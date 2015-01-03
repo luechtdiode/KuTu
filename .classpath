@@ -6,6 +6,7 @@
   <classpathentry kind="output" path="target/classes"/>
   <classpathentry kind="con" path="org.eclipse.jdt.launching.JRE_CONTAINER"/>
   <classpathentry kind="con" path="org.scala-ide.sdt.launching.SCALA_CONTAINER"/>
+  <classpathentry kind="var" path="M2_REPO/org/scalafx/scalafx_2.10/8.0.0-R4/scalafx_2.10-8.0.0-R4.jar" sourcepath="M2_REPO/org/scalafx/scalafx_2.10/8.0.0-R4/scalafx_2.10-8.0.0-R4-sources.jar"/>
   <classpathentry kind="var" path="M2_REPO/mysql/mysql-connector-java/5.1.18/mysql-connector-java-5.1.18.jar"/>
   <classpathentry kind="var" path="M2_REPO/com/h2database/h2/1.3.174/h2-1.3.174.jar" sourcepath="M2_REPO/com/h2database/h2/1.3.174/h2-1.3.174-sources.jar"/>
   <classpathentry kind="var" path="M2_REPO/com/typesafe/slick/slick_2.10/2.0.0/slick_2.10-2.0.0.jar" sourcepath="M2_REPO/com/typesafe/slick/slick_2.10/2.0.0/slick_2.10-2.0.0-sources.jar"/>

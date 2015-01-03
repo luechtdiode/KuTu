@@ -63,6 +63,11 @@
 			<artifactId>scala-library</artifactId>
 			<version>${scala.version}</version>
 		</dependency>
+		<dependency>
+			<groupId>org.scalafx</groupId>
+			<artifactId>scalafx_${scala.majorversion}</artifactId>
+			<version>8.0.0-R4</version>
+		</dependency>
 		
 		<dependency>
 		  <groupId>mysql</groupId>
@@ -263,6 +268,24 @@
 		      </sourceIncludes>
           </configuration>
       </plugin>
+      <!-- activate to import as Maven-Project into eclipse, then deactivate again plugin>
+         <groupId>org.apache.maven.plugins</groupId>
+         <artifactId>maven-compiler-plugin</artifactId>
+         <configuration>
+           <skipMain>true</skipMain>
+           <skip>true</skip>
+         </configuration>
+         <executions>
+           <execution>
+             <id>default-compile</id>
+             <goals><goal>compile</goal></goals>
+           </execution>
+           <execution>
+             <id>default-testCompile</id>
+             <goals><goal>testCompile</goal></goals>
+           </execution>
+         </executions>
+      </plugin-->
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-surefire-plugin</artifactId>

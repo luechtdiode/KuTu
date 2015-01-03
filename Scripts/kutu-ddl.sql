@@ -140,9 +140,9 @@ CREATE TABLE IF NOT EXISTS `kutu`.`wertung` (
   `athlet_id` bigint(20) NOT NULL,
   `wettkampfdisziplin_id` bigint(20) NOT NULL,
   `wettkampf_id` bigint(20) NOT NULL,
-  `note_d` decimal(4,3) NOT NULL,
-  `note_e` decimal(4,3) NOT NULL,
-  `endnote` decimal(4,3) NOT NULL,
+  `note_d` decimal(10,3) NOT NULL,
+  `note_e` decimal(10,3) NOT NULL,
+  `endnote` decimal(10,3) NOT NULL,
   UNIQUE INDEX `id` (`id` ASC),
   PRIMARY KEY (`id`),
   CONSTRAINT `wertung_athlet_FK` 

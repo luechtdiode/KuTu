@@ -1,7 +1,7 @@
 package ch.seidel
 
-import scala.annotation.tailrec
 package object domain {
+
   case class Verein(id: Long, name: String)
 
   case class Athlet(id: Long, name: String, vorname: String, gebdat: Option[java.sql.Date], verein: Option[Long])
@@ -22,7 +22,7 @@ package object domain {
     }
 
     final def buildPathToParent(path: Seq[Programm]): ProgrammView = {
-      if(path.nonEmpty) {
+      if (path.nonEmpty) {
         path.head.buildPathToParent(path.tail).withParent(toView)
       }
       else {
@@ -34,12 +34,12 @@ package object domain {
   case class ProgrammRaw(id: Long, name: String, parentId: Long) extends Programm
   case class ProgrammView(id: Long, name: String, parent: Option[ProgrammView]) extends Programm {
     def head: ProgrammView = parent match {
-      case None => this
+      case None    => this
       case Some(p) => p.head
     }
     def sameOrigin(other: ProgrammView) = head.equals(other.head)
     def toPath: String = parent match {
-      case None => this.name
+      case None    => this.name
       case Some(p) => p.toPath + " / " + name
     }
   }
