@@ -80,9 +80,10 @@ package object domain {
   case class Resultat(noteD: scala.math.BigDecimal, noteE: scala.math.BigDecimal, endnote: scala.math.BigDecimal) extends DataObject {
     def + (r: Resultat) = Resultat(noteD + r.noteD, noteE + r.noteE, endnote + r.endnote)
     override def easyprint = {
-      val d = f"${noteD}%5.3f"
-      val a = f"${noteE}%5.3f"
-      val e = f"${endnote}%5.2f"
+      val empty = ""
+      val d = if(noteD > 0) f"${noteD}%5.3f" else empty
+      val a = if(noteE > 0) f"${noteE}%5.3f" else empty
+      val e = if(endnote > 0) f"${endnote}%5.2f" else empty
       f"${d}%6s${a}%6s${e}%6s"
     }
   }

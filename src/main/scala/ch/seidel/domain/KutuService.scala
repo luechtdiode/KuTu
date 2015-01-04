@@ -32,6 +32,8 @@ trait KutuService {
     case Some(id) => Some(Verein(r.<<[Long], r.<<[String]))
     case _        => { r.skip; r.skip; None }
   })
+  private implicit val getAthletResult = GetResult(r =>
+    Athlet(r.<<, r.<<, r.<<, r.<<, r.<<))
   private implicit val getAthletViewResult = GetResult(r =>
     AthletView(r.<<[Long], r.<<[String], r.<<[String], r.<<[Option[java.sql.Date]], r))
   private implicit val getDisziplinResult = GetResult(r =>
@@ -258,7 +260,6 @@ trait KutuService {
   }
 
   def selectAthletes = {
-    implicit val getResult = GetResult(r => Athlet(r.<<, r.<<, r.<<, r.<<, r.<<))
     sql"""select * from kutu.athlet""".as[Athlet]
   }
 
