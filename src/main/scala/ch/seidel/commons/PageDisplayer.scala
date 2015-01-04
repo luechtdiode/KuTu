@@ -1,9 +1,22 @@
 package ch.seidel.commons
 
-import scalafx.scene.Node
+import javafx.scene.{ control => jfxsc }
+import javafx.{ scene => jfxs }
+import scalafx.stage.Stage
+import scalafx.geometry.Insets
 import scalafx.scene.layout.{Priority, VBox}
+import scalafx.scene.Scene
+import scalafx.scene.layout.BorderPane
+import scalafx.scene.control.Button
 import ch.seidel.KuTuAppTree
 import ch.seidel.domain.WettkampfView
+import scalafx.scene.control.ToolBar
+import scalafx.event.ActionEvent
+import scalafx.stage.Modality
+import scalafx.stage.Window
+import scalafx.scene.Node
+import scalafx.scene.layout.HBox
+import scalafx.geometry.Pos
 
 /**
  * the class that updates tabbed view or dashboard view
@@ -11,16 +24,47 @@ import ch.seidel.domain.WettkampfView
  */
 object PageDisplayer {
 
+  def showInDialog(tit: String, nodeToAdd: DisplayablePage, commands: Button*)(implicit event: ActionEvent) {
+    // Create dialog
+    val dialogStage = new Stage {
+      outer => {
+        initModality(Modality.WINDOW_MODAL)
+        val node = event.source.asInstanceOf[jfxs.Node]
+        delegate.initOwner(node.getScene.getWindow)
+        title = tit
+        scene = new Scene {
+          root = new BorderPane {
+            padding = Insets(15)
+            center = nodeToAdd.getPage
+            bottom = new HBox {
+              prefHeight = 50
+              alignment = Pos.BOTTOM_RIGHT
+              hgrow = Priority.ALWAYS
+              content = commands
+            }
+            var first = false
+            commands.foreach { btn =>
+              if(!first) {
+                first = true
+                btn.defaultButton = true
+              }
+              btn.minWidth = 100
+              btn.filterEvent(ActionEvent.ACTION) { () => outer.close()}}
+          }
+        }
+      }
+    }
+    // Show dialog and wait till it is closed
+    dialogStage.showAndWait()
+  }
+
   def choosePage(context: Option[Any], value: String = "dashBoard", tree: KuTuAppTree): Node = {
     value match {
       case "dashBoard" => displayPage(new DashboardPage(tree = tree))
-      case _ =>
-        /*if (value.startsWith("dashBoard - ")) {
-
-        } else*/ context match {
-          case Some(w: WettkampfView) => chooseWettkampfPage(w, tree)
-          case _                      => displayPage(new DashboardPage(value.split("-")(1).trim(), tree))
-        }
+      case _           => context match {
+        case Some(w: WettkampfView) => chooseWettkampfPage(w, tree)
+        case _                      => displayPage(new DashboardPage(value.split("-")(1).trim(), tree))
+      }
     }
   }
   def chooseWettkampfPage(wettkampf: WettkampfView, tree: KuTuAppTree): Node = {

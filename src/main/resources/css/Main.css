@@ -472,6 +472,13 @@
 	/*  -fx-effect: dropshadow( three-pass-box , white , 0, 0.0 , 10 , 1 ); */
 }
 
+.toolbar-header {
+	-fx-font-size: 1.2em;
+	-fx-font-weight: bold;
+	-fx-padding: 8px 0 2px 0;
+	-fx-text-fill: #0072aa;
+}
+
 /* Category Page Styles */
 .category-page {
     -fx-background: #333333;

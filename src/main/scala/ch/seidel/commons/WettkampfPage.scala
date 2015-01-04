@@ -22,6 +22,12 @@ import scalafx.beans.property.ReadOnlyStringWrapper
 import ch.seidel.domain._
 import scalafx.util.converter.DoubleStringConverter
 import scalafx.beans.value.ObservableValue
+import scalafx.scene.control.ToolBar
+import scalafx.scene.control.Button
+import scalafx.scene.layout.HBox
+import scalafx.scene.Group
+import scalafx.event.ActionEvent
+import scalafx.scene.control.ScrollPane
 
 object WettkampfPage {
 
@@ -73,7 +79,7 @@ object WettkampfPage {
 
   class LazyLoadingTab(programm: ProgrammView, wettkampf: WettkampfView, service: KutuService, athleten: => IndexedSeq[WertungView]) extends Tab {
     lazy val populated = {
-      val wertungen = athleten.filter(wv => wv.wettkampfdisziplin.programm.id == programm.id).groupBy(wv => wv.athlet).map(wvg => wvg._2.map(WertungEditor)).toIndexedSeq
+      def wertungen = athleten.filter(wv => wv.wettkampfdisziplin.programm.id == programm.id).groupBy(wv => wv.athlet).map(wvg => wvg._2.map(WertungEditor)).toIndexedSeq
       val wkModel = ObservableBuffer[IndexedSeq[WertungEditor]](wertungen)
 
       val indexerE = Iterator.from(0)
@@ -85,8 +91,8 @@ object WettkampfPage {
             val index = indexerD.next
             text = wertung.init.wettkampfdisziplin.disziplin.name
 //            cellValueFactory = {x => new ReadOnlyStringWrapper(x.value, "athlet", f"D: ${wertung.noteD}%2.3f E: ${wertung.noteE}%2.3f = ${wertung.endnote}%2.3f") }
-            cellValueFactory = {x => x.value(index).noteD }
-            cellFactory = {x => new TextFieldTableCell[IndexedSeq[WertungEditor], String] (new DefaultStringConverter())}
+            cellValueFactory = {x => if(x.value.size > index) x.value(index).noteD else wertung.noteD}
+            cellFactory = {_ => new TextFieldTableCell[IndexedSeq[WertungEditor], String] (new DefaultStringConverter())}
 
             styleClass +=  "table-cell-with-value"
             prefWidth = 60
@@ -105,7 +111,7 @@ object WettkampfPage {
             val index = indexerE.next
             text = wertung.init.wettkampfdisziplin.disziplin.name
 //            cellValueFactory = {x => new ReadOnlyStringWrapper(x.value, "athlet", f"D: ${wertung.noteD}%2.3f E: ${wertung.noteE}%2.3f = ${wertung.endnote}%2.3f") }
-            cellValueFactory = {x => x.value(index).noteE}
+            cellValueFactory = {x => if(x.value.size > index) x.value(index).noteE else wertung.noteE}
             cellFactory = {x => new TextFieldTableCell[IndexedSeq[WertungEditor], String] (new DefaultStringConverter())}
 
             styleClass +=  "table-cell-with-value"
@@ -125,7 +131,7 @@ object WettkampfPage {
             val index = indexerF.next
             text = wertung.init.wettkampfdisziplin.disziplin.name
 //            cellValueFactory = {x => new ReadOnlyStringWrapper(x.value, "athlet", f"D: ${wertung.noteD}%2.3f E: ${wertung.noteE}%2.3f = ${wertung.endnote}%2.3f") }
-            cellValueFactory = {x => x.value(index).endnote}
+            cellValueFactory = {x => if(x.value.size > index) x.value(index).endnote else wertung.endnote}
             cellFactory = {x => new TextFieldTableCell[IndexedSeq[WertungEditor], String] (new DefaultStringConverter())}
 
             styleClass +=  "table-cell-with-value"
@@ -199,15 +205,94 @@ object WettkampfPage {
         editable = true
       }
 
+      val addButton = new Button {
+              text = "Athlet hinzufügen"
+              minWidth = 75
+              onAction = (event: ActionEvent) => {
+                disable = true
+                val athletModel = ObservableBuffer[AthletView](
+                  service.selectAthletesView.filter{p => wertungen.forall { wp => wp.head.init.athlet.id != p.id}}
+                )
+                val athletTable = new TableView[AthletView](athletModel) {
+                  columns ++= List(
+                    new TableColumn[AthletView, String] {
+                      text = "Athlet"
+                      cellValueFactory = {x => new ReadOnlyStringWrapper(x.value, "athlet", {
+                        s"${x.value.vorname} ${x.value.name} (${x.value.verein.map { _.name }.getOrElse("ohne Verein")})"})}
+                      //prefWidth = 150
+                    }
+                  )
+                }
+                implicit val impevent = event
+                PageDisplayer.showInDialog(text.value, new DisplayablePage() {
+                  def getPage: Node = {
+                    new BorderPane {
+                      hgrow = Priority.ALWAYS
+                      vgrow = Priority.ALWAYS
+                      center = athletTable
+                    }
+                  }
+                }, new Button("OK") {
+                  onAction = (event: ActionEvent) => {
+                    if(!athletTable.selectionModel().isEmpty) {
+                      val athlet = athletTable.selectionModel().getSelectedItem
+                      def filter(progId: Long, a: Athlet): Boolean = a.id == athlet.id
+                      service.assignAthletsToWettkampf(wettkampf.id, Set(programm.id), Some(filter))
+                      wkModel.clear
+                      wkModel.appendAll(wertungen)
+                    }
+                  }
+                })
+                disable = false
+              }
+            }
+      val removeButton = new Button {
+              text = "Athlet entfernen"
+              minWidth = 75
+              onAction = (event: ActionEvent) => {
+                    if(!wkview.selectionModel().isEmpty) {
+                      val athletwertungen = wkview.selectionModel().getSelectedItem.map(_.init.id).toSet
+                      service.unassignAthletFromWettkampf(athletwertungen)
+                      wkModel.remove(wkview.selectionModel().getSelectedIndex)
+                    }
+                  }
+            }
+      val clearButton = new Button {
+              text = "Athlet zurücksetzen"
+              minWidth = 75
+              onAction = (event: ActionEvent) => {
+                    if(!wkview.selectionModel().isEmpty) {
+                      val selected = wkview.selectionModel().getSelectedItem
+                      for(disciplin <- selected) {
+                        disciplin.noteD.value = "0"
+                        disciplin.noteE.value = "0"
+                        disciplin.endnote.value = "0"
+                        val rowIndex = wkModel.indexOf(selected)
+                        if(disciplin.isDirty) {
+                          wkModel.update(rowIndex, selected.updated(selected.indexOf(disciplin), WertungEditor(service.updateWertung(disciplin.commit))))
+                        }
+                      }
+                    }
+                  }
+            }
+      //addButton.disable <== when (wkview.selectionModel.value.selectedItemProperty.isNull()) choose true otherwise false
+      removeButton.disable <== when (wkview.selectionModel.value.selectedItemProperty.isNull()) choose true otherwise false
+      clearButton.disable <== when (wkview.selectionModel.value.selectedItemProperty.isNull()) choose true otherwise false
+
       content = new BorderPane {
         hgrow = Priority.ALWAYS
         vgrow = Priority.ALWAYS
         center = wkview
-        top = new Label {
-          text = s"Programm ${programm.name}"
-          maxWidth = Double.MaxValue
-          minHeight = Region.USE_PREF_SIZE
-          styleClass += "page-subheader"
+        top = new ToolBar {
+          content = List(
+            new Label {
+              text = s"Programm ${programm.name}"
+              maxWidth = Double.MaxValue
+              minHeight = Region.USE_PREF_SIZE
+              styleClass += "toolbar-header"
+            },
+            addButton, removeButton, clearButton
+          )
         }
       }
       /*content =new StackPane {

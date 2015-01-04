@@ -3,7 +3,7 @@ package ch.seidel
 import java.io.{File, IOException}
 import scala.collection.immutable.TreeMap
 import scalafx.Includes._
-import ch.seidel.commons.{ExampleInfo, PageDisplayer, SortUtils}
+import ch.seidel.commons.{PageDisplayer, SortUtils}
 import scalafx.event.ActionEvent
 import scalafx.geometry.{Insets, Orientation}
 import scalafx.scene.control._
@@ -73,7 +73,7 @@ class KuTuAppTree(service: KutuService) {
         val inputStream = this.getClass.getResourceAsStream(filePath)
         if (inputStream == null) {
           throw new IOException("Unable to locate resource: " + filePath)
-      }
+        }
         image = new Image(inputStream)
       }
       def thmb(context: Any, path: String, node: String) = {

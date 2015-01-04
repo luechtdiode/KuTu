@@ -177,7 +177,17 @@ trait KutuService {
     }
   }
 
-  def assignAthletsToWettkampf(wettkampfId: Long, programmId: Set[Long], withAthlets: Option[(Long, Athlet) => Boolean] = Some({ (_, _) => true }))(implicit session: Session) {
+  def unassignAthletFromWettkampf(wertungId: Set[Long]) {
+    database withTransaction { implicit session: Session =>
+      sqlu"""
+                    delete from kutu.wertung
+                    where id in (#${wertungId.mkString(",")})
+              """.execute
+    }
+  }
+
+  def assignAthletsToWettkampf(wettkampfId: Long, programmId: Set[Long], withAthlets: Option[(Long, Athlet) => Boolean] = Some({ (_, _) => true })) {
+    database withSession {implicit session: Session =>
       withAthlets match {
         case Some(f) =>
           for {
@@ -200,6 +210,7 @@ trait KutuService {
           }
         case None =>
       }
+    }
   }
 
   def listWettkaempfe = {
@@ -248,7 +259,9 @@ trait KutuService {
   }
 
   def selectAthletesView = {
-    sql"""select * from kutu.athlet""".as[AthletView]
+    database withSession { implicit session =>
+      sql"""select * from kutu.athlet inner join kutu.verein on (verein.id = athlet.verein)""".as[AthletView].list()
+    }
   }
 
   def insertAthlete(athlete: Athlet) = {
