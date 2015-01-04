@@ -3,207 +3,207 @@ USE `kutu`;
 DELETE FROM disziplin;
 
 INSERT INTO disziplin
-(id, name)
-VALUES(4, 'Sprung');
+(id, name, ord)
+VALUES(1, 'Boden', 1);
 INSERT INTO disziplin
-(id, name)
-VALUES(2, 'Pferd Pauschen');
+(id, name, ord)
+VALUES(2, 'Pferd Pauschen', 2);
 INSERT INTO disziplin
-(id, name)
-VALUES(5, 'Barren');
+(id, name, ord)
+VALUES(3, 'Ring', 3);
 INSERT INTO disziplin
-(id, name)
-VALUES(3, 'Ring');
+(id, name, ord)
+VALUES(4, 'Sprung', 4);
 INSERT INTO disziplin
-(id, name)
-VALUES(1, 'Boden');
+(id, name, ord)
+VALUES(5, 'Barren', 5);
 INSERT INTO disziplin
-(id, name)
-VALUES(6, 'Reck');
+(id, name, ord)
+VALUES(6, 'Reck', 6);
 
 INSERT INTO disziplin
-(id, name)
-VALUES(7, 'Arm-Rumpf-Winkel vorlings');
+(id, name, ord)
+VALUES(7, 'Arm-Rumpf-Winkel vorlings', 1);
 
 INSERT INTO disziplin
-(id, name)
-VALUES(8, 'Arm-Rumpf-Winkel rücklings');
+(id, name, ord)
+VALUES(8, 'Arm-Rumpf-Winkel rücklings', 2);
 
 INSERT INTO disziplin
-(id, name)
-VALUES(9, 'Ein- und Ausschultern');
+(id, name, ord)
+VALUES(9, 'Ein- und Ausschultern', 3);
 
 INSERT INTO disziplin
-(id, name)
-VALUES(10, 'Brücke');
+(id, name, ord)
+VALUES(10, 'Brücke', 4);
 
 INSERT INTO disziplin
-(id, name)
-VALUES(11, 'Rumpfbeugen vorwärts');
+(id, name, ord)
+VALUES(11, 'Rumpfbeugen vorwärts', 5);
 
 INSERT INTO disziplin
-(id, name)
-VALUES(12, 'Querspagat rechts');
+(id, name, ord)
+VALUES(12, 'Querspagat rechts', 6);
 
 INSERT INTO disziplin
-(id, name)
-VALUES(13, 'Querspagat links');
+(id, name, ord)
+VALUES(13, 'Querspagat links', 7);
 
 INSERT INTO disziplin
-(id, name)
-VALUES(14, 'Seitspagat');
+(id, name, ord)
+VALUES(14, 'Seitspagat', 8);
 
 INSERT INTO disziplin
-(id, name)
-VALUES(15, 'Sprint');
+(id, name, ord)
+VALUES(15, 'Sprint', 9);
 
 INSERT INTO disziplin
-(id, name)
-VALUES(16, 'Standweitsprung');
+(id, name, ord)
+VALUES(16, 'Standweitsprung', 10);
 
 INSERT INTO disziplin
-(id, name)
-VALUES(17, 'Hangeln / Klettern / Klimmzug');
+(id, name, ord)
+VALUES(17, 'Hangeln / Klettern / Klimmzug', 11);
 
 INSERT INTO disziplin
-(id, name)
-VALUES(18, 'Beugestütz / Liegestütz');
+(id, name, ord)
+VALUES(18, 'Beugestütz / Liegestütz', 12);
 
 INSERT INTO disziplin
-(id, name)
-VALUES(19, 'Handstand');
+(id, name, ord)
+VALUES(19, 'Handstand', 13);
 
 INSERT INTO disziplin
-(id, name)
-VALUES(20, 'Schweizer zum Handstand / Wiener zum Handstand');
+(id, name, ord)
+VALUES(20, 'Schweizer zum Handstand / Wiener zum Handstand', 14);
 
 INSERT INTO disziplin
-(id, name)
-VALUES(21, 'Manna / Spitzwinkelstütz / Winkelstütz / Hockwinkelstütz');
+(id, name, ord)
+VALUES(21, 'Manna / Spitzwinkelstütz / Winkelstütz / Hockwinkelstütz', 15);
 
 INSERT INTO disziplin
-(id, name)
-VALUES(22, 'Beinheben an der Sprossenwand');
+(id, name, ord)
+VALUES(22, 'Beinheben an der Sprossenwand', 16);
 
 INSERT INTO disziplin
-(id, name)
-VALUES(23, 'Hangwaage rücklings / Sturzhänge');
+(id, name, ord)
+VALUES(23, 'Hangwaage rücklings / Sturzhänge', 17);
 
 INSERT INTO disziplin
-(id, name)
-VALUES(24, 'Stützwaage gehockt');
+(id, name, ord)
+VALUES(24, 'Stützwaage gehockt', 18);
 
 INSERT INTO disziplin
-(id, name)
-VALUES(25, 'Pilz Kreisen beider Beine');
+(id, name, ord)
+VALUES(25, 'Pilz Kreisen beider Beine', 19);
 
 
 
 DELETE FROM programm;
 
 INSERT INTO programm
-(id, parent_id, name)
-VALUES(1, null, 'Athletiktest');
+(id, parent_id, name, aggregate)
+VALUES(1, null, 'Athletiktest', 0);
 
 INSERT INTO programm
-(id, parent_id, name)
-VALUES(2, 1, 'Athletiktest 8-10 Jährige');
+(id, parent_id, name, aggregate)
+VALUES(2, 1, 'Athletiktest 8-10 Jährige', 1);
 
 INSERT INTO programm
-(id, parent_id, name)
-VALUES(3, 2, 'Athletiktest-Beweglichkeit 8-10 Jährige');
+(id, parent_id, name, aggregate)
+VALUES(3, 2, 'Athletiktest-Beweglichkeit 8-10 Jährige', 1);
 
 INSERT INTO programm
-(id, parent_id, name)
-VALUES(4, 2, 'Athletiktest-Kraft 8-10 Jährige');
+(id, parent_id, name, aggregate)
+VALUES(4, 2, 'Athletiktest-Kraft 8-10 Jährige', 1);
 
 INSERT INTO programm
-(id, parent_id, name)
-VALUES(5, 1, 'Athletiktest -7 Jährige');
+(id, parent_id, name, aggregate)
+VALUES(5, 1, 'Athletiktest -7 Jährige', 1);
 
 INSERT INTO programm
-(id, parent_id, name)
-VALUES(6, 5, 'Athletiktest-Beweglichkeit -7 Jährige');
+(id, parent_id, name, aggregate)
+VALUES(6, 5, 'Athletiktest-Beweglichkeit -7 Jährige', 1);
 
 INSERT INTO programm
-(id, parent_id, name)
-VALUES(7, 5, 'Athletiktest-Kraft -7 Jährige');
+(id, parent_id, name, aggregate)
+VALUES(7, 5, 'Athletiktest-Kraft -7 Jährige', 1);
 
 INSERT INTO programm
-(id, parent_id, name)
-VALUES(8, 1, 'Athletiktest 11+ Jährige');
+(id, parent_id, name, aggregate)
+VALUES(8, 1, 'Athletiktest 11+ Jährige', 1);
 
 INSERT INTO programm
-(id, parent_id, name)
-VALUES(9, 8, 'Athletiktest-Beweglichkeit 11+ Jährige');
+(id, parent_id, name, aggregate)
+VALUES(9, 8, 'Athletiktest-Beweglichkeit 11+ Jährige', 1);
 
 INSERT INTO programm
-(id, parent_id, name)
-VALUES(10, 8, 'Athletiktest-Kraft 11+ Jährige');
+(id, parent_id, name, aggregate)
+VALUES(10, 8, 'Athletiktest-Kraft 11+ Jährige', 1);
 
 INSERT INTO programm
-(id, parent_id, name)
-VALUES(11, null, 'KuTu-Wettkampf');
+(id, parent_id, name, aggregate)
+VALUES(11, null, 'KuTu-Wettkampf', 0);
 
 INSERT INTO programm
-(id, parent_id, name)
-VALUES(12, 11, 'EP');
+(id, parent_id, name, aggregate, ord)
+VALUES(12, 11, 'EP', 0, 1);
 
 INSERT INTO programm
-(id, parent_id, name)
-VALUES(13, 11, 'P1-U9');
+(id, parent_id, name, aggregate, ord)
+VALUES(13, 11, 'P1-U9', 0, 2);
 
 INSERT INTO programm
-(id, parent_id, name)
-VALUES(14, 11, 'P1');
+(id, parent_id, name, aggregate, ord)
+VALUES(14, 11, 'P1', 0, 3);
 
 INSERT INTO programm
-(id, parent_id, name)
-VALUES(15, 11, 'P2');
+(id, parent_id, name, aggregate, ord)
+VALUES(15, 11, 'P2', 0, 4);
 
 INSERT INTO programm
-(id, parent_id, name)
-VALUES(16, 11, 'P3');
+(id, parent_id, name, aggregate, ord)
+VALUES(16, 11, 'P3', 0, 5);
 
 INSERT INTO programm
-(id, parent_id, name)
-VALUES(17, 11, 'P4');
+(id, parent_id, name, aggregate, ord)
+VALUES(17, 11, 'P4', 0, 6);
 
 INSERT INTO programm
-(id, parent_id, name)
-VALUES(18, 11, 'P5');
+(id, parent_id, name, aggregate, ord)
+VALUES(18, 11, 'P5', 0, 7);
 
 INSERT INTO programm
-(id, parent_id, name)
-VALUES(19, 11, 'P6');
+(id, parent_id, name, aggregate, ord)
+VALUES(19, 11, 'P6', 0, 8);
 
 INSERT INTO programm
-(id, parent_id, name)
-VALUES(20, null, 'GeTu-Wettkampf');
+(id, parent_id, name, aggregate)
+VALUES(20, null, 'GeTu-Wettkampf', 0);
 
 INSERT INTO programm
-(id, parent_id, name)
-VALUES(21, 20, 'K1');
+(id, parent_id, name, aggregate, ord)
+VALUES(21, 20, 'K1', 0, 1);
 
 INSERT INTO programm
-(id, parent_id, name)
-VALUES(22, 20, 'K2');
+(id, parent_id, name, aggregate, ord)
+VALUES(22, 20, 'K2', 0, 2);
 
 INSERT INTO programm
-(id, parent_id, name)
-VALUES(23, 20, 'K3');
+(id, parent_id, name, aggregate, ord)
+VALUES(23, 20, 'K3', 0, 3);
 
 INSERT INTO programm
-(id, parent_id, name)
-VALUES(24, 20, 'K4');
+(id, parent_id, name, aggregate, ord)
+VALUES(24, 20, 'K4', 0, 4);
 
 INSERT INTO programm
-(id, parent_id, name)
-VALUES(25, 20, 'K5');
+(id, parent_id, name, aggregate, ord)
+VALUES(25, 20, 'K5', 0, 5);
 
 INSERT INTO programm
-(id, parent_id, name)
-VALUES(26, 20, 'K6');
+(id, parent_id, name, aggregate, ord)
+VALUES(26, 20, 'K6', 0, 6);
 
 DELETE FROM wettkampfdisziplin;
 -- Athletiktest Beweglichkeit (3, 6, 9 -> 7-14)
@@ -537,6 +537,18 @@ DELETE FROM verein;
 INSERT INTO verein
 (name)
 VALUES('BTV Basel');
+INSERT INTO verein
+(name)
+VALUES('TV Seltisberg');
+INSERT INTO verein
+(name)
+VALUES('TV Nunningen');
+INSERT INTO verein
+(name)
+VALUES('AS Pratteln');
+INSERT INTO verein
+(name)
+VALUES('NKL');
 
 DELETE FROM athlet;
 INSERT INTO athlet

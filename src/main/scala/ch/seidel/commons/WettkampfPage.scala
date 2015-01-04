@@ -28,6 +28,8 @@ import scalafx.scene.layout.HBox
 import scalafx.scene.Group
 import scalafx.event.ActionEvent
 import scalafx.scene.control.ScrollPane
+import java.text.SimpleDateFormat
+import scala.collection.mutable.StringBuilder
 
 object WettkampfPage {
 
@@ -76,9 +78,14 @@ object WettkampfPage {
         scala.math.BigDecimal(_noteE),
         scala.math.BigDecimal(_endnote))
   }
+  trait TabWithService {
+    val service: KutuService
+    lazy val populated = isPopulated
+    def isPopulated: Boolean
+  }
 
-  class LazyLoadingTab(programm: ProgrammView, wettkampf: WettkampfView, service: KutuService, athleten: => IndexedSeq[WertungView]) extends Tab {
-    lazy val populated = {
+  class LazyLoadingTab(programm: ProgrammView, wettkampf: WettkampfView, override val service: KutuService, athleten: => IndexedSeq[WertungView]) extends Tab with TabWithService {
+    override def isPopulated = {
       def wertungen = athleten.filter(wv => wv.wettkampfdisziplin.programm.id == programm.id).groupBy(wv => wv.athlet).map(wvg => wvg._2.map(WertungEditor)).toIndexedSeq
       val wkModel = ObservableBuffer[IndexedSeq[WertungEditor]](wertungen)
 
@@ -302,18 +309,195 @@ object WettkampfPage {
     }
   }
 
-  class LazyTabPane(progSites: Seq[LazyLoadingTab]) extends TabPane {
+  class RanglisteTab(wettkampf: WettkampfView, override val service: KutuService) extends Tab with TabWithService {
+        /*
+         * combo 1. Gruppierung [leer, Programm, Jahrgang, Disziplin, Verein]
+         * combo 2. Gruppierung [leer, Programm, Jahrgang, Disziplin, Verein]
+         * combo 3. Gruppierung [leer, Programm, Jahrgang, Disziplin, Verein]
+         * combo 4. Gruppierung [leer, Programm, Jahrgang, Disziplin, Verein]
+         */
+
+//    val daten = service.selectWertungen().groupBy { x =>
+//      x.wettkampf }.map(x => (x._1, x._2.groupBy { x =>
+//        x.wettkampfdisziplin.programm }.map(x => (x._1, x._2.groupBy { x =>
+//          x.athlet }))))
+        sealed trait GroupSection {
+          val groupKey: DataObject
+          val sum: Resultat
+          def aggregate: GroupSum = GroupSum(groupKey, sum)
+          def easyprint: String
+        }
+        case class GroupSum(override val groupKey: DataObject, wertung: Resultat) extends GroupSection {
+          override val sum: Resultat = wertung
+          override def easyprint = groupKey.easyprint + " " + sum.easyprint
+        }
+        case class GroupLeaf(override val groupKey: DataObject, list: Iterable[WertungView]) extends GroupSection {
+          override val sum: Resultat = list.map(_.resultat).reduce((r1, r2) => r1 + r2)
+          override def easyprint = {
+            val buffer = new StringBuilder()
+            buffer.append(groupKey.easyprint).append("\n")
+            val ds = list.map(_.wettkampfdisziplin.disziplin).toSet[Disziplin].toList.sortBy { d => d.id }
+            buffer.append(f"${"Disziplin"}%40s")
+            for(w <- ds) {
+              buffer.append(f" ${w.easyprint}%18s")
+            }
+            buffer.append("\n")
+            buffer.append(f"${"Athlet"}%40s")
+            val legendd = "D"
+            val legenda = "E"
+            val legende = "End"
+            val legend = f"${legendd}%6s${legenda}%6s${legende}%6s"
+            for(w <- ds) {
+              buffer.append(f" ${legend}%18s")
+            }
+            buffer.append("\n")
+//            val extractor = groupKey match {
+//              case p@Programm => (w: WertungView) => w.wettkampfdisziplin.programm
+//              case p@Disziplin =>
+//              case p@Verein =>
+//              case p@AthletJahrgang =>
+//              case _ =>
+//            }
+            for(wv <- list.groupBy { x => x.athlet }.map{x => (x._1, x._2, x._2.map(w => w.endnote).sum)}.toList.sortBy(_._3).reverse) {
+              val (athlet, wertungen, sum) = wv
+              buffer.append(f"${athlet.easyprint}%40s")
+              for(w <- wertungen.toList.sortBy { x => x.wettkampfdisziplin.disziplin.id }) {
+                buffer.append(f" ${w.easyprint}%18s")
+              }
+              buffer.append("\n")
+            }
+            buffer.toString()
+          }
+        }
+
+        case class GroupNode(override val groupKey: DataObject, next: Iterable[GroupSection]) extends GroupSection {
+          override val sum: Resultat = next.map(_.sum).reduce((r1, r2) => r1 + r2)
+          override def easyprint = {
+            val buffer = new StringBuilder()
+            buffer.append(groupKey.easyprint).append("\n")
+            for(gi <- next) {
+              buffer.append(gi.easyprint).append("\n")
+            }
+            buffer.toString
+          }
+        }
+
+        sealed trait GroupBy {
+          private var next: Option[GroupBy] = None
+          protected val grouper: (WertungView) => DataObject
+          protected val sorter: Option[(GroupSection, GroupSection) => Boolean] = leafsorter
+          protected val leafsorter: Option[(GroupSection, GroupSection) => Boolean] = Some((gs1:GroupSection , gs2:GroupSection ) => {
+            gs1.sum.endnote > gs2.sum.endnote
+          })
+
+          def groupBy(next: GroupBy): GroupBy = {
+            this.next match {
+              case Some(n) => n.groupBy(next)
+              case None    => this.next = Some(next)
+            }
+            this
+          }
+
+          def select(wvlist: Seq[WertungView] = service.selectWertungen()): Iterable[GroupSection] = {
+            val grouped = wvlist groupBy grouper
+            next match {
+              case Some(ng) => mapAndSortNode(ng, grouped)
+              case None     => mapAndSortLeaf(grouped)
+            }
+          }
+
+          private def mapAndSortLeaf(grouped: Map[DataObject, Seq[WertungView]]) = {
+            def reduce(switch: DataObject, list: Seq[WertungView]):Seq[GroupSection] = {
+              switch match {
+                case p: ProgrammView if(p.aggregate > 0) =>
+                  list.groupBy { x => x.athlet }.map{ x => GroupSum(x._1, x._2.map(y => y.resultat).reduce((r1, r2) => r1 + r2))}.toSeq
+                case _ => list.toList match {
+                  case head :: _ if(head.wettkampfdisziplin.programm.aggregate > 0) =>
+                    Seq(GroupNode(switch, sort(list.groupBy { x => x.athlet }.map{ x => GroupSum(x._1, x._2.map(y => y.resultat).reduce((r1, r2) => r1 + r2))}.toSeq, leafsorter)))
+                  case _ =>
+                    Seq(GroupLeaf(switch, list))
+                }
+              }
+            }
+            sort(grouped.flatMap(x => reduce(x._1, x._2)), leafsorter)
+          }
+
+          private def mapAndSortNode(ng: GroupBy, grouped: Map[DataObject, Seq[WertungView]]) = {
+            sort(grouped.map{x =>
+              val (grp, seq) = x
+              GroupNode(grp, ng.select(seq))
+            }, sorter)
+          }
+
+          private def sort(mapped: Iterable[GroupSection], sorter: Option[(GroupSection, GroupSection) => Boolean]) = {
+            sorter match {
+              case Some(s) => mapped.toList.sortWith(s)
+              case None    => mapped
+            }
+          }
+        }
+
+        case object ByProgramm extends GroupBy {
+          protected override val grouper = (v: WertungView) => {
+            v.wettkampfdisziplin.programm
+          }
+          protected override val sorter: Option[(GroupSection, GroupSection) => Boolean] = Some((gs1:GroupSection , gs2:GroupSection ) => {
+            gs1.groupKey.asInstanceOf[ProgrammView].name.compareTo(gs2.groupKey.asInstanceOf[ProgrammView].name) < 0
+          })
+        }
+        case object ByJahrgang extends GroupBy {
+          private val extractYear = new SimpleDateFormat("YYYY")
+          protected override val grouper = (v: WertungView) => {
+            v.athlet.gebdat match {
+              case Some(d) => AthletJahrgang(extractYear.format(d))
+              case None    => AthletJahrgang("unbekannt")
+            }
+          }
+          protected override val sorter: Option[(GroupSection, GroupSection) => Boolean] = Some((gs1:GroupSection , gs2:GroupSection ) => {
+            gs1.groupKey.asInstanceOf[AthletJahrgang].hg.compareTo(gs2.groupKey.asInstanceOf[AthletJahrgang].hg) < 0
+          })
+        }
+        case object ByDisziplin extends GroupBy {
+          protected override val grouper = (v: WertungView) => {
+            v.wettkampfdisziplin.disziplin
+          }
+          protected override val sorter: Option[(GroupSection, GroupSection) => Boolean] = Some((gs1:GroupSection , gs2:GroupSection ) => {
+            gs1.groupKey.asInstanceOf[Disziplin].name.compareTo(gs2.groupKey.asInstanceOf[Disziplin].name) < 0
+          })
+        }
+        case object ByVerein extends GroupBy {
+          protected override val grouper = (v: WertungView) => {
+            v.athlet.verein match {
+              case Some(v) => v
+              case _ => Verein(0, "kein")
+            }
+          }
+          protected override val sorter: Option[(GroupSection, GroupSection) => Boolean] = Some((gs1:GroupSection , gs2:GroupSection ) => {
+            gs1.groupKey.asInstanceOf[Verein].name.compareTo(gs2.groupKey.asInstanceOf[Verein].name) < 0
+          })
+        }
+
+    override def isPopulated = {
+        val combination = ByProgramm.groupBy(ByJahrgang).groupBy(ByVerein).select(
+//        val combination = ByJahrgang.select(
+//        val combination = ByDisziplin.select(
+            service.selectWertungen().filter(p => p.wettkampf.id == wettkampf.id))
+
+        for(c <- combination) {
+          println(c.easyprint)
+        }
+      true
+    }
+  }
+
+  class LazyTabPane(progSites: Seq[Tab]) extends TabPane {
     hgrow = Priority.ALWAYS
     vgrow = Priority.ALWAYS
     id = "source-tabs"
-    tabs = progSites :+
-      new Tab() {
-        text = "Rangliste"
-        closable = false
-      }
+    tabs = progSites
 
     def init {
-      progSites.foreach(_.populated)
+      progSites.foreach(_.asInstanceOf[TabWithService].populated)
     }
   }
 
@@ -321,13 +505,20 @@ object WettkampfPage {
     val progs = service.readWettkampfLeafs(wettkampf.programm.id)
     lazy val athleten = service.listAthletenWertungenZuProgramm(progs map (p => p.id))
 
-    val progSites = progs map {v =>
+    val progSites: Seq[Tab] = progs map {v =>
       new LazyLoadingTab(v, wettkampf, service, service.listAthletenWertungenZuProgramm(progs map (p => p.id))) {
         text = v.name
         closable = false
       }
     }
-    new WettkampfPage( new LazyTabPane(progSites))
+    val ranglisteSite: Seq[Tab] = Seq(
+      new RanglisteTab(wettkampf, service) {
+        text = "Rangliste"
+        closable = false
+      }
+    )
+
+    new WettkampfPage( new LazyTabPane(progSites ++ ranglisteSite))
   }
 }
 

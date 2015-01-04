@@ -35,7 +35,7 @@ trait KutuService {
   private implicit val getAthletViewResult = GetResult(r =>
     AthletView(r.<<[Long], r.<<[String], r.<<[String], r.<<[Option[java.sql.Date]], r))
   private implicit val getDisziplinResult = GetResult(r =>
-    Disziplin(r.<<[Long], r.<<[String]))
+    Disziplin(r.<<[Long], r.<<[String], r.<<[Int]))
   private implicit val getWettkampfResult = GetResult(r =>
     Wettkampf(r.<<[Long], r.<<[java.sql.Date], r.<<[String], r.<<[Long]))
   private implicit val getWettkampfDisziplinResult = GetResult(r =>
@@ -50,7 +50,7 @@ trait KutuService {
   private implicit def getWettkampfViewResult(implicit session: Session) = GetResult(r =>
     WettkampfView(r.<<[Long], r.<<[java.sql.Date], r.<<[String], readProgramm(r.<<[Long])))
   private implicit val getProgrammRawResult = GetResult(r =>
-    ProgrammRaw(r.<<[Long], r.<<[String], r.<<[Long]))
+    ProgrammRaw(r.<<[Long], r.<<[String], r.<<[Int], r.<<[Long], r.<<[Int]))
 
   def readProgramm(id: Long)(implicit session: Session): ProgrammView = {
     readProgramm(id, scala.collection.mutable.Map[Long, ProgrammView]())
@@ -172,7 +172,7 @@ trait KutuService {
                     where id in (select max(id) from kutu.wettkampf)
                   """.as[Wettkampf].build().head
 
-      assignAthletsToWettkampf(wk.id, programmId, withAthlets)
+      assignAthletsToWettkampfS(wk.id, programmId, withAthlets, session)
       wk
     }
   }
@@ -187,29 +187,34 @@ trait KutuService {
   }
 
   def assignAthletsToWettkampf(wettkampfId: Long, programmId: Set[Long], withAthlets: Option[(Long, Athlet) => Boolean] = Some({ (_, _) => true })) {
-    database withSession {implicit session: Session =>
-      withAthlets match {
-        case Some(f) =>
-          for {
-            pgm <- programmId
-            a <- selectAthletes.build().filter(f(pgm, _))
-            wkd <- sql"""
-                    select * from kutu.wettkampfdisziplin
-                    where programm_Id = $pgm
-                    """.as[Wettkampfdisziplin]
-          } {
-            sqlu"""
-                    delete from kutu.wertung where
-                    athlet_Id=${a.id} and wettkampfdisziplin_Id=${wkd.id} and wettkampf_Id=${wettkampfId}
-              """.execute
-            sqlu"""
-                    insert into kutu.wertung
-                    (athlet_Id, wettkampfdisziplin_Id, wettkampf_Id, note_d, note_e, endnote)
-                    values (${a.id}, ${wkd.id}, ${wettkampfId}, 0, 0, 0)
-              """.execute
-          }
-        case None =>
-      }
+    database withTransaction {implicit session: Session =>
+      assignAthletsToWettkampfS(wettkampfId, programmId, withAthlets, session)
+    }
+  }
+
+  def assignAthletsToWettkampfS(wettkampfId: Long, programmId: Set[Long], withAthlets: Option[(Long, Athlet) => Boolean] = Some({ (_, _) => true }), sess: Session) {
+    implicit val session = sess
+    withAthlets match {
+      case Some(f) =>
+        for {
+          pgm <- programmId
+          a <- selectAthletes.build().filter(f(pgm, _))
+          wkid <- sql"""
+                  select id from kutu.wettkampfdisziplin
+                  where programm_Id = $pgm
+                  """.as[Long]
+        } {
+          sqlu"""
+                  delete from kutu.wertung where
+                  athlet_Id=${a.id} and wettkampfdisziplin_Id=${wkid} and wettkampf_Id=${wettkampfId}
+            """.execute
+          sqlu"""
+                  insert into kutu.wertung
+                  (athlet_Id, wettkampfdisziplin_Id, wettkampf_Id, note_d, note_e, endnote)
+                  values (${a.id}, ${wkid}, ${wettkampfId}, 0, 0, 0)
+            """.execute
+        }
+      case None =>
     }
   }
 
@@ -225,9 +230,20 @@ trait KutuService {
     sql"""select * from kutu.wettkampf where id=$id""".as[Wettkampf].build().head
   }
 
-  def selectWertungen(wertungId: Option[Long] = None, athletId: Option[Long] = None, wettkampfId: Option[Long] = None, disziplinId: Option[Long] = None)(implicit session: Session): Seq[WertungView] = {
+  def selectWertungen(wertungId: Option[Long] = None, athletId: Option[Long] = None, wettkampfId: Option[Long] = None, disziplinId: Option[Long] = None): Seq[WertungView] = {
     implicit val cache = scala.collection.mutable.Map[Long, ProgrammView]()
-    sql"""
+    database withSession {implicit session: Session =>
+      val where = "where " + (athletId match {
+        case None     => "true"
+        case Some(id) => s"a.id = $id"
+      }) + " and " + (wettkampfId match {
+        case None     => "true"
+        case Some(id) => s"wk.id = $id"
+      }) + " and " + (disziplinId match {
+        case None     => "true"
+        case Some(id) => s"d.id = $id"
+      })
+      sql"""
                     SELECT w.id, a.*, v.*, wd.id, wd.programm_id, d.*, wd.kurzbeschreibung, wk.*, note_d as difficulty, note_e as execution, endnote
                     FROM kutu.wertung w
                     inner join kutu.athlet a on (a.id = w.athlet_id)
@@ -236,20 +252,8 @@ trait KutuService {
                     inner join kutu.disziplin d on (d.id = wd.disziplin_id)
                     inner join kutu.programm p on (p.id = wd.programm_id)
                     inner join kutu.wettkampf wk on (wk.id = w.wettkampf_id)
-       """.as[WertungView].build() filter { x =>
-      lazy val d = (athletId match {
-        case None     => true
-        case Some(id) => id == x.athlet.id
-      })
-      lazy val dd = (wettkampfId match {
-        case None     => true
-        case Some(id) => id == x.wettkampf.id
-      })
-      lazy val ddd = (disziplinId match {
-        case None     => true
-        case Some(id) => id == x.wettkampfdisziplin.id
-      })
-      d && dd && ddd
+                    #$where
+         """.as[WertungView].build()
     }
   }
 

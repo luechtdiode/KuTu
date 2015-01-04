@@ -121,7 +121,7 @@ class KuTuAppTree(service: KutuService) {
     }
   }.toList
 
-  def getThumbs(keyName: String) = thumbnails(keyName)
+  def getThumbs(keyName: String) = thumbnails.getOrElse(keyName, Seq.empty)
 
   def getDashThumbsCtrl =
     thumbnails.flatMap {

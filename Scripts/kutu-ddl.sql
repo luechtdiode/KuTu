@@ -52,7 +52,9 @@ DROP TABLE IF EXISTS `kutu`.`programm`;
 CREATE TABLE IF NOT EXISTS `kutu`.`programm` (
   `id` bigint(20) NOT NULL AUTO_INCREMENT,
   `name` varchar(100) NOT NULL,
+  `aggregate` INT NOT NULL,
   `parent_id` bigint(20),
+  `ord` INT NOT NULL DEFAULT 0,
   UNIQUE INDEX `id` (`id` ASC),
   PRIMARY KEY (`id`),
   CONSTRAINT `programm_parent_FK` 
@@ -95,6 +97,7 @@ DROP TABLE IF EXISTS `kutu`.`disziplin`;
 CREATE TABLE IF NOT EXISTS `kutu`.`disziplin` (
   `id` bigint(20) NOT NULL AUTO_INCREMENT,
   `name` varchar(100) NOT NULL,
+  `ord` INT NOT NULL DEFAULT 0,
   UNIQUE INDEX `id` (`id` ASC) ,
   PRIMARY KEY (`id`)
 ) 

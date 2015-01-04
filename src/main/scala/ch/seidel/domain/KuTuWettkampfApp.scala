@@ -56,8 +56,8 @@ object KuTuWettkampfApp extends JFXApp with KutuService {
 //      println(a)
 //    }
 //
-//    println(createWettkampf("15.02.2015", "Jugendcup 2015", Set(programmEP, programmEP+1, programmEP+2), Some(mapFilter)))
-//    println(createWettkampf("16.01.2015", "Athletiktest NKL Frühling 2015", Set(9,10)))
+    println(createWettkampf("15.02.2015", "Jugendcup 2015", Set(programmEP, programmEP+1, programmEP+2), Some(mapFilter)))
+    println(createWettkampf("16.01.2015", "Athletiktest NKL Frühling 2015", Set(9,10)))
 //    assignAthletsToWettkampf(27L, Set(programmEP, programmEP+1, programmEP+2), Some(mapFilter))
 //    assignAthletsToWettkampf(24L, Set(9,10))
     val daten = selectWertungen().groupBy { x =>
