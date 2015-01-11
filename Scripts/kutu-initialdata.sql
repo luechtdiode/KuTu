@@ -103,43 +103,39 @@ DELETE FROM programm;
 
 INSERT INTO programm
 (id, parent_id, name, aggregate)
-VALUES(1, null, 'Athletiktest', 0);
+VALUES(1, null, 'Athletiktest', 1);
 
 INSERT INTO programm
-(id, parent_id, name, aggregate)
-VALUES(2, 1, 'Athletiktest 8-10 Jährige', 1);
+(id, parent_id, name, aggregate, ord)
+VALUES(2, 1, 'Athletiktest Kraft', 1, 2);
 
 INSERT INTO programm
-(id, parent_id, name, aggregate)
-VALUES(3, 2, 'Athletiktest-Beweglichkeit 8-10 Jährige', 1);
+(id, parent_id, name, aggregate, ord)
+VALUES(3, 1, 'Athletiktest Beweglichkeit', 1, 1);
 
 INSERT INTO programm
-(id, parent_id, name, aggregate)
-VALUES(4, 2, 'Athletiktest-Kraft 8-10 Jährige', 1);
+(id, parent_id, name, aggregate, alter_von, alter_bis, ord)
+VALUES(4, 3, 'Athletiktest-Beweglichkeit 8-10 Jährige', 1, 8, 10, 3);
 
 INSERT INTO programm
-(id, parent_id, name, aggregate)
-VALUES(5, 1, 'Athletiktest -7 Jährige', 1);
+(id, parent_id, name, aggregate, alter_von, alter_bis, ord)
+VALUES(5, 2, 'Athletiktest-Kraft 8-10 Jährige', 1, 8, 10, 4);
 
 INSERT INTO programm
-(id, parent_id, name, aggregate)
-VALUES(6, 5, 'Athletiktest-Beweglichkeit -7 Jährige', 1);
+(id, parent_id, name, aggregate, alter_von, alter_bis, ord)
+VALUES(6, 3, 'Athletiktest-Beweglichkeit -7 Jährige', 1, 0, 7, 1);
 
 INSERT INTO programm
-(id, parent_id, name, aggregate)
-VALUES(7, 5, 'Athletiktest-Kraft -7 Jährige', 1);
+(id, parent_id, name, aggregate, alter_von, alter_bis, ord)
+VALUES(7, 2, 'Athletiktest-Kraft -7 Jährige', 1, 0, 7, 2);
 
 INSERT INTO programm
-(id, parent_id, name, aggregate)
-VALUES(8, 1, 'Athletiktest 11+ Jährige', 1);
+(id, parent_id, name, aggregate, alter_von, ord)
+VALUES(8, 3, 'Athletiktest-Beweglichkeit 11+ Jährige', 1, 11, 5);
 
 INSERT INTO programm
-(id, parent_id, name, aggregate)
-VALUES(9, 8, 'Athletiktest-Beweglichkeit 11+ Jährige', 1);
-
-INSERT INTO programm
-(id, parent_id, name, aggregate)
-VALUES(10, 8, 'Athletiktest-Kraft 11+ Jährige', 1);
+(id, parent_id, name, aggregate, alter_von, ord)
+VALUES(9, 2, 'Athletiktest-Kraft 11+ Jährige', 1, 11, 6);
 
 INSERT INTO programm
 (id, parent_id, name, aggregate)
@@ -206,31 +202,31 @@ INSERT INTO programm
 VALUES(26, 20, 'K6', 0, 6);
 
 DELETE FROM wettkampfdisziplin;
--- Athletiktest Beweglichkeit (3, 6, 9 -> 7-14)
+-- Athletiktest Beweglichkeit (4, 6, 8 -> 7-14)
 INSERT INTO wettkampfdisziplin
 (programm_id, disziplin_id)
-VALUES(3, 7);
+VALUES(4, 7);
 INSERT INTO wettkampfdisziplin
 (programm_id, disziplin_id)
-VALUES(3, 8);
+VALUES(4, 8);
 INSERT INTO wettkampfdisziplin
 (programm_id, disziplin_id)
-VALUES(3, 9);
+VALUES(4, 9);
 INSERT INTO wettkampfdisziplin
 (programm_id, disziplin_id)
-VALUES(3, 10);
+VALUES(4, 10);
 INSERT INTO wettkampfdisziplin
 (programm_id, disziplin_id)
-VALUES(3, 11);
+VALUES(4, 11);
 INSERT INTO wettkampfdisziplin
 (programm_id, disziplin_id)
-VALUES(3, 12);
+VALUES(4, 12);
 INSERT INTO wettkampfdisziplin
 (programm_id, disziplin_id)
-VALUES(3, 13);
+VALUES(4, 13);
 INSERT INTO wettkampfdisziplin
 (programm_id, disziplin_id)
-VALUES(3, 14);
+VALUES(4, 14);
 INSERT INTO wettkampfdisziplin
 (programm_id, disziplin_id)
 VALUES(6, 7);
@@ -257,62 +253,62 @@ INSERT INTO wettkampfdisziplin
 VALUES(6, 14);
 INSERT INTO wettkampfdisziplin
 (programm_id, disziplin_id)
-VALUES(9, 7);
+VALUES(8, 7);
 INSERT INTO wettkampfdisziplin
 (programm_id, disziplin_id)
-VALUES(9, 8);
+VALUES(8, 8);
 INSERT INTO wettkampfdisziplin
 (programm_id, disziplin_id)
-VALUES(9, 9);
+VALUES(8, 9);
 INSERT INTO wettkampfdisziplin
 (programm_id, disziplin_id)
-VALUES(9, 10);
+VALUES(8, 10);
 INSERT INTO wettkampfdisziplin
 (programm_id, disziplin_id)
-VALUES(9, 11);
+VALUES(8, 11);
 INSERT INTO wettkampfdisziplin
 (programm_id, disziplin_id)
-VALUES(9, 12);
+VALUES(8, 12);
 INSERT INTO wettkampfdisziplin
 (programm_id, disziplin_id)
-VALUES(9, 13);
+VALUES(8, 13);
 INSERT INTO wettkampfdisziplin
 (programm_id, disziplin_id)
-VALUES(9, 14);
--- Athletiktest Kraft (4,7,10 -> 15-25)
+VALUES(8, 14);
+-- Athletiktest Kraft (5,7,9 -> 15-25)
 INSERT INTO wettkampfdisziplin
 (programm_id, disziplin_id)
-VALUES(4, 15);
+VALUES(5, 15);
 INSERT INTO wettkampfdisziplin
 (programm_id, disziplin_id)
-VALUES(4, 16);
+VALUES(5, 16);
 INSERT INTO wettkampfdisziplin
 (programm_id, disziplin_id)
-VALUES(4, 17);
+VALUES(5, 17);
 INSERT INTO wettkampfdisziplin
 (programm_id, disziplin_id)
-VALUES(4, 18);
+VALUES(5, 18);
 INSERT INTO wettkampfdisziplin
 (programm_id, disziplin_id)
-VALUES(4, 19);
+VALUES(5, 19);
 INSERT INTO wettkampfdisziplin
 (programm_id, disziplin_id)
-VALUES(4, 20);
+VALUES(5, 20);
 INSERT INTO wettkampfdisziplin
 (programm_id, disziplin_id)
-VALUES(4, 21);
+VALUES(5, 21);
 INSERT INTO wettkampfdisziplin
 (programm_id, disziplin_id)
-VALUES(4, 22);
+VALUES(5, 22);
 INSERT INTO wettkampfdisziplin
 (programm_id, disziplin_id)
-VALUES(4, 23);
+VALUES(5, 23);
 INSERT INTO wettkampfdisziplin
 (programm_id, disziplin_id)
-VALUES(4, 24);
+VALUES(5, 24);
 INSERT INTO wettkampfdisziplin
 (programm_id, disziplin_id)
-VALUES(4, 25);
+VALUES(5, 25);
 INSERT INTO wettkampfdisziplin
 (programm_id, disziplin_id)
 VALUES(7, 15);
@@ -348,37 +344,37 @@ INSERT INTO wettkampfdisziplin
 VALUES(7, 25);
 INSERT INTO wettkampfdisziplin
 (programm_id, disziplin_id)
-VALUES(10, 15);
+VALUES(9, 15);
 INSERT INTO wettkampfdisziplin
 (programm_id, disziplin_id)
-VALUES(10, 16);
+VALUES(9, 16);
 INSERT INTO wettkampfdisziplin
 (programm_id, disziplin_id)
-VALUES(10, 17);
+VALUES(9, 17);
 INSERT INTO wettkampfdisziplin
 (programm_id, disziplin_id)
-VALUES(10, 18);
+VALUES(9, 18);
 INSERT INTO wettkampfdisziplin
 (programm_id, disziplin_id)
-VALUES(10, 19);
+VALUES(9, 19);
 INSERT INTO wettkampfdisziplin
 (programm_id, disziplin_id)
-VALUES(10, 20);
+VALUES(9, 20);
 INSERT INTO wettkampfdisziplin
 (programm_id, disziplin_id)
-VALUES(10, 21);
+VALUES(9, 21);
 INSERT INTO wettkampfdisziplin
 (programm_id, disziplin_id)
-VALUES(10, 22);
+VALUES(9, 22);
 INSERT INTO wettkampfdisziplin
 (programm_id, disziplin_id)
-VALUES(10, 23);
+VALUES(9, 23);
 INSERT INTO wettkampfdisziplin
 (programm_id, disziplin_id)
-VALUES(10, 24);
+VALUES(9, 24);
 INSERT INTO wettkampfdisziplin
 (programm_id, disziplin_id)
-VALUES(10, 25);
+VALUES(9, 25);
 
 -- EP-Wettkampfgeräte (12 -> 1-6)
 INSERT INTO wettkampfdisziplin
@@ -553,4 +549,4 @@ VALUES('NKL');
 DELETE FROM athlet;
 INSERT INTO athlet
 (name, vorname, gebdat, verein)
-VALUES('Weihofen', 'Yannik', '2006-05-30', 1);
+VALUES('Weihofen', 'Yannik', '2005-06-29', 1);

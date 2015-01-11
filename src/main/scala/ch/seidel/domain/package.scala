@@ -8,10 +8,10 @@ package object domain {
     override def easyprint = name
   }
 
-  case class Athlet(id: Long, name: String, vorname: String, gebdat: Option[java.sql.Date], verein: Option[Long]) extends DataObject {
+  case class Athlet(id: Long, js_id: Int, geschlecht: String, name: String, vorname: String, gebdat: Option[java.sql.Date], strasse: String, plz: String, ort: String, verein: Option[Long]) extends DataObject {
     override def easyprint = name + " " + vorname + " " + (gebdat match {case Some(d) => f"$d%tY "; case _ => ""})
   }
-  case class AthletView(id: Long, name: String, vorname: String, gebdat: Option[java.sql.Date], verein: Option[Verein]) extends DataObject {
+  case class AthletView(id: Long, js_id: Int, geschlecht: String, name: String, vorname: String, gebdat: Option[java.sql.Date], strasse: String, plz: String, ort: String, verein: Option[Verein]) extends DataObject {
     override def easyprint = name + " " + vorname + " " + (gebdat match {case Some(d) => f"$d%tY "; case _ => " "}) + (verein match {case Some(v) => v.easyprint; case _ => ""})
   }
 
@@ -29,32 +29,38 @@ package object domain {
     val name: String
     val aggregate: Int
     val ord: Int
+    val alterVon: Int
+    val alterBis: Int
 
     def withParent(parent: ProgrammView) = {
-      ProgrammView(id, name, aggregate, Some(parent), ord)
+      ProgrammView(id, name, aggregate, Some(parent), ord, alterVon, alterBis)
     }
 
     def toView = {
-      ProgrammView(id, name, aggregate, None, ord)
-    }
-
-    final def buildPathToParent(path: Seq[Programm]): ProgrammView = {
-      if (path.nonEmpty) {
-        path.head.buildPathToParent(path.tail).withParent(toView)
-      }
-      else {
-        toView
-      }
+      ProgrammView(id, name, aggregate, None, ord, alterVon, alterBis)
     }
   }
 
-  case class ProgrammRaw(id: Long, name: String, aggregate: Int, parentId: Long, ord: Int) extends Programm
-  case class ProgrammView(id: Long, name: String, aggregate: Int, parent: Option[ProgrammView], ord: Int) extends Programm  {
-    override def easyprint = toPath
+  case class ProgrammRaw(id: Long, name: String, aggregate: Int, parentId: Long, ord: Int, alterVon: Int, alterBis: Int) extends Programm
+  case class ProgrammView(id: Long, name: String, aggregate: Int, parent: Option[ProgrammView], ord: Int, alterVon: Int, alterBis: Int) extends Programm  {
+    //override def easyprint = toPath
 
     def head: ProgrammView = parent match {
       case None    => this
       case Some(p) => p.head
+    }
+    def aggregatorHead: ProgrammView = parent match {
+      case Some(p) if(aggregate != 0) => p.aggregatorHead
+      case _       => this
+    }
+    def aggregatorParent: ProgrammView = parent match {
+      case Some(p) if(aggregate != 0) => p.parent.getOrElse(this)
+      case _       => this
+    }
+    def aggregatorSubHead: ProgrammView = parent match {
+      case Some(p) if(aggregate != 0 && p.aggregate != 0) => p.aggregatorSubHead
+      case Some(p) if(aggregate != 0 && p.aggregate == 0) => this
+      case _       => this
     }
     def sameOrigin(other: ProgrammView) = head.equals(other.head)
     def toPath: String = parent match {
@@ -63,15 +69,15 @@ package object domain {
     }
   }
 
-  case class Wettkampf(id: Long, datum: java.sql.Date, titel: String, programmId: Long) extends DataObject {
-    override def easyprint = f"$titel am $datum%tdd.$datum%tMM.$datum%tYYYY"
+  case class Wettkampf(id: Long, datum: java.sql.Date, titel: String, programmId: Long, auszeichnung: Int) extends DataObject {
+    override def easyprint = f"$titel am $datum%td.$datum%tm.$datum%tY"
     def toView(programm: ProgrammView) = {
-      WettkampfView(id, datum, titel, programm)
+      WettkampfView(id, datum, titel, programm, auszeichnung)
     }
   }
 
-  case class WettkampfView(id: Long, datum: java.sql.Date, titel: String, programm: ProgrammView) extends DataObject {
-    override def easyprint = f"$titel im Programm ${programm.easyprint} am $datum%tdd.$datum%tMM.$datum%tYYYY"
+  case class WettkampfView(id: Long, datum: java.sql.Date, titel: String, programm: ProgrammView, auszeichnung: Int) extends DataObject {
+    override def easyprint = f"$titel am $datum%td.$datum%tm.$datum%tY"
   }
 
   case class Wettkampfdisziplin(id: Long, programmId: Long, disziplinId: Long, kurzbeschreibung: String, detailbeschreibung: Option[java.sql.Blob]) extends DataObject
@@ -79,13 +85,10 @@ package object domain {
 
   case class Resultat(noteD: scala.math.BigDecimal, noteE: scala.math.BigDecimal, endnote: scala.math.BigDecimal) extends DataObject {
     def + (r: Resultat) = Resultat(noteD + r.noteD, noteE + r.noteE, endnote + r.endnote)
-    override def easyprint = {
-      val empty = ""
-      val d = if(noteD > 0) f"${noteD}%5.3f" else empty
-      val a = if(noteE > 0) f"${noteE}%5.3f" else empty
-      val e = if(endnote > 0) f"${endnote}%5.2f" else empty
-      f"${d}%6s${a}%6s${e}%6s"
-    }
+    lazy val formattedD = if(noteD > 0) f"${noteD}%5.3f" else ""
+    lazy val formattedE = if(noteE > 0) f"${noteE}%5.3f" else ""
+    lazy val formattedEnd = if(endnote > 0) f"${endnote}%5.2f" else ""
+    override def easyprint = f"${formattedD}%6s${formattedE}%6s${formattedEnd}%6s"
   }
   case class Wertung(id: Long, athletId: Long, wettkampfdisziplinId: Long, wettkampfId: Long, noteD: scala.math.BigDecimal, noteE: scala.math.BigDecimal, endnote: scala.math.BigDecimal) extends DataObject
   case class WertungView(id: Long, athlet: AthletView, wettkampfdisziplin: WettkampfdisziplinView, wettkampf: Wettkampf, noteD: scala.math.BigDecimal, noteE: scala.math.BigDecimal, endnote: scala.math.BigDecimal) extends DataObject {

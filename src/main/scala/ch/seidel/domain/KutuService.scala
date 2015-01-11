@@ -10,6 +10,10 @@ import scala.annotation.tailrec
 import scala.slick.lifted.Query
 import scala.slick.jdbc.StaticQuery
 import scala.slick.jdbc.SetParameter
+import java.util.concurrent.TimeUnit
+import java.time.LocalDate
+import java.time.temporal.TemporalField
+import java.time.Period
 
 trait KutuService {
   lazy val database = Database.forURL(
@@ -33,13 +37,13 @@ trait KutuService {
     case _        => { r.skip; r.skip; None }
   })
   private implicit val getAthletResult = GetResult(r =>
-    Athlet(r.<<, r.<<, r.<<, r.<<, r.<<))
+    Athlet(r.<<, r.<<, r.<<, r.<<, r.<<, r.<<, r.<<, r.<<, r.<<, r.<<))
   private implicit val getAthletViewResult = GetResult(r =>
-    AthletView(r.<<[Long], r.<<[String], r.<<[String], r.<<[Option[java.sql.Date]], r))
+    AthletView(r.<<, r.<<, r.<<, r.<<, r.<<, r.<<, r.<<, r.<<, r.<<, r))
   private implicit val getDisziplinResult = GetResult(r =>
     Disziplin(r.<<[Long], r.<<[String], r.<<[Int]))
   private implicit val getWettkampfResult = GetResult(r =>
-    Wettkampf(r.<<[Long], r.<<[java.sql.Date], r.<<[String], r.<<[Long]))
+    Wettkampf(r.<<[Long], r.<<[java.sql.Date], r.<<[String], r.<<[Long], r.<<[Int]))
   private implicit val getWettkampfDisziplinResult = GetResult(r =>
     Wettkampfdisziplin(r.<<[Long], r.<<[Long], r.<<[Long], r.<<[String], None))
 
@@ -48,11 +52,11 @@ trait KutuService {
   private implicit def getResultWertungView(implicit session: Session, cache: scala.collection.mutable.Map[Long, ProgrammView]) = GetResult(r =>
     WertungView(r.<<[Long], r, r, r, r.<<[scala.math.BigDecimal], r.<<[scala.math.BigDecimal], r.<<[scala.math.BigDecimal]))
   private implicit def getWettkampfViewResultCached(implicit session: Session, cache: scala.collection.mutable.Map[Long, ProgrammView]) = GetResult(r =>
-    WettkampfView(r.<<[Long], r.<<[java.sql.Date], r.<<[String], readProgramm(r.<<[Long], cache)))
+    WettkampfView(r.<<[Long], r.<<[java.sql.Date], r.<<[String], readProgramm(r.<<[Long], cache), r.<<[Int]))
   private implicit def getWettkampfViewResult(implicit session: Session) = GetResult(r =>
-    WettkampfView(r.<<[Long], r.<<[java.sql.Date], r.<<[String], readProgramm(r.<<[Long])))
+    WettkampfView(r.<<[Long], r.<<[java.sql.Date], r.<<[String], readProgramm(r.<<[Long]), r.<<[Int]))
   private implicit val getProgrammRawResult = GetResult(r =>
-    ProgrammRaw(r.<<[Long], r.<<[String], r.<<[Int], r.<<[Long], r.<<[Int]))
+    ProgrammRaw(r.<<[Long], r.<<[String], r.<<[Int], r.<<[Long], r.<<[Int], r.<<[Int], r.<<[Int]))
 
   def readProgramm(id: Long)(implicit session: Session): ProgrammView = {
     readProgramm(id, scala.collection.mutable.Map[Long, ProgrammView]())
@@ -78,7 +82,8 @@ trait KutuService {
     cache.get(id) match {
       case Some(wk) => wk
       case _ =>
-        val wk = path.head.buildPathToParent(path.tail)
+        val rev = path
+        val wk = rev.foldLeft(rev.head.toView)((path, p) => if(p.id == path.id) path else p.withParent(path))
         cache.put(id, wk)
         wk
     }
@@ -174,7 +179,7 @@ trait KutuService {
                     where id in (select max(id) from kutu.wettkampf)
                   """.as[Wettkampf].build().head
 
-      assignAthletsToWettkampfS(wk.id, programmId, withAthlets, session)
+      assignAthletsToWettkampfS(wk.id, programs, withAthlets, session)
       wk
     }
   }
@@ -188,22 +193,33 @@ trait KutuService {
     }
   }
 
-  def assignAthletsToWettkampf(wettkampfId: Long, programmId: Set[Long], withAthlets: Option[(Long, Athlet) => Boolean] = Some({ (_, _) => true })) {
+  def assignAthletsToWettkampf(wettkampfId: Long, programmIds: Set[Long], withAthlets: Option[(Long, Athlet) => Boolean] = Some({ (_, _) => true })) {
     database withTransaction {implicit session: Session =>
-      assignAthletsToWettkampfS(wettkampfId, programmId, withAthlets, session)
+      val cache = scala.collection.mutable.Map[Long, ProgrammView]()
+      val programs = programmIds map (p => readProgramm(p, cache))
+      assignAthletsToWettkampfS(wettkampfId, programs, withAthlets, session)
     }
   }
 
-  def assignAthletsToWettkampfS(wettkampfId: Long, programmId: Set[Long], withAthlets: Option[(Long, Athlet) => Boolean] = Some({ (_, _) => true }), sess: Session) {
+  def assignAthletsToWettkampfS(wettkampfId: Long, programs: Set[ProgrammView], withAthlets: Option[(Long, Athlet) => Boolean] = Some({ (_, _) => true }), sess: Session) {
     implicit val session = sess
+
+    def altersfilter(pgm: ProgrammView, a: Athlet): Boolean = {
+      val alter = a.gebdat match {
+        case Some(d) => Period.between(d.toLocalDate, LocalDate.now).getYears
+        case None    => 7
+      }
+      pgm.alterVon <= alter && pgm.alterBis >= alter
+    }
+
     withAthlets match {
       case Some(f) =>
         for {
-          pgm <- programmId
-          a <- selectAthletes.build().filter(f(pgm, _))
+          pgm <- programs
+          a <- selectAthletes.build().filter(altersfilter(pgm, _)).filter(f(pgm.id, _))
           wkid <- sql"""
                   select id from kutu.wettkampfdisziplin
-                  where programm_Id = $pgm
+                  where programm_Id = ${pgm.id}
                   """.as[Long]
         } {
           sqlu"""
@@ -282,22 +298,22 @@ trait KutuService {
           case Some(id) =>
             sqlu"""
                     replace into kutu.athlet
-                    (id, name, vorname, gebdat, verein)
-                    values (${id}, ${athlete.name}, ${athlete.vorname}, ${athlete.gebdat}, ${athlete.verein})
+                    (id, js_id, geschlecht, name, vorname, gebdat, strasse, plz, ort, verein)
+                    values (${id}, ${athlete.js_id}, ${athlete.geschlecht}, ${athlete.name}, ${athlete.vorname}, ${athlete.gebdat}, ${athlete.strasse}, ${athlete.plz}, ${athlete.ort}, ${athlete.verein})
             """.execute
             athlete.id
           case None => sqlu"""
                     replace into kutu.athlet
-                    (name, vorname, gebdat, verein)
-                    values (${athlete.name}, ${athlete.vorname}, ${athlete.gebdat}, ${athlete.verein})
+                    (js_id, geschlecht, name, vorname, gebdat, strasse, plz, ort, verein)
+                    values (${athlete.js_id}, ${athlete.geschlecht}, ${athlete.name}, ${athlete.vorname}, ${athlete.gebdat}, ${athlete.strasse}, ${athlete.plz}, ${athlete.ort}, ${athlete.verein})
             """.execute
         }
       }
       else {
         sqlu"""
                     replace into kutu.athlet
-                    (id, name, vorname, gebdat, verein)
-                    values (${athlete.id}, ${athlete.name}, ${athlete.vorname}, ${athlete.gebdat}, ${athlete.verein})
+                    (id, js_id, geschlecht, name, vorname, gebdat, strasse, plz, ort, verein)
+                    values (${athlete.id}, ${athlete.js_id}, ${athlete.geschlecht}, ${athlete.name}, ${athlete.vorname}, ${athlete.gebdat}, ${athlete.strasse}, ${athlete.plz}, ${athlete.ort}, ${athlete.verein})
             """.execute
         athlete.id
       }

@@ -28,9 +28,14 @@ DROP TABLE IF EXISTS `kutu`.`athlet`;
 
 CREATE TABLE IF NOT EXISTS `kutu`.`athlet` (
   `id` bigint(20) NOT NULL AUTO_INCREMENT,
+  `js_id` int DEFAULT NULL,
+  `geschlecht` char(1) NOT NULL DEFAULT 'M',
   `name` varchar(35) NOT NULL,
   `vorname` varchar(35) NOT NULL,
   `gebdat` date DEFAULT NULL,
+  `strasse` varchar(100) DEFAULT '',
+  `plz` varchar(10) DEFAULT '',
+  `ort` varchar(100) DEFAULT '',
   `verein` bigint(20) DEFAULT NULL,
   UNIQUE INDEX `id` (`id` ASC) ,
   PRIMARY KEY (`id`),
@@ -55,6 +60,8 @@ CREATE TABLE IF NOT EXISTS `kutu`.`programm` (
   `aggregate` INT NOT NULL,
   `parent_id` bigint(20),
   `ord` INT NOT NULL DEFAULT 0,
+  `alter_von` int NOT NULL DEFAULT 0,
+  `alter_bis` int NOT NULL DEFAULT 100,
   UNIQUE INDEX `id` (`id` ASC),
   PRIMARY KEY (`id`),
   CONSTRAINT `programm_parent_FK` 
@@ -77,6 +84,7 @@ CREATE TABLE IF NOT EXISTS `kutu`.`wettkampf` (
   `datum` date NOT NULL,
   `titel` varchar(100) NOT NULL,
   `programm_id` bigint(20) NOT NULL,
+  `auszeichnung` INT NOT NULL DEFAULT 40,
   UNIQUE INDEX `id` (`id` ASC),
   PRIMARY KEY (`id`),
   CONSTRAINT `wettkampf_programm_FK` 
