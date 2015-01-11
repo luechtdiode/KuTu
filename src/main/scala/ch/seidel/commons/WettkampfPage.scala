@@ -225,7 +225,7 @@ object WettkampfPage {
               onAction = (event: ActionEvent) => {
                 disable = true
                 val athletModel = ObservableBuffer[AthletView](
-                  service.selectAthletesView.filter{p => wertungen.forall { wp => wp.head.init.athlet.id != p.id}}
+                  service.selectAthletesView.filter(service.altersfilter(programm, _)).filter{p => wertungen.forall { wp => wp.head.init.athlet.id != p.id}}
                 )
                 val athletTable = new TableView[AthletView](athletModel) {
                   columns ++= List(
@@ -251,6 +251,19 @@ object WettkampfPage {
                     if(!athletTable.selectionModel().isEmpty) {
                       val athlet = athletTable.selectionModel().getSelectedItem
                       def filter(progId: Long, a: Athlet): Boolean = a.id == athlet.id
+                      service.assignAthletsToWettkampf(wettkampf.id, Set(programm.id), Some(filter))
+                      wkModel.clear
+                      wertungen = updateWertungen
+                      wkModel.appendAll(wertungen)
+                      wkview.columns.clear()
+                      wkview.columns ++= athletCol ++ wertungenCols ++ sumCol
+                    }
+                  }
+                }, new Button("OK, Alle") {
+                  onAction = (event: ActionEvent) => {
+                    if(!athletTable.selectionModel().isEmpty) {
+                      val athlet = athletTable.selectionModel().getSelectedItem
+                      def filter(progId: Long, a: Athlet): Boolean = athletModel.exists { x => x.id == a.id }
                       service.assignAthletsToWettkampf(wettkampf.id, Set(programm.id), Some(filter))
                       wkModel.clear
                       wertungen = updateWertungen

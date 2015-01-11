@@ -201,16 +201,24 @@ trait KutuService {
     }
   }
 
+  def altersfilter(pgm: ProgrammView, a: Athlet): Boolean = {
+    val alter = a.gebdat match {
+      case Some(d) => Period.between(d.toLocalDate, LocalDate.now).getYears
+      case None    => 7
+    }
+    pgm.alterVon <= alter && pgm.alterBis >= alter
+  }
+
+  def altersfilter(pgm: ProgrammView, a: AthletView): Boolean = {
+    val alter = a.gebdat match {
+      case Some(d) => Period.between(d.toLocalDate, LocalDate.now).getYears
+      case None    => 7
+    }
+    pgm.alterVon <= alter && pgm.alterBis >= alter
+  }
+
   def assignAthletsToWettkampfS(wettkampfId: Long, programs: Set[ProgrammView], withAthlets: Option[(Long, Athlet) => Boolean] = Some({ (_, _) => true }), sess: Session) {
     implicit val session = sess
-
-    def altersfilter(pgm: ProgrammView, a: Athlet): Boolean = {
-      val alter = a.gebdat match {
-        case Some(d) => Period.between(d.toLocalDate, LocalDate.now).getYears
-        case None    => 7
-      }
-      pgm.alterVon <= alter && pgm.alterBis >= alter
-    }
 
     withAthlets match {
       case Some(f) =>
@@ -281,7 +289,7 @@ trait KutuService {
 
   def selectAthletesView = {
     database withSession { implicit session =>
-      sql"""select * from kutu.athlet inner join kutu.verein on (verein.id = athlet.verein)""".as[AthletView].list()
+      sql"""select * from kutu.athlet inner join kutu.verein on (verein.id = athlet.verein) """.as[AthletView].list()
     }
   }
 
