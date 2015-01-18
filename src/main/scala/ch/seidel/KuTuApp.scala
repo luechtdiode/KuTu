@@ -12,6 +12,7 @@ import scalafx.scene.layout._
 import scalafx.stage.Screen
 import ch.seidel.domain.KutuService
 import ch.seidel.domain.WettkampfView
+import ch.seidel.domain.Verein
 
 object KuTuApp extends JFXApp with KutuService {
   val tree = AppNavigationModel.create(KuTuApp.this)
@@ -35,7 +36,8 @@ object KuTuApp extends JFXApp with KutuService {
       val centerPane = (newItem.isLeaf, Option(newItem.getParent)) match {
         case (true, Some(parent)) => {
           tree.getThumbs(parent.getValue).find(p => p.button.text.getValue.equals(newItem.getValue)) match {
-            case Some(KuTuAppThumbNail(p: WettkampfView, _)) => PageDisplayer.choosePage(Some(p), "dashBoard - " + newItem.getValue, tree)
+            case Some(KuTuAppThumbNail(p: WettkampfView, _, newItem)) => PageDisplayer.choosePage(Some(p), "dashBoard - " + newItem.getValue, tree)
+            case Some(KuTuAppThumbNail(v: Verein, _, newItem)) => PageDisplayer.choosePage(Some(v), "dashBoard - " + newItem.getValue, tree)
             case _       => PageDisplayer.choosePage(None, "dashBoard - " + newItem.getValue, tree)
           }
         }
@@ -99,7 +101,20 @@ object KuTuApp extends JFXApp with KutuService {
         }
         styleClass += "application"
       }
+
     }
-    scene().stylesheets += this.getClass.getResource("/css/main.css").toExternalForm
+    val st = this.getClass.getResource("/css/Main.css")
+    if(st == null) {
+      println("Ressource /css/main.css not found. Class-Anchor: " + this.getClass)
+    }
+    else if(scene() == null) {
+    	println("scene() == null")
+    }
+    else if(scene().getStylesheets == null) {
+      println("scene().getStylesheets == null")
+    }
+    else {
+    	scene().stylesheets.add(st.toExternalForm)
+    }
   }
 }

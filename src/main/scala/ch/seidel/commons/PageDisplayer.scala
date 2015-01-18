@@ -17,6 +17,10 @@ import scalafx.stage.Window
 import scalafx.scene.Node
 import scalafx.scene.layout.HBox
 import scalafx.geometry.Pos
+import ch.seidel.WettkampfPage
+import ch.seidel.TurnerPage
+import ch.seidel.domain.Verein
+import scalafx.scene.control.TreeItem
 
 /**
  * the class that updates tabbed view or dashboard view
@@ -63,12 +67,16 @@ object PageDisplayer {
       case "dashBoard" => displayPage(new DashboardPage(tree = tree))
       case _           => context match {
         case Some(w: WettkampfView) => chooseWettkampfPage(w, tree)
+        case Some(v: Verein)        => chooseVereinPage(v, tree)
         case _                      => displayPage(new DashboardPage(value.split("-")(1).trim(), tree))
       }
     }
   }
-  def chooseWettkampfPage(wettkampf: WettkampfView, tree: KuTuAppTree): Node = {
+  private def chooseWettkampfPage(wettkampf: WettkampfView, tree: KuTuAppTree): Node = {
     displayPage(WettkampfPage.buildTab(wettkampf, tree.getService))
+  }
+  private def chooseVereinPage(verein: Verein, tree: KuTuAppTree): Node = {
+    displayPage(TurnerPage.buildTab(verein, tree.getService))
   }
 
   private def displayPage(nodeToAdd: DisplayablePage): Node = {

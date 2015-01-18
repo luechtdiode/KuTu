@@ -99,4 +99,9 @@ package object domain {
       resultat.easyprint
     }
   }
+
+  sealed trait DataRow {}
+  case class LeafRow(title: String, sum: Resultat, rang: Resultat) extends DataRow
+  case class GroupRow(athlet: AthletView, resultate: IndexedSeq[LeafRow], sum: Resultat, rang: Resultat) extends DataRow
+
 }

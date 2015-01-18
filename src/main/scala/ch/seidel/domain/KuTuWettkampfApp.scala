@@ -42,7 +42,7 @@ object KuTuWettkampfApp extends JFXApp with KutuService {
     insertAthlete(Athlet(0, 0, "M", "Burger", "Noam", Some("27.10.2005"), "", "", "", Some(verein)))
     insertAthlete(Athlet(0, 0, "M", "Gasio", "Aaron", Some("31.01.2005"), "", "", "", Some(verein)))
     insertAthlete(Athlet(0, 0, "M", "Kostic", "Alexander", Some("19.05.2005"), "", "", "", Some(verein)))
-    insertAthlete(Athlet(0, 0, "M", "Lüber", "Lukas", Some("21.08.2005"), "", "", "", Some(verein)))
+    insertAthlete(Athlet(0, 0, "M", "LÃ¼ber", "Lukas", Some("21.08.2005"), "", "", "", Some(verein)))
     insertAthlete(Athlet(0, 0, "F", "Grossman", "Audrey", Some("28.02.2006"), "", "", "", Some(verein)))
     insertAthlete(Athlet(0, 0, "M", "Mebert", "Lenny", Some("03.03.2007"), "", "", "", Some(verein)))
 
@@ -64,7 +64,7 @@ object KuTuWettkampfApp extends JFXApp with KutuService {
 //    }
 //
     println(createWettkampf("15.02.2015", "Jugendcup 2015", Set(programmEP, programmEP+1, programmEP+2), Some(mapFilter)))
-    println(createWettkampf("16.01.2015", "Athletiktest NKL Frühling 2015", Set(4,5,6,7,8,9)))
+    println(createWettkampf("16.01.2015", "Athletiktest NKL FrÃ¼hling 2015", Set(4,5,6,7,8,9)))
 //    assignAthletsToWettkampf(27L, Set(programmEP, programmEP+1, programmEP+2), Some(mapFilter))
 //    assignAthletsToWettkampf(24L, Set(9,10))
     val daten = selectWertungen().groupBy { x =>

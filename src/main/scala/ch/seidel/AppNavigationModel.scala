@@ -17,7 +17,7 @@ object AppNavigationModel  {
 
 /**
  * Wettkampf (Home)
- *    - ATT Frühling 2015
+ *    - ATT FrÃ¼hling 2015
  *    - Jugendcup 2015
  * Stammdaten
  *    - Athlet (+Verein)
@@ -27,7 +27,7 @@ object AppNavigationModel  {
  *    - Dizsiplin (Barren, Reck, ...)
  *    - Programmdisziplin (Barren-P1, Reck-P1, ...)
  */
-case class KuTuAppThumbNail(context: Any, button: Button)
+case class KuTuAppThumbNail(context: Any, button: Button, item: TreeItem[String])
 
 /**
  * The class provide accessibility methods to access the
@@ -35,8 +35,8 @@ case class KuTuAppThumbNail(context: Any, button: Button)
  */
 class KuTuAppTree(service: KutuService) {
 
-  val tree: Map[String, List[TreeItem[String]]] = createTree()
   val thumbnails: Map[String, List[KuTuAppThumbNail]] = createThumbnails()
+	val tree: Map[String, List[TreeItem[String]]] = createTree()
 
   def getService = service
 
@@ -45,18 +45,8 @@ class KuTuAppTree(service: KutuService) {
    * This is used in UI
    */
   private def createTree(): Map[String, List[TreeItem[String]]] = {
-//    val exampleRootFiles = examplePath.listFiles()
-//    if (exampleRootFiles == null)
-//      throw new IOException("Cannot list files in the example directory. May be caused by Issue #10.")
-    implicit val session = service.database.createSession()
-    try {
-      TreeMap(
-//          "Athleten" -> service.selectAthletesView.list().map { a => new TreeItem(s"${a.vorname} ${a.name} (${a.verein.map { _.name }.getOrElse("ohne Verein")})") },
-          "Wettkämpfe" -> service.listWettkaempfeView.map { wk => new TreeItem(s"${wk.titel} ${wk.datum}") }.toList
-          )
-    }
-    finally {
-      session.close()
+    thumbnails map {group =>
+      group._1 -> group._2.map(_.item)
     }
   }
 
@@ -77,6 +67,7 @@ class KuTuAppTree(service: KutuService) {
         image = new Image(inputStream)
       }
       def thmb(context: Any, path: String, node: String) = {
+        val thmbitem = new TreeItem[String](node)
         val button = new Button(node, img) {
           prefWidth = 140
           prefHeight = 145
@@ -84,19 +75,20 @@ class KuTuAppTree(service: KutuService) {
           styleClass.clear()
           styleClass += "sample-tile"
           onAction = (ae: ActionEvent) => {
-            KuTuApp.splitPane.items.remove(1)
-            KuTuApp.splitPane.items.add(1,
-              PageDisplayer.choosePage(Some(context), path + " > " + node, KuTuAppTree.this))
+            KuTuApp.controlsView.selectionModel().select(thmbitem)
+//            KuTuApp.splitPane.items.remove(1)
+//            KuTuApp.splitPane.items.add(1,
+//              PageDisplayer.choosePage(Some(context), path + " > " + node, KuTuAppTree.this))
           }
         }
-        KuTuAppThumbNail(context, button)
+        KuTuAppThumbNail(context, button, thmbitem)
       }
       TreeMap(
-//          "Athleten" -> service.selectAthletes.list().map { a =>
-//              thmb("Athleten", s"${a.vorname} ${a.name}")
-//            },
-          "Wettkämpfe" -> service.listWettkaempfeView.map { wk =>
-              thmb(wk, "Wettkämpfe", s"${wk.titel} ${wk.datum}")
+          "Athleten" -> service.selectVereine.map { a =>
+              thmb(a, "Athleten", s"${a.name}")
+            },
+          "WettkÃ¤mpfe" -> service.listWettkaempfeView.map { wk =>
+              thmb(wk, "WettkÃ¤mpfe", s"${wk.titel} ${wk.datum}")
             }.toList
 //            ,
 //          "Analysen" -> service.selectWertungen().map { d =>
@@ -131,7 +123,7 @@ class KuTuAppTree(service: KutuService) {
   def getDashThumb(ctrlGrpName: String) =
     Seq(
       createCategoryLabel(ctrlGrpName),
-      createTiles(thumbnails(ctrlGrpName))
+      createTiles(getThumbs(ctrlGrpName).toList)
     )
 
   private def createCategoryLabel(value: String) =

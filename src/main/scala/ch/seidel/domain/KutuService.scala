@@ -32,8 +32,9 @@ trait KutuService {
   }
 
   implicit def getSQLDate(date: String) = new java.sql.Date(sdf.parse(date).getTime)
+  private implicit val getVereinResult = GetResult(r => Verein(r.<<[Long], r.<<[String]))
   private implicit val getVereinOptionResult = GetResult(r =>  r.nextLongOption() match {
-    case Some(id) => Some(Verein(r.<<[Long], r.<<[String]))
+    case Some(id) => Some(getVereinResult(r))
     case _        => { r.skip; r.skip; None }
   })
   private implicit val getAthletResult = GetResult(r =>
@@ -166,7 +167,7 @@ trait KutuService {
       val programs = programmId map (p => readProgramm(p, cache))
       val heads = programs map (_.head)
       if (!heads.forall { h => h.id == heads.head.id }) {
-        throw new IllegalArgumentException("Programme nicht aus der selben Gruppe können nicht in einen Wettkampf aufgenommen werden")
+        throw new IllegalArgumentException("Programme nicht aus der selben Gruppe kÃ¶nnen nicht in einen Wettkampf aufgenommen werden")
       }
       sqlu"""
                     insert into kutu.wettkampf
@@ -293,6 +294,12 @@ trait KutuService {
     }
   }
 
+  def selectVereine = {
+    database withSession { implicit session =>
+      sql"""select * from kutu.verein""".as[Verein].list()
+    }
+  }
+
   def insertAthlete(athlete: Athlet) = {
     database withTransaction { implicit session =>
       def getId = sql"""
@@ -324,6 +331,43 @@ trait KutuService {
                     values (${athlete.id}, ${athlete.js_id}, ${athlete.geschlecht}, ${athlete.name}, ${athlete.vorname}, ${athlete.gebdat}, ${athlete.strasse}, ${athlete.plz}, ${athlete.ort}, ${athlete.verein})
             """.execute
         athlete.id
+      }
+    }
+  }
+
+  def insertOrupdateAthlete(athlete: Athlet) = {
+    database withTransaction { implicit session =>
+      def getId = sql"""
+                    select max(athlet.id) as maxid
+                    from kutu.athlet
+                    where name=${athlete.name} and vorname=${athlete.vorname} and gebdat=${athlete.gebdat} and verein=${athlete.verein}
+           """.as[Long].build().headOption
+
+      if (athlete.id == 0) {
+        val id: Long = getId match {
+          case Some(id) =>
+            sqlu"""
+                    replace into kutu.athlet
+                    (id, js_id, geschlecht, name, vorname, gebdat, strasse, plz, ort, verein)
+                    values (${id}, ${athlete.js_id}, ${athlete.geschlecht}, ${athlete.name}, ${athlete.vorname}, ${athlete.gebdat}, ${athlete.strasse}, ${athlete.plz}, ${athlete.ort}, ${athlete.verein})
+            """.execute
+            athlete.id
+          case None => sqlu"""
+                    replace into kutu.athlet
+                    (js_id, geschlecht, name, vorname, gebdat, strasse, plz, ort, verein)
+                    values (${athlete.js_id}, ${athlete.geschlecht}, ${athlete.name}, ${athlete.vorname}, ${athlete.gebdat}, ${athlete.strasse}, ${athlete.plz}, ${athlete.ort}, ${athlete.verein})
+            """.execute
+            getId.get
+        }
+        sql"""select * from kutu.athlet where id = ${id}""".as[Athlet].build().headOption.get
+      }
+      else {
+        sqlu"""
+                    replace into kutu.athlet
+                    (id, js_id, geschlecht, name, vorname, gebdat, strasse, plz, ort, verein)
+                    values (${athlete.id}, ${athlete.js_id}, ${athlete.geschlecht}, ${athlete.name}, ${athlete.vorname}, ${athlete.gebdat}, ${athlete.strasse}, ${athlete.plz}, ${athlete.ort}, ${athlete.verein})
+            """.execute
+        athlete
       }
     }
   }
