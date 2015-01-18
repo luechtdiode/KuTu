@@ -224,13 +224,23 @@ class RanglisteTab(wettkampf: WettkampfView, override val service: KutuService) 
       gsBlock.toString()
     }
 
+    combs.foreach{c =>
+      c.onAction = handle {
+        refreshRangliste(buildQuery)
+      }
+    }
+
     val btnRefresh = new Button {
       text = "refresh"
       onAction = handle {
         refreshRangliste(buildQuery)
       }
     }
-
+    onSelectionChanged = handle {
+      if(selected.value) {
+        refreshRangliste(buildQuery)
+      }
+    }
     content = new BorderPane {
       vgrow = Priority.ALWAYS
       hgrow = Priority.ALWAYS

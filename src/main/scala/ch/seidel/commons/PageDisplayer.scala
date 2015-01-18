@@ -21,6 +21,7 @@ import ch.seidel.WettkampfPage
 import ch.seidel.TurnerPage
 import ch.seidel.domain.Verein
 import scalafx.scene.control.TreeItem
+import ch.seidel.KuTuApp
 
 /**
  * the class that updates tabbed view or dashboard view
@@ -33,8 +34,11 @@ object PageDisplayer {
     val dialogStage = new Stage {
       outer => {
         initModality(Modality.WINDOW_MODAL)
-        val node = event.source.asInstanceOf[jfxs.Node]
-        delegate.initOwner(node.getScene.getWindow)
+        event.source match {
+          case n: jfxs.Node => delegate.initOwner(n.getScene.getWindow)
+          case _ => delegate.initOwner(KuTuApp.getStage.getScene.getWindow)
+        }
+
         title = tit
         scene = new Scene {
           root = new BorderPane {

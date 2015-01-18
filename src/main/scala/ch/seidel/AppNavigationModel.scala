@@ -10,6 +10,8 @@ import scalafx.scene.control._
 import scalafx.scene.image.{Image, ImageView}
 import scalafx.scene.layout.{Region, TilePane}
 import ch.seidel.domain.KutuService
+import ch.seidel.domain.Verein
+import ch.seidel.domain.WettkampfView
 
 object AppNavigationModel  {
   def create(service: KutuService): KuTuAppTree = new KuTuAppTree(service)
@@ -58,16 +60,26 @@ class KuTuAppTree(service: KutuService) {
 
     implicit val session = service.database.createSession()
     try {
-      val img = new ImageView {
-        val filePath = "/images/icon-48x48.png"
-        val inputStream = this.getClass.getResourceAsStream(filePath)
-        if (inputStream == null) {
-          throw new IOException("Unable to locate resource: " + filePath)
-        }
-        image = new Image(inputStream)
+      val wkfilePath = "/images/wettkampf-shadowed.png"
+      val wkinputStream = this.getClass.getResourceAsStream(wkfilePath)
+      if (wkinputStream == null) {
+        throw new IOException("Unable to locate resource: " + wkfilePath)
       }
+      val wkimage = new Image(wkinputStream)
+      val vfilePath = "/images/verein-shadowed.png"
+      val vinputStream = this.getClass.getResourceAsStream(vfilePath)
+      if (vinputStream == null) {
+        throw new IOException("Unable to locate resource: " + vfilePath)
+      }
+      val vimage = new Image(vinputStream)
       def thmb(context: Any, path: String, node: String) = {
         val thmbitem = new TreeItem[String](node)
+        val img = new ImageView {
+          context match {
+            case _:Verein        => image = vimage
+            case _:WettkampfView => image = wkimage
+          }
+        }
         val button = new Button(node, img) {
           prefWidth = 140
           prefHeight = 145

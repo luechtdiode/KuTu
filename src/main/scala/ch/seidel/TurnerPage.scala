@@ -65,9 +65,7 @@ object TurnerPage {
 
     override def isPopulated: Boolean = {
       val athleten = service.database withSession {implicit session =>
-        val sql = (service.selectAthletes + s" where verein = ${verein.id}")
-//        println(sql.query)
-        sql.list.map{a => AthletEditor(a)}
+        (service.selectAthletes + " where verein=" +? verein.id).list.map{a => AthletEditor(a)}
       }
 
       val wkModel = ObservableBuffer[AthletEditor](athleten)
@@ -93,6 +91,7 @@ object TurnerPage {
           }
           tc
         }.toList
+
       content = new TableView[AthletEditor](wkModel) {
         columns ++= cols
         id = "athlet-table"

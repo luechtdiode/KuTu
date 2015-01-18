@@ -3,16 +3,20 @@ package ch.seidel
 import scalafx.Includes._
 import scalafx.application.JFXApp
 import scalafx.application.JFXApp.PrimaryStage
-import ch.seidel.commons.PageDisplayer
 import scalafx.geometry.Insets
 import scalafx.scene.Scene
+import scalafx.stage.Screen
+import scalafx.scene.Node
+import scalafx.scene.layout._
 import scalafx.scene.control._
 import scalafx.scene.image.{Image, ImageView}
-import scalafx.scene.layout._
-import scalafx.stage.Screen
+import scalafx.scene.input.ContextMenuEvent
 import ch.seidel.domain.KutuService
 import ch.seidel.domain.WettkampfView
 import ch.seidel.domain.Verein
+import ch.seidel.commons.PageDisplayer
+import ch.seidel.commons.DisplayablePage
+import scalafx.event.ActionEvent
 
 object KuTuApp extends JFXApp with KutuService {
   val tree = AppNavigationModel.create(KuTuApp.this)
@@ -22,6 +26,12 @@ object KuTuApp extends JFXApp with KutuService {
   }
   var centerPane = PageDisplayer.choosePage(None, "dashBoard", tree)
 
+  def handleAction[J <: javafx.event.ActionEvent, R](handler: scalafx.event.ActionEvent => R) = new javafx.event.EventHandler[J] {
+    def handle(event: J) {
+      handler(event)
+    }
+  }
+
   val screen = Screen.primary
   val controlsView = new TreeView[String]() {
     minWidth = 200
@@ -30,24 +40,55 @@ object KuTuApp extends JFXApp with KutuService {
     root = rootTreeItem
     id = "page-tree"
   }
+  controlsView.onContextMenuRequested = handle {
+    val sel = controlsView.selectionModel().selectedItem
+    sel.value.value.value
+  }
   controlsView.selectionModel().selectionMode = SelectionMode.SINGLE
   controlsView.selectionModel().selectedItem.onChange {
     (_, _, newItem) => {
-      val centerPane = (newItem.isLeaf, Option(newItem.getParent)) match {
-        case (true, Some(parent)) => {
-          tree.getThumbs(parent.getValue).find(p => p.button.text.getValue.equals(newItem.getValue)) match {
-            case Some(KuTuAppThumbNail(p: WettkampfView, _, newItem)) => PageDisplayer.choosePage(Some(p), "dashBoard - " + newItem.getValue, tree)
-            case Some(KuTuAppThumbNail(v: Verein, _, newItem)) => PageDisplayer.choosePage(Some(v), "dashBoard - " + newItem.getValue, tree)
-            case _       => PageDisplayer.choosePage(None, "dashBoard - " + newItem.getValue, tree)
-          }
+      if(newItem != null) {
+        newItem.value.value match {
+          case "Wettkämpfe" =>
+            controlsView.contextMenu = new ContextMenu() {
+              items += new javafx.scene.control.MenuItem("neu anlegen ...") {
+                onAction = handleAction { implicit e: ActionEvent =>
+                  PageDisplayer.showInDialog(getText, new DisplayablePage() {
+                    def getPage: Node = {
+                      new BorderPane {
+                        hgrow = Priority.ALWAYS
+                        vgrow = Priority.ALWAYS
+                        //center = athletTable
+                      }
+                    }
+                  }, new Button("OK") {
+                    onAction = handleAction {implicit e: ActionEvent =>
+                    }
+                  }, new Button("OK, Alle") {
+                    onAction = handleAction {implicit e: ActionEvent =>
+                    }
+                  })
+                }
+              }
+            }
+          case _ => controlsView.contextMenu = new ContextMenu()
         }
-        case (false, Some(_))     => PageDisplayer.choosePage(None, "dashBoard - " + newItem.getValue, tree)
-        case (_, _)               => PageDisplayer.choosePage(None, "dashBoard", tree)
+        val centerPane = (newItem.isLeaf, Option(newItem.getParent)) match {
+          case (true, Some(parent)) => {
+            tree.getThumbs(parent.getValue).find(p => p.button.text.getValue.equals(newItem.getValue)) match {
+              case Some(KuTuAppThumbNail(p: WettkampfView, _, newItem)) => PageDisplayer.choosePage(Some(p), "dashBoard - " + newItem.getValue, tree)
+              case Some(KuTuAppThumbNail(v: Verein, _, newItem)) => PageDisplayer.choosePage(Some(v), "dashBoard - " + newItem.getValue, tree)
+              case _       => PageDisplayer.choosePage(None, "dashBoard - " + newItem.getValue, tree)
+            }
+          }
+          case (false, Some(_))     => PageDisplayer.choosePage(None, "dashBoard - " + newItem.getValue, tree)
+          case (_, _)               => PageDisplayer.choosePage(None, "dashBoard", tree)
+        }
+        if(splitPane.items.size > 1) {
+          splitPane.items.remove(1)
+        }
+        splitPane.items.add(1, centerPane)
       }
-      if(splitPane.items.size > 1) {
-        splitPane.items.remove(1)
-      }
-      splitPane.items.add(1, centerPane)
     }
   }
 
@@ -64,7 +105,7 @@ object KuTuApp extends JFXApp with KutuService {
     id = "page-splitpane"
     items.addAll(scrollPane, centerPane)
   }
-
+  def getStage() = stage
   //
   // Layout the main stage
   //
