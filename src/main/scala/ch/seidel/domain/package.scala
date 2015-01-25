@@ -1,6 +1,9 @@
 package ch.seidel
 
 package object domain {
+  implicit def dbl2Str(d: Double) = f"${d}%2.3f"
+  implicit def str2dbl(d: String) = d.toString()
+
   trait DataObject {
     def easyprint: String = toString
   }

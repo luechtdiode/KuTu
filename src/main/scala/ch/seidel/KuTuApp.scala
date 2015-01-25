@@ -58,6 +58,7 @@ object KuTuApp extends JFXApp with KutuService {
                       new BorderPane {
                         hgrow = Priority.ALWAYS
                         vgrow = Priority.ALWAYS
+                        //createWettkampf(datum: java.sql.Date, titel: String, programmId: Set[Long]
                         //center = athletTable
                       }
                     }
@@ -111,7 +112,6 @@ object KuTuApp extends JFXApp with KutuService {
   //
   stage = new PrimaryStage {
     title = "KuTu Wettkampf-App"
-    //icons += new Image("/images/ScalaFX-icon-64x64.png")
     scene = new Scene(1020, 700) {
       root = new BorderPane {
         top = new VBox {
@@ -126,15 +126,7 @@ object KuTuApp extends JFXApp with KutuService {
                 image = new Image(
                   this.getClass.getResourceAsStream("/images/logo.png"))
                 margin = Insets(0, 0, 0, 10)
-              }/*,
-              new Region {
-                minWidth = 300
-              },
-              new Button {
-                minWidth = 120
-                minHeight = 66
-                id = "newButton"
-              }*/)
+              })
           }
         }
         center = new BorderPane {

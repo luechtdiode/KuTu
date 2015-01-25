@@ -88,9 +88,6 @@ class KuTuAppTree(service: KutuService) {
           styleClass += "sample-tile"
           onAction = (ae: ActionEvent) => {
             KuTuApp.controlsView.selectionModel().select(thmbitem)
-//            KuTuApp.splitPane.items.remove(1)
-//            KuTuApp.splitPane.items.add(1,
-//              PageDisplayer.choosePage(Some(context), path + " > " + node, KuTuAppTree.this))
           }
         }
         KuTuAppThumbNail(context, button, thmbitem)

@@ -6,6 +6,7 @@ import javafx.scene.{ control => jfxsc }
 import javafx.collections.{ ObservableList, ListChangeListener }
 import scalafx.collections.ObservableBuffer
 import scalafx.Includes._
+import scalafx.util.converter.StringConverterJavaToJavaDelegate
 import scalafx.util.converter.DefaultStringConverter
 import scalafx.util.converter.DoubleStringConverter
 import scalafx.beans.property.ReadOnlyStringWrapper
@@ -35,122 +36,280 @@ import scalafx.scene.Group
 import scalafx.scene.web.WebView
 import ch.seidel.domain._
 import ch.seidel.commons._
+import scalafx.scene.control.Pagination
+import scalafx.scene.control.TextField
+import javafx.beans.binding.Bindings
+import javafx.beans.value.ChangeListener
+import scalafx.beans.binding.BooleanBinding
+import scalafx.beans.binding.ObjectBinding
+import scalafx.beans.binding.NumberBinding
 
 case class WertungEditor(init: WertungView) {
-  private var _noteD = init.noteD.toDouble
-  def getNoteD = f"${_noteD}%2.3f"
-  def setNoteD(v: String) { _noteD = v.toDouble }
-  val noteD = new StringProperty(this, "noteD", getNoteD) {
-    override def value = getNoteD
-    override def value_=(v: String) {
-      _noteD = v.toDouble
-    }
+	type WertungChangeListener = (WertungEditor) => Unit
+  val noteD = DoubleProperty(init.noteD.toDouble)
+  val noteE = DoubleProperty(init.noteE.toDouble)
+  val endnote = DoubleProperty(init.endnote.toDouble)
+  noteD.onChange {
+    listeners.foreach(f => f(this))
   }
-
-  var _noteE = init.noteE.toDouble
-  def getNoteE = f"${_noteE}%2.3f"
-  def setNoteE(v: String) { _noteE = v.toDouble }
-  val noteE = new StringProperty(this, "noteE", getNoteE) {
-    override def value = getNoteE
-    override def value_=(v: String) {
-      _noteE = v.toDouble
-    }
+  noteE.onChange {
+    listeners.foreach(f => f(this))
   }
-
-  var _endnote = init.endnote.toDouble
-  def getEndnote = f"${_endnote}%2.3f"
-  def setEndnote(v: String) { _endnote = v.toDouble }
-  val endnote = new StringProperty(this, "endnote", getEndnote) {
-    override def value = getEndnote
-    override def value_=(v: String) {
-      _endnote = v.toDouble
-    }
+  endnote.onChange {
+    listeners.foreach(f => f(this))
   }
-
-  def isDirty = _noteD != init.noteD || _noteE != init.noteE || _endnote != init.endnote
-
+  def isDirty = noteD.value != init.noteD || noteE.value != init.noteE || endnote.value != init.endnote
+  var listeners = Set[WertungChangeListener]()
+  def addListener(l: WertungChangeListener) {
+   listeners += l
+  }
+  def removeListener(l: WertungChangeListener) {
+    listeners -= l
+  }
   def reset {
-    noteD.value = init.noteD.toString
-    noteE.value = init.noteE.toString
-    endnote.value = init.endnote.toString
+    noteD.value = init.noteD
+    noteE.value = init.noteE
+    endnote.value = init.endnote
   }
 
   def commit = Wertung(
     init.id, init.athlet.id, init.wettkampfdisziplin.id, init.wettkampf.id,
-    scala.math.BigDecimal(_noteD),
-    scala.math.BigDecimal(_noteE),
-    scala.math.BigDecimal(_endnote))
+    scala.math.BigDecimal(noteD.value),
+    scala.math.BigDecimal(noteE.value),
+    scala.math.BigDecimal(endnote.value))
+}
+
+object NoteFormatter extends DoubleStringConverter() {
+  override def toString(arg0: Double): String = {
+    arg0
+  }
 }
 
 class WettkampfWertungTab(programm: ProgrammView, wettkampf: WettkampfView, override val service: KutuService, athleten: => IndexedSeq[WertungView]) extends Tab with TabWithService {
+	implicit def doublePropertyToObservableValue(p: DoubleProperty): ObservableValue[Double,Double] = p.asInstanceOf[ObservableValue[Double,Double]]
+
   override def isPopulated = {
     def updateWertungen = {
       athleten.filter(wv => wv.wettkampfdisziplin.programm.id == programm.id).groupBy(wv => wv.athlet).map(wvg => wvg._2.map(WertungEditor)).toIndexedSeq
     }
     var wertungen = updateWertungen
     val wkModel = ObservableBuffer[IndexedSeq[WertungEditor]](wertungen)
+    val wkview = new TableView[IndexedSeq[WertungEditor]](wkModel) {
+      id = "kutu-table"
+      editable = true
+    }
+
+    var editorPane: EditorPane = null
+
+    def disziplinCnt = wertungen.headOption match {case Some(w) => w.size case _ => 0}
+
+    def updateEditorPane {
+    	if(editorPane != null) {
+    		editorPane.adjust
+    	}
+    }
+    case class EditorPane(index: Int) extends VBox {
+      val lblDisciplin = new Label() {
+        styleClass += "toolbar-header"
+      }
+      val lblAthlet = new Label() {
+        styleClass += "toolbar-header"
+      }
+      val lblHeader = new ToolBar {
+        content = List(lblAthlet, lblDisciplin)
+      }
+      val txtD = new TextField() {
+        promptText = "D-Note"
+        prefWidth = 100
+      }
+      val txtE = new TextField() {
+        promptText = "E-Note"
+        prefWidth = 100
+      }
+      val txtEnd = new TextField() {
+        promptText = "End-Note"
+        prefWidth = 100
+      }
+      val btnSaveNextDisciplin = new Button() {
+        text = "Speichern ->"
+        disable <== when(isDirty) choose false otherwise true
+      }
+      val btnSaveNextAthlet = new Button() {
+        text = "Speichern v"
+        disable <== when(isDirty) choose false otherwise true
+      }
+      val actionBox = new HBox() {
+        content = List(btnSaveNextAthlet, btnSaveNextDisciplin)
+      }
+      val noteBox = new HBox() {
+        content = List(txtD, txtE, txtEnd, actionBox)
+      }
+      content = List(lblHeader, noteBox)
+      alignment = Pos.CENTER
+      var disciplin: WertungEditor = null
+
+      val listener = (we: WertungEditor) => {
+        txtD.text.value = disciplin.noteD.value
+        txtE.text.value = disciplin.noteE.value
+        txtEnd.text.value = disciplin.endnote.value
+      }
+
+      def isDirty: BooleanBinding = new javafx.beans.binding.BooleanBinding() {
+        bind(txtD.text, txtE.text, txtEnd.text)
+        def computeValue = {
+          try {
+            disciplin.noteD.value != NoteFormatter.fromString(txtD.text.value) ||
+            disciplin.noteE.value != NoteFormatter.fromString(txtE.text.value) ||
+            disciplin.endnote.value != NoteFormatter.fromString(txtEnd.text.value)
+          }
+          catch {
+            case e: Exception => false
+          }
+        }
+      }
+
+      def lastEditedOffset: Int = {
+        if(txtD.focused.value) 0
+        else if(txtE.focused.value) 1
+        else 2
+      }
+      def adjust = {
+        unbind
+        println("inAdjustSelection at index " + index)
+        val selected = wkview.selectionModel().getSelectedItem
+        if (selected != null) {
+          disciplin = selected(index)
+          disciplin.addListener(listener)
+          val rowIndex = wkModel.indexOf(selected)
+          lblDisciplin.text = disciplin.init.wettkampfdisziplin.disziplin.name
+          lblAthlet.text = selected(index).init.athlet.easyprint
+          def save {
+            disciplin.noteD.value = NoteFormatter.fromString(txtD.text.value)
+            disciplin.noteE.value = NoteFormatter.fromString(txtE.text.value)
+            disciplin.endnote.value = NoteFormatter.fromString(txtEnd.text.value)
+            if (disciplin.isDirty) {
+              wkModel.update(rowIndex, selected.updated(index, WertungEditor(service.updateWertung(disciplin.commit))))
+              wkview.selectionModel.value.select(rowIndex, wkview.columns(index+2).columns(lastEditedOffset))
+              wkview.scrollTo(rowIndex)
+              wkview.scrollToColumn(wkview.columns(index+2).columns(lastEditedOffset))
+            }
+          }
+          listener(disciplin)
+          //txtD.text.delegate.bindBidirectional(disciplin.noteD, NoteFormatter.asInstanceOf[scalafx.util.StringConverter[Number]])
+          //txtD.text <==> disciplin.noteD
+          txtD.onAction = () => save
+          txtE.onAction = () => save
+          txtEnd.onAction = () => save
+          btnSaveNextAthlet.onAction = () => {
+            save
+            wkview.selectionModel.value.selectBelowCell
+          }
+          btnSaveNextDisciplin.onAction = () => {
+            save
+            if(index < disziplinCnt-1) {
+              wkview.selectionModel.value.select(rowIndex, wkview.columns(index+3).columns(lastEditedOffset))
+              wkview.scrollToColumn(wkview.columns(index+3).columns(lastEditedOffset))
+              wkview.scrollTo(rowIndex)
+            }
+            else if(rowIndex < wkModel.size-1){
+              wkview.selectionModel.value.select(rowIndex+1, wkview.columns(2).columns(lastEditedOffset))
+              wkview.scrollToColumn(wkview.columns(2).columns(lastEditedOffset))
+              wkview.scrollTo(rowIndex + 1)
+            }
+          }
+          println("binded")
+          rowIndex
+        }
+        else {
+          -1
+        }
+      }
+//      adjust
+      def unbind() {
+        if (disciplin != null) {
+          disciplin.removeListener(listener)
+          txtD.text.unbind()
+          txtD.onAction.unbind()
+          txtE.text.unbind()
+          txtE.onAction.unbind()
+          txtEnd.text.unbind()
+          txtEnd.onAction.unbind()
+          println("unbinded")
+//          disciplin.noteD.unbind()
+          //disciplin.noteE.unbind(txtE.text)
+          //disciplin.endnote.unbind(txtEnd.text)
+        println(" disciplin unbinded")
+        }
+        disciplin = null
+      }
+    }
 
     val indexerE = Iterator.from(0)
     val indexerD = Iterator.from(0)
     val indexerF = Iterator.from(0)
+
     def wertungenCols = if (wertungen.nonEmpty) {
       wertungen.head.map { wertung =>
-        val clDnote /*: jfxsc.TableColumn[IndexedSeq[WertungEditor],_]*/ = new TableColumn[IndexedSeq[WertungEditor], String] {
+        val clDnote = new TableColumn[IndexedSeq[WertungEditor], Double] {
           val index = indexerD.next
           text = wertung.init.wettkampfdisziplin.disziplin.name
-          //            cellValueFactory = {x => new ReadOnlyStringWrapper(x.value, "athlet", f"D: ${wertung.noteD}%2.3f E: ${wertung.noteE}%2.3f = ${wertung.endnote}%2.3f") }
           cellValueFactory = { x => if (x.value.size > index) x.value(index).noteD else wertung.noteD }
-          cellFactory = { _ => new TextFieldTableCell[IndexedSeq[WertungEditor], String](new DefaultStringConverter()) }
+          cellFactory = { _ => new TextFieldTableCell[IndexedSeq[WertungEditor], Double](NoteFormatter)}
 
           styleClass += "table-cell-with-value"
           prefWidth = 60
           editable = true
-          onEditCommit = (evt: CellEditEvent[IndexedSeq[WertungEditor], String]) => {
+          onEditCommit = (evt: CellEditEvent[IndexedSeq[WertungEditor], Double]) => {
             val disciplin = evt.rowValue(index)
             disciplin.noteD.value = evt.newValue
             val rowIndex = wkModel.indexOf(evt.rowValue)
             if (disciplin.isDirty) {
               wkModel.update(rowIndex, evt.rowValue.updated(index, WertungEditor(service.updateWertung(disciplin.commit))))
+              evt.tableView.selectionModel.value.select(rowIndex, this)
+              updateEditorPane
             }
             evt.tableView.requestFocus()
           }
         }
-        val clEnote /*: jfxsc.TableColumn[IndexedSeq[WertungEditor],_]*/ = new TableColumn[IndexedSeq[WertungEditor], String] {
+        val clEnote = new TableColumn[IndexedSeq[WertungEditor], Double] {
           val index = indexerE.next
           text = wertung.init.wettkampfdisziplin.disziplin.name
-          //            cellValueFactory = {x => new ReadOnlyStringWrapper(x.value, "athlet", f"D: ${wertung.noteD}%2.3f E: ${wertung.noteE}%2.3f = ${wertung.endnote}%2.3f") }
           cellValueFactory = { x => if (x.value.size > index) x.value(index).noteE else wertung.noteE }
-          cellFactory = { x => new TextFieldTableCell[IndexedSeq[WertungEditor], String](new DefaultStringConverter()) }
+          cellFactory = { x => new TextFieldTableCell[IndexedSeq[WertungEditor], Double](NoteFormatter) }
 
           styleClass += "table-cell-with-value"
           prefWidth = 60
           editable = true
-          onEditCommit = (evt: CellEditEvent[IndexedSeq[WertungEditor], String]) => {
+          onEditCommit = (evt: CellEditEvent[IndexedSeq[WertungEditor], Double]) => {
             val disciplin = evt.rowValue(index)
             disciplin.noteE.value = evt.newValue
             val rowIndex = wkModel.indexOf(evt.rowValue)
             if (disciplin.isDirty) {
               wkModel.update(rowIndex, evt.rowValue.updated(index, WertungEditor(service.updateWertung(disciplin.commit))))
+              evt.tableView.selectionModel.value.select(rowIndex, this)
+              updateEditorPane
             }
             evt.tableView.requestFocus()
           }
         }
-        val clEndnote = new TableColumn[IndexedSeq[WertungEditor], String] {
+        val clEndnote = new TableColumn[IndexedSeq[WertungEditor], Double] {
           val index = indexerF.next
           text = wertung.init.wettkampfdisziplin.disziplin.name
           //            cellValueFactory = {x => new ReadOnlyStringWrapper(x.value, "athlet", f"D: ${wertung.noteD}%2.3f E: ${wertung.noteE}%2.3f = ${wertung.endnote}%2.3f") }
           cellValueFactory = { x => if (x.value.size > index) x.value(index).endnote else wertung.endnote }
-          cellFactory = { x => new TextFieldTableCell[IndexedSeq[WertungEditor], String](new DefaultStringConverter()) }
+          cellFactory = { x => new TextFieldTableCell[IndexedSeq[WertungEditor], Double](NoteFormatter) }
 
           styleClass += "table-cell-with-value"
           prefWidth = 80
           editable = true
-          onEditCommit = (evt: CellEditEvent[IndexedSeq[WertungEditor], String]) => {
+          onEditCommit = (evt: CellEditEvent[IndexedSeq[WertungEditor], Double]) => {
             val disciplin = evt.rowValue(index)
             disciplin.endnote.value = evt.newValue
             val rowIndex = wkModel.indexOf(evt.rowValue)
             if (disciplin.isDirty) {
               wkModel.update(rowIndex, evt.rowValue.updated(index, WertungEditor(service.updateWertung(disciplin.commit))))
+              evt.tableView.selectionModel.value.select(rowIndex, this)
+              updateEditorPane
             }
             evt.tableView.requestFocus()
           }
@@ -199,21 +358,12 @@ class WettkampfWertungTab(programm: ProgrammView, wettkampf: WettkampfView, over
     val sumCol: List[jfxsc.TableColumn[IndexedSeq[WertungEditor], _]] = List(
       new TableColumn[IndexedSeq[WertungEditor], String] {
         text = "Punkte"
-        //              cellValueFactory = {x => new ReadOnlyFloatWrapper(x.value, "punkte", { x.value.map(w => w.endnote).sum.toFloat})}
-        cellValueFactory = { x =>
-          val w = new ReadOnlyStringWrapper(x.value, "punkte", { f"${x.value.map(w => w._endnote).sum}%3.3f" })
-
-          w
-        }
+        cellValueFactory = { x => new ReadOnlyStringWrapper(x.value, "punkte", { f"${x.value.map(w => w.endnote.value.toDouble).sum}%3.3f" })}
         prefWidth = 80
         styleClass += "table-cell-with-value"
       })
 
-    val wkview = new TableView[IndexedSeq[WertungEditor]](wkModel) {
-      columns ++= athletCol ++ wertungenCols ++ sumCol
-      id = "kutu-table"
-      editable = true
-    }
+    wkview.columns ++= athletCol ++ wertungenCols ++ sumCol
 
     val addButton = new Button {
       text = "Athlet hinzufügen"
@@ -292,13 +442,18 @@ class WettkampfWertungTab(programm: ProgrammView, wettkampf: WettkampfView, over
       onAction = (event: ActionEvent) => {
         if (!wkview.selectionModel().isEmpty) {
           val selected = wkview.selectionModel().getSelectedItem
-          for (disciplin <- selected) {
-            disciplin.noteD.value = "0"
-            disciplin.noteE.value = "0"
-            disciplin.endnote.value = "0"
-            val rowIndex = wkModel.indexOf(selected)
-            if (disciplin.isDirty) {
-              wkModel.update(rowIndex, selected.updated(selected.indexOf(disciplin), WertungEditor(service.updateWertung(disciplin.commit))))
+          var index = 0
+          val rowIndex = wkModel.indexOf(selected)
+          if(rowIndex > -1) {
+            for (disciplin <- selected) {
+              disciplin.noteD.value = 0
+              disciplin.noteE.value = 0
+              disciplin.endnote.value = 0
+              if (disciplin.isDirty) {
+                wkModel.update(rowIndex, selected.updated(index, WertungEditor(service.updateWertung(disciplin.commit))))
+                wkview.requestFocus()
+              }
+              index = index + 1
             }
           }
         }
@@ -307,8 +462,9 @@ class WettkampfWertungTab(programm: ProgrammView, wettkampf: WettkampfView, over
     //addButton.disable <== when (wkview.selectionModel.value.selectedItemProperty.isNull()) choose true otherwise false
     removeButton.disable <== when(wkview.selectionModel.value.selectedItemProperty.isNull()) choose true otherwise false
     clearButton.disable <== when(wkview.selectionModel.value.selectedItemProperty.isNull()) choose true otherwise false
+    wkview.selectionModel.value.setCellSelectionEnabled(true)
 
-    content = new BorderPane {
+    val cont = new BorderPane {
       hgrow = Priority.ALWAYS
       vgrow = Priority.ALWAYS
       center = wkview
@@ -323,7 +479,41 @@ class WettkampfWertungTab(programm: ProgrammView, wettkampf: WettkampfView, over
           addButton, removeButton, clearButton
         )
       }
+      //bottom = pagination
     }
+
+    val pagination = new Pagination(disziplinCnt, 0) {
+      pageFactory = (index: Int) => {
+        if(editorPane != null) {
+          editorPane.unbind
+        }
+        editorPane = new EditorPane(index)
+        val rowIndex = editorPane.adjust
+        if(rowIndex > -1) {
+          wkview.scrollTo(rowIndex)
+          wkview.scrollToColumn(wkview.columns(index+2).columns(0))
+        }
+        editorPane
+      }
+    }
+
+    wkview.focusModel.value.focusedCell.onChange {(focusModel, oldTablePos, newTablePos) =>
+      if(newTablePos != null) {
+        val idx = math.max(0, (newTablePos.getColumn-2) / 3)
+        println("Adjust pagination at " +idx)
+        val oldIdx = pagination.currentPageIndex.value
+        pagination.currentPageIndex.value = idx
+        if(oldIdx == idx) {
+          updateEditorPane
+        }
+      }
+      else {
+        cont.bottom = null
+      }
+    }
+    cont.bottom = pagination
+
+    content = cont
     /*content =new StackPane {
       alignmentInParent = Pos.TOP_LEFT*/
 
