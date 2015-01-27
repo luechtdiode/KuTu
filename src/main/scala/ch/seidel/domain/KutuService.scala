@@ -46,10 +46,10 @@ trait KutuService {
   private implicit val getWettkampfResult = GetResult(r =>
     Wettkampf(r.<<[Long], r.<<[java.sql.Date], r.<<[String], r.<<[Long], r.<<[Int]))
   private implicit val getWettkampfDisziplinResult = GetResult(r =>
-    Wettkampfdisziplin(r.<<[Long], r.<<[Long], r.<<[Long], r.<<[String], None))
+    Wettkampfdisziplin(r.<<[Long], r.<<[Long], r.<<[Long], r.<<[String], r.nextBlobOption()))
 
   implicit def getWettkampfDisziplinViewResultCached(r: PositionedResult)(implicit session: Session, cache: scala.collection.mutable.Map[Long, ProgrammView]) =
-    WettkampfdisziplinView(r.<<[Long], readProgramm(r.<<[Long], cache), r, r.<<[String], None)
+    WettkampfdisziplinView(r.<<[Long], readProgramm(r.<<[Long], cache), r, r.<<[String], r.nextBlobOption())
   private implicit def getResultWertungView(implicit session: Session, cache: scala.collection.mutable.Map[Long, ProgrammView]) = GetResult(r =>
     WertungView(r.<<[Long], r, r, r, r.<<[scala.math.BigDecimal], r.<<[scala.math.BigDecimal], r.<<[scala.math.BigDecimal]))
   private implicit def getWettkampfViewResultCached(implicit session: Session, cache: scala.collection.mutable.Map[Long, ProgrammView]) = GetResult(r =>
@@ -121,7 +121,7 @@ trait KutuService {
 
       implicit val cache = scala.collection.mutable.Map[Long, ProgrammView]()
       sql"""
-                    SELECT w.id, a.*, v.*, wd.id, wd.programm_id, d.*, wd.kurzbeschreibung, wk.*, note_d as difficulty, note_e as execution, endnote
+                    SELECT w.id, a.*, v.*, wd.id, wd.programm_id, d.*, wd.kurzbeschreibung, wd.detailbeschreibung, wk.*, note_d as difficulty, note_e as execution, endnote
                     FROM kutu.wertung w
                     inner join kutu.athlet a on (a.id = w.athlet_id)
                     left outer join kutu.verein v on (a.verein = v.id)
@@ -138,7 +138,7 @@ trait KutuService {
     database withSession { implicit session =>
       implicit val cache = scala.collection.mutable.Map[Long, ProgrammView]()
       sql"""
-                    SELECT w.id, a.*, v.*, wd.id, wd.programm_id, d.*, wd.kurzbeschreibung, wk.*, note_d as difficulty, note_e as execution, endnote
+                    SELECT w.id, a.*, v.*, wd.id, wd.programm_id, d.*, wd.kurzbeschreibung, wd.detailbeschreibung, wk.*, note_d as difficulty, note_e as execution, endnote
                     FROM kutu.wertung w
                     inner join kutu.athlet a on (a.id = w.athlet_id)
                     left outer join kutu.verein v on (a.verein = v.id)
@@ -271,7 +271,7 @@ trait KutuService {
         case Some(id) => s"d.id = $id"
       })
       sql"""
-                    SELECT w.id, a.*, v.*, wd.id, wd.programm_id, d.*, wd.kurzbeschreibung, wk.*, note_d as difficulty, note_e as execution, endnote
+                    SELECT w.id, a.*, v.*, wd.id, wd.programm_id, d.*, wd.kurzbeschreibung, wd.detailbeschreibung, wk.*, note_d as difficulty, note_e as execution, endnote
                     FROM kutu.wertung w
                     inner join kutu.athlet a on (a.id = w.athlet_id)
                     left outer join kutu.verein v on (a.verein = v.id)

@@ -1,5 +1,8 @@
 package ch.seidel
 
+import scalafx.util.converter.DoubleStringConverter
+import java.io.ObjectInputStream
+import scalafx.collections.ObservableBuffer
 package object domain {
   implicit def dbl2Str(d: Double) = f"${d}%2.3f"
   implicit def str2dbl(d: String) = d.toString()
@@ -7,6 +10,7 @@ package object domain {
   trait DataObject {
     def easyprint: String = toString
   }
+
   case class Verein(id: Long, name: String) extends DataObject {
     override def easyprint = name
   }
@@ -84,7 +88,14 @@ package object domain {
   }
 
   case class Wettkampfdisziplin(id: Long, programmId: Long, disziplinId: Long, kurzbeschreibung: String, detailbeschreibung: Option[java.sql.Blob]) extends DataObject
-  case class WettkampfdisziplinView(id: Long, programm: ProgrammView, disziplin: Disziplin, kurzbeschreibung: String, detailbeschreibung: Option[java.sql.Blob]) extends DataObject
+  case class WettkampfdisziplinView(id: Long, programm: ProgrammView, disziplin: Disziplin, kurzbeschreibung: String, detailbeschreibung: Option[java.sql.Blob]) extends DataObject {
+    lazy val notenSpez = {
+      detailbeschreibung match {
+        case blob: java.sql.Blob => new ObjectInputStream(blob.getBinaryStream).readObject.asInstanceOf[NotenModus]
+        case _ => (if(programm.aggregatorHead.id == 1) Athletiktest(Map("<3cm"-> 1d, ">=3cm" -> 10d), 3d) else Wettkampf).asInstanceOf[NotenModus]
+      }
+    }
+  }
 
   case class Resultat(noteD: scala.math.BigDecimal, noteE: scala.math.BigDecimal, endnote: scala.math.BigDecimal) extends DataObject {
     def + (r: Resultat) = Resultat(noteD + r.noteD, noteE + r.noteE, endnote + r.endnote)
@@ -106,5 +117,24 @@ package object domain {
   sealed trait DataRow {}
   case class LeafRow(title: String, sum: Resultat, rang: Resultat) extends DataRow
   case class GroupRow(athlet: AthletView, resultate: IndexedSeq[LeafRow], sum: Resultat, rang: Resultat) extends DataRow
+
+  sealed trait NotenModus extends DoubleStringConverter {
+    def map(input: String): Double
+    val isDNoteUsed: Boolean
+    def selectableItems: Option[List[String]] = None
+    def calcEndnote(dnote: Double, enote: Double): Double
+    override def toString(value: Double): String = value
+  }
+  case class Athletiktest(punktemapping: Map[String,Double], punktgewicht: Double) extends NotenModus {
+    override val isDNoteUsed = false
+    override def map(input: String) = punktemapping.getOrElse(input, fromString(input))
+    override def calcEndnote(dnote: Double, enote: Double) = enote * punktgewicht
+    override def selectableItems: Option[List[String]] = Some(punktemapping.keys.toList)
+  }
+  case object Wettkampf extends NotenModus {
+    override val isDNoteUsed = true
+    override def map(input: String) = fromString(input)
+    override def calcEndnote(dnote: Double, enote: Double) = dnote + enote
+  }
 
 }
