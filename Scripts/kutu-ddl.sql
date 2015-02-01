@@ -124,6 +124,7 @@ CREATE TABLE IF NOT EXISTS `kutu`.`wettkampfdisziplin` (
   `disziplin_id` bigint(20) NOT NULL,
   `kurzbeschreibung` varchar(100) NOT NULL DEFAULT "",
   `detailbeschreibung` BLOB,
+  `notenfaktor` decimal(10,3) NOT NULL DEFAULT 1.0,
   UNIQUE INDEX `id` (`id` ASC),
   PRIMARY KEY (`id`),
   CONSTRAINT `wettkampfdisziplin_disziplin_FK` 
@@ -138,6 +139,27 @@ CREATE TABLE IF NOT EXISTS `kutu`.`wettkampfdisziplin` (
     ON UPDATE CASCADE
 )
 ENGINE=InnoDB
+DEFAULT CHARSET=utf8;
+
+-- -----------------------------------------------------
+-- Table `kutu`.`notenskala`
+-- -----------------------------------------------------
+DROP TABLE IF EXISTS `kutu`.`notenskala`;
+
+CREATE TABLE IF NOT EXISTS `kutu`.`notenskala` (
+  `id` bigint(20) NOT NULL AUTO_INCREMENT,
+  `wettkampfdisziplin_id` bigint(20) NOT NULL,
+  `kurzbeschreibung` varchar(500) NOT NULL DEFAULT "",
+  `punktwert` decimal(10,3) NOT NULL,
+  UNIQUE INDEX `id` (`id` ASC),
+  PRIMARY KEY (`id`),
+  CONSTRAINT `notenskala_wettkampfdisziplin_FK` 
+    FOREIGN KEY (`wettkampfdisziplin_id`) 
+    REFERENCES `kutu`.`wettkampfdisziplin` (`id`)
+    ON DELETE CASCADE
+    ON UPDATE CASCADE
+) 
+ENGINE=InnoDB 
 DEFAULT CHARSET=utf8;
 
 
