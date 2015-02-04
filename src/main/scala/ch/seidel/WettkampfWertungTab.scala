@@ -34,8 +34,6 @@ import scalafx.scene.control.ComboBox
 import scalafx.scene.layout.HBox
 import scalafx.scene.Group
 import scalafx.scene.web.WebView
-import ch.seidel.domain._
-import ch.seidel.commons._
 import scalafx.scene.control.Pagination
 import scalafx.scene.control.TextField
 import javafx.beans.binding.Bindings
@@ -43,6 +41,8 @@ import javafx.beans.value.ChangeListener
 import scalafx.beans.binding.BooleanBinding
 import scalafx.beans.binding.ObjectBinding
 import scalafx.beans.binding.NumberBinding
+import ch.seidel.domain._
+import ch.seidel.commons._
 import java.io.ObjectInputStream
 
 case class WertungEditor(init: WertungView) {

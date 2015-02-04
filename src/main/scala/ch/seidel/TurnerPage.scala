@@ -1,23 +1,23 @@
 package ch.seidel
 
+import java.text.SimpleDateFormat
+import java.sql.Date
+import scala.collection.JavaConversions
 import javafx.scene.{ control => jfxsc }
 import scalafx.Includes._
 import scalafx.scene.control.{Tab, TabPane}
-import scalafx.scene.layout.Priority
+import scalafx.scene.layout._
 import scalafx.scene.control.TableColumn._
 import scalafx.beans.property.StringProperty
+import scalafx.collections.ObservableBuffer
+import scalafx.scene.control._
+import scalafx.scene.control.cell.TextFieldTableCell
+import scalafx.util.converter.DefaultStringConverter
 import ch.seidel.domain._
 import ch.seidel.commons.DisplayablePage
 import ch.seidel.commons.TabWithService
 import ch.seidel.commons.LazyTabPane
-import java.text.SimpleDateFormat
-import java.sql.Date
-import scalafx.collections.ObservableBuffer
-import scalafx.scene.control.TableColumn
-import scalafx.scene.control.cell.TextFieldTableCell
-import scalafx.util.converter.DefaultStringConverter
-import scala.collection.JavaConversions
-import scalafx.scene.control.TableView
+import scalafx.event.ActionEvent
 
 object TurnerPage {
 
@@ -92,11 +92,53 @@ object TurnerPage {
           tc
         }.toList
 
-      content = new TableView[AthletEditor](wkModel) {
+    val athletenview = new TableView[AthletEditor](wkModel) {
         columns ++= cols
         id = "athlet-table"
         editable = true
       }
+
+    val addButton = new Button {
+      text = "Athlet hinzufügen"
+      minWidth = 75
+      onAction = (event: ActionEvent) => {
+        val ae = new AthletEditor(Athlet(verein))
+        wkModel.add(ae)
+        athletenview.selectionModel().select(ae)
+      }
+    }
+
+    val removeButton = new Button {
+      text = "Athlet entfernen"
+      minWidth = 75
+      onAction = (event: ActionEvent) => {
+        if (!athletenview.selectionModel().isEmpty) {
+          val athlet = athletenview.selectionModel().getSelectedItem
+          service.deleteAthlet(athlet.commit.id)
+          wkModel.remove(athletenview.selectionModel().getSelectedIndex)
+        }
+      }
+    }
+
+    val cont = new BorderPane {
+      hgrow = Priority.ALWAYS
+      vgrow = Priority.ALWAYS
+      center = athletenview
+      top = new ToolBar {
+        content = List(
+          new Label {
+            text = s"Verein ${verein.name}"
+            maxWidth = Double.MaxValue
+            minHeight = Region.USE_PREF_SIZE
+            styleClass += "toolbar-header"
+          },
+          addButton, removeButton
+        )
+      }
+      //bottom = pagination
+    }
+
+      content = cont
       true
     }
   }
