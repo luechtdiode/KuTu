@@ -67,6 +67,10 @@ package object domain {
       case Some(p) if(aggregate != 0) => p.parent.getOrElse(this)
       case _       => this
     }
+    def aggregator: ProgrammView = parent match {
+      case Some(p) if(aggregate != 0) => p
+      case _       => this
+    }
     def aggregatorSubHead: ProgrammView = parent match {
       case Some(p) if(aggregate != 0 && p.aggregate != 0) => p.aggregatorSubHead
       case Some(p) if(aggregate != 0 && p.aggregate == 0) => this

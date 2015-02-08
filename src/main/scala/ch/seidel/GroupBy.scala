@@ -117,7 +117,7 @@ case object ByNothing extends GroupBy {
 case object ByProgramm extends GroupBy {
   override val groupname = "Programm"
   protected override val grouper = (v: WertungView) => {
-    v.wettkampfdisziplin.programm.aggregatorHead
+    v.wettkampfdisziplin.programm
   }
   protected override val sorter: Option[(GroupSection, GroupSection) => Boolean] = Some((gs1: GroupSection, gs2: GroupSection) => {
     gs1.groupKey.asInstanceOf[ProgrammView].ord.compareTo(gs2.groupKey.asInstanceOf[ProgrammView].ord) < 0
