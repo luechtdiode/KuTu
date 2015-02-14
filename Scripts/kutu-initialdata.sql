@@ -42,6 +42,12 @@ VALUES
 ,(25, 'Pilz Kreisen beider Beine', 19)
 ;
 
+INSERT INTO disziplin
+(id, name, ord)
+VALUES
+ (26, 'Schaukelringe', 7)
+;
+
 DELETE FROM programm;
 
 INSERT INTO programm
@@ -213,6 +219,54 @@ VALUES
 ,(19, 4)
 ,(19, 5)
 ,(19, 6)
+;
+
+-- K1-K6-Wettkampfgeräte (21 - 26 mit 1-6 + 26)
+INSERT INTO wettkampfdisziplin
+(programm_id, disziplin_id)
+VALUES
+ (21, 1)
+,(21, 2)
+,(21, 3)
+,(21, 4)
+,(21, 5)
+,(21, 6)
+,(21, 26)
+,(22, 1)
+,(22, 2)
+,(22, 3)
+,(22, 4)
+,(22, 5)
+,(22, 6)
+,(22, 26)
+,(23, 1)
+,(23, 2)
+,(23, 3)
+,(23, 4)
+,(23, 5)
+,(23, 6)
+,(23, 26)
+,(24, 1)
+,(24, 2)
+,(24, 3)
+,(24, 4)
+,(24, 5)
+,(24, 6)
+,(24, 26)
+,(25, 1)
+,(25, 2)
+,(25, 3)
+,(25, 4)
+,(25, 5)
+,(25, 6)
+,(25, 26)
+,(26, 1)
+,(26, 2)
+,(26, 3)
+,(26, 4)
+,(26, 5)
+,(26, 6)
+,(26, 26)
 ;
 
 DELETE FROM verein;
