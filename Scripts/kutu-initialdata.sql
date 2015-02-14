@@ -46,15 +46,15 @@ DELETE FROM programm;
 
 INSERT INTO programm
 (id, parent_id, name, aggregate)
-VALUES(1, null, 'Athletiktest', 1);
+VALUES(1, null, 'Athletiktest', 0);
 
 INSERT INTO programm
 (id, parent_id, name, aggregate, ord)
-VALUES(2, 1, 'Athletiktest Kraft', 1, 2);
+VALUES(2, 1, 'Athletiktest Beweglichkeit', 1, 2);
 
 INSERT INTO programm
 (id, parent_id, name, aggregate, ord)
-VALUES(3, 1, 'Athletiktest Beweglichkeit', 1, 1);
+VALUES(3, 1, 'Athletiktest Kraft', 1, 1);
 
 INSERT INTO programm
 (id, parent_id, name, aggregate)
