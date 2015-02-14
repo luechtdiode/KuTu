@@ -76,6 +76,14 @@ trait KutuService {
     }
   }
 
+  def listRootProgramme(): List[ProgrammView] = {
+    database withSession { implicit session =>
+      sql"""select id from kutu.programm where parent_id is null or parent_id = 0""".as[Long].build().foldLeft(List[ProgrammView]()){(acc, pid) =>
+        acc :+ readProgramm(pid)
+      }
+    }
+  }
+
   def readProgramm(id: Long)(implicit session: Session): ProgrammView = {
     readProgramm(id, scala.collection.mutable.Map[Long, ProgrammView]())
   }
@@ -201,7 +209,26 @@ trait KutuService {
       wk
     }
   }
-
+  def deleteWettkampf(wettkampfid: Long) {
+    database withTransaction { implicit session: Session =>
+      sqlu"""delete from kutu.wettkampf where id=${wettkampfid}""".execute
+    }
+  }
+  def createVerein(name: String): Long = {
+    database withTransaction { implicit session: Session =>
+      sqlu"""       insert into kutu.verein
+                    (name) values (${name})""".execute
+      sql"""
+                    select id from kutu.verein
+                    where id in (select max(id) from kutu.verein)
+         """.as[Long].build().head
+    }
+  }
+  def deleteVerein(vereinid: Long) {
+    database withTransaction { implicit session: Session =>
+      sqlu"""delete from kutu.verein where id=${vereinid}""".execute
+    }
+  }
   def unassignAthletFromWettkampf(wertungId: Set[Long]) {
     database withTransaction { implicit session: Session =>
       sqlu"""
@@ -242,7 +269,9 @@ trait KutuService {
       case Some(f) =>
         for {
           pgm <- programs
-          a <- selectAthletes.build().filter(altersfilter(pgm, _)).filter(f(pgm.id, _))
+          a <- selectAthletes.build().filter(altersfilter(pgm, _)).filter{x =>
+//              println(x)
+              f(pgm.id, x)}
           wkid <- sql"""
                   select id from kutu.wettkampfdisziplin
                   where programm_Id = ${pgm.id}

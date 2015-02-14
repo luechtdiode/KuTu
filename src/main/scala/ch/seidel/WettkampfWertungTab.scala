@@ -26,6 +26,7 @@ import scalafx.scene.control.TextField
 import scalafx.scene.control.ToolBar
 import scalafx.scene.control.cell.TextFieldTableCell
 import scalafx.scene.layout.BorderPane
+import scalafx.scene.layout.FlowPane
 import scalafx.scene.layout.HBox
 import scalafx.scene.layout.Priority
 import scalafx.scene.layout.Region
@@ -72,7 +73,7 @@ class WettkampfWertungTab(programm: ProgrammView, wettkampf: WettkampfView, over
 
   override def isPopulated = {
     def updateWertungen = {
-      athleten.filter(wv => wv.wettkampfdisziplin.programm.id == programm.id).groupBy(wv => wv.athlet).map(wvg => wvg._2.map(WertungEditor)).toIndexedSeq
+      athleten.filter(wv => wv.wettkampfdisziplin.programm.id == programm.id && wv.wettkampf.id == wettkampf.id).groupBy(wv => wv.athlet).map(wvg => wvg._2.map(WertungEditor)).toIndexedSeq
     }
     var wertungen = updateWertungen
     val wkModel = ObservableBuffer[IndexedSeq[WertungEditor]](wertungen)
@@ -131,9 +132,13 @@ class WettkampfWertungTab(programm: ProgrammView, wettkampf: WettkampfView, over
       val actionBox = new HBox() {
         content = List(btnSaveNextAthlet, btnSaveNextDisciplin)
       }
-      val noteBox = new HBox() {
+      val noteBox = new FlowPane() {
+        alignment = Pos.CENTER
         content = List(txtD, txtE, txtEnd, actionBox)
       }
+//      val noteBox = new HBox() {
+//        content = List(txtD, txtE, txtEnd, actionBox)
+//      }
       content = List(lblHeader, noteBox)
       alignment = Pos.CENTER
       var disciplin: WertungEditor = null
@@ -533,9 +538,10 @@ class WettkampfWertungTab(programm: ProgrammView, wettkampf: WettkampfView, over
         if(rowIndex > -1) {
           wkview.scrollTo(rowIndex)
           val datacolcnt = (wkview.columns.size - 3)
-          val dcgrp = if(datacolcnt % 3 == 0) 3 else 2
-          wkview.scrollToColumn(wkview.columns(index+dcgrp).columns(0))
+          val dcgrp = if(datacolcnt % 3 == 0) 2 else 1
+          wkview.scrollToColumn(wkview.columns(2 + index).columns(dcgrp))
         }
+        editorPane.requestLayout()
         editorPane
       }
     }
@@ -544,7 +550,7 @@ class WettkampfWertungTab(programm: ProgrammView, wettkampf: WettkampfView, over
       if(newTablePos != null) {
         val datacolcnt = (wkview.columns.size - 3)
         val dcgrp = if(datacolcnt % 3 == 0) 3 else 2
-        val idx = math.max(0, (newTablePos.getColumn-2) / dcgrp)
+        val idx = math.min(datacolcnt * dcgrp, math.max(0, (newTablePos.getColumn-2) / dcgrp))
 //        println("Adjust pagination at " +idx)
         val oldIdx = pagination.currentPageIndex.value
         pagination.currentPageIndex.value = idx

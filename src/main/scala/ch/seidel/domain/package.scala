@@ -4,9 +4,18 @@ import scalafx.util.converter.DoubleStringConverter
 import java.io.ObjectInputStream
 import scalafx.collections.ObservableBuffer
 import np.com.ngopal.control.AutoFillTextBoxFactory
+import java.time.LocalDate
+import java.time.ZoneId
+
 package object domain {
   implicit def dbl2Str(d: Double) = f"${d}%2.3f"
   implicit def str2dbl(d: String) = d.toString()
+  implicit def ld2SQLDate(ld: LocalDate): java.sql.Date = {
+    if(ld==null) return null else {
+      val inst = ld.atStartOfDay(ZoneId.of("UTC"))
+      new java.sql.Date(java.util.Date.from(inst.toInstant()).getTime())
+    }
+  }
 
   trait DataObject {
     def easyprint: String = toString

@@ -17,18 +17,39 @@ import ch.seidel.domain.Verein
 import ch.seidel.commons.PageDisplayer
 import ch.seidel.commons.DisplayablePage
 import scalafx.event.ActionEvent
+import javafx.scene.control.DatePicker
+import scalafx.collections.ObservableBuffer
+import ch.seidel.domain.ProgrammView
+import javafx.util.Callback
+import java.time.temporal.TemporalField
+import java.time.ZoneId
+import java.util.Date
+import java.time.LocalDate
 
 object KuTuApp extends JFXApp with KutuService {
-  val tree = AppNavigationModel.create(KuTuApp.this)
+  var tree = AppNavigationModel.create(KuTuApp.this)
   val rootTreeItem = new TreeItem[String]("Dashboard") {
     expanded = true
     children = tree.getTree
   }
   var centerPane = PageDisplayer.choosePage(None, "dashBoard", tree)
 
+  def updateTree {
+    tree = AppNavigationModel.create(KuTuApp.this)
+    rootTreeItem.children = tree.getTree
+  }
   def handleAction[J <: javafx.event.ActionEvent, R](handler: scalafx.event.ActionEvent => R) = new javafx.event.EventHandler[J] {
     def handle(event: J) {
       handler(event)
+    }
+  }
+
+  class ProgrammListCell extends javafx.scene.control.ListCell[ProgrammView] {
+    override def updateItem(item: ProgrammView, empty: Boolean) {
+      super.updateItem(item, empty)
+      if (item != null) {
+        textProperty().setValue(item.easyprint)
+      }
     }
   }
 
@@ -49,30 +70,107 @@ object KuTuApp extends JFXApp with KutuService {
     (_, _, newItem) => {
       if(newItem != null) {
         newItem.value.value match {
-          case "Wettkämpfe" =>
+          case "Athleten" =>
             controlsView.contextMenu = new ContextMenu() {
-              items += new javafx.scene.control.MenuItem("neu anlegen ...") {
+              items += new javafx.scene.control.MenuItem("Neuen Verein anlegen ...") {
                 onAction = handleAction { implicit e: ActionEvent =>
+                  val txtTitel = new TextField {
+                    prefWidth = 500
+                    promptText = "Vereinsname"
+                  }
                   PageDisplayer.showInDialog(getText, new DisplayablePage() {
                     def getPage: Node = {
                       new BorderPane {
                         hgrow = Priority.ALWAYS
                         vgrow = Priority.ALWAYS
-                        //createWettkampf(datum: java.sql.Date, titel: String, programmId: Set[Long]
-                        //center = athletTable
+                        center = new VBox {
+                          content.addAll(txtTitel)
+                        }
                       }
                     }
                   }, new Button("OK") {
                     onAction = handleAction {implicit e: ActionEvent =>
-                    }
-                  }, new Button("OK, Alle") {
-                    onAction = handleAction {implicit e: ActionEvent =>
+                      createVerein(txtTitel.text.value)
+                      updateTree
                     }
                   })
                 }
               }
             }
-          case _ => controlsView.contextMenu = new ContextMenu()
+          case "Wettkämpfe" =>
+            controlsView.contextMenu = new ContextMenu() {
+              items += new javafx.scene.control.MenuItem("Neuen Wettkampf anlegen ...") {
+                onAction = handleAction { implicit e: ActionEvent =>
+                  val txtDatum = new DatePicker {
+                    setPromptText("Wettkampf-Datum")
+                    setPrefWidth(500)
+                  }
+                  val txtTitel = new TextField {
+                    prefWidth = 500
+                    promptText = "Wettkampf-Titel"
+                  }
+                  val cmbProgramm = new ComboBox(ObservableBuffer[ProgrammView](listRootProgramme)) {
+                    prefWidth = 500
+                    buttonCell = new ProgrammListCell
+                    cellFactory = new Callback[ListView[ProgrammView], ListCell[ProgrammView]]() {
+                      def call(p: ListView[ProgrammView]): ListCell[ProgrammView] = {
+                        new ProgrammListCell
+                      }
+                    }
+                    promptText = "Programm"
+                  }
+                  PageDisplayer.showInDialog(getText, new DisplayablePage() {
+                    def getPage: Node = {
+                      new BorderPane {
+                        hgrow = Priority.ALWAYS
+                        vgrow = Priority.ALWAYS
+                        center = new VBox {
+                          content.addAll(txtDatum, txtTitel, cmbProgramm)
+                        }
+                      }
+                    }
+                  }, new Button("OK") {
+                    onAction = handleAction {implicit e: ActionEvent =>
+                      def ld2SQLDate(ld: LocalDate): java.sql.Date = {
+                        if(ld==null) return null else {
+                          val inst = ld.atStartOfDay(ZoneId.of("UTC"))
+                          new java.sql.Date(java.util.Date.from(inst.toInstant()).getTime())
+                        }
+                      }
+                      createWettkampf(
+                          ld2SQLDate(txtDatum.valueProperty().value),
+                          txtTitel.text.value,
+                          Set(cmbProgramm.selectionModel.value.getSelectedItem.id),
+                          Some({ (_, _) => false }))
+                      updateTree
+                    }
+                  })
+                }
+              }
+            }
+          case _ => (newItem.isLeaf, Option(newItem.getParent)) match {
+              case (true, Some(parent)) => {
+                tree.getThumbs(parent.getValue).find(p => p.button.text.getValue.equals(newItem.getValue)) match {
+                  case Some(KuTuAppThumbNail(p: WettkampfView, _, newItem)) => controlsView.contextMenu = new ContextMenu() {
+                    items += new javafx.scene.control.MenuItem("Wettkampf löschen") {
+                      onAction = handleAction { implicit e: ActionEvent =>
+                        deleteWettkampf(p.id)
+                        updateTree
+                    }
+                  }}
+                  case Some(KuTuAppThumbNail(v: Verein, _, newItem)) => controlsView.contextMenu = new ContextMenu() {
+                    items += new javafx.scene.control.MenuItem("Verein löschen") {
+                    onAction = handleAction { implicit e: ActionEvent =>
+                      deleteVerein(v.id)
+                      updateTree
+                    }
+                  }}
+                  case _       => controlsView.contextMenu = new ContextMenu()
+                }
+              }
+              case _  => controlsView.contextMenu = new ContextMenu()
+            }
+
         }
         val centerPane = (newItem.isLeaf, Option(newItem.getParent)) match {
           case (true, Some(parent)) => {
