@@ -3,6 +3,7 @@ package ch.seidel
 import scalafx.util.converter.DoubleStringConverter
 import java.io.ObjectInputStream
 import scalafx.collections.ObservableBuffer
+import np.com.ngopal.control.AutoFillTextBoxFactory
 package object domain {
   implicit def dbl2Str(d: Double) = f"${d}%2.3f"
   implicit def str2dbl(d: String) = d.toString()
@@ -94,15 +95,8 @@ package object domain {
     override def easyprint = f"$titel am $datum%td.$datum%tm.$datum%tY"
   }
 
-  case class Wettkampfdisziplin(id: Long, programmId: Long, disziplinId: Long, kurzbeschreibung: String, detailbeschreibung: Option[java.sql.Blob]) extends DataObject
-  case class WettkampfdisziplinView(id: Long, programm: ProgrammView, disziplin: Disziplin, kurzbeschreibung: String, detailbeschreibung: Option[java.sql.Blob]) extends DataObject {
-    lazy val notenSpez = {
-      detailbeschreibung match {
-        case blob: java.sql.Blob => new ObjectInputStream(blob.getBinaryStream).readObject.asInstanceOf[NotenModus]
-        case _ => (if(programm.aggregatorHead.id == 1) Athletiktest(Map("<3cm"-> 1d, ">=3cm" -> 10d), 3d) else Wettkampf).asInstanceOf[NotenModus]
-      }
-    }
-  }
+  case class Wettkampfdisziplin(id: Long, programmId: Long, disziplinId: Long, kurzbeschreibung: String, detailbeschreibung: Option[java.sql.Blob], notenfaktor: scala.math.BigDecimal) extends DataObject
+  case class WettkampfdisziplinView(id: Long, programm: ProgrammView, disziplin: Disziplin, kurzbeschreibung: String, detailbeschreibung: Option[java.sql.Blob], notenSpez: NotenModus) extends DataObject
 
   case class Resultat(noteD: scala.math.BigDecimal, noteE: scala.math.BigDecimal, endnote: scala.math.BigDecimal) extends DataObject {
     def + (r: Resultat) = Resultat(noteD + r.noteD, noteE + r.noteE, endnote + r.endnote)
@@ -125,22 +119,61 @@ package object domain {
   case class LeafRow(title: String, sum: Resultat, rang: Resultat) extends DataRow
   case class GroupRow(athlet: AthletView, resultate: IndexedSeq[LeafRow], sum: Resultat, rang: Resultat) extends DataRow
 
-  sealed trait NotenModus extends DoubleStringConverter {
-    def map(input: String): Double
+  sealed trait NotenModus extends DoubleStringConverter with AutoFillTextBoxFactory.ItemComparator[String] {
     val isDNoteUsed: Boolean
     def selectableItems: Option[List[String]] = None
     def calcEndnote(dnote: Double, enote: Double): Double
     override def toString(value: Double): String = value
+    override def shouldSuggest(item: String, query: String): Boolean = false
   }
   case class Athletiktest(punktemapping: Map[String,Double], punktgewicht: Double) extends NotenModus {
     override val isDNoteUsed = false
-    override def map(input: String) = punktemapping.getOrElse(input, fromString(input))
+    override def shouldSuggest(item: String, query: String): Boolean = {
+      findLikes(query).find(x => x.equalsIgnoreCase(item)).size > 0
+    }
+    def findnearest(value: Double): Double = {
+      val sorted = punktemapping.values.toList.sorted
+      sorted.find { x => x >= value }.getOrElse(sorted.last)
+    }
+    def findLikes(value: String) = {
+      val lv = value.toLowerCase()
+      def extractDigits(lv: String) = lv.filter(c => c.isDigit || c == '.')
+      lazy val lvv = extractDigits(lv)
+      val orderedKeys = punktemapping.keys.toList.sortBy(punktemapping).map(x => x.toLowerCase())
+      orderedKeys.filter(v => v.contains(lv) || extractDigits(v).equals(lvv))
+    }
+    def mapToDouble(input: String) = try {findnearest(super.fromString(input))} catch {case _ => 0d}
+    def findLike(value: String): String = {
+      val lv = value.toLowerCase()
+      def extractDigits(lv: String) = lv.filter(c => c.isDigit || c == '.')
+      lazy val lvv = extractDigits(lv)
+      val valuedKeys = punktemapping.keys.toList.sortBy(punktemapping)
+      if(valuedKeys.contains(value)) {
+        return value
+      }
+      val lvd = mapToDouble(value)
+      if(lvd > 0d && punktemapping.values.exists { v => v == lvd }) {
+        return value
+      }
+      val orderedKeys = punktemapping.keys.toList.sortBy(punktemapping).map(_.toLowerCase())
+      orderedKeys.find(v => v.equals(lv)).getOrElse {
+    	  orderedKeys.find(v => extractDigits(v).equals(lvv)).getOrElse {
+          orderedKeys.find(v => v.startsWith(lv)).getOrElse {
+            orderedKeys.find(v => v.contains(lv)).getOrElse {
+              value
+            }
+          }
+        }
+      }
+    }
+//    override def toString(value: Double): String = punktemapping.find(p => p._2 == value).map(_._1).getOrElse(value)
+    override def fromString(input: String) = punktemapping.getOrElse(findLike(input), mapToDouble(input))
     override def calcEndnote(dnote: Double, enote: Double) = enote * punktgewicht
-    override def selectableItems: Option[List[String]] = Some(punktemapping.keys.toList)
+    override def selectableItems: Option[List[String]] = Some(punktemapping.keys.toList.sortBy(punktemapping))
   }
   case object Wettkampf extends NotenModus {
     override val isDNoteUsed = true
-    override def map(input: String) = fromString(input)
+    override def fromString(input: String) = super.fromString(input)
     override def calcEndnote(dnote: Double, enote: Double) = dnote + enote
   }
 

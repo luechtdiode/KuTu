@@ -46,10 +46,13 @@ trait KutuService {
   private implicit val getWettkampfResult = GetResult(r =>
     Wettkampf(r.<<[Long], r.<<[java.sql.Date], r.<<[String], r.<<[Long], r.<<[Int]))
   private implicit val getWettkampfDisziplinResult = GetResult(r =>
-    Wettkampfdisziplin(r.<<[Long], r.<<[Long], r.<<[Long], r.<<[String], r.nextBlobOption()))
+    Wettkampfdisziplin(r.<<[Long], r.<<[Long], r.<<[Long], r.<<[String], r.nextBlobOption(), r.<<))
 
-  implicit def getWettkampfDisziplinViewResultCached(r: PositionedResult)(implicit session: Session, cache: scala.collection.mutable.Map[Long, ProgrammView]) =
-    WettkampfdisziplinView(r.<<[Long], readProgramm(r.<<[Long], cache), r, r.<<[String], r.nextBlobOption())
+  implicit def getWettkampfDisziplinViewResultCached(r: PositionedResult)(implicit session: Session, cache: scala.collection.mutable.Map[Long, ProgrammView]) = {
+    val id = r.<<[Long]
+    val pgm = readProgramm(r.<<[Long], cache)
+    WettkampfdisziplinView(id, pgm, r, r.<<[String], r.nextBlobOption(), readNotenModus(id, pgm, r.<<))
+  }
   private implicit def getResultWertungView(implicit session: Session, cache: scala.collection.mutable.Map[Long, ProgrammView]) = GetResult(r =>
     WertungView(r.<<[Long], r, r, r, r.<<[scala.math.BigDecimal], r.<<[scala.math.BigDecimal], r.<<[scala.math.BigDecimal]))
   private implicit def getWettkampfViewResultCached(implicit session: Session, cache: scala.collection.mutable.Map[Long, ProgrammView]) = GetResult(r =>
@@ -58,6 +61,20 @@ trait KutuService {
     WettkampfView(r.<<[Long], r.<<[java.sql.Date], r.<<[String], readProgramm(r.<<[Long]), r.<<[Int]))
   private implicit val getProgrammRawResult = GetResult(r =>
     ProgrammRaw(r.<<[Long], r.<<[String], r.<<[Int], r.<<[Long], r.<<[Int], r.<<[Int], r.<<[Int]))
+
+  def readNotenModus(id: Long, pgm: ProgrammView, notenfaktor: Double)(implicit session: Session): NotenModus = {
+    val skala = sql"""
+                   select kurzbeschreibung, punktwert from kutu.notenskala
+                   where wettkampfdisziplin_id=${id}
+                   order by punktwert
+       """.as[(String,Double)].build()
+    if(pgm.head.id == 1) {
+      Athletiktest(skala.toMap, notenfaktor)
+    }
+    else {
+      Wettkampf
+    }
+  }
 
   def readProgramm(id: Long)(implicit session: Session): ProgrammView = {
     readProgramm(id, scala.collection.mutable.Map[Long, ProgrammView]())
@@ -121,7 +138,7 @@ trait KutuService {
 
       implicit val cache = scala.collection.mutable.Map[Long, ProgrammView]()
       sql"""
-                    SELECT w.id, a.*, v.*, wd.id, wd.programm_id, d.*, wd.kurzbeschreibung, wd.detailbeschreibung, wk.*, note_d as difficulty, note_e as execution, endnote
+                    SELECT w.id, a.*, v.*, wd.id, wd.programm_id, d.*, wd.kurzbeschreibung, wd.detailbeschreibung, wd.notenfaktor, wk.*, note_d as difficulty, note_e as execution, endnote
                     FROM kutu.wertung w
                     inner join kutu.athlet a on (a.id = w.athlet_id)
                     left outer join kutu.verein v on (a.verein = v.id)
@@ -138,7 +155,7 @@ trait KutuService {
     database withSession { implicit session =>
       implicit val cache = scala.collection.mutable.Map[Long, ProgrammView]()
       sql"""
-                    SELECT w.id, a.*, v.*, wd.id, wd.programm_id, d.*, wd.kurzbeschreibung, wd.detailbeschreibung, wk.*, note_d as difficulty, note_e as execution, endnote
+                    SELECT w.id, a.*, v.*, wd.id, wd.programm_id, d.*, wd.kurzbeschreibung, wd.detailbeschreibung, wd.notenfaktor, wk.*, note_d as difficulty, note_e as execution, endnote
                     FROM kutu.wertung w
                     inner join kutu.athlet a on (a.id = w.athlet_id)
                     left outer join kutu.verein v on (a.verein = v.id)
@@ -271,7 +288,7 @@ trait KutuService {
         case Some(id) => s"d.id = $id"
       })
       sql"""
-                    SELECT w.id, a.*, v.*, wd.id, wd.programm_id, d.*, wd.kurzbeschreibung, wd.detailbeschreibung, wk.*, note_d as difficulty, note_e as execution, endnote
+                    SELECT w.id, a.*, v.*, wd.id, wd.programm_id, d.*, wd.kurzbeschreibung, wd.detailbeschreibung, wd.notenfaktor, wk.*, note_d as difficulty, note_e as execution, endnote
                     FROM kutu.wertung w
                     inner join kutu.athlet a on (a.id = w.athlet_id)
                     left outer join kutu.verein v on (a.verein = v.id)

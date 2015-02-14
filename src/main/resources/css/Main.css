@@ -90,6 +90,10 @@
 	-fx-background-image: url("../images/search-clear-over.png");
 }
 
+.autofill-text{
+    -fx-skin:"np.com.ngopal.control.AutoFillTextBoxSkin";
+}
+
 .search-menu-item {
 	-fx-border-color: transparent transparent transparent #bbbbbb;
 	-fx-border-insets: 0 0 0 69;

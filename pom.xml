@@ -92,6 +92,11 @@
 			<version>1.6.4</version>
 		</dependency>
 
+		<dependency>
+		    <groupId>np.com.ngopal</groupId>
+		    <artifactId>javafx-autocomplete-field</artifactId>
+		    <version>1.0</version>
+		</dependency>
 		<!-- Akka <dependency> <groupId>com.typesafe.akka</groupId> <artifactId>akka-contrib_${scala.majorversion}</artifactId> 
 			<version>${akka.version}</version> <exclusions> <exclusion> <groupId>org.scala-stm</groupId> 
 			<artifactId>scala-stm_${scala.majorversion}</artifactId> </exclusion> </exclusions> 

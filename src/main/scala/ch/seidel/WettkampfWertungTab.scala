@@ -1,49 +1,37 @@
 package ch.seidel
 
-import java.text.SimpleDateFormat
-import scala.collection.mutable.StringBuilder
-import javafx.scene.{ control => jfxsc }
-import javafx.collections.{ ObservableList, ListChangeListener }
-import scalafx.collections.ObservableBuffer
-import scalafx.Includes._
-import scalafx.util.converter.StringConverterJavaToJavaDelegate
-import scalafx.util.converter.DefaultStringConverter
-import scalafx.util.converter.DoubleStringConverter
-import scalafx.beans.property.ReadOnlyStringWrapper
-import scalafx.beans.value.ObservableValue
-import scalafx.beans.property.ReadOnlyDoubleWrapper
-import scalafx.event.ActionEvent
-import scalafx.scene.layout.Region
-import scalafx.scene.control.Label
-import scalafx.scene.layout.VBox
-import scalafx.scene.layout.BorderPane
-import scalafx.beans.property.DoubleProperty
-import scalafx.beans.property.StringProperty
-import scalafx.geometry.Pos
-import scalafx.geometry.Insets
-import scalafx.scene.Node
-import scalafx.scene.control.{ Tab, TabPane }
-import scalafx.scene.layout.{ Priority, StackPane }
-import scalafx.scene.control.{ TableView, TableColumn }
-import scalafx.scene.control.cell.TextFieldTableCell
-import scalafx.scene.control.TableColumn._
-import scalafx.scene.control.ToolBar
-import scalafx.scene.control.Button
-import scalafx.scene.control.ScrollPane
-import scalafx.scene.control.ComboBox
-import scalafx.scene.layout.HBox
-import scalafx.scene.Group
-import scalafx.scene.web.WebView
-import scalafx.scene.control.Pagination
-import scalafx.scene.control.TextField
-import javafx.beans.binding.Bindings
-import javafx.beans.value.ChangeListener
-import scalafx.beans.binding.BooleanBinding
-import scalafx.beans.binding.ObjectBinding
-import scalafx.beans.binding.NumberBinding
-import ch.seidel.domain._
 import ch.seidel.commons._
-import java.io.ObjectInputStream
+import ch.seidel.domain._
+import javafx.beans.binding.Bindings
+import javafx.collections.ObservableList
+import javafx.scene.{control => jfxsc}
+import scalafx.Includes._
+import scalafx.beans.binding.BooleanBinding
+import scalafx.beans.property.DoubleProperty
+import scalafx.beans.property.ReadOnlyStringWrapper
+import scalafx.beans.property.StringProperty
+import scalafx.beans.value.ObservableValue
+import scalafx.collections.ObservableBuffer
+import scalafx.event.ActionEvent
+import scalafx.geometry.Pos
+import scalafx.scene.Node
+import scalafx.scene.control.Button
+import scalafx.scene.control.Label
+import scalafx.scene.control.Pagination
+import scalafx.scene.control.Tab
+import scalafx.scene.control.TableColumn
+import scalafx.scene.control.TableColumn._
+import scalafx.scene.control.TableView
+import scalafx.scene.control.TextField
+import scalafx.scene.control.ToolBar
+import scalafx.scene.control.cell.TextFieldTableCell
+import scalafx.scene.layout.BorderPane
+import scalafx.scene.layout.HBox
+import scalafx.scene.layout.Priority
+import scalafx.scene.layout.Region
+import scalafx.scene.layout.VBox
+import scalafx.util.converter.StringConverterJavaToJavaDelegate
+import scalafx.scene.control.Control
 
 case class WertungEditor(init: WertungView) {
 	type WertungChangeListener = (WertungEditor) => Unit
@@ -103,6 +91,7 @@ class WettkampfWertungTab(programm: ProgrammView, wettkampf: WettkampfView, over
     	}
     }
     case class EditorPane(index: Int) extends VBox {
+      var lastFocused: Option[Control] = None;
       val lblDisciplin = new Label() {
         styleClass += "toolbar-header"
       }
@@ -116,10 +105,17 @@ class WettkampfWertungTab(programm: ProgrammView, wettkampf: WettkampfView, over
         promptText = "D-Note"
         prefWidth = 100
       }
-      val txtE = new TextField() {
+      val txtE = new AutoFillTextBox[String]() {
         promptText = "E-Note"
-        prefWidth = 100
+        prefWidth = 800
+        delegate.setListLimit(20)
+//        prefHeight = 50
       }
+//      txtE.prefWidth(100)
+//      val txtE = new TextField() {
+//        promptText = "E-Note"
+//        prefWidth = 100
+//      }
       val txtEnd = new TextField() {
         promptText = "End-Note"
         prefWidth = 100
@@ -143,8 +139,12 @@ class WettkampfWertungTab(programm: ProgrammView, wettkampf: WettkampfView, over
       var disciplin: WertungEditor = null
 
       val listener = (we: WertungEditor) => {
-        txtD.text.value = disciplin.noteD.value
-        txtE.text.value = disciplin.noteE.value
+        if(disciplin.init.wettkampfdisziplin.notenSpez.isDNoteUsed) {
+          txtD.text.value = disciplin.noteD.value
+          txtD.delegate.selectAll
+        }
+        txtE.text.value = disciplin.init.wettkampfdisziplin.notenSpez.toString(disciplin.noteE.value)
+        txtE.delegate.getTextbox.selectAll
         txtEnd.text.value = disciplin.endnote.value
       }
 
@@ -153,7 +153,7 @@ class WettkampfWertungTab(programm: ProgrammView, wettkampf: WettkampfView, over
         def computeValue = {
           try {
             disciplin.noteD.value != Wettkampf.fromString(txtD.text.value) ||
-            disciplin.noteE.value != Wettkampf.fromString(txtE.text.value) ||
+            disciplin.noteE.value != disciplin.init.wettkampfdisziplin.notenSpez.fromString(txtE.text.value) ||
             disciplin.endnote.value != Wettkampf.fromString(txtEnd.text.value)
           }
           catch {
@@ -163,13 +163,34 @@ class WettkampfWertungTab(programm: ProgrammView, wettkampf: WettkampfView, over
       }
 
       def lastEditedOffset: Int = {
-        if(txtD.focused.value) 0
-        else if(txtE.focused.value) 1
+        if(txtD.focused.value) {
+          lastFocused = Some(txtD)
+          0
+        }
+        else if(txtE.focused.value) {
+          lastFocused = Some(txtE)
+          1
+        }
         else 2
+//        lastFocused match {
+//          case textD => 0
+//          case textE => 1
+//          case _ =>
+//            if(txtD.focused.value) {
+//              lastFocused = Some(txtD)
+//              0
+//            }
+//            else if(txtE.focused.value) {
+//              lastFocused = Some(txtE)
+//              1
+//            }
+//            else 2
+//        }
       }
+
       def adjust = {
         unbind
-        println("inAdjustSelection at index " + index)
+//        println("inAdjustSelection at index " + index)
         val selected = wkview.selectionModel().getSelectedItem
         if (selected != null) {
           disciplin = selected(index)
@@ -178,8 +199,14 @@ class WettkampfWertungTab(programm: ProgrammView, wettkampf: WettkampfView, over
           lblDisciplin.text = disciplin.init.wettkampfdisziplin.disziplin.name
           lblAthlet.text = selected(index).init.athlet.easyprint
           def save {
-            disciplin.noteD.value = disciplin.init.wettkampfdisziplin.notenSpez.fromString(txtD.text.value)
-            disciplin.noteE.value = disciplin.init.wettkampfdisziplin.notenSpez.fromString(txtE.text.value)
+        	  lastFocused = List(txtD, txtE, txtEnd).find(p => p.isFocused())
+            val td = txtD.text.value
+            val te = txtE.text.value
+
+            if(disciplin.init.wettkampfdisziplin.notenSpez.isDNoteUsed) {
+              disciplin.noteD.value = disciplin.init.wettkampfdisziplin.notenSpez.fromString(td)
+            }
+            disciplin.noteE.value = disciplin.init.wettkampfdisziplin.notenSpez.fromString(te)
             disciplin.endnote.value = disciplin.init.wettkampfdisziplin.notenSpez.calcEndnote(disciplin.noteD.value, disciplin.noteE.value)
             if (disciplin.isDirty) {
               wkModel.update(rowIndex, selected.updated(index, WertungEditor(service.updateWertung(disciplin.commit))))
@@ -187,6 +214,7 @@ class WettkampfWertungTab(programm: ProgrammView, wettkampf: WettkampfView, over
               wkview.scrollTo(rowIndex)
               wkview.scrollToColumn(wkview.columns(index+2).columns(lastEditedOffset))
             }
+            wkview.selectionModel.value.selectBelowCell
           }
           listener(disciplin)
           //txtD.text.delegate.bindBidirectional(disciplin.noteD, NoteFormatter.asInstanceOf[scalafx.util.StringConverter[Number]])
@@ -200,6 +228,13 @@ class WettkampfWertungTab(programm: ProgrammView, wettkampf: WettkampfView, over
           else {
             txtD.editable = false
             txtD.visible = false
+          }
+          disciplin.init.wettkampfdisziplin.notenSpez.selectableItems.foreach { x =>
+            txtE.delegate.getData().clear()
+            for(s <- x) {
+              txtE.delegate.getData().add(s)
+            }
+            txtE.delegate.setItemComparator(disciplin.init.wettkampfdisziplin.notenSpez)
           }
           txtE.onAction = () => save
 //          txtEnd.onAction = () => save
@@ -220,7 +255,7 @@ class WettkampfWertungTab(programm: ProgrammView, wettkampf: WettkampfView, over
               wkview.scrollTo(rowIndex + 1)
             }
           }
-          println("binded")
+//          println("binded")
           rowIndex
         }
         else {
@@ -237,11 +272,11 @@ class WettkampfWertungTab(programm: ProgrammView, wettkampf: WettkampfView, over
           txtE.onAction.unbind()
           txtEnd.text.unbind()
           txtEnd.onAction.unbind()
-          println("unbinded")
+//          println("unbinded")
 //          disciplin.noteD.unbind()
           //disciplin.noteE.unbind(txtE.text)
           //disciplin.endnote.unbind(txtEnd.text)
-        println(" disciplin unbinded")
+//        println(" disciplin unbinded")
         }
         disciplin = null
       }
@@ -262,7 +297,7 @@ class WettkampfWertungTab(programm: ProgrammView, wettkampf: WettkampfView, over
           styleClass += "table-cell-with-value"
           prefWidth = if(wertung.init.wettkampfdisziplin.notenSpez.isDNoteUsed) 60 else 0
           editable = wertung.init.wettkampfdisziplin.notenSpez.isDNoteUsed
-//          visible = wertung.init.wettkampfdisziplin.notenSpez.isDNoteUsed
+          visible = wertung.init.wettkampfdisziplin.notenSpez.isDNoteUsed
           onEditCommit = (evt: CellEditEvent[IndexedSeq[WertungEditor], Double]) => {
             val disciplin = evt.rowValue(index)
             disciplin.noteD.value = evt.newValue
@@ -285,6 +320,7 @@ class WettkampfWertungTab(programm: ProgrammView, wettkampf: WettkampfView, over
           styleClass += "table-cell-with-value"
           prefWidth = 60
           editable = true
+          //println(text, index)
           onEditCommit = (evt: CellEditEvent[IndexedSeq[WertungEditor], Double]) => {
             val disciplin = evt.rowValue(index)
             disciplin.noteE.value = evt.newValue
@@ -496,7 +532,9 @@ class WettkampfWertungTab(programm: ProgrammView, wettkampf: WettkampfView, over
         val rowIndex = editorPane.adjust
         if(rowIndex > -1) {
           wkview.scrollTo(rowIndex)
-          wkview.scrollToColumn(wkview.columns(index+2).columns(0))
+          val datacolcnt = (wkview.columns.size - 3)
+          val dcgrp = if(datacolcnt % 3 == 0) 3 else 2
+          wkview.scrollToColumn(wkview.columns(index+dcgrp).columns(0))
         }
         editorPane
       }
@@ -504,8 +542,10 @@ class WettkampfWertungTab(programm: ProgrammView, wettkampf: WettkampfView, over
 
     wkview.focusModel.value.focusedCell.onChange {(focusModel, oldTablePos, newTablePos) =>
       if(newTablePos != null) {
-        val idx = math.max(0, (newTablePos.getColumn-2) / 3)
-        println("Adjust pagination at " +idx)
+        val datacolcnt = (wkview.columns.size - 3)
+        val dcgrp = if(datacolcnt % 3 == 0) 3 else 2
+        val idx = math.max(0, (newTablePos.getColumn-2) / dcgrp)
+//        println("Adjust pagination at " +idx)
         val oldIdx = pagination.currentPageIndex.value
         pagination.currentPageIndex.value = idx
         if(oldIdx == idx) {
