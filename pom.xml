@@ -240,7 +240,7 @@
 								<argument>-appclass</argument>
 								<argument>ch.seidel.KuTuApp</argument>
 								<argument>-name</argument>
-								<argument>KuTuApp</argument>
+								<argument>TurnerWettkampf-App</argument>
 								<argument>-srcdir</argument>
 								<argument>${project.build.directory}</argument>
 								<argument>-srcfiles</argument>
@@ -250,7 +250,7 @@
 								<argument>-outfile</argument>
 								<argument>KuTuApp</argument>
 								<argument>-native</argument>
-								<argument>exe</argument>
+								<argument>msi</argument>
 								<argument>-allpermissions</argument>
 								<argument>-width</argument><argument>1024</argument>
 								<argument>-height</argument><argument>900</argument>
@@ -258,7 +258,20 @@
 								<argument>-BjvmOptions=-Xmx512m</argument>
 								<argument>-BjvmOptions=-Xms512m</argument>
 								<argument>-Bcopyright="Interpolar"</argument>
-								<argument>-title</argument><argument>"KuTu Wettkampf App"</argument>
+								<argument>-title</argument><argument>"Turner Wettkampf"</argument>
+							</arguments>
+						</configuration>
+					</execution>
+					<execution>
+						<id>bundle</id>
+						<phase>package</phase>
+						<goals>
+							<goal>exec</goal>
+						</goals>
+						<configuration>
+							<executable>"C:\Program Files (x86)\Inno Setup 5\iscc.exe"</executable>
+							<arguments>
+								<argument>"${project.build.directory}\..\Scripts\setupKuTuWKApp.iss"</argument>
 							</arguments>
 						</configuration>
 					</execution>

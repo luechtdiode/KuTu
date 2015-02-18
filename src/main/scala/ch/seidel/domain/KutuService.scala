@@ -17,7 +17,7 @@ import java.time.Period
 
 trait KutuService {
   lazy val database = Database.forURL(
-    url = "jdbc:mysql://localhost:3306/kutu",
+    url = "jdbc:mysql://localhost:36551/kutu",
     driver = "com.mysql.jdbc.Driver",
     user = "kutu",
     password = "kutu")
