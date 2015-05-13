@@ -14,13 +14,62 @@ import java.util.concurrent.TimeUnit
 import java.time.LocalDate
 import java.time.temporal.TemporalField
 import java.time.Period
+import java.io.File
+import scala.io.Source
 
 trait KutuService {
   lazy val database = Database.forURL(
-    url = "jdbc:mysql://localhost:36551/kutu",
-    driver = "com.mysql.jdbc.Driver",
+      url = "jdbc:sqlite:./db/kutu.sqlite",
+      driver = "org.sqlite.JDBC", //org.SQLite.Driver",
+//    url = "jdbc:mysql://localhost:3306/kutu",
+//    url = "jdbc:mysql://localhost:36551/kutu",
+//    driver = "com.mysql.jdbc.Driver",
     user = "kutu",
     password = "kutu")
+
+  val dbfile = new File("./db/kutu.sqlite")
+
+  def installDB {
+    val sqlfile = new File("./Scripts/kutu-sqllite-ddl.sql")
+    val sqldatafile = new File("./Scripts/kutu-sqllite-initialdata.sql")
+    if(sqlfile.exists()) {
+      Source.fromFile(sqlfile).getLines().filter(!_.startsWith("-- ")).foldLeft(List(""))((acc, line) =>
+        if(line.endsWith(";")) {
+          acc.updated(acc.size -1, acc.last + line) :+ ""
+        }
+        else {
+          acc.updated(acc.size -1, acc.last + line)
+        }
+      ).foreach { statement => println(statement) }
+      database withSession { implicit session =>
+        Source.fromFile(sqlfile).getLines().filter(!_.trim().startsWith("-- ")).foldLeft(List(""))((acc, line) =>
+          if(line.endsWith(";")) {
+            acc.updated(acc.size -1, acc.last + line) :+ ""
+          }
+          else {
+            acc.updated(acc.size -1, acc.last + line)
+          }
+        ).filter(_.trim().length() > 0).foreach { statement => println(statement); StaticQuery.updateNA(statement).execute }
+        Source.fromFile(sqldatafile).getLines().filter(!_.trim().startsWith("-- ")).foldLeft(List(""))((acc, line) =>
+          if(line.endsWith(";")) {
+            acc.updated(acc.size -1, acc.last + line) :+ ""
+          }
+          else {
+            acc.updated(acc.size -1, acc.last + line)
+          }
+        ).filter(_.trim().length() > 0).foreach { statement => println(statement); StaticQuery.updateNA(statement).execute }
+      }
+    }
+  }
+
+  if(!dbfile.exists() || dbfile.length() == 0) {
+    dbfile.createNewFile()
+    installDB
+  }
+
+//  if(selectVereine.size == 0) {
+//    installDB
+//  }
 
   val sdf = new SimpleDateFormat("dd.MM.yyyy")
 
@@ -51,7 +100,7 @@ trait KutuService {
   implicit def getWettkampfDisziplinViewResultCached(r: PositionedResult)(implicit session: Session, cache: scala.collection.mutable.Map[Long, ProgrammView]) = {
     val id = r.<<[Long]
     val pgm = readProgramm(r.<<[Long], cache)
-    WettkampfdisziplinView(id, pgm, r, r.<<[String], r.nextBlobOption(), readNotenModus(id, pgm, r.<<))
+    WettkampfdisziplinView(id, pgm, r, r.<<[String], r.nextBytesOption(), readNotenModus(id, pgm, r.<<))
   }
   private implicit def getResultWertungView(implicit session: Session, cache: scala.collection.mutable.Map[Long, ProgrammView]) = GetResult(r =>
     WertungView(r.<<[Long], r, r, r, r.<<[scala.math.BigDecimal], r.<<[scala.math.BigDecimal], r.<<[scala.math.BigDecimal]))
@@ -64,7 +113,7 @@ trait KutuService {
 
   def readNotenModus(id: Long, pgm: ProgrammView, notenfaktor: Double)(implicit session: Session): NotenModus = {
     val skala = sql"""
-                   select kurzbeschreibung, punktwert from kutu.notenskala
+                   select kurzbeschreibung, punktwert from notenskala
                    where wettkampfdisziplin_id=${id}
                    order by punktwert
        """.as[(String,Double)].build()
@@ -78,7 +127,7 @@ trait KutuService {
 
   def listRootProgramme(): List[ProgrammView] = {
     database withSession { implicit session =>
-      sql"""select id from kutu.programm where parent_id is null or parent_id = 0""".as[Long].build().foldLeft(List[ProgrammView]()){(acc, pid) =>
+      sql"""select id from programm where parent_id is null or parent_id = 0""".as[Long].build().foldLeft(List[ProgrammView]()){(acc, pid) =>
         acc :+ readProgramm(pid)
       }
     }
@@ -90,7 +139,7 @@ trait KutuService {
   def readProgramm(id: Long, cache: scala.collection.mutable.Map[Long, ProgrammView])(implicit session: Session): ProgrammView = {
 
     def wk(pid: Long) = sql"""
-                    select * from kutu.programm
+                    select * from programm
                     where id=$pid
                             """.as[ProgrammRaw].build().head
     @tailrec
@@ -119,7 +168,7 @@ trait KutuService {
     database withSession { implicit session =>
 
       def children(pid: Long) =
-        sql"""      select * from kutu.programm
+        sql"""      select * from programm
                     where parent_id=$pid
             """.as[ProgrammRaw].build()
 
@@ -139,7 +188,7 @@ trait KutuService {
 
   def updateWertung(w: Wertung): WertungView = {
     database withTransaction { implicit session =>
-      sqlu"""       UPDATE kutu.wertung
+      sqlu"""       UPDATE wertung
                     SET note_d=${w.noteD}, note_e=${w.noteE}, endnote=${w.endnote}
                     WHERE id=${w.id};
           """.execute
@@ -147,13 +196,13 @@ trait KutuService {
       implicit val cache = scala.collection.mutable.Map[Long, ProgrammView]()
       sql"""
                     SELECT w.id, a.*, v.*, wd.id, wd.programm_id, d.*, wd.kurzbeschreibung, wd.detailbeschreibung, wd.notenfaktor, wk.*, note_d as difficulty, note_e as execution, endnote
-                    FROM kutu.wertung w
-                    inner join kutu.athlet a on (a.id = w.athlet_id)
-                    left outer join kutu.verein v on (a.verein = v.id)
-                    inner join kutu.wettkampfdisziplin wd on (wd.id = w.wettkampfdisziplin_id)
-                    inner join kutu.disziplin d on (d.id = wd.disziplin_id)
-                    inner join kutu.programm p on (p.id = wd.programm_id)
-                    inner join kutu.wettkampf wk on (wk.id = w.wettkampf_id)
+                    FROM wertung w
+                    inner join athlet a on (a.id = w.athlet_id)
+                    left outer join verein v on (a.verein = v.id)
+                    inner join wettkampfdisziplin wd on (wd.id = w.wettkampfdisziplin_id)
+                    inner join disziplin d on (d.id = wd.disziplin_id)
+                    inner join programm p on (p.id = wd.programm_id)
+                    inner join wettkampf wk on (wk.id = w.wettkampf_id)
                     WHERE w.id=${w.id}
        """.as[WertungView].build().head
     }
@@ -164,13 +213,13 @@ trait KutuService {
       implicit val cache = scala.collection.mutable.Map[Long, ProgrammView]()
       sql"""
                     SELECT w.id, a.*, v.*, wd.id, wd.programm_id, d.*, wd.kurzbeschreibung, wd.detailbeschreibung, wd.notenfaktor, wk.*, note_d as difficulty, note_e as execution, endnote
-                    FROM kutu.wertung w
-                    inner join kutu.athlet a on (a.id = w.athlet_id)
-                    left outer join kutu.verein v on (a.verein = v.id)
-                    inner join kutu.wettkampfdisziplin wd on (wd.id = w.wettkampfdisziplin_id)
-                    inner join kutu.disziplin d on (d.id = wd.disziplin_id)
-                    inner join kutu.programm p on (p.id = wd.programm_id)
-                    inner join kutu.wettkampf wk on (wk.id = w.wettkampf_id)
+                    FROM wertung w
+                    inner join athlet a on (a.id = w.athlet_id)
+                    left outer join verein v on (a.verein = v.id)
+                    inner join wettkampfdisziplin wd on (wd.id = w.wettkampfdisziplin_id)
+                    inner join disziplin d on (d.id = wd.disziplin_id)
+                    inner join programm p on (p.id = wd.programm_id)
+                    inner join wettkampf wk on (wk.id = w.wettkampf_id)
                     where wd.programm_id in (#${progids.mkString(",")})
        """.as[WertungView].build()
     }
@@ -178,9 +227,9 @@ trait KutuService {
 
   def listAthletenZuWettkampf(progids: Seq[Long]) = {
     database withSession { implicit session =>
-      sql"""select a.* from kutu.athlet a
-                    inner join kutu.wertung w on (a.id = w.athlet_id)
-                    inner join kutu.wettkampfdisziplin wd on (wd.id = w.wettkampfdisziplin_id)
+      sql"""select a.* from athlet a
+                    inner join wertung w on (a.id = w.athlet_id)
+                    inner join wettkampfdisziplin wd on (wd.id = w.wettkampfdisziplin_id)
                     where wd.programm_id in (#${progids.mkString(",")})
          """.as[AthletView].build()
     }
@@ -195,14 +244,14 @@ trait KutuService {
         throw new IllegalArgumentException("Programme nicht aus der selben Gruppe können nicht in einen Wettkampf aufgenommen werden")
       }
       sqlu"""
-                    insert into kutu.wettkampf
+                    insert into wettkampf
                     (datum, titel, programm_Id)
                     values (${datum}, ${titel}, ${heads.head.id})
           """.execute
 
       val wk = sql"""
-                    select * from kutu.wettkampf
-                    where id in (select max(id) from kutu.wettkampf)
+                    select * from wettkampf
+                    where id in (select max(id) from wettkampf)
                   """.as[Wettkampf].build().head
 
       assignAthletsToWettkampfS(wk.id, programs, withAthlets, session)
@@ -211,28 +260,28 @@ trait KutuService {
   }
   def deleteWettkampf(wettkampfid: Long) {
     database withTransaction { implicit session: Session =>
-      sqlu"""delete from kutu.wettkampf where id=${wettkampfid}""".execute
+      sqlu"""delete from wettkampf where id=${wettkampfid}""".execute
     }
   }
   def createVerein(name: String): Long = {
     database withTransaction { implicit session: Session =>
-      sqlu"""       insert into kutu.verein
+      sqlu"""       insert into verein
                     (name) values (${name})""".execute
       sql"""
-                    select id from kutu.verein
-                    where id in (select max(id) from kutu.verein)
+                    select id from verein
+                    where id in (select max(id) from verein)
          """.as[Long].build().head
     }
   }
   def deleteVerein(vereinid: Long) {
     database withTransaction { implicit session: Session =>
-      sqlu"""delete from kutu.verein where id=${vereinid}""".execute
+      sqlu"""delete from verein where id=${vereinid}""".execute
     }
   }
   def unassignAthletFromWettkampf(wertungId: Set[Long]) {
     database withTransaction { implicit session: Session =>
       sqlu"""
-                    delete from kutu.wertung
+                    delete from wertung
                     where id in (#${wertungId.mkString(",")})
               """.execute
     }
@@ -273,16 +322,16 @@ trait KutuService {
 //              println(x)
               f(pgm.id, x)}
           wkid <- sql"""
-                  select id from kutu.wettkampfdisziplin
+                  select id from wettkampfdisziplin
                   where programm_Id = ${pgm.id}
                   """.as[Long]
         } {
           sqlu"""
-                  delete from kutu.wertung where
+                  delete from wertung where
                   athlet_Id=${a.id} and wettkampfdisziplin_Id=${wkid} and wettkampf_Id=${wettkampfId}
             """.execute
           sqlu"""
-                  insert into kutu.wertung
+                  insert into wertung
                   (athlet_Id, wettkampfdisziplin_Id, wettkampf_Id, note_d, note_e, endnote)
                   values (${a.id}, ${wkid}, ${wettkampfId}, 0, 0, 0)
             """.execute
@@ -292,64 +341,64 @@ trait KutuService {
   }
 
   def listWettkaempfe = {
-    sql"""select * from kutu.wettkampf """.as[Wettkampf]
+    sql"""select * from wettkampf """.as[Wettkampf]
   }
   def listWettkaempfeView(implicit session: Session) = {
     val cache = scala.collection.mutable.Map[Long, ProgrammView]()
-    sql"""select * from kutu.wettkampf """.as[WettkampfView].build()
+    sql"""select * from wettkampf """.as[WettkampfView].build()
   }
 
   def readWettkampf(id: Long)(implicit session: Session) = {
-    sql"""select * from kutu.wettkampf where id=$id""".as[Wettkampf].build().head
+    sql"""select * from wettkampf where id=$id""".as[Wettkampf].build().head
   }
 
   def selectWertungen(wertungId: Option[Long] = None, athletId: Option[Long] = None, wettkampfId: Option[Long] = None, disziplinId: Option[Long] = None): Seq[WertungView] = {
     implicit val cache = scala.collection.mutable.Map[Long, ProgrammView]()
     database withSession {implicit session: Session =>
       val where = "where " + (athletId match {
-        case None     => "true"
+        case None     => "1=1"
         case Some(id) => s"a.id = $id"
       }) + " and " + (wettkampfId match {
-        case None     => "true"
+        case None     => "1=1"
         case Some(id) => s"wk.id = $id"
       }) + " and " + (disziplinId match {
-        case None     => "true"
+        case None     => "1=1"
         case Some(id) => s"d.id = $id"
       })
       sql"""
                     SELECT w.id, a.*, v.*, wd.id, wd.programm_id, d.*, wd.kurzbeschreibung, wd.detailbeschreibung, wd.notenfaktor, wk.*, note_d as difficulty, note_e as execution, endnote
-                    FROM kutu.wertung w
-                    inner join kutu.athlet a on (a.id = w.athlet_id)
-                    left outer join kutu.verein v on (a.verein = v.id)
-                    inner join kutu.wettkampfdisziplin wd on (wd.id = w.wettkampfdisziplin_id)
-                    inner join kutu.disziplin d on (d.id = wd.disziplin_id)
-                    inner join kutu.programm p on (p.id = wd.programm_id)
-                    inner join kutu.wettkampf wk on (wk.id = w.wettkampf_id)
+                    FROM wertung w
+                    inner join athlet a on (a.id = w.athlet_id)
+                    left outer join verein v on (a.verein = v.id)
+                    inner join wettkampfdisziplin wd on (wd.id = w.wettkampfdisziplin_id)
+                    inner join disziplin d on (d.id = wd.disziplin_id)
+                    inner join programm p on (p.id = wd.programm_id)
+                    inner join wettkampf wk on (wk.id = w.wettkampf_id)
                     #$where
          """.as[WertungView].build()
     }
   }
 
   def selectAthletes = {
-    sql"""select * from kutu.athlet""".as[Athlet]
+    sql"""select * from athlet""".as[Athlet]
   }
 
   def selectAthletesView = {
     database withSession { implicit session =>
-      sql"""select * from kutu.athlet inner join kutu.verein on (verein.id = athlet.verein) """.as[AthletView].list()
+      sql"""select * from athlet inner join verein on (verein.id = athlet.verein) """.as[AthletView].list()
     }
   }
 
   def selectVereine = {
     database withSession { implicit session =>
-      sql"""select * from kutu.verein""".as[Verein].list()
+      sql"""select id, name from verein""".as[Verein].list()
     }
   }
 
   def deleteAthlet(id: Long) {
     database withTransaction { implicit session =>
       sqlu"""
-                   delete from kutu.athlet where id=${id}
+                   delete from athlet where id=${id}
           """.execute
     }
   }
@@ -357,7 +406,7 @@ trait KutuService {
     database withTransaction { implicit session =>
       def getId = sql"""
                     select max(athlet.id) as maxid
-                    from kutu.athlet
+                    from athlet
                     where name=${athlete.name} and vorname=${athlete.vorname} and gebdat=${athlete.gebdat} and verein=${athlete.verein}
            """.as[Long].build().headOption
 
@@ -365,22 +414,22 @@ trait KutuService {
         getId match {
           case Some(id) if(id > 0) =>
             sqlu"""
-                    replace into kutu.athlet
+                    replace into athlet
                     (id, js_id, geschlecht, name, vorname, gebdat, strasse, plz, ort, verein)
                     values (${id}, ${athlete.js_id}, ${athlete.geschlecht}, ${athlete.name}, ${athlete.vorname}, ${athlete.gebdat}, ${athlete.strasse}, ${athlete.plz}, ${athlete.ort}, ${athlete.verein})
             """.execute
-            sql"""select * from kutu.athlet where id = ${id}""".as[Athlet].build().head
+            sql"""select * from athlet where id = ${id}""".as[Athlet].build().head
           case _ => sqlu"""
-                    replace into kutu.athlet
+                    replace into athlet
                     (js_id, geschlecht, name, vorname, gebdat, strasse, plz, ort, verein)
                     values (${athlete.js_id}, ${athlete.geschlecht}, ${athlete.name}, ${athlete.vorname}, ${athlete.gebdat}, ${athlete.strasse}, ${athlete.plz}, ${athlete.ort}, ${athlete.verein})
             """.execute
-            sql"""select * from kutu.athlet where id = (select max(athlet.id) from kutu.athlet)""".as[Athlet].build().head
+            sql"""select * from athlet where id = (select max(athlet.id) from athlet)""".as[Athlet].build().head
         }
       }
       else {
         sqlu"""
-                    replace into kutu.athlet
+                    replace into athlet
                     (id, js_id, geschlecht, name, vorname, gebdat, strasse, plz, ort, verein)
                     values (${athlete.id}, ${athlete.js_id}, ${athlete.geschlecht}, ${athlete.name}, ${athlete.vorname}, ${athlete.gebdat}, ${athlete.strasse}, ${athlete.plz}, ${athlete.ort}, ${athlete.verein})
             """.execute
@@ -394,7 +443,7 @@ trait KutuService {
 //    database withTransaction { implicit session =>
 //      def getId = sql"""
 //                    select max(athlet.id) as maxid
-//                    from kutu.athlet
+//                    from athlet
 //                    where name=${athlete.name} and vorname=${athlete.vorname} and gebdat=${athlete.gebdat} and verein=${athlete.verein}
 //           """.as[Long].build().headOption
 //
@@ -402,23 +451,23 @@ trait KutuService {
 //        val id: Long = getId match {
 //          case Some(id) if(id > 0) =>
 //            sqlu"""
-//                    replace into kutu.athlet
+//                    replace into athlet
 //                    (id, js_id, geschlecht, name, vorname, gebdat, strasse, plz, ort, verein)
 //                    values (${id}, ${athlete.js_id}, ${athlete.geschlecht}, ${athlete.name}, ${athlete.vorname}, ${athlete.gebdat}, ${athlete.strasse}, ${athlete.plz}, ${athlete.ort}, ${athlete.verein})
 //            """.execute
 //            id
 //          case _ => sqlu"""
-//                    replace into kutu.athlet
+//                    replace into athlet
 //                    (js_id, geschlecht, name, vorname, gebdat, strasse, plz, ort, verein)
 //                    values (${athlete.js_id}, ${athlete.geschlecht}, ${athlete.name}, ${athlete.vorname}, ${athlete.gebdat}, ${athlete.strasse}, ${athlete.plz}, ${athlete.ort}, ${athlete.verein})
 //            """.execute
 //            getId.get
 //        }
-//        sql"""select * from kutu.athlet where id = ${id}""".as[Athlet].build().headOption.get
+//        sql"""select * from athlet where id = ${id}""".as[Athlet].build().headOption.get
 //      }
 //      else {
 //        sqlu"""
-//                    replace into kutu.athlet
+//                    replace into athlet
 //                    (id, js_id, geschlecht, name, vorname, gebdat, strasse, plz, ort, verein)
 //                    values (${athlete.id}, ${athlete.js_id}, ${athlete.geschlecht}, ${athlete.name}, ${athlete.vorname}, ${athlete.gebdat}, ${athlete.strasse}, ${athlete.plz}, ${athlete.ort}, ${athlete.verein})
 //            """.execute
