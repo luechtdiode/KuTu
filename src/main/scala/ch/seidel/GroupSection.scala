@@ -309,7 +309,7 @@ case class GroupLeaf(override val groupKey: DataObject, list: Iterable[WertungVi
         buffer.append(f" ${w.easyprint}%18s")
       }
       buffer.append("\n")
-      buffer.append(f"${"Ger�terang"}%58s")
+      buffer.append(f"${"Geräterang"}%58s")
       for (w <- wertungen.toList.sortBy { x => x.wettkampfdisziplin.disziplin.id }) {
         buffer.append(f" ${athletDisziplinRangMap(w.wettkampfdisziplin.disziplin.id)(w.athlet).rang.easyprint}%18s")
       }

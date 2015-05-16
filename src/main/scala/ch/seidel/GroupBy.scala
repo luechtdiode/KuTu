@@ -145,6 +145,15 @@ case object ByDisziplin extends GroupBy {
     gs1.groupKey.asInstanceOf[Disziplin].ord.compareTo(gs2.groupKey.asInstanceOf[Disziplin].ord) < 0
   })
 }
+case object ByGeschlecht extends GroupBy {
+  override val groupname = "Geschlecht"
+  protected override val grouper = (v: WertungView) => {
+    TurnerGeschlecht(v.athlet.geschlecht)
+  }
+  protected override val sorter: Option[(GroupSection, GroupSection) => Boolean] = Some((gs1: GroupSection, gs2: GroupSection) => {
+    gs1.groupKey.asInstanceOf[TurnerGeschlecht].easyprint.compareTo(gs2.groupKey.asInstanceOf[TurnerGeschlecht].easyprint) > 0
+  })
+}
 case object ByVerein extends GroupBy {
   override val groupname = "Verein"
   protected override val grouper = (v: WertungView) => {

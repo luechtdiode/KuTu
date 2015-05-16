@@ -21,6 +21,14 @@ package object domain {
     def easyprint: String = toString
   }
 
+  case class TurnerGeschlecht(geschlecht: String) extends DataObject {
+    override def easyprint = geschlecht.toLowerCase() match {
+      case "m" => "Turner"
+      case "w" => "Turnerinnen"
+      case "f" => "Turnerinnen"
+      case _ => "Turner"
+    }
+  }
   case class Verein(id: Long, name: String) extends DataObject {
     override def easyprint = name
   }

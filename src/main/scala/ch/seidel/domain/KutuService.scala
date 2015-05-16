@@ -16,48 +16,63 @@ import java.time.temporal.TemporalField
 import java.time.Period
 import java.io.File
 import scala.io.Source
+import org.sqlite.SQLiteConfig.Pragma
+import org.sqlite.SQLiteConfig.DatePrecision
+import java.util.Properties
 
 trait KutuService {
-  lazy val database = Database.forURL(
-      url = "jdbc:sqlite:./db/kutu.sqlite",
-      driver = "org.sqlite.JDBC", //org.SQLite.Driver",
-//    url = "jdbc:mysql://localhost:3306/kutu",
+
+  lazy val databasemysql = Database.forURL(
+    url = "jdbc:mysql://localhost:3306/kutu",
 //    url = "jdbc:mysql://localhost:36551/kutu",
-//    driver = "com.mysql.jdbc.Driver",
+    driver = "com.mysql.jdbc.Driver",
     user = "kutu",
     password = "kutu")
+
+  lazy val proplite = {
+    val prop = new Properties()
+    prop.setProperty("date_string_format", "yyyy-MM-dd")
+    prop
+  }
+
+  lazy val databaselite = Database.forURL(
+    url = "jdbc:sqlite:./db/kutu.sqlite",
+    driver = "org.sqlite.JDBC",
+    prop = proplite,
+    user = "kutu",
+    password = "kutu")
+
+  lazy val database = databaselite
+//  lazy val database = databasemysql
 
   val dbfile = new File("./db/kutu.sqlite")
 
   def installDB {
     val sqlfile = new File("./Scripts/kutu-sqllite-ddl.sql")
     val sqldatafile = new File("./Scripts/kutu-sqllite-initialdata.sql")
+    val sqlwkdatafile = new File("./Scripts/kutu-daten.sql")
     if(sqlfile.exists()) {
-      Source.fromFile(sqlfile).getLines().filter(!_.startsWith("-- ")).foldLeft(List(""))((acc, line) =>
-        if(line.endsWith(";")) {
-          acc.updated(acc.size -1, acc.last + line) :+ ""
-        }
-        else {
-          acc.updated(acc.size -1, acc.last + line)
-        }
-      ).foreach { statement => println(statement) }
       database withSession { implicit session =>
-        Source.fromFile(sqlfile).getLines().filter(!_.trim().startsWith("-- ")).foldLeft(List(""))((acc, line) =>
+        def execStatement(statement: String) {
+          println(statement); StaticQuery.updateNA(statement).execute
+        }
+        def filterCommentLines(line: String) = {
+          !line.trim().startsWith("-- ")
+        }
+        def combineMultilineStatement(acc: List[String], line: String) = {
           if(line.endsWith(";")) {
             acc.updated(acc.size -1, acc.last + line) :+ ""
           }
           else {
             acc.updated(acc.size -1, acc.last + line)
           }
-        ).filter(_.trim().length() > 0).foreach { statement => println(statement); StaticQuery.updateNA(statement).execute }
-        Source.fromFile(sqldatafile).getLines().filter(!_.trim().startsWith("-- ")).foldLeft(List(""))((acc, line) =>
-          if(line.endsWith(";")) {
-            acc.updated(acc.size -1, acc.last + line) :+ ""
-          }
-          else {
-            acc.updated(acc.size -1, acc.last + line)
-          }
-        ).filter(_.trim().length() > 0).foreach { statement => println(statement); StaticQuery.updateNA(statement).execute }
+        }
+        def parse(lines: Iterator[String]): List[String] = {
+          lines.filter(filterCommentLines).foldLeft(List(""))(combineMultilineStatement).filter(_.trim().length() > 0)
+        }
+        parse(Source.fromFile(sqlfile).getLines()).foreach(execStatement)
+        parse(Source.fromFile(sqldatafile).getLines()).foreach(execStatement)
+//        parse(Source.fromFile(sqlwkdatafile).getLines()).foreach(execStatement)
       }
     }
   }
@@ -66,7 +81,6 @@ trait KutuService {
     dbfile.createNewFile()
     installDB
   }
-
 //  if(selectVereine.size == 0) {
 //    installDB
 //  }
