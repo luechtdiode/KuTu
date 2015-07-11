@@ -226,25 +226,25 @@ trait KutuService {
     database withSession { implicit session =>
       implicit val cache = scala.collection.mutable.Map[Long, ProgrammView]()
       sql"""
-                    SELECT w.id, a.*, v.*, wd.id, wd.programm_id, d.*, wd.kurzbeschreibung, wd.detailbeschreibung, wd.notenfaktor, wk.*, note_d as difficulty, note_e as execution, endnote
-                    FROM wertung w
-                    inner join athlet a on (a.id = w.athlet_id)
-                    left outer join verein v on (a.verein = v.id)
-                    inner join wettkampfdisziplin wd on (wd.id = w.wettkampfdisziplin_id)
-                    inner join disziplin d on (d.id = wd.disziplin_id)
-                    inner join programm p on (p.id = wd.programm_id)
-                    inner join wettkampf wk on (wk.id = w.wettkampf_id)
-                    where wd.programm_id in (#${progids.mkString(",")})
+                   SELECT w.id, a.*, v.*, wd.id, wd.programm_id, d.*, wd.kurzbeschreibung, wd.detailbeschreibung, wd.notenfaktor, wk.*, note_d as difficulty, note_e as execution, endnote
+                   FROM wertung w
+                   inner join athlet a on (a.id = w.athlet_id)
+                   left outer join verein v on (a.verein = v.id)
+                   inner join wettkampfdisziplin wd on (wd.id = w.wettkampfdisziplin_id)
+                   inner join disziplin d on (d.id = wd.disziplin_id)
+                   inner join programm p on (p.id = wd.programm_id)
+                   inner join wettkampf wk on (wk.id = w.wettkampf_id)
+                   where wd.programm_id in (#${progids.mkString(",")})
        """.as[WertungView].build()
     }
   }
 
   def listAthletenZuWettkampf(progids: Seq[Long]) = {
     database withSession { implicit session =>
-      sql"""select a.* from athlet a
-                    inner join wertung w on (a.id = w.athlet_id)
-                    inner join wettkampfdisziplin wd on (wd.id = w.wettkampfdisziplin_id)
-                    where wd.programm_id in (#${progids.mkString(",")})
+      sql"""       select a.* from athlet a
+                   inner join wertung w on (a.id = w.athlet_id)
+                   inner join wettkampfdisziplin wd on (wd.id = w.wettkampfdisziplin_id)
+                   where wd.programm_id in (#${progids.mkString(",")})
          """.as[AthletView].build()
     }
   }
@@ -274,7 +274,8 @@ trait KutuService {
   }
   def deleteWettkampf(wettkampfid: Long) {
     database withTransaction { implicit session: Session =>
-      sqlu"""delete from wettkampf where id=${wettkampfid}""".execute
+      sqlu"""       delete from wertung where wettkampf_id=${wettkampfid}""".execute
+      sqlu"""       delete from wettkampf where id=${wettkampfid}""".execute
     }
   }
   def createVerein(name: String): Long = {
@@ -289,7 +290,9 @@ trait KutuService {
   }
   def deleteVerein(vereinid: Long) {
     database withTransaction { implicit session: Session =>
-      sqlu"""delete from verein where id=${vereinid}""".execute
+      sqlu"""       delete from wertung where athlet_id in (select athlet_id from athlete where verein_id=${vereinid})""".execute
+      sqlu"""       delete from athlet where verein_id=${vereinid}""".execute
+      sqlu"""       delete from verein where id=${vereinid}""".execute
     }
   }
   def unassignAthletFromWettkampf(wertungId: Set[Long]) {
@@ -336,18 +339,18 @@ trait KutuService {
 //              println(x)
               f(pgm.id, x)}
           wkid <- sql"""
-                  select id from wettkampfdisziplin
-                  where programm_Id = ${pgm.id}
+                    select id from wettkampfdisziplin
+                    where programm_Id = ${pgm.id}
                   """.as[Long]
         } {
           sqlu"""
-                  delete from wertung where
-                  athlet_Id=${a.id} and wettkampfdisziplin_Id=${wkid} and wettkampf_Id=${wettkampfId}
+                    delete from wertung where
+                    athlet_Id=${a.id} and wettkampfdisziplin_Id=${wkid} and wettkampf_Id=${wettkampfId}
             """.execute
           sqlu"""
-                  insert into wertung
-                  (athlet_Id, wettkampfdisziplin_Id, wettkampf_Id, note_d, note_e, endnote)
-                  values (${a.id}, ${wkid}, ${wettkampfId}, 0, 0, 0)
+                    insert into wertung
+                    (athlet_Id, wettkampfdisziplin_Id, wettkampf_Id, note_d, note_e, endnote)
+                    values (${a.id}, ${wkid}, ${wettkampfId}, 0, 0, 0)
             """.execute
         }
       case None =>
@@ -355,15 +358,15 @@ trait KutuService {
   }
 
   def listWettkaempfe = {
-    sql"""select * from wettkampf """.as[Wettkampf]
+    sql"""          select * from wettkampf """.as[Wettkampf]
   }
   def listWettkaempfeView(implicit session: Session) = {
     val cache = scala.collection.mutable.Map[Long, ProgrammView]()
-    sql"""select * from wettkampf """.as[WettkampfView].build()
+    sql"""          select * from wettkampf """.as[WettkampfView].build()
   }
 
   def readWettkampf(id: Long)(implicit session: Session) = {
-    sql"""select * from wettkampf where id=$id""".as[Wettkampf].build().head
+    sql"""          select * from wettkampf where id=$id""".as[Wettkampf].build().head
   }
 
   def selectWertungen(wertungId: Option[Long] = None, athletId: Option[Long] = None, wettkampfId: Option[Long] = None, disziplinId: Option[Long] = None): Seq[WertungView] = {
@@ -394,25 +397,30 @@ trait KutuService {
   }
 
   def selectAthletes = {
-    sql"""select * from athlet""".as[Athlet]
+    sql"""          select * from athlet""".as[Athlet]
   }
 
   def selectAthletesView = {
     database withSession { implicit session =>
-      sql"""select * from athlet inner join verein on (verein.id = athlet.verein) """.as[AthletView].list()
+      sql"""        select * from athlet inner join verein on (verein.id = athlet.verein) """.as[AthletView].list()
     }
   }
 
   def selectVereine = {
     database withSession { implicit session =>
-      sql"""select id, name from verein""".as[Verein].list()
+      sql"""        select id, name from verein""".as[Verein].list()
     }
   }
 
   def deleteAthlet(id: Long) {
     database withTransaction { implicit session =>
+      sqlu"""       delete from wertung
+                    where athlet_id in (
+                     select athlet_id from athlete where verein_id=${id}
+                    )
+          """.execute
       sqlu"""
-                   delete from athlet where id=${id}
+                    delete from athlet where id=${id}
           """.execute
     }
   }
