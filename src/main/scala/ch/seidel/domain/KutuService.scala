@@ -290,8 +290,8 @@ trait KutuService {
   }
   def deleteVerein(vereinid: Long) {
     database withTransaction { implicit session: Session =>
-      sqlu"""       delete from wertung where athlet_id in (select athlet_id from athlete where verein_id=${vereinid})""".execute
-      sqlu"""       delete from athlet where verein_id=${vereinid}""".execute
+      sqlu"""       delete from wertung where athlet_id in (select athlet_id from athlet where verein=${vereinid})""".execute
+      sqlu"""       delete from athlet where verein=${vereinid}""".execute
       sqlu"""       delete from verein where id=${vereinid}""".execute
     }
   }
@@ -415,9 +415,7 @@ trait KutuService {
   def deleteAthlet(id: Long) {
     database withTransaction { implicit session =>
       sqlu"""       delete from wertung
-                    where athlet_id in (
-                     select athlet_id from athlete where verein_id=${id}
-                    )
+                    where athlet_id=${id}
           """.execute
       sqlu"""
                     delete from athlet where id=${id}

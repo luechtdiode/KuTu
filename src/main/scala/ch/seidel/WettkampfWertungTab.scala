@@ -108,7 +108,7 @@ class WettkampfWertungTab(programm: ProgrammView, wettkampf: WettkampfView, over
       }
       val txtE = new AutoFillTextBox[String]() {
         promptText = "E-Note"
-        prefWidth = 800
+        prefWidth = 500
         delegate.setListLimit(20)
 //        prefHeight = 50
       }
