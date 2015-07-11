@@ -150,7 +150,11 @@ package object domain {
     }
     def findnearest(value: Double): Double = {
       val sorted = punktemapping.values.toList.sorted
-      sorted.find { x => x >= value }.getOrElse(sorted.last)
+      if(value.equals(0.0d)) value else
+        sorted.find { x => x >= value } match {
+        case Some(v) => v
+        case None => sorted.last
+      }
     }
     def findLikes(value: String) = {
       val lv = value.toLowerCase()
