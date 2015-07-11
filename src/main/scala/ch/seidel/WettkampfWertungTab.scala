@@ -538,7 +538,10 @@ class WettkampfWertungTab(programm: ProgrammView, wettkampf: WettkampfView, over
         if(rowIndex > -1) {
           wkview.scrollTo(rowIndex)
           val datacolcnt = (wkview.columns.size - 3)
-          val dcgrp = if(datacolcnt % 3 == 0) 2 else 1
+          val dcgrp = wkModel.headOption match {
+            case Some(wertung) => if(wertung.head.init.wettkampfdisziplin.notenSpez.isDNoteUsed) 2 else 1
+            case None => 2
+          } //if(datacolcnt % 3 == 0) 2 else 1
           wkview.scrollToColumn(wkview.columns(2 + index).columns(dcgrp))
         }
         editorPane.requestLayout()
@@ -549,7 +552,10 @@ class WettkampfWertungTab(programm: ProgrammView, wettkampf: WettkampfView, over
     wkview.focusModel.value.focusedCell.onChange {(focusModel, oldTablePos, newTablePos) =>
       if(newTablePos != null) {
         val datacolcnt = (wkview.columns.size - 3)
-        val dcgrp = if(datacolcnt % 3 == 0) 3 else 2
+        val dcgrp = wkModel.headOption match {
+            case Some(wertung) => if(wertung.head.init.wettkampfdisziplin.notenSpez.isDNoteUsed) 3 else 2
+            case None => 3
+          }//if(datacolcnt % 3 == 0) 3 else 2
         val idx = math.min(datacolcnt * dcgrp, math.max(0, (newTablePos.getColumn-2) / dcgrp))
 //        println("Adjust pagination at " +idx)
         val oldIdx = pagination.currentPageIndex.value
