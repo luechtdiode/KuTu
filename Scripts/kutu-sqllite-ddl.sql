@@ -115,6 +115,7 @@ CREATE TABLE IF NOT EXISTS `wertung` (
   `note_d` decimal(10,3) NOT NULL,
   `note_e` decimal(10,3) NOT NULL,
   `endnote` decimal(10,3) NOT NULL,
+  `riege` INTEGER,
   FOREIGN KEY (`athlet_id`) REFERENCES `athlet` (`id`),
   FOREIGN KEY (`wettkampfdisziplin_id`) REFERENCES `wettkampfdisziplin` (`id`),
   FOREIGN KEY (`wettkampf_id`) REFERENCES `wettkampf` (`id`)
