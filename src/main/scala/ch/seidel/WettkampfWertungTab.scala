@@ -65,7 +65,8 @@ case class WertungEditor(init: WertungView) {
     init.id, init.athlet.id, init.wettkampfdisziplin.id, init.wettkampf.id,
     scala.math.BigDecimal(noteD.value),
     scala.math.BigDecimal(noteE.value),
-    scala.math.BigDecimal(endnote.value))
+    scala.math.BigDecimal(endnote.value),
+    init.riege)
 }
 
 class WettkampfWertungTab(programm: ProgrammView, wettkampf: WettkampfView, override val service: KutuService, athleten: => IndexedSeq[WertungView]) extends Tab with TabWithService {

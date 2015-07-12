@@ -27,6 +27,7 @@ import scalafx.scene.canvas.Canvas
 import scalafx.scene.control.cell.TextFieldTableCell
 
 object KuTuWettkampfApp extends JFXApp with KutuService {
+  print(suggestRiegen(7, Seq(6)))
   // Open a database connection
 
 //  database withSession { implicit session =>

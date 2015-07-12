@@ -122,11 +122,12 @@ package object domain {
     lazy val formattedEnd = if(endnote > 0) f"${endnote}%5.2f" else ""
     override def easyprint = f"${formattedD}%6s${formattedE}%6s${formattedEnd}%6s"
   }
-  case class Wertung(id: Long, athletId: Long, wettkampfdisziplinId: Long, wettkampfId: Long, noteD: scala.math.BigDecimal, noteE: scala.math.BigDecimal, endnote: scala.math.BigDecimal) extends DataObject
-  case class WertungView(id: Long, athlet: AthletView, wettkampfdisziplin: WettkampfdisziplinView, wettkampf: Wettkampf, noteD: scala.math.BigDecimal, noteE: scala.math.BigDecimal, endnote: scala.math.BigDecimal) extends DataObject {
+  case class Wertung(id: Long, athletId: Long, wettkampfdisziplinId: Long, wettkampfId: Long, noteD: scala.math.BigDecimal, noteE: scala.math.BigDecimal, endnote: scala.math.BigDecimal, riege: Option[String]) extends DataObject
+  case class WertungView(id: Long, athlet: AthletView, wettkampfdisziplin: WettkampfdisziplinView, wettkampf: Wettkampf, noteD: scala.math.BigDecimal, noteE: scala.math.BigDecimal, endnote: scala.math.BigDecimal, riege: Option[String]) extends DataObject {
     lazy val resultat = Resultat(noteD, noteE, endnote)
     def + (r: Resultat) = resultat + r
-
+    def toWertung = Wertung(id, athlet.id, wettkampfdisziplin.id, wettkampf.id, noteD, noteE, endnote, riege)
+    def toWertung(riege: String) = Wertung(id, athlet.id, wettkampfdisziplin.id, wettkampf.id, noteD, noteE, endnote, Some(riege))
     override def easyprint = {
       resultat.easyprint
     }

@@ -117,7 +117,7 @@ trait KutuService {
     WettkampfdisziplinView(id, pgm, r, r.<<[String], r.nextBytesOption(), readNotenModus(id, pgm, r.<<))
   }
   private implicit def getResultWertungView(implicit session: Session, cache: scala.collection.mutable.Map[Long, ProgrammView]) = GetResult(r =>
-    WertungView(r.<<[Long], r, r, r, r.<<[scala.math.BigDecimal], r.<<[scala.math.BigDecimal], r.<<[scala.math.BigDecimal]))
+    WertungView(r.<<[Long], r, r, r, r.<<[scala.math.BigDecimal], r.<<[scala.math.BigDecimal], r.<<[scala.math.BigDecimal], r.<<))
   private implicit def getWettkampfViewResultCached(implicit session: Session, cache: scala.collection.mutable.Map[Long, ProgrammView]) = GetResult(r =>
     WettkampfView(r.<<[Long], r.<<[java.sql.Date], r.<<[String], readProgramm(r.<<[Long], cache), r.<<[Int]))
   private implicit def getWettkampfViewResult(implicit session: Session) = GetResult(r =>
@@ -203,13 +203,13 @@ trait KutuService {
   def updateWertung(w: Wertung): WertungView = {
     database withTransaction { implicit session =>
       sqlu"""       UPDATE wertung
-                    SET note_d=${w.noteD}, note_e=${w.noteE}, endnote=${w.endnote}
+                    SET note_d=${w.noteD}, note_e=${w.noteE}, endnote=${w.endnote}, riege=${w.riege}
                     WHERE id=${w.id};
           """.execute
 
       implicit val cache = scala.collection.mutable.Map[Long, ProgrammView]()
       sql"""
-                    SELECT w.id, a.*, v.*, wd.id, wd.programm_id, d.*, wd.kurzbeschreibung, wd.detailbeschreibung, wd.notenfaktor, wk.*, note_d as difficulty, note_e as execution, endnote
+                    SELECT w.id, a.*, v.*, wd.id, wd.programm_id, d.*, wd.kurzbeschreibung, wd.detailbeschreibung, wd.notenfaktor, wk.*, note_d as difficulty, note_e as execution, endnote, riege
                     FROM wertung w
                     inner join athlet a on (a.id = w.athlet_id)
                     left outer join verein v on (a.verein = v.id)
@@ -226,7 +226,7 @@ trait KutuService {
     database withSession { implicit session =>
       implicit val cache = scala.collection.mutable.Map[Long, ProgrammView]()
       sql"""
-                   SELECT w.id, a.*, v.*, wd.id, wd.programm_id, d.*, wd.kurzbeschreibung, wd.detailbeschreibung, wd.notenfaktor, wk.*, note_d as difficulty, note_e as execution, endnote
+                   SELECT w.id, a.*, v.*, wd.id, wd.programm_id, d.*, wd.kurzbeschreibung, wd.detailbeschreibung, wd.notenfaktor, wk.*, note_d as difficulty, note_e as execution, endnote, riege
                    FROM wertung w
                    inner join athlet a on (a.id = w.athlet_id)
                    left outer join verein v on (a.verein = v.id)
@@ -290,7 +290,7 @@ trait KutuService {
   }
   def deleteVerein(vereinid: Long) {
     database withTransaction { implicit session: Session =>
-      sqlu"""       delete from wertung where athlet_id in (select athlet_id from athlet where verein=${vereinid})""".execute
+      sqlu"""       delete from wertung where athlet_id in (select id from athlet where verein=${vereinid})""".execute
       sqlu"""       delete from athlet where verein=${vereinid}""".execute
       sqlu"""       delete from verein where id=${vereinid}""".execute
     }
@@ -383,7 +383,7 @@ trait KutuService {
         case Some(id) => s"d.id = $id"
       })
       sql"""
-                    SELECT w.id, a.*, v.*, wd.id, wd.programm_id, d.*, wd.kurzbeschreibung, wd.detailbeschreibung, wd.notenfaktor, wk.*, note_d as difficulty, note_e as execution, endnote
+                    SELECT w.id, a.*, v.*, wd.id, wd.programm_id, d.*, wd.kurzbeschreibung, wd.detailbeschreibung, wd.notenfaktor, wk.*, note_d as difficulty, note_e as execution, endnote, riege
                     FROM wertung w
                     inner join athlet a on (a.id = w.athlet_id)
                     left outer join verein v on (a.verein = v.id)
@@ -494,5 +494,81 @@ trait KutuService {
 //        athlete
 //      }
 //    }
+  }
+
+  /* Riegenbuilder:
+--     1. Anzahl Rotationen (min = 1, max = Anzahl Teilnehmer),
+--     2. Anzahl Stationen (min = 1, max = Anzahl Diszipline im Programm),
+--     => ergibt die Anzahl Riegen (Rotationen * Stationen)
+--     3. Gruppiert nach Programm oder Jahrgang (Jahrgang im Athletiktest-Modus),
+--     4. Gruppiert nach Verein oder Jahrgang (Verein im Athletiktest-Modus)
+--     => Verknüpfen der Gruppen auf eine Start-Station/-Rotation
+--     => operation suggestRiegen(WettkampfId, Rotationen/Stationen:List<Integer>): Map<Riegennummer,List<WertungId>>
+*/
+  def suggestRiegen(wettkampfId: Long, rotationstation: Seq[Integer]): Seq[(String, Seq[Wertung])] = {
+    val riegencnt = rotationstation.reduce(_+_)
+    val cache = scala.collection.mutable.Map[String, Integer]()
+    val wertungen = selectWertungen(wettkampfId = Some(wettkampfId))
+    if(wertungen.isEmpty) {
+      Seq[(String, Seq[Wertung])]()
+    }
+    else {
+      def splitToRiegenCount[A](sugg: Seq[(String, Seq[A])]): Seq[(String, Seq[A])] = {
+        def split(riege: (String, Seq[A])): Seq[(String, Seq[A])] = {
+          val (key, r) = riege
+          val oldKey1 = (key + ".").split("\\.").headOption.getOrElse("Riege")
+          val oldList = r.toList
+          def occurences(key: String) = {
+            val cnt = cache.getOrElse(key, 0).asInstanceOf[Integer] + 1
+            cache.update(key, cnt)
+            cnt
+          }
+          val key1 = if(key.contains("\\.")) key else oldKey1 + "." + occurences(oldKey1)
+          val key2 = oldKey1 + "." + occurences(oldKey1)
+          List((key1, oldList.take(r.size / 2)), (key2, oldList.drop(r.size / 2)))
+        }
+        val ret = sugg.sortBy(_._2.size).reverse
+        if(ret.size < riegencnt) {
+          splitToRiegenCount(split(ret.head) ++ ret.tail)
+        }
+        else {
+          ret
+        }
+      }
+      def groupers(grplst: List[WertungView => String])(wertung: WertungView): String = {
+        grplst.foldLeft(""){(acc, f) =>
+          acc + "," + f(wertung)
+        }.drop(1)
+      }
+      @tailrec
+      def groupWertungen(grp: List[WertungView => String], grpAll: List[WertungView => String]): Seq[(String, Seq[Wertung])] = {
+        val sugg = wertungen.groupBy(groupers(grp)).toSeq
+        if(sugg.size > riegencnt && grp.size > 1) {
+          groupWertungen(grp.reverse.tail.reverse, grpAll)
+        }
+        else {
+          val prep = sugg.map(x => (x._1, x._2.foldLeft((Seq[WertungView](), Set[Long]())){(acc, w) =>
+            if(acc._2.contains(w.athlet.id)) acc else (w +: acc._1, acc._2 + w.athlet.id)
+          }
+          ._1.sortBy(groupers(grpAll))))
+          splitToRiegenCount(prep).map(w => (w._1, w._2.map(wv => wv.toWertung(w._1))))
+        }
+      }
+      val wkGrouper: List[WertungView => String] = List(
+          x => x.athlet.geschlecht,
+          x => x.wettkampfdisziplin.programm.name,
+          x => x.athlet.verein match {case Some(v) => v.easyprint case None => ""},
+          x => (x.athlet.gebdat match {case Some(d) => f"$d%tY"; case _ => ""})
+          );
+      val atGrouper: List[WertungView => String] = List(
+          x => x.athlet.geschlecht,
+          x => (x.athlet.gebdat match {case Some(d) => f"$d%tY"; case _ => ""}),
+          x => x.athlet.verein match {case Some(v) => v.easyprint case None => ""}
+          );
+      if(wertungen.head.wettkampfdisziplin.notenSpez.isInstanceOf[Athletiktest])
+        groupWertungen(atGrouper, atGrouper)
+      else
+        groupWertungen(wkGrouper, wkGrouper)
+    }
   }
 }
