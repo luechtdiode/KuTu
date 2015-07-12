@@ -508,11 +508,12 @@ trait KutuService {
   def suggestRiegen(wettkampfId: Long, rotationstation: Seq[Integer]): Seq[(String, Seq[Wertung])] = {
     val riegencnt = rotationstation.reduce(_+_)
     val cache = scala.collection.mutable.Map[String, Integer]()
-    val wertungen = selectWertungen(wettkampfId = Some(wettkampfId))
+    val wertungen = selectWertungen(wettkampfId = Some(wettkampfId)).groupBy { w => w.athlet }
     if(wertungen.isEmpty) {
       Seq[(String, Seq[Wertung])]()
     }
     else {
+      @tailrec
       def splitToRiegenCount[A](sugg: Seq[(String, Seq[A])]): Seq[(String, Seq[A])] = {
         def split(riege: (String, Seq[A])): Seq[(String, Seq[A])] = {
           val (key, r) = riege
@@ -542,16 +543,16 @@ trait KutuService {
       }
       @tailrec
       def groupWertungen(grp: List[WertungView => String], grpAll: List[WertungView => String]): Seq[(String, Seq[Wertung])] = {
-        val sugg = wertungen.groupBy(groupers(grp)).toSeq
+        val sugg = wertungen.groupBy(w => groupers(grp)(w._2.head)).toSeq
         if(sugg.size > riegencnt && grp.size > 1) {
           groupWertungen(grp.reverse.tail.reverse, grpAll)
         }
         else {
-          val prep = sugg.map(x => (x._1, x._2.foldLeft((Seq[WertungView](), Set[Long]())){(acc, w) =>
-            if(acc._2.contains(w.athlet.id)) acc else (w +: acc._1, acc._2 + w.athlet.id)
+          val prep = sugg.map(x => (x._1, x._2.foldLeft((Seq[(AthletView, Seq[WertungView])](), Set[Long]())){(acc, w) =>
+            if(acc._2.contains(w._1.id)) acc else (w +: acc._1, acc._2 + w._1.id)
           }
-          ._1.sortBy(groupers(grpAll))))
-          splitToRiegenCount(prep).map(w => (w._1, w._2.map(wv => wv.toWertung(w._1))))
+          ._1.sortBy(w => groupers(grpAll)(w._2.head))))
+          splitToRiegenCount(prep).map(w => (w._1, w._2.flatMap(wv => wv._2.map(wt => wt.toWertung(w._1)))))
         }
       }
       val wkGrouper: List[WertungView => String] = List(
@@ -565,7 +566,7 @@ trait KutuService {
           x => (x.athlet.gebdat match {case Some(d) => f"$d%tY"; case _ => ""}),
           x => x.athlet.verein match {case Some(v) => v.easyprint case None => ""}
           );
-      if(wertungen.head.wettkampfdisziplin.notenSpez.isInstanceOf[Athletiktest])
+      if(wertungen.head._2.head.wettkampfdisziplin.notenSpez.isInstanceOf[Athletiktest])
         groupWertungen(atGrouper, atGrouper)
       else
         groupWertungen(wkGrouper, wkGrouper)
