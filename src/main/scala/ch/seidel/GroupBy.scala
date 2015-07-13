@@ -123,6 +123,15 @@ case object ByProgramm extends GroupBy {
     gs1.groupKey.asInstanceOf[ProgrammView].ord.compareTo(gs2.groupKey.asInstanceOf[ProgrammView].ord) < 0
   })
 }
+case object ByRiege extends GroupBy {
+  override val groupname = "Riege"
+  protected override val grouper = (v: WertungView) => {
+    Riege(v.riege match {case Some(r) => r case None => "keine Einteilung"})
+  }
+  protected override val sorter: Option[(GroupSection, GroupSection) => Boolean] = Some((gs1: GroupSection, gs2: GroupSection) => {
+    gs1.groupKey.easyprint.compareTo(gs2.groupKey.easyprint) < 0
+  })
+}
 case object ByJahrgang extends GroupBy {
   override val groupname = "Jahrgang"
   private val extractYear = new SimpleDateFormat("YYYY")

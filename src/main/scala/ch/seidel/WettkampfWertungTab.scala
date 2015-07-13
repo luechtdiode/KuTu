@@ -33,6 +33,7 @@ import scalafx.scene.layout.Region
 import scalafx.scene.layout.VBox
 import scalafx.util.converter.StringConverterJavaToJavaDelegate
 import scalafx.scene.control.Control
+import scalafx.util.converter.DefaultStringConverter
 
 case class WertungEditor(init: WertungView) {
 	type WertungChangeListener = (WertungEditor) => Unit
@@ -216,9 +217,9 @@ class WettkampfWertungTab(programm: ProgrammView, wettkampf: WettkampfView, over
             disciplin.endnote.value = disciplin.init.wettkampfdisziplin.notenSpez.calcEndnote(disciplin.noteD.value, disciplin.noteE.value)
             if (disciplin.isDirty) {
               wkModel.update(rowIndex, selected.updated(index, WertungEditor(service.updateWertung(disciplin.commit))))
-              wkview.selectionModel.value.select(rowIndex, wkview.columns(index+2).columns(lastEditedOffset))
+              wkview.selectionModel.value.select(rowIndex, wkview.columns(index+3).columns(lastEditedOffset))
               wkview.scrollTo(rowIndex)
-              wkview.scrollToColumn(wkview.columns(index+2).columns(lastEditedOffset))
+              wkview.scrollToColumn(wkview.columns(index+3).columns(lastEditedOffset))
             }
             wkview.selectionModel.value.selectBelowCell
           }
@@ -256,8 +257,8 @@ class WettkampfWertungTab(programm: ProgrammView, wettkampf: WettkampfView, over
               wkview.scrollTo(rowIndex)
             }
             else if(rowIndex < wkModel.size-1){
-              wkview.selectionModel.value.select(rowIndex+1, wkview.columns(2).columns(lastEditedOffset))
-              wkview.scrollToColumn(wkview.columns(2).columns(lastEditedOffset))
+              wkview.selectionModel.value.select(rowIndex+1, wkview.columns(3).columns(lastEditedOffset))
+              wkview.scrollToColumn(wkview.columns(3).columns(lastEditedOffset))
               wkview.scrollTo(rowIndex + 1)
             }
           }
@@ -400,6 +401,36 @@ class WettkampfWertungTab(programm: ProgrammView, wettkampf: WettkampfView, over
           })
         }
         prefWidth = 100
+      },
+      new TableColumn[IndexedSeq[WertungEditor], String] {
+        text = "Riege"
+        styleClass += "table-cell-with-value"
+//        cellValueFactory = { x => x.value.head.init.riege.getOrElse("keine Einteilung") }
+        cellFactory = { x => new TextFieldTableCell[IndexedSeq[WertungEditor], String](new DefaultStringConverter()) }
+        cellValueFactory = { x =>
+          new ReadOnlyStringWrapper(x.value, "riege", {
+            s"${x.value.head.init.riege.getOrElse("keine Einteilung")}"
+          })
+        }
+        prefWidth = 100
+        editable = true
+        onEditCommit = (evt: CellEditEvent[IndexedSeq[WertungEditor], String]) => {
+        	val rowIndex = wkModel.indexOf(evt.rowValue)
+          for(disciplin <- evt.rowValue) {
+            wkModel.update(rowIndex,
+                evt.rowValue.updated(
+                    evt.rowValue.indexOf(disciplin),
+                    WertungEditor(
+                        service.updateWertung(
+                            disciplin.commit.copy(riege = if(evt.newValue.isEmpty()) None else Some(evt.newValue))
+                            )
+                        )
+                    )
+                )
+          }
+          updateEditorPane
+          evt.tableView.requestFocus()
+        }
       })
 
     val sumCol: List[jfxsc.TableColumn[IndexedSeq[WertungEditor], _]] = List(
@@ -506,6 +537,45 @@ class WettkampfWertungTab(programm: ProgrammView, wettkampf: WettkampfView, over
         }
       }
     }
+    val riegensuggestButton = new Button {
+      text = "Riegen einteilen"
+      minWidth = 75
+      val stationen = new TextField()
+      onAction = (event: ActionEvent) => {
+        implicit val impevent = event
+        stationen.text = wkModel.head.size.toString()
+        PageDisplayer.showInDialog(text.value, new DisplayablePage() {
+          def getPage: Node = {
+            new HBox {
+              prefHeight = 50
+              alignment = Pos.BOTTOM_RIGHT
+              hgrow = Priority.ALWAYS
+              content = Seq(new Label("Stationen (wenn mehr wie eine Rotation, dann pro Rotation, getrennt mit Komma)  "), stationen)
+            }
+          }
+        }, new Button("OK") {
+          onAction = (event: ActionEvent) => {
+            if (!stationen.text.value.isEmpty) {
+              val riegenzuteilungen = service.suggestRiegen(
+                  wkModel.head.init.head.init.wettkampf.id,
+                  stationen.text.value.split(",").foldLeft(Seq[Int]())((acc, s) => acc :+ str2Int(s))
+                  )
+              for{
+                pair <- riegenzuteilungen
+                w <- pair._2
+              } {
+                service.updateWertung(w)
+              }
+              wkModel.clear
+              wertungen = updateWertungen
+              wkModel.appendAll(wertungen)
+              wkview.columns.clear()
+              wkview.columns ++= athletCol ++ wertungenCols ++ sumCol
+            }
+          }
+        })
+      }
+    }
     //addButton.disable <== when (wkview.selectionModel.value.selectedItemProperty.isNull()) choose true otherwise false
     removeButton.disable <== when(wkview.selectionModel.value.selectedItemProperty.isNull()) choose true otherwise false
     clearButton.disable <== when(wkview.selectionModel.value.selectedItemProperty.isNull()) choose true otherwise false
@@ -523,7 +593,7 @@ class WettkampfWertungTab(programm: ProgrammView, wettkampf: WettkampfView, over
             minHeight = Region.USE_PREF_SIZE
             styleClass += "toolbar-header"
           },
-          addButton, removeButton, clearButton
+          addButton, removeButton, clearButton, riegensuggestButton
         )
       }
       //bottom = pagination
@@ -538,12 +608,12 @@ class WettkampfWertungTab(programm: ProgrammView, wettkampf: WettkampfView, over
         val rowIndex = editorPane.adjust
         if(rowIndex > -1) {
           wkview.scrollTo(rowIndex)
-          val datacolcnt = (wkview.columns.size - 3)
+          val datacolcnt = (wkview.columns.size - 4)
           val dcgrp = wkModel.headOption match {
             case Some(wertung) => if(wertung.head.init.wettkampfdisziplin.notenSpez.isDNoteUsed) 2 else 1
             case None => 2
           } //if(datacolcnt % 3 == 0) 2 else 1
-          wkview.scrollToColumn(wkview.columns(2 + index).columns(dcgrp))
+          wkview.scrollToColumn(wkview.columns(3 + index).columns(dcgrp))
         }
         editorPane.requestLayout()
         editorPane
@@ -552,12 +622,12 @@ class WettkampfWertungTab(programm: ProgrammView, wettkampf: WettkampfView, over
 
     wkview.focusModel.value.focusedCell.onChange {(focusModel, oldTablePos, newTablePos) =>
       if(newTablePos != null) {
-        val datacolcnt = (wkview.columns.size - 3)
+        val datacolcnt = (wkview.columns.size - 4)
         val dcgrp = wkModel.headOption match {
             case Some(wertung) => if(wertung.head.init.wettkampfdisziplin.notenSpez.isDNoteUsed) 3 else 2
             case None => 3
           }//if(datacolcnt % 3 == 0) 3 else 2
-        val idx = math.min(datacolcnt * dcgrp, math.max(0, (newTablePos.getColumn-2) / dcgrp))
+        val idx = math.min(datacolcnt * dcgrp, math.max(0, (newTablePos.getColumn-3) / dcgrp))
 //        println("Adjust pagination at " +idx)
         val oldIdx = pagination.currentPageIndex.value
         pagination.currentPageIndex.value = idx

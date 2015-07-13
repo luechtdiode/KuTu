@@ -6,10 +6,12 @@ import scalafx.collections.ObservableBuffer
 import np.com.ngopal.control.AutoFillTextBoxFactory
 import java.time.LocalDate
 import java.time.ZoneId
+import scalafx.util.converter.IntStringConverter
 
 package object domain {
   implicit def dbl2Str(d: Double) = f"${d}%2.3f"
-  implicit def str2dbl(d: String) = d.toString()
+  implicit def str2dbl(d: String) = new DoubleStringConverter().fromString(d)
+  implicit def str2Int(d: String) = new IntStringConverter().fromString(d)
   implicit def ld2SQLDate(ld: LocalDate): java.sql.Date = {
     if(ld==null) return null else {
       val inst = ld.atStartOfDay(ZoneId.of("UTC"))
@@ -21,6 +23,9 @@ package object domain {
     def easyprint: String = toString
   }
 
+  case class Riege(r: String) extends DataObject {
+    override def easyprint = r
+  }
   case class TurnerGeschlecht(geschlecht: String) extends DataObject {
     override def easyprint = geschlecht.toLowerCase() match {
       case "m" => "Turner"

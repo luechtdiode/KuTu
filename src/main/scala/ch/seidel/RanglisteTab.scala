@@ -51,7 +51,7 @@ class RanglisteTab(wettkampf: WettkampfView, override val service: KutuService) 
 
   override def isPopulated = {
     val dummyTableView = new TableView[GroupRow]()
-    val groupers = List(ByNothing, ByProgramm, ByJahrgang, ByGeschlecht, ByVerein, ByDisziplin)
+    val groupers = List(ByNothing, ByProgramm, ByJahrgang, ByGeschlecht, ByVerein, ByRiege, ByDisziplin)
     val gr1Model = ObservableBuffer[GroupBy](groupers)
     val cb1 = new ComboBox[GroupBy] {
       maxWidth = 200

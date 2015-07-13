@@ -499,34 +499,36 @@ trait KutuService {
   /* Riegenbuilder:
 --     1. Anzahl Rotationen (min = 1, max = Anzahl Teilnehmer),
 --     2. Anzahl Stationen (min = 1, max = Anzahl Diszipline im Programm),
---     => ergibt die Anzahl Riegen (Rotationen * Stationen)
+--     => ergibt die optimale Anzahl Riegen (Rotationen * Stationen)
 --     3. Gruppiert nach Programm oder Jahrgang (Jahrgang im Athletiktest-Modus),
 --     4. Gruppiert nach Verein oder Jahrgang (Verein im Athletiktest-Modus)
 --     => Verknüpfen der Gruppen auf eine Start-Station/-Rotation
 --     => operation suggestRiegen(WettkampfId, Rotationen/Stationen:List<Integer>): Map<Riegennummer,List<WertungId>>
 */
-  def suggestRiegen(wettkampfId: Long, rotationstation: Seq[Integer]): Seq[(String, Seq[Wertung])] = {
+  def suggestRiegen(wettkampfId: Long, rotationstation: Seq[Int]): Seq[(String, Seq[Wertung])] = {
     val riegencnt = rotationstation.reduce(_+_)
-    val cache = scala.collection.mutable.Map[String, Integer]()
-    val wertungen = selectWertungen(wettkampfId = Some(wettkampfId)).groupBy { w => w.athlet }
+    val cache = scala.collection.mutable.Map[String, Int]()
+    val wertungen = selectWertungen(wettkampfId = Some(wettkampfId)).groupBy(w => w.athlet)
     if(wertungen.isEmpty) {
       Seq[(String, Seq[Wertung])]()
     }
     else {
       @tailrec
       def splitToRiegenCount[A](sugg: Seq[(String, Seq[A])]): Seq[(String, Seq[A])] = {
+        cache.clear
         def split(riege: (String, Seq[A])): Seq[(String, Seq[A])] = {
           val (key, r) = riege
           val oldKey1 = (key + ".").split("\\.").headOption.getOrElse("Riege")
           val oldList = r.toList
           def occurences(key: String) = {
-            val cnt = cache.getOrElse(key, 0).asInstanceOf[Integer] + 1
+            val cnt = cache.getOrElse(key, 0) + 1
             cache.update(key, cnt)
-            cnt
+            f"${cnt}%02d"
           }
           val key1 = if(key.contains("\\.")) key else oldKey1 + "." + occurences(oldKey1)
           val key2 = oldKey1 + "." + occurences(oldKey1)
-          List((key1, oldList.take(r.size / 2)), (key2, oldList.drop(r.size / 2)))
+          val splitpos = r.size / 2
+          List((key1, oldList.take(splitpos)), (key2, oldList.drop(splitpos)))
         }
         val ret = sugg.sortBy(_._2.size).reverse
         if(ret.size < riegencnt) {
