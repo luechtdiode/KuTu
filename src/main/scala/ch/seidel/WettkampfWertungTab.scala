@@ -34,6 +34,8 @@ import scalafx.scene.layout.VBox
 import scalafx.util.converter.StringConverterJavaToJavaDelegate
 import scalafx.scene.control.Control
 import scalafx.util.converter.DefaultStringConverter
+import scala.swing.event.KeyPressed
+import scalafx.scene.input.KeyEvent
 
 case class WertungEditor(init: WertungView) {
 	type WertungChangeListener = (WertungEditor) => Unit
@@ -86,6 +88,18 @@ class WettkampfWertungTab(programm: ProgrammView, wettkampf: WettkampfView, over
     val wkview = new TableView[IndexedSeq[WertungEditor]](wkModel) {
       id = "kutu-table"
       editable = true
+      onKeyTyped_= {evt: KeyEvent =>
+        if(    Character.isAlphabetic(evt.character.charAt(0))
+            || Character.isDigit(evt.character.charAt(0))
+            || evt.code.isLetterKey
+            || evt.code.isDigitKey) {
+          evt.consume()
+          val selelctedCell = selectionModel.value.getSelectedCells
+          selelctedCell.foreach{tp =>
+            edit(tp.row, tp.getTableColumn.asInstanceOf[jfxsc.TableColumn[IndexedSeq[WertungEditor], Any]])
+            }
+        }
+      }
     }
 
     def disziplinCnt = wertungen.headOption match {case Some(w) => w.size case _ => 0}
@@ -330,6 +344,7 @@ class WettkampfWertungTab(programm: ProgrammView, wettkampf: WettkampfView, over
           prefWidth = 60
           editable = true
           //println(text, index)
+
           onEditCommit = (evt: CellEditEvent[IndexedSeq[WertungEditor], Double]) => {
             val disciplin = evt.rowValue(index)
             disciplin.noteE.value = evt.newValue
@@ -408,6 +423,7 @@ class WettkampfWertungTab(programm: ProgrammView, wettkampf: WettkampfView, over
         text = "Riege"
         styleClass += "table-cell-with-value"
 //        cellValueFactory = { x => x.value.head.init.riege.getOrElse("keine Einteilung") }
+
         cellFactory = { x => new TextFieldTableCell[IndexedSeq[WertungEditor], String](new DefaultStringConverter()) }
         cellValueFactory = { x =>
           new ReadOnlyStringWrapper(x.value, "riege", {
@@ -424,7 +440,7 @@ class WettkampfWertungTab(programm: ProgrammView, wettkampf: WettkampfView, over
                     evt.rowValue.indexOf(disciplin),
                     WertungEditor(
                         service.updateWertung(
-                            disciplin.commit.copy(riege = if(evt.newValue.isEmpty()) None else Some(evt.newValue))
+                            disciplin.commit.copy(riege = if(evt.newValue.trim.isEmpty()) None else Some(evt.newValue))
                             )
                         )
                     )
@@ -610,8 +626,8 @@ class WettkampfWertungTab(programm: ProgrammView, wettkampf: WettkampfView, over
             if (!stationen.text.value.isEmpty) {
               val riegenzuteilungen = service.suggestRiegen(
                   wkModel.head.init.head.init.wettkampf.id,
-                  stationen.text.value.split(",").foldLeft(Seq[Int]())((acc, s) => acc :+ str2Int(s))
-                  )
+                  stationen.text.value.split(",").foldLeft(Seq[Int]()){(acc, s) => acc :+ str2Int(s)}
+              )
               for{
                 pair <- riegenzuteilungen
                 w <- pair._2
