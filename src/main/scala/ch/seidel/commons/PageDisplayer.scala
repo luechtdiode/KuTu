@@ -35,8 +35,10 @@ object PageDisplayer {
       outer => {
         initModality(Modality.WINDOW_MODAL)
         event.source match {
-          case n: jfxs.Node => delegate.initOwner(n.getScene.getWindow)
-          case _ => delegate.initOwner(KuTuApp.getStage.getScene.getWindow)
+          case n: jfxs.Node if(n.getScene.getRoot == KuTuApp.getStage.getScene.getRoot) =>
+            delegate.initOwner(n.getScene.getWindow)
+          case _ =>
+            delegate.initOwner(KuTuApp.getStage.getScene.getWindow)
         }
 
         title = tit

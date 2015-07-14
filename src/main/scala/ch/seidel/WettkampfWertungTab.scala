@@ -74,17 +74,19 @@ class WettkampfWertungTab(programm: ProgrammView, wettkampf: WettkampfView, over
 	implicit def doublePropertyToObservableValue(p: DoubleProperty): ObservableValue[Double,Double] = p.asInstanceOf[ObservableValue[Double,Double]]
 
   override def isPopulated = {
+
+    var editorPane: EditorPane = null
+
     def updateWertungen = {
       athleten.filter(wv => wv.wettkampfdisziplin.programm.id == programm.id && wv.wettkampf.id == wettkampf.id).groupBy(wv => wv.athlet).map(wvg => wvg._2.map(WertungEditor)).toIndexedSeq
     }
+
     var wertungen = updateWertungen
-    val wkModel = ObservableBuffer[IndexedSeq[WertungEditor]](wertungen)
+ 		val wkModel = ObservableBuffer[IndexedSeq[WertungEditor]](wertungen)
     val wkview = new TableView[IndexedSeq[WertungEditor]](wkModel) {
       id = "kutu-table"
       editable = true
     }
-
-    var editorPane: EditorPane = null
 
     def disziplinCnt = wertungen.headOption match {case Some(w) => w.size case _ => 0}
 
@@ -221,7 +223,7 @@ class WettkampfWertungTab(programm: ProgrammView, wettkampf: WettkampfView, over
               wkview.scrollTo(rowIndex)
               wkview.scrollToColumn(wkview.columns(index+3).columns(lastEditedOffset))
             }
-            wkview.selectionModel.value.selectBelowCell
+            //wkview.selectionModel.value.selectBelowCell
           }
           listener(disciplin)
           //txtD.text.delegate.bindBidirectional(disciplin.noteD, NoteFormatter.asInstanceOf[scalafx.util.StringConverter[Number]])
@@ -443,6 +445,64 @@ class WettkampfWertungTab(programm: ProgrammView, wettkampf: WettkampfView, over
 
     wkview.columns ++= athletCol ++ wertungenCols ++ sumCol
 
+    val pagination = new Pagination(disziplinCnt, 0) {
+      pageFactory = (index: Int) => {
+        if(editorPane != null) {
+          editorPane.unbind
+        }
+        editorPane = new EditorPane(index)
+        val rowIndex = editorPane.adjust
+        if(rowIndex > -1) {
+          wkview.scrollTo(rowIndex)
+          val datacolcnt = (wkview.columns.size - 4)
+          val dcgrp = wkModel.headOption match {
+            case Some(wertung) => if(wertung.head.init.wettkampfdisziplin.notenSpez.isDNoteUsed) 2 else 1
+            case None => 2
+          } //if(datacolcnt % 3 == 0) 2 else 1
+          wkview.scrollToColumn(wkview.columns(3 + index).columns(dcgrp))
+        }
+        editorPane.requestLayout()
+        editorPane
+      }
+    }
+    def reloadData() = {
+      val selectionstore = wkview.selectionModel.value.getSelectedCells
+      val coords = for(ts <- selectionstore) yield {
+        if(ts.getTableColumn.getParentColumn != null)
+          //(ts.getRow, wkview.columns.indexOf(ts.getTableColumn.getParentColumn))
+          (ts.getRow, (3 + editorPane.index) * -100)
+        else
+          (ts.getRow, ts.getColumn)
+      }
+      val idx = pagination.currentPageIndex.value
+
+      val columnrebuild = wertungen.isEmpty
+      wkModel.clear
+      wertungen = updateWertungen
+      wkModel.appendAll(wertungen)
+      if(columnrebuild) {
+        wkview.columns.clear()
+        wkview.columns ++= athletCol ++ wertungenCols ++ sumCol
+      }
+
+      pagination.currentPageIndex.value = idx
+      for(ts <- coords) {
+        if(ts._2 < -100) {
+          val toSelectParent = wkview.columns(ts._2 / -100);
+          val firstVisible = toSelectParent.getColumns.find(p => p.width.value > 50d).getOrElse(toSelectParent.columns(0))
+          wkview.selectionModel.value.select(ts._1, firstVisible)
+          wkview.scrollToColumn(firstVisible)
+        }
+        else {
+          wkview.selectionModel.value.select(ts._1, wkview.columns(ts._2))
+          wkview.scrollToColumn(wkview.columns(ts._2))
+        }
+        wkview.scrollTo(ts._1)
+
+      }
+      updateEditorPane
+    }
+
     val addButton = new Button {
       text = "Athlet hinzufügen"
       minWidth = 75
@@ -479,11 +539,7 @@ class WettkampfWertungTab(programm: ProgrammView, wettkampf: WettkampfView, over
               val athlet = athletTable.selectionModel().getSelectedItem
               def filter(progId: Long, a: Athlet): Boolean = a.id == athlet.id
               service.assignAthletsToWettkampf(wettkampf.id, Set(programm.id), Some(filter))
-              wkModel.clear
-              wertungen = updateWertungen
-              wkModel.appendAll(wertungen)
-              wkview.columns.clear()
-              wkview.columns ++= athletCol ++ wertungenCols ++ sumCol
+              reloadData()
             }
           }
         }, new Button("OK, Alle") {
@@ -492,11 +548,7 @@ class WettkampfWertungTab(programm: ProgrammView, wettkampf: WettkampfView, over
               val athlet = athletTable.selectionModel().getSelectedItem
               def filter(progId: Long, a: Athlet): Boolean = athletModel.exists { x => x.id == a.id }
               service.assignAthletsToWettkampf(wettkampf.id, Set(programm.id), Some(filter))
-              wkModel.clear
-              wertungen = updateWertungen
-              wkModel.appendAll(wertungen)
-              wkview.columns.clear()
-              wkview.columns ++= athletCol ++ wertungenCols ++ sumCol
+              reloadData()
             }
           }
         })
@@ -566,11 +618,7 @@ class WettkampfWertungTab(programm: ProgrammView, wettkampf: WettkampfView, over
               } {
                 service.updateWertung(w)
               }
-              wkModel.clear
-              wertungen = updateWertungen
-              wkModel.appendAll(wertungen)
-              wkview.columns.clear()
-              wkview.columns ++= athletCol ++ wertungenCols ++ sumCol
+              reloadData()
             }
           }
         })
@@ -580,6 +628,12 @@ class WettkampfWertungTab(programm: ProgrammView, wettkampf: WettkampfView, over
     removeButton.disable <== when(wkview.selectionModel.value.selectedItemProperty.isNull()) choose true otherwise false
     clearButton.disable <== when(wkview.selectionModel.value.selectedItemProperty.isNull()) choose true otherwise false
     wkview.selectionModel.value.setCellSelectionEnabled(true)
+
+    onSelectionChanged = handle {
+      if(selected.value) {
+        reloadData()
+      }
+    }
 
     val cont = new BorderPane {
       hgrow = Priority.ALWAYS
@@ -597,27 +651,6 @@ class WettkampfWertungTab(programm: ProgrammView, wettkampf: WettkampfView, over
         )
       }
       //bottom = pagination
-    }
-
-    val pagination = new Pagination(disziplinCnt, 0) {
-      pageFactory = (index: Int) => {
-        if(editorPane != null) {
-          editorPane.unbind
-        }
-        editorPane = new EditorPane(index)
-        val rowIndex = editorPane.adjust
-        if(rowIndex > -1) {
-          wkview.scrollTo(rowIndex)
-          val datacolcnt = (wkview.columns.size - 4)
-          val dcgrp = wkModel.headOption match {
-            case Some(wertung) => if(wertung.head.init.wettkampfdisziplin.notenSpez.isDNoteUsed) 2 else 1
-            case None => 2
-          } //if(datacolcnt % 3 == 0) 2 else 1
-          wkview.scrollToColumn(wkview.columns(3 + index).columns(dcgrp))
-        }
-        editorPane.requestLayout()
-        editorPane
-      }
     }
 
     wkview.focusModel.value.focusedCell.onChange {(focusModel, oldTablePos, newTablePos) =>
