@@ -222,7 +222,7 @@ trait KutuService {
     }
   }
 
-  def listAthletenWertungenZuProgramm(progids: Seq[Long]) = {
+  def listAthletenWertungenZuProgramm(progids: Seq[Long], wettkampf: Long, riege: String = "%") = {
     database withSession { implicit session =>
       implicit val cache = scala.collection.mutable.Map[Long, ProgrammView]()
       sql"""
@@ -235,7 +235,38 @@ trait KutuService {
                    inner join programm p on (p.id = wd.programm_id)
                    inner join wettkampf wk on (wk.id = w.wettkampf_id)
                    where wd.programm_id in (#${progids.mkString(",")})
+                     and w.wettkampf_id = $wettkampf
+                     and ($riege = '%' or w.riege = $riege)
        """.as[WertungView].build()
+    }
+  }
+
+  def listAthletenWertungenZuRiege(progids: Seq[Long], wettkampf: Long, riege: String) = {
+    database withSession { implicit session =>
+      implicit val cache = scala.collection.mutable.Map[Long, ProgrammView]()
+      sql"""
+                   SELECT w.id, a.*, v.*, wd.id, wd.programm_id, d.*, wd.kurzbeschreibung, wd.detailbeschreibung, wd.notenfaktor, wk.*, note_d as difficulty, note_e as execution, endnote, riege
+                   FROM wertung w
+                   inner join athlet a on (a.id = w.athlet_id)
+                   left outer join verein v on (a.verein = v.id)
+                   inner join wettkampfdisziplin wd on (wd.id = w.wettkampfdisziplin_id)
+                   inner join disziplin d on (d.id = wd.disziplin_id)
+                   inner join programm p on (p.id = wd.programm_id)
+                   inner join wettkampf wk on (wk.id = w.wettkampf_id)
+                   where wd.programm_id in (#${progids.mkString(",")})
+                     and w.riege = $riege
+                     and w.wettkampf_id = $wettkampf
+       """.as[WertungView].build()
+    }
+  }
+
+  def listRiegenZuWettkampf(wettkampf: Long) = {
+    database withSession { implicit session =>
+      sql"""
+                   SELECT distinct w.riege
+                   FROM wertung w
+                   where w.riege not null and w.wettkampf_id = $wettkampf
+       """.as[String].build()
     }
   }
 
@@ -506,6 +537,12 @@ trait KutuService {
 --     => operation suggestRiegen(WettkampfId, Rotationen/Stationen:List<Integer>): Map<Riegennummer,List<WertungId>>
 */
   def suggestRiegen(wettkampfId: Long, rotationstation: Seq[Int]): Seq[(String, Seq[Wertung])] = {
+
+    /*
+     * Max Riegengrösse
+     * Riegen pro Programm (implizite Rotation)
+     *   z.B. R1 [EP, P1u9], R2 [P1, P2], R3 [P3-P6]
+     */
     val riegencnt = rotationstation.reduce(_+_)
     val cache = scala.collection.mutable.Map[String, Int]()
     val wertungen = selectWertungen(wettkampfId = Some(wettkampfId)).groupBy(w => w.athlet)
@@ -515,7 +552,7 @@ trait KutuService {
     else {
       @tailrec
       def splitToRiegenCount[A](sugg: Seq[(String, Seq[A])]): Seq[(String, Seq[A])] = {
-        cache.clear
+        //cache.clear
         def split(riege: (String, Seq[A])): Seq[(String, Seq[A])] = {
           val (key, r) = riege
           val oldKey1 = (key + ".").split("\\.").headOption.getOrElse("Riege")
@@ -523,18 +560,23 @@ trait KutuService {
           def occurences(key: String) = {
             val cnt = cache.getOrElse(key, 0) + 1
             cache.update(key, cnt)
+            //println(f"occurences $key : $cnt")
             f"${cnt}%02d"
           }
-          val key1 = if(key.contains("\\.")) key else oldKey1 + "." + occurences(oldKey1)
+          println(f"key: $key, oldKey1: $oldKey1")
+          val key1 = if(key.contains(".")) key else oldKey1 + "." + occurences(oldKey1)
           val key2 = oldKey1 + "." + occurences(oldKey1)
           val splitpos = r.size / 2
+          //println(f"key1: $key1, key2: $key2")
           List((key1, oldList.take(splitpos)), (key2, oldList.drop(splitpos)))
         }
         val ret = sugg.sortBy(_._2.size).reverse
+        //println((ret.size, riegencnt))
         if(ret.size < riegencnt) {
           splitToRiegenCount(split(ret.head) ++ ret.tail)
         }
         else {
+          //println(ret.mkString("\n"))
           ret
         }
       }
