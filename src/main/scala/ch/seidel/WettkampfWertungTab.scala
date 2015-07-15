@@ -72,15 +72,30 @@ case class WertungEditor(init: WertungView) {
     init.riege)
 }
 
-class WettkampfWertungTab(programm: ProgrammView, wettkampf: WettkampfView, override val service: KutuService, athleten: => IndexedSeq[WertungView]) extends Tab with TabWithService {
+class WettkampfWertungTab(programm: Option[ProgrammView], riege: Option[String], wettkampf: WettkampfView, override val service: KutuService, athleten: => IndexedSeq[WertungView]) extends Tab with TabWithService {
 	implicit def doublePropertyToObservableValue(p: DoubleProperty): ObservableValue[Double,Double] = p.asInstanceOf[ObservableValue[Double,Double]]
 
+  private var lazypane: Option[LazyTabPane] = None
+  def setLazyPane(pane: LazyTabPane) {
+    lazypane = Some(pane);
+  }
+  def refreshLazyPane() {
+    lazypane match {
+      case Some(pane) => pane.refreshTabs()
+      case _=>
+    }
+  }
   override def isPopulated = {
 
     var editorPane: EditorPane = null
 
     def updateWertungen = {
-      athleten.filter(wv => wv.wettkampfdisziplin.programm.id == programm.id && wv.wettkampf.id == wettkampf.id).groupBy(wv => wv.athlet).map(wvg => wvg._2.map(WertungEditor)).toIndexedSeq
+      programm match {
+        case Some(progrm) =>
+          athleten.filter(wv => wv.wettkampfdisziplin.programm.id == progrm.id && wv.wettkampf.id == wettkampf.id).groupBy(wv => wv.athlet).map(wvg => wvg._2.map(WertungEditor)).toIndexedSeq
+        case None =>
+          athleten.filter(wv => wv.wettkampf.id == wettkampf.id).groupBy(wv => wv.athlet).map(wvg => wvg._2.map(WertungEditor)).toIndexedSeq
+      }
     }
 
     var wertungen = updateWertungen
@@ -446,6 +461,7 @@ class WettkampfWertungTab(programm: ProgrammView, wettkampf: WettkampfView, over
                     )
                 )
           }
+          refreshLazyPane()
           updateEditorPane
           evt.tableView.requestFocus()
         }
@@ -484,7 +500,7 @@ class WettkampfWertungTab(programm: ProgrammView, wettkampf: WettkampfView, over
     def reloadData() = {
       val selectionstore = wkview.selectionModel.value.getSelectedCells
       val coords = for(ts <- selectionstore) yield {
-        if(ts.getTableColumn.getParentColumn != null)
+        if(ts.getColumn > -1 && ts.getTableColumn.getParentColumn != null)
           //(ts.getRow, wkview.columns.indexOf(ts.getTableColumn.getParentColumn))
           (ts.getRow, (3 + editorPane.index) * -100)
         else
@@ -500,88 +516,161 @@ class WettkampfWertungTab(programm: ProgrammView, wettkampf: WettkampfView, over
         wkview.columns.clear()
         wkview.columns ++= athletCol ++ wertungenCols ++ sumCol
       }
+      try {
+        pagination.currentPageIndex.value = idx
+        for(ts <- coords) {
+          if(ts._2 < -100) {
+            val toSelectParent = wkview.columns(ts._2 / -100);
+            val firstVisible = toSelectParent.getColumns.find(p => p.width.value > 50d).getOrElse(toSelectParent.columns(0))
+            wkview.selectionModel.value.select(ts._1, firstVisible)
+            wkview.scrollToColumn(firstVisible)
+          }
+          else {
+            wkview.selectionModel.value.select(ts._1, wkview.columns(ts._2))
+            wkview.scrollToColumn(wkview.columns(ts._2))
+          }
+          wkview.scrollTo(ts._1)
 
-      pagination.currentPageIndex.value = idx
-      for(ts <- coords) {
-        if(ts._2 < -100) {
-          val toSelectParent = wkview.columns(ts._2 / -100);
-          val firstVisible = toSelectParent.getColumns.find(p => p.width.value > 50d).getOrElse(toSelectParent.columns(0))
-          wkview.selectionModel.value.select(ts._1, firstVisible)
-          wkview.scrollToColumn(firstVisible)
         }
-        else {
-          wkview.selectionModel.value.select(ts._1, wkview.columns(ts._2))
-          wkview.scrollToColumn(wkview.columns(ts._2))
-        }
-        wkview.scrollTo(ts._1)
-
+      }
+      catch {
+        case e: Exception =>
       }
       updateEditorPane
     }
 
-    val addButton = new Button {
-      text = "Athlet hinzufügen"
-      minWidth = 75
-      onAction = (event: ActionEvent) => {
-        disable = true
-        val athletModel = ObservableBuffer[AthletView](
-          service.selectAthletesView.filter(service.altersfilter(programm, _)).filter { p => wertungen.forall { wp => wp.head.init.athlet.id != p.id } }
-        )
-        val athletTable = new TableView[AthletView](athletModel) {
-          columns ++= List(
-            new TableColumn[AthletView, String] {
-              text = "Athlet"
-              cellValueFactory = { x =>
-                new ReadOnlyStringWrapper(x.value, "athlet", {
-                  s"${x.value.vorname} ${x.value.name} (${x.value.verein.map { _.name }.getOrElse("ohne Verein")})"
-                })
-              }
-              //prefWidth = 150
-            }
+    val actionButtons = programm match {
+      case None => List[Button]()
+      case Some(progrm) =>
+      val addButton = new Button {
+        text = "Athlet hinzufügen"
+        minWidth = 75
+        onAction = (event: ActionEvent) => {
+          disable = true
+          val athletModel = ObservableBuffer[AthletView](
+            service.selectAthletesView.filter(service.altersfilter(progrm, _)).filter { p => wertungen.forall { wp => wp.head.init.athlet.id != p.id } }
           )
+          val athletTable = new TableView[AthletView](athletModel) {
+            columns ++= List(
+              new TableColumn[AthletView, String] {
+                text = "Athlet"
+                cellValueFactory = { x =>
+                  new ReadOnlyStringWrapper(x.value, "athlet", {
+                    s"${x.value.vorname} ${x.value.name} (${x.value.verein.map { _.name }.getOrElse("ohne Verein")})"
+                  })
+                }
+                //prefWidth = 150
+              }
+            )
+          }
+          implicit val impevent = event
+          PageDisplayer.showInDialog(text.value, new DisplayablePage() {
+            def getPage: Node = {
+              new BorderPane {
+                hgrow = Priority.ALWAYS
+                vgrow = Priority.ALWAYS
+                center = athletTable
+              }
+            }
+          }, new Button("OK") {
+            onAction = (event: ActionEvent) => {
+              if (!athletTable.selectionModel().isEmpty) {
+                val athlet = athletTable.selectionModel().getSelectedItem
+                def filter(progId: Long, a: Athlet): Boolean = a.id == athlet.id
+                service.assignAthletsToWettkampf(wettkampf.id, Set(progrm.id), Some(filter))
+                reloadData()
+              }
+            }
+          }, new Button("OK, Alle") {
+            onAction = (event: ActionEvent) => {
+              if (!athletTable.selectionModel().isEmpty) {
+                val athlet = athletTable.selectionModel().getSelectedItem
+                def filter(progId: Long, a: Athlet): Boolean = athletModel.exists { x => x.id == a.id }
+                service.assignAthletsToWettkampf(wettkampf.id, Set(progrm.id), Some(filter))
+                reloadData()
+              }
+            }
+          })
+          disable = false
         }
-        implicit val impevent = event
-        PageDisplayer.showInDialog(text.value, new DisplayablePage() {
-          def getPage: Node = {
-            new BorderPane {
-              hgrow = Priority.ALWAYS
-              vgrow = Priority.ALWAYS
-              center = athletTable
-            }
-          }
-        }, new Button("OK") {
-          onAction = (event: ActionEvent) => {
-            if (!athletTable.selectionModel().isEmpty) {
-              val athlet = athletTable.selectionModel().getSelectedItem
-              def filter(progId: Long, a: Athlet): Boolean = a.id == athlet.id
-              service.assignAthletsToWettkampf(wettkampf.id, Set(programm.id), Some(filter))
-              reloadData()
-            }
-          }
-        }, new Button("OK, Alle") {
-          onAction = (event: ActionEvent) => {
-            if (!athletTable.selectionModel().isEmpty) {
-              val athlet = athletTable.selectionModel().getSelectedItem
-              def filter(progId: Long, a: Athlet): Boolean = athletModel.exists { x => x.id == a.id }
-              service.assignAthletsToWettkampf(wettkampf.id, Set(programm.id), Some(filter))
-              reloadData()
-            }
-          }
-        })
-        disable = false
       }
-    }
-    val removeButton = new Button {
-      text = "Athlet entfernen"
-      minWidth = 75
-      onAction = (event: ActionEvent) => {
-        if (!wkview.selectionModel().isEmpty) {
-          val athletwertungen = wkview.selectionModel().getSelectedItem.map(_.init.id).toSet
-          service.unassignAthletFromWettkampf(athletwertungen)
-          wkModel.remove(wkview.selectionModel().getSelectedIndex)
+      val removeButton = new Button {
+        text = "Athlet entfernen"
+        minWidth = 75
+        onAction = (event: ActionEvent) => {
+          if (!wkview.selectionModel().isEmpty) {
+            val athletwertungen = wkview.selectionModel().getSelectedItem.map(_.init.id).toSet
+            service.unassignAthletFromWettkampf(athletwertungen)
+            wkModel.remove(wkview.selectionModel().getSelectedIndex)
+          }
         }
       }
+      val clearButton = new Button {
+        text = "Athlet zurücksetzen"
+        minWidth = 75
+        onAction = (event: ActionEvent) => {
+          if (!wkview.selectionModel().isEmpty) {
+            val selected = wkview.selectionModel().getSelectedItem
+            var index = 0
+            val rowIndex = wkModel.indexOf(selected)
+            if(rowIndex > -1) {
+              for (disciplin <- selected) {
+                disciplin.noteD.value = 0
+                disciplin.noteE.value = 0
+                disciplin.endnote.value = 0
+                if (disciplin.isDirty) {
+                  wkModel.update(rowIndex, selected.updated(index, WertungEditor(service.updateWertung(disciplin.commit))))
+                  wkview.requestFocus()
+                }
+                index = index + 1
+              }
+            }
+          }
+        }
+      }
+      val riegensuggestButton = new Button {
+        text = "Riegen einteilen"
+        minWidth = 75
+        val stationen = new TextField()
+        onAction = (event: ActionEvent) => {
+          implicit val impevent = event
+          stationen.text = wkModel.head.size.toString()
+          PageDisplayer.showInDialog(text.value, new DisplayablePage() {
+            def getPage: Node = {
+              new HBox {
+                prefHeight = 50
+                alignment = Pos.BOTTOM_RIGHT
+                hgrow = Priority.ALWAYS
+                content = Seq(new Label("Stationen (wenn mehr wie eine Rotation, dann pro Rotation, getrennt mit Komma)  "), stationen)
+              }
+            }
+          }, new Button("OK") {
+            onAction = (event: ActionEvent) => {
+              if (!stationen.text.value.isEmpty) {
+                val riegenzuteilungen = service.suggestRiegen(
+                    wkModel.head.init.head.init.wettkampf.id,
+                    stationen.text.value.split(",").foldLeft(Seq[Int]()){(acc, s) => acc :+ str2Int(s)}
+                )
+                for{
+                  pair <- riegenzuteilungen
+                  w <- pair._2
+                } {
+                  service.updateWertung(w)
+                }
+                refreshLazyPane()
+                reloadData()
+              }
+            }
+          })
+        }
+      }
+      //addButton.disable <== when (wkview.selectionModel.value.selectedItemProperty.isNull()) choose true otherwise false
+      removeButton.disable <== when(wkview.selectionModel.value.selectedItemProperty.isNull()) choose true otherwise false
+      clearButton.disable <== when(wkview.selectionModel.value.selectedItemProperty.isNull()) choose true otherwise false
+      wkview.selectionModel.value.setCellSelectionEnabled(true)
+      List(addButton, removeButton, riegensuggestButton)
     }
+
     val clearButton = new Button {
       text = "Athlet zurücksetzen"
       minWidth = 75
@@ -605,45 +694,6 @@ class WettkampfWertungTab(programm: ProgrammView, wettkampf: WettkampfView, over
         }
       }
     }
-    val riegensuggestButton = new Button {
-      text = "Riegen einteilen"
-      minWidth = 75
-      val stationen = new TextField()
-      onAction = (event: ActionEvent) => {
-        implicit val impevent = event
-        stationen.text = wkModel.head.size.toString()
-        PageDisplayer.showInDialog(text.value, new DisplayablePage() {
-          def getPage: Node = {
-            new HBox {
-              prefHeight = 50
-              alignment = Pos.BOTTOM_RIGHT
-              hgrow = Priority.ALWAYS
-              content = Seq(new Label("Stationen (wenn mehr wie eine Rotation, dann pro Rotation, getrennt mit Komma)  "), stationen)
-            }
-          }
-        }, new Button("OK") {
-          onAction = (event: ActionEvent) => {
-            if (!stationen.text.value.isEmpty) {
-              val riegenzuteilungen = service.suggestRiegen(
-                  wkModel.head.init.head.init.wettkampf.id,
-                  stationen.text.value.split(",").foldLeft(Seq[Int]()){(acc, s) => acc :+ str2Int(s)}
-              )
-              for{
-                pair <- riegenzuteilungen
-                w <- pair._2
-              } {
-                service.updateWertung(w)
-              }
-              reloadData()
-            }
-          }
-        })
-      }
-    }
-    //addButton.disable <== when (wkview.selectionModel.value.selectedItemProperty.isNull()) choose true otherwise false
-    removeButton.disable <== when(wkview.selectionModel.value.selectedItemProperty.isNull()) choose true otherwise false
-    clearButton.disable <== when(wkview.selectionModel.value.selectedItemProperty.isNull()) choose true otherwise false
-    wkview.selectionModel.value.setCellSelectionEnabled(true)
 
     onSelectionChanged = handle {
       if(selected.value) {
@@ -658,13 +708,21 @@ class WettkampfWertungTab(programm: ProgrammView, wettkampf: WettkampfView, over
       top = new ToolBar {
         content = List(
           new Label {
-            text = s"Programm ${programm.name}"
+            text = (programm match {
+              case Some(progrm) =>
+                s"Programm ${progrm.name}  "
+              case None => ""
+            }) + " " + (riege match {
+              case Some(r) =>
+                s"Riege ${r}  "
+              case None => ""
+            }).trim
             maxWidth = Double.MaxValue
             minHeight = Region.USE_PREF_SIZE
             styleClass += "toolbar-header"
-          },
-          addButton, removeButton, clearButton, riegensuggestButton
-        )
+          }
+          //addButton, removeButton, clearButton, riegensuggestButton
+        ) ++ actionButtons :+ clearButton
       }
       //bottom = pagination
     }

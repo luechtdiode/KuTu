@@ -144,10 +144,13 @@ object TurnerPage {
   }
 
   def buildTab(verein: Verein, service: KutuService) = {
-    new TurnerPage( new LazyTabPane(Seq(new VereinTab(verein, service) {
+    def refresher(pane: LazyTabPane) = {
+      Seq(new VereinTab(verein, service) {
         text = verein.name
         closable = false
-      })))
+      })
+    }
+    new TurnerPage( new LazyTabPane(refresher))
   }
 }
 
