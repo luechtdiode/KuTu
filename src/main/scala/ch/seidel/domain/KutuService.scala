@@ -580,14 +580,14 @@ trait KutuService {
           ret
         }
       }
-      def groupers(grplst: List[WertungView => String])(wertung: WertungView): String = {
+      def groupKey(grplst: List[WertungView => String])(wertung: WertungView): String = {
         grplst.foldLeft(""){(acc, f) =>
           acc + "," + f(wertung)
         }.drop(1)
       }
       @tailrec
       def groupWertungen(grp: List[WertungView => String], grpAll: List[WertungView => String]): Seq[(String, Seq[Wertung])] = {
-        val sugg = wertungen.groupBy(w => groupers(grp)(w._2.head)).toSeq
+        val sugg = wertungen.groupBy(w => groupKey(grp)(w._2.head)).toSeq
         if(sugg.size > riegencnt && grp.size > 1) {
           groupWertungen(grp.reverse.tail.reverse, grpAll)
         }
@@ -595,7 +595,7 @@ trait KutuService {
           val prep = sugg.map(x => (x._1, x._2.foldLeft((Seq[(AthletView, Seq[WertungView])](), Set[Long]())){(acc, w) =>
             if(acc._2.contains(w._1.id)) acc else (w +: acc._1, acc._2 + w._1.id)
           }
-          ._1.sortBy(w => groupers(grpAll)(w._2.head))))
+          ._1.sortBy(w => groupKey(grpAll)(w._2.head))))
           splitToRiegenCount(prep).map(w => (w._1, w._2.flatMap(wv => wv._2.map(wt => wt.toWertung(w._1)))))
         }
       }
