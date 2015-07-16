@@ -121,7 +121,11 @@ class WettkampfWertungTab(programm: Option[ProgrammView], riege: Option[String],
 
     def updateEditorPane {
     	if(editorPane != null) {
-    		editorPane.adjust
+        if(disziplinCnt > 0)
+    		  editorPane.adjust
+        else {
+          editorPane.unbind();
+        }
     	}
     }
     case class EditorPane(index: Int) extends VBox {
@@ -233,6 +237,10 @@ class WettkampfWertungTab(programm: Option[ProgrammView], riege: Option[String],
         if (selected != null) {
           disciplin = selected(index)
           disciplin.addListener(listener)
+          txtD.disable = false
+          txtE.disable = false
+          txtEnd.disable = false
+
           val rowIndex = wkModel.indexOf(selected)
           lblDisciplin.text = disciplin.init.wettkampfdisziplin.disziplin.name
           lblAthlet.text = selected(index).init.athlet.easyprint
@@ -316,6 +324,9 @@ class WettkampfWertungTab(programm: Option[ProgrammView], riege: Option[String],
           //disciplin.endnote.unbind(txtEnd.text)
 //        println(" disciplin unbinded")
         }
+        txtD.disable = true
+        txtE.disable = true
+        txtEnd.disable = true
         disciplin = null
       }
     }
@@ -478,6 +489,7 @@ class WettkampfWertungTab(programm: Option[ProgrammView], riege: Option[String],
     wkview.columns ++= athletCol ++ wertungenCols ++ sumCol
 
     val pagination = new Pagination(disziplinCnt, 0) {
+      disable = disziplinCnt == 0
       pageFactory = (index: Int) => {
         if(editorPane != null) {
           editorPane.unbind
@@ -540,7 +552,24 @@ class WettkampfWertungTab(programm: Option[ProgrammView], riege: Option[String],
     }
 
     val actionButtons = programm match {
-      case None => List[Button]()
+      case None =>
+      val riegenRemoveButton = new Button {
+        text = "Riege löschen"
+        minWidth = 75
+        onAction = (event: ActionEvent) => {
+          for{
+            wl <- wertungen
+            if(wl.head.init.riege.equals(riege))
+            w <- wl
+          } {
+            w.commit.copy(riege = None)
+            service.updateWertung(w.commit.copy(riege = None))
+          }
+          refreshLazyPane()
+          reloadData()
+        }
+      }
+        List[Button](riegenRemoveButton)
       case Some(progrm) =>
       val addButton = new Button {
         text = "Athlet hinzufügen"
@@ -605,29 +634,6 @@ class WettkampfWertungTab(programm: Option[ProgrammView], riege: Option[String],
           }
         }
       }
-      val clearButton = new Button {
-        text = "Athlet zurücksetzen"
-        minWidth = 75
-        onAction = (event: ActionEvent) => {
-          if (!wkview.selectionModel().isEmpty) {
-            val selected = wkview.selectionModel().getSelectedItem
-            var index = 0
-            val rowIndex = wkModel.indexOf(selected)
-            if(rowIndex > -1) {
-              for (disciplin <- selected) {
-                disciplin.noteD.value = 0
-                disciplin.noteE.value = 0
-                disciplin.endnote.value = 0
-                if (disciplin.isDirty) {
-                  wkModel.update(rowIndex, selected.updated(index, WertungEditor(service.updateWertung(disciplin.commit))))
-                  wkview.requestFocus()
-                }
-                index = index + 1
-              }
-            }
-          }
-        }
-      }
       val riegensuggestButton = new Button {
         text = "Riegen einteilen"
         minWidth = 75
@@ -666,11 +672,11 @@ class WettkampfWertungTab(programm: Option[ProgrammView], riege: Option[String],
       }
       //addButton.disable <== when (wkview.selectionModel.value.selectedItemProperty.isNull()) choose true otherwise false
       removeButton.disable <== when(wkview.selectionModel.value.selectedItemProperty.isNull()) choose true otherwise false
-      clearButton.disable <== when(wkview.selectionModel.value.selectedItemProperty.isNull()) choose true otherwise false
-      wkview.selectionModel.value.setCellSelectionEnabled(true)
+      riegensuggestButton.disable <== when(wkview.selectionModel.value.selectedItemProperty.isNull()) choose true otherwise false
       List(addButton, removeButton, riegensuggestButton)
     }
 
+    wkview.selectionModel.value.setCellSelectionEnabled(true)
     val clearButton = new Button {
       text = "Athlet zurücksetzen"
       minWidth = 75
@@ -694,6 +700,7 @@ class WettkampfWertungTab(programm: Option[ProgrammView], riege: Option[String],
         }
       }
     }
+    clearButton.disable <== when(wkview.selectionModel.value.selectedItemProperty.isNull()) choose true otherwise false
 
     onSelectionChanged = handle {
       if(selected.value) {

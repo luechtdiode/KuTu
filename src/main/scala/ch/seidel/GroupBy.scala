@@ -1,40 +1,8 @@
 package ch.seidel
 
 import java.text.SimpleDateFormat
-import scala.collection.mutable.StringBuilder
-import javafx.scene.{ control => jfxsc }
-import javafx.collections.{ ObservableList, ListChangeListener }
-import scalafx.collections.ObservableBuffer
-import scalafx.Includes._
-import scalafx.util.converter.DefaultStringConverter
-import scalafx.util.converter.DoubleStringConverter
-import scalafx.beans.property.ReadOnlyStringWrapper
-import scalafx.beans.value.ObservableValue
-import scalafx.beans.property.ReadOnlyDoubleWrapper
-import scalafx.event.ActionEvent
-import scalafx.scene.layout.Region
-import scalafx.scene.control.Label
-import scalafx.scene.layout.VBox
-import scalafx.scene.layout.BorderPane
-import scalafx.beans.property.DoubleProperty
-import scalafx.beans.property.StringProperty
-import scalafx.geometry.Pos
-import scalafx.geometry.Insets
-import scalafx.scene.Node
-import scalafx.scene.control.{ Tab, TabPane }
-import scalafx.scene.layout.{ Priority, StackPane }
-import scalafx.scene.control.{ TableView, TableColumn }
-import scalafx.scene.control.cell.TextFieldTableCell
-import scalafx.scene.control.TableColumn._
-import scalafx.scene.control.ToolBar
-import scalafx.scene.control.Button
-import scalafx.scene.control.ScrollPane
-import scalafx.scene.control.ComboBox
-import scalafx.scene.layout.HBox
-import scalafx.scene.Group
-import scalafx.scene.web.WebView
+
 import ch.seidel.domain._
-import ch.seidel.commons._
 
 sealed trait GroupBy {
   val groupname: String

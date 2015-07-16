@@ -1,40 +1,19 @@
 package ch.seidel
 
-import java.text.SimpleDateFormat
 import scala.collection.mutable.StringBuilder
-import javafx.scene.{ control => jfxsc }
-import javafx.collections.{ ObservableList, ListChangeListener }
-import scalafx.collections.ObservableBuffer
-import scalafx.Includes._
-import scalafx.util.converter.DefaultStringConverter
-import scalafx.util.converter.DoubleStringConverter
+import scala.math.BigDecimal.int2bigDecimal
+
+import ch.seidel.domain.AthletView
+import ch.seidel.domain.DataObject
+import ch.seidel.domain.Disziplin
+import ch.seidel.domain.GroupRow
+import ch.seidel.domain.LeafRow
+import ch.seidel.domain.Resultat
+import ch.seidel.domain.WertungView
+import javafx.scene.{control => jfxsc}
 import scalafx.beans.property.ReadOnlyStringWrapper
-import scalafx.beans.value.ObservableValue
-import scalafx.beans.property.ReadOnlyDoubleWrapper
-import scalafx.event.ActionEvent
-import scalafx.scene.layout.Region
-import scalafx.scene.control.Label
-import scalafx.scene.layout.VBox
-import scalafx.scene.layout.BorderPane
-import scalafx.beans.property.DoubleProperty
-import scalafx.beans.property.StringProperty
-import scalafx.geometry.Pos
-import scalafx.geometry.Insets
-import scalafx.scene.Node
-import scalafx.scene.control.{ Tab, TabPane }
-import scalafx.scene.layout.{ Priority, StackPane }
-import scalafx.scene.control.{ TableView, TableColumn }
-import scalafx.scene.control.cell.TextFieldTableCell
-import scalafx.scene.control.TableColumn._
-import scalafx.scene.control.ToolBar
-import scalafx.scene.control.Button
-import scalafx.scene.control.ScrollPane
-import scalafx.scene.control.ComboBox
-import scalafx.scene.layout.HBox
-import scalafx.scene.Group
-import scalafx.scene.web.WebView
-import ch.seidel.domain._
-import ch.seidel.commons._
+import scalafx.scene.control.TableColumn
+import scalafx.scene.control.TableColumn.sfxTableColumn2jfx
 
 object GroupSection {
   def mapRang(list: Iterable[(DataObject, Resultat)]) = {
@@ -85,7 +64,9 @@ case class GroupLeaf(override val groupKey: DataObject, list: Iterable[WertungVi
       new TableColumn[GroupRow, String] {
         text = "Rang"
         cellValueFactory = { x =>
-          val w = new ReadOnlyStringWrapper(x.value, "rang", { f"${x.value.rang.endnote}%3.0f" })
+          val w = new ReadOnlyStringWrapper(x.value, "rang", {
+            if(x.value.auszeichnung) f"${x.value.rang.endnote}%3.0f *" else f"${x.value.rang.endnote}%3.0f"
+            })
           w
         }
         prefWidth = 20
@@ -265,9 +246,12 @@ case class GroupLeaf(override val groupKey: DataObject, list: Iterable[WertungVi
   def getTableData = {
     def mapToGroupSum(athlWertungen: Iterable[WertungView]): IndexedSeq[LeafRow] = {
       athlWertungen.map { w =>
+        val rang = athletDisziplinRangMap(w.wettkampfdisziplin.disziplin.id)(w.athlet).rang
+        val posproz = 100d * rang.endnote / athletDisziplinRangMap.size
         LeafRow(w.wettkampfdisziplin.disziplin.name,
           w.resultat,
-          athletDisziplinRangMap(w.wettkampfdisziplin.disziplin.id)(w.athlet).rang)
+          athletDisziplinRangMap(w.wettkampfdisziplin.disziplin.id)(w.athlet).rang,
+          rang.endnote < 4 || posproz <= w.wettkampf.auszeichnung)
       }.toIndexedSeq
     }
     def mapToRowSummary(athlWertungen: Iterable[WertungView]): (Resultat, Resultat) = {
@@ -278,7 +262,8 @@ case class GroupLeaf(override val groupKey: DataObject, list: Iterable[WertungVi
       x.athlet
     }.map { x =>
       val (sum, rang) = mapToRowSummary(x._2)
-      GroupRow(x._1, mapToGroupSum(x._2), sum, rang)
+      val posproz = 100d * rang.endnote / athletRangMap.size
+      GroupRow(x._1, mapToGroupSum(x._2), sum, rang, rang.endnote < 4 || posproz <= x._2.head.wettkampf.auszeichnung)
     }.toList.sortBy(_.rang.endnote)
   }
 
