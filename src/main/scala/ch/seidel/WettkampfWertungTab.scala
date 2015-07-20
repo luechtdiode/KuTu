@@ -230,20 +230,24 @@ class WettkampfWertungTab(programm: Option[ProgrammView], riege: Option[String],
 //        }
       }
 
-      def adjust = {
+      def adjust: Int = {
+       	val selected = wkview.selectionModel().getSelectedItem
+        if(selected != null && disciplin != null && selected(index) == disciplin) {
+          return wkModel.indexOf(selected)
+        }
         unbind
 //        println("inAdjustSelection at index " + index)
-        val selected = wkview.selectionModel().getSelectedItem
         if (selected != null) {
           disciplin = selected(index)
-          disciplin.addListener(listener)
           txtD.disable = false
           txtE.disable = false
           txtEnd.disable = false
 
           val rowIndex = wkModel.indexOf(selected)
+          disciplin.addListener(listener)
           lblDisciplin.text = disciplin.init.wettkampfdisziplin.disziplin.name
           lblAthlet.text = selected(index).init.athlet.easyprint
+          //new Exception(f"on bind to index $index, ${selected(index).init.athlet.easyprint}").printStackTrace();
           def save {
         	  lastFocused = List(txtD, txtE, txtEnd).find(p => p.isFocused())
             val td = txtD.text.value
@@ -488,27 +492,36 @@ class WettkampfWertungTab(programm: Option[ProgrammView], riege: Option[String],
 
     wkview.columns ++= athletCol ++ wertungenCols ++ sumCol
 
+    def setEditorPaneToDiscipline(index: Int): Node = {
+      if(editorPane != null) {
+        if(editorPane.index == index) {
+          updateEditorPane
+          return editorPane
+        }
+        editorPane.unbind
+      }
+      editorPane = new EditorPane(index)
+      val rowIndex = editorPane.adjust
+      if(rowIndex > -1) {
+        wkview.scrollTo(rowIndex)
+        val datacolcnt = (wkview.columns.size - 4)
+        val dcgrp = wkModel.headOption match {
+          case Some(wertung) => if(wertung.head.init.wettkampfdisziplin.notenSpez.isDNoteUsed) 2 else 1
+          case None => 2
+        }
+        wkview.scrollToColumn(wkview.columns(3 + index).columns(dcgrp))
+      }
+      editorPane.requestLayout()
+      editorPane
+    }
+
     val pagination = new Pagination(disziplinCnt, 0) {
       disable = disziplinCnt == 0
       pageFactory = (index: Int) => {
-        if(editorPane != null) {
-          editorPane.unbind
-        }
-        editorPane = new EditorPane(index)
-        val rowIndex = editorPane.adjust
-        if(rowIndex > -1) {
-          wkview.scrollTo(rowIndex)
-          val datacolcnt = (wkview.columns.size - 4)
-          val dcgrp = wkModel.headOption match {
-            case Some(wertung) => if(wertung.head.init.wettkampfdisziplin.notenSpez.isDNoteUsed) 2 else 1
-            case None => 2
-          } //if(datacolcnt % 3 == 0) 2 else 1
-          wkview.scrollToColumn(wkview.columns(3 + index).columns(dcgrp))
-        }
-        editorPane.requestLayout()
-        editorPane
+        setEditorPaneToDiscipline(index)
       }
     }
+
     def reloadData() = {
       val selectionstore = wkview.selectionModel.value.getSelectedCells
       val coords = for(ts <- selectionstore) yield {
@@ -521,7 +534,7 @@ class WettkampfWertungTab(programm: Option[ProgrammView], riege: Option[String],
       val idx = pagination.currentPageIndex.value
 
       val columnrebuild = wertungen.isEmpty
-      wkModel.clear
+      wkModel.clear()
       wertungen = updateWertungen
       wkModel.appendAll(wertungen)
       if(columnrebuild) {
@@ -529,7 +542,7 @@ class WettkampfWertungTab(programm: Option[ProgrammView], riege: Option[String],
         wkview.columns ++= athletCol ++ wertungenCols ++ sumCol
       }
       try {
-        pagination.currentPageIndex.value = idx
+//        pagination.currentPageIndex.value = idx
         for(ts <- coords) {
           if(ts._2 < -100) {
             val toSelectParent = wkview.columns(ts._2 / -100);
@@ -548,6 +561,7 @@ class WettkampfWertungTab(programm: Option[ProgrammView], riege: Option[String],
       catch {
         case e: Exception =>
       }
+//      setEditorPaneToDiscipline(idx)
       updateEditorPane
     }
 
@@ -733,20 +747,33 @@ class WettkampfWertungTab(programm: Option[ProgrammView], riege: Option[String],
       }
       //bottom = pagination
     }
+    wkview.selectionModel.value.selectedItemProperty().onChange(
+        (model: scalafx.beans.value.ObservableValue[IndexedSeq[ch.seidel.WertungEditor], IndexedSeq[ch.seidel.WertungEditor]],
+         oldSelection: IndexedSeq[ch.seidel.WertungEditor],
+         newSelection: IndexedSeq[ch.seidel.WertungEditor]) => {
+      if(newSelection == null /*|| editorPane == null || editorPane.disciplin == null*/) {
+        updateEditorPane
+      }
+    })
 
     wkview.focusModel.value.focusedCell.onChange {(focusModel, oldTablePos, newTablePos) =>
       if(newTablePos != null) {
-        val datacolcnt = (wkview.columns.size - 4)
-        val dcgrp = wkModel.headOption match {
-            case Some(wertung) => if(wertung.head.init.wettkampfdisziplin.notenSpez.isDNoteUsed) 3 else 2
-            case None => 3
-          }//if(datacolcnt % 3 == 0) 3 else 2
-        val idx = math.min(datacolcnt * dcgrp, math.max(0, (newTablePos.getColumn-3) / dcgrp))
-//        println("Adjust pagination at " +idx)
-        val oldIdx = pagination.currentPageIndex.value
-        pagination.currentPageIndex.value = idx
-        if(oldIdx == idx) {
-          updateEditorPane
+        if(newTablePos.row < 0) {
+          editorPane.unbind()
+        }
+        else {
+          val datacolcnt = (wkview.columns.size - 4)
+          val dcgrp = wkModel.headOption match {
+              case Some(wertung) => if(wertung.head.init.wettkampfdisziplin.notenSpez.isDNoteUsed) 3 else 2
+              case None => 3
+            }//if(datacolcnt % 3 == 0) 3 else 2
+          val idx = math.min(datacolcnt * dcgrp, math.max(0, (newTablePos.getColumn-3) / dcgrp))
+  //        println("Adjust pagination at " +idx)
+          val oldIdx = pagination.currentPageIndex.value
+          pagination.currentPageIndex.value = idx
+          if(oldIdx == idx) {
+            updateEditorPane
+          }
         }
       }
       else {
