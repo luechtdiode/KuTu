@@ -105,7 +105,6 @@ DROP TABLE IF EXISTS `kutu`.`disziplin`;
 CREATE TABLE IF NOT EXISTS `kutu`.`disziplin` (
   `id` bigint(20) NOT NULL AUTO_INCREMENT,
   `name` varchar(100) NOT NULL,
-  `ord` INT NOT NULL DEFAULT 0,
   UNIQUE INDEX `id` (`id` ASC) ,
   PRIMARY KEY (`id`)
 ) 
@@ -125,6 +124,7 @@ CREATE TABLE IF NOT EXISTS `kutu`.`wettkampfdisziplin` (
   `kurzbeschreibung` varchar(100) NOT NULL DEFAULT "",
   `detailbeschreibung` BLOB,
   `notenfaktor` decimal(10,3) NOT NULL DEFAULT 1.0,
+  `ord` INT NOT NULL DEFAULT 0,
   UNIQUE INDEX `id` (`id` ASC),
   PRIMARY KEY (`id`),
   CONSTRAINT `wettkampfdisziplin_disziplin_FK` 

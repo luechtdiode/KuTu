@@ -2,7 +2,6 @@ package ch.seidel
 
 import scala.collection.mutable.StringBuilder
 import scala.math.BigDecimal.int2bigDecimal
-
 import ch.seidel.domain.AthletView
 import ch.seidel.domain.DataObject
 import ch.seidel.domain.Disziplin
@@ -14,6 +13,8 @@ import javafx.scene.{control => jfxsc}
 import scalafx.beans.property.ReadOnlyStringWrapper
 import scalafx.scene.control.TableColumn
 import scalafx.scene.control.TableColumn.sfxTableColumn2jfx
+import ch.seidel.domain.Disziplin
+import ch.seidel.domain.ProgrammView
 
 object GroupSection {
   def mapRang(list: Iterable[(DataObject, Resultat)]) = {
@@ -58,7 +59,7 @@ case class GroupLeaf(override val groupKey: DataObject, list: Iterable[WertungVi
 
   def buildColumns: List[jfxsc.TableColumn[GroupRow, _]] = {
     val groups = list.groupBy(w => w.wettkampfdisziplin.programm.aggregatorSubHead).map { pw =>
-      (pw._1 -> pw._2.map(_.wettkampfdisziplin.disziplin).toSet[Disziplin].toList.sortBy { d => d.id })
+      (pw._1 -> pw._2.map(w => (w.wettkampfdisziplin.ord, w.wettkampfdisziplin.disziplin)).toSet[(Int, Disziplin)].toList.sortBy{ d => d._1 }.map(_._2))
     }
     val athletCols: List[jfxsc.TableColumn[GroupRow, _]] = List(
       new TableColumn[GroupRow, String] {
@@ -100,7 +101,8 @@ case class GroupLeaf(override val groupKey: DataObject, list: Iterable[WertungVi
       if (groups.keySet.size > 1) {
         // pro Gruppenkey eine Summenspalte bilden
         groups.toList.map { gr =>
-          val (grKey, diszipline) = gr
+          val (grKey, disziplin) = gr
+//          val disziplin = dis map (_._2)
           val clDnote = new TableColumn[GroupRow, String] {
             text = "D"
             cellValueFactory = { x =>
@@ -163,6 +165,7 @@ case class GroupLeaf(override val groupKey: DataObject, list: Iterable[WertungVi
       }
       else {
         groups.head._2.map { disziplin =>
+//          val (ord, disziplin) = od
           val index = indexer.next
           val clDnote = new TableColumn[GroupRow, String] {
             text = "D"

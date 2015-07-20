@@ -1,8 +1,8 @@
 package ch.seidel
 
 import java.text.SimpleDateFormat
-
 import ch.seidel.domain._
+import scala.collection.mutable.HashMap
 
 sealed trait GroupBy {
   val groupname: String
@@ -115,11 +115,16 @@ case object ByJahrgang extends GroupBy {
 }
 case object ByDisziplin extends GroupBy {
   override val groupname = "Disziplin"
+  private val ordering = HashMap[Long, Long]()
+
   protected override val grouper = (v: WertungView) => {
+    ordering.put(v.wettkampfdisziplin.disziplin.id, v.wettkampfdisziplin.ord.toLong)
     v.wettkampfdisziplin.disziplin
   }
   protected override val sorter: Option[(GroupSection, GroupSection) => Boolean] = Some((gs1: GroupSection, gs2: GroupSection) => {
-    gs1.groupKey.asInstanceOf[Disziplin].ord.compareTo(gs2.groupKey.asInstanceOf[Disziplin].ord) < 0
+    val go1 = ordering.getOrElse(gs1.groupKey.asInstanceOf[Disziplin].id, gs1.groupKey.asInstanceOf[Disziplin].id)
+    val go2 = ordering.getOrElse(gs2.groupKey.asInstanceOf[Disziplin].id, gs2.groupKey.asInstanceOf[Disziplin].id)
+    go1.compareTo(go2) < 0
   })
 }
 case object ByGeschlecht extends GroupBy {

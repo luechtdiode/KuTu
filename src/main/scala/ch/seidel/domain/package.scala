@@ -51,7 +51,7 @@ package object domain {
   case class AthletJahrgang(hg: String) extends DataObject {
     override def easyprint = hg
   }
-  case class Disziplin(id: Long, name: String, ord: Int) extends DataObject {
+  case class Disziplin(id: Long, name: String) extends DataObject {
     override def easyprint = name
   }
 
@@ -117,8 +117,12 @@ package object domain {
     override def easyprint = f"$titel am $datum%td.$datum%tm.$datum%tY"
   }
 
-  case class Wettkampfdisziplin(id: Long, programmId: Long, disziplinId: Long, kurzbeschreibung: String, detailbeschreibung: Option[java.sql.Blob], notenfaktor: scala.math.BigDecimal) extends DataObject
-  case class WettkampfdisziplinView(id: Long, programm: ProgrammView, disziplin: Disziplin, kurzbeschreibung: String, detailbeschreibung: Option[Array[Byte]], notenSpez: NotenModus) extends DataObject
+  case class Wettkampfdisziplin(id: Long, programmId: Long, disziplinId: Long, kurzbeschreibung: String, detailbeschreibung: Option[java.sql.Blob], notenfaktor: scala.math.BigDecimal, ord: Int) extends DataObject {
+    override def easyprint = f"$disziplinId%02d: $kurzbeschreibung"
+  }
+  case class WettkampfdisziplinView(id: Long, programm: ProgrammView, disziplin: Disziplin, kurzbeschreibung: String, detailbeschreibung: Option[Array[Byte]], notenSpez: NotenModus, ord: Int) extends DataObject {
+    override def easyprint = disziplin.name
+  }
 
   case class Resultat(noteD: scala.math.BigDecimal, noteE: scala.math.BigDecimal, endnote: scala.math.BigDecimal) extends DataObject {
     def + (r: Resultat) = Resultat(noteD + r.noteD, noteE + r.noteE, endnote + r.endnote)

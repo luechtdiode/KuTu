@@ -118,6 +118,7 @@ class WettkampfWertungTab(programm: Option[ProgrammView], riege: Option[String],
     }
 
     def disziplinCnt = wertungen.headOption match {case Some(w) => w.size case _ => 0}
+//    def ordermapping = wertungen.headOption.getOrElse(List()).map { x => x.init.wettkampfdisziplin.disziplin.id -> x.init.wettkampfdisziplin.ord }.toMap
 
     def updateEditorPane {
     	if(editorPane != null) {
@@ -414,6 +415,7 @@ class WettkampfWertungTab(programm: Option[ProgrammView], riege: Option[String],
           clDnote.text = "D"
           clEnote.text = "E"
           clEndnote.text = "Endnote"
+          delegate.impl_setReorderable(false)
           prefWidth = 200
           columns ++= Seq(
             clDnote,
@@ -437,6 +439,7 @@ class WettkampfWertungTab(programm: Option[ProgrammView], riege: Option[String],
             s"${a.vorname} ${a.name}"
           })
         }
+        delegate.impl_setReorderable(false)
         prefWidth = 150
       },
       new TableColumn[IndexedSeq[WertungEditor], String] {
@@ -447,6 +450,7 @@ class WettkampfWertungTab(programm: Option[ProgrammView], riege: Option[String],
             s"${a.verein.map { _.name }.getOrElse("ohne Verein")}"
           })
         }
+        delegate.impl_setReorderable(false)
         prefWidth = 100
       },
       new TableColumn[IndexedSeq[WertungEditor], String] {
@@ -460,6 +464,7 @@ class WettkampfWertungTab(programm: Option[ProgrammView], riege: Option[String],
             s"${x.value.head.init.riege.getOrElse("keine Einteilung")}"
           })
         }
+        delegate.impl_setReorderable(false)
         prefWidth = 100
         editable = true
         onEditCommit = (evt: CellEditEvent[IndexedSeq[WertungEditor], String]) => {
@@ -487,6 +492,7 @@ class WettkampfWertungTab(programm: Option[ProgrammView], riege: Option[String],
         text = "Punkte"
         cellValueFactory = { x => new ReadOnlyStringWrapper(x.value, "punkte", { f"${x.value.map(w => w.endnote.value.toDouble).sum}%3.3f" })}
         prefWidth = 80
+        delegate.impl_setReorderable(false)
         styleClass += "table-cell-with-value"
       })
 

@@ -67,8 +67,7 @@ DROP TABLE IF EXISTS `disziplin`;
 
 CREATE TABLE IF NOT EXISTS `disziplin` (
   `id` integer primary key,
-  `name` varchar(100) NOT NULL,
-  `ord` INT NOT NULL DEFAULT 0
+  `name` varchar(100) NOT NULL
 );
 
 
@@ -84,6 +83,7 @@ CREATE TABLE IF NOT EXISTS `wettkampfdisziplin` (
   `kurzbeschreibung` varchar(100) NOT NULL DEFAULT "",
   `detailbeschreibung` BLOB,
   `notenfaktor` decimal(10,3) NOT NULL DEFAULT 1.0,
+  `ord` INTEGER NOT NULL DEFAULT 0,
   FOREIGN KEY (`disziplin_id`) REFERENCES `disziplin` (`id`),
   FOREIGN KEY (`programm_id`) REFERENCES `programm` (`id`)
 );

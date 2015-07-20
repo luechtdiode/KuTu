@@ -105,16 +105,16 @@ trait KutuService {
   private implicit val getAthletViewResult = GetResult(r =>
     AthletView(r.<<, r.<<, r.<<, r.<<, r.<<, r.<<, r.<<, r.<<, r.<<, r))
   private implicit val getDisziplinResult = GetResult(r =>
-    Disziplin(r.<<[Long], r.<<[String], r.<<[Int]))
+    Disziplin(r.<<[Long], r.<<[String]))
   private implicit val getWettkampfResult = GetResult(r =>
     Wettkampf(r.<<[Long], r.<<[java.sql.Date], r.<<[String], r.<<[Long], r.<<[Int]))
   private implicit val getWettkampfDisziplinResult = GetResult(r =>
-    Wettkampfdisziplin(r.<<[Long], r.<<[Long], r.<<[Long], r.<<[String], r.nextBlobOption(), r.<<))
+    Wettkampfdisziplin(r.<<[Long], r.<<[Long], r.<<[Long], r.<<[String], r.nextBlobOption(), r.<<, r.<<[Int]))
 
   implicit def getWettkampfDisziplinViewResultCached(r: PositionedResult)(implicit session: Session, cache: scala.collection.mutable.Map[Long, ProgrammView]) = {
     val id = r.<<[Long]
     val pgm = readProgramm(r.<<[Long], cache)
-    WettkampfdisziplinView(id, pgm, r, r.<<[String], r.nextBytesOption(), readNotenModus(id, pgm, r.<<))
+    WettkampfdisziplinView(id, pgm, r, r.<<[String], r.nextBytesOption(), readNotenModus(id, pgm, r.<<), r.<<)
   }
   private implicit def getResultWertungView(implicit session: Session, cache: scala.collection.mutable.Map[Long, ProgrammView]) = GetResult(r =>
     WertungView(r.<<[Long], r, r, r, r.<<[scala.math.BigDecimal], r.<<[scala.math.BigDecimal], r.<<[scala.math.BigDecimal], r.<<))
@@ -209,7 +209,7 @@ trait KutuService {
 
       implicit val cache = scala.collection.mutable.Map[Long, ProgrammView]()
       sql"""
-                    SELECT w.id, a.*, v.*, wd.id, wd.programm_id, d.*, wd.kurzbeschreibung, wd.detailbeschreibung, wd.notenfaktor, wk.*, note_d as difficulty, note_e as execution, endnote, riege
+                    SELECT w.id, a.*, v.*, wd.id, wd.programm_id, d.*, wd.kurzbeschreibung, wd.detailbeschreibung, wd.notenfaktor, wd.ord, wk.*, note_d as difficulty, note_e as execution, endnote, riege
                     FROM wertung w
                     inner join athlet a on (a.id = w.athlet_id)
                     left outer join verein v on (a.verein = v.id)
@@ -218,6 +218,7 @@ trait KutuService {
                     inner join programm p on (p.id = wd.programm_id)
                     inner join wettkampf wk on (wk.id = w.wettkampf_id)
                     WHERE w.id=${w.id}
+                    order by wd.programm_id, wd.ord
        """.as[WertungView].build().head
     }
   }
@@ -226,7 +227,7 @@ trait KutuService {
     database withSession { implicit session =>
       implicit val cache = scala.collection.mutable.Map[Long, ProgrammView]()
       sql"""
-                   SELECT w.id, a.*, v.*, wd.id, wd.programm_id, d.*, wd.kurzbeschreibung, wd.detailbeschreibung, wd.notenfaktor, wk.*, note_d as difficulty, note_e as execution, endnote, riege
+                   SELECT w.id, a.*, v.*, wd.id, wd.programm_id, d.*, wd.kurzbeschreibung, wd.detailbeschreibung, wd.notenfaktor, wd.ord, wk.*, note_d as difficulty, note_e as execution, endnote, riege
                    FROM wertung w
                    inner join athlet a on (a.id = w.athlet_id)
                    left outer join verein v on (a.verein = v.id)
@@ -237,6 +238,7 @@ trait KutuService {
                    where wd.programm_id in (#${progids.mkString(",")})
                      and w.wettkampf_id = $wettkampf
                      and ($riege = '%' or w.riege = $riege)
+                   order by wd.programm_id, wd.ord
        """.as[WertungView].build()
     }
   }
@@ -245,7 +247,7 @@ trait KutuService {
     database withSession { implicit session =>
       implicit val cache = scala.collection.mutable.Map[Long, ProgrammView]()
       sql"""
-                   SELECT w.id, a.*, v.*, wd.id, wd.programm_id, d.*, wd.kurzbeschreibung, wd.detailbeschreibung, wd.notenfaktor, wk.*, note_d as difficulty, note_e as execution, endnote, riege
+                   SELECT w.id, a.*, v.*, wd.id, wd.programm_id, d.*, wd.kurzbeschreibung, wd.detailbeschreibung, wd.notenfaktor, wd.ord, wk.*, note_d as difficulty, note_e as execution, endnote, riege
                    FROM wertung w
                    inner join athlet a on (a.id = w.athlet_id)
                    left outer join verein v on (a.verein = v.id)
@@ -256,6 +258,7 @@ trait KutuService {
                    where wd.programm_id in (#${progids.mkString(",")})
                      and w.riege = $riege
                      and w.wettkampf_id = $wettkampf
+                   order by wd.programm_id, wd.ord
        """.as[WertungView].build()
     }
   }
@@ -414,7 +417,7 @@ trait KutuService {
         case Some(id) => s"d.id = $id"
       })
       sql"""
-                    SELECT w.id, a.*, v.*, wd.id, wd.programm_id, d.*, wd.kurzbeschreibung, wd.detailbeschreibung, wd.notenfaktor, wk.*, note_d as difficulty, note_e as execution, endnote, riege
+                    SELECT w.id, a.*, v.*, wd.id, wd.programm_id, d.*, wd.kurzbeschreibung, wd.detailbeschreibung, wd.notenfaktor, wd.ord, wk.*, note_d as difficulty, note_e as execution, endnote, riege
                     FROM wertung w
                     inner join athlet a on (a.id = w.athlet_id)
                     left outer join verein v on (a.verein = v.id)
@@ -423,6 +426,7 @@ trait KutuService {
                     inner join programm p on (p.id = wd.programm_id)
                     inner join wettkampf wk on (wk.id = w.wettkampf_id)
                     #$where
+                    order by wd.programm_id, wd.ord
          """.as[WertungView].build()
     }
   }
@@ -538,11 +542,6 @@ trait KutuService {
 */
   def suggestRiegen(wettkampfId: Long, rotationstation: Seq[Int]): Seq[(String, Seq[Wertung])] = {
 
-    /*
-     * Max Riegengrösse
-     * Riegen pro Programm (implizite Rotation)
-     *   z.B. R1 [EP, P1u9], R2 [P1, P2], R3 [P3-P6]
-     */
     val riegencnt = rotationstation.reduce(_+_)
     val cache = scala.collection.mutable.Map[String, Int]()
     val wertungen = selectWertungen(wettkampfId = Some(wettkampfId)).groupBy(w => w.athlet)
@@ -563,7 +562,7 @@ trait KutuService {
             //println(f"occurences $key : $cnt")
             f"${cnt}%02d"
           }
-          println(f"key: $key, oldKey1: $oldKey1")
+//          println(f"key: $key, oldKey1: $oldKey1")
           val key1 = if(key.contains(".")) key else oldKey1 + "." + occurences(oldKey1)
           val key2 = oldKey1 + "." + occurences(oldKey1)
           val splitpos = r.size / 2
