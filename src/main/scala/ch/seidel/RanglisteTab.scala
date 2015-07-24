@@ -85,7 +85,7 @@ class RanglisteTab(wettkampf: WettkampfView, override val service: KutuService) 
       groupers.foreach { gr => gr.reset }
       val cblist = combs.filter(cb => !cb.selectionModel.value.isEmpty).map(cb => cb.selectionModel.value.getSelectedItem).filter(x => x != ByNothing)
       if (cblist.isEmpty) {
-        ByProgramm
+        ByWettkampfProgramm
       }
       else {
         cblist.foldLeft(cblist.head)((acc, cb) => if (acc != cb) acc.groupBy(cb) else acc)

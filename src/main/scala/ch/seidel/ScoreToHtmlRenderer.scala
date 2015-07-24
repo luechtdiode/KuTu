@@ -35,9 +35,11 @@ trait ScoreToHtmlRenderer {
             th {
               background-color: rgb(250,250,200);
               font-size: 9px;
+              overflow: hidden;
             }
             td {
               padding:0.25em;
+              overflow: hidden;
             }
             td .data {
               text-align: right
@@ -50,15 +52,32 @@ trait ScoreToHtmlRenderer {
               font-size: 9px;
               text-align: right
             }
-            col:first-child {
-              background: rgb(250, 250, 200, 0.6);
+            col:nth-child(1) {
+              width: 2em;
             }
-            col:nth-child(4n+6) {
+            col:nth-child(2) {
+              width: 10em;
+            }
+            col:nth-child(3) {
+              width: 8em;
+            }
+            col:first-child {
               background: rgba(150, 150, 150, 0.6);
             }
             col:nth-child(4n+4) {
+              /*width: 5em;*/
               border-left: 1px solid black;
-            }
+            }/*
+            col:nth-child(4n+5) {
+              width: 5em;
+            }*/
+            col:nth-child(4n+6) {
+              background: rgba(150, 150, 150, 0.6);
+              /*width: 5em;*/
+            }/*
+            col:nth-child(4n+7) {
+              width: 5em;
+            }*/
             tr:nth-child(even) .data {background: rgba(230, 230, 230, 0.6);}
             tr:nth-child(odd) .data {background: rgba(210, 200, 180, 0.6);}
             /*.disziplin {

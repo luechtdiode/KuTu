@@ -36,8 +36,8 @@ import scalafx.scene.web.WebView
 import ch.seidel.domain._
 import ch.seidel.commons._
 
-class TurnerScoreTab(val verein: Verein, override val service: KutuService) extends Tab with TabWithService  with ScoreToHtmlRenderer {
-  override val title = verein.easyprint
+class TurnerScoreTab(val verein: Option[Verein], override val service: KutuService) extends Tab with TabWithService  with ScoreToHtmlRenderer {
+  override val title = verein match {case Some(v) => v.easyprint case None => "Vereinsübergreifend"}
 
   /*
          * combo 1. Gruppierung [leer, Programm, Jahrgang, Disziplin, Verein]
@@ -92,7 +92,10 @@ class TurnerScoreTab(val verein: Verein, override val service: KutuService) exte
     }
 
     def refreshRangliste(query: GroupBy) {
-      val combination = query.select(service.selectWertungen(vereinId = Some(verein.id))).toList
+      val combination = verein match {
+        case Some(v) => query.select(service.selectWertungen(vereinId = Some(v.id))).toList
+        case None    => query.select(service.selectWertungen()).toList
+      }
       webView.engine.loadContent(toHTML(combination))
     }
 

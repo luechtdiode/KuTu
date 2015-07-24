@@ -63,6 +63,7 @@ case class GroupLeaf(override val groupKey: DataObject, list: Iterable[WertungVi
   override val avg: Resultat = sum / list.size
   override def easyprint = groupKey.easyprint + s" $sum, $avg"
   val groups = GroupSection.groupWertungList(list).filter(_._2.size > 0)
+  lazy val anzahWettkaempfe = list.filter(_.endnote > 0).groupBy { w => w.wettkampf }.size // Anzahl Wettkämpfe
 
   def buildColumns: List[jfxsc.TableColumn[GroupRow, _]] = {
     val athletCols: List[jfxsc.TableColumn[GroupRow, _]] = List(
@@ -159,7 +160,12 @@ case class GroupLeaf(override val groupKey: DataObject, list: Iterable[WertungVi
             styleClass += "hintdata"
           }
           val cl: jfxsc.TableColumn[GroupRow, _] = new TableColumn[GroupRow, String] {
-            text = grKey.easyprint
+            if(anzahWettkaempfe > 1) {
+              text = grKey.easyprint + s" (ø aus $anzahWettkaempfe)"
+            }
+            else {
+              text = grKey.easyprint
+            }
             prefWidth = 240
             columns ++= Seq(
               clDnote,
@@ -221,7 +227,7 @@ case class GroupLeaf(override val groupKey: DataObject, list: Iterable[WertungVi
                                   "*"
                              else
                                   ""
-                  best + x.value.resultate(index).sum.endnote
+                  best + x.value.resultate(index).sum.formattedEnd
                 } else ""
               })
             }
@@ -239,7 +245,12 @@ case class GroupLeaf(override val groupKey: DataObject, list: Iterable[WertungVi
             styleClass += "hintdata"
           }
           val cl: jfxsc.TableColumn[GroupRow, _] = new TableColumn[GroupRow, String] {
-            text = disziplin.name
+            if(anzahWettkaempfe > 1) {
+              text =  disziplin.name + s" (ø aus $anzahWettkaempfe)"
+            }
+            else {
+              text = disziplin.name
+            }
             prefWidth = 240
             columns ++= Seq(
               clDnote,
@@ -253,19 +264,34 @@ case class GroupLeaf(override val groupKey: DataObject, list: Iterable[WertungVi
       }
     val sumCol: List[jfxsc.TableColumn[GroupRow, _]] = List(
       new TableColumn[GroupRow, String] {
-        text = "Total D"
+        if(anzahWettkaempfe > 1) {
+          text = s"Total D (ø aus $anzahWettkaempfe)"
+        }
+        else {
+          text = "Total D"
+        }
         cellValueFactory = { x => new ReadOnlyStringWrapper(x.value, "punkte", x.value.sum.formattedD) }
         prefWidth = 80
         styleClass += "hintdata"
       },
       new TableColumn[GroupRow, String] {
-        text = "Total E"
+        if(anzahWettkaempfe > 1) {
+          text = s"Total E (ø aus $anzahWettkaempfe)"
+        }
+        else {
+          text = "Total E"
+        }
         cellValueFactory = { x => new ReadOnlyStringWrapper(x.value, "punkte", x.value.sum.formattedE) }
         prefWidth = 80
         styleClass += "hintdata"
       },
       new TableColumn[GroupRow, String] {
-        text = "Total Punkte"
+        if(anzahWettkaempfe > 1) {
+          text = s"Total Punkte (ø aus $anzahWettkaempfe)"
+        }
+        else {
+          text = "Total Punkte"
+        }
         cellValueFactory = { x => new ReadOnlyStringWrapper(x.value, "punkte", x.value.sum.formattedEnd) }
         prefWidth = 80
         styleClass += "valuedata"
@@ -345,7 +371,6 @@ case class GroupLeaf(override val groupKey: DataObject, list: Iterable[WertungVi
     }.map { d => (d._1 -> mapToAvgRang(d._2)) }
 
     val teilnehmer = avgPerAthlet.size
-    val anzahWettkaempfe = list.filter(_.endnote > 0).groupBy { w => w.wettkampf }.size // Anzahl Wettkämpfe
 
     def mapToGroupSum(
         athlet: AthletView,

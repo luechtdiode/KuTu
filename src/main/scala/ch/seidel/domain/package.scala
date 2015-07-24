@@ -129,7 +129,7 @@ package object domain {
     def / (cnt: Int) = Resultat(noteD / cnt, noteE / cnt, endnote / cnt)
     lazy val formattedD = if(noteD > 0) f"${noteD}%4.2f" else ""
     lazy val formattedE = if(noteE > 0) f"${noteE}%4.2f" else ""
-    lazy val formattedEnd = if(endnote > 0) f"${endnote}%4.2f" else ""
+    lazy val formattedEnd = if(endnote > 0) f"${endnote}%6.2f" else ""
     override def easyprint = f"${formattedD}%6s${formattedE}%6s${formattedEnd}%6s"
   }
   case class Wertung(id: Long, athletId: Long, wettkampfdisziplinId: Long, wettkampfId: Long, noteD: scala.math.BigDecimal, noteE: scala.math.BigDecimal, endnote: scala.math.BigDecimal, riege: Option[String]) extends DataObject

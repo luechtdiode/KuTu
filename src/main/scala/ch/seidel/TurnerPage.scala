@@ -143,13 +143,17 @@ object TurnerPage {
     }
   }
 
-  def buildTab(verein: Verein, service: KutuService) = {
+  def buildTab(club: Verein, service: KutuService) = {
     def refresher(pane: LazyTabPane) = {
-      Seq(new VereinTab(verein, service) {
+      Seq(new VereinTab(club, service) {
         text = verein.name
         closable = false
       },
-      new TurnerScoreTab(verein, service){
+      new TurnerScoreTab(Some(club), service){
+        text = club.easyprint + "-übergreifende Turner-Auswertung"
+        closable = false
+      },
+      new TurnerScoreTab(None, service){
         text = "Übergreifende Turner-Auswertung"
         closable = false
       })
