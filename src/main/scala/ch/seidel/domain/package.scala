@@ -174,7 +174,7 @@ package object domain {
       val orderedKeys = punktemapping.keys.toList.sortBy(punktemapping).map(x => x.toLowerCase())
       orderedKeys.filter(v => v.contains(lv) || extractDigits(v).equals(lvv))
     }
-    def mapToDouble(input: String) = try {findnearest(super.fromString(input))} catch {case _ => 0d}
+    def mapToDouble(input: String) = try {findnearest(super.fromString(input))} catch {case _: Throwable => 0d}
     def findLike(value: String): String = {
       val lv = value.toLowerCase()
       def extractDigits(lv: String) = lv.filter(c => c.isDigit || c == '.')
