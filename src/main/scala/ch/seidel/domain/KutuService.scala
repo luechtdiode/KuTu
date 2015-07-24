@@ -403,12 +403,15 @@ trait KutuService {
     sql"""          select * from wettkampf where id=$id""".as[Wettkampf].build().head
   }
 
-  def selectWertungen(wertungId: Option[Long] = None, athletId: Option[Long] = None, wettkampfId: Option[Long] = None, disziplinId: Option[Long] = None): Seq[WertungView] = {
+  def selectWertungen(vereinId: Option[Long] = None, athletId: Option[Long] = None, wettkampfId: Option[Long] = None, disziplinId: Option[Long] = None): Seq[WertungView] = {
     implicit val cache = scala.collection.mutable.Map[Long, ProgrammView]()
     database withSession {implicit session: Session =>
       val where = "where " + (athletId match {
         case None     => "1=1"
         case Some(id) => s"a.id = $id"
+      }) + " and " + (vereinId match {
+        case None     => "1=1"
+        case Some(id) => s"v.id = $id"
       }) + " and " + (wettkampfId match {
         case None     => "1=1"
         case Some(id) => s"wk.id = $id"

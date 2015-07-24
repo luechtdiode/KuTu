@@ -30,7 +30,7 @@ sealed trait GroupBy {
   }
 
   def select(wvlist: Seq[WertungView]): Iterable[GroupSection] = {
-    val grouped = wvlist groupBy grouper
+    val grouped = wvlist groupBy grouper filter(g => g._2.size > 0)
     next match {
       case Some(ng) => mapAndSortNode(ng, grouped)
       case None     => mapAndSortLeaf(grouped)
@@ -38,30 +38,23 @@ sealed trait GroupBy {
   }
 
   private def mapAndSortLeaf(grouped: Map[DataObject, Seq[WertungView]]) = {
-    def x(switch: DataObject, list: Seq[WertungView]) = {
-      val grouped = list.groupBy { x => x.athlet }.map { x =>
-        val r = x._2.map(y => y.resultat).reduce((r1, r2) => r1 + r2)
-        (x._1, r)
-      }
-      GroupSection.mapRang(grouped).toSeq
-    }
-
     def reduce(switch: DataObject, list: Seq[WertungView]): Seq[GroupSection] = {
-      list.toList match {
-        //                case head :: _ if(head.wettkampfdisziplin.programm.aggregate > 0) =>
-        //                  Seq(GroupNode(switch, sort(x(switch, list), leafsorter)))
-        case _ =>
-          Seq(GroupLeaf(switch, list))
-      }
+      Seq(GroupLeaf(switch, list))
     }
-    sort(grouped.flatMap(x => reduce(x._1, x._2)), sorter)
+    sort(grouped.flatMap(x => reduce(x._1, x._2)).filter(g => g.sum.endnote > 0), sorter)
   }
 
   private def mapAndSortNode(ng: GroupBy, grouped: Map[DataObject, Seq[WertungView]]) = {
     sort(grouped.map { x =>
       val (grp, seq) = x
-      GroupNode(grp, ng.select(seq))
-    }, sorter)
+      val list = ng.select(seq)
+      if(list.isEmpty) {
+        GroupNode(grp, Seq(GroupSum(grp, Resultat(0, 0, 0), Resultat(0, 0, 0), Resultat(0, 0, 0))))
+      }
+      else {
+        GroupNode(grp, ng.select(seq))
+      }
+    }.filter(g => g.sum.endnote > 0), sorter)
   }
 
   private def sort(mapped: Iterable[GroupSection], sorter: Option[(GroupSection, GroupSection) => Boolean]) = {
@@ -86,6 +79,29 @@ case object ByProgramm extends GroupBy {
   override val groupname = "Programm"
   protected override val grouper = (v: WertungView) => {
     v.wettkampfdisziplin.programm
+  }
+  protected override val sorter: Option[(GroupSection, GroupSection) => Boolean] = Some((gs1: GroupSection, gs2: GroupSection) => {
+    gs1.groupKey.asInstanceOf[ProgrammView].ord.compareTo(gs2.groupKey.asInstanceOf[ProgrammView].ord) < 0
+  })
+}
+case object ByWettkampfProgramm extends GroupBy {
+  override val groupname = "Wettkampf-Programm"
+  protected override val grouper = (v: WertungView) => {
+    if(v.wettkampfdisziplin.programm.aggregator == v.wettkampfdisziplin.programm) {
+      v.wettkampfdisziplin.programm
+    }
+    else {
+    	v.wettkampfdisziplin.programm.head
+    }
+  }
+  protected override val sorter: Option[(GroupSection, GroupSection) => Boolean] = Some((gs1: GroupSection, gs2: GroupSection) => {
+    gs1.groupKey.asInstanceOf[ProgrammView].ord.compareTo(gs2.groupKey.asInstanceOf[ProgrammView].ord) < 0
+  })
+}
+case object ByWettkampfArt extends GroupBy {
+  override val groupname = "Wettkampf-Art"
+  protected override val grouper = (v: WertungView) => {
+    v.wettkampfdisziplin.programm.head
   }
   protected override val sorter: Option[(GroupSection, GroupSection) => Boolean] = Some((gs1: GroupSection, gs2: GroupSection) => {
     gs1.groupKey.asInstanceOf[ProgrammView].ord.compareTo(gs2.groupKey.asInstanceOf[ProgrammView].ord) < 0

@@ -148,6 +148,10 @@ object TurnerPage {
       Seq(new VereinTab(verein, service) {
         text = verein.name
         closable = false
+      },
+      new TurnerScoreTab(verein, service){
+        text = "Übergreifende Turner-Auswertung"
+        closable = false
       })
     }
     new TurnerPage( new LazyTabPane(refresher))
