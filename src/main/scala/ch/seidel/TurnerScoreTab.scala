@@ -33,8 +33,13 @@ import scalafx.scene.control.ComboBox
 import scalafx.scene.layout.HBox
 import scalafx.scene.Group
 import scalafx.scene.web.WebView
+import scalafx.stage.FileChooser
 import ch.seidel.domain._
 import ch.seidel.commons._
+import scalafx.stage.FileChooser.ExtensionFilter
+import java.io.BufferedOutputStream
+import java.io.FileOutputStream
+import java.awt.Desktop
 
 class TurnerScoreTab(val verein: Option[Verein], override val service: KutuService) extends Tab with TabWithService  with ScoreToHtmlRenderer {
   override val title = verein match {case Some(v) => v.easyprint case None => "Vereinsübergreifend"}
@@ -55,26 +60,26 @@ class TurnerScoreTab(val verein: Option[Verein], override val service: KutuServi
     val groupers = List(ByNothing, ByWettkampfArt, ByWettkampfProgramm, ByProgramm, ByJahrgang, ByGeschlecht, ByVerein, ByDisziplin)
     val gr1Model = ObservableBuffer[GroupBy](groupers)
     val cb1 = new ComboBox[GroupBy] {
-      maxWidth = 200
-      promptText = "erste gruppierung..."
+      maxWidth = 250
+      promptText = "erste Gruppierung..."
       items = gr1Model
     }
     val cb2 =
       new ComboBox[GroupBy] {
-        maxWidth = 200
-        promptText = "zweite gruppierung..."
+        maxWidth = 250
+        promptText = "zweite Gruppierung..."
         items = gr1Model
       }
     val cb3 =
       new ComboBox[GroupBy] {
-        maxWidth = 200
-        promptText = "dritte gruppierung..."
+        maxWidth = 250
+        promptText = "dritte Gruppierung..."
         items = gr1Model
       }
     val cb4 =
       new ComboBox[GroupBy] {
-        maxWidth = 200
-        promptText = "vierte gruppierung..."
+        maxWidth = 250
+        promptText = "vierte Gruppierung..."
         items = gr1Model
       }
     val combs = List(cb1, cb2, cb3, cb4)
@@ -84,20 +89,25 @@ class TurnerScoreTab(val verein: Option[Verein], override val service: KutuServi
       groupers.foreach { gr => gr.reset }
       val cblist = combs.filter(cb => !cb.selectionModel.value.isEmpty).map(cb => cb.selectionModel.value.getSelectedItem).filter(x => x != ByNothing)
       if (cblist.isEmpty) {
-        ByWettkampfArt
+        ByWettkampfProgramm.groupBy(ByGeschlecht)
       }
       else {
         cblist.foldLeft(cblist.head)((acc, cb) => if (acc != cb) acc.groupBy(cb) else acc)
       }
     }
 
-    def refreshRangliste(query: GroupBy) {
+    def refreshRangliste(query: GroupBy) = {
       val combination = verein match {
         case Some(v) => query.select(service.selectWertungen(vereinId = Some(v.id))).toList
         case None    => query.select(service.selectWertungen()).toList
       }
-      webView.engine.loadContent(toHTML(combination))
+      val ret = toHTML(combination)
+      webView.engine.loadContent(ret)
+      ret
     }
+
+    cb1.selectionModel.value.select(ByWettkampfProgramm)
+    cb2.selectionModel.value.select(ByGeschlecht)
 
     combs.foreach{c =>
       c.onAction = handle {
@@ -105,10 +115,32 @@ class TurnerScoreTab(val verein: Option[Verein], override val service: KutuServi
       }
     }
 
-    val btnRefresh = new Button {
-      text = "refresh"
+    val btnSave = new Button {
+      text = "Speichern als ..."
       onAction = handle {
-        refreshRangliste(buildQuery)
+        val fileChooser = new FileChooser()
+        fileChooser.initialDirectory = new java.io.File(System.getProperty("user.home") + "/documents")
+        fileChooser.setTitle("Open Resource File")
+        fileChooser.getExtensionFilters().addAll(
+                 new ExtensionFilter("Web-Datei", "*.html"),
+                 new ExtensionFilter("All Files", "*.*"))
+        val selectedFile = fileChooser.showSaveDialog(KuTuApp.getStage())
+        if (selectedFile != null) {
+          val file = if(!selectedFile.getName.endsWith(".html") && !selectedFile.getName.endsWith(".htm")) {
+            new java.io.File(selectedFile.getAbsolutePath + ".html")
+          }
+          else {
+            selectedFile
+          }
+          val toSave = refreshRangliste(buildQuery).getBytes("UTF-8")
+          val os = new BufferedOutputStream(new FileOutputStream(selectedFile))
+          os.write(toSave)
+          os.flush()
+          os.close()
+          Desktop.getDesktop().open(selectedFile);
+//          new ProcessBuilder().command("explorer.exe", selectedFile.getAbsolutePath).start()
+        }
+
       }
     }
     onSelectionChanged = handle {
@@ -123,8 +155,8 @@ class TurnerScoreTab(val verein: Option[Verein], override val service: KutuServi
         vgrow = Priority.ALWAYS
         hgrow = Priority.ALWAYS
         spacing = 15
-        padding = Insets(20)
-        content = combs :+ btnRefresh
+        padding = Insets(15)
+        content = new Label("Gruppierungen:") +: combs :+ btnSave
       }
       center = webView
     }

@@ -21,7 +21,8 @@ trait ScoreToHtmlRenderer {
     val dummyTableView = new TableView[GroupRow]()
     val gsBlock = new StringBuilder()
     if (level == 0) {
-      gsBlock.append(s"""<html><head>
+      gsBlock.append(s"""<html lang="de-CH"><head>
+          <meta charset="UTF-8" />
           <style type="text/css">
             body {
               font-family: "Arial", "Verdana", sans-serif;

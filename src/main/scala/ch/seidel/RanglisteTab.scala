@@ -35,6 +35,11 @@ import scalafx.scene.Group
 import scalafx.scene.web.WebView
 import ch.seidel.domain._
 import ch.seidel.commons._
+import java.io.FileOutputStream
+import java.awt.Desktop
+import java.io.BufferedOutputStream
+import scalafx.stage.FileChooser
+import scalafx.stage.FileChooser.ExtensionFilter
 
 class RanglisteTab(wettkampf: WettkampfView, override val service: KutuService) extends Tab with TabWithService with ScoreToHtmlRenderer {
   override val title = wettkampf.easyprint
@@ -56,26 +61,26 @@ class RanglisteTab(wettkampf: WettkampfView, override val service: KutuService) 
     val groupers = List(ByNothing, ByWettkampfArt, ByWettkampfProgramm, ByProgramm, ByJahrgang, ByGeschlecht, ByVerein, ByRiege, ByDisziplin)
     val gr1Model = ObservableBuffer[GroupBy](groupers)
     val cb1 = new ComboBox[GroupBy] {
-      maxWidth = 200
-      promptText = "erste gruppierung..."
+      maxWidth = 250
+      promptText = "erste Gruppierung..."
       items = gr1Model
     }
     val cb2 =
       new ComboBox[GroupBy] {
-        maxWidth = 200
-        promptText = "zweite gruppierung..."
+        maxWidth = 250
+        promptText = "zweite Gruppierung..."
         items = gr1Model
       }
     val cb3 =
       new ComboBox[GroupBy] {
-        maxWidth = 200
-        promptText = "dritte gruppierung..."
+        maxWidth = 250
+        promptText = "dritte Gruppierung..."
         items = gr1Model
       }
     val cb4 =
       new ComboBox[GroupBy] {
-        maxWidth = 200
-        promptText = "vierte gruppierung..."
+        maxWidth = 250
+        promptText = "vierte Gruppierung..."
         items = gr1Model
       }
     val combs = List(cb1, cb2, cb3, cb4)
@@ -85,17 +90,22 @@ class RanglisteTab(wettkampf: WettkampfView, override val service: KutuService) 
       groupers.foreach { gr => gr.reset }
       val cblist = combs.filter(cb => !cb.selectionModel.value.isEmpty).map(cb => cb.selectionModel.value.getSelectedItem).filter(x => x != ByNothing)
       if (cblist.isEmpty) {
-        ByWettkampfProgramm
+        ByWettkampfProgramm.groupBy(ByGeschlecht)
       }
       else {
         cblist.foldLeft(cblist.head)((acc, cb) => if (acc != cb) acc.groupBy(cb) else acc)
       }
     }
 
-    def refreshRangliste(query: GroupBy) {
+    def refreshRangliste(query: GroupBy) = {
       val combination = query.select(service.selectWertungen(wettkampfId = Some(wettkampf.id))).toList
-      webView.engine.loadContent(toHTML(combination))
+      val ret = toHTML(combination)
+      webView.engine.loadContent(ret)
+      ret
     }
+
+    cb1.selectionModel.value.select(ByWettkampfProgramm)
+    cb2.selectionModel.value.select(ByGeschlecht)
 
     combs.foreach{c =>
       c.onAction = handle {
@@ -103,10 +113,32 @@ class RanglisteTab(wettkampf: WettkampfView, override val service: KutuService) 
       }
     }
 
-    val btnRefresh = new Button {
-      text = "refresh"
+    val btnSave = new Button {
+      text = "Speichern als ..."
       onAction = handle {
-        refreshRangliste(buildQuery)
+        val fileChooser = new FileChooser()
+        fileChooser.initialDirectory = new java.io.File(System.getProperty("user.home") + "/documents")
+        fileChooser.setTitle("Open Resource File")
+        fileChooser.getExtensionFilters().addAll(
+                 new ExtensionFilter("Web-Datei", "*.html"),
+                 new ExtensionFilter("All Files", "*.*"))
+        val selectedFile = fileChooser.showSaveDialog(KuTuApp.getStage())
+        if (selectedFile != null) {
+          val file = if(!selectedFile.getName.endsWith(".html") && !selectedFile.getName.endsWith(".htm")) {
+            new java.io.File(selectedFile.getAbsolutePath + ".html")
+          }
+          else {
+            selectedFile
+          }
+          val toSave = refreshRangliste(buildQuery).getBytes("UTF-8")
+          val os = new BufferedOutputStream(new FileOutputStream(selectedFile))
+          os.write(toSave)
+          os.flush()
+          os.close()
+          Desktop.getDesktop().open(selectedFile);
+//          new ProcessBuilder().command("explorer.exe", selectedFile.getAbsolutePath).start()
+        }
+
       }
     }
     onSelectionChanged = handle {
@@ -121,8 +153,8 @@ class RanglisteTab(wettkampf: WettkampfView, override val service: KutuService) 
         vgrow = Priority.ALWAYS
         hgrow = Priority.ALWAYS
         spacing = 15
-        padding = Insets(20)
-        content = combs :+ btnRefresh
+        padding = Insets(15)
+        content = new Label("Gruppierungen:") +: combs :+ btnSave
       }
       center = webView
     }

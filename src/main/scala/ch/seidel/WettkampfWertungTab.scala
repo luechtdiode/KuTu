@@ -34,8 +34,8 @@ import scalafx.scene.layout.VBox
 import scalafx.util.converter.StringConverterJavaToJavaDelegate
 import scalafx.scene.control.Control
 import scalafx.util.converter.DefaultStringConverter
-import scala.swing.event.KeyPressed
 import scalafx.scene.input.KeyEvent
+import scalafx.scene.input.KeyCode
 
 case class WertungEditor(init: WertungView) {
 	type WertungChangeListener = (WertungEditor) => Unit
@@ -103,16 +103,48 @@ class WettkampfWertungTab(programm: Option[ProgrammView], riege: Option[String],
     val wkview = new TableView[IndexedSeq[WertungEditor]](wkModel) {
       id = "kutu-table"
       editable = true
-      onKeyTyped_= {evt: KeyEvent =>
-        if(    Character.isAlphabetic(evt.character.charAt(0))
+//        // switch to edit mode on keypress
+//        // this must be KeyEvent.KEY_PRESSED so that the key gets forwarded to the editing cell; it wouldn't be forwarded on KEY_RELEASED
+//      addEventFilter(KeyEvent.KeyPressed, {event: KeyEvent =>
+//        // switch to edit mode on keypress, but only if we aren't already in edit mode
+//        if(delegate.getEditingCell() == null) {
+//          if( event.getCode().isLetterKey() || event.getCode().isDigitKey()) {
+//            val tp = focusModel.value.focusedCell.value;
+//            edit(tp.row, tp.getTableColumn.asInstanceOf[jfxsc.TableColumn[IndexedSeq[WertungEditor], Any]])
+//          }
+//        }
+//      });
+      onKeyPressed_= {evt: KeyEvent =>
+        if(delegate.getEditingCell() == null && (
+               Character.isAlphabetic(evt.character.charAt(0))
             || Character.isDigit(evt.character.charAt(0))
             || evt.code.isLetterKey
-            || evt.code.isDigitKey) {
-          evt.consume()
+            || evt.code.isDigitKey)
+            || evt.code.equals(KeyCode.DELETE)) {
+          //evt.consume()
           val selelctedCell = selectionModel.value.getSelectedCells
           selelctedCell.foreach{tp =>
-            edit(tp.row, tp.getTableColumn.asInstanceOf[jfxsc.TableColumn[IndexedSeq[WertungEditor], Any]])
+            if(evt.code.equals(KeyCode.DELETE)) {
+              val column = tp.getTableColumn.asInstanceOf[jfxsc.TableColumn[IndexedSeq[WertungEditor], Any]]
+              if(column.parentColumn.value != null) {
+                items.get.get(tp.row).find { x => x.init.wettkampfdisziplin.disziplin.name.equals(column.parentColumn.value.getText)}
+                match {
+                  case Some(editor) =>
+                    column.text.value match {
+                      case "D" => editor.noteD.value = 0d
+                      case "E" => editor.noteE.value = 0d
+                      case _   =>
+                    }
+
+                  case None =>
+                }
+              }
+              else {
+
+              }
             }
+            edit(tp.row, tp.getTableColumn.asInstanceOf[jfxsc.TableColumn[IndexedSeq[WertungEditor], Any]])
+          }
         }
       }
     }
@@ -364,6 +396,11 @@ class WettkampfWertungTab(programm: Option[ProgrammView], riege: Option[String],
             }
             evt.tableView.requestFocus()
           }
+          onEditCancel = (evt: CellEditEvent[IndexedSeq[WertungEditor], Double]) => {
+           if (wertung.isDirty) {
+              wertung.reset
+            }
+          }
         }
         val clEnote = new TableColumn[IndexedSeq[WertungEditor], Double] {
           val index = indexerE.next
@@ -387,6 +424,11 @@ class WettkampfWertungTab(programm: Option[ProgrammView], riege: Option[String],
               updateEditorPane
             }
             evt.tableView.requestFocus()
+          }
+          onEditCancel = (evt: CellEditEvent[IndexedSeq[WertungEditor], Double]) => {
+            if (wertung.isDirty) {
+              wertung.reset
+            }
           }
         }
         val clEndnote = new TableColumn[IndexedSeq[WertungEditor], Double] {
@@ -484,6 +526,9 @@ class WettkampfWertungTab(programm: Option[ProgrammView], riege: Option[String],
           refreshLazyPane()
           updateEditorPane
           evt.tableView.requestFocus()
+        }
+        onEditCancel = (evt: CellEditEvent[IndexedSeq[WertungEditor], String]) => {
+//          println(evt)
         }
       })
 
