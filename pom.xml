@@ -219,6 +219,8 @@
 							<arguments>
 								<argument>-createjar</argument>
 								<argument>-nocss2bin</argument>
+								<argument>-manifestAttrs</argument>
+								<argument>Permissions=all-permissions,Codebase=*,Application-Name=TurnerWettkampf-App</argument>
 								<argument>-appclass</argument>
 								<argument>ch.seidel.KuTuApp</argument>
 								<argument>-srcdir</argument>
@@ -289,7 +291,7 @@
 								<argument>-BjvmOptions=-Xmx512m</argument>
 								<argument>-BjvmOptions=-Xms512m</argument>
 								<argument>-Bcopyright="Interpolar"</argument>
-								<argument>-Btitle="TurnerWettkampf"</argument>
+								<argument>-Btitle="TurnerWettkampf-App"</argument>
 								<argument>-Bvendor="Interpolar"</argument>
 								<!-- argument>-Bdescription="Wettkampf Verwaltung und Durchfuehrung"</argument-->
 							</arguments>
