@@ -49,7 +49,7 @@ package object domain {
   }
 
   case class AthletJahrgang(hg: String) extends DataObject {
-    override def easyprint = hg
+    override def easyprint = "Jahrgang " + hg
   }
   case class Disziplin(id: Long, name: String) extends DataObject {
     override def easyprint = name
