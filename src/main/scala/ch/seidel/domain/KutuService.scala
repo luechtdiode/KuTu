@@ -34,9 +34,22 @@ trait KutuService {
     prop.setProperty("date_string_format", "yyyy-MM-dd")
     prop
   }
+  lazy val dbhomedir = if(new File("./db/kutu.sqlite").exists()) {
+    "./db"
+  }
+  else if(new File(System.getProperty("user.home") + "/kutuapp/db").exists()) {
+    System.getProperty("user.home") + "/kutuapp/db"
+  }
+  else {
+    val f = new File(System.getProperty("user.home") + "/kutuapp/db")
+    println("try to create for installing the db: " + f);
+    f.mkdirs();
+    System.getProperty("user.home") + "/kutuapp/db"
+  }
+  val dbfile = new File(dbhomedir + "/kutu.sqlite")
 
   lazy val databaselite = Database.forURL(
-    url = "jdbc:sqlite:./db/kutu.sqlite",
+    url = "jdbc:sqlite:" + dbfile.getAbsolutePath,
     driver = "org.sqlite.JDBC",
     prop = proplite,
     user = "kutu",
@@ -45,35 +58,31 @@ trait KutuService {
   lazy val database = databaselite
 //  lazy val database = databasemysql
 
-  val dbfile = new File("./db/kutu.sqlite")
-
   def installDB {
-    val sqlfile = new File("./Scripts/kutu-sqllite-ddl.sql")
-    val sqldatafile = new File("./Scripts/kutu-sqllite-initialdata.sql")
-    val sqlwkdatafile = new File("./Scripts/kutu-daten.sql")
-    if(sqlfile.exists()) {
-      database withSession { implicit session =>
-        def execStatement(statement: String) {
-          println(statement); StaticQuery.updateNA(statement).execute
-        }
-        def filterCommentLines(line: String) = {
-          !line.trim().startsWith("-- ")
-        }
-        def combineMultilineStatement(acc: List[String], line: String) = {
-          if(line.endsWith(";")) {
-            acc.updated(acc.size -1, acc.last + line) :+ ""
-          }
-          else {
-            acc.updated(acc.size -1, acc.last + line)
-          }
-        }
-        def parse(lines: Iterator[String]): List[String] = {
-          lines.filter(filterCommentLines).foldLeft(List(""))(combineMultilineStatement).filter(_.trim().length() > 0)
-        }
-        parse(Source.fromFile(sqlfile).getLines()).foreach(execStatement)
-        parse(Source.fromFile(sqldatafile).getLines()).foreach(execStatement)
-//        parse(Source.fromFile(sqlwkdatafile).getLines()).foreach(execStatement)
+    val sqlfile = this.getClass.getResourceAsStream("/dbscripts/kutu-sqllite-ddl.sql")
+    val sqldatafile = this.getClass.getResourceAsStream("/dbscripts/kutu-sqllite-initialdata.sql")
+//    val sqlwkdatafile = this.getClass.getResourceAsStream("/dbscripts/kutu-daten.sql")
+    database withSession { implicit session =>
+      def execStatement(statement: String) {
+        println(statement); StaticQuery.updateNA(statement).execute
       }
+      def filterCommentLines(line: String) = {
+        !line.trim().startsWith("-- ")
+      }
+      def combineMultilineStatement(acc: List[String], line: String) = {
+        if(line.endsWith(";")) {
+          acc.updated(acc.size -1, acc.last + line) :+ ""
+        }
+        else {
+          acc.updated(acc.size -1, acc.last + line)
+        }
+      }
+      def parse(lines: Iterator[String]): List[String] = {
+        lines.filter(filterCommentLines).foldLeft(List(""))(combineMultilineStatement).filter(_.trim().length() > 0)
+      }
+      parse(Source.fromInputStream(sqlfile, "utf-8").getLines()).foreach(execStatement)
+      parse(Source.fromInputStream(sqldatafile, "utf-8").getLines()).foreach(execStatement)
+//        parse(Source.fromFile(sqlwkdatafile).getLines()).foreach(execStatement)
     }
   }
 
