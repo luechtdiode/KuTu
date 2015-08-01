@@ -148,6 +148,7 @@
 						<configuration>
 							<sources>
 								<source>src/main/scala</source>
+								<source>Scripts</source>
 							</sources>
 						</configuration>
 					</execution>
@@ -233,7 +234,32 @@
 						</configuration>
 					</execution>
 					<execution>
-						<id>deploy</id>
+						<id>sign-jar</id>
+						<phase>package</phase>
+						<goals>
+							<goal>exec</goal>
+						</goals>
+						<configuration>
+							<executable>${env.JAVA_HOME}/bin/javapackager</executable>
+							<arguments>
+								<argument>-signjar</argument>
+								<argument>-srcdir</argument>
+								<argument>${project.build.directory}</argument>
+								<argument>-outdir</argument>
+								<argument>${project.build.directory}</argument>
+								<argument>-keyStore</argument>
+								<argument>c:/dev/keystore.jks</argument>
+								<argument>-storePass</argument>
+								<argument>${keyPass}</argument>
+								<argument>-keyPass</argument>
+								<argument>${keyPass}</argument>
+								<argument>-alias</argument>
+								<argument>app.interpolar.ch</argument>
+							</arguments>
+						</configuration>
+					</execution>
+					<execution>
+						<id>deploy-msi</id>
 						<phase>package</phase>
 						<goals>
 							<goal>exec</goal>
@@ -263,11 +289,48 @@
 								<argument>-BjvmOptions=-Xmx512m</argument>
 								<argument>-BjvmOptions=-Xms512m</argument>
 								<argument>-Bcopyright="Interpolar"</argument>
-								<argument>-title</argument><argument>"Turner Wettkampf"</argument>
+								<argument>-Btitle="TurnerWettkampf"</argument>
+								<argument>-Bvendor="Interpolar"</argument>
+								<!-- argument>-Bdescription="Wettkampf Verwaltung und Durchfuehrung"</argument-->
 							</arguments>
 						</configuration>
 					</execution>
 					<execution>
+						<id>deploy-jnlp</id>
+						<phase>package</phase>
+						<goals>
+							<goal>exec</goal>
+						</goals>
+						<configuration>
+							<executable>${env.JAVA_HOME}/bin/javapackager</executable>
+							<arguments>
+								<argument>-deploy</argument>
+								<argument>-appclass</argument>
+								<argument>ch.seidel.KuTuApp</argument>
+								<argument>-name</argument>
+								<argument>TurnerWettkampf-App</argument>
+								<argument>-srcdir</argument>
+								<argument>${project.build.directory}</argument>
+								<argument>-srcfiles</argument>
+								<argument>${project.artifactId}-app.jar</argument>
+								<argument>-outdir</argument>
+								<argument>${project.build.directory}</argument>
+								<argument>-outfile</argument>
+								<argument>KuTuApp</argument>
+								<argument>-allpermissions</argument>
+								<argument>-width</argument><argument>1024</argument>
+								<argument>-height</argument><argument>900</argument>
+								<argument>-BsystemWide=true</argument>
+								<argument>-BjvmOptions=-Xmx512m</argument>
+								<argument>-BjvmOptions=-Xms512m</argument>
+								<argument>-Bcopyright="Interpolar"</argument>
+								<argument>-title</argument><argument>"Turner Wettkampf"</argument>
+								<argument>-vendor</argument><argument>"Interpolar"</argument>
+								<argument>-description</argument><argument>Wettkampf Verwaltung und Durchfuehrung</argument>
+							</arguments>
+						</configuration>
+					</execution>
+					<!-- execution>
 						<id>bundle</id>
 						<phase>package</phase>
 						<goals>
@@ -279,7 +342,7 @@
 								<argument>"${project.build.directory}\..\Scripts\setupKuTuWKApp.iss"</argument>
 							</arguments>
 						</configuration>
-					</execution>
+					</execution-->
 				</executions>
 			</plugin>
 			<plugin>
