@@ -30,6 +30,7 @@ import ch.seidel.KuTuApp
 object PageDisplayer {
 
   def showInDialog(tit: String, nodeToAdd: DisplayablePage, commands: Button*)(implicit event: ActionEvent) {
+    val buttons = commands :+ new Button(if(commands.length == 0) "Schliessen" else "Abbrechen")
     // Create dialog
     val dialogStage = new Stage {
       outer => {
@@ -50,10 +51,10 @@ object PageDisplayer {
               prefHeight = 50
               alignment = Pos.BOTTOM_RIGHT
               hgrow = Priority.ALWAYS
-              content = commands
+              content = buttons
             }
             var first = false
-            commands.foreach { btn =>
+            buttons.foreach { btn =>
               if(!first) {
                 first = true
                 btn.defaultButton = true
