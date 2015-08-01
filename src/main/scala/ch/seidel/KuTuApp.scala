@@ -84,7 +84,7 @@ object KuTuApp extends JFXApp with KutuService {
                         hgrow = Priority.ALWAYS
                         vgrow = Priority.ALWAYS
                         center = new VBox {
-                          content.addAll(txtTitel)
+                          content.addAll(new Label(txtTitel.promptText.value), txtTitel)
                         }
                       }
                     }
@@ -125,7 +125,10 @@ object KuTuApp extends JFXApp with KutuService {
                         hgrow = Priority.ALWAYS
                         vgrow = Priority.ALWAYS
                         center = new VBox {
-                          content.addAll(txtDatum, txtTitel, cmbProgramm)
+                          content.addAll(
+                              new Label(txtDatum.promptText.value), txtDatum,
+                              new Label(txtTitel.promptText.value), txtTitel,
+                              new Label(cmbProgramm.promptText.value), cmbProgramm)
                         }
                       }
                     }
@@ -154,15 +157,44 @@ object KuTuApp extends JFXApp with KutuService {
                   case Some(KuTuAppThumbNail(p: WettkampfView, _, newItem)) => controlsView.contextMenu = new ContextMenu() {
                     items += new javafx.scene.control.MenuItem("Wettkampf löschen") {
                       onAction = handleAction { implicit e: ActionEvent =>
-                        deleteWettkampf(p.id)
-                        updateTree
+                        PageDisplayer.showInDialog(getText, new DisplayablePage() {
+                          def getPage: Node = {
+                            new BorderPane {
+                              hgrow = Priority.ALWAYS
+                              vgrow = Priority.ALWAYS
+                              center = new VBox {
+                                content.addAll(new Label("Mit dem Wettkampf werden auch die zugehörigen Wettkampfresultate der Athleten gelöscht."))
+                              }
+                            }
+                          }
+                        }, new Button("OK") {
+                          onAction = handleAction {implicit e: ActionEvent =>
+                            deleteWettkampf(p.id)
+                            updateTree
+                          }
+                        }
+                      )
                     }
                   }}
                   case Some(KuTuAppThumbNail(v: Verein, _, newItem)) => controlsView.contextMenu = new ContextMenu() {
                     items += new javafx.scene.control.MenuItem("Verein löschen") {
                     onAction = handleAction { implicit e: ActionEvent =>
-                      deleteVerein(v.id)
-                      updateTree
+                      PageDisplayer.showInDialog(getText, new DisplayablePage() {
+                        def getPage: Node = {
+                          new BorderPane {
+                            hgrow = Priority.ALWAYS
+                            vgrow = Priority.ALWAYS
+                            center = new VBox {
+                              content.addAll(new Label("Mit dem Verein werden auch alle dessen Athleten inkl. deren Wettkampfresultaten gelöscht."))
+                            }
+                          }
+                        }
+                      }, new Button("OK") {
+                        onAction = handleAction {implicit e: ActionEvent =>
+                          deleteVerein(v.id)
+                          updateTree
+                        }
+                      })
                     }
                   }}
                   case _       => controlsView.contextMenu = new ContextMenu()
@@ -175,13 +207,18 @@ object KuTuApp extends JFXApp with KutuService {
         val centerPane = (newItem.isLeaf, Option(newItem.getParent)) match {
           case (true, Some(parent)) => {
             tree.getThumbs(parent.getValue).find(p => p.button.text.getValue.equals(newItem.getValue)) match {
-              case Some(KuTuAppThumbNail(p: WettkampfView, _, newItem)) => PageDisplayer.choosePage(Some(p), "dashBoard - " + newItem.getValue, tree)
-              case Some(KuTuAppThumbNail(v: Verein, _, newItem)) => PageDisplayer.choosePage(Some(v), "dashBoard - " + newItem.getValue, tree)
-              case _       => PageDisplayer.choosePage(None, "dashBoard - " + newItem.getValue, tree)
+              case Some(KuTuAppThumbNail(p: WettkampfView, _, newItem)) =>
+                PageDisplayer.choosePage(Some(p), "dashBoard - " + newItem.getValue, tree)
+              case Some(KuTuAppThumbNail(v: Verein, _, newItem)) =>
+                PageDisplayer.choosePage(Some(v), "dashBoard - " + newItem.getValue, tree)
+              case _ =>
+                PageDisplayer.choosePage(None, "dashBoard - " + newItem.getValue, tree)
             }
           }
-          case (false, Some(_))     => PageDisplayer.choosePage(None, "dashBoard - " + newItem.getValue, tree)
-          case (_, _)               => PageDisplayer.choosePage(None, "dashBoard", tree)
+          case (false, Some(_)) =>
+            PageDisplayer.choosePage(None, "dashBoard - " + newItem.getValue, tree)
+          case (_, _) =>
+            PageDisplayer.choosePage(None, "dashBoard", tree)
         }
         if(splitPane.items.size > 1) {
           splitPane.items.remove(1)
