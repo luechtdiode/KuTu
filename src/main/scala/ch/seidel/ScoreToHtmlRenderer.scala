@@ -4,8 +4,8 @@ import javafx.scene.{ control => jfxsc }
 import scalafx.scene.control.TableColumn.CellDataFeatures
 import scalafx.scene.control.TableView
 import scalafx.Includes._
-
 import ch.seidel.domain.GroupRow
+import scala.annotation.tailrec
 
 /**
  * @author Roland
@@ -14,10 +14,10 @@ trait ScoreToHtmlRenderer {
   protected val title: String
 
   def toHTML(gs: List[GroupSection]): String = {
-    toHTML(gs, 0)
+    toHTML(gs, "", 0)
   }
 
-  private def toHTML(gs: List[GroupSection], level: Int): String = {
+  private def toHTML(gs: List[GroupSection], openedTitle: String, level: Int): String = {
     val dummyTableView = new TableView[GroupRow]()
     val gsBlock = new StringBuilder()
     if (level == 0) {
@@ -93,7 +93,14 @@ trait ScoreToHtmlRenderer {
     for (c <- gs) {
       c match {
         case gl: GroupLeaf =>
-          gsBlock.append(s"<h${level + 2}>${gl.groupKey.easyprint}</h${level + 2}>\n<table width='100%'>\n")
+          if(openedTitle.startsWith("<h")) {
+            val closetag = openedTitle.substring(0, openedTitle.indexOf(">")+1).replace("<", "</")
+            gsBlock.append(s"${openedTitle + gl.groupKey.easyprint}${closetag}\n<table width='100%'>\n")
+          }
+          else {
+            gsBlock.append(s"<h${level + 2}>${openedTitle + gl.groupKey.easyprint}</h${level + 2}>\n<table width='100%'>\n")
+          }
+//          gsBlock.append(s"<h${level + 2}>${gl.groupKey.easyprint}</h${level + 2}>\n<table width='100%'>\n")
           val cols = gl.buildColumns
           cols.foreach { th =>
             if (th.columns.size > 0) {
@@ -159,11 +166,31 @@ trait ScoreToHtmlRenderer {
           }
           gsBlock.append(s"</tbody></table>\n")
 
-        case g: GroupNode => gsBlock.append(s"<h${level + 2}>${g.groupKey.easyprint}</h${level + 2}>\n").append(toHTML(g.next.toList, level + 1))
-        case s: GroupSum  => gsBlock.append(s.easyprint)
+//        case g: GroupNode => gsBlock.append(s"<h${level + 2}>${g.groupKey.easyprint}</h${level + 2}>\n").append(toHTML(g.next.toList, level + 1))
+        case g: GroupNode => gsBlock.append(toHTML(g.next.toList, if(openedTitle.length() > 0) openedTitle + s"${g.groupKey.easyprint}, " else s"<h${level + 2}>${g.groupKey.easyprint}, ", level + 1))
+//        case g: GroupNode =>
+//          @tailrec
+//          def collectGNs(s: GroupSection, acc: String): (String, Iterable[GroupSection]) = {
+//            if(s.isInstanceOf[GroupNode]) {
+//              val gn = s.asInstanceOf[GroupNode]
+//              gn.next match {
+//                case ss: GroupNode => collectGNs(ss, acc + ", " + gn.easyprint)
+//                case _ => (gn.groupKey.easyprint, gn.next)
+//              }
+//            }
+//            else {
+//              (acc, Seq(s))
+//            }
+//          }
+//          val (heads, next) = collectGNs(g, "")
+//          gsBlock.append(s"<h${level + 2}>${heads}</h${level + 2}>\n").append(toHTML(next.toList, level + 1))
+        case s: GroupSum  =>
+          gsBlock.append(s.easyprint)
       }
     }
-    gsBlock.append("</body></html>")
+    if (level == 0) {
+      gsBlock.append("</body></html>")
+    }
     gsBlock.toString()
   }
 }
