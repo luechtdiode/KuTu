@@ -31,7 +31,8 @@ object TurnerPage {
       "gebdat" -> 80,
       "strasse" -> 180,
       "plz" -> 100,
-      "ort" -> 180
+      "ort" -> 180,
+      "activ" -> 100
     )
   }
 
@@ -45,6 +46,7 @@ object TurnerPage {
     val strasse = new StringProperty(init.strasse)
     val plz = new StringProperty(init.plz)
     val ort = new StringProperty(init.ort)
+    val activ = new StringProperty(init.activ match {case true => "Aktiv" case _ => "Inaktiv"})
 
     def reset {
       jsid.value_=(init.js_id + "")
@@ -57,7 +59,7 @@ object TurnerPage {
       }
     }
 
-    def commit = Athlet(init.id, Integer.valueOf(jsid.value), geschlecht.value, name.value, vorname.value, optionOfGebDat, strasse.value, plz.value, ort.value, init.verein)
+    def commit = Athlet(init.id, Integer.valueOf(jsid.value), geschlecht.value, name.value, vorname.value, optionOfGebDat, strasse.value, plz.value, ort.value, init.verein, activ.value.toUpperCase().startsWith("A"))
   }
 
   class VereinTab(val verein: Verein, override val service: KutuService) extends Tab with TabWithService {
@@ -65,7 +67,7 @@ object TurnerPage {
 
     override def isPopulated: Boolean = {
       val athleten = service.database withSession {implicit session =>
-        (service.selectAthletes + " where verein=" +? verein.id).list.map{a => AthletEditor(a)}
+        (service.selectAthletes + " where verein=" +? verein.id + " order by activ desc, name, vorname asc").list.sortBy { a => (a.activ match {case true => "A" case _ => "X"}) + ":" + a.name + ":" + a.vorname }.map{a => AthletEditor(a)}
       }
 
       val wkModel = ObservableBuffer[AthletEditor](athleten)
@@ -75,7 +77,7 @@ object TurnerPage {
         }.map { field =>
           field.setAccessible(true)
           val tc: jfxsc.TableColumn[AthletEditor, _] = new TableColumn[AthletEditor, String] {
-            text = field.getName
+            text =  field.getName.take(1).toUpperCase() + field.getName.drop(1)
             cellValueFactory = { x =>
               field.get(x.value).asInstanceOf[StringProperty] }
             cellFactory = { _ => new TextFieldTableCell[AthletEditor, String](new DefaultStringConverter()) }

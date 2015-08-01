@@ -19,6 +19,7 @@ import scala.io.Source
 import org.sqlite.SQLiteConfig.Pragma
 import org.sqlite.SQLiteConfig.DatePrecision
 import java.util.Properties
+import java.text.ParseException
 
 trait KutuService {
 
@@ -61,7 +62,55 @@ trait KutuService {
   def installDB {
     val sqlfile = this.getClass.getResourceAsStream("/dbscripts/kutu-sqllite-ddl.sql")
     val sqldatafile = this.getClass.getResourceAsStream("/dbscripts/kutu-sqllite-initialdata.sql")
-//    val sqlwkdatafile = this.getClass.getResourceAsStream("/dbscripts/kutu-daten.sql")
+    executeDBScript(Source.fromInputStream(sqlfile, "utf-8").getLines())
+    executeDBScript(Source.fromInputStream(sqldatafile, "utf-8").getLines())
+//    val sqlwkdatafile = this.getClass.getResou
+  }
+
+  def parseLine(s: String): IndexedSeq[String] = {
+    @tailrec
+    def cutFields(s: String, acc: IndexedSeq[String]): IndexedSeq[String] = {
+      if(s.isEmpty()) {
+        acc
+      }
+      else if(s.startsWith("\"")) {
+        val splitter = s.indexOf("\",", 1)
+        if(splitter == -1) {
+          val splitter2 = s.indexOf("\"", 1)
+          if(splitter2 == 0) {
+            acc :+ ""
+          }
+          else {
+            acc :+ s.drop(1).take(splitter2-1)
+          }
+        }
+        else if(splitter == 0) {
+          cutFields(s.drop(splitter+2), acc :+ "")
+        }
+        else {
+          cutFields(s.drop(splitter+2), acc :+ s.drop(1).take(splitter-1))
+        }
+      }
+      else if(s.startsWith(",")) {
+        cutFields(s.drop(1), acc :+ "")
+      }
+      else {
+        val splitter = s.indexOf(",", 1)
+        if(splitter == -1) {
+          acc :+ s
+        }
+        else if(splitter == 0){
+          cutFields(s.drop(1), acc :+ "")
+        }
+        else {
+          cutFields(s.drop(splitter+1), acc :+ s.take(splitter))
+        }
+      }
+    }
+    cutFields(s, IndexedSeq[String]())
+  }
+
+  def executeDBScript(script: Iterator[String]) {
     database withSession { implicit session =>
       def execStatement(statement: String) {
         println(statement); StaticQuery.updateNA(statement).execute
@@ -80,9 +129,7 @@ trait KutuService {
       def parse(lines: Iterator[String]): List[String] = {
         lines.filter(filterCommentLines).foldLeft(List(""))(combineMultilineStatement).filter(_.trim().length() > 0)
       }
-      parse(Source.fromInputStream(sqlfile, "utf-8").getLines()).foreach(execStatement)
-      parse(Source.fromInputStream(sqldatafile, "utf-8").getLines()).foreach(execStatement)
-//        parse(Source.fromFile(sqlwkdatafile).getLines()).foreach(execStatement)
+      parse(script).foreach(execStatement)
     }
   }
 
@@ -95,6 +142,7 @@ trait KutuService {
 //  }
 
   val sdf = new SimpleDateFormat("dd.MM.yyyy")
+  val sdfExported = new SimpleDateFormat("yyyy-MM-dd")
 
   def addFilter[P](query: StaticQuery[P,_], predicate: String, param: Option[P]) = {
     param map {
@@ -103,16 +151,24 @@ trait KutuService {
     }
   }
 
-  implicit def getSQLDate(date: String) = new java.sql.Date(sdf.parse(date).getTime)
+  implicit def getSQLDate(date: String) = try {
+    new java.sql.Date(sdf.parse(date).getTime)
+  }
+  catch {
+    case d: ParseException =>
+      new java.sql.Date(sdfExported.parse(date).getTime)
+
+  }
+
   private implicit val getVereinResult = GetResult(r => Verein(r.<<[Long], r.<<[String]))
   private implicit val getVereinOptionResult = GetResult(r =>  r.nextLongOption() match {
     case Some(id) => Some(getVereinResult(r))
     case _        => { r.skip; r.skip; None }
   })
   private implicit val getAthletResult = GetResult(r =>
-    Athlet(r.<<, r.<<, r.<<, r.<<, r.<<, r.<<, r.<<, r.<<, r.<<, r.<<))
+    Athlet(r.<<, r.<<, r.<<, r.<<, r.<<, r.<<, r.<<, r.<<, r.<<, r.<<, r.<<))
   private implicit val getAthletViewResult = GetResult(r =>
-    AthletView(r.<<, r.<<, r.<<, r.<<, r.<<, r.<<, r.<<, r.<<, r.<<, r))
+    AthletView(r.<<, r.<<, r.<<, r.<<, r.<<, r.<<, r.<<, r.<<, r.<<, r.<<, r))
   private implicit val getDisziplinResult = GetResult(r =>
     Disziplin(r.<<[Long], r.<<[String]))
   private implicit val getWettkampfResult = GetResult(r =>
@@ -321,6 +377,29 @@ trait KutuService {
       sqlu"""       delete from wettkampf where id=${wettkampfid}""".execute
     }
   }
+
+  def insertVerein(verein: Verein): Verein = {
+    database withTransaction { implicit session: Session =>
+      val candidateId = sql"""
+                select max(verein.id) as maxid
+                from verein
+                where UPPER(name)=${verein.name.toUpperCase()}
+       """.as[Long].build().headOption
+       candidateId match {
+         case Some(id) if(id > 0) =>
+           Verein(id, verein.name)
+         case _ =>
+           sqlu"""
+                insert into verein  (name) values (${verein.name})
+               """.execute
+           val id = sql"""
+                select id from verein where id in (select max(id) from verein)
+              """.as[Long].build().head
+           Verein(id, verein.name)
+       }
+    }
+  }
+
   def createVerein(name: String): Long = {
     database withTransaction { implicit session: Session =>
       sqlu"""       insert into verein
@@ -449,13 +528,13 @@ trait KutuService {
 
   def selectAthletesView = {
     database withSession { implicit session =>
-      sql"""        select * from athlet inner join verein on (verein.id = athlet.verein) """.as[AthletView].list()
+      sql"""        select * from athlet inner join verein on (verein.id = athlet.verein) order by activ desc, name, vorname asc """.as[AthletView].list()
     }
   }
 
   def selectVereine = {
     database withSession { implicit session =>
-      sql"""        select id, name from verein""".as[Verein].list()
+      sql"""        select id, name from verein order by name""".as[Verein].list()
     }
   }
 
@@ -474,7 +553,7 @@ trait KutuService {
       def getId = sql"""
                     select max(athlet.id) as maxid
                     from athlet
-                    where name=${athlete.name} and vorname=${athlete.vorname} and gebdat=${athlete.gebdat} and verein=${athlete.verein}
+                    where name=${athlete.name} and vorname=${athlete.vorname} and strftime('%Y', gebdat)=strftime('%Y',${athlete.gebdat}) and verein=${athlete.verein}
            """.as[Long].build().headOption
 
       if (athlete.id == 0) {
@@ -482,14 +561,14 @@ trait KutuService {
           case Some(id) if(id > 0) =>
             sqlu"""
                     replace into athlet
-                    (id, js_id, geschlecht, name, vorname, gebdat, strasse, plz, ort, verein)
-                    values (${id}, ${athlete.js_id}, ${athlete.geschlecht}, ${athlete.name}, ${athlete.vorname}, ${athlete.gebdat}, ${athlete.strasse}, ${athlete.plz}, ${athlete.ort}, ${athlete.verein})
+                    (id, js_id, geschlecht, name, vorname, gebdat, strasse, plz, ort, verein, activ)
+                    values (${id}, ${athlete.js_id}, ${athlete.geschlecht}, ${athlete.name}, ${athlete.vorname}, ${athlete.gebdat}, ${athlete.strasse}, ${athlete.plz}, ${athlete.ort}, ${athlete.verein}, ${athlete.activ})
             """.execute
             sql"""select * from athlet where id = ${id}""".as[Athlet].build().head
           case _ => sqlu"""
                     replace into athlet
-                    (js_id, geschlecht, name, vorname, gebdat, strasse, plz, ort, verein)
-                    values (${athlete.js_id}, ${athlete.geschlecht}, ${athlete.name}, ${athlete.vorname}, ${athlete.gebdat}, ${athlete.strasse}, ${athlete.plz}, ${athlete.ort}, ${athlete.verein})
+                    (js_id, geschlecht, name, vorname, gebdat, strasse, plz, ort, verein, activ)
+                    values (${athlete.js_id}, ${athlete.geschlecht}, ${athlete.name}, ${athlete.vorname}, ${athlete.gebdat}, ${athlete.strasse}, ${athlete.plz}, ${athlete.ort}, ${athlete.verein}, ${athlete.activ})
             """.execute
             sql"""select * from athlet where id = (select max(athlet.id) from athlet)""".as[Athlet].build().head
         }
@@ -497,8 +576,8 @@ trait KutuService {
       else {
         sqlu"""
                     replace into athlet
-                    (id, js_id, geschlecht, name, vorname, gebdat, strasse, plz, ort, verein)
-                    values (${athlete.id}, ${athlete.js_id}, ${athlete.geschlecht}, ${athlete.name}, ${athlete.vorname}, ${athlete.gebdat}, ${athlete.strasse}, ${athlete.plz}, ${athlete.ort}, ${athlete.verein})
+                    (id, js_id, geschlecht, name, vorname, gebdat, strasse, plz, ort, verein, activ)
+                    values (${athlete.id}, ${athlete.js_id}, ${athlete.geschlecht}, ${athlete.name}, ${athlete.vorname}, ${athlete.gebdat}, ${athlete.strasse}, ${athlete.plz}, ${athlete.ort}, ${athlete.verein}, ${athlete.activ})
             """.execute
         athlete
       }

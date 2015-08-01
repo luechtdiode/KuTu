@@ -25,6 +25,7 @@ CREATE TABLE IF NOT EXISTS `athlet` (
   `plz` varchar(10) DEFAULT '',
   `ort` varchar(100) DEFAULT '',
   `verein` integer DEFAULT NULL,
+  `activ` Boolean NOT NULL DEFAULT True,
   FOREIGN KEY (`verein`) REFERENCES `verein` (`id`)
 );
 

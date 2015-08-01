@@ -3,8 +3,9 @@ package ch.seidel
 import ch.seidel.commons._
 import ch.seidel.domain._
 import javafx.beans.binding.Bindings
+import javafx.beans.value.ChangeListener
 import javafx.collections.ObservableList
-import javafx.scene.{control => jfxsc}
+import javafx.scene.{ control => jfxsc }
 import scalafx.Includes._
 import scalafx.beans.binding.BooleanBinding
 import scalafx.beans.property.DoubleProperty
@@ -16,6 +17,7 @@ import scalafx.event.ActionEvent
 import scalafx.geometry.Pos
 import scalafx.scene.Node
 import scalafx.scene.control.Button
+import scalafx.scene.control.Control
 import scalafx.scene.control.Label
 import scalafx.scene.control.Pagination
 import scalafx.scene.control.Tab
@@ -25,17 +27,16 @@ import scalafx.scene.control.TableView
 import scalafx.scene.control.TextField
 import scalafx.scene.control.ToolBar
 import scalafx.scene.control.cell.TextFieldTableCell
+import scalafx.scene.input.KeyCode
+import scalafx.scene.input.KeyEvent
 import scalafx.scene.layout.BorderPane
 import scalafx.scene.layout.FlowPane
 import scalafx.scene.layout.HBox
 import scalafx.scene.layout.Priority
 import scalafx.scene.layout.Region
 import scalafx.scene.layout.VBox
-import scalafx.util.converter.StringConverterJavaToJavaDelegate
-import scalafx.scene.control.Control
 import scalafx.util.converter.DefaultStringConverter
-import scalafx.scene.input.KeyEvent
-import scalafx.scene.input.KeyCode
+import scalafx.util.converter.StringConverterJavaToJavaDelegate
 
 case class WertungEditor(init: WertungView) {
 	type WertungChangeListener = (WertungEditor) => Unit
@@ -656,19 +657,50 @@ class WettkampfWertungTab(programm: Option[ProgrammView], riege: Option[String],
         onAction = (event: ActionEvent) => {
           disable = true
           val athletModel = ObservableBuffer[AthletView](
-            service.selectAthletesView.filter(service.altersfilter(progrm, _)).filter { p => wertungen.forall { wp => wp.head.init.athlet.id != p.id } }
+            service.selectAthletesView.filter(service.altersfilter(progrm, _)).
+            filter { p => p.activ && wertungen.forall { wp => wp.head.init.athlet.id != p.id } }.
+            sortBy { a => (a.activ match {case true => "A" case _ => "X"}) + ":" + a.name + ":" + a.vorname }
           )
-          val athletTable = new TableView[AthletView](athletModel) {
+          val filteredModel = ObservableBuffer[AthletView](athletModel)
+          val filter = new TextField() {
+            promptText = "Such-Text"
+            text.addListener{ (o: javafx.beans.value.ObservableValue[_ <: String], oldVal: String, newVal: String) =>
+              filteredModel.clear()
+              val search = newVal.toUpperCase()
+              for(athlet <- athletModel) {
+                if(search.isEmpty() || athlet.name.toUpperCase().contains(search)) {
+                  filteredModel.add(athlet)
+                }
+                else if(athlet.vorname.toUpperCase().contains(search)) {
+                  filteredModel.add(athlet)
+                }
+                else if(athlet.verein match {case Some(v) => v.name.toUpperCase().contains(search) case None => false}) {
+                  filteredModel.add(athlet)
+                }
+              }
+            }
+          }
+          val athletTable = new TableView[AthletView](filteredModel) {
             columns ++= List(
               new TableColumn[AthletView, String] {
                 text = "Athlet"
                 cellValueFactory = { x =>
                   new ReadOnlyStringWrapper(x.value, "athlet", {
-                    s"${x.value.vorname} ${x.value.name} (${x.value.verein.map { _.name }.getOrElse("ohne Verein")})"
+                    s"${x.value.vorname} ${x.value.name}"
+                  })
+                }
+                //prefWidth = 150
+              },
+              new TableColumn[AthletView, String] {
+                text = "Verein"
+                cellValueFactory = { x =>
+                  new ReadOnlyStringWrapper(x.value, "verein", {
+                    s"${x.value.verein.map { _.name }.getOrElse("ohne Verein")}"
                   })
                 }
                 //prefWidth = 150
               }
+
             )
           }
           implicit val impevent = event
@@ -677,6 +709,7 @@ class WettkampfWertungTab(programm: Option[ProgrammView], riege: Option[String],
               new BorderPane {
                 hgrow = Priority.ALWAYS
                 vgrow = Priority.ALWAYS
+                top = filter
                 center = athletTable
               }
             }
@@ -691,9 +724,9 @@ class WettkampfWertungTab(programm: Option[ProgrammView], riege: Option[String],
             }
           }, new Button("OK, Alle") {
             onAction = (event: ActionEvent) => {
-              if (!athletTable.selectionModel().isEmpty) {
+              if (!filteredModel.isEmpty) {
                 val athlet = athletTable.selectionModel().getSelectedItem
-                def filter(progId: Long, a: Athlet): Boolean = athletModel.exists { x => x.id == a.id }
+                def filter(progId: Long, a: Athlet): Boolean = filteredModel.exists { x => x.id == a.id }
                 service.assignAthletsToWettkampf(wettkampf.id, Set(progrm.id), Some(filter))
                 reloadData()
               }
