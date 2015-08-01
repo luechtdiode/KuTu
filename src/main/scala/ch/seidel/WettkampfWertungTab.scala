@@ -100,6 +100,7 @@ class WettkampfWertungTab(programm: Option[ProgrammView], riege: Option[String],
 
     var wertungen = updateWertungen
  		val wkModel = ObservableBuffer[IndexedSeq[WertungEditor]](wertungen)
+    var editingEditor: Option[WertungEditor] = None
     val wkview = new TableView[IndexedSeq[WertungEditor]](wkModel) {
       id = "kutu-table"
       editable = true
@@ -124,12 +125,14 @@ class WettkampfWertungTab(programm: Option[ProgrammView], riege: Option[String],
           //evt.consume()
           val selelctedCell = selectionModel.value.getSelectedCells
           selelctedCell.foreach{tp =>
+            edit(tp.row, tp.getTableColumn.asInstanceOf[jfxsc.TableColumn[IndexedSeq[WertungEditor], Any]])
             if(evt.code.equals(KeyCode.DELETE)) {
               val column = tp.getTableColumn.asInstanceOf[jfxsc.TableColumn[IndexedSeq[WertungEditor], Any]]
               if(column.parentColumn.value != null) {
                 items.get.get(tp.row).find { x => x.init.wettkampfdisziplin.disziplin.name.equals(column.parentColumn.value.getText)}
                 match {
                   case Some(editor) =>
+                    editingEditor = Some(editor)
                     column.text.value match {
                       case "D" => editor.noteD.value = 0d
                       case "E" => editor.noteE.value = 0d
@@ -143,7 +146,6 @@ class WettkampfWertungTab(programm: Option[ProgrammView], riege: Option[String],
 
               }
             }
-            edit(tp.row, tp.getTableColumn.asInstanceOf[jfxsc.TableColumn[IndexedSeq[WertungEditor], Any]])
           }
         }
       }
@@ -385,6 +387,7 @@ class WettkampfWertungTab(programm: Option[ProgrammView], riege: Option[String],
           editable = wertung.init.wettkampfdisziplin.notenSpez.isDNoteUsed
           visible = wertung.init.wettkampfdisziplin.notenSpez.isDNoteUsed
           onEditCommit = (evt: CellEditEvent[IndexedSeq[WertungEditor], Double]) => {
+            editingEditor = None
             val disciplin = evt.rowValue(index)
             disciplin.noteD.value = evt.newValue
             disciplin.endnote.value = wertung.init.wettkampfdisziplin.notenSpez.calcEndnote(disciplin.noteD.value, disciplin.noteE.value)
@@ -397,8 +400,13 @@ class WettkampfWertungTab(programm: Option[ProgrammView], riege: Option[String],
             evt.tableView.requestFocus()
           }
           onEditCancel = (evt: CellEditEvent[IndexedSeq[WertungEditor], Double]) => {
-           if (wertung.isDirty) {
-              wertung.reset
+            editingEditor match {
+              case Some(editor) =>
+                if (editor.isDirty) {
+                  editor.reset
+                }
+                editingEditor = None
+              case None =>
             }
           }
         }
@@ -414,6 +422,7 @@ class WettkampfWertungTab(programm: Option[ProgrammView], riege: Option[String],
           //println(text, index)
 
           onEditCommit = (evt: CellEditEvent[IndexedSeq[WertungEditor], Double]) => {
+            editingEditor = None
             val disciplin = evt.rowValue(index)
             disciplin.noteE.value = evt.newValue
             disciplin.endnote.value = wertung.init.wettkampfdisziplin.notenSpez.calcEndnote(disciplin.noteD.value, disciplin.noteE.value)
@@ -426,8 +435,13 @@ class WettkampfWertungTab(programm: Option[ProgrammView], riege: Option[String],
             evt.tableView.requestFocus()
           }
           onEditCancel = (evt: CellEditEvent[IndexedSeq[WertungEditor], Double]) => {
-            if (wertung.isDirty) {
-              wertung.reset
+            editingEditor match {
+              case Some(editor) =>
+                if (editor.isDirty) {
+                  editor.reset
+                }
+                editingEditor = None
+              case None =>
             }
           }
         }
