@@ -18,11 +18,24 @@ sealed trait GroupBy {
   def /(next: GroupBy): GroupBy = groupBy(next)
 
   def groupBy(next: GroupBy): GroupBy = {
-    this.next match {
-      case Some(n) => n.groupBy(next)
-      case None    => this.next = Some(next)
+    if(this == next) {
+      next
     }
-    this
+    else {
+      this.next match {
+        case Some(n) =>
+          if(n != this) {
+            n.groupBy(next)
+            this
+          }
+          else {
+            n
+          }
+        case None =>
+          this.next = Some(next)
+          this
+      }
+    }
   }
 
   def reset {
