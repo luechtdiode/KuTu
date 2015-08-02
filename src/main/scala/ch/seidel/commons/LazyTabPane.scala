@@ -5,8 +5,8 @@ import scalafx.scene.layout.Priority
 import scalafx.scene.control.Tab
 
 class LazyTabPane(refreshTabs: (LazyTabPane) => Seq[Tab]) extends TabPane {
-  hgrow = Priority.ALWAYS
-  vgrow = Priority.ALWAYS
+  hgrow = Priority.Always
+  vgrow = Priority.Always
   id = "source-tabs"
 
   def init {

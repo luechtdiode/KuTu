@@ -7,15 +7,22 @@ import np.com.ngopal.control.AutoFillTextBoxFactory
 import java.time.LocalDate
 import java.time.ZoneId
 import scalafx.util.converter.IntStringConverter
+import scalafx.util.converter.LongStringConverter
 
 package object domain {
   implicit def dbl2Str(d: Double) = f"${d}%2.3f"
   implicit def str2dbl(d: String) = new DoubleStringConverter().fromString(d)
   implicit def str2Int(d: String) = new IntStringConverter().fromString(d)
+  implicit def str2Long(d: String) = new LongStringConverter().fromString(d)
   implicit def ld2SQLDate(ld: LocalDate): java.sql.Date = {
     if(ld==null) return null else {
       val inst = ld.atStartOfDay(ZoneId.of("UTC"))
       new java.sql.Date(java.util.Date.from(inst.toInstant()).getTime())
+    }
+  }
+  implicit def sqlDate2ld(sd: java.sql.Date): LocalDate = {
+    if(sd==null) return null else {
+      sd.toLocalDate()//.toInstant().atZone(ZoneId.systemDefault()).toLocalDate()
     }
   }
 
@@ -44,7 +51,7 @@ package object domain {
   case class Athlet(id: Long, js_id: Int, geschlecht: String, name: String, vorname: String, gebdat: Option[java.sql.Date], strasse: String, plz: String, ort: String, verein: Option[Long], activ: Boolean) extends DataObject {
     override def easyprint = name + " " + vorname + " " + (gebdat match {case Some(d) => f"$d%tY "; case _ => ""})
   }
-  case class AthletView(id: Long, js_id: Int, geschlecht: String, name: String, vorname: String, gebdat: Option[java.sql.Date], strasse: String, plz: String, ort: String, activ: Boolean, verein: Option[Verein]) extends DataObject {
+  case class AthletView(id: Long, js_id: Int, geschlecht: String, name: String, vorname: String, gebdat: Option[java.sql.Date], strasse: String, plz: String, ort: String, verein: Option[Verein], activ: Boolean) extends DataObject {
     override def easyprint = name + " " + vorname + " " + (gebdat match {case Some(d) => f"$d%tY "; case _ => " "}) + (verein match {case Some(v) => v.easyprint; case _ => ""})
   }
 

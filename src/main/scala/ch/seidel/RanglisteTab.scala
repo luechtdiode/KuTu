@@ -147,14 +147,14 @@ class RanglisteTab(wettkampf: WettkampfView, override val service: KutuService) 
       }
     }
     content = new BorderPane {
-      vgrow = Priority.ALWAYS
-      hgrow = Priority.ALWAYS
+      vgrow = Priority.Always
+      hgrow = Priority.Always
       top = new HBox {
-        vgrow = Priority.ALWAYS
-        hgrow = Priority.ALWAYS
+        vgrow = Priority.Always
+        hgrow = Priority.Always
         spacing = 15
         padding = Insets(15)
-        content = new Label("Gruppierungen:") +: combs :+ btnSave
+        children = new Label("Gruppierungen:") +: combs :+ btnSave
       }
       center = webView
     }

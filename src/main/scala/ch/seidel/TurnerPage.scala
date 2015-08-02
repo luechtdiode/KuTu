@@ -123,8 +123,8 @@ object TurnerPage {
     }
 
     val cont = new BorderPane {
-      hgrow = Priority.ALWAYS
-      vgrow = Priority.ALWAYS
+      hgrow = Priority.Always
+      vgrow = Priority.Always
       center = athletenview
       top = new ToolBar {
         content = List(

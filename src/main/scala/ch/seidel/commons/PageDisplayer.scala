@@ -49,9 +49,9 @@ object PageDisplayer {
             center = nodeToAdd.getPage
             bottom = new HBox {
               prefHeight = 50
-              alignment = Pos.BOTTOM_RIGHT
-              hgrow = Priority.ALWAYS
-              content = buttons
+              alignment = Pos.BottomRight
+              hgrow = Priority.Always
+              children = buttons
             }
             var first = false
             buttons.foreach { btn =>
@@ -60,7 +60,7 @@ object PageDisplayer {
                 btn.defaultButton = true
               }
               btn.minWidth = 100
-              btn.filterEvent(ActionEvent.ACTION) { () => outer.close()}}
+              btn.filterEvent(ActionEvent.Action) { () => outer.close()}}
           }
         }
       }
@@ -88,9 +88,9 @@ object PageDisplayer {
 
   private def displayPage(nodeToAdd: DisplayablePage): Node = {
     new VBox {
-      vgrow = Priority.ALWAYS
-      hgrow = Priority.ALWAYS
-      content = nodeToAdd.getPage
+      vgrow = Priority.Always
+      hgrow = Priority.Always
+      children = nodeToAdd.getPage
     }
   }
 }

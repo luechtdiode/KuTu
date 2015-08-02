@@ -1,17 +1,19 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <classpath>
-  <classpathentry kind="src" path="src/test/scala" output="target/test-classes" including="**/*.scala|**/*.java|**/*.java"/>
-  <classpathentry kind="src" path="src/main/scala" including="**/*.scala|**/*.java|**/*.java"/>
-  <classpathentry kind="src" path="src/main/resources" excluding="**/*.java"/>
-  <classpathentry kind="output" path="target/classes"/>
-  <classpathentry kind="con" path="org.eclipse.jdt.launching.JRE_CONTAINER"/>
-  <classpathentry kind="con" path="org.scala-ide.sdt.launching.SCALA_CONTAINER"/>
-  <classpathentry kind="var" path="M2_REPO/org/scalafx/scalafx_2.10/8.0.0-R4/scalafx_2.10-8.0.0-R4.jar" sourcepath="M2_REPO/org/scalafx/scalafx_2.10/8.0.0-R4/scalafx_2.10-8.0.0-R4-sources.jar"/>
-  <classpathentry kind="var" path="M2_REPO/org/xerial/sqlite-jdbc/3.8.9.1/sqlite-jdbc-3.8.9.1.jar" sourcepath="M2_REPO/org/xerial/sqlite-jdbc/3.8.9.1/sqlite-jdbc-3.8.9.1-sources.jar"/>
-  <classpathentry kind="var" path="M2_REPO/mysql/mysql-connector-java/5.1.18/mysql-connector-java-5.1.18.jar"/>
-  <classpathentry kind="var" path="M2_REPO/com/h2database/h2/1.3.174/h2-1.3.174.jar" sourcepath="M2_REPO/com/h2database/h2/1.3.174/h2-1.3.174-sources.jar"/>
-  <classpathentry kind="var" path="M2_REPO/com/typesafe/slick/slick_2.10/2.0.0/slick_2.10-2.0.0.jar" sourcepath="M2_REPO/com/typesafe/slick/slick_2.10/2.0.0/slick_2.10-2.0.0-sources.jar"/>
-  <classpathentry kind="var" path="M2_REPO/org/slf4j/slf4j-api/1.6.4/slf4j-api-1.6.4.jar" sourcepath="M2_REPO/org/slf4j/slf4j-api/1.6.4/slf4j-api-1.6.4-sources.jar"/>
-  <classpathentry kind="var" path="M2_REPO/org/slf4j/slf4j-nop/1.6.4/slf4j-nop-1.6.4.jar" sourcepath="M2_REPO/org/slf4j/slf4j-nop/1.6.4/slf4j-nop-1.6.4-sources.jar"/>
-  <classpathentry kind="var" path="M2_REPO/np/com/ngopal/javafx-autocomplete-field/1.0/javafx-autocomplete-field-1.0.jar"/>
+	<classpathentry including="**/*.scala|**/*.java|**/*.java" kind="src" output="target/test-classes" path="src/test/scala"/>
+	<classpathentry including="**/*.scala|**/*.java|**/*.java" kind="src" path="src/main/scala"/>
+	<classpathentry including="**/*.scala|**/*.java|**/*.java" kind="src" path="Scripts"/>
+	<classpathentry excluding="**/*.java" kind="src" path="src/main/resources"/>
+	<classpathentry kind="con" path="org.eclipse.jdt.launching.JRE_CONTAINER"/>
+	<classpathentry kind="con" path="org.scala-ide.sdt.launching.SCALA_CONTAINER"/>
+	<classpathentry kind="var" path="M2_REPO/org/scalafx/scalafx_2.10/8.0.40-R8/scalafx_2.10-8.0.40-R8.jar" sourcepath="M2_REPO/org/scalafx/scalafx_2.10/8.0.40-R8/scalafx_2.10-8.0.40-R8-sources.jar"/>
+	<classpathentry kind="var" path="M2_REPO/org/scala-lang/scala-reflect/2.10.5/scala-reflect-2.10.5.jar" sourcepath="M2_REPO/org/scala-lang/scala-reflect/2.10.5/scala-reflect-2.10.5-sources.jar"/>
+	<classpathentry kind="var" path="M2_REPO/org/xerial/sqlite-jdbc/3.8.11/sqlite-jdbc-3.8.11.jar" sourcepath="M2_REPO/org/xerial/sqlite-jdbc/3.8.11/sqlite-jdbc-3.8.11-sources.jar"/>
+	<classpathentry kind="var" path="M2_REPO/com/typesafe/slick/slick_2.10/3.0.0/slick_2.10-3.0.0.jar" sourcepath="M2_REPO/com/typesafe/slick/slick_2.10/3.0.0/slick_2.10-3.0.0-sources.jar"/>
+	<classpathentry kind="var" path="M2_REPO/org/slf4j/slf4j-api/1.6.4/slf4j-api-1.6.4.jar" sourcepath="M2_REPO/org/slf4j/slf4j-api/1.6.4/slf4j-api-1.6.4-sources.jar"/>
+	<classpathentry kind="var" path="M2_REPO/com/typesafe/config/1.2.1/config-1.2.1.jar" sourcepath="M2_REPO/com/typesafe/config/1.2.1/config-1.2.1-sources.jar"/>
+	<classpathentry kind="var" path="M2_REPO/org/reactivestreams/reactive-streams/1.0.0/reactive-streams-1.0.0.jar" sourcepath="M2_REPO/org/reactivestreams/reactive-streams/1.0.0/reactive-streams-1.0.0-sources.jar"/>
+	<classpathentry kind="var" path="M2_REPO/org/slf4j/slf4j-nop/1.6.4/slf4j-nop-1.6.4.jar" sourcepath="M2_REPO/org/slf4j/slf4j-nop/1.6.4/slf4j-nop-1.6.4-sources.jar"/>
+	<classpathentry kind="var" path="M2_REPO/np/com/ngopal/javafx-autocomplete-field/1.0/javafx-autocomplete-field-1.0.jar"/>
+	<classpathentry kind="output" path="classes"/>
 </classpath>

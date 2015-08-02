@@ -150,6 +150,6 @@ class KuTuAppTree(service: KutuService) {
     padding = Insets(10, 10, 10, 10)
     orientation = Orientation.HORIZONTAL
     styleClass += "category-page-flow"
-    content = value.map(_.button)
+    children = value.map(_.button)
   }
 }

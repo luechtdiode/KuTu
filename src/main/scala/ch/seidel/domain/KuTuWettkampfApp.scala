@@ -1,30 +1,6 @@
 package ch.seidel.domain
 
-import scala.slick.jdbc.GetResult
-import scala.slick.jdbc.JdbcBackend.Database
-import scala.slick.jdbc.JdbcBackend.Session
-import scala.slick.jdbc.StaticQuery._
-import javax.swing.JFrame
-import java.awt.BorderLayout
-import javax.swing.JLabel
-import javax.swing.JScrollPane
-import scalafx.Includes._
 import scalafx.application.JFXApp
-import scalafx.application.JFXApp.PrimaryStage
-import scalafx.scene._
-import scalafx.scene.control._
-import scalafx.scene.control.TableColumn._
-import scalafx.scene.layout._
-import scalafx.scene.paint._
-import scalafx.scene.paint.Color._
-import scalafx.scene.web._
-import scalafx.collections._
-import scalafx.geometry._
-import scalafx.beans.property.StringProperty
-import scalafx.beans.property.ReadOnlyStringWrapper
-import java.sql.Date
-import scalafx.scene.canvas.Canvas
-import scalafx.scene.control.cell.TextFieldTableCell
 
 object KuTuWettkampfApp extends JFXApp with KutuService {
   print(suggestRiegen(7, Seq(6)))

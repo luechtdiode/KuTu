@@ -105,17 +105,6 @@ class WettkampfWertungTab(programm: Option[ProgrammView], riege: Option[String],
     val wkview = new TableView[IndexedSeq[WertungEditor]](wkModel) {
       id = "kutu-table"
       editable = true
-//        // switch to edit mode on keypress
-//        // this must be KeyEvent.KEY_PRESSED so that the key gets forwarded to the editing cell; it wouldn't be forwarded on KEY_RELEASED
-//      addEventFilter(KeyEvent.KeyPressed, {event: KeyEvent =>
-//        // switch to edit mode on keypress, but only if we aren't already in edit mode
-//        if(delegate.getEditingCell() == null) {
-//          if( event.getCode().isLetterKey() || event.getCode().isDigitKey()) {
-//            val tp = focusModel.value.focusedCell.value;
-//            edit(tp.row, tp.getTableColumn.asInstanceOf[jfxsc.TableColumn[IndexedSeq[WertungEditor], Any]])
-//          }
-//        }
-//      });
       onKeyPressed_= {evt: KeyEvent =>
         if(delegate.getEditingCell() == null && (
                Character.isAlphabetic(evt.character.charAt(0))
@@ -153,7 +142,6 @@ class WettkampfWertungTab(programm: Option[ProgrammView], riege: Option[String],
     }
 
     def disziplinCnt = wertungen.headOption match {case Some(w) => w.size case _ => 0}
-//    def ordermapping = wertungen.headOption.getOrElse(List()).map { x => x.init.wettkampfdisziplin.disziplin.id -> x.init.wettkampfdisziplin.ord }.toMap
 
     def updateEditorPane {
     	if(editorPane != null) {
@@ -183,13 +171,7 @@ class WettkampfWertungTab(programm: Option[ProgrammView], riege: Option[String],
         promptText = "E-Note"
         prefWidth = 500
         delegate.setListLimit(20)
-//        prefHeight = 50
       }
-//      txtE.prefWidth(100)
-//      val txtE = new TextField() {
-//        promptText = "E-Note"
-//        prefWidth = 100
-//      }
       val txtEnd = new TextField() {
         promptText = "End-Note"
         prefWidth = 100
@@ -203,17 +185,14 @@ class WettkampfWertungTab(programm: Option[ProgrammView], riege: Option[String],
         disable <== when(isDirty) choose false otherwise true
       }
       val actionBox = new HBox() {
-        content = List(btnSaveNextAthlet, btnSaveNextDisciplin)
+        children = List(btnSaveNextAthlet, btnSaveNextDisciplin)
       }
       val noteBox = new FlowPane() {
-        alignment = Pos.CENTER
-        content = List(txtD, txtE, txtEnd, actionBox)
+        alignment = Pos.Center
+        children = List(txtD, txtE, txtEnd, actionBox)
       }
-//      val noteBox = new HBox() {
-//        content = List(txtD, txtE, txtEnd, actionBox)
-//      }
-      content = List(lblHeader, noteBox)
-      alignment = Pos.CENTER
+      children = List(lblHeader, noteBox)
+      alignment = Pos.Center
       var disciplin: WertungEditor = null
 
       val listener = (we: WertungEditor) => {
@@ -250,20 +229,6 @@ class WettkampfWertungTab(programm: Option[ProgrammView], riege: Option[String],
           1
         }
         else 2
-//        lastFocused match {
-//          case textD => 0
-//          case textE => 1
-//          case _ =>
-//            if(txtD.focused.value) {
-//              lastFocused = Some(txtD)
-//              0
-//            }
-//            else if(txtE.focused.value) {
-//              lastFocused = Some(txtE)
-//              1
-//            }
-//            else 2
-//        }
       }
 
       def adjust: Int = {
@@ -303,8 +268,6 @@ class WettkampfWertungTab(programm: Option[ProgrammView], riege: Option[String],
             //wkview.selectionModel.value.selectBelowCell
           }
           listener(disciplin)
-          //txtD.text.delegate.bindBidirectional(disciplin.noteD, NoteFormatter.asInstanceOf[scalafx.util.StringConverter[Number]])
-          //txtD.text <==> disciplin.noteD
           txtEnd.editable = false
           if(disciplin.init.wettkampfdisziplin.notenSpez.isDNoteUsed) {
             txtD.editable = true
@@ -358,10 +321,6 @@ class WettkampfWertungTab(programm: Option[ProgrammView], riege: Option[String],
           txtE.onAction.unbind()
           txtEnd.text.unbind()
           txtEnd.onAction.unbind()
-//          println("unbinded")
-//          disciplin.noteD.unbind()
-          //disciplin.noteE.unbind(txtE.text)
-          //disciplin.endnote.unbind(txtEnd.text)
 //        println(" disciplin unbinded")
         }
         txtD.disable = true
@@ -450,22 +409,8 @@ class WettkampfWertungTab(programm: Option[ProgrammView], riege: Option[String],
           val index = indexerF.next
           text = wertung.init.wettkampfdisziplin.disziplin.name
           cellValueFactory = { x => if (x.value.size > index) x.value(index).endnote else wertung.endnote }
-          //cellFactory = { x => new TextFieldTableCell[IndexedSeq[WertungEditor], Double](NoteFormatter) }
-
           styleClass += "table-cell-with-value"
           prefWidth = 80
-//          editable = true
-//          onEditCommit = (evt: CellEditEvent[IndexedSeq[WertungEditor], Double]) => {
-//            val disciplin = evt.rowValue(index)
-//            disciplin.endnote.value = evt.newValue
-//            val rowIndex = wkModel.indexOf(evt.rowValue)
-//            if (disciplin.isDirty) {
-//              wkModel.update(rowIndex, evt.rowValue.updated(index, WertungEditor(service.updateWertung(disciplin.commit))))
-//              evt.tableView.selectionModel.value.select(rowIndex, this)
-//              updateEditorPane
-//            }
-//            evt.tableView.requestFocus()
-//          }
         }
         val cl: jfxsc.TableColumn[IndexedSeq[WertungEditor], _] = new TableColumn[IndexedSeq[WertungEditor], String] {
           text = clEndnote.text.value
@@ -496,7 +441,7 @@ class WettkampfWertungTab(programm: Option[ProgrammView], riege: Option[String],
             s"${a.vorname} ${a.name}"
           })
         }
-        delegate.impl_setReorderable(false)
+        delegate.impl_setReorderable(false) // shame on me??? why this feature should not be a requirement?
         prefWidth = 150
       },
       new TableColumn[IndexedSeq[WertungEditor], String] {
@@ -513,8 +458,6 @@ class WettkampfWertungTab(programm: Option[ProgrammView], riege: Option[String],
       new TableColumn[IndexedSeq[WertungEditor], String] {
         text = "Riege"
         styleClass += "table-cell-with-value"
-//        cellValueFactory = { x => x.value.head.init.riege.getOrElse("keine Einteilung") }
-
         cellFactory = { x => new TextFieldTableCell[IndexedSeq[WertungEditor], String](new DefaultStringConverter()) }
         cellValueFactory = { x =>
           new ReadOnlyStringWrapper(x.value, "riege", {
@@ -608,7 +551,6 @@ class WettkampfWertungTab(programm: Option[ProgrammView], riege: Option[String],
         wkview.columns ++= athletCol ++ wertungenCols ++ sumCol
       }
       try {
-//        pagination.currentPageIndex.value = idx
         for(ts <- coords) {
           if(ts._2 < -100) {
             val toSelectParent = wkview.columns(ts._2 / -100);
@@ -658,7 +600,7 @@ class WettkampfWertungTab(programm: Option[ProgrammView], riege: Option[String],
           disable = true
           val athletModel = ObservableBuffer[AthletView](
             service.selectAthletesView.filter(service.altersfilter(progrm, _)).
-            filter { p => p.activ && wertungen.forall { wp => wp.head.init.athlet.id != p.id } }.
+            filter { p => /*p.activ &&*/ wertungen.forall { wp => wp.head.init.athlet.id != p.id } }.
             sortBy { a => (a.activ match {case true => "A" case _ => "X"}) + ":" + a.name + ":" + a.vorname }
           )
           val filteredModel = ObservableBuffer[AthletView](athletModel)
@@ -696,6 +638,15 @@ class WettkampfWertungTab(programm: Option[ProgrammView], riege: Option[String],
                 cellValueFactory = { x =>
                   new ReadOnlyStringWrapper(x.value, "verein", {
                     s"${x.value.verein.map { _.name }.getOrElse("ohne Verein")}"
+                  })
+                }
+                //prefWidth = 150
+              },
+              new TableColumn[AthletView, String] {
+                text = "Status"
+                cellValueFactory = { x =>
+                  new ReadOnlyStringWrapper(x.value, "status", {
+                    x.value.activ match {case true => "Aktiv" case _ => "Inaktiv"}
                   })
                 }
                 //prefWidth = 150
@@ -757,9 +708,9 @@ class WettkampfWertungTab(programm: Option[ProgrammView], riege: Option[String],
             def getPage: Node = {
               new HBox {
                 prefHeight = 50
-                alignment = Pos.BOTTOM_RIGHT
-                hgrow = Priority.ALWAYS
-                content = Seq(new Label("Stationen (wenn mehr wie eine Rotation, dann pro Rotation, getrennt mit Komma)  "), stationen)
+                alignment = Pos.BottomRight
+                hgrow = Priority.Always
+                children = Seq(new Label("Stationen (wenn mehr wie eine Rotation, dann pro Rotation, getrennt mit Komma)  "), stationen)
               }
             }
           }, new Button("OK") {
@@ -821,8 +772,8 @@ class WettkampfWertungTab(programm: Option[ProgrammView], riege: Option[String],
     }
 
     val cont = new BorderPane {
-      hgrow = Priority.ALWAYS
-      vgrow = Priority.ALWAYS
+      hgrow = Priority.Always
+      vgrow = Priority.Always
       center = wkview
       top = new ToolBar {
         content = List(
