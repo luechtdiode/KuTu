@@ -23,6 +23,7 @@ class DashboardPage(dashPart: String = "dashboard", tree: KuTuAppTree) extends D
         vgrow = Priority.Always
         hgrow = Priority.Always
         children = thumbs
+        styleClass += "category-page"
       }
       styleClass += "category-page"
     }

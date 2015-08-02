@@ -562,7 +562,7 @@ trait KutuService {
         case Some(id) => s"d.id = $id"
       })
       sql"""
-                    SELECT w.id, a.id, a.js_id, a.geschlecht, a.name, a.vorname, a.gebdat, a.strasse, a.plz, a.ort, a.activ, a.verein, , v.*, wd.id, wd.programm_id, d.*, wd.kurzbeschreibung, wd.detailbeschreibung, wd.notenfaktor, wd.ord, wk.*, note_d as difficulty, note_e as execution, endnote, riege
+                    SELECT w.id, a.id, a.js_id, a.geschlecht, a.name, a.vorname, a.gebdat, a.strasse, a.plz, a.ort, a.activ, a.verein, v.*, wd.id, wd.programm_id, d.*, wd.kurzbeschreibung, wd.detailbeschreibung, wd.notenfaktor, wd.ord, wk.*, note_d as difficulty, note_e as execution, endnote, riege
                     FROM wertung w
                     inner join athlet a on (a.id = w.athlet_id)
                     left outer join verein v on (a.verein = v.id)

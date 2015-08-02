@@ -25,6 +25,10 @@ import java.time.temporal.TemporalField
 import java.time.ZoneId
 import java.util.Date
 import java.time.LocalDate
+import scalafx.scene.control.Alert.AlertType
+import scalafx.scene.Cursor
+import scalafx.application.Platform
+import scala.concurrent.Future
 
 object KuTuApp extends JFXApp with KutuService {
   var tree = AppNavigationModel.create(KuTuApp.this)
@@ -32,7 +36,6 @@ object KuTuApp extends JFXApp with KutuService {
     expanded = true
     children = tree.getTree
   }
-  var centerPane = PageDisplayer.choosePage(None, "dashBoard", tree)
 
   def updateTree {
     tree = AppNavigationModel.create(KuTuApp.this)
@@ -40,7 +43,38 @@ object KuTuApp extends JFXApp with KutuService {
   }
   def handleAction[J <: javafx.event.ActionEvent, R](handler: scalafx.event.ActionEvent => R) = new javafx.event.EventHandler[J] {
     def handle(event: J) {
-      handler(event)
+      setCursor(Cursor.WAIT)
+      try {
+        handler(event)
+      }
+      finally {
+        setCursor(Cursor.DEFAULT)
+      }
+    }
+  }
+
+  def invokeWithBusyIndicator[R](task: => Unit) {
+    setCursor(Cursor.WAIT)
+
+    import scala.concurrent.ExecutionContext.Implicits.global
+    val f = Future[Boolean] {
+      Thread.sleep(10L)// currentThread().wait(1L)
+      Platform.runLater{
+        try {
+          task
+        }
+        finally {
+          setCursor(Cursor.DEFAULT)
+        }
+      }
+      true
+    }
+  }
+
+  def setCursor(c: Cursor) {
+    if(getStage() != null) {
+      getStage().scene.root.value.cursor.value = c
+      getStage().scene.root.value.requestLayout()
     }
   }
 
@@ -136,6 +170,7 @@ object KuTuApp extends JFXApp with KutuService {
           }
           catch {
             case e: IllegalArgumentException =>
+              new Alert(AlertType.Error, e.getMessage).showAndWait()
           }
           updateTree
         }
@@ -332,6 +367,9 @@ object KuTuApp extends JFXApp with KutuService {
     id = "page-tree"
     content = controlsView
   }
+
+  var centerPane = PageDisplayer.choosePage(None, "dashBoard", tree)
+
   val splitPane = new SplitPane {
     dividerPositions = 0
     id = "page-splitpane"

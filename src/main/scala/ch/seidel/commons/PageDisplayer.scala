@@ -22,6 +22,11 @@ import ch.seidel.TurnerPage
 import ch.seidel.domain.Verein
 import scalafx.scene.control.TreeItem
 import ch.seidel.KuTuApp
+import scala.concurrent.Future
+import scala.concurrent.Await
+import scala.concurrent.duration.Duration
+import scalafx.scene.Cursor
+import scalafx.scene.control.Label
 
 /**
  * the class that updates tabbed view or dashboard view
@@ -80,17 +85,36 @@ object PageDisplayer {
     }
   }
   private def chooseWettkampfPage(wettkampf: WettkampfView, tree: KuTuAppTree): Node = {
-    displayPage(WettkampfPage.buildTab(wettkampf, tree.getService))
+    def op = {
+      WettkampfPage.buildTab(wettkampf, tree.getService)
+    }
+    displayPage(op)
   }
   private def chooseVereinPage(verein: Verein, tree: KuTuAppTree): Node = {
-    displayPage(TurnerPage.buildTab(verein, tree.getService))
+    def op = {
+      TurnerPage.buildTab(verein, tree.getService)
+    }
+    displayPage(op)
   }
 
-  private def displayPage(nodeToAdd: DisplayablePage): Node = {
-    new VBox {
+  private def displayPage(nodeToAdd:  => DisplayablePage): Node = {
+    val ret = new VBox {
       vgrow = Priority.Always
       hgrow = Priority.Always
-      children = nodeToAdd.getPage
+      val indicator = new VBox {
+        vgrow = Priority.Always
+        hgrow = Priority.Always
+        children = Seq(new Label("loading ..."))
+        styleClass += "category-page"
+      }
+      children = Seq(indicator)
     }
+    def op = {
+      val p = nodeToAdd.getPage
+      ret.children = p
+      ret.requestLayout()
+    }
+    KuTuApp.invokeWithBusyIndicator(op)
+    ret
   }
 }
