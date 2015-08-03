@@ -9,7 +9,7 @@
 	<properties>
 		<scala.majorversion>2.10</scala.majorversion>
 		<scala.version>${scala.majorversion}.5</scala.version>
-		<maven-scala-plugin.version>2.15.2</maven-scala-plugin.version>
+		<maven-scala-plugin.version>3.2.1</maven-scala-plugin.version>
 		<akka.version>2.3.8</akka.version>
 
 		<maven.compiler.source>1.8</maven.compiler.source>
@@ -142,7 +142,7 @@
 			<plugin>
 				<groupId>org.codehaus.mojo</groupId>
 				<artifactId>build-helper-maven-plugin</artifactId>
-				<version>1.8</version>
+				<version>1.9.1</version>
 				<executions>
 					<execution>
 						<id>add-source</id>
@@ -172,7 +172,24 @@
 				</executions>
 			</plugin>
 			<plugin>
-				<groupId>org.scala-tools</groupId>
+		        <groupId>net.alchim31.maven</groupId>
+		        <artifactId>scala-maven-plugin</artifactId>
+		        <version>3.2.1</version>
+				<executions>
+					<execution>
+						<goals>
+							<goal>compile</goal>
+							<goal>testCompile</goal>
+						</goals>
+					</execution>
+				</executions>
+				<configuration>
+					<jvmArgs>
+			            <jvmArg>-Xms64m</jvmArg>
+			            <jvmArg>-Xmx1024m</jvmArg>
+	  		        </jvmArgs>
+				</configuration>
+				<!-- groupId>org.scala-tools</groupId>
 				<artifactId>maven-scala-plugin</artifactId>
 				<version>${maven-scala-plugin.version}</version>
 				<executions>
@@ -188,11 +205,11 @@
 					<args>
 						<arg>-target:jvm-1.7</arg>
 					</args>
-				</configuration>
+				</configuration-->
 			</plugin>
 			<plugin>
 				<artifactId>maven-dependency-plugin</artifactId>
-				<version>2.6</version>
+				<version>2.10</version>
 				<executions>
 					<execution>
 						<id>unpack-dependencies</id>
@@ -211,7 +228,7 @@
 			<plugin>
 				<groupId>org.codehaus.mojo</groupId>
 				<artifactId>exec-maven-plugin</artifactId>
-				<version>1.2.1</version>
+				<version>1.4.0</version>
 				<executions>
 					<execution>
 						<id>package-jar</id>
@@ -240,7 +257,7 @@
 							</arguments>
 						</configuration>
 					</execution>
-					<execution>
+					<!-- execution>
 						<id>sign-jar</id>
 						<phase>package</phase>
 						<goals>
@@ -264,7 +281,7 @@
 								<argument>app.interpolar.ch</argument>
 							</arguments>
 						</configuration>
-					</execution>
+					</execution-->
 					<execution>
 						<id>deploy-msi</id>
 						<phase>package</phase>
@@ -293,16 +310,16 @@
 								<argument>-width</argument><argument>1024</argument>
 								<argument>-height</argument><argument>900</argument>
 								<argument>-BsystemWide=true</argument>
-								<argument>-BjvmOptions=-Xmx512m</argument>
-								<argument>-BjvmOptions=-Xms512m</argument>
+								<!-- argument>-BjvmOptions=-Xmx512m</argument-->
 								<argument>-Bcopyright="Interpolar"</argument>
-								<argument>-Btitle="TurnerWettkampf-App"</argument>
-								<argument>-Bvendor="Interpolar"</argument>
+								<argument>-title</argument><argument>"Turner Wettkampf"</argument>
+								<!-- argument>-Btitle="TurnerWettkampf-App"</argument>
+								<argument>-Bvendor="Interpolar"</argument-->
 								<!-- argument>-Bdescription="Wettkampf Verwaltung und Durchfuehrung"</argument-->
 							</arguments>
 						</configuration>
 					</execution>
-					<execution>
+					<!-- execution>
 						<id>deploy-jnlp</id>
 						<phase>package</phase>
 						<goals>
@@ -336,7 +353,7 @@
 								<argument>-description</argument><argument>Wettkampf Verwaltung und Durchfuehrung</argument>
 							</arguments>
 						</configuration>
-					</execution>
+					</execution-->
 					<!-- execution>
 						<id>bundle</id>
 						<phase>package</phase>

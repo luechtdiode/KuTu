@@ -37,6 +37,8 @@ object KuTuApp extends JFXApp with KutuService {
     children = tree.getTree
   }
 
+  var centerPane = PageDisplayer.choosePage(None, "dashBoard", tree)
+
   def updateTree {
     tree = AppNavigationModel.create(KuTuApp.this)
     rootTreeItem.children = tree.getTree
@@ -367,8 +369,6 @@ object KuTuApp extends JFXApp with KutuService {
     id = "page-tree"
     content = controlsView
   }
-
-  var centerPane = PageDisplayer.choosePage(None, "dashBoard", tree)
 
   val splitPane = new SplitPane {
     dividerPositions = 0
