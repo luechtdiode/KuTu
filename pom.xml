@@ -12,8 +12,8 @@
 		<maven-scala-plugin.version>3.2.1</maven-scala-plugin.version>
 		<akka.version>2.3.8</akka.version>
 
-		<maven.compiler.source>1.8</maven.compiler.source>
-		<maven.compiler.target>1.8</maven.compiler.target>
+		<maven.compiler.source>1.7</maven.compiler.source>
+		<maven.compiler.target>1.7</maven.compiler.target>
 		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
 	</properties>
 	<repositories>
@@ -257,7 +257,7 @@
 							</arguments>
 						</configuration>
 					</execution>
-					<!-- execution>
+					<execution>
 						<id>sign-jar</id>
 						<phase>package</phase>
 						<goals>
@@ -281,7 +281,7 @@
 								<argument>app.interpolar.ch</argument>
 							</arguments>
 						</configuration>
-					</execution-->
+					</execution>
 					<execution>
 						<id>deploy-msi</id>
 						<phase>package</phase>
@@ -305,16 +305,15 @@
 								<argument>-outfile</argument>
 								<argument>KuTuApp</argument>
 								<argument>-native</argument>
-								<argument>msi</argument>
+								<!-- argument>msi</argument-->
 								<argument>-allpermissions</argument>
 								<argument>-width</argument><argument>1024</argument>
 								<argument>-height</argument><argument>900</argument>
+								<argument>-title</argument><argument>"Turner Wettkampf"</argument>
 								<argument>-BsystemWide=true</argument>
 								<!-- argument>-BjvmOptions=-Xmx512m</argument-->
 								<argument>-Bcopyright="Interpolar"</argument>
-								<argument>-title</argument><argument>"Turner Wettkampf"</argument>
-								<!-- argument>-Btitle="TurnerWettkampf-App"</argument>
-								<argument>-Bvendor="Interpolar"</argument-->
+								<argument>-Bvendor="Interpolar"</argument>
 								<!-- argument>-Bdescription="Wettkampf Verwaltung und Durchfuehrung"</argument-->
 							</arguments>
 						</configuration>
