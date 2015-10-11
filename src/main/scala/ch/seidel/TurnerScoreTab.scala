@@ -59,10 +59,19 @@ class TurnerScoreTab(val verein: Option[Verein], override val service: KutuServi
   override def isPopulated = {
     val groupers = List(ByNothing, ByWettkampfArt, ByWettkampfProgramm, ByProgramm, ByJahrgang, ByGeschlecht, ByVerein, ByDisziplin)
     val gr1Model = ObservableBuffer[GroupBy](groupers)
+    val f1Model = ObservableBuffer[DataObject]()
+    val f2Model = ObservableBuffer[DataObject]()
+    val f3Model = ObservableBuffer[DataObject]()
+    val f4Model = ObservableBuffer[DataObject]()
     val cb1 = new ComboBox[GroupBy] {
       maxWidth = 250
       promptText = "erste Gruppierung..."
       items = gr1Model
+    }
+    val fcb1 = new ComboBox[DataObject] {
+      maxWidth = 250
+      promptText = "Filter..."
+      items = f1Model
     }
     val cb2 =
       new ComboBox[GroupBy] {
@@ -70,19 +79,35 @@ class TurnerScoreTab(val verein: Option[Verein], override val service: KutuServi
         promptText = "zweite Gruppierung..."
         items = gr1Model
       }
+    val fcb2 = new ComboBox[DataObject] {
+      maxWidth = 250
+      promptText = "Filter..."
+      items = f2Model
+    }
     val cb3 =
       new ComboBox[GroupBy] {
         maxWidth = 250
         promptText = "dritte Gruppierung..."
         items = gr1Model
       }
+    val fcb3 = new ComboBox[DataObject] {
+      maxWidth = 250
+      promptText = "Filter..."
+      items = f3Model
+    }
     val cb4 =
       new ComboBox[GroupBy] {
         maxWidth = 250
         promptText = "vierte Gruppierung..."
         items = gr1Model
       }
+    val fcb4 = new ComboBox[DataObject] {
+      maxWidth = 250
+      promptText = "Filter..."
+      items = f4Model
+    }
     val combs = List(cb1, cb2, cb3, cb4)
+    //val filters = List(fcb1, fcb2, fcb3, fcb4)
     val webView = new WebView
 
     def buildQuery = {
@@ -97,10 +122,12 @@ class TurnerScoreTab(val verein: Option[Verein], override val service: KutuServi
     }
 
     def refreshRangliste(query: GroupBy) = {
-      val combination = verein match {
-        case Some(v) => query.select(service.selectWertungen(vereinId = Some(v.id))).toList
-        case None    => query.select(service.selectWertungen()).toList
+      val qry = verein match {
+        case Some(v) => service.selectWertungen(vereinId = Some(v.id))
+        case None    => service.selectWertungen()
       }
+      val combination = query.select(qry).toList
+      //query.asInstanceOf[FilterBy].adjustFilter(filters)
       val ret = toHTML(combination)
       webView.engine.loadContent(ret)
       ret
@@ -114,6 +141,11 @@ class TurnerScoreTab(val verein: Option[Verein], override val service: KutuServi
         refreshRangliste(buildQuery)
       }
     }
+//    filters.foreach{c =>
+//      c.onAction = handle {
+//        refreshRangliste(buildQuery)
+//      }
+//    }
 
     val btnSave = new Button {
       text = "Speichern als ..."
@@ -156,7 +188,14 @@ class TurnerScoreTab(val verein: Option[Verein], override val service: KutuServi
         hgrow = Priority.Always
         spacing = 15
         padding = Insets(15)
-        children = new Label("Gruppierungen:") +: combs :+ btnSave
+//        children = new Label("Gruppierungen:") +: combs.zip(filters).map(x => new VBox {
+//          vgrow = Priority.Always
+//          hgrow = Priority.Always
+//          spacing = 5
+//          padding = Insets(5)
+//          children = List(x._1, x._2)
+//        }) :+ btnSave
+        children = combs :+ btnSave
       }
       center = webView
     }

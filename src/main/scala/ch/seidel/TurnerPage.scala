@@ -20,6 +20,7 @@ import ch.seidel.commons.LazyTabPane
 import scalafx.event.ActionEvent
 
 object TurnerPage {
+  var turnerAnalyzers = Map[Long, TurnerAnalyzer]()
 
   object AthletEditor {
     def apply(init: Athlet) = new AthletEditor(init)
@@ -62,7 +63,7 @@ object TurnerPage {
     def commit = Athlet(init.id, Integer.valueOf(jsid.value), geschlecht.value, name.value, vorname.value, optionOfGebDat, strasse.value, plz.value, ort.value, init.verein, activ.value.toUpperCase().startsWith("A"))
   }
 
-  class VereinTab(val verein: Verein, override val service: KutuService) extends Tab with TabWithService {
+  class VereinTab(val verein: Verein, override val service: KutuService, val tabpane: LazyTabPane) extends Tab with TabWithService {
     import scala.collection.JavaConversions._
 
     override def isPopulated: Boolean = {
@@ -122,6 +123,29 @@ object TurnerPage {
       }
     }
 
+    val analyzeButton = new Button {
+      text = "Athlet Analysieren"
+      minWidth = 75
+      onAction = (event: ActionEvent) => {
+        if (!athletenview.selectionModel().isEmpty) {
+          val a = athletenview.selectionModel().getSelectedItem.commit
+          val newtab = new TurnerAnalyzer(Some(verein), Some(a), service) {
+            text = a.easyprint + "-Analyse"
+            closable = true
+            onClosed = handle {
+              turnerAnalyzers = turnerAnalyzers.filter(x => !x._1.equals(a.id))
+              tabpane.selectionModel.value.select(0)
+            }
+          }
+          turnerAnalyzers = turnerAnalyzers.updated(a.id, newtab)
+          tabpane.refreshTabs()
+          tabpane.selectionModel.value.select(newtab)
+        }
+      }
+    }
+    analyzeButton.disable <== when(athletenview.selectionModel.value.selectedItemProperty.isNull()) choose true otherwise false
+    removeButton.disable <== when(athletenview.selectionModel.value.selectedItemProperty.isNull()) choose true otherwise false
+
     val cont = new BorderPane {
       hgrow = Priority.Always
       vgrow = Priority.Always
@@ -134,7 +158,7 @@ object TurnerPage {
             minHeight = Region.USE_PREF_SIZE
             styleClass += "toolbar-header"
           },
-          addButton, removeButton
+          addButton, analyzeButton, removeButton
         )
       }
       //bottom = pagination
@@ -147,8 +171,12 @@ object TurnerPage {
 
   def buildTab(club: Verein, service: KutuService) = {
     def refresher(pane: LazyTabPane) = {
-      Seq(new VereinTab(club, service) {
+      val retUnsorted = Seq(new VereinTab(club, service, pane) {
         text = verein.name
+        closable = false
+      }) ++ turnerAnalyzers.values.toSeq ++ Seq(
+      new TurnerAnalyzer(Some(club), None, service) {
+        text = club.easyprint + " Turner-Analyse"
         closable = false
       },
       new TurnerScoreTab(Some(club), service){
@@ -159,6 +187,30 @@ object TurnerPage {
         text = "Übergreifende Turner-Auswertung"
         closable = false
       })
+
+      val retSorted = retUnsorted.sortBy(tab =>
+        if(tab.isInstanceOf[VereinTab]) {
+          0
+        }
+        else if(tab.isInstanceOf[TurnerAnalyzer]) {
+          val ta = tab.asInstanceOf[TurnerAnalyzer]
+          ta.athlet match {
+            case Some(a) => a.id
+            case None => 1000
+          }
+        }
+        else if(tab.isInstanceOf[TurnerScoreTab]) {
+          val ts = tab.asInstanceOf[TurnerScoreTab]
+          ts.verein match {
+            case Some(v) => 1001
+            case None => 1002
+          }
+        }
+        else {
+          5000
+        }
+      )
+      retSorted
     }
     new TurnerPage( new LazyTabPane(refresher))
   }
@@ -168,7 +220,7 @@ class TurnerPage(tabPane: LazyTabPane) extends DisplayablePage {
 
   def getPage = {
     import WettkampfPage._
-
+    TurnerPage.turnerAnalyzers = Map[Long, TurnerAnalyzer]()
     tabPane.init
     tabPane
   }

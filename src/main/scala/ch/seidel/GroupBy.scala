@@ -3,10 +3,12 @@ package ch.seidel
 import java.text.SimpleDateFormat
 import ch.seidel.domain._
 import scala.collection.mutable.HashMap
+import scalafx.scene.control.ComboBox
+import scalafx.Includes._
 
 sealed trait GroupBy {
   val groupname: String
-  private var next: Option[GroupBy] = None
+  protected var next: Option[GroupBy] = None
   protected val grouper: (WertungView) => DataObject
   protected val sorter: Option[(GroupSection, GroupSection) => Boolean] //= leafsorter
   protected val leafsorter: Option[(GroupSection, GroupSection) => Boolean] = Some((gs1: GroupSection, gs2: GroupSection) => {
@@ -78,7 +80,41 @@ sealed trait GroupBy {
   }
 }
 
-case object ByNothing extends GroupBy {
+sealed trait FilterBy extends GroupBy {
+  def filterItems: List[DataObject] = filtItems
+  protected def items(fromData: Seq[WertungView]): List[DataObject]
+  private[FilterBy] var filter: Option[DataObject] = None
+  private[FilterBy] var filtItems: List[DataObject] = List()
+
+  def adjustFilter(cbs: List[ComboBox[DataObject]]) {
+    if(cbs.nonEmpty) {
+      val h = cbs.head
+      val selected = h.selectionModel.value.selectedItem
+      if(filterItems.diff(h.items.value).size > 0) {
+        h.items.value.clear
+        h.items.value ++= filterItems
+      }
+      next match {
+        case Some(ng) => ng.asInstanceOf[FilterBy].adjustFilter(cbs.tail)
+        case None     =>
+      }
+    }
+  }
+
+  override def select(wvlist: Seq[WertungView]): Iterable[GroupSection] = {
+    filtItems = items(wvlist)
+    super.select(wvlist.filter(g => if(getFilter.isDefined) getFilter.get.equals(g) else true))
+  }
+
+  def setFilter(f: Option[DataObject]) {
+    filter = f
+  }
+  def getFilter = {
+    filter
+  }
+}
+
+case object ByNothing extends GroupBy with FilterBy {
   override val groupname = "keine"
   protected override val grouper = (v: WertungView) => {
     v
@@ -86,9 +122,29 @@ case object ByNothing extends GroupBy {
   protected override val sorter: Option[(GroupSection, GroupSection) => Boolean] = Some((gs1: GroupSection, gs2: GroupSection) => {
     gs1.sum.endnote < gs2.sum.endnote
   })
+
+  def items(fromData: Seq[WertungView]): List[DataObject] = {
+    val grp = fromData.groupBy(grouper)
+    grp.map(_._1).toList
+  }
 }
 
-case object ByProgramm extends GroupBy {
+case object ByAthlet extends GroupBy with FilterBy {
+  override val groupname = "Athlet"
+  protected override val grouper = (v: WertungView) => {
+    v.athlet
+  }
+  protected override val sorter: Option[(GroupSection, GroupSection) => Boolean] = Some((gs1: GroupSection, gs2: GroupSection) => {
+    gs1.sum.endnote < gs2.sum.endnote
+  })
+
+  def items(fromData: Seq[WertungView]): List[DataObject] = {
+    val grp = fromData.groupBy(grouper)
+    grp.map(_._1).toList
+  }
+}
+
+case object ByProgramm extends GroupBy with FilterBy {
   override val groupname = "Programm"
   protected override val grouper = (v: WertungView) => {
     v.wettkampfdisziplin.programm
@@ -96,22 +152,28 @@ case object ByProgramm extends GroupBy {
   protected override val sorter: Option[(GroupSection, GroupSection) => Boolean] = Some((gs1: GroupSection, gs2: GroupSection) => {
     gs1.groupKey.asInstanceOf[ProgrammView].ord.compareTo(gs2.groupKey.asInstanceOf[ProgrammView].ord) < 0
   })
+
+  def items(fromData: Seq[WertungView]): List[DataObject] = {
+    val grp = fromData.groupBy(grouper)
+    grp.map(_._1).toList
+  }
 }
-case object ByWettkampfProgramm extends GroupBy {
+
+case object ByWettkampfProgramm extends GroupBy with FilterBy {
   override val groupname = "Wettkampf-Programm"
   protected override val grouper = (v: WertungView) => {
-    if(v.wettkampfdisziplin.programm.aggregator == v.wettkampfdisziplin.programm) {
-      v.wettkampfdisziplin.programm
-    }
-    else {
-    	v.wettkampfdisziplin.programm.head
-    }
+    v.wettkampfdisziplin.programm.wettkampfprogramm
   }
   protected override val sorter: Option[(GroupSection, GroupSection) => Boolean] = Some((gs1: GroupSection, gs2: GroupSection) => {
     gs1.groupKey.asInstanceOf[ProgrammView].ord.compareTo(gs2.groupKey.asInstanceOf[ProgrammView].ord) < 0
   })
+
+  def items(fromData: Seq[WertungView]): List[DataObject] = {
+    val grp = fromData.groupBy(grouper)
+    grp.map(_._1).toList
+  }
 }
-case object ByWettkampfArt extends GroupBy {
+case object ByWettkampfArt extends GroupBy with FilterBy {
   override val groupname = "Wettkampf-Art"
   protected override val grouper = (v: WertungView) => {
     v.wettkampfdisziplin.programm.head
@@ -119,8 +181,14 @@ case object ByWettkampfArt extends GroupBy {
   protected override val sorter: Option[(GroupSection, GroupSection) => Boolean] = Some((gs1: GroupSection, gs2: GroupSection) => {
     gs1.groupKey.asInstanceOf[ProgrammView].ord.compareTo(gs2.groupKey.asInstanceOf[ProgrammView].ord) < 0
   })
+
+  def items(fromData: Seq[WertungView]): List[DataObject] = {
+    val grp = fromData.groupBy(grouper)
+    grp.map(_._1).toList
+  }
 }
-case object ByRiege extends GroupBy {
+
+case object ByRiege extends GroupBy with FilterBy {
   override val groupname = "Riege"
   protected override val grouper = (v: WertungView) => {
     Riege(v.riege match {case Some(r) => r case None => "keine Einteilung"})
@@ -128,8 +196,14 @@ case object ByRiege extends GroupBy {
   protected override val sorter: Option[(GroupSection, GroupSection) => Boolean] = Some((gs1: GroupSection, gs2: GroupSection) => {
     gs1.groupKey.easyprint.compareTo(gs2.groupKey.easyprint) < 0
   })
+
+  def items(fromData: Seq[WertungView]): List[DataObject] = {
+    val grp = fromData.groupBy(grouper)
+    grp.map(_._1).toList
+  }
 }
-case object ByJahrgang extends GroupBy {
+
+case object ByJahrgang extends GroupBy with FilterBy {
   override val groupname = "Jahrgang"
   private val extractYear = new SimpleDateFormat("YYYY")
   protected override val grouper = (v: WertungView) => {
@@ -141,8 +215,14 @@ case object ByJahrgang extends GroupBy {
   protected override val sorter: Option[(GroupSection, GroupSection) => Boolean] = Some((gs1: GroupSection, gs2: GroupSection) => {
     gs1.groupKey.asInstanceOf[AthletJahrgang].hg.compareTo(gs2.groupKey.asInstanceOf[AthletJahrgang].hg) < 0
   })
+
+  def items(fromData: Seq[WertungView]): List[DataObject] = {
+    val grp = fromData.groupBy(grouper)
+    grp.map(_._1).toList
+  }
 }
-case object ByDisziplin extends GroupBy {
+
+case object ByDisziplin extends GroupBy with FilterBy {
   override val groupname = "Disziplin"
   private val ordering = HashMap[Long, Long]()
 
@@ -155,8 +235,14 @@ case object ByDisziplin extends GroupBy {
     val go2 = ordering.getOrElse(gs2.groupKey.asInstanceOf[Disziplin].id, gs2.groupKey.asInstanceOf[Disziplin].id)
     go1.compareTo(go2) < 0
   })
+
+  def items(fromData: Seq[WertungView]): List[DataObject] = {
+    val grp = fromData.groupBy(grouper)
+    grp.map(_._1).toList
+  }
 }
-case object ByGeschlecht extends GroupBy {
+
+case object ByGeschlecht extends GroupBy with FilterBy {
   override val groupname = "Geschlecht"
   protected override val grouper = (v: WertungView) => {
     TurnerGeschlecht(v.athlet.geschlecht)
@@ -164,8 +250,14 @@ case object ByGeschlecht extends GroupBy {
   protected override val sorter: Option[(GroupSection, GroupSection) => Boolean] = Some((gs1: GroupSection, gs2: GroupSection) => {
     gs1.groupKey.asInstanceOf[TurnerGeschlecht].easyprint.compareTo(gs2.groupKey.asInstanceOf[TurnerGeschlecht].easyprint) > 0
   })
+
+  def items(fromData: Seq[WertungView]): List[DataObject] = {
+    val grp = fromData.groupBy(grouper)
+    grp.map(_._1).toList
+  }
 }
-case object ByVerein extends GroupBy {
+
+case object ByVerein extends GroupBy with FilterBy {
   override val groupname = "Verein"
   protected override val grouper = (v: WertungView) => {
     v.athlet.verein match {
@@ -176,4 +268,9 @@ case object ByVerein extends GroupBy {
   protected override val sorter: Option[(GroupSection, GroupSection) => Boolean] = Some((gs1: GroupSection, gs2: GroupSection) => {
     gs1.groupKey.asInstanceOf[Verein].name.compareTo(gs2.groupKey.asInstanceOf[Verein].name) < 0
   })
+
+  def items(fromData: Seq[WertungView]): List[DataObject] = {
+    val grp = fromData.groupBy(grouper)
+    grp.map(_._1).toList
+  }
 }

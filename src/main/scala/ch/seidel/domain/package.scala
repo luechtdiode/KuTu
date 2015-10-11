@@ -89,6 +89,9 @@ package object domain {
       case None    => this
       case Some(p) => p.head
     }
+
+    def wettkampfprogramm: ProgrammView = if(aggregator == this) this else head
+
     def aggregatorHead: ProgrammView = parent match {
       case Some(p) if(aggregate != 0) => p.aggregatorHead
       case _       => this
@@ -163,56 +166,56 @@ package object domain {
   }
   case class Athletiktest(punktemapping: Map[String,Double], punktgewicht: Double) extends NotenModus {
     override val isDNoteUsed = false
-    override def shouldSuggest(item: String, query: String): Boolean = {
-      findLikes(query).find(x => x.equalsIgnoreCase(item)).size > 0
-    }
-    def findnearest(value: Double): Double = {
-      val sorted = punktemapping.values.toList.sorted
-      if(value.equals(0.0d)) value else
-        sorted.find { x => x >= value } match {
-        case Some(v) => v
-        case None => sorted.last
-      }
-    }
-    def findLikes(value: String) = {
-      val lv = value.toLowerCase()
-      def extractDigits(lv: String) = lv.filter(c => c.isDigit || c == '.')
-      lazy val lvv = extractDigits(lv)
-      val orderedKeys = punktemapping.keys.toList.sortBy(punktemapping).map(x => x.toLowerCase())
-      orderedKeys.filter(v => v.contains(lv) || extractDigits(v).equals(lvv))
-    }
-    def mapToDouble(input: String) = try {findnearest(super.fromString(input))} catch {case _: Throwable => 0d}
-    def findLike(value: String): String = {
-      val lv = value.toLowerCase()
-      def extractDigits(lv: String) = lv.filter(c => c.isDigit || c == '.')
-      lazy val lvv = extractDigits(lv)
-      val valuedKeys = punktemapping.keys.toList.sortBy(punktemapping)
-      if(valuedKeys.contains(value)) {
-        return value
-      }
-      val lvd = mapToDouble(value)
-      if(lvd > 0d && punktemapping.values.exists { v => v == lvd }) {
-        return value
-      }
-      val orderedKeys = punktemapping.keys.toList.sortBy(punktemapping).map(_.toLowerCase())
-      orderedKeys.find(v => v.equals(lv)).getOrElse {
-    	  orderedKeys.find(v => extractDigits(v).equals(lvv)).getOrElse {
-          orderedKeys.find(v => v.startsWith(lv)).getOrElse {
-            orderedKeys.find(v => v.contains(lv)).getOrElse {
-              value
-            }
-          }
-        }
-      }
-    }
+//    override def shouldSuggest(item: String, query: String): Boolean = {
+//      findLikes(query).find(x => x.equalsIgnoreCase(item)).size > 0
+//    }
+//    def findnearest(value: Double): Double = {
+//      val sorted = punktemapping.values.toList.sorted
+//      if(value.equals(0.0d)) value else
+//        sorted.find { x => x >= value } match {
+//        case Some(v) => v
+//        case None => sorted.last
+//      }
+//    }
+//    def findLikes(value: String) = {
+//      val lv = value.toLowerCase()
+//      def extractDigits(lv: String) = lv.filter(c => c.isDigit || c == '.')
+//      lazy val lvv = extractDigits(lv)
+//      val orderedKeys = punktemapping.keys.toList.sortBy(punktemapping).map(x => x.toLowerCase())
+//      orderedKeys.filter(v => v.contains(lv) || extractDigits(v).equals(lvv))
+//    }
+//    def mapToDouble(input: String) = try {findnearest(super.fromString(input))} catch {case _: Throwable => 0d}
+//    def findLike(value: String): String = {
+//      val lv = value.toLowerCase()
+//      def extractDigits(lv: String) = lv.filter(c => c.isDigit || c == '.')
+//      lazy val lvv = extractDigits(lv)
+//      val valuedKeys = punktemapping.keys.toList.sortBy(punktemapping)
+//      if(valuedKeys.contains(value)) {
+//        return value
+//      }
+//      val lvd = mapToDouble(value)
+//      if(lvd > 0d && punktemapping.values.exists { v => v == lvd }) {
+//        return value
+//      }
+//      val orderedKeys = punktemapping.keys.toList.sortBy(punktemapping).map(_.toLowerCase())
+//      orderedKeys.find(v => v.equals(lv)).getOrElse {
+//    	  orderedKeys.find(v => extractDigits(v).equals(lvv)).getOrElse {
+//          orderedKeys.find(v => v.startsWith(lv)).getOrElse {
+//            orderedKeys.find(v => v.contains(lv)).getOrElse {
+//              value
+//            }
+//          }
+//        }
+//      }
+//    }
 //    override def toString(value: Double): String = punktemapping.find(p => p._2 == value).map(_._1).getOrElse(value)
-    override def fromString(input: String) = punktemapping.getOrElse(findLike(input), mapToDouble(input))
+    //override def fromString(input: String) = punktemapping.getOrElse(findLike(input), mapToDouble(input))
     override def calcEndnote(dnote: Double, enote: Double) = enote * punktgewicht
     override def selectableItems: Option[List[String]] = Some(punktemapping.keys.toList.sortBy(punktemapping))
   }
   case object Wettkampf extends NotenModus {
     override val isDNoteUsed = true
-    override def fromString(input: String) = super.fromString(input)
+    //override def fromString(input: String) = super.fromString(input)
     override def calcEndnote(dnote: Double, enote: Double) = dnote + enote
   }
 

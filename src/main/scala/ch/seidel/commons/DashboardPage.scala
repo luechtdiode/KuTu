@@ -19,13 +19,13 @@ class DashboardPage(dashPart: String = "dashboard", tree: KuTuAppTree) extends D
       hgrow = Priority.Always
       fitToHeight = true
       fitToWidth = true
+      vbarPolicy = ScrollPane.ScrollBarPolicy.ALWAYS
       content = new VBox {
         vgrow = Priority.Always
         hgrow = Priority.Always
         children = thumbs
         styleClass += "category-page"
       }
-      styleClass += "category-page"
     }
   }
 }

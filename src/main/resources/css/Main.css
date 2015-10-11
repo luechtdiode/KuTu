@@ -610,25 +610,35 @@
 	-fx-border-width: 0px;
 }
 
-#source-tabs .tab {
+.tab {
 	-fx-padding: 2 8 2 8;
 	-fx-background-radius: 8 8 0 0, 7 7 0 0, 6 6 0 0;
 	-fx-background-color: #AAAAAA;
 }
 
-#source-tabs .tab-label {
+.tab-label {
 	-fx-font-size: 1em;
 }
 
-#source-tabs .tab:selected {
+.tab:selected {
 	-fx-padding: 2 8 2 8;
 	-fx-background-radius: 8 8 0 0, 7 7 0 0, 6 6 0 0;
 	-fx-background-color: #EEEEEE;
 }
 
-#source-tabs .tab-close-button {
-	-fx-shape: null;
+.tab-close-button {
+    /*-fx-background-color: -fx-mid-text-color;*/
+    -fx-shape: "M 0,0 H1 L 4,3 7,0 H8 V1 L 5,4 8,7 V8 H7 L 4,5 1,8 H0 V7 L 3,4 0,1 Z";
+    -fx-scale-shape: false;
+    -fx-effect: dropshadow(two-pass-box , rgba(255, 255, 255, 0.4), 1, 0.0 , 0, 1);
+	/*-fx-shape: null;*/
 }
+.tab-close-button:hover {
+	-fx-background-color: #DD0000;
+	-fx-effect: dropshadow(three-pass-box, rgba(255, 255, 255, 0.6), 10, 0.5,
+		0, 0 );
+}
+
 /* Right Side Bar Styles */
 .right-sidebar {
 	-fx-background-color: linear-gradient(#353E4A, #18212B);
