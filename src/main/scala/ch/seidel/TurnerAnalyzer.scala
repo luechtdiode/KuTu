@@ -6,7 +6,6 @@ import javafx.collections.ObservableList
 import javafx.scene.{ control => jfxsc }
 import scalafx.Includes._
 import scalafx.scene.control._
-
 import scalafx.scene.chart._
 import javafx.scene.chart.XYChart.Data
 import scalafx.scene.chart.XYChart.Series
@@ -37,8 +36,18 @@ import scalafx.print.Paper
 import scalafx.print.PageOrientation
 import scalafx.print.PrinterJob
 import scalafx.event.ActionEvent
+import scalafx.scene.effect.Glow
 
-class TurnerAnalyzer(val verein: Option[Verein], val athlet: Option[Athlet], override val service: KutuService) extends Tab with TabWithService {
+class TurnerAnalyzer(val verein: Option[Verein], val athlet: Option[Athlet], val wettkampfdisziplin: Option[WettkampfdisziplinView], override val service: KutuService) extends Tab with TabWithService {
+
+  def onDrillDown(a: Athlet) {
+
+  }
+
+  def onDrillDown(a: WettkampfdisziplinView) {
+
+  }
+
   def print(node: Node) {
     val printer = Printer.defaultPrinter;
     val pageLayout = printer.createPageLayout(Paper.A4, PageOrientation.Portrait, Printer.MarginType.Default);
@@ -56,6 +65,7 @@ class TurnerAnalyzer(val verein: Option[Verein], val athlet: Option[Athlet], ove
       node.getTransforms().remove(scale)
     }
   }
+  val glow = new Glow(.8)
 
   def displayLabelForData[A,B](data: Data[A, B]) = {
     val node = data.nodeProperty()
@@ -64,13 +74,28 @@ class TurnerAnalyzer(val verein: Option[Verein], val athlet: Option[Athlet], ove
     data.nodeProperty().addListener(new ChangeListener[Node]() {
       override def changed(ov: ObservableValue[_<: Node], oldNode: Node, node: Node) {
         if(node != null) {
-         node.parentProperty().addListener(new ChangeListener[Parent]() {
+          node.setEffect(null)
+          node.onMouseEntered = handle {
+            node.setEffect(glow)
+          }
+          node.onMouseExited = handle {
+            node.setEffect(null)
+          }
+          node.onMouseClicked = handle {
+            data.extraValue.value match {
+              case a: AthletView => onDrillDown(a.toAthlet)
+              case d: WettkampfdisziplinView => onDrillDown(d)
+              case _ =>
+            }
+//            System.out.println(data.getXValue() + " : " + data.getYValue())
+          }
+
+          node.parentProperty().addListener(new ChangeListener[Parent]() {
             override def changed(ov: ObservableValue[_<: Parent], oldParent: Parent, parent: Parent) {
               val parentGroup = parent.asInstanceOf[Group]
               parentGroup.getChildren().add(dataText)
             }
           })
-
           node.boundsInParentProperty().addListener(new ChangeListener[Bounds]() {
             override def changed(ov: ObservableValue[_<: Bounds], oldBounds: Bounds, bounds: Bounds) {
               dataText.setLayoutX(bounds.getMinX)
@@ -114,9 +139,9 @@ class TurnerAnalyzer(val verein: Option[Verein], val athlet: Option[Athlet], ove
     data
   }
 
-  def toSeries(disciplinename: String, serie: Seq[(String,Number)]) = {
+  def toSeries(disciplinename: String, serie: Seq[(String,Object,Number)]) = {
     val series = serie.foldLeft(new Series[String, Number]()){(acc, pair) =>
-      val d: Data[String,Number] = new Data[String,Number](pair._1, pair._2)
+      val d: Data[String,Number] = new Data[String,Number](pair._1, pair._3, pair._2)
       displayLabelForData(d)
       acc.data.get.add(d)
       acc
@@ -125,9 +150,9 @@ class TurnerAnalyzer(val verein: Option[Verein], val athlet: Option[Athlet], ove
     series
   }
 
-  def toSeriesq(disciplinename: String, serie: Seq[(String,Number)]) = {
+  def toSeriesq(disciplinename: String, serie: Seq[(String,Object,Number)]) = {
     val series = serie.foldLeft(new Series[Number,String]()){(acc, pair) =>
-      val d = new Data[Number,String](pair._2, pair._1)
+      val d = new Data[Number,String](pair._3, pair._1, pair._2)
       displayLabelForData(d)
       acc.data.get.add(d)
       acc
@@ -144,7 +169,10 @@ class TurnerAnalyzer(val verein: Option[Verein], val athlet: Option[Athlet], ove
     }
     {
       var hastoadd = false
-      val pwg = pwertungen.groupBy { x => x.wettkampf }.toSeq.sortBy(x => x._1.datum.getTime)
+      val pwg = pwertungen.
+        filter{x => wettkampfdisziplin match {case Some(d) => d.disziplin.id == x.wettkampfdisziplin.disziplin.id case None => true}}.
+        groupBy { x => x.wettkampf }.
+        toSeq.sortBy(x => x._1.datum.getTime)
       val legend = pwg.map(x => x._1.easyprint)
 
       val xAxis = new CategoryAxis() {
@@ -157,14 +185,15 @@ class TurnerAnalyzer(val verein: Option[Verein], val athlet: Option[Athlet], ove
         title = programm.easyprint + (athlet match {
           case None    => ""
           case Some(a) => " - " + a.easyprint
-        })
+        }) + wettkampfdisziplin.map { " - " + _.disziplin.name }.getOrElse("")
         legendSide = Side.RIGHT
         legendVisible = true
         alternativeRowFillVisible = true
       }
+      val withDNotes = pwg.map(x => x._2).flatMap(x => x.filter(x => x.noteD > 0).map(_.wettkampfdisziplin.id)).toSet.size > 0
       val elemente = athlet match {
         case None => pwg.map(x => x._2).flatMap(x => x.map(_.athlet.id)).toSet.size
-        case _    => pwg.map(x => x._2).flatMap(x => x.map(_.wettkampfdisziplin.id)).toSet.size
+        case _    => pwg.map(x => x._2).flatMap(x => x.map(_.wettkampfdisziplin.id)).toSet.size * (if(withDNotes) 2 else 1)
       }
       val chartheight = elemente * pwg.size * 40d
       for{
@@ -174,11 +203,17 @@ class TurnerAnalyzer(val verein: Option[Verein], val athlet: Option[Athlet], ove
 //        println(s"für Programm ${programm.easyprint} und Wettkampf ${wettkampf.easyprint}")
         val sumPerDivider = awertungen.
         groupBy { x => athlet match {case None => x.athlet case _ => x.wettkampfdisziplin}}.
-        map(x => (x._1.easyprint.take(30), x._2.map { x => x.endnote }.sum)).
-//        filter(x => x._2 > 1).
+        map(x => (x._1.easyprint.take(30), x._1, x._2.map { x => x.endnote }.sum, x._2.map { x => x.noteD }.sum)).
+        filter(x => x._3 > 1).
         toSeq
-        if(sumPerDivider.filter(x => x._2 > 1).nonEmpty) {
-          lineChart.data.get.add(toSeriesq(wettkampf.easyprint, sumPerDivider.filter(x => x._2 > 1)))
+        if(sumPerDivider.nonEmpty) {
+          if(withDNotes) {
+            lineChart.data.get.add(toSeriesq("D-Note " +wettkampf.easyprint, sumPerDivider.map(x => (x._1, x._2, x._4))))
+            lineChart.data.get.add(toSeriesq("Endnote " + wettkampf.easyprint, sumPerDivider.map(x => (x._1, x._2, x._3))))
+          }
+          else {
+            lineChart.data.get.add(toSeriesq(wettkampf.easyprint, sumPerDivider.map(x => (x._1, x._2, x._3))))
+          }
           hastoadd = true
         }
         val ph = lineChart.delegate.prefHeight(-1d)
@@ -211,132 +246,6 @@ class TurnerAnalyzer(val verein: Option[Verein], val athlet: Option[Athlet], ove
         content = charts
       }
       //charts
-    }
-    true
-  }
-
-  def isPopulatedBar = {
-    val qry = verein match {
-      case Some(v) => service.selectWertungen(vereinId = Some(v.id))
-      case None    => service.selectWertungen()
-    }
-    val charts = new VBox
-    for {
-      (programm, pwertungen) <- qry.filter(x => x.endnote > 0).groupBy { x => x.wettkampfdisziplin.programm.wettkampfprogramm }.toList.sortBy(x => x._1.ord)
-    }
-    {
-      var hastoadd = false
-      val pwg = pwertungen.groupBy { x => x.wettkampf }.toSeq.sortBy(x => x._1.datum.getTime)
-      val legend = pwg.map(x => x._1.easyprint)
-
-      val xAxis = new CategoryAxis() {
-        tickLabelRotation = 360d
-      }
-      val yAxis = new NumberAxis() {
-        forceZeroInRange = false
-      }
-      val lineChart = new BarChart[String,Number](xAxis,yAxis) {
-        title = programm.easyprint
-        minHeight = 300d
-      }
-
-      for{
-        (wettkampf, awertungen) <- pwg
-      }
-      {
-        val sumPerAthlet = awertungen.
-        groupBy { x => x.athlet }.
-        map(x => (x._1.easyprint, x._2.map { x => x.endnote }.sum)).
-        toSeq
-        if(sumPerAthlet.filter(x => x._2 > 1).nonEmpty) {
-          lineChart.data.get.add(toSeries(wettkampf.easyprint, sumPerAthlet))
-          println(wettkampf.easyprint, sumPerAthlet)
-          hastoadd = true
-        }
-      }
-      if(hastoadd) {
-        lineChart.legendSide = Side.RIGHT
-        lineChart.legendVisible = true
-        charts.getChildren.add(lineChart)
-      }
-    }
-
-    content = new BorderPane {
-      vgrow = Priority.Always
-      hgrow = Priority.Always
-      top = new ToolBar {
-        content = List(new Button {
-          text = "Drucken"
-          minWidth = 75
-          onAction = (event: ActionEvent) => {
-            print(charts)
-          }
-        }
-        )
-      }
-      center = new ScrollPane {
-        fitToWidth = true
-        fitToHeight = true
-        content = charts
-      }
-      //charts
-    }
-    true
-  }
-
-  def isPopulatedLine = {
-    val qry = verein match {
-      case Some(v) => service.selectWertungen(vereinId = Some(v.id))
-      case None    => service.selectWertungen()
-    }
-    val charts = new VBox
-    for {
-      (programm, pwertungen) <- qry.groupBy { x => x.wettkampfdisziplin.programm.head }
-    }
-    {
-      val xAxis = new CategoryAxis()
-      val yAxis = new NumberAxis()
-//      xAxis.setLabel("Wettkampf")
-      val lineChart = new LineChart[String,Number](xAxis,yAxis)
-      lineChart.setTitle(programm.easyprint)
-      var hastoadd = false
-      for{
-        (athlet, awertungen) <- pwertungen.groupBy { x => x.athlet }
-      }
-      {
-        val sumPerWettkampf = awertungen.
-        groupBy { x => x.wettkampf }.
-        map(x => (x._1, x._2.map { x => x.endnote }.sum)).
-        toSeq.sortBy(x => x._1.datum.getTime).
-        map(x => (x._1.datum.toString, x._2))
-        if(sumPerWettkampf.filter(x => x._2 > 0).nonEmpty) {
-          lineChart.data.get.add(toSeries(athlet.easyprint, sumPerWettkampf))
-          hastoadd = true
-        }
-      }
-      if(hastoadd) {
-        lineChart.legendSide = Side.RIGHT
-        lineChart.legendVisible = true
-        charts.getChildren.add(lineChart)
-      }
-    }
-
-    content = new BorderPane {
-      vgrow = Priority.Always
-      hgrow = Priority.Always
-      top = new ToolBar {
-        content = List(new Button {
-          text = "Drucken"
-          minWidth = 75
-          onAction = (event: ActionEvent) => {
-            print(charts)
-          }
-        }
-        )
-      }
-      center = new ScrollPane {
-        content = charts
-      }
     }
     true
   }

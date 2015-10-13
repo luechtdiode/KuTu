@@ -89,8 +89,6 @@ object ResourceExchanger extends KutuService {
     }.toMap
 
     val (wertungenCsv, wertungenHeader) = collection("wertungen.csv")
-    println(wertungenHeader)
-    var cnt: Int = 0
     wertungenCsv.map(parseLine).filter(_.size == wertungenHeader.size).foreach{fields =>
       val athletid: Long = fields(wertungenHeader("athletId"))
       val wettkampfid: Long = fields(wertungenHeader("wettkampfId"))
@@ -110,10 +108,8 @@ object ResourceExchanger extends KutuService {
         endnote = BigDecimal.valueOf(fields(wertungenHeader("endnote"))),
         riege = if(fields(wertungenHeader("riege")).length > 0) Some(fields(wertungenHeader("riege"))) else None
       )
-      cnt = cnt + 1
       updateOrinsertWertung(w)
     }
-    println(cnt)
     wettkampfInstances.head._2
   }
 
@@ -130,20 +126,16 @@ object ResourceExchanger extends KutuService {
     val im = rm.reflect(instance)
     val values = typeOf[T].members.collect {
       case m: MethodSymbol if m.isCaseAccessor =>
-//        val name  = m.name.toString
-//        val value = im.reflectMethod(m).apply()
-//        (name -> value)
         im.reflectMethod(m).apply() match {
           case Some(verein: Verein) => verein.id + ""
           case Some(programm: Programm) => programm.id + ""
-          case Some(programm: ProgrammView) => programm.id + ""
           case Some(athlet: Athlet) => athlet.id + ""
           case Some(athlet: AthletView) => athlet.id + ""
           case Some(value) => value.toString
           case None => ""
           case e => e.toString
         }
-    } (collection.breakOut)
+    }
     values.map("\"" + _ + "\"").mkString(",")
   }
 
@@ -174,13 +166,11 @@ object ResourceExchanger extends KutuService {
     val wertungenRaw = wertungen.map(_.toWertung)
     zip.putNextEntry(new ZipEntry("wertungen.csv"));
     zip.write((getHeader[Wertung] + "\n").getBytes("utf-8"))
-    var cnt: Int = 0
     for(wertung <- wertungenRaw) {
       zip.write((getValues(wertung) + "\n").getBytes("utf-8"))
-      cnt = cnt + 1
     }
-    println(cnt)
     zip.closeEntry()
+
     zip.finish()
     zip.close()
   }

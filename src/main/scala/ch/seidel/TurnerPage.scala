@@ -63,6 +63,41 @@ object TurnerPage {
     def commit = Athlet(init.id, Integer.valueOf(jsid.value), geschlecht.value, name.value, vorname.value, optionOfGebDat, strasse.value, plz.value, ort.value, init.verein, activ.value.toUpperCase().startsWith("A"))
   }
 
+  def drillDownInAthlet(vverein: Option[Verein], a: Athlet, service: KutuService, tabpane: LazyTabPane) {
+    val newtab = new TurnerAnalyzer(vverein, Some(a), None, service) {
+      text = a.easyprint + "-Analyse"
+      closable = true
+      override def onDrillDown(w: WettkampfdisziplinView) {
+        drillDownInDisziplin(vverein, w, service, tabpane)
+      }
+
+      onClosed = handle {
+        turnerAnalyzers = turnerAnalyzers.filter(x => !x._1.equals(a.id))
+        tabpane.selectionModel.value.select(0)
+      }
+    }
+    turnerAnalyzers = turnerAnalyzers.updated(a.id, newtab)
+    tabpane.refreshTabs()
+    tabpane.selectionModel.value.select(newtab)
+  }
+
+  def drillDownInDisziplin(vverein: Option[Verein], w: WettkampfdisziplinView, service: KutuService, tabpane: LazyTabPane) {
+    val newtab = new TurnerAnalyzer(vverein, None, Some(w), service) {
+      text = w.easyprint + "-Analyse"
+      closable = true
+      override def onDrillDown(a: Athlet) {
+        drillDownInAthlet(vverein, a, service, tabpane)
+      }
+      onClosed = handle {
+        turnerAnalyzers = turnerAnalyzers.filter(x => !x._1.equals(w.id * -1))
+        tabpane.selectionModel.value.select(0)
+      }
+    }
+    turnerAnalyzers = turnerAnalyzers.updated(w.id * -1, newtab)
+    tabpane.refreshTabs()
+    tabpane.selectionModel.value.select(newtab)
+  }
+
   class VereinTab(val verein: Verein, override val service: KutuService, val tabpane: LazyTabPane) extends Tab with TabWithService {
     import scala.collection.JavaConversions._
 
@@ -123,27 +158,28 @@ object TurnerPage {
       }
     }
 
-    val analyzeButton = new Button {
-      text = "Athlet Analysieren"
+    val analyzeVereinButton = new Button {
+      text = "Athlet im Verein Analysieren"
       minWidth = 75
       onAction = (event: ActionEvent) => {
         if (!athletenview.selectionModel().isEmpty) {
           val a = athletenview.selectionModel().getSelectedItem.commit
-          val newtab = new TurnerAnalyzer(Some(verein), Some(a), service) {
-            text = a.easyprint + "-Analyse"
-            closable = true
-            onClosed = handle {
-              turnerAnalyzers = turnerAnalyzers.filter(x => !x._1.equals(a.id))
-              tabpane.selectionModel.value.select(0)
-            }
-          }
-          turnerAnalyzers = turnerAnalyzers.updated(a.id, newtab)
-          tabpane.refreshTabs()
-          tabpane.selectionModel.value.select(newtab)
+          drillDownInAthlet(Some(verein), a, service, tabpane)
         }
       }
     }
-    analyzeButton.disable <== when(athletenview.selectionModel.value.selectedItemProperty.isNull()) choose true otherwise false
+//    val analyzeButton = new Button {
+//      text = "Athlet Analysieren"
+//      minWidth = 75
+//      onAction = (event: ActionEvent) => {
+//        if (!athletenview.selectionModel().isEmpty) {
+//          val a = athletenview.selectionModel().getSelectedItem.commit
+//          drillDownInAthlet(None, a, service, tabpane)
+//        }
+//      }
+//    }
+    analyzeVereinButton.disable <== when(athletenview.selectionModel.value.selectedItemProperty.isNull()) choose true otherwise false
+//    analyzeButton.disable <== when(athletenview.selectionModel.value.selectedItemProperty.isNull()) choose true otherwise false
     removeButton.disable <== when(athletenview.selectionModel.value.selectedItemProperty.isNull()) choose true otherwise false
 
     val cont = new BorderPane {
@@ -158,7 +194,7 @@ object TurnerPage {
             minHeight = Region.USE_PREF_SIZE
             styleClass += "toolbar-header"
           },
-          addButton, analyzeButton, removeButton
+          addButton, analyzeVereinButton, /*analyzeButton,*/ removeButton
         )
       }
       //bottom = pagination
@@ -175,9 +211,25 @@ object TurnerPage {
         text = verein.name
         closable = false
       }) ++ turnerAnalyzers.values.toSeq ++ Seq(
-      new TurnerAnalyzer(Some(club), None, service) {
+      new TurnerAnalyzer(Some(club), None, None, service) {
         text = club.easyprint + " Turner-Analyse"
         closable = false
+        override def onDrillDown(a: Athlet) {
+          drillDownInAthlet(Some(club), a, service, pane)
+        }
+        override def onDrillDown(w: WettkampfdisziplinView) {
+          drillDownInDisziplin(Some(club), w, service, pane)
+        }
+      },
+      new TurnerAnalyzer(None, None, None, service) {
+        text = "Turner-Analyse"
+        closable = false
+        override def onDrillDown(a: Athlet) {
+          drillDownInAthlet(None, a, service, pane)
+        }
+        override def onDrillDown(w: WettkampfdisziplinView) {
+          drillDownInDisziplin(None, w, service, pane)
+        }
       },
       new TurnerScoreTab(Some(club), service){
         text = club.easyprint + "-übergreifende Turner-Auswertung"
