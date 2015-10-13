@@ -125,6 +125,7 @@ package object domain {
 
   case class WettkampfView(id: Long, datum: java.sql.Date, titel: String, programm: ProgrammView, auszeichnung: Int) extends DataObject {
     override def easyprint = f"$titel am $datum%td.$datum%tm.$datum%tY"
+    def toWettkampf = Wettkampf(id, datum, titel, programm.id, auszeichnung)
   }
 
   case class Wettkampfdisziplin(id: Long, programmId: Long, disziplinId: Long, kurzbeschreibung: String, detailbeschreibung: Option[java.sql.Blob], notenfaktor: scala.math.BigDecimal, ord: Int) extends DataObject {

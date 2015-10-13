@@ -12,6 +12,7 @@ import scalafx.scene.control._
 import scalafx.scene.image.{Image, ImageView}
 import scalafx.scene.input.ContextMenuEvent
 import ch.seidel.domain.KutuService
+import ch.seidel.domain.Wettkampf
 import ch.seidel.domain.WettkampfView
 import ch.seidel.domain.Verein
 import ch.seidel.commons.PageDisplayer
@@ -29,6 +30,8 @@ import scalafx.scene.control.Alert.AlertType
 import scalafx.scene.Cursor
 import scalafx.application.Platform
 import scala.concurrent.Future
+import scalafx.stage.FileChooser
+import scalafx.stage.FileChooser.ExtensionFilter
 
 object KuTuApp extends JFXApp with KutuService {
   var tree = AppNavigationModel.create(KuTuApp.this)
@@ -179,6 +182,13 @@ object KuTuApp extends JFXApp with KutuService {
       }
     )}
   }
+  def makeWettkampfExportierenMenu(p: WettkampfView): MenuItem = {
+    makeMenuAction("Wettkampf exportieren") {(caption, action) =>
+      implicit val e = action
+      import domain._
+      ResourceExchanger.exportWettkampf(p.toWettkampf, System.getProperty("user.home") + "/" + p.titel.replace(" ", "_") + ".zip");
+    }
+  }
 
   def makeNeuerVereinAnlegenMenu = makeMenuAction("Neuen Verein anlegen ...") {(caption, action) =>
     implicit val e = action
@@ -200,67 +210,113 @@ object KuTuApp extends JFXApp with KutuService {
       }
     }, new Button("OK") {
       onAction = handleAction {implicit e: ActionEvent =>
-        createVerein(txtTitel.text.value)
+        val vid = createVerein(txtTitel.text.value)
         updateTree
+        selectVereine.find {_.id == vid } match {
+          case Some(verein) =>
+            val text = s"${verein.name}"
+            tree.getLeaves("Athleten").find { item => text.equals(item.value.value) } match {
+              case Some(node) =>
+                controlsView.selectionModel().select(node)
+              case None =>
+            }
+          case None =>
+        }
       }
     })
   }
 
-  def makeNeuerWettkampfAnlegenMenu = makeMenuAction("Neuen Wettkampf anlegen ...") {(caption, action) =>
-    implicit val e = action
-    import domain._
-    val txtDatum = new DatePicker {
-      setPromptText("Wettkampf-Datum")
-      setPrefWidth(500)
-    }
-    val txtTitel = new TextField {
-      prefWidth = 500
-      promptText = "Wettkampf-Titel"
-    }
-    val cmbProgramm = new ComboBox(ObservableBuffer[ProgrammView](listRootProgramme)) {
-      prefWidth = 500
-      buttonCell = new ProgrammListCell
-      cellFactory = new Callback[ListView[ProgrammView], ListCell[ProgrammView]]() {
-        def call(p: ListView[ProgrammView]): ListCell[ProgrammView] = {
-          new ProgrammListCell
-        }
+  def makeNeuerWettkampfAnlegenMenu: MenuItem = {
+    makeMenuAction("Neuen Wettkampf anlegen ...") {(caption, action) =>
+      implicit val e = action
+      import domain._
+      val txtDatum = new DatePicker {
+        setPromptText("Wettkampf-Datum")
+        setPrefWidth(500)
       }
-      promptText = "Programm"
-    }
-    val txtAuszeichnung = new TextField {
-      prefWidth = 500
-      promptText = "%-Angabe, wer eine Auszeichnung bekommt"
-      text = "40%"
-    }
-    PageDisplayer.showInDialog(caption, new DisplayablePage() {
-      def getPage: Node = {
-        new BorderPane {
-          hgrow = Priority.Always
-          vgrow = Priority.Always
-          center = new VBox {
-            children.addAll(
-                new Label(txtDatum.promptText.value), txtDatum,
-                new Label(txtTitel.promptText.value), txtTitel,
-                new Label(cmbProgramm.promptText.value), cmbProgramm,
-                new Label(txtAuszeichnung.promptText.value), txtAuszeichnung)
+      val txtTitel = new TextField {
+        prefWidth = 500
+        promptText = "Wettkampf-Titel"
+      }
+      val cmbProgramm = new ComboBox(ObservableBuffer[ProgrammView](listRootProgramme)) {
+        prefWidth = 500
+        buttonCell = new ProgrammListCell
+        cellFactory = new Callback[ListView[ProgrammView], ListCell[ProgrammView]]() {
+          def call(p: ListView[ProgrammView]): ListCell[ProgrammView] = {
+            new ProgrammListCell
           }
         }
+        promptText = "Programm"
       }
-    }, new Button("OK") {
-      onAction = handleAction {implicit e: ActionEvent =>
-        createWettkampf(
-            ld2SQLDate(txtDatum.valueProperty().value),
-            txtTitel.text.value,
-            Set(cmbProgramm.selectionModel.value.getSelectedItem.id),
-            txtAuszeichnung.text.value.filter(c => c.isDigit).toString match {
-              case ""        => 0
-              case s: String => str2Int(s)
-            },
-            Some({ (_, _) => false }))
-        updateTree
+      val txtAuszeichnung = new TextField {
+        prefWidth = 500
+        promptText = "%-Angabe, wer eine Auszeichnung bekommt"
+        text = "40%"
       }
-    })
+      PageDisplayer.showInDialog(caption, new DisplayablePage() {
+        def getPage: Node = {
+          new BorderPane {
+            hgrow = Priority.Always
+            vgrow = Priority.Always
+            center = new VBox {
+              children.addAll(
+                  new Label(txtDatum.promptText.value), txtDatum,
+                  new Label(txtTitel.promptText.value), txtTitel,
+                  new Label(cmbProgramm.promptText.value), cmbProgramm,
+                  new Label(txtAuszeichnung.promptText.value), txtAuszeichnung)
+            }
+          }
+        }
+      }, new Button("OK") {
+        onAction = handleAction {implicit e: ActionEvent =>
+          val w = createWettkampf(
+              ld2SQLDate(txtDatum.valueProperty().value),
+              txtTitel.text.value,
+              Set(cmbProgramm.selectionModel.value.getSelectedItem.id),
+              txtAuszeichnung.text.value.filter(c => c.isDigit).toString match {
+                case ""        => 0
+                case s: String => str2Int(s)
+              },
+              Some({ (_, _) => false }))
+           updateTree
+           val text = s"${w.titel} ${w.datum}"
+           tree.getLeaves("Wettkämpfe").find { item => text.equals(item.value.value) } match {
+             case Some(node) =>
+               controlsView.selectionModel().select(node)
+             case None =>
+           }
+        }
+      })
+    }
   }
+  def makeNeuerWettkampfImportierenMenu: MenuItem = {
+    makeMenuAction("Wettkampf importieren") {(caption, action) =>
+      implicit val e = action
+      import domain._
+      val fileChooser = new FileChooser {
+         title = "Wettkampf File importieren"
+         initialDirectory = new java.io.File(System.getProperty("user.home"))
+         extensionFilters ++= Seq(
+           new ExtensionFilter("Zip-Files", "*.zip"),
+//           new ExtensionFilter("Image Files", Seq("*.png", "*.jpg", "*.gif")),
+//           new ExtensionFilter("Audio Files", Seq("*.wav", "*.mp3", "*.aac")),
+           new ExtensionFilter("All Files", "*.*")
+         )
+        }
+        val selectedFile = fileChooser.showOpenDialog(stage)
+        if (selectedFile != null) {
+          val w = ResourceExchanger.importWettkampf(selectedFile.getAbsolutePath)
+          updateTree
+          val text = s"${w.titel} ${w.datum}"
+          tree.getLeaves("Wettkämpfe").find { item => text.equals(item.value.value) } match {
+            case Some(node) =>
+              controlsView.selectionModel().select(node)
+            case None =>
+          }
+        }
+    }
+  }
+
   def makeWettkampfLoeschenMenu(p: WettkampfView) = makeMenuAction("Wettkampf löschen") {(caption, action) =>
     implicit val e = action
     import domain._
@@ -318,6 +374,7 @@ object KuTuApp extends JFXApp with KutuService {
         case "Wettkämpfe" =>
           controlsView.contextMenu = new ContextMenu() {
             items += makeNeuerWettkampfAnlegenMenu
+            items += makeNeuerWettkampfImportierenMenu
           }
         case _ => (newItem.isLeaf, Option(newItem.getParent)) match {
             case (true, Some(parent)) => {
@@ -325,6 +382,7 @@ object KuTuApp extends JFXApp with KutuService {
                 case Some(KuTuAppThumbNail(p: WettkampfView, _, newItem)) =>
                 controlsView.contextMenu = new ContextMenu() {
                   items += makeWettkampfBearbeitenMenu(p)
+                  items += makeWettkampfExportierenMenu(p)
                   items += makeWettkampfLoeschenMenu(p)
                 }
                 case Some(KuTuAppThumbNail(v: Verein, _, newItem)) =>

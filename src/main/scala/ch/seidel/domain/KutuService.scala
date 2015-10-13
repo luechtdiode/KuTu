@@ -277,6 +277,20 @@ trait KutuService {
     }
   }
 
+  def updateOrinsertWertung(w: Wertung) = {
+    database withTransaction { implicit session =>
+      sqlu"""
+                delete from wertung where
+                athlet_Id=${w.athletId} and wettkampfdisziplin_Id=${w.wettkampfdisziplinId} and wettkampf_Id=${w.wettkampfId}
+        """.execute
+      sqlu"""
+                insert into wertung
+                (athlet_Id, wettkampfdisziplin_Id, wettkampf_Id, note_d, note_e, endnote, riege)
+                values (${w.athletId}, ${w.wettkampfdisziplinId}, ${w.wettkampfId}, ${w.noteD}, ${w.noteE}, ${w.endnote}, ${w.riege})
+        """.execute
+    }
+  }
+
   def updateWertung(w: Wertung): WertungView = {
     database withTransaction { implicit session =>
       sqlu"""       UPDATE wertung
@@ -589,7 +603,7 @@ trait KutuService {
     }
   }
 
-  def selectVereine = {
+  def selectVereine: List[Verein] = {
     database withSession { implicit session =>
       sql"""        select id, name from verein order by name""".as[Verein].list
     }
