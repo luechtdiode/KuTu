@@ -144,8 +144,8 @@ case object ByAthlet extends GroupBy with FilterBy {
   }
 }
 
-case object ByProgramm extends GroupBy with FilterBy {
-  override val groupname = "Programm"
+case class ByProgramm(text: String = "Programm/Kategorie") extends GroupBy with FilterBy {
+  override val groupname = text
   protected override val grouper = (v: WertungView) => {
     v.wettkampfdisziplin.programm
   }
@@ -159,8 +159,8 @@ case object ByProgramm extends GroupBy with FilterBy {
   }
 }
 
-case object ByWettkampfProgramm extends GroupBy with FilterBy {
-  override val groupname = "Wettkampf-Programm"
+case class ByWettkampfProgramm(text: String = "Programm/Kategorie") extends GroupBy with FilterBy {
+  override val groupname = "Wettkampf-" + text
   protected override val grouper = (v: WertungView) => {
     v.wettkampfdisziplin.programm.wettkampfprogramm
   }
@@ -195,6 +195,22 @@ case object ByRiege extends GroupBy with FilterBy {
   }
   protected override val sorter: Option[(GroupSection, GroupSection) => Boolean] = Some((gs1: GroupSection, gs2: GroupSection) => {
     gs1.groupKey.easyprint.compareTo(gs2.groupKey.easyprint) < 0
+  })
+
+  def items(fromData: Seq[WertungView]): List[DataObject] = {
+    val grp = fromData.groupBy(grouper)
+    grp.map(_._1).toList
+  }
+}
+
+case object ByJahr extends GroupBy with FilterBy {
+  override val groupname = "Wettkampf-Jahr"
+  private val extractYear = new SimpleDateFormat("YYYY")
+  protected override val grouper = (v: WertungView) => {
+    WettkampfJahr(extractYear.format(v.wettkampf.datum))
+  }
+  protected override val sorter: Option[(GroupSection, GroupSection) => Boolean] = Some((gs1: GroupSection, gs2: GroupSection) => {
+    gs1.groupKey.asInstanceOf[WettkampfJahr].hg.compareTo(gs2.groupKey.asInstanceOf[WettkampfJahr].hg) < 0
   })
 
   def items(fromData: Seq[WertungView]): List[DataObject] = {

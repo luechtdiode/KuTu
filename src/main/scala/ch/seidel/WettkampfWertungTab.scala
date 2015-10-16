@@ -42,6 +42,7 @@ import scalafx.scene.Scene
 import scalafx.scene.Group
 import scalafx.scene.text.Font
 import scalafx.scene.text.FontWeight
+import scalafx.scene.control.ComboBox
 
 case class WertungEditor(init: WertungView) {
 	type WertungChangeListener = (WertungEditor) => Unit
@@ -98,9 +99,15 @@ class WettkampfWertungTab(programm: Option[ProgrammView], riege: Option[String],
     def updateWertungen = {
       programm match {
         case Some(progrm) =>
-          athleten.filter(wv => wv.wettkampfdisziplin.programm.id == progrm.id && wv.wettkampf.id == wettkampf.id).groupBy(wv => wv.athlet).map(wvg => wvg._2.map(WertungEditor)).toIndexedSeq
+          athleten.
+          filter(wv => wv.wettkampfdisziplin.programm.id == progrm.id && wv.wettkampf.id == wettkampf.id).
+          groupBy(wv => wv.athlet).
+          map(wvg => wvg._2.map(WertungEditor)).toIndexedSeq
         case None =>
-          athleten.filter(wv => wv.wettkampf.id == wettkampf.id).groupBy(wv => wv.athlet).map(wvg => wvg._2.map(WertungEditor)).toIndexedSeq
+          athleten.
+          filter(wv => wv.wettkampf.id == wettkampf.id).
+          groupBy(wv => wv.athlet).
+          map(wvg => wvg._2.map(WertungEditor)).toIndexedSeq
       }
     }
 
@@ -714,6 +721,39 @@ class WettkampfWertungTab(programm: Option[ProgrammView], riege: Option[String],
           }
         }
       }
+      val moveToOtherProgramButton = new Button {
+        text = programm.map(p => p.head.id match {case 20 => "Turner Kategorie wechseln ..." case 1  => "." case _ => "Turner Programm wechseln ..."}).getOrElse(".")
+        minWidth = 75
+        onAction = (event: ActionEvent) => {
+          implicit val impevent = event
+          val programms = programm.map(p => service.readWettkampfLeafs(p.head.id)).get
+          val prmodel = ObservableBuffer[ProgrammView](programms)
+          val cbProgramms = new ComboBox[ProgrammView] {
+            items = prmodel
+          }
+          PageDisplayer.showInDialog(text.value, new DisplayablePage() {
+            def getPage: Node = {
+              new HBox {
+                prefHeight = 50
+                alignment = Pos.BottomRight
+                hgrow = Priority.Always
+                children = Seq(new Label("Neue Zuteilung  "), cbProgramms)
+              }
+            }
+          }, new Button("OK") {
+            onAction = (event: ActionEvent) => {
+              if (!wkview.selectionModel().isEmpty) {
+                val athletwertungen = wkview.selectionModel().getSelectedItem.map(_.init.id).toSet
+                val athlet = wkview.selectionModel().getSelectedItem.map(_.init.athlet).head
+                service.unassignAthletFromWettkampf(athletwertungen)
+                wkModel.remove(wkview.selectionModel().getSelectedIndex)
+                def filter(progId: Long, a: Athlet): Boolean = a.id == athlet.id
+                service.assignAthletsToWettkampf(wettkampf.id, Set(cbProgramms.selectionModel().selectedItem.value.id), Some(filter))
+              }
+            }
+          })
+        }
+      }
       val riegensuggestButton = new Button {
         text = "Riegen einteilen"
         minWidth = 75
@@ -751,9 +791,12 @@ class WettkampfWertungTab(programm: Option[ProgrammView], riege: Option[String],
         }
       }
       //addButton.disable <== when (wkview.selectionModel.value.selectedItemProperty.isNull()) choose true otherwise false
+      val moveAvaillable = programm.forall { p => p.head != 1 }
+      moveToOtherProgramButton.disable <== when(wkview.selectionModel.value.selectedItemProperty.isNull()) choose moveAvaillable otherwise false
       removeButton.disable <== when(wkview.selectionModel.value.selectedItemProperty.isNull()) choose true otherwise false
       riegensuggestButton.disable <== when(wkview.selectionModel.value.selectedItemProperty.isNull()) choose true otherwise false
-      List(addButton, removeButton, riegensuggestButton)
+
+      List(addButton, moveToOtherProgramButton, removeButton, riegensuggestButton).filter(btn => !btn.text.value.equals("."))
     }
 
     wkview.selectionModel.value.setCellSelectionEnabled(true)

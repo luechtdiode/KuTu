@@ -57,7 +57,7 @@ class TurnerScoreTab(val verein: Option[Verein], override val service: KutuServi
   //          x.athlet }))))
 
   override def isPopulated = {
-    val groupers = List(ByNothing, ByWettkampfArt, ByWettkampfProgramm, ByProgramm, ByJahrgang, ByGeschlecht, ByVerein, ByDisziplin)
+    val groupers = List(ByNothing, ByJahr, ByWettkampfArt, ByWettkampfProgramm(), ByProgramm(), ByJahrgang, ByGeschlecht, ByVerein, ByDisziplin)
     val gr1Model = ObservableBuffer[GroupBy](groupers)
     val f1Model = ObservableBuffer[DataObject]()
     val f2Model = ObservableBuffer[DataObject]()
@@ -114,7 +114,7 @@ class TurnerScoreTab(val verein: Option[Verein], override val service: KutuServi
       groupers.foreach { gr => gr.reset }
       val cblist = combs.filter(cb => !cb.selectionModel.value.isEmpty).map(cb => cb.selectionModel.value.getSelectedItem).filter(x => x != ByNothing)
       if (cblist.isEmpty) {
-        ByWettkampfProgramm.groupBy(ByGeschlecht)
+        ByWettkampfProgramm().groupBy(ByGeschlecht)
       }
       else {
         cblist.foldLeft(cblist.head)((acc, cb) => if (acc != cb) acc.groupBy(cb) else acc)
@@ -133,7 +133,7 @@ class TurnerScoreTab(val verein: Option[Verein], override val service: KutuServi
       ret
     }
 
-    cb1.selectionModel.value.select(ByWettkampfProgramm)
+    cb1.selectionModel.value.select(ByWettkampfProgramm())
     cb2.selectionModel.value.select(ByGeschlecht)
 
     combs.foreach{c =>

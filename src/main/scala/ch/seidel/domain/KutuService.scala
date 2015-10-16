@@ -211,8 +211,11 @@ trait KutuService {
     if(pgm.head.id == 1) {
       Athletiktest(skala.toMap, notenfaktor)
     }
+    else if(pgm.head.id == 20) {
+      GeTuWettkampf
+    }
     else {
-      Wettkampf
+      KuTuWettkampf
     }
   }
 

@@ -58,7 +58,8 @@ class RanglisteTab(wettkampf: WettkampfView, override val service: KutuService) 
 
   override def isPopulated = {
     val dummyTableView = new TableView[GroupRow]()
-    val groupers = List(ByNothing, ByWettkampfArt, ByWettkampfProgramm, ByProgramm, ByJahrgang, ByGeschlecht, ByVerein, ByRiege, ByDisziplin)
+    val text = wettkampf.programm.id match {case 20 => "Kategorie" case _ => "Programm"}
+    val groupers = List(ByNothing, ByWettkampfArt, ByWettkampfProgramm(text), ByProgramm(text), ByJahrgang, ByGeschlecht, ByVerein, ByRiege, ByDisziplin)
     val gr1Model = ObservableBuffer[GroupBy](groupers)
     val cb1 = new ComboBox[GroupBy] {
       maxWidth = 250
@@ -90,7 +91,7 @@ class RanglisteTab(wettkampf: WettkampfView, override val service: KutuService) 
       groupers.foreach { gr => gr.reset }
       val cblist = combs.filter(cb => !cb.selectionModel.value.isEmpty).map(cb => cb.selectionModel.value.getSelectedItem).filter(x => x != ByNothing)
       if (cblist.isEmpty) {
-        ByWettkampfProgramm.groupBy(ByGeschlecht)
+        ByWettkampfProgramm().groupBy(ByGeschlecht)
       }
       else {
         cblist.foldLeft(cblist.head)((acc, cb) => if (acc != cb) acc.groupBy(cb) else acc)
@@ -104,7 +105,7 @@ class RanglisteTab(wettkampf: WettkampfView, override val service: KutuService) 
       ret
     }
 
-    cb1.selectionModel.value.select(ByWettkampfProgramm)
+    cb1.selectionModel.value.select(ByWettkampfProgramm(text))
     cb2.selectionModel.value.select(ByGeschlecht)
 
     combs.foreach{c =>

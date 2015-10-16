@@ -59,6 +59,10 @@ package object domain {
   case class AthletJahrgang(hg: String) extends DataObject {
     override def easyprint = "Jahrgang " + hg
   }
+
+  case class WettkampfJahr(hg: String) extends DataObject {
+    override def easyprint = "Wettkampf-Jahr " + hg
+  }
   case class Disziplin(id: Long, name: String) extends DataObject {
     override def easyprint = name
   }
@@ -115,6 +119,7 @@ package object domain {
       case None    => this.name
       case Some(p) => p.toPath + " / " + name
     }
+    override def toString = toPath
   }
 
   case class Wettkampf(id: Long, datum: java.sql.Date, titel: String, programmId: Long, auszeichnung: Int) extends DataObject {
@@ -216,10 +221,15 @@ package object domain {
     override def calcEndnote(dnote: Double, enote: Double) = enote * punktgewicht
     override def selectableItems: Option[List[String]] = Some(punktemapping.keys.toList.sortBy(punktemapping))
   }
-  case object Wettkampf extends NotenModus {
+  case object KuTuWettkampf extends NotenModus {
     override val isDNoteUsed = true
     //override def fromString(input: String) = super.fromString(input)
     override def calcEndnote(dnote: Double, enote: Double) = dnote + enote
+  }
+  case object GeTuWettkampf extends NotenModus {
+    override val isDNoteUsed = false
+    //override def fromString(input: String) = super.fromString(input)
+    override def calcEndnote(dnote: Double, enote: Double) = enote
   }
 
 }
