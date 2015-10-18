@@ -79,6 +79,22 @@ case class WertungEditor(init: WertungView) {
     init.riege)
 }
 
+trait TCAccess {
+  def getIndex: Int
+  def valueEditor(selectedRow: IndexedSeq[WertungEditor]): WertungEditor
+}
+
+class WKJFSCTableColumn[T](val index: Int) extends jfxsc.TableColumn[IndexedSeq[WertungEditor], T] with TCAccess {
+  override def getIndex: Int = index
+  override def valueEditor(selectedRow: IndexedSeq[WertungEditor]): WertungEditor = selectedRow(index)
+}
+
+class WKTableColumn[T](val index: Int) extends TableColumn[IndexedSeq[WertungEditor], T] with TCAccess {
+  override val delegate: jfxsc.TableColumn[IndexedSeq[WertungEditor], T] = new WKJFSCTableColumn[T](index)
+  override def getIndex: Int = index
+  override def valueEditor(selectedRow: IndexedSeq[WertungEditor]): WertungEditor = selectedRow(index)
+}
+
 class WettkampfWertungTab(programm: Option[ProgrammView], riege: Option[String], wettkampf: WettkampfView, override val service: KutuService, athleten: => IndexedSeq[WertungView]) extends Tab with TabWithService {
 	implicit def doublePropertyToObservableValue(p: DoubleProperty): ObservableValue[Double,Double] = p.asInstanceOf[ObservableValue[Double,Double]]
 
@@ -92,9 +108,62 @@ class WettkampfWertungTab(programm: Option[ProgrammView], riege: Option[String],
       case _=>
     }
   }
-  override def isPopulated = {
 
-    var editorPane: EditorPane = null
+  case class EditorPane(wkview: TableView[IndexedSeq[WertungEditor]]) extends VBox {
+    var index = -1
+//    var lastFocused: Option[Control] = None;
+    var selected: IndexedSeq[ch.seidel.WertungEditor] = IndexedSeq()
+
+    val lblDisciplin = new Label() {
+      styleClass += "toolbar-header"
+    }
+    val lblAthlet = new Label() {
+      styleClass += "toolbar-header"
+    }
+
+    wkview.selectionModel.value.selectedItemProperty().onChange(
+        (model: scalafx.beans.value.ObservableValue[IndexedSeq[ch.seidel.WertungEditor], IndexedSeq[ch.seidel.WertungEditor]],
+         oldSelection: IndexedSeq[ch.seidel.WertungEditor],
+         newSelection: IndexedSeq[ch.seidel.WertungEditor]) => {
+      if(newSelection != null && selected != newSelection) {
+        selected = newSelection
+        adjust
+      }
+    })
+
+    wkview.focusModel.value.focusedCell.onChange {(focusModel, oldTablePos, newTablePos) =>
+      if(newTablePos != null && selected != null) {
+        val column = newTablePos.tableColumn
+        val selrow = newTablePos.getRow
+        if(column != null && selrow > -1) {
+          if(column.isInstanceOf[TCAccess]) {
+            val selectedIndex = column.asInstanceOf[TCAccess].getIndex
+            if(selectedIndex > -1 && selectedIndex != index) {
+              index = selectedIndex
+              adjust
+            }
+          }
+        }
+      }
+    }
+
+    children = List(lblAthlet, lblDisciplin/*lblHeader, noteBox*/)
+    VBox.setMargin(lblAthlet, Insets(0d,10d,0d,20d))
+    VBox.setMargin(lblDisciplin, Insets(0d,10d,0d,20d))
+
+    def adjust {
+      if(selected != null && index > -1 && index < selected.size) {
+        lblAthlet.text.value = selected(index).init.athlet.easyprint
+        lblDisciplin.text.value = selected(index).init.wettkampfdisziplin.easyprint
+      }
+      else {
+        lblAthlet.text.value = ""
+        lblDisciplin.text.value = ""
+      }
+    }
+  }
+
+  override def isPopulated = {
 
     def updateWertungen = {
       programm match {
@@ -153,196 +222,13 @@ class WettkampfWertungTab(programm: Option[ProgrammView], riege: Option[String],
       }
     }
 
+    val editorPane: EditorPane = new EditorPane(wkview)
     def disziplinCnt = wertungen.headOption match {case Some(w) => w.size case _ => 0}
+    val withDNotes = wertungen.flatMap(w => w.filter(ww => ww.init.wettkampfdisziplin.notenSpez.isDNoteUsed)).nonEmpty
+    val withENotes = wettkampf.programm.id != 1
 
     def updateEditorPane {
-    	if(editorPane != null) {
-        if(disziplinCnt > 0)
-    		  editorPane.adjust
-        else {
-          editorPane.unbind();
-        }
-    	}
-    }
-    case class EditorPane(index: Int) extends VBox {
-      var lastFocused: Option[Control] = None;
-      val lblDisciplin = new Label() {
-        styleClass += "toolbar-header"
-      }
-      val lblAthlet = new Label() {
-        styleClass += "toolbar-header"
-      }
-      //styleClass += "breadcrumb-bar"
-//      val lblHeader = new ToolBar {
-//        content = List(lblAthlet, lblDisciplin)
-//      }
-//      val txtD = new TextField() {
-//        promptText = "D-Note"
-//        prefWidth = 100
-//      }
-//      val txtE = new AutoFillTextBox[String]() {
-//        promptText = "E-Note"
-//        prefWidth = 500
-//        delegate.setListLimit(20)
-//      }
-//      val txtEnd = new TextField() {
-//        promptText = "End-Note"
-//        prefWidth = 100
-//      }
-//      val btnSaveNextDisciplin = new Button() {
-//        text = "Speichern ->"
-//        disable <== when(isDirty) choose false otherwise true
-//      }
-//      val btnSaveNextAthlet = new Button() {
-//        text = "Speichern v"
-//        disable <== when(isDirty) choose false otherwise true
-//      }
-//      val actionBox = new HBox() {
-//        children = List(btnSaveNextAthlet, btnSaveNextDisciplin)
-//      }
-//      val noteBox = new FlowPane() {
-//        alignment = Pos.Center
-//        children = List(txtD, txtE, txtEnd, actionBox)
-//      }
-      children = List(lblAthlet, lblDisciplin/*lblHeader, noteBox*/)
-//      alignment = Pos.Center
-      VBox.setMargin(lblAthlet, Insets(0d,10d,0d,20d))
-      VBox.setMargin(lblDisciplin, Insets(0d,10d,0d,20d))
-      var disciplin: WertungEditor = null
-
-//      val listener = (we: WertungEditor) => {
-//        if(disciplin.init.wettkampfdisziplin.notenSpez.isDNoteUsed) {
-//          txtD.text.value = disciplin.noteD.value
-//          txtD.delegate.selectAll
-//        }
-//        txtE.text.value = disciplin.init.wettkampfdisziplin.notenSpez.toString(disciplin.noteE.value)
-//        txtE.delegate.getTextbox.selectAll
-//        txtEnd.text.value = disciplin.endnote.value
-//      }
-
-//      def isDirty: BooleanBinding = new javafx.beans.binding.BooleanBinding() {
-//        bind(txtD.text, txtE.text, txtEnd.text)
-//        def computeValue = {
-//          try {
-//            disciplin.noteD.value != Wettkampf.fromString(txtD.text.value) ||
-//            disciplin.noteE.value != disciplin.init.wettkampfdisziplin.notenSpez.fromString(txtE.text.value) ||
-//            disciplin.endnote.value != Wettkampf.fromString(txtEnd.text.value)
-//          }
-//          catch {
-//            case e: Exception => false
-//          }
-//        }
-//      }
-//
-//      def lastEditedOffset: Int = {
-//        if(txtD.focused.value) {
-//          lastFocused = Some(txtD)
-//          0
-//        }
-//        else if(txtE.focused.value) {
-//          lastFocused = Some(txtE)
-//          1
-//        }
-//        else 2
-//      }
-
-      def adjust: Int = {
-       	val selected = wkview.selectionModel().getSelectedItem
-        if(selected != null && disciplin != null && selected(index) == disciplin) {
-          return wkModel.indexOf(selected)
-        }
-        unbind
-//        println("inAdjustSelection at index " + index)
-        if (selected != null && selected.size > index) {
-          disciplin = selected(index)
-//          txtD.disable = false
-//          txtE.disable = false
-//          txtEnd.disable = false
-//
-          val rowIndex = wkModel.indexOf(selected)
-//          disciplin.addListener(listener)
-          lblDisciplin.text = "Disziplin: " + disciplin.init.wettkampfdisziplin.disziplin.name
-          lblAthlet.text = "Athlet: " + selected(index).init.athlet.easyprint
-          //new Exception(f"on bind to index $index, ${selected(index).init.athlet.easyprint}").printStackTrace();
-//          def save {
-//        	  lastFocused = List(txtD, txtE, txtEnd).find(p => p.isFocused())
-//            val td = txtD.text.value
-//            val te = txtE.text.value
-//
-//            if(disciplin.init.wettkampfdisziplin.notenSpez.isDNoteUsed) {
-//              disciplin.noteD.value = disciplin.init.wettkampfdisziplin.notenSpez.fromString(td)
-//            }
-//            disciplin.noteE.value = disciplin.init.wettkampfdisziplin.notenSpez.fromString(te)
-//            disciplin.endnote.value = disciplin.init.wettkampfdisziplin.notenSpez.calcEndnote(disciplin.noteD.value, disciplin.noteE.value)
-//            if (disciplin.isDirty) {
-//              wkModel.update(rowIndex, selected.updated(index, WertungEditor(service.updateWertung(disciplin.commit))))
-//              wkview.selectionModel.value.select(rowIndex, wkview.columns(index+3).columns(lastEditedOffset))
-//              wkview.scrollTo(rowIndex)
-//              wkview.scrollToColumn(wkview.columns(index+3).columns(lastEditedOffset))
-//            }
-//            //wkview.selectionModel.value.selectBelowCell
-//          }
-//          listener(disciplin)
-//          txtEnd.editable = false
-//          if(disciplin.init.wettkampfdisziplin.notenSpez.isDNoteUsed) {
-//            txtD.editable = true
-//            txtD.visible = true
-//            txtD.onAction = () => save
-//          }
-//          else {
-//            txtD.editable = false
-//            txtD.visible = false
-//          }
-//          disciplin.init.wettkampfdisziplin.notenSpez.selectableItems.foreach { x =>
-//            txtE.delegate.getData().clear()
-//            for(s <- x) {
-//              txtE.delegate.getData().add(s)
-//            }
-//            txtE.delegate.setItemComparator(disciplin.init.wettkampfdisziplin.notenSpez)
-//          }
-//          txtE.onAction = () => save
-////          txtEnd.onAction = () => save
-//          btnSaveNextAthlet.onAction = () => {
-//            save
-//            wkview.selectionModel.value.selectBelowCell
-//          }
-//          btnSaveNextDisciplin.onAction = () => {
-//            save
-//            if(index < disziplinCnt-1) {
-//              wkview.selectionModel.value.select(rowIndex, wkview.columns(index+4).columns(lastEditedOffset))
-//              wkview.scrollToColumn(wkview.columns(index+4).columns(lastEditedOffset))
-//              wkview.scrollTo(rowIndex)
-//            }
-//            else if(rowIndex < wkModel.size-1){
-//              wkview.selectionModel.value.select(rowIndex+1, wkview.columns(3).columns(lastEditedOffset))
-//              wkview.scrollToColumn(wkview.columns(3).columns(lastEditedOffset))
-//              wkview.scrollTo(rowIndex + 1)
-//            }
-//          }
-////          println("binded")
-          rowIndex
-        }
-        else {
-          -1
-        }
-      }
-//      adjust
-      def unbind() {
-//        if (disciplin != null) {
-//          disciplin.removeListener(listener)
-//          txtD.text.unbind()
-//          txtD.onAction.unbind()
-//          txtE.text.unbind()
-//          txtE.onAction.unbind()
-//          txtEnd.text.unbind()
-//          txtEnd.onAction.unbind()
-////        println(" disciplin unbinded")
-//        }
-//        txtD.disable = true
-//        txtE.disable = true
-//        txtEnd.disable = true
-        disciplin = null
-      }
+		  editorPane.adjust
     }
 
     val indexerE = Iterator.from(0)
@@ -351,9 +237,8 @@ class WettkampfWertungTab(programm: Option[ProgrammView], riege: Option[String],
 
     def wertungenCols = if (wertungen.nonEmpty) {
       wertungen.head.map { wertung =>
-        val clDnote = new TableColumn[IndexedSeq[WertungEditor], Double] {
-          val index = indexerD.next
-          text = wertung.init.wettkampfdisziplin.disziplin.name
+        lazy val clDnote = new WKTableColumn[Double](indexerD.next) {
+          text = "D"
           cellValueFactory = { x => if (x.value.size > index) x.value(index).noteD else wertung.noteD }
           cellFactory = { _ => new TextFieldTableCell[IndexedSeq[WertungEditor], Double](wertung.init.wettkampfdisziplin.notenSpez)}
 
@@ -385,9 +270,8 @@ class WettkampfWertungTab(programm: Option[ProgrammView], riege: Option[String],
             }
           }
         }
-        val clEnote = new TableColumn[IndexedSeq[WertungEditor], Double] {
-          val index = indexerE.next
-          text = wertung.init.wettkampfdisziplin.disziplin.name
+        lazy val clEnote = new WKTableColumn[Double](indexerE.next) {
+          text = "E"
           cellValueFactory = { x => if (x.value.size > index) x.value(index).noteE else wertung.noteE }
           cellFactory = { x => new TextFieldTableCell[IndexedSeq[WertungEditor], Double](wertung.init.wettkampfdisziplin.notenSpez) }
 
@@ -420,30 +304,22 @@ class WettkampfWertungTab(programm: Option[ProgrammView], riege: Option[String],
             }
           }
         }
-        val clEndnote = new TableColumn[IndexedSeq[WertungEditor], Double] {
-          val index = indexerF.next
-          text = wertung.init.wettkampfdisziplin.disziplin.name
+        lazy val clEndnote = new WKTableColumn[Double](indexerF.next) {
+          text = "Endnote"
           cellValueFactory = { x => if (x.value.size > index) x.value(index).endnote else wertung.endnote }
           styleClass += "table-cell-with-value"
           prefWidth = 80
         }
-        val cl: jfxsc.TableColumn[IndexedSeq[WertungEditor], _] = new TableColumn[IndexedSeq[WertungEditor], String] {
-          text = clEndnote.text.value
-          clDnote.text = "D"
-          clEnote.text = "E"
-          clEndnote.text = "Endnote"
-          delegate.impl_setReorderable(false)
-          val measure = new Text(text.value)
-          measure.font.value = Font(measure.font.value.getFamily, FontWeight.BOLD, measure.font.value.size)
-          new Scene(new Group(measure))
-          measure.applyCss()
-          val w = measure.layoutBounds.value.width + 10
-          prefWidth = math.min(200, w)
-          columns ++= Seq(
-            clDnote,
-            clEnote,
-            clEndnote
-          )
+        val cl: jfxsc.TableColumn[IndexedSeq[WertungEditor], _] =  if(withDNotes) {
+          new TableColumn[IndexedSeq[WertungEditor], String] {
+            text = wertung.init.wettkampfdisziplin.disziplin.name
+//            delegate.impl_setReorderable(false)
+            columns ++= Seq(clDnote, clEnote, clEndnote)
+          }
+        }
+        else {
+          clEnote.text = wertung.init.wettkampfdisziplin.disziplin.name
+          clEnote
         }
         cl
       }
@@ -453,18 +329,18 @@ class WettkampfWertungTab(programm: Option[ProgrammView], riege: Option[String],
     }
 
     val athletCol: List[jfxsc.TableColumn[IndexedSeq[WertungEditor], _]] = List(
-      new TableColumn[IndexedSeq[WertungEditor], String] {
+      new WKTableColumn[String](-1) {
         text = "Athlet"
         cellValueFactory = { x =>
           new ReadOnlyStringWrapper(x.value, "athlet", {
             val a = x.value.head.init.athlet
-            s"${a.vorname} ${a.name}"
+            s"${a.vorname} ${a.name} ${(a.gebdat match {case Some(d) => f"$d%tY "; case _ => " "}) }"
           })
         }
-        delegate.impl_setReorderable(false) // shame on me??? why this feature should not be a requirement?
+//        delegate.impl_setReorderable(false) // shame on me??? why this feature should not be a requirement?
         prefWidth = 150
       },
-      new TableColumn[IndexedSeq[WertungEditor], String] {
+      new WKTableColumn[String](-1) {
         text = "Verein"
         cellValueFactory = { x =>
           new ReadOnlyStringWrapper(x.value, "verein", {
@@ -472,10 +348,10 @@ class WettkampfWertungTab(programm: Option[ProgrammView], riege: Option[String],
             s"${a.verein.map { _.name }.getOrElse("ohne Verein")}"
           })
         }
-        delegate.impl_setReorderable(false)
+//        delegate.impl_setReorderable(false)
         prefWidth = 100
       },
-      new TableColumn[IndexedSeq[WertungEditor], String] {
+      new WKTableColumn[String](-1) {
         text = "Riege"
         styleClass += "table-cell-with-value"
         cellFactory = { x => new TextFieldTableCell[IndexedSeq[WertungEditor], String](new DefaultStringConverter()) }
@@ -484,7 +360,7 @@ class WettkampfWertungTab(programm: Option[ProgrammView], riege: Option[String],
             s"${x.value.head.init.riege.getOrElse("keine Einteilung")}"
           })
         }
-        delegate.impl_setReorderable(false)
+//        delegate.impl_setReorderable(false)
         prefWidth = 100
         editable = true
         onEditCommit = (evt: CellEditEvent[IndexedSeq[WertungEditor], String]) => {
@@ -511,7 +387,7 @@ class WettkampfWertungTab(programm: Option[ProgrammView], riege: Option[String],
       })
 
     val sumCol: List[jfxsc.TableColumn[IndexedSeq[WertungEditor], _]] = List(
-      new TableColumn[IndexedSeq[WertungEditor], String] {
+      new WKTableColumn[String](-1) {
         text = "Punkte"
         cellValueFactory = { x => new ReadOnlyStringWrapper(x.value, "punkte", { f"${x.value.map(w => w.endnote.value.toDouble).sum}%3.3f" })}
         prefWidth = 100
@@ -522,33 +398,18 @@ class WettkampfWertungTab(programm: Option[ProgrammView], riege: Option[String],
     wkview.columns ++= athletCol ++ wertungenCols ++ sumCol
 
     def setEditorPaneToDiscipline(index: Int): Node = {
-      if(editorPane != null) {
-        if(editorPane.index == index) {
-          updateEditorPane
-          return editorPane
-        }
-        editorPane.unbind
-      }
-      editorPane = new EditorPane(index)
-      val rowIndex = editorPane.adjust
-      if(rowIndex > -1) {
-        wkview.scrollTo(rowIndex)
-        val datacolcnt = (wkview.columns.size - 4)
-        val dcgrp = wkModel.headOption match {
-          case Some(wertung) => if(wertung.head.init.wettkampfdisziplin.notenSpez.isDNoteUsed) 2 else 1
-          case None => 2
-        }
-        wkview.scrollToColumn(wkview.columns(3 + index).columns(dcgrp))
-      }
+      editorPane.adjust
+//      if(rowIndex > -1) {
+//        wkview.scrollTo(rowIndex)
+//        val datacolcnt = (wkview.columns.size - 4)
+//        val dcgrp = wkModel.headOption match {
+//          case Some(wertung) => if(wertung.head.init.wettkampfdisziplin.notenSpez.isDNoteUsed) 2 else 1
+//          case None => 2
+//        }
+//        wkview.scrollToColumn(wkview.columns(3 + index).columns(dcgrp))
+//      }
       editorPane.requestLayout()
       editorPane
-    }
-
-    val pagination = new Pagination(disziplinCnt, 0) {
-      disable = disziplinCnt == 0
-      pageFactory = (index: Int) => {
-        setEditorPaneToDiscipline(index)
-      }
     }
 
     def reloadData() = {
@@ -560,7 +421,6 @@ class WettkampfWertungTab(programm: Option[ProgrammView], riege: Option[String],
         else
           (ts.getRow, ts.getColumn)
       }
-      val idx = pagination.currentPageIndex.value
 
       val columnrebuild = wertungen.isEmpty
       wkModel.clear()
@@ -833,8 +693,10 @@ class WettkampfWertungTab(programm: Option[ProgrammView], riege: Option[String],
     val editTablePane = new BorderPane {
       hgrow = Priority.Always
       vgrow = Priority.Always
+      top = editorPane
       center = wkview
     }
+
     val cont = new BorderPane {
       hgrow = Priority.Always
       vgrow = Priority.Always
@@ -855,51 +717,11 @@ class WettkampfWertungTab(programm: Option[ProgrammView], riege: Option[String],
             minHeight = Region.USE_PREF_SIZE
             styleClass += "toolbar-header"
           }
-          //addButton, removeButton, clearButton, riegensuggestButton
         ) ++ actionButtons :+ clearButton
       }
-      //bottom = pagination
     }
-    wkview.selectionModel.value.selectedItemProperty().onChange(
-        (model: scalafx.beans.value.ObservableValue[IndexedSeq[ch.seidel.WertungEditor], IndexedSeq[ch.seidel.WertungEditor]],
-         oldSelection: IndexedSeq[ch.seidel.WertungEditor],
-         newSelection: IndexedSeq[ch.seidel.WertungEditor]) => {
-      if(newSelection == null /*|| editorPane == null || editorPane.disciplin == null*/) {
-        updateEditorPane
-      }
-    })
-
-    wkview.focusModel.value.focusedCell.onChange {(focusModel, oldTablePos, newTablePos) =>
-      if(newTablePos != null) {
-        if(newTablePos.row < 0) {
-          if(editorPane != null) editorPane.unbind()
-          editTablePane.top = null
-        }
-        else {
-          val datacolcnt = (wkview.columns.size - 4)
-          val dcgrp = wkModel.headOption match {
-              case Some(wertung) => if(wertung.head.init.wettkampfdisziplin.notenSpez.isDNoteUsed) 3 else 2
-              case None => 3
-            }//if(datacolcnt % 3 == 0) 3 else 2
-          val idx = math.min(datacolcnt * dcgrp, math.max(0, (newTablePos.getColumn-3) / dcgrp))
-  //        println("Adjust pagination at " +idx)
-          val oldIdx = pagination.currentPageIndex.value
-//          pagination.currentPageIndex.value = idx
-          editTablePane.top = setEditorPaneToDiscipline(idx)
-          if(oldIdx == idx) {
-            updateEditorPane
-          }
-        }
-      }
-      else {
-        cont.bottom = null
-      }
-    }
-    //cont.bottom = pagination
 
     content = cont
-    /*content =new StackPane {
-      alignmentInParent = Pos.TOP_LEFT*/
 
     true
   }
