@@ -31,13 +31,17 @@ trait ScoreToHtmlRenderer {
                 /*table-layout:fixed;*/
                 border-collapse:collapse;
                 border-spacing:0;
-                border-style:hidden;
+                /*border-style:hidden;*/
+                border: 1px solid rgb(50,100,150);
             }
             th {
               background-color: rgb(250,250,200);
               font-size: 9px;
               overflow: hidden;
             }
+            /*tr {
+              border-bottom: 1px solid rgb(50,100,150);
+            }*/
             td {
               padding:0.25em;
               overflow: hidden;
@@ -62,31 +66,11 @@ trait ScoreToHtmlRenderer {
             col:nth-child(3) {
               width: 8em;
             }
-            col:first-child {
-              background: rgba(150, 150, 150, 0.6);
+            tr:nth-child(even) {background: rgba(230, 230, 230, 0.6);}
+            /*tr:nth-child(odd) {background: rgba(210, 200, 180, 0.6);}*/
+            tr .blockstart {
+              border-left: 1px dotted black;
             }
-            col:nth-child(4n+4) {
-              /*width: 5em;*/
-              border-left: 1px solid black;
-            }/*
-            col:nth-child(4n+5) {
-              width: 5em;
-            }*/
-            col:nth-child(4n+6) {
-              background: rgba(150, 150, 150, 0.6);
-              /*width: 5em;*/
-            }/*
-            col:nth-child(4n+7) {
-              width: 5em;
-            }*/
-            tr:nth-child(even) .data {background: rgba(230, 230, 230, 0.6);}
-            tr:nth-child(odd) .data {background: rgba(210, 200, 180, 0.6);}
-            /*.disziplin {
-              -webkit-transform: rotate(90deg);
-              -moz-transform: rotate(90deg);
-              -o-transform: rotate(90deg);
-              writing-mode: lr-tb;
-            }*/
           </style>
           </head><body><h1>Rangliste ${title}</h1>\n""")
     }
@@ -113,19 +97,34 @@ trait ScoreToHtmlRenderer {
             }
           }
           gsBlock.append(s"\n<thead><tr class='head'>\n")
+          var first = true
           cols.foreach { th =>
-            if (th.columns.size > 0) {
-              gsBlock.append(s"<th colspan=${th.columns.size}>${th.getText}</th>")
+            val style = if(first) {
+              first = false
+              ""
             }
             else {
-              gsBlock.append(s"<th rowspan=2>${th.getText}</th>")
+              "class='blockstart'"
+            }
+            if (th.columns.size > 0) {
+              gsBlock.append(s"<th $style colspan=${th.columns.size}>${th.getText}</th>")
+            }
+            else {
+              gsBlock.append(s"<th $style rowspan=2>${th.getText}</th>")
             }
           }
           gsBlock.append(s"</tr><tr>\n")
           cols.foreach { th =>
             if (th.columns.size > 0) {
+              var first = true
               th.columns.foreach { th =>
-                gsBlock.append(s"<th>${th.getText}</th>")
+                if(first) {
+                  gsBlock.append(s"<th class='blockstart'>${th.getText}</th>")
+                  first = false;
+                }
+                else {
+                  gsBlock.append(s"<th>${th.getText}</th>")
+                }
               }
             }
           }
@@ -137,27 +136,33 @@ trait ScoreToHtmlRenderer {
                 val c = col.asInstanceOf[jfxsc.TableColumn[GroupRow, String]]
                 val feature = new CellDataFeatures(dummyTableView, c, row)
                 if (c.getStyleClass.contains("hintdata")) {
-                  gsBlock.append(s"<td class='data'><div class='hintdata'>${c.getCellValueFactory.apply(feature).getValue}</div></td>")
+                  gsBlock.append(s"<td class='data, blockstart'><div class='hintdata'>${c.getCellValueFactory.apply(feature).getValue}</div></td>")
                 }
                 else if (c.getStyleClass.contains("data")) {
-                  gsBlock.append(s"<td class='data'>${c.getCellValueFactory.apply(feature).getValue}</td>")
+                  gsBlock.append(s"<td class='data, blockstart'>${c.getCellValueFactory.apply(feature).getValue}</td>")
                 }
                 else {
-                  gsBlock.append(s"<td class='data'><div class='valuedata'>${c.getCellValueFactory.apply(feature).getValue}</div></td>")
+                  gsBlock.append(s"<td class='data, blockstart'><div class='valuedata'>${c.getCellValueFactory.apply(feature).getValue}</div></td>")
                 }
               }
               else {
+                var first = true
                 col.columns.foreach { ccol =>
                   val c = ccol.asInstanceOf[jfxsc.TableColumn[GroupRow, String]]
                   val feature = new CellDataFeatures(dummyTableView, c, row)
+                  val style = if(first) {
+                                first = false
+                                "data, blockstart"
+                              }
+                              else "data"
                   if (c.getStyleClass.contains("hintdata")) {
-                    gsBlock.append(s"<td class='data'><div class='hintdata'>${c.getCellValueFactory.apply(feature).getValue}</div></td>")
+                    gsBlock.append(s"<td class='$style'><div class='hintdata'>${c.getCellValueFactory.apply(feature).getValue}</div></td>")
                   }
                   else if (c.getStyleClass.contains("data")) {
-                    gsBlock.append(s"<td class='data'>${c.getCellValueFactory.apply(feature).getValue}</td>")
+                    gsBlock.append(s"<td class='$style'>${c.getCellValueFactory.apply(feature).getValue}</td>")
                   }
                   else {
-                    gsBlock.append(s"<td class='data'><div class='valuedata'>${c.getCellValueFactory.apply(feature).getValue}</div></td>")
+                    gsBlock.append(s"<td class='$style'><div class='valuedata'>${c.getCellValueFactory.apply(feature).getValue}</div></td>")
                   }
                 }
               }

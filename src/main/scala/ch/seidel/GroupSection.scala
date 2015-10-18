@@ -89,6 +89,17 @@ case class GroupLeaf(override val groupKey: DataObject, list: Iterable[WertungVi
         styleClass += "data"
       },
       new TableColumn[GroupRow, String] {
+        text = "Jahrgang"
+        cellValueFactory = { x =>
+          new ReadOnlyStringWrapper(x.value, "jahrgang", {
+            val a = x.value.athlet
+            f"${AthletJahrgang(a.gebdat).hg}"
+          })
+        }
+        prefWidth = 90
+        styleClass += "data"
+      },
+      new TableColumn[GroupRow, String] {
         text = "Verein"
         cellValueFactory = { x =>
           new ReadOnlyStringWrapper(x.value, "verein", {
@@ -100,6 +111,11 @@ case class GroupLeaf(override val groupKey: DataObject, list: Iterable[WertungVi
         styleClass += "data"
       }
     )
+
+    val withDNotes = list.filter(w => w.noteD > 0).nonEmpty
+    val withENotes = list.filter(w => w.wettkampf.programmId != 1).nonEmpty
+    val divider = if(withDNotes) 1 else groups.head._2.size
+
     val indexer = Iterator.from(0)
     val disziplinCol: List[jfxsc.TableColumn[GroupRow, _]] =
       if (groups.keySet.size > 1) {
@@ -125,12 +141,17 @@ case class GroupLeaf(override val groupKey: DataObject, list: Iterable[WertungVi
             styleClass += "hintdata"
           }
           val clEnote = new TableColumn[GroupRow, String] {
-            text = "E"
+            text = if(withDNotes) "E" else "ø Gerät"
             cellValueFactory = { x =>
               new ReadOnlyStringWrapper(x.value, "enote", {
                 val cs = colsum(x)
                 val best = if(cs.sum.noteE > 0 && cs.rang.noteE.toInt == 1) "*" else ""
-                best + cs.sum.formattedE
+                if(divider == 1) {
+                  best + (cs.sum / divider).formattedE
+                }
+                else {
+                	best + (cs.sum / divider).formattedEnd
+                }
               })
             }
             prefWidth = 60
@@ -141,7 +162,7 @@ case class GroupLeaf(override val groupKey: DataObject, list: Iterable[WertungVi
             cellValueFactory = { x =>
               new ReadOnlyStringWrapper(x.value, "endnote", {
                 val cs = colsum(x)
-                val best = if(cs.sum.endnote > 0 && cs.rang.endnote.toInt == 1) "*" else ""
+                val best = if(cs.sum.endnote > 0 && cs.sum.endnote.toInt == 1) "*" else ""
                 best + cs.sum.formattedEnd
               })
             }
@@ -160,6 +181,17 @@ case class GroupLeaf(override val groupKey: DataObject, list: Iterable[WertungVi
             styleClass += "hintdata"
           }
           val cl: jfxsc.TableColumn[GroupRow, _] = new TableColumn[GroupRow, String] {
+            val withDNotes = list.filter(w => w.noteD > 0).nonEmpty
+            val cols: Seq[jfxsc.TableColumn[GroupRow, _]] = if(withDNotes) {
+                Seq(clDnote, clEnote, clEndnote, clRang)
+              }
+              else if(withENotes) {
+                Seq(clEnote, clEndnote, clRang)
+              }
+              else {
+                Seq(clEndnote, clRang)
+              }
+
             if(anzahWettkaempfe > 1) {
               text = grKey.easyprint + s" (ø aus $anzahWettkaempfe)"
             }
@@ -167,12 +199,7 @@ case class GroupLeaf(override val groupKey: DataObject, list: Iterable[WertungVi
               text = grKey.easyprint
             }
             prefWidth = 240
-            columns ++= Seq(
-              clDnote,
-              clEnote,
-              clEndnote,
-              clRang
-            )
+            columns ++= cols
           }
           cl
         }
@@ -203,14 +230,13 @@ case class GroupLeaf(override val groupKey: DataObject, list: Iterable[WertungVi
             cellValueFactory = { x =>
               new ReadOnlyStringWrapper(x.value, "enote", {
                 if (x.value.resultate.size > index) {
-                  val best = if (x.value.resultate(index).sum.noteE > 0
-                              && x.value.resultate.size > index
-                              && x.value.resultate(index).rang.noteE.toInt == 1)
-                                  "*"
-                             else
-                                  ""
-                  best + x.value.resultate(index).sum.formattedE
-                } else ""
+                  if(x.value.resultate(index).sum.noteE > 0
+                     && x.value.resultate(index).rang.noteE.toInt == 1)
+                    "*" + x.value.resultate(index).sum.formattedE
+                  else
+                    "" + x.value.resultate(index).sum.formattedE
+                }
+                else ""
               })
             }
             prefWidth = 60
@@ -252,17 +278,21 @@ case class GroupLeaf(override val groupKey: DataObject, list: Iterable[WertungVi
               text = disziplin.name
             }
             prefWidth = 240
-            columns ++= Seq(
-              clDnote,
-              clEnote,
-              clEndnote,
-              clRang
-            )
+            val cols: Seq[jfxsc.TableColumn[GroupRow, _]] = if(withDNotes) {
+                Seq(clDnote, clEnote, clEndnote, clRang)
+              }
+              else if(withENotes) {
+                Seq(clEnote, clEndnote, clRang)
+              }
+              else {
+                Seq(clEndnote, clRang)
+              }
+            columns ++= cols
           }
           cl
         }.toList
       }
-    val sumCol: List[jfxsc.TableColumn[GroupRow, _]] = List(
+    val sumColAll: List[jfxsc.TableColumn[GroupRow, _]] = List(
       new TableColumn[GroupRow, String] {
         if(anzahWettkaempfe > 1) {
           text = s"Total D (ø aus $anzahWettkaempfe)"
@@ -270,18 +300,40 @@ case class GroupLeaf(override val groupKey: DataObject, list: Iterable[WertungVi
         else {
           text = "Total D"
         }
-        cellValueFactory = { x => new ReadOnlyStringWrapper(x.value, "punkte", x.value.sum.formattedD) }
+        cellValueFactory = { x => new ReadOnlyStringWrapper(x.value, "punkte", {
+          x.value.sum.formattedD
+        }) }
         prefWidth = 80
         styleClass += "hintdata"
       },
       new TableColumn[GroupRow, String] {
         if(anzahWettkaempfe > 1) {
-          text = s"Total E (ø aus $anzahWettkaempfe)"
+          if(divider == 1 && withDNotes) {
+            text = s"Total E (ø aus $anzahWettkaempfe)"
+          }
+          else {
+            text = s"ø Gerät"
+          }
         }
-        else {
+        else if(divider == 1 && withDNotes) {
           text = "Total E"
         }
-        cellValueFactory = { x => new ReadOnlyStringWrapper(x.value, "punkte", x.value.sum.formattedE) }
+        else {
+          text = "ø Gerät"
+        }
+        cellValueFactory = { x => new ReadOnlyStringWrapper(x.value, "punkte", {
+          if (divider == 1) {
+            if(x.value.sum.noteE > 0
+               && x.value.rang.noteE.toInt == 1)
+              "*" + x.value.sum.formattedE
+            else
+              "" + x.value.sum.formattedE
+          }
+          else {
+            (x.value.sum / divider).formattedEnd
+          }
+//          x.value.sum.formattedE
+        }) }
         prefWidth = 80
         styleClass += "hintdata"
       },
@@ -297,6 +349,8 @@ case class GroupLeaf(override val groupKey: DataObject, list: Iterable[WertungVi
         styleClass += "valuedata"
       }
     )
+
+    val sumCol: List[jfxsc.TableColumn[GroupRow, _]] = List(withDNotes, withENotes, true).zip(sumColAll).filter(v => v._1).map(_._2)
     athletCols ++ disziplinCol ++ sumCol
   }
 

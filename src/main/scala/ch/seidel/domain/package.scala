@@ -8,6 +8,7 @@ import java.time.LocalDate
 import java.time.ZoneId
 import scalafx.util.converter.IntStringConverter
 import scalafx.util.converter.LongStringConverter
+import java.text.SimpleDateFormat
 
 package object domain {
   implicit def dbl2Str(d: Double) = f"${d}%2.3f"
@@ -25,6 +26,10 @@ package object domain {
       sd.toLocalDate()//.toInstant().atZone(ZoneId.systemDefault()).toLocalDate()
     }
   }
+//  implicit def dateOption2AthletJahrgang(gebdat: Option[Date]) = gebdat match {
+//        case Some(d) => AthletJahrgang(extractYear.format(d))
+//        case None    => AthletJahrgang("unbekannt")
+//      }
 
   trait DataObject {
     def easyprint: String = toString
@@ -56,6 +61,14 @@ package object domain {
     def toAthlet = Athlet(id, js_id, geschlecht, name, vorname, gebdat, strasse, plz, ort, verein.map(_.id), activ)
   }
 
+  object AthletJahrgang {
+    private val extractYear = new SimpleDateFormat("YYYY")
+
+    def apply(gebdat: Option[java.sql.Date]): AthletJahrgang = gebdat match {
+        case Some(d) => AthletJahrgang(extractYear.format(d))
+        case None    => AthletJahrgang("unbekannt")
+      }
+  }
   case class AthletJahrgang(hg: String) extends DataObject {
     override def easyprint = "Jahrgang " + hg
   }
