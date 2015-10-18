@@ -63,6 +63,7 @@ case class GroupLeaf(override val groupKey: DataObject, list: Iterable[WertungVi
   override val avg: Resultat = sum / list.size
   override def easyprint = groupKey.easyprint + s" $sum, $avg"
   val groups = GroupSection.groupWertungList(list).filter(_._2.size > 0)
+//  lazy val wkPerProgramm = list.filter(_.endnote > 0).groupBy { w => w.wettkampf.programmId }
   lazy val anzahWettkaempfe = list.filter(_.endnote > 0).groupBy { w => w.wettkampf }.size // Anzahl Wettkämpfe
 
   def buildColumns: List[jfxsc.TableColumn[GroupRow, _]] = {
@@ -193,7 +194,7 @@ case class GroupLeaf(override val groupKey: DataObject, list: Iterable[WertungVi
               }
 
             if(anzahWettkaempfe > 1) {
-              text = grKey.easyprint + s" (ø aus $anzahWettkaempfe)"
+              text = s"ø aus " + grKey.easyprint
             }
             else {
               text = grKey.easyprint
@@ -272,7 +273,7 @@ case class GroupLeaf(override val groupKey: DataObject, list: Iterable[WertungVi
           }
           val cl: jfxsc.TableColumn[GroupRow, _] = new TableColumn[GroupRow, String] {
             if(anzahWettkaempfe > 1) {
-              text =  disziplin.name + s" (ø aus $anzahWettkaempfe)"
+              text =  s"ø aus " + disziplin.name
             }
             else {
               text = disziplin.name
@@ -295,7 +296,7 @@ case class GroupLeaf(override val groupKey: DataObject, list: Iterable[WertungVi
     val sumColAll: List[jfxsc.TableColumn[GroupRow, _]] = List(
       new TableColumn[GroupRow, String] {
         if(anzahWettkaempfe > 1) {
-          text = s"Total D (ø aus $anzahWettkaempfe)"
+          text = s"Total ø aus D"
         }
         else {
           text = "Total D"
@@ -309,7 +310,7 @@ case class GroupLeaf(override val groupKey: DataObject, list: Iterable[WertungVi
       new TableColumn[GroupRow, String] {
         if(anzahWettkaempfe > 1) {
           if(divider == 1 && withDNotes) {
-            text = s"Total E (ø aus $anzahWettkaempfe)"
+            text = s"Total ø aus E"
           }
           else {
             text = s"ø Gerät"
@@ -339,7 +340,7 @@ case class GroupLeaf(override val groupKey: DataObject, list: Iterable[WertungVi
       },
       new TableColumn[GroupRow, String] {
         if(anzahWettkaempfe > 1) {
-          text = s"Total Punkte (ø aus $anzahWettkaempfe)"
+          text = s"Total ø Punkte"
         }
         else {
           text = "Total Punkte"
