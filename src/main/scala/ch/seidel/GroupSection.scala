@@ -208,7 +208,7 @@ case class GroupLeaf(override val groupKey: DataObject, list: Iterable[WertungVi
       else {
         groups.head._2.map { disziplin =>
           val index = indexer.next
-          val clDnote = new TableColumn[GroupRow, String] {
+          lazy val clDnote = new TableColumn[GroupRow, String] {
             text = "D"
             cellValueFactory = { x =>
               new ReadOnlyStringWrapper(x.value, "dnote", {
@@ -226,7 +226,7 @@ case class GroupLeaf(override val groupKey: DataObject, list: Iterable[WertungVi
             prefWidth = 60
             styleClass += "hintdata"
           }
-          val clEnote = new TableColumn[GroupRow, String] {
+          lazy val clEnote = new TableColumn[GroupRow, String] {
             text = "E"
             cellValueFactory = { x =>
               new ReadOnlyStringWrapper(x.value, "enote", {
@@ -243,7 +243,7 @@ case class GroupLeaf(override val groupKey: DataObject, list: Iterable[WertungVi
             prefWidth = 60
             styleClass += "hintdata"
           }
-          val clEndnote = new TableColumn[GroupRow, String] {
+          lazy val clEndnote = new TableColumn[GroupRow, String] {
             text = "Endnote"
             cellValueFactory = { x =>
               new ReadOnlyStringWrapper(x.value, "endnote", {
@@ -261,7 +261,7 @@ case class GroupLeaf(override val groupKey: DataObject, list: Iterable[WertungVi
             prefWidth = 60
             styleClass += "valuedata"
           }
-          val clRang = new TableColumn[GroupRow, String] {
+          lazy val clRang = new TableColumn[GroupRow, String] {
             text = "Rang"
             cellValueFactory = { x =>
               new ReadOnlyStringWrapper(x.value, "rang", {
@@ -282,9 +282,9 @@ case class GroupLeaf(override val groupKey: DataObject, list: Iterable[WertungVi
             val cols: Seq[jfxsc.TableColumn[GroupRow, _]] = if(withDNotes) {
                 Seq(clDnote, clEnote, clEndnote, clRang)
               }
-              else if(withENotes) {
-                Seq(clEnote, clEndnote, clRang)
-              }
+//              else if(withENotes) {
+//                Seq(clEnote, clEndnote, clRang)
+//              }
               else {
                 Seq(clEndnote, clRang)
               }
@@ -351,7 +351,7 @@ case class GroupLeaf(override val groupKey: DataObject, list: Iterable[WertungVi
       }
     )
 
-    val sumCol: List[jfxsc.TableColumn[GroupRow, _]] = List(withDNotes, withENotes, true).zip(sumColAll).filter(v => v._1).map(_._2)
+    val sumCol: List[jfxsc.TableColumn[GroupRow, _]] = List(withDNotes, divider > 1 || withDNotes, true).zip(sumColAll).filter(v => v._1).map(_._2)
     athletCols ++ disziplinCol ++ sumCol
   }
 

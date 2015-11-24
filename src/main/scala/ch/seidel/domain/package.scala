@@ -48,6 +48,7 @@ package object domain {
   }
   case class Verein(id: Long, name: String) extends DataObject {
     override def easyprint = name
+    override def toString = name
   }
 
   object Athlet {

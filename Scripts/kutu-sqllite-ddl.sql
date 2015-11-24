@@ -8,6 +8,8 @@ CREATE TABLE IF NOT EXISTS `verein` (
   `name` varchar(100) NOT NULL
 );
 
+CREATE UNIQUE INDEX `xvereinpk` ON `verein` (`id`);
+
 
 -- -----------------------------------------------------
 -- Table `athlet`
@@ -29,6 +31,9 @@ CREATE TABLE IF NOT EXISTS `athlet` (
   FOREIGN KEY (`verein`) REFERENCES `verein` (`id`)
 );
 
+CREATE UNIQUE INDEX `xathletpk` ON `athlet` (`id`);
+CREATE INDEX `xathletnameverein` ON `athlet` (`name`, `verein`);
+
 -- -----------------------------------------------------
 -- Table `programm`
 -- -----------------------------------------------------
@@ -45,6 +50,8 @@ CREATE TABLE IF NOT EXISTS `programm` (
   FOREIGN KEY (`parent_id`) REFERENCES `programm` (`id`)
 );
 
+CREATE UNIQUE INDEX `xprogrammpk` ON `programm` (`id`);
+CREATE INDEX `xprogrammparent` ON `programm` (`parent_id`);
 
 -- -----------------------------------------------------
 -- Table `wettkampf`
@@ -60,6 +67,8 @@ CREATE TABLE IF NOT EXISTS `wettkampf` (
   FOREIGN KEY (`programm_id`) REFERENCES `programm` (`id`)
 );
 
+CREATE UNIQUE INDEX `xwettkampfpk` ON `wettkampf` (`id`);
+CREATE INDEX `xwettkampfprogramm` ON `wettkampf` (`programm_id`);
 
 -- -----------------------------------------------------
 -- Table `disziplin`
@@ -71,6 +80,7 @@ CREATE TABLE IF NOT EXISTS `disziplin` (
   `name` varchar(100) NOT NULL
 );
 
+CREATE UNIQUE INDEX `xdisziplinpk` ON `disziplin` (`id`);
 
 -- -----------------------------------------------------
 -- Table `wettkampfdisziplin`
@@ -88,6 +98,11 @@ CREATE TABLE IF NOT EXISTS `wettkampfdisziplin` (
   FOREIGN KEY (`disziplin_id`) REFERENCES `disziplin` (`id`),
   FOREIGN KEY (`programm_id`) REFERENCES `programm` (`id`)
 );
+
+CREATE UNIQUE INDEX `xwettkampfdisziplinpk` ON `wettkampfdisziplin` (`id`);
+CREATE INDEX `xwettkampfdisziplindisziplin` ON `wettkampfdisziplin` (`disziplin_id`);
+CREATE INDEX `xwettkampfdisziplinprogramm`  ON `wettkampfdisziplin` (`programm_id`);
+CREATE INDEX `xwettkampfdisziplinprogramm2` ON `wettkampfdisziplin` (`disziplin_id`, `programm_id`);
 
 -- -----------------------------------------------------
 -- Table `notenskala`
@@ -121,3 +136,8 @@ CREATE TABLE IF NOT EXISTS `wertung` (
   FOREIGN KEY (`wettkampfdisziplin_id`) REFERENCES `wettkampfdisziplin` (`id`),
   FOREIGN KEY (`wettkampf_id`) REFERENCES `wettkampf` (`id`)
 );
+
+CREATE UNIQUE INDEX `xwertungpk` ON `wertung` (`id`);
+CREATE INDEX `xwertungathlet_id` ON `wertung` (`athlet_id`);
+CREATE INDEX `xwertungwettkampfdisziplin_id`  ON `wertung` (`wettkampfdisziplin_id`);
+CREATE INDEX `xwertungwettkampf_id` ON `wertung` (`wettkampf_id`);
