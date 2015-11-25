@@ -189,40 +189,7 @@ class WettkampfWertungTab(programm: Option[ProgrammView], riege: Option[String],
     val wkview = new TableView[IndexedSeq[WertungEditor]](wkModel) {
       id = "kutu-table"
       editable = true
-      onKeyPressed_= {evt: KeyEvent =>
-        if(delegate.getEditingCell() == null && (
-               Character.isAlphabetic(evt.character.charAt(0))
-            || Character.isDigit(evt.character.charAt(0))
-            || evt.code.isLetterKey
-            || evt.code.isDigitKey)
-            || evt.code.equals(KeyCode.DELETE)) {
-          //evt.consume()
-          val selelctedCell = selectionModel.value.getSelectedCells
-          selelctedCell.foreach{tp =>
-            edit(tp.row, tp.getTableColumn.asInstanceOf[jfxsc.TableColumn[IndexedSeq[WertungEditor], Any]])
-            if(evt.code.equals(KeyCode.DELETE)) {
-              val column = tp.getTableColumn.asInstanceOf[jfxsc.TableColumn[IndexedSeq[WertungEditor], Any]]
-              if(column.parentColumn.value != null) {
-                items.get.get(tp.row).find { x => x.init.wettkampfdisziplin.disziplin.name.equals(column.parentColumn.value.getText)}
-                match {
-                  case Some(editor) =>
-                    editingEditor = Some(editor)
-                    column.text.value match {
-                      case "D" => editor.noteD.value = 0d
-                      case "E" => editor.noteE.value = 0d
-                      case _   =>
-                    }
 
-                  case None =>
-                }
-              }
-              else {
-
-              }
-            }
-          }
-        }
-      }
     }
 
     val editorPane: EditorPane = new EditorPane(wkview)
@@ -961,12 +928,52 @@ class WettkampfWertungTab(programm: Option[ProgrammView], riege: Option[String],
     }
     clearButton.disable <== when(wkview.selectionModel.value.selectedItemProperty.isNull()) choose true otherwise false
 
-    wkview.onKeyPressed = (ke: KeyEvent) => {
-      val isPasteAction = (ke.shiftDown && ke.code == KeyCode.INSERT) || (ke.controlDown && ke.text.equals("v"))
-      if(isPasteAction) {
-        doPasteFromExcel(programm)(new ActionEvent())
+//    wkview.addEventHandler(KeyEvent.KeyPressed, (ke: KeyEvent) => {
+//      val isPasteAction = (ke.shiftDown && ke.code == KeyCode.INSERT) || (ke.controlDown && ke.text.equals("v"))
+//      if(isPasteAction) {
+//        doPasteFromExcel(programm)(new ActionEvent())
+//      }
+//    })
+    wkview.onKeyPressed_= {evt: KeyEvent =>
+        if(wkview.delegate.getEditingCell() == null && (
+               Character.isAlphabetic(evt.character.charAt(0))
+            || Character.isDigit(evt.character.charAt(0))
+            || evt.code.isLetterKey
+            || evt.code.isDigitKey)
+            || evt.code.equals(KeyCode.DELETE)) {
+          //evt.consume()
+          val selelctedCell = wkview.selectionModel.value.getSelectedCells
+          selelctedCell.foreach{tp =>
+            wkview.edit(tp.row, tp.getTableColumn.asInstanceOf[jfxsc.TableColumn[IndexedSeq[WertungEditor], Any]])
+            if(evt.code.equals(KeyCode.DELETE)) {
+              val column = tp.getTableColumn.asInstanceOf[jfxsc.TableColumn[IndexedSeq[WertungEditor], Any]]
+              if(column.parentColumn.value != null) {
+                wkview.items.get.get(tp.row).find { x => x.init.wettkampfdisziplin.disziplin.name.equals(column.parentColumn.value.getText)}
+                match {
+                  case Some(editor) =>
+                    editingEditor = Some(editor)
+                    column.text.value match {
+                      case "D" => editor.noteD.value = 0d
+                      case "E" => editor.noteE.value = 0d
+                      case _   =>
+                    }
+
+                  case None =>
+                }
+              }
+              else {
+
+              }
+            }
+          }
+        }
+        else {
+          val isPasteAction = (evt.shiftDown && evt.code == KeyCode.INSERT) || (evt.controlDown && evt.text.equals("v"))
+          if(isPasteAction) {
+            doPasteFromExcel(programm)(new ActionEvent())
+          }
+        }
       }
-    }
 
     onSelectionChanged = handle {
       if(selected.value) {
