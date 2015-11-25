@@ -18,6 +18,11 @@ import ch.seidel.commons.DisplayablePage
 import ch.seidel.commons.TabWithService
 import ch.seidel.commons.LazyTabPane
 import scalafx.event.ActionEvent
+import scalafx.scene.control.SelectionMode
+import scalafx.application.Platform
+import scalafx.scene.input.KeyEvent
+import scalafx.scene.input.KeyCode
+import ch.seidel.commons.AutoCommitTextFieldTableCell
 
 object TurnerPage {
   var turnerAnalyzers = Map[Long, TurnerAnalyzer]()
@@ -40,7 +45,7 @@ object TurnerPage {
   class AthletEditor(init: Athlet) {
     val sdf = new SimpleDateFormat("dd.MM.yyyy")
     val jsid = new StringProperty(init.js_id + "")
-    val geschlecht = new StringProperty(init.geschlecht)
+    val geschlecht = new StringProperty(if(init.geschlecht.toUpperCase.startsWith("M")) "M" else "W")
     val name = new StringProperty(init.name)
     val vorname = new StringProperty(init.vorname)
     val gebdat = new StringProperty(init.gebdat match {case Some(d) => sdf.format(d); case _ => ""})
@@ -60,7 +65,7 @@ object TurnerPage {
       }
     }
 
-    def commit = Athlet(init.id, Integer.valueOf(jsid.value), geschlecht.value, name.value, vorname.value, optionOfGebDat, strasse.value, plz.value, ort.value, init.verein, activ.value.toUpperCase().startsWith("A"))
+    def commit = Athlet(init.id, Integer.valueOf(jsid.value), if(geschlecht.value.toUpperCase.startsWith("M")) "M" else "W", name.value, vorname.value, optionOfGebDat, strasse.value, plz.value, ort.value, init.verein, activ.value.toUpperCase().startsWith("A"))
   }
 
   def drillDownInAthlet(vverein: Option[Verein], a: Athlet, service: KutuService, tabpane: LazyTabPane) {
@@ -116,7 +121,7 @@ object TurnerPage {
             text =  field.getName.take(1).toUpperCase() + field.getName.drop(1)
             cellValueFactory = { x =>
               field.get(x.value).asInstanceOf[StringProperty] }
-            cellFactory = { _ => new TextFieldTableCell[AthletEditor, String](new DefaultStringConverter()) }
+            cellFactory = { _ => new AutoCommitTextFieldTableCell[AthletEditor, String](new DefaultStringConverter()) }
             styleClass += "table-cell-with-value"
             prefWidth = AthletEditor.coldef(field.getName)
             editable = true
@@ -124,6 +129,7 @@ object TurnerPage {
               field.get(evt.rowValue).asInstanceOf[StringProperty].value = evt.newValue
               val rowIndex = wkModel.indexOf(evt.rowValue)
               wkModel.update(rowIndex, AthletEditor(service.insertOrupdateAthlete(evt.rowValue.commit)))
+              evt.tableView.selectionModel.value.select(rowIndex, this)
               evt.tableView.requestFocus()
             }
           }
@@ -135,6 +141,80 @@ object TurnerPage {
         id = "athlet-table"
         editable = true
       }
+    athletenview.selectionModel.value.setCellSelectionEnabled(true)
+    athletenview.filterEvent(KeyEvent.KeyPressed) { (ke: KeyEvent) =>
+      ke.code match {
+        case KeyCode.TAB if(!ke.controlDown) =>
+          val action = new Runnable() {
+            override def run = {
+              if(ke.shiftDown)
+                athletenview.selectionModel.value.selectPrevious()
+              else
+                athletenview.selectionModel.value.selectNext()
+            }
+          }
+          val wasEditing = athletenview.delegate.getEditingCell() != null
+          action.run()
+          if(wasEditing) {
+            ke.consume()
+            Platform.runLater(action)
+          }
+          else {
+            ke.consume()
+          }
+
+        case KeyCode.ENTER /*if(ke.controlDown || wkview.delegate.getEditingCell() != null)*/ =>
+          val action = new Runnable() {
+            override def run = {
+              if(ke.shiftDown) {
+                val index = athletenview.selectionModel.value.getSelectedIndex
+                if(index == 0) {
+                  athletenview.selectionModel.value.selectLast()
+                }
+                else {
+                  athletenview.selectionModel.value.selectAboveCell()
+                }
+              }
+              else {
+                val index = athletenview.selectionModel.value.getSelectedIndex
+                if(index == athletenview.items.value.size()-1) {
+                  athletenview.selectionModel.value.selectFirst()
+                }
+                else {
+                  athletenview.selectionModel.value.selectBelowCell()
+                }
+              }
+            }
+          }
+          val wasEditing = athletenview.delegate.getEditingCell() != null
+          action.run()
+          if(wasEditing) {
+            ke.consume()
+            Platform.runLater(action)
+          }
+          else {
+            ke.consume()
+          }
+
+        case KeyCode.DELETE if(athletenview.delegate.getEditingCell() == null) =>
+          val fc = athletenview.focusModel.value.focusedCell.value
+          val tc = fc.tableColumn.asInstanceOf[jfxsc.TableColumn[AthletEditor, Any]]
+          athletenview.edit(fc.row, tc)
+          //val athlet = athletenview.selectionModel.value.selectedItem.value
+
+//        // Paste via CTRL+V or SHIFT+INSERT
+//        case c if(ke.shiftDown && c == KeyCode.INSERT) || (ke.controlDown && ke.text.equals("v")) =>
+//          doPasteFromExcel(programm)(new ActionEvent())
+//          ke.consume()
+
+        case c if((c.isLetterKey || c.isDigitKey) && athletenview.editingCell.value == null) =>
+          val fc = athletenview.focusModel.value.focusedCell.value
+          val tc = fc.tableColumn.asInstanceOf[jfxsc.TableColumn[AthletEditor, Any]]
+          athletenview.edit(fc.row, tc)
+
+        case _ =>
+      }
+    }
 
     val addButton = new Button {
       text = "Athlet hinzufügen"

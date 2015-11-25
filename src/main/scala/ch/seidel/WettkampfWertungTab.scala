@@ -47,6 +47,7 @@ import scalafx.scene.input.Clipboard
 import scala.io.Source
 import java.text.SimpleDateFormat
 import scalafx.scene.control.SelectionMode
+import scalafx.application.Platform
 
 case class WertungEditor(init: WertungView) {
 	type WertungChangeListener = (WertungEditor) => Unit
@@ -210,7 +211,7 @@ class WettkampfWertungTab(programm: Option[ProgrammView], riege: Option[String],
         lazy val clDnote = new WKTableColumn[Double](indexerD.next) {
           text = "D"
           cellValueFactory = { x => if (x.value.size > index) x.value(index).noteD else wertung.noteD }
-          cellFactory = { _ => new TextFieldTableCell[IndexedSeq[WertungEditor], Double](wertung.init.wettkampfdisziplin.notenSpez)}
+          cellFactory = { _ => new AutoCommitTextFieldTableCell[IndexedSeq[WertungEditor], Double](wertung.init.wettkampfdisziplin.notenSpez)}
 
           styleClass += "table-cell-with-value"
           prefWidth = if(wertung.init.wettkampfdisziplin.notenSpez.isDNoteUsed) 60 else 0
@@ -243,7 +244,7 @@ class WettkampfWertungTab(programm: Option[ProgrammView], riege: Option[String],
         lazy val clEnote = new WKTableColumn[Double](indexerE.next) {
           text = "E"
           cellValueFactory = { x => if (x.value.size > index) x.value(index).noteE else wertung.noteE }
-          cellFactory = { x => new TextFieldTableCell[IndexedSeq[WertungEditor], Double](wertung.init.wettkampfdisziplin.notenSpez) }
+          cellFactory = { x => new AutoCommitTextFieldTableCell[IndexedSeq[WertungEditor], Double](wertung.init.wettkampfdisziplin.notenSpez) }
 
           styleClass += "table-cell-with-value"
           prefWidth = 60
@@ -324,7 +325,9 @@ class WettkampfWertungTab(programm: Option[ProgrammView], riege: Option[String],
       new WKTableColumn[String](-1) {
         text = "Riege"
         styleClass += "table-cell-with-value"
-        cellFactory = { x => new TextFieldTableCell[IndexedSeq[WertungEditor], String](new DefaultStringConverter()) }
+        cellFactory = { x =>
+          new AutoCommitTextFieldTableCell[IndexedSeq[WertungEditor], String](new DefaultStringConverter())
+        }
         cellValueFactory = { x =>
           new ReadOnlyStringWrapper(x.value, "riege", {
             s"${x.value.head.init.riege.getOrElse("keine Einteilung")}"
@@ -928,52 +931,95 @@ class WettkampfWertungTab(programm: Option[ProgrammView], riege: Option[String],
     }
     clearButton.disable <== when(wkview.selectionModel.value.selectedItemProperty.isNull()) choose true otherwise false
 
-//    wkview.addEventHandler(KeyEvent.KeyPressed, (ke: KeyEvent) => {
-//      val isPasteAction = (ke.shiftDown && ke.code == KeyCode.INSERT) || (ke.controlDown && ke.text.equals("v"))
-//      if(isPasteAction) {
-//        doPasteFromExcel(programm)(new ActionEvent())
-//      }
-//    })
-    wkview.onKeyPressed_= {evt: KeyEvent =>
-        if(wkview.delegate.getEditingCell() == null && (
-               Character.isAlphabetic(evt.character.charAt(0))
-            || Character.isDigit(evt.character.charAt(0))
-            || evt.code.isLetterKey
-            || evt.code.isDigitKey)
-            || evt.code.equals(KeyCode.DELETE)) {
-          //evt.consume()
-          val selelctedCell = wkview.selectionModel.value.getSelectedCells
-          selelctedCell.foreach{tp =>
-            wkview.edit(tp.row, tp.getTableColumn.asInstanceOf[jfxsc.TableColumn[IndexedSeq[WertungEditor], Any]])
-            if(evt.code.equals(KeyCode.DELETE)) {
-              val column = tp.getTableColumn.asInstanceOf[jfxsc.TableColumn[IndexedSeq[WertungEditor], Any]]
-              if(column.parentColumn.value != null) {
-                wkview.items.get.get(tp.row).find { x => x.init.wettkampfdisziplin.disziplin.name.equals(column.parentColumn.value.getText)}
-                match {
-                  case Some(editor) =>
-                    editingEditor = Some(editor)
-                    column.text.value match {
-                      case "D" => editor.noteD.value = 0d
-                      case "E" => editor.noteE.value = 0d
-                      case _   =>
-                    }
+    wkview.filterEvent(KeyEvent.KeyPressed) { (ke: KeyEvent) =>
+      ke.code match {
+        case KeyCode.TAB if(!ke.controlDown) =>
+          val action = new Runnable() {
+            override def run = {
+              if(ke.shiftDown)
+                wkview.selectionModel.value.selectPrevious()
+              else
+                wkview.selectionModel.value.selectNext()
+            }
+          }
+          val wasEditing = wkview.delegate.getEditingCell() != null
+          action.run()
+          if(wasEditing) {
+            ke.consume()
+            Platform.runLater(action)
+          }
+          else {
+            ke.consume()
+          }
 
-                  case None =>
+        case KeyCode.ENTER /*if(ke.controlDown || wkview.delegate.getEditingCell() != null)*/ =>
+          val action = new Runnable() {
+            override def run = {
+              if(ke.shiftDown) {
+                val index = wkview.selectionModel.value.getSelectedIndex
+                if(index == 0) {
+                  wkview.selectionModel.value.selectLast()
+                }
+                else {
+                  wkview.selectionModel.value.selectAboveCell()
                 }
               }
               else {
-
+                val index = wkview.selectionModel.value.getSelectedIndex
+                if(index == wkview.items.value.size()-1) {
+                  wkview.selectionModel.value.selectFirst()
+                }
+                else {
+                  wkview.selectionModel.value.selectBelowCell()
+                }
               }
             }
           }
-        }
-        else {
-          val isPasteAction = (evt.shiftDown && evt.code == KeyCode.INSERT) || (evt.controlDown && evt.text.equals("v"))
-          if(isPasteAction) {
-            doPasteFromExcel(programm)(new ActionEvent())
+          val wasEditing = wkview.delegate.getEditingCell() != null
+          action.run()
+          if(wasEditing) {
+            ke.consume()
+            Platform.runLater(action)
           }
-        }
+          else {
+            ke.consume()
+          }
+
+        case KeyCode.DELETE if(wkview.delegate.getEditingCell() == null) =>
+          val fc = wkview.focusModel.value.focusedCell.value
+          val tc = fc.tableColumn.asInstanceOf[jfxsc.TableColumn[IndexedSeq[WertungEditor], Any]]
+
+          wkview.edit(fc.row, tc)
+
+          val textKey = if(tc.parentColumn.value != null) tc.parentColumn.value.getText else tc.getText
+          wkview.items.get.get(fc.row).find {
+            x => x.init.wettkampfdisziplin.disziplin.name.equals(textKey)
+          } match {
+            case Some(editor) =>
+              editingEditor = Some(editor)
+              tc.text.value match {
+                case "D" => editor.noteD.value = 0d
+                case "E" => editor.noteE.value = 0d
+                case s if(s.equals(textKey)) => editor.noteE.value = 0d
+                case _ =>
+              }
+
+            case None =>
+          }
+          ke.consume()
+
+        // Paste via CTRL+V or SHIFT+INSERT
+        case c if(ke.shiftDown && c == KeyCode.INSERT) || (ke.controlDown && ke.text.equals("v")) =>
+          doPasteFromExcel(programm)(new ActionEvent())
+          ke.consume()
+
+        case c if((c.isLetterKey || c.isDigitKey) && wkview.editingCell.value == null) =>
+          val fc = wkview.focusModel.value.focusedCell.value
+          wkview.edit(fc.row, fc.tableColumn.asInstanceOf[jfxsc.TableColumn[IndexedSeq[WertungEditor], Any]])
+
+        case _ =>
       }
+    }
 
     onSelectionChanged = handle {
       if(selected.value) {
