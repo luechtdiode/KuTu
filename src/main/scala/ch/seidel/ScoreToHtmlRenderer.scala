@@ -43,7 +43,8 @@ trait ScoreToHtmlRenderer {
               border-bottom: 1px solid rgb(50,100,150);
             }*/
             td {
-              padding:0.25em;
+              font-size: 12px;
+              padding:0.2em;
               overflow: hidden;
             }
             td .data {
@@ -61,18 +62,18 @@ trait ScoreToHtmlRenderer {
               width: 2em;
             }
             col:nth-child(2) {
-              width: 10em;
-            }
-            col:nth-child(3) {
               width: 8em;
+            }
+            col:nth-child(4) {
+              width: 7em;
             }
             tr:nth-child(even) {background: rgba(230, 230, 230, 0.6);}
             /*tr:nth-child(odd) {background: rgba(210, 200, 180, 0.6);}*/
             tr .blockstart {
-              border-left: 1px dotted black;
+              border-left: 1px dotted gray;
             }
           </style>
-          </head><body><h1>Rangliste ${title}</h1>\n""")
+          </head><body><h1>Rangliste</h1><p>${title}</p>\n""")
     }
     for (c <- gs) {
       c match {

@@ -48,6 +48,9 @@ import scala.io.Source
 import java.text.SimpleDateFormat
 import scalafx.scene.control.SelectionMode
 import scalafx.application.Platform
+import java.io.BufferedOutputStream
+import java.io.FileOutputStream
+import java.awt.Desktop
 
 case class WertungEditor(init: WertungView) {
 	type WertungChangeListener = (WertungEditor) => Unit
@@ -405,6 +408,9 @@ class WettkampfWertungTab(programm: Option[ProgrammView], riege: Option[String],
             else if(athlet(0).init.athlet.verein match {case Some(v) => v.name.toUpperCase().contains(search) case None => false}) {
               true
             }
+            else if(athlet(0).init.riege match {case Some(r) => r.toUpperCase().contains(search) case None => false}) {
+              true
+            }
             else {
               false
             }
@@ -649,6 +655,59 @@ class WettkampfWertungTab(programm: Option[ProgrammView], riege: Option[String],
         }
       })
     }
+    val generateRiegenblaetter = new Button with NotenblattToHtmlRenderer {
+      text = "Riegenblätter erstellen"
+      minWidth = 75
+
+      onAction = (event: ActionEvent) => {
+        if (wkModel.nonEmpty) {
+          val driver = wkModel.toSeq
+          val programme = driver.flatten.map(x => x.init.wettkampfdisziplin.programm).foldLeft(Seq[ProgrammView]()){(acc, pgm) =>
+              if(!acc.exists { x => x.id == pgm.id }) {
+                println(pgm)
+                acc :+ pgm } else { acc }
+            }
+          println(programme)
+          val seriendaten = for {
+            programm <- programme
+
+            athletwertungen <- driver.map(we => we.filter { x => val ret = x.init.wettkampfdisziplin.programm.id == programm.id
+              if(!ret) {
+                println(x.init.athlet, x.init.wettkampfdisziplin.programm)
+              }
+              ret})
+            if(athletwertungen.nonEmpty)
+          }
+          yield {
+            val einsatz = athletwertungen.head.init
+            val athlet = einsatz.athlet
+            Kandidat(
+            einsatz.wettkampf.easyprint
+            ,athlet.geschlecht match {case "M" => "Turner"  case _ => "Turnerin"}
+            ,einsatz.wettkampfdisziplin.programm.easyprint
+            //,einsatz.riege
+            ,athlet.name
+            ,athlet.vorname
+            ,AthletJahrgang(athlet.gebdat).hg
+            ,athlet.verein match {case Some(v) => v.easyprint case _ => ""}
+            ,athletwertungen.map(_.init.wettkampfdisziplin.disziplin.easyprint)
+            )
+          }
+          val filename = "Notenblatt_" + wettkampf.titel.replace(" ", "_") + programm.map("_Programm_" + _.easyprint.replace(" ", "_")).getOrElse("") + riege.map("_Riege_" + _.replace(" ", "_")).getOrElse("") + ".html"
+          val file = new java.io.File(System.getProperty("user.home") + "/" + filename)
+          val toSave = wettkampf.programm.head.id match {
+            case 20 => toHTMLasGeTu(seriendaten).getBytes("UTF-8")
+            case n if(n == 11 || n == 31) => toHTMLasKuTu(seriendaten).getBytes("UTF-8")
+            case _ => toHTMLasATT(seriendaten).getBytes("UTF-8")
+          }
+          val os = new BufferedOutputStream(new FileOutputStream(file))
+          os.write(toSave)
+          os.flush()
+          os.close()
+          Desktop.getDesktop().open(file);
+        }
+      }
+    }
     val actionButtons = programm match {
       case None =>
       val riegenRemoveButton = new Button {
@@ -698,7 +757,7 @@ class WettkampfWertungTab(programm: Option[ProgrammView], riege: Option[String],
           })
         }
       }
-      List[Button](riegeRenameButton, riegenRemoveButton)
+      List[Button](generateRiegenblaetter, riegeRenameButton, riegenRemoveButton)
       case Some(progrm) =>
       val addButton = new Button {
         text = "Athlet hinzufügen"
@@ -902,7 +961,7 @@ class WettkampfWertungTab(programm: Option[ProgrammView], riege: Option[String],
       removeButton.disable <== when(wkview.selectionModel.value.selectedItemProperty.isNull()) choose true otherwise false
       riegensuggestButton.disable <== when(wkview.selectionModel.value.selectedItemProperty.isNull()) choose true otherwise false
 
-      List(addButton, pasteFromExcel, moveToOtherProgramButton, removeButton, riegensuggestButton).filter(btn => !btn.text.value.equals("."))
+      List(addButton, pasteFromExcel, moveToOtherProgramButton, generateRiegenblaetter, removeButton, riegensuggestButton).filter(btn => !btn.text.value.equals("."))
     }
 
     wkview.selectionModel.value.setCellSelectionEnabled(true)
