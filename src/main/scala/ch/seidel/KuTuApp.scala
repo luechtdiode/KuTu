@@ -433,6 +433,21 @@ object KuTuApp extends JFXApp with KutuService {
     id = "page-splitpane"
     items.addAll(scrollPane, centerPane)
   }
+
+  val header = new ToolBar {
+          vgrow = Priority.Always
+          hgrow = Priority.Always
+          prefHeight = 76
+          maxHeight = 76
+          id = "mainToolBar"
+          content = List(
+            new ImageView {
+              image = new Image(
+                this.getClass.getResourceAsStream("/images/logo.png"))
+              margin = Insets(0, 0, 0, 10)
+            })
+          }
+
   def getStage() = stage
   //
   // Layout the main stage
@@ -441,21 +456,7 @@ object KuTuApp extends JFXApp with KutuService {
     title = "KuTu Wettkampf-App"
     scene = new Scene(1020, 700) {
       root = new BorderPane {
-        top = new VBox {
-          vgrow = Priority.Always
-          hgrow = Priority.Always
-          content = new ToolBar {
-            prefHeight = 76
-            maxHeight = 76
-            id = "mainToolBar"
-            content = List(
-              new ImageView {
-                image = new Image(
-                  this.getClass.getResourceAsStream("/images/logo.png"))
-                margin = Insets(0, 0, 0, 10)
-              })
-          }
-        }
+        top = header
         center = new BorderPane {
           center = splitPane
         }
