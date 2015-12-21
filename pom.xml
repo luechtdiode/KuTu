@@ -177,7 +177,7 @@
 								<argument>-manifestAttrs</argument>
 								<argument>Permissions=all-permissions,Codebase=*,Application-Name=TurnerWettkampf-App</argument>
 								<argument>-appclass</argument>
-								<argument>ch.seidel.KuTuApp</argument>
+								<argument>ch.seidel.kutu.KuTuApp</argument>
 								<argument>-srcdir</argument>
 								<argument>${project.build.directory}/classes</argument>
 								<argument>-outdir</argument>
@@ -226,7 +226,7 @@
 							<arguments>
 								<argument>-deploy</argument>
 								<argument>-appclass</argument>
-								<argument>ch.seidel.KuTuApp</argument>
+								<argument>ch.seidel.kutu.KuTuApp</argument>
 								<argument>-name</argument>
 								<argument>TurnerWettkampf-App</argument>
 								<argument>-srcdir</argument>
