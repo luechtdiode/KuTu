@@ -1,5 +1,8 @@
 package ch.seidel.commons
 
+import scala.concurrent.Future
+import scala.concurrent.Await
+import scala.concurrent.duration.Duration
 import javafx.scene.{ control => jfxsc }
 import javafx.{ scene => jfxs }
 import scalafx.stage.Stage
@@ -8,8 +11,6 @@ import scalafx.scene.layout.{Priority, VBox}
 import scalafx.scene.Scene
 import scalafx.scene.layout.BorderPane
 import scalafx.scene.control.Button
-import ch.seidel.KuTuAppTree
-import ch.seidel.domain.WettkampfView
 import scalafx.scene.control.ToolBar
 import scalafx.event.ActionEvent
 import scalafx.stage.Modality
@@ -17,16 +18,13 @@ import scalafx.stage.Window
 import scalafx.scene.Node
 import scalafx.scene.layout.HBox
 import scalafx.geometry.Pos
-import ch.seidel.WettkampfPage
-import ch.seidel.TurnerPage
-import ch.seidel.domain.Verein
 import scalafx.scene.control.TreeItem
-import ch.seidel.KuTuApp
-import scala.concurrent.Future
-import scala.concurrent.Await
-import scala.concurrent.duration.Duration
 import scalafx.scene.Cursor
 import scalafx.scene.control.Label
+import ch.seidel.kutu.view._
+import ch.seidel.kutu.domain._
+import ch.seidel.kutu.KuTuAppTree
+import ch.seidel.kutu.KuTuApp
 
 /**
  * the class that updates tabbed view or dashboard view

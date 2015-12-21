@@ -1,4 +1,4 @@
-package ch.seidel
+package ch.seidel.kutu.data
 
 import scala.collection.mutable.StringBuilder
 import scala.math.BigDecimal.int2bigDecimal
@@ -7,7 +7,9 @@ import scalafx.beans.property.ReadOnlyStringWrapper
 import scalafx.scene.control.TableColumn
 import scalafx.scene.control.TableColumn.sfxTableColumn2jfx
 import scalafx.scene.control.TableColumn.CellDataFeatures
-import ch.seidel.domain._
+import ch.seidel.kutu.domain._
+import javafx.scene.{control => jfxsc}
+import scala.math.BigDecimal.double2bigDecimal
 
 object GroupSection {
   def programGrouper( w: WertungView): ProgrammView = w.wettkampfdisziplin.programm.aggregatorSubHead

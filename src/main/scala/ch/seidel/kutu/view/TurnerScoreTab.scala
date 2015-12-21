@@ -1,9 +1,12 @@
-package ch.seidel
+package ch.seidel.kutu.view
 
 import java.text.SimpleDateFormat
-import scala.collection.mutable.StringBuilder
+import java.io.BufferedOutputStream
+import java.io.FileOutputStream
+import java.awt.Desktop
 import javafx.scene.{ control => jfxsc }
 import javafx.collections.{ ObservableList, ListChangeListener }
+import scala.collection.mutable.StringBuilder
 import scalafx.collections.ObservableBuffer
 import scalafx.Includes._
 import scalafx.util.converter.DefaultStringConverter
@@ -34,12 +37,12 @@ import scalafx.scene.layout.HBox
 import scalafx.scene.Group
 import scalafx.scene.web.WebView
 import scalafx.stage.FileChooser
-import ch.seidel.domain._
-import ch.seidel.commons._
 import scalafx.stage.FileChooser.ExtensionFilter
-import java.io.BufferedOutputStream
-import java.io.FileOutputStream
-import java.awt.Desktop
+import ch.seidel.kutu.domain._
+import ch.seidel.kutu.data._
+import ch.seidel.commons._
+import ch.seidel.kutu.KuTuApp
+import ch.seidel.kutu.renderer.ScoreToHtmlRenderer
 
 class TurnerScoreTab(val verein: Option[Verein], override val service: KutuService) extends Tab with TabWithService  with ScoreToHtmlRenderer {
   override val title = verein match {case Some(v) => v.easyprint case None => "Vereinsübergreifend"}

@@ -1,4 +1,4 @@
-package ch.seidel.domain
+package ch.seidel.kutu.domain
 
 import java.text.SimpleDateFormat
 import java.text.ParseException

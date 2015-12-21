@@ -1,47 +1,30 @@
-package ch.seidel
+package ch.seidel.kutu.view
 
-import ch.seidel.commons._
-import ch.seidel.domain._
-import javafx.beans.binding.Bindings
-import javafx.beans.value.ChangeListener
-import javafx.collections.ObservableList
 import javafx.scene.{ control => jfxsc }
 import scalafx.Includes._
-import scalafx.beans.binding.BooleanBinding
 import scalafx.beans.property.DoubleProperty
 import scalafx.beans.property.ReadOnlyStringWrapper
-import scalafx.beans.property.StringProperty
 import scalafx.beans.value.ObservableValue
 import scalafx.collections.ObservableBuffer
 import scalafx.event.ActionEvent
 import scalafx.geometry._
 import scalafx.scene.Node
 import scalafx.scene.control.Button
-import scalafx.scene.control.Control
 import scalafx.scene.control.Label
-import scalafx.scene.control.Pagination
 import scalafx.scene.control.Tab
 import scalafx.scene.control.TableColumn
 import scalafx.scene.control.TableColumn._
 import scalafx.scene.control.TableView
 import scalafx.scene.control.TextField
 import scalafx.scene.control.ToolBar
-import scalafx.scene.control.cell.TextFieldTableCell
 import scalafx.scene.input.KeyCode
 import scalafx.scene.input.KeyEvent
 import scalafx.scene.layout.BorderPane
-import scalafx.scene.layout.FlowPane
 import scalafx.scene.layout.HBox
 import scalafx.scene.layout.Priority
 import scalafx.scene.layout.Region
 import scalafx.scene.layout.VBox
 import scalafx.util.converter.DefaultStringConverter
-import scalafx.util.converter.StringConverterJavaToJavaDelegate
-import scalafx.scene.text.Text
-import scalafx.scene.Scene
-import scalafx.scene.Group
-import scalafx.scene.text.Font
-import scalafx.scene.text.FontWeight
 import scalafx.scene.control.ComboBox
 import scalafx.scene.input.Clipboard
 import scala.io.Source
@@ -51,6 +34,16 @@ import scalafx.application.Platform
 import java.io.BufferedOutputStream
 import java.io.FileOutputStream
 import java.awt.Desktop
+import javafx.scene.{control => jfxsc}
+import scala.IndexedSeq
+import scalafx.beans.property.StringProperty.sfxStringProperty2jfx
+import scalafx.collections.ObservableBuffer.observableBuffer2ObservableList
+import scalafx.scene.control.SelectionMode.sfxEnum2jfx
+import scalafx.scene.control.TableView.sfxTableView2jfx
+
+import ch.seidel.commons._
+import ch.seidel.kutu.renderer.NotenblattToHtmlRenderer
+import ch.seidel.kutu.domain._
 
 case class WertungEditor(init: WertungView) {
 	type WertungChangeListener = (WertungEditor) => Unit
@@ -119,7 +112,7 @@ class WettkampfWertungTab(programm: Option[ProgrammView], riege: Option[String],
   case class EditorPane(wkview: TableView[IndexedSeq[WertungEditor]]) extends VBox {
     var index = -1
 //    var lastFocused: Option[Control] = None;
-    var selected: IndexedSeq[ch.seidel.WertungEditor] = IndexedSeq()
+    var selected: IndexedSeq[WertungEditor] = IndexedSeq()
 
     val lblDisciplin = new Label() {
       styleClass += "toolbar-header"
@@ -129,9 +122,9 @@ class WettkampfWertungTab(programm: Option[ProgrammView], riege: Option[String],
     }
 
     wkview.selectionModel.value.selectedItemProperty().onChange(
-        (model: scalafx.beans.value.ObservableValue[IndexedSeq[ch.seidel.WertungEditor], IndexedSeq[ch.seidel.WertungEditor]],
-         oldSelection: IndexedSeq[ch.seidel.WertungEditor],
-         newSelection: IndexedSeq[ch.seidel.WertungEditor]) => {
+        (model: scalafx.beans.value.ObservableValue[IndexedSeq[WertungEditor], IndexedSeq[WertungEditor]],
+         oldSelection: IndexedSeq[WertungEditor],
+         newSelection: IndexedSeq[WertungEditor]) => {
       if(newSelection != null && selected != newSelection) {
         selected = newSelection
         adjust

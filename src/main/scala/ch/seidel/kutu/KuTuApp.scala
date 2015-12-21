@@ -1,4 +1,4 @@
-package ch.seidel
+package ch.seidel.kutu
 
 import scalafx.Includes._
 import scalafx.application.JFXApp
@@ -10,28 +10,30 @@ import scalafx.scene.Node
 import scalafx.scene.layout._
 import scalafx.scene.control._
 import scalafx.scene.image.{Image, ImageView}
-import scalafx.scene.input.ContextMenuEvent
-import ch.seidel.domain.KutuService
-import ch.seidel.domain.Wettkampf
-import ch.seidel.domain.WettkampfView
-import ch.seidel.domain.Verein
-import ch.seidel.commons.PageDisplayer
-import ch.seidel.commons.DisplayablePage
 import scalafx.event.ActionEvent
 import javafx.scene.control.DatePicker
 import scalafx.collections.ObservableBuffer
-import ch.seidel.domain.ProgrammView
 import javafx.util.Callback
-import java.time.temporal.TemporalField
-import java.time.ZoneId
-import java.util.Date
-import java.time.LocalDate
 import scalafx.scene.control.Alert.AlertType
 import scalafx.scene.Cursor
 import scalafx.application.Platform
 import scala.concurrent.Future
 import scalafx.stage.FileChooser
 import scalafx.stage.FileChooser.ExtensionFilter
+import scala.concurrent.ExecutionContext.Implicits
+import scalafx.beans.property.StringProperty.sfxStringProperty2jfx
+import scalafx.scene.Cursor.sfxCursor2jfx
+import scalafx.scene.Node.sfxNode2jfx
+import scalafx.scene.control.ComboBox.sfxComboBox2jfx
+import scalafx.scene.control.Label.sfxLabel2jfx
+import scalafx.scene.control.MenuItem.sfxMenuItem2jfx
+import scalafx.scene.control.ScrollPane.sfxScrollPane2jfx
+import scalafx.scene.control.TextField.sfxTextField2jfx
+import scalafx.scene.control.TreeItem.sfxTreeItemToJfx
+import ch.seidel.kutu.domain._
+import ch.seidel.commons.PageDisplayer
+import ch.seidel.commons.DisplayablePage
+import ch.seidel.kutu.data.ResourceExchanger
 
 object KuTuApp extends JFXApp with KutuService {
   var tree = AppNavigationModel.create(KuTuApp.this)
@@ -117,7 +119,6 @@ object KuTuApp extends JFXApp with KutuService {
   def makeWettkampfBearbeitenMenu(p: WettkampfView): MenuItem = {
     makeMenuAction("Wettkampf bearbeiten") {(caption, action) =>
       implicit val e = action
-      import domain._
       val txtDatum = new DatePicker {
         setPromptText("Wettkampf-Datum")
         setPrefWidth(500)
@@ -160,7 +161,6 @@ object KuTuApp extends JFXApp with KutuService {
         }
       },
       new Button("OK") {
-        import domain._
         onAction = handleAction {implicit e: ActionEvent =>
           try {
             saveWettkampf(
@@ -185,14 +185,12 @@ object KuTuApp extends JFXApp with KutuService {
   def makeWettkampfExportierenMenu(p: WettkampfView): MenuItem = {
     makeMenuAction("Wettkampf exportieren") {(caption, action) =>
       implicit val e = action
-      import domain._
       ResourceExchanger.exportWettkampf(p.toWettkampf, System.getProperty("user.home") + "/" + p.titel.replace(" ", "_") + ".zip");
     }
   }
 
   def makeNeuerVereinAnlegenMenu = makeMenuAction("Neuen Verein anlegen ...") {(caption, action) =>
     implicit val e = action
-    import domain._
 
     val txtTitel = new TextField {
       prefWidth = 500
@@ -229,7 +227,6 @@ object KuTuApp extends JFXApp with KutuService {
   def makeNeuerWettkampfAnlegenMenu: MenuItem = {
     makeMenuAction("Neuen Wettkampf anlegen ...") {(caption, action) =>
       implicit val e = action
-      import domain._
       val txtDatum = new DatePicker {
         setPromptText("Wettkampf-Datum")
         setPrefWidth(500)
@@ -292,7 +289,6 @@ object KuTuApp extends JFXApp with KutuService {
   def makeNeuerWettkampfImportierenMenu: MenuItem = {
     makeMenuAction("Wettkampf importieren") {(caption, action) =>
       implicit val e = action
-      import domain._
       val fileChooser = new FileChooser {
          title = "Wettkampf File importieren"
          initialDirectory = new java.io.File(System.getProperty("user.home"))
@@ -319,7 +315,6 @@ object KuTuApp extends JFXApp with KutuService {
 
   def makeWettkampfLoeschenMenu(p: WettkampfView) = makeMenuAction("Wettkampf löschen") {(caption, action) =>
     implicit val e = action
-    import domain._
     PageDisplayer.showInDialog(caption, new DisplayablePage() {
       def getPage: Node = {
         new BorderPane {
@@ -342,7 +337,6 @@ object KuTuApp extends JFXApp with KutuService {
 
   def makeVereinLoeschenMenu(v: Verein) = makeMenuAction("Verein löschen") {(caption, action) =>
     implicit val e = action
-    import domain._
     PageDisplayer.showInDialog(caption, new DisplayablePage() {
       def getPage: Node = {
         new BorderPane {
@@ -364,7 +358,6 @@ object KuTuApp extends JFXApp with KutuService {
 
   controlsView.selectionModel().selectionMode = SelectionMode.SINGLE
   controlsView.selectionModel().selectedItem.onChange { (_, _, newItem) =>
-    import domain._
     if(newItem != null) {
       newItem.value.value match {
         case "Athleten" =>

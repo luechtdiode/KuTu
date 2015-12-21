@@ -1,4 +1,4 @@
-package ch.seidel
+package ch.seidel.kutu.renderer
 
 trait NotenblattToHtmlRenderer {
   case class Kandidat(wettkampfTitel: String, geschlecht: String, programm: String,

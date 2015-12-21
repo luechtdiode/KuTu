@@ -1,6 +1,6 @@
 package ch.seidel.commons
 
-import ch.seidel.KuTuAppThumbNail
+import ch.seidel.kutu.KuTuAppThumbNail
 import scalafx.scene.control._
 
 /**

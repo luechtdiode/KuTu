@@ -1,9 +1,5 @@
-package ch.seidel
+package ch.seidel.kutu.view
 
-import scala.collection.JavaConversions
-import javafx.collections.FXCollections
-import javafx.collections.ObservableList
-import javafx.scene.{ control => jfxsc }
 import scalafx.Includes._
 import scalafx.scene.control._
 import scalafx.scene.chart._
@@ -12,16 +8,11 @@ import scalafx.scene.chart.XYChart.Series
 import scalafx.scene.control.Tab
 import scalafx.scene.layout.BorderPane
 import scalafx.scene.layout.Priority
-import scalafx.scene.layout.HBox
-import scalafx.geometry.Insets
 import scalafx.scene.layout.VBox
 import scalafx.scene.control.ScrollPane
 import scalafx.geometry.Side
-import scalafx.scene.chart.LineChart
-import scalafx.collections.ObservableArray
-import scalafx.collections.ObservableBuffer
 import ch.seidel.commons.TabWithService
-import ch.seidel.domain._
+import ch.seidel.kutu.domain._
 import scalafx.scene.text.Text
 import javafx.beans.value.ChangeListener
 import javafx.scene.Parent
@@ -37,6 +28,13 @@ import scalafx.print.PageOrientation
 import scalafx.print.PrinterJob
 import scalafx.event.ActionEvent
 import scalafx.scene.effect.Glow
+import scala.math.BigDecimal.int2bigDecimal
+import scalafx.print.PageLayout.sfxPageLayout2jfx
+import scalafx.print.PrinterJob.sfxPrinterJob2jfx
+import scalafx.scene.chart.BarChart.sfxBarChart2jfx
+import scalafx.scene.effect.Glow.sfxGlow2jfx
+import scalafx.scene.layout.VBox.sfxVBox2jfx
+import scalafx.scene.text.Text.sfxText2jfx
 
 class TurnerAnalyzer(val verein: Option[Verein], val athlet: Option[Athlet], val wettkampfdisziplin: Option[WettkampfdisziplinView], override val service: KutuService) extends Tab with TabWithService {
 

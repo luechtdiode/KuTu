@@ -1,21 +1,17 @@
-package ch.seidel
+package ch.seidel.kutu.data
 
-import scala.io.Source
 import java.io.File
-import ch.seidel.domain.KutuService
-import ch.seidel.domain.str2Int
-import ch.seidel.domain.str2Long
 import java.io.FileOutputStream
+import java.io.OutputStream
+import java.io.InputStream
 import java.io.{BufferedReader, FileOutputStream, FileInputStream, File}
 import java.util.zip.{ZipEntry, ZipOutputStream, ZipInputStream}
 import reflect.runtime.universe._
-import ch.seidel.domain._
+import scala.io.Source
 import scala.annotation.tailrec
-import java.io.OutputStream
-import java.io.InputStream
+import ch.seidel.kutu.domain._
 
 /**
- * @author Roland
  */
 object ResourceExchanger extends KutuService {
   private val rm = reflect.runtime.universe.runtimeMirror(getClass.getClassLoader)

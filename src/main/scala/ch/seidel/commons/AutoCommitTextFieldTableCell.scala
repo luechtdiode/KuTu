@@ -25,29 +25,11 @@ import scalafx.collections.ObservableSet.Remove
 
 object AutoCommitTextFieldTableCell {
 
-  /**
-   * Converts a ScalaFX $TFTC to its JavaFX counterpart.
-   *
-   * @tparam T $TTYPE
-   * @param cell ScalaFX $TFTC
-   * @return JavaFX $TFTC
-   */
   implicit def sfxAutoCommitTextFieldTableCell2jfx[S, T](cell: AutoCommitTextFieldTableCell[S, T]): jfxscc.TextFieldTableCell[S, T] = if (cell != null) cell.delegate else null
 
-  /**
-   * $FLVINIT
-   *
-   * @return $FLVRET
-   */
   def forTableColumn[S](): (TableColumn[S, String] => TableCell[S, String]) =
     (view: TableColumn[S, String]) => jfxscc.TextFieldTableCell.forTableColumn[S]().call(view)
 
-  /**
-   * $FLVINIT
-   *
-   * @param converter A `StringConverter` that can convert the given String (from what the user typed in) into an instance of type T.
-   * @return $FLVRET
-   */
   def forTableColumn[S, T](converter: StringConverter[T]): (TableColumn[S, T] => TableCell[S, T]) =
     (view: TableColumn[S, T]) => jfxscc.TextFieldTableCell.forTableColumn[S, T](converter).call(view)
 

@@ -1,17 +1,15 @@
-package ch.seidel
+package ch.seidel.kutu
 
-import java.io.{File, IOException}
+import java.io.IOException
 import scala.collection.immutable.TreeMap
 import scalafx.Includes._
-import ch.seidel.commons.{PageDisplayer, SortUtils}
 import scalafx.event.ActionEvent
 import scalafx.geometry.{Insets, Orientation}
 import scalafx.scene.control._
 import scalafx.scene.image.{Image, ImageView}
 import scalafx.scene.layout.{Region, TilePane}
-import ch.seidel.domain.KutuService
-import ch.seidel.domain.Verein
-import ch.seidel.domain.WettkampfView
+import scalafx.scene.control.TreeItem.sfxTreeItemToJfx
+import ch.seidel.kutu.domain._
 
 object AppNavigationModel  {
   def create(service: KutuService): KuTuAppTree = new KuTuAppTree(service)

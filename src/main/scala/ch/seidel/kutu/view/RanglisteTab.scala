@@ -1,4 +1,4 @@
-package ch.seidel
+package ch.seidel.kutu.view
 
 import java.text.SimpleDateFormat
 import scala.collection.mutable.StringBuilder
@@ -33,13 +33,16 @@ import scalafx.scene.control.ComboBox
 import scalafx.scene.layout.HBox
 import scalafx.scene.Group
 import scalafx.scene.web.WebView
-import ch.seidel.domain._
-import ch.seidel.commons._
 import java.io.FileOutputStream
 import java.awt.Desktop
 import java.io.BufferedOutputStream
 import scalafx.stage.FileChooser
 import scalafx.stage.FileChooser.ExtensionFilter
+import ch.seidel.commons._
+import ch.seidel.kutu.KuTuApp
+import ch.seidel.kutu.domain._
+import ch.seidel.kutu.data._
+import ch.seidel.kutu.renderer.ScoreToHtmlRenderer
 
 class RanglisteTab(wettkampf: WettkampfView, override val service: KutuService) extends Tab with TabWithService with ScoreToHtmlRenderer {
   override val title = wettkampf.easyprint

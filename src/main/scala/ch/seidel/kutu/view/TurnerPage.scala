@@ -1,28 +1,29 @@
-package ch.seidel
+package ch.seidel.kutu.view
 
 import java.text.SimpleDateFormat
 import java.sql.Date
-import scala.collection.JavaConversions
 import javafx.scene.{ control => jfxsc }
+import javafx.scene.{control => jfxsc}
+import scala.collection.JavaConversions
 import scalafx.Includes._
-import scalafx.scene.control.{Tab, TabPane}
+import scalafx.scene.control.Tab
 import scalafx.scene.layout._
 import scalafx.scene.control.TableColumn._
 import scalafx.beans.property.StringProperty
 import scalafx.collections.ObservableBuffer
 import scalafx.scene.control._
-import scalafx.scene.control.cell.TextFieldTableCell
 import scalafx.util.converter.DefaultStringConverter
-import ch.seidel.domain._
-import ch.seidel.commons.DisplayablePage
-import ch.seidel.commons.TabWithService
-import ch.seidel.commons.LazyTabPane
 import scalafx.event.ActionEvent
-import scalafx.scene.control.SelectionMode
 import scalafx.application.Platform
 import scalafx.scene.input.KeyEvent
 import scalafx.scene.input.KeyCode
+import scalafx.scene.control.Tab.sfxTab2jfx
+import slick.jdbc.StaticQuery.staticQueryToInvoker
 import ch.seidel.commons.AutoCommitTextFieldTableCell
+import ch.seidel.commons.DisplayablePage
+import ch.seidel.commons.TabWithService
+import ch.seidel.commons.LazyTabPane
+import ch.seidel.kutu.domain._
 
 object TurnerPage {
   var turnerAnalyzers = Map[Long, TurnerAnalyzer]()

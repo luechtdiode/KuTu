@@ -1,10 +1,11 @@
-package ch.seidel
+package ch.seidel.kutu.data
 
 import java.text.SimpleDateFormat
-import ch.seidel.domain._
+import ch.seidel.kutu.domain._
 import scala.collection.mutable.HashMap
 import scalafx.scene.control.ComboBox
 import scalafx.Includes._
+import scala.math.BigDecimal.int2bigDecimal
 
 sealed trait GroupBy {
   val groupname: String

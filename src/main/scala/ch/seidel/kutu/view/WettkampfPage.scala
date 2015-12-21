@@ -1,10 +1,9 @@
-package ch.seidel
+package ch.seidel.kutu.view
 
+import scalafx.scene.control.Tab
+import ch.seidel.kutu.domain._
 import ch.seidel.commons.DisplayablePage
 import ch.seidel.commons.LazyTabPane
-import ch.seidel.domain.KutuService
-import ch.seidel.domain.WettkampfView
-import scalafx.scene.control.Tab
 
 object WettkampfPage {
 

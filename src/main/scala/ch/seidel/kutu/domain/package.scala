@@ -1,9 +1,9 @@
-package ch.seidel
+package ch.seidel.kutu
 
 import scalafx.util.converter.DoubleStringConverter
 import java.io.ObjectInputStream
 import scalafx.collections.ObservableBuffer
-import np.com.ngopal.control.AutoFillTextBoxFactory
+//import np.com.ngopal.control.AutoFillTextBoxFactory
 import java.time.LocalDate
 import java.time.ZoneId
 import scalafx.util.converter.IntStringConverter
@@ -179,12 +179,12 @@ package object domain {
   case class LeafRow(title: String, sum: Resultat, rang: Resultat, auszeichnung: Boolean) extends DataRow
   case class GroupRow(athlet: AthletView, resultate: IndexedSeq[LeafRow], sum: Resultat, rang: Resultat, auszeichnung: Boolean) extends DataRow
 
-  sealed trait NotenModus extends DoubleStringConverter with AutoFillTextBoxFactory.ItemComparator[String] {
+  sealed trait NotenModus extends DoubleStringConverter /*with AutoFillTextBoxFactory.ItemComparator[String]*/ {
     val isDNoteUsed: Boolean
     def selectableItems: Option[List[String]] = None
     def calcEndnote(dnote: Double, enote: Double): Double
     override def toString(value: Double): String = value
-    override def shouldSuggest(item: String, query: String): Boolean = false
+    /*override*/ def shouldSuggest(item: String, query: String): Boolean = false
   }
   case class Athletiktest(punktemapping: Map[String,Double], punktgewicht: Double) extends NotenModus {
     override val isDNoteUsed = false

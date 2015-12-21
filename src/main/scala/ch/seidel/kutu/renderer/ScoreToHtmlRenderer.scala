@@ -1,11 +1,12 @@
-package ch.seidel
+package ch.seidel.kutu.renderer
 
+import ch.seidel.kutu.data._
+import ch.seidel.kutu.domain.GroupRow
 import javafx.scene.{ control => jfxsc }
+import javafx.scene.{ control => jfxsc }
+import scalafx.Includes._
 import scalafx.scene.control.TableColumn.CellDataFeatures
 import scalafx.scene.control.TableView
-import scalafx.Includes._
-import ch.seidel.domain.GroupRow
-import scala.annotation.tailrec
 
 /**
  * @author Roland

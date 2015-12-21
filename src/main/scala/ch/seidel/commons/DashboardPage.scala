@@ -1,7 +1,7 @@
 package ch.seidel.commons
 
 import scalafx.Includes._
-import ch.seidel.KuTuAppTree
+import ch.seidel.kutu.KuTuAppTree
 import scalafx.scene.control.ScrollPane
 import scalafx.scene.layout.{Priority, VBox}
 

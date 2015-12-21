@@ -1,6 +1,6 @@
 package ch.seidel.commons
 
-import ch.seidel.domain.KutuService
+import ch.seidel.kutu.domain.KutuService
 
 trait TabWithService {
   val service: KutuService
