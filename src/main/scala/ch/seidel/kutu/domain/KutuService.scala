@@ -60,11 +60,38 @@ trait KutuService {
 //  lazy val database = databasemysql
 
   def installDB {
-    val sqlfile = this.getClass.getResourceAsStream("/dbscripts/kutu-sqllite-ddl.sql")
-    val sqldatafile = this.getClass.getResourceAsStream("/dbscripts/kutu-sqllite-initialdata.sql")
-    executeDBScript(Source.fromInputStream(sqlfile, "utf-8").getLines())
-    executeDBScript(Source.fromInputStream(sqldatafile, "utf-8").getLines())
-//    val sqlwkdatafile = this.getClass.getResou
+    val sqlScripts = Seq(
+         "kutu-sqllite-ddl.sql"
+        ,"kutu-sqllite-initialdata.sql"
+        )
+
+    sqlScripts.foreach { filename =>
+      val file = getClass.getResourceAsStream("/dbscripts/" + filename)
+      executeDBScript(Source.fromInputStream(file, "utf-8").getLines())
+    }
+  }
+
+  def updateDB {
+    val sqlScripts = Seq(
+         "UpdateGeTuReihenfolge.sql"
+        ,"AlterGeschlechtFelder.sql"
+        ,"CreateIndicies.sql"
+        )
+
+    sqlScripts.filter{ filename =>
+      val f = new File(dbhomedir + "/" + filename)
+      !f.exists()
+    }.foreach { filename =>
+      val file = getClass.getResourceAsStream("/dbscripts/" + filename)
+      try {
+        executeDBScript(Source.fromInputStream(file, "utf-8").getLines())
+      }
+      catch {
+        case e: Exception => e.printStackTrace()
+      }
+      val quitfile = new File(dbhomedir + "/" + filename)
+      quitfile.createNewFile();
+    }
   }
 
   def parseLine(s: String): IndexedSeq[String] = {
@@ -137,9 +164,7 @@ trait KutuService {
     dbfile.createNewFile()
     installDB
   }
-//  if(selectVereine.size == 0) {
-//    installDB
-//  }
+  updateDB
 
   val sdf = new SimpleDateFormat("dd.MM.yyyy")
   val sdfExported = new SimpleDateFormat("yyyy-MM-dd")
@@ -186,12 +211,12 @@ trait KutuService {
   private implicit val getWettkampfResult = GetResult(r =>
     Wettkampf(r.<<[Long], r.<<[java.sql.Date], r.<<[String], r.<<[Long], r.<<[Int]))
   private implicit val getWettkampfDisziplinResult = GetResult(r =>
-    Wettkampfdisziplin(r.<<[Long], r.<<[Long], r.<<[Long], r.<<[String], r.nextBlobOption(), r.<<, r.<<[Int]))
+    Wettkampfdisziplin(r.<<[Long], r.<<[Long], r.<<[Long], r.<<[String], r.nextBlobOption(), r.<<, r.<<[Int], r.<<[Int], r.<<[Int]))
 
   implicit def getWettkampfDisziplinViewResultCached(r: PositionedResult)(implicit session: Session, cache: scala.collection.mutable.Map[Long, ProgrammView]) = {
     val id = r.<<[Long]
     val pgm = readProgramm(r.<<[Long], cache)
-    WettkampfdisziplinView(id, pgm, r, r.<<[String], r.nextBytesOption(), readNotenModus(id, pgm, r.<<), r.<<)
+    WettkampfdisziplinView(id, pgm, r, r.<<[String], r.nextBytesOption(), readNotenModus(id, pgm, r.<<), r.<<, r.<<[Int], r.<<[Int])
   }
   private implicit def getResultWertungView(implicit session: Session, cache: scala.collection.mutable.Map[Long, ProgrammView]) = GetResult(r =>
     WertungView(r.<<[Long], r, r, r, r.<<[scala.math.BigDecimal], r.<<[scala.math.BigDecimal], r.<<[scala.math.BigDecimal], r.<<))
@@ -302,10 +327,10 @@ trait KutuService {
           """.execute
 
       implicit val cache = scala.collection.mutable.Map[Long, ProgrammView]()
-      //id |id |js_id |geschlecht |name |vorname |gebdat |strasse |plz |ort |verein |activ |id |name |id |programm_id |id |name |kurzbeschreibung |detailbeschreibung |notenfaktor |ord |id |datum |titel |programm_id |auszeichnung |difficulty |execution |endnote |riege |
+      //id |id |js_id |geschlecht |name |vorname |gebdat |strasse |plz |ort |verein |activ |id |name |id |programm_id |id |name |kurzbeschreibung |detailbeschreibung |notenfaktor |ord |masculin |feminim |id |datum |titel |programm_id |auszeichnung |difficulty |execution |endnote |riege |
       sql"""
                     SELECT w.id, a.id, a.js_id, a.geschlecht, a.name, a.vorname, a.gebdat, a.strasse, a.plz, a.ort, a.activ, a.verein, v.*,
-                      wd.id, wd.programm_id, d.*, wd.kurzbeschreibung, wd.detailbeschreibung, wd.notenfaktor, wd.ord,
+                      wd.id, wd.programm_id, d.*, wd.kurzbeschreibung, wd.detailbeschreibung, wd.notenfaktor, wd.ord, wd.masculin, wd.feminim
                       wk.*,
                       note_d as difficulty, note_e as execution, endnote, riege
                     FROM wertung w
@@ -325,7 +350,10 @@ trait KutuService {
     database withSession { implicit session =>
       implicit val cache = scala.collection.mutable.Map[Long, ProgrammView]()
       sql"""
-                   SELECT w.id, a.id, a.js_id, a.geschlecht, a.name, a.vorname, a.gebdat, a.strasse, a.plz, a.ort, a.activ, a.verein, v.*, wd.id, wd.programm_id, d.*, wd.kurzbeschreibung, wd.detailbeschreibung, wd.notenfaktor, wd.ord, wk.*, note_d as difficulty, note_e as execution, endnote, riege
+                   SELECT w.id, a.id, a.js_id, a.geschlecht, a.name, a.vorname, a.gebdat, a.strasse, a.plz, a.ort, a.activ, a.verein, v.*,
+                     wd.id, wd.programm_id, d.*, wd.kurzbeschreibung, wd.detailbeschreibung, wd.notenfaktor, wd.ord, wd.masculin, wd.feminim,
+                     wk.*,
+                     note_d as difficulty, note_e as execution, endnote, riege
                    FROM wertung w
                    inner join athlet a on (a.id = w.athlet_id)
                    left outer join verein v on (a.verein = v.id)
@@ -345,7 +373,10 @@ trait KutuService {
     database withSession { implicit session =>
       implicit val cache = scala.collection.mutable.Map[Long, ProgrammView]()
       sql"""
-                   SELECT w.id, a.id, a.js_id, a.geschlecht, a.name, a.vorname, a.gebdat, a.strasse, a.plz, a.ort, a.activ, a.verein, v.*, wd.id, wd.programm_id, d.*, wd.kurzbeschreibung, wd.detailbeschreibung, wd.notenfaktor, wd.ord, wk.*, note_d as difficulty, note_e as execution, endnote, riege
+                   SELECT w.id, a.id, a.js_id, a.geschlecht, a.name, a.vorname, a.gebdat, a.strasse, a.plz, a.ort, a.activ, a.verein, v.*,
+                     wd.id, wd.programm_id, d.*, wd.kurzbeschreibung, wd.detailbeschreibung, wd.notenfaktor, wd.ord, wd.masculin, wd.feminim,
+                     wk.*,
+                     note_d as difficulty, note_e as execution, endnote, riege
                    FROM wertung w
                    inner join athlet a on (a.id = w.athlet_id)
                    left outer join verein v on (a.verein = v.id)
@@ -579,7 +610,10 @@ trait KutuService {
         case Some(id) => s"d.id = $id"
       })
       sql"""
-                    SELECT w.id, a.id, a.js_id, a.geschlecht, a.name, a.vorname, a.gebdat, a.strasse, a.plz, a.ort, a.activ, a.verein, v.*, wd.id, wd.programm_id, d.*, wd.kurzbeschreibung, wd.detailbeschreibung, wd.notenfaktor, wd.ord, wk.*, note_d as difficulty, note_e as execution, endnote, riege
+                    SELECT w.id, a.id, a.js_id, a.geschlecht, a.name, a.vorname, a.gebdat, a.strasse, a.plz, a.ort, a.activ, a.verein, v.*,
+                      wd.id, wd.programm_id, d.*, wd.kurzbeschreibung, wd.detailbeschreibung, wd.notenfaktor, wd.ord, wd.masculin, wd.feminim,
+                      wk.*,
+                      note_d as difficulty, note_e as execution, endnote, riege
                     FROM wertung w
                     inner join athlet a on (a.id = w.athlet_id)
                     left outer join verein v on (a.verein = v.id)

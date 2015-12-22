@@ -107,7 +107,11 @@ trait NotenblattToHtmlRenderer {
     </html>
   """
 
-  private def notenblattForGeTu(kandidat: Kandidat) =
+  private def notenblattForGeTu(kandidat: Kandidat) = {
+    val d = kandidat.diszipline.zip(Range(1, kandidat.diszipline.size+1)).map{dis =>
+      s"""<tr class="geraeteRow"><td class="large">${dis._2}. ${dis._1}</td><td>&nbsp;</td><td>&nbsp;</td><td class="totalCol">&nbsp;</td></tr>"""
+    }
+    val dt = d.updated(d.size-1, d.last.replace("geraeteRow", "totalRow")).mkString("", "\n", "\n")
     s"""<div class=notenblatt>
       <div class=headline>
         <img class=logo src="logo.jpg" title="Logo"/>
@@ -123,21 +127,18 @@ trait NotenblattToHtmlRenderer {
       <div class="showborder">
         <table width="100%">
           <tr class="totalRow heavyRow"><td>Gerät</td><td>1. Wertung</td><td>2. Wertung</td><td class="totalCol">Endnote</td></tr>
-          <tr class="geraeteRow"><td class="large">1. Sprung</td><td>&nbsp;</td><td>&nbsp;</td><td class="totalCol">&nbsp;</td></tr>
-          <tr class="geraeteRow"><td class="large">2. Reck</td><td>&nbsp;</td><td>&nbsp;</td><td class="totalCol">&nbsp;</td></tr>
-          <tr class="geraeteRow"><td class="large">3. Boden</td><td>&nbsp;</td><td>&nbsp;</td><td class="totalCol">&nbsp;</td></tr>
-          <tr class="geraeteRow"><td class="large">4. Schaukelringe</td><td>&nbsp;</td><td>&nbsp;</td><td class="totalCol">&nbsp;</td></tr>
-          <tr class="totalRow"><td class="large">5. Barren</td><td>&nbsp;</td><td>&nbsp;</td><td class="totalCol">&nbsp;</td></tr>
+          ${dt}
           <tr class="heavyRow"><td class="large">Total</td><td>&nbsp;</td><td>&nbsp;</td><td class="totalCol">&nbsp;</td></tr>
         </table>
       </div>
       <div class="rang">Rang: __________</div>
     </div>
-  """
+    """
+  }
 
   private def notenblattForATT(kandidat: Kandidat) = {
-    val d = kandidat.diszipline.map{dis =>
-      s"""<tr class="geraeteRow"><td class="large">$dis</td><td class="totalCol">&nbsp;</td></tr>"""
+    val d = kandidat.diszipline.zip(Range(1, kandidat.diszipline.size+1)).map{dis =>
+      s"""<tr class="geraeteRow"><td class="large">${dis._2}. ${dis._1}</td><td class="totalCol">&nbsp;</td></tr>"""
     }
     val dt = d.mkString("", "\n", "\n")
     s"""<div class=notenblatt>
@@ -159,7 +160,11 @@ trait NotenblattToHtmlRenderer {
   """
   }
 
-  private def notenblattForKuTu(kandidat: Kandidat) =
+  private def notenblattForKuTu(kandidat: Kandidat) = {
+    val d = kandidat.diszipline.zip(Range(1, kandidat.diszipline.size+1)).map{dis =>
+      s"""<tr class="geraeteRow"><td class="large">${dis._2}. ${dis._1}</td><td>&nbsp;</td><td>&nbsp;</td><td class="totalCol">&nbsp;</td></tr>"""
+    }
+    val dt = d.updated(d.size-1, d.last.replace("geraeteRow", "totalRow")).mkString("", "\n", "\n")
     s"""<div class=notenblatt>
       <div class=headline>
         <img class=logo src="logo.jpg" title="Logo"/>
@@ -173,17 +178,13 @@ trait NotenblattToHtmlRenderer {
       <div class="showborder">
         <table width="100%">
           <tr class="totalRow heavyRow"><td>Gerät</td><td>D-Wert</td><td>E-Wert</td><td class="totalCol">Endnote</td></tr>
-          <tr class="geraeteRow"><td class="large">1. Boden</td><td>&nbsp;</td><td>&nbsp;</td><td class="totalCol">&nbsp;</td></tr>
-          <tr class="geraeteRow"><td class="large">2. Pferdpauschen</td><td>&nbsp;</td><td>&nbsp;</td><td class="totalCol">&nbsp;</td></tr>
-          <tr class="geraeteRow"><td class="large">3. Ring</td><td>&nbsp;</td><td>&nbsp;</td><td class="totalCol">&nbsp;</td></tr>
-          <tr class="geraeteRow"><td class="large">4. Sprung</td><td>&nbsp;</td><td>&nbsp;</td><td class="totalCol">&nbsp;</td></tr>
-          <tr class="geraeteRow"><td class="large">5. Barren</td><td>&nbsp;</td><td>&nbsp;</td><td class="totalCol">&nbsp;</td></tr>
-          <tr class="totalRow"><td class="large">6. Reck</td><td>&nbsp;</td><td>&nbsp;</td><td class="totalCol">&nbsp;</td></tr>
+          ${dt}
           <tr class="heavyRow"><td class="large">Total</td><td>&nbsp;</td><td>&nbsp;</td><td class="totalCol">&nbsp;</td></tr>
         </table>
       </div>
     </div>
-  """
+    """
+  }
 
   def toHTMLasGeTu(kandidaten: Seq[Kandidat]): String = {
     val blaetter = kandidaten.map(notenblattForGeTu(_))

@@ -109,7 +109,7 @@ class WettkampfWertungTab(programm: Option[ProgrammView], riege: Option[String],
     }
   }
 
-  case class EditorPane(wkview: TableView[IndexedSeq[WertungEditor]]) extends VBox {
+  case class EditorPane(wkview: TableView[IndexedSeq[WertungEditor]]) extends HBox {
     var index = -1
 //    var lastFocused: Option[Control] = None;
     var selected: IndexedSeq[WertungEditor] = IndexedSeq()
@@ -149,12 +149,12 @@ class WettkampfWertungTab(programm: Option[ProgrammView], riege: Option[String],
 
     children = List(lblAthlet, lblDisciplin/*lblHeader, noteBox*/)
     VBox.setMargin(lblAthlet, Insets(0d,10d,0d,20d))
-    VBox.setMargin(lblDisciplin, Insets(0d,10d,0d,20d))
+    VBox.setMargin(lblDisciplin, Insets(0d,10d,0d,40d))
 
     def adjust {
       if(selected != null && index > -1 && index < selected.size) {
         lblAthlet.text.value = selected(index).init.athlet.easyprint
-        lblDisciplin.text.value = selected(index).init.wettkampfdisziplin.easyprint
+        lblDisciplin.text.value = " : " + selected(index).init.wettkampfdisziplin.easyprint
       }
       else {
         lblAthlet.text.value = ""
@@ -664,11 +664,7 @@ class WettkampfWertungTab(programm: Option[ProgrammView], riege: Option[String],
           val seriendaten = for {
             programm <- programme
 
-            athletwertungen <- driver.map(we => we.filter { x => val ret = x.init.wettkampfdisziplin.programm.id == programm.id
-              if(!ret) {
-                println(x.init.athlet, x.init.wettkampfdisziplin.programm)
-              }
-              ret})
+            athletwertungen <- driver.map(we => we.filter { x => x.init.wettkampfdisziplin.programm.id == programm.id})
             if(athletwertungen.nonEmpty)
           }
           yield {
@@ -683,7 +679,17 @@ class WettkampfWertungTab(programm: Option[ProgrammView], riege: Option[String],
             ,athlet.vorname
             ,AthletJahrgang(athlet.gebdat).hg
             ,athlet.verein match {case Some(v) => v.easyprint case _ => ""}
-            ,athletwertungen.map(_.init.wettkampfdisziplin.disziplin.easyprint)
+            ,athletwertungen.filter{wertung =>
+              if(wertung.init.wettkampfdisziplin.feminim == 0 && !wertung.init.athlet.geschlecht.equalsIgnoreCase("M")) {
+                false
+              }
+              else if(wertung.init.wettkampfdisziplin.masculin == 0 && wertung.init.athlet.geschlecht.equalsIgnoreCase("M")) {
+                false
+              }
+              else {
+                true
+              }
+            }.map(_.init.wettkampfdisziplin.disziplin.easyprint)
             )
           }
           val filename = "Notenblatt_" + wettkampf.titel.replace(" ", "_") + programm.map("_Programm_" + _.easyprint.replace(" ", "_")).getOrElse("") + riege.map("_Riege_" + _.replace(" ", "_")).getOrElse("") + ".html"
