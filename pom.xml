@@ -205,7 +205,7 @@
 								<argument>-outdir</argument>
 								<argument>${project.build.directory}</argument>
 								<argument>-keyStore</argument>
-								<argument>c:/dev/keystore.jks</argument>
+								<argument>keystore-dev.jks</argument>
 								<argument>-storePass</argument>
 								<argument>${keyPass}</argument>
 								<argument>-keyPass</argument>
