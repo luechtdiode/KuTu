@@ -11,10 +11,6 @@ cache:
     
 language: scala
 
-os:
-  - windows
-  - linux
-  - osx
 env:
   global:
     - OS=$(uname -s)
