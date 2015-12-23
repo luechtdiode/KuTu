@@ -1,5 +1,3 @@
-sudo: false
-
 cache:
   directories:
     - $HOME/.m2/repository
@@ -9,8 +7,7 @@ cache:
 language: scala
 
 scala:
-   - 2.10.4
+   - 2.10.5
 
 jdk:
   - oraclejdk8
-  - openjdk7
