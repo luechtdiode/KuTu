@@ -10,6 +10,15 @@ cache:
     - $HOME/.ivy2
     
 language: scala
+
+os:
+  - windows
+  - linux
+  - osx
+env:
+  global:
+    - OS=$(uname -s)
+
 script: mvn clean compile test
 
 scala:
