@@ -3,7 +3,6 @@ package ch.seidel.kutu.data
 import java.text.SimpleDateFormat
 import ch.seidel.kutu.domain._
 import scala.collection.mutable.HashMap
-import scalafx.scene.control.ComboBox
 import scalafx.Includes._
 import scala.math.BigDecimal.int2bigDecimal
 
@@ -87,20 +86,20 @@ sealed trait FilterBy extends GroupBy {
   private[FilterBy] var filter: Option[DataObject] = None
   private[FilterBy] var filtItems: List[DataObject] = List()
 
-  def adjustFilter(cbs: List[ComboBox[DataObject]]) {
-    if(cbs.nonEmpty) {
-      val h = cbs.head
-      val selected = h.selectionModel.value.selectedItem
-      if(filterItems.diff(h.items.value).size > 0) {
-        h.items.value.clear
-        h.items.value ++= filterItems
-      }
-      next match {
-        case Some(ng) => ng.asInstanceOf[FilterBy].adjustFilter(cbs.tail)
-        case None     =>
-      }
-    }
-  }
+//  def adjustFilter(cbs: List[ComboBox[DataObject]]) {
+//    if(cbs.nonEmpty) {
+//      val h = cbs.head
+//      val selected = h.selectionModel.value.selectedItem
+//      if(filterItems.diff(h.items.value).size > 0) {
+//        h.items.value.clear
+//        h.items.value ++= filterItems
+//      }
+//      next match {
+//        case Some(ng) => ng.asInstanceOf[FilterBy].adjustFilter(cbs.tail)
+//        case None     =>
+//      }
+//    }
+//  }
 
   override def select(wvlist: Seq[WertungView]): Iterable[GroupSection] = {
     filtItems = items(wvlist)

@@ -8,9 +8,6 @@ import scalafx.Includes._
 import scalafx.scene.control.TableColumn.CellDataFeatures
 import scalafx.scene.control.TableView
 
-/**
- * @author Roland
- */
 trait ScoreToHtmlRenderer {
   protected val title: String
 
@@ -86,18 +83,17 @@ trait ScoreToHtmlRenderer {
           else {
             gsBlock.append(s"<h${level + 2}>${openedTitle + gl.groupKey.easyprint}</h${level + 2}>\n<table width='100%'>\n")
           }
-//          gsBlock.append(s"<h${level + 2}>${gl.groupKey.easyprint}</h${level + 2}>\n<table width='100%'>\n")
           val cols = gl.buildColumns
-          cols.foreach { th =>
-            if (th.columns.size > 0) {
-              cols.foreach { thc =>
+          cols.foreach { th => th match {
+            case gc: WKGroupCol =>
+              gc.cols.foreach { thc =>
                 gsBlock.append(s"<col/>")
               }
-            }
-            else {
+            case _ =>
               gsBlock.append(s"<col/>")
             }
           }
+
           gsBlock.append(s"\n<thead><tr class='head'>\n")
           var first = true
           cols.foreach { th =>
@@ -108,89 +104,72 @@ trait ScoreToHtmlRenderer {
             else {
               "class='blockstart'"
             }
-            if (th.columns.size > 0) {
-              gsBlock.append(s"<th $style colspan=${th.columns.size}>${th.getText}</th>")
-            }
-            else {
-              gsBlock.append(s"<th $style rowspan=2>${th.getText}</th>")
+            th match {
+              case gc: WKGroupCol =>
+                gsBlock.append(s"<th $style colspan=${gc.cols.size}>${gc.text}</th>")
+              case _ =>
+                gsBlock.append(s"<th $style rowspan=2>${th.text}</th>")
             }
           }
           gsBlock.append(s"</tr><tr>\n")
           cols.foreach { th =>
-            if (th.columns.size > 0) {
-              var first = true
-              th.columns.foreach { th =>
-                if(first) {
-                  gsBlock.append(s"<th class='blockstart'>${th.getText}</th>")
-                  first = false;
+            th match {
+              case gc: WKGroupCol =>
+                var first = true
+                gc.cols.foreach { thc =>
+                  if(first) {
+                    gsBlock.append(s"<th class='blockstart'>${thc.text}</th>")
+                    first = false;
+                  }
+                  else {
+                    gsBlock.append(s"<th>${thc.text}</th>")
+                  }
                 }
-                else {
-                  gsBlock.append(s"<th>${th.getText}</th>")
-                }
-              }
+              case _ =>
             }
           }
           gsBlock.append(s"</tr></thead><tbody>\n")
           gl.getTableData.foreach { row =>
             gsBlock.append(s"<tr class='data'>")
             cols.foreach { col =>
-              if (col.columns.size == 0) {
-                val c = col.asInstanceOf[jfxsc.TableColumn[GroupRow, String]]
-                val feature = new CellDataFeatures(dummyTableView, c, row)
-                if (c.getStyleClass.contains("hintdata")) {
-                  gsBlock.append(s"<td class='data, blockstart'><div class='hintdata'>${c.getCellValueFactory.apply(feature).getValue}</div></td>")
-                }
-                else if (c.getStyleClass.contains("data")) {
-                  gsBlock.append(s"<td class='data, blockstart'>${c.getCellValueFactory.apply(feature).getValue}</td>")
-                }
-                else {
-                  gsBlock.append(s"<td class='data, blockstart'><div class='valuedata'>${c.getCellValueFactory.apply(feature).getValue}</div></td>")
-                }
-              }
-              else {
-                var first = true
-                col.columns.foreach { ccol =>
-                  val c = ccol.asInstanceOf[jfxsc.TableColumn[GroupRow, String]]
-                  val feature = new CellDataFeatures(dummyTableView, c, row)
-                  val style = if(first) {
-                                first = false
-                                "data, blockstart"
-                              }
-                              else "data"
-                  if (c.getStyleClass.contains("hintdata")) {
-                    gsBlock.append(s"<td class='$style'><div class='hintdata'>${c.getCellValueFactory.apply(feature).getValue}</div></td>")
+              col match {
+                case ccol: WKLeafCol[_] =>
+                  val c = ccol.asInstanceOf[WKLeafCol[GroupRow]]
+                  if (c.styleClass.contains("hintdata")) {
+                    gsBlock.append(s"<td class='data, blockstart'><div class='hintdata'>${c.valueMapper(row)}</div></td>")
                   }
-                  else if (c.getStyleClass.contains("data")) {
-                    gsBlock.append(s"<td class='$style'>${c.getCellValueFactory.apply(feature).getValue}</td>")
+                  else if (c.styleClass.contains("data")) {
+                    gsBlock.append(s"<td class='data, blockstart'>${c.valueMapper(row)}</td>")
                   }
                   else {
-                    gsBlock.append(s"<td class='$style'><div class='valuedata'>${c.getCellValueFactory.apply(feature).getValue}</div></td>")
+                    gsBlock.append(s"<td class='data, blockstart'><div class='valuedata'>${c.valueMapper(row)}</div></td>")
                   }
-                }
+                case gc: WKGroupCol =>
+                  var first = true
+                  gc.cols.foreach { ccol =>
+                    val c = ccol.asInstanceOf[WKLeafCol[GroupRow]]
+                    val style = if(first) {
+                        first = false
+                        "data, blockstart"
+                      }
+                      else "data"
+                    if (c.styleClass.contains("hintdata")) {
+                      gsBlock.append(s"<td class='$style'><div class='hintdata'>${c.valueMapper(row)}</div></td>")
+                    }
+                    else if (c.styleClass.contains("data")) {
+                      gsBlock.append(s"<td class='$style'>${c.valueMapper(row)}</td>")
+                    }
+                    else {
+                      gsBlock.append(s"<td class='$style'><div class='valuedata'>${c.valueMapper(row)}</div></td>")
+                    }
+                  }
               }
             }
             gsBlock.append(s"</tr>\n")
           }
           gsBlock.append(s"</tbody></table>\n")
 
-//        case g: GroupNode => gsBlock.append(s"<h${level + 2}>${g.groupKey.easyprint}</h${level + 2}>\n").append(toHTML(g.next.toList, level + 1))
         case g: GroupNode => gsBlock.append(toHTML(g.next.toList, if(openedTitle.length() > 0) openedTitle + s"${g.groupKey.easyprint}, " else s"<h${level + 2}>${g.groupKey.easyprint}, ", level + 1))
-//        case g: GroupNode =>
-//          @tailrec
-//          def collectGNs(s: GroupSection, acc: String): (String, Iterable[GroupSection]) = {
-//            if(s.isInstanceOf[GroupNode]) {
-//              val gn = s.asInstanceOf[GroupNode]
-//              gn.next match {
-//                case ss: GroupNode => collectGNs(ss, acc + ", " + gn.easyprint)
-//                case _ => (gn.groupKey.easyprint, gn.next)
-//              }
-//            }
-//            else {
-//              (acc, Seq(s))
-//            }
-//          }
-//          val (heads, next) = collectGNs(g, "")
-//          gsBlock.append(s"<h${level + 2}>${heads}</h${level + 2}>\n").append(toHTML(next.toList, level + 1))
         case s: GroupSum  =>
           gsBlock.append(s.easyprint)
       }

@@ -2,14 +2,8 @@ package ch.seidel.kutu.data
 
 import scala.collection.mutable.StringBuilder
 import scala.math.BigDecimal.int2bigDecimal
-import javafx.scene.{control => jfxsc}
-import scalafx.beans.property.ReadOnlyStringWrapper
-import scalafx.scene.control.TableColumn
-import scalafx.scene.control.TableColumn.sfxTableColumn2jfx
-import scalafx.scene.control.TableColumn.CellDataFeatures
-import ch.seidel.kutu.domain._
-import javafx.scene.{control => jfxsc}
 import scala.math.BigDecimal.double2bigDecimal
+import ch.seidel.kutu.domain._
 
 object GroupSection {
   def programGrouper( w: WertungView): ProgrammView = w.wettkampfdisziplin.programm.aggregatorSubHead
@@ -60,6 +54,14 @@ case class GroupSum(override val groupKey: DataObject, wertung: Resultat, overri
   override def easyprint = f"Rang ${rang.easyprint} ${groupKey.easyprint}%40s Punkte ${sum.easyprint}%18s øPunkte ${avg.easyprint}%18s"
 }
 
+sealed trait WKCol {
+  val text: String
+  val prefWidth: Int
+  val styleClass: Seq[String]
+}
+case class WKLeafCol[T](override val text: String, override val prefWidth: Int, override val styleClass: Seq[String], valueMapper: T => String) extends WKCol
+case class WKGroupCol(override val text: String, override val prefWidth: Int, override val styleClass: Seq[String], cols: Seq[WKCol]) extends WKCol
+
 case class GroupLeaf(override val groupKey: DataObject, list: Iterable[WertungView]) extends GroupSection {
   override val sum: Resultat = list.map(_.resultat).reduce(_+_)
   override val avg: Resultat = sum / list.size
@@ -68,51 +70,31 @@ case class GroupLeaf(override val groupKey: DataObject, list: Iterable[WertungVi
 //  lazy val wkPerProgramm = list.filter(_.endnote > 0).groupBy { w => w.wettkampf.programmId }
   lazy val anzahWettkaempfe = list.filter(_.endnote > 0).groupBy { w => w.wettkampf }.size // Anzahl Wettkämpfe
 
-  def buildColumns: List[jfxsc.TableColumn[GroupRow, _]] = {
-    val athletCols: List[jfxsc.TableColumn[GroupRow, _]] = List(
-      new TableColumn[GroupRow, String] {
-        text = "Rang"
-        cellValueFactory = { x =>
-          new ReadOnlyStringWrapper(x.value, "rang", {
-            if(x.value.auszeichnung) f"${x.value.rang.endnote}%3.0f *" else f"${x.value.rang.endnote}%3.0f"
-          })
+  def buildColumns: List[WKCol] = {
+    val athletCols: List[WKCol] = List(
+      WKLeafCol[GroupRow](text = "Rang", prefWidth = 20, styleClass = Seq("data"), valueMapper = gr => {
+        if(gr.auszeichnung) {
+          gr.rang.endnote.intValue() match {
+            case 1 => f"${gr.rang.endnote}%3.0f G"
+            case 2 => f"${gr.rang.endnote}%3.0f S"
+            case 3 => f"${gr.rang.endnote}%3.0f B"
+            case _ => f"${gr.rang.endnote}%3.0f *"
+          }
         }
-        prefWidth = 20
-        styleClass += "data"
-      },
-      new TableColumn[GroupRow, String] {
-        text = "Athlet"
-        cellValueFactory = { x =>
-          new ReadOnlyStringWrapper(x.value, "athlet", {
-            val a = x.value.athlet
-            f"${a.vorname} ${a.name}"
-          })
-        }
-        prefWidth = 90
-        styleClass += "data"
-      },
-      new TableColumn[GroupRow, String] {
-        text = "Jahrgang"
-        cellValueFactory = { x =>
-          new ReadOnlyStringWrapper(x.value, "jahrgang", {
-            val a = x.value.athlet
-            f"${AthletJahrgang(a.gebdat).hg}"
-          })
-        }
-        prefWidth = 90
-        styleClass += "data"
-      },
-      new TableColumn[GroupRow, String] {
-        text = "Verein"
-        cellValueFactory = { x =>
-          new ReadOnlyStringWrapper(x.value, "verein", {
-            val a = x.value.athlet
-            s"${a.verein.map { _.name }.getOrElse("ohne Verein")}"
-          })
-        }
-        prefWidth = 90
-        styleClass += "data"
-      }
+        else f"${gr.rang.endnote}%3.0f"
+      }),
+      WKLeafCol[GroupRow](text = "Athlet", prefWidth = 90, styleClass = Seq("data"), valueMapper = gr => {
+        val a = gr.athlet
+        f"${a.vorname} ${a.name}"
+      }),
+      WKLeafCol[GroupRow](text = "Jahrgang", prefWidth = 90, styleClass = Seq("data"), valueMapper = gr => {
+        val a = gr.athlet
+        f"${AthletJahrgang(a.gebdat).hg}"
+      }),
+      WKLeafCol[GroupRow](text = "Verein", prefWidth = 90, styleClass = Seq("data"), valueMapper = gr => {
+        val a = gr.athlet
+        s"${a.verein.map { _.name }.getOrElse("ohne Verein")}"
+      })
     )
 
     val withDNotes = list.filter(w => w.noteD > 0).nonEmpty
@@ -120,72 +102,51 @@ case class GroupLeaf(override val groupKey: DataObject, list: Iterable[WertungVi
     val divider = if(withDNotes) 1 else groups.head._2.size
 
     val indexer = Iterator.from(0)
-    val disziplinCol: List[jfxsc.TableColumn[GroupRow, _]] =
+    val disziplinCol: List[WKCol] =
       if (groups.keySet.size > 1) {
         // Mehrere "Programme" => pro Gruppenkey eine Summenspalte bilden
         groups.toList.sortBy(gru => gru._1.ord).map { gr =>
           val (grKey, disziplin) = gr
 
-          def colsum(x: CellDataFeatures[GroupRow, String]) =
-            x.value.resultate.find { x =>
+          def colsum(gr: GroupRow) =
+            gr.resultate.find { x =>
               x.title.equals(grKey.easyprint) }.getOrElse(
                   LeafRow(grKey.easyprint, Resultat(0, 0, 0), Resultat(0, 0, 0), false))
 
-          val clDnote = new TableColumn[GroupRow, String] {
-            text = "D"
-            cellValueFactory = { x =>
-              new ReadOnlyStringWrapper(x.value, "dnote", {
-                val cs = colsum(x)
-             		val best = if(cs.sum.noteD > 0 && cs.rang.noteD.toInt == 1) "*" else ""
-                best + cs.sum.formattedD
-              })
+          val clDnote = WKLeafCol[GroupRow](text = "D", prefWidth = 60, styleClass = Seq("hintdata"), valueMapper = gr => {
+            val cs = colsum(gr)
+         		val best = if(cs.sum.noteD > 0 && cs.rang.noteD.toInt == 1) "*" else ""
+            best + cs.sum.formattedD
+          })
+          val clEnote = WKLeafCol[GroupRow](text = if(withDNotes) "E" else "ø Gerät", prefWidth = 60, styleClass = Seq("hintdata"), valueMapper = gr => {
+            val cs = colsum(gr)
+         		val best = if(cs.sum.noteE > 0 && cs.rang.noteE.toInt == 1) "*" else ""
+            if(divider == 1) {
+              best + (cs.sum / divider).formattedE
             }
-            prefWidth = 60
-            styleClass += "hintdata"
-          }
-          val clEnote = new TableColumn[GroupRow, String] {
-            text = if(withDNotes) "E" else "ø Gerät"
-            cellValueFactory = { x =>
-              new ReadOnlyStringWrapper(x.value, "enote", {
-                val cs = colsum(x)
-                val best = if(cs.sum.noteE > 0 && cs.rang.noteE.toInt == 1) "*" else ""
-                if(divider == 1) {
-                  best + (cs.sum / divider).formattedE
-                }
-                else {
-                	best + (cs.sum / divider).formattedEnd
-                }
-              })
+            else {
+            	best + (cs.sum / divider).formattedEnd
             }
-            prefWidth = 60
-            styleClass += "hintdata"
-          }
-          val clEndnote = new TableColumn[GroupRow, String] {
-            text = "Endnote"
-            cellValueFactory = { x =>
-              new ReadOnlyStringWrapper(x.value, "endnote", {
-                val cs = colsum(x)
-                val best = if(cs.sum.endnote > 0 && cs.sum.endnote.toInt == 1) "*" else ""
-                best + cs.sum.formattedEnd
-              })
-            }
-            prefWidth = 60
-            styleClass += "valuedata"
-          }
-          val clRang = new TableColumn[GroupRow, String] {
-            text = "Rang"
-            cellValueFactory = { x =>
-              new ReadOnlyStringWrapper(x.value, "rang", {
-                val cs = colsum(x)
-                cs.rang.formattedEnd
-              })
-            }
-            prefWidth = 60
-            styleClass += "hintdata"
-          }
-          val cl: jfxsc.TableColumn[GroupRow, _] = new TableColumn[GroupRow, String] {
-            val withDNotes = list.filter(w => w.noteD > 0).nonEmpty
-            val cols: Seq[jfxsc.TableColumn[GroupRow, _]] = if(withDNotes) {
+          })
+          val clEndnote = WKLeafCol[GroupRow](text = "Endnote", prefWidth = 60, styleClass = Seq("valuedata"), valueMapper = gr => {
+            val cs = colsum(gr)
+         		val best = if(cs.sum.endnote > 0 && cs.sum.endnote.toInt == 1) "*" else ""
+            best + cs.sum.formattedEnd
+          })
+          val clRang = WKLeafCol[GroupRow](text = "Rang", prefWidth = 60, styleClass = Seq("hintdata"), valueMapper = gr => {
+            val cs = colsum(gr)
+         		cs.rang.formattedEnd
+          })
+          val cl: WKCol = WKGroupCol(
+              text = if(anzahWettkaempfe > 1) {
+                s"ø aus " + grKey.easyprint
+              }
+              else {
+                grKey.easyprint
+              }
+            , prefWidth = 240, styleClass = Seq("hintdata"), cols = {
+              val withDNotes = list.filter(w => w.noteD > 0).nonEmpty
+              if(withDNotes) {
                 Seq(clDnote, clEnote, clEndnote, clRang)
               }
               else if(withENotes) {
@@ -194,166 +155,121 @@ case class GroupLeaf(override val groupKey: DataObject, list: Iterable[WertungVi
               else {
                 Seq(clEndnote, clRang)
               }
-
-            if(anzahWettkaempfe > 1) {
-              text = s"ø aus " + grKey.easyprint
             }
-            else {
-              text = grKey.easyprint
-            }
-            prefWidth = 240
-            columns ++= cols
-          }
+            )
           cl
         }
       }
       else {
         groups.head._2.map { disziplin =>
           val index = indexer.next
-          lazy val clDnote = new TableColumn[GroupRow, String] {
-            text = "D"
-            cellValueFactory = { x =>
-              new ReadOnlyStringWrapper(x.value, "dnote", {
-                if (x.value.resultate.size > index) {
-                  val best = if (x.value.resultate(index).sum.noteD > 0
-                              && x.value.resultate.size > index
-                              && x.value.resultate(index).rang.noteD.toInt == 1)
+          lazy val clDnote = WKLeafCol[GroupRow](text = "D", prefWidth = 60, styleClass = Seq("hintdata"), valueMapper = gr => {
+            if (gr.resultate.size > index) {
+                  val best = if (gr.resultate(index).sum.noteD > 0
+                              && gr.resultate.size > index
+                              && gr.resultate(index).rang.noteD.toInt == 1)
                                   "*"
                              else
                                   ""
-                  best + x.value.resultate(index).sum.formattedD
+                  best + gr.resultate(index).sum.formattedD
                 } else ""
-              })
-            }
-            prefWidth = 60
-            styleClass += "hintdata"
-          }
-          lazy val clEnote = new TableColumn[GroupRow, String] {
-            text = "E"
-            cellValueFactory = { x =>
-              new ReadOnlyStringWrapper(x.value, "enote", {
-                if (x.value.resultate.size > index) {
-                  if(x.value.resultate(index).sum.noteE > 0
-                     && x.value.resultate(index).rang.noteE.toInt == 1)
-                    "*" + x.value.resultate(index).sum.formattedE
-                  else
-                    "" + x.value.resultate(index).sum.formattedE
-                }
-                else ""
-              })
-            }
-            prefWidth = 60
-            styleClass += "hintdata"
-          }
-          lazy val clEndnote = new TableColumn[GroupRow, String] {
-            text = "Endnote"
-            cellValueFactory = { x =>
-              new ReadOnlyStringWrapper(x.value, "endnote", {
-                if (x.value.resultate.size > index) {
-                  val best = if (x.value.resultate(index).sum.endnote > 0
-                              && x.value.resultate.size > index
-                              && x.value.resultate(index).rang.endnote.toInt == 1)
+          })
+          lazy val clEnote = WKLeafCol[GroupRow](text = "E", prefWidth = 60, styleClass = Seq("hintdata"), valueMapper = gr => {
+            if (gr.resultate.size > index) {
+                  val best = if (gr.resultate(index).sum.noteE > 0
+                              && gr.resultate.size > index
+                              && gr.resultate(index).rang.noteE.toInt == 1)
                                   "*"
                              else
                                   ""
-                  best + x.value.resultate(index).sum.formattedEnd
+                  best + gr.resultate(index).sum.formattedE
                 } else ""
-              })
-            }
-            prefWidth = 60
-            styleClass += "valuedata"
-          }
-          lazy val clRang = new TableColumn[GroupRow, String] {
-            text = "Rang"
-            cellValueFactory = { x =>
-              new ReadOnlyStringWrapper(x.value, "rang", {
-                if (x.value.resultate.size > index) f"${x.value.resultate(index).rang.endnote}%3.0f" else ""
-              })
-            }
-            prefWidth = 60
-            styleClass += "hintdata"
-          }
-          val cl: jfxsc.TableColumn[GroupRow, _] = new TableColumn[GroupRow, String] {
-            if(anzahWettkaempfe > 1) {
-              text =  s"ø aus " + disziplin.name
+          })
+          lazy val clEndnote = WKLeafCol[GroupRow](text = "Endnote", prefWidth = 60, styleClass = Seq("valuedata"), valueMapper = gr => {
+            if (gr.resultate.size > index) {
+                  val best = if (gr.resultate(index).sum.endnote > 0
+                              && gr.resultate.size > index
+                              && gr.resultate(index).rang.endnote.toInt == 1)
+                                  "*"
+                             else
+                                  ""
+                  best + gr.resultate(index).sum.formattedEnd
+                } else ""
+          })
+          lazy val clRang = WKLeafCol[GroupRow](text = "Rang", prefWidth = 60, styleClass = Seq("hintdata"), valueMapper = gr => {
+            if (gr.resultate.size > index) f"${gr.resultate(index).rang.endnote}%3.0f" else ""
+          })
+          val cl = WKGroupCol(text = if(anzahWettkaempfe > 1) {
+              s"ø aus " + disziplin.name
             }
             else {
-              text = disziplin.name
+              disziplin.name
             }
-            prefWidth = 240
-            val cols: Seq[jfxsc.TableColumn[GroupRow, _]] = if(withDNotes) {
-                Seq(clDnote, clEnote, clEndnote, clRang)
-              }
-//              else if(withENotes) {
-//                Seq(clEnote, clEndnote, clRang)
-//              }
-              else {
-                Seq(clEndnote, clRang)
-              }
-            columns ++= cols
-          }
+          , prefWidth = 240, styleClass = Seq("valuedata"), cols= {
+            if(withDNotes) {
+              Seq(clDnote, clEnote, clEndnote, clRang)
+            }
+            else {
+              Seq(clEndnote, clRang)
+            }
+          })
           cl
         }.toList
       }
-    val sumColAll: List[jfxsc.TableColumn[GroupRow, _]] = List(
-      new TableColumn[GroupRow, String] {
-        if(anzahWettkaempfe > 1) {
-          text = s"Total ø aus D"
-        }
-        else {
-          text = "Total D"
-        }
-        cellValueFactory = { x => new ReadOnlyStringWrapper(x.value, "punkte", {
-          x.value.sum.formattedD
-        }) }
-        prefWidth = 80
-        styleClass += "hintdata"
-      },
-      new TableColumn[GroupRow, String] {
-        if(anzahWettkaempfe > 1) {
-          if(divider == 1 && withDNotes) {
-            text = s"Total ø aus E"
+    val sumColAll: List[WKCol] = List(
+      WKLeafCol[GroupRow](
+          text = if(anzahWettkaempfe > 1) {
+            s"Total ø aus D"
           }
           else {
-            text = s"ø Gerät"
+            "Total D"
           }
-        }
-        else if(divider == 1 && withDNotes) {
-          text = "Total E"
-        }
-        else {
-          text = "ø Gerät"
-        }
-        cellValueFactory = { x => new ReadOnlyStringWrapper(x.value, "punkte", {
-          if (divider == 1) {
-            if(x.value.sum.noteE > 0
-               && x.value.rang.noteE.toInt == 1)
-              "*" + x.value.sum.formattedE
-            else
-              "" + x.value.sum.formattedE
+          , prefWidth = 80, styleClass = Seq("hintdata"), valueMapper = gr => {
+            gr.sum.formattedD
+          }
+      ),
+      WKLeafCol[GroupRow](
+          text = if(anzahWettkaempfe > 1) {
+            if(divider == 1 && withDNotes) {
+              s"Total ø aus E"
+            }
+            else {
+              s"ø Gerät"
+            }
+          }
+          else if(divider == 1 && withDNotes) {
+            "Total E"
           }
           else {
-            (x.value.sum / divider).formattedEnd
+            "ø Gerät"
           }
-//          x.value.sum.formattedE
-        }) }
-        prefWidth = 80
-        styleClass += "hintdata"
-      },
-      new TableColumn[GroupRow, String] {
-        if(anzahWettkaempfe > 1) {
-          text = s"Total ø Punkte"
-        }
-        else {
-          text = "Total Punkte"
-        }
-        cellValueFactory = { x => new ReadOnlyStringWrapper(x.value, "punkte", x.value.sum.formattedEnd) }
-        prefWidth = 80
-        styleClass += "valuedata"
-      }
+          , prefWidth = 80, styleClass = Seq("hintdata"), valueMapper = gr => {
+            if (divider == 1) {
+              if(gr.sum.noteE > 0
+                 && gr.rang.noteE.toInt == 1)
+                "*" + gr.sum.formattedE
+              else
+                "" + gr.sum.formattedE
+            }
+            else {
+              (gr.sum / divider).formattedEnd
+            }
+          }
+      ),
+      WKLeafCol[GroupRow](
+          text = if(anzahWettkaempfe > 1) {
+            s"Total ø Punkte"
+          }
+          else {
+            "Total Punkte"
+          }
+          , prefWidth = 80, styleClass = Seq("valuedata"), valueMapper = gr => {
+            gr.sum.formattedEnd
+          }
+      )
     )
 
-    val sumCol: List[jfxsc.TableColumn[GroupRow, _]] = List(withDNotes, divider > 1 || withDNotes, true).zip(sumColAll).filter(v => v._1).map(_._2)
+    val sumCol: List[WKCol] = List(withDNotes, divider > 1 || withDNotes, true).zip(sumColAll).filter(v => v._1).map(_._2)
     athletCols ++ disziplinCol ++ sumCol
   }
 
@@ -438,7 +354,7 @@ case class GroupLeaf(override val groupKey: DataObject, list: Iterable[WertungVi
         disziplinResults.map{w =>
           val ww = avgDisziplinRangMap(w._1)(athlet)
           val rang = ww.rang
-          val posproz = 100d * rang.endnote / avgDisziplinRangMap.size
+          //val posproz = 100d * ww.rang.endnote / avgDisziplinRangMap.size
           if(anzahWettkaempfe > 1) {
             LeafRow(w._1.name,
               ww.avg,

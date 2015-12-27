@@ -113,7 +113,7 @@ class TurnerScoreTab(val verein: Option[Verein], override val service: KutuServi
     //val filters = List(fcb1, fcb2, fcb3, fcb4)
     val webView = new WebView
 
-    def buildQuery = {
+    def buildGrouper = {
       groupers.foreach { gr => gr.reset }
       val cblist = combs.filter(cb => !cb.selectionModel.value.isEmpty).map(cb => cb.selectionModel.value.getSelectedItem).filter(x => x != ByNothing)
       if (cblist.isEmpty) {
@@ -124,14 +124,14 @@ class TurnerScoreTab(val verein: Option[Verein], override val service: KutuServi
       }
     }
 
-    def refreshRangliste(query: GroupBy) = {
-      val qry = verein match {
+    def refreshRangliste(grouper: GroupBy) = {
+      val data = verein match {
         case Some(v) => service.selectWertungen(vereinId = Some(v.id))
         case None    => service.selectWertungen()
       }
-      val combination = query.select(qry).toList
+      val groupedData = grouper.select(data).toList
       //query.asInstanceOf[FilterBy].adjustFilter(filters)
-      val ret = toHTML(combination)
+      val ret = toHTML(groupedData)
       webView.engine.loadContent(ret)
       ret
     }
@@ -141,7 +141,7 @@ class TurnerScoreTab(val verein: Option[Verein], override val service: KutuServi
 
     combs.foreach{c =>
       c.onAction = handle {
-        refreshRangliste(buildQuery)
+        refreshRangliste(buildGrouper)
       }
     }
 //    filters.foreach{c =>
@@ -167,7 +167,7 @@ class TurnerScoreTab(val verein: Option[Verein], override val service: KutuServi
           else {
             selectedFile
           }
-          val toSave = refreshRangliste(buildQuery).getBytes("UTF-8")
+          val toSave = refreshRangliste(buildGrouper).getBytes("UTF-8")
           val os = new BufferedOutputStream(new FileOutputStream(selectedFile))
           os.write(toSave)
           os.flush()
@@ -180,7 +180,7 @@ class TurnerScoreTab(val verein: Option[Verein], override val service: KutuServi
     }
     onSelectionChanged = handle {
       if(selected.value) {
-        refreshRangliste(buildQuery)
+        refreshRangliste(buildGrouper)
       }
     }
     content = new BorderPane {
