@@ -5,6 +5,7 @@ import java.text.ParseException
 import java.time.LocalDate
 import java.time.temporal.TemporalField
 import java.time.Period
+import java.sql.Date
 import java.util.concurrent.TimeUnit
 import java.util.Properties
 import java.io.File
@@ -20,6 +21,10 @@ import slick.jdbc.StaticQuery
 import slick.jdbc.SetParameter
 import org.sqlite.SQLiteConfig.Pragma
 import org.sqlite.SQLiteConfig.DatePrecision
+import org.apache.commons.codec.language.bm._
+import org.apache.commons.lang.StringUtils
+import org.apache.commons.codec.language.ColognePhonetic
+
 
 trait KutuService {
 
@@ -662,7 +667,7 @@ trait KutuService {
                     select max(athlet.id) as maxid
                     from athlet
                     where name=${athlete.name} and vorname=${athlete.vorname} and strftime('%Y', gebdat)=strftime('%Y',${athlete.gebdat}) and verein=${athlete.verein}
-           """.as[Long].build.headOption
+           """.as[Long].iterator.toStream.headOption
 
       if (athlete.id == 0) {
         getId match {
@@ -672,13 +677,13 @@ trait KutuService {
                     (id, js_id, geschlecht, name, vorname, gebdat, strasse, plz, ort, verein, activ)
                     values (${id}, ${athlete.js_id}, ${athlete.geschlecht}, ${athlete.name}, ${athlete.vorname}, ${athlete.gebdat}, ${athlete.strasse}, ${athlete.plz}, ${athlete.ort}, ${athlete.verein}, ${athlete.activ})
             """.execute
-            sql"""select * from athlet where id = ${id}""".as[Athlet].build.head
+            sql"""select * from athlet where id = ${id}""".as[Athlet].iterator.toStream.head
           case _ => sqlu"""
                     replace into athlet
                     (js_id, geschlecht, name, vorname, gebdat, strasse, plz, ort, verein, activ)
                     values (${athlete.js_id}, ${athlete.geschlecht}, ${athlete.name}, ${athlete.vorname}, ${athlete.gebdat}, ${athlete.strasse}, ${athlete.plz}, ${athlete.ort}, ${athlete.verein}, ${athlete.activ})
             """.execute
-            sql"""select * from athlet where id = (select max(athlet.id) from athlet)""".as[Athlet].build.head
+            sql"""select * from athlet where id = (select max(athlet.id) from athlet)""".as[Athlet].iterator.toStream.head
         }
       }
       else {
@@ -689,6 +694,73 @@ trait KutuService {
             """.execute
         athlete
       }
+    }
+  }
+
+  def similarFactor(name1: String, name2: String) = {
+    val diff = StringUtils.getLevenshteinDistance(name1, name2)
+    val diffproz = 100 * diff / name1.length()
+    val similar = 100 - diffproz
+    val threshold = 80 //%
+    if(similar >= threshold) {
+      similar
+    }
+    else {
+      0
+    }
+  }
+
+  val bmenc = new BeiderMorseEncoder()
+  bmenc.setRuleType(RuleType.EXACT)
+  bmenc.setMaxPhonemes(5)
+  val bmenc2 = new BeiderMorseEncoder()
+  bmenc2.setRuleType(RuleType.EXACT)
+  bmenc2.setMaxPhonemes(5)
+  bmenc2.setNameType(NameType.SEPHARDIC)
+  val bmenc3 = new BeiderMorseEncoder()
+  bmenc3.setRuleType(RuleType.EXACT)
+  bmenc3.setMaxPhonemes(5)
+  bmenc3.setNameType(NameType.ASHKENAZI)
+  val colenc = new ColognePhonetic()
+
+  def findAthleteLike(athlet: Athlet) = {
+    val bmname = bmenc.encode(athlet.name).split("-") ++ bmenc2.encode(athlet.name).split("-") ++ bmenc3.encode(athlet.name).split("-") ++ colenc.encode(athlet.name)
+    val bmvorname = bmenc.encode(athlet.vorname).split("-") ++ bmenc2.encode(athlet.vorname).split("-") ++ bmenc3.encode(athlet.vorname).split("-") ++ colenc.encode(athlet.vorname)
+
+    def similarAthletFactor(name: String, vorname: String, jahrgang: String) = {
+//      print(athlet.easyprint, name, vorname, jahrgang)
+      val encodedNamen = bmenc.encode(name).split('-')
+      val namenSimilarity = similarFactor(name, athlet.name) + (100 * encodedNamen.filter(bmname.contains(_)).toList.size / encodedNamen.size)
+      val encodedVorNamen = bmenc.encode(vorname).split('-') ++ colenc.encode(vorname)
+      val vorNamenSimilarity = similarFactor(vorname, athlet.vorname) + (100 * encodedVorNamen.filter(bmvorname.contains(_)).toList.size / encodedVorNamen.size)
+      val jahrgangSimilarity = jahrgang.equals(AthletJahrgang(athlet.gebdat).hg)
+      val preret = namenSimilarity > 140 && vorNamenSimilarity > 140
+//      print(f" namenSimilarity: $namenSimilarity vorNamenSimilarity: $vorNamenSimilarity jahrgangSimilarity: $jahrgangSimilarity jahrgang: $jahrgang - ${AthletJahrgang(athlet.gebdat).hg}")
+      if(preret && jahrgangSimilarity) {
+//        println(" factor " + (namenSimilarity + vorNamenSimilarity) * 2)
+        (namenSimilarity + vorNamenSimilarity) * 2
+      }
+      else if(preret) {
+//        println(" factor " + (namenSimilarity + vorNamenSimilarity))
+        namenSimilarity + vorNamenSimilarity
+      }
+      else {
+//        println(" factor 0")
+        0
+      }
+    }
+
+    database withTransaction { implicit session =>
+      val preselect = sql"""
+           select id, name, vorname, gebdat
+           from athlet
+           """.as[(Long, String, String, Option[Date])].iterator.map{x =>
+             val (id, name, vorname, jahr) = x
+             (id, similarAthletFactor(name, vorname, AthletJahrgang(jahr).hg))
+           }.filter(_._2 > 0)
+       val presel2 = preselect.toList.sortBy(_._2).reverse
+       presel2.headOption.flatMap(k =>
+           sql"""select * from athlet where id=${k._1}""".as[Athlet].build.headOption).getOrElse(athlet)
     }
   }
 
