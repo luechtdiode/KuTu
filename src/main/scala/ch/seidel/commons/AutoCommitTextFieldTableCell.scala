@@ -24,8 +24,8 @@ import scalafx.collections.ObservableSet.Change
 import scalafx.collections.ObservableSet.Remove
 
 object AutoCommitTextFieldTableCell {
-
   implicit def sfxAutoCommitTextFieldTableCell2jfx[S, T](cell: AutoCommitTextFieldTableCell[S, T]): jfxscc.TextFieldTableCell[S, T] = if (cell != null) cell.delegate else null
+  protected val PSEUDO_CLASS_FOCUSED = PseudoClass("focused")
 
   def forTableColumn[S](): (TableColumn[S, String] => TableCell[S, String]) =
     (view: TableColumn[S, String]) => jfxscc.TextFieldTableCell.forTableColumn[S]().call(view)
@@ -41,11 +41,12 @@ class AutoCommitTextFieldTableCell[S, T](override val delegate: jfxscc.TextField
   with UpdatableCell[jfxscc.TextFieldTableCell[S, T], T]
   with SFXDelegate[jfxscc.TextFieldTableCell[S, T]] {
 
+  import AutoCommitTextFieldTableCell.PSEUDO_CLASS_FOCUSED
+
   def this(converter: StringConverter[T]) = {
     this(new jfxscc.TextFieldTableCell[S, T](converter))
   }
 
-  val PSEUDO_CLASS_FOCUSED = PseudoClass("focused")
   var textField: Option[TextField] = None
 
   graphic.onChange( textField = if(graphic.value.isInstanceOf[TextField]) Some(graphic.value.asInstanceOf[TextField]) else None )
