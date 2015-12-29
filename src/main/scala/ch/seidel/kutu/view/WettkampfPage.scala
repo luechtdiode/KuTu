@@ -33,6 +33,11 @@ object WettkampfPage {
           text = v._1 + " (" + v._2 + ")"
           closable = false
         }
+//        val title = ""//v._1 + " (" + v._2 + ")"
+//        keepAlive match {
+//          case Some(tab) if(tab.text.equals(title) => tab
+//          case _ =>
+//        }
       }
       (riegenSites ++ progSites).foreach { t => t.asInstanceOf[WettkampfWertungTab].setLazyPane(pane)}
       riegenSites ++ progSites ++ ranglisteSite

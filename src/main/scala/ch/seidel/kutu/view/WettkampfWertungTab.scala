@@ -31,6 +31,7 @@ import scala.io.Source
 import java.text.SimpleDateFormat
 import scalafx.scene.control.SelectionMode
 import scalafx.application.Platform
+import java.io.File
 import java.io.BufferedOutputStream
 import java.io.FileOutputStream
 import java.awt.Desktop
@@ -40,7 +41,8 @@ import scalafx.beans.property.StringProperty.sfxStringProperty2jfx
 import scalafx.collections.ObservableBuffer.observableBuffer2ObservableList
 import scalafx.scene.control.SelectionMode.sfxEnum2jfx
 import scalafx.scene.control.TableView.sfxTableView2jfx
-
+import scalafx.scene.layout.StackPane
+import scalafx.scene.web.WebView
 import ch.seidel.commons._
 import ch.seidel.kutu.renderer.NotenblattToHtmlRenderer
 import ch.seidel.kutu.domain._
@@ -191,6 +193,24 @@ class WettkampfWertungTab(programm: Option[ProgrammView], riege: Option[String],
     }
   }
 
+  import scalafx.print._
+  import scalafx.scene.web.WebEngine
+  def printHtml(html: String, engine: WebEngine, datadirectory: File) {
+    val printer = Printer.defaultPrinter;
+    val pageLayout = printer.createPageLayout(Paper.A4, PageOrientation.Landscape, Printer.MarginType.HardwareMinimum);
+
+    val job = PrinterJob.createPrinterJob;
+    if (job != null) {
+      job.jobSettings.pageLayout = pageLayout
+      if(job.showPrintDialog(null)) {
+        engine.loadContent(html)
+        engine.print(job)
+        engine.userDataDirectory.value = datadirectory
+        job.endJob
+      }
+    }
+  }
+
   override def isPopulated = {
 
     def updateWertungen = {
@@ -208,6 +228,7 @@ class WettkampfWertungTab(programm: Option[ProgrammView], riege: Option[String],
       }
     }
 
+    val webView = new WebView
     var wertungen = updateWertungen
  		val wkModel = ObservableBuffer[IndexedSeq[WertungEditor]](wertungen)
     var editingEditor: Option[WertungEditor] = None
@@ -805,15 +826,16 @@ class WettkampfWertungTab(programm: Option[ProgrammView], riege: Option[String],
             "../logo.jpg"
           }
           val toSave = wettkampf.programm.head.id match {
-            case 20 => toHTMLasGeTu(seriendaten, logofile).getBytes("UTF-8")
-            case n if(n == 11 || n == 31) => toHTMLasKuTu(seriendaten, logofile).getBytes("UTF-8")
-            case _ => toHTMLasATT(seriendaten, logofile).getBytes("UTF-8")
+            case 20 => toHTMLasGeTu(seriendaten, logofile)
+            case n if(n == 11 || n == 31) => toHTMLasKuTu(seriendaten, logofile)
+            case _ => toHTMLasATT(seriendaten, logofile)
           }
           val os = new BufferedOutputStream(new FileOutputStream(file))
-          os.write(toSave)
+          os.write(toSave.getBytes("UTF-8"))
           os.flush()
           os.close()
           Desktop.getDesktop().open(file);
+          //printHtml(toSave, webView.engine)
         }
       }
     }
@@ -1245,7 +1267,10 @@ class WettkampfWertungTab(programm: Option[ProgrammView], riege: Option[String],
       hgrow = Priority.Always
       vgrow = Priority.Always
       top = editorPane
-      center = wkview
+      center = new StackPane {
+        children += webView
+        children += wkview
+      }
     }
 
     val cont = new BorderPane {

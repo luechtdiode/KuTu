@@ -60,7 +60,6 @@ class RanglisteTab(wettkampf: WettkampfView, override val service: KutuService) 
   //          x.athlet }))))
 
   override def isPopulated = {
-    val dummyTableView = new TableView[GroupRow]()
     val text = wettkampf.programm.id match {case 20 => "Kategorie" case _ => "Programm"}
     val groupers = List(ByNothing, ByWettkampfArt, ByWettkampfProgramm(text), ByProgramm(text), ByJahrgang, ByGeschlecht, ByVerein, ByRiege, ByDisziplin)
     val gr1Model = ObservableBuffer[GroupBy](groupers)
