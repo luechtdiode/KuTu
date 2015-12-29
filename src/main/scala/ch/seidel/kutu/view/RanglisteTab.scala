@@ -89,7 +89,7 @@ class RanglisteTab(wettkampf: WettkampfView, override val service: KutuService) 
     val combs = List(cb1, cb2, cb3, cb4)
     val webView = new WebView
 
-    def buildQuery = {
+    def buildGrouper = {
       groupers.foreach { gr => gr.reset }
       val cblist = combs.filter(cb => !cb.selectionModel.value.isEmpty).map(cb => cb.selectionModel.value.getSelectedItem).filter(x => x != ByNothing)
       if (cblist.isEmpty) {
@@ -112,19 +112,26 @@ class RanglisteTab(wettkampf: WettkampfView, override val service: KutuService) 
 
     combs.foreach{c =>
       c.onAction = handle {
-        refreshRangliste(buildQuery)
+        refreshRangliste(buildGrouper)
       }
     }
 
     val btnSave = new Button {
       text = "Speichern als ..."
       onAction = handle {
-        val fileChooser = new FileChooser()
-        fileChooser.initialDirectory = new java.io.File(System.getProperty("user.home") + "/documents")
-        fileChooser.setTitle("Open Resource File")
-        fileChooser.getExtensionFilters().addAll(
+          val filename = "Rangliste_" + wettkampf.easyprint.replace(" ", "_") + ".html"
+          val dir = new java.io.File(service.homedir + "/" + wettkampf.easyprint.replace(" ", "_"))
+          if(!dir.exists()) {
+            dir.mkdirs();
+          }
+          val fileChooser = new FileChooser() {
+          initialDirectory = dir
+          title = "Rangliste zum drucken speichern ..."
+          extensionFilters.addAll(
                  new ExtensionFilter("Web-Datei", "*.html"),
                  new ExtensionFilter("All Files", "*.*"))
+          initialFileName = filename
+        }
         val selectedFile = fileChooser.showSaveDialog(KuTuApp.getStage())
         if (selectedFile != null) {
           val file = if(!selectedFile.getName.endsWith(".html") && !selectedFile.getName.endsWith(".htm")) {
@@ -133,7 +140,13 @@ class RanglisteTab(wettkampf: WettkampfView, override val service: KutuService) 
           else {
             selectedFile
           }
-          val toSave = refreshRangliste(buildQuery).getBytes("UTF-8")
+//          val logofile = if(new java.io.File(dir.getPath + "/logo.jpg").exists()) {
+//            "logo.jpg"
+//          }
+//          else {
+//            "../logo.jpg"
+//          }
+          val toSave = refreshRangliste(buildGrouper).getBytes("UTF-8")
           val os = new BufferedOutputStream(new FileOutputStream(selectedFile))
           os.write(toSave)
           os.flush()
@@ -141,12 +154,11 @@ class RanglisteTab(wettkampf: WettkampfView, override val service: KutuService) 
           Desktop.getDesktop().open(selectedFile);
 //          new ProcessBuilder().command("explorer.exe", selectedFile.getAbsolutePath).start()
         }
-
       }
     }
     onSelectionChanged = handle {
       if(selected.value) {
-        refreshRangliste(buildQuery)
+        refreshRangliste(buildGrouper)
       }
     }
     content = new BorderPane {

@@ -190,7 +190,25 @@ object KuTuApp extends JFXApp with KutuService {
   def makeWettkampfExportierenMenu(p: WettkampfView): MenuItem = {
     makeMenuAction("Wettkampf exportieren") {(caption, action) =>
       implicit val e = action
-      ResourceExchanger.exportWettkampf(p.toWettkampf, homedir + "/" + p.titel.replace(" ", "_") + ".zip");
+      val fileChooser = new FileChooser {
+         title = "Wettkampf File exportieren"
+         initialDirectory = new java.io.File(homedir)
+         extensionFilters ++= Seq(
+           new ExtensionFilter("Zip-Files", "*.zip"),
+           new ExtensionFilter("All Files", "*.*")
+         )
+         initialFileName.value = p.titel.replace(" ", "_") + ".zip"
+      }
+      val selectedFile = fileChooser.showSaveDialog(stage)
+      if (selectedFile != null) {
+        val file = if(!selectedFile.getName.endsWith(".zip")) {
+          new java.io.File(selectedFile.getAbsolutePath + ".zip")
+        }
+        else {
+          selectedFile
+        }
+        ResourceExchanger.exportWettkampf(p.toWettkampf, file.getPath);
+      }
     }
   }
 
@@ -377,6 +395,34 @@ object KuTuApp extends JFXApp with KutuService {
     })
   }
 
+  def makeVereinUmbenennenMenu(v: Verein) = makeMenuAction("Verein umbenennen") {(caption, action) =>
+    implicit val e = action
+    val txtVereinsname = new TextField {
+    	prefWidth = 500
+    			promptText = "Neuer Vereinsname"
+    			text = v.name
+    }
+    PageDisplayer.showInDialog(caption, new DisplayablePage() {
+      def getPage: Node = {
+        new BorderPane {
+          hgrow = Priority.Always
+          vgrow = Priority.Always
+          center = new VBox {
+            children.addAll(
+                new Label(txtVereinsname.promptText.value), txtVereinsname
+            )
+          }
+        }
+      }
+    },
+    new Button("OK") {
+      onAction = handleAction {implicit e: ActionEvent =>
+        updateVerein(v.copy(name = txtVereinsname.text.value))
+        updateTree
+      }
+    })
+  }
+
   controlsView.selectionModel().selectionMode = SelectionMode.SINGLE
   controlsView.selectionModel().selectedItem.onChange { (_, _, newItem) =>
     if(newItem != null) {
@@ -402,6 +448,7 @@ object KuTuApp extends JFXApp with KutuService {
                 }
                 case Some(KuTuAppThumbNail(v: Verein, _, newItem)) =>
                   controlsView.contextMenu = new ContextMenu() {
+                    items += makeVereinUmbenennenMenu(v)
                     items += makeVereinLoeschenMenu(v)
                   }
                 case _       => controlsView.contextMenu = new ContextMenu()

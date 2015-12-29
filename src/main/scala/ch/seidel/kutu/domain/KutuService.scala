@@ -536,6 +536,15 @@ trait KutuService {
          """.as[Long].build.head
     }
   }
+
+  def updateVerein(verein: Verein) {
+    database withTransaction { implicit session: Session =>
+      sqlu"""       update verein
+                    set name = ${verein.name}
+                    where id = ${verein.id}
+          """.execute
+    }
+  }
   def deleteVerein(vereinid: Long) {
     database withTransaction { implicit session: Session =>
       sqlu"""       delete from wertung where athlet_id in (select id from athlet where verein=${vereinid})""".execute

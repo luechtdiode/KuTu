@@ -153,12 +153,14 @@ class TurnerScoreTab(val verein: Option[Verein], override val service: KutuServi
     val btnSave = new Button {
       text = "Speichern als ..."
       onAction = handle {
-        val fileChooser = new FileChooser()
-        fileChooser.initialDirectory = new java.io.File(service.homedir)
-        fileChooser.setTitle("Open Resource File")
-        fileChooser.getExtensionFilters().addAll(
+        val fileChooser = new FileChooser() {
+          initialDirectory = new java.io.File(service.homedir)
+          title = "Rangliste zum drucken speichern ..."
+          extensionFilters.addAll(
                  new ExtensionFilter("Web-Datei", "*.html"),
                  new ExtensionFilter("All Files", "*.*"))
+//          initialFileName = p.titel.replace(" ", "_") + ".zip"
+        }
         val selectedFile = fileChooser.showSaveDialog(KuTuApp.getStage())
         if (selectedFile != null) {
           val file = if(!selectedFile.getName.endsWith(".html") && !selectedFile.getName.endsWith(".htm")) {

@@ -10,6 +10,7 @@ import scalafx.scene.image.{Image, ImageView}
 import scalafx.scene.layout.{Region, TilePane}
 import scalafx.scene.control.TreeItem.sfxTreeItemToJfx
 import ch.seidel.kutu.domain._
+import scalafx.scene.Node
 
 object AppNavigationModel  {
   def create(service: KutuService): KuTuAppTree = new KuTuAppTree(service)
@@ -35,8 +36,8 @@ case class KuTuAppThumbNail(context: Any, button: Button, item: TreeItem[String]
  */
 class KuTuAppTree(service: KutuService) {
 
-  val thumbnails: Map[String, List[KuTuAppThumbNail]] = createThumbnails()
-	val tree: Map[String, List[TreeItem[String]]] = createTree()
+  val thumbnails: Map[String, (List[KuTuAppThumbNail], Boolean, Int)] = createThumbnails()
+	val tree: Map[String, (List[TreeItem[String]], Boolean, Int)] = createTree()
 
   def getService = service
 
@@ -44,9 +45,9 @@ class KuTuAppTree(service: KutuService) {
    * build a map by iterating through the examples folder.
    * This is used in UI
    */
-  private def createTree(): Map[String, List[TreeItem[String]]] = {
+  private def createTree(): Map[String, (List[TreeItem[String]], Boolean, Int)] = {
     thumbnails map {group =>
-      group._1 -> group._2.map(_.item)
+      group._1 -> (group._2._1.map(_.item), group._2._2, group._2._3)
     }
   }
 
@@ -71,7 +72,9 @@ class KuTuAppTree(service: KutuService) {
       }
       val vimage = new Image(vinputStream)
       def thmb(context: Any, path: String, node: String) = {
-        val thmbitem = new TreeItem[String](node)
+        val thmbitem = new TreeItem[String](node) {
+          expanded = false
+        }
         val img = new ImageView {
           context match {
             case _:Verein        => image = vimage
@@ -91,13 +94,12 @@ class KuTuAppTree(service: KutuService) {
         KuTuAppThumbNail(context, button, thmbitem)
       }
       TreeMap(
-          "Athleten" -> service.selectVereine.map { a =>
-              thmb(a, "Athleten", s"${a.name}")
-            },
-          "Wettkämpfe" -> service.listWettkaempfeView.map { wk =>
+          "Wettkämpfe" -> (service.listWettkaempfeView.map { wk =>
               thmb(wk, "Wettkämpfe", s"${wk.titel} ${wk.datum}")
-            }.toList
-//            ,
+            }.toList, true, 1),
+            "Athleten" -> (service.selectVereine.map { a =>
+              thmb(a, "Athleten", s"${a.name}")
+            }, false, 2)//,
 //          "Analysen" -> service.selectWertungen().map { d =>
 //              thmb("Analysen", s"d.wettkampfdisziplin.disziplin.name}%s")
 //            }.toList
@@ -108,29 +110,29 @@ class KuTuAppTree(service: KutuService) {
     }
   }
 
-  def getLeaves(keyName: String) = tree(keyName)
+  def getLeaves(keyName: String) = tree(keyName)._1
 
   /**
    * returns the entire tree
    */
-  def getTree: List[TreeItem[String]] = tree.map {
-    case (name, items) => new TreeItem[String](name) {
-      expanded = true
+  def getTree: List[TreeItem[String]] = tree.toList.sortBy(_._2._3).map {
+    case (name, (items, exp, ord)) => new TreeItem[String](name) {
+      expanded = exp
       children = items
     }
   }.toList
 
-  def getThumbs(keyName: String) = thumbnails.getOrElse(keyName, Seq.empty)
+  def getThumbs(keyName: String) = thumbnails.getOrElse(keyName, (List[KuTuAppThumbNail](), false, 0))._1
 
   def getDashThumbsCtrl =
-    thumbnails.flatMap {
-      case (heading, ts) => Seq(createCategoryLabel(heading), createTiles(ts))
-    }
+    thumbnails.map {
+      case (heading, ts) => (Seq[Node](createCategoryLabel(heading), createTiles(ts._1)), ts._3)
+    }.toList.sortBy(_._2).flatMap(_._1)
 
   def getDashThumb(ctrlGrpName: String) =
     Seq(
       createCategoryLabel(ctrlGrpName),
-      createTiles(getThumbs(ctrlGrpName).toList)
+      createTiles(getThumbs(ctrlGrpName))
     )
 
   private def createCategoryLabel(value: String) =
