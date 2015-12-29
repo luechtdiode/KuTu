@@ -102,7 +102,8 @@ object ResourceExchanger extends KutuService {
         noteD = BigDecimal.valueOf(fields(wertungenHeader("noteD"))),
         noteE = BigDecimal.valueOf(fields(wertungenHeader("noteE"))),
         endnote = BigDecimal.valueOf(fields(wertungenHeader("endnote"))),
-        riege = if(fields(wertungenHeader("riege")).length > 0) Some(fields(wertungenHeader("riege"))) else None
+        riege = if(fields(wertungenHeader("riege")).length > 0) Some(fields(wertungenHeader("riege"))) else None,
+        riege2 = if(fields(wertungenHeader("riege2")).length > 0) Some(fields(wertungenHeader("riege2"))) else None
       )
       updateOrinsertWertung(w)
     }

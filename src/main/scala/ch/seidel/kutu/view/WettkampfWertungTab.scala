@@ -77,7 +77,8 @@ case class WertungEditor(init: WertungView) {
     scala.math.BigDecimal(noteD.value),
     scala.math.BigDecimal(noteE.value),
     scala.math.BigDecimal(endnote.value),
-    init.riege)
+    init.riege,
+    init.riege2)
 }
 
 trait TCAccess {
@@ -353,6 +354,42 @@ class WettkampfWertungTab(programm: Option[ProgrammView], riege: Option[String],
         onEditCancel = (evt: CellEditEvent[IndexedSeq[WertungEditor], String]) => {
 //          println(evt)
         }
+      },
+      new WKTableColumn[String](-1) {
+        text = "Riege 2"
+        styleClass += "table-cell-with-value"
+        cellFactory = { x =>
+          new AutoCommitTextFieldTableCell[IndexedSeq[WertungEditor], String](new DefaultStringConverter())
+        }
+        cellValueFactory = { x =>
+          new ReadOnlyStringWrapper(x.value, "riege2", {
+            s"${x.value.head.init.riege2.getOrElse("keine Einteilung")}"
+          })
+        }
+//        delegate.impl_setReorderable(false)
+        prefWidth = 100
+        editable = true
+        onEditCommit = (evt: CellEditEvent[IndexedSeq[WertungEditor], String]) => {
+        	val rowIndex = wkModel.indexOf(evt.rowValue)
+          for(disciplin <- evt.rowValue) {
+            wkModel.update(rowIndex,
+                evt.rowValue.updated(
+                    evt.rowValue.indexOf(disciplin),
+                    WertungEditor(
+                        service.updateWertung(
+                            disciplin.commit.copy(riege2 = if(evt.newValue.trim.isEmpty()) None else Some(evt.newValue))
+                            )
+                        )
+                    )
+                )
+          }
+          refreshLazyPane()
+          updateEditorPane
+          evt.tableView.requestFocus()
+        }
+        onEditCancel = (evt: CellEditEvent[IndexedSeq[WertungEditor], String]) => {
+//          println(evt)
+        }
       })
 
     val sumCol: List[jfxsc.TableColumn[IndexedSeq[WertungEditor], _]] = List(
@@ -402,6 +439,9 @@ class WettkampfWertungTab(programm: Option[ProgrammView], riege: Option[String],
               true
             }
             else if(athlet(0).init.riege match {case Some(r) => r.toUpperCase().contains(search) case None => false}) {
+              true
+            }
+            else if(athlet(0).init.riege2 match {case Some(r) => r.toUpperCase().contains(search) case None => false}) {
               true
             }
             else {
@@ -495,7 +535,7 @@ class WettkampfWertungTab(programm: Option[ProgrammView], riege: Option[String],
                             strasse = "",
                             plz = "",
                             ort = "",
-                            verein = None, //Some(cbVereine.selectionModel.value.selectedItem.value.id),
+                            verein = None,
                             activ = true
                             )
                         val candidate = service.findAthleteLike(parsed)
@@ -678,8 +718,8 @@ class WettkampfWertungTab(programm: Option[ProgrammView], riege: Option[String],
         }
       })
     }
-    val generateRiegenblaetter = new Button with NotenblattToHtmlRenderer {
-      text = "Riegenblätter erstellen"
+    val generateNotenblaetter = new Button with NotenblattToHtmlRenderer {
+      text = "Notenblätter erstellen"
       minWidth = 75
 
       onAction = (event: ActionEvent) => {
@@ -722,8 +762,8 @@ class WettkampfWertungTab(programm: Option[ProgrammView], riege: Option[String],
             }.map(_.init.wettkampfdisziplin.disziplin.easyprint)
             )
           }
-          val filename = "Notenblatt_" + wettkampf.titel.replace(" ", "_") + programm.map("_Programm_" + _.easyprint.replace(" ", "_")).getOrElse("") + riege.map("_Riege_" + _.replace(" ", "_")).getOrElse("") + ".html"
-          val file = new java.io.File(System.getProperty("user.home") + "/" + filename)
+          val filename = "Notenblatt_" + wettkampf.easyprint.replace(" ", "_") + programm.map("_Programm_" + _.easyprint.replace(" ", "_")).getOrElse("") + riege.map("_Riege_" + _.replace(" ", "_")).getOrElse("") + ".html"
+          val file = new java.io.File(service.homedir + "/" + filename)
           val toSave = wettkampf.programm.head.id match {
             case 20 => toHTMLasGeTu(seriendaten).getBytes("UTF-8")
             case n if(n == 11 || n == 31) => toHTMLasKuTu(seriendaten).getBytes("UTF-8")
@@ -786,7 +826,7 @@ class WettkampfWertungTab(programm: Option[ProgrammView], riege: Option[String],
           })
         }
       }
-      List[Button](generateRiegenblaetter, riegeRenameButton, riegenRemoveButton)
+      List[Button](generateNotenblaetter, riegeRenameButton, riegenRemoveButton)
       case Some(progrm) =>
       val addButton = new Button {
         text = "Athlet hinzufügen"
@@ -990,7 +1030,7 @@ class WettkampfWertungTab(programm: Option[ProgrammView], riege: Option[String],
       removeButton.disable <== when(wkview.selectionModel.value.selectedItemProperty.isNull()) choose true otherwise false
       riegensuggestButton.disable <== when(wkview.selectionModel.value.selectedItemProperty.isNull()) choose true otherwise false
 
-      List(addButton, pasteFromExcel, moveToOtherProgramButton, generateRiegenblaetter, removeButton, riegensuggestButton).filter(btn => !btn.text.value.equals("."))
+      List(addButton, pasteFromExcel, moveToOtherProgramButton, generateNotenblaetter, removeButton, riegensuggestButton).filter(btn => !btn.text.value.equals("."))
     }
 
     wkview.selectionModel.value.setCellSelectionEnabled(true)

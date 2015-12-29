@@ -154,7 +154,7 @@ class TurnerScoreTab(val verein: Option[Verein], override val service: KutuServi
       text = "Speichern als ..."
       onAction = handle {
         val fileChooser = new FileChooser()
-        fileChooser.initialDirectory = new java.io.File(System.getProperty("user.home") + "/documents")
+        fileChooser.initialDirectory = new java.io.File(service.homedir)
         fileChooser.setTitle("Open Resource File")
         fileChooser.getExtensionFilters().addAll(
                  new ExtensionFilter("Web-Datei", "*.html"),

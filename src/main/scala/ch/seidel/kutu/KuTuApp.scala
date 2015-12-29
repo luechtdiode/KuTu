@@ -185,7 +185,7 @@ object KuTuApp extends JFXApp with KutuService {
   def makeWettkampfExportierenMenu(p: WettkampfView): MenuItem = {
     makeMenuAction("Wettkampf exportieren") {(caption, action) =>
       implicit val e = action
-      ResourceExchanger.exportWettkampf(p.toWettkampf, System.getProperty("user.home") + "/" + p.titel.replace(" ", "_") + ".zip");
+      ResourceExchanger.exportWettkampf(p.toWettkampf, homedir + "/" + p.titel.replace(" ", "_") + ".zip");
     }
   }
 
@@ -291,7 +291,7 @@ object KuTuApp extends JFXApp with KutuService {
       implicit val e = action
       val fileChooser = new FileChooser {
          title = "Wettkampf File importieren"
-         initialDirectory = new java.io.File(System.getProperty("user.home"))
+         initialDirectory = new java.io.File(homedir)
          extensionFilters ++= Seq(
            new ExtensionFilter("Zip-Files", "*.zip"),
 //           new ExtensionFilter("Image Files", Seq("*.png", "*.jpg", "*.gif")),

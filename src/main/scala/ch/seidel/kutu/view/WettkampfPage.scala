@@ -24,12 +24,12 @@ object WettkampfPage {
       }
     )
     def refresher(pane: LazyTabPane) = {
-      val riegen = service.listRiegenZuWettkampf(wettkampf.id).sorted
+      val riegen = service.listRiegenZuWettkampf(wettkampf.id).sortBy(r => r._1)
       val riegenSites: Seq[Tab] = riegen map {v =>
-        new WettkampfWertungTab(None, Some(v), wettkampf, service, {
-          service.listAthletenWertungenZuRiege(progs map (p => p.id), wettkampf.id, v)
+        new WettkampfWertungTab(None, Some(v._1), wettkampf, service, {
+          service.listAthletenWertungenZuRiege(progs map (p => p.id), wettkampf.id, v._1)
           }) {
-          text = v
+          text = v._1 + " (" + v._2 + ")"
           closable = false
         }
       }
