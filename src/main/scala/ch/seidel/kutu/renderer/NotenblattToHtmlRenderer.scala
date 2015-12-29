@@ -107,14 +107,14 @@ trait NotenblattToHtmlRenderer {
     </html>
   """
 
-  private def notenblattForGeTu(kandidat: Kandidat) = {
+  private def notenblattForGeTu(kandidat: Kandidat, logo: String) = {
     val d = kandidat.diszipline.zip(Range(1, kandidat.diszipline.size+1)).map{dis =>
       s"""<tr class="geraeteRow"><td class="large">${dis._2}. ${dis._1}</td><td>&nbsp;</td><td>&nbsp;</td><td class="totalCol">&nbsp;</td></tr>"""
     }
     val dt = d.updated(d.size-1, d.last.replace("geraeteRow", "totalRow")).mkString("", "\n", "\n")
     s"""<div class=notenblatt>
       <div class=headline>
-        <img class=logo src="logo.jpg" title="Logo"/>
+        <img class=logo src="${logo}" title="Logo"/>
         <div class=programm>${kandidat.programm}</br><div class=geschlecht>${kandidat.geschlecht}</div></div>
       </div>
       <h1>${kandidat.wettkampfTitel}</h1>
@@ -136,7 +136,7 @@ trait NotenblattToHtmlRenderer {
     """
   }
 
-  private def notenblattForATT(kandidat: Kandidat) = {
+  private def notenblattForATT(kandidat: Kandidat, logo: String) = {
     val d = kandidat.diszipline.zip(Range(1, kandidat.diszipline.size+1)).map{dis =>
       s"""<tr class="geraeteRow"><td class="large">${dis._2}. ${dis._1}</td><td class="totalCol">&nbsp;</td></tr>"""
     }
@@ -160,7 +160,7 @@ trait NotenblattToHtmlRenderer {
   """
   }
 
-  private def notenblattForKuTu(kandidat: Kandidat) = {
+  private def notenblattForKuTu(kandidat: Kandidat, logo: String) = {
     val d = kandidat.diszipline.zip(Range(1, kandidat.diszipline.size+1)).map{dis =>
       s"""<tr class="geraeteRow"><td class="large">${dis._2}. ${dis._1}</td><td>&nbsp;</td><td>&nbsp;</td><td class="totalCol">&nbsp;</td></tr>"""
     }
@@ -186,20 +186,20 @@ trait NotenblattToHtmlRenderer {
     """
   }
 
-  def toHTMLasGeTu(kandidaten: Seq[Kandidat]): String = {
-    val blaetter = kandidaten.map(notenblattForGeTu(_))
+  def toHTMLasGeTu(kandidaten: Seq[Kandidat], logo: String): String = {
+    val blaetter = kandidaten.map(notenblattForGeTu(_, logo))
     val pages = blaetter.sliding(2, 2).map { _.mkString("</li><li>") }.mkString("</li></ul><ul><li>")
     intro + pages + outro
   }
 
-  def toHTMLasKuTu(kandidaten: Seq[Kandidat]): String = {
-    val blaetter = kandidaten.map(notenblattForKuTu(_))
+  def toHTMLasKuTu(kandidaten: Seq[Kandidat], logo: String): String = {
+    val blaetter = kandidaten.map(notenblattForKuTu(_, logo))
     val pages = blaetter.sliding(2, 2).map { _.mkString("</li><li>") }.mkString("</li></ul><ul><li>")
     intro + pages + outro
   }
 
-  def toHTMLasATT(kandidaten: Seq[Kandidat]): String = {
-    val blaetter = kandidaten.map(notenblattForATT(_))
+  def toHTMLasATT(kandidaten: Seq[Kandidat], logo: String): String = {
+    val blaetter = kandidaten.map(notenblattForATT(_, logo))
     val pages = blaetter.sliding(2, 2).map { _.mkString("</li><li>") }.mkString("</li></ul><ul><li>")
     intro + pages + outro
   }

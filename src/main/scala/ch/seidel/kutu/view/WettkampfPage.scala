@@ -4,6 +4,7 @@ import scalafx.scene.control.Tab
 import ch.seidel.kutu.domain._
 import ch.seidel.commons.DisplayablePage
 import ch.seidel.commons.LazyTabPane
+import ch.seidel.commons.TabWithService
 
 object WettkampfPage {
 
@@ -47,7 +48,7 @@ class WettkampfPage(tabPane: LazyTabPane)
   def getPage = {
     import WettkampfPage._
 
-    tabPane.init
+    tabPane.init()
     tabPane
   }
 }

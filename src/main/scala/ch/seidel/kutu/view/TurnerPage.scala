@@ -354,7 +354,7 @@ class TurnerPage(tabPane: LazyTabPane) extends DisplayablePage {
   def getPage = {
     import WettkampfPage._
     TurnerPage.turnerAnalyzers = Map[Long, TurnerAnalyzer]()
-    tabPane.init
+    tabPane.init()
     tabPane
   }
 }

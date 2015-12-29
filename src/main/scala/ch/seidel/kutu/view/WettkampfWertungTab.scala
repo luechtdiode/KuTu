@@ -109,6 +109,12 @@ class WettkampfWertungTab(programm: Option[ProgrammView], riege: Option[String],
       case _=>
     }
   }
+  def refreshOtherLazyPanes() {
+    lazypane match {
+      case Some(pane) => pane.refreshTabs()
+      case _=>
+    }
+  }
 
   case class EditorPane(wkview: TableView[IndexedSeq[WertungEditor]]) extends HBox {
     var index = -1
@@ -130,6 +136,11 @@ class WettkampfWertungTab(programm: Option[ProgrammView], riege: Option[String],
         selected = newSelection
         adjust
       }
+      else if(newSelection == null) {
+        selected = null
+        index = -1
+        adjust
+      }
     })
 
     wkview.focusModel.value.focusedCell.onChange {(focusModel, oldTablePos, newTablePos) =>
@@ -143,7 +154,19 @@ class WettkampfWertungTab(programm: Option[ProgrammView], riege: Option[String],
               index = selectedIndex
               adjust
             }
+            else if(selectedIndex < 0) {
+              index = -1
+              adjust
+            }
           }
+          else {
+            index = -1
+            adjust
+          }
+        }
+        else {
+          index = -1
+          adjust
         }
       }
     }
@@ -156,6 +179,10 @@ class WettkampfWertungTab(programm: Option[ProgrammView], riege: Option[String],
       if(selected != null && index > -1 && index < selected.size) {
         lblAthlet.text.value = selected(index).init.athlet.easyprint
         lblDisciplin.text.value = " : " + selected(index).init.wettkampfdisziplin.easyprint
+      }
+      else if(selected != null && selected.size > 0) {
+        lblAthlet.text.value = selected(0).init.athlet.easyprint
+        lblDisciplin.text.value = " : " + Seq(selected(0).init.riege, selected(0).init.riege2).map(_.getOrElse("")).filter { _.length() > 0 }.mkString(", ")
       }
       else {
         lblAthlet.text.value = ""
@@ -347,7 +374,7 @@ class WettkampfWertungTab(programm: Option[ProgrammView], riege: Option[String],
                     )
                 )
           }
-          refreshLazyPane()
+          refreshOtherLazyPanes()
           updateEditorPane
           evt.tableView.requestFocus()
         }
@@ -383,7 +410,7 @@ class WettkampfWertungTab(programm: Option[ProgrammView], riege: Option[String],
                     )
                 )
           }
-          refreshLazyPane()
+          refreshOtherLazyPanes()
           updateEditorPane
           evt.tableView.requestFocus()
         }
@@ -726,10 +753,13 @@ class WettkampfWertungTab(programm: Option[ProgrammView], riege: Option[String],
         if (wkModel.nonEmpty) {
           val driver = wkModel.toSeq
           val programme = driver.flatten.map(x => x.init.wettkampfdisziplin.programm).foldLeft(Seq[ProgrammView]()){(acc, pgm) =>
-              if(!acc.exists { x => x.id == pgm.id }) {
-                println(pgm)
-                acc :+ pgm } else { acc }
+            if(!acc.exists { x => x.id == pgm.id }) {
+              acc :+ pgm
             }
+            else {
+              acc
+            }
+          }
           println(programme)
           val seriendaten = for {
             programm <- programme
@@ -763,11 +793,21 @@ class WettkampfWertungTab(programm: Option[ProgrammView], riege: Option[String],
             )
           }
           val filename = "Notenblatt_" + wettkampf.easyprint.replace(" ", "_") + programm.map("_Programm_" + _.easyprint.replace(" ", "_")).getOrElse("") + riege.map("_Riege_" + _.replace(" ", "_")).getOrElse("") + ".html"
-          val file = new java.io.File(service.homedir + "/" + filename)
+          val dir = new java.io.File(service.homedir + "/" + wettkampf.easyprint.replace(" ", "_"))
+          if(!dir.exists()) {
+            dir.mkdirs();
+          }
+          val file = new java.io.File(dir.getPath + "/" + filename)
+          val logofile = if(new java.io.File(dir.getPath + "/logo.jpg").exists()) {
+            "logo.jpg"
+          }
+          else {
+            "../logo.jpg"
+          }
           val toSave = wettkampf.programm.head.id match {
-            case 20 => toHTMLasGeTu(seriendaten).getBytes("UTF-8")
-            case n if(n == 11 || n == 31) => toHTMLasKuTu(seriendaten).getBytes("UTF-8")
-            case _ => toHTMLasATT(seriendaten).getBytes("UTF-8")
+            case 20 => toHTMLasGeTu(seriendaten, logofile).getBytes("UTF-8")
+            case n if(n == 11 || n == 31) => toHTMLasKuTu(seriendaten, logofile).getBytes("UTF-8")
+            case _ => toHTMLasATT(seriendaten, logofile).getBytes("UTF-8")
           }
           val os = new BufferedOutputStream(new FileOutputStream(file))
           os.write(toSave)
@@ -789,6 +829,13 @@ class WettkampfWertungTab(programm: Option[ProgrammView], riege: Option[String],
             w <- wl
           } {
             service.updateWertung(w.commit.copy(riege = None))
+          }
+          for{
+            wl <- wertungen
+            if(wl.head.init.riege2.equals(riege))
+            w <- wl
+          } {
+            service.updateWertung(w.commit.copy(riege2 = None))
           }
           refreshLazyPane()
           reloadData()
@@ -819,6 +866,13 @@ class WettkampfWertungTab(programm: Option[ProgrammView], riege: Option[String],
                 w <- wl
               } {
                 service.updateWertung(w.commit.copy(riege = Some(txtRiegenName.text.value)))
+              }
+              for{
+                wl <- wertungen
+                if(wl.head.init.riege2.equals(riege))
+                w <- wl
+              } {
+                service.updateWertung(w.commit.copy(riege2 = Some(txtRiegenName.text.value)))
               }
               refreshLazyPane()
               reloadData()
@@ -1060,10 +1114,41 @@ class WettkampfWertungTab(programm: Option[ProgrammView], riege: Option[String],
     clearButton.disable <== when(wkview.selectionModel.value.selectedItemProperty.isNull()) choose true otherwise false
 
     wkview.filterEvent(KeyEvent.KeyPressed) { (ke: KeyEvent) =>
+      val selectionstore = wkview.selectionModel.value.getSelectedCells
+      val coords = for(ts <- selectionstore) yield {
+        if(ts.getColumn > -1 && ts.getTableColumn.getParentColumn != null)
+          //(ts.getRow, wkview.columns.indexOf(ts.getTableColumn.getParentColumn))
+          (ts.getRow, (3 + editorPane.index) * -100)
+        else
+          (ts.getRow, ts.getColumn)
+      }
+
+      def restoreSelection = try {
+        for(ts <- coords) {
+          if(ts._2 < -100) {
+            val toSelectParent = wkview.columns(ts._2 / -100);
+            val firstVisible = toSelectParent.getColumns.find(p => p.width.value > 50d).getOrElse(toSelectParent.columns(0))
+            wkview.selectionModel.value.select(ts._1, firstVisible)
+            wkview.scrollToColumn(firstVisible)
+          }
+          else {
+            wkview.selectionModel.value.select(ts._1, wkview.columns(ts._2))
+            wkview.scrollToColumn(wkview.columns(ts._2))
+          }
+          wkview.scrollTo(ts._1)
+
+        }
+      }
+      catch {
+        case e: Exception =>
+      }
+
       ke.code match {
         case KeyCode.TAB if(!ke.controlDown) =>
+
           val action = new Runnable() {
             override def run = {
+              restoreSelection
               if(ke.shiftDown)
                 wkview.selectionModel.value.selectPrevious()
               else
@@ -1083,6 +1168,7 @@ class WettkampfWertungTab(programm: Option[ProgrammView], riege: Option[String],
         case KeyCode.ENTER /*if(ke.controlDown || wkview.delegate.getEditingCell() != null)*/ =>
           val action = new Runnable() {
             override def run = {
+              restoreSelection
               if(ke.shiftDown) {
                 val index = wkview.selectionModel.value.getSelectedIndex
                 if(index == 0) {

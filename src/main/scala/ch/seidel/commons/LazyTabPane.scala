@@ -9,7 +9,9 @@ class LazyTabPane(refreshTabs: (LazyTabPane) => Seq[Tab]) extends TabPane {
   vgrow = Priority.Always
   id = "source-tabs"
 
-  def init {
+  def init() {
+    val selected = selectionModel.value.getSelectedItem
+
     def indexOfTab(title: String): Int = {
       for(idx <- (tabs.size()-1 to 0 by -1)) {
         if(title.equals(tabs.get(idx).textProperty().getValue)) {
@@ -39,9 +41,12 @@ class LazyTabPane(refreshTabs: (LazyTabPane) => Seq[Tab]) extends TabPane {
        }
     }
     lazytabs.foreach(_.asInstanceOf[TabWithService].populated)
+    if(selected != null && indexOfTab(selected.textProperty().getValue) > -1) {
+      selectionModel.value.select(indexOfTab(selected.textProperty().getValue))
+    }
   }
 
   def refreshTabs() {
-    init
+    init()
   }
 }

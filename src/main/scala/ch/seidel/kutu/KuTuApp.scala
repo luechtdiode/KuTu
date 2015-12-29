@@ -34,6 +34,7 @@ import ch.seidel.kutu.domain._
 import ch.seidel.commons.PageDisplayer
 import ch.seidel.commons.DisplayablePage
 import ch.seidel.kutu.data.ResourceExchanger
+import java.awt.Desktop
 
 object KuTuApp extends JFXApp with KutuService {
   var tree = AppNavigationModel.create(KuTuApp.this)
@@ -163,7 +164,7 @@ object KuTuApp extends JFXApp with KutuService {
       new Button("OK") {
         onAction = handleAction {implicit e: ActionEvent =>
           try {
-            saveWettkampf(
+            val w = saveWettkampf(
               p.id,
               ld2SQLDate(txtDatum.valueProperty().value),
               txtTitel.text.value,
@@ -172,6 +173,10 @@ object KuTuApp extends JFXApp with KutuService {
                 case ""        => 0
                 case s: String => str2Int(s)
               })
+            val dir = new java.io.File(homedir + "/" + w.easyprint.replace(" ", "_"))
+            if(!dir.exists()) {
+              dir.mkdirs();
+            }
           }
           catch {
             case e: IllegalArgumentException =>
@@ -275,6 +280,10 @@ object KuTuApp extends JFXApp with KutuService {
                 case s: String => str2Int(s)
               },
               Some({ (_, _) => false }))
+           val dir = new java.io.File(homedir + "/" + w.easyprint.replace(" ", "_"))
+           if(!dir.exists()) {
+             dir.mkdirs();
+           }
            updateTree
            val text = s"${w.titel} ${w.datum}"
            tree.getLeaves("Wettkämpfe").find { item => text.equals(item.value.value) } match {
@@ -302,6 +311,10 @@ object KuTuApp extends JFXApp with KutuService {
         val selectedFile = fileChooser.showOpenDialog(stage)
         if (selectedFile != null) {
           val w = ResourceExchanger.importWettkampf(selectedFile.getAbsolutePath)
+          val dir = new java.io.File(homedir + "/" + w.easyprint.replace(" ", "_"))
+          if(!dir.exists()) {
+            dir.mkdirs();
+          }
           updateTree
           val text = s"${w.titel} ${w.datum}"
           tree.getLeaves("Wettkämpfe").find { item => text.equals(item.value.value) } match {
@@ -333,6 +346,14 @@ object KuTuApp extends JFXApp with KutuService {
         }
       }
     )
+  }
+
+  def makeWettkampfDataDirectoryMenu(w: WettkampfView) = makeMenuAction("Wettkampf Verzeichnis öffnen") {(caption, action) =>
+    val dir = new java.io.File(homedir + "/" + w.easyprint.replace(" ", "_"))
+    if(!dir.exists()) {
+      dir.mkdirs();
+    }
+    Desktop.getDesktop().open(dir);
   }
 
   def makeVereinLoeschenMenu(v: Verein) = makeMenuAction("Verein löschen") {(caption, action) =>
@@ -376,6 +397,7 @@ object KuTuApp extends JFXApp with KutuService {
                 controlsView.contextMenu = new ContextMenu() {
                   items += makeWettkampfBearbeitenMenu(p)
                   items += makeWettkampfExportierenMenu(p)
+                  items += makeWettkampfDataDirectoryMenu(p)
                   items += makeWettkampfLoeschenMenu(p)
                 }
                 case Some(KuTuAppThumbNail(v: Verein, _, newItem)) =>
