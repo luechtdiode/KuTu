@@ -3,6 +3,8 @@ package ch.seidel.kutu.data
 import scala.collection.mutable.StringBuilder
 import scala.math.BigDecimal.int2bigDecimal
 import scala.math.BigDecimal.double2bigDecimal
+import java.time._
+import java.time.temporal._
 import ch.seidel.kutu.domain._
 
 object GroupSection {
@@ -284,11 +286,60 @@ case class GroupLeaf(override val groupKey: DataObject, list: Iterable[WertungVi
     def mapToAvgRang[A <: DataObject](grp: Iterable[(A, (Resultat, Resultat))]) = {
       GroupSection.mapAvgRang(grp.map { d => (d._1, d._2._1, d._2._2) }).map(r => (r.groupKey.asInstanceOf[A] -> r)).toMap
     }
-    def mapToAvgRowSummary(athlWertungen: Iterable[WertungView]): (Resultat, Resultat, Iterable[(Disziplin, Resultat, Resultat, Option[Int])], Iterable[(ProgrammView, Resultat, Resultat, Option[Int])]) = {
+    def mapToAvgRowSummary(athlWertungen: Iterable[WertungView]): (Resultat, Resultat, Iterable[(Disziplin, Resultat, Resultat, Option[Int])], Iterable[(ProgrammView, Resultat, Resultat, Option[Int])], Resultat) = {
       val wks = athlWertungen.filter(_.endnote > 0).groupBy { w => w.wettkampf }
       val wksums = wks.map {wk => wk._2.map(w => w.resultat).reduce(_+_)}
-      val sum = if(wksums.nonEmpty) wksums.reduce(_+_) else Resultat(0,0,0)
-      val avg = if(wksums.nonEmpty) sum / wksums.size else Resultat(0,0,0)
+      val rsum = if(wksums.nonEmpty) wksums.reduce(_+_) else Resultat(0,0,0)
+      lazy val wksENOrdered = wks.map(wk => wk._1 -> wk._2.toList.sortBy(w => w.resultat.endnote))
+      lazy val getuDisziplinGOrder = Map(26L -> 1, 4L -> 2, 6L -> 3)
+      lazy val jet = LocalDate.now()
+      lazy val hundredyears = jet.minus(100, ChronoUnit.YEARS)
+
+      def factorizeKuTu(w: WertungView): Long = {
+        val idx = wksENOrdered(w.wettkampf).indexOf(w)
+        if(idx < 4) {
+          1
+        }
+        else {
+          val gebdat = w.athlet.gebdat match {case Some(d) => d.toLocalDate() case None => hundredyears}
+          val alterInTagen = jet.toEpochDay() - gebdat.toEpochDay()
+          val alterInJahren = alterInTagen / 365
+          val altersfaktor = 100L - alterInJahren
+//          val altersfaktor = 36500 - alterInTagen
+          val powered = Math.floor(Math.pow(1000, idx)).toLong
+//          println(altersfaktor, powered, powered + altersfaktor)
+          powered + altersfaktor
+        }
+      }
+
+      def factorizeGeTu(w: WertungView): Long = {
+        val idx = 4 - getuDisziplinGOrder.getOrElse(w.wettkampfdisziplin.disziplin.id, 4)
+        val ret = if(idx == 0) {
+          1L
+        }
+        else {
+          Math.floor(Math.pow(1000, idx)).toLong
+        }
+//        println(ret, idx, w.wettkampfdisziplin.disziplin.id)
+        ret
+      }
+
+      val gwksums = wks.map {wk => wk._2.map{w =>
+        val factor = w.wettkampf.programmId match {
+          case id if(id > 0 && id < 4) => // Athletiktest
+             1L
+          case id if((id > 10 && id < 20) || id == 28) => // KuTu Programm
+            factorizeKuTu(w)
+          case id if(id > 19 && id < 27) => // GeTu Kategorie
+            factorizeGeTu(w)
+          case id if(id > 30 && id < 41) => // KuTuRi Programm
+            factorizeKuTu(w)
+          case _ => 1L
+        }
+        w.resultat * 10000000000L + w.resultat * factor
+        }.reduce(_+_)}
+      val gsum = if(gwksums.nonEmpty) gwksums.reduce(_+_) else Resultat(0,0,0)
+      val avg = if(wksums.nonEmpty) rsum / wksums.size else Resultat(0,0,0)
       val auszeichnung = if(wks.size == 1) Some(wks.head._1.auszeichnung) else None
       val perDisziplinAvgs = (for {
         wettkampf <- wks.keySet.toSeq
@@ -299,8 +350,8 @@ case class GroupLeaf(override val groupKey: DataObject, list: Iterable[WertungVi
         val dsum = if(dsums.nonEmpty) dsums.reduce(_+_) else Resultat(0,0,0)
         ((ord, disziplin) -> dsum)
       }).groupBy(_._1).map{x =>
-        val sum = x._2.map(_._2).reduce(_+_)
-        (x._1, sum, sum / x._2.size, auszeichnung)}
+        val xsum = x._2.map(_._2).reduce(_+_)
+        (x._1, xsum, xsum / x._2.size, auszeichnung)}
       .toList.sortBy(d => d._1._1)
       .map(d => (d._1._2, d._2, d._3, d._4)).toIterable
 
@@ -313,11 +364,11 @@ case class GroupLeaf(override val groupKey: DataObject, list: Iterable[WertungVi
       yield {
         (programm, psum)
       }).groupBy(_._1).map{x =>
-        val sum = x._2.map(_._2).reduce(_+_)
-        (x._1, sum, sum / x._2.size, auszeichnung)}
+        val xsum = x._2.map(_._2).reduce(_+_)
+        (x._1, xsum, xsum / x._2.size, auszeichnung)}
       .toList.sortBy(d => d._1.ord)
 
-      (sum, avg, perDisziplinAvgs, perProgrammAvgs)
+      (rsum, avg, perDisziplinAvgs, perProgrammAvgs, gsum)
     }
 
     val avgPerAthlet = list.groupBy { x =>
@@ -327,16 +378,16 @@ case class GroupLeaf(override val groupKey: DataObject, list: Iterable[WertungVi
     }.filter(_._2._1.endnote > 0)
 
     // Beeinflusst die Total-Rangierung pro Gruppierung
-    val rangMap: Map[AthletView, GroupSum] = mapToAvgRang(avgPerAthlet.map(rm => rm._1 -> (rm._2._1, rm._2._2)))
+    val rangMap: Map[AthletView, GroupSum] = mapToAvgRang(avgPerAthlet.map(rm => rm._1 -> (rm._2._1, rm._2._5)))
     lazy val avgDisziplinRangMap = avgPerAthlet.foldLeft(Map[Disziplin, Map[AthletView, (Resultat, Resultat)]]()){(acc, x) =>
-      val (athlet, (sum, avg, disziplinwertungen, programmwertungen)) = x
+      val (athlet, (sum, avg, disziplinwertungen, programmwertungen, gsum)) = x
       disziplinwertungen.foldLeft(acc){(accc, disziplin) =>
         accc.updated(disziplin._1, accc.getOrElse(
                      disziplin._1, Map[AthletView, (Resultat, Resultat)]()).updated(athlet, (disziplin._2, disziplin._3)))
       }
     }.map { d => (d._1 -> mapToAvgRang(d._2)) }
     lazy val avgProgrammRangMap = avgPerAthlet.foldLeft(Map[ProgrammView, Map[AthletView, (Resultat, Resultat)]]()){(acc, x) =>
-      val (athlet, (sum, avg, disziplinwertungen, programmwertungen)) = x
+      val (athlet, (sum, avg, disziplinwertungen, programmwertungen, gsum)) = x
       programmwertungen.foldLeft(acc){(accc, programm) =>
         accc.updated(programm._1, accc.getOrElse(
                      programm._1, Map[AthletView, (Resultat, Resultat)]()).updated(athlet, (programm._2, programm._3)))
@@ -390,7 +441,7 @@ case class GroupLeaf(override val groupKey: DataObject, list: Iterable[WertungVi
     }
 
     avgPerAthlet.map {x =>
-      val (athlet, (sum, avg, wd, wp)) = x
+      val (athlet, (sum, avg, wd, wp, gsum)) = x
       val gsrang = rangMap(athlet)
       val posproz = 100d * gsrang.rang.endnote / teilnehmer
       GroupRow(athlet, mapToGroupSum(athlet, wd, wp), avg, gsrang.rang,
