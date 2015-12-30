@@ -419,6 +419,12 @@ object KuTuApp extends JFXApp with KutuService {
       onAction = handleAction {implicit e: ActionEvent =>
         updateVerein(v.copy(name = txtVereinsname.text.value))
         updateTree
+        val text = txtVereinsname.text.value
+        tree.getLeaves("Athleten").find { item => text.equals(item.value.value) } match {
+          case Some(node) =>
+            controlsView.selectionModel().select(node)
+          case None =>
+        }
       }
     })
   }

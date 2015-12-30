@@ -1078,6 +1078,7 @@ class WettkampfWertungTab(programm: Option[ProgrammView], riege: Option[String],
                 alignment = Pos.BottomRight
                 hgrow = Priority.Always
                 children = Seq(new Label("Stationen (wenn mehr wie eine Rotation, dann pro Rotation, getrennt mit Komma)  "), stationen)
+                // Rotation mit [], Kategorie-Gruppe mit Kx(), Geräte-Gruppe mit G<Gerätnummer>k1(4)
               }
             }
           }, new Button("OK") {
