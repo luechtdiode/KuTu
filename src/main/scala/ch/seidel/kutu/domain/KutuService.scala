@@ -92,6 +92,7 @@ trait KutuService {
         ,"AlterGeschlechtFelder.sql"
         //,"CreateIndicies.sql"
         ,"AlterAlternativeRiegeFelder.sql"
+        ,"UpdateGeTuK7.sql"
         )
 
     sqlScripts.filter{ filename =>
