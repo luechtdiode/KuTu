@@ -1,1 +1,1 @@
-ALTER TABLE wertung ADD riege2 INTEGER DEFAULT NULL;
+ALTER TABLE wertung ADD riege2 varchar(100) DEFAULT NULL;

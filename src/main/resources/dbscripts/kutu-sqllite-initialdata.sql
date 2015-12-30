@@ -68,10 +68,6 @@ INSERT INTO programm
 VALUES(11, null, 'KuTu-Wettkampf', 0);
 
 INSERT INTO programm
-(id, parent_id, name, aggregate)
-VALUES(31, null, 'KuTuri-Wettkampf', 0);
-
-INSERT INTO programm
 (id, parent_id, name, aggregate, ord)
 VALUES
  (12, 11, 'EP', 0, 1)
@@ -83,6 +79,24 @@ VALUES
 ,(18, 11, 'P5', 0, 7)
 ,(19, 11, 'P6', 0, 8)
 ,(27, 11, 'OP', 0, 9)
+;
+
+INSERT INTO programm
+(id, parent_id, name, aggregate)
+VALUES(31, null, 'KuTuri-Wettkampf', 0);
+
+INSERT INTO programm
+(id, parent_id, name, aggregate, ord)
+VALUES
+ (32, 31, 'EP', 0, 1)
+,(33, 31, 'P1-U9', 0, 2)
+,(34, 31, 'P1', 0, 3)
+,(35, 31, 'P2', 0, 4)
+,(36, 31, 'P3', 0, 5)
+,(37, 31, 'P4', 0, 6)
+,(38, 31, 'P5', 0, 7)
+,(39, 31, 'P6', 0, 8)
+,(40, 31, 'OP', 0, 9)
 ;
 
 INSERT INTO programm
@@ -402,15 +416,15 @@ VALUES
 ;
 
 DELETE FROM verein;
-INSERT INTO verein
-(name)
-VALUES
- ('BTV Basel')
-,('TV Seltisberg')
-,('TV Nunningen')
-,('AS Pratteln')
-,('NKL')
-;
+-- INSERT INTO verein
+-- (name)
+-- VALUES
+--  ('BTV Basel')
+-- ,('TV Seltisberg')
+-- ,('TV Nunningen')
+-- ,('AS Pratteln')
+-- ,('NKL')
+-- ;
 
 DELETE FROM athlet;
 -- INSERT INTO athlet

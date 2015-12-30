@@ -90,7 +90,7 @@ trait KutuService {
     val sqlScripts = Seq(
          "UpdateGeTuReihenfolge.sql"
         ,"AlterGeschlechtFelder.sql"
-        ,"CreateIndicies.sql"
+        //,"CreateIndicies.sql"
         ,"AlterAlternativeRiegeFelder.sql"
         )
 
