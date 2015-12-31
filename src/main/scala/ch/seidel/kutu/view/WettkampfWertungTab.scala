@@ -37,16 +37,31 @@ import java.io.FileOutputStream
 import java.awt.Desktop
 import javafx.scene.{control => jfxsc}
 import scala.IndexedSeq
+import scalafx.beans.property._
 import scalafx.beans.property.StringProperty.sfxStringProperty2jfx
 import scalafx.collections.ObservableBuffer.observableBuffer2ObservableList
 import scalafx.scene.control.SelectionMode.sfxEnum2jfx
 import scalafx.scene.control.TableView.sfxTableView2jfx
+import scalafx.scene.control.cell.CheckBoxTableCell
 import scalafx.scene.layout.StackPane
 import scalafx.scene.web.WebView
 import ch.seidel.commons._
 import ch.seidel.kutu.renderer.NotenblattToHtmlRenderer
 import ch.seidel.kutu.domain._
+import scalafx.scene.control.CheckBox
+import scalafx.scene.control.SplitPane
 
+case class RiegeEditor(initname: String, initanz: Int, enabled: Boolean, onNameChange: (String, String) => Unit, onSelectedChange: (String, Boolean) => Boolean) {
+  val selected = BooleanProperty(enabled)
+  val name = StringProperty(initname)
+  val anz = IntegerProperty(initanz)
+  name onChange {
+    onNameChange(initname, name.value)
+  }
+  selected onChange {
+    selected.value = onSelectedChange(initname, selected.value)
+  }
+}
 case class WertungEditor(init: WertungView) {
 	type WertungChangeListener = (WertungEditor) => Unit
   val noteD = DoubleProperty(init.noteD.toDouble)
@@ -212,31 +227,35 @@ class WettkampfWertungTab(programm: Option[ProgrammView], riege: Option[String],
   }
 
   override def isPopulated = {
-
-    def updateWertungen = {
+    def defaultFilter: (WertungView) => Boolean = {wertung =>
       programm match {
         case Some(progrm) =>
-          athleten.
-          filter(wv => wv.wettkampfdisziplin.programm.id == progrm.id && wv.wettkampf.id == wettkampf.id).
-          groupBy(wv => wv.athlet).
-          map(wvg => wvg._2.map(WertungEditor)).toIndexedSeq
+          wertung.wettkampfdisziplin.programm.id == progrm.id
         case None =>
-          athleten.
-          filter(wv => wv.wettkampf.id == wettkampf.id).
-          groupBy(wv => wv.athlet).
-          map(wvg => wvg._2.map(WertungEditor)).toIndexedSeq
+          true
       }
+    }
+    def reloadWertungen(extrafilter: (WertungView) => Boolean = defaultFilter) = {
+      athleten.
+      filter(wv => wv.wettkampf.id == wettkampf.id).
+      filter(extrafilter).
+      groupBy(wv => wv.athlet).
+      map(wvg => wvg._2.map(WertungEditor)).toIndexedSeq
     }
 
     val webView = new WebView
-    var wertungen = updateWertungen
+    var wertungen = reloadWertungen()
  		val wkModel = ObservableBuffer[IndexedSeq[WertungEditor]](wertungen)
     var editingEditor: Option[WertungEditor] = None
     val wkview = new TableView[IndexedSeq[WertungEditor]](wkModel) {
       id = "kutu-table"
       editable = true
-
     }
+    var relevantRiegen: Map[String,Boolean] = (if(wertungen.size > 0) wertungen.map(x => x.head).flatMap(x => Seq(x.init.riege, x.init.riege2).flatten).toSet else Set.empty[String]).map(x => x -> true).toMap
+    def riegen(onNameChange: (String, String) => Unit, onSelectedChange: (String, Boolean) => Boolean, initial: Boolean): IndexedSeq[RiegeEditor] = {
+      service.listRiegenZuWettkampf(wettkampf.id).sortBy(r => r._1).map(x => RiegeEditor(x._1, x._2, relevantRiegen.contains(x._1) && (initial || relevantRiegen(x._1)), onNameChange, onSelectedChange))
+    }
+    val riegenFilterModel = ObservableBuffer[RiegeEditor]()
 
     val editorPane: EditorPane = new EditorPane(wkview)
     def disziplinCnt = wertungen.headOption match {case Some(w) => w.size case _ => 0}
@@ -369,7 +388,6 @@ class WettkampfWertungTab(programm: Option[ProgrammView], riege: Option[String],
       },
       new WKTableColumn[String](-1) {
         text = "Riege"
-        styleClass += "table-cell-with-value"
         cellFactory = { x =>
           new AutoCommitTextFieldTableCell[IndexedSeq[WertungEditor], String](new DefaultStringConverter())
         }
@@ -405,7 +423,6 @@ class WettkampfWertungTab(programm: Option[ProgrammView], riege: Option[String],
       },
       new WKTableColumn[String](-1) {
         text = "Riege 2"
-        styleClass += "table-cell-with-value"
         cellFactory = { x =>
           new AutoCommitTextFieldTableCell[IndexedSeq[WertungEditor], String](new DefaultStringConverter())
         }
@@ -476,7 +493,13 @@ class WettkampfWertungTab(programm: Option[ProgrammView], riege: Option[String],
         val searchQuery = newVal.toUpperCase().split(" ")
         for{athlet <- wertungen
         } {
-          val matches = athlet.nonEmpty && searchQuery.forall{search =>
+          def isRiegenFilterConform(wertung: WertungView) = {
+            val athletRiegen = Seq(wertung.riege, wertung.riege2)
+            val undefined = athletRiegen.forall{case None => true case _ => false}
+            undefined || !athletRiegen.forall{case Some(riege) => !relevantRiegen.getOrElse(riege, false) case _ => true}
+          }
+          val matches = athlet.nonEmpty && isRiegenFilterConform(athlet(0).init) &&
+            searchQuery.forall{search =>
             if(search.isEmpty() || athlet(0).init.athlet.name.toUpperCase().contains(search)) {
               true
             }
@@ -514,11 +537,52 @@ class WettkampfWertungTab(programm: Option[ProgrammView], riege: Option[String],
       }
     }
 
+    val alleRiegenCheckBox = new CheckBox {
+      text = "Alle Riegen" + programm.map(" im " + _.name).getOrElse("")
+      margin = Insets(5, 0, 5, 5)
+    }
+    def updateAlleRiegenCheck(toggle: Boolean = false) {
+      val allselected = relevantRiegen.values.forall{x => x}
+      val newAllSelected = if(toggle) !allselected else allselected
+      if(toggle) {
+        relevantRiegen = relevantRiegen.map(r => (r._1, newAllSelected))
+        updateFilteredList(lastFilter)
+        updateRiegen(false)
+      }
+      else {
+        alleRiegenCheckBox.selected.value = newAllSelected
+      }
+    }
+    alleRiegenCheckBox onAction = (event: ActionEvent) => {
+      updateAlleRiegenCheck(true)
+    }
+
+    def updateRiegen(initial: Boolean) {
+      def onNameChange(name1: String, name2: String) = {
+        reloadData()
+      }
+      def onSelectedChange(name: String, selected: Boolean) = {
+        if(relevantRiegen.contains(name)) {
+          relevantRiegen = relevantRiegen.updated(name, selected)
+          updateFilteredList(lastFilter)
+          updateAlleRiegenCheck()
+          selected
+        }
+        else {
+          false
+        }
+      }
+      riegenFilterModel.clear()
+      riegen(onNameChange, onSelectedChange, initial).foreach(riegenFilterModel.add(_))
+      if(initial) {
+        updateAlleRiegenCheck()
+      }
+    }
+
     def reloadData() = {
       val selectionstore = wkview.selectionModel.value.getSelectedCells
       val coords = for(ts <- selectionstore) yield {
         if(ts.getColumn > -1 && ts.getTableColumn.getParentColumn != null)
-          //(ts.getRow, wkview.columns.indexOf(ts.getTableColumn.getParentColumn))
           (ts.getRow, (3 + editorPane.index) * -100)
         else
           (ts.getRow, ts.getColumn)
@@ -526,7 +590,11 @@ class WettkampfWertungTab(programm: Option[ProgrammView], riege: Option[String],
 
       val columnrebuild = wertungen.isEmpty
       wkModel.clear()
-      wertungen = updateWertungen
+      wertungen = reloadWertungen()
+      relevantRiegen = (if(wertungen.size > 0) wertungen.map(x => x.head).flatMap(x => Seq(x.init.riege, x.init.riege2).flatten).toSet else Set.empty[String]).map(x => x -> relevantRiegen.getOrElse(x, true)).toMap
+
+      updateRiegen(false)
+
       lastFilter = ""
       updateFilteredList(lastFilter)
       txtUserFilter.text.value = lastFilter
@@ -534,6 +602,7 @@ class WettkampfWertungTab(programm: Option[ProgrammView], riege: Option[String],
         wkview.columns.clear()
         wkview.columns ++= athletCol ++ wertungenCols ++ sumCol
       }
+
       try {
         for(ts <- coords) {
           if(ts._2 < -100) {
@@ -557,7 +626,28 @@ class WettkampfWertungTab(programm: Option[ProgrammView], riege: Option[String],
       updateEditorPane
     }
 
-    def doPasteFromExcel(progrm: Option[ProgrammView])(implicit event: ActionEvent) {
+    val riegenFilterView = new TableView[RiegeEditor](riegenFilterModel) {
+      id = "riege-table"
+      editable = true
+      columns ++= List(
+          new TableColumn[RiegeEditor, Boolean] {
+            text = "Filter"
+            cellValueFactory = { x => x.value.selected.asInstanceOf[ObservableValue[Boolean,Boolean]] }
+            cellFactory = { x => new CheckBoxTableCell[RiegeEditor, Boolean]() }
+            editable = true
+          }
+         ,new TableColumn[RiegeEditor, String] {
+            text = "Riege"
+            cellValueFactory = { x => x.value.name }
+          }
+         ,new TableColumn[RiegeEditor, Int] {
+            text = "Anz"
+            cellValueFactory = { x => x.value.anz.asInstanceOf[ObservableValue[Int,Int]] }
+          })
+    }
+    updateRiegen(true)
+
+    def doPasteFromExcel(progrm: Option[ProgrammView])(implicit event: ActionEvent) = {
       val athletModel = ObservableBuffer[(Long, Athlet, AthletView)]()
       val vereineList = service.selectVereine
       val vereineMap = vereineList.map(v => v.id -> v).toMap
@@ -603,168 +693,174 @@ class WettkampfWertungTab(programm: Option[ProgrammView], riege: Option[String],
                            candidate.strasse, candidate.plz, candidate.ort,
                            candidate.verein.map(vereineMap), true))
                     }.toList
-      athletModel.appendAll(clipraw)
-      clipraw.find(a => a._3.verein match{case Some(v) => true case _ => false}) match {
-                      case Some((id, athlet, candidate)) =>
-                        cbVereine.selectionModel.value.select(candidate.verein.get)
-                      case _ =>
-                    }
-      val filteredModel = ObservableBuffer[(Long, Athlet, AthletView)](athletModel)
-      val athletTable = new TableView[(Long, Athlet, AthletView)](filteredModel) {
-        columns ++= List(
-          new TableColumn[(Long, Athlet, AthletView), String] {
-            text = "Athlet"
-            cellValueFactory = { x =>
-              new ReadOnlyStringWrapper(x.value, "athlet", {
-                s"${x.value._2.name} ${x.value._2.vorname}, ${x.value._2.gebdat.map(sdfYYYY.format(_)) match {case None => "" case Some(t) => t}}"
-              })
-            }
-            minWidth = 250
-          },
-          new TableColumn[(Long, Athlet, AthletView), String] {
-            text = programm.map(p => p.head.id match {case 20 => "Kategorie" case 1  => "." case _ => "Programm"}).getOrElse(".")
-            cellValueFactory = { x =>
-              new ReadOnlyStringWrapper(x.value, "programm", {
-               programms.find { p => p.id == x.value._1 || p.aggregatorHead.id == x.value._1} match {case Some(programm)=> programm.name case _ => "unbekannt"}
-              })
-            }
-          },
-          new TableColumn[(Long, Athlet, AthletView), String] {
-            text = "Import-Vorschlag"
-            cellValueFactory = { x =>
-              new ReadOnlyStringWrapper(x.value, "dbmatch", {
-                if(x.value._3.id > 0) "als " + x.value._3.easyprint else "wird neu importiert"
-              })
-            }
-          }
-        )
+      if(clipraw.isEmpty) {
+        false
       }
-      athletTable.selectionModel.value.setSelectionMode(SelectionMode.MULTIPLE)
-      val filter = new TextField() {
-        promptText = "Such-Text"
-        text.addListener{ (o: javafx.beans.value.ObservableValue[_ <: String], oldVal: String, newVal: String) =>
-          val sortOrder = athletTable.sortOrder.toList;
-          filteredModel.clear()
-          val searchQuery = newVal.toUpperCase().split(" ")
-          for{(progrid, athlet, vorschlag) <- athletModel
-          } {
-            val matches = searchQuery.forall{search =>
-              if(search.isEmpty() || athlet.name.toUpperCase().contains(search)) {
-                true
+      else {
+        athletModel.appendAll(clipraw)
+        clipraw.find(a => a._3.verein match{case Some(v) => true case _ => false}) match {
+                        case Some((id, athlet, candidate)) =>
+                          cbVereine.selectionModel.value.select(candidate.verein.get)
+                        case _ =>
+                      }
+        val filteredModel = ObservableBuffer[(Long, Athlet, AthletView)](athletModel)
+        val athletTable = new TableView[(Long, Athlet, AthletView)](filteredModel) {
+          columns ++= List(
+            new TableColumn[(Long, Athlet, AthletView), String] {
+              text = "Athlet"
+              cellValueFactory = { x =>
+                new ReadOnlyStringWrapper(x.value, "athlet", {
+                  s"${x.value._2.name} ${x.value._2.vorname}, ${x.value._2.gebdat.map(sdfYYYY.format(_)) match {case None => "" case Some(t) => t}}"
+                })
               }
-              else if(athlet.vorname.toUpperCase().contains(search)) {
-                true
+              minWidth = 250
+            },
+            new TableColumn[(Long, Athlet, AthletView), String] {
+              text = programm.map(p => p.head.id match {case 20 => "Kategorie" case 1  => "." case _ => "Programm"}).getOrElse(".")
+              cellValueFactory = { x =>
+                new ReadOnlyStringWrapper(x.value, "programm", {
+                 programms.find { p => p.id == x.value._1 || p.aggregatorHead.id == x.value._1} match {case Some(programm)=> programm.name case _ => "unbekannt"}
+                })
               }
-              else if(vorschlag.verein match {case Some(v) => v.name.toUpperCase().contains(search) case None => false}) {
-                true
-              }
-              else {
-                false
+            },
+            new TableColumn[(Long, Athlet, AthletView), String] {
+              text = "Import-Vorschlag"
+              cellValueFactory = { x =>
+                new ReadOnlyStringWrapper(x.value, "dbmatch", {
+                  if(x.value._3.id > 0) "als " + x.value._3.easyprint else "wird neu importiert"
+                })
               }
             }
-
-            if(matches) {
-              filteredModel.add((progrid, athlet, vorschlag))
-            }
-          }
-          athletTable.sortOrder.clear()
-          val restored = athletTable.sortOrder ++= sortOrder
+          )
         }
-      }
-      PageDisplayer.showInDialog("Aus Excel einfügen ...", new DisplayablePage() {
-        def getPage: Node = {
-          new BorderPane {
-            hgrow = Priority.Always
-            vgrow = Priority.Always
-            minWidth = 600
-            top = new HBox {
-              prefHeight = 50
-              alignment = Pos.BottomRight
-              hgrow = Priority.Always
-              children = Seq(new Label("Turner/-Innen aus dem Verein  "), cbVereine)
+        athletTable.selectionModel.value.setSelectionMode(SelectionMode.MULTIPLE)
+        val filter = new TextField() {
+          promptText = "Such-Text"
+          text.addListener{ (o: javafx.beans.value.ObservableValue[_ <: String], oldVal: String, newVal: String) =>
+            val sortOrder = athletTable.sortOrder.toList;
+            filteredModel.clear()
+            val searchQuery = newVal.toUpperCase().split(" ")
+            for{(progrid, athlet, vorschlag) <- athletModel
+            } {
+              val matches = searchQuery.forall{search =>
+                if(search.isEmpty() || athlet.name.toUpperCase().contains(search)) {
+                  true
+                }
+                else if(athlet.vorname.toUpperCase().contains(search)) {
+                  true
+                }
+                else if(vorschlag.verein match {case Some(v) => v.name.toUpperCase().contains(search) case None => false}) {
+                  true
+                }
+                else {
+                  false
+                }
+              }
+
+              if(matches) {
+                filteredModel.add((progrid, athlet, vorschlag))
+              }
             }
-            center = new BorderPane {
+            athletTable.sortOrder.clear()
+            val restored = athletTable.sortOrder ++= sortOrder
+          }
+        }
+        PageDisplayer.showInDialog("Aus Excel einfügen ...", new DisplayablePage() {
+          def getPage: Node = {
+            new BorderPane {
               hgrow = Priority.Always
               vgrow = Priority.Always
-              top = filter
-              center = athletTable
-              minWidth = 550
-            }
+              minWidth = 600
+              top = new HBox {
+                prefHeight = 50
+                alignment = Pos.BottomRight
+                hgrow = Priority.Always
+                children = Seq(new Label("Turner/-Innen aus dem Verein  "), cbVereine)
+              }
+              center = new BorderPane {
+                hgrow = Priority.Always
+                vgrow = Priority.Always
+                top = filter
+                center = athletTable
+                minWidth = 550
+              }
 
-          }
-        }
-      }, new Button("OK") {
-        disable <== when(cbVereine.selectionModel.value.selectedItemProperty.isNull()) choose true otherwise false
-        onAction = (event: ActionEvent) => {
-          if (!athletTable.selectionModel().isEmpty) {
-            val selectedAthleten = athletTable.items.value.zipWithIndex.filter {
-              x => athletTable.selectionModel.value.isSelected(x._2)
-            }.map {x =>
-              val ((progrId, importathlet, candidateView),idx) = x
-              val id = if(candidateView.id > 0) {
-                candidateView.id
-              }
-              else {
-                val athlet = service.insertAthlete(Athlet(
-                    id = 0,
-                    js_id = candidateView.js_id,
-                    geschlecht = candidateView.geschlecht,
-                    name = candidateView.name,
-                    vorname = candidateView.vorname,
-                    gebdat = candidateView.gebdat,
-                    strasse = candidateView.strasse,
-                    plz = candidateView.plz,
-                    ort = candidateView.ort,
-                    verein = Some(cbVereine.selectionModel.value.selectedItem.value.id),
-                    activ = true
-                    ))
-              }
-              (progrId, id)
             }
+          }
+        }, new Button("OK") {
+          disable <== when(cbVereine.selectionModel.value.selectedItemProperty.isNull()) choose true otherwise false
+          onAction = (event: ActionEvent) => {
+            if (!athletTable.selectionModel().isEmpty) {
+              val selectedAthleten = athletTable.items.value.zipWithIndex.filter {
+                x => athletTable.selectionModel.value.isSelected(x._2)
+              }.map {x =>
+                val ((progrId, importathlet, candidateView),idx) = x
+                val id = if(candidateView.id > 0) {
+                  candidateView.id
+                }
+                else {
+                  val athlet = service.insertAthlete(Athlet(
+                      id = 0,
+                      js_id = candidateView.js_id,
+                      geschlecht = candidateView.geschlecht,
+                      name = candidateView.name,
+                      vorname = candidateView.vorname,
+                      gebdat = candidateView.gebdat,
+                      strasse = candidateView.strasse,
+                      plz = candidateView.plz,
+                      ort = candidateView.ort,
+                      verein = Some(cbVereine.selectionModel.value.selectedItem.value.id),
+                      activ = true
+                      ))
+                }
+                (progrId, id)
+              }
 
-            for((progId, athletes) <- selectedAthleten.groupBy(_._1).map(x => (x._1, x._2.map(_._2)))) {
-              def filter(progId: Long, a: Athlet): Boolean = athletes.exists { _ == a.id }
-              service.assignAthletsToWettkampf(wettkampf.id, Set(progId), Some(filter))
-            }
-            reloadData()
-          }
-        }
-      }, new Button("OK Alle") {
-        disable <== when(cbVereine.selectionModel.value.selectedItemProperty.isNull()) choose true otherwise false
-        onAction = (event: ActionEvent) => {
-          val clip = filteredModel.map { raw =>
-              val (progId, importAthlet, candidateView) = raw
-              val athlet = if(candidateView.id > 0) {
-                candidateView
+              for((progId, athletes) <- selectedAthleten.groupBy(_._1).map(x => (x._1, x._2.map(_._2)))) {
+                def filter(progId: Long, a: Athlet): Boolean = athletes.exists { _ == a.id }
+                service.assignAthletsToWettkampf(wettkampf.id, Set(progId), Some(filter))
               }
-              else {
-                val candidate =  Athlet(
-                    id = candidateView.id,
-                    js_id = candidateView.js_id,
-                    geschlecht = candidateView.geschlecht,
-                    name = candidateView.name,
-                    vorname = candidateView.vorname,
-                    gebdat = candidateView.gebdat,
-                    strasse = candidateView.strasse,
-                    plz = candidateView.plz,
-                    ort = candidateView.ort,
-                    verein = Some(cbVereine.selectionModel.value.selectedItem.value.id),
-                    activ = true
-                    )
-                val athlet = service.insertAthlete(candidate)
-                AthletView(athlet.id, athlet.js_id, athlet.geschlecht, athlet.name, athlet.vorname, athlet.gebdat, athlet.strasse, athlet.plz, athlet.ort, Some(cbVereine.selectionModel.value.selectedItem.value), true)
-              }
-             (progId, athlet)
-          }.toList
-          if (!athletModel.isEmpty) {
-            for((progId, athletes) <- clip.groupBy(_._1).map(x => (x._1, x._2.map(_._2)))) {
-              def filter(progId: Long, a: Athlet): Boolean = athletes.exists { x => x.id == a.id }
-              service.assignAthletsToWettkampf(wettkampf.id, Set(progId), Some(filter))
+              reloadData()
             }
-            reloadData()
           }
-        }
-      })
+        }, new Button("OK Alle") {
+          disable <== when(cbVereine.selectionModel.value.selectedItemProperty.isNull()) choose true otherwise false
+          onAction = (event: ActionEvent) => {
+            val clip = filteredModel.map { raw =>
+                val (progId, importAthlet, candidateView) = raw
+                val athlet = if(candidateView.id > 0) {
+                  candidateView
+                }
+                else {
+                  val candidate =  Athlet(
+                      id = candidateView.id,
+                      js_id = candidateView.js_id,
+                      geschlecht = candidateView.geschlecht,
+                      name = candidateView.name,
+                      vorname = candidateView.vorname,
+                      gebdat = candidateView.gebdat,
+                      strasse = candidateView.strasse,
+                      plz = candidateView.plz,
+                      ort = candidateView.ort,
+                      verein = Some(cbVereine.selectionModel.value.selectedItem.value.id),
+                      activ = true
+                      )
+                  val athlet = service.insertAthlete(candidate)
+                  AthletView(athlet.id, athlet.js_id, athlet.geschlecht, athlet.name, athlet.vorname, athlet.gebdat, athlet.strasse, athlet.plz, athlet.ort, Some(cbVereine.selectionModel.value.selectedItem.value), true)
+                }
+               (progId, athlet)
+            }.toList
+            if (!athletModel.isEmpty) {
+              for((progId, athletes) <- clip.groupBy(_._1).map(x => (x._1, x._2.map(_._2)))) {
+                def filter(progId: Long, a: Athlet): Boolean = athletes.exists { x => x.id == a.id }
+                service.assignAthletsToWettkampf(wettkampf.id, Set(progId), Some(filter))
+              }
+              reloadData()
+            }
+          }
+        })
+        true
+      }
     }
     val generateNotenblaetter = new Button with NotenblattToHtmlRenderer {
       text = "Notenblätter erstellen"
@@ -839,69 +935,115 @@ class WettkampfWertungTab(programm: Option[ProgrammView], riege: Option[String],
         }
       }
     }
-    val actionButtons = programm match {
-      case None =>
-      val riegenRemoveButton = new Button {
-        text = "Riege löschen"
-        minWidth = 75
-        onAction = (event: ActionEvent) => {
-          for{
-            wl <- wertungen
-            if(wl.head.init.riege.equals(riege))
-            w <- wl
-          } {
-            service.updateWertung(w.commit.copy(riege = None))
-          }
-          for{
-            wl <- wertungen
-            if(wl.head.init.riege2.equals(riege))
-            w <- wl
-          } {
-            service.updateWertung(w.commit.copy(riege2 = None))
-          }
-          refreshLazyPane()
-          reloadData()
-        }
-      }
-      val riegeRenameButton = new Button {
-        text = "Riege umbenennen"
-        minWidth = 75
-        onAction = (event: ActionEvent) => {
-          implicit val impevent = event
-          val txtRiegenName = new TextField {
-            text.value = riege.getOrElse("")
-          }
-          PageDisplayer.showInDialog(text.value, new DisplayablePage() {
-            def getPage: Node = {
-              new HBox {
-                prefHeight = 50
-                alignment = Pos.BottomRight
-                hgrow = Priority.Always
-                children = Seq(new Label("Neuer Riegenname  "), txtRiegenName)
-              }
+    val riegensuggestButton = new Button {
+      text = "Riegen einteilen"
+      minWidth = 75
+      val stationen = new TextField()
+      onAction = (event: ActionEvent) => {
+        implicit val impevent = event
+        stationen.text = wkModel.head.size.toString()
+        PageDisplayer.showInDialog(text.value, new DisplayablePage() {
+          def getPage: Node = {
+            new HBox {
+              prefHeight = 50
+              alignment = Pos.BottomRight
+              hgrow = Priority.Always
+              children = Seq(new Label("Stationen (wenn mehr wie eine Rotation, dann pro Rotation, getrennt mit Komma)  "), stationen)
+              // Rotation mit [], Kategorie-Gruppe mit Kx(), Geräte-Gruppe mit G<Gerätnummer>k1(4)
             }
-          }, new Button("OK") {
-            onAction = (event: ActionEvent) => {
+          }
+        }, new Button("OK") {
+          onAction = (event: ActionEvent) => {
+            if (!stationen.text.value.isEmpty) {
+              val riegenzuteilungen = service.suggestRiegen(
+                  wkModel.head.init.head.init.wettkampf.id,
+                  stationen.text.value.split(",").foldLeft(Seq[Int]()){(acc, s) => acc :+ str2Int(s)}
+              )
               for{
-                wl <- wertungen
-                if(wl.head.init.riege.equals(riege))
-                w <- wl
+                pair <- riegenzuteilungen
+                w <- pair._2
               } {
-                service.updateWertung(w.commit.copy(riege = Some(txtRiegenName.text.value)))
-              }
-              for{
-                wl <- wertungen
-                if(wl.head.init.riege2.equals(riege))
-                w <- wl
-              } {
-                service.updateWertung(w.commit.copy(riege2 = Some(txtRiegenName.text.value)))
+                service.updateWertung(w)
               }
               refreshLazyPane()
               reloadData()
             }
-          })
-        }
+          }
+        })
       }
+    }
+    val riegenRemoveButton = new Button {
+      text = "Riege löschen"
+      minWidth = 75
+      disable <== when(riegenFilterView.selectionModel.value.selectedItemProperty().isNull()) choose true otherwise false
+      onAction = (event: ActionEvent) => {
+        val selectedRiege = riegenFilterView.selectionModel.value.getSelectedItem.name.value
+        for{
+          wl <- reloadWertungen{wertung =>
+              wertung.riege match {case Some(r) => r.equals(selectedRiege) case _ => false}
+            }
+          w <- wl
+        } {
+          service.updateWertung(w.commit.copy(riege = None))
+        }
+        for{
+          wl <- reloadWertungen{wertung =>
+              wertung.riege2 match {case Some(r) => r.equals(selectedRiege) case _ => false}
+            }
+          w <- wl
+        } {
+          service.updateWertung(w.commit.copy(riege2 = None))
+        }
+        refreshLazyPane()
+        reloadData()
+      }
+    }
+    val riegeRenameButton = new Button {
+      text = "Riege umbenennen"
+      minWidth = 75
+      disable <== when(riegenFilterView.selectionModel.value.selectedItemProperty().isNull()) choose true otherwise false
+      onAction = (event: ActionEvent) => {
+        implicit val impevent = event
+        val selectedRiege = riegenFilterView.selectionModel.value.getSelectedItem.name.value
+        val txtRiegenName = new TextField {
+          text.value = selectedRiege
+        }
+        PageDisplayer.showInDialog(text.value, new DisplayablePage() {
+          def getPage: Node = {
+            new HBox {
+              prefHeight = 50
+              alignment = Pos.BottomRight
+              hgrow = Priority.Always
+              children = Seq(new Label("Neuer Riegenname  "), txtRiegenName)
+            }
+          }
+        }, new Button("OK") {
+          onAction = (event: ActionEvent) => {
+            for{
+              wl <- reloadWertungen{wertung =>
+                wertung.riege match {case Some(r) => r.equals(selectedRiege) case _ => false}
+              }
+              w <- wl
+            } {
+              service.updateWertung(w.commit.copy(riege = Some(txtRiegenName.text.value)))
+            }
+            for{
+              wl <- reloadWertungen{wertung =>
+                wertung.riege2 match {case Some(r) => r.equals(selectedRiege) case _ => false}
+              }
+              w <- wl
+            } {
+              service.updateWertung(w.commit.copy(riege2 = Some(txtRiegenName.text.value)))
+            }
+            refreshLazyPane()
+            reloadData()
+          }
+        })
+      }
+    }
+
+    val actionButtons = programm match {
+      case None =>
       List[Button](generateNotenblaetter, riegeRenameButton, riegenRemoveButton)
       case Some(progrm) =>
       val addButton = new Button {
@@ -1064,50 +1206,13 @@ class WettkampfWertungTab(programm: Option[ProgrammView], riege: Option[String],
           })
         }
       }
-      val riegensuggestButton = new Button {
-        text = "Riegen einteilen"
-        minWidth = 75
-        val stationen = new TextField()
-        onAction = (event: ActionEvent) => {
-          implicit val impevent = event
-          stationen.text = wkModel.head.size.toString()
-          PageDisplayer.showInDialog(text.value, new DisplayablePage() {
-            def getPage: Node = {
-              new HBox {
-                prefHeight = 50
-                alignment = Pos.BottomRight
-                hgrow = Priority.Always
-                children = Seq(new Label("Stationen (wenn mehr wie eine Rotation, dann pro Rotation, getrennt mit Komma)  "), stationen)
-                // Rotation mit [], Kategorie-Gruppe mit Kx(), Geräte-Gruppe mit G<Gerätnummer>k1(4)
-              }
-            }
-          }, new Button("OK") {
-            onAction = (event: ActionEvent) => {
-              if (!stationen.text.value.isEmpty) {
-                val riegenzuteilungen = service.suggestRiegen(
-                    wkModel.head.init.head.init.wettkampf.id,
-                    stationen.text.value.split(",").foldLeft(Seq[Int]()){(acc, s) => acc :+ str2Int(s)}
-                )
-                for{
-                  pair <- riegenzuteilungen
-                  w <- pair._2
-                } {
-                  service.updateWertung(w)
-                }
-                refreshLazyPane()
-                reloadData()
-              }
-            }
-          })
-        }
-      }
+
       //addButton.disable <== when (wkview.selectionModel.value.selectedItemProperty.isNull()) choose true otherwise false
       val moveAvaillable = programm.forall { p => p.head != 1 }
       moveToOtherProgramButton.disable <== when(wkview.selectionModel.value.selectedItemProperty.isNull()) choose moveAvaillable otherwise false
       removeButton.disable <== when(wkview.selectionModel.value.selectedItemProperty.isNull()) choose true otherwise false
-      riegensuggestButton.disable <== when(wkview.selectionModel.value.selectedItemProperty.isNull()) choose true otherwise false
 
-      List(addButton, pasteFromExcel, moveToOtherProgramButton, generateNotenblaetter, removeButton, riegensuggestButton).filter(btn => !btn.text.value.equals("."))
+      List(addButton, pasteFromExcel, moveToOtherProgramButton, generateNotenblaetter, removeButton).filter(btn => !btn.text.value.equals("."))
     }
 
     wkview.selectionModel.value.setCellSelectionEnabled(true)
@@ -1138,15 +1243,15 @@ class WettkampfWertungTab(programm: Option[ProgrammView], riege: Option[String],
 
     wkview.filterEvent(KeyEvent.KeyPressed) { (ke: KeyEvent) =>
       val selectionstore = wkview.selectionModel.value.getSelectedCells
-      val coords = for(ts <- selectionstore) yield {
+      def extractCoords = for(ts <- selectionstore) yield {
         if(ts.getColumn > -1 && ts.getTableColumn.getParentColumn != null)
           //(ts.getRow, wkview.columns.indexOf(ts.getTableColumn.getParentColumn))
           (ts.getRow, (3 + editorPane.index) * -100)
         else
           (ts.getRow, ts.getColumn)
       }
-
-      def restoreSelection = try {
+      val coords = extractCoords
+      def restoreSelection = if(!coords.equals(extractCoords)) try {
         for(ts <- coords) {
           if(ts._2 < -100) {
             val toSelectParent = wkview.columns(ts._2 / -100);
@@ -1179,13 +1284,10 @@ class WettkampfWertungTab(programm: Option[ProgrammView], riege: Option[String],
             }
           }
           val wasEditing = wkview.delegate.getEditingCell() != null
+          ke.consume()
           action.run()
           if(wasEditing) {
-            ke.consume()
             Platform.runLater(action)
-          }
-          else {
-            ke.consume()
           }
 
         case KeyCode.ENTER /*if(ke.controlDown || wkview.delegate.getEditingCell() != null)*/ =>
@@ -1247,8 +1349,9 @@ class WettkampfWertungTab(programm: Option[ProgrammView], riege: Option[String],
 
         // Paste via CTRL+V or SHIFT+INSERT
         case c if(ke.shiftDown && c == KeyCode.INSERT) || (ke.controlDown && ke.text.equals("v")) =>
-          doPasteFromExcel(programm)(new ActionEvent())
-          ke.consume()
+          if(doPasteFromExcel(programm)(new ActionEvent())) {
+            ke.consume()
+          }
 
         case c if((c.isLetterKey || c.isDigitKey) && wkview.editingCell.value == null) =>
           val fc = wkview.focusModel.value.focusedCell.value
@@ -1274,10 +1377,44 @@ class WettkampfWertungTab(programm: Option[ProgrammView], riege: Option[String],
       }
     }
 
+    val riegenFilterControl = new ToolBar {
+      content = List(
+          riegensuggestButton
+        , riegeRenameButton
+        , riegenRemoveButton
+      )
+    }
+
+    val riegenHeader = new VBox {
+      maxWidth = Double.MaxValue
+      minHeight = Region.USE_PREF_SIZE
+      val title = new Label {
+        text = "Riegen-Einteilung"
+        styleClass += "toolbar-header"
+      }
+      children += title
+      children += riegenFilterControl
+      children += alleRiegenCheckBox
+    }
+
+    val riegenFilterPane = new BorderPane {
+      hgrow = Priority.Always
+      vgrow = Priority.Always
+      margin = Insets(0, 0, 0, 10)
+      top = riegenHeader
+      center = new BorderPane {
+        center = riegenFilterView
+      }
+    }
+
     val cont = new BorderPane {
       hgrow = Priority.Always
       vgrow = Priority.Always
-      center = editTablePane
+      center = new SplitPane {
+        orientation = Orientation.HORIZONTAL
+        items += editTablePane
+        items += riegenFilterPane
+      }
       top = new ToolBar {
         content = List(
           new Label {

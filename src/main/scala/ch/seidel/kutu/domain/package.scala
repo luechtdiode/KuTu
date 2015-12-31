@@ -26,6 +26,7 @@ package object domain {
       sd.toLocalDate()//.toInstant().atZone(ZoneId.systemDefault()).toLocalDate()
     }
   }
+
 //  implicit def dateOption2AthletJahrgang(gebdat: Option[Date]) = gebdat match {
 //        case Some(d) => AthletJahrgang(extractYear.format(d))
 //        case None    => AthletJahrgang("unbekannt")
@@ -38,6 +39,7 @@ package object domain {
   case class Riege(r: String) extends DataObject {
     override def easyprint = r
   }
+
   case class TurnerGeschlecht(geschlecht: String) extends DataObject {
     override def easyprint = geschlecht.toLowerCase() match {
       case "m" => "Turner"

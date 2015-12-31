@@ -25,22 +25,8 @@ object WettkampfPage {
       }
     )
     def refresher(pane: LazyTabPane) = {
-      val riegen = service.listRiegenZuWettkampf(wettkampf.id).sortBy(r => r._1)
-      val riegenSites: Seq[Tab] = riegen map {v =>
-        new WettkampfWertungTab(None, Some(v._1), wettkampf, service, {
-          service.listAthletenWertungenZuRiege(progs map (p => p.id), wettkampf.id, v._1)
-          }) {
-          text = v._1 + " (" + v._2 + ")"
-          closable = false
-        }
-//        val title = ""//v._1 + " (" + v._2 + ")"
-//        keepAlive match {
-//          case Some(tab) if(tab.text.equals(title) => tab
-//          case _ =>
-//        }
-      }
-      (riegenSites ++ progSites).foreach { t => t.asInstanceOf[WettkampfWertungTab].setLazyPane(pane)}
-      riegenSites ++ progSites ++ ranglisteSite
+      (progSites).foreach { t => t.asInstanceOf[WettkampfWertungTab].setLazyPane(pane)}
+      progSites ++ ranglisteSite
     }
 
     new WettkampfPage( new LazyTabPane(refresher))
