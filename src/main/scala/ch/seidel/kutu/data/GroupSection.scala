@@ -336,7 +336,7 @@ case class GroupLeaf(override val groupKey: DataObject, list: Iterable[WertungVi
             factorizeKuTu(w)
           case _ => 1L
         }
-        w.resultat * 10000000000L + w.resultat * factor
+        w.resultat * 1000000000000L + w.resultat * factor
         }.reduce(_+_)}
       val gsum = if(gwksums.nonEmpty) gwksums.reduce(_+_) else Resultat(0,0,0)
       val avg = if(wksums.nonEmpty) rsum / wksums.size else Resultat(0,0,0)
