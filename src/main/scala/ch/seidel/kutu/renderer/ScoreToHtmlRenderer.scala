@@ -62,8 +62,17 @@ trait ScoreToHtmlRenderer {
             col:nth-child(2) {
               width: 8em;
             }
+            col:nth-child(3) {
+              width: 4em;
+            }
             col:nth-child(4) {
-              width: 7em;
+              width: 10em;
+            }
+            col:nth-last-child(1) {
+              width: 6em;
+            }
+            col:nth-last-child(2) {
+              width: 3em;
             }
             tr:nth-child(even) {background: rgba(230, 230, 230, 0.6);}
             /*tr:nth-child(odd) {background: rgba(210, 200, 180, 0.6);}*/
