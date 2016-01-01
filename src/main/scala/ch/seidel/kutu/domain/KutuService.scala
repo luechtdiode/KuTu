@@ -448,7 +448,7 @@ trait KutuService {
       val candidateId = sql"""
                     select max(id) as maxid
                     from wettkampf
-                    where UPPER(titel)=${titel.toUpperCase()} and programm_id = ${heads.head.id} and datum=$datum
+                    where LOWER(titel)=${titel.toLowerCase()} and programm_id = ${heads.head.id} and datum=$datum
                            """.as[Long].build.headOption
       val wk = candidateId match {
         case Some(cid) if(cid > 0) =>
@@ -510,7 +510,7 @@ trait KutuService {
       val candidateId = sql"""
                 select max(verein.id) as maxid
                 from verein
-                where UPPER(name)=${verein.name.toUpperCase()}
+                where LOWER(name)=${verein.name.toLowerCase()}
        """.as[Long].build.headOption
        candidateId match {
          case Some(id) if(id > 0) =>
@@ -692,11 +692,20 @@ trait KutuService {
   }
   def insertAthlete(athlete: Athlet) = {
     database withTransaction { implicit session =>
-      def getId = sql"""
+      def getId = athlete.gebdat match {
+        case Some(gebdat) =>
+           sql"""
                     select max(athlet.id) as maxid
                     from athlet
-                    where name=${athlete.name} and vorname=${athlete.vorname} and strftime('%Y', gebdat)=strftime('%Y',${athlete.gebdat}) and verein=${athlete.verein}
+                    where name=${athlete.name} and vorname=${athlete.vorname} and strftime('%Y', gebdat)=strftime('%Y',${gebdat}) and verein=${athlete.verein}
            """.as[Long].iterator.toStream.headOption
+        case _ =>
+           sql"""
+                    select max(athlet.id) as maxid
+                    from athlet
+                    where name=${athlete.name} and vorname=${athlete.vorname} and verein=${athlete.verein}
+           """.as[Long].iterator.toStream.headOption
+      }
 
       if (athlete.id == 0) {
         getId match {
@@ -751,25 +760,35 @@ trait KutuService {
   bmenc3.setMaxPhonemes(5)
   bmenc3.setNameType(NameType.ASHKENAZI)
   val colenc = new ColognePhonetic()
+  def encArrToList(enc: String) = enc.split("-").flatMap(_.split("\\|"))
+  def encode(name: String): Seq[String] =
+    encArrToList(bmenc.encode(name)) ++
+    encArrToList(bmenc2.encode(name)) ++
+    encArrToList(bmenc3.encode(name)) ++
+    Seq(colenc.encode(name).mkString(""))
 
   def findAthleteLike(athlet: Athlet) = {
-    val bmname = bmenc.encode(athlet.name).split("-") ++ bmenc2.encode(athlet.name).split("-") ++ bmenc3.encode(athlet.name).split("-") ++ colenc.encode(athlet.name)
-    val bmvorname = bmenc.encode(athlet.vorname).split("-") ++ bmenc2.encode(athlet.vorname).split("-") ++ bmenc3.encode(athlet.vorname).split("-") ++ colenc.encode(athlet.vorname)
+    val bmname = encode(athlet.name)
+    val bmvorname = encode(athlet.vorname)
 
-    def similarAthletFactor(name: String, vorname: String, jahrgang: String) = {
+    def similarAthletFactor(name: String, vorname: String, jahrgang: String, verein: Long) = {
 //      print(athlet.easyprint, name, vorname, jahrgang)
-      val encodedNamen = bmenc.encode(name).split('-')
+      val encodedNamen = encode(name)
       val namenSimilarity = similarFactor(name, athlet.name) + (100 * encodedNamen.filter(bmname.contains(_)).toList.size / encodedNamen.size)
-      val encodedVorNamen = bmenc.encode(vorname).split('-') ++ colenc.encode(vorname)
+      val encodedVorNamen = encode(vorname)
       val vorNamenSimilarity = similarFactor(vorname, athlet.vorname) + (100 * encodedVorNamen.filter(bmvorname.contains(_)).toList.size / encodedVorNamen.size)
       val jahrgangSimilarity = jahrgang.equals(AthletJahrgang(athlet.gebdat).hg)
       val preret = namenSimilarity > 140 && vorNamenSimilarity > 140
+      val vereinSimilarity = athlet.verein match {
+        case Some(vid) => vid == verein
+        case _ => true
+      }
 //      print(f" namenSimilarity: $namenSimilarity vorNamenSimilarity: $vorNamenSimilarity jahrgangSimilarity: $jahrgangSimilarity jahrgang: $jahrgang - ${AthletJahrgang(athlet.gebdat).hg}")
-      if(preret && jahrgangSimilarity) {
+      if(vereinSimilarity && preret && jahrgangSimilarity) {
 //        println(" factor " + (namenSimilarity + vorNamenSimilarity) * 2)
         (namenSimilarity + vorNamenSimilarity) * 2
       }
-      else if(preret) {
+      else if(vereinSimilarity && preret) {
 //        println(" factor " + (namenSimilarity + vorNamenSimilarity))
         namenSimilarity + vorNamenSimilarity
       }
@@ -781,11 +800,11 @@ trait KutuService {
 
     database withTransaction { implicit session =>
       val preselect = sql"""
-           select id, name, vorname, gebdat
+           select id, name, vorname, gebdat, verein
            from athlet
-           """.as[(Long, String, String, Option[Date])].iterator.map{x =>
-             val (id, name, vorname, jahr) = x
-             (id, similarAthletFactor(name, vorname, AthletJahrgang(jahr).hg))
+           """.as[(Long, String, String, Option[Date], Long)].iterator.map{x =>
+             val (id, name, vorname, jahr, verein) = x
+             (id, similarAthletFactor(name, vorname, AthletJahrgang(jahr).hg, verein))
            }.filter(_._2 > 0)
        val presel2 = preselect.toList.sortBy(_._2).reverse
        presel2.headOption.flatMap(k =>

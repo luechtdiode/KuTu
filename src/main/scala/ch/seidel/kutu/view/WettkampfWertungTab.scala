@@ -669,7 +669,12 @@ class WettkampfWertungTab(programm: Option[ProgrammView], riege: Option[String],
                             geschlecht = if(!"".equals(fields(4))) "W" else "M",
                             name = fields(0),
                             vorname = fields(1),
-                            gebdat = if(fields(2).length > 4) Some(service.getSQLDate(fields(2))) else None,
+                            gebdat = if(fields(2).length > 4) Some(service.getSQLDate(fields(2))) else if(fields(2).length == 4){
+                                       Some(service.getSQLDate("01.01." + fields(2)))
+                                     }
+                                     else {
+                                       None
+                                     },
                             strasse = "",
                             plz = "",
                             ort = "",
@@ -795,7 +800,31 @@ class WettkampfWertungTab(programm: Option[ProgrammView], riege: Option[String],
                 x => athletTable.selectionModel.value.isSelected(x._2)
               }.map {x =>
                 val ((progrId, importathlet, candidateView),idx) = x
-                val id = if(candidateView.id > 0) {
+                val id = if(candidateView.id > 0 &&
+                           (importathlet.gebdat match {
+                             case Some(d) =>
+                               candidateView.gebdat match {
+                                 case Some(cd) =>cd.toString().startsWith("01.01")
+                                 case _        => true
+                               }
+                             case _ => false
+                             })) {
+                  val athlet = service.insertAthlete(Athlet(
+                      id = candidateView.id,
+                      js_id = candidateView.js_id,
+                      geschlecht = candidateView.geschlecht,
+                      name = candidateView.name,
+                      vorname = candidateView.vorname,
+                      gebdat = importathlet.gebdat,
+                      strasse = candidateView.strasse,
+                      plz = candidateView.plz,
+                      ort = candidateView.ort,
+                      verein = Some(cbVereine.selectionModel.value.selectedItem.value.id),
+                      activ = true
+                      ))
+                  athlet.id
+                }
+                else if(candidateView.id > 0) {
                   candidateView.id
                 }
                 else {
@@ -812,6 +841,7 @@ class WettkampfWertungTab(programm: Option[ProgrammView], riege: Option[String],
                       verein = Some(cbVereine.selectionModel.value.selectedItem.value.id),
                       activ = true
                       ))
+                  athlet.id
                 }
                 (progrId, id)
               }
@@ -828,7 +858,31 @@ class WettkampfWertungTab(programm: Option[ProgrammView], riege: Option[String],
           onAction = (event: ActionEvent) => {
             val clip = filteredModel.map { raw =>
                 val (progId, importAthlet, candidateView) = raw
-                val athlet = if(candidateView.id > 0) {
+                val athlet = if(candidateView.id > 0 &&
+                           (importAthlet.gebdat match {
+                             case Some(d) =>
+                               candidateView.gebdat match {
+                                 case Some(cd) =>cd.toString().startsWith("01.01")
+                                 case _        => true
+                               }
+                             case _ => false
+                             })) {
+                  val athlet = service.insertAthlete(Athlet(
+                      id = candidateView.id,
+                      js_id = candidateView.js_id,
+                      geschlecht = candidateView.geschlecht,
+                      name = candidateView.name,
+                      vorname = candidateView.vorname,
+                      gebdat = importAthlet.gebdat,
+                      strasse = candidateView.strasse,
+                      plz = candidateView.plz,
+                      ort = candidateView.ort,
+                      verein = Some(cbVereine.selectionModel.value.selectedItem.value.id),
+                      activ = true
+                      ))
+                  AthletView(athlet.id, athlet.js_id, athlet.geschlecht, athlet.name, athlet.vorname, athlet.gebdat, athlet.strasse, athlet.plz, athlet.ort, Some(cbVereine.selectionModel.value.selectedItem.value), true)
+                }
+                else if(candidateView.id > 0) {
                   candidateView
                 }
                 else {

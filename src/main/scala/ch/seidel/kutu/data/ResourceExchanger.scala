@@ -55,7 +55,7 @@ object ResourceExchanger extends KutuService {
     println(athletHeader)
     val athletInstances = athletCsv.map(parseLine).filter(_.size == athletHeader.size).map{fields =>
       val geb = fields(athletHeader("gebdat")).replace("Some(", "").replace(")","")
-      val candidate = Athlet(
+      val importathlet = Athlet(
           id = 0,
           js_id = fields(athletHeader("js_id")),
           geschlecht = fields(athletHeader("geschlecht")),
@@ -68,7 +68,21 @@ object ResourceExchanger extends KutuService {
           verein = vereinInstances.get(fields(athletHeader("verein"))).map(v => v.id),
           activ = fields(athletHeader("activ")).toUpperCase() match {case "TRUE" => true case _ => false}
           )
-      val athlet = insertAthlete(candidate)
+      val candidate = findAthleteLike(importathlet)
+      val athlet = if(candidate.id > 0 &&
+                           (importathlet.gebdat match {
+                             case Some(d) =>
+                               candidate.gebdat match {
+                                 case Some(cd) =>cd.toString().startsWith("01.01")
+                                 case _        => true
+                               }
+                             case _ => false
+                             })) {
+         candidate
+      }
+      else {
+         insertAthlete(candidate)
+      }
       (fields(athletHeader("id")), athlet)
     }.toMap
 
