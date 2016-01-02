@@ -50,6 +50,7 @@ import ch.seidel.kutu.renderer.NotenblattToHtmlRenderer
 import ch.seidel.kutu.domain._
 import scalafx.scene.control.CheckBox
 import scalafx.scene.control.SplitPane
+import ch.seidel.kutu.renderer.KategorieTeilnehmerToHtmlRenderer
 
 case class RiegeEditor(initname: String, initanz: Int, enabled: Boolean, onNameChange: (String, String) => Unit, onSelectedChange: (String, Boolean) => Boolean) {
   val selected = BooleanProperty(enabled)
@@ -916,6 +917,76 @@ class WettkampfWertungTab(programm: Option[ProgrammView], riege: Option[String],
         true
       }
     }
+    val generateTeilnehmerListe = new Button with KategorieTeilnehmerToHtmlRenderer {
+      text = "Teilnehmerliste erstellen"
+      minWidth = 75
+      onAction = (event: ActionEvent) => {
+        if (wkModel.nonEmpty) {
+          val driver = wkModel.toSeq
+          val programme = driver.flatten.map(x => x.init.wettkampfdisziplin.programm).foldLeft(Seq[ProgrammView]()){(acc, pgm) =>
+            if(!acc.exists { x => x.id == pgm.id }) {
+              acc :+ pgm
+            }
+            else {
+              acc
+            }
+          }
+          println(programme)
+          val startgeraet = service.selectRiegen(wettkampf.id).map(r => r.r -> r.start.map(_.name).getOrElse("")).toMap
+          val seriendaten = for {
+            programm <- programme
+
+            athletwertungen <- driver.map(we => we.filter { x => x.init.wettkampfdisziplin.programm.id == programm.id})
+            if(athletwertungen.nonEmpty)
+          }
+          yield {
+            val einsatz = athletwertungen.head.init
+            val athlet = einsatz.athlet
+            Kandidat(
+            einsatz.wettkampf.easyprint
+            ,athlet.geschlecht match {case "M" => "Turner"  case _ => "Turnerin"}
+            ,einsatz.wettkampfdisziplin.programm.easyprint
+            ,athlet.name
+            ,athlet.vorname
+            ,AthletJahrgang(athlet.gebdat).hg
+            ,athlet.verein match {case Some(v) => v.easyprint case _ => ""}
+            ,einsatz.riege.getOrElse("")
+            ,startgeraet.getOrElse(einsatz.riege.getOrElse(""), "")
+            ,athletwertungen.filter{wertung =>
+              if(wertung.init.wettkampfdisziplin.feminim == 0 && !wertung.init.athlet.geschlecht.equalsIgnoreCase("M")) {
+                false
+              }
+              else if(wertung.init.wettkampfdisziplin.masculin == 0 && wertung.init.athlet.geschlecht.equalsIgnoreCase("M")) {
+                false
+              }
+              else {
+                true
+              }
+            }.map(_.init.wettkampfdisziplin.disziplin.easyprint)
+            )
+          }
+          val filename = "Teilnehmerliste_" + wettkampf.easyprint.replace(" ", "_") + programm.map("_Programm_" + _.easyprint.replace(" ", "_")).getOrElse("") + riege.map("_Riege_" + _.replace(" ", "_")).getOrElse("") + ".html"
+          val dir = new java.io.File(service.homedir + "/" + wettkampf.easyprint.replace(" ", "_"))
+          if(!dir.exists()) {
+            dir.mkdirs();
+          }
+          val file = new java.io.File(dir.getPath + "/" + filename)
+          val logofile = if(new java.io.File(dir.getPath + "/logo.jpg").exists()) {
+            "logo.jpg"
+          }
+          else {
+            "../logo.jpg"
+          }
+          val toSave = toHTMLasKategorienListe(seriendaten, logofile)
+          val os = new BufferedOutputStream(new FileOutputStream(file))
+          os.write(toSave.getBytes("UTF-8"))
+          os.flush()
+          os.close()
+          Desktop.getDesktop().open(file);
+          //printHtml(toSave, webView.engine)
+        }
+      }
+    }
     val generateNotenblaetter = new Button with NotenblattToHtmlRenderer {
       text = "Notenblätter erstellen"
       minWidth = 75
@@ -1266,7 +1337,7 @@ class WettkampfWertungTab(programm: Option[ProgrammView], riege: Option[String],
       moveToOtherProgramButton.disable <== when(wkview.selectionModel.value.selectedItemProperty.isNull()) choose moveAvaillable otherwise false
       removeButton.disable <== when(wkview.selectionModel.value.selectedItemProperty.isNull()) choose true otherwise false
 
-      List(addButton, pasteFromExcel, moveToOtherProgramButton, generateNotenblaetter, removeButton).filter(btn => !btn.text.value.equals("."))
+      List(addButton, pasteFromExcel, moveToOtherProgramButton, generateTeilnehmerListe, generateNotenblaetter, removeButton).filter(btn => !btn.text.value.equals("."))
     }
 
     wkview.selectionModel.value.setCellSelectionEnabled(true)
