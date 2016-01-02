@@ -19,7 +19,14 @@ sealed trait GroupBy {
 
   def /(next: GroupBy): GroupBy = groupBy(next)
 
-  def groupBy(next: GroupBy): GroupBy = {
+  def traverse[T >: GroupBy, A](accumulator: A)(op: (T, A) => A): A = {
+    next match {
+      case Some(gb) => gb.traverse(op(this, accumulator)) { op }
+      case _ => op(this, accumulator)
+    }
+  }
+
+  def groupBy[T >: GroupBy](next: T): T = {
     if(this == next) {
       next
     }
@@ -34,7 +41,7 @@ sealed trait GroupBy {
             n
           }
         case None =>
-          this.next = Some(next)
+          this.next = Some(next.asInstanceOf[GroupBy])
           this
       }
     }
@@ -86,24 +93,14 @@ sealed trait FilterBy extends GroupBy {
   private[FilterBy] var filter: Option[DataObject] = None
   private[FilterBy] var filtItems: List[DataObject] = List()
 
-//  def adjustFilter(cbs: List[ComboBox[DataObject]]) {
-//    if(cbs.nonEmpty) {
-//      val h = cbs.head
-//      val selected = h.selectionModel.value.selectedItem
-//      if(filterItems.diff(h.items.value).size > 0) {
-//        h.items.value.clear
-//        h.items.value ++= filterItems
-//      }
-//      next match {
-//        case Some(ng) => ng.asInstanceOf[FilterBy].adjustFilter(cbs.tail)
-//        case None     =>
-//      }
-//    }
-//  }
+  def analyze(wvlist: Seq[WertungView]): Seq[DataObject] = {
+    filtItems = items(wvlist)
+    filtItems
+  }
 
   override def select(wvlist: Seq[WertungView]): Iterable[GroupSection] = {
     filtItems = items(wvlist)
-    super.select(wvlist.filter(g => if(getFilter.isDefined) getFilter.get.equals(g) else true))
+    super.select(wvlist.filter(g => if(getFilter.isDefined) getFilter.get.equals(grouper(g)) else true))
   }
 
   def setFilter(f: Option[DataObject]) {
@@ -112,6 +109,11 @@ sealed trait FilterBy extends GroupBy {
   def getFilter = {
     filter
   }
+  override def reset {
+    super.reset
+    filter = None
+  }
+
 }
 
 case object ByNothing extends GroupBy with FilterBy {

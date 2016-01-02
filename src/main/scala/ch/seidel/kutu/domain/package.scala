@@ -36,6 +36,9 @@ package object domain {
     def easyprint: String = toString
   }
 
+  case class NullObject(caption: String) extends DataObject {
+    override def easyprint = caption
+  }
   case class Riege(r: String) extends DataObject {
     override def easyprint = r
   }
