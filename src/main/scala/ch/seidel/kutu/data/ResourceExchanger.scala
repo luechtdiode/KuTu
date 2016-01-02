@@ -43,9 +43,10 @@ object ResourceExchanger extends KutuService {
     val (vereinCsv, vereinHeader) = collection("vereine.csv")
     println(vereinHeader)
     val vereinNameIdx = vereinHeader("name")
+    val vereinVerbandIdx = vereinHeader.getOrElse("verband", -1)
     val vereinIdIdx = vereinHeader("id")
     val vereinInstances = vereinCsv.map(parseLine).filter(_.size == vereinHeader.size).map{fields =>
-      val candidate = Verein(id = 0, name = fields(vereinNameIdx))
+      val candidate = Verein(id = 0, name = fields(vereinNameIdx), verband = if(vereinVerbandIdx > -1) Some(fields(vereinVerbandIdx)) else None)
       val verein = insertVerein(candidate)
       (fields(vereinIdIdx), verein)
     }.toMap
@@ -91,6 +92,7 @@ object ResourceExchanger extends KutuService {
     val wettkampfInstances = wettkampfCsv.map(parseLine).filter(_.size == wettkampfHeader.size).map{fields =>
       val wettkampf = createWettkampf(
           auszeichnung = fields(wettkampfHeader("auszeichnung")),
+          auszeichnungendnote = try {BigDecimal.valueOf(fields(wettkampfHeader("auszeichnungendnote")))} catch {case e:Exception => 0},
           datum = fields(wettkampfHeader("datum")),
           programmId = Set(fields(wettkampfHeader("programmId"))),
           titel = fields(wettkampfHeader("titel"))
@@ -121,6 +123,18 @@ object ResourceExchanger extends KutuService {
       )
       updateOrinsertWertung(w)
     }
+    if(collection.contains("riegen.csv")) {
+      val (riegenCsv, riegenHeader) = collection("riegen.csv")
+      riegenCsv.map(parseLine).filter(_.size == riegenHeader.size).foreach{fields =>
+        val riege = RiegeRaw(
+            wettkampfId = fields(riegenHeader("wettkampfId")),
+            r = fields(riegenHeader("r")),
+            durchgang = if(fields(riegenHeader("durchgang")).length > 0) Some(fields(riegenHeader("durchgang"))) else None,
+            start = if(fields(riegenHeader("start")).length > 0) Some(fields(riegenHeader("start"))) else None
+            )
+        updateOrinsertRiege(riege)
+      }
+    }
     wettkampfInstances.head._2
   }
 
@@ -142,6 +156,7 @@ object ResourceExchanger extends KutuService {
           case Some(programm: Programm) => programm.id + ""
           case Some(athlet: Athlet) => athlet.id + ""
           case Some(athlet: AthletView) => athlet.id + ""
+          case Some(disziplin: Disziplin) => disziplin.id + ""
           case Some(value) => value.toString
           case None => ""
           case e => e.toString
@@ -179,6 +194,14 @@ object ResourceExchanger extends KutuService {
     zip.write((getHeader[Wertung] + "\n").getBytes("utf-8"))
     for(wertung <- wertungenRaw) {
       zip.write((getValues(wertung) + "\n").getBytes("utf-8"))
+    }
+    zip.closeEntry()
+
+    val riegenRaw = selectRiegenRaw(wettkampf.id)
+    zip.putNextEntry(new ZipEntry("riegen.csv"));
+    zip.write((getHeader[Riege] + "\n").getBytes("utf-8"))
+    for(riege <- riegenRaw) {
+      zip.write((getValues(riege) + "\n").getBytes("utf-8"))
     }
     zip.closeEntry()
 

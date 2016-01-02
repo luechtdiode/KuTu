@@ -84,7 +84,7 @@ class KuTuAppTree(service: KutuService) {
         val button = new Button(node, img) {
           prefWidth = 140
           prefHeight = 145
-          contentDisplay = ContentDisplay.TOP
+          contentDisplay = ContentDisplay.Top
           styleClass.clear()
           styleClass += "sample-tile"
           onAction = (ae: ActionEvent) => {
@@ -98,7 +98,7 @@ class KuTuAppTree(service: KutuService) {
               thmb(wk, "Wettkämpfe", s"${wk.titel} ${wk.datum}")
             }.toList, true, 1),
             "Athleten" -> (service.selectVereine.map { a =>
-              thmb(a, "Athleten", s"${a.name}")
+              thmb(a, "Athleten", s"${a.name}" + a.verband.map(v => s" ($v)").getOrElse(""))
             }, false, 2)//,
 //          "Analysen" -> service.selectWertungen().map { d =>
 //              thmb("Analysen", s"d.wettkampfdisziplin.disziplin.name}%s")

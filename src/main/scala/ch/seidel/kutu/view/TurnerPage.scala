@@ -129,7 +129,7 @@ object TurnerPage {
             onEditCommit = (evt: CellEditEvent[AthletEditor, String]) => {
               field.get(evt.rowValue).asInstanceOf[StringProperty].value = evt.newValue
               val rowIndex = wkModel.indexOf(evt.rowValue)
-              wkModel.update(rowIndex, AthletEditor(service.insertOrupdateAthlete(evt.rowValue.commit)))
+              wkModel.update(rowIndex, AthletEditor(service.insertAthlete(evt.rowValue.commit)))
               evt.tableView.selectionModel.value.select(rowIndex, this)
               evt.tableView.requestFocus()
             }

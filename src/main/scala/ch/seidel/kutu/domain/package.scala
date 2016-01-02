@@ -39,7 +39,12 @@ package object domain {
   case class NullObject(caption: String) extends DataObject {
     override def easyprint = caption
   }
-  case class Riege(r: String) extends DataObject {
+
+  case class RiegeRaw(wettkampfId: Long, r: String, durchgang: Option[String], start: Option[Long]) extends DataObject {
+    override def easyprint = r
+  }
+
+  case class Riege(r: String, durchgang: Option[String], start: Option[Disziplin]) extends DataObject {
     override def easyprint = r
   }
 
@@ -51,7 +56,11 @@ package object domain {
       case _ => "Turner"
     }
   }
-  case class Verein(id: Long, name: String) extends DataObject {
+  case class Verein(id: Long, name: String, verband: Option[String]) extends DataObject {
+    override def easyprint = name
+    override def toString = name
+  }
+  case class Verband(name: String) extends DataObject {
     override def easyprint = name
     override def toString = name
   }
@@ -141,16 +150,16 @@ package object domain {
     override def toString = toPath
   }
 
-  case class Wettkampf(id: Long, datum: java.sql.Date, titel: String, programmId: Long, auszeichnung: Int) extends DataObject {
+  case class Wettkampf(id: Long, datum: java.sql.Date, titel: String, programmId: Long, auszeichnung: Int, auszeichnungendnote: scala.math.BigDecimal) extends DataObject {
     override def easyprint = f"$titel am $datum%td.$datum%tm.$datum%tY"
     def toView(programm: ProgrammView) = {
-      WettkampfView(id, datum, titel, programm, auszeichnung)
+      WettkampfView(id, datum, titel, programm, auszeichnung, auszeichnungendnote)
     }
   }
 
-  case class WettkampfView(id: Long, datum: java.sql.Date, titel: String, programm: ProgrammView, auszeichnung: Int) extends DataObject {
+  case class WettkampfView(id: Long, datum: java.sql.Date, titel: String, programm: ProgrammView, auszeichnung: Int, auszeichnungendnote: scala.math.BigDecimal) extends DataObject {
     override def easyprint = f"$titel am $datum%td.$datum%tm.$datum%tY"
-    def toWettkampf = Wettkampf(id, datum, titel, programm.id, auszeichnung)
+    def toWettkampf = Wettkampf(id, datum, titel, programm.id, auszeichnung, auszeichnungendnote)
   }
 
   case class Wettkampfdisziplin(id: Long, programmId: Long, disziplinId: Long, kurzbeschreibung: String, detailbeschreibung: Option[java.sql.Blob], notenfaktor: scala.math.BigDecimal, ord: Int, masculin: Int, feminim: Int) extends DataObject {

@@ -92,6 +92,7 @@ trait KutuService {
         ,"AlterGeschlechtFelder.sql"
         //,"CreateIndicies.sql"
         ,"AlterAlternativeRiegeFelder.sql"
+        ,"AlterRiegeVerbandAuszNote.sql"
         ,"UpdateGeTuK7.sql"
         )
 
@@ -202,7 +203,7 @@ trait KutuService {
 
   }
 
-  private implicit val getVereinResult = GetResult(r => Verein(r.<<[Long], r.<<[String]))
+  private implicit val getVereinResult = GetResult(r => Verein(r.<<[Long], r.<<[String], r.<<))
   private implicit val getVereinOptionResult = GetResult(r =>  r.nextLongOption() match {
     case Some(id) => Some(getVereinResult(r))
     case _        => { r.skip; r.skip; None }
@@ -225,8 +226,16 @@ trait KutuService {
         verein = r))
   private implicit val getDisziplinResult = GetResult(r =>
     Disziplin(r.<<[Long], r.<<[String]))
+  private implicit val getDisziplinOptionResult = GetResult(r => r.nextLongOption() match {
+    case Some(id) => Some(getDisziplinResult(r))
+    case _        => {r.skip; r.skip; None}
+  })
+  private implicit val getRiegeRawResult = GetResult(r =>
+    RiegeRaw(r.<<, r.<<, r.<<, r.<<))
+  private implicit val getRiegeResult = GetResult(r =>
+    Riege(r.<<, r.<<, r))
   private implicit val getWettkampfResult = GetResult(r =>
-    Wettkampf(r.<<[Long], r.<<[java.sql.Date], r.<<[String], r.<<[Long], r.<<[Int]))
+    Wettkampf(r.<<[Long], r.<<[java.sql.Date], r.<<[String], r.<<[Long], r.<<[Int], r.<<))
   private implicit val getWettkampfDisziplinResult = GetResult(r =>
     Wettkampfdisziplin(r.<<[Long], r.<<[Long], r.<<[Long], r.<<[String], r.nextBlobOption(), r.<<, r.<<[Int], r.<<[Int], r.<<[Int]))
 
@@ -240,9 +249,9 @@ trait KutuService {
     //WertungView(id: Long, athlet: AthletView, wettkampfdisziplin: WettkampfdisziplinView, wettkampf: Wettkampf, noteD: scala.math.BigDecimal, noteE: scala.math.BigDecimal, endnote: scala.math.BigDecimal, riege: Option[String], riege2: Option[String])
     //WertungView(r.<<[Long], r, r, r, r.<<[scala.math.BigDecimal], r.<<[scala.math.BigDecimal], r.<<[scala.math.BigDecimal], r.<<))
   private implicit def getWettkampfViewResultCached(implicit session: Session, cache: scala.collection.mutable.Map[Long, ProgrammView]) = GetResult(r =>
-    WettkampfView(r.<<[Long], r.<<[java.sql.Date], r.<<[String], readProgramm(r.<<[Long], cache), r.<<[Int]))
+    WettkampfView(r.<<[Long], r.<<[java.sql.Date], r.<<[String], readProgramm(r.<<[Long], cache), r.<<[Int], r.<<))
   private implicit def getWettkampfViewResult(implicit session: Session) = GetResult(r =>
-    WettkampfView(r.<<[Long], r.<<[java.sql.Date], r.<<[String], readProgramm(r.<<[Long]), r.<<[Int]))
+    WettkampfView(r.<<[Long], r.<<[java.sql.Date], r.<<[String], readProgramm(r.<<[Long]), r.<<[Int], r.<<))
   private implicit val getProgrammRawResult = GetResult(r =>
     ProgrammRaw(r.<<[Long], r.<<[String], r.<<[Int], r.<<[Long], r.<<[Int], r.<<[Int], r.<<[Int]))
 
@@ -325,6 +334,7 @@ trait KutuService {
   }
 
   def updateOrinsertWertung(w: Wertung) = {
+    // TODO Riegen nachpflegen (neue, wegfallende)
     database withTransaction { implicit session =>
       sqlu"""
                 delete from wertung where
@@ -339,6 +349,7 @@ trait KutuService {
   }
 
   def updateWertung(w: Wertung): WertungView = {
+    // TODO Riegen nachpflegen (neue, wegfallende)
     database withTransaction { implicit session =>
       sqlu"""       UPDATE wertung
                     SET note_d=${w.noteD}, note_e=${w.noteE}, endnote=${w.endnote}, riege=${w.riege}, riege2=${w.riege2}
@@ -437,7 +448,7 @@ trait KutuService {
     }
   }
 
-  def createWettkampf(datum: java.sql.Date, titel: String, programmId: Set[Long], auszeichnung: Int, withAthlets: Option[(Long, Athlet) => Boolean] = Some({ (_, _) => true })): Wettkampf = {
+  def createWettkampf(datum: java.sql.Date, titel: String, programmId: Set[Long], auszeichnung: Int, auszeichnungendnote: scala.math.BigDecimal, withAthlets: Option[(Long, Athlet) => Boolean] = Some({ (_, _) => true })): Wettkampf = {
     database withTransaction { implicit session =>
       val cache = scala.collection.mutable.Map[Long, ProgrammView]()
       val programs = programmId map (p => readProgramm(p, cache))
@@ -459,8 +470,8 @@ trait KutuService {
         case _ =>
           sqlu"""
                     insert into wettkampf
-                    (datum, titel, programm_Id, auszeichnung)
-                    values (${datum}, ${titel}, ${heads.head.id}, $auszeichnung)
+                    (datum, titel, programm_Id, auszeichnung, auszeichnungendnote)
+                    values (${datum}, ${titel}, ${heads.head.id}, $auszeichnung, $auszeichnungendnote)
               """.execute
           sql"""
                     select * from wettkampf
@@ -473,7 +484,7 @@ trait KutuService {
     }
   }
 
-  def saveWettkampf(id: Long, datum: java.sql.Date, titel: String, programmId: Set[Long], auszeichnung: Int): Wettkampf = {
+  def saveWettkampf(id: Long, datum: java.sql.Date, titel: String, programmId: Set[Long], auszeichnung: Int, auszeichnungendnote: scala.math.BigDecimal): Wettkampf = {
     database withTransaction { implicit session =>
       val existing = sql"""
                     select * from wettkampf
@@ -489,8 +500,8 @@ trait KutuService {
       }
       sqlu"""
                     replace into wettkampf
-                    (id, datum, titel, programm_Id, auszeichnung)
-                    values ($id, $datum, $titel, ${heads.head.id}, $auszeichnung)
+                    (id, datum, titel, programm_Id, auszeichnung, auszeichnungendnote)
+                    values ($id, $datum, $titel, ${heads.head.id}, $auszeichnung, $auszeichnungendnote)
           """.execute
       sql"""
                     select * from wettkampf
@@ -514,23 +525,23 @@ trait KutuService {
        """.as[Long].build.headOption
        candidateId match {
          case Some(id) if(id > 0) =>
-           Verein(id, verein.name)
+           Verein(id, verein.name, verein.verband)
          case _ =>
            sqlu"""
-                insert into verein  (name) values (${verein.name})
+                insert into verein  (name, verband) values (${verein.name}, ${verein.verband})
                """.execute
            val id = sql"""
                 select id from verein where id in (select max(id) from verein)
               """.as[Long].build.head
-           Verein(id, verein.name)
+           Verein(id, verein.name, verein.verband)
        }
     }
   }
 
-  def createVerein(name: String): Long = {
+  def createVerein(name: String, verband: Option[String]): Long = {
     database withTransaction { implicit session: Session =>
       sqlu"""       insert into verein
-                    (name) values (${name})""".execute
+                    (name, verband) values (${name}, ${verband})""".execute
       sql"""
                     select id from verein
                     where id in (select max(id) from verein)
@@ -541,7 +552,7 @@ trait KutuService {
   def updateVerein(verein: Verein) {
     database withTransaction { implicit session: Session =>
       sqlu"""       update verein
-                    set name = ${verein.name}
+                    set name = ${verein.name}, verband = ${verein.verband}
                     where id = ${verein.id}
           """.execute
     }
@@ -676,7 +687,7 @@ trait KutuService {
 
   def selectVereine: List[Verein] = {
     database withSession { implicit session =>
-      sql"""        select id, name from verein order by name""".as[Verein].list
+      sql"""        select id, name, verband from verein order by name""".as[Verein].list
     }
   }
 
@@ -812,44 +823,6 @@ trait KutuService {
     }
   }
 
-  def insertOrupdateAthlete(athlete: Athlet) = {
-    insertAthlete(athlete)
-//    database withTransaction { implicit session =>
-//      def getId = sql"""
-//                    select max(athlet.id) as maxid
-//                    from athlet
-//                    where name=${athlete.name} and vorname=${athlete.vorname} and gebdat=${athlete.gebdat} and verein=${athlete.verein}
-//           """.as[Long].build.headOption
-//
-//      if (athlete.id == 0) {
-//        val id: Long = getId match {
-//          case Some(id) if(id > 0) =>
-//            sqlu"""
-//                    replace into athlet
-//                    (id, js_id, geschlecht, name, vorname, gebdat, strasse, plz, ort, verein)
-//                    values (${id}, ${athlete.js_id}, ${athlete.geschlecht}, ${athlete.name}, ${athlete.vorname}, ${athlete.gebdat}, ${athlete.strasse}, ${athlete.plz}, ${athlete.ort}, ${athlete.verein})
-//            """.execute
-//            id
-//          case _ => sqlu"""
-//                    replace into athlet
-//                    (js_id, geschlecht, name, vorname, gebdat, strasse, plz, ort, verein)
-//                    values (${athlete.js_id}, ${athlete.geschlecht}, ${athlete.name}, ${athlete.vorname}, ${athlete.gebdat}, ${athlete.strasse}, ${athlete.plz}, ${athlete.ort}, ${athlete.verein})
-//            """.execute
-//            getId.get
-//        }
-//        sql"""select * from athlet where id = ${id}""".as[Athlet].build.headOption.get
-//      }
-//      else {
-//        sqlu"""
-//                    replace into athlet
-//                    (id, js_id, geschlecht, name, vorname, gebdat, strasse, plz, ort, verein)
-//                    values (${athlete.id}, ${athlete.js_id}, ${athlete.geschlecht}, ${athlete.name}, ${athlete.vorname}, ${athlete.gebdat}, ${athlete.strasse}, ${athlete.plz}, ${athlete.ort}, ${athlete.verein})
-//            """.execute
-//        athlete
-//      }
-//    }
-  }
-
   /* Riegenbuilder:
 --     1. Anzahl Rotationen (min = 1, max = Anzahl Teilnehmer),
 --     2. Anzahl Stationen (min = 1, max = Anzahl Diszipline im Programm),
@@ -932,6 +905,38 @@ trait KutuService {
         groupWertungen(atGrouper, atGrouper)
       else
         groupWertungen(wkGrouper, wkGrouper)
+    }
+  }
+
+  def updateOrinsertRiege(riege: RiegeRaw) = {
+    database withTransaction { implicit session =>
+      sqlu"""
+                delete from riege where
+                wettkampf_id=${riege.wettkampfId} and name=${riege.r}
+        """.execute
+      sqlu"""
+                insert into riege
+                (wettkampf_Id, name, durchgang, start)
+                values (${riege.wettkampfId}, ${riege.r}, ${riege.durchgang}, ${riege.start})
+        """.execute
+    }
+  }
+
+  def selectRiegenRaw(wettkampfId: Long) = {
+    database withSession { implicit session =>
+       sql"""select r.wettkampf_id, r.name, r.durchgang, r.start
+             from riege r
+             where wettkampf_id=$wettkampfId
+          """.as[RiegeRaw].iterator.toList
+    }
+  }
+  def selectRiegen(wettkampfId: Long) = {
+    database withSession { implicit session =>
+       sql"""select r.name, r.durchgang, d.*
+             from riege r
+             left outer join disziplin d on (r.start = d.id)
+             where wettkampf_id=$wettkampfId
+          """.as[Riege].iterator.toList
     }
   }
 }

@@ -62,7 +62,7 @@ abstract class DefaultRanglisteTab(override val service: KutuService) extends Ta
   //      x.wettkampf }.map(x => (x._1, x._2.groupBy { x =>
   //        x.wettkampfdisziplin.programm }.map(x => (x._1, x._2.groupBy { x =>
   //          x.athlet }))))
-  def groupers(text: String): List[FilterBy] = ???
+  def groupers: List[FilterBy] = ???
   def getData: Seq[WertungView] = ???
   case class FilenameDefault(filename: String, dir: java.io.File)
   def getSaveAsFilenameDefault: FilenameDefault = ???

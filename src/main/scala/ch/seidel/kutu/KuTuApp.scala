@@ -146,6 +146,11 @@ object KuTuApp extends JFXApp with KutuService {
         promptText = "%-Angabe, wer eine Auszeichnung bekommt"
         text = p.auszeichnung + "%"
       }
+      val txtAuszeichnungEndnote = new TextField {
+        prefWidth = 500
+        promptText = "Auszeichnung bei Erreichung des Mindest-Endwerts"
+        text = p.auszeichnungendnote.toString
+      }
       PageDisplayer.showInDialog(caption, new DisplayablePage() {
         def getPage: Node = {
           new BorderPane {
@@ -156,7 +161,8 @@ object KuTuApp extends JFXApp with KutuService {
                   new Label(txtDatum.promptText.value), txtDatum,
                   new Label(txtTitel.promptText.value), txtTitel,
                   new Label(cmbProgramm.promptText.value), cmbProgramm,
-                  new Label(txtAuszeichnung.promptText.value), txtAuszeichnung)
+                  new Label(txtAuszeichnung.promptText.value), txtAuszeichnung,
+                  new Label(txtAuszeichnungEndnote.promptText.value), txtAuszeichnungEndnote)
             }
           }
         }
@@ -172,6 +178,10 @@ object KuTuApp extends JFXApp with KutuService {
               txtAuszeichnung.text.value.filter(c => c.isDigit).toString match {
                 case ""        => 0
                 case s: String => str2Int(s)
+              },
+              txtAuszeichnungEndnote.text.value match {
+                case ""        => 0
+                case s: String => try {BigDecimal.valueOf(s)} catch {case e:Exception => 0}
               })
             val dir = new java.io.File(homedir + "/" + w.easyprint.replace(" ", "_"))
             if(!dir.exists()) {
@@ -219,19 +229,33 @@ object KuTuApp extends JFXApp with KutuService {
       prefWidth = 500
       promptText = "Vereinsname"
     }
+
+    val txtVerband = new TextField {
+      prefWidth = 500
+      promptText = "Verband"
+    }
     PageDisplayer.showInDialog(caption, new DisplayablePage() {
       def getPage: Node = {
         new BorderPane {
           hgrow = Priority.Always
           vgrow = Priority.Always
           center = new VBox {
-            children.addAll(new Label(txtTitel.promptText.value), txtTitel)
+            children.addAll(
+                new Label(txtTitel.promptText.value), txtTitel,
+                new Label(txtVerband.promptText.value), txtVerband
+                )
           }
         }
       }
     }, new Button("OK") {
       onAction = handleAction {implicit e: ActionEvent =>
-        val vid = createVerein(txtTitel.text.value)
+        val vid = createVerein(
+            txtTitel.text.value.trim(),
+            txtVerband.text.value match {
+              case "" => None
+              case s => Some(s.trim())
+            }
+            )
         updateTree
         selectVereine.find {_.id == vid } match {
           case Some(verein) =>
@@ -273,6 +297,11 @@ object KuTuApp extends JFXApp with KutuService {
         promptText = "%-Angabe, wer eine Auszeichnung bekommt"
         text = "40%"
       }
+      val txtAuszeichnungEndnote = new TextField {
+        prefWidth = 500
+        promptText = "Auszeichnung bei Erreichung des Mindest-Endwerts"
+        text = ""
+      }
       PageDisplayer.showInDialog(caption, new DisplayablePage() {
         def getPage: Node = {
           new BorderPane {
@@ -283,7 +312,8 @@ object KuTuApp extends JFXApp with KutuService {
                   new Label(txtDatum.promptText.value), txtDatum,
                   new Label(txtTitel.promptText.value), txtTitel,
                   new Label(cmbProgramm.promptText.value), cmbProgramm,
-                  new Label(txtAuszeichnung.promptText.value), txtAuszeichnung)
+                  new Label(txtAuszeichnung.promptText.value), txtAuszeichnung,
+                  new Label(txtAuszeichnungEndnote.promptText.value), txtAuszeichnungEndnote)
             }
           }
         }
@@ -296,6 +326,10 @@ object KuTuApp extends JFXApp with KutuService {
               txtAuszeichnung.text.value.filter(c => c.isDigit).toString match {
                 case ""        => 0
                 case s: String => str2Int(s)
+              },
+              txtAuszeichnungEndnote.text.value match {
+                case ""        => 0
+                case s: String => try {BigDecimal.valueOf(s)} catch {case e:Exception => 0}
               },
               Some({ (_, _) => false }))
            val dir = new java.io.File(homedir + "/" + w.easyprint.replace(" ", "_"))
@@ -402,6 +436,11 @@ object KuTuApp extends JFXApp with KutuService {
     			promptText = "Neuer Vereinsname"
     			text = v.name
     }
+    val txtVerband = new TextField {
+      prefWidth = 500
+      promptText = "Verband"
+      text = v.verband.getOrElse("")
+    }
     PageDisplayer.showInDialog(caption, new DisplayablePage() {
       def getPage: Node = {
         new BorderPane {
@@ -409,7 +448,8 @@ object KuTuApp extends JFXApp with KutuService {
           vgrow = Priority.Always
           center = new VBox {
             children.addAll(
-                new Label(txtVereinsname.promptText.value), txtVereinsname
+                new Label(txtVereinsname.promptText.value), txtVereinsname,
+                new Label(txtVerband.promptText.value), txtVerband
             )
           }
         }
@@ -417,10 +457,16 @@ object KuTuApp extends JFXApp with KutuService {
     },
     new Button("OK") {
       onAction = handleAction {implicit e: ActionEvent =>
-        updateVerein(v.copy(name = txtVereinsname.text.value))
+        updateVerein(v.copy(
+            name = txtVereinsname.text.value.trim(),
+            verband = txtVerband.text.value match {
+              case "" => None
+              case s => Some(s.trim())
+            }
+            ))
         updateTree
         val text = txtVereinsname.text.value
-        tree.getLeaves("Athleten").find { item => text.equals(item.value.value) } match {
+        tree.getLeaves("Athleten").find { item => item.value.value.contains(text) } match {
           case Some(node) =>
             controlsView.selectionModel().select(node)
           case None =>

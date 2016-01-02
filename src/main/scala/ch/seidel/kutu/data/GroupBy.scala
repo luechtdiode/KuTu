@@ -193,7 +193,7 @@ case object ByWettkampfArt extends GroupBy with FilterBy {
 case object ByRiege extends GroupBy with FilterBy {
   override val groupname = "Riege"
   protected override val grouper = (v: WertungView) => {
-    Riege(v.riege match {case Some(r) => r case None => "keine Einteilung"})
+    Riege(v.riege match {case Some(r) => r case None => "keine Einteilung"}, None, None)
   }
   protected override val sorter: Option[(GroupSection, GroupSection) => Boolean] = Some((gs1: GroupSection, gs2: GroupSection) => {
     gs1.groupKey.easyprint.compareTo(gs2.groupKey.easyprint) < 0
@@ -280,11 +280,29 @@ case object ByVerein extends GroupBy with FilterBy {
   protected override val grouper = (v: WertungView) => {
     v.athlet.verein match {
       case Some(v) => v
-      case _       => Verein(0, "kein")
+      case _       => Verein(0, "kein", None)
     }
   }
   protected override val sorter: Option[(GroupSection, GroupSection) => Boolean] = Some((gs1: GroupSection, gs2: GroupSection) => {
     gs1.groupKey.asInstanceOf[Verein].name.compareTo(gs2.groupKey.asInstanceOf[Verein].name) < 0
+  })
+
+  def items(fromData: Seq[WertungView]): List[DataObject] = {
+    val grp = fromData.groupBy(grouper)
+    grp.map(_._1).toList
+  }
+}
+
+case object ByVerband extends GroupBy with FilterBy {
+  override val groupname = "Verband"
+  protected override val grouper = (v: WertungView) => {
+    v.athlet.verein match {
+      case Some(v) => Verband(v.verband.getOrElse("kein"))
+      case _       => Verband("kein")
+    }
+  }
+  protected override val sorter: Option[(GroupSection, GroupSection) => Boolean] = Some((gs1: GroupSection, gs2: GroupSection) => {
+    gs1.groupKey.asInstanceOf[Verband].name.compareTo(gs2.groupKey.asInstanceOf[Verband].name) < 0
   })
 
   def items(fromData: Seq[WertungView]): List[DataObject] = {
