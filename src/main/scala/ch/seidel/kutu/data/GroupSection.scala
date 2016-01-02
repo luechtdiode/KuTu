@@ -286,7 +286,7 @@ case class GroupLeaf(override val groupKey: DataObject, list: Iterable[WertungVi
     def mapToAvgRang[A <: DataObject](grp: Iterable[(A, (Resultat, Resultat))]) = {
       GroupSection.mapAvgRang(grp.map { d => (d._1, d._2._1, d._2._2) }).map(r => (r.groupKey.asInstanceOf[A] -> r)).toMap
     }
-    def mapToAvgRowSummary(athlWertungen: Iterable[WertungView]): (Resultat, Resultat, Iterable[(Disziplin, Resultat, Resultat, Option[Int])], Iterable[(ProgrammView, Resultat, Resultat, Option[Int])], Resultat) = {
+    def mapToAvgRowSummary(athlWertungen: Iterable[WertungView]): (Resultat, Resultat, Iterable[(Disziplin, Resultat, Resultat, Option[Int], Option[BigDecimal])], Iterable[(ProgrammView, Resultat, Resultat, Option[Int], Option[BigDecimal])], Resultat) = {
       val wks = athlWertungen.filter(_.endnote > 0).groupBy { w => w.wettkampf }
       val wksums = wks.map {wk => wk._2.map(w => w.resultat).reduce(_+_)}
       val rsum = if(wksums.nonEmpty) wksums.reduce(_+_) else Resultat(0,0,0)
@@ -341,6 +341,7 @@ case class GroupLeaf(override val groupKey: DataObject, list: Iterable[WertungVi
       val gsum = if(gwksums.nonEmpty) gwksums.reduce(_+_) else Resultat(0,0,0)
       val avg = if(wksums.nonEmpty) rsum / wksums.size else Resultat(0,0,0)
       val auszeichnung = if(wks.size == 1) Some(wks.head._1.auszeichnung) else None
+      val auszeichnungEndnote = if(wks.size == 1 && wks.head._1.auszeichnungendnote > 0) Some(wks.head._1.auszeichnungendnote) else None
       val perDisziplinAvgs = (for {
         wettkampf <- wks.keySet.toSeq
         ((ord, disziplin), dwertungen) <- wks(wettkampf).groupBy { x => (x.wettkampfdisziplin.ord, x.wettkampfdisziplin.disziplin) }
@@ -351,9 +352,9 @@ case class GroupLeaf(override val groupKey: DataObject, list: Iterable[WertungVi
         ((ord, disziplin) -> dsum)
       }).groupBy(_._1).map{x =>
         val xsum = x._2.map(_._2).reduce(_+_)
-        (x._1, xsum, xsum / x._2.size, auszeichnung)}
+        (x._1, xsum, xsum / x._2.size, auszeichnung, auszeichnungEndnote)}
       .toList.sortBy(d => d._1._1)
-      .map(d => (d._1._2, d._2, d._3, d._4)).toIterable
+      .map(d => (d._1._2, d._2, d._3, d._4, d._5)).toIterable
 
       val perProgrammAvgs = (for {
         wettkampf <- wks.keySet.toSeq
@@ -365,7 +366,7 @@ case class GroupLeaf(override val groupKey: DataObject, list: Iterable[WertungVi
         (programm, psum)
       }).groupBy(_._1).map{x =>
         val xsum = x._2.map(_._2).reduce(_+_)
-        (x._1, xsum, xsum / x._2.size, auszeichnung)}
+        (x._1, xsum, xsum / x._2.size, auszeichnung, auszeichnungEndnote)}
       .toList.sortBy(d => d._1.ord)
 
       (rsum, avg, perDisziplinAvgs, perProgrammAvgs, gsum)
@@ -398,8 +399,8 @@ case class GroupLeaf(override val groupKey: DataObject, list: Iterable[WertungVi
 
     def mapToGroupSum(
         athlet: AthletView,
-        disziplinResults: Iterable[(Disziplin, Resultat, Resultat, Option[Int])],
-        programmResults: Iterable[(ProgrammView, Resultat, Resultat, Option[Int])]): IndexedSeq[LeafRow] = {
+        disziplinResults: Iterable[(Disziplin, Resultat, Resultat, Option[Int], Option[BigDecimal])],
+        programmResults: Iterable[(ProgrammView, Resultat, Resultat, Option[Int], Option[BigDecimal])]): IndexedSeq[LeafRow] = {
 
       if(groups.size == 1) {
         disziplinResults.map{w =>
@@ -423,7 +424,7 @@ case class GroupLeaf(override val groupKey: DataObject, list: Iterable[WertungVi
       else {
         programmResults.map{w =>
           val ww = avgProgrammRangMap(w._1)(athlet)
-          val posproz = 100d * ww.rang.endnote / avgProgrammRangMap.size
+//          val posproz = 100d * ww.rang.endnote / avgProgrammRangMap.size
           if(anzahWettkaempfe > 1) {
             LeafRow(w._1.easyprint,
               ww.avg,
@@ -448,7 +449,13 @@ case class GroupLeaf(override val groupKey: DataObject, list: Iterable[WertungVi
           gsrang.rang.endnote > 0
           && (gsrang.rang.endnote < 4
               || (wp.head._4 match {
-                case Some(auszeichnung) => posproz <= auszeichnung
+                case Some(auszeichnung) =>
+                  val ret = posproz <= auszeichnung
+                  ret
+                case None               => false})
+              || (wp.head._5 match {
+                case Some(auszeichnung) =>
+                  gsrang.sum.endnote >= auszeichnung
                 case None               => false})))
 
     }.toList.filter(_.sum.endnote > 0).sortBy(_.rang.endnote)
