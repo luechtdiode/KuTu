@@ -1,7 +1,7 @@
 INSERT INTO programm
 (id, parent_id, name, aggregate, ord)
 VALUES
- (41, 20, 'K7', 0, 1)
+ (41, 20, 'K7', 0, 7)
 ;
 
 -- K7-Wettkampfgeräte (41 mit 1-6 + 26)
