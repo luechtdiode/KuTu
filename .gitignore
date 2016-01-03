@@ -1,3 +1,6 @@
 /target/
 /.cache
 /classes/
+/.*
+*.exe
+
