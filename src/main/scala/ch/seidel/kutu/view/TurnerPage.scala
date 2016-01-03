@@ -144,77 +144,7 @@ object TurnerPage {
       }
     athletenview.selectionModel.value.setCellSelectionEnabled(true)
     athletenview.filterEvent(KeyEvent.KeyPressed) { (ke: KeyEvent) =>
-      ke.code match {
-        case KeyCode.TAB if(!ke.controlDown) =>
-          val action = new Runnable() {
-            override def run = {
-              if(ke.shiftDown)
-                athletenview.selectionModel.value.selectPrevious()
-              else
-                athletenview.selectionModel.value.selectNext()
-            }
-          }
-          val wasEditing = athletenview.delegate.getEditingCell() != null
-          action.run()
-          if(wasEditing) {
-            ke.consume()
-            Platform.runLater(action)
-          }
-          else {
-            ke.consume()
-          }
-
-        case KeyCode.ENTER /*if(ke.controlDown || wkview.delegate.getEditingCell() != null)*/ =>
-          val action = new Runnable() {
-            override def run = {
-              if(ke.shiftDown) {
-                val index = athletenview.selectionModel.value.getSelectedIndex
-                if(index == 0) {
-                  athletenview.selectionModel.value.selectLast()
-                }
-                else {
-                  athletenview.selectionModel.value.selectAboveCell()
-                }
-              }
-              else {
-                val index = athletenview.selectionModel.value.getSelectedIndex
-                if(index == athletenview.items.value.size()-1) {
-                  athletenview.selectionModel.value.selectFirst()
-                }
-                else {
-                  athletenview.selectionModel.value.selectBelowCell()
-                }
-              }
-            }
-          }
-          val wasEditing = athletenview.delegate.getEditingCell() != null
-          action.run()
-          if(wasEditing) {
-            ke.consume()
-            Platform.runLater(action)
-          }
-          else {
-            ke.consume()
-          }
-
-        case KeyCode.DELETE if(athletenview.delegate.getEditingCell() == null) =>
-          val fc = athletenview.focusModel.value.focusedCell.value
-          val tc = fc.tableColumn.asInstanceOf[jfxsc.TableColumn[AthletEditor, Any]]
-          athletenview.edit(fc.row, tc)
-          //val athlet = athletenview.selectionModel.value.selectedItem.value
-
-//        // Paste via CTRL+V or SHIFT+INSERT
-//        case c if(ke.shiftDown && c == KeyCode.INSERT) || (ke.controlDown && ke.text.equals("v")) =>
-//          doPasteFromExcel(programm)(new ActionEvent())
-//          ke.consume()
-
-        case c if((c.isLetterKey || c.isDigitKey) && athletenview.editingCell.value == null) =>
-          val fc = athletenview.focusModel.value.focusedCell.value
-          val tc = fc.tableColumn.asInstanceOf[jfxsc.TableColumn[AthletEditor, Any]]
-          athletenview.edit(fc.row, tc)
-
-        case _ =>
-      }
+      AutoCommitTextFieldTableCell.handleDefaultEditingKeyEvents(athletenview, false)(ke)
     }
 
     val addButton = new Button {

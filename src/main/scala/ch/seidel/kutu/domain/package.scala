@@ -9,6 +9,9 @@ import java.time.ZoneId
 import scalafx.util.converter.IntStringConverter
 import scalafx.util.converter.LongStringConverter
 import java.text.SimpleDateFormat
+import org.apache.commons.codec.language.bm._
+import org.apache.commons.lang.StringUtils
+import org.apache.commons.codec.language.ColognePhonetic
 
 package object domain {
   implicit def dbl2Str(d: Double) = f"${d}%2.3f"
@@ -259,6 +262,46 @@ package object domain {
     override val isDNoteUsed = false
     //override def fromString(input: String) = super.fromString(input)
     override def calcEndnote(dnote: Double, enote: Double) = enote
+  }
+
+  object MatchCode {
+    val bmenc = new BeiderMorseEncoder()
+    bmenc.setRuleType(RuleType.EXACT)
+    bmenc.setMaxPhonemes(5)
+    val bmenc2 = new BeiderMorseEncoder()
+    bmenc2.setRuleType(RuleType.EXACT)
+    bmenc2.setMaxPhonemes(5)
+    bmenc2.setNameType(NameType.SEPHARDIC)
+    val bmenc3 = new BeiderMorseEncoder()
+    bmenc3.setRuleType(RuleType.EXACT)
+    bmenc3.setMaxPhonemes(5)
+    bmenc3.setNameType(NameType.ASHKENAZI)
+    val colenc = new ColognePhonetic()
+    def encArrToList(enc: String) = enc.split("-").flatMap(_.split("\\|"))
+    def encode(name: String): Seq[String] =
+      encArrToList(bmenc.encode(name)) ++
+      encArrToList(bmenc2.encode(name)) ++
+      encArrToList(bmenc3.encode(name)) ++
+      Seq(colenc.encode(name).mkString(""))
+
+    def similarFactor(name1: String, name2: String) = {
+      val diff = StringUtils.getLevenshteinDistance(name1, name2)
+      val diffproz = 100 * diff / name1.length()
+      val similar = 100 - diffproz
+      val threshold = 80 //%
+      if(similar >= threshold) {
+        similar
+      }
+      else {
+        0
+      }
+    }
+  }
+
+  case class MatchCode(id: Long, name: String, vorname: String, jahrgang: String, verein: Long) {
+    import MatchCode._
+    val encodedNamen = encode(name)
+    val encodedVorNamen = encode(vorname)
   }
 
 }

@@ -119,8 +119,8 @@ trait KategorieTeilnehmerToHtmlRenderer {
 
   def toHTMLasKategorienListe(kandidaten: Seq[Kandidat], logo: String): String = {
     val kandidatenPerKategorie = kandidaten.sortBy { k =>
-      val krit = f"${k.name}%s40 ${k.vorname}%s40"
-      println(krit)
+      val krit = f"${k.name}%-40s ${k.vorname}%-40s"
+      //println(krit)
       krit
     }.groupBy(k => k.programm)
     val rawpages = for {

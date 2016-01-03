@@ -21,9 +21,10 @@ import slick.jdbc.StaticQuery
 import slick.jdbc.SetParameter
 import org.sqlite.SQLiteConfig.Pragma
 import org.sqlite.SQLiteConfig.DatePrecision
-import org.apache.commons.codec.language.bm._
-import org.apache.commons.lang.StringUtils
-import org.apache.commons.codec.language.ColognePhonetic
+import java.util.Arrays.ArrayList
+import java.util.Collections
+import java.util.ArrayList
+import scala.collection.JavaConversions
 
 trait KutuService {
 
@@ -227,8 +228,8 @@ trait KutuService {
   private implicit val getDisziplinResult = GetResult(r =>
     Disziplin(r.<<[Long], r.<<[String]))
   private implicit val getDisziplinOptionResult = GetResult(r => r.nextLongOption() match {
-    case Some(id) => Some(getDisziplinResult(r))
-    case _        => {r.skip; r.skip; None}
+    case Some(id) => Some(Disziplin(id, r.<<[String]))
+    case _        => {r.skip; None}
   })
   private implicit val getRiegeRawResult = GetResult(r =>
     RiegeRaw(r.<<, r.<<, r.<<, r.<<))
@@ -334,7 +335,6 @@ trait KutuService {
   }
 
   def updateOrinsertWertung(w: Wertung) = {
-    // TODO Riegen nachpflegen (neue, wegfallende)
     database withTransaction { implicit session =>
       sqlu"""
                 delete from wertung where
@@ -345,15 +345,30 @@ trait KutuService {
                 (athlet_Id, wettkampfdisziplin_Id, wettkampf_Id, note_d, note_e, endnote, riege, riege2)
                 values (${w.athletId}, ${w.wettkampfdisziplinId}, ${w.wettkampfId}, ${w.noteD}, ${w.noteE}, ${w.endnote}, ${w.riege}, ${w.riege2})
         """.execute
+
+      sqlu"""       DELETE from riege
+                    WHERE wettkampf_id=${w.id} and not exists (
+                      SELECT 1 FROM wertung w
+                      WHERE w.wettkampf_id=${w.id}
+                        and (w.riege=name or w.riege2=name)
+                    )
+          """.execute
     }
   }
 
   def updateWertung(w: Wertung): WertungView = {
-    // TODO Riegen nachpflegen (neue, wegfallende)
     database withTransaction { implicit session =>
       sqlu"""       UPDATE wertung
                     SET note_d=${w.noteD}, note_e=${w.noteE}, endnote=${w.endnote}, riege=${w.riege}, riege2=${w.riege2}
-                    WHERE id=${w.id};
+                    WHERE id=${w.id}
+          """.execute
+
+      sqlu"""       DELETE from riege
+                    WHERE wettkampf_id=${w.id} and not exists (
+                      SELECT 1 FROM wertung w
+                      WHERE w.wettkampf_id=${w.id}
+                        and (w.riege=name or w.riege2=name)
+                    )
           """.execute
 
       implicit val cache = scala.collection.mutable.Map[Long, ProgrammView]()
@@ -425,16 +440,25 @@ trait KutuService {
 
   def listRiegenZuWettkampf(wettkampf: Long) = {
     database withSession { implicit session =>
+      /*
+       *  r.name, r.durchgang, d.*
+             from riege r
+             left outer join disziplin d on (r.start = d.id)
+       */
       sql"""
-                   SELECT distinct w.riege, count(distinct w.athlet_id)
+                   SELECT distinct w.riege, count(distinct w.athlet_id), r.durchgang, d.*
                    FROM wertung w
+                   left outer join riege r on (r.name = w.riege and r.wettkampf_id = w.wettkampf_id)
+                   left outer join disziplin d on (d.id = r.start)
                    where w.riege not null and w.wettkampf_id = $wettkampf
                    group by w.riege
-                   union SELECT distinct w.riege2 as riege, count(distinct w.athlet_id)
+                   union SELECT distinct w.riege2 as riege, count(distinct w.athlet_id), r.durchgang, d.*
                    FROM wertung w
+                   left outer join riege r on (r.name = w.riege2 and r.wettkampf_id = w.wettkampf_id)
+                   left outer join disziplin d on (d.id = r.start)
                    where w.riege2 not null and w.wettkampf_id = $wettkampf
                    group by w.riege2
-       """.as[(String, Int)].build
+       """.as[(String, Int, Option[String], Option[Disziplin])].build
     }
   }
 
@@ -511,6 +535,7 @@ trait KutuService {
   }
   def deleteWettkampf(wettkampfid: Long) {
     database withTransaction { implicit session: Session =>
+      sqlu"""       delete from riege where wettkampf_id=${wettkampfid}""".execute
       sqlu"""       delete from wertung where wettkampf_id=${wettkampfid}""".execute
       sqlu"""       delete from wettkampf where id=${wettkampfid}""".execute
     }
@@ -746,52 +771,19 @@ trait KutuService {
     }
   }
 
-  def similarFactor(name1: String, name2: String) = {
-    val diff = StringUtils.getLevenshteinDistance(name1, name2)
-    val diffproz = 100 * diff / name1.length()
-    val similar = 100 - diffproz
-    val threshold = 80 //%
-    if(similar >= threshold) {
-      similar
-    }
-    else {
-      0
-    }
-  }
-
-  val bmenc = new BeiderMorseEncoder()
-  bmenc.setRuleType(RuleType.EXACT)
-  bmenc.setMaxPhonemes(5)
-  val bmenc2 = new BeiderMorseEncoder()
-  bmenc2.setRuleType(RuleType.EXACT)
-  bmenc2.setMaxPhonemes(5)
-  bmenc2.setNameType(NameType.SEPHARDIC)
-  val bmenc3 = new BeiderMorseEncoder()
-  bmenc3.setRuleType(RuleType.EXACT)
-  bmenc3.setMaxPhonemes(5)
-  bmenc3.setNameType(NameType.ASHKENAZI)
-  val colenc = new ColognePhonetic()
-  def encArrToList(enc: String) = enc.split("-").flatMap(_.split("\\|"))
-  def encode(name: String): Seq[String] =
-    encArrToList(bmenc.encode(name)) ++
-    encArrToList(bmenc2.encode(name)) ++
-    encArrToList(bmenc3.encode(name)) ++
-    Seq(colenc.encode(name).mkString(""))
-
-  def findAthleteLike(athlet: Athlet) = {
-    val bmname = encode(athlet.name)
-    val bmvorname = encode(athlet.vorname)
-
-    def similarAthletFactor(name: String, vorname: String, jahrgang: String, verein: Long) = {
+  def findAthleteLike(cache: java.util.List[MatchCode] = java.util.Collections.emptyList[MatchCode])(athlet: Athlet) = {
+    val bmname = MatchCode.encode(athlet.name)
+    val bmvorname = MatchCode.encode(athlet.vorname)
+    def similarAthletFactor(code: MatchCode) = {
 //      print(athlet.easyprint, name, vorname, jahrgang)
-      val encodedNamen = encode(name)
-      val namenSimilarity = similarFactor(name, athlet.name) + (100 * encodedNamen.filter(bmname.contains(_)).toList.size / encodedNamen.size)
-      val encodedVorNamen = encode(vorname)
-      val vorNamenSimilarity = similarFactor(vorname, athlet.vorname) + (100 * encodedVorNamen.filter(bmvorname.contains(_)).toList.size / encodedVorNamen.size)
-      val jahrgangSimilarity = jahrgang.equals(AthletJahrgang(athlet.gebdat).hg)
+      val encodedNamen = code.encodedNamen
+      val namenSimilarity = MatchCode.similarFactor(code.name, athlet.name) + (100 * encodedNamen.filter(bmname.contains(_)).toList.size / encodedNamen.size)
+      val encodedVorNamen = code.encodedVorNamen
+      val vorNamenSimilarity = MatchCode.similarFactor(code.vorname, athlet.vorname) + (100 * encodedVorNamen.filter(bmvorname.contains(_)).toList.size / encodedVorNamen.size)
+      val jahrgangSimilarity = code.jahrgang.equals(AthletJahrgang(athlet.gebdat).hg)
       val preret = namenSimilarity > 140 && vorNamenSimilarity > 140
       val vereinSimilarity = athlet.verein match {
-        case Some(vid) => vid == verein
+        case Some(vid) => vid == code.verein
         case _ => true
       }
 //      print(f" namenSimilarity: $namenSimilarity vorNamenSimilarity: $vorNamenSimilarity jahrgangSimilarity: $jahrgangSimilarity jahrgang: $jahrgang - ${AthletJahrgang(athlet.gebdat).hg}")
@@ -810,16 +802,27 @@ trait KutuService {
     }
 
     database withTransaction { implicit session =>
-      val preselect = sql"""
+      val preselect = if(cache.isEmpty()) {
+        sql"""
            select id, name, vorname, gebdat, verein
            from athlet
-           """.as[(Long, String, String, Option[Date], Long)].iterator.map{x =>
-             val (id, name, vorname, jahr, verein) = x
-             (id, similarAthletFactor(name, vorname, AthletJahrgang(jahr).hg, verein))
-           }.filter(_._2 > 0)
-       val presel2 = preselect.toList.sortBy(_._2).reverse
-       presel2.headOption.flatMap(k =>
-           sql"""select * from athlet where id=${k._1}""".as[Athlet].build.headOption).getOrElse(athlet)
+           """.as[(Long, String, String, Option[Date], Long)].iterator.
+        map{x =>
+          val (id, name, vorname, jahr, verein) = x
+          MatchCode(id, name, vorname, AthletJahrgang(jahr).hg, verein)
+        }.foreach{ cache.add }
+        cache
+      }
+      else {
+        cache
+      }
+      val presel2 = JavaConversions.collectionAsScalaIterable(preselect).map{matchcode =>
+        (matchcode.id, similarAthletFactor(matchcode))
+      }.filter(_._2 > 0).toList.sortBy(_._2).reverse
+      presel2.headOption.flatMap(k =>
+        sql"""select * from athlet where id=${k._1}""".as[Athlet].
+        build.headOption
+      ).getOrElse(athlet)
     }
   }
 
@@ -908,7 +911,50 @@ trait KutuService {
     }
   }
 
-  def updateOrinsertRiege(riege: RiegeRaw) = {
+  def renameRiege(wettkampfid: Long, oldname: String, newname: String): Riege = {
+    database withTransaction { implicit session =>
+      val existing = sql"""select r.wettkampf_id, r.name, r.durchgang, r.start
+             from riege r
+             where wettkampf_id=$wettkampfid and name=${oldname}
+          """.as[RiegeRaw].iterator.toList
+        sqlu"""
+                DELETE from riege where name=${newname.trim} and wettkampf_id=${wettkampfid}
+        """.execute
+      if(existing.isEmpty) {
+        sqlu"""
+                insert into riege
+                       (name, wettkampf_id)
+                VALUES (${newname.trim}, ${wettkampfid})
+        """.execute
+      }
+      else {
+        sqlu"""
+                update riege
+                set name=${newname.trim}
+                where
+                wettkampf_id=${wettkampfid} and name=${oldname}
+        """.execute
+      }
+
+      sqlu"""   UPDATE wertung
+                SET riege=${newname}
+                WHERE wettkampf_id=${wettkampfid} and riege=${oldname}
+          """.execute
+
+      sqlu"""   UPDATE wertung
+                SET riege2=${newname}
+                WHERE wettkampf_id=${wettkampfid} and riege2=${oldname}
+          """.execute
+
+      sql"""   select r.name as riegenname, r.durchgang, d.*
+               from riege r
+               left outer join disziplin d on (r.start = d.id)
+               where r.wettkampf_id=${wettkampfid} and r.name=${newname}
+         """.as[Riege].iterator.toList.head
+    }
+  }
+
+  def updateOrinsertRiege(riege: RiegeRaw): Riege = {
     database withTransaction { implicit session =>
       sqlu"""
                 delete from riege where
@@ -919,6 +965,11 @@ trait KutuService {
                 (wettkampf_Id, name, durchgang, start)
                 values (${riege.wettkampfId}, ${riege.r}, ${riege.durchgang}, ${riege.start})
         """.execute
+       sql"""select r.name as riegenname, r.durchgang, d.*
+             from riege r
+             left outer join disziplin d on (r.start = d.id)
+             where r.wettkampf_id=${riege.wettkampfId} and r.name=${riege.r}
+          """.as[Riege].iterator.toList.head
     }
   }
 
@@ -932,7 +983,7 @@ trait KutuService {
   }
   def selectRiegen(wettkampfId: Long) = {
     database withSession { implicit session =>
-       sql"""select r.name, r.durchgang, d.*
+       sql"""select r.name as riegenname, r.durchgang, d.*
              from riege r
              left outer join disziplin d on (r.start = d.id)
              where wettkampf_id=$wettkampfId

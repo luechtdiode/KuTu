@@ -41,7 +41,7 @@ object ResourceExchanger extends KutuService {
     }
 
     val (vereinCsv, vereinHeader) = collection("vereine.csv")
-    println(vereinHeader)
+    println("importing vereine ...", vereinHeader)
     val vereinNameIdx = vereinHeader("name")
     val vereinVerbandIdx = vereinHeader.getOrElse("verband", -1)
     val vereinIdIdx = vereinHeader("id")
@@ -50,10 +50,10 @@ object ResourceExchanger extends KutuService {
       val verein = insertVerein(candidate)
       (fields(vereinIdIdx), verein)
     }.toMap
-    println(vereinInstances.toList)
 
     val (athletCsv, athletHeader) = collection("athleten.csv")
-    println(athletHeader)
+    println("importing athleten ...", athletHeader)
+    val cache = new java.util.ArrayList[MatchCode]()
     val athletInstances = athletCsv.map(parseLine).filter(_.size == athletHeader.size).map{fields =>
       val geb = fields(athletHeader("gebdat")).replace("Some(", "").replace(")","")
       val importathlet = Athlet(
@@ -69,15 +69,19 @@ object ResourceExchanger extends KutuService {
           verein = vereinInstances.get(fields(athletHeader("verein"))).map(v => v.id),
           activ = fields(athletHeader("activ")).toUpperCase() match {case "TRUE" => true case _ => false}
           )
-      val candidate = findAthleteLike(importathlet)
+      val candidate = findAthleteLike(cache)(importathlet)
       val athlet = if(candidate.id > 0 &&
                            (importathlet.gebdat match {
                              case Some(d) =>
                                candidate.gebdat match {
-                                 case Some(cd) =>cd.toString().startsWith("01.01")
+                                 case Some(cd) => cd.toString().startsWith("01.01") || importathlet.gebdat.equals(candidate.gebdat)
                                  case _        => true
                                }
-                             case _ => false
+                             case _ =>
+                               candidate.gebdat match {
+                                 case Some(cd) => false
+                                 case _        => true
+                               }
                              })) {
          candidate
       }
@@ -88,7 +92,7 @@ object ResourceExchanger extends KutuService {
     }.toMap
 
     val (wettkampfCsv, wettkampfHeader) = collection("wettkampf.csv")
-    println(wettkampfHeader)
+    println("importing wettkampf ...", wettkampfHeader)
     val wettkampfInstances = wettkampfCsv.map(parseLine).filter(_.size == wettkampfHeader.size).map{fields =>
       val wettkampf = createWettkampf(
           auszeichnung = fields(wettkampfHeader("auszeichnung")),
@@ -101,6 +105,7 @@ object ResourceExchanger extends KutuService {
     }.toMap
 
     val (wertungenCsv, wertungenHeader) = collection("wertungen.csv")
+    println("importing wertungen ...", wertungenHeader)
     wertungenCsv.map(parseLine).filter(_.size == wertungenHeader.size).foreach{fields =>
       val athletid: Long = fields(wertungenHeader("athletId"))
       val wettkampfid: Long = fields(wertungenHeader("wettkampfId"))
@@ -125,6 +130,7 @@ object ResourceExchanger extends KutuService {
     }
     if(collection.contains("riegen.csv")) {
       val (riegenCsv, riegenHeader) = collection("riegen.csv")
+      println("importing riegen ...", riegenHeader)
       riegenCsv.map(parseLine).filter(_.size == riegenHeader.size).foreach{fields =>
         val riege = RiegeRaw(
             wettkampfId = fields(riegenHeader("wettkampfId")),
@@ -199,7 +205,7 @@ object ResourceExchanger extends KutuService {
 
     val riegenRaw = selectRiegenRaw(wettkampf.id)
     zip.putNextEntry(new ZipEntry("riegen.csv"));
-    zip.write((getHeader[Riege] + "\n").getBytes("utf-8"))
+    zip.write((getHeader[RiegeRaw] + "\n").getBytes("utf-8"))
     for(riege <- riegenRaw) {
       zip.write((getValues(riege) + "\n").getBytes("utf-8"))
     }

@@ -279,15 +279,18 @@ abstract class DefaultRanglisteTab(override val service: KutuService) extends Ta
         hgrow = Priority.Always
         spacing = 15
         children = new Label("Gruppierungen:") {
-          prefWidth = 150
+          padding = Insets(4,0,0,0)
+          prefWidth = 120
         } +: combs :+ btnSave
       }
       val topPanel2 = new HBox {
         vgrow = Priority.Always
         hgrow = Priority.Always
         spacing = 15
+        padding = Insets(4,0,0,0)
         children = new Label("Filter:") {
-          prefWidth = 150
+          padding = Insets(4,0,0,0)
+          prefWidth = 120
         } +: combfs
       }
       top = new VBox {

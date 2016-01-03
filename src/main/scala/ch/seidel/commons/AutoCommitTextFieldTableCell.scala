@@ -1,11 +1,11 @@
 package ch.seidel.commons
 
 import javafx.{collections => jfxc}
+import javafx.scene.{ control => jfxsc }
 import javafx.{css => jfxcss}
 import javafx.scene.control.{cell => jfxscc}
 import javafx.{util => jfxu}
 import javafx.scene.control.{TextField}
-
 import scalafx.Includes._
 import scala.language.implicitConversions
 import scalafx.delegate.SFXDelegate
@@ -22,6 +22,8 @@ import scalafx.beans.value.ObservableValue
 import scalafx.collections.ObservableSet
 import scalafx.collections.ObservableSet.Change
 import scalafx.collections.ObservableSet.Remove
+import scalafx.scene.control._
+import scalafx.application.Platform
 
 object AutoCommitTextFieldTableCell {
   implicit def sfxAutoCommitTextFieldTableCell2jfx[S, T](cell: AutoCommitTextFieldTableCell[S, T]): jfxscc.TextFieldTableCell[S, T] = if (cell != null) cell.delegate else null
@@ -32,6 +34,103 @@ object AutoCommitTextFieldTableCell {
 
   def forTableColumn[S, T](converter: StringConverter[T]): (TableColumn[S, T] => TableCell[S, T]) =
     (view: TableColumn[S, T]) => jfxscc.TextFieldTableCell.forTableColumn[S, T](converter).call(view)
+
+  def handleDefaultEditingKeyEvents[A, B](tableView: TableView[A], double: Boolean)(ke: KeyEvent) = {
+    val fc = tableView.focusModel.value.focusedCell.value
+    val tc = fc.tableColumn.asInstanceOf[jfxsc.TableColumn[A,B]]
+
+    val selectionstore = tableView.selectionModel.value.getSelectedCells
+    def extractCoords = for(ts <- selectionstore) yield {
+      if(ts.getColumn > -1 && ts.getTableColumn.getParentColumn != null)
+        //(ts.getRow, wkview.columns.indexOf(ts.getTableColumn.getParentColumn))
+        (ts.getRow, Seq(tableView.columns.indexOf(ts.getTableColumn.getParentColumn), ts.getColumn))
+      else
+        (ts.getRow, Seq(ts.getColumn))
+    }
+    val coords = extractCoords
+    def restoreSelection = if(!coords.equals(extractCoords)) try {
+      for(ts <- coords) {
+        if(ts._2.size > 1) {
+          val toSelectParent = tableView.columns(ts._2.head);
+          val firstVisible = toSelectParent.getColumns.get(ts._2.tail.head)//toSelectParent.columns(0)
+          tableView.selectionModel.value.select(ts._1, firstVisible)
+          tableView.scrollToColumn(firstVisible)
+        }
+        else {
+          tableView.selectionModel.value.select(ts._1, tableView.columns(ts._2.head))
+          tableView.scrollToColumn(tableView.columns(ts._2.head))
+        }
+        tableView.scrollTo(ts._1)
+
+      }
+    }
+    catch {
+      case e: Exception =>
+    }
+    ke.code match {
+      case KeyCode.TAB if(!ke.controlDown) =>
+
+        val action = new Runnable() {
+          override def run = {
+            if(ke.shiftDown)
+              tableView.selectionModel.value.selectPrevious()
+            else
+              tableView.selectionModel.value.selectNext()
+          }
+        }
+        val wasEditing = tableView.delegate.getEditingCell() != null
+        ke.consume()
+        action.run()
+        if(wasEditing) {
+          Platform.runLater(action)
+        }
+
+      case KeyCode.ENTER /*if(ke.controlDown || wkview.delegate.getEditingCell() != null)*/ =>
+        val action = new Runnable() {
+          override def run = {
+            if(ke.shiftDown) {
+              val index = tableView.selectionModel.value.getSelectedIndex
+              if(index == 0) {
+                tableView.selectionModel.value.selectLast()
+              }
+              else {
+                tableView.selectionModel.value.selectAboveCell()
+              }
+            }
+            else {
+              val index = tableView.selectionModel.value.getSelectedIndex
+              if(index == tableView.items.value.size()-1) {
+                tableView.selectionModel.value.selectFirst()
+              }
+              else {
+                tableView.selectionModel.value.selectBelowCell()
+              }
+            }
+          }
+        }
+        val wasEditing = tableView.delegate.getEditingCell() != null
+        action.run()
+        if(wasEditing) {
+          ke.consume()
+          Platform.runLater(action)
+        }
+        else {
+          ke.consume()
+        }
+
+      case KeyCode.DELETE if(tableView.delegate.getEditingCell() == null) =>
+        tableView.edit(fc.row, tc)
+
+      // Paste via CTRL+V or SHIFT+INSERT
+      case c if(ke.shiftDown && c == KeyCode.INSERT) || (ke.controlDown && ke.text.equals("v")) =>
+        tableView.edit(fc.row, tc)
+
+      case c if((c.isLetterKey || c.isDigitKey) && tableView.editingCell.value == null) =>
+        tableView.edit(fc.row, tc)
+
+      case _ =>
+    }
+  }
 
 }
 

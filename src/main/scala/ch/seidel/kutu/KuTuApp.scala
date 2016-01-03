@@ -35,6 +35,9 @@ import ch.seidel.commons.PageDisplayer
 import ch.seidel.commons.DisplayablePage
 import ch.seidel.kutu.data.ResourceExchanger
 import java.awt.Desktop
+import scala.concurrent.Promise
+import scala.util.Failure
+import scala.util.Success
 
 object KuTuApp extends JFXApp with KutuService {
   var tree = AppNavigationModel.create(KuTuApp.this)
@@ -61,9 +64,8 @@ object KuTuApp extends JFXApp with KutuService {
     }
   }
 
-  def invokeWithBusyIndicator[R](task: => Unit) {
+  def invokeWithBusyIndicator(task: => Unit) {
     setCursor(Cursor.WAIT)
-
     import scala.concurrent.ExecutionContext.Implicits.global
     val f = Future[Boolean] {
       Thread.sleep(10L)// currentThread().wait(1L)
@@ -79,9 +81,54 @@ object KuTuApp extends JFXApp with KutuService {
     }
   }
 
+  def invokeAsyncWithBusyIndicator[R](task: => R): Future[R] = {
+    setCursor(Cursor.WAIT)
+    val p = Promise[R]
+    import scala.concurrent.ExecutionContext.Implicits.global
+    val f = Future[Boolean] {
+//      Thread.sleep(100L)// currentThread().wait(1L)
+      try {
+        val ret = task
+        Platform.runLater{
+          try {
+            p.success(ret)
+          }
+          catch {
+            case e:Exception => p.failure(e)
+          }
+          finally {
+            setCursor(Cursor.DEFAULT)
+          }
+        }
+      }
+      catch {
+        case e:Exception =>
+          setCursor(Cursor.DEFAULT)
+          p.failure(e)
+      }
+      true
+    }
+    p.future
+  }
+  var cursorWaiters = 0
   def setCursor(c: Cursor) {
+    val ctoSet = if(c.equals(Cursor.WAIT)) {
+      cursorWaiters += 1
+      c
+    }
+    else {
+      cursorWaiters -= 1
+      if(cursorWaiters > 0) {
+        Cursor.WAIT
+      }
+      else {
+        cursorWaiters = 0
+        c
+      }
+    }
+    //println(cursorWaiters)
     if(getStage() != null) {
-      getStage().scene.root.value.cursor.value = c
+      getStage().scene.root.value.cursor.value = ctoSet
       getStage().scene.root.value.requestLayout()
     }
   }
@@ -187,12 +234,18 @@ object KuTuApp extends JFXApp with KutuService {
             if(!dir.exists()) {
               dir.mkdirs();
             }
+            updateTree
+            val text = s"${w.titel} ${w.datum}"
+            tree.getLeaves("Wettkämpfe").find { item => text.equals(item.value.value) } match {
+              case Some(node) =>
+                controlsView.selectionModel().select(node)
+              case None =>
+            }
           }
           catch {
             case e: IllegalArgumentException =>
               new Alert(AlertType.Error, e.getMessage).showAndWait()
           }
-          updateTree
         }
       }
     )}
@@ -211,13 +264,15 @@ object KuTuApp extends JFXApp with KutuService {
       }
       val selectedFile = fileChooser.showSaveDialog(stage)
       if (selectedFile != null) {
-        val file = if(!selectedFile.getName.endsWith(".zip")) {
-          new java.io.File(selectedFile.getAbsolutePath + ".zip")
+        KuTuApp.invokeWithBusyIndicator {
+          val file = if(!selectedFile.getName.endsWith(".zip")) {
+            new java.io.File(selectedFile.getAbsolutePath + ".zip")
+          }
+          else {
+            selectedFile
+          }
+          ResourceExchanger.exportWettkampf(p.toWettkampf, file.getPath);
         }
-        else {
-          selectedFile
-        }
-        ResourceExchanger.exportWettkampf(p.toWettkampf, file.getPath);
       }
     }
   }
@@ -362,17 +417,27 @@ object KuTuApp extends JFXApp with KutuService {
         }
         val selectedFile = fileChooser.showOpenDialog(stage)
         if (selectedFile != null) {
-          val w = ResourceExchanger.importWettkampf(selectedFile.getAbsolutePath)
-          val dir = new java.io.File(homedir + "/" + w.easyprint.replace(" ", "_"))
-          if(!dir.exists()) {
-            dir.mkdirs();
+          val wf = KuTuApp.invokeAsyncWithBusyIndicator {
+            val w = ResourceExchanger.importWettkampf(selectedFile.getAbsolutePath)
+            val dir = new java.io.File(homedir + "/" + w.easyprint.replace(" ", "_"))
+            if(!dir.exists()) {
+              dir.mkdirs();
+            }
+            w
           }
-          updateTree
-          val text = s"${w.titel} ${w.datum}"
-          tree.getLeaves("Wettkämpfe").find { item => text.equals(item.value.value) } match {
-            case Some(node) =>
-              controlsView.selectionModel().select(node)
-            case None =>
+          import scala.concurrent.ExecutionContext.Implicits._
+          wf.andThen {
+            case Failure(f) => println(f)
+            case Success(w) =>
+              Platform.runLater {
+                updateTree
+                val text = s"${w.titel} ${w.datum}"
+                tree.getLeaves("Wettkämpfe").find { item => text.equals(item.value.value) } match {
+                  case Some(node) =>
+                    controlsView.selectionModel().select(node)
+                  case None =>
+                }
+              }
           }
         }
     }

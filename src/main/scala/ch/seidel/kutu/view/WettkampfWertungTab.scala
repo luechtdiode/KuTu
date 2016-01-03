@@ -51,17 +51,45 @@ import ch.seidel.kutu.domain._
 import scalafx.scene.control.CheckBox
 import scalafx.scene.control.SplitPane
 import ch.seidel.kutu.renderer.KategorieTeilnehmerToHtmlRenderer
+import scalafx.scene.control.cell.ComboBoxTableCell
+import scalafx.util.StringConverter
+import ch.seidel.kutu.KuTuApp
+import scala.concurrent.Await
+import scala.concurrent.duration.Duration
 
-case class RiegeEditor(initname: String, initanz: Int, enabled: Boolean, onNameChange: (String, String) => Unit, onSelectedChange: (String, Boolean) => Boolean) {
+object RiegeEditor {
+  def apply(wettkampfid: Long, anz: Int, enabled: Boolean, riege: Riege, onNameChange: (String, String) => Unit, onSelectedChange: (String, Boolean) => Boolean): RiegeEditor =
+    RiegeEditor(wettkampfid, riege.r, anz, enabled, riege.durchgang, riege.start, onNameChange, onSelectedChange)
+}
+case class RiegeEditor(wettkampfid: Long, initname: String, initanz: Int, enabled: Boolean, initdurchgang: Option[String], initstart: Option[Disziplin], onNameChange: (String, String) => Unit, onSelectedChange: (String, Boolean) => Boolean) {
   val selected = BooleanProperty(enabled)
   val name = StringProperty(initname)
   val anz = IntegerProperty(initanz)
-  name onChange {
-    onNameChange(initname, name.value)
-  }
+  val durchgang = StringProperty(initdurchgang.getOrElse(""))
+  val start = ObjectProperty(initstart.getOrElse(null))
+//  name onChange {
+//    onNameChange(initname, name.value)
+//  }
   selected onChange {
     selected.value = onSelectedChange(initname, selected.value)
   }
+//  durchgang onChange {
+//    durchgang.value = onSelectedChange(initdurchgang.getOrElse(""), durchgang.value)
+//  }
+//  start onChange {
+//    selected.value = onSelectedChange(initname, selected.value)
+//  }
+  def reset {
+    name.value = initname
+    durchgang.value = initdurchgang.getOrElse("")
+    start.value = initstart.getOrElse(null)
+  }
+  def commit = RiegeRaw (
+      wettkampfId = wettkampfid,
+      r = name.value,
+      durchgang = if(durchgang.value.trim.length > 0) Some(durchgang.value.trim) else None,
+      start = if(start.value != null && start.value.isInstanceOf[Disziplin]) Some(start.value.asInstanceOf[Disziplin].id) else None
+    )
 }
 case class WertungEditor(init: WertungView) {
 	type WertungChangeListener = (WertungEditor) => Unit
@@ -254,11 +282,20 @@ class WettkampfWertungTab(programm: Option[ProgrammView], riege: Option[String],
     }
     var relevantRiegen: Map[String,Boolean] = (if(wertungen.size > 0) wertungen.map(x => x.head).flatMap(x => Seq(x.init.riege, x.init.riege2).flatten).toSet else Set.empty[String]).map(x => x -> true).toMap
     def riegen(onNameChange: (String, String) => Unit, onSelectedChange: (String, Boolean) => Boolean, initial: Boolean): IndexedSeq[RiegeEditor] = {
-      service.listRiegenZuWettkampf(wettkampf.id).sortBy(r => r._1).map(x => RiegeEditor(x._1, x._2, relevantRiegen.contains(x._1) && (initial || relevantRiegen(x._1)), onNameChange, onSelectedChange))
+      service.listRiegenZuWettkampf(wettkampf.id).sortBy(r => r._1).map(x =>
+        RiegeEditor(
+            wettkampf.id,
+            x._1,
+            x._2,
+            relevantRiegen.contains(x._1) && (initial || relevantRiegen(x._1)),
+            x._3,
+            x._4,
+            onNameChange, onSelectedChange))
     }
     val riegenFilterModel = ObservableBuffer[RiegeEditor]()
 
     val editorPane: EditorPane = new EditorPane(wkview)
+    val disziplinlist = wertungen.headOption match {case Some(w) => w.map(_.init.wettkampfdisziplin.disziplin) case _ => IndexedSeq[Disziplin]()}
     def disziplinCnt = wertungen.headOption match {case Some(w) => w.size case _ => 0}
     val withDNotes = wertungen.flatMap(w => w.filter(ww => ww.init.wettkampfdisziplin.notenSpez.isDNoteUsed)).nonEmpty
     val withENotes = wettkampf.programm.id != 1
@@ -402,13 +439,13 @@ class WettkampfWertungTab(programm: Option[ProgrammView], riege: Option[String],
         editable = true
         onEditCommit = (evt: CellEditEvent[IndexedSeq[WertungEditor], String]) => {
         	val rowIndex = wkModel.indexOf(evt.rowValue)
-          for(disciplin <- evt.rowValue) {
+          for(wertung <- evt.rowValue) {
             wkModel.update(rowIndex,
                 evt.rowValue.updated(
-                    evt.rowValue.indexOf(disciplin),
+                    evt.rowValue.indexOf(wertung),
                     WertungEditor(
                         service.updateWertung(
-                            disciplin.commit.copy(riege = if(evt.newValue.trim.isEmpty()) None else Some(evt.newValue))
+                            wertung.commit.copy(riege = if(evt.newValue.trim.isEmpty()) None else Some(evt.newValue))
                             )
                         )
                     )
@@ -640,15 +677,75 @@ class WettkampfWertungTab(programm: Option[ProgrammView], riege: Option[String],
          ,new TableColumn[RiegeEditor, String] {
             text = "Riege"
             cellValueFactory = { x => x.value.name }
+            cellFactory = { _ => new AutoCommitTextFieldTableCell[RiegeEditor, String](new DefaultStringConverter()) }
+            editable = true
+            onEditCommit = (evt: CellEditEvent[RiegeEditor, String]) => {
+              val editor = evt.rowValue
+              editor.name.value = evt.newValue
+              val rowIndex = riegenFilterModel.indexOf(evt.rowValue)
+              service.renameRiege(wettkampf.id, evt.rowValue.initname, evt.newValue)
+              refreshLazyPane()
+              reloadData()
+              evt.tableView.selectionModel.value.select(rowIndex, this)
+              evt.tableView.requestFocus()
+            }
           }
          ,new TableColumn[RiegeEditor, Int] {
             text = "Anz"
             cellValueFactory = { x => x.value.anz.asInstanceOf[ObservableValue[Int,Int]] }
+          }
+         ,new TableColumn[RiegeEditor, String] {
+            text = "Durchgang"
+            prefWidth = 150
+            cellValueFactory = { x => x.value.durchgang }
+            cellFactory = { _ => new AutoCommitTextFieldTableCell[RiegeEditor, String](new DefaultStringConverter()) }
+            editable = true
+            onEditCommit = (evt: CellEditEvent[RiegeEditor, String]) => {
+              val editor = evt.rowValue
+              editor.durchgang.value = evt.newValue
+              val rowIndex = riegenFilterModel.indexOf(evt.rowValue)
+              riegenFilterModel.update(rowIndex, RiegeEditor(
+                  evt.rowValue.wettkampfid,
+                  evt.rowValue.initanz,
+                  evt.rowValue.enabled,
+                  service.updateOrinsertRiege(evt.rowValue.commit),
+                  evt.rowValue.onNameChange,
+                  evt.rowValue.onSelectedChange))
+              evt.tableView.selectionModel.value.select(rowIndex, this)
+              evt.tableView.requestFocus()
+            }
+          }
+         ,new TableColumn[RiegeEditor, Disziplin] {
+            text = "Start"
+            prefWidth = 150
+            val converter = new StringConverter[Disziplin] {
+              override def toString(d: Disziplin) = if(d != null) d.easyprint else ""
+              override def fromString(s: String) = if(s != null) disziplinlist.find { d => d.name.equals(s) }.getOrElse(null) else null
+            }
+            val list = ObservableBuffer[Disziplin](disziplinlist)
+            cellValueFactory = { x => x.value.start.asInstanceOf[ObservableValue[Disziplin,Disziplin]] }
+            cellFactory = { _ => new ComboBoxTableCell[RiegeEditor, Disziplin](converter, list) }
+            editable = true
+            onEditCommit = (evt: CellEditEvent[RiegeEditor, Disziplin]) => {
+              val editor = evt.rowValue
+              editor.start.value = evt.newValue
+              val rowIndex = riegenFilterModel.indexOf(evt.rowValue)
+              riegenFilterModel.update(rowIndex, RiegeEditor(
+                  evt.rowValue.wettkampfid,
+                  evt.rowValue.initanz,
+                  evt.rowValue.enabled,
+                  service.updateOrinsertRiege(evt.rowValue.commit),
+                  evt.rowValue.onNameChange,
+                  evt.rowValue.onSelectedChange))
+              evt.tableView.selectionModel.value.select(rowIndex, this)
+              evt.tableView.requestFocus()
+            }
           })
     }
     updateRiegen(true)
 
     def doPasteFromExcel(progrm: Option[ProgrammView])(implicit event: ActionEvent) = {
+      import scala.util.{Try, Success, Failure}
       val athletModel = ObservableBuffer[(Long, Athlet, AthletView)]()
       val vereineList = service.selectVereine
       val vereineMap = vereineList.map(v => v.id -> v).toMap
@@ -660,7 +757,10 @@ class WettkampfWertungTab(programm: Option[ProgrammView], riege: Option[String],
       val sdfYYYY = new SimpleDateFormat("YYYY")
       val sdfYY = new SimpleDateFormat("YY")
       val programms = programm.map(p => service.readWettkampfLeafs(p.head.id)).toSeq.flatten
-      val clipraw = Source.fromString(Clipboard.systemClipboard.getString).getLines().
+      val clipboardlines = Source.fromString(Clipboard.systemClipboard.getString).getLines()
+      val cache = new java.util.ArrayList[MatchCode]()
+      val cliprawf = KuTuApp.invokeAsyncWithBusyIndicator {
+                     clipboardlines.
                      map    { line   => line.split("\\t") }.
                      filter { fields => fields.length > 2 }.
                      map    { fields =>
@@ -682,7 +782,7 @@ class WettkampfWertungTab(programm: Option[ProgrammView], riege: Option[String],
                             verein = None,
                             activ = true
                             )
-                        val candidate = service.findAthleteLike(parsed)
+                        val candidate = service.findAthleteLike(cache)(parsed)
                         val progId: Long = try {
                           programms(Integer.valueOf(fields(3))-1).id
                         }
@@ -699,222 +799,226 @@ class WettkampfWertungTab(programm: Option[ProgrammView], riege: Option[String],
                            candidate.strasse, candidate.plz, candidate.ort,
                            candidate.verein.map(vereineMap), true))
                     }.toList
-      if(clipraw.isEmpty) {
-        false
       }
-      else {
-        athletModel.appendAll(clipraw)
-        clipraw.find(a => a._3.verein match{case Some(v) => true case _ => false}) match {
-                        case Some((id, athlet, candidate)) =>
-                          cbVereine.selectionModel.value.select(candidate.verein.get)
-                        case _ =>
-                      }
-        val filteredModel = ObservableBuffer[(Long, Athlet, AthletView)](athletModel)
-        val athletTable = new TableView[(Long, Athlet, AthletView)](filteredModel) {
-          columns ++= List(
-            new TableColumn[(Long, Athlet, AthletView), String] {
-              text = "Athlet"
-              cellValueFactory = { x =>
-                new ReadOnlyStringWrapper(x.value, "athlet", {
-                  s"${x.value._2.name} ${x.value._2.vorname}, ${x.value._2.gebdat.map(sdfYYYY.format(_)) match {case None => "" case Some(t) => t}}"
-                })
-              }
-              minWidth = 250
-            },
-            new TableColumn[(Long, Athlet, AthletView), String] {
-              text = programm.map(p => p.head.id match {case 20 => "Kategorie" case 1  => "." case _ => "Programm"}).getOrElse(".")
-              cellValueFactory = { x =>
-                new ReadOnlyStringWrapper(x.value, "programm", {
-                 programms.find { p => p.id == x.value._1 || p.aggregatorHead.id == x.value._1} match {case Some(programm)=> programm.name case _ => "unbekannt"}
-                })
-              }
-            },
-            new TableColumn[(Long, Athlet, AthletView), String] {
-              text = "Import-Vorschlag"
-              cellValueFactory = { x =>
-                new ReadOnlyStringWrapper(x.value, "dbmatch", {
-                  if(x.value._3.id > 0) "als " + x.value._3.easyprint else "wird neu importiert"
-                })
-              }
-            }
-          )
-        }
-        athletTable.selectionModel.value.setSelectionMode(SelectionMode.MULTIPLE)
-        val filter = new TextField() {
-          promptText = "Such-Text"
-          text.addListener{ (o: javafx.beans.value.ObservableValue[_ <: String], oldVal: String, newVal: String) =>
-            val sortOrder = athletTable.sortOrder.toList;
-            filteredModel.clear()
-            val searchQuery = newVal.toUpperCase().split(" ")
-            for{(progrid, athlet, vorschlag) <- athletModel
-            } {
-              val matches = searchQuery.forall{search =>
-                if(search.isEmpty() || athlet.name.toUpperCase().contains(search)) {
-                  true
+      import scala.concurrent.ExecutionContext.Implicits._
+      cliprawf.andThen {
+        case Failure(t) => println(t)
+        case Success(clipraw) => Platform.runLater{
+//        val clipraw = Await.result(cliprawf, Duration.Inf)
+        if(clipraw.nonEmpty) {
+          athletModel.appendAll(clipraw)
+          clipraw.find(a => a._3.verein match{case Some(v) => true case _ => false}) match {
+                          case Some((id, athlet, candidate)) =>
+                            cbVereine.selectionModel.value.select(candidate.verein.get)
+                          case _ =>
+                        }
+          val filteredModel = ObservableBuffer[(Long, Athlet, AthletView)](athletModel)
+          val athletTable = new TableView[(Long, Athlet, AthletView)](filteredModel) {
+            columns ++= List(
+              new TableColumn[(Long, Athlet, AthletView), String] {
+                text = "Athlet"
+                cellValueFactory = { x =>
+                  new ReadOnlyStringWrapper(x.value, "athlet", {
+                    s"${x.value._2.name} ${x.value._2.vorname}, ${x.value._2.gebdat.map(sdfYYYY.format(_)) match {case None => "" case Some(t) => t}}"
+                  })
                 }
-                else if(athlet.vorname.toUpperCase().contains(search)) {
-                  true
+                minWidth = 250
+              },
+              new TableColumn[(Long, Athlet, AthletView), String] {
+                text = programm.map(p => p.head.id match {case 20 => "Kategorie" case 1  => "." case _ => "Programm"}).getOrElse(".")
+                cellValueFactory = { x =>
+                  new ReadOnlyStringWrapper(x.value, "programm", {
+                   programms.find { p => p.id == x.value._1 || p.aggregatorHead.id == x.value._1} match {case Some(programm)=> programm.name case _ => "unbekannt"}
+                  })
                 }
-                else if(vorschlag.verein match {case Some(v) => v.name.toUpperCase().contains(search) case None => false}) {
-                  true
-                }
-                else {
-                  false
+              },
+              new TableColumn[(Long, Athlet, AthletView), String] {
+                text = "Import-Vorschlag"
+                cellValueFactory = { x =>
+                  new ReadOnlyStringWrapper(x.value, "dbmatch", {
+                    if(x.value._3.id > 0) "als " + x.value._3.easyprint else "wird neu importiert"
+                  })
                 }
               }
-
-              if(matches) {
-                filteredModel.add((progrid, athlet, vorschlag))
-              }
-            }
-            athletTable.sortOrder.clear()
-            val restored = athletTable.sortOrder ++= sortOrder
+            )
           }
-        }
-        PageDisplayer.showInDialog("Aus Excel einfügen ...", new DisplayablePage() {
-          def getPage: Node = {
-            new BorderPane {
-              hgrow = Priority.Always
-              vgrow = Priority.Always
-              minWidth = 600
-              top = new HBox {
-                prefHeight = 50
-                alignment = Pos.BottomRight
-                hgrow = Priority.Always
-                children = Seq(new Label("Turner/-Innen aus dem Verein  "), cbVereine)
+          athletTable.selectionModel.value.setSelectionMode(SelectionMode.MULTIPLE)
+          val filter = new TextField() {
+            promptText = "Such-Text"
+            text.addListener{ (o: javafx.beans.value.ObservableValue[_ <: String], oldVal: String, newVal: String) =>
+              val sortOrder = athletTable.sortOrder.toList;
+              filteredModel.clear()
+              val searchQuery = newVal.toUpperCase().split(" ")
+              for{(progrid, athlet, vorschlag) <- athletModel
+              } {
+                val matches = searchQuery.forall{search =>
+                  if(search.isEmpty() || athlet.name.toUpperCase().contains(search)) {
+                    true
+                  }
+                  else if(athlet.vorname.toUpperCase().contains(search)) {
+                    true
+                  }
+                  else if(vorschlag.verein match {case Some(v) => v.name.toUpperCase().contains(search) case None => false}) {
+                    true
+                  }
+                  else {
+                    false
+                  }
+                }
+
+                if(matches) {
+                  filteredModel.add((progrid, athlet, vorschlag))
+                }
               }
-              center = new BorderPane {
+              athletTable.sortOrder.clear()
+              val restored = athletTable.sortOrder ++= sortOrder
+            }
+          }
+          PageDisplayer.showInDialog("Aus Excel einfügen ...", new DisplayablePage() {
+            def getPage: Node = {
+              new BorderPane {
                 hgrow = Priority.Always
                 vgrow = Priority.Always
-                top = filter
-                center = athletTable
-                minWidth = 550
-              }
+                minWidth = 600
+                top = new HBox {
+                  prefHeight = 50
+                  alignment = Pos.BottomRight
+                  hgrow = Priority.Always
+                  children = Seq(new Label("Turner/-Innen aus dem Verein  "), cbVereine)
+                }
+                center = new BorderPane {
+                  hgrow = Priority.Always
+                  vgrow = Priority.Always
+                  top = filter
+                  center = athletTable
+                  minWidth = 550
+                }
 
-            }
-          }
-        }, new Button("OK") {
-          disable <== when(cbVereine.selectionModel.value.selectedItemProperty.isNull()) choose true otherwise false
-          onAction = (event: ActionEvent) => {
-            if (!athletTable.selectionModel().isEmpty) {
-              val selectedAthleten = athletTable.items.value.zipWithIndex.filter {
-                x => athletTable.selectionModel.value.isSelected(x._2)
-              }.map {x =>
-                val ((progrId, importathlet, candidateView),idx) = x
-                val id = if(candidateView.id > 0 &&
-                           (importathlet.gebdat match {
-                             case Some(d) =>
-                               candidateView.gebdat match {
-                                 case Some(cd) =>cd.toString().startsWith("01.01")
-                                 case _        => true
-                               }
-                             case _ => false
-                             })) {
-                  val athlet = service.insertAthlete(Athlet(
-                      id = candidateView.id,
-                      js_id = candidateView.js_id,
-                      geschlecht = candidateView.geschlecht,
-                      name = candidateView.name,
-                      vorname = candidateView.vorname,
-                      gebdat = importathlet.gebdat,
-                      strasse = candidateView.strasse,
-                      plz = candidateView.plz,
-                      ort = candidateView.ort,
-                      verein = Some(cbVereine.selectionModel.value.selectedItem.value.id),
-                      activ = true
-                      ))
-                  athlet.id
-                }
-                else if(candidateView.id > 0) {
-                  candidateView.id
-                }
-                else {
-                  val athlet = service.insertAthlete(Athlet(
-                      id = 0,
-                      js_id = candidateView.js_id,
-                      geschlecht = candidateView.geschlecht,
-                      name = candidateView.name,
-                      vorname = candidateView.vorname,
-                      gebdat = candidateView.gebdat,
-                      strasse = candidateView.strasse,
-                      plz = candidateView.plz,
-                      ort = candidateView.ort,
-                      verein = Some(cbVereine.selectionModel.value.selectedItem.value.id),
-                      activ = true
-                      ))
-                  athlet.id
-                }
-                (progrId, id)
               }
+            }
+          }, new Button("OK") {
+            disable <== when(cbVereine.selectionModel.value.selectedItemProperty.isNull()) choose true otherwise false
+            onAction = (event: ActionEvent) => {
+              if (!athletTable.selectionModel().isEmpty) {
+                val selectedAthleten = athletTable.items.value.zipWithIndex.filter {
+                  x => athletTable.selectionModel.value.isSelected(x._2)
+                }.map {x =>
+                  val ((progrId, importathlet, candidateView),idx) = x
+                  val id = if(candidateView.id > 0 &&
+                             (importathlet.gebdat match {
+                               case Some(d) =>
+                                 candidateView.gebdat match {
+                                   case Some(cd) =>cd.toString().startsWith("01.01")
+                                   case _        => true
+                                 }
+                               case _ => false
+                               })) {
+                    val athlet = service.insertAthlete(Athlet(
+                        id = candidateView.id,
+                        js_id = candidateView.js_id,
+                        geschlecht = candidateView.geschlecht,
+                        name = candidateView.name,
+                        vorname = candidateView.vorname,
+                        gebdat = importathlet.gebdat,
+                        strasse = candidateView.strasse,
+                        plz = candidateView.plz,
+                        ort = candidateView.ort,
+                        verein = Some(cbVereine.selectionModel.value.selectedItem.value.id),
+                        activ = true
+                        ))
+                    athlet.id
+                  }
+                  else if(candidateView.id > 0) {
+                    candidateView.id
+                  }
+                  else {
+                    val athlet = service.insertAthlete(Athlet(
+                        id = 0,
+                        js_id = candidateView.js_id,
+                        geschlecht = candidateView.geschlecht,
+                        name = candidateView.name,
+                        vorname = candidateView.vorname,
+                        gebdat = candidateView.gebdat,
+                        strasse = candidateView.strasse,
+                        plz = candidateView.plz,
+                        ort = candidateView.ort,
+                        verein = Some(cbVereine.selectionModel.value.selectedItem.value.id),
+                        activ = true
+                        ))
+                    athlet.id
+                  }
+                  (progrId, id)
+                }
 
-              for((progId, athletes) <- selectedAthleten.groupBy(_._1).map(x => (x._1, x._2.map(_._2)))) {
-                def filter(progId: Long, a: Athlet): Boolean = athletes.exists { _ == a.id }
-                service.assignAthletsToWettkampf(wettkampf.id, Set(progId), Some(filter))
+                for((progId, athletes) <- selectedAthleten.groupBy(_._1).map(x => (x._1, x._2.map(_._2)))) {
+                  def filter(progId: Long, a: Athlet): Boolean = athletes.exists { _ == a.id }
+                  service.assignAthletsToWettkampf(wettkampf.id, Set(progId), Some(filter))
+                }
+                reloadData()
               }
-              reloadData()
             }
-          }
-        }, new Button("OK Alle") {
-          disable <== when(cbVereine.selectionModel.value.selectedItemProperty.isNull()) choose true otherwise false
-          onAction = (event: ActionEvent) => {
-            val clip = filteredModel.map { raw =>
-                val (progId, importAthlet, candidateView) = raw
-                val athlet = if(candidateView.id > 0 &&
-                           (importAthlet.gebdat match {
-                             case Some(d) =>
-                               candidateView.gebdat match {
-                                 case Some(cd) =>cd.toString().startsWith("01.01")
-                                 case _        => true
-                               }
-                             case _ => false
-                             })) {
-                  val athlet = service.insertAthlete(Athlet(
-                      id = candidateView.id,
-                      js_id = candidateView.js_id,
-                      geschlecht = candidateView.geschlecht,
-                      name = candidateView.name,
-                      vorname = candidateView.vorname,
-                      gebdat = importAthlet.gebdat,
-                      strasse = candidateView.strasse,
-                      plz = candidateView.plz,
-                      ort = candidateView.ort,
-                      verein = Some(cbVereine.selectionModel.value.selectedItem.value.id),
-                      activ = true
-                      ))
-                  AthletView(athlet.id, athlet.js_id, athlet.geschlecht, athlet.name, athlet.vorname, athlet.gebdat, athlet.strasse, athlet.plz, athlet.ort, Some(cbVereine.selectionModel.value.selectedItem.value), true)
+          }, new Button("OK Alle") {
+            disable <== when(cbVereine.selectionModel.value.selectedItemProperty.isNull()) choose true otherwise false
+            onAction = (event: ActionEvent) => {
+              val clip = filteredModel.map { raw =>
+                  val (progId, importAthlet, candidateView) = raw
+                  val athlet = if(candidateView.id > 0 &&
+                             (importAthlet.gebdat match {
+                               case Some(d) =>
+                                 candidateView.gebdat match {
+                                   case Some(cd) =>cd.toString().startsWith("01.01")
+                                   case _        => true
+                                 }
+                               case _ => false
+                               })) {
+                    val athlet = service.insertAthlete(Athlet(
+                        id = candidateView.id,
+                        js_id = candidateView.js_id,
+                        geschlecht = candidateView.geschlecht,
+                        name = candidateView.name,
+                        vorname = candidateView.vorname,
+                        gebdat = importAthlet.gebdat,
+                        strasse = candidateView.strasse,
+                        plz = candidateView.plz,
+                        ort = candidateView.ort,
+                        verein = Some(cbVereine.selectionModel.value.selectedItem.value.id),
+                        activ = true
+                        ))
+                    AthletView(athlet.id, athlet.js_id, athlet.geschlecht, athlet.name, athlet.vorname, athlet.gebdat, athlet.strasse, athlet.plz, athlet.ort, Some(cbVereine.selectionModel.value.selectedItem.value), true)
+                  }
+                  else if(candidateView.id > 0) {
+                    candidateView
+                  }
+                  else {
+                    val candidate =  Athlet(
+                        id = candidateView.id,
+                        js_id = candidateView.js_id,
+                        geschlecht = candidateView.geschlecht,
+                        name = candidateView.name,
+                        vorname = candidateView.vorname,
+                        gebdat = candidateView.gebdat,
+                        strasse = candidateView.strasse,
+                        plz = candidateView.plz,
+                        ort = candidateView.ort,
+                        verein = Some(cbVereine.selectionModel.value.selectedItem.value.id),
+                        activ = true
+                        )
+                    val athlet = service.insertAthlete(candidate)
+                    AthletView(athlet.id, athlet.js_id, athlet.geschlecht, athlet.name, athlet.vorname, athlet.gebdat, athlet.strasse, athlet.plz, athlet.ort, Some(cbVereine.selectionModel.value.selectedItem.value), true)
+                  }
+                 (progId, athlet)
+              }.toList
+              if (!athletModel.isEmpty) {
+                for((progId, athletes) <- clip.groupBy(_._1).map(x => (x._1, x._2.map(_._2)))) {
+                  def filter(progId: Long, a: Athlet): Boolean = athletes.exists { x => x.id == a.id }
+                  service.assignAthletsToWettkampf(wettkampf.id, Set(progId), Some(filter))
                 }
-                else if(candidateView.id > 0) {
-                  candidateView
-                }
-                else {
-                  val candidate =  Athlet(
-                      id = candidateView.id,
-                      js_id = candidateView.js_id,
-                      geschlecht = candidateView.geschlecht,
-                      name = candidateView.name,
-                      vorname = candidateView.vorname,
-                      gebdat = candidateView.gebdat,
-                      strasse = candidateView.strasse,
-                      plz = candidateView.plz,
-                      ort = candidateView.ort,
-                      verein = Some(cbVereine.selectionModel.value.selectedItem.value.id),
-                      activ = true
-                      )
-                  val athlet = service.insertAthlete(candidate)
-                  AthletView(athlet.id, athlet.js_id, athlet.geschlecht, athlet.name, athlet.vorname, athlet.gebdat, athlet.strasse, athlet.plz, athlet.ort, Some(cbVereine.selectionModel.value.selectedItem.value), true)
-                }
-               (progId, athlet)
-            }.toList
-            if (!athletModel.isEmpty) {
-              for((progId, athletes) <- clip.groupBy(_._1).map(x => (x._1, x._2.map(_._2)))) {
-                def filter(progId: Long, a: Athlet): Boolean = athletes.exists { x => x.id == a.id }
-                service.assignAthletsToWettkampf(wettkampf.id, Set(progId), Some(filter))
+                reloadData()
               }
-              reloadData()
             }
-          }
-        })
-        true
+          })
+        }
+        }
       }
     }
     val generateTeilnehmerListe = new Button with KategorieTeilnehmerToHtmlRenderer {
@@ -932,7 +1036,7 @@ class WettkampfWertungTab(programm: Option[ProgrammView], riege: Option[String],
             }
           }
           println(programme)
-          val startgeraet = service.selectRiegen(wettkampf.id).map(r => r.r -> r.start.map(_.name).getOrElse("")).toMap
+          val riegen = service.selectRiegen(wettkampf.id).map(r => r.r -> (r.start.map(_.name).getOrElse(""), r.durchgang.getOrElse(""))).toMap
           val seriendaten = for {
             programm <- programme
 
@@ -950,8 +1054,8 @@ class WettkampfWertungTab(programm: Option[ProgrammView], riege: Option[String],
             ,athlet.vorname
             ,AthletJahrgang(athlet.gebdat).hg
             ,athlet.verein match {case Some(v) => v.easyprint case _ => ""}
-            ,einsatz.riege.getOrElse("")
-            ,startgeraet.getOrElse(einsatz.riege.getOrElse(""), "")
+            ,einsatz.riege.getOrElse("") + " " + riegen.getOrElse(einsatz.riege.getOrElse(""), ("", ""))._2
+            ,riegen.getOrElse(einsatz.riege.getOrElse(""), ("", ""))._1
             ,athletwertungen.filter{wertung =>
               if(wertung.init.wettkampfdisziplin.feminim == 0 && !wertung.init.athlet.geschlecht.equalsIgnoreCase("M")) {
                 false
@@ -1080,18 +1184,20 @@ class WettkampfWertungTab(programm: Option[ProgrammView], riege: Option[String],
         }, new Button("OK") {
           onAction = (event: ActionEvent) => {
             if (!stationen.text.value.isEmpty) {
-              val riegenzuteilungen = service.suggestRiegen(
-                  wkModel.head.init.head.init.wettkampf.id,
-                  stationen.text.value.split(",").foldLeft(Seq[Int]()){(acc, s) => acc :+ str2Int(s)}
-              )
-              for{
-                pair <- riegenzuteilungen
-                w <- pair._2
-              } {
-                service.updateWertung(w)
+              KuTuApp.invokeWithBusyIndicator {
+                val riegenzuteilungen = service.suggestRiegen(
+                    wkModel.head.init.head.init.wettkampf.id,
+                    stationen.text.value.split(",").foldLeft(Seq[Int]()){(acc, s) => acc :+ str2Int(s)}
+                )
+                for{
+                  pair <- riegenzuteilungen
+                  w <- pair._2
+                } {
+                  service.updateWertung(w)
+                }
+                refreshLazyPane()
+                reloadData()
               }
-              refreshLazyPane()
-              reloadData()
             }
           }
         })
@@ -1102,25 +1208,27 @@ class WettkampfWertungTab(programm: Option[ProgrammView], riege: Option[String],
       minWidth = 75
       disable <== when(riegenFilterView.selectionModel.value.selectedItemProperty().isNull()) choose true otherwise false
       onAction = (event: ActionEvent) => {
-        val selectedRiege = riegenFilterView.selectionModel.value.getSelectedItem.name.value
-        for{
-          wl <- reloadWertungen{wertung =>
-              wertung.riege match {case Some(r) => r.equals(selectedRiege) case _ => false}
-            }
-          w <- wl
-        } {
-          service.updateWertung(w.commit.copy(riege = None))
+        KuTuApp.invokeWithBusyIndicator {
+          val selectedRiege = riegenFilterView.selectionModel.value.getSelectedItem.name.value
+          for{
+            wl <- reloadWertungen{wertung =>
+                wertung.riege match {case Some(r) => r.equals(selectedRiege) case _ => false}
+              }
+            w <- wl
+          } {
+            service.updateWertung(w.commit.copy(riege = None))
+          }
+          for{
+            wl <- reloadWertungen{wertung =>
+                wertung.riege2 match {case Some(r) => r.equals(selectedRiege) case _ => false}
+              }
+            w <- wl
+          } {
+            service.updateWertung(w.commit.copy(riege2 = None))
+          }
+          refreshLazyPane()
+          reloadData()
         }
-        for{
-          wl <- reloadWertungen{wertung =>
-              wertung.riege2 match {case Some(r) => r.equals(selectedRiege) case _ => false}
-            }
-          w <- wl
-        } {
-          service.updateWertung(w.commit.copy(riege2 = None))
-        }
-        refreshLazyPane()
-        reloadData()
       }
     }
     val riegeRenameButton = new Button {
@@ -1144,24 +1252,11 @@ class WettkampfWertungTab(programm: Option[ProgrammView], riege: Option[String],
           }
         }, new Button("OK") {
           onAction = (event: ActionEvent) => {
-            for{
-              wl <- reloadWertungen{wertung =>
-                wertung.riege match {case Some(r) => r.equals(selectedRiege) case _ => false}
-              }
-              w <- wl
-            } {
-              service.updateWertung(w.commit.copy(riege = Some(txtRiegenName.text.value)))
+            KuTuApp.invokeWithBusyIndicator {
+              service.renameRiege(wettkampf.id, selectedRiege, txtRiegenName.text.value)
+              refreshLazyPane()
+              reloadData()
             }
-            for{
-              wl <- reloadWertungen{wertung =>
-                wertung.riege2 match {case Some(r) => r.equals(selectedRiege) case _ => false}
-              }
-              w <- wl
-            } {
-              service.updateWertung(w.commit.copy(riege2 = Some(txtRiegenName.text.value)))
-            }
-            refreshLazyPane()
-            reloadData()
           }
         })
       }
@@ -1340,7 +1435,6 @@ class WettkampfWertungTab(programm: Option[ProgrammView], riege: Option[String],
       List(addButton, pasteFromExcel, moveToOtherProgramButton, generateTeilnehmerListe, generateNotenblaetter, removeButton).filter(btn => !btn.text.value.equals("."))
     }
 
-    wkview.selectionModel.value.setCellSelectionEnabled(true)
     val clearButton = new Button {
       text = "Athlet zurücksetzen"
       minWidth = 75
@@ -1366,124 +1460,14 @@ class WettkampfWertungTab(programm: Option[ProgrammView], riege: Option[String],
     }
     clearButton.disable <== when(wkview.selectionModel.value.selectedItemProperty.isNull()) choose true otherwise false
 
+    wkview.selectionModel.value.setCellSelectionEnabled(true)
     wkview.filterEvent(KeyEvent.KeyPressed) { (ke: KeyEvent) =>
-      val selectionstore = wkview.selectionModel.value.getSelectedCells
-      def extractCoords = for(ts <- selectionstore) yield {
-        if(ts.getColumn > -1 && ts.getTableColumn.getParentColumn != null)
-          //(ts.getRow, wkview.columns.indexOf(ts.getTableColumn.getParentColumn))
-          (ts.getRow, (3 + editorPane.index) * -100)
-        else
-          (ts.getRow, ts.getColumn)
-      }
-      val coords = extractCoords
-      def restoreSelection = if(!coords.equals(extractCoords)) try {
-        for(ts <- coords) {
-          if(ts._2 < -100) {
-            val toSelectParent = wkview.columns(ts._2 / -100);
-            val firstVisible = toSelectParent.getColumns.find(p => p.width.value > 50d).getOrElse(toSelectParent.columns(0))
-            wkview.selectionModel.value.select(ts._1, firstVisible)
-            wkview.scrollToColumn(firstVisible)
-          }
-          else {
-            wkview.selectionModel.value.select(ts._1, wkview.columns(ts._2))
-            wkview.scrollToColumn(wkview.columns(ts._2))
-          }
-          wkview.scrollTo(ts._1)
+      AutoCommitTextFieldTableCell.handleDefaultEditingKeyEvents(wkview, true)(ke)
+    }
 
-        }
-      }
-      catch {
-        case e: Exception =>
-      }
-
-      ke.code match {
-        case KeyCode.TAB if(!ke.controlDown) =>
-
-          val action = new Runnable() {
-            override def run = {
-              restoreSelection
-              if(ke.shiftDown)
-                wkview.selectionModel.value.selectPrevious()
-              else
-                wkview.selectionModel.value.selectNext()
-            }
-          }
-          val wasEditing = wkview.delegate.getEditingCell() != null
-          ke.consume()
-          action.run()
-          if(wasEditing) {
-            Platform.runLater(action)
-          }
-
-        case KeyCode.ENTER /*if(ke.controlDown || wkview.delegate.getEditingCell() != null)*/ =>
-          val action = new Runnable() {
-            override def run = {
-              restoreSelection
-              if(ke.shiftDown) {
-                val index = wkview.selectionModel.value.getSelectedIndex
-                if(index == 0) {
-                  wkview.selectionModel.value.selectLast()
-                }
-                else {
-                  wkview.selectionModel.value.selectAboveCell()
-                }
-              }
-              else {
-                val index = wkview.selectionModel.value.getSelectedIndex
-                if(index == wkview.items.value.size()-1) {
-                  wkview.selectionModel.value.selectFirst()
-                }
-                else {
-                  wkview.selectionModel.value.selectBelowCell()
-                }
-              }
-            }
-          }
-          val wasEditing = wkview.delegate.getEditingCell() != null
-          action.run()
-          if(wasEditing) {
-            ke.consume()
-            Platform.runLater(action)
-          }
-          else {
-            ke.consume()
-          }
-
-        case KeyCode.DELETE if(wkview.delegate.getEditingCell() == null) =>
-          val fc = wkview.focusModel.value.focusedCell.value
-          val tc = fc.tableColumn.asInstanceOf[jfxsc.TableColumn[IndexedSeq[WertungEditor], Any]]
-
-          wkview.edit(fc.row, tc)
-
-          val textKey = if(tc.parentColumn.value != null) tc.parentColumn.value.getText else tc.getText
-          wkview.items.get.get(fc.row).find {
-            x => x.init.wettkampfdisziplin.disziplin.name.equals(textKey)
-          } match {
-            case Some(editor) =>
-              editingEditor = Some(editor)
-              tc.text.value match {
-                case "D" => editor.noteD.value = 0d
-                case "E" => editor.noteE.value = 0d
-                case s if(s.equals(textKey)) => editor.noteE.value = 0d
-                case _ =>
-              }
-
-            case None =>
-          }
-          ke.consume()
-
-        // Paste via CTRL+V or SHIFT+INSERT
-        case c if(ke.shiftDown && c == KeyCode.INSERT) || (ke.controlDown && ke.text.equals("v")) =>
-          if(doPasteFromExcel(programm)(new ActionEvent())) {
-            ke.consume()
-          }
-
-        case c if((c.isLetterKey || c.isDigitKey) && wkview.editingCell.value == null) =>
-          val fc = wkview.focusModel.value.focusedCell.value
-          wkview.edit(fc.row, fc.tableColumn.asInstanceOf[jfxsc.TableColumn[IndexedSeq[WertungEditor], Any]])
-
-        case _ =>
-      }
+    riegenFilterView.selectionModel.value.setCellSelectionEnabled(true)
+    riegenFilterView.filterEvent(KeyEvent.KeyPressed) { (ke: KeyEvent) =>
+      AutoCommitTextFieldTableCell.handleDefaultEditingKeyEvents(riegenFilterView, false)(ke)
     }
 
     onSelectionChanged = handle {
@@ -1525,6 +1509,7 @@ class WettkampfWertungTab(programm: Option[ProgrammView], riege: Option[String],
     val riegenFilterPane = new BorderPane {
       hgrow = Priority.Always
       vgrow = Priority.Always
+      prefWidth = 500
       margin = Insets(0, 0, 0, 10)
       top = riegenHeader
       center = new BorderPane {
@@ -1535,10 +1520,16 @@ class WettkampfWertungTab(programm: Option[ProgrammView], riege: Option[String],
     val cont = new BorderPane {
       hgrow = Priority.Always
       vgrow = Priority.Always
-      center = new SplitPane {
-        orientation = Orientation.HORIZONTAL
-        items += editTablePane
-        items += riegenFilterPane
+//      center = new SplitPane {
+//        orientation = Orientation.HORIZONTAL
+//        items += editTablePane
+//        items += riegenFilterPane
+//        //setDividerPosition(0, 0.7d)
+//        SplitPane.setResizableWithParent(riegenFilterPane, false)
+//      }
+      center = new BorderPane {
+        center = editTablePane
+        left = riegenFilterPane
       }
       top = new ToolBar {
         content = List(

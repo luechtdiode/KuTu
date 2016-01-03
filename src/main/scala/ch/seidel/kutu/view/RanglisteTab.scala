@@ -10,7 +10,7 @@ class RanglisteTab(wettkampf: WettkampfView, override val service: KutuService) 
   val programmText = wettkampf.programm.id match {case 20 => "Kategorie" case _ => "Programm"}
 
   override def groupers: List[FilterBy] = {
-    List(ByNothing, ByWettkampfArt, ByWettkampfProgramm(programmText), ByProgramm(programmText), ByJahrgang, ByGeschlecht, ByVerband, ByVerein, ByRiege, ByDisziplin)
+    List(ByNothing, ByWettkampfProgramm(programmText), ByProgramm(programmText), ByJahrgang, ByGeschlecht, ByVerband, ByVerein, ByRiege, ByDisziplin)
   }
 
   override def getData: Seq[WertungView] = service.selectWertungen(wettkampfId = Some(wettkampf.id))
@@ -21,8 +21,8 @@ class RanglisteTab(wettkampf: WettkampfView, override val service: KutuService) 
   override def isPopulated = {
     val combos = populate(groupers)
 
-    combos(0).selectionModel.value.select(ByWettkampfProgramm(programmText))
-    combos(1).selectionModel.value.select(ByGeschlecht)
+    combos(1).selectionModel.value.select(ByWettkampfProgramm(programmText))
+    combos(2).selectionModel.value.select(ByGeschlecht)
 
     true
   }
