@@ -56,6 +56,7 @@ import scalafx.util.StringConverter
 import ch.seidel.kutu.KuTuApp
 import scala.concurrent.Await
 import scala.concurrent.duration.Duration
+import ch.seidel.kutu.data.ResourceExchanger
 
 object RiegeEditor {
   def apply(wettkampfid: Long, anz: Int, enabled: Boolean, riege: Riege, onNameChange: (String, String) => Unit, onSelectedChange: (String, Boolean) => Boolean): RiegeEditor =
@@ -1203,6 +1204,25 @@ class WettkampfWertungTab(programm: Option[ProgrammView], riege: Option[String],
         })
       }
     }
+    val einheitenExportButton = new Button {
+      text = "Riegen Einheiten export"
+      minWidth = 75
+      val stationen = new TextField()
+      onAction = (event: ActionEvent) => {
+        implicit val impevent = event
+        KuTuApp.invokeWithBusyIndicator {
+          val filename = "Einheiten.csv"
+          val dir = new java.io.File(service.homedir + "/" + wettkampf.easyprint.replace(" ", "_"))
+          if(!dir.exists()) {
+            dir.mkdirs();
+          }
+          val file = new java.io.File(dir.getPath + "/" + filename)
+
+          ResourceExchanger.exportEinheiten(wkModel.head.init.head.init.wettkampf, file.getPath)
+          Desktop.getDesktop().open(file);
+        }
+      }
+    }
     val riegenRemoveButton = new Button {
       text = "Riege löschen"
       minWidth = 75
@@ -1489,6 +1509,7 @@ class WettkampfWertungTab(programm: Option[ProgrammView], riege: Option[String],
     val riegenFilterControl = new ToolBar {
       content = List(
           riegensuggestButton
+        , einheitenExportButton
         , riegeRenameButton
         , riegenRemoveButton
       )

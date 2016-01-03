@@ -132,8 +132,12 @@ object ResourceExchanger extends KutuService {
       val (riegenCsv, riegenHeader) = collection("riegen.csv")
       println("importing riegen ...", riegenHeader)
       riegenCsv.map(parseLine).filter(_.size == riegenHeader.size).foreach{fields =>
+        val wettkampfid = fields(riegenHeader("wettkampfId"))
         val riege = RiegeRaw(
-            wettkampfId = fields(riegenHeader("wettkampfId")),
+            wettkampfId = wettkampfInstances.get(wettkampfid + "") match {
+              case Some(w) => w.id
+              case None => wettkampfid
+            },
             r = fields(riegenHeader("r")),
             durchgang = if(fields(riegenHeader("durchgang")).length > 0) Some(fields(riegenHeader("durchgang"))) else None,
             start = if(fields(riegenHeader("start")).length > 0) Some(fields(riegenHeader("start"))) else None
@@ -213,6 +217,30 @@ object ResourceExchanger extends KutuService {
 
     zip.finish()
     zip.close()
+  }
+
+  def exportEinheiten(wettkampf: Wettkampf, filename: String) {
+    val export = new FileOutputStream(filename);
+    val riegenRaw = suggestRiegen(wettkampf.id, Seq(0))
+    val mapVereinVerband = selectVereine.map(v => v.name -> v.verband.getOrElse("")).toMap
+    val sep = ";"
+    def butify(grpkey: String, anzahl: Int) = {
+      val parts = grpkey.split(",")
+      // Verein         Kategorie                   Geschlecht
+      mapVereinVerband(parts.drop(2).head) + sep + (parts.drop(2) :+ parts(1).split("//.")(0) :+ parts(0).replace("M", "Tu").replace("W", "Ti")).mkString(sep) + sep + anzahl + sep +
+                      (parts.drop(2) :+ parts(1).split("//.")(0) :+ parts(0).replace("M", "(Tu)").replace("W", "(Ti)")).mkString(" ") + s" (${anzahl})"
+    }
+    val riegen = riegenRaw.map{r =>
+      val anzahl = r._2.map(w => w.athletId).toSet.size
+      butify(r._1, anzahl)
+    }
+    export.write(f"sep=${sep}\nVerband${sep}Verein${sep}Kategorie${sep}Geschlecht${sep}Anzahl${sep}Einheitsbezeichnung\n".getBytes("ISO-8859-1"))
+    for(riege <- riegen) {
+      export.write((riege + "\n").getBytes("ISO-8859-1"))
+    }
+
+    export.flush()
+    export.close()
   }
 
 }
