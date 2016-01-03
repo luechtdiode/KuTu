@@ -834,7 +834,85 @@ trait KutuService {
 --     4. Gruppiert nach Verein oder Jahrgang (Verein im Athletiktest-Modus)
 --     => Verknüpfen der Gruppen auf eine Start-Station/-Rotation
 --     => operation suggestRiegen(WettkampfId, Rotationen/Stationen:List<Integer>): Map<Riegennummer,List<WertungId>>
-*/
+
+       - Ausgangsgrösse ist die Gesamtteilnehmer-Anzahl und die maximale Gruppengrösse in einer Riege
+         z.B. 290 Teilnehmer und max 14 Turner in einer Riege
+
+       - Die Gruppengrösse in einer Riege sollte sich pro Durchgang einheitlich ergeben (+-3 Tu/Ti)
+
+       - Ein Verein darf Rotationen überspannen, innerhalb der Rotation und Kategorie aber nicht
+         => Dies, weil sonst vom Verein zu viele Betreuer notwendig würden.
+
+       - Spezialfälle
+         - Barren nur für Tu am Ende jedes Durchgangs
+         - Parallel geführte Kategorien z.B. (K1 & K2), (K3 & K4)
+         - Gemischt geführte Gruppen z.B. K5 - K7
+
+
+       Somit müsste jede Rotation in sich zunächst stimmen
+       => Vorgabe von aussen:
+       - Rotation[
+         - Parallel geführte Gruppe [
+           - Gemischt geführte Kategorie [
+             - Parallel, gemischt geführte Geräte
+           ]
+         ]
+       ]
+       Beispiel GeTu:
+       Rotation 1 (Ti,Tu) [                         Gruppen, Kumuliert
+         Sub-Rotation 1 [
+           Parallel Gruppe [
+             Gemischt Gruppe [
+               K1 (Ti,Tu) [
+                 Reck, Boden, Schaukelringe, Sprung       4,         4
+               ]
+             ]
+             Gemischt Gruppe [
+               K2 (Ti,Tu) [
+                 Reck, Boden, Schaukelringe, Sprung       4,         8
+               ]
+             ]
+           ]
+         ]
+         Sub-Rotation 2 [
+           Parallel Gruppe [
+             Gemischt Gruppe [                            1,         9
+               K1 (Tu) [
+                 Barren
+               ]
+             ]
+             Gemischt Gruppe [                            1,        10
+               K2 (Tu)  [
+                 Barren
+               ]
+             ]
+           ]
+         ]
+       ]
+       
+       Rotation 2 (Ti)[ 
+         Parallel Gruppe [
+           Gemischt Gruppe [                            4,        13
+             K1 [
+               Reck, Boden, Schaukelringe, Sprung
+             ]
+             K2 [
+               Reck, Boden, Schaukelringe, Sprung
+             ]
+           ]
+         ]
+         Parallel Gruppe [
+           Gemischt Gruppe [                            4,        17
+             K3 [
+               Reck, Boden, Schaukelringe, Sprung
+             ]
+             K4 [
+               Reck, Boden, Schaukelringe, Sprung
+             ]
+           ]
+         ]
+       ]
+ * * */
   def suggestRiegen(wettkampfId: Long, rotationstation: Seq[Int]): Seq[(String, Seq[Wertung])] = {
 
     val riegencnt = rotationstation.reduce(_+_)
@@ -877,19 +955,28 @@ trait KutuService {
       def groupKey(grplst: List[WertungView => String])(wertung: WertungView): String = {
         grplst.foldLeft(""){(acc, f) =>
           acc + "," + f(wertung)
-        }.drop(1)
+        }.drop(1)// remove leading ","
       }
       @tailrec
       def groupWertungen(grp: List[WertungView => String], grpAll: List[WertungView => String]): Seq[(String, Seq[Wertung])] = {
         val sugg = wertungen.groupBy(w => groupKey(grp)(w._2.head)).toSeq
-        if(sugg.size > riegencnt && grp.size > 1) {
+        if(riegencnt > 0 && sugg.size > riegencnt && grp.size > 1) {
+          // too much groups
+          // remove last grouper and try again
           groupWertungen(grp.reverse.tail.reverse, grpAll)
         }
         else {
-          val prep = sugg.map(x => (x._1, x._2.foldLeft((Seq[(AthletView, Seq[WertungView])](), Set[Long]())){(acc, w) =>
-            if(acc._2.contains(w._1.id)) acc else (w +: acc._1, acc._2 + w._1.id)
+          // per groupkey, transform map to seq, sorted by all groupkeys
+          val prep = sugg.map{x =>
+            (/*grpkey*/  x._1,
+             /*values*/  x._2.foldLeft((Seq[(AthletView, Seq[WertungView])](), Set[Long]())){(acc, w) =>
+                val (data, seen) = acc
+                val (athlet, _ ) = w
+                if(seen.contains(athlet.id)) acc else (w +: data, seen + athlet.id)
+              }
+              ._1.sortBy(w => groupKey(grpAll)(w._2.head))
+            )
           }
-          ._1.sortBy(w => groupKey(grpAll)(w._2.head))))
           splitToRiegenCount(prep).map(w => (w._1, w._2.flatMap(wv => wv._2.map(wt => wt.toWertung(w._1)))))
         }
       }
@@ -897,8 +984,10 @@ trait KutuService {
           x => x.athlet.geschlecht,
           x => x.wettkampfdisziplin.programm.name,
           x => x.athlet.verein match {case Some(v) => v.easyprint case None => ""},
+          // fallback ... should not happen
           x => (x.athlet.gebdat match {case Some(d) => f"$d%tY"; case _ => ""})
-          );
+          )
+      val wkFilteredGrouper = wkGrouper.take(if(riegencnt == 0) wkGrouper.size-1 else wkGrouper.size)          
       val atGrouper: List[WertungView => String] = List(
           x => x.athlet.geschlecht,
           x => (x.athlet.gebdat match {case Some(d) => f"$d%tY"; case _ => ""}),
@@ -907,7 +996,7 @@ trait KutuService {
       if(wertungen.head._2.head.wettkampfdisziplin.notenSpez.isInstanceOf[Athletiktest])
         groupWertungen(atGrouper, atGrouper)
       else
-        groupWertungen(wkGrouper, wkGrouper)
+        groupWertungen(wkFilteredGrouper, wkGrouper)
     }
   }
 
