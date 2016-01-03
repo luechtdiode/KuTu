@@ -189,7 +189,7 @@ abstract class DefaultRanglisteTab(override val service: KutuService) extends Ta
       }
     }
 
-    def refreshRangliste(query: GroupBy) = {
+    def refreshRangliste(query: GroupBy, forPrint: Boolean = false) = {
     	val data = getData
 
       val filter = query.asInstanceOf[FilterBy]
@@ -206,8 +206,8 @@ abstract class DefaultRanglisteTab(override val service: KutuService) extends Ta
     	  model.sortBy { x => x.easyprint}
     	}
       val combination = query.select(data).toList
-      val ret = toHTML(combination)
-      webView.engine.loadContent(ret)
+      val ret = toHTML(combination, if(forPrint) 40 else 0)
+      if(!forPrint) webView.engine.loadContent(ret)
       ret
     }
 
@@ -254,7 +254,7 @@ abstract class DefaultRanglisteTab(override val service: KutuService) extends Ta
 //          else {
 //            "../logo.jpg"
 //          }
-          val toSave = refreshRangliste(buildGrouper).getBytes("UTF-8")
+          val toSave = refreshRangliste(buildGrouper, true).getBytes("UTF-8")
           val os = new BufferedOutputStream(new FileOutputStream(selectedFile))
           os.write(toSave)
           os.flush()
