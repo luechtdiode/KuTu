@@ -103,7 +103,9 @@ object ResourceExchanger extends KutuService {
           )
       (fields(wettkampfHeader("id")), wettkampf)
     }.toMap
-
+    val wkdisziplines = wettkampfInstances.map{w =>
+      (w._2.id, listDisziplinIdsZuWettkampf(w._2.id))
+    }
     val (wertungenCsv, wertungenHeader) = collection("wertungen.csv")
     println("importing wertungen ...", wertungenHeader)
     wertungenCsv.map(parseLine).filter(_.size == wertungenHeader.size).foreach{fields =>
@@ -126,7 +128,23 @@ object ResourceExchanger extends KutuService {
         riege = if(fields(wertungenHeader("riege")).length > 0) Some(fields(wertungenHeader("riege"))) else None,
         riege2 = if(fields(wertungenHeader("riege2")).length > 0) Some(fields(wertungenHeader("riege2"))) else None
       )
-      updateOrinsertWertung(w)
+      if(wkdisziplines(w.wettkampfId).contains(w.wettkampfdisziplinId)) {
+        updateOrinsertWertung(w)
+      }
+      else {
+        println("WARNING: No matching Disciplin" + w)
+      }
+    }
+    wettkampfInstances.foreach{w =>
+      val (_, wettkampf) = w
+      athletInstances.foreach{a =>
+        val (_, athlet) = a
+        val completed = completeDisziplinListOfAthletInWettkampf(wettkampf, athlet.id)
+        if(completed.nonEmpty) {
+          println("Completed missing disciplines for " + athlet.easyprint, wettkampf.easyprint + ":")
+          println(completed.mkString("[", ", ", "]"))
+        }
+      }
     }
     if(collection.contains("riegen.csv")) {
       val (riegenCsv, riegenHeader) = collection("riegen.csv")

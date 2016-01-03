@@ -438,6 +438,29 @@ trait KutuService {
     }
   }
 
+  def listAthletWertungenZuWettkampf(athletId: Long, wettkampf: Long) = {
+    database withSession { implicit session =>
+      implicit val cache = scala.collection.mutable.Map[Long, ProgrammView]()
+      val ret = sql"""
+                   SELECT w.id, a.id, a.js_id, a.geschlecht, a.name, a.vorname, a.gebdat, a.strasse, a.plz, a.ort, a.activ, a.verein, v.*,
+                     wd.id, wd.programm_id, d.*, wd.kurzbeschreibung, wd.detailbeschreibung, wd.notenfaktor, wd.ord, wd.masculin, wd.feminim,
+                     wk.*,
+                     w.note_d as difficulty, w.note_e as execution, w.endnote, w.riege, w.riege2
+                   FROM wertung w
+                   inner join athlet a on (a.id = w.athlet_id)
+                   left outer join verein v on (a.verein = v.id)
+                   inner join wettkampfdisziplin wd on (wd.id = w.wettkampfdisziplin_id)
+                   inner join disziplin d on (d.id = wd.disziplin_id)
+                   inner join programm p on (p.id = wd.programm_id)
+                   inner join wettkampf wk on (wk.id = w.wettkampf_id)
+                   where w.athlet_id = $athletId
+                     and w.wettkampf_id = $wettkampf
+                   order by wd.programm_id, wd.ord
+       """.as[WertungView].build
+       ret
+    }
+  }
+
   def listRiegenZuWettkampf(wettkampf: Long) = {
     database withSession { implicit session =>
       /*
@@ -650,7 +673,40 @@ trait KutuService {
       case None =>
     }
   }
-
+  def listDisziplinIdsZuWettkampf(wettkampfId: Long): List[Long] = {
+    database withSession {implicit session: Session =>
+      val wettkampf: Wettkampf = readWettkampf(wettkampfId)
+      val programme = readWettkampfLeafs(wettkampf.programmId).map(p => p.id).mkString("(", ",", ")")
+      sql""" select id from wettkampfdisziplin where programm_Id in #$programme""".as[Long].build
+    }
+  }
+  def completeDisziplinListOfAthletInWettkampf(wettkampf: Wettkampf, athletId: Long) = {
+    val wertungen = listAthletWertungenZuWettkampf(athletId, wettkampf.id)
+    val programme = readWettkampfLeafs(wettkampf.programmId).map(p => p.id).toSet
+    database withTransaction {implicit session: Session =>
+      val pgmwkds = programme.map{x =>
+        x -> sql""" select id from wettkampfdisziplin
+                    where programm_Id = ${x}
+                      and id not in (select wettkampfdisziplin_Id from wertung
+                                     where athlet_Id=${athletId}
+                                       and wettkampf_Id=${wettkampf.id})""".as[Long].build
+      }.toMap
+      val completed = programme.filter{p => wertungen.filter{w => p == w.wettkampfdisziplin.programm.id}.nonEmpty}.
+      map{pgmwkds}.flatMap{wkds => wkds.map{wkd =>
+          sqlu"""
+                    delete from wertung where
+                    athlet_Id=${athletId} and wettkampfdisziplin_Id=$wkd and wettkampf_Id=${wettkampf.id}
+            """.execute
+          sqlu"""
+                    insert into wertung
+                    (athlet_Id, wettkampfdisziplin_Id, wettkampf_Id, note_d, note_e, endnote)
+                    values (${athletId}, ${wkd}, ${wettkampf.id}, 0, 0, 0)
+            """.execute
+          wkd
+      }}
+      completed
+    }
+  }
   def listWettkaempfe = {
     sql"""          select * from wettkampf """.as[Wettkampf]
   }
@@ -848,7 +904,6 @@ trait KutuService {
          - Parallel geführte Kategorien z.B. (K1 & K2), (K3 & K4)
          - Gemischt geführte Gruppen z.B. K5 - K7
 
-
        Somit müsste jede Rotation in sich zunächst stimmen
        => Vorgabe von aussen:
        - Rotation[
@@ -889,8 +944,8 @@ trait KutuService {
            ]
          ]
        ]
-       
-       Rotation 2 (Ti)[ 
+
+       Rotation 2 (Ti)[
          Parallel Gruppe [
            Gemischt Gruppe [                            4,        13
              K1 [
@@ -987,7 +1042,7 @@ trait KutuService {
           // fallback ... should not happen
           x => (x.athlet.gebdat match {case Some(d) => f"$d%tY"; case _ => ""})
           )
-      val wkFilteredGrouper = wkGrouper.take(if(riegencnt == 0) wkGrouper.size-1 else wkGrouper.size)          
+      val wkFilteredGrouper = wkGrouper.take(if(riegencnt == 0) wkGrouper.size-1 else wkGrouper.size)
       val atGrouper: List[WertungView => String] = List(
           x => x.athlet.geschlecht,
           x => (x.athlet.gebdat match {case Some(d) => f"$d%tY"; case _ => ""}),
