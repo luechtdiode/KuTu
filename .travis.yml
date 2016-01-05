@@ -27,7 +27,7 @@ os:
   - linux
   - osx
   
-script: mvn deploy site --settings deploy-settings.xml
+script: mvn site --settings deploy-settings.xml
 
 branches:
   only:
