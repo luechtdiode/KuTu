@@ -22,8 +22,11 @@ scala:
 
 jdk:
   - oraclejdk8
-  - osx
 
+os:
+  - linux
+  - osx
+  
 script: mvn deploy site --settings deploy-settings.xml
 
 branches:

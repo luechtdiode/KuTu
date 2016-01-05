@@ -347,7 +347,7 @@
 							<goal>upload</goal>
 						</goals>
 						<configuration>
-							<fromDir>${basedir}/target/${OS}/</fromDir>
+							<fromDir>${basedir}/target/${OS}/bundles</fromDir>
 							<includes>
 								**/*.*
 							</includes>
