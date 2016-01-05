@@ -1,0 +1,9 @@
+<settings>
+  <servers>
+    <server>
+      <id>ftp-repository</id>
+      <username>${env.ftp_user}</username>
+      <password>${env.ftp_key}</password>
+    </server>
+  </servers>
+</settings>

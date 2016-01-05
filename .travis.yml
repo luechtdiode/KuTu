@@ -22,4 +22,10 @@ scala:
 
 jdk:
   - oraclejdk8
+  - osx
 
+script: mvn deploy site --settings deploy-settings.xml
+
+branches:
+  only:
+    - master

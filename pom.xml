@@ -84,7 +84,7 @@
 			<artifactId>slf4j-nop</artifactId>
 			<version>1.6.4</version>
 		</dependency>
-		
+
 		<dependency>
 			<groupId>commons-codec</groupId>
 			<artifactId>commons-codec</artifactId>
@@ -97,6 +97,12 @@
 		</dependency>
 
 	</dependencies>
+	<!-- distributionManagement>
+		<repository>
+			<id>ftp-repository</id>
+			<url>ftp://ftp.interpolar.ch/snapshots</url>
+		</repository>
+	</distributionManagement-->
 
 	<build>
 		<plugins>
@@ -201,31 +207,14 @@
 							</arguments>
 						</configuration>
 					</execution>
-					<execution>
-						<id>sign-jar</id>
-						<phase>package</phase>
-						<goals>
-							<goal>exec</goal>
-						</goals>
-						<configuration>
-							<executable>${env.JAVA_HOME}/bin/javapackager</executable>
-							<arguments>
-								<argument>-signjar</argument>
-								<argument>-srcdir</argument>
-								<argument>${project.build.directory}</argument>
-								<argument>-outdir</argument>
-								<argument>${project.build.directory}</argument>
-								<argument>-keyStore</argument>
-								<argument>ksdev.jks</argument>
-								<argument>-storePass</argument>
-								<argument>${keyPass}</argument>
-								<argument>-keyPass</argument>
-								<argument>${keyPass}</argument>
-								<argument>-alias</argument>
-								<argument>app.interpolar.ch</argument>
-							</arguments>
-						</configuration>
-					</execution>
+					<!-- execution> <id>sign-jar</id> <phase>package</phase> <goals> <goal>exec</goal> 
+						</goals> <configuration> <executable>${env.JAVA_HOME}/bin/javapackager</executable> 
+						<arguments> <argument>-signjar</argument> <argument>-srcdir</argument> <argument>${project.build.directory}</argument> 
+						<argument>-outdir</argument> <argument>${project.build.directory}</argument> 
+						<argument>-keyStore</argument> <argument>ksdev.jks</argument> <argument>-storePass</argument> 
+						<argument>${keyPass}</argument> <argument>-keyPass</argument> <argument>${keyPass}</argument> 
+						<argument>-alias</argument> <argument>app.interpolar.ch</argument> </arguments> 
+						</configuration> </execution -->
 					<execution>
 						<id>deploy-native</id>
 						<phase>package</phase>
@@ -245,11 +234,12 @@
 								<argument>-srcfiles</argument>
 								<argument>${project.artifactId}-app.jar</argument>
 								<argument>-outdir</argument>
-								<argument>${project.build.directory}</argument>
+								<argument>${project.build.directory}/${OS}</argument>
 								<argument>-outfile</argument>
 								<argument>KuTuApp</argument>
 								<argument>-native</argument>
-								<!-- argument>msi</argument -->
+								<argument>image</argument>
+								<argument>-nosign</argument>
 								<argument>-allpermissions</argument>
 								<argument>-width</argument>
 								<argument>1024</argument>
@@ -262,6 +252,9 @@
 								<argument>-Bcopyright="Interpolar"</argument>
 								<argument>-Bvendor="Interpolar"</argument>
 								<!-- argument>-Bdescription="Wettkampf Verwaltung und Durchfuehrung"</argument -->
+								<argument>-Bmac.CFBundleIdentifier="ch.seidel.KuTuApp"</argument>
+								<argument>-Bmac.CFBundleName=Wettkampf</argument>
+								<argument>-Bmac.CFBundleVersion=100</argument>
 							</arguments>
 						</configuration>
 					</execution>
@@ -299,7 +292,7 @@
 				<executions> <execution> <id>default-compile</id> <goals><goal>compile</goal></goals> 
 				</execution> <execution> <id>default-testCompile</id> <goals><goal>testCompile</goal></goals> 
 				</execution> </executions> </plugin -->
-			<plugin>
+			<!-- plugin>
 				<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-surefire-plugin</artifactId>
 				<version>2.16</version>
@@ -315,18 +308,64 @@
 					</includes>
 				</configuration>
 			</plugin>
-		</plugins>
-	</build>
-	<reporting>
-		<plugins>
 			<plugin>
-				<groupId>org.scala-tools</groupId>
-				<artifactId>maven-scala-plugin</artifactId>
-				<version>${maven-scala-plugin.version}</version>
+				<groupId>com.github.github</groupId>
+				<artifactId>site-maven-plugin</artifactId>
+				<version>0.12</version>
 				<configuration>
-					<scalaVersion>${scala.version}</scalaVersion>
+					<repositoryOwner>luechtdiode</repositoryOwner>
+					<repositoryName>KuTu</repositoryName>
+					<message>update website</message>
+					<oauth2Token>${env.github_oauth2Token_KuTu}</oauth2Token>
+					<outputDirectory>${project.build.directory}</outputDirectory>
+					<branch>refs/heads/gh-pages</branch>
+					<merge>true</merge>
+					<path>download</path>
+					<dryRun>true</dryRun>
+					<includes>
+						<include>KuTu-app.jar</include>
+					</includes>
 				</configuration>
+				<executions>
+					<execution>
+						<goals>
+							<goal>site</goal>
+						</goals>
+						<phase>site</phase>
+					</execution>
+				</executions>
+			</plugin-->
+			<plugin>
+				<groupId>org.codehaus.mojo</groupId>
+				<artifactId>wagon-maven-plugin</artifactId>
+				<version>1.0</version>
+				<executions>
+					<execution>
+						<id>upload-binaries</id>
+						<phase>site</phase>
+						<goals>
+							<goal>upload</goal>
+						</goals>
+						<configuration>
+							<fromDir>${basedir}/target/${OS}/</fromDir>
+							<includes>
+								**/*.*
+							</includes>
+							<serverId>ftp-repository</serverId>
+							<url>ftp://ftp.interpolar.ch</url>
+							<toDir>${OS}</toDir>
+						</configuration>
+					</execution>
+				</executions>
 			</plugin>
 		</plugins>
-	</reporting>
+		<extensions>
+			<!-- Enabling the use of FTP -->
+			<extension>
+				<groupId>org.apache.maven.wagon</groupId>
+				<artifactId>wagon-ftp</artifactId>
+				<version>1.0</version>
+			</extension>
+		</extensions>
+	</build>
 </project> 
