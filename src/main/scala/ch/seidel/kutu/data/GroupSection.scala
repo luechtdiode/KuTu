@@ -341,8 +341,9 @@ case class GroupLeaf(override val groupKey: DataObject, list: Iterable[WertungVi
         }.reduce(_+_)}
       val gsum = if(gwksums.nonEmpty) gwksums.reduce(_+_) else Resultat(0,0,0)
       val avg = if(wksums.nonEmpty) rsum / wksums.size else Resultat(0,0,0)
-      val auszeichnung = if(wks.size == 1) Some(wks.head._1.auszeichnung) else None
-      val auszeichnungEndnote = if(wks.size == 1 && wks.head._1.auszeichnungendnote > 0) Some(wks.head._1.auszeichnungendnote) else None
+      val withAuszeichnung = anzahWettkaempfe == 1 && groups.size == 1 && wks.size == 1
+      val auszeichnung = if(withAuszeichnung) Some(wks.head._1.auszeichnung) else None
+      val auszeichnungEndnote = if(withAuszeichnung && wks.head._1.auszeichnungendnote > 0) Some(wks.head._1.auszeichnungendnote) else None
       val perDisziplinAvgs = (for {
         wettkampf <- wks.keySet.toSeq
         ((ord, disziplin), dwertungen) <- wks(wettkampf).groupBy { x => (x.wettkampfdisziplin.ord, x.wettkampfdisziplin.disziplin) }
