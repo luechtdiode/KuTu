@@ -354,7 +354,7 @@ object KuTuApp extends JFXApp with KutuService {
       }
       val txtAuszeichnungEndnote = new TextField {
         prefWidth = 500
-        promptText = "Auszeichnung bei Erreichung des Mindest-Endwerts"
+        promptText = "Auszeichnung bei Erreichung des Mindest-Gerätedurchschnittwerts"
         text = ""
       }
       PageDisplayer.showInDialog(caption, new DisplayablePage() {
