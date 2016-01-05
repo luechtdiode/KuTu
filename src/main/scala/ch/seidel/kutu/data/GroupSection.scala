@@ -71,6 +71,10 @@ case class GroupLeaf(override val groupKey: DataObject, list: Iterable[WertungVi
   val groups = GroupSection.groupWertungList(list).filter(_._2.size > 0)
 //  lazy val wkPerProgramm = list.filter(_.endnote > 0).groupBy { w => w.wettkampf.programmId }
   lazy val anzahWettkaempfe = list.filter(_.endnote > 0).groupBy { w => w.wettkampf }.size // Anzahl Wettkämpfe
+  val withDNotes = list.filter(w => w.noteD > 0).nonEmpty
+  val withENotes = list.filter(w => w.wettkampf.programmId != 1).nonEmpty
+  val isDivided = !(withDNotes || groups.isEmpty)
+  val divider = if(!isDivided) 1 else groups.head._2.size
 
   def buildColumns: List[WKCol] = {
     val athletCols: List[WKCol] = List(
@@ -99,10 +103,6 @@ case class GroupLeaf(override val groupKey: DataObject, list: Iterable[WertungVi
       })
     )
 
-    val withDNotes = list.filter(w => w.noteD > 0).nonEmpty
-    val withENotes = list.filter(w => w.wettkampf.programmId != 1).nonEmpty
-    val divider = if(withDNotes) 1 else groups.head._2.size
-
     val indexer = Iterator.from(0)
     val disziplinCol: List[WKCol] =
       if (groups.keySet.size > 1) {
@@ -123,11 +123,12 @@ case class GroupLeaf(override val groupKey: DataObject, list: Iterable[WertungVi
           val clEnote = WKLeafCol[GroupRow](text = if(withDNotes) "E" else "ø Gerät", prefWidth = 60, styleClass = Seq("hintdata"), valueMapper = gr => {
             val cs = colsum(gr)
          		val best = if(cs.sum.noteE > 0 && cs.rang.noteE.toInt == 1) "*" else ""
-            if(divider == 1) {
-              best + (cs.sum / divider).formattedE
+         		val div = Math.max(gr.divider, divider)
+            if(div == 1) {
+              best + cs.sum.formattedE
             }
             else {
-            	best + (cs.sum / divider).formattedEnd
+            	best + (cs.sum / div).formattedEnd
             }
           })
           val clEndnote = WKLeafCol[GroupRow](text = "Endnote", prefWidth = 60, styleClass = Seq("valuedata"), valueMapper = gr => {
@@ -232,21 +233,22 @@ case class GroupLeaf(override val groupKey: DataObject, list: Iterable[WertungVi
       ),
       WKLeafCol[GroupRow](
           text = if(anzahWettkaempfe > 1) {
-            if(divider == 1 && withDNotes) {
+            if(!isDivided && withDNotes) {
               s"Total ø aus E"
             }
             else {
               s"ø Gerät"
             }
           }
-          else if(divider == 1 && withDNotes) {
+          else if(!isDivided && withDNotes) {
             "Total E"
           }
           else {
             "ø Gerät"
           }
           , prefWidth = 80, styleClass = Seq("hintdata"), valueMapper = gr => {
-            if (divider == 1) {
+            val div = Math.max(gr.divider, divider)
+            if (div < 2) {
               if(gr.sum.noteE > 0
                  && gr.rang.noteE.toInt == 1)
                 "*" + gr.sum.formattedE
@@ -254,7 +256,7 @@ case class GroupLeaf(override val groupKey: DataObject, list: Iterable[WertungVi
                 "" + gr.sum.formattedE
             }
             else {
-              (gr.sum / divider).formattedEnd
+              (gr.sum / div).formattedEnd
             }
           }
       ),
@@ -271,11 +273,12 @@ case class GroupLeaf(override val groupKey: DataObject, list: Iterable[WertungVi
       )
     )
 
-    val sumCol: List[WKCol] = List(withDNotes, divider > 1 || withDNotes, true).zip(sumColAll).filter(v => v._1).map(_._2)
+    val sumCol: List[WKCol] = List(withDNotes, isDivided || withDNotes, true).zip(sumColAll).filter(v => v._1).map(_._2)
     athletCols ++ disziplinCol ++ sumCol
   }
 
   def getTableData = {
+
     def mapToRang(athlWertungen: Iterable[WertungView]) = {
       val grouped = athlWertungen.groupBy { _.athlet }.map { x =>
         val r = x._2.map(y => y.resultat).reduce(_+_)
@@ -305,9 +308,7 @@ case class GroupLeaf(override val groupKey: DataObject, list: Iterable[WertungVi
           val alterInTagen = jet.toEpochDay() - gebdat.toEpochDay()
           val alterInJahren = alterInTagen / 365
           val altersfaktor = 100L - alterInJahren
-//          val altersfaktor = 36500 - alterInTagen
           val powered = Math.floor(Math.pow(1000, idx)).toLong
-//          println(altersfaktor, powered, powered + altersfaktor)
           powered + altersfaktor
         }
       }
@@ -445,7 +446,10 @@ case class GroupLeaf(override val groupKey: DataObject, list: Iterable[WertungVi
       val (athlet, (sum, avg, wd, wp, gsum)) = x
       val gsrang = rangMap(athlet)
       val posproz = 100d * gsrang.rang.endnote / teilnehmer
-      GroupRow(athlet, mapToGroupSum(athlet, wd, wp), avg, gsrang.rang,
+      val gs = mapToGroupSum(athlet, wd, wp)
+      val divider = if(withDNotes || gs.isEmpty) 1 else gs.filter{r => r.sum.endnote > 0}.size
+
+      GroupRow(athlet, gs, avg, gsrang.rang,
           gsrang.rang.endnote > 0
           && (gsrang.rang.endnote < 4
               || (wp.head._4 match {
@@ -455,7 +459,7 @@ case class GroupLeaf(override val groupKey: DataObject, list: Iterable[WertungVi
                 case None               => false})
               || (wp.head._5 match {
                 case Some(auszeichnung) =>
-                  gsrang.sum.endnote >= auszeichnung
+                  gsrang.sum.endnote / divider >= auszeichnung
                 case None               => false})))
 
     }.toList.filter(_.sum.endnote > 0).sortBy(_.rang.endnote)
