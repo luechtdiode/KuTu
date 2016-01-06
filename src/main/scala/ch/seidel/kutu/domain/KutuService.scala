@@ -511,6 +511,8 @@ trait KutuService {
                            """.as[Long].build.headOption
       val wk = candidateId match {
         case Some(cid) if(cid > 0) =>
+          sqlu"""   delete from riege where wettkampf_id=${cid}""".execute
+          sqlu"""   delete from wertung where wettkampf_id=${cid}""".execute
           sql"""
                     select * from wettkampf
                     where id=$cid
@@ -572,8 +574,23 @@ trait KutuService {
                 from verein
                 where LOWER(name)=${verein.name.toLowerCase()}
        """.as[Long].build.headOption
-       candidateId match {
-         case Some(id) if(id > 0) =>
+           candidateId match {
+             case Some(id) if(id > 0) =>
+               val savedverein = sql"""
+                    select *
+                    from verein
+                    where id=${id}
+           """.as[Verein].build.head
+           if(!savedverein.name.equals(verein.name) || !savedverein.verband.equals(verein.verband)) {
+             sqlu"""
+                  update verein
+                  set
+                    name = ${verein.name}
+                  , verband = ${verein.verband}
+                  where id=${id}
+                 """.execute
+
+           }
            Verein(id, verein.name, verein.verband)
          case _ =>
            sqlu"""
@@ -679,6 +696,19 @@ trait KutuService {
       val wettkampf: Wettkampf = readWettkampf(wettkampfId)
       val programme = readWettkampfLeafs(wettkampf.programmId).map(p => p.id).mkString("(", ",", ")")
       sql""" select id from wettkampfdisziplin where programm_Id in #$programme""".as[Long].build
+    }
+  }
+  def listDisziplinesZuWettkampf(wettkampfId: Long): List[Wettkampfdisziplin] = {
+    database withSession {implicit session: Session =>
+      val wettkampf: Wettkampf = readWettkampf(wettkampfId)
+      val programme = readWettkampfLeafs(wettkampf.programmId).map(p => p.id).mkString("(", ",", ")")
+      val list = sql""" select wd.id, wd.programm_id, wd.disziplin_id, printf('%s (%s)',d.name, p.name) as kurzbeschreibung
+             from wettkampfdisziplin wd, disziplin d, programm p
+             where
+              wd.disziplin_id = d.id
+              and wd.programm_id = p.id and
+              programm_Id in #$programme""".as[(Long, Long, Long, String)].iterator
+      list.map{t => Wettkampfdisziplin(t._1, t._2, t._3, t._4, None, 0, 0, 0, 0) }.toList
     }
   }
   def completeDisziplinListOfAthletInWettkampf(wettkampf: Wettkampf, athletId: Long) = {

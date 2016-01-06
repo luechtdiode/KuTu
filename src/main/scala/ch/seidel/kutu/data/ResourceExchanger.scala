@@ -70,20 +70,19 @@ object ResourceExchanger extends KutuService {
           activ = fields(athletHeader("activ")).toUpperCase() match {case "TRUE" => true case _ => false}
           )
       val candidate = findAthleteLike(cache)(importathlet)
-      val athlet = if(candidate.id > 0 &&
-                           (importathlet.gebdat match {
-                             case Some(d) =>
-                               candidate.gebdat match {
-                                 case Some(cd) => cd.toString().startsWith("01.01") || importathlet.gebdat.equals(candidate.gebdat)
-                                 case _        => true
-                               }
-                             case _ =>
-                               candidate.gebdat match {
-                                 case Some(cd) => false
-                                 case _        => true
-                               }
-                             })) {
-         candidate
+
+      val athlet = if(candidate.id > 0) {
+        importathlet.gebdat match {
+        case Some(d) =>
+          candidate.gebdat match {
+            case Some(cd) if(!cd.toString().startsWith("01.01") || d.equals(cd)) =>
+              candidate
+            case _ =>
+              insertAthlete(candidate.copy(gebdat = importathlet.gebdat))
+          }
+        case None =>
+          candidate
+        }
       }
       else {
          insertAthlete(candidate)
@@ -104,7 +103,7 @@ object ResourceExchanger extends KutuService {
       (fields(wettkampfHeader("id")), wettkampf)
     }.toMap
     val wkdisziplines = wettkampfInstances.map{w =>
-      (w._2.id, listDisziplinIdsZuWettkampf(w._2.id))
+      (w._2.id, listDisziplinesZuWettkampf(w._2.id).map(d => d.id -> d).toMap)
     }
     val (wertungenCsv, wertungenHeader) = collection("wertungen.csv")
     println("importing wertungen ...", wertungenHeader)
@@ -129,10 +128,18 @@ object ResourceExchanger extends KutuService {
         riege2 = if(fields(wertungenHeader("riege2")).length > 0) Some(fields(wertungenHeader("riege2"))) else None
       )
       if(wkdisziplines(w.wettkampfId).contains(w.wettkampfdisziplinId)) {
-        updateOrinsertWertung(w)
+        if(w.endnote < 1) {
+          println("WARNING: not Importing zero-measure for " + (athletInstances.get(athletid + "") match {
+            case Some(a) => a.easyprint
+            case None => ""
+          }) + " and " + wkdisziplines(w.wettkampfId)(w.wettkampfdisziplinId).kurzbeschreibung)
+        }
+        else {
+          updateOrinsertWertung(w)
+        }
       }
       else {
-        println("WARNING: No matching Disciplin" + w)
+        println("WARNING: No matching Disciplin" + wkdisziplines(w.wettkampfId)(w.wettkampfdisziplinId).kurzbeschreibung + " - " + w)
       }
     }
     wettkampfInstances.foreach{w =>
@@ -142,7 +149,7 @@ object ResourceExchanger extends KutuService {
         val completed = completeDisziplinListOfAthletInWettkampf(wettkampf, athlet.id)
         if(completed.nonEmpty) {
           println("Completed missing disciplines for " + athlet.easyprint, wettkampf.easyprint + ":")
-          println(completed.mkString("[", ", ", "]"))
+          println(completed.map(wkdisziplines(wettkampf.id)(_).kurzbeschreibung).mkString("[", ", ", "]"))
         }
       }
     }
