@@ -4,3 +4,6 @@
 /.*
 *.exe
 
+/lib/
+/maven-eclipse.xml
+/scratchpad.sc

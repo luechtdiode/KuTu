@@ -38,6 +38,7 @@ import java.awt.Desktop
 import scala.concurrent.Promise
 import scala.util.Failure
 import scala.util.Success
+import scalafx.stage.StageStyle
 
 object KuTuApp extends JFXApp with KutuService {
   var tree = AppNavigationModel.create(KuTuApp.this)
@@ -599,8 +600,9 @@ object KuTuApp extends JFXApp with KutuService {
   }
 
   val scrollPane = new ScrollPane {
-    minWidth = 200
+    minWidth = 5
     maxWidth = 400
+    prefWidth = 200
     fitToWidth = true
     fitToHeight = true
     id = "page-tree"
@@ -608,7 +610,7 @@ object KuTuApp extends JFXApp with KutuService {
   }
 
   val splitPane = new SplitPane {
-    dividerPositions = 0
+    dividerPositions = 0.2
     id = "page-splitpane"
     items.addAll(scrollPane, centerPane)
   }
@@ -632,8 +634,9 @@ object KuTuApp extends JFXApp with KutuService {
   // Layout the main stage
   //
   stage = new PrimaryStage {
+    //initStyle(StageStyle.TRANSPARENT);
     title = "KuTu Wettkampf-App"
-    scene = new Scene(1020, 700) {
+    scene = new Scene(1400, 900) {
       root = new BorderPane {
         top = header
         center = new BorderPane {

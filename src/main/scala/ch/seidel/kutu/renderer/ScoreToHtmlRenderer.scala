@@ -106,7 +106,6 @@ trait ScoreToHtmlRenderer {
     if (level == 0) {
       gsBlock.append(firstSite(title))
     }
-    var athletCounter = 0
     for (c <- gs) {
       c match {
         case gl: GroupLeaf =>

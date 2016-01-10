@@ -238,7 +238,7 @@
 								<argument>-outfile</argument>
 								<argument>KuTuApp</argument>
 								<argument>-native</argument>
-								<argument>image</argument>
+								<!-- argument>image</argument-->
 								<argument>-nosign</argument>
 								<argument>-allpermissions</argument>
 								<argument>-width</argument>
@@ -349,7 +349,7 @@
 						<configuration>
 							<fromDir>${basedir}/target/${OS}/bundles</fromDir>
 							<includes>
-								**/*.*
+                              **/*.msi, **/*.pkg, **/*.dmg, **/*.rpm, **/*.deb
 							</includes>
 							<serverId>ftp-repository</serverId>
 							<url>ftp://ftp.interpolar.ch</url>
