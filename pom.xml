@@ -238,7 +238,6 @@
 								<argument>-outfile</argument>
 								<argument>KuTuApp</argument>
 								<argument>-native</argument>
-								<!-- argument>image</argument-->
 								<argument>-nosign</argument>
 								<argument>-allpermissions</argument>
 								<argument>-width</argument>
