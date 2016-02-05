@@ -439,22 +439,24 @@ class WettkampfWertungTab(programm: Option[ProgrammView], riege: Option[String],
         prefWidth = 100
         editable = true
         onEditCommit = (evt: CellEditEvent[IndexedSeq[WertungEditor], String]) => {
-        	val rowIndex = wkModel.indexOf(evt.rowValue)
-          for(wertung <- evt.rowValue) {
-            wkModel.update(rowIndex,
-                evt.rowValue.updated(
-                    evt.rowValue.indexOf(wertung),
-                    WertungEditor(
-                        service.updateWertung(
-                            wertung.commit.copy(riege = if(evt.newValue.trim.isEmpty()) None else Some(evt.newValue))
-                            )
-                        )
-                    )
-                )
+          if(!evt.newValue.equals("keine Einteilung")) {
+          	val rowIndex = wkModel.indexOf(evt.rowValue)
+            for(wertung <- evt.rowValue) {
+              wkModel.update(rowIndex,
+                  evt.rowValue.updated(
+                      evt.rowValue.indexOf(wertung),
+                      WertungEditor(
+                          service.updateWertung(
+                              wertung.commit.copy(riege = if(evt.newValue.trim.isEmpty() || evt.newValue.equals("keine Einteilung")) None else Some(evt.newValue))
+                              )
+                          )
+                      )
+                  )
+            }
+            refreshOtherLazyPanes()
+            updateEditorPane
+            evt.tableView.requestFocus()
           }
-          refreshOtherLazyPanes()
-          updateEditorPane
-          evt.tableView.requestFocus()
         }
         onEditCancel = (evt: CellEditEvent[IndexedSeq[WertungEditor], String]) => {
 //          println(evt)
@@ -474,22 +476,24 @@ class WettkampfWertungTab(programm: Option[ProgrammView], riege: Option[String],
         prefWidth = 100
         editable = true
         onEditCommit = (evt: CellEditEvent[IndexedSeq[WertungEditor], String]) => {
-        	val rowIndex = wkModel.indexOf(evt.rowValue)
-          for(disciplin <- evt.rowValue) {
-            wkModel.update(rowIndex,
-                evt.rowValue.updated(
-                    evt.rowValue.indexOf(disciplin),
-                    WertungEditor(
-                        service.updateWertung(
-                            disciplin.commit.copy(riege2 = if(evt.newValue.trim.isEmpty()) None else Some(evt.newValue))
-                            )
-                        )
-                    )
-                )
-          }
-          refreshOtherLazyPanes()
-          updateEditorPane
-          evt.tableView.requestFocus()
+        	if(!evt.newValue.equals("keine Einteilung")) {
+            val rowIndex = wkModel.indexOf(evt.rowValue)
+            for(disciplin <- evt.rowValue) {
+              wkModel.update(rowIndex,
+                  evt.rowValue.updated(
+                      evt.rowValue.indexOf(disciplin),
+                      WertungEditor(
+                          service.updateWertung(
+                              disciplin.commit.copy(riege2 = if(evt.newValue.trim.isEmpty()) None else Some(evt.newValue))
+                              )
+                          )
+                      )
+                  )
+            }
+            refreshOtherLazyPanes()
+            updateEditorPane
+            evt.tableView.requestFocus()
+        	}
         }
         onEditCancel = (evt: CellEditEvent[IndexedSeq[WertungEditor], String]) => {
 //          println(evt)
@@ -909,7 +913,7 @@ class WettkampfWertungTab(programm: Option[ProgrammView], riege: Option[String],
                              (importathlet.gebdat match {
                                case Some(d) =>
                                  candidateView.gebdat match {
-                                   case Some(cd) =>cd.toString().startsWith("01.01")
+                                   case Some(cd) => f"${cd}%tF".endsWith("-01-01")
                                    case _        => true
                                  }
                                case _ => false
@@ -967,7 +971,7 @@ class WettkampfWertungTab(programm: Option[ProgrammView], riege: Option[String],
                              (importAthlet.gebdat match {
                                case Some(d) =>
                                  candidateView.gebdat match {
-                                   case Some(cd) =>cd.toString().startsWith("01.01")
+                                   case Some(cd) => f"${cd}%tF".endsWith("-01-01")
                                    case _        => true
                                  }
                                case _ => false

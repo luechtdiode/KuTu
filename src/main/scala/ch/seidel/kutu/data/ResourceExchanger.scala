@@ -75,7 +75,7 @@ object ResourceExchanger extends KutuService {
         importathlet.gebdat match {
         case Some(d) =>
           candidate.gebdat match {
-            case Some(cd) if(!cd.toString().startsWith("01.01") || d.equals(cd)) =>
+            case Some(cd) if(!f"${cd}%tF".endsWith("-01-01") || d.equals(cd)) =>
               candidate
             case _ =>
               insertAthlete(candidate.copy(gebdat = importathlet.gebdat))
