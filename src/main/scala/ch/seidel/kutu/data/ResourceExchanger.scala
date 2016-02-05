@@ -110,7 +110,7 @@ object ResourceExchanger extends KutuService {
     val wertungInstances = wertungenCsv.map(parseLine).filter(_.size == wertungenHeader.size).map{fields =>
       val athletid: Long = fields(wertungenHeader("athletId"))
       val wettkampfid: Long = fields(wertungenHeader("wettkampfId"))
-      val w = Wertung(
+      Wertung(
         id = fields(wertungenHeader("id")),
         athletId = athletInstances.get(athletid + "") match {
           case Some(a) => a.id
@@ -127,12 +127,11 @@ object ResourceExchanger extends KutuService {
         riege = if(fields(wertungenHeader("riege")).length > 0) Some(fields(wertungenHeader("riege"))) else None,
         riege2 = if(fields(wertungenHeader("riege2")).length > 0) Some(fields(wertungenHeader("riege2"))) else None
       )
-      w
     }
 
     wertungInstances.groupBy(w => w.athletId).foreach { aw =>
       val (athletid, wertungen) = aw
-      lazy val empty = wertungen.count { w => w.endnote > 0 } == 0
+      lazy val empty = wertungen.forall { w => w.endnote < 1 }
       wertungen.foreach { w =>
         if(wkdisziplines(w.wettkampfId).contains(w.wettkampfdisziplinId)) {
           if(w.endnote < 1 && !empty) {
