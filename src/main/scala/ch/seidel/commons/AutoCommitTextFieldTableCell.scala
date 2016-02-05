@@ -91,7 +91,12 @@ object AutoCommitTextFieldTableCell {
             if(ke.shiftDown) {
               val index = tableView.selectionModel.value.getSelectedIndex
               if(index == 0) {
-                tableView.selectionModel.value.selectLast()
+                if(index == tableView.items.value.size()-1) {
+                  tableView.selectionModel.value.selectNext()
+                }
+                else {
+                  tableView.selectionModel.value.selectLast()
+                }
               }
               else {
                 tableView.selectionModel.value.selectAboveCell()
@@ -100,9 +105,14 @@ object AutoCommitTextFieldTableCell {
             else {
               val index = tableView.selectionModel.value.getSelectedIndex
               if(index == tableView.items.value.size()-1) {
-                tableView.selectionModel.value.selectFirst()
+                if(index == 0) {
+                  tableView.selectionModel.value.selectNext()
+                }
+                else {
+                  tableView.selectionModel.value.selectFirst()
+                }
               }
-              else {
+              else  {
                 tableView.selectionModel.value.selectBelowCell()
               }
             }
