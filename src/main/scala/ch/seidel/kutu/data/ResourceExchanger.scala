@@ -107,7 +107,7 @@ object ResourceExchanger extends KutuService {
     }
     val (wertungenCsv, wertungenHeader) = collection("wertungen.csv")
     println("importing wertungen ...", wertungenHeader)
-    wertungenCsv.map(parseLine).filter(_.size == wertungenHeader.size).foreach{fields =>
+    val wertungInstances = wertungenCsv.map(parseLine).filter(_.size == wertungenHeader.size).map{fields =>
       val athletid: Long = fields(wertungenHeader("athletId"))
       val wettkampfid: Long = fields(wertungenHeader("wettkampfId"))
       val w = Wertung(
@@ -127,19 +127,27 @@ object ResourceExchanger extends KutuService {
         riege = if(fields(wertungenHeader("riege")).length > 0) Some(fields(wertungenHeader("riege"))) else None,
         riege2 = if(fields(wertungenHeader("riege2")).length > 0) Some(fields(wertungenHeader("riege2"))) else None
       )
-      if(wkdisziplines(w.wettkampfId).contains(w.wettkampfdisziplinId)) {
-        if(w.endnote < 1) {
-          println("WARNING: not Importing zero-measure for " + (athletInstances.get(athletid + "") match {
-            case Some(a) => a.easyprint
-            case None => ""
-          }) + " and " + wkdisziplines(w.wettkampfId)(w.wettkampfdisziplinId).kurzbeschreibung)
+      w
+    }
+
+    wertungInstances.groupBy(w => w.athletId).foreach { aw =>
+      val (athletid, wertungen) = aw
+      lazy val empty = wertungen.count { w => w.endnote > 0 } == 0
+      wertungen.foreach { w =>
+        if(wkdisziplines(w.wettkampfId).contains(w.wettkampfdisziplinId)) {
+          if(w.endnote < 1 && !empty) {
+            println("WARNING: not Importing zero-measure for " + (athletInstances.get(athletid + "") match {
+              case Some(a) => a.easyprint
+              case None => ""
+            }) + " and " + wkdisziplines(w.wettkampfId)(w.wettkampfdisziplinId).kurzbeschreibung)
+          }
+          else {
+            updateOrinsertWertung(w)
+          }
         }
         else {
-          updateOrinsertWertung(w)
+          println("WARNING: No matching Disciplin" + wkdisziplines(w.wettkampfId)(w.wettkampfdisziplinId).kurzbeschreibung + " - " + w)
         }
-      }
-      else {
-        println("WARNING: No matching Disciplin" + wkdisziplines(w.wettkampfId)(w.wettkampfdisziplinId).kurzbeschreibung + " - " + w)
       }
     }
     wettkampfInstances.foreach{w =>
