@@ -3,7 +3,6 @@ package ch.seidel.kutu
 import scalafx.util.converter.DoubleStringConverter
 import java.io.ObjectInputStream
 import scalafx.collections.ObservableBuffer
-//import np.com.ngopal.control.AutoFillTextBoxFactory
 import java.time.LocalDate
 import java.time.ZoneId
 import scalafx.util.converter.IntStringConverter
@@ -12,6 +11,7 @@ import java.text.SimpleDateFormat
 import org.apache.commons.codec.language.bm._
 import org.apache.commons.lang.StringUtils
 import org.apache.commons.codec.language.ColognePhonetic
+import java.util.TimeZone
 
 package object domain {
   implicit def dbl2Str(d: Double) = f"${d}%2.3f"
@@ -80,10 +80,8 @@ package object domain {
   }
 
   object AthletJahrgang {
-    private val extractYear = new SimpleDateFormat("YYYY")
-
     def apply(gebdat: Option[java.sql.Date]): AthletJahrgang = gebdat match {
-        case Some(d) => AthletJahrgang(extractYear.format(d))
+        case Some(d) => AthletJahrgang(f"$d%tY")
         case None    => AthletJahrgang("unbekannt")
       }
   }

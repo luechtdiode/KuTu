@@ -759,8 +759,6 @@ class WettkampfWertungTab(programm: Option[ProgrammView], riege: Option[String],
         items = vereine
         //selectionModel.value.selectFirst()
       }
-      val sdfYYYY = new SimpleDateFormat("YYYY")
-      val sdfYY = new SimpleDateFormat("YY")
       val programms = programm.map(p => service.readWettkampfLeafs(p.head.id)).toSeq.flatten
       val clipboardlines = Source.fromString(Clipboard.systemClipboard.getString).getLines()
       val cache = new java.util.ArrayList[MatchCode]()
@@ -775,12 +773,14 @@ class WettkampfWertungTab(programm: Option[ProgrammView], riege: Option[String],
                             geschlecht = if(!"".equals(fields(4))) "W" else "M",
                             name = fields(0),
                             vorname = fields(1),
-                            gebdat = if(fields(2).length > 4) Some(service.getSQLDate(fields(2))) else if(fields(2).length == 4){
-                                       Some(service.getSQLDate("01.01." + fields(2)))
-                                     }
-                                     else {
-                                       None
-                                     },
+                            gebdat = if(fields(2).length > 4)
+                                Some(service.getSQLDate(fields(2)))
+                              else if(fields(2).length == 4) {
+                                Some(service.getSQLDate("01.01." + fields(2)))
+                              }
+                              else {
+                                None
+                              },
                             strasse = "",
                             plz = "",
                             ort = "",
@@ -824,7 +824,7 @@ class WettkampfWertungTab(programm: Option[ProgrammView], riege: Option[String],
                 text = "Athlet"
                 cellValueFactory = { x =>
                   new ReadOnlyStringWrapper(x.value, "athlet", {
-                    s"${x.value._2.name} ${x.value._2.vorname}, ${x.value._2.gebdat.map(sdfYYYY.format(_)) match {case None => "" case Some(t) => t}}"
+                    s"${x.value._2.name} ${x.value._2.vorname}, ${x.value._2.gebdat.map(d => f"$d%tY") match {case None => "" case Some(t) => t}}"
                   })
                 }
                 minWidth = 250

@@ -187,6 +187,7 @@ trait KutuService {
   updateDB
 
   val sdf = new SimpleDateFormat("dd.MM.yyyy")
+  val sdfShort = new SimpleDateFormat("dd.MM.yy")
   val sdfExported = new SimpleDateFormat("yyyy-MM-dd")
 
   def addFilter[P](query: StaticQuery[P,_], predicate: String, param: Option[P]) = {
@@ -200,9 +201,13 @@ trait KutuService {
     new java.sql.Date(sdf.parse(date).getTime)
   }
   catch {
-    case d: ParseException =>
-      new java.sql.Date(sdfExported.parse(date).getTime)
-
+    case d: ParseException => try {
+    	new java.sql.Date(sdfExported.parse(date).getTime)
+    }
+    catch {
+      case dd: ParseException =>
+        new java.sql.Date(sdfShort.parse(date).getTime)
+    }
   }
 
   private implicit val getVereinResult = GetResult(r => Verein(r.<<[Long], r.<<[String], r.<<))
