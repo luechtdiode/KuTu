@@ -59,13 +59,14 @@ import scala.concurrent.duration.Duration
 import ch.seidel.kutu.data.ResourceExchanger
 
 object RiegeEditor {
-  def apply(wettkampfid: Long, anz: Int, enabled: Boolean, riege: Riege, onNameChange: (String, String) => Unit, onSelectedChange: (String, Boolean) => Boolean): RiegeEditor =
-    RiegeEditor(wettkampfid, riege.r, anz, enabled, riege.durchgang, riege.start, onNameChange, onSelectedChange)
+  def apply(wettkampfid: Long, anz: Int, viewanz: Int, enabled: Boolean, riege: Riege, onNameChange: (String, String) => Unit, onSelectedChange: (String, Boolean) => Boolean): RiegeEditor =
+    RiegeEditor(wettkampfid, riege.r, anz, viewanz, enabled, riege.durchgang, riege.start, onNameChange, onSelectedChange)
 }
-case class RiegeEditor(wettkampfid: Long, initname: String, initanz: Int, enabled: Boolean, initdurchgang: Option[String], initstart: Option[Disziplin], onNameChange: (String, String) => Unit, onSelectedChange: (String, Boolean) => Boolean) {
+case class RiegeEditor(wettkampfid: Long, initname: String, initanz: Int, initviewanz: Int, enabled: Boolean, initdurchgang: Option[String], initstart: Option[Disziplin], onNameChange: (String, String) => Unit, onSelectedChange: (String, Boolean) => Boolean) {
   val selected = BooleanProperty(enabled)
   val name = StringProperty(initname)
   val anz = IntegerProperty(initanz)
+  val anzkat = StringProperty(s"$initviewanz/$initanz")
   val durchgang = StringProperty(initdurchgang.getOrElse(""))
   val start = ObjectProperty(initstart.getOrElse(null))
 //  name onChange {
@@ -281,14 +282,23 @@ class WettkampfWertungTab(programm: Option[ProgrammView], riege: Option[String],
       id = "kutu-table"
       editable = true
     }
-    var relevantRiegen: Map[String,Boolean] = (if(wertungen.size > 0) wertungen.map(x => x.head).flatMap(x => Seq(x.init.riege, x.init.riege2).flatten).toSet else Set.empty[String]).map(x => x -> true).toMap
+ 		var relevantRiegen: Map[String,(Boolean, Int)] = Map[String,(Boolean, Int)]()
+    def computeRelevantRiegen = {
+      (if(wertungen.size > 0) wertungen.
+          map(x => x.head).flatMap(x => Seq(x.init.riege, x.init.riege2).flatten).
+          groupBy(x => x).map(x => (x._1, x._2.size)).toSet else Set.empty[(String,Int)]).
+          map(x => x._1 -> (relevantRiegen.getOrElse(x._1, (true, x._2))._1, x._2)).toMap
+    }
+    relevantRiegen = computeRelevantRiegen
+
     def riegen(onNameChange: (String, String) => Unit, onSelectedChange: (String, Boolean) => Boolean, initial: Boolean): IndexedSeq[RiegeEditor] = {
-      service.listRiegenZuWettkampf(wettkampf.id).sortBy(r => r._1).map(x =>
+      service.listRiegenZuWettkampf(wettkampf.id).sortBy(r => r._1).filter{r => relevantRiegen.contains(r._1)}.map(x =>
         RiegeEditor(
             wettkampf.id,
             x._1,
             x._2,
-            relevantRiegen.contains(x._1) && (initial || relevantRiegen(x._1)),
+            if(relevantRiegen.contains(x._1)) relevantRiegen(x._1)._2 else 0,
+            relevantRiegen.contains(x._1) && (initial || relevantRiegen(x._1)._1),
             x._3,
             x._4,
             onNameChange, onSelectedChange))
@@ -539,7 +549,7 @@ class WettkampfWertungTab(programm: Option[ProgrammView], riege: Option[String],
           def isRiegenFilterConform(wertung: WertungView) = {
             val athletRiegen = Seq(wertung.riege, wertung.riege2)
             val undefined = athletRiegen.forall{case None => true case _ => false}
-            undefined || !athletRiegen.forall{case Some(riege) => !relevantRiegen.getOrElse(riege, false) case _ => true}
+            undefined || !athletRiegen.forall{case Some(riege) => !relevantRiegen.getOrElse(riege, (false, 0))._1 case _ => true}
           }
           val matches = athlet.nonEmpty && isRiegenFilterConform(athlet(0).init) &&
             searchQuery.forall{search =>
@@ -580,21 +590,30 @@ class WettkampfWertungTab(programm: Option[ProgrammView], riege: Option[String],
       }
     }
 
+  	val teilnehmerCntLabel = new Label {
+  	  margin = Insets(5, 0, 5, 5)
+  	}
     val alleRiegenCheckBox = new CheckBox {
       text = "Alle Riegen" + programm.map(" im " + _.name).getOrElse("")
       margin = Insets(5, 0, 5, 5)
     }
     def updateAlleRiegenCheck(toggle: Boolean = false) {
-      val allselected = relevantRiegen.values.forall{x => x}
+      val allselected = relevantRiegen.values.forall{x => x._1}
       val newAllSelected = if(toggle) !allselected else allselected
       if(toggle) {
-        relevantRiegen = relevantRiegen.map(r => (r._1, newAllSelected))
+        relevantRiegen = relevantRiegen.map(r => (r._1, (newAllSelected, r._2._2)))
         updateFilteredList(lastFilter)
         updateRiegen(false)
       }
       else {
         alleRiegenCheckBox.selected.value = newAllSelected
       }
+      val counttotriegen = riegenFilterModel.foldLeft(0)((sum, r) => sum + r.initanz)
+      val counttotprogramm = wertungen.size
+      //val counttotprogramm = riegenFilterModel.foldLeft(0)((sum, r) => sum + r.initviewanz)
+      val countsel = riegenFilterModel.filter(r => relevantRiegen(r.initname)._1).foldLeft(0)((sum, r) => sum + r.initviewanz)
+      val rc = relevantRiegen.size
+      teilnehmerCntLabel.text = s"$rc Riegen mit $counttotriegen Riegenmitglieder/-innen, $countsel von $counttotprogramm" + programm.map(" im " + _.name).getOrElse("")
     }
     alleRiegenCheckBox onAction = (event: ActionEvent) => {
       updateAlleRiegenCheck(true)
@@ -606,7 +625,7 @@ class WettkampfWertungTab(programm: Option[ProgrammView], riege: Option[String],
       }
       def onSelectedChange(name: String, selected: Boolean) = {
         if(relevantRiegen.contains(name)) {
-          relevantRiegen = relevantRiegen.updated(name, selected)
+          relevantRiegen = relevantRiegen.updated(name, (selected, relevantRiegen(name)._2))
           updateFilteredList(lastFilter)
           updateAlleRiegenCheck()
           selected
@@ -634,7 +653,8 @@ class WettkampfWertungTab(programm: Option[ProgrammView], riege: Option[String],
       val columnrebuild = wertungen.isEmpty
       wkModel.clear()
       wertungen = reloadWertungen()
-      relevantRiegen = (if(wertungen.size > 0) wertungen.map(x => x.head).flatMap(x => Seq(x.init.riege, x.init.riege2).flatten).toSet else Set.empty[String]).map(x => x -> relevantRiegen.getOrElse(x, true)).toMap
+
+      relevantRiegen = computeRelevantRiegen
 
       updateRiegen(false)
 
@@ -695,9 +715,9 @@ class WettkampfWertungTab(programm: Option[ProgrammView], riege: Option[String],
               evt.tableView.requestFocus()
             }
           }
-         ,new TableColumn[RiegeEditor, Int] {
+         ,new TableColumn[RiegeEditor, String] {
             text = "Anz"
-            cellValueFactory = { x => x.value.anz.asInstanceOf[ObservableValue[Int,Int]] }
+            cellValueFactory = { x => x.value.anzkat.asInstanceOf[ObservableValue[String,String]] }
           }
          ,new TableColumn[RiegeEditor, String] {
             text = "Durchgang"
@@ -712,6 +732,7 @@ class WettkampfWertungTab(programm: Option[ProgrammView], riege: Option[String],
               riegenFilterModel.update(rowIndex, RiegeEditor(
                   evt.rowValue.wettkampfid,
                   evt.rowValue.initanz,
+                  evt.rowValue.initviewanz,
                   evt.rowValue.enabled,
                   service.updateOrinsertRiege(evt.rowValue.commit),
                   evt.rowValue.onNameChange,
@@ -738,6 +759,7 @@ class WettkampfWertungTab(programm: Option[ProgrammView], riege: Option[String],
               riegenFilterModel.update(rowIndex, RiegeEditor(
                   evt.rowValue.wettkampfid,
                   evt.rowValue.initanz,
+                  evt.rowValue.initviewanz,
                   evt.rowValue.enabled,
                   service.updateOrinsertRiege(evt.rowValue.commit),
                   evt.rowValue.onNameChange,
@@ -1519,6 +1541,10 @@ class WettkampfWertungTab(programm: Option[ProgrammView], riege: Option[String],
       )
     }
 
+    val filterControl = new HBox {
+   		children += teilnehmerCntLabel
+    }
+
     val riegenHeader = new VBox {
       maxWidth = Double.MaxValue
       minHeight = Region.USE_PREF_SIZE
@@ -1528,6 +1554,7 @@ class WettkampfWertungTab(programm: Option[ProgrammView], riege: Option[String],
       }
       children += title
       children += riegenFilterControl
+      children += filterControl
       children += alleRiegenCheckBox
     }
 
@@ -1540,6 +1567,7 @@ class WettkampfWertungTab(programm: Option[ProgrammView], riege: Option[String],
       center = new BorderPane {
         center = riegenFilterView
       }
+      bottom = filterControl
     }
 
     val cont = new BorderPane {

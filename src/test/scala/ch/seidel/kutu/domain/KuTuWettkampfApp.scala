@@ -1,8 +1,10 @@
 package ch.seidel.kutu.domain
 
 import scalafx.application.JFXApp
+import java.util.Date
 
 object KuTuWettkampfApp extends JFXApp with KutuService {
+  print(f"${new Date()}%tF")
 //  print(suggestRiegen(7, Seq(6)))
   // Open a database connection
 
