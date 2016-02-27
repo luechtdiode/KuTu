@@ -58,41 +58,6 @@ import scala.concurrent.Await
 import scala.concurrent.duration.Duration
 import ch.seidel.kutu.data.ResourceExchanger
 
-object RiegeEditor {
-  def apply(wettkampfid: Long, anz: Int, viewanz: Int, enabled: Boolean, riege: Riege, onNameChange: (String, String) => Unit, onSelectedChange: (String, Boolean) => Boolean): RiegeEditor =
-    RiegeEditor(wettkampfid, riege.r, anz, viewanz, enabled, riege.durchgang, riege.start, onNameChange, onSelectedChange)
-}
-case class RiegeEditor(wettkampfid: Long, initname: String, initanz: Int, initviewanz: Int, enabled: Boolean, initdurchgang: Option[String], initstart: Option[Disziplin], onNameChange: (String, String) => Unit, onSelectedChange: (String, Boolean) => Boolean) {
-  val selected = BooleanProperty(enabled)
-  val name = StringProperty(initname)
-  val anz = IntegerProperty(initanz)
-  val anzkat = StringProperty(s"$initviewanz/$initanz")
-  val durchgang = StringProperty(initdurchgang.getOrElse(""))
-  val start = ObjectProperty(initstart.getOrElse(null))
-//  name onChange {
-//    onNameChange(initname, name.value)
-//  }
-  selected onChange {
-    selected.value = onSelectedChange(initname, selected.value)
-  }
-//  durchgang onChange {
-//    durchgang.value = onSelectedChange(initdurchgang.getOrElse(""), durchgang.value)
-//  }
-//  start onChange {
-//    selected.value = onSelectedChange(initname, selected.value)
-//  }
-  def reset {
-    name.value = initname
-    durchgang.value = initdurchgang.getOrElse("")
-    start.value = initstart.getOrElse(null)
-  }
-  def commit = RiegeRaw (
-      wettkampfId = wettkampfid,
-      r = name.value,
-      durchgang = if(durchgang.value.trim.length > 0) Some(durchgang.value.trim) else None,
-      start = if(start.value != null && start.value.isInstanceOf[Disziplin]) Some(start.value.asInstanceOf[Disziplin].id) else None
-    )
-}
 case class WertungEditor(init: WertungView) {
 	type WertungChangeListener = (WertungEditor) => Unit
   val noteD = DoubleProperty(init.noteD.toDouble)
@@ -689,86 +654,13 @@ class WettkampfWertungTab(programm: Option[ProgrammView], riege: Option[String],
       updateEditorPane
     }
 
-    val riegenFilterView = new TableView[RiegeEditor](riegenFilterModel) {
-      id = "riege-table"
-      editable = true
-      columns ++= List(
-          new TableColumn[RiegeEditor, Boolean] {
-            text = "Filter"
-            cellValueFactory = { x => x.value.selected.asInstanceOf[ObservableValue[Boolean,Boolean]] }
-            cellFactory = { x => new CheckBoxTableCell[RiegeEditor, Boolean]() }
-            editable = true
-          }
-         ,new TableColumn[RiegeEditor, String] {
-            text = "Riege"
-            cellValueFactory = { x => x.value.name }
-            cellFactory = { _ => new AutoCommitTextFieldTableCell[RiegeEditor, String](new DefaultStringConverter()) }
-            editable = true
-            onEditCommit = (evt: CellEditEvent[RiegeEditor, String]) => {
-              val editor = evt.rowValue
-              editor.name.value = evt.newValue
-              val rowIndex = riegenFilterModel.indexOf(evt.rowValue)
-              service.renameRiege(wettkampf.id, evt.rowValue.initname, evt.newValue)
-              refreshLazyPane()
-              reloadData()
-              evt.tableView.selectionModel.value.select(rowIndex, this)
-              evt.tableView.requestFocus()
-            }
-          }
-         ,new TableColumn[RiegeEditor, String] {
-            text = "Anz"
-            cellValueFactory = { x => x.value.anzkat.asInstanceOf[ObservableValue[String,String]] }
-          }
-         ,new TableColumn[RiegeEditor, String] {
-            text = "Durchgang"
-            prefWidth = 150
-            cellValueFactory = { x => x.value.durchgang }
-            cellFactory = { _ => new AutoCommitTextFieldTableCell[RiegeEditor, String](new DefaultStringConverter()) }
-            editable = true
-            onEditCommit = (evt: CellEditEvent[RiegeEditor, String]) => {
-              val editor = evt.rowValue
-              editor.durchgang.value = evt.newValue
-              val rowIndex = riegenFilterModel.indexOf(evt.rowValue)
-              riegenFilterModel.update(rowIndex, RiegeEditor(
-                  evt.rowValue.wettkampfid,
-                  evt.rowValue.initanz,
-                  evt.rowValue.initviewanz,
-                  evt.rowValue.enabled,
-                  service.updateOrinsertRiege(evt.rowValue.commit),
-                  evt.rowValue.onNameChange,
-                  evt.rowValue.onSelectedChange))
-              evt.tableView.selectionModel.value.select(rowIndex, this)
-              evt.tableView.requestFocus()
-            }
-          }
-         ,new TableColumn[RiegeEditor, Disziplin] {
-            text = "Start"
-            prefWidth = 150
-            val converter = new StringConverter[Disziplin] {
-              override def toString(d: Disziplin) = if(d != null) d.easyprint else ""
-              override def fromString(s: String) = if(s != null) disziplinlist.find { d => d.name.equals(s) }.getOrElse(null) else null
-            }
-            val list = ObservableBuffer[Disziplin](disziplinlist)
-            cellValueFactory = { x => x.value.start.asInstanceOf[ObservableValue[Disziplin,Disziplin]] }
-            cellFactory = { _ => new ComboBoxTableCell[RiegeEditor, Disziplin](converter, list) }
-            editable = true
-            onEditCommit = (evt: CellEditEvent[RiegeEditor, Disziplin]) => {
-              val editor = evt.rowValue
-              editor.start.value = evt.newValue
-              val rowIndex = riegenFilterModel.indexOf(evt.rowValue)
-              riegenFilterModel.update(rowIndex, RiegeEditor(
-                  evt.rowValue.wettkampfid,
-                  evt.rowValue.initanz,
-                  evt.rowValue.initviewanz,
-                  evt.rowValue.enabled,
-                  service.updateOrinsertRiege(evt.rowValue.commit),
-                  evt.rowValue.onNameChange,
-                  evt.rowValue.onSelectedChange))
-              evt.tableView.selectionModel.value.select(rowIndex, this)
-              evt.tableView.requestFocus()
-            }
-          })
-    }
+    val riegenFilterView = new RiegenFilterView(
+        wettkampf, service,
+        () => {
+          refreshLazyPane()
+          reloadData()
+        },
+        riegenFilterModel)
     updateRiegen(true)
 
     def doPasteFromExcel(progrm: Option[ProgrammView])(implicit event: ActionEvent) = {

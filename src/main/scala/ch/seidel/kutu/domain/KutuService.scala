@@ -703,7 +703,20 @@ trait KutuService {
       sql""" select id from wettkampfdisziplin where programm_Id in #$programme""".as[Long].build
     }
   }
-  def listDisziplinesZuWettkampf(wettkampfId: Long): List[Wettkampfdisziplin] = {
+  def listDisziplinesZuWettkampf(wettkampfId: Long): List[Disziplin] = {
+    database withSession {implicit session: Session =>
+      val wettkampf: Wettkampf = readWettkampf(wettkampfId)
+      val programme = readWettkampfLeafs(wettkampf.programmId).map(p => p.id).mkString("(", ",", ")")
+      val list = sql""" select wd.disziplin_id, d.name
+             from wettkampfdisziplin wd, disziplin d, programm p
+             where
+              wd.disziplin_id = d.id
+              and wd.programm_id = p.id and
+              programm_id in #$programme""".as[Disziplin].iterator
+      list.toList
+    }
+  }
+  def listWettkampfDisziplines(wettkampfId: Long): List[Wettkampfdisziplin] = {
     database withSession {implicit session: Session =>
       val wettkampf: Wettkampf = readWettkampf(wettkampfId)
       val programme = readWettkampfLeafs(wettkampf.programmId).map(p => p.id).mkString("(", ",", ")")

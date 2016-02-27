@@ -103,7 +103,7 @@ object ResourceExchanger extends KutuService {
       (fields(wettkampfHeader("id")), wettkampf)
     }.toMap
     val wkdisziplines = wettkampfInstances.map{w =>
-      (w._2.id, listDisziplinesZuWettkampf(w._2.id).map(d => d.id -> d).toMap)
+      (w._2.id, listWettkampfDisziplines(w._2.id).map(d => d.id -> d).toMap)
     }
     val (wertungenCsv, wertungenHeader) = collection("wertungen.csv")
     println("importing wertungen ...", wertungenHeader)
