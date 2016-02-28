@@ -69,6 +69,7 @@ package object domain {
   }
 
   object Athlet {
+    def apply(): Athlet = Athlet(0, 0, "", "", "", None, "", "", "", None, true)
     def apply(verein: Verein): Athlet = Athlet(0, 0, "M", "<Name>", "<Vorname>", None, "", "", "", Some(verein.id), true)
   }
   case class Athlet(id: Long, js_id: Int, geschlecht: String, name: String, vorname: String, gebdat: Option[java.sql.Date], strasse: String, plz: String, ort: String, verein: Option[Long], activ: Boolean) extends DataObject {

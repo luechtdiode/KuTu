@@ -16,6 +16,7 @@ import scalafx.scene.layout._
 import scalafx.scene.input.KeyCode
 import scalafx.scene.input.KeyEvent
 import scalafx.scene.input.MouseEvent
+import scalafx.application.Platform
 
 class AthletSelectionDialog(actionTitle: String, progrm: ProgrammView, assignedAthleten: Seq[AthletView], service: KutuService, refreshPaneData: ((Long, Athlet)=>Boolean)=>Unit) {
 
@@ -120,9 +121,13 @@ class AthletSelectionDialog(actionTitle: String, progrm: ProgrammView, assignedA
 
   val btnNew = new Button("Neu erfassen ...") {
     onAction = (event: ActionEvent) => {
-      val athlet = athletTable.selectionModel().getSelectedItem
-      def filter(progId: Long, a: Athlet): Boolean = filteredModel.exists { x => x.id == a.id }
-      refreshPaneData(filter)
+      val athlet = AthletDialog(service, (x: Athlet) => {
+    	  def filter(progId: Long, a: Athlet): Boolean = x.id == a.id
+    	  refreshPaneData(filter)
+      })
+      Platform.runLater {
+        athlet.execute(event)
+      }
     }
   }
 

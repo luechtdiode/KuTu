@@ -32,6 +32,13 @@ class AthletEditor(init: Athlet) {
   val ort = new StringProperty(init.ort)
   val activ = new StringProperty(init.activ match {case true => "Aktiv" case _ => "Inaktiv"})
 
+  def isValid = {
+    name.value.nonEmpty &&
+    vorname.value.nonEmpty &&
+    geschlecht.value.nonEmpty &&
+    (optionOfGebDat match {case Some(d) => true case _ => false})
+  }
+
   def reset {
     jsid.value_=(init.js_id + "")
   }
@@ -39,7 +46,12 @@ class AthletEditor(init: Athlet) {
   private def optionOfGebDat: Option[Date] = {
     gebdat.value match {
       case "" => None
-      case s: String => Some(new java.sql.Date(sdf.parse(s).getTime()))
+      case s: String => try {
+        Some(new java.sql.Date(sdf.parse(s).getTime()))
+      }
+      catch {
+        case e: Exception => None
+      }
     }
   }
 
