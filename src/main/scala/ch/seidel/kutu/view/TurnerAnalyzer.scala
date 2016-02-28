@@ -203,7 +203,7 @@ class TurnerAnalyzer(val verein: Option[Verein], val athlet: Option[Athlet], val
         groupBy { x => athlet match {case None => x.athlet case _ => x.wettkampfdisziplin}}.
         map(x => (x._1.easyprint.take(30), x._1, x._2.map { x => x.endnote }.sum, x._2.map { x => x.noteD }.sum)).
         filter(x => x._3 > 1).
-        toSeq
+        toSeq.sortBy(x => x._3)
         if(sumPerDivider.nonEmpty) {
           if(withDNotes) {
             lineChart.data.get.add(toSeriesq("D-Note " +wettkampf.easyprint, sumPerDivider.map(x => (x._1, x._2, x._4))))

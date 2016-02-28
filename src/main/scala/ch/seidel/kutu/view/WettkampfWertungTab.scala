@@ -58,42 +58,6 @@ import scala.concurrent.Await
 import scala.concurrent.duration.Duration
 import ch.seidel.kutu.data.ResourceExchanger
 
-case class WertungEditor(init: WertungView) {
-	type WertungChangeListener = (WertungEditor) => Unit
-  val noteD = DoubleProperty(init.noteD.toDouble)
-  val noteE = DoubleProperty(init.noteE.toDouble)
-  val endnote = DoubleProperty(init.endnote.toDouble)
-  noteD.onChange {
-    listeners.foreach(f => f(this))
-  }
-  noteE.onChange {
-    listeners.foreach(f => f(this))
-  }
-  endnote.onChange {
-    listeners.foreach(f => f(this))
-  }
-  def isDirty = noteD.value != init.noteD || noteE.value != init.noteE || endnote.value != init.endnote
-  var listeners = Set[WertungChangeListener]()
-  def addListener(l: WertungChangeListener) {
-   listeners += l
-  }
-  def removeListener(l: WertungChangeListener) {
-    listeners -= l
-  }
-  def reset {
-    noteD.value = init.noteD
-    noteE.value = init.noteE
-    endnote.value = init.endnote
-  }
-  def commit = Wertung(
-    init.id, init.athlet.id, init.wettkampfdisziplin.id, init.wettkampf.id,
-    scala.math.BigDecimal(noteD.value),
-    scala.math.BigDecimal(noteE.value),
-    scala.math.BigDecimal(endnote.value),
-    init.riege,
-    init.riege2)
-}
-
 trait TCAccess {
   def getIndex: Int
   def valueEditor(selectedRow: IndexedSeq[WertungEditor]): WertungEditor
@@ -1208,111 +1172,13 @@ class WettkampfWertungTab(programm: Option[ProgrammView], riege: Option[String],
         text = "Athlet hinzufügen"
         minWidth = 75
         onAction = (event: ActionEvent) => {
-          disable = true
-          val athletModel = ObservableBuffer[AthletView](
-            service.selectAthletesView.filter(service.altersfilter(progrm, _)).
-            filter { p => /*p.activ &&*/ wertungen.forall { wp => wp.head.init.athlet.id != p.id } }.
-            sortBy { a => (a.activ match {case true => "A" case _ => "X"}) + ":" + a.name + ":" + a.vorname }
-          )
-          val filteredModel = ObservableBuffer[AthletView](athletModel)
-          val athletTable = new TableView[AthletView](filteredModel) {
-            columns ++= List(
-              new TableColumn[AthletView, String] {
-                text = "Athlet"
-                cellValueFactory = { x =>
-                  new ReadOnlyStringWrapper(x.value, "athlet", {
-                    s"${x.value.vorname} ${x.value.name}"
-                  })
-                }
-                //prefWidth = 150
-              },
-              new TableColumn[AthletView, String] {
-                text = "Verein"
-                cellValueFactory = { x =>
-                  new ReadOnlyStringWrapper(x.value, "verein", {
-                    s"${x.value.verein.map { _.name }.getOrElse("ohne Verein")}"
-                  })
-                }
-                //prefWidth = 150
-              },
-              new TableColumn[AthletView, String] {
-                text = "Status"
-                cellValueFactory = { x =>
-                  new ReadOnlyStringWrapper(x.value, "status", {
-                    x.value.activ match {case true => "Aktiv" case _ => "Inaktiv"}
-                  })
-                }
-                //prefWidth = 150
-              }
-
-            )
-          }
-          athletTable.selectionModel.value.setSelectionMode(SelectionMode.MULTIPLE)
-          val filter = new TextField() {
-            promptText = "Such-Text"
-            text.addListener{ (o: javafx.beans.value.ObservableValue[_ <: String], oldVal: String, newVal: String) =>
-              val sortOrder = athletTable.sortOrder.toList;
-              filteredModel.clear()
-              val searchQuery = newVal.toUpperCase().split(" ")
-              for{athlet <- athletModel
-              } {
-                val matches = searchQuery.forall{search =>
-                  if(search.isEmpty() || athlet.name.toUpperCase().contains(search)) {
-                    true
-                  }
-                  else if(athlet.vorname.toUpperCase().contains(search)) {
-                    true
-                  }
-                  else if(athlet.verein match {case Some(v) => v.name.toUpperCase().contains(search) case None => false}) {
-                    true
-                  }
-                  else {
-                    false
-                  }
-                }
-
-                if(matches) {
-                  filteredModel.add(athlet)
-                }
-              }
-              athletTable.sortOrder.clear()
-              val restored = athletTable.sortOrder ++= sortOrder
+          new AthletSelectionDialog(
+            text.value, progrm, wertungen.map(w => w.head.init.athlet), service,
+            (filter: (Long, Athlet)=>Boolean) => {
+              service.assignAthletsToWettkampf(wettkampf.id, Set(progrm.id), Some(filter))
+              reloadData()
             }
-          }
-          implicit val impevent = event
-          PageDisplayer.showInDialog(text.value, new DisplayablePage() {
-            def getPage: Node = {
-              new BorderPane {
-                hgrow = Priority.Always
-                vgrow = Priority.Always
-                top = filter
-                center = athletTable
-                minWidth = 350
-              }
-            }
-          }, new Button("OK") {
-            onAction = (event: ActionEvent) => {
-              if (!athletTable.selectionModel().isEmpty) {
-                val selectedAthleten = athletTable.items.value.zipWithIndex.filter {
-                  x => athletTable.selectionModel.value.isSelected(x._2)
-                }.map(x => x._1.id)
-
-                def filter(progId: Long, a: Athlet): Boolean = selectedAthleten.contains(a.id)
-                service.assignAthletsToWettkampf(wettkampf.id, Set(progrm.id), Some(filter))
-                reloadData()
-              }
-            }
-          }, new Button("OK, Alle") {
-            onAction = (event: ActionEvent) => {
-              if (!filteredModel.isEmpty) {
-                val athlet = athletTable.selectionModel().getSelectedItem
-                def filter(progId: Long, a: Athlet): Boolean = filteredModel.exists { x => x.id == a.id }
-                service.assignAthletsToWettkampf(wettkampf.id, Set(progrm.id), Some(filter))
-                reloadData()
-              }
-            }
-          })
-          disable = false
+          ).execute(event)
         }
       }
       val pasteFromExcel = new Button("Aus Excel einfügen ...") {
@@ -1400,12 +1266,12 @@ class WettkampfWertungTab(programm: Option[ProgrammView], riege: Option[String],
 
     wkview.selectionModel.value.setCellSelectionEnabled(true)
     wkview.filterEvent(KeyEvent.KeyPressed) { (ke: KeyEvent) =>
-      AutoCommitTextFieldTableCell.handleDefaultEditingKeyEvents(wkview, true)(ke)
+      AutoCommitTextFieldTableCell.handleDefaultEditingKeyEvents(wkview, true, txtUserFilter)(ke)
     }
 
     riegenFilterView.selectionModel.value.setCellSelectionEnabled(true)
     riegenFilterView.filterEvent(KeyEvent.KeyPressed) { (ke: KeyEvent) =>
-      AutoCommitTextFieldTableCell.handleDefaultEditingKeyEvents(riegenFilterView, false)(ke)
+      AutoCommitTextFieldTableCell.handleDefaultEditingKeyEvents(riegenFilterView, false, txtUserFilter)(ke)
     }
 
     onSelectionChanged = handle {
@@ -1465,17 +1331,6 @@ class WettkampfWertungTab(programm: Option[ProgrammView], riege: Option[String],
     val cont = new BorderPane {
       hgrow = Priority.Always
       vgrow = Priority.Always
-//      center = new SplitPane {
-//        orientation = Orientation.HORIZONTAL
-//        items += editTablePane
-//        items += riegenFilterPane
-//        //setDividerPosition(0, 0.7d)
-//        SplitPane.setResizableWithParent(riegenFilterPane, false)
-//      }
-      center = new BorderPane {
-        center = editTablePane
-        left = riegenFilterPane
-      }
       top = new ToolBar {
         content = List(
           new Label {
@@ -1493,6 +1348,17 @@ class WettkampfWertungTab(programm: Option[ProgrammView], riege: Option[String],
             styleClass += "toolbar-header"
           }
         ) ++ actionButtons :+ clearButton :+ txtUserFilter
+      }
+//      center = new SplitPane {
+//        orientation = Orientation.HORIZONTAL
+//        items += editTablePane
+//        items += riegenFilterPane
+//        //setDividerPosition(0, 0.7d)
+//        SplitPane.setResizableWithParent(riegenFilterPane, false)
+//      }
+      center = new BorderPane {
+        center = editTablePane
+        left = riegenFilterPane
       }
     }
 

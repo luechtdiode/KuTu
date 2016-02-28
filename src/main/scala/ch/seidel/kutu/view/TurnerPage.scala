@@ -28,47 +28,6 @@ import ch.seidel.kutu.domain._
 object TurnerPage {
   var turnerAnalyzers = Map[Long, TurnerAnalyzer]()
 
-  object AthletEditor {
-    def apply(init: Athlet) = new AthletEditor(init)
-    val coldef = Map(
-      "jsid" -> 80,
-      "geschlecht" -> 80,
-      "name" -> 160,
-      "vorname" -> 160,
-      "gebdat" -> 80,
-      "strasse" -> 180,
-      "plz" -> 100,
-      "ort" -> 180,
-      "activ" -> 100
-    )
-  }
-
-  class AthletEditor(init: Athlet) {
-    val sdf = new SimpleDateFormat("dd.MM.yyyy")
-    val jsid = new StringProperty(init.js_id + "")
-    val geschlecht = new StringProperty(if(init.geschlecht.toUpperCase.startsWith("M")) "M" else "W")
-    val name = new StringProperty(init.name)
-    val vorname = new StringProperty(init.vorname)
-    val gebdat = new StringProperty(init.gebdat match {case Some(d) => sdf.format(d); case _ => ""})
-    val strasse = new StringProperty(init.strasse)
-    val plz = new StringProperty(init.plz)
-    val ort = new StringProperty(init.ort)
-    val activ = new StringProperty(init.activ match {case true => "Aktiv" case _ => "Inaktiv"})
-
-    def reset {
-      jsid.value_=(init.js_id + "")
-    }
-
-    private def optionOfGebDat: Option[Date] = {
-      gebdat.value match {
-        case "" => None
-        case s: String => Some(new java.sql.Date(sdf.parse(s).getTime()))
-      }
-    }
-
-    def commit = Athlet(init.id, Integer.valueOf(jsid.value), if(geschlecht.value.toUpperCase.startsWith("M")) "M" else "W", name.value, vorname.value, optionOfGebDat, strasse.value, plz.value, ort.value, init.verein, activ.value.toUpperCase().startsWith("A"))
-  }
-
   def drillDownInAthlet(vverein: Option[Verein], a: Athlet, service: KutuService, tabpane: LazyTabPane) {
     val newtab = new TurnerAnalyzer(vverein, Some(a), None, service) {
       text = a.easyprint + "-Analyse"
@@ -138,13 +97,52 @@ object TurnerPage {
         }.toList
 
     val athletenview = new TableView[AthletEditor](wkModel) {
-        columns ++= cols
-        id = "athlet-table"
-        editable = true
+      columns ++= cols
+      id = "athlet-table"
+      editable = true
+    }
+
+    var lastFilter: String = ""
+
+    def updateFilteredList(newVal: String) {
+      //if(!newVal.equalsIgnoreCase(lastFilter)) {
+        lastFilter = newVal
+        val sortOrder = athletenview.sortOrder.toList;
+        wkModel.clear()
+        val searchQuery = newVal.toUpperCase().split(" ")
+        for{athlet <- athleten} {
+          val matches =
+            searchQuery.forall{search =>
+            if(search.isEmpty() || athlet.name.value.toUpperCase().contains(search)) {
+              true
+            }
+            else if(athlet.vorname.value.toUpperCase().contains(search)) {
+              true
+            }
+            else {
+              false
+            }
+          }
+
+          if(matches) {
+            wkModel.add(athlet)
+          }
+        }
+        athletenview.sortOrder.clear()
+        val restored = athletenview.sortOrder ++= sortOrder
+      //}
+  	}
+    val txtUserFilter = new TextField() {
+      promptText = "Athlet-Filter"
+      text.addListener{ (o: javafx.beans.value.ObservableValue[_ <: String], oldVal: String, newVal: String) =>
+        if(!lastFilter.equalsIgnoreCase(newVal)) {
+          updateFilteredList(newVal)
+        }
       }
+    }
     athletenview.selectionModel.value.setCellSelectionEnabled(true)
     athletenview.filterEvent(KeyEvent.KeyPressed) { (ke: KeyEvent) =>
-      AutoCommitTextFieldTableCell.handleDefaultEditingKeyEvents(athletenview, false)(ke)
+      AutoCommitTextFieldTableCell.handleDefaultEditingKeyEvents(athletenview, false, txtUserFilter)(ke)
     }
 
     val addButton = new Button {
@@ -152,8 +150,11 @@ object TurnerPage {
       minWidth = 75
       onAction = (event: ActionEvent) => {
         val ae = new AthletEditor(Athlet(verein))
-        wkModel.add(ae)
-        athletenview.selectionModel().select(ae)
+        wkModel.insert(0, ae)
+        athletenview.requestFocus()
+        athletenview.selectionModel.value.select(0, athletenview.columns(0))
+        athletenview.scrollToColumn(athletenview.columns(0))
+//        athletenview.selectionModel().select(ae)
       }
     }
 
@@ -196,18 +197,18 @@ object TurnerPage {
     val cont = new BorderPane {
       hgrow = Priority.Always
       vgrow = Priority.Always
-      center = athletenview
       top = new ToolBar {
         content = List(
           new Label {
-            text = s"Verein ${verein.name}"
+            text = s"Verein ${verein.name} "
             maxWidth = Double.MaxValue
             minHeight = Region.USE_PREF_SIZE
             styleClass += "toolbar-header"
           },
-          addButton, analyzeVereinButton, /*analyzeButton,*/ removeButton
+          addButton, analyzeVereinButton, /*analyzeButton,*/ removeButton, txtUserFilter
         )
       }
+      center = athletenview
       //bottom = pagination
     }
 

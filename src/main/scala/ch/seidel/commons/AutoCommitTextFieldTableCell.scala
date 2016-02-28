@@ -35,7 +35,7 @@ object AutoCommitTextFieldTableCell {
   def forTableColumn[S, T](converter: StringConverter[T]): (TableColumn[S, T] => TableCell[S, T]) =
     (view: TableColumn[S, T]) => jfxscc.TextFieldTableCell.forTableColumn[S, T](converter).call(view)
 
-  def handleDefaultEditingKeyEvents[A, B](tableView: TableView[A], double: Boolean)(ke: KeyEvent) = {
+  def handleDefaultEditingKeyEvents[A, B](tableView: TableView[A], double: Boolean, filterText: TextField)(ke: KeyEvent) = {
     val fc = tableView.focusModel.value.focusedCell.value
     val tc = fc.tableColumn.asInstanceOf[jfxsc.TableColumn[A,B]]
 
@@ -68,6 +68,10 @@ object AutoCommitTextFieldTableCell {
       case e: Exception =>
     }
     ke.code match {
+      case KeyCode.F if(ke.controlDown) =>
+        filterText.requestFocus()
+        ke.consume()
+
       case KeyCode.TAB if(!ke.controlDown) =>
 
         val action = new Runnable() {
