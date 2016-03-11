@@ -26,7 +26,7 @@ object WettkampfPage {
     )
     def refresher(pane: LazyTabPane) = {
       (progSites).foreach { t => t.asInstanceOf[WettkampfWertungTab].setLazyPane(pane)}
-      progSites ++ ranglisteSite
+      progSites ++ Seq[Tab](new RiegenTab(wettkampf, service)) ++ ranglisteSite
     }
 
     new WettkampfPage( new LazyTabPane(refresher))

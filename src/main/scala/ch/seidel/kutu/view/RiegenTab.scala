@@ -58,96 +58,202 @@ import scala.concurrent.Await
 import scala.concurrent.duration.Duration
 import ch.seidel.kutu.data.ResourceExchanger
 
+class DurchgangView(wettkampf: WettkampfView, service: KutuService) extends TableView[DurchgangEditor] {
+  id = "durchgang-table"
 
+  val disziplinlist = service.listDisziplinesZuWettkampf(wettkampf.id)
 
-class RiegenFilterView(wettkampf: WettkampfView, service: KutuService, refreshPaneData: ()=>Unit, riegenFilterModel: ObservableBuffer[RiegeEditor]) extends TableView[RiegeEditor] {
+  columns ++= Seq(
+    new TableColumn[DurchgangEditor, String] {
+      text = "Durchgang"
+      cellValueFactory = { x => x.value.name }
+    }
+    , new TableColumn[DurchgangEditor, String] {
+      text = "Anzahl total"
+      cellValueFactory = { x => x.value.anz.asInstanceOf[ObservableValue[String,String]]}
+    })
+
+  columns ++= disziplinlist.map {disziplin =>
+    val dc: jfxsc.TableColumn[DurchgangEditor, String] = new TableColumn[DurchgangEditor, String] {
+      text = disziplin.name
+      prefWidth = 200
+      columns ++= Seq(
+          new TableColumn[DurchgangEditor, String] {
+            text = "Riege"
+            cellValueFactory = { x =>
+              x.value.initstartriegen.get(disziplin) match {
+                case Some(re) => StringProperty(re.map(rs => s"${rs.name.value} (${rs.anz.value})").mkString("\n"))
+                case _ => StringProperty("")
+              }
+            }
+          }
+          , new TableColumn[DurchgangEditor, String] {
+            text = "Anz"
+            cellValueFactory = { x =>
+              x.value.initstartriegen.get(disziplin) match {
+                case Some(re) => StringProperty(re.map(rs => rs.anz.value).sum.toString)
+                case _ => StringProperty("0")
+              }
+            }
+          }
+        )
+    }
+    dc
+  }
+
+}
+
+class RiegenFilterView(wettkampf: WettkampfView, service: KutuService, refreshPaneData: Option[()=>Unit], riegenFilterModel: ObservableBuffer[RiegeEditor]) extends TableView[RiegeEditor] {
   val disziplinlist = service.listDisziplinesZuWettkampf(wettkampf.id)
   items = riegenFilterModel
   id = "riege-table"
+  editable = true
+  if(refreshPaneData.isDefined) {
+    columns ++= List(
+    new TableColumn[RiegeEditor, Boolean] {
+      text = "Filter"
+      cellValueFactory = { x => x.value.selected.asInstanceOf[ObservableValue[Boolean,Boolean]] }
+      cellFactory = { x => new CheckBoxTableCell[RiegeEditor, Boolean]() }
       editable = true
-      columns ++= List(
-          new TableColumn[RiegeEditor, Boolean] {
-            text = "Filter"
-            cellValueFactory = { x => x.value.selected.asInstanceOf[ObservableValue[Boolean,Boolean]] }
-            cellFactory = { x => new CheckBoxTableCell[RiegeEditor, Boolean]() }
-            editable = true
-          }
-         ,new TableColumn[RiegeEditor, String] {
-            text = "Riege"
-            cellValueFactory = { x => x.value.name }
-            cellFactory = { _ => new AutoCommitTextFieldTableCell[RiegeEditor, String](new DefaultStringConverter()) }
-            editable = true
-            onEditCommit = (evt: CellEditEvent[RiegeEditor, String]) => {
-              val editor = evt.rowValue
-              editor.name.value = evt.newValue
-              val rowIndex = riegenFilterModel.indexOf(evt.rowValue)
-              service.renameRiege(wettkampf.id, evt.rowValue.initname, evt.newValue)
-              refreshPaneData()
-              //refreshLazyPane()
-              //reloadData()
-              evt.tableView.selectionModel.value.select(rowIndex, this)
-              evt.tableView.requestFocus()
-            }
-          }
-         ,new TableColumn[RiegeEditor, String] {
-            text = "Anz"
-            cellValueFactory = { x => x.value.anzkat.asInstanceOf[ObservableValue[String,String]] }
-          }
-         ,new TableColumn[RiegeEditor, String] {
-            text = "Durchgang"
-            prefWidth = 150
-            cellValueFactory = { x => x.value.durchgang }
-            cellFactory = { _ => new AutoCommitTextFieldTableCell[RiegeEditor, String](new DefaultStringConverter()) }
-            editable = true
-            onEditCommit = (evt: CellEditEvent[RiegeEditor, String]) => {
-              val editor = evt.rowValue
-              editor.durchgang.value = evt.newValue
-              val rowIndex = riegenFilterModel.indexOf(evt.rowValue)
-              riegenFilterModel.update(rowIndex, RiegeEditor(
-                  evt.rowValue.wettkampfid,
-                  evt.rowValue.initanz,
-                  evt.rowValue.initviewanz,
-                  evt.rowValue.enabled,
-                  service.updateOrinsertRiege(evt.rowValue.commit),
-                  evt.rowValue.onNameChange,
-                  evt.rowValue.onSelectedChange))
-              evt.tableView.selectionModel.value.select(rowIndex, this)
-              evt.tableView.requestFocus()
-            }
-          }
-         ,new TableColumn[RiegeEditor, Disziplin] {
-            text = "Start"
-            prefWidth = 150
-            val converter = new StringConverter[Disziplin] {
-              override def toString(d: Disziplin) = if(d != null) d.easyprint else ""
-              override def fromString(s: String) = if(s != null) disziplinlist.find { d => d.name.equals(s) }.getOrElse(null) else null
-            }
-            val list = ObservableBuffer[Disziplin](disziplinlist)
-            cellValueFactory = { x => x.value.start.asInstanceOf[ObservableValue[Disziplin,Disziplin]] }
-            cellFactory = { _ => new ComboBoxTableCell[RiegeEditor, Disziplin](converter, list) }
-            editable = true
-            onEditCommit = (evt: CellEditEvent[RiegeEditor, Disziplin]) => {
-              val editor = evt.rowValue
-              editor.start.value = evt.newValue
-              val rowIndex = riegenFilterModel.indexOf(evt.rowValue)
-              riegenFilterModel.update(rowIndex, RiegeEditor(
-                  evt.rowValue.wettkampfid,
-                  evt.rowValue.initanz,
-                  evt.rowValue.initviewanz,
-                  evt.rowValue.enabled,
-                  service.updateOrinsertRiege(evt.rowValue.commit),
-                  evt.rowValue.onNameChange,
-                  evt.rowValue.onSelectedChange))
-              evt.tableView.selectionModel.value.select(rowIndex, this)
-              evt.tableView.requestFocus()
-            }
-          })
+    })
+  }
+  columns ++= List(
+    new TableColumn[RiegeEditor, String] {
+      text = "Riege"
+      cellValueFactory = { x => x.value.name }
+      cellFactory = { _ => new AutoCommitTextFieldTableCell[RiegeEditor, String](new DefaultStringConverter()) }
+      editable = true
+      onEditCommit = (evt: CellEditEvent[RiegeEditor, String]) => {
+        val editor = evt.rowValue
+        editor.name.value = evt.newValue
+        val rowIndex = riegenFilterModel.indexOf(evt.rowValue)
+        service.renameRiege(wettkampf.id, evt.rowValue.initname, evt.newValue)
+        if(refreshPaneData.isDefined) {
+          refreshPaneData.get()
+        }
+        //refreshLazyPane()
+        //reloadData()
+        evt.tableView.selectionModel.value.select(rowIndex, this)
+        evt.tableView.requestFocus()
+      }
     }
+    , new TableColumn[RiegeEditor, String] {
+      text = "Anz"
+      cellValueFactory = { if(refreshPaneData.isDefined) {
+          x => x.value.anzkat.asInstanceOf[ObservableValue[String,String]]
+        }
+        else {
+          x => x.value.anz.asInstanceOf[ObservableValue[String,String]]
+        }
+      }
+    }
+    , new TableColumn[RiegeEditor, String] {
+      text = "Durchgang"
+      prefWidth = 150
+      cellValueFactory = { x => x.value.durchgang }
+      cellFactory = { _ => new AutoCommitTextFieldTableCell[RiegeEditor, String](new DefaultStringConverter()) }
+      editable = true
+      onEditCommit = (evt: CellEditEvent[RiegeEditor, String]) => {
+        val editor = evt.rowValue
+        editor.durchgang.value = evt.newValue
+        val rowIndex = riegenFilterModel.indexOf(evt.rowValue)
+        riegenFilterModel.update(rowIndex, RiegeEditor(
+            evt.rowValue.wettkampfid,
+            evt.rowValue.initanz,
+            evt.rowValue.initviewanz,
+            evt.rowValue.enabled,
+            service.updateOrinsertRiege(evt.rowValue.commit),
+            evt.rowValue.onNameChange,
+            evt.rowValue.onSelectedChange))
+        evt.tableView.selectionModel.value.select(rowIndex, this)
+        evt.tableView.requestFocus()
+      }
+    }
+    , new TableColumn[RiegeEditor, Disziplin] {
+      text = "Start"
+      prefWidth = 150
+      val converter = new StringConverter[Disziplin] {
+        override def toString(d: Disziplin) = if(d != null) d.easyprint else ""
+        override def fromString(s: String) = if(s != null) disziplinlist.find { d => d.name.equals(s) }.getOrElse(null) else null
+      }
+      val list = ObservableBuffer[Disziplin](disziplinlist)
+      cellValueFactory = { x => x.value.start.asInstanceOf[ObservableValue[Disziplin,Disziplin]] }
+      cellFactory = { _ => new ComboBoxTableCell[RiegeEditor, Disziplin](converter, list) }
+      editable = true
+      onEditCommit = (evt: CellEditEvent[RiegeEditor, Disziplin]) => {
+        val editor = evt.rowValue
+        editor.start.value = evt.newValue
+        val rowIndex = riegenFilterModel.indexOf(evt.rowValue)
+        riegenFilterModel.update(rowIndex, RiegeEditor(
+            evt.rowValue.wettkampfid,
+            evt.rowValue.initanz,
+            evt.rowValue.initviewanz,
+            evt.rowValue.enabled,
+            service.updateOrinsertRiege(evt.rowValue.commit),
+            evt.rowValue.onNameChange,
+            evt.rowValue.onSelectedChange))
+        evt.tableView.selectionModel.value.select(rowIndex, this)
+        evt.tableView.requestFocus()
+      }
+    }
+  )
+}
 
 class RiegenTab(wettkampf: WettkampfView, override val service: KutuService) extends Tab with TabWithService {
   val programmText = wettkampf.programm.id match {case 20 => "Kategorie" case _ => "Programm"}
+  text = "Riegeneinteilung"
+
+  def onNameChange(name1: String, name2: String) = {
+//      reloadData()
+  }
+  def onSelectedChange(name: String, selected: Boolean) = {
+    selected
+  }
+
+  onSelectionChanged = handle {
+    if(selected.value) {
+      reloadData()
+    }
+  }
+
+  def reloadData() {
+    riegenFilterModel.clear()
+    riegen(onNameChange, onSelectedChange).foreach(riegenFilterModel.add(_))
+
+  }
+
+  def riegen(onNameChange: (String, String) => Unit, onSelectedChange: (String, Boolean) => Boolean): IndexedSeq[RiegeEditor] = {
+    service.listRiegenZuWettkampf(wettkampf.id).sortBy(r => r._1).map(x =>
+      RiegeEditor(
+          wettkampf.id,
+          x._1,
+          x._2,
+          0,
+          true,
+          x._3,
+          x._4,
+          onNameChange, onSelectedChange))
+  }
+  val riegenFilterModel = ObservableBuffer[RiegeEditor]()
 
   override def isPopulated = {
+
+    reloadData()
+    val riegenFilterView = new RiegenFilterView(
+        wettkampf, service,
+        None,
+        riegenFilterModel)
+    val durchgangView = new DurchgangView(wettkampf, service)
+    riegenFilterModel.groupBy(re => re.initdurchgang).map{res =>
+      val (name, rel) = res
+      DurchgangEditor(wettkampf.id, name.getOrElse(""), rel)
+    }.foreach {durchgangView.items.value.add(_)}
+
+    val container = new BorderPane {
+    	top = durchgangView
+      center = riegenFilterView
+    }
+    content = container
 
     true
   }

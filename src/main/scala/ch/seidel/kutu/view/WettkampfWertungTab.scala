@@ -620,10 +620,10 @@ class WettkampfWertungTab(programm: Option[ProgrammView], riege: Option[String],
 
     val riegenFilterView = new RiegenFilterView(
         wettkampf, service,
-        () => {
+        Some(() => {
           refreshLazyPane()
           reloadData()
-        },
+        }),
         riegenFilterModel)
     updateRiegen(true)
 
