@@ -707,7 +707,7 @@ trait KutuService {
     database withSession {implicit session: Session =>
       val wettkampf: Wettkampf = readWettkampf(wettkampfId)
       val programme = readWettkampfLeafs(wettkampf.programmId).map(p => p.id).mkString("(", ",", ")")
-      val list = sql""" select wd.disziplin_id, d.name
+      val list = sql""" select distinct wd.disziplin_id, d.name
              from wettkampfdisziplin wd, disziplin d, programm p
              where
               wd.disziplin_id = d.id
