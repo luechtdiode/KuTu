@@ -5,8 +5,7 @@ import scalafx.beans.property._
 
 object DurchgangEditor {
   def apply(wettkampfid: Long, name: String, initstartriegen: Seq[RiegeEditor]): DurchgangEditor = {
-      val anz = initstartriegen.map(_.initanz).sum
-      new DurchgangEditor(wettkampfid, name, anz,
+      new DurchgangEditor(wettkampfid, name,
           initstartriegen.filter{riege => riege.initstart match {
               case Some(s) => name.equalsIgnoreCase(riege.durchgang.value)
               case _ => false
@@ -18,9 +17,12 @@ object DurchgangEditor {
   }
 }
 
-case class DurchgangEditor(wettkampfid: Long, initname: String, initanz: Int, initstartriegen: Map[Disziplin, Seq[RiegeEditor]]) {
+case class DurchgangEditor(wettkampfid: Long, initname: String, initstartriegen: Map[Disziplin, Seq[RiegeEditor]]) {
   val name = StringProperty(initname)
-  val anz = IntegerProperty(initanz)
+  val anz = IntegerProperty(initstartriegen.map(r => r._2.map(rr => rr.initanz).sum).sum)
+  val min = IntegerProperty(if(initstartriegen.size > 0) initstartriegen.map(r => r._2.map(rr => rr.initanz).sum).min else 0)
+  val max = IntegerProperty(if(initstartriegen.size > 0) initstartriegen.map(r => r._2.map(rr => rr.initanz).sum).max else 0)
+  val avg = IntegerProperty(if(initstartriegen.size > 0) anz.value / initstartriegen.size else 0)
 
 //  def reset {
 //    name.value = initname
