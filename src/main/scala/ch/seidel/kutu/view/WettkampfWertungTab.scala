@@ -220,7 +220,7 @@ class WettkampfWertungTab(programm: Option[ProgrammView], riege: Option[String],
     }
     relevantRiegen = computeRelevantRiegen
 
-    def riegen(onNameChange: (String, String) => Unit, onSelectedChange: (String, Boolean) => Boolean, initial: Boolean): IndexedSeq[RiegeEditor] = {
+    def riegen(onSelectedChange: (String, Boolean) => Boolean, initial: Boolean): IndexedSeq[RiegeEditor] = {
       service.listRiegenZuWettkampf(wettkampf.id).sortBy(r => r._1).filter{r => relevantRiegen.contains(r._1)}.map(x =>
         RiegeEditor(
             wettkampf.id,
@@ -230,7 +230,7 @@ class WettkampfWertungTab(programm: Option[ProgrammView], riege: Option[String],
             relevantRiegen.contains(x._1) && (initial || relevantRiegen(x._1)._1),
             x._3,
             x._4,
-            onNameChange, onSelectedChange))
+            Some(onSelectedChange)))
     }
     val riegenFilterModel = ObservableBuffer[RiegeEditor]()
 
@@ -549,9 +549,6 @@ class WettkampfWertungTab(programm: Option[ProgrammView], riege: Option[String],
     }
 
     def updateRiegen(initial: Boolean) {
-      def onNameChange(name1: String, name2: String) = {
-        reloadData()
-      }
       def onSelectedChange(name: String, selected: Boolean) = {
         if(relevantRiegen.contains(name)) {
           relevantRiegen = relevantRiegen.updated(name, (selected, relevantRiegen(name)._2))
@@ -564,7 +561,7 @@ class WettkampfWertungTab(programm: Option[ProgrammView], riege: Option[String],
         }
       }
       riegenFilterModel.clear()
-      riegen(onNameChange, onSelectedChange, initial).foreach(riegenFilterModel.add(_))
+      riegen(onSelectedChange, initial).foreach(riegenFilterModel.add(_))
       if(initial) {
         updateAlleRiegenCheck()
       }
@@ -620,11 +617,15 @@ class WettkampfWertungTab(programm: Option[ProgrammView], riege: Option[String],
 
     val riegenFilterView = new RiegenFilterView(
         wettkampf, service,
-        Some(() => {
-          refreshLazyPane()
-          reloadData()
-        }),
+        () => {disziplinlist},
+        true,
         riegenFilterModel)
+
+    riegenFilterView.addListener((editor: RiegeEditor) => {
+      refreshLazyPane()
+      reloadData()
+    })
+
     updateRiegen(true)
 
     def doPasteFromExcel(progrm: Option[ProgrammView])(implicit event: ActionEvent) = {
@@ -1047,121 +1048,61 @@ class WettkampfWertungTab(programm: Option[ProgrammView], riege: Option[String],
         }
       }
     }
-    val riegensuggestButton = new Button {
-      text = "Riegen einteilen"
-      minWidth = 75
-      val stationen = new TextField()
-      onAction = (event: ActionEvent) => {
-        implicit val impevent = event
-        stationen.text = wkModel.head.size.toString()
-        PageDisplayer.showInDialog(text.value, new DisplayablePage() {
-          def getPage: Node = {
-            new HBox {
-              prefHeight = 50
-              alignment = Pos.BottomRight
-              hgrow = Priority.Always
-              children = Seq(new Label("Stationen (wenn mehr wie eine Rotation, dann pro Rotation, getrennt mit Komma)  "), stationen)
-              // Rotation mit [], Kategorie-Gruppe mit Kx(), Geräte-Gruppe mit G<Gerätnummer>k1(4)
-            }
-          }
-        }, new Button("OK") {
-          onAction = (event: ActionEvent) => {
-            if (!stationen.text.value.isEmpty) {
-              KuTuApp.invokeWithBusyIndicator {
-                val riegenzuteilungen = service.suggestRiegen(
-                    wkModel.head.init.head.init.wettkampf.id,
-                    stationen.text.value.split(",").foldLeft(Seq[Int]()){(acc, s) => acc :+ str2Int(s)}
-                )
-                for{
-                  pair <- riegenzuteilungen
-                  w <- pair._2
-                } {
-                  service.updateWertung(w)
-                }
-                refreshLazyPane()
-                reloadData()
-              }
-            }
-          }
-        })
-      }
-    }
-    val einheitenExportButton = new Button {
-      text = "Riegen Einheiten export"
-      minWidth = 75
-      val stationen = new TextField()
-      onAction = (event: ActionEvent) => {
-        implicit val impevent = event
-        KuTuApp.invokeWithBusyIndicator {
-          val filename = "Einheiten.csv"
-          val dir = new java.io.File(service.homedir + "/" + wettkampf.easyprint.replace(" ", "_"))
-          if(!dir.exists()) {
-            dir.mkdirs();
-          }
-          val file = new java.io.File(dir.getPath + "/" + filename)
-
-          ResourceExchanger.exportEinheiten(wkModel.head.init.head.init.wettkampf, file.getPath)
-          Desktop.getDesktop().open(file);
-        }
-      }
-    }
     val riegenRemoveButton = new Button {
-      text = "Riege löschen"
-      minWidth = 75
-      disable <== when(riegenFilterView.selectionModel.value.selectedItemProperty().isNull()) choose true otherwise false
-      onAction = (event: ActionEvent) => {
-        KuTuApp.invokeWithBusyIndicator {
-          val selectedRiege = riegenFilterView.selectionModel.value.getSelectedItem.name.value
-          for{
-            wl <- reloadWertungen{wertung =>
-                wertung.riege match {case Some(r) => r.equals(selectedRiege) case _ => false}
-              }
-            w <- wl
-          } {
-            service.updateWertung(w.commit.copy(riege = None))
-          }
-          for{
-            wl <- reloadWertungen{wertung =>
-                wertung.riege2 match {case Some(r) => r.equals(selectedRiege) case _ => false}
-              }
-            w <- wl
-          } {
-            service.updateWertung(w.commit.copy(riege2 = None))
-          }
-          refreshLazyPane()
-          reloadData()
-        }
-      }
+  	  text = "Riege löschen"
+  			  minWidth = 75
+  			  disable <== when(riegenFilterView.selectionModel.value.selectedItemProperty().isNull()) choose true otherwise false
+  			  onAction = (event: ActionEvent) => {
+  				  KuTuApp.invokeWithBusyIndicator {
+  					  val selectedRiege = riegenFilterView.selectionModel.value.getSelectedItem.name.value
+  							  for{
+  								  wl <- reloadWertungen{wertung =>
+  								  wertung.riege match {case Some(r) => r.equals(selectedRiege) case _ => false}
+  								  }
+  								  w <- wl
+  							  } {
+  								  service.updateWertung(w.commit.copy(riege = None))
+  							  }
+  							  for{
+  								  wl <- reloadWertungen{wertung =>
+  								  wertung.riege2 match {case Some(r) => r.equals(selectedRiege) case _ => false}
+  								  }
+  								  w <- wl
+  							  } {
+  								  service.updateWertung(w.commit.copy(riege2 = None))
+  							  }
+  							  reloadData()
+  				  }
+  			  }
     }
     val riegeRenameButton = new Button {
-      text = "Riege umbenennen"
-      minWidth = 75
-      disable <== when(riegenFilterView.selectionModel.value.selectedItemProperty().isNull()) choose true otherwise false
-      onAction = (event: ActionEvent) => {
-        implicit val impevent = event
-        val selectedRiege = riegenFilterView.selectionModel.value.getSelectedItem.name.value
-        val txtRiegenName = new TextField {
-          text.value = selectedRiege
-        }
-        PageDisplayer.showInDialog(text.value, new DisplayablePage() {
-          def getPage: Node = {
-            new HBox {
-              prefHeight = 50
-              alignment = Pos.BottomRight
-              hgrow = Priority.Always
-              children = Seq(new Label("Neuer Riegenname  "), txtRiegenName)
-            }
-          }
-        }, new Button("OK") {
-          onAction = (event: ActionEvent) => {
-            KuTuApp.invokeWithBusyIndicator {
-              service.renameRiege(wettkampf.id, selectedRiege, txtRiegenName.text.value)
-              refreshLazyPane()
-              reloadData()
-            }
-          }
-        })
-      }
+  	  text = "Riege umbenennen"
+  			  minWidth = 75
+  			  disable <== when(riegenFilterView.selectionModel.value.selectedItemProperty().isNull()) choose true otherwise false
+  			  onAction = (event: ActionEvent) => {
+  				  implicit val impevent = event
+  						  val selectedRiege = riegenFilterView.selectionModel.value.getSelectedItem.name.value
+  						  val txtRiegenName = new TextField {
+  					  text.value = selectedRiege
+  				  }
+  				  PageDisplayer.showInDialog(text.value, new DisplayablePage() {
+  					  def getPage: Node = {
+  					  new HBox {
+  						  prefHeight = 50
+  								  alignment = Pos.BottomRight
+  								  hgrow = Priority.Always
+  								  children = Seq(new Label("Neuer Riegenname  "), txtRiegenName)
+  					  }
+  				  }
+  				  }, new Button("OK") {
+  					  onAction = (event: ActionEvent) => {
+  						  KuTuApp.invokeWithBusyIndicator {
+  							  service.renameRiege(wettkampf.id, selectedRiege, txtRiegenName.text.value)
+  							  reloadData()
+  						  }
+  					  }
+  				  })
+  			  }
     }
 
     val actionButtons = programm match {
@@ -1290,15 +1231,6 @@ class WettkampfWertungTab(programm: Option[ProgrammView], riege: Option[String],
       }
     }
 
-    val riegenFilterControl = new ToolBar {
-      content = List(
-          riegensuggestButton
-        , einheitenExportButton
-        , riegeRenameButton
-        , riegenRemoveButton
-      )
-    }
-
     val filterControl = new HBox {
    		children += teilnehmerCntLabel
     }
@@ -1311,7 +1243,6 @@ class WettkampfWertungTab(programm: Option[ProgrammView], riege: Option[String],
         styleClass += "toolbar-header"
       }
       children += title
-      children += riegenFilterControl
       children += filterControl
       children += alleRiegenCheckBox
     }
@@ -1349,16 +1280,12 @@ class WettkampfWertungTab(programm: Option[ProgrammView], riege: Option[String],
           }
         ) ++ actionButtons :+ clearButton :+ txtUserFilter
       }
-//      center = new SplitPane {
-//        orientation = Orientation.HORIZONTAL
-//        items += editTablePane
-//        items += riegenFilterPane
-//        //setDividerPosition(0, 0.7d)
-//        SplitPane.setResizableWithParent(riegenFilterPane, false)
-//      }
-      center = new BorderPane {
-        center = editTablePane
-        left = riegenFilterPane
+      center = new SplitPane {
+        orientation = Orientation.HORIZONTAL
+     		items += riegenFilterPane
+        items += editTablePane
+        setDividerPosition(0, 0.3d)
+        SplitPane.setResizableWithParent(riegenFilterPane, false)
       }
     }
 

@@ -712,7 +712,10 @@ trait KutuService {
              where
               wd.disziplin_id = d.id
               and wd.programm_id = p.id and
-              programm_id in #$programme""".as[Disziplin].iterator
+              programm_id in #$programme
+             order by
+              wd.ord
+             """.as[Disziplin].iterator
       list.toList
     }
   }
@@ -720,13 +723,16 @@ trait KutuService {
     database withSession {implicit session: Session =>
       val wettkampf: Wettkampf = readWettkampf(wettkampfId)
       val programme = readWettkampfLeafs(wettkampf.programmId).map(p => p.id).mkString("(", ",", ")")
-      val list = sql""" select wd.id, wd.programm_id, wd.disziplin_id, printf('%s (%s)',d.name, p.name) as kurzbeschreibung
+      val list = sql""" select wd.id, wd.programm_id, wd.disziplin_id, printf('%s (%s)',d.name, p.name) as kurzbeschreibung, wd.ord
              from wettkampfdisziplin wd, disziplin d, programm p
              where
               wd.disziplin_id = d.id
               and wd.programm_id = p.id and
-              programm_Id in #$programme""".as[(Long, Long, Long, String)].iterator
-      list.map{t => Wettkampfdisziplin(t._1, t._2, t._3, t._4, None, 0, 0, 0, 0) }.toList
+              programm_Id in #$programme
+             order by
+              wd.ord
+                 """.as[(Long, Long, Long, String, Int)].iterator
+      list.map{t => Wettkampfdisziplin(t._1, t._2, t._3, t._4, None, 0, t._5, 0, 0) }.toList
     }
   }
   def completeDisziplinListOfAthletInWettkampf(wettkampf: Wettkampf, athletId: Long) = {
@@ -1101,6 +1107,24 @@ trait KutuService {
         groupWertungen(atGrouper, atGrouper)
       else
         groupWertungen(wkFilteredGrouper, wkGrouper)
+    }
+  }
+
+  def deleteRiege(wettkampfid: Long, oldname: String) {
+    database withTransaction { implicit session =>
+      sqlu"""
+                DELETE from riege where name=${oldname.trim} and wettkampf_id=${wettkampfid}
+          """.execute
+
+      sqlu"""   UPDATE wertung
+                SET riege=''
+                WHERE wettkampf_id=${wettkampfid} and riege=${oldname}
+          """.execute
+
+      sqlu"""   UPDATE wertung
+                SET riege2=''
+                WHERE wettkampf_id=${wettkampfid} and riege2=${oldname}
+          """.execute
     }
   }
 

@@ -69,7 +69,7 @@ object AutoCommitTextFieldTableCell {
     }
     ke.code match {
       case KeyCode.F if(ke.controlDown) =>
-        filterText.requestFocus()
+        if(filterText != null) filterText.requestFocus()
         ke.consume()
 
       case KeyCode.TAB if(!ke.controlDown) =>
