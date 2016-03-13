@@ -223,10 +223,9 @@ case object ByJahr extends GroupBy with FilterBy {
 
 case object ByJahrgang extends GroupBy with FilterBy {
   override val groupname = "Jahrgang"
-  private val extractYear = new SimpleDateFormat("YYYY")
   protected override val grouper = (v: WertungView) => {
     v.athlet.gebdat match {
-      case Some(d) => AthletJahrgang(extractYear.format(d))
+      case Some(d) => AthletJahrgang(f"$d%tY")
       case None    => AthletJahrgang("unbekannt")
     }
   }
