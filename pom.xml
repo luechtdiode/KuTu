@@ -116,6 +116,7 @@
 						<phase>generate-sources</phase>
 						<goals>
 							<goal>add-source</goal>
+							<goal>parse-version</goal>
 						</goals>
 						<configuration>
 							<sources>
@@ -229,6 +230,7 @@
 								<argument>ch.seidel.kutu.KuTuApp</argument>
 								<argument>-name</argument>
 								<argument>TurnerWettkampf-App</argument>
+								<argument>-BappVersion=${parsedVersion.majorVersion}.${parsedVersion.minorVersion}</argument>
 								<argument>-srcdir</argument>
 								<argument>${project.build.directory}</argument>
 								<argument>-srcfiles</argument>
@@ -253,7 +255,7 @@
 								<!-- argument>-Bdescription="Wettkampf Verwaltung und Durchfuehrung"</argument -->
 								<argument>-Bmac.CFBundleIdentifier="ch.seidel.KuTuApp"</argument>
 								<argument>-Bmac.CFBundleName=Wettkampf</argument>
-								<argument>-Bmac.CFBundleVersion=100</argument>
+								<argument>-Bmac.CFBundleVersion=110</argument>
 							</arguments>
 						</configuration>
 					</execution>
