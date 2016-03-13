@@ -277,7 +277,7 @@ case class GroupLeaf(override val groupKey: DataObject, list: Iterable[WertungVi
     athletCols ++ disziplinCol ++ sumCol
   }
 
-  def getTableData = {
+  def getTableData(sortAlphabetically: Boolean = false) = {
 
     def mapToRang(athlWertungen: Iterable[WertungView]) = {
       val grouped = athlWertungen.groupBy { _.athlet }.map { x =>
@@ -443,7 +443,7 @@ case class GroupLeaf(override val groupKey: DataObject, list: Iterable[WertungVi
       }
     }
 
-    avgPerAthlet.map {x =>
+    val prepared = avgPerAthlet.map {x =>
       val (athlet, (sum, avg, wd, wp, gsum)) = x
       val gsrang = rangMap(athlet)
       val posproz = 100d * gsrang.rang.endnote / teilnehmer
@@ -463,7 +463,13 @@ case class GroupLeaf(override val groupKey: DataObject, list: Iterable[WertungVi
                   gsrang.sum.endnote / divider >= auszeichnung
                 case None               => false})))
 
-    }.toList.filter(_.sum.endnote > 0).sortBy(_.rang.endnote)
+    }.toList
+    if(sortAlphabetically) {
+      prepared.sortBy(_.athlet.easyprint)
+    }
+    else{
+      prepared.filter(_.sum.endnote > 0).sortBy(_.rang.endnote)
+    }
   }
 }
 

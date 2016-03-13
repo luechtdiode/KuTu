@@ -47,6 +47,7 @@ import ch.seidel.kutu.data.FilterBy
 import scalafx.scene.control.ListCell
 import javafx.util.Callback
 import scalafx.scene.control.ListView
+import scalafx.scene.control.CheckBox
 
 abstract class DefaultRanglisteTab(override val service: KutuService) extends Tab with TabWithService with ScoreToHtmlRenderer {
   override val title = ""
@@ -151,6 +152,10 @@ abstract class DefaultRanglisteTab(override val service: KutuService) extends Ta
     val combfs = List(cbf1, cbf2, cbf3, cbf4)
     val fmodels = List(grf1Model, grf2Model, grf3Model, grf4Model)
     val webView = new WebView
+    val cbModus: CheckBox = new CheckBox {
+      text = "Sortierung alphabetisch"
+      selected = false
+    }
 
     def relevantGroup(cb: ComboBox[FilterBy]): Boolean = {
       if(!cb.selectionModel.value.isEmpty) {
@@ -206,7 +211,7 @@ abstract class DefaultRanglisteTab(override val service: KutuService) extends Ta
     	  model.sortBy { x => x.easyprint}
     	}
       val combination = query.select(data).toList
-      val ret = toHTML(combination, if(forPrint) 40 else 0)
+      val ret = toHTML(combination, if(forPrint) 40 else 0, cbModus.selected.value)
       if(!forPrint) webView.engine.loadContent(ret)
       ret
     }
@@ -221,6 +226,9 @@ abstract class DefaultRanglisteTab(override val service: KutuService) extends Ta
 //        val selected = c.selectionModel.value.selectedItem.value
         refreshRangliste(buildGrouper)
       }
+    }
+    cbModus.onAction = handle {
+      refreshRangliste(buildGrouper)
     }
 
     val btnSave = new Button {
@@ -291,7 +299,7 @@ abstract class DefaultRanglisteTab(override val service: KutuService) extends Ta
         children = new Label("Filter:") {
           padding = Insets(4,0,0,0)
           prefWidth = 120
-        } +: combfs
+        } +: combfs :+ cbModus
       }
       top = new VBox {
         vgrow = Priority.Always

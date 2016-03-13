@@ -11,8 +11,8 @@ import scalafx.scene.control.TableView
 trait ScoreToHtmlRenderer {
   protected val title: String
 
-  def toHTML(gs: List[GroupSection], athletsPerPage: Int = 0): String = {
-    toHTML(gs, "", 0, athletsPerPage)
+  def toHTML(gs: List[GroupSection], athletsPerPage: Int = 0, sortAlphabetically: Boolean = false): String = {
+    toHTML(gs, "", 0, athletsPerPage, sortAlphabetically)
   }
 
   val intro = s"""<html lang="de-CH"><head>
@@ -101,7 +101,7 @@ trait ScoreToHtmlRenderer {
     </html>
   """
 
-  private def toHTML(gs: List[GroupSection], openedTitle: String, level: Int, athletsPerPage: Int): String = {
+  private def toHTML(gs: List[GroupSection], openedTitle: String, level: Int, athletsPerPage: Int, sortAlphabetically: Boolean): String = {
     val gsBlock = new StringBuilder()
     if (level == 0) {
       gsBlock.append(firstSite(title))
@@ -209,7 +209,7 @@ trait ScoreToHtmlRenderer {
             }
           }
 
-          val alldata = gl.getTableData
+          val alldata = gl.getTableData(sortAlphabetically)
           val pagedata = if(athletsPerPage == 0) alldata.sliding(alldata.size, alldata.size) else alldata.sliding(athletsPerPage, athletsPerPage)
           pagedata.foreach {section =>
             renderListHead
@@ -218,7 +218,7 @@ trait ScoreToHtmlRenderer {
             gsBlock.append(nextSite)
           }
 
-        case g: GroupNode => gsBlock.append(toHTML(g.next.toList, if(openedTitle.length() > 0) openedTitle + s"${g.groupKey.easyprint}, " else s"<h${level + 2}>${g.groupKey.easyprint}, ", level + 1, athletsPerPage))
+        case g: GroupNode => gsBlock.append(toHTML(g.next.toList, if(openedTitle.length() > 0) openedTitle + s"${g.groupKey.easyprint}, " else s"<h${level + 2}>${g.groupKey.easyprint}, ", level + 1, athletsPerPage, sortAlphabetically))
         case s: GroupSum  =>
           gsBlock.append(s.easyprint)
       }
