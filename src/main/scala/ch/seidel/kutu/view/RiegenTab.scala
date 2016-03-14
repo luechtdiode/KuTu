@@ -59,7 +59,7 @@ import scala.concurrent.duration.Duration
 import ch.seidel.kutu.data.ResourceExchanger
 
 class DurchgangView(wettkampf: WettkampfView, service: KutuService, disziplinlist: () => Seq[Disziplin], durchgangModel: ObservableBuffer[DurchgangEditor]) extends TableView[DurchgangEditor] {
-  
+
   id = "durchgang-table"
   items = durchgangModel
 
@@ -126,23 +126,23 @@ class DurchgangView(wettkampf: WettkampfView, service: KutuService, disziplinlis
 class RiegenFilterView(wettkampf: WettkampfView, service: KutuService, disziplinlist: () => Seq[Disziplin], asFilter: Boolean, riegenFilterModel: ObservableBuffer[RiegeEditor]) extends TableView[RiegeEditor] {
   type RigenChangeListener = RiegeEditor => Unit
   var changeListeners = List[RigenChangeListener]()
-  
+
   def addListener(listener: RigenChangeListener) {
     changeListeners = changeListeners :+ listener
   }
-  
+
   def removeListener(listener: RigenChangeListener) {
     changeListeners = changeListeners filter(f => f != listener)
   }
-  
+
   def fireRiegeChanged(riege: RiegeEditor) {
     changeListeners.foreach(listener => listener(riege))
   }
-  
+
   items = riegenFilterModel
   id = "riege-table"
   editable = true
-  
+
   if(asFilter) {
     columns ++= List(
     new TableColumn[RiegeEditor, Boolean] {
@@ -152,7 +152,7 @@ class RiegenFilterView(wettkampf: WettkampfView, service: KutuService, disziplin
       editable = true
     })
   }
-  
+
   columns ++= List(
     new TableColumn[RiegeEditor, String] {
       text = "Riege"
@@ -187,7 +187,7 @@ class RiegenFilterView(wettkampf: WettkampfView, service: KutuService, disziplin
 //      }
 //    )
 //  }
-  
+
   columns ++= List(
     new TableColumn[RiegeEditor, String] {
       text = "Anz"
@@ -219,7 +219,7 @@ class RiegenFilterView(wettkampf: WettkampfView, service: KutuService, disziplin
         val rowIndex = riegenFilterModel.indexOf(evt.rowValue)
         riegenFilterModel.update(rowIndex, updated)
         fireRiegeChanged(updated)
-            
+
         evt.tableView.selectionModel.value.select(rowIndex, this)
         evt.tableView.requestFocus()
       }
@@ -260,16 +260,14 @@ class RiegenTab(wettkampf: WettkampfView, override val service: KutuService) ext
   val riegenFilterModel = ObservableBuffer[RiegeEditor]()
   val durchgangModel = ObservableBuffer[DurchgangEditor]()
   lazy val disziplinlist = service.listDisziplinesZuWettkampf(wettkampf.id)
-  
 
   text = "Riegeneinteilung"
-
 
   def reloadRiegen() {
     riegenFilterModel.clear()
     riegen().foreach(riegenFilterModel.add(_))
   }
-  
+
   def reloadDurchgaenge() {
     durchgangModel.clear()
     riegenFilterModel.groupBy(re => re.initdurchgang).map{res =>
@@ -277,7 +275,7 @@ class RiegenTab(wettkampf: WettkampfView, override val service: KutuService) ext
       DurchgangEditor(wettkampf.id, name.getOrElse(""), rel)
     }.foreach {durchgangModel.add(_)}
   }
-  
+
   def reloadData() {
     reloadRiegen()
     reloadDurchgaenge()
@@ -290,12 +288,12 @@ class RiegenTab(wettkampf: WettkampfView, override val service: KutuService) ext
   def onSelectedChange(name: String, selected: Boolean) = {
     selected
   }
-  
+
   def onRiegeChanged(editor: RiegeEditor) {
     reloadData()
 //    reloadDurchgaenge()
   }
-  
+
   // This handles also the initial load
   onSelectionChanged = handle {
     if(selected.value) {
@@ -323,9 +321,9 @@ class RiegenTab(wettkampf: WettkampfView, override val service: KutuService) ext
         () => {disziplinlist},
         false,
         riegenFilterModel)
-    
+
     riegenFilterView.addListener(onRiegeChanged)
-    
+
     val riegensuggestButton = new Button {
   	  text = "Riegen einteilen"
   	  minWidth = 75
@@ -367,7 +365,6 @@ class RiegenTab(wettkampf: WettkampfView, override val service: KutuService) ext
     val einheitenExportButton = new Button {
   	  text = "Riegen Einheiten export"
 		  minWidth = 75
-		  val stationen = new TextField()
   	  onAction = (event: ActionEvent) => {
   		  implicit val impevent = event
 			  KuTuApp.invokeWithBusyIndicator {
@@ -377,8 +374,26 @@ class RiegenTab(wettkampf: WettkampfView, override val service: KutuService) ext
   				  dir.mkdirs();
   			  }
   			  val file = new java.io.File(dir.getPath + "/" + filename)
-  			  
+
   			  ResourceExchanger.exportEinheiten(wettkampf.toWettkampf, file.getPath)
+  			  Desktop.getDesktop().open(file);
+  		  }
+  	  }
+    }
+    val durchgangExportButton = new Button {
+  	  text = "Durchgang-Planung export"
+		  minWidth = 75
+  	  onAction = (event: ActionEvent) => {
+  		  implicit val impevent = event
+			  KuTuApp.invokeWithBusyIndicator {
+  			  val filename = "Durchgaenge.csv"
+  					  val dir = new java.io.File(service.homedir + "/" + wettkampf.easyprint.replace(" ", "_"))
+  			  if(!dir.exists()) {
+  				  dir.mkdirs();
+  			  }
+  			  val file = new java.io.File(dir.getPath + "/" + filename)
+
+  			  ResourceExchanger.exportDurchgaenge(wettkampf.toWettkampf, file.getPath)
   			  Desktop.getDesktop().open(file);
   		  }
   	  }
@@ -425,13 +440,14 @@ class RiegenTab(wettkampf: WettkampfView, override val service: KutuService) ext
       	)
 		  }
     }
-    
+
     val riegenFilterControl = new ToolBar {
       content = List(
           riegensuggestButton
         , einheitenExportButton
         , riegeRenameButton
         , riegenRemoveButton
+        , durchgangExportButton
       )
     }
 
@@ -444,17 +460,17 @@ class RiegenTab(wettkampf: WettkampfView, override val service: KutuService) ext
         center = riegenFilterView
       }
     }
-    
+
     val durchgangView = new DurchgangView(
         wettkampf, service,
         () => {disziplinlist},
         durchgangModel)
-    
-    durchgangView.selectionModel.value.setCellSelectionEnabled(true)
-    durchgangView.filterEvent(KeyEvent.KeyPressed) { (ke: KeyEvent) =>
-      AutoCommitTextFieldTableCell.handleDefaultEditingKeyEvents(durchgangView, false, null)(ke)
-    }
-    
+
+//    durchgangView.selectionModel.value.setCellSelectionEnabled(true)
+//    durchgangView.filterEvent(KeyEvent.KeyPressed) { (ke: KeyEvent) =>
+//      AutoCommitTextFieldTableCell.handleDefaultEditingKeyEvents(durchgangView, false, null)(ke)
+//    }
+
     riegenFilterView.selectionModel.value.setCellSelectionEnabled(true)
     riegenFilterView.filterEvent(KeyEvent.KeyPressed) { (ke: KeyEvent) =>
       AutoCommitTextFieldTableCell.handleDefaultEditingKeyEvents(riegenFilterView, false, null)(ke)

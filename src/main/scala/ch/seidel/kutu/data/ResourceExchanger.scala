@@ -10,6 +10,7 @@ import reflect.runtime.universe._
 import scala.io.Source
 import scala.annotation.tailrec
 import ch.seidel.kutu.domain._
+import ch.seidel.kutu.view._
 
 /**
  */
@@ -270,6 +271,46 @@ object ResourceExchanger extends KutuService {
     for(riege <- riegen) {
       export.write((riege + "\n").getBytes("ISO-8859-1"))
     }
+
+    export.flush()
+    export.close()
+  }
+
+  def exportDurchgaenge(wettkampf: Wettkampf, filename: String) {
+    val export = new FileOutputStream(filename);
+    val diszipline = listDisziplinesZuWettkampf(wettkampf.id)
+    val sep = ";"
+    export.write(f"""sep=${sep}\nDurchgang${sep}Summe${sep}Min${sep}Max${sep}Durchschn.""".getBytes("ISO-8859-1"))
+
+    diszipline.foreach { x =>
+        export.write(f"${sep}${x.name}${sep}Anz".getBytes("ISO-8859-1"))
+    }
+    export.write("\r\n".getBytes("ISO-8859-1"))
+
+    listRiegenZuWettkampf(wettkampf.id)
+      .sortBy(r => r._1)
+      .map(x =>
+        RiegeEditor(
+            wettkampf.id,
+            x._1,
+            x._2,
+            0,
+            true,
+            x._3,
+            x._4,
+            None))
+      .groupBy(re => re.initdurchgang)
+      .map{res =>
+        val (name, rel) = res
+        DurchgangEditor(wettkampf.id, name.getOrElse(""), rel)
+      }
+      .foreach { x =>
+        export.write(f"""${x.initname}${sep}${x.anz.value}${sep}${x.min.value}${sep}${x.max.value}${sep}${x.avg.value}""".getBytes("ISO-8859-1"))
+        diszipline.foreach { d =>
+          export.write(f"${sep}${x.initstartriegen.getOrElse(d, Seq[RiegeEditor]()).map(r => f"${r.name.value.replace("M,", "Tu,").replace("W,", "Ti,")} (${r.anz.value})").mkString("\"","\n", "\"")}${sep}${x.initstartriegen.getOrElse(d, Seq[RiegeEditor]()).map(r => r.anz.value).sum}".getBytes("ISO-8859-1"))
+        }
+        export.write("\r\n".getBytes("ISO-8859-1"))
+      }
 
     export.flush()
     export.close()

@@ -523,6 +523,7 @@ class WettkampfWertungTab(programm: Option[ProgrammView], riege: Option[String],
   	  margin = Insets(5, 0, 5, 5)
   	}
     val alleRiegenCheckBox = new CheckBox {
+      focusTraversable = false
       text = "Alle Riegen" + programm.map(" im " + _.name).getOrElse("")
       margin = Insets(5, 0, 5, 5)
     }
@@ -619,7 +620,8 @@ class WettkampfWertungTab(programm: Option[ProgrammView], riege: Option[String],
         wettkampf, service,
         () => {disziplinlist},
         true,
-        riegenFilterModel)
+        riegenFilterModel){
+    }
 
     riegenFilterView.addListener((editor: RiegeEditor) => {
       refreshLazyPane()
@@ -1081,8 +1083,8 @@ class WettkampfWertungTab(programm: Option[ProgrammView], riege: Option[String],
   			  disable <== when(riegenFilterView.selectionModel.value.selectedItemProperty().isNull()) choose true otherwise false
   			  onAction = (event: ActionEvent) => {
   				  implicit val impevent = event
-  						  val selectedRiege = riegenFilterView.selectionModel.value.getSelectedItem.name.value
-  						  val txtRiegenName = new TextField {
+  					val selectedRiege = riegenFilterView.selectionModel.value.getSelectedItem.name.value
+  					val txtRiegenName = new TextField {
   					  text.value = selectedRiege
   				  }
   				  PageDisplayer.showInDialog(text.value, new DisplayablePage() {
@@ -1236,18 +1238,20 @@ class WettkampfWertungTab(programm: Option[ProgrammView], riege: Option[String],
     }
 
     val riegenHeader = new VBox {
+      focusTraversable = false
       maxWidth = Double.MaxValue
       minHeight = Region.USE_PREF_SIZE
       val title = new Label {
-        text = "Riegen-Einteilung"
+        text = "Riegen-Filter"
         styleClass += "toolbar-header"
       }
       children += title
       children += filterControl
       children += alleRiegenCheckBox
     }
-
+    riegenFilterView.focusTraversable = false
     val riegenFilterPane = new BorderPane {
+      focusTraversable = false
       hgrow = Priority.Always
       vgrow = Priority.Always
       prefWidth = 500
