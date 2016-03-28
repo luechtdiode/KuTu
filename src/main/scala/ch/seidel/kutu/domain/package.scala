@@ -206,6 +206,7 @@ package object domain {
     override def toString(value: Double): String = value
     /*override*/ def shouldSuggest(item: String, query: String): Boolean = false
   }
+
   case class Athletiktest(punktemapping: Map[String,Double], punktgewicht: Double) extends NotenModus {
     override val isDNoteUsed = false
 //    override def shouldSuggest(item: String, query: String): Boolean = {

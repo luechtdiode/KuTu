@@ -170,10 +170,11 @@ class RiegenFilterView(wettkampf: WettkampfView, service: KutuService, disziplin
             evt.rowValue.enabled,
             Riege(editor.name.value, editor.initdurchgang, editor.initstart),
             evt.rowValue.onSelectedChange)
-        val rowIndex = riegenFilterModel.indexOf(evt.rowValue)
         service.renameRiege(wettkampf.id, evt.rowValue.initname, evt.newValue)
         fireRiegeChanged(updated)
+        val rowIndex = riegenFilterModel.indexOf(evt.rowValue)
         evt.tableView.selectionModel.value.select(rowIndex, this)
+        evt.tableView.sort()
         evt.tableView.requestFocus()
       }
     }
@@ -216,10 +217,8 @@ class RiegenFilterView(wettkampf: WettkampfView, service: KutuService, disziplin
             evt.rowValue.enabled,
             service.updateOrinsertRiege(editor.commit),
             evt.rowValue.onSelectedChange)
-        val rowIndex = riegenFilterModel.indexOf(evt.rowValue)
-        riegenFilterModel.update(rowIndex, updated)
         fireRiegeChanged(updated)
-
+        val rowIndex = riegenFilterModel.indexOf(evt.rowValue)
         evt.tableView.selectionModel.value.select(rowIndex, this)
         evt.tableView.requestFocus()
       }
@@ -245,9 +244,8 @@ class RiegenFilterView(wettkampf: WettkampfView, service: KutuService, disziplin
             evt.rowValue.enabled,
             service.updateOrinsertRiege(evt.rowValue.commit),
             evt.rowValue.onSelectedChange)
-        val rowIndex = riegenFilterModel.indexOf(evt.rowValue)
-        riegenFilterModel.update(rowIndex, updated)
         fireRiegeChanged(updated)
+        val rowIndex = riegenFilterModel.indexOf(evt.rowValue)
         evt.tableView.selectionModel.value.select(rowIndex, this)
         evt.tableView.requestFocus()
       }
@@ -266,6 +264,7 @@ class RiegenTab(wettkampf: WettkampfView, override val service: KutuService) ext
   def reloadRiegen() {
     riegenFilterModel.clear()
     riegen().foreach(riegenFilterModel.add(_))
+
   }
 
   def reloadDurchgaenge() {
@@ -279,6 +278,7 @@ class RiegenTab(wettkampf: WettkampfView, override val service: KutuService) ext
   def reloadData() {
     reloadRiegen()
     reloadDurchgaenge()
+//    riegenFilterView.sort()
   }
 
   def onNameChange(name1: String, name2: String) = {
@@ -289,8 +289,9 @@ class RiegenTab(wettkampf: WettkampfView, override val service: KutuService) ext
     selected
   }
 
-  def onRiegeChanged(editor: RiegeEditor) {
+  def onRiegeChanged(sorter: () => Unit)(editor: RiegeEditor) {
     reloadData()
+    sorter()
 //    reloadDurchgaenge()
   }
 
@@ -322,7 +323,10 @@ class RiegenTab(wettkampf: WettkampfView, override val service: KutuService) ext
         false,
         riegenFilterModel)
 
-    riegenFilterView.addListener(onRiegeChanged)
+    val durchgangView = new DurchgangView(
+        wettkampf, service,
+        () => {disziplinlist},
+        durchgangModel)
 
     val riegensuggestButton = new Button {
   	  text = "Riegen einteilen"
@@ -330,32 +334,41 @@ class RiegenTab(wettkampf: WettkampfView, override val service: KutuService) ext
   	  val stationen = new TextField()
   	  onAction = (event: ActionEvent) => {
   		  implicit val impevent = event
-			  stationen.text = disziplinlist.size.toString()
+			  stationen.text = "14"
 			  PageDisplayer.showInDialog(text.value, new DisplayablePage() {
  				  def getPage: Node = {
   				  new HBox {
   					  prefHeight = 50
   					  alignment = Pos.BottomRight
   					  hgrow = Priority.Always
-  					  children = Seq(new Label("Stationen (wenn mehr wie eine Rotation, dann pro Rotation, getrennt mit Komma)  "), stationen)
-  					  // Rotation mit [], Kategorie-Gruppe mit Kx(), Geräte-Gruppe mit G<Gerätnummer>k1(4)
+  					  children = Seq(new Label("Maximale Gruppengrösse: "), stationen)
   				  }
   			  }
 			  }, new Button("OK") {
 				  onAction = (event: ActionEvent) => {
 					  if (!stationen.text.value.isEmpty) {
 						  KuTuApp.invokeWithBusyIndicator {
-							  val riegenzuteilungen = service.suggestRiegen(
+							  val riegenzuteilungen = service.suggestDurchgaenge(
   							  wettkampf.id,
-  							  stationen.text.value.split(",").foldLeft(Seq[Int]()){(acc, s) => acc :+ str2Int(s)}
-							  )
+  							  str2Int(stationen.text.value))
+
+  							service.cleanAllRiegenDurchgaenge(wettkampf.id)
+
 							  for{
-								  pair <- riegenzuteilungen
-								  w <- pair._2
+							    durchgang <- riegenzuteilungen.keys
+								  (start, riegen) <- riegenzuteilungen(durchgang)
+								  (riege, wertungen) <- riegen
 							  } {
-								  service.updateWertung(w)
+								  service.insertRiegenWertungen(RiegeRaw(
+								    wettkampfId = wettkampf.id,
+								    r = riege,
+								    durchgang = Some(durchgang),
+								    start = Some(start.id)
+								  ), wertungen)
 							  }
 							  reloadData()
+                riegenFilterView.sort
+                durchgangView.sort
 						  }
 					  }
 				  }
@@ -407,6 +420,8 @@ class RiegenTab(wettkampf: WettkampfView, override val service: KutuService) ext
 			  KuTuApp.invokeWithBusyIndicator {
 			    service.deleteRiege(wettkampf.id, selectedRiege)
 				  reloadData()
+          riegenFilterView.sort
+          durchgangView.sort
 			  }
 		  }
     }
@@ -434,6 +449,8 @@ class RiegenTab(wettkampf: WettkampfView, override val service: KutuService) ext
       			  KuTuApp.invokeWithBusyIndicator {
       				  service.renameRiege(wettkampf.id, selectedRiege, txtRiegenName.text.value)
       				  reloadData()
+                riegenFilterView.sort
+                durchgangView.sort
       			  }
       		  }
       	  }
@@ -461,15 +478,16 @@ class RiegenTab(wettkampf: WettkampfView, override val service: KutuService) ext
       }
     }
 
-    val durchgangView = new DurchgangView(
-        wettkampf, service,
-        () => {disziplinlist},
-        durchgangModel)
-
 //    durchgangView.selectionModel.value.setCellSelectionEnabled(true)
 //    durchgangView.filterEvent(KeyEvent.KeyPressed) { (ke: KeyEvent) =>
 //      AutoCommitTextFieldTableCell.handleDefaultEditingKeyEvents(durchgangView, false, null)(ke)
 //    }
+
+    def sorter = () => {
+      riegenFilterView.sort
+      durchgangView.sort
+    }
+    riegenFilterView.addListener(onRiegeChanged(sorter))
 
     riegenFilterView.selectionModel.value.setCellSelectionEnabled(true)
     riegenFilterView.filterEvent(KeyEvent.KeyPressed) { (ke: KeyEvent) =>

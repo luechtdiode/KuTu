@@ -397,6 +397,15 @@ trait KutuService {
     }
   }
 
+  def updateWertungSimple(w: Wertung) {
+    database withTransaction { implicit session =>
+      sqlu"""       UPDATE wertung
+                    SET note_d=${w.noteD}, note_e=${w.noteE}, endnote=${w.endnote}, riege=${w.riege}, riege2=${w.riege2}
+                    WHERE id=${w.id}
+          """.execute
+    }
+  }
+
   def listAthletenWertungenZuProgramm(progids: Seq[Long], wettkampf: Long, riege: String = "%") = {
     database withSession { implicit session =>
       implicit val cache = scala.collection.mutable.Map[Long, ProgrammView]()
@@ -1110,6 +1119,188 @@ trait KutuService {
     }
   }
 
+  def suggestDurchgaenge(wettkampfId: Long, maxRiegenSize: Int = 14): Map[String, Map[Disziplin, Iterable[(String,Seq[Wertung])]]] = {
+    val cache = scala.collection.mutable.Map[String, Int]()
+    val wert = selectWertungen(wettkampfId = Some(wettkampfId)).groupBy(w => w.athlet)
+    val progAthlWertungen = wert.groupBy(x => x._2.head.wettkampfdisziplin.programm)
+    val riegencnt = 0
+    val disziplinlist = listDisziplinesZuWettkampf(wettkampfId)
+
+    if(wert.isEmpty) {
+      Map[String, Map[Disziplin, Iterable[(String,Seq[Wertung])]]]()
+    }
+    else {
+      @tailrec
+      def splitToRiegenCount[A](sugg: Seq[(String, Seq[A])], minCount: Int): Seq[(String, Seq[A])] = {
+        //cache.clear
+        def split(riege: (String, Seq[A])): Seq[(String, Seq[A])] = {
+          val (key, r) = riege
+          val oldKey1 = (key + ".").split("\\.").headOption.getOrElse("Riege")
+          val oldList = r.toList
+          def occurences(key: String) = {
+            val cnt = cache.getOrElse(key, 0) + 1
+            cache.update(key, cnt)
+            //println(f"occurences $key : $cnt")
+            f"${cnt}%02d"
+          }
+//          println(f"key: $key, oldKey1: $oldKey1")
+          val key1 = if(key.contains(".")) key else oldKey1 + "." + occurences(oldKey1)
+          val key2 = oldKey1 + "." + occurences(oldKey1)
+          val splitpos = r.size / 2
+          //println(f"key1: $key1, key2: $key2")
+          List((key1, oldList.take(splitpos)), (key2, oldList.drop(splitpos)))
+        }
+        val ret = sugg.sortBy(_._2.size).reverse
+        //println((ret.size, riegencnt))
+        if(/*ret.size % minCount > 0 ||*/ (ret.size > 0 && ret.head._2.size > maxRiegenSize)) {
+          splitToRiegenCount(split(ret.head) ++ ret.tail, minCount)
+        }
+        else {
+          //println(ret.mkString("\n"))
+          ret
+        }
+      }
+      def groupKey(grplst: List[WertungView => String])(wertung: WertungView): String = {
+        grplst.foldLeft(""){(acc, f) =>
+          acc + "," + f(wertung)
+        }.drop(1)// remove leading ","
+      }
+
+      def groupWertungen(programm: String, prgWertungen: Map[AthletView, Seq[WertungView]], grp: List[WertungView => String], grpAll: List[WertungView => String], startgeraete: Seq[Disziplin])/*: Seq[(String, Seq[Wertung])]*/ = {
+        val sugg = prgWertungen.groupBy(w => groupKey(grp)(w._2.head)).toSeq
+        // per groupkey, transform map to seq, sorted by all groupkeys
+        val atheltenInRiege = sugg.map{x =>
+          (/*grpkey*/  x._1, // Riegenname
+           /*values*/  x._2.foldLeft((Seq[(AthletView, Seq[WertungView])](), Set[Long]())){(acc, w) =>
+              val (data, seen) = acc
+              val (athlet, _ ) = w
+              if(seen.contains(athlet.id)) acc else (w +: data, seen + athlet.id)
+            }
+            ._1.sortBy(w => groupKey(grpAll)(w._2.head)) // Liste der Athleten in der Riege, mit ihren Wertungen
+          )
+        }
+        val riegen = splitToRiegenCount(atheltenInRiege, startgeraete.size)//.map(w => (w._1, w._2.flatMap(wv => wv._2.map(wt => wt.toWertung(w._1)))))
+        // Maximalausdehnung. Nun die sinnvollen Zusammenlegungen
+        type RiegeAthletWertungen = Map[String, Seq[(AthletView, Seq[WertungView])]]
+        def durchgangRiegeSize(w: RiegeAthletWertungen) = {
+          w.values.foldLeft(0)((acc, item) => acc + item.size)
+        }
+
+        def easyPrint(w: RiegeAthletWertungen): String = {
+          w.keys.mkString(s"${w.size} Riegen (", ", ", ")")
+        }
+
+        @tailrec
+        def combineToDurchgangSize(combis: Seq[RiegeAthletWertungen], offset: Int): Seq[RiegeAthletWertungen] = {
+
+          if(combis.size > startgeraete.size && offset < combis.size) {
+            // sind mind. startgeraete.size Riegen zu finden, die gepaart die Maxilmalgruppengrösse nicht übersteigen?
+            val relevantcombis = combis.drop(offset)
+
+            @tailrec
+            def buildPairs(candidate: Seq[RiegeAthletWertungen], acc: Seq[(RiegeAthletWertungen, RiegeAthletWertungen)]): Seq[(RiegeAthletWertungen, RiegeAthletWertungen)] = {
+              if(candidate.isEmpty) {
+                acc
+              }
+              else if (candidate.size > 1 && (durchgangRiegeSize(candidate.head) + durchgangRiegeSize(candidate.last) <= maxRiegenSize)) {
+                buildPairs(candidate.tail.take(candidate.size -2), acc :+ (candidate.head, candidate.last))
+              }
+              else if(candidate.size > 1) {
+                buildPairs(candidate.tail, acc)
+              }
+              else {
+                acc
+              }
+            }
+
+            val possiblePairs = buildPairs(relevantcombis, Seq.empty)
+
+            println(s"possiblePairs: ${possiblePairs.map(x => (easyPrint(x._1), easyPrint(x._2))).mkString("", "\n  ", "")}")
+            val stable = combis.filter(c => !possiblePairs.exists(p => p._1 == c || p._2 == c) )
+            if(possiblePairs.size >= startgeraete.size && startgeraete.size > 0) {
+              val newcombis = possiblePairs.map{x =>
+                x._1 ++ x._2
+              }
+              println(s"combis merging: ${(stable ++ newcombis).map(x => easyPrint(x)).mkString("", "\n  ", "")}")
+              combineToDurchgangSize(stable ++ newcombis, offset)
+            }
+            else if(possiblePairs.size > 0) {
+              println(s"combis mit offset + 1 ${offset+1} : ${combis.map(x => easyPrint(x)).mkString("", "\n  ", "")}")
+              combineToDurchgangSize(combis, offset+1)
+            }
+            else {
+              println(s"combis elsefall : ${combis.map(x => easyPrint(x)).mkString("", "\n  ", "")}")
+              combis
+            }
+          }
+          else {
+            println(s"combis.size <= ${startgeraete.size} : ${combis.map(x => easyPrint(x)).mkString("", "\n  ", "")}")
+            combis
+          }
+        }
+
+        val alignedriegen = combineToDurchgangSize(riegen.map(r => Map(r._1 -> r._2)), 0)
+
+        alignedriegen.zipWithIndex.flatMap{ r =>
+          val (rr, index) = r
+          val startgeridx =  (index + startgeraete.size) % startgeraete.size
+          rr.keys.map{riegenname =>
+            println(s"Start Riege $riegenname mit ${rr(riegenname).size} Athleten am ${startgeraete(startgeridx)}")
+            (s"$programm (${index / startgeraete.size + 1})", riegenname, startgeraete(startgeridx), rr(riegenname))
+          }
+        }
+      }
+
+      val wkGrouper: List[WertungView => String] = List(
+          x => x.athlet.geschlecht,
+          x => x.wettkampfdisziplin.programm.name,
+          x => x.athlet.verein match {case Some(v) => v.easyprint case None => ""},
+          // fallback ... should not happen
+          x => (x.athlet.gebdat match {case Some(d) => f"$d%tY"; case _ => ""})
+          )
+      val wkFilteredGrouper = wkGrouper.take(if(riegencnt == 0) wkGrouper.size-1 else wkGrouper.size)
+      val atGrouper: List[WertungView => String] = List(
+          x => x.athlet.geschlecht,
+          x => (x.athlet.gebdat match {case Some(d) => f"$d%tY"; case _ => ""}),
+          x => x.athlet.verein match {case Some(v) => v.easyprint case None => ""}
+          );
+
+      val riegen = progAthlWertungen.flatMap{x =>
+        val (programm, wertungen) = x
+        if(wertungen.head._2.head.wettkampfdisziplin.notenSpez.isInstanceOf[Athletiktest])
+          groupWertungen(programm.name, wertungen, atGrouper, atGrouper, disziplinlist)
+        else if(wertungen.head._2.head.wettkampfdisziplin.notenSpez.equals(KuTuWettkampf))
+          groupWertungen(programm.name, wertungen, wkFilteredGrouper, wkGrouper, disziplinlist)
+        else if(wertungen.head._2.head.wettkampfdisziplin.notenSpez.equals(GeTuWettkampf)) // ohne Barren
+          groupWertungen(programm.name, wertungen, wkFilteredGrouper, wkGrouper, disziplinlist.take(disziplinlist.size -1))
+        else
+          groupWertungen(programm.name, wertungen, wkFilteredGrouper, wkGrouper, disziplinlist)
+      }
+      val ret: Map[String, Map[Disziplin, Iterable[(String,Seq[Wertung])]]] =
+        //.map(w => (w._1, w._2.flatMap(wv => wv._2.map(wt => wt.toWertung(w._1)))))
+        riegen.groupBy{r => r._1}
+        .map{rr =>
+          val (durchgang, disz) = rr
+          println(durchgang)
+          (durchgang, disz.groupBy(d => d._3).map{rrr =>
+            val (start, athleten) = rrr
+            println(start.name)
+            (start, athleten.map{a =>
+              val (_, riegenname, _, wertungen) = a
+              println(riegenname, wertungen.size)
+              (riegenname, wertungen.flatMap{wv =>
+                wv._2.map(wt =>
+                  wt.toWertung(riegenname)
+                )
+              })
+            })
+          })
+        }
+
+      ret
+    }
+  }
+
   def deleteRiege(wettkampfid: Long, oldname: String) {
     database withTransaction { implicit session =>
       sqlu"""
@@ -1171,6 +1362,15 @@ trait KutuService {
     }
   }
 
+  def cleanAllRiegenDurchgaenge(wettkampfid: Long) {
+    database withTransaction { implicit session =>
+      sqlu"""
+                delete from riege where
+                wettkampf_id=${wettkampfid}
+        """.execute
+    }
+  }
+
   def updateOrinsertRiege(riege: RiegeRaw): Riege = {
     database withTransaction { implicit session =>
       sqlu"""
@@ -1187,6 +1387,22 @@ trait KutuService {
              left outer join disziplin d on (r.start = d.id)
              where r.wettkampf_id=${riege.wettkampfId} and r.name=${riege.r}
           """.as[Riege].iterator.toList.head
+    }
+  }
+
+  def insertRiegenWertungen(riege: RiegeRaw, wertungen: Seq[Wertung]) {
+    database withTransaction { implicit session =>
+      sqlu"""
+                insert into riege
+                (wettkampf_Id, name, durchgang, start)
+                values (${riege.wettkampfId}, ${riege.r}, ${riege.durchgang}, ${riege.start})
+        """.execute
+      for(w <- wertungen) {
+        sqlu"""     UPDATE wertung
+                    SET riege=${riege.r}
+                    WHERE id=${w.id}
+          """.execute
+      }
     }
   }
 
