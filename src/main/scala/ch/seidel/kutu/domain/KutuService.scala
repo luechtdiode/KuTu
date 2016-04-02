@@ -1314,14 +1314,50 @@ trait KutuService {
           }
         }
 
-        val alignedriegen = combineToDurchgangSize(riegen)
+        @tailrec
+        def spreadEven(startriegen: Seq[RiegeAthletWertungen]): Seq[RiegeAthletWertungen] = {
+          /*
+           * 1. Durchschnittsgrösse ermitteln
+           * 2. Grösste Abweichungen ermitteln (kleinste, grösste)
+           * 3. davon (teilbare) Gruppen filtern
+           * 4. schieben.
+           */
+          val averageSize = startriegen.map(durchgangRiegeSize).sum / startriegen.size
+
+          def smallestDividable(r: RiegeAthletWertungen) = {
+            if(r.size > 1) {
+              Some(r.keys.map(x => (x, r(x))).toSeq.sortBy(y => y._2.size).head)
+            }
+            else {
+              None
+            }
+          }
+          val stats = startriegen.map{raw =>
+            // Riege, Anz. Gruppen, Anz. Turner, Std.Abweichung, (kleinste Gruppekey, kleinste Gruppe)
+            val anzTurner = durchgangRiegeSize(raw)
+            val abweichung = anzTurner - averageSize
+            (raw, raw.size, anzTurner, abweichung, smallestDividable(raw) )
+          }.sortBy(_._4).reverse // Abweichung
+          val idxKleinste = stats.size-1
+          val kleinsteGruppe = stats(idxKleinste)
+
+          stats.find(p => p != kleinsteGruppe && p._3 > averageSize && p._5 != None && p._5.get._2.size + kleinsteGruppe._3 <= averageSize) match {
+            case Some(groessteTeilbare) =>
+              val gt = groessteTeilbare._1 - groessteTeilbare._5.get._1
+              val sg = kleinsteGruppe._1 ++ Map(groessteTeilbare._5.get._1 -> groessteTeilbare._5.get._2)
+              spreadEven(gt +: startriegen.filter(sr => sr != groessteTeilbare._1 && sr != kleinsteGruppe._1) :+ sg)
+            case _ => startriegen
+          }
+        }
+
+        val alignedriegen = spreadEven(combineToDurchgangSize(riegen))
 
         // Startgeräteverteilung
         alignedriegen.zipWithIndex.flatMap{ r =>
           val (rr, index) = r
           val startgeridx =  (index + startgeraete.size) % startgeraete.size
           rr.keys.map{riegenname =>
-            println(s"Start Riege $riegenname mit ${rr(riegenname).size} Athleten am ${startgeraete(startgeridx)}")
+            println(s"Durchgang $programm (${index / startgeraete.size + 1}), Start ${startgeraete(startgeridx).easyprint}, ${rr(riegenname).size} Tu/Ti der Riege $riegenname")
             (s"$programm (${index / startgeraete.size + 1})", riegenname, startgeraete(startgeridx), rr(riegenname))
           }
         }
@@ -1394,6 +1430,17 @@ trait KutuService {
                 SET riege2=''
                 WHERE wettkampf_id=${wettkampfid} and riege2=${oldname}
           """.execute
+    }
+  }
+
+  def renameDurchgang(wettkampfid: Long, oldname: String, newname: String) = {
+    database withTransaction { implicit session =>
+        sqlu"""
+                update riege
+                set durchgang=${newname.trim}
+                where
+                wettkampf_id=${wettkampfid} and durchgang=${oldname}
+        """.execute
     }
   }
 

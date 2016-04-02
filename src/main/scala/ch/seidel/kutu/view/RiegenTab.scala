@@ -457,6 +457,38 @@ class RiegenTab(wettkampf: WettkampfView, override val service: KutuService) ext
       	)
 		  }
     }
+    val durchgangRenameButton = new Button {
+  	  text = "Durchgang umbenennen"
+		  minWidth = 75
+		  disable <== when(riegenFilterView.selectionModel.value.selectedItemProperty().isNull()) choose true otherwise false
+		  onAction = (event: ActionEvent) => {
+			  implicit val impevent = event
+			  val selectedDurchgang = riegenFilterView.selectionModel.value.getSelectedItem.durchgang.value
+			  val txtDurchgangName = new TextField {
+    		  text.value = selectedDurchgang
+    	  }
+    	  PageDisplayer.showInDialog(text.value, new DisplayablePage() {
+    		  def getPage: Node = {
+      		  new HBox {
+      			  prefHeight = 50
+      			  alignment = Pos.BottomRight
+      			  hgrow = Priority.Always
+      			  children = Seq(new Label("Neue Durchgangs-Bezeichung  "), txtDurchgangName)
+      		  }
+      	  }
+      	  }, new Button("OK") {
+      		  onAction = (event: ActionEvent) => {
+      			  KuTuApp.invokeWithBusyIndicator {
+      				  service.renameDurchgang(wettkampf.id, selectedDurchgang, txtDurchgangName.text.value)
+      				  reloadData()
+                riegenFilterView.sort
+                durchgangView.sort
+      			  }
+      		  }
+      	  }
+      	)
+		  }
+    }
 
     val riegenFilterControl = new ToolBar {
       content = List(
@@ -464,6 +496,7 @@ class RiegenTab(wettkampf: WettkampfView, override val service: KutuService) ext
         , einheitenExportButton
         , riegeRenameButton
         , riegenRemoveButton
+        , durchgangRenameButton
         , durchgangExportButton
       )
     }
