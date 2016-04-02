@@ -299,7 +299,8 @@ object ResourceExchanger extends KutuService {
             x._3,
             x._4,
             None))
-      .groupBy(re => re.initdurchgang)
+      .groupBy(re => re.initdurchgang).toSeq
+      .sortBy(re => re._1)
       .map{res =>
         val (name, rel) = res
         DurchgangEditor(wettkampf.id, name.getOrElse(""), rel)
