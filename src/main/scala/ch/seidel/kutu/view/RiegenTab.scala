@@ -331,26 +331,26 @@ class RiegenTab(wettkampf: WettkampfView, override val service: KutuService) ext
     val riegensuggestButton = new Button {
   	  text = "Riegen einteilen"
   	  minWidth = 75
-  	  val stationen = new TextField()
+  	  val txtGruppengroesse = new TextField()
   	  onAction = (event: ActionEvent) => {
   		  implicit val impevent = event
-			  stationen.text = "14"
+			  txtGruppengroesse.text = "11"
 			  PageDisplayer.showInDialog(text.value, new DisplayablePage() {
  				  def getPage: Node = {
   				  new HBox {
   					  prefHeight = 50
   					  alignment = Pos.BottomRight
   					  hgrow = Priority.Always
-  					  children = Seq(new Label("Maximale Gruppengrösse: "), stationen)
+  					  children = Seq(new Label("Maximale Gruppengrösse: "), txtGruppengroesse)
   				  }
   			  }
 			  }, new Button("OK") {
 				  onAction = (event: ActionEvent) => {
-					  if (!stationen.text.value.isEmpty) {
+					  if (!txtGruppengroesse.text.value.isEmpty) {
 						  KuTuApp.invokeWithBusyIndicator {
 							  val riegenzuteilungen = service.suggestDurchgaenge(
   							  wettkampf.id,
-  							  str2Int(stationen.text.value))
+  							  str2Int(txtGruppengroesse.text.value))
 
   							service.cleanAllRiegenDurchgaenge(wettkampf.id)
 

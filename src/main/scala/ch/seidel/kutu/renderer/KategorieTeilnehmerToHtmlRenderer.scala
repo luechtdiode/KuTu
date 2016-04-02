@@ -2,7 +2,7 @@ package ch.seidel.kutu.renderer
 
 trait KategorieTeilnehmerToHtmlRenderer {
   case class Kandidat(wettkampfTitel: String, geschlecht: String, programm: String,
-                      name: String, vorname: String, jahrgang: String, verein: String, riege: String, start: String, diszipline: Seq[String])
+                      name: String, vorname: String, jahrgang: String, verein: String, riege: String, durchgang: String, start: String, diszipline: Seq[String])
 
   val intro = """<html>
     <head>
@@ -96,9 +96,9 @@ trait KategorieTeilnehmerToHtmlRenderer {
     </html>
   """
 
-  private def notenblattForATT(kategorie: String, kandidaten: Seq[Kandidat], logo: String) = {
+  private def anmeldeListe(kategorie: String, kandidaten: Seq[Kandidat], logo: String) = {
     val d = kandidaten.map{kandidat =>
-      s"""<tr class="athletRow"><td class="large">${kandidat.name} ${kandidat.vorname} (${kandidat.jahrgang})</td><td>${kandidat.verein}</td><td>${kandidat.riege}</td><td>${kandidat.start}</td><td class="totalCol">&nbsp;</td></tr>"""
+      s"""<tr class="athletRow"><td>${kandidat.verein}</td><td class="large">${kandidat.name} ${kandidat.vorname} (${kandidat.jahrgang})</td><td>${kandidat.durchgang}</td><td>${kandidat.start}</td><td class="totalCol">&nbsp;</td></tr>"""
     }
     val dt = d.mkString("", "\n", "\n")
     s"""<div class=notenblatt>
@@ -109,7 +109,7 @@ trait KategorieTeilnehmerToHtmlRenderer {
       </div>
       <div class="showborder">
         <table width="100%">
-          <tr class="totalRow heavyRow"><td>Name</td><td>Verein</td><td>Einteilung</td><td>Start</td><td class="totalCol">Bemerkung</td></tr>
+          <tr class="totalRow heavyRow"><td>Verein</td><td>Name</td><td>Einteilung</td><td>Start</td><td class="totalCol">Bemerkung</td></tr>
           ${dt}
         </table>
       </div>
@@ -119,16 +119,16 @@ trait KategorieTeilnehmerToHtmlRenderer {
 
   def toHTMLasKategorienListe(kandidaten: Seq[Kandidat], logo: String): String = {
     val kandidatenPerKategorie = kandidaten.sortBy { k =>
-      val krit = f"${k.name}%-40s ${k.vorname}%-40s"
+      val krit = f"${k.verein}%-40s ${k.name}%-40s ${k.vorname}%-40s"
       //println(krit)
       krit
     }.groupBy(k => k.programm)
     val rawpages = for {
       kategorie <- kandidatenPerKategorie.keys.toList.sorted
-      a4seitenmenge <- kandidatenPerKategorie(kategorie).sliding(30, 30)
+      a4seitenmenge <- kandidatenPerKategorie(kategorie).sliding(28, 28)
     }
     yield {
-      notenblattForATT(kategorie, a4seitenmenge, logo)
+      anmeldeListe(kategorie, a4seitenmenge, logo)
     }
 
     val pages = rawpages.mkString("</li></ul><ul><li>")

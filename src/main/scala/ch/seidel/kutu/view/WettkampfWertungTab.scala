@@ -940,7 +940,8 @@ class WettkampfWertungTab(programm: Option[ProgrammView], riege: Option[String],
             ,athlet.vorname
             ,AthletJahrgang(athlet.gebdat).hg
             ,athlet.verein match {case Some(v) => v.easyprint case _ => ""}
-            ,einsatz.riege.getOrElse("") + " " + riegen.getOrElse(einsatz.riege.getOrElse(""), ("", ""))._2
+            ,einsatz.riege.getOrElse("")
+            ,riegen.getOrElse(einsatz.riege.getOrElse(""), ("", ""))._2
             ,riegen.getOrElse(einsatz.riege.getOrElse(""), ("", ""))._1
             ,athletwertungen.filter{wertung =>
               if(wertung.init.wettkampfdisziplin.feminim == 0 && !wertung.init.athlet.geschlecht.equalsIgnoreCase("M")) {

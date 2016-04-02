@@ -1313,6 +1313,16 @@ trait KutuService {
             relevantcombis
           }
         }
+        def vereinStats(like: Option[Verein], startriege: RiegeAthletWertungen) = {
+          startriege.values.flatMap{x =>
+            x.flatMap{xx =>
+              xx._1.verein.filter{verein =>
+//                println(s"seek $like found $verein")
+                like.equals(Some(verein))
+              }
+            }
+          }.size
+        }
 
         @tailrec
         def spreadEven(startriegen: Seq[RiegeAthletWertungen]): Seq[RiegeAthletWertungen] = {
@@ -1340,17 +1350,77 @@ trait KutuService {
           }.sortBy(_._4).reverse // Abweichung
           val idxKleinste = stats.size-1
           val kleinsteGruppe = stats(idxKleinste)
+          stats.find{p =>
+            val b1 = p._5 != None && p != kleinsteGruppe
+            val b2 = p._3 > averageSize
+            val b3 = b1 && p._5.get._2.size + kleinsteGruppe._3 <= averageSize
+            lazy val v1 = vereinStats(p._5.get._2.head._1.verein, p._1)
+            lazy val v2 = vereinStats(p._5.get._2.head._1.verein, kleinsteGruppe._1)
+            lazy val b4 = v1 - p._5.get._2.size < v2 + p._5.get._2.size
+            lazy val b5 = {
+              p._5.get._2.size + kleinsteGruppe._3 <= averageSize + (kleinsteGruppe._3 / 2)
+            }
 
-          stats.find(p => p != kleinsteGruppe && p._3 > averageSize && p._5 != None && p._5.get._2.size + kleinsteGruppe._3 <= averageSize) match {
+            b1 && ((b2 && b3 && b4) || (b2 && b3 && b5 && v1 - p._5.get._2.size == 0 && v2 > 0))
+          } match {
             case Some(groessteTeilbare) =>
               val gt = groessteTeilbare._1 - groessteTeilbare._5.get._1
               val sg = kleinsteGruppe._1 ++ Map(groessteTeilbare._5.get._1 -> groessteTeilbare._5.get._2)
               spreadEven(gt +: startriegen.filter(sr => sr != groessteTeilbare._1 && sr != kleinsteGruppe._1) :+ sg)
-            case _ => startriegen
+            case _ => stats.find(p => p != kleinsteGruppe && p._3 > averageSize && p._5 != None && p._5.get._2.size + kleinsteGruppe._3 <= averageSize) match {
+              case Some(groessteTeilbare) =>
+                val gt = groessteTeilbare._1 - groessteTeilbare._5.get._1
+                val sg = kleinsteGruppe._1 ++ Map(groessteTeilbare._5.get._1 -> groessteTeilbare._5.get._2)
+                spreadEven(gt +: startriegen.filter(sr => sr != groessteTeilbare._1 && sr != kleinsteGruppe._1) :+ sg)
+              case _ => startriegen
+            }
           }
         }
 
-        val alignedriegen = spreadEven(combineToDurchgangSize(riegen))
+        def bringVereineTogether(startriegen: Seq[RiegeAthletWertungen]): Seq[RiegeAthletWertungen] = {
+          val averageSize = startriegen.map(durchgangRiegeSize).sum / startriegen.size
+          startriegen.flatMap{raw =>
+            raw.values.flatMap{r =>
+              r.map{rr =>
+                (rr._1.verein -> raw)
+              }
+            }
+          }.groupBy{vereinraw =>
+            vereinraw._1
+          }.map{vereinraw =>
+            vereinraw._1 -> vereinraw._2.map(_._2).toSet
+          }.foldLeft(startriegen){(acc, item) =>
+            val (verein, riegen) = item
+            val ret = riegen.map(f => (f, f.filter(ff => ff._2.exists(p => p._1.verein.equals(verein))).keys.head)).foldLeft(acc.toSet){(accc, riegen2) =>
+              val (geraetRiege, filteredRiege) = riegen2
+              val toMove = geraetRiege(filteredRiege)
+              val v1 = vereinStats(verein, geraetRiege)
+              val anzTurner = durchgangRiegeSize(geraetRiege)
+              accc.find{p =>
+                p != geraetRiege &&
+                //acc.contains(geraetRiege) &&
+                accc.contains(geraetRiege) &&
+                durchgangRiegeSize(p) <= averageSize + (averageSize * 0.3).intValue() &&
+                vereinStats(verein, p) > v1
+              }
+              match {
+                case Some(zielriege) =>
+                  println(s"moving $filteredRiege from ${geraetRiege.keys} to ${zielriege.keys}")
+                  val gt = geraetRiege - filteredRiege
+                  val sg = zielriege ++ Map(filteredRiege -> toMove)
+                  val r1 = accc - zielriege
+                  val r2 = r1 + sg
+                  val r3 = r2 - geraetRiege
+                  val ret = r3 + gt
+                  ret
+                case _ => accc
+              }
+            }
+            ret.toSeq
+          }
+        }
+
+        val alignedriegen = bringVereineTogether(spreadEven(bringVereineTogether(spreadEven(combineToDurchgangSize(riegen)))))
 
         // Startgeräteverteilung
         alignedriegen.zipWithIndex.flatMap{ r =>
@@ -1518,10 +1588,10 @@ trait KutuService {
   def insertRiegenWertungen(riege: RiegeRaw, wertungen: Seq[Wertung]) {
     database withTransaction { implicit session =>
       sqlu"""
-                insert into riege
-                (wettkampf_Id, name, durchgang, start)
-                values (${riege.wettkampfId}, ${riege.r}, ${riege.durchgang}, ${riege.start})
-        """.execute
+                  insert into riege
+                  (wettkampf_Id, name, durchgang, start)
+                  values (${riege.wettkampfId}, ${riege.r}, ${riege.durchgang}, ${riege.start})
+          """.execute
       for(w <- wertungen) {
         sqlu"""     UPDATE wertung
                     SET riege=${riege.r}
