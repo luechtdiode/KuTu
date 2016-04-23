@@ -712,7 +712,7 @@ trait KutuService {
       sql""" select id from wettkampfdisziplin where programm_Id in #$programme""".as[Long].build
     }
   }
-  def listDisziplinesZuWettkampf(wettkampfId: Long): List[Disziplin] = {
+  def listDisziplinesZuWettkampf(wettkampfId: Long, geschlecht: Option[String] = None): List[Disziplin] = {
     database withSession {implicit session: Session =>
       val wettkampf: Wettkampf = readWettkampf(wettkampfId)
       val programme = readWettkampfLeafs(wettkampf.programmId).map(p => p.id).mkString("(", ",", ")")
@@ -720,8 +720,15 @@ trait KutuService {
              from wettkampfdisziplin wd, disziplin d, programm p
              where
               wd.disziplin_id = d.id
-              and wd.programm_id = p.id and
-              programm_id in #$programme
+              and wd.programm_id = p.id
+              #${
+                geschlecht match {
+                  case Some("M") => "and wd.masculin = 1"
+                  case Some("W") => "and wd.feminim = 1"
+                  case _ => ""
+                }
+              }
+              and programm_id in #$programme
              order by
               wd.ord
              """.as[Disziplin].iterator

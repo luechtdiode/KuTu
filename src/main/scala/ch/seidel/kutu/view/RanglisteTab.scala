@@ -26,5 +26,5 @@ class RanglisteTab(wettkampf: WettkampfView, override val service: KutuService) 
 
     true
   }
-
+  
 }

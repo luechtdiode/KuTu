@@ -48,6 +48,10 @@ import scalafx.scene.control.ListCell
 import javafx.util.Callback
 import scalafx.scene.control.ListView
 import scalafx.scene.control.CheckBox
+import java.io.ObjectOutputStream
+import java.io.ObjectInputStream
+import java.io.FileInputStream
+import java.io.File
 
 abstract class DefaultRanglisteTab(override val service: KutuService) extends Tab with TabWithService with ScoreToHtmlRenderer {
   override val title = ""
@@ -86,6 +90,17 @@ abstract class DefaultRanglisteTab(override val service: KutuService) extends Ta
         }
       }
     }
+    class FileListCell extends ListCell[File] {
+      override val delegate: jfxsc.ListCell[File] = new jfxsc.ListCell[File] {
+       override protected def updateItem(item: File, empty: Boolean) {
+         super.updateItem(item, empty)
+         if (item != null) {
+           setText(item.getName);
+         }
+       }
+     }
+   }
+
     val cb1 = new ComboBox[FilterBy] {
       maxWidth = 250
         minWidth = 250
@@ -166,6 +181,7 @@ abstract class DefaultRanglisteTab(override val service: KutuService) extends Ta
         false
       }
     }
+
     def buildGrouper = {
       groupers.foreach { gr => gr.reset }
       val cblist = combs.zip(combfs).filter{cbp =>
@@ -211,24 +227,56 @@ abstract class DefaultRanglisteTab(override val service: KutuService) extends Ta
     	  model.sortBy { x => x.easyprint}
     	}
       val combination = query.select(data).toList
-      val ret = toHTML(combination, if(forPrint) 40 else 0, cbModus.selected.value)
+      //Map[Long,Map[String,List[Disziplin]]]
+      val diszMap = data.groupBy { x => x.wettkampf.programmId }.map{ x =>
+        x._1 -> Map(
+              "W" -> service.listDisziplinesZuWettkampf(x._2.head.wettkampf.id, Some("W"))
+            , "M" -> service.listDisziplinesZuWettkampf(x._2.head.wettkampf.id, Some("M")))
+        }
+      val ret = toHTML(combination, if(forPrint) 40 else 0, cbModus.selected.value, diszMap)
       if(!forPrint) webView.engine.loadContent(ret)
       ret
+    }
+    var restoring = false
+    def restoreGrouper(query: GroupBy) {
+      restoring = true
+      query.traverse(combs.zip(combfs)){(grp, acc) =>
+        println(grp)
+        if(acc.isEmpty) {
+          acc
+        }
+        else {
+          val (cmb, cmbf) = acc.head
+//          cmb.selectionModel.value.clearSelection()
+//          cmb.selectionModel.value.select(grp.asInstanceOf[FilterBy])
+//          cmbf.selectionModel.value.clearSelection()
+          grp.asInstanceOf[FilterBy].getFilter.foreach {f =>
+            println(f)
+//            cmbf.getSelectionModel.select(f)
+          }
+          acc.tail
+        }
+      }
+      restoring = false;
+      refreshRangliste(buildGrouper)
     }
 
     combs.foreach{c =>
       c.onAction = handle {
-        refreshRangliste(buildGrouper)
+        if(!restoring)
+          refreshRangliste(buildGrouper)
       }
     }
     combfs.foreach{c =>
       c.onAction = handle {
 //        val selected = c.selectionModel.value.selectedItem.value
-        refreshRangliste(buildGrouper)
+        if(!restoring)
+          refreshRangliste(buildGrouper)
       }
     }
     cbModus.onAction = handle {
-      refreshRangliste(buildGrouper)
+      if(!restoring)
+        refreshRangliste(buildGrouper)
     }
 
     val btnSave = new Button {
@@ -272,6 +320,79 @@ abstract class DefaultRanglisteTab(override val service: KutuService) extends Ta
         }
       }
     }
+
+    def extractFilterText = {
+      buildGrouper.traverse(""){(item, filename) =>
+        item match {
+          case ByNothing => filename
+          case _ if(filename.isEmpty()) => filename + item.groupname
+          case _ => filename + "-" + item.groupname
+        }
+      }
+    }
+
+    def getFilterSaveAsFilenameDefault: FilenameDefault = {
+      val default = getSaveAsFilenameDefault
+      FilenameDefault(extractFilterText, default.dir)
+    }
+
+    def loadFilter(selectedFile: File) {
+      val ios = new ObjectInputStream(new FileInputStream(selectedFile))
+      val grouper = ios.readObject().asInstanceOf[GroupBy]
+      restoreGrouper(grouper)
+    }
+
+    def listFilter = getFilterSaveAsFilenameDefault.dir.listFiles().filter(f => f.getName.endsWith(".filter")).toList.sortBy { _.getName }
+
+    val cbfSaved =
+      new ComboBox[File] {
+        maxWidth = 250
+        minWidth = 250
+        promptText = ""
+        items = ObservableBuffer[File](listFilter)
+        buttonCell = new FileListCell()
+        cellFactory = { p => new FileListCell() }
+        onAction = handle {
+          if(selectionModel.value.getSelectedItem != null) {
+            loadFilter(selectionModel.value.getSelectedItem)
+          }
+        }
+      }
+
+    val _btnSaveFilter = new Button {
+      text = "Filter speichern als ..."
+      onAction = handle {
+          val defaults = getFilterSaveAsFilenameDefault
+          val filename = defaults.filename
+          val dir = defaults.dir
+          if(!dir.exists()) {
+            dir.mkdirs();
+          }
+          val fileChooser = new FileChooser() {
+          initialDirectory = dir
+          title = "Filtereinstellung speichern ..."
+          extensionFilters.addAll(
+                 new ExtensionFilter("Filtereinstellung", "*.filter"),
+                 new ExtensionFilter("All Files", "*.*"))
+          initialFileName = filename
+        }
+        val selectedFile = fileChooser.showSaveDialog(KuTuApp.getStage())
+        if (selectedFile != null) {
+          val file = if(!selectedFile.getName.endsWith(".filter") && !selectedFile.getName.endsWith(".filter")) {
+            new java.io.File(selectedFile.getAbsolutePath + ".filter")
+          }
+          else {
+            selectedFile
+          }
+          val os = new ObjectOutputStream(new FileOutputStream(selectedFile))
+          os.writeObject(buildGrouper)
+          os.flush()
+          os.close()
+          cbfSaved.items = ObservableBuffer[File](listFilter)
+        }
+      }
+    }
+
     onSelectionChanged = handle {
       if(selected.value) {
         refreshRangliste(buildGrouper)
@@ -289,7 +410,7 @@ abstract class DefaultRanglisteTab(override val service: KutuService) extends Ta
         children = new Label("Gruppierungen:") {
           padding = Insets(4,0,0,0)
           prefWidth = 120
-        } +: combs :+ btnSave
+        } +: combs :+ btnSave// :+ btnSaveFilter
       }
       val topPanel2 = new HBox {
         vgrow = Priority.Always
@@ -299,7 +420,7 @@ abstract class DefaultRanglisteTab(override val service: KutuService) extends Ta
         children = new Label("Filter:") {
           padding = Insets(4,0,0,0)
           prefWidth = 120
-        } +: combfs :+ cbModus
+        } +: combfs :+ cbModus// :+ cbfSaved
       }
       top = new VBox {
         vgrow = Priority.Always
