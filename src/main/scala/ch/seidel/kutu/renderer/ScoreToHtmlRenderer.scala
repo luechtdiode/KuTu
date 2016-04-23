@@ -47,6 +47,12 @@ trait ScoreToHtmlRenderer {
               padding:0.2em;
               overflow: hidden;
             }
+            tr .sf1 {
+              font-size: 10px;
+            }
+            tr .sf2 {
+              font-size: 9px;
+            }
             td .data {
               text-align: right
             }
@@ -59,19 +65,19 @@ trait ScoreToHtmlRenderer {
               text-align: right
             }
             col:nth-child(1) {
-              width: 2em;
+              width: 3em;
             }
             col:nth-child(2) {
-              width: 8em;
+              width: 9em;
             }
             col:nth-child(3) {
-              width: 4em;
+              width: 3em;
             }
             col:nth-child(4) {
-              width: 10em;
+              width: 9em;
             }
             col:nth-last-child(1) {
-              width: 6em;
+              width: 4em;
             }
             col:nth-last-child(2) {
               width: 3em;
@@ -176,14 +182,16 @@ trait ScoreToHtmlRenderer {
                 col match {
                   case ccol: WKLeafCol[_] =>
                     val c = ccol.asInstanceOf[WKLeafCol[GroupRow]]
+                    val t = c.valueMapper(row)
+                    val smallfont = if(t.length() > 17) " sf2" else if(t.length() > 13) " sf1" else ""
                     if (c.styleClass.contains("hintdata")) {
-                      gsBlock.append(s"<td class='data, blockstart'><div class='hintdata'>${c.valueMapper(row)}</div></td>")
+                      gsBlock.append(s"<td class='data blockstart$smallfont'><div class='hintdata'>${c.valueMapper(row)}</div></td>")
                     }
                     else if (c.styleClass.contains("data")) {
-                      gsBlock.append(s"<td class='data, blockstart'>${c.valueMapper(row)}</td>")
+                      gsBlock.append(s"<td class='data blockstart$smallfont'>${c.valueMapper(row)}</td>")
                     }
                     else {
-                      gsBlock.append(s"<td class='data, blockstart'><div class='valuedata'>${c.valueMapper(row)}</div></td>")
+                      gsBlock.append(s"<td class='data blockstart$smallfont'><div class='valuedata'>${c.valueMapper(row)}</div></td>")
                     }
                   case gc: WKGroupCol =>
                     var first = true
@@ -191,7 +199,7 @@ trait ScoreToHtmlRenderer {
                       val c = ccol.asInstanceOf[WKLeafCol[GroupRow]]
                       val style = if(first) {
                           first = false
-                          "data, blockstart"
+                          "data blockstart"
                         }
                         else "data"
                       if (c.styleClass.contains("hintdata")) {

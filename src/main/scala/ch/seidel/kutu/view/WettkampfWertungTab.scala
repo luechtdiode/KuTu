@@ -203,7 +203,7 @@ class WettkampfWertungTab(wettkampfmode: Boolean, programm: Option[ProgrammView]
       map(wvg => wvg._2.map(WertungEditor)).toIndexedSeq
     }
 
-    val webView = new WebView
+//    val webView = new WebView
     var wertungen = reloadWertungen()
  		val wkModel = ObservableBuffer[IndexedSeq[WertungEditor]](wertungen)
     var editingEditor: Option[WertungEditor] = None
@@ -379,8 +379,9 @@ class WettkampfWertungTab(wettkampfmode: Boolean, programm: Option[ProgrammView]
           })
         }
 //        delegate.impl_setReorderable(false)
-        prefWidth = 100
         editable = !wettkampfmode
+        visible = !wettkampfmode
+        prefWidth = 100
         if(!wettkampfmode) {
           onEditCommit = (evt: CellEditEvent[IndexedSeq[WertungEditor], String]) => {
             if(!evt.newValue.equals("keine Einteilung")) {
@@ -420,8 +421,9 @@ class WettkampfWertungTab(wettkampfmode: Boolean, programm: Option[ProgrammView]
           })
         }
 //        delegate.impl_setReorderable(false)
-        prefWidth = 100
         editable = !wettkampfmode
+        visible = !wettkampfmode
+        prefWidth = 100
         if(!wettkampfmode) {
           onEditCommit = (evt: CellEditEvent[IndexedSeq[WertungEditor], String]) => {
           	if(!evt.newValue.equals("keine Einteilung")) {
@@ -1261,7 +1263,7 @@ class WettkampfWertungTab(wettkampfmode: Boolean, programm: Option[ProgrammView]
       vgrow = Priority.Always
       top = editorPane
       center = new StackPane {
-        children += webView
+//        children += webView
         children += wkview
       }
     }
