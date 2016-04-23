@@ -36,6 +36,74 @@ object AutoCommitTextFieldTableCell {
     (view: TableColumn[S, T]) => jfxscc.TextFieldTableCell.forTableColumn[S, T](converter).call(view)
 
   def handleDefaultEditingKeyEvents[A, B](tableView: TableView[A], double: Boolean, filterText: TextField)(ke: KeyEvent) = {
+
+    def selectNextEditable = {
+      val editableColumns = tableView.columns.toList.flatMap(p => p +: p.getColumns.toList).filter(p => p.isEditable())
+      val selected = tableView.selectionModel.value.getSelectedCells.head
+      val remaining = editableColumns.dropWhile(_ != selected.getTableColumn)
+      val ret = () => {
+        if(remaining.size > 1) {
+          val nextEditable = remaining.drop(1).head
+          tableView.selectionModel.value.select(selected.getRow, nextEditable)
+          tableView.scrollToColumn(nextEditable)
+        }
+        else if(editableColumns.size > 1) {
+          val nextEditable = editableColumns.head
+          tableView.selectionModel.value.select(selected.getRow, nextEditable)
+          tableView.scrollToColumn(nextEditable)
+        }
+      }
+      ret
+    }
+
+    def selectPrevEditable = {
+      val editableColumns = tableView.columns.toList.flatMap(p => p +: p.getColumns.toList).filter(p => p.isEditable())
+      val selected = tableView.selectionModel.value.getSelectedCells.head
+      val remaining = editableColumns.reverse.dropWhile(_ != selected.getTableColumn)
+      val ret = () => {
+        if(remaining.size > 1) {
+          val nextEditable = remaining.drop(1).head
+          tableView.selectionModel.value.select(selected.getRow, nextEditable)
+          tableView.scrollToColumn(nextEditable)
+        }
+        else if(editableColumns.size > 1) {
+          val nextEditable = editableColumns.last
+          tableView.selectionModel.value.select(selected.getRow, nextEditable)
+          tableView.scrollToColumn(nextEditable)
+        }
+      }
+      ret
+    }
+
+    def selectBelowEditable = {
+      val editableColumns = tableView.columns.toList.flatMap(p => p +: p.getColumns.toList).filter(p => p.isEditable())
+      val selected = tableView.selectionModel.value.getSelectedCells.head
+      val remaining = if(selected.getTableColumn.isEditable()) editableColumns.dropWhile(_ != selected.getTableColumn) else editableColumns
+      val newSelectedRowIdx = if(selected.getRow == tableView.items.value.size()-1) 0 else selected.getRow + 1
+      val ret = () => {
+        if(remaining.size > 0) {
+          tableView.selectionModel.value.select(newSelectedRowIdx, remaining.head)
+        }
+        tableView.scrollTo(newSelectedRowIdx)
+      }
+      ret
+    }
+
+    def selectAboveEditable = {
+      val editableColumns = tableView.columns.toList.flatMap(p => p +: p.getColumns.toList).filter(p => p.isEditable())
+      val selected = tableView.selectionModel.value.getSelectedCells.head
+
+      val remaining = if(selected.getTableColumn.isEditable()) editableColumns.dropWhile(_ != selected.getTableColumn) else editableColumns
+      val newSelectedRowIdx = if(selected.getRow == 0) tableView.items.value.size()-1 else selected.getRow - 1
+      val ret = () => {
+        if(remaining.size > 0) {
+          tableView.selectionModel.value.select(newSelectedRowIdx, remaining.head)
+        }
+        tableView.scrollTo(newSelectedRowIdx)
+      }
+      ret
+    }
+
     val fc = tableView.focusModel.value.focusedCell.value
     val tc = fc.tableColumn.asInstanceOf[jfxsc.TableColumn[A,B]]
 
@@ -73,13 +141,16 @@ object AutoCommitTextFieldTableCell {
         ke.consume()
 
       case KeyCode.TAB if(!ke.controlDown) =>
-
+        val toSelectNextOp = selectNextEditable
+        val toSelectPrevOp = selectPrevEditable
         val action = new Runnable() {
           override def run = {
             if(ke.shiftDown)
-              tableView.selectionModel.value.selectPrevious()
-            else
-              tableView.selectionModel.value.selectNext()
+              toSelectPrevOp()
+            else {
+//              tableView.selectionModel.value.selectNext()
+              toSelectNextOp()
+            }
           }
         }
         val wasEditing = tableView.delegate.getEditingCell() != null
@@ -90,34 +161,33 @@ object AutoCommitTextFieldTableCell {
         }
 
       case KeyCode.ENTER /*if(ke.controlDown || wkview.delegate.getEditingCell() != null)*/ =>
+        val toSelectNextOp = selectNextEditable
+        val toSelectPrevOp = selectPrevEditable
+        val toSelectAboveOp = selectAboveEditable
+        val toSelectBelowOp = selectBelowEditable
         val action = new Runnable() {
           override def run = {
             if(ke.shiftDown) {
               val index = tableView.selectionModel.value.getSelectedIndex
               if(index == 0) {
                 if(index == tableView.items.value.size()-1) {
-                  tableView.selectionModel.value.selectNext()
+                  toSelectPrevOp()
                 }
                 else {
-                  tableView.selectionModel.value.selectLast()
+                  toSelectNextOp()
                 }
               }
               else {
-                tableView.selectionModel.value.selectAboveCell()
+                toSelectAboveOp()
               }
             }
             else {
               val index = tableView.selectionModel.value.getSelectedIndex
               if(index == tableView.items.value.size()-1) {
-                if(index == 0) {
-                  tableView.selectionModel.value.selectNext()
-                }
-                else {
-                  tableView.selectionModel.value.selectFirst()
-                }
+                toSelectNextOp()
               }
               else  {
-                tableView.selectionModel.value.selectBelowCell()
+                toSelectBelowOp()
               }
             }
           }

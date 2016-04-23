@@ -72,19 +72,19 @@ object PageDisplayer {
     dialogStage.showAndWait()
   }
 
-  def choosePage(context: Option[Any], value: String = "dashBoard", tree: KuTuAppTree): Node = {
+  def choosePage(wettkampfmode: Boolean, context: Option[Any], value: String = "dashBoard", tree: KuTuAppTree): Node = {
     value match {
       case "dashBoard" => displayPage(new DashboardPage(tree = tree))
       case _           => context match {
-        case Some(w: WettkampfView) => chooseWettkampfPage(w, tree)
+        case Some(w: WettkampfView) => chooseWettkampfPage(wettkampfmode, w, tree)
         case Some(v: Verein)        => chooseVereinPage(v, tree)
         case _                      => displayPage(new DashboardPage(value.split("-")(1).trim(), tree))
       }
     }
   }
-  private def chooseWettkampfPage(wettkampf: WettkampfView, tree: KuTuAppTree): Node = {
+  private def chooseWettkampfPage(wettkampfmode: Boolean, wettkampf: WettkampfView, tree: KuTuAppTree): Node = {
     def op = {
-      WettkampfPage.buildTab(wettkampf, tree.getService)
+      WettkampfPage.buildTab(wettkampfmode, wettkampf, tree.getService)
     }
     displayPage(op)
   }

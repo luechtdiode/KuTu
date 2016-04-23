@@ -8,10 +8,10 @@ import ch.seidel.commons.TabWithService
 
 object WettkampfPage {
 
-  def buildTab(wettkampf: WettkampfView, service: KutuService) = {
+  def buildTab(wettkampfmode: Boolean, wettkampf: WettkampfView, service: KutuService) = {
 	  lazy val progs = service.readWettkampfLeafs(wettkampf.programm.id)
     lazy val progSites: Seq[Tab] = progs map {v =>
-      new WettkampfWertungTab(Some(v), None, wettkampf, service, {
+      new WettkampfWertungTab(wettkampfmode, Some(v), None, wettkampf, service, {
         service.listAthletenWertungenZuProgramm(progs map (p => p.id), wettkampf.id)
         }) {
         text = v.name
@@ -26,7 +26,12 @@ object WettkampfPage {
     )
     def refresher(pane: LazyTabPane) = {
       (progSites).foreach { t => t.asInstanceOf[WettkampfWertungTab].setLazyPane(pane)}
-      progSites ++ Seq[Tab](new RiegenTab(wettkampf, service)) ++ ranglisteSite
+      if(wettkampfmode) {
+        progSites ++ ranglisteSite
+      }
+      else {
+        progSites ++ Seq[Tab](new RiegenTab(wettkampf, service)) ++ ranglisteSite
+      }
     }
 
     new WettkampfPage( new LazyTabPane(refresher))

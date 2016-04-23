@@ -74,7 +74,7 @@ class WKTableColumn[T](val index: Int) extends TableColumn[IndexedSeq[WertungEdi
   override def valueEditor(selectedRow: IndexedSeq[WertungEditor]): WertungEditor = selectedRow(index)
 }
 
-class WettkampfWertungTab(programm: Option[ProgrammView], riege: Option[String], wettkampf: WettkampfView, override val service: KutuService, athleten: => IndexedSeq[WertungView]) extends Tab with TabWithService {
+class WettkampfWertungTab(wettkampfmode: Boolean, programm: Option[ProgrammView], riege: Option[String], wettkampf: WettkampfView, override val service: KutuService, athleten: => IndexedSeq[WertungView]) extends Tab with TabWithService {
 	implicit def doublePropertyToObservableValue(p: DoubleProperty): ObservableValue[Double,Double] = p.asInstanceOf[ObservableValue[Double,Double]]
   private var lazypane: Option[LazyTabPane] = None
   def setLazyPane(pane: LazyTabPane) {
@@ -352,6 +352,7 @@ class WettkampfWertungTab(programm: Option[ProgrammView], riege: Option[String],
         }
 //        delegate.impl_setReorderable(false) // shame on me??? why this feature should not be a requirement?
         prefWidth = 150
+        editable = false
       },
       new WKTableColumn[String](-1) {
         text = "Verein"
@@ -363,11 +364,14 @@ class WettkampfWertungTab(programm: Option[ProgrammView], riege: Option[String],
         }
 //        delegate.impl_setReorderable(false)
         prefWidth = 100
+        editable = false
       },
       new WKTableColumn[String](-1) {
         text = "Riege"
-        cellFactory = { x =>
-          new AutoCommitTextFieldTableCell[IndexedSeq[WertungEditor], String](new DefaultStringConverter())
+        if(!wettkampfmode) {
+          cellFactory = { x =>
+            new AutoCommitTextFieldTableCell[IndexedSeq[WertungEditor], String](new DefaultStringConverter())
+          }
         }
         cellValueFactory = { x =>
           new ReadOnlyStringWrapper(x.value, "riege", {
@@ -376,35 +380,39 @@ class WettkampfWertungTab(programm: Option[ProgrammView], riege: Option[String],
         }
 //        delegate.impl_setReorderable(false)
         prefWidth = 100
-        editable = true
-        onEditCommit = (evt: CellEditEvent[IndexedSeq[WertungEditor], String]) => {
-          if(!evt.newValue.equals("keine Einteilung")) {
-          	val rowIndex = wkModel.indexOf(evt.rowValue)
-            for(wertung <- evt.rowValue) {
-              wkModel.update(rowIndex,
-                  evt.rowValue.updated(
-                      evt.rowValue.indexOf(wertung),
-                      WertungEditor(
-                          service.updateWertung(
-                              wertung.commit.copy(riege = if(evt.newValue.trim.isEmpty() || evt.newValue.equals("keine Einteilung")) None else Some(evt.newValue))
-                              )
-                          )
-                      )
-                  )
+        editable = !wettkampfmode
+        if(!wettkampfmode) {
+          onEditCommit = (evt: CellEditEvent[IndexedSeq[WertungEditor], String]) => {
+            if(!evt.newValue.equals("keine Einteilung")) {
+            	val rowIndex = wkModel.indexOf(evt.rowValue)
+              for(wertung <- evt.rowValue) {
+                wkModel.update(rowIndex,
+                    evt.rowValue.updated(
+                        evt.rowValue.indexOf(wertung),
+                        WertungEditor(
+                            service.updateWertung(
+                                wertung.commit.copy(riege = if(evt.newValue.trim.isEmpty() || evt.newValue.equals("keine Einteilung")) None else Some(evt.newValue))
+                                )
+                            )
+                        )
+                    )
+              }
+              refreshOtherLazyPanes()
+              updateEditorPane
+              evt.tableView.requestFocus()
             }
-            refreshOtherLazyPanes()
-            updateEditorPane
-            evt.tableView.requestFocus()
           }
-        }
-        onEditCancel = (evt: CellEditEvent[IndexedSeq[WertungEditor], String]) => {
-//          println(evt)
+          onEditCancel = (evt: CellEditEvent[IndexedSeq[WertungEditor], String]) => {
+  //          println(evt)
+          }
         }
       },
       new WKTableColumn[String](-1) {
         text = "Riege 2"
-        cellFactory = { x =>
-          new AutoCommitTextFieldTableCell[IndexedSeq[WertungEditor], String](new DefaultStringConverter())
+        if(!wettkampfmode) {
+          cellFactory = { x =>
+            new AutoCommitTextFieldTableCell[IndexedSeq[WertungEditor], String](new DefaultStringConverter())
+          }
         }
         cellValueFactory = { x =>
           new ReadOnlyStringWrapper(x.value, "riege2", {
@@ -413,29 +421,31 @@ class WettkampfWertungTab(programm: Option[ProgrammView], riege: Option[String],
         }
 //        delegate.impl_setReorderable(false)
         prefWidth = 100
-        editable = true
-        onEditCommit = (evt: CellEditEvent[IndexedSeq[WertungEditor], String]) => {
-        	if(!evt.newValue.equals("keine Einteilung")) {
-            val rowIndex = wkModel.indexOf(evt.rowValue)
-            for(disciplin <- evt.rowValue) {
-              wkModel.update(rowIndex,
-                  evt.rowValue.updated(
-                      evt.rowValue.indexOf(disciplin),
-                      WertungEditor(
-                          service.updateWertung(
-                              disciplin.commit.copy(riege2 = if(evt.newValue.trim.isEmpty()) None else Some(evt.newValue))
-                              )
-                          )
-                      )
-                  )
-            }
-            refreshOtherLazyPanes()
-            updateEditorPane
-            evt.tableView.requestFocus()
-        	}
-        }
-        onEditCancel = (evt: CellEditEvent[IndexedSeq[WertungEditor], String]) => {
-//          println(evt)
+        editable = !wettkampfmode
+        if(!wettkampfmode) {
+          onEditCommit = (evt: CellEditEvent[IndexedSeq[WertungEditor], String]) => {
+          	if(!evt.newValue.equals("keine Einteilung")) {
+              val rowIndex = wkModel.indexOf(evt.rowValue)
+              for(disciplin <- evt.rowValue) {
+                wkModel.update(rowIndex,
+                    evt.rowValue.updated(
+                        evt.rowValue.indexOf(disciplin),
+                        WertungEditor(
+                            service.updateWertung(
+                                disciplin.commit.copy(riege2 = if(evt.newValue.trim.isEmpty()) None else Some(evt.newValue))
+                                )
+                            )
+                        )
+                    )
+              }
+              refreshOtherLazyPanes()
+              updateEditorPane
+              evt.tableView.requestFocus()
+          	}
+          }
+          onEditCancel = (evt: CellEditEvent[IndexedSeq[WertungEditor], String]) => {
+  //          println(evt)
+          }
         }
       })
 
@@ -446,24 +456,10 @@ class WettkampfWertungTab(programm: Option[ProgrammView], riege: Option[String],
         prefWidth = 100
         delegate.impl_setReorderable(false)
         styleClass += "table-cell-with-value"
+        editable = false
       })
 
     wkview.columns ++= athletCol ++ wertungenCols ++ sumCol
-
-    def setEditorPaneToDiscipline(index: Int): Node = {
-      editorPane.adjust
-//      if(rowIndex > -1) {
-//        wkview.scrollTo(rowIndex)
-//        val datacolcnt = (wkview.columns.size - 4)
-//        val dcgrp = wkModel.headOption match {
-//          case Some(wertung) => if(wertung.head.init.wettkampfdisziplin.notenSpez.isDNoteUsed) 2 else 1
-//          case None => 2
-//        }
-//        wkview.scrollToColumn(wkview.columns(3 + index).columns(dcgrp))
-//      }
-      editorPane.requestLayout()
-      editorPane
-    }
 
     var lastFilter = ""
 
@@ -616,7 +612,7 @@ class WettkampfWertungTab(programm: Option[ProgrammView], riege: Option[String],
       updateEditorPane
     }
 
-    val riegenFilterView = new RiegenFilterView(
+    val riegenFilterView = new RiegenFilterView(!wettkampfmode,
         wettkampf, service,
         () => {disziplinlist},
         true,
@@ -840,6 +836,7 @@ class WettkampfWertungTab(programm: Option[ProgrammView], riege: Option[String],
                   def filter(progId: Long, a: Athlet): Boolean = athletes.exists { _ == a.id }
                   service.assignAthletsToWettkampf(wettkampf.id, Set(progId), Some(filter))
                 }
+
                 reloadData()
               }
             }
@@ -1135,9 +1132,26 @@ class WettkampfWertungTab(programm: Option[ProgrammView], riege: Option[String],
         minWidth = 75
         onAction = (event: ActionEvent) => {
           if (!wkview.selectionModel().isEmpty) {
+        	  val wertungEditor = wkview.selectionModel().getSelectedItem.head
             val athletwertungen = wkview.selectionModel().getSelectedItem.map(_.init.id).toSet
-            service.unassignAthletFromWettkampf(athletwertungen)
-            wkModel.remove(wkview.selectionModel().getSelectedIndex)
+            implicit val impevent = event
+            PageDisplayer.showInDialog(text.value, new DisplayablePage() {
+              def getPage: Node = {
+                new HBox {
+                  prefHeight = 50
+                  alignment = Pos.BottomRight
+                  hgrow = Priority.Always
+                  children = Seq(
+                      new Label(
+                          s"Soll '${wertungEditor.init.athlet.easyprint}' wirklich aus der Einteilung im ${wertungEditor.init.wettkampfdisziplin.programm.name} entfernt werden?"))
+                }
+              }
+            }, new Button("OK") {
+              onAction = (event: ActionEvent) => {
+                service.unassignAthletFromWettkampf(athletwertungen)
+                wkModel.remove(wkview.selectionModel().getSelectedIndex)
+              }
+            })
           }
         }
       }
@@ -1189,20 +1203,36 @@ class WettkampfWertungTab(programm: Option[ProgrammView], riege: Option[String],
       onAction = (event: ActionEvent) => {
         if (!wkview.selectionModel().isEmpty) {
           val selected = wkview.selectionModel().getSelectedItem
-          var index = 0
-          val rowIndex = wkModel.indexOf(selected)
-          if(rowIndex > -1) {
-            for (disciplin <- selected) {
-              disciplin.noteD.value = 0
-              disciplin.noteE.value = 0
-              disciplin.endnote.value = 0
-              if (disciplin.isDirty) {
-                wkModel.update(rowIndex, selected.updated(index, WertungEditor(service.updateWertung(disciplin.commit))))
-                wkview.requestFocus()
+          implicit val impevent = event
+          PageDisplayer.showInDialog(text.value, new DisplayablePage() {
+            def getPage: Node = {
+              new HBox {
+                prefHeight = 50
+                alignment = Pos.BottomRight
+                hgrow = Priority.Always
+                children = Seq(
+                  new Label(
+                    s"Sollen wirklich die in diesem Wettkampf bereits erfassten Resultate für '${selected.head.init.athlet.easyprint}' zurückgesetzt werden?"))
               }
-              index = index + 1
             }
-          }
+          }, new Button("OK") {
+            onAction = (event: ActionEvent) => {
+              var index = 0
+              val rowIndex = wkModel.indexOf(selected)
+              if(rowIndex > -1) {
+                for (disciplin <- selected) {
+                  disciplin.noteD.value = 0
+                  disciplin.noteE.value = 0
+                  disciplin.endnote.value = 0
+                  if (disciplin.isDirty) {
+                    wkModel.update(rowIndex, selected.updated(index, WertungEditor(service.updateWertung(disciplin.commit))))
+                    wkview.requestFocus()
+                  }
+                  index = index + 1
+                }
+              }
+            }
+          })
         }
       }
     }
@@ -1213,9 +1243,11 @@ class WettkampfWertungTab(programm: Option[ProgrammView], riege: Option[String],
       AutoCommitTextFieldTableCell.handleDefaultEditingKeyEvents(wkview, true, txtUserFilter)(ke)
     }
 
-    riegenFilterView.selectionModel.value.setCellSelectionEnabled(true)
-    riegenFilterView.filterEvent(KeyEvent.KeyPressed) { (ke: KeyEvent) =>
-      AutoCommitTextFieldTableCell.handleDefaultEditingKeyEvents(riegenFilterView, false, txtUserFilter)(ke)
+    if(!wettkampfmode) {
+      riegenFilterView.selectionModel.value.setCellSelectionEnabled(true)
+      riegenFilterView.filterEvent(KeyEvent.KeyPressed) { (ke: KeyEvent) =>
+        AutoCommitTextFieldTableCell.handleDefaultEditingKeyEvents(riegenFilterView, false, txtUserFilter)(ke)
+      }
     }
 
     onSelectionChanged = handle {
@@ -1283,13 +1315,15 @@ class WettkampfWertungTab(programm: Option[ProgrammView], riege: Option[String],
             minHeight = Region.USE_PREF_SIZE
             styleClass += "toolbar-header"
           }
-        ) ++ actionButtons :+ clearButton :+ txtUserFilter
+        ) ++ (if(wettkampfmode) List(txtUserFilter) else actionButtons :+ clearButton :+ txtUserFilter)
       }
       center = new SplitPane {
         orientation = Orientation.HORIZONTAL
      		items += riegenFilterPane
         items += editTablePane
+
         setDividerPosition(0, 0.3d)
+
         SplitPane.setResizableWithParent(riegenFilterPane, false)
       }
     }

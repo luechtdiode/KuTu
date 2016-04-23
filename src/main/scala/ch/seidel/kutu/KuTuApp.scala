@@ -47,7 +47,7 @@ object KuTuApp extends JFXApp with KutuService {
     children = tree.getTree
   }
 
-  var centerPane = PageDisplayer.choosePage(None, "dashBoard", tree)
+  var centerPane = PageDisplayer.choosePage(false, None, "dashBoard", tree)
 
   def updateTree {
     tree = AppNavigationModel.create(KuTuApp.this)
@@ -275,6 +275,18 @@ object KuTuApp extends JFXApp with KutuService {
           ResourceExchanger.exportWettkampf(p.toWettkampf, file.getPath);
         }
       }
+    }
+  }
+
+  def makeWettkampfDurchfuehrenMenu(p: WettkampfView): MenuItem = {
+    makeMenuAction("Wettkampf durchführen") {(caption, action) =>
+      implicit val e = action
+      centerPane = PageDisplayer.choosePage(true, Some(p), "dashBoard - " + caption, tree)
+      if(splitPane.items.size > 1) {
+        splitPane.items.remove(1)
+      }
+      splitPane.items.add(1, centerPane)
+      splitPane.dividerPositions = 0.0d
     }
   }
 
@@ -559,6 +571,7 @@ object KuTuApp extends JFXApp with KutuService {
               tree.getThumbs(parent.getValue).find(p => p.button.text.getValue.equals(newItem.getValue)) match {
                 case Some(KuTuAppThumbNail(p: WettkampfView, _, newItem)) =>
                 controlsView.contextMenu = new ContextMenu() {
+                  items += makeWettkampfDurchfuehrenMenu(p)
                   items += makeWettkampfBearbeitenMenu(p)
                   items += makeWettkampfExportierenMenu(p)
                   items += makeWettkampfDataDirectoryMenu(p)
@@ -580,17 +593,17 @@ object KuTuApp extends JFXApp with KutuService {
         case (true, Some(parent)) => {
           tree.getThumbs(parent.getValue).find(p => p.button.text.getValue.equals(newItem.getValue)) match {
             case Some(KuTuAppThumbNail(p: WettkampfView, _, newItem)) =>
-              PageDisplayer.choosePage(Some(p), "dashBoard - " + newItem.getValue, tree)
+              PageDisplayer.choosePage(false, Some(p), "dashBoard - " + newItem.getValue, tree)
             case Some(KuTuAppThumbNail(v: Verein, _, newItem)) =>
-              PageDisplayer.choosePage(Some(v), "dashBoard - " + newItem.getValue, tree)
+              PageDisplayer.choosePage(false, Some(v), "dashBoard - " + newItem.getValue, tree)
             case _ =>
-              PageDisplayer.choosePage(None, "dashBoard - " + newItem.getValue, tree)
+              PageDisplayer.choosePage(false, None, "dashBoard - " + newItem.getValue, tree)
           }
         }
         case (false, Some(_)) =>
-          PageDisplayer.choosePage(None, "dashBoard - " + newItem.getValue, tree)
+          PageDisplayer.choosePage(false, None, "dashBoard - " + newItem.getValue, tree)
         case (_, _) =>
-          PageDisplayer.choosePage(None, "dashBoard", tree)
+          PageDisplayer.choosePage(false, None, "dashBoard", tree)
       }
       if(splitPane.items.size > 1) {
         splitPane.items.remove(1)
