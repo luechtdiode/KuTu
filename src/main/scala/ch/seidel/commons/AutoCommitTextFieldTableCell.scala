@@ -165,10 +165,10 @@ object AutoCommitTextFieldTableCell {
         val toSelectPrevOp = selectPrevEditable
         val toSelectAboveOp = selectAboveEditable
         val toSelectBelowOp = selectBelowEditable
+        val index = tableView.selectionModel.value.getSelectedIndex
         val action = new Runnable() {
           override def run = {
             if(ke.shiftDown) {
-              val index = tableView.selectionModel.value.getSelectedIndex
               if(index == 0) {
                 if(index == tableView.items.value.size()-1) {
                   toSelectPrevOp()
@@ -182,8 +182,7 @@ object AutoCommitTextFieldTableCell {
               }
             }
             else {
-              val index = tableView.selectionModel.value.getSelectedIndex
-              if(index == tableView.items.value.size()-1) {
+              if(index == 0 && index == tableView.items.value.size()-1) {
                 toSelectNextOp()
               }
               else  {
