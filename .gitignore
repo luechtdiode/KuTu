@@ -1,0 +1,16 @@
+/classes/
+/db/
+/docs/
+/lib/
+/Scripts/
+/src/
+/target/
+/.settings/
+/.worksheet/
+/.cache
+/.cache-main
+/.cache-tests
+/.dbeaver-data-sources.xml
+/addToManifest.txt
+/maven-eclipse.xml
+/scratchpad.sc
