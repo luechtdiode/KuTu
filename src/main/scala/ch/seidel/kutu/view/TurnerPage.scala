@@ -3,27 +3,29 @@ package ch.seidel.kutu.view
 import java.text.SimpleDateFormat
 import java.sql.Date
 import javafx.scene.{ control => jfxsc }
-import javafx.scene.{control => jfxsc}
+import javafx.scene.{ control => jfxsc}
 import scala.collection.JavaConversions
 import scalafx.Includes._
-import scalafx.scene.control.Tab
-import scalafx.scene.layout._
-import scalafx.scene.control.TableColumn._
 import scalafx.beans.property.StringProperty
 import scalafx.collections.ObservableBuffer
-import scalafx.scene.control._
 import scalafx.util.converter.DefaultStringConverter
 import scalafx.event.ActionEvent
 import scalafx.application.Platform
+import scalafx.scene.control._
+import scalafx.scene.control.TableColumn._
+import scalafx.scene.control.Tab.sfxTab2jfx
+import scalafx.scene.layout._
 import scalafx.scene.input.KeyEvent
 import scalafx.scene.input.KeyCode
-import scalafx.scene.control.Tab.sfxTab2jfx
+import scalafx.scene.Node
+import scalafx.geometry.Pos
 import slick.jdbc.StaticQuery.staticQueryToInvoker
 import ch.seidel.commons.AutoCommitTextFieldTableCell
 import ch.seidel.commons.DisplayablePage
 import ch.seidel.commons.TabWithService
 import ch.seidel.commons.LazyTabPane
 import ch.seidel.kutu.domain._
+import ch.seidel.commons.PageDisplayer
 
 object TurnerPage {
   var turnerAnalyzers = Map[Long, TurnerAnalyzer]()
@@ -164,8 +166,24 @@ object TurnerPage {
       onAction = (event: ActionEvent) => {
         if (!athletenview.selectionModel().isEmpty) {
           val athlet = athletenview.selectionModel().getSelectedItem
-          service.deleteAthlet(athlet.commit.id)
-          wkModel.remove(athletenview.selectionModel().getSelectedIndex)
+          implicit val impevent = event
+          PageDisplayer.showInDialog(text.value, new DisplayablePage() {
+            def getPage: Node = {
+              new HBox {
+                prefHeight = 50
+                alignment = Pos.BottomRight
+                hgrow = Priority.Always
+                children = Seq(
+                    new Label(
+                        s"Soll '${athlet.commit.easyprint}' wirklich mitsamt seinen Wettkampfresultaten gelöscht werden?"))
+              }
+            }
+          }, new Button("OK") {
+            onAction = (event: ActionEvent) => {
+              service.deleteAthlet(athlet.commit.id)
+              wkModel.remove(athletenview.selectionModel().getSelectedIndex)
+            }
+          })
         }
       }
     }

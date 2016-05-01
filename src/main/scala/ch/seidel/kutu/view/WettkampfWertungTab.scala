@@ -1090,10 +1090,10 @@ class WettkampfWertungTab(wettkampfmode: Boolean, programm: Option[ProgrammView]
             einsatz.wettkampf.easyprint
             ,athlet.geschlecht match {case "M" => "Turner"  case _ => "Turnerin"}
             ,einsatz.wettkampfdisziplin.programm.easyprint
+            ,athlet.id
             ,athlet.name
             ,athlet.vorname
             ,AthletJahrgang(athlet.gebdat).hg
-            ,athlet.id
             ,athlet.verein match {case Some(v) => v.easyprint case _ => ""}
             ,riegendurchgaenge.get(einsatz.riege.getOrElse(""))
             ,riegendurchgaenge.get(einsatz.riege2.getOrElse(""))

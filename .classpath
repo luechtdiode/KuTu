@@ -7,8 +7,8 @@
   <classpathentry kind="output" path="target/classes"/>
   <classpathentry kind="con" path="org.eclipse.jdt.launching.JRE_CONTAINER"/>
   <classpathentry kind="con" path="org.scala-ide.sdt.launching.SCALA_CONTAINER"/>
-  <classpathentry kind="var" path="M2_REPO/org/scalafx/scalafx_2.10/8.0.40-R8/scalafx_2.10-8.0.40-R8.jar" sourcepath="M2_REPO/org/scalafx/scalafx_2.10/8.0.40-R8/scalafx_2.10-8.0.40-R8-sources.jar"/>
-  <classpathentry kind="var" path="M2_REPO/org/scala-lang/scala-reflect/2.10.5/scala-reflect-2.10.5.jar" sourcepath="M2_REPO/org/scala-lang/scala-reflect/2.10.5/scala-reflect-2.10.5-sources.jar"/>
+  <classpathentry kind="var" path="M2_REPO/org/scalafx/scalafx_2.10/8.0.92-R10/scalafx_2.10-8.0.92-R10.jar" sourcepath="M2_REPO/org/scalafx/scalafx_2.10/8.0.92-R10/scalafx_2.10-8.0.92-R10-sources.jar"/>
+  <classpathentry kind="var" path="M2_REPO/org/scala-lang/scala-reflect/2.10.6/scala-reflect-2.10.6.jar" sourcepath="M2_REPO/org/scala-lang/scala-reflect/2.10.6/scala-reflect-2.10.6-sources.jar"/>
   <classpathentry kind="var" path="M2_REPO/org/xerial/sqlite-jdbc/3.8.11.2/sqlite-jdbc-3.8.11.2.jar" sourcepath="M2_REPO/org/xerial/sqlite-jdbc/3.8.11.2/sqlite-jdbc-3.8.11.2-sources.jar"/>
   <classpathentry kind="var" path="M2_REPO/com/typesafe/slick/slick_2.10/3.0.0/slick_2.10-3.0.0.jar" sourcepath="M2_REPO/com/typesafe/slick/slick_2.10/3.0.0/slick_2.10-3.0.0-sources.jar"/>
   <classpathentry kind="var" path="M2_REPO/org/slf4j/slf4j-api/1.6.4/slf4j-api-1.6.4.jar" sourcepath="M2_REPO/org/slf4j/slf4j-api/1.6.4/slf4j-api-1.6.4-sources.jar"/>

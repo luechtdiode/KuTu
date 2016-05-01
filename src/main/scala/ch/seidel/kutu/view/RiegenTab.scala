@@ -429,12 +429,28 @@ class RiegenTab(wettkampf: WettkampfView, override val service: KutuService) ext
 		  disable <== when(riegenFilterView.selectionModel.value.selectedItemProperty().isNull()) choose true otherwise false
 		  onAction = (event: ActionEvent) => {
 		    val selectedRiege = riegenFilterView.selectionModel.value.getSelectedItem.name.value
-			  KuTuApp.invokeWithBusyIndicator {
-			    service.deleteRiege(wettkampf.id, selectedRiege)
-				  reloadData()
-          riegenFilterView.sort
-          durchgangView.sort
-			  }
+          implicit val impevent = event
+          PageDisplayer.showInDialog(text.value, new DisplayablePage() {
+            def getPage: Node = {
+              new HBox {
+                prefHeight = 50
+                alignment = Pos.BottomRight
+                hgrow = Priority.Always
+                children = Seq(
+                    new Label(
+                        s"Soll die Riege '${selectedRiege}' gelöscht werden?\nDamit werden Turner/-Innen die Riegenzuteilung zur gelöschten Riege verlieren."))
+              }
+            }
+          }, new Button("OK") {
+            onAction = (event: ActionEvent) => {
+      			  KuTuApp.invokeWithBusyIndicator {
+      			    service.deleteRiege(wettkampf.id, selectedRiege)
+      				  reloadData()
+                riegenFilterView.sort
+                durchgangView.sort
+      			  }
+            }
+          })
 		  }
     }
     val riegeRenameButton = new Button {
