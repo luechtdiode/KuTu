@@ -1,8 +1,8 @@
 package ch.seidel.kutu.renderer
 
+import ch.seidel.kutu.domain._
+
 trait NotenblattToHtmlRenderer {
-  case class Kandidat(wettkampfTitel: String, geschlecht: String, programm: String,
-                      name: String, vorname: String, jahrgang: String, verein: String, diszipline: Seq[String])
 
   val intro = """<html>
     <head>

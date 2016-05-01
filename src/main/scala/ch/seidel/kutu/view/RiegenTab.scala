@@ -57,6 +57,7 @@ import ch.seidel.kutu.KuTuApp
 import scala.concurrent.Await
 import scala.concurrent.duration.Duration
 import ch.seidel.kutu.data.ResourceExchanger
+import ch.seidel.kutu.renderer.RiegenblattToHtmlRenderer
 
 class DurchgangView(wettkampf: WettkampfView, service: KutuService, disziplinlist: () => Seq[Disziplin], durchgangModel: ObservableBuffer[DurchgangEditor]) extends TableView[DurchgangEditor] {
 
@@ -500,6 +501,74 @@ class RiegenTab(wettkampf: WettkampfView, override val service: KutuService) ext
       	)
 		  }
     }
+    val generateRiegenblaetter = new Button with RiegenblattToHtmlRenderer {
+      text = "Riegenblätter erstellen"
+      minWidth = 75
+
+      onAction = (event: ActionEvent) => {
+        val driver = service.selectWertungen(wettkampfId = Some(wettkampf.id)).groupBy { x => x.athlet }.map(_._2).toList
+        val programme = driver.flatten.map(x => x.wettkampfdisziplin.programm).foldLeft(Seq[ProgrammView]()){(acc, pgm) =>
+          if(!acc.exists { x => x.id == pgm.id }) {
+            acc :+ pgm
+          }
+          else {
+            acc
+          }
+        }
+        println(programme)
+        val riegendurchgaenge = service.selectRiegen(wettkampf.id).map(r => r.r-> r).toMap
+        val seriendaten = for {
+          programm <- programme
+          athletwertungen <- driver.map(we => we.filter { x => x.wettkampfdisziplin.programm.id == programm.id})
+          if(athletwertungen.nonEmpty)
+        }
+        yield {
+          val einsatz = athletwertungen.head
+          val athlet = einsatz.athlet
+          Kandidat(
+          einsatz.wettkampf.easyprint
+          ,athlet.geschlecht match {case "M" => "Turner"  case _ => "Turnerin"}
+          ,einsatz.wettkampfdisziplin.programm.easyprint
+          ,athlet.id
+          ,athlet.name
+          ,athlet.vorname
+          ,AthletJahrgang(athlet.gebdat).hg
+          ,athlet.verein match {case Some(v) => v.easyprint case _ => ""}
+          ,riegendurchgaenge.get(einsatz.riege.getOrElse(""))
+          ,riegendurchgaenge.get(einsatz.riege2.getOrElse(""))
+          ,athletwertungen.filter{wertung =>
+            if(wertung.wettkampfdisziplin.feminim == 0 && !wertung.athlet.geschlecht.equalsIgnoreCase("M")) {
+              false
+            }
+            else if(wertung.wettkampfdisziplin.masculin == 0 && wertung.athlet.geschlecht.equalsIgnoreCase("M")) {
+              false
+            }
+            else {
+              true
+            }
+          }.map(_.wettkampfdisziplin.disziplin.easyprint)
+          )
+        }
+        val filename = "Riegenblatt_" + wettkampf.easyprint.replace(" ", "_") + ".html"
+        val dir = new java.io.File(service.homedir + "/" + wettkampf.easyprint.replace(" ", "_"))
+        if(!dir.exists()) {
+          dir.mkdirs();
+        }
+        val file = new java.io.File(dir.getPath + "/" + filename)
+        val logofile = if(new java.io.File(dir.getPath + "/logo.jpg").exists()) {
+          "logo.jpg"
+        }
+        else {
+          "../logo.jpg"
+        }
+        val toSave = toHTML(seriendaten, logofile)
+        val os = new BufferedOutputStream(new FileOutputStream(file))
+        os.write(toSave.getBytes("UTF-8"))
+        os.flush()
+        os.close()
+        Desktop.getDesktop().open(file);
+      }
+    }
 
     val riegenFilterControl = new ToolBar {
       content = List(
@@ -509,6 +578,7 @@ class RiegenTab(wettkampf: WettkampfView, override val service: KutuService) ext
         , riegenRemoveButton
         , durchgangRenameButton
         , durchgangExportButton
+        , generateRiegenblaetter
       )
     }
 

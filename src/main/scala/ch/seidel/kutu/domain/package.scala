@@ -307,4 +307,8 @@ package object domain {
     val encodedVorNamen = encode(vorname)
   }
 
+  case class Kandidat(wettkampfTitel: String, geschlecht: String, programm: String, id: Long,
+                      name: String, vorname: String, jahrgang: String, verein: String, einteilung: Option[Riege], einteilung2: Option[Riege], diszipline: Seq[String])
+  case class GeraeteRiege(wettkampfTitel: String, durchgang: Option[String], halt: Int, disziplin: Option[Disziplin], kandidaten: Seq[Kandidat])
+
 }
