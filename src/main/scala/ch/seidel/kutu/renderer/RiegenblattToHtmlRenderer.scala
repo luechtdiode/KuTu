@@ -3,27 +3,17 @@ package ch.seidel.kutu.renderer
 import ch.seidel.kutu.domain._
 
 object RiegenBuilder {
+
   def mapToGeraeteRiegen(kandidaten: List[Kandidat]): List[GeraeteRiege] = {
-    val durchgaenge = kandidaten
-    .flatMap(k => k.einteilung ++ k.einteilung2)
-    .groupBy(e => e.durchgang).toList
-    .sortBy(d => d._1)
-    .map{d =>
-      val (durchgang, riegen) = d
-      val geraete = riegen.groupBy(e => e.start).toList
-      val startformationen = geraete.flatMap{s =>
+
+    def pickStartformationen(geraete: List[(Option[Disziplin], List[Riege])], durchgang: Option[String], extractKandidatEinteilung: Kandidat => Option[Riege]) = {
+      geraete.flatMap{s =>
         val (startdisziplin, _) = s
         val splitpoint = geraete.indexWhere(g => g._1.equals(startdisziplin))
         val shifted = geraete.drop(splitpoint) ++ geraete.take(splitpoint)
         shifted.zipWithIndex.map{ss =>
           val ((disziplin, _), offset) = ss
-          val tuti = kandidaten.filter{k => (k.einteilung match {
-            case Some(einteilung) =>
-              einteilung.durchgang.equals(durchgang) &&
-              einteilung.start.equals(startdisziplin) &&
-              k.diszipline.contains(disziplin.map(_.name).getOrElse(""))
-            case None => false
-          }) || (k.einteilung2 match {
+          val tuti = kandidaten.filter{k => (extractKandidatEinteilung(k) match {
             case Some(einteilung) =>
               einteilung.durchgang.equals(durchgang) &&
               einteilung.start.equals(startdisziplin) &&
@@ -32,10 +22,32 @@ object RiegenBuilder {
           })}
           (offset, disziplin, (tuti.drop(offset) ++ tuti.take(offset)))
         }
-      }
-      (durchgang, startformationen.filter(p => p._3.nonEmpty))
+      }.filter(p => p._3.nonEmpty)
     }
-    val riegen = durchgaenge.flatMap{item =>
+
+    val hauptdurchgaenge = kandidaten
+    .flatMap(k => k.einteilung)
+    .groupBy(e => e.durchgang).toList
+    .sortBy(d => d._1)
+    .map{d =>
+      val (durchgang, riegen) = d
+      val geraete = riegen.groupBy(e => e.start).toList
+      val startformationen = pickStartformationen(geraete, durchgang, k => k.einteilung)
+
+      (durchgang, startformationen)
+    }
+    val nebendurchgaenge = kandidaten
+    .flatMap(k => k.einteilung2)
+    .groupBy(e => e.durchgang).toList
+    .sortBy(d => d._1)
+    .map{d =>
+      val (durchgang, riegen) = d
+      val geraete = riegen.groupBy(e => e.start).toList
+      val startformationen = pickStartformationen(geraete, durchgang, k => k.einteilung2)
+
+      (durchgang, startformationen)
+    }
+    val riegen = (hauptdurchgaenge ++ nebendurchgaenge).flatMap{item =>
       val (durchgang, starts) = item
       starts.map{start =>
         GeraeteRiege(start._3.head.wettkampfTitel, durchgang, start._1, start._2, start._3)
@@ -87,7 +99,7 @@ trait RiegenblattToHtmlRenderer {
           font-weight: 600;
         }
         .showborder {
-          margin-top: 10px;
+          margin-top: 8px;
           padding: 5px;
           border: 1px solid black;
           border-radius: 5px;
@@ -105,9 +117,9 @@ trait RiegenblattToHtmlRenderer {
           border-left: 1px solid #000;
         }
         .large {
-          padding: 10px;
-          padding-top: 15px;
-          padding-bottom: 15px;
+          padding: 8px;
+          padding-top: 10px;
+          padding-bottom: 10px;
         }
         body {
           font-family: "Arial", "Verdana", sans-serif;
@@ -116,7 +128,7 @@ trait RiegenblattToHtmlRenderer {
           font-size: 75%;
         }
         table {
-          width: 27em;
+          width: 25em;
           border-collapse:collapse;
           border-spacing:0;
         }
@@ -147,9 +159,10 @@ trait RiegenblattToHtmlRenderer {
     </html>
   """
 
-  private def notenblatt(riege: GeraeteRiege, logo: String) = {
+  private def notenblatt(riegepart: (GeraeteRiege, Int), logo: String) = {
+    val (riege, tutioffset) = riegepart
     val d = riege.kandidaten.zip(Range(1, riege.kandidaten.size+1)).map{kandidat =>
-      s"""<tr class="turnerRow"><td class="large">${kandidat._2}. ${kandidat._1.vorname} ${kandidat._1.name}</td><td>&nbsp;</td><td>&nbsp;</td><td class="totalCol">&nbsp;</td></tr>"""
+      s"""<tr class="turnerRow"><td class="large">${kandidat._2 + tutioffset}. ${kandidat._1.vorname} ${kandidat._1.name}</td><td>&nbsp;</td><td>&nbsp;</td><td class="totalCol">&nbsp;</td></tr>"""
     }.mkString("", "\n", "\n")
 
     s"""<div class=riegenblatt>
@@ -169,7 +182,18 @@ trait RiegenblattToHtmlRenderer {
   }
 
   def toHTML(kandidaten: Seq[Kandidat], logo: String): String = {
-    val blaetter = RiegenBuilder.mapToGeraeteRiegen(kandidaten.toList).map(notenblatt(_, logo))
+    def splitToFitPage(riegen: List[GeraeteRiege]) = {
+      riegen.foldLeft(List[(GeraeteRiege, Int)]()){(acc, item) =>
+        if(item.kandidaten.size > 13) {
+          acc ++ item.kandidaten.sliding(13, 13).zipWithIndex.map(k => (item.copy(kandidaten = k._1), k._2 * 13))
+        }
+        else {
+          acc :+ (item, 0)
+        }
+      }
+    }
+    val riegendaten = splitToFitPage(RiegenBuilder.mapToGeraeteRiegen(kandidaten.toList))
+    val blaetter = riegendaten.map(notenblatt(_, logo))
     val pages = blaetter.sliding(2, 2).map { _.mkString("</li><li>") }.mkString("</li></ul><ul><li>")
     intro + pages + outro
   }
