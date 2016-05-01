@@ -12,8 +12,8 @@
 		<scala.version>${scala.majorversion}.6</scala.version>
 		<maven-scala-plugin.version>3.2.1</maven-scala-plugin.version>
 
-		<maven.compiler.source>1.7</maven.compiler.source>
-		<maven.compiler.target>1.7</maven.compiler.target>
+		<maven.compiler.source>1.8</maven.compiler.source>
+		<maven.compiler.target>1.8</maven.compiler.target>
 		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
 	</properties>
 
@@ -65,7 +65,7 @@
 		<dependency>
 			<groupId>org.scalafx</groupId>
 			<artifactId>scalafx_${scala.majorversion}</artifactId>
-			<version>8.0.40-R8</version>
+			<version>8.0.92-R10</version>
 		</dependency>
 		<dependency>
 			<groupId>org.xerial</groupId>

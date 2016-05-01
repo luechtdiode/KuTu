@@ -27,36 +27,48 @@ trait ScoreToHtmlRenderer {
             body {
               font-family: "Arial", "Verdana", sans-serif;
             }
+            h1 {
+              font-size: 16px;
+            }
+            h2 {
+              font-size: 15px;
+            }
+            h3 {
+              font-size: 14px;
+            }
+            h4 {
+              font-size: 13px;
+            }
+            p {
+              font-size: 12px;
+            }
             table{
-                /*table-layout:fixed;*/
-                border-collapse:collapse;
-                border-spacing:0;
-                /*border-style:hidden;*/
-                border: 1px solid rgb(50,100,150);
+              border-collapse:collapse;
+              border-spacing:0;
+              border: 1px solid rgb(50,100,150);
             }
             th {
               background-color: rgb(250,250,200);
               font-size: 9px;
               overflow: hidden;
             }
-            /*tr {
-              border-bottom: 1px solid rgb(50,100,150);
-            }*/
             td {
-              font-size: 12px;
+              font-size: 10px;
               padding:0.2em;
               overflow: hidden;
+              white-space: nowrap;
             }
             tr .sf1 {
               font-size: 10px;
             }
             tr .sf2 {
-              font-size: 9px;
+              font-size: 10px;
             }
             td .data {
               text-align: right
             }
             td .valuedata {
+         		  font-size: 11px;
               text-align: right
             }
             td .hintdata {
@@ -177,7 +189,7 @@ trait ScoreToHtmlRenderer {
 
           def renderListRows(list: List[GroupRow]) = {
             list.foreach{ row =>
-              gsBlock.append(s"<tr class='data'>")
+              gsBlock.append(s"<tr>")
               cols.foreach { col =>
                 col match {
                   case ccol: WKLeafCol[_] =>
