@@ -236,7 +236,7 @@ abstract class DefaultRanglisteTab(override val service: KutuService) extends Ta
               "W" -> service.listDisziplinesZuWettkampf(x._2.head.wettkampf.id, Some("W"))
             , "M" -> service.listDisziplinesZuWettkampf(x._2.head.wettkampf.id, Some("M")))
         }
-      val ret = toHTML(combination, if(forPrint) 46 else 0, cbModus.selected.value, diszMap)
+      val ret = toHTML(combination, if(forPrint) 53 else 0, cbModus.selected.value, diszMap)
       if(!forPrint) webView.engine.loadContent(ret)
       ret
     }
