@@ -58,6 +58,11 @@ import scala.concurrent.Await
 import scala.concurrent.duration.Duration
 import ch.seidel.kutu.data.ResourceExchanger
 import ch.seidel.kutu.renderer.RiegenblattToHtmlRenderer
+import scalafx.scene.control.ContextMenu
+import scalafx.scene.control.MenuItem
+import scalafx.scene.control.Alert
+import scalafx.scene.control.Alert.AlertType
+import scalafx.scene.control.Menu
 
 class DurchgangView(wettkampf: WettkampfView, service: KutuService, disziplinlist: () => Seq[Disziplin], durchgangModel: ObservableBuffer[DurchgangEditor]) extends TableView[DurchgangEditor] {
 
@@ -281,7 +286,7 @@ class RiegenTab(wettkampf: WettkampfView, override val service: KutuService) ext
 
   def reloadDurchgaenge() {
     durchgangModel.clear()
-    riegenFilterModel.groupBy(re => re.initdurchgang).map{res =>
+    riegenFilterModel.groupBy(re => re.initdurchgang).toList.sortBy(_._1).map{res =>
       val (name, rel) = res
       DurchgangEditor(wettkampf.id, name.getOrElse(""), rel)
     }.foreach {durchgangModel.add(_)}
@@ -324,7 +329,10 @@ class RiegenTab(wettkampf: WettkampfView, override val service: KutuService) ext
           true,
           x._3,
           x._4,
-          None))
+          None)).sortBy { re =>
+            re.initdurchgang.toString() + re.initname + re.initstart.toString()
+          }
+
   }
 
   override def isPopulated = {
@@ -339,6 +347,153 @@ class RiegenTab(wettkampf: WettkampfView, override val service: KutuService) ext
         wettkampf, service,
         () => {disziplinlist},
         durchgangModel)
+
+    def makeRegenereateDurchgangMenu(durchgang: Set[String]): MenuItem = {
+      KuTuApp.makeMenuAction("Durchgang neu einteilen") {(caption, action) =>
+        implicit val e = action
+    	  val txtGruppengroesse = new TextField() {
+          text = "11"
+        }
+    	  val cbSplitSex = new ComboBox[SexDivideRule]() {
+          items.get.addAll(GemischteRiegen, GemischterDurchgang, GetrennteDurchgaenge)
+          selectionModel.value.selectFirst()
+        }
+        val chkSplitPgm = new CheckBox() {
+          text = "Programme / Kategorien teilen"
+          selected = true
+        }
+  			  PageDisplayer.showInDialog(text.value, new DisplayablePage() {
+   				  def getPage: Node = {
+    				  new VBox {
+    					  children = Seq(new Label("Maximale Gruppengrösse: "), txtGruppengroesse
+                             , new Label("Geschlechter-Trennung: "), cbSplitSex
+                             , chkSplitPgm)
+    				  }
+    			  }
+  			  }, new Button("OK") {
+				  onAction = (event: ActionEvent) => {
+					  if (!txtGruppengroesse.text.value.isEmpty) {
+						  KuTuApp.invokeWithBusyIndicator {
+							  val riegenzuteilungen = service.suggestDurchgaenge(
+  							  wettkampf.id,
+  							  str2Int(txtGruppengroesse.text.value), durchgang, splitSex = cbSplitSex.getSelectionModel.getSelectedItem, splitPgm = chkSplitPgm.selected.value)
+
+							  for{
+							    durchgang <- riegenzuteilungen.keys
+								  (start, riegen) <- riegenzuteilungen(durchgang)
+								  (riege, wertungen) <- riegen
+							  } {
+								  service.insertRiegenWertungen(RiegeRaw(
+								    wettkampfId = wettkampf.id,
+								    r = riege,
+								    durchgang = Some(durchgang),
+								    start = Some(start.id)
+								  ), wertungen)
+							  }
+							  reloadData()
+                riegenFilterView.sort
+                durchgangView.sort
+						  }
+					  }
+				  }
+			  })
+      }
+    }
+
+    def makeMergeDurchganMenu(durchgang: Set[String]): MenuItem = {
+      val ret = KuTuApp.makeMenuAction("Durchgänge zusammenlegen") {(caption, action) =>
+        implicit val e = action
+    	  val txtNeuerDurchgangName = new TextField() {
+          text = durchgang.toList.sorted.head
+        }
+    	  val chkSplitSex = new CheckBox() {
+          text = "Geschlechter trennen"
+          selected = false
+        }
+
+			  PageDisplayer.showInDialog(text.value, new DisplayablePage() {
+ 				  def getPage: Node = {
+  				  new VBox {
+  					  children = Seq(new Label("Neuer Durchgangsname: "), txtNeuerDurchgangName)
+  				  }
+  			  }
+			  }, new Button("OK") {
+				  onAction = (event: ActionEvent) => {
+					  if (!txtNeuerDurchgangName.text.value.isEmpty) {
+						  KuTuApp.invokeWithBusyIndicator {
+						    durchgang.foreach { selectedDurchgang =>
+        				  service.renameDurchgang(wettkampf.id, selectedDurchgang, txtNeuerDurchgangName.text.value)
+        				  reloadData()
+                  riegenFilterView.sort
+                  durchgangView.sort
+  						  }
+						  }
+					  }
+				  }
+			  })
+      }
+      ret.setDisable(durchgang.size < 2)
+      ret
+    }
+
+    def makeMoveDurchganMenu(durchgang: DurchgangEditor): Menu = {
+      new Menu("In anderen Durchgang verschieben ...") {
+        durchgang.initstartriegen.flatMap(_._2).toList.sortBy(r => r.initname).foreach{r =>
+          val riege = r
+          items += new Menu(riege.initname) {
+            durchgangModel.foreach{d =>
+        	    items += KuTuApp.makeMenuAction(d.initname) {(caption, action) =>
+        	      implicit val e = action
+        	      val toSave = riege.copy(initdurchgang = Some(d.initname))
+  						  KuTuApp.invokeWithBusyIndicator {
+        				  service.updateOrinsertRiege(toSave.commit)
+        				  reloadData()
+                  riegenFilterView.sort
+                  durchgangView.sort
+  						  }
+        	    }
+            }
+          }.asInstanceOf[MenuItem]
+        }
+      }
+    }
+
+    def makeMoveStartgeraetMenu(durchgang: DurchgangEditor): Menu = {
+      new Menu("Auf anderes Startgerät verschieben ...") {
+        durchgang.initstartriegen.flatMap(_._2).toList.sortBy(r => r.initname).foreach{r =>
+          val riege = r
+          items += new Menu(riege.initname) {
+            disziplinlist
+            .filter(d => riege.initstart match {case Some(dd) if(dd.equals(d)) => false case _ => true})
+            .foreach{start =>
+        	    items += KuTuApp.makeMenuAction(start.name) {(caption, action) =>
+        	      implicit val e = action
+        	      val toSave = riege.copy(initstart = Some(start))
+  						  KuTuApp.invokeWithBusyIndicator {
+        				  service.updateOrinsertRiege(toSave.commit)
+        				  reloadData()
+                  riegenFilterView.sort
+                  durchgangView.sort
+  						  }
+        	    }
+            }
+          }.asInstanceOf[MenuItem]
+        }
+      }
+    }
+
+    durchgangView.selectionModel().setSelectionMode(SelectionMode.Multiple)
+    durchgangView.selectionModel().selectedItems.onChange { ( _, newItem) =>
+      val actSelection = durchgangView.selectionModel().selectedItems.map(d => d.initname)
+      durchgangView.contextMenu = new ContextMenu() {
+          items += makeRegenereateDurchgangMenu(actSelection.toSet)
+          items += makeMergeDurchganMenu(actSelection.toSet)
+          if(actSelection.size == 1) {
+            items += makeMoveDurchganMenu(durchgangView.selectionModel().selectedItems.head)
+            items += makeMoveStartgeraetMenu(durchgangView.selectionModel().selectedItems.head)
+          }
+        }
+      }
 
     val riegensuggestButton = new Button {
   	  text = "Riegen einteilen"

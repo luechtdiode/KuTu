@@ -311,4 +311,17 @@ package object domain {
                       name: String, vorname: String, jahrgang: String, verein: String, einteilung: Option[Riege], einteilung2: Option[Riege], diszipline: Seq[String])
   case class GeraeteRiege(wettkampfTitel: String, durchgang: Option[String], halt: Int, disziplin: Option[Disziplin], kandidaten: Seq[Kandidat])
 
+  sealed trait SexDivideRule {
+    val name: String
+    override def toString = name
+  }
+  case object GemischteRiegen extends SexDivideRule {
+    override val name = "gemischte Geräteriegen"
+  }
+  case object GemischterDurchgang extends SexDivideRule {
+    override val name = "gemischter Durchgang"
+  }
+  case object GetrennteDurchgaenge extends SexDivideRule {
+    override val name = "getrennte Durchgänge"
+  }
 }

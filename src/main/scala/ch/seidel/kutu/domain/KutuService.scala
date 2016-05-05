@@ -1128,11 +1128,24 @@ trait KutuService {
     }
   }
 
-  def suggestDurchgaenge(wettkampfId: Long, maxRiegenSize: Int = 14): Map[String, Map[Disziplin, Iterable[(String,Seq[Wertung])]]] = {
+  def suggestDurchgaenge(wettkampfId: Long, maxRiegenSize: Int = 14, durchgangfilter: Set[String] = Set.empty, programmfilter: Set[Long] = Set.empty, splitSex: SexDivideRule = GemischteRiegen, splitPgm: Boolean = true): Map[String, Map[Disziplin, Iterable[(String,Seq[Wertung])]]] = {
     val cache = scala.collection.mutable.Map[String, Int]()
     val wert = selectWertungen(wettkampfId = Some(wettkampfId)).groupBy(w => w.athlet)
-    val progAthlWertungen = wert.groupBy(x => x._2.head.wettkampfdisziplin.programm)
-    val riegencnt = 0
+    def listProgramme(x: Map[AthletView, Seq[WertungView]]) = x.map(w => w._2.head.wettkampfdisziplin.programm.name).toSet
+    val findDurchgang = selectRiegenRaw(wettkampfId)
+      .filter(rr => rr.durchgang.isDefined)
+      .map(rr => rr.r -> rr.durchgang.get)
+      .toMap
+
+    val filteredWert = wert
+    .filter{x =>
+      (programmfilter.isEmpty || programmfilter.contains(x._2.head.wettkampfdisziplin.programm.id)) &&
+      (durchgangfilter.isEmpty || (x._2.head.riege.forall(r => findDurchgang.get(r).forall(d => durchgangfilter.contains(d)))))
+    }
+    val programme = listProgramme(filteredWert)
+    val progAthlWertungen = filteredWert.groupBy(x => if(splitPgm || durchgangfilter.isEmpty || programme.size == 1) x._2.head.wettkampfdisziplin.programm.name else programme.mkString(" & "))
+
+    val riegencnt = 0 // riegencnt 0 is unlimited
     val disziplinlist = listDisziplinesZuWettkampf(wettkampfId)
 
     if(wert.isEmpty) {
@@ -1225,8 +1238,13 @@ trait KutuService {
           def splitEven(unsorted: Seq[RiegeAthletWertungen]) = {
             val sorted = unsorted.sortBy { durchgangRiegeSize }.reverse
             val combis = sorted.filter(x => x.size > 1)
-            val splitpoint = sorted.indexOf(combis(combis.size / 2))
-            splitAt(splitpoint, sorted, true)
+            if(combis.nonEmpty) {
+              val splitpoint = sorted.indexOf(combis(combis.size / 2))
+              splitAt(splitpoint, sorted, true)
+            }
+            else {
+              sorted
+            }
           }
           def splitSmallest(unsorted: Seq[RiegeAthletWertungen]) = {
             val sorted = unsorted.sortBy { durchgangRiegeSize }
@@ -1243,7 +1261,9 @@ trait KutuService {
             val splitpoint = sorted.indexWhere { x => x.size > 1 }
             splitAt(splitpoint, sorted, true)
           }
-
+          def filterM(list: Seq[RiegeAthletWertungen]) = {
+            ???
+          }
           if(relevantcombis.size > startgeraete.size) {
             // sind mind. startgeraete.size Riegen zu finden, die gepaart die Maxilmalgruppengrösse nicht übersteigen?
 
@@ -1275,37 +1295,51 @@ trait KutuService {
 
             @tailrec
             def nc(candidate: Seq[RiegeAthletWertungen], level: Int): Seq[RiegeAthletWertungen] = {
-              if(candidate.map(durchgangRiegeSize).sum != relevantcombis.map(durchgangRiegeSize).sum) {
-                println("ALERT")
-              }
               val possiblePairs = buildPairs(targetPairCnt, candidate, Seq.empty)
               val stable = candidate.filter(c => !possiblePairs.exists(p => p._1 == c || p._2 == c) )
               val newcombis = stable ++ possiblePairs.map{x => x._1 ++ x._2}
-              if(newcombis.map(durchgangRiegeSize).sum != relevantcombis.map(durchgangRiegeSize).sum) {
+              if(newcombis.map(durchgangRiegeSize).sum != candidate.map(durchgangRiegeSize).sum) {
                 println("ALERT")
               }
-              val base = candidate.map( durchgangRiegeSize )
-              println(s"  => candidates=${candidate.size}, max=${base.max}, min=${base.min}, possiblePairs=${possiblePairs.size}, stable=${stable.size}, newcombis=${newcombis.size}, level=$level")
-              if(level == 0 || newcombis.size >= targetPairCnt || (newcombis.size < targetPairCnt && newcombis.size % startgeraete.size == 0)) {
+              if(splitSex == GemischterDurchgang) {
                 newcombis
               }
-              else if(newcombis.size < targetPairCnt) {
-                val splitted = (newcombis.size until targetPairCnt).foldLeft(newcombis){(acc, idx) =>
-                  splitEven(acc)
-                }
-                splitted
-              }
               else {
-                val n = if(level % 3 == 0) splitSmallest(candidate) else splitSmallest(newcombis)
-                nc(n, level-1)
+                val base = candidate.map( durchgangRiegeSize )
+                println(s"  => candidates=${candidate.size}, max=${base.max}, min=${base.min}, possiblePairs=${possiblePairs.size}, stable=${stable.size}, newcombis=${newcombis.size}, level=$level")
+                if(level == 0 || newcombis.size >= targetPairCnt || (newcombis.size < targetPairCnt && newcombis.size % startgeraete.size == 0)) {
+                  newcombis
+                }
+                else if(newcombis.nonEmpty && newcombis.size < targetPairCnt) {
+                  val splitted = (newcombis.size until targetPairCnt).foldLeft(newcombis){(acc, idx) =>
+                    if(acc.nonEmpty) splitEven(acc) else acc
+                  }
+                  splitted
+                }
+                else {
+                  val n = if(level % 3 == 0) splitSmallest(candidate) else splitSmallest(newcombis)
+                  nc(n, level-1)
+                }
               }
             }
             println(s"relevantcombis=${relevantcombis.size}, fullPairs=$targetPairCnt")
-            val newcombis = nc(relevantcombis, relevantcombis.size)// stable ++ possiblePairs.map{x => x._1 ++ x._2}
+            val newcombis = splitSex match {
+              case GemischterDurchgang =>
+                val rcm = relevantcombis.filter(c => c.head._2.head._1.geschlecht.equalsIgnoreCase("M"))
+                val rcw = relevantcombis.filter(c => c.head._2.head._1.geschlecht.equalsIgnoreCase("W"))
+                nc(rcm, rcm.size) ++ nc(rcw, rcw.size)
+              case _ =>
+                nc(relevantcombis, relevantcombis.size)
+            }
+            //val newcombis = nc(relevantcombis, relevantcombis.size)// stable ++ possiblePairs.map{x => x._1 ++ x._2}
 
-            if(targetPairCnt > 0 && newcombis.size < relevantcombis.size && (newcombis.size % startgeraete.size == 0)) {
+            if(targetPairCnt > 0 && newcombis.size < relevantcombis.size) {
               println(s"combis merging: ${(newcombis).map(x => easyPrint(x)).mkString("", "\n  ", "")}")
               combineToDurchgangSize(newcombis.sortBy { durchgangRiegeSize }.reverse)
+            }
+            else if(targetPairCnt > 0 && newcombis.size < relevantcombis.size && ((newcombis.size % startgeraete.size == 0) || (newcombis.size / startgeraete.size >= 1))) {
+              println(s"take newcombis : ${newcombis.map(x => easyPrint(x)).mkString("", "\n  ", "")}")
+              newcombis
             }
             else {
               println(s"combis elsefall : ${relevantcombis.map(x => easyPrint(x)).mkString("", "\n  ", "")}")
@@ -1357,10 +1391,21 @@ trait KutuService {
           }.sortBy(_._4).reverse // Abweichung
           val idxKleinste = stats.size-1
           val kleinsteGruppe = stats(idxKleinste)
+          type GrpStats = (RiegeAthletWertungen, Int, Int, Int, Option[(String, Seq[(AthletView, Seq[WertungView])])])
+          def checkSC(p1: GrpStats, p2: GrpStats): Boolean = {
+            splitSex match {
+              case GemischterDurchgang =>
+                val ret = p1._1.head._2.head._1.geschlecht.equals(p2._1.head._2.head._1.geschlecht)
+                ret
+              case _ =>
+                true
+            }
+          }
           stats.find{p =>
-            val b1 = p._5 != None && p != kleinsteGruppe
+            val b11 = p._5 != None && p != kleinsteGruppe
+            val b12 = checkSC(p, kleinsteGruppe)
             val b2 = p._3 > averageSize
-            val b3 = b1 && p._5.get._2.size + kleinsteGruppe._3 <= averageSize
+            val b3 = b11 && p._5.get._2.size + kleinsteGruppe._3 <= averageSize
             lazy val v1 = vereinStats(p._5.get._2.head._1.verein, p._1)
             lazy val v2 = vereinStats(p._5.get._2.head._1.verein, kleinsteGruppe._1)
             lazy val b4 = v1 - p._5.get._2.size < v2 + p._5.get._2.size
@@ -1368,19 +1413,30 @@ trait KutuService {
               p._5.get._2.size + kleinsteGruppe._3 <= averageSize + (kleinsteGruppe._3 / 2)
             }
 
-            b1 && ((b2 && b3 && b4) || (b2 && b3 && b5 && v1 - p._5.get._2.size == 0 && v2 > 0))
+            b11 && b12 && ((b2 && b3 && b4) || (b2 && b3 && b5 && v1 - p._5.get._2.size == 0 && v2 > 0))
           } match {
             case Some(groessteTeilbare) =>
               val gt = groessteTeilbare._1 - groessteTeilbare._5.get._1
               val sg = kleinsteGruppe._1 ++ Map(groessteTeilbare._5.get._1 -> groessteTeilbare._5.get._2)
               spreadEven(gt +: startriegen.filter(sr => sr != groessteTeilbare._1 && sr != kleinsteGruppe._1) :+ sg)
-            case _ => stats.find(p => p != kleinsteGruppe && p._3 > averageSize && p._5 != None && p._5.get._2.size + kleinsteGruppe._3 <= averageSize) match {
+            case _ => stats.find(p => p != kleinsteGruppe && checkSC(p, kleinsteGruppe) && p._3 > averageSize && p._5 != None && p._5.get._2.size + kleinsteGruppe._3 <= averageSize) match {
               case Some(groessteTeilbare) =>
                 val gt = groessteTeilbare._1 - groessteTeilbare._5.get._1
                 val sg = kleinsteGruppe._1 ++ Map(groessteTeilbare._5.get._1 -> groessteTeilbare._5.get._2)
                 spreadEven(gt +: startriegen.filter(sr => sr != groessteTeilbare._1 && sr != kleinsteGruppe._1) :+ sg)
               case _ => startriegen
             }
+          }
+        }
+
+        def handleVereinMerges(startriegen: Seq[RiegeAthletWertungen]): Seq[RiegeAthletWertungen] = {
+          splitSex match {
+            case GemischteRiegen =>
+              bringVereineTogether(startriegen)
+            case GemischterDurchgang =>
+              startriegen
+            case GetrennteDurchgaenge =>
+              bringVereineTogether(startriegen)
           }
         }
 
@@ -1405,9 +1461,8 @@ trait KutuService {
               val anzTurner = durchgangRiegeSize(geraetRiege)
               accc.find{p =>
                 p != geraetRiege &&
-                //acc.contains(geraetRiege) &&
                 accc.contains(geraetRiege) &&
-                durchgangRiegeSize(p) <= averageSize + (averageSize * 0.3).intValue() &&
+                durchgangRiegeSize(p) <= math.min(maxRiegenSize, averageSize + (averageSize * 0.3).intValue()) &&
                 vereinStats(verein, p) > v1
               }
               match {
@@ -1427,7 +1482,7 @@ trait KutuService {
           }
         }
 
-        val alignedriegen = bringVereineTogether(spreadEven(bringVereineTogether(spreadEven(combineToDurchgangSize(riegen)))))
+        val alignedriegen = if(riegen.isEmpty) riegen else handleVereinMerges(spreadEven(handleVereinMerges(spreadEven(combineToDurchgangSize(riegen)))))
 
         // Startgeräteverteilung
         alignedriegen.zipWithIndex.flatMap{ r =>
@@ -1458,12 +1513,42 @@ trait KutuService {
         val (programm, wertungen) = x
         wertungen.head._2.head.wettkampfdisziplin.notenSpez match {
           case at: Athletiktest =>
-            groupWertungen(programm.name, wertungen, atGrouper, atGrouper, disziplinlist)
+            splitSex match {
+              case GemischteRiegen =>
+                groupWertungen(programm, wertungen, atGrouper, atGrouper, disziplinlist)
+              case GemischterDurchgang =>
+                groupWertungen(programm, wertungen, atGrouper, atGrouper, disziplinlist)
+              case GetrennteDurchgaenge =>
+                val m = wertungen.filter(w => w._1.geschlecht.equalsIgnoreCase("M"))
+                val w = wertungen.filter(w => w._1.geschlecht.equalsIgnoreCase("W"))
+                groupWertungen(programm + "-Tu", m, atGrouper, atGrouper, disziplinlist) ++
+                groupWertungen(programm + "-Ti", w, atGrouper, atGrouper, disziplinlist)
+            }
           case KuTuWettkampf =>
-            groupWertungen(programm.name, wertungen, wkFilteredGrouper, wkGrouper, disziplinlist)
+            splitSex match {
+              case GemischteRiegen =>
+                groupWertungen(programm, wertungen, wkFilteredGrouper, wkGrouper, disziplinlist)
+              case GemischterDurchgang =>
+                groupWertungen(programm, wertungen, wkFilteredGrouper, wkGrouper, disziplinlist)
+              case GetrennteDurchgaenge =>
+                val m = wertungen.filter(w => w._1.geschlecht.equalsIgnoreCase("M"))
+                val w = wertungen.filter(w => w._1.geschlecht.equalsIgnoreCase("W"))
+                groupWertungen(programm + "-Tu", m, wkFilteredGrouper, wkGrouper, disziplinlist) ++
+                groupWertungen(programm + "-Ti", w, wkFilteredGrouper, wkGrouper, disziplinlist)
+            }
           case GeTuWettkampf =>
             // Barren wegschneiden (ist kein Startgerät)
-            groupWertungen(programm.name, wertungen, wkFilteredGrouper, wkGrouper, disziplinlist.take(disziplinlist.size -1))
+            val m = wertungen.filter(w => w._1.geschlecht.equalsIgnoreCase("M"))
+            splitSex match {
+              case GemischteRiegen =>
+                groupWertungen(programm, wertungen, wkFilteredGrouper, wkGrouper, disziplinlist.take(disziplinlist.size -1))
+              case GemischterDurchgang =>
+                groupWertungen(programm, wertungen, wkFilteredGrouper, wkGrouper, disziplinlist.take(disziplinlist.size -1))
+              case GetrennteDurchgaenge =>
+                val w = wertungen.filter(w => w._1.geschlecht.equalsIgnoreCase("W"))
+                groupWertungen(programm + "-Tu", m, wkFilteredGrouper, wkGrouper, disziplinlist.take(disziplinlist.size -1)) ++
+                groupWertungen(programm + "-Ti", w, wkFilteredGrouper, wkGrouper, disziplinlist.take(disziplinlist.size -1))
+            }
         }
       }
 
@@ -1595,7 +1680,7 @@ trait KutuService {
   def insertRiegenWertungen(riege: RiegeRaw, wertungen: Seq[Wertung]) {
     database withTransaction { implicit session =>
       sqlu"""
-                  insert into riege
+                  replace into riege
                   (wettkampf_Id, name, durchgang, start)
                   values (${riege.wettkampfId}, ${riege.r}, ${riege.durchgang}, ${riege.start})
           """.execute
