@@ -1128,7 +1128,11 @@ trait KutuService {
     }
   }
 
-  def suggestDurchgaenge(wettkampfId: Long, maxRiegenSize: Int = 14, durchgangfilter: Set[String] = Set.empty, programmfilter: Set[Long] = Set.empty, splitSex: SexDivideRule = GemischteRiegen, splitPgm: Boolean = true): Map[String, Map[Disziplin, Iterable[(String,Seq[Wertung])]]] = {
+  def suggestDurchgaenge(wettkampfId: Long, maxRiegenSize: Int = 14,
+      durchgangfilter: Set[String] = Set.empty, programmfilter: Set[Long] = Set.empty,
+      splitSex: SexDivideRule = GemischteRiegen, splitPgm: Boolean = true,
+      onDisziplinList: Option[Set[Disziplin]] = None): Map[String, Map[Disziplin, Iterable[(String,Seq[Wertung])]]] = {
+
     val cache = scala.collection.mutable.Map[String, Int]()
     val wert = selectWertungen(wettkampfId = Some(wettkampfId)).groupBy(w => w.athlet)
     def listProgramme(x: Map[AthletView, Seq[WertungView]]) = x.map(w => w._2.head.wettkampfdisziplin.programm.name).toSet
@@ -1509,45 +1513,48 @@ trait KutuService {
           x => x.athlet.verein match {case Some(v) => v.easyprint case None => ""}
           );
 
+      val dzl = disziplinlist.filter(d => onDisziplinList.isEmpty || onDisziplinList.get.contains(d))
+
       val riegen = progAthlWertungen.flatMap{x =>
         val (programm, wertungen) = x
         wertungen.head._2.head.wettkampfdisziplin.notenSpez match {
           case at: Athletiktest =>
             splitSex match {
               case GemischteRiegen =>
-                groupWertungen(programm, wertungen, atGrouper, atGrouper, disziplinlist)
+                groupWertungen(programm, wertungen, atGrouper, atGrouper, dzl)
               case GemischterDurchgang =>
-                groupWertungen(programm, wertungen, atGrouper, atGrouper, disziplinlist)
+                groupWertungen(programm, wertungen, atGrouper, atGrouper, dzl)
               case GetrennteDurchgaenge =>
                 val m = wertungen.filter(w => w._1.geschlecht.equalsIgnoreCase("M"))
                 val w = wertungen.filter(w => w._1.geschlecht.equalsIgnoreCase("W"))
-                groupWertungen(programm + "-Tu", m, atGrouper, atGrouper, disziplinlist) ++
-                groupWertungen(programm + "-Ti", w, atGrouper, atGrouper, disziplinlist)
+                groupWertungen(programm + "-Tu", m, atGrouper, atGrouper, dzl) ++
+                groupWertungen(programm + "-Ti", w, atGrouper, atGrouper, dzl)
             }
           case KuTuWettkampf =>
             splitSex match {
               case GemischteRiegen =>
-                groupWertungen(programm, wertungen, wkFilteredGrouper, wkGrouper, disziplinlist)
+                groupWertungen(programm, wertungen, wkFilteredGrouper, wkGrouper, dzl)
               case GemischterDurchgang =>
-                groupWertungen(programm, wertungen, wkFilteredGrouper, wkGrouper, disziplinlist)
+                groupWertungen(programm, wertungen, wkFilteredGrouper, wkGrouper, dzl)
               case GetrennteDurchgaenge =>
                 val m = wertungen.filter(w => w._1.geschlecht.equalsIgnoreCase("M"))
                 val w = wertungen.filter(w => w._1.geschlecht.equalsIgnoreCase("W"))
-                groupWertungen(programm + "-Tu", m, wkFilteredGrouper, wkGrouper, disziplinlist) ++
-                groupWertungen(programm + "-Ti", w, wkFilteredGrouper, wkGrouper, disziplinlist)
+                groupWertungen(programm + "-Tu", m, wkFilteredGrouper, wkGrouper, dzl) ++
+                groupWertungen(programm + "-Ti", w, wkFilteredGrouper, wkGrouper, dzl)
             }
           case GeTuWettkampf =>
             // Barren wegschneiden (ist kein Startgerät)
-            val m = wertungen.filter(w => w._1.geschlecht.equalsIgnoreCase("M"))
+            val dzl = disziplinlist.filter(d => (onDisziplinList.isEmpty && d.id != 5) || (onDisziplinList.nonEmpty && onDisziplinList.get.contains(d)))
             splitSex match {
               case GemischteRiegen =>
-                groupWertungen(programm, wertungen, wkFilteredGrouper, wkGrouper, disziplinlist.take(disziplinlist.size -1))
+                groupWertungen(programm, wertungen, wkFilteredGrouper, wkGrouper, dzl)
               case GemischterDurchgang =>
-                groupWertungen(programm, wertungen, wkFilteredGrouper, wkGrouper, disziplinlist.take(disziplinlist.size -1))
+                groupWertungen(programm, wertungen, wkFilteredGrouper, wkGrouper, dzl)
               case GetrennteDurchgaenge =>
+                val m = wertungen.filter(w => w._1.geschlecht.equalsIgnoreCase("M"))
                 val w = wertungen.filter(w => w._1.geschlecht.equalsIgnoreCase("W"))
-                groupWertungen(programm + "-Tu", m, wkFilteredGrouper, wkGrouper, disziplinlist.take(disziplinlist.size -1)) ++
-                groupWertungen(programm + "-Ti", w, wkFilteredGrouper, wkGrouper, disziplinlist.take(disziplinlist.size -1))
+                groupWertungen(programm + "-Tu", m, wkFilteredGrouper, wkGrouper, dzl) ++
+                groupWertungen(programm + "-Ti", w, wkFilteredGrouper, wkGrouper, dzl)
             }
         }
       }
