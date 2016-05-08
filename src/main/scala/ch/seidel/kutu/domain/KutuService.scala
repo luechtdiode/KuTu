@@ -684,9 +684,7 @@ trait KutuService {
       case Some(f) =>
         for {
           pgm <- programs
-          a <- selectAthletes.build.filter(altersfilter(pgm, _)).filter{x =>
-//              println(x)
-              f(pgm.id, x)}
+          a <- selectAthletes.build.filter(altersfilter(pgm, _)).filter{x => f(pgm.id, x)}
           wkid <- sql"""
                     select id from wettkampfdisziplin
                     where programm_Id = ${pgm.id}
@@ -1069,6 +1067,7 @@ trait KutuService {
       ret
     }
   }
+
   def groupKey(grplst: List[WertungView => String])(wertung: WertungView): String = {
     grplst.foldLeft(""){(acc, f) =>
       acc + "," + f(wertung)
@@ -1077,55 +1076,64 @@ trait KutuService {
 
   def suggestRiegen(wettkampfId: Long, rotationstation: Seq[Int]): Seq[(String, Seq[Wertung])] = {
 
-    val riegencnt = rotationstation.reduce(_+_)
-    val cache = scala.collection.mutable.Map[String, Int]()
-    val wertungen = selectWertungen(wettkampfId = Some(wettkampfId)).groupBy(w => w.athlet)
-    if(wertungen.isEmpty) {
-      Seq[(String, Seq[Wertung])]()
-    }
-    else {
+	val riegencnt = rotationstation.reduce(_+_)
+	val cache = scala.collection.mutable.Map[String, Int]()
+	val wertungen = selectWertungen(wettkampfId = Some(wettkampfId)).groupBy(w => w.athlet)
+	if(wertungen.isEmpty) {
+	  Seq[(String, Seq[Wertung])]()
+	}
+	else {
 
-      @tailrec
-      def groupWertungen(grp: List[WertungView => String], grpAll: List[WertungView => String]): Seq[(String, Seq[Wertung])] = {
-        val sugg = wertungen.groupBy(w => groupKey(grp)(w._2.head)).toSeq
-        if(riegencnt > 0 && sugg.size > riegencnt && grp.size > 1) {
-          // too much groups
-          // remove last grouper and try again
-          groupWertungen(grp.reverse.tail.reverse, grpAll)
-        }
-        else {
-          // per groupkey, transform map to seq, sorted by all groupkeys
-          val prep = sugg.map{x =>
-            (/*grpkey*/  x._1,
-             /*values*/  x._2.foldLeft((Seq[(AthletView, Seq[WertungView])](), Set[Long]())){(acc, w) =>
-                val (data, seen) = acc
-                val (athlet, _ ) = w
-                if(seen.contains(athlet.id)) acc else (w +: data, seen + athlet.id)
-              }
-              ._1.sortBy(w => groupKey(grpAll)(w._2.head))
-            )
-          }
-          splitToRiegenCount(prep, riegencnt, cache).map(w => (w._1, w._2.flatMap(wv => wv._2.map(wt => wt.toWertung(w._1)))))
-        }
-      }
-      val wkGrouper: List[WertungView => String] = List(
-          x => x.athlet.geschlecht,
-          x => x.wettkampfdisziplin.programm.name,
-          x => x.athlet.verein match {case Some(v) => v.easyprint case None => ""},
-          // fallback ... should not happen
-          x => (x.athlet.gebdat match {case Some(d) => f"$d%tY"; case _ => ""})
-          )
-      val wkFilteredGrouper = wkGrouper.take(if(riegencnt == 0) wkGrouper.size-1 else wkGrouper.size)
-      val atGrouper: List[WertungView => String] = List(
-          x => x.athlet.geschlecht,
-          x => (x.athlet.gebdat match {case Some(d) => f"$d%tY"; case _ => ""}),
-          x => x.athlet.verein match {case Some(v) => v.easyprint case None => ""}
-          );
-      if(wertungen.head._2.head.wettkampfdisziplin.notenSpez.isInstanceOf[Athletiktest])
-        groupWertungen(atGrouper, atGrouper)
-      else
-        groupWertungen(wkFilteredGrouper, wkGrouper)
+	  @tailrec
+	  def groupWertungen(grp: List[WertungView => String], grpAll: List[WertungView => String]): Seq[(String, Seq[Wertung])] = {
+	    val sugg = wertungen.groupBy(w => groupKey(grp)(w._2.head)).toSeq
+	    if(riegencnt > 0 && sugg.size > riegencnt && grp.size > 1) {
+	      // too much groups
+	      // remove last grouper and try again
+	      groupWertungen(grp.reverse.tail.reverse, grpAll)
+	    }
+	    else {
+	      // per groupkey, transform map to seq, sorted by all groupkeys
+	      val prep = sugg.map{x =>
+	        (/*grpkey*/  x._1,
+	         /*values*/  x._2.foldLeft((Seq[(AthletView, Seq[WertungView])](), Set[Long]())){(acc, w) =>
+	            val (data, seen) = acc
+	            val (athlet, _ ) = w
+	            if(seen.contains(athlet.id)) acc else (w +: data, seen + athlet.id)
+	          }
+	          ._1.sortBy(w => groupKey(grpAll)(w._2.head))
+	        )
+	      }
+	      splitToRiegenCount(prep, riegencnt, cache).map(w => (w._1, w._2.flatMap(wv => wv._2.map(wt => wt.toWertung(w._1)))))
+	    }
+	  }
+	  val wkFilteredGrouper = wkGrouper.take(if(riegencnt == 0) wkGrouper.size-1 else wkGrouper.size)
+	      if(wertungen.head._2.head.wettkampfdisziplin.notenSpez.isInstanceOf[Athletiktest])
+	        groupWertungen(atGrouper, atGrouper)
+	      else
+	        groupWertungen(wkFilteredGrouper, wkGrouper)
+	    }
+	  }
+
+  val wkGrouper: List[WertungView => String] = List(
+    x => x.athlet.geschlecht,
+    x => x.wettkampfdisziplin.programm.name,
+    x => x.athlet.verein match {case Some(v) => v.easyprint case None => ""},
+    // fallback ... should not happen
+    x => (x.athlet.gebdat match {case Some(d) => f"$d%tY"; case _ => ""})
+      )
+  val atGrouper: List[WertungView => String] = List(
+      x => x.athlet.geschlecht,
+      x => (x.athlet.gebdat match {case Some(d) => f"$d%tY"; case _ => ""}),
+      x => x.athlet.verein match {case Some(v) => v.easyprint case None => ""}
+    );
+
+  def generateRiegenName(w: WertungView) = {
+    val grp = w.wettkampfdisziplin.notenSpez match {
+      case a: Athletiktest => atGrouper
+      case _ => wkGrouper.take(wkGrouper.size-1)
     }
+    groupKey(grp)(w)
   }
 
   def suggestDurchgaenge(wettkampfId: Long, maxRiegenSize: Int = 14,
@@ -1499,21 +1507,8 @@ trait KutuService {
         }
       }
 
-      val wkGrouper: List[WertungView => String] = List(
-          x => x.athlet.geschlecht,
-          x => x.wettkampfdisziplin.programm.name,
-          x => x.athlet.verein match {case Some(v) => v.easyprint case None => ""},
-          // fallback ... should not happen
-          x => (x.athlet.gebdat match {case Some(d) => f"$d%tY"; case _ => ""})
-          )
-      val wkFilteredGrouper = wkGrouper.take(if(riegencnt == 0) wkGrouper.size-1 else wkGrouper.size)
-      val atGrouper: List[WertungView => String] = List(
-          x => x.athlet.geschlecht,
-          x => (x.athlet.gebdat match {case Some(d) => f"$d%tY"; case _ => ""}),
-          x => x.athlet.verein match {case Some(v) => v.easyprint case None => ""}
-          );
-
       val dzl = disziplinlist.filter(d => onDisziplinList.isEmpty || onDisziplinList.get.contains(d))
+      val wkFilteredGrouper = wkGrouper.take(if(riegencnt == 0) wkGrouper.size-1 else wkGrouper.size)
 
       val riegen = progAthlWertungen.flatMap{x =>
         val (programm, wertungen) = x
@@ -1715,6 +1710,36 @@ trait KutuService {
              left outer join disziplin d on (r.start = d.id)
              where wettkampf_id=$wettkampfId
           """.as[Riege].iterator.toList
+    }
+  }
+
+  def moveToProgram(wId: Long, pgmId: Long, aId: Long) {
+    database withTransaction { implicit session =>
+      sqlu"""
+                delete from wertung where
+                athlet_Id=${aId} and wettkampf_Id=${wId}
+        """.execute
+      for {
+        wkid <- sql"""
+                  select id from wettkampfdisziplin
+                  where programm_Id = ${pgmId}
+                """.as[Long]
+      } {
+        sqlu"""
+                  insert into wertung
+                  (athlet_Id, wettkampfdisziplin_Id, wettkampf_Id, note_d, note_e, endnote)
+                  values (${aId}, ${wkid}, ${wId}, 0, 0, 0)
+          """.execute
+      }
+    }
+    val wertungen = selectWertungen(athletId = Some(aId), wettkampfId = Some(wId))
+    database withTransaction { implicit session =>
+      for(w <- wertungen) {
+        sqlu"""     UPDATE wertung
+                    SET riege=${generateRiegenName(w)}
+                    WHERE id=${w.id}
+          """.execute
+      }
     }
   }
 }

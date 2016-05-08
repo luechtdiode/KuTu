@@ -60,6 +60,7 @@ import ch.seidel.kutu.data.ResourceExchanger
 import ch.seidel.kutu.renderer.RiegenblattToHtmlRenderer
 import ch.seidel.kutu.renderer.RiegenBuilder
 import scalafx.scene.control.ListCell
+import scalafx.beans.binding.Bindings
 
 trait TCAccess {
   def getIndex: Int
@@ -1320,24 +1321,53 @@ class WettkampfWertungTab(wettkampfmode: Boolean, programm: Option[ProgrammView]
           }, new Button("OK") {
             onAction = (event: ActionEvent) => {
               if (!wkview.selectionModel().isEmpty) {
-                val athletwertungen = wkview.selectionModel().getSelectedItem.map(_.init.id).toSet
-                val athlet = wkview.selectionModel().getSelectedItem.map(_.init.athlet).head
-                service.unassignAthletFromWettkampf(athletwertungen)
-                wkModel.remove(wkview.selectionModel().getSelectedIndex)
-                def filter(progId: Long, a: Athlet): Boolean = a.id == athlet.id
-                service.assignAthletsToWettkampf(wettkampf.id, Set(cbProgramms.selectionModel().selectedItem.value.id), Some(filter))
+                service.moveToProgram(wettkampf.id, cbProgramms.selectionModel().selectedItem.value.id, wkview.selectionModel().getSelectedItem.head.init.athlet.id)
+                reloadData()
               }
             }
           })
+        }
+      }
+      val setRiege2ForAllButton = new Button {
+        text = "2. Riege"
+        tooltip = "2. Riegenzuteilung für alle in der Liste angezeigten Tu/Ti"
+        minWidth = 75
+        onAction = (event: ActionEvent) => {
+          implicit val impevent = event
+          val selectedRiege = wkModel
+					val txtRiegenName = new TextField
+				  PageDisplayer.showInDialog(text.value, new DisplayablePage() {
+					  def getPage: Node = {
+					  new HBox {
+						  prefHeight = 50
+								  alignment = Pos.BottomRight
+								  hgrow = Priority.Always
+								  children = Seq(new Label("Neuer Riegenname für die zweite Riegenzuteilung "), txtRiegenName)
+					  }
+				  }
+				  }, new Button("OK") {
+					  onAction = (event: ActionEvent) => {
+						  KuTuApp.invokeWithBusyIndicator {
+						    val ws = selectedRiege.map(wl => wl.map(w => w.init.copy(riege2 = if(txtRiegenName.text.value.nonEmpty) Some(txtRiegenName.text.value) else None).toWertung))
+							  ws.foreach { x => x.foreach(service.updateWertungSimple(_))}
+							  reloadData()
+						  }
+					  }
+				  })
         }
       }
 
       //addButton.disable <== when (wkview.selectionModel.value.selectedItemProperty.isNull()) choose true otherwise false
       val moveAvaillable = programm.forall { p => p.head != 1 }
       moveToOtherProgramButton.disable <== when(wkview.selectionModel.value.selectedItemProperty.isNull()) choose moveAvaillable otherwise false
+      setRiege2ForAllButton.disable <== when(Bindings.createBooleanBinding(() => {
+        wkModel.isEmpty
+      },
+        wkModel
+      )) choose true otherwise false
       removeButton.disable <== when(wkview.selectionModel.value.selectedItemProperty.isNull()) choose true otherwise false
 
-      List(addButton, pasteFromExcel, moveToOtherProgramButton, generateTeilnehmerListe, generateNotenblaetter, removeButton).filter(btn => !btn.text.value.equals("."))
+      List(addButton, pasteFromExcel, moveToOtherProgramButton, setRiege2ForAllButton, generateTeilnehmerListe, generateNotenblaetter, removeButton).filter(btn => !btn.text.value.equals("."))
     }
 
     val clearButton = new Button {
