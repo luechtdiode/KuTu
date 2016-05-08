@@ -19,7 +19,7 @@ object RiegenBuilder {
               einteilung.start.equals(startdisziplin) &&
               k.diszipline.contains(disziplin.map(_.name).getOrElse(""))
             case None => false
-          })}
+          })}.sortBy { x => x.verein + x.jahrgang}
           (offset, disziplin, (tuti.drop(offset) ++ tuti.take(offset)))
         }
       }.filter(p => p._3.nonEmpty)
@@ -162,7 +162,7 @@ trait RiegenblattToHtmlRenderer {
   private def notenblatt(riegepart: (GeraeteRiege, Int), logo: String) = {
     val (riege, tutioffset) = riegepart
     val d = riege.kandidaten.zip(Range(1, riege.kandidaten.size+1)).map{kandidat =>
-      s"""<tr class="turnerRow"><td class="large">${kandidat._2 + tutioffset}. ${kandidat._1.vorname} ${kandidat._1.name}</td><td>&nbsp;</td><td>&nbsp;</td><td class="totalCol">&nbsp;</td></tr>"""
+      s"""<tr class="turnerRow"><td class="large">${kandidat._2 + tutioffset}. ${kandidat._1.vorname} ${kandidat._1.name} ${if(kandidat._1.programm.isEmpty())"" else "(" + kandidat._1.programm + ")"}</td><td>&nbsp;</td><td>&nbsp;</td><td class="totalCol">&nbsp;</td></tr>"""
     }.mkString("", "\n", "\n")
 
     s"""<div class=riegenblatt>
@@ -181,15 +181,26 @@ trait RiegenblattToHtmlRenderer {
     """
   }
 
+  val fcs = 15
+
   def toHTML(kandidaten: Seq[Kandidat], logo: String): String = {
     def splitToFitPage(riegen: List[GeraeteRiege]) = {
       riegen.foldLeft(List[(GeraeteRiege, Int)]()){(acc, item) =>
-        if(item.kandidaten.size > 13) {
-          acc ++ item.kandidaten.sliding(13, 13).zipWithIndex.map(k => (item.copy(kandidaten = k._1), k._2 * 13))
+        if(item.kandidaten.size > fcs) {
+          acc ++ item.kandidaten.sliding(fcs, fcs)
+          .zipWithIndex.map(k => (item.copy(kandidaten = k._1), k._2 * fcs))
         }
         else {
           acc :+ (item, 0)
         }
+      }
+      .map{r =>
+        val (riege, offset) = r
+        val full = (fcs + riege.kandidaten.size / fcs * fcs) - riege.kandidaten.size
+        (riege.copy(kandidaten = riege.kandidaten ++ (1 to full).map(i => Kandidat(
+            riege.kandidaten.head.wettkampfTitel,
+            "", "", 0,
+            "", "", "", "", None, None, Seq[String]()))), offset)
       }
     }
     val riegendaten = splitToFitPage(RiegenBuilder.mapToGeraeteRiegen(kandidaten.toList))

@@ -236,6 +236,17 @@ class WettkampfWertungTab(wettkampfmode: Boolean, programm: Option[ProgrammView]
       promptText = "Durchgang-Filter"
       buttonCell = new GeraeteRiegeListCell()
       cellFactory = { p => new GeraeteRiegeListCell() }
+
+      focused.onChange({
+        if(!focused.value) {
+          val focusSetter = AutoCommitTextFieldTableCell.selectFirstEditable(wkview)
+          Platform.runLater(new Runnable() {
+            override def run = {
+              focusSetter()
+            }
+          })
+        }
+      })
     }
 
     def rebuildDurchgangFilterList = {
@@ -540,8 +551,34 @@ class WettkampfWertungTab(wettkampfmode: Boolean, programm: Option[ProgrammView]
         wkModel.clear()
         val searchQuery = newVal.toUpperCase().split(" ")
 //        val rd = riegendurchgaenge.values.toList
-        for{athlet <- wertungen
-        } {
+        def restoreVisibility(col: TableColumn[_, _]) {
+          col.sortable.value = true
+          if(col.delegate.isInstanceOf[TCAccess]) {
+            val tca = col.delegate.asInstanceOf[TCAccess]
+            if(tca.getIndex > -1 && !col.isVisible()) {
+              col.setVisible(true)
+            }
+          }
+          col.columns.foreach(restoreVisibility(_))
+        }
+        def hideIfNotUsed(col: TableColumn[_, _]) {
+          col.sortable.value = false
+          if(col.delegate.isInstanceOf[TCAccess]) {
+            val tca = col.delegate.asInstanceOf[TCAccess]
+            if(tca.getIndex > -1) {
+              col.setVisible(durchgangFilter.disziplin.isDefined && tca.getIndex == disziplinlist.indexOf(durchgangFilter.disziplin.get))
+            }
+          }
+          col.columns.foreach(hideIfNotUsed(_))
+        }
+        val orderedWertungen = if(durchgangFilter.equals(emptyRiege)){
+          wkview.columns.foreach{restoreVisibility(_)}
+          wertungen}
+        else {
+          wkview.columns.foreach{hideIfNotUsed(_)}
+          wertungen.sortBy { w => durchgangFilter.kandidaten.indexWhere { x => x.id == w.head.init.athlet.id } }
+        }
+        for{athlet <- orderedWertungen} {
           def isRiegenFilterConform(wertung: WertungView) = {
             val athletRiegen = Seq(wertung.riege, wertung.riege2)
             val undefined = athletRiegen.forall{case None => true case _ => false}
@@ -587,6 +624,24 @@ class WettkampfWertungTab(wettkampfmode: Boolean, programm: Option[ProgrammView]
         }
       }
     }
+    txtUserFilter.focused.onChange({
+      if(!txtUserFilter.focused.value) {
+        val focusSetter = AutoCommitTextFieldTableCell.selectFirstEditable(wkview)
+        Platform.runLater(new Runnable() {
+          override def run = {
+            focusSetter()
+          }
+        })
+      }
+    })
+    wkview.focused.onChange({
+      if(wkview.focused.value) {
+        txtUserFilter.promptText = "Athlet-Filter (CTRL+F)"
+      }
+      else {
+        txtUserFilter.promptText = "Athlet-Filter"
+      }
+    })
 
   	val teilnehmerCntLabel = new Label {
   	  margin = Insets(5, 0, 5, 5)
@@ -1406,7 +1461,7 @@ class WettkampfWertungTab(wettkampfmode: Boolean, programm: Option[ProgrammView]
         ) ++ (if(wettkampfmode) List(cmbDurchgangFilter, txtUserFilter) else actionButtons :+ clearButton :+ cmbDurchgangFilter :+ txtUserFilter)
       }
       center = new SplitPane {
-        orientation = Orientation.HORIZONTAL
+        orientation = Orientation.Horizontal
      		items += riegenFilterPane
         items += editTablePane
 

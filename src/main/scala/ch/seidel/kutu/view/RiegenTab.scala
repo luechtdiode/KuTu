@@ -803,7 +803,6 @@ class RiegenTab(wettkampf: WettkampfView, override val service: KutuService) ext
             acc
           }
         }
-        println(programme)
         val riegendurchgaenge = service.selectRiegen(wettkampf.id).map(r => r.r-> r).toMap
         val seriendaten = for {
           programm <- programme
