@@ -98,6 +98,9 @@ trait RiegenblattToHtmlRenderer {
           font-size: 12px;
           font-weight: 600;
         }
+        .sf {
+          font-size: 9px;
+        }
         .showborder {
           margin-top: 8px;
           padding: 5px;
@@ -159,10 +162,13 @@ trait RiegenblattToHtmlRenderer {
     </html>
   """
 
+  def shorten(s: String) = if(s.length() > 3) (" " + s.split(" ").map(_.take(3) + ".").mkString(" ")) else s
+
   private def notenblatt(riegepart: (GeraeteRiege, Int), logo: String) = {
     val (riege, tutioffset) = riegepart
     val d = riege.kandidaten.zip(Range(1, riege.kandidaten.size+1)).map{kandidat =>
-      s"""<tr class="turnerRow"><td class="large">${kandidat._2 + tutioffset}. ${kandidat._1.vorname} ${kandidat._1.name} ${if(kandidat._1.programm.isEmpty())"" else "(" + kandidat._1.programm + ")"}</td><td>&nbsp;</td><td>&nbsp;</td><td class="totalCol">&nbsp;</td></tr>"""
+      val programm = if(kandidat._1.programm.isEmpty())"" else "(" + shorten(kandidat._1.programm) + ")"
+      s"""<tr class="turnerRow"><td class="large">${kandidat._2 + tutioffset}. ${kandidat._1.vorname} ${kandidat._1.name} <span class='sf'>${programm}</span></td><td>&nbsp;</td><td>&nbsp;</td><td class="totalCol">&nbsp;</td></tr>"""
     }.mkString("", "\n", "\n")
 
     s"""<div class=riegenblatt>
@@ -197,10 +203,15 @@ trait RiegenblattToHtmlRenderer {
       .map{r =>
         val (riege, offset) = r
         val full = (fcs + riege.kandidaten.size / fcs * fcs) - riege.kandidaten.size
-        (riege.copy(kandidaten = riege.kandidaten ++ (1 to full).map(i => Kandidat(
-            riege.kandidaten.head.wettkampfTitel,
-            "", "", 0,
-            "", "", "", "", None, None, Seq[String]()))), offset)
+        if(full % fcs == 0) {
+          r
+        }
+        else {
+          (riege.copy(kandidaten = riege.kandidaten ++ (1 to full).map(i => Kandidat(
+              riege.kandidaten.head.wettkampfTitel,
+              "", "", 0,
+              "", "", "", "", None, None, Seq[String]()))), offset)
+        }
       }
     }
     val riegendaten = splitToFitPage(RiegenBuilder.mapToGeraeteRiegen(kandidaten.toList))
