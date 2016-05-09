@@ -1076,44 +1076,46 @@ trait KutuService {
 
   def suggestRiegen(wettkampfId: Long, rotationstation: Seq[Int]): Seq[(String, Seq[Wertung])] = {
 
-	val riegencnt = rotationstation.reduce(_+_)
-	val cache = scala.collection.mutable.Map[String, Int]()
-	val wertungen = selectWertungen(wettkampfId = Some(wettkampfId)).groupBy(w => w.athlet)
-	if(wertungen.isEmpty) {
-	  Seq[(String, Seq[Wertung])]()
-	}
-	else {
+  	val riegencnt = rotationstation.reduce(_+_)
+  	val cache = scala.collection.mutable.Map[String, Int]()
+  	val wertungen = selectWertungen(wettkampfId = Some(wettkampfId)).groupBy(w => w.athlet)
+  	if(wertungen.isEmpty) {
+  	  Seq[(String, Seq[Wertung])]()
+  	}
+  	else {
 
-	  @tailrec
-	  def groupWertungen(grp: List[WertungView => String], grpAll: List[WertungView => String]): Seq[(String, Seq[Wertung])] = {
-	    val sugg = wertungen.groupBy(w => groupKey(grp)(w._2.head)).toSeq
-	    if(riegencnt > 0 && sugg.size > riegencnt && grp.size > 1) {
-	      // too much groups
-	      // remove last grouper and try again
-	      groupWertungen(grp.reverse.tail.reverse, grpAll)
-	    }
-	    else {
-	      // per groupkey, transform map to seq, sorted by all groupkeys
-	      val prep = sugg.map{x =>
-	        (/*grpkey*/  x._1,
-	         /*values*/  x._2.foldLeft((Seq[(AthletView, Seq[WertungView])](), Set[Long]())){(acc, w) =>
-	            val (data, seen) = acc
-	            val (athlet, _ ) = w
-	            if(seen.contains(athlet.id)) acc else (w +: data, seen + athlet.id)
-	          }
-	          ._1.sortBy(w => groupKey(grpAll)(w._2.head))
-	        )
-	      }
-	      splitToRiegenCount(prep, riegencnt, cache).map(w => (w._1, w._2.flatMap(wv => wv._2.map(wt => wt.toWertung(w._1)))))
-	    }
-	  }
-	  val wkFilteredGrouper = wkGrouper.take(if(riegencnt == 0) wkGrouper.size-1 else wkGrouper.size)
-	      if(wertungen.head._2.head.wettkampfdisziplin.notenSpez.isInstanceOf[Athletiktest])
-	        groupWertungen(atGrouper, atGrouper)
-	      else
-	        groupWertungen(wkFilteredGrouper, wkGrouper)
-	    }
-	  }
+  	  @tailrec
+  	  def groupWertungen(grp: List[WertungView => String], grpAll: List[WertungView => String]): Seq[(String, Seq[Wertung])] = {
+  	    val sugg = wertungen.groupBy(w => groupKey(grp)(w._2.head)).toSeq
+  	    if(riegencnt > 0 && sugg.size > riegencnt && grp.size > 1) {
+  	      // too much groups
+  	      // remove last grouper and try again
+  	      groupWertungen(grp.reverse.tail.reverse, grpAll)
+  	    }
+  	    else {
+  	      // per groupkey, transform map to seq, sorted by all groupkeys
+  	      val prep = sugg.map{x =>
+  	        (/*grpkey*/  x._1,
+  	         /*values*/  x._2.foldLeft((Seq[(AthletView, Seq[WertungView])](), Set[Long]())){(acc, w) =>
+  	            val (data, seen) = acc
+  	            val (athlet, _ ) = w
+  	            if(seen.contains(athlet.id)) acc else (w +: data, seen + athlet.id)
+  	          }
+  	          ._1.sortBy(w => groupKey(grpAll)(w._2.head))
+  	        )
+  	      }
+  	      splitToRiegenCount(prep, riegencnt, cache).map(w => (w._1, w._2.flatMap(wv => wv._2.map(wt => wt.toWertung(w._1)))))
+  	    }
+  	  }
+  	  val wkFilteredGrouper = wkGrouper.take(if(riegencnt == 0) wkGrouper.size-1 else wkGrouper.size)
+      if(wertungen.head._2.head.wettkampfdisziplin.notenSpez.isInstanceOf[Athletiktest])
+        groupWertungen(atGrouper, atGrouper)
+      else
+        groupWertungen(wkFilteredGrouper, wkGrouper)
+    }
+  }
+
+  def shorten(s: String) = (" " + s.split(" ").map(_.take(3) + ".").mkString(" "))
 
   val wkGrouper: List[WertungView => String] = List(
     x => x.athlet.geschlecht,
@@ -1123,9 +1125,10 @@ trait KutuService {
     x => (x.athlet.gebdat match {case Some(d) => f"$d%tY"; case _ => ""})
       )
   val atGrouper: List[WertungView => String] = List(
+      x => shorten(x.wettkampfdisziplin.programm.name),
       x => x.athlet.geschlecht,
-      x => (x.athlet.gebdat match {case Some(d) => f"$d%tY"; case _ => ""}),
-      x => x.athlet.verein match {case Some(v) => v.easyprint case None => ""}
+      x => (x.athlet.gebdat match {case Some(d) => f"$d%tY"; case _ => ""})
+      //x => x.athlet.verein match {case Some(v) => v.easyprint case None => ""}
     );
 
   def generateRiegenName(w: WertungView) = {
@@ -1143,7 +1146,7 @@ trait KutuService {
 
     val cache = scala.collection.mutable.Map[String, Int]()
     val wert = selectWertungen(wettkampfId = Some(wettkampfId)).groupBy(w => w.athlet)
-    def listProgramme(x: Map[AthletView, Seq[WertungView]]) = x.map(w => w._2.head.wettkampfdisziplin.programm.name).toSet
+    def listProgramme(x: Map[AthletView, Seq[WertungView]]) = x.flatMap(w => w._2.map(xx => xx.wettkampfdisziplin.programm.name)).toSet
     val findDurchgang = selectRiegenRaw(wettkampfId)
       .filter(rr => rr.durchgang.isDefined)
       .map(rr => rr.r -> rr.durchgang.get)
@@ -1154,11 +1157,34 @@ trait KutuService {
       (programmfilter.isEmpty || programmfilter.contains(x._2.head.wettkampfdisziplin.programm.id)) &&
       (durchgangfilter.isEmpty || (x._2.head.riege.forall(r => findDurchgang.get(r).forall(d => durchgangfilter.contains(d)))))
     }
+
     val programme = listProgramme(filteredWert)
-    val progAthlWertungen = filteredWert.groupBy(x => if(splitPgm || durchgangfilter.isEmpty || programme.size == 1) x._2.head.wettkampfdisziplin.programm.name else programme.mkString(" & "))
+
+    val progAthlWertungen = filteredWert.toSeq.flatMap{aw =>
+      val (athlet, wertungen) = aw
+      val pgmsPerAthlet = wertungen.groupBy { wg => wg.wettkampfdisziplin.programm }.toSeq.map(w => (athlet, w._1, w._2))
+      if(pgmsPerAthlet.size > 1) {
+        pgmsPerAthlet.map(pgpa =>
+          (pgpa._1, pgpa._2, pgpa._3.map{w =>
+            val wkpg = shorten(pgpa._2.name)
+            if(w.riege.getOrElse("").contains(wkpg))
+              w
+            else
+              w.copy(riege = Some((w.riege.getOrElse("") + wkpg).trim))
+          }))
+      }
+      else {
+        pgmsPerAthlet
+      }
+    }.groupBy{x =>
+      if(splitPgm || durchgangfilter.isEmpty || programme.size == 1)
+        x._2.name
+      else programme.mkString(" & ")
+    }.map(x => x._1 -> x._2.map(xx => xx._1 -> xx._3).toMap)
 
     val riegencnt = 0 // riegencnt 0 is unlimited
     val disziplinlist = listDisziplinesZuWettkampf(wettkampfId)
+    val wkdisziplinlist = listWettkampfDisziplines(wettkampfId)
 
     if(wert.isEmpty) {
       Map[String, Map[Disziplin, Iterable[(String,Seq[Wertung])]]]()
@@ -1169,7 +1195,7 @@ trait KutuService {
         //cache.clear
         def split(riege: (String, Seq[A])): Seq[(String, Seq[A])] = {
           val (key, r) = riege
-          val oldKey1 = (key + ".").split("\\.").headOption.getOrElse("Riege")
+          val oldKey1 = (key + "#").split("#").headOption.getOrElse("Riege")
           val oldList = r.toList
           def occurences(key: String) = {
             val cnt = cache.getOrElse(key, 0) + 1
@@ -1178,8 +1204,8 @@ trait KutuService {
             f"${cnt}%02d"
           }
 //            println(f"key: $key, oldKey1: $oldKey1")
-          val key1 = if(key.contains(".")) key else oldKey1 + "." + occurences(oldKey1)
-          val key2 = oldKey1 + "." + occurences(oldKey1)
+          val key1 = if(key.contains("#")) key else oldKey1 + "#" + occurences(oldKey1)
+          val key2 = oldKey1 + "#" + occurences(oldKey1)
           val splitpos = r.size / 2
           //println(f"key1: $key1, key2: $key2")
           List((key1, oldList.take(splitpos)), (key2, oldList.drop(splitpos)))
@@ -1195,7 +1221,7 @@ trait KutuService {
         }
       }
 
-      def groupWertungen(programm: String, prgWertungen: Map[AthletView, Seq[WertungView]], grp: List[WertungView => String], grpAll: List[WertungView => String], startgeraete: Seq[Disziplin])/*: Seq[(String, Seq[Wertung])]*/ = {
+      def groupWertungen(programm: String, prgWertungen: Map[AthletView, Seq[WertungView]], grp: List[WertungView => String], grpAll: List[WertungView => String], startgeraete: List[Disziplin], jahrgangGroup: Boolean) = {
         val sugg = prgWertungen.groupBy(w => groupKey(grp)(w._2.head)).toSeq
         // per groupkey, transform map to seq, sorted by all groupkeys
         val atheltenInRiege = sugg.map{x =>
@@ -1208,6 +1234,12 @@ trait KutuService {
             ._1.sortBy(w => groupKey(grpAll)(w._2.head)) // Liste der Athleten in der Riege, mit ihren Wertungen
           )
         }
+//
+//        val jahrgangGroup = prgWertungen.head._2.head.wettkampfdisziplin.notenSpez match {
+//          case at: Athletiktest => true
+//          case _ => false
+//        }
+
         val riegen = splitToRiegenCount(atheltenInRiege, 0/*, cache*/).map(r => Map(r._1 -> r._2))
         // Maximalausdehnung. Nun die sinnvollen Zusammenlegungen
         type RiegeAthletWertungen = Map[String, Seq[(AthletView, Seq[WertungView])]]
@@ -1273,10 +1305,10 @@ trait KutuService {
             val splitpoint = sorted.indexWhere { x => x.size > 1 }
             splitAt(splitpoint, sorted, true)
           }
-          def filterM(list: Seq[RiegeAthletWertungen]) = {
-            ???
-          }
-          if(relevantcombis.size > startgeraete.size) {
+
+          val startgeraeteSize = startgeraete.size
+
+          if(relevantcombis.size > startgeraeteSize) {
             // sind mind. startgeraete.size Riegen zu finden, die gepaart die Maxilmalgruppengrösse nicht übersteigen?
 
             @tailrec
@@ -1292,7 +1324,7 @@ trait KutuService {
                 // Auf max Riegen-Size zusammenmergen (auffüllen)
                 buildPairs(requiredPairs, candidate.tail.take(candidate.size -2), acc :+ (candidate.head, candidate.last))
               }
-              else if(candidate.size > 1 && (acc.size < requiredPairs - startgeraete.size || acc.size % startgeraete.size != 0)) {
+              else if(candidate.size > 1 && (acc.size < requiredPairs - startgeraeteSize || acc.size % startgeraeteSize != 0)) {
                 buildPairs(requiredPairs, candidate.tail, acc)
               }
               else {
@@ -1313,7 +1345,7 @@ trait KutuService {
               if(newcombis.map(durchgangRiegeSize).sum != candidate.map(durchgangRiegeSize).sum) {
                 println("ALERT")
               }
-              if(splitSex == GemischterDurchgang) {
+              if(splitSex == GemischterDurchgang || jahrgangGroup) {
                 newcombis
               }
               else {
@@ -1335,13 +1367,25 @@ trait KutuService {
               }
             }
             println(s"relevantcombis=${relevantcombis.size}, fullPairs=$targetPairCnt")
+            def splitJGIfRequired(in: Seq[RiegeAthletWertungen]): Seq[RiegeAthletWertungen] = {
+//              if(jahrgangGroup) {
+//                val perJG = in.groupBy {c => AthletJahrgang(c.head._2.head._1.gebdat).hg }
+//                perJG.map{x =>
+//                  val (jg, raw) = x
+//                  nc(raw, in.size)
+//                }.reduce(_ ++ _)
+//              }
+//              else {
+                nc(in, in.size)
+//              }
+            }
             val newcombis = splitSex match {
               case GemischterDurchgang =>
                 val rcm = relevantcombis.filter(c => c.head._2.head._1.geschlecht.equalsIgnoreCase("M"))
                 val rcw = relevantcombis.filter(c => c.head._2.head._1.geschlecht.equalsIgnoreCase("W"))
-                nc(rcm, rcm.size) ++ nc(rcw, rcw.size)
+                splitJGIfRequired(rcm) ++ splitJGIfRequired(rcw)
               case _ =>
-                nc(relevantcombis, relevantcombis.size)
+                splitJGIfRequired(relevantcombis)
             }
             //val newcombis = nc(relevantcombis, relevantcombis.size)// stable ++ possiblePairs.map{x => x._1 ++ x._2}
 
@@ -1442,7 +1486,10 @@ trait KutuService {
         }
 
         def handleVereinMerges(startriegen: Seq[RiegeAthletWertungen]): Seq[RiegeAthletWertungen] = {
-          splitSex match {
+          if(jahrgangGroup) {
+            startriegen
+          }
+          else splitSex match {
             case GemischteRiegen =>
               bringVereineTogether(startriegen)
             case GemischterDurchgang =>
@@ -1509,47 +1556,54 @@ trait KutuService {
 
       val dzl = disziplinlist.filter(d => onDisziplinList.isEmpty || onDisziplinList.get.contains(d))
       val wkFilteredGrouper = wkGrouper.take(if(riegencnt == 0) wkGrouper.size-1 else wkGrouper.size)
-
+      if(progAthlWertungen.keys.size > 1) {
+        println(progAthlWertungen.keys.size, progAthlWertungen.keys.map(k => (progAthlWertungen(k).size, progAthlWertungen(k).map(w => w._2.size).sum)))
+      }
       val riegen = progAthlWertungen.flatMap{x =>
         val (programm, wertungen) = x
+        val dzlf = dzl.filter{d =>
+          val pgm = wertungen.head._2.head.wettkampfdisziplin.programm
+          wkdisziplinlist.exists { wd => d.id == wd.disziplinId && wd.programmId == pgm.id }
+        }
+
         wertungen.head._2.head.wettkampfdisziplin.notenSpez match {
           case at: Athletiktest =>
             splitSex match {
               case GemischteRiegen =>
-                groupWertungen(programm, wertungen, atGrouper, atGrouper, dzl)
+                groupWertungen(programm, wertungen, atGrouper, atGrouper, dzlf, true)
               case GemischterDurchgang =>
-                groupWertungen(programm, wertungen, atGrouper, atGrouper, dzl)
+                groupWertungen(programm, wertungen, atGrouper, atGrouper, dzlf, true)
               case GetrennteDurchgaenge =>
                 val m = wertungen.filter(w => w._1.geschlecht.equalsIgnoreCase("M"))
                 val w = wertungen.filter(w => w._1.geschlecht.equalsIgnoreCase("W"))
-                groupWertungen(programm + "-Tu", m, atGrouper, atGrouper, dzl) ++
-                groupWertungen(programm + "-Ti", w, atGrouper, atGrouper, dzl)
+                groupWertungen(programm + "-Tu", m, atGrouper, atGrouper, dzlf, true) ++
+                groupWertungen(programm + "-Ti", w, atGrouper, atGrouper, dzlf, true)
             }
           case KuTuWettkampf =>
             splitSex match {
               case GemischteRiegen =>
-                groupWertungen(programm, wertungen, wkFilteredGrouper, wkGrouper, dzl)
+                groupWertungen(programm, wertungen, wkFilteredGrouper, wkGrouper, dzlf, false)
               case GemischterDurchgang =>
-                groupWertungen(programm, wertungen, wkFilteredGrouper, wkGrouper, dzl)
+                groupWertungen(programm, wertungen, wkFilteredGrouper, wkGrouper, dzlf, false)
               case GetrennteDurchgaenge =>
                 val m = wertungen.filter(w => w._1.geschlecht.equalsIgnoreCase("M"))
                 val w = wertungen.filter(w => w._1.geschlecht.equalsIgnoreCase("W"))
-                groupWertungen(programm + "-Tu", m, wkFilteredGrouper, wkGrouper, dzl) ++
-                groupWertungen(programm + "-Ti", w, wkFilteredGrouper, wkGrouper, dzl)
+                groupWertungen(programm + "-Tu", m, wkFilteredGrouper, wkGrouper, dzlf, false) ++
+                groupWertungen(programm + "-Ti", w, wkFilteredGrouper, wkGrouper, dzlf, false)
             }
           case GeTuWettkampf =>
             // Barren wegschneiden (ist kein Startgerät)
             val dzl = disziplinlist.filter(d => (onDisziplinList.isEmpty && d.id != 5) || (onDisziplinList.nonEmpty && onDisziplinList.get.contains(d)))
             splitSex match {
               case GemischteRiegen =>
-                groupWertungen(programm, wertungen, wkFilteredGrouper, wkGrouper, dzl)
+                groupWertungen(programm, wertungen, wkFilteredGrouper, wkGrouper, dzlf, false)
               case GemischterDurchgang =>
-                groupWertungen(programm, wertungen, wkFilteredGrouper, wkGrouper, dzl)
+                groupWertungen(programm, wertungen, wkFilteredGrouper, wkGrouper, dzlf, false)
               case GetrennteDurchgaenge =>
                 val m = wertungen.filter(w => w._1.geschlecht.equalsIgnoreCase("M"))
                 val w = wertungen.filter(w => w._1.geschlecht.equalsIgnoreCase("W"))
-                groupWertungen(programm + "-Tu", m, wkFilteredGrouper, wkGrouper, dzl) ++
-                groupWertungen(programm + "-Ti", w, wkFilteredGrouper, wkGrouper, dzl)
+                groupWertungen(programm + "-Tu", m, wkFilteredGrouper, wkGrouper, dzlf, false) ++
+                groupWertungen(programm + "-Ti", w, wkFilteredGrouper, wkGrouper, dzlf, false)
             }
         }
       }
