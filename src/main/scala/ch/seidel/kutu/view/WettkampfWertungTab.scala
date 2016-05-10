@@ -401,6 +401,7 @@ class WettkampfWertungTab(wettkampfmode: Boolean, programm: Option[ProgrammView]
           cellValueFactory = { x => if (x.value.size > index) x.value(index).endnote else wertung.endnote }
           styleClass += "table-cell-with-value"
           prefWidth = 80
+          editable = false
         }
         val cl: jfxsc.TableColumn[IndexedSeq[WertungEditor], _] =  if(withDNotes) {
           new TableColumn[IndexedSeq[WertungEditor], String] {

@@ -35,8 +35,13 @@ object AutoCommitTextFieldTableCell {
   def forTableColumn[S, T](converter: StringConverter[T]): (TableColumn[S, T] => TableCell[S, T]) =
     (view: TableColumn[S, T]) => jfxscc.TextFieldTableCell.forTableColumn[S, T](converter).call(view)
 
+  def isEditableColumn(p: TableColumn[_, _]) = p.isVisible() && p.isEditable() && p.columns.size == 0
+
+  def getEditableColums[T](tableView: TableView[T]) =
+    tableView.columns.toList.flatMap(p => p +: p.columns.toList).filter(isEditableColumn(_))
+
   def selectFirstEditable[T](tableView: TableView[T]) = {
- 		val editableColumns = tableView.columns.toList.flatMap(p => p +: p.getColumns.toList).filter(p => p.isVisible() && p.isEditable())
+ 		val editableColumns = getEditableColums(tableView)
     val ret = () => {
       if(editableColumns.size > 0) {
         val nextEditable = editableColumns.head
@@ -49,69 +54,89 @@ object AutoCommitTextFieldTableCell {
   }
 
   def selectNextEditable[T](tableView: TableView[T]) = {
-    val editableColumns = tableView.columns.toList.flatMap(p => p +: p.getColumns.toList).filter(p => p.isVisible() && p.isEditable())
-    val selected = tableView.selectionModel.value.getSelectedCells.head
-    val remaining = editableColumns.dropWhile(_ != selected.getTableColumn)
+    val editableColumns = getEditableColums(tableView)
+    val selected = tableView.selectionModel.value.selectedCells.head
+    val remaining = editableColumns.dropWhile(_ != selected.tableColumn)
     val newSelectedRowIdx = if(selected.getRow == tableView.items.value.size()-1) 0 else selected.getRow + 1
     val ret = () => {
       if(remaining.size > 1) {
         val nextEditable = remaining.drop(1).head
         tableView.selectionModel.value.select(selected.getRow, nextEditable)
+        tableView.scrollTo(selected.getRow)
         tableView.scrollToColumn(nextEditable)
       }
-      else if(editableColumns.size > 1) {
+      else if(editableColumns.size > 1 && tableView.items.value.size == 1) {
         val nextEditable = editableColumns.head
         tableView.selectionModel.value.select(selected.getRow, nextEditable)
+        tableView.scrollTo(selected.getRow)
         tableView.scrollToColumn(nextEditable)
       }
-      else if(editableColumns.size == 1 && !editableColumns.head.equals(selected.getTableColumn)) {
+      else if(editableColumns.size == 1 && !editableColumns.head.equals(selected.tableColumn)) {
         tableView.selectionModel.value.select(selected.getRow, editableColumns.head)
         tableView.scrollTo(selected.getRow)
+        tableView.scrollToColumn(editableColumns.head)
       }
-      else if(editableColumns.size == 1) {
+      else {
         tableView.selectionModel.value.select(newSelectedRowIdx, editableColumns.head)
         tableView.scrollTo(newSelectedRowIdx)
+        tableView.scrollToColumn(editableColumns.head)
       }
     }
     ret
   }
 
   def selectPrevEditable[T](tableView: TableView[T]) = {
-    val editableColumns = tableView.columns.toList.flatMap(p => p +: p.getColumns.toList).filter(p => p.isVisible() && p.isEditable())
-    val selected = tableView.selectionModel.value.getSelectedCells.head
-    val remaining = editableColumns.reverse.dropWhile(_ != selected.getTableColumn)
+    val editableColumns = getEditableColums(tableView)
+    val selected = tableView.selectionModel.value.selectedCells.head
+    val remaining = editableColumns.reverse.dropWhile(_ != selected.tableColumn)
     val newSelectedRowIdx = if(selected.getRow == 0) tableView.items.value.size()-1 else selected.getRow - 1
     val ret = () => {
       if(remaining.size > 1) {
         val nextEditable = remaining.drop(1).head
         tableView.selectionModel.value.select(selected.getRow, nextEditable)
+        tableView.scrollTo(selected.getRow)
         tableView.scrollToColumn(nextEditable)
       }
-      else if(editableColumns.size > 1) {
+      else if(editableColumns.size > 1 && tableView.items.value.size == 1) {
         val nextEditable = editableColumns.last
         tableView.selectionModel.value.select(selected.getRow, nextEditable)
+        tableView.scrollTo(selected.getRow)
         tableView.scrollToColumn(nextEditable)
       }
-      else if(editableColumns.size == 1 && !editableColumns.head.equals(selected.getTableColumn)) {
+      else if(editableColumns.size == 1 && !editableColumns.head.equals(selected.tableColumn)) {
         tableView.selectionModel.value.select(selected.getRow, editableColumns.head)
         tableView.scrollTo(selected.getRow)
+        tableView.scrollToColumn(editableColumns.head)
       }
-      else if(editableColumns.size == 1) {
-        tableView.selectionModel.value.select(newSelectedRowIdx, editableColumns.head)
+      else {
+        tableView.selectionModel.value.select(newSelectedRowIdx, editableColumns.last)
         tableView.scrollTo(newSelectedRowIdx)
+        tableView.scrollToColumn(editableColumns.last)
       }
     }
     ret
   }
 
   def selectBelowEditable[T](tableView: TableView[T]) = {
-    val editableColumns = tableView.columns.toList.flatMap(p => p +: p.getColumns.toList).filter(p => p.isVisible() && p.isEditable())
-    val selected = tableView.selectionModel.value.getSelectedCells.head
-    val remaining = if(selected.getTableColumn.isEditable()) editableColumns.dropWhile(_ != selected.getTableColumn) else editableColumns
+    val editableColumns = getEditableColums(tableView)
+    val selected = tableView.selectionModel.value.selectedCells.head
+    val remaining = if(selected.tableColumn.isEditable()) editableColumns.dropWhile(_ != selected.tableColumn) else editableColumns
     val newSelectedRowIdx = if(selected.getRow == tableView.items.value.size()-1) 0 else selected.getRow + 1
+    val movedDown = selected.getRow < newSelectedRowIdx
     val ret = () => {
-      if(remaining.size > 0) {
-        tableView.selectionModel.value.select(newSelectedRowIdx, remaining.head)
+      if(remaining.size == 1) {
+        val nextEditable = if(!movedDown) editableColumns.head else remaining.head
+        tableView.selectionModel.value.select(newSelectedRowIdx, nextEditable)
+        tableView.scrollToColumn(nextEditable)
+      }
+      else if(remaining.size > 1) {
+        val nextEditable = if(!movedDown) remaining.drop(1).head else remaining.head
+        tableView.selectionModel.value.select(newSelectedRowIdx, nextEditable)
+        tableView.scrollToColumn(nextEditable)
+      }
+      else {
+        tableView.selectionModel.value.select(newSelectedRowIdx, editableColumns.head)
+        tableView.scrollToColumn(editableColumns.head)
       }
       tableView.scrollTo(newSelectedRowIdx)
     }
@@ -119,14 +144,26 @@ object AutoCommitTextFieldTableCell {
   }
 
   def selectAboveEditable[T](tableView: TableView[T]) = {
-    val editableColumns = tableView.columns.toList.flatMap(p => p +: p.getColumns.toList).filter(p => p.isVisible() && p.isEditable())
-    val selected = tableView.selectionModel.value.getSelectedCells.head
+    val editableColumns = getEditableColums(tableView)
+    val selected = tableView.selectionModel.value.selectedCells.head
 
-    val remaining = if(selected.getTableColumn.isEditable()) editableColumns.dropWhile(_ != selected.getTableColumn) else editableColumns
+    val remaining = if(selected.tableColumn.isEditable()) editableColumns.reverse.dropWhile(_ != selected.tableColumn) else editableColumns
     val newSelectedRowIdx = if(selected.getRow == 0) tableView.items.value.size()-1 else selected.getRow - 1
+    val movedUp = selected.getRow > newSelectedRowIdx
     val ret = () => {
-      if(remaining.size > 0) {
-        tableView.selectionModel.value.select(newSelectedRowIdx, remaining.head)
+      if(remaining.size == 1) {
+        val nextEditable = if(!movedUp) editableColumns.last else remaining.head
+        tableView.selectionModel.value.select(newSelectedRowIdx, nextEditable)
+        tableView.scrollToColumn(nextEditable)
+      }
+      else if(remaining.size > 1) {
+        val nextEditable = if(!movedUp) remaining.drop(1).head else remaining.head
+        tableView.selectionModel.value.select(newSelectedRowIdx, nextEditable)
+        tableView.scrollToColumn(nextEditable)
+      }
+      else {
+        tableView.selectionModel.value.select(newSelectedRowIdx, editableColumns.last)
+        tableView.scrollToColumn(editableColumns.head)
       }
       tableView.scrollTo(newSelectedRowIdx)
     }
@@ -171,7 +208,7 @@ object AutoCommitTextFieldTableCell {
         if(filterText != null) filterText.requestFocus()
         ke.consume()
 
-      case KeyCode.TAB if(!ke.controlDown) =>
+      case KeyCode.Tab if(!ke.controlDown) =>
         val toSelectNextOp = selectNextEditable(tableView)
         val toSelectPrevOp = selectPrevEditable(tableView)
         val action = new Runnable() {
@@ -179,7 +216,6 @@ object AutoCommitTextFieldTableCell {
             if(ke.shiftDown)
               toSelectPrevOp()
             else {
-//              tableView.selectionModel.value.selectNext()
               toSelectNextOp()
             }
           }
@@ -192,33 +228,16 @@ object AutoCommitTextFieldTableCell {
         }
 
       case KeyCode.Enter =>
-        val toSelectNextOp = selectNextEditable(tableView)
-        val toSelectPrevOp = selectPrevEditable(tableView)
         val toSelectAboveOp = selectAboveEditable(tableView)
         val toSelectBelowOp = selectBelowEditable(tableView)
         val index = tableView.selectionModel.value.getSelectedIndex
         val action = new Runnable() {
           override def run = {
             if(ke.shiftDown) {
-              if(index == 0) {
-                if(index == tableView.items.value.size()-1) {
-                  toSelectPrevOp()
-                }
-                else {
-                  toSelectNextOp()
-                }
-              }
-              else {
-                toSelectAboveOp()
-              }
+              toSelectAboveOp()
             }
             else {
-              if(index == 0 && index == tableView.items.value.size()-1) {
-                toSelectNextOp()
-              }
-              else  {
-                toSelectBelowOp()
-              }
+              toSelectBelowOp()
             }
           }
         }
