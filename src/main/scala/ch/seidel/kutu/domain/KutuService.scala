@@ -1170,9 +1170,11 @@ trait KutuService {
         (x._1, mappedWertungen)
       }
     }
-    .filter{x => x._2.size > 0 &&
+    .filter{x =>
+      lazy val pgms = x._2.groupBy { mw => mw.wettkampfdisziplin.programm }.map(_._1).size
+      x._2.size > 0 &&
       (programmfilter.isEmpty || programmfilter.contains(x._2.head.wettkampfdisziplin.programm.id)) &&
-      (durchgangfilter.isEmpty || containsRiegeInDurchgang(x._2.head.riege) || containsRiegeInDurchgang(x._2.head.riege2))
+      (durchgangfilter.isEmpty || containsRiegeInDurchgang(x._2.head.riege) || (pgms == 1 && containsRiegeInDurchgang(x._2.head.riege2)))
     }
 
     val programme = listProgramme(filteredWert)
