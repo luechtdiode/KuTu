@@ -20,8 +20,13 @@ object RiegenBuilder {
               k.diszipline.contains(disziplin.map(_.name).getOrElse(""))
             case None => false
           })}.sortBy { x => x.verein + x.jahrgang}
-          val mo = (tuti.size * geraete.size + offset) % tuti.size
-          (offset, disziplin, (tuti.drop(mo) ++ tuti.take(mo)))
+          if(tuti.size > 0) {
+            val mo = (tuti.size * geraete.size + offset) % tuti.size
+            (offset, disziplin, (tuti.drop(mo) ++ tuti.take(mo)))
+          }
+          else {
+            (offset, disziplin, tuti)
+          }
         }
       }.filter(p => p._3.nonEmpty)
     }

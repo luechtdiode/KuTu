@@ -259,15 +259,38 @@ object ResourceExchanger extends KutuService {
     val sep = ";"
     def butify(grpkey: String, anzahl: Int) = {
       val parts = grpkey.split(",")
-      // Verein         Kategorie                   Geschlecht
+      // Verband, Verein, Kategorie, Geschlecht, Anzahl, Bezeichnung
+      //            2         1           0
       mapVereinVerband(parts.drop(2).head) + sep + (parts.drop(2) :+ parts(1).split("//.")(0) :+ parts(0).replace("M", "Tu").replace("W", "Ti")).mkString(sep) + sep + anzahl + sep +
                       (parts.drop(2) :+ parts(1).split("//.")(0) :+ parts(0).replace("M", "(Tu)").replace("W", "(Ti)")).mkString(" ") + s" (${anzahl})"
     }
+    def butifyATT(grpkey: String, anzahl: Int) = {
+      val parts = grpkey.split(",")
+      val geschl = parts(0).replace("M", "Tu").replace("W", "Ti")
+      val jg = parts(1)
+      val verein = parts(2)
+      val kat = parts(3)
+      val rearranged = Seq(verein, jg, geschl)
+      // Verband, Verein, Jahrgang, Geschlecht, Anzahl, Bezeichnung
+      //            2         1         0
+      mapVereinVerband(verein) + sep + rearranged.mkString(sep) + sep + anzahl + sep +
+                      rearranged.mkString(" ") + s" (${anzahl})"
+    }
     val riegen = riegenRaw.map{r =>
       val anzahl = r._2.map(w => w.athletId).toSet.size
-      butify(r._1, anzahl)
+      if(wettkampf.programmId == 1) {
+        butifyATT(r._1, anzahl)
+      }
+      else {
+        butify(r._1, anzahl)
+      }
     }
-    export.write(f"sep=${sep}\nVerband${sep}Verein${sep}Kategorie${sep}Geschlecht${sep}Anzahl${sep}Einheitsbezeichnung\n".getBytes("ISO-8859-1"))
+    if(wettkampf.programmId == 1) {
+      export.write(f"sep=${sep}\nVerband${sep}Verein${sep}Jahrgang${sep}Geschlecht${sep}Anzahl${sep}Einheitsbezeichnung\n".getBytes("ISO-8859-1"))
+    }
+    else {
+      export.write(f"sep=${sep}\nVerband${sep}Verein${sep}Kategorie${sep}Geschlecht${sep}Anzahl${sep}Einheitsbezeichnung\n".getBytes("ISO-8859-1"))
+    }
     for(riege <- riegen) {
       export.write((riege + "\n").getBytes("ISO-8859-1"))
     }

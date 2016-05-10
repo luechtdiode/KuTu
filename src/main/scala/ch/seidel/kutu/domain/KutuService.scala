@@ -1108,10 +1108,13 @@ trait KutuService {
   	    }
   	  }
   	  val wkFilteredGrouper = wkGrouper.take(if(riegencnt == 0) wkGrouper.size-1 else wkGrouper.size)
-      if(wertungen.head._2.head.wettkampfdisziplin.notenSpez.isInstanceOf[Athletiktest])
-        groupWertungen(atGrouper, atGrouper)
-      else
+      if(wertungen.head._2.head.wettkampfdisziplin.notenSpez.isInstanceOf[Athletiktest]) {
+        val atGrp = atGrouper.drop(1)++atGrouper.take(1)
+        groupWertungen(atGrp, atGrp)
+      }
+      else {
         groupWertungen(wkFilteredGrouper, wkGrouper)
+      }
     }
   }
 
@@ -1127,8 +1130,8 @@ trait KutuService {
   val atGrouper: List[WertungView => String] = List(
       x => shorten(x.wettkampfdisziplin.programm.name),
       x => x.athlet.geschlecht,
-      x => (x.athlet.gebdat match {case Some(d) => f"$d%tY"; case _ => ""})
-      //x => x.athlet.verein match {case Some(v) => v.easyprint case None => ""}
+      x => (x.athlet.gebdat match {case Some(d) => f"$d%tY"; case _ => ""}),
+      x => x.athlet.verein match {case Some(v) => v.easyprint case None => ""}
     );
 
   def generateRiegenName(w: WertungView) = {
@@ -1243,16 +1246,11 @@ trait KutuService {
             ._1.sortBy(w => groupKey(grpAll)(w._2.head)) // Liste der Athleten in der Riege, mit ihren Wertungen
           )
         }
-//
-//        val jahrgangGroup = prgWertungen.head._2.head.wettkampfdisziplin.notenSpez match {
-//          case at: Athletiktest => true
-//          case _ => false
-//        }
 
         val athletensum = atheltenInRiege.flatMap{a =>
-          a._2.map(aw => aw._1)
+          a._2.map(aw => aw._1.id)
         }.toSet.size
-        val maxRiegenSize2 = if(maxRiegenSize > 0) maxRiegenSize else athletensum / disziplinlist.size
+        val maxRiegenSize2 = if(maxRiegenSize > 0) maxRiegenSize else math.max(14, athletensum / disziplinlist.size)
         val riegen = splitToRiegenCount(atheltenInRiege, maxRiegenSize2).map(r => Map(r._1 -> r._2))
         // Maximalausdehnung. Nun die sinnvollen Zusammenlegungen
         type RiegeAthletWertungen = Map[String, Seq[(AthletView, Seq[WertungView])]]
@@ -1581,16 +1579,17 @@ trait KutuService {
 
         wertungen.head._2.head.wettkampfdisziplin.notenSpez match {
           case at: Athletiktest =>
+            val atgr = atGrouper.take(atGrouper.size-1)
             splitSex match {
               case GemischteRiegen =>
-                groupWertungen(programm, wertungen, atGrouper, atGrouper, dzlf, true)
+                groupWertungen(programm, wertungen, atgr, atGrouper, dzlf, true)
               case GemischterDurchgang =>
-                groupWertungen(programm, wertungen, atGrouper, atGrouper, dzlf, true)
+                groupWertungen(programm, wertungen, atgr, atGrouper, dzlf, true)
               case GetrennteDurchgaenge =>
                 val m = wertungen.filter(w => w._1.geschlecht.equalsIgnoreCase("M"))
                 val w = wertungen.filter(w => w._1.geschlecht.equalsIgnoreCase("W"))
-                groupWertungen(programm + "-Tu", m, atGrouper, atGrouper, dzlf, true) ++
-                groupWertungen(programm + "-Ti", w, atGrouper, atGrouper, dzlf, true)
+                groupWertungen(programm + "-Tu", m, atgr, atGrouper, dzlf, true) ++
+                groupWertungen(programm + "-Ti", w, atgr, atGrouper, dzlf, true)
             }
           case KuTuWettkampf =>
             splitSex match {
@@ -1606,17 +1605,17 @@ trait KutuService {
             }
           case GeTuWettkampf =>
             // Barren wegschneiden (ist kein Startgerät)
-            val dzl = disziplinlist.filter(d => (onDisziplinList.isEmpty && d.id != 5) || (onDisziplinList.nonEmpty && onDisziplinList.get.contains(d)))
+            val dzlff = dzlf.filter(d => (onDisziplinList.isEmpty && d.id != 5) || (onDisziplinList.nonEmpty && onDisziplinList.get.contains(d)))
             splitSex match {
               case GemischteRiegen =>
-                groupWertungen(programm, wertungen, wkFilteredGrouper, wkGrouper, dzlf, false)
+                groupWertungen(programm, wertungen, wkFilteredGrouper, wkGrouper, dzlff, false)
               case GemischterDurchgang =>
-                groupWertungen(programm, wertungen, wkFilteredGrouper, wkGrouper, dzlf, false)
+                groupWertungen(programm, wertungen, wkFilteredGrouper, wkGrouper, dzlff, false)
               case GetrennteDurchgaenge =>
                 val m = wertungen.filter(w => w._1.geschlecht.equalsIgnoreCase("M"))
                 val w = wertungen.filter(w => w._1.geschlecht.equalsIgnoreCase("W"))
-                groupWertungen(programm + "-Tu", m, wkFilteredGrouper, wkGrouper, dzlf, false) ++
-                groupWertungen(programm + "-Ti", w, wkFilteredGrouper, wkGrouper, dzlf, false)
+                groupWertungen(programm + "-Tu", m, wkFilteredGrouper, wkGrouper, dzlff, false) ++
+                groupWertungen(programm + "-Ti", w, wkFilteredGrouper, wkGrouper, dzlff, false)
             }
         }
       }
@@ -1653,12 +1652,12 @@ trait KutuService {
           """.execute
 
       sqlu"""   UPDATE wertung
-                SET riege=''
+                SET riege=null
                 WHERE wettkampf_id=${wettkampfid} and riege=${oldname}
           """.execute
 
       sqlu"""   UPDATE wertung
-                SET riege2=''
+                SET riege2=null
                 WHERE wettkampf_id=${wettkampfid} and riege2=${oldname}
           """.execute
     }
