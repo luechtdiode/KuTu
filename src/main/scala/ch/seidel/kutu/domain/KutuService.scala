@@ -1152,10 +1152,24 @@ trait KutuService {
       .map(rr => rr.r -> rr.durchgang.get)
       .toMap
 
+    def containsRiegeInDurchgang(riege: Option[String]) =
+      riege.nonEmpty && riege.forall(r =>
+        findDurchgang.get(r).forall(d =>
+          durchgangfilter.contains(d)))
+
     val filteredWert = wert
-    .filter{x =>
+    .map{x =>
+      if(durchgangfilter.isEmpty) {
+        x
+      }
+      else {
+        val mappedWertungen = x._2.filter { x => containsRiegeInDurchgang(x.riege) || containsRiegeInDurchgang(x.riege2) }
+        (x._1, mappedWertungen)
+      }
+    }
+    .filter{x => x._2.size > 0 &&
       (programmfilter.isEmpty || programmfilter.contains(x._2.head.wettkampfdisziplin.programm.id)) &&
-      (durchgangfilter.isEmpty || (x._2.head.riege.forall(r => findDurchgang.get(r).forall(d => durchgangfilter.contains(d)))))
+      (durchgangfilter.isEmpty || containsRiegeInDurchgang(x._2.head.riege) || containsRiegeInDurchgang(x._2.head.riege2))
     }
 
     val programme = listProgramme(filteredWert)
