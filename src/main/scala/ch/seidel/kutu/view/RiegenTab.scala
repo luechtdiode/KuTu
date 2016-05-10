@@ -71,6 +71,7 @@ import scalafx.scene.control.TabPane
 import scalafx.beans.binding.Bindings
 import scalafx.scene.control.ListView
 import scalafx.scene.control.cell.CheckBoxListCell
+import scalafx.scene.control.TablePosition
 
 class DurchgangView(wettkampf: WettkampfView, service: KutuService, disziplinlist: () => Seq[Disziplin], durchgangModel: ObservableBuffer[DurchgangEditor]) extends TableView[DurchgangEditor] {
 
@@ -510,9 +511,17 @@ class RiegenTab(wettkampf: WettkampfView, override val service: KutuService) ext
       ret
     }
 
-    def makeMoveDurchganMenu(durchgang: DurchgangEditor): Menu = {
+    def toGeraetId(tcpl: List[Int]): List[Long] = {
+      def tgi(tcp: Int): Int = {
+        (tcp - 5) / 2
+      }
+      tcpl map tgi filter { _ > -1 } map { disziplinlist(_).id }
+    }
+
+    def makeMoveDurchganMenu(durchgang: DurchgangEditor, cells: List[TablePosition[_, _]]): Menu = {
+      val selectedGerate = toGeraetId(cells.map(c => c.column))
       new Menu("In anderen Durchgang verschieben") {
-        durchgang.initstartriegen.flatMap(_._2).toList.sortBy(r => r.initanz).foreach{riege =>
+        durchgang.initstartriegen.filter(d => selectedGerate.isEmpty || selectedGerate.contains(d._1.id)).flatMap(_._2).toList.sortBy(r => r.initanz).foreach{riege =>
           items += new Menu(riege.initname + " ("+riege.initanz+")") {
             durchgangModel.filter(d => !d.equals(durchgang)).foreach{durchgang =>
         	    items += KuTuApp.makeMenuAction(durchgang.initname) {(caption, action) =>
@@ -527,11 +536,13 @@ class RiegenTab(wettkampf: WettkampfView, override val service: KutuService) ext
             }
           }.asInstanceOf[MenuItem]
         }
+        disable.value = items.size() == 0
       }
     }
-    def makeMoveStartgeraetMenu(durchgang: DurchgangEditor): Menu = {
+    def makeMoveStartgeraetMenu(durchgang: DurchgangEditor, cells: List[TablePosition[_, _]]): Menu = {
+      val selectedGerate = toGeraetId(cells.map(c => c.column))
       new Menu("Auf anderes Startgerät verschieben") {
-        durchgang.initstartriegen.flatMap(_._2).toList.sortBy(r => r.initanz).foreach{riege =>
+        durchgang.initstartriegen.filter(d => selectedGerate.isEmpty || selectedGerate.contains(d._1.id)).flatMap(_._2).toList.sortBy(r => r.initanz).foreach{riege =>
           val von = "Von " + riege.initstart.map(d => d.name + " (" + durchgang.initstartriegen.get(d).map(r => r.map(re => re.initanz).sum).getOrElse(0) + ")").getOrElse("?") + " auf "
           items += new Menu(riege.initname+ " ("+riege.initanz+")") {
             disziplinlist
@@ -549,6 +560,7 @@ class RiegenTab(wettkampf: WettkampfView, override val service: KutuService) ext
             }
           }.asInstanceOf[MenuItem]
         }
+        disable.value = items.size() == 0
       }
     }
     def makeRenameDurchgangMenu: MenuItem = {
@@ -587,17 +599,19 @@ class RiegenTab(wettkampf: WettkampfView, override val service: KutuService) ext
       disable <== when(makeDurchgangActiveBinding) choose true otherwise false
     }
 
-    durchgangView.selectionModel().setSelectionMode(SelectionMode.Multiple)
-    durchgangView.selectionModel().selectedItems.onChange { ( _, newItem) =>
-      val actSelection = durchgangView.selectionModel().selectedItems.map(d => d.initname)
+    durchgangView.selectionModel.value.setSelectionMode(SelectionMode.Multiple)
+    durchgangView.selectionModel.value.setCellSelectionEnabled(true)
+    durchgangView.selectionModel().getSelectedCells().onChange { ( _, newItem) =>
+      val focusedCells = durchgangView.selectionModel.value.selectedCells.toList
+      val actSelection = durchgangView.selectionModel.value.selectedItems.toList.map(d => d.initname)
       durchgangView.contextMenu = new ContextMenu() {
           items += makeRegenereateDurchgangMenu(actSelection.toSet)
           items += makeMergeDurchganMenu(actSelection.toSet)
           items += makeRenameDurchgangMenu
           if(actSelection.size == 1) {
         	  items += new SeparatorMenuItem()
-            items += makeMoveDurchganMenu(durchgangView.selectionModel().selectedItems.head)
-            items += makeMoveStartgeraetMenu(durchgangView.selectionModel().selectedItems.head)
+            items += makeMoveDurchganMenu(durchgangView.selectionModel().selectedItems.head, focusedCells)
+            items += makeMoveStartgeraetMenu(durchgangView.selectionModel().selectedItems.head, focusedCells)
           }
       }
       btnEditDurchgang.text.value = "Durchgang " + actSelection.mkString("[",", ", "]") + " bearbeiten"
@@ -607,8 +621,8 @@ class RiegenTab(wettkampf: WettkampfView, override val service: KutuService) ext
       btnEditDurchgang.items += makeRenameDurchgangMenu
       if(actSelection.size == 1) {
     	  btnEditDurchgang.items += new SeparatorMenuItem()
-        btnEditDurchgang.items += makeMoveDurchganMenu(durchgangView.selectionModel().selectedItems.head)
-        btnEditDurchgang.items += makeMoveStartgeraetMenu(durchgangView.selectionModel().selectedItems.head)
+        btnEditDurchgang.items += makeMoveDurchganMenu(durchgangView.selectionModel().selectedItems.head, focusedCells)
+        btnEditDurchgang.items += makeMoveStartgeraetMenu(durchgangView.selectionModel().selectedItems.head, focusedCells)
       }
     }
 

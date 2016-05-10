@@ -1205,7 +1205,7 @@ trait KutuService {
     }
     else {
       @tailrec
-      def splitToRiegenCount[A](sugg: Seq[(String, Seq[A])], minCount: Int): Seq[(String, Seq[A])] = {
+      def splitToRiegenCount[A](sugg: Seq[(String, Seq[A])], maxRiegenTurnerCount: Int): Seq[(String, Seq[A])] = {
         //cache.clear
         def split(riege: (String, Seq[A])): Seq[(String, Seq[A])] = {
           val (key, r) = riege
@@ -1214,23 +1214,18 @@ trait KutuService {
           def occurences(key: String) = {
             val cnt = cache.getOrElse(key, 0) + 1
             cache.update(key, cnt)
-            //println(f"occurences $key : $cnt")
             f"${cnt}%02d"
           }
-//            println(f"key: $key, oldKey1: $oldKey1")
           val key1 = if(key.contains("#")) key else oldKey1 + "#" + occurences(oldKey1)
           val key2 = oldKey1 + "#" + occurences(oldKey1)
           val splitpos = r.size / 2
-          //println(f"key1: $key1, key2: $key2")
           List((key1, oldList.take(splitpos)), (key2, oldList.drop(splitpos)))
         }
         val ret = sugg.sortBy(_._2.size).reverse
-        //println((ret.size, riegencnt))
-        if(/*ret.size % minCount > 0 ||*/ (ret.size > 0 && ret.head._2.size > maxRiegenSize)) {
-          splitToRiegenCount(split(ret.head) ++ ret.tail, minCount)
+        if((ret.size > 0 && ret.head._2.size > maxRiegenTurnerCount)) {
+          splitToRiegenCount(split(ret.head) ++ ret.tail, maxRiegenTurnerCount)
         }
         else {
-          //println(ret.mkString("\n"))
           ret
         }
       }
@@ -1254,7 +1249,11 @@ trait KutuService {
 //          case _ => false
 //        }
 
-        val riegen = splitToRiegenCount(atheltenInRiege, 0/*, cache*/).map(r => Map(r._1 -> r._2))
+        val athletensum = atheltenInRiege.flatMap{a =>
+          a._2.map(aw => aw._1)
+        }.toSet.size
+        val maxRiegenSize2 = if(maxRiegenSize > 0) maxRiegenSize else athletensum / disziplinlist.size
+        val riegen = splitToRiegenCount(atheltenInRiege, maxRiegenSize2).map(r => Map(r._1 -> r._2))
         // Maximalausdehnung. Nun die sinnvollen Zusammenlegungen
         type RiegeAthletWertungen = Map[String, Seq[(AthletView, Seq[WertungView])]]
 
@@ -1334,7 +1333,7 @@ trait KutuService {
               else if(requiredPairs <= acc.size) {
                 acc
               }
-              else if (candidate.size > 1 && (durchgangRiegeSize(candidate.head) + durchgangRiegeSize(candidate.last) <= maxRiegenSize)) {
+              else if (candidate.size > 1 && (durchgangRiegeSize(candidate.head) + durchgangRiegeSize(candidate.last) <= maxRiegenSize2)) {
                 // Auf max Riegen-Size zusammenmergen (auffüllen)
                 buildPairs(requiredPairs, candidate.tail.take(candidate.size -2), acc :+ (candidate.head, candidate.last))
               }
@@ -1347,7 +1346,7 @@ trait KutuService {
             }
             val turnerSum = relevantcombis.map(durchgangRiegeSize).sum
             val combisturnerSum = relevantcombis.map(durchgangRiegeSize).sum
-            val idealRiegenCnt = (math.floor(turnerSum / maxRiegenSize) + ((turnerSum / maxRiegenSize) % startgeraete.size)).intValue()
+            val idealRiegenCnt = (math.floor(turnerSum / maxRiegenSize2) + ((turnerSum / maxRiegenSize2) % startgeraete.size)).intValue()
             val targetPairCnt = math.max(startgeraete.size, startgeraete.size * math.floor((relevantcombis.size - startgeraete.size) / startgeraete.size).intValue())
             println(s"turnerSum=$turnerSum, idealRiegenCnt=$idealRiegenCnt, targetPairCnt=$targetPairCnt")
 
@@ -1535,7 +1534,7 @@ trait KutuService {
               accc.find{p =>
                 p != geraetRiege &&
                 accc.contains(geraetRiege) &&
-                durchgangRiegeSize(p) <= math.min(maxRiegenSize, averageSize + (averageSize * 0.3).intValue()) &&
+                durchgangRiegeSize(p) <= math.min(maxRiegenSize2, averageSize + (averageSize * 0.3).intValue()) &&
                 vereinStats(verein, p) > v1
               }
               match {
@@ -1563,7 +1562,7 @@ trait KutuService {
           val startgeridx =  (index + startgeraete.size) % startgeraete.size
           rr.keys.map{riegenname =>
             println(s"Durchgang $programm (${index / startgeraete.size + 1}), Start ${startgeraete(startgeridx).easyprint}, ${rr(riegenname).size} Tu/Ti der Riege $riegenname")
-            (s"$programm (${index / startgeraete.size + 1})", riegenname, startgeraete(startgeridx), rr(riegenname))
+            (s"$programm (${if(maxRiegenSize > 0) index / startgeraete.size + 1 else 1})", riegenname, startgeraete(startgeridx), rr(riegenname))
           }
         }
       }
