@@ -429,27 +429,25 @@ trait KutuService {
     }
   }
 
-  def listAthletenWertungenZuRiege(progids: Seq[Long], wettkampf: Long, riege: String) = {
+  def listDisziplinesZuDurchgang(durchgang: Set[String], wettkampf: Long, riege1: Boolean): Map[String, IndexedSeq[Disziplin]] = {
     database withSession { implicit session =>
-      implicit val cache = scala.collection.mutable.Map[Long, ProgrammView]()
-      val ret = sql"""
-                   SELECT w.id, a.id, a.js_id, a.geschlecht, a.name, a.vorname, a.gebdat, a.strasse, a.plz, a.ort, a.activ, a.verein, v.*,
-                     wd.id, wd.programm_id, d.*, wd.kurzbeschreibung, wd.detailbeschreibung, wd.notenfaktor, wd.ord, wd.masculin, wd.feminim,
-                     wk.*,
-                     w.note_d as difficulty, w.note_e as execution, w.endnote, w.riege, w.riege2
-                   FROM wertung w
-                   inner join athlet a on (a.id = w.athlet_id)
-                   left outer join verein v on (a.verein = v.id)
-                   inner join wettkampfdisziplin wd on (wd.id = w.wettkampfdisziplin_id)
-                   inner join disziplin d on (d.id = wd.disziplin_id)
-                   inner join programm p on (p.id = wd.programm_id)
-                   inner join wettkampf wk on (wk.id = w.wettkampf_id)
-                   where wd.programm_id in (#${progids.mkString(",")})
-                     and (w.riege = $riege or w.riege2 = $riege)
-                     and w.wettkampf_id = $wettkampf
-                   order by wd.programm_id, wd.ord
-       """.as[WertungView].build
-       ret
+      val ret = sql""" select distinct wd.disziplin_id, d.name, r.durchgang
+             from wettkampfdisziplin wd
+             inner join disziplin d on (wd.disziplin_id = d.id)
+             inner join wertung w on (w.wettkampfdisziplin_id = wd.id)
+             inner join riege r on (r.wettkampf_id = $wettkampf
+                                    and r.start = d.id
+                                    and r.durchgang in (#${durchgang.mkString("'","','","'")})
+                                    and #${if(riege1) "r.name = w.riege" else "r.name = w.riege2"}
+                                    )
+             where
+               w.wettkampf_id = $wettkampf
+             order by
+              wd.ord
+       """.as[(Long, String, String)].build
+       ret.map{tupel =>
+         (Disziplin(tupel._1, tupel._2), tupel._3)
+       }.groupBy(_._2).map(x => x._1 -> x._2.map(_._1))
     }
   }
 

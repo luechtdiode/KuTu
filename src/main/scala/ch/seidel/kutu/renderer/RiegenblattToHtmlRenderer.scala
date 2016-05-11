@@ -6,18 +6,20 @@ object RiegenBuilder {
 
   def mapToGeraeteRiegen(kandidaten: List[Kandidat]): List[GeraeteRiege] = {
 
-    def pickStartformationen(geraete: List[(Option[Disziplin], List[Riege])], durchgang: Option[String], extractKandidatEinteilung: Kandidat => Option[Riege]) = {
+    def pickStartformationen(geraete: List[(Option[Disziplin], List[Riege])], durchgang: Option[String], extractKandidatEinteilung: Kandidat => (Option[Riege], Seq[Disziplin])) = {
       geraete.flatMap{s =>
         val (startdisziplin, _) = s
         val splitpoint = geraete.indexWhere(g => g._1.equals(startdisziplin))
         val shifted = geraete.drop(splitpoint) ++ geraete.take(splitpoint)
         shifted.zipWithIndex.map{ss =>
           val ((disziplin, _), offset) = ss
-          val tuti = kandidaten.filter{k => (extractKandidatEinteilung(k) match {
+          val tuti = kandidaten.filter{k =>
+            val (einteilung, diszipline) = extractKandidatEinteilung(k)
+            (einteilung match {
             case Some(einteilung) =>
               einteilung.durchgang.equals(durchgang) &&
               einteilung.start.equals(startdisziplin) &&
-              k.diszipline.contains(disziplin.map(_.name).getOrElse(""))
+              diszipline.map(_.id).contains(disziplin.map(_.id).getOrElse(0))
             case None => false
           })}.sortBy { x => x.verein + x.jahrgang}
           if(tuti.size > 0) {
@@ -32,24 +34,44 @@ object RiegenBuilder {
     }
 
     val hauptdurchgaenge = kandidaten
-    .flatMap(k => k.einteilung)
-    .groupBy(e => e.durchgang).toList
+    .filter(k => k.einteilung.nonEmpty)
+    .map(k => (k, k.einteilung.get))
+    .groupBy(e => e._2.durchgang).toList
     .sortBy(d => d._1)
     .map{d =>
-      val (durchgang, riegen) = d
-      val geraete = riegen.groupBy(e => e.start).toList
-      val startformationen = pickStartformationen(geraete, durchgang, k => k.einteilung)
+      val (durchgang, kandidatriegen) = d
+      val riegen = kandidatriegen.map(_._2)
+      val dzl = kandidatriegen.flatMap(_._1.diszipline).toSet.toList//.sortBy { d => d.ord }
+
+      //kandidat.diszipline für die Rotationsberechnung verwenden
+      val geraete = dzl.foldLeft(riegen.groupBy(e => e.start).toList){(acc, item) =>
+        acc.find(p => p._1.exists { f => f.equals(item) }) match {
+          case Some(_) => acc
+          case _ => acc :+ (Some(item) -> List[Riege]())
+        }
+      }
+      val startformationen = pickStartformationen(geraete, durchgang, k => (k.einteilung, k.diszipline))
 
       (durchgang, startformationen)
     }
     val nebendurchgaenge = kandidaten
-    .flatMap(k => k.einteilung2)
-    .groupBy(e => e.durchgang).toList
+    .filter(k => k.einteilung2.nonEmpty)
+    .map(k => (k, k.einteilung2.get))
+    .groupBy(e => e._2.durchgang).toList
     .sortBy(d => d._1)
     .map{d =>
-      val (durchgang, riegen) = d
-      val geraete = riegen.groupBy(e => e.start).toList
-      val startformationen = pickStartformationen(geraete, durchgang, k => k.einteilung2)
+      val (durchgang, kandidatriegen) = d
+      val riegen = kandidatriegen.map(_._2)
+      val dzl = kandidatriegen.flatMap(_._1.diszipline2).toSet.toList//.sortBy { d => d.ord }
+
+      //kandidat.diszipline für die Rotationsberechnung verwenden
+      val geraete = dzl.foldLeft(riegen.groupBy(e => e.start).toList){(acc, item) =>
+        acc.find(p => p._1.exists { f => f.equals(item) }) match {
+          case Some(_) => acc
+          case _ => acc :+ (Some(item) -> List[Riege]())
+        }
+      }
+      val startformationen = pickStartformationen(geraete, durchgang, k => (k.einteilung2, k.diszipline2))
 
       (durchgang, startformationen)
     }
@@ -216,7 +238,7 @@ trait RiegenblattToHtmlRenderer {
           (riege.copy(kandidaten = riege.kandidaten ++ (1 to full).map(i => Kandidat(
               riege.kandidaten.head.wettkampfTitel,
               "", "", 0,
-              "", "", "", "", None, None, Seq[String]()))), offset)
+              "", "", "", "", None, None, Seq[Disziplin](), Seq[Disziplin]()))), offset)
         }
       }
     }

@@ -252,6 +252,10 @@ class WettkampfWertungTab(wettkampfmode: Boolean, programm: Option[ProgrammView]
 
     def rebuildDurchgangFilterList = {
       val riegendurchgaenge = service.selectRiegen(wettkampf.id).map(r => r.r-> r).toMap
+      val rds = riegendurchgaenge.values.map(v => v.durchgang.getOrElse("")).toSet
+      val disziplinsZuDurchgangR1 = service.listDisziplinesZuDurchgang(rds, wettkampf.id, true)
+      val disziplinsZuDurchgangR2 = service.listDisziplinesZuDurchgang(rds, wettkampf.id, false)
+
       val seriendaten = for {
         athletwertungen <- wertungen
         if(athletwertungen.nonEmpty)
@@ -259,6 +263,8 @@ class WettkampfWertungTab(wettkampfmode: Boolean, programm: Option[ProgrammView]
       yield {
         val einsatz = athletwertungen.head.init
         val athlet = einsatz.athlet
+        val riegendurchgang1 = riegendurchgaenge.get(einsatz.riege.getOrElse(""))
+        val riegendurchgang2 = riegendurchgaenge.get(einsatz.riege2.getOrElse(""))
         Kandidat(
         einsatz.wettkampf.easyprint
         ,athlet.geschlecht match {case "M" => "Turner"  case _ => "Turnerin"}
@@ -268,8 +274,8 @@ class WettkampfWertungTab(wettkampfmode: Boolean, programm: Option[ProgrammView]
         ,athlet.vorname
         ,AthletJahrgang(athlet.gebdat).hg
         ,athlet.verein match {case Some(v) => v.easyprint case _ => ""}
-        ,riegendurchgaenge.get(einsatz.riege.getOrElse(""))
-        ,riegendurchgaenge.get(einsatz.riege2.getOrElse(""))
+        ,riegendurchgang1
+        ,riegendurchgang2
         ,athletwertungen.filter{wertung =>
           if(wertung.init.wettkampfdisziplin.feminim == 0 && !wertung.init.athlet.geschlecht.equalsIgnoreCase("M")) {
             false
@@ -278,9 +284,32 @@ class WettkampfWertungTab(wettkampfmode: Boolean, programm: Option[ProgrammView]
             false
           }
           else {
-            true
+            riegendurchgang1.forall{x =>
+              x.durchgang.nonEmpty &&
+              x.durchgang.forall{d =>
+                d.nonEmpty &&
+                disziplinsZuDurchgangR1(d).contains(wertung.init.wettkampfdisziplin.disziplin)
+              }
+            }
           }
-        }.map(_.init.wettkampfdisziplin.disziplin.easyprint)
+        }.map(_.init.wettkampfdisziplin.disziplin)
+        ,athletwertungen.filter{wertung =>
+          if(wertung.init.wettkampfdisziplin.feminim == 0 && !wertung.init.athlet.geschlecht.equalsIgnoreCase("M")) {
+            false
+          }
+          else if(wertung.init.wettkampfdisziplin.masculin == 0 && wertung.init.athlet.geschlecht.equalsIgnoreCase("M")) {
+            false
+          }
+          else {
+            riegendurchgang2.forall{x =>
+              x.durchgang.nonEmpty &&
+              x.durchgang.forall{d =>
+                d.nonEmpty &&
+                disziplinsZuDurchgangR2(d).contains(wertung.init.wettkampfdisziplin.disziplin)
+              }
+            }
+          }
+        }.map(_.init.wettkampfdisziplin.disziplin)
         )
       }
       RiegenBuilder.mapToGeraeteRiegen(seriendaten.toList)
@@ -1153,7 +1182,7 @@ class WettkampfWertungTab(wettkampfmode: Boolean, programm: Option[ProgrammView]
             ,AthletJahrgang(athlet.gebdat).hg
             ,athlet.verein match {case Some(v) => v.easyprint case _ => ""}
             ,riegendurchgaenge.get(einsatz.riege.getOrElse(""))
-            ,riegendurchgaenge.get(einsatz.riege2.getOrElse(""))
+            ,None
             ,athletwertungen.filter{wertung =>
               if(wertung.init.wettkampfdisziplin.feminim == 0 && !wertung.init.athlet.geschlecht.equalsIgnoreCase("M")) {
                 false
@@ -1164,7 +1193,8 @@ class WettkampfWertungTab(wettkampfmode: Boolean, programm: Option[ProgrammView]
               else {
                 true
               }
-            }.map(_.init.wettkampfdisziplin.disziplin.easyprint)
+            }.map(_.init.wettkampfdisziplin.disziplin)
+            ,Seq.empty
             )
           }
           val filename = "Notenblatt_" + wettkampf.easyprint.replace(" ", "_") + programm.map("_Programm_" + _.easyprint.replace(" ", "_")).getOrElse("") + riege.map("_Riege_" + _.replace(" ", "_")).getOrElse("") + ".html"

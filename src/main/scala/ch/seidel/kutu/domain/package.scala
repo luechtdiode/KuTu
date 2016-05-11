@@ -308,7 +308,7 @@ package object domain {
   }
 
   case class Kandidat(wettkampfTitel: String, geschlecht: String, programm: String, id: Long,
-                      name: String, vorname: String, jahrgang: String, verein: String, einteilung: Option[Riege], einteilung2: Option[Riege], diszipline: Seq[String])
+                      name: String, vorname: String, jahrgang: String, verein: String, einteilung: Option[Riege], einteilung2: Option[Riege], diszipline: Seq[Disziplin], diszipline2: Seq[Disziplin])
   case class GeraeteRiege(wettkampfTitel: String, durchgang: Option[String], halt: Int, disziplin: Option[Disziplin], kandidaten: Seq[Kandidat])
 
   sealed trait SexDivideRule {

@@ -833,6 +833,10 @@ class RiegenTab(wettkampf: WettkampfView, override val service: KutuService) ext
           }
         }
         val riegendurchgaenge = service.selectRiegen(wettkampf.id).map(r => r.r-> r).toMap
+        val rds = riegendurchgaenge.values.map(v => v.durchgang.getOrElse("")).toSet
+        val disziplinsZuDurchgangR1 = service.listDisziplinesZuDurchgang(rds, wettkampf.id, true)
+        val disziplinsZuDurchgangR2 = service.listDisziplinesZuDurchgang(rds, wettkampf.id, false)
+
         val seriendaten = for {
           programm <- programme
           athletwertungen <- driver.map(we => we.filter { x => x.wettkampfdisziplin.programm.id == programm.id})
@@ -841,6 +845,9 @@ class RiegenTab(wettkampf: WettkampfView, override val service: KutuService) ext
         yield {
           val einsatz = athletwertungen.head
           val athlet = einsatz.athlet
+          val riegendurchgang1 = riegendurchgaenge.get(einsatz.riege.getOrElse(""))
+          val riegendurchgang2 = riegendurchgaenge.get(einsatz.riege2.getOrElse(""))
+
           Kandidat(
           einsatz.wettkampf.easyprint
           ,athlet.geschlecht match {case "M" => "Turner"  case _ => "Turnerin"}
@@ -850,8 +857,8 @@ class RiegenTab(wettkampf: WettkampfView, override val service: KutuService) ext
           ,athlet.vorname
           ,AthletJahrgang(athlet.gebdat).hg
           ,athlet.verein match {case Some(v) => v.easyprint case _ => ""}
-          ,riegendurchgaenge.get(einsatz.riege.getOrElse(""))
-          ,riegendurchgaenge.get(einsatz.riege2.getOrElse(""))
+          ,riegendurchgang1
+          ,riegendurchgang2
           ,athletwertungen.filter{wertung =>
             if(wertung.wettkampfdisziplin.feminim == 0 && !wertung.athlet.geschlecht.equalsIgnoreCase("M")) {
               false
@@ -860,9 +867,32 @@ class RiegenTab(wettkampf: WettkampfView, override val service: KutuService) ext
               false
             }
             else {
-              true
+              riegendurchgang1.forall{x =>
+                x.durchgang.nonEmpty &&
+                x.durchgang.forall{d =>
+                  d.nonEmpty &&
+                  disziplinsZuDurchgangR1(d).contains(wertung.wettkampfdisziplin.disziplin)
+                }
+              }
             }
-          }.map(_.wettkampfdisziplin.disziplin.easyprint)
+          }.map(_.wettkampfdisziplin.disziplin)
+          ,athletwertungen.filter{wertung =>
+            if(wertung.wettkampfdisziplin.feminim == 0 && !wertung.athlet.geschlecht.equalsIgnoreCase("M")) {
+              false
+            }
+            else if(wertung.wettkampfdisziplin.masculin == 0 && wertung.athlet.geschlecht.equalsIgnoreCase("M")) {
+              false
+            }
+            else {
+              riegendurchgang2.forall{x =>
+                x.durchgang.nonEmpty &&
+                x.durchgang.forall{d =>
+                  d.nonEmpty &&
+                  disziplinsZuDurchgangR2(d).contains(wertung.wettkampfdisziplin.disziplin)
+                }
+              }
+            }
+          }.map(_.wettkampfdisziplin.disziplin)
           )
         }
         val filename = "Riegenblatt_" + wettkampf.easyprint.replace(" ", "_") + ".html"
