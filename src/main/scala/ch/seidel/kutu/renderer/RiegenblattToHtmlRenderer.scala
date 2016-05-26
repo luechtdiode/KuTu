@@ -42,12 +42,12 @@ object RiegenBuilder {
       val (durchgang, kandidatriegen) = d
       val riegen1 = kandidatriegen.map(_._2)
       val dzl1 = kandidatriegen.flatMap(_._1.diszipline)
-      val riegen = riegen1.sortBy(r => dzl1.indexOf(r.start))
+      val riegen = riegen1.sortBy(r => r.start.map( dzl1.indexOf(_)))
       val dzl2 = dzl1.toSet.toList
       val dzl = dzl2.sortBy{dzl1.indexOf(_)}
 
       //kandidat.diszipline für die Rotationsberechnung verwenden
-      val rg = riegen.groupBy(e => e.start).toList.sortBy{d => dzl.indexOf(d._1.getOrElse(None))}
+      val rg = riegen.groupBy(e => e.start).toList.sortBy{d => d._1.map( dzl.indexOf(_))}
       val geraete = dzl.foldLeft(rg){(acc, item) =>
         acc.find(p => p._1.exists { f => f.equals(item) }) match {
           case Some(_) => acc
@@ -67,12 +67,12 @@ object RiegenBuilder {
       val (durchgang, kandidatriegen) = d
       val riegen1 = kandidatriegen.map(_._2)
       val dzl1 = kandidatriegen.flatMap(_._1.diszipline2)
-      val riegen = riegen1.sortBy(r => dzl1.indexOf(r.start))
+      val riegen = riegen1.sortBy(r => r.start.map( dzl1.indexOf(_)))
       val dzl2 = dzl1.toSet.toList
       val dzl = dzl2.sortBy{dzl1.indexOf(_)}
 
       //kandidat.diszipline für die Rotationsberechnung verwenden
-      val rg = riegen.groupBy(e => e.start).toList.sortBy{d => dzl.indexOf(d._1.getOrElse(None))}
+      val rg = riegen.groupBy(e => e.start).toList.sortBy{d => d._1.map( dzl.indexOf(_))}
       val geraete = dzl.foldLeft(rg){(acc, item) =>
         acc.find(p => p._1.exists { f => f.equals(item) }) match {
           case Some(_) => acc
