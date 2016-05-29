@@ -329,7 +329,7 @@ abstract class DefaultRanglisteTab(override val service: KutuService) extends Ta
       text = "Drucken (via Browser) ..."
       onAction = (action: ActionEvent) => {
         val defaults = getSaveAsFilenameDefault
-        val selectedFile = new File(defaults.filename)
+        val selectedFile = new File(defaults.dir.getAbsolutePath + "/" + defaults.filename)
         val dir = defaults.dir
         if(!dir.exists()) {
           dir.mkdirs();
