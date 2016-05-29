@@ -227,8 +227,15 @@ class WettkampfWertungTab(wettkampfmode: Boolean, programm: Option[ProgrammView]
  		
   	val cmbDurchgangFilter = new ComboBox[GeraeteRiege]() {
       id = "cmbDurchgaenge"
-      val okIcon = new Image(getClass().getResourceAsStream("/images/GreenOK.png"))
-      val nokIcon = new Image(getClass().getResourceAsStream("/images/RedException.png"))
+      var okIcon: Image = null
+      try {
+        okIcon = new Image(getClass().getResourceAsStream("/images/GreenOk.png"))
+      }catch{case e: Exception => e.printStackTrace()}
+      var nokIcon: Image = null
+      try {
+        nokIcon = new Image(getClass().getResourceAsStream("/images/RedException.png"))
+      }catch{case e: Exception => e.printStackTrace()}
+      
       class GeraeteRiegeListCell extends ListCell[GeraeteRiege] {
         override val delegate: jfxsc.ListCell[GeraeteRiege] = new jfxsc.ListCell[GeraeteRiege] {
           override protected def updateItem(item: GeraeteRiege, empty: Boolean) {
