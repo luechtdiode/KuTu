@@ -61,6 +61,11 @@ import ch.seidel.kutu.renderer.RiegenblattToHtmlRenderer
 import ch.seidel.kutu.renderer.RiegenBuilder
 import scalafx.scene.control.ListCell
 import scalafx.beans.binding.Bindings
+import scalafx.scene.shape.Circle
+import scalafx.scene.paint.Color
+import scalafx.scene.control.ContentDisplay
+import scalafx.scene.image.Image
+import scalafx.scene.image.ImageView
 
 trait TCAccess {
   def getIndex: Int
@@ -215,21 +220,47 @@ class WettkampfWertungTab(wettkampfmode: Boolean, programm: Option[ProgrammView]
       id = "kutu-table"
       editable = true
     }
-    val emptyRiege = GeraeteRiege("", None, 0, None, Seq())
+    val emptyRiege = GeraeteRiege("", None, 0, None, Seq(), false)
     var riegendurchgaenge: List[GeraeteRiege] = List[GeraeteRiege]()
  		var relevantRiegen: Map[String,(Boolean, Int)] = Map[String,(Boolean, Int)]()
+ 		var erfasst = false
+ 		
   	val cmbDurchgangFilter = new ComboBox[GeraeteRiege]() {
+      id = "cmbDurchgaenge"
+      val okIcon = new Image(getClass().getResourceAsStream("/images/GreenOK.png"))
+      val nokIcon = new Image(getClass().getResourceAsStream("/images/RedException.png"))
       class GeraeteRiegeListCell extends ListCell[GeraeteRiege] {
         override val delegate: jfxsc.ListCell[GeraeteRiege] = new jfxsc.ListCell[GeraeteRiege] {
           override protected def updateItem(item: GeraeteRiege, empty: Boolean) {
             super.updateItem(item, empty)
             if (item != null) {
+            	val imageView = new ImageView {
+                image = okIcon
+            	}
               item.durchgang match {
                 case Some(d) =>
                   setText(s"${item.durchgang.get}: ${item.disziplin.map(d => d.name).getOrElse("")}  (${item.halt + 1}. Gerät)");
+                  if(!item.erfasst) {
+                    styleClass.add("incomplete");
+                    imageView.image = nokIcon
+                  }
+                  else if (styleClass.indexOf("incomplete") > -1) {
+                    styleClass.remove(styleClass.indexOf("incomplete"));
+                  }
                 case None =>
                   setText(s"Alle");
+                  if(!erfasst) {
+                    styleClass.add("incomplete");
+                    imageView.image = nokIcon
+                  }
+                  else if (styleClass.indexOf("incomplete") > -1) {
+                    styleClass.remove(styleClass.indexOf("incomplete"));
+                  }
               }
+              graphic = imageView
+            }
+            else {
+              graphic = null
             }
           }
         }
@@ -255,7 +286,7 @@ class WettkampfWertungTab(wettkampfmode: Boolean, programm: Option[ProgrammView]
       val rds = riegendurchgaenge.values.map(v => v.durchgang.getOrElse("")).toSet
       val disziplinsZuDurchgangR1 = service.listDisziplinesZuDurchgang(rds, wettkampf.id, true)
       val disziplinsZuDurchgangR2 = service.listDisziplinesZuDurchgang(rds, wettkampf.id, false)
-
+      
       val seriendaten = for {
         athletwertungen <- wertungen
         if(athletwertungen.nonEmpty)
@@ -309,10 +340,13 @@ class WettkampfWertungTab(wettkampfmode: Boolean, programm: Option[ProgrammView]
               }
             }
           }
-        }.map(_.init.wettkampfdisziplin.disziplin)
+        }.map(_.init.wettkampfdisziplin.disziplin),
+        athletwertungen.toSeq.map(_.view)
         )
       }
-      RiegenBuilder.mapToGeraeteRiegen(seriendaten.toList)
+      val ret = RiegenBuilder.mapToGeraeteRiegen(seriendaten.toList)
+      erfasst = ret.forall { riege => riege == emptyRiege || riege.erfasst }
+      ret
     }
 
     def computeRelevantRiegen = {
@@ -350,6 +384,40 @@ class WettkampfWertungTab(wettkampfmode: Boolean, programm: Option[ProgrammView]
 
     def updateEditorPane {
 		  editorPane.adjust
+//		  Platform.runLater{
+		    val model = cmbDurchgangFilter.items.getValue
+		    val raw = emptyRiege +: rebuildDurchgangFilterList
+		    val selected = cmbDurchgangFilter.selectionModel.value.selectedItem.value
+		    model.foreach { x => 
+		      raw.find {_.softEquals(x)} match {
+		        case Some(item) => 
+		          val reselect = selected == x
+		          model.set(model.indexOf(x), item)
+		          if(reselect) {
+		            cmbDurchgangFilter.selectionModel.value.select(item)
+		          }
+		        case None =>
+		      }
+		    }
+    	  val toRemove =
+    	    for{
+    	      o <- model 
+    	      i = raw.find { _ == o}
+    	      if(i.isEmpty && o != emptyRiege)
+    	    }
+    	    yield {model.indexOf(o)}
+    	  for{i <- toRemove.sorted.reverse} {
+    	    model.remove(i)
+    	  }
+
+    	  for{
+    	    o <- raw 
+          i = model.find { _ == o}
+    	    if(i.isEmpty)
+    	  }{
+    	    model.insert(raw.indexWhere { rx => rx.softEquals(o)}, o)
+    	  }
+//		  }
     }
 
     val indexerE = Iterator.from(0)
@@ -571,7 +639,27 @@ class WettkampfWertungTab(wettkampfmode: Boolean, programm: Option[ProgrammView]
       })
 
     wkview.columns ++= athletCol ++ wertungenCols ++ sumCol
-
+    var isFilterRefreshing = false;
+    
+    wkModel.onChange{(seq1, seq2) => 
+      import scalafx.collections.ObservableBuffer._
+      if(!isFilterRefreshing) {
+        def updateWertungen(index: Int) {
+          val changed = wkModel.get(index)
+          val idx = wertungen.indexWhere { x => x.head.init.athlet.id == changed.head.init.athlet.id }
+          wertungen = wertungen.updated(idx, changed)
+        }
+        seq2.foreach { change => 
+          change match {
+            case Remove(position, removed) => 
+            case Add(position, added) => 
+              updateWertungen(position)
+            case Reorder(start, end, permutation) =>
+            case Update(from, to) => 
+          }
+        }
+      }
+    }
     var lastFilter = ""
     var durchgangFilter = emptyRiege
     def updateFilteredList(newVal: String, newDurchgang: GeraeteRiege) {
@@ -579,6 +667,7 @@ class WettkampfWertungTab(wettkampfmode: Boolean, programm: Option[ProgrammView]
         lastFilter = newVal
         durchgangFilter = newDurchgang
         val sortOrder = wkview.sortOrder.toList;
+        isFilterRefreshing = true;
         wkModel.clear()
         val searchQuery = newVal.toUpperCase().split(" ")
 //        val rd = riegendurchgaenge.values.toList
@@ -645,6 +734,7 @@ class WettkampfWertungTab(wettkampfmode: Boolean, programm: Option[ProgrammView]
         }
         wkview.sortOrder.clear()
         val restored = wkview.sortOrder ++= sortOrder
+        isFilterRefreshing = false;
       //}
   	}
   	val txtUserFilter = new TextField() {
@@ -744,6 +834,7 @@ class WettkampfWertungTab(wettkampfmode: Boolean, programm: Option[ProgrammView]
       }
 
       val columnrebuild = wertungen.isEmpty
+      isFilterRefreshing = true;
       wkModel.clear()
       wertungen = reloadWertungen()
 
@@ -781,6 +872,7 @@ class WettkampfWertungTab(wettkampfmode: Boolean, programm: Option[ProgrammView]
       }
 //      setEditorPaneToDiscipline(idx)
       updateEditorPane
+      isFilterRefreshing = false;
     }
 
     val riegenFilterView = new RiegenFilterView(!wettkampfmode,
@@ -1194,7 +1286,9 @@ class WettkampfWertungTab(wettkampfmode: Boolean, programm: Option[ProgrammView]
                 true
               }
             }.map(_.init.wettkampfdisziplin.disziplin)
-            ,Seq.empty
+            ,
+            Seq.empty,
+            athletwertungen.toSeq.map(_.view)
             )
           }
           val filename = "Notenblatt_" + wettkampf.easyprint.replace(" ", "_") + programm.map("_Programm_" + _.easyprint.replace(" ", "_")).getOrElse("") + riege.map("_Riege_" + _.replace(" ", "_")).getOrElse("") + ".html"

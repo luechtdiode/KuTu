@@ -37,4 +37,6 @@ case class WertungEditor(init: WertungView) {
     scala.math.BigDecimal(endnote.value),
     init.riege,
     init.riege2)
+  
+  def view = init.copy(noteD = noteD.value, noteE = noteE.value, endnote = endnote.value)    
 }

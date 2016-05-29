@@ -52,6 +52,7 @@ import java.io.ObjectOutputStream
 import java.io.ObjectInputStream
 import java.io.FileInputStream
 import java.io.File
+import scalafx.scene.control.TextField
 
 abstract class DefaultRanglisteTab(override val service: KutuService) extends Tab with TabWithService with ScoreToHtmlRenderer {
   override val title = ""
@@ -210,7 +211,7 @@ abstract class DefaultRanglisteTab(override val service: KutuService) extends Ta
       }
     }
 
-    def refreshRangliste(query: GroupBy, forPrint: Boolean = false) = {
+    def refreshRangliste(query: GroupBy, linesPerPage: Int = 0) = {
     	val data = getData
 
       val filter = query.asInstanceOf[FilterBy]
@@ -236,10 +237,11 @@ abstract class DefaultRanglisteTab(override val service: KutuService) extends Ta
               "W" -> service.listDisziplinesZuWettkampf(x._2.head.wettkampf.id, Some("W"))
             , "M" -> service.listDisziplinesZuWettkampf(x._2.head.wettkampf.id, Some("M")))
         }
-      val ret = toHTML(combination, if(forPrint) 53 else 0, cbModus.selected.value, diszMap)
-      if(!forPrint) webView.engine.loadContent(ret)
+      val ret = toHTML(combination, linesPerPage, cbModus.selected.value, diszMap)
+      if(linesPerPage == 0) webView.engine.loadContent(ret)
       ret
     }
+    
     var restoring = false
     def restoreGrouper(query: GroupBy) {
       restoring = true
@@ -293,7 +295,7 @@ abstract class DefaultRanglisteTab(override val service: KutuService) extends Ta
           }
           val fileChooser = new FileChooser() {
           initialDirectory = dir
-          title = "Rangliste zum drucken speichern ..."
+          title = "Rangliste zum speichern ..."
           extensionFilters.addAll(
                  new ExtensionFilter("Web-Datei", "*.html"),
                  new ExtensionFilter("All Files", "*.*"))
@@ -313,7 +315,7 @@ abstract class DefaultRanglisteTab(override val service: KutuService) extends Ta
 //          else {
 //            "../logo.jpg"
 //          }
-          val toSave = refreshRangliste(buildGrouper, true).getBytes("UTF-8")
+          val toSave = refreshRangliste(buildGrouper).getBytes("UTF-8")
           val os = new BufferedOutputStream(new FileOutputStream(selectedFile))
           os.write(toSave)
           os.flush()
@@ -321,6 +323,57 @@ abstract class DefaultRanglisteTab(override val service: KutuService) extends Ta
           Desktop.getDesktop().open(selectedFile);
         }
       }
+    }
+
+    val btnPrint = new Button {
+      text = "Drucken (via Browser) ..."
+      onAction = (action: ActionEvent) => {
+        val defaults = getSaveAsFilenameDefault
+        val selectedFile = new File(defaults.filename)
+        val dir = defaults.dir
+        if(!dir.exists()) {
+          dir.mkdirs();
+        }
+        val txtLinesPerPage = new TextField {
+    		  text.value = "51"
+    	  }
+        implicit val impevent = action
+    	  PageDisplayer.showInDialog(text.value, new DisplayablePage() {
+    		  def getPage: Node = {
+      		  new HBox {
+      			  prefHeight = 50
+      			  alignment = Pos.BottomRight
+      			  hgrow = Priority.Always
+      			  children = Seq(new Label("Zeilen pro Seite (51 für A4 hoch, 20 für A4 quer)  "), txtLinesPerPage)
+      		  }
+      	  }
+      	  }, new Button("OK") {
+      		  onAction = (event: ActionEvent) => {
+              val file = if(!selectedFile.getName.endsWith(".html") && !selectedFile.getName.endsWith(".htm")) {
+                new java.io.File(selectedFile.getAbsolutePath + ".html")
+              }
+              else {
+                selectedFile
+              }
+              var lpp = 51
+              try {
+                lpp = Integer.valueOf(txtLinesPerPage.text.value)
+                if(lpp < 1) lpp = 51
+              }
+              catch {
+                case e: Exception =>
+              }
+              val toSave = refreshRangliste(buildGrouper, lpp).getBytes("UTF-8")
+              val os = new BufferedOutputStream(new FileOutputStream(selectedFile))
+              os.write(toSave)
+              os.flush()
+              os.close()
+              Desktop.getDesktop().open(selectedFile)
+      		  }
+      	  }
+      	)
+      }
+      
     }
 
     def extractFilterText = {
@@ -425,7 +478,7 @@ abstract class DefaultRanglisteTab(override val service: KutuService) extends Ta
       val topActions = new VBox {
         vgrow = Priority.Always
         hgrow = Priority.Always
-        children = List(btnSave, cbModus)
+        children = List(btnPrint, cbModus)
       }
       top = new ToolBar {
         content = (topBox +: topCombos :+ topActions)

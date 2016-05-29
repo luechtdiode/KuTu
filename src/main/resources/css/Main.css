@@ -818,3 +818,10 @@
 		);
 	-fx-background-radius: 0, 0, 0;
 }
+
+#cmbDurchgaenge .incomplete {
+	-fx-font-weight: bold;
+}
+
+#cmbDurchgaenge .complete {
+}

@@ -892,7 +892,8 @@ class RiegenTab(wettkampf: WettkampfView, override val service: KutuService) ext
                 }
               }
             }
-          }.map(_.wettkampfdisziplin.disziplin)
+          }.map(_.wettkampfdisziplin.disziplin),
+          athletwertungen
           )
         }
         val filename = "Riegenblatt_" + wettkampf.easyprint.replace(" ", "_") + ".html"

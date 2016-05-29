@@ -22,12 +22,18 @@ object RiegenBuilder {
               diszipline.map(_.id).contains(disziplin.map(_.id).getOrElse(0))
             case None => false
           })}.sortBy { x => x.verein + x.jahrgang}
+          
+          val completed = tuti.
+            flatMap(k => k.wertungen).
+            filter(wertung => disziplin.forall(_.equals(wertung.wettkampfdisziplin.disziplin))).
+            forall(_.endnote > 0d)
+            
           if(tuti.size > 0) {
             val mo = (tuti.size * geraete.size + offset) % tuti.size
-            (offset, disziplin, (tuti.drop(mo) ++ tuti.take(mo)))
+            (offset, disziplin, (tuti.drop(mo) ++ tuti.take(mo)), completed)
           }
           else {
-            (offset, disziplin, tuti)
+            (offset, disziplin, tuti, completed)
           }
         }
       }.filter(p => p._3.nonEmpty)
@@ -86,7 +92,7 @@ object RiegenBuilder {
     val riegen = (hauptdurchgaenge ++ nebendurchgaenge).flatMap{item =>
       val (durchgang, starts) = item
       starts.map{start =>
-        GeraeteRiege(start._3.head.wettkampfTitel, durchgang, start._1, start._2, start._3)
+        GeraeteRiege(start._3.head.wettkampfTitel, durchgang, start._1, start._2, start._3, start._4)
       }
     }.toList
 
@@ -246,7 +252,9 @@ trait RiegenblattToHtmlRenderer {
           (riege.copy(kandidaten = riege.kandidaten ++ (1 to full).map(i => Kandidat(
               riege.kandidaten.head.wettkampfTitel,
               "", "", 0,
-              "", "", "", "", None, None, Seq[Disziplin](), Seq[Disziplin]()))), offset)
+              "", "", "", "", None, None, 
+              Seq[Disziplin](), Seq[Disziplin](), Seq[WertungView]())))
+          , offset)
         }
       }
     }
