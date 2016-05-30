@@ -17,7 +17,7 @@ class TurnerScoreTab(val verein: Option[Verein], override val service: KutuServi
     case None    => service.selectWertungen()
   }
 
-  override def getSaveAsFilenameDefault: FilenameDefault = FilenameDefault("", new java.io.File(service.homedir))
+  override def getSaveAsFilenameDefault: FilenameDefault = FilenameDefault("Rangliste_" + verein.map(_.name.replace(" ", "_")).getOrElse("Alle"), new java.io.File(service.homedir))
 
   override def isPopulated = {
     val combos = populate(groupers)

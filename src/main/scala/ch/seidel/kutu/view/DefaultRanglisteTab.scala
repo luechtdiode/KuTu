@@ -329,11 +329,11 @@ abstract class DefaultRanglisteTab(override val service: KutuService) extends Ta
       text = "Drucken (via Browser) ..."
       onAction = (action: ActionEvent) => {
         val defaults = getSaveAsFilenameDefault
-        val selectedFile = new File(defaults.dir.getAbsolutePath + "/" + defaults.filename)
         val dir = defaults.dir
         if(!dir.exists()) {
           dir.mkdirs();
         }
+        val selectedFile = new File(dir.getPath + "/" + defaults.filename)
         val txtLinesPerPage = new TextField {
     		  text.value = "51"
     	  }
@@ -344,7 +344,7 @@ abstract class DefaultRanglisteTab(override val service: KutuService) extends Ta
       			  prefHeight = 50
       			  alignment = Pos.BottomRight
       			  hgrow = Priority.Always
-      			  children = Seq(new Label("Zeilen pro Seite (51 für A4 hoch, 20 für A4 quer)  "), txtLinesPerPage)
+      			  children = Seq(new Label("Zeilen pro Seite (51 für A4 hoch, 34 für A4 quer)  "), txtLinesPerPage)
       		  }
       	  }
       	  }, new Button("OK") {
@@ -364,11 +364,11 @@ abstract class DefaultRanglisteTab(override val service: KutuService) extends Ta
                 case e: Exception =>
               }
               val toSave = refreshRangliste(buildGrouper, lpp).getBytes("UTF-8")
-              val os = new BufferedOutputStream(new FileOutputStream(selectedFile))
+              val os = new BufferedOutputStream(new FileOutputStream(file))
               os.write(toSave)
               os.flush()
               os.close()
-              Desktop.getDesktop().open(selectedFile)
+              Desktop.getDesktop().open(file)
       		  }
       	  }
       	)
