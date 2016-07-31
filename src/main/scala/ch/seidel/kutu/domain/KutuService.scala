@@ -379,7 +379,7 @@ trait KutuService {
 
       implicit val cache = scala.collection.mutable.Map[Long, ProgrammView]()
       //id |id |js_id |geschlecht |name |vorname |gebdat |strasse |plz |ort |verein |activ |id |name |id |programm_id |id |name |kurzbeschreibung |detailbeschreibung |notenfaktor |ord |masculin |feminim |id |datum |titel |programm_id |auszeichnung |difficulty |execution |endnote |riege |
-      sql"""
+      val wv = sql"""
                     SELECT w.id, a.id, a.js_id, a.geschlecht, a.name, a.vorname, a.gebdat, a.strasse, a.plz, a.ort, a.activ, a.verein, v.*,
                       wd.id, wd.programm_id, d.*, wd.kurzbeschreibung, wd.detailbeschreibung, wd.notenfaktor, wd.ord, wd.masculin, wd.feminim,
                       wk.*,
@@ -394,6 +394,10 @@ trait KutuService {
                     WHERE w.id=${w.id}
                     order by wd.programm_id, wd.ord
        """.as[WertungView].build.head
+      if(wv.endnote >= 8.7) {
+        putWertungToBestenResults(wv)
+      }
+      wv
     }
   }
 
@@ -1153,11 +1157,14 @@ trait KutuService {
       .map(rr => rr.r -> rr.durchgang.get)
       .toMap
 
-    def containsRiegeInDurchgang(riege: Option[String]) =
-      riege.nonEmpty && riege.forall(r =>
-        findDurchgang.get(r).forall(d =>
-          durchgangfilter.contains(d)))
-
+    def containsRiegeInDurchgang(riege: Option[String]) = riege match {
+      case Some(r) => findDurchgang.get(r) match {
+        case Some(d) => durchgangfilter.contains(d)
+        case _ => false
+      }
+      case _ => false
+    }
+      
     val filteredWert = wert
     .map{x =>
       if(durchgangfilter.isEmpty) {
@@ -1807,5 +1814,30 @@ trait KutuService {
           """.execute
       }
     }
+  }
+  
+  private var bestenResults = Map[String,WertungView]()
+  private var shouldResetBestenResults = false
+  
+  def putWertungToBestenResults(wertung: WertungView) {
+    if(shouldResetBestenResults) {
+      bestenResults = Map[String,WertungView]()
+      shouldResetBestenResults = false;
+    }
+    bestenResults = bestenResults.updated(wertung.athlet.id + ":" + wertung.wettkampfdisziplin.id, wertung)
+  }
+  
+  def getBestenResults = {
+    bestenResults
+/* Athlet, Disziplin, Wertung (Endnote)
+    .map(w =>(w._2.athlet.easyprint, w._2.wettkampfdisziplin.disziplin.name, w._2.endnote))    
+    .sortBy(_._3)
+ */
+    .map(_._2)    
+    .toList
+  }
+  
+  def resetBestenResults {
+    shouldResetBestenResults = true;
   }
 }

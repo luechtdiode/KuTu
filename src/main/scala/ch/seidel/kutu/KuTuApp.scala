@@ -287,6 +287,7 @@ object KuTuApp extends JFXApp with KutuService {
       }
       splitPane.items.add(1, centerPane)
       splitPane.dividerPositions = 0.0d
+      resetBestenResults
     }
   }
 

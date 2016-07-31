@@ -57,6 +57,7 @@ import ch.seidel.kutu.KuTuApp
 import scala.concurrent.Await
 import scala.concurrent.duration.Duration
 import ch.seidel.kutu.data.ResourceExchanger
+import ch.seidel.kutu.renderer.BestenListeToHtmlRenderer
 import ch.seidel.kutu.renderer.RiegenblattToHtmlRenderer
 import ch.seidel.kutu.renderer.RiegenBuilder
 import scalafx.scene.control.ListCell
@@ -1324,6 +1325,33 @@ class WettkampfWertungTab(wettkampfmode: Boolean, programm: Option[ProgrammView]
         }
       }
     }
+    val generateBestenliste = new Button with BestenListeToHtmlRenderer {
+      text = "Bestenliste erstellen"
+      minWidth = 75
+
+      onAction = (event: ActionEvent) => {
+        val filename = "Bestenliste_" + wettkampf.easyprint.replace(" ", "_") + ".html"
+        val dir = new java.io.File(service.homedir + "/" + wettkampf.easyprint.replace(" ", "_"))
+        if(!dir.exists()) {
+          dir.mkdirs();
+        }
+        val file = new java.io.File(dir.getPath + "/" + filename)
+        val logofile = if(new java.io.File(dir.getPath + "/logo.jpg").exists()) {
+          "logo.jpg"
+        }
+        else {
+          "../logo.jpg"
+        }
+        val toSave = toHTMListe(service.getBestenResults, logofile)
+        val os = new BufferedOutputStream(new FileOutputStream(file))
+        os.write(toSave.getBytes("UTF-8"))
+        os.flush()
+        os.close()
+        Desktop.getDesktop().open(file);
+        //printHtml(toSave, webView.engine)
+        service.resetBestenResults
+      }
+    }
     val riegenRemoveButton = new Button {
   	  text = "Riege löschen"
   			  minWidth = 75
@@ -1620,7 +1648,7 @@ class WettkampfWertungTab(wettkampfmode: Boolean, programm: Option[ProgrammView]
             minHeight = Region.USE_PREF_SIZE
             styleClass += "toolbar-header"
           }
-        ) ++ (if(wettkampfmode) List(cmbDurchgangFilter, txtUserFilter) else actionButtons :+ clearButton :+ cmbDurchgangFilter :+ txtUserFilter)
+        ) ++ (if(wettkampfmode) List(cmbDurchgangFilter, txtUserFilter, generateBestenliste) else actionButtons :+ clearButton :+ cmbDurchgangFilter :+ txtUserFilter)
       }
       center = new SplitPane {
         orientation = Orientation.Horizontal
