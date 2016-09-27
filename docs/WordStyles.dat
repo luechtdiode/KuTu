@@ -15,6 +15,6 @@ DestDir=C:\Users\Roland\git\KuTu\docs
 VerweiseBeruecksichtigen=True
 VerweisText=Siehe auch
 SpezVerweisText=True
-VerweisStyle=Kommentarzeichen  [wdStyleCommentReference]
+VerweisStyle=Kommentartext  [wdStyleCommentText]
 VerweisSeitenZahl=True
 VerweisSeiteText=Seite

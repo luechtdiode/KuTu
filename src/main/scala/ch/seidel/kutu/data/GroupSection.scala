@@ -11,7 +11,7 @@ object GroupSection {
   def programGrouper( w: WertungView): ProgrammView = w.wettkampfdisziplin.programm.aggregatorSubHead
   def disziplinGrouper( w: WertungView): (Int, Disziplin) = (w.wettkampfdisziplin.ord, w.wettkampfdisziplin.disziplin)
   def groupWertungList(list: Iterable[WertungView]) = {
-    val groups = list.filter(_.endnote > 0).groupBy(programGrouper).map { pw =>
+    val groups = list.filter(w => w.showInScoreList).groupBy(programGrouper).map { pw =>
       (pw._1 -> pw._2.map(disziplinGrouper).toSet[(Int, Disziplin)].toList.sortBy{ d =>
         d._1 }.map(_._2))
     }
@@ -466,6 +466,7 @@ case class GroupLeaf(override val groupKey: DataObject, list: Iterable[WertungVi
       val (athlet, (sum, avg, wd, wp, gsum)) = x
       val gsrang = rangMap(athlet)
       val posproz = 100d * gsrang.rang.endnote / teilnehmer
+      val posprom = 10000d * gsrang.rang.endnote / teilnehmer
       val gs = mapToGroupSum(athlet, wd, wp)
       val divider = if(withDNotes || gs.isEmpty) 1 else gs.filter{r => r.sum.endnote > 0}.size
 
@@ -474,8 +475,14 @@ case class GroupLeaf(override val groupKey: DataObject, list: Iterable[WertungVi
           && (gsrang.rang.endnote < 4
               || (wp.head._4 match {
                 case Some(auszeichnung) =>
-                  val ret = posproz <= auszeichnung
-                  ret
+                  if(auszeichnung > 100) {
+                    val ret = posprom <= auszeichnung
+                    ret
+                  }
+                  else {
+                    val ret = posproz <= auszeichnung
+                    ret
+                  }
                 case None               => false})
               || (wp.head._5 match {
                 case Some(auszeichnung) =>
@@ -487,7 +494,7 @@ case class GroupLeaf(override val groupKey: DataObject, list: Iterable[WertungVi
       prepared.sortBy(_.athlet.easyprint)
     }
     else{
-      prepared.filter(_.sum.endnote > 0).sortBy(_.rang.endnote)
+      prepared/*.filter(_.sum.endnote > 0)*/.sortBy(_.rang.endnote)
     }
   }
 }

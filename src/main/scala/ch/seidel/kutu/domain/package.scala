@@ -189,6 +189,13 @@ package object domain {
     def + (r: Resultat) = resultat + r
     def toWertung = Wertung(id, athlet.id, wettkampfdisziplin.id, wettkampf.id, noteD, noteE, endnote, riege, riege2)
     def toWertung(riege: String) = Wertung(id, athlet.id, wettkampfdisziplin.id, wettkampf.id, noteD, noteE, endnote, Some(riege), riege2)
+    def showInScoreList = {
+      (endnote > 0) || (athlet.geschlecht match {
+        case "M" => wettkampfdisziplin.masculin > 0
+        case "W" => wettkampfdisziplin.feminim > 0
+        case _ => endnote > 0
+      })
+    }
     override def easyprint = {
       resultat.easyprint
     }

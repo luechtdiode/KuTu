@@ -192,7 +192,12 @@ object KuTuApp extends JFXApp with KutuService {
       val txtAuszeichnung = new TextField {
         prefWidth = 500
         promptText = "%-Angabe, wer eine Auszeichnung bekommt"
-        text = p.auszeichnung + "%"
+        if(p.auszeichnung > 100) {
+          text = dbl2Str(p.auszeichnung / 100d) + "%"
+        }
+        else {
+          text = p.auszeichnung + "%"
+        }
       }
       val txtAuszeichnungEndnote = new TextField {
         prefWidth = 500
@@ -223,8 +228,9 @@ object KuTuApp extends JFXApp with KutuService {
               ld2SQLDate(txtDatum.valueProperty().value),
               txtTitel.text.value,
               Set(cmbProgramm.selectionModel.value.getSelectedItem.id),
-              txtAuszeichnung.text.value.filter(c => c.isDigit).toString match {
+              txtAuszeichnung.text.value.filter(c => c.isDigit || c == '.' || c == ',').toString match {
                 case ""        => 0
+                case s: String if(s.indexOf(".") > -1 || s.indexOf(",") > -1) => math.round(str2dbl(s) * 100).toInt
                 case s: String => str2Int(s)
               },
               txtAuszeichnungEndnote.text.value match {
