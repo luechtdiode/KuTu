@@ -35,4 +35,4 @@ script: mvn site --settings deploy-settings.xml
 branches:
   only:
     - master
-    - OptimierungRiegeneinteilung
+    - v1r1b0-rc5
