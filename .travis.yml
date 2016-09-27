@@ -6,9 +6,9 @@
 
 # just working on osx ...
 before_install:
-  - "wget --no-cookies --no-check-certificate --header \"Cookie: gpw_e24=http%3A%2F%2Fwww.oracle.com%2F; oraclelicense=accept-securebackup-cookie\" http://download.oracle.com/otn-pub/java/jdk/8u92-b14/jdk-8u92-macosx-x64.dmg" 
-  - hdiutil mount jdk-8u92-macosx-x64.dmg
-  - sudo installer -pkg /Volumes/JDK\ 8\ Update\ 92/JDK\ 8\ Update\ 92.pkg -target LocalSystem
+  - "wget --no-cookies --no-check-certificate --header \"Cookie: gpw_e24=http%3A%2F%2Fwww.oracle.com%2F; oraclelicense=accept-securebackup-cookie\" http://download.oracle.com/otn-pub/java/jdk/8u102-b14/jdk-8u102-macosx-x64.dmg" 
+  - hdiutil mount jdk-8u102-macosx-x64.dmg
+  - sudo installer -pkg /Volumes/JDK\ 8\ Update\ 102/JDK\ 8\ Update\ 102.pkg -target LocalSystem
   - export JAVA_HOME=$(/usr/libexec/java_home)
   
 cache:
