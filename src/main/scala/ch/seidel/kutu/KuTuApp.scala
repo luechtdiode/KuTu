@@ -39,6 +39,7 @@ import scala.concurrent.Promise
 import scala.util.Failure
 import scala.util.Success
 import scalafx.stage.StageStyle
+import scalafx.beans.property.BooleanProperty
 
 object KuTuApp extends JFXApp with KutuService {
   var tree = AppNavigationModel.create(KuTuApp.this)
@@ -46,13 +47,22 @@ object KuTuApp extends JFXApp with KutuService {
     expanded = true
     children = tree.getTree
   }
+  val modelWettkampfModus = new BooleanProperty()
 
-  var centerPane = PageDisplayer.choosePage(false, None, "dashBoard", tree)
+  val btnWettkampfModus = new ToggleButton("Wettkampf-Modus") {
+    id = "wettkampfmodusButton"
+    selected <==> modelWettkampfModus
+    disable = true
+  }
+//  btnWettkampfModus.disable =  <== when(wkview.selectionModel.value.selectedItemProperty.isNull()) choose true otherwise false
+
+  var centerPane = PageDisplayer.choosePage(modelWettkampfModus, None, "dashBoard", tree)
 
   def updateTree {
     tree = AppNavigationModel.create(KuTuApp.this)
     rootTreeItem.children = tree.getTree
   }
+  
   def handleAction[J <: javafx.event.ActionEvent, R](handler: scalafx.event.ActionEvent => R) = new javafx.event.EventHandler[J] {
     def handle(event: J) {
       setCursor(Cursor.WAIT)
@@ -283,17 +293,29 @@ object KuTuApp extends JFXApp with KutuService {
       }
     }
   }
-
+  
   def makeWettkampfDurchfuehrenMenu(p: WettkampfView): MenuItem = {
-    makeMenuAction("Wettkampf durchführen") {(caption, action) =>
-      implicit val e = action
-      centerPane = PageDisplayer.choosePage(true, Some(p), "dashBoard - " + caption, tree)
-      if(splitPane.items.size > 1) {
-        splitPane.items.remove(1)
+//    def switchToWettkampf(caption: String) = {
+//      centerPane = PageDisplayer.choosePage(true, Some(p), "dashBoard - " + caption, tree)
+//      if(splitPane.items.size > 1) {
+//        splitPane.items.remove(1)
+//      }
+//      splitPane.items.add(1, centerPane)
+//      splitPane.dividerPositions = 0.0d
+//      btnWettkampfModus.selected = true
+//      resetBestenResults
+//    }
+    if(!modelWettkampfModus.value) {
+      makeMenuAction("Wettkampf durchführen") {(caption, action) =>
+        implicit val e = action
+        modelWettkampfModus.value = true
       }
-      splitPane.items.add(1, centerPane)
-      splitPane.dividerPositions = 0.0d
-      resetBestenResults
+    }
+    else {
+      makeMenuAction("Wettkampf-Modus beenden") {(caption, action) =>
+        implicit val e = action
+        modelWettkampfModus.value = false
+      }
     }
   }
 
@@ -560,8 +582,9 @@ object KuTuApp extends JFXApp with KutuService {
     })
   }
 
-  controlsView.selectionModel().selectionMode = SelectionMode.SINGLE
+  controlsView.selectionModel().selectionMode = SelectionMode.Single
   controlsView.selectionModel().selectedItem.onChange { (_, _, newItem) =>
+    btnWettkampfModus.disable.value = true
     if(newItem != null) {
       newItem.value.value match {
         case "Athleten" =>
@@ -577,13 +600,14 @@ object KuTuApp extends JFXApp with KutuService {
             case (true, Some(parent)) => {
               tree.getThumbs(parent.getValue).find(p => p.button.text.getValue.equals(newItem.getValue)) match {
                 case Some(KuTuAppThumbNail(p: WettkampfView, _, newItem)) =>
-                controlsView.contextMenu = new ContextMenu() {
-                  items += makeWettkampfDurchfuehrenMenu(p)
-                  items += makeWettkampfBearbeitenMenu(p)
-                  items += makeWettkampfExportierenMenu(p)
-                  items += makeWettkampfDataDirectoryMenu(p)
-                  items += makeWettkampfLoeschenMenu(p)
-                }
+                  btnWettkampfModus.disable.value = false
+                  controlsView.contextMenu = new ContextMenu() {
+                    items += makeWettkampfDurchfuehrenMenu(p)
+                    items += makeWettkampfBearbeitenMenu(p)
+                    items += makeWettkampfExportierenMenu(p)
+                    items += makeWettkampfDataDirectoryMenu(p)
+                    items += makeWettkampfLoeschenMenu(p)
+                  }
                 case Some(KuTuAppThumbNail(v: Verein, _, newItem)) =>
                   controlsView.contextMenu = new ContextMenu() {
                     items += makeVereinUmbenennenMenu(v)
@@ -600,17 +624,17 @@ object KuTuApp extends JFXApp with KutuService {
         case (true, Some(parent)) => {
           tree.getThumbs(parent.getValue).find(p => p.button.text.getValue.equals(newItem.getValue)) match {
             case Some(KuTuAppThumbNail(p: WettkampfView, _, newItem)) =>
-              PageDisplayer.choosePage(false, Some(p), "dashBoard - " + newItem.getValue, tree)
+              PageDisplayer.choosePage(modelWettkampfModus, Some(p), "dashBoard - " + newItem.getValue, tree)
             case Some(KuTuAppThumbNail(v: Verein, _, newItem)) =>
-              PageDisplayer.choosePage(false, Some(v), "dashBoard - " + newItem.getValue, tree)
+              PageDisplayer.choosePage(modelWettkampfModus, Some(v), "dashBoard - " + newItem.getValue, tree)
             case _ =>
-              PageDisplayer.choosePage(false, None, "dashBoard - " + newItem.getValue, tree)
+              PageDisplayer.choosePage(modelWettkampfModus, None, "dashBoard - " + newItem.getValue, tree)
           }
         }
         case (false, Some(_)) =>
-          PageDisplayer.choosePage(false, None, "dashBoard - " + newItem.getValue, tree)
+          PageDisplayer.choosePage(modelWettkampfModus, None, "dashBoard - " + newItem.getValue, tree)
         case (_, _) =>
-          PageDisplayer.choosePage(false, None, "dashBoard", tree)
+          PageDisplayer.choosePage(modelWettkampfModus, None, "dashBoard", tree)
       }
       if(splitPane.items.size > 1) {
         splitPane.items.remove(1)
@@ -635,19 +659,38 @@ object KuTuApp extends JFXApp with KutuService {
     items.addAll(scrollPane, centerPane)
   }
 
-  val header = new ToolBar {
-          vgrow = Priority.Always
-          hgrow = Priority.Always
-          prefHeight = 76
-          maxHeight = 76
-          id = "mainToolBar"
-          content = List(
-            new ImageView {
-              image = new Image(
-                this.getClass.getResourceAsStream("/images/logo.png"))
-              margin = Insets(0, 0, 0, 10)
-            })
-          }
+  var divider: Option[Double] = None
+  
+  modelWettkampfModus.onChange {
+    if(modelWettkampfModus.value) {
+      divider = Some(splitPane.dividerPositions(0))
+    }
+    if(!modelWettkampfModus.value && (divider match {case Some(_) => true case _ => false})) {
+      splitPane.dividerPositions = divider.get
+    }
+    else {
+      splitPane.dividerPositions = 0d
+    }
+    resetBestenResults
+  }
+  
+  val header = new BorderPane {
+    vgrow = Priority.Always
+    hgrow = Priority.Always
+    prefHeight = 76
+    maxHeight = 76
+    id = "mainHeader"
+    left = new ImageView {
+      image = new Image(this.getClass.getResourceAsStream("/images/logo.png"))
+      margin = Insets(15, 0, 0, 10)
+    }
+    right = new ToolBar {
+      id = "mainToolBar"
+      vgrow = Priority.Always
+      hgrow = Priority.Always
+      content = List(btnWettkampfModus)
+    }
+  }
 
   def getStage() = stage
   //

@@ -294,7 +294,7 @@ object TurnerPage {
       )
       retSorted
     }
-    new TurnerPage( new LazyTabPane(refresher))
+    new TurnerPage( new LazyTabPane(refresher, () => {}))
   }
 }
 

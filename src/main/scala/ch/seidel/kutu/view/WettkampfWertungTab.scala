@@ -67,6 +67,7 @@ import scalafx.scene.paint.Color
 import scalafx.scene.control.ContentDisplay
 import scalafx.scene.image.Image
 import scalafx.scene.image.ImageView
+import scalafx.event.subscriptions.Subscription
 
 trait TCAccess {
   def getIndex: Int
@@ -84,7 +85,7 @@ class WKTableColumn[T](val index: Int) extends TableColumn[IndexedSeq[WertungEdi
   override def valueEditor(selectedRow: IndexedSeq[WertungEditor]): WertungEditor = selectedRow(index)
 }
 
-class WettkampfWertungTab(wettkampfmode: Boolean, programm: Option[ProgrammView], riege: Option[String], wettkampf: WettkampfView, override val service: KutuService, athleten: => IndexedSeq[WertungView]) extends Tab with TabWithService {
+class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[ProgrammView], riege: Option[String], wettkampf: WettkampfView, override val service: KutuService, athleten: => IndexedSeq[WertungView]) extends Tab with TabWithService {
 	implicit def doublePropertyToObservableValue(p: DoubleProperty): ObservableValue[Double,Double] = p.asInstanceOf[ObservableValue[Double,Double]]
   private var lazypane: Option[LazyTabPane] = None
   def setLazyPane(pane: LazyTabPane) {
@@ -102,7 +103,7 @@ class WettkampfWertungTab(wettkampfmode: Boolean, programm: Option[ProgrammView]
       case _=>
     }
   }
-
+  
   case class EditorPane(wkview: TableView[IndexedSeq[WertungEditor]]) extends HBox {
     var index = -1
 //    var lastFocused: Option[Control] = None;
@@ -196,7 +197,33 @@ class WettkampfWertungTab(wettkampfmode: Boolean, programm: Option[ProgrammView]
     }
   }
 
+  var subscription: Option[Subscription] = None
+  override def release {
+    subscription match {
+      case Some(s) => 
+        s.cancel
+        subscription = None
+//        println("subscription released "+ programm + wettkampf + hashCode())
+      case None =>
+//        println("nonexisting subscription released "+ programm+ wettkampf + hashCode())
+    }
+  }
+  
   override def isPopulated = {
+    subscription match {
+      case None =>
+        subscription = Some(wettkampfmode.onChange {
+          def op = {
+            val pop = isPopulated
+            refreshLazyPane()
+          }
+          KuTuApp.invokeWithBusyIndicator(op)
+        })
+//        println("was not populated and subscription new accquired "+ programm+ wettkampf + hashCode())
+      case _ => 
+//        println("was populated and subscription active "+ programm+ wettkampf + hashCode())
+    }
+      
     def defaultFilter: (WertungView) => Boolean = {wertung =>
       programm match {
         case Some(progrm) =>
@@ -553,7 +580,7 @@ class WettkampfWertungTab(wettkampfmode: Boolean, programm: Option[ProgrammView]
       },
       new WKTableColumn[String](-1) {
         text = "Riege"
-        if(!wettkampfmode) {
+        if(!wettkampfmode.value) {
           cellFactory = { x =>
             new AutoCommitTextFieldTableCell[IndexedSeq[WertungEditor], String](new DefaultStringConverter())
           }
@@ -564,10 +591,10 @@ class WettkampfWertungTab(wettkampfmode: Boolean, programm: Option[ProgrammView]
           })
         }
 //        delegate.impl_setReorderable(false)
-        editable = !wettkampfmode
-        visible = !wettkampfmode
+        editable = !wettkampfmode.value
+        visible = !wettkampfmode.value
         prefWidth = 100
-        if(!wettkampfmode) {
+        if(!wettkampfmode.value) {
           onEditCommit = (evt: CellEditEvent[IndexedSeq[WertungEditor], String]) => {
             if(!evt.newValue.equals("keine Einteilung")) {
             	val rowIndex = wkModel.indexOf(evt.rowValue)
@@ -595,7 +622,7 @@ class WettkampfWertungTab(wettkampfmode: Boolean, programm: Option[ProgrammView]
       },
       new WKTableColumn[String](-1) {
         text = "Riege 2"
-        if(!wettkampfmode) {
+        if(!wettkampfmode.value) {
           cellFactory = { x =>
             new AutoCommitTextFieldTableCell[IndexedSeq[WertungEditor], String](new DefaultStringConverter())
           }
@@ -606,10 +633,10 @@ class WettkampfWertungTab(wettkampfmode: Boolean, programm: Option[ProgrammView]
           })
         }
 //        delegate.impl_setReorderable(false)
-        editable = !wettkampfmode
-        visible = !wettkampfmode
+        editable = !wettkampfmode.value
+        visible = !wettkampfmode.value
         prefWidth = 100
-        if(!wettkampfmode) {
+        if(!wettkampfmode.value) {
           onEditCommit = (evt: CellEditEvent[IndexedSeq[WertungEditor], String]) => {
           	if(!evt.newValue.equals("keine Einteilung")) {
               val rowIndex = wkModel.indexOf(evt.rowValue)
@@ -883,7 +910,7 @@ class WettkampfWertungTab(wettkampfmode: Boolean, programm: Option[ProgrammView]
       isFilterRefreshing = false;
     }
 
-    val riegenFilterView = new RiegenFilterView(!wettkampfmode,
+    val riegenFilterView = new RiegenFilterView(!wettkampfmode.value,
         wettkampf, service,
         () => {disziplinlist},
         true,
@@ -1576,7 +1603,7 @@ class WettkampfWertungTab(wettkampfmode: Boolean, programm: Option[ProgrammView]
       AutoCommitTextFieldTableCell.handleDefaultEditingKeyEvents(wkview, true, txtUserFilter)(ke)
     }
 
-    if(!wettkampfmode) {
+    if(!wettkampfmode.value) {
       riegenFilterView.selectionModel.value.setCellSelectionEnabled(true)
       riegenFilterView.filterEvent(KeyEvent.KeyPressed) { (ke: KeyEvent) =>
         AutoCommitTextFieldTableCell.handleDefaultEditingKeyEvents(riegenFilterView, false, txtUserFilter)(ke)
@@ -1648,7 +1675,7 @@ class WettkampfWertungTab(wettkampfmode: Boolean, programm: Option[ProgrammView]
             minHeight = Region.USE_PREF_SIZE
             styleClass += "toolbar-header"
           }
-        ) ++ (if(wettkampfmode) List(cmbDurchgangFilter, txtUserFilter, generateBestenliste) else actionButtons :+ clearButton :+ cmbDurchgangFilter :+ txtUserFilter)
+        ) ++ (if(wettkampfmode.value) List(cmbDurchgangFilter, txtUserFilter, generateBestenliste) else actionButtons :+ clearButton :+ cmbDurchgangFilter :+ txtUserFilter)
       }
       center = new SplitPane {
         orientation = Orientation.Horizontal

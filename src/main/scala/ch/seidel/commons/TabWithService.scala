@@ -6,4 +6,5 @@ trait TabWithService {
   val service: KutuService
   lazy val populated = isPopulated
   def isPopulated: Boolean
+  def release = {}
 }

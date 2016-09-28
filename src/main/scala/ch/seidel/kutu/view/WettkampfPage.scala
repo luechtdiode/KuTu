@@ -5,10 +5,11 @@ import ch.seidel.kutu.domain._
 import ch.seidel.commons.DisplayablePage
 import ch.seidel.commons.LazyTabPane
 import ch.seidel.commons.TabWithService
+import scalafx.beans.property.BooleanProperty
 
 object WettkampfPage {
 
-  def buildTab(wettkampfmode: Boolean, wettkampf: WettkampfView, service: KutuService) = {
+  def buildTab(wettkampfmode: BooleanProperty, wettkampf: WettkampfView, service: KutuService) = {
 	  lazy val progs = service.readWettkampfLeafs(wettkampf.programm.id)
     lazy val progSites: Seq[Tab] = progs map {v =>
       new WettkampfWertungTab(wettkampfmode, Some(v), None, wettkampf, service, {
@@ -24,9 +25,17 @@ object WettkampfPage {
         closable = false
       }
     )
+    def releaser() {
+      (progSites).foreach { t => 
+        t.asInstanceOf[WettkampfWertungTab].release
+      }
+    }
     def refresher(pane: LazyTabPane) = {
-      (progSites).foreach { t => t.asInstanceOf[WettkampfWertungTab].setLazyPane(pane)}
-      if(wettkampfmode) {
+      (progSites).foreach { t => 
+        t.asInstanceOf[WettkampfWertungTab].setLazyPane(pane)
+//        t.asInstanceOf[WettkampfWertungTab].release
+      }
+      if(wettkampfmode.value) {
         progSites ++ ranglisteSite
       }
       else {
@@ -34,7 +43,7 @@ object WettkampfPage {
       }
     }
 
-    new WettkampfPage( new LazyTabPane(refresher))
+    new WettkampfPage( new LazyTabPane(refresher, releaser))
   }
 }
 
@@ -46,5 +55,9 @@ class WettkampfPage(tabPane: LazyTabPane)
 
     tabPane.init()
     tabPane
+  }
+  
+  override def release() {
+    tabPane.release()
   }
 }

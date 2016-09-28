@@ -25,6 +25,7 @@ import ch.seidel.kutu.view._
 import ch.seidel.kutu.domain._
 import ch.seidel.kutu.KuTuAppTree
 import ch.seidel.kutu.KuTuApp
+import scalafx.beans.property.BooleanProperty
 
 /**
  * the class that updates tabbed view or dashboard view
@@ -72,7 +73,7 @@ object PageDisplayer {
     dialogStage.showAndWait()
   }
 
-  def choosePage(wettkampfmode: Boolean, context: Option[Any], value: String = "dashBoard", tree: KuTuAppTree): Node = {
+  def choosePage(wettkampfmode: BooleanProperty, context: Option[Any], value: String = "dashBoard", tree: KuTuAppTree): Node = {
     value match {
       case "dashBoard" => displayPage(new DashboardPage(tree = tree))
       case _           => context match {
@@ -82,20 +83,22 @@ object PageDisplayer {
       }
     }
   }
-  private def chooseWettkampfPage(wettkampfmode: Boolean, wettkampf: WettkampfView, tree: KuTuAppTree): Node = {
-    def op = {
-      WettkampfPage.buildTab(wettkampfmode, wettkampf, tree.getService)
-    }
-    displayPage(op)
+  private def chooseWettkampfPage(wettkampfmode: BooleanProperty, wettkampf: WettkampfView, tree: KuTuAppTree): Node = {
+    displayPage(WettkampfPage.buildTab(wettkampfmode, wettkampf, tree.getService))
   }
   private def chooseVereinPage(verein: Verein, tree: KuTuAppTree): Node = {
-    def op = {
-      TurnerPage.buildTab(verein, tree.getService)
-    }
-    displayPage(op)
+    displayPage(TurnerPage.buildTab(verein, tree.getService))
   }
 
-  private def displayPage(nodeToAdd:  => DisplayablePage): Node = {
+  var activePage: Option[DisplayablePage] = None
+  
+  private def displayPage(nodeToAdd: DisplayablePage): Node = {
+    activePage match {
+      case Some(p) if(p != nodeToAdd) => 
+        p.release()
+      case _ =>
+    }
+    activePage = Some(nodeToAdd)
     val ret = new VBox {
       vgrow = Priority.Always
       hgrow = Priority.Always

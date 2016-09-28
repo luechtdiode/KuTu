@@ -22,7 +22,7 @@
 	-fx-text-fill: orangered;
 }
 
-#mainToolBar {
+#mainHeader {
 	-fx-padding: 10px;
 	-fx-background-image: url("../images/top-bar.png");
 	-fx-background-size: cover;
@@ -30,6 +30,21 @@
 	-fx-background-repeat: no-repeat;
 }
 
+#mainToolBar {
+  -fx-background-color: null;
+}
+
+.toggle-button {
+  -fx-background-color: null;
+  -fx-label-padding: 5 40 5 10;
+  -fx-background-image: url("../images/btn-toggle-off.png");
+  -fx-background-repeat: no-repeat;
+  -fx-background-position: center;
+}
+
+.toggle-button:selected {
+  -fx-background-image:url("../images/btn-toggle-on.png");
+}
 #newButton {
 	-fx-background-color: null;
 	-fx-padding: -10 0 -10 0;
@@ -46,7 +61,7 @@
 	-fx-background-repeat: no-repeat;
 }
 
-#highlightsButton:hover,#newButton:hover {
+#highlightsButton:hover,#newButton:hover,#wettkampfmodusButton:hover {
 	-fx-effect: dropshadow(three-pass-box, rgba(255, 255, 255, 0.6), 10, 0.5,
 		0, 0 );
 }

@@ -4,12 +4,13 @@ import scalafx.scene.control.TabPane
 import scalafx.scene.layout.Priority
 import scalafx.scene.control.Tab
 
-class LazyTabPane(refreshTabs: (LazyTabPane) => Seq[Tab]) extends TabPane {
+class LazyTabPane(refreshTabs: (LazyTabPane) => Seq[Tab], releaseTabs: () => Unit) extends TabPane {
   hgrow = Priority.Always
   vgrow = Priority.Always
   id = "source-tabs"
-
+  
   def init() {
+//    release()
     val selected = selectionModel.value.getSelectedItem
 
     def indexOfTab(title: String): Int = {
@@ -48,5 +49,8 @@ class LazyTabPane(refreshTabs: (LazyTabPane) => Seq[Tab]) extends TabPane {
 
   def refreshTabs() {
     init()
+  }
+  def release() {
+    releaseTabs()
   }
 }
