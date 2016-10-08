@@ -8,6 +8,7 @@ import scalafx.Includes._
 import scalafx.scene.control.TableColumn.CellDataFeatures
 import scalafx.scene.control.TableView
 import ch.seidel.kutu.domain._
+import java.util.concurrent.atomic.AtomicBoolean
 
 trait ScoreToHtmlRenderer {
   protected val title: String
@@ -131,12 +132,13 @@ trait ScoreToHtmlRenderer {
       val partpage = if(!p.startsWith(intro)) intro + p + outro else p + outro
       printjob(partpage)}
   }
-    
+  val firstSiteRendered = new AtomicBoolean(false)
+
   private def toHTML(gs: List[GroupSection], openedTitle: String, level: Int, athletsPerPage: Int, sortAlphabetically: Boolean, diszMap: Map[Long,Map[String,List[Disziplin]]]): String = {
     val gsBlock = new StringBuilder()
-    val gsPageBlock = new StringBuilder()
     if (level == 0) {
       gsBlock.append(firstSite(title))
+      firstSiteRendered.set(false)
     }
     for (c <- gs) {
       c match {
@@ -244,7 +246,15 @@ trait ScoreToHtmlRenderer {
           }
 
           val alldata = gl.getTableData(sortAlphabetically, diszMap)
-          val pagedata = if(athletsPerPage == 0) alldata.sliding(alldata.size, alldata.size) else alldata.sliding(athletsPerPage, athletsPerPage)
+          val pagedata = if(athletsPerPage == 0) alldata.sliding(alldata.size, alldata.size) 
+          else if(firstSiteRendered.get) {
+            alldata.sliding(athletsPerPage, athletsPerPage)
+          }
+          else {
+        	  firstSiteRendered.set(true)
+            List(alldata.take(athletsPerPage-3)) ++
+            alldata.drop(athletsPerPage-3).sliding(athletsPerPage, athletsPerPage)
+          }
           pagedata.foreach {section =>
             renderListHead
             renderListRows(section)

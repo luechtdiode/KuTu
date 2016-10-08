@@ -351,7 +351,7 @@ abstract class DefaultRanglisteTab(override val service: KutuService) extends Ta
         val selectedFile = new File(dir.getPath + "/" + defaults.filename)
         val txtLinesPerPage = new TextField {
           margin = Insets(10,10,10,0)
-    		  text.value = "49"
+    		  text.value = "51"
     	  }
         val chkViaBrowser = new CheckBox("via Browser") {
           margin = Insets(10,10,10,0)
@@ -370,7 +370,7 @@ abstract class DefaultRanglisteTab(override val service: KutuService) extends Ta
       			  
       			  hgrow = Priority.Always
       			  children = Seq(
-      			      new Label("Zeilen pro Seite (49 für A4 hoch, 33 für A4 quer)"), 
+      			      new Label("Zeilen pro Seite (51 für A4 hoch, 34 für A4 quer)"), 
       			      txtLinesPerPage,
       			      chkViaBrowser,
       			      new Label("Drucker") {
@@ -392,10 +392,10 @@ abstract class DefaultRanglisteTab(override val service: KutuService) extends Ta
               else {
                 selectedFile
               }
-              var lpp = 49
+              var lpp = 51
               try {
                 lpp = Integer.valueOf(txtLinesPerPage.text.value)
-                if(lpp < 1) lpp = 49
+                if(lpp < 1) lpp = 51
               }
               catch {
                 case e: Exception =>
