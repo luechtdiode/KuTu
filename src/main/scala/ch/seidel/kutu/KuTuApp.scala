@@ -40,6 +40,7 @@ import scala.util.Failure
 import scala.util.Success
 import scalafx.stage.StageStyle
 import scalafx.beans.property.BooleanProperty
+import scalafx.beans.binding.Bindings
 
 object KuTuApp extends JFXApp with KutuService {
   var tree = AppNavigationModel.create(KuTuApp.this)
@@ -65,18 +66,18 @@ object KuTuApp extends JFXApp with KutuService {
   
   def handleAction[J <: javafx.event.ActionEvent, R](handler: scalafx.event.ActionEvent => R) = new javafx.event.EventHandler[J] {
     def handle(event: J) {
-      setCursor(Cursor.WAIT)
+      setCursor(Cursor.Wait)
       try {
         handler(event)
       }
       finally {
-        setCursor(Cursor.DEFAULT)
+        setCursor(Cursor.Default)
       }
     }
   }
 
   def invokeWithBusyIndicator(task: => Unit) {
-    setCursor(Cursor.WAIT)
+    setCursor(Cursor.Wait)
     import scala.concurrent.ExecutionContext.Implicits.global
     val f = Future[Boolean] {
       Thread.sleep(10L)// currentThread().wait(1L)
@@ -85,7 +86,7 @@ object KuTuApp extends JFXApp with KutuService {
           task
         }
         finally {
-          setCursor(Cursor.DEFAULT)
+          setCursor(Cursor.Default)
         }
       }
       true
@@ -93,7 +94,7 @@ object KuTuApp extends JFXApp with KutuService {
   }
 
   def invokeAsyncWithBusyIndicator[R](task: => R): Future[R] = {
-    setCursor(Cursor.WAIT)
+    setCursor(Cursor.Wait)
     val p = Promise[R]
     import scala.concurrent.ExecutionContext.Implicits.global
     val f = Future[Boolean] {
@@ -108,14 +109,15 @@ object KuTuApp extends JFXApp with KutuService {
             case e:Exception => p.failure(e)
           }
           finally {
-            setCursor(Cursor.DEFAULT)
+            setCursor(Cursor.Default)
           }
         }
       }
       catch {
         case e:Exception =>
-          setCursor(Cursor.DEFAULT)
+          setCursor(Cursor.Default)
           p.failure(e)
+          e.printStackTrace()
       }
       true
     }
@@ -123,7 +125,7 @@ object KuTuApp extends JFXApp with KutuService {
   }
   var cursorWaiters = 0
   def setCursor(c: Cursor) {
-    val ctoSet = if(c.equals(Cursor.WAIT)) {
+    val ctoSet = if(c.equals(Cursor.Wait)) {
       cursorWaiters += 1
       c
     }
@@ -139,8 +141,8 @@ object KuTuApp extends JFXApp with KutuService {
     }
     //println(cursorWaiters)
     if(getStage() != null) {
-      getStage().scene.root.value.cursor.value = ctoSet
-      getStage().scene.root.value.requestLayout()
+      getStage().scene.delegate.getValue.cursor = ctoSet
+      getStage().scene.delegate.getValue.root.value.requestLayout()
     }
   }
 
@@ -231,6 +233,12 @@ object KuTuApp extends JFXApp with KutuService {
         }
       },
       new Button("OK") {
+        disable <== when(Bindings.createBooleanBinding(() => {
+                            cmbProgramm.selectionModel.value.getSelectedIndex == -1 || 
+                            txtDatum.value.isNull.value || txtTitel.text.isEmpty.value
+                          },
+                            cmbProgramm.selectionModel.value.selectedIndexProperty, txtDatum.value, txtTitel.text
+                          )) choose true otherwise false
         onAction = handleAction {implicit e: ActionEvent =>
           try {
             val w = saveWettkampf(
@@ -295,25 +303,13 @@ object KuTuApp extends JFXApp with KutuService {
   }
   
   def makeWettkampfDurchfuehrenMenu(p: WettkampfView): MenuItem = {
-//    def switchToWettkampf(caption: String) = {
-//      centerPane = PageDisplayer.choosePage(true, Some(p), "dashBoard - " + caption, tree)
-//      if(splitPane.items.size > 1) {
-//        splitPane.items.remove(1)
-//      }
-//      splitPane.items.add(1, centerPane)
-//      splitPane.dividerPositions = 0.0d
-//      btnWettkampfModus.selected = true
-//      resetBestenResults
-//    }
     if(!modelWettkampfModus.value) {
       makeMenuAction("Wettkampf durchführen") {(caption, action) =>
-        implicit val e = action
         modelWettkampfModus.value = true
       }
     }
     else {
       makeMenuAction("Wettkampf-Modus beenden") {(caption, action) =>
-        implicit val e = action
         modelWettkampfModus.value = false
       }
     }
@@ -322,7 +318,7 @@ object KuTuApp extends JFXApp with KutuService {
   def makeNeuerVereinAnlegenMenu = makeMenuAction("Neuen Verein anlegen ...") {(caption, action) =>
     implicit val e = action
 
-    val txtTitel = new TextField {
+    val txtVereinsname = new TextField {
       prefWidth = 500
       promptText = "Vereinsname"
     }
@@ -338,16 +334,21 @@ object KuTuApp extends JFXApp with KutuService {
           vgrow = Priority.Always
           center = new VBox {
             children.addAll(
-                new Label(txtTitel.promptText.value), txtTitel,
+                new Label(txtVereinsname.promptText.value), txtVereinsname,
                 new Label(txtVerband.promptText.value), txtVerband
                 )
           }
         }
       }
     }, new Button("OK") {
+      disable <== when(Bindings.createBooleanBinding(() => {
+                            txtVereinsname.text.isEmpty.value
+                          },
+                            txtVereinsname.text
+                          )) choose true otherwise false
       onAction = handleAction {implicit e: ActionEvent =>
         val vid = createVerein(
-            txtTitel.text.value.trim(),
+            txtVereinsname.text.value.trim(),
             txtVerband.text.value match {
               case "" => None
               case s => Some(s.trim())
@@ -392,7 +393,7 @@ object KuTuApp extends JFXApp with KutuService {
       val txtAuszeichnung = new TextField {
         prefWidth = 500
         promptText = "%-Angabe, wer eine Auszeichnung bekommt"
-        text = "40%"
+        text = "40.00%"
       }
       val txtAuszeichnungEndnote = new TextField {
         prefWidth = 500
@@ -415,13 +416,20 @@ object KuTuApp extends JFXApp with KutuService {
           }
         }
       }, new Button("OK") {
+        disable <== when(Bindings.createBooleanBinding(() => {
+                            cmbProgramm.selectionModel.value.getSelectedIndex == -1 || 
+                            txtDatum.value.isNull.value || txtTitel.text.isEmpty.value
+                          },
+                            cmbProgramm.selectionModel.value.selectedIndexProperty, txtDatum.value, txtTitel.text
+                          )) choose true otherwise false
         onAction = handleAction {implicit e: ActionEvent =>
           val w = createWettkampf(
               ld2SQLDate(txtDatum.valueProperty().value),
               txtTitel.text.value,
               Set(cmbProgramm.selectionModel.value.getSelectedItem.id),
-              txtAuszeichnung.text.value.filter(c => c.isDigit).toString match {
+              txtAuszeichnung.text.value.filter(c => c.isDigit || c == '.' || c == ',').toString match {
                 case ""        => 0
+                case s: String if(s.indexOf(".") > -1 || s.indexOf(",") > -1) => math.round(str2dbl(s) * 100).toInt
                 case s: String => str2Int(s)
               },
               txtAuszeichnungEndnote.text.value match {
@@ -563,6 +571,11 @@ object KuTuApp extends JFXApp with KutuService {
       }
     },
     new Button("OK") {
+      disable <== when(Bindings.createBooleanBinding(() => {
+                            txtVereinsname.text.isEmpty.value
+                          },
+                            txtVereinsname.text
+                          )) choose true otherwise false
       onAction = handleAction {implicit e: ActionEvent =>
         updateVerein(v.copy(
             name = txtVereinsname.text.value.trim(),
