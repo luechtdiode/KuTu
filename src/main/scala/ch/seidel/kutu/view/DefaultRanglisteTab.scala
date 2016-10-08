@@ -359,7 +359,7 @@ abstract class DefaultRanglisteTab(override val service: KutuService) extends Ta
         val cmbDrucker = new ComboBox[Printer] {
           margin = Insets(10,10,10,0)
           disable <== when(chkViaBrowser.selected) choose true otherwise false
-          PrintUtil.printers.foreach {p => items.value.add(p) }
+          PrintUtil.printers.toList.sortBy(p => p.name).foreach {p => items.value.add(p) }
         }
         implicit val impevent = action
     	  PageDisplayer.showInDialog(text.value, new DisplayablePage() {

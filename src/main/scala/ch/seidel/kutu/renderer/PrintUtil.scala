@@ -19,24 +19,32 @@ object PrintUtil {
     pdfPrinter.foreach(p => printWebContent(engine, p, orientation))
   }
   
+  
   def printWebContent(engine: WebEngine, printdevice: Printer, orientation: PageOrientation) {
     // clear margins
-    val inchToMM = 25.4d
+    
+	  val inchToMM = 25.4d
     val defaultLeftMarginInch = 0.75d // 54.0 pts
     
     val defaultLayout = printdevice.createPageLayout(
         Paper.A4, 
         orientation, 
         MarginType.Default)
+        
+    val maxLayout = printdevice.createPageLayout(
+        Paper.A4, 
+        orientation, 
+        MarginType.HardwareMinimum)    
+        
     val pointsPerInch = defaultLayout.leftMargin / defaultLeftMarginInch        
-    val poinsPerMM = pointsPerInch / inchToMM
+    val pointsPerMM = pointsPerInch / inchToMM
     
-    def mmToPoints(mm: Integer) = mm * poinsPerMM
+    def mmToPoints(mm: Integer) = mm * pointsPerMM  
     
-    val lb = mmToPoints(20)
-    val rb = mmToPoints(5)
-    val tb = mmToPoints(5)
-    val bb = mmToPoints(5)
+    val lb = math.max(mmToPoints(10), maxLayout.getLeftMargin)
+    val rb = math.max(mmToPoints(5), maxLayout.getRightMargin)
+    val tb = math.max(mmToPoints(5), maxLayout.getTopMargin)
+    val bb = math.max(mmToPoints(5), maxLayout.getBottomMargin)
     val layout = printdevice.createPageLayout(
         Paper.A4, 
         orientation, 
