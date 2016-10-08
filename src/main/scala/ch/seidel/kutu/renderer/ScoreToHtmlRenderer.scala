@@ -22,6 +22,7 @@ trait ScoreToHtmlRenderer {
             @media print {
               ul {
                 page-break-inside: avoid;
+                /*-webkit-print-color-adjust: exact;*/
               }
             }
             body {
@@ -47,6 +48,9 @@ trait ScoreToHtmlRenderer {
               border-spacing:0;
               border: 1px solid rgb(50,100,150);
             }
+            thead {
+              border-bottom: 1px solid gray;            
+            }
             th {
               background-color: rgb(250,250,200);
               font-size: 9px;
@@ -57,6 +61,7 @@ trait ScoreToHtmlRenderer {
               padding:0.2em;
               overflow: hidden;
               white-space: nowrap;
+              border-bottom: 1px dotted gray;
             }
             tr .sf1 {
               font-size: 10px;
@@ -120,8 +125,16 @@ trait ScoreToHtmlRenderer {
     </html>
   """
 
+  def splitToAutonomPages(html: String, printjob: String => Unit) {
+    val pages = html.split(nextSite)
+    pages.foreach{p => 
+      val partpage = if(!p.startsWith(intro)) intro + p + outro else p + outro
+      printjob(partpage)}
+  }
+    
   private def toHTML(gs: List[GroupSection], openedTitle: String, level: Int, athletsPerPage: Int, sortAlphabetically: Boolean, diszMap: Map[Long,Map[String,List[Disziplin]]]): String = {
     val gsBlock = new StringBuilder()
+    val gsPageBlock = new StringBuilder()
     if (level == 0) {
       gsBlock.append(firstSite(title))
     }

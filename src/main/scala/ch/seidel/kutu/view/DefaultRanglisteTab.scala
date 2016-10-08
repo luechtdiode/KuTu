@@ -53,6 +53,13 @@ import java.io.ObjectInputStream
 import java.io.FileInputStream
 import java.io.File
 import scalafx.scene.control.TextField
+import scalafx.scene.web.WebEngine
+import ch.seidel.kutu.renderer.PrintUtil
+import ch.seidel.kutu.renderer.PrintUtil
+import ch.seidel.kutu.renderer.PrintUtil
+import scalafx.print.PageOrientation
+import scalafx.print.Printer
+import scalafx.beans.binding.Bindings
 
 abstract class DefaultRanglisteTab(override val service: KutuService) extends Tab with TabWithService with ScoreToHtmlRenderer {
   override val title = ""
@@ -72,7 +79,11 @@ abstract class DefaultRanglisteTab(override val service: KutuService) extends Ta
   def getData: Seq[WertungView] = ???
   case class FilenameDefault(filename: String, dir: java.io.File)
   def getSaveAsFilenameDefault: FilenameDefault = ???
-
+  val webView = new WebView
+  def print(printer: Printer) {
+    PrintUtil.printWebContent(webView.engine, printer, PageOrientation.Portrait)
+  }
+  
   def populate(groupers: List[FilterBy]): Seq[ComboBox[FilterBy]] = {
     val gr1Model = ObservableBuffer[FilterBy](groupers)
     val nullFilter = NullObject("alle")
@@ -167,7 +178,7 @@ abstract class DefaultRanglisteTab(override val service: KutuService) extends Ta
       }
     val combfs = List(cbf1, cbf2, cbf3, cbf4)
     val fmodels = List(grf1Model, grf2Model, grf3Model, grf4Model)
-    val webView = new WebView
+    
     val cbModus: CheckBox = new CheckBox {
       text = "Sortierung alphabetisch"
       selected = false
@@ -238,7 +249,9 @@ abstract class DefaultRanglisteTab(override val service: KutuService) extends Ta
             , "M" -> service.listDisziplinesZuWettkampf(x._2.head.wettkampf.id, Some("M")))
         }
       val ret = toHTML(combination, linesPerPage, cbModus.selected.value, diszMap)
-      if(linesPerPage == 0) webView.engine.loadContent(ret)
+      if(linesPerPage == 0){
+        webView.engine.loadContent(ret)
+      }
       ret
     }
     
@@ -326,8 +339,10 @@ abstract class DefaultRanglisteTab(override val service: KutuService) extends Ta
     }
 
     val btnPrint = new Button {
-      text = "Drucken (via Browser) ..."
+      text = "Drucken ..."
       onAction = (action: ActionEvent) => {
+//        print
+        
         val defaults = getSaveAsFilenameDefault
         val dir = defaults.dir
         if(!dir.exists()) {
@@ -335,19 +350,41 @@ abstract class DefaultRanglisteTab(override val service: KutuService) extends Ta
         }
         val selectedFile = new File(dir.getPath + "/" + defaults.filename)
         val txtLinesPerPage = new TextField {
-    		  text.value = "51"
+          margin = Insets(10,10,10,0)
+    		  text.value = "49"
     	  }
+        val chkViaBrowser = new CheckBox("via Browser") {
+          margin = Insets(10,10,10,0)
+        }
+        val cmbDrucker = new ComboBox[Printer] {
+          margin = Insets(10,10,10,0)
+          disable <== when(chkViaBrowser.selected) choose true otherwise false
+          PrintUtil.printers.foreach {p => items.value.add(p) }
+        }
         implicit val impevent = action
     	  PageDisplayer.showInDialog(text.value, new DisplayablePage() {
     		  def getPage: Node = {
-      		  new HBox {
+      		  new VBox {
       			  prefHeight = 50
-      			  alignment = Pos.BottomRight
+      			  alignment = Pos.TopLeft
+      			  
       			  hgrow = Priority.Always
-      			  children = Seq(new Label("Zeilen pro Seite (51 für A4 hoch, 34 für A4 quer)  "), txtLinesPerPage)
+      			  children = Seq(
+      			      new Label("Zeilen pro Seite (49 für A4 hoch, 33 für A4 quer)"), 
+      			      txtLinesPerPage,
+      			      chkViaBrowser,
+      			      new Label("Drucker") {
+      			        disable <== when(chkViaBrowser.selected) choose true otherwise false
+      			      },
+      			      cmbDrucker)
       		  }
       	  }
       	  }, new Button("OK") {
+      	    disable <== when(Bindings.createBooleanBinding(() => {
+                          !chkViaBrowser.selected.value && cmbDrucker.selectionModel.value.isEmpty()
+                        },
+                          chkViaBrowser.selected, cmbDrucker.selectionModel.value.selectedItemProperty
+                        )) choose true otherwise false
       		  onAction = (event: ActionEvent) => {
               val file = if(!selectedFile.getName.endsWith(".html") && !selectedFile.getName.endsWith(".htm")) {
                 new java.io.File(selectedFile.getAbsolutePath + ".html")
@@ -355,20 +392,30 @@ abstract class DefaultRanglisteTab(override val service: KutuService) extends Ta
               else {
                 selectedFile
               }
-              var lpp = 51
+              var lpp = 49
               try {
                 lpp = Integer.valueOf(txtLinesPerPage.text.value)
-                if(lpp < 1) lpp = 51
+                if(lpp < 1) lpp = 49
               }
               catch {
                 case e: Exception =>
               }
-              val toSave = refreshRangliste(buildGrouper, lpp).getBytes("UTF-8")
-              val os = new BufferedOutputStream(new FileOutputStream(file))
-              os.write(toSave)
-              os.flush()
-              os.close()
-              Desktop.getDesktop().open(file)
+              val toSave = refreshRangliste(buildGrouper, lpp)
+              if(chkViaBrowser.selected.value) {
+                val os = new BufferedOutputStream(new FileOutputStream(file))
+                os.write(toSave.getBytes("UTF-8"))
+                os.flush()
+                os.close()
+                Desktop.getDesktop().open(file)
+              }
+              else {
+            	  webView.engine.loadContent(toSave)
+            	  KuTuApp.invokeWithBusyIndicator{
+            		  print(cmbDrucker.getSelectionModel.getSelectedItem)
+            		  refreshRangliste(buildGrouper, 0)
+            	  }
+                
+              }
       		  }
       	  }
       	)
