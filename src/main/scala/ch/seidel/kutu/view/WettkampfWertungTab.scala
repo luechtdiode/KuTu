@@ -371,7 +371,7 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
               x.durchgang.nonEmpty &&
               x.durchgang.forall{d =>
                 d.nonEmpty &&
-                disziplinsZuDurchgangR2(d).contains(wertung.init.wettkampfdisziplin.disziplin)
+                disziplinsZuDurchgangR2.get(d).map(dm => dm.contains(wertung.init.wettkampfdisziplin.disziplin)).getOrElse(false)
               }
             }
           }
