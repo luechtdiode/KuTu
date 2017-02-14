@@ -904,21 +904,24 @@ trait KutuService {
     def similarAthletFactor(code: MatchCode) = {
 //      print(athlet.easyprint, name, vorname, jahrgang)
       val encodedNamen = code.encodedNamen
-      val namenSimilarity = MatchCode.similarFactor(code.name, athlet.name) + (100 * encodedNamen.filter(bmname.contains(_)).toList.size / encodedNamen.size)
+      val encNvsBmName = encodedNamen.filter(bmname.contains(_)).toList.size;
+      val bmNamevsEncN = bmname.filter(encodedNamen.contains(_)).toList.size;
+      val encNMax = math.max(encNvsBmName, bmNamevsEncN);
+      val namenSimilarity = MatchCode.similarFactor(code.name, athlet.name) + (100 * encNMax / encodedNamen.size)
       val encodedVorNamen = code.encodedVorNamen
       val vorNamenSimilarity = MatchCode.similarFactor(code.vorname, athlet.vorname) + (100 * encodedVorNamen.filter(bmvorname.contains(_)).toList.size / encodedVorNamen.size)
       val jahrgangSimilarity = code.jahrgang.equals(AthletJahrgang(athlet.gebdat).hg)
       val preret = namenSimilarity > 140 && vorNamenSimilarity > 140
+      val preret2 = (namenSimilarity + vorNamenSimilarity) > 220
       val vereinSimilarity = athlet.verein match {
         case Some(vid) => vid == code.verein
         case _ => true
       }
-//      print(f" namenSimilarity: $namenSimilarity vorNamenSimilarity: $vorNamenSimilarity jahrgangSimilarity: $jahrgangSimilarity jahrgang: $jahrgang - ${AthletJahrgang(athlet.gebdat).hg}")
       if(vereinSimilarity && preret && jahrgangSimilarity) {
 //        println(" factor " + (namenSimilarity + vorNamenSimilarity) * 2)
         (namenSimilarity + vorNamenSimilarity) * 2
       }
-      else if(vereinSimilarity && preret) {
+      else if(vereinSimilarity && (preret || (preret2 && jahrgangSimilarity))) {
 //        println(" factor " + (namenSimilarity + vorNamenSimilarity))
         namenSimilarity + vorNamenSimilarity
       }

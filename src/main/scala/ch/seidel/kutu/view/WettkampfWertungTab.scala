@@ -939,7 +939,7 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
       val cache = new java.util.ArrayList[MatchCode]()
       val cliprawf = KuTuApp.invokeAsyncWithBusyIndicator {
                      clipboardlines.
-                     map    { line   => line.split("\\t") }.
+                     map    { line   => line.split("\\t").map(_.trim()) }.
                      filter { fields => fields.length > 2 }.
                      map    { fields =>
                         val parsed = Athlet(
