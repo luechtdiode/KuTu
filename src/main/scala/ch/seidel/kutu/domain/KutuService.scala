@@ -1720,7 +1720,7 @@ trait KutuService {
                from riege r
                left outer join disziplin d on (r.start = d.id)
                where r.wettkampf_id=${wettkampfid} and r.name=${newname}
-         """.as[Riege].iterator.toList.head
+         """.as[Riege].iterator.toList.headOption.getOrElse(Riege(newname, None, None))
     }
   }
 
@@ -1730,6 +1730,11 @@ trait KutuService {
                 delete from riege where
                 wettkampf_id=${wettkampfid}
         """.execute
+      sqlu"""   UPDATE wertung
+                SET riege=""
+                  , riege2=""
+                WHERE wettkampf_id=${wettkampfid}
+          """.execute
     }
   }
 

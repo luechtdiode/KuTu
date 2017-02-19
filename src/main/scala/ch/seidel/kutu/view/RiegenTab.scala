@@ -72,6 +72,9 @@ import scalafx.beans.binding.Bindings
 import scalafx.scene.control.ListView
 import scalafx.scene.control.cell.CheckBoxListCell
 import scalafx.scene.control.TablePosition
+import scalafx.scene.layout.Background
+import scalafx.scene.image.Image
+import scalafx.scene.image.ImageView
 
 class DurchgangView(wettkampf: WettkampfView, service: KutuService, disziplinlist: () => Seq[Disziplin], durchgangModel: ObservableBuffer[DurchgangEditor]) extends TableView[DurchgangEditor] {
 
@@ -638,92 +641,178 @@ class RiegenTab(wettkampf: WettkampfView, override val service: KutuService) ext
         }
       }
     }
+    var warnIcon: Image = null
+    try {
+      warnIcon = new Image(getClass().getResourceAsStream("/images/OrangeWarning.png"))
+    } catch {
+      case e: Exception => e.printStackTrace()
+    }
+    
+    def makeRiegenSuggestMenu(): MenuItem = {
+      val m = KuTuApp.makeMenuAction("Riegen & Durchgänge frisch einteilen ...") {(caption: String, action: ActionEvent) =>
+        doRiegenSuggest(action)
+      }
+      m.graphic = new ImageView {
+        image = warnIcon
+    	}
+      m
+    }
 
-    val riegensuggestButton = new Button {
-  	  text = "Riegen einteilen"
-  	  minWidth = 75
+    def makeRiegenResetMenu(): MenuItem = {
+      val m = KuTuApp.makeMenuAction("Einteilung von Riegen & Durchgängen zurücksetzen ...") {(caption: String, action: ActionEvent) =>
+        doRiegenReset(action)
+      }
+      m.graphic = new ImageView {
+        image = warnIcon
+    	}
+      m
+    }
+    
+    def computeRiegenSuggest(event: ActionEvent, gruppengroesse: Int) {
+      implicit val impevent = event
+      PageDisplayer.showInDialog("Riegen neu einteilen ...", new DisplayablePage() {
+        def getPage: Node = {
+          new HBox {
+            prefHeight = 50
+            alignment = Pos.BottomRight
+            hgrow = Priority.Always
+            children = Seq(
+                new ImageView {
+                  image = warnIcon
+              	},
+                new Label(
+                    s"Mit der Neueinteilung der Riegen und Druchgänge werden die bisherigen Einteilungen zurückgesetzt."))
+          }
+        }
+      }, new Button("OK") {
+        onAction = (event: ActionEvent) => {
+          implicit val impevent = event
+				  KuTuApp.invokeWithBusyIndicator {
+					  val riegenzuteilungen = service.suggestDurchgaenge(
+						  wettkampf.id,
+						  gruppengroesse)
+
+						service.cleanAllRiegenDurchgaenge(wettkampf.id)
+
+					  for{
+					    durchgang <- riegenzuteilungen.keys
+						  (start, riegen) <- riegenzuteilungen(durchgang)
+						  (riege, wertungen) <- riegen
+					  } {
+						  service.insertRiegenWertungen(RiegeRaw(
+						    wettkampfId = wettkampf.id,
+						    r = riege,
+						    durchgang = Some(durchgang),
+						    start = Some(start.id)
+						  ), wertungen)
+					  }
+					  reloadData()
+            riegenFilterView.sort
+            durchgangView.sort
+				  } 
+        }
+      })
+    }
+
+    def doRiegenReset(event: ActionEvent) {
+		  implicit val impevent = event
+      PageDisplayer.showInDialog("Riegen- und Durchgangseinteilung zurücksetzen ...", new DisplayablePage() {
+        def getPage: Node = {
+          new HBox {
+            prefHeight = 50
+            alignment = Pos.BottomRight
+            hgrow = Priority.Always
+            children = Seq(
+                new ImageView {
+                  image = warnIcon
+              	},
+                new Label(
+                    s"Es werden die bisherigen Einteilungen in Riegen und Durchgänge zurückgesetzt."))
+          }
+        }
+      }, new Button("OK") {
+        onAction = (event: ActionEvent) => {
+          implicit val impevent = event
+				  KuTuApp.invokeWithBusyIndicator {
+						service.cleanAllRiegenDurchgaenge(wettkampf.id)
+					  reloadData()
+            riegenFilterView.sort
+            durchgangView.sort
+				  } 
+        }
+      })    
+    }
+    
+    def doRiegenSuggest(event: ActionEvent) {
+		  implicit val impevent = event
   	  val txtGruppengroesse2 = new TextField() {
-  	    text <==> txtGruppengroesse.text //= if(isAthletikTest) "0" else "11"
+  	    text <==> txtGruppengroesse.text 
   	    tooltip = "Max. Gruppengrösse oder 0 für gleichmässige Verteilung mit einem Durchgang."
   	  }
-  	  onAction = (event: ActionEvent) => {
-  		  implicit val impevent = event
-			  PageDisplayer.showInDialog(text.value, new DisplayablePage() {
- 				  def getPage: Node = {
-  				  new HBox {
-  					  prefHeight = 50
-  					  alignment = Pos.BottomRight
-  					  hgrow = Priority.Always
-  					  children = Seq(new Label("Maximale Gruppengrösse: "), txtGruppengroesse2)
-  				  }
-  			  }
-			  }, new Button("OK") {
-				  onAction = (event: ActionEvent) => {
-					  if (!txtGruppengroesse2.text.value.isEmpty) {
-						  KuTuApp.invokeWithBusyIndicator {
-							  val riegenzuteilungen = service.suggestDurchgaenge(
-  							  wettkampf.id,
-  							  str2Int(txtGruppengroesse2.text.value))
-
-  							service.cleanAllRiegenDurchgaenge(wettkampf.id)
-
-							  for{
-							    durchgang <- riegenzuteilungen.keys
-								  (start, riegen) <- riegenzuteilungen(durchgang)
-								  (riege, wertungen) <- riegen
-							  } {
-								  service.insertRiegenWertungen(RiegeRaw(
-								    wettkampfId = wettkampf.id,
-								    r = riege,
-								    durchgang = Some(durchgang),
-								    start = Some(start.id)
-								  ), wertungen)
-							  }
-							  reloadData()
-                riegenFilterView.sort
-                durchgangView.sort
-						  }
-					  }
+		  PageDisplayer.showInDialog("Riegen neu einteilen ...", new DisplayablePage() {
+			  def getPage: Node = {
+				  new HBox {
+					  prefHeight = 50
+					  alignment = Pos.BottomRight
+					  hgrow = Priority.Always
+					  children = Seq(new Label("Maximale Gruppengrösse: "), txtGruppengroesse2)
 				  }
-			  })
-  	  }
+			  }
+		  }, new Button("OK (bestehende Einteilung wird zurückgesetzt)", new ImageView { image = warnIcon }) {
+			  onAction = (event: ActionEvent) => {
+				  if (!txtGruppengroesse2.text.value.isEmpty) {
+				    Platform.runLater{
+				      computeRiegenSuggest(event, str2Int(txtGruppengroesse2.text.value))
+				    }
+				  }
+			  }
+		  })
     }
-    val einheitenExportButton = new Button {
-  	  text = "Riegen Einheiten export"
-		  minWidth = 75
-  	  onAction = (event: ActionEvent) => {
-  		  implicit val impevent = event
-			  KuTuApp.invokeWithBusyIndicator {
-  			  val filename = "Einheiten.csv"
-  					  val dir = new java.io.File(service.homedir + "/" + wettkampf.easyprint.replace(" ", "_"))
-  			  if(!dir.exists()) {
-  				  dir.mkdirs();
-  			  }
-  			  val file = new java.io.File(dir.getPath + "/" + filename)
+      
+    def doRiegenEinheitenExport(event: ActionEvent) {
+		  implicit val impevent = event
+		  KuTuApp.invokeWithBusyIndicator {
+			  val filename = "Einheiten.csv"
+					  val dir = new java.io.File(service.homedir + "/" + wettkampf.easyprint.replace(" ", "_"))
+			  if(!dir.exists()) {
+				  dir.mkdirs();
+			  }
+			  val file = new java.io.File(dir.getPath + "/" + filename)
 
-  			  ResourceExchanger.exportEinheiten(wettkampf.toWettkampf, file.getPath)
-  			  Desktop.getDesktop().open(file);
-  		  }
-  	  }
+			  ResourceExchanger.exportEinheiten(wettkampf.toWettkampf, file.getPath)
+			  Desktop.getDesktop().open(file);
+		  }
     }
-    val durchgangExportButton = new Button {
-  	  text = "Durchgang-Planung export"
-		  minWidth = 75
-  	  onAction = (event: ActionEvent) => {
-  		  implicit val impevent = event
-			  KuTuApp.invokeWithBusyIndicator {
-  			  val filename = "Durchgaenge.csv"
-  					  val dir = new java.io.File(service.homedir + "/" + wettkampf.easyprint.replace(" ", "_"))
-  			  if(!dir.exists()) {
-  				  dir.mkdirs();
-  			  }
-  			  val file = new java.io.File(dir.getPath + "/" + filename)
+    
+    def makeRiegenEinheitenExport(): MenuItem = {
+      val m = KuTuApp.makeMenuAction("Riegen Einheiten export") {(caption: String, action: ActionEvent) =>
+        doRiegenEinheitenExport(action)
+      }
+      m
+    }
+    
+    def doDurchgangExport(event: ActionEvent) {
+		  implicit val impevent = event
+		  KuTuApp.invokeWithBusyIndicator {
+			  val filename = "Durchgaenge.csv"
+					  val dir = new java.io.File(service.homedir + "/" + wettkampf.easyprint.replace(" ", "_"))
+			  if(!dir.exists()) {
+				  dir.mkdirs();
+			  }
+			  val file = new java.io.File(dir.getPath + "/" + filename)
 
-  			  ResourceExchanger.exportDurchgaenge(wettkampf.toWettkampf, file.getPath)
-  			  Desktop.getDesktop().open(file);
-  		  }
-  	  }
+			  ResourceExchanger.exportDurchgaenge(wettkampf.toWettkampf, file.getPath)
+			  Desktop.getDesktop().open(file);
+		  }
     }
+    
+    def makeDurchgangExport(): MenuItem = {
+      val m = KuTuApp.makeMenuAction("Durchgang-Planung export") {(caption: String, action: ActionEvent) =>
+        doDurchgangExport(action)
+      }
+      m
+    }
+    
     val riegenRemoveButton = new Button {
   	  text = "Riege löschen"
 		  minWidth = 75
@@ -754,6 +843,7 @@ class RiegenTab(wettkampf: WettkampfView, override val service: KutuService) ext
           })
 		  }
     }
+    
     val riegeRenameButton = new Button {
   	  text = "Riege umbenennen"
 		  minWidth = 75
@@ -818,115 +908,127 @@ class RiegenTab(wettkampf: WettkampfView, override val service: KutuService) ext
       	)
 		  }
     }
-    val generateRiegenblaetter = new Button with RiegenblattToHtmlRenderer {
-      text = "Riegenblätter erstellen"
-      minWidth = 75
-
-      onAction = (event: ActionEvent) => {
-        val driver = service.selectWertungen(wettkampfId = Some(wettkampf.id)).groupBy { x => x.athlet }.map(_._2).toList
-        val programme = driver.flatten.map(x => x.wettkampfdisziplin.programm).foldLeft(Seq[ProgrammView]()){(acc, pgm) =>
-          if(!acc.exists { x => x.id == pgm.id }) {
-            acc :+ pgm
-          }
-          else {
-            acc
-          }
-        }
-        val riegendurchgaenge = service.selectRiegen(wettkampf.id).map(r => r.r-> r).toMap
-        val rds = riegendurchgaenge.values.map(v => v.durchgang.getOrElse("")).toSet
-        val disziplinsZuDurchgangR1 = service.listDisziplinesZuDurchgang(rds, wettkampf.id, true)
-        val disziplinsZuDurchgangR2 = service.listDisziplinesZuDurchgang(rds, wettkampf.id, false)
-
-        val seriendaten = for {
-          programm <- programme
-          athletwertungen <- driver.map(we => we.filter { x => x.wettkampfdisziplin.programm.id == programm.id})
-          if(athletwertungen.nonEmpty)
-        }
-        yield {
-          val einsatz = athletwertungen.head
-          val athlet = einsatz.athlet
-          val riegendurchgang1 = riegendurchgaenge.get(einsatz.riege.getOrElse(""))
-          val riegendurchgang2 = riegendurchgaenge.get(einsatz.riege2.getOrElse(""))
-
-          Kandidat(
-          einsatz.wettkampf.easyprint
-          ,athlet.geschlecht match {case "M" => "Turner"  case _ => "Turnerin"}
-          ,einsatz.wettkampfdisziplin.programm.easyprint
-          ,athlet.id
-          ,athlet.name
-          ,athlet.vorname
-          ,AthletJahrgang(athlet.gebdat).hg
-          ,athlet.verein match {case Some(v) => v.easyprint case _ => ""}
-          ,riegendurchgang1
-          ,riegendurchgang2
-          ,athletwertungen.filter{wertung =>
-            if(wertung.wettkampfdisziplin.feminim == 0 && !wertung.athlet.geschlecht.equalsIgnoreCase("M")) {
-              false
-            }
-            else if(wertung.wettkampfdisziplin.masculin == 0 && wertung.athlet.geschlecht.equalsIgnoreCase("M")) {
-              false
-            }
-            else {
-              riegendurchgang1.forall{x =>
-                x.durchgang.nonEmpty &&
-                x.durchgang.forall{d =>
-                  d.nonEmpty &&
-                  disziplinsZuDurchgangR1(d).contains(wertung.wettkampfdisziplin.disziplin)
-                }
-              }
-            }
-          }.map(_.wettkampfdisziplin.disziplin)
-          ,athletwertungen.filter{wertung =>
-            if(wertung.wettkampfdisziplin.feminim == 0 && !wertung.athlet.geschlecht.equalsIgnoreCase("M")) {
-              false
-            }
-            else if(wertung.wettkampfdisziplin.masculin == 0 && wertung.athlet.geschlecht.equalsIgnoreCase("M")) {
-              false
-            }
-            else {
-              riegendurchgang2.forall{x =>
-                x.durchgang.nonEmpty &&
-                x.durchgang.forall{d =>
-                  d.nonEmpty &&
-                  disziplinsZuDurchgangR2(d).contains(wertung.wettkampfdisziplin.disziplin)
-                }
-              }
-            }
-          }.map(_.wettkampfdisziplin.disziplin),
-          athletwertungen
-          )
-        }
-        val filename = "Riegenblatt_" + wettkampf.easyprint.replace(" ", "_") + ".html"
-        val dir = new java.io.File(service.homedir + "/" + wettkampf.easyprint.replace(" ", "_"))
-        if(!dir.exists()) {
-          dir.mkdirs();
-        }
-        val file = new java.io.File(dir.getPath + "/" + filename)
-        val logofile = if(new java.io.File(dir.getPath + "/logo.jpg").exists()) {
-          "logo.jpg"
+    
+    def doRiegenBelatterExport() {
+      val driver = service.selectWertungen(wettkampfId = Some(wettkampf.id)).groupBy { x => x.athlet }.map(_._2).toList
+      val programme = driver.flatten.map(x => x.wettkampfdisziplin.programm).foldLeft(Seq[ProgrammView]()){(acc, pgm) =>
+        if(!acc.exists { x => x.id == pgm.id }) {
+          acc :+ pgm
         }
         else {
-          "../logo.jpg"
+          acc
         }
-        val toSave = toHTML(seriendaten, logofile)
-        val os = new BufferedOutputStream(new FileOutputStream(file))
-        os.write(toSave.getBytes("UTF-8"))
-        os.flush()
-        os.close()
-        Desktop.getDesktop().open(file);
       }
+      val riegendurchgaenge = service.selectRiegen(wettkampf.id).map(r => r.r-> r).toMap
+      val rds = riegendurchgaenge.values.map(v => v.durchgang.getOrElse("")).toSet
+      val disziplinsZuDurchgangR1 = service.listDisziplinesZuDurchgang(rds, wettkampf.id, true)
+      val disziplinsZuDurchgangR2 = service.listDisziplinesZuDurchgang(rds, wettkampf.id, false)
+
+      val seriendaten = for {
+        programm <- programme
+        athletwertungen <- driver.map(we => we.filter { x => x.wettkampfdisziplin.programm.id == programm.id})
+        if(athletwertungen.nonEmpty)
+      }
+      yield {
+        val einsatz = athletwertungen.head
+        val athlet = einsatz.athlet
+        val riegendurchgang1 = riegendurchgaenge.get(einsatz.riege.getOrElse(""))
+        val riegendurchgang2 = riegendurchgaenge.get(einsatz.riege2.getOrElse(""))
+
+        Kandidat(
+        einsatz.wettkampf.easyprint
+        ,athlet.geschlecht match {case "M" => "Turner"  case _ => "Turnerin"}
+        ,einsatz.wettkampfdisziplin.programm.easyprint
+        ,athlet.id
+        ,athlet.name
+        ,athlet.vorname
+        ,AthletJahrgang(athlet.gebdat).hg
+        ,athlet.verein match {case Some(v) => v.easyprint case _ => ""}
+        ,riegendurchgang1
+        ,riegendurchgang2
+        ,athletwertungen.filter{wertung =>
+          if(wertung.wettkampfdisziplin.feminim == 0 && !wertung.athlet.geschlecht.equalsIgnoreCase("M")) {
+            false
+          }
+          else if(wertung.wettkampfdisziplin.masculin == 0 && wertung.athlet.geschlecht.equalsIgnoreCase("M")) {
+            false
+          }
+          else {
+            riegendurchgang1.forall{x =>
+              x.durchgang.nonEmpty &&
+              x.durchgang.forall{d =>
+                d.nonEmpty &&
+                disziplinsZuDurchgangR1(d).contains(wertung.wettkampfdisziplin.disziplin)
+              }
+            }
+          }
+        }.map(_.wettkampfdisziplin.disziplin)
+        ,athletwertungen.filter{wertung =>
+          if(wertung.wettkampfdisziplin.feminim == 0 && !wertung.athlet.geschlecht.equalsIgnoreCase("M")) {
+            false
+          }
+          else if(wertung.wettkampfdisziplin.masculin == 0 && wertung.athlet.geschlecht.equalsIgnoreCase("M")) {
+            false
+          }
+          else {
+            riegendurchgang2.forall{x =>
+              x.durchgang.nonEmpty &&
+              x.durchgang.forall{d =>
+                d.nonEmpty &&
+                disziplinsZuDurchgangR2(d).contains(wertung.wettkampfdisziplin.disziplin)
+              }
+            }
+          }
+        }.map(_.wettkampfdisziplin.disziplin),
+        athletwertungen
+        )
+      }
+      val filename = "Riegenblatt_" + wettkampf.easyprint.replace(" ", "_") + ".html"
+      val dir = new java.io.File(service.homedir + "/" + wettkampf.easyprint.replace(" ", "_"))
+      if(!dir.exists()) {
+        dir.mkdirs();
+      }
+      val file = new java.io.File(dir.getPath + "/" + filename)
+      val logofile = if(new java.io.File(dir.getPath + "/logo.jpg").exists()) {
+        "logo.jpg"
+      }
+      else {
+        "../logo.jpg"
+      }
+      val toSave = (new Object with RiegenblattToHtmlRenderer).toHTML(seriendaten, logofile)
+      val os = new BufferedOutputStream(new FileOutputStream(file))
+      os.write(toSave.getBytes("UTF-8"))
+      os.flush()
+      os.close()
+      Desktop.getDesktop().open(file);      
+    }
+    
+    def makeRiegenBlaetterExport(): MenuItem = {
+      val m = KuTuApp.makeMenuAction("Riegenblätter erstellen") {(caption: String, action: ActionEvent) =>
+        doRiegenBelatterExport()
+      }
+      m
     }
 
+    val btnRiegen = new MenuButton("Riegen- & Durchgangs-Einteilung") {
+      items += makeRiegenSuggestMenu()
+      items += makeRiegenResetMenu()
+    }
+    
+    val btnExport = new MenuButton("Export") {
+      items += makeRiegenEinheitenExport()
+      items += makeDurchgangExport()
+      items += makeRiegenBlaetterExport()
+    }
+    
     val riegenFilterControl = new ToolBar {
       content = List[ButtonBase](
-          riegensuggestButton
-        , einheitenExportButton
+          btnRiegen
         , btnEditDurchgang
         , riegeRenameButton
         , riegenRemoveButton
         , durchgangRenameButton
-        , durchgangExportButton
-        , generateRiegenblaetter
+        , btnExport
       )
     }
 
