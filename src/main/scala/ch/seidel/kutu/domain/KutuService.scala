@@ -1731,8 +1731,8 @@ trait KutuService {
                 wettkampf_id=${wettkampfid}
         """.execute
       sqlu"""   UPDATE wertung
-                SET riege=""
-                  , riege2=""
+                SET riege=NULL
+                  , riege2=NULL
                 WHERE wettkampf_id=${wettkampfid}
           """.execute
     }
