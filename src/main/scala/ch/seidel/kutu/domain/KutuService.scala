@@ -97,6 +97,7 @@ trait KutuService {
         ,"UpdateGeTuK7.sql"
         ,"UpdateGeTuK7Ord.sql"
         ,"AddGeTuDamenHerrenKategorie.sql"
+        ,"UpdateGeTuK7DamenOhneBarren.sql"
         )
 
     sqlScripts.filter{ filename =>

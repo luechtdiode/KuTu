@@ -8,11 +8,11 @@ VALUES
 -- ID             => Ord
 -- 1, 4, 5, 6, 26 => 2, 4, 5, 1, 3
 INSERT INTO wettkampfdisziplin
-(programm_id, disziplin_id, ord)
+(programm_id, disziplin_id, ord, feminim)
 VALUES
- (41, 1, 2)
-,(41, 4, 4)
-,(41, 5, 5)
-,(41, 6, 1)
-,(41, 26, 3)
+ (41, 1, 2, 1)
+,(41, 4, 4, 1)
+,(41, 5, 5, 0)
+,(41, 6, 1, 1)
+,(41, 26, 3, 1)
 ;
