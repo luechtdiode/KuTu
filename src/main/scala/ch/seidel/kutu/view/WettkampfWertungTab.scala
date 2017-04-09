@@ -317,20 +317,31 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
     }
 
     def rebuildDurchgangFilterList = {
+            val driver = service.selectWertungen(wettkampfId = Some(wettkampf.id)).groupBy { x => x.athlet }.map(_._2).toList
+      val programme = driver.flatten.map(x => x.wettkampfdisziplin.programm).foldLeft(Seq[ProgrammView]()){(acc, pgm) =>
+        if(!acc.exists { x => x.id == pgm.id }) {
+          acc :+ pgm
+        }
+        else {
+          acc
+        }
+      }
       val riegendurchgaenge = service.selectRiegen(wettkampf.id).map(r => r.r-> r).toMap
       val rds = riegendurchgaenge.values.map(v => v.durchgang.getOrElse("")).toSet
       val disziplinsZuDurchgangR1 = service.listDisziplinesZuDurchgang(rds, wettkampf.id, true)
       val disziplinsZuDurchgangR2 = service.listDisziplinesZuDurchgang(rds, wettkampf.id, false)
-      
+
       val seriendaten = for {
-        athletwertungen <- wertungen
+        programm <- programme
+        athletwertungen <- driver.map(we => we.filter { x => x.wettkampfdisziplin.programm.id == programm.id})
         if(athletwertungen.nonEmpty)
       }
       yield {
-        val einsatz = athletwertungen.head.init
+        val einsatz = athletwertungen.head
         val athlet = einsatz.athlet
         val riegendurchgang1 = riegendurchgaenge.get(einsatz.riege.getOrElse(""))
         val riegendurchgang2 = riegendurchgaenge.get(einsatz.riege2.getOrElse(""))
+
         Kandidat(
         einsatz.wettkampf.easyprint
         ,athlet.geschlecht match {case "M" => "Turner"  case _ => "Turnerin"}
@@ -343,10 +354,10 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
         ,riegendurchgang1
         ,riegendurchgang2
         ,athletwertungen.filter{wertung =>
-          if(wertung.init.wettkampfdisziplin.feminim == 0 && !wertung.init.athlet.geschlecht.equalsIgnoreCase("M")) {
+          if(wertung.wettkampfdisziplin.feminim == 0 && !wertung.athlet.geschlecht.equalsIgnoreCase("M")) {
             false
           }
-          else if(wertung.init.wettkampfdisziplin.masculin == 0 && wertung.init.athlet.geschlecht.equalsIgnoreCase("M")) {
+          else if(wertung.wettkampfdisziplin.masculin == 0 && wertung.athlet.geschlecht.equalsIgnoreCase("M")) {
             false
           }
           else {
@@ -354,16 +365,16 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
               x.durchgang.nonEmpty &&
               x.durchgang.forall{d =>
                 d.nonEmpty &&
-                disziplinsZuDurchgangR1(d).contains(wertung.init.wettkampfdisziplin.disziplin)
+                disziplinsZuDurchgangR1(d).contains(wertung.wettkampfdisziplin.disziplin)
               }
             }
           }
-        }.map(_.init.wettkampfdisziplin.disziplin)
+        }.map(_.wettkampfdisziplin.disziplin)
         ,athletwertungen.filter{wertung =>
-          if(wertung.init.wettkampfdisziplin.feminim == 0 && !wertung.init.athlet.geschlecht.equalsIgnoreCase("M")) {
+          if(wertung.wettkampfdisziplin.feminim == 0 && !wertung.athlet.geschlecht.equalsIgnoreCase("M")) {
             false
           }
-          else if(wertung.init.wettkampfdisziplin.masculin == 0 && wertung.init.athlet.geschlecht.equalsIgnoreCase("M")) {
+          else if(wertung.wettkampfdisziplin.masculin == 0 && wertung.athlet.geschlecht.equalsIgnoreCase("M")) {
             false
           }
           else {
@@ -371,15 +382,16 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
               x.durchgang.nonEmpty &&
               x.durchgang.forall{d =>
                 d.nonEmpty &&
-                disziplinsZuDurchgangR2.get(d).map(dm => dm.contains(wertung.init.wettkampfdisziplin.disziplin)).getOrElse(false)
+                disziplinsZuDurchgangR2(d).contains(wertung.wettkampfdisziplin.disziplin)
               }
             }
           }
-        }.map(_.init.wettkampfdisziplin.disziplin),
-        athletwertungen.toSeq.map(_.view)
+        }.map(_.wettkampfdisziplin.disziplin),
+        athletwertungen
         )
       }
-      val ret = RiegenBuilder.mapToGeraeteRiegen(seriendaten.toList)
+
+      val ret = RiegenBuilder.mapToGeraeteRiegen(seriendaten.toList).filter(r => wertungen.exists { p => r.kandidaten.exists { k => p.head.init.athlet.id == k.id } })
       erfasst = ret.forall { riege => riege == emptyRiege || riege.erfasst }
       ret
     }

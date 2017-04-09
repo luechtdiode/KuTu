@@ -137,7 +137,7 @@ trait RiegenblattToHtmlRenderer {
         .geraet {
           text-align: right;
           float: right;
-          font-size: 12px;
+          font-size: 16px;
           font-weight: 600;
         }
         .sf {
@@ -173,12 +173,12 @@ trait RiegenblattToHtmlRenderer {
           font-size: 75%;
         }
         table {
-          width: 25em;
+          width: 35em;
           border-collapse:collapse;
           border-spacing:0;
         }
         tr {
-          font-size: 11px;
+          font-size: 14px;
           overflow: hidden;
         }
         td {
@@ -204,13 +204,22 @@ trait RiegenblattToHtmlRenderer {
     </html>
   """
 
-  def shorten(s: String) = if(s.length() > 3) (" " + s.split(" ").map(_.take(3) + ".").mkString(" ")) else s
+  def shorten(s: String, l: Int = 3) = {
+    if (s.length() <= l) {
+      s
+    } else {
+      val words = s.split(" ")
+      val ll = words.length + l -1;
+      s.take(ll) + "."
+    }
+  }
 
   private def notenblatt(riegepart: (GeraeteRiege, Int), logo: String) = {
     val (riege, tutioffset) = riegepart
     val d = riege.kandidaten.zip(Range(1, riege.kandidaten.size+1)).map{kandidat =>
       val programm = if(kandidat._1.programm.isEmpty())"" else "(" + shorten(kandidat._1.programm) + ")"
-      s"""<tr class="turnerRow"><td class="large">${kandidat._2 + tutioffset}. ${kandidat._1.vorname} ${kandidat._1.name} <span class='sf'>${programm}</span></td><td>&nbsp;</td><td>&nbsp;</td><td class="totalCol">&nbsp;</td></tr>"""
+      val verein = if(kandidat._1.verein.isEmpty())"" else shorten(kandidat._1.verein, 15) 
+      s"""<tr class="turnerRow"><td class="large">${kandidat._2 + tutioffset}. ${kandidat._1.vorname} ${kandidat._1.name} <span class='sf'>${programm}</span></td><td><span class='sf'>${verein}</span></td><td>&nbsp;</td><td>&nbsp;</td><td class="totalCol">&nbsp;</td></tr>"""
     }.mkString("", "\n", "\n")
 
     s"""<div class=riegenblatt>
@@ -221,7 +230,7 @@ trait RiegenblattToHtmlRenderer {
       <h1>${riege.wettkampfTitel}</h1>
       <div class="showborder">
         <table width="100%">
-          <tr class="totalRow heavyRow"><td>Turner/Turnerin</td><td>1. Wertung</td><td>2. Wertung</td><td class="totalCol">Endnote</td></tr>
+          <tr class="totalRow heavyRow"><td>Turner/Turnerin</td><td>Verein</td><td>1. Wertung</td><td>2. Wertung</td><td class="totalCol">Endnote</td></tr>
           ${d}
         </table>
       </div>
@@ -229,7 +238,7 @@ trait RiegenblattToHtmlRenderer {
     """
   }
 
-  val fcs = 15
+  val fcs = 20
 
   def toHTML(kandidaten: Seq[Kandidat], logo: String): String = {
     def splitToFitPage(riegen: List[GeraeteRiege]) = {
@@ -260,7 +269,7 @@ trait RiegenblattToHtmlRenderer {
     }
     val riegendaten = splitToFitPage(RiegenBuilder.mapToGeraeteRiegen(kandidaten.toList))
     val blaetter = riegendaten.map(notenblatt(_, logo))
-    val pages = blaetter.sliding(2, 2).map { _.mkString("</li><li>") }.mkString("</li></ul><ul><li>")
+    val pages = blaetter.sliding(1, 1).map { _.mkString("</li><li>") }.mkString("</li></ul><ul><li>")
     intro + pages + outro
   }
 }

@@ -11,14 +11,20 @@ object WettkampfPage {
 
   def buildTab(wettkampfmode: BooleanProperty, wettkampf: WettkampfView, service: KutuService) = {
 	  lazy val progs = service.readWettkampfLeafs(wettkampf.programm.id)
-    lazy val progSites: Seq[Tab] = progs map {v =>
+    lazy val progSites: Seq[Tab] = (progs map {v =>
       new WettkampfWertungTab(wettkampfmode, Some(v), None, wettkampf, service, {
         service.listAthletenWertungenZuProgramm(progs map (p => p.id), wettkampf.id)
         }) {
         text = v.name
         closable = false
       }
-    }
+    }) :+ new WettkampfWertungTab(wettkampfmode, None, None, wettkampf, service, {
+        service.listAthletenWertungenZuProgramm(progs map (p => p.id), wettkampf.id)
+        }) {
+        text = "Alle"
+        closable = false
+      }
+   
     lazy val ranglisteSite: Seq[Tab] = Seq(
       new RanglisteTab(wettkampf, service) {
         text = "Rangliste"
