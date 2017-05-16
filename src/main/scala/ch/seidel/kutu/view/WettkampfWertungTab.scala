@@ -365,7 +365,7 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
               x.durchgang.nonEmpty &&
               x.durchgang.forall{d =>
                 d.nonEmpty &&
-                disziplinsZuDurchgangR1(d).contains(wertung.wettkampfdisziplin.disziplin)
+                disziplinsZuDurchgangR1.get(d).map(dm => dm.contains(wertung.wettkampfdisziplin.disziplin)).getOrElse(false)
               }
             }
           }
@@ -382,7 +382,7 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
               x.durchgang.nonEmpty &&
               x.durchgang.forall{d =>
                 d.nonEmpty &&
-                disziplinsZuDurchgangR2(d).contains(wertung.wettkampfdisziplin.disziplin)
+                disziplinsZuDurchgangR2.get(d).map(dm => dm.contains(wertung.wettkampfdisziplin.disziplin)).getOrElse(false)
               }
             }
           }
