@@ -206,10 +206,10 @@ abstract class DefaultRanglisteTab(override val service: KutuService) extends Ta
         val grp = cb.selectionModel.value.getSelectedItem
 
         if(cf.selectionModel.value.isEmpty() || cf.selectionModel.value.selectedItem.value.equals(nullFilter)) {
-        	grp.setFilter(None)
+        	grp.reset
         }
         else {
-          grp.setFilter(Some(cf.selectionModel.value.selectedItem.value))
+          grp.setFilter(Set(cf.selectionModel.value.selectedItem.value))
         }
         grp
       }

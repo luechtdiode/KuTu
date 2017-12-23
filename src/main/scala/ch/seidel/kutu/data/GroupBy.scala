@@ -90,8 +90,8 @@ sealed trait GroupBy {
 sealed trait FilterBy extends GroupBy {
   def filterItems: List[DataObject] = filtItems
   protected def items(fromData: Seq[WertungView]): List[DataObject]
-  private[FilterBy] var filter: Option[DataObject] = None
-  private[FilterBy] var filtItems: List[DataObject] = List()
+  private[FilterBy] var filter: Set[DataObject] = Set.empty
+  private[FilterBy] var filtItems: List[DataObject] = List.empty
 
   def analyze(wvlist: Seq[WertungView]): Seq[DataObject] = {
     filtItems = items(wvlist)
@@ -100,10 +100,10 @@ sealed trait FilterBy extends GroupBy {
 
   override def select(wvlist: Seq[WertungView]): Iterable[GroupSection] = {
     filtItems = items(wvlist)
-    super.select(wvlist.filter(g => if(getFilter.isDefined) getFilter.get.equals(grouper(g)) else true))
+    super.select(wvlist.filter(g => if(getFilter.nonEmpty) getFilter.contains(grouper(g)) else true))
   }
 
-  def setFilter(f: Option[DataObject]) {
+  def setFilter(f: Set[DataObject]) {
     filter = f
   }
   def getFilter = {
@@ -111,7 +111,7 @@ sealed trait FilterBy extends GroupBy {
   }
   override def reset {
     super.reset
-    filter = None
+    filter = Set.empty
   }
 
 }
