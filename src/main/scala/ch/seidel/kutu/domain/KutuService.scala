@@ -9,22 +9,30 @@ import java.sql.Date
 import java.util.concurrent.TimeUnit
 import java.util.Properties
 import java.io.File
+
 import scala.io.Source
 import scala.annotation.tailrec
+import scala.collection.JavaConversions
+import scala.concurrent.ExecutionContext.Implicits.global
+
 import slick.jdbc.JdbcBackend.Database
-import slick.jdbc.JdbcBackend.Session
-import slick.jdbc.StaticQuery._
-import slick.jdbc.{GetResult, StaticQuery => Q}
+//import slick.jdbc.JdbcBackend.Session
+import slick.jdbc.SQLiteProfile
+import slick.jdbc.SQLiteProfile.api._
 import slick.jdbc.PositionedResult
-import slick.lifted.Query
-import slick.jdbc.StaticQuery
-import slick.jdbc.SetParameter
+import slick.jdbc.GetResult
+//import slick.jdbc.SetParameter
+//import slick.lifted.Query
+
 import org.sqlite.SQLiteConfig.Pragma
 import org.sqlite.SQLiteConfig.DatePrecision
+
 import java.util.Arrays.ArrayList
 import java.util.Collections
 import java.util.ArrayList
-import scala.collection.JavaConversions
+import scala.concurrent.Await
+import scala.concurrent.duration.Duration
+import scala.collection.JavaConverters
 
 trait KutuService {
 
@@ -38,6 +46,8 @@ trait KutuService {
   lazy val proplite = {
     val prop = new Properties()
     prop.setProperty("date_string_format", "yyyy-MM-dd")
+    prop.setProperty("connectionPool", "disabled")
+    prop.setProperty("keepAliveConnection", "true")
     prop
   }
   lazy val homedir = if(new File("./data").exists()) {
@@ -160,26 +170,22 @@ trait KutuService {
   }
 
   def executeDBScript(script: Iterator[String]) {
-    database withSession { implicit session =>
-      def execStatement(statement: String) {
-        println(statement); StaticQuery.updateNA(statement).execute
-      }
-      def filterCommentLines(line: String) = {
-        !line.trim().startsWith("-- ")
-      }
-      def combineMultilineStatement(acc: List[String], line: String) = {
-        if(line.endsWith(";")) {
-          acc.updated(acc.size -1, acc.last + line) :+ ""
-        }
-        else {
-          acc.updated(acc.size -1, acc.last + line)
-        }
-      }
-      def parse(lines: Iterator[String]): List[String] = {
-        lines.filter(filterCommentLines).foldLeft(List(""))(combineMultilineStatement).filter(_.trim().length() > 0)
-      }
-      parse(script).foreach(execStatement)
+    def filterCommentLines(line: String) = {
+      !line.trim().startsWith("-- ")
     }
+    def combineMultilineStatement(acc: List[String], line: String) = {
+      if(line.endsWith(";")) {
+        acc.updated(acc.size -1, acc.last + line) :+ ""
+      }
+      else {
+        acc.updated(acc.size -1, acc.last + line)
+      }
+    }
+    def parse(lines: Iterator[String]): List[String] = {
+      lines.filter(filterCommentLines).foldLeft(List(""))(combineMultilineStatement).filter(_.trim().length() > 0)
+    }
+    
+    database.run(DBIO.sequence(parse(script).map(statement => sqlu"""#$statement""")))
   }
 
   if(!dbfile.exists() || dbfile.length() == 0) {
@@ -191,13 +197,6 @@ trait KutuService {
   val sdf = new SimpleDateFormat("dd.MM.yyyy")
   val sdfShort = new SimpleDateFormat("dd.MM.yy")
   val sdfExported = new SimpleDateFormat("yyyy-MM-dd")
-
-  def addFilter[P](query: StaticQuery[P,_], predicate: String, param: Option[P]) = {
-    param map {
-      case Some(p) => query + predicate + p.toString()
-      case _ => query
-    }
-  }
 
   implicit def getSQLDate(date: String) = try {
     new java.sql.Date(sdf.parse(date).getTime)
@@ -248,30 +247,31 @@ trait KutuService {
   private implicit val getWettkampfDisziplinResult = GetResult(r =>
     Wettkampfdisziplin(r.<<[Long], r.<<[Long], r.<<[Long], r.<<[String], r.nextBlobOption(), r.<<, r.<<[Int], r.<<[Int], r.<<[Int]))
 
-  implicit def getWettkampfDisziplinViewResultCached(r: PositionedResult)(implicit session: Session, cache: scala.collection.mutable.Map[Long, ProgrammView]) = {
+  implicit def getWettkampfDisziplinViewResultCached(r: PositionedResult)(implicit cache: scala.collection.mutable.Map[Long, ProgrammView]) = {
     val id = r.<<[Long]
     val pgm = readProgramm(r.<<[Long], cache)
     WettkampfdisziplinView(id, pgm, r, r.<<[String], r.nextBytesOption(), readNotenModus(id, pgm, r.<<), r.<<, r.<<[Int], r.<<[Int])
   }
-  private implicit def getResultWertungView(implicit session: Session, cache: scala.collection.mutable.Map[Long, ProgrammView]) = GetResult(r =>
+  private implicit def getResultWertungView(implicit cache: scala.collection.mutable.Map[Long, ProgrammView]) = GetResult(r =>
     WertungView(r.<<[Long], r, r, r, r.<<[scala.math.BigDecimal], r.<<[scala.math.BigDecimal], r.<<[scala.math.BigDecimal], r.<<, r.<<))
     //WertungView(id: Long, athlet: AthletView, wettkampfdisziplin: WettkampfdisziplinView, wettkampf: Wettkampf, noteD: scala.math.BigDecimal, noteE: scala.math.BigDecimal, endnote: scala.math.BigDecimal, riege: Option[String], riege2: Option[String])
     //WertungView(r.<<[Long], r, r, r, r.<<[scala.math.BigDecimal], r.<<[scala.math.BigDecimal], r.<<[scala.math.BigDecimal], r.<<))
-  private implicit def getWettkampfViewResultCached(implicit session: Session, cache: scala.collection.mutable.Map[Long, ProgrammView]) = GetResult(r =>
+  private implicit def getWettkampfViewResultCached(implicit cache: scala.collection.mutable.Map[Long, ProgrammView]) = GetResult(r =>
     WettkampfView(r.<<[Long], r.<<[java.sql.Date], r.<<[String], readProgramm(r.<<[Long], cache), r.<<[Int], r.<<))
-  private implicit def getWettkampfViewResult(implicit session: Session) = GetResult(r =>
+  private implicit def getWettkampfViewResult = GetResult(r =>
     WettkampfView(r.<<[Long], r.<<[java.sql.Date], r.<<[String], readProgramm(r.<<[Long]), r.<<[Int], r.<<))
   private implicit val getProgrammRawResult = GetResult(r =>
     ProgrammRaw(r.<<[Long], r.<<[String], r.<<[Int], r.<<[Long], r.<<[Int], r.<<[Int], r.<<[Int]))
 
-  def readNotenModus(id: Long, pgm: ProgrammView, notenfaktor: Double)(implicit session: Session): NotenModus = {
-    val skala = sql"""
+  def readNotenModus(id: Long, pgm: ProgrammView, notenfaktor: Double): NotenModus = {
+    if(pgm.head.id == 1) {
+      val skala = sql"""
                    select kurzbeschreibung, punktwert from notenskala
                    where wettkampfdisziplin_id=${id}
                    order by punktwert
-       """.as[(String,Double)].build
-    if(pgm.head.id == 1) {
-      Athletiktest(skala.toMap, notenfaktor)
+        """.as[(String,Double)].withPinnedSession      
+      val skalamap = Await.result(database.run(skala), Duration.Inf).toMap
+      Athletiktest(skalamap, notenfaktor)
     }
     else if(pgm.head.id == 20) {
       GeTuWettkampf
@@ -282,94 +282,90 @@ trait KutuService {
   }
 
   def listRootProgramme(): List[ProgrammView] = {
-    database withSession { implicit session =>
-      sql"""select id from programm where parent_id is null or parent_id = 0""".as[Long].build.foldLeft(List[ProgrammView]()){(acc, pid) =>
+    val allPgmsQuery = sql"""select * from programm where parent_id is null or parent_id = 0""".as[ProgrammRaw]
+        .map{l => l.map(p => p.id -> p).toMap}
+        .map{map => map.foldLeft(List[ProgrammView]()){(acc, pgmEntry) =>
+          val (id, pgm) = pgmEntry
+          if (pgm.parentId > 0) {
+            acc :+ pgm.withParent(map(pgm.parentId).toView)
+          } else {
+            acc :+ pgm.toView            
+          }
+        }
+      }
+    Await.result(database.run(allPgmsQuery), Duration.Inf)
+  }
+
+  def readProgramm(id: Long): ProgrammView = {
+    val allPgmsQuery = sql"""select * from programm""".as[ProgrammRaw].withPinnedSession
+        .map{l => l.map(p => p.id -> p).toMap}
+        .map{map => map.foldLeft(List[ProgrammView]()){(acc, pgmEntry) =>
+            val (id, pgm) = pgmEntry
+            if (pgm.parentId > 0) {
+              acc :+ pgm.withParent(map(pgm.parentId).toView)
+            } else {
+              acc :+ pgm.toView            
+            }
+          }
+          .filter(view => view.id == id)
+          .head
+        }
+    Await.result(database.run(allPgmsQuery), Duration.Inf)
+  }
+  
+  def readProgramm(id: Long, cache: scala.collection.mutable.Map[Long, ProgrammView]): ProgrammView = {
+    cache.getOrElseUpdate(id, readProgramm(id))
+  }
+  
+  def readWettkampfLeafs(programmid: Long) = {
+    def children(pid: Long) = Await.result(database.run{
+        sql"""    select * from programm
+                  where parent_id=$pid
+           """.as[ProgrammRaw].withPinnedSession
+      }, Duration.Inf)
+
+    def seek(pid: Long, acc: Seq[ProgrammView]): Seq[ProgrammView] = {
+      val ch = children(pid)
+      if(ch.isEmpty) {
         acc :+ readProgramm(pid)
       }
-    }
-  }
-
-  def readProgramm(id: Long)(implicit session: Session): ProgrammView = {
-    readProgramm(id, scala.collection.mutable.Map[Long, ProgrammView]())
-  }
-  def readProgramm(id: Long, cache: scala.collection.mutable.Map[Long, ProgrammView])(implicit session: Session): ProgrammView = {
-
-    def wk(pid: Long) = sql"""
-                    select * from programm
-                    where id=$pid
-                            """.as[ProgrammRaw].build.head
-    @tailrec
-    def rp(pgm: ProgrammRaw, pgml: List[ProgrammRaw]): List[ProgrammRaw] = {
-      if (pgm.parentId > 0l) {
-        val wkv = wk(pgm.parentId)
-        rp(wkv, pgm :: pgml)
-      }
       else {
-        pgm :: pgml
+        (for(c <- ch) yield (seek(c.id, acc))).flatten
       }
     }
-    lazy val path = rp(wk(id), List.empty)
 
-    cache.get(id) match {
-      case Some(wk) => wk
-      case _ =>
-        val rev = path
-        val wk = rev.foldLeft(rev.head.toView)((path, p) => if(p.id == path.id) path else p.withParent(path))
-        cache.put(id, wk)
-        wk
-    }
-  }
-
-  def readWettkampfLeafs(programmid: Long) = {
-    database withSession { implicit session =>
-
-      def children(pid: Long) =
-        sql"""      select * from programm
-                    where parent_id=$pid
-            """.as[ProgrammRaw].build
-
-      def seek(pid: Long, acc: Seq[ProgrammView]): Seq[ProgrammView] = {
-        val ch = children(pid)
-        if(ch.isEmpty) {
-          acc :+ readProgramm(pid)
-        }
-        else {
-          (for(c <- ch) yield (seek(c.id, acc))).flatten
-        }
-      }
-
-      seek(programmid, Seq.empty)
-    }
+    seek(programmid, Seq.empty)
   }
 
   def updateOrinsertWertung(w: Wertung) = {
-    database withTransaction { implicit session =>
+    database.run(DBIO.sequence(Seq(
       sqlu"""
                 delete from wertung where
                 athlet_Id=${w.athletId} and wettkampfdisziplin_Id=${w.wettkampfdisziplinId} and wettkampf_Id=${w.wettkampfId}
-        """.execute
+        """,
+        
       sqlu"""
                 insert into wertung
                 (athlet_Id, wettkampfdisziplin_Id, wettkampf_Id, note_d, note_e, endnote, riege, riege2)
                 values (${w.athletId}, ${w.wettkampfdisziplinId}, ${w.wettkampfId}, ${w.noteD}, ${w.noteE}, ${w.endnote}, ${w.riege}, ${w.riege2})
-        """.execute
+        """,
 
-      sqlu"""       DELETE from riege
-                    WHERE wettkampf_id=${w.id} and not exists (
-                      SELECT 1 FROM wertung w
-                      WHERE w.wettkampf_id=${w.id}
-                        and (w.riege=name or w.riege2=name)
-                    )
-          """.execute
-    }
+      sqlu"""   delete from riege
+                WHERE wettkampf_id=${w.id} and not exists (
+                  SELECT 1 FROM wertung w
+                  WHERE w.wettkampf_id=${w.id}
+                    and (w.riege=name or w.riege2=name)
+                )
+        """
+    )))
   }
 
   def updateWertung(w: Wertung): WertungView = {
-    database withTransaction { implicit session =>
+    Await.result(database.run(DBIO.sequence(Seq(
       sqlu"""       UPDATE wertung
                     SET note_d=${w.noteD}, note_e=${w.noteE}, endnote=${w.endnote}, riege=${w.riege}, riege2=${w.riege2}
                     WHERE id=${w.id}
-          """.execute
+          """,
 
       sqlu"""       DELETE from riege
                     WHERE wettkampf_id=${w.id} and not exists (
@@ -377,11 +373,12 @@ trait KutuService {
                       WHERE w.wettkampf_id=${w.id}
                         and (w.riege=name or w.riege2=name)
                     )
-          """.execute
+          """
+    ))), Duration.Inf)
 
-      implicit val cache = scala.collection.mutable.Map[Long, ProgrammView]()
+    implicit val cache = scala.collection.mutable.Map[Long, ProgrammView]()
       //id |id |js_id |geschlecht |name |vorname |gebdat |strasse |plz |ort |verein |activ |id |name |id |programm_id |id |name |kurzbeschreibung |detailbeschreibung |notenfaktor |ord |masculin |feminim |id |datum |titel |programm_id |auszeichnung |difficulty |execution |endnote |riege |
-      val wv = sql"""
+    val wv = Await.result(database.run(sql"""
                     SELECT w.id, a.id, a.js_id, a.geschlecht, a.name, a.vorname, a.gebdat, a.strasse, a.plz, a.ort, a.activ, a.verein, v.*,
                       wd.id, wd.programm_id, d.*, wd.kurzbeschreibung, wd.detailbeschreibung, wd.notenfaktor, wd.ord, wd.masculin, wd.feminim,
                       wk.*,
@@ -395,25 +392,24 @@ trait KutuService {
                     inner join wettkampf wk on (wk.id = w.wettkampf_id)
                     WHERE w.id=${w.id}
                     order by wd.programm_id, wd.ord
-       """.as[WertungView].build.head
-      if(wv.endnote >= 8.7) {
-        putWertungToBestenResults(wv)
-      }
-      wv
+       """.as[WertungView].head.withPinnedSession), Duration.Inf)
+    if(wv.endnote >= 8.7) {
+      putWertungToBestenResults(wv)
     }
+    wv    
   }
 
   def updateWertungSimple(w: Wertung) {
-    database withTransaction { implicit session =>
+    Await.result(database.run(
       sqlu"""       UPDATE wertung
                     SET note_d=${w.noteD}, note_e=${w.noteE}, endnote=${w.endnote}, riege=${w.riege}, riege2=${w.riege2}
                     WHERE id=${w.id}
-          """.execute
-    }
+          """
+    ), Duration.Inf)
   }
 
   def listAthletenWertungenZuProgramm(progids: Seq[Long], wettkampf: Long, riege: String = "%") = {
-    database withSession { implicit session =>
+    Await.result(database.run{
       implicit val cache = scala.collection.mutable.Map[Long, ProgrammView]()
       sql"""
                    SELECT w.id, a.id, a.js_id, a.geschlecht, a.name, a.vorname, a.gebdat, a.strasse, a.plz, a.ort, a.activ, a.verein, v.*,
@@ -431,12 +427,11 @@ trait KutuService {
                      and w.wettkampf_id = $wettkampf
                      and ($riege = '%' or w.riege = $riege or w.riege2 = $riege)
                    order by wd.programm_id, wd.ord
-       """.as[WertungView].build
-    }
+       """.as[WertungView].withPinnedSession}, Duration.Inf)    
   }
 
   def listDisziplinesZuDurchgang(durchgang: Set[String], wettkampf: Long, riege1: Boolean): Map[String, IndexedSeq[Disziplin]] = {
-    database withSession { implicit session =>
+    Await.result(database.run{
       val ret = sql""" select distinct wd.disziplin_id, d.name, r.durchgang
              from wettkampfdisziplin wd
              inner join disziplin d on (wd.disziplin_id = d.id)
@@ -450,17 +445,19 @@ trait KutuService {
                w.wettkampf_id = $wettkampf
              order by
               wd.ord
-       """.as[(Long, String, String)].build
-       ret.map{tupel =>
-         (Disziplin(tupel._1, tupel._2), tupel._3)
-       }.groupBy(_._2).map(x => x._1 -> x._2.map(_._1))
-    }
+       """.as[(Long, String, String)]
+       ret.map{_.map{
+         tupel =>
+           (Disziplin(tupel._1, tupel._2), tupel._3)
+         }.groupBy(_._2).map(x => x._1 -> x._2.map(_._1))
+       }
+    }, Duration.Inf)
   }
 
   def listAthletWertungenZuWettkampf(athletId: Long, wettkampf: Long) = {
-    database withSession { implicit session =>
+    Await.result(database.run{
       implicit val cache = scala.collection.mutable.Map[Long, ProgrammView]()
-      val ret = sql"""
+      sql"""
                    SELECT w.id, a.id, a.js_id, a.geschlecht, a.name, a.vorname, a.gebdat, a.strasse, a.plz, a.ort, a.activ, a.verein, v.*,
                      wd.id, wd.programm_id, d.*, wd.kurzbeschreibung, wd.detailbeschreibung, wd.notenfaktor, wd.ord, wd.masculin, wd.feminim,
                      wk.*,
@@ -475,18 +472,12 @@ trait KutuService {
                    where w.athlet_id = $athletId
                      and w.wettkampf_id = $wettkampf
                    order by wd.programm_id, wd.ord
-       """.as[WertungView].build
-       ret
-    }
+       """.as[WertungView].withPinnedSession
+    }, Duration.Inf)
   }
 
   def listRiegenZuWettkampf(wettkampf: Long) = {
-    database withSession { implicit session =>
-      /*
-       *  r.name, r.durchgang, d.*
-             from riege r
-             left outer join disziplin d on (r.start = d.id)
-       */
+    Await.result(database.run{
       sql"""
                    SELECT distinct w.riege, count(distinct w.athlet_id), r.durchgang, d.*
                    FROM wertung w
@@ -500,169 +491,176 @@ trait KutuService {
                    left outer join disziplin d on (d.id = r.start)
                    where w.riege2 not null and w.wettkampf_id = $wettkampf
                    group by w.riege2
-       """.as[(String, Int, Option[String], Option[Disziplin])].build
-    }
+       """.as[(String, Int, Option[String], Option[Disziplin])]
+    }, Duration.Inf)
   }
 
   def listAthletenZuWettkampf(progids: Seq[Long]) = {
-    database withSession { implicit session =>
+    Await.result(database.run{
       sql"""       select a.* from athlet a
                    inner join wertung w on (a.id = w.athlet_id)
                    inner join wettkampfdisziplin wd on (wd.id = w.wettkampfdisziplin_id)
                    where wd.programm_id in (#${progids.mkString(",")})
-         """.as[AthletView].build
-    }
+         """.as[AthletView]
+    }, Duration.Inf)
   }
 
-  def createWettkampf(datum: java.sql.Date, titel: String, programmId: Set[Long], auszeichnung: Int, auszeichnungendnote: scala.math.BigDecimal, withAthlets: Option[(Long, Athlet) => Boolean] = Some({ (_, _) => true })): Wettkampf = {
-    database withTransaction { implicit session =>
-      val cache = scala.collection.mutable.Map[Long, ProgrammView]()
-      val programs = programmId map (p => readProgramm(p, cache))
-      val heads = programs map (_.head)
-      if (!heads.forall { h => h.id == heads.head.id }) {
-        throw new IllegalArgumentException("Programme nicht aus der selben Gruppe können nicht in einen Wettkampf aufgenommen werden")
-      }
-      val candidateId = sql"""
+  def createWettkampf(datum: java.sql.Date, titel: String, programmId: Set[Long], auszeichnung: Int, auszeichnungendnote: scala.math.BigDecimal): Wettkampf = {
+    val cache = scala.collection.mutable.Map[Long, ProgrammView]()
+    val programs = programmId map (p => readProgramm(p, cache))
+    val heads = programs map (_.head)
+    if (!heads.forall { h => h.id == heads.head.id }) {
+      throw new IllegalArgumentException("Programme nicht aus der selben Gruppe können nicht in einen Wettkampf aufgenommen werden")
+    }
+    val process = 
+      sql"""
                     select max(id) as maxid
                     from wettkampf
                     where LOWER(titel)=${titel.toLowerCase()} and programm_id = ${heads.head.id} and datum=$datum
-                           """.as[Long].build.headOption
-      val wk = candidateId match {
-        case Some(cid) if(cid > 0) =>
-          sqlu"""   delete from riege where wettkampf_id=${cid}""".execute
-          sqlu"""   delete from wertung where wettkampf_id=${cid}""".execute
+             """.as[Long]
+      .headOption
+      .flatMap{
+        case Some(cid) if(cid > 0) => 
+          sqlu"""   delete from riege where wettkampf_id=${cid}""" >>
+          sqlu"""   delete from wertung where wettkampf_id=${cid}""" >>
           sql"""
                     select * from wettkampf
                     where id=$cid
-             """.as[Wettkampf].build.head
-        case _ =>
+             """.as[Wettkampf].head
+        case _ => 
           sqlu"""
                     insert into wettkampf
                     (datum, titel, programm_Id, auszeichnung, auszeichnungendnote)
                     values (${datum}, ${titel}, ${heads.head.id}, $auszeichnung, $auszeichnungendnote)
-              """.execute
+              """ >>
           sql"""
                     select * from wettkampf
                     where id in (select max(id) from wettkampf)
-             """.as[Wettkampf].build.head
+             """.as[Wettkampf].head
       }
-
-      assignAthletsToWettkampfS(wk.id, programs, withAthlets, session)
-      wk
-    }
+      
+    Await.result(database.run(process), Duration.Inf)
   }
 
   def saveWettkampf(id: Long, datum: java.sql.Date, titel: String, programmId: Set[Long], auszeichnung: Int, auszeichnungendnote: scala.math.BigDecimal): Wettkampf = {
-    database withTransaction { implicit session =>
-      val existing = sql"""
-                    select * from wettkampf
-                    where id = $id
-                        """.as[Wettkampf].build.head
-      val hasWertungen = sql"""
-                    select count(*) from wertung where wettkampf_id=$id""".as[Int].build.head
-      val cache = scala.collection.mutable.Map[Long, ProgrammView]()
-      val programs = (programmId + existing.programmId) map (p => readProgramm(p, cache))
+    val cache = scala.collection.mutable.Map[Long, ProgrammView]()
+    val process = for {
+        existing <- sql"""
+                  select * from wettkampf
+                  where id = $id
+                      """.as[Wettkampf]
+        hasWertungen <- sql"""
+                  select count(*) from wertung where wettkampf_id=$id""".as[Int]
+    } yield {
+      val programs = (programmId + existing.head.programmId) map (p => readProgramm(p, cache))
       val heads = programs map (_.head)
-      if (hasWertungen > 0 && !heads.forall { h => h.id == heads.head.id }) {
+      if (hasWertungen.head > 0 && !heads.forall { h => h.id == heads.head.id }) {
         throw new IllegalArgumentException("Es kann keine Programmanpassung gemacht werden, wenn bereits Turner zum Wettkampf verknüpft sind.")
       }
       sqlu"""
                     replace into wettkampf
                     (id, datum, titel, programm_Id, auszeichnung, auszeichnungendnote)
                     values ($id, $datum, $titel, ${heads.head.id}, $auszeichnung, $auszeichnungendnote)
-          """.execute
+          """ >>
       sql"""
                     select * from wettkampf
                     where id = $id
-         """.as[Wettkampf].build.head
+         """.as[Wettkampf].head
     }
+    
+    
+    Await.result(database.run{process.flatten}, Duration.Inf)
   }
+  
   def deleteWettkampf(wettkampfid: Long) {
-    database withTransaction { implicit session: Session =>
-      sqlu"""       delete from riege where wettkampf_id=${wettkampfid}""".execute
-      sqlu"""       delete from wertung where wettkampf_id=${wettkampfid}""".execute
-      sqlu"""       delete from wettkampf where id=${wettkampfid}""".execute
-    }
+    Await.result(database.run{
+      sqlu"""       delete from riege where wettkampf_id=${wettkampfid}""" >>
+      sqlu"""       delete from wertung where wettkampf_id=${wettkampfid}""" >>
+      sqlu"""       delete from wettkampf where id=${wettkampfid}"""
+    }, Duration.Inf)
   }
 
   def insertVerein(verein: Verein): Verein = {
-    database withTransaction { implicit session: Session =>
-      val candidateId = sql"""
-                select max(verein.id) as maxid
+    val process = for {
+      candidateId <- sql"""
+              select max(verein.id) as maxid
+              from verein
+              where LOWER(name)=${verein.name.toLowerCase()}
+         """.as[Long].headOption
+     } yield {
+       candidateId match {
+         case Some(id) if(id > 0) =>
+           sql"""
+                select *
                 from verein
-                where LOWER(name)=${verein.name.toLowerCase()}
-       """.as[Long].build.headOption
-           candidateId match {
-             case Some(id) if(id > 0) =>
-               val savedverein = sql"""
-                    select *
-                    from verein
+                where id=${id}
+             """.as[Verein].map{vereine => vereine
+               .filter{v => !v.name.equals(verein.name) || !v.verband.equals(verein.verband)}
+               .map{savedverein =>
+                 sqlu"""
+                    update verein
+                    set
+                      name = ${verein.name}
+                    , verband = ${verein.verband}
                     where id=${id}
-           """.as[Verein].build.head
-           if(!savedverein.name.equals(verein.name) || !savedverein.verband.equals(verein.verband)) {
-             sqlu"""
-                  update verein
-                  set
-                    name = ${verein.name}
-                  , verband = ${verein.verband}
-                  where id=${id}
-                 """.execute
-
-           }
-           Verein(id, verein.name, verein.verband)
+                     """
+               }
+             } >> 
+             sql"""
+                select id from verein where id in (select max(id) from verein)
+                """.as[Long].head
          case _ =>
            sqlu"""
                 insert into verein  (name, verband) values (${verein.name}, ${verein.verband})
-               """.execute
-           val id = sql"""
+               """ >> 
+           sql"""
                 select id from verein where id in (select max(id) from verein)
-              """.as[Long].build.head
-           Verein(id, verein.name, verein.verband)
+              """.as[Long].head
        }
-    }
+     }
+     
+     Await.result(database.run{process.flatten.map(Verein(_, verein.name, verein.verband))}, Duration.Inf)
   }
 
   def createVerein(name: String, verband: Option[String]): Long = {
-    database withTransaction { implicit session: Session =>
+    Await.result(database.run{
       sqlu"""       insert into verein
-                    (name, verband) values (${name}, ${verband})""".execute
+                    (name, verband) values (${name}, ${verband})""" >>
       sql"""
                     select id from verein
                     where id in (select max(id) from verein)
-         """.as[Long].build.head
-    }
+         """.as[Long].head
+    }, Duration.Inf)
   }
 
   def updateVerein(verein: Verein) {
-    database withTransaction { implicit session: Session =>
+     Await.result(database.run{
       sqlu"""       update verein
                     set name = ${verein.name}, verband = ${verein.verband}
                     where id = ${verein.id}
-          """.execute
-    }
+          """
+    }, Duration.Inf)
   }
   def deleteVerein(vereinid: Long) {
-    database withTransaction { implicit session: Session =>
-      sqlu"""       delete from wertung where athlet_id in (select id from athlet where verein=${vereinid})""".execute
-      sqlu"""       delete from athlet where verein=${vereinid}""".execute
-      sqlu"""       delete from verein where id=${vereinid}""".execute
-    }
+    Await.result(database.run{
+      sqlu"""       delete from wertung where athlet_id in (select id from athlet where verein=${vereinid})""" >>
+      sqlu"""       delete from athlet where verein=${vereinid}""" >>
+      sqlu"""       delete from verein where id=${vereinid}"""
+    }, Duration.Inf)
   }
   def unassignAthletFromWettkampf(wertungId: Set[Long]) {
-    database withTransaction { implicit session: Session =>
+    Await.result(database.run{
       sqlu"""
                     delete from wertung
                     where id in (#${wertungId.mkString(",")})
-              """.execute
-    }
+              """
+    }, Duration.Inf)
   }
 
-  def assignAthletsToWettkampf(wettkampfId: Long, programmIds: Set[Long], withAthlets: Option[(Long, Athlet) => Boolean] = Some({ (_, _) => true })) {
-    database withTransaction {implicit session: Session =>
-      val cache = scala.collection.mutable.Map[Long, ProgrammView]()
-      val programs = programmIds map (p => readProgramm(p, cache))
-      assignAthletsToWettkampfS(wettkampfId, programs, withAthlets, session)
-    }
+  def assignAthletsToWettkampf(wettkampfId: Long, programmIds: Set[Long], withAthlets: Set[Long] = Set.empty) {
+    val cache = scala.collection.mutable.Map[Long, ProgrammView]()
+    val programs = programmIds map (p => readProgramm(p, cache))
+    assignAthletsToWettkampfS(wettkampfId, programs, withAthlets)
   }
 
   def altersfilter(pgm: ProgrammView, a: Athlet): Boolean = {
@@ -681,44 +679,52 @@ trait KutuService {
     pgm.alterVon <= alter && pgm.alterBis >= alter
   }
 
-  def assignAthletsToWettkampfS(wettkampfId: Long, programs: Set[ProgrammView], withAthlets: Option[(Long, Athlet) => Boolean] = Some({ (_, _) => true }), sess: Session) {
-    implicit val session = sess
-
-    withAthlets match {
-      case Some(f) =>
-        for {
-          pgm <- programs
-          a <- selectAthletes.build.filter(altersfilter(pgm, _)).filter{x => f(pgm.id, x)}
-          wkid <- sql"""
-                    select id from wettkampfdisziplin
-                    where programm_Id = ${pgm.id}
-                  """.as[Long]
-        } {
-          sqlu"""
+  def assignAthletsToWettkampfS(wettkampfId: Long, programs: Set[ProgrammView], withAthlets: Set[Long] = Set.empty) {
+    if (withAthlets.nonEmpty) {
+      
+      val process = sql"""
+                    select id, programm_Id from wettkampfdisziplin
+                    where programm_Id in #${programs.map(_.id).mkString("(", ",", ")")}
+           """.as[(Long, Long)].head
+     .flatMap{
+       case (wkid, pgmid) =>
+         for {
+           a <- sql"""select * from athlet a where
+                      a.id in #${withAthlets.mkString("(", ",", ")")}
+                   """.as[Athlet].head.filter(a => {
+               altersfilter(programs.find(_.id ==pgmid).get, a)
+             })
+         }
+         yield {
+           sqlu"""
                     delete from wertung where
                     athlet_Id=${a.id} and wettkampfdisziplin_Id=${wkid} and wettkampf_Id=${wettkampfId}
-            """.execute
-          sqlu"""
+               """ >>
+           sqlu"""
                     insert into wertung
                     (athlet_Id, wettkampfdisziplin_Id, wettkampf_Id, note_d, note_e, endnote)
                     values (${a.id}, ${wkid}, ${wettkampfId}, 0, 0, 0)
-            """.execute
+              """      
         }
-      case None =>
+      }
+        
+      Await.result(database.run{process.flatten}, Duration.Inf)
     }
   }
+  
   def listDisziplinIdsZuWettkampf(wettkampfId: Long): List[Long] = {
-    database withSession {implicit session: Session =>
+    Await.result(database.run{
       val wettkampf: Wettkampf = readWettkampf(wettkampfId)
       val programme = readWettkampfLeafs(wettkampf.programmId).map(p => p.id).mkString("(", ",", ")")
-      sql""" select id from wettkampfdisziplin where programm_Id in #$programme""".as[Long].build
-    }
+      sql""" select id from wettkampfdisziplin where programm_Id in #$programme""".as[Long]
+    }, Duration.Inf).toList
   }
+  
   def listDisziplinesZuWettkampf(wettkampfId: Long, geschlecht: Option[String] = None): List[Disziplin] = {
-    database withSession {implicit session: Session =>
+    Await.result(database.run{
       val wettkampf: Wettkampf = readWettkampf(wettkampfId)
       val programme = readWettkampfLeafs(wettkampf.programmId).map(p => p.id).mkString("(", ",", ")")
-      val list = sql""" select distinct wd.disziplin_id, d.name
+      sql""" select distinct wd.disziplin_id, d.name
              from wettkampfdisziplin wd, disziplin d, programm p
              where
               wd.disziplin_id = d.id
@@ -733,15 +739,15 @@ trait KutuService {
               and programm_id in #$programme
              order by
               wd.ord
-             """.as[Disziplin].iterator
-      list.toList
-    }
+             """.as[Disziplin]      
+    }, Duration.Inf).toList
   }
+  
   def listWettkampfDisziplines(wettkampfId: Long): List[Wettkampfdisziplin] = {
-    database withSession {implicit session: Session =>
+    Await.result(database.run{
       val wettkampf: Wettkampf = readWettkampf(wettkampfId)
       val programme = readWettkampfLeafs(wettkampf.programmId).map(p => p.id).mkString("(", ",", ")")
-      val list = sql""" select wd.id, wd.programm_id, wd.disziplin_id, printf('%s (%s)',d.name, p.name) as kurzbeschreibung, wd.ord
+      sql""" select wd.id, wd.programm_id, wd.disziplin_id, printf('%s (%s)',d.name, p.name) as kurzbeschreibung, wd.ord
              from wettkampfdisziplin wd, disziplin d, programm p
              where
               wd.disziplin_id = d.id
@@ -749,65 +755,70 @@ trait KutuService {
               programm_Id in #$programme
              order by
               wd.ord
-                 """.as[(Long, Long, Long, String, Int)].iterator
-      list.map{t => Wettkampfdisziplin(t._1, t._2, t._3, t._4, None, 0, t._5, 0, 0) }.toList
-    }
+         """.as[(Long, Long, Long, String, Int)]
+    }, Duration.Inf)
+    .map{t => Wettkampfdisziplin(t._1, t._2, t._3, t._4, None, 0, t._5, 0, 0) }.toList
   }
+  
   def completeDisziplinListOfAthletInWettkampf(wettkampf: Wettkampf, athletId: Long) = {
     val wertungen = listAthletWertungenZuWettkampf(athletId, wettkampf.id)
     val programme = readWettkampfLeafs(wettkampf.programmId).map(p => p.id).toSet
-    database withTransaction {implicit session: Session =>
-      val pgmwkds = programme.map{x =>
-        x -> sql""" select id from wettkampfdisziplin
+    
+    val pgmwkds: Map[Long,Vector[Long]] = programme.map{x =>
+        x -> Await.result(database.run{sql""" select id from wettkampfdisziplin
                     where programm_Id = ${x}
                       and id not in (select wettkampfdisziplin_Id from wertung
                                      where athlet_Id=${athletId}
-                                       and wettkampf_Id=${wettkampf.id})""".as[Long].build
-      }.toMap
-      val completed = programme.filter{p => wertungen.filter{w => p == w.wettkampfdisziplin.programm.id}.nonEmpty}.
+                                       and wettkampf_Id=${wettkampf.id})""".as[Long]}, Duration.Inf)
+    }.toMap
+    val completed = programme.filter{p => wertungen.filter{w => p == w.wettkampfdisziplin.programm.id}.nonEmpty}.
       map{pgmwkds}.flatMap{wkds => wkds.map{wkd =>
-          sqlu"""
-                    delete from wertung where
-                    athlet_Id=${athletId} and wettkampfdisziplin_Id=$wkd and wettkampf_Id=${wettkampf.id}
-            """.execute
-          sqlu"""
-                    insert into wertung
-                    (athlet_Id, wettkampfdisziplin_Id, wettkampf_Id, note_d, note_e, endnote)
-                    values (${athletId}, ${wkd}, ${wettkampf.id}, 0, 0, 0)
-            """.execute
-          wkd
-      }}
-      completed
-    }
+        Await.result(database.run{sqlu"""
+                  delete from wertung where
+                  athlet_Id=${athletId} and wettkampfdisziplin_Id=$wkd and wettkampf_Id=${wettkampf.id}
+          """ >>
+        sqlu"""
+                  insert into wertung
+                  (athlet_Id, wettkampfdisziplin_Id, wettkampf_Id, note_d, note_e, endnote)
+                  values (${athletId}, ${wkd}, ${wettkampf.id}, 0, 0, 0)
+          """}, Duration.Inf)
+        wkd
+    }}
+    completed    
   }
+  
   def listWettkaempfe = {
     sql"""          select * from wettkampf """.as[Wettkampf]
   }
-  def listWettkaempfeView(implicit session: Session) = {
+  def listWettkaempfeView = {
     val cache = scala.collection.mutable.Map[Long, ProgrammView]()
-    sql"""          select * from wettkampf """.as[WettkampfView].build
+    Await.result(database.run{
+      sql"""          select * from wettkampf """.as[WettkampfView]
+    }, Duration.Inf)
   }
 
-  def readWettkampf(id: Long)(implicit session: Session) = {
-    sql"""          select * from wettkampf where id=$id""".as[Wettkampf].build.head
+  def readWettkampf(id: Long) = {
+    Await.result(database.run{
+      sql"""          select * from wettkampf where id=$id""".as[Wettkampf].head
+    }, Duration.Inf)
   }
 
   def selectWertungen(vereinId: Option[Long] = None, athletId: Option[Long] = None, wettkampfId: Option[Long] = None, disziplinId: Option[Long] = None): Seq[WertungView] = {
     implicit val cache = scala.collection.mutable.Map[Long, ProgrammView]()
-    database withSession {implicit session: Session =>
-      val where = "where " + (athletId match {
-        case None     => "1=1"
-        case Some(id) => s"a.id = $id"
-      }) + " and " + (vereinId match {
-        case None     => "1=1"
-        case Some(id) => s"v.id = $id"
-      }) + " and " + (wettkampfId match {
-        case None     => "1=1"
-        case Some(id) => s"wk.id = $id"
-      }) + " and " + (disziplinId match {
-        case None     => "1=1"
-        case Some(id) => s"d.id = $id"
-      })
+    val where = "where " + (athletId match {
+      case None     => "1=1"
+      case Some(id) => s"a.id = $id"
+    }) + " and " + (vereinId match {
+      case None     => "1=1"
+      case Some(id) => s"v.id = $id"
+    }) + " and " + (wettkampfId match {
+      case None     => "1=1"
+      case Some(id) => s"wk.id = $id"
+    }) + " and " + (disziplinId match {
+      case None     => "1=1"
+      case Some(id) => s"d.id = $id"
+    })
+    Await.result(database.run{
       sql"""
                     SELECT w.id, a.id, a.js_id, a.geschlecht, a.name, a.vorname, a.gebdat, a.strasse, a.plz, a.ort, a.activ, a.verein, v.*,
                       wd.id, wd.programm_id, d.*, wd.kurzbeschreibung, wd.detailbeschreibung, wd.notenfaktor, wd.ord, wd.masculin, wd.feminim,
@@ -822,81 +833,96 @@ trait KutuService {
                     inner join wettkampf wk on (wk.id = w.wettkampf_id)
                     #$where
                     order by wd.programm_id, wd.ord
-         """.as[WertungView].build
-    }
+         """.as[WertungView]
+    }, Duration.Inf)
   }
 
   def selectAthletes = {
     sql"""          select * from athlet""".as[Athlet]
   }
-
+  
+  def selectAthletesOfVerein(id: Long) = {
+    Await.result(database.run{
+      sql"""        select * from athlet
+                    where verein=${id}
+                    order by activ desc, name, vorname asc
+       """.as[Athlet]
+    }, Duration.Inf).toList
+  }
+  
   /**
    * id |js_id |geschlecht |name |vorname   |gebdat |strasse |plz |ort |activ |verein |id |name        |
    */
   def selectAthletesView = {
-    database withSession { implicit session =>
-      sql"""        select a.id, a.js_id, a.geschlecht, a.name, a.vorname, a.gebdat, a.strasse, a.plz, a.ort, a.activ, a.verein, v.* from athlet a inner join verein v on (v.id = a.verein) order by activ desc, name, vorname asc """.as[AthletView].list
-    }
+    Await.result(database.run{
+      sql"""        select a.id, a.js_id, a.geschlecht, a.name, a.vorname, a.gebdat, a.strasse, a.plz, a.ort, a.activ, a.verein, v.* from athlet a inner join verein v on (v.id = a.verein) order by activ desc, name, vorname asc """.as[AthletView]
+    }, Duration.Inf).toList
   }
 
   def selectVereine: List[Verein] = {
-    database withSession { implicit session =>
-      sql"""        select id, name, verband from verein order by name""".as[Verein].list
-    }
+    Await.result(database.run{
+      sql"""        select id, name, verband from verein order by name""".as[Verein]
+    }, Duration.Inf).toList
   }
 
   def deleteAthlet(id: Long) {
-    database withTransaction { implicit session =>
+    Await.result(database.run{
       sqlu"""       delete from wertung
                     where athlet_id=${id}
-          """.execute
+          """ >>
       sqlu"""
                     delete from athlet where id=${id}
-          """.execute
-    }
+          """
+    }, Duration.Inf)
   }
-  def insertAthlete(athlete: Athlet) = {
-    database withTransaction { implicit session =>
-      def getId = athlete.gebdat match {
-        case Some(gebdat) =>
-           sql"""
-                    select max(athlet.id) as maxid
-                    from athlet
-                    where name=${athlete.name} and vorname=${athlete.vorname} and strftime('%Y', gebdat)=strftime('%Y',${gebdat}) and verein=${athlete.verein}
-           """.as[Long].iterator.toStream.headOption
-        case _ =>
-           sql"""
-                    select max(athlet.id) as maxid
-                    from athlet
-                    where name=${athlete.name} and vorname=${athlete.vorname} and verein=${athlete.verein}
-           """.as[Long].iterator.toStream.headOption
-      }
+  
+  def insertAthlete(athlete: Athlet) = {    
+    def getId: Option[Long] = athlete.gebdat match {
+      case Some(gebdat) =>
+         Await.result(database.run{sql"""
+                  select max(athlet.id) as maxid
+                  from athlet
+                  where name=${athlete.name} and vorname=${athlete.vorname} and strftime('%Y', gebdat)=strftime('%Y',${gebdat}) and verein=${athlete.verein}
+         """.as[Long].headOption}, Duration.Inf)
+      case _ =>
+         Await.result(database.run{sql"""
+                  select max(athlet.id) as maxid
+                  from athlet
+                  where name=${athlete.name} and vorname=${athlete.vorname} and verein=${athlete.verein}
+         """.as[Long].headOption}, Duration.Inf)
+    }
 
-      if (athlete.id == 0) {
-        getId match {
-          case Some(id) if(id > 0) =>
+    if (athlete.id == 0) {
+      getId match {
+        case Some(id) if(id > 0) =>
+          Await.result(database.run{
             sqlu"""
-                    replace into athlet
-                    (id, js_id, geschlecht, name, vorname, gebdat, strasse, plz, ort, verein, activ)
-                    values (${id}, ${athlete.js_id}, ${athlete.geschlecht}, ${athlete.name}, ${athlete.vorname}, ${athlete.gebdat}, ${athlete.strasse}, ${athlete.plz}, ${athlete.ort}, ${athlete.verein}, ${athlete.activ})
-            """.execute
-            sql"""select * from athlet where id = ${id}""".as[Athlet].iterator.toStream.head
-          case _ => sqlu"""
-                    replace into athlet
-                    (js_id, geschlecht, name, vorname, gebdat, strasse, plz, ort, verein, activ)
-                    values (${athlete.js_id}, ${athlete.geschlecht}, ${athlete.name}, ${athlete.vorname}, ${athlete.gebdat}, ${athlete.strasse}, ${athlete.plz}, ${athlete.ort}, ${athlete.verein}, ${athlete.activ})
-            """.execute
-            sql"""select * from athlet where id = (select max(athlet.id) from athlet)""".as[Athlet].iterator.toStream.head
-        }
+                  replace into athlet
+                  (id, js_id, geschlecht, name, vorname, gebdat, strasse, plz, ort, verein, activ)
+                  values (${id}, ${athlete.js_id}, ${athlete.geschlecht}, ${athlete.name}, ${athlete.vorname}, ${athlete.gebdat}, ${athlete.strasse}, ${athlete.plz}, ${athlete.ort}, ${athlete.verein}, ${athlete.activ})
+            """ >>
+            sql"""select * from athlet where id = ${id}""".as[Athlet].head
+          }, Duration.Inf)
+        case _ =>
+          Await.result(database.run{
+            sqlu"""
+                  replace into athlet
+                  (js_id, geschlecht, name, vorname, gebdat, strasse, plz, ort, verein, activ)
+                  values (${athlete.js_id}, ${athlete.geschlecht}, ${athlete.name}, ${athlete.vorname}, ${athlete.gebdat}, ${athlete.strasse}, ${athlete.plz}, ${athlete.ort}, ${athlete.verein}, ${athlete.activ})
+            """ >>
+            sql"""select * from athlet where id = (select max(athlet.id) from athlet)""".as[Athlet].head
+          }, Duration.Inf)
       }
-      else {
+    }
+    else {
+      Await.result(database.run{
         sqlu"""
-                    replace into athlet
-                    (id, js_id, geschlecht, name, vorname, gebdat, strasse, plz, ort, verein, activ)
-                    values (${athlete.id}, ${athlete.js_id}, ${athlete.geschlecht}, ${athlete.name}, ${athlete.vorname}, ${athlete.gebdat}, ${athlete.strasse}, ${athlete.plz}, ${athlete.ort}, ${athlete.verein}, ${athlete.activ})
-            """.execute
-        athlete
-      }
+                  replace into athlet
+                  (id, js_id, geschlecht, name, vorname, gebdat, strasse, plz, ort, verein, activ)
+                  values (${athlete.id}, ${athlete.js_id}, ${athlete.geschlecht}, ${athlete.name}, ${athlete.vorname}, ${athlete.gebdat}, ${athlete.strasse}, ${athlete.plz}, ${athlete.ort}, ${athlete.verein}, ${athlete.activ})
+          """
+      }, Duration.Inf)
+      athlete
     }
   }
 
@@ -929,30 +955,29 @@ trait KutuService {
         0
       }
     }
-
-    database withTransaction { implicit session =>
-      val preselect = if(cache.isEmpty()) {
-        sql"""
-           select id, name, vorname, gebdat, verein
-           from athlet
-           """.as[(Long, String, String, Option[Date], Long)].iterator.
-        map{x =>
-          val (id, name, vorname, jahr, verein) = x
-          MatchCode(id, name, vorname, AthletJahrgang(jahr).hg, verein)
-        }.foreach{ cache.add }
-        cache
-      }
-      else {
-        cache
-      }
-      val presel2 = JavaConversions.collectionAsScalaIterable(preselect).map{matchcode =>
-        (matchcode.id, similarAthletFactor(matchcode))
-      }.filter(_._2 > 0).toList.sortBy(_._2).reverse
-      presel2.headOption.flatMap(k =>
-        sql"""select * from athlet where id=${k._1}""".as[Athlet].
-        build.headOption
-      ).getOrElse(athlet)
+    
+    val preselect = if(cache.isEmpty()) {
+      Await.result(database.run{sql"""
+         select id, name, vorname, gebdat, verein
+         from athlet
+         """.as[(Long, String, String, Option[Date], Long)]
+      }, Duration.Inf).
+      map{x =>
+        val (id, name, vorname, jahr, verein) = x
+        MatchCode(id, name, vorname, AthletJahrgang(jahr).hg, verein)
+      }.foreach{ cache.add }
+      cache
     }
+    else {
+      cache
+    }
+    val presel2 = JavaConverters.asScalaBuffer(preselect).map{matchcode =>
+      (matchcode.id, similarAthletFactor(matchcode))
+    }.filter(_._2 > 0).toList.sortBy(_._2).reverse
+    presel2.headOption.flatMap(k =>
+      Await.result(database.run{sql"""select * from athlet where id=${k._1}""".as[Athlet].
+      headOption}, Duration.Inf)
+    ).getOrElse(athlet)
   }
 
   /* Riegenbuilder:
@@ -1655,172 +1680,172 @@ trait KutuService {
   }
 
   def deleteRiege(wettkampfid: Long, oldname: String) {
-    database withTransaction { implicit session =>
+    Await.result(database.run{
       sqlu"""
                 DELETE from riege where name=${oldname.trim} and wettkampf_id=${wettkampfid}
-          """.execute
-
+          """ >>
       sqlu"""   UPDATE wertung
                 SET riege=null
                 WHERE wettkampf_id=${wettkampfid} and riege=${oldname}
-          """.execute
-
+          """ >>
       sqlu"""   UPDATE wertung
                 SET riege2=null
                 WHERE wettkampf_id=${wettkampfid} and riege2=${oldname}
-          """.execute
-    }
+          """
+    }, Duration.Inf)
   }
 
   def renameDurchgang(wettkampfid: Long, oldname: String, newname: String) = {
-    database withTransaction { implicit session =>
+    Await.result(database.run{
         sqlu"""
                 update riege
                 set durchgang=${newname.trim}
                 where
                 wettkampf_id=${wettkampfid} and durchgang=${oldname}
-        """.execute
-    }
+        """
+    }, Duration.Inf)
   }
 
   def renameRiege(wettkampfid: Long, oldname: String, newname: String): Riege = {
-    database withTransaction { implicit session =>
-      val existing = sql"""select r.wettkampf_id, r.name, r.durchgang, r.start
-             from riege r
-             where wettkampf_id=$wettkampfid and name=${oldname}
-          """.as[RiegeRaw].iterator.toList
+    val existing = Await.result(database.run{
         sqlu"""
                 DELETE from riege where name=${newname.trim} and wettkampf_id=${wettkampfid}
-        """.execute
-      if(existing.isEmpty) {
+        """ >>
+        sql"""select r.wettkampf_id, r.name, r.durchgang, r.start
+             from riege r
+             where wettkampf_id=$wettkampfid and name=${oldname}
+          """.as[RiegeRaw]
+    }, Duration.Inf)
+    
+    Await.result(database.run{
+      val riegeModifierAction = if(existing.isEmpty) {
         sqlu"""
                 insert into riege
                        (name, wettkampf_id)
                 VALUES (${newname.trim}, ${wettkampfid})
-        """.execute
+        """
       }
       else {
         sqlu"""
-                update riege
-                set name=${newname.trim}
-                where
-                wettkampf_id=${wettkampfid} and name=${oldname}
-        """.execute
+                  update riege
+                  set name=${newname.trim}
+                  where
+                  wettkampf_id=${wettkampfid} and name=${oldname}
+          """
       }
-
-      sqlu"""   UPDATE wertung
-                SET riege=${newname}
-                WHERE wettkampf_id=${wettkampfid} and riege=${oldname}
-          """.execute
-
-      sqlu"""   UPDATE wertung
-                SET riege2=${newname}
-                WHERE wettkampf_id=${wettkampfid} and riege2=${oldname}
-          """.execute
-
-      sql"""   select r.name as riegenname, r.durchgang, d.*
-               from riege r
-               left outer join disziplin d on (r.start = d.id)
-               where r.wettkampf_id=${wettkampfid} and r.name=${newname}
-         """.as[Riege].iterator.toList.headOption.getOrElse(Riege(newname, None, None))
-    }
+      riegeModifierAction >>
+        sqlu"""   UPDATE wertung
+                  SET riege=${newname}
+                  WHERE wettkampf_id=${wettkampfid} and riege=${oldname}
+            """ >>
+        sqlu"""   UPDATE wertung
+                  SET riege2=${newname}
+                  WHERE wettkampf_id=${wettkampfid} and riege2=${oldname}
+            """ >>
+        sql"""   select r.name as riegenname, r.durchgang, d.*
+                 from riege r
+                 left outer join disziplin d on (r.start = d.id)
+                 where r.wettkampf_id=${wettkampfid} and r.name=${newname}
+           """.as[Riege].headOption
+    }, Duration.Inf).getOrElse(Riege(newname, None, None))
   }
 
   def cleanAllRiegenDurchgaenge(wettkampfid: Long) {
-    database withTransaction { implicit session =>
+    Await.result(database.run{
       sqlu"""
                 delete from riege where
                 wettkampf_id=${wettkampfid}
-        """.execute
+        """ >>
       sqlu"""   UPDATE wertung
                 SET riege=NULL
                   , riege2=NULL
                 WHERE wettkampf_id=${wettkampfid}
-          """.execute
-    }
+          """
+    }, Duration.Inf)
   }
 
   def updateOrinsertRiege(riege: RiegeRaw): Riege = {
-    database withTransaction { implicit session =>
+    Await.result(database.run{
       sqlu"""
                 delete from riege where
                 wettkampf_id=${riege.wettkampfId} and name=${riege.r}
-        """.execute
+        """ >>
       sqlu"""
                 insert into riege
                 (wettkampf_Id, name, durchgang, start)
                 values (${riege.wettkampfId}, ${riege.r}, ${riege.durchgang}, ${riege.start})
-        """.execute
+        """ >>
        sql"""select r.name as riegenname, r.durchgang, d.*
              from riege r
              left outer join disziplin d on (r.start = d.id)
              where r.wettkampf_id=${riege.wettkampfId} and r.name=${riege.r}
-          """.as[Riege].iterator.toList.head
-    }
+          """.as[Riege]
+    }, Duration.Inf).head
   }
 
   def insertRiegenWertungen(riege: RiegeRaw, wertungen: Seq[Wertung]) {
-    database withTransaction { implicit session =>
+    Await.result(database.run{
       sqlu"""
                   replace into riege
                   (wettkampf_Id, name, durchgang, start)
                   values (${riege.wettkampfId}, ${riege.r}, ${riege.durchgang}, ${riege.start})
-          """.execute
-      for(w <- wertungen) {
+          """ >>
+      DBIO.sequence(for(w <- wertungen) yield {
         sqlu"""     UPDATE wertung
                     SET riege=${riege.r}
                     WHERE id=${w.id}
-          """.execute
-      }
-    }
+          """
+      })
+    }, Duration.Inf)
   }
 
   def selectRiegenRaw(wettkampfId: Long) = {
-    database withSession { implicit session =>
+    Await.result(database.run{
        sql"""select r.wettkampf_id, r.name, r.durchgang, r.start
              from riege r
              where wettkampf_id=$wettkampfId
-          """.as[RiegeRaw].iterator.toList
-    }
+          """.as[RiegeRaw]
+    }, Duration.Inf).toList
   }
   def selectRiegen(wettkampfId: Long) = {
-    database withSession { implicit session =>
+    Await.result(database.run{
        sql"""select r.name as riegenname, r.durchgang, d.*
              from riege r
              left outer join disziplin d on (r.start = d.id)
              where wettkampf_id=$wettkampfId
-          """.as[Riege].iterator.toList
-    }
+          """.as[Riege]
+    }, Duration.Inf).toList
   }
 
   def moveToProgram(wId: Long, pgmId: Long, aId: Long) {
-    database withTransaction { implicit session =>
+    Await.result(database.run{
       sqlu"""
                 delete from wertung where
                 athlet_Id=${aId} and wettkampf_Id=${wId}
-        """.execute
-      for {
+        """ >>
+      DBIO.seq((for {
         wkid <- sql"""
                   select id from wettkampfdisziplin
                   where programm_Id = ${pgmId}
-                """.as[Long]
-      } {
+                """.as[Long].head
+      } yield {
         sqlu"""
                   insert into wertung
                   (athlet_Id, wettkampfdisziplin_Id, wettkampf_Id, note_d, note_e, endnote)
                   values (${aId}, ${wkid}, ${wId}, 0, 0, 0)
-          """.execute
-      }
-    }
+          """
+      }).flatten)
+    }, Duration.Inf)
+    
     val wertungen = selectWertungen(athletId = Some(aId), wettkampfId = Some(wId))
-    database withTransaction { implicit session =>
-      for(w <- wertungen) {
+    Await.result(database.run{
+      DBIO.sequence(for(w <- wertungen) yield {
         sqlu"""     UPDATE wertung
                     SET riege=${generateRiegenName(w)}
                     WHERE id=${w.id}
-          """.execute
-      }
-    }
+          """
+      })
+    }, Duration.Inf)
   }
   
   private var bestenResults = Map[String,WertungView]()

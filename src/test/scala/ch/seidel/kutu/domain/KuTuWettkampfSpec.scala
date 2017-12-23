@@ -1,9 +1,11 @@
 package ch.seidel.kutu.domain
 
-import scalafx.application.JFXApp
 import java.util.Date
+import org.scalatest.WordSpec
+import org.scalatest.Matchers
 
-object KuTuWettkampfApp extends JFXApp with KutuService {
+//@RunWith(classOf[JUnitRunner])
+class KuTuWettkampfSpec extends WordSpec with Matchers with KutuService {
   print(f"${new Date()}%tF")
 //  print(suggestRiegen(7, Seq(6)))
   // Open a database connection

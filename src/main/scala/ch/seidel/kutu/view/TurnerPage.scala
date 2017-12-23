@@ -19,7 +19,7 @@ import scalafx.scene.input.KeyEvent
 import scalafx.scene.input.KeyCode
 import scalafx.scene.Node
 import scalafx.geometry.Pos
-import slick.jdbc.StaticQuery.staticQueryToInvoker
+
 import ch.seidel.commons.AutoCommitTextFieldTableCell
 import ch.seidel.commons.DisplayablePage
 import ch.seidel.commons.TabWithService
@@ -67,11 +67,12 @@ object TurnerPage {
 
   class VereinTab(val verein: Verein, override val service: KutuService, val tabpane: LazyTabPane) extends Tab with TabWithService {
     import scala.collection.JavaConversions._
-
+    import slick.jdbc.SQLiteProfile
+    import slick.jdbc.SQLiteProfile.api._
+    
     override def isPopulated: Boolean = {
-      val athleten = service.database withSession {implicit session =>
-        (service.selectAthletes + " where verein=" +? verein.id + " order by activ desc, name, vorname asc").list.sortBy { a => (a.activ match {case true => "A" case _ => "X"}) + ":" + a.name + ":" + a.vorname }.map{a => AthletEditor(a)}
-      }
+      val athleten = service.selectAthletesOfVerein(verein.id)
+        .sortBy { a => (a.activ match {case true => "A" case _ => "X"}) + ":" + a.name + ":" + a.vorname }.map{a => AthletEditor(a)}
 
       val wkModel = ObservableBuffer[AthletEditor](athleten)
 

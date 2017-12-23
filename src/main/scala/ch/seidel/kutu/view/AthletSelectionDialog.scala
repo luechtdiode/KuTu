@@ -18,7 +18,7 @@ import scalafx.scene.input.KeyEvent
 import scalafx.scene.input.MouseEvent
 import scalafx.application.Platform
 
-class AthletSelectionDialog(actionTitle: String, progrm: ProgrammView, assignedAthleten: Seq[AthletView], service: KutuService, refreshPaneData: ((Long, Athlet)=>Boolean)=>Unit) {
+class AthletSelectionDialog(actionTitle: String, progrm: ProgrammView, assignedAthleten: Seq[AthletView], service: KutuService, refreshPaneData: Set[Long]=>Unit) {
 
   val athletModel = ObservableBuffer[AthletView](
     service.selectAthletesView.filter(service.altersfilter(progrm, _)).
@@ -103,8 +103,7 @@ class AthletSelectionDialog(actionTitle: String, progrm: ProgrammView, assignedA
           x => athletTable.selectionModel.value.isSelected(x._2)
         }.map(x => x._1.id)
 
-        def filter(progId: Long, a: Athlet): Boolean = selectedAthleten.contains(a.id)
-        refreshPaneData(filter)
+        refreshPaneData(selectedAthleten.toSet)
       }
     }
   }
@@ -112,18 +111,15 @@ class AthletSelectionDialog(actionTitle: String, progrm: ProgrammView, assignedA
   val btnOKAll = new Button("OK, Alle") {
     onAction = (event: ActionEvent) => {
       if (!filteredModel.isEmpty) {
-        val athlet = athletTable.selectionModel().getSelectedItem
-        def filter(progId: Long, a: Athlet): Boolean = filteredModel.exists { x => x.id == a.id }
-        refreshPaneData(filter)
+        refreshPaneData(filteredModel.map(_.id).toSet)
       }
     }
   }
 
   val btnNew = new Button("Neu erfassen ...") {
     onAction = (event: ActionEvent) => {
-      val athlet = AthletDialog(service, (x: Athlet) => {
-    	  def filter(progId: Long, a: Athlet): Boolean = x.id == a.id
-    	  refreshPaneData(filter)
+      val athlet = AthletDialog(service, (a: Athlet) => {
+    	  refreshPaneData(Set(a.id))
       })
       Platform.runLater {
         athlet.execute(event)

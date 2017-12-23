@@ -9,12 +9,14 @@ import scalafx.util.converter.IntStringConverter
 import scalafx.util.converter.LongStringConverter
 import java.text.SimpleDateFormat
 import org.apache.commons.codec.language.bm._
-import org.apache.commons.lang.StringUtils
 import org.apache.commons.codec.language.ColognePhonetic
 import java.util.TimeZone
+import org.apache.commons.text.similarity.LevenshteinDistance
+import scalafx.util.converter.BigDecimalStringConverter
 
 package object domain {
   implicit def dbl2Str(d: Double) = f"${d}%2.3f"
+  implicit def str2bd(d: String) = new BigDecimalStringConverter().fromString(d)
   implicit def str2dbl(d: String) = new DoubleStringConverter().fromString(d)
   implicit def str2Int(d: String) = new IntStringConverter().fromString(d)
   implicit def str2Long(d: String) = new LongStringConverter().fromString(d)
@@ -297,7 +299,7 @@ package object domain {
       Seq(colenc.encode(name).mkString(""))
 
     def similarFactor(name1: String, name2: String) = {
-      val diff = StringUtils.getLevenshteinDistance(name1, name2)
+      val diff = LevenshteinDistance.getDefaultInstance.apply(name1, name2)
       val diffproz = 100 * diff / name1.length()
       val similar = 100 - diffproz
       val threshold = 80 //%

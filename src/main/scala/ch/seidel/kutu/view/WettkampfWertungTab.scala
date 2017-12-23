@@ -1143,8 +1143,7 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
                 }
 
                 for((progId, athletes) <- selectedAthleten.groupBy(_._1).map(x => (x._1, x._2.map(_._2)))) {
-                  def filter(progId: Long, a: Athlet): Boolean = athletes.exists { _ == a.id }
-                  service.assignAthletsToWettkampf(wettkampf.id, Set(progId), Some(filter))
+                  service.assignAthletsToWettkampf(wettkampf.id, Set(progId), athletes.toSet)
                 }
 
                 reloadData()
@@ -1202,9 +1201,8 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
                  (progId, athlet)
               }.toList
               if (!athletModel.isEmpty) {
-                for((progId, athletes) <- clip.groupBy(_._1).map(x => (x._1, x._2.map(_._2)))) {
-                  def filter(progId: Long, a: Athlet): Boolean = athletes.exists { x => x.id == a.id }
-                  service.assignAthletsToWettkampf(wettkampf.id, Set(progId), Some(filter))
+                for((progId, athletes) <- clip.groupBy(_._1).map(x => (x._1, x._2.map(_._2.id)))) {
+                  service.assignAthletsToWettkampf(wettkampf.id, Set(progId), athletes.toSet)
                 }
                 reloadData()
               }
@@ -1458,8 +1456,8 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
         onAction = (event: ActionEvent) => {
           new AthletSelectionDialog(
             text.value, progrm, wertungen.map(w => w.head.init.athlet), service,
-            (filter: (Long, Athlet)=>Boolean) => {
-              service.assignAthletsToWettkampf(wettkampf.id, Set(progrm.id), Some(filter))
+            (selection: Set[Long]) => {
+              service.assignAthletsToWettkampf(wettkampf.id, Set(progrm.id), selection)
               reloadData()
             }
           ).execute(event)
