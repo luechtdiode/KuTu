@@ -3,7 +3,7 @@
 	<modelVersion>4.0.0</modelVersion>
 	<groupId>ch.seidel</groupId>
 	<artifactId>KuTu</artifactId>
-	<version>1.1.3</version>
+	<version>1.1.4-SNAPSHOT</version>
 
 	<inceptionYear>2014</inceptionYear>
 
@@ -267,7 +267,7 @@
 								<!-- argument>-Bdescription="Wettkampf Verwaltung und Durchfuehrung"</argument -->
 								<argument>-Bmac.CFBundleIdentifier="ch.seidel.KuTuApp"</argument>
 								<argument>-Bmac.CFBundleName=Wettkampf</argument>
-								<argument>-Bmac.CFBundleVersion=113</argument>
+								<argument>-Bmac.CFBundleVersion=114</argument>
 							</arguments>
 						</configuration>
 					</execution>
