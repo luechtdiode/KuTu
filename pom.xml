@@ -105,7 +105,7 @@
 			<groupId>org.scalatest</groupId>
 			<artifactId>scalatest_${scala.majorversion}</artifactId>
 			<version>3.0.3</version>
-			<scope>Test</scope>
+			<scope>test</scope>
 		</dependency>
 		
 	</dependencies>
