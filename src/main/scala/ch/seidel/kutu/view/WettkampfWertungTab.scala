@@ -947,7 +947,7 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
         //selectionModel.value.selectFirst()
       }
       val programms = programm.map(p => service.readWettkampfLeafs(p.head.id)).toSeq.flatten
-      val clipboardlines = Source.fromString(Clipboard.systemClipboard.getString).getLines()
+      val clipboardlines = Source.fromString(Clipboard.systemClipboard.getString + "").getLines()
       val cache = new java.util.ArrayList[MatchCode]()
       val cliprawf = KuTuApp.invokeAsyncWithBusyIndicator {
                      clipboardlines.
@@ -1201,7 +1201,9 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
                  (progId, athlet)
               }.toList
               if (!athletModel.isEmpty) {
-                for((progId, athletes) <- clip.groupBy(_._1).map(x => (x._1, x._2.map(_._2.id)))) {
+                val pgathl = clip.groupBy(_._1).map(x => (x._1, x._2.map(_._2.id)))
+                println(pgathl)
+                for((progId, athletes) <- pgathl) {
                   service.assignAthletsToWettkampf(wettkampf.id, Set(progId), athletes.toSet)
                 }
                 reloadData()
