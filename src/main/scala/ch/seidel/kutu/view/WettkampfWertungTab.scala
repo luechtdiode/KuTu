@@ -1555,7 +1555,7 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
       }
 
       //addButton.disable <== when (wkview.selectionModel.value.selectedItemProperty.isNull()) choose true otherwise false
-      val moveAvaillable = programm.forall { p => p.head != 1 }
+      val moveAvaillable = programm.forall { p => p.head.id != 1l }
       moveToOtherProgramButton.disable <== when(wkview.selectionModel.value.selectedItemProperty.isNull()) choose moveAvaillable otherwise false
       setRiege2ForAllButton.disable <== when(Bindings.createBooleanBinding(() => {
         wkModel.isEmpty
