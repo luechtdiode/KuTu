@@ -607,7 +607,7 @@ trait KutuService {
                }
              } >> 
              sql"""
-                select id from verein where id in (select max(id) from verein)
+                select id from verein where id=${id}
                 """.as[Long].head
          case _ =>
            sqlu"""
@@ -681,34 +681,26 @@ trait KutuService {
 
   def assignAthletsToWettkampfS(wettkampfId: Long, programs: Set[ProgrammView], withAthlets: Set[Long] = Set.empty) {
     if (withAthlets.nonEmpty) {
-      
-      val process = sql"""
-                    select id, programm_Id from wettkampfdisziplin
+      val athletsFilter = withAthlets.mkString("(", ",", ")")
+      val disciplines = Await.result(database.run{sql"""
+                    select id from wettkampfdisziplin
                     where programm_Id in #${programs.map(_.id).mkString("(", ",", ")")}
-           """.as[(Long, Long)].head
-     .flatMap{
-       case (wkid, pgmid) =>
-         for {
-           a <- sql"""select * from athlet a where
-                      a.id in #${withAthlets.mkString("(", ",", ")")}
-                   """.as[Athlet].head.filter(a => {
-               altersfilter(programs.find(_.id ==pgmid).get, a)
-             })
-         }
-         yield {
-           sqlu"""
+           """.as[Long]}, Duration.Inf)
+           
+      withAthlets.foreach(aid => disciplines.foreach{case disciplin =>
+        Await.result(database.run{
+          sqlu"""
                     delete from wertung where
-                    athlet_Id=${a.id} and wettkampfdisziplin_Id=${wkid} and wettkampf_Id=${wettkampfId}
+                    athlet_Id=${aid} and wettkampfdisziplin_Id=${disciplin} and wettkampf_Id=${wettkampfId}
                """ >>
            sqlu"""
                     insert into wertung
                     (athlet_Id, wettkampfdisziplin_Id, wettkampf_Id, note_d, note_e, endnote)
-                    values (${a.id}, ${wkid}, ${wettkampfId}, 0, 0, 0)
-              """      
-        }
-      }
-        
-      Await.result(database.run{process.flatten}, Duration.Inf)
+                    values (${aid}, ${disciplin}, ${wettkampfId}, 0, 0, 0)
+              """    
+        }, Duration.Inf)
+      })           
+
     }
   }
   
