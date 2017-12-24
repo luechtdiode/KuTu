@@ -24,8 +24,8 @@ env:
   global:
     - OS=$(uname -s)
 
-# jdk:
-#   - oraclejdk8
+jdk:
+  - oraclejdk8
 
 os:
 #   - linux
