@@ -879,7 +879,7 @@ class RiegenTab(wettkampf: WettkampfView, override val service: KutuService) ext
     val durchgangRenameButton = new Button {
   	  text = "Durchgang umbenennen"
 		  minWidth = 75
-		  disable <== when(makeRiegenFilterActiveBinding) choose true otherwise false
+		  disable <== when(makeDurchgangActiveBinding) choose true otherwise false
 		  onAction = (event: ActionEvent) => {
 			  implicit val impevent = event
 			  val selectedDurchgang = riegenFilterView.selectionModel.value.getSelectedItem.durchgang.value
