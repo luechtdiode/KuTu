@@ -80,7 +80,8 @@ trait KutuService {
     driver = "org.sqlite.JDBC",
     prop = proplite,
     user = "kutu",
-    password = "kutu")
+    password = "kutu",
+    executor = AsyncExecutor("DB-Actions", 30, 10000))
 
   lazy val database = databaselite
 //  lazy val database = databasemysql
@@ -297,7 +298,7 @@ trait KutuService {
   }
 
   def readProgramm(id: Long): ProgrammView = {
-    val allPgmsQuery = sql"""select * from programm""".as[ProgrammRaw].withPinnedSession
+    val allPgmsQuery = sql"""select * from programm""".as[ProgrammRaw]
         .map{l => l.map(p => p.id -> p).toMap}
         .map{map => map.foldLeft(List[ProgrammView]()){(acc, pgmEntry) =>
             val (id, pgm) = pgmEntry
@@ -321,7 +322,7 @@ trait KutuService {
     def children(pid: Long) = Await.result(database.run{
         sql"""    select * from programm
                   where parent_id=$pid
-           """.as[ProgrammRaw].withPinnedSession
+           """.as[ProgrammRaw]
       }, Duration.Inf)
 
     def seek(pid: Long, acc: Seq[ProgrammView]): Seq[ProgrammView] = {
@@ -333,7 +334,6 @@ trait KutuService {
         (for(c <- ch) yield (seek(c.id, acc))).flatten
       }
     }
-
     seek(programmid, Seq.empty)
   }
 

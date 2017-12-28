@@ -146,7 +146,7 @@ object ResourceExchanger extends KutuService {
           }
         }
         else {
-          println("WARNING: No matching Disciplin" + wkdisziplines(w.wettkampfId)(w.wettkampfdisziplinId).kurzbeschreibung + " - " + w)
+          println("WARNING: No matching Disciplin - " + w)
         }
       }
     }
