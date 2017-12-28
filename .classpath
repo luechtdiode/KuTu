@@ -9,6 +9,7 @@
   <classpathentry kind="con" path="org.scala-ide.sdt.launching.SCALA_CONTAINER"/>
   <classpathentry kind="var" path="M2_REPO/org/scalafx/scalafx_2.12/8.0.144-R12/scalafx_2.12-8.0.144-R12.jar" sourcepath="M2_REPO/org/scalafx/scalafx_2.12/8.0.144-R12/scalafx_2.12-8.0.144-R12-sources.jar"/>
   <classpathentry kind="var" path="M2_REPO/org/scala-lang/scala-reflect/2.12.3/scala-reflect-2.12.3.jar" sourcepath="M2_REPO/org/scala-lang/scala-reflect/2.12.3/scala-reflect-2.12.3-sources.jar"/>
+  <classpathentry kind="var" path="M2_REPO/org/controlsfx/controlsfx/8.40.14/controlsfx-8.40.14.jar" sourcepath="M2_REPO/org/controlsfx/controlsfx/8.40.14/controlsfx-8.40.14-sources.jar"/>
   <classpathentry kind="var" path="M2_REPO/org/xerial/sqlite-jdbc/3.21.0.1/sqlite-jdbc-3.21.0.1.jar" sourcepath="M2_REPO/org/xerial/sqlite-jdbc/3.21.0.1/sqlite-jdbc-3.21.0.1-sources.jar"/>
   <classpathentry kind="var" path="M2_REPO/com/typesafe/slick/slick_2.12/3.2.1/slick_2.12-3.2.1.jar" sourcepath="M2_REPO/com/typesafe/slick/slick_2.12/3.2.1/slick_2.12-3.2.1-sources.jar"/>
   <classpathentry kind="var" path="M2_REPO/org/slf4j/slf4j-api/1.7.18/slf4j-api-1.7.18.jar" sourcepath="M2_REPO/org/slf4j/slf4j-api/1.7.18/slf4j-api-1.7.18-sources.jar"/>

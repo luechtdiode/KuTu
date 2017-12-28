@@ -1,65 +1,41 @@
 package ch.seidel.kutu.view
 
-import java.text.SimpleDateFormat
-import scala.collection.mutable.StringBuilder
-import javafx.scene.{ control => jfxsc }
-import javafx.collections.{ ObservableList, ListChangeListener }
-import scalafx.collections.ObservableBuffer
-import scalafx.Includes._
-import scalafx.util.converter.DefaultStringConverter
-import scalafx.util.converter.DoubleStringConverter
-import scalafx.beans.property.ReadOnlyStringWrapper
-import scalafx.beans.value.ObservableValue
-import scalafx.beans.property.ReadOnlyDoubleWrapper
-import scalafx.event.ActionEvent
-import scalafx.scene.layout.Region
-import scalafx.scene.control.Label
-import scalafx.scene.layout.VBox
-import scalafx.scene.layout.BorderPane
-import scalafx.beans.property.DoubleProperty
-import scalafx.beans.property.StringProperty
-import scalafx.geometry.Pos
-import scalafx.geometry.Insets
-import scalafx.scene.Node
-import scalafx.scene.control.{ Tab, TabPane }
-import scalafx.scene.layout.{ Priority, StackPane }
-import scalafx.scene.control.{ TableView, TableColumn }
-import scalafx.scene.control.cell.TextFieldTableCell
-import scalafx.scene.control.TableColumn._
-import scalafx.scene.control.ToolBar
-import scalafx.scene.control.Button
-import scalafx.scene.control.ScrollPane
-import scalafx.scene.control.ComboBox
-import scalafx.scene.layout.HBox
-import scalafx.scene.Group
-import scalafx.scene.web.WebView
-import java.io.FileOutputStream
 import java.awt.Desktop
 import java.io.BufferedOutputStream
-import scalafx.stage.FileChooser
-import scalafx.stage.FileChooser.ExtensionFilter
+import java.io.File
+import java.io.FileInputStream
+import java.io.FileOutputStream
+import java.io.ObjectInputStream
+
+import scala.language.implicitConversions
+
+import org.controlsfx.control.CheckComboBox
+
 import ch.seidel.commons._
 import ch.seidel.kutu.KuTuApp
-import ch.seidel.kutu.domain._
 import ch.seidel.kutu.data._
-import ch.seidel.kutu.renderer.ScoreToHtmlRenderer
 import ch.seidel.kutu.data.FilterBy
-import scalafx.scene.control.ListCell
-import javafx.util.Callback
-import scalafx.scene.control.ListView
-import scalafx.scene.control.CheckBox
-import java.io.ObjectOutputStream
-import java.io.ObjectInputStream
-import java.io.FileInputStream
-import java.io.File
-import scalafx.scene.control.TextField
-import scalafx.scene.web.WebEngine
+import ch.seidel.kutu.domain._
 import ch.seidel.kutu.renderer.PrintUtil
-import ch.seidel.kutu.renderer.PrintUtil
-import ch.seidel.kutu.renderer.PrintUtil
+import ch.seidel.kutu.renderer.ScoreToHtmlRenderer
+import javafx.scene.{ control => jfxsc }
+import scalafx.Includes._
+import scalafx.beans.binding.Bindings
+import scalafx.collections.ObservableBuffer
+import scalafx.event.ActionEvent
+import scalafx.geometry.Insets
+import scalafx.geometry.Pos
 import scalafx.print.PageOrientation
 import scalafx.print.Printer
-import scalafx.beans.binding.Bindings
+import scalafx.scene.Node
+import scalafx.scene.control._
+import scalafx.scene.layout._
+import scalafx.scene.web.WebEngine
+import scalafx.scene.web.WebView
+import scalafx.stage.FileChooser
+import scalafx.stage.FileChooser.ExtensionFilter
+import scalafx.util.StringConverter
+import scala.collection.JavaConverters
 
 abstract class DefaultRanglisteTab(override val service: KutuService) extends Tab with TabWithService with ScoreToHtmlRenderer {
   override val title = ""
@@ -80,18 +56,29 @@ abstract class DefaultRanglisteTab(override val service: KutuService) extends Ta
   case class FilenameDefault(filename: String, dir: java.io.File)
   def getSaveAsFilenameDefault: FilenameDefault = ???
   val webView = new WebView
+  var restoring = false
+  val nullFilter = NullObject("alle")
+  
   def print(printer: Printer) {
     PrintUtil.printWebContent(webView.engine, printer, PageOrientation.Portrait)
   }
   
   def populate(groupers: List[FilterBy]): Seq[ComboBox[FilterBy]] = {
     val gr1Model = ObservableBuffer[FilterBy](groupers)
-    val nullFilter = NullObject("alle")
-    val grf1Model = ObservableBuffer[DataObject](Seq(nullFilter))
-    val grf2Model = ObservableBuffer[DataObject](Seq(nullFilter))
-    val grf3Model = ObservableBuffer[DataObject](Seq(nullFilter))
-    val grf4Model = ObservableBuffer[DataObject](Seq(nullFilter))
+    
+    val grf1Model = ObservableBuffer[DataObject](Seq())
+    val grf2Model = ObservableBuffer[DataObject](Seq())
+    val grf3Model = ObservableBuffer[DataObject](Seq())
+    val grf4Model = ObservableBuffer[DataObject](Seq())
 
+    class DataObjectConverter extends StringConverter[DataObject] {
+      def fromString(text: String) = {
+        nullFilter
+      }
+      def toString(d: DataObject) = if (d != null) d.easyprint else ""
+    }
+    val converter = new DataObjectConverter()
+   
     class DataObjectListCell extends ListCell[DataObject] {
       override val delegate: jfxsc.ListCell[DataObject] = new jfxsc.ListCell[DataObject] {
         override protected def updateItem(item: DataObject, empty: Boolean) {
@@ -141,41 +128,26 @@ abstract class DefaultRanglisteTab(override val service: KutuService) extends Ta
         items = gr1Model
       }
     val combs = List(cb1, cb2, cb3, cb4)
-    val cbf1 = new ComboBox[DataObject] {
-      maxWidth = 250
-      minWidth = 100
-      promptText = "alle"
-      items = grf1Model
-      buttonCell = new DataObjectListCell()
-      cellFactory = { p => new DataObjectListCell() }
+    val cbf1 = new CheckComboBox[DataObject](grf1Model) {
+      setMaxWidth(250)
+      setMinWidth(100)
+      setConverter(converter)
     }
-    val cbf2 =
-      new ComboBox[DataObject] {
-        maxWidth = 250
-        minWidth = 100
-        promptText = "alle"
-        items = grf2Model
-        buttonCell = new DataObjectListCell()
-        cellFactory = { p => new DataObjectListCell() }
-      }
-    val cbf3 =
-      new ComboBox[DataObject] {
-        maxWidth = 250
-        minWidth = 100
-        promptText = "alle"
-        items = grf3Model
-        buttonCell = new DataObjectListCell()
-        cellFactory = { p => new DataObjectListCell() }
-      }
-    val cbf4 =
-      new ComboBox[DataObject] {
-        maxWidth = 250
-        minWidth = 100
-        promptText = "alle"
-        items = grf4Model
-        buttonCell = new DataObjectListCell()
-        cellFactory = { p => new DataObjectListCell() }
-      }
+    val cbf2 = new CheckComboBox[DataObject](grf2Model) {
+      setMaxWidth(250)
+      setMinWidth(100)
+      setConverter(converter)
+    }
+    val cbf3 = new CheckComboBox[DataObject](grf3Model) {
+      setMaxWidth(250)
+      setMinWidth(100)
+      setConverter(converter)
+    }
+    val cbf4 = new CheckComboBox[DataObject](grf4Model) {
+      setMaxWidth(250)
+      setMinWidth(100)
+      setConverter(converter)
+    }
     val combfs = List(cbf1, cbf2, cbf3, cbf4)
     val fmodels = List(grf1Model, grf2Model, grf3Model, grf4Model)
     
@@ -195,24 +167,26 @@ abstract class DefaultRanglisteTab(override val service: KutuService) extends Ta
     }
 
     def buildGrouper = {
+      restoring = true
       groupers.foreach { gr => gr.reset }
       val cblist = combs.zip(combfs).filter{cbp =>
         val (cb, cf) = cbp
         val ret = relevantGroup(cb)
-        cf.disable.value = !ret
+        cf.setDisable(!ret)
         ret
       }.map{cbp =>
         val (cb, cf) = cbp
         val grp = cb.selectionModel.value.getSelectedItem
 
-        if(cf.selectionModel.value.isEmpty() || cf.selectionModel.value.selectedItem.value.equals(nullFilter)) {
+        if(cf.getCheckModel.getCheckedItems.isEmpty() || cf.getCheckModel.getCheckedItems.forall(nullFilter.equals(_))) {
         	grp.reset
         }
         else {
-          grp.setFilter(Set(cf.selectionModel.value.selectedItem.value))
+          grp.setFilter(cf.getCheckModel.getCheckedItems.toSet[DataObject])
         }
         grp
       }
+      restoring = false
 
       if (cblist.isEmpty) {
         ByWettkampfProgramm().groupBy(ByGeschlecht)
@@ -223,23 +197,30 @@ abstract class DefaultRanglisteTab(override val service: KutuService) extends Ta
     }
 
     def refreshRangliste(query: GroupBy, linesPerPage: Int = 0) = {
+      restoring = true
     	val data = getData
-
+//    	println(query.chainToString)
       val filter = query.asInstanceOf[FilterBy]
       val filterLists = filter.traverse(Seq[Seq[DataObject]]()){ (f, acc) =>
-        acc :+ f.asInstanceOf[FilterBy].analyze(data).sortBy { x => x.easyprint}
+        val allItems = f.asInstanceOf[FilterBy].analyze(data).sortBy { x => x.easyprint}
+        acc :+ (if (f.canSkipGrouper) nullFilter +: allItems else allItems)
       }
-    	filterLists.zip(fmodels.zip(combs).filter{x => relevantGroup(x._2)}.map(_._1)).foreach {x =>
-    	  val (raw, model) = x
-    	  val toRemove =
-    	    for(o <- model if(!raw.contains(o) && o != nullFilter && model.indexOf(o) > -1))
-    	    yield {model.indexOf(o)}
-    	  for{i <- toRemove.sorted.reverse} {model.remove(i)}
-
-    	  for(o <- raw if(!model.contains(o))) {
-    	    model.append(o)
-    	  }
-    	  model.sortBy { x => x.easyprint}
+      combfs.filter(cmb => cmb.disabled.value).foreach(cmb => {
+        cmb.getCheckModel.clearChecks()
+        cmb.getItems.clear()
+      })
+    	filterLists.zip(fmodels.zip(combs.zip(combfs)).filter{x => relevantGroup(x._2._1)}.map(x => (x._1, x._2._2))).foreach {x =>
+    	  val ( expected, (model, combf)) = x
+    	  val checked = combf.getCheckModel.getCheckedItems.toSet
+    	  combf.getCheckModel.clearChecks()
+    	  model.retainAll(expected)
+    	  model.insertAll(model.size, expected.filter(!model.contains(_)))
+//    	  for(o <- expected if(!model.contains(o))) {
+//    	    model.append(o)
+//    	  }
+    	  model.sort{case (a, b) => a.easyprint.compareTo(b.easyprint) < 0}
+      
+    	  checked.filter(model.contains(_)).foreach(combf.getCheckModel.check(_))
     	}
       val combination = query.select(data).toList
       //Map[Long,Map[String,List[Disziplin]]]
@@ -252,10 +233,10 @@ abstract class DefaultRanglisteTab(override val service: KutuService) extends Ta
       if(linesPerPage == 0){
         webView.engine.loadContent(ret)
       }
+      restoring = false
       ret
     }
     
-    var restoring = false
     def restoreGrouper(query: GroupBy) {
       restoring = true
       query.traverse(combs.zip(combfs)){(grp, acc) =>
@@ -279,19 +260,22 @@ abstract class DefaultRanglisteTab(override val service: KutuService) extends Ta
       refreshRangliste(buildGrouper)
     }
 
-    combs.foreach{c =>
-      c.onAction = handle {
-        if(!restoring)
+    combs.zip(combfs).foreach{ case (comb, combfs) =>
+      comb.onAction = handle {
+        if(!restoring) {
+          restoring = true
+          combfs.getCheckModel.clearChecks()
+          combfs.getItems.clear()
           refreshRangliste(buildGrouper)
+        }
       }
-    }
-    combfs.foreach{c =>
-      c.onAction = handle {
-//        val selected = c.selectionModel.value.selectedItem.value
-        if(!restoring)
+      combfs.getCheckModel.getCheckedItems.onChange((b, s) => {
+        if(!restoring) {
           refreshRangliste(buildGrouper)
-      }
+        }
+      })        
     }
+    
     cbModus.onAction = handle {
       if(!restoring)
         refreshRangliste(buildGrouper)
@@ -519,7 +503,8 @@ abstract class DefaultRanglisteTab(override val service: KutuService) extends Ta
         new VBox {
           vgrow = Priority.Always
           hgrow = Priority.Always
-          children = List(ccs._1, ccs._2)
+          val filterControl: Control = ccs._2
+          children = List(ccs._1, filterControl)
         }
       }
       val topActions = new VBox {

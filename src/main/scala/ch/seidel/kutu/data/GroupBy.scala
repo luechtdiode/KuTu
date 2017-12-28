@@ -9,6 +9,8 @@ import scala.math.BigDecimal.int2bigDecimal
 sealed trait GroupBy {
   val groupname: String
   protected var next: Option[GroupBy] = None
+  protected def allName = groupname
+  protected val allgrouper = (w: WertungView) => NullObject(allName).asInstanceOf[DataObject]
   protected val grouper: (WertungView) => DataObject
   protected val sorter: Option[(GroupSection, GroupSection) => Boolean] //= leafsorter
   protected val leafsorter: Option[(GroupSection, GroupSection) => Boolean] = Some((gs1: GroupSection, gs2: GroupSection) => {
@@ -16,7 +18,15 @@ sealed trait GroupBy {
   })
 
   override def toString = groupname
-
+  
+  def chainToString: String = s"$groupname (skipGrouper: $skipGrouper, ${allName})" + (next match {
+      case Some(gb) =>  "\n\t/" + gb.chainToString
+      case _ => ""
+    })
+  
+  def skipGrouper: Boolean = false
+  def canSkipGrouper: Boolean = false
+  
   def /(next: GroupBy): GroupBy = groupBy(next)
 
   def traverse[T >: GroupBy, A](accumulator: A)(op: (T, A) => A): A = {
@@ -52,7 +62,13 @@ sealed trait GroupBy {
   }
 
   def select(wvlist: Seq[WertungView]): Iterable[GroupSection] = {
-    val grouped = wvlist groupBy grouper filter(g => g._2.size > 0)
+   val grouped = if (skipGrouper) {
+        wvlist groupBy allgrouper filter(g => g._2.size > 0)
+      }
+      else {
+        wvlist groupBy grouper filter(g => g._2.size > 0)
+      }
+   
     next match {
       case Some(ng) => mapAndSortNode(ng, grouped)
       case None     => mapAndSortLeaf(grouped)
@@ -74,7 +90,7 @@ sealed trait GroupBy {
         GroupNode(grp, Seq(GroupSum(grp, Resultat(0, 0, 0), Resultat(0, 0, 0), Resultat(0, 0, 0))))
       }
       else {
-        GroupNode(grp, ng.select(seq))
+        GroupNode(grp, list)
       }
     }.filter(g => g.sum.endnote > 0), sorter)
   }
@@ -92,17 +108,25 @@ sealed trait FilterBy extends GroupBy {
   protected def items(fromData: Seq[WertungView]): List[DataObject]
   private[FilterBy] var filter: Set[DataObject] = Set.empty
   private[FilterBy] var filtItems: List[DataObject] = List.empty
-
+  private[FilterBy] def nullObjectFilter = (d: DataObject) => d match { case NullObject(_) => true case _ => false }
+  
   def analyze(wvlist: Seq[WertungView]): Seq[DataObject] = {
     filtItems = items(wvlist)
     filtItems
   }
-
+  
+  override protected def allName = {
+    getFilter.filterNot(nullObjectFilter).map(_.easyprint).mkString("[", ", ", "]")
+  }
+  
   override def select(wvlist: Seq[WertungView]): Iterable[GroupSection] = {
     filtItems = items(wvlist)
     super.select(wvlist.filter(g => if(getFilter.nonEmpty) getFilter.contains(grouper(g)) else true))
   }
 
+  override def canSkipGrouper = getFilter.filterNot(nullObjectFilter).size > 1
+  override def skipGrouper = getFilter.exists{nullObjectFilter} && canSkipGrouper
+  
   def setFilter(f: Set[DataObject]) {
     filter = f
   }
@@ -182,6 +206,20 @@ case object ByWettkampfArt extends GroupBy with FilterBy {
   }
   protected override val sorter: Option[(GroupSection, GroupSection) => Boolean] = Some((gs1: GroupSection, gs2: GroupSection) => {
     gs1.groupKey.asInstanceOf[ProgrammView].ord.compareTo(gs2.groupKey.asInstanceOf[ProgrammView].ord) < 0
+  })
+
+  def items(fromData: Seq[WertungView]): List[DataObject] = {
+    val grp = fromData.groupBy(grouper)
+    grp.map(_._1).toList
+  }
+}
+case object ByWettkampf extends GroupBy with FilterBy {
+  override val groupname = "Wettkampf"
+  protected override val grouper = (v: WertungView) => {
+    v.wettkampf
+  }
+  protected override val sorter: Option[(GroupSection, GroupSection) => Boolean] = Some((gs1: GroupSection, gs2: GroupSection) => {
+    gs1.groupKey.asInstanceOf[Wettkampf].datum.compareTo(gs2.groupKey.asInstanceOf[Wettkampf].datum) < 0
   })
 
   def items(fromData: Seq[WertungView]): List[DataObject] = {
