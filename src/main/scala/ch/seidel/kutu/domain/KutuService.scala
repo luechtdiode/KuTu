@@ -33,6 +33,7 @@ import java.util.ArrayList
 import scala.concurrent.Await
 import scala.concurrent.duration.Duration
 import scala.collection.JavaConverters
+import ch.seidel.kutu.data.Stager
 
 trait KutuService {
 
@@ -1261,6 +1262,8 @@ trait KutuService {
 
       def groupWertungen(programm: String, prgWertungen: Map[AthletView, Seq[WertungView]], grp: List[WertungView => String], grpAll: List[WertungView => String], startgeraete: List[Disziplin], jahrgangGroup: Boolean) = {
         val sugg = prgWertungen.groupBy(w => groupKey(grp)(w._2.head)).toSeq
+        val startgeraeteSize = startgeraete.size
+
         // per groupkey, transform map to seq, sorted by all groupkeys
         val atheltenInRiege = sugg.map{x =>
           (/*grpkey*/  x._1, // Riegenname
@@ -1276,7 +1279,7 @@ trait KutuService {
         val athletensum = atheltenInRiege.flatMap{a =>
           a._2.map(aw => aw._1.id)
         }.toSet.size
-        val maxRiegenSize2 = if(maxRiegenSize > 0) maxRiegenSize else math.max(14, athletensum / disziplinlist.size)
+        val maxRiegenSize2 = if(maxRiegenSize > 0) maxRiegenSize else math.max(14, math.ceil(1d * athletensum / startgeraeteSize).intValue())
         val riegen = splitToRiegenCount(atheltenInRiege, maxRiegenSize2).map(r => Map(r._1 -> r._2))
         // Maximalausdehnung. Nun die sinnvollen Zusammenlegungen
         type RiegeAthletWertungen = Map[String, Seq[(AthletView, Seq[WertungView])]]
@@ -1289,164 +1292,17 @@ trait KutuService {
           w.keys.mkString(s"${w.size} Riegen (", ", ", ")")
         }
 
-        @tailrec
         def combineToDurchgangSize(relevantcombis: Seq[RiegeAthletWertungen]): Seq[RiegeAthletWertungen] = {
-          def splitAt(splitpoint: Int, sorted: Seq[RiegeAthletWertungen], first: Boolean) = {
-            if(splitpoint < 0 || splitpoint >= sorted.size) {
-              sorted
-            }
-            else {
-              val headItems = sorted.take(math.max(0, splitpoint))
-              val splittedItem = sorted(splitpoint)
-              val tailItems = sorted.drop(math.min(sorted.size, splitpoint+1))
-              val ret = if(first) {
-                val sh1: RiegeAthletWertungen = splittedItem.tail
-                val sh2: RiegeAthletWertungen = Map(splittedItem.head._1 -> splittedItem.head._2)
-                headItems ++ Seq(sh1, sh2) ++ tailItems
-              }
-              else {
-                val sh1: RiegeAthletWertungen = splittedItem.take(splittedItem.size -1)
-                val sh2: RiegeAthletWertungen = Map(splittedItem.last._1 -> splittedItem.last._2)
-                headItems ++ Seq(sh1, sh2) ++ tailItems
-              }
-              if(sorted.map(durchgangRiegeSize).sum != ret.map(durchgangRiegeSize).sum) {
-                println(s"splitAt input: ${(sorted).map(x => easyPrint(x)).mkString("", "\n  ", "")}")
-                println(s"splitAt output: ${(ret).map(x => easyPrint(x)).mkString("", "\n  ", "")}")
-              }
-              ret
-            }
-          }
-          def splitEven(unsorted: Seq[RiegeAthletWertungen]) = {
-            val sorted = unsorted.sortBy { durchgangRiegeSize }.reverse
-            val combis = sorted.filter(x => x.size > 1)
-            if(combis.nonEmpty) {
-              val splitpoint = sorted.indexOf(combis(combis.size / 2))
-              splitAt(splitpoint, sorted, true)
-            }
-            else {
-              sorted
-            }
-          }
-          def splitSmallest(unsorted: Seq[RiegeAthletWertungen]) = {
-            val sorted = unsorted.sortBy { durchgangRiegeSize }
-            val splitpoint = sorted.lastIndexWhere { x => x.size > 1 }
-            val output = splitAt(splitpoint, sorted, false)
-            if(unsorted.map(durchgangRiegeSize).sum != output.map(durchgangRiegeSize).sum) {
-              println(s"splitSmallest input: ${(unsorted).map(x => easyPrint(x)).mkString("", "\n  ", "")}")
-              println(s"splitSmallest output: ${(output).map(x => easyPrint(x)).mkString("", "\n  ", "")}")
-            }
-            output
-          }
-          def splitLargest(unsorted: Seq[RiegeAthletWertungen]) = {
-            val sorted = unsorted.sortBy { durchgangRiegeSize }.reverse
-            val splitpoint = sorted.indexWhere { x => x.size > 1 }
-            splitAt(splitpoint, sorted, true)
-          }
-
-          val startgeraeteSize = startgeraete.size
-
-          if(relevantcombis.size > startgeraeteSize) {
-            // sind mind. startgeraete.size Riegen zu finden, die gepaart die Maxilmalgruppengrösse nicht übersteigen?
-
-            @tailrec
-            def buildPairs(requiredPairs: Int, candidate: Seq[RiegeAthletWertungen], acc: Seq[(RiegeAthletWertungen, RiegeAthletWertungen)]): Seq[(RiegeAthletWertungen, RiegeAthletWertungen)] = {
-              println(s"    => buildPairs: candidates=${candidate.size}, acc=${acc.size}, requiredPairs=$requiredPairs")
-              if(candidate.isEmpty) {
-                acc
-              }
-              else if(requiredPairs <= acc.size) {
-                acc
-              }
-              else if (candidate.size > 1 && (durchgangRiegeSize(candidate.head) + durchgangRiegeSize(candidate.last) <= maxRiegenSize2)) {
-                // Auf max Riegen-Size zusammenmergen (auffüllen)
-                buildPairs(requiredPairs, candidate.tail.take(candidate.size -2), acc :+ (candidate.head, candidate.last))
-              }
-              else if(candidate.size > 1 && (acc.size < requiredPairs - startgeraeteSize || acc.size % startgeraeteSize != 0)) {
-                buildPairs(requiredPairs, candidate.tail, acc)
-              }
-              else {
-                acc
-              }
-            }
-            val turnerSum = relevantcombis.map(durchgangRiegeSize).sum
-            val combisturnerSum = relevantcombis.map(durchgangRiegeSize).sum
-            val idealRiegenCnt = (math.floor(turnerSum / maxRiegenSize2) + ((turnerSum / maxRiegenSize2) % startgeraete.size)).intValue()
-            val targetPairCnt = math.max(startgeraete.size, startgeraete.size * math.floor((relevantcombis.size - startgeraete.size) / startgeraete.size).intValue())
-            println(s"turnerSum=$turnerSum, idealRiegenCnt=$idealRiegenCnt, targetPairCnt=$targetPairCnt")
-
-            @tailrec
-            def nc(candidate: Seq[RiegeAthletWertungen], level: Int): Seq[RiegeAthletWertungen] = {
-              val possiblePairs = buildPairs(targetPairCnt, candidate, Seq.empty)
-              val stable = candidate.filter(c => !possiblePairs.exists(p => p._1 == c || p._2 == c) )
-              val newcombis = stable ++ possiblePairs.map{x => x._1 ++ x._2}
-              if(newcombis.map(durchgangRiegeSize).sum != candidate.map(durchgangRiegeSize).sum) {
-                println("ALERT")
-              }
-              if(splitSex == GemischterDurchgang || jahrgangGroup) {
-                newcombis
-              }
-              else {
-                val base = candidate.map( durchgangRiegeSize )
-                println(s"  => candidates=${candidate.size}, max=${base.max}, min=${base.min}, possiblePairs=${possiblePairs.size}, stable=${stable.size}, newcombis=${newcombis.size}, level=$level")
-                if(level == 0 || newcombis.size >= targetPairCnt || (newcombis.size < targetPairCnt && newcombis.size % startgeraete.size == 0)) {
-                  newcombis
-                }
-                else if(newcombis.nonEmpty && newcombis.size < targetPairCnt) {
-                  val splitted = (newcombis.size until targetPairCnt).foldLeft(newcombis){(acc, idx) =>
-                    if(acc.nonEmpty) splitEven(acc) else acc
-                  }
-                  splitted
-                }
-                else {
-                  val n = if(level % 3 == 0) splitSmallest(candidate) else splitSmallest(newcombis)
-                  nc(n, level-1)
-                }
-              }
-            }
-            println(s"relevantcombis=${relevantcombis.size}, fullPairs=$targetPairCnt")
-            def splitJGIfRequired(in: Seq[RiegeAthletWertungen]): Seq[RiegeAthletWertungen] = {
-//              if(jahrgangGroup) {
-//                val perJG = in.groupBy {c => AthletJahrgang(c.head._2.head._1.gebdat).hg }
-//                perJG.map{x =>
-//                  val (jg, raw) = x
-//                  nc(raw, in.size)
-//                }.reduce(_ ++ _)
-//              }
-//              else {
-                nc(in, in.size)
-//              }
-            }
-            val newcombis = splitSex match {
-              case GemischterDurchgang =>
-                val rcm = relevantcombis.filter(c => c.head._2.head._1.geschlecht.equalsIgnoreCase("M"))
-                val rcw = relevantcombis.filter(c => c.head._2.head._1.geschlecht.equalsIgnoreCase("W"))
-                splitJGIfRequired(rcm) ++ splitJGIfRequired(rcw)
-              case _ =>
-                splitJGIfRequired(relevantcombis)
-            }
-            //val newcombis = nc(relevantcombis, relevantcombis.size)// stable ++ possiblePairs.map{x => x._1 ++ x._2}
-
-            if(targetPairCnt > 0 && newcombis.size < relevantcombis.size) {
-              println(s"combis merging: ${(newcombis).map(x => easyPrint(x)).mkString("", "\n  ", "")}")
-              combineToDurchgangSize(newcombis.sortBy { durchgangRiegeSize }.reverse)
-            }
-            else if(targetPairCnt > 0 && newcombis.size < relevantcombis.size && ((newcombis.size % startgeraete.size == 0) || (newcombis.size / startgeraete.size >= 1))) {
-              println(s"take newcombis : ${newcombis.map(x => easyPrint(x)).mkString("", "\n  ", "")}")
-              newcombis
-            }
-            else {
-              println(s"combis elsefall : ${relevantcombis.map(x => easyPrint(x)).mkString("", "\n  ", "")}")
-              relevantcombis
-            }
-          }
-          else if(relevantcombis.size < startgeraete.size && relevantcombis.exists { x => x.size > 1 }) {
-            combineToDurchgangSize(splitEven(relevantcombis))
-          }
-          else {
-            println(s"combis.size <= ${startgeraete.size} : ${relevantcombis.map(x => easyPrint(x)).mkString("", "\n  ", "")}")
-            relevantcombis
+          splitSex match {
+            case GemischterDurchgang =>
+              val rcm = relevantcombis.filter(c => c.head._2.head._1.geschlecht.equalsIgnoreCase("M"))
+              val rcw = relevantcombis.filter(c => c.head._2.head._1.geschlecht.equalsIgnoreCase("W"))
+              Stager.buildPairs(startgeraeteSize, maxRiegenSize2, rcm)++ Stager.buildPairs(startgeraeteSize, maxRiegenSize2, rcw)
+            case _ =>
+              Stager.buildPairs(startgeraeteSize, maxRiegenSize2, relevantcombis)
           }
         }
+        
         def vereinStats(like: Option[Verein], startriege: RiegeAthletWertungen) = {
           startriege.values.flatMap{x =>
             x.flatMap{xx =>
@@ -1481,9 +1337,8 @@ trait KutuService {
             val anzTurner = durchgangRiegeSize(raw)
             val abweichung = anzTurner - averageSize
             (raw, raw.size, anzTurner, abweichung, smallestDividable(raw) )
-          }.sortBy(_._4).reverse // Abweichung
-          val idxKleinste = stats.size-1
-          val kleinsteGruppe = stats(idxKleinste)
+          }.sortBy(_._4).reverse // Abweichung          
+          val kleinsteGruppe = stats.last
           type GrpStats = (RiegeAthletWertungen, Int, Int, Int, Option[(String, Seq[(AthletView, Seq[WertungView])])])
           def checkSC(p1: GrpStats, p2: GrpStats): Boolean = {
             splitSex match {
@@ -1505,19 +1360,21 @@ trait KutuService {
             lazy val b5 = {
               p._5.get._2.size + kleinsteGruppe._3 <= averageSize + (kleinsteGruppe._3 / 2)
             }
+            lazy val b6 = v1 - p._5.get._2.size == 0
+            lazy val b7 = v2 > 0
 
-            b11 && b12 && ((b2 && b3 && b4) || (b2 && b3 && b5 && v1 - p._5.get._2.size == 0 && v2 > 0))
+            b11 && b12 && ((b2 && b3 && b4) || (b2 && b3 && b5 && b6 && b7))
           } match {
             case Some(groessteTeilbare) =>
               val gt = groessteTeilbare._1 - groessteTeilbare._5.get._1
               val sg = kleinsteGruppe._1 ++ Map(groessteTeilbare._5.get._1 -> groessteTeilbare._5.get._2)
               spreadEven(gt +: startriegen.filter(sr => sr != groessteTeilbare._1 && sr != kleinsteGruppe._1) :+ sg)
-            case _ => stats.find(p => p != kleinsteGruppe && checkSC(p, kleinsteGruppe) && p._3 > averageSize && p._5 != None && p._5.get._2.size + kleinsteGruppe._3 <= averageSize) match {
+            case None => stats.find(p => p != kleinsteGruppe && checkSC(p, kleinsteGruppe) && p._3 > averageSize && p._5 != None && p._5.get._2.size + kleinsteGruppe._3 <= averageSize) match {
               case Some(groessteTeilbare) =>
                 val gt = groessteTeilbare._1 - groessteTeilbare._5.get._1
                 val sg = kleinsteGruppe._1 ++ Map(groessteTeilbare._5.get._1 -> groessteTeilbare._5.get._2)
                 spreadEven(gt +: startriegen.filter(sr => sr != groessteTeilbare._1 && sr != kleinsteGruppe._1) :+ sg)
-              case _ => startriegen
+              case None => startriegen
             }
           }
         }
@@ -1578,7 +1435,8 @@ trait KutuService {
           }
         }
 
-        val alignedriegen = if(riegen.isEmpty) riegen else handleVereinMerges(spreadEven(handleVereinMerges(spreadEven(combineToDurchgangSize(riegen)))))
+        
+        val alignedriegen = if(riegen.isEmpty) riegen else combineToDurchgangSize(riegen)// spreadEven(combineToDurchgangSize(riegen)) //handleVereinMerges(spreadEven(handleVereinMerges(spreadEven(combineToDurchgangSize(riegen)))))
 
         // Startgeräteverteilung
         alignedriegen.zipWithIndex.flatMap{ r =>
