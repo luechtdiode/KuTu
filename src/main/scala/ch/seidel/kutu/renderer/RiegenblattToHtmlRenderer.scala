@@ -4,7 +4,7 @@ import ch.seidel.kutu.domain._
 
 object RiegenBuilder {
 
-  def mapToGeraeteRiegen(kandidaten: List[Kandidat]): List[GeraeteRiege] = {
+  def mapToGeraeteRiegen(kandidaten: List[Kandidat], printorder: Boolean = false): List[GeraeteRiege] = {
 
     def pickStartformationen(geraete: List[(Option[Disziplin], List[Riege])], durchgang: Option[String], extractKandidatEinteilung: Kandidat => (Option[Riege], Seq[Disziplin])) = {
       geraete.flatMap{s =>
@@ -61,8 +61,12 @@ object RiegenBuilder {
         }
       }
       val startformationen = pickStartformationen(geraete, durchgang, k => (k.einteilung, k.diszipline))
-
-      (durchgang, startformationen)
+      if (printorder) {
+        (durchgang, startformationen)        
+      }
+      else {
+        (durchgang, startformationen.sortBy(d => d._1 * 100 + d._2.map( dzl.indexOf(_))))
+      }
     }
     val nebendurchgaenge = kandidaten
     .filter(k => k.einteilung2.nonEmpty)
@@ -87,7 +91,12 @@ object RiegenBuilder {
       }
       val startformationen = pickStartformationen(geraete, durchgang, k => (k.einteilung2, k.diszipline2))
 
-      (durchgang, startformationen)
+      if (printorder) {
+        (durchgang, startformationen)        
+      }
+      else {
+        (durchgang, startformationen.sortBy(d => d._1 * 100 + d._2.map( dzl.indexOf(_))))
+      }
     }
     val riegen = (hauptdurchgaenge ++ nebendurchgaenge).flatMap{item =>
       val (durchgang, starts) = item
@@ -267,7 +276,7 @@ trait RiegenblattToHtmlRenderer {
         }
       }
     }
-    val riegendaten = splitToFitPage(RiegenBuilder.mapToGeraeteRiegen(kandidaten.toList))
+    val riegendaten = splitToFitPage(RiegenBuilder.mapToGeraeteRiegen(kandidaten.toList, true))
     val blaetter = riegendaten.map(notenblatt(_, logo))
     val pages = blaetter.sliding(1, 1).map { _.mkString("</li><li>") }.mkString("</li></ul><ul><li>")
     intro + pages + outro
