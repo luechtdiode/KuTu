@@ -66,12 +66,10 @@ object Stager {
       
       val smallerCandidates = if (preferredRiege.nonEmpty) 
           candidates
-  //        .drop(keepUnmerged)
           .filter(_.size + preferredRiege.get.preferred.size <= targetGeraeteRiegeSize)         
         else if(keepUnmerged == 1) candidates
         else
            candidates
-  //         .drop(keepUnmerged)
            .dropWhile(_.size > median)
          
       val biggerCandidates =  if (preferredRiege.nonEmpty) 
@@ -79,7 +77,6 @@ object Stager {
         else if(keepUnmerged == 1) candidates
         else
           candidates
-//          .take(keepUnmerged)
           .takeWhile(_.size >= median)
         
       val validPairs = smallerCandidates
@@ -110,15 +107,12 @@ object Stager {
           val (s, b) = pair
           val (merged, newEinteilung) = merge(s, b)
           if(keepUnmerged == 1) {
-            println("staging not optimal")
+//            println("staging not optimal")
             acc + newEinteilung
           } else {
             val pr = preferredRiege.map(p => p.copy(preferred = merged, pairs = p.pairs + pair)).orElse(Some(PreferredAccumulator(merged, einteilung, b, Set(pair))))
             mergeCandidates(geraete, targetGeraeteRiegeSize, newEinteilung, acc, pr)
           }
-        case None if(keepUnmerged == 1) =>
-          println("staging failed")
-          acc
         case None => acc
       }
     }
@@ -137,8 +131,16 @@ object Stager {
 
     @tailrec
     def _solve(acc: Set[(Long, GeraeteRiegen)], nextCandidates: Stream[GeraeteRiegen]): (Long, GeraeteRiegen) = {
+      def finish(finalAcc: Set[(Long, GeraeteRiegen)]): (Long, GeraeteRiegen) = {
+        val sorted = finalAcc.toList.sortBy(_._1)
+//        println("finishing with", sorted.take(3).zipWithIndex.mkString("\n(\n\t", "\n\t", "\n)"))
+        sorted.headOption match {
+          case Some(optimum) => optimum
+          case _ => (0, Set.empty)
+        }
+      }
       if(nextCandidates.isEmpty) {
-        acc.toList.sortBy(_._1).head // .map(r => (score(geraete, eqsize, r), r))
+        finish(acc)
       }
       else {
         val withNewCandidates = nextCandidates #::: (for{
@@ -151,14 +153,15 @@ object Stager {
         
         withNewCandidates match {
           case candidate #:: tail if(tail.isEmpty) => 
-            println("found end of stream")
-            (score(geraete, eqsize, candidate), candidate)
+//            println("found end of stream")
+            val sc = (score(geraete, eqsize, candidate), candidate)
+            finish(acc + sc)
           case candidate #:: tail => score(geraete, eqsize, candidate) match {
             case 0 => 
-              println("found top scorer")
+//              println("found top scorer")
               (score(geraete, eqsize, candidate), candidate)
             case s =>
-              println("should seek further")
+//              println("should seek further")
               val sc = (s, candidate)
               _solve(acc + sc, tail)
           }

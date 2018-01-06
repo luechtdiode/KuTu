@@ -1394,49 +1394,90 @@ trait KutuService {
         }
 
         def bringVereineTogether(startriegen: Seq[RiegeAthletWertungen]): Seq[RiegeAthletWertungen] = {
-          val averageSize = startriegen.map(durchgangRiegeSize).sum / startriegen.size
-          startriegen.flatMap{raw =>
-            raw.values.flatMap{r =>
-              r.map{rr =>
-                (rr._1.verein -> raw)
+          
+          def findSubstitutesFor(riegeToReplace: RiegeAthletWertungen, zielriege: RiegeAthletWertungen): Option[RiegeAthletWertungen] = {
+            // RiegenAthletWertungen = Map[String, Seq[(AthletView, Seq[WertungView])]]
+            val replaceCnt = durchgangRiegeSize(riegeToReplace)
+            val candidates = (zielriege - riegeToReplace.keys.head).toList.sortBy(x => x._2.size).reverse.foldLeft(Map().asInstanceOf[RiegeAthletWertungen]){(acc, candidate) =>
+              val grouped = acc + candidate
+              if (durchgangRiegeSize(grouped) <= replaceCnt) {
+                grouped
+              } else {
+                acc
               }
             }
-          }.groupBy{vereinraw =>
-            vereinraw._1
-          }.map{vereinraw =>
-            vereinraw._1 -> vereinraw._2.map(_._2).toSet
-          }.foldLeft(startriegen){(acc, item) =>
-            val (verein, riegen) = item
-            val ret = riegen.map(f => (f, f.filter(ff => ff._2.exists(p => p._1.verein.equals(verein))).keys.head)).foldLeft(acc.toSet){(accc, riegen2) =>
-              val (geraetRiege, filteredRiege) = riegen2
-              val toMove = geraetRiege(filteredRiege)
-              val v1 = vereinStats(verein, geraetRiege)
-              val anzTurner = durchgangRiegeSize(geraetRiege)
-              accc.find{p =>
-                p != geraetRiege &&
-                accc.contains(geraetRiege) &&
-                durchgangRiegeSize(p) <= math.min(maxRiegenSize2, averageSize + (averageSize * 0.3).intValue()) &&
-                vereinStats(verein, p) > v1
-              }
-              match {
-                case Some(zielriege) =>
-                  println(s"moving $filteredRiege from ${geraetRiege.keys} to ${zielriege.keys}")
-                  val gt = geraetRiege - filteredRiege
-                  val sg = zielriege ++ Map(filteredRiege -> toMove)
-                  val r1 = accc - zielriege
-                  val r2 = r1 + sg
-                  val r3 = r2 - geraetRiege
-                  val ret = r3 + gt
-                  ret
-                case _ => accc
-              }
+            if (candidates.nonEmpty) {
+              Some(candidates)
+            } else {
+              None
             }
-            ret.toSeq
           }
+          
+          @tailrec
+          def _bringVereineTogether(startriegen: Seq[RiegeAthletWertungen], variantsCache: Set[Seq[RiegeAthletWertungen]]): Seq[RiegeAthletWertungen] = {
+            val averageSize = startriegen.map(durchgangRiegeSize).sum / startriegen.size
+            val optimized = startriegen.flatMap{raw =>
+              raw.values.flatMap{r =>
+                r.map{rr =>
+                  (rr._1.verein -> raw)
+                }
+              }
+            }.groupBy{vereinraw =>
+              vereinraw._1
+            }.map{vereinraw =>
+              vereinraw._1 -> vereinraw._2.map(_._2).toSet // (Option[Verein] -> Set[RiegenAthletWertungen}) RiegenAthletWertungen = Map[String, Seq[(AthletView, Seq[WertungView])]]
+            }.foldLeft(startriegen){(accStartriegen, item) =>
+              val (verein, riegen) = item
+              val ret = riegen.map(f => (f, f.filter(ff => ff._2.exists(p => p._1.verein.equals(verein))).keys.head)).foldLeft(accStartriegen.toSet){(acccStartriegen, riegen2) =>
+                val (geraetRiege, filteredRiege) = riegen2
+                val toMove = geraetRiege(filteredRiege)
+                val vereinTurnerRiege = Map(filteredRiege -> toMove)
+                val v1 = vereinStats(verein, geraetRiege)
+                val anzTurner = durchgangRiegeSize(geraetRiege)
+                acccStartriegen.find{p =>
+                  p != geraetRiege &&
+                  acccStartriegen.contains(geraetRiege) &&
+                  vereinStats(verein, p) > v1
+                }
+                match {
+                  case Some(zielriege) if (durchgangRiegeSize(zielriege ++ vereinTurnerRiege) <= maxRiegenSize2) =>
+                    println(s"moving $filteredRiege from ${geraetRiege.keys.toSet} to ${zielriege.keys.toSet}")
+                    val gt = geraetRiege - filteredRiege
+                    val sg = zielriege ++ Map(filteredRiege -> toMove)
+                    val r1 = acccStartriegen - zielriege
+                    val r2 = r1 + sg
+                    val r3 = r2 - geraetRiege
+                    val ret = r3 + gt
+                    ret
+                  case Some(zielriege) => findSubstitutesFor(vereinTurnerRiege, zielriege) match {
+                    case Some(substitues) => 
+                      println(s"switching ${substitues.keys.toSet} with $filteredRiege between ${geraetRiege.keys.toSet} to ${zielriege.keys.toSet}")
+                      val gt = geraetRiege - filteredRiege ++ substitues
+                      val sg = zielriege -- substitues.keys ++ Map(filteredRiege -> toMove)
+                      acccStartriegen - zielriege - geraetRiege + gt + sg
+                    case None => acccStartriegen
+                  }
+                  case None => acccStartriegen
+                }
+              }
+              ret.toSeq
+            }
+            if (optimized == startriegen || variantsCache.contains(optimized)) {
+              optimized
+            } else {
+              val evenoptimized = spreadEven(optimized)
+              if (evenoptimized == startriegen || variantsCache.contains(evenoptimized)) {
+                evenoptimized
+              } else {
+                _bringVereineTogether(evenoptimized, variantsCache + optimized + evenoptimized)
+              }
+            }
+          }
+          _bringVereineTogether(startriegen, Set(startriegen))
         }
 
         
-        val alignedriegen = if(riegen.isEmpty) riegen else combineToDurchgangSize(riegen)// spreadEven(combineToDurchgangSize(riegen)) //handleVereinMerges(spreadEven(handleVereinMerges(spreadEven(combineToDurchgangSize(riegen)))))
+        val alignedriegen = if(riegen.isEmpty) riegen else handleVereinMerges(combineToDurchgangSize(riegen))
 
         // Startgeräteverteilung
         alignedriegen.zipWithIndex.flatMap{ r =>
