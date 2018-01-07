@@ -4,7 +4,7 @@ import scala.annotation.tailrec
 import ch.seidel.kutu.domain._
 import ch.seidel.kutu.squad._
 
-trait StartGeraetGrouper extends RiegenSplitter {
+trait StartGeraetGrouper extends RiegenSplitter with Stager {
   
   def groupWertungen(programm: String, wertungen: Map[AthletView, Seq[WertungView]], 
       grp: List[WertungView => String], grpAll: List[WertungView => String], 
@@ -29,200 +29,35 @@ trait StartGeraetGrouper extends RiegenSplitter {
     val maxRiegenSize2 = if(maxRiegenSize > 0) maxRiegenSize else math.max(14, math.ceil(1d * athletensum / startgeraeteSize).intValue())
     val riegen = splitToMaxTurnerCount(atheltenInRiege, maxRiegenSize2, cache).map(r => Map(r._1 -> r._2))
     // Maximalausdehnung. Nun die sinnvollen Zusammenlegungen
+    val riegenindex = buildRiegenIndex(riegen)
+    val workmodel = buildWorkModel(riegen)
 
-    def combineToDurchgangSize(relevantcombis: Seq[RiegeAthletWertungen]): Seq[RiegeAthletWertungen] = {
+    def combineToDurchgangSize(relevantcombis: GeraeteRiegen): GeraeteRiegen = {
       splitSex match {
         case GemischterDurchgang =>
-          val rcm = relevantcombis.filter(c => c.head._2.head._1.geschlecht.equalsIgnoreCase("M"))
-          val rcw = relevantcombis.filter(c => c.head._2.head._1.geschlecht.equalsIgnoreCase("W"))
-          Stager.solve(startgeraeteSize, maxRiegenSize2, rcm)++ Stager.solve(startgeraeteSize, maxRiegenSize2, rcw)
+          val rcm = relevantcombis.filter(c => c.turnerriegen.head.geschlecht.equalsIgnoreCase("M"))
+          val rcw = relevantcombis.filter(c => c.turnerriegen.head.geschlecht.equalsIgnoreCase("W"))
+          buildPairs(startgeraeteSize, maxRiegenSize2, rcm)++ buildPairs(startgeraeteSize, maxRiegenSize2, rcw)
         case _ =>
-          Stager.solve(startgeraeteSize, maxRiegenSize2, relevantcombis)
-      }
-    }
-    
-    def vereinStats(like: Option[Verein], startriege: RiegeAthletWertungen) = {
-      startriege.values.flatMap{x =>
-        x.flatMap{xx =>
-          xx._1.verein.filter{verein =>
-//                println(s"seek $like found $verein")
-            like.equals(Some(verein))
-          }
-        }
-      }.size
-    }
-
-    @tailrec
-    def spreadEven(startriegen: Seq[RiegeAthletWertungen]): Seq[RiegeAthletWertungen] = {
-      /*
-       * 1. Durchschnittsgrösse ermitteln
-       * 2. Grösste Abweichungen ermitteln (kleinste, grösste)
-       * 3. davon (teilbare) Gruppen filtern
-       * 4. schieben.
-       */
-      val averageSize = startriegen.map(_.durchgangRiegeSize).sum / startriegen.size
-
-      def smallestDividable(r: RiegeAthletWertungen) = {
-        if(r.size > 1) {
-          Some(r.keys.map(x => (x, r(x))).toSeq.sortBy(y => y._2.size).head)
-        }
-        else {
-          None
-        }
-      }
-      val stats = startriegen.map{raw =>
-        // Riege, Anz. Gruppen, Anz. Turner, Std.Abweichung, (kleinste Gruppekey, kleinste Gruppe)
-        val anzTurner = raw.durchgangRiegeSize
-        val abweichung = anzTurner - averageSize
-        (raw, raw.size, anzTurner, abweichung, smallestDividable(raw) )
-      }.sortBy(_._4).reverse // Abweichung          
-      val kleinsteGruppe = stats.last
-      type GrpStats = (RiegeAthletWertungen, Int, Int, Int, Option[(String, Seq[(AthletView, Seq[WertungView])])])
-      def checkSC(p1: GrpStats, p2: GrpStats): Boolean = {
-        splitSex match {
-          case GemischterDurchgang =>
-            val ret = p1._1.head._2.head._1.geschlecht.equals(p2._1.head._2.head._1.geschlecht)
-            ret
-          case _ =>
-            true
-        }
-      }
-      stats.find{p =>
-        val b11 = p._5 != None && p != kleinsteGruppe
-        val b12 = checkSC(p, kleinsteGruppe)
-        val b2 = p._3 > averageSize
-        val b3 = b11 && p._5.get._2.size + kleinsteGruppe._3 <= averageSize
-        lazy val v1 = vereinStats(p._5.get._2.head._1.verein, p._1)
-        lazy val v2 = vereinStats(p._5.get._2.head._1.verein, kleinsteGruppe._1)
-        lazy val b4 = v1 - p._5.get._2.size < v2 + p._5.get._2.size
-        lazy val b5 = {
-          p._5.get._2.size + kleinsteGruppe._3 <= averageSize + (kleinsteGruppe._3 / 2)
-        }
-        lazy val b6 = v1 - p._5.get._2.size == 0
-        lazy val b7 = v2 > 0
-
-        b11 && b12 && ((b2 && b3 && b4) || (b2 && b3 && b5 && b6 && b7))
-      } match {
-        case Some(groessteTeilbare) =>
-          val gt = groessteTeilbare._1 - groessteTeilbare._5.get._1
-          val sg = kleinsteGruppe._1 ++ Map(groessteTeilbare._5.get._1 -> groessteTeilbare._5.get._2)
-          spreadEven(gt +: startriegen.filter(sr => sr != groessteTeilbare._1 && sr != kleinsteGruppe._1) :+ sg)
-        case None => stats.find(p => p != kleinsteGruppe && checkSC(p, kleinsteGruppe) && p._3 > averageSize && p._5 != None && p._5.get._2.size + kleinsteGruppe._3 <= averageSize) match {
-          case Some(groessteTeilbare) =>
-            val gt = groessteTeilbare._1 - groessteTeilbare._5.get._1
-            val sg = kleinsteGruppe._1 ++ Map(groessteTeilbare._5.get._1 -> groessteTeilbare._5.get._2)
-            spreadEven(gt +: startriegen.filter(sr => sr != groessteTeilbare._1 && sr != kleinsteGruppe._1) :+ sg)
-          case None => startriegen
-        }
+          buildPairs(startgeraeteSize, maxRiegenSize2, relevantcombis)
       }
     }
 
-    def handleVereinMerges(startriegen: Seq[RiegeAthletWertungen]): Seq[RiegeAthletWertungen] = {
+    def handleVereinMerges(startriegen: GeraeteRiegen): GeraeteRiegen = {
       if(jahrgangGroup) {
         startriegen
       }
       else splitSex match {
-        case GemischteRiegen =>
-          bringVereineTogether(startriegen)
-        case GemischterDurchgang =>
-          startriegen
-        case GetrennteDurchgaenge =>
-          bringVereineTogether(startriegen)
+        case GemischteRiegen =>      bringVereineTogether(startriegen, maxRiegenSize2, splitSex)
+        case GemischterDurchgang =>  startriegen
+        case GetrennteDurchgaenge => bringVereineTogether(startriegen, maxRiegenSize2, splitSex)
       }
     }
-
-    def bringVereineTogether(startriegen: Seq[RiegeAthletWertungen]): Seq[RiegeAthletWertungen] = {
-      
-      def findSubstitutesFor(riegeToReplace: RiegeAthletWertungen, zielriege: RiegeAthletWertungen): Option[RiegeAthletWertungen] = {
-        // RiegenAthletWertungen = Map[String, Seq[(AthletView, Seq[WertungView])]]
-        val replaceCnt = riegeToReplace.durchgangRiegeSize
-        val candidates = (zielriege - riegeToReplace.keys.head).toList.sortBy(x => x._2.size).reverse.foldLeft(Map().asInstanceOf[RiegeAthletWertungen]){(acc, candidate) =>
-          val grouped = acc + candidate
-          if (grouped.durchgangRiegeSize <= replaceCnt) {
-            grouped
-          } else {
-            acc
-          }
-        }
-        if (candidates.nonEmpty) {
-          Some(candidates)
-        } else {
-          None
-        }
-      }
-      
-      @tailrec
-      def _bringVereineTogether(startriegen: Seq[RiegeAthletWertungen], variantsCache: Set[Seq[RiegeAthletWertungen]]): Seq[RiegeAthletWertungen] = {
-        val averageSize = startriegen.map(_.durchgangRiegeSize).sum / startriegen.size
-        val optimized = startriegen.flatMap{raw =>
-          raw.values.flatMap{r =>
-            r.map{rr =>
-              (rr._1.verein -> raw)
-            }
-          }
-        }.groupBy{vereinraw =>
-          vereinraw._1
-        }.map{vereinraw =>
-          vereinraw._1 -> vereinraw._2.map(_._2).toSet // (Option[Verein] -> Set[RiegenAthletWertungen}) RiegenAthletWertungen = Map[String, Seq[(AthletView, Seq[WertungView])]]
-        }.foldLeft(startriegen){(accStartriegen, item) =>
-          val (verein, riegen) = item
-          val ret = riegen.map(f => (f, f.filter(ff => ff._2.exists(p => p._1.verein.equals(verein))).keys.head)).foldLeft(accStartriegen.toSet){(acccStartriegen, riegen2) =>
-            val (geraetRiege, filteredRiege) = riegen2
-            val toMove = geraetRiege(filteredRiege)
-            val vereinTurnerRiege = Map(filteredRiege -> toMove)
-            val v1 = vereinStats(verein, geraetRiege)
-            val anzTurner = geraetRiege.durchgangRiegeSize
-            acccStartriegen.find{p =>
-              p != geraetRiege &&
-              acccStartriegen.contains(geraetRiege) &&
-              vereinStats(verein, p) > v1
-            }
-            match {
-              case Some(zielriege) if ((zielriege ++ vereinTurnerRiege).durchgangRiegeSize <= maxRiegenSize2) =>
-                println(s"moving $filteredRiege from ${geraetRiege.keys.toSet} to ${zielriege.keys.toSet}")
-                val gt = geraetRiege - filteredRiege
-                val sg = zielriege ++ Map(filteredRiege -> toMove)
-                val r1 = acccStartriegen - zielriege
-                val r2 = r1 + sg
-                val r3 = r2 - geraetRiege
-                val ret = r3 + gt
-                ret
-              case Some(zielriege) => findSubstitutesFor(vereinTurnerRiege, zielriege) match {
-                case Some(substitues) => 
-                  val gt = geraetRiege - filteredRiege ++ substitues
-                  val sg = zielriege -- substitues.keys ++ Map(filteredRiege -> toMove)
-                  if (gt.durchgangRiegeSize > maxRiegenSize2 || sg.durchgangRiegeSize > maxRiegenSize2) {
-                    acccStartriegen
-                  } else {
-                    println(s"switching ${substitues.keys.toSet} with $filteredRiege between ${geraetRiege.keys.toSet} to ${zielriege.keys.toSet}")
-                    acccStartriegen - zielriege - geraetRiege + gt + sg
-                  }
-                case None => acccStartriegen
-              }
-              case None => acccStartriegen
-            }
-          }
-          ret.toSeq
-        }
-        if (optimized == startriegen || variantsCache.contains(optimized)) {
-          optimized
-        } else {
-          val evenoptimized = spreadEven(optimized)
-          if (evenoptimized == startriegen || variantsCache.contains(evenoptimized)) {
-            evenoptimized
-          } else {
-            _bringVereineTogether(evenoptimized, variantsCache + optimized + evenoptimized)
-          }
-        }
-      }
-      _bringVereineTogether(startriegen, Set(startriegen))
-    }
-
     
-    val alignedriegen = if(riegen.isEmpty) riegen else handleVereinMerges(combineToDurchgangSize(riegen))
+    val alignedriegen = if(workmodel.isEmpty) workmodel else handleVereinMerges(combineToDurchgangSize(workmodel))
 
     // Startgeräteverteilung
-    distributeToStartgeraete(programm, startgeraete, maxRiegenSize, alignedriegen)
+    distributeToStartgeraete(programm, startgeraete, maxRiegenSize, rebuildWertungen(alignedriegen, riegenindex))
   }  
   
   private def distributeToStartgeraete(programm: String, startgeraete: List[Disziplin], maxRiegenSize: Int, alignedriegen: Seq[RiegeAthletWertungen]) = 
@@ -234,4 +69,151 @@ trait StartGeraetGrouper extends RiegenSplitter {
         (s"$programm (${if(maxRiegenSize > 0) index / startgeraete.size + 1 else 1})", riegenname, startgeraete(startgeridx), rr(riegenname))
       }
     }
+  
+
+  private def bringVereineTogether(startriegen: GeraeteRiegen, maxRiegenSize2: Int, splitSex: SexDivideRule): GeraeteRiegen = {
+    @tailrec
+    def _bringVereineTogether(startriegen: GeraeteRiegen, variantsCache: Set[GeraeteRiegen]): GeraeteRiegen = {
+      val averageSize = startriegen.averageSize
+      val optimized = startriegen.flatMap{raw =>
+        raw.turnerriegen.map{r =>
+            (r.verein -> raw)
+        }
+      }.groupBy{vereinraw =>
+        vereinraw._1
+      }.map{vereinraw =>
+        vereinraw._1 -> vereinraw._2.map(_._2).toSet // (Option[Verein] -> GeraeteRiegen)
+      }.foldLeft(startriegen){(accStartriegen, item) =>
+        val (verein, riegen) = item
+        val ret = riegen.map(f => (f, f.withVerein(verein))).foldLeft(accStartriegen.toSet){(acccStartriegen, riegen2) =>
+          val (geraetRiege, toMove) = riegen2
+//            val vereinTurnerRiege = Map(filteredRiege -> toMove)
+          val v1 = geraetRiege.countVereine(verein)
+          val anzTurner = geraetRiege.size
+          acccStartriegen.find{p =>
+            p != geraetRiege &&
+            acccStartriegen.contains(geraetRiege) &&
+            p.countVereine(verein) > v1
+          }
+          match {
+            case Some(zielriege) if ((zielriege ++ toMove).size <= maxRiegenSize2) =>
+              println(s"moving $toMove from ${geraetRiege} to ${zielriege}")
+              val gt = geraetRiege -- toMove
+              val sg = zielriege ++ toMove
+              val r1 = acccStartriegen - zielriege
+              val r2 = r1 + sg
+              val r3 = r2 - geraetRiege
+              val ret = r3 + gt
+              ret
+            case Some(zielriege) => findSubstitutesFor(toMove, zielriege) match {
+              case Some(substitues) => 
+                val gt = geraetRiege -- toMove ++ substitues
+                val sg = zielriege -- substitues ++ toMove
+                if (gt.size > maxRiegenSize2 || sg.size > maxRiegenSize2) {
+                  acccStartriegen
+                } else {
+                  println(s"switching ${substitues} with toMove between ${geraetRiege} to ${zielriege}")
+                  acccStartriegen - zielriege - geraetRiege + gt + sg
+                }
+              case None => acccStartriegen
+            }
+            case None => acccStartriegen
+          }
+        }
+        ret
+      }
+      if (optimized == startriegen || variantsCache.contains(optimized)) {
+        optimized
+      } else {
+        val evenoptimized = spreadEven(optimized, splitSex)
+        if (evenoptimized == startriegen || variantsCache.contains(evenoptimized)) {
+          evenoptimized
+        } else {
+          _bringVereineTogether(evenoptimized, variantsCache + optimized + evenoptimized)
+        }
+      }
+    }
+    _bringVereineTogether(startriegen, Set(startriegen))
+  }
+    
+  private def findSubstitutesFor(riegeToReplace: GeraeteRiege, zielriege: GeraeteRiege): Option[GeraeteRiege] = {
+    val replaceCnt = riegeToReplace.size
+    val reducedZielriege = zielriege -- riegeToReplace
+
+    val candidates = reducedZielriege.turnerriegen.toSeq.sortBy(_.size).reverse.foldLeft(GeraeteRiege()){(acc, candidate) =>
+      val grouped = acc + candidate
+      if (grouped.size <= replaceCnt) {
+        grouped
+      } else {
+        acc
+      }
+    }
+    if (candidates.nonEmpty) {
+      Some(candidates)
+    } else {
+      None
+    }
+  }
+      
+  @tailrec
+  private def spreadEven(startriegen: GeraeteRiegen, splitSex: SexDivideRule): GeraeteRiegen = {
+    /*
+     * 1. Durchschnittsgrösse ermitteln
+     * 2. Grösste Abweichungen ermitteln (kleinste, grösste)
+     * 3. davon (teilbare) Gruppen filtern
+     * 4. schieben.
+     */
+    val stats = startriegen.map{raw =>
+      // Riege, Anz. Gruppen, Anz. Turner, Std.Abweichung, (kleinste Gruppekey, kleinste Gruppe)
+      val anzTurner = raw.size
+      val abweichung = anzTurner - startriegen.averageSize
+      (raw, raw.size, anzTurner, abweichung, raw.smallestDividable )
+    }.toSeq.sortBy(_._4).reverse // Abweichung  
+    
+    val kleinsteGruppe @ (geraeteRiegeAusKleinsterGruppe, _, anzGruppenAusKleinsterGruppe, _, turnerRiegeAusKleinsterGruppe) = stats.last
+    type GrpStats = (GeraeteRiege, Int, Int, Int, Option[TurnerRiege])
+    def checkSC(p1: GrpStats, p2: GrpStats): Boolean = {
+      splitSex match {
+        case GemischterDurchgang =>
+          val ret = p1._1.turnerriegen.head.geschlecht.equals(p2._1.turnerriegen.head.geschlecht)
+          ret
+        case _ =>
+          true
+      }
+    }
+    stats.find{groessteGruppe =>
+      val (geraeteRiege, _, anzGruppenAusGroessterGruppe, _, turnerRiege) = groessteGruppe
+      val b11 = turnerRiege != None && groessteGruppe != kleinsteGruppe
+      val b12 = checkSC(groessteGruppe, kleinsteGruppe)
+      val b2 = anzGruppenAusGroessterGruppe > startriegen.averageSize
+      val b3 = b11 && turnerRiege.size + anzGruppenAusKleinsterGruppe <= startriegen.averageSize
+      lazy val v1 = geraeteRiege.countVereine(turnerRiege.head.verein)
+      lazy val v2 = kleinsteGruppe._1.countVereine(turnerRiege.head.verein)
+      lazy val b4 = v1 - turnerRiege.size < v2 + turnerRiege.size
+      lazy val b5 = turnerRiege.size + anzGruppenAusKleinsterGruppe <= startriegen.averageSize + (anzGruppenAusKleinsterGruppe / 2)
+      lazy val b6 = v1 - turnerRiege.size == 0
+      lazy val b7 = v2 > 0
+
+      b11 && b12 && ((b2 && b3 && b4) || (b2 && b3 && b5 && b6 && b7))
+    } match {
+      case Some(groessteTeilbare @ (geraeteRiege, _, _, _, Some(turnerRiege))) =>
+        val gt = geraeteRiege - turnerRiege
+        val sg = geraeteRiegeAusKleinsterGruppe + turnerRiege
+        spreadEven(gt + startriegen.filter(sr => sr != groessteTeilbare._1 && sr != kleinsteGruppe._1) + sg, splitSex)
+      case _ => stats.find {
+        case groessteGruppe @ (geraeteRiegeAusGroessterGruppe, _, anzGruppenAusGroessterGruppe, _, Some(turnerRiegeAusGroessterGruppe)) =>
+                  groessteGruppe != kleinsteGruppe && 
+                  checkSC(groessteGruppe, kleinsteGruppe) && 
+                  anzGruppenAusGroessterGruppe > startriegen.averageSize && 
+                  turnerRiegeAusGroessterGruppe.size + anzGruppenAusKleinsterGruppe <= startriegen.averageSize
+        case _ => false
+      } match {
+            case Some(groessteGruppe @ (geraeteRiegeAusGroessterGruppe, _, _, _, Some(turnerRiegeAusGroessterGruppe))) =>
+              val gt = geraeteRiegeAusGroessterGruppe - turnerRiegeAusGroessterGruppe
+              val sg = geraeteRiegeAusKleinsterGruppe + turnerRiegeAusGroessterGruppe
+              spreadEven(gt + startriegen.filter(sr => sr != geraeteRiegeAusGroessterGruppe && sr != geraeteRiegeAusKleinsterGruppe) + sg, splitSex)
+            case _ => startriegen
+          } // inner stats find match
+    } // stats find match
+  }  
 }

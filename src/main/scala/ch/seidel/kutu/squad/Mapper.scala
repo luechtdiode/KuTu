@@ -9,7 +9,13 @@ trait Mapper {
   protected def buildRiegenIndex(riegen: Seq[RiegeAthletWertungen]) = riegen.flatten.toMap
   
   protected def buildWorkModel(riegen: Seq[RiegeAthletWertungen]): GeraeteRiegen = {
-    riegen.map(raw => GeraeteRiege(raw.map(rt => TurnerRiege(rt._1, rt._2.size)).toSet)).toSet
+    riegen.map(raw => GeraeteRiege(raw.map(rt => TurnerRiege(
+        rt._1, 
+        rt._2.headOption.flatMap(_._1.verein), 
+        rt._2.headOption.map(_._1.geschlecht).get, 
+        rt._2.size)).toSet
+      )
+    ).toSet
   }
   
   protected def rebuildWertungen(riegen: GeraeteRiegen, index: RiegeAthletWertungen): Seq[RiegeAthletWertungen] = {
