@@ -1,0 +1,23 @@
+package ch.seidel.kutu.squad
+
+import scala.annotation.tailrec
+import ch.seidel.kutu.domain._
+
+case object KuTuGeTuGrouper extends RiegenGrouper {
+
+  override def generateRiegenName(w: WertungView) = groupKey(wkGrouper.take(wkGrouper.size-1))(w)
+
+  override protected def buildGrouper(riegencnt: Int): (List[WertungView => String], List[WertungView => String]) = {
+	  val wkFilteredGrouper = wkGrouper.take(if(riegencnt == 0) wkGrouper.size-1 else wkGrouper.size)
+    (wkFilteredGrouper, wkGrouper)
+  }
+
+  val wkGrouper: List[WertungView => String] = List(
+    x => x.athlet.geschlecht,
+    x => x.wettkampfdisziplin.programm.name,
+    x => x.athlet.verein match {case Some(v) => v.easyprint case None => ""},
+    // fallback ... should not happen
+    x => (x.athlet.gebdat match {case Some(d) => f"$d%tY"; case _ => ""})
+  )
+
+}

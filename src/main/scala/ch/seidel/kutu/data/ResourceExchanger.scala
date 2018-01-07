@@ -11,10 +11,11 @@ import scala.io.Source
 import scala.annotation.tailrec
 import ch.seidel.kutu.domain._
 import ch.seidel.kutu.view._
+import ch.seidel.kutu.squad.RiegenBuilder
 
 /**
  */
-object ResourceExchanger extends KutuService {
+object ResourceExchanger extends KutuService with RiegenBuilder {
   private val rm = reflect.runtime.universe.runtimeMirror(getClass.getClassLoader)
 
   def importWettkampf(filename: String) = {
@@ -254,7 +255,7 @@ object ResourceExchanger extends KutuService {
 
   def exportEinheiten(wettkampf: Wettkampf, filename: String) {
     val export = new FileOutputStream(filename);
-    val riegenRaw = suggestRiegen(wettkampf.id, Seq(0))
+    val riegenRaw = suggestRiegen(Seq(0), selectWertungen(wettkampfId = Some(wettkampf.id)))
     val mapVereinVerband = selectVereine.map(v => v.name -> v.verband.getOrElse("")).toMap
     val sep = ";"
     def butify(grpkey: String, anzahl: Int) = {
