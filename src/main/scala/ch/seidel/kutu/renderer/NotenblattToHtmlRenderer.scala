@@ -138,7 +138,7 @@ trait NotenblattToHtmlRenderer {
 
   private def notenblattForATT(kandidat: Kandidat, logo: String) = {
     val d = kandidat.diszipline.zip(Range(1, kandidat.diszipline.size+1)).map{dis =>
-      s"""<tr class="geraeteRow"><td class="large">${dis._2}. ${dis._1}</td><td class="totalCol">&nbsp;</td></tr>"""
+      s"""<tr class="geraeteRow"><td class="large">${dis._2}. ${dis._1.easyprint}</td><td class="totalCol">&nbsp;</td></tr>"""
     }
     val dt = d.mkString("", "\n", "\n")
     s"""<div class=notenblatt>
@@ -162,7 +162,7 @@ trait NotenblattToHtmlRenderer {
 
   private def notenblattForKuTu(kandidat: Kandidat, logo: String) = {
     val d = kandidat.diszipline.zip(Range(1, kandidat.diszipline.size+1)).map{dis =>
-      s"""<tr class="geraeteRow"><td class="large">${dis._2}. ${dis._1}</td><td>&nbsp;</td><td>&nbsp;</td><td class="totalCol">&nbsp;</td></tr>"""
+      s"""<tr class="geraeteRow"><td class="large">${dis._2}. ${dis._1.easyprint}</td><td>&nbsp;</td><td>&nbsp;</td><td class="totalCol">&nbsp;</td></tr>"""
     }
     val dt = d.updated(d.size-1, d.last.replace("geraeteRow", "totalRow")).mkString("", "\n", "\n")
     s"""<div class=notenblatt>
