@@ -37,7 +37,9 @@ trait StartGeraetGrouper extends RiegenSplitter with Stager {
         case GemischterDurchgang =>
           val rcm = relevantcombis.filter(c => c.turnerriegen.head.geschlecht.equalsIgnoreCase("M"))
           val rcw = relevantcombis.filter(c => c.turnerriegen.head.geschlecht.equalsIgnoreCase("W"))
-          buildPairs(startgeraeteSize, maxRiegenSize2, rcm)++ buildPairs(startgeraeteSize, maxRiegenSize2, rcw)
+          val maxMGeraete = startgeraeteSize * rcm.size / relevantcombis.size
+          val maxWGeraete = startgeraeteSize * rcw.size / relevantcombis.size
+          buildPairs(maxMGeraete, maxRiegenSize2, rcm)++ buildPairs(maxWGeraete, maxRiegenSize2, rcw)
         case _ =>
           buildPairs(startgeraeteSize, maxRiegenSize2, relevantcombis)
       }
