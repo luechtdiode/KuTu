@@ -21,9 +21,14 @@ trait ScoreToHtmlRenderer {
           <meta charset="UTF-8" />
           <style type="text/css">
             @media print {
+              body {
+                /*-webkit-print-color-adjust: exact;*/
+              }
               ul {
                 page-break-inside: avoid;
-                /*-webkit-print-color-adjust: exact;*/
+              }
+              table{
+                border-width: medium;
               }
             }
             body {
@@ -48,12 +53,13 @@ trait ScoreToHtmlRenderer {
               border-collapse:collapse;
               border-spacing:0;
               border: 1px solid rgb(50,100,150);
+              border-width: thin;
             }
             thead {
               border-bottom: 1px solid gray;            
             }
             th {
-              background-color: rgb(250,250,200);
+              background-color: rgb(250,250,200) !important;
               font-size: 9px;
               overflow: hidden;
             }
@@ -62,7 +68,10 @@ trait ScoreToHtmlRenderer {
               padding:0.2em;
               overflow: hidden;
               white-space: nowrap;
-              border-bottom: 1px dotted gray;
+            }
+            tr:not(:last-child) > td {
+              border-bottom: solid lightgray;
+              border-bottom-width: thin;
             }
             tr .sf1 {
               font-size: 10px;
@@ -100,10 +109,10 @@ trait ScoreToHtmlRenderer {
             col:nth-last-child(2) {
               width: 3em;
             }
-            tr:nth-child(even) {background: rgba(230, 230, 230, 0.6);}
+            tr:nth-child(even) {background: rgba(230, 230, 230, 0.6) !important;}
             /*tr:nth-child(odd) {background: rgba(210, 200, 180, 0.6);}*/
-            tr .blockstart {
-              border-left: 1px dotted gray;
+            tr .blockstart:not(:first-child) {
+              border-left: 1px solid lightgray;
             }
             ul {
               margin: 0px;
@@ -116,7 +125,7 @@ trait ScoreToHtmlRenderer {
               float: left;
               width: 100%
             }
-          </style>
+          </style>          
           </head><body><ul><li>
   """
   def firstSite(title: String) = intro + s"<h1>Rangliste</h1><p>${title}</p>\n"
