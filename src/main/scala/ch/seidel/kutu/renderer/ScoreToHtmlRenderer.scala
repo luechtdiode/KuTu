@@ -21,18 +21,14 @@ trait ScoreToHtmlRenderer {
           <meta charset="UTF-8" />
           <style type="text/css">
             @media print {
-              body {
-                /*-webkit-print-color-adjust: exact;*/
-              }
+              body { -webkit-print-color-adjust: economy; }
               ul {
                 page-break-inside: avoid;
-              }
-              table{
-                border-width: medium;
               }
             }
             body {
               font-family: "Arial", "Verdana", sans-serif;
+              /*-webkit-print-color-adjust: economy;*/
             }
             h1 {
               font-size: 16px;
@@ -52,14 +48,14 @@ trait ScoreToHtmlRenderer {
             table{
               border-collapse:collapse;
               border-spacing:0;
-              border: 1px solid rgb(50,100,150);
-              border-width: thin;
+              border: 0px; /*1px solid rgb(50,100,150);*/
+              /*border-width: thin;*/
             }
             thead {
               border-bottom: 1px solid gray;            
             }
             th {
-              background-color: rgb(250,250,200) !important;
+              background-color: rgb(250,250,200);
               font-size: 9px;
               overflow: hidden;
             }
@@ -109,8 +105,7 @@ trait ScoreToHtmlRenderer {
             col:nth-last-child(2) {
               width: 3em;
             }
-            tr:nth-child(even) {background: rgba(230, 230, 230, 0.6) !important;}
-            /*tr:nth-child(odd) {background: rgba(210, 200, 180, 0.6);}*/
+            tr:nth-child(even) {background: rgba(230, 230, 230, 0.6);}
             tr .blockstart:not(:first-child) {
               border-left: 1px solid lightgray;
             }
@@ -124,6 +119,11 @@ trait ScoreToHtmlRenderer {
             li {
               float: left;
               width: 100%
+            }
+            .showborder {
+              padding: 1px;
+              border: 1px solid rgb(50,100,150);
+              border-radius: 5px;
             }
           </style>          
           </head><body><ul><li>
@@ -161,7 +161,7 @@ trait ScoreToHtmlRenderer {
           }
           val cols = gl.buildColumns
           def renderListHead = {
-            gsBlock.append("\n<table width='100%'>\n")
+            gsBlock.append("\n<div class='showborder'><table width='100%'>\n")
             cols.foreach { th => th match {
               case gc: WKGroupCol =>
                 gc.cols.foreach { thc =>
@@ -209,7 +209,7 @@ trait ScoreToHtmlRenderer {
             gsBlock.append(s"</tr></thead><tbody>\n")
           }
 
-          def renderListEnd = gsBlock.append(s"</tbody></table>\n")
+          def renderListEnd = gsBlock.append(s"</tbody></table></div>\n")
 
           def renderListRows(list: List[GroupRow]) = {
             list.foreach{ row =>

@@ -10,9 +10,12 @@ import scalafx.print.Printer.MarginType
 object PrintUtil {
   def printers = Printer.allPrinters.map(jfxprinter => new Printer(jfxprinter)) 
   
-  def pdfPrinter: Option[Printer] = printers.iterator.find{ p => p.name.startsWith("PDF24 PDF") } match {
+  def pdfPrinter: Option[Printer] = printers.iterator.find{ p => p.name.toUpperCase().contains("PDF24 PDF") } match {
     case Some(p) => Some(p)
-    case _ => printers.iterator.find{ p => p.name.endsWith("PDF") }
+    case _ => printers.iterator.find{ p => p.name.toUpperCase().contains("PDF") && !p.name.toUpperCase().contains("FAX")} match {
+      case Some(p) => Some(p)
+      case _ => printers.headOption
+    }
   }
     
   def printWebContentToPdf(engine: WebEngine, orientation: PageOrientation) {
