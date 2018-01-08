@@ -344,6 +344,7 @@ abstract class DefaultRanglisteTab(override val service: KutuService) extends Ta
           margin = Insets(10,10,10,0)
           disable <== when(chkViaBrowser.selected) choose true otherwise false
           PrintUtil.printers.toList.sortBy(p => p.name).foreach {p => items.value.add(p) }
+          selectionModel.value.select(PrintUtil.pdfPrinter.getOrElse(PrintUtil.printers.head))
         }
         implicit val impevent = action
     	  PageDisplayer.showInDialog(text.value, new DisplayablePage() {
