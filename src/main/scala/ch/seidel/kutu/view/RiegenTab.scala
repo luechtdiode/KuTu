@@ -63,6 +63,9 @@ import scalafx.scene.layout.Priority
 import scalafx.scene.layout.VBox
 import scalafx.util.StringConverter
 import scalafx.util.converter.DefaultStringConverter
+import ch.seidel.kutu.renderer.PrintUtil
+import ch.seidel.kutu.renderer.PrintUtil.FilenameDefault
+import scalafx.print.PageOrientation
 
 class DurchgangView(wettkampf: WettkampfView, service: KutuService, disziplinlist: () => Seq[Disziplin], durchgangModel: ObservableBuffer[DurchgangEditor]) extends TableView[DurchgangEditor] {
 
@@ -897,7 +900,7 @@ class RiegenTab(wettkampf: WettkampfView, override val service: KutuService) ext
 		  }
     }
     
-    def doRiegenBelatterExport() {
+    def doRiegenBelatterExport(event: ActionEvent) {
       val driver = service.selectWertungen(wettkampfId = Some(wettkampf.id)).groupBy { x => x.athlet }.map(_._2).toList
       val programme = driver.flatten.map(x => x.wettkampfdisziplin.programm).foldLeft(Seq[ProgrammView]()){(acc, pgm) =>
         if(!acc.exists { x => x.id == pgm.id }) {
@@ -976,24 +979,19 @@ class RiegenTab(wettkampf: WettkampfView, override val service: KutuService) ext
       if(!dir.exists()) {
         dir.mkdirs();
       }
-      val file = new java.io.File(dir.getPath + "/" + filename)
       val logofile = if(new java.io.File(dir.getPath + "/logo.jpg").exists()) {
-        "logo.jpg"
+        new java.io.File(dir.getPath + "/logo.jpg")
       }
       else {
-        "../logo.jpg"
+        new java.io.File(dir.getParentFile.getPath + "/logo.jpg")
       }
-      val toSave = (new Object with RiegenblattToHtmlRenderer).toHTML(seriendaten, logofile)
-      val os = new BufferedOutputStream(new FileOutputStream(file))
-      os.write(toSave.getBytes("UTF-8"))
-      os.flush()
-      os.close()
-      Desktop.getDesktop().open(file);      
+      def generate(lpp: Int) = (new Object with RiegenblattToHtmlRenderer).toHTML(seriendaten, logofile)
+      PrintUtil.printDialog(text.value, FilenameDefault(filename, dir), false, generate, orientation = PageOrientation.Portrait)(event)
     }
     
     def makeRiegenBlaetterExport(): MenuItem = {
       val m = KuTuApp.makeMenuAction("Riegenblätter erstellen") {(caption: String, action: ActionEvent) =>
-        doRiegenBelatterExport()
+        doRiegenBelatterExport(action)
       }
       m
     }

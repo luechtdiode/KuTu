@@ -1,6 +1,8 @@
 package ch.seidel.kutu.renderer
 
 import ch.seidel.kutu.domain._
+import java.io.File
+import PrintUtil._
 
 object RiegenBuilder {
 
@@ -62,10 +64,10 @@ object RiegenBuilder {
       }
       val startformationen = pickStartformationen(geraete, durchgang, k => (k.einteilung, k.diszipline))
       if (printorder) {
-        (durchgang, startformationen)        
+        (durchgang, startformationen.sortBy(d => d._2.map( dzl.indexOf(_)).getOrElse(0) * 100 + d._1))        
       }
       else {
-        (durchgang, startformationen.sortBy(d => d._1 * 100 + d._2.map( dzl.indexOf(_))))
+        (durchgang, startformationen.sortBy(d => d._1 * 100 + d._2.map( dzl.indexOf(_)).getOrElse(0)))
       }
     }
     val nebendurchgaenge = kandidaten
@@ -116,6 +118,7 @@ trait RiegenblattToHtmlRenderer {
       <meta charset="UTF-8" />
       <style>
         @media print {
+          body { -webkit-print-color-adjust: economy; }
           ul {
             page-break-inside: avoid;
           }
@@ -223,7 +226,8 @@ trait RiegenblattToHtmlRenderer {
     }
   }
 
-  private def notenblatt(riegepart: (GeraeteRiege, Int), logo: String) = {
+  private def notenblatt(riegepart: (GeraeteRiege, Int), logo: File) = {
+    val logoHtml = if (logo.exists()) s"""<img class=logo src="${logo.imageSrcForWebEngine}" title="Logo"/>""" else ""
     val (riege, tutioffset) = riegepart
     val d = riege.kandidaten.zip(Range(1, riege.kandidaten.size+1)).map{kandidat =>
       val programm = if(kandidat._1.programm.isEmpty())"" else "(" + shorten(kandidat._1.programm) + ")"
@@ -233,7 +237,7 @@ trait RiegenblattToHtmlRenderer {
 
     s"""<div class=riegenblatt>
       <div class=headline>
-        <img class=logo src="${logo}" title="Logo"/>
+        $logoHtml
         <div class=durchgang>${riege.durchgang.getOrElse("")}</br><div class=geraet>${riege.disziplin.map(d => d.easyprint).getOrElse("")} (${riege.halt + 1}. Gerät)</div></div>
       </div>
       <h1>${riege.wettkampfTitel}</h1>
@@ -249,7 +253,8 @@ trait RiegenblattToHtmlRenderer {
 
   val fcs = 20
 
-  def toHTML(kandidaten: Seq[Kandidat], logo: String): String = {
+  def toHTML(kandidaten: Seq[Kandidat], logo: File): String = {
+    import PrintUtil._
     def splitToFitPage(riegen: List[GeraeteRiege]) = {
       riegen.foldLeft(List[(GeraeteRiege, Int)]()){(acc, item) =>
         if(item.kandidaten.size > fcs) {

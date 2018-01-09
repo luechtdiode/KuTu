@@ -9,12 +9,14 @@ import scalafx.scene.control.TableColumn.CellDataFeatures
 import scalafx.scene.control.TableView
 import ch.seidel.kutu.domain._
 import java.util.concurrent.atomic.AtomicBoolean
+import java.io.File
+import PrintUtil._
 
 trait ScoreToHtmlRenderer {
   protected val title: String
-
-  def toHTML(gs: List[GroupSection], athletsPerPage: Int = 0, sortAlphabetically: Boolean = false, diszMap: Map[Long,Map[String,List[Disziplin]]]): String = {
-    toHTML(gs, "", 0, athletsPerPage, sortAlphabetically, diszMap)
+  
+  def toHTML(gs: List[GroupSection], athletsPerPage: Int = 0, sortAlphabetically: Boolean = false, diszMap: Map[Long,Map[String,List[Disziplin]]], logoFile: File): String = {
+    toHTML(gs, "", 0, athletsPerPage, sortAlphabetically, diszMap, logoFile)
   }
 
   val intro = s"""<html lang="de-CH"><head>
@@ -31,7 +33,7 @@ trait ScoreToHtmlRenderer {
               /*-webkit-print-color-adjust: economy;*/
             }
             h1 {
-              font-size: 16px;
+              font-size: 32px;
             }
             h2 {
               font-size: 15px;
@@ -120,6 +122,16 @@ trait ScoreToHtmlRenderer {
               float: left;
               width: 100%
             }
+            .headline {
+              display: block;
+              border: 0px;
+              overflow: auto;
+            }
+            .logo {
+              float: right;
+              max-height: 100px;
+              border-radius: 5px;
+            }
             .showborder {
               padding: 1px;
               border: 1px solid rgb(50,100,150);
@@ -128,7 +140,16 @@ trait ScoreToHtmlRenderer {
           </style>          
           </head><body><ul><li>
   """
-  def firstSite(title: String) = intro + s"<h1>Rangliste</h1><p>${title}</p>\n"
+  val fixFirstPageHeaderLines = 6
+  def firstSite(title: String, logoFile: File) = intro + (if (logoFile.exists) s"""
+      <div class='headline'>
+        <img class='logo' src="${logoFile.imageSrcForWebEngine}" title="Logo"/>
+        <h1>Rangliste</h1><h2>${title}</h2></div>
+      </div>\n""" else s"""
+      <div class='headline'>
+        <h1>Rangliste</h1><h2>${title}</h2></div>
+      </div>\n""")
+        
   val nextSite = "</li></ul><ul><li>\n"
   val outro = """
     </li></ul></body>
@@ -143,10 +164,10 @@ trait ScoreToHtmlRenderer {
   }
   val firstSiteRendered = new AtomicBoolean(false)
 
-  private def toHTML(gs: List[GroupSection], openedTitle: String, level: Int, athletsPerPage: Int, sortAlphabetically: Boolean, diszMap: Map[Long,Map[String,List[Disziplin]]]): String = {
+  private def toHTML(gs: List[GroupSection], openedTitle: String, level: Int, athletsPerPage: Int, sortAlphabetically: Boolean, diszMap: Map[Long,Map[String,List[Disziplin]]], logoFile: File): String = {
     val gsBlock = new StringBuilder()
     if (level == 0) {
-      gsBlock.append(firstSite(title))
+      gsBlock.append(firstSite(title, logoFile))
       firstSiteRendered.set(false)
     }
     for (c <- gs) {
@@ -261,8 +282,8 @@ trait ScoreToHtmlRenderer {
           }
           else {
         	  firstSiteRendered.set(true)
-            List(alldata.take(athletsPerPage-3)) ++
-            alldata.drop(athletsPerPage-3).sliding(athletsPerPage, athletsPerPage)
+            List(alldata.take(athletsPerPage-fixFirstPageHeaderLines)) ++
+            alldata.drop(athletsPerPage-fixFirstPageHeaderLines).sliding(athletsPerPage, athletsPerPage)
           }
           pagedata.foreach {section =>
             renderListHead
@@ -277,7 +298,7 @@ trait ScoreToHtmlRenderer {
                   openedTitle + s"${g.groupKey.easyprint}, "
                 else
                   s"<h${level + 2}>${g.groupKey.easyprint}, ",
-                  level + 1, athletsPerPage, sortAlphabetically, diszMap))
+                  level + 1, athletsPerPage, sortAlphabetically, diszMap, logoFile))
 
         case s: GroupSum  =>
           gsBlock.append(s.easyprint)

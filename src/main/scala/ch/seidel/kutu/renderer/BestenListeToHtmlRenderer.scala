@@ -2,6 +2,8 @@ package ch.seidel.kutu.renderer
 
 import ch.seidel.kutu.domain.Wertung
 import ch.seidel.kutu.domain.WertungView
+import java.io.File
+import PrintUtil._
 
 trait BestenListeToHtmlRenderer {
   val intro = """<html>
@@ -96,14 +98,15 @@ trait BestenListeToHtmlRenderer {
     </html>
   """
 
-  private def anmeldeListe(wertungen: Seq[WertungView], logo: String) = {
+  private def anmeldeListe(wertungen: Seq[WertungView], logo: File) = {
     val d = wertungen.map{wertung =>
       s"""<tr class="athletRow"><td>${wertung.athlet.verein.map(_.name).getOrElse("")}</td><td class="large">${wertung.athlet.name} ${wertung.athlet.vorname}</td><td class="large">${wertung.wettkampfdisziplin.disziplin.name}, ${wertung.wettkampfdisziplin.programm.name}</td><td class="totalCol">${wertung.endnote}</td></tr>"""
     }
     val dt = d.mkString("", "\n", "\n")
+    val logoHtml = if (logo.exists()) s"""<img class=logo src="${logo.imageSrcForWebEngine}" title="Logo"/>""" else ""
     s"""<div class=notenblatt>
       <div class=headline>
-        <img class=logo src="${logo}" title="Logo"/>
+        $logoHtml
         <h4>Besten-Noten, ${wertungen.head.wettkampf.titel}</h4>
       </div>
       <div class="showborder">
@@ -116,7 +119,7 @@ trait BestenListeToHtmlRenderer {
   """
   }
 
-  def toHTMListe(wertungen: Seq[WertungView], logo: String): String = {
+  def toHTMListe(wertungen: Seq[WertungView], logo: File): String = {
     val kandidatenPerKategorie = wertungen.sortBy { k =>
       val krit = f"${k.endnote}%-10s ${k.wettkampfdisziplin.ord}%-10s ${k.athlet.easyprint}%-40s"
       //println(krit)

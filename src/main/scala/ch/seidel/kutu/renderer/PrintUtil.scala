@@ -1,20 +1,135 @@
 package ch.seidel.kutu.renderer
 
-import scalafx.print.Printer
-import scalafx.print.PrinterJob
-import scalafx.scene.web.WebEngine
+import java.awt.Desktop
+import java.io.BufferedOutputStream
+import java.io.File
+import java.io.FileOutputStream
+
+import scala.language.implicitConversions
+
+import ch.seidel.commons._
+import ch.seidel.kutu.KuTuApp
+import scalafx.Includes._
+import scalafx.beans.binding.Bindings
+import scalafx.event.ActionEvent
+import scalafx.geometry.Insets
+import scalafx.geometry.Pos
 import scalafx.print.PageOrientation
 import scalafx.print.Paper
+import scalafx.print.Printer
+import scalafx.print.PrinterJob
+import scalafx.scene.Node
+import scalafx.scene.control._
+import scalafx.scene.layout._
+import scalafx.scene.web.WebEngine
 import scalafx.print.Printer.MarginType
+import java.io.ByteArrayOutputStream
+import javax.imageio.ImageIO
+import java.util.Base64
+import java.awt.image.RenderedImage
+import scalafx.print.PrintResolution
+import scalafx.print.PrintQuality
+import java.awt.image.BufferedImage
+import java.util.concurrent.atomic.AtomicBoolean
+
 
 object PrintUtil {
+  private val PRINT_TO_BROWSER = new AtomicBoolean(false)
+  
+  case class FilenameDefault(filename: String, dir: java.io.File)
+
+  def btnPrint(title: String, defaults: FilenameDefault, adjustLinesPerPage: Boolean = false, onGenerateOutput: (Int)=>String, engine: WebEngine = KuTuApp.invisibleWebView.engine, orientation: PageOrientation = PageOrientation.Portrait) = new Button {
+    text = "Drucken ..."
+    onAction = printDialog(title, defaults, adjustLinesPerPage, onGenerateOutput, engine, orientation)
+  }
+  
+  def printDialog(title: String, defaults: FilenameDefault, adjustLinesPerPage: Boolean = false, onGenerateOutput: (Int)=>String, engine: WebEngine = KuTuApp.invisibleWebView.engine, orientation: PageOrientation = PageOrientation.Portrait)(action: ActionEvent) {
+
+      val dir = defaults.dir
+      if(!dir.exists()) {
+        dir.mkdirs();
+      }
+      val selectedFile = new File(dir.getPath + "/" + defaults.filename)
+      val txtLinesPerPage = new TextField {
+        margin = Insets(10,10,10,0)
+  		  text.value = "51"
+  	  }
+      val chkViaBrowser = new CheckBox("via Browser") {
+        margin = Insets(10,10,10,0)
+        selected = PRINT_TO_BROWSER.get
+      }
+      val cmbDrucker = new ComboBox[Printer] {
+        margin = Insets(10,10,10,0)
+        disable <== when(chkViaBrowser.selected) choose true otherwise false
+        PrintUtil.printers.toList.sortBy(p => p.name).foreach {p => items.value.add(p) }
+        selectionModel.value.select(PrintUtil.pdfPrinter.getOrElse(PrintUtil.printers.head))
+      }
+      implicit val impevent = action
+  	  PageDisplayer.showInDialog(title, new DisplayablePage() {
+  		  def getPage: Node = {
+    		  new VBox {
+    			  prefHeight = 50
+    			  alignment = Pos.TopLeft
+    			  
+    			  hgrow = Priority.Always
+    			  children = (if (adjustLinesPerPage) Seq(
+    			      new Label("Zeilen pro Seite (51 für A4 hoch, 34 für A4 quer)"), 
+    			      txtLinesPerPage) else Seq.empty) ++ Seq(
+    			      chkViaBrowser,
+    			      new Label("Drucker") {
+    			        disable <== when(chkViaBrowser.selected) choose true otherwise false
+    			      },
+    			      cmbDrucker)
+    		  }
+    	  }
+    	  }, new Button("OK") {
+    	    disable <== when(Bindings.createBooleanBinding(() => {
+                        !chkViaBrowser.selected.value && cmbDrucker.selectionModel.value.isEmpty()
+                      },
+                        chkViaBrowser.selected, cmbDrucker.selectionModel.value.selectedItemProperty
+                      )) choose true otherwise false
+    		  onAction = (event: ActionEvent) => {
+            val file = if(!selectedFile.getName.endsWith(".html") && !selectedFile.getName.endsWith(".htm")) {
+              new java.io.File(selectedFile.getAbsolutePath + ".html")
+            }
+            else {
+              selectedFile
+            }
+            var lpp = 51
+            try {
+              lpp = Integer.valueOf(txtLinesPerPage.text.value)
+              if(lpp < 1) lpp = 51
+            }
+            catch {
+              case e: Exception =>
+            }
+            PRINT_TO_BROWSER.set(chkViaBrowser.selected.value)
+            val toSave = onGenerateOutput(lpp)
+            if(chkViaBrowser.selected.value) {
+              val os = new BufferedOutputStream(new FileOutputStream(file))
+              os.write(toSave.getBytes("UTF-8"))
+              os.flush()
+              os.close()
+              Desktop.getDesktop().open(file)
+            }
+            else {
+          	  engine.loadContent(toSave)
+          	  KuTuApp.invokeWithBusyIndicator{
+          	    printWebContent(engine, cmbDrucker.getSelectionModel.getSelectedItem, orientation)
+          	    onGenerateOutput(0)
+          	  }
+            }
+    		  }
+    	  }
+    	)    
+  }
   def printers = Printer.allPrinters.map(jfxprinter => new Printer(jfxprinter)) 
   
   def pdfPrinter: Option[Printer] = printers.iterator.find{ p => p.name.toUpperCase().contains("PDF24 PDF") } match {
     case Some(p) => Some(p)
     case _ => printers.iterator.find{ p => p.name.toUpperCase().contains("PDF") && !p.name.toUpperCase().contains("FAX")} match {
       case Some(p) => Some(p)
-      case _ => printers.headOption
+      case _ => Some(Printer.defaultPrinter)
     }
   }
     
@@ -57,11 +172,27 @@ object PrintUtil {
     try {
       job.getJobSettings().setPageLayout(layout)
       job.getJobSettings().setJobName("KuTuApp Printing Job")
-  
+      job.jobSettings.printQuality = PrintQuality.High
+      
       engine.print(job);
     } 
     finally {
       job.endJob()
     }
   }
+  
+  implicit class ImageFile(file: File) {
+    def imageSrcForWebEngine = {
+      if (PRINT_TO_BROWSER.get) {
+        file.toURI.toString
+      } else {
+        val imageBuffer = ImageIO.read(file)
+        val output = new ByteArrayOutputStream()
+        ImageIO.write(imageBuffer, "PNG", output)
+        val imagedata = "data:base64," + Base64.getMimeEncoder().encodeToString(output.toByteArray())
+        imagedata
+      }
+    }
+  }
+  
 }

@@ -68,6 +68,9 @@ import scalafx.scene.control.ContentDisplay
 import scalafx.scene.image.Image
 import scalafx.scene.image.ImageView
 import scalafx.event.subscriptions.Subscription
+import ch.seidel.kutu.renderer.PrintUtil.FilenameDefault
+import ch.seidel.kutu.renderer.PrintUtil
+import scalafx.print.PageOrientation
 
 trait TCAccess {
   def getIndex: Int
@@ -175,24 +178,6 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
       else {
         lblAthlet.text.value = ""
         lblDisciplin.text.value = ""
-      }
-    }
-  }
-
-  import scalafx.print._
-  import scalafx.scene.web.WebEngine
-  def printHtml(html: String, engine: WebEngine, datadirectory: File) {
-    val printer = Printer.defaultPrinter;
-    val pageLayout = printer.createPageLayout(Paper.A4, PageOrientation.Landscape, Printer.MarginType.HardwareMinimum);
-
-    val job = PrinterJob.createPrinterJob;
-    if (job != null) {
-      job.jobSettings.pageLayout = pageLayout
-      if(job.showPrintDialog(null)) {
-        engine.loadContent(html)
-        engine.print(job)
-        engine.userDataDirectory.value = datadirectory
-        job.endJob
       }
     }
   }
@@ -1270,18 +1255,13 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
           }
           val file = new java.io.File(dir.getPath + "/" + filename)
           val logofile = if(new java.io.File(dir.getPath + "/logo.jpg").exists()) {
-            "logo.jpg"
+            new java.io.File(dir.getPath + "/logo.jpg")
           }
           else {
-            "../logo.jpg"
+            new java.io.File(dir.getParentFile.getPath + "/logo.jpg")
           }
-          val toSave = toHTMLasKategorienListe(seriendaten, logofile)
-          val os = new BufferedOutputStream(new FileOutputStream(file))
-          os.write(toSave.getBytes("UTF-8"))
-          os.flush()
-          os.close()
-          Desktop.getDesktop().open(file);
-          //printHtml(toSave, webView.engine)
+          def generate(lpp: Int) = toHTMLasKategorienListe(seriendaten, logofile)
+          PrintUtil.printDialog(text.value,FilenameDefault(filename, dir), false, generate, orientation = PageOrientation.Portrait)(event)
         }
       }
     }
@@ -1343,24 +1323,19 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
           if(!dir.exists()) {
             dir.mkdirs();
           }
-          val file = new java.io.File(dir.getPath + "/" + filename)
           val logofile = if(new java.io.File(dir.getPath + "/logo.jpg").exists()) {
-            "logo.jpg"
+            new java.io.File(dir.getPath + "/logo.jpg")
           }
           else {
-            "../logo.jpg"
+            new java.io.File(dir.getParentFile.getPath + "/logo.jpg")
           }
-          val toSave = wettkampf.programm.head.id match {
+          
+          def generate(lpp: Int) = wettkampf.programm.head.id match {
             case 20 => toHTMLasGeTu(seriendaten, logofile)
             case n if(n == 11 || n == 31) => toHTMLasKuTu(seriendaten, logofile)
             case _ => toHTMLasATT(seriendaten, logofile)
           }
-          val os = new BufferedOutputStream(new FileOutputStream(file))
-          os.write(toSave.getBytes("UTF-8"))
-          os.flush()
-          os.close()
-          Desktop.getDesktop().open(file);
-          //printHtml(toSave, webView.engine)
+          PrintUtil.printDialog(text.value,FilenameDefault(filename, dir), false, generate, orientation = PageOrientation.Landscape)(event)
         }
       }
     }
@@ -1374,20 +1349,15 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
         if(!dir.exists()) {
           dir.mkdirs();
         }
-        val file = new java.io.File(dir.getPath + "/" + filename)
         val logofile = if(new java.io.File(dir.getPath + "/logo.jpg").exists()) {
-          "logo.jpg"
+          new java.io.File(dir.getPath + "/logo.jpg")
         }
         else {
-          "../logo.jpg"
+          new java.io.File(dir.getParentFile.getPath + "/logo.jpg")
         }
-        val toSave = toHTMListe(service.getBestenResults, logofile)
-        val os = new BufferedOutputStream(new FileOutputStream(file))
-        os.write(toSave.getBytes("UTF-8"))
-        os.flush()
-        os.close()
-        Desktop.getDesktop().open(file);
-        //printHtml(toSave, webView.engine)
+        
+        def generate(lpp: Int) = toHTMListe(service.getBestenResults, logofile)
+        PrintUtil.printDialog(text.value,FilenameDefault(filename, dir), false, generate, orientation = PageOrientation.Portrait)(event)
         service.resetBestenResults
       }
     }

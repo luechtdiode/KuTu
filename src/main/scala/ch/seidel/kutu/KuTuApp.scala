@@ -41,6 +41,7 @@ import scala.util.Success
 import scalafx.stage.StageStyle
 import scalafx.beans.property.BooleanProperty
 import scalafx.beans.binding.Bindings
+import scalafx.scene.web.WebView
 
 object KuTuApp extends JFXApp with KutuService {
   var tree = AppNavigationModel.create(KuTuApp.this)
@@ -703,6 +704,27 @@ object KuTuApp extends JFXApp with KutuService {
       content = List(btnWettkampfModus)
     }
   }
+  
+  val invisibleWebView = new WebView()
+  val webViewContainer = new ScrollPane() {
+    vgrow = Priority.Always
+    hgrow = Priority.Always
+    prefHeight = 76
+    maxHeight = 76
+//    maxWidth = 0
+//    maxHeight = 0
+//    prefHeight = 0
+//    prefWidth = 0
+    id = "invisible-webView"
+    content = invisibleWebView
+  }
+  val headerContainer = new StackPane() {
+    vgrow = Priority.Always
+    hgrow = Priority.Always
+    prefHeight = 76
+    maxHeight = 76    
+    children = Seq(webViewContainer, header)
+  }
 
   def getStage() = stage
   //
@@ -713,7 +735,7 @@ object KuTuApp extends JFXApp with KutuService {
     title = "KuTu Wettkampf-App"
     scene = new Scene(1400, 900) {
       root = new BorderPane {
-        top = header
+        top = headerContainer
         center = new BorderPane {
           center = splitPane
         }

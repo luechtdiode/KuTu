@@ -36,6 +36,7 @@ import scalafx.stage.FileChooser
 import scalafx.stage.FileChooser.ExtensionFilter
 import scalafx.util.StringConverter
 import scala.collection.JavaConverters
+import ch.seidel.kutu.renderer.PrintUtil.FilenameDefault
 
 abstract class DefaultRanglisteTab(override val service: KutuService) extends Tab with TabWithService with ScoreToHtmlRenderer {
   override val title = ""
@@ -53,7 +54,6 @@ abstract class DefaultRanglisteTab(override val service: KutuService) extends Ta
   //          x.athlet }))))
   def groupers: List[FilterBy] = ???
   def getData: Seq[WertungView] = ???
-  case class FilenameDefault(filename: String, dir: java.io.File)
   def getSaveAsFilenameDefault: FilenameDefault = ???
   val webView = new WebView
   var restoring = false
@@ -229,7 +229,13 @@ abstract class DefaultRanglisteTab(override val service: KutuService) extends Ta
               "W" -> service.listDisziplinesZuWettkampf(x._2.head.wettkampf.id, Some("W"))
             , "M" -> service.listDisziplinesZuWettkampf(x._2.head.wettkampf.id, Some("M")))
         }
-      val ret = toHTML(combination, linesPerPage, cbModus.selected.value, diszMap)
+      val logofile = if(new java.io.File(getSaveAsFilenameDefault.dir.getPath + "/logo.jpg").exists()) {
+        new java.io.File(getSaveAsFilenameDefault.dir.getPath + "/logo.jpg")
+      }
+      else {
+        new java.io.File(getSaveAsFilenameDefault.dir.getParentFile.getPath + "/logo.jpg")
+      }
+      val ret = toHTML(combination, linesPerPage, cbModus.selected.value, diszMap, logofile)
       if(linesPerPage == 0){
         webView.engine.loadContent(ret)
       }
@@ -306,12 +312,6 @@ abstract class DefaultRanglisteTab(override val service: KutuService) extends Ta
           else {
             selectedFile
           }
-//          val logofile = if(new java.io.File(dir.getPath + "/logo.jpg").exists()) {
-//            "logo.jpg"
-//          }
-//          else {
-//            "../logo.jpg"
-//          }
           val toSave = refreshRangliste(buildGrouper).getBytes("UTF-8")
           val os = new BufferedOutputStream(new FileOutputStream(selectedFile))
           os.write(toSave)
@@ -321,93 +321,8 @@ abstract class DefaultRanglisteTab(override val service: KutuService) extends Ta
         }
       }
     }
-
-    val btnPrint = new Button {
-      text = "Drucken ..."
-      onAction = (action: ActionEvent) => {
-//        print
-        
-        val defaults = getSaveAsFilenameDefault
-        val dir = defaults.dir
-        if(!dir.exists()) {
-          dir.mkdirs();
-        }
-        val selectedFile = new File(dir.getPath + "/" + defaults.filename)
-        val txtLinesPerPage = new TextField {
-          margin = Insets(10,10,10,0)
-    		  text.value = "51"
-    	  }
-        val chkViaBrowser = new CheckBox("via Browser") {
-          margin = Insets(10,10,10,0)
-        }
-        val cmbDrucker = new ComboBox[Printer] {
-          margin = Insets(10,10,10,0)
-          disable <== when(chkViaBrowser.selected) choose true otherwise false
-          PrintUtil.printers.toList.sortBy(p => p.name).foreach {p => items.value.add(p) }
-          selectionModel.value.select(PrintUtil.pdfPrinter.getOrElse(PrintUtil.printers.head))
-        }
-        implicit val impevent = action
-    	  PageDisplayer.showInDialog(text.value, new DisplayablePage() {
-    		  def getPage: Node = {
-      		  new VBox {
-      			  prefHeight = 50
-      			  alignment = Pos.TopLeft
-      			  
-      			  hgrow = Priority.Always
-      			  children = Seq(
-      			      new Label("Zeilen pro Seite (51 für A4 hoch, 34 für A4 quer)"), 
-      			      txtLinesPerPage,
-      			      chkViaBrowser,
-      			      new Label("Drucker") {
-      			        disable <== when(chkViaBrowser.selected) choose true otherwise false
-      			      },
-      			      cmbDrucker)
-      		  }
-      	  }
-      	  }, new Button("OK") {
-      	    disable <== when(Bindings.createBooleanBinding(() => {
-                          !chkViaBrowser.selected.value && cmbDrucker.selectionModel.value.isEmpty()
-                        },
-                          chkViaBrowser.selected, cmbDrucker.selectionModel.value.selectedItemProperty
-                        )) choose true otherwise false
-      		  onAction = (event: ActionEvent) => {
-              val file = if(!selectedFile.getName.endsWith(".html") && !selectedFile.getName.endsWith(".htm")) {
-                new java.io.File(selectedFile.getAbsolutePath + ".html")
-              }
-              else {
-                selectedFile
-              }
-              var lpp = 51
-              try {
-                lpp = Integer.valueOf(txtLinesPerPage.text.value)
-                if(lpp < 1) lpp = 51
-              }
-              catch {
-                case e: Exception =>
-              }
-              val toSave = refreshRangliste(buildGrouper, lpp)
-              if(chkViaBrowser.selected.value) {
-                val os = new BufferedOutputStream(new FileOutputStream(file))
-                os.write(toSave.getBytes("UTF-8"))
-                os.flush()
-                os.close()
-                Desktop.getDesktop().open(file)
-              }
-              else {
-            	  webView.engine.loadContent(toSave)
-            	  KuTuApp.invokeWithBusyIndicator{
-            		  print(cmbDrucker.getSelectionModel.getSelectedItem)
-            		  refreshRangliste(buildGrouper, 0)
-            	  }
-                
-              }
-      		  }
-      	  }
-      	)
-      }
-      
-    }
-
+    val btnPrint = PrintUtil.btnPrint(text.value, getSaveAsFilenameDefault, true, (lpp:Int)=>refreshRangliste(buildGrouper, lpp))
+    
     def extractFilterText = {
       buildGrouper.traverse(""){(item, filename) =>
         item match {

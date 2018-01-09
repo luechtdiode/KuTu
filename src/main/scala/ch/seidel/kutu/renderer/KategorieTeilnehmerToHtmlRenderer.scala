@@ -1,5 +1,8 @@
 package ch.seidel.kutu.renderer
 
+import java.io.File
+import PrintUtil._
+
 trait KategorieTeilnehmerToHtmlRenderer {
   case class Kandidat(wettkampfTitel: String, geschlecht: String, programm: String,
                       name: String, vorname: String, jahrgang: String, verein: String, riege: String, durchgang: String, start: String, diszipline: Seq[String])
@@ -96,14 +99,16 @@ trait KategorieTeilnehmerToHtmlRenderer {
     </html>
   """
 
-  private def anmeldeListe(kategorie: String, kandidaten: Seq[Kandidat], logo: String) = {
+  private def anmeldeListe(kategorie: String, kandidaten: Seq[Kandidat], logo: File) = {
+    val logoHtml = if (logo.exists()) s"""<img class=logo src="${logo.imageSrcForWebEngine}" title="Logo"/>""" else ""
+      
     val d = kandidaten.map{kandidat =>
       s"""<tr class="athletRow"><td>${kandidat.verein}</td><td class="large">${kandidat.name} ${kandidat.vorname} (${kandidat.jahrgang})</td><td>${kandidat.durchgang}</td><td>${kandidat.start}</td><td class="totalCol">&nbsp;</td></tr>"""
     }
     val dt = d.mkString("", "\n", "\n")
     s"""<div class=notenblatt>
       <div class=headline>
-        <img class=logo src="${logo}" title="Logo"/>
+        $logoHtml
         <div class=programm>${kategorie}</br></div>
         <h4>${kandidaten.head.wettkampfTitel}</h4>
       </div>
@@ -117,7 +122,7 @@ trait KategorieTeilnehmerToHtmlRenderer {
   """
   }
 
-  def toHTMLasKategorienListe(kandidaten: Seq[Kandidat], logo: String): String = {
+  def toHTMLasKategorienListe(kandidaten: Seq[Kandidat], logo: File): String = {
     val kandidatenPerKategorie = kandidaten.sortBy { k =>
       val krit = f"${k.verein}%-40s ${k.name}%-40s ${k.vorname}%-40s"
       //println(krit)

@@ -4,6 +4,7 @@ import ch.seidel.kutu.data._
 import ch.seidel.kutu.domain.KutuService
 import ch.seidel.kutu.domain.WertungView
 import ch.seidel.kutu.domain.WettkampfView
+import ch.seidel.kutu.renderer.PrintUtil.FilenameDefault
 
 class RanglisteTab(wettkampf: WettkampfView, override val service: KutuService) extends DefaultRanglisteTab(service) {
   override val title = wettkampf.easyprint

@@ -5,6 +5,7 @@ import scalafx.scene.control.TableColumn._
 import ch.seidel.kutu.data._
 import ch.seidel.kutu.domain._
 import ch.seidel.kutu.renderer.ScoreToHtmlRenderer
+import ch.seidel.kutu.renderer.PrintUtil.FilenameDefault
 
 class TurnerScoreTab(val verein: Option[Verein], override val service: KutuService) extends DefaultRanglisteTab(service) {
   override val title = verein match {case Some(v) => v.easyprint case None => "Vereinsübergreifend"}

@@ -1,6 +1,8 @@
 package ch.seidel.kutu.renderer
 
 import ch.seidel.kutu.domain._
+import java.io.File
+import PrintUtil._
 
 trait NotenblattToHtmlRenderer {
 
@@ -9,11 +11,13 @@ trait NotenblattToHtmlRenderer {
       <meta charset="UTF-8" />
       <style>
         @media print {
+          body { -webkit-print-color-adjust: economy; }
           ul {
             page-break-inside: avoid;
           }
         }
         .notenblatt {
+          max-width: 35em;
           display: block;
           padding: 15px;
           padding-left: 40px;
@@ -75,16 +79,19 @@ trait NotenblattToHtmlRenderer {
         h1 {
           font-size: 75%;
         }
-        table {
-          width: 27em;
+        .dataTable {
           border-collapse:collapse;
           border-spacing:0;
+        }
+        table {
+          width: 100%;
         }
         tr {
           font-size: 12px;
           overflow: hidden;
         }
-        td {
+        td { vertical-align: top; }
+        .dataTd {
           padding: 6px;
         }
         ul {
@@ -95,7 +102,7 @@ trait NotenblattToHtmlRenderer {
           overflow: auto;
         }
         li {
-          float: left;
+          /*float: left;*/
         }
       </style>
     </head>
@@ -106,29 +113,30 @@ trait NotenblattToHtmlRenderer {
     </li></ul></body>
     </html>
   """
-
-  private def notenblattForGeTu(kandidat: Kandidat, logo: String) = {
+// for loading logo see https://stackoverflow.com/questions/26447451/javafx-in-webview-img-tag-is-not-loading-local-images
+  private def notenblattForGeTu(kandidat: Kandidat, logo: File) = {
     val d = kandidat.diszipline.zip(Range(1, kandidat.diszipline.size+1)).map{dis =>
       s"""<tr class="geraeteRow"><td class="large">${dis._2}. ${dis._1.easyprint}</td><td>&nbsp;</td><td>&nbsp;</td><td class="totalCol">&nbsp;</td></tr>"""
     }
     val dt = d.updated(d.size-1, d.last.replace("geraeteRow", "totalRow")).mkString("", "\n", "\n")
+    val logoHtml = (if (logo.exists) s"""<img class=logo src="${logo.imageSrcForWebEngine}" title="Logo"/>""" else s"")
     s"""<div class=notenblatt>
       <div class=headline>
-        <img class=logo src="${logo}" title="Logo"/>
-        <div class=programm>${kandidat.programm}</br><div class=geschlecht>${kandidat.geschlecht}</div></div>
+        $logoHtml
+        <div class='programm'>${kandidat.programm}</br><div class='geschlecht'>${kandidat.geschlecht}</div></div>
       </div>
       <h1>${kandidat.wettkampfTitel}</h1>
-      <table width="100%">
-        <tr><td width="30%">Name:</td><td>${kandidat.name}</td></tr>
-        <tr><td>Vorname:</td><td>${kandidat.vorname}</td></tr>
-        <tr><td>Jahrgang:</td><td>${kandidat.jahrgang}</td></tr>
-        <tr><td>Verein:</td><td>${kandidat.verein}</td></tr>
+      <table class='dataTable' width="100%">
+        <tr><td class='dataTd' width="30%">Name:</td><td>${kandidat.name}</td></tr>
+        <tr><td class='dataTd'>Vorname:</td><td>${kandidat.vorname}</td></tr>
+        <tr><td class='dataTd'>Jahrgang:</td><td>${kandidat.jahrgang}</td></tr>
+        <tr><td class='dataTd'>Verein:</td><td>${kandidat.verein}</td></tr>
       </table>
       <div class="showborder">
-        <table width="100%">
-          <tr class="totalRow heavyRow"><td>Gerät</td><td>1. Wertung</td><td>2. Wertung</td><td class="totalCol">Endnote</td></tr>
+        <table class='dataTable' width="100%">
+          <tr class="totalRow heavyRow"><td class='dataTd'>Gerät</td><td class='dataTd'>1. Wertung</td><td class='dataTd'>2. Wertung</td><td class="dataTd totalCol">Endnote</td></tr>
           ${dt}
-          <tr class="heavyRow"><td class="large">Total</td><td>&nbsp;</td><td>&nbsp;</td><td class="totalCol">&nbsp;</td></tr>
+          <tr class="heavyRow"><td class="dataTd large">Total</td><td class='dataTd'>&nbsp;</td><td class='dataTd'>&nbsp;</td><td class="dataTd totalCol">&nbsp;</td></tr>
         </table>
       </div>
       <div class="rang">Rang: __________</div>
@@ -136,9 +144,9 @@ trait NotenblattToHtmlRenderer {
     """
   }
 
-  private def notenblattForATT(kandidat: Kandidat, logo: String) = {
+  private def notenblattForATT(kandidat: Kandidat, logo: File) = {
     val d = kandidat.diszipline.zip(Range(1, kandidat.diszipline.size+1)).map{dis =>
-      s"""<tr class="geraeteRow"><td class="large">${dis._2}. ${dis._1.easyprint}</td><td class="totalCol">&nbsp;</td></tr>"""
+      s"""<tr class="geraeteRow"><td class="large dataTd">${dis._2}. ${dis._1.easyprint}</td><td class="totalCol dataTd">&nbsp;</td></tr>"""
     }
     val dt = d.mkString("", "\n", "\n")
     s"""<div class=notenblatt>
@@ -148,11 +156,11 @@ trait NotenblattToHtmlRenderer {
           <div class=geschlecht>${kandidat.geschlecht}</div></div>
       </div>
       <table width="100%">
-        <tr><td width="15%">Name:</td><td>${kandidat.name}</td><td width="15%">Vorname:</td><td>${kandidat.vorname}</td><td width="10%">Jahrgang:</td><td>${kandidat.jahrgang}</td></tr>
+        <tr><td class='dataTd' width="15%">Name:</td><td class='dataTd'>${kandidat.name}</td><td class='dataTd' width="15%">Vorname:</td><td class='dataTd'>${kandidat.vorname}</td><td class='dataTd' width="10%">Jahrgang:</td><td class='dataTd'>${kandidat.jahrgang}</td></tr>
       </table>
       <div class="showborder">
-        <table width="100%">
-          <tr class="totalRow heavyRow"><td>Disziplin</td><td class="totalCol">Punkte</td></tr>
+        <table class="dataTable" width="100%">
+          <tr class="totalRow heavyRow"><td class='dataTd'>Disziplin</td><td class="dataTd totalCol">Punkte</td></tr>
           ${dt}
         </table>
       </div>
@@ -160,47 +168,53 @@ trait NotenblattToHtmlRenderer {
   """
   }
 
-  private def notenblattForKuTu(kandidat: Kandidat, logo: String) = {
+  private def notenblattForKuTu(kandidat: Kandidat, logo: File) = {
     val d = kandidat.diszipline.zip(Range(1, kandidat.diszipline.size+1)).map{dis =>
       s"""<tr class="geraeteRow"><td class="large">${dis._2}. ${dis._1.easyprint}</td><td>&nbsp;</td><td>&nbsp;</td><td class="totalCol">&nbsp;</td></tr>"""
     }
     val dt = d.updated(d.size-1, d.last.replace("geraeteRow", "totalRow")).mkString("", "\n", "\n")
+    val logoHtml = (if (logo.exists) s"""<img class=logo src="${logo.imageSrcForWebEngine}" title="Logo"/>""" else s"")
     s"""<div class=notenblatt>
       <div class=headline>
-        <img class=logo src="logo.jpg" title="Logo"/>
+        ${logoHtml}
         <div class=programm>${kandidat.programm}</br><div class=geschlecht>${kandidat.geschlecht}</div></div>
       </div>
       <h1>${kandidat.wettkampfTitel}</h1>
       <table width="100%">
-        <tr><td width="20%">Name:</td><td>${kandidat.name}</td><td width="20%">Vorname:</td><td>${kandidat.vorname}</td></tr>
-        <tr><td>Verein:</td><td>${kandidat.verein}</td><td>Jahrgang:</td><td>${kandidat.jahrgang}</td></tr>
+        <tr><td class='dataTd' width="20%">Name:</td><td class='dataTd'>${kandidat.name}</td><td class='dataTd' width="20%">Vorname:</td><td class='dataTd'>${kandidat.vorname}</td></tr>
+        <tr><td class='dataTd'>Verein:</td><td class='dataTd'>${kandidat.verein}</td><td class='dataTd'>Jahrgang:</td><td class='dataTd'>${kandidat.jahrgang}</td></tr>
       </table>
       <div class="showborder">
-        <table width="100%">
-          <tr class="totalRow heavyRow"><td>Gerät</td><td>D-Wert</td><td>E-Wert</td><td class="totalCol">Endnote</td></tr>
+        <table class="dataTable" width="100%">
+          <tr class="totalRow heavyRow"><td class='dataTd'>Gerät</td><td class='dataTd'>D-Wert</td><td class='dataTd'>E-Wert</td><td class="dataTd totalCol">Endnote</td></tr>
           ${dt}
-          <tr class="heavyRow"><td class="large">Total</td><td>&nbsp;</td><td>&nbsp;</td><td class="totalCol">&nbsp;</td></tr>
+          <tr class="heavyRow"><td class="dataTd large">Total</td><td class='dataTd'>&nbsp;</td><td class='dataTd'>&nbsp;</td><td class="dataTd totalCol">&nbsp;</td></tr>
         </table>
       </div>
     </div>
     """
   }
-
-  def toHTMLasGeTu(kandidaten: Seq[Kandidat], logo: String): String = {
+  val nextSite = "</li></ul><ul><li>\n"
+  
+  val pageIntro = "<table width='100%'><tr><td>"
+  val pageOutro = "</td></tr></table>"
+  def toHTMLasGeTu(kandidaten: Seq[Kandidat], logo: File): String = {
     val blaetter = kandidaten.map(notenblattForGeTu(_, logo))
-    val pages = blaetter.sliding(2, 2).map { _.mkString("</li><li>") }.mkString("</li></ul><ul><li>")
+    val pages = blaetter.sliding(2, 2).map { _.mkString(pageIntro, "</td><td>", pageOutro) }.mkString(nextSite)
     intro + pages + outro
   }
 
-  def toHTMLasKuTu(kandidaten: Seq[Kandidat], logo: String): String = {
+  def toHTMLasKuTu(kandidaten: Seq[Kandidat], logo: File): String = {
     val blaetter = kandidaten.map(notenblattForKuTu(_, logo))
-    val pages = blaetter.sliding(2, 2).map { _.mkString("</li><li>") }.mkString("</li></ul><ul><li>")
+//    val pages = blaetter.sliding(2, 2).map { _.mkString("</li><li>") }.mkString(nextSite)
+    val pages = blaetter.sliding(2, 2).map { _.mkString(pageIntro, "</td><td>", pageOutro) }.mkString(nextSite)
     intro + pages + outro
   }
 
-  def toHTMLasATT(kandidaten: Seq[Kandidat], logo: String): String = {
+  def toHTMLasATT(kandidaten: Seq[Kandidat], logo: File): String = {
     val blaetter = kandidaten.map(notenblattForATT(_, logo))
-    val pages = blaetter.sliding(2, 2).map { _.mkString("</li><li>") }.mkString("</li></ul><ul><li>")
+//    val pages = blaetter.sliding(2, 2).map { _.mkString("</li><li>") }.mkString(nextSite)
+    val pages = blaetter.sliding(2, 2).map { _.mkString(pageIntro, "</td><td>", pageOutro) }.mkString(nextSite)
     intro + pages + outro
   }
 }
