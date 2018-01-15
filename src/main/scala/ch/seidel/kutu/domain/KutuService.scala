@@ -1112,23 +1112,23 @@ trait KutuService extends RiegenBuilder {
   }
 
   def moveToProgram(wId: Long, pgmId: Long, aId: Long) {
+    val wkIDs = Await.result(database.run{sql"""
+                  select id from wettkampfdisziplin
+                  where programm_Id = ${pgmId}
+                """.as[Long]}, Duration.Inf)
+                
     Await.result(database.run{
       sqlu"""
                 delete from wertung where
                 athlet_Id=${aId} and wettkampf_Id=${wId}
         """ >>
-      DBIO.seq((for {
-        wkid <- sql"""
-                  select id from wettkampfdisziplin
-                  where programm_Id = ${pgmId}
-                """.as[Long].head
-      } yield {
+      DBIO.sequence(for {wkid <- wkIDs} yield {
         sqlu"""
                   insert into wertung
                   (athlet_Id, wettkampfdisziplin_Id, wettkampf_Id, note_d, note_e, endnote)
                   values (${aId}, ${wkid}, ${wId}, 0, 0, 0)
           """
-      }).flatten)
+      })
     }, Duration.Inf)
     
     val wertungen = selectWertungen(athletId = Some(aId), wettkampfId = Some(wId))
