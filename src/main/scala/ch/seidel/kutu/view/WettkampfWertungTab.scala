@@ -1254,13 +1254,7 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
             dir.mkdirs();
           }
           val file = new java.io.File(dir.getPath + "/" + filename)
-          val logofile = if(new java.io.File(dir.getPath + "/logo.jpg").exists()) {
-            new java.io.File(dir.getPath + "/logo.jpg")
-          }
-          else {
-            new java.io.File(dir.getParentFile.getPath + "/logo.jpg")
-          }
-          def generate(lpp: Int) = toHTMLasKategorienListe(seriendaten, logofile)
+          def generate(lpp: Int) = toHTMLasKategorienListe(seriendaten, PrintUtil.locateLogoFile(dir))
           PrintUtil.printDialog(text.value,FilenameDefault(filename, dir), false, generate, orientation = PageOrientation.Portrait)(event)
         }
       }
@@ -1323,13 +1317,7 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
           if(!dir.exists()) {
             dir.mkdirs();
           }
-          val logofile = if(new java.io.File(dir.getPath + "/logo.jpg").exists()) {
-            new java.io.File(dir.getPath + "/logo.jpg")
-          }
-          else {
-            new java.io.File(dir.getParentFile.getPath + "/logo.jpg")
-          }
-          
+          val logofile = PrintUtil.locateLogoFile(dir)
           def generate(lpp: Int) = wettkampf.programm.head.id match {
             case 20 => toHTMLasGeTu(seriendaten, logofile)
             case n if(n == 11 || n == 31) => toHTMLasKuTu(seriendaten, logofile)
@@ -1349,12 +1337,7 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
         if(!dir.exists()) {
           dir.mkdirs();
         }
-        val logofile = if(new java.io.File(dir.getPath + "/logo.jpg").exists()) {
-          new java.io.File(dir.getPath + "/logo.jpg")
-        }
-        else {
-          new java.io.File(dir.getParentFile.getPath + "/logo.jpg")
-        }
+        val logofile = PrintUtil.locateLogoFile(dir)
         
         def generate(lpp: Int) = toHTMListe(service.getBestenResults, logofile)
         PrintUtil.printDialog(text.value,FilenameDefault(filename, dir), false, generate, orientation = PageOrientation.Portrait)(event)
@@ -1417,126 +1400,126 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
   				  })
   			  }
     }
-
-    val actionButtons = programm match {
-      case None =>
-      List[Button](generateNotenblaetter, riegeRenameButton, riegenRemoveButton)
-      case Some(progrm) =>
-      val addButton = new Button {
-        text = "Athlet hinzufügen"
-        minWidth = 75
-        onAction = (event: ActionEvent) => {
-          new AthletSelectionDialog(
-            text.value, progrm, wertungen.map(w => w.head.init.athlet), service,
-            (selection: Set[Long]) => {
-              service.assignAthletsToWettkampf(wettkampf.id, Set(progrm.id), selection)
-              reloadData()
-            }
-          ).execute(event)
-        }
-      }
-      val pasteFromExcel = new Button("Aus Excel einfügen ...") {
-        onAction = (event: ActionEvent) => {
-          doPasteFromExcel(Some(progrm))(event)
-        }
-      }
-      val removeButton = new Button {
-        text = "Athlet entfernen"
-        minWidth = 75
-        onAction = (event: ActionEvent) => {
-          if (!wkview.selectionModel().isEmpty) {
-        	  val wertungEditor = wkview.selectionModel().getSelectedItem.head
-            val athletwertungen = wkview.selectionModel().getSelectedItem.map(_.init.id).toSet
-            implicit val impevent = event
-            PageDisplayer.showInDialog(text.value, new DisplayablePage() {
-              def getPage: Node = {
-                new HBox {
-                  prefHeight = 50
-                  alignment = Pos.BottomRight
-                  hgrow = Priority.Always
-                  children = Seq(
-                      new Label(
-                          s"Soll '${wertungEditor.init.athlet.easyprint}' wirklich aus der Einteilung im ${wertungEditor.init.wettkampfdisziplin.programm.name} entfernt werden?"))
-                }
-              }
-            }, new Button("OK") {
-              onAction = (event: ActionEvent) => {
-                service.unassignAthletFromWettkampf(athletwertungen)
-                wkModel.remove(wkview.selectionModel().getSelectedIndex)
-              }
-            })
-          }
-        }
-      }
-      val moveToOtherProgramButton = new Button {
-        text = programm.map(p => p.head.id match {case 20 => "Turner Kategorie wechseln ..." case 1  => "." case _ => "Turner Programm wechseln ..."}).getOrElse(".")
-        minWidth = 75
-        onAction = (event: ActionEvent) => {
+    
+    val removeButton = new Button {
+      text = "Athlet entfernen"
+      minWidth = 75
+      onAction = (event: ActionEvent) => {
+        if (!wkview.selectionModel().isEmpty) {
+      	  val wertungEditor = wkview.selectionModel().getSelectedItem.head
+          val athletwertungen = wkview.selectionModel().getSelectedItem.map(_.init.id).toSet
           implicit val impevent = event
-          val programms = programm.map(p => service.readWettkampfLeafs(p.head.id)).get
-          val prmodel = ObservableBuffer[ProgrammView](programms)
-          val cbProgramms = new ComboBox[ProgrammView] {
-            items = prmodel
-          }
           PageDisplayer.showInDialog(text.value, new DisplayablePage() {
             def getPage: Node = {
               new HBox {
                 prefHeight = 50
                 alignment = Pos.BottomRight
                 hgrow = Priority.Always
-                children = Seq(new Label("Neue Zuteilung  "), cbProgramms)
+                children = Seq(
+                    new Label(
+                        s"Soll '${wertungEditor.init.athlet.easyprint}' wirklich aus der Einteilung im ${wertungEditor.init.wettkampfdisziplin.programm.name} entfernt werden?"))
               }
             }
           }, new Button("OK") {
             onAction = (event: ActionEvent) => {
-              if (!wkview.selectionModel().isEmpty) {
-                service.moveToProgram(wettkampf.id, cbProgramms.selectionModel().selectedItem.value.id, wkview.selectionModel().getSelectedItem.head.init.athlet.id)
-                reloadData()
-              }
+              service.unassignAthletFromWettkampf(athletwertungen)
+              wkModel.remove(wkview.selectionModel().getSelectedIndex)
             }
           })
         }
       }
-      val setRiege2ForAllButton = new Button {
-        text = "2. Riege"
-        tooltip = "2. Riegenzuteilung für alle in der Liste angezeigten Tu/Ti"
-        minWidth = 75
-        onAction = (event: ActionEvent) => {
-          implicit val impevent = event
-          val selectedRiege = wkModel
-					val txtRiegenName = new TextField
-				  PageDisplayer.showInDialog(text.value, new DisplayablePage() {
-					  def getPage: Node = {
-					  new HBox {
-						  prefHeight = 50
-								  alignment = Pos.BottomRight
-								  hgrow = Priority.Always
-								  children = Seq(new Label("Neuer Riegenname für die zweite Riegenzuteilung "), txtRiegenName)
+    }
+    val moveToOtherProgramButton = new Button {
+      text = programm.map(p => p.head.id match {case 20 => "Turner Kategorie wechseln ..." case 1  => "." case _ => "Turner Programm wechseln ..."}).getOrElse(".")
+      minWidth = 75
+      onAction = (event: ActionEvent) => {
+        implicit val impevent = event
+        val programms = programm.map(p => service.readWettkampfLeafs(p.head.id)).get
+        val prmodel = ObservableBuffer[ProgrammView](programms)
+        val cbProgramms = new ComboBox[ProgrammView] {
+          items = prmodel
+        }
+        PageDisplayer.showInDialog(text.value, new DisplayablePage() {
+          def getPage: Node = {
+            new HBox {
+              prefHeight = 50
+              alignment = Pos.BottomRight
+              hgrow = Priority.Always
+              children = Seq(new Label("Neue Zuteilung  "), cbProgramms)
+            }
+          }
+        }, new Button("OK") {
+          onAction = (event: ActionEvent) => {
+            if (!wkview.selectionModel().isEmpty) {
+              service.moveToProgram(wettkampf.id, cbProgramms.selectionModel().selectedItem.value.id, wkview.selectionModel().getSelectedItem.head.init.athlet.id)
+              reloadData()
+            }
+          }
+        })
+      }
+    }
+    val setRiege2ForAllButton = new Button {
+      text = "2. Riege"
+      tooltip = "2. Riegenzuteilung für alle in der Liste angezeigten Tu/Ti"
+      minWidth = 75
+      onAction = (event: ActionEvent) => {
+        implicit val impevent = event
+        val selectedRiege = wkModel
+				val txtRiegenName = new TextField
+			  PageDisplayer.showInDialog(text.value, new DisplayablePage() {
+				  def getPage: Node = {
+				  new HBox {
+					  prefHeight = 50
+							  alignment = Pos.BottomRight
+							  hgrow = Priority.Always
+							  children = Seq(new Label("Neuer Riegenname für die zweite Riegenzuteilung "), txtRiegenName)
+				  }
+			  }
+			  }, new Button("OK") {
+				  onAction = (event: ActionEvent) => {
+					  KuTuApp.invokeWithBusyIndicator {
+					    val ws = selectedRiege.map(wl => wl.map(w => w.init.copy(riege2 = if(txtRiegenName.text.value.nonEmpty) Some(txtRiegenName.text.value) else None).toWertung))
+						  ws.foreach { x => x.foreach(service.updateWertungSimple(_))}
+						  reloadData()
 					  }
 				  }
-				  }, new Button("OK") {
-					  onAction = (event: ActionEvent) => {
-						  KuTuApp.invokeWithBusyIndicator {
-						    val ws = selectedRiege.map(wl => wl.map(w => w.init.copy(riege2 = if(txtRiegenName.text.value.nonEmpty) Some(txtRiegenName.text.value) else None).toWertung))
-							  ws.foreach { x => x.foreach(service.updateWertungSimple(_))}
-							  reloadData()
-						  }
-					  }
-				  })
-        }
+			  })
       }
+    }
 
-      //addButton.disable <== when (wkview.selectionModel.value.selectedItemProperty.isNull()) choose true otherwise false
-      val moveAvaillable = programm.forall { p => p.head.id != 1l }
-      moveToOtherProgramButton.disable <== when(wkview.selectionModel.value.selectedItemProperty.isNull()) choose moveAvaillable otherwise false
-      setRiege2ForAllButton.disable <== when(Bindings.createBooleanBinding(() => {
-        wkModel.isEmpty
-      },
-        wkModel
-      )) choose true otherwise false
-      removeButton.disable <== when(wkview.selectionModel.value.selectedItemProperty.isNull()) choose true otherwise false
+    //addButton.disable <== when (wkview.selectionModel.value.selectedItemProperty.isNull()) choose true otherwise false
+    val moveAvaillable = programm.forall { p => p.head.id != 1l }
+    moveToOtherProgramButton.disable <== when(wkview.selectionModel.value.selectedItemProperty.isNull()) choose moveAvaillable otherwise false
+    setRiege2ForAllButton.disable <== when(Bindings.createBooleanBinding(() => {
+      wkModel.isEmpty
+    },
+      wkModel
+    )) choose true otherwise false
+    removeButton.disable <== when(wkview.selectionModel.value.selectedItemProperty.isNull()) choose true otherwise false
 
-      List(addButton, pasteFromExcel, moveToOtherProgramButton, setRiege2ForAllButton, generateTeilnehmerListe, generateNotenblaetter, removeButton).filter(btn => !btn.text.value.equals("."))
+    val actionButtons = programm match {
+      case None =>
+        List[Button](generateTeilnehmerListe, generateNotenblaetter, setRiege2ForAllButton, riegeRenameButton, riegenRemoveButton)
+      case Some(progrm) =>
+        val addButton = new Button {
+          text = "Athlet hinzufügen"
+          minWidth = 75
+          onAction = (event: ActionEvent) => {
+            new AthletSelectionDialog(
+              text.value, progrm, wertungen.map(w => w.head.init.athlet), service,
+              (selection: Set[Long]) => {
+                service.assignAthletsToWettkampf(wettkampf.id, Set(progrm.id), selection)
+                reloadData()
+              }
+            ).execute(event)
+          }
+        }
+        val pasteFromExcel = new Button("Aus Excel einfügen ...") {
+          onAction = (event: ActionEvent) => {
+            doPasteFromExcel(Some(progrm))(event)
+          }
+        }
+        List(addButton, pasteFromExcel, moveToOtherProgramButton, setRiege2ForAllButton, generateTeilnehmerListe, generateNotenblaetter, removeButton).filter(btn => !btn.text.value.equals("."))
     }
 
     val clearButton = new Button {

@@ -31,6 +31,12 @@ import scalafx.print.PrintResolution
 import scalafx.print.PrintQuality
 import java.awt.image.BufferedImage
 import java.util.concurrent.atomic.AtomicBoolean
+import javax.print.attribute.ResolutionSyntax
+import javax.print.attribute.standard.PrinterResolution
+import com.sun.xml.internal.messaging.saaj.util.ByteInputStream
+import java.io.FileInputStream
+import java.io.BufferedInputStream
+import scala.io.Source
 
 
 object PrintUtil {
@@ -173,7 +179,7 @@ object PrintUtil {
       job.getJobSettings().setPageLayout(layout)
       job.getJobSettings().setJobName("KuTuApp Printing Job")
       job.jobSettings.printQuality = PrintQuality.High
-      
+//      job.jobSettings.printResolution = new PrintResolution(600,600,ResolutionSyntax.DPI)
       engine.print(job);
     } 
     finally {
@@ -181,10 +187,23 @@ object PrintUtil {
     }
   }
   
+  def locateLogoFile(wettkampfDir: File) = {
+    val prefferedLogoFileNames = (List("logo.svg", "logo.png", "logo.jpg", "logo.jpeg").map(name => new java.io.File(wettkampfDir.getPath + "/" + name)) ++ 
+                                List("logo.svg", "logo.png", "logo.jpg", "logo.jpeg").map(name => new java.io.File(wettkampfDir.getParentFile + "/" + name)))
+    prefferedLogoFileNames.find(_.exists).getOrElse(prefferedLogoFileNames.head);
+  }
+  
   implicit class ImageFile(file: File) {
     def imageSrcForWebEngine = {
-      if (PRINT_TO_BROWSER.get) {
-        file.toURI.toString
+      if(file.getName.endsWith("svg")) {
+          val in = new FileInputStream(file)
+          val imagedata = try {
+            val buffer = Source.fromInputStream(in).mkString;
+            "data:image/svg+xml;base64," + Base64.getMimeEncoder().encodeToString(buffer.getBytes())
+          } finally {
+            in.close
+          }
+          imagedata
       } else {
         val imageBuffer = ImageIO.read(file)
         val output = new ByteArrayOutputStream()

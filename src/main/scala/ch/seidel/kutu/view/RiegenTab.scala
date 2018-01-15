@@ -979,12 +979,7 @@ class RiegenTab(wettkampf: WettkampfView, override val service: KutuService) ext
       if(!dir.exists()) {
         dir.mkdirs();
       }
-      val logofile = if(new java.io.File(dir.getPath + "/logo.jpg").exists()) {
-        new java.io.File(dir.getPath + "/logo.jpg")
-      }
-      else {
-        new java.io.File(dir.getParentFile.getPath + "/logo.jpg")
-      }
+      val logofile = PrintUtil.locateLogoFile(dir)
       def generate(lpp: Int) = (new Object with RiegenblattToHtmlRenderer).toHTML(seriendaten, logofile)
       PrintUtil.printDialog(text.value, FilenameDefault(filename, dir), false, generate, orientation = PageOrientation.Portrait)(event)
     }

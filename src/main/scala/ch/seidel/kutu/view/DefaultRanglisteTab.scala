@@ -229,12 +229,7 @@ abstract class DefaultRanglisteTab(override val service: KutuService) extends Ta
               "W" -> service.listDisziplinesZuWettkampf(x._2.head.wettkampf.id, Some("W"))
             , "M" -> service.listDisziplinesZuWettkampf(x._2.head.wettkampf.id, Some("M")))
         }
-      val logofile = if(new java.io.File(getSaveAsFilenameDefault.dir.getPath + "/logo.jpg").exists()) {
-        new java.io.File(getSaveAsFilenameDefault.dir.getPath + "/logo.jpg")
-      }
-      else {
-        new java.io.File(getSaveAsFilenameDefault.dir.getParentFile.getPath + "/logo.jpg")
-      }
+      val logofile = PrintUtil.locateLogoFile(getSaveAsFilenameDefault.dir)
       val ret = toHTML(combination, linesPerPage, cbModus.selected.value, diszMap, logofile)
       if(linesPerPage == 0){
         webView.engine.loadContent(ret)
