@@ -12,10 +12,12 @@ import scala.annotation.tailrec
 import ch.seidel.kutu.domain._
 import ch.seidel.kutu.view._
 import ch.seidel.kutu.squad.RiegenBuilder
+import org.slf4j.LoggerFactory
 
 /**
  */
 object ResourceExchanger extends KutuService with RiegenBuilder {
+  private val logger = LoggerFactory.getLogger(this.getClass)
   private val rm = reflect.runtime.universe.runtimeMirror(getClass.getClassLoader)
 
   def importWettkampf(filename: String) = {
@@ -43,7 +45,7 @@ object ResourceExchanger extends KutuService with RiegenBuilder {
     }
 
     val (vereinCsv, vereinHeader) = collection("vereine.csv")
-    println("importing vereine ...", vereinHeader)
+    logger.debug("importing vereine ...", vereinHeader)
     val vereinNameIdx = vereinHeader("name")
     val vereinVerbandIdx = vereinHeader.getOrElse("verband", -1)
     val vereinIdIdx = vereinHeader("id")
@@ -54,7 +56,7 @@ object ResourceExchanger extends KutuService with RiegenBuilder {
     }.toMap
 
     val (athletCsv, athletHeader) = collection("athleten.csv")
-    println("importing athleten ...", athletHeader)
+    logger.debug("importing athleten ...", athletHeader)
     val cache = new java.util.ArrayList[MatchCode]()
     val athletInstances = athletCsv.map(parseLine).filter(_.size == athletHeader.size).map{fields =>
       val geb = fields(athletHeader("gebdat")).replace("Some(", "").replace(")","")
@@ -93,7 +95,7 @@ object ResourceExchanger extends KutuService with RiegenBuilder {
     }.toMap
 
     val (wettkampfCsv, wettkampfHeader) = collection("wettkampf.csv")
-    println("importing wettkampf ...", wettkampfHeader)
+    logger.debug("importing wettkampf ...", wettkampfHeader)
     val wettkampfInstances = wettkampfCsv.map(parseLine).filter(_.size == wettkampfHeader.size).map{fields =>
       val wettkampf = createWettkampf(
           auszeichnung = fields(wettkampfHeader("auszeichnung")),
@@ -108,7 +110,7 @@ object ResourceExchanger extends KutuService with RiegenBuilder {
       (w._2.id, listWettkampfDisziplines(w._2.id).map(d => d.id -> d).toMap)
     }
     val (wertungenCsv, wertungenHeader) = collection("wertungen.csv")
-    println("importing wertungen ...", wertungenHeader)
+    logger.debug("importing wertungen ...", wertungenHeader)
     val wertungInstances = wertungenCsv.map(parseLine).filter(_.size == wertungenHeader.size).map{fields =>
       val athletid: Long = fields(wertungenHeader("athletId"))
       val wettkampfid: Long = fields(wertungenHeader("wettkampfId"))
@@ -137,7 +139,7 @@ object ResourceExchanger extends KutuService with RiegenBuilder {
       wertungen.foreach { w =>
         if(wkdisziplines(w.wettkampfId).contains(w.wettkampfdisziplinId)) {
           if(w.endnote < 1 && !empty) {
-            println("WARNING: not Importing zero-measure for " + (athletInstances.get(athletid + "") match {
+            logger.debug("WARNING: not Importing zero-measure for " + (athletInstances.get(athletid + "") match {
               case Some(a) => a.easyprint
               case None => ""
             }) + " and " + wkdisziplines(w.wettkampfId)(w.wettkampfdisziplinId).kurzbeschreibung)
@@ -147,7 +149,7 @@ object ResourceExchanger extends KutuService with RiegenBuilder {
           }
         }
         else {
-          println("WARNING: No matching Disciplin - " + w)
+          logger.debug("WARNING: No matching Disciplin - " + w)
         }
       }
     }
@@ -157,14 +159,14 @@ object ResourceExchanger extends KutuService with RiegenBuilder {
         val (_, athlet) = a
         val completed = completeDisziplinListOfAthletInWettkampf(wettkampf, athlet.id)
         if(completed.nonEmpty) {
-          println("Completed missing disciplines for " + athlet.easyprint, wettkampf.easyprint + ":")
-          println(completed.map(wkdisziplines(wettkampf.id)(_).kurzbeschreibung).mkString("[", ", ", "]"))
+          logger.debug("Completed missing disciplines for " + athlet.easyprint, wettkampf.easyprint + ":")
+          logger.debug(completed.map(wkdisziplines(wettkampf.id)(_).kurzbeschreibung).mkString("[", ", ", "]"))
         }
       }
     }
     if(collection.contains("riegen.csv")) {
       val (riegenCsv, riegenHeader) = collection("riegen.csv")
-      println("importing riegen ...", riegenHeader)
+      logger.debug("importing riegen ...", riegenHeader)
       riegenCsv.map(parseLine).filter(_.size == riegenHeader.size).foreach{fields =>
         val wettkampfid = fields(riegenHeader("wettkampfId"))
         val riege = RiegeRaw(

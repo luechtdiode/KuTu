@@ -39,6 +39,7 @@ import scala.collection.JavaConverters
 import ch.seidel.kutu.renderer.PrintUtil.FilenameDefault
 
 abstract class DefaultRanglisteTab(override val service: KutuService) extends Tab with TabWithService with ScoreToHtmlRenderer {
+
   override val title = ""
 
   /*
@@ -199,7 +200,7 @@ abstract class DefaultRanglisteTab(override val service: KutuService) extends Ta
     def refreshRangliste(query: GroupBy, linesPerPage: Int = 0) = {
       restoring = true
     	val data = getData
-//    	println(query.chainToString)
+//    	logger.debug(query.chainToString)
       val filter = query.asInstanceOf[FilterBy]
       val filterLists = filter.traverse(Seq[Seq[DataObject]]()){ (f, acc) =>
         val allItems = f.asInstanceOf[FilterBy].analyze(data).sortBy { x => x.easyprint}
@@ -241,7 +242,7 @@ abstract class DefaultRanglisteTab(override val service: KutuService) extends Ta
     def restoreGrouper(query: GroupBy) {
       restoring = true
       query.traverse(combs.zip(combfs)){(grp, acc) =>
-        println(grp)
+        logger.debug(grp.toString)        
         if(acc.isEmpty) {
           acc
         }
@@ -251,7 +252,7 @@ abstract class DefaultRanglisteTab(override val service: KutuService) extends Ta
 //          cmb.selectionModel.value.select(grp.asInstanceOf[FilterBy])
 //          cmbf.selectionModel.value.clearSelection()
           grp.asInstanceOf[FilterBy].getFilter.foreach {f =>
-            println(f)
+            logger.debug(f.toString)
 //            cmbf.getSelectionModel.select(f)
           }
           acc.tail

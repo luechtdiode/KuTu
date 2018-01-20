@@ -42,8 +42,15 @@ import scalafx.stage.StageStyle
 import scalafx.beans.property.BooleanProperty
 import scalafx.beans.binding.Bindings
 import scalafx.scene.web.WebView
+import ch.seidel.kutu.http.BootedCore
+import org.slf4j.LoggerFactory
 
-object KuTuApp extends JFXApp with KutuService {
+object KuTuApp extends JFXApp with KutuService with BootedCore {
+  private val logger = LoggerFactory.getLogger(this.getClass)
+  override def stopApp() {
+    shutDown()
+  }
+  
   var tree = AppNavigationModel.create(KuTuApp.this)
   val rootTreeItem = new TreeItem[String]("Dashboard") {
     expanded = true
@@ -56,7 +63,6 @@ object KuTuApp extends JFXApp with KutuService {
     selected <==> modelWettkampfModus
     disable = true
   }
-//  btnWettkampfModus.disable =  <== when(wkview.selectionModel.value.selectedItemProperty.isNull()) choose true otherwise false
 
   var centerPane = PageDisplayer.choosePage(modelWettkampfModus, None, "dashBoard", tree)
 
@@ -140,7 +146,7 @@ object KuTuApp extends JFXApp with KutuService {
         c
       }
     }
-    //println(cursorWaiters)
+    //logger.debug(cursorWaiters)
     if(getStage() != null) {
       getStage().scene.delegate.getValue.cursor = ctoSet
       getStage().scene.delegate.getValue.root.value.requestLayout()
@@ -477,7 +483,7 @@ object KuTuApp extends JFXApp with KutuService {
           }
           import scala.concurrent.ExecutionContext.Implicits._
           wf.andThen {
-            case Failure(f) => println(f)
+            case Failure(f) => logger.debug(f.toString)
             case Success(w) =>
               Platform.runLater {
                 updateTree
@@ -745,13 +751,13 @@ object KuTuApp extends JFXApp with KutuService {
     }
     val st = this.getClass.getResource("/css/Main.css")
     if(st == null) {
-      println("Ressource /css/main.css not found. Class-Anchor: " + this.getClass)
+      logger.debug("Ressource /css/main.css not found. Class-Anchor: " + this.getClass)
     }
     else if(scene() == null) {
-    	println("scene() == null")
+    	logger.debug("scene() == null")
     }
     else if(scene().getStylesheets == null) {
-      println("scene().getStylesheets == null")
+      logger.debug("scene().getStylesheets == null")
     }
     else {
     	scene().stylesheets.add(st.toExternalForm)

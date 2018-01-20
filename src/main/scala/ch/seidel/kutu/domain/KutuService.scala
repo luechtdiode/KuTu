@@ -34,9 +34,11 @@ import scala.concurrent.Await
 import scala.concurrent.duration.Duration
 import scala.collection.JavaConverters
 import ch.seidel.kutu.squad._
+import org.slf4j.LoggerFactory
 
 trait KutuService extends RiegenBuilder {
-
+  private val logger = LoggerFactory.getLogger(this.getClass)
+  
   lazy val databasemysql = Database.forURL(
     url = "jdbc:mysql://localhost:3306/kutu",
 //    url = "jdbc:mysql://localhost:36551/kutu",
@@ -70,7 +72,7 @@ trait KutuService extends RiegenBuilder {
   }
   else {
     val f = new File(System.getProperty("user.home") + "/kutuapp/db")
-    println("try to create for installing the db: " + f);
+    logger.debug("try to create for installing the db: " + f);
     f.mkdirs();
     System.getProperty("user.home") + "/kutuapp/db"
   }
@@ -936,15 +938,15 @@ trait KutuService extends RiegenBuilder {
         case _ => true
       }
       if(vereinSimilarity && preret && jahrgangSimilarity) {
-//        println(" factor " + (namenSimilarity + vorNamenSimilarity) * 2)
+//        logger.debug(" factor " + (namenSimilarity + vorNamenSimilarity) * 2)
         (namenSimilarity + vorNamenSimilarity) * 2
       }
       else if(vereinSimilarity && (preret || (preret2 && jahrgangSimilarity))) {
-//        println(" factor " + (namenSimilarity + vorNamenSimilarity))
+//        logger.debug(" factor " + (namenSimilarity + vorNamenSimilarity))
         namenSimilarity + vorNamenSimilarity
       }
       else {
-//        println(" factor 0")
+//        logger.debug(" factor 0")
         0
       }
     }

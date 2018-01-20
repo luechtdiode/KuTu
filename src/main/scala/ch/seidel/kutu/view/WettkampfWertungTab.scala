@@ -71,6 +71,7 @@ import scalafx.event.subscriptions.Subscription
 import ch.seidel.kutu.renderer.PrintUtil.FilenameDefault
 import ch.seidel.kutu.renderer.PrintUtil
 import scalafx.print.PageOrientation
+import org.slf4j.LoggerFactory
 
 trait TCAccess {
   def getIndex: Int
@@ -89,6 +90,7 @@ class WKTableColumn[T](val index: Int) extends TableColumn[IndexedSeq[WertungEdi
 }
 
 class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[ProgrammView], riege: Option[String], wettkampf: WettkampfView, override val service: KutuService, athleten: => IndexedSeq[WertungView]) extends Tab with TabWithService {
+  val logger = LoggerFactory.getLogger(this.getClass)
 	implicit def doublePropertyToObservableValue(p: DoubleProperty): ObservableValue[Double,Double] = p.asInstanceOf[ObservableValue[Double,Double]]
   private var lazypane: Option[LazyTabPane] = None
   def setLazyPane(pane: LazyTabPane) {
@@ -188,9 +190,9 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
       case Some(s) => 
         s.cancel
         subscription = None
-//        println("subscription released "+ programm + wettkampf + hashCode())
+//        logger.debug("subscription released "+ programm + wettkampf + hashCode())
       case None =>
-//        println("nonexisting subscription released "+ programm+ wettkampf + hashCode())
+//        logger.debug("nonexisting subscription released "+ programm+ wettkampf + hashCode())
     }
   }
   
@@ -204,9 +206,9 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
           }
           KuTuApp.invokeWithBusyIndicator(op)
         })
-//        println("was not populated and subscription new accquired "+ programm+ wettkampf + hashCode())
+//        logger.debug("was not populated and subscription new accquired "+ programm+ wettkampf + hashCode())
       case _ => 
-//        println("was populated and subscription active "+ programm+ wettkampf + hashCode())
+//        logger.debug("was populated and subscription active "+ programm+ wettkampf + hashCode())
     }
       
     def defaultFilter: (WertungView) => Boolean = {wertung =>
@@ -499,7 +501,7 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
           styleClass += "table-cell-with-value"
           prefWidth = 60
           editable = true
-          //println(text, index)
+          //logger.debug(text, index)
 
           onEditCommit = (evt: CellEditEvent[IndexedSeq[WertungEditor], Double]) => {
             editingEditor = None
@@ -613,7 +615,7 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
             }
           }
           onEditCancel = (evt: CellEditEvent[IndexedSeq[WertungEditor], String]) => {
-  //          println(evt)
+  //          logger.debug(evt)
           }
         }
       },
@@ -655,7 +657,7 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
           	}
           }
           onEditCancel = (evt: CellEditEvent[IndexedSeq[WertungEditor], String]) => {
-  //          println(evt)
+  //          logger.debug(evt)
           }
         }
       })
@@ -979,7 +981,7 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
       }
       import scala.concurrent.ExecutionContext.Implicits._
       cliprawf.andThen {
-        case Failure(t) => println(t)
+        case Failure(t) => logger.debug(t.toString)
         case Success(clipraw) => Platform.runLater{
 //        val clipraw = Await.result(cliprawf, Duration.Inf)
         if(clipraw.nonEmpty) {
@@ -1187,7 +1189,7 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
               }.toList
               if (!athletModel.isEmpty) {
                 val pgathl = clip.groupBy(_._1).map(x => (x._1, x._2.map(_._2.id)))
-                println(pgathl)
+                logger.debug(pgathl.toString)
                 for((progId, athletes) <- pgathl) {
                   service.assignAthletsToWettkampf(wettkampf.id, Set(progId), athletes.toSet)
                 }
@@ -1213,7 +1215,7 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
               acc
             }
           }
-          println(programme)
+          logger.debug(programme.toString)
           val riegen = service.selectRiegen(wettkampf.id).map(r => r.r -> (r.start.map(_.name).getOrElse(""), r.durchgang.getOrElse(""))).toMap
           val seriendaten = for {
             programm <- programme
@@ -1274,7 +1276,7 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
               acc
             }
           }
-          println(programme)
+          logger.debug(programme.toString)
           val riegendurchgaenge = service.selectRiegen(wettkampf.id).map(r => r.r-> r).toMap
           val seriendaten = for {
             programm <- programme

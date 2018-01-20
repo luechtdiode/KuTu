@@ -3,9 +3,10 @@ package ch.seidel.kutu.renderer
 import ch.seidel.kutu.domain._
 import java.io.File
 import PrintUtil._
+import org.slf4j.LoggerFactory
 
 object RiegenBuilder {
-
+  val logger = LoggerFactory.getLogger(this.getClass)
   def mapToGeraeteRiegen(kandidaten: List[Kandidat], printorder: Boolean = false): List[GeraeteRiege] = {
 
     def pickStartformationen(geraete: List[(Option[Disziplin], List[Riege])], durchgang: Option[String], extractKandidatEinteilung: Kandidat => (Option[Riege], Seq[Disziplin])) = {

@@ -3,13 +3,15 @@
 	<modelVersion>4.0.0</modelVersion>
 	<groupId>ch.seidel</groupId>
 	<artifactId>KuTu</artifactId>
-	<version>1.2.0-SNAPSHOT</version>
+	<version>2.0.0-SNAPSHOT</version>
 
 	<inceptionYear>2014</inceptionYear>
 
 	<properties>
 		<scala.majorversion>2.12</scala.majorversion>
 		<scala.version>${scala.majorversion}.4</scala.version>
+		<akkaHttp.version>10.0.10</akkaHttp.version>
+		<akka.version>2.5.4</akka.version>
 		<maven-scala-plugin.version>3.2.1</maven-scala-plugin.version>
 
 		<maven.compiler.source>1.8</maven.compiler.source>
@@ -77,19 +79,85 @@
 			<artifactId>sqlite-jdbc</artifactId>
 			<version>3.21.0.1</version>
 		</dependency>
-
+		
+		<!-- akka / akkahttp -->
+		<dependency>
+			<groupId>com.typesafe.akka</groupId>
+			<artifactId>akka-http_${scala.majorversion}</artifactId>
+			<version>${akkaHttp.version}</version>
+		</dependency>
+		<dependency>
+			<groupId>com.typesafe.akka</groupId>
+			<artifactId>akka-http-spray-json_${scala.majorversion}</artifactId>
+			<version>${akkaHttp.version}</version>
+		</dependency>
+		<dependency>
+			<groupId>com.typesafe.akka</groupId>
+			<artifactId>akka-http-xml_${scala.majorversion}</artifactId>
+			<version>${akkaHttp.version}</version>
+		</dependency>
+		<dependency>
+			<groupId>com.typesafe.akka</groupId>
+			<artifactId>akka-http-testkit_${scala.majorversion}</artifactId>
+			<version>${akkaHttp.version}</version>
+			<scope>Test</scope>
+		</dependency>
+		<dependency>
+			<groupId>com.typesafe.akka</groupId>
+			<artifactId>akka-stream_${scala.majorversion}</artifactId>
+			<version>${akka.version}</version>
+		</dependency>
+		<dependency>
+			<groupId>com.typesafe.akka</groupId>
+			<artifactId>akka-cluster_${scala.majorversion}</artifactId>
+			<version>${akka.version}</version>
+		</dependency>
+		<dependency>
+			<groupId>com.typesafe.akka</groupId>
+			<artifactId>akka-cluster-tools_${scala.majorversion}</artifactId>
+			<version>${akka.version}</version>
+		</dependency>
+		
+		<!-- JWT -->
+		<dependency>
+			<groupId>com.jason-goodwin</groupId>
+			<artifactId>authentikat-jwt_${scala.majorversion}</artifactId>
+			<version>0.4.5</version>
+		</dependency>
+		
 		<!-- Slick -->
 		<dependency>
 			<groupId>com.typesafe.slick</groupId>
 			<artifactId>slick_${scala.majorversion}</artifactId>
 			<version>3.2.1</version>
 		</dependency>
+		
 		<!-- dependency>
+			<groupId>org.apache.logging.log4j</groupId>
+			<artifactId>log4j-api</artifactId>
+			<version>2.10.0</version>
+		</dependency>
+		<dependency>
+			<groupId>org.apache.logging.log4j</groupId>
+			<artifactId>log4j-core</artifactId>
+			<version>2.10.0</version>
+		</dependency>		
+		<dependency>
 			<groupId>org.slf4j</groupId>
 			<artifactId>slf4j-nop</artifactId>
 			<version>1.7.25</version>
 		</dependency-->
-
+		<dependency>
+			<groupId>org.slf4j</groupId>
+			<artifactId>slf4j-api</artifactId>
+			<version>1.7.25</version>
+		</dependency>
+		<dependency>
+			<groupId>ch.qos.logback</groupId>
+			<artifactId>logback-classic</artifactId>
+			<version>1.2.3</version>
+		</dependency>
+		
 		<dependency>
 			<groupId>commons-codec</groupId>
 			<artifactId>commons-codec</artifactId>
@@ -110,7 +178,7 @@
 			<groupId>org.scalatest</groupId>
 			<artifactId>scalatest_${scala.majorversion}</artifactId>
 			<version>3.0.3</version>
-			<scope>test</scope>
+			<scope>Test</scope>
 		</dependency>
 		
 	</dependencies>
@@ -272,7 +340,7 @@
 								<!-- argument>-Bdescription="Wettkampf Verwaltung und Durchfuehrung"</argument -->
 								<argument>-Bmac.CFBundleIdentifier="ch.seidel.KuTuApp"</argument>
 								<argument>-Bmac.CFBundleName=Wettkampf</argument>
-								<argument>-Bmac.CFBundleVersion=120</argument>
+								<argument>-Bmac.CFBundleVersion=200</argument>
 							</arguments>
 						</configuration>
 					</execution>

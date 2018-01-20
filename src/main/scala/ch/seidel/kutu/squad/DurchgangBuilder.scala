@@ -3,8 +3,10 @@ package ch.seidel.kutu.squad
 import scala.annotation.tailrec
 import ch.seidel.kutu.domain._
 import ch.seidel.kutu.squad._
+import org.slf4j.LoggerFactory
 
 case class DurchgangBuilder(service: KutuService) extends Mapper with RiegenSplitter with StartGeraetGrouper {
+  private val logger = LoggerFactory.getLogger(classOf[DurchgangBuilder])
   
   def suggestDurchgaenge(wettkampfId: Long, maxRiegenSize: Int = 14,  
       durchgangfilter: Set[String] = Set.empty, programmfilter: Set[Long] = Set.empty,
@@ -32,7 +34,7 @@ case class DurchgangBuilder(service: KutuService) extends Mapper with RiegenSpli
       val wkGrouper = KuTuGeTuGrouper.wkGrouper
       val wkFilteredGrouper = wkGrouper.take(if(riegencnt == 0) wkGrouper.size-1 else wkGrouper.size)
       if(progAthlWertungen.keys.size > 1) {
-        println(progAthlWertungen.keys.size, progAthlWertungen.keys.map(k => (progAthlWertungen(k).size, progAthlWertungen(k).map(w => w._2.size).sum)))
+        logger.debug(progAthlWertungen.keys.size, progAthlWertungen.keys.map(k => (progAthlWertungen(k).size, progAthlWertungen(k).map(w => w._2.size).sum)))
       }
       val riegen = progAthlWertungen.flatMap{x =>
         val (programm, wertungen) = x

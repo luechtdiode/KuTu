@@ -4,8 +4,10 @@ import ch.seidel.kutu.domain.Wertung
 import ch.seidel.kutu.domain.WertungView
 import java.io.File
 import PrintUtil._
+import org.slf4j.LoggerFactory
 
 trait BestenListeToHtmlRenderer {
+  val logger = LoggerFactory.getLogger(classOf[BestenListeToHtmlRenderer])
   val intro = """<html>
     <head>
       <meta charset="UTF-8" />
@@ -122,7 +124,7 @@ trait BestenListeToHtmlRenderer {
   def toHTMListe(wertungen: Seq[WertungView], logo: File): String = {
     val kandidatenPerKategorie = wertungen.sortBy { k =>
       val krit = f"${k.endnote}%-10s ${k.wettkampfdisziplin.ord}%-10s ${k.athlet.easyprint}%-40s"
-      //println(krit)
+      //logger.debug(krit)
       krit
     }
     val rawpages = for {

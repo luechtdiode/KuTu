@@ -11,8 +11,11 @@ import ch.seidel.kutu.domain._
 import java.util.concurrent.atomic.AtomicBoolean
 import java.io.File
 import PrintUtil._
+import org.slf4j.LoggerFactory
 
 trait ScoreToHtmlRenderer {
+  val logger = LoggerFactory.getLogger(this.getClass)
+  
   protected val title: String
   
   def toHTML(gs: List[GroupSection], athletsPerPage: Int = 0, sortAlphabetically: Boolean = false, diszMap: Map[Long,Map[String,List[Disziplin]]], logoFile: File): String = {
