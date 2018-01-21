@@ -1,0 +1,20 @@
+{
+  "name": "resultcatcher",
+  "app_id": "",
+  "type": "ionic-angular",
+  "integrations": {
+    "cordova": {}
+  },
+  "proxies": [
+    {
+      "path": "/api",
+      "proxyUrl2": "https://38qniweusmuwjkbr.myfritz.net/mbq/api",
+      "proxyUrl": "https://mws-01:5757/api",
+      "rejectUnauthorized": false,
+      "autoRewrite": true,
+      "xfwd": true,
+      "secure": false,
+      "changeOrigin": true,
+      "logLevel": "debug"    }
+  ]
+}

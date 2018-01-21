@@ -1,0 +1,40 @@
+<ion-header>
+  <ion-navbar>
+    <button ion-button menuToggle>
+      <ion-icon name="menu"></ion-icon>
+    </button>
+    <ion-title>Kampfrichter Resultaterfassung</ion-title>
+  </ion-navbar>
+</ion-header>
+
+<ion-content padding>
+  <ion-list>
+    <ion-item>
+      <ion-label>Wettkampf</ion-label>
+      <ion-select *ngIf="getCompetitions()" [(ngModel)]='competition' okText='Okay' cancelText='Abbrechen'>
+        <ion-option *ngFor='let comp of getCompetitions()' [value]='comp.id'>{{comp.titel}}</ion-option>
+      </ion-select>
+    </ion-item>
+    <ion-item>
+      <ion-label>Durchgang</ion-label>
+      <ion-select *ngIf="competition && getDurchgaenge()" [(ngModel)]='durchgang' okText='Okay' cancelText='Abbrechen'>
+          <ion-option *ngFor='let d of getDurchgaenge()' [value]='d'>{{d}}</ion-option>
+      </ion-select>
+    </ion-item>
+    <ion-item>
+      <ion-label>Gerät</ion-label>
+      <ion-select *ngIf="durchgang && getGeraete()" [(ngModel)]='geraet' okText='Okay' cancelText='Abbrechen'>
+          <ion-option *ngFor='let g of getGeraete()' [value]='g.id'>{{g.name}}</ion-option>
+      </ion-select>
+    </ion-item>
+    <ion-item>
+      <ion-label>Wiederholung</ion-label>
+      <ion-range *ngIf="geraet &&getSteps()" [(ngModel)]="step" [min]="1" [max]="getSteps().length" [step]="1" [snaps]="true" color="secondary"></ion-range>
+    </ion-item>
+  </ion-list>
+  <ion-list *ngIf="step && getWertungen()">
+      <ion-item *ngFor='let w of getWertungen()'>{{w.name + ' (' + w.wertung.riege + ')'}}
+        <ion-note item-end>{{w.wertung.endnote}}</ion-note>
+      </ion-item>
+  </ion-list>
+</ion-content>
