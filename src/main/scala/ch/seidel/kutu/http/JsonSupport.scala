@@ -3,18 +3,11 @@ package ch.seidel.kutu.http
 import scala.reflect.ClassTag
 import akka.http.scaladsl.marshallers.sprayjson.SprayJsonSupport
 import spray.json._
+import ch.seidel.kutu.domain._
 
 trait JsonSupport extends SprayJsonSupport with EnrichedJson {
   // import the default encoders for primitive types (Int, String, Lists etc)
   import DefaultJsonProtocol._
-
-//  implicit object TicketStateJsonSupport extends CaseObjectJsonSupport[TicketState]
-//  implicit val orderTypeJsonFormat: RootJsonFormat[TicketState] = TicketStateJsonSupport
-  
-//  implicit val eventJsonFormat = jsonFormat5(Event)
-//  implicit val eventsJsonFormat = jsonFormat1(Events)
-//  implicit val eventUpdatedFormat = jsonFormat1(EventUpdated)
-//  implicit val eventDeletedFormat = jsonFormat1(EventDeleted)
   
   // support for websocket incoming json-messages
 //  val caseClassesJsonReader: Map[String, JsonReader[_ <: MobileTicketQueueProtokoll]] = Map(

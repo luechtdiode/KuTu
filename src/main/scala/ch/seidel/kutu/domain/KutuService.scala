@@ -783,19 +783,30 @@ trait KutuService extends RiegenBuilder {
   }
   
   def listWettkaempfe = {
-    sql"""          select * from wettkampf """.as[Wettkampf]
+     sql"""          select * from wettkampf """.as[Wettkampf]
   }
-  def listWettkaempfeView = {
+  def listWettkaempfeAsync = {
+     database.run{ listWettkaempfe }
+  }
+  
+  def listWettkaempfeViewAsync = {
     val cache = scala.collection.mutable.Map[Long, ProgrammView]()
-    Await.result(database.run{
+    database.run{
       sql"""          select * from wettkampf """.as[WettkampfView]
-    }, Duration.Inf)
+    }
+  }
+  
+  def listWettkaempfeView = {
+    Await.result(listWettkaempfeViewAsync, Duration.Inf)
   }
 
-  def readWettkampf(id: Long) = {
-    Await.result(database.run{
+  def readWettkampfAsync(id: Long) = {
+    database.run{
       sql"""          select * from wettkampf where id=$id""".as[Wettkampf].head
-    }, Duration.Inf)
+    }
+  }
+  def readWettkampf(id: Long) = {
+    Await.result(readWettkampfAsync(id), Duration.Inf)
   }
 
   def selectWertungen(vereinId: Option[Long] = None, athletId: Option[Long] = None, wettkampfId: Option[Long] = None, disziplinId: Option[Long] = None): Seq[WertungView] = {
@@ -1167,5 +1178,81 @@ trait KutuService extends RiegenBuilder {
   
   def resetBestenResults {
     shouldResetBestenResults = true;
+  }
+  
+  def getAllKandidatenWertungen(competitionId: Long) = {
+    val driver = selectWertungen(wettkampfId = Some(competitionId)).groupBy { x => x.athlet }.map(_._2).toList
+    val programme = driver.flatten.map(x => x.wettkampfdisziplin.programm).foldLeft(Seq[ProgrammView]()){(acc, pgm) =>
+      if(!acc.exists { x => x.id == pgm.id }) {
+        acc :+ pgm
+      }
+      else {
+        acc
+      }
+    }
+    val riegendurchgaenge = selectRiegen(competitionId).map(r => r.r-> r).toMap
+    val rds = riegendurchgaenge.values.map(v => v.durchgang.getOrElse("")).toSet
+    val disziplinsZuDurchgangR1 = listDisziplinesZuDurchgang(rds, competitionId, true)
+    val disziplinsZuDurchgangR2 = listDisziplinesZuDurchgang(rds, competitionId, false)
+
+    for {
+      programm <- programme
+      athletwertungen <- driver.map(we => we.filter { x => x.wettkampfdisziplin.programm.id == programm.id})
+      if(athletwertungen.nonEmpty)
+      val einsatz = athletwertungen.head
+      val athlet = einsatz.athlet
+    }
+    yield {
+      val riegendurchgang1 = riegendurchgaenge.get(einsatz.riege.getOrElse(""))
+      val riegendurchgang2 = riegendurchgaenge.get(einsatz.riege2.getOrElse(""))
+
+      Kandidat(
+      einsatz.wettkampf.easyprint
+      ,athlet.geschlecht match {case "M" => "Turner"  case _ => "Turnerin"}
+      ,einsatz.wettkampfdisziplin.programm.easyprint
+      ,athlet.id
+      ,athlet.name
+      ,athlet.vorname
+      ,AthletJahrgang(athlet.gebdat).hg
+      ,athlet.verein match {case Some(v) => v.easyprint case _ => ""}
+      ,riegendurchgang1
+      ,riegendurchgang2
+      ,athletwertungen.filter{wertung =>
+        if(wertung.wettkampfdisziplin.feminim == 0 && !wertung.athlet.geschlecht.equalsIgnoreCase("M")) {
+          false
+        }
+        else if(wertung.wettkampfdisziplin.masculin == 0 && wertung.athlet.geschlecht.equalsIgnoreCase("M")) {
+          false
+        }
+        else {
+          riegendurchgang1.forall{x =>
+            x.durchgang.nonEmpty &&
+            x.durchgang.forall{d =>
+              d.nonEmpty &&
+              disziplinsZuDurchgangR1.get(d).map(dm => dm.contains(wertung.wettkampfdisziplin.disziplin)).getOrElse(false)
+            }
+          }
+        }
+      }.map(_.wettkampfdisziplin.disziplin)
+      ,athletwertungen.filter{wertung =>
+        if(wertung.wettkampfdisziplin.feminim == 0 && !wertung.athlet.geschlecht.equalsIgnoreCase("M")) {
+          false
+        }
+        else if(wertung.wettkampfdisziplin.masculin == 0 && wertung.athlet.geschlecht.equalsIgnoreCase("M")) {
+          false
+        }
+        else {
+          riegendurchgang2.forall{x =>
+            x.durchgang.nonEmpty &&
+            x.durchgang.forall{d =>
+              d.nonEmpty &&
+              disziplinsZuDurchgangR2.get(d).map(dm => dm.contains(wertung.wettkampfdisziplin.disziplin)).getOrElse(false)
+            }
+          }
+        }
+      }.map(_.wettkampfdisziplin.disziplin),
+      athletwertungen
+      )
+    }
   }
 }

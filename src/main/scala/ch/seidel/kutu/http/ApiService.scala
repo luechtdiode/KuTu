@@ -13,7 +13,7 @@ trait ApiService extends RouteConcatenation
 //  private implicit lazy val _ = ch.seidel.kutu.http.Core.system.dispatcher
 
   lazy val allroutes =
-      eventRoutes ~
+      wertungenRoutes ~
       resourceRoutes ~
 //      websocket ~
       complete(StatusCodes.NotFound)

@@ -1,87 +1,123 @@
 package ch.seidel.kutu.http
 
-import akka.actor.{ ActorRef, ActorSystem }
+import scala.concurrent.duration._
+import scala.concurrent.Future
+
+import akka.actor.{ ActorRef, ActorSystem, ActorLogging }
+import akka.pattern.ask
+import akka.util.Timeout
 import akka.event.Logging
 
-import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.model.StatusCodes
 import akka.http.scaladsl.server.Route
 import akka.http.scaladsl.server.directives.MethodDirectives.delete
 import akka.http.scaladsl.server.directives.MethodDirectives.get
 import akka.http.scaladsl.server.directives.MethodDirectives.post
 import akka.http.scaladsl.server.directives.RouteDirectives.complete
+import akka.http.scaladsl.marshallers.sprayjson.SprayJsonSupport
+import akka.http.scaladsl.server.Directives._
 
-import akka.pattern.ask
-import akka.util.Timeout
+import spray.json._
 
-import scala.concurrent.duration._
-import scala.concurrent.Future
+import ch.seidel.kutu.domain._
+import ch.seidel.kutu.renderer.RiegenBuilder
 
-import akka.actor.ActorLogging
-
-trait WertungenRoutes extends JsonSupport with JwtSupport with RouterLogging {
+trait WertungenRoutes extends SprayJsonSupport with EnrichedJson with JwtSupport with RouterLogging with KutuService {
+  import scala.concurrent.ExecutionContext.Implicits.global
+  import slick.jdbc.SQLiteProfile
+  import slick.jdbc.SQLiteProfile.api._
+  
+  import DefaultJsonProtocol._
+  implicit val wkFormat2 = jsonFormat6(Wettkampf)
+  implicit val pgmFormat = jsonFormat7(ProgrammRaw)
+  implicit val disziplinFormat = jsonFormat2(Disziplin)
+  implicit val wertungFormat = jsonFormat(Wertung, "id", "athletId", "wettkampfdisziplinId", "wettkampfId", "noteD", "noteE", "endnote", "riege", "riege2")
+  
   // Required by the `ask` (?) method below
   private implicit lazy val timeout = Timeout(5.seconds) // usually we'd obtain the timeout from the system's configuration
 
-  lazy val eventRoutes: Route = {
-    pathPrefix("api" / "events") {
+  lazy val wertungenRoutes: Route = {
+    pathPrefix("programm") {
       pathEnd {
-        get { ???
-//          val events: Future[Events] =
-//            (eventRegistryActor ? GetEvents).mapTo[Events]
-//          complete(events)
-        } ~ post { ???
-//          authenticated { userid =>
-//            entity(as[Event]) { event =>
-//              val eventCreated: Future[ActionPerformed] =
-//                (eventRegistryActor ? CreateEvent(event)).mapTo[ActionPerformed]
-//              onSuccess(eventCreated) { performed =>
-//                log.info("Created event [{}]: {}", performed.event, performed.description)
-//                complete((StatusCodes.Created, performed))
-//              }
-//            }
-//          }
+        get {
+          complete{ Future { 
+            listRootProgramme().map(x => ProgrammRaw(x.id, x.name, x.aggregate, x.parent.map(_.id).getOrElse(0), x.ord, x.alterVon, x.alterBis)) 
+          } }          
         }
-
-      } ~
-        //#events-get-post
-        //#events-get-delete
-        path(LongNumber) { id =>
-          pathEnd {
-            get { ???
-              //#retrieve-event-info
-//              val maybeEvent: Future[Option[Event]] =
-//                (eventRegistryActor ? GetEvent(id)).mapTo[Option[Event]]
-//              rejectEmptyResponse {
-//                complete(maybeEvent)
-//              }
-              //#retrieve-event-info
-            } ~ delete { ???
-//              authenticated { userid =>
-//                //#events-delete-logic
-//                val eventDeleted: Future[ActionPerformed] =
-//                  (eventRegistryActor ? DeleteEvent(id)).mapTo[ActionPerformed]
-//                onSuccess(eventDeleted) { performed =>
-//                  log.info("Deleted event [{}]: {}", id, performed.description)
-//                  complete((StatusCodes.OK, performed))
-//                }
-//                //#events-delete-logic
-//              }
-            } ~ put { ???
-//              authenticated { userid =>
-//                entity(as[Event]) { event =>
-//                  val eventCreated: Future[ActionPerformed] =
-//                    (eventRegistryActor ? UpdateEvent(event)).mapTo[ActionPerformed]
-//                  onSuccess(eventCreated) { performed =>
-//                    log.info("Created event [{}]: {}", performed.event, performed.description)
-//                    complete((StatusCodes.Created, performed))
-//                  }
-//                  //#events-put-logic
-//                }
-//              }
+      }
+    } ~
+    pathPrefix("competition") {
+      pathEnd {
+        get {
+          complete{ listWettkaempfeAsync }          
+        }
+      }
+    } ~
+    pathPrefix("competition" / LongNumber) { competitionId =>
+      pathEnd {
+        get {
+          complete { Future {
+            RiegenBuilder.mapToGeraeteRiegen(getAllKandidatenWertungen(competitionId).toList)
+              .filter(gr => gr.durchgang.nonEmpty) 
+              .map(gr => gr.durchgang.get)
+              .toSet.toList.sorted
             }
           }
         }
+      } ~
+      path(Segments) {segments => 
+        get {
+          // Durchgang/Geraet/Step
+          segments match { 
+            case List(durchgang) => complete { Future {
+              RiegenBuilder.mapToGeraeteRiegen(getAllKandidatenWertungen(competitionId).toList)
+                .filter(gr => gr.durchgang.exists(_ == durchgang) && gr.disziplin.nonEmpty) 
+                .map(gr => gr.disziplin.get)
+                .toSet.toList
+              }
+            }
+            case List(durchgang, geraet) => complete { Future {
+              val gid: Long = geraet
+              RiegenBuilder.mapToGeraeteRiegen(getAllKandidatenWertungen(competitionId).toList)
+                .filter(gr => gr.durchgang.exists(_ == durchgang)  && gr.disziplin.exists(_.id == gid))
+                .map(gr => gr.halt + 1)
+                .toSet.toList.sorted
+              }
+            }
+            case List(durchgang, geraet, step) => complete { Future {
+              val halt: Int = step
+              val gid: Long = geraet
+              RiegenBuilder.mapToGeraeteRiegen(getAllKandidatenWertungen(competitionId).toList)
+                .filter(gr => 
+                    gr.durchgang.exists(_ == durchgang) && 
+                    gr.disziplin.exists(_.id == gid) && 
+                    gr.halt == halt -1)
+                .flatMap(gr => gr.kandidaten.map(k => (k.name, k.vorname, k.verein, k.geschlecht, k.wertungen.filter(w => w.wettkampfdisziplin.disziplin.id == gid).map(_.toWertung))))
+              }
+            }
+          }
+        } ~
+        put {
+          entity(as[Wertung]) { wertung =>
+            segments match { 
+              case List(durchgang, geraet, step) => complete { Future {
+                if (wertung.wettkampfId == competitionId) {
+                  updateWertungSimple(wertung)
+                }
+                val halt: Int = step
+                val gid: Long = geraet
+                RiegenBuilder.mapToGeraeteRiegen(getAllKandidatenWertungen(competitionId).toList)
+                  .filter(gr => 
+                      gr.durchgang.exists(_ == durchgang) && 
+                      gr.disziplin.exists(_.id == gid) && 
+                      gr.halt == halt -1)
+                  .flatMap(gr => gr.kandidaten.map(k => (k.name, k.vorname, k.verein, k.geschlecht, k.wertungen.filter(w => w.wettkampfdisziplin.disziplin.id == gid).map(_.toWertung))))
+                }
+              }
+            }
+          }
+        }
+      }
     }
   }
 }

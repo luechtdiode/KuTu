@@ -6,6 +6,8 @@ import java.security.MessageDigest
 import spray.json.{ JsString, JsValue, JsonReader, JsonWriter, _ }
 
 import scala.util.Try
+import java.util.Date
+import java.text.SimpleDateFormat
 
 trait EnrichedJson {
   implicit class RichJson(jsValue: JsValue) {
@@ -27,6 +29,42 @@ trait EnrichedJson {
     def asJsonOpt[T](implicit reader: JsonReader[T]): Option[T] = Try(string.parseJson.convertTo[T]).toOption
     def canConvert[T](implicit reader: JsonReader[T]): Boolean = Try(string.parseJson.convertTo[T]).isSuccess
   }
+
+  implicit object DateFormat extends JsonFormat[Date] {
+    private val localIsoDateFormatter = new ThreadLocal[SimpleDateFormat] {
+      override def initialValue() = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSSZ")
+    }
+  
+    private def dateToIsoString(date: Date) = localIsoDateFormatter.get().format(date)
+  
+    private def parseIsoDateString(date: String): Option[Date] = Try{ localIsoDateFormatter.get().parse(date) }.toOption
+    def write(date: Date) = JsString(dateToIsoString(date))
+    def read(json: JsValue) = json match {
+      case JsString(rawDate) =>
+        parseIsoDateString(rawDate)
+          .fold(deserializationError(s"Expected ISO Date format, got $rawDate"))(identity)
+      case error => deserializationError(s"Expected JsString, got $error")
+    }
+  }
+
+
+  implicit object SqlDateFormat extends JsonFormat[java.sql.Date] {
+    private val localIsoDateFormatter = new ThreadLocal[SimpleDateFormat] {
+      override def initialValue() = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSSZ")
+    }
+  
+    private def dateToIsoString(date: java.sql.Date) = localIsoDateFormatter.get().format(date)
+  
+    private def parseIsoDateString(date: String): Option[java.sql.Date] = Try{ new java.sql.Date(localIsoDateFormatter.get().parse(date).getTime) }.toOption
+    def write(date: java.sql.Date) = JsString(dateToIsoString(date))
+    def read(json: JsValue) = json match {
+      case JsString(rawDate) =>
+        parseIsoDateString(rawDate)
+          .fold(deserializationError(s"Expected ISO Date format, got $rawDate"))(identity)
+      case error => deserializationError(s"Expected JsString, got $error")
+    }
+  }
+
 
   import scala.reflect.ClassTag
 
