@@ -5,25 +5,28 @@ import akka.http.scaladsl.model.headers.RawHeader
 import akka.http.scaladsl.server.{ Directives, Directive1, Route }
 import authentikat.jwt._
 import java.util.concurrent.TimeUnit
+import akka.http.scaladsl.server.directives.Credentials
 
 trait JwtSupport extends Directives with Config {
   private lazy val userKey = "user"
   private lazy val expiredAtKey = "expiredAtKey"
-  private lazy val authorizationKey = "x-access-token"
-
-  def authenticated: Directive1[Long] =
-    optionalHeaderValueByName(authorizationKey).flatMap {
+  
+  def authenticated: Directive1[String] =
+    optionalHeaderValueByName(jwtAuthorizationKey).flatMap {
       case Some(jwt) if JsonWebToken.validate(jwt, jwtSecretKey) =>
         if (isTokenExpired(jwt)) {
           complete(StatusCodes.Unauthorized -> "Token expired.")
-        } else {
-          provide(getUserID(getClaims(jwt)))
+        } else { 
+          getUserID(getClaims(jwt)) match {
+            case Some(id) => provide(id)
+            case _=> complete(StatusCodes.Unauthorized)
+          }
         }
 
       case _ => complete(StatusCodes.Unauthorized)
     }
 
-  def setClaims(userid: Long, expiryPeriodInDays: Long) = JwtClaimsSet(
+  def setClaims(userid: String, expiryPeriodInDays: Long) = JwtClaimsSet(
     Map(
       userKey -> userid,
       expiredAtKey -> (System.currentTimeMillis() + TimeUnit.DAYS
@@ -36,7 +39,7 @@ trait JwtSupport extends Directives with Config {
     case _ => None
   }
 
-  def getUserID(claims: Option[Map[String, String]]) = claims.map(_.get(userKey).map(_.toLong).getOrElse(0L)).getOrElse(0L)
+  def getUserID(claims: Option[Map[String, String]]): Option[String] = claims.map(_.get(userKey)).get
 
   private def isTokenExpired(jwt: String) = getClaims(jwt) match {
     case Some(claims) =>

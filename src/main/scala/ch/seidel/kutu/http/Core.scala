@@ -16,28 +16,34 @@ import scala.io.StdIn
 import com.typesafe.config.ConfigFactory
 import org.slf4j.LoggerFactory
 
-object Core {
+object Core extends KuTuSSLContext {
+  val logger = LoggerFactory.getLogger(this.getClass)
   /**
    * Construct the ActorSystem we will use in our application
    */
-  implicit lazy val system = ActorSystem("KuTuApp")
-  // Needed for the Future and its methods flatMap/onComplete in the end
-  implicit val executionContext: ExecutionContext = system.dispatcher
-  implicit val materializer: ActorMaterializer = ActorMaterializer()
+  override implicit val system = ActorSystem("KuTuApp")
+  override implicit val materializer: ActorMaterializer = ActorMaterializer()
+//  private implicit val executionContext: ExecutionContext = system.dispatcher
+  
 //  val eventRegistryActor: ActorRef = system.actorOf(EventRegistryActor.props, "eventRegistryActor")
 //  val userRegistryActor: ActorRef = system.actorOf(UserRegistryActor.props(eventRegistryActor), "userRegistryActor")
 }
 
-trait BootedCore extends Config with ApiService {
+trait KuTuAppHTTPServer extends Config with ApiService {
+  
   import Core._
   
-  val binding = Http().bindAndHandle(allroutes, httpInterface, httpPort)
+  def startServer(userLookup: (String) => String) {
+    Http().setDefaultServerHttpContext(https)
+    Http().bindAndHandle(allroutes(userLookup), httpInterface, httpPort, connectionContext = https)
+    logger.info("Https-Server started")
+  }
   
   /**
    * Ensure that the constructed ActorSystem is shut down when the JVM shuts down
    */
   sys.addShutdownHook(shutDown())
-
+  
   def shutDown() {
     system.terminate()
   }

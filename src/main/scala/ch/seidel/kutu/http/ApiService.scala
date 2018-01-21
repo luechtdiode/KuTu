@@ -6,15 +6,19 @@ import akka.http.scaladsl.server.Route
 import akka.http.scaladsl.model.headers.RawHeader
 
 trait ApiService extends RouteConcatenation
+    with LoginRoutes
     with WertungenRoutes
 //    with WebSockets
     with ResourceService {
 
 //  private implicit lazy val _ = ch.seidel.kutu.http.Core.system.dispatcher
 
-  lazy val allroutes =
-      wertungenRoutes ~
+  def allroutes(userLookup: (String) => String) =
+      login(userLookup) ~
       resourceRoutes ~
-//      websocket ~
+      pathPrefix("api") {
+        wertungenRoutes
+//      websocket
+      } ~
       complete(StatusCodes.NotFound)
 }

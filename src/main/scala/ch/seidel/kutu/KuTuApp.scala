@@ -42,11 +42,12 @@ import scalafx.stage.StageStyle
 import scalafx.beans.property.BooleanProperty
 import scalafx.beans.binding.Bindings
 import scalafx.scene.web.WebView
-import ch.seidel.kutu.http.BootedCore
+import ch.seidel.kutu.http.KuTuAppHTTPServer
 import org.slf4j.LoggerFactory
 
-object KuTuApp extends JFXApp with KutuService with BootedCore {
+object KuTuApp extends JFXApp with KutuService with KuTuAppHTTPServer {
   private val logger = LoggerFactory.getLogger(this.getClass)
+  
   override def stopApp() {
     shutDown()
   }
@@ -763,4 +764,6 @@ object KuTuApp extends JFXApp with KutuService with BootedCore {
     	scene().stylesheets.add(st.toExternalForm)
     }
   }
+  
+  startServer { x => x }
 }

@@ -22,7 +22,7 @@ import spray.json._
 import ch.seidel.kutu.domain._
 import ch.seidel.kutu.renderer.RiegenBuilder
 
-trait WertungenRoutes extends SprayJsonSupport with EnrichedJson with JwtSupport with RouterLogging with KutuService {
+trait WertungenRoutes extends SprayJsonSupport with EnrichedJson with JwtSupport with BasicAuthSupport with RouterLogging with KutuService {
   import scala.concurrent.ExecutionContext.Implicits.global
   import slick.jdbc.SQLiteProfile
   import slick.jdbc.SQLiteProfile.api._
@@ -33,6 +33,10 @@ trait WertungenRoutes extends SprayJsonSupport with EnrichedJson with JwtSupport
   implicit val disziplinFormat = jsonFormat2(Disziplin)
   implicit val wertungFormat = jsonFormat(Wertung, "id", "athletId", "wettkampfdisziplinId", "wettkampfId", "noteD", "noteE", "endnote", "riege", "riege2")
   
+  case class AthletWertung(id: Long, name: String, vorname: String, verein: String, geschlecht: String, wertung: Wertung)
+  implicit val athletWertungFormat = jsonFormat6(AthletWertung)
+  
+
   // Required by the `ask` (?) method below
   private implicit lazy val timeout = Timeout(5.seconds) // usually we'd obtain the timeout from the system's configuration
 
@@ -92,26 +96,37 @@ trait WertungenRoutes extends SprayJsonSupport with EnrichedJson with JwtSupport
                     gr.durchgang.exists(_ == durchgang) && 
                     gr.disziplin.exists(_.id == gid) && 
                     gr.halt == halt -1)
-                .flatMap(gr => gr.kandidaten.map(k => (k.name, k.vorname, k.verein, k.geschlecht, k.wertungen.filter(w => w.wettkampfdisziplin.disziplin.id == gid).map(_.toWertung))))
+                .flatMap(gr => gr.kandidaten.map(k => AthletWertung(k.id, k.name, k.vorname, k.verein, k.geschlecht, k.wertungen.filter(w => w.wettkampfdisziplin.disziplin.id == gid).map(_.toWertung).head)))
               }
             }
           }
         } ~
         put {
-          entity(as[Wertung]) { wertung =>
-            segments match { 
-              case List(durchgang, geraet, step) => complete { Future {
-                if (wertung.wettkampfId == competitionId) {
-                  updateWertungSimple(wertung)
-                }
-                val halt: Int = step
-                val gid: Long = geraet
-                RiegenBuilder.mapToGeraeteRiegen(getAllKandidatenWertungen(competitionId).toList)
-                  .filter(gr => 
-                      gr.durchgang.exists(_ == durchgang) && 
-                      gr.disziplin.exists(_.id == gid) && 
-                      gr.halt == halt -1)
-                  .flatMap(gr => gr.kandidaten.map(k => (k.name, k.vorname, k.verein, k.geschlecht, k.wertungen.filter(w => w.wettkampfdisziplin.disziplin.id == gid).map(_.toWertung))))
+          authenticated { userId =>
+            entity(as[Wertung]) { wertung =>
+              segments match { 
+                case List(durchgang, geraet, step) => complete { Future {
+                  val halt: Int = step
+                  val gid: Long = geraet
+                  val wertungOriginal = RiegenBuilder.mapToGeraeteRiegen(getAllKandidatenWertungen(competitionId).toList)
+                    .filter(gr => 
+                        gr.durchgang.exists(_ == durchgang) && 
+                        gr.disziplin.exists(_.id == gid) && 
+                        gr.halt == halt -1)
+                    .flatMap(gr => gr.kandidaten
+                        .filter(k => k.id == wertung.athletId)
+                        .map(k => AthletWertung(k.id, k.name, k.vorname, k.verein, k.geschlecht, k.wertungen.filter(w => w.wettkampfdisziplin.disziplin.id == gid).map(_.toWertung).head))).headOption
+                  
+                  if (wertungOriginal.exists(wo => wo.id == wertung.id) && wertung.wettkampfId == competitionId) {
+                    updateWertungSimple(wertungOriginal.get.wertung.updatedWertung(wertung))
+                  }
+                  RiegenBuilder.mapToGeraeteRiegen(getAllKandidatenWertungen(competitionId).toList)
+                    .filter(gr => 
+                        gr.durchgang.exists(_ == durchgang) && 
+                        gr.disziplin.exists(_.id == gid) && 
+                        gr.halt == halt -1)
+                    .flatMap(gr => gr.kandidaten.map(k => AthletWertung(k.id, k.name, k.vorname, k.verein, k.geschlecht, k.wertungen.filter(w => w.wettkampfdisziplin.disziplin.id == gid).map(_.toWertung).head)))
+                  }
                 }
               }
             }

@@ -14,9 +14,14 @@ trait Config {
   private val config = ConfigFactory.load()
   private val httpConfig = config.getConfig("http")
   private val jwtConfig = config.getConfig("jwt")
+  
   val httpInterface = httpConfig.getString("interface")
   val httpPort = httpConfig.getInt("port")
+  val httpHostname = httpConfig.getString("hostname")
+  val certPw = httpConfig.getString("certPw")
+  
+  val jwtAuthorizationKey = "x-access-token"
   val jwtTokenExpiryPeriodInDays = jwtConfig.getInt("tokenExpiryPeriodInDays")
-  val jwtSecretKey = Config.jwtSecretKey // jwtConfig.getString("secretKey")
+  val jwtSecretKey = Config.jwtSecretKey
   val jwtHeader = JwtHeader(jwtConfig.getString("algorithm"), jwtConfig.getString("contenttype"))
 }
