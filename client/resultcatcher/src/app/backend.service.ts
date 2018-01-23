@@ -3,6 +3,7 @@ import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { backendUrl } from './utils';
 import { TokenInterceptor } from './token-interceptor';
 import { toBase64String } from '@angular/compiler/src/output/source_map';
+import { WertungContainer, Geraet, Wettkampf } from './backend-types';
 
 declare var location: any;
 
@@ -10,11 +11,11 @@ declare var location: any;
 export class BackendService {
   private loggedIn = false;
 
-  competitions;
-  durchgaenge;
-  geraete;
-  steps;
-  wertungen;
+  competitions: Wettkampf[];
+  durchgaenge: string[];
+  geraete: Geraet[];
+  steps: string[];
+  wertungen: WertungContainer[];
 
   constructor(public http: HttpClient, public tokenInterceptor: TokenInterceptor) {
     this.loggedIn = !!localStorage.getItem('auth_token');
@@ -32,45 +33,46 @@ export class BackendService {
     }).subscribe((data) => {
       this.tokenInterceptor.accessToken = data.headers.get('x-access-token');
       localStorage.setItem('auth_token', this.tokenInterceptor.accessToken);
+      this.loggedIn = !!localStorage.getItem('auth_token');
     });
   }
 
   getCompetitions() {
-    this.http.get<any>(backendUrl + 'api/competition').subscribe((data) => {
+    this.http.get<Wettkampf[]>(backendUrl + 'api/competition').subscribe((data) => {
       this.competitions = data;
     });
   }
 
-  getDurchgaenge(competition) {
+  getDurchgaenge(competitionId: number) {
     this.durchgaenge = undefined;
     this.geraete = undefined;
     this.steps = undefined;
     this.wertungen = undefined;
-    this.http.get<any>(backendUrl + 'api/competition/' + competition).subscribe((data) => {
+    this.http.get<string[]>(backendUrl + 'api/competition/' + competitionId).subscribe((data) => {
       this.durchgaenge = data;
     });
   }
 
-  getGeraete(competition, durchgang) {
+  getGeraete(competitionId, durchgang) {
     this.geraete = undefined;
     this.steps = undefined;
     this.wertungen = undefined;
-    this.http.get<any>(backendUrl + 'api/competition/' + competition + '/' + durchgang).subscribe((data) => {
+    this.http.get<Geraet[]>(backendUrl + 'api/competition/' + competitionId + '/' + durchgang).subscribe((data) => {
       this.geraete = data;
     });
   }
 
-  getSteps(competition, durchgang, geraet) {
+  getSteps(competitionId, durchgang, geraetId) {
     this.steps = undefined;
     this.wertungen = undefined;
-    this.http.get<any>(backendUrl + 'api/competition/' + competition + '/' + durchgang + '/' + geraet).subscribe((data) => {
+    this.http.get<string[]>(backendUrl + 'api/competition/' + competitionId + '/' + durchgang + '/' + geraetId).subscribe((data) => {
       this.steps = data;
     });
   }
 
-  getWertungen(competition, durchgang, geraet, step) {
+  getWertungen(competitionId, durchgang, geraetId, step) {
     this.wertungen = undefined;
-    this.http.get<any>(backendUrl + 'api/competition/' + competition + '/' + durchgang + '/' + geraet + '/' + step).subscribe((data) => {
+    this.http.get<WertungContainer[]>(backendUrl + 'api/competition/' + competitionId + '/' + durchgang + '/' + geraetId + '/' + step).subscribe((data) => {
       this.wertungen = data;
     });
   }
