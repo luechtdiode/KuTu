@@ -684,9 +684,10 @@ class RiegenTab(wettkampf: WettkampfView, override val service: KutuService) ext
           val snp = text.parent.value.snapshot(null, null)
           
           val width = snp.getWidth.toInt
+          val height: Int = Math.min(snp.getHeight.toInt - 4 + (hoveredTextIndex * spacePerRiege).toInt, spacePerRiege.toInt)
           val croppedImage = new WritableImage(snp.getPixelReader(), 
               0, 5 + (hoveredTextIndex * spacePerRiege).toInt+1, 
-              width, Math.min(snp.getHeight - 5 + (hoveredTextIndex * spacePerRiege).toInt+1, spacePerRiege.toInt))
+              width, height)
 
           val db = durchgangView.startDragAndDrop(TransferMode.Move)
           db.setDragView(croppedImage)
