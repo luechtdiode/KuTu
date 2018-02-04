@@ -12,7 +12,7 @@
 </ion-header>
 
 <ion-content>
-    <riege-list *ngIf="step && getWertungen()" [items] = 'getWertungen()' [geraetId]='geraet'></riege-list>
+    <riege-list *ngIf="step && getWertungen()" [items] = 'getWertungen()' [geraetId]='geraet' [durchgang]='durchgang' [step]='step'></riege-list>
   </ion-content>
 
 <ion-footer>

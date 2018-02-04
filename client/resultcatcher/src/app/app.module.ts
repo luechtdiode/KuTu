@@ -4,19 +4,21 @@ import { IonicApp, IonicErrorHandler, IonicModule } from 'ionic-angular';
 
 import { MyApp } from './app.component';
 import { HomePage } from '../pages/home/home';
-import { ListPage } from '../pages/list/list';
+import { RiegeListPage } from '../pages/list/riege-list';
 
 import { StatusBar } from '@ionic-native/status-bar';
 import { SplashScreen } from '@ionic-native/splash-screen';
 import { HttpClientModule, HTTP_INTERCEPTORS } from '@angular/common/http';
 import { TokenInterceptor } from './token-interceptor';
 import { BackendService } from './backend.service';
+import { WertungEditorPage } from '../pages/wertung-editor/wertung-editor';
 
 @NgModule({
   declarations: [
     MyApp,
     HomePage,
-    ListPage
+    RiegeListPage,
+    WertungEditorPage
   ],
   imports: [
     BrowserModule,
@@ -27,7 +29,8 @@ import { BackendService } from './backend.service';
   entryComponents: [
     MyApp,
     HomePage,
-    ListPage
+    RiegeListPage,
+    WertungEditorPage
   ],
   providers: [
     StatusBar,

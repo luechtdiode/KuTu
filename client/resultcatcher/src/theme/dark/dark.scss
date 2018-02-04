@@ -1,0 +1,102 @@
+@import "./ionic.globals";
+
+
+
+
+
+// A new dark theme for ionic2+
+// ----------------------------------------
+
+// this can go into variables.scss too - I like 
+// it here so its in one place. If you move it to variables.scss,
+// remember to copy over the complete map and then extend it
+$colors: (
+  primary:    (base: #eeae15, contrast:#000),
+  secondary:  (base: #007ACC, contrast: #000),
+  danger:     #f43e00,
+  light:      (base:#bdc3c7, contrast:#000),
+  dark:       (base:#d35400, contrast:#000),
+  alert:      #F39C12,
+  
+) !default;
+
+
+$text-color:                 #DADFE1 !default;
+$link-color:                 color($colors, primary) !default;
+$background-color:           #363232 !default;
+$subdued-text-color:         #666 !default;
+
+$font-family-base:            "Helvetica Neue", "Roboto", sans-serif !default;
+$font-size-base:             1.4rem !default; // 1.4rem == 14px
+
+$content-padding:            16px !default;
+$content-margin:             16px !default;
+
+$content-outer-background: #000;
+
+$toolbar-background:         #434343 !default;
+$toolbar-border-color:       #434343 !default;
+
+$toolbar-active-color:       $link-color !default;
+$toolbar-inactive-color:     #8c8c8c !default;
+
+$tabs-background:            $toolbar-background !default;
+$tabs-border-color:          $toolbar-border-color !default;
+$tabs-tab-color-inactive:    #8c8c8c !default;
+$tabs-tab-color-active:      $link-color !default;
+
+$list-text-color:            $text-color !default;
+$list-background-color:      #242424 !default;
+$list-border-color:          #4C4C4C !default;
+$list-header-color:          $text-color !default;
+$list-activated-background-color: #656565 !default;
+
+
+$card-text-color:           $text-color !default;
+
+$note-md-color: lighten(color($colors, dark),30%) !default;
+
+$item-divider-color: $text-color !default;
+$item-divider-background: #515151 !default;
+
+$toast-background: #019875 !default;
+
+
+$tabs-tab-color-inactive: #808080 !default;
+
+$searchbar-input-text-color: #bdc3c7 !default;
+$searchbar-input-placeholder-color: #A3A8AC !default;
+$searchbar-input-background-color: #313131 !default;
+
+$toggle-background-color-off:#696969 !default;
+$toggle-background-color-on:#eeae15 !default;
+
+
+$alert-background: $toolbar-background !default;
+$alert-button-background-color-activated: lighten($alert-background,30%) !default;
+$alert-message-text-color: $text-color !default;
+$alert-input-background-color: #bdc3c7 !default;
+$alert-input-text-color: #7c7c7c !default;
+
+
+::-webkit-scrollbar {
+  background-color: $toolbar-background;
+  }
+
+::-webkit-scrollbar-thumb {
+  background-color:#696969;
+  }
+
+.alert-input {
+  color: $alert-input-text-color;
+  background-color: $alert-input-background-color;
+}
+
+body {
+  //background-color: $background-color;
+  color: $text-color;
+  
+  
+}
+
+@import "./dark.platform.scss"

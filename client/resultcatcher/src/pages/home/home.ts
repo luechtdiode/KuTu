@@ -2,6 +2,7 @@ import { Component } from '@angular/core';
 import { NavController } from 'ionic-angular';
 import { Backdrop } from 'ionic-angular/components/backdrop/backdrop';
 import { BackendService } from '../../app/backend.service';
+import { Wettkampf, Geraet, WertungContainer } from '../../app/backend-types';
 
 @Component({
   selector: 'page-home',
@@ -9,37 +10,37 @@ import { BackendService } from '../../app/backend.service';
 })
 export class HomePage {
 
-  _competition;
-  set competition(c) {
-    this._competition = c;
+  _competition: number;
+  set competition(competitionId: number) {
+    this._competition = competitionId;
     this._durchgang = undefined;
     this._geraet = undefined;
     this._step = undefined;
     
-    this.backendService.getDurchgaenge(c);
+    this.backendService.getDurchgaenge(competitionId);
   }
-  get competition() {
+  get competition(): number {
     return this._competition;
   }
 
-  _durchgang;
-  set durchgang(d) {
+  _durchgang: string;
+  set durchgang(d: string) {
     this._durchgang = d;
     this._geraet = undefined;
     this._step = undefined;
     this.backendService.getGeraete(this._competition, d);
   }
-  get durchgang() {
+  get durchgang(): string {
     return this._durchgang;
   }
 
-  _geraet;
-  set geraet(g) {
-    this._geraet = g;
+  _geraet: number;
+  set geraet(geraetId: number) {
+    this._geraet = geraetId;
     this.step = '1';
-    this.backendService.getSteps(this._competition, this._durchgang, g);
+    this.backendService.getSteps(this._competition, this._durchgang, geraetId);
   }
-  get geraet() {
+  get geraet(): number {
     return this._geraet;
   }
 
@@ -56,23 +57,23 @@ export class HomePage {
     this.backendService.getCompetitions();
   }
 
-  getCompetitions() {
+  getCompetitions(): Wettkampf[] {
     return this.backendService.competitions;
   }
 
-  getDurchgaenge() {
+  getDurchgaenge(): string[] {
     return this.backendService.durchgaenge;
   }
 
-  getGeraete() {
+  getGeraete(): Geraet[] {
     return this.backendService.geraete;
   }
   
-  getSteps() {
+  getSteps(): string[] {
     return this.backendService.steps;
   }  
 
-  getWertungen() {
+  getWertungen(): WertungContainer[] {
     return this.backendService.wertungen;
   }
 }

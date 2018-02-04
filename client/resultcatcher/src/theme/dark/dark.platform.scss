@@ -1,0 +1,95 @@
+// platform specific color mappings
+// kept the same because this is a non standard theme
+
+
+$loading-background: $toolbar-background !default;
+$loading-text-color: $text-color !default; 
+
+
+$alert-ios-background: $alert-background !default;
+$alert-md-background-color: $alert-background !default;
+$alert-wp-background-color: $alert-background !default;
+
+$alert-ios-message-text-color: $alert-message-text-color !default;
+$alert-md-message-text-color: $alert-message-text-color !default;
+$alert-wp-message-text-color: $alert-message-text-color !default;
+
+$alert-ios-button-background-color-activated: $alert-button-background-color-activated !default;
+$alert-md-button-background-color-activated: $alert-button-background-color-activated !default;
+$alert-wp-button-background-color-activated: $alert-button-background-color-activated !default;
+
+$content-ios-outer-background:$content-outer-background !default;
+$content-md-outer-background:$content-outer-background !default;
+$content-wp-outer-background:$content-outer-background !default;
+
+$list-ios-header-color:  $list-header-color !default;
+$list-md-header-color:  $list-header-color !default;
+$list-wp-header-color:  $list-header-color !default;
+
+$list-ios-border-color: $list-border-color !default;
+$list-md-border-color: $list-border-color !default;
+$list-wp-border-color: $list-border-color !default;
+$list-ios-activated-background-color: $list-activated-background-color !default;
+$list-md-activated-background-color: $list-activated-background-color !default;
+$list-wp-activated-background-color: $list-activated-background-color !default;
+
+$alert-ios-input-background-color: $alert-input-background-color !default;
+$alert-md-input-background-color: $alert-input-background-color !default;
+$alert-wp-input-background-color: $alert-input-background-color !default;
+
+$alert-ios-input-text-color:$alert-input-text-color !default;
+$alert-md-input-text-color:$text-color !default;
+$alert-wp-input-text-color:$alert-input-text-color !default;
+
+
+$loading-ios-background: $loading-background !default;
+$loading-md-background: $loading-background !default;
+$loading-wp-background: $loading-background !default;
+
+$loading-ios-text-color: $loading-text-color !default;
+$loading-md-text-color: $loading-text-color !default;
+$loading-wp-text-color: $loading-text-color !default;
+
+$item-ios-divider-color: $item-divider-color !default;
+$item-md-divider-color: $item-divider-color !default;
+$item-wp-divider-color: $item-divider-color !default;
+
+
+$card-ios-text-color: $card-text-color !default;
+$card-md-text-color: $card-text-color !default;
+$card-wp-text-color: $card-text-color !default;
+
+
+$item-ios-divider-background: $item-divider-background !default;
+$item-md-divider-background: $item-divider-background !default;
+$item-wp-divider-background: $item-divider-background !default;
+
+$tabs-ios-tab-color-inactive: $tabs-tab-color-inactive !default;
+$tabs-md-tab-color-inactive: $tabs-tab-color-inactive !default;
+$tabs-wp-tab-color-inactive: $tabs-tab-color-inactive !default;
+
+
+$searchbar-ios-input-text-color: $searchbar-input-text-color !default;
+$searchbar-md-input-text-color: $searchbar-input-text-color !default;
+$searchbar-wp-input-text-color: $searchbar-input-text-color !default;
+$searchbar-ios-input-background-color: $searchbar-input-background-color !default;
+$searchbar-md-input-background-color: $searchbar-input-background-color !default;
+$searchbar-wp-input-background-color: $searchbar-input-background-color !default;
+$searchbar-ios-input-placeholder-color: $searchbar-input-placeholder-color !default;
+$searchbar-md-input-placeholder-color: $searchbar-input-placeholder-color !default;
+$searchbar-wp-input-placeholder-color: $searchbar-input-placeholder-color !default;
+
+
+
+
+$toast-ios-background: $toast-background !default;
+$toast-md-background: $toast-background !default;
+$toast-wp-background: $toast-background !default;
+
+
+$toggle-ios-background-color-off: $toggle-background-color-off !default;
+$toggle-md-background-color-off: $toggle-background-color-off !default;
+$toggle-wp-background-color-off: $toggle-background-color-off !default;
+$toggle-ios-background-color-on: $toggle-background-color-on !default;
+$toggle-md-background-color-on: $toggle-background-color-on !default;
+$toggle-wp-background-color-on: $toggle-background-color-on !default;

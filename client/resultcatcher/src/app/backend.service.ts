@@ -3,7 +3,7 @@ import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { backendUrl } from './utils';
 import { TokenInterceptor } from './token-interceptor';
 import { toBase64String } from '@angular/compiler/src/output/source_map';
-import { WertungContainer, Geraet, Wettkampf } from './backend-types';
+import { WertungContainer, Geraet, Wettkampf, Wertung } from './backend-types';
 
 declare var location: any;
 
@@ -75,5 +75,13 @@ export class BackendService {
     this.http.get<WertungContainer[]>(backendUrl + 'api/competition/' + competitionId + '/' + durchgang + '/' + geraetId + '/' + step).subscribe((data) => {
       this.wertungen = data;
     });
+  }
+
+  updateWertung(durchgang: string, step: string, wertung: Wertung) {
+    const competitionId = wertung.wettkampfId;
+    const geraetId = wertung.wettkampfdisziplinId;
+    this.http.put<WertungContainer>(backendUrl + 'api/competition/' + competitionId + '/' + durchgang + '/' + geraetId + '/' + step, wertung).subscribe((data) => {
+      this.wertungen = [...this.wertungen.filter(wc => wc.wertung.id !== data.wertung.id), data];
+    });    
   }
 }
