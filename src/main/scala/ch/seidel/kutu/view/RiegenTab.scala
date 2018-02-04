@@ -66,9 +66,68 @@ import scalafx.util.converter.DefaultStringConverter
 import ch.seidel.kutu.renderer.PrintUtil
 import ch.seidel.kutu.renderer.PrintUtil.FilenameDefault
 import scalafx.print.PageOrientation
+import scalafx.scene.input.Dragboard
+import scalafx.scene.input.ClipboardContent
+import scalafx.scene.input.TransferMode
+import scalafx.scene.input.DataFormat
+import scalafx.scene.image.WritableImage
+import scalafx.scene.SnapshotParameters
+import javafx.geometry.Rectangle2DBuilder
+import scalafx.geometry.Rectangle2D
+import javafx.scene.text.Text
+import scalafx.geometry.BoundingBox
+import scalafx.geometry.Bounds
+import scalafx.geometry.Point2D
+import scalafx.scene.Scene
+import com.sun.javafx.util.TempState
+import scalafx.scene.control.TableCell
+
+object DurchgangView {
+  val DRAG_RIEGE = new DataFormat("application/x-drag-riege");
+  def getVisibleBounds(aNode: Node): Bounds = {
+      // If node not visible, return empty bounds
+      if(!aNode.isVisible) {
+        new BoundingBox(0,0,-1,-1)
+      } else if(aNode.getClip != null) {
+        aNode.getClip.getBoundsInParent
+      } else {            
+        // If node has parent, get parent visible bounds in node coords
+        val bounds = if (aNode.getParent()!=null) getVisibleBounds(aNode.getParent()) else null
+        if(bounds != null && !bounds.isEmpty) aNode.parentToLocal(bounds) else bounds
+      }
+  }
+  def positionInTarget(aNode: Node, aTargetNode: Object): Point2D = {
+    if (aNode.parent.value == aTargetNode) {
+      new Point2D(aNode.getLayoutX,  aNode.getLayoutY)
+    } else {
+      val parentBounds = positionInScene(aNode.parent.value)
+      new Point2D(aNode.getLayoutX + parentBounds.getX, aNode.getLayoutY + parentBounds.getY)
+    }
+  }
+  def positionInScene(aNode: Node): Point2D = {
+    if (aNode.parent.value == null) {
+      new Point2D(aNode.getLayoutX,  aNode.getLayoutY)
+    } else {
+      val parentBounds = positionInScene(aNode.parent.value)
+      new Point2D(aNode.getLayoutX + parentBounds.getX, aNode.getLayoutY + parentBounds.getY)
+    }
+  }
+}
+trait DurchgangTCAccess extends TCAccess[DurchgangEditor, Seq[RiegeEditor],Disziplin] {
+  def getDisziplin = getIndex
+}
+class DurchgangJFSCTableColumn[T](val index: Disziplin) extends jfxsc.TableColumn[DurchgangEditor, T] with DurchgangTCAccess {
+  override def getIndex: Disziplin = index
+  override def valueEditor(selectedRow: DurchgangEditor): Seq[RiegeEditor] = selectedRow.initstartriegen(index)
+}
+class DurchgangTableColumn[T](val index: Disziplin) extends TableColumn[DurchgangEditor, T] with DurchgangTCAccess {
+  override val delegate: jfxsc.TableColumn[DurchgangEditor, T] = new DurchgangJFSCTableColumn[T](index)
+  override def getIndex: Disziplin = index
+  override def valueEditor(selectedRow: DurchgangEditor): Seq[RiegeEditor] = selectedRow.initstartriegen(index)
+}
 
 class DurchgangView(wettkampf: WettkampfView, service: KutuService, disziplinlist: () => Seq[Disziplin], durchgangModel: ObservableBuffer[DurchgangEditor]) extends TableView[DurchgangEditor] {
-
+    
   id = "durchgang-table"
   items = durchgangModel
 
@@ -105,7 +164,7 @@ class DurchgangView(wettkampf: WettkampfView, service: KutuService, disziplinlis
       text = disziplin.name
       prefWidth = 230
       columns ++= Seq(
-          new TableColumn[DurchgangEditor, String] {
+          new DurchgangTableColumn[String](disziplin) {
             text = "Riege"
             prefWidth = 190
             cellValueFactory = { x =>
@@ -605,6 +664,91 @@ class RiegenTab(wettkampf: WettkampfView, override val service: KutuService) ext
 
     durchgangView.selectionModel.value.setSelectionMode(SelectionMode.Multiple)
     durchgangView.selectionModel.value.setCellSelectionEnabled(true)
+    
+    durchgangView.setOnDragDetected((event) => {
+      val focusedCells = durchgangView.selectionModel.value.selectedCells.toList
+      val selectedGerate = toGeraetId(focusedCells.map(c => c.column))
+      val actDurchgangSelection = focusedCells.map(c => durchgangView.items.value.get(c.row)).toSet.filter(_ != null)
+      if(actDurchgangSelection.size == 1 && selectedGerate.size == 1) {
+        val startgeraet = selectedGerate.head
+        val durchgangEditor = actDurchgangSelection.head
+        val riegenEditorCandidates = durchgangEditor.initstartriegen.filter(d => selectedGerate.isEmpty || selectedGerate.contains(d._1.id)).flatMap(_._2).toList.sortBy(r => r.initname).map(r => r.initname)
+        if (event.pickResult.getIntersectedNode.isInstanceOf[Text]) {
+          val text = event.pickResult.getIntersectedNode.asInstanceOf[Text]
+          val vb = DurchgangView.positionInScene(text.parent.value)
+          val pointInText = new Point2D(event.getSceneX - vb.x, event.getSceneY - vb.y)
+          val spacePerRiege = (text.boundsInLocal.value.getHeight) / riegenEditorCandidates.size
+          val hoveredTextIndex = (Math.abs(Math.max(1,pointInText.y)) / spacePerRiege).toInt
+          val hoveredText = riegenEditorCandidates(Math.min(riegenEditorCandidates.size -1, hoveredTextIndex))
+
+          val snp = text.parent.value.snapshot(null, null)
+          
+          val width = snp.getWidth.toInt
+          val croppedImage = new WritableImage(snp.getPixelReader(), 
+              0, 5 + (hoveredTextIndex * spacePerRiege).toInt+1, 
+              width, Math.min(snp.getHeight - 5 + (hoveredTextIndex * spacePerRiege).toInt+1, spacePerRiege.toInt))
+
+          val db = durchgangView.startDragAndDrop(TransferMode.Move)
+          db.setDragView(croppedImage)
+          val content = new ClipboardContent()
+          content.put(DurchgangView.DRAG_RIEGE, (durchgangEditor.initname, hoveredText, startgeraet))
+          content.putString(hoveredText)
+          db.setContent(content)
+
+          event.consume()
+        }
+      }
+    })
+    durchgangView.setOnDragDropped((event) => {
+        val db = event.getDragboard()
+        // If this is a meaningful drop...
+        if (db.hasContent(DurchgangView.DRAG_RIEGE)) {
+          val (selecteddurchgang, selectedriege, selectedGeraet) = db.getContent(DurchgangView.DRAG_RIEGE).asInstanceOf[(String, String, Long)]
+          val fromDisziplin = disziplinlist.filter(_.id == selectedGeraet).head
+          val dg = durchgangView.items.value.toList.filter(dge => dge.initname == selecteddurchgang).head
+          dg.initstartriegen.filter(d => d._1.id == selectedGeraet).flatMap(_._2).filter(r => r.initname == selectedriege).headOption match {
+            case Some(riege) =>
+              def findTableCell(node: Object): Option[jfxsc.TableCell[DurchgangEditor,_]] = 
+                if (node.isInstanceOf[jfxsc.TableCell[_,_]]) {
+                  Some(node.asInstanceOf[jfxsc.TableCell[DurchgangEditor,_]])
+                } else if (node.isInstanceOf[Text]) {
+                  findTableCell(node.asInstanceOf[Text].getParent)
+                } else {
+                  None
+                }
+              findTableCell(event.getPickResult.getIntersectedNode) match {
+                case Some(selectedCell) => 
+                  val durchgang = selectedCell.getTableRow
+                  val startGeraetColumn = selectedCell.getTableColumn
+                  if (startGeraetColumn.isInstanceOf[DurchgangTCAccess]) {
+                    val targetStartgeraet = startGeraetColumn.asInstanceOf[DurchgangTCAccess].getDisziplin
+                    if (targetStartgeraet != fromDisziplin || !durchgang.getItem.equals(dg)) {
+                      val targetDurchgang = durchgang.getItem.asInstanceOf[DurchgangEditor].initname
+                      val toSave = riege.copy(initstart = Some(targetStartgeraet), initdurchgang = Some(targetDurchgang))
+                      println(targetDurchgang, targetStartgeraet)
+          					  KuTuApp.invokeWithBusyIndicator {
+              				  service.updateOrinsertRiege(toSave.commit)
+              				  reloadData()
+                        riegenFilterView.sort
+                        durchgangView.sort
+          					  }          
+                    }                  
+                  }
+                case None => 
+              }
+              event.setDropCompleted(true)
+            case None => event.setDropCompleted(false)
+          }
+        }
+        event.consume()
+    })
+    durchgangView.setOnDragOver((event) => {
+        if ( event.getDragboard().hasContent(DurchgangView.DRAG_RIEGE)) {
+            event.acceptTransferModes(TransferMode.Move)
+        }
+        event.consume()
+    })
+        
     durchgangView.getSelectionModel().getSelectedCells().onChange { ( _, newItem) =>
       Platform.runLater {
         val focusedCells = durchgangView.selectionModel.value.selectedCells.toList
@@ -620,6 +764,7 @@ class RiegenTab(wettkampf: WettkampfView, override val service: KutuService) ext
               items += makeMoveStartgeraetMenu(durchgangView.selectionModel().selectedItems.head, focusedCells)
             }
         }
+        
         btnEditDurchgang.text.value = "Durchgang " + actSelection.mkString("[",", ", "]") + " bearbeiten"
         btnEditDurchgang.items.clear
         btnEditDurchgang.items += makeRegenereateDurchgangMenu(actSelection.toSet)

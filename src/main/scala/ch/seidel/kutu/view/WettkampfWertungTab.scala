@@ -72,17 +72,20 @@ import ch.seidel.kutu.renderer.PrintUtil.FilenameDefault
 import ch.seidel.kutu.renderer.PrintUtil
 import scalafx.print.PageOrientation
 
-trait TCAccess {
-  def getIndex: Int
-  def valueEditor(selectedRow: IndexedSeq[WertungEditor]): WertungEditor
+trait TCAccess[R, E, IDX] {
+  def getIndex: IDX
+  def valueEditor(selectedRow: R): E
 }
 
-class WKJFSCTableColumn[T](val index: Int) extends jfxsc.TableColumn[IndexedSeq[WertungEditor], T] with TCAccess {
+trait WKTCAccess extends TCAccess[IndexedSeq[WertungEditor], WertungEditor, Int] {
+}
+
+class WKJFSCTableColumn[T](val index: Int) extends jfxsc.TableColumn[IndexedSeq[WertungEditor], T] with WKTCAccess {
   override def getIndex: Int = index
   override def valueEditor(selectedRow: IndexedSeq[WertungEditor]): WertungEditor = selectedRow(index)
 }
 
-class WKTableColumn[T](val index: Int) extends TableColumn[IndexedSeq[WertungEditor], T] with TCAccess {
+class WKTableColumn[T](val index: Int) extends TableColumn[IndexedSeq[WertungEditor], T] with WKTCAccess {
   override val delegate: jfxsc.TableColumn[IndexedSeq[WertungEditor], T] = new WKJFSCTableColumn[T](index)
   override def getIndex: Int = index
   override def valueEditor(selectedRow: IndexedSeq[WertungEditor]): WertungEditor = selectedRow(index)
@@ -139,8 +142,8 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
         val column = newTablePos.tableColumn
         val selrow = newTablePos.getRow
         if(column != null && selrow > -1) {
-          if(column.isInstanceOf[TCAccess]) {
-            val selectedIndex = column.asInstanceOf[TCAccess].getIndex
+          if(column.isInstanceOf[WKTCAccess]) {
+            val selectedIndex = column.asInstanceOf[WKTCAccess].getIndex
             if(selectedIndex > -1 && selectedIndex != index) {
               index = selectedIndex
               adjust
@@ -705,8 +708,8 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
 //        val rd = riegendurchgaenge.values.toList
         def restoreVisibility(col: TableColumn[_, _]) {
           col.sortable.value = true
-          if(col.delegate.isInstanceOf[TCAccess]) {
-            val tca = col.delegate.asInstanceOf[TCAccess]
+          if(col.delegate.isInstanceOf[WKTCAccess]) {
+            val tca = col.delegate.asInstanceOf[WKTCAccess]
             if(tca.getIndex > -1 && !col.isVisible()) {
               col.setVisible(true)
             }
@@ -715,8 +718,8 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
         }
         def hideIfNotUsed(col: TableColumn[_, _]) {
           col.sortable.value = false
-          if(col.delegate.isInstanceOf[TCAccess]) {
-            val tca = col.delegate.asInstanceOf[TCAccess]
+          if(col.delegate.isInstanceOf[WKTCAccess]) {
+            val tca = col.delegate.asInstanceOf[WKTCAccess]
             if(tca.getIndex > -1) {
               col.setVisible(durchgangFilter.disziplin.isDefined && tca.getIndex == disziplinlist.indexOf(durchgangFilter.disziplin.get))
             }
