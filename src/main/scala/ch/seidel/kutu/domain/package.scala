@@ -235,6 +235,14 @@ package object domain {
     val isDNoteUsed: Boolean
     def selectableItems: Option[List[String]] = None
     def calcEndnote(dnote: Double, enote: Double): Double
+    def verifiedAndCalculatedWertung(wertung: Wertung) = {
+      if (isDNoteUsed) {
+        wertung.copy(endnote = calcEndnote(wertung.noteD.doubleValue(), wertung.noteE.doubleValue()))
+      } else {
+        wertung.copy(noteD = 0, endnote = calcEndnote(wertung.noteD.doubleValue(), wertung.noteE.doubleValue()))
+      }
+    }
+    
     override def toString(value: Double): String = value
     /*override*/ def shouldSuggest(item: String, query: String): Boolean = false
   }

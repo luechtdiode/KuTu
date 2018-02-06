@@ -49,6 +49,27 @@ abstract trait WertungService extends DBService with WertungResultMapper with Di
     }, Duration.Inf)
   }
   
+  def getWertung(id: Long): WertungView = {
+    implicit val cache = scala.collection.mutable.Map[Long, ProgrammView]()
+    Await.result(database.run{
+      sql"""
+                    SELECT w.id, a.id, a.js_id, a.geschlecht, a.name, a.vorname, a.gebdat, a.strasse, a.plz, a.ort, a.activ, a.verein, v.*,
+                      wd.id, wd.programm_id, d.*, wd.kurzbeschreibung, wd.detailbeschreibung, wd.notenfaktor, wd.ord, wd.masculin, wd.feminim,
+                      wk.*,
+                      w.note_d as difficulty, w.note_e as execution, w.endnote, w.riege, w.riege2
+                    FROM wertung w
+                    inner join athlet a on (a.id = w.athlet_id)
+                    left outer join verein v on (a.verein = v.id)
+                    inner join wettkampfdisziplin wd on (wd.id = w.wettkampfdisziplin_id)
+                    inner join disziplin d on (d.id = wd.disziplin_id)
+                    inner join programm p on (p.id = wd.programm_id)
+                    inner join wettkampf wk on (wk.id = w.wettkampf_id)
+                    where w.id = ${id}
+                    order by wd.programm_id, wd.ord
+         """.as[WertungView]
+    }, Duration.Inf).head
+  }
+  
   def updateOrinsertWertung(w: Wertung) = {
     database.run(DBIO.sequence(Seq(
       sqlu"""
@@ -112,10 +133,13 @@ abstract trait WertungService extends DBService with WertungResultMapper with Di
   }
 
   def updateWertungSimple(w: Wertung) {
+    val wv = getWertung(w.id).wettkampfdisziplin.notenSpez.verifiedAndCalculatedWertung(w)
+    
+//    val endnoteCalculated = wv.i
     Await.result(database.run(
       sqlu"""       UPDATE wertung
-                    SET note_d=${w.noteD}, note_e=${w.noteE}, endnote=${w.endnote}, riege=${w.riege}, riege2=${w.riege2}
-                    WHERE id=${w.id}
+                    SET note_d=${wv.noteD}, note_e=${wv.noteE}, endnote=${wv.endnote}, riege=${wv.riege}, riege2=${wv.riege2}
+                    WHERE id=${wv.id}
           """
     ), Duration.Inf)
   }

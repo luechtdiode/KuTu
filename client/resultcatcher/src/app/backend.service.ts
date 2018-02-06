@@ -9,7 +9,7 @@ declare var location: any;
 
 @Injectable()
 export class BackendService {
-  private loggedIn = false;
+  loggedIn = false;
 
   competitions: Wettkampf[];
   durchgaenge: string[];
@@ -17,24 +17,29 @@ export class BackendService {
   steps: string[];
   wertungen: WertungContainer[];
 
-  constructor(public http: HttpClient, public tokenInterceptor: TokenInterceptor) {
+  constructor(public http: HttpClient) {
     this.loggedIn = !!localStorage.getItem('auth_token');
-    if (this.loggedIn) {
-      this.tokenInterceptor.accessToken = localStorage.getItem('auth_token');
-    }
   }
 
   login(username, password) {
-    let headers = new HttpHeaders();
-    headers.append('Authorization', 'Basic ' + btoa(username + ':' + password));
-    this.http.get(backendUrl + 'login', { 
+    const headers = new HttpHeaders();
+    this.http.options(backendUrl + 'api/login', { 
       observe: 'response', 
-      headers: headers
+      headers: headers.set('Authorization', 'Basic ' + btoa(username + ':' + password)),
+      withCredentials: true,
+      responseType: 'text'
     }).subscribe((data) => {
-      this.tokenInterceptor.accessToken = data.headers.get('x-access-token');
-      localStorage.setItem('auth_token', this.tokenInterceptor.accessToken);
+      console.log(data);
+      localStorage.setItem('auth_token', data.headers.get('x-access-token'));
       this.loggedIn = !!localStorage.getItem('auth_token');
+    }, (err) => {
+      console.log(err);
     });
+  }
+
+  logout() {
+    localStorage.removeItem('auth_token');
+    this.loggedIn = !!localStorage.getItem('auth_token');
   }
 
   getCompetitions() {
@@ -77,11 +82,10 @@ export class BackendService {
     });
   }
 
-  updateWertung(durchgang: string, step: string, wertung: Wertung) {
+  updateWertung(durchgang: string, step: number, geraetId: number, wertung: Wertung) {
     const competitionId = wertung.wettkampfId;
-    const geraetId = wertung.wettkampfdisziplinId;
-    this.http.put<WertungContainer>(backendUrl + 'api/competition/' + competitionId + '/' + durchgang + '/' + geraetId + '/' + step, wertung).subscribe((data) => {
-      this.wertungen = [...this.wertungen.filter(wc => wc.wertung.id !== data.wertung.id), data];
+    this.http.put<WertungContainer[]>(backendUrl + 'api/competition/' + competitionId + '/' + durchgang + '/' + geraetId + '/' + step, wertung).subscribe((data) => {
+      this.wertungen = data;
     });    
   }
 }

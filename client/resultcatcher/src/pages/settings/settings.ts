@@ -1,7 +1,7 @@
 import { Component } from '@angular/core';
 import { NavController } from 'ionic-angular';
 import { Observable } from 'rxjs/Observable';
-import { TranslateService } from '@ngx-translate/core';
+// import { TranslateService } from '@ngx-translate/core';
 import { BackendService } from '../../app/backend.service';
 
 @Component({
@@ -17,7 +17,7 @@ export class SettingsPage {
   // };
 
   constructor(public navCtrl: NavController, public ws: BackendService,
-    private translate: TranslateService) {
+    /*private translate: TranslateService*/) {
     // ws.loginFailed.subscribe(lf => {
     //   this.loginFailed = lf.passwordRequired ? 'Password required' : 'User exists already';
     // });
@@ -37,9 +37,9 @@ export class SettingsPage {
   //   // return this.ws.connected;
   // }
 
-  // loggedIn(): Observable<boolean> {
-  //   return this.ws.identified;
-  // }
+  loggedIn(): boolean {
+    return this.ws.loggedIn;
+  }
 
   // stopped() {
   //   this.loginFailed = '';
@@ -54,7 +54,6 @@ export class SettingsPage {
   // }
 
   logIn(name, password) {
-    this.loginFailed = '';
     // this.subscr = this.ws.identified.subscribe(e => {
     //   if (e) {
     //     this.navCtrl.pop();
@@ -67,6 +66,7 @@ export class SettingsPage {
 
   logOut() {
     this.loginFailed = '';
+    this.ws.logout();
     // this.ws.disconnectWS();
   }
   

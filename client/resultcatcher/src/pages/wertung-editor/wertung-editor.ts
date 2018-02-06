@@ -37,7 +37,7 @@ export class WertungEditorPage {
   durchgang: string;
 
   save(wertung: Wertung) {
-    this.backendService.updateWertung(this.durchgang, this.step + '', wertung);
+    this.backendService.updateWertung(this.durchgang, this.step, this.geraetId, wertung);
   }
   
   geraetName(): string {

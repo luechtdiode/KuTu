@@ -14,9 +14,9 @@ trait ApiService extends RouteConcatenation
 //  private implicit lazy val _ = ch.seidel.kutu.http.Core.system.dispatcher
 
   def allroutes(userLookup: (String) => String) =
-      login(userLookup) ~
       resourceRoutes ~
       pathPrefix("api") {
+        login(userLookup) ~
         wertungenRoutes
 //      websocket
       } ~

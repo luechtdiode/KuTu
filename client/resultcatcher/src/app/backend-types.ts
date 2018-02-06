@@ -5,6 +5,7 @@ export interface WertungContainer {
   geschlecht: string;
   verein: string;
   wertung: Wertung;
+  geraet: number;
 }
 
 export interface Wertung {

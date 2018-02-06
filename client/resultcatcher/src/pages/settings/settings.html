@@ -3,9 +3,8 @@
     <button ion-button menuToggle>
       <ion-icon name="menu"></ion-icon>
     </button>
-    <ion-title>{{"texts.Settings" | translate}}</ion-title>
     <ion-buttons end>
-      <!-- <ion-note>{{loggedInText() | async}}</ion-note> -->
+      <ion-note>Logged In: {{loggedIn()}}</ion-note>
     </ion-buttons>
   </ion-navbar>
 </ion-header>
@@ -13,21 +12,17 @@
 <ion-content>
   <ion-item>
     <ion-label floating>Name</ion-label>
-    <ion-input #issuerName [(ngModel)]="username" [disabled]="loggedIn() | async"></ion-input>
+    <ion-input #issuerName [(ngModel)]="username" [disabled]="loggedIn()"></ion-input>
   </ion-item>
   <ion-item>
     <ion-label floating>Passwort</ion-label>
-    <ion-input type="password" #issuerpassword [(ngModel)]="password" [disabled]="loggedIn() | async"></ion-input>
+    <ion-input type="password" #issuerpassword [(ngModel)]="password" [disabled]="loggedIn()"></ion-input>
   </ion-item>
   <ion-item>
-    <button ion-button large block icon-left color="secondary" (click)="logIn(issuerName.value, issuerpassword.value)">
+    <button [disabled]="loggedIn()" ion-button large block icon-left color="secondary" (click)="logIn(issuerName.value, issuerpassword.value)">
       <ion-icon name="log-in"></ion-icon>Login</button>
-    <!-- <button *ngIf="(loggedIn() | async)" ion-button large block icon-left (click)="logOut()">
-      <ion-icon name="log-out"></ion-icon>Logout</button> -->
-    <!-- <button ion-button ion-stop icon-left large item-right color="danger" (click)="logOut()" [disabled]="stopped()">
-      <ion-icon name="square"></ion-icon>
-      <div>Stop</div>
-    </button> -->
+    <button [disabled]="!loggedIn()" ion-button large block icon-left (click)="logOut()">
+      <ion-icon name="log-out"></ion-icon>Logout</button>
   </ion-item>
 
   <!-- <ion-card *ngIf="lastMessages">

@@ -15,12 +15,11 @@ export class TokenInterceptor implements HttpInterceptor {
   accessToken: string;
 
   intercept(request: HttpRequest<any>, next: HttpHandler): Observable<HttpEvent<any>> {
-    
     request = request.clone({
       setHeaders: {
-        'x-access-token': `${this.accessToken}`
+        'x-access-token': `${localStorage.getItem('auth_token')}`
       }
-    });
+    });  
 
     return next.handle(request);
   }
