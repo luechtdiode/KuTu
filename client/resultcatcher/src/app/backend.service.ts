@@ -4,6 +4,9 @@ import { backendUrl } from './utils';
 import { TokenInterceptor } from './token-interceptor';
 import { toBase64String } from '@angular/compiler/src/output/source_map';
 import { WertungContainer, Geraet, Wettkampf, Wertung } from './backend-types';
+import { Observable } from 'rxjs/Observable';
+import { Subject } from 'rxjs/Subject';
+import { tokenNotExpired } from 'angular2-jwt';
 
 declare var location: any;
 
@@ -18,7 +21,12 @@ export class BackendService {
   wertungen: WertungContainer[];
 
   constructor(public http: HttpClient) {
-    this.loggedIn = !!localStorage.getItem('auth_token');
+    this.loggedIn = this.checkJWT();
+  }
+
+  private checkJWT(): boolean {
+    const token = localStorage.getItem('auth_token');
+    return !!token && tokenNotExpired(token);
   }
 
   login(username, password) {
@@ -31,15 +39,17 @@ export class BackendService {
     }).subscribe((data) => {
       console.log(data);
       localStorage.setItem('auth_token', data.headers.get('x-access-token'));
-      this.loggedIn = !!localStorage.getItem('auth_token');
+      this.loggedIn = this.checkJWT();
     }, (err) => {
       console.log(err);
+      localStorage.removeItem('auth_token');
+      this.loggedIn = this.checkJWT();
     });
   }
 
   logout() {
     localStorage.removeItem('auth_token');
-    this.loggedIn = !!localStorage.getItem('auth_token');
+    this.loggedIn = this.checkJWT();
   }
 
   getCompetitions() {
@@ -82,10 +92,18 @@ export class BackendService {
     });
   }
 
-  updateWertung(durchgang: string, step: number, geraetId: number, wertung: Wertung) {
+  updateWertung(durchgang: string, step: number, geraetId: number, wertung: Wertung): Observable<WertungContainer> {
     const competitionId = wertung.wettkampfId;
-    this.http.put<WertungContainer[]>(backendUrl + 'api/competition/' + competitionId + '/' + durchgang + '/' + geraetId + '/' + step, wertung).subscribe((data) => {
+    const result = new Subject<WertungContainer>();
+    this.http.put<WertungContainer[]>(backendUrl + 'api/competition/' + competitionId + '/' + durchgang + '/' + geraetId + '/' + step, wertung)
+    .subscribe((data) => {
       this.wertungen = data;
+      result.next(data.find(wc => wc.wertung.id === wertung.id));
+      result.complete();
+    }, (err)=> {
+      result.next(this.wertungen.find(wc => wc.wertung.id === wertung.id));
+      result.error(err);
     });    
+    return result;
   }
 }

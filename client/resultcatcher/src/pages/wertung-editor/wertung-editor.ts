@@ -15,10 +15,12 @@ import { BackendService } from '../../app/backend.service';
   templateUrl: 'wertung-editor.html',
 })
 export class WertungEditorPage {
+  private itemOriginal: WertungContainer;
 
   constructor(public navCtrl: NavController, public navParams: NavParams, public backendService: BackendService) {
       // If we navigated to this page, we will have an item available as a nav param
-      this.item = navParams.get('item');
+      this.item = Object.assign({}, navParams.get('item'));
+      this.itemOriginal = navParams.get('item');
       this.durchgang = navParams.get('durchgang');
       this.step = navParams.get('step');
       this.geraetId = navParams.get('geraetId');
@@ -36,8 +38,18 @@ export class WertungEditorPage {
   @Input()
   durchgang: string;
 
+  editable() {
+    return this.backendService.login
+  }
+
   save(wertung: Wertung) {
-    this.backendService.updateWertung(this.durchgang, this.step, this.geraetId, wertung);
+    this.backendService.updateWertung(this.durchgang, this.step, this.geraetId, wertung).subscribe((wc) => {
+      this.item = Object.assign({}, wc);
+      this.navCtrl.pop();
+    }, (err) => {
+      this.item = Object.assign({}, this.itemOriginal);
+      console.log(err);      
+    });
   }
   
   geraetName(): string {
