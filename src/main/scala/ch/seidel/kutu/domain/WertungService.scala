@@ -132,7 +132,7 @@ abstract trait WertungService extends DBService with WertungResultMapper with Di
     wv    
   }
 
-  def updateWertungSimple(w: Wertung) {
+  def updateWertungSimple(w: Wertung, putToBestenresults: Boolean = false) {
     val wv = getWertung(w.id).wettkampfdisziplin.notenSpez.verifiedAndCalculatedWertung(w)
     
 //    val endnoteCalculated = wv.i
@@ -142,6 +142,10 @@ abstract trait WertungService extends DBService with WertungResultMapper with Di
                     WHERE id=${wv.id}
           """
     ), Duration.Inf)
+    // TODO - this feature is not able to serve for multiple competitions at same time
+    if(putToBestenresults && wv.endnote >= 8.7) {
+      putWertungToBestenResults(getWertung(w.id))
+    }
   }
 
   def listAthletenWertungenZuProgramm(progids: Seq[Long], wettkampf: Long, riege: String = "%") = {

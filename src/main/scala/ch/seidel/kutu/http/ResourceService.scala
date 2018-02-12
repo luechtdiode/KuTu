@@ -7,10 +7,10 @@ trait ResourceService extends Directives {
   def appRoute = {
     pathPrefix("") {
       pathEndOrSingleSlash {
-        getFromResource("app/resultcatcher/dist/index.html")
+        getFromResource("app/index.html")
       }
     } ~
-      getFromResourceDirectory("app/resultcatcher/dist")
+      getFromResourceDirectory("app")
   }
 
   val resourceRoutes = appRoute

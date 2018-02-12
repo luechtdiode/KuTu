@@ -8,6 +8,7 @@ import akka.http.scaladsl.model.headers.RawHeader
 trait ApiService extends RouteConcatenation
     with LoginRoutes
     with WertungenRoutes
+    with WettkampfRoutes
 //    with WebSockets
     with ResourceService {
 
@@ -17,7 +18,8 @@ trait ApiService extends RouteConcatenation
       resourceRoutes ~
       pathPrefix("api") {
         login(userLookup) ~
-        wertungenRoutes
+        wertungenRoutes ~
+        wettkampfRoutes
 //      websocket
       } ~
       complete(StatusCodes.NotFound)

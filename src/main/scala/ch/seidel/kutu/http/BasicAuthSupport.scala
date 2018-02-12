@@ -10,7 +10,7 @@ import akka.http.scaladsl.server.directives.Credentials
 trait BasicAuthSupport extends Directives with Config with Hashing {
 
   def userPassAuthenticator(userLookup: (String) => String): AuthenticatorPF[String] = {
-    case p @ Credentials.Provided(id) if p.verify(userLookup(id)/*, sha256*/) => id
+    case p @ Credentials.Provided(id) if p.verify(userLookup(id), sha256) => id
   }
   
 }

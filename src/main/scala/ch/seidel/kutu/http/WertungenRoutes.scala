@@ -123,8 +123,7 @@ trait WertungenRoutes extends SprayJsonSupport with EnrichedJson with JwtSupport
                   val compOK = wertung.wettkampfId == competitionId
                   val wertungOk = wertungOriginal.exists(wo => wo.wertung.id == wertung.id)
                   if (wertungOk && compOK) {
-                    
-                    updateWertungSimple(wertungOriginal.get.wertung.updatedWertung(wertung))
+                    updateWertungSimple(wertungOriginal.get.wertung.updatedWertung(wertung), true)
                   }
                   RiegenBuilder.mapToGeraeteRiegen(getAllKandidatenWertungen(competitionId).toList)
                     .filter(gr => 

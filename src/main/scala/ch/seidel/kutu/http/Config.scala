@@ -14,6 +14,7 @@ trait Config {
   private val config = ConfigFactory.load()
   private val httpConfig = config.getConfig("http")
   private val jwtConfig = config.getConfig("jwt")
+  private val appRemoteConfig = config.getConfig("app.remote")
   
   val httpInterface = httpConfig.getString("interface")
   val httpPort = httpConfig.getInt("port")
@@ -24,4 +25,7 @@ trait Config {
   val jwtTokenExpiryPeriodInDays = jwtConfig.getInt("tokenExpiryPeriodInDays")
   val jwtSecretKey = Config.jwtSecretKey
   val jwtHeader = JwtHeader(jwtConfig.getString("algorithm"), jwtConfig.getString("contenttype"))
+  
+  val remoteHost = appRemoteConfig.getString("hostname")
+  val remotePort = appRemoteConfig.getInt("port")
 }

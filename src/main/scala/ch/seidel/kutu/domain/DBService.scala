@@ -69,6 +69,7 @@ trait DBService {
   }
   else if(new File(System.getProperty("user.home") + "/kutuapp/db").exists()) {
     System.getProperty("user.home") + "/kutuapp/db"
+    "./db"
   }
   else {
     val f = new File(System.getProperty("user.home") + "/kutuapp/db")
@@ -215,4 +216,5 @@ trait DBService {
         new java.sql.Date(sdfShort.parse(date).getTime)
     }
   }
+  
 }

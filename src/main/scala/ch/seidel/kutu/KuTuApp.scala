@@ -44,9 +44,15 @@ import scalafx.beans.binding.Bindings
 import scalafx.scene.web.WebView
 import ch.seidel.kutu.http.KuTuAppHTTPServer
 import org.slf4j.LoggerFactory
+import net.glxn.qrgen.QRCode
+import net.glxn.qrgen.image.ImageType
+import java.io.ByteArrayInputStream
+import java.io.FileInputStream
+import scala.concurrent.ExecutionContext
 
 object KuTuApp extends JFXApp with KutuService with KuTuAppHTTPServer {
   private val logger = LoggerFactory.getLogger(this.getClass)
+  private val server = KuTuServer
   
   override def stopApp() {
     shutDown()
@@ -310,6 +316,25 @@ object KuTuApp extends JFXApp with KutuService with KuTuAppHTTPServer {
     }
   }
   
+  def makeWettkampfUploadMenu(p: WettkampfView): MenuItem = {
+    makeMenuAction("Wettkampf hochladen") {(caption, action) =>
+      KuTuApp.invokeWithBusyIndicator {
+        server.httpClientRequest("http://localhost:5757/api/competition/upload", server.toHttpEntity(p.toWettkampf))
+      }
+    }
+  }
+  
+  def makeWettkampfDownloadMenu(p: WettkampfView): MenuItem = {
+    makeMenuAction("Wettkampf Resultate aktualisieren") {(caption, action) =>
+      KuTuApp.invokeWithBusyIndicator {
+        import ch.seidel.kutu.http.Core._
+        implicit val executionContext: ExecutionContext = system.dispatcher
+        val response = server.httpClientGetRequest(s"http://localhost:5757/api/competition/download/${p.id}")
+        response.onComplete{t => t.foreach(r => server.fromEntity(r.entity))} 
+      }
+    }
+  }
+  
   def makeWettkampfDurchfuehrenMenu(p: WettkampfView): MenuItem = {
     if(!modelWettkampfModus.value) {
       makeMenuAction("Wettkampf durchführen") {(caption, action) =>
@@ -459,6 +484,39 @@ object KuTuApp extends JFXApp with KutuService with KuTuAppHTTPServer {
       })
     }
   }
+  def makeWettkampfHerunterladenMenu: MenuItem = {
+    makeMenuAction("Wettkampf herunterladen") {(caption, action) =>
+      implicit val e = action
+      // TODO via rest-api Wettkampfliste anzeigen
+//        if (selectedFile != null) {
+//          val wf = KuTuApp.invokeAsyncWithBusyIndicator {
+//            val is = new FileInputStream(selectedFile)
+//            val w = ResourceExchanger.importWettkampf(is)
+//            is.close()
+//            val dir = new java.io.File(homedir + "/" + w.easyprint.replace(" ", "_"))
+//            if(!dir.exists()) {
+//              dir.mkdirs();
+//            }
+//            w
+//          }
+//          import scala.concurrent.ExecutionContext.Implicits._
+//          wf.andThen {
+//            case Failure(f) => logger.debug(f.toString)
+//            case Success(w) =>
+//              Platform.runLater {
+//                updateTree
+//                val text = s"${w.titel} ${w.datum}"
+//                tree.getLeaves("Wettkämpfe").find { item => text.equals(item.value.value) } match {
+//                  case Some(node) =>
+//                    controlsView.selectionModel().select(node)
+//                  case None =>
+//                }
+//              }
+//          }
+//        }
+    }
+  }
+  
   def makeNeuerWettkampfImportierenMenu: MenuItem = {
     makeMenuAction("Wettkampf importieren") {(caption, action) =>
       implicit val e = action
@@ -475,7 +533,9 @@ object KuTuApp extends JFXApp with KutuService with KuTuAppHTTPServer {
         val selectedFile = fileChooser.showOpenDialog(stage)
         if (selectedFile != null) {
           val wf = KuTuApp.invokeAsyncWithBusyIndicator {
-            val w = ResourceExchanger.importWettkampf(selectedFile.getAbsolutePath)
+            val is = new FileInputStream(selectedFile)
+            val w = ResourceExchanger.importWettkampf(is)
+            is.close()
             val dir = new java.io.File(homedir + "/" + w.easyprint.replace(" ", "_"))
             if(!dir.exists()) {
               dir.mkdirs();
@@ -500,6 +560,26 @@ object KuTuApp extends JFXApp with KutuService with KuTuAppHTTPServer {
     }
   }
 
+  def showQRCode(p: WettkampfView) = makeMenuAction("Kampfrichter Mobile connet ...") {(caption, action) =>
+    implicit val e = action
+    val connectionString = s"https://gymapp.sharevic.net/operating/api/competition/${p.id}"
+    println(connectionString)
+    val out = QRCode.from(connectionString).to(ImageType.PNG).withSize(200, 200).stream();
+    val in = new ByteArrayInputStream(out.toByteArray());
+
+    val image = new Image(in);
+    val view = new ImageView(image);
+    view.setStyle("-fx-stroke-width: 2; -fx-stroke: blue");
+    PageDisplayer.showInDialog(caption, new DisplayablePage() {
+      def getPage: Node = view
+    },
+    new Button("OK") {
+        onAction = handleAction {implicit e: ActionEvent =>
+        }
+      }
+    )  
+  }
+  
   def makeWettkampfLoeschenMenu(p: WettkampfView) = makeMenuAction("Wettkampf löschen") {(caption, action) =>
     implicit val e = action
     PageDisplayer.showInDialog(caption, new DisplayablePage() {
@@ -615,6 +695,7 @@ object KuTuApp extends JFXApp with KutuService with KuTuAppHTTPServer {
           controlsView.contextMenu = new ContextMenu() {
             items += makeNeuerWettkampfAnlegenMenu
             items += makeNeuerWettkampfImportierenMenu
+            items += makeWettkampfHerunterladenMenu
           }
         case _ => (newItem.isLeaf, Option(newItem.getParent)) match {
             case (true, Some(parent)) => {
@@ -623,8 +704,10 @@ object KuTuApp extends JFXApp with KutuService with KuTuAppHTTPServer {
                   btnWettkampfModus.disable.value = false
                   controlsView.contextMenu = new ContextMenu() {
                     items += makeWettkampfDurchfuehrenMenu(p)
+                    items += showQRCode(p)
                     items += makeWettkampfBearbeitenMenu(p)
                     items += makeWettkampfExportierenMenu(p)
+                    items += makeWettkampfUploadMenu(p)
                     items += makeWettkampfDataDirectoryMenu(p)
                     items += makeWettkampfLoeschenMenu(p)
                   }

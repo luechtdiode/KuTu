@@ -20,10 +20,10 @@ object ResourceExchanger extends KutuService with RiegenBuilder {
   private val logger = LoggerFactory.getLogger(this.getClass)
   private val rm = reflect.runtime.universe.runtimeMirror(getClass.getClassLoader)
 
-  def importWettkampf(filename: String) = {
+  def importWettkampf(file: InputStream) = {
     type ZipStream = (ZipEntry,InputStream)
-    class ZipEntryTraversableClass(filename: String) extends Traversable[ZipStream] {
-      val zis = new ZipInputStream(new FileInputStream(filename))
+    class ZipEntryTraversableClass extends Traversable[ZipStream] {
+      val zis = new ZipInputStream(file)
       def entryIsValid(ze: ZipEntry) = !ze.isDirectory
 
       def foreach[U](f: ZipStream => U) {
@@ -37,7 +37,7 @@ object ResourceExchanger extends KutuService with RiegenBuilder {
       }
     }
 
-    val zip: Traversable[ZipStream] = new ZipEntryTraversableClass(filename)
+    val zip: Traversable[ZipStream] = new ZipEntryTraversableClass()
     val collection = zip.foldLeft(Map[String, (Seq[String],Map[String,Int])]()) { (acc, entry) =>
       val csv = Source.fromInputStream(entry._2, "utf-8").getLines().toList
       val header = csv.take(1).map(_.dropWhile {_.isUnicodeIdentifierPart }).flatMap(parseLine).zipWithIndex.toMap
@@ -136,34 +136,35 @@ object ResourceExchanger extends KutuService with RiegenBuilder {
     wertungInstances.groupBy(w => w.athletId).foreach { aw =>
       val (athletid, wertungen) = aw
       lazy val empty = wertungen.forall { w => w.endnote < 1 }
+      println("insert Wertungen for " + athletid, wertungen)
       wertungen.foreach { w =>
         if(wkdisziplines(w.wettkampfId).contains(w.wettkampfdisziplinId)) {
-          if(w.endnote < 1 && !empty) {
-            logger.debug("WARNING: not Importing zero-measure for " + (athletInstances.get(athletid + "") match {
-              case Some(a) => a.easyprint
-              case None => ""
-            }) + " and " + wkdisziplines(w.wettkampfId)(w.wettkampfdisziplinId).kurzbeschreibung)
-          }
-          else {
+//          if(w.endnote < 1 && !empty) {
+//            logger.debug("WARNING: not Importing zero-measure for " + (athletInstances.get(athletid + "") match {
+//              case Some(a) => a.easyprint
+//              case None => ""
+//            }) + " and " + wkdisziplines(w.wettkampfId)(w.wettkampfdisziplinId).kurzbeschreibung)
+//          }
+//          else {
             updateOrinsertWertung(w)
-          }
+//          }
         }
         else {
           logger.debug("WARNING: No matching Disciplin - " + w)
         }
       }
     }
-    wettkampfInstances.foreach{w =>
-      val (_, wettkampf) = w
-      athletInstances.foreach{a =>
-        val (_, athlet) = a
-        val completed = completeDisziplinListOfAthletInWettkampf(wettkampf, athlet.id)
-        if(completed.nonEmpty) {
-          logger.debug("Completed missing disciplines for " + athlet.easyprint, wettkampf.easyprint + ":")
-          logger.debug(completed.map(wkdisziplines(wettkampf.id)(_).kurzbeschreibung).mkString("[", ", ", "]"))
-        }
-      }
-    }
+//    wettkampfInstances.foreach{w =>
+//      val (_, wettkampf) = w
+//      athletInstances.foreach{a =>
+//        val (_, athlet) = a
+//        val completed = completeDisziplinListOfAthletInWettkampf(wettkampf, athlet.id)
+//        if(completed.nonEmpty) {
+//          logger.debug("Completed missing disciplines for " + athlet.easyprint, wettkampf.easyprint + ":")
+//          logger.debug(completed.map(wkdisziplines(wettkampf.id)(_).kurzbeschreibung).mkString("[", ", ", "]"))
+//        }
+//      }
+//    }
     if(collection.contains("riegen.csv")) {
       val (riegenCsv, riegenHeader) = collection("riegen.csv")
       logger.debug("importing riegen ...", riegenHeader)
@@ -210,9 +211,13 @@ object ResourceExchanger extends KutuService with RiegenBuilder {
     }
     values.map("\"" + _ + "\"").mkString(",")
   }
-
+  
   def exportWettkampf(wettkampf: Wettkampf, filename: String) {
-    val zip = new ZipOutputStream(new FileOutputStream(filename));
+    exportWettkampfToStream(wettkampf, new FileOutputStream(filename))
+  }
+  
+  def exportWettkampfToStream(wettkampf: Wettkampf, os: OutputStream) {
+    val zip = new ZipOutputStream(os);
     zip.putNextEntry(new ZipEntry("wettkampf.csv"));
     zip.write((getHeader[Wettkampf] + "\n" + getValues(wettkampf)).getBytes("utf-8"))
     zip.closeEntry()
