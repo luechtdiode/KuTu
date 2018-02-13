@@ -254,7 +254,7 @@ object KuTuApp extends JFXApp with KutuService {
               },
               txtAuszeichnungEndnote.text.value match {
                 case ""        => 0
-                case s: String => try {BigDecimal.valueOf(s)} catch {case e:Exception => 0}
+                case s: String => try {s} catch {case e:Exception => 0}
               })
             val dir = new java.io.File(homedir + "/" + w.easyprint.replace(" ", "_"))
             if(!dir.exists()) {
