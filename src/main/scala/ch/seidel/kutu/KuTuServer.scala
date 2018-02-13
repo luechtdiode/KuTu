@@ -12,8 +12,6 @@ object KuTuServer extends App with KuTuAppHTTPServer with Hashing {
   import Core._
   private implicit val executionContext: ExecutionContext = system.dispatcher
 
-  println(sha256("geräteturnen"))
-  println("917DA0F80E3C0821063D9A0C04ED9E7F5138C7D8C535C8434C0091503FEDC25E")
   val binding = startServer(user => user)
   
   override def shutDown() {
