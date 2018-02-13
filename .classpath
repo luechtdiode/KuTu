@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <classpath>
   <classpathentry kind="src" path="src/test/scala" output="target/test-classes" including="**/*.scala|**/*.java|**/*.java"/>
+  <classpathentry kind="src" path="src/test/resources" output="target/test-classes" excluding="**/*.java"/>
   <classpathentry kind="src" path="src/main/scala" including="**/*.scala|**/*.java|**/*.java"/>
   <classpathentry kind="src" path="Scripts" including="**/*.scala|**/*.java|**/*.java"/>
   <classpathentry kind="src" path="src/main/resources" excluding="**/*.java"/>
@@ -12,9 +13,11 @@
   <classpathentry kind="var" path="M2_REPO/org/controlsfx/controlsfx/8.40.14/controlsfx-8.40.14.jar" sourcepath="M2_REPO/org/controlsfx/controlsfx/8.40.14/controlsfx-8.40.14-sources.jar"/>
   <classpathentry kind="var" path="M2_REPO/org/xerial/sqlite-jdbc/3.21.0.1/sqlite-jdbc-3.21.0.1.jar" sourcepath="M2_REPO/org/xerial/sqlite-jdbc/3.21.0.1/sqlite-jdbc-3.21.0.1-sources.jar"/>
   <classpathentry kind="var" path="M2_REPO/com/typesafe/slick/slick_2.12/3.2.1/slick_2.12-3.2.1.jar" sourcepath="M2_REPO/com/typesafe/slick/slick_2.12/3.2.1/slick_2.12-3.2.1-sources.jar"/>
-  <classpathentry kind="var" path="M2_REPO/org/slf4j/slf4j-api/1.7.18/slf4j-api-1.7.18.jar" sourcepath="M2_REPO/org/slf4j/slf4j-api/1.7.18/slf4j-api-1.7.18-sources.jar"/>
+  <classpathentry kind="var" path="M2_REPO/org/slf4j/slf4j-api/1.7.25/slf4j-api-1.7.25.jar" sourcepath="M2_REPO/org/slf4j/slf4j-api/1.7.25/slf4j-api-1.7.25-sources.jar"/>
   <classpathentry kind="var" path="M2_REPO/com/typesafe/config/1.2.1/config-1.2.1.jar" sourcepath="M2_REPO/com/typesafe/config/1.2.1/config-1.2.1-sources.jar"/>
   <classpathentry kind="var" path="M2_REPO/org/reactivestreams/reactive-streams/1.0.0/reactive-streams-1.0.0.jar" sourcepath="M2_REPO/org/reactivestreams/reactive-streams/1.0.0/reactive-streams-1.0.0-sources.jar"/>
+  <classpathentry kind="var" path="M2_REPO/ch/qos/logback/logback-classic/1.2.3/logback-classic-1.2.3.jar" sourcepath="M2_REPO/ch/qos/logback/logback-classic/1.2.3/logback-classic-1.2.3-sources.jar"/>
+  <classpathentry kind="var" path="M2_REPO/ch/qos/logback/logback-core/1.2.3/logback-core-1.2.3.jar" sourcepath="M2_REPO/ch/qos/logback/logback-core/1.2.3/logback-core-1.2.3-sources.jar"/>
   <classpathentry kind="var" path="M2_REPO/commons-codec/commons-codec/1.11/commons-codec-1.11.jar" sourcepath="M2_REPO/commons-codec/commons-codec/1.11/commons-codec-1.11-sources.jar"/>
   <classpathentry kind="var" path="M2_REPO/org/apache/commons/commons-lang3/3.7/commons-lang3-3.7.jar" sourcepath="M2_REPO/org/apache/commons/commons-lang3/3.7/commons-lang3-3.7-sources.jar"/>
   <classpathentry kind="var" path="M2_REPO/org/apache/commons/commons-text/1.2/commons-text-1.2.jar" sourcepath="M2_REPO/org/apache/commons/commons-text/1.2/commons-text-1.2-sources.jar"/>
