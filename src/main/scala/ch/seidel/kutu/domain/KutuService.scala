@@ -75,7 +75,8 @@ trait KutuService extends RiegenBuilder {
     System.getProperty("user.home") + "/kutuapp/db"
   }
   val dbfile = new File(dbhomedir + "/kutu.sqlite")
-
+  println(dbfile)
+  
   lazy val databaselite = Database.forURL(
     url = "jdbc:sqlite:" + dbfile.getAbsolutePath,
     driver = "org.sqlite.JDBC",
@@ -187,7 +188,7 @@ trait KutuService extends RiegenBuilder {
       lines.filter(filterCommentLines).foldLeft(List(""))(combineMultilineStatement).filter(_.trim().length() > 0)
     }
     
-    database.run(DBIO.sequence(parse(script).map(statement => sqlu"""#$statement""")))
+    Await.ready(database.run(DBIO.sequence(parse(script).map(statement => sqlu"""#$statement"""))), Duration.Inf)
   }
 
   if(!dbfile.exists() || dbfile.length() == 0) {
@@ -339,7 +340,7 @@ trait KutuService extends RiegenBuilder {
   }
 
   def updateOrinsertWertung(w: Wertung) = {
-    database.run(DBIO.sequence(Seq(
+    Await.result(database.run(DBIO.sequence(Seq(
       sqlu"""
                 delete from wertung where
                 athlet_Id=${w.athletId} and wettkampfdisziplin_Id=${w.wettkampfdisziplinId} and wettkampf_Id=${w.wettkampfId}
@@ -355,10 +356,10 @@ trait KutuService extends RiegenBuilder {
                 WHERE wettkampf_id=${w.id} and not exists (
                   SELECT 1 FROM wertung w
                   WHERE w.wettkampf_id=${w.id}
-                    and (w.riege=name or w.riege2=name)
+                    and (w.riege=riege.name or w.riege2=riege.name)
                 )
         """
-    )))
+    ))), Duration.Inf)
   }
 
   def updateWertung(w: Wertung): WertungView = {
@@ -755,7 +756,8 @@ trait KutuService extends RiegenBuilder {
   
   def completeDisziplinListOfAthletInWettkampf(wettkampf: Wettkampf, athletId: Long) = {
     val wertungen = listAthletWertungenZuWettkampf(athletId, wettkampf.id)
-    val programme = readWettkampfLeafs(wettkampf.programmId).map(p => p.id).toSet
+    val wpgms = wertungen.map(w => w.wettkampfdisziplin.programm.id)
+    val programme = readWettkampfLeafs(wettkampf.programmId).map(p => p.id).filter(id => wpgms.contains(id)).toSet
     
     val pgmwkds: Map[Long,Vector[Long]] = programme.map{x =>
         x -> Await.result(database.run{sql""" select id from wettkampfdisziplin
@@ -764,12 +766,9 @@ trait KutuService extends RiegenBuilder {
                                      where athlet_Id=${athletId}
                                        and wettkampf_Id=${wettkampf.id})""".as[Long]}, Duration.Inf)
     }.toMap
-    val completed = programme.filter{p => wertungen.filter{w => p == w.wettkampfdisziplin.programm.id}.nonEmpty}.
+    val completed = programme.
       map{pgmwkds}.flatMap{wkds => wkds.map{wkd =>
-        Await.result(database.run{sqlu"""
-                  delete from wertung where
-                  athlet_Id=${athletId} and wettkampfdisziplin_Id=$wkd and wettkampf_Id=${wettkampf.id}
-          """ >>
+        Await.result(database.run{
         sqlu"""
                   insert into wertung
                   (athlet_Id, wettkampfdisziplin_Id, wettkampf_Id, note_d, note_e, endnote)
