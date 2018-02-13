@@ -71,7 +71,7 @@ abstract trait WertungService extends DBService with WertungResultMapper with Di
   }
   
   def updateOrinsertWertung(w: Wertung) = {
-    database.run(DBIO.sequence(Seq(
+    Await.result(database.run(DBIO.sequence(Seq(
       sqlu"""
                 delete from wertung where
                 athlet_Id=${w.athletId} and wettkampfdisziplin_Id=${w.wettkampfdisziplinId} and wettkampf_Id=${w.wettkampfId}
@@ -87,10 +87,10 @@ abstract trait WertungService extends DBService with WertungResultMapper with Di
                 WHERE wettkampf_id=${w.id} and not exists (
                   SELECT 1 FROM wertung w
                   WHERE w.wettkampf_id=${w.id}
-                    and (w.riege=name or w.riege2=name)
+                    and (w.riege=riege.name or w.riege2=riege.name)
                 )
         """
-    )))
+    ))), Duration.Inf)
   }
 
   def updateWertung(w: Wertung): WertungView = {

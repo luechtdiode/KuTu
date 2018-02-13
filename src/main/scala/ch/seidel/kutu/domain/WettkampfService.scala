@@ -228,26 +228,23 @@ trait WettkampfService extends DBService
   
   def completeDisziplinListOfAthletInWettkampf(wettkampf: Wettkampf, athletId: Long) = {
     val wertungen = listAthletWertungenZuWettkampf(athletId, wettkampf.id)
-    val programme = readWettkampfLeafs(wettkampf.programmId).map(p => p.id).toSet
+    val wpgms = wertungen.map(w => w.wettkampfdisziplin.programm.id)
+    val programme = readWettkampfLeafs(wettkampf.programmId).map(p => p.id).filter(id => wpgms.contains(id)).toSet
     
     val pgmwkds: Map[Long,Vector[Long]] = programme.map{x =>
-        x -> Await.result(database.run{sql""" 
-                   select id from wettkampfdisziplin
-                   where programm_Id = ${x}
-                     and id not in (select wettkampfdisziplin_Id from wertung
+        x -> Await.result(database.run{sql""" select id from wettkampfdisziplin
+                    where programm_Id = ${x}
+                      and id not in (select wettkampfdisziplin_Id from wertung
                                      where athlet_Id=${athletId}
                                        and wettkampf_Id=${wettkampf.id})""".as[Long]}, Duration.Inf)
     }.toMap
-    val completed = programme.filter{p => wertungen.filter{w => p == w.wettkampfdisziplin.programm.id}.nonEmpty}.
+    val completed = programme.
       map{pgmwkds}.flatMap{wkds => wkds.map{wkd =>
-        Await.result(database.run{sqlu"""
-                   delete from wertung where
-                   athlet_Id=${athletId} and wettkampfdisziplin_Id=$wkd and wettkampf_Id=${wettkampf.id}
-          """ >>
+        Await.result(database.run{
         sqlu"""
-                   insert into wertung
-                   (athlet_Id, wettkampfdisziplin_Id, wettkampf_Id, note_d, note_e, endnote)
-                   values (${athletId}, ${wkd}, ${wettkampf.id}, 0, 0, 0)
+                  insert into wertung
+                  (athlet_Id, wettkampfdisziplin_Id, wettkampf_Id, note_d, note_e, endnote)
+                  values (${athletId}, ${wkd}, ${wettkampf.id}, 0, 0, 0)
           """}, Duration.Inf)
         wkd
     }}

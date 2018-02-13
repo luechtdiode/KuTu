@@ -109,12 +109,21 @@ object ResourceExchanger extends KutuService with RiegenBuilder {
     val wkdisziplines = wettkampfInstances.map{w =>
       (w._2.id, listWettkampfDisziplines(w._2.id).map(d => d.id -> d).toMap)
     }
+    def getAthletName(athletid: Long): String = {
+      athletInstances.get(athletid + "") match {
+        case Some(a) => a.easyprint
+        case None => athletInstances.find(a => a._2.id == athletid).map(_._2.easyprint).getOrElse(athletid + "")
+      }
+    }
+    def getWettkampfDisziplinName(w: Wertung): String = {
+      wkdisziplines(w.wettkampfId)(w.wettkampfdisziplinId).kurzbeschreibung
+    }
     val (wertungenCsv, wertungenHeader) = collection("wertungen.csv")
     logger.debug("importing wertungen ...", wertungenHeader)
     val wertungInstances = wertungenCsv.map(parseLine).filter(_.size == wertungenHeader.size).map{fields =>
       val athletid: Long = fields(wertungenHeader("athletId"))
       val wettkampfid: Long = fields(wertungenHeader("wettkampfId"))
-      Wertung(
+      val w = Wertung(
         id = fields(wertungenHeader("id")),
         athletId = athletInstances.get(athletid + "") match {
           case Some(a) => a.id
@@ -131,40 +140,38 @@ object ResourceExchanger extends KutuService with RiegenBuilder {
         riege = if(fields(wertungenHeader("riege")).length > 0) Some(fields(wertungenHeader("riege"))) else None,
         riege2 = if(fields(wertungenHeader("riege2")).length > 0) Some(fields(wertungenHeader("riege2"))) else None
       )
+//      println(w.athletId, getAthletName(w.athletId), w.endnote, w.wettkampfdisziplinId, w.wettkampfdisziplinId, getWettkampfDisziplinName(w))
+      w
     }
 
-    wertungInstances.groupBy(w => w.athletId).foreach { aw =>
+    val inserted = wertungInstances.groupBy(w => w.athletId).map { aw =>
       val (athletid, wertungen) = aw
       lazy val empty = wertungen.forall { w => w.endnote < 1 }
-      println("insert Wertungen for " + athletid, wertungen)
-      wertungen.foreach { w =>
+      wertungen.map { w =>
         if(wkdisziplines(w.wettkampfId).contains(w.wettkampfdisziplinId)) {
 //          if(w.endnote < 1 && !empty) {
-//            logger.debug("WARNING: not Importing zero-measure for " + (athletInstances.get(athletid + "") match {
-//              case Some(a) => a.easyprint
-//              case None => ""
-//            }) + " and " + wkdisziplines(w.wettkampfId)(w.wettkampfdisziplinId).kurzbeschreibung)
+//            println("WARNING: Importing zero-measure for " + getAthletName(w.athletId) + " and " + getWettkampfDisziplinName(w))
 //          }
-//          else {
-            updateOrinsertWertung(w)
-//          }
+          updateOrinsertWertung(w)(1)
         }
         else {
           logger.debug("WARNING: No matching Disciplin - " + w)
+          0
+        }
+      }.sum
+    }.sum
+    logger.debug(wertungInstances.size, inserted)
+    wettkampfInstances.foreach{w =>
+      val (_, wettkampf) = w
+      athletInstances.foreach{a =>
+        val (_, athlet) = a
+        val completed = completeDisziplinListOfAthletInWettkampf(wettkampf, athlet.id)
+        if(completed.nonEmpty) {
+          logger.debug("Completed missing disciplines for " + athlet.id + " " + athlet.easyprint, wettkampf.easyprint + ":")
+          logger.debug(completed.map(wkdisziplines(wettkampf.id)(_).toString).mkString("[", ", ", "]"))
         }
       }
     }
-//    wettkampfInstances.foreach{w =>
-//      val (_, wettkampf) = w
-//      athletInstances.foreach{a =>
-//        val (_, athlet) = a
-//        val completed = completeDisziplinListOfAthletInWettkampf(wettkampf, athlet.id)
-//        if(completed.nonEmpty) {
-//          logger.debug("Completed missing disciplines for " + athlet.easyprint, wettkampf.easyprint + ":")
-//          logger.debug(completed.map(wkdisziplines(wettkampf.id)(_).kurzbeschreibung).mkString("[", ", ", "]"))
-//        }
-//      }
-//    }
     if(collection.contains("riegen.csv")) {
       val (riegenCsv, riegenHeader) = collection("riegen.csv")
       logger.debug("importing riegen ...", riegenHeader)
@@ -182,6 +189,7 @@ object ResourceExchanger extends KutuService with RiegenBuilder {
         updateOrinsertRiege(riege)
       }
     }
+    logger.debug("import finished")
     wettkampfInstances.head._2
   }
 
