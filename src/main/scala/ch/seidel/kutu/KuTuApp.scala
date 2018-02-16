@@ -49,6 +49,9 @@ import net.glxn.qrgen.image.ImageType
 import java.io.ByteArrayInputStream
 import java.io.FileInputStream
 import scala.concurrent.ExecutionContext
+import scala.concurrent.Await
+import scala.concurrent.duration.Duration
+import scala.io.Source
 
 object KuTuApp extends JFXApp with KutuService with KuTuAppHTTPServer {
   private val logger = LoggerFactory.getLogger(this.getClass)
@@ -319,7 +322,7 @@ object KuTuApp extends JFXApp with KutuService with KuTuAppHTTPServer {
   def makeWettkampfUploadMenu(p: WettkampfView): MenuItem = {
     makeMenuAction("Wettkampf hochladen") {(caption, action) =>
       KuTuApp.invokeWithBusyIndicator {
-        server.httpClientRequest("http://localhost:5757/api/competition/upload", server.toHttpEntity(p.toWettkampf))
+        Await.result(server.httpPutClientRequest(s"$remoteBaseUrl/api/competition/upload", server.toHttpEntity(p.toWettkampf)), Duration.Inf)
       }
     }
   }
@@ -327,10 +330,8 @@ object KuTuApp extends JFXApp with KutuService with KuTuAppHTTPServer {
   def makeWettkampfDownloadMenu(p: WettkampfView): MenuItem = {
     makeMenuAction("Wettkampf Resultate aktualisieren") {(caption, action) =>
       KuTuApp.invokeWithBusyIndicator {
-        import ch.seidel.kutu.http.Core._
-        implicit val executionContext: ExecutionContext = system.dispatcher
-        val response = server.httpClientGetRequest(s"http://localhost:5757/api/competition/download/${p.id}")
-        response.onComplete{t => t.foreach(r => server.fromEntity(r.entity))} 
+        val url=s"$remoteBaseUrl/api/competition/download/${p.id}"
+        Await.result(server.httpDownloadRequest(server.makeHttpGetRequest(url)), Duration.Inf)
       }
     }
   }
@@ -562,7 +563,7 @@ object KuTuApp extends JFXApp with KutuService with KuTuAppHTTPServer {
 
   def showQRCode(p: WettkampfView) = makeMenuAction("Kampfrichter Mobile connet ...") {(caption, action) =>
     implicit val e = action
-    val connectionString = s"https://gymapp.sharevic.net/operating/api/competition/${p.id}"
+    val connectionString = s"$remoteBaseUrl/api/competition/${p.id}"
     println(connectionString)
     val out = QRCode.from(connectionString).to(ImageType.PNG).withSize(200, 200).stream();
     val in = new ByteArrayInputStream(out.toByteArray());
@@ -708,6 +709,7 @@ object KuTuApp extends JFXApp with KutuService with KuTuAppHTTPServer {
                     items += makeWettkampfBearbeitenMenu(p)
                     items += makeWettkampfExportierenMenu(p)
                     items += makeWettkampfUploadMenu(p)
+                    items += makeWettkampfDownloadMenu(p)
                     items += makeWettkampfDataDirectoryMenu(p)
                     items += makeWettkampfLoeschenMenu(p)
                   }
@@ -848,5 +850,5 @@ object KuTuApp extends JFXApp with KutuService with KuTuAppHTTPServer {
     }
   }
   
-  startServer { x => x }
+  startServer { x => sha256(x) }
 }

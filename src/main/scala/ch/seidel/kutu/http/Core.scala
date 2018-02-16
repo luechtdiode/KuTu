@@ -21,6 +21,7 @@ import java.net.NetworkInterface
 import java.net.InetAddress
 import akka.http.scaladsl.model.headers.RawHeader
 import authentikat.jwt.JsonWebToken
+import scala.util.Try
 
 object Core extends KuTuSSLContext {
   val logger = LoggerFactory.getLogger(this.getClass)
@@ -50,22 +51,33 @@ trait KuTuAppHTTPServer extends Config with ApiService {
   var clientheader = Some(RawHeader(jwtAuthorizationKey, JsonWebToken(jwtHeader, setClaims("kutuapp-systemuser", jwtTokenExpiryPeriodInDays), jwtSecretKey)))
   
 
-  def httpClientRequest(uri: String, entity: RequestEntity): Future[HttpResponse] = {
-    import HttpMethods._
+  def withAuthHeader(request: HttpRequest) = {
     clientheader match {
-      case Some(ch) => Http().singleRequest(HttpRequest(PUT, uri=uri, entity = entity, headers = List(ch)))
-      case _ => Http().singleRequest(HttpRequest(PUT, uri=uri, entity = entity))
+      case Some(ch) => request.withHeaders(request.headers :+ ch)
+      case _ => request
     }
+    
   }
   
-  def httpClientGetRequest(uri: String): Future[HttpResponse] = {
-    import HttpMethods._
-    clientheader match {
-      case Some(ch) => Http().singleRequest(HttpRequest(GET, uri=uri, headers = List(ch)))
-      case _ => Http().singleRequest(HttpRequest(GET, uri=uri))
-    }
+  def httpClientRequest(request: HttpRequest): Future[HttpResponse] = {
+    Http().singleRequest(withAuthHeader(request))
   }
   
+  def httpPutClientRequest(uri: String, entity: RequestEntity): Future[HttpResponse] = {
+    import HttpMethods._
+    httpClientRequest(HttpRequest(PUT, uri=uri, entity = entity))
+  }
+
+  def makeHttpGetRequest(url: String) = {
+    import HttpMethods._
+    withAuthHeader(HttpRequest(GET, uri=url))
+  }
+  
+  def httpGetClientRequest(uri: String): Future[HttpResponse] = {
+    import HttpMethods._
+    httpClientRequest(HttpRequest(GET, uri=uri))
+  }
+
   /**
    * Ensure that the constructed ActorSystem is shut down when the JVM shuts down
    */

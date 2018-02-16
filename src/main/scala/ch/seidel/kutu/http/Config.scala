@@ -28,4 +28,5 @@ trait Config {
   
   val remoteHost = appRemoteConfig.getString("hostname")
   val remotePort = appRemoteConfig.getInt("port")
+  val remoteBaseUrl = s"http://$remoteHost:$remotePort/operating"
 }

@@ -1,22 +1,29 @@
 package ch.seidel.kutu.http
 
-import java.io.FileInputStream
+import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream
+import java.io.FileInputStream
+import java.io.InputStreamReader
 
-import akka.http.scaladsl.common.EntityStreamingSupport
-import akka.http.scaladsl.model.StatusCodes
+import scala.concurrent.duration.FiniteDuration
+import scala.concurrent.Future
+import scala.util.Try
+import java.util.concurrent.TimeUnit
+
+import akka.http.scaladsl._
+import akka.http.scaladsl.model._
 import akka.http.scaladsl.server.Route
-import akka.http.scaladsl.model.MediaTypes
-import akka.http.scaladsl.model.HttpEntity
+import akka.http.scaladsl.unmarshalling.Unmarshaller
+import akka.http.scaladsl.unmarshalling.Unmarshaller.EnhancedFromEntityUnmarshaller
+import akka.http.scaladsl.unmarshalling.Unmarshal
+
+import akka.stream.scaladsl.StreamConverters
+import akka.stream.scaladsl.Sink
+import akka.stream.scaladsl.Source
 
 import ch.seidel.kutu.data.ResourceExchanger
-import ch.seidel.kutu.domain.WettkampfService
-import akka.http.javadsl.model.Multiparts
-import akka.http.javadsl.model.HttpEntities
 import ch.seidel.kutu.domain.Wettkampf
-import akka.http.scaladsl.model.ContentTypes
-import akka.http.scaladsl.model.Multipart
-import akka.stream.scaladsl._
+import ch.seidel.kutu.domain.WettkampfService
 
 trait WettkampfRoutes extends JwtSupport with RouterLogging with WettkampfService {
   
@@ -34,11 +41,24 @@ trait WettkampfRoutes extends JwtSupport with RouterLogging with WettkampfServic
     ) toEntity
   }
   
-  def fromEntity(e: HttpEntity) {
+ 
+  def httpDownloadRequest(request: HttpRequest) = {
     import Core._
-    ResourceExchanger.importWettkampf(e.dataBytes.runWith(StreamConverters.asInputStream()))
+    val source = Source.single((request, ()))
+    val requestResponseFlow = Http().superPool[Unit]()
+    def responseOrFail[T](in: (Try[HttpResponse], T)): (HttpResponse, T) = in match {
+      case (responseTry, context) => (responseTry.get, context)
+    }
+    def importData()(httpResponse : HttpResponse) {
+      val is = httpResponse.entity.dataBytes.runWith(StreamConverters.asInputStream())
+      ResourceExchanger.importWettkampf(is)
+    }
+    source.via(requestResponseFlow)
+          .map(responseOrFail)
+          .map(_._1)
+          .runWith(Sink.foreach(importData()))
   }
-    
+      
   lazy val wettkampfRoutes: Route = {
     pathPrefix("competition" / "upload") {
       pathEnd {
@@ -57,14 +77,13 @@ trait WettkampfRoutes extends JwtSupport with RouterLogging with WettkampfServic
     } ~
     path("competition" / "download" / LongNumber) { wettkampfid =>
       authenticated { userId =>
-        val bos = new ByteArrayOutputStream()
         val wettkampf = readWettkampf(wettkampfid)
+        val bos = new ByteArrayOutputStream()
         ResourceExchanger.exportWettkampfToStream(wettkampf, bos)
         val bytes = bos.toByteArray()
-        val responseEntity = HttpEntity(
-//          MediaTypes.`application/zip`
-          bytes)
-        complete(responseEntity)
+        complete(HttpEntity(
+                MediaTypes.`application/zip`,
+                bos.toByteArray))
       }
     }
     
