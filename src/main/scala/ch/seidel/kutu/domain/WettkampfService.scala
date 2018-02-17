@@ -12,6 +12,7 @@ import slick.jdbc.SQLiteProfile
 import slick.jdbc.SQLiteProfile.api._
 import scala.collection.JavaConverters
 import ch.seidel.kutu.squad.RiegenBuilder
+import java.util.UUID
 
 trait WettkampfService extends DBService 
   with WettkampfResultMapper 
@@ -122,6 +123,16 @@ trait WettkampfService extends DBService
     }, Duration.Inf)
   }
   
+  def readWettkampfAsync(uuid: String) = {
+    database.run{
+      sql"""      select * from wettkampf where uuid=$uuid""".as[Wettkampf].head
+    }
+  }  
+    
+  def readWettkampf(uuid: String) = {
+    Await.result(readWettkampfAsync(uuid), Duration.Inf)
+  }
+  
   def readWettkampfAsync(id: Long) = {
     database.run{
       sql"""      select * from wettkampf where id=$id""".as[Wettkampf].head
@@ -151,19 +162,27 @@ trait WettkampfService extends DBService
     seek(programmid, Seq.empty)
   }
 
-  def createWettkampf(datum: java.sql.Date, titel: String, programmId: Set[Long], auszeichnung: Int, auszeichnungendnote: scala.math.BigDecimal): Wettkampf = {
+  def createWettkampf(datum: java.sql.Date, titel: String, programmId: Set[Long], auszeichnung: Int, auszeichnungendnote: scala.math.BigDecimal, uuidOption: Option[String]): Wettkampf = {
     val cache = scala.collection.mutable.Map[Long, ProgrammView]()
     val programs = programmId map (p => readProgramm(p, cache))
     val heads = programs map (_.head)
-    if (!heads.forall { h => h.id == heads.head.id }) {
-      throw new IllegalArgumentException("Programme nicht aus der selben Gruppe können nicht in einen Wettkampf aufgenommen werden")
-    }
-    val process = 
-      sql"""
+    val uuid = uuidOption.getOrElse(UUID.randomUUID().toString())
+    val initialCheck = uuidOption match {
+      case Some(suuid) => sql"""
+                  select max(id) as maxid
+                  from wettkampf
+                  where uuid=$suuid
+             """.as[Long]
+      case _ => sql"""
                   select max(id) as maxid
                   from wettkampf
                   where LOWER(titel)=${titel.toLowerCase()} and programm_id = ${heads.head.id} and datum=$datum
              """.as[Long]
+    }
+    if (!heads.forall { h => h.id == heads.head.id }) {
+      throw new IllegalArgumentException("Programme nicht aus der selben Gruppe können nicht in einen Wettkampf aufgenommen werden")
+    }
+    val process = initialCheck
       .headOption
       .flatMap{
         case Some(cid) if(cid > 0) => 
@@ -176,8 +195,8 @@ trait WettkampfService extends DBService
         case _ => 
           sqlu"""
                   insert into wettkampf
-                  (datum, titel, programm_Id, auszeichnung, auszeichnungendnote)
-                  values (${datum}, ${titel}, ${heads.head.id}, $auszeichnung, $auszeichnungendnote)
+                  (datum, titel, programm_Id, auszeichnung, auszeichnungendnote, uuid)
+                  values (${datum}, ${titel}, ${heads.head.id}, $auszeichnung, $auszeichnungendnote, $uuid)
               """ >>
           sql"""
                   select * from wettkampf
@@ -188,7 +207,8 @@ trait WettkampfService extends DBService
     Await.result(database.run(process), Duration.Inf)
   }
 
-  def saveWettkampf(id: Long, datum: java.sql.Date, titel: String, programmId: Set[Long], auszeichnung: Int, auszeichnungendnote: scala.math.BigDecimal): Wettkampf = {
+  def saveWettkampf(id: Long, datum: java.sql.Date, titel: String, programmId: Set[Long], auszeichnung: Int, auszeichnungendnote: scala.math.BigDecimal, uuidOption: Option[String]): Wettkampf = {
+    val uuid = uuidOption.getOrElse(UUID.randomUUID().toString())
     val cache = scala.collection.mutable.Map[Long, ProgrammView]()
     val process = for {
         existing <- sql"""
@@ -205,8 +225,8 @@ trait WettkampfService extends DBService
       }
       sqlu"""
                   replace into wettkampf
-                  (id, datum, titel, programm_Id, auszeichnung, auszeichnungendnote)
-                  values ($id, $datum, $titel, ${heads.head.id}, $auszeichnung, $auszeichnungendnote)
+                  (id, datum, titel, programm_Id, auszeichnung, auszeichnungendnote, uuid)
+                  values ($id, $datum, $titel, ${heads.head.id}, $auszeichnung, $auszeichnungendnote, $uuid)
           """ >>
           sql"""
                   select * from wettkampf

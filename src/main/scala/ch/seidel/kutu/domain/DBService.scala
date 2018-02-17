@@ -65,17 +65,28 @@ trait DBService {
     System.getProperty("user.home") + "/kutuapp/data"
   }
   lazy val dbhomedir = if(new File("./db/kutu.sqlite").exists()) {
+    logger.info("using db at: " + new File("./db/kutu.sqlite").getAbsolutePath);
     "./db"
   }
   else if(new File(System.getProperty("user.home") + "/kutuapp/db").exists()) {
+    logger.info("using db at: " + System.getProperty("user.home") + "/kutuapp/db");
     System.getProperty("user.home") + "/kutuapp/db"
-    "./db"
+//    "./db"
   }
   else {
     val f = new File(System.getProperty("user.home") + "/kutuapp/db")
     logger.debug("try to create for installing the db: " + f);
-    f.mkdirs();
-    System.getProperty("user.home") + "/kutuapp/db"
+    try {
+      f.mkdirs();
+      logger.info("using db at: " + f);
+      System.getProperty("user.home") + "/kutuapp/db"
+    } catch {
+      case _ : Throwable =>
+        val f = new File(".db")
+        logger.warn("try to create for installing the db: " + f);
+        f.mkdirs();
+        f.getPath
+    }
   }
   val dbfile = new File(dbhomedir + "/kutu.sqlite")
 
@@ -87,16 +98,20 @@ trait DBService {
     password = "kutu",
     executor = AsyncExecutor("DB-Actions", 30, 10000))
 
-  lazy val database = databaselite
+  lazy val database = {
+    logger.info(s"Using Database at ${dbfile.getAbsolutePath}")
+    databaselite
+  }
 //  lazy val database = databasemysql
 
   def installDB {
     val sqlScripts = Seq(
          "kutu-sqllite-ddl.sql"
-        ,"kutu-sqllite-initialdata.sql"
+        ,"kutu-sqllite-initialdata.sql"        
         )
 
     sqlScripts.foreach { filename =>
+      logger.info(s"running sql-script: $filename")
       val file = getClass.getResourceAsStream("/dbscripts/" + filename)
       executeDBScript(Source.fromInputStream(file, "utf-8").getLines())
     }
@@ -114,6 +129,7 @@ trait DBService {
         ,"AddGeTuDamenHerrenKategorie.sql"
         ,"UpdateGeTuK7DamenOhneBarren.sql"
         ,"AlterKampfrichter.sql"
+        ,"AlterWettkampfUUID.sql"
         )
 
     sqlScripts.filter{ filename =>
@@ -122,6 +138,8 @@ trait DBService {
     }.foreach { filename =>
       val file = getClass.getResourceAsStream("/dbscripts/" + filename)
       try {
+        logger.info(s"running sql-script: $filename")
+
         executeDBScript(Source.fromInputStream(file, "utf-8").getLines())
       }
       catch {

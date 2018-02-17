@@ -52,13 +52,15 @@ import scala.concurrent.ExecutionContext
 import scala.concurrent.Await
 import scala.concurrent.duration.Duration
 import scala.io.Source
+import java.util.UUID
+import ch.seidel.kutu.http.Core
 
 object KuTuApp extends JFXApp with KutuService with KuTuAppHTTPServer {
   private val logger = LoggerFactory.getLogger(this.getClass)
   private val server = KuTuServer
   
   override def stopApp() {
-    shutDown()
+    super.shutDown("KuTuApp")
   }
   
   var tree = AppNavigationModel.create(KuTuApp.this)
@@ -271,7 +273,8 @@ object KuTuApp extends JFXApp with KutuService with KuTuAppHTTPServer {
               txtAuszeichnungEndnote.text.value match {
                 case ""        => 0
                 case s: String => try {s} catch {case e:Exception => 0}
-              })
+              },
+              p.uuid)
             val dir = new java.io.File(homedir + "/" + w.easyprint.replace(" ", "_"))
             if(!dir.exists()) {
               dir.mkdirs();
@@ -322,7 +325,7 @@ object KuTuApp extends JFXApp with KutuService with KuTuAppHTTPServer {
   def makeWettkampfUploadMenu(p: WettkampfView): MenuItem = {
     makeMenuAction("Wettkampf hochladen") {(caption, action) =>
       KuTuApp.invokeWithBusyIndicator {
-        Await.result(server.httpPutClientRequest(s"$remoteBaseUrl/api/competition/upload", server.toHttpEntity(p.toWettkampf)), Duration.Inf)
+        Await.result(server.httpPutClientRequest(s"$remoteAdminBaseUrl/api/competition/upload", server.toHttpEntity(p.toWettkampf)), Duration.Inf)
       }
     }
   }
@@ -330,7 +333,7 @@ object KuTuApp extends JFXApp with KutuService with KuTuAppHTTPServer {
   def makeWettkampfDownloadMenu(p: WettkampfView): MenuItem = {
     makeMenuAction("Wettkampf Resultate aktualisieren") {(caption, action) =>
       KuTuApp.invokeWithBusyIndicator {
-        val url=s"$remoteBaseUrl/api/competition/download/${p.id}"
+        val url=s"$remoteAdminBaseUrl/api/competition/download/${p.id}"
         Await.result(server.httpDownloadRequest(server.makeHttpGetRequest(url)), Duration.Inf)
       }
     }
@@ -403,6 +406,46 @@ object KuTuApp extends JFXApp with KutuService with KuTuAppHTTPServer {
     })
   }
 
+  def makeLoginMenu = makeMenuAction("Login ...") {(caption, action) =>
+    implicit val e = action
+
+    val txtUsername = new TextField {
+      prefWidth = 500
+      promptText = "Username"
+    }
+
+    val txtPassword = new PasswordField {
+      prefWidth = 500
+      promptText = "Passwort"
+    }
+    PageDisplayer.showInDialog(caption, new DisplayablePage() {
+      def getPage: Node = {
+        new BorderPane {
+          hgrow = Priority.Always
+          vgrow = Priority.Always
+          center = new VBox {
+            children.addAll(
+                new Label(txtUsername.promptText.value), txtUsername,
+                new Label(txtPassword.promptText.value), txtPassword
+                )
+          }
+        }
+      }
+    }, new Button("OK") {
+      disable <== when(Bindings.createBooleanBinding(() => {
+                            txtUsername.text.isEmpty.value && txtPassword.text.isEmpty().value
+                          },
+                            txtUsername.text, txtPassword.text
+                          )) choose true otherwise false
+      onAction = handleAction {implicit e: ActionEvent =>
+        KuTuApp.invokeWithBusyIndicator {
+          Await.result(server.httpLoginRequest(s"$remoteBaseUrl/api/login", txtUsername.text.value.trim(), txtPassword.text.value.trim()), Duration.Inf)
+//          Await.result(server.httpLoginRequest(s"https://38qniweusmuwjkbr.myfritz.net/gymapp/api/auth/login", txtUsername.text.value.trim(), txtPassword.text.value.trim()), Duration.Inf)
+        }
+      }
+    })
+  }
+
   def makeNeuerWettkampfAnlegenMenu: MenuItem = {
     makeMenuAction("Neuen Wettkampf anlegen ...") {(caption, action) =>
       implicit val e = action
@@ -468,8 +511,9 @@ object KuTuApp extends JFXApp with KutuService with KuTuAppHTTPServer {
               },
               txtAuszeichnungEndnote.text.value match {
                 case ""        => 0
-                case s: String => try {BigDecimal.valueOf(s)} catch {case e:Exception => 0}
-              })
+                case s: String => try {BigDecimal.valueOf(s)} catch {case e:Exception => 0}                
+              },
+              Some(UUID.randomUUID().toString()))
            val dir = new java.io.File(homedir + "/" + w.easyprint.replace(" ", "_"))
            if(!dir.exists()) {
              dir.mkdirs();
@@ -563,7 +607,7 @@ object KuTuApp extends JFXApp with KutuService with KuTuAppHTTPServer {
 
   def showQRCode(p: WettkampfView) = makeMenuAction("Kampfrichter Mobile connet ...") {(caption, action) =>
     implicit val e = action
-    val connectionString = s"$remoteBaseUrl/api/competition/${p.id}"
+    val connectionString = s"$remoteBaseUrl/api/competition/${p.uuid.getOrElse("")}"
     println(connectionString)
     val out = QRCode.from(connectionString).to(ImageType.PNG).withSize(200, 200).stream();
     val in = new ByteArrayInputStream(out.toByteArray());
@@ -697,6 +741,7 @@ object KuTuApp extends JFXApp with KutuService with KuTuAppHTTPServer {
             items += makeNeuerWettkampfAnlegenMenu
             items += makeNeuerWettkampfImportierenMenu
             items += makeWettkampfHerunterladenMenu
+            items += makeLoginMenu
           }
         case _ => (newItem.isLeaf, Option(newItem.getParent)) match {
             case (true, Some(parent)) => {

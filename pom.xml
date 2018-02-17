@@ -198,6 +198,40 @@
 	<build>
 		<plugins>
 			<plugin>
+			 <groupId>org.apache.maven.plugins</groupId>
+			 <artifactId>maven-shade-plugin</artifactId>
+			 <version>1.5</version>
+			 <executions>
+			  <execution>
+			   <phase>package</phase>
+			   <goals>
+			    <goal>shade</goal>
+			   </goals>
+			   <configuration>
+			    <shadedArtifactAttached>true</shadedArtifactAttached>
+			    <shadedClassifierName>allinone</shadedClassifierName>
+			    <artifactSet>
+			     <includes>
+			      <include>*:*</include>
+			     </includes>
+			    </artifactSet>
+			    <transformers>
+			      <transformer
+			       implementation="org.apache.maven.plugins.shade.resource.AppendingTransformer">
+			       <resource>reference.conf</resource>
+			      </transformer>
+			      <!-- transformer
+			       implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
+			       <manifestEntries>
+			        <Main-Class>akka.Main</Main-Class>
+			       </manifestEntries>
+			      </transformer-->
+			    </transformers>
+			   </configuration>
+			  </execution>
+			 </executions>
+			</plugin>
+			<plugin>
 				<groupId>org.codehaus.mojo</groupId>
 				<artifactId>build-helper-maven-plugin</artifactId>
 				<version>1.9.1</version>
@@ -249,7 +283,7 @@
 					</jvmArgs>
 				</configuration>
 			</plugin>
-			<plugin>
+			<!-- plugin>
 				<artifactId>maven-dependency-plugin</artifactId>
 				<version>2.10</version>
 				<executions>
@@ -266,7 +300,7 @@
 						</configuration>
 					</execution>
 				</executions>
-			</plugin>
+			</plugin-->
 			<plugin>
 				<groupId>org.codehaus.mojo</groupId>
 				<artifactId>exec-maven-plugin</artifactId>
@@ -287,8 +321,8 @@
 								<argument>Permissions=all-permissions,Codebase=*,Application-Name=TurnerWettkampf-App</argument>
 								<argument>-appclass</argument>
 								<argument>ch.seidel.kutu.KuTuApp</argument>
-								<argument>-srcdir</argument>
-								<argument>${project.build.directory}/classes</argument>
+								<argument>-srcfiles</argument>
+								<argument>${project.build.directory}/${project.artifactId}-${project.version}-allinone.jar</argument>
 								<argument>-outdir</argument>
 								<argument>.</argument>
 								<argument>-outdir</argument>

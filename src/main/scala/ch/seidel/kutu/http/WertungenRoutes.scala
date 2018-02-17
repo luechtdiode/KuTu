@@ -29,7 +29,7 @@ trait WertungenRoutes extends SprayJsonSupport with EnrichedJson with JwtSupport
   import slick.jdbc.SQLiteProfile.api._
   
   import DefaultJsonProtocol._
-  implicit val wkFormat2 = jsonFormat6(Wettkampf)
+  implicit val wkFormat = jsonFormat(Wettkampf, "id", "datum", "titel", "programmId", "auszeichnung", "auszeichnungendnote", "uuid")
   implicit val pgmFormat = jsonFormat7(ProgrammRaw)
   implicit val disziplinFormat = jsonFormat2(Disziplin)
   implicit val wertungFormat = jsonFormat(Wertung, "id", "athletId", "wettkampfdisziplinId", "wettkampfId", "noteD", "noteE", "endnote", "riege", "riege2")
@@ -58,7 +58,7 @@ trait WertungenRoutes extends SprayJsonSupport with EnrichedJson with JwtSupport
         }
       }
     } ~
-    pathPrefix("competition" / LongNumber) { competitionId =>
+    pathPrefix("competition" / JavaUUID) { competitionId =>
       pathEnd {
         get {
           complete { Future {
@@ -110,6 +110,7 @@ trait WertungenRoutes extends SprayJsonSupport with EnrichedJson with JwtSupport
                   val halt: Int = step
                   val gid: Long = geraet
                   val gerateRiegen = RiegenBuilder.mapToGeraeteRiegen(getAllKandidatenWertungen(competitionId).toList)
+                  val wkid = gerateRiegen.head.kandidaten.head.wertungen.head.wettkampf.id
                   def filter(gr: GeraeteRiege): Boolean = {
                     gr.durchgang.exists(_ == durchgang) && 
                     gr.disziplin.exists(_.id == gid) && 
@@ -120,7 +121,7 @@ trait WertungenRoutes extends SprayJsonSupport with EnrichedJson with JwtSupport
                     .flatMap(gr => gr.kandidaten
                         .filter(k => k.id == wertung.athletId)
                         .map(k => AthletWertung(k.id, k.name, k.vorname, k.verein, k.geschlecht, k.wertungen.filter(w => w.wettkampfdisziplin.disziplin.id == gid).map(_.toWertung).head, gid))).headOption
-                  val compOK = wertung.wettkampfId == competitionId
+                  val compOK = wertung.wettkampfId == wkid
                   val wertungOk = wertungOriginal.exists(wo => wo.wertung.id == wertung.id)
                   if (wertungOk && compOK) {
                     updateWertungSimple(wertungOriginal.get.wertung.updatedWertung(wertung), true)

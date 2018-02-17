@@ -13,6 +13,7 @@ import org.apache.commons.codec.language.ColognePhonetic
 import java.util.TimeZone
 import org.apache.commons.text.similarity.LevenshteinDistance
 import scalafx.util.converter.BigDecimalStringConverter
+import java.util.UUID
 
 package object domain {
   implicit def dbl2Str(d: Double) = f"${d}%2.3f"
@@ -174,16 +175,30 @@ package object domain {
     override def toString = toPath
   }
 
-  case class Wettkampf(id: Long, datum: java.sql.Date, titel: String, programmId: Long, auszeichnung: Int, auszeichnungendnote: scala.math.BigDecimal) extends DataObject {
+//  object Wettkampf {
+//    def apply(id: Long, datum: java.sql.Date, titel: String, programmId: Long, auszeichnung: Int, auszeichnungendnote: scala.math.BigDecimal): Wettkampf = 
+//      Wettkampf(id, datum, titel, programmId, auszeichnung, auszeichnungendnote, if(id == 0) Some(UUID.randomUUID().toString()) else None)
+//    def apply(id: Long, datum: java.sql.Date, titel: String, programmId: Long, auszeichnung: Int, auszeichnungendnote: scala.math.BigDecimal, uuid: String): Wettkampf = 
+//      if(uuid != null) Wettkampf(id, datum, titel, programmId, auszeichnung, auszeichnungendnote, Some(uuid))
+//      else apply(id, datum, titel, programmId, auszeichnung, auszeichnungendnote)
+//  }
+  case class Wettkampf(id: Long, datum: java.sql.Date, titel: String, programmId: Long, auszeichnung: Int, auszeichnungendnote: scala.math.BigDecimal, uuid: Option[String]) extends DataObject {
     override def easyprint = f"$titel am $datum%td.$datum%tm.$datum%tY"
     def toView(programm: ProgrammView) = {
-      WettkampfView(id, datum, titel, programm, auszeichnung, auszeichnungendnote)
+      WettkampfView(id, datum, titel, programm, auszeichnung, auszeichnungendnote, uuid)
     }
   }
 
-  case class WettkampfView(id: Long, datum: java.sql.Date, titel: String, programm: ProgrammView, auszeichnung: Int, auszeichnungendnote: scala.math.BigDecimal) extends DataObject {
+//  object WettkampfView {
+//    def apply(id: Long, datum: java.sql.Date, titel: String, programm: ProgrammView, auszeichnung: Int, auszeichnungendnote: scala.math.BigDecimal): WettkampfView = 
+//      WettkampfView(id, datum, titel, programm, auszeichnung, auszeichnungendnote, if(id == 0) Some(UUID.randomUUID().toString()) else None)
+//    def apply(id: Long, datum: java.sql.Date, titel: String, programm: ProgrammView, auszeichnung: Int, auszeichnungendnote: scala.math.BigDecimal, uuid: String): WettkampfView = 
+//      if(uuid != null) WettkampfView(id, datum, titel, programm, auszeichnung, auszeichnungendnote, Some(uuid))
+//      else apply(id, datum, titel, programm, auszeichnung, auszeichnungendnote)
+//  }
+  case class WettkampfView(id: Long, datum: java.sql.Date, titel: String, programm: ProgrammView, auszeichnung: Int, auszeichnungendnote: scala.math.BigDecimal, uuid: Option[String]) extends DataObject {
     override def easyprint = f"$titel am $datum%td.$datum%tm.$datum%tY"
-    def toWettkampf = Wettkampf(id, datum, titel, programm.id, auszeichnung, auszeichnungendnote)
+    def toWettkampf = Wettkampf(id, datum, titel, programm.id, auszeichnung, auszeichnungendnote, uuid)
   }
 
   case class Wettkampfdisziplin(id: Long, programmId: Long, disziplinId: Long, kurzbeschreibung: String, detailbeschreibung: Option[java.sql.Blob], notenfaktor: scala.math.BigDecimal, ord: Int, masculin: Int, feminim: Int) extends DataObject {

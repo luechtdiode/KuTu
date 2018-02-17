@@ -12,28 +12,29 @@ import com.typesafe.sslconfig.akka.AkkaSSLConfig
 import scala.concurrent.ExecutionContextExecutor
 
 trait KuTuSSLContext extends Config {
-  implicit val system: ActorSystem
-  implicit val materializer: ActorMaterializer
-  private implicit lazy val executionContext = system.dispatcher
     // Manual HTTPS configuration
   
-  private val password: Array[Char] = certPw.toCharArray // do not store passwords in code, read them from somewhere safe!
+  val ks: KeyStore = KeyStore.getInstance("JKS")
+  val keystore: InputStream = getClass.getClassLoader.getResourceAsStream(httpHostname + ".jks")
+  lazy val hasHttpsConfig = certPw != null && keystore != null
   
-  private val ks: KeyStore = KeyStore.getInstance("JKS")
-  private val keystore: InputStream = getClass.getClassLoader.getResourceAsStream(httpHostname + ".jks")
-  
-  require(keystore != null, "Keystore required!")
-  ks.load(keystore, password)
-  
-  private val keyManagerFactory: KeyManagerFactory = KeyManagerFactory.getInstance("SunX509")
-  keyManagerFactory.init(ks, password)
-  
-  private val tmf: TrustManagerFactory = TrustManagerFactory.getInstance("SunX509")
-  tmf.init(ks)
-  
-  private val sslContext: SSLContext = SSLContext.getInstance("TLS")
-  sslContext.init(keyManagerFactory.getKeyManagers, tmf.getTrustManagers, new SecureRandom)
-  
-  val https: HttpsConnectionContext = ConnectionContext.https(sslContext)
+  lazy val https: HttpsConnectionContext = {
+    require(certPw != null, "Keystore Password required!")
+    val password: Array[Char] = certPw.toCharArray // do not store passwords in code, read them from somewhere safe!
+      
+    require(keystore != null, "Keystore required!")
+    ks.load(keystore, password)
+    
+    val keyManagerFactory: KeyManagerFactory = KeyManagerFactory.getInstance("SunX509")
+    keyManagerFactory.init(ks, password)
+    
+    val tmf: TrustManagerFactory = TrustManagerFactory.getInstance("SunX509")
+    tmf.init(ks)
+    
+    val sslContext: SSLContext = SSLContext.getInstance("TLS")
+    sslContext.init(keyManagerFactory.getKeyManagers, tmf.getTrustManagers, new SecureRandom)
+    
+    ConnectionContext.https(sslContext)
+  }
  
 }

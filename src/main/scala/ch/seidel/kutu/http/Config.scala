@@ -4,29 +4,38 @@ import com.typesafe.config.ConfigFactory
 import authentikat.jwt.JwtHeader
 import java.util.UUID
 import scala.util.Random
+import java.io.File
 
 object Config {
   Random.setSeed(Random.nextLong() / System.currentTimeMillis())
   val jwtSecretKey = UUID.randomUUID().toString + UUID.randomUUID().toString + UUID.randomUUID().toString + UUID.randomUUID().toString
+  val jwtAuthorizationKey = "x-access-token"
+  
+  val configPath = System.getProperty("user.dir")
+  println("Path where custom configurations (kutuapp.conf) are taken from:", configPath)
+  val userConfig = new File(configPath + "/kutuapp.conf")
+  val config = if (userConfig.exists()) ConfigFactory.parseFile(new File(configPath + "/kutuapp.conf")).withFallback(ConfigFactory.load()) else ConfigFactory.load()
+
+  private val jwtConfig = config.getConfig("jwt")
+  private val appRemoteConfig = config.getConfig("app.remote")
 }
 
 trait Config {
-  private val config = ConfigFactory.load()
-  private val httpConfig = config.getConfig("http")
-  private val jwtConfig = config.getConfig("jwt")
-  private val appRemoteConfig = config.getConfig("app.remote")
+  import Config._
   
-  val httpInterface = httpConfig.getString("interface")
-  val httpPort = httpConfig.getInt("port")
-  val httpHostname = httpConfig.getString("hostname")
-  val certPw = httpConfig.getString("certPw")
+  lazy val httpInterface = if (config.hasPath("http.interface"))    config.getString("http.interface")    else "0.0.0.0"
+  lazy val httpPort =      if (config.hasPath("http.port"))         config.getInt("http.port")            else 5757
+  lazy val httpHostname =  if (config.hasPath("http.hostname"))     config.getString("http.hostname")     else "kutuapp"
+  lazy val certPw =        if (config.hasPath("http.certPw"))       config.getString("http.certPw")       else null
   
-  val jwtAuthorizationKey = "x-access-token"
-  val jwtTokenExpiryPeriodInDays = jwtConfig.getInt("tokenExpiryPeriodInDays")
-  val jwtSecretKey = Config.jwtSecretKey
-  val jwtHeader = JwtHeader(jwtConfig.getString("algorithm"), jwtConfig.getString("contenttype"))
+  lazy val jwtTokenExpiryPeriodInDays = jwtConfig.getInt("tokenExpiryPeriodInDays")
+  lazy val jwtHeader = JwtHeader(jwtConfig.getString("algorithm"), jwtConfig.getString("contenttype"))
   
-  val remoteHost = appRemoteConfig.getString("hostname")
-  val remotePort = appRemoteConfig.getInt("port")
-  val remoteBaseUrl = s"http://$remoteHost:$remotePort/operating"
+  lazy val remoteHost =    if (appRemoteConfig.hasPath("hostname")) appRemoteConfig.getString("hostname") else "kutuapp"
+  lazy val remotePort =    if (appRemoteConfig.hasPath("port"))     appRemoteConfig.getInt("port")        else 5757
+  lazy val remoteSchema =  if (appRemoteConfig.hasPath("schema"))   appRemoteConfig.getString("schema")   else "https"
+    
+  lazy val remoteBaseUrl = s"$remoteSchema://$remoteHost:$remotePort"
+  lazy val remoteOperatingBaseUrl = remoteBaseUrl //s"http://$remoteHost:$remotePort/operating"
+  lazy val remoteAdminBaseUrl = remoteBaseUrl//s"$remoteBaseUrl/wkadmin"
 }

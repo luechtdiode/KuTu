@@ -34,6 +34,7 @@ trait LoginRoutes extends SprayJsonSupport with EnrichedJson with JwtSupport wit
   def login(userLookup: (String) => String) = pathPrefix("login") {
     pathEndOrSingleSlash {
       authenticateBasicPF(realm = "secure site", userPassAuthenticator(userLookup)) { userId =>
+        import Config._
         val claims = setClaims(userId, jwtTokenExpiryPeriodInDays)
         respondWithHeader(RawHeader(jwtAuthorizationKey, JsonWebToken(jwtHeader, claims, jwtSecretKey))) {
           complete(StatusCodes.OK)

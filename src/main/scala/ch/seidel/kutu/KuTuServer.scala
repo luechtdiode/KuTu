@@ -9,21 +9,21 @@ import scala.concurrent.ExecutionContext
 import ch.seidel.kutu.http.Core
 
 object KuTuServer extends App with KuTuAppHTTPServer with Hashing {
-  import Core._
-  private implicit val executionContext: ExecutionContext = system.dispatcher
 
-  val binding = startServer(user => user)
+  val binding = startServer(user => sha256(user))
   
-  override def shutDown() {
-    println(s"Server stops ...")
+  override def shutDown(caller: String) {
+    import Core._
+    implicit val executionContext: ExecutionContext = system.dispatcher
+    println(s"$caller: Server stops ...")
     if (binding  != null) {
       binding.flatMap(_.unbind()) // trigger unbinding from the port
       .onComplete { done =>
         done.failed.map { ex => log.error(ex, "Failed unbinding") }
-        super.shutDown()
+        super.shutDown("KuTuServer")
       }    
     } else {
-      super.shutDown()
+      super.shutDown("KuTuServer")
     }
   }
 
@@ -32,7 +32,7 @@ object KuTuServer extends App with KuTuAppHTTPServer with Hashing {
   while (
     StdIn.readLine() match {
       case s: String if (s.endsWith("quit")) =>
-        shutDown()
+        shutDown("KuTuServer")
         false
       case s: String => 
         println(s"command submited: '$s'")

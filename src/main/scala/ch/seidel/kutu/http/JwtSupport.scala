@@ -10,7 +10,7 @@ import akka.http.scaladsl.server.directives.Credentials
 trait JwtSupport extends Directives with Config {
   private lazy val userKey = "user"
   private lazy val expiredAtKey = "expiredAtKey"
-  
+  import Config._
   def authenticated: Directive1[String] =
     optionalHeaderValueByName(jwtAuthorizationKey).flatMap {
       case Some(jwt) if JsonWebToken.validate(jwt, jwtSecretKey) =>

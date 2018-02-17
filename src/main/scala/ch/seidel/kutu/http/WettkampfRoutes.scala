@@ -49,14 +49,14 @@ trait WettkampfRoutes extends JwtSupport with RouterLogging with WettkampfServic
     def responseOrFail[T](in: (Try[HttpResponse], T)): (HttpResponse, T) = in match {
       case (responseTry, context) => (responseTry.get, context)
     }
-    def importData()(httpResponse : HttpResponse) {
+    def importData(httpResponse : HttpResponse) {
       val is = httpResponse.entity.dataBytes.runWith(StreamConverters.asInputStream())
       ResourceExchanger.importWettkampf(is)
     }
     source.via(requestResponseFlow)
           .map(responseOrFail)
           .map(_._1)
-          .runWith(Sink.foreach(importData()))
+          .runWith(Sink.foreach(importData))
   }
       
   lazy val wettkampfRoutes: Route = {

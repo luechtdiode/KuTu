@@ -11,11 +11,12 @@ import slick.jdbc.GetResult
 import slick.jdbc.SQLiteProfile
 import slick.jdbc.SQLiteProfile.api._
 import scala.collection.JavaConverters
+import java.util.UUID
 
 abstract trait WertungService extends DBService with WertungResultMapper with DisziplinService with RiegenService {
   private val logger = LoggerFactory.getLogger(this.getClass)
 
-  def selectWertungen(vereinId: Option[Long] = None, athletId: Option[Long] = None, wettkampfId: Option[Long] = None, disziplinId: Option[Long] = None): Seq[WertungView] = {
+  def selectWertungen(vereinId: Option[Long] = None, athletId: Option[Long] = None, wettkampfId: Option[Long] = None, disziplinId: Option[Long] = None, wkuuid: Option[String] = None): Seq[WertungView] = {
     implicit val cache = scala.collection.mutable.Map[Long, ProgrammView]()
     val where = "where " + (athletId match {
       case None     => "1=1"
@@ -29,6 +30,9 @@ abstract trait WertungService extends DBService with WertungResultMapper with Di
     }) + " and " + (disziplinId match {
       case None     => "1=1"
       case Some(id) => s"d.id = $id"
+    }) + " and " + (wkuuid match {
+      case None     => "1=1"
+      case Some(uuid) => s"wk.uuid = $uuid"
     })
     Await.result(database.run{
       sql"""
@@ -217,8 +221,14 @@ abstract trait WertungService extends DBService with WertungResultMapper with Di
     shouldResetBestenResults = true;
   }
   
-  def getAllKandidatenWertungen(competitionId: Long) = {
-    val driver = selectWertungen(wettkampfId = Some(competitionId)).groupBy { x => x.athlet }.map(_._2).toList
+  def getAllKandidatenWertungen(competitionUUId: UUID) = {
+    val driver = selectWertungen(wkuuid = Some(competitionUUId.toString())).groupBy { x => x.athlet }.map(_._2).toList
+    val competitionId = if (driver.isEmpty || driver.head.isEmpty) {
+      0
+    } else {
+      driver.head.head.wettkampf.id
+    }
+    
     val programme = driver.flatten.map(x => x.wettkampfdisziplin.programm).foldLeft(Seq[ProgrammView]()){(acc, pgm) =>
       if(!acc.exists { x => x.id == pgm.id }) {
         acc :+ pgm

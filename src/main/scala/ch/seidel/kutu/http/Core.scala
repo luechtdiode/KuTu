@@ -1,5 +1,6 @@
 package ch.seidel.kutu.http
 
+import akka.util.ByteString
 import akka.actor.{ ActorRef, ActorSystem }
 import akka.http.scaladsl.Http
 import akka.http.scaladsl.Http.ServerBinding
@@ -8,83 +9,67 @@ import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.settings.ServerSettings
 import akka.http.scaladsl.server.HttpApp
 import akka.http.scaladsl.model._
+import akka.http.scaladsl.model.headers._
+import akka.http.scaladsl.model.HttpHeader$ParsingResult._
 
 import akka.stream.ActorMaterializer
 import akka.stream.scaladsl._
 
 import scala.concurrent.{ ExecutionContext, Future }
-import scala.util.{ Failure, Success }
+import scala.util.{ Failure, Success, Try }
 import com.typesafe.config.ConfigFactory
 import org.slf4j.LoggerFactory
 import java.net.Inet6Address
 import java.net.NetworkInterface
 import java.net.InetAddress
-import akka.http.scaladsl.model.headers.RawHeader
 import authentikat.jwt.JsonWebToken
-import scala.util.Try
+import scala.concurrent.Await
 
 object Core extends KuTuSSLContext {
   val logger = LoggerFactory.getLogger(this.getClass)
   /**
    * Construct the ActorSystem we will use in our application
    */
-  override implicit val system = ActorSystem("KuTuApp")
-  override implicit val materializer: ActorMaterializer = ActorMaterializer()
+  implicit lazy val system: ActorSystem = ActorSystem("KuTuApp") // , Config.config
+  implicit lazy val materializer: ActorMaterializer = ActorMaterializer()
   
 //  val eventRegistryActor: ActorRef = system.actorOf(EventRegistryActor.props, "eventRegistryActor")
 //  val userRegistryActor: ActorRef = system.actorOf(UserRegistryActor.props(eventRegistryActor), "userRegistryActor")
+  private var terminated = false;
+  
+  def terminate() {
+    if(!terminated) {        
+      terminated = true
+      system.terminate()
+    }
+  }
 }
 
-trait KuTuAppHTTPServer extends Config with ApiService {
-  
-  import Core._
-  import collection.JavaConverters._
-  private implicit val executionContext: ExecutionContext = system.dispatcher
-    
+trait KuTuAppHTTPServer extends Config with ApiService with JsonSupport {
+      
   def startServer(userLookup: (String) => String) = {
-    //Http().setDefaultServerHttpContext(https)
-    val binding = Http().bindAndHandle(allroutes(userLookup), httpInterface, httpPort/*, connectionContext = https*/)
-    logger.info("Http-Server started")
-    binding
-  }
-  
-  var clientheader = Some(RawHeader(jwtAuthorizationKey, JsonWebToken(jwtHeader, setClaims("kutuapp-systemuser", jwtTokenExpiryPeriodInDays), jwtSecretKey)))
-  
-
-  def withAuthHeader(request: HttpRequest) = {
-    clientheader match {
-      case Some(ch) => request.withHeaders(request.headers :+ ch)
-      case _ => request
+    import Core._
+    import collection.JavaConverters._
+    val binding = if (hasHttpsConfig) {
+      Http().setDefaultServerHttpContext(https)
+      val b = Http().bindAndHandle(allroutes(userLookup), Core.httpInterface, Core.httpPort, connectionContext = https)
+      logger.info("Https-Server started")
+      b
+    } else {
+      val b = Http().bindAndHandle(allroutes(userLookup), Core.httpInterface, Core.httpPort)
+      logger.info("Http-Server started")
+      b
     }
-    
-  }
-  
-  def httpClientRequest(request: HttpRequest): Future[HttpResponse] = {
-    Http().singleRequest(withAuthHeader(request))
-  }
-  
-  def httpPutClientRequest(uri: String, entity: RequestEntity): Future[HttpResponse] = {
-    import HttpMethods._
-    httpClientRequest(HttpRequest(PUT, uri=uri, entity = entity))
-  }
-
-  def makeHttpGetRequest(url: String) = {
-    import HttpMethods._
-    withAuthHeader(HttpRequest(GET, uri=url))
-  }
-  
-  def httpGetClientRequest(uri: String): Future[HttpResponse] = {
-    import HttpMethods._
-    httpClientRequest(HttpRequest(GET, uri=uri))
+    binding
   }
 
   /**
    * Ensure that the constructed ActorSystem is shut down when the JVM shuts down
    */
-  sys.addShutdownHook(shutDown())
+  sys.addShutdownHook(shutDown(getClass.getName))
   
-  def shutDown() {
-    system.terminate()
-    println("System terminated")
+  def shutDown(caller: String) {
+    Core.terminate()
+    println(caller + " System terminated")
   }
 }

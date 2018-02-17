@@ -97,12 +97,14 @@ object ResourceExchanger extends KutuService with RiegenBuilder {
     val (wettkampfCsv, wettkampfHeader) = collection("wettkampf.csv")
     logger.debug("importing wettkampf ...", wettkampfHeader)
     val wettkampfInstances = wettkampfCsv.map(parseLine).filter(_.size == wettkampfHeader.size).map{fields =>
+      val uuid = wettkampfHeader.get("uuidOption").map(uuidIdx => Some(fields(uuidIdx))).getOrElse(None)
       val wettkampf = createWettkampf(
           auszeichnung = fields(wettkampfHeader("auszeichnung")),
           auszeichnungendnote = try {BigDecimal.valueOf(fields(wettkampfHeader("auszeichnungendnote")))} catch {case e:Exception => 0},
           datum = fields(wettkampfHeader("datum")),
           programmId = Set(fields(wettkampfHeader("programmId"))),
-          titel = fields(wettkampfHeader("titel"))
+          titel = fields(wettkampfHeader("titel")),
+          uuidOption = uuid
           )
       (fields(wettkampfHeader("id")), wettkampf)
     }.toMap
