@@ -1,26 +1,70 @@
 package ch.seidel.kutu
 
-import scalafx.util.converter.DoubleStringConverter
 import java.io.ObjectInputStream
-import scalafx.collections.ObservableBuffer
 import java.time.LocalDate
 import java.time.ZoneId
-import scalafx.util.converter.IntStringConverter
-import scalafx.util.converter.LongStringConverter
 import java.text.SimpleDateFormat
 import org.apache.commons.codec.language.bm._
 import org.apache.commons.codec.language.ColognePhonetic
 import java.util.TimeZone
 import org.apache.commons.text.similarity.LevenshteinDistance
-import scalafx.util.converter.BigDecimalStringConverter
 import java.util.UUID
 
 package object domain {
   implicit def dbl2Str(d: Double) = f"${d}%2.3f"
-  implicit def str2bd(d: String) = new BigDecimalStringConverter().fromString(d)
-  implicit def str2dbl(d: String) = new DoubleStringConverter().fromString(d)
-  implicit def str2Int(d: String) = new IntStringConverter().fromString(d)
-  implicit def str2Long(d: String) = new LongStringConverter().fromString(d)
+  implicit def str2bd(value: String): BigDecimal = {
+    if (value != null) {
+      val trimmed = value.trim()
+
+      if (trimmed.length() < 1) {
+          null
+      } else {
+          BigDecimal(trimmed) 
+      }
+    } else {
+        null          
+    }
+  }
+  implicit def str2dbl(value: String): Double = {
+    if (value != null) {
+      val trimmed = value.trim()
+
+      if (trimmed.length() < 1) {
+          0d
+      } else {
+          val bigd: BigDecimal = trimmed
+          bigd.toDouble
+      }
+    } else {
+        0d          
+    }    
+  }
+  implicit def str2Int(value: String): Int = {
+    if (value != null) {
+      val trimmed = value.trim()
+
+      if (trimmed.length() < 1) {
+        0
+      } else {
+        Integer.valueOf(trimmed)
+      }
+    } else {
+      0         
+    }    
+  }
+  implicit def str2Long(value: String): Long = {
+    if (value != null) {
+      val trimmed = value.trim()
+
+      if (trimmed.length() < 1) {
+        0L
+      } else {
+        java.lang.Long.valueOf(trimmed)
+      }
+    } else {
+      0L      
+    }    
+  }
   implicit def ld2SQLDate(ld: LocalDate): java.sql.Date = {
     if(ld==null) return null else {
       val inst = ld.atStartOfDay(ZoneId.of("UTC"))
@@ -218,15 +262,15 @@ package object domain {
     lazy val formattedEnd = if(endnote > 0) f"${endnote}%6.2f" else ""
     override def easyprint = f"${formattedD}%6s${formattedE}%6s${formattedEnd}%6s"
   }
-  case class Wertung(id: Long, athletId: Long, wettkampfdisziplinId: Long, wettkampfId: Long, noteD: scala.math.BigDecimal, noteE: scala.math.BigDecimal, endnote: scala.math.BigDecimal, riege: Option[String], riege2: Option[String]) extends DataObject {
+  case class Wertung(id: Long, athletId: Long, wettkampfdisziplinId: Long, wettkampfId: Long, wettkampfUUID: String, noteD: scala.math.BigDecimal, noteE: scala.math.BigDecimal, endnote: scala.math.BigDecimal, riege: Option[String], riege2: Option[String]) extends DataObject {
     lazy val resultat = Resultat(noteD, noteE, endnote)
     def updatedWertung(valuesFrom: Wertung) = copy(noteD = valuesFrom.noteD, noteE = valuesFrom.noteE, endnote = valuesFrom.endnote)
   }
   case class WertungView(id: Long, athlet: AthletView, wettkampfdisziplin: WettkampfdisziplinView, wettkampf: Wettkampf, noteD: scala.math.BigDecimal, noteE: scala.math.BigDecimal, endnote: scala.math.BigDecimal, riege: Option[String], riege2: Option[String]) extends DataObject {
     lazy val resultat = Resultat(noteD, noteE, endnote)
     def + (r: Resultat) = resultat + r
-    def toWertung = Wertung(id, athlet.id, wettkampfdisziplin.id, wettkampf.id, noteD, noteE, endnote, riege, riege2)
-    def toWertung(riege: String) = Wertung(id, athlet.id, wettkampfdisziplin.id, wettkampf.id, noteD, noteE, endnote, Some(riege), riege2)
+    def toWertung = Wertung(id, athlet.id, wettkampfdisziplin.id, wettkampf.id, wettkampf.uuid.getOrElse(""), noteD, noteE, endnote, riege, riege2)
+    def toWertung(riege: String) = Wertung(id, athlet.id, wettkampfdisziplin.id, wettkampf.id, wettkampf.uuid.getOrElse(""), noteD, noteE, endnote, Some(riege), riege2)
     def showInScoreList = {
       (endnote > 0) || (athlet.geschlecht match {
         case "M" => wettkampfdisziplin.masculin > 0
@@ -246,7 +290,7 @@ package object domain {
     lazy val divider = if(withDNotes || resultate.isEmpty) 1 else resultate.filter{r => r.sum.endnote > 0}.size
   }
 
-  sealed trait NotenModus extends DoubleStringConverter /*with AutoFillTextBoxFactory.ItemComparator[String]*/ {
+  sealed trait NotenModus /*with AutoFillTextBoxFactory.ItemComparator[String]*/ {
     val isDNoteUsed: Boolean
     def selectableItems: Option[List[String]] = None
     def calcEndnote(dnote: Double, enote: Double): Double
@@ -258,7 +302,7 @@ package object domain {
       }
     }
     
-    override def toString(value: Double): String = value
+    def toString(value: Double): String = value
     /*override*/ def shouldSuggest(item: String, query: String): Boolean = false
   }
 

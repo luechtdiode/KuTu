@@ -10,8 +10,8 @@ import { Wettkampf, Geraet, WertungContainer } from '../../app/backend-types';
 })
 export class HomePage {
 
-  _competition: number;
-  set competition(competitionId: number) {
+  _competition: string;
+  set competition(competitionId: string) {
     this._competition = competitionId;
     this._durchgang = undefined;
     this._geraet = undefined;
@@ -19,7 +19,7 @@ export class HomePage {
     
     this.backendService.getDurchgaenge(competitionId);
   }
-  get competition(): number {
+  get competition(): string {
     return this._competition;
   }
 

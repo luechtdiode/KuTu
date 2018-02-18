@@ -32,7 +32,7 @@ trait WertungenRoutes extends SprayJsonSupport with EnrichedJson with JwtSupport
   implicit val wkFormat = jsonFormat(Wettkampf, "id", "datum", "titel", "programmId", "auszeichnung", "auszeichnungendnote", "uuid")
   implicit val pgmFormat = jsonFormat7(ProgrammRaw)
   implicit val disziplinFormat = jsonFormat2(Disziplin)
-  implicit val wertungFormat = jsonFormat(Wertung, "id", "athletId", "wettkampfdisziplinId", "wettkampfId", "noteD", "noteE", "endnote", "riege", "riege2")
+  implicit val wertungFormat = jsonFormat(Wertung, "id", "athletId", "wettkampfdisziplinId", "wettkampfId", "wettkampfUUID", "noteD", "noteE", "endnote", "riege", "riege2")
   
   case class AthletWertung(id: Long, name: String, vorname: String, verein: String, geschlecht: String, wertung: Wertung, geraet: Long)
   implicit val athletWertungFormat = jsonFormat7(AthletWertung)

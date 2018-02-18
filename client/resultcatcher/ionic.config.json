@@ -9,7 +9,7 @@
     {
       "path": "/api",
       "proxyUrl2": "https://38qniweusmuwjkbr.myfritz.net/mbq/api",
-      "proxyUrl": "https://mws-01:5757/api",
+      "proxyUrl": "http://mws-01:5757/api",
       "rejectUnauthorized": false,
       "autoRewrite": true,
       "xfwd": true,

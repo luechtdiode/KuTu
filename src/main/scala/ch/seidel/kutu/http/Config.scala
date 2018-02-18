@@ -5,14 +5,18 @@ import authentikat.jwt.JwtHeader
 import java.util.UUID
 import scala.util.Random
 import java.io.File
+import org.slf4j.LoggerFactory
 
 object Config {
+  private val logger = LoggerFactory.getLogger(this.getClass)
   Random.setSeed(Random.nextLong() / System.currentTimeMillis())
   val jwtSecretKey = UUID.randomUUID().toString + UUID.randomUUID().toString + UUID.randomUUID().toString + UUID.randomUUID().toString
   val jwtAuthorizationKey = "x-access-token"
   
   val configPath = System.getProperty("user.dir")
-  println("Path where custom configurations (kutuapp.conf) are taken from:", configPath)
+  logger.info("Path where custom configurations (kutuapp.conf) are taken from:", configPath)
+  val userHomePath = System.getProperty("user.home")
+  logger.info("Path where db is taken from:", userHomePath)
   val userConfig = new File(configPath + "/kutuapp.conf")
   val config = if (userConfig.exists()) ConfigFactory.parseFile(new File(configPath + "/kutuapp.conf")).withFallback(ConfigFactory.load()) else ConfigFactory.load()
 
@@ -32,10 +36,9 @@ trait Config {
   lazy val jwtHeader = JwtHeader(jwtConfig.getString("algorithm"), jwtConfig.getString("contenttype"))
   
   lazy val remoteHost =    if (appRemoteConfig.hasPath("hostname")) appRemoteConfig.getString("hostname") else "kutuapp"
-  lazy val remotePort =    if (appRemoteConfig.hasPath("port"))     appRemoteConfig.getInt("port")        else 5757
   lazy val remoteSchema =  if (appRemoteConfig.hasPath("schema"))   appRemoteConfig.getString("schema")   else "https"
     
-  lazy val remoteBaseUrl = s"$remoteSchema://$remoteHost:$remotePort"
+  lazy val remoteBaseUrl = s"$remoteSchema://$remoteHost"
   lazy val remoteOperatingBaseUrl = remoteBaseUrl //s"http://$remoteHost:$remotePort/operating"
   lazy val remoteAdminBaseUrl = remoteBaseUrl//s"$remoteBaseUrl/wkadmin"
 }

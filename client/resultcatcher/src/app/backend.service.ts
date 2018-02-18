@@ -58,7 +58,7 @@ export class BackendService {
     });
   }
 
-  getDurchgaenge(competitionId: number) {
+  getDurchgaenge(competitionId: string) {
     this.durchgaenge = undefined;
     this.geraete = undefined;
     this.steps = undefined;
@@ -68,7 +68,7 @@ export class BackendService {
     });
   }
 
-  getGeraete(competitionId, durchgang) {
+  getGeraete(competitionId: string, durchgang: string) {
     this.geraete = undefined;
     this.steps = undefined;
     this.wertungen = undefined;
@@ -77,7 +77,7 @@ export class BackendService {
     });
   }
 
-  getSteps(competitionId, durchgang, geraetId) {
+  getSteps(competitionId: string, durchgang: string, geraetId: number) {
     this.steps = undefined;
     this.wertungen = undefined;
     this.http.get<string[]>(backendUrl + 'api/competition/' + competitionId + '/' + durchgang + '/' + geraetId).subscribe((data) => {
@@ -85,7 +85,7 @@ export class BackendService {
     });
   }
 
-  getWertungen(competitionId, durchgang, geraetId, step) {
+  getWertungen(competitionId: string, durchgang: string, geraetId: number, step: number) {
     this.wertungen = undefined;
     this.http.get<WertungContainer[]>(backendUrl + 'api/competition/' + competitionId + '/' + durchgang + '/' + geraetId + '/' + step).subscribe((data) => {
       this.wertungen = data;
@@ -93,7 +93,7 @@ export class BackendService {
   }
 
   updateWertung(durchgang: string, step: number, geraetId: number, wertung: Wertung): Observable<WertungContainer> {
-    const competitionId = wertung.wettkampfId;
+    const competitionId = wertung.wettkampfUUID;
     const result = new Subject<WertungContainer>();
     this.http.put<WertungContainer[]>(backendUrl + 'api/competition/' + competitionId + '/' + durchgang + '/' + geraetId + '/' + step, wertung)
     .subscribe((data) => {

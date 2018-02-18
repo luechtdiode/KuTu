@@ -72,6 +72,7 @@ import ch.seidel.kutu.renderer.PrintUtil.FilenameDefault
 import ch.seidel.kutu.renderer.PrintUtil
 import scalafx.print.PageOrientation
 import org.slf4j.LoggerFactory
+import scalafx.util.converter.DoubleStringConverter
 
 trait TCAccess[R, E, IDX] {
   def getIndex: IDX
@@ -461,12 +462,16 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
     val indexerD = Iterator.from(0)
     val indexerF = Iterator.from(0)
 
+    case class DoubleConverter(notenModus: NotenModus) extends DoubleStringConverter {
+      override def toString(value: Double) = notenModus.toString(value)
+    }
+    
     def wertungenCols = if (wertungen.nonEmpty) {
       wertungen.head.map { wertung =>
         lazy val clDnote = new WKTableColumn[Double](indexerD.next) {
           text = "D"
           cellValueFactory = { x => if (x.value.size > index) x.value(index).noteD else wertung.noteD }
-          cellFactory = { _ => new AutoCommitTextFieldTableCell[IndexedSeq[WertungEditor], Double](wertung.init.wettkampfdisziplin.notenSpez)}
+          cellFactory = { _ => new AutoCommitTextFieldTableCell[IndexedSeq[WertungEditor], Double](DoubleConverter(wertung.init.wettkampfdisziplin.notenSpez))}
 
           styleClass += "table-cell-with-value"
           prefWidth = if(wertung.init.wettkampfdisziplin.notenSpez.isDNoteUsed) 60 else 0
@@ -499,7 +504,7 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
         lazy val clEnote = new WKTableColumn[Double](indexerE.next) {
           text = "E"
           cellValueFactory = { x => if (x.value.size > index) x.value(index).noteE else wertung.noteE }
-          cellFactory = { x => new AutoCommitTextFieldTableCell[IndexedSeq[WertungEditor], Double](wertung.init.wettkampfdisziplin.notenSpez) }
+          cellFactory = { x => new AutoCommitTextFieldTableCell[IndexedSeq[WertungEditor], Double](DoubleConverter(wertung.init.wettkampfdisziplin.notenSpez)) }
 
           styleClass += "table-cell-with-value"
           prefWidth = 60

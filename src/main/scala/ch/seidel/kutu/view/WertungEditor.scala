@@ -31,7 +31,7 @@ case class WertungEditor(init: WertungView) {
     endnote.value = init.endnote
   }
   def commit = Wertung(
-    init.id, init.athlet.id, init.wettkampfdisziplin.id, init.wettkampf.id,
+    init.id, init.athlet.id, init.wettkampfdisziplin.id, init.wettkampf.id, init.wettkampf.uuid.getOrElse(""),
     scala.math.BigDecimal(noteD.value),
     scala.math.BigDecimal(noteE.value),
     scala.math.BigDecimal(endnote.value),

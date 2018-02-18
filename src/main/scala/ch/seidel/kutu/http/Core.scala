@@ -26,7 +26,7 @@ import authentikat.jwt.JsonWebToken
 import scala.concurrent.Await
 
 object Core extends KuTuSSLContext {
-  val logger = LoggerFactory.getLogger(this.getClass)
+//  val logger = LoggerFactory.getLogger(this.getClass)
   /**
    * Construct the ActorSystem we will use in our application
    */
@@ -36,7 +36,8 @@ object Core extends KuTuSSLContext {
 //  val eventRegistryActor: ActorRef = system.actorOf(EventRegistryActor.props, "eventRegistryActor")
 //  val userRegistryActor: ActorRef = system.actorOf(UserRegistryActor.props(eventRegistryActor), "userRegistryActor")
   private var terminated = false;
-  
+  var serverBinding: Option[Future[Http.ServerBinding]] = None
+
   def terminate() {
     if(!terminated) {        
       terminated = true
@@ -46,30 +47,43 @@ object Core extends KuTuSSLContext {
 }
 
 trait KuTuAppHTTPServer extends Config with ApiService with JsonSupport {
-      
+  private val logger = LoggerFactory.getLogger(this.getClass)
+  import Core._
+  
   def startServer(userLookup: (String) => String) = {
-    import Core._
-    import collection.JavaConverters._
-    val binding = if (hasHttpsConfig) {
-      Http().setDefaultServerHttpContext(https)
-      val b = Http().bindAndHandle(allroutes(userLookup), Core.httpInterface, Core.httpPort, connectionContext = https)
-      logger.info("Https-Server started")
-      b
-    } else {
-      val b = Http().bindAndHandle(allroutes(userLookup), Core.httpInterface, Core.httpPort)
-      logger.info("Http-Server started")
-      b
+    serverBinding match {
+      case None =>
+      /**
+       * Ensure that the constructed ActorSystem is shut down when the JVM shuts down
+       */
+      sys.addShutdownHook(shutDown(getClass.getName))
+      
+      startDB
+      
+      import collection.JavaConverters._
+      val binding = if (hasHttpsConfig) {
+        Http().setDefaultServerHttpContext(https)
+        val b = Http().bindAndHandle(allroutes(userLookup), Core.httpInterface, Core.httpPort, connectionContext = https)
+        logger.info(s"Server online at https://${Core.httpInterface}:${Core.httpPort}/")
+        b
+      } else {
+        val b = Http().bindAndHandle(allroutes(userLookup), Core.httpInterface, Core.httpPort)
+        logger.info(s"Server online at http://${Core.httpInterface}:${Core.httpPort}/")
+        b
+      }
+      serverBinding = Some(binding)
+      binding
+      case Some(binding) => binding
     }
-    binding
   }
-
-  /**
-   * Ensure that the constructed ActorSystem is shut down when the JVM shuts down
-   */
-  sys.addShutdownHook(shutDown(getClass.getName))
   
   def shutDown(caller: String) {
-    Core.terminate()
-    println(caller + " System terminated")
+    serverBinding match {
+      case Some(_) =>
+        Core.terminate()
+        serverBinding = None
+        println(caller + " System terminated")
+      case _ =>
+    }
   }
 }

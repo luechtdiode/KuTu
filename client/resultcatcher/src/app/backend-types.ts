@@ -11,6 +11,7 @@ export interface WertungContainer {
 export interface Wertung {
   id: number;
   wettkampfId: number;
+  wettkampfUUID: string;
   wettkampfdisziplinId: number;
   athletId: number;
   riege: string;
@@ -31,4 +32,5 @@ export interface Wettkampf {
   titel: string;
   auszeichnung: number;
   auszeichnungendnote: number;
+  uuid: string;
 }

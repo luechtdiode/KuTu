@@ -75,7 +75,7 @@ trait DBService {
   }
   else {
     val f = new File(System.getProperty("user.home") + "/kutuapp/db")
-    logger.debug("try to create for installing the db: " + f);
+    logger.info("try to create for installing the db: " + f);
     try {
       f.mkdirs();
       logger.info("using db at: " + f);
@@ -209,15 +209,25 @@ trait DBService {
       lines.filter(filterCommentLines).foldLeft(List(""))(combineMultilineStatement).filter(_.trim().length() > 0)
     }
     
-    database.run(DBIO.sequence(parse(script).map(statement => sqlu"""#$statement""")))
+    Await.result(database.run(DBIO.sequence(parse(script).map(statement => sqlu"""#$statement"""))), Duration.Inf)
   }
 
-  if(!dbfile.exists() || dbfile.length() == 0) {
-    dbfile.createNewFile()
-    installDB
-  }
-  updateDB
 
+  lazy val startDB = {
+    logger.info("starting database ...")
+    if(!dbfile.exists() || dbfile.length() == 0) {
+      dbfile.createNewFile()
+      installDB
+    }
+    updateDB
+    logger.info("Database initialized")
+    true
+  }
+  
+  if (!startDB) {
+    logger.error("Database not initialized!!!")
+    System.exit(-1)
+  }
   val sdf = new SimpleDateFormat("dd.MM.yyyy")
   val sdfShort = new SimpleDateFormat("dd.MM.yy")
   val sdfExported = new SimpleDateFormat("yyyy-MM-dd")

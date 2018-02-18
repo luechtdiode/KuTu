@@ -325,7 +325,12 @@ object KuTuApp extends JFXApp with KutuService with KuTuAppHTTPServer {
   def makeWettkampfUploadMenu(p: WettkampfView): MenuItem = {
     makeMenuAction("Wettkampf hochladen") {(caption, action) =>
       KuTuApp.invokeWithBusyIndicator {
+        try {
         Await.result(server.httpPutClientRequest(s"$remoteAdminBaseUrl/api/competition/upload", server.toHttpEntity(p.toWettkampf)), Duration.Inf)
+        logger.info(s"Wettkampf ${p.easyprint} auf $remoteAdminBaseUrl/api/competition/upload hochgeladen")
+        } catch {
+          case t : Exception => logger.error("Fehler beim Hochladen", t)
+        }
       }
     }
   }
@@ -333,7 +338,7 @@ object KuTuApp extends JFXApp with KutuService with KuTuAppHTTPServer {
   def makeWettkampfDownloadMenu(p: WettkampfView): MenuItem = {
     makeMenuAction("Wettkampf Resultate aktualisieren") {(caption, action) =>
       KuTuApp.invokeWithBusyIndicator {
-        val url=s"$remoteAdminBaseUrl/api/competition/download/${p.id}"
+        val url=s"$remoteAdminBaseUrl/api/competition/download/${p.uuid.get}"
         Await.result(server.httpDownloadRequest(server.makeHttpGetRequest(url)), Duration.Inf)
       }
     }
@@ -439,6 +444,7 @@ object KuTuApp extends JFXApp with KutuService with KuTuAppHTTPServer {
                           )) choose true otherwise false
       onAction = handleAction {implicit e: ActionEvent =>
         KuTuApp.invokeWithBusyIndicator {
+          startServer { x => sha256(x) }
           Await.result(server.httpLoginRequest(s"$remoteBaseUrl/api/login", txtUsername.text.value.trim(), txtPassword.text.value.trim()), Duration.Inf)
 //          Await.result(server.httpLoginRequest(s"https://38qniweusmuwjkbr.myfritz.net/gymapp/api/auth/login", txtUsername.text.value.trim(), txtPassword.text.value.trim()), Duration.Inf)
         }
@@ -895,5 +901,4 @@ object KuTuApp extends JFXApp with KutuService with KuTuAppHTTPServer {
     }
   }
   
-  startServer { x => sha256(x) }
 }

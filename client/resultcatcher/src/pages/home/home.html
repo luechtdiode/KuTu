@@ -22,7 +22,7 @@
               <!-- <ion-thumbnail  item-start><img src="assets/imgs/wettkampf.png"></ion-thumbnail > -->
               <ion-label>Wettkampf</ion-label>
               <ion-select *ngIf="getCompetitions()" [(ngModel)]='competition' okText='Okay' cancelText='Abbrechen'>
-                <ion-option *ngFor='let comp of getCompetitions()' [value]='comp.id'>{{comp.titel}}</ion-option>
+                <ion-option *ngFor='let comp of getCompetitions()' [value]='comp.uuid'>{{comp.titel}}</ion-option>
               </ion-select>
             </ion-item>
             <ion-item>

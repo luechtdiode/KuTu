@@ -136,6 +136,10 @@ object ResourceExchanger extends KutuService with RiegenBuilder {
           case Some(w) => w.id
           case None => wettkampfid
         },
+        wettkampfUUID = wettkampfInstances.get(wettkampfid + "") match {
+          case Some(w) => w.uuid.getOrElse("")
+          case None => ""
+        },
         noteD = fields(wertungenHeader("noteD")),
         noteE = fields(wertungenHeader("noteE")),
         endnote = fields(wertungenHeader("endnote")),

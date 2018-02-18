@@ -11,8 +11,8 @@
     </encoder>
   </appender>
   
-  <!-- logger name="slick.basic" level="INFO"/>
-  <logger name="slick.jdbc" level="INFO"/-->
+  <logger name="slick.basic" level="INFO"/>
+  <logger name="slick.jdbc" level="INFO"/>
   
   <root level="debug">
     <appender-ref ref="STDOUT" />

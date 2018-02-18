@@ -32,7 +32,7 @@ abstract trait WertungService extends DBService with WertungResultMapper with Di
       case Some(id) => s"d.id = $id"
     }) + " and " + (wkuuid match {
       case None     => "1=1"
-      case Some(uuid) => s"wk.uuid = $uuid"
+      case Some(uuid) => s"wk.uuid = '$uuid'"
     })
     Await.result(database.run{
       sql"""

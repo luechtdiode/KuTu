@@ -66,6 +66,7 @@ trait WettkampfRoutes extends JwtSupport with RouterLogging with WettkampfServic
           uploadedFile("zip") {
             case (metadata, file) =>
               // do something with the file and file metadata ...
+              log.info("receiving wettkampf: " + metadata)
               val is = new FileInputStream(file)
               ResourceExchanger.importWettkampf(is)
               is.close()
@@ -75,9 +76,10 @@ trait WettkampfRoutes extends JwtSupport with RouterLogging with WettkampfServic
         }
       }
     } ~
-    path("competition" / "download" / LongNumber) { wettkampfid =>
+    path("competition" / "download" / JavaUUID) { wettkampfid =>
       authenticated { userId =>
-        val wettkampf = readWettkampf(wettkampfid)
+        log.info("serving wettkampf: " + wettkampfid)
+        val wettkampf = readWettkampf(wettkampfid.toString())
         val bos = new ByteArrayOutputStream()
         ResourceExchanger.exportWettkampfToStream(wettkampf, bos)
         val bytes = bos.toByteArray()
