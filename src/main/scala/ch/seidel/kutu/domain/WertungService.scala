@@ -34,7 +34,7 @@ abstract trait WertungService extends DBService with WertungResultMapper with Di
       case None     => "1=1"
       case Some(uuid) => s"wk.uuid = '$uuid'"
     })
-    Await.result(database.run{
+    Await.result(database.run{(
       sql"""
                     SELECT w.id, a.id, a.js_id, a.geschlecht, a.name, a.vorname, a.gebdat, a.strasse, a.plz, a.ort, a.activ, a.verein, v.*,
                       wd.id, wd.programm_id, d.*, wd.kurzbeschreibung, wd.detailbeschreibung, wd.notenfaktor, wd.ord, wd.masculin, wd.feminim,
@@ -49,13 +49,13 @@ abstract trait WertungService extends DBService with WertungResultMapper with Di
                     inner join wettkampf wk on (wk.id = w.wettkampf_id)
                     #$where
                     order by wd.programm_id, wd.ord
-         """.as[WertungView]
+         """.as[WertungView]).withPinnedSession
     }, Duration.Inf)
   }
   
   def getWertung(id: Long): WertungView = {
     implicit val cache = scala.collection.mutable.Map[Long, ProgrammView]()
-    Await.result(database.run{
+    Await.result(database.run{(
       sql"""
                     SELECT w.id, a.id, a.js_id, a.geschlecht, a.name, a.vorname, a.gebdat, a.strasse, a.plz, a.ort, a.activ, a.verein, v.*,
                       wd.id, wd.programm_id, d.*, wd.kurzbeschreibung, wd.detailbeschreibung, wd.notenfaktor, wd.ord, wd.masculin, wd.feminim,
@@ -70,7 +70,7 @@ abstract trait WertungService extends DBService with WertungResultMapper with Di
                     inner join wettkampf wk on (wk.id = w.wettkampf_id)
                     where w.id = ${id}
                     order by wd.programm_id, wd.ord
-         """.as[WertungView]
+         """.as[WertungView]).withPinnedSession
     }, Duration.Inf).head
   }
   
@@ -99,7 +99,7 @@ abstract trait WertungService extends DBService with WertungResultMapper with Di
       insertWertungenAction
     )
       
-    Await.result(database.run{process}, Duration.Inf)
+    Await.result(database.run{process.transactionally}, Duration.Inf)
     wertungen.size
   }
   
@@ -125,7 +125,7 @@ abstract trait WertungService extends DBService with WertungResultMapper with Di
         """
       
     })
-    Await.result(database.run{process}, Duration.Inf)
+    Await.result(database.run{process.transactionally}, Duration.Inf)
     wertungen.size
   }
   
@@ -149,7 +149,7 @@ abstract trait WertungService extends DBService with WertungResultMapper with Di
                     and (w.riege=riege.name or w.riege2=riege.name)
                 )
         """
-    ))), Duration.Inf)
+    )).transactionally), Duration.Inf)
   }
 
   def updateWertung(w: Wertung): WertungView = {
@@ -166,11 +166,11 @@ abstract trait WertungService extends DBService with WertungResultMapper with Di
                         and (w.riege=name or w.riege2=name)
                     )
           """
-    ))), Duration.Inf)
+    )).transactionally), Duration.Inf)
 
     implicit val cache = scala.collection.mutable.Map[Long, ProgrammView]()
       //id |id |js_id |geschlecht |name |vorname |gebdat |strasse |plz |ort |verein |activ |id |name |id |programm_id |id |name |kurzbeschreibung |detailbeschreibung |notenfaktor |ord |masculin |feminim |id |datum |titel |programm_id |auszeichnung |difficulty |execution |endnote |riege |
-    val wv = Await.result(database.run(sql"""
+    val wv = Await.result(database.run((sql"""
                     SELECT w.id, a.id, a.js_id, a.geschlecht, a.name, a.vorname, a.gebdat, a.strasse, a.plz, a.ort, a.activ, a.verein, v.*,
                       wd.id, wd.programm_id, d.*, wd.kurzbeschreibung, wd.detailbeschreibung, wd.notenfaktor, wd.ord, wd.masculin, wd.feminim,
                       wk.*,
@@ -184,7 +184,7 @@ abstract trait WertungService extends DBService with WertungResultMapper with Di
                     inner join wettkampf wk on (wk.id = w.wettkampf_id)
                     WHERE w.id=${w.id}
                     order by wd.programm_id, wd.ord
-       """.as[WertungView].head.withPinnedSession), Duration.Inf)
+       """.as[WertungView].head).withPinnedSession), Duration.Inf)
     if(wv.endnote >= 8.7) {
       putWertungToBestenResults(wv)
     }
@@ -195,11 +195,11 @@ abstract trait WertungService extends DBService with WertungResultMapper with Di
     val wv = getWertung(w.id).wettkampfdisziplin.notenSpez.verifiedAndCalculatedWertung(w)
     
 //    val endnoteCalculated = wv.i
-    Await.result(database.run(
+    Await.result(database.run((
       sqlu"""       UPDATE wertung
                     SET note_d=${wv.noteD}, note_e=${wv.noteE}, endnote=${wv.endnote}, riege=${wv.riege}, riege2=${wv.riege2}
                     WHERE id=${wv.id}
-          """
+          """).transactionally
     ), Duration.Inf)
     // TODO - this feature is not able to serve for multiple competitions at same time
     if(putToBestenresults && wv.endnote >= 8.7) {
@@ -210,7 +210,7 @@ abstract trait WertungService extends DBService with WertungResultMapper with Di
   def listAthletenWertungenZuProgramm(progids: Seq[Long], wettkampf: Long, riege: String = "%") = {
     Await.result(database.run{
       implicit val cache = scala.collection.mutable.Map[Long, ProgrammView]()
-      sql"""
+      (sql"""
                    SELECT w.id, a.id, a.js_id, a.geschlecht, a.name, a.vorname, a.gebdat, a.strasse, a.plz, a.ort, a.activ, a.verein, v.*,
                      wd.id, wd.programm_id, d.*, wd.kurzbeschreibung, wd.detailbeschreibung, wd.notenfaktor, wd.ord, wd.masculin, wd.feminim,
                      wk.*,
@@ -226,13 +226,13 @@ abstract trait WertungService extends DBService with WertungResultMapper with Di
                      and w.wettkampf_id = $wettkampf
                      and ($riege = '%' or w.riege = $riege or w.riege2 = $riege)
                    order by wd.programm_id, wd.ord
-       """.as[WertungView].withPinnedSession}, Duration.Inf)    
+       """.as[WertungView]).withPinnedSession}, Duration.Inf)    
   }
 
   def listAthletWertungenZuWettkampf(athletId: Long, wettkampf: Long) = {
     Await.result(database.run{
       implicit val cache = scala.collection.mutable.Map[Long, ProgrammView]()
-      sql"""
+      (sql"""
                    SELECT w.id, a.id, a.js_id, a.geschlecht, a.name, a.vorname, a.gebdat, a.strasse, a.plz, a.ort, a.activ, a.verein, v.*,
                      wd.id, wd.programm_id, d.*, wd.kurzbeschreibung, wd.detailbeschreibung, wd.notenfaktor, wd.ord, wd.masculin, wd.feminim,
                      wk.*,
@@ -247,7 +247,7 @@ abstract trait WertungService extends DBService with WertungResultMapper with Di
                    where w.athlet_id = $athletId
                      and w.wettkampf_id = $wettkampf
                    order by wd.programm_id, wd.ord
-       """.as[WertungView].withPinnedSession
+       """.as[WertungView]).withPinnedSession
     }, Duration.Inf)
   }
 

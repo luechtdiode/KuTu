@@ -209,7 +209,7 @@ trait DBService {
       lines.filter(filterCommentLines).foldLeft(List(""))(combineMultilineStatement).filter(_.trim().length() > 0)
     }
     
-    Await.result(database.run(DBIO.sequence(parse(script).map(statement => sqlu"""#$statement"""))), Duration.Inf)
+    Await.result(database.run(DBIO.sequence(parse(script).map(statement => sqlu"""#$statement""")).transactionally), Duration.Inf)
   }
 
 

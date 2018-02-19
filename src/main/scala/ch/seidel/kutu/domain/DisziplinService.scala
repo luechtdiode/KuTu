@@ -34,7 +34,7 @@ abstract trait DisziplinService extends DBService with DisziplinResultMapper {
              order by
               wd.ord
        """.as[(Long, String, String)]
-       ret.map{_.map{tupel => (Disziplin(tupel._1, tupel._2), tupel._3)}.groupBy(_._2).map(x => x._1 -> x._2.map(_._1))}
+       ret.withPinnedSession.map{_.map{tupel => (Disziplin(tupel._1, tupel._2), tupel._3)}.groupBy(_._2).map(x => x._1 -> x._2.map(_._1))}
     }, Duration.Inf)
   }
 
@@ -42,7 +42,7 @@ abstract trait DisziplinService extends DBService with DisziplinResultMapper {
     Await.result(database.run{
       val wettkampf: Wettkampf = readWettkampf(wettkampfId)
       val programme = readWettkampfLeafs(wettkampf.programmId).map(p => p.id).mkString("(", ",", ")")
-      sql""" select id from wettkampfdisziplin where programm_Id in #$programme""".as[Long]
+      sql""" select id from wettkampfdisziplin where programm_Id in #$programme""".as[Long].withPinnedSession
     }, Duration.Inf).toList
   }
   
@@ -65,7 +65,7 @@ abstract trait DisziplinService extends DBService with DisziplinResultMapper {
               and programm_id in #$programme
              order by
               wd.ord
-             """.as[Disziplin]      
+             """.as[Disziplin].withPinnedSession
     }, Duration.Inf).toList
   }
   
@@ -81,7 +81,7 @@ abstract trait DisziplinService extends DBService with DisziplinResultMapper {
               programm_Id in #$programme
              order by
               wd.ord
-         """.as[(Long, Long, Long, String, Int)]
+         """.as[(Long, Long, Long, String, Int)].withPinnedSession
     }, Duration.Inf)
     .map{t => Wettkampfdisziplin(t._1, t._2, t._3, t._4, None, 0, t._5, 0, 0) }.toList
   }

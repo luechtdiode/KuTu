@@ -15,7 +15,7 @@ trait VereinService extends DBService with VereinResultMapper {
  
   def selectVereine: List[Verein] = {
     Await.result(database.run{
-      sql"""        select id, name, verband from verein order by name""".as[Verein]
+      (sql"""        select id, name, verband from verein order by name""".as[Verein]).withPinnedSession
     }, Duration.Inf).toList
   }
   
@@ -58,34 +58,34 @@ trait VereinService extends DBService with VereinResultMapper {
       }
     }
 
-    Await.result(database.run { process.flatten.map(Verein(_, verein.name, verein.verband)) }, Duration.Inf)
+    Await.result(database.run { (process.flatten.map(Verein(_, verein.name, verein.verband))).transactionally }, Duration.Inf)
   }
 
   def createVerein(name: String, verband: Option[String]): Long = {
-    Await.result(database.run {
+    Await.result(database.run {(
       sqlu"""       insert into verein
                     (name, verband) values (${name}, ${verband})""" >>
         sql"""
                     select id from verein
                     where id in (select max(id) from verein)
-         """.as[Long].head
+         """.as[Long].head).transactionally
     }, Duration.Inf)
   }
 
   def updateVerein(verein: Verein) {
-    Await.result(database.run {
+    Await.result(database.run {(
       sqlu"""       update verein
                     set name = ${verein.name}, verband = ${verein.verband}
                     where id = ${verein.id}
-          """
+          """).transactionally
     }, Duration.Inf)
   }
   
   def deleteVerein(vereinid: Long) {
-    Await.result(database.run {
+    Await.result(database.run {(
       sqlu"""       delete from wertung where athlet_id in (select id from athlet where verein=${vereinid})""" >>
       sqlu"""       delete from athlet where verein=${vereinid}""" >>
-      sqlu"""       delete from verein where id=${vereinid}"""
+      sqlu"""       delete from verein where id=${vereinid}""").transactionally
     }, Duration.Inf)
   }
 

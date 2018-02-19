@@ -22,11 +22,11 @@ trait AthletService extends DBService with AthletResultMapper {
   }
   
   def selectAthletesOfVerein(id: Long) = {
-    Await.result(database.run{
+    Await.result(database.run{(
       sql"""        select * from athlet
                     where verein=${id}
                     order by activ desc, name, vorname asc
-       """.as[Athlet]
+       """.as[Athlet]).withPinnedSession
     }, Duration.Inf).toList
   }
   
@@ -35,27 +35,28 @@ trait AthletService extends DBService with AthletResultMapper {
    */
   def selectAthletesView = {
     Await.result(database.run{
-      sql"""        select a.id, a.js_id, a.geschlecht, a.name, a.vorname, a.gebdat, a.strasse, a.plz, a.ort, a.activ, a.verein, v.* from athlet a inner join verein v on (v.id = a.verein) order by activ desc, name, vorname asc """.as[AthletView]
+      (sql"""        select a.id, a.js_id, a.geschlecht, a.name, a.vorname, a.gebdat, a.strasse, a.plz, a.ort, a.activ, a.verein, v.* from athlet a inner join verein v on (v.id = a.verein) order by activ desc, name, vorname asc """.as[AthletView]
+      ).withPinnedSession
     }, Duration.Inf).toList
   }
   
 
 
   def deleteAthlet(id: Long) {
-    Await.result(database.run{
+    Await.result(database.run{(
       sqlu"""       delete from wertung
                     where athlet_id=${id}
           """ >>
       sqlu"""
                     delete from athlet where id=${id}
-          """
+          """).transactionally
     }, Duration.Inf)
   }
   
   def insertAthletes(athletes: Iterable[(String,Athlet)]): Iterable[(String,Athlet)] = {
     val process = athletes.map(a => insertAthlete2(a))
     Await.result(database.run{
-      DBIO.sequence(process)
+      DBIO.sequence(process).transactionally
     }, Duration.Inf)
   }
   
@@ -106,7 +107,7 @@ trait AthletService extends DBService with AthletResultMapper {
   def insertAthlete(athlete: Athlet): Athlet = {   
     val process = Seq(("", athlete)).map(a => insertAthlete2(a))
     Await.result(database.run{
-      DBIO.sequence(process)
+      DBIO.sequence(process).transactionally
     }, Duration.Inf).map(x => x._2).head
   }
 
@@ -144,7 +145,7 @@ trait AthletService extends DBService with AthletResultMapper {
       Await.result(database.run{sql"""
          select id, name, vorname, gebdat, verein
          from athlet
-         """.as[(Long, String, String, Option[Date], Long)]
+         """.as[(Long, String, String, Option[Date], Long)].withPinnedSession
       }, Duration.Inf).
       map{x =>
         val (id, name, vorname, jahr, verein) = x
@@ -159,8 +160,8 @@ trait AthletService extends DBService with AthletResultMapper {
       (matchcode.id, similarAthletFactor(matchcode))
     }.filter(_._2 > 0).toList.sortBy(_._2).reverse
     presel2.headOption.flatMap(k =>
-      Await.result(database.run{sql"""select * from athlet where id=${k._1}""".as[Athlet].
-      headOption}, Duration.Inf)
+      Await.result(database.run{(sql"""select * from athlet where id=${k._1}""".as[Athlet].
+      headOption).withPinnedSession}, Duration.Inf)
     ).getOrElse(athlet)
   }
 

@@ -86,7 +86,6 @@ object ResourceExchanger extends KutuService with RiegenBuilder {
               (csvId, candidate, false)
             case _ =>
               (csvId, candidate.copy(gebdat = importathlet.gebdat), true)
-//              insertAthlete(candidate.copy(gebdat = importathlet.gebdat))
           }
         case None =>
           (csvId, candidate, false)
@@ -94,7 +93,6 @@ object ResourceExchanger extends KutuService with RiegenBuilder {
       }
       else {
          (csvId, candidate, true)
-//         insertAthlete(candidate)
       }
     }
     val athletInstances = (athletInstanceCandidates
@@ -111,7 +109,8 @@ object ResourceExchanger extends KutuService with RiegenBuilder {
     val (wettkampfCsv, wettkampfHeader) = collection("wettkampf.csv")
     logger.debug("importing wettkampf ...", wettkampfHeader)
     val wettkampfInstances = wettkampfCsv.map(parseLine).filter(_.size == wettkampfHeader.size).map{fields =>
-      val uuid = wettkampfHeader.get("uuidOption").map(uuidIdx => Some(fields(uuidIdx))).getOrElse(None)
+      val uuid = wettkampfHeader.get("uuid").map(uuidIdx => Some(fields(uuidIdx))).getOrElse(None)
+      logger.debug("wettkampf uuid: " + uuid)
       val wettkampf = createWettkampf(
           auszeichnung = fields(wettkampfHeader("auszeichnung")),
           auszeichnungendnote = try {BigDecimal.valueOf(fields(wettkampfHeader("auszeichnungendnote")))} catch {case e:Exception => 0},
@@ -122,6 +121,7 @@ object ResourceExchanger extends KutuService with RiegenBuilder {
           )
       (fields(wettkampfHeader("id")), wettkampf)
     }.toMap
+    
     val wkdisziplines = wettkampfInstances.map{w =>
       (w._2.id, listWettkampfDisziplines(w._2.id).map(d => d.id -> d).toMap)
     }
@@ -164,43 +164,46 @@ object ResourceExchanger extends KutuService with RiegenBuilder {
       w
     }
     val start = System.currentTimeMillis()
-    val wettkampf = wettkampfInstances.values.find(w => w.id == wertungInstances.head.wettkampfId).get
-    val inserted = updateOrinsertWertungenZuWettkampf(wettkampf, wertungInstances.groupBy(w => w.athletId).flatMap { aw =>
-      val (athletid, wertungen) = aw
-      val programm = wkdisziplines(wettkampf.id)(wertungen.head.wettkampfdisziplinId).programmId
-      val requiredDisciplines = wkdisziplines(wettkampf.id).filter(wd => wd._2.programmId == programm)
-      lazy val empty = wertungen.forall { w => w.endnote < 1 }
-      val filtered = wertungen.filter(w => requiredDisciplines.contains(w.wettkampfdisziplinId))
-      wertungen.filter(!filtered.contains(_)).foreach(w => logger.debug("WARNING: No matching Disciplin - " + w))
-
-      val missing = requiredDisciplines.keys.filter(d => !filtered.exists(w => w.wettkampfdisziplinId == d))
-      missing.foreach(w => logger.debug("WARNING: missing Disciplin - " + requiredDisciplines(w).easyprint))
-      val completeWertungenSet = filtered ++ missing.map{missingDisziplin => 
-        Wertung(
-          id = 0L,
-          athletId = athletid,
-          wettkampfdisziplinId = missingDisziplin,
-          wettkampfId = wettkampf.id,
-          wettkampfUUID = wettkampfInstances.get(wettkampf.id + "") match {
-            case Some(w) => w.uuid.getOrElse("")
-            case None => ""
-          },
-          noteD = 0d,
-          noteE = 0d,
-          endnote = 0d,
-          riege = None,
-          riege2 = None
-        )      
-      }
-      completeWertungenSet
-    })
+    val inserted = wertungInstances.groupBy(w => w.wettkampfId).map{wkWertungen =>
+      val (wettkampfid, wertungen) = wkWertungen
+      val wettkampf = wettkampfInstances.values.find(w => w.id == wettkampfid).get
+      updateOrinsertWertungenZuWettkampf(wettkampf, wertungen.groupBy(w => w.athletId).flatMap { aw =>
+        val (athletid, wertungen) = aw
+        val programm = wkdisziplines(wettkampf.id)(wertungen.head.wettkampfdisziplinId).programmId
+        val requiredDisciplines = wkdisziplines(wettkampf.id).filter(wd => wd._2.programmId == programm)
+        lazy val empty = wertungen.forall { w => w.endnote < 1 }
+        val filtered = wertungen.filter(w => requiredDisciplines.contains(w.wettkampfdisziplinId))
+        wertungen.filter(!filtered.contains(_)).foreach(w => logger.debug("WARNING: No matching Disciplin - " + w))
+  
+        val missing = requiredDisciplines.keys.filter(d => !filtered.exists(w => w.wettkampfdisziplinId == d))
+        missing.foreach(w => logger.debug("WARNING: missing Disciplin - " + requiredDisciplines(w).easyprint))
+        val completeWertungenSet = filtered ++ missing.map{missingDisziplin => 
+          Wertung(
+            id = 0L,
+            athletId = athletid,
+            wettkampfdisziplinId = missingDisziplin,
+            wettkampfId = wettkampf.id,
+            wettkampfUUID = wettkampfInstances.get(wettkampf.id + "") match {
+              case Some(w) => w.uuid.getOrElse("")
+              case None => ""
+            },
+            noteD = 0d,
+            noteE = 0d,
+            endnote = 0d,
+            riege = None,
+            riege2 = None
+          )      
+        }
+        completeWertungenSet
+      })
+    }.sum
     // wertungen: 1857 / inserted: 1857, duration: 6335ms
     logger.debug(s"wertungen: ${wertungInstances.size} / inserted: $inserted, duration: ${System.currentTimeMillis() - start}ms")
     
     if(collection.contains("riegen.csv")) {
       val (riegenCsv, riegenHeader) = collection("riegen.csv")
       logger.debug("importing riegen ...", riegenHeader)
-      riegenCsv.map(parseLine).filter(_.size == riegenHeader.size).foreach{fields =>
+      updateOrinsertRiegen(riegenCsv.map(parseLine).filter(_.size == riegenHeader.size).map{fields =>
         val wettkampfid = fields(riegenHeader("wettkampfId"))
         val riege = RiegeRaw(
             wettkampfId = wettkampfInstances.get(wettkampfid + "") match {
@@ -211,8 +214,8 @@ object ResourceExchanger extends KutuService with RiegenBuilder {
             durchgang = if(fields(riegenHeader("durchgang")).length > 0) Some(fields(riegenHeader("durchgang"))) else None,
             start = if(fields(riegenHeader("start")).length > 0) Some(fields(riegenHeader("start"))) else None
             )
-        updateOrinsertRiege(riege)
-      }
+        riege
+      })
     }
     logger.debug("import finished")
     wettkampfInstances.head._2
