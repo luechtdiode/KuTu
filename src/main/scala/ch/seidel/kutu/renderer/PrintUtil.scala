@@ -207,12 +207,26 @@ object PrintUtil {
             in.close
           }
           imagedata
-      } else {
+      } else if(file.getName.endsWith("png")) {
         val imageBuffer = ImageIO.read(file)
         val output = new ByteArrayOutputStream()
-        ImageIO.write(imageBuffer, "PNG", output)
-        val imagedata = "data:base64," + Base64.getMimeEncoder().encodeToString(output.toByteArray())
+        ImageIO.write(imageBuffer, "png", output)
+        val imagedata = "data:image/png;base64," + Base64.getMimeEncoder().encodeToString(output.toByteArray())
         imagedata
+      } else if(file.getName.endsWith("jpg")) {
+        val imageBuffer = ImageIO.read(file)
+        val output = new ByteArrayOutputStream()
+        ImageIO.write(imageBuffer, "jpg", output)
+        val imagedata = "data:image/jpg;base64," + Base64.getMimeEncoder().encodeToString(output.toByteArray())
+        imagedata
+      } else if(file.getName.endsWith("jpeg")) {
+        val imageBuffer = ImageIO.read(file)
+        val output = new ByteArrayOutputStream()
+        ImageIO.write(imageBuffer, "jpeg", output)
+        val imagedata = "data:image/jpeg;base64," + Base64.getMimeEncoder().encodeToString(output.toByteArray())
+        imagedata        
+      } else {
+        file.toURI.toString
       }
     }
   }
