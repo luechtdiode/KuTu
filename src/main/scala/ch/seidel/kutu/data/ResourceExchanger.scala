@@ -57,10 +57,9 @@ object ResourceExchanger extends KutuService with RiegenBuilder {
 
     val (athletCsv, athletHeader) = collection("athleten.csv")
     logger.debug("importing athleten ...", athletHeader)
-    val cache = new java.util.ArrayList[MatchCode]()
-    val athletInstances = athletCsv.map(parseLine).filter(_.size == athletHeader.size).map{fields =>
+    val mappedAthletes = athletCsv.map(parseLine).filter(_.size == athletHeader.size).map{fields =>
       val geb = fields(athletHeader("gebdat")).replace("Some(", "").replace(")","")
-      val importathlet = Athlet(
+      (fields(athletHeader("id")), Athlet(
           id = 0,
           js_id = fields(athletHeader("js_id")),
           geschlecht = fields(athletHeader("geschlecht")),
@@ -72,28 +71,43 @@ object ResourceExchanger extends KutuService with RiegenBuilder {
           ort = fields(athletHeader("ort")),
           verein = vereinInstances.get(fields(athletHeader("verein"))).map(v => v.id),
           activ = fields(athletHeader("activ")).toUpperCase() match {case "TRUE" => true case _ => false}
-          )
+          ))
+    }
+    val cache = new java.util.ArrayList[MatchCode]()
+    val athletInstanceCandidates = mappedAthletes.map{imported =>
+      val (csvId, importathlet) = imported
       val candidate = findAthleteLike(cache)(importathlet)
 
-      val athlet = if(candidate.id > 0) {
+      if(candidate.id > 0) {
         importathlet.gebdat match {
         case Some(d) =>
           candidate.gebdat match {
             case Some(cd) if(!f"${cd}%tF".endsWith("-01-01") || d.equals(cd)) =>
-              candidate
+              (csvId, candidate, false)
             case _ =>
-              insertAthlete(candidate.copy(gebdat = importathlet.gebdat))
+              (csvId, candidate.copy(gebdat = importathlet.gebdat), true)
+//              insertAthlete(candidate.copy(gebdat = importathlet.gebdat))
           }
         case None =>
-          candidate
+          (csvId, candidate, false)
         }
       }
       else {
-         insertAthlete(candidate)
+         (csvId, candidate, true)
+//         insertAthlete(candidate)
       }
-      (fields(athletHeader("id")), athlet)
-    }.toMap
-
+    }
+    val athletInstances = (athletInstanceCandidates
+      .filter(x => !x._3)
+      .map{toInsert =>
+        val (key, candidate, _) = toInsert
+        (key, candidate)
+      } ++ insertAthletes(athletInstanceCandidates.filter(x => x._3).map{toInsert =>
+        val (key, candidate, _) = toInsert
+        (key, candidate)
+      }))
+      .toMap
+      
     val (wettkampfCsv, wettkampfHeader) = collection("wettkampf.csv")
     logger.debug("importing wettkampf ...", wettkampfHeader)
     val wettkampfInstances = wettkampfCsv.map(parseLine).filter(_.size == wettkampfHeader.size).map{fields =>
@@ -149,35 +163,40 @@ object ResourceExchanger extends KutuService with RiegenBuilder {
 //      println(w.athletId, getAthletName(w.athletId), w.endnote, w.wettkampfdisziplinId, w.wettkampfdisziplinId, getWettkampfDisziplinName(w))
       w
     }
-
-    val inserted = wertungInstances.groupBy(w => w.athletId).map { aw =>
+    val start = System.currentTimeMillis()
+    val wettkampf = wettkampfInstances.values.find(w => w.id == wertungInstances.head.wettkampfId).get
+    val inserted = updateOrinsertWertungenZuWettkampf(wettkampf, wertungInstances.groupBy(w => w.athletId).flatMap { aw =>
       val (athletid, wertungen) = aw
+      val programm = wkdisziplines(wettkampf.id)(wertungen.head.wettkampfdisziplinId).programmId
+      val requiredDisciplines = wkdisziplines(wettkampf.id).filter(wd => wd._2.programmId == programm)
       lazy val empty = wertungen.forall { w => w.endnote < 1 }
-      wertungen.map { w =>
-        if(wkdisziplines(w.wettkampfId).contains(w.wettkampfdisziplinId)) {
-//          if(w.endnote < 1 && !empty) {
-//            println("WARNING: Importing zero-measure for " + getAthletName(w.athletId) + " and " + getWettkampfDisziplinName(w))
-//          }
-          updateOrinsertWertung(w)(1)
-        }
-        else {
-          logger.debug("WARNING: No matching Disciplin - " + w)
-          0
-        }
-      }.sum
-    }.sum
-    logger.debug(wertungInstances.size, inserted)
-    wettkampfInstances.foreach{w =>
-      val (_, wettkampf) = w
-      athletInstances.foreach{a =>
-        val (_, athlet) = a
-        val completed = completeDisziplinListOfAthletInWettkampf(wettkampf, athlet.id)
-        if(completed.nonEmpty) {
-          logger.debug("Completed missing disciplines for " + athlet.id + " " + athlet.easyprint, wettkampf.easyprint + ":")
-          logger.debug(completed.map(wkdisziplines(wettkampf.id)(_).toString).mkString("[", ", ", "]"))
-        }
+      val filtered = wertungen.filter(w => requiredDisciplines.contains(w.wettkampfdisziplinId))
+      wertungen.filter(!filtered.contains(_)).foreach(w => logger.debug("WARNING: No matching Disciplin - " + w))
+
+      val missing = requiredDisciplines.keys.filter(d => !filtered.exists(w => w.wettkampfdisziplinId == d))
+      missing.foreach(w => logger.debug("WARNING: missing Disciplin - " + requiredDisciplines(w).easyprint))
+      val completeWertungenSet = filtered ++ missing.map{missingDisziplin => 
+        Wertung(
+          id = 0L,
+          athletId = athletid,
+          wettkampfdisziplinId = missingDisziplin,
+          wettkampfId = wettkampf.id,
+          wettkampfUUID = wettkampfInstances.get(wettkampf.id + "") match {
+            case Some(w) => w.uuid.getOrElse("")
+            case None => ""
+          },
+          noteD = 0d,
+          noteE = 0d,
+          endnote = 0d,
+          riege = None,
+          riege2 = None
+        )      
       }
-    }
+      completeWertungenSet
+    })
+    // wertungen: 1857 / inserted: 1857, duration: 6335ms
+    logger.debug(s"wertungen: ${wertungInstances.size} / inserted: $inserted, duration: ${System.currentTimeMillis() - start}ms")
+    
     if(collection.contains("riegen.csv")) {
       val (riegenCsv, riegenHeader) = collection("riegen.csv")
       logger.debug("importing riegen ...", riegenHeader)

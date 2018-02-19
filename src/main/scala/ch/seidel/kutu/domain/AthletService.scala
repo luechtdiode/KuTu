@@ -52,54 +52,62 @@ trait AthletService extends DBService with AthletResultMapper {
     }, Duration.Inf)
   }
   
-  def insertAthlete(athlete: Athlet) = {    
-    def getId: Option[Long] = athlete.gebdat match {
+  def insertAthletes(athletes: Iterable[(String,Athlet)]): Iterable[(String,Athlet)] = {
+    val process = athletes.map(a => insertAthlete2(a))
+    Await.result(database.run{
+      DBIO.sequence(process)
+    }, Duration.Inf)
+  }
+  
+  private def insertAthlete2(importAthlet: (String,Athlet)) = {
+    val (id, athlete) = importAthlet
+    def getId = athlete.gebdat match {
       case Some(gebdat) =>
-         Await.result(database.run{sql"""
+         sql"""
                   select max(athlet.id) as maxid
                   from athlet
                   where name=${athlete.name} and vorname=${athlete.vorname} and strftime('%Y', gebdat)=strftime('%Y',${gebdat}) and verein=${athlete.verein}
-         """.as[Long].headOption}, Duration.Inf)
+         """.as[Long].headOption
       case _ =>
-         Await.result(database.run{sql"""
+         sql"""
                   select max(athlet.id) as maxid
                   from athlet
                   where name=${athlete.name} and vorname=${athlete.vorname} and verein=${athlete.verein}
-         """.as[Long].headOption}, Duration.Inf)
+         """.as[Long].headOption
     }
-
-    if (athlete.id == 0) {
-      getId match {
+    (if (athlete.id == 0) {
+      getId.flatMap(id => id match {
         case Some(id) if(id > 0) =>
-          Await.result(database.run{
             sqlu"""
                   replace into athlet
                   (id, js_id, geschlecht, name, vorname, gebdat, strasse, plz, ort, verein, activ)
                   values (${id}, ${athlete.js_id}, ${athlete.geschlecht}, ${athlete.name}, ${athlete.vorname}, ${athlete.gebdat}, ${athlete.strasse}, ${athlete.plz}, ${athlete.ort}, ${athlete.verein}, ${athlete.activ})
             """ >>
             sql"""select * from athlet where id = ${id}""".as[Athlet].head
-          }, Duration.Inf)
+          
         case _ =>
-          Await.result(database.run{
             sqlu"""
                   replace into athlet
                   (js_id, geschlecht, name, vorname, gebdat, strasse, plz, ort, verein, activ)
                   values (${athlete.js_id}, ${athlete.geschlecht}, ${athlete.name}, ${athlete.vorname}, ${athlete.gebdat}, ${athlete.strasse}, ${athlete.plz}, ${athlete.ort}, ${athlete.verein}, ${athlete.activ})
             """ >>
             sql"""select * from athlet where id = (select max(athlet.id) from athlet)""".as[Athlet].head
-          }, Duration.Inf)
-      }
-    }
-    else {
-      Await.result(database.run{
+      })
+    } else {
         sqlu"""
                   replace into athlet
                   (id, js_id, geschlecht, name, vorname, gebdat, strasse, plz, ort, verein, activ)
                   values (${athlete.id}, ${athlete.js_id}, ${athlete.geschlecht}, ${athlete.name}, ${athlete.vorname}, ${athlete.gebdat}, ${athlete.strasse}, ${athlete.plz}, ${athlete.ort}, ${athlete.verein}, ${athlete.activ})
-          """
-      }, Duration.Inf)
-      athlete
-    }
+          """.map(_ => athlete)
+    })
+    .map(a => (id, a))
+  }
+
+  def insertAthlete(athlete: Athlet): Athlet = {   
+    val process = Seq(("", athlete)).map(a => insertAthlete2(a))
+    Await.result(database.run{
+      DBIO.sequence(process)
+    }, Duration.Inf).map(x => x._2).head
   }
 
   def findAthleteLike(cache: java.util.List[MatchCode] = java.util.Collections.emptyList[MatchCode])(athlet: Athlet) = {

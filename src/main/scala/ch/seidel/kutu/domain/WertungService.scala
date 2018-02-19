@@ -74,6 +74,61 @@ abstract trait WertungService extends DBService with WertungResultMapper with Di
     }, Duration.Inf).head
   }
   
+  def updateOrinsertWertungenZuWettkampf(wettkampf: Wettkampf, wertungen: Iterable[Wertung]) = {
+    val insertWertungenAction = DBIO.sequence(for {
+      w <- wertungen
+    } yield {
+      sqlu"""
+                insert into wertung
+                (athlet_Id, wettkampfdisziplin_Id, wettkampf_Id, note_d, note_e, endnote, riege, riege2)
+                values (${w.athletId}, ${w.wettkampfdisziplinId}, ${w.wettkampfId}, ${w.noteD}, ${w.noteE}, ${w.endnote}, ${w.riege}, ${w.riege2})
+        """
+    })
+    
+    val process = DBIO.seq(
+      sqlu"""
+                delete from wertung where wettkampf_id=${wettkampf.id}
+          """>>
+      sqlu"""   delete from riege
+                WHERE wettkampf_id=${wettkampf.id} and not exists (
+                  SELECT 1 FROM wertung w
+                  WHERE w.wettkampf_id=${wettkampf.id}
+                    and (w.riege=riege.name or w.riege2=riege.name)
+                )
+          """>>
+      insertWertungenAction
+    )
+      
+    Await.result(database.run{process}, Duration.Inf)
+    wertungen.size
+  }
+  
+  def updateOrinsertWertungen(wertungen: Iterable[Wertung]) = {
+    val process = DBIO.sequence(for {
+      w <- wertungen
+    } yield {
+      sqlu"""
+                delete from wertung where
+                athlet_Id=${w.athletId} and wettkampfdisziplin_Id=${w.wettkampfdisziplinId} and wettkampf_Id=${w.wettkampfId}
+        """>>  
+      sqlu"""
+                insert into wertung
+                (athlet_Id, wettkampfdisziplin_Id, wettkampf_Id, note_d, note_e, endnote, riege, riege2)
+                values (${w.athletId}, ${w.wettkampfdisziplinId}, ${w.wettkampfId}, ${w.noteD}, ${w.noteE}, ${w.endnote}, ${w.riege}, ${w.riege2})
+        """>>
+      sqlu"""   delete from riege
+                WHERE wettkampf_id=${w.id} and not exists (
+                  SELECT 1 FROM wertung w
+                  WHERE w.wettkampf_id=${w.id}
+                    and (w.riege=riege.name or w.riege2=riege.name)
+                )
+        """
+      
+    })
+    Await.result(database.run{process}, Duration.Inf)
+    wertungen.size
+  }
+  
   def updateOrinsertWertung(w: Wertung) = {
     Await.result(database.run(DBIO.sequence(Seq(
       sqlu"""
