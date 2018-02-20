@@ -77,20 +77,27 @@ trait RiegenService extends DBService with RiegenResultMapper {
     }, Duration.Inf)
   }
 
-  def updateOrinsertRiegen(riegen: Iterable[RiegeRaw]) {
-    val process = DBIO.sequence(for {
-      riege <- riegen
-    } yield {
-      sqlu"""
-                delete from riege where
-                wettkampf_id=${riege.wettkampfId} and name=${riege.r}
-        """>>  
+  def updateOrinsertRiegen(riegen: Iterable[RiegeRaw]) {      
+    def insertRiegen(rs: Iterable[RiegeRaw]) = DBIO.sequence(for {
+        riege <- rs
+      } yield {
       sqlu"""
                 insert into riege
                 (wettkampf_Id, name, durchgang, start)
                 values (${riege.wettkampfId}, ${riege.r}, ${riege.durchgang}, ${riege.start})
         """      
-    })    
+      })
+
+    val process = DBIO.sequence(for {
+      (wettkampfid, riegen) <- riegen.groupBy(_.wettkampfId).toIterable
+    } yield {
+      sqlu"""
+                delete from riege where
+                wettkampf_id=${wettkampfid}
+        """>>
+      insertRiegen(riegen)
+    })
+            
     Await.result(database.run{process.transactionally}, Duration.Inf)
   }
   
