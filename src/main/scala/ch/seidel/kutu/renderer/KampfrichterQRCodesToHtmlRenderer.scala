@@ -10,15 +10,19 @@ import net.glxn.qrgen.image.ImageType
 import java.util.UUID
 
 case class KampfrichterQRCode(wettkampfTitle: String, durchgangname: String, geraet: String, uri: String, imageData: String)
+
 object KampfrichterQRCode {
   val logger = LoggerFactory.getLogger(this.getClass)
   val enc = Base64.getUrlEncoder
+  
   def toURI(uuid: String, remoteBaseUrl: String, gr: GeraeteRiege) = s"$remoteBaseUrl?" + new String(enc.encodeToString((s"c=$uuid&d=${gr.durchgang.get}&g=${gr.disziplin.get}").getBytes))
+  
   def toQRCodeImage(uri: String) = {
     val out = QRCode.from(uri).to(ImageType.PNG).withSize(200, 200).stream();
     val imagedata = "data:image/png;base64," + Base64.getMimeEncoder().encodeToString(out.toByteArray())
     imagedata
   }
+  
   def toMobileConnectData(wettkampf: WettkampfView, baseUrl: String)(gr: GeraeteRiege) =
     KampfrichterQRCode(wettkampf.titel, gr.durchgang.get, gr.disziplin.get.name, toURI(wettkampf.uuid.get, baseUrl, gr), toQRCodeImage(toURI(wettkampf.uuid.get, baseUrl, gr)))
 }
@@ -97,7 +101,6 @@ trait KampfrichterQRCodesToHtmlRenderer {
           font-size: 75%;
         }
         table {
-          width: 100%;
           border-collapse:collapse;
           border-spacing:0;
         }
@@ -128,17 +131,7 @@ trait KampfrichterQRCodesToHtmlRenderer {
     </html>
   """
 
-  def shorten(s: String, l: Int = 3) = {
-    if (s.length() <= l) {
-      s
-    } else {
-      val words = s.split(" ")
-      val ll = words.length + l -1;
-      s.take(ll) + "."
-    }
-  }
-
-  private def notenblatt(geraetCodes: (String, String, Seq[KampfrichterQRCode]), logo: File) = {
+  private def renderedDurchgaenge(geraetCodes: (String, String, Seq[KampfrichterQRCode]), logo: File) = {
     val logoHtml = if (logo.exists()) s"""<img class=logo src="${logo.imageSrcForWebEngine}" title="Logo"/>""" else ""
     val (wettkampfTitel, geraet, codes) = geraetCodes
     val sorted = codes.sortBy(_.durchgangname)
@@ -171,11 +164,11 @@ trait KampfrichterQRCodesToHtmlRenderer {
 
   def toHTML(qrCodes: Seq[KampfrichterQRCode], logo: File): String = {
     import PrintUtil._
-    val daten = qrCodes.groupBy(_.geraet).map(geraetCodes => {
+    val datenProGeraet = qrCodes.groupBy(_.geraet).map(geraetCodes => {
       val (geraet, codes) = geraetCodes
       (codes.head.wettkampfTitle, geraet, codes)
     })
-    val blaetter = daten.map(notenblatt(_, logo))
+    val blaetter = datenProGeraet.map(renderedDurchgaenge(_, logo))
     val pages = blaetter.sliding(1, 1).map { _.mkString("</li><li>") }.mkString("</li></ul><ul><li>")
     intro + pages + outro
   }
