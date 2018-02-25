@@ -611,9 +611,9 @@ object KuTuApp extends JFXApp with KutuService with KuTuAppHTTPServer {
     }
   }
 
-  def showQRCode(p: WettkampfView) = makeMenuAction("Kampfrichter Mobile connet ...") {(caption, action) =>
+  def showQRCode(p: WettkampfView) = makeMenuAction("Kampfrichter Mobile register ...") {(caption, action) =>
     implicit val e = action
-    val connectionString = s"$remoteBaseUrl/api/competition/${p.uuid.getOrElse("")}"
+    val connectionString = s"$remoteBaseUrl/api/competition/${p.uuid.getOrElse("")}/register"
     println(connectionString)
     val out = QRCode.from(connectionString).to(ImageType.PNG).withSize(200, 200).stream();
     val in = new ByteArrayInputStream(out.toByteArray());

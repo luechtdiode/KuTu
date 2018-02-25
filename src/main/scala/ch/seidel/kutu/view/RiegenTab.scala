@@ -1,22 +1,26 @@
 package ch.seidel.kutu.view
 
 import java.awt.Desktop
-import java.io.BufferedOutputStream
-import java.io.FileOutputStream
+import java.util.UUID
 
-import ch.seidel.commons.AutoCommitTextFieldTableCell
-import ch.seidel.commons.DisplayablePage
-import ch.seidel.commons.PageDisplayer
-import ch.seidel.commons.TabWithService
-import ch.seidel.kutu.KuTuApp
-import ch.seidel.kutu.data.ResourceExchanger
-import ch.seidel.kutu.domain._
-import ch.seidel.kutu.renderer.RiegenblattToHtmlRenderer
-import ch.seidel.kutu.squad.DurchgangBuilder
 import javafx.scene.{ control => jfxsc }
+import javafx.scene.text.Text
 import scalafx.Includes.eventClosureWrapperWithParam
 import scalafx.Includes.handle
-import scalafx.Includes._
+import scalafx.Includes.jfxActionEvent2sfx
+import scalafx.Includes.jfxBooleanBinding2sfx
+import scalafx.Includes.jfxBounds2sfx
+import scalafx.Includes.jfxCellEditEvent2sfx
+import scalafx.Includes.jfxKeyEvent2sfx
+import scalafx.Includes.jfxMouseEvent2sfx
+import scalafx.Includes.jfxObjectProperty2sfx
+import scalafx.Includes.jfxParent2sfx
+import scalafx.Includes.jfxPixelReader2sfx
+import scalafx.Includes.jfxReadOnlyBooleanProperty2sfx
+import scalafx.Includes.jfxTableViewSelectionModel2sfx
+import scalafx.Includes.jfxText2sfxText
+import scalafx.Includes.observableList2ObservableBuffer
+import scalafx.Includes.when
 import scalafx.application.Platform
 import scalafx.beans.binding.Bindings
 import scalafx.beans.property.StringProperty
@@ -24,8 +28,12 @@ import scalafx.beans.value.ObservableValue
 import scalafx.collections.ObservableBuffer
 import scalafx.collections.ObservableBuffer.observableBuffer2ObservableList
 import scalafx.event.ActionEvent
+import scalafx.geometry.BoundingBox
+import scalafx.geometry.Bounds
 import scalafx.geometry.Insets
+import scalafx.geometry.Point2D
 import scalafx.geometry.Pos
+import scalafx.print.PageOrientation
 import scalafx.scene.Node
 import scalafx.scene.control.Button
 import scalafx.scene.control.ButtonBase
@@ -55,7 +63,11 @@ import scalafx.scene.control.cell.CheckBoxTableCell
 import scalafx.scene.control.cell.ComboBoxTableCell
 import scalafx.scene.image.Image
 import scalafx.scene.image.ImageView
+import scalafx.scene.image.WritableImage
+import scalafx.scene.input.ClipboardContent
+import scalafx.scene.input.DataFormat
 import scalafx.scene.input.KeyEvent
+import scalafx.scene.input.TransferMode
 import scalafx.scene.layout.BorderPane
 import scalafx.scene.layout.GridPane
 import scalafx.scene.layout.HBox
@@ -63,24 +75,30 @@ import scalafx.scene.layout.Priority
 import scalafx.scene.layout.VBox
 import scalafx.util.StringConverter
 import scalafx.util.converter.DefaultStringConverter
+
+import ch.seidel.commons.AutoCommitTextFieldTableCell
+import ch.seidel.commons.DisplayablePage
+import ch.seidel.commons.PageDisplayer
+import ch.seidel.commons.TabWithService
+import ch.seidel.kutu.KuTuApp
+import ch.seidel.kutu.data.ResourceExchanger
+import ch.seidel.kutu.domain.Disziplin
+import ch.seidel.kutu.domain.GemischteRiegen
+import ch.seidel.kutu.domain.GemischterDurchgang
+import ch.seidel.kutu.domain.GetrennteDurchgaenge
+import ch.seidel.kutu.domain.KutuService
+import ch.seidel.kutu.domain.Riege
+import ch.seidel.kutu.domain.RiegeRaw
+import ch.seidel.kutu.domain.SexDivideRule
+import ch.seidel.kutu.domain.WettkampfView
+import ch.seidel.kutu.domain.str2Int
+import ch.seidel.kutu.http.Config
+import ch.seidel.kutu.renderer.KampfrichterQRCode
+import ch.seidel.kutu.renderer.KampfrichterQRCodesToHtmlRenderer
 import ch.seidel.kutu.renderer.PrintUtil
 import ch.seidel.kutu.renderer.PrintUtil.FilenameDefault
-import scalafx.print.PageOrientation
-import scalafx.scene.input.Dragboard
-import scalafx.scene.input.ClipboardContent
-import scalafx.scene.input.TransferMode
-import scalafx.scene.input.DataFormat
-import scalafx.scene.image.WritableImage
-import scalafx.scene.SnapshotParameters
-import javafx.geometry.Rectangle2DBuilder
-import scalafx.geometry.Rectangle2D
-import javafx.scene.text.Text
-import scalafx.geometry.BoundingBox
-import scalafx.geometry.Bounds
-import scalafx.geometry.Point2D
-import scalafx.scene.Scene
-import com.sun.javafx.util.TempState
-import scalafx.scene.control.TableCell
+import ch.seidel.kutu.renderer.RiegenBuilder
+import ch.seidel.kutu.squad.DurchgangBuilder
 
 object DurchgangView {
   val DRAG_RIEGE = new DataFormat("application/x-drag-riege");
@@ -332,7 +350,7 @@ class RiegenFilterView(isEditable: Boolean, wettkampf: WettkampfView, service: K
   )
 }
 
-class RiegenTab(wettkampf: WettkampfView, override val service: KutuService) extends Tab with TabWithService {
+class RiegenTab(wettkampf: WettkampfView, override val service: KutuService) extends Tab with TabWithService with Config {
   val programmText = wettkampf.programm.id match {case 20 => "Kategorie" case _ => "Programm"}
   val riegenFilterModel = ObservableBuffer[RiegeEditor]()
   val durchgangModel = ObservableBuffer[DurchgangEditor]()
@@ -1047,86 +1065,14 @@ class RiegenTab(wettkampf: WettkampfView, override val service: KutuService) ext
     }
     
     def doRiegenBelatterExport(event: ActionEvent) {
-      val driver = service.selectWertungen(wettkampfId = Some(wettkampf.id)).groupBy { x => x.athlet }.map(_._2).toList
-      val programme = driver.flatten.map(x => x.wettkampfdisziplin.programm).foldLeft(Seq[ProgrammView]()){(acc, pgm) =>
-        if(!acc.exists { x => x.id == pgm.id }) {
-          acc :+ pgm
-        }
-        else {
-          acc
-        }
-      }
-      val riegendurchgaenge = service.selectRiegen(wettkampf.id).map(r => r.r-> r).toMap
-      val rds = riegendurchgaenge.values.map(v => v.durchgang.getOrElse("")).toSet
-      val disziplinsZuDurchgangR1 = service.listDisziplinesZuDurchgang(rds, wettkampf.id, true)
-      val disziplinsZuDurchgangR2 = service.listDisziplinesZuDurchgang(rds, wettkampf.id, false)
-
-      val seriendaten = for {
-        programm <- programme
-        athletwertungen <- driver.map(we => we.filter { x => x.wettkampfdisziplin.programm.id == programm.id})
-        if(athletwertungen.nonEmpty)
-      }
-      yield {
-        val einsatz = athletwertungen.head
-        val athlet = einsatz.athlet
-        val riegendurchgang1 = riegendurchgaenge.get(einsatz.riege.getOrElse(""))
-        val riegendurchgang2 = riegendurchgaenge.get(einsatz.riege2.getOrElse(""))
-
-        Kandidat(
-        einsatz.wettkampf.easyprint
-        ,athlet.geschlecht match {case "M" => "Turner"  case _ => "Turnerin"}
-        ,einsatz.wettkampfdisziplin.programm.easyprint
-        ,athlet.id
-        ,athlet.name
-        ,athlet.vorname
-        ,AthletJahrgang(athlet.gebdat).hg
-        ,athlet.verein match {case Some(v) => v.easyprint case _ => ""}
-        ,riegendurchgang1
-        ,riegendurchgang2
-        ,athletwertungen.filter{wertung =>
-          if(wertung.wettkampfdisziplin.feminim == 0 && !wertung.athlet.geschlecht.equalsIgnoreCase("M")) {
-            false
-          }
-          else if(wertung.wettkampfdisziplin.masculin == 0 && wertung.athlet.geschlecht.equalsIgnoreCase("M")) {
-            false
-          }
-          else {
-            riegendurchgang1.forall{x =>
-              x.durchgang.nonEmpty &&
-              x.durchgang.forall{d =>
-                d.nonEmpty &&
-                disziplinsZuDurchgangR1(d).contains(wertung.wettkampfdisziplin.disziplin)
-              }
-            }
-          }
-        }.map(_.wettkampfdisziplin.disziplin)
-        ,athletwertungen.filter{wertung =>
-          if(wertung.wettkampfdisziplin.feminim == 0 && !wertung.athlet.geschlecht.equalsIgnoreCase("M")) {
-            false
-          }
-          else if(wertung.wettkampfdisziplin.masculin == 0 && wertung.athlet.geschlecht.equalsIgnoreCase("M")) {
-            false
-          }
-          else {
-            riegendurchgang2.forall{x =>
-              x.durchgang.nonEmpty &&
-              x.durchgang.forall{d =>
-                d.nonEmpty &&
-                disziplinsZuDurchgangR2(d).contains(wertung.wettkampfdisziplin.disziplin)
-              }
-            }
-          }
-        }.map(_.wettkampfdisziplin.disziplin),
-        athletwertungen
-        )
-      }
+      val seriendaten = service.getAllKandidatenWertungen(wettkampf.uuid.map(UUID.fromString(_)).get)
       val filename = "Riegenblatt_" + wettkampf.easyprint.replace(" ", "_") + ".html"
       val dir = new java.io.File(service.homedir + "/" + wettkampf.easyprint.replace(" ", "_"))
       if(!dir.exists()) {
         dir.mkdirs();
       }
       val logofile = PrintUtil.locateLogoFile(dir)
-      def generate(lpp: Int) = (new Object with RiegenblattToHtmlRenderer).toHTML(seriendaten, logofile)
+      def generate(lpp: Int) = (new Object with ch.seidel.kutu.renderer.RiegenblattToHtmlRenderer).toHTML(seriendaten, logofile)
       PrintUtil.printDialog(text.value, FilenameDefault(filename, dir), false, generate, orientation = PageOrientation.Portrait)(event)
     }
     
@@ -1137,6 +1083,25 @@ class RiegenTab(wettkampf: WettkampfView, override val service: KutuService) ext
       m
     }
 
+    def makeRiegenQRCodesExport(): MenuItem = {
+      val m = KuTuApp.makeMenuAction("QR-Codes für Kamprichter erstellen") {(caption: String, action: ActionEvent) =>
+        
+        val seriendaten = RiegenBuilder.mapToGeraeteRiegen(service.getAllKandidatenWertungen(wettkampf.uuid.map(UUID.fromString(_)).get).toList)
+              .filter(gr => gr.durchgang.nonEmpty && gr.disziplin.nonEmpty) 
+              .map(KampfrichterQRCode.toMobileConnectData(wettkampf, remoteBaseUrl))
+              .toSet.toList
+        val filename = "KampfrichterConnectQRCodes_" + wettkampf.easyprint.replace(" ", "_") + ".html"
+        val dir = new java.io.File(service.homedir + "/" + wettkampf.easyprint.replace(" ", "_"))
+        if(!dir.exists()) {
+          dir.mkdirs();
+        }
+        val logofile = PrintUtil.locateLogoFile(dir)
+        def generate(lpp: Int) = (new Object with KampfrichterQRCodesToHtmlRenderer).toHTML(seriendaten.sortBy(_.uri), logofile)
+        PrintUtil.printDialog(text.value, FilenameDefault(filename, dir), false, generate, orientation = PageOrientation.Portrait)(action)
+      }
+      m
+    }
+    
     val btnRiegen = new MenuButton("Riegen- & Durchgangs-Einteilung") {
       items += makeRiegenSuggestMenu()
       items += makeRiegenResetMenu()
@@ -1146,6 +1111,7 @@ class RiegenTab(wettkampf: WettkampfView, override val service: KutuService) ext
       items += makeRiegenEinheitenExport()
       items += makeDurchgangExport()
       items += makeRiegenBlaetterExport()
+      items += makeRiegenQRCodesExport()
     }
     
     val riegenFilterControl = new ToolBar {
