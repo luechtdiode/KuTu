@@ -10,6 +10,10 @@ import { tokenNotExpired } from 'angular2-jwt';
 
 declare var location: any;
 
+function encodeURIComponent2(uri: string): string {
+  return encodeURIComponent(uri.replace(/[,&.*+?/^${}()|[\]\\]/g, "_"));
+}
+
 @Injectable()
 export class BackendService {
   loggedIn = false;
@@ -72,7 +76,7 @@ export class BackendService {
     this.geraete = undefined;
     this.steps = undefined;
     this.wertungen = undefined;
-    this.http.get<Geraet[]>(backendUrl + 'api/competition/' + competitionId + '/' + durchgang).subscribe((data) => {
+    this.http.get<Geraet[]>(backendUrl + 'api/competition/' + competitionId + '/' + encodeURIComponent2(durchgang)).subscribe((data) => {
       this.geraete = data;
     });
   }
@@ -80,14 +84,14 @@ export class BackendService {
   getSteps(competitionId: string, durchgang: string, geraetId: number) {
     this.steps = undefined;
     this.wertungen = undefined;
-    this.http.get<string[]>(backendUrl + 'api/competition/' + competitionId + '/' + durchgang + '/' + geraetId).subscribe((data) => {
+    this.http.get<string[]>(backendUrl + 'api/competition/' + competitionId + '/' + encodeURIComponent2(durchgang) + '/' + geraetId).subscribe((data) => {
       this.steps = data;
     });
   }
 
   getWertungen(competitionId: string, durchgang: string, geraetId: number, step: number) {
     this.wertungen = undefined;
-    this.http.get<WertungContainer[]>(backendUrl + 'api/competition/' + competitionId + '/' + durchgang + '/' + geraetId + '/' + step).subscribe((data) => {
+    this.http.get<WertungContainer[]>(backendUrl + 'api/competition/' + competitionId + '/' + encodeURIComponent2(durchgang) + '/' + geraetId + '/' + step).subscribe((data) => {
       this.wertungen = data;
     });
   }
@@ -95,7 +99,7 @@ export class BackendService {
   updateWertung(durchgang: string, step: number, geraetId: number, wertung: Wertung): Observable<WertungContainer> {
     const competitionId = wertung.wettkampfUUID;
     const result = new Subject<WertungContainer>();
-    this.http.put<WertungContainer[]>(backendUrl + 'api/competition/' + competitionId + '/' + durchgang + '/' + geraetId + '/' + step, wertung)
+    this.http.put<WertungContainer[]>(backendUrl + 'api/competition/' + competitionId + '/' + encodeURIComponent2(durchgang) + '/' + geraetId + '/' + step, wertung)
     .subscribe((data) => {
       this.wertungen = data;
       result.next(data.find(wc => wc.wertung.id === wertung.id));

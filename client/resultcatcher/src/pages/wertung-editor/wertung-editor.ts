@@ -39,7 +39,7 @@ export class WertungEditorPage {
   durchgang: string;
 
   editable() {
-    return this.backendService.login
+    return this.backendService.loggedIn
   }
 
   save(wertung: Wertung) {

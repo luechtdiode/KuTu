@@ -36,8 +36,9 @@ trait WertungenRoutes extends SprayJsonSupport with EnrichedJson with JwtSupport
   
   case class AthletWertung(id: Long, name: String, vorname: String, verein: String, geschlecht: String, wertung: Wertung, geraet: Long)
   implicit val athletWertungFormat = jsonFormat7(AthletWertung)
+  val encodeInvalidURIRegEx =  "[,&.*+?/^${}()|\\[\\]\\\\]".r
+  def encodeURIComponent(uri: String) = encodeInvalidURIRegEx.replaceAllIn(uri, "_")
   
-
   // Required by the `ask` (?) method below
   private implicit lazy val timeout = Timeout(5.seconds) // usually we'd obtain the timeout from the system's configuration
 
@@ -76,15 +77,15 @@ trait WertungenRoutes extends SprayJsonSupport with EnrichedJson with JwtSupport
           segments match { 
             case List(durchgang) => complete { Future {
               RiegenBuilder.mapToGeraeteRiegen(getAllKandidatenWertungen(competitionId).toList)
-                .filter(gr => gr.durchgang.exists(_ == durchgang) && gr.disziplin.nonEmpty) 
+                .filter(gr => gr.durchgang.exists(encodeURIComponent(_) == durchgang) && gr.disziplin.nonEmpty) 
                 .map(gr => gr.disziplin.get)
-                .toSet.toList
+                .foldLeft(List[Disziplin]())((acc, geraet) => if (acc.contains(geraet)) acc else acc :+ geraet)
               }
             }
             case List(durchgang, geraet) => complete { Future {
               val gid: Long = geraet
               RiegenBuilder.mapToGeraeteRiegen(getAllKandidatenWertungen(competitionId).toList)
-                .filter(gr => gr.durchgang.exists(_ == durchgang)  && gr.disziplin.exists(_.id == gid))
+                .filter(gr => gr.durchgang.exists(encodeURIComponent(_) == durchgang)  && gr.disziplin.exists(_.id == gid))
                 .map(gr => gr.halt + 1)
                 .toSet.toList.sorted
               }
@@ -94,7 +95,7 @@ trait WertungenRoutes extends SprayJsonSupport with EnrichedJson with JwtSupport
               val gid: Long = geraet
               RiegenBuilder.mapToGeraeteRiegen(getAllKandidatenWertungen(competitionId).toList)
                 .filter(gr => 
-                    gr.durchgang.exists(_ == durchgang) && 
+                    gr.durchgang.exists(encodeURIComponent(_) == durchgang) && 
                     gr.disziplin.exists(_.id == gid) && 
                     gr.halt == halt -1)
                 .flatMap(gr => gr.kandidaten.map(k => AthletWertung(k.id, k.name, k.vorname, k.verein, k.geschlecht, k.wertungen.filter(w => w.wettkampfdisziplin.disziplin.id == gid).map(_.toWertung).head, gid)))
@@ -128,7 +129,7 @@ trait WertungenRoutes extends SprayJsonSupport with EnrichedJson with JwtSupport
                   }
                   RiegenBuilder.mapToGeraeteRiegen(getAllKandidatenWertungen(competitionId).toList)
                     .filter(gr => 
-                        gr.durchgang.exists(_ == durchgang) && 
+                        gr.durchgang.exists(encodeURIComponent(_) == durchgang) && 
                         gr.disziplin.exists(_.id == gid) && 
                         gr.halt == halt -1)
                     .flatMap(gr => gr.kandidaten.map(k => AthletWertung(k.id, k.name, k.vorname, k.verein, k.geschlecht, k.wertungen.filter(w => w.wettkampfdisziplin.disziplin.id == gid).map(_.toWertung).head, gid)))
