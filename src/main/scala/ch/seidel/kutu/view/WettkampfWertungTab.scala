@@ -975,9 +975,12 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
                         }
                         catch {
                           case d: Exception =>
-                            progrm match {
+                            programms.filter(pgm => pgm.name.equalsIgnoreCase(fields(3))).headOption match {
                               case Some(p) => p.id
-                              case None => 0L
+                              case _ => progrm match {
+                                case Some(p) => p.id
+                                case None => 0L
+                              }
                             }
                         }
                        (progId, parsed, AthletView(
