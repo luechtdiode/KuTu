@@ -4,12 +4,20 @@ import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream
 import java.io.FileInputStream
 import java.io.InputStreamReader
+import java.nio.file.LinkOption
+import java.nio.file.OpenOption
+import java.nio.file.StandardOpenOption
 import java.nio.file.Files
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.attribute.FileAttribute
 
 import scala.concurrent.duration.FiniteDuration
+import scala.concurrent.duration.Duration
+import scala.concurrent.Await
+import scala.util.Success
+import scala.util.Failure
+import scala.concurrent.Promise
 import scala.concurrent.Future
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.util.Try
@@ -35,14 +43,13 @@ import authentikat.jwt.JsonWebToken
 import ch.seidel.kutu.data.ResourceExchanger
 import ch.seidel.kutu.domain.Wettkampf
 import ch.seidel.kutu.domain.WettkampfService
-import scala.concurrent.Await
-import scala.concurrent.duration.Duration
-import java.nio.file.LinkOption
-import java.nio.file.OpenOption
-import java.nio.file.StandardOpenOption
-import scala.util.Success
-import scala.util.Failure
-import scala.concurrent.Promise
+import ch.seidel.kutu.akka._
+import java.util.UUID
+import akka.http.scaladsl.model.ws.WebSocketRequest
+import akka.stream.scaladsl.Flow
+import akka.http.scaladsl.model.ws.TextMessage
+import akka.stream.scaladsl.Keep
+import akka.http.scaladsl.model.ws.Message
 
 trait WettkampfRoutes extends SprayJsonSupport with JsonSupport with JwtSupport with BasicAuthSupport with RouterLogging with WettkampfService with Config {
   import DefaultJsonProtocol._
@@ -63,6 +70,28 @@ trait WettkampfRoutes extends SprayJsonSupport with JsonSupport with JwtSupport 
             Map("filename" -> s"${wettkampf.easyprint}.zip")
         )
     ) toEntity
+  }
+  
+ // FIXME implement real ws consumer instead of println
+  def connect(wettkampf: Wettkampf, messageProcessor: Message=>Unit = println) = {
+    import Core.system
+    import Core.materializer
+    import Config._
+    import scala.collection.immutable
+    val flow: Flow[Message, Message, Promise[Option[Message]]] =
+      Flow.fromSinkAndSourceMat(
+        Sink.foreach[Message](messageProcessor),
+        Source.maybe[Message])(Keep.right)
+    
+    val (upgradeResponse, promise) = Http().singleWebSocketRequest(
+        WebSocketRequest(
+            // FIXME take url from config, choose dynamic from ws/wss
+            "ws://localhost:5757/api/competition/ws", 
+            extraHeaders = immutable.Seq(RawHeader(jwtAuthorizationKey, wettkampf.readSecret(homedir).get))),
+        flow)
+    
+    // FIXME close WS at some later time we want to disconnect
+    promise//.success(None)    
   }
   
   def httpUploadWettkampfRequest(wettkampf: Wettkampf) = {
@@ -136,8 +165,13 @@ trait WettkampfRoutes extends SprayJsonSupport with JsonSupport with JwtSupport 
     case HttpHeader("wkuuid", value) => Some(value)
     case _                           => None
   }
-  
+
   lazy val wettkampfRoutes: Route = {
+    path("competition" / "ws") {
+      authenticated { wettkampfUUID =>
+        handleWebSocketMessages(CompetitionCoordinatorClientActor.createActorSinkSource(UUID.randomUUID().toString, wettkampfUUID, None))
+      }
+    } ~
     pathPrefix("competition") {
       pathEnd {
         get {
@@ -149,8 +183,7 @@ trait WettkampfRoutes extends SprayJsonSupport with JsonSupport with JwtSupport 
       pathEnd {
         post {
           onSuccess(wettkampfExistsAsync(wkuuid.toString())) {
-            // FIXME activate this exists guard
-            case exists /*if (!exists)*/ =>
+            case exists if (!exists) =>
               uploadedFile("zip") {
                 case (metadata, file) =>
                   // do something with the file and file metadata ...

@@ -518,10 +518,13 @@ object KuTuApp extends JFXApp with KutuService with KuTuAppHTTPServer {
         case None => 
           server.httpUploadWettkampfRequest(p.toWettkampf)
       }
-    }
+    }.map(response => {
+      
+      (response, server.connect(p.toWettkampf))
+    })
     process.onComplete{
-      case Success(response) =>
-        ConnectionStates.connectedWith(p.uuid.get)
+      case Success((response, wspromise)) =>
+        ConnectionStates.connectedWith(p.uuid.get, wspromise)
         Platform.runLater{
         PageDisplayer.showInDialog(caption, 
           new DisplayablePage() {

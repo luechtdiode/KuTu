@@ -61,17 +61,24 @@ class CompetitionCoordinatorClientActor(wettkampfUUID: String) extends Actor wit
       
     case Subscribe(ref, deviceId, durchgang) =>
       val durchgangClients = wsSend.getOrElse(durchgang, List.empty) :+ ref
+      context.watch(ref)
       wsSend = wsSend + (durchgang -> durchgangClients)
       deviceWebsocketRefs = deviceWebsocketRefs + (deviceId -> ref)
       ref ! TextMessage("Connection established.")
 
     // system actions
-    case KeepAlive => wsSend.flatMap(_._2).foreach(ws => ws ! KeepAlive)
+    case KeepAlive => wsSend.flatMap(_._2).foreach(ws => ws ! TextMessage("KeepAlive"))
     
     case MessageAck(txt) if (txt.equals("keepAlive")) => handleKeepAliveAck
 
     case StopDevice(deviceId) =>
       val stoppedWebsocket = deviceWebsocketRefs(deviceId)
+      deviceWebsocketRefs = deviceWebsocketRefs.filter(x => x._2 != stoppedWebsocket)      
+      wsSend = wsSend.map{x => (x._1, x._2.filter(_ != stoppedWebsocket))}.filter(x => x._2.nonEmpty)
+      if (wsSend.isEmpty) handleStop
+      
+    case Terminated(stoppedWebsocket) =>
+      context.unwatch(stoppedWebsocket)
       deviceWebsocketRefs = deviceWebsocketRefs.filter(x => x._2 != stoppedWebsocket)      
       wsSend = wsSend.map{x => (x._1, x._2.filter(_ != stoppedWebsocket))}.filter(x => x._2.nonEmpty)
       if (wsSend.isEmpty) handleStop
