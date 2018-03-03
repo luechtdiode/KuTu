@@ -38,12 +38,13 @@ import scala.concurrent.duration.Duration
 
 trait BasicAuthSupport extends Directives with SprayJsonSupport with Config with Hashing {
   import spray.json.DefaultJsonProtocol._
-
-  def userPassAuthenticator(userLookup: (String) => String): AuthenticatorPF[String] = {
-    case p @ Credentials.Provided(id) if p.verify(userLookup(id), sha256) => id
+    
+  def userPassAuthenticator(userSecretHashLookup: (String) => String): AuthenticatorPF[String] = {
+    case p @ Credentials.Provided(id) if p.verify(userSecretHashLookup(id), sha256) => id
   }
   
   private var clientheader: Option[RawHeader] = None // Some(RawHeader(jwtAuthorizationKey, JsonWebToken(jwtHeader, setClaims("kutuapp-systemuser", jwtTokenExpiryPeriodInDays), jwtSecretKey)))
+  
   
   /**
    * Supports header- and body-based request->response with credentials->acces-token
@@ -73,7 +74,35 @@ trait BasicAuthSupport extends Directives with SprayJsonSupport with Config with
       }
     }
   }
+  
+  def httpRenewLoginRequest(uri: String, wettkampfuuid: String, jwtToken: String) = {
+    import HttpMethods._
+    import Config._
+    import Core._
 
+    Marshal(wettkampfuuid).to[RequestEntity] flatMap { entity =>
+      val request = HttpRequest(method = POST, uri = uri, entity = entity)
+      Http().singleRequest(request.withHeaders(request.headers :+ RawHeader(jwtAuthorizationKey, jwtToken))).map {r => r match {
+        case HttpResponse(StatusCodes.OK, headers, entity, _) =>
+          clientheader = headers.filter(h => h.is(jwtAuthorizationKey)).headOption.flatMap {
+            case HttpHeader(_, token) => 
+              entity.discardBytes()
+              Some(RawHeader(jwtAuthorizationKey, token))
+          } match {
+            case token @ Some(_) => token
+            case _ => Await.result(Unmarshal(entity).to[JsObject].map{json =>
+                  json.getFields("token").map(field => RawHeader(jwtAuthorizationKey, field.toString)).headOption
+              }, Duration.Inf)            
+          }
+          println(s"renewed JWT: $clientheader")
+          r
+        case x => println("something wrong", x.toString())
+          r
+        }
+      }
+    }
+  }
+  
   def withAuthHeader(request: HttpRequest) = {
     clientheader match {
       case Some(ch) => request.withHeaders(request.headers :+ ch)
@@ -90,7 +119,11 @@ trait BasicAuthSupport extends Directives with SprayJsonSupport with Config with
     import HttpMethods._
     httpClientRequest(HttpRequest(PUT, uri=uri, entity = entity))
   }
-
+  
+  def httpPostClientRequest(uri: String, entity: RequestEntity): Future[HttpResponse] = {
+    import HttpMethods._
+    httpClientRequest(HttpRequest(POST, uri=uri, entity = entity))
+  }
   def makeHttpGetRequest(url: String) = {
     import HttpMethods._
     withAuthHeader(HttpRequest(GET, uri=url))

@@ -23,19 +23,14 @@ import ch.seidel.kutu.domain._
 import ch.seidel.kutu.renderer.RiegenBuilder
 import ch.seidel.kutu.view.WertungEditor
 
-trait WertungenRoutes extends SprayJsonSupport with EnrichedJson with JwtSupport with BasicAuthSupport with RouterLogging with KutuService {
+trait WertungenRoutes extends SprayJsonSupport with JsonSupport with JwtSupport with BasicAuthSupport with RouterLogging with KutuService {
   import scala.concurrent.ExecutionContext.Implicits.global
   import slick.jdbc.SQLiteProfile
   import slick.jdbc.SQLiteProfile.api._
   
   import DefaultJsonProtocol._
-  implicit val wkFormat = jsonFormat(Wettkampf, "id", "datum", "titel", "programmId", "auszeichnung", "auszeichnungendnote", "uuid")
-  implicit val pgmFormat = jsonFormat7(ProgrammRaw)
-  implicit val disziplinFormat = jsonFormat2(Disziplin)
-  implicit val wertungFormat = jsonFormat(Wertung, "id", "athletId", "wettkampfdisziplinId", "wettkampfId", "wettkampfUUID", "noteD", "noteE", "endnote", "riege", "riege2")
+  import Core._
   
-  case class AthletWertung(id: Long, name: String, vorname: String, verein: String, geschlecht: String, wertung: Wertung, geraet: Long)
-  implicit val athletWertungFormat = jsonFormat7(AthletWertung)
   val encodeInvalidURIRegEx =  "[,&.*+?/^${}()|\\[\\]\\\\]".r
   def encodeURIComponent(uri: String) = encodeInvalidURIRegEx.replaceAllIn(uri, "_")
   
@@ -52,14 +47,7 @@ trait WertungenRoutes extends SprayJsonSupport with EnrichedJson with JwtSupport
         }
       }
     } ~
-    pathPrefix("competition") {
-      pathEnd {
-        get {
-          complete{ listWettkaempfeAsync }          
-        }
-      }
-    } ~
-    pathPrefix("competition" / JavaUUID) { competitionId =>
+    pathPrefix("durchgang" / JavaUUID) { competitionId =>
       pathEnd {
         get {
           complete { Future {

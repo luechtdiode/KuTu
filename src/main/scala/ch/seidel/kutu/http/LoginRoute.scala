@@ -41,6 +41,17 @@ trait LoginRoutes extends SprayJsonSupport with EnrichedJson with JwtSupport wit
         }
       }
     }
+  }~
+  pathPrefix("loginrenew") {
+    pathEndOrSingleSlash {
+      authenticated { userId =>
+        import Config._
+        val claims = setClaims(userId, jwtTokenExpiryPeriodInDays)
+        respondWithHeader(RawHeader(jwtAuthorizationKey, JsonWebToken(jwtHeader, claims, jwtSecretKey))) {
+          complete(StatusCodes.OK)
+        }
+      }
+    }
   }
   
 }

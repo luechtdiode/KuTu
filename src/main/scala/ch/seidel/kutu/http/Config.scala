@@ -6,12 +6,12 @@ import java.util.UUID
 import scala.util.Random
 import java.io.File
 import org.slf4j.LoggerFactory
+import java.nio.file.Files
+import java.nio.file.StandardOpenOption
+import java.nio.file.LinkOption
 
 object Config {
   private val logger = LoggerFactory.getLogger(this.getClass)
-  Random.setSeed(Random.nextLong() / System.currentTimeMillis())
-  val jwtSecretKey = UUID.randomUUID().toString + UUID.randomUUID().toString + UUID.randomUUID().toString + UUID.randomUUID().toString
-  val jwtAuthorizationKey = "x-access-token"
   
   val configPath = System.getProperty("user.dir")
   logger.info("Path where custom configurations (kutuapp.conf) are taken from:", configPath)
@@ -22,6 +22,39 @@ object Config {
 
   private val jwtConfig = config.getConfig("jwt")
   private val appRemoteConfig = config.getConfig("app.remote")
+
+  def saveSecret(secret: String) {
+    val path = new File(userHomePath + "/kutuapp/.jwt").toPath
+    Files.newOutputStream(path, StandardOpenOption.CREATE_NEW).write(secret.getBytes("utf-8"))
+    if (System.getProperty("os.name").toLowerCase.indexOf("win") > -1) {
+      Files.setAttribute(path, "dos:hidden", true, LinkOption.NOFOLLOW_LINKS)
+    }
+    logger.info("Secret new createt " + path)
+  }
+  
+  def readSecret: Option[String] = {
+    val path = new File(userHomePath + "/kutuapp/.jwt").toPath
+    if (path.toFile.exists) {
+      logger.info("Secret found " + path)
+      Some(new String(Files.readAllBytes(path), "utf-8"))
+    }
+    else {
+      logger.info("No secret found")
+      None
+    }
+  }
+  
+  lazy val jwtSecretKey = {
+    readSecret match {
+      case Some(secret) => secret
+      case None =>
+        Random.setSeed(Random.nextLong() / System.currentTimeMillis())  
+        val secret = UUID.randomUUID().toString + UUID.randomUUID().toString + UUID.randomUUID().toString + UUID.randomUUID().toString
+        saveSecret(secret)
+        secret
+    }
+  }
+  val jwtAuthorizationKey = "x-access-token"
 }
 
 trait Config {

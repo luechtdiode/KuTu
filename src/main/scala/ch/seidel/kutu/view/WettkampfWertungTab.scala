@@ -73,6 +73,7 @@ import ch.seidel.kutu.renderer.PrintUtil
 import scalafx.print.PageOrientation
 import org.slf4j.LoggerFactory
 import scalafx.util.converter.DoubleStringConverter
+import scala.concurrent.Future
 
 trait TCAccess[R, E, IDX] {
   def getIndex: IDX
@@ -933,6 +934,7 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
 
     def doPasteFromExcel(progrm: Option[ProgrammView])(implicit event: ActionEvent) = {
       import scala.util.{Try, Success, Failure}
+      import scala.concurrent.ExecutionContext.Implicits._
       val athletModel = ObservableBuffer[(Long, Athlet, AthletView)]()
       val vereineList = service.selectVereine
       val vereineMap = vereineList.map(v => v.id -> v).toMap
@@ -944,7 +946,7 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
       val programms = programm.map(p => service.readWettkampfLeafs(p.head.id)).toSeq.flatten
       val clipboardlines = Source.fromString(Clipboard.systemClipboard.getString + "").getLines()
       val cache = new java.util.ArrayList[MatchCode]()
-      val cliprawf = KuTuApp.invokeAsyncWithBusyIndicator {
+      val cliprawf = KuTuApp.invokeAsyncWithBusyIndicator { Future {
                      clipboardlines.
                      map    { line   => line.split("\\t").map(_.trim()) }.
                      filter { fields => fields.length > 2 }.
@@ -989,9 +991,10 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
                            candidate.strasse, candidate.plz, candidate.ort,
                            candidate.verein.map(vereineMap), true))
                     }.toList
+        }
       }
       import scala.concurrent.ExecutionContext.Implicits._
-      cliprawf.andThen {
+      cliprawf.onComplete {
         case Failure(t) => logger.debug(t.toString)
         case Success(clipraw) => Platform.runLater{
 //        val clipraw = Await.result(cliprawf, Duration.Inf)

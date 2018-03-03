@@ -9,6 +9,9 @@ import org.apache.commons.codec.language.ColognePhonetic
 import java.util.TimeZone
 import org.apache.commons.text.similarity.LevenshteinDistance
 import java.util.UUID
+import java.nio.file.Files
+import java.nio.file.StandardOpenOption
+import java.nio.file.LinkOption
 
 package object domain {
   implicit def dbl2Str(d: Double) = f"${d}%2.3f"
@@ -228,9 +231,41 @@ package object domain {
 //  }
   case class Wettkampf(id: Long, datum: java.sql.Date, titel: String, programmId: Long, auszeichnung: Int, auszeichnungendnote: scala.math.BigDecimal, uuid: Option[String]) extends DataObject {
     override def easyprint = f"$titel am $datum%td.$datum%tm.$datum%tY"
+    
     def toView(programm: ProgrammView) = {
       WettkampfView(id, datum, titel, programm, auszeichnung, auszeichnungendnote, uuid)
     }
+    
+    def prepareFilePath(homedir: String) = {
+      val dir = new java.io.File(homedir + "/" + easyprint.replace(" ", "_"))
+      if(!dir.exists) {
+        dir.mkdirs;
+      }
+      dir
+    }
+    
+    def filePath(homedir: String) = new java.io.File(prepareFilePath(homedir), ".at").toPath
+    
+    def saveSecret(homedir: String, secret: String) {
+      val path = filePath(homedir)
+      Files.newOutputStream(path, StandardOpenOption.CREATE_NEW).write(secret.getBytes("utf-8"))
+      val os = System.getProperty("os.name").toLowerCase
+//      if (os.indexOf("win") > -1) {
+        Files.setAttribute(path, "dos:hidden", true, LinkOption.NOFOLLOW_LINKS)
+//      }
+    }
+    
+    def readSecret(homedir: String): Option[String] = {
+      val path = filePath(homedir)
+      if (path.toFile.exists) {
+        Some(new String(Files.readAllBytes(path), "utf-8"))
+      }
+      else {
+        None
+      }
+    }
+    
+    def hasSecred(homedir: String): Boolean = readSecret(homedir) match {case Some(_) => true case None => false }
   }
 
 //  object WettkampfView {

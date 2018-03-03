@@ -34,7 +34,7 @@
   -fx-background-color: null;
 }
 
-.toggle-button {
+#wettkampfmodusButton { /* .toggle-button*/ 
   -fx-background-color: null;
   -fx-label-padding: 5 40 5 10;
   -fx-background-image: url("../images/btn-toggle-off.png");
@@ -42,7 +42,7 @@
   -fx-background-position: center;
 }
 
-.toggle-button:selected {
+#wettkampfmodusButton:selected {/* .toggle-button*/
   -fx-background-image:url("../images/btn-toggle-on.png");
 }
 #newButton {
