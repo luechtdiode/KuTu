@@ -13,11 +13,13 @@ import { TokenInterceptor } from './token-interceptor';
 import { BackendService } from './backend.service';
 import { WertungEditorPage } from '../pages/wertung-editor/wertung-editor';
 import { SettingsPage } from '../pages/settings/settings';
+import { StationPage } from '../pages/station/station';
 
 @NgModule({
   declarations: [
     MyApp,
     HomePage,
+    StationPage,
     SettingsPage,
     RiegeListPage,
     WertungEditorPage
@@ -31,6 +33,7 @@ import { SettingsPage } from '../pages/settings/settings';
   entryComponents: [
     MyApp,
     HomePage,
+    StationPage,
     SettingsPage,
     RiegeListPage,
     WertungEditorPage

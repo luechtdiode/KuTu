@@ -15,7 +15,7 @@ object KampfrichterQRCode {
   val logger = LoggerFactory.getLogger(this.getClass)
   val enc = Base64.getUrlEncoder
   
-  def toURI(uuid: String, remoteBaseUrl: String, gr: GeraeteRiege) = s"$remoteBaseUrl?" + new String(enc.encodeToString((s"c=$uuid&d=${gr.durchgang.get}&g=${gr.disziplin.get}").getBytes))
+  def toURI(uuid: String, remoteBaseUrl: String, gr: GeraeteRiege) = s"$remoteBaseUrl?" + new String(enc.encodeToString((s"c=$uuid&d=${gr.durchgang.get}&g=${gr.disziplin.get.id}").getBytes))
   
   def toQRCodeImage(uri: String) = {
     val out = QRCode.from(uri).to(ImageType.PNG).withSize(200, 200).stream();

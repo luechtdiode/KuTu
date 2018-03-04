@@ -82,4 +82,5 @@ object Config {
   lazy val remoteBaseUrl = s"$remoteSchema://$remoteHost"
   lazy val remoteOperatingBaseUrl = remoteBaseUrl //s"http://$remoteHost:$remotePort/operating"
   lazy val remoteAdminBaseUrl = remoteBaseUrl//s"$remoteBaseUrl/wkadmin"
+  lazy val remoteWebSocketUrl = remoteBaseUrl.replace("http", "ws")
 }

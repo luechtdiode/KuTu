@@ -1,32 +1,39 @@
 package ch.seidel.kutu.akka
 
+import scala.concurrent.Await
+import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 import scala.concurrent.duration.DurationInt
-import scala.concurrent.ExecutionContext.Implicits.global
 import scala.util.Failure
+import scala.util.control.NonFatal
 
+import akka.actor.Actor
+import akka.actor.ActorRef
+import akka.actor.OneForOneStrategy
+import akka.actor.Props
 import akka.actor.SupervisorStrategy.Stop
-import akka.actor.{ Actor, ActorLogging, ActorRef }
+import akka.actor.Terminated
 import akka.pattern.ask
-
-import akka.http.scaladsl.model.ws.{ BinaryMessage, Message, TextMessage }
-import akka.stream.{ Graph, OverflowStrategy, SinkShape }
-import akka.stream.scaladsl.{ Flow, Sink, Source }
-import akka.util.Timeout
 
 import spray.json._
 
-import ch.seidel.kutu.http.JsonSupport
+import akka.http.scaladsl.model.ws.BinaryMessage
+import akka.http.scaladsl.model.ws.Message
+import akka.http.scaladsl.model.ws.TextMessage
+import akka.stream.OverflowStrategy
+import akka.stream.scaladsl.Flow
+import akka.stream.scaladsl.Sink
+import akka.stream.scaladsl.Source
+import ch.seidel.kutu.domain.Wertung
 import ch.seidel.kutu.http.EnrichedJson
-import scala.concurrent.Await
-import akka.actor.OneForOneStrategy
-import scala.util.control.NonFatal
-import akka.actor.Props
-import akka.actor.Terminated
+import ch.seidel.kutu.http.JsonSupport
+import akka.util.Timeout
+import scala.concurrent.duration.FiniteDuration
+import ch.seidel.kutu.domain.KutuService
 
-class CompetitionCoordinatorClientActor(wettkampfUUID: String) extends Actor with JsonSupport {
-  import akka.pattern.pipe
+class CompetitionCoordinatorClientActor(wettkampfUUID: String) extends Actor with JsonSupport with KutuService {
   import context._
+
   var wsSend: Map[Option[String],List[ActorRef]] = Map.empty
   var deviceWebsocketRefs: Map[String,ActorRef] = Map.empty
   var pendingKeepAliveAck: Option[Int] = None
@@ -55,9 +62,20 @@ class CompetitionCoordinatorClientActor(wettkampfUUID: String) extends Actor wit
     case StartDurchgang(wettkampfUUID, durchgang) =>
       val eventDurchgangStarted = DurchgangStarted(wettkampfUUID, durchgang)
       wsSend(Some(durchgang)).foreach(ws => ws ! eventDurchgangStarted)
+      sender ! eventDurchgangStarted
       
-    case UpdateWertung(wertung) =>
-      
+    case uw @ UpdateAthletWertung(athlet, wertung, wettkampfUUID, durchgang, geraet) =>
+//      val mappedAthlet = findAthleteLike()(athlet.toAthlet)
+//      val wertungOriginal = selectWertungen(athletId, wkuuid, disziplinId
+//      updateWertungSimple(wertungOriginal.get.wertung.updatedWertung(wertung), true)
+      updateWertungSimple(wertung, true)
+      val toPublish = AthletWertungUpdated(athlet, wertung, wettkampfUUID, durchgang, geraet)
+      wsSend.flatMap(_._2).foreach(ws => ws ! TextMessage(toPublish.toJson.toJsonStringWithType(toPublish)))
+      sender ! MessageAck("OK")
+
+    case uw: KutuAppAction => //@ UpdateAthletWertung(id, name, vorname, verein, geschlecht, wertung, wettkampfUUID, durchgang, geraet) =>
+      wsSend.flatMap(_._2).foreach(ws => ws ! uw)
+      sender ! MessageAck("OK")
       
     case Subscribe(ref, deviceId, durchgang) =>
       val durchgangClients = wsSend.getOrElse(durchgang, List.empty) :+ ref
@@ -136,6 +154,9 @@ class ClientActorSupervisor extends Actor {
       }
       sender ! coordinator
     
+    case uw: KutuAppAction =>
+      wettkampfCoordinators.filter(p => p._1 == uw.wettkampfUUID).foreach(_._2.forward(uw))
+      
     case Terminated(wettkampfActor) =>
       context.unwatch(wettkampfActor)
       wettkampfCoordinators = wettkampfCoordinators.filter(_._2 != wettkampfActor)
@@ -147,19 +168,24 @@ object CompetitionCoordinatorClientActor extends JsonSupport with EnrichedJson {
   import ch.seidel.kutu.http.Core._
   val supervisor = system.actorOf(Props[ClientActorSupervisor])
   
+  def publish(action: KutuAppAction) = {
+    implicit val timeout = Timeout(5000 milli)
+    (supervisor ? action).mapTo[KutuAppEvent]
+  }
+  
   def props(wettkampfUUID: String) = Props(classOf[CompetitionCoordinatorClientActor], wettkampfUUID)
   
   def reportErrorsFlow[T]: Flow[T, T, Any] =
     Flow[T]
       .watchTermination()((_, f) => f.onComplete {
         case Failure(cause) =>
-          println(s"WS stream failed with $cause")
+          println(s"WS-Server stream failed with $cause")
         case _ => // ignore regular completion
-          println(s"WS stream closed")
+          println(s"WS-Server stream closed")
       })
 
-  def tryMapText(text: String): KutuAppProtokoll = try {
-    text.asType[KutuAppProtokoll]
+  def tryMapText(text: String): KutuAppEvent = try {
+    text.asType[KutuAppEvent]
   } catch {
     case e: Exception => MessageAck(text)
   }

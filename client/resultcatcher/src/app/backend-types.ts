@@ -26,7 +26,7 @@ export interface Geraet {
 }
 
 export interface Wettkampf {
-  id: number;
+  id: string;
   programmId: number;
   datum: Date;
   titel: string;

@@ -1,0 +1,33 @@
+<ion-tabs>
+    <ion-tab tabIcon="settings" tabTitle="Station" [root]="tabStation"></ion-tab>
+    <ion-tab tabIcon="contact" tabTitle="Riege" [root]="tabRiege"></ion-tab>
+</ion-tabs>
+<ion-header>
+  <ion-navbar>
+    <button ion-button menuToggle>
+      <ion-icon name="menu"></ion-icon>
+    </button>
+    <ion-title>Resultaterfassung</ion-title>
+  </ion-navbar>
+</ion-header>
+
+<ion-content>
+    <riege-list *ngIf="geraet && durchgang && step && getWertungen()" [items] = 'getWertungen()' [geraetId]='geraet' [durchgang]='durchgang' [step]='step'></riege-list>
+</ion-content>
+
+<ion-footer >
+    <ion-toolbar>
+        <ion-list>
+          <ion-item >
+            <!-- <ion-thumbnail  item-start><img src="assets/imgs/wettkampf.png"></ion-thumbnail > -->
+            <ion-label>{{competitionName()}}</ion-label>
+          </ion-item>
+          <ion-item >
+            <ion-note *ngIf="durchgang && geraet">
+              {{durchgang}}, {{geraetName()}}, Riege {{step}}
+            </ion-note>
+          </ion-item>
+        </ion-list>      
+    </ion-toolbar>
+  
+</ion-footer>

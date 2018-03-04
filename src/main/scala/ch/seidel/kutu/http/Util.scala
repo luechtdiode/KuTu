@@ -91,7 +91,7 @@ trait EnrichedJson {
 
   def string2trait[T: TypeTag: ClassTag]: Map[JsValue, T] = {
     val clazz = typeOf[T].typeSymbol.asClass
-    clazz.knownDirectSubclasses.map { sc =>
+    clazz.knownDirectSubclasses.filter(sc => sc.toString.startsWith("object ")).map { sc =>
       val objectName = sc.toString.stripPrefix("object ")
       (JsString(objectName), objectBy[T](objectName))
     }.toMap

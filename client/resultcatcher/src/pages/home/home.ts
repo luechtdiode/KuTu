@@ -1,8 +1,12 @@
-import { Component } from '@angular/core';
+import { Component, OnInit } from '@angular/core';
 import { NavController } from 'ionic-angular';
 import { Backdrop } from 'ionic-angular/components/backdrop/backdrop';
 import { BackendService } from '../../app/backend.service';
 import { Wettkampf, Geraet, WertungContainer } from '../../app/backend-types';
+import { Observable } from 'rxjs/Observable';
+import { Subscription } from 'rxjs';
+import { StationPage } from '../station/station';
+
 
 @Component({
   selector: 'page-home',
@@ -10,57 +14,76 @@ import { Wettkampf, Geraet, WertungContainer } from '../../app/backend-types';
 })
 export class HomePage {
 
-  _competition: string;
+  constructor(public navCtrl: NavController, public backendService: BackendService) {
+    //this.backendService.getCompetitions();
+  }
+
   set competition(competitionId: string) {
-    this._competition = competitionId;
-    this._durchgang = undefined;
-    this._geraet = undefined;
-    this._step = undefined;
-    
-    this.backendService.getDurchgaenge(competitionId);
+    if(!this.stationFreezed) {
+      this.backendService.getDurchgaenge(competitionId);
+    }
   }
   get competition(): string {
-    return this._competition;
+    return this.backendService.competition;
   }
 
-  _durchgang: string;
   set durchgang(d: string) {
-    this._durchgang = d;
-    this._geraet = undefined;
-    this._step = undefined;
-    this.backendService.getGeraete(this._competition, d);
+    if(!this.stationFreezed) {
+      this.backendService.getGeraete(this.competition, d);
+    }
   }
   get durchgang(): string {
-    return this._durchgang;
+    return this.backendService.durchgang;
   }
 
-  _geraet: number;
   set geraet(geraetId: number) {
-    this._geraet = geraetId;
-    this.step = '1';
-    this.backendService.getSteps(this._competition, this._durchgang, geraetId);
+    if(!this.stationFreezed) {
+      this.backendService.getSteps(this.competition, this.durchgang, geraetId);
+    }
   }
   get geraet(): number {
-    return this._geraet;
+    return this.backendService.geraet;
   }
 
-  _step;
   set step(s) {
-    this._step = s;
-    this.backendService.getWertungen(this._competition, this._durchgang, this._geraet, s);
+    this.backendService.getWertungen(this.competition, this.durchgang, this.geraet, s);
   }
   get step() {
-    return this._step;
+    return this.backendService.step;
   }
 
-  constructor(public navCtrl: NavController, public backendService: BackendService) {
-    this.backendService.getCompetitions();
+  get stationFreezed(): Boolean {
+    return this.backendService.stationFreezed;
   }
 
   getCompetitions(): Wettkampf[] {
     return this.backendService.competitions;
   }
+  competitionName(): string {
+    if (!this.backendService.competitions) return '';
+    let candidate = this.backendService.competitions
+      .filter(c => c.uuid === this.backendService.competition)
+      .map(c => c.titel + ', am ' + (c.datum + 'T').split('T')[0].split('-').reverse().join("-"));
 
+    if (candidate.length === 1) {
+      return candidate[0];
+    } else {
+      return '';
+    }
+  }
+
+  geraetName(): string {
+    if (!this.backendService.geraete) return '';
+    let candidate = this.backendService.geraete
+      .filter(c => c.id === this.backendService.geraet)
+      .map(c => c.name);
+
+    if (candidate.length === 1) {
+      return candidate[0];
+    } else {
+      return '';
+    }
+  }
   getDurchgaenge(): string[] {
     return this.backendService.durchgaenge;
   }
@@ -69,11 +92,15 @@ export class HomePage {
     return this.backendService.geraete;
   }
   
-  getSteps(): string[] {
+  getSteps(): number[] {
+    if (! this.backendService.steps && this.backendService.geraet) {
+      this.backendService.getWertungen(this.competition, this.durchgang, this.geraet, 1);
+    }
     return this.backendService.steps;
   }  
 
-  getWertungen(): WertungContainer[] {
-    return this.backendService.wertungen;
+  navToStation() {
+    this.navCtrl.swipeBackEnabled = true;
+    this.navCtrl.setRoot(StationPage);
   }
 }

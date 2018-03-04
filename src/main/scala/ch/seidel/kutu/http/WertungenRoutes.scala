@@ -22,6 +22,10 @@ import spray.json._
 import ch.seidel.kutu.domain._
 import ch.seidel.kutu.renderer.RiegenBuilder
 import ch.seidel.kutu.view.WertungEditor
+import ch.seidel.kutu.akka.UpdateAthletWertung
+import ch.seidel.kutu.akka.CompetitionCoordinatorClientActor
+import ch.seidel.kutu.akka.WertungContainer
+import scala.concurrent.Await
 
 trait WertungenRoutes extends SprayJsonSupport with JsonSupport with JwtSupport with BasicAuthSupport with RouterLogging with KutuService {
   import scala.concurrent.ExecutionContext.Implicits.global
@@ -86,7 +90,10 @@ trait WertungenRoutes extends SprayJsonSupport with JsonSupport with JwtSupport 
                     gr.durchgang.exists(encodeURIComponent(_) == durchgang) && 
                     gr.disziplin.exists(_.id == gid) && 
                     gr.halt == halt -1)
-                .flatMap(gr => gr.kandidaten.map(k => AthletWertung(k.id, k.name, k.vorname, k.verein, k.geschlecht, k.wertungen.filter(w => w.wettkampfdisziplin.disziplin.id == gid).map(_.toWertung).head, gid)))
+                .flatMap(gr => gr.kandidaten.map(k => 
+                  WertungContainer(k.id, k.vorname, k.name, k.geschlecht, k.verein, 
+                      k.wertungen.filter(w => w.wettkampfdisziplin.disziplin.id == gid).map(_.toWertung).head, 
+                      gid)))
               }
             }
           }
@@ -101,7 +108,7 @@ trait WertungenRoutes extends SprayJsonSupport with JsonSupport with JwtSupport 
                   val gerateRiegen = RiegenBuilder.mapToGeraeteRiegen(getAllKandidatenWertungen(competitionId).toList)
                   val wkid = gerateRiegen.head.kandidaten.head.wertungen.head.wettkampf.id
                   def filter(gr: GeraeteRiege): Boolean = {
-                    gr.durchgang.exists(_ == durchgang) && 
+                    gr.durchgang.exists(encodeURIComponent(_) == durchgang) && 
                     gr.disziplin.exists(_.id == gid) && 
                     gr.halt == halt -1                    
                   }
@@ -109,18 +116,27 @@ trait WertungenRoutes extends SprayJsonSupport with JsonSupport with JwtSupport 
                   val wertungOriginal = filteredRiegen
                     .flatMap(gr => gr.kandidaten
                         .filter(k => k.id == wertung.athletId)
-                        .map(k => AthletWertung(k.id, k.name, k.vorname, k.verein, k.geschlecht, k.wertungen.filter(w => w.wettkampfdisziplin.disziplin.id == gid).map(_.toWertung).head, gid))).headOption
+                        .map(k => UpdateAthletWertung(loadAthleteView(k.id), 
+                          k.wertungen.filter(w => w.wettkampfdisziplin.disziplin.id == gid).map(_.toWertung).head, 
+                          competitionId.toString, durchgang, gid))).headOption
                   val compOK = wertung.wettkampfId == wkid
                   val wertungOk = wertungOriginal.exists(wo => wo.wertung.id == wertung.id)
                   if (wertungOk && compOK) {
-                    updateWertungSimple(wertungOriginal.get.wertung.updatedWertung(wertung), true)
+                    Await.result(CompetitionCoordinatorClientActor.publish(
+                      UpdateAthletWertung(
+                          wertungOriginal.get.ahtlet,
+                          wertungOriginal.get.wertung.updatedWertung(wertung), 
+                          competitionId.toString, durchgang, geraet) 
+                    ), Duration.Inf)
                   }
                   RiegenBuilder.mapToGeraeteRiegen(getAllKandidatenWertungen(competitionId).toList)
                     .filter(gr => 
                         gr.durchgang.exists(encodeURIComponent(_) == durchgang) && 
                         gr.disziplin.exists(_.id == gid) && 
                         gr.halt == halt -1)
-                    .flatMap(gr => gr.kandidaten.map(k => AthletWertung(k.id, k.name, k.vorname, k.verein, k.geschlecht, k.wertungen.filter(w => w.wettkampfdisziplin.disziplin.id == gid).map(_.toWertung).head, gid)))
+                    .flatMap(gr => gr.kandidaten.map(k => WertungContainer(k.id, k.vorname, k.name, k.geschlecht, k.verein, 
+                      k.wertungen.filter(w => w.wettkampfdisziplin.disziplin.id == gid).map(_.toWertung).head, 
+                      gid)))
                   }
                 }
               }

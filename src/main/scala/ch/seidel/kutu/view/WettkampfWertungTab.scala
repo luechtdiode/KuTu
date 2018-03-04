@@ -191,7 +191,10 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
   }
 
   var subscription: Option[Subscription] = None
+  var websocketsubscription: Option[Subscription] = None
   override def release {
+    websocketsubscription.foreach(_.cancel)
+    websocketsubscription = None
     subscription match {
       case Some(s) => 
         s.cancel
@@ -918,6 +921,10 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
       updateEditorPane
       isFilterRefreshing = false;
     }
+    
+    websocketsubscription = Some(KuTuApp.modelWettkampfWertungChanged.onChange { (_, _, newItem) =>
+      KuTuApp.invokeWithBusyIndicator(reloadData())
+    })
 
     val riegenFilterView = new RiegenFilterView(!wettkampfmode.value,
         wettkampf, service,

@@ -56,6 +56,9 @@ import java.util.UUID
 import ch.seidel.kutu.http.Core
 import ch.seidel.kutu.http.WebSocketClient
 import ch.seidel.kutu.Config._
+import java.util.Base64
+import javafx.beans.property.SimpleObjectProperty
+import ch.seidel.kutu.akka.KutuAppEvent
 
 object KuTuApp extends JFXApp with KutuService with KuTuAppHTTPServer {
   private val logger = LoggerFactory.getLogger(this.getClass)
@@ -72,6 +75,7 @@ object KuTuApp extends JFXApp with KutuService with KuTuAppHTTPServer {
     children = tree.getTree
   }
   val modelWettkampfModus = new BooleanProperty()
+  val modelWettkampfWertungChanged = new SimpleObjectProperty[KutuAppEvent]()
 
   val btnWettkampfModus = new ToggleButton("Wettkampf-Modus") {
     id = "wettkampfmodusButton"
@@ -533,7 +537,11 @@ object KuTuApp extends JFXApp with KutuService with KuTuAppHTTPServer {
           server.httpUploadWettkampfRequest(p.toWettkampf)
       }
     }.map(response => {
-      (response, WebSocketClient.connect(p.toWettkampf))
+      (response, WebSocketClient.connect(p.toWettkampf, ResourceExchanger.processWSMessage((event) => {
+        Platform.runLater{
+          modelWettkampfWertungChanged.setValue(event)
+        }
+      })))
     })
     process.onComplete{
       case Success((response, wspromise)) =>
@@ -761,15 +769,16 @@ object KuTuApp extends JFXApp with KutuService with KuTuAppHTTPServer {
         }
     }
   }
-
+  
+  val enc = Base64.getUrlEncoder
   def showQRCode(p: WettkampfView) = {
     val item = makeMenuAction("Kampfrichter Mobile register ...") {(caption, action) =>
       implicit val e = action
       p.uuid.zip(p.toWettkampf.readSecret(homedir)).headOption match {
         case Some((uuid, secret)) =>
-          val connectionString = s"$remoteBaseUrl/?c=$uuid&s=$secret"
+          val connectionString = s"$remoteBaseUrl/?" + new String(enc.encodeToString((s"c=$uuid&s=$secret").getBytes))
           println(connectionString)
-          val out = QRCode.from(connectionString).to(ImageType.PNG).withSize(200, 200).stream();
+          val out = QRCode.from(connectionString).to(ImageType.PNG).withSize(500, 500).stream();
           val in = new ByteArrayInputStream(out.toByteArray());
       
           val image = new Image(in);

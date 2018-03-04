@@ -13,6 +13,7 @@ import ch.seidel.kutu.domain._
 import ch.seidel.kutu.view._
 import ch.seidel.kutu.squad.RiegenBuilder
 import org.slf4j.LoggerFactory
+import ch.seidel.kutu.akka._
 
 /**
  */
@@ -20,6 +21,23 @@ object ResourceExchanger extends KutuService with RiegenBuilder {
   private val logger = LoggerFactory.getLogger(this.getClass)
   private val rm = reflect.runtime.universe.runtimeMirror(getClass.getClassLoader)
 
+  def processWSMessage(refresher: KutuAppEvent=>Unit) = {
+    val cache = new java.util.ArrayList[MatchCode]()
+    
+    val opFn: KutuAppEvent=>Unit = {  
+      case uw @ AthletWertungUpdated(athlet, wertung, wettkampfUUID, durchgang, geraet) =>
+        val mappedAthlet = findAthleteLike()(athlet.toAthlet)
+        val mappedWettkampf = readWettkampf(wettkampfUUID)
+        updateWertungSimple(wertung.copy(athletId = mappedAthlet.id, wettkampfId = mappedWettkampf.id, wettkampfUUID = wettkampfUUID), true)
+        refresher(uw)
+        
+      case _ =>  
+        
+    }
+    
+    opFn
+  }
+  
   def importWettkampf(file: InputStream) = {
     type ZipStream = (ZipEntry,InputStream)
     class ZipEntryTraversableClass extends Traversable[ZipStream] {

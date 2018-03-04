@@ -37,10 +37,18 @@ import scalafx.stage.FileChooser.ExtensionFilter
 import scalafx.util.StringConverter
 import scala.collection.JavaConverters
 import ch.seidel.kutu.renderer.PrintUtil.FilenameDefault
+import scalafx.event.subscriptions.Subscription
+import ch.seidel.kutu.akka.KutuAppEvent
 
 abstract class DefaultRanglisteTab(override val service: KutuService) extends Tab with TabWithService with ScoreToHtmlRenderer {
 
   override val title = ""
+  var subscription: Option[Subscription] = None
+
+  override def release() {
+    subscription.foreach(_.cancel)
+  }
+  
 
   /*
          * combo 1. Gruppierung [leer, Programm, Jahrgang, Disziplin, Verein]
@@ -261,7 +269,7 @@ abstract class DefaultRanglisteTab(override val service: KutuService) extends Ta
       restoring = false;
       refreshRangliste(buildGrouper)
     }
-
+  
     combs.zip(combfs).foreach{ case (comb, combfs) =>
       comb.onAction = handle {
         if(!restoring) {
@@ -282,7 +290,11 @@ abstract class DefaultRanglisteTab(override val service: KutuService) extends Ta
       if(!restoring)
         refreshRangliste(buildGrouper)
     }
-
+    subscription = Some(KuTuApp.modelWettkampfWertungChanged.onChange { (_, _, newItem) =>
+      println("refreshing from websocket", newItem)
+      refreshRangliste(buildGrouper)
+    })
+    
     val btnSave = new Button {
       text = "Speichern als ..."
       onAction = handle {

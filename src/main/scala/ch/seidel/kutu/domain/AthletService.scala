@@ -35,12 +35,24 @@ trait AthletService extends DBService with AthletResultMapper {
    */
   def selectAthletesView = {
     Await.result(database.run{
-      (sql"""        select a.id, a.js_id, a.geschlecht, a.name, a.vorname, a.gebdat, a.strasse, a.plz, a.ort, a.activ, a.verein, v.* from athlet a inner join verein v on (v.id = a.verein) order by activ desc, name, vorname asc """.as[AthletView]
+      (sql"""        select a.id, a.js_id, a.geschlecht, a.name, a.vorname, a.gebdat, a.strasse, a.plz, a.ort, a.activ, a.verein, 
+                            v.* from athlet a inner join verein v on (v.id = a.verein) 
+                     order by activ desc, name, vorname asc 
+          """.as[AthletView]
       ).withPinnedSession
     }, Duration.Inf).toList
   }
   
-
+  def loadAthleteView(athletId: Long) = {
+    Await.result(database.run{
+      (sql"""        select a.id, a.js_id, a.geschlecht, a.name, a.vorname, a.gebdat, a.strasse, a.plz, a.ort, a.activ, a.verein, 
+                            v.* from athlet a inner join verein v on (v.id = a.verein) 
+                     where a.id = $athletId 
+                     order by activ desc, name, vorname asc
+          """.as[AthletView].head
+      ).withPinnedSession
+    }, Duration.Inf)
+  }
 
   def deleteAthlet(id: Long) {
     Await.result(database.run{(
@@ -111,7 +123,7 @@ trait AthletService extends DBService with AthletResultMapper {
     }, Duration.Inf).map(x => x._2).head
   }
 
-  def findAthleteLike(cache: java.util.List[MatchCode] = java.util.Collections.emptyList[MatchCode])(athlet: Athlet) = {
+  def findAthleteLike(cache: java.util.List[MatchCode] = new java.util.ArrayList[MatchCode])(athlet: Athlet) = {
     val bmname = MatchCode.encode(athlet.name)
     val bmvorname = MatchCode.encode(athlet.vorname)
     def similarAthletFactor(code: MatchCode) = {

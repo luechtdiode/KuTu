@@ -6,6 +6,7 @@ import { SplashScreen } from '@ionic-native/splash-screen';
 import { HomePage } from '../pages/home/home';
 import { RiegeListPage } from '../pages/list/riege-list';
 import { SettingsPage } from '../pages/settings/settings';
+import { StationPage } from '../pages/station/station';
 
 @Component({
   templateUrl: 'app.html'
@@ -22,8 +23,9 @@ export class MyApp {
 
     // used for an example of ngFor and navigation
     this.pages = [
-      { title: 'Station', component: HomePage },
-      { title: 'Settings', component: SettingsPage }
+      { title: 'Home', component: HomePage },
+      { title: 'Resultate', component: StationPage }/*,
+      { title: 'Settings', component: SettingsPage }*/
     ];
 
   }
@@ -33,6 +35,17 @@ export class MyApp {
       // Okay, so the platform is ready and our plugins are available.
       // Here you can do any higher level native things you might need.
       this.statusBar.styleDefault();
+      if(window.location.href.indexOf('?') > 0) {
+        try {
+          const initializeWith = atob(window.location.href.split('?')[1]);
+          
+          localStorage.setItem("external_load", initializeWith); 
+          window.history.replaceState({}, document.title, window.location.href.split('?')[0]);
+          
+        } catch(e) {
+          console.log(e);
+        }
+      }
       this.splashScreen.hide();
     });
   }

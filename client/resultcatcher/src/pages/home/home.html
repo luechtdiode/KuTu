@@ -1,50 +1,77 @@
-<ion-tabs>
+<!-- <ion-tabs>
     <ion-tab tabIcon="settings" tabTitle="Station" [root]="tabStation"></ion-tab>
     <ion-tab tabIcon="contact" tabTitle="Riege" [root]="tabRiege"></ion-tab>
-</ion-tabs>
+</ion-tabs> -->
 <ion-header>
   <ion-navbar>
     <button ion-button menuToggle>
       <ion-icon name="menu"></ion-icon>
     </button>
-    <ion-title>Kampfrichter Resultaterfassung</ion-title>
+    <ion-title>Wettkampf App</ion-title>
   </ion-navbar>
 </ion-header>
 
 <ion-content>
-    <riege-list *ngIf="step && getWertungen()" [items] = 'getWertungen()' [geraetId]='geraet' [durchgang]='durchgang' [step]='step'></riege-list>
-  </ion-content>
+    <ion-list *ngIf="stationFreezed">
+        <ion-item >
+          <!-- <ion-thumbnail  item-start><img src="assets/imgs/wettkampf.png"></ion-thumbnail > -->
+          <ion-label>{{competitionName()}}</ion-label>
+        </ion-item>
+        <ion-item >
+          <ion-note *ngIf="durchgang && geraet">
+            {{durchgang}}, {{geraetName()}}
+          </ion-note>
+        </ion-item>
+        <ion-item>
+          <ion-range *ngIf="geraet && getSteps()" [(ngModel)]="step" pin="true" [min]="1" [max]="getSteps().length" [step]="1" [snaps]="true" color="secondary">
+              <ion-label range-left class="small-text">Riege 1</ion-label>
+              <ion-label range-right class="small-text">{{getSteps().length}}</ion-label>
+          </ion-range>
+          <ion-label item-start>Riege {{step}}</ion-label>
+        </ion-item>
+      </ion-list>      
+      <ion-list *ngIf="!stationFreezed">
+          <ion-item >
+            <!-- <ion-thumbnail  item-start><img src="assets/imgs/wettkampf.png"></ion-thumbnail > -->
+            <ion-label>Wettkampf</ion-label>
+            <ion-select *ngIf="getCompetitions()" [(ngModel)]='competition' okText='Okay' cancelText='Abbrechen'>
+              <ion-option *ngFor='let comp of getCompetitions()' [value]='comp.uuid'>{{comp.titel}}</ion-option>
+            </ion-select>
+          </ion-item>
+          <ion-item >
+            <ion-label>Durchgang</ion-label>
+            <ion-select *ngIf="competition && getDurchgaenge()" [(ngModel)]='durchgang' okText='Okay' cancelText='Abbrechen'>
+              <ion-option *ngFor='let d of getDurchgaenge()' [value]='d'>{{d}}</ion-option>
+            </ion-select>
+            <ion-note *ngIf="competition && !getDurchgaenge() && durchgang">
+              {{durchgang}}
+            </ion-note>
+          </ion-item>
+          <ion-item >
+            <ion-label>Gerät</ion-label>
+            <ion-select *ngIf="durchgang && getGeraete()" [(ngModel)]='geraet' okText='Okay' cancelText='Abbrechen'>
+              <ion-option *ngFor='let g of getGeraete()' [value]='g.id'>{{g.name}}</ion-option>
+            </ion-select>
+            <ion-note *ngIf="competition && !getDurchgaenge() && durchgang">
+              {{geraet}}
+            </ion-note>
+          </ion-item>
+          <ion-item>
+            <ion-range *ngIf="geraet && getSteps()" [(ngModel)]="step" pin="true" [min]="1" [max]="getSteps().length" [step]="1" [snaps]="true" color="secondary">
+                <ion-label range-left class="small-text">Riege 1</ion-label>
+                <ion-label range-right class="small-text">{{getSteps().length}}</ion-label>
+            </ion-range>
+            <ion-label item-start>Riege {{step}}</ion-label>
+          </ion-item>
+        </ion-list>
+</ion-content>
 
 <ion-footer>
     <ion-toolbar>
         <ion-list>
-            <ion-item>
-              <!-- <ion-thumbnail  item-start><img src="assets/imgs/wettkampf.png"></ion-thumbnail > -->
-              <ion-label>Wettkampf</ion-label>
-              <ion-select *ngIf="getCompetitions()" [(ngModel)]='competition' okText='Okay' cancelText='Abbrechen'>
-                <ion-option *ngFor='let comp of getCompetitions()' [value]='comp.uuid'>{{comp.titel}}</ion-option>
-              </ion-select>
-            </ion-item>
-            <ion-item>
-              <ion-label>Durchgang</ion-label>
-              <ion-select *ngIf="competition && getDurchgaenge()" [(ngModel)]='durchgang' okText='Okay' cancelText='Abbrechen'>
-                <ion-option *ngFor='let d of getDurchgaenge()' [value]='d'>{{d}}</ion-option>
-              </ion-select>
-            </ion-item>
-            <ion-item>
-              <ion-label>Gerät</ion-label>
-              <ion-select *ngIf="durchgang && getGeraete()" [(ngModel)]='geraet' okText='Okay' cancelText='Abbrechen'>
-                <ion-option *ngFor='let g of getGeraete()' [value]='g.id'>{{g.name}}</ion-option>
-              </ion-select>
-            </ion-item>
-            <ion-item>
-              <ion-range *ngIf="geraet &&getSteps()" [(ngModel)]="step" pin="true" [min]="1" [max]="getSteps().length" [step]="1" [snaps]="true" color="secondary">
-                  <ion-label range-left class="small-text">Riege 1</ion-label>
-                  <ion-label range-right class="small-text">{{getSteps().length}}</ion-label>
-              </ion-range>
-              <ion-label item-start>Riege {{step}}</ion-label>
-            </ion-item>
-          </ion-list>
+            <button ion-button large block icon-left color="secondary" (click)="navToStation()" [disabled]="!(geraet && getSteps())">
+                <ion-icon name="create"></ion-icon>Resultate</button>
+
+        </ion-list>
     </ion-toolbar>
-  
-</ion-footer>
+  </ion-footer>
