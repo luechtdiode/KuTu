@@ -10,8 +10,10 @@ import akka.http.scaladsl.{ ConnectionContext, HttpsConnectionContext, Http }
 import akka.stream.ActorMaterializer
 import com.typesafe.sslconfig.akka.AkkaSSLConfig
 import scala.concurrent.ExecutionContextExecutor
+import ch.seidel.kutu.Config._
 
-trait KuTuSSLContext extends Config {
+trait KuTuSSLContext {
+
     // Manual HTTPS configuration
   
   val ks: KeyStore = KeyStore.getInstance("JKS")

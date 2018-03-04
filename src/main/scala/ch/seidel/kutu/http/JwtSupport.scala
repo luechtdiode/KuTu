@@ -6,11 +6,12 @@ import akka.http.scaladsl.server.{ Directives, Directive1, Route }
 import authentikat.jwt._
 import java.util.concurrent.TimeUnit
 import akka.http.scaladsl.server.directives.Credentials
+import ch.seidel.kutu.Config._
 
-trait JwtSupport extends Directives with Config {
+trait JwtSupport extends Directives {
   private lazy val userKey = "user"
   private lazy val expiredAtKey = "expiredAtKey"
-  import Config._
+  
   def authenticated: Directive1[String] =
     optionalHeaderValueByName(jwtAuthorizationKey).flatMap {
       case Some(jwt) if JsonWebToken.validate(jwt, jwtSecretKey) =>

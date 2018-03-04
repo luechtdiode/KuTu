@@ -5,6 +5,7 @@ import ch.seidel.kutu.domain.KutuService
 import ch.seidel.kutu.domain.WertungView
 import ch.seidel.kutu.domain.WettkampfView
 import ch.seidel.kutu.renderer.PrintUtil.FilenameDefault
+import ch.seidel.kutu.Config._
 
 class RanglisteTab(wettkampf: WettkampfView, override val service: KutuService) extends DefaultRanglisteTab(service) {
   override val title = wettkampf.easyprint
@@ -17,7 +18,7 @@ class RanglisteTab(wettkampf: WettkampfView, override val service: KutuService) 
   override def getData: Seq[WertungView] = service.selectWertungen(wettkampfId = Some(wettkampf.id))
 
   override def getSaveAsFilenameDefault: FilenameDefault =
-    FilenameDefault("Rangliste_" + wettkampf.easyprint.replace(" ", "_") + ".html", new java.io.File(service.homedir + "/" + wettkampf.easyprint.replace(" ", "_")))
+    FilenameDefault("Rangliste_" + wettkampf.easyprint.replace(" ", "_") + ".html", new java.io.File(homedir + "/" + wettkampf.easyprint.replace(" ", "_")))
 
   override def isPopulated = {
     val combos = populate(groupers)

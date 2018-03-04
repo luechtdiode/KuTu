@@ -74,6 +74,7 @@ import scalafx.print.PageOrientation
 import org.slf4j.LoggerFactory
 import scalafx.util.converter.DoubleStringConverter
 import scala.concurrent.Future
+import ch.seidel.kutu.Config._
 
 trait TCAccess[R, E, IDX] {
   def getIndex: IDX
@@ -1265,7 +1266,7 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
             )
           }
           val filename = "Teilnehmerliste_" + wettkampf.easyprint.replace(" ", "_") + programm.map("_Programm_" + _.easyprint.replace(" ", "_")).getOrElse("") + riege.map("_Riege_" + _.replace(" ", "_")).getOrElse("") + ".html"
-          val dir = new java.io.File(service.homedir + "/" + wettkampf.easyprint.replace(" ", "_"))
+          val dir = new java.io.File(homedir + "/" + wettkampf.easyprint.replace(" ", "_"))
           if(!dir.exists()) {
             dir.mkdirs();
           }
@@ -1329,7 +1330,7 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
             )
           }
           val filename = "Notenblatt_" + wettkampf.easyprint.replace(" ", "_") + programm.map("_Programm_" + _.easyprint.replace(" ", "_")).getOrElse("") + riege.map("_Riege_" + _.replace(" ", "_")).getOrElse("") + ".html"
-          val dir = new java.io.File(service.homedir + "/" + wettkampf.easyprint.replace(" ", "_"))
+          val dir = new java.io.File(homedir + "/" + wettkampf.easyprint.replace(" ", "_"))
           if(!dir.exists()) {
             dir.mkdirs();
           }
@@ -1349,7 +1350,7 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
 
       onAction = (event: ActionEvent) => {
         val filename = "Bestenliste_" + wettkampf.easyprint.replace(" ", "_") + ".html"
-        val dir = new java.io.File(service.homedir + "/" + wettkampf.easyprint.replace(" ", "_"))
+        val dir = new java.io.File(homedir + "/" + wettkampf.easyprint.replace(" ", "_"))
         if(!dir.exists()) {
           dir.mkdirs();
         }

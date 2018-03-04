@@ -44,6 +44,7 @@ import ch.seidel.kutu.data.ResourceExchanger
 import ch.seidel.kutu.domain.Wettkampf
 import ch.seidel.kutu.domain.WettkampfService
 import ch.seidel.kutu.akka._
+import ch.seidel.kutu.Config._
 import java.util.UUID
 import akka.http.scaladsl.model.ws.WebSocketRequest
 import akka.stream.scaladsl.Flow
@@ -51,7 +52,7 @@ import akka.http.scaladsl.model.ws.TextMessage
 import akka.stream.scaladsl.Keep
 import akka.http.scaladsl.model.ws.Message
 
-trait WettkampfRoutes extends SprayJsonSupport with JsonSupport with JwtSupport with BasicAuthSupport with RouterLogging with WettkampfService with Config {
+trait WettkampfRoutes extends SprayJsonSupport with JsonSupport with JwtSupport with BasicAuthSupport with RouterLogging with WettkampfService {
   import DefaultJsonProtocol._
 
   def responseOrFail[T](in: (Try[HttpResponse], T)): (HttpResponse, T) = in match {
@@ -72,32 +73,10 @@ trait WettkampfRoutes extends SprayJsonSupport with JsonSupport with JwtSupport 
     ) toEntity
   }
   
- // FIXME implement real ws consumer instead of println
-  def connect(wettkampf: Wettkampf, messageProcessor: Message=>Unit = println) = {
-    import Core.system
-    import Core.materializer
-    import Config._
-    import scala.collection.immutable
-    val flow: Flow[Message, Message, Promise[Option[Message]]] =
-      Flow.fromSinkAndSourceMat(
-        Sink.foreach[Message](messageProcessor),
-        Source.maybe[Message])(Keep.right)
-    
-    val (upgradeResponse, promise) = Http().singleWebSocketRequest(
-        WebSocketRequest(
-            // FIXME take url from config, choose dynamic from ws/wss
-            "ws://localhost:5757/api/competition/ws", 
-            extraHeaders = immutable.Seq(RawHeader(jwtAuthorizationKey, wettkampf.readSecret(homedir).get))),
-        flow)
-    
-    // FIXME close WS at some later time we want to disconnect
-    promise//.success(None)    
-  }
   
   def httpUploadWettkampfRequest(wettkampf: Wettkampf) = {
     import Core.system
     import Core.materializer
-    import Config._
     val wettkampfEntity = toHttpEntity(wettkampf)
     val hadSecret = wettkampf.hasSecred(homedir)
     val uploadProm = Promise[String]()
@@ -193,7 +172,6 @@ trait WettkampfRoutes extends SprayJsonSupport with JsonSupport with JwtSupport 
                   is.close()
                   file.delete()
 
-                  import Config._
                   val claims = setClaims(wkuuid.toString(), Int.MaxValue)
                   respondWithHeader(RawHeader(jwtAuthorizationKey, JsonWebToken(jwtHeader, claims, jwtSecretKey))) {
                     complete(StatusCodes.OK)

@@ -137,7 +137,8 @@ class ClientActorSupervisor extends Actor {
       sender ! coordinator
     
     case Terminated(wettkampfActor) =>
-      context.unwatch(wettkampfActor)      
+      context.unwatch(wettkampfActor)
+      wettkampfCoordinators = wettkampfCoordinators.filter(_._2 != wettkampfActor)
   }
 }
 

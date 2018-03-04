@@ -54,12 +54,14 @@ import scala.concurrent.duration.Duration
 import scala.io.Source
 import java.util.UUID
 import ch.seidel.kutu.http.Core
+import ch.seidel.kutu.http.WebSocketClient
+import ch.seidel.kutu.Config._
 
 object KuTuApp extends JFXApp with KutuService with KuTuAppHTTPServer {
   private val logger = LoggerFactory.getLogger(this.getClass)
   private val server = KuTuServer
   import scala.concurrent.ExecutionContext.Implicits.global
-
+  
   override def stopApp() {
     super.shutDown("KuTuApp")
   }
@@ -505,6 +507,18 @@ object KuTuApp extends JFXApp with KutuService with KuTuAppHTTPServer {
     })
   }
 
+  def makeDisconnectMenu(p: WettkampfView) = {
+    val item = makeMenuAction("Netzwerkmodus stoppen") {(caption, action) =>
+      ConnectionStates.disconnected
+    }
+    item.disable <== when(Bindings.createBooleanBinding(() => 
+      !ConnectionStates.connectedWithProperty.value.equals(p.uuid.map(_.toString).getOrElse("")),
+      controlsView.selectionModel().selectedItem,
+      ConnectionStates.connectedWithProperty
+      )) choose true otherwise false 
+    item
+  }
+  
   def makeConnectAndShareMenu(p: WettkampfView) = { 
     val item = makeMenuAction("Connect and share ...") {(caption, action) =>
     implicit val e = action
@@ -519,8 +533,7 @@ object KuTuApp extends JFXApp with KutuService with KuTuAppHTTPServer {
           server.httpUploadWettkampfRequest(p.toWettkampf)
       }
     }.map(response => {
-      
-      (response, server.connect(p.toWettkampf))
+      (response, WebSocketClient.connect(p.toWettkampf))
     })
     process.onComplete{
       case Success((response, wspromise)) =>
@@ -921,7 +934,8 @@ object KuTuApp extends JFXApp with KutuService with KuTuAppHTTPServer {
                     items += showQRCode(p)
                     items += makeWettkampfUploadMenu(p)
                     items += makeConnectAndShareMenu(p)
-                    items += makeWettkampfDownloadMenu(p)                    
+                    items += makeWettkampfDownloadMenu(p)    
+                    items += makeDisconnectMenu(p)
                   }
                   
                   controlsView.contextMenu = new ContextMenu() {

@@ -6,6 +6,7 @@ import ch.seidel.kutu.data._
 import ch.seidel.kutu.domain._
 import ch.seidel.kutu.renderer.ScoreToHtmlRenderer
 import ch.seidel.kutu.renderer.PrintUtil.FilenameDefault
+import ch.seidel.kutu.Config._
 
 class TurnerScoreTab(val verein: Option[Verein], override val service: KutuService) extends DefaultRanglisteTab(service) {
   override val title = verein match {case Some(v) => v.easyprint case None => "Vereinsübergreifend"}
@@ -18,7 +19,7 @@ class TurnerScoreTab(val verein: Option[Verein], override val service: KutuServi
     case None    => service.selectWertungen()
   }
 
-  override def getSaveAsFilenameDefault: FilenameDefault = FilenameDefault("Rangliste_" + verein.map(_.name.replace(" ", "_")).getOrElse("Alle"), new java.io.File(service.homedir))
+  override def getSaveAsFilenameDefault: FilenameDefault = FilenameDefault("Rangliste_" + verein.map(_.name.replace(" ", "_")).getOrElse("Alle"), new java.io.File(homedir))
 
   override def isPopulated = {
     val combos = populate(groupers)

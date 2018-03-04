@@ -35,15 +35,16 @@ import akka.http.scaladsl.unmarshalling.Unmarshal
 import spray.json.JsObject
 import scala.concurrent.Await
 import scala.concurrent.duration.Duration
+import ch.seidel.kutu.Config._
 
-trait BasicAuthSupport extends Directives with SprayJsonSupport with Config with Hashing {
+trait BasicAuthSupport extends Directives with SprayJsonSupport with Hashing {
   import spray.json.DefaultJsonProtocol._
-    
+  
   def userPassAuthenticator(userSecretHashLookup: (String) => String): AuthenticatorPF[String] = {
     case p @ Credentials.Provided(id) if p.verify(userSecretHashLookup(id), sha256) => id
   }
   
-  private var clientheader: Option[RawHeader] = None // Some(RawHeader(jwtAuthorizationKey, JsonWebToken(jwtHeader, setClaims("kutuapp-systemuser", jwtTokenExpiryPeriodInDays), jwtSecretKey)))
+  private var clientheader: Option[RawHeader] = None
   
   
   /**
@@ -51,7 +52,6 @@ trait BasicAuthSupport extends Directives with SprayJsonSupport with Config with
    */
   def httpLoginRequest(uri: String, user: String, pw: String) = {
     import HttpMethods._
-    import Config._
     case class UserCredentials(username: String, password: String)
     implicit val credsFormat = jsonFormat2(UserCredentials)
     import Core._
@@ -77,7 +77,6 @@ trait BasicAuthSupport extends Directives with SprayJsonSupport with Config with
   
   def httpRenewLoginRequest(uri: String, wettkampfuuid: String, jwtToken: String) = {
     import HttpMethods._
-    import Config._
     import Core._
 
     Marshal(wettkampfuuid).to[RequestEntity] flatMap { entity =>

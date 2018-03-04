@@ -35,6 +35,7 @@ import scala.concurrent.duration.Duration
 import scala.collection.JavaConverters
 import ch.seidel.kutu.squad._
 import org.slf4j.LoggerFactory
+import ch.seidel.kutu.Config._
 
 trait DBService {
   private val logger = LoggerFactory.getLogger(this.getClass)
@@ -53,17 +54,7 @@ trait DBService {
     prop.setProperty("keepAliveConnection", "true")
     prop
   }
-  lazy val homedir = if(new File("./data").exists()) {
-    "./data"
-  }
-  else if(new File(System.getProperty("user.home") + "/kutuapp/data").exists()) {
-    System.getProperty("user.home") + "/kutuapp/data"
-  }
-  else {
-    val f = new File(System.getProperty("user.home") + "/kutuapp/data")
-    f.mkdirs();
-    System.getProperty("user.home") + "/kutuapp/data"
-  }
+  
   lazy val dbhomedir = if(new File("./db/kutu.sqlite").exists()) {
     logger.info("using db at: " + new File("./db/kutu.sqlite").getAbsolutePath);
     "./db"

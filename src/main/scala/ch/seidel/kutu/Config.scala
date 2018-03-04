@@ -1,4 +1,4 @@
-package ch.seidel.kutu.http
+package ch.seidel.kutu
 
 import com.typesafe.config.ConfigFactory
 import authentikat.jwt.JwtHeader
@@ -55,10 +55,18 @@ object Config {
     }
   }
   val jwtAuthorizationKey = "x-access-token"
-}
-
-trait Config {
-  import Config._
+  
+  lazy val homedir = if(new File("./data").exists()) {
+    "./data"
+  }
+  else if(new File(System.getProperty("user.home") + "/kutuapp/data").exists()) {
+    System.getProperty("user.home") + "/kutuapp/data"
+  }
+  else {
+    val f = new File(System.getProperty("user.home") + "/kutuapp/data")
+    f.mkdirs();
+    System.getProperty("user.home") + "/kutuapp/data"
+  }
   
   lazy val httpInterface = if (config.hasPath("http.interface"))    config.getString("http.interface")    else "0.0.0.0"
   lazy val httpPort =      if (config.hasPath("http.port"))         config.getInt("http.port")            else 5757

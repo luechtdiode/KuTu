@@ -24,6 +24,7 @@ import java.net.NetworkInterface
 import java.net.InetAddress
 import authentikat.jwt.JsonWebToken
 import scala.concurrent.Await
+import ch.seidel.kutu.Config._
 
 object Core extends KuTuSSLContext {
 //  val logger = LoggerFactory.getLogger(this.getClass)
@@ -46,9 +47,10 @@ object Core extends KuTuSSLContext {
   }
 }
 
-trait KuTuAppHTTPServer extends Config with ApiService with JsonSupport {
+trait KuTuAppHTTPServer extends ApiService with JsonSupport {
   private val logger = LoggerFactory.getLogger(this.getClass)
   import Core._
+
   
   def startServer(userLookup: (String) => String) = {
     serverBinding match {
@@ -63,12 +65,12 @@ trait KuTuAppHTTPServer extends Config with ApiService with JsonSupport {
       import collection.JavaConverters._
       val binding = if (hasHttpsConfig) {
         Http().setDefaultServerHttpContext(https)
-        val b = Http().bindAndHandle(allroutes(userLookup), Core.httpInterface, Core.httpPort, connectionContext = https)
-        logger.info(s"Server online at https://${Core.httpInterface}:${Core.httpPort}/")
+        val b = Http().bindAndHandle(allroutes(userLookup), httpInterface, httpPort, connectionContext = https)
+        logger.info(s"Server online at https://${httpInterface}:${httpPort}/")
         b
       } else {
-        val b = Http().bindAndHandle(allroutes(userLookup), Core.httpInterface, Core.httpPort)
-        logger.info(s"Server online at http://${Core.httpInterface}:${Core.httpPort}/")
+        val b = Http().bindAndHandle(allroutes(userLookup), httpInterface, httpPort)
+        logger.info(s"Server online at http://${httpInterface}:${httpPort}/")
         b
       }
       serverBinding = Some(binding)

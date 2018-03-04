@@ -21,6 +21,7 @@ import spray.json._
 
 import ch.seidel.kutu.domain._
 import ch.seidel.kutu.renderer.RiegenBuilder
+import ch.seidel.kutu.Config._
 import authentikat.jwt.JsonWebToken
 import akka.http.scaladsl.model.headers.RawHeader
 
@@ -34,7 +35,6 @@ trait LoginRoutes extends SprayJsonSupport with EnrichedJson with JwtSupport wit
   def login(userLookup: (String) => String) = pathPrefix("login") {
     pathEndOrSingleSlash {
       authenticateBasicPF(realm = "secure site", userPassAuthenticator(userLookup)) { userId =>
-        import Config._
         val claims = setClaims(userId, jwtTokenExpiryPeriodInDays)
         respondWithHeader(RawHeader(jwtAuthorizationKey, JsonWebToken(jwtHeader, claims, jwtSecretKey))) {
           complete(StatusCodes.OK)
@@ -45,7 +45,6 @@ trait LoginRoutes extends SprayJsonSupport with EnrichedJson with JwtSupport wit
   pathPrefix("loginrenew") {
     pathEndOrSingleSlash {
       authenticated { userId =>
-        import Config._
         val claims = setClaims(userId, jwtTokenExpiryPeriodInDays)
         respondWithHeader(RawHeader(jwtAuthorizationKey, JsonWebToken(jwtHeader, claims, jwtSecretKey))) {
           complete(StatusCodes.OK)
