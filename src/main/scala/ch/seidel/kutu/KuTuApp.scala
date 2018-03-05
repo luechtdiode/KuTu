@@ -66,6 +66,7 @@ object KuTuApp extends JFXApp with KutuService with KuTuAppHTTPServer {
   import scala.concurrent.ExecutionContext.Implicits.global
   
   override def stopApp() {
+    ConnectionStates.disconnected()
     super.shutDown("KuTuApp")
   }
   
@@ -88,7 +89,7 @@ object KuTuApp extends JFXApp with KutuService with KuTuAppHTTPServer {
 //    selected <== ConnectionStates.connectedProperty
     text <== createStringBinding(() => {
       ConnectionStates.connectedWithProperty.value match {
-        case "" => "nicht verunden"
+        case "" => "nicht verbunden"
         case uuid => s"Verbunden mit ${readWettkampf(uuid).easyprint}"
       }       
     }, ConnectionStates.connectedWithProperty)

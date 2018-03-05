@@ -47,13 +47,14 @@ trait BasicAuthSupport extends Directives with SprayJsonSupport with Hashing {
   private var clientheader: Option[RawHeader] = None
   
   
+  case class UserCredentials(username: String, password: String)
+  implicit val credsFormat = jsonFormat2(UserCredentials)
+  
   /**
    * Supports header- and body-based request->response with credentials->acces-token
    */
   def httpLoginRequest(uri: String, user: String, pw: String) = {
     import HttpMethods._
-    case class UserCredentials(username: String, password: String)
-    implicit val credsFormat = jsonFormat2(UserCredentials)
     import Core._
     Marshal(UserCredentials(user, pw)).to[RequestEntity] flatMap { entity =>
       Http().singleRequest(
@@ -78,8 +79,7 @@ trait BasicAuthSupport extends Directives with SprayJsonSupport with Hashing {
   def httpRenewLoginRequest(uri: String, wettkampfuuid: String, jwtToken: String) = {
     import HttpMethods._
     import Core._
-
-    Marshal(wettkampfuuid).to[RequestEntity] flatMap { entity =>
+    Marshal(UserCredentials(wettkampfuuid, jwtToken)).to[RequestEntity] flatMap { entity =>
       val request = HttpRequest(method = POST, uri = uri, entity = entity)
       Http().singleRequest(request.withHeaders(request.headers :+ RawHeader(jwtAuthorizationKey, jwtToken))).map {r => r match {
         case HttpResponse(StatusCodes.OK, headers, entity, _) =>
