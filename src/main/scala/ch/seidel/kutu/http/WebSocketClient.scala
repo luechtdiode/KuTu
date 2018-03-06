@@ -34,7 +34,7 @@ object WebSocketClient extends SprayJsonSupport with JsonSupport {
       Flow.fromSinkAndSourceMat(
         websocketFlow.to(Sink.foreach[KutuAppEvent](messageProcessor)),
         Source.maybe[Message])(Keep.right)
-    
+
     val (upgradeResponse, promise) = Http().singleWebSocketRequest(
         WebSocketRequest(
             // FIXME take url from config, choose dynamic from ws/wss

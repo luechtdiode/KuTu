@@ -19,6 +19,15 @@ trait VereinService extends DBService with VereinResultMapper {
     }, Duration.Inf).toList
   }
   
+  def findVereinLike(verein: Verein): Option[Long] = {
+    Await.result(database.run{sql"""
+                    select max(verein.id) as maxid
+                    from verein
+                    where LOWER(name)=${verein.name.toLowerCase()}
+         """.as[Long].withPinnedSession
+         }, Duration.Inf).toList.headOption
+  }
+  
   def insertVerein(verein: Verein): Verein = {
     val process = for {
       candidateId <- sql"""

@@ -30,6 +30,7 @@ import ch.seidel.kutu.http.JsonSupport
 import akka.util.Timeout
 import scala.concurrent.duration.FiniteDuration
 import ch.seidel.kutu.domain.KutuService
+import akka.stream.scaladsl.Keep
 
 class CompetitionCoordinatorClientActor(wettkampfUUID: String) extends Actor with JsonSupport with KutuService {
   import context._

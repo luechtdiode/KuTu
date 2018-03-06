@@ -8,11 +8,12 @@ import org.slf4j.LoggerFactory
 import java.sql.Date
 
 import slick.jdbc.GetResult
+import slick.jdbc.PositionedResult
 import slick.jdbc.SQLiteProfile
 import slick.jdbc.SQLiteProfile.api._
 import scala.collection.JavaConverters
 
-abstract trait DisziplinService extends DBService with DisziplinResultMapper {
+abstract trait DisziplinService extends DBService with WettkampfResultMapper {
   private val logger = LoggerFactory.getLogger(this.getClass)
 
   def readWettkampfLeafs(programmid: Long): Seq[ProgrammView]
@@ -86,5 +87,25 @@ abstract trait DisziplinService extends DBService with DisziplinResultMapper {
     .map{t => Wettkampfdisziplin(t._1, t._2, t._3, t._4, None, 0, t._5, 0, 0) }.toList
   }
   
+  def readWettkampfDisziplinView(wettkampfDisziplinId: Long): WettkampfdisziplinView = {
+    
+    implicit def getWettkampfDisziplinViewResult = GetResult{r =>
+      val id = r.<<[Long]
+      val pgm = readProgramm(r.<<)
+      WettkampfdisziplinView(id, pgm, r, r.<<[String], r.nextBytesOption(), readNotenModus(id, pgm, r.<<), r.<<, r.<<[Int], r.<<[Int])
+    }
+
+    val wd = Await.result(database.run{
+      sql""" select wd.id, wd.programm_id, d.*, wd.kurzbeschreibung, wd.detailbeschreibung, wd.notenfaktor, wd.ord, wd.masculin, wd.feminim
+             from wettkampfdisziplin wd, disziplin d
+             where
+              wd.disziplin_id = d.id
+              and wd.id = $wettkampfDisziplinId
+             order by
+              wd.ord
+         """.as[WettkampfdisziplinView].withPinnedSession
+    }, Duration.Inf).toList
+    wd.head    
+  }
   
 }

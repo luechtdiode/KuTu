@@ -191,19 +191,32 @@ abstract trait WertungService extends DBService with WertungResultMapper with Di
     wv    
   }
 
-  def updateWertungSimple(w: Wertung, putToBestenresults: Boolean = false) {
-    val wv = getWertung(w.id).wettkampfdisziplin.notenSpez.verifiedAndCalculatedWertung(w)
-    
-//    val endnoteCalculated = wv.i
-    Await.result(database.run((
-      sqlu"""       UPDATE wertung
+  def updateWertungSimple(w: Wertung, putToBestenresults: Boolean = false) = {
+    try {      
+      val wv = readWettkampfDisziplinView(w.wettkampfdisziplinId).notenSpez.verifiedAndCalculatedWertung(w)
+      val wvId = Await.result(database.run((for {
+          updated <- sqlu"""
+                    UPDATE wertung
                     SET note_d=${wv.noteD}, note_e=${wv.noteE}, endnote=${wv.endnote}, riege=${wv.riege}, riege2=${wv.riege2}
-                    WHERE id=${wv.id}
-          """).transactionally
-    ), Duration.Inf)
-    // TODO - this feature is not able to serve for multiple competitions at same time
-    if(putToBestenresults && wv.endnote >= 8.7) {
-      putWertungToBestenResults(getWertung(w.id))
+                    WHERE 
+                      athlet_Id=${w.athletId} and wettkampfdisziplin_Id=${w.wettkampfdisziplinId} and wettkampf_Id=${w.wettkampfId}
+            """
+          wvId <- sql"""
+                    SELECT id FROM wertung
+                    WHERE 
+                      athlet_Id=${w.athletId} and wettkampfdisziplin_Id=${w.wettkampfdisziplinId} and wettkampf_Id=${w.wettkampfId}
+          """.as[Long]
+        } yield {
+          wvId
+        }).transactionally
+      ), Duration.Inf).head
+      // TODO - this feature is not able to serve for multiple competitions at same time
+      if(putToBestenresults && wv.endnote >= 8.7) {
+        putWertungToBestenResults(getWertung(wvId))
+      }
+      wv.copy(id = wvId)
+    } catch {
+      case e: Exception => e.printStackTrace()
     }
   }
 

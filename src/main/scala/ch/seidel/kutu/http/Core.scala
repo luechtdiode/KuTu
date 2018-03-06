@@ -80,9 +80,9 @@ trait KuTuAppHTTPServer extends ApiService with JsonSupport {
   }
   
   def shutDown(caller: String) {
+    Core.terminate()
     serverBinding match {
       case Some(_) =>
-        Core.terminate()
         serverBinding = None
         println(caller + " System terminated")
       case _ =>

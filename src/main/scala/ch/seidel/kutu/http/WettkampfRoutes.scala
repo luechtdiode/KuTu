@@ -162,7 +162,7 @@ trait WettkampfRoutes extends SprayJsonSupport with JsonSupport with JwtSupport 
       pathEnd {
         post {
           onSuccess(wettkampfExistsAsync(wkuuid.toString())) {
-            case exists if (!exists) =>
+            case exists /*if (!exists)*/ =>
               uploadedFile("zip") {
                 case (metadata, file) =>
                   // do something with the file and file metadata ...

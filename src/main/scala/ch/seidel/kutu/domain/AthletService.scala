@@ -127,7 +127,6 @@ trait AthletService extends DBService with AthletResultMapper {
     val bmname = MatchCode.encode(athlet.name)
     val bmvorname = MatchCode.encode(athlet.vorname)
     def similarAthletFactor(code: MatchCode) = {
-//      print(athlet.easyprint, name, vorname, jahrgang)
       val encodedNamen = code.encodedNamen
       val namenSimilarity = MatchCode.similarFactor(code.name, athlet.name) + (100 * encodedNamen.filter(bmname.contains(_)).toList.size / encodedNamen.size)
       val encodedVorNamen = code.encodedVorNamen
@@ -139,6 +138,9 @@ trait AthletService extends DBService with AthletResultMapper {
         case Some(vid) => vid == code.verein
         case _ => true
       }
+//      if (code.name.equals(athlet.name)) {
+//      print(athlet.easyprint, this)
+//      }
       if(vereinSimilarity && preret && jahrgangSimilarity) {
 //        logger.debug(" factor " + (namenSimilarity + vorNamenSimilarity) * 2)
         (namenSimilarity + vorNamenSimilarity) * 2

@@ -34,17 +34,36 @@
   -fx-background-color: null;
 }
 
-#wettkampfmodusButton { /* .toggle-button*/ 
-  -fx-background-color: null;
-  -fx-label-padding: 5 40 5 10;
-  -fx-background-image: url("../images/btn-toggle-off.png");
-  -fx-background-repeat: no-repeat;
-  -fx-background-position: center;
+#wettkampfmodusButton_ { /* .toggle-button*/ 
+    -fx-background-color:
+        linear-gradient(#d6d6d6 50%, white 100%),
+        radial-gradient(center 50% -40%, radius 200%, #e6e6e6 45%, rgba(230,230,230,0));
+    -fx-background-radius: 6, 5;
+    -fx-background-insets: 0, 1;
+    -fx-effect: dropshadow( three-pass-box , rgba(0,0,0,0.4) , 5, 0.0 , 0 , 1 );
+    -fx-text-fill: grey;
 }
 
-#wettkampfmodusButton:selected {/* .toggle-button*/
-  -fx-background-image:url("../images/btn-toggle-on.png");
+#wettkampfmodusButton_:selected {/* .toggle-button*/
+  -fx-background-color:
+        linear-gradient(#f0ff35, #a9ff00),
+        radial-gradient(center 50% -40%, radius 200%, #b8ee36 45%, #80c800 50%);
+  -fx-font-weight: bold;
 }
+.toggle-button { 
+  -fx-background-color: null;
+  -fx-label-padding: 5 40 5 10;
+  -fx-padding: -0 -38 -0 -8;
+  -fx-border-image-source: url("../images/btn-toggle-off.png");
+  /* border-image-slice: oben rechts unten links */
+  -fx-border-image-slice: 5 40 5 20 fill;
+  -fx-border-image-width: 5 40 5 20;
+  -fx-border-image-repeat: stretch;
+}
+.toggle-button:selected {
+  -fx-border-image-source: url("../images/btn-toggle-on.png");
+}
+
 #newButton {
 	-fx-background-color: null;
 	-fx-padding: -10 0 -10 0;
@@ -145,6 +164,16 @@
 #search-info-description {
 	-fx-padding: 5 0 5 0;
 	-fx-text-fill: white;
+}
+
+#connected-info {
+	-fx-padding: 5 0 5 0;
+	-fx-text-fill: white;
+		
+	-fx-border-image-source: url("../images/info-tooltip.png");
+	-fx-border-image-slice: 34 20 12 12 fill;
+	-fx-border-image-width: 34 20 12 12;
+	-fx-border-image-repeat: stretch;
 }
 
 .group-label {

@@ -1,5 +1,6 @@
 package ch.seidel.kutu.data
 
+import scala.concurrent.ExecutionContext.Implicits.global
 import java.io.File
 import java.io.FileOutputStream
 import java.io.OutputStream
@@ -14,6 +15,7 @@ import ch.seidel.kutu.view._
 import ch.seidel.kutu.squad.RiegenBuilder
 import org.slf4j.LoggerFactory
 import ch.seidel.kutu.akka._
+import scala.concurrent.Future
 
 /**
  */
@@ -26,12 +28,17 @@ object ResourceExchanger extends KutuService with RiegenBuilder {
     
     val opFn: KutuAppEvent=>Unit = {  
       case uw @ AthletWertungUpdated(athlet, wertung, wettkampfUUID, durchgang, geraet) =>
-        val mappedAthlet = findAthleteLike()(athlet.toAthlet)
-        val mappedWettkampf = readWettkampf(wettkampfUUID)
-        updateWertungSimple(wertung.copy(athletId = mappedAthlet.id, wettkampfId = mappedWettkampf.id, wettkampfUUID = wettkampfUUID), true)
-        refresher(uw)
-        
-      case _ =>  
+        Future {
+          logger.info("received new " + uw)
+          val mappedverein = athlet.verein match {case Some(v) => findVereinLike(Verein(id = 0, name = v.name, verband = None)) case _ => None}
+          val mappedAthlet = findAthleteLike(cache)(athlet.toAthlet.copy(id = 0, verein = mappedverein))
+          val mappedWettkampf = readWettkampf(wettkampfUUID)
+          val mappedWertung = wertung.copy(athletId = mappedAthlet.id, wettkampfId = mappedWettkampf.id, wettkampfUUID = wettkampfUUID)
+          val verifiedWertung = updateWertungSimple(mappedWertung, true)
+          logger.info("saved " + verifiedWertung)
+          refresher(uw)
+        }
+      case someOther => println(someOther)  
         
     }
     

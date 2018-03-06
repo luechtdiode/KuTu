@@ -78,15 +78,15 @@ object KuTuApp extends JFXApp with KutuService with KuTuAppHTTPServer {
   val modelWettkampfModus = new BooleanProperty()
   val modelWettkampfWertungChanged = new SimpleObjectProperty[KutuAppEvent]()
 
-  val btnWettkampfModus = new ToggleButton("Wettkampf-Modus") {
+  val btnWettkampfModus = new ToggleButton("Wettkampf-Modus asdfadfasdfasdfasdfasdf") {
     id = "wettkampfmodusButton"
     selected <==> modelWettkampfModus
     disable = true
   }
   
   val lblConnectStatus = new Label() {
-    id = "search-info-description"
-//    selected <== ConnectionStates.connectedProperty
+    id = "connected-info"
+//      selected <== ConnectionStates.connectedProperty
     text <== createStringBinding(() => {
       ConnectionStates.connectedWithProperty.value match {
         case "" => "nicht verbunden"
@@ -740,32 +740,34 @@ object KuTuApp extends JFXApp with KutuService with KuTuAppHTTPServer {
               w
             }
           }
-          wf.onComplete {
-            case Failure(f) => logger.debug(f.toString)
-              PageDisplayer.showInDialog(caption, new DisplayablePage() {
-                def getPage: Node = {
-                  new BorderPane {
-                    hgrow = Priority.Always
-                    vgrow = Priority.Always
-                    center = new VBox {
-                      children.addAll(new Label(f.toString))
+          wf.onComplete {tr =>
+            Platform.runLater{ tr match {
+              case Failure(f) => logger.debug(f.toString)
+                PageDisplayer.showInDialog(caption, new DisplayablePage() {
+                  def getPage: Node = {
+                    new BorderPane {
+                      hgrow = Priority.Always
+                      vgrow = Priority.Always
+                      center = new VBox {
+                        children.addAll(new Label(f.toString))
+                      }
                     }
                   }
-                }
-              },
-              new Button("OK") {
-                  onAction = handleAction {implicit e: ActionEvent =>
+                },
+                new Button("OK") {
+                    onAction = handleAction {implicit e: ActionEvent =>
+                    }
                   }
-                }
-              )  
-            case Success(w) =>
-                updateTree
-                val text = s"${w.titel} ${w.datum}"
-                tree.getLeaves("Wettkämpfe").find { item => text.equals(item.value.value) } match {
-                  case Some(node) =>
-                    controlsView.selectionModel().select(node)
-                  case None =>
-                }
+                )  
+              case Success(w) =>
+                  updateTree
+                  val text = s"${w.titel} ${w.datum}"
+                  tree.getLeaves("Wettkämpfe").find { item => text.equals(item.value.value) } match {
+                    case Some(node) =>
+                      controlsView.selectionModel().select(node)
+                    case None =>
+                  }
+            }}
           }
         }
     }
