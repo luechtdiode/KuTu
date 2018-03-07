@@ -1,3 +1,13 @@
 page-home {
+ 
+}
+ion-select {
+  max-width: 80%;
+}
+body > ion-app > ion-alert > div {
+  max-width: 100% !important;
+} 
 
+.alert-md .alert-radio-label {
+  color: deepskyblue;
 }

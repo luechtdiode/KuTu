@@ -123,6 +123,10 @@ trait BasicAuthSupport extends Directives with SprayJsonSupport with Hashing {
     import HttpMethods._
     httpClientRequest(HttpRequest(POST, uri=uri, entity = entity))
   }
+  def httpDeleteClientRequest(uri: String): Future[HttpResponse] = {
+    import HttpMethods._
+    httpClientRequest(HttpRequest(DELETE, uri=uri))
+  }
   def makeHttpGetRequest(url: String) = {
     import HttpMethods._
     withAuthHeader(HttpRequest(GET, uri=url))

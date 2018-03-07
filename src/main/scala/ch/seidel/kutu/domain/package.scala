@@ -84,7 +84,10 @@ package object domain {
 //        case Some(d) => AthletJahrgang(extractYear.format(d))
 //        case None    => AthletJahrgang("unbekannt")
 //      }
-
+  
+  val encodeInvalidURIRegEx =  "[,&.*+?/^${}()|\\[\\]\\\\]".r
+  def encodeURIComponent(uri: String) = encodeInvalidURIRegEx.replaceAllIn(uri, "_")
+  
   trait DataObject {
     def easyprint: String = toString
   }
@@ -264,7 +267,12 @@ package object domain {
         None
       }
     }
-    
+    def removeSecret(homedir: String) {
+      val atFile = filePath(homedir).toFile
+      if (atFile.exists) {
+        atFile.delete()
+      }
+    }
     def hasSecred(homedir: String): Boolean = readSecret(homedir) match {case Some(_) => true case None => false }
   }
 

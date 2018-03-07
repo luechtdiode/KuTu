@@ -15,7 +15,7 @@ import { StationPage } from '../station/station';
 export class HomePage {
 
   constructor(public navCtrl: NavController, public backendService: BackendService) {
-    //this.backendService.getCompetitions();
+    this.backendService.getCompetitions();
   }
 
   set competition(competitionId: string) {
@@ -101,6 +101,9 @@ export class HomePage {
 
   navToStation() {
     this.navCtrl.swipeBackEnabled = true;
-    this.navCtrl.setRoot(StationPage);
+    this.navCtrl.push(StationPage);
+  }
+  logout() {
+    this.backendService.logout();
   }
 }

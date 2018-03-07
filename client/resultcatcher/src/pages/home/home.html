@@ -35,7 +35,7 @@
             <!-- <ion-thumbnail  item-start><img src="assets/imgs/wettkampf.png"></ion-thumbnail > -->
             <ion-label>Wettkampf</ion-label>
             <ion-select *ngIf="getCompetitions()" [(ngModel)]='competition' okText='Okay' cancelText='Abbrechen'>
-              <ion-option *ngFor='let comp of getCompetitions()' [value]='comp.uuid'>{{comp.titel}}</ion-option>
+              <ion-option *ngFor='let comp of getCompetitions()' [value]='comp.uuid'>{{comp.titel + ' ' + (comp.datum | date:'dd-MM-yy')}}</ion-option>
             </ion-select>
           </ion-item>
           <ion-item >
@@ -64,14 +64,18 @@
             <ion-label item-start>Riege {{step}}</ion-label>
           </ion-item>
         </ion-list>
-</ion-content>
-
-<ion-footer>
-    <ion-toolbar>
         <ion-list>
             <button ion-button large block icon-left color="secondary" (click)="navToStation()" [disabled]="!(geraet && getSteps())">
                 <ion-icon name="create"></ion-icon>Resultate</button>
 
+        </ion-list>
+</ion-content>
+
+<ion-footer>
+    <ion-toolbar>
+        <ion-list *ngIf="stationFreezed">
+            <button ion-button large block icon-left color="danger" (click)="logout()" [disabled]="!(geraet && getSteps())">
+                <ion-icon name="log-out"></ion-icon>Station verlassen</button>          
         </ion-list>
     </ion-toolbar>
   </ion-footer>

@@ -80,7 +80,7 @@
 	-fx-background-repeat: no-repeat;
 }
 
-#highlightsButton:hover,#newButton:hover,#wettkampfmodusButton:hover {
+#highlightsButton:hover,#newButton:hover,.toggle-button:hover {
 	-fx-effect: dropshadow(three-pass-box, rgba(255, 255, 255, 0.6), 10, 0.5,
 		0, 0 );
 }

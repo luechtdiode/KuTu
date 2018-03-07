@@ -117,7 +117,18 @@ export class BackendService {
 
   logout() {
     localStorage.removeItem('auth_token');
+    localStorage.removeItem('current_station');
     this.loggedIn = this.checkJWT();
+    this.stationFreezed = false;
+    this._competition = undefined;
+    this._durchgang = undefined;
+    this._geraet = undefined;
+    this._step = undefined;    
+    this.getCompetitions();
+    // this.loadDurchgaenge();    
+    // this.loadGeraete();
+    // this.loadSteps();
+    // this.loadWertungen();
   }
 
   getCompetitions() {
@@ -128,7 +139,7 @@ export class BackendService {
 
   getDurchgaenge(competitionId: string) {
     if (this.durchgaenge != undefined && this._competition === competitionId) return;
-    this.durchgaenge = undefined;
+    this.durchgaenge = [];
     this.geraete = undefined;
     this.steps = undefined;
     this.wertungen = undefined;
@@ -148,7 +159,7 @@ export class BackendService {
 
   getGeraete(competitionId: string, durchgang: string) {
     if (this.geraete != undefined && this._competition === competitionId && this._durchgang === durchgang) return;
-    this.geraete = undefined;
+    this.geraete = [];
     this.steps = undefined;
     this.wertungen = undefined;
 
@@ -167,7 +178,7 @@ export class BackendService {
 
   getSteps(competitionId: string, durchgang: string, geraetId: number) {
     if (this.steps != undefined && this._competition === competitionId && this._durchgang === durchgang && this._geraet === geraetId) return;
-    this.steps = undefined;
+    this.steps = [];
     this.wertungen = undefined;
 
     this._competition = competitionId;
@@ -181,12 +192,15 @@ export class BackendService {
   loadSteps() {
     this.http.get<string[]>(backendUrl + 'api/durchgang/' + this._competition + '/' + encodeURIComponent2(this._durchgang) + '/' + this._geraet).subscribe((data) => {
       this.steps = data.map(step => parseInt(step));
-      this._step = 1;
+      if (this._step === undefined) {
+        this._step = 1;
+        this.loadWertungen();
+      }
     });
   }
   getWertungen(competitionId: string, durchgang: string, geraetId: number, step: number) {
     if (this.wertungen != undefined && this._competition === competitionId && this._durchgang === durchgang && this._geraet === geraetId && this._step === step) return;
-    this.wertungen = undefined;
+    this.wertungen = [];
 
     this._competition = competitionId;
     this._durchgang = durchgang;

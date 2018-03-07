@@ -140,6 +140,11 @@ trait WettkampfRoutes extends SprayJsonSupport with JsonSupport with JwtSupport 
           .runWith(Sink.foreach(importData))
   }
       
+  def httpRemoveWettkampfRequest(wettkampf: Wettkampf) = {
+    httpDeleteClientRequest(s"$remoteAdminBaseUrl/api/competition/${wettkampf.uuid.get}")
+    wettkampf.removeSecret(homedir)
+  }
+  
   def extractWettkampfUUID: HttpHeader => Option[String] = {
     case HttpHeader("wkuuid", value) => Some(value)
     case _                           => None
@@ -162,7 +167,7 @@ trait WettkampfRoutes extends SprayJsonSupport with JsonSupport with JwtSupport 
       pathEnd {
         post {
           onSuccess(wettkampfExistsAsync(wkuuid.toString())) {
-            case exists /*if (!exists)*/ =>
+            case exists if (!exists) =>
               uploadedFile("zip") {
                 case (metadata, file) =>
                   // do something with the file and file metadata ...
