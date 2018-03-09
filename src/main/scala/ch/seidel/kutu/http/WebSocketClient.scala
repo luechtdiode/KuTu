@@ -37,7 +37,6 @@ object WebSocketClient extends SprayJsonSupport with JsonSupport {
 
     val (upgradeResponse, promise) = Http().singleWebSocketRequest(
         WebSocketRequest(
-            // FIXME take url from config, choose dynamic from ws/wss
             s"$remoteWebSocketUrl/api/competition/ws", 
             extraHeaders = immutable.Seq(RawHeader(jwtAuthorizationKey, wettkampf.readSecret(homedir).get))),
         flow)

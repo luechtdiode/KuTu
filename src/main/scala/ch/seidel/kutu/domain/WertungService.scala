@@ -191,7 +191,7 @@ abstract trait WertungService extends DBService with WertungResultMapper with Di
     wv    
   }
 
-  def updateWertungSimple(w: Wertung, putToBestenresults: Boolean = false) = {
+  def updateWertungSimple(w: Wertung, putToBestenresults: Boolean = false): Option[Wertung] = {
     try {      
       val wv = readWettkampfDisziplinView(w.wettkampfdisziplinId).notenSpez.verifiedAndCalculatedWertung(w)
       val wvId = Await.result(database.run((for {
@@ -214,9 +214,10 @@ abstract trait WertungService extends DBService with WertungResultMapper with Di
       if(putToBestenresults && wv.endnote >= 8.7) {
         putWertungToBestenResults(getWertung(wvId))
       }
-      wv.copy(id = wvId)
-    } catch {
+      Some(wv.copy(id = wvId))
+    } catch {      
       case e: Exception => e.printStackTrace()
+        None
     }
   }
 

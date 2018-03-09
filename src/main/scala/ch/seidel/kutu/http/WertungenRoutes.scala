@@ -26,6 +26,7 @@ import ch.seidel.kutu.akka.UpdateAthletWertung
 import ch.seidel.kutu.akka.CompetitionCoordinatorClientActor
 import ch.seidel.kutu.akka.WertungContainer
 import scala.concurrent.Await
+import java.util.UUID
 
 trait WertungenRoutes extends SprayJsonSupport with JsonSupport with JwtSupport with BasicAuthSupport with RouterLogging with KutuService {
   import scala.concurrent.ExecutionContext.Implicits.global
@@ -59,6 +60,11 @@ trait WertungenRoutes extends SprayJsonSupport with JsonSupport with JwtSupport 
             }
           }
         }
+      } ~
+      path(Segment / "ws") { durchgang =>
+          authenticated { wettkampfUUID =>
+            handleWebSocketMessages(CompetitionCoordinatorClientActor.createActorSinkSource(UUID.randomUUID().toString, wettkampfUUID, Some(durchgang)))
+          }
       } ~
       path(Segments) {segments => 
         get {

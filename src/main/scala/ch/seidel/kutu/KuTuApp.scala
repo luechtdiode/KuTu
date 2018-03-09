@@ -78,6 +78,7 @@ object KuTuApp extends JFXApp with KutuService with KuTuAppHTTPServer {
   val modelWettkampfModus = new BooleanProperty()
   val modelWettkampfWertungChanged = new SimpleObjectProperty[KutuAppEvent]()
   val selectedWettkampf = new SimpleObjectProperty[WettkampfView]()
+  val selectedWettkampfSecret = new SimpleObjectProperty[Option[String]]()
   
   val btnWettkampfModus = new ToggleButton("Wettkampf-Modus") {
     id = "wettkampfmodusButton"
@@ -109,6 +110,11 @@ object KuTuApp extends JFXApp with KutuService with KuTuAppHTTPServer {
           s"Verbunden mit ${readWettkampf(uuid).easyprint}"
       }       
     }, ConnectionStates.connectedWithProperty)
+  }
+  val lblRemoteAddress = new Label() {
+    id = "connected-info"
+    text.value = Config.remoteBaseUrl
+    visible <== ConnectionStates.connectedProperty
   }
 
   var centerPane = PageDisplayer.choosePage(modelWettkampfModus, None, "dashBoard", tree)
@@ -384,8 +390,10 @@ object KuTuApp extends JFXApp with KutuService with KuTuAppHTTPServer {
       process.onComplete{resultTry =>
         Platform.runLater{ 
           val feedback = resultTry match {
-            case Success(response) => s"Der Wettkampf ${p.easyprint} wurde erfolgreich im Netzwerk bereitgestellt"
-            case Failure(error) => error.toString().replace("(", "(\n")
+            case Success(response) => 
+              selectedWettkampfSecret.value = p.toWettkampf.readSecret(homedir)
+              s"Der Wettkampf ${p.easyprint} wurde erfolgreich im Netzwerk bereitgestellt"
+            case Failure(error) => error.getMessage.replace("(", "(\n")
           }
           implicit val e = action
           PageDisplayer.showInDialog(caption, new DisplayablePage() {
@@ -402,7 +410,9 @@ object KuTuApp extends JFXApp with KutuService with KuTuAppHTTPServer {
         }
       }
     }
-    item.disable  <== when(Bindings.createBooleanBinding(() => p.toWettkampf.hasSecred(homedir), controlsView.selectionModel().selectedItem)) choose true otherwise false 
+    item.disable <== when(Bindings.createBooleanBinding(() => p.toWettkampf.hasSecred(homedir) && !ConnectionStates.connectedProperty.value, 
+        selectedWettkampfSecret, ConnectionStates.connectedProperty,
+        controlsView.selectionModel().selectedItem)) choose true otherwise false 
     item
   }
   
@@ -416,8 +426,10 @@ object KuTuApp extends JFXApp with KutuService with KuTuAppHTTPServer {
       process.onComplete{resultTry =>
         Platform.runLater{ 
           val feedback = resultTry match {
-            case Success(response) => "Wettkampf im Netzwerk entfernt."
-            case Failure(error) => error.toString()
+            case Success(response) => 
+              selectedWettkampfSecret.value = p.toWettkampf.readSecret(homedir)
+              "Wettkampf im Netzwerk entfernt."
+            case Failure(error) => error.getMessage.replace("(", "(\n")
           }
           implicit val e = action
           PageDisplayer.showInDialog(caption, new DisplayablePage() {
@@ -434,7 +446,8 @@ object KuTuApp extends JFXApp with KutuService with KuTuAppHTTPServer {
         }
       }
     }
-    item.disable  <== when(Bindings.createBooleanBinding(() => !p.toWettkampf.hasSecred(homedir), controlsView.selectionModel().selectedItem)) choose true otherwise false 
+    item.disable  <== when(Bindings.createBooleanBinding(() => !p.toWettkampf.hasSecred(homedir) || !ConnectionStates.connectedWithProperty.value.equals(p.uuid.map(_.toString).getOrElse("")), 
+        controlsView.selectionModel().selectedItem, ConnectionStates.connectedWithProperty,selectedWettkampfSecret, ConnectionStates.connectedProperty)) choose true otherwise false 
     item
   }
   
@@ -448,6 +461,7 @@ object KuTuApp extends JFXApp with KutuService with KuTuAppHTTPServer {
     item.disable <== when(Bindings.createBooleanBinding(() => 
       !p.toWettkampf.hasSecred(homedir) || !ConnectionStates.connectedWithProperty.value.equals(p.uuid.map(_.toString).getOrElse("")),
       controlsView.selectionModel().selectedItem,
+      selectedWettkampfSecret, 
       ConnectionStates.connectedWithProperty
       )) choose true otherwise false 
     item
@@ -567,6 +581,7 @@ object KuTuApp extends JFXApp with KutuService with KuTuAppHTTPServer {
     item.disable <== when(Bindings.createBooleanBinding(() => 
       !ConnectionStates.connectedWithProperty.value.equals(p.uuid.map(_.toString).getOrElse("")),
       controlsView.selectionModel().selectedItem,
+      selectedWettkampfSecret, 
       ConnectionStates.connectedWithProperty
       )) choose true otherwise false 
     item
@@ -618,7 +633,7 @@ object KuTuApp extends JFXApp with KutuService with KuTuAppHTTPServer {
                 hgrow = Priority.Always
                 vgrow = Priority.Always
                 center = new VBox {
-                  children.addAll(new Label(error.toString.replace("(", "(\n")))
+                  children.addAll(new Label(error.getMessage.replace("(", "(\n")))
                 }
               }
             }
@@ -635,6 +650,7 @@ object KuTuApp extends JFXApp with KutuService with KuTuAppHTTPServer {
     item.disable <== when(Bindings.createBooleanBinding(() => 
       !p.toWettkampf.hasSecred(homedir) || ConnectionStates.connectedWithProperty.value.equals(p.uuid.map(_.toString).getOrElse("")),
       controlsView.selectionModel().selectedItem,
+      selectedWettkampfSecret, 
       ConnectionStates.connectedWithProperty
       )) choose true otherwise false 
     item
@@ -851,7 +867,8 @@ object KuTuApp extends JFXApp with KutuService with KuTuAppHTTPServer {
           )  
       }
     }
-    item.disable <== when(Bindings.createBooleanBinding(() => !p.toWettkampf.hasSecred(homedir), controlsView.selectionModel().selectedItem)) choose true otherwise false 
+    item.disable <== when(Bindings.createBooleanBinding(() => !p.toWettkampf.hasSecred(homedir) || !ConnectionStates.connectedWithProperty.value.equals(p.uuid.map(_.toString).getOrElse("")), 
+        ConnectionStates.connectedWithProperty, selectedWettkampfSecret, controlsView.selectionModel().selectedItem)) choose true otherwise false 
     item
   }
   
@@ -979,6 +996,7 @@ object KuTuApp extends JFXApp with KutuService with KuTuAppHTTPServer {
                 case Some(KuTuAppThumbNail(p: WettkampfView, _, newItem)) =>
                   btnWettkampfModus.disable.value = false
                   selectedWettkampf.value = p
+                  selectedWettkampfSecret.value = p.toWettkampf.readSecret(homedir)
                   val networkMenu = new Menu("Netzwerk") {
                     items += showQRCode(p)
                     items += makeWettkampfUploadMenu(p)
@@ -1076,7 +1094,7 @@ object KuTuApp extends JFXApp with KutuService with KuTuAppHTTPServer {
       id = "mainToolBar"
       vgrow = Priority.Always
       hgrow = Priority.Always
-      content = List(btnWettkampfModus, lblConnectStatus)
+      content = List(btnWettkampfModus, lblConnectStatus/*, lblRemoteAddress*/)
     }
   }
   

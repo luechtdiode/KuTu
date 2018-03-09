@@ -66,15 +66,18 @@ class CompetitionCoordinatorClientActor(wettkampfUUID: String) extends Actor wit
       sender ! eventDurchgangStarted
       
     case uw @ UpdateAthletWertung(athlet, wertung, wettkampfUUID, durchgang, geraet) =>
-//      val mappedAthlet = findAthleteLike()(athlet.toAthlet)
-//      val wertungOriginal = selectWertungen(athletId, wkuuid, disziplinId
-//      updateWertungSimple(wertungOriginal.get.wertung.updatedWertung(wertung), true)
-      updateWertungSimple(wertung, true)
-      val toPublish = AthletWertungUpdated(athlet, wertung, wettkampfUUID, durchgang, geraet)
-      wsSend.flatMap(_._2).foreach(ws => ws ! TextMessage(toPublish.toJson.toJsonStringWithType(toPublish)))
+      updateWertungSimple(wertung, true) match {
+        case Some(verifiedWertung) => 
+          // calculate progress for durchgang and for durchgang-geraet
+          // if complete, close durchgang and commit to wettkampf-origin
+          val awu = AthletWertungUpdated(athlet, verifiedWertung, wettkampfUUID, durchgang, geraet)
+          val toPublish = TextMessage(awu.toJson.toJsonStringWithType(awu))
+          wsSend.flatMap(_._2).foreach(ws => ws ! toPublish)
+        case _ =>
+      }
       sender ! MessageAck("OK")
 
-    case uw: KutuAppAction => //@ UpdateAthletWertung(id, name, vorname, verein, geschlecht, wertung, wettkampfUUID, durchgang, geraet) =>
+    case uw: KutuAppAction =>
       wsSend.flatMap(_._2).foreach(ws => ws ! uw)
       sender ! MessageAck("OK")
       

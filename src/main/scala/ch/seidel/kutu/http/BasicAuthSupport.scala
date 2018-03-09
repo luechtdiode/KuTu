@@ -71,7 +71,12 @@ trait BasicAuthSupport extends Directives with SprayJsonSupport with Hashing {
               }, Duration.Inf)            
           }
           println(s"New JWT: $clientheader")
-        case x => println("something wrong", x.toString())
+        case HttpResponse(_, headers, entity, _) => entity match {
+          case HttpEntity.Strict(_, text) =>
+            throw new RuntimeException(text.utf8String)
+          case x => 
+            throw new RuntimeException(x.toString)
+        }
       }
     }
   }
@@ -95,10 +100,14 @@ trait BasicAuthSupport extends Directives with SprayJsonSupport with Hashing {
           }
           println(s"renewed JWT: $clientheader")
           r
-        case x => println("something wrong", x.toString())
-          r
+      
+        case HttpResponse(_, headers, entity, _) => entity match {
+          case HttpEntity.Strict(_, text) =>
+            throw new RuntimeException(text.utf8String)
+          case x => 
+            throw new RuntimeException(x.toString)
         }
-      }
+      }}
     }
   }
   
