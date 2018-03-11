@@ -46,7 +46,7 @@ object WebSocketClient extends SprayJsonSupport with JsonSupport {
     val (upgradeResponse, promise) = Http().singleWebSocketRequest(
         WebSocketRequest(
             s"$remoteWebSocketUrl/api/competition/ws", 
-            extraHeaders = immutable.Seq(RawHeader(jwtAuthorizationKey, wettkampf.readSecret(homedir).get))),
+            extraHeaders = immutable.Seq(RawHeader(jwtAuthorizationKey, wettkampf.readSecret(homedir, remoteHostOrigin).get))),
         flow)
     connectedIncomingPromise = Some(promise)
     promise.future.onComplete{

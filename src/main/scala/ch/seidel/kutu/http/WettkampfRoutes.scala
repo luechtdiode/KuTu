@@ -84,10 +84,10 @@ trait WettkampfRoutes extends SprayJsonSupport with JsonSupport with JwtSupport 
     val wettkampfEntity = toHttpEntity(wettkampf)
     val uploadProm = Promise[String]()
     val uploadFut = uploadProm.future
-    if (remoteHost.startsWith(httpHostname) && !wettkampf.hasSecred(homedir)) {
-      wettkampf.saveSecret(homedir,  JsonWebToken(jwtHeader, setClaims(uuid, Int.MaxValue), jwtSecretKey))
+    if (remoteHost.startsWith(httpHostname) && !wettkampf.hasSecred(homedir, remoteHostOrigin)) {
+      wettkampf.saveSecret(homedir, remoteHostOrigin,  JsonWebToken(jwtHeader, setClaims(uuid, Int.MaxValue), jwtSecretKey))
     }
-    val hadSecret = wettkampf.hasSecred(homedir)
+    val hadSecret = wettkampf.hasSecred(homedir, remoteHostOrigin)
     if (!hadSecret) {
       // try to initial upload new wettkampf
       log.info("post to " + s"${remoteAdminBaseUrl}/api/competition/${uuid}")
@@ -105,7 +105,7 @@ trait WettkampfRoutes extends SprayJsonSupport with JsonSupport with JwtSupport 
                   }, Duration.Inf)            
               }
               println(s"New Secret: " + secret)
-              wettkampf.saveSecret(homedir, secret.get.value)
+              wettkampf.saveSecret(homedir, remoteHostOrigin, secret.get.value)
               uploadProm.success(secret.get.value)
               
             case HttpResponse(_, headers, entity, _) => entity match {
@@ -119,7 +119,7 @@ trait WettkampfRoutes extends SprayJsonSupport with JsonSupport with JwtSupport 
           }
       
     } else {
-      wettkampf.readSecret(homedir) match {
+      wettkampf.readSecret(homedir, remoteHostOrigin) match {
         case Some(secret) => uploadProm.success(secret)
         case _ => uploadProm.failure(new RuntimeException("No Secret for Competition avaliable"))
       }
@@ -156,7 +156,7 @@ trait WettkampfRoutes extends SprayJsonSupport with JsonSupport with JwtSupport 
       
   def httpRemoveWettkampfRequest(wettkampf: Wettkampf) = {
     httpDeleteClientRequest(s"$remoteAdminBaseUrl/api/competition/${wettkampf.uuid.get}")
-    wettkampf.removeSecret(homedir)
+    wettkampf.removeSecret(homedir, remoteHostOrigin)
   }
   
   def extractWettkampfUUID: HttpHeader => Option[String] = {

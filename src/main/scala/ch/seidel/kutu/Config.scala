@@ -90,7 +90,9 @@ object Config {
   
   lazy val remoteHost =    if (appRemoteConfig.hasPath("hostname")) appRemoteConfig.getString("hostname") else "kutuapp"
   lazy val remoteSchema =  if (appRemoteConfig.hasPath("schema"))   appRemoteConfig.getString("schema")   else "https"
-    
+  
+  lazy val remoteHostOrigin = remoteHost.split(":")(0)
+  
   lazy val remoteBaseUrl = s"$remoteSchema://$remoteHost"
   lazy val remoteOperatingBaseUrl = remoteBaseUrl //s"http://$remoteHost:$remotePort/operating"
   lazy val remoteAdminBaseUrl = remoteBaseUrl//s"$remoteBaseUrl/wkadmin"

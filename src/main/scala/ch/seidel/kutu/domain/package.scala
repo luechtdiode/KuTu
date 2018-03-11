@@ -247,10 +247,10 @@ package object domain {
       dir
     }
     
-    def filePath(homedir: String) = new java.io.File(prepareFilePath(homedir), ".at").toPath
+    def filePath(homedir: String, origin: String) = new java.io.File(prepareFilePath(homedir), ".at." + origin).toPath
     
-    def saveSecret(homedir: String, secret: String) {
-      val path = filePath(homedir)
+    def saveSecret(homedir: String, origin: String, secret: String) {
+      val path = filePath(homedir, origin)
       val fos = Files.newOutputStream(path, StandardOpenOption.CREATE_NEW)
       try {
         fos.write(secret.getBytes("utf-8"))
@@ -264,8 +264,8 @@ package object domain {
       }
     }
     
-    def readSecret(homedir: String): Option[String] = {
-      val path = filePath(homedir)
+    def readSecret(homedir: String, origin: String): Option[String] = {
+      val path = filePath(homedir, origin)
       if (path.toFile.exists) {
         Some(new String(Files.readAllBytes(path), "utf-8"))
       }
@@ -273,13 +273,13 @@ package object domain {
         None
       }
     }
-    def removeSecret(homedir: String) {
-      val atFile = filePath(homedir).toFile
+    def removeSecret(homedir: String, origin: String) {
+      val atFile = filePath(homedir, origin).toFile
       if (atFile.exists) {
         atFile.delete()
       }
     }
-    def hasSecred(homedir: String): Boolean = readSecret(homedir) match {case Some(_) => true case None => false }
+    def hasSecred(homedir: String, origin: String): Boolean = readSecret(homedir, origin) match {case Some(_) => true case None => false }
   }
 
 //  object WettkampfView {

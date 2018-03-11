@@ -399,7 +399,7 @@ object KuTuApp extends JFXApp with KutuService with KuTuAppHTTPServer {
         Platform.runLater{ 
           val feedback = resultTry match {
             case Success(response) => 
-              selectedWettkampfSecret.value = p.toWettkampf.readSecret(homedir)
+              selectedWettkampfSecret.value = p.toWettkampf.readSecret(homedir, remoteHostOrigin)
               s"Der Wettkampf ${p.easyprint} wurde erfolgreich im Netzwerk bereitgestellt"
             case Failure(error) => error.getMessage.replace("(", "(\n")
           }
@@ -418,7 +418,7 @@ object KuTuApp extends JFXApp with KutuService with KuTuAppHTTPServer {
         }
       }
     }
-    item.disable <== when(Bindings.createBooleanBinding(() => p.toWettkampf.hasSecred(homedir) && !ConnectionStates.connectedProperty.value, 
+    item.disable <== when(Bindings.createBooleanBinding(() => p.toWettkampf.hasSecred(homedir, remoteHostOrigin) && !ConnectionStates.connectedProperty.value, 
         selectedWettkampfSecret, ConnectionStates.connectedProperty,
         controlsView.selectionModel().selectedItem)) choose true otherwise false 
     item
@@ -435,7 +435,7 @@ object KuTuApp extends JFXApp with KutuService with KuTuAppHTTPServer {
         Platform.runLater{ 
           val feedback = resultTry match {
             case Success(response) => 
-              selectedWettkampfSecret.value = p.toWettkampf.readSecret(homedir)
+              selectedWettkampfSecret.value = p.toWettkampf.readSecret(homedir, remoteHostOrigin)
               "Wettkampf im Netzwerk entfernt."
             case Failure(error) => error.getMessage.replace("(", "(\n")
           }
@@ -454,7 +454,7 @@ object KuTuApp extends JFXApp with KutuService with KuTuAppHTTPServer {
         }
       }
     }
-    item.disable  <== when(Bindings.createBooleanBinding(() => !p.toWettkampf.hasSecred(homedir) || !ConnectionStates.connectedWithProperty.value.equals(p.uuid.map(_.toString).getOrElse("")), 
+    item.disable  <== when(Bindings.createBooleanBinding(() => !p.toWettkampf.hasSecred(homedir, remoteHostOrigin) || !ConnectionStates.connectedWithProperty.value.equals(p.uuid.map(_.toString).getOrElse("")), 
         controlsView.selectionModel().selectedItem, ConnectionStates.connectedWithProperty,selectedWettkampfSecret, ConnectionStates.connectedProperty)) choose true otherwise false 
     item
   }
@@ -467,7 +467,7 @@ object KuTuApp extends JFXApp with KutuService with KuTuAppHTTPServer {
       }
     }
     item.disable <== when(Bindings.createBooleanBinding(() => 
-      !p.toWettkampf.hasSecred(homedir) || !ConnectionStates.connectedWithProperty.value.equals(p.uuid.map(_.toString).getOrElse("")),
+      !p.toWettkampf.hasSecred(homedir, remoteHostOrigin) || !ConnectionStates.connectedWithProperty.value.equals(p.uuid.map(_.toString).getOrElse("")),
       controlsView.selectionModel().selectedItem,
       selectedWettkampfSecret, 
       ConnectionStates.connectedWithProperty
@@ -601,7 +601,7 @@ object KuTuApp extends JFXApp with KutuService with KuTuAppHTTPServer {
       if (remoteBaseUrl.indexOf("localhost") > -1) {
         startServer { uuid => sha256(uuid) }
       }
-      p.uuid.zip(p.toWettkampf.readSecret(homedir)).headOption match {
+      p.uuid.zip(p.toWettkampf.readSecret(homedir, remoteHostOrigin)).headOption match {
         case Some((uuid, secret)) =>
           server.httpRenewLoginRequest(s"$remoteBaseUrl/api/loginrenew", uuid, secret)
         case None => 
@@ -656,7 +656,7 @@ object KuTuApp extends JFXApp with KutuService with KuTuAppHTTPServer {
       connectAndShare(p, caption, action)
     }
     item.disable <== when(Bindings.createBooleanBinding(() => 
-      !p.toWettkampf.hasSecred(homedir) || ConnectionStates.connectedWithProperty.value.equals(p.uuid.map(_.toString).getOrElse("")),
+      !p.toWettkampf.hasSecred(homedir, remoteHostOrigin) || ConnectionStates.connectedWithProperty.value.equals(p.uuid.map(_.toString).getOrElse("")),
       controlsView.selectionModel().selectedItem,
       selectedWettkampfSecret, 
       ConnectionStates.connectedWithProperty
@@ -845,7 +845,7 @@ object KuTuApp extends JFXApp with KutuService with KuTuAppHTTPServer {
   def showQRCode(p: WettkampfView) = {
     val item = makeMenuAction("Kampfrichter Mobile register ...") {(caption, action) =>
       implicit val e = action
-      p.uuid.zip(p.toWettkampf.readSecret(homedir)).headOption match {
+      p.uuid.zip(p.toWettkampf.readSecret(homedir, remoteHostOrigin)).headOption match {
         case Some((uuid, secret)) =>
           val connectionString = s"$remoteBaseUrl/?" + new String(enc.encodeToString((s"c=$uuid&s=$secret").getBytes))
           println(connectionString)
@@ -875,7 +875,7 @@ object KuTuApp extends JFXApp with KutuService with KuTuAppHTTPServer {
           )  
       }
     }
-    item.disable <== when(Bindings.createBooleanBinding(() => !p.toWettkampf.hasSecred(homedir) || !ConnectionStates.connectedWithProperty.value.equals(p.uuid.map(_.toString).getOrElse("")), 
+    item.disable <== when(Bindings.createBooleanBinding(() => !p.toWettkampf.hasSecred(homedir, remoteHostOrigin) || !ConnectionStates.connectedWithProperty.value.equals(p.uuid.map(_.toString).getOrElse("")), 
         ConnectionStates.connectedWithProperty, selectedWettkampfSecret, controlsView.selectionModel().selectedItem)) choose true otherwise false 
     item
   }
@@ -1004,7 +1004,7 @@ object KuTuApp extends JFXApp with KutuService with KuTuAppHTTPServer {
                 case Some(KuTuAppThumbNail(p: WettkampfView, _, newItem)) =>
                   btnWettkampfModus.disable.value = false
                   selectedWettkampf.value = p
-                  selectedWettkampfSecret.value = p.toWettkampf.readSecret(homedir)
+                  selectedWettkampfSecret.value = p.toWettkampf.readSecret(homedir, remoteHostOrigin)
                   val networkMenu = new Menu("Netzwerk") {
                     items += showQRCode(p)
                     items += makeWettkampfUploadMenu(p)
