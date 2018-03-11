@@ -22,25 +22,18 @@ import slick.jdbc.SQLiteProfile.api.DBIO
 import slick.jdbc.SQLiteProfile.api.actionBasedSQLInterpolation
 import slick.jdbc.SQLiteProfile.api.jdbcActionExtensionMethods
 
-trait DBService {
+object DBService {
   private val logger = LoggerFactory.getLogger(this.getClass)
-  
-  lazy val databasemysql = Database.forURL(
-    url = "jdbc:mysql://localhost:3306/kutu",
-//    url = "jdbc:mysql://localhost:36551/kutu",
-    driver = "com.mysql.jdbc.Driver",
-    user = "kutu",
-    password = "kutu")
 
-  lazy val proplite = {
+  lazy private val proplite = {
     val prop = new Properties()
     prop.setProperty("date_string_format", "yyyy-MM-dd")
     prop.setProperty("connectionPool", "disabled")
     prop.setProperty("keepAliveConnection", "true")
     prop
   }
-  lazy val dbFilename = s"kutu-$appVersion.sqlite"
-  lazy val dbhomedir = if(new File("./db/kutu.sqlite").exists()) {
+  lazy private val dbFilename = s"kutu-$appVersion.sqlite"
+  lazy private val dbhomedir = if(new File("./db/kutu.sqlite").exists()) {
     logger.info("using db at: " + new File("./db/" + dbFilename).getAbsolutePath);
     "./db"
   }
@@ -64,9 +57,9 @@ trait DBService {
         f.getPath
     }
   }
-  val dbfile = new File(dbhomedir + "/" + dbFilename)
+  private lazy val dbfile = new File(dbhomedir + "/" + dbFilename)
 
-  lazy val databaselite = Database.forURL(
+  private lazy val databaselite = Database.forURL(
     url = "jdbc:sqlite:" + dbfile.getAbsolutePath,
     driver = "org.sqlite.JDBC",
     prop = proplite,
@@ -79,19 +72,7 @@ trait DBService {
     databaselite
   }
 //  lazy val database = databasemysql
-
-  def installDB {
-    val sqlScripts = Seq(
-         "kutu-sqllite-ddl.sql"
-        ,"kutu-sqllite-initialdata.sql"        
-        )
-
-    sqlScripts.foreach { filename =>
-      logger.info(s"running sql-script: $filename")
-      val file = getClass.getResourceAsStream("/dbscripts/" + filename)
-      executeDBScript(Source.fromInputStream(file, "utf-8").getLines())
-    }
-  }
+  
 
   def updateDB {
     val sqlScripts = Seq(
@@ -185,6 +166,19 @@ trait DBService {
   }
 
 
+  def installDB {
+    val sqlScripts = Seq(
+         "kutu-sqllite-ddl.sql"
+        ,"kutu-sqllite-initialdata.sql"        
+        )
+
+    sqlScripts.foreach { filename =>
+      logger.info(s"running sql-script: $filename")
+      val file = getClass.getResourceAsStream("/dbscripts/" + filename)
+      executeDBScript(Source.fromInputStream(file, "utf-8").getLines())
+    }
+  }
+
   lazy val startDB = {
     logger.info("starting database ...")
     if(!dbfile.exists() || dbfile.length() == 0) {
@@ -199,22 +193,31 @@ trait DBService {
   if (!startDB) {
     logger.error("Database not initialized!!!")
     System.exit(-1)
-  }
+  }  
+
   val sdf = new SimpleDateFormat("dd.MM.yyyy")
   val sdfShort = new SimpleDateFormat("dd.MM.yy")
   val sdfExported = new SimpleDateFormat("yyyy-MM-dd")
+  val sdfYear = new SimpleDateFormat("yyyy")
+
+}
+
+trait DBService {
+  private val logger = LoggerFactory.getLogger(this.getClass)
+  
+  val database = DBService.database
+  
 
   implicit def getSQLDate(date: String) = try {
-    new java.sql.Date(sdf.parse(date).getTime)
+    new java.sql.Date(DBService.sdf.parse(date).getTime)
   }
   catch {
     case d: ParseException => try {
-    	new java.sql.Date(sdfExported.parse(date).getTime)
+    	new java.sql.Date(DBService.sdfExported.parse(date).getTime)
     }
     catch {
       case dd: ParseException =>
-        new java.sql.Date(sdfShort.parse(date).getTime)
+        new java.sql.Date(DBService.sdfShort.parse(date).getTime)
     }
   }
-  
 }

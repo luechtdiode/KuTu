@@ -25,6 +25,7 @@ import java.net.InetAddress
 import authentikat.jwt.JsonWebToken
 import scala.concurrent.Await
 import ch.seidel.kutu.Config._
+import ch.seidel.kutu.domain.DBService
 
 object Core extends KuTuSSLContext {
 //  val logger = LoggerFactory.getLogger(this.getClass)
@@ -60,7 +61,7 @@ trait KuTuAppHTTPServer extends ApiService with JsonSupport {
        */
       sys.addShutdownHook(shutDown(getClass.getName))
       
-      startDB
+      DBService.startDB
       
       import collection.JavaConverters._
       val binding = if (hasHttpsConfig) {
