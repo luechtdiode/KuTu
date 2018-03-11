@@ -12,20 +12,29 @@ import java.nio.file.LinkOption
 
 object Config {
   private val logger = LoggerFactory.getLogger(this.getClass)
+  logger.info("OS-Name: " + System.getProperty("os.name"))
   
   val configPath = System.getProperty("user.dir")
-  logger.info("Path where custom configurations (kutuapp.conf) are taken from:", configPath)
-  val userHomePath = System.getProperty("user.home")
-  logger.info("Path where db is taken from:", userHomePath)
+  logger.info(s"user.dir Path where custom configurations (kutuapp.conf) are taken from: ${new File(configPath).getAbsolutePath}")
+  val userHomePath = System.getProperty("user.home") + "/kutuapp"
+  logger.info(s"user.home Path where db is taken from: ${new File(userHomePath).getAbsolutePath}")
   val userConfig = new File(configPath + "/kutuapp.conf")
   val config = if (userConfig.exists()) ConfigFactory.parseFile(new File(configPath + "/kutuapp.conf")).withFallback(ConfigFactory.load()) else ConfigFactory.load()
 
+  val appVersion = if (config.hasPath("version")) config.getString("version") else "2.0"
+  logger.info(s"App-Version: $appVersion")
+    
   private val jwtConfig = config.getConfig("jwt")
   private val appRemoteConfig = config.getConfig("app.remote")
 
   def saveSecret(secret: String) {
-    val path = new File(userHomePath + "/kutuapp/.jwt").toPath
-    Files.newOutputStream(path, StandardOpenOption.CREATE_NEW).write(secret.getBytes("utf-8"))
+    val path = new File(userHomePath + "/.jwt").toPath
+    val fos = Files.newOutputStream(path, StandardOpenOption.CREATE_NEW)
+    try {
+      fos.write(secret.getBytes("utf-8"))
+    } finally {
+      fos.close
+    }
     if (System.getProperty("os.name").toLowerCase.indexOf("win") > -1) {
       Files.setAttribute(path, "dos:hidden", true, LinkOption.NOFOLLOW_LINKS)
     }
@@ -33,7 +42,7 @@ object Config {
   }
   
   def readSecret: Option[String] = {
-    val path = new File(userHomePath + "/kutuapp/.jwt").toPath
+    val path = new File(userHomePath + "/.jwt").toPath
     if (path.toFile.exists) {
       logger.info("Secret found " + path)
       Some(new String(Files.readAllBytes(path), "utf-8"))
@@ -59,13 +68,13 @@ object Config {
   lazy val homedir = if(new File("./data").exists()) {
     "./data"
   }
-  else if(new File(System.getProperty("user.home") + "/kutuapp/data").exists()) {
-    System.getProperty("user.home") + "/kutuapp/data"
+  else if(new File(userHomePath + "/data").exists()) {
+    userHomePath + "/data"
   }
   else {
-    val f = new File(System.getProperty("user.home") + "/kutuapp/data")
+    val f = new File(userHomePath + "/data")
     f.mkdirs();
-    System.getProperty("user.home") + "/kutuapp/data"
+    userHomePath + "/data"
   }
   
   lazy val httpInterface = if (config.hasPath("http.interface"))    config.getString("http.interface")    else "0.0.0.0"

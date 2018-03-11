@@ -1,41 +1,26 @@
 package ch.seidel.kutu.domain
 
-import java.text.SimpleDateFormat
-import java.text.ParseException
-import java.time.LocalDate
-import java.time.temporal.TemporalField
-import java.time.Period
-import java.sql.Date
-import java.util.concurrent.TimeUnit
-import java.util.Properties
 import java.io.File
+import java.nio.file.Files
+import java.nio.file.StandardOpenOption
+import java.text.ParseException
+import java.text.SimpleDateFormat
+import java.util.Properties
 
-import scala.io.Source
 import scala.annotation.tailrec
-import scala.collection.JavaConversions
-import scala.concurrent.ExecutionContext.Implicits.global
-
-import slick.jdbc.JdbcBackend.Database
-//import slick.jdbc.JdbcBackend.Session
-import slick.jdbc.SQLiteProfile
-import slick.jdbc.SQLiteProfile.api._
-import slick.jdbc.PositionedResult
-import slick.jdbc.GetResult
-//import slick.jdbc.SetParameter
-//import slick.lifted.Query
-
-import org.sqlite.SQLiteConfig.Pragma
-import org.sqlite.SQLiteConfig.DatePrecision
-
-import java.util.Arrays.ArrayList
-import java.util.Collections
-import java.util.ArrayList
 import scala.concurrent.Await
 import scala.concurrent.duration.Duration
-import scala.collection.JavaConverters
-import ch.seidel.kutu.squad._
+import scala.io.Source
+
 import org.slf4j.LoggerFactory
-import ch.seidel.kutu.Config._
+
+import ch.seidel.kutu.Config.appVersion
+import ch.seidel.kutu.Config.userHomePath
+import slick.jdbc.JdbcBackend.Database
+import slick.jdbc.SQLiteProfile.api.AsyncExecutor
+import slick.jdbc.SQLiteProfile.api.DBIO
+import slick.jdbc.SQLiteProfile.api.actionBasedSQLInterpolation
+import slick.jdbc.SQLiteProfile.api.jdbcActionExtensionMethods
 
 trait DBService {
   private val logger = LoggerFactory.getLogger(this.getClass)
@@ -54,32 +39,32 @@ trait DBService {
     prop.setProperty("keepAliveConnection", "true")
     prop
   }
-  
+  lazy val dbFilename = s"kutu-$appVersion.sqlite"
   lazy val dbhomedir = if(new File("./db/kutu.sqlite").exists()) {
-    logger.info("using db at: " + new File("./db/kutu.sqlite").getAbsolutePath);
+    logger.info("using db at: " + new File("./db/" + dbFilename).getAbsolutePath);
     "./db"
   }
-  else if(new File(System.getProperty("user.home") + "/kutuapp/db").exists()) {
-    logger.info("using db at: " + System.getProperty("user.home") + "/kutuapp/db");
-    System.getProperty("user.home") + "/kutuapp/db"
+  else if(new File(userHomePath + "/db").exists()) {
+    logger.info("using db at: " + userHomePath + "/db");
+    userHomePath + "/db"
 //    "./db"
   }
   else {
-    val f = new File(System.getProperty("user.home") + "/kutuapp/db")
+    val f = new File(userHomePath + "/db")
     logger.info("try to create for installing the db: " + f);
     try {
       f.mkdirs();
       logger.info("using db at: " + f);
-      System.getProperty("user.home") + "/kutuapp/db"
+      userHomePath + "/db"
     } catch {
       case _ : Throwable =>
         val f = new File(".db")
-        logger.warn("try to create for installing the db: " + f);
+        logger.warn("try to create for installing the db: " + f.getAbsolutePath);
         f.mkdirs();
         f.getPath
     }
   }
-  val dbfile = new File(dbhomedir + "/kutu.sqlite")
+  val dbfile = new File(dbhomedir + "/" + dbFilename)
 
   lazy val databaselite = Database.forURL(
     url = "jdbc:sqlite:" + dbfile.getAbsolutePath,
@@ -110,34 +95,29 @@ trait DBService {
 
   def updateDB {
     val sqlScripts = Seq(
-         "UpdateGeTuReihenfolge.sql"
-        ,"AlterGeschlechtFelder.sql"
-        //,"CreateIndicies.sql"
-        ,"AlterAlternativeRiegeFelder.sql"
-        ,"AlterRiegeVerbandAuszNote.sql"
-        ,"UpdateGeTuK7.sql"
-        ,"UpdateGeTuK7Ord.sql"
-        ,"AddGeTuDamenHerrenKategorie.sql"
-        ,"UpdateGeTuK7DamenOhneBarren.sql"
-        ,"AlterKampfrichter.sql"
-        ,"AlterWettkampfUUID.sql"
+//        ,"AlterWettkampfUUID.sql"
         )
 
     sqlScripts.filter{ filename =>
-      val f = new File(dbhomedir + "/" + filename)
+      val f = new File(dbhomedir + s"/$appVersion-$filename.log")
       !f.exists()
     }.foreach { filename =>
       val file = getClass.getResourceAsStream("/dbscripts/" + filename)
-      try {
+      val log = try {
         logger.info(s"running sql-script: $filename")
 
         executeDBScript(Source.fromInputStream(file, "utf-8").getLines())
       }
       catch {
-        case e: Exception => e.printStackTrace()
+        case e: Exception => e.getMessage
       }
-      val quitfile = new File(dbhomedir + "/" + filename)
-      quitfile.createNewFile();
+      
+      val fos = Files.newOutputStream(new File(dbhomedir + s"/$appVersion-$filename.log").toPath, StandardOpenOption.CREATE_NEW)
+      try {
+        fos.write(log.getBytes("utf-8"))
+      } finally {
+        fos.close
+      }
     }
   }
 
@@ -184,7 +164,7 @@ trait DBService {
     cutFields(s, IndexedSeq[String]())
   }
 
-  def executeDBScript(script: Iterator[String]) {
+  def executeDBScript(script: Iterator[String]) = {
     def filterCommentLines(line: String) = {
       !line.trim().startsWith("-- ")
     }
@@ -199,8 +179,9 @@ trait DBService {
     def parse(lines: Iterator[String]): List[String] = {
       lines.filter(filterCommentLines).foldLeft(List(""))(combineMultilineStatement).filter(_.trim().length() > 0)
     }
-    
-    Await.result(database.run(DBIO.sequence(parse(script).map(statement => sqlu"""#$statement""")).transactionally), Duration.Inf)
+    val statements = parse(script).map(statement => sqlu"""#$statement""")
+    val counters = Await.result(database.run(DBIO.sequence(statements).transactionally), Duration.Inf)
+    statements.zip(counters).map(p => s"statements: ${p._1.statements.mkString("[", ",", "]")}\n\tupdate-cnt: ${p._2}").mkString("\n")
   }
 
 

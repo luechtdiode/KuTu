@@ -232,11 +232,11 @@ package object domain {
 //      if(uuid != null) Wettkampf(id, datum, titel, programmId, auszeichnung, auszeichnungendnote, Some(uuid))
 //      else apply(id, datum, titel, programmId, auszeichnung, auszeichnungendnote)
 //  }
-  case class Wettkampf(id: Long, datum: java.sql.Date, titel: String, programmId: Long, auszeichnung: Int, auszeichnungendnote: scala.math.BigDecimal, uuid: Option[String]) extends DataObject {
+  case class Wettkampf(id: Long, uuid: Option[String], datum: java.sql.Date, titel: String, programmId: Long, auszeichnung: Int, auszeichnungendnote: scala.math.BigDecimal) extends DataObject {
     override def easyprint = f"$titel am $datum%td.$datum%tm.$datum%tY"
     
     def toView(programm: ProgrammView) = {
-      WettkampfView(id, datum, titel, programm, auszeichnung, auszeichnungendnote, uuid)
+      WettkampfView(id, uuid, datum, titel, programm, auszeichnung, auszeichnungendnote)
     }
     
     def prepareFilePath(homedir: String) = {
@@ -289,17 +289,17 @@ package object domain {
 //      if(uuid != null) WettkampfView(id, datum, titel, programm, auszeichnung, auszeichnungendnote, Some(uuid))
 //      else apply(id, datum, titel, programm, auszeichnung, auszeichnungendnote)
 //  }
-  case class WettkampfView(id: Long, datum: java.sql.Date, titel: String, programm: ProgrammView, auszeichnung: Int, auszeichnungendnote: scala.math.BigDecimal, uuid: Option[String]) extends DataObject {
+  case class WettkampfView(id: Long, uuid: Option[String], datum: java.sql.Date, titel: String, programm: ProgrammView, auszeichnung: Int, auszeichnungendnote: scala.math.BigDecimal) extends DataObject {
     override def easyprint = f"$titel am $datum%td.$datum%tm.$datum%tY"
-    def toWettkampf = Wettkampf(id, datum, titel, programm.id, auszeichnung, auszeichnungendnote, uuid)
+    def toWettkampf = Wettkampf(id, uuid, datum, titel, programm.id, auszeichnung, auszeichnungendnote)
   }
 
-  case class Wettkampfdisziplin(id: Long, programmId: Long, disziplinId: Long, kurzbeschreibung: String, detailbeschreibung: Option[java.sql.Blob], notenfaktor: scala.math.BigDecimal, ord: Int, masculin: Int, feminim: Int) extends DataObject {
+  case class Wettkampfdisziplin(id: Long, programmId: Long, disziplinId: Long, kurzbeschreibung: String, detailbeschreibung: Option[java.sql.Blob], notenfaktor: scala.math.BigDecimal, masculin: Int, feminim: Int, ord: Int) extends DataObject {
     override def easyprint = f"$disziplinId%02d: $kurzbeschreibung"
   }
-  case class WettkampfdisziplinView(id: Long, programm: ProgrammView, disziplin: Disziplin, kurzbeschreibung: String, detailbeschreibung: Option[Array[Byte]], notenSpez: NotenModus, ord: Int, masculin: Int, feminim: Int) extends DataObject {
+  case class WettkampfdisziplinView(id: Long, programm: ProgrammView, disziplin: Disziplin, kurzbeschreibung: String, detailbeschreibung: Option[Array[Byte]], notenSpez: NotenModus, masculin: Int, feminim: Int, ord: Int) extends DataObject {
     override def easyprint = disziplin.name
-    def toWettkampdisziplin = Wettkampfdisziplin(id, programm.id, disziplin.id, kurzbeschreibung, None, notenSpez.calcEndnote(0, 1), ord, masculin, feminim)
+    def toWettkampdisziplin = Wettkampfdisziplin(id, programm.id, disziplin.id, kurzbeschreibung, None, notenSpez.calcEndnote(0, 1), masculin, feminim, ord)
   }
 
   case class Resultat(noteD: scala.math.BigDecimal, noteE: scala.math.BigDecimal, endnote: scala.math.BigDecimal) extends DataObject {

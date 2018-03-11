@@ -92,6 +92,7 @@ class CompetitionCoordinatorClientActor(wettkampfUUID: String) extends Actor wit
             println("publishing from + " + sender.path + " to " + ws.path)
             ws ! toPublish
           }
+        case _ =>
       }
       
     case uw: KutuAppAction =>
