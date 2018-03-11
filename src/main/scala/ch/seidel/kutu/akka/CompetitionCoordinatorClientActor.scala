@@ -39,6 +39,9 @@ class CompetitionCoordinatorClientActor(wettkampfUUID: String) extends Actor wit
   var deviceWebsocketRefs: Map[String,ActorRef] = Map.empty
   var pendingKeepAliveAck: Option[Int] = None
 
+  private def deviceIdOf(actor: ActorRef) = deviceWebsocketRefs.filter(_._2 == actor).map(_._1)
+  private def actorWithSameDeviceIdOfSender = deviceWebsocketRefs.filter(p => sender.path.name.endsWith(p._1)).map(_._2)
+  
   // send keepalive messages to prevent closing the websocket connection
   private case object KeepAlive
   val liveticker = context.system.scheduler.schedule(15.second, 15.second) {
@@ -70,13 +73,27 @@ class CompetitionCoordinatorClientActor(wettkampfUUID: String) extends Actor wit
         case Some(verifiedWertung) => 
           // calculate progress for durchgang and for durchgang-geraet
           // if complete, close durchgang and commit to wettkampf-origin
-          val awu = AthletWertungUpdated(athlet, verifiedWertung, wettkampfUUID, durchgang, geraet)
-          val toPublish = TextMessage(awu.toJson.toJsonStringWithType(awu))
+          val awu: KutuAppEvent = AthletWertungUpdated(athlet, verifiedWertung, wettkampfUUID, durchgang, geraet)
+          val toPublish = TextMessage(awu.toJson.compactPrint)
           wsSend.flatMap(_._2).foreach(ws => ws ! toPublish)
         case _ =>
       }
       sender ! MessageAck("OK")
-
+      
+    case awu @ AthletWertungUpdated(athlet, verifiedWertung, wettkampfUUID, durchgang, geraet) =>
+      updateWertungSimple(verifiedWertung, true) match {
+        case Some(verifiedWertung) => 
+          val senderWebSocket = actorWithSameDeviceIdOfSender
+          // calculate progress for durchgang and for durchgang-geraet
+          // if complete, close durchgang and commit to wettkampf-origin
+          val awu: KutuAppEvent = AthletWertungUpdated(athlet, verifiedWertung, wettkampfUUID, durchgang, geraet)
+          val toPublish = TextMessage(awu.toJson.compactPrint)
+          wsSend.flatMap(_._2).filter(ws => !senderWebSocket.exists(_ == ws)).foreach{ws => 
+            println("publishing from + " + sender.path + " to " + ws.path)
+            ws ! toPublish
+          }
+      }
+      
     case uw: KutuAppAction =>
       wsSend.flatMap(_._2).foreach(ws => ws ! uw)
       sender ! MessageAck("OK")
@@ -91,7 +108,7 @@ class CompetitionCoordinatorClientActor(wettkampfUUID: String) extends Actor wit
     // system actions
     case KeepAlive => wsSend.flatMap(_._2).foreach(ws => ws ! TextMessage("KeepAlive"))
     
-    case MessageAck(txt) if (txt.equals("keepAlive")) => handleKeepAliveAck
+    case MessageAck(txt) => if (txt.equals("keepAlive")) handleKeepAliveAck else println(txt)
 
     case StopDevice(deviceId) =>
       val stoppedWebsocket = deviceWebsocketRefs(deviceId)
@@ -164,6 +181,8 @@ class ClientActorSupervisor extends Actor {
     case Terminated(wettkampfActor) =>
       context.unwatch(wettkampfActor)
       wettkampfCoordinators = wettkampfCoordinators.filter(_._2 != wettkampfActor)
+      
+    case MessageAck(text) => println(text)
   }
 }
 
@@ -205,12 +224,11 @@ object CompetitionCoordinatorClientActor extends JsonSupport with EnrichedJson {
   def createActorSinkSource(deviceId: String, wettkampfUUID: String, durchgang: Option[String]): Flow[Message, Message, Any] = {
     val clientActor = Await.result(ask(supervisor, CreateClient(deviceId, wettkampfUUID))(5000 milli).mapTo[ActorRef], 5000 milli)     
     
-    val source: Source[Nothing, ActorRef] = Source.actorRef(256, OverflowStrategy.dropNew).mapMaterializedValue { wsSend =>
-      clientActor ! Subscribe(wsSend, deviceId, durchgang)
-      wsSend
-    }
-
-    val sink = websocketFlow.to(Sink.actorRef(clientActor, StopDevice(deviceId)))
+    val sink = websocketFlow.to(Sink.actorRef(clientActor, StopDevice(deviceId)).named(deviceId))
+    val source: Source[Nothing, ActorRef] = Source.actorRef(256, OverflowStrategy.dropNew).mapMaterializedValue { wsSource =>
+      clientActor ! Subscribe(wsSource, deviceId, durchgang)
+      wsSource
+    }.named(deviceId)
 
     Flow.fromSinkAndSource(sink, source)
   }

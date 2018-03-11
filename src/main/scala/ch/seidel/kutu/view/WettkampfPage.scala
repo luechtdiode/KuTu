@@ -35,6 +35,9 @@ object WettkampfPage {
       (progSites).foreach { t => 
         t.asInstanceOf[WettkampfWertungTab].release
       }
+      ranglisteSite.foreach{t => 
+        t.asInstanceOf[RanglisteTab].release
+      }
     }
     def refresher(pane: LazyTabPane) = {
       (progSites).foreach { t => 

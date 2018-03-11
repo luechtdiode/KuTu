@@ -250,7 +250,7 @@ case object ByJahr extends GroupBy with FilterBy {
     WettkampfJahr(extractYear.format(v.wettkampf.datum))
   }
   protected override val sorter: Option[(GroupSection, GroupSection) => Boolean] = Some((gs1: GroupSection, gs2: GroupSection) => {
-    gs1.groupKey.asInstanceOf[WettkampfJahr].hg.compareTo(gs2.groupKey.asInstanceOf[WettkampfJahr].hg) < 0
+    gs1.groupKey.asInstanceOf[WettkampfJahr].wettkampfjahr.compareTo(gs2.groupKey.asInstanceOf[WettkampfJahr].wettkampfjahr) < 0
   })
 
   def items(fromData: Seq[WertungView]): List[DataObject] = {
@@ -268,7 +268,7 @@ case object ByJahrgang extends GroupBy with FilterBy {
     }
   }
   protected override val sorter: Option[(GroupSection, GroupSection) => Boolean] = Some((gs1: GroupSection, gs2: GroupSection) => {
-    gs1.groupKey.asInstanceOf[AthletJahrgang].hg.compareTo(gs2.groupKey.asInstanceOf[AthletJahrgang].hg) < 0
+    gs1.groupKey.asInstanceOf[AthletJahrgang].jahrgang.compareTo(gs2.groupKey.asInstanceOf[AthletJahrgang].jahrgang) < 0
   })
 
   def items(fromData: Seq[WertungView]): List[DataObject] = {

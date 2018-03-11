@@ -29,19 +29,26 @@ trait JsonSupport extends SprayJsonSupport with EnrichedJson {
   
   implicit val wertungContainerFormat = jsonFormat7(WertungContainer)
   implicit val athletWertungFormat = jsonFormat5(UpdateAthletWertung)
-  implicit val wertungUpdatedFormat = jsonFormat5(AthletWertungUpdated)
+  val wertungUpdatedFormat = jsonFormat5(AthletWertungUpdated)
   
   // support for websocket incoming json-messages
-  val caseClassesJsonReader: Map[String, JsonReader[_ <: KutuAppEvent]] = Map(      
+  val caseClassesJsonFormatter: Map[String, JsonFormat[_ <: KutuAppEvent]] = Map(      
       classOf[AthletWertungUpdated].getSimpleName -> wertungUpdatedFormat
   )
 
-  implicit val messagesFormat: JsonReader[KutuAppEvent] = { json =>
-    json.asOpt[JsObject].flatMap(_.fields.get("type").flatMap(_.asOpt[String])).map(caseClassesJsonReader) match {
+  implicit val messagesFormatter: RootJsonFormat[KutuAppEvent] = new RootJsonFormat[KutuAppEvent] { 
+    override def read(json: JsValue) = 
+      json.asOpt[JsObject].flatMap(_.fields.get("type").flatMap(_.asOpt[String])).map(caseClassesJsonFormatter) match {
       case Some(jsonReader) =>
         val plain = json.withoutFields("type")
         jsonReader.read(plain)
       case _ => throw new Exception(s"Unable to parse $json to KutuAppProtokoll")
+    }
+    override def write(obj: KutuAppEvent): JsValue = 
+      caseClassesJsonFormatter.get(obj.getClass.getSimpleName) match {
+      case Some(jsonWriter) => 
+        jsonWriter.asInstanceOf[JsonFormat[KutuAppEvent]].write(obj).addFields(Map(("type" -> JsString(obj.getClass.getSimpleName))))
+      case _ => throw new Exception(s"Unable to find jsonFormatter for $obj")
     }
   }
 }

@@ -75,6 +75,7 @@ import org.slf4j.LoggerFactory
 import scalafx.util.converter.DoubleStringConverter
 import scala.concurrent.Future
 import ch.seidel.kutu.Config._
+import java.util.UUID
 
 trait TCAccess[R, E, IDX] {
   def getIndex: IDX
@@ -97,7 +98,8 @@ class WKTableColumn[T](val index: Int) extends TableColumn[IndexedSeq[WertungEdi
 
 class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[ProgrammView], riege: Option[String], wettkampf: WettkampfView, override val service: KutuService, athleten: => IndexedSeq[WertungView]) extends Tab with TabWithService {
   val logger = LoggerFactory.getLogger(this.getClass)
-	implicit def doublePropertyToObservableValue(p: DoubleProperty): ObservableValue[Double,Double] = p.asInstanceOf[ObservableValue[Double,Double]]
+
+  implicit def doublePropertyToObservableValue(p: DoubleProperty): ObservableValue[Double,Double] = p.asInstanceOf[ObservableValue[Double,Double]]
   private var lazypane: Option[LazyTabPane] = None
   def setLazyPane(pane: LazyTabPane) {
     lazypane = Some(pane);
@@ -199,9 +201,7 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
       case Some(s) => 
         s.cancel
         subscription = None
-//        logger.debug("subscription released "+ programm + wettkampf + hashCode())
       case None =>
-//        logger.debug("nonexisting subscription released "+ programm+ wettkampf + hashCode())
     }
   }
   
@@ -236,7 +236,6 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
       map(wvg => wvg._2.map(WertungEditor)).toIndexedSeq
     }
 
-//    val webView = new WebView
     var wertungen = reloadWertungen()
  		val wkModel = ObservableBuffer[IndexedSeq[WertungEditor]](wertungen)
     var editingEditor: Option[WertungEditor] = None
@@ -313,81 +312,8 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
     }
 
     def rebuildDurchgangFilterList = {
-      val driver = service.selectWertungen(wettkampfId = Some(wettkampf.id)).groupBy { x => x.athlet }.map(_._2).toList
-      val programme = driver.flatten.map(x => x.wettkampfdisziplin.programm).foldLeft(Seq[ProgrammView]()){(acc, pgm) =>
-        if(!acc.exists { x => x.id == pgm.id }) {
-          acc :+ pgm
-        }
-        else {
-          acc
-        }
-      }
-      val riegendurchgaenge = service.selectRiegen(wettkampf.id).map(r => r.r-> r).toMap
-      val rds = riegendurchgaenge.values.map(v => v.durchgang.getOrElse("")).toSet
-      val disziplinsZuDurchgangR1 = service.listDisziplinesZuDurchgang(rds, wettkampf.id, true)
-      val disziplinsZuDurchgangR2 = service.listDisziplinesZuDurchgang(rds, wettkampf.id, false)
-
-      val seriendaten = for {
-        programm <- programme
-        athletwertungen <- driver.map(we => we.filter { x => x.wettkampfdisziplin.programm.id == programm.id})
-        if(athletwertungen.nonEmpty)
-      }
-      yield {
-        val einsatz = athletwertungen.head
-        val athlet = einsatz.athlet
-        val riegendurchgang1 = riegendurchgaenge.get(einsatz.riege.getOrElse(""))
-        val riegendurchgang2 = riegendurchgaenge.get(einsatz.riege2.getOrElse(""))
-
-        Kandidat(
-        einsatz.wettkampf.easyprint
-        ,athlet.geschlecht match {case "M" => "Turner"  case _ => "Turnerin"}
-        ,einsatz.wettkampfdisziplin.programm.easyprint
-        ,athlet.id
-        ,athlet.name
-        ,athlet.vorname
-        ,AthletJahrgang(athlet.gebdat).hg
-        ,athlet.verein match {case Some(v) => v.easyprint case _ => ""}
-        ,riegendurchgang1
-        ,riegendurchgang2
-        ,athletwertungen.filter{wertung =>
-          if(wertung.wettkampfdisziplin.feminim == 0 && !wertung.athlet.geschlecht.equalsIgnoreCase("M")) {
-            false
-          }
-          else if(wertung.wettkampfdisziplin.masculin == 0 && wertung.athlet.geschlecht.equalsIgnoreCase("M")) {
-            false
-          }
-          else {
-            riegendurchgang1.forall{x =>
-              x.durchgang.nonEmpty &&
-              x.durchgang.forall{d =>
-                d.nonEmpty &&
-                disziplinsZuDurchgangR1.get(d).map(dm => dm.contains(wertung.wettkampfdisziplin.disziplin)).getOrElse(false)
-              }
-            }
-          }
-        }.map(_.wettkampfdisziplin.disziplin)
-        ,athletwertungen.filter{wertung =>
-          if(wertung.wettkampfdisziplin.feminim == 0 && !wertung.athlet.geschlecht.equalsIgnoreCase("M")) {
-            false
-          }
-          else if(wertung.wettkampfdisziplin.masculin == 0 && wertung.athlet.geschlecht.equalsIgnoreCase("M")) {
-            false
-          }
-          else {
-            riegendurchgang2.forall{x =>
-              x.durchgang.nonEmpty &&
-              x.durchgang.forall{d =>
-                d.nonEmpty &&
-                disziplinsZuDurchgangR2.get(d).map(dm => dm.contains(wertung.wettkampfdisziplin.disziplin)).getOrElse(false)
-              }
-            }
-          }
-        }.map(_.wettkampfdisziplin.disziplin),
-        athletwertungen
-        )
-      }
-
-      val ret = RiegenBuilder.mapToGeraeteRiegen(seriendaten.toList).filter(r => wertungen.exists { p => r.kandidaten.exists { k => p.head.init.athlet.id == k.id } })
+      val kandidaten = service.getAllKandidatenWertungen(UUID.fromString(wettkampf.uuid.get))
+      val ret = RiegenBuilder.mapToGeraeteRiegen(kandidaten).filter(r => wertungen.exists { p => r.kandidaten.exists { k => p.head.init.athlet.id == k.id } })
       erfasst = ret.forall { riege => riege == emptyRiege || riege.erfasst }
       ret
     }
@@ -399,7 +325,11 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
           map(x => x._1 -> (relevantRiegen.getOrElse(x._1, (true, x._2))._1, x._2)).toMap
 
 //      riegendurchgaenge = service.selectRiegen(wettkampf.id).filter(p => relevantRiegen.contains(p.r)).map(r => r.r -> r.durchgang.getOrElse("")).toMap
+       val lastDurchgangSelection = cmbDurchgangFilter.selectionModel.value.getSelectedItem
       cmbDurchgangFilter.items = ObservableBuffer[GeraeteRiege](emptyRiege  +: rebuildDurchgangFilterList)
+      if (cmbDurchgangFilter.items.value.contains(lastDurchgangSelection)) {
+        cmbDurchgangFilter.selectionModel.value.select(lastDurchgangSelection)
+      }
       //riegendurchgaenge.map(_._2).toSet.toList.sorted)
       relevantRiegen
     }
@@ -923,6 +853,7 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
     }
     
     websocketsubscription = Some(KuTuApp.modelWettkampfWertungChanged.onChange { (_, _, newItem) =>
+      val textfilter = lastFilter
       KuTuApp.invokeWithBusyIndicator(reloadData())
     })
 
@@ -1254,7 +1185,7 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
             ,einsatz.wettkampfdisziplin.programm.easyprint
             ,athlet.name
             ,athlet.vorname
-            ,AthletJahrgang(athlet.gebdat).hg
+            ,AthletJahrgang(athlet.gebdat).jahrgang
             ,athlet.verein match {case Some(v) => v.easyprint case _ => ""}
             ,einsatz.riege.getOrElse("")
             ,riegen.getOrElse(einsatz.riege.getOrElse(""), ("", ""))._2
@@ -1316,7 +1247,7 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
             ,athlet.id
             ,athlet.name
             ,athlet.vorname
-            ,AthletJahrgang(athlet.gebdat).hg
+            ,AthletJahrgang(athlet.gebdat).jahrgang
             ,athlet.verein match {case Some(v) => v.easyprint case _ => ""}
             ,riegendurchgaenge.get(einsatz.riege.getOrElse(""))
             ,None
@@ -1363,9 +1294,9 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
         }
         val logofile = PrintUtil.locateLogoFile(dir)
         
-        def generate(lpp: Int) = toHTMListe(service.getBestenResults, logofile)
+        def generate(lpp: Int) = toHTMListe(WertungServiceBestenResult.getBestenResults, logofile)
         PrintUtil.printDialog(text.value,FilenameDefault(filename, dir), false, generate, orientation = PageOrientation.Portrait)(event)
-        service.resetBestenResults
+        WertungServiceBestenResult.resetBestenResults
       }
     }
     val riegenRemoveButton = new Button {

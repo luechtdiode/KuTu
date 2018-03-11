@@ -95,7 +95,7 @@ case class GroupLeaf(override val groupKey: DataObject, list: Iterable[WertungVi
       }),
       WKLeafCol[GroupRow](text = "Jahrgang", prefWidth = 90, styleClass = Seq("data"), valueMapper = gr => {
         val a = gr.athlet
-        f"${AthletJahrgang(a.gebdat).hg}"
+        f"${AthletJahrgang(a.gebdat).jahrgang}"
       }),
       WKLeafCol[GroupRow](text = "Verein", prefWidth = 90, styleClass = Seq("data"), valueMapper = gr => {
         val a = gr.athlet

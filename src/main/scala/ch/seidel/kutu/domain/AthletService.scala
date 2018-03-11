@@ -131,7 +131,7 @@ trait AthletService extends DBService with AthletResultMapper {
       val namenSimilarity = MatchCode.similarFactor(code.name, athlet.name) + (100 * encodedNamen.filter(bmname.contains(_)).toList.size / encodedNamen.size)
       val encodedVorNamen = code.encodedVorNamen
       val vorNamenSimilarity = MatchCode.similarFactor(code.vorname, athlet.vorname) + (100 * encodedVorNamen.filter(bmvorname.contains(_)).toList.size / encodedVorNamen.size)
-      val jahrgangSimilarity = code.jahrgang.equals(AthletJahrgang(athlet.gebdat).hg)
+      val jahrgangSimilarity = code.jahrgang.equals(AthletJahrgang(athlet.gebdat).jahrgang)
       val preret = namenSimilarity > 140 && vorNamenSimilarity > 140
       val preret2 = (namenSimilarity + vorNamenSimilarity) > 220 && (math.max(namenSimilarity, vorNamenSimilarity) > 140)
       val vereinSimilarity = athlet.verein match {
@@ -163,7 +163,7 @@ trait AthletService extends DBService with AthletResultMapper {
       }, Duration.Inf).
       map{x =>
         val (id, name, vorname, jahr, verein) = x
-        MatchCode(id, name, vorname, AthletJahrgang(jahr).hg, verein)
+        MatchCode(id, name, vorname, AthletJahrgang(jahr).jahrgang, verein)
       }.foreach{ cache.add }
       cache
     }

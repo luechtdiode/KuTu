@@ -61,6 +61,8 @@ import javafx.beans.property.SimpleObjectProperty
 import ch.seidel.kutu.akka.KutuAppEvent
 
 object KuTuApp extends JFXApp with KutuService with KuTuAppHTTPServer {
+  import WertungServiceBestenResult._
+  
   private val logger = LoggerFactory.getLogger(this.getClass)
   private val server = KuTuServer
   import scala.concurrent.ExecutionContext.Implicits.global
@@ -86,18 +88,18 @@ object KuTuApp extends JFXApp with KutuService with KuTuAppHTTPServer {
     disable = true
   }
   
-  val lblConnectStatus = new ToggleButton() {
+  val btnConnectStatus = new ToggleButton() {
     //id = "connected-info"
     disable <== btnWettkampfModus.disable
     onAction = handleAction {action => 
       if (ConnectionStates.connectedProperty.value) {
-//        selected.value = false
         ConnectionStates.disconnected
       } else {        
         connectAndShare(selectedWettkampf.value, "Share", action)
-        
       }
-//      selected.value = ConnectionStates.connectedProperty.value
+      Platform.runLater{
+        selected.value = ConnectionStates.connectedProperty.value
+      }
     }
 //    selected <== ConnectionStates.connectedProperty
     text <== createStringBinding(() => {
@@ -1094,7 +1096,7 @@ object KuTuApp extends JFXApp with KutuService with KuTuAppHTTPServer {
       id = "mainToolBar"
       vgrow = Priority.Always
       hgrow = Priority.Always
-      content = List(btnWettkampfModus, lblConnectStatus/*, lblRemoteAddress*/)
+      content = List(btnWettkampfModus, btnConnectStatus/*, lblRemoteAddress*/)
     }
   }
   

@@ -3,7 +3,7 @@ package ch.seidel.kutu.akka
 import akka.actor.ActorRef
 import ch.seidel.kutu.domain._
 
-case class Subscribe(client: ActorRef, deviceId: String, durchgang: Option[String])
+case class Subscribe(clientSource: ActorRef, deviceId: String, durchgang: Option[String])
 case class StopDevice(deviceId: String)
 case class CreateClient(deviceID: String, wettkampfUUID: String)
 

@@ -12,10 +12,44 @@ import slick.jdbc.SQLiteProfile
 import slick.jdbc.SQLiteProfile.api._
 import scala.collection.JavaConverters
 import java.util.UUID
+import ch.seidel.kutu.http.WebSocketClient
+import ch.seidel.kutu.akka.AthletWertungUpdated
+
+object WertungServiceBestenResult {
+  private val logger = LoggerFactory.getLogger(this.getClass)
+  
+  private var bestenResults = Map[String,WertungView]()
+  private var shouldResetBestenResults = false
+  
+  def putWertungToBestenResults(wertung: WertungView) {
+    if(shouldResetBestenResults) {
+      bestenResults = Map[String,WertungView]()
+      shouldResetBestenResults = false;
+    }
+    bestenResults = bestenResults.updated(wertung.athlet.id + ":" + wertung.wettkampfdisziplin.id, wertung)
+    logger.info(s"actually best-scored: \n${bestenResults.mkString("\n")}")
+  }
+  
+  def getBestenResults = {
+    bestenResults
+/* Athlet, Disziplin, Wertung (Endnote)
+    .map(w =>(w._2.athlet.easyprint, w._2.wettkampfdisziplin.disziplin.name, w._2.endnote))    
+    .sortBy(_._3)
+ */
+    .map(_._2)    
+    .toList
+  }
+  
+  def resetBestenResults {
+    shouldResetBestenResults = true;
+  }
+  
+}
 
 abstract trait WertungService extends DBService with WertungResultMapper with DisziplinService with RiegenService {
   private val logger = LoggerFactory.getLogger(this.getClass)
-
+  import WertungServiceBestenResult._
+  
   def selectWertungen(vereinId: Option[Long] = None, athletId: Option[Long] = None, wettkampfId: Option[Long] = None, disziplinId: Option[Long] = None, wkuuid: Option[String] = None): Seq[WertungView] = {
     implicit val cache = scala.collection.mutable.Map[Long, ProgrammView]()
     val where = "where " + (athletId match {
@@ -188,6 +222,8 @@ abstract trait WertungService extends DBService with WertungResultMapper with Di
     if(wv.endnote >= 8.7) {
       putWertungToBestenResults(wv)
     }
+    val awu = AthletWertungUpdated(wv.athlet, wv.toWertung, wv.wettkampf.uuid.get, "", wv.wettkampfdisziplin.disziplin.id)
+    WebSocketClient.publish(awu)
     wv    
   }
 
@@ -265,31 +301,6 @@ abstract trait WertungService extends DBService with WertungResultMapper with Di
     }, Duration.Inf)
   }
 
-  private var bestenResults = Map[String,WertungView]()
-  private var shouldResetBestenResults = false
-  
-  def putWertungToBestenResults(wertung: WertungView) {
-    if(shouldResetBestenResults) {
-      bestenResults = Map[String,WertungView]()
-      shouldResetBestenResults = false;
-    }
-    bestenResults = bestenResults.updated(wertung.athlet.id + ":" + wertung.wettkampfdisziplin.id, wertung)
-  }
-  
-  def getBestenResults = {
-    bestenResults
-/* Athlet, Disziplin, Wertung (Endnote)
-    .map(w =>(w._2.athlet.easyprint, w._2.wettkampfdisziplin.disziplin.name, w._2.endnote))    
-    .sortBy(_._3)
- */
-    .map(_._2)    
-    .toList
-  }
-  
-  def resetBestenResults {
-    shouldResetBestenResults = true;
-  }
-  
   def getAllKandidatenWertungen(competitionUUId: UUID) = {
     val driver = selectWertungen(wkuuid = Some(competitionUUId.toString())).groupBy { x => x.athlet }.map(_._2).toList
     val competitionId = if (driver.isEmpty || driver.head.isEmpty) {
@@ -329,7 +340,7 @@ abstract trait WertungService extends DBService with WertungResultMapper with Di
       ,athlet.id
       ,athlet.name
       ,athlet.vorname
-      ,AthletJahrgang(athlet.gebdat).hg
+      ,AthletJahrgang(athlet.gebdat).jahrgang
       ,athlet.verein match {case Some(v) => v.easyprint case _ => ""}
       ,riegendurchgang1
       ,riegendurchgang2

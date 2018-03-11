@@ -159,12 +159,12 @@ package object domain {
     }
   }
   
-  case class AthletJahrgang(hg: String) extends DataObject {
-    override def easyprint = "Jahrgang " + hg
+  case class AthletJahrgang(jahrgang: String) extends DataObject {
+    override def easyprint = "Jahrgang " + jahrgang
   }
 
-  case class WettkampfJahr(hg: String) extends DataObject {
-    override def easyprint = "Wettkampf-Jahr " + hg
+  case class WettkampfJahr(wettkampfjahr: String) extends DataObject {
+    override def easyprint = "Wettkampf-Jahr " + wettkampfjahr
   }
   case class Disziplin(id: Long, name: String) extends DataObject {
     override def easyprint = name
@@ -251,11 +251,17 @@ package object domain {
     
     def saveSecret(homedir: String, secret: String) {
       val path = filePath(homedir)
-      Files.newOutputStream(path, StandardOpenOption.CREATE_NEW).write(secret.getBytes("utf-8"))
+      val fos = Files.newOutputStream(path, StandardOpenOption.CREATE_NEW)
+      try {
+        fos.write(secret.getBytes("utf-8"))
+        fos.flush
+      } finally {
+        fos.close
+      }
       val os = System.getProperty("os.name").toLowerCase
-//      if (os.indexOf("win") > -1) {
+      if (os.indexOf("win") > -1) {
         Files.setAttribute(path, "dos:hidden", true, LinkOption.NOFOLLOW_LINKS)
-//      }
+      }
     }
     
     def readSecret(homedir: String): Option[String] = {

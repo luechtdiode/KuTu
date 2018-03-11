@@ -290,6 +290,7 @@ abstract class DefaultRanglisteTab(override val service: KutuService) extends Ta
       if(!restoring)
         refreshRangliste(buildGrouper)
     }
+    println("subscribing for refreshing from websocket")
     subscription = Some(KuTuApp.modelWettkampfWertungChanged.onChange { (_, _, newItem) =>
       println("refreshing from websocket", newItem)
       refreshRangliste(buildGrouper)

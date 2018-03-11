@@ -7,9 +7,9 @@ import org.slf4j.LoggerFactory
 
 object RiegenBuilder {
   val logger = LoggerFactory.getLogger(this.getClass)
-  def mapToGeraeteRiegen(kandidaten: List[Kandidat], printorder: Boolean = false): List[GeraeteRiege] = {
+  def mapToGeraeteRiegen(kandidaten: Seq[Kandidat], printorder: Boolean = false): List[GeraeteRiege] = {
 
-    def pickStartformationen(geraete: List[(Option[Disziplin], List[Riege])], durchgang: Option[String], extractKandidatEinteilung: Kandidat => (Option[Riege], Seq[Disziplin])) = {
+    def pickStartformationen(geraete: Seq[(Option[Disziplin], Seq[Riege])], durchgang: Option[String], extractKandidatEinteilung: Kandidat => (Option[Riege], Seq[Disziplin])) = {
       geraete.flatMap{s =>
         val (startdisziplin, _) = s
         val splitpoint = geraete.indexWhere(g => g._1.equals(startdisziplin))
