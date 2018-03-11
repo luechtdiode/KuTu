@@ -9,6 +9,7 @@ import org.slf4j.LoggerFactory
 import java.nio.file.Files
 import java.nio.file.StandardOpenOption
 import java.nio.file.LinkOption
+import java.util.Properties
 
 object Config {
   private val logger = LoggerFactory.getLogger(this.getClass)
@@ -21,7 +22,9 @@ object Config {
   val userConfig = new File(configPath + "/kutuapp.conf")
   val config = if (userConfig.exists()) ConfigFactory.parseFile(new File(configPath + "/kutuapp.conf")).withFallback(ConfigFactory.load()) else ConfigFactory.load()
 
-  val appVersion = if (config.hasPath("version")) config.getString("version") else "2.0"
+  val appVersion = if (config.hasPath("app.majorversion")) config.getString("app.majorversion") else "dev.dev"
+  val builddate = if (config.hasPath("app.builddate")) config.getString("app.builddate") else "today"
+    
   logger.info(s"App-Version: $appVersion")
     
   private val jwtConfig = config.getConfig("jwt")

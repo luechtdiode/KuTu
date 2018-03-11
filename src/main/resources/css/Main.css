@@ -167,12 +167,12 @@
 }
 
 #connected-info {
-	-fx-padding: 5 0 5 0;
+	-fx-padding: 5 0 5 5;
 	-fx-text-fill: white;
 		
-	-fx-border-image-source: url("../images/info-tooltip.png");
-	-fx-border-image-slice: 34 20 12 12 fill;
-	-fx-border-image-width: 34 20 12 12;
+	-fx-border-image-source: url("../images/info-bg.png");
+	-fx-border-image-slice: 10 20 10 10 fill;
+	-fx-border-image-width: 10 20 10 10;
 	-fx-border-image-repeat: stretch;
 }
 

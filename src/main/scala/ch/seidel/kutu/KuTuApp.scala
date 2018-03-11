@@ -115,10 +115,16 @@ object KuTuApp extends JFXApp with KutuService with KuTuAppHTTPServer {
   }
   val lblRemoteAddress = new Label() {
     id = "connected-info"
-    text.value = Config.remoteBaseUrl
-    visible <== ConnectionStates.connectedProperty
+    text <== createStringBinding(() => {
+      ConnectionStates.connectedWithProperty.value match {
+        case "" =>
+           s"Version: ${Config.appVersion}, Built: ${Config.builddate}"
+        case uuid =>
+           s"Server: ${Config.remoteBaseUrl}\nVersion: ${Config.appVersion}, Built: ${Config.builddate}"
+      }      
+    //visible <== ConnectionStates.connectedProperty
+     }, ConnectionStates.connectedWithProperty)
   }
-
   var centerPane = PageDisplayer.choosePage(modelWettkampfModus, None, "dashBoard", tree)
 
   def updateTree {
@@ -1096,7 +1102,7 @@ object KuTuApp extends JFXApp with KutuService with KuTuAppHTTPServer {
       id = "mainToolBar"
       vgrow = Priority.Always
       hgrow = Priority.Always
-      content = List(btnWettkampfModus, btnConnectStatus/*, lblRemoteAddress*/)
+      content = List(btnWettkampfModus, btnConnectStatus, lblRemoteAddress)
     }
   }
   
