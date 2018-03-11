@@ -33,7 +33,7 @@ object DBService {
     prop
   }
   lazy private val dbFilename = s"kutu-$appVersion.sqlite"
-  lazy private val dbhomedir = if(new File("./db/kutu.sqlite").exists()) {
+  lazy private val dbhomedir = if(new File("./db/" + dbFilename).exists()) {
     logger.info("using db at: " + new File("./db/" + dbFilename).getAbsolutePath);
     "./db"
   }

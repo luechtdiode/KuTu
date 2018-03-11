@@ -10,7 +10,7 @@ trait JsonSupport extends SprayJsonSupport with EnrichedJson {
   // import the default encoders for primitive types (Int, String, Lists etc)
   import DefaultJsonProtocol._
   
-  implicit val wkFormat = jsonFormat(Wettkampf, "id", "datum", "titel", "programmId", "auszeichnung", "auszeichnungendnote", "uuid")
+  implicit val wkFormat = jsonFormat(Wettkampf, "id", "uuid", "datum", "titel", "programmId", "auszeichnung", "auszeichnungendnote")
   implicit val pgmFormat = jsonFormat7(ProgrammRaw)
   implicit val disziplinFormat = jsonFormat2(Disziplin)
   implicit val wertungFormat = jsonFormat(Wertung, "id", "athletId", "wettkampfdisziplinId", "wettkampfId", "wettkampfUUID", "noteD", "noteE", "endnote", "riege", "riege2")  
