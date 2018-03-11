@@ -112,195 +112,211 @@ VALUES
 ,(24, 20, 'K4', 0, 4)
 ,(25, 20, 'K5', 0, 5)
 ,(26, 20, 'K6', 0, 6)
+,(41, 20, 'K7', 0, 7)
+,(42, 20, 'KD', 0, 8)
+,(43, 20, 'KH', 0, 9)
 ;
 
 DELETE FROM wettkampfdisziplin;
 -- Athletiktest Beweglichkeit (2 (4, 6, 8) -> 7-14)
 INSERT INTO wettkampfdisziplin
-(programm_id, disziplin_id, notenfaktor, ord)
+(id, programm_id, disziplin_id, notenfaktor, ord)
 VALUES
- (2, 7, 4.000, 1)
-,(2, 8, 4.000, 2)
-,(2, 9, 4.000, 3)
-,(2, 10, 4.000, 4)
-,(2, 11, 4.000, 5)
-,(2, 12, 4.000, 6)
-,(2, 13, 4.000, 7)
-,(2, 14, 4.000, 8)
+ (1, 2, 7, 4.000, 1)
+,(2, 2, 8, 4.000, 2)
+,(3, 2, 9, 4.000, 3)
+,(4, 2, 10, 4.000, 4)
+,(5, 2, 11, 4.000, 5)
+,(6, 2, 12, 4.000, 6)
+,(7, 2, 13, 4.000, 7)
+,(8, 2, 14, 4.000, 8)
 ;
 -- Athletiktest Kraft (3 (5,7,9) -> 15-25)
 INSERT INTO wettkampfdisziplin
-(programm_id, disziplin_id, notenfaktor, ord)
+(id, programm_id, disziplin_id, notenfaktor, ord)
 VALUES
- (3, 15, 1.000, 10)
-,(3, 16, 1.000, 11)
-,(3, 17, 1.000, 12)
-,(3, 18, 1.000, 13)
-,(3, 19, 1.000, 14)
-,(3, 20, 1.000, 15)
-,(3, 21, 1.000, 16)
-,(3, 22, 1.000, 17)
-,(3, 23, 1.000, 18)
-,(3, 24, 1.000, 19)
-,(3, 25, 1.000, 20)
+ (9,  3, 15, 1.000, 10)
+,(10, 3, 16, 1.000, 11)
+,(11, 3, 17, 1.000, 12)
+,(12, 3, 18, 1.000, 13)
+,(13, 3, 19, 1.000, 14)
+,(14, 3, 20, 1.000, 15)
+,(15, 3, 21, 1.000, 16)
+,(16, 3, 22, 1.000, 17)
+,(17, 3, 23, 1.000, 18)
+,(18, 3, 24, 1.000, 19)
+,(19, 3, 25, 1.000, 20)
 ;
 
 -- EP-Wettkampfgeräte (12 -> 1-6)
 INSERT INTO wettkampfdisziplin
-(programm_id, disziplin_id, ord)
+(id, programm_id, disziplin_id, ord)
 VALUES
- (12, 1, 1)
-,(12, 2, 2)
-,(12, 3, 3)
-,(12, 4, 4)
-,(12, 5, 5)
-,(12, 6, 6)
+ (20, 12, 1, 1)
+,(21, 12, 2, 2)
+,(22, 12, 3, 3)
+,(23, 12, 4, 4)
+,(24, 12, 5, 5)
+,(25, 12, 6, 6)
 ;
 
 -- P1-U9-Wettkampfgeräte (13 -> 1-6)
 INSERT INTO wettkampfdisziplin
-(programm_id, disziplin_id, ord)
+(id, programm_id, disziplin_id, ord)
 VALUES
- (13, 1, 1)
-,(13, 2, 2)
-,(13, 3, 3)
-,(13, 4, 4)
-,(13, 5, 5)
-,(13, 6, 6)
+ (26, 13, 1, 1)
+,(27, 13, 2, 2)
+,(28, 13, 3, 3)
+,(29, 13, 4, 4)
+,(30, 13, 5, 5)
+,(31, 13, 6, 6)
 ;
 
 -- P1-Wettkampfgeräte (14 -> 1-6)
 INSERT INTO wettkampfdisziplin
-(programm_id, disziplin_id, ord)
+(id, programm_id, disziplin_id, ord)
 VALUES
- (14, 1, 1)
-,(14, 2, 2)
-,(14, 3, 3)
-,(14, 4, 4)
-,(14, 5, 5)
-,(14, 6, 6)
+ (32, 14, 1, 1)
+,(33, 14, 2, 2)
+,(34, 14, 3, 3)
+,(35, 14, 4, 4)
+,(36, 14, 5, 5)
+,(37, 14, 6, 6)
 ;
 
 -- P2-Wettkampfgeräte (15 -> 1-6)
 INSERT INTO wettkampfdisziplin
-(programm_id, disziplin_id, ord)
+(id, programm_id, disziplin_id, ord)
 VALUES
- (15, 1, 1)
-,(15, 2, 2)
-,(15, 3, 3)
-,(15, 4, 4)
-,(15, 5, 5)
-,(15, 6, 6)
+ (38, 15, 1, 1)
+,(39, 15, 2, 2)
+,(40, 15, 3, 3)
+,(41, 15, 4, 4)
+,(42, 15, 5, 5)
+,(43, 15, 6, 6)
 ;
 
 -- P3-Wettkampfgeräte (16 -> 1-6)
 INSERT INTO wettkampfdisziplin
-(programm_id, disziplin_id, ord)
+(id, programm_id, disziplin_id, ord)
 VALUES
- (16, 1, 1)
-,(16, 2, 2)
-,(16, 3, 3)
-,(16, 4, 4)
-,(16, 5, 5)
-,(16, 6, 6)
+ (44, 16, 1, 1)
+,(45, 16, 2, 2)
+,(46, 16, 3, 3)
+,(47, 16, 4, 4)
+,(48, 16, 5, 5)
+,(49, 16, 6, 6)
 ;
 
 -- P4-Wettkampfgeräte (17 -> 1-6)
 INSERT INTO wettkampfdisziplin
-(programm_id, disziplin_id, ord)
+(id, programm_id, disziplin_id, ord)
 VALUES
- (17, 1, 1)
-,(17, 2, 2)
-,(17, 3, 3)
-,(17, 4, 4)
-,(17, 5, 5)
-,(17, 6, 6)
+ (50, 17, 1, 1)
+,(51, 17, 2, 2)
+,(52, 17, 3, 3)
+,(53, 17, 4, 4)
+,(54, 17, 5, 5)
+,(55, 17, 6, 6)
 ;
 
 -- P5-Wettkampfgeräte (18 -> 1-6)
 INSERT INTO wettkampfdisziplin
-(programm_id, disziplin_id, ord)
+(id, programm_id, disziplin_id, ord)
 VALUES
- (18, 1, 1)
-,(18, 2, 2)
-,(18, 3, 3)
-,(18, 4, 4)
-,(18, 5, 5)
-,(18, 6, 6)
+ (56, 18, 1, 1)
+,(57, 18, 2, 2)
+,(58, 18, 3, 3)
+,(59, 18, 4, 4)
+,(60, 18, 5, 5)
+,(61, 18, 6, 6)
 ;
 
 -- P6-Wettkampfgeräte (19 -> 1-6)
 INSERT INTO wettkampfdisziplin
-(programm_id, disziplin_id, ord)
+(id, programm_id, disziplin_id, ord)
 VALUES
- (19, 1, 1)
-,(19, 2, 2)
-,(19, 3, 3)
-,(19, 4, 4)
-,(19, 5, 5)
-,(19, 6, 6)
+ (62, 19, 1, 1)
+,(63, 19, 2, 2)
+,(64, 19, 3, 3)
+,(65, 19, 4, 4)
+,(66, 19, 5, 5)
+,(67, 19, 6, 6)
 ;
 
 -- OP-Wettkampfgeräte (19 -> 1-6)
 INSERT INTO wettkampfdisziplin
-(programm_id, disziplin_id, ord)
+(id, programm_id, disziplin_id, ord)
 VALUES
- (27, 1, 1)
-,(27, 2, 2)
-,(27, 3, 3)
-,(27, 4, 4)
-,(27, 5, 5)
-,(27, 6, 6)
+ (68, 27, 1, 1)
+,(69, 27, 2, 2)
+,(70, 27, 3, 3)
+,(71, 27, 4, 4)
+,(72, 27, 5, 5)
+,(73, 27, 6, 6)
 ;
 
--- K1-K6-Wettkampfgeräte (21 - 26 mit 1-6 + 26)
+-- K1-K7, KH, KD-Wettkampfgeräte (21 - 26 mit 1-6 + 26)
 INSERT INTO wettkampfdisziplin
-(programm_id, disziplin_id, ord)
+(id, programm_id, disziplin_id, ord, feminim)
 VALUES
- (21, 1, 2)
-,(21, 4, 4)
-,(21, 5, 5)
-,(21, 6, 1)
-,(21, 26, 3)
-,(22, 1, 2)
-,(22, 4, 4)
-,(22, 5, 5)
-,(22, 6, 1)
-,(22, 26, 3)
-,(23, 1, 2)
-,(23, 4, 4)
-,(23, 5, 5)
-,(23, 6, 1)
-,(23, 26, 3)
-,(24, 1, 2)
-,(24, 4, 4)
-,(24, 5, 5)
-,(24, 6, 1)
-,(24, 26, 3)
-,(25, 1, 2)
-,(25, 4, 4)
-,(25, 5, 5)
-,(25, 6, 1)
-,(25, 26, 3)
-,(26, 1, 2)
-,(26, 4, 4)
-,(26, 5, 5)
-,(26, 6, 1)
-,(26, 26, 3)
+ (74, 21, 1, 2, 1)
+,(75, 21, 4, 4, 1)
+,(76, 21, 5, 5, 0)
+,(77, 21, 6, 1, 1)
+,(78, 21, 26, 3, 1)
+,(79, 22, 1, 2, 1)
+,(80, 22, 4, 4, 1)
+,(81, 22, 5, 5, 0)
+,(82, 22, 6, 1, 1)
+,(83, 22, 26, 3, 1)
+,(84, 23, 1, 2, 1)
+,(85, 23, 4, 4, 1)
+,(86, 23, 5, 5, 0)
+,(87, 23, 6, 1, 1)
+,(88, 23, 26, 3, 1)
+,(89, 24, 1, 2, 1)
+,(90, 24, 4, 4, 1)
+,(91, 24, 5, 5, 0)
+,(92, 24, 6, 1, 1)
+,(93, 24, 26, 3, 1)
+,(94, 25, 1, 2, 1)
+,(95, 25, 4, 4, 1)
+,(96, 25, 5, 5, 0)
+,(97, 25, 6, 1, 1)
+,(98, 25, 26, 3, 1)
+,(99, 26, 1, 2, 1)
+,(100, 26, 4, 4, 1)
+,(101, 26, 5, 5, 0)
+,(102, 26, 6, 1, 1)
+,(103, 26, 26, 3, 1)
+,(140, 41, 1, 2, 1)
+,(141, 41, 4, 4, 1)
+,(142, 41, 5, 5, 0)
+,(143, 41, 6, 1, 1)
+,(144, 41, 26, 3, 1)
+,(145, 42, 1, 2, 1)
+,(146, 42, 4, 4, 1)
+,(147, 42, 6, 1, 1)
+,(148, 42, 26, 3, 1)
+,(149, 43, 1, 2, 0)
+,(150, 43, 4, 4, 0)
+,(151, 43, 5, 5, 0)
+,(152, 43, 6, 1, 0)
+,(153, 43, 26, 3, 0)
 ;
-
 -- EP-Wettkampfgeräte (32 -> 4,27,28,1)
 -- 4 Sprung,
 -- 27 Stufenbarren,
 -- 28 Balken,
 -- 1 Boden,
 INSERT INTO wettkampfdisziplin
-(programm_id, disziplin_id, ord)
+(id, programm_id, disziplin_id, ord)
 VALUES
- (32, 4, 1)
-,(32, 27, 2)
-,(32, 28, 3)
-,(32, 1, 4)
+ (104, 32, 4, 1)
+,(105, 32, 27, 2)
+,(106, 32, 28, 3)
+,(107, 32, 1, 4)
 ;
 
 -- P1-U9-Wettkampfgeräte (33 -> 4,27,28,1)
@@ -309,12 +325,12 @@ VALUES
 -- 28 Balken,
 -- 1 Boden,
 INSERT INTO wettkampfdisziplin
-(programm_id, disziplin_id, ord)
+(id, programm_id, disziplin_id, ord)
 VALUES
- (33, 4, 1)
-,(33, 27, 2)
-,(33, 28, 3)
-,(33, 1, 4)
+ (108, 33, 4, 1)
+,(109, 33, 27, 2)
+,(110, 33, 28, 3)
+,(111, 33, 1, 4)
 ;
 
 -- P1-Wettkampfgeräte (34 -> 4,27,28,1)
@@ -323,12 +339,12 @@ VALUES
 -- 28 Balken,
 -- 1 Boden,
 INSERT INTO wettkampfdisziplin
-(programm_id, disziplin_id, ord)
+(id, programm_id, disziplin_id, ord)
 VALUES
- (34, 4, 1)
-,(34, 27, 2)
-,(34, 28, 3)
-,(34, 1, 4)
+ (112, 34, 4, 1)
+,(113, 34, 27, 2)
+,(114, 34, 28, 3)
+,(115, 34, 1, 4)
 ;
 
 -- P2-Wettkampfgeräte (35 -> 4,27,28,1)
@@ -337,12 +353,12 @@ VALUES
 -- 28 Balken,
 -- 1 Boden,
 INSERT INTO wettkampfdisziplin
-(programm_id, disziplin_id, ord)
+(id, programm_id, disziplin_id, ord)
 VALUES
- (35, 4, 1)
-,(35, 27, 2)
-,(35, 28, 3)
-,(35, 1, 4)
+ (116, 35, 4, 1)
+,(117, 35, 27, 2)
+,(118, 35, 28, 3)
+,(119, 35, 1, 4)
 ;
 
 -- P3-Wettkampfgeräte (36 -> 4,27,28,1)
@@ -351,12 +367,12 @@ VALUES
 -- 28 Balken,
 -- 1 Boden,
 INSERT INTO wettkampfdisziplin
-(programm_id, disziplin_id, ord)
+(id, programm_id, disziplin_id, ord)
 VALUES
- (36, 4, 1)
-,(36, 27, 2)
-,(36, 28, 3)
-,(36, 1, 4)
+ (120, 36, 4, 1)
+,(121, 36, 27, 2)
+,(122, 36, 28, 3)
+,(123, 36, 1, 4)
 ;
 
 -- P4-Wettkampfgeräte (37 -> 4,27,28,1)
@@ -365,12 +381,12 @@ VALUES
 -- 28 Balken,
 -- 1 Boden,
 INSERT INTO wettkampfdisziplin
-(programm_id, disziplin_id, ord)
+(id, programm_id, disziplin_id, ord)
 VALUES
- (37, 4, 1)
-,(37, 27, 2)
-,(37, 28, 3)
-,(37, 1, 4)
+ (124, 37, 4, 1)
+,(125, 37, 27, 2)
+,(126, 37, 28, 3)
+,(127, 37, 1, 4)
 ;
 
 -- P5-Wettkampfgeräte (38 -> 4,27,28,1)
@@ -379,12 +395,12 @@ VALUES
 -- 28 Balken,
 -- 1 Boden,
 INSERT INTO wettkampfdisziplin
-(programm_id, disziplin_id, ord)
+(id, programm_id, disziplin_id, ord)
 VALUES
- (38, 4, 1)
-,(38, 27, 2)
-,(38, 28, 3)
-,(38, 1, 4)
+ (128, 38, 4, 1)
+,(129, 38, 27, 2)
+,(130, 38, 28, 3)
+,(131, 38, 1, 4)
 ;
 
 -- P6-Wettkampfgeräte (39 -> 4,27,28,1)
@@ -393,12 +409,12 @@ VALUES
 -- 28 Balken,
 -- 1 Boden,
 INSERT INTO wettkampfdisziplin
-(programm_id, disziplin_id, ord)
+(id, programm_id, disziplin_id, ord)
 VALUES
- (39, 4, 1)
-,(39, 27, 2)
-,(39, 28, 3)
-,(39, 1, 4)
+ (132, 39, 4, 1)
+,(133, 39, 27, 2)
+,(134, 39, 28, 3)
+,(135, 39, 1, 4)
 ;
 
 -- OP-Wettkampfgeräte (40 -> 4,27,28,1)
@@ -407,29 +423,10 @@ VALUES
 -- 28 Balken,
 -- 1 Boden,
 INSERT INTO wettkampfdisziplin
-(programm_id, disziplin_id, ord)
+(id, programm_id, disziplin_id, ord)
 VALUES
- (40, 4, 1)
-,(40, 27, 2)
-,(40, 28, 3)
-,(40, 1, 4)
+ (136, 40, 4, 1)
+,(137, 40, 27, 2)
+,(138, 40, 28, 3)
+,(139, 40, 1, 4)
 ;
-
-DELETE FROM verein;
--- INSERT INTO verein
--- (name)
--- VALUES
---  ('BTV Basel')
--- ,('TV Seltisberg')
--- ,('TV Nunningen')
--- ,('AS Pratteln')
--- ,('NKL')
--- ;
-
-DELETE FROM athlet;
--- INSERT INTO athlet
--- (name, vorname, gebdat, verein)
--- VALUES('x', 'y', '2005-06-29', 1);
-
-
-DELETE FROM notenskala;
