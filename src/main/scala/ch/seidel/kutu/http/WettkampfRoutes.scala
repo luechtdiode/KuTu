@@ -84,7 +84,7 @@ trait WettkampfRoutes extends SprayJsonSupport with JsonSupport with JwtSupport 
     val wettkampfEntity = toHttpEntity(wettkampf)
     val uploadProm = Promise[String]()
     val uploadFut = uploadProm.future
-    if (remoteHost.startsWith(httpHostname) && !wettkampf.hasSecred(homedir, remoteHostOrigin)) {
+    if (remoteHost.startsWith("localhost") && !wettkampf.hasSecred(homedir, remoteHostOrigin)) {
       wettkampf.saveSecret(homedir, remoteHostOrigin,  JsonWebToken(jwtHeader, setClaims(uuid, Int.MaxValue), jwtSecretKey))
     }
     val hadSecret = wettkampf.hasSecred(homedir, remoteHostOrigin)
