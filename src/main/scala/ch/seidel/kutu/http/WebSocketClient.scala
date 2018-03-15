@@ -29,7 +29,7 @@ import akka.stream.OverflowStrategy
 import ch.seidel.kutu.akka.KutuAppEvent
 import akka.stream.scaladsl.SourceQueueWithComplete
 
-object WebSocketClient extends SprayJsonSupport with JsonSupport {
+object WebSocketClient extends SprayJsonSupport with JsonSupport with AuthSupport {
   import Core.materializer
   import Core.system
 
@@ -43,7 +43,7 @@ object WebSocketClient extends SprayJsonSupport with JsonSupport {
         websocketIncomingFlow.to(Sink.foreach[KutuAppEvent](messageProcessor)),
         websocketOutgoingSource.concatMat(Source.maybe[Message])(Keep.right))(Keep.right)
 
-    val (upgradeResponse, promise) = Http().singleWebSocketRequest(
+    val promise = websocketClientRequest(
         WebSocketRequest(
             s"$remoteWebSocketUrl/api/competition/ws", 
             extraHeaders = immutable.Seq(RawHeader(jwtAuthorizationKey, wettkampf.readSecret(homedir, remoteHostOrigin).get))),

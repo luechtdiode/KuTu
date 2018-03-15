@@ -25,7 +25,7 @@ import ch.seidel.kutu.Config._
 import authentikat.jwt.JsonWebToken
 import akka.http.scaladsl.model.headers.RawHeader
 
-trait LoginRoutes extends SprayJsonSupport with EnrichedJson with JwtSupport with BasicAuthSupport with RouterLogging with KutuService {
+trait LoginRoutes extends SprayJsonSupport with EnrichedJson with JwtSupport with AuthSupport with RouterLogging with KutuService {
   import scala.concurrent.ExecutionContext.Implicits.global
   import slick.jdbc.SQLiteProfile
   import slick.jdbc.SQLiteProfile.api._

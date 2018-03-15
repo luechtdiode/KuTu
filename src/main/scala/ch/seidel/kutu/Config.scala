@@ -82,7 +82,7 @@ object Config {
   
   lazy val httpInterface = if (config.hasPath("http.interface"))    config.getString("http.interface")    else "0.0.0.0"
   lazy val httpPort =      if (config.hasPath("http.port"))         config.getInt("http.port")            else 5757
-  lazy val httpHostname =  if (config.hasPath("http.hostname"))     config.getString("http.hostname")     else "kutuapp"
+  lazy val httpHostname =  if (config.hasPath("http.hostname"))     config.getString("http.hostname")     else "kutuapp.sharevic.net"
   lazy val certPw =        if (config.hasPath("http.certPw"))       config.getString("http.certPw")       else null
   
   lazy val jwtTokenExpiryPeriodInDays = jwtConfig.getInt("tokenExpiryPeriodInDays")
@@ -91,6 +91,8 @@ object Config {
   lazy val remoteHost =    if (appRemoteConfig.hasPath("hostname")) appRemoteConfig.getString("hostname") else "kutuapp"
   lazy val remoteSchema =  if (appRemoteConfig.hasPath("schema"))   appRemoteConfig.getString("schema")   else "https"
   
+  lazy val proxyHost =     if (appRemoteConfig.hasPath("proxyHost")) Some(appRemoteConfig.getString("proxyHost")) else None
+  lazy val proxyPort =     if (appRemoteConfig.hasPath("proxyPort")) Some(appRemoteConfig.getString("proxyPort")) else Some("3128")
   lazy val remoteHostOrigin = remoteHost.split(":")(0)
   
   lazy val remoteBaseUrl = s"$remoteSchema://$remoteHost"

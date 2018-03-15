@@ -1,5 +1,6 @@
 package ch.seidel.kutu
 
+import javafx.scene.{ control => jfxsc }
 import scalafx.Includes._
 import scalafx.application.JFXApp
 import scalafx.application.JFXApp.PrimaryStage
@@ -11,9 +12,7 @@ import scalafx.scene.layout._
 import scalafx.scene.control._
 import scalafx.scene.image.{Image, ImageView}
 import scalafx.event.ActionEvent
-import javafx.scene.control.DatePicker
 import scalafx.collections.ObservableBuffer
-import javafx.util.Callback
 import scalafx.scene.control.Alert.AlertType
 import scalafx.scene.Cursor
 import scalafx.application.Platform
@@ -24,6 +23,8 @@ import scala.concurrent.ExecutionContext.Implicits
 import scalafx.beans.property.StringProperty.sfxStringProperty2jfx
 import scalafx.scene.Cursor.sfxCursor2jfx
 import scalafx.scene.Node.sfxNode2jfx
+import scalafx.scene.control._
+import scalafx.scene.control.TableColumn._
 import scalafx.scene.control.ComboBox.sfxComboBox2jfx
 import scalafx.scene.control.Label.sfxLabel2jfx
 import scalafx.scene.control.MenuItem.sfxMenuItem2jfx
@@ -42,7 +43,7 @@ import scalafx.stage.StageStyle
 import scalafx.beans.property.BooleanProperty
 import scalafx.beans.binding.Bindings
 import scalafx.scene.web.WebView
-import ch.seidel.kutu.http.KuTuAppHTTPServer
+import scalafx.beans.property.ReadOnlyStringWrapper
 import org.slf4j.LoggerFactory
 import net.glxn.qrgen.QRCode
 import net.glxn.qrgen.image.ImageType
@@ -57,10 +58,16 @@ import ch.seidel.kutu.http.Core
 import ch.seidel.kutu.http.WebSocketClient
 import ch.seidel.kutu.Config._
 import java.util.Base64
-import javafx.beans.property.SimpleObjectProperty
+import ch.seidel.kutu.http.KuTuAppHTTPServer
 import ch.seidel.kutu.akka.KutuAppEvent
+import ch.seidel.kutu.http.JsonSupport
+import spray.json._
 
-object KuTuApp extends JFXApp with KutuService with KuTuAppHTTPServer {
+import javafx.beans.property.SimpleObjectProperty
+import javafx.scene.control.DatePicker
+import javafx.util.Callback
+
+object KuTuApp extends JFXApp with KutuService with JsonSupport {
   import WertungServiceBestenResult._
   
   private val logger = LoggerFactory.getLogger(this.getClass)
@@ -69,7 +76,7 @@ object KuTuApp extends JFXApp with KutuService with KuTuAppHTTPServer {
   
   override def stopApp() {
     ConnectionStates.disconnected()
-    super.shutDown("KuTuApp")
+    server.shutDown("KuTuApp")
   }
   
   var tree = AppNavigationModel.create(KuTuApp.this)
@@ -391,7 +398,7 @@ object KuTuApp extends JFXApp with KutuService with KuTuAppHTTPServer {
     val item = makeMenuAction("Wettkampf hochladen") {(caption, action) =>
       val process = KuTuApp.invokeAsyncWithBusyIndicator{
         if (remoteBaseUrl.indexOf("localhost") > -1) {
-          startServer { uuid => sha256(uuid) }
+          server.startServer { uuid => server.sha256(uuid) }
         }
         server.httpUploadWettkampfRequest(p.toWettkampf)
       }
@@ -575,9 +582,62 @@ object KuTuApp extends JFXApp with KutuService with KuTuAppHTTPServer {
                           )) choose true otherwise false
       onAction = handleAction {implicit e: ActionEvent =>
         KuTuApp.invokeWithBusyIndicator {
-          startServer { x => sha256(x) }
+          server.startServer { x => server.sha256(x) }
           Await.result(server.httpLoginRequest(s"$remoteBaseUrl/api/login", txtUsername.text.value.trim(), txtPassword.text.value.trim()), Duration.Inf)
         }
+      }
+    })
+  }
+  
+  def makeProxyLoginMenu = makeMenuAction("Internet Proxy ...") {(caption, action) =>
+    implicit val e = action
+    val txtProxyAddress = new TextField {
+      prefWidth = 500
+      promptText = "Proxy Adresse"
+      text = Config.proxyHost.getOrElse("")
+    }    
+    val txtProxyPort = new TextField {
+      prefWidth = 500
+      promptText = "Proxy Port"
+      text = Config.proxyPort.getOrElse("")
+    }
+    val txtUsername = new TextField {
+      prefWidth = 500
+      promptText = "Username"
+      text = System.getProperty("user.name")
+    }
+
+    val txtPassword = new PasswordField {
+      prefWidth = 500
+      promptText = "Internet Proxy Passwort"
+    }
+    PageDisplayer.showInDialog(caption, new DisplayablePage() {
+      def getPage: Node = {
+        new BorderPane {
+          hgrow = Priority.Always
+          vgrow = Priority.Always
+          center = new VBox {
+            children.addAll(
+                new Label(txtProxyAddress.promptText.value), txtProxyAddress,
+                new Label(txtProxyPort.promptText.value), txtProxyPort,
+                new Label(txtUsername.promptText.value), txtUsername,
+                new Label(txtPassword.promptText.value), txtPassword
+                )
+          }
+        }
+      }
+    }, new Button("OK") {
+      disable <== when(Bindings.createBooleanBinding(() => {
+                            txtUsername.text.isEmpty.value && txtPassword.text.isEmpty().value
+                          },
+                            txtUsername.text, txtPassword.text
+                          )) choose true otherwise false
+      onAction = handleAction {implicit e: ActionEvent =>
+        server.setProxyProperties(
+            host = txtProxyAddress.text.value.trim(), 
+            port = txtProxyPort.text.value.trim(),
+            user = txtUsername.text.value.trim(),
+            password = txtPassword.text.value.trim())
       }
     })
   }
@@ -599,7 +659,7 @@ object KuTuApp extends JFXApp with KutuService with KuTuAppHTTPServer {
     implicit val e = action
     val process = KuTuApp.invokeAsyncWithBusyIndicator{
       if (remoteBaseUrl.indexOf("localhost") > -1) {
-        startServer { uuid => sha256(uuid) }
+        server.startServer { uuid => server.sha256(uuid) }
       }
       p.uuid.zip(p.toWettkampf.readSecret(homedir, remoteHostOrigin)).headOption match {
         case Some((uuid, secret)) =>
@@ -748,35 +808,102 @@ object KuTuApp extends JFXApp with KutuService with KuTuAppHTTPServer {
     }
   }
   def makeWettkampfHerunterladenMenu: MenuItem = {
+    import DefaultJsonProtocol._ 
     makeMenuAction("Wettkampf herunterladen") {(caption, action) =>
-      implicit val e = action
-      // TODO via rest-api Wettkampfliste anzeigen
-//        if (selectedFile != null) {
-//          val wf = KuTuApp.invokeAsyncWithBusyIndicator {
-//            val is = new FileInputStream(selectedFile)
-//            val w = ResourceExchanger.importWettkampf(is)
-//            is.close()
-//            val dir = new java.io.File(homedir + "/" + w.easyprint.replace(" ", "_"))
-//            if(!dir.exists()) {
-//              dir.mkdirs();
-//            }
-//            w
-//          }
-//          import scala.concurrent.ExecutionContext.Implicits._
-//          wf.andThen {
-//            case Failure(f) => logger.debug(f.toString)
-//            case Success(w) =>
-//              Platform.runLater {
-//                updateTree
-//                val text = s"${w.titel} ${w.datum}"
-//                tree.getLeaves("Wettkämpfe").find { item => text.equals(item.value.value) } match {
-//                  case Some(node) =>
-//                    controlsView.selectionModel().select(node)
-//                  case None =>
-//                }
-//              }
-//          }
-//        }
+      implicit val e = action  
+      
+      val wklist = server.httpGet(s"${remoteAdminBaseUrl}/api/competition").map{
+        case entityString: String => entityString.asType[List[Wettkampf]] 
+        case _ => List[Wettkampf]()
+      }
+      wklist.onComplete{
+        case Success(wkl) => 
+          Platform.runLater{
+            val filteredModel = ObservableBuffer[Wettkampf](wkl)
+            val wkTable = new TableView[Wettkampf](filteredModel) {
+              columns ++= List(
+                new TableColumn[Wettkampf, String] {
+                  text = "Datum"
+                  cellValueFactory = { x =>
+                    new ReadOnlyStringWrapper(x.value, "datum", {
+                      s"${x.value.datum}"
+                    })
+                  }
+                  minWidth = 250
+                },
+                new TableColumn[Wettkampf, String] {
+                  text = "Titel"
+                  cellValueFactory = { x =>
+                    new ReadOnlyStringWrapper(x.value, "titel", {
+                     s"${x.value.titel}"
+                    })
+                  }
+                }
+              )
+            }
+            wkTable.selectionModel.value.setSelectionMode(SelectionMode.SINGLE)
+            val filter = new TextField() {
+              promptText = "Such-Text"
+              text.addListener{ (o: javafx.beans.value.ObservableValue[_ <: String], oldVal: String, newVal: String) =>
+                val sortOrder = wkTable.sortOrder.toList;
+                filteredModel.clear()
+                val searchQuery = newVal.toUpperCase().split(" ")
+                for{wettkampf <- wkl
+                } {
+                  val matches = searchQuery.forall{search =>
+                    if(search.isEmpty() || wettkampf.easyprint.toUpperCase().contains(search)) {
+                      true
+                    }
+                    else {
+                      false
+                    }
+                  }
+  
+                  if(matches) {
+                    filteredModel.add(wettkampf)
+                  }
+                }
+                wkTable.sortOrder.clear()
+                val restored = wkTable.sortOrder ++= sortOrder
+              }
+            }
+            PageDisplayer.showInDialog(caption, new DisplayablePage() {
+              def getPage: Node = {
+                new BorderPane {
+                  hgrow = Priority.Always
+                  vgrow = Priority.Always
+                  minWidth = 600
+                  center = new BorderPane {
+                    hgrow = Priority.Always
+                    vgrow = Priority.Always
+                    top = filter
+                    center = wkTable
+                    minWidth = 550
+                  }
+  
+                }
+              }
+            }, new Button("OK") {
+              disable <== when(wkTable.selectionModel.value.selectedItemProperty.isNull()) choose true otherwise false
+              onAction = (event: ActionEvent) => {
+                if (!wkTable.selectionModel().isEmpty) {
+                  val selectedAthleten = wkTable.items.value.zipWithIndex.filter {
+                    x => wkTable.selectionModel.value.isSelected(x._2)
+                  }.map {x =>
+                    val (wettkampf,idx) = x
+                    KuTuApp.invokeWithBusyIndicator {
+                      val url=s"$remoteAdminBaseUrl/api/competition/${wettkampf.uuid.get}"
+                      Await.result(server.httpDownloadRequest(server.makeHttpGetRequest(url)), Duration.Inf)
+                    }
+                  }
+                }
+              }
+            }
+          )
+        }
+
+        case _ =>
+      }
     }
   }
   
@@ -995,8 +1122,11 @@ object KuTuApp extends JFXApp with KutuService with KuTuAppHTTPServer {
           controlsView.contextMenu = new ContextMenu() {
             items += makeNeuerWettkampfAnlegenMenu
             items += makeNeuerWettkampfImportierenMenu
-            items += makeWettkampfHerunterladenMenu
-            //items += makeLoginMenu
+            items += new Menu("Netzwerk") {
+              //items += makeLoginMenu
+              items += makeProxyLoginMenu
+              items += makeWettkampfHerunterladenMenu
+            }
           }
         case _ => (newItem.isLeaf, Option(newItem.getParent)) match {
             case (true, Some(parent)) => {

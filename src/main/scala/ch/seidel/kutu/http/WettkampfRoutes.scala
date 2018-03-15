@@ -51,8 +51,9 @@ import akka.stream.scaladsl.Flow
 import akka.http.scaladsl.model.ws.TextMessage
 import akka.stream.scaladsl.Keep
 import akka.http.scaladsl.model.ws.Message
+import akka.http.scaladsl.settings.ConnectionPoolSettings
 
-trait WettkampfRoutes extends SprayJsonSupport with JsonSupport with JwtSupport with BasicAuthSupport with RouterLogging with WettkampfService {
+trait WettkampfRoutes extends SprayJsonSupport with JsonSupport with JwtSupport with AuthSupport with RouterLogging with WettkampfService {
   import DefaultJsonProtocol._
 
   def responseOrFail[T](in: (Try[HttpResponse], T)): (HttpResponse, T) = in match {
@@ -91,7 +92,7 @@ trait WettkampfRoutes extends SprayJsonSupport with JsonSupport with JwtSupport 
     if (!hadSecret) {
       // try to initial upload new wettkampf
       log.info("post to " + s"${remoteAdminBaseUrl}/api/competition/${uuid}")
-      Http().singleRequest(
+      httpClientRequest(
           HttpRequest(method = HttpMethods.POST, uri = s"${remoteAdminBaseUrl}/api/competition/${uuid}", entity = wettkampfEntity)).map {
             case HttpResponse(StatusCodes.OK, headers, entity, _) =>
               val secret = headers.filter(h => h.is(jwtAuthorizationKey)).headOption.flatMap {

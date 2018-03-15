@@ -36,19 +36,51 @@ import spray.json.JsObject
 import scala.concurrent.Await
 import scala.concurrent.duration.Duration
 import ch.seidel.kutu.Config._
+import akka.http.scaladsl.ClientTransport
+import java.net.InetSocketAddress
+import akka.http.scaladsl.settings.ClientConnectionSettings
+import akka.http.scaladsl.settings.ConnectionPoolSettings
+import scala.concurrent.Promise
+import akka.http.scaladsl.model.ws.Message
+import akka.http.scaladsl.model.ws.WebSocketRequest
 
-trait BasicAuthSupport extends Directives with SprayJsonSupport with Hashing {
+trait AuthSupport extends Directives with SprayJsonSupport with Hashing {
   import spray.json.DefaultJsonProtocol._
+  
+  private var proxyPort: Option[String] = None
+  private var proxyHost: Option[String] = None
+  private var proxyUser: Option[String] = None
+  private var proxyPassword: Option[String] = None
+  private var clientheader: Option[RawHeader] = None
+  
+  case class UserCredentials(username: String, password: String)
+  implicit val credsFormat = jsonFormat2(UserCredentials)
+  
+  def setProxyProperties(port: String, host: String, user: String, password: String) {
+    proxyPort = Some(port)
+    proxyHost = Some(host)
+    proxyUser = Some(user)
+    proxyPassword = Some(password)
+  }
+  
+  def httpsProxyTransport = proxyHost.flatMap(h => 
+    proxyPort.map(p =>
+      (proxyUser, proxyPassword) match {
+        case (Some(user), Some(password)) => ClientTransport.httpsProxy(InetSocketAddress.createUnresolved(h, Integer.valueOf(p)), headers.BasicHttpCredentials(user, password))
+        case _ => ClientTransport.httpsProxy(InetSocketAddress.createUnresolved(h, Integer.valueOf(p)))
+      }
+    ))
+    
+  def poolsettings = ConnectionPoolSettings(Core.system)
+    .withConnectionSettings(httpsProxyTransport match { 
+      case Some(pt) => ClientConnectionSettings(Core.system).withTransport(pt) 
+      case _        => ClientConnectionSettings(Core.system)
+    })
   
   def userPassAuthenticator(userSecretHashLookup: (String) => String): AuthenticatorPF[String] = {
     case p @ Credentials.Provided(id) if p.verify(userSecretHashLookup(id), sha256) => id
   }
   
-  private var clientheader: Option[RawHeader] = None
-  
-  
-  case class UserCredentials(username: String, password: String)
-  implicit val credsFormat = jsonFormat2(UserCredentials)
   
   /**
    * Supports header- and body-based request->response with credentials->acces-token
@@ -58,7 +90,7 @@ trait BasicAuthSupport extends Directives with SprayJsonSupport with Hashing {
     import Core._
     Marshal(UserCredentials(user, pw)).to[RequestEntity] flatMap { entity =>
       Http().singleRequest(
-          HttpRequest(method = POST, uri = uri, entity = entity).addHeader(Authorization(BasicHttpCredentials(user, pw)))).map {
+          HttpRequest(method = POST, uri = uri, entity = entity).addHeader(Authorization(BasicHttpCredentials(user, pw))), settings = poolsettings).map {
         case HttpResponse(StatusCodes.OK, headers, entity, _) =>
           clientheader = headers.filter(h => h.is(jwtAuthorizationKey)).headOption.flatMap {
             case HttpHeader(_, token) => 
@@ -86,8 +118,8 @@ trait BasicAuthSupport extends Directives with SprayJsonSupport with Hashing {
     import Core._
     Marshal(UserCredentials(wettkampfuuid, jwtToken)).to[RequestEntity] flatMap { entity =>
       val request = HttpRequest(method = POST, uri = uri, entity = entity)
-      Http().singleRequest(request.withHeaders(request.headers :+ RawHeader(jwtAuthorizationKey, jwtToken))).map {r => r match {
-        case HttpResponse(StatusCodes.OK, headers, entity, _) =>
+      Http().singleRequest(request.withHeaders(request.headers :+ RawHeader(jwtAuthorizationKey, jwtToken)), settings = poolsettings).map {
+        case response @ HttpResponse(StatusCodes.OK, headers, entity, _) =>
           clientheader = headers.filter(h => h.is(jwtAuthorizationKey)).headOption.flatMap {
             case HttpHeader(_, token) => 
               entity.discardBytes()
@@ -99,7 +131,7 @@ trait BasicAuthSupport extends Directives with SprayJsonSupport with Hashing {
               }, Duration.Inf)            
           }
           println(s"renewed JWT: $clientheader")
-          r
+          response
       
         case HttpResponse(_, headers, entity, _) => entity match {
           case HttpEntity.Strict(_, text) =>
@@ -107,8 +139,16 @@ trait BasicAuthSupport extends Directives with SprayJsonSupport with Hashing {
           case x => 
             throw new RuntimeException(x.toString)
         }
-      }}
+      }
     }
+  }
+  
+  def httpGet[T](url: String): Future[String] = {
+    import Core._
+    httpGetClientRequest(url).flatMap{
+        case HttpResponse(StatusCodes.OK, headers, entity, _) => Unmarshal(entity).to[String]
+        case _ => Future{""}
+      }
   }
   
   def withAuthHeader(request: HttpRequest) = {
@@ -120,7 +160,12 @@ trait BasicAuthSupport extends Directives with SprayJsonSupport with Hashing {
   
   def httpClientRequest(request: HttpRequest): Future[HttpResponse] = {
     import Core._
-    Http().singleRequest(withAuthHeader(request))
+    Http().singleRequest(withAuthHeader(request), settings = poolsettings)
+  }
+  
+  def websocketClientRequest(request: WebSocketRequest, flow: Flow[Message, Message, Promise[Option[Message]]]) : Promise[Option[Message]] = {
+    import Core._
+    Http().singleWebSocketRequest(request, clientFlow = flow, settings = poolsettings.connectionSettings)._2
   }
   
   def httpPutClientRequest(uri: String, entity: RequestEntity): Future[HttpResponse] = {

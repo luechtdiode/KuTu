@@ -28,7 +28,7 @@ import ch.seidel.kutu.akka.WertungContainer
 import scala.concurrent.Await
 import java.util.UUID
 
-trait WertungenRoutes extends SprayJsonSupport with JsonSupport with JwtSupport with BasicAuthSupport with RouterLogging with KutuService {
+trait WertungenRoutes extends SprayJsonSupport with JsonSupport with JwtSupport with AuthSupport with RouterLogging with KutuService {
   import scala.concurrent.ExecutionContext.Implicits.global
   import slick.jdbc.SQLiteProfile
   import slick.jdbc.SQLiteProfile.api._

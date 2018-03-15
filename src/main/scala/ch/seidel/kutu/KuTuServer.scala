@@ -9,8 +9,9 @@ import scala.concurrent.ExecutionContext
 import ch.seidel.kutu.http.Core
 import org.slf4j.LoggerFactory
 import scala.concurrent.Future
+import ch.seidel.kutu.http.AuthSupport
 
-object KuTuServer extends App with KuTuAppHTTPServer with Hashing {
+object KuTuServer extends App with KuTuAppHTTPServer with AuthSupport with Hashing {
   private val logger = LoggerFactory.getLogger(this.getClass)
   
   val binding = startServer(user => sha256(user))
@@ -18,10 +19,9 @@ object KuTuServer extends App with KuTuAppHTTPServer with Hashing {
   import Core._
   implicit val executionContext: ExecutionContext = system.dispatcher
   
-  override def shutDown(caller: String) {
-    logger.info(s"$caller: Server stops ...")
-    
+  override def shutDown(caller: String) {  
     if (binding  != null) {
+      logger.info(s"$caller: Server stops ...")
       binding.flatMap(_.unbind()) // trigger unbinding from the port
       .onComplete { done =>
         done.failed.map { ex => log.error(ex, "Failed unbinding") }
