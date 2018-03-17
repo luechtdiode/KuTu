@@ -28,6 +28,7 @@ import ch.seidel.kutu.Config._
 import akka.stream.OverflowStrategy
 import ch.seidel.kutu.akka.KutuAppEvent
 import akka.stream.scaladsl.SourceQueueWithComplete
+import scala.util.Success
 
 object WebSocketClient extends SprayJsonSupport with JsonSupport with AuthSupport {
   import Core.materializer
@@ -50,7 +51,10 @@ object WebSocketClient extends SprayJsonSupport with JsonSupport with AuthSuppor
         flow)
     connectedIncomingPromise = Some(promise)
     promise.future.onComplete{
-      case _ => disconnect
+      case Success(_) => disconnect
+      case Failure(error) => 
+        println(s"completed with error: $error")
+        disconnect
     }
     promise // return promise to close the ws-connection at some point later    
   }
