@@ -519,92 +519,193 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
 //        delegate.impl_setReorderable(false)
         prefWidth = 100
         editable = false
-      },
-      new WKTableColumn[String](-1) {
-        text = "Riege"
-        if(!wettkampfmode.value) {
-          cellFactory = { x =>
-            new AutoCommitTextFieldTableCell[IndexedSeq[WertungEditor], String](new DefaultStringConverter())
-          }
-        }
-        cellValueFactory = { x =>
-          new ReadOnlyStringWrapper(x.value, "riege", {
-            s"${x.value.head.init.riege.getOrElse("keine Einteilung")}"
-          })
-        }
-//        delegate.impl_setReorderable(false)
-        editable = !wettkampfmode.value
-        visible = !wettkampfmode.value
-        prefWidth = 100
-        if(!wettkampfmode.value) {
-          onEditCommit = (evt: CellEditEvent[IndexedSeq[WertungEditor], String]) => {
-            if(!evt.newValue.equals("keine Einteilung")) {
-            	val rowIndex = wkModel.indexOf(evt.rowValue)
-              for(wertung <- evt.rowValue) {
-                wkModel.update(rowIndex,
-                    evt.rowValue.updated(
-                        evt.rowValue.indexOf(wertung),
-                        WertungEditor(
-                            service.updateWertung(
-                                wertung.commit.copy(riege = if(evt.newValue.trim.isEmpty() || evt.newValue.equals("keine Einteilung")) None else Some(evt.newValue))
-                                )
-                            )
-                        )
-                    )
-              }
-              refreshOtherLazyPanes()
-              updateEditorPane
-              evt.tableView.requestFocus()
+      }
+    )
+    val leafprograms = wertungen.flatMap(a => a.map(w => w.init.wettkampfdisziplin.programm)).filter(p => p.aggregate != 0).toSet.toList.sortWith((a, b) => a.ord > b.ord)
+    
+    val riegeCol: List[jfxsc.TableColumn[IndexedSeq[WertungEditor], _]] = if(leafprograms.size < 2) {
+      List(new WKTableColumn[String](-1) {
+          text = "Riege"
+          if(!wettkampfmode.value) {
+            cellFactory = { x =>
+              new AutoCommitTextFieldTableCell[IndexedSeq[WertungEditor], String](new DefaultStringConverter())
             }
           }
-          onEditCancel = (evt: CellEditEvent[IndexedSeq[WertungEditor], String]) => {
-  //          logger.debug(evt)
+          cellValueFactory = { x =>
+            new ReadOnlyStringWrapper(x.value, "riege", {
+              s"${x.value.head.init.riege.getOrElse("keine Einteilung")}"
+            })
           }
-        }
-      },
-      new WKTableColumn[String](-1) {
-        text = "Riege 2"
-        if(!wettkampfmode.value) {
-          cellFactory = { x =>
-            new AutoCommitTextFieldTableCell[IndexedSeq[WertungEditor], String](new DefaultStringConverter())
-          }
-        }
-        cellValueFactory = { x =>
-          new ReadOnlyStringWrapper(x.value, "riege2", {
-            s"${x.value.head.init.riege2.getOrElse("keine Einteilung")}"
-          })
-        }
-//        delegate.impl_setReorderable(false)
-        editable = !wettkampfmode.value
-        visible = !wettkampfmode.value
-        prefWidth = 100
-        if(!wettkampfmode.value) {
-          onEditCommit = (evt: CellEditEvent[IndexedSeq[WertungEditor], String]) => {
-          	if(!evt.newValue.equals("keine Einteilung")) {
-              val rowIndex = wkModel.indexOf(evt.rowValue)
-              for(disciplin <- evt.rowValue) {
-                wkModel.update(rowIndex,
-                    evt.rowValue.updated(
-                        evt.rowValue.indexOf(disciplin),
-                        WertungEditor(
-                            service.updateWertung(
-                                disciplin.commit.copy(riege2 = if(evt.newValue.trim.isEmpty()) None else Some(evt.newValue))
-                                )
-                            )
-                        )
-                    )
+  //        delegate.impl_setReorderable(false)
+          editable = !wettkampfmode.value
+          visible = !wettkampfmode.value
+          prefWidth = 100
+          if(!wettkampfmode.value) {
+            onEditCommit = (evt: CellEditEvent[IndexedSeq[WertungEditor], String]) => {
+              if(!evt.newValue.equals("keine Einteilung")) {
+              	val rowIndex = wkModel.indexOf(evt.rowValue)
+                for(wertung <- evt.rowValue) {
+                  wkModel.update(rowIndex,
+                      evt.rowValue.updated(
+                          evt.rowValue.indexOf(wertung),
+                          WertungEditor(
+                              service.updateWertung(
+                                  wertung.commit.copy(riege = if(evt.newValue.trim.isEmpty() || evt.newValue.equals("keine Einteilung")) None else Some(evt.newValue))
+                                  )
+                              )
+                          )
+                      )
+                }
+                refreshOtherLazyPanes()
+                updateEditorPane
+                evt.tableView.requestFocus()
               }
-              refreshOtherLazyPanes()
-              updateEditorPane
-              evt.tableView.requestFocus()
-          	}
+            }
+            onEditCancel = (evt: CellEditEvent[IndexedSeq[WertungEditor], String]) => {
+    //          logger.debug(evt)
+            }
           }
-          onEditCancel = (evt: CellEditEvent[IndexedSeq[WertungEditor], String]) => {
-  //          logger.debug(evt)
+        },
+        new WKTableColumn[String](-1) {
+          text = "Riege 2"
+          if(!wettkampfmode.value) {
+            cellFactory = { x =>
+              new AutoCommitTextFieldTableCell[IndexedSeq[WertungEditor], String](new DefaultStringConverter())
+            }
           }
-        }
-      })
-
+          cellValueFactory = { x =>
+            new ReadOnlyStringWrapper(x.value, "riege2", {
+              s"${x.value.head.init.riege2.getOrElse("keine Einteilung")}"
+            })
+          }
+  //        delegate.impl_setReorderable(false)
+          editable = !wettkampfmode.value
+          visible = !wettkampfmode.value
+          prefWidth = 100
+          if(!wettkampfmode.value) {
+            onEditCommit = (evt: CellEditEvent[IndexedSeq[WertungEditor], String]) => {
+            	if(!evt.newValue.equals("keine Einteilung")) {
+                val rowIndex = wkModel.indexOf(evt.rowValue)
+                for(disciplin <- evt.rowValue) {
+                  wkModel.update(rowIndex,
+                      evt.rowValue.updated(
+                          evt.rowValue.indexOf(disciplin),
+                          WertungEditor(
+                              service.updateWertung(
+                                  disciplin.commit.copy(riege2 = if(evt.newValue.trim.isEmpty()) None else Some(evt.newValue))
+                                  )
+                              )
+                          )
+                      )
+                }
+                refreshOtherLazyPanes()
+                updateEditorPane
+                evt.tableView.requestFocus()
+            	}
+            }
+            onEditCancel = (evt: CellEditEvent[IndexedSeq[WertungEditor], String]) => {
+    //          logger.debug(evt)
+            }
+          }
+        })
+    } else { 
+      // List[jfxsc.TableColumn[IndexedSeq[WertungEditor], _]]
+      val cols: List[jfxsc.TableColumn[IndexedSeq[WertungEditor], _]] = leafprograms.map{p => 
+        val col: jfxsc.TableColumn[IndexedSeq[WertungEditor], _] = new TableColumn[IndexedSeq[WertungEditor], String] {
+          text = s"${p.name}"
+//            delegate.impl_setReorderable(false)
+          columns ++= Seq(
+            new WKTableColumn[String](-1) {
+              text = "Riege"
+              if(!wettkampfmode.value) {
+                cellFactory = { x =>
+                  new AutoCommitTextFieldTableCell[IndexedSeq[WertungEditor], String](new DefaultStringConverter())
+                }
+              }
+              cellValueFactory = { x =>
+                new ReadOnlyStringWrapper(x.value, "riege", {
+                  s"${x.value.find(we => we.init.wettkampfdisziplin.programm == p).flatMap(we => we.init.riege).getOrElse("keine Einteilung")}"
+                })
+              }
+      //        delegate.impl_setReorderable(false)
+              editable = !wettkampfmode.value
+              visible = !wettkampfmode.value
+              prefWidth = 100
+              if(!wettkampfmode.value) {
+                onEditCommit = (evt: CellEditEvent[IndexedSeq[WertungEditor], String]) => {
+                  if(!evt.newValue.equals("keine Einteilung")) {
+                  	val rowIndex = wkModel.indexOf(evt.rowValue)
+                    for(wertung <- evt.rowValue) {
+                      wkModel.update(rowIndex,
+                          evt.rowValue.updated(
+                              evt.rowValue.indexOf(wertung),
+                              WertungEditor(
+                                  service.updateWertung(
+                                      wertung.commit.copy(riege = if(evt.newValue.trim.isEmpty() || evt.newValue.equals("keine Einteilung")) None else Some(evt.newValue))
+                                      )
+                                  )
+                              )
+                          )
+                    }
+                    refreshOtherLazyPanes()
+                    updateEditorPane
+                    evt.tableView.requestFocus()
+                  }
+                }
+                onEditCancel = (evt: CellEditEvent[IndexedSeq[WertungEditor], String]) => {
+        //          logger.debug(evt)
+                }
+              }
+            },
+            new WKTableColumn[String](-1) {
+              text = "Riege 2"
+              if(!wettkampfmode.value) {
+                cellFactory = { x =>
+                  new AutoCommitTextFieldTableCell[IndexedSeq[WertungEditor], String](new DefaultStringConverter())
+                }
+              }
+              cellValueFactory = { x =>
+                new ReadOnlyStringWrapper(x.value, "riege2", {
+                  s"${x.value.find(we => we.init.wettkampfdisziplin.programm == p).flatMap(we => we.init.riege2).getOrElse("keine Einteilung")}"
+                })
+              }
+      //        delegate.impl_setReorderable(false)
+              editable = !wettkampfmode.value
+              visible = !wettkampfmode.value
+              prefWidth = 100
+              if(!wettkampfmode.value) {
+                onEditCommit = (evt: CellEditEvent[IndexedSeq[WertungEditor], String]) => {
+                	if(!evt.newValue.equals("keine Einteilung")) {
+                    val rowIndex = wkModel.indexOf(evt.rowValue)
+                    for(disciplin <- evt.rowValue) {
+                      wkModel.update(rowIndex,
+                          evt.rowValue.updated(
+                              evt.rowValue.indexOf(disciplin),
+                              WertungEditor(
+                                  service.updateWertung(
+                                      disciplin.commit.copy(riege2 = if(evt.newValue.trim.isEmpty()) None else Some(evt.newValue))
+                                      )
+                                  )
+                              )
+                          )
+                    }
+                    refreshOtherLazyPanes()
+                    updateEditorPane
+                    evt.tableView.requestFocus()
+                	}
+                }
+                onEditCancel = (evt: CellEditEvent[IndexedSeq[WertungEditor], String]) => {
+        //          logger.debug(evt)
+                }
+              }
+            }
+           )
+          }
+        col
+      }.toList
+      cols
+    }
+      
     val sumCol: List[jfxsc.TableColumn[IndexedSeq[WertungEditor], _]] = List(
       new WKTableColumn[String](-1) {
         text = "Punkte"
@@ -614,8 +715,7 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
         styleClass += "table-cell-with-value"
         editable = false
       })
-
-    wkview.columns ++= athletCol ++ wertungenCols ++ sumCol
+    wkview.columns ++= athletCol ++ riegeCol ++ wertungenCols ++ sumCol
     var isFilterRefreshing = false;
     
     wkModel.onChange{(seq1, seq2) => 
@@ -1453,8 +1553,31 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
     removeButton.disable <== when(wkview.selectionModel.value.selectedItemProperty.isNull()) choose true otherwise false
 
     val actionButtons = programm match {
-      case None =>
-        List[Button](generateTeilnehmerListe, generateNotenblaetter, setRiege2ForAllButton, riegeRenameButton, riegenRemoveButton)
+      case None => wettkampf.programm.id match {
+        case 1 => // Athletiktest
+          val addButton = new Button {
+            text = "Athlet hinzufügen"
+            minWidth = 75
+            onAction = (event: ActionEvent) => {
+              new AthletSelectionDialog(
+                text.value, wettkampf.programm, wertungen.map(w => w.head.init.athlet), service,
+                (selection: Set[Long]) => {
+                  service.assignAthletsToWettkampf(wettkampf.id, Set(2, 3), selection)
+                  reloadData()
+                }
+              ).execute(event)
+            }
+          }
+          List[Button](addButton, removeButton, setRiege2ForAllButton, riegeRenameButton, riegenRemoveButton, generateTeilnehmerListe, generateNotenblaetter)
+          
+        case _ => // andere
+          val pasteFromExcel = new Button("Aus Excel einfügen ...") {
+            onAction = (event: ActionEvent) => {
+              doPasteFromExcel(Some(wettkampf.programm))(event)
+            }
+          }
+          List[Button](pasteFromExcel, removeButton, setRiege2ForAllButton, riegeRenameButton, riegenRemoveButton, generateTeilnehmerListe, generateNotenblaetter)
+      }
       case Some(progrm) =>
         val addButton = new Button {
           text = "Athlet hinzufügen"
@@ -1474,7 +1597,7 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
             doPasteFromExcel(Some(progrm))(event)
           }
         }
-        List(addButton, pasteFromExcel, moveToOtherProgramButton, setRiege2ForAllButton, generateTeilnehmerListe, generateNotenblaetter, removeButton).filter(btn => !btn.text.value.equals("."))
+        List(addButton, pasteFromExcel, moveToOtherProgramButton, removeButton, setRiege2ForAllButton, riegenRemoveButton, generateTeilnehmerListe, generateNotenblaetter).filter(btn => !btn.text.value.equals("."))
     }
 
     val clearButton = new Button {
