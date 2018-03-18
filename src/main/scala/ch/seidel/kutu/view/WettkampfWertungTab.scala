@@ -609,7 +609,6 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
           }
         })
     } else { 
-      // List[jfxsc.TableColumn[IndexedSeq[WertungEditor], _]]
       val cols: List[jfxsc.TableColumn[IndexedSeq[WertungEditor], _]] = leafprograms.map{p => 
         val col: jfxsc.TableColumn[IndexedSeq[WertungEditor], _] = new TableColumn[IndexedSeq[WertungEditor], String] {
           text = s"${p.name}"
@@ -635,7 +634,7 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
                 onEditCommit = (evt: CellEditEvent[IndexedSeq[WertungEditor], String]) => {
                   if(!evt.newValue.equals("keine Einteilung")) {
                   	val rowIndex = wkModel.indexOf(evt.rowValue)
-                    for(wertung <- evt.rowValue) {
+                    for(wertung <- evt.rowValue if(wertung.init.wettkampfdisziplin.programm == p)) {
                       wkModel.update(rowIndex,
                           evt.rowValue.updated(
                               evt.rowValue.indexOf(wertung),
@@ -677,13 +676,13 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
                 onEditCommit = (evt: CellEditEvent[IndexedSeq[WertungEditor], String]) => {
                 	if(!evt.newValue.equals("keine Einteilung")) {
                     val rowIndex = wkModel.indexOf(evt.rowValue)
-                    for(disciplin <- evt.rowValue) {
+                    for(wertung <- evt.rowValue if(wertung.init.wettkampfdisziplin.programm == p)) {
                       wkModel.update(rowIndex,
                           evt.rowValue.updated(
-                              evt.rowValue.indexOf(disciplin),
+                              evt.rowValue.indexOf(wertung),
                               WertungEditor(
                                   service.updateWertung(
-                                      disciplin.commit.copy(riege2 = if(evt.newValue.trim.isEmpty()) None else Some(evt.newValue))
+                                      wertung.commit.copy(riege2 = if(evt.newValue.trim.isEmpty()) None else Some(evt.newValue))
                                       )
                                   )
                               )
