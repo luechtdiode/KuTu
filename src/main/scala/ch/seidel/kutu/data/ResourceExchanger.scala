@@ -192,10 +192,13 @@ object ResourceExchanger extends KutuService with RiegenBuilder {
     val inserted = wertungInstances.groupBy(w => w.wettkampfId).map{wkWertungen =>
       val (wettkampfid, wertungen) = wkWertungen
       val wettkampf = wettkampfInstances.values.find(w => w.id == wettkampfid).get
+      val wkDisziplines = wkdisziplines(wettkampf.id)
       updateOrinsertWertungenZuWettkampf(wettkampf, wertungen.groupBy(w => w.athletId).flatMap { aw =>
         val (athletid, wertungen) = aw
-        val programm = wkdisziplines(wettkampf.id)(wertungen.head.wettkampfdisziplinId).programmId
-        val requiredDisciplines = wkdisziplines(wettkampf.id).filter(wd => wd._2.programmId == programm)
+        val programm = wkDisziplines(wertungen.head.wettkampfdisziplinId).programmId
+        val programms = wertungen.map(wertung => wkDisziplines(wertung.wettkampfdisziplinId).programmId).toSet
+
+        val requiredDisciplines = wkdisziplines(wettkampf.id).filter(wd => programms.contains(wd._2.programmId))
         lazy val empty = wertungen.forall { w => w.endnote < 1 }
         val filtered = wertungen.filter(w => requiredDisciplines.contains(w.wettkampfdisziplinId))
         wertungen.filter(!filtered.contains(_)).foreach(w => logger.debug("WARNING: No matching Disciplin - " + w))
