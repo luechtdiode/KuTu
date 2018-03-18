@@ -320,7 +320,7 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
 
     def computeRelevantRiegen = {
       relevantRiegen = (if(wertungen.size > 0) wertungen.
-          map(x => x.head).flatMap(x => Seq(x.init.riege, x.init.riege2).flatten).
+          flatMap(x => x.flatMap(x => Seq(x.init.riege, x.init.riege2).flatten).toSet).
           groupBy(x => x).map(x => (x._1, x._2.size)).toSet else Set.empty[(String,Int)]).
           map(x => x._1 -> (relevantRiegen.getOrElse(x._1, (true, x._2))._1, x._2)).toMap
 
@@ -776,14 +776,13 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
           wertungen.sortBy { w => durchgangFilter.kandidaten.indexWhere { x => x.id == w.head.init.athlet.id } }
         }
         for{athlet <- orderedWertungen} {
-          def isRiegenFilterConform(wertung: WertungView) = {
-            val athletRiegen = Seq(wertung.riege, wertung.riege2)
+          def isRiegenFilterConform(athletRiegen: Set[Option[String]]) = {
             val undefined = athletRiegen.forall{case None => true case _ => false}
             val durchgangKonform = durchgangFilter.equals(emptyRiege) ||
                durchgangFilter.kandidaten.filter { k => athletRiegen.contains(k.einteilung.map(_.r))}.nonEmpty
             durchgangKonform && (undefined || !athletRiegen.forall{case Some(riege) => !relevantRiegen.getOrElse(riege, (false, 0))._1 case _ => true})
           }
-          val matches = athlet.nonEmpty && isRiegenFilterConform(athlet(0).init) &&
+          val matches = athlet.nonEmpty && isRiegenFilterConform(athlet.flatMap(a => Set(a.init.riege, a.init.riege2)).toSet) &&
             searchQuery.forall{search =>
             if(search.isEmpty() || athlet(0).init.athlet.name.toUpperCase().contains(search)) {
               true
