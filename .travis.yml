@@ -38,3 +38,4 @@ script: mvn site --settings deploy-settings.xml
 branches:
   only:
     - master
+    - v2-networked
