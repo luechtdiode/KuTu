@@ -167,8 +167,10 @@ trait WettkampfRoutes extends SprayJsonSupport with JsonSupport with JwtSupport 
 
   lazy val wettkampfRoutes: Route = {
     path("competition" / "ws") {
-      authenticated { wettkampfUUID =>
-        handleWebSocketMessages(CompetitionCoordinatorClientActor.createActorSinkSource(UUID.randomUUID().toString, wettkampfUUID, None))
+      pathEnd {
+        authenticated { wettkampfUUID =>
+          handleWebSocketMessages(CompetitionCoordinatorClientActor.createActorSinkSource(UUID.randomUUID().toString, wettkampfUUID, None))
+        }
       }
     } ~
     pathPrefix("competition") {

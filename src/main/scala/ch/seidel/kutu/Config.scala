@@ -10,6 +10,12 @@ import java.nio.file.Files
 import java.nio.file.StandardOpenOption
 import java.nio.file.LinkOption
 import java.util.Properties
+import com.github.markusbernhardt.proxy.ProxySearch
+import java.net.ProxySelector
+import java.net.URI
+import java.net.Proxy
+import java.util.Collections
+import scala.collection.JavaConverters
 
 object Config {
   private val logger = LoggerFactory.getLogger(this.getClass)
@@ -80,6 +86,27 @@ object Config {
     userHomePath + "/data"
   }
   
+  // Use the static factory method getDefaultProxySearch to create a proxy search instance 
+  // configured with the default proxy search strategies for the current environment.
+  val proxySearch = ProxySearch.getDefaultProxySearch()
+  val proxySelector = proxySearch.getProxySelector()
+  ProxySelector.setDefault(proxySelector)
+
+//  private val proxy = Proxy.NO_PROXY
+  
+  // Get list of proxies from default ProxySelector available for given URL
+  private val proxies: List[Proxy] = if (ProxySelector.getDefault() != null) {
+      JavaConverters.asScalaIterator(ProxySelector.getDefault().select(new URI(Config.remoteBaseUrl)).iterator()).toList
+  } else { List() }
+  
+  // Find first proxy for HTTP/S. Any DIRECT proxy in the list returned is only second choice
+  val autoconfigProxy = proxies.filter(p => p.`type` match{case Proxy.Type.HTTP => true case _ => false}).map{p => p.address.toString.split(":")}.map(a => (a(0), a(a.length-1))).headOption match {
+    case Some((proxyConfigIp, proxyConfigPort)) =>
+      println(proxyConfigIp, proxyConfigPort)
+      (Some(proxyConfigIp), Some(proxyConfigPort))
+    case _=> (None, Some("3128"))
+  }
+
   lazy val httpInterface = if (config.hasPath("http.interface"))    config.getString("http.interface")    else "0.0.0.0"
   lazy val httpPort =      if (config.hasPath("http.port"))         config.getInt("http.port")            else 5757
   lazy val httpHostname =  if (config.hasPath("http.hostname"))     config.getString("http.hostname")     else "kutuapp.sharevic.net"
@@ -91,8 +118,8 @@ object Config {
   lazy val remoteHost =    if (appRemoteConfig.hasPath("hostname")) appRemoteConfig.getString("hostname") else "kutuapp"
   lazy val remoteSchema =  if (appRemoteConfig.hasPath("schema"))   appRemoteConfig.getString("schema")   else "https"
   
-  lazy val proxyHost =     if (appRemoteConfig.hasPath("proxyHost")) Some(appRemoteConfig.getString("proxyHost")) else None
-  lazy val proxyPort =     if (appRemoteConfig.hasPath("proxyPort")) Some(appRemoteConfig.getString("proxyPort")) else Some("3128")
+  lazy val proxyHost =     if (appRemoteConfig.hasPath("proxyHost")) Some(appRemoteConfig.getString("proxyHost")) else autoconfigProxy._1
+  lazy val proxyPort =     if (appRemoteConfig.hasPath("proxyPort")) Some(appRemoteConfig.getString("proxyPort")) else autoconfigProxy._2
   lazy val remoteHostOrigin = remoteHost.split(":")(0)
   
   lazy val remoteBaseUrl = s"$remoteSchema://$remoteHost"

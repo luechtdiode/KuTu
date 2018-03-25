@@ -37,11 +37,11 @@ object WebSocketClient extends SprayJsonSupport with JsonSupport with AuthSuppor
   private var connectedOutgoingQueue: Option[SourceQueueWithComplete[Message]] = None
   private var connectedIncomingPromise: Option[Promise[Option[Message]]] = None
   
-  def connect(wettkampf: Wettkampf, messageProcessor: KutuAppEvent=>Unit = println) = {
+  def connect(wettkampf: Wettkampf, messageProcessor: KutuAppEvent=>Unit = println, handleError: Throwable=>Unit = println) = {
     import scala.collection.immutable
     val flow: Flow[Message, Message, Promise[Option[Message]]] =
       Flow.fromSinkAndSourceMat(
-        websocketIncomingFlow.to(Sink.foreach[KutuAppEvent](messageProcessor)),
+        websocketIncomingFlow(handleError).to(Sink.foreach[KutuAppEvent](messageProcessor)),
         websocketOutgoingSource.concatMat(Source.maybe[Message])(Keep.right))(Keep.right)
 
     val promise = websocketClientRequest(
@@ -72,11 +72,12 @@ object WebSocketClient extends SprayJsonSupport with JsonSupport with AuthSuppor
     connectedOutgoingQueue.foreach(_.offer(tryMapEvent(event)))
   }
   
-  def reportErrorsFlow[T]: Flow[T, T, Any] =
+  def reportErrorsFlow[T](handleError: Throwable=>Unit): Flow[T, T, Any] =
     Flow[T]
       .watchTermination()((_, f) => f.onComplete {
         case Failure(cause) =>
           println(s"WS-Client stream failed with $cause")
+          handleError(cause)
         case _ => // ignore regular completion
           println(s"WS-Client stream closed")
       })
@@ -92,13 +93,13 @@ object WebSocketClient extends SprayJsonSupport with JsonSupport with AuthSuppor
     case e: Exception => TextMessage(event.toString)
   }
   
-  def websocketIncomingFlow: Flow[Message, KutuAppEvent, Any] =
+  def websocketIncomingFlow(handleError: Throwable=>Unit): Flow[Message, KutuAppEvent, Any] =
     Flow[Message]
       .mapAsync(1) {
         case TextMessage.Strict(text) => Future.successful(tryMapText(text))
         case TextMessage.Streamed(stream) => stream.runFold("")(_ + _).map(tryMapText(_))
         case b: BinaryMessage => throw new Exception("Binary message cannot be handled")
-      }.via(reportErrorsFlow)
+      }.via(reportErrorsFlow(handleError))
       
   val websocketOutgoingSource = Source.queue[Message](10, OverflowStrategy.dropHead)
     .mapMaterializedValue(queue => connectedOutgoingQueue = Some(queue))

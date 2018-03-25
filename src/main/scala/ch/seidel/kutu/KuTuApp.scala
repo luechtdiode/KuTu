@@ -94,7 +94,7 @@ object KuTuApp extends JFXApp with KutuService with JsonSupport {
     selected <==> modelWettkampfModus
     disable = true
   }
-  
+
   val btnConnectStatus = new ToggleButton() {
     //id = "connected-info"
     disable <== btnWettkampfModus.disable
@@ -672,7 +672,7 @@ object KuTuApp extends JFXApp with KutuService with JsonSupport {
         Platform.runLater{
           modelWettkampfWertungChanged.setValue(event)
         }
-      })))
+      }), PageDisplayer.showErrorDialog(caption)))
     })
     process.onComplete{
       case Success((response, wspromise)) =>
@@ -692,23 +692,8 @@ object KuTuApp extends JFXApp with KutuService with JsonSupport {
           }
         )
         }
-      case Failure(error) =>
-        Platform.runLater{
-        PageDisplayer.showInDialog(caption, 
-          new DisplayablePage() {
-            def getPage: Node = {
-              new BorderPane {
-                hgrow = Priority.Always
-                vgrow = Priority.Always
-                center = new VBox {
-                  children.addAll(new Label(error.getMessage.replace("(", "(\n")))
-                }
-              }
-            }
-          }
-        )
-        }
-      }
+      case Failure(error) => PageDisplayer.showErrorDialog(caption)(error)
+    }
   }
   
   def makeConnectAndShareMenu(p: WettkampfView) = { 
@@ -902,7 +887,7 @@ object KuTuApp extends JFXApp with KutuService with JsonSupport {
           )
         }
 
-        case _ =>
+        case Failure(error) => PageDisplayer.showErrorDialog(caption)(error)
       }
     }
   }

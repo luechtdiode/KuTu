@@ -31,8 +31,10 @@ import akka.util.Timeout
 import scala.concurrent.duration.FiniteDuration
 import ch.seidel.kutu.domain.KutuService
 import akka.stream.scaladsl.Keep
+import ch.seidel.kutu.data.ResourceExchanger
+import akka.actor.ActorLogging
 
-class CompetitionCoordinatorClientActor(wettkampfUUID: String) extends Actor with JsonSupport with KutuService {
+class CompetitionCoordinatorClientActor(wettkampfUUID: String) extends Actor with JsonSupport with KutuService with ActorLogging {
   import context._
 
   var wsSend: Map[Option[String],List[ActorRef]] = Map.empty
@@ -49,12 +51,12 @@ class CompetitionCoordinatorClientActor(wettkampfUUID: String) extends Actor wit
   }
 
   override def preStart(): Unit = {
-    println("Starting CompetitionCoordinatorClientActor")
+    log.info("Starting CompetitionCoordinatorClientActor")
   }
 
   override def postStop: Unit = {
     liveticker.cancel()
-    println("CompetitionCoordinatorClientActor stopped")
+    log.info("CompetitionCoordinatorClientActor stopped")
     wsSend.values.flatten.foreach(context.stop)
   }
 
@@ -80,20 +82,17 @@ class CompetitionCoordinatorClientActor(wettkampfUUID: String) extends Actor wit
       }
       sender ! MessageAck("OK")
       
-    case awu @ AthletWertungUpdated(athlet, verifiedWertung, wettkampfUUID, durchgang, geraet) =>
-      updateWertungSimple(verifiedWertung, true) match {
-        case Some(verifiedWertung) => 
-          val senderWebSocket = actorWithSameDeviceIdOfSender
-          // calculate progress for durchgang and for durchgang-geraet
-          // if complete, close durchgang and commit to wettkampf-origin
-          val awu: KutuAppEvent = AthletWertungUpdated(athlet, verifiedWertung, wettkampfUUID, durchgang, geraet)
-          val toPublish = TextMessage(awu.toJson.compactPrint)
+    case awu: AthletWertungUpdated =>
+      val senderWebSocket = actorWithSameDeviceIdOfSender
+      ResourceExchanger.processWSMessage(event => event match {
+        case awuv: KutuAppEvent =>
+          val toPublish = TextMessage(awuv.toJson.compactPrint)
           wsSend.flatMap(_._2).filter(ws => !senderWebSocket.exists(_ == ws)).foreach{ws => 
             println("publishing from + " + sender.path + " to " + ws.path)
             ws ! toPublish
           }
         case _ =>
-      }
+      })(awu)
       
     case uw: KutuAppAction =>
       wsSend.flatMap(_._2).foreach(ws => ws ! uw)
@@ -128,7 +127,7 @@ class CompetitionCoordinatorClientActor(wettkampfUUID: String) extends Actor wit
   }
 
   private def handleStop {
-    println("Closing client actor")
+    log.info("Closing client actor")
     stop(self)
   }
 
@@ -154,13 +153,13 @@ class CompetitionCoordinatorClientActor(wettkampfUUID: String) extends Actor wit
   
 }
 
-class ClientActorSupervisor extends Actor {
+class ClientActorSupervisor extends Actor with ActorLogging {
 
   var wettkampfCoordinators = Map[String, ActorRef]()
   
   override val supervisorStrategy = OneForOneStrategy() {
     case NonFatal(e) =>
-      println("Error in client actor", e)
+      log.error("Error in WettkampfCoordinator actor", e)
       Stop
   }
 
@@ -177,7 +176,10 @@ class ClientActorSupervisor extends Actor {
       sender ! coordinator
     
     case uw: KutuAppAction =>
-      wettkampfCoordinators.filter(p => p._1 == uw.wettkampfUUID).foreach(_._2.forward(uw))
+      wettkampfCoordinators.get(uw.wettkampfUUID) match {
+        case Some(coordinator) => coordinator.forward(uw)
+        case _=> sender ! MessageAck("OK")
+      }
       
     case Terminated(wettkampfActor) =>
       context.unwatch(wettkampfActor)
@@ -204,14 +206,17 @@ object CompetitionCoordinatorClientActor extends JsonSupport with EnrichedJson {
       .watchTermination()((_, f) => f.onComplete {
         case Failure(cause) =>
           println(s"WS-Server stream failed with $cause")
-        case _ => // ignore regular completion
+        case s => // ignore regular completion
+          println(s.toString)
           println(s"WS-Server stream closed")
       })
 
   def tryMapText(text: String): KutuAppEvent = try {
     text.asType[KutuAppEvent]
   } catch {
-    case e: Exception => MessageAck(text)
+    case e: Exception => 
+      e.printStackTrace
+      MessageAck(text)
   }
 
   def websocketFlow: Flow[Message, KutuAppProtokoll, Any] =

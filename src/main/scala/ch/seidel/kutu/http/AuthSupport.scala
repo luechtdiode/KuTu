@@ -43,18 +43,39 @@ import akka.http.scaladsl.settings.ConnectionPoolSettings
 import scala.concurrent.Promise
 import akka.http.scaladsl.model.ws.Message
 import akka.http.scaladsl.model.ws.WebSocketRequest
+import java.net.PasswordAuthentication
+import java.net.Proxy
+import java.net.ProxySelector
+import ch.seidel.kutu.Config
+import java.net.URI
+import java.util.Collections
+import java.net.Authenticator
+import java.net.PasswordAuthentication
+import java.net.Authenticator.RequestorType
+import ch.seidel.commons.PageDisplayer
+
+object AuthSupport {
+  private[AuthSupport] var proxyPort: Option[String] = None
+  private[AuthSupport] var proxyHost: Option[String] = None
+  private[AuthSupport] var proxyUser: Option[String] = None
+  private[AuthSupport] var proxyPassword: Option[String] = None
+  private[AuthSupport] var clientheader: Option[RawHeader] = None
+  
+  case class UserCredentials(username: String, password: String)
+}
 
 trait AuthSupport extends Directives with SprayJsonSupport with Hashing {
   import spray.json.DefaultJsonProtocol._
+  import AuthSupport._
   
-  private var proxyPort: Option[String] = None
-  private var proxyHost: Option[String] = None
-  private var proxyUser: Option[String] = None
-  private var proxyPassword: Option[String] = None
-  private var clientheader: Option[RawHeader] = None
-  
-  case class UserCredentials(username: String, password: String)
   implicit val credsFormat = jsonFormat2(UserCredentials)
+  
+  autoconfigProxy match {
+    case (Some(host), Some(port)) =>
+      proxyPort = Some(port)
+      proxyHost = Some(host)
+    case _ =>
+  }
   
   def setProxyProperties(port: String, host: String, user: String, password: String) {
     proxyPort = Some(port)
@@ -62,21 +83,94 @@ trait AuthSupport extends Directives with SprayJsonSupport with Hashing {
     proxyUser = Some(user)
     proxyPassword = Some(password)
   }
+//  
+//  Authenticator.setDefault(new Authenticator() {
+//    override protected def getPasswordAuthentication(): PasswordAuthentication = {
+//      import javafx.scene.{ control => jfxsc }
+//      import scalafx.Includes._
+//      import scalafx.scene.control._
+//      import scalafx.scene.layout._
+//      import scalafx.scene._
+//      import scalafx.beans.binding._
+//      import ch.seidel.commons.DisplayablePage
+//      import ch.seidel.commons.PageDisplayer
+//      
+//      if (getRequestorType() == RequestorType.PROXY) {
+//        val txtUsername = new TextField {
+//          prefWidth = 500
+//          promptText = "Username"
+//          text = System.getProperty("user.name")
+//        }
+//    
+//        val txtPassword = new PasswordField {
+//          prefWidth = 500
+//          promptText = "Internet Proxy Passwort"
+//        }
+//        PageDisplayer.showInDialogFromRoot("Internet Proxy authentication", new DisplayablePage() {
+//          def getPage: Node = {
+//            new BorderPane {
+//              hgrow = Priority.Always
+//              vgrow = Priority.Always
+//              center = new VBox {
+//                children.addAll(
+//                    new Label(txtUsername.promptText.value), txtUsername,
+//                    new Label(txtPassword.promptText.value), txtPassword
+//                    )
+//              }
+//            }
+//          }
+//        }, new Button("OK") {
+//          disable <== when(Bindings.createBooleanBinding(() => {
+//                                txtUsername.text.isEmpty.value && txtPassword.text.isEmpty().value
+//                              },
+//                                txtUsername.text, txtPassword.text
+//                              )) choose true otherwise false
+//          onAction = () =>
+//            setProxyProperties(
+//                host = Config.proxyHost.getOrElse(""), 
+//                port = Config.proxyPort.getOrElse(""),
+//                user = txtUsername.text.value.trim(),
+//                password = txtPassword.text.value.trim())
+//          }
+//        })
+//        getProxyAuth
+//      } else { 
+//        super.getPasswordAuthentication()
+//      }
+//    }               
+//  })
+//    
+  def askForUsernamePassword = PageDisplayer.askFor("Proxy Login", ("Username", System.getProperty("user.name")), ("Passwort*", proxyPassword.getOrElse("")))
+  
+  def getProxyAuth = askForUsernamePassword match {
+    case Some(Seq(username, password)) => 
+      proxyUser = Some(username)
+      proxyPassword = Some(password)
+      new PasswordAuthentication(username, proxyPassword.get.toCharArray())
+    case _ => new PasswordAuthentication(proxyUser.get, proxyPassword.get.toCharArray())
+  }
   
   def httpsProxyTransport = proxyHost.flatMap(h => 
     proxyPort.map(p =>
       (proxyUser, proxyPassword) match {
         case (Some(user), Some(password)) => ClientTransport.httpsProxy(InetSocketAddress.createUnresolved(h, Integer.valueOf(p)), headers.BasicHttpCredentials(user, password))
-        case _ => ClientTransport.httpsProxy(InetSocketAddress.createUnresolved(h, Integer.valueOf(p)))
+        case _ => askForUsernamePassword match {
+          case Some(Seq(user, password)) => 
+            proxyUser = Some(user)
+            proxyPassword = Some(password)
+            ClientTransport.httpsProxy(InetSocketAddress.createUnresolved(h, Integer.valueOf(p)), headers.BasicHttpCredentials(user, password))
+          case _ =>  ClientTransport.httpsProxy(InetSocketAddress.createUnresolved(h, Integer.valueOf(p)))
+        }
       }
     ))
     
-  def poolsettings = ConnectionPoolSettings(Core.system)
-    .withConnectionSettings(httpsProxyTransport match { 
-      case Some(pt) => ClientConnectionSettings(Core.system).withTransport(pt) 
-      case _        => ClientConnectionSettings(Core.system)
-    })
-  
+  def clientsettings = httpsProxyTransport match { 
+    case Some(pt) => ClientConnectionSettings(Core.system).withTransport(pt)
+    case _        => ClientConnectionSettings(Core.system)
+  }
+
+  def poolsettings = ConnectionPoolSettings(Core.system).withConnectionSettings(clientsettings)
+ 
   def userPassAuthenticator(userSecretHashLookup: (String) => String): AuthenticatorPF[String] = {
     case p @ Credentials.Provided(id) if p.verify(userSecretHashLookup(id), sha256) => id
   }
@@ -165,7 +259,7 @@ trait AuthSupport extends Directives with SprayJsonSupport with Hashing {
   
   def websocketClientRequest(request: WebSocketRequest, flow: Flow[Message, Message, Promise[Option[Message]]]) : Promise[Option[Message]] = {
     import Core._
-    Http().singleWebSocketRequest(request, clientFlow = flow, settings = poolsettings.connectionSettings)._2
+    Http().singleWebSocketRequest(request, clientFlow = flow, settings = clientsettings)._2
   }
   
   def httpPutClientRequest(uri: String, entity: RequestEntity): Future[HttpResponse] = {

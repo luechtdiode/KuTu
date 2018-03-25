@@ -103,7 +103,7 @@
 			<groupId>com.typesafe.akka</groupId>
 			<artifactId>akka-http-testkit_${scala.majorversion}</artifactId>
 			<version>${akkaHttp.version}</version>
-			<scope>Test</scope>
+			<scope>test</scope>
 		</dependency>
 		<dependency>
 			<groupId>com.typesafe.akka</groupId>
@@ -141,6 +141,12 @@
 			<artifactId>qrgen</artifactId>
 			<version>1.4</version>
 		</dependency>
+		<!-- proxy -->
+		<dependency>
+		    <groupId>com.github.markusbernhardt</groupId>
+		    <artifactId>proxy-vole</artifactId>
+		    <version>1.0.4</version>
+		</dependency>	
 		<!-- dependency> <groupId>org.apache.logging.log4j</groupId> <artifactId>log4j-api</artifactId> 
 			<version>2.10.0</version> </dependency> <dependency> <groupId>org.apache.logging.log4j</groupId> 
 			<artifactId>log4j-core</artifactId> <version>2.10.0</version> </dependency> 
@@ -177,12 +183,26 @@
 			<groupId>org.scalatest</groupId>
 			<artifactId>scalatest_${scala.majorversion}</artifactId>
 			<version>3.0.3</version>
-			<scope>Test</scope>
+			<scope>test</scope>
 		</dependency>
 
 	</dependencies>
 	<!-- distributionManagement> <repository> <id>ftp-repository</id> <url>ftp://ftp.interpolar.ch/snapshots</url> 
 		</repository> </distributionManagement -->
+	<distributionManagement>
+	 <site>
+	  <id>s3.site</id>
+	  <url>s3://rs-travis/kutuapp/site</url>
+	 </site>
+	 <repository>
+	  <id>s3.release</id>
+	  <url>s3://rs-travis/kutuapp/release</url>
+	 </repository>
+	 <snapshotRepository>
+	  <id>s3.snapshot</id>
+	  <url>s3://rs-travis/kutuapp/snapshot</url>
+	 </snapshotRepository>
+	</distributionManagement>		
 
 	<build>
 		<resources>
@@ -444,6 +464,11 @@
 			</plugin>
 		</plugins>
 		<extensions>
+			<extension>
+			    <groupId>org.kuali.maven.wagons</groupId>
+			    <artifactId>maven-s3-wagon</artifactId>
+			    <version>1.2.1</version>
+		   </extension>
 			<!-- Enabling the use of FTP -->
 			<extension>
 				<groupId>org.apache.maven.wagon</groupId>
