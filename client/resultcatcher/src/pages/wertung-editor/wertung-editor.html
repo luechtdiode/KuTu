@@ -13,31 +13,31 @@
 </ion-header>
 
 <ion-content>
-  <ion-list>
-    <ion-item>
-        <ion-title>{{item.vorname + ' ' + item.name}}</ion-title>
-        <ion-note item-end>{{item.wertung.riege}}</ion-note>
-    </ion-item>
-    <ion-item>
-      <ion-label>D-Note</ion-label>
-      <ion-input [readonly]='!editable()' [(ngModel)]='item.wertung.noteD'></ion-input>
-    </ion-item>
-    <ion-item>
-      <ion-label>E-Note</ion-label>
-      <ion-input [readonly]='!editable()' [(ngModel)]='item.wertung.noteE'></ion-input>
-    </ion-item>
-    <ion-item>
-      <ion-label>Endnote</ion-label>
-      <ion-input [value]='item.wertung.endnote' readonly></ion-input>
-    </ion-item>
+    <ion-list>
+      <ion-item>
+          <ion-title>{{item.vorname + ' ' + item.name}}</ion-title>
+          <ion-note item-end>{{wertung.riege}}</ion-note>
+      </ion-item>
+      <ion-item>
+        <ion-label>D-Note</ion-label>
+        <ion-input [readonly]='!editable()' [(ngModel)]='wertung.noteD' (keyup.enter)="save(wertung)"></ion-input>
+      </ion-item>
+      <ion-item>
+        <ion-label>E-Note</ion-label>
+        <ion-input [readonly]='!editable()' [(ngModel)]='wertung.noteE' (keyup.enter)="save(wertung)"></ion-input>
+      </ion-item>
+      <ion-item>
+        <ion-label>Endnote</ion-label>
+        <ion-input [value]='wertung.endnote' readonly></ion-input>
+      </ion-item>
 
-  </ion-list>
+    </ion-list>
 </ion-content>
 
 <ion-footer>
   <ion-toolbar>
       <ion-list>
-          <button *ngIf='editable()' ion-button large block icon-left color="secondary" (click)='save(item.wertung)'>
+          <button *ngIf='editable()' ion-button large block icon-left color="secondary" (click)='save(wertung)' type="submit">
               <ion-icon name="checkmark-circle"></ion-icon>Save</button>
       </ion-list>
   </ion-toolbar>

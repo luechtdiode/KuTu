@@ -1,12 +1,11 @@
 import { Component, ViewChild } from '@angular/core';
-import { Nav, Platform } from 'ionic-angular';
+import { Nav, Platform, AlertController } from 'ionic-angular';
 import { StatusBar } from '@ionic-native/status-bar';
 import { SplashScreen } from '@ionic-native/splash-screen';
 
 import { HomePage } from '../pages/home/home';
-import { RiegeListPage } from '../pages/list/riege-list';
-import { SettingsPage } from '../pages/settings/settings';
 import { StationPage } from '../pages/station/station';
+import { BackendService } from './backend.service';
 
 @Component({
   templateUrl: 'app.html'
@@ -18,7 +17,8 @@ export class MyApp {
 
   pages: Array<{title: string, component: any}>;
 
-  constructor(public platform: Platform, public statusBar: StatusBar, public splashScreen: SplashScreen) {
+  constructor(public platform: Platform, public statusBar: StatusBar, public splashScreen: SplashScreen,
+     public backendService: BackendService, private alertCtrl: AlertController) {
     this.initializeApp();
 
     // used for an example of ngFor and navigation
@@ -47,6 +47,15 @@ export class MyApp {
         }
       }
       this.splashScreen.hide();
+
+      this.backendService.showMessage.subscribe(message => {
+        let alert = this.alertCtrl.create({
+          title: 'Achtung',
+          subTitle: message.msg,
+          buttons: ['OK']
+        });
+        alert.present();
+      });
     });
   }
 

@@ -1,4 +1,4 @@
-import { Component, Input } from '@angular/core';
+import { Component } from '@angular/core';
 import { NavController, NavParams } from 'ionic-angular';
 import { WertungContainer, Wertung } from '../../app/backend-types';
 import { BackendService } from '../../app/backend.service';
@@ -19,23 +19,30 @@ export class WertungEditorPage {
 
   constructor(public navCtrl: NavController, public navParams: NavParams, public backendService: BackendService) {
       // If we navigated to this page, we will have an item available as a nav param
-      this.item = Object.assign({}, navParams.get('item'));
-      this.itemOriginal = navParams.get('item');
       this.durchgang = navParams.get('durchgang');
       this.step = navParams.get('step');
       this.geraetId = navParams.get('geraetId');
+      
+      this.itemOriginal = navParams.get('item');
+      this.item = Object.assign({}, this.itemOriginal);
+      this.wertung = Object.assign({}, this.item.wertung);
+
+      backendService.wertungUpdated.subscribe(wc => {
+        if (wc.wertung.id === this.wertung.id) {
+          this.item.wertung = Object.assign({}, wc.wertung);
+          this.itemOriginal.wertung = Object.assign({}, wc.wertung);
+          this.wertung = Object.assign({}, this.itemOriginal.wertung);
+        }
+      });
   }
 
-  @Input()
   item: WertungContainer;
+  wertung: Wertung;
 
-  @Input()
   geraetId: number;
 
-  @Input()
   step: number;
 
-  @Input()
   durchgang: string;
 
   editable() {
@@ -45,9 +52,12 @@ export class WertungEditorPage {
   save(wertung: Wertung) {
     this.backendService.updateWertung(this.durchgang, this.step, this.geraetId, wertung).subscribe((wc) => {
       this.item = Object.assign({}, wc);
+      this.itemOriginal = Object.assign({}, wc);
+      this.wertung = Object.assign({}, this.itemOriginal.wertung);
       this.navCtrl.pop();
     }, (err) => {
       this.item = Object.assign({}, this.itemOriginal);
+      this.wertung = Object.assign({}, this.itemOriginal.wertung);
       console.log(err);      
     });
   }

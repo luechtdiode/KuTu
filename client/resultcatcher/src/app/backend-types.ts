@@ -34,3 +34,36 @@ export interface Wettkampf {
   auszeichnungendnote: number;
   uuid: string;
 }
+
+// actions
+export interface FinishDurchgangStation {
+  wettkampfUUID: string;
+  durchgang: string;
+  geraet: number;
+  step: number;
+}
+
+// websocket events
+export interface MessageAck {
+  msg: string;
+  type: string;
+}
+
+export interface DurchgangStarted {
+  wettkampfUUID: string;
+  durchgang: string;
+  type: string;
+}
+export interface DurchgangFinished {
+  wettkampfUUID: string;
+  durchgang: string;
+  type: string;
+}
+export interface AthletWertungUpdated {
+  ahtlet: any, 
+  wertung: Wertung; 
+  wettkampfUUID: string;
+  durchgang: string;
+  geraet: number;
+  type: string;
+}

@@ -1,10 +1,8 @@
-import { Component, OnInit } from '@angular/core';
+import { Component } from '@angular/core';
 import { NavController } from 'ionic-angular';
-import { Backdrop } from 'ionic-angular/components/backdrop/backdrop';
 import { BackendService } from '../../app/backend.service';
 import { Wettkampf, Geraet, WertungContainer } from '../../app/backend-types';
-import { Observable } from 'rxjs/Observable';
-import { Subscription } from 'rxjs';
+import { encodeURIComponent2 } from '../../app/websocket.service';
 
 
 @Component({
@@ -13,8 +11,16 @@ import { Subscription } from 'rxjs';
 })
 export class StationPage {
 
+  durchgangstate = 'gesperrt';
+  durchgangopen = false;
+  
   constructor(public navCtrl: NavController, public backendService: BackendService) {
-    //this.backendService.getCompetitions();
+    this.backendService.durchgangStarted.map(dgl => 
+      dgl.filter(dg => encodeURIComponent2(dg.durchgang) === encodeURIComponent2(this.backendService.durchgang) && dg.wettkampfUUID === this.backendService.competition).length > 0 ? true : false
+    ).subscribe(dg => {
+      this.durchgangstate = dg ? 'gestartet' : 'gesperrt';
+      this.durchgangopen = dg;
+    });
   }
 
   set competition(competitionId: string) {
@@ -54,7 +60,12 @@ export class StationPage {
   get stationFreezed(): Boolean {
     return this.backendService.stationFreezed;
   }
-
+  isLoggedIn() {
+    return this.backendService.loggedIn;
+  }
+  finish() {
+    this.backendService.finishStation(this.competition, this.durchgang, this.step, this.geraet);
+  }
   getCompetitions(): Wettkampf[] {
     return this.backendService.competitions;
   }

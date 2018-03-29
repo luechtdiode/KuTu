@@ -7,7 +7,8 @@
     <button ion-button menuToggle>
       <ion-icon name="menu"></ion-icon>
     </button>
-    <ion-title>Resultaterfassung</ion-title>
+    <ion-title>Resultaterfassung&nbsp;-&nbsp;<ion-note item-end>{{durchgangstate}}</ion-note></ion-title>
+    
   </ion-navbar>
 </ion-header>
 
@@ -18,6 +19,10 @@
 <ion-footer >
     <ion-toolbar>
         <ion-list>
+            <ion-item *ngIf="isLoggedIn() && durchgangopen" >
+                <button ion-button large block icon-left color="green" (click)="finish()" [disabled]="!(geraet && getSteps())">
+                <ion-icon name="git-commit"></ion-icon>Eingaben abschliessen</button>          
+            </ion-item>  
           <ion-item >
             <!-- <ion-thumbnail  item-start><img src="assets/imgs/wettkampf.png"></ion-thumbnail > -->
               <ion-note>{{competitionName()}}</ion-note>

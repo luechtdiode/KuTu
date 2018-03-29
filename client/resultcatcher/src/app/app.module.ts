@@ -12,7 +12,6 @@ import { HttpClientModule, HTTP_INTERCEPTORS } from '@angular/common/http';
 import { TokenInterceptor } from './token-interceptor';
 import { BackendService } from './backend.service';
 import { WertungEditorPage } from '../pages/wertung-editor/wertung-editor';
-import { SettingsPage } from '../pages/settings/settings';
 import { StationPage } from '../pages/station/station';
 
 @NgModule({
@@ -20,7 +19,6 @@ import { StationPage } from '../pages/station/station';
     MyApp,
     HomePage,
     StationPage,
-    SettingsPage,
     RiegeListPage,
     WertungEditorPage
   ],
@@ -34,7 +32,6 @@ import { StationPage } from '../pages/station/station';
     MyApp,
     HomePage,
     StationPage,
-    SettingsPage,
     RiegeListPage,
     WertungEditorPage
   ],

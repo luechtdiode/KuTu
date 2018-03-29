@@ -1,23 +1,19 @@
 import { Injectable } from '@angular/core';
 import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { backendUrl } from './utils';
-import { TokenInterceptor } from './token-interceptor';
-import { toBase64String } from '@angular/compiler/src/output/source_map';
-import { WertungContainer, Geraet, Wettkampf, Wertung } from './backend-types';
+import { WertungContainer, Geraet, Wettkampf, Wertung, MessageAck, AthletWertungUpdated, DurchgangStarted, DurchgangFinished, FinishDurchgangStation } from './backend-types';
 import { Observable } from 'rxjs/Observable';
 import { Subject } from 'rxjs/Subject';
-import { Subscription } from 'rxjs';
+import { Subscription, BehaviorSubject } from 'rxjs';
 import { tokenNotExpired } from 'angular2-jwt';
 import { interval } from 'rxjs/observable/interval';
+import { WebsocketService, encodeURIComponent2 } from './websocket.service';
 
 declare var location: any;
 
-function encodeURIComponent2(uri: string): string {
-  return encodeURIComponent(uri.replace(/[,&.*+?/^${}()|[\]\\]/g, "_"));
-}
-
 @Injectable()
-export class BackendService {
+export class BackendService extends WebsocketService {
+
   externalLoaderSubscription: Subscription;
 
   loggedIn = false;
@@ -28,7 +24,7 @@ export class BackendService {
   geraete: Geraet[];
   steps: number[];
   wertungen: WertungContainer[];
-  
+
   private _competition: string = undefined;
   get competition(): string {
     return this._competition;
@@ -47,6 +43,7 @@ export class BackendService {
   }
 
   constructor(public http: HttpClient) {
+    super();
     this.externalLoaderSubscription = interval(1000).subscribe(latest => {
       this.loggedIn = this.checkJWT();
       const initWith = localStorage.getItem("external_load");
@@ -89,6 +86,9 @@ export class BackendService {
         this.loadGeraete();
         this.loadSteps();
         this.loadWertungen();
+      } else if (this._competition) {
+        this.getCompetitions();
+        this.loadDurchgaenge();            
       }
     }
   }
@@ -114,6 +114,12 @@ export class BackendService {
       this.loggedIn = this.checkJWT();
     });
   }
+  
+  unlock() {
+    localStorage.removeItem('current_station');
+    this.loggedIn = this.checkJWT();
+    this.stationFreezed = false;
+  }
 
   logout() {
     localStorage.removeItem('auth_token');
@@ -125,10 +131,6 @@ export class BackendService {
     this._geraet = undefined;
     this._step = undefined;    
     this.getCompetitions();
-    // this.loadDurchgaenge();    
-    // this.loadGeraete();
-    // this.loadSteps();
-    // this.loadWertungen();
   }
 
   getCompetitions() {
@@ -211,23 +213,114 @@ export class BackendService {
   }
 
   loadWertungen() {
+    this.disconnectWS(true);
+    this.initWebsocket();
     this.http.get<WertungContainer[]>(backendUrl + 'api/durchgang/' + this._competition + '/' + encodeURIComponent2( this._durchgang) + '/' + this._geraet + '/' + this._step).subscribe((data) => {
       this.wertungen = data;
     });    
   }
 
+  isMessageAck(test: WertungContainer | MessageAck): test is MessageAck { return (test as MessageAck).type === 'MessageAck'}
+
   updateWertung(durchgang: string, step: number, geraetId: number, wertung: Wertung): Observable<WertungContainer> {
     const competitionId = wertung.wettkampfUUID;
     const result = new Subject<WertungContainer>();
-    this.http.put<WertungContainer[]>(backendUrl + 'api/durchgang/' + competitionId + '/' + encodeURIComponent2(durchgang) + '/' + geraetId + '/' + step, wertung)
+    this.http.put<WertungContainer | MessageAck>(backendUrl + 'api/durchgang/' + competitionId + '/' + encodeURIComponent2(durchgang) + '/' + geraetId + '/' + step, wertung)
     .subscribe((data) => {
-      this.wertungen = data;
-      result.next(data.find(wc => wc.wertung.id === wertung.id));
-      result.complete();
+      if (!this.isMessageAck(data)) { 
+        this.wertungen = this.wertungen.map(w => {
+          if (w.id === data.id) {
+            return data;
+          } else {
+            return w;
+          }
+        }); 
+        result.next(data);
+        result.complete();
+      } else {
+        const msg = data as MessageAck
+        this.showMessage.next(msg);
+        result.error(msg.msg);
+      }
     }, (err)=> {
-      result.next(this.wertungen.find(wc => wc.wertung.id === wertung.id));
+      this.showMessage.next(err);
       result.error(err);
     });    
     return result;
   }
+
+  finishStation(competitionId: string, durchgang: string, step: number, geraetId: number) {
+    this.http.post<MessageAck>(backendUrl + 'api/durchgang/' + competitionId + '/finish', JSON.stringify(<FinishDurchgangStation>{
+      type : "FinishDurchgangStation",
+      wettkampfUUID : competitionId,
+      durchgang : durchgang,
+      geraet : geraetId,
+      step : step
+    }))
+    .subscribe((data) => {
+      localStorage.removeItem('current_station');
+      this.loggedIn = this.checkJWT();
+      this.stationFreezed = false;
+      const nextSteps = this.steps.filter(s => s > this._step);
+      if (nextSteps.length > 0) {
+        this._step = nextSteps[0];
+      } else {
+        this._step = 1;
+      }
+      this.loadWertungen();
+    }, (err)=> {
+    });    
+  }  
+
+  //// Websocket implementations
+
+  private _activeDurchgangList: DurchgangStarted[] = [];
+  get activeDurchgangList(): DurchgangStarted[] {
+    return this._activeDurchgangList;
+  }
+
+  durchgangStarted = new BehaviorSubject<DurchgangStarted[]>([]);
+  wertungUpdated = new Subject<AthletWertungUpdated>();
+  
+  protected getWebsocketBackendUrl(): string {
+    const host = location.host;
+    const path = location.pathname;
+    const protocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
+    if (!host || host === '') {
+      return "wss://kutuapp.sharevic.net/api/durchgang/" + this._competition + '/' + this._durchgang + '/ws';
+    } else if (host.startsWith('localhost')) {
+      return "ws://localhost:5757/api/durchgang/" + this._competition + '/' + this._durchgang + '/ws';
+    } else {
+      return protocol + "//" + host + path + "api/durchgang/" + this._competition + '/' + this._durchgang + '/ws';
+    }
+  }
+
+  protected handleWebsocketMessage(message: any): boolean {
+    const type = message['type'];
+    switch (type) {
+      case 'DurchgangStarted':
+        this._activeDurchgangList = [...this.activeDurchgangList, (message as DurchgangStarted)]
+        this.durchgangStarted.next(this.activeDurchgangList);
+        return true;
+
+      case 'DurchgangFinished':
+        let finished = (message as DurchgangFinished)
+        this._activeDurchgangList = this.activeDurchgangList.filter(d => d.durchgang !== finished.durchgang || d.wettkampfUUID !== finished.wettkampfUUID);
+        this.durchgangStarted.next(this.activeDurchgangList);
+        return true;
+
+      case 'AthletWertungUpdated':
+        let updated = (message as AthletWertungUpdated)
+        this.wertungUpdated.next(updated);
+        return true;
+
+      case 'MessageAck':
+        console.log((message as MessageAck).msg);
+        this.showMessage.next((message as MessageAck));
+        return true;
+
+      default:
+        return false;
+    }
+  };
 }

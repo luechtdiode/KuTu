@@ -43,18 +43,18 @@
             <ion-select *ngIf="competition && getDurchgaenge()" [(ngModel)]='durchgang' okText='Okay' cancelText='Abbrechen'>
               <ion-option *ngFor='let d of getDurchgaenge()' [value]='d'>{{d}}</ion-option>
             </ion-select>
-            <ion-note *ngIf="competition && !getDurchgaenge() && durchgang">
+            <!-- <ion-note *ngIf="competition && !getDurchgaenge() && durchgang">
               {{durchgang}}
-            </ion-note>
+            </ion-note> -->
           </ion-item>
           <ion-item >
             <ion-label>Gerät</ion-label>
             <ion-select *ngIf="durchgang && getGeraete()" [(ngModel)]='geraet' okText='Okay' cancelText='Abbrechen'>
               <ion-option *ngFor='let g of getGeraete()' [value]='g.id'>{{g.name}}</ion-option>
             </ion-select>
-            <ion-note *ngIf="competition && !getDurchgaenge() && durchgang">
+            <!-- <ion-note *ngIf="competition && !getDurchgaenge() && durchgang">
               {{geraet}}
-            </ion-note>
+            </ion-note> -->
           </ion-item>
           <ion-item>
             <ion-range *ngIf="geraet && getSteps()" [(ngModel)]="step" pin="true" [min]="1" [max]="getSteps().length" [step]="1" [snaps]="true" color="secondary">
@@ -67,15 +67,16 @@
         <ion-list>
             <button ion-button large block icon-left color="secondary" (click)="navToStation()" [disabled]="!(geraet && getSteps())">
                 <ion-icon name="create"></ion-icon>Resultate</button>
-
-        </ion-list>
+            <button *ngIf="isLoggedIn() && durchgangopen" ion-button large block icon-left color="green" (click)="finish()" [disabled]="!(geraet && getSteps())">
+              <ion-icon name="git-commit"></ion-icon>Eingaben abschliessen</button>          
+          </ion-list>
 </ion-content>
 
 <ion-footer>
     <ion-toolbar>
-        <ion-list *ngIf="stationFreezed">
-            <button ion-button large block icon-left color="danger" (click)="logout()" [disabled]="!(geraet && getSteps())">
-                <ion-icon name="log-out"></ion-icon>Station verlassen</button>          
+        <ion-list *ngIf="isLoggedIn()">
+          <button ion-button large block icon-left color="danger" (click)="logout()">
+              <ion-icon name="log-out"></ion-icon>Abmelden</button>          
         </ion-list>
     </ion-toolbar>
   </ion-footer>

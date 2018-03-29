@@ -1,11 +1,9 @@
-import { Component, OnInit } from '@angular/core';
+import { Component } from '@angular/core';
 import { NavController } from 'ionic-angular';
-import { Backdrop } from 'ionic-angular/components/backdrop/backdrop';
 import { BackendService } from '../../app/backend.service';
-import { Wettkampf, Geraet, WertungContainer } from '../../app/backend-types';
-import { Observable } from 'rxjs/Observable';
-import { Subscription } from 'rxjs';
+import { Wettkampf, Geraet } from '../../app/backend-types';
 import { StationPage } from '../station/station';
+import { encodeURIComponent2 } from '../../app/websocket.service';
 
 
 @Component({
@@ -14,8 +12,17 @@ import { StationPage } from '../station/station';
 })
 export class HomePage {
 
+  durchgangstate: string;
+  durchgangopen = false;
+  
   constructor(public navCtrl: NavController, public backendService: BackendService) {
     this.backendService.getCompetitions();
+    this.backendService.durchgangStarted.map(dgl => 
+      dgl.filter(dg => encodeURIComponent2(dg.durchgang) === encodeURIComponent2(this.backendService.durchgang) && dg.wettkampfUUID === this.backendService.competition).length > 0 ? true : false
+    ).subscribe(dg => {
+      this.durchgangstate = dg ? 'gestartet' : 'gesperrt';
+      this.durchgangopen = dg;
+    });
   }
 
   set competition(competitionId: string) {
@@ -24,7 +31,7 @@ export class HomePage {
     }
   }
   get competition(): string {
-    return this.backendService.competition;
+    return this.backendService.competition || "";
   }
 
   set durchgang(d: string) {
@@ -33,7 +40,7 @@ export class HomePage {
     }
   }
   get durchgang(): string {
-    return this.backendService.durchgang;
+    return this.backendService.durchgang || "";
   }
 
   set geraet(geraetId: number) {
@@ -42,14 +49,14 @@ export class HomePage {
     }
   }
   get geraet(): number {
-    return this.backendService.geraet;
+    return this.backendService.geraet || -1;
   }
 
   set step(s) {
     this.backendService.getWertungen(this.competition, this.durchgang, this.geraet, s);
   }
   get step() {
-    return this.backendService.step;
+    return this.backendService.step || -1;
   }
 
   get stationFreezed(): Boolean {
@@ -105,5 +112,11 @@ export class HomePage {
   }
   logout() {
     this.backendService.logout();
+  }
+  isLoggedIn() {
+    return this.backendService.loggedIn;
+  }
+  finish() {
+    this.backendService.finishStation(this.competition, this.durchgang, this.step, this.geraet);
   }
 }
