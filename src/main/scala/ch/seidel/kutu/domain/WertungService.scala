@@ -14,6 +14,7 @@ import scala.collection.JavaConverters
 import java.util.UUID
 import ch.seidel.kutu.http.WebSocketClient
 import ch.seidel.kutu.akka.AthletWertungUpdated
+import scala.util.Try
 
 object WertungServiceBestenResult {
   private val logger = LoggerFactory.getLogger(this.getClass)
@@ -227,34 +228,30 @@ abstract trait WertungService extends DBService with WertungResultMapper with Di
     wv    
   }
 
-  def updateWertungSimple(w: Wertung, putToBestenresults: Boolean = false): Option[Wertung] = {
-    try {      
-      val wv = readWettkampfDisziplinView(w.wettkampfdisziplinId).notenSpez.verifiedAndCalculatedWertung(w)
-      val wvId = Await.result(database.run((for {
-          updated <- sqlu"""
-                    UPDATE wertung
-                    SET note_d=${wv.noteD}, note_e=${wv.noteE}, endnote=${wv.endnote}, riege=${wv.riege}, riege2=${wv.riege2}
-                    WHERE 
-                      athlet_Id=${wv.athletId} and wettkampfdisziplin_Id=${wv.wettkampfdisziplinId} and wettkampf_Id=${wv.wettkampfId}
-            """
-          wvId <- sql"""
-                    SELECT id FROM wertung
-                    WHERE 
-                      athlet_Id=${wv.athletId} and wettkampfdisziplin_Id=${wv.wettkampfdisziplinId} and wettkampf_Id=${wv.wettkampfId}
-          """.as[Long]
-        } yield {
-          wvId
-        }).transactionally
-      ), Duration.Inf).head
-      // TODO - this feature is not able to serve for multiple competitions at same time
-      if(putToBestenresults && wv.endnote >= 8.7) {
-        putWertungToBestenResults(getWertung(wvId))
-      }
-      Some(wv.copy(id = wvId))
-    } catch {      
-      case e: Exception => e.printStackTrace()
-        None
+  @throws(classOf[Exception])
+  def updateWertungSimple(w: Wertung, putToBestenresults: Boolean = false): Wertung = {
+    val wv = readWettkampfDisziplinView(w.wettkampfdisziplinId).notenSpez.verifiedAndCalculatedWertung(w)
+    val wvId = Await.result(database.run((for {
+        updated <- sqlu"""
+                  UPDATE wertung
+                  SET note_d=${wv.noteD}, note_e=${wv.noteE}, endnote=${wv.endnote}, riege=${wv.riege}, riege2=${wv.riege2}
+                  WHERE 
+                    athlet_Id=${wv.athletId} and wettkampfdisziplin_Id=${wv.wettkampfdisziplinId} and wettkampf_Id=${wv.wettkampfId}
+          """
+        wvId <- sql"""
+                  SELECT id FROM wertung
+                  WHERE 
+                    athlet_Id=${wv.athletId} and wettkampfdisziplin_Id=${wv.wettkampfdisziplinId} and wettkampf_Id=${wv.wettkampfId}
+        """.as[Long]
+      } yield {
+        wvId
+      }).transactionally
+    ), Duration.Inf).head
+    // TODO - this feature is not able to serve for multiple competitions at same time
+    if(putToBestenresults && wv.endnote >= 8.7) {
+      putWertungToBestenResults(getWertung(wvId))
     }
+    wv.copy(id = wvId)
   }
 
   def listAthletenWertungenZuProgramm(progids: Seq[Long], wettkampf: Long, riege: String = "%") = {

@@ -27,6 +27,10 @@ import ch.seidel.kutu.akka.CompetitionCoordinatorClientActor
 import ch.seidel.kutu.akka.WertungContainer
 import scala.concurrent.Await
 import java.util.UUID
+import scala.util.Success
+import ch.seidel.kutu.akka.AthletWertungUpdated
+import scala.util.Failure
+import ch.seidel.kutu.akka.FinishDurchgangStation
 
 trait WertungenRoutes extends SprayJsonSupport with JsonSupport with JwtSupport with AuthSupport with RouterLogging with KutuService {
   import scala.concurrent.ExecutionContext.Implicits.global
@@ -62,10 +66,35 @@ trait WertungenRoutes extends SprayJsonSupport with JsonSupport with JwtSupport 
         }
       } ~
       path(Segment / "ws") { durchgang =>
-          authenticated { wettkampfUUID =>
-            handleWebSocketMessages(CompetitionCoordinatorClientActor.createActorSinkSource(UUID.randomUUID().toString, wettkampfUUID, Some(durchgang)))
+        parameters('jwt.as[String]) { (jwt) =>
+          authenticateWith(Some(jwt), true) { id =>
+            if (id == competitionId.toString) {
+              handleWebSocketMessages(CompetitionCoordinatorClientActor.createActorSinkSource(UUID.randomUUID().toString, competitionId.toString, Some(durchgang)))
+            } else {
+              complete(StatusCodes.Unauthorized)
+            }
+          }          
+        } ~
+        authenticated(true) { id =>
+         if (id == competitionId.toString) {
+            handleWebSocketMessages(CompetitionCoordinatorClientActor.createActorSinkSource(UUID.randomUUID().toString, competitionId.toString, Some(durchgang)))
+          } else {
+            complete(StatusCodes.Unauthorized)
           }
+        } ~
+        pathEnd {
+          handleWebSocketMessages(CompetitionCoordinatorClientActor.createActorSource(UUID.randomUUID().toString, competitionId.toString, Some(durchgang)))          
+        }
       } ~
+      path("finish") { 
+        post {
+          authenticated() { userId =>
+            entity(as[String]) { fd =>
+              complete(CompetitionCoordinatorClientActor.publish(fd.asType[FinishDurchgangStation]))
+            }
+          }
+        }
+      } ~    
       path(Segments) {segments => 
         get {
           // Durchgang/Geraet/Step
@@ -102,10 +131,10 @@ trait WertungenRoutes extends SprayJsonSupport with JsonSupport with JwtSupport 
           }
         } ~
         put {
-          authenticated { userId =>
+          authenticated() { userId =>
             entity(as[Wertung]) { wertung =>
               segments match { 
-                case List(durchgang, geraet, step) => complete { Future {
+                case List(durchgang, geraet, step) => onComplete{ Future {
                   val halt: Int = step
                   val gid: Long = geraet
                   val gerateRiegen = RiegenBuilder.mapToGeraeteRiegen(getAllKandidatenWertungen(competitionId).toList)
@@ -115,32 +144,43 @@ trait WertungenRoutes extends SprayJsonSupport with JsonSupport with JwtSupport 
                     gr.disziplin.exists(_.id == gid) && 
                     gr.halt == halt -1                    
                   }
-                  val filteredRiegen = gerateRiegen.filter(filter)
-                  val wertungOriginal = filteredRiegen
-                    .flatMap(gr => gr.kandidaten
+                  
+                  if (wertung.wettkampfId == wkid) {
+                    gerateRiegen.filter(filter).flatMap(gr => gr.kandidaten
                         .filter(k => k.id == wertung.athletId)
-                        .map(k => UpdateAthletWertung(loadAthleteView(k.id), 
-                          k.wertungen.filter(w => w.wettkampfdisziplin.disziplin.id == gid).map(_.toWertung).head, 
-                          competitionId.toString, durchgang, gid))).headOption
-                  val compOK = wertung.wettkampfId == wkid
-                  val wertungOk = wertungOriginal.exists(wo => wo.wertung.id == wertung.id)
-                  if (wertungOk && compOK) {
-                    Await.result(CompetitionCoordinatorClientActor.publish(
-                      UpdateAthletWertung(
-                          wertungOriginal.get.ahtlet,
-                          wertungOriginal.get.wertung.updatedWertung(wertung), 
-                          competitionId.toString, durchgang, geraet) 
-                    ), Duration.Inf)
+                        .map(k => UpdateAthletWertung(
+                            loadAthleteView(k.id), 
+                            k.wertungen.filter(w => w.wettkampfdisziplin.disziplin.id == gid && w.id == wertung.id).map(_.toWertung.updatedWertung(wertung)).head, 
+                            competitionId.toString, 
+                            gr.durchgang.get, 
+                            gid, 
+                            halt-1))).headOption
+                  } else {
+                    None
                   }
-                  RiegenBuilder.mapToGeraeteRiegen(getAllKandidatenWertungen(competitionId).toList)
-                    .filter(gr => 
-                        gr.durchgang.exists(encodeURIComponent(_) == durchgang) && 
-                        gr.disziplin.exists(_.id == gid) && 
-                        gr.halt == halt -1)
-                    .flatMap(gr => gr.kandidaten.map(k => WertungContainer(k.id, k.vorname, k.name, k.geschlecht, k.verein, 
-                      k.wertungen.filter(w => w.wettkampfdisziplin.disziplin.id == gid).map(_.toWertung).head, 
-                      gid)))
-                  }
+                }} {
+                  case Success(Some(wertung)) => 
+//                  RiegenBuilder.mapToGeraeteRiegen(getAllKandidatenWertungen(competitionId).toList)
+//                    .filter(gr => 
+//                        gr.durchgang.exists(encodeURIComponent(_) == durchgang) && 
+//                        gr.disziplin.exists(_.id == gid) && 
+//                        gr.halt == halt -1)
+//                    .flatMap(gr => gr.kandidaten.map(k => WertungContainer(k.id, k.vorname, k.name, k.geschlecht, k.verein, 
+//                      k.wertungen.filter(w => w.wettkampfdisziplin.disziplin.id == gid).map(_.toWertung).head, 
+//                      gid)))                  
+                    complete(CompetitionCoordinatorClientActor.publish(wertung).andThen{
+                      case Success(w) => w match {
+                        case a @ AthletWertungUpdated(athlet, verifiedWertung, wettkampfUUID, durchgang, geraet) =>
+                          val verein: String = athlet.verein.map(_.name).getOrElse("")
+                          WertungContainer(athlet.id, athlet.vorname, athlet.name, athlet.geschlecht, verein,
+                              verifiedWertung, geraet)
+                        case _ => StatusCodes.Conflict
+                      }
+                      case Failure(error) => StatusCodes.Conflict
+                    })
+                    
+                  case _ => 
+                    complete(StatusCodes.Conflict)
                 }
               }
             }

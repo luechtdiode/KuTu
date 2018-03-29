@@ -34,11 +34,13 @@ object ResourceExchanger extends KutuService with RiegenBuilder {
           val mappedAthlet = findAthleteLike(cache)(athlet.toAthlet.copy(id = 0, verein = mappedverein))
           val mappedWettkampf = readWettkampf(wettkampfUUID)
           val mappedWertung = wertung.copy(athletId = mappedAthlet.id, wettkampfId = mappedWettkampf.id, wettkampfUUID = wettkampfUUID)
-          val verifiedWertung = updateWertungSimple(mappedWertung, true)match {
-            case Some(verifiedWertung) => 
-              logger.info("saved " + verifiedWertung)
-              refresher(uw.copy(wertung = verifiedWertung))
-            case _ => 
+          val verifiedWertung = try {
+            val vw = updateWertungSimple(mappedWertung, true)
+            logger.info("saved " + vw)
+            refresher(uw.copy(wertung = vw))
+            vw
+          } catch {
+            case e: Exception =>
               logger.info("not saved!")
               refresher(uw)
           }

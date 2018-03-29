@@ -52,6 +52,10 @@ import akka.http.scaladsl.model.ws.TextMessage
 import akka.stream.scaladsl.Keep
 import akka.http.scaladsl.model.ws.Message
 import akka.http.scaladsl.settings.ConnectionPoolSettings
+import ch.seidel.kutu.domain.WettkampfView
+import akka.http.scaladsl.marshalling.Marshal
+import akka.util.ByteString
+import akka.http.scaladsl.marshalling.Marshaller
 
 trait WettkampfRoutes extends SprayJsonSupport with JsonSupport with JwtSupport with AuthSupport with RouterLogging with WettkampfService {
   import DefaultJsonProtocol._
@@ -74,7 +78,27 @@ trait WettkampfRoutes extends SprayJsonSupport with JsonSupport with JwtSupport 
     ) toEntity
   }
   
+  def startDurchgang(p: WettkampfView, durchgang: String) = {
+    import scala.concurrent.ExecutionContext.Implicits.global
+    import Core.system.dispatcher
+    httpPostClientRequest(s"$remoteAdminBaseUrl/api/competition/${p.uuid.get}/start",
+        HttpEntity(
+            ContentTypes.`application/json`, 
+            ByteString(StartDurchgang(p.uuid.get, durchgang).toJson.compactPrint)
+        )
+    )
+  }
   
+  def finishDurchgang(p: WettkampfView, durchgang: String) = {
+    import scala.concurrent.ExecutionContext.Implicits.global
+    import Core.system.dispatcher
+    httpPostClientRequest(s"$remoteAdminBaseUrl/api/competition/${p.uuid.get}/stop",
+        HttpEntity(
+            ContentTypes.`application/json`, 
+            ByteString(FinishDurchgang(p.uuid.get, durchgang).toJson.compactPrint)
+        )
+    )
+  }  
   def httpUploadWettkampfRequest(wettkampf: Wettkampf) = {
     import Core.system
     import Core.materializer
@@ -168,7 +192,7 @@ trait WettkampfRoutes extends SprayJsonSupport with JsonSupport with JwtSupport 
   lazy val wettkampfRoutes: Route = {
     path("competition" / "ws") {
       pathEnd {
-        authenticated { wettkampfUUID =>
+        authenticated() { wettkampfUUID =>
           handleWebSocketMessages(CompetitionCoordinatorClientActor.createActorSinkSource(UUID.randomUUID().toString, wettkampfUUID, None))
         }
       }
@@ -181,6 +205,32 @@ trait WettkampfRoutes extends SprayJsonSupport with JsonSupport with JwtSupport 
       }
     } ~
     pathPrefix("competition" / JavaUUID) { wkuuid =>
+      path("start") {
+        post {
+          authenticated() { userId =>
+            entity(as[StartDurchgang]) { sd =>
+              if (userId.equals(wkuuid.toString())) {
+                complete(CompetitionCoordinatorClientActor.publish(sd))
+              } else {
+                complete(StatusCodes.Conflict)
+              }
+            }
+          }
+        }
+      } ~
+      path("stop") {
+        post {
+          authenticated() { userId =>
+            entity(as[FinishDurchgang]) { fd =>
+              if (userId.equals(wkuuid.toString())) {
+                complete(CompetitionCoordinatorClientActor.publish(fd))
+              } else {
+                complete(StatusCodes.Conflict)
+              }
+            }
+          }
+        }
+      } ~
       pathEnd {
         post {
           onSuccess(wettkampfExistsAsync(wkuuid.toString())) {
@@ -205,7 +255,7 @@ trait WettkampfRoutes extends SprayJsonSupport with JsonSupport with JwtSupport 
           }
         }~
         put {
-          authenticated { userId =>
+          authenticated() { userId =>
             if (userId.equals(wkuuid.toString())) {
               uploadedFile("zip") {
                 case (metadata, file) =>
@@ -224,7 +274,7 @@ trait WettkampfRoutes extends SprayJsonSupport with JsonSupport with JwtSupport 
           }
         }~
         delete {
-          authenticated { userId =>
+          authenticated() { userId =>
             onSuccess(readWettkampfAsync(wkuuid.toString())) { wettkampf =>
               deleteWettkampf(wettkampf.id)
               complete(StatusCodes.OK)

@@ -15,7 +15,9 @@ sealed trait KutuAppAction extends KutuAppProtokoll {
   val wettkampfUUID: String
 }
 case class StartDurchgang(override val wettkampfUUID: String, durchgang: String) extends KutuAppAction
-case class UpdateAthletWertung(ahtlet: AthletView, wertung: Wertung, override val wettkampfUUID: String, durchgang: String, geraet: Long) extends KutuAppAction
+case class UpdateAthletWertung(ahtlet: AthletView, wertung: Wertung, override val wettkampfUUID: String, durchgang: String, geraet: Long, step: Int) extends KutuAppAction
+case class FinishDurchgangStation(override val wettkampfUUID: String, durchgang: String, geraet: Long, step: Int) extends KutuAppAction
+case class FinishDurchgang(override val wettkampfUUID: String, durchgang: String) extends KutuAppAction
 
 sealed trait KutuAppEvent extends KutuAppProtokoll
 case class DurchgangStarted(wettkampfUUID: String, durchgang: String) extends KutuAppEvent

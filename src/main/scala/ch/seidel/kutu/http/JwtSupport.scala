@@ -12,21 +12,25 @@ trait JwtSupport extends Directives {
   private lazy val userKey = "user"
   private lazy val expiredAtKey = "expiredAtKey"
   
-  def authenticated: Directive1[String] =
-    optionalHeaderValueByName(jwtAuthorizationKey).flatMap {
-      case Some(jwt) if JsonWebToken.validate(jwt, jwtSecretKey) =>
-        if (isTokenExpired(jwt)) {
-          complete(StatusCodes.Unauthorized -> "Token expired.")
-        } else { 
-          getUserID(getClaims(jwt)) match {
-            case Some(id) => provide(id)
-            case _=> complete(StatusCodes.Unauthorized)
-          }
+  def authenticated(rejectRequest: Boolean = false): Directive1[String] = {
+    optionalHeaderValueByName(jwtAuthorizationKey).flatMap(authenticateWith(_, rejectRequest))
+  }
+  
+  def authenticateWith(jwt: Option[String], rejectRequest: Boolean): Directive1[String] = jwt match {
+    case Some(jwt) if JsonWebToken.validate(jwt, jwtSecretKey) =>
+      if (isTokenExpired(jwt)) {
+        complete(StatusCodes.Unauthorized -> "Token expired.")
+      } else { 
+        getUserID(getClaims(jwt)) match {
+          case Some(id) => provide(id)
+          case _=> if (rejectRequest) reject else complete(StatusCodes.Unauthorized)
         }
+      }
 
-      case _ => complete(StatusCodes.Unauthorized)
-    }
-
+    case _ => 
+       if (rejectRequest) reject else complete(StatusCodes.Unauthorized)
+  }
+  
   def setClaims(userid: String, expiryPeriodInDays: Long) = JwtClaimsSet(
     Map(
       userKey -> userid,

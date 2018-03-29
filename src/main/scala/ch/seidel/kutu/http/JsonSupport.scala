@@ -16,7 +16,9 @@ trait JsonSupport extends SprayJsonSupport with EnrichedJson {
   implicit val wertungFormat = jsonFormat(Wertung, "id", "athletId", "wettkampfdisziplinId", "wettkampfId", "wettkampfUUID", "noteD", "noteE", "endnote", "riege", "riege2")  
   implicit val vereinFormat = jsonFormat(Verein, "id", "name", "verband")
   implicit val atheltViewFormat = jsonFormat(AthletView, "id", "js_id", "geschlecht", "name", "vorname", "gebdat", "strasse", "plz", "ort", "verein", "activ")
-//  implicit val programmViewFormat: JsonFormat[ProgrammView] = lazyFormat(jsonFormat(ProgrammView, "id", "name", "aggregate", "parent", "ord", "alterVon", "alterBis"))
+  implicit val wertungContainerFormat = jsonFormat7(WertungContainer)
+
+  //  implicit val programmViewFormat: JsonFormat[ProgrammView] = lazyFormat(jsonFormat(ProgrammView, "id", "name", "aggregate", "parent", "ord", "alterVon", "alterBis"))
 //  implicit val wettkampfViewFormat: JsonFormat[WettkampfView] = jsonFormat(WettkampfView, "id", "datum", "titel", "programm", "auszeichnung", "auszeichnungendnote", "uuid")
 
   //  implicit val attNotenModusFormat: JsonFormat[Athletiktest] = jsonFormat(Athletiktest, "punktemapping", "punktgewicht")
@@ -27,13 +29,26 @@ trait JsonSupport extends SprayJsonSupport with EnrichedJson {
 //  implicit val wettkampfDisciplinViewFormat = jsonFormat(WettkampfdisziplinView, "id", "programm", "disziplin", "kurzbeschreibung", "detailbeschreibung", "notenSpez", "ord", "masculin", "feminim")
 //  implicit val wertungViewFormat = jsonFormat(WertungView, "id", "athlet", "wettkampfdisziplin", "wettkampf", "noteD", "noteE", "endnote", "riege", "riege2")
   
-  implicit val wertungContainerFormat = jsonFormat7(WertungContainer)
-  implicit val athletWertungFormat = jsonFormat5(UpdateAthletWertung)
-  val wertungUpdatedFormat = jsonFormat5(AthletWertungUpdated)
+  // actions (via rest-request)
+  implicit val startDurchgangFormat = jsonFormat2(StartDurchgang)
+  implicit val updateAthletWertungFormat = jsonFormat6(UpdateAthletWertung)
+  implicit val finishDurchgangStationFormat = jsonFormat4(FinishDurchgangStation)
+  implicit val finishDurchgangFormat = jsonFormat2(FinishDurchgang)
+
+  // events (via ws and rest-response)
+  implicit val durchgangStartedFormat = jsonFormat2(DurchgangStarted)
+  implicit val wertungUpdatedFormat = jsonFormat5(AthletWertungUpdated)
+  implicit val stationsWertungenCompletedFormat = jsonFormat1(StationWertungenCompleted)
+  implicit val durchgangFinishedFormat = jsonFormat2(DurchgangFinished)
+  implicit val messageAckFormat = jsonFormat1(MessageAck)
   
   // support for websocket incoming json-messages
   val caseClassesJsonFormatter: Map[String, JsonFormat[_ <: KutuAppEvent]] = Map(      
-      classOf[AthletWertungUpdated].getSimpleName -> wertungUpdatedFormat
+      classOf[DurchgangStarted].getSimpleName -> durchgangStartedFormat,
+      classOf[AthletWertungUpdated].getSimpleName -> wertungUpdatedFormat,
+      classOf[StationWertungenCompleted].getSimpleName -> stationsWertungenCompletedFormat,
+      classOf[DurchgangFinished].getSimpleName -> durchgangFinishedFormat,
+      classOf[MessageAck].getSimpleName -> messageAckFormat
   )
 
   implicit val messagesFormatter: RootJsonFormat[KutuAppEvent] = new RootJsonFormat[KutuAppEvent] { 
