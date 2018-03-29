@@ -53,6 +53,15 @@
   <classpathentry kind="var" path="M2_REPO/net/glxn/qrgen/1.4/qrgen-1.4.jar" sourcepath="M2_REPO/net/glxn/qrgen/1.4/qrgen-1.4-sources.jar"/>
   <classpathentry kind="var" path="M2_REPO/com/google/zxing/javase/3.0.0/javase-3.0.0.jar" sourcepath="M2_REPO/com/google/zxing/javase/3.0.0/javase-3.0.0-sources.jar"/>
   <classpathentry kind="var" path="M2_REPO/com/google/zxing/core/3.0.0/core-3.0.0.jar" sourcepath="M2_REPO/com/google/zxing/core/3.0.0/core-3.0.0-sources.jar"/>
+  <classpathentry kind="var" path="M2_REPO/com/github/markusbernhardt/proxy-vole/1.0.4/proxy-vole-1.0.4.jar" sourcepath="M2_REPO/com/github/markusbernhardt/proxy-vole/1.0.4/proxy-vole-1.0.4-sources.jar"/>
+  <classpathentry kind="var" path="M2_REPO/org/ini4j/ini4j/0.5.4/ini4j-0.5.4.jar" sourcepath="M2_REPO/org/ini4j/ini4j/0.5.4/ini4j-0.5.4-sources.jar"/>
+  <classpathentry kind="var" path="M2_REPO/net/java/dev/jna/jna/4.2.2/jna-4.2.2.jar" sourcepath="M2_REPO/net/java/dev/jna/jna/4.2.2/jna-4.2.2-sources.jar"/>
+  <classpathentry kind="var" path="M2_REPO/net/java/dev/jna/jna-platform/4.2.2/jna-platform-4.2.2.jar" sourcepath="M2_REPO/net/java/dev/jna/jna-platform/4.2.2/jna-platform-4.2.2-sources.jar"/>
+  <classpathentry kind="var" path="M2_REPO/org/javadelight/delight-rhino-sandbox/0.0.6/delight-rhino-sandbox-0.0.6.jar" sourcepath="M2_REPO/org/javadelight/delight-rhino-sandbox/0.0.6/delight-rhino-sandbox-0.0.6-sources.jar"/>
+  <classpathentry kind="var" path="M2_REPO/org/mozilla/rhino/1.7.7/rhino-1.7.7.jar" sourcepath="M2_REPO/org/mozilla/rhino/1.7.7/rhino-1.7.7-sources.jar"/>
+  <classpathentry kind="var" path="M2_REPO/org/eclipse/xtend/org.eclipse.xtend.lib/2.8.3/org.eclipse.xtend.lib-2.8.3.jar" sourcepath="M2_REPO/org/eclipse/xtend/org.eclipse.xtend.lib/2.8.3/org.eclipse.xtend.lib-2.8.3-sources.jar"/>
+  <classpathentry kind="var" path="M2_REPO/org/eclipse/xtext/org.eclipse.xtext.xbase.lib/2.8.3/org.eclipse.xtext.xbase.lib-2.8.3.jar" sourcepath="M2_REPO/org/eclipse/xtext/org.eclipse.xtext.xbase.lib/2.8.3/org.eclipse.xtext.xbase.lib-2.8.3-sources.jar"/>
+  <classpathentry kind="var" path="M2_REPO/org/eclipse/xtend/org.eclipse.xtend.lib.macro/2.8.3/org.eclipse.xtend.lib.macro-2.8.3.jar" sourcepath="M2_REPO/org/eclipse/xtend/org.eclipse.xtend.lib.macro/2.8.3/org.eclipse.xtend.lib.macro-2.8.3-sources.jar"/>
   <classpathentry kind="var" path="M2_REPO/ch/qos/logback/logback-classic/1.2.3/logback-classic-1.2.3.jar" sourcepath="M2_REPO/ch/qos/logback/logback-classic/1.2.3/logback-classic-1.2.3-sources.jar"/>
   <classpathentry kind="var" path="M2_REPO/ch/qos/logback/logback-core/1.2.3/logback-core-1.2.3.jar" sourcepath="M2_REPO/ch/qos/logback/logback-core/1.2.3/logback-core-1.2.3-sources.jar"/>
   <classpathentry kind="var" path="M2_REPO/org/apache/commons/commons-lang3/3.7/commons-lang3-3.7.jar" sourcepath="M2_REPO/org/apache/commons/commons-lang3/3.7/commons-lang3-3.7-sources.jar"/>
