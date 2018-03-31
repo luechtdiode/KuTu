@@ -45,7 +45,10 @@ object ResourceExchanger extends KutuService with RiegenBuilder {
               refresher(uw)
           }
         }
-      case someOther => println(someOther)  
+      case MessageAck(_) => 
+      case someOther => 
+        refresher(someOther)
+        println(someOther)  
         
     }
     

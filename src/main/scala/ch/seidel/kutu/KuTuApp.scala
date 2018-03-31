@@ -66,6 +66,7 @@ import spray.json._
 import javafx.beans.property.SimpleObjectProperty
 import javafx.scene.control.DatePicker
 import javafx.util.Callback
+import ch.seidel.kutu.akka.StartDurchgang
 
 object KuTuApp extends JFXApp with KutuService with JsonSupport {
   import WertungServiceBestenResult._
@@ -85,7 +86,6 @@ object KuTuApp extends JFXApp with KutuService with JsonSupport {
     children = tree.getTree
   }
   val modelWettkampfModus = new BooleanProperty()
-  val modelWettkampfWertungChanged = new SimpleObjectProperty[KutuAppEvent]()
   val selectedWettkampf = new SimpleObjectProperty[WettkampfView]()
   val selectedWettkampfSecret = new SimpleObjectProperty[Option[String]]()
   
@@ -670,7 +670,7 @@ object KuTuApp extends JFXApp with KutuService with JsonSupport {
     }.map(response => {
       (response, WebSocketClient.connect(p.toWettkampf, ResourceExchanger.processWSMessage((event) => {
         Platform.runLater{
-          modelWettkampfWertungChanged.setValue(event)
+          WebSocketClient.modelWettkampfWertungChanged.setValue(event)
         }
       }), PageDisplayer.showErrorDialog(caption)))
     })

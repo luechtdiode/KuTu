@@ -44,6 +44,7 @@ class CompetitionCoordinatorClientActor(wettkampfUUID: String) extends Actor wit
   var startedDurchgaenge: Set[DurchgangStarted] = Set.empty
   var finishedDurchgangSteps: Set[FinishDurchgangStation] = Set.empty
   var finishedDurchgaenge: Set[DurchgangFinished] = Set.empty
+  var startStopEvents: List[KutuAppEvent] = List.empty
   
   private def deviceIdOf(actor: ActorRef) = deviceWebsocketRefs.filter(_._2 == actor).map(_._1)
   private def actorWithSameDeviceIdOfSender = deviceWebsocketRefs.filter(p => sender.path.name.endsWith(p._1)).map(_._2)
@@ -69,6 +70,7 @@ class CompetitionCoordinatorClientActor(wettkampfUUID: String) extends Actor wit
     case StartDurchgang(wettkampfUUID, durchgang) =>
       val eventDurchgangStarted = DurchgangStarted(wettkampfUUID, durchgang)
       val eventDurchgangFinished = DurchgangFinished(wettkampfUUID, durchgang)
+      startStopEvents = startStopEvents :+ eventDurchgangStarted
       startedDurchgaenge += eventDurchgangStarted
       finishedDurchgaenge -= eventDurchgangFinished
       finishedDurchgangSteps = finishedDurchgangSteps.filter(fds => encodeURIComponent(fds.durchgang) != encodeURIComponent(durchgang))
@@ -77,14 +79,23 @@ class CompetitionCoordinatorClientActor(wettkampfUUID: String) extends Actor wit
         case Some(wsList) => wsList.foreach(ws => ws ! dgsText)
         case _ =>
       }
+      wsSend.get(None) match {
+        case Some(wsList) => wsList.foreach(ws => ws ! dgsText)
+        case _ =>
+      }
       sender ! eventDurchgangStarted
       
     case FinishDurchgang(wettkampfUUID, durchgang) =>
       val eventDurchgangFinished = DurchgangFinished(wettkampfUUID, durchgang)
+      startStopEvents = startStopEvents :+ eventDurchgangFinished
       startedDurchgaenge -= DurchgangStarted(wettkampfUUID, durchgang)
       finishedDurchgaenge += eventDurchgangFinished
       val dgsText = TextMessage(eventDurchgangFinished.asInstanceOf[KutuAppEvent].toJson.compactPrint)
       wsSend.get(Some(durchgang)) match {
+        case Some(wsList) => wsList.foreach(ws => ws ! dgsText)
+        case _ =>
+      }
+      wsSend.get(None) match {
         case Some(wsList) => wsList.foreach(ws => ws ! dgsText)
         case _ =>
       }
@@ -135,7 +146,7 @@ class CompetitionCoordinatorClientActor(wettkampfUUID: String) extends Actor wit
       wsSend = wsSend + (durchgang -> durchgangClients)
       deviceWebsocketRefs = deviceWebsocketRefs + (deviceId -> ref)
       ref ! TextMessage("Connection established.")      
-      startedDurchgaenge.filter(d => durchgang.exists(_ == d.durchgang)).foreach(d => ref ! TextMessage(d.asInstanceOf[KutuAppEvent].toJson.compactPrint))
+      startStopEvents.foreach(d => ref ! TextMessage(d.asInstanceOf[KutuAppEvent].toJson.compactPrint))
 
     // system actions
     case KeepAlive => wsSend.flatMap(_._2).foreach(ws => ws ! TextMessage("KeepAlive"))

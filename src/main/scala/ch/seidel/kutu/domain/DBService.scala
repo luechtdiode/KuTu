@@ -65,7 +65,8 @@ object DBService {
     prop = proplite,
     user = "kutu",
     password = "kutu",
-    executor = AsyncExecutor("DB-Actions", 30, 10000))
+    executor = AsyncExecutor("DB-Actions", 10, 10000)
+    )
 
   lazy val database = {
     logger.info(s"Using Database at ${dbfile.getAbsolutePath}")

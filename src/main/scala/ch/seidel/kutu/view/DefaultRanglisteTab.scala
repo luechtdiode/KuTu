@@ -39,6 +39,7 @@ import scala.collection.JavaConverters
 import ch.seidel.kutu.renderer.PrintUtil.FilenameDefault
 import scalafx.event.subscriptions.Subscription
 import ch.seidel.kutu.akka.KutuAppEvent
+import ch.seidel.kutu.http.WebSocketClient
 
 abstract class DefaultRanglisteTab(override val service: KutuService) extends Tab with TabWithService with ScoreToHtmlRenderer {
 
@@ -291,9 +292,11 @@ abstract class DefaultRanglisteTab(override val service: KutuService) extends Ta
         refreshRangliste(buildGrouper)
     }
     println("subscribing for refreshing from websocket")
-    subscription = Some(KuTuApp.modelWettkampfWertungChanged.onChange { (_, _, newItem) =>
-      println("refreshing from websocket", newItem)
-      refreshRangliste(buildGrouper)
+    subscription = Some(WebSocketClient.modelWettkampfWertungChanged.onChange { (_, _, newItem) =>
+      if (selected.value) {
+        println("refreshing rangliste from websocket", newItem)
+        refreshRangliste(buildGrouper)
+      }
     })
     
     val btnSave = new Button {

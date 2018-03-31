@@ -31,6 +31,10 @@ object WettkampfPage {
         closable = false
       }
     )
+    lazy val networkSite: Seq[Tab] = Seq(
+        new NetworkTab(wettkampf, service)
+      )
+        
     def releaser() {
       (progSites).foreach { t => 
         t.asInstanceOf[WettkampfWertungTab].release
@@ -38,17 +42,21 @@ object WettkampfPage {
       ranglisteSite.foreach{t => 
         t.asInstanceOf[RanglisteTab].release
       }
+      networkSite.foreach{t => 
+        t.asInstanceOf[NetworkTab].release
+      }
     }
+    
     def refresher(pane: LazyTabPane) = {
       (progSites).foreach { t => 
         t.asInstanceOf[WettkampfWertungTab].setLazyPane(pane)
 //        t.asInstanceOf[WettkampfWertungTab].release
       }
       if(wettkampfmode.value) {
-        progSites ++ ranglisteSite
+        progSites ++ networkSite ++ ranglisteSite
       }
       else {
-        progSites ++ Seq[Tab](new RiegenTab(wettkampf, service)) ++ ranglisteSite
+        progSites ++ Seq[Tab](new RiegenTab(wettkampf, service)) ++ networkSite ++ ranglisteSite
       }
     }
 

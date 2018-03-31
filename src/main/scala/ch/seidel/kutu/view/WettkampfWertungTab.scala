@@ -1,5 +1,6 @@
 package ch.seidel.kutu.view
 
+import scala.concurrent.ExecutionContext.Implicits.global
 import javafx.scene.{ control => jfxsc }
 import scalafx.Includes._
 import scalafx.beans.property.DoubleProperty
@@ -76,6 +77,10 @@ import scalafx.util.converter.DoubleStringConverter
 import scala.concurrent.Future
 import ch.seidel.kutu.Config._
 import java.util.UUID
+import ch.seidel.kutu.akka.AthletWertungUpdated
+import ch.seidel.kutu.http.WebSocketClient
+import scala.util.Success
+import scala.util.Failure
 
 trait TCAccess[R, E, IDX] {
   def getIndex: IDX
@@ -354,43 +359,53 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
     def disziplinCnt = wertungen.headOption match {case Some(w) => w.size case _ => 0}
     val withDNotes = wertungen.flatMap(w => w.filter(ww => ww.init.wettkampfdisziplin.notenSpez.isDNoteUsed)).nonEmpty
     val withENotes = wettkampf.programm.id != 1
+    var lastFilter = ""
+    var durchgangFilter = emptyRiege
 
-    def updateEditorPane {
+    def updateEditorPane(focusHolder: Option[Node] = None) {
+      if(selected.value) {
+//      logger.debug("enter refreshing durchgangfilter")
 		  editorPane.adjust
-//		  Platform.runLater{
-		    val model = cmbDurchgangFilter.items.getValue
+      val model = cmbDurchgangFilter.items.getValue
+//		  Future {
 		    val raw = emptyRiege +: rebuildDurchgangFilterList
-		    val selected = cmbDurchgangFilter.selectionModel.value.selectedItem.value
-		    model.foreach { x => 
-		      raw.find {_.softEquals(x)} match {
-		        case Some(item) => 
-		          val reselect = selected == x
-		          model.set(model.indexOf(x), item)
-		          if(reselect) {
-		            cmbDurchgangFilter.selectionModel.value.select(item)
-		          }
-		        case None =>
-		      }
-		    }
-    	  val toRemove =
-    	    for{
-    	      o <- model 
-    	      i = raw.find { _ == o}
-    	      if(i.isEmpty && o != emptyRiege)
-    	    }
-    	    yield {model.indexOf(o)}
-    	  for{i <- toRemove.sorted.reverse} {
-    	    model.remove(i)
-    	  }
-
-    	  for{
-    	    o <- raw 
-          i = model.find { _ == o}
-    	    if(i.isEmpty)
-    	  }{
-    	    model.insert(raw.indexWhere { rx => rx.softEquals(o)}, o)
-    	  }
+//  		  Platform.runLater{
+//		      logger.debug("refreshing durchgangfilter")
+  		    val selected = cmbDurchgangFilter.selectionModel.value.selectedItem.value
+  		    model.foreach { x => 
+  		      raw.find {_.softEquals(x)} match {
+  		        case Some(item) => 
+  		          val reselect = selected == x
+  		          model.set(model.indexOf(x), item)
+  		          if(reselect) {
+  		            durchgangFilter = item
+  		            cmbDurchgangFilter.selectionModel.value.select(item)
+  		          }
+  		        case None =>
+  		      }
+  		    }
+      	  val toRemove =
+      	    for{
+      	      o <- model 
+      	      i = raw.find { _ == o}
+      	      if(i.isEmpty && o != emptyRiege)
+      	    }
+      	    yield {model.indexOf(o)}
+      	  for{i <- toRemove.sorted.reverse} {
+      	    model.remove(i)
+      	  }
+  
+      	  for{
+      	    o <- raw 
+            i = model.find { _ == o}
+      	    if(i.isEmpty)
+      	  }{
+      	    model.insert(raw.indexWhere { rx => rx.softEquals(o)}, o)
+      	  }
+      	  focusHolder.foreach(_.requestFocus())
+//		    }
 //		  }
+      }
     }
 
     val indexerE = Iterator.from(0)
@@ -419,9 +434,11 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
             disciplin.endnote.value = wertung.init.wettkampfdisziplin.notenSpez.calcEndnote(disciplin.noteD.value, disciplin.noteE.value)
             val rowIndex = wkModel.indexOf(evt.rowValue)
             if (disciplin.isDirty) {
-              wkModel.update(rowIndex, evt.rowValue.updated(index, WertungEditor(service.updateWertung(disciplin.commit))))
+              service.updateWertungAsync(disciplin.commit).andThen {
+                case Success(w) => logger.debug("saved") 
+                case Failure(e) => logger.error("not saved", e)
+              }
               evt.tableView.selectionModel.value.select(rowIndex, this)
-              updateEditorPane
             }
             evt.tableView.requestFocus()
           }
@@ -453,9 +470,11 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
             disciplin.endnote.value = wertung.init.wettkampfdisziplin.notenSpez.calcEndnote(disciplin.noteD.value, disciplin.noteE.value)
             val rowIndex = wkModel.indexOf(evt.rowValue)
             if (disciplin.isDirty) {
-              wkModel.update(rowIndex, evt.rowValue.updated(index, WertungEditor(service.updateWertung(disciplin.commit))))
+              service.updateWertungAsync(disciplin.commit).andThen {
+                case Success(w) => logger.debug("saved") 
+                case Failure(e) => logger.error("not saved", e)
+              }
               evt.tableView.selectionModel.value.select(rowIndex, this)
-              updateEditorPane
             }
             evt.tableView.requestFocus()
           }
@@ -542,24 +561,27 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
           prefWidth = 100
           if(!wettkampfmode.value) {
             onEditCommit = (evt: CellEditEvent[IndexedSeq[WertungEditor], String]) => {
-              if(!evt.newValue.equals("keine Einteilung")) {
-              	val rowIndex = wkModel.indexOf(evt.rowValue)
-                for(wertung <- evt.rowValue) {
-                  wkModel.update(rowIndex,
-                      evt.rowValue.updated(
-                          evt.rowValue.indexOf(wertung),
-                          WertungEditor(
-                              service.updateWertung(
-                                  wertung.commit.copy(riege = if(evt.newValue.trim.isEmpty() || evt.newValue.equals("keine Einteilung")) None else Some(evt.newValue))
-                                  )
-                              )
-                          )
-                      )
-                }
-                refreshOtherLazyPanes()
-                updateEditorPane
-                evt.tableView.requestFocus()
+              val rowIndex = wkModel.indexOf(evt.rowValue)
+              val newRiege = if(evt.newValue.trim.isEmpty() || evt.newValue.equals("keine Einteilung")) None 
+            	        else Some(evt.newValue)
+            	logger.debug("start riege-rename")
+            	service.updateAllWertungenAsync(
+            	    evt.rowValue.map(wertung => 
+            	      wertung.commit.copy(riege = newRiege))).andThen {
+                case Success(ws) => logger.debug("saved riege-rename")
+                  KuTuApp.invokeWithBusyIndicator{
+                    val selected = wkview.selectionModel.value.selectedCells
+                    refreshOtherLazyPanes()
+                    wkModel.update(rowIndex, ws.map(w => WertungEditor(w)).toIndexedSeq)
+                    selected.foreach(c => wkview.selectionModel.value.select(c.row, c.tableColumn.asInstanceOf[jfxsc.TableColumn[IndexedSeq[WertungEditor], _]]))
+                    updateEditorPane(Some(evt.tableView))
+                    logger.debug("finished riege-rename")
+                  }
+                case Failure(e) => logger.error("not saved", e)
               }
+              
+              evt.tableView.selectionModel.value.select(rowIndex, this)
+              evt.tableView.requestFocus()
             }
             onEditCancel = (evt: CellEditEvent[IndexedSeq[WertungEditor], String]) => {
     //          logger.debug(evt)
@@ -584,24 +606,27 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
           prefWidth = 100
           if(!wettkampfmode.value) {
             onEditCommit = (evt: CellEditEvent[IndexedSeq[WertungEditor], String]) => {
-            	if(!evt.newValue.equals("keine Einteilung")) {
-                val rowIndex = wkModel.indexOf(evt.rowValue)
-                for(disciplin <- evt.rowValue) {
-                  wkModel.update(rowIndex,
-                      evt.rowValue.updated(
-                          evt.rowValue.indexOf(disciplin),
-                          WertungEditor(
-                              service.updateWertung(
-                                  disciplin.commit.copy(riege2 = if(evt.newValue.trim.isEmpty()) None else Some(evt.newValue))
-                                  )
-                              )
-                          )
-                      )
-                }
-                refreshOtherLazyPanes()
-                updateEditorPane
-                evt.tableView.requestFocus()
-            	}
+              val rowIndex = wkModel.indexOf(evt.rowValue)
+              val newRiege = if(evt.newValue.trim.isEmpty() || evt.newValue.equals("keine Einteilung")) None 
+            	        else Some(evt.newValue)
+            	logger.debug("start riege-rename")
+            	service.updateAllWertungenAsync(
+            	    evt.rowValue.map(wertung => 
+            	      wertung.commit.copy(riege2 = newRiege))).andThen {
+                case Success(ws) => logger.debug("saved riege-rename")
+                  KuTuApp.invokeWithBusyIndicator{
+                    val selected = wkview.selectionModel.value.selectedCells
+                    refreshOtherLazyPanes()
+                    wkModel.update(rowIndex, ws.map(w => WertungEditor(w)).toIndexedSeq)
+                    selected.foreach(c => wkview.selectionModel.value.select(c.row, c.tableColumn.asInstanceOf[jfxsc.TableColumn[IndexedSeq[WertungEditor], _]]))
+                    updateEditorPane(Some(evt.tableView))
+                    logger.debug("finished riege-rename")
+                  }
+                case Failure(e) => logger.error("not saved", e)
+              }
+              
+              evt.tableView.selectionModel.value.select(rowIndex, this)
+              evt.tableView.requestFocus()
             }
             onEditCancel = (evt: CellEditEvent[IndexedSeq[WertungEditor], String]) => {
     //          logger.debug(evt)
@@ -632,24 +657,27 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
               prefWidth = 100
               if(!wettkampfmode.value) {
                 onEditCommit = (evt: CellEditEvent[IndexedSeq[WertungEditor], String]) => {
-                  if(!evt.newValue.equals("keine Einteilung")) {
-                  	val rowIndex = wkModel.indexOf(evt.rowValue)
-                    for(wertung <- evt.rowValue if(wertung.init.wettkampfdisziplin.programm == p)) {
-                      wkModel.update(rowIndex,
-                          evt.rowValue.updated(
-                              evt.rowValue.indexOf(wertung),
-                              WertungEditor(
-                                  service.updateWertung(
-                                      wertung.commit.copy(riege = if(evt.newValue.trim.isEmpty() || evt.newValue.equals("keine Einteilung")) None else Some(evt.newValue))
-                                      )
-                                  )
-                              )
-                          )
-                    }
-                    refreshOtherLazyPanes()
-                    updateEditorPane
-                    evt.tableView.requestFocus()
+                  val rowIndex = wkModel.indexOf(evt.rowValue)
+                  val newRiege = if(evt.newValue.trim.isEmpty() || evt.newValue.equals("keine Einteilung")) None 
+                	        else Some(evt.newValue)
+                	logger.debug("start riege-rename")
+                	service.updateAllWertungenAsync(
+                	    evt.rowValue.map(wertung => 
+                	      wertung.commit.copy(riege = newRiege))).andThen {
+                    case Success(ws) => logger.debug("saved riege-rename")
+                      KuTuApp.invokeWithBusyIndicator{
+                        val selected = wkview.selectionModel.value.selectedCells
+                        refreshOtherLazyPanes()
+                        wkModel.update(rowIndex, ws.map(w => WertungEditor(w)).toIndexedSeq)
+                        selected.foreach(c => wkview.selectionModel.value.select(c.row, c.tableColumn.asInstanceOf[jfxsc.TableColumn[IndexedSeq[WertungEditor], _]]))
+                        updateEditorPane(Some(evt.tableView))
+                        logger.debug("finished riege-rename")
+                      }
+                    case Failure(e) => logger.error("not saved", e)
                   }
+                  
+                  evt.tableView.selectionModel.value.select(rowIndex, this)
+                  evt.tableView.requestFocus()
                 }
                 onEditCancel = (evt: CellEditEvent[IndexedSeq[WertungEditor], String]) => {
         //          logger.debug(evt)
@@ -674,24 +702,27 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
               prefWidth = 100
               if(!wettkampfmode.value) {
                 onEditCommit = (evt: CellEditEvent[IndexedSeq[WertungEditor], String]) => {
-                	if(!evt.newValue.equals("keine Einteilung")) {
-                    val rowIndex = wkModel.indexOf(evt.rowValue)
-                    for(wertung <- evt.rowValue if(wertung.init.wettkampfdisziplin.programm == p)) {
-                      wkModel.update(rowIndex,
-                          evt.rowValue.updated(
-                              evt.rowValue.indexOf(wertung),
-                              WertungEditor(
-                                  service.updateWertung(
-                                      wertung.commit.copy(riege2 = if(evt.newValue.trim.isEmpty()) None else Some(evt.newValue))
-                                      )
-                                  )
-                              )
-                          )
-                    }
-                    refreshOtherLazyPanes()
-                    updateEditorPane
-                    evt.tableView.requestFocus()
-                	}
+                  val rowIndex = wkModel.indexOf(evt.rowValue)
+                  val newRiege = if(evt.newValue.trim.isEmpty() || evt.newValue.equals("keine Einteilung")) None 
+                	        else Some(evt.newValue)
+                	logger.debug("start riege-rename")
+                	service.updateAllWertungenAsync(
+                	    evt.rowValue.map(wertung => 
+                	      wertung.commit.copy(riege2 = newRiege))).andThen {
+                    case Success(ws) => logger.debug("saved riege-rename")
+                      KuTuApp.invokeWithBusyIndicator{
+                        val selected = wkview.selectionModel.value.selectedCells
+                        refreshOtherLazyPanes()
+                        wkModel.update(rowIndex, ws.map(w => WertungEditor(w)).toIndexedSeq)
+                        selected.foreach(c => wkview.selectionModel.value.select(c.row, c.tableColumn.asInstanceOf[jfxsc.TableColumn[IndexedSeq[WertungEditor], _]]))
+                        updateEditorPane(Some(evt.tableView))
+                        logger.debug("finished riege-rename")
+                      }
+                    case Failure(e) => logger.error("not saved", e)
+                  }
+                  
+                  evt.tableView.selectionModel.value.select(rowIndex, this)
+                  evt.tableView.requestFocus()
                 }
                 onEditCancel = (evt: CellEditEvent[IndexedSeq[WertungEditor], String]) => {
         //          logger.debug(evt)
@@ -736,9 +767,9 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
         }
       }
     }
-    var lastFilter = ""
-    var durchgangFilter = emptyRiege
     def updateFilteredList(newVal: String, newDurchgang: GeraeteRiege) {
+      val wkListHadFocus = wkview.focused.value
+      val selected = wkview.selectionModel.value.selectedCells
       //if(!newVal.equalsIgnoreCase(lastFilter)) {
         lastFilter = newVal
         durchgangFilter = newDurchgang
@@ -809,6 +840,10 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
         }
         wkview.sortOrder.clear()
         val restored = wkview.sortOrder ++= sortOrder
+        if (wkListHadFocus) {
+          wkview.requestFocus()
+          selected.foreach(s => wkview.selectionModel.value.selectedCells.add(s))          
+        }
         isFilterRefreshing = false;
       //}
   	}
@@ -945,14 +980,42 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
       catch {
         case e: Exception =>
       }
-//      setEditorPaneToDiscipline(idx)
-      updateEditorPane
+//      setEditorPaneToDiscipline(idx)      
+      updateEditorPane(if (wkview.focused.value) Some(wkview) else None)
       isFilterRefreshing = false;
     }
     
-    websocketsubscription = Some(KuTuApp.modelWettkampfWertungChanged.onChange { (_, _, newItem) =>
-      val textfilter = lastFilter
-      KuTuApp.invokeWithBusyIndicator(reloadData())
+    websocketsubscription = Some(WebSocketClient.modelWettkampfWertungChanged.onChange { (_, _, newItem) =>
+      if (selected.value) {
+        newItem match {
+          case a @ AthletWertungUpdated(ahtlet, wertung, wettkampfUUID, durchgang, geraet) =>
+            val tableSelected = if (wkview.focused.value) Some(wkview) else None
+            wertungen = wertungen.map{aw => 
+              val index = wkModel.indexOf(aw)
+              val newWertungen = aw.map{ w => 
+                if (w.init.athlet == ahtlet && w.init.id == wertung.id && w.endnote != wertung.endnote) {
+                  //KuTuApp.invokeWithBusyIndicator(reloadData())
+                  WertungEditor(w.init.updatedWertung(wertung))
+                } else {
+                  w
+                }
+              }
+              if (index > -1 && wkModel(index).map(_.init.endnote).sum != newWertungen.map(_.init.endnote).sum) {
+                isFilterRefreshing = true
+                val selected = wkview.selectionModel.value.selectedCells
+                wkModel.update(index, newWertungen)
+                selected.foreach(c => wkview.selectionModel.value.select(c.row, c.tableColumn.asInstanceOf[jfxsc.TableColumn[IndexedSeq[WertungEditor], _]]))
+                isFilterRefreshing = false
+              }
+              newWertungen
+            }
+            updateEditorPane(tableSelected)
+
+            //updateFilteredList(lastFilter, durchgangFilter)
+            
+          case _ =>
+        }
+      }
     })
 
     val riegenFilterView = new RiegenFilterView(!wettkampfmode.value,

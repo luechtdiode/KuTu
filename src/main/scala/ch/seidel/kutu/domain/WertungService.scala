@@ -15,6 +15,7 @@ import java.util.UUID
 import ch.seidel.kutu.http.WebSocketClient
 import ch.seidel.kutu.akka.AthletWertungUpdated
 import scala.util.Try
+import scala.concurrent.Future
 
 object WertungServiceBestenResult {
   private val logger = LoggerFactory.getLogger(this.getClass)
@@ -188,24 +189,27 @@ abstract trait WertungService extends DBService with WertungResultMapper with Di
   }
 
   def updateWertung(w: Wertung): WertungView = {
-    Await.result(database.run(DBIO.sequence(Seq(
+    Await.result(updateWertungAsync(w), Duration.Inf)
+  }
+  
+  def updateAllWertungenAsync(ws: Seq[Wertung]): Future[Seq[WertungView]] = {
+    implicit val cache = scala.collection.mutable.Map[Long, ProgrammView]()
+    implicit val mapper = getAthletViewResult
+    val ret = database.run(DBIO.sequence((for {
+      w <- ws
+    } yield {
       sqlu"""       UPDATE wertung
                     SET note_d=${w.noteD}, note_e=${w.noteE}, endnote=${w.endnote}, riege=${w.riege}, riege2=${w.riege2}
                     WHERE id=${w.id}
-          """,
-
+          """>>
       sqlu"""       DELETE from riege
                     WHERE wettkampf_id=${w.id} and not exists (
                       SELECT 1 FROM wertung w
                       WHERE w.wettkampf_id=${w.id}
                         and (w.riege=name or w.riege2=name)
                     )
-          """
-    )).transactionally), Duration.Inf)
-
-    implicit val cache = scala.collection.mutable.Map[Long, ProgrammView]()
-      //id |id |js_id |geschlecht |name |vorname |gebdat |strasse |plz |ort |verein |activ |id |name |id |programm_id |id |name |kurzbeschreibung |detailbeschreibung |notenfaktor |masculin |feminim |ord |id |datum |titel |programm_id |auszeichnung |difficulty |execution |endnote |riege |
-    val wv = Await.result(database.run((sql"""
+          """>>
+      sql"""
                     SELECT w.id, a.id, a.js_id, a.geschlecht, a.name, a.vorname, a.gebdat, a.strasse, a.plz, a.ort, a.activ, a.verein, v.*,
                       wd.id, wd.programm_id, d.*, wd.kurzbeschreibung, wd.detailbeschreibung, wd.notenfaktor, wd.masculin, wd.feminim, wd.ord, 
                       wk.*,
@@ -219,15 +223,55 @@ abstract trait WertungService extends DBService with WertungResultMapper with Di
                     inner join wettkampf wk on (wk.id = w.wettkampf_id)
                     WHERE w.id=${w.id}
                     order by wd.programm_id, wd.ord
-       """.as[WertungView].head).withPinnedSession), Duration.Inf)
-    if(wv.endnote >= 8.7) {
-      putWertungToBestenResults(wv)
-    }
-    val awu = AthletWertungUpdated(wv.athlet, wv.toWertung, wv.wettkampf.uuid.get, "", wv.wettkampfdisziplin.disziplin.id)
-    WebSocketClient.publish(awu)
-    wv    
+       """.as[WertungView].head
+     })).transactionally)
+    
+    ret
   }
+  
+  def updateWertungAsync(w: Wertung): Future[WertungView] = {
+    implicit val cache = scala.collection.mutable.Map[Long, ProgrammView]()
+    implicit val mapper = getAthletViewResult
+    val ret = database.run((
+      sqlu"""       UPDATE wertung
+                    SET note_d=${w.noteD}, note_e=${w.noteE}, endnote=${w.endnote}, riege=${w.riege}, riege2=${w.riege2}
+                    WHERE id=${w.id}
+          """>>
 
+      sqlu"""       DELETE from riege
+                    WHERE wettkampf_id=${w.id} and not exists (
+                      SELECT 1 FROM wertung w
+                      WHERE w.wettkampf_id=${w.id}
+                        and (w.riege=name or w.riege2=name)
+                    )
+          """>>
+      sql"""
+                    SELECT w.id, a.id, a.js_id, a.geschlecht, a.name, a.vorname, a.gebdat, a.strasse, a.plz, a.ort, a.activ, a.verein, v.*,
+                      wd.id, wd.programm_id, d.*, wd.kurzbeschreibung, wd.detailbeschreibung, wd.notenfaktor, wd.masculin, wd.feminim, wd.ord, 
+                      wk.*,
+                      w.note_d as difficulty, w.note_e as execution, w.endnote, w.riege, w.riege2
+                    FROM wertung w
+                    inner join athlet a on (a.id = w.athlet_id)
+                    left outer join verein v on (a.verein = v.id)
+                    inner join wettkampfdisziplin wd on (wd.id = w.wettkampfdisziplin_id)
+                    inner join disziplin d on (d.id = wd.disziplin_id)
+                    inner join programm p on (p.id = wd.programm_id)
+                    inner join wettkampf wk on (wk.id = w.wettkampf_id)
+                    WHERE w.id=${w.id}
+                    order by wd.programm_id, wd.ord
+       """.as[WertungView].head).transactionally)
+    
+    ret.map{wv => 
+      if(wv.endnote >= 8.7) {
+        putWertungToBestenResults(wv)
+      }
+      val awu = AthletWertungUpdated(wv.athlet, wv.toWertung, wv.wettkampf.uuid.get, "", wv.wettkampfdisziplin.disziplin.id)
+      WebSocketClient.publish(awu)
+      wv
+    }
+    ret
+  }
+  
   @throws(classOf[Exception])
   def updateWertungSimple(w: Wertung, putToBestenresults: Boolean = false): Wertung = {
     val wv = readWettkampfDisziplinView(w.wettkampfdisziplinId).notenSpez.verifiedAndCalculatedWertung(w)

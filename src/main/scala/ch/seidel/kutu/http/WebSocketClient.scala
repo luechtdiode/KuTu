@@ -29,6 +29,8 @@ import akka.stream.OverflowStrategy
 import ch.seidel.kutu.akka.KutuAppEvent
 import akka.stream.scaladsl.SourceQueueWithComplete
 import scala.util.Success
+import javafx.beans.property.SimpleObjectProperty
+import scalafx.application.Platform
 
 object WebSocketClient extends SprayJsonSupport with JsonSupport with AuthSupport {
   import Core.materializer
@@ -36,6 +38,7 @@ object WebSocketClient extends SprayJsonSupport with JsonSupport with AuthSuppor
 
   private var connectedOutgoingQueue: Option[SourceQueueWithComplete[Message]] = None
   private var connectedIncomingPromise: Option[Promise[Option[Message]]] = None
+  val modelWettkampfWertungChanged = new SimpleObjectProperty[KutuAppEvent]()
   
   def connect(wettkampf: Wettkampf, messageProcessor: KutuAppEvent=>Unit = println, handleError: Throwable=>Unit = println) = {
     import scala.collection.immutable
@@ -69,7 +72,10 @@ object WebSocketClient extends SprayJsonSupport with JsonSupport with AuthSuppor
   def isConnected = connectedIncomingPromise.nonEmpty
   
   def publish(event: KutuAppEvent) {
-    connectedOutgoingQueue.foreach(_.offer(tryMapEvent(event)))
+    Platform.runLater {
+      WebSocketClient.modelWettkampfWertungChanged.set(event)
+      connectedOutgoingQueue.foreach(_.offer(tryMapEvent(event)))
+    }
   }
   
   def reportErrorsFlow[T](handleError: Throwable=>Unit): Flow[T, T, Any] =
