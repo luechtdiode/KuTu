@@ -287,11 +287,11 @@ export class BackendService extends WebsocketService {
     const path = location.pathname;
     const protocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
     if (!host || host === '') {
-      return "wss://kutuapp.sharevic.net/api/durchgang/" + this._competition + '/' + this._durchgang + '/ws';
+      return "wss://kutuapp.sharevic.net/api/durchgang/" + this._competition + '/' + encodeURIComponent2(this._durchgang) + '/ws';
     } else if (host.startsWith('localhost')) {
-      return "ws://localhost:5757/api/durchgang/" + this._competition + '/' + this._durchgang + '/ws';
+      return "ws://localhost:5757/api/durchgang/" + this._competition + '/' + encodeURIComponent2(this._durchgang) + '/ws';
     } else {
-      return protocol + "//" + host + path + "api/durchgang/" + this._competition + '/' + this._durchgang + '/ws';
+      return protocol + "//" + host + path + "api/durchgang/" + this._competition + '/' + encodeURIComponent2(this._durchgang) + '/ws';
     }
   }
 
@@ -311,6 +311,13 @@ export class BackendService extends WebsocketService {
 
       case 'AthletWertungUpdated':
         let updated = (message as AthletWertungUpdated)
+        this.wertungen = this.wertungen.map(w => {
+          if (w.id === updated.wertung.athletId && w.wertung.wettkampfdisziplinId === updated.wertung.wettkampfdisziplinId ) {
+            return Object.assign({}, w, {wertung: updated.wertung });
+          } else {
+            return w;
+          }
+        }); 
         this.wertungUpdated.next(updated);
         return true;
 

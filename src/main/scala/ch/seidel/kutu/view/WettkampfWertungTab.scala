@@ -988,12 +988,12 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
     websocketsubscription = Some(WebSocketClient.modelWettkampfWertungChanged.onChange { (_, _, newItem) =>
       if (selected.value) {
         newItem match {
-          case a @ AthletWertungUpdated(ahtlet, wertung, wettkampfUUID, durchgang, geraet) =>
+          case a @ AthletWertungUpdated(_, wertung, _, _, _) =>
             val tableSelected = if (wkview.focused.value) Some(wkview) else None
             wertungen = wertungen.map{aw => 
               val index = wkModel.indexOf(aw)
               val newWertungen = aw.map{ w => 
-                if (w.init.athlet == ahtlet && w.init.id == wertung.id && w.endnote != wertung.endnote) {
+                if (w.init.id == wertung.id && w.endnote != wertung.endnote) {
                   //KuTuApp.invokeWithBusyIndicator(reloadData())
                   WertungEditor(w.init.updatedWertung(wertung))
                 } else {
