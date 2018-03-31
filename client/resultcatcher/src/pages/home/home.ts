@@ -25,6 +25,9 @@ export class HomePage {
     });
   }
 
+  isOpenAndActive() {
+    return this.durchgangopen && this.backendService.isWebsocketConnected();
+  }
   set competition(competitionId: string) {
     if(!this.stationFreezed) {
       this.backendService.getDurchgaenge(competitionId);

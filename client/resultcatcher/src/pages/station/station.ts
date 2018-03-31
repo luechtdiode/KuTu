@@ -11,18 +11,18 @@ import { encodeURIComponent2 } from '../../app/websocket.service';
 })
 export class StationPage {
 
-  durchgangstate = 'gesperrt';
   durchgangopen = false;
-  
+
   constructor(public navCtrl: NavController, public backendService: BackendService) {
     this.backendService.durchgangStarted.map(dgl => 
       dgl.filter(dg => encodeURIComponent2(dg.durchgang) === encodeURIComponent2(this.backendService.durchgang) && dg.wettkampfUUID === this.backendService.competition).length > 0 ? true : false
     ).subscribe(dg => {
-      this.durchgangstate = dg ? 'gestartet' : 'gesperrt';
       this.durchgangopen = dg;
     });
   }
-
+  durchgangstate() {
+    return (this.durchgangopen && this.backendService.isWebsocketConnected()) ? 'gestartet' : 'gesperrt';
+  }
   set competition(competitionId: string) {
     if(!this.stationFreezed) {
       this.backendService.getDurchgaenge(competitionId);

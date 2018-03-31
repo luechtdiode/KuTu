@@ -77,7 +77,7 @@ export abstract class WebsocketService {
     this.connected.next(this.connectedState);
   }
 
-  private isWebsocketConnected(): boolean {
+  public isWebsocketConnected(): boolean {
     return this.websocket && this.websocket.readyState === this.websocket.OPEN;
   }
   private isWebsocketConnecting(): boolean {
