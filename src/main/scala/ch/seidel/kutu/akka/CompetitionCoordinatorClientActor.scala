@@ -75,7 +75,7 @@ class CompetitionCoordinatorClientActor(wettkampfUUID: String) extends Actor wit
       finishedDurchgaenge -= eventDurchgangFinished
       finishedDurchgangSteps = finishedDurchgangSteps.filter(fds => encodeURIComponent(fds.durchgang) != encodeURIComponent(durchgang))
       val dgsText = TextMessage(eventDurchgangStarted.asInstanceOf[KutuAppEvent].toJson.compactPrint)
-      wsSend.get(Some(durchgang)) match {
+      wsSend.get(Some(encodeURIComponent(durchgang))) match {
         case Some(wsList) => wsList.foreach(ws => ws ! dgsText)
         case _ =>
       }
@@ -91,7 +91,7 @@ class CompetitionCoordinatorClientActor(wettkampfUUID: String) extends Actor wit
       startedDurchgaenge -= DurchgangStarted(wettkampfUUID, durchgang)
       finishedDurchgaenge += eventDurchgangFinished
       val dgsText = TextMessage(eventDurchgangFinished.asInstanceOf[KutuAppEvent].toJson.compactPrint)
-      wsSend.get(Some(durchgang)) match {
+      wsSend.get(Some(encodeURIComponent(durchgang))) match {
         case Some(wsList) => wsList.foreach(ws => ws ! dgsText)
         case _ =>
       }
@@ -102,6 +102,7 @@ class CompetitionCoordinatorClientActor(wettkampfUUID: String) extends Actor wit
       sender ! eventDurchgangFinished
       
     case uw @ UpdateAthletWertung(athlet, wertung, wettkampfUUID, durchgang, geraet, step) =>
+      val senderWebSocket = actorWithSameDeviceIdOfSender
       if (finishedDurchgangSteps.exists(fds => encodeURIComponent(fds.durchgang) == encodeURIComponent(durchgang) && fds.geraet == geraet && fds.step == step+1)) {
         sender ! MessageAck("Diese Station ist bereits abgeschlossen und kann keine neuen Resultate mehr entgegennehmen.")
       } else if (!startedDurchgaenge.exists(d => encodeURIComponent(d.durchgang) == encodeURIComponent(durchgang))) {
@@ -113,21 +114,28 @@ class CompetitionCoordinatorClientActor(wettkampfUUID: String) extends Actor wit
         // if complete, close durchgang and commit to wettkampf-origin
         val awu: KutuAppEvent = AthletWertungUpdated(athlet, verifiedWertung, wettkampfUUID, durchgang, geraet)
         val toPublish = TextMessage(awu.toJson.compactPrint)
-        wsSend.flatMap(_._2).foreach(ws => ws ! toPublish)
+        wsSend.get(Some(encodeURIComponent(durchgang))) match {
+          case Some(wsList) => wsList.filter(ws => !senderWebSocket.exists(_ == ws)).foreach(ws => ws ! toPublish)
+          case _ =>
+        }
+        wsSend.get(None) match {
+          case Some(wsList) => wsList.filter(ws => !senderWebSocket.exists(_ == ws)).foreach(ws => ws ! toPublish)
+          case _ =>
+        }
         sender ! awu
       } catch {
         case e: Exception =>
           sender ! MessageAck(e.getMessage)
       }
-      
+        
     case awu: AthletWertungUpdated =>
       val senderWebSocket = actorWithSameDeviceIdOfSender
       ResourceExchanger.processWSMessage(event => event match {
         case awuv: KutuAppEvent =>
           val toPublish = TextMessage(awuv.toJson.compactPrint)
-          wsSend.flatMap(_._2).filter(ws => !senderWebSocket.exists(_ == ws)).foreach{ws => 
-            println("publishing from " + senderWebSocket + " to " + ws.path)
-            ws ! toPublish
+          wsSend.get(Some(encodeURIComponent(awu.durchgang))) match {
+            case Some(wsList) => wsList.filter(ws => !senderWebSocket.exists(_ == ws)).foreach(ws => ws ! toPublish)
+            case _ =>
           }
         case _ =>
       })(awu)
