@@ -250,13 +250,13 @@ export class BackendService extends WebsocketService {
   }
 
   finishStation(competitionId: string, durchgang: string, step: number, geraetId: number) {
-    this.http.post<MessageAck>(backendUrl + 'api/durchgang/' + competitionId + '/finish', JSON.stringify(<FinishDurchgangStation>{
+    this.http.post<MessageAck>(backendUrl + 'api/durchgang/' + competitionId + '/finish', <FinishDurchgangStation>{
       type : "FinishDurchgangStation",
       wettkampfUUID : competitionId,
       durchgang : durchgang,
       geraet : geraetId,
       step : step
-    }))
+    })
     .subscribe((data) => {
       localStorage.removeItem('current_station');
       this.loggedIn = this.checkJWT();
