@@ -12,6 +12,7 @@ import java.util.UUID
 import java.nio.file.Files
 import java.nio.file.StandardOpenOption
 import java.nio.file.LinkOption
+import java.net.URLEncoder
 
 package object domain {
   implicit def dbl2Str(d: Double) = f"${d}%2.3f"
@@ -88,6 +89,14 @@ package object domain {
   val encodeInvalidURIRegEx =  "[,&.*+?/^${}()|\\[\\]\\\\]".r
   def encodeURIComponent(uri: String) = encodeInvalidURIRegEx.replaceAllIn(uri, "_")
   
+  def encodeURIParam(uri: String) = URLEncoder.encode(uri, "UTF-8")
+    .replaceAll("\\+", "%20")
+    .replaceAll("\\%21", "!")
+    .replaceAll("\\%27", "'")
+    .replaceAll("\\%28", "(")
+    .replaceAll("\\%29", ")")
+    .replaceAll("\\%7E", "~")
+    
   trait DataObject {
     def easyprint: String = toString
   }

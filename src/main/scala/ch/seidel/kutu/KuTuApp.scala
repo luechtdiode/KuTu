@@ -67,8 +67,14 @@ import javafx.beans.property.SimpleObjectProperty
 import javafx.scene.control.DatePicker
 import javafx.util.Callback
 import ch.seidel.kutu.akka.StartDurchgang
+import java.net.URI
+import java.util.Date
+import java.time.LocalDate
+import java.net.URLEncoder
+import ch.seidel.kutu.http.AuthSupport
+import ch.seidel.kutu.http.JwtSupport
 
-object KuTuApp extends JFXApp with KutuService with JsonSupport {
+object KuTuApp extends JFXApp with KutuService with JsonSupport with JwtSupport {
   import WertungServiceBestenResult._
   
   private val logger = LoggerFactory.getLogger(this.getClass)
@@ -957,18 +963,54 @@ object KuTuApp extends JFXApp with KutuService with JsonSupport {
   def showQRCode(p: WettkampfView) = {
     val item = makeMenuAction("Kampfrichter Mobile register ...") {(caption, action) =>
       implicit val e = action
-      p.uuid.zip(p.toWettkampf.readSecret(homedir, remoteHostOrigin)).headOption match {
-        case Some((uuid, secret)) =>
+      p.uuid.zip(AuthSupport.getClientSecret).zip(p.toWettkampf.readSecret(homedir, remoteHostOrigin)).headOption match {
+        case Some(((uuid, shortsecret), secret)) =>
+          val shorttimeout = getExpiration(shortsecret).getOrElse(new Date())
+          val longtimeout = getExpiration(secret).getOrElse(new Date())
           val connectionString = s"$remoteBaseUrl/?" + new String(enc.encodeToString((s"c=$uuid&s=$secret").getBytes))
-          println(connectionString)
-          val out = QRCode.from(connectionString).to(ImageType.PNG).withSize(500, 500).stream();
+          val shortConnectionString = s"$remoteBaseUrl/?" + new String(enc.encodeToString((s"c=$uuid&s=$shortsecret").getBytes))
+          
+          def formatDateTime(d: Date) = f"$d%td.$d%tm.$d%tY - $d%tH:$d%tM"
+          
+          println(("longterm-secret", formatDateTime(longtimeout), connectionString))
+          println(("shortterm-secret", formatDateTime(shorttimeout), shortConnectionString))
+          val out = QRCode.from(shortConnectionString).to(ImageType.PNG).withSize(500, 500).stream();
           val in = new ByteArrayInputStream(out.toByteArray());
       
           val image = new Image(in);
           val view = new ImageView(image);
+          val urlLabel = new Hyperlink("Link (24h gültig) im Browser öffnen")
+          urlLabel.onMouseClicked = handle {
+            Desktop.getDesktop().browse(new URI(shortConnectionString))
+          }
+          val mailLabel = new Hyperlink("Link (24h gültig) als EMail versenden")
+          mailLabel.onMouseClicked = handle {
+            val mailURIStr = String.format("mailto:%s?subject=%s&cc=%s&body=%s",
+              "", encodeURIParam(s"Link für Datenerfassung Wettkampf (${p.easyprint})"), "", encodeURIParam(
+            s"""  Geschätze(r) Wertungsrichter(in)
+               | 
+               |  mit dem folgenden Link kommst Du in die App, in der Du die Wettkampf-Resultate
+               |  für den Wettkampf '${p.easyprint}' erfassen kannst:
+               |  ${shortConnectionString}
+               | 
+               |  Wichtig:
+               |  * Dieser Link ist bis am ${formatDateTime(shorttimeout)} Uhr gültig.
+               |  * Bitte den Link vertraulich behandeln - nur Du darfst mit diesem Link einsteigen.
+               | 
+               |  Sportliche Grüsse,
+               |  Wertungsrichter-Einsatzplanung
+              """.stripMargin))
+            val mailURI = new URI(mailURIStr)
+            Desktop.getDesktop().mail(new URI(mailURIStr))
+          }
           view.setStyle("-fx-stroke-width: 2; -fx-stroke: blue");
           PageDisplayer.showInDialog(caption, new DisplayablePage() {
-            def getPage: Node = view
+            def getPage: Node = new VBox{
+              children += new Label("QR-Code mit Link (24h gültig)")
+              children += view
+              children += urlLabel
+              children += mailLabel
+            }
           }
           )  
           

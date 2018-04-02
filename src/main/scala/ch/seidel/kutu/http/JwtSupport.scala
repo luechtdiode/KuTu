@@ -7,6 +7,7 @@ import authentikat.jwt._
 import java.util.concurrent.TimeUnit
 import akka.http.scaladsl.server.directives.Credentials
 import ch.seidel.kutu.Config._
+import java.util.Date
 
 trait JwtSupport extends Directives {
   private lazy val userKey = "user"
@@ -46,6 +47,14 @@ trait JwtSupport extends Directives {
 
   def getUserID(claims: Option[Map[String, String]]): Option[String] = claims.map(_.get(userKey)).get
 
+  def getExpiration(jwt: String): Option[Date] = getClaims(jwt) match {
+    case Some(claims) => claims.get(expiredAtKey) match {
+      case Some(value) => Some(new Date(value.toLong))
+      case _ => None
+    }
+    case _ => None
+  }
+  
   private def isTokenExpired(jwt: String) = getClaims(jwt) match {
     case Some(claims) =>
       claims.get(expiredAtKey) match {

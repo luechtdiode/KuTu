@@ -62,6 +62,8 @@ object AuthSupport {
   private[AuthSupport] var clientheader: Option[RawHeader] = None
   
   case class UserCredentials(username: String, password: String)
+  
+  def getClientSecret = clientheader.map(_.value)
 }
 
 trait AuthSupport extends Directives with SprayJsonSupport with Hashing {
