@@ -81,6 +81,10 @@ import ch.seidel.kutu.akka.AthletWertungUpdated
 import ch.seidel.kutu.http.WebSocketClient
 import scala.util.Success
 import scala.util.Failure
+import java.util.concurrent.Executors
+import java.util.concurrent.Callable
+import java.util.concurrent.TimeUnit
+import java.util.concurrent.ScheduledFuture
 
 trait TCAccess[R, E, IDX] {
   def getIndex: IDX
@@ -243,7 +247,6 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
 
     var wertungen = reloadWertungen()
  		val wkModel = ObservableBuffer[IndexedSeq[WertungEditor]](wertungen)
-    var editingEditor: Option[WertungEditor] = None
     val wkview = new TableView[IndexedSeq[WertungEditor]](wkModel) {
       id = "kutu-table"
       editable = true
@@ -362,15 +365,25 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
     var lastFilter = ""
     var durchgangFilter = emptyRiege
 
+    var lazyEditorPaneUpdater: Map[String, ScheduledFuture[_]] = Map.empty
+    val lazyExecutor = Executors.newScheduledThreadPool(1)
+    def submitLazy(name: String, task: ()=>Unit, delay: Long) {
+      println("submitting " + name)
+      lazyEditorPaneUpdater.get(name).foreach(_.cancel(true))
+      val ft = lazyExecutor.schedule(new Runnable() { def run = { 
+        Platform.runLater{task()}
+      }}, delay, TimeUnit.SECONDS)
+      
+      lazyEditorPaneUpdater = lazyEditorPaneUpdater + (name -> ft)
+    }
+    
     def updateEditorPane(focusHolder: Option[Node] = None) {
-      if(selected.value) {
-//      logger.debug("enter refreshing durchgangfilter")
-		  editorPane.adjust
-      val model = cmbDurchgangFilter.items.getValue
-//		  Future {
-		    val raw = emptyRiege +: rebuildDurchgangFilterList
-//  		  Platform.runLater{
-//		      logger.debug("refreshing durchgangfilter")
+      submitLazy("updateEditorPane", () => {
+        if(selected.value) {
+          println("updating EditorPane ")
+    		  editorPane.adjust
+          val model = cmbDurchgangFilter.items.getValue
+  		    val raw = emptyRiege +: rebuildDurchgangFilterList
   		    val selected = cmbDurchgangFilter.selectionModel.value.selectedItem.value
   		    model.foreach { x => 
   		      raw.find {_.softEquals(x)} match {
@@ -403,9 +416,8 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
       	    model.insert(raw.indexWhere { rx => rx.softEquals(o)}, o)
       	  }
       	  focusHolder.foreach(_.requestFocus())
-//		    }
-//		  }
-      }
+        }        
+      }, 5)
     }
 
     val indexerE = Iterator.from(0)
@@ -428,29 +440,16 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
           editable = wertung.init.wettkampfdisziplin.notenSpez.isDNoteUsed
           visible = wertung.init.wettkampfdisziplin.notenSpez.isDNoteUsed
           onEditCommit = (evt: CellEditEvent[IndexedSeq[WertungEditor], Double]) => {
-            editingEditor = None
             val disciplin = evt.rowValue(index)
             disciplin.noteD.value = evt.newValue
             disciplin.endnote.value = wertung.init.wettkampfdisziplin.notenSpez.calcEndnote(disciplin.noteD.value, disciplin.noteE.value)
             val rowIndex = wkModel.indexOf(evt.rowValue)
             if (disciplin.isDirty) {
-              service.updateWertungAsync(disciplin.commit).andThen {
-                case Success(w) => logger.debug("saved") 
-                case Failure(e) => logger.error("not saved", e)
-              }
-              evt.tableView.selectionModel.value.select(rowIndex, this)
+              service.updateWertung(disciplin.commit)
             }
             evt.tableView.requestFocus()
           }
           onEditCancel = (evt: CellEditEvent[IndexedSeq[WertungEditor], Double]) => {
-            editingEditor match {
-              case Some(editor) =>
-                if (editor.isDirty) {
-                  editor.reset
-                }
-                editingEditor = None
-              case None =>
-            }
           }
         }
         lazy val clEnote = new WKTableColumn[Double](indexerE.next) {
@@ -464,29 +463,16 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
           //logger.debug(text, index)
 
           onEditCommit = (evt: CellEditEvent[IndexedSeq[WertungEditor], Double]) => {
-            editingEditor = None
             val disciplin = evt.rowValue(index)
             disciplin.noteE.value = evt.newValue
             disciplin.endnote.value = wertung.init.wettkampfdisziplin.notenSpez.calcEndnote(disciplin.noteD.value, disciplin.noteE.value)
             val rowIndex = wkModel.indexOf(evt.rowValue)
             if (disciplin.isDirty) {
-              service.updateWertungAsync(disciplin.commit).andThen {
-                case Success(w) => logger.debug("saved") 
-                case Failure(e) => logger.error("not saved", e)
-              }
-              evt.tableView.selectionModel.value.select(rowIndex, this)
+              service.updateWertung(disciplin.commit)
             }
             evt.tableView.requestFocus()
           }
           onEditCancel = (evt: CellEditEvent[IndexedSeq[WertungEditor], Double]) => {
-            editingEditor match {
-              case Some(editor) =>
-                if (editor.isDirty) {
-                  editor.reset
-                }
-                editingEditor = None
-              case None =>
-            }
           }
         }
         lazy val clEndnote = new WKTableColumn[Double](indexerF.next) {
@@ -1004,7 +990,7 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
                 isFilterRefreshing = true
                 val selected = wkview.selectionModel.value.selectedCells
                 wkModel.update(index, newWertungen)
-                selected.foreach(c => wkview.selectionModel.value.select(c.row, c.tableColumn.asInstanceOf[jfxsc.TableColumn[IndexedSeq[WertungEditor], _]]))
+                //selected.foreach(c => wkview.selectionModel.value.select(c.row, c.tableColumn.asInstanceOf[jfxsc.TableColumn[IndexedSeq[WertungEditor], _]]))
                 isFilterRefreshing = false
               }
               newWertungen
