@@ -33,6 +33,7 @@ import ch.seidel.kutu.domain._
 import akka.stream.scaladsl.Keep
 import ch.seidel.kutu.data.ResourceExchanger
 import akka.actor.ActorLogging
+import org.slf4j.LoggerFactory
 
 class CompetitionCoordinatorClientActor(wettkampfUUID: String) extends Actor with JsonSupport with KutuService with ActorLogging {
   import context._
@@ -241,6 +242,7 @@ class ClientActorSupervisor extends Actor with ActorLogging {
 }
 
 object CompetitionCoordinatorClientActor extends JsonSupport with EnrichedJson {
+  private val logger = LoggerFactory.getLogger(this.getClass)
 
   import ch.seidel.kutu.http.Core._
   val supervisor = system.actorOf(Props[ClientActorSupervisor])
@@ -256,10 +258,9 @@ object CompetitionCoordinatorClientActor extends JsonSupport with EnrichedJson {
     Flow[T]
       .watchTermination()((_, f) => f.onComplete {
         case Failure(cause) =>
-          println(s"WS-Server stream failed with $cause")
+          logger.error(s"WS-Server stream failed with $cause")
         case s => // ignore regular completion
-          println(s.toString)
-          println(s"WS-Server stream closed")
+          logger.info(s"WS-Server stream closed")
       })
 
   
@@ -267,7 +268,7 @@ object CompetitionCoordinatorClientActor extends JsonSupport with EnrichedJson {
     text.asType[KutuAppEvent]
   } catch {
     case e: Exception => 
-      e.printStackTrace
+      logger.debug("unparsable json mapped to MessageAck: " + text)
       MessageAck(text)
   }
 

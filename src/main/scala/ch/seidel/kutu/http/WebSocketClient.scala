@@ -31,8 +31,10 @@ import akka.stream.scaladsl.SourceQueueWithComplete
 import scala.util.Success
 import javafx.beans.property.SimpleObjectProperty
 import scalafx.application.Platform
+import org.slf4j.LoggerFactory
 
 object WebSocketClient extends SprayJsonSupport with JsonSupport with AuthSupport {
+  private val logger = LoggerFactory.getLogger(this.getClass)
   import Core.materializer
   import Core.system
 
@@ -56,7 +58,7 @@ object WebSocketClient extends SprayJsonSupport with JsonSupport with AuthSuppor
     promise.future.onComplete{
       case Success(_) => disconnect
       case Failure(error) => 
-        println(s"completed with error: $error")
+        logger.error(s"completed with error: $error")
         disconnect
     }
     promise // return promise to close the ws-connection at some point later    
@@ -82,10 +84,10 @@ object WebSocketClient extends SprayJsonSupport with JsonSupport with AuthSuppor
     Flow[T]
       .watchTermination()((_, f) => f.onComplete {
         case Failure(cause) =>
-          println(s"WS-Client stream failed with $cause")
+          logger.error(s"WS-Client stream failed with $cause")
           handleError(cause)
         case _ => // ignore regular completion
-          println(s"WS-Client stream closed")
+          logger.info(s"WS-Client stream closed")
       })
 
   def tryMapText(text: String): KutuAppEvent = try {
