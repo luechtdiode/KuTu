@@ -366,11 +366,11 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
     var durchgangFilter = emptyRiege
 
     var lazyEditorPaneUpdater: Map[String, ScheduledFuture[_]] = Map.empty
-    val lazyExecutor = Executors.newScheduledThreadPool(1)
+   
     def submitLazy(name: String, task: ()=>Unit, delay: Long) {
       println("submitting " + name)
       lazyEditorPaneUpdater.get(name).foreach(_.cancel(true))
-      val ft = lazyExecutor.schedule(new Runnable() { def run = { 
+      val ft = KuTuApp.lazyExecutor.schedule(new Runnable() { def run = { 
         Platform.runLater{task()}
       }}, delay, TimeUnit.SECONDS)
       

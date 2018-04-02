@@ -73,6 +73,7 @@ import java.time.LocalDate
 import java.net.URLEncoder
 import ch.seidel.kutu.http.AuthSupport
 import ch.seidel.kutu.http.JwtSupport
+import java.util.concurrent.Executors
 
 object KuTuApp extends JFXApp with KutuService with JsonSupport with JwtSupport {
   import WertungServiceBestenResult._
@@ -80,8 +81,10 @@ object KuTuApp extends JFXApp with KutuService with JsonSupport with JwtSupport 
   private val logger = LoggerFactory.getLogger(this.getClass)
   private val server = KuTuServer
   import scala.concurrent.ExecutionContext.Implicits.global
+  val lazyExecutor = Executors.newScheduledThreadPool(1)
   
   override def stopApp() {
+    lazyExecutor.shutdownNow()
     ConnectionStates.disconnected()
     server.shutDown("KuTuApp")
   }
