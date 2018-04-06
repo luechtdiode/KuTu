@@ -58,6 +58,7 @@ jobs:
     osx_image: xcode9.2
     before_install:
       - pip install --user awscli
+      - export PATH=$PATH:$HOME/.local/bin
       - ./ecr_credentials.sh
       - mkdir -p ~/$TRAVIS_BUILD_NUMBER
       - aws s3 sync $S3_BUCKET_CACHE/$TRAVIS_BUILD_NUMBER ~/$TRAVIS_BUILD_NUMBER
