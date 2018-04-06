@@ -1,41 +1,75 @@
-# just working on linux ...
-# sudo: false
-# addons:
-#   apt:
-#     packages:
-#       - oracle-java8-installer
+env:
+  global:
+    - OS=$(uname -s)
+    - PATH=$HOME/.local/bin:$PATH
+    - S3_BUCKET_CACHE=s3://rs-travis/kutuapp/build-cache
 
-# just working on osx ...
-# before_install:
-#   - "wget --no-cookies --no-check-certificate --header \"Cookie: gpw_e24=http%3A%2F%2Fwww.oracle.com%2F; oraclelicense=accept-securebackup-cookie\" http://download.oracle.com/otn-pub/java/jdk/8u152-b16/aa0333dd3019491ca4f6ddbe78cdb6d0/jdk-8u152-macosx-x64.dmg" 
-#   - hdiutil mount jdk-8u102-macosx-x64.dmg
-#   - sudo installer -pkg /Volumes/JDK\ 8\ Update\ 102/JDK\ 8\ Update\ 102.pkg -target LocalSystem
-#   - export JAVA_HOME=$(/usr/libexec/java_home)
+branches:
+  only:
+    - master
+    - v2-networked
   
 cache:
   directories:
     - $HOME/.m2/repository
     - $HOME/.sbt
     - $HOME/.ivy2
+
+stages:
+  - client
+  - server
+
+jobs:
+  include:
+  - stage: client
+    language: node_js
+    before_install:
+      - npm install -g ionic
+      - pip install --user awscli
+      - ./ecr_credentials.sh
+      - mkdir -p ~/$TRAVIS_BUILD_NUMBER
+      - aws s3 sync $S3_BUCKET_CACHE/$TRAVIS_BUILD_NUMBER ~/$TRAVIS_BUILD_NUMBER
+      - mkdir -p ~/requisites
+      - aws s3 sync $S3_BUCKET_REQUISITES ~/requisites
+    script:
+      - cd $TRAVIS_BUILD_DIR/client/resultcatcher
+      - npm install
+      - ionic build --prod
+      - cp -R -f ./www ~/$TRAVIS_BUILD_NUMBER/
+      - rm -rf ~/requisites
+    after_success:
+      - aws s3 sync ~/$TRAVIS_BUILD_NUMBER $S3_BUCKET_CACHE/$TRAVIS_BUILD_NUMBER  
+  - stage: server
+    language: java
+    os: osx
+    osx_image: xcode9.2
+    before_install:
+      - pip install --user awscli
+      - ./ecr_credentials.sh
+      - mkdir -p ~/$TRAVIS_BUILD_NUMBER
+      - aws s3 sync $S3_BUCKET_CACHE/$TRAVIS_BUILD_NUMBER ~/$TRAVIS_BUILD_NUMBER
+    script:
+      - cp -R -f ~/$TRAVIS_BUILD_NUMBER/www/* $TRAVIS_BUILD_DIR/src/main/resources/app
+      - mvn clean package
+      - cp -f $TRAVIS_BUILD_DIR/target/KuTu-app.jar $TRAVIS_BUILD_DIR/outputs/server/release
+      - cp -f $TRAVIS_BUILD_DIR/$OS/bundles/*.msi $TRAVIS_BUILD_DIR/outputs/server/release/$OS
+      - cp -f $TRAVIS_BUILD_DIR/$OS/bundles/*.dmg $TRAVIS_BUILD_DIR/outputs/server/release/$OS
+      - cp -f $TRAVIS_BUILD_DIR/$OS/bundles/*.pkg $TRAVIS_BUILD_DIR/outputs/server/release/$OS
+    after_success:
+      - aws s3 rm --recursive $S3_BUCKET_CACHE/$TRAVIS_BUILD_NUMBER # clean up after ourselves
     
-language: java
 
-env:
-  global:
-    - OS=$(uname -s)
+  
+# script: mvn clean deploy --settings deploy-settings.xml
+# script: mvn clean deploysite --settings deploy-settings.xml
 
-# jdk:
-#   - oraclejdk8
-
-os:
-#   - linux
-  - osx
-
-osx_image: xcode9.2
-
-script: mvn site --settings deploy-settings.xml
-
-branches:
-  only:
-    - master
-    - v2-networked
+deploy:
+  # deploy build to s3
+  provider: s3
+  access_key_id: $aws_user
+  secret_access_key: $aws_accesskey
+  region: "eu-west-1"
+  bucket: "rs-travis"
+  local_dir: ./outputs
+  upload_dir: public/kutuapp
+  skip_cleanup: true    
