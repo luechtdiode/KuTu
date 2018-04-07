@@ -69,7 +69,7 @@ jobs:
       - git commit -a -m "update with generated Client from TravisCI for build $TRAVIS_BUILD_NUMBER with [skip ci]"
       - export GIT_TAG=travisbuild-$TRAVIS_BRANCH-$(date -u "+%Y-%m-%d")-$TRAVIS_BUILD_NUMBER
       - git tag $GIT_TAG -a -m "Generated tag from TravisCI for build $TRAVIS_BUILD_NUMBER"
-      - git push -fq origin $TRAVIS_BRANCH > /dev/null 2>&1
+      - if [[! git push -fq origin $TRAVIS_BRANCH > /dev/null 2>&1]]; then err "failed to push git changes"; return1; fi
       - aws s3 sync ~/$TRAVIS_BUILD_NUMBER $S3_BUCKET_CACHE/$TRAVIS_BUILD_NUMBER  
   - stage: server
     language: java
@@ -100,11 +100,11 @@ deploy:
     upload_dir: kutuapp
     skip_cleanup: true
   
-  # - provider: releases
-  #   api_key: $github_oauth2Token_KuTu
-  #   file_glob: true
-  #   file: $TRAVIS_BUILD_DIR/src/main/resources/app
-  #   skip_cleanup: true
+  - provider: releases
+    api_key: $github_oauth2Token_KuTu
+    file_glob: true
+    file: $TRAVIS_BUILD_DIR/src/main/resources/app
+    skip_cleanup: true
   #   on:
   #     tags: true
   
