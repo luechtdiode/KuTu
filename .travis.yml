@@ -56,7 +56,7 @@ jobs:
     after_success:
       - git config --global user.email "builds@travis-ci.com"
       - git config --global user.name "Travis CI"
-      - git add src/main/resources/app
+      - git add $TRAVIS_BUILD_DIR/src/main/resources/app
       - git commit -a -m "update with generated Client from TravisCI for build $TRAVIS_BUILD_NUMBER"
       - export GIT_TAG=travisbuild-$TRAVIS_BRANCH-$(date -u "+%Y-%m-%d")-$TRAVIS_BUILD_NUMBER
       - git tag $GIT_TAG -a -m "Generated tag from TravisCI for build $TRAVIS_BUILD_NUMBER"
