@@ -36,10 +36,10 @@ trait JsonSupport extends SprayJsonSupport with EnrichedJson {
   implicit val finishDurchgangFormat = jsonFormat2(FinishDurchgang)
 
   // events (via ws and rest-response)
-  implicit val durchgangStartedFormat = jsonFormat2(DurchgangStarted)
+  implicit val durchgangStartedFormat = jsonFormat3(DurchgangStarted)
   implicit val wertungUpdatedFormat = jsonFormat5(AthletWertungUpdated)
   implicit val stationsWertungenCompletedFormat = jsonFormat1(StationWertungenCompleted)
-  implicit val durchgangFinishedFormat = jsonFormat2(DurchgangFinished)
+  implicit val durchgangFinishedFormat = jsonFormat3(DurchgangFinished)
   implicit val messageAckFormat = jsonFormat1(MessageAck)
   
   // support for websocket incoming json-messages

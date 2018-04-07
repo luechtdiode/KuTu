@@ -169,14 +169,16 @@ trait WettkampfRoutes extends SprayJsonSupport with JsonSupport with JwtSupport 
     val source = Source.single((request, ()))
     val requestResponseFlow = Http().superPool[Unit]()
 
-    def importData(httpResponse : HttpResponse) {
+    def importData(httpResponse : HttpResponse) = {
       val is = httpResponse.entity.dataBytes.runWith(StreamConverters.asInputStream())
       ResourceExchanger.importWettkampf(is)
     }
-    source.via(requestResponseFlow)
+    val wettkampf = source.via(requestResponseFlow)
           .map(responseOrFail)
           .map(_._1)
-          .runWith(Sink.foreach(importData))
+          .map(importData)
+          .runWith(Sink.head)
+    wettkampf          
   }
       
   def httpRemoveWettkampfRequest(wettkampf: Wettkampf) = {

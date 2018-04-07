@@ -45,8 +45,8 @@ import ch.seidel.kutu.akka._
 import ch.seidel.kutu.http.WebSocketClient
 
 case class DurchgangState(wettkampfUUID: String, name: String, started: Long, complete: Boolean, finished: Long, geraeteRiegen: List[GeraeteRiege]) {
-  def start = DurchgangState(wettkampfUUID, name, if (started == 0) System.currentTimeMillis() else started, complete, 0, geraeteRiegen)
-  def finish = DurchgangState(wettkampfUUID, name, started, complete, System.currentTimeMillis(), geraeteRiegen)
+  def start(time: Long = 0) = DurchgangState(wettkampfUUID, name, if (started == 0) if (time == 0) System.currentTimeMillis() else time else started, complete, 0, geraeteRiegen)
+  def finish(time: Long = 0) = DurchgangState(wettkampfUUID, name, started, complete, if (time == 0) System.currentTimeMillis() else time, geraeteRiegen)
   def update(newGeraeteRiegen: List[GeraeteRiege]) = {
     if (newGeraeteRiegen.forall(gr => geraeteRiegen.exists(egr => egr == gr))) this 
     else DurchgangState(wettkampfUUID, name, started, complete, finished, newGeraeteRiegen)
@@ -92,8 +92,8 @@ object NetworkTab {
   var activeDurchgaenge: Map[WettkampfView, Set[DurchgangState]] = Map.empty
   val activeDurchgaengeProp = new ObjectProperty[Set[DurchgangState]]()
   
-  def startDurchgang(w: WettkampfView, d: DurchgangState) = {
-    val started = d.start
+  def startDurchgang(w: WettkampfView, d: DurchgangState, t: Long) = {
+    val started = d.start(t)
     val newset = activeDurchgaenge.get(w).orElse(Some(Set[DurchgangState]())).get.filter(_ != d) + started
     val newEntry = (w -> newset)
     activeDurchgaenge = activeDurchgaenge + newEntry
@@ -101,8 +101,8 @@ object NetworkTab {
     started
   }
   
-  def finishDurchgang(w: WettkampfView, d: DurchgangState) = {
-    val finished = d.finish
+  def finishDurchgang(w: WettkampfView, d: DurchgangState, t: Long) = {
+    val finished = d.finish(t)
     val newset = activeDurchgaenge.get(w).orElse(Some(Set[DurchgangState]())).get.filter(_ != d) + finished
     val newEntry = (w -> newset)
     activeDurchgaenge = activeDurchgaenge + newEntry
@@ -277,11 +277,11 @@ class NetworkTab(wettkampf: WettkampfView, override val service: KutuService) ex
   def refreshData(event: Option[KutuAppEvent] = None) {
     val newList = loadDurchgaenge.map{d =>
       event match {
-        case Some(DurchgangStarted(wettkampfUUID: String, durchgang: String)) if (d.wettkampfUUID == wettkampfUUID && d.name == durchgang) =>
-          startDurchgang(wettkampf, d)
+        case Some(DurchgangStarted(wettkampfUUID: String, durchgang: String, time: Long)) if (d.wettkampfUUID == wettkampfUUID && d.name == durchgang) =>
+          startDurchgang(wettkampf, d, time)
 //      caseSome( StationWertungenCompleted(wertungen: List[UpdateAthletWertung])) =>
-        case Some(DurchgangFinished(wettkampfUUID: String, durchgang: String)) if (d.wettkampfUUID == wettkampfUUID && d.name == durchgang) =>
-          finishDurchgang(wettkampf, d)
+        case Some(DurchgangFinished(wettkampfUUID: String, durchgang: String, time: Long)) if (d.wettkampfUUID == wettkampfUUID && d.name == durchgang) =>
+          finishDurchgang(wettkampf, d, time)
         case _ => d
       }
     }
@@ -359,7 +359,7 @@ class NetworkTab(wettkampf: WettkampfView, override val service: KutuService) ex
           case Some(d: DurchgangState) =>
             KuTuApp.invokeWithBusyIndicator {
               Await.result(KuTuServer.startDurchgang(p, d.name), Duration.Inf)
-              startDurchgang(p, d)
+              startDurchgang(p, d, 0)
               refreshData()
             }
           case _ =>
@@ -385,7 +385,7 @@ class NetworkTab(wettkampf: WettkampfView, override val service: KutuService) ex
           case Some(d: DurchgangState) =>
             KuTuApp.invokeWithBusyIndicator {
               Await.result(KuTuServer.finishDurchgang(p, d.name), Duration.Inf)
-              finishDurchgang(p, d)
+              finishDurchgang(p, d, 0)
               refreshData()
             }
           case _ =>

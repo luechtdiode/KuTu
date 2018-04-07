@@ -2,6 +2,7 @@ package ch.seidel.kutu.akka
 
 import akka.actor.ActorRef
 import ch.seidel.kutu.domain._
+import java.time.Instant
 
 case class Subscribe(clientSource: ActorRef, deviceId: String, durchgang: Option[String])
 case class StopDevice(deviceId: String)
@@ -20,9 +21,9 @@ case class FinishDurchgangStation(override val wettkampfUUID: String, durchgang:
 case class FinishDurchgang(override val wettkampfUUID: String, durchgang: String) extends KutuAppAction
 
 sealed trait KutuAppEvent extends KutuAppProtokoll
-case class DurchgangStarted(wettkampfUUID: String, durchgang: String) extends KutuAppEvent
+case class DurchgangStarted(wettkampfUUID: String, durchgang: String, time: Long = System.currentTimeMillis()) extends KutuAppEvent
 case class StationWertungenCompleted(wertungen: List[UpdateAthletWertung]) extends KutuAppEvent
-case class DurchgangFinished(wettkampfUUID: String, durchgang: String) extends KutuAppEvent
+case class DurchgangFinished(wettkampfUUID: String, durchgang: String, time: Long = System.currentTimeMillis()) extends KutuAppEvent
 case class AthletWertungUpdated(ahtlet: AthletView, wertung: Wertung, wettkampfUUID: String, durchgang: String, geraet: Long) extends KutuAppEvent
 
 case class MessageAck(msg: String) extends KutuAppEvent

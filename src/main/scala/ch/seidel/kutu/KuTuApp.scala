@@ -887,7 +887,19 @@ object KuTuApp extends JFXApp with KutuService with JsonSupport with JwtSupport 
                     val (wettkampf,idx) = x
                     KuTuApp.invokeWithBusyIndicator {
                       val url=s"$remoteAdminBaseUrl/api/competition/${wettkampf.uuid.get}"
-                      Await.result(server.httpDownloadRequest(server.makeHttpGetRequest(url)), Duration.Inf)
+                      server.httpDownloadRequest(server.makeHttpGetRequest(url)).onComplete(ft =>
+                        Platform.runLater{ ft match {
+                            case Success(w) => 
+                              updateTree
+                              val text = s"${w.titel} ${w.datum}"
+                              tree.getLeaves("Wettkämpfe").find { item => text.equals(item.value.value) } match {
+                                case Some(node) => controlsView.selectionModel().select(node)
+                                case None =>
+                              }
+                            case _ => 
+                          }
+                        }
+                      )
                     }
                   }
                 }
@@ -942,12 +954,7 @@ object KuTuApp extends JFXApp with KutuService with JsonSupport with JwtSupport 
                       }
                     }
                   }
-                },
-                new Button("OK") {
-                    onAction = handleAction {implicit e: ActionEvent =>
-                    }
-                  }
-                )  
+                })  
               case Success(w) =>
                   updateTree
                   val text = s"${w.titel} ${w.datum}"

@@ -42,9 +42,9 @@ class CompetitionCoordinatorClientActor(wettkampfUUID: String) extends Actor wit
   var deviceWebsocketRefs: Map[String,ActorRef] = Map.empty
   var pendingKeepAliveAck: Option[Int] = None
 
-  var startedDurchgaenge: Set[DurchgangStarted] = Set.empty
+  var startedDurchgaenge: Set[String] = Set.empty
   var finishedDurchgangSteps: Set[FinishDurchgangStation] = Set.empty
-  var finishedDurchgaenge: Set[DurchgangFinished] = Set.empty
+  var finishedDurchgaenge: Set[String] = Set.empty
   var startStopEvents: List[KutuAppEvent] = List.empty
   
   private def deviceIdOf(actor: ActorRef) = deviceWebsocketRefs.filter(_._2 == actor).map(_._1)
@@ -72,8 +72,8 @@ class CompetitionCoordinatorClientActor(wettkampfUUID: String) extends Actor wit
       val eventDurchgangStarted = DurchgangStarted(wettkampfUUID, durchgang)
       val eventDurchgangFinished = DurchgangFinished(wettkampfUUID, durchgang)
       startStopEvents = startStopEvents :+ eventDurchgangStarted
-      startedDurchgaenge += eventDurchgangStarted
-      finishedDurchgaenge -= eventDurchgangFinished
+      startedDurchgaenge += eventDurchgangStarted.durchgang
+      finishedDurchgaenge -= eventDurchgangFinished.durchgang
       finishedDurchgangSteps = finishedDurchgangSteps.filter(fds => encodeURIComponent(fds.durchgang) != encodeURIComponent(durchgang))
       val dgsText = TextMessage(eventDurchgangStarted.asInstanceOf[KutuAppEvent].toJson.compactPrint)
       wsSend.get(Some(encodeURIComponent(durchgang))) match {
@@ -89,8 +89,8 @@ class CompetitionCoordinatorClientActor(wettkampfUUID: String) extends Actor wit
     case FinishDurchgang(wettkampfUUID, durchgang) =>
       val eventDurchgangFinished = DurchgangFinished(wettkampfUUID, durchgang)
       startStopEvents = startStopEvents :+ eventDurchgangFinished
-      startedDurchgaenge -= DurchgangStarted(wettkampfUUID, durchgang)
-      finishedDurchgaenge += eventDurchgangFinished
+      startedDurchgaenge -= durchgang
+      finishedDurchgaenge += eventDurchgangFinished.durchgang
       val dgsText = TextMessage(eventDurchgangFinished.asInstanceOf[KutuAppEvent].toJson.compactPrint)
       wsSend.get(Some(encodeURIComponent(durchgang))) match {
         case Some(wsList) => wsList.foreach(ws => ws ! dgsText)
@@ -106,13 +106,11 @@ class CompetitionCoordinatorClientActor(wettkampfUUID: String) extends Actor wit
       val senderWebSocket = actorWithSameDeviceIdOfSender
       if (finishedDurchgangSteps.exists(fds => encodeURIComponent(fds.durchgang) == encodeURIComponent(durchgang) && fds.geraet == geraet && fds.step == step+1)) {
         sender ! MessageAck("Diese Station ist bereits abgeschlossen und kann keine neuen Resultate mehr entgegennehmen.")
-      } else if (!startedDurchgaenge.exists(d => encodeURIComponent(d.durchgang) == encodeURIComponent(durchgang))) {
+      } else if (!startedDurchgaenge.exists(d => encodeURIComponent(d) == encodeURIComponent(durchgang))) {
         sender ! MessageAck("Dieser Durchgang ist noch nicht für die Resultaterfassung freigegeben.")
       } else try {
         val verifiedWertung = updateWertungSimple(wertung, true)
        
-        // calculate progress for durchgang and for durchgang-geraet
-        // if complete, close durchgang and commit to wettkampf-origin
         val awu: KutuAppEvent = AthletWertungUpdated(athlet, verifiedWertung, wettkampfUUID, durchgang, geraet)
         val toPublish = TextMessage(awu.toJson.compactPrint)
         wsSend.get(Some(encodeURIComponent(durchgang))) match {
@@ -155,7 +153,17 @@ class CompetitionCoordinatorClientActor(wettkampfUUID: String) extends Actor wit
       wsSend = wsSend + (durchgang -> durchgangClients)
       deviceWebsocketRefs = deviceWebsocketRefs + (deviceId -> ref)
       ref ! TextMessage("Connection established.")      
-      startStopEvents.foreach(d => ref ! TextMessage(d.asInstanceOf[KutuAppEvent].toJson.compactPrint))
+      (durchgang match {
+        case Some(dg) =>
+          val dgn = encodeURIComponent(dg)
+          startStopEvents.seq.reverse.filter {
+            case DurchgangStarted(w, d, t) => encodeURIComponent(d) == dgn
+            case DurchgangFinished(w, d, t) => encodeURIComponent(d) == dgn
+            case _ => false
+          }.take(1)
+        case _ => startStopEvents
+      })
+      .foreach(d => ref ! TextMessage(d.asInstanceOf[KutuAppEvent].toJson.compactPrint))
 
     // system actions
     case KeepAlive => wsSend.flatMap(_._2).foreach(ws => ws ! TextMessage("KeepAlive"))
