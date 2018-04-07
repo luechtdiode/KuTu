@@ -65,9 +65,9 @@ jobs:
       - cp -R -f ~/$TRAVIS_BUILD_NUMBER/www/* $TRAVIS_BUILD_DIR/src/main/resources/app
       - mvn clean package
       - cp -f $TRAVIS_BUILD_DIR/target/KuTu-app.jar $TRAVIS_BUILD_DIR/outputs/server/release
-      - cp -f $TRAVIS_BUILD_DIR/$OS/bundles/*.msi $TRAVIS_BUILD_DIR/outputs/server/release/$OS
-      - cp -f $TRAVIS_BUILD_DIR/$OS/bundles/*.dmg $TRAVIS_BUILD_DIR/outputs/server/release/$OS
-      - cp -f $TRAVIS_BUILD_DIR/$OS/bundles/*.pkg $TRAVIS_BUILD_DIR/outputs/server/release/$OS
+      - cp -f $TRAVIS_BUILD_DIR/target/$OS/bundles/*.dmg $TRAVIS_BUILD_DIR/outputs/server/release/$OS
+      - cp -f $TRAVIS_BUILD_DIR/target/$OS/bundles/*.pkg $TRAVIS_BUILD_DIR/outputs/server/release/$OS
+      - cp -f $TRAVIS_BUILD_DIR/target/$OS/bundles/*.msi $TRAVIS_BUILD_DIR/outputs/server/release/$OS
     after_success:
       - aws s3 rm --recursive $S3_BUCKET_CACHE/$TRAVIS_BUILD_NUMBER # clean up after ourselves
   
