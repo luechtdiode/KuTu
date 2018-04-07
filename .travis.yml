@@ -52,6 +52,7 @@ jobs:
       - npm install
       - ionic build --prod
       - cp -R -f ./www ~/$TRAVIS_BUILD_NUMBER/
+      - cp -R -f ~/$TRAVIS_BUILD_NUMBER/www/* $TRAVIS_BUILD_DIR/src/main/resources/app
       - rm -rf ~/requisites
     after_success:
       - git config --global user.email "builds@travis-ci.com"
@@ -80,17 +81,22 @@ jobs:
     after_success:
       - aws s3 rm --recursive $S3_BUCKET_CACHE/$TRAVIS_BUILD_NUMBER # clean up after ourselves
 
-before_deploy:	
-
-  
 deploy:
   # deploy build to s3
-  provider: s3
-  access_key_id: $aws_user
-  secret_access_key: $aws_accesskey
-  region: "eu-west-1"
-  bucket: "rs-travis"
-  local_dir: $TRAVIS_BUILD_DIR/outputs
-  upload_dir: kutuapp
-  skip_cleanup: true
+  - provider: s3
+    access_key_id: $aws_user
+    secret_access_key: $aws_accesskey
+    region: "eu-west-1"
+    bucket: "rs-travis"
+    local_dir: $TRAVIS_BUILD_DIR/outputs
+    upload_dir: kutuapp
+    skip_cleanup: true
+  
+  # - provider: releases
+  #   api_key: $github_oauth2Token_KuTu
+  #   file_glob: true
+  #   file: $TRAVIS_BUILD_DIR/src/main/resources/app
+  #   skip_cleanup: true
+  #   on:
+  #     tags: true
   
