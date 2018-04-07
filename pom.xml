@@ -420,25 +420,6 @@
 					</sourceIncludes>
 				</configuration>
 			</plugin>
-			<!-- activate to import as Maven-Project into eclipse, then deactivate 
-				again plugin> <groupId>org.apache.maven.plugins</groupId> <artifactId>maven-compiler-plugin</artifactId> 
-				<configuration> <skipMain>true</skipMain> <skip>true</skip> </configuration> 
-				<executions> <execution> <id>default-compile</id> <goals><goal>compile</goal></goals> 
-				</execution> <execution> <id>default-testCompile</id> <goals><goal>testCompile</goal></goals> 
-				</execution> </executions> </plugin -->
-			<!-- plugin> <groupId>org.apache.maven.plugins</groupId> <artifactId>maven-surefire-plugin</artifactId> 
-				<version>2.16</version> <configuration> <useSystemClassLoader>false</useSystemClassLoader> 
-				<argLine>-Xmx512m</argLine> <excludes> <exclude>**/*RDTest.java</exclude> 
-				</excludes> <includes> <include>**/*Test.java</include> <include>**/*Spec.java</include> 
-				</includes> </configuration> </plugin> <plugin> <groupId>com.github.github</groupId> 
-				<artifactId>site-maven-plugin</artifactId> <version>0.12</version> <configuration> 
-				<repositoryOwner>luechtdiode</repositoryOwner> <repositoryName>KuTu</repositoryName> 
-				<message>update website</message> <oauth2Token>${env.github_oauth2Token_KuTu}</oauth2Token> 
-				<outputDirectory>${project.build.directory}</outputDirectory> <branch>refs/heads/gh-pages</branch> 
-				<merge>true</merge> <path>download</path> <dryRun>true</dryRun> <includes> 
-				<include>KuTu-app.jar</include> </includes> </configuration> <executions> 
-				<execution> <goals> <goal>site</goal> </goals> <phase>site</phase> </execution> 
-				</executions> </plugin -->
 			<plugin>
 				<groupId>org.codehaus.mojo</groupId>
 				<artifactId>wagon-maven-plugin</artifactId>
@@ -446,7 +427,7 @@
 				<executions>
 					<execution>
 						<id>upload-binaries</id>
-						<phase>site</phase>
+						<phase>deploy</phase>
 						<goals>
 							<goal>upload</goal>
 						</goals>
@@ -455,8 +436,12 @@
 							<includes>
 								**/*.msi, **/*.pkg, **/*.dmg, **/*.rpm, **/*.deb
 							</includes>
-							<serverId>ftp-repository</serverId>
-							<url>ftp://ftp.interpolar.ch</url>
+							<!-- serverId>ftp-repository</serverId>
+							<toDir>${OS}</toDir>
+							<url>ftp://ftp.interpolar.ch</url-->
+							<!--  see https://stackoverflow.com/questions/20650514/upload-static-resource-to-amazon-s3-server-using-maven-plugin -->
+							<serverId>s3.release</serverId>
+							<url>s3://rs-travis/public/kutuapp/</url>
 							<toDir>${OS}</toDir>
 						</configuration>
 					</execution>
