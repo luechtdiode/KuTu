@@ -189,7 +189,7 @@
 	</dependencies>
 	<!-- distributionManagement> <repository> <id>ftp-repository</id> <url>ftp://ftp.interpolar.ch/snapshots</url> 
 		</repository> </distributionManagement -->
-	<distributionManagement>
+	<!-- distributionManagement>
 	 <site>
 	  <id>s3.site</id>
 	  <url>s3://rs-travis/kutuapp/site</url>
@@ -202,7 +202,7 @@
 	  <id>s3.snapshot</id>
 	  <url>s3://rs-travis/kutuapp/snapshot</url>
 	 </snapshotRepository>
-	</distributionManagement>		
+	</distributionManagement-->		
 
 	<build>
 		<resources>
