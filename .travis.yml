@@ -5,13 +5,9 @@ env:
     - S3_BUCKET_CACHE=s3://rs-travis/kutuapp/build-cache
     - S3_BUCKET_REQUISITES=s3://rs-travis/kutuapp/requisites
     
-branches:
-  only:
-    - master
-    - v2-networked
 branches:    
   except:
-    - /^travisbuild-[0-9a-z\-]*/
+  - /^travisbuild-[0-9a-z\-]*/
       
 cache:
   directories:
