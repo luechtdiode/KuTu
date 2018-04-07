@@ -4,7 +4,11 @@ env:
     - PATH=$HOME/.local/bin:$PATH
     - S3_BUCKET_CACHE=s3://rs-travis/kutuapp/build-cache
     - S3_BUCKET_REQUISITES=s3://rs-travis/kutuapp/requisites
-    
+
+branches:
+  except:
+  - /^travisbuild-[0-9a-z\-]*/
+      
 branches:
   only:
     - master
