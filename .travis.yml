@@ -52,7 +52,7 @@ jobs:
       - npm install
       - ionic build --prod
       - cp -R -f ./www ~/$TRAVIS_BUILD_NUMBER/
-      - cp -R -f ~/$TRAVIS_BUILD_NUMBER/www/* $TRAVIS_BUILD_DIR/src/main/resources/app
+      - cp -R -f ./www/* $TRAVIS_BUILD_DIR/src/main/resources/app/
       - rm -rf ~/requisites
     after_success:
       - git config --global user.email "builds@travis-ci.com"
