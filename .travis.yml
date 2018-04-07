@@ -76,13 +76,11 @@ jobs:
       - git status
       - ls $TRAVIS_BUILD_DIR/src/main/resources/app
       - git status
-      - git remote rm origin
-      - git remote add origin https://$GH_ACCESS_TOKEN@github.com/luechtdiode/KuTu.git
       - git add $TRAVIS_BUILD_DIR/src/main/resources/app
       - git commit -a -m "update with generated Client from TravisCI for build $TRAVIS_BUILD_NUMBER with [skip ci]"
       - export GIT_TAG=travisbuild-$TRAVIS_BRANCH-$(date -u "+%Y-%m-%d")-$TRAVIS_BUILD_NUMBER
       - git tag $GIT_TAG -a -m "Generated tag from TravisCI for build $TRAVIS_BUILD_NUMBER"
-      - if [[! git push -fq origin $TRAVIS_BRANCH > /dev/null 2>&1]]; then err "failed to push git changes"; return1; fi
+      - if ! git push -fq --follow-tags https://$GH_ACCESS_TOKEN@github.com/luechtdiode/KuTu.git $TRAVIS_BRANCH > /dev/null 2>&1; then err "failed to push git changes"; return1; fi
       - aws s3 rm --recursive $S3_BUCKET_CACHE/$TRAVIS_BUILD_NUMBER # clean up after ourselves
 
 deploy:
