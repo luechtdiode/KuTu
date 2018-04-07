@@ -70,15 +70,6 @@ jobs:
       - cp -f $TRAVIS_BUILD_DIR/target/$OS/bundles/*.pkg $TRAVIS_BUILD_DIR/outputs/$OS/
     after_success:
       - aws s3 rm --recursive $S3_BUCKET_CACHE/$TRAVIS_BUILD_NUMBER # clean up after ourselves  
-	before_deploy:	
-      - git config --global user.email "builds@travis-ci.com"
-      - git config --global user.name "Travis CI"
-      - git add src/main/resources/app
-      - git commit -a -m "update with generated Client from TravisCI for build $TRAVIS_BUILD_NUMBER"
-      - export GIT_TAG=travisbuild--$TRAVIS_BRANCH-$(date -u "+%Y-%m-%d")-$TRAVIS_BUILD_NUMBER
-      - git tag $GIT_TAG -a -m "Generated tag from TravisCI for build $TRAVIS_BUILD_NUMBER"
-      - git push -q https://$github_oauth2Token_KuTu@github.com/luechtdiode/KuTu $GIT_TAG > /dev/null 2>&1
-      - ls -R
 	  
 deploy:
   # deploy build to s3
