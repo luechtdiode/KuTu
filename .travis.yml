@@ -67,7 +67,7 @@ jobs:
       - git commit -a -m "update with generated Client from TravisCI for build $TRAVIS_BUILD_NUMBER"
       - export GIT_TAG=travisbuild-$TRAVIS_BRANCH-$(date -u "+%Y-%m-%d")-$TRAVIS_BUILD_NUMBER
       - git tag $GIT_TAG -a -m "Generated tag from TravisCI for build $TRAVIS_BUILD_NUMBER"
-      - git push -q https://$github_oauth2Token_KuTu@github.com/luechtdiode/KuTu $GIT_TAG > /dev/null 2>&1
+      - git push -q https://$github_oauth2Token_KuTu@github.com/luechtdiode/KuTu.git $GIT_TAG > /dev/null 2>&1
       - aws s3 sync ~/$TRAVIS_BUILD_NUMBER $S3_BUCKET_CACHE/$TRAVIS_BUILD_NUMBER  
   - stage: server
     language: java
