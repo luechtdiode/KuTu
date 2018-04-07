@@ -71,6 +71,18 @@ jobs:
       - cp -f $TRAVIS_BUILD_DIR/target/$OS/bundles/*.dmg $TRAVIS_BUILD_DIR/outputs/$OS/
       - cp -f $TRAVIS_BUILD_DIR/target/$OS/bundles/*.pkg $TRAVIS_BUILD_DIR/outputs/$OS/
     after_success:
+      - git checkout "$TRAVIS_BRANCH"
+      - cp -R -f ~/$TRAVIS_BUILD_NUMBER/www/* $TRAVIS_BUILD_DIR/src/main/resources/app
+      - git status
+      - ls $TRAVIS_BUILD_DIR/src/main/resources/app
+      - git status
+      - git remote rm origin
+      - git remote add origin https://$GH_ACCESS_TOKEN@github.com/luechtdiode/KuTu.git
+      - git add $TRAVIS_BUILD_DIR/src/main/resources/app
+      - git commit -a -m "update with generated Client from TravisCI for build $TRAVIS_BUILD_NUMBER with [skip ci]"
+      - export GIT_TAG=travisbuild-$TRAVIS_BRANCH-$(date -u "+%Y-%m-%d")-$TRAVIS_BUILD_NUMBER
+      - git tag $GIT_TAG -a -m "Generated tag from TravisCI for build $TRAVIS_BUILD_NUMBER"
+      - if [[! git push -fq origin $TRAVIS_BRANCH > /dev/null 2>&1]]; then err "failed to push git changes"; return1; fi
       - aws s3 rm --recursive $S3_BUCKET_CACHE/$TRAVIS_BUILD_NUMBER # clean up after ourselves
 
 deploy:
@@ -86,13 +98,13 @@ deploy:
     on:
       all_branches: true
       
-  - provider: releases
-    api_key: $GH_ACCESS_TOKEN
-    file_glob: true
-    file: $TRAVIS_BUILD_DIR/src/main/resources/app
-    skip_cleanup: true
-    on:
-      all_branches: true
-  #   on:
-  #     tags: true
+#   - provider: releases
+#     api_key: $GH_ACCESS_TOKEN
+#     file_glob: true
+#     file: $TRAVIS_BUILD_DIR/src/main/resources/app
+#     skip_cleanup: true
+#     on:
+#       all_branches: true
+#   #   on:
+#   #     tags: true
   
