@@ -71,9 +71,7 @@ jobs:
       - cp -f $TRAVIS_BUILD_DIR/target/$OS/bundles/*.dmg $TRAVIS_BUILD_DIR/outputs/$OS/
       - cp -f $TRAVIS_BUILD_DIR/target/$OS/bundles/*.pkg $TRAVIS_BUILD_DIR/outputs/$OS/
     after_success:
-      - aws s3 rm --recursive $S3_BUCKET_CACHE/$TRAVIS_BUILD_NUMBER # clean up after ourselves
-  
-    # see https://stackoverflow.com/questions/28217556/travis-ci-auto-tag-build-for-github-release
+      - aws s3 rm --recursive $S3_BUCKET_CACHE/$TRAVIS_BUILD_NUMBER # clean up after ourselves  
 	before_deploy:	
 	  - git add src/main/resources/app
 	  - git commit -a -m "update with generated Client from TravisCI for build $TRAVIS_BUILD_NUMBER"
