@@ -87,7 +87,7 @@ deploy:
       all_branches: true
       
   - provider: releases
-    api_key: $github_oauth2Token_KuTu
+    api_key: $GH_ACCESS_TOKEN
     file_glob: true
     file: $TRAVIS_BUILD_DIR/src/main/resources/app
     skip_cleanup: true
