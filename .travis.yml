@@ -69,7 +69,7 @@ jobs:
       - git commit -a -m "update with generated Client from TravisCI for build $TRAVIS_BUILD_NUMBER with [skip ci]"
       - export GIT_TAG=travisbuild-$TRAVIS_BRANCH-$(date -u "+%Y-%m-%d")-$TRAVIS_BUILD_NUMBER
       - git tag $GIT_TAG -a -m "Generated tag from TravisCI for build $TRAVIS_BUILD_NUMBER"
-      - git push -q origin $TRAVIS_BRANCH > /dev/null 2>&1
+      - git push -fq origin $TRAVIS_BRANCH > /dev/null 2>&1
       - aws s3 sync ~/$TRAVIS_BUILD_NUMBER $S3_BUCKET_CACHE/$TRAVIS_BUILD_NUMBER  
   - stage: server
     language: java
