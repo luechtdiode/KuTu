@@ -52,12 +52,17 @@ jobs:
       - npm install
       - ionic build --prod
       - cp -R -f ./www ~/$TRAVIS_BUILD_NUMBER/
+      - ls ~/$TRAVIS_BUILD_NUMBER
       - rm -rf ~/requisites
     after_success:
       - git config --global user.email "builds@travis-ci.com"
       - git config --global user.name "Travis CI"
       - git checkout "$TRAVIS_BRANCH"
+      - ls ~/$TRAVIS_BUILD_NUMBER/www
       - cp -R -f ~/$TRAVIS_BUILD_NUMBER/www/* $TRAVIS_BUILD_DIR/src/main/resources/app
+      - git status
+      - ls $TRAVIS_BUILD_DIR/src/main/resources/app
+      - git status
       - git add $TRAVIS_BUILD_DIR/src/main/resources/app
       - git commit -a -m "update with generated Client from TravisCI for build $TRAVIS_BUILD_NUMBER"
       - export GIT_TAG=travisbuild-$TRAVIS_BRANCH-$(date -u "+%Y-%m-%d")-$TRAVIS_BUILD_NUMBER
