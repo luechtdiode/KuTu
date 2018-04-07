@@ -52,24 +52,8 @@ jobs:
       - npm install
       - ionic build --prod
       - cp -R -f ./www ~/$TRAVIS_BUILD_NUMBER/
-      - ls ~/$TRAVIS_BUILD_NUMBER
       - rm -rf ~/requisites
     after_success:
-      - git config --global user.email "builds@travis-ci.com"
-      - git config --global user.name "Travis CI"
-      - git checkout "$TRAVIS_BRANCH"
-      - ls ~/$TRAVIS_BUILD_NUMBER/www
-      - cp -R -f ~/$TRAVIS_BUILD_NUMBER/www/* $TRAVIS_BUILD_DIR/src/main/resources/app
-      - git status
-      - ls $TRAVIS_BUILD_DIR/src/main/resources/app
-      - git status
-      - git remote rm origin
-      - git remote add origin https://$github_oauth2Token_KuTu@github.com/luechtdiode/KuTu.git
-      - git add $TRAVIS_BUILD_DIR/src/main/resources/app
-      - git commit -a -m "update with generated Client from TravisCI for build $TRAVIS_BUILD_NUMBER with [skip ci]"
-      - export GIT_TAG=travisbuild-$TRAVIS_BRANCH-$(date -u "+%Y-%m-%d")-$TRAVIS_BUILD_NUMBER
-      - git tag $GIT_TAG -a -m "Generated tag from TravisCI for build $TRAVIS_BUILD_NUMBER"
-      - if [[! git push -fq origin $TRAVIS_BRANCH > /dev/null 2>&1]]; then err "failed to push git changes"; return1; fi
       - aws s3 sync ~/$TRAVIS_BUILD_NUMBER $S3_BUCKET_CACHE/$TRAVIS_BUILD_NUMBER  
   - stage: server
     language: java
@@ -99,12 +83,16 @@ deploy:
     local_dir: $TRAVIS_BUILD_DIR/outputs
     upload_dir: kutuapp
     skip_cleanup: true
-  
+    on:
+      all_branches: true
+      
   - provider: releases
     api_key: $github_oauth2Token_KuTu
     file_glob: true
     file: $TRAVIS_BUILD_DIR/src/main/resources/app
     skip_cleanup: true
+    on:
+      all_branches: true
   #   on:
   #     tags: true
   
