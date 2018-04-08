@@ -21,10 +21,11 @@ import scala.concurrent.duration.Duration
 import akka.stream.scaladsl.Sink
 import ch.seidel.kutu.squad.DurchgangBuilder
 import scala.util.Success
+import scala.concurrent.Future
 
 @RunWith(classOf[JUnitRunner])
 class KuTuWettkampfCollectResultsSpec extends KuTuBaseSpec {
-  val testwettkampf = insertGeTuWettkampf("TestGetuWK")
+  val testwettkampf = insertGeTuWettkampf("TestGetuWK", 4)
   
   "wettkampf" should {
 
@@ -80,19 +81,22 @@ class KuTuWettkampfCollectResultsSpec extends KuTuBaseSpec {
         val step = grs.flatMap{gr => 
           gr.kandidaten.flatMap{ k => 
             k.wertungen.map{ wertung => 
-              val command = UpdateAthletWertung(
-                              loadAthleteView(k.id), 
-                              k.wertungen.filter(w => w.id == wertung.id).map(_.toWertung.updatedWertung(wertung.copy(noteE = scala.math.BigDecimal(8.5)).toWertung)).head, 
-                              testwettkampf.uuid.get, 
-                              gr.durchgang.get, 
-                              wertung.wettkampfdisziplin.disziplin.id, 
-                              0)
-              CompetitionCoordinatorClientActor.publish(command)
+              UpdateAthletWertung(
+                loadAthleteView(k.id), 
+                k.wertungen.filter(w => w.id == wertung.id).map(_.toWertung.updatedWertung(wertung.copy(noteE = scala.math.BigDecimal(8.5)).toWertung)).head, 
+                testwettkampf.uuid.get, 
+                gr.durchgang.get, 
+                wertung.wettkampfdisziplin.disziplin.id, 
+                0)
             }
+            .map{command => CompetitionCoordinatorClientActor.publish(command)}
           }
         }.toList
-        s"durchg: $durchgang, halt: $halt, anz: ${step.foldLeft(Seq[KutuAppEvent]()){(acc, item) => acc :+ Await.result(item,Duration.Inf)}.size}"
-      }.foreach(evt => println("Received: " + evt))
+        val summary = s"durchg: $durchgang, halt: $halt, anz: ${step.foldLeft(Seq[KutuAppEvent]()){(acc, item) => acc :+ Await.result(item,Duration.Inf)}.size}"
+        println(summary)
+        summary
+//        s"durchg: $durchgang, halt: $halt, anz: ${step.foldLeft(Seq[KutuAppEvent]()){(acc, item) => acc :+ item}.size}"
+      }//.foreach(evt => println("Received: " + evt))
     }
   }
 
