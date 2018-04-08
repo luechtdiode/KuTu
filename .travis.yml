@@ -66,7 +66,7 @@ jobs:
       - aws s3 sync $S3_BUCKET_CACHE/$TRAVIS_BUILD_NUMBER ~/$TRAVIS_BUILD_NUMBER
     script:
       - cp -R -f ~/$TRAVIS_BUILD_NUMBER/www/* $TRAVIS_BUILD_DIR/src/main/resources/app
-      - mvn clean deploy --settings deploy-settings.xml
+      - mvn clean install deploy --settings deploy-settings.xml
       - cp -f $TRAVIS_BUILD_DIR/target/KuTu-app.jar $TRAVIS_BUILD_DIR/outputs/
       - cp -f $TRAVIS_BUILD_DIR/target/$OS/bundles/*.dmg $TRAVIS_BUILD_DIR/outputs/$OS/
       - cp -f $TRAVIS_BUILD_DIR/target/$OS/bundles/*.pkg $TRAVIS_BUILD_DIR/outputs/$OS/
