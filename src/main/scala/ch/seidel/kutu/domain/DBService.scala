@@ -21,6 +21,7 @@ import slick.jdbc.SQLiteProfile.api.AsyncExecutor
 import slick.jdbc.SQLiteProfile.api.DBIO
 import slick.jdbc.SQLiteProfile.api.actionBasedSQLInterpolation
 import slick.jdbc.SQLiteProfile.api.jdbcActionExtensionMethods
+import slick.jdbc.JdbcBackend.DatabaseDef
 
 object DBService {
   private val logger = LoggerFactory.getLogger(this.getClass)
@@ -59,23 +60,23 @@ object DBService {
   }
   private lazy val dbfile = new File(dbhomedir + "/" + dbFilename)
 
-  private lazy val databaselite = Database.forURL(
-    url = "jdbc:sqlite:" + dbfile.getAbsolutePath,
-    driver = "org.sqlite.JDBC",
-    prop = proplite,
-    user = "kutu",
-    password = "kutu",
-    executor = AsyncExecutor("DB-Actions", 10, 10000)
-    )
-
-  lazy val database = {
+  private lazy val databaselite = {
     logger.info(s"Using Database at ${dbfile.getAbsolutePath}")
-    databaselite
+    Database.forURL(
+      url = "jdbc:sqlite:" + dbfile.getAbsolutePath,
+      driver = "org.sqlite.JDBC",
+      prop = proplite,
+      user = "kutu",
+      password = "kutu",
+      executor = AsyncExecutor("DB-Actions", 10, 10000)
+    )
   }
+  
+  lazy val database: DatabaseDef = databaselite  
 //  lazy val database = databasemysql
   
 
-  def updateDB {
+  def updateDB(db: DatabaseDef) = {
     val sqlScripts = Seq(
 //        ,"AlterWettkampfUUID.sql"
         )
@@ -88,7 +89,7 @@ object DBService {
       val log = try {
         logger.info(s"running sql-script: $filename")
 
-        executeDBScript(Source.fromInputStream(file, "utf-8").getLines())
+        executeDBScript(Source.fromInputStream(file, "utf-8").getLines(), db)
       }
       catch {
         case e: Exception => e.getMessage
@@ -100,6 +101,7 @@ object DBService {
       } finally {
         fos.close
       }
+      log
     }
   }
 
@@ -146,7 +148,7 @@ object DBService {
     cutFields(s, IndexedSeq[String]())
   }
 
-  def executeDBScript(script: Iterator[String]) = {
+  def executeDBScript(script: Iterator[String], db: DatabaseDef) = {
     def filterCommentLines(line: String) = {
       !line.trim().startsWith("-- ")
     }
@@ -161,41 +163,45 @@ object DBService {
     def parse(lines: Iterator[String]): List[String] = {
       lines.filter(filterCommentLines).foldLeft(List(""))(combineMultilineStatement).filter(_.trim().length() > 0)
     }
-    val statements = parse(script).map(statement => sqlu"""#$statement""")
-    val counters = Await.result(database.run(DBIO.sequence(statements).transactionally), Duration.Inf)
-    statements.zip(counters).map(p => s"statements: ${p._1.statements.mkString("[", ",", "]")}\n\tupdate-cnt: ${p._2}").mkString("\n")
+    val statements = parse(script)
+    val statementActions = statements.map(statement => sqlu"""#$statement""")
+    val counters = Await.result(db.run(DBIO.sequence(statementActions).transactionally), Duration.Inf)
+    val log = statements.zip(counters).map(p => s"statements: ${p._1}\n\tupdate-cnt: ${p._2}").mkString("\n")
+    log
   }
 
 
-  def installDB {
+  def installDB(db: DatabaseDef) = {
     val sqlScripts = Seq(
          "kutu-sqllite-ddl.sql"
         ,"kutu-sqllite-initialdata.sql"        
         )
 
-    sqlScripts.foreach { filename =>
+    sqlScripts.map { filename =>
       logger.info(s"running sql-script: $filename")
       val file = getClass.getResourceAsStream("/dbscripts/" + filename)
-      executeDBScript(Source.fromInputStream(file, "utf-8").getLines())
+      executeDBScript(Source.fromInputStream(file, "utf-8").getLines(), db)
     }
   }
 
-  lazy val startDB = {
+  lazy val _startDB = {
     logger.info("starting database ...")
     if(!dbfile.exists() || dbfile.length() == 0) {
       dbfile.createNewFile()
-      installDB
+      installDB(database)
     }
-    updateDB
+    updateDB(database)
     logger.info("Database initialized")
     true
   }
   
-  if (!startDB) {
-    logger.error("Database not initialized!!!")
-    System.exit(-1)
-  }  
-
+  def startDB {
+    if (!_startDB) {
+      logger.error("Database not initialized!!!")
+      System.exit(-1)
+    }  
+  }
+  
   val sdf = new SimpleDateFormat("dd.MM.yyyy")
   val sdfShort = new SimpleDateFormat("dd.MM.yy")
   val sdfExported = new SimpleDateFormat("yyyy-MM-dd")
@@ -206,7 +212,10 @@ object DBService {
 trait DBService {
   private val logger = LoggerFactory.getLogger(this.getClass)
   
-  val database = DBService.database
+  def database: DatabaseDef = {
+    DBService.startDB
+    DBService.database
+  }
   
 
   implicit def getSQLDate(date: String) = try {

@@ -24,11 +24,11 @@ object Config {
   val configPath = System.getProperty("user.dir")
   logger.info(s"user.dir Path where custom configurations (kutuapp.conf) are taken from: ${new File(configPath).getAbsolutePath}")
   val userHomePath = System.getProperty("user.home") + "/kutuapp"
-  logger.info(s"user.home Path where db is taken from: ${new File(userHomePath).getAbsolutePath}")
+  logger.info(s"user.home Path: ${new File(userHomePath).getAbsolutePath}")
   val userConfig = new File(configPath + "/kutuapp.conf")
   val config = if (userConfig.exists()) ConfigFactory.parseFile(new File(configPath + "/kutuapp.conf")).withFallback(ConfigFactory.load()) else ConfigFactory.load()
 
-  val appVersion = if (config.hasPath("app.majorversion")) config.getString("app.majorversion") else "dev.dev"
+  val appVersion = if (config.hasPath("app.majorversion")) config.getString("app.majorversion") else "dev.dev.test"
   val builddate = if (config.hasPath("app.builddate")) config.getString("app.builddate") else "today"
     
   logger.info(s"App-Version: $appVersion")
@@ -100,7 +100,12 @@ object Config {
   } else { List() }
   
   // Find first proxy for HTTP/S. Any DIRECT proxy in the list returned is only second choice
-  val autoconfigProxy = proxies.filter(p => p.`type` match{case Proxy.Type.HTTP => true case _ => false}).map{p => p.address.toString.split(":")}.map(a => (a(0), a(a.length-1))).headOption match {
+  val autoconfigProxy = proxies.filter(p => p.`type` match{
+    case Proxy.Type.HTTP => true 
+    case _ => false
+  })
+  .map{p => p.address.toString.split(":")}
+  .map(a => (a(0), a(a.length-1))).headOption match {
     case Some((proxyConfigIp, proxyConfigPort)) =>
       println(proxyConfigIp, proxyConfigPort)
       (Some(proxyConfigIp), Some(proxyConfigPort))

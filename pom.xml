@@ -185,7 +185,13 @@
 			<version>3.0.3</version>
 			<scope>test</scope>
 		</dependency>
-
+		<dependency>
+		    <groupId>junit</groupId>
+		    <artifactId>junit</artifactId>
+		    <version>4.12</version>
+		    <scope>test</scope>
+		</dependency>
+		
 	</dependencies>
 	<!-- distributionManagement> <repository> <id>ftp-repository</id> <url>ftp://ftp.interpolar.ch/snapshots</url> 
 		</repository> </distributionManagement -->
@@ -326,7 +332,7 @@
 								<argument>-createjar</argument>
 								<argument>-nocss2bin</argument>
 								<argument>-manifestAttrs</argument>
-								<argument>Permissions=all-permissions,Codebase=*,Application-Name=TurnerWettkampf-App</argument>
+								<argument>Permissions=all-permissions,Codebase=*,Application-Name=TurnerWettkampf-App-v${parsedVersion.majorVersion}r${parsedVersion.minorVersion}</argument>
 								<argument>-appclass</argument>
 								<argument>ch.seidel.kutu.KuTuApp</argument>
 								<argument>-srcfiles</argument>
@@ -362,7 +368,7 @@
 								<argument>-appclass</argument>
 								<argument>ch.seidel.kutu.KuTuApp</argument>
 								<argument>-name</argument>
-								<argument>TurnerWettkampf-App</argument>
+								<argument>TurnerWettkampf-App-v${parsedVersion.majorVersion}r${parsedVersion.minorVersion}</argument>
 								<argument>-BappVersion=${parsedVersion.majorVersion}.${parsedVersion.minorVersion}</argument>
 								<argument>-srcdir</argument>
 								<argument>${project.build.directory}</argument>

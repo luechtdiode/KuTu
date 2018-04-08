@@ -148,7 +148,7 @@ trait WettkampfService extends DBService
     Await.result(readWettkampfAsync(id), Duration.Inf)
   }
   
-  def readWettkampfLeafs(programmid: Long) = {
+  def readWettkampfLeafs(programmid: Long): Seq[ProgrammView] = {
     def children(pid: Long) = Await.result(database.run{
         (sql"""    select * from programm
                   where parent_id=$pid
@@ -291,7 +291,32 @@ trait WettkampfService extends DBService
     assignAthletsToWettkampfS(wettkampfId, programs, withAthlets)
   }
 
-
+//
+//  def assignAthletsToWettkampfF(wettkampfId: Long, programs: Set[ProgrammView], withAthlets: Set[Long] = Set.empty) {
+//    if (withAthlets.nonEmpty) {
+//      val athletsFilter = withAthlets.mkString("(", ",", ")")
+//      def assignAction(aid: Long, disciplin: Long) = sqlu"""
+//                   delete from wertung where
+//                   athlet_Id=${aid} and wettkampfdisziplin_Id=${disciplin} and wettkampf_Id=${wettkampfId}
+//               """ >>
+//           sqlu"""
+//                   insert into wertung
+//                   (athlet_Id, wettkampfdisziplin_Id, wettkampf_Id, note_d, note_e, endnote)
+//                   values (${aid}, ${disciplin}, ${wettkampfId}, 0, 0, 0)
+//              """
+//      val dbActions = sql"""
+//                   select id from wettkampfdisziplin
+//                   where programm_Id in #${programs.map(_.id).mkString("(", ",", ")")}
+//           """.as[Long].
+////      .flatMap{disciplines =>
+//////        disciplines.flatMap{disciplin =>
+//////          ???//withAthlets.flatMap(aid => assignAction(aid, disciplin))
+//////        }
+////      }
+//     Await.result(database.run{dbActions}, Duration.Inf)
+//    }
+//  }
+//  
   def assignAthletsToWettkampfS(wettkampfId: Long, programs: Set[ProgrammView], withAthlets: Set[Long] = Set.empty) {
     if (withAthlets.nonEmpty) {
       val athletsFilter = withAthlets.mkString("(", ",", ")")
