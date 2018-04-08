@@ -72,7 +72,7 @@ object DBService {
     )
   }
   
-  lazy val database: DatabaseDef = databaselite  
+  private var database: Option[DatabaseDef] = None  
 //  lazy val database = databasemysql
   
 
@@ -186,20 +186,32 @@ object DBService {
 
   lazy val _startDB = {
     logger.info("starting database ...")
-    if(!dbfile.exists() || dbfile.length() == 0) {
-      dbfile.createNewFile()
-      installDB(database)
+    database = database match {
+      case None => 
+        if(!dbfile.exists() || dbfile.length() == 0) {
+          dbfile.createNewFile()
+          installDB(databaselite)
+        }
+        updateDB(databaselite)
+        Some(databaselite)
+      case Some(db) => 
+        Some(db)
     }
-    updateDB(database)
     logger.info("Database initialized")
     true
   }
   
-  def startDB {
+  def startDB(alternativDB: Option[DatabaseDef] = None) = {
+    alternativDB match {
+      case Some(db) => 
+        database = Some(db)
+      case None =>
+    }
     if (!_startDB) {
       logger.error("Database not initialized!!!")
       System.exit(-1)
-    }  
+    }
+    database.get
   }
   
   val sdf = new SimpleDateFormat("dd.MM.yyyy")
@@ -212,10 +224,7 @@ object DBService {
 trait DBService {
   private val logger = LoggerFactory.getLogger(this.getClass)
   
-  def database: DatabaseDef = {
-    DBService.startDB
-    DBService.database
-  }
+  def database: DatabaseDef = DBService.startDB()
   
 
   implicit def getSQLDate(date: String) = try {

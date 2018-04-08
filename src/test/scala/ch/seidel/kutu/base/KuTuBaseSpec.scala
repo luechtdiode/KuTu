@@ -13,21 +13,20 @@ import java.sql.Date
 
 trait KuTuBaseSpec extends WordSpec with Matchers with DBService with KutuService with ApiService with ScalaFutures with ScalatestRouteTest {
   private val logger = LoggerFactory.getLogger(this.getClass)
-  
-  override def database = TestDBService.db
+  DBService.startDB(Some(TestDBService.db))
 
   def insertGeTuWettkampf(name: String) = {
     val wettkampf = createWettkampf(new Date(System.currentTimeMillis()), name, Set(20L), 3333, 7.5d, Some(UUID.randomUUID().toString))
     val programme: Seq[ProgrammView] = readWettkampfLeafs(wettkampf.programmId)
-    val pgIds = programme.map(_.id)
+    val pgIds = programme.map(_.id)// 20 * 9 * 2 = 360
     val vereine = for (v <- (1 to 20)) yield {
       val vereinID = createVerein(s"Verein-$v", Some(s"Verband-$v"))
       val athleten = for {
         pg <- (1 to pgIds.size) 
-        a <- (1 to pg)
+        a <- (1 to 2)
       } yield {
-        val athlet = insertAthlete(Athlet(vereinID).copy(name = s"Athlet-$a"))
-        assignAthletsToWettkampf(wettkampf.id, Set(pgIds(pgIds.size - pg)), Set(athlet.id))
+        val athlet = insertAthlete(Athlet(vereinID).copy(name = s"Athlet-$pg-$a"))
+        assignAthletsToWettkampf(wettkampf.id, Set(pgIds(pg-1)), Set(athlet.id))
         athlet
       }
     }

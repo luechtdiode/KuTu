@@ -61,7 +61,7 @@ trait KuTuAppHTTPServer extends ApiService with JsonSupport {
        */
       sys.addShutdownHook(shutDown(getClass.getName))
       
-      DBService.startDB
+      DBService.startDB()
       
       import collection.JavaConverters._
       val binding = if (hasHttpsConfig) {
