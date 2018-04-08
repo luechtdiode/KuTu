@@ -83,18 +83,18 @@ jobs:
       - if ! git push -fq --follow-tags https://$GH_ACCESS_TOKEN@github.com/luechtdiode/KuTu.git $TRAVIS_BRANCH > /dev/null 2>&1; then err "failed to push git changes"; return1; fi
       - aws s3 rm --recursive $S3_BUCKET_CACHE/$TRAVIS_BUILD_NUMBER # clean up after ourselves
 
-deploy:
-  # deploy build to s3
-  - provider: s3
-    access_key_id: $aws_user
-    secret_access_key: $aws_accesskey
-    region: "eu-west-1"
-    bucket: "rs-travis"
-    local_dir: $TRAVIS_BUILD_DIR/outputs
-    upload_dir: kutuapp
-    skip_cleanup: true
-    on:
-      all_branches: true
+# deploy: actually, deploy is managed by maven wagon
+#   # deploy build to s3
+#   - provider: s3
+#     access_key_id: $aws_user
+#     secret_access_key: $aws_accesskey
+#     region: "eu-west-1"
+#     bucket: "rs-travis"
+#     local_dir: $TRAVIS_BUILD_DIR/outputs
+#     upload_dir: kutuapp
+#     skip_cleanup: true
+#     on:
+#       all_branches: true
       
 #   - provider: releases
 #     api_key: $GH_ACCESS_TOKEN
