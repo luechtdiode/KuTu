@@ -57,7 +57,7 @@ import akka.http.scaladsl.marshalling.Marshal
 import akka.util.ByteString
 import akka.http.scaladsl.marshalling.Marshaller
 
-trait WettkampfRoutes extends SprayJsonSupport with JsonSupport with JwtSupport with AuthSupport with RouterLogging with WettkampfService {
+trait WettkampfRoutes extends SprayJsonSupport with JsonSupport with JwtSupport with AuthSupport with RouterLogging with WettkampfService with IpToDeviceID {
   import DefaultJsonProtocol._
 
   def responseOrFail[T](in: (Try[HttpResponse], T)): (HttpResponse, T) = in match {
@@ -192,10 +192,11 @@ trait WettkampfRoutes extends SprayJsonSupport with JsonSupport with JwtSupport 
   }
 
   lazy val wettkampfRoutes: Route = {
+    extractClientIP { ip =>
     path("competition" / "ws") {
       pathEnd {
         authenticated() { wettkampfUUID =>
-          handleWebSocketMessages(CompetitionCoordinatorClientActor.createActorSinkSource(UUID.randomUUID().toString, wettkampfUUID, None))
+          handleWebSocketMessages(CompetitionCoordinatorClientActor.createActorSinkSource(makeDeviceId(ip), wettkampfUUID, None))
         }
       }
     } ~
@@ -297,5 +298,6 @@ trait WettkampfRoutes extends SprayJsonSupport with JsonSupport with JwtSupport 
         }
       }
     }
+  }
   }
 }

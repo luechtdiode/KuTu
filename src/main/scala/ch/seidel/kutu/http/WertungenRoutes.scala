@@ -32,7 +32,7 @@ import ch.seidel.kutu.akka.AthletWertungUpdated
 import scala.util.Failure
 import ch.seidel.kutu.akka.FinishDurchgangStation
 
-trait WertungenRoutes extends SprayJsonSupport with JsonSupport with JwtSupport with AuthSupport with RouterLogging with KutuService {
+trait WertungenRoutes extends SprayJsonSupport with JsonSupport with JwtSupport with AuthSupport with RouterLogging with KutuService with IpToDeviceID {
   import scala.concurrent.ExecutionContext.Implicits.global
   import slick.jdbc.SQLiteProfile
   import slick.jdbc.SQLiteProfile.api._
@@ -44,6 +44,7 @@ trait WertungenRoutes extends SprayJsonSupport with JsonSupport with JwtSupport 
   private implicit lazy val timeout = Timeout(5.seconds) // usually we'd obtain the timeout from the system's configuration
 
   lazy val wertungenRoutes: Route = {
+    extractClientIP { ip =>
     pathPrefix("programm") {
       pathEnd {
         get {
@@ -69,7 +70,7 @@ trait WertungenRoutes extends SprayJsonSupport with JsonSupport with JwtSupport 
         parameters('jwt.as[String]) { (jwt) =>
           authenticateWith(Some(jwt), true) { id =>
             if (id == competitionId.toString) {
-              handleWebSocketMessages(CompetitionCoordinatorClientActor.createActorSinkSource(UUID.randomUUID().toString, competitionId.toString, Some(durchgang)))
+              handleWebSocketMessages(CompetitionCoordinatorClientActor.createActorSinkSource(makeDeviceId(ip), competitionId.toString, Some(durchgang)))
             } else {
               complete(StatusCodes.Unauthorized)
             }
@@ -77,13 +78,13 @@ trait WertungenRoutes extends SprayJsonSupport with JsonSupport with JwtSupport 
         } ~
         authenticated(true) { id =>
          if (id == competitionId.toString) {
-            handleWebSocketMessages(CompetitionCoordinatorClientActor.createActorSinkSource(UUID.randomUUID().toString, competitionId.toString, Some(durchgang)))
+            handleWebSocketMessages(CompetitionCoordinatorClientActor.createActorSinkSource(makeDeviceId(ip), competitionId.toString, Some(durchgang)))
           } else {
             complete(StatusCodes.Unauthorized)
           }
         } ~
         pathEnd {
-          handleWebSocketMessages(CompetitionCoordinatorClientActor.createActorSource(UUID.randomUUID().toString, competitionId.toString, Some(durchgang)))          
+          handleWebSocketMessages(CompetitionCoordinatorClientActor.createActorSource(makeDeviceId(ip), competitionId.toString, Some(durchgang)))          
         }
       } ~
       path("finish") { 
@@ -188,5 +189,6 @@ trait WertungenRoutes extends SprayJsonSupport with JsonSupport with JwtSupport 
         }
       }
     }
+  }
   }
 }

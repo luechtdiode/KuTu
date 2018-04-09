@@ -56,6 +56,8 @@ class CompetitionCoordinatorClientActor(wettkampfUUID: String) extends Actor wit
     self ! KeepAlive
   }
 
+  val websocketProcessor = ResourceExchanger.processWSMessage(handleWebsocketMessages)
+  
   override def preStart(): Unit = {
     log.info("Starting CompetitionCoordinatorClientActor")
   }
@@ -127,17 +129,7 @@ class CompetitionCoordinatorClientActor(wettkampfUUID: String) extends Actor wit
           sender ! MessageAck(e.getMessage)
       }
         
-    case awu: AthletWertungUpdated =>
-      val senderWebSocket = actorWithSameDeviceIdOfSender
-      ResourceExchanger.processWSMessage(event => event match {
-        case awuv: KutuAppEvent =>
-          val toPublish = TextMessage(awuv.toJson.compactPrint)
-          wsSend.get(Some(encodeURIComponent(awu.durchgang))) match {
-            case Some(wsList) => wsList.filter(ws => !senderWebSocket.exists(_ == ws)).foreach(ws => ws ! toPublish)
-            case _ =>
-          }
-        case _ =>
-      })(awu)
+    case awu: AthletWertungUpdated => websocketProcessor(awu)
       
     case fds: FinishDurchgangStation =>
       finishedDurchgangSteps += fds
@@ -154,15 +146,23 @@ class CompetitionCoordinatorClientActor(wettkampfUUID: String) extends Actor wit
       deviceWebsocketRefs = deviceWebsocketRefs + (deviceId -> ref)
       ref ! TextMessage("Connection established.")      
       (durchgang match {
-        case Some(dg) =>
+        case Some(dg) => // take last of requested durchgang
           val dgn = encodeURIComponent(dg)
           startStopEvents.seq.reverse.filter {
             case DurchgangStarted(w, d, t) => encodeURIComponent(d) == dgn
             case DurchgangFinished(w, d, t) => encodeURIComponent(d) == dgn
             case _ => false
           }.take(1)
-        case _ => startStopEvents
-      })
+        case _ => //take first and last per durchgang
+          startStopEvents.groupBy { 
+            case DurchgangStarted(w, d, t) => d
+            case DurchgangFinished(w, d, t) => d
+            case _ => "_"
+          }
+          .filter(_._1 != "_")
+          .flatMap(d => Seq(d._2.head, d._2.last))
+        }
+      )
       .foreach(d => ref ! TextMessage(d.asInstanceOf[KutuAppEvent].toJson.compactPrint))
 
     // system actions
@@ -171,6 +171,7 @@ class CompetitionCoordinatorClientActor(wettkampfUUID: String) extends Actor wit
     case MessageAck(txt) => if (txt.equals("keepAlive")) handleKeepAliveAck else println(txt)
 
     case StopDevice(deviceId) =>
+      log.info(s"stopped device $deviceId")
       val stoppedWebsocket = deviceWebsocketRefs(deviceId)
       deviceWebsocketRefs = deviceWebsocketRefs.filter(x => x._2 != stoppedWebsocket)      
       wsSend = wsSend.map{x => (x._1, x._2.filter(_ != stoppedWebsocket))}.filter(x => x._2.nonEmpty)
@@ -178,6 +179,8 @@ class CompetitionCoordinatorClientActor(wettkampfUUID: String) extends Actor wit
       
     case Terminated(stoppedWebsocket) =>
       context.unwatch(stoppedWebsocket)
+      val deviceId = deviceWebsocketRefs.filter(x => x._2 == stoppedWebsocket).map(_._1).headOption
+      log.info(s"terminated device $deviceId")
       deviceWebsocketRefs = deviceWebsocketRefs.filter(x => x._2 != stoppedWebsocket)      
       wsSend = wsSend.map{x => (x._1, x._2.filter(_ != stoppedWebsocket))}.filter(x => x._2.nonEmpty)
       if (startedDurchgaenge.isEmpty && wsSend.isEmpty) handleStop
@@ -186,8 +189,20 @@ class CompetitionCoordinatorClientActor(wettkampfUUID: String) extends Actor wit
     case _ =>
   }
 
+  def handleWebsocketMessages(event: KutuAppEvent) {
+    event match {
+      case awuv: AthletWertungUpdated =>
+        val senderWebSocket = actorWithSameDeviceIdOfSender
+        val toPublish = TextMessage(event.toJson.compactPrint)
+        wsSend.get(Some(encodeURIComponent(awuv.durchgang))) match {
+          case Some(wsList) => wsList.filter(ws => !senderWebSocket.exists(_ == ws)).foreach(ws => ws ! toPublish)
+          case _ =>
+        }
+      case _ =>
+    }
+  }
+  
   private def handleStop {
-    log.info("Closing client actor")
     stop(self)
   }
 
@@ -226,11 +241,14 @@ class ClientActorSupervisor extends Actor with ActorLogging {
   override def receive = {
     case CreateClient(deviceID, wettkampfUUID) =>
       val coordinator = wettkampfCoordinators.get(wettkampfUUID) match {
-        case Some(coordinator) => coordinator
+        case Some(coordinator) => 
+          log.info(s"Connect new client to existing coordinator. Device: $deviceID, Wettkampf: $wettkampfUUID")
+          coordinator
         case _ =>
           val coordinator = context.actorOf(CompetitionCoordinatorClientActor.props(wettkampfUUID), "client-" + wettkampfUUID)
           context.watch(coordinator)
           wettkampfCoordinators = wettkampfCoordinators + (wettkampfUUID -> coordinator)
+          log.info(s"Connect new client to new coordinator. Device: $deviceID, Wettkampf: $wettkampfUUID")
           coordinator
       }
       sender ! coordinator

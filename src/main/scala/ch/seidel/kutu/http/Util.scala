@@ -8,6 +8,8 @@ import spray.json.{ JsString, JsValue, JsonReader, JsonWriter, _ }
 import scala.util.Try
 import java.util.Date
 import java.text.SimpleDateFormat
+import akka.http.scaladsl.model.RemoteAddress
+import java.util.UUID
 
 trait EnrichedJson {
   implicit class RichJson(jsValue: JsValue) {
@@ -112,4 +114,8 @@ trait Hashing {
     val digest = MessageDigest.getInstance("SHA-256")
     digest.digest(text.getBytes(StandardCharsets.UTF_8)).map("%02X".format(_)).mkString
   }
+}
+
+trait IpToDeviceID {
+  def makeDeviceId(ip: RemoteAddress) = ip.toOption.map(_.getHostAddress).getOrElse("unknown") + "@" + UUID.randomUUID().toString
 }

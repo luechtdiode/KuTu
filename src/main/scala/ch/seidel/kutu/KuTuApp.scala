@@ -479,7 +479,21 @@ object KuTuApp extends JFXApp with KutuService with JsonSupport with JwtSupport 
     val item = makeMenuAction("Wettkampf Resultate lokal aktualisieren") {(caption, action) =>
       KuTuApp.invokeWithBusyIndicator {
         val url=s"$remoteAdminBaseUrl/api/competition/${p.uuid.get}"
-        Await.result(server.httpDownloadRequest(server.makeHttpGetRequest(url)), Duration.Inf)
+        val response = server.httpDownloadRequest(server.makeHttpGetRequest(url))
+        response.onComplete(ft =>
+          Platform.runLater{ ft match {
+              case Success(w) => 
+                updateTree
+                val text = s"${w.titel} ${w.datum}"
+                tree.getLeaves("Wettkämpfe").find { item => text.equals(item.value.value) } match {
+                  case Some(node) => controlsView.selectionModel().select(node)
+                  case None =>
+                }
+              case Failure(error) => PageDisplayer.showErrorDialog(caption)(error)
+            }
+          }
+        )
+        Await.result(response, Duration.Inf)
       }
     }
     item.disable <== when(Bindings.createBooleanBinding(() => 
@@ -896,7 +910,7 @@ object KuTuApp extends JFXApp with KutuService with JsonSupport with JwtSupport 
                                 case Some(node) => controlsView.selectionModel().select(node)
                                 case None =>
                               }
-                            case _ => 
+                            case Failure(error) => PageDisplayer.showErrorDialog(caption)(error)
                           }
                         }
                       )
