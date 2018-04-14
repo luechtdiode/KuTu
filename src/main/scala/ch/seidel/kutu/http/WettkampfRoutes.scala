@@ -166,8 +166,8 @@ trait WettkampfRoutes extends SprayJsonSupport with JsonSupport with JwtSupport 
  
   def httpDownloadRequest(request: HttpRequest) = {
     import Core._
-    val source = Source.single((request, ()))
-    val requestResponseFlow = Http().superPool[Unit]()
+    val source = Source.single(withAuthHeader(request), ())
+    val requestResponseFlow = Http().superPool[Unit](settings = poolsettings)
 
     def importData(httpResponse : HttpResponse) = {
       val is = httpResponse.entity.dataBytes.runWith(StreamConverters.asInputStream())
