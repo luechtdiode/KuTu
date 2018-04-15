@@ -152,12 +152,12 @@ trait WettkampfRoutes extends SprayJsonSupport with JsonSupport with JwtSupport 
     
     val process = uploadFut.flatMap{secret =>
       httpRenewLoginRequest(s"$remoteBaseUrl/api/loginrenew", uuid, secret)
-    }.flatMap{request =>  
+    }.flatMap{response =>  
       if (hadSecret) {
       log.info("put to " + s"${remoteAdminBaseUrl}/api/competition/${uuid}")
         httpPutClientRequest(s"$remoteAdminBaseUrl/api/competition/${uuid}", wettkampfEntity)
       } else {
-        Future{request}
+        Future{response}
       }
     }
 
@@ -166,7 +166,7 @@ trait WettkampfRoutes extends SprayJsonSupport with JsonSupport with JwtSupport 
  
   def httpDownloadRequest(request: HttpRequest) = {
     import Core._
-    val source = Source.single(withAuthHeader(request), ())
+    val source = Source.single(request, ())
     val requestResponseFlow = Http().superPool[Unit](settings = poolsettings)
 
     def importData(httpResponse : HttpResponse) = {
