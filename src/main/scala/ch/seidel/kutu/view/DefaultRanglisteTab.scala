@@ -40,6 +40,9 @@ import ch.seidel.kutu.renderer.PrintUtil.FilenameDefault
 import scalafx.event.subscriptions.Subscription
 import ch.seidel.kutu.akka.KutuAppEvent
 import ch.seidel.kutu.http.WebSocketClient
+import scalafx.application.Platform
+import java.util.concurrent.TimeUnit
+import java.util.concurrent.ScheduledFuture
 
 abstract class DefaultRanglisteTab(override val service: KutuService) extends Tab with TabWithService with ScoreToHtmlRenderer {
 
@@ -48,6 +51,18 @@ abstract class DefaultRanglisteTab(override val service: KutuService) extends Ta
 
   override def release() {
     subscription.foreach(_.cancel)
+  }
+  
+  var lazyPaneUpdater: Map[String, ScheduledFuture[_]] = Map.empty
+ 
+  def submitLazy(name: String, task: ()=>Unit, delay: Long) {
+    println("submitting " + name)
+    lazyPaneUpdater.get(name).foreach(_.cancel(true))
+    val ft = KuTuApp.lazyExecutor.schedule(new Runnable() { def run = { 
+      Platform.runLater{task()}
+    }}, delay, TimeUnit.SECONDS)
+    
+    lazyPaneUpdater = lazyPaneUpdater + (name -> ft)
   }
   
 
@@ -294,8 +309,11 @@ abstract class DefaultRanglisteTab(override val service: KutuService) extends Ta
     println("subscribing for refreshing from websocket")
     subscription = Some(WebSocketClient.modelWettkampfWertungChanged.onChange { (_, _, newItem) =>
       if (selected.value) {
-        println("refreshing rangliste from websocket", newItem)
-        refreshRangliste(buildGrouper)
+        submitLazy("refreshRangliste", () => if (selected.value) {
+            println("refreshing rangliste from websocket", newItem)
+            refreshRangliste(buildGrouper)
+          }, 5
+        )
       }
     })
     

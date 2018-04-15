@@ -43,6 +43,15 @@ import ch.seidel.kutu.http.Core
 import scalafx.beans.property.ObjectProperty
 import ch.seidel.kutu.akka._
 import ch.seidel.kutu.http.WebSocketClient
+import scala.util.Success
+import ch.seidel.commons.PageDisplayer
+import scala.util.Failure
+import ch.seidel.commons.DisplayablePage
+import scalafx.scene.Node
+import scalafx.scene.layout.VBox
+import scalafx.scene.control.Label
+import scalafx.scene.control.ToolBar
+import scalafx.scene.control.Button
 
 case class DurchgangState(wettkampfUUID: String, name: String, started: Long, complete: Boolean, finished: Long, geraeteRiegen: List[GeraeteRiege]) {
   def start(time: Long = 0) = DurchgangState(wettkampfUUID, name, if (started == 0) if (time == 0) System.currentTimeMillis() else time else started, complete, 0, geraeteRiegen)
@@ -54,7 +63,7 @@ case class DurchgangState(wettkampfUUID: String, name: String, started: Long, co
   def ~ (other: DurchgangState) = name == other.name && geraeteRiegen != other.geraeteRiegen
   
   val updated = System.currentTimeMillis()
-  
+  val isRunning = started > 0L && finished < started
   lazy val statsBase = geraeteRiegen.groupBy(_.disziplin).map(_._2.map(_.kandidaten.size).sum)
   lazy val statsCompletedBase = geraeteRiegen.groupBy(gr => gr.disziplin).map{gr =>  
     val (disziplin, grd) = gr
@@ -91,7 +100,7 @@ case class DurchgangState(wettkampfUUID: String, name: String, started: Long, co
 object NetworkTab {
   var activeDurchgaenge: Map[WettkampfView, Set[DurchgangState]] = Map.empty
   val activeDurchgaengeProp = new ObjectProperty[Set[DurchgangState]]()
-  
+   
   def startDurchgang(w: WettkampfView, d: DurchgangState, t: Long) = {
     val started = d.start(t)
     val newset = activeDurchgaenge.get(w).orElse(Some(Set[DurchgangState]())).get.filter(_ != d) + started
@@ -121,6 +130,11 @@ object NetworkTab {
 //    d.finish
   }
   
+  def isRunning(wettkampf: WettkampfView) = {
+    val running = activeDurchgaenge.filter(_._1 == wettkampf).exists(_._2.exists(_.isRunning))
+    running
+  }
+  
   def getDurchgang(w: WettkampfView, d: String) = {
     activeDurchgaenge.get(w) match {
       case Some(dl) => dl.find(dx => dx.name == d)
@@ -143,6 +157,7 @@ class DurchgangStationTableColumn[T](val index: Disziplin) extends TableColumn[D
 }
 
 class DurchgangStationView(wettkampf: WettkampfView, service: KutuService, disziplinlist: () => Seq[Disziplin], durchgangModel: ObservableBuffer[DurchgangState]) extends TableView[DurchgangState] {
+
   id = "durchgang-table"
   items = durchgangModel
   var okIcon: Image = null
@@ -323,6 +338,37 @@ class NetworkTab(wettkampf: WettkampfView, override val service: KutuService) ex
       case _ =>
     }
   }
+    
+  def uploadResults(caption: String) {
+    import scala.concurrent.ExecutionContext.Implicits.global
+    val process = KuTuApp.invokeAsyncWithBusyIndicator{
+      if (remoteBaseUrl.indexOf("localhost") > -1) {
+        KuTuServer.startServer { uuid => KuTuServer.sha256(uuid) }
+      }
+      KuTuServer.httpUploadWettkampfRequest(wettkampf.toWettkampf)
+    }
+    process.onComplete{resultTry =>
+      Platform.runLater{ 
+        val feedback = resultTry match {
+          case Success(response) => 
+            KuTuApp.selectedWettkampfSecret.value = wettkampf.toWettkampf.readSecret(homedir, remoteHostOrigin)
+            s"Der Wettkampf ${wettkampf.easyprint} wurde erfolgreich im Netzwerk bereitgestellt"
+          case Failure(error) => error.getMessage.replace("(", "(\n")
+        }
+        PageDisplayer.showInDialogFromRoot(caption, new DisplayablePage() {
+          def getPage: Node = {
+            new BorderPane {
+              hgrow = Priority.Always
+              vgrow = Priority.Always
+              center = new VBox {
+                children.addAll(new Label(feedback))
+              }
+            }
+          }
+        })          
+      }
+    }
+  }
   
   override def isPopulated = {
     refreshData()
@@ -395,26 +441,92 @@ class NetworkTab(wettkampf: WettkampfView, override val service: KutuService) ex
         )) choose true otherwise false 
       item
     }
+
+    val qrcodeMenu: MenuItem = KuTuApp.makeShowQRCodeMenu(wettkampf)
+    val connectAndShareMenu = KuTuApp.makeConnectAndShareMenu(wettkampf)
     
-//    view.getSelectionModel().getSelectedCells().onChange { ( _, newItem) =>
-//      Platform.runLater {
-//      }
-//    }
-    val btnActions = new MenuButton("Export") {
-      items += makeDurchgangStartenMenu(wettkampf)
-      items += makeDurchgangAbschliessenMenu(wettkampf)
+    val uploadMenu: MenuItem = {
+      val item = makeMenuAction("Resultate bereitstellen") {(caption, action) =>
+        uploadResults(caption)        
+      }
+      item.disable <== when(Bindings.createBooleanBinding(() => 
+        
+        (wettkampf.toWettkampf.hasSecred(homedir, remoteHostOrigin) 
+        && !ConnectionStates.connectedProperty.value)
+        || isRunning(wettkampf),
+        
+        KuTuApp.selectedWettkampfSecret, 
+        ConnectionStates.connectedProperty,
+        activeDurchgaengeProp
+      )) choose true otherwise false 
+      item
     }
+
+    val downloadMenu: MenuItem = KuTuApp.makeWettkampfDownloadMenu(wettkampf)
+    
+    val disconnectMenu = KuTuApp.makeDisconnectMenu(wettkampf)
+    val removeRemoteMenu = KuTuApp.makeWettkampfRemoteRemoveMenu(wettkampf)
+    
     view.contextMenu = new ContextMenu() {
       items += makeDurchgangStartenMenu(wettkampf)
       items += makeDurchgangAbschliessenMenu(wettkampf)
     }
+    val toolbar = new ToolBar {
+    }
     val rootpane = new BorderPane {
       hgrow = Priority.Always
       vgrow = Priority.Always
-      //margin = Insets(0, 0, 0, 10)
+      top = toolbar
       center = view
     }
-    
+    def updateButtons {
+      val dgs = makeDurchgangStartenMenu(wettkampf)
+      val dga = makeDurchgangAbschliessenMenu(wettkampf)
+      view.contextMenu = new ContextMenu() {
+        items += dgs
+        items += dga
+      }
+      toolbar.content = List(
+          new Button {
+            onAction = connectAndShareMenu.onAction.get
+            text <== connectAndShareMenu.text
+            disable <== connectAndShareMenu.disable
+          }, new Button {
+            onAction = qrcodeMenu.onAction.get
+            text <== qrcodeMenu.text
+            disable <== qrcodeMenu.disable
+          }, new Button {
+            onAction = dgs.onAction.get
+            text <== dgs.text
+            disable <== dgs.disable
+          }, new Button {
+            val act = makeDurchgangAbschliessenMenu(wettkampf)
+            onAction = dga.onAction.get
+            text <== dga.text
+            disable <== dga.disable
+          }, new Button {
+            onAction = uploadMenu.onAction.get
+            text <== uploadMenu.text
+            disable <== uploadMenu.disable
+          }, new Button {
+            onAction = downloadMenu.onAction.get
+            text <== downloadMenu.text
+            disable <== downloadMenu.disable
+          }, new Button {
+            onAction = disconnectMenu.onAction.get
+            text <== disconnectMenu.text
+            disable <== disconnectMenu.disable
+          }, new Button {
+            onAction = removeRemoteMenu.onAction.get
+            text <== removeRemoteMenu.text
+            disable <== removeRemoteMenu.disable
+          })      
+    }
+    updateButtons
+//    val showQRCode = make
+    view.selectionModel().selectedItem.onChange{
+      updateButtons
+    }
     content = rootpane
     true
   }

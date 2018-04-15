@@ -147,7 +147,7 @@ object KuTuApp extends JFXApp with KutuService with JsonSupport with JwtSupport 
     tree = AppNavigationModel.create(KuTuApp.this)
     rootTreeItem.children = tree.getTree
   }
-  
+    
   def handleAction[J <: javafx.event.ActionEvent, R](handler: scalafx.event.ActionEvent => R) = new javafx.event.EventHandler[J] {
     def handle(event: J) {
       setCursor(Cursor.Wait)
@@ -470,13 +470,22 @@ object KuTuApp extends JFXApp with KutuService with JsonSupport with JwtSupport 
         }
       }
     }
-    item.disable  <== when(Bindings.createBooleanBinding(() => !p.toWettkampf.hasSecred(homedir, remoteHostOrigin) || !ConnectionStates.connectedWithProperty.value.equals(p.uuid.map(_.toString).getOrElse("")), 
-        controlsView.selectionModel().selectedItem, ConnectionStates.connectedWithProperty,selectedWettkampfSecret, ConnectionStates.connectedProperty)) choose true otherwise false 
+    item.disable  <== when(Bindings.createBooleanBinding(() => 
+      !p.toWettkampf.hasSecred(homedir, remoteHostOrigin)
+      || modelWettkampfModus.value
+      || !ConnectionStates.connectedWithProperty.value.equals(p.uuid.map(_.toString).getOrElse("")), 
+      
+      controlsView.selectionModel().selectedItem, 
+      ConnectionStates.connectedWithProperty,
+      selectedWettkampfSecret, 
+      modelWettkampfModus,
+      ConnectionStates.connectedProperty
+    )) choose true otherwise false 
     item
   }
   
   def makeWettkampfDownloadMenu(p: WettkampfView): MenuItem = {
-    val item = makeMenuAction("Wettkampf Resultate lokal aktualisieren") {(caption, action) =>
+    val item = makeMenuAction("Resultate vom Netzwerk übernehmen") {(caption, action) =>
       KuTuApp.invokeWithBusyIndicator {
         val url=s"$remoteAdminBaseUrl/api/competition/${p.uuid.get}"
         val response = server.httpDownloadRequest(server.makeHttpGetRequest(url))
@@ -984,9 +993,16 @@ object KuTuApp extends JFXApp with KutuService with JsonSupport with JwtSupport 
   }
   
   val enc = Base64.getUrlEncoder
-  def showQRCode(p: WettkampfView) = {
+  def makeShowQRCodeMenu(p: WettkampfView) = {
     val item = makeMenuAction("Kampfrichter Mobile register ...") {(caption, action) =>
-      implicit val e = action
+      showQRCode(caption, p)
+    }
+    item.disable <== when(Bindings.createBooleanBinding(() => !p.toWettkampf.hasSecred(homedir, remoteHostOrigin) || !ConnectionStates.connectedWithProperty.value.equals(p.uuid.map(_.toString).getOrElse("")), 
+        ConnectionStates.connectedWithProperty, selectedWettkampfSecret, controlsView.selectionModel().selectedItem)) choose true otherwise false 
+    item
+  }
+
+  def showQRCode(caption: String, p: WettkampfView) = {
       p.uuid.zip(AuthSupport.getClientSecret).zip(p.toWettkampf.readSecret(homedir, remoteHostOrigin)).headOption match {
         case Some(((uuid, shortsecret), secret)) =>
           val shorttimeout = getExpiration(shortsecret).getOrElse(new Date())
@@ -1028,7 +1044,7 @@ object KuTuApp extends JFXApp with KutuService with JsonSupport with JwtSupport 
             Desktop.getDesktop().mail(new URI(mailURIStr))
           }
           view.setStyle("-fx-stroke-width: 2; -fx-stroke: blue");
-          PageDisplayer.showInDialog(caption, new DisplayablePage() {
+          PageDisplayer.showInDialogFromRoot(caption, new DisplayablePage() {
             def getPage: Node = new VBox{
               children += new Label("QR-Code mit Link (24h gültig)")
               children += view
@@ -1039,7 +1055,7 @@ object KuTuApp extends JFXApp with KutuService with JsonSupport with JwtSupport 
           )  
           
         case None =>
-          PageDisplayer.showInDialog(caption, new DisplayablePage() {
+          PageDisplayer.showInDialogFromRoot(caption, new DisplayablePage() {
             def getPage: Node = {
               new BorderPane {
                 hgrow = Priority.Always
@@ -1052,10 +1068,6 @@ object KuTuApp extends JFXApp with KutuService with JsonSupport with JwtSupport 
           }
           )  
       }
-    }
-    item.disable <== when(Bindings.createBooleanBinding(() => !p.toWettkampf.hasSecred(homedir, remoteHostOrigin) || !ConnectionStates.connectedWithProperty.value.equals(p.uuid.map(_.toString).getOrElse("")), 
-        ConnectionStates.connectedWithProperty, selectedWettkampfSecret, controlsView.selectionModel().selectedItem)) choose true otherwise false 
-    item
   }
   
   def makeWettkampfLoeschenMenu(p: WettkampfView) = makeMenuAction("Wettkampf löschen") {(caption, action) =>
@@ -1186,14 +1198,14 @@ object KuTuApp extends JFXApp with KutuService with JsonSupport with JwtSupport 
                   btnWettkampfModus.disable.value = false
                   selectedWettkampf.value = p
                   selectedWettkampfSecret.value = p.toWettkampf.readSecret(homedir, remoteHostOrigin)
-                  val networkMenu = new Menu("Netzwerk") {
-                    items += showQRCode(p)
-                    items += makeWettkampfUploadMenu(p)
-                    items += makeConnectAndShareMenu(p)
-                    items += makeWettkampfDownloadMenu(p)    
-                    items += makeDisconnectMenu(p)
-                    items += makeWettkampfRemoteRemoveMenu(p)
-                  }
+//                  val networkMenu = new Menu("Netzwerk") {
+//                    items += makeShowQRCodeMenu(p)
+//                    items += makeWettkampfUploadMenu(p)
+//                    items += makeConnectAndShareMenu(p)
+//                    items += makeWettkampfDownloadMenu(p)    
+//                    items += makeDisconnectMenu(p)
+//                    items += makeWettkampfRemoteRemoveMenu(p)
+//                  }
                   
                   controlsView.contextMenu = new ContextMenu() {
                     items += makeWettkampfDurchfuehrenMenu(p)
@@ -1201,7 +1213,7 @@ object KuTuApp extends JFXApp with KutuService with JsonSupport with JwtSupport 
                     items += makeWettkampfExportierenMenu(p)
                     items += makeWettkampfDataDirectoryMenu(p)
                     items += makeWettkampfLoeschenMenu(p)
-                    items += networkMenu
+//                    items += networkMenu
                   }
                 case Some(KuTuAppThumbNail(v: Verein, _, newItem)) =>
                   controlsView.contextMenu = new ContextMenu() {
