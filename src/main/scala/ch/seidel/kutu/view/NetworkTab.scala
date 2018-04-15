@@ -153,15 +153,6 @@ class DurchgangStationView(wettkampf: WettkampfView, service: KutuService, diszi
   try {
     nokIcon = new Image(getClass().getResourceAsStream("/images/RedException.png"))
   }catch{case e: Exception => e.printStackTrace()}
-
-  def toTime(millis: Long) = if (millis <= 0) "" else f"${new Date(millis)}%tT"
-  def toDuration(from: Long, to: Long) = { 
-    val too = if (to == 0 && from > 0) System.currentTimeMillis() else to
-    if (too - from <= 0) "" else {
-      val d = Duration(too - from, TimeUnit.MILLISECONDS)
-      f"${d.toHours}%02d:${d.toMinutes - d.toHours * 60}%02d:${d.toSeconds - d.toHours * 3600 - d.toMinutes * 60}%02d"//f"${Duration(millis)}%tT"
-    }
-  }
   
   columns ++= List(
     new TableColumn[DurchgangState, String] {
@@ -172,17 +163,17 @@ class DurchgangStationView(wettkampf: WettkampfView, service: KutuService, diszi
     , new TableColumn[DurchgangState, String] {
       prefWidth = 85
       text = "Start"
-      cellValueFactory = { x => StringProperty(toTime(x.value.started))}
+      cellValueFactory = { x => StringProperty(toTimeFormat(x.value.started))}
     }
     , new TableColumn[DurchgangState, String] {
       prefWidth = 85
       text = "Ende"
-      cellValueFactory = { x => StringProperty(toTime(x.value.finished))}
+      cellValueFactory = { x => StringProperty(toTimeFormat(x.value.finished))}
     }
     , new TableColumn[DurchgangState, String] {
       prefWidth = 85
       text = "Dauer"
-      cellValueFactory = { x => StringProperty(toDuration(x.value.started, x.value.finished))
+      cellValueFactory = { x => StringProperty(toDurationFormat(x.value.started, x.value.finished))
       }
     }
     , new TableColumn[DurchgangState, String] {

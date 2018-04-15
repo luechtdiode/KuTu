@@ -13,6 +13,8 @@ import java.nio.file.Files
 import java.nio.file.StandardOpenOption
 import java.nio.file.LinkOption
 import java.net.URLEncoder
+import java.util.concurrent.TimeUnit
+import scala.concurrent.duration.Duration
 
 package object domain {
   implicit def dbl2Str(d: Double) = f"${d}%2.3f"
@@ -78,6 +80,18 @@ package object domain {
   implicit def sqlDate2ld(sd: java.sql.Date): LocalDate = {
     if(sd==null) return null else {
       sd.toLocalDate()//.toInstant().atZone(ZoneId.systemDefault()).toLocalDate()
+    }
+  }
+
+  def toTimeFormat(millis: Long) = if (millis <= 0) "" else f"${new java.util.Date(millis)}%tT"
+  def toDurationFormat(from: Long, to: Long) = { 
+    val too = if (to <= 0 && from > 0) System.currentTimeMillis() else to
+    if (too - from <= 0) "" else {
+      val d = Duration(too - from, TimeUnit.MILLISECONDS)
+      List((d.toDays, "d"), (d.toHours - d.toDays * 24, "h"), (d.toMinutes - d.toHours * 60, "m"), (d.toSeconds - d.toMinutes * 60, "s"))
+      .filter(_._1 > 0)
+      .map(p => s"${p._1}${p._2}")
+      .mkString(", ")
     }
   }
 
