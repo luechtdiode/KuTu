@@ -12,6 +12,7 @@ import slick.jdbc.PositionedResult
 import slick.jdbc.SQLiteProfile
 import slick.jdbc.SQLiteProfile.api._
 import scala.collection.JavaConverters
+import scala.concurrent.Future
 
 abstract trait DisziplinService extends DBService with WettkampfResultMapper {
   private val logger = LoggerFactory.getLogger(this.getClass)
@@ -44,6 +45,27 @@ abstract trait DisziplinService extends DBService with WettkampfResultMapper {
       val wettkampf: Wettkampf = readWettkampf(wettkampfId)
       val programme = readWettkampfLeafs(wettkampf.programmId).map(p => p.id).mkString("(", ",", ")")
       sql""" select id from wettkampfdisziplin where programm_Id in #$programme""".as[Long].withPinnedSession
+    }, Duration.Inf).toList
+  }
+  
+  def listDisziplinesZuProgramm(programmId: Long, geschlecht: Option[String] = None): List[Disziplin] = {
+    Await.result(database.run{
+      sql""" select distinct wd.disziplin_id, d.name
+             from wettkampfdisziplin wd, disziplin d, programm p
+             where
+              wd.disziplin_id = d.id
+              and wd.programm_id = p.id
+              #${
+                geschlecht match {
+                  case Some("M") => "and wd.masculin = 1"
+                  case Some("W") => "and wd.feminim = 1"
+                  case _ => ""
+                }
+              }
+              and programm_id = $programmId
+             order by
+              wd.ord
+             """.as[Disziplin].withPinnedSession
     }, Duration.Inf).toList
   }
   

@@ -10,6 +10,7 @@ trait ApiService extends RouteConcatenation
     with LoginRoutes
     with WertungenRoutes
     with WettkampfRoutes
+    with ScoreRoutes
 //    with WebSockets
     with ResourceService 
     with DBService {
@@ -21,7 +22,8 @@ trait ApiService extends RouteConcatenation
       pathPrefix("api") {
         login(userLookup) ~
         wertungenRoutes ~
-        wettkampfRoutes
+        wettkampfRoutes ~
+        scoresRoutes
 //      websocket
       } ~
       complete(StatusCodes.NotFound)

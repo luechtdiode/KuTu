@@ -1,44 +1,32 @@
 package ch.seidel.kutu.http
 
-import scala.concurrent.duration._
 import scala.concurrent.Future
+import scala.concurrent.duration.DurationInt
+import scala.util.Failure
+import scala.util.Success
 
-import akka.actor.{ ActorRef, ActorSystem, ActorLogging }
-import akka.pattern.ask
-import akka.util.Timeout
-import akka.event.Logging
-
+import akka.http.scaladsl.marshallers.sprayjson.SprayJsonSupport
 import akka.http.scaladsl.model.StatusCodes
 import akka.http.scaladsl.server.Route
-import akka.http.scaladsl.server.directives.MethodDirectives.delete
-import akka.http.scaladsl.server.directives.MethodDirectives.get
-import akka.http.scaladsl.server.directives.MethodDirectives.post
-import akka.http.scaladsl.server.directives.RouteDirectives.complete
-import akka.http.scaladsl.marshallers.sprayjson.SprayJsonSupport
-import akka.http.scaladsl.server.Directives._
-
-import spray.json._
-
-import ch.seidel.kutu.domain._
-import ch.seidel.kutu.renderer.RiegenBuilder
-import ch.seidel.kutu.view.WertungEditor
-import ch.seidel.kutu.akka.UpdateAthletWertung
-import ch.seidel.kutu.akka.CompetitionCoordinatorClientActor
-import ch.seidel.kutu.akka.WertungContainer
-import scala.concurrent.Await
-import java.util.UUID
-import scala.util.Success
+import akka.util.Timeout
 import ch.seidel.kutu.akka.AthletWertungUpdated
-import scala.util.Failure
+import ch.seidel.kutu.akka.CompetitionCoordinatorClientActor
 import ch.seidel.kutu.akka.FinishDurchgangStation
+import ch.seidel.kutu.akka.UpdateAthletWertung
+import ch.seidel.kutu.akka.WertungContainer
+import ch.seidel.kutu.domain.Disziplin
+import ch.seidel.kutu.domain.GeraeteRiege
+import ch.seidel.kutu.domain.KutuService
+import ch.seidel.kutu.domain.ProgrammRaw
+import ch.seidel.kutu.domain.Wertung
+import ch.seidel.kutu.domain.encodeURIComponent
+import ch.seidel.kutu.domain.str2Int
+import ch.seidel.kutu.domain.str2Long
+import ch.seidel.kutu.renderer.RiegenBuilder
 
 trait WertungenRoutes extends SprayJsonSupport with JsonSupport with JwtSupport with AuthSupport with RouterLogging with KutuService with IpToDeviceID {
   import scala.concurrent.ExecutionContext.Implicits.global
-  import slick.jdbc.SQLiteProfile
-  import slick.jdbc.SQLiteProfile.api._
-  
-  import DefaultJsonProtocol._
-  import Core._
+  import spray.json.DefaultJsonProtocol._
   
   // Required by the `ask` (?) method below
   private implicit lazy val timeout = Timeout(5.seconds) // usually we'd obtain the timeout from the system's configuration

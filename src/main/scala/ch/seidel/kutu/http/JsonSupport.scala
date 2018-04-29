@@ -6,6 +6,7 @@ import spray.json._
 import ch.seidel.kutu.domain._
 import ch.seidel.kutu.akka._
 
+
 trait JsonSupport extends SprayJsonSupport with EnrichedJson {
   // import the default encoders for primitive types (Int, String, Lists etc)
   import DefaultJsonProtocol._
@@ -18,6 +19,13 @@ trait JsonSupport extends SprayJsonSupport with EnrichedJson {
   implicit val atheltViewFormat = jsonFormat(AthletView, "id", "js_id", "geschlecht", "name", "vorname", "gebdat", "strasse", "plz", "ort", "verein", "activ")
   implicit val wertungContainerFormat = jsonFormat7(WertungContainer)
 
+  implicit val resultatFormat = jsonFormat(Resultat, "noteD", "noteE", "endnote")
+  implicit val dataObjectFormat = new RootJsonWriter[DataObject]{
+    def write(p: DataObject) = {
+      p.easyprint.toJson
+    }
+  }
+    
   //  implicit val programmViewFormat: JsonFormat[ProgrammView] = lazyFormat(jsonFormat(ProgrammView, "id", "name", "aggregate", "parent", "ord", "alterVon", "alterBis"))
 //  implicit val wettkampfViewFormat: JsonFormat[WettkampfView] = jsonFormat(WettkampfView, "id", "datum", "titel", "programm", "auszeichnung", "auszeichnungendnote", "uuid")
 

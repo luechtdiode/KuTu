@@ -56,6 +56,11 @@ import ch.seidel.kutu.domain.WettkampfView
 import akka.http.scaladsl.marshalling.Marshal
 import akka.util.ByteString
 import akka.http.scaladsl.marshalling.Marshaller
+import ch.seidel.kutu.data.ByWettkampfProgramm
+import ch.seidel.kutu.data.ByGeschlecht
+import ch.seidel.kutu.renderer.ScoreToHtmlRenderer
+import java.io.File
+import ch.seidel.kutu.akka.StartDurchgang
 
 trait WettkampfRoutes extends SprayJsonSupport with JsonSupport with JwtSupport with AuthSupport with RouterLogging with WettkampfService with IpToDeviceID {
   import DefaultJsonProtocol._

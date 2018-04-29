@@ -248,7 +248,12 @@ abstract class DefaultRanglisteTab(override val service: KutuService) extends Ta
     	  checked.filter(model.contains(_)).foreach(combf.getCheckModel.check(_))
     	}
       val combination = query.select(data).toList
-      //Map[Long,Map[String,List[Disziplin]]]
+      //Map[Long,Map[String,List[Disziplin]]] 
+//      val diszMap = data.groupBy { x => x.wettkampf.programmId }.map{ x =>
+//        x._1 -> Map(
+//              "W" -> service.listDisziplinesZuProgramm(x._1, Some("W"))
+//            , "M" -> service.listDisziplinesZuProgramm(x._1, Some("M")))
+//      }
       val diszMap = data.groupBy { x => x.wettkampf.programmId }.map{ x =>
         x._1 -> Map(
               "W" -> service.listDisziplinesZuWettkampf(x._2.head.wettkampf.id, Some("W"))
