@@ -40,7 +40,7 @@
           </ion-item>
           <ion-item >
             <ion-label>Durchgang</ion-label>
-            <ion-select *ngIf="competition && getDurchgaenge()" [(ngModel)]='durchgang' okText='Okay' cancelText='Abbrechen'>
+            <ion-select *ngIf="competition && getDurchgaenge() && getDurchgaenge().length > 0" [(ngModel)]='durchgang' okText='Okay' cancelText='Abbrechen'>
               <ion-option *ngFor='let d of getDurchgaenge()' [value]='d'>{{d}}</ion-option>
             </ion-select>
             <!-- <ion-note *ngIf="competition && !getDurchgaenge() && durchgang">
@@ -49,7 +49,7 @@
           </ion-item>
           <ion-item >
             <ion-label>Gerät</ion-label>
-            <ion-select *ngIf="durchgang && getGeraete()" [(ngModel)]='geraet' okText='Okay' cancelText='Abbrechen'>
+            <ion-select *ngIf="durchgang && getGeraete() && getGeraete().length > 0" [(ngModel)]='geraet' okText='Okay' cancelText='Abbrechen'>
               <ion-option *ngFor='let g of getGeraete()' [value]='g.id'>{{g.name}}</ion-option>
             </ion-select>
             <!-- <ion-note *ngIf="competition && !getDurchgaenge() && durchgang">
