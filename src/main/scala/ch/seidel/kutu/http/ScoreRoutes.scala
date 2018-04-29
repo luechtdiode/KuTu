@@ -22,6 +22,9 @@ import ch.seidel.kutu.data.GroupBy
 import ch.seidel.kutu.domain.KutuService
 import ch.seidel.kutu.renderer.ScoreToJsonRenderer
 import spray.json.enrichString
+import akka.http.scaladsl.model.ContentTypes
+import ch.seidel.kutu.renderer.ScoreToHtmlRenderer
+import akka.http.scaladsl.model.HttpEntity
 
 trait ScoreRoutes extends SprayJsonSupport with JsonSupport with JwtSupport with AuthSupport with RouterLogging with KutuService with IpToDeviceID {
   import spray.json.DefaultJsonProtocol._
@@ -33,6 +36,19 @@ trait ScoreRoutes extends SprayJsonSupport with JsonSupport with JwtSupport with
   lazy val scoresRoutes: Route = {
     extractClientIP { ip =>
       pathPrefix("scores") {
+        pathEnd {
+          get {
+            complete(
+              listWettkaempfeAsync.map{competitions =>
+                HttpEntity(ContentTypes.`text/html(UTF-8)`,
+                    competitions
+                    .map(comp => (s"<li><a href='/api/scores/${comp.uuid.get.toString}?html'>${comp.easyprint}</a></li>"))
+                    .mkString("<html><body>\n", "\n", "</body></html>")
+                )
+              }
+            )
+          }
+        } ~
         path("grouper") {
           get {
             complete{ Future { 
@@ -58,18 +74,26 @@ trait ScoreRoutes extends SprayJsonSupport with JsonSupport with JwtSupport with
           }
           pathEnd {
             get {
-              parameters('groupby.?, 'filter.?) { (groupby, filter) =>
+              parameters('groupby.?, 'filter.?, 'html.?) { (groupby, filter, html) =>
                 complete(Future{
                   val cblist = groupby.toSeq.flatMap(gb => gb.split(":")).map{groupername =>
                     groupers.find(grouper => grouper.groupname.equals(groupername))
                   }.filter{case Some(_) => true case None => false}.map(_.get)
-                  
+                  cblist.foreach(_.reset)
                   val query = if (cblist.nonEmpty) {
                     cblist.foldLeft(cblist.head.asInstanceOf[GroupBy])((acc, cb) => if (acc != cb) acc.groupBy(cb) else acc)
                   } else {
                     ByWettkampfProgramm().groupBy(ByGeschlecht)
                   }
-                  ScoreToJsonRenderer.toJson(data.head.wettkampf.easyprint, query.select(data).toList, false, diszMap, logofile).parseJson
+                  if (html.nonEmpty) {
+                    HttpEntity(ContentTypes.`text/html(UTF-8)`, new ScoreToHtmlRenderer(){override val title = data.head.wettkampf.easyprint}
+                    .toHTML(query.select(data).toList, 0, false, diszMap, logofile))
+                  } else {
+                    HttpEntity(ContentTypes.`application/json`,  ScoreToJsonRenderer
+                    .toJson(data.head.wettkampf.easyprint, query.select(data).toList, false, diszMap, logofile))
+                  }
+//                  ScoreToJsonRenderer
+//                    .toJson(data.head.wettkampf.easyprint, query.select(data).toList, false, diszMap, logofile).parseJson
                 })
               }
             }
