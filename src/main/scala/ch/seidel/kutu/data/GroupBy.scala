@@ -145,7 +145,7 @@ sealed trait FilterBy extends GroupBy {
 
 }
 
-case object ByNothing extends GroupBy with FilterBy {
+case class ByNothing() extends GroupBy with FilterBy {
   override val groupname = "keine"
   protected override val grouper = (v: WertungView) => {
     v
@@ -155,7 +155,7 @@ case object ByNothing extends GroupBy with FilterBy {
   })
 }
 
-case object ByAthlet extends GroupBy with FilterBy {
+case class ByAthlet() extends GroupBy with FilterBy {
   override val groupname = "Athlet"
   protected override val grouper = (v: WertungView) => {
     v.athlet
@@ -184,7 +184,7 @@ case class ByWettkampfProgramm(text: String = "Programm/Kategorie") extends Grou
     gs1.groupKey.asInstanceOf[ProgrammView].ord.compareTo(gs2.groupKey.asInstanceOf[ProgrammView].ord) < 0
   })
 }
-case object ByWettkampfArt extends GroupBy with FilterBy {
+case class ByWettkampfArt() extends GroupBy with FilterBy {
   override val groupname = "Wettkampf-Art"
   protected override val grouper = (v: WertungView) => {
     v.wettkampfdisziplin.programm.head
@@ -193,7 +193,7 @@ case object ByWettkampfArt extends GroupBy with FilterBy {
     gs1.groupKey.asInstanceOf[ProgrammView].ord.compareTo(gs2.groupKey.asInstanceOf[ProgrammView].ord) < 0
   })
 }
-case object ByWettkampf extends GroupBy with FilterBy {
+case class ByWettkampf() extends GroupBy with FilterBy {
   override val groupname = "Wettkampf"
   protected override val grouper = (v: WertungView) => {
     v.wettkampf
@@ -203,7 +203,7 @@ case object ByWettkampf extends GroupBy with FilterBy {
   })
 }
 
-case object ByRiege extends GroupBy with FilterBy {
+case class ByRiege() extends GroupBy with FilterBy {
   override val groupname = "Riege"
   protected override val grouper = (v: WertungView) => {
     Riege(v.riege match {case Some(r) => r case None => "keine Einteilung"}, None, None)
@@ -213,7 +213,7 @@ case object ByRiege extends GroupBy with FilterBy {
   })
 }
 
-case object ByJahr extends GroupBy with FilterBy {
+case class ByJahr() extends GroupBy with FilterBy {
   override val groupname = "Wettkampf-Jahr"
   private val extractYear = new SimpleDateFormat("YYYY")
   protected override val grouper = (v: WertungView) => {
@@ -224,7 +224,7 @@ case object ByJahr extends GroupBy with FilterBy {
   })
 }
 
-case object ByJahrgang extends GroupBy with FilterBy {
+case class ByJahrgang() extends GroupBy with FilterBy {
   override val groupname = "Jahrgang"
   protected override val grouper = (v: WertungView) => {
     v.athlet.gebdat match {
@@ -237,7 +237,7 @@ case object ByJahrgang extends GroupBy with FilterBy {
   })
 }
 
-case object ByDisziplin extends GroupBy with FilterBy {
+case class ByDisziplin() extends GroupBy with FilterBy {
   override val groupname = "Disziplin"
   private val ordering = HashMap[Long, Long]()
 
@@ -252,7 +252,7 @@ case object ByDisziplin extends GroupBy with FilterBy {
   })
 }
 
-case object ByGeschlecht extends GroupBy with FilterBy {
+case class ByGeschlecht() extends GroupBy with FilterBy {
   override val groupname = "Geschlecht"
   protected override val grouper = (v: WertungView) => {
     TurnerGeschlecht(v.athlet.geschlecht)
@@ -262,7 +262,7 @@ case object ByGeschlecht extends GroupBy with FilterBy {
   })
 }
 
-case object ByVerein extends GroupBy with FilterBy {
+case class ByVerein() extends GroupBy with FilterBy {
   override val groupname = "Verein"
   protected override val grouper = (v: WertungView) => {
     v.athlet.verein match {
@@ -275,7 +275,7 @@ case object ByVerein extends GroupBy with FilterBy {
   })
 }
 
-case object ByVerband extends GroupBy with FilterBy {
+case class ByVerband() extends GroupBy with FilterBy {
   override val groupname = "Verband"
   protected override val grouper = (v: WertungView) => {
     v.athlet.verein match {

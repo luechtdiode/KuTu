@@ -25,6 +25,7 @@ import spray.json.enrichString
 import akka.http.scaladsl.model.ContentTypes
 import ch.seidel.kutu.renderer.ScoreToHtmlRenderer
 import akka.http.scaladsl.model.HttpEntity
+import ch.seidel.kutu.domain.encodeURIParam
 
 trait ScoreRoutes extends SprayJsonSupport with JsonSupport with JwtSupport with AuthSupport with RouterLogging with KutuService with IpToDeviceID {
   import spray.json.DefaultJsonProtocol._
@@ -53,8 +54,8 @@ trait ScoreRoutes extends SprayJsonSupport with JsonSupport with JwtSupport with
           get {
             complete{ Future { 
               List(ByWettkampfProgramm(), ByProgramm(), 
-                  ByJahrgang, ByGeschlecht, ByVerband, ByVerein, 
-                  ByRiege, ByDisziplin, ByJahr).map(_.groupname)
+                  ByJahrgang(), ByGeschlecht(), ByVerband(), ByVerein(), 
+                  ByRiege(), ByDisziplin(), ByJahr()).map(_.groupname)
             }}
           }
         } ~
@@ -69,21 +70,38 @@ trait ScoreRoutes extends SprayJsonSupport with JsonSupport with JwtSupport with
           val programmText = data.head.wettkampf.programmId match {case 20 => "Kategorie" case _ => "Programm"}
           val groupers: List[FilterBy] = {
             List(ByWettkampfProgramm(programmText), ByProgramm(programmText), 
-                ByJahrgang, ByGeschlecht, ByVerband, ByVerein, 
-                ByRiege, ByDisziplin, ByJahr)
+                ByJahrgang(), ByGeschlecht(), ByVerband(), ByVerein(), 
+                ByRiege(), ByDisziplin(), ByJahr())
           }
           pathEnd {
             get {
-              parameters('groupby.?, 'filter.?, 'html.?) { (groupby, filter, html) =>
+              parameters('groupby.?, 'filter.*, 'html.?) { (groupby, filter, html) =>
                 complete(Future{
+                  val filterList = filter.map{flt =>
+                    val keyvalues = flt.split(":")
+                    val key = keyvalues(0)
+                    val values = keyvalues(1).split("!").map(encodeURIParam(_))
+                    (key -> values.toSet)
+                  }.toMap
+                  
                   val cblist = groupby.toSeq.flatMap(gb => gb.split(":")).map{groupername =>
-                    groupers.find(grouper => grouper.groupname.equals(groupername))
+                    val grouper = groupers.find(grouper => grouper.groupname.equals(groupername))
+                    grouper
                   }.filter{case Some(_) => true case None => false}.map(_.get)
-                  cblist.foreach(_.reset)
+                  
+                  cblist.foreach{gr =>
+                    gr.reset
+                    filterList.get(gr.groupname) match {
+                      case Some(filterValues) =>
+                        gr.setFilter(gr.analyze(data).filter(f => filterValues.contains(encodeURIParam(f.easyprint))).toSet)
+                      case _ =>
+                    }
+                  }
+                  
                   val query = if (cblist.nonEmpty) {
                     cblist.foldLeft(cblist.head.asInstanceOf[GroupBy])((acc, cb) => if (acc != cb) acc.groupBy(cb) else acc)
                   } else {
-                    ByWettkampfProgramm().groupBy(ByGeschlecht)
+                    ByWettkampfProgramm().groupBy(ByGeschlecht())
                   }
                   if (html.nonEmpty) {
                     HttpEntity(ContentTypes.`text/html(UTF-8)`, new ScoreToHtmlRenderer(){override val title = data.head.wettkampf.easyprint}
@@ -103,6 +121,24 @@ trait ScoreRoutes extends SprayJsonSupport with JsonSupport with JwtSupport with
               complete{ Future { 
                 groupers.map(_.groupname)
               }}
+            }
+          } ~
+          path("filter") {
+            get {
+              parameters('groupby.?) { (groupby) =>
+                complete{ Future {
+                  val cblist = groupby.toSeq.flatMap(gb => gb.split(":")).map{groupername =>
+                    groupers.find(grouper => grouper.groupname.equals(groupername))
+                  }.filter{case Some(_) => true case None => false}.map(_.get)
+                  cblist.foreach(_.reset)
+                  val query = if (cblist.nonEmpty) {
+                    cblist
+                  } else {
+                    List(ByWettkampfProgramm(),ByGeschlecht())
+                  }
+                  query.map(g => s"${g.groupname}:${g.analyze(data).map(x => encodeURIParam(x.easyprint)).mkString("!")}")
+                }}
+              }
             }
           }
         }

@@ -104,6 +104,7 @@ package object domain {
   def encodeURIComponent(uri: String) = encodeInvalidURIRegEx.replaceAllIn(uri, "_")
   
   def encodeURIParam(uri: String) = URLEncoder.encode(uri, "UTF-8")
+    .replaceAll(" ", "%20")
     .replaceAll("\\+", "%20")
     .replaceAll("\\%21", "!")
     .replaceAll("\\%27", "'")

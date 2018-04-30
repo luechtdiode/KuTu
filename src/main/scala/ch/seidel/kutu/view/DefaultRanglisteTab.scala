@@ -184,7 +184,7 @@ abstract class DefaultRanglisteTab(override val service: KutuService) extends Ta
     def relevantGroup(cb: ComboBox[FilterBy]): Boolean = {
       if(!cb.selectionModel.value.isEmpty) {
         val grp = cb.selectionModel.value.getSelectedItem
-        grp != ByNothing
+        grp != ByNothing()
       }
       else {
         false
@@ -214,7 +214,7 @@ abstract class DefaultRanglisteTab(override val service: KutuService) extends Ta
       restoring = false
 
       if (cblist.isEmpty) {
-        ByWettkampfProgramm().groupBy(ByGeschlecht)
+        ByWettkampfProgramm().groupBy(ByGeschlecht())
       }
       else {
         cblist.foldLeft(cblist.head.asInstanceOf[GroupBy])((acc, cb) => if (acc != cb) acc.groupBy(cb) else acc)
@@ -361,7 +361,7 @@ abstract class DefaultRanglisteTab(override val service: KutuService) extends Ta
     def extractFilterText = {
       buildGrouper.traverse(""){(item, filename) =>
         item match {
-          case ByNothing => filename
+          case ByNothing() => filename
           case _ if(filename.isEmpty()) => filename + item.groupname
           case _ => filename + "-" + item.groupname
         }
