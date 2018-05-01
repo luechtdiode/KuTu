@@ -59,7 +59,7 @@ object ResourceExchanger extends KutuService with RiegenBuilder {
   
   def importWettkampf(file: InputStream) = {
     val buffer = new BufferedInputStream(file)
-    buffer.mark(file.available())
+    buffer.mark(40*4096)
     type ZipStream = (ZipEntry,InputStream)
     class ZipEntryTraversableClass extends Traversable[ZipStream] {
       buffer.reset
@@ -368,16 +368,17 @@ object ResourceExchanger extends KutuService with RiegenBuilder {
     val competitionDir = new java.io.File(Config.homedir + "/" + wettkampf.easyprint.replace(" ", "_"))
     
     val logofile = PrintUtil.locateLogoFile(competitionDir);
-    zip.putNextEntry(new ZipEntry(logofile.getName));
-    val fis = new FileInputStream(logofile)
-    val bytes = new Array[Byte](1024) //1024 bytes - Buffer size
-    Iterator
-    .continually(fis.read(bytes))
-    .takeWhile(-1 !=)
-    .foreach(read=> zip.write(bytes, 0, read))
-    zip.closeEntry()
-    println("logo was taken " + logofile.getName)
-    
+    if (logofile.exists()) {
+      zip.putNextEntry(new ZipEntry(logofile.getName));
+      val fis = new FileInputStream(logofile)
+      val bytes = new Array[Byte](1024) //1024 bytes - Buffer size
+      Iterator
+      .continually(fis.read(bytes))
+      .takeWhile(-1 !=)
+      .foreach(read=> zip.write(bytes, 0, read))
+      zip.closeEntry()
+      println("logo was taken " + logofile.getName)
+    }
     if (withSecret && wettkampf.hasSecred(Config.homedir, Config.remoteHostOrigin)) {
       val secretfile = wettkampf.filePath(Config.homedir, Config.remoteHostOrigin).toFile();
       zip.putNextEntry(new ZipEntry(secretfile.getName));
