@@ -16,6 +16,10 @@ import ch.seidel.kutu.squad.RiegenBuilder
 import org.slf4j.LoggerFactory
 import ch.seidel.kutu.akka._
 import scala.concurrent.Future
+import ch.seidel.kutu.Config
+import ch.seidel.kutu.renderer.PrintUtil
+import akka.stream.scaladsl.FileIO
+import java.io.BufferedInputStream
 
 /**
  */
@@ -41,24 +45,25 @@ object ResourceExchanger extends KutuService with RiegenBuilder {
             vw
           } catch {
             case e: Exception =>
-              logger.info("not saved!")
+              logger.error("not saved!", e)
               refresher(uw)
           }
         }
       case MessageAck(_) => 
       case someOther => 
         refresher(someOther)
-        println(someOther)  
-        
     }
     
     opFn
   }
   
   def importWettkampf(file: InputStream) = {
+    val buffer = new BufferedInputStream(file)
+    buffer.mark(file.available())
     type ZipStream = (ZipEntry,InputStream)
     class ZipEntryTraversableClass extends Traversable[ZipStream] {
-      val zis = new ZipInputStream(file)
+      buffer.reset
+      val zis = new ZipInputStream(buffer)
       def entryIsValid(ze: ZipEntry) = !ze.isDirectory
 
       def foreach[U](f: ZipStream => U) {
@@ -72,11 +77,12 @@ object ResourceExchanger extends KutuService with RiegenBuilder {
       }
     }
 
-    val zip: Traversable[ZipStream] = new ZipEntryTraversableClass()
-    val collection = zip.foldLeft(Map[String, (Seq[String],Map[String,Int])]()) { (acc, entry) =>
-      val csv = Source.fromInputStream(entry._2, "utf-8").getLines().toList
-      val header = csv.take(1).map(_.dropWhile {_.isUnicodeIdentifierPart }).flatMap(DBService.parseLine).zipWithIndex.toMap
-      acc + (entry._1.getName -> (csv.drop(1), header))
+    val collection = new ZipEntryTraversableClass().foldLeft(Map[String, (Seq[String],Map[String,Int])]()) { (acc, entry) =>
+      if (entry._1.getName.endsWith(".csv")) {
+        val csv = Source.fromInputStream(entry._2, "utf-8").getLines().toList
+        val header = csv.take(1).map(_.dropWhile {_.isUnicodeIdentifierPart }).flatMap(DBService.parseLine).zipWithIndex.toMap
+        acc + (entry._1.getName -> (csv.drop(1), header))
+      } else acc
     }
 
     val (vereinCsv, vereinHeader) = collection("vereine.csv")
@@ -154,6 +160,30 @@ object ResourceExchanger extends KutuService with RiegenBuilder {
           titel = fields(wettkampfHeader("titel")),
           uuidOption = uuid
           )
+          
+      new ZipEntryTraversableClass().foreach{entry =>
+        if (entry._1.getName.startsWith("logo")) {
+          val filename = entry._1.getName
+          val logofile = new java.io.File(Config.homedir + "/" + wettkampf.easyprint.replace(" ", "_") + "/" + filename)
+          val fos = new FileOutputStream(logofile)
+          val bytes = new Array[Byte](1024) //1024 bytes - Buffer size
+          Iterator
+          .continually(entry._2.read(bytes))
+          .takeWhile(-1 !=)
+          .foreach(read=> fos.write(bytes, 0, read))
+          fos.flush()
+          fos.close()
+          logger.info("logo was written " + logofile.getName)
+        }
+      }
+      new ZipEntryTraversableClass().foreach{entry =>
+        if (entry._1.getName.startsWith(".at") && entry._1.getName.contains(Config.remoteHostOrigin) && !wettkampf.hasSecred(Config.homedir, Config.remoteHostOrigin)) {
+          val filename = entry._1.getName
+          val secretfile = new java.io.File(Config.homedir + "/" + wettkampf.easyprint.replace(" ", "_") + "/" + filename)
+          wettkampf.saveSecret(Config.homedir, Config.remoteHostOrigin, Source.fromInputStream(entry._2, "utf-8").mkString)
+          logger.info("secret was written " + filename)
+        }
+      }
       (fields(wettkampfHeader("id")), wettkampf)
     }.toMap
     
@@ -255,6 +285,7 @@ object ResourceExchanger extends KutuService with RiegenBuilder {
         riege
       })
     }
+    
     logger.debug("import finished")
     wettkampfInstances.head._2
   }
@@ -287,10 +318,10 @@ object ResourceExchanger extends KutuService with RiegenBuilder {
   }
   
   def exportWettkampf(wettkampf: Wettkampf, filename: String) {
-    exportWettkampfToStream(wettkampf, new FileOutputStream(filename))
+    exportWettkampfToStream(wettkampf, new FileOutputStream(filename), true)
   }
   
-  def exportWettkampfToStream(wettkampf: Wettkampf, os: OutputStream) {
+  def exportWettkampfToStream(wettkampf: Wettkampf, os: OutputStream, withSecret: Boolean = false) {
     val zip = new ZipOutputStream(os);
     zip.putNextEntry(new ZipEntry("wettkampf.csv"));
     zip.write((getHeader[Wettkampf] + "\n" + getValues(wettkampf)).getBytes("utf-8"))
@@ -330,6 +361,31 @@ object ResourceExchanger extends KutuService with RiegenBuilder {
     }
     zip.closeEntry()
 
+    val competitionDir = new java.io.File(Config.homedir + "/" + wettkampf.easyprint.replace(" ", "_"))
+    
+    val logofile = PrintUtil.locateLogoFile(competitionDir);
+    zip.putNextEntry(new ZipEntry(logofile.getName));
+    val fis = new FileInputStream(logofile)
+    val bytes = new Array[Byte](1024) //1024 bytes - Buffer size
+    Iterator
+    .continually(fis.read(bytes))
+    .takeWhile(-1 !=)
+    .foreach(read=> zip.write(bytes, 0, read))
+    zip.closeEntry()
+    println("logo was taken " + logofile.getName)
+    
+    if (withSecret && wettkampf.hasSecred(Config.homedir, Config.remoteHostOrigin)) {
+      val secretfile = wettkampf.filePath(Config.homedir, Config.remoteHostOrigin).toFile();
+      zip.putNextEntry(new ZipEntry(secretfile.getName));
+      val fis = new FileInputStream(secretfile)
+      val bytes = new Array[Byte](1024) //1024 bytes - Buffer size
+      Iterator
+      .continually(fis.read(bytes))
+      .takeWhile(-1 !=)
+      .foreach(read=> zip.write(bytes, 0, read))
+      zip.closeEntry()
+      println("secret was taken " + secretfile.getName)
+    }
     zip.finish()
     zip.close()
   }
