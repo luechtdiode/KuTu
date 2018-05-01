@@ -202,7 +202,7 @@ object PrintUtil {
           val in = new FileInputStream(file)
           val imagedata = try {
             val buffer = Source.fromInputStream(in).mkString;
-            "data:image/svg+xml;base64," + Base64.getMimeEncoder().encodeToString(buffer.getBytes())
+            "data:image/svg+xml;base64," + Base64.getEncoder().encodeToString(buffer.getBytes())
           } finally {
             in.close
           }
@@ -211,19 +211,19 @@ object PrintUtil {
         val imageBuffer = ImageIO.read(file)
         val output = new ByteArrayOutputStream()
         ImageIO.write(imageBuffer, "png", output)
-        val imagedata = "data:image/png;base64," + Base64.getMimeEncoder().encodeToString(output.toByteArray())
+        val imagedata = "data:image/png;base64," + Base64.getEncoder().encodeToString(output.toByteArray())
         imagedata
       } else if(file.getName.endsWith("jpg")) {
         val imageBuffer = ImageIO.read(file)
         val output = new ByteArrayOutputStream()
         ImageIO.write(imageBuffer, "jpg", output)
-        val imagedata = "data:image/jpg;base64," + Base64.getMimeEncoder().encodeToString(output.toByteArray())
+        val imagedata = "data:image/jpg;base64," + Base64.getEncoder().encodeToString(output.toByteArray())
         imagedata
       } else if(file.getName.endsWith("jpeg")) {
         val imageBuffer = ImageIO.read(file)
         val output = new ByteArrayOutputStream()
         ImageIO.write(imageBuffer, "jpeg", output)
-        val imagedata = "data:image/jpeg;base64," + Base64.getMimeEncoder().encodeToString(output.toByteArray())
+        val imagedata = "data:image/jpeg;base64," + Base64.getEncoder().encodeToString(output.toByteArray())
         imagedata        
       } else {
         file.toURI.toString
