@@ -93,8 +93,8 @@ import ch.seidel.kutu.domain.SexDivideRule
 import ch.seidel.kutu.domain.WettkampfView
 import ch.seidel.kutu.domain.str2Int
 import ch.seidel.kutu.Config._
-import ch.seidel.kutu.renderer.KampfrichterQRCode
-import ch.seidel.kutu.renderer.KampfrichterQRCodesToHtmlRenderer
+import ch.seidel.kutu.renderer.WertungsrichterQRCode
+import ch.seidel.kutu.renderer.WertungsrichterQRCodesToHtmlRenderer
 import ch.seidel.kutu.renderer.PrintUtil
 import ch.seidel.kutu.renderer.PrintUtil.FilenameDefault
 import ch.seidel.kutu.renderer.RiegenBuilder
@@ -1084,19 +1084,19 @@ class RiegenTab(wettkampf: WettkampfView, override val service: KutuService) ext
     }
 
     def makeRiegenQRCodesExport(): MenuItem = {
-      val m = KuTuApp.makeMenuAction("QR-Codes für Kamprichter erstellen") {(caption: String, action: ActionEvent) =>
+      val m = KuTuApp.makeMenuAction("QR-Codes für Wertungsrichter erstellen") {(caption: String, action: ActionEvent) =>
         
         val seriendaten = RiegenBuilder.mapToGeraeteRiegen(service.getAllKandidatenWertungen(wettkampf.uuid.map(UUID.fromString(_)).get).toList)
               .filter(gr => gr.durchgang.nonEmpty && gr.disziplin.nonEmpty) 
-              .map(KampfrichterQRCode.toMobileConnectData(wettkampf, remoteBaseUrl))
+              .map(WertungsrichterQRCode.toMobileConnectData(wettkampf, remoteBaseUrl))
               .toSet.toList
-        val filename = "KampfrichterConnectQRCodes_" + wettkampf.easyprint.replace(" ", "_") + ".html"
+        val filename = "WertungsrichterConnectQRCodes_" + wettkampf.easyprint.replace(" ", "_") + ".html"
         val dir = new java.io.File(homedir + "/" + wettkampf.easyprint.replace(" ", "_"))
         if(!dir.exists()) {
           dir.mkdirs();
         }
         val logofile = PrintUtil.locateLogoFile(dir)
-        def generate(lpp: Int) = (new Object with KampfrichterQRCodesToHtmlRenderer).toHTML(seriendaten.sortBy(_.uri), logofile)
+        def generate(lpp: Int) = (new Object with WertungsrichterQRCodesToHtmlRenderer).toHTML(seriendaten.sortBy(_.uri), logofile)
         PrintUtil.printDialog(text.value, FilenameDefault(filename, dir), false, generate, orientation = PageOrientation.Portrait)(action)
       }
       m

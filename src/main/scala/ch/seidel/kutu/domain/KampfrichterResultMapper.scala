@@ -3,14 +3,14 @@ package ch.seidel.kutu.domain
 import slick.jdbc.PositionedResult
 import slick.jdbc.GetResult
 
-trait KampfrichterResultMapper extends VereinResultMapper {
+trait WertungsrichterResultMapper extends VereinResultMapper {
       
-  implicit val getKampfrichterResult = GetResult(r =>
-    Kampfrichter(r.<<, r.<<, r.<<, r.<<, r.<<, r.<<, r.<<, r.<<, r.<<, r.<<, r.<<))
+  implicit val getWertungsrichterResult = GetResult(r =>
+    Wertungsrichter(r.<<, r.<<, r.<<, r.<<, r.<<, r.<<, r.<<, r.<<, r.<<, r.<<, r.<<))
     
-  implicit val getKampfrichterViewResult = GetResult(r =>
+  implicit val getWertungsrichterViewResult = GetResult(r =>
     //id |js_id |geschlecht |name |vorname   |gebdat |strasse |plz |ort |activ |verein |id |name        |
-    KampfrichterView(
+    WertungsrichterView(
         id = r.<<,
         js_id = r.<<,
         geschlecht = r.<<,
@@ -23,8 +23,8 @@ trait KampfrichterResultMapper extends VereinResultMapper {
         activ = r.<<,
         verein = r))
         
-  implicit val getKampfrichterOptionResult = GetResult(r => r.nextLongOption() match {
-    case Some(id) => Some(KampfrichterView(id, js_id = r.<<,
+  implicit val getWertungsrichterOptionResult = GetResult(r => r.nextLongOption() match {
+    case Some(id) => Some(WertungsrichterView(id, js_id = r.<<,
                                           geschlecht = r.<<,
                                           name = r.<<,
                                           vorname = r.<<,

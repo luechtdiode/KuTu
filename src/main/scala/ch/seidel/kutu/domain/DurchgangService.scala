@@ -17,7 +17,7 @@ trait DurchgangService extends DBService with DurchgangResultMapper {
 
   def selectDurchgangstationen(wettkampfId: Long) = {
     Await.result(database.run{(
-       sql"""select r.wettkampf_id, r.durchgang, r.d_kampfrichter1, r.e_kampfrichter1, r.d_kampfrichter2, r.e_kampfrichter2, d.*
+       sql"""select r.wettkampf_id, r.durchgang, r.d_Wertungsrichter1, r.e_Wertungsrichter1, r.d_Wertungsrichter2, r.e_Wertungsrichter2, d.*
              from durchgangstation r
              inner join disziplin d on (r.start = d.id)
              where wettkampf_id=$wettkampfId
@@ -29,10 +29,10 @@ trait DurchgangService extends DBService with DurchgangResultMapper {
     Await.result(database.run{(
        sql"""select r.wettkampf_id, r.durchgang, d1.*, e1.*, d2.*, e2.*, d.*
              from durchgangstation r
-             left outer join kampfrichter d1 on (r.d_kampfrichter1 = d.id)
-             left outer join kampfrichter e1 on (r.e_kampfrichter1 = d.id)
-             left outer join kampfrichter d2 on (r.d_kampfrichter2 = d.id)
-             left outer join kampfrichter e2 on (r.e_kampfrichter2 = d.id)
+             left outer join Wertungsrichter d1 on (r.d_Wertungsrichter1 = d.id)
+             left outer join Wertungsrichter e1 on (r.e_Wertungsrichter1 = d.id)
+             left outer join Wertungsrichter d2 on (r.d_Wertungsrichter2 = d.id)
+             left outer join Wertungsrichter e2 on (r.e_Wertungsrichter2 = d.id)
              inner join disziplin d on (r.start = d.id)
              where wettkampf_id=$wettkampfId
           """.as[DurchgangstationView]).withPinnedSession

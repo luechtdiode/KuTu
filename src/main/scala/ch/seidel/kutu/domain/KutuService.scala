@@ -8,7 +8,7 @@ trait KutuService extends DBService
   with WettkampfService 
   with RiegenService
   with DurchgangService
-  with KampfrichterService {
+  with WertungsrichterService {
   private val logger = LoggerFactory.getLogger(this.getClass)
   
 }

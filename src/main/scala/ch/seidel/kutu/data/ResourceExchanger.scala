@@ -164,6 +164,10 @@ object ResourceExchanger extends KutuService with RiegenBuilder {
       new ZipEntryTraversableClass().foreach{entry =>
         if (entry._1.getName.startsWith("logo")) {
           val filename = entry._1.getName
+          val logodir = new java.io.File(Config.homedir + "/" + wettkampf.easyprint.replace(" ", "_"))
+          if (!logodir.exists()) {
+            logodir.mkdir()
+          }
           val logofile = new java.io.File(Config.homedir + "/" + wettkampf.easyprint.replace(" ", "_") + "/" + filename)
           val fos = new FileOutputStream(logofile)
           val bytes = new Array[Byte](1024) //1024 bytes - Buffer size

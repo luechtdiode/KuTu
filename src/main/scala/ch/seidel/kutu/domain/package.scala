@@ -158,23 +158,23 @@ package object domain {
     def toAthlet = Athlet(id, js_id, geschlecht, name, vorname, gebdat, strasse, plz, ort, verein.map(_.id), activ)
   }
 
-  object Kampfrichter {
-    def apply(): Kampfrichter = Kampfrichter(0, 0, "", "", "", None, "", "", "", None, true)
+  object Wertungsrichter {
+    def apply(): Wertungsrichter = Wertungsrichter(0, 0, "", "", "", None, "", "", "", None, true)
   }
-  case class Kampfrichter(id: Long, js_id: Int, geschlecht: String, name: String, vorname: String, gebdat: Option[java.sql.Date], strasse: String, plz: String, ort: String, verein: Option[Long], activ: Boolean) extends DataObject {
-    override def easyprint = "Kampfrichter " + name
+  case class Wertungsrichter(id: Long, js_id: Int, geschlecht: String, name: String, vorname: String, gebdat: Option[java.sql.Date], strasse: String, plz: String, ort: String, verein: Option[Long], activ: Boolean) extends DataObject {
+    override def easyprint = "Wertungsrichter " + name
   }
-  case class KampfrichterView(id: Long, js_id: Int, geschlecht: String, name: String, vorname: String, gebdat: Option[java.sql.Date], strasse: String, plz: String, ort: String, verein: Option[Verein], activ: Boolean) extends DataObject {
+  case class WertungsrichterView(id: Long, js_id: Int, geschlecht: String, name: String, vorname: String, gebdat: Option[java.sql.Date], strasse: String, plz: String, ort: String, verein: Option[Verein], activ: Boolean) extends DataObject {
     override def easyprint = name + " " + vorname + " " + (gebdat match {case Some(d) => f"$d%tY "; case _ => " "}) + (verein match {case Some(v) => v.easyprint; case _ => ""})
-    def toKampfrichter = Kampfrichter(id, js_id, geschlecht, name, vorname, gebdat, strasse, plz, ort, verein.map(_.id), activ)
+    def toWertungsrichter = Wertungsrichter(id, js_id, geschlecht, name, vorname, gebdat, strasse, plz, ort, verein.map(_.id), activ)
   }
   
-  case class Durchgangstation(wettkampfId: Long, durchgang: String, d_kampfrichter1: Option[Long], e_kampfrichter1: Option[Long], d_kampfrichter2: Option[Long], e_kampfrichter2: Option[Long], geraet: Disziplin) extends DataObject {
+  case class Durchgangstation(wettkampfId: Long, durchgang: String, d_Wertungsrichter1: Option[Long], e_Wertungsrichter1: Option[Long], d_Wertungsrichter2: Option[Long], e_Wertungsrichter2: Option[Long], geraet: Disziplin) extends DataObject {
     override def easyprint = toString
   }
-  case class DurchgangstationView(wettkampfId: Long, durchgang: String, d_kampfrichter1: Option[KampfrichterView], e_kampfrichter1: Option[KampfrichterView], d_kampfrichter2: Option[KampfrichterView], e_kampfrichter2: Option[KampfrichterView], geraet: Disziplin) extends DataObject {
+  case class DurchgangstationView(wettkampfId: Long, durchgang: String, d_Wertungsrichter1: Option[WertungsrichterView], e_Wertungsrichter1: Option[WertungsrichterView], d_Wertungsrichter2: Option[WertungsrichterView], e_Wertungsrichter2: Option[WertungsrichterView], geraet: Disziplin) extends DataObject {
     override def easyprint = toString
-    def toDurchgangstation = Durchgangstation(wettkampfId, durchgang, d_kampfrichter1.map(_.id), e_kampfrichter1.map(_.id), d_kampfrichter2.map(_.id), e_kampfrichter2.map(_.id), geraet)
+    def toDurchgangstation = Durchgangstation(wettkampfId, durchgang, d_Wertungsrichter1.map(_.id), e_Wertungsrichter1.map(_.id), d_Wertungsrichter2.map(_.id), e_Wertungsrichter2.map(_.id), geraet)
   }
   
   object AthletJahrgang {

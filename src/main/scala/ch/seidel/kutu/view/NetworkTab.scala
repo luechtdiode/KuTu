@@ -350,7 +350,7 @@ class NetworkTab(wettkampf: WettkampfView, override val service: KutuService) ex
     process.onComplete{resultTry =>
       Platform.runLater{ 
         val feedback = resultTry match {
-          case Success(response) => 
+          case Success(response) =>
             KuTuApp.selectedWettkampfSecret.value = wettkampf.toWettkampf.readSecret(homedir, remoteHostOrigin)
             s"Der Wettkampf ${wettkampf.easyprint} wurde erfolgreich im Netzwerk bereitgestellt"
           case Failure(error) => error.getMessage.replace("(", "(\n")
@@ -446,8 +446,28 @@ class NetworkTab(wettkampf: WettkampfView, override val service: KutuService) ex
     val connectAndShareMenu = KuTuApp.makeConnectAndShareMenu(wettkampf)
     
     val uploadMenu: MenuItem = {
-      val item = makeMenuAction("Resultate bereitstellen") {(caption, action) =>
-        uploadResults(caption)        
+      val item = makeMenuAction("Upload") {(caption, action) =>
+        implicit val e = action
+        PageDisplayer.showInDialog(caption, new DisplayablePage() {
+          def getPage: Node = {
+            new BorderPane {
+              hgrow = Priority.Always
+              vgrow = Priority.Always
+              center = new VBox {
+                if (wettkampf.toWettkampf.hasSecred(homedir, remoteHostOrigin)) {
+                  children.addAll(new Label("Die Resultate zu diesem Wettkampf werden im Netzwerk hochgeladen und\nersetzen dort die Resultate, die zu diesem Wettkampf erfasst wurden."))
+                } else {
+                  children.addAll(new Label("Die Resultate zu diesem Wettkampf werden neu im Netzwerk bereitgestellt."))
+                }
+              }
+            }
+          }
+        },
+        new Button("OK") {
+          onAction = handleAction {implicit e: ActionEvent =>
+            uploadResults(caption)
+          }
+        })
       }
       item.disable <== when(Bindings.createBooleanBinding(() => 
         

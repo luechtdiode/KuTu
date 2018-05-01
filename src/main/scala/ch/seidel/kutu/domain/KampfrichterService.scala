@@ -12,89 +12,89 @@ import slick.jdbc.SQLiteProfile
 import slick.jdbc.SQLiteProfile.api._
 import scala.collection.JavaConverters
 
-trait KampfrichterService extends DBService with KampfrichterResultMapper {
+trait WertungsrichterService extends DBService with WertungsrichterResultMapper {
   private val logger = LoggerFactory.getLogger(this.getClass)
 
-  def createOrUpdateKampfrichter(kampfrichter: Kampfrichter): Kampfrichter = {
-    def getId: Option[Long] = kampfrichter.gebdat match {
+  def createOrUpdateWertungsrichter(Wertungsrichter: Wertungsrichter): Wertungsrichter = {
+    def getId: Option[Long] = Wertungsrichter.gebdat match {
       case Some(gebdat) =>
          Await.result(database.run{sql"""
-                  select max(kampfrichter.id) as maxid
-                  from kampfrichter
-                  where name=${kampfrichter.name} and vorname=${kampfrichter.vorname} and strftime('%Y', gebdat)=strftime('%Y',${gebdat}) and verein=${kampfrichter.verein}
+                  select max(Wertungsrichter.id) as maxid
+                  from Wertungsrichter
+                  where name=${Wertungsrichter.name} and vorname=${Wertungsrichter.vorname} and strftime('%Y', gebdat)=strftime('%Y',${gebdat}) and verein=${Wertungsrichter.verein}
          """.as[Long].headOption}, Duration.Inf)
       case _ =>
          Await.result(database.run{sql"""
-                  select max(kampfrichter.id) as maxid
-                  from kampfrichter
-                  where name=${kampfrichter.name} and vorname=${kampfrichter.vorname} and verein=${kampfrichter.verein}
+                  select max(Wertungsrichter.id) as maxid
+                  from Wertungsrichter
+                  where name=${Wertungsrichter.name} and vorname=${Wertungsrichter.vorname} and verein=${Wertungsrichter.verein}
          """.as[Long].headOption}, Duration.Inf)
     }
 
-    if (kampfrichter.id == 0) {
+    if (Wertungsrichter.id == 0) {
       getId match {
         case Some(id) if(id > 0) =>
           Await.result(database.run{
             sqlu"""
-                  replace into kampfrichter
+                  replace into Wertungsrichter
                   (id, js_id, geschlecht, name, vorname, gebdat, strasse, plz, ort, verein, activ)
-                  values (${id}, ${kampfrichter.js_id}, ${kampfrichter.geschlecht}, ${kampfrichter.name}, ${kampfrichter.vorname}, 
-                                 ${kampfrichter.gebdat}, ${kampfrichter.strasse}, ${kampfrichter.plz}, ${kampfrichter.ort}, ${kampfrichter.verein}, 
-                                 ${kampfrichter.activ})
+                  values (${id}, ${Wertungsrichter.js_id}, ${Wertungsrichter.geschlecht}, ${Wertungsrichter.name}, ${Wertungsrichter.vorname}, 
+                                 ${Wertungsrichter.gebdat}, ${Wertungsrichter.strasse}, ${Wertungsrichter.plz}, ${Wertungsrichter.ort}, ${Wertungsrichter.verein}, 
+                                 ${Wertungsrichter.activ})
             """ >>
-            sql"""select * from kampfrichter where id = ${id}""".as[Kampfrichter].head
+            sql"""select * from Wertungsrichter where id = ${id}""".as[Wertungsrichter].head
           }, Duration.Inf)
         case _ =>
           Await.result(database.run{
             sqlu"""
-                  replace into kampfrichter
+                  replace into Wertungsrichter
                   (js_id, geschlecht, name, vorname, gebdat, strasse, plz, ort, verein, activ)
-                  values (${kampfrichter.js_id}, ${kampfrichter.geschlecht}, ${kampfrichter.name}, ${kampfrichter.vorname}, ${kampfrichter.gebdat}, ${kampfrichter.strasse}, ${kampfrichter.plz}, ${kampfrichter.ort}, ${kampfrichter.verein}, ${kampfrichter.activ})
+                  values (${Wertungsrichter.js_id}, ${Wertungsrichter.geschlecht}, ${Wertungsrichter.name}, ${Wertungsrichter.vorname}, ${Wertungsrichter.gebdat}, ${Wertungsrichter.strasse}, ${Wertungsrichter.plz}, ${Wertungsrichter.ort}, ${Wertungsrichter.verein}, ${Wertungsrichter.activ})
             """ >>
-            sql"""select * from kampfrichter where id = (select max(kampfrichter.id) from kampfrichter)""".as[Kampfrichter].head
+            sql"""select * from Wertungsrichter where id = (select max(Wertungsrichter.id) from Wertungsrichter)""".as[Wertungsrichter].head
           }, Duration.Inf)
       }
     }
     else {
       Await.result(database.run{
         sqlu"""
-                  replace into kampfrichter
+                  replace into Wertungsrichter
                   (id, js_id, geschlecht, name, vorname, gebdat, strasse, plz, ort, verein, activ)
-                  values (${kampfrichter.id}, ${kampfrichter.js_id}, ${kampfrichter.geschlecht}, ${kampfrichter.name}, ${kampfrichter.vorname}, ${kampfrichter.gebdat}, ${kampfrichter.strasse}, ${kampfrichter.plz}, ${kampfrichter.ort}, ${kampfrichter.verein}, ${kampfrichter.activ})
+                  values (${Wertungsrichter.id}, ${Wertungsrichter.js_id}, ${Wertungsrichter.geschlecht}, ${Wertungsrichter.name}, ${Wertungsrichter.vorname}, ${Wertungsrichter.gebdat}, ${Wertungsrichter.strasse}, ${Wertungsrichter.plz}, ${Wertungsrichter.ort}, ${Wertungsrichter.verein}, ${Wertungsrichter.activ})
           """
       }, Duration.Inf)
-      kampfrichter
+      Wertungsrichter
     }
   }
   
-  def selectKampfrichter = {
-    sql"""          select * from kampfrichter""".as[Kampfrichter]
+  def selectWertungsrichter = {
+    sql"""          select * from Wertungsrichter""".as[Wertungsrichter]
   }
   
-  def selectKampfrichterOfVerein(id: Long) = {
+  def selectWertungsrichterOfVerein(id: Long) = {
     Await.result(database.run{
-      sql"""        select * from kampfrichter
+      sql"""        select * from Wertungsrichter
                     where verein=${id}
                     order by activ desc, name, vorname asc
-       """.as[Kampfrichter]
+       """.as[Wertungsrichter]
     }, Duration.Inf).toList
   }
   
   /**
    * id |js_id |geschlecht |name |vorname   |gebdat |strasse |plz |ort |activ |verein |id |name        |
    */
-  def selectKampfrichterView = {
+  def selectWertungsrichterView = {
     Await.result(database.run{
-      sql"""        select a.id, a.js_id, a.geschlecht, a.name, a.vorname, a.gebdat, a.strasse, a.plz, a.ort, a.activ, a.verein, v.* from kampfrichter a inner join verein v on (v.id = a.verein) order by activ desc, name, vorname asc """.as[KampfrichterView]
+      sql"""        select a.id, a.js_id, a.geschlecht, a.name, a.vorname, a.gebdat, a.strasse, a.plz, a.ort, a.activ, a.verein, v.* from Wertungsrichter a inner join verein v on (v.id = a.verein) order by activ desc, name, vorname asc """.as[WertungsrichterView]
     }, Duration.Inf).toList
   }
 
   def deleteKamprichter(kamprichterid: Long) {
     Await.result(database.run{
-      sqlu"""       update durchgangstation set d_kampfrichter1 = 0 where d_kampfrichter1 =${kamprichterid}""" >>
-      sqlu"""       update durchgangstation set e_kampfrichter1 = 0 where e_kampfrichter1 =${kamprichterid}""" >>
-      sqlu"""       update durchgangstation set d_kampfrichter2 = 0 where d_kampfrichter2 =${kamprichterid}""" >>
-      sqlu"""       update durchgangstation set e_kampfrichter2 = 0 where e_kampfrichter2 =${kamprichterid}""" >>
+      sqlu"""       update durchgangstation set d_Wertungsrichter1 = 0 where d_Wertungsrichter1 =${kamprichterid}""" >>
+      sqlu"""       update durchgangstation set e_Wertungsrichter1 = 0 where e_Wertungsrichter1 =${kamprichterid}""" >>
+      sqlu"""       update durchgangstation set d_Wertungsrichter2 = 0 where d_Wertungsrichter2 =${kamprichterid}""" >>
+      sqlu"""       update durchgangstation set e_Wertungsrichter2 = 0 where e_Wertungsrichter2 =${kamprichterid}""" >>
       sqlu"""       delete from kamprichter where id=${kamprichterid}"""
     }, Duration.Inf)
   }

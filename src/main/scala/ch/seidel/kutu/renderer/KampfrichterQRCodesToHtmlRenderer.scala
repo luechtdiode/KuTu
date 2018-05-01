@@ -9,9 +9,9 @@ import net.glxn.qrgen.QRCode
 import net.glxn.qrgen.image.ImageType
 import java.util.UUID
 
-case class KampfrichterQRCode(wettkampfTitle: String, durchgangname: String, geraet: String, uri: String, imageData: String)
+case class WertungsrichterQRCode(wettkampfTitle: String, durchgangname: String, geraet: String, uri: String, imageData: String)
 
-object KampfrichterQRCode {
+object WertungsrichterQRCode {
   val logger = LoggerFactory.getLogger(this.getClass)
   val enc = Base64.getUrlEncoder
   
@@ -24,10 +24,10 @@ object KampfrichterQRCode {
   }
   
   def toMobileConnectData(wettkampf: WettkampfView, baseUrl: String)(gr: GeraeteRiege) =
-    KampfrichterQRCode(wettkampf.titel, gr.durchgang.get, gr.disziplin.get.name, toURI(wettkampf.uuid.get, baseUrl, gr), toQRCodeImage(toURI(wettkampf.uuid.get, baseUrl, gr)))
+    WertungsrichterQRCode(wettkampf.titel, gr.durchgang.get, gr.disziplin.get.name, toURI(wettkampf.uuid.get, baseUrl, gr), toQRCodeImage(toURI(wettkampf.uuid.get, baseUrl, gr)))
 }
 
-trait KampfrichterQRCodesToHtmlRenderer {
+trait WertungsrichterQRCodesToHtmlRenderer {
 
   val intro = """<html>
     <head>
@@ -131,11 +131,11 @@ trait KampfrichterQRCodesToHtmlRenderer {
     </html>
   """
 
-  private def renderedDurchgaenge(geraetCodes: (String, String, Seq[KampfrichterQRCode]), logo: File) = {
+  private def renderedDurchgaenge(geraetCodes: (String, String, Seq[WertungsrichterQRCode]), logo: File) = {
     val logoHtml = if (logo.exists()) s"""<img class=logo src="${logo.imageSrcForWebEngine}" title="Logo"/>""" else ""
     val (wettkampfTitel, geraet, codes) = geraetCodes
     val sorted = codes.sortBy(_.durchgangname)
-    val divided = sorted.take(sorted.size / 2).zipAll(sorted.drop(sorted.size / 2), KampfrichterQRCode("", "", "", "", ""), KampfrichterQRCode("", "", "", "", ""))
+    val divided = sorted.take(sorted.size / 2).zipAll(sorted.drop(sorted.size / 2), WertungsrichterQRCode("", "", "", "", ""), WertungsrichterQRCode("", "", "", "", ""))
     val d = divided.map{durchgangspalten =>
       val (d1, d2) = durchgangspalten
       s"""<tr class="turnerRow">
@@ -162,7 +162,7 @@ trait KampfrichterQRCodesToHtmlRenderer {
 
   val fcs = 20
 
-  def toHTML(qrCodes: Seq[KampfrichterQRCode], logo: File): String = {
+  def toHTML(qrCodes: Seq[WertungsrichterQRCode], logo: File): String = {
     import PrintUtil._
     val datenProGeraet = qrCodes.groupBy(_.geraet).map(geraetCodes => {
       val (geraet, codes) = geraetCodes
