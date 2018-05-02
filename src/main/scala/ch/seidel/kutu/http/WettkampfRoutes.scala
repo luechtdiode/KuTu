@@ -241,25 +241,26 @@ trait WettkampfRoutes extends SprayJsonSupport with JsonSupport with JwtSupport 
       } ~
       pathEnd {
         post {
-          onSuccess(wettkampfExistsAsync(wkuuid.toString())) {
-            case exists if (!exists) =>
-              uploadedFile("zip") {
-                case (metadata, file) =>
-                  // do something with the file and file metadata ...
-                  log.info(s"receiving wettkampf: $metadata, $wkuuid")
-                  val is = new FileInputStream(file)
-                  ResourceExchanger.importWettkampf(is)
-                  is.close()
-                  file.delete()
-
-                  val claims = setClaims(wkuuid.toString(), Int.MaxValue)
-                  respondWithHeader(RawHeader(jwtAuthorizationKey, JsonWebToken(jwtHeader, claims, jwtSecretKey))) {
-                    complete(StatusCodes.OK)
-                  }
-              }
-            case _ => 
-              log.warning(s"wettkampf $wkuuid cannot be uploaded twice")
-              complete(StatusCodes.Conflict, s"wettkampf $wkuuid kann nicht mehrfach hochgeladen werden.")
+          withoutRequestTimeout {
+            onSuccess(wettkampfExistsAsync(wkuuid.toString())) {
+              case exists if (!exists) =>
+                uploadedFile("zip") {
+                  case (metadata, file) =>
+                    // do something with the file and file metadata ...
+                    log.info(s"receiving wettkampf: $metadata, $wkuuid")
+                    val is = new FileInputStream(file)
+                    ResourceExchanger.importWettkampf(is)
+                    is.close()
+                    file.delete()
+                    val claims = setClaims(wkuuid.toString(), Int.MaxValue)
+                    respondWithHeader(RawHeader(jwtAuthorizationKey, JsonWebToken(jwtHeader, claims, jwtSecretKey))) {
+                      complete(StatusCodes.OK)
+                    }
+                }
+              case _ => 
+                log.warning(s"wettkampf $wkuuid cannot be uploaded twice")
+                complete(StatusCodes.Conflict, s"wettkampf $wkuuid kann nicht mehrfach hochgeladen werden.")
+            }
           }
         }~
         put {
