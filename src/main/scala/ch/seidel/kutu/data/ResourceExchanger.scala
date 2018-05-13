@@ -20,6 +20,7 @@ import ch.seidel.kutu.Config
 import ch.seidel.kutu.renderer.PrintUtil
 import akka.stream.scaladsl.FileIO
 import java.io.BufferedInputStream
+import akka.actor.ActorRef
 
 /**
  */
@@ -27,11 +28,11 @@ object ResourceExchanger extends KutuService with RiegenBuilder {
   private val logger = LoggerFactory.getLogger(this.getClass)
   private val rm = reflect.runtime.universe.runtimeMirror(getClass.getClassLoader)
 
-  def processWSMessage(refresher: KutuAppEvent=>Unit) = {
+  def processWSMessage[T](refresher: (Option[T], KutuAppEvent)=>Unit) = {
     val cache = new java.util.ArrayList[MatchCode]()
     
-    val opFn: KutuAppEvent=>Unit = {  
-      case uw @ AthletWertungUpdated(athlet, wertung, wettkampfUUID, durchgang, geraet) =>
+    val opFn: (Option[T], KutuAppEvent)=>Unit = {  
+      case (sender, uw @ AthletWertungUpdated(athlet, wertung, wettkampfUUID, durchgang, geraet)) =>
         Future {
           logger.info("received new " + uw)
           val mappedverein = athlet.verein match {case Some(v) => findVereinLike(Verein(id = 0, name = v.name, verband = None)) case _ => None}
@@ -41,17 +42,17 @@ object ResourceExchanger extends KutuService with RiegenBuilder {
           val verifiedWertung = try {
             val vw = updateWertungSimple(mappedWertung, true)
             logger.info("saved " + vw)
-            refresher(uw.copy(wertung = vw))
+            refresher(sender, uw.copy(wertung = vw))
             vw
           } catch {
             case e: Exception =>
               logger.error("not saved!", e)
-              refresher(uw)
+              refresher(sender, uw)
           }
         }
-      case MessageAck(_) => 
-      case someOther => 
-        refresher(someOther)
+      case (sender, MessageAck(_)) => 
+      case (sender, someOther) => 
+        refresher(sender, someOther)
     }
     
     opFn

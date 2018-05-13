@@ -42,11 +42,14 @@ object WebSocketClient extends SprayJsonSupport with JsonSupport with AuthSuppor
   private var connectedIncomingPromise: Option[Promise[Option[Message]]] = None
   val modelWettkampfWertungChanged = new SimpleObjectProperty[KutuAppEvent]()
   
-  def connect(wettkampf: Wettkampf, messageProcessor: KutuAppEvent=>Unit = println, handleError: Throwable=>Unit = println) = {
+  def connect[T](wettkampf: Wettkampf, messageProcessor: (Option[T], KutuAppEvent)=>Unit, handleError: Throwable=>Unit = println) = {
+    val processorWithoutSender = (event: KutuAppEvent)=>{
+      messageProcessor(None, event)
+    }
     import scala.collection.immutable
     val flow: Flow[Message, Message, Promise[Option[Message]]] =
       Flow.fromSinkAndSourceMat(
-        websocketIncomingFlow(handleError).to(Sink.foreach[KutuAppEvent](messageProcessor)),
+        websocketIncomingFlow(handleError).to(Sink.foreach[KutuAppEvent](processorWithoutSender)),
         websocketOutgoingSource.concatMat(Source.maybe[Message])(Keep.right))(Keep.right)
 
     val promise = websocketClientRequest(

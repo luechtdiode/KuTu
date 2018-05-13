@@ -737,7 +737,7 @@ object KuTuApp extends JFXApp with KutuService with JsonSupport with JwtSupport 
           server.httpUploadWettkampfRequest(p.toWettkampf)
       }
     }.map(response => {
-      (response, WebSocketClient.connect(p.toWettkampf, ResourceExchanger.processWSMessage((event) => {
+      (response, WebSocketClient.connect(p.toWettkampf, ResourceExchanger.processWSMessage((sender: Object, event: KutuAppEvent) => {
         Platform.runLater{
           WebSocketClient.modelWettkampfWertungChanged.setValue(event)
         }

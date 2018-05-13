@@ -48,7 +48,7 @@ class CompetitionCoordinatorClientActor(wettkampfUUID: String) extends Actor wit
   var startStopEvents: List[KutuAppEvent] = List.empty
   
   private def deviceIdOf(actor: ActorRef) = deviceWebsocketRefs.filter(_._2 == actor).map(_._1)
-  private def actorWithSameDeviceIdOfSender = deviceWebsocketRefs.filter(p => sender.path.name.endsWith(p._1)).map(_._2)
+  private def actorWithSameDeviceIdOfSender(originSender: ActorRef = sender) = deviceWebsocketRefs.filter(p => originSender.path.name.endsWith(p._1)).map(_._2)
   
   // send keepalive messages to prevent closing the websocket connection
   private case object KeepAlive
@@ -105,7 +105,7 @@ class CompetitionCoordinatorClientActor(wettkampfUUID: String) extends Actor wit
       sender ! eventDurchgangFinished
       
     case uw @ UpdateAthletWertung(athlet, wertung, wettkampfUUID, durchgang, geraet, step) =>
-      val senderWebSocket = actorWithSameDeviceIdOfSender
+      val senderWebSocket = actorWithSameDeviceIdOfSender()
       if (finishedDurchgangSteps.exists(fds => encodeURIComponent(fds.durchgang) == encodeURIComponent(durchgang) && fds.geraet == geraet && fds.step == step+1)) {
         sender ! MessageAck("Diese Station ist bereits abgeschlossen und kann keine neuen Resultate mehr entgegennehmen.")
       } else if (!startedDurchgaenge.exists(d => encodeURIComponent(d) == encodeURIComponent(durchgang))) {
@@ -129,7 +129,7 @@ class CompetitionCoordinatorClientActor(wettkampfUUID: String) extends Actor wit
           sender ! MessageAck(e.getMessage)
       }
         
-    case awu: AthletWertungUpdated => websocketProcessor(awu)
+    case awu: AthletWertungUpdated => websocketProcessor(Some(sender), awu)
       
     case fds: FinishDurchgangStation =>
       finishedDurchgangSteps += fds
@@ -140,14 +140,14 @@ class CompetitionCoordinatorClientActor(wettkampfUUID: String) extends Actor wit
       sender ! MessageAck("OK")
       
     case Subscribe(ref, deviceId, durchgang) =>
-      val durchgangClients = wsSend.getOrElse(durchgang, List.empty) :+ ref
+      val durchgangNormalized = durchgang.map(encodeURIComponent)
+      val durchgangClients = wsSend.getOrElse(durchgangNormalized, List.empty) :+ ref
       context.watch(ref)
-      wsSend = wsSend + (durchgang -> durchgangClients)
+      wsSend = wsSend + (durchgangNormalized -> durchgangClients)
       deviceWebsocketRefs = deviceWebsocketRefs + (deviceId -> ref)
       ref ! TextMessage("Connection established.")      
       (durchgang match {
-        case Some(dg) => // take last of requested durchgang
-          val dgn = encodeURIComponent(dg)
+        case Some(dgn) => // take last of requested durchgang
           startStopEvents.seq.reverse.filter {
             case DurchgangStarted(w, d, t) => encodeURIComponent(d) == dgn
             case DurchgangFinished(w, d, t) => encodeURIComponent(d) == dgn
@@ -189,14 +189,28 @@ class CompetitionCoordinatorClientActor(wettkampfUUID: String) extends Actor wit
     case _ =>
   }
 
-  def handleWebsocketMessages(event: KutuAppEvent) {
+  def handleWebsocketMessages(originSender: Option[ActorRef], event: KutuAppEvent) {
     event match {
       case awuv: AthletWertungUpdated =>
-        val senderWebSocket = actorWithSameDeviceIdOfSender
+        val senderWebSocket = actorWithSameDeviceIdOfSender(originSender.getOrElse(sender))
         val toPublish = TextMessage(event.toJson.compactPrint)
-        wsSend.get(Some(encodeURIComponent(awuv.durchgang))) match {
-          case Some(wsList) => wsList.filter(ws => !senderWebSocket.exists(_ == ws)).foreach(ws => ws ! toPublish)
-          case _ =>
+        if (awuv.durchgang == "") {
+          wsSend.foreach(entry => {
+            val (dgoption, actors) = entry
+            wsSend.get(dgoption) match {
+              case Some(wsList) => wsList.filter(ws => !senderWebSocket.exists(_ == ws)).foreach(ws => ws ! toPublish)
+              case _ =>
+            }
+          })
+        } else {
+          wsSend.get(Some(encodeURIComponent(awuv.durchgang))) match {
+            case Some(wsList) => wsList.filter(ws => !senderWebSocket.exists(_ == ws)).foreach(ws => ws ! toPublish)
+            case _ =>
+          }
+          wsSend.get(None) match {
+            case Some(wsList) => wsList.filter(ws => !senderWebSocket.exists(_ == ws)).foreach(ws => ws ! toPublish)
+            case _ =>
+          }
         }
       case _ =>
     }
