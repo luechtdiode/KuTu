@@ -7,7 +7,7 @@ import org.slf4j.LoggerFactory
 
 object RiegenBuilder {
   val logger = LoggerFactory.getLogger(this.getClass)
-  def mapToGeraeteRiegen(kandidaten: Seq[Kandidat], printorder: Boolean = false): List[GeraeteRiege] = {
+  def mapToGeraeteRiegen(kandidaten: Seq[Kandidat], printorder: Boolean = false, groupByProgramm: Boolean = true): List[GeraeteRiege] = {
 
     def pickStartformationen(geraete: Seq[(Option[Disziplin], Seq[Riege])], durchgang: Option[String], extractKandidatEinteilung: Kandidat => (Option[Riege], Seq[Disziplin])) = {
       geraete.flatMap{s =>
@@ -24,7 +24,7 @@ object RiegenBuilder {
               einteilung.start.equals(startdisziplin) &&
               diszipline.map(_.id).contains(disziplin.map(_.id).getOrElse(0))
             case None => false
-          })}.sortBy { x => x.verein + x.jahrgang}
+          })}.sortBy { x => (if (groupByProgramm) x.programm else "") + x.verein + x.jahrgang}
           
           val completed = tuti.
             flatMap(k => k.wertungen).
