@@ -150,18 +150,16 @@ export class BackendService extends WebsocketService {
     localStorage.removeItem('current_station');
     this.checkJWT();
     this.stationFreezed = false;
-  }
-
-  logout() {
-    localStorage.removeItem('auth_token');
-    localStorage.removeItem('current_station');
-    this.checkJWT();
-    this.stationFreezed = false;
-    this._competition = undefined;
+    // this._competition = undefined;
     this._durchgang = undefined;
     this._geraet = undefined;
     this._step = undefined;    
     this.getCompetitions();
+  }
+
+  logout() {
+    localStorage.removeItem('auth_token');
+    this.unlock();
   }
 
   getCompetitions() {
@@ -284,7 +282,8 @@ export class BackendService extends WebsocketService {
     return result;
   }
 
-  finishStation(competitionId: string, durchgang: string, step: number, geraetId: number) {
+  finishStation(competitionId: string, durchgang: string, geraetId: number, step: number): Observable<number[]> {
+    const result = new Subject<number[]>();
     this.http.post<MessageAck>(backendUrl + 'api/durchgang/' + competitionId + '/finish', <FinishDurchgangStation>{
       type : "FinishDurchgangStation",
       wettkampfUUID : competitionId,
@@ -293,18 +292,20 @@ export class BackendService extends WebsocketService {
       step : step
     })
     .subscribe((data) => {
-      localStorage.removeItem('current_station');
-      this.checkJWT();
-      this.stationFreezed = false;
       const nextSteps = this.steps.filter(s => s > this._step);
       if (nextSteps.length > 0) {
         this._step = nextSteps[0];
       } else {
+        localStorage.removeItem('current_station');
+        this.checkJWT();
+        this.stationFreezed = false;
         this._step = 1;
       }
       this.loadWertungen();
+      result.next(nextSteps);
     }, (err)=> {
-    });    
+    }); 
+    return result.asObservable();   
   }  
 
   //// Websocket implementations

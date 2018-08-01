@@ -1,5 +1,5 @@
 import { Component } from '@angular/core';
-import { NavController, NavParams } from 'ionic-angular';
+import { NavController, NavParams, NavOptions } from 'ionic-angular';
 import { WertungContainer, Wertung } from '../../app/backend-types';
 import { BackendService } from '../../app/backend.service';
 
@@ -16,6 +16,7 @@ import { BackendService } from '../../app/backend.service';
 })
 export class WertungEditorPage {
   private itemOriginal: WertungContainer;
+  private items: WertungContainer[];
 
   constructor(public navCtrl: NavController, public navParams: NavParams, public backendService: BackendService) {
       // If we navigated to this page, we will have an item available as a nav param
@@ -62,6 +63,27 @@ export class WertungEditorPage {
     });
   }
   
+  saveNext(wertung: Wertung) {
+    this.backendService.updateWertung(this.durchgang, this.step, this.geraetId, wertung).subscribe((wc) => {
+      const currentItemIndex = this.backendService.wertungen.findIndex(wc => wc.wertung.id === wertung.id);
+      let nextItemIndex = currentItemIndex + 1;
+      if (currentItemIndex < 0) {
+        nextItemIndex = 0;
+      } else if (currentItemIndex >= this.backendService.wertungen.length-1) {
+        this.save(wertung);
+        return;
+      }
+      const wertungsContainer: WertungContainer = this.backendService.wertungen[nextItemIndex];
+      this.item = Object.assign({}, wertungsContainer);
+      this.itemOriginal = Object.assign({}, wertungsContainer);
+      this.wertung = Object.assign({}, this.itemOriginal.wertung);
+    }, (err) => {
+      this.item = Object.assign({}, this.itemOriginal);
+      this.wertung = Object.assign({}, this.itemOriginal.wertung);
+      console.log(err);      
+    });
+  }
+
   geraetName(): string {
     return this.backendService.geraete ? this.backendService.geraete.find(g => g.id === this.geraetId).name : '';
   }

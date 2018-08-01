@@ -38,7 +38,9 @@
   <ion-toolbar>
       <ion-list>
           <button *ngIf='editable()' ion-button large block icon-left color="secondary" (click)='save(wertung)' type="submit">
-              <ion-icon name="checkmark-circle"></ion-icon>Save</button>
-      </ion-list>
+            <ion-icon name="checkmark-circle"></ion-icon>Speichern</button>
+          <button *ngIf='editable()' ion-button large block icon-left color="favorite" (click)='saveNext(wertung)' type="submit">
+            <ion-icon name="arrow-dropright-circle"></ion-icon>Speichern & Weiter</button>
+        </ion-list>
   </ion-toolbar>
 </ion-footer>

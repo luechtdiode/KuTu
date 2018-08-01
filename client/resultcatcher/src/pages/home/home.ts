@@ -28,6 +28,12 @@ export class HomePage {
   isOpenAndActive() {
     return this.durchgangopen && this.backendService.isWebsocketConnected();
   }
+  isLocked() {
+    return this.backendService.stationFreezed;
+  }
+  unlock() {
+    this.backendService.unlock();
+  }
   set competition(competitionId: string) {
     if(!this.stationFreezed) {
       this.backendService.getDurchgaenge(competitionId);
@@ -120,6 +126,6 @@ export class HomePage {
     return this.backendService.loggedIn;
   }
   finish() {
-    this.backendService.finishStation(this.competition, this.durchgang, this.step, this.geraet);
+    this.backendService.finishStation(this.competition, this.durchgang, this.geraet, this.step);
   }
 }

@@ -64,7 +64,12 @@ export class StationPage {
     return this.backendService.loggedIn;
   }
   finish() {
-    this.backendService.finishStation(this.competition, this.durchgang, this.step, this.geraet);
+    this.backendService.finishStation(this.competition, this.durchgang, this.geraet, this.step)
+    .subscribe(nextSteps => {
+      if (nextSteps.length === 0) {
+        this.navCtrl.pop();
+      }
+    });
   }
   getCompetitions(): Wettkampf[] {
     return this.backendService.competitions;
