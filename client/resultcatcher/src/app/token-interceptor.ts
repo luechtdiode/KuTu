@@ -12,8 +12,6 @@ export class TokenInterceptor implements HttpInterceptor {
 
   constructor() {}
 
-  accessToken: string;
-
   intercept(request: HttpRequest<any>, next: HttpHandler): Observable<HttpEvent<any>> {
     request = request.clone({
       setHeaders: {

@@ -7,7 +7,12 @@
     <button ion-button menuToggle>
       <ion-icon name="menu"></ion-icon>
     </button>
-    <ion-title>Resultaterfassung&nbsp;-&nbsp;<ion-note item-end>{{durchgangstate()}}</ion-note></ion-title>
+    <div *ngIf="!isLoggedIn()">
+      <ion-title>Resultate</ion-title>
+    </div>
+    <div *ngIf="isLoggedIn()">
+      <ion-title>Resultaterfassung&nbsp;-&nbsp;<ion-note item-end>{{durchgangstate()}}</ion-note></ion-title>
+    </div>
     
   </ion-navbar>
 </ion-header>

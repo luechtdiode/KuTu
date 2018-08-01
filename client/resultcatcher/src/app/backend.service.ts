@@ -1,11 +1,11 @@
 import { Injectable } from '@angular/core';
-import { HttpClient, HttpHeaders } from '@angular/common/http';
+import { HttpClient, HttpHeaders, HttpErrorResponse } from '@angular/common/http';
 import { backendUrl } from './utils';
 import { WertungContainer, Geraet, Wettkampf, Wertung, MessageAck, AthletWertungUpdated, DurchgangStarted, DurchgangFinished, FinishDurchgangStation } from './backend-types';
 import { Observable } from 'rxjs/Observable';
 import { Subject } from 'rxjs/Subject';
 import { Subscription, BehaviorSubject } from 'rxjs';
-import { tokenNotExpired } from 'angular2-jwt';
+//import { tokenNotExpired } from 'angular2-jwt';
 import { interval } from 'rxjs/observable/interval';
 import { WebsocketService, encodeURIComponent2 } from './websocket.service';
 
@@ -42,10 +42,12 @@ export class BackendService extends WebsocketService {
     return this._step;
   }
 
+  private lastJWTChecked = 0;
+
   constructor(public http: HttpClient) {
     super();
     this.externalLoaderSubscription = interval(1000).subscribe(latest => {
-      this.loggedIn = this.checkJWT();
+      this.checkJWT();
       const initWith = localStorage.getItem("external_load");
       if (initWith) {
         this.initWithQuery(initWith);
@@ -63,7 +65,7 @@ export class BackendService extends WebsocketService {
         switch (key) {
           case 's':
             localStorage.setItem('auth_token', value);
-            this.loggedIn = this.checkJWT();
+            this.checkJWT();
             break;
           case 'c':
             this._competition = value;
@@ -93,8 +95,31 @@ export class BackendService extends WebsocketService {
     }
   }
 
-  private checkJWT(): boolean {
-    return tokenNotExpired('auth_token');
+  private checkJWT() {
+    const now = new Date();
+    const oneHourAgo = now.getTime() - 3600000;
+    if (oneHourAgo < this.lastJWTChecked) {
+      return;
+    }
+    if(!localStorage.getItem('auth_token')) {
+      this.loggedIn = false;
+      return;
+    }
+    this.http.options(backendUrl + 'api/isTokenExpired', { 
+      observe: 'response', 
+      responseType: 'text'
+    }).subscribe((data) => {
+      console.log(data);
+      localStorage.setItem('auth_token', data.headers.get('x-access-token'));
+      this.loggedIn = true;
+    }, (err: HttpErrorResponse) => {
+      console.log(err);
+      if (err.status === 401) {
+        localStorage.removeItem('auth_token');
+        this.loggedIn = false;
+      }
+    });
+    this.lastJWTChecked = new Date().getTime();
   }
 
   login(username, password) {
@@ -107,24 +132,24 @@ export class BackendService extends WebsocketService {
     }).subscribe((data) => {
       console.log(data);
       localStorage.setItem('auth_token', data.headers.get('x-access-token'));
-      this.loggedIn = this.checkJWT();
+      this.loggedIn =true;
     }, (err) => {
       console.log(err);
       localStorage.removeItem('auth_token');
-      this.loggedIn = this.checkJWT();
+      this.loggedIn = false;
     });
   }
   
   unlock() {
     localStorage.removeItem('current_station');
-    this.loggedIn = this.checkJWT();
+    this.checkJWT();
     this.stationFreezed = false;
   }
 
   logout() {
     localStorage.removeItem('auth_token');
     localStorage.removeItem('current_station');
-    this.loggedIn = this.checkJWT();
+    this.checkJWT();
     this.stationFreezed = false;
     this._competition = undefined;
     this._durchgang = undefined;
@@ -242,8 +267,12 @@ export class BackendService extends WebsocketService {
         this.showMessage.next(msg);
         result.error(msg.msg);
       }
-    }, (err)=> {
-      this.showMessage.next(err);
+    }, (err: HttpErrorResponse)=> {
+      const msg = <MessageAck>{
+        msg : err.statusText + ': ' + err.message,
+        type : err.name
+      };
+      this.showMessage.next(msg);
       result.error(err);
     });    
     return result;
@@ -259,7 +288,7 @@ export class BackendService extends WebsocketService {
     })
     .subscribe((data) => {
       localStorage.removeItem('current_station');
-      this.loggedIn = this.checkJWT();
+      this.checkJWT();
       this.stationFreezed = false;
       const nextSteps = this.steps.filter(s => s > this._step);
       if (nextSteps.length > 0) {

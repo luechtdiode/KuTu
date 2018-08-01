@@ -65,8 +65,10 @@
           </ion-item>
         </ion-list>
         <ion-list>
-            <button ion-button large block icon-left color="secondary" (click)="navToStation()" [disabled]="!(geraet && getSteps())">
-                <ion-icon name="create"></ion-icon>Resultate</button>
+            <button *ngIf="!isLoggedIn()" ion-button large block icon-left color="secondary" (click)="navToStation()" [disabled]="!(geraet && getSteps())">
+                <ion-icon name="list"></ion-icon>Resultate</button>
+            <button *ngIf="isLoggedIn()" ion-button large block icon-left color="secondary" (click)="navToStation()" [disabled]="!(geraet && getSteps())">
+              <ion-icon name="create"></ion-icon>Resultate</button>
             <button *ngIf="isLoggedIn() && isOpenAndActive()" ion-button large block icon-left color="green" (click)="finish()" [disabled]="!(geraet && getSteps())">
               <ion-icon name="git-commit"></ion-icon>Eingaben abschliessen</button>          
           </ion-list>

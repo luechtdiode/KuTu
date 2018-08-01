@@ -16,6 +16,9 @@ import java.net.URI
 import java.net.Proxy
 import java.util.Collections
 import scala.collection.JavaConverters
+import java.security.SecureRandom
+import java.security.NoSuchAlgorithmException
+import javax.crypto.KeyGenerator
 
 object Config {
   private val logger = LoggerFactory.getLogger(this.getClass)
@@ -66,8 +69,32 @@ object Config {
     readSecret match {
       case Some(secret) => secret
       case None =>
-        Random.setSeed(Random.nextLong() / System.currentTimeMillis())  
-        val secret = UUID.randomUUID().toString + UUID.randomUUID().toString + UUID.randomUUID().toString + UUID.randomUUID().toString
+        val kgen = try {
+          KeyGenerator.getInstance("AES")
+        } catch {
+          case e: NoSuchAlgorithmException =>
+            throw new RuntimeException("AES key generator should always be available in a Java runtime", e)
+        }
+        val rng = try {
+            SecureRandom.getInstanceStrong()
+        } catch {
+          case e: NoSuchAlgorithmException=> 
+            throw new RuntimeException("No strong secure random available to generate strong AES key", e)
+        }
+        // already throws IllegalParameterException for wrong key sizes
+        kgen.init(512, rng)
+
+        val key = kgen.generateKey().getEncoded
+        
+        val toHex: Array[Byte]=>String = (data) => {
+          val sb = new StringBuilder(data.length * 2)
+          for (b <- data) {
+              sb.append(f"$b%02X")
+          }
+          sb.toString()
+        }
+        
+        val secret = toHex(key)
         saveSecret(secret)
         secret
     }

@@ -198,6 +198,16 @@ trait WettkampfRoutes extends SprayJsonSupport with JsonSupport with JwtSupport 
 
   lazy val wettkampfRoutes: Route = {
     extractClientIP { ip =>
+    path("isTokenExpired") {
+      pathEnd {
+        authenticated() { wettkampfUUID =>
+          val claims = setClaims(wettkampfUUID.toString(), jwtTokenExpiryPeriodInDays)
+          respondWithHeader(RawHeader(jwtAuthorizationKey, JsonWebToken(jwtHeader, claims, jwtSecretKey))) {
+            complete(StatusCodes.OK)
+          }
+        }
+      }
+    } ~
     path("competition" / "ws") {
       pathEnd {
         authenticated() { wettkampfUUID =>

@@ -51,7 +51,7 @@ export class MyApp {
       this.backendService.showMessage.subscribe(message => {
         let alert = this.alertCtrl.create({
           title: 'Achtung',
-          subTitle: message.msg,
+          subTitle: message.msg || 'Die gewünschte Aktion ist aktuell nicht möglich.',
           buttons: ['OK']
         });
         alert.present();
