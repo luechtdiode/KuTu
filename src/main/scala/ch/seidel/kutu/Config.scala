@@ -82,7 +82,7 @@ object Config {
             throw new RuntimeException("No strong secure random available to generate strong AES key", e)
         }
         // already throws IllegalParameterException for wrong key sizes
-        kgen.init(512, rng)
+        kgen.init(256, rng)
 
         val key = kgen.generateKey().getEncoded
         
