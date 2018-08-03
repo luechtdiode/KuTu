@@ -46,17 +46,22 @@ export class WertungEditorPage {
 
   durchgang: string;
 
+  waiting = false;
+
   editable() {
     return this.backendService.loggedIn
   }
 
   save(wertung: Wertung) {
+    this.waiting = true;
     this.backendService.updateWertung(this.durchgang, this.step, this.geraetId, wertung).subscribe((wc) => {
+      this.waiting = false;
       this.item = Object.assign({}, wc);
       this.itemOriginal = Object.assign({}, wc);
       this.wertung = Object.assign({}, this.itemOriginal.wertung);
       this.navCtrl.pop();
     }, (err) => {
+      this.waiting = false;
       this.item = Object.assign({}, this.itemOriginal);
       this.wertung = Object.assign({}, this.itemOriginal.wertung);
       console.log(err);      
@@ -64,7 +69,9 @@ export class WertungEditorPage {
   }
   
   saveNext(wertung: Wertung) {
+    this.waiting = true;
     this.backendService.updateWertung(this.durchgang, this.step, this.geraetId, wertung).subscribe((wc) => {
+      this.waiting = false;
       const currentItemIndex = this.backendService.wertungen.findIndex(wc => wc.wertung.id === wertung.id);
       let nextItemIndex = currentItemIndex + 1;
       if (currentItemIndex < 0) {
@@ -78,6 +85,7 @@ export class WertungEditorPage {
       this.itemOriginal = Object.assign({}, wertungsContainer);
       this.wertung = Object.assign({}, this.itemOriginal.wertung);
     }, (err) => {
+      this.waiting = false;
       this.item = Object.assign({}, this.itemOriginal);
       this.wertung = Object.assign({}, this.itemOriginal.wertung);
       console.log(err);      
