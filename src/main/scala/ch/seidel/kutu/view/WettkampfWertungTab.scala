@@ -85,6 +85,7 @@ import java.util.concurrent.Executors
 import java.util.concurrent.Callable
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.ScheduledFuture
+import ch.seidel.kutu.KuTuServer
 
 trait TCAccess[R, E, IDX] {
   def getIndex: IDX
@@ -974,7 +975,7 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
     websocketsubscription = Some(WebSocketClient.modelWettkampfWertungChanged.onChange { (_, _, newItem) =>
       if (selected.value) {
         newItem match {
-          case a @ AthletWertungUpdated(_, wertung, _, _, _) =>
+          case a @ AthletWertungUpdated(_, wertung, _, _, _, _) =>
             val tableSelected = if (wkview.focused.value) Some(wkview) else None
             wertungen = wertungen.map{aw => 
               val index = wkModel.indexOf(aw)
@@ -1434,15 +1435,19 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
       minWidth = 75
 
       onAction = (event: ActionEvent) => {
-        val filename = "Bestenliste_" + wettkampf.easyprint.replace(" ", "_") + ".html"
-        val dir = new java.io.File(homedir + "/" + wettkampf.easyprint.replace(" ", "_"))
-        if(!dir.exists()) {
-          dir.mkdirs();
+        if (!WebSocketClient.isConnected) {          
+          val filename = "Bestenliste_" + wettkampf.easyprint.replace(" ", "_") + ".html"
+          val dir = new java.io.File(homedir + "/" + wettkampf.easyprint.replace(" ", "_"))
+          if(!dir.exists()) {
+            dir.mkdirs();
+          }
+          val logofile = PrintUtil.locateLogoFile(dir)
+          
+          def generate(lpp: Int) = toHTMListe(WertungServiceBestenResult.getBestenResults, logofile)
+          PrintUtil.printDialog(text.value,FilenameDefault(filename, dir), false, generate, orientation = PageOrientation.Portrait)(event)
+        } else {
+          Await.result(KuTuServer.finishDurchgangStep(wettkampf), Duration.Inf)          
         }
-        val logofile = PrintUtil.locateLogoFile(dir)
-        
-        def generate(lpp: Int) = toHTMListe(WertungServiceBestenResult.getBestenResults, logofile)
-        PrintUtil.printDialog(text.value,FilenameDefault(filename, dir), false, generate, orientation = PageOrientation.Portrait)(event)
         WertungServiceBestenResult.resetBestenResults
       }
     }

@@ -58,7 +58,11 @@ trait WertungenRoutes extends SprayJsonSupport with JsonSupport with JwtSupport 
         parameters('jwt.as[String]) { (jwt) =>
           authenticateWith(Some(jwt), true) { id =>
             if (id == competitionId.toString) {
-              handleWebSocketMessages(CompetitionCoordinatorClientActor.createActorSinkSource(makeDeviceId(ip), competitionId.toString, Some(durchgang)))
+              if (durchgang.equalsIgnoreCase("all")) {
+                handleWebSocketMessages(CompetitionCoordinatorClientActor.createActorSinkSource(makeDeviceId(ip), competitionId.toString, None))
+              } else {
+                handleWebSocketMessages(CompetitionCoordinatorClientActor.createActorSinkSource(makeDeviceId(ip), competitionId.toString, Some(durchgang)))
+              }
             } else {
               complete(StatusCodes.Unauthorized)
             }
@@ -83,7 +87,29 @@ trait WertungenRoutes extends SprayJsonSupport with JsonSupport with JwtSupport 
             }
           }
         }
-      } ~    
+      } ~
+      path("geraete") { 
+        get {
+           complete { Future {
+             RiegenBuilder.mapToGeraeteRiegen(getAllKandidatenWertungen(competitionId).toList)
+              .filter(gr => gr.disziplin.nonEmpty) 
+              .map(gr => gr.disziplin.get)
+              .foldLeft(List[Disziplin]())((acc, geraet) => if (acc.contains(geraet)) acc else acc :+ geraet)
+            }
+          }
+        }
+      } ~
+      path("diszipline") { 
+        get {
+           complete { Future {
+             RiegenBuilder.mapToGeraeteRiegen(getAllKandidatenWertungen(competitionId).toList)
+              .filter(gr => gr.disziplin.nonEmpty) 
+              .map(gr => gr.disziplin.get)
+              .foldLeft(List[Disziplin]())((acc, geraet) => if (acc.contains(geraet)) acc else acc :+ geraet)
+            }
+          }
+        }
+      } ~
       path(Segments) {segments => 
         get {
           // Durchgang/Geraet/Step
@@ -114,7 +140,7 @@ trait WertungenRoutes extends SprayJsonSupport with JsonSupport with JwtSupport 
                 .flatMap(gr => gr.kandidaten.map(k => 
                   WertungContainer(k.id, k.vorname, k.name, k.geschlecht, k.verein, 
                       k.wertungen.filter(w => w.wettkampfdisziplin.disziplin.id == gid).map(_.toWertung).head, 
-                      gid)))
+                      gid, k.programm)))
               }
             }
           }
@@ -143,7 +169,7 @@ trait WertungenRoutes extends SprayJsonSupport with JsonSupport with JwtSupport 
                             competitionId.toString, 
                             gr.durchgang.get, 
                             gid, 
-                            halt-1))).headOption
+                            halt-1, k.programm))).headOption
                   } else {
                     None
                   }
@@ -159,10 +185,10 @@ trait WertungenRoutes extends SprayJsonSupport with JsonSupport with JwtSupport 
 //                      gid)))                  
                     complete(CompetitionCoordinatorClientActor.publish(wertung).andThen{
                       case Success(w) => w match {
-                        case a @ AthletWertungUpdated(athlet, verifiedWertung, wettkampfUUID, durchgang, geraet) =>
+                        case a @ AthletWertungUpdated(athlet, verifiedWertung, wettkampfUUID, durchgang, geraet, programm) =>
                           val verein: String = athlet.verein.map(_.name).getOrElse("")
                           WertungContainer(athlet.id, athlet.vorname, athlet.name, athlet.geschlecht, verein,
-                              verifiedWertung, geraet)
+                              verifiedWertung, geraet, programm)
                         case _ => StatusCodes.Conflict
                       }
                       case Failure(error) => StatusCodes.Conflict

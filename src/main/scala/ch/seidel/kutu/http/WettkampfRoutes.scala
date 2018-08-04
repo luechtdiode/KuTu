@@ -93,7 +93,16 @@ trait WettkampfRoutes extends SprayJsonSupport with JsonSupport with JwtSupport 
         )
     )
   }
-  
+  def finishDurchgangStep(p: WettkampfView) = {
+    import scala.concurrent.ExecutionContext.Implicits.global
+    import Core.system.dispatcher
+    httpPostClientRequest(s"$remoteAdminBaseUrl/api/competition/${p.uuid.get}/finishedStep",
+        HttpEntity(
+            ContentTypes.`application/json`, 
+            ByteString(FinishDurchgangStep(p.uuid.get).toJson.compactPrint)
+        )
+    )
+  }   
   def finishDurchgang(p: WettkampfView, durchgang: String) = {
     import scala.concurrent.ExecutionContext.Implicits.global
     import Core.system.dispatcher
@@ -240,6 +249,19 @@ trait WettkampfRoutes extends SprayJsonSupport with JsonSupport with JwtSupport 
         post {
           authenticated() { userId =>
             entity(as[FinishDurchgang]) { fd =>
+              if (userId.equals(wkuuid.toString())) {
+                complete(CompetitionCoordinatorClientActor.publish(fd))
+              } else {
+                complete(StatusCodes.Conflict)
+              }
+            }
+          }
+        }
+      } ~
+      path("finishedStep") {
+        post {
+          authenticated() { userId =>
+            entity(as[FinishDurchgangStep]) { fd =>
               if (userId.equals(wkuuid.toString())) {
                 complete(CompetitionCoordinatorClientActor.publish(fd))
               } else {

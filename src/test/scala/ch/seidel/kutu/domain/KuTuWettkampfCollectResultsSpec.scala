@@ -87,7 +87,7 @@ class KuTuWettkampfCollectResultsSpec extends KuTuBaseSpec {
                 testwettkampf.uuid.get, 
                 gr.durchgang.get, 
                 wertung.wettkampfdisziplin.disziplin.id, 
-                0)
+                0, k.programm)
             }
             .map{command => CompetitionCoordinatorClientActor.publish(command)}
           }

@@ -100,6 +100,7 @@ case class DurchgangState(wettkampfUUID: String, name: String, started: Long, co
 object NetworkTab {
   var activeDurchgaenge: Map[WettkampfView, Set[DurchgangState]] = Map.empty
   val activeDurchgaengeProp = new ObjectProperty[Set[DurchgangState]]()
+  val activeDurchgaengeStepFinishedProp = new ObjectProperty[FinishDurchgangStep]()
    
   def startDurchgang(w: WettkampfView, d: DurchgangState, t: Long) = {
     val started = d.start(t)
@@ -109,7 +110,9 @@ object NetworkTab {
     activeDurchgaengeProp.set(activeDurchgaenge.flatMap(x => x._2).toSet)
     started
   }
-  
+  def finishDurchgangStep(w: WettkampfView) = {
+    activeDurchgaengeStepFinishedProp.set(FinishDurchgangStep(w.id));
+  }
   def finishDurchgang(w: WettkampfView, d: DurchgangState, t: Long) = {
     val finished = d.finish(t)
     val newset = activeDurchgaenge.get(w).orElse(Some(Set[DurchgangState]())).get.filter(_ != d) + finished
@@ -330,7 +333,7 @@ class NetworkTab(wettkampf: WettkampfView, override val service: KutuService) ex
       case df: DurchgangFinished =>
         println("refreshing network-dashboard from websocket", newItem) 
         refreshData(Some(df))
-      case AthletWertungUpdated(ahtlet: AthletView, wertung: Wertung, wettkampfUUID: String, durchgang: String, geraet: Long) =>
+      case AthletWertungUpdated(ahtlet: AthletView, wertung: Wertung, wettkampfUUID: String, durchgang: String, geraet: Long, programm: String) =>
         if (selected.value) {
           println("refreshing network-dashboard from websocket", newItem) 
           refreshData()

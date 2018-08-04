@@ -1,5 +1,5 @@
 import { Component } from '@angular/core';
-import { NavController, NavParams, NavOptions } from 'ionic-angular';
+import { NavController, NavParams } from 'ionic-angular';
 import { WertungContainer, Wertung } from '../../app/backend-types';
 import { BackendService } from '../../app/backend.service';
 
@@ -16,7 +16,6 @@ import { BackendService } from '../../app/backend.service';
 })
 export class WertungEditorPage {
   private itemOriginal: WertungContainer;
-  private items: WertungContainer[];
 
   constructor(public navCtrl: NavController, public navParams: NavParams, public backendService: BackendService) {
       // If we navigated to this page, we will have an item available as a nav param

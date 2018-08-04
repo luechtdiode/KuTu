@@ -13,6 +13,10 @@ import { TokenInterceptor } from './token-interceptor';
 import { BackendService } from './backend.service';
 import { WertungEditorPage } from '../pages/wertung-editor/wertung-editor';
 import { StationPage } from '../pages/station/station';
+import { LastResultDetailPage } from '../pages/last-result-detail/last-result-detail';
+import { LastResultsPage } from '../pages/last-results/last-results';
+import { LastTopResultsPage } from '../pages/last-top-results/last-top-results';
+import { ResultDisplayComponent } from '../components/result-display/result-display';
 
 @NgModule({
   declarations: [
@@ -20,7 +24,11 @@ import { StationPage } from '../pages/station/station';
     HomePage,
     StationPage,
     RiegeListPage,
-    WertungEditorPage
+    WertungEditorPage,
+    LastResultsPage,
+    LastResultDetailPage,
+    LastTopResultsPage,
+    ResultDisplayComponent
   ],
   imports: [
     BrowserModule,
@@ -33,7 +41,10 @@ import { StationPage } from '../pages/station/station';
     HomePage,
     StationPage,
     RiegeListPage,
-    WertungEditorPage
+    WertungEditorPage,
+    LastResultsPage,
+    LastResultDetailPage,
+    LastTopResultsPage
   ],
   providers: [
     StatusBar,

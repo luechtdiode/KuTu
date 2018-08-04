@@ -46,6 +46,10 @@ class CompetitionCoordinatorClientActor(wettkampfUUID: String) extends Actor wit
   var finishedDurchgangSteps: Set[FinishDurchgangStation] = Set.empty
   var finishedDurchgaenge: Set[String] = Set.empty
   var startStopEvents: List[KutuAppEvent] = List.empty
+  // Durchgang -> WettkampfdisciplinId -> Wertung
+  var lastWertungen: Map[String, WertungContainer] = Map.empty
+  var bestenResults = Map[String,WertungContainer]()
+  var lastBestenResults = Map[String,WertungContainer]()
   
   private def deviceIdOf(actor: ActorRef) = deviceWebsocketRefs.filter(_._2 == actor).map(_._1)
   private def actorWithSameDeviceIdOfSender(originSender: ActorRef = sender) = deviceWebsocketRefs.filter(p => originSender.path.name.endsWith(p._1)).map(_._2)
@@ -77,6 +81,8 @@ class CompetitionCoordinatorClientActor(wettkampfUUID: String) extends Actor wit
       startedDurchgaenge += eventDurchgangStarted.durchgang
       finishedDurchgaenge -= eventDurchgangFinished.durchgang
       finishedDurchgangSteps = finishedDurchgangSteps.filter(fds => encodeURIComponent(fds.durchgang) != encodeURIComponent(durchgang))
+      sender ! eventDurchgangStarted
+
       val dgsText = TextMessage(eventDurchgangStarted.asInstanceOf[KutuAppEvent].toJson.compactPrint)
       wsSend.get(Some(encodeURIComponent(durchgang))) match {
         case Some(wsList) => wsList.foreach(ws => ws ! dgsText)
@@ -86,13 +92,13 @@ class CompetitionCoordinatorClientActor(wettkampfUUID: String) extends Actor wit
         case Some(wsList) => wsList.foreach(ws => ws ! dgsText)
         case _ =>
       }
-      sender ! eventDurchgangStarted
       
     case FinishDurchgang(wettkampfUUID, durchgang) =>
       val eventDurchgangFinished = DurchgangFinished(wettkampfUUID, durchgang)
       startStopEvents = startStopEvents :+ eventDurchgangFinished
       startedDurchgaenge -= durchgang
       finishedDurchgaenge += eventDurchgangFinished.durchgang
+      sender ! eventDurchgangFinished
       val dgsText = TextMessage(eventDurchgangFinished.asInstanceOf[KutuAppEvent].toJson.compactPrint)
       wsSend.get(Some(encodeURIComponent(durchgang))) match {
         case Some(wsList) => wsList.foreach(ws => ws ! dgsText)
@@ -102,9 +108,8 @@ class CompetitionCoordinatorClientActor(wettkampfUUID: String) extends Actor wit
         case Some(wsList) => wsList.foreach(ws => ws ! dgsText)
         case _ =>
       }
-      sender ! eventDurchgangFinished
       
-    case uw @ UpdateAthletWertung(athlet, wertung, wettkampfUUID, durchgang, geraet, step) =>
+    case uw @ UpdateAthletWertung(athlet, wertung, wettkampfUUID, durchgang, geraet, step, programm) =>
       val senderWebSocket = actorWithSameDeviceIdOfSender()
       if (finishedDurchgangSteps.exists(fds => encodeURIComponent(fds.durchgang) == encodeURIComponent(durchgang) && fds.geraet == geraet && fds.step == step+1)) {
         sender ! MessageAck("Diese Station ist bereits abgeschlossen und kann keine neuen Resultate mehr entgegennehmen.")
@@ -112,8 +117,16 @@ class CompetitionCoordinatorClientActor(wettkampfUUID: String) extends Actor wit
         sender ! MessageAck("Dieser Durchgang ist noch nicht für die Resultaterfassung freigegeben.")
       } else try {
         val verifiedWertung = updateWertungSimple(wertung, true)
-       
-        val awu: KutuAppEvent = AthletWertungUpdated(athlet, verifiedWertung, wettkampfUUID, durchgang, geraet)
+        
+        val awu: KutuAppEvent = AthletWertungUpdated(athlet, verifiedWertung, wettkampfUUID, durchgang, geraet, programm)
+        sender ! awu     
+
+        updateLastWertungen(
+            WertungContainer(
+                athlet.id, athlet.vorname, athlet.name, athlet.geschlecht, athlet.verein.map(_.name).getOrElse(""), 
+                verifiedWertung, 
+                geraet, programm))
+
         val toPublish = TextMessage(awu.toJson.compactPrint)
         wsSend.get(Some(encodeURIComponent(durchgang))) match {
           case Some(wsList) => wsList.filter(ws => !senderWebSocket.exists(_ == ws)).foreach(ws => ws ! toPublish)
@@ -123,7 +136,6 @@ class CompetitionCoordinatorClientActor(wettkampfUUID: String) extends Actor wit
           case Some(wsList) => wsList.filter(ws => !senderWebSocket.exists(_ == ws)).foreach(ws => ws ! toPublish)
           case _ =>
         }
-        sender ! awu
       } catch {
         case e: Exception =>
           sender ! MessageAck(e.getMessage)
@@ -133,6 +145,10 @@ class CompetitionCoordinatorClientActor(wettkampfUUID: String) extends Actor wit
       
     case fds: FinishDurchgangStation =>
       finishedDurchgangSteps += fds
+      sender ! MessageAck("OK")
+      
+    case fds: FinishDurchgangStep =>
+      resetBestenResult()
       sender ! MessageAck("OK")
       
     case uw: KutuAppAction =>
@@ -164,6 +180,7 @@ class CompetitionCoordinatorClientActor(wettkampfUUID: String) extends Actor wit
         }
       )
       .foreach(d => ref ! TextMessage(d.asInstanceOf[KutuAppEvent].toJson.compactPrint))
+      ref ! TextMessage(NewLastResults(lastWertungen, lastBestenResults).asInstanceOf[KutuAppEvent].toJson.compactPrint)
 
     // system actions
     case KeepAlive => wsSend.flatMap(_._2).foreach(ws => ws ! TextMessage("KeepAlive"))
@@ -193,6 +210,7 @@ class CompetitionCoordinatorClientActor(wettkampfUUID: String) extends Actor wit
     event match {
       case awuv: AthletWertungUpdated =>
         val senderWebSocket = actorWithSameDeviceIdOfSender(originSender.getOrElse(sender))
+
         val toPublish = TextMessage(event.toJson.compactPrint)
         if (awuv.durchgang == "") {
           wsSend.foreach(entry => {
@@ -212,7 +230,45 @@ class CompetitionCoordinatorClientActor(wettkampfUUID: String) extends Actor wit
             case _ =>
           }
         }
+        updateLastWertungen(
+            WertungContainer(
+                awuv.athlet.id, awuv.athlet.vorname, awuv.athlet.name, awuv.athlet.geschlecht, awuv.athlet.verein.map(_.name).getOrElse(""), 
+                awuv.wertung, 
+                awuv.geraet, awuv.programm))
       case _ =>
+    }
+  }
+  
+  def updateLastWertungen(wertungContainer: WertungContainer) {
+    lastWertungen = lastWertungen.updated(wertungContainer.wertung.wettkampfdisziplinId, wertungContainer)
+    if(wertungContainer.wertung.endnote >= 8.7) {
+      putBestenResult(wertungContainer)
+    }
+    
+    val wsSends = wsSend.values
+    val msg = TextMessage(NewLastResults(lastWertungen, lastBestenResults).asInstanceOf[KutuAppEvent].toJson.compactPrint)
+//    println(msg)
+    Future {
+      for(wsList <- wsSends) {
+        wsList.foreach(ws => ws ! msg)
+      }
+    }
+  }
+  
+  def putBestenResult(wertungContainer: WertungContainer) {
+    bestenResults = bestenResults.updated(wertungContainer.id + ":" + wertungContainer.wertung.wettkampfdisziplinId, wertungContainer)
+  }
+  
+  def resetBestenResult() {
+    lastBestenResults = bestenResults
+    bestenResults = Map[String,WertungContainer]()
+    val wsSends = wsSend.values
+    val msg = TextMessage(NewLastResults(lastWertungen, lastBestenResults).asInstanceOf[KutuAppEvent].toJson.compactPrint)
+//    println(msg)
+    Future {
+      for(wsList <- wsSends) {
+        wsList.foreach(ws => ws ! msg)
+      }
     }
   }
   

@@ -6,6 +6,12 @@ export interface WertungContainer {
   verein: string;
   wertung: Wertung;
   geraet: number;
+  programm: string;
+}
+
+export interface NewLastResults {
+  results: WertungContainer[];
+  lastTopResults: WertungContainer[];
 }
 
 export interface Wertung {
@@ -60,7 +66,7 @@ export interface DurchgangFinished {
   type: string;
 }
 export interface AthletWertungUpdated {
-  ahtlet: any, 
+  athlet: any, 
   wertung: Wertung; 
   wettkampfUUID: string;
   durchgang: string;

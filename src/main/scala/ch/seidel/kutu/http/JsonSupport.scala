@@ -17,7 +17,7 @@ trait JsonSupport extends SprayJsonSupport with EnrichedJson {
   implicit val wertungFormat = jsonFormat(Wertung, "id", "athletId", "wettkampfdisziplinId", "wettkampfId", "wettkampfUUID", "noteD", "noteE", "endnote", "riege", "riege2")  
   implicit val vereinFormat = jsonFormat(Verein, "id", "name", "verband")
   implicit val atheltViewFormat = jsonFormat(AthletView, "id", "js_id", "geschlecht", "name", "vorname", "gebdat", "strasse", "plz", "ort", "verein", "activ")
-  implicit val wertungContainerFormat = jsonFormat7(WertungContainer)
+  implicit val wertungContainerFormat = jsonFormat8(WertungContainer)
 
   implicit val resultatFormat = jsonFormat(Resultat, "noteD", "noteE", "endnote")
   implicit val dataObjectFormat = new RootJsonWriter[DataObject]{
@@ -39,14 +39,16 @@ trait JsonSupport extends SprayJsonSupport with EnrichedJson {
   
   // actions (via rest-request)
   implicit val startDurchgangFormat = jsonFormat2(StartDurchgang)
-  implicit val updateAthletWertungFormat = jsonFormat6(UpdateAthletWertung)
+  implicit val updateAthletWertungFormat = jsonFormat7(UpdateAthletWertung)
   implicit val finishDurchgangStationFormat = jsonFormat4(FinishDurchgangStation)
   implicit val finishDurchgangFormat = jsonFormat2(FinishDurchgang)
+  implicit val finishDurchgangStepFormat = jsonFormat1(FinishDurchgangStep)
 
   // events (via ws and rest-response)
   implicit val durchgangStartedFormat = jsonFormat3(DurchgangStarted)
-  implicit val wertungUpdatedFormat = jsonFormat5(AthletWertungUpdated)
+  implicit val wertungUpdatedFormat = jsonFormat6(AthletWertungUpdated)
   implicit val stationsWertungenCompletedFormat = jsonFormat1(StationWertungenCompleted)
+  implicit val newLastResultsFormat = jsonFormat2(NewLastResults)
   implicit val durchgangFinishedFormat = jsonFormat3(DurchgangFinished)
   implicit val messageAckFormat = jsonFormat1(MessageAck)
   
@@ -55,6 +57,7 @@ trait JsonSupport extends SprayJsonSupport with EnrichedJson {
       classOf[DurchgangStarted].getSimpleName -> durchgangStartedFormat,
       classOf[AthletWertungUpdated].getSimpleName -> wertungUpdatedFormat,
       classOf[StationWertungenCompleted].getSimpleName -> stationsWertungenCompletedFormat,
+      classOf[NewLastResults].getSimpleName -> newLastResultsFormat,
       classOf[DurchgangFinished].getSimpleName -> durchgangFinishedFormat,
       classOf[MessageAck].getSimpleName -> messageAckFormat
   )

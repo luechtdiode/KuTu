@@ -265,11 +265,10 @@ abstract trait WertungService extends DBService with WertungResultMapper with Di
       if(wv.endnote >= 8.7) {
         putWertungToBestenResults(wv)
       }
-      val awu = AthletWertungUpdated(wv.athlet, wv.toWertung, wv.wettkampf.uuid.get, "", wv.wettkampfdisziplin.disziplin.id)
+      val awu = AthletWertungUpdated(wv.athlet, wv.toWertung, wv.wettkampf.uuid.get, "", wv.wettkampfdisziplin.disziplin.id, wv.wettkampfdisziplin.programm.easyprint)
       WebSocketClient.publish(awu)
       wv
     }
-    ret
   }
   
   @throws(classOf[Exception])
@@ -291,11 +290,13 @@ abstract trait WertungService extends DBService with WertungResultMapper with Di
         wvId
       }).transactionally
     ), Duration.Inf).head
+    val result = wv.copy(id = wvId)
+
     // TODO - this feature is not able to serve for multiple competitions at same time
-    if(putToBestenresults && wv.endnote >= 8.7) {
-      putWertungToBestenResults(getWertung(wvId))
-    }
-    wv.copy(id = wvId)
+    // if(putToBestenresults && result.endnote >= 8.7) {
+    //   putWertungToBestenResults(result)
+    // }
+    result
   }
 
   def listAthletenWertungenZuProgramm(progids: Seq[Long], wettkampf: Long, riege: String = "%") = {

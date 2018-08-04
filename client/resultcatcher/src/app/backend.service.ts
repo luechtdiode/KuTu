@@ -1,7 +1,7 @@
 import { Injectable } from '@angular/core';
 import { HttpClient, HttpHeaders, HttpErrorResponse } from '@angular/common/http';
 import { backendUrl } from './utils';
-import { WertungContainer, Geraet, Wettkampf, Wertung, MessageAck, AthletWertungUpdated, DurchgangStarted, DurchgangFinished, FinishDurchgangStation } from './backend-types';
+import { WertungContainer, Geraet, Wettkampf, Wertung, MessageAck, AthletWertungUpdated, DurchgangStarted, DurchgangFinished, FinishDurchgangStation, NewLastResults } from './backend-types';
 import { Observable } from 'rxjs/Observable';
 import { Subject } from 'rxjs/Subject';
 import { Subscription, BehaviorSubject } from 'rxjs';
@@ -18,12 +18,14 @@ export class BackendService extends WebsocketService {
 
   loggedIn = false;
   stationFreezed = false;
+  captionmode = false;
 
   competitions: Wettkampf[];
   durchgaenge: string[];
   geraete: Geraet[];
   steps: number[];
   wertungen: WertungContainer[];
+  newLastResults = new BehaviorSubject<NewLastResults>(undefined);
 
   private _competition: string = undefined;
   get competition(): string {
@@ -115,7 +117,6 @@ export class BackendService extends WebsocketService {
       observe: 'response', 
       responseType: 'text'
     }).subscribe((data) => {
-      console.log(data);
       localStorage.setItem('auth_token', data.headers.get('x-access-token'));
       this.loggedIn = true;
     }, (err: HttpErrorResponse) => {
@@ -202,10 +203,19 @@ export class BackendService extends WebsocketService {
     this.loadGeraete();
   }
   loadGeraete() {
-    this.http.get<Geraet[]>(backendUrl + 'api/durchgang/' + this._competition + '/' + encodeURIComponent2(this._durchgang)).subscribe((data) => {
+    let path = '';
+    if (this.captionmode) {
+      path = backendUrl + 'api/durchgang/' + this._competition + '/' + encodeURIComponent2(this._durchgang);  
+    } else {
+      path = backendUrl + 'api/durchgang/' + this._competition + '/geraete';  
+    }
+    const request = this.http.get<Geraet[]>(path).share();
+    request.subscribe((data) => {
       this.geraete = data;
-    });
-  }
+    });  
+
+    return request;
+}
 
   getSteps(competitionId: string, durchgang: string, geraetId: number) {
     if (this.steps != undefined && this._competition === competitionId && this._durchgang === durchgang && this._geraet === geraetId) return;
@@ -242,11 +252,23 @@ export class BackendService extends WebsocketService {
   }
 
   loadWertungen() {
+    this.captionmode = true;
     this.disconnectWS(true);
     this.initWebsocket();
     this.http.get<WertungContainer[]>(backendUrl + 'api/durchgang/' + this._competition + '/' + encodeURIComponent2( this._durchgang) + '/' + this._geraet + '/' + this._step).subscribe((data) => {
       this.wertungen = data;
     });    
+  }
+
+  loadAlleResultate(): Observable<Geraet[]> {
+    if (this._competition) {
+      this.captionmode = false;
+      this.disconnectWS(true);
+      this.initWebsocket();
+      return this.loadGeraete();
+    } else {
+      return Observable.of(this.geraete);
+    }
   }
 
   isMessageAck(test: WertungContainer | MessageAck): test is MessageAck { return (test as MessageAck).type === 'MessageAck'}
@@ -319,16 +341,25 @@ export class BackendService extends WebsocketService {
   wertungUpdated = new Subject<AthletWertungUpdated>();
   
   protected getWebsocketBackendUrl(): string {
-    const host = location.host;
-    const path = location.pathname;
-    const protocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
-    if (!host || host === '') {
-      return "wss://kutuapp.sharevic.net/api/durchgang/" + this._competition + '/' + encodeURIComponent2(this._durchgang) + '/ws';
-    } else if (host.startsWith('localhost')) {
-      return "ws://localhost:5757/api/durchgang/" + this._competition + '/' + encodeURIComponent2(this._durchgang) + '/ws';
+    let host = location.host;
+    let path = location.pathname;
+    const protocol = location.protocol === "https:" ? "wss:" : "ws:";
+    let apiPath = "api/";
+    if (this._durchgang && this.captionmode) {
+      apiPath = apiPath + "durchgang/" + this._competition + "/" + encodeURIComponent2(this._durchgang) + "/ws";
     } else {
-      return protocol + "//" + host + path + "api/durchgang/" + this._competition + '/' + encodeURIComponent2(this._durchgang) + '/ws';
+      apiPath = apiPath + "durchgang/" + this._competition + "/all/ws";
+      // apiPath = apiPath + "competition/ws";
     }
+    if (!host || host === '') {
+      host = "wss://kutuapp.sharevic.net/"; //durchgang/" + this._competition + (this._durchgang && this.captionmode ? '/' + encodeURIComponent2(this._durchgang) : '') + '/ws';
+    } else if (host.startsWith("localhost")) {
+      host = "ws://localhost:5757/"; // durchgang/" + this._competition + (this._durchgang && this.captionmode ? '/' + encodeURIComponent2(this._durchgang) : '')+ '/ws';
+    } else {
+      host = protocol + "//" + host + path; //durchgang/" + this._competition + (this._durchgang && this.captionmode ? '/' + encodeURIComponent2(this._durchgang) : '') + '/ws';
+    }
+
+    return host + apiPath;
   }
 
   protected handleWebsocketMessage(message: any): boolean {
@@ -355,6 +386,10 @@ export class BackendService extends WebsocketService {
           }
         }); 
         this.wertungUpdated.next(updated);
+        return true;
+
+      case 'NewLastResults':
+        this.newLastResults.next((message as NewLastResults));
         return true;
 
       case 'MessageAck':
