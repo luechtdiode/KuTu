@@ -95,8 +95,4 @@ export class WertungEditorPage {
     return this.backendService.geraete ? this.backendService.geraete.find(g => g.id === this.geraetId).name : '';
   }
 
-  ionViewDidLoad() {
-    console.log('ionViewDidLoad WertungEditorPage');
-  }
-
 }

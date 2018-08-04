@@ -79,8 +79,10 @@ $searchbar-ios-input-placeholder-color: $searchbar-input-placeholder-color !defa
 $searchbar-md-input-placeholder-color: $searchbar-input-placeholder-color !default;
 $searchbar-wp-input-placeholder-color: $searchbar-input-placeholder-color !default;
 
-
-
+$item-ios-note-color:	#d35400; //#f4f4f4;
+$note-ios-color: lighten(color($colors, dark),30%) !default;
+$note-md-color: lighten(color($colors, dark),30%) !default;
+$note-wp-color: lighten(color($colors, dark),30%) !default;
 
 $toast-ios-background: $toast-background !default;
 $toast-md-background: $toast-background !default;
