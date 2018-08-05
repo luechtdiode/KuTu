@@ -20,11 +20,11 @@
       </ion-item>
       <ion-item>
         <ion-label>D-Note</ion-label>
-        <ion-input [readonly]='!editable()'  [disabled]="waiting" [(ngModel)]='wertung.noteD' (keyup.enter)="save(wertung)"></ion-input>
+        <ion-input [readonly]='!editable()' type="number" [disabled]="waiting" [(ngModel)]='wertung.noteD' (keyup.enter)="save(wertung)"></ion-input>
       </ion-item>
       <ion-item>
         <ion-label>E-Note</ion-label>
-        <ion-input [readonly]='!editable()'  [disabled]="waiting" [(ngModel)]='wertung.noteE' (keyup.enter)="save(wertung)"></ion-input>
+        <ion-input [readonly]='!editable()' type="number"  [disabled]="waiting" [(ngModel)]='wertung.noteE' (keyup.enter)="save(wertung)"></ion-input>
       </ion-item>
       <ion-item>
         <ion-label>Endnote</ion-label>

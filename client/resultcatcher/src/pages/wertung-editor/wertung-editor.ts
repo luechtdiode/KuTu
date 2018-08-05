@@ -50,15 +50,31 @@ export class WertungEditorPage {
   editable() {
     return this.backendService.loggedIn
   }
-
+  
+  updateUI(wc: WertungContainer) {
+    this.waiting = false;
+    this.item = Object.assign({}, wc);
+    this.itemOriginal = Object.assign({}, wc);
+    this.wertung = Object.assign({}, this.itemOriginal.wertung);
+  }
+  
+  saveClose(wertung: Wertung) {
+    this.waiting = true;
+    this.backendService.updateWertung(this.durchgang, this.step, this.geraetId, wertung).subscribe((wc) => {
+      this.updateUI(wc);
+      this.navCtrl.pop();
+    }, (err) => {
+      this.waiting = false;
+      this.item = Object.assign({}, this.itemOriginal);
+      this.wertung = Object.assign({}, this.itemOriginal.wertung);
+      console.log(err);      
+    });
+  }
+  
   save(wertung: Wertung) {
     this.waiting = true;
     this.backendService.updateWertung(this.durchgang, this.step, this.geraetId, wertung).subscribe((wc) => {
-      this.waiting = false;
-      this.item = Object.assign({}, wc);
-      this.itemOriginal = Object.assign({}, wc);
-      this.wertung = Object.assign({}, this.itemOriginal.wertung);
-      this.navCtrl.pop();
+        this.updateUI(wc);
     }, (err) => {
       this.waiting = false;
       this.item = Object.assign({}, this.itemOriginal);
@@ -76,13 +92,10 @@ export class WertungEditorPage {
       if (currentItemIndex < 0) {
         nextItemIndex = 0;
       } else if (currentItemIndex >= this.backendService.wertungen.length-1) {
-        this.save(wertung);
+        this.saveClose(wertung);
         return;
       }
-      const wertungsContainer: WertungContainer = this.backendService.wertungen[nextItemIndex];
-      this.item = Object.assign({}, wertungsContainer);
-      this.itemOriginal = Object.assign({}, wertungsContainer);
-      this.wertung = Object.assign({}, this.itemOriginal.wertung);
+      this.updateUI(this.backendService.wertungen[nextItemIndex]);
     }, (err) => {
       this.waiting = false;
       this.item = Object.assign({}, this.itemOriginal);
