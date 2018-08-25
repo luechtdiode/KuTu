@@ -21,9 +21,7 @@ export class MyApp {
 
   constructor(public platform: Platform, public statusBar: StatusBar, public splashScreen: SplashScreen,
      public backendService: BackendService, private alertCtrl: AlertController) {
-    this.initializeApp();
 
-    // used for an example of ngFor and navigation
     this.pages = [
       { title: 'Home', component: HomePage },
       { title: 'Resultate', component: StationPage },
@@ -32,6 +30,7 @@ export class MyApp {
       { title: 'Settings', component: SettingsPage }*/
     ];
 
+    this.initializeApp();
   }
 
   initializeApp() {
@@ -41,10 +40,34 @@ export class MyApp {
       this.statusBar.styleDefault();
       if(window.location.href.indexOf('?') > 0) {
         try {
-          const initializeWith = atob(window.location.href.split('?')[1]);
-          
-          localStorage.setItem("external_load", initializeWith); 
-          window.history.replaceState({}, document.title, window.location.href.split('?')[0]);
+          const initializeWithEncoded = window.location.href.split('?')[1];
+          const initializeWith = atob(initializeWithEncoded);
+          if (initializeWithEncoded.startsWith("all")) {
+            this.pages = [
+              { title: 'Alle Resultate', component: LastResultsPage }
+            ];        
+            this.rootPage = LastResultsPage;
+          } else if (initializeWithEncoded.startsWith("top")) {
+            this.pages = [
+              { title: 'Top Resultate', component: LastTopResultsPage }
+            ];
+            this.rootPage = LastTopResultsPage;
+          } else if (initializeWith.startsWith("last")) {
+            this.pages = [
+              { title: 'Alle Resultate', component: LastResultsPage }
+            ];        
+            this.rootPage = LastResultsPage;
+            localStorage.setItem("external_load", initializeWith.substring(4)); 
+          } else if (initializeWith.startsWith("top")) {
+            this.pages = [
+              { title: 'Top Resultate', component: LastTopResultsPage }
+            ];
+            this.rootPage = LastTopResultsPage;
+            localStorage.setItem("external_load", initializeWith.substring(4)); 
+          } else {
+            localStorage.setItem("external_load", initializeWith); 
+            window.history.replaceState({}, document.title, window.location.href.split('?')[0]);
+          }
           
         } catch(e) {
           console.log(e);

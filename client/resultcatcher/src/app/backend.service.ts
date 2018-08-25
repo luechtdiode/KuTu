@@ -76,6 +76,9 @@ export class BackendService extends WebsocketService {
           case 'c':
             this._competition = value;
             break;
+          case 'ca':
+            this._competition = undefined;
+            break;
           case 'd':
             this._durchgang = value;
             break;
@@ -85,16 +88,17 @@ export class BackendService extends WebsocketService {
             this.stationFreezed = true;
           default:
             this._step = 1;
-      }});
-      localStorage.removeItem("external_load");
+        }
+      });
       this.externalLoaderSubscription.unsubscribe();
+      localStorage.removeItem("external_load");
       if (this._geraet) {
         this.getCompetitions();
         this.loadDurchgaenge();    
         this.loadGeraete();
         this.loadSteps();
         this.loadWertungen();
-      } else if (this._competition) {
+      } else if (this._competition) {        
         this.getCompetitions();
         this.loadDurchgaenge();            
       }

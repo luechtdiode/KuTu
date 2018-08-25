@@ -30,6 +30,7 @@ import akka.http.scaladsl.marshalling.ToResponseMarshallable
 import ch.seidel.kutu.Config
 import ch.seidel.kutu.renderer.PrintUtil
 import ch.seidel.kutu.domain.WertungView
+import java.util.Base64
 
 trait ScoreRoutes extends SprayJsonSupport with JsonSupport with AuthSupport with RouterLogging with KutuService with IpToDeviceID {
   import spray.json.DefaultJsonProtocol._
@@ -110,7 +111,9 @@ trait ScoreRoutes extends SprayJsonSupport with JsonSupport with AuthSupport wit
                     val allMap = ("all" -> Map(
                         ("scores-href" -> "/api/scores/all"), 
                         ("grouper-href" -> "/api/scores/all/grouper"), 
-                        ("filter-href" -> "/api/scores/all/filter"), 
+                        ("filter-href" -> "/api/scores/all/filter"),
+                        ("lastresults-href" -> s"/?all"), 
+                        ("topresults-href" -> s"/?top"), 
                         ("name" -> "Übergreifend")
                     ))
                     ToResponseMarshallable(
@@ -119,7 +122,9 @@ trait ScoreRoutes extends SprayJsonSupport with JsonSupport with AuthSupport wit
                           Map(
                             ("scores-href" -> s"/api/scores/${comp.uuid.get.toString}"), 
                             ("grouper-href" -> s"/api/scores/${comp.uuid.get.toString}/grouper"), 
-                            ("filter-href" -> s"/api/scores/${comp.uuid.get.toString}/filter"), 
+                            ("filter-href" -> s"/api/scores/${comp.uuid.get.toString}/filter"),
+                            ("lastresults-href" -> s"/?${new String(Base64.getUrlEncoder.encodeToString((s"last&c=${comp.uuid.get.toString}").getBytes))}"), 
+                            ("topresults-href" -> s"/?${new String(Base64.getUrlEncoder.encodeToString((s"top&c=${comp.uuid.get.toString}").getBytes))}"), 
                             ("name" -> comp.easyprint)
                           )
                         )
@@ -127,7 +132,7 @@ trait ScoreRoutes extends SprayJsonSupport with JsonSupport with AuthSupport wit
                   case Some(_) =>
                     ToResponseMarshallable(HttpEntity(ContentTypes.`text/html(UTF-8)`,
                         competitions
-                        .map(comp => (s"<li><a href='/api/scores/${comp.uuid.get.toString}?html'>${comp.easyprint}</a></li>"))
+                        .map(comp => (s"<li><a href='/api/scores/${comp.uuid.get.toString}?html'>${comp.easyprint}</a>, <a href='/?${new String(Base64.getUrlEncoder.encodeToString((s"all&c=${comp.uuid.get.toString}").getBytes))}'>Letzte Resultate</a>, <a href='/?${new String(Base64.getUrlEncoder.encodeToString((s"top&c=${comp.uuid.get.toString}").getBytes))}'>Top Resultate</a></li>"))
                         .mkString("<html><body>\n", "\n", "</body></html>")
                     ))
                   }
