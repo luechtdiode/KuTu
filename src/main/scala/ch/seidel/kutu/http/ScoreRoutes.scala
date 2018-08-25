@@ -31,6 +31,7 @@ import ch.seidel.kutu.Config
 import ch.seidel.kutu.renderer.PrintUtil
 import ch.seidel.kutu.domain.WertungView
 import java.util.Base64
+import ch.seidel.kutu.domain.Wettkampf
 
 trait ScoreRoutes extends SprayJsonSupport with JsonSupport with AuthSupport with RouterLogging with KutuService with IpToDeviceID {
   import spray.json.DefaultJsonProtocol._
@@ -45,7 +46,7 @@ trait ScoreRoutes extends SprayJsonSupport with JsonSupport with AuthSupport wit
       ByRiege(), ByDisziplin(), ByJahr()
   )
                   
-  def queryScoreResults(groupby: Option[String], filter: Iterable[String], html: Boolean, groupers: List[FilterBy], data: Seq[WertungView], logofile: File) = {
+  def queryScoreResults(wettkampf: String, groupby: Option[String], filter: Iterable[String], html: Boolean, groupers: List[FilterBy], data: Seq[WertungView], logofile: File) = {
       val diszMap = data.groupBy { x => x.wettkampf.programmId }.map{ x =>
         x._1 -> Map(
               "W" -> listDisziplinesZuWettkampf(x._2.head.wettkampf.id, Some("W"))
@@ -78,7 +79,7 @@ trait ScoreRoutes extends SprayJsonSupport with JsonSupport with AuthSupport wit
       ByWettkampfProgramm().groupBy(ByGeschlecht())
     }
     if (html) {
-      HttpEntity(ContentTypes.`text/html(UTF-8)`, new ScoreToHtmlRenderer(){override val title = data.head.wettkampf.easyprint}
+      HttpEntity(ContentTypes.`text/html(UTF-8)`, new ScoreToHtmlRenderer(){override val title = wettkampf}
       .toHTML(query.select(data).toList, 0, false, diszMap, logofile))
     } else {
       HttpEntity(ContentTypes.`application/json`,  ScoreToJsonRenderer
@@ -151,7 +152,7 @@ trait ScoreRoutes extends SprayJsonSupport with JsonSupport with AuthSupport wit
             get {
               parameters('groupby.?, 'filter.*, 'html.?) { (groupby, filter, html) =>
                 complete(Future{
-                  queryScoreResults(groupby, filter, html.nonEmpty, allGroupers, data, logofile)
+                  queryScoreResults("Alle Wettkämpfe", groupby, filter, html.nonEmpty, allGroupers, data, logofile)
                 })
               }
             }
@@ -174,10 +175,11 @@ trait ScoreRoutes extends SprayJsonSupport with JsonSupport with AuthSupport wit
           }
         } ~
         pathPrefix(JavaUUID) { competitionId =>
+          val wettkampf = readWettkampf(competitionId.toString)
           val data = selectWertungen(wkuuid = Some(competitionId.toString))
-          val logodir = new java.io.File(Config.homedir + "/" + data.head.wettkampf.easyprint.replace(" ", "_"))
+          val logodir = new java.io.File(Config.homedir + "/" + wettkampf.easyprint.replace(" ", "_"))
           val logofile = PrintUtil.locateLogoFile(logodir);
-          val programmText = data.head.wettkampf.programmId match {case 20 => "Kategorie" case _ => "Programm"}
+          val programmText = wettkampf.programmId match {case 20 => "Kategorie" case _ => "Programm"}
           val groupers: List[FilterBy] = {
             List(ByWettkampfProgramm(programmText), ByProgramm(programmText), 
                 ByJahrgang(), ByGeschlecht(), ByVerband(), ByVerein(), 
@@ -188,7 +190,7 @@ trait ScoreRoutes extends SprayJsonSupport with JsonSupport with AuthSupport wit
               parameters('groupby.?, 'filter.*, 'html.?) { (groupby, filter, html) =>
                 complete(
                   Future{
-                    queryScoreResults(groupby, filter, html.nonEmpty, groupers, data, logofile)                
+                    queryScoreResults(wettkampf.easyprint, groupby, filter, html.nonEmpty, groupers, data, logofile)                
                   }
                 )
               }
