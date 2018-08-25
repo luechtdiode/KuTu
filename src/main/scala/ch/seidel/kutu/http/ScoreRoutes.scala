@@ -132,7 +132,7 @@ trait ScoreRoutes extends SprayJsonSupport with JsonSupport with AuthSupport wit
                   case Some(_) =>
                     ToResponseMarshallable(HttpEntity(ContentTypes.`text/html(UTF-8)`,
                         competitions
-                        .map(comp => (s"<li><a href='/api/scores/${comp.uuid.get.toString}?html'>${comp.easyprint}</a>, <a href='/?${new String(Base64.getUrlEncoder.encodeToString((s"all&c=${comp.uuid.get.toString}").getBytes))}'>Letzte Resultate</a>, <a href='/?${new String(Base64.getUrlEncoder.encodeToString((s"top&c=${comp.uuid.get.toString}").getBytes))}'>Top Resultate</a></li>"))
+                        .map(comp => (s"<li><a href='/api/scores/${comp.uuid.get.toString}?html'>${comp.easyprint}</a>, <a href='/?${new String(Base64.getUrlEncoder.encodeToString((s"last&c=${comp.uuid.get.toString}").getBytes))}'>Letzte Resultate</a>, <a href='/?${new String(Base64.getUrlEncoder.encodeToString((s"top&c=${comp.uuid.get.toString}").getBytes))}'>Top Resultate</a></li>"))
                         .mkString("<html><body>\n", "\n", "</body></html>")
                     ))
                   }
