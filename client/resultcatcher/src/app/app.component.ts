@@ -54,7 +54,7 @@ export class MyApp {
             this.rootPage = LastTopResultsPage;
           } else if (initializeWith.startsWith("last")) {
             this.pages = [
-              { title: 'Alle Resultate', component: LastResultsPage }
+              { title: 'Letzte Resultate', component: LastResultsPage }
             ];        
             this.rootPage = LastResultsPage;
             localStorage.setItem("external_load", initializeWith.substring(4)); 
