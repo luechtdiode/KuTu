@@ -24,10 +24,6 @@
 <ion-footer >
     <ion-toolbar>
         <ion-list>
-            <ion-item *ngIf="isLoggedIn() && durchgangopen" >
-                <button ion-button large block icon-left color="green" (click)="finish()" [disabled]="!(geraet && getSteps())">
-                <ion-icon name="git-commit"></ion-icon>Eingaben abschliessen</button>          
-            </ion-item>  
           <ion-item >
             <!-- <ion-thumbnail  item-start><img src="assets/imgs/wettkampf.png"></ion-thumbnail > -->
               <ion-note>{{competitionName()}}</ion-note>
@@ -37,7 +33,11 @@
               {{durchgang}}, {{geraetName()}}, Riege {{step}}
             </ion-note>
           </ion-item>
-        </ion-list>      
+          <ion-item *ngIf="isLoggedIn() && durchgangopen" >
+            <button ion-button large block icon-left color="green" (click)="finish()" [disabled]="!(geraet && getSteps())">
+            <ion-icon name="git-commit"></ion-icon>Eingaben abschliessen</button>          
+        </ion-item>  
+    </ion-list>      
     </ion-toolbar>
   
 </ion-footer>

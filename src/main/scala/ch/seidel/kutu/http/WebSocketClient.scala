@@ -112,6 +112,6 @@ object WebSocketClient extends SprayJsonSupport with JsonSupport with AuthSuppor
         case b: BinaryMessage => throw new Exception("Binary message cannot be handled")
       }.via(reportErrorsFlow(handleError))
       
-  val websocketOutgoingSource = Source.queue[Message](10, OverflowStrategy.dropHead)
+  val websocketOutgoingSource = Source.queue[Message](100, OverflowStrategy.dropHead)
     .mapMaterializedValue(queue => connectedOutgoingQueue = Some(queue))
 }

@@ -76,9 +76,13 @@ export class MyApp {
       this.splashScreen.hide();
 
       this.backendService.showMessage.subscribe(message => {
+        let msg = message.msg;
+        if (!msg || msg.trim().length === 0) {
+          msg = 'Die gewünschte Aktion ist aktuell nicht möglich.';
+        }
         let alert = this.alertCtrl.create({
           title: 'Achtung',
-          subTitle: message.msg || 'Die gewünschte Aktion ist aktuell nicht möglich.',
+          subTitle: msg,
           buttons: ['OK']
         });
         alert.present();

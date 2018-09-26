@@ -129,6 +129,10 @@ export class BackendService extends WebsocketService {
         localStorage.removeItem('auth_token');
         this.loggedIn = false;
       }
+      this.showMessage.next(<MessageAck> {
+        msg: 'Die Berechtigung zum erfassen von Wertungen ist abgelaufen.',
+        type:'Berechtigung'
+      });
     });
     this.lastJWTChecked = new Date().getTime();
   }
@@ -148,6 +152,10 @@ export class BackendService extends WebsocketService {
       console.log(err);
       localStorage.removeItem('auth_token');
       this.loggedIn = false;
+      this.showMessage.next(<MessageAck> {
+        msg: 'Die Berechtigung zum erfassen von Wertungen ist nicht gültig oder abgelaufen.',
+        type:'Berechtigung'
+      });
     });
   }
   
@@ -356,11 +364,11 @@ export class BackendService extends WebsocketService {
       // apiPath = apiPath + "competition/ws";
     }
     if (!host || host === '') {
-      host = "wss://kutuapp.sharevic.net/"; //durchgang/" + this._competition + (this._durchgang && this.captionmode ? '/' + encodeURIComponent2(this._durchgang) : '') + '/ws';
+      host = "wss://kutuapp.sharevic.net/";
     } else if (host.startsWith("localhost")) {
-      host = "ws://localhost:5757/"; // durchgang/" + this._competition + (this._durchgang && this.captionmode ? '/' + encodeURIComponent2(this._durchgang) : '')+ '/ws';
+      host = "ws://localhost:5757/";
     } else {
-      host = protocol + "//" + host + path; //durchgang/" + this._competition + (this._durchgang && this.captionmode ? '/' + encodeURIComponent2(this._durchgang) : '') + '/ws';
+      host = protocol + "//" + host + path;
     }
 
     return host + apiPath;

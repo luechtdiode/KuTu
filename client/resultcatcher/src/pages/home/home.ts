@@ -1,5 +1,5 @@
 import { Component } from '@angular/core';
-import { NavController } from 'ionic-angular';
+import { NavController, AlertController } from 'ionic-angular';
 import { BackendService } from '../../app/backend.service';
 import { Wettkampf, Geraet } from '../../app/backend-types';
 import { StationPage } from '../station/station';
@@ -15,27 +15,29 @@ export class HomePage {
   durchgangstate: string;
   durchgangopen = false;
   
-  constructor(public navCtrl: NavController, public backendService: BackendService) {
+  constructor(public navCtrl: NavController, public backendService: BackendService, private alertCtrl: AlertController) {
     this.backendService.getCompetitions();
     this.backendService.durchgangStarted.map(dgl => 
-      dgl.filter(dg => encodeURIComponent2(dg.durchgang) === encodeURIComponent2(this.backendService.durchgang) && dg.wettkampfUUID === this.backendService.competition).length > 0 ? true : false
+      dgl.filter(dg => encodeURIComponent2(dg.durchgang) === encodeURIComponent2(this.backendService.durchgang) 
+                       && dg.wettkampfUUID === this.backendService.competition).length > 0 ? true : false
     ).subscribe(dg => {
       this.durchgangstate = dg ? 'gestartet' : 'gesperrt';
       this.durchgangopen = dg;
     });
   }
 
-  isOpenAndActive() {
-    return this.durchgangopen && this.backendService.isWebsocketConnected();
-  }
-  isLocked() {
+  get isLocked(): Boolean {
     return this.backendService.stationFreezed;
   }
-  unlock() {
-    this.backendService.unlock();
+  get isOpenAndActive() {
+    return this.durchgangopen && this.backendService.isWebsocketConnected();
   }
+  get isLoggedIn() {
+    return this.backendService.loggedIn;
+  }
+
   set competition(competitionId: string) {
-    if(!this.stationFreezed) {
+    if(!this.isLocked) {
       this.backendService.getDurchgaenge(competitionId);
     }
   }
@@ -44,7 +46,7 @@ export class HomePage {
   }
 
   set durchgang(d: string) {
-    if(!this.stationFreezed) {
+    if(!this.isLocked) {
       this.backendService.getGeraete(this.competition, d);
     }
   }
@@ -53,7 +55,7 @@ export class HomePage {
   }
 
   set geraet(geraetId: number) {
-    if(!this.stationFreezed) {
+    if(!this.isLocked) {
       this.backendService.getSteps(this.competition, this.durchgang, geraetId);
     }
   }
@@ -66,10 +68,6 @@ export class HomePage {
   }
   get step() {
     return this.backendService.step || -1;
-  }
-
-  get stationFreezed(): Boolean {
-    return this.backendService.stationFreezed;
   }
 
   getCompetitions(): Wettkampf[] {
@@ -119,13 +117,64 @@ export class HomePage {
     this.navCtrl.swipeBackEnabled = true;
     this.navCtrl.push(StationPage);
   }
+
+  unlock() {
+    let station = this.competitionName() + '/' + this.durchgang + '/' + this.geraetName();
+    let alert = this.alertCtrl.create({
+      title: 'Info',
+      subTitle: 'Die Fixierung auf die Station <em><font color="#ffa76d">"'
+                + station
+                + '"</font></em> wird aufgehoben.<br>Du kannst dann die Station frei einstellen.',
+      buttons: [
+        {text: 'ABBRECHEN', role: 'cancel', handler: () => {}},
+        {text: 'OKAY', handler: () => {
+            this.backendService.unlock();
+          }
+        }, 
+      ]
+    });
+    alert.present();
+  }
+
   logout() {
-    this.backendService.logout();
+    let alert = this.alertCtrl.create({
+      title: 'Achtung',
+      subTitle: 'Nach dem Abmelden können keine weiteren Resultate mehr erfasst werden.<br>Für die Erfassung weiterer Resultate wird eine Neuanmeldung erforderlich.',
+      buttons: [
+        {text: 'ABBRECHEN', role: 'cancel', handler: () => {}},
+        {text: 'OKAY', handler: () => {
+            this.backendService.logout();
+          }
+        }, 
+      ]
+    });
+    alert.present();
   }
-  isLoggedIn() {
-    return this.backendService.loggedIn;
-  }
+
   finish() {
-    this.backendService.finishStation(this.competition, this.durchgang, this.geraet, this.step);
+    let station = this.geraetName() + '/Riege #' + this.step;
+    let alert = this.alertCtrl.create({
+      title: 'Achtung',
+      subTitle: 'Nach dem Abschliessen der Station <em><font color="#ffa76d">"'
+                 + station
+                 + '"</font></em> können die erfassten Wertungen nur noch im Wettkampf-Büro korrigiert werden.',
+      buttons: [
+        {text: 'ABBRECHEN', role: 'cancel', handler: () => {}},
+        {text: 'OKAY', handler: () => {
+            const navTransition = alert.dismiss();
+            this.backendService.finishStation(this.competition, this.durchgang, this.geraet, this.step)
+            .subscribe(nextSteps => {
+              if (nextSteps.length === 0) {
+                navTransition.then(() => {
+                  this.navCtrl.pop();
+                });
+              }
+            });
+            return false;
+          }
+        }, 
+      ]
+    });
+    alert.present();
   }
 }

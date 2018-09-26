@@ -26,6 +26,7 @@ export class WertungEditorPage {
       this.itemOriginal = navParams.get('item');
       this.item = Object.assign({}, this.itemOriginal);
       this.wertung = Object.assign({}, this.item.wertung);
+      this.isDNoteUsed = this.item.isDNoteUsed;
 
       backendService.wertungUpdated.subscribe(wc => {
         if (wc.wertung.id === this.wertung.id) {
@@ -46,6 +47,8 @@ export class WertungEditorPage {
   durchgang: string;
 
   waiting = false;
+
+  isDNoteUsed = true;
 
   editable() {
     return this.backendService.loggedIn

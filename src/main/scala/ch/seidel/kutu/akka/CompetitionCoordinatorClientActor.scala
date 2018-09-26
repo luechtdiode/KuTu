@@ -61,7 +61,9 @@ class CompetitionCoordinatorClientActor(wettkampfUUID: String) extends Actor wit
   }
 
   val websocketProcessor = ResourceExchanger.processWSMessage(handleWebsocketMessages)
-  
+  val wkPgmId = readWettkampf(wettkampfUUID).programmId
+  val isDNoteUsed = wkPgmId != 20 && wkPgmId != 1
+
   override def preStart(): Unit = {
     log.info("Starting CompetitionCoordinatorClientActor")
   }
@@ -125,7 +127,7 @@ class CompetitionCoordinatorClientActor(wettkampfUUID: String) extends Actor wit
             WertungContainer(
                 athlet.id, athlet.vorname, athlet.name, athlet.geschlecht, athlet.verein.map(_.name).getOrElse(""), 
                 verifiedWertung, 
-                geraet, programm))
+                geraet, programm, isDNoteUsed))
 
         val toPublish = TextMessage(awu.toJson.compactPrint)
         wsSend.get(Some(encodeURIComponent(durchgang))) match {
@@ -234,7 +236,7 @@ class CompetitionCoordinatorClientActor(wettkampfUUID: String) extends Actor wit
             WertungContainer(
                 awuv.athlet.id, awuv.athlet.vorname, awuv.athlet.name, awuv.athlet.geschlecht, awuv.athlet.verein.map(_.name).getOrElse(""), 
                 awuv.wertung, 
-                awuv.geraet, awuv.programm))
+                awuv.geraet, awuv.programm, isDNoteUsed))
       case _ =>
     }
   }

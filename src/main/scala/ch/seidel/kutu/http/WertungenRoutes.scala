@@ -112,6 +112,8 @@ trait WertungenRoutes extends SprayJsonSupport with JsonSupport with JwtSupport 
       } ~
       path(Segments) {segments => 
         get {
+          val wkPgmId = readWettkampf(competitionId.toString()).programmId
+          val isDNoteUsed = wkPgmId != 20 && wkPgmId != 1
           // Durchgang/Geraet/Step
           segments match { 
             case List(durchgang) => complete { Future {
@@ -140,7 +142,7 @@ trait WertungenRoutes extends SprayJsonSupport with JsonSupport with JwtSupport 
                 .flatMap(gr => gr.kandidaten.map(k => 
                   WertungContainer(k.id, k.vorname, k.name, k.geschlecht, k.verein, 
                       k.wertungen.filter(w => w.wettkampfdisziplin.disziplin.id == gid).map(_.toWertung).head, 
-                      gid, k.programm)))
+                      gid, k.programm, isDNoteUsed)))
               }
             }
           }
@@ -187,8 +189,10 @@ trait WertungenRoutes extends SprayJsonSupport with JsonSupport with JwtSupport 
                       case Success(w) => w match {
                         case a @ AthletWertungUpdated(athlet, verifiedWertung, wettkampfUUID, durchgang, geraet, programm) =>
                           val verein: String = athlet.verein.map(_.name).getOrElse("")
+                          val wkPgmId = readWettkampf(competitionId.toString()).programmId
+                          val isDNoteUsed = wkPgmId != 20 && wkPgmId != 1
                           WertungContainer(athlet.id, athlet.vorname, athlet.name, athlet.geschlecht, verein,
-                              verifiedWertung, geraet, programm)
+                              verifiedWertung, geraet, programm, isDNoteUsed)
                         case _ => StatusCodes.Conflict
                       }
                       case Failure(error) => StatusCodes.Conflict

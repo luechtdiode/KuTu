@@ -12,7 +12,7 @@
 </ion-header>
 
 <ion-content>
-    <ion-list *ngIf="stationFreezed">
+    <ion-list *ngIf="isLocked">
         <ion-item >
           <!-- <ion-thumbnail  item-start><img src="assets/imgs/wettkampf.png"></ion-thumbnail > -->
           <ion-label>{{competitionName()}}</ion-label>
@@ -30,7 +30,7 @@
           <ion-label item-start>Riege {{step}}</ion-label>
         </ion-item>
       </ion-list>      
-      <ion-list *ngIf="!stationFreezed">
+      <ion-list *ngIf="!isLocked">
           <ion-item >
             <!-- <ion-thumbnail  item-start><img src="assets/imgs/wettkampf.png"></ion-thumbnail > -->
             <ion-label>Wettkampf</ion-label>
@@ -65,24 +65,24 @@
           </ion-item>
         </ion-list>
         <ion-list>
-            <button *ngIf="!isLoggedIn()" ion-button large block icon-left color="secondary" (click)="navToStation()" [disabled]="!(geraet && getSteps())">
+            <button *ngIf="!isLoggedIn" ion-button large block icon-left color="secondary" (click)="navToStation()" [disabled]="!(geraet && getSteps())">
                 <ion-icon name="list"></ion-icon>Resultate</button>
-            <button *ngIf="isLoggedIn()" ion-button large block icon-left color="secondary" (click)="navToStation()" [disabled]="!(geraet && getSteps())">
+            <button *ngIf="isLoggedIn" ion-button large block icon-left color="secondary" (click)="navToStation()" [disabled]="!(geraet && getSteps())">
               <ion-icon name="create"></ion-icon>Resultate</button>
-            <button *ngIf="isLoggedIn() && isOpenAndActive()" ion-button large block icon-left color="green" (click)="finish()" [disabled]="!(geraet && getSteps())">
-              <ion-icon name="git-commit"></ion-icon>Eingaben abschliessen</button>          
           </ion-list>
 </ion-content>
 
 <ion-footer>
     <ion-toolbar>
-      <ion-list *ngIf="isLocked()">
+      <ion-list *ngIf="isLocked">
         <button ion-button large block icon-left color="warn" (click)="unlock()">
             <ion-icon name="unlock"></ion-icon>Einstellung zurücksetzen</button>          
       </ion-list>
-      <ion-list *ngIf="isLoggedIn()">
-          <button ion-button large block icon-left color="danger" (click)="logout()">
-              <ion-icon name="log-out"></ion-icon>Abmelden</button>          
+      <ion-list *ngIf="isLoggedIn">
+        <button *ngIf="isLoggedIn && isOpenAndActive" ion-button large block icon-left color="green" (click)="finish()" [disabled]="!(geraet && getSteps())">
+          <ion-icon name="git-commit"></ion-icon>Eingaben abschliessen</button>          
+        <button ion-button large block icon-left color="danger" (click)="logout()">
+          <ion-icon name="log-out"></ion-icon>Abmelden</button>          
         </ion-list>
     </ion-toolbar>
   </ion-footer>
