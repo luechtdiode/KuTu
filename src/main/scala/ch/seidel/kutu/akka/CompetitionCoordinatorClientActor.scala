@@ -94,7 +94,8 @@ class CompetitionCoordinatorClientActor(wettkampfUUID: String) extends Actor wit
         case Some(wsList) => wsList.foreach(ws => ws ! dgsText)
         case _ =>
       }
-      
+      resetBestenResult()
+
     case FinishDurchgang(wettkampfUUID, durchgang) =>
       val eventDurchgangFinished = DurchgangFinished(wettkampfUUID, durchgang)
       startStopEvents = startStopEvents :+ eventDurchgangFinished
@@ -164,7 +165,7 @@ class CompetitionCoordinatorClientActor(wettkampfUUID: String) extends Actor wit
       wsSend = wsSend + (durchgangNormalized -> durchgangClients)
       deviceWebsocketRefs = deviceWebsocketRefs + (deviceId -> ref)
       ref ! TextMessage("Connection established.")      
-      (durchgang match {
+      (durchgangNormalized match {
         case Some(dgn) => // take last of requested durchgang
           startStopEvents.seq.reverse.filter {
             case DurchgangStarted(w, d, t) => encodeURIComponent(d) == dgn
@@ -264,6 +265,7 @@ class CompetitionCoordinatorClientActor(wettkampfUUID: String) extends Actor wit
   def resetBestenResult() {
     lastBestenResults = bestenResults
     bestenResults = Map[String,WertungContainer]()
+    lastWertungen = Map.empty
     val wsSends = wsSend.values
     val msg = TextMessage(NewLastResults(lastWertungen, lastBestenResults).asInstanceOf[KutuAppEvent].toJson.compactPrint)
 //    println(msg)
