@@ -169,6 +169,12 @@ package object domain {
     def toWertungsrichter = Wertungsrichter(id, js_id, geschlecht, name, vorname, gebdat, strasse, plz, ort, verein.map(_.id), activ)
   }
   
+  object Durchgang {
+    def apply(): Durchgang = Durchgang(0, "nicht zugewiesen")
+  }
+  case class Durchgang(wettkampfId: Long, durchgang: String) extends DataObject {
+    override def easyprint = durchgang
+  }  
   case class Durchgangstation(wettkampfId: Long, durchgang: String, d_Wertungsrichter1: Option[Long], e_Wertungsrichter1: Option[Long], d_Wertungsrichter2: Option[Long], e_Wertungsrichter2: Option[Long], geraet: Disziplin) extends DataObject {
     override def easyprint = toString
   }

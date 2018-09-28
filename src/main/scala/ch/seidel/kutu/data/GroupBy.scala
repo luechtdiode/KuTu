@@ -165,6 +165,16 @@ case class ByAthlet() extends GroupBy with FilterBy {
   })
 }
 
+
+case class ByDurchgang(riegenZuDurchgang: Map[String,Durchgang]) extends GroupBy with FilterBy {
+  override val groupname = "Durchgang"
+  protected override val grouper = (v: WertungView) => {
+    riegenZuDurchgang.getOrElse(v.riege.getOrElse(""), riegenZuDurchgang.getOrElse(v.riege2.getOrElse(""), Durchgang()))
+  }
+  protected override val sorter: Option[(GroupSection, GroupSection) => Boolean] = Some((gs1: GroupSection, gs2: GroupSection) => {
+    gs1.groupKey.asInstanceOf[Durchgang].durchgang.compareTo(gs2.groupKey.asInstanceOf[Durchgang].durchgang) < 0
+  })
+}
 case class ByProgramm(text: String = "Programm/Kategorie") extends GroupBy with FilterBy {
   override val groupname = text
   protected override val grouper = (v: WertungView) => {
