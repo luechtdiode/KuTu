@@ -1,4 +1,4 @@
-import { Component, ViewChild, HostListener } from '@angular/core';
+import { Component, ViewChild, HostListener, OnInit } from '@angular/core';
 import { NavController, NavParams, Content, Header } from 'ionic-angular';
 import { LastResultDetailPage } from '../last-result-detail/last-result-detail';
 import { BackendService } from '../../app/backend.service';
@@ -15,7 +15,8 @@ import { WertungContainer, Wettkampf, Geraet } from '../../app/backend-types';
   selector: 'page-last-results',
   templateUrl: 'last-results.html',
 })
-export class LastResultsPage {
+export class LastResultsPage implements OnInit {
+
   @ViewChild(Content) content: Content;
   @ViewChild(Header) header: Header;
 
@@ -30,6 +31,8 @@ export class LastResultsPage {
   }
 
   constructor(public navCtrl: NavController, public navParams: NavParams, public backendService: BackendService) {
+  }
+  ngOnInit(): void {
     this.backendService.loadAlleResultate().subscribe(geraete => {
       this.geraete = geraete;
       this.sortItems();
@@ -44,7 +47,6 @@ export class LastResultsPage {
       this.sortItems();
     });
   }
-
   sortItems() {
     this.items = this.items.sort((a, b) => {
       let p = a.programm.localeCompare(b.programm);

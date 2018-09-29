@@ -57,13 +57,15 @@ export class MyApp {
               { title: 'Letzte Resultate', component: LastResultsPage }
             ];        
             this.rootPage = LastResultsPage;
-            localStorage.setItem("external_load", initializeWith.substring(5)); 
+            this.backendService.initWithQuery(initializeWith.substring(5));
+            //localStorage.setItem("external_load", initializeWith.substring(5)); 
           } else if (initializeWith.startsWith("top")) {
             this.pages = [
               { title: 'Top Resultate', component: LastTopResultsPage }
             ];
             this.rootPage = LastTopResultsPage;
-            localStorage.setItem("external_load", initializeWith.substring(4)); 
+            this.backendService.initWithQuery(initializeWith.substring(4));
+            //localStorage.setItem("external_load", initializeWith.substring(4)); 
           } else {
             localStorage.setItem("external_load", initializeWith); 
             window.history.replaceState({}, document.title, window.location.href.split('?')[0]);
