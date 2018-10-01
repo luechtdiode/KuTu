@@ -274,24 +274,32 @@ abstract trait WertungService extends DBService with WertungResultMapper with Di
   @throws(classOf[Exception])
   def updateWertungSimple(w: Wertung, putToBestenresults: Boolean = false): Wertung = {
     val wv = readWettkampfDisziplinView(w.wettkampfdisziplinId).notenSpez.verifiedAndCalculatedWertung(w)
-    val wvId = Await.result(database.run((for {
-        updated <- sqlu"""
+//    val wvId = Await.result(database.run((for {
+//        updated <- sqlu"""
+//                  UPDATE wertung
+//                  SET note_d=${wv.noteD}, note_e=${wv.noteE}, endnote=${wv.endnote}, riege=${wv.riege}, riege2=${wv.riege2}
+//                  WHERE 
+//                    athlet_Id=${wv.athletId} and wettkampfdisziplin_Id=${wv.wettkampfdisziplinId} and wettkampf_Id=${wv.wettkampfId}
+//          """
+//        wvId <- sql"""
+//                  SELECT id FROM wertung
+//                  WHERE 
+//                    athlet_Id=${wv.athletId} and wettkampfdisziplin_Id=${wv.wettkampfdisziplinId} and wettkampf_Id=${wv.wettkampfId}
+//        """.as[Long]
+//      } yield {
+//        wvId
+//      })//.transactionally
+//    ), Duration.Inf).head
+//    val result = wv.copy(id = wvId)
+    val wvId = Await.result(database.run(DBIO.sequence(Seq(sqlu"""
                   UPDATE wertung
                   SET note_d=${wv.noteD}, note_e=${wv.noteE}, endnote=${wv.endnote}, riege=${wv.riege}, riege2=${wv.riege2}
                   WHERE 
                     athlet_Id=${wv.athletId} and wettkampfdisziplin_Id=${wv.wettkampfdisziplinId} and wettkampf_Id=${wv.wettkampfId}
-          """
-        wvId <- sql"""
-                  SELECT id FROM wertung
-                  WHERE 
-                    athlet_Id=${wv.athletId} and wettkampfdisziplin_Id=${wv.wettkampfdisziplinId} and wettkampf_Id=${wv.wettkampfId}
-        """.as[Long]
-      } yield {
-        wvId
-      }).transactionally
+          """//.transactionally
+          ))
     ), Duration.Inf).head
-    val result = wv.copy(id = wvId)
-
+    val result = wv//.copy(id = wvId)
     // TODO - this feature is not able to serve for multiple competitions at same time
     // if(putToBestenresults && result.endnote >= 8.7) {
     //   putWertungToBestenResults(result)

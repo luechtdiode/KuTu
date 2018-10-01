@@ -34,7 +34,7 @@ object TestDBService {
         prop = proplite,
         user = "kutu",
         password = "kutu",
-        executor = AsyncExecutor("DB-Actions", 10, 10000)
+        executor = AsyncExecutor("DB-Actions", 500, 10000)
         )
     DBService.installDB(tempDatabase)
     DBService.updateDB(tempDatabase)

@@ -36,5 +36,16 @@ class PackageSpec extends KuTuBaseSpec {
       val millis = 3 * 1000 + 59 * 60 * 1000 + 23 * 3600 * 1000  +  1 * 24 * 3600 * 1000
       assert("1d, 23h, 59m, 3s" == toDurationFormat(1L, 1L + millis))
     }
-  }  
+  }
+  
+  "encapsulated titles" should {
+    "match" in {
+      val titles = Seq(
+          "D1, K1-4 Tu & Ti"
+          , "D1.TuTi"
+          )
+      titles.foreach(t => assert(t.matches(".*[\\s,\\.;!].*")))
+      //assert("KH.KD".matches(".*[\\s,\\.;!].*"))
+    }
+  }
 }

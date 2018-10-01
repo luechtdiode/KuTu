@@ -49,10 +49,10 @@ object ScoreToJsonRenderer {
           def renderListHead = {
             gsBlock.append("{")
             if(openedTitle.startsWith("\"title\":{")) {
-              gsBlock.append(s"""${openedTitle + gl.groupKey.easyprint}"},""")
+              gsBlock.append(s"""${openedTitle + gl.groupKey.capsulatedprint}"},""")
             }
             else {
-              gsBlock.append(s""""title":{"level":"${level + 2}", "text":"${openedTitle + gl.groupKey.easyprint}"},""")
+              gsBlock.append(s""""title":{"level":"${level + 2}", "text":"${openedTitle + gl.groupKey.capsulatedprint}"},""")
             }
           }
 
@@ -99,9 +99,9 @@ object ScoreToJsonRenderer {
         case g: GroupNode => gsBlock.append(
             toJsonString(title, g.next.toList,
                 if(openedTitle.length() > 0)
-                  openedTitle + s"${g.groupKey.easyprint}, "
+                  openedTitle + s"${g.groupKey.capsulatedprint}, "
                 else
-                  s""""title":{"level":"${level + 2}", "text":"${g.groupKey.easyprint}, """,
+                  s""""title":{"level":"${level + 2}", "text":"${g.groupKey.capsulatedprint}, """,
                 level + 1, sortAlphabetically, diszMap, logoFile))
 
         case s: GroupSum  =>

@@ -76,6 +76,8 @@ class CompetitionCoordinatorClientActor(wettkampfUUID: String) extends Actor wit
 
   override def receive = {
 
+    case sd:StartedDurchgaenge => sender ! ResponseMessage(startedDurchgaenge)
+      
     case StartDurchgang(wettkampfUUID, durchgang) =>
       val eventDurchgangStarted = DurchgangStarted(wettkampfUUID, durchgang)
       val eventDurchgangFinished = DurchgangFinished(wettkampfUUID, durchgang)
@@ -192,9 +194,10 @@ class CompetitionCoordinatorClientActor(wettkampfUUID: String) extends Actor wit
 
     case StopDevice(deviceId) =>
       log.info(s"stopped device $deviceId")
-      val stoppedWebsocket = deviceWebsocketRefs(deviceId)
-      deviceWebsocketRefs = deviceWebsocketRefs.filter(x => x._2 != stoppedWebsocket)      
-      wsSend = wsSend.map{x => (x._1, x._2.filter(_ != stoppedWebsocket))}.filter(x => x._2.nonEmpty)
+      deviceWebsocketRefs.get(deviceId).foreach{ stoppedWebsocket =>
+          deviceWebsocketRefs = deviceWebsocketRefs.filter(x => x._2 != stoppedWebsocket)  
+          wsSend = wsSend.map{x => (x._1, x._2.filter(_ != stoppedWebsocket))}.filter(x => x._2.nonEmpty)
+      }
       if (startedDurchgaenge.isEmpty && wsSend.isEmpty) handleStop
       
     case Terminated(stoppedWebsocket) =>
@@ -330,7 +333,9 @@ class ClientActorSupervisor extends Actor with ActorLogging {
     case uw: KutuAppAction =>
       wettkampfCoordinators.get(uw.wettkampfUUID) match {
         case Some(coordinator) => coordinator.forward(uw)
-        case _=> sender ! MessageAck("OK")
+        case _=> 
+          println("Action for unknown competition: " + uw)
+          sender ! MessageAck("Action for unknown competition: " + uw)
       }
       
     case Terminated(wettkampfActor) =>
@@ -351,7 +356,7 @@ object CompetitionCoordinatorClientActor extends JsonSupport with EnrichedJson {
     implicit val timeout = Timeout(5000 milli)
     (supervisor ? action).mapTo[KutuAppEvent]
   }
-  
+ 
   def props(wettkampfUUID: String) = Props(classOf[CompetitionCoordinatorClientActor], wettkampfUUID)
   
   def reportErrorsFlow[T]: Flow[T, T, Any] =

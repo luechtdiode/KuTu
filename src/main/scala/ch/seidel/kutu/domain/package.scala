@@ -114,6 +114,10 @@ package object domain {
     
   trait DataObject {
     def easyprint: String = toString
+    def capsulatedprint: String = {
+      val ep = easyprint
+      if (ep.matches(".*[\\s,\\.;].*")) s""""$ep"""" else ep
+    }
   }
 
   case class NullObject(caption: String) extends DataObject {

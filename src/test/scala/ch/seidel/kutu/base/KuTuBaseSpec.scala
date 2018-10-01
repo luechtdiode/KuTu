@@ -23,7 +23,7 @@ trait KuTuBaseSpec extends WordSpec with Matchers with DBService with KutuServic
       val vereinID = createVerein(s"Verein-$v", Some(s"Verband-$v"))
       val athleten = for {
         pg <- (1 to pgIds.size) 
-        a <- (1 to 1)
+        a <- (1 to Math.max(1, 4-pg))
       } yield {
         val athlet = insertAthlete(Athlet(vereinID).copy(name = s"Athlet-$pg-$a"))
         assignAthletsToWettkampf(wettkampf.id, Set(pgIds(pg-1)), Set(athlet.id))
