@@ -251,13 +251,13 @@ class RiegenFilterView(isEditable: Boolean, wettkampf: WettkampfView, service: K
           val editor = evt.rowValue
           editor.name.value = evt.newValue
           val updated = RiegeEditor(
-              evt.rowValue.wettkampfid,
-              evt.rowValue.initanz,
-              evt.rowValue.initviewanz,
-              evt.rowValue.enabled,
+              editor.wettkampfid,
+              editor.initanz,
+              editor.initviewanz,
+              editor.enabled,
               Riege(editor.name.value, editor.initdurchgang, editor.initstart),
-              evt.rowValue.onSelectedChange)
-          service.renameRiege(wettkampf.id, evt.rowValue.initname, evt.newValue)
+              editor.onSelectedChange)
+          service.renameRiege(wettkampf.id, editor.initname, evt.newValue)
           fireRiegeChanged(updated)
           val rowIndex = riegenFilterModel.indexOf(evt.rowValue)
           evt.tableView.selectionModel.value.select(rowIndex, this)

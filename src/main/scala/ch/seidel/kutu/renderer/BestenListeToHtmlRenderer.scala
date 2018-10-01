@@ -100,7 +100,7 @@ trait BestenListeToHtmlRenderer {
     </html>
   """
 
-  private def anmeldeListe(wertungen: Seq[WertungView], logo: File) = {
+  private def bestenListe(wertungen: Seq[WertungView], logo: File) = {
     val d = wertungen.map{wertung =>
       s"""<tr class="athletRow"><td>${wertung.athlet.verein.map(_.name).getOrElse("")}</td><td class="large">${wertung.athlet.name} ${wertung.athlet.vorname}</td><td class="large">${wertung.wettkampfdisziplin.disziplin.name}, ${wertung.wettkampfdisziplin.programm.name}</td><td class="totalCol">${wertung.endnote}</td></tr>"""
     }
@@ -131,7 +131,7 @@ trait BestenListeToHtmlRenderer {
       a4seitenmenge <- kandidatenPerKategorie.sliding(28, 28)
     }
     yield {
-      anmeldeListe(a4seitenmenge, logo)
+      bestenListe(a4seitenmenge, logo)
     }
 
     val pages = rawpages.mkString("</li></ul><ul><li>")
