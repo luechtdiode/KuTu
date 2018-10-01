@@ -17,13 +17,19 @@ trait RiegenService extends DBService with RiegenResultMapper {
 
   def renameRiege(wettkampfid: Long, oldname: String, newname: String): Riege = {
     val existing = Await.result(database.run{
-        (sqlu"""
-                DELETE from riege where name=${newname.trim} and wettkampf_id=${wettkampfid}
-        """ >>
-        sql"""select r.wettkampf_id, r.name, r.durchgang, r.start
+        (if (newname.trim == oldname) {
+          sql"""select r.wettkampf_id, r.name, r.durchgang, r.start
              from riege r
              where wettkampf_id=$wettkampfid and name=${oldname}
-          """.as[RiegeRaw]).transactionally
+          """.as[RiegeRaw]
+        } else {
+          sqlu"""
+                DELETE from riege where name=${newname.trim} and wettkampf_id=${wettkampfid}
+                """  >>
+          sql"""select r.wettkampf_id, r.name, r.durchgang, r.start
+             from riege r
+             where wettkampf_id=$wettkampfid and name=${oldname}
+          """.as[RiegeRaw]}).transactionally
     }, Duration.Inf)
     
     Await.result(database.run{
