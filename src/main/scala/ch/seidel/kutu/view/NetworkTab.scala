@@ -104,7 +104,7 @@ object NetworkTab {
    
   def startDurchgang(w: WettkampfView, d: DurchgangState, t: Long) = {
     val started = d.start(t)
-    val newset = activeDurchgaenge.get(w).orElse(Some(Set[DurchgangState]())).get.filter(_ != d) + started
+    val newset = activeDurchgaenge.get(w).orElse(Some(Set[DurchgangState]())).get.filter(_.name != d.name) + started
     val newEntry = (w -> newset)
     activeDurchgaenge = activeDurchgaenge + newEntry
     activeDurchgaengeProp.set(activeDurchgaenge.flatMap(x => x._2).toSet)
@@ -115,7 +115,7 @@ object NetworkTab {
   }
   def finishDurchgang(w: WettkampfView, d: DurchgangState, t: Long) = {
     val finished = d.finish(t)
-    val newset = activeDurchgaenge.get(w).orElse(Some(Set[DurchgangState]())).get.filter(_ != d) + finished
+    val newset = activeDurchgaenge.get(w).orElse(Some(Set[DurchgangState]())).get.filter(_.name != d.name) + finished
     val newEntry = (w -> newset)
     activeDurchgaenge = activeDurchgaenge + newEntry
     activeDurchgaengeProp.set(activeDurchgaenge.flatMap(x => x._2).toSet)

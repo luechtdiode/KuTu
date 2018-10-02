@@ -181,7 +181,13 @@ class CompetitionCoordinatorClientActor(wettkampfUUID: String) extends Actor wit
             case _ => "_"
           }
           .filter(_._1 != "_")
-          .flatMap(d => Seq(d._2.head, d._2.last))
+          .flatMap{d =>
+            if (d._2.size > 1) {
+              Seq(d._2.head, d._2.last)
+            } else {
+              d._2
+            }            
+          }
         }
       )
       .foreach(d => ref ! TextMessage(d.asInstanceOf[KutuAppEvent].toJson.compactPrint))
