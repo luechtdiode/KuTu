@@ -13,33 +13,18 @@
 </ion-header>
 
 <ion-content>
-    <ion-list *ngIf="isDNoteUsed">
+    <ion-list>
       <ion-item>
           <ion-title>{{item.vorname + ' ' + item.name}}</ion-title>
           <ion-note item-end>{{wertung.riege}}</ion-note>
       </ion-item>
-      <ion-item>
+      <ion-item [hidden]="!isDNoteUsed">
         <ion-label>D-Note</ion-label>
-        <ion-input [readonly]='!editable()' type="number" [disabled]="waiting" [(ngModel)]='wertung.noteD'></ion-input>
+        <ion-input autofocus #dnote [readonly]='!editable()' type="number" [disabled]="waiting" [(ngModel)]='wertung.noteD'></ion-input>
       </ion-item>
       <ion-item>
         <ion-label>E-Note</ion-label>
-        <ion-input [readonly]='!editable()' type="number"  [disabled]="waiting" [(ngModel)]='wertung.noteE' (keyup.enter)="saveNext(wertung)"></ion-input>
-      </ion-item>
-      <ion-item>
-        <ion-label>Endnote</ion-label>
-        <ion-input [value]='wertung.endnote' readonly></ion-input>
-      </ion-item>
-
-    </ion-list>
-    <ion-list *ngIf="!isDNoteUsed">
-      <ion-item>
-          <ion-title>{{item.vorname + ' ' + item.name}}</ion-title>
-          <ion-note item-end>{{wertung.riege}}</ion-note>
-      </ion-item>
-      <ion-item>
-        <ion-label>E-Note</ion-label>
-        <ion-input [readonly]='!editable()' type="number"  [disabled]="waiting" [(ngModel)]='wertung.noteE' (keyup.enter)="saveNext(wertung)"></ion-input>
+        <ion-input autofocus #enote [readonly]='!editable()' type="number"  [disabled]="waiting" [(ngModel)]='wertung.noteE' (keyup.enter)="saveNext(wertung)"></ion-input>
       </ion-item>
       <ion-item>
         <ion-label>Endnote</ion-label>
