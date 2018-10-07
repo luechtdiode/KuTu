@@ -345,33 +345,6 @@
 						<include>**/*Spec.java</include>
 					</includes>
 				</configuration>
-			</plugin>
-			<plugin>
-				<groupId>com.github.github</groupId>
-				<artifactId>site-maven-plugin</artifactId>
-				<version>0.12</version>
-				<configuration>
-					<repositoryOwner>luechtdiode</repositoryOwner>
-					<repositoryName>KuTu</repositoryName>
-					<message>update website</message>
-					<oauth2Token>${env.github_oauth2Token_KuTu}</oauth2Token>
-					<outputDirectory>${project.build.directory}</outputDirectory>
-					<branch>refs/heads/gh-pages</branch>
-					<merge>true</merge>
-					<path>download</path>
-					<dryRun>true</dryRun>
-					<includes>
-						<include>KuTu-app.jar</include>
-					</includes>
-				</configuration>
-				<executions>
-					<execution>
-						<goals>
-							<goal>site</goal>
-						</goals>
-						<phase>site</phase>
-					</execution>
-				</executions>
 			</plugin-->
 			<plugin>
 				<groupId>org.codehaus.mojo</groupId>
@@ -380,9 +353,11 @@
 				<configuration>
 					<serverId>ftp-repository</serverId>
 					<url>ftp://ftp.interpolar.ch</url>
+					<fromDir>${basedir}/target/${OS}/bundles</fromDir>
 					<includes>
                             **/*.msi, **/*.pkg, **/*.dmg, **/*.rpm, **/*.deb
 					</includes>
+					<toDir>${OS}</toDir>
 				</configuration>
 				<executions>
 					<execution>
@@ -391,10 +366,6 @@
 						<goals>
 							<goal>upload</goal>
 						</goals>
-						<configuration>
-							<fromDir>${basedir}/target/${OS}/bundles</fromDir>
-							<toDir>${OS}</toDir>
-						</configuration>
 					</execution>
 				</executions>
 			</plugin>
