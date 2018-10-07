@@ -1,7 +1,8 @@
-import { Component } from '@angular/core';
-import { NavController, NavParams } from 'ionic-angular';
+import { Component, ViewChild } from '@angular/core';
+import { NavController, NavParams, Keyboard, Platform } from 'ionic-angular';
 import { WertungContainer, Wertung } from '../../app/backend-types';
 import { BackendService } from '../../app/backend.service';
+import { NgForm } from '@angular/forms';
 
 /**
  * Generated class for the WertungEditorPage page.
@@ -17,7 +18,12 @@ import { BackendService } from '../../app/backend.service';
 export class WertungEditorPage {
   private itemOriginal: WertungContainer;
 
-  constructor(public navCtrl: NavController, public navParams: NavParams, public backendService: BackendService) {
+  @ViewChild("wertungsform") public form;
+  @ViewChild("enote") public enote;
+  @ViewChild("dnote") public dnote;
+
+  constructor(public navCtrl: NavController, public navParams: NavParams, public backendService: BackendService,
+    public keyboard: Keyboard, public platform: Platform) {
       // If we navigated to this page, we will have an item available as a nav param
       this.durchgang = navParams.get('durchgang');
       this.step = navParams.get('step');
@@ -29,12 +35,38 @@ export class WertungEditorPage {
       this.isDNoteUsed = this.item.isDNoteUsed;
 
       backendService.wertungUpdated.subscribe(wc => {
-        if (wc.wertung.id === this.wertung.id) {
+        if (wc.wertung.id === this.wertung.id && wc.wertung.endnote !== this.wertung.endnote) {
+          console.log("updateing wertung from service");
           this.item.wertung = Object.assign({}, wc.wertung);
           this.itemOriginal.wertung = Object.assign({}, wc.wertung);
           this.wertung = Object.assign({}, this.itemOriginal.wertung);
+          this.form.form.markAsUnTouched();
         }
       });
+  }
+
+  ionViewWillEnter() {
+
+    console.log("ionViewWillEnter");
+    this.platform.ready().then(() => {
+
+      // We need to use a timeout in order to set the focus on load
+      setTimeout(() => {
+        if ((this.keyboard as any).show) {
+          (this.keyboard as any).show(); // Needed for android. Call in a platform ready function
+          console.log("keyboard called");
+        }
+        if (this.isDNoteUsed && this.dnote) {
+          this.dnote.setFocus();
+          console.log("dnote focused");
+        } else if (this.enote) {
+          this.enote.setFocus();
+          console.log("enote focused");
+        }        
+      },400);
+
+    });
+
   }
 
   item: WertungContainer;
@@ -54,16 +86,28 @@ export class WertungEditorPage {
     return this.backendService.loggedIn
   }
   
-  updateUI(wc: WertungContainer) {
+  updateUI(wc: WertungContainer) {    
     this.waiting = false;
     this.item = Object.assign({}, wc);
     this.itemOriginal = Object.assign({}, wc);
     this.wertung = Object.assign({}, this.itemOriginal.wertung);
+    
+    this.ionViewWillEnter();
   }
   
+  ensureInitialValues(wertung: Wertung): Wertung {
+    if (!wertung.noteD) {
+      wertung.noteD = 0;
+    }
+    if (!wertung.noteE) {
+      wertung.noteE = 0;
+    }
+    return wertung;
+  }
+
   saveClose(wertung: Wertung) {
     this.waiting = true;
-    this.backendService.updateWertung(this.durchgang, this.step, this.geraetId, wertung).subscribe((wc) => {
+    this.backendService.updateWertung(this.durchgang, this.step, this.geraetId, this.ensureInitialValues(wertung)).subscribe((wc) => {
       this.updateUI(wc);
       this.navCtrl.pop();
     }, (err) => {
@@ -76,7 +120,7 @@ export class WertungEditorPage {
   
   save(wertung: Wertung) {
     this.waiting = true;
-    this.backendService.updateWertung(this.durchgang, this.step, this.geraetId, wertung).subscribe((wc) => {
+    this.backendService.updateWertung(this.durchgang, this.step, this.geraetId, this.ensureInitialValues(wertung)).subscribe((wc) => {
         this.updateUI(wc);
     }, (err) => {
       this.waiting = false;
@@ -85,10 +129,10 @@ export class WertungEditorPage {
       console.log(err);      
     });
   }
-  
+
   saveNext(wertung: Wertung) {
     this.waiting = true;
-    this.backendService.updateWertung(this.durchgang, this.step, this.geraetId, wertung).subscribe((wc) => {
+    this.backendService.updateWertung(this.durchgang, this.step, this.geraetId, this.ensureInitialValues(wertung)).subscribe((wc) => {
       this.waiting = false;
       const currentItemIndex = this.backendService.wertungen.findIndex(wc => wc.wertung.id === wertung.id);
       let nextItemIndex = currentItemIndex + 1;
