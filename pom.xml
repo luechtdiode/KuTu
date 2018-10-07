@@ -376,7 +376,14 @@
 			<plugin>
 				<groupId>org.codehaus.mojo</groupId>
 				<artifactId>wagon-maven-plugin</artifactId>
-				<version>1.0</version>
+				<version>2.0.0</version>
+				<configuration>
+					<serverId>ftp-repository</serverId>
+					<url>ftp://ftp.interpolar.ch</url>
+					<includes>
+                            **/*.msi, **/*.pkg, **/*.dmg, **/*.rpm, **/*.deb
+					</includes>
+				</configuration>
 				<executions>
 					<execution>
 						<id>upload-binaries</id>
@@ -386,11 +393,6 @@
 						</goals>
 						<configuration>
 							<fromDir>${basedir}/target/${OS}/bundles</fromDir>
-							<includes>
-                              **/*.msi, **/*.pkg, **/*.dmg, **/*.rpm, **/*.deb
-							</includes>
-							<serverId>ftp-repository</serverId>
-							<url>ftp://ftp.interpolar.ch</url>
 							<toDir>${OS}</toDir>
 						</configuration>
 					</execution>
@@ -402,7 +404,7 @@
 			<extension>
 				<groupId>org.apache.maven.wagon</groupId>
 				<artifactId>wagon-ftp</artifactId>
-				<version>1.0</version>
+				<version>3.2.0</version>
 			</extension>
 		</extensions>
 	</build>
