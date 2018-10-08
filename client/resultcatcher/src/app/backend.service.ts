@@ -26,6 +26,7 @@ export class BackendService extends WebsocketService {
   steps: number[];
   wertungen: WertungContainer[];
   newLastResults = new BehaviorSubject<NewLastResults>(undefined);
+  lastMessageAck: MessageAck;
 
   private _competition: string = undefined;
   get competition(): string {
@@ -57,7 +58,7 @@ export class BackendService extends WebsocketService {
         this.initWithQuery(localStorage.getItem('current_station'));
       }
     });
-      
+    this.showMessage.subscribe(msg => this.lastMessageAck = msg);
   }
 
   initWithQuery(initWith: string) {
@@ -105,6 +106,17 @@ export class BackendService extends WebsocketService {
     }
   }
 
+  standardErrorHandler = (err: HttpErrorResponse) => {
+    console.log(err);
+    const msgAck = <MessageAck>{
+      msg : '<em>' + err.statusText + '</em><br>' + err.message,
+      type : err.name
+    };
+    if (!this.lastMessageAck || this.lastMessageAck.msg !== msgAck.msg) {
+      this.showMessage.next(msgAck);  
+    }
+  }
+
   private checkJWT() {
     if(!localStorage.getItem('auth_token')) {
       this.loggedIn = false;
@@ -128,11 +140,13 @@ export class BackendService extends WebsocketService {
       if (err.status === 401) {
         localStorage.removeItem('auth_token');
         this.loggedIn = false;
+        this.showMessage.next(<MessageAck> {
+          msg: 'Die Berechtigung zum erfassen von Wertungen ist abgelaufen.',
+          type:'Berechtigung'
+        });
+      } else {
+        this.standardErrorHandler(err);
       }
-      this.showMessage.next(<MessageAck> {
-        msg: 'Die Berechtigung zum erfassen von Wertungen ist abgelaufen.',
-        type:'Berechtigung'
-      });
     });
     this.lastJWTChecked = new Date().getTime();
   }
@@ -152,10 +166,16 @@ export class BackendService extends WebsocketService {
       console.log(err);
       localStorage.removeItem('auth_token');
       this.loggedIn = false;
-      this.showMessage.next(<MessageAck> {
-        msg: 'Die Berechtigung zum erfassen von Wertungen ist nicht gültig oder abgelaufen.',
-        type:'Berechtigung'
-      });
+      if (err.status === 401) {
+        localStorage.removeItem('auth_token');
+        this.loggedIn = false;
+        this.showMessage.next(<MessageAck> {
+          msg: 'Die Berechtigung zum erfassen von Wertungen ist nicht gültig oder abgelaufen.',
+          type:'Berechtigung'
+        });
+      } else {
+        this.standardErrorHandler(err);
+      }
     });
   }
   
@@ -178,7 +198,7 @@ export class BackendService extends WebsocketService {
   getCompetitions() {
     this.http.get<Wettkampf[]>(backendUrl + 'api/competition').subscribe((data) => {
       this.competitions = data;
-    });
+    }, this.standardErrorHandler);
   }
 
   getDurchgaenge(competitionId: string) {
@@ -198,7 +218,7 @@ export class BackendService extends WebsocketService {
   loadDurchgaenge() {
     this.http.get<string[]>(backendUrl + 'api/durchgang/' + this._competition).subscribe((data) => {
       this.durchgaenge = data;
-    });
+    }, this.standardErrorHandler);
   }
 
   getGeraete(competitionId: string, durchgang: string) {
@@ -224,8 +244,7 @@ export class BackendService extends WebsocketService {
     const request = this.http.get<Geraet[]>(path).share();
     request.subscribe((data) => {
       this.geraete = data;
-    });  
-
+    }, this.standardErrorHandler);
     return request;
 }
 
@@ -249,7 +268,7 @@ export class BackendService extends WebsocketService {
         this._step = 1;
         this.loadWertungen();
       }
-    });
+    }, this.standardErrorHandler);
   }
   getWertungen(competitionId: string, durchgang: string, geraetId: number, step: number) {
     if (this.wertungen != undefined && this._competition === competitionId && this._durchgang === durchgang && this._geraet === geraetId && this._step === step) return;
@@ -269,7 +288,7 @@ export class BackendService extends WebsocketService {
     this.initWebsocket();
     this.http.get<WertungContainer[]>(backendUrl + 'api/durchgang/' + this._competition + '/' + encodeURIComponent2( this._durchgang) + '/' + this._geraet + '/' + this._step).subscribe((data) => {
       this.wertungen = data;
-    });    
+    }, this.standardErrorHandler);
   }
 
   loadAlleResultate(): Observable<Geraet[]> {
@@ -305,7 +324,7 @@ export class BackendService extends WebsocketService {
         this.showMessage.next(msg);
         result.error(msg.msg);
       }
-    }, (err: HttpErrorResponse)=> {
+  }, (err: HttpErrorResponse)=> {
       const msg = <MessageAck>{
         msg : err.statusText + ': ' + err.message,
         type : err.name
@@ -337,8 +356,8 @@ export class BackendService extends WebsocketService {
       }
       this.loadWertungen();
       result.next(nextSteps);
-    }, (err)=> {
-    }); 
+    }, this.standardErrorHandler); 
+
     return result.asObservable();   
   }  
 

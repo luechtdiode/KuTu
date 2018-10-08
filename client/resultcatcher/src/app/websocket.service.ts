@@ -25,7 +25,6 @@ export abstract class WebsocketService {
   identified = new BehaviorSubject<boolean>(false);
   logMessages = new BehaviorSubject<string>("");
   showMessage = new Subject<MessageAck>();
-  
   lastMessages: string[] = [];
 
   get stopped(): boolean {
