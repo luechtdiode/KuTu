@@ -316,9 +316,13 @@ trait WettkampfRoutes extends SprayJsonSupport with JsonSupport with JwtSupport 
         }~
         delete {
           authenticated() { userId =>
-            onSuccess(readWettkampfAsync(wkuuid.toString())) { wettkampf =>
-              deleteWettkampf(wettkampf.id)
-              complete(StatusCodes.OK)
+            if (userId.equals(wkuuid.toString())) {
+              onSuccess(readWettkampfAsync(wkuuid.toString())) { wettkampf =>
+                deleteWettkampf(wettkampf.id)
+                complete(StatusCodes.OK)
+              }
+            } else {
+              complete(StatusCodes.Unauthorized)
             }
           }
         }~

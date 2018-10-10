@@ -68,11 +68,11 @@ export class BackendService extends WebsocketService {
         switch (key) {
           case 's':
             localStorage.setItem('auth_token', value);
-            this.checkJWT();
+            this.checkJWT(value);
             const cs = localStorage.getItem('current_station');
             if (cs) {
               this.initWithQuery(cs);
-            }
+            }  
             break;
           case 'c':
             this._competition = value;
@@ -117,21 +117,24 @@ export class BackendService extends WebsocketService {
     }
   }
 
-  private checkJWT() {
-    if(!localStorage.getItem('auth_token')) {
+  private checkJWT(jwt?: string) {
+    if(!jwt && !localStorage.getItem('auth_token')) {
       this.loggedIn = false;
       return;
     }
 
     const now = new Date();
     const oneHourAgo = now.getTime() - 3600000;
-    if (oneHourAgo < this.lastJWTChecked) {
+    if ((!jwt || jwt === localStorage.getItem('auth_token')) && (oneHourAgo < this.lastJWTChecked)) {
       return;
     }
 
     this.http.options(backendUrl + 'api/isTokenExpired', { 
       observe: 'response', 
-      responseType: 'text'
+      responseType: 'text',
+      headers: {
+        'x-access-token': `${jwt}`
+      }
     }).subscribe((data) => {
       localStorage.setItem('auth_token', data.headers.get('x-access-token'));
       this.loggedIn = true;

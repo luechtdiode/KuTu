@@ -149,59 +149,63 @@ trait WertungenRoutes extends SprayJsonSupport with JsonSupport with JwtSupport 
         } ~
         put {
           authenticated() { userId =>
-            entity(as[Wertung]) { wertung =>
-              segments match { 
-                case List(durchgang, geraet, step) => onComplete{ Future {
-                  val halt: Int = step
-                  val gid: Long = geraet
-                  val gerateRiegen = RiegenBuilder.mapToGeraeteRiegen(getAllKandidatenWertungen(competitionId).toList)
-                  val wkid = gerateRiegen.head.kandidaten.head.wertungen.head.wettkampf.id
-                  def filter(gr: GeraeteRiege): Boolean = {
-                    gr.durchgang.exists(encodeURIComponent(_) == durchgang) && 
-                    gr.disziplin.exists(_.id == gid) && 
-                    gr.halt == halt -1                    
-                  }
-                  
-                  if (wertung.wettkampfId == wkid) {
-                    gerateRiegen.filter(filter).flatMap(gr => gr.kandidaten
-                        .filter(k => k.id == wertung.athletId)
-                        .map(k => UpdateAthletWertung(
-                            loadAthleteView(k.id), 
-                            k.wertungen.filter(w => w.wettkampfdisziplin.disziplin.id == gid && w.id == wertung.id).map(_.toWertung.updatedWertung(wertung)).head, 
-                            competitionId.toString, 
-                            gr.durchgang.get, 
-                            gid, 
-                            halt-1, k.programm))).headOption
-                  } else {
-                    None
-                  }
-                }} {
-                  case Success(Some(wertung)) => 
-//                  RiegenBuilder.mapToGeraeteRiegen(getAllKandidatenWertungen(competitionId).toList)
-//                    .filter(gr => 
-//                        gr.durchgang.exists(encodeURIComponent(_) == durchgang) && 
-//                        gr.disziplin.exists(_.id == gid) && 
-//                        gr.halt == halt -1)
-//                    .flatMap(gr => gr.kandidaten.map(k => WertungContainer(k.id, k.vorname, k.name, k.geschlecht, k.verein, 
-//                      k.wertungen.filter(w => w.wettkampfdisziplin.disziplin.id == gid).map(_.toWertung).head, 
-//                      gid)))                  
-                    complete(CompetitionCoordinatorClientActor.publish(wertung).andThen{
-                      case Success(w) => w match {
-                        case a @ AthletWertungUpdated(athlet, verifiedWertung, wettkampfUUID, durchgang, geraet, programm) =>
-                          val verein: String = athlet.verein.map(_.name).getOrElse("")
-                          val wkPgmId = readWettkampf(competitionId.toString()).programmId
-                          val isDNoteUsed = wkPgmId != 20 && wkPgmId != 1
-                          WertungContainer(athlet.id, athlet.vorname, athlet.name, athlet.geschlecht, verein,
-                              verifiedWertung, geraet, programm, isDNoteUsed)
-                        case _ => StatusCodes.Conflict
-                      }
-                      case Failure(error) => StatusCodes.Conflict
-                    })
+            if (userId.equals(competitionId.toString())) {              
+              entity(as[Wertung]) { wertung =>
+                segments match { 
+                  case List(durchgang, geraet, step) => onComplete{ Future {
+                    val halt: Int = step
+                    val gid: Long = geraet
+                    val gerateRiegen = RiegenBuilder.mapToGeraeteRiegen(getAllKandidatenWertungen(competitionId).toList)
+                    val wkid = gerateRiegen.head.kandidaten.head.wertungen.head.wettkampf.id
+                    def filter(gr: GeraeteRiege): Boolean = {
+                      gr.durchgang.exists(encodeURIComponent(_) == durchgang) && 
+                      gr.disziplin.exists(_.id == gid) && 
+                      gr.halt == halt -1                    
+                    }
                     
-                  case _ => 
-                    complete(StatusCodes.Conflict)
+                    if (wertung.wettkampfId == wkid) {
+                      gerateRiegen.filter(filter).flatMap(gr => gr.kandidaten
+                          .filter(k => k.id == wertung.athletId)
+                          .map(k => UpdateAthletWertung(
+                              loadAthleteView(k.id), 
+                              k.wertungen.filter(w => w.wettkampfdisziplin.disziplin.id == gid && w.id == wertung.id).map(_.toWertung.updatedWertung(wertung)).head, 
+                              competitionId.toString, 
+                              gr.durchgang.get, 
+                              gid, 
+                              halt-1, k.programm))).headOption
+                    } else {
+                      None
+                    }
+                  }} {
+                    case Success(Some(wertung)) => 
+  //                  RiegenBuilder.mapToGeraeteRiegen(getAllKandidatenWertungen(competitionId).toList)
+  //                    .filter(gr => 
+  //                        gr.durchgang.exists(encodeURIComponent(_) == durchgang) && 
+  //                        gr.disziplin.exists(_.id == gid) && 
+  //                        gr.halt == halt -1)
+  //                    .flatMap(gr => gr.kandidaten.map(k => WertungContainer(k.id, k.vorname, k.name, k.geschlecht, k.verein, 
+  //                      k.wertungen.filter(w => w.wettkampfdisziplin.disziplin.id == gid).map(_.toWertung).head, 
+  //                      gid)))                  
+                      complete(CompetitionCoordinatorClientActor.publish(wertung).andThen{
+                        case Success(w) => w match {
+                          case a @ AthletWertungUpdated(athlet, verifiedWertung, wettkampfUUID, durchgang, geraet, programm) =>
+                            val verein: String = athlet.verein.map(_.name).getOrElse("")
+                            val wkPgmId = readWettkampf(competitionId.toString()).programmId
+                            val isDNoteUsed = wkPgmId != 20 && wkPgmId != 1
+                            WertungContainer(athlet.id, athlet.vorname, athlet.name, athlet.geschlecht, verein,
+                                verifiedWertung, geraet, programm, isDNoteUsed)
+                          case _ => StatusCodes.Conflict
+                        }
+                        case Failure(error) => StatusCodes.Conflict
+                      })
+                      
+                    case _ => 
+                      complete(StatusCodes.Conflict)
+                  }
                 }
               }
+            } else {
+              complete(StatusCodes.Unauthorized)
             }
           }
         }
