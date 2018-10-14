@@ -56,13 +56,27 @@
               {{geraet}}
             </ion-note> -->
           </ion-item>
-          <ion-item>
-            <ion-range *ngIf="geraet && getSteps()" [(ngModel)]="step" pin="true" [min]="1" [max]="getSteps().length" [step]="1" [snaps]="true" color="secondary">
-                <ion-label range-left class="small-text">Riege 1</ion-label>
-                <ion-label range-right class="small-text">{{getSteps().length}}</ion-label>
-            </ion-range>
-            <ion-label item-start>Riege {{step}}</ion-label>
-          </ion-item>
+          <ion-item-sliding #slidingStepItem>
+            <ion-item>                
+              <ion-range *ngIf="geraet && getSteps()" [(ngModel)]="step" pin="true" [min]="1" [max]="getSteps().length" [step]="1" [snaps]="true" color="secondary">
+                  <ion-label range-left class="small-text">Riege 1</ion-label>
+                  <ion-label range-right class="small-text">{{getSteps().length}}</ion-label>
+              </ion-range>
+              <ion-label item-start>Riege {{step}}</ion-label>
+            </ion-item>
+            <ion-item-options side="left">
+                <button ion-button color="secondary" (click)="prevStep(slidingStepItem)" [disabled]="!geraet || !getSteps()">
+                  <ion-icon name="arrow-dropleft-circle"></ion-icon>
+                  Vorherige Riege
+                </button>                
+            </ion-item-options>
+            <ion-item-options side="right">
+                <button ion-button color="secondary" (click)="nextStep(slidingStepItem)" [disabled]="!geraet || !getSteps()">
+                  <ion-icon name="arrow-dropright-circle"></ion-icon>
+                  Nächste Riege
+                </button>
+            </ion-item-options>            
+          </ion-item-sliding>
         </ion-list>
         <ion-list>
             <button *ngIf="!isLoggedIn" ion-button large block icon-left color="secondary" (click)="navToStation()" [disabled]="!(geraet && getSteps())">

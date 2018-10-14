@@ -1,5 +1,5 @@
 import { Component } from '@angular/core';
-import { NavController, AlertController } from 'ionic-angular';
+import { NavController, AlertController, ItemSliding } from 'ionic-angular';
 import { BackendService } from '../../app/backend.service';
 import { Wettkampf, Geraet } from '../../app/backend-types';
 import { StationPage } from '../station/station';
@@ -68,6 +68,16 @@ export class HomePage {
   }
   get step() {
     return this.backendService.step || -1;
+  }
+
+  nextStep(slidingItem: ItemSliding) {
+    this.step = this.backendService.nextStep();
+    slidingItem.close();
+  }
+
+  prevStep(slidingItem: ItemSliding) {
+    this.step = this.backendService.prevStep();
+    slidingItem.close();
   }
 
   getCompetitions(): Wettkampf[] {

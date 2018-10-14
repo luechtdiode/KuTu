@@ -63,6 +63,17 @@ export class StationPage {
   isLoggedIn() {
     return this.backendService.loggedIn;
   }
+  
+  nextStep(slidingItem: ItemSliding) {
+    this.step = this.backendService.nextStep();
+    slidingItem.close();
+  }
+
+  prevStep(slidingItem: ItemSliding) {
+    this.step = this.backendService.prevStep();
+    slidingItem.close();
+  }
+  
   finish() {
     let station = this.geraetName() + '/Riege #' + this.step;
     let alert = this.alertCtrl.create({

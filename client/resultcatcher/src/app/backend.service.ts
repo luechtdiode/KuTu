@@ -356,13 +356,31 @@ export class BackendService extends WebsocketService {
         this.checkJWT();
         this.stationFreezed = false;
         this._step = 1;
-      }
+      } 
       this.loadWertungen();
       result.next(nextSteps);
     }, this.standardErrorHandler); 
 
     return result.asObservable();   
   }  
+
+  nextStep(): number {
+    const nextSteps = this.steps.filter(s => s > this._step);
+    if (nextSteps.length > 0) {
+      return nextSteps[0];
+    } else {
+      return 1;
+    } 
+  }
+
+  prevStep(): number {
+    const prevSteps = this.steps.filter(s => s < this._step);
+    if (prevSteps.length > 0) {
+      return prevSteps[prevSteps.length -1];
+    } else {
+      return this.steps[this.steps.length -1];
+    } 
+  }
 
   //// Websocket implementations
 
