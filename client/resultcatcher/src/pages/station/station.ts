@@ -1,5 +1,5 @@
 import { Component } from '@angular/core';
-import { NavController, AlertController } from 'ionic-angular';
+import { NavController, AlertController, ItemSliding } from 'ionic-angular';
 import { BackendService } from '../../app/backend.service';
 import { Wettkampf, Geraet, WertungContainer } from '../../app/backend-types';
 import { encodeURIComponent2 } from '../../app/websocket.service';
