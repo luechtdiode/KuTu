@@ -40,7 +40,7 @@ object ResourceExchanger extends KutuService with RiegenBuilder {
           val mappedWettkampf = readWettkampf(wettkampfUUID)
           val mappedWertung = wertung.copy(athletId = mappedAthlet.id, wettkampfId = mappedWettkampf.id, wettkampfUUID = wettkampfUUID)
           val verifiedWertung = try {
-            val vw = updateWertungSimple(mappedWertung, true)
+            val vw = updateWertungWithIDMapping(mappedWertung, true)
             logger.info("saved " + vw)
             refresher(sender, uw.copy(wertung = vw))
             vw
