@@ -118,7 +118,10 @@ export class BackendService extends WebsocketService {
   }
 
   private checkJWT(jwt?: string) {
-    if(!jwt && !localStorage.getItem('auth_token')) {
+    if (!jwt) {
+      jwt = localStorage.getItem('auth_token');
+    }
+    if(!jwt) {
       this.loggedIn = false;
       return;
     }

@@ -67,6 +67,7 @@ export class MyApp {
             this.backendService.initWithQuery(initializeWith.substring(4));
             //localStorage.setItem("external_load", initializeWith.substring(4)); 
           } else {
+            console.log("initializing with " + initializeWith);
             localStorage.setItem("external_load", initializeWith); 
             window.history.replaceState({}, document.title, window.location.href.split('?')[0]);
           }
