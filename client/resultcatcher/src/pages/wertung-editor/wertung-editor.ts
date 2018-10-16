@@ -3,6 +3,7 @@ import { NavController, NavParams, Keyboard, Platform } from 'ionic-angular';
 import { WertungContainer, Wertung } from '../../app/backend-types';
 import { BackendService } from '../../app/backend.service';
 import { NgForm } from '@angular/forms';
+import { Subscription } from 'rxjs';
 
 /**
  * Generated class for the WertungEditorPage page.
@@ -22,6 +23,8 @@ export class WertungEditorPage {
   @ViewChild("enote") public enote;
   @ViewChild("dnote") public dnote;
 
+  private subscription: Subscription;
+
   constructor(public navCtrl: NavController, public navParams: NavParams, public backendService: BackendService,
     public keyboard: Keyboard, public platform: Platform) {
       // If we navigated to this page, we will have an item available as a nav param
@@ -34,20 +37,31 @@ export class WertungEditorPage {
       this.wertung = Object.assign({}, this.item.wertung);
       this.isDNoteUsed = this.item.isDNoteUsed;
 
-      backendService.wertungUpdated.subscribe(wc => {
-        if (wc.wertung.id === this.wertung.id && wc.wertung.endnote !== this.wertung.endnote) {
-          console.log("updateing wertung from service");
-          this.item.wertung = Object.assign({}, wc.wertung);
-          this.itemOriginal.wertung = Object.assign({}, wc.wertung);
-          this.wertung = Object.assign({}, this.itemOriginal.wertung);
-          this.form.form.markAsUnTouched();
-        }
-      });
+  }
+
+  ionViewWillLeave() {
+    if (this.subscription) {
+      this.subscription.unsubscribe();
+      this.subscription = undefined;
+    }
   }
 
   ionViewWillEnter() {
-
-    console.log("ionViewWillEnter");
+    if (this.subscription) {
+      this.subscription.unsubscribe();
+      this.subscription = undefined;
+    }
+    this.subscription = this.backendService.wertungUpdated.subscribe(wc => {
+      // console.log("incoming wertung from service", wc);
+      if (wc.wertung.athletId === this.wertung.athletId 
+         && wc.wertung.wettkampfdisziplinId === this.wertung.wettkampfdisziplinId
+         && wc.wertung.endnote !== this.wertung.endnote) {
+        // console.log("updateing wertung from service");
+        this.item.wertung = Object.assign({}, wc.wertung);
+        this.itemOriginal.wertung = Object.assign({}, wc.wertung);
+        this.wertung = Object.assign({}, this.itemOriginal.wertung);
+      }
+    });
     this.platform.ready().then(() => {
 
       // We need to use a timeout in order to set the focus on load

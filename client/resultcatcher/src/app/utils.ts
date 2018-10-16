@@ -21,7 +21,7 @@ export const sysOptions = {
 const host = location.host;
 const path = location.pathname;
 const protocol = location.protocol;
-export const backendUrl = protocol + "//" + host + path;
+export const backendUrl = (protocol + "//" + host + path).replace('index.html', '');
 
 export function formatCurrentMoment(withSeconds: boolean = false) {
   return formatDate(new Date(), withSeconds);

@@ -108,6 +108,7 @@ export class BackendService extends WebsocketService {
 
   standardErrorHandler = (err: HttpErrorResponse) => {
     console.log(err);
+    this.wertungenLoading = false;
     const msgAck = <MessageAck>{
       msg : '<em>' + err.statusText + '</em><br>' + err.message,
       type : err.name
@@ -288,12 +289,24 @@ export class BackendService extends WebsocketService {
     this.loadWertungen();
   }
 
+  wertungenLoading = false;
   loadWertungen() {
+    // prevent denial of service fired from the step-slider
+    if (this.wertungenLoading) {
+      return;
+    }
     this.captionmode = true;
     this.disconnectWS(true);
     this.initWebsocket();
+    const lastStepToLoad = this._step;
+    this.wertungenLoading = true;
     this.http.get<WertungContainer[]>(backendUrl + 'api/durchgang/' + this._competition + '/' + encodeURIComponent2( this._durchgang) + '/' + this._geraet + '/' + this._step).subscribe((data) => {
-      this.wertungen = data;
+      this.wertungenLoading = false;
+      if (this._step !== lastStepToLoad) {
+        this.loadWertungen();
+      } else {
+        this.wertungen = data;
+      }
     }, this.standardErrorHandler);
   }
 
@@ -411,7 +424,7 @@ export class BackendService extends WebsocketService {
     } else if (host.startsWith("localhost")) {
       host = "ws://localhost:5757/";
     } else {
-      host = protocol + "//" + host + path;
+      host = (protocol + "//" + host + path).replace('index.html', '');
     }
 
     return host + apiPath;
