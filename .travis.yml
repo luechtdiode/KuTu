@@ -83,6 +83,7 @@ jobs:
       - if ! git push -fq --follow-tags https://$GH_ACCESS_TOKEN@github.com/luechtdiode/KuTu.git $TRAVIS_BRANCH > /dev/null 2>&1; then err "failed to push git changes"; return1; fi
       - aws s3 rm --recursive $S3_BUCKET_CACHE/$TRAVIS_BUILD_NUMBER # clean up after ourselves
 
+<<<<<<< HEAD
 # deploy: actually, deploy is managed by maven wagon
 #   # deploy build to s3
 #   - provider: s3
@@ -106,3 +107,16 @@ jobs:
 #   #   on:
 #   #     tags: true
   
+=======
+os:
+#   - linux
+  - osx
+
+osx_image: xcode9.2
+
+script: mvn clean install wagon:upload --settings deploy-settings.xml
+
+branches:
+  only:
+    - master
+>>>>>>> refs/heads/master

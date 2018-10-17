@@ -440,10 +440,42 @@
 					</sourceIncludes>
 				</configuration>
 			</plugin>
+			<!-- activate to import as Maven-Project into eclipse, then deactivate 
+				again plugin> <groupId>org.apache.maven.plugins</groupId> <artifactId>maven-compiler-plugin</artifactId> 
+				<configuration> <skipMain>true</skipMain> <skip>true</skip> </configuration> 
+				<executions> <execution> <id>default-compile</id> <goals><goal>compile</goal></goals> 
+				</execution> <execution> <id>default-testCompile</id> <goals><goal>testCompile</goal></goals> 
+				</execution> </executions> </plugin -->
+			<!-- plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-surefire-plugin</artifactId>
+				<version>2.16</version>
+				<configuration>
+					<useSystemClassLoader>false</useSystemClassLoader>
+					<argLine>-Xmx512m</argLine>
+					<excludes>
+						<exclude>**/*RDTest.java</exclude>
+					</excludes>
+					<includes>
+						<include>**/*Test.java</include>
+						<include>**/*Spec.java</include>
+					</includes>
+				</configuration>
+			</plugin-->
 			<plugin>
 				<groupId>org.codehaus.mojo</groupId>
 				<artifactId>wagon-maven-plugin</artifactId>
-				<version>1.0</version>
+				<version>2.0.0</version>
+				<configuration>
+					<!--  see https://stackoverflow.com/questions/20650514/upload-static-resource-to-amazon-s3-server-using-maven-plugin -->
+					<serverId>s3.release</serverId>
+					<url>s3://rs-travis/public/kutuapp/</url>
+					<fromDir>${basedir}/target/${OS}/bundles</fromDir>
+					<includes>
+                            **/*.msi, **/*.pkg, **/*.dmg, **/*.rpm, **/*.deb
+					</includes>
+					<toDir>${project.version}/${OS}</toDir>
+				</configuration>
 				<executions>
 					<execution>
 						<id>upload-binaries</id>
@@ -456,13 +488,6 @@
 							<includes>
 								**/*.msi, **/*.pkg, **/*.dmg, **/*.rpm, **/*.deb
 							</includes>
-							<!-- serverId>ftp-repository</serverId>
-							<toDir>${OS}</toDir>
-							<url>ftp://ftp.interpolar.ch</url-->
-							<!--  see https://stackoverflow.com/questions/20650514/upload-static-resource-to-amazon-s3-server-using-maven-plugin -->
-							<serverId>s3.release</serverId>
-							<url>s3://rs-travis/public/kutuapp/</url>
-							<toDir>${project.version}/${OS}</toDir>
 						</configuration>
 					</execution>
 				</executions>
@@ -478,7 +503,7 @@
 			<extension>
 				<groupId>org.apache.maven.wagon</groupId>
 				<artifactId>wagon-ftp</artifactId>
-				<version>1.0</version>
+				<version>3.2.0</version>
 			</extension>
 		</extensions>
 	</build>
