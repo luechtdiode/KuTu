@@ -11,8 +11,11 @@ import ch.seidel.kutu.domain._
 import java.util.concurrent.atomic.AtomicBoolean
 import java.io.File
 import PrintUtil._
+import org.slf4j.LoggerFactory
 
 trait ScoreToHtmlRenderer {
+  val logger = LoggerFactory.getLogger(this.getClass)
+  
   protected val title: String
   
   def toHTML(gs: List[GroupSection], athletsPerPage: Int = 0, sortAlphabetically: Boolean = false, diszMap: Map[Long,Map[String,List[Disziplin]]], logoFile: File): String = {
@@ -175,10 +178,10 @@ trait ScoreToHtmlRenderer {
         case gl: GroupLeaf =>
           if(openedTitle.startsWith("<h")) {
             val closetag = openedTitle.substring(0, openedTitle.indexOf(">")+1).replace("<", "</")
-            gsBlock.append(s"${openedTitle + gl.groupKey.easyprint}${closetag}")
+            gsBlock.append(s"${openedTitle + gl.groupKey.capsulatedprint}${closetag}")
           }
           else {
-            gsBlock.append(s"<h${level + 2}>${openedTitle + gl.groupKey.easyprint}</h${level + 2}>")
+            gsBlock.append(s"<h${level + 2}>${openedTitle + gl.groupKey.capsulatedprint}</h${level + 2}>")
           }
           val cols = gl.buildColumns
           def renderListHead = {
@@ -295,10 +298,10 @@ trait ScoreToHtmlRenderer {
         case g: GroupNode => gsBlock.append(
             toHTML(g.next.toList,
                 if(openedTitle.length() > 0)
-                  openedTitle + s"${g.groupKey.easyprint}, "
+                  openedTitle + s"${g.groupKey.capsulatedprint}, "
                 else
-                  s"<h${level + 2}>${g.groupKey.easyprint}, ",
-                  level + 1, athletsPerPage, sortAlphabetically, diszMap, logoFile))
+                  s"<h${level + 2}>${g.groupKey.capsulatedprint}, ",
+                level + 1, athletsPerPage, sortAlphabetically, diszMap, logoFile))
 
         case s: GroupSum  =>
           gsBlock.append(s.easyprint)

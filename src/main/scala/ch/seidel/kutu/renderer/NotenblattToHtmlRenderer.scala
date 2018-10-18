@@ -3,9 +3,10 @@ package ch.seidel.kutu.renderer
 import ch.seidel.kutu.domain._
 import java.io.File
 import PrintUtil._
+import org.slf4j.LoggerFactory
 
 trait NotenblattToHtmlRenderer {
-
+  val logger = LoggerFactory.getLogger(classOf[NotenblattToHtmlRenderer])
   val intro = """<html>
     <head>
       <meta charset="UTF-8" />

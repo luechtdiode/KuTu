@@ -2,8 +2,10 @@ package ch.seidel.kutu.renderer
 
 import java.io.File
 import PrintUtil._
+import org.slf4j.LoggerFactory
 
 trait KategorieTeilnehmerToHtmlRenderer {
+  val logger = LoggerFactory.getLogger(classOf[KategorieTeilnehmerToHtmlRenderer])
   case class Kandidat(wettkampfTitel: String, geschlecht: String, programm: String,
                       name: String, vorname: String, jahrgang: String, verein: String, riege: String, durchgang: String, start: String, diszipline: Seq[String])
 
@@ -125,7 +127,7 @@ trait KategorieTeilnehmerToHtmlRenderer {
   def toHTMLasKategorienListe(kandidaten: Seq[Kandidat], logo: File): String = {
     val kandidatenPerKategorie = kandidaten.sortBy { k =>
       val krit = f"${k.verein}%-40s ${k.name}%-40s ${k.vorname}%-40s"
-      //println(krit)
+      //logger.debug(krit)
       krit
     }.groupBy(k => k.programm)
     val rawpages = for {

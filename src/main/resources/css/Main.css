@@ -34,17 +34,36 @@
   -fx-background-color: null;
 }
 
-.toggle-button {
-  -fx-background-color: null;
-  -fx-label-padding: 5 40 5 10;
-  -fx-background-image: url("../images/btn-toggle-off.png");
-  -fx-background-repeat: no-repeat;
-  -fx-background-position: center;
+#wettkampfmodusButton_ { /* .toggle-button*/ 
+    -fx-background-color:
+        linear-gradient(#d6d6d6 50%, white 100%),
+        radial-gradient(center 50% -40%, radius 200%, #e6e6e6 45%, rgba(230,230,230,0));
+    -fx-background-radius: 6, 5;
+    -fx-background-insets: 0, 1;
+    -fx-effect: dropshadow( three-pass-box , rgba(0,0,0,0.4) , 5, 0.0 , 0 , 1 );
+    -fx-text-fill: grey;
 }
 
-.toggle-button:selected {
-  -fx-background-image:url("../images/btn-toggle-on.png");
+#wettkampfmodusButton_:selected {/* .toggle-button*/
+  -fx-background-color:
+        linear-gradient(#f0ff35, #a9ff00),
+        radial-gradient(center 50% -40%, radius 200%, #b8ee36 45%, #80c800 50%);
+  -fx-font-weight: bold;
 }
+.toggle-button { 
+  -fx-background-color: null;
+  -fx-label-padding: 5 40 5 10;
+  -fx-padding: -0 -38 -0 -8;
+  -fx-border-image-source: url("../images/btn-toggle-off.png");
+  /* border-image-slice: oben rechts unten links */
+  -fx-border-image-slice: 5 40 5 20 fill;
+  -fx-border-image-width: 5 40 5 20;
+  -fx-border-image-repeat: stretch;
+}
+.toggle-button:selected {
+  -fx-border-image-source: url("../images/btn-toggle-on.png");
+}
+
 #newButton {
 	-fx-background-color: null;
 	-fx-padding: -10 0 -10 0;
@@ -61,7 +80,7 @@
 	-fx-background-repeat: no-repeat;
 }
 
-#highlightsButton:hover,#newButton:hover,#wettkampfmodusButton:hover {
+#highlightsButton:hover,#newButton:hover,.toggle-button:hover {
 	-fx-effect: dropshadow(three-pass-box, rgba(255, 255, 255, 0.6), 10, 0.5,
 		0, 0 );
 }
@@ -145,6 +164,16 @@
 #search-info-description {
 	-fx-padding: 5 0 5 0;
 	-fx-text-fill: white;
+}
+
+#connected-info {
+	-fx-padding: 5 0 5 5;
+	-fx-text-fill: white;
+		
+	-fx-border-image-source: url("../images/info-bg.png");
+	-fx-border-image-slice: 10 20 10 10 fill;
+	-fx-border-image-width: 10 20 10 10;
+	-fx-border-image-repeat: stretch;
 }
 
 .group-label {

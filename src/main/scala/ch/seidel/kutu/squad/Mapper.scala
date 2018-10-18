@@ -3,9 +3,10 @@ package ch.seidel.kutu.squad
 import ch.seidel.kutu._
 import ch.seidel.kutu.squad._
 import ch.seidel.kutu.domain._
+import org.slf4j.LoggerFactory
 
 trait Mapper {
-        
+  private val logger = LoggerFactory.getLogger(classOf[Mapper])
   protected def buildRiegenIndex(riegen: Seq[RiegeAthletWertungen]) = riegen.flatten.toMap
   
   protected def buildWorkModel(riegen: Seq[RiegeAthletWertungen]): GeraeteRiegen = {
@@ -26,13 +27,13 @@ trait Mapper {
     riegen.groupBy{r => r._1}
     .map{rr =>
       val (durchgang, disz) = rr
-      println(durchgang)
+      logger.debug(durchgang)
       (durchgang, disz.groupBy(d => d._3).map{rrr =>
         val (start, athleten) = rrr
-        println(start.name)
+        logger.debug(start.name)
         (start, athleten.map{a =>
           val (_, riegenname, _, wertungen) = a
-          println(riegenname, wertungen.size)
+          logger.debug(riegenname, wertungen.size)
           (riegenname, wertungen.flatMap{wv =>
             wv._2.map(wt =>
               wt.toWertung(riegenname)

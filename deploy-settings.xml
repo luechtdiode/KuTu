@@ -5,5 +5,20 @@
       <username>${env.ftp_user}</username>
       <password>${env.ftp_key}</password>
     </server>
+    <server>
+      <id>s3.site</id>
+      <username>${env.aws_user}</username>
+      <password>${env.aws_accesskey}</password>
+    </server>    
+    <server>
+      <id>s3.release</id>
+      <username>${env.aws_user}</username>
+      <password>${env.aws_accesskey}</password>
+    </server>    
+    <server>
+      <id>s3.snapshot</id>
+      <username>${env.aws_user}</username>
+      <password>${env.aws_accesskey}</password>
+    </server>    
   </servers>
 </settings>

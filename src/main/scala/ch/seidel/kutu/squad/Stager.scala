@@ -3,9 +3,10 @@ package ch.seidel.kutu.squad
 import ch.seidel.kutu.domain._
 import scala.annotation.tailrec
 import ch.seidel.kutu.data._
+import org.slf4j.LoggerFactory
 
 trait Stager extends Mapper {
-    
+  private val logger = LoggerFactory.getLogger(classOf[Stager])
 //  def solve(geraete: Int, maxGeraeteRiegenSize: Int, riegen: Seq[RiegeAthletWertungen]): Seq[RiegeAthletWertungen] = {
 //    val riegenindex = buildRiegenIndex(riegen)
 //    val workmodel = buildWorkModel(riegen)
@@ -17,13 +18,13 @@ trait Stager extends Mapper {
     val sum = geraeteriegen.sizeOfAll
     val (eqsize, rounds) = computeDimensions(sum, geraeteOriginal, maxGeraeteRiegenSize, 1)
     val geraete = rounds * geraeteOriginal
-    println(s"sum: $sum, eqsize: $eqsize, geraete: $geraete, gerateOriginal: $geraeteOriginal")
+    logger.debug(s"sum: $sum, eqsize: $eqsize, geraete: $geraete, gerateOriginal: $geraeteOriginal")
 
     @tailrec
     def _buildPairs(acc: Set[(Long, GeraeteRiegen)], nextCandidates: Stream[GeraeteRiegen]): (Long, GeraeteRiegen) = {
       def finish(finalAcc: Set[(Long, GeraeteRiegen)]): (Long, GeraeteRiegen) = {
         val sorted = finalAcc.toList.sortBy(_._1)
-//        println("finishing with", sorted.take(3).zipWithIndex.mkString("\n(\n\t", "\n\t", "\n)"))
+//        logger.debug("finishing with", sorted.take(3).zipWithIndex.mkString("\n(\n\t", "\n\t", "\n)"))
         sorted.headOption match {
           case Some(optimum) => optimum
           case _ => (0, Set.empty)
@@ -43,15 +44,15 @@ trait Stager extends Mapper {
         
         withNewCandidates match {
           case candidate #:: tail if(tail.isEmpty) => 
-//            println("found end of stream")
+//            logger.debug("found end of stream")
             val sc = (score(geraete, eqsize, candidate), candidate)
             finish(acc + sc)
           case candidate #:: tail => score(geraete, eqsize, candidate) match {
             case 0 => 
-//              println("found top scorer")
+//              logger.debug("found top scorer")
               (score(geraete, eqsize, candidate), candidate)
             case s =>
-//              println("should seek further")
+//              logger.debug("should seek further")
               val sc = (s, candidate)
               _buildPairs(acc + sc, tail)
           }
@@ -59,7 +60,7 @@ trait Stager extends Mapper {
       }
     }
     val (rank, pairs) = _buildPairs(Set(), Stream(geraeteriegen))
-    //println(rank, pairs.mkString("\n ", "\n ", ""))
+    //logger.debug(rank, pairs.mkString("\n ", "\n ", ""))
     pairs
   }
   protected def score(geraete: Int, eqsize: Int, einteilung: GeraeteRiegen): Long = {
@@ -122,7 +123,7 @@ trait Stager extends Mapper {
           val (s, b) = pair
           val (merged, newEinteilung) = merge(s, b)
           if(keepUnmerged == 1) {
-//            println("staging not optimal")
+//            logger.debug("staging not optimal")
             acc + newEinteilung
           } else {
             val pr = preferredRiege.map(p => p.copy(preferred = merged, pairs = p.pairs + pair)).orElse(Some(PreferredAccumulator(merged, einteilung, b, Set(pair))))

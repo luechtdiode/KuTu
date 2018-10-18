@@ -1,10 +1,13 @@
 package ch.seidel.commons
 
+import scala.concurrent.ExecutionContext.Implicits.global
+import scala.concurrent.Promise
 import scala.concurrent.Future
 import scala.concurrent.Await
 import scala.concurrent.duration.Duration
 import javafx.scene.{ control => jfxsc }
 import javafx.{ scene => jfxs }
+import scalafx.Includes._
 import scalafx.stage.Stage
 import scalafx.geometry.Insets
 import scalafx.scene.layout.{Priority, VBox}
@@ -26,19 +29,34 @@ import ch.seidel.kutu.domain._
 import ch.seidel.kutu.KuTuAppTree
 import ch.seidel.kutu.KuTuApp
 import scalafx.beans.property.BooleanProperty
+import scalafx.application.Platform
+import scalafx.scene.image._
+import scalafx.scene.control.Control
+import scalafx.scene.control.PasswordField
+import scalafx.scene.control.TextField
+import scalafx.beans.binding.Bindings
+import scalafx.beans.Observable
+import scalafx.collections.ObservableArray
+
 
 /**
  * the class that updates tabbed view or dashboard view
  * based on the TreeItem selected from left pane
  */
 object PageDisplayer {
-
+  var errorIcon: Image = null
+  try {
+    errorIcon = new Image(getClass().getResourceAsStream("/images/RedException.png"))
+  } catch {
+    case e: Exception => e.printStackTrace()
+  }
+    
   def showInDialog(tit: String, nodeToAdd: DisplayablePage, commands: Button*)(implicit event: ActionEvent) {
     val buttons = commands :+ new Button(if(commands.length == 0) "Schliessen" else "Abbrechen")
     // Create dialog
     val dialogStage = new Stage {
       outer => {
-        initModality(Modality.WINDOW_MODAL)
+        initModality(Modality.WindowModal)
         event.source match {
           case n: jfxs.Node if(n.getScene.getRoot == KuTuApp.getStage.getScene.getRoot) =>
             delegate.initOwner(n.getScene.getWindow)
@@ -72,7 +90,132 @@ object PageDisplayer {
     // Show dialog and wait till it is closed
     dialogStage.showAndWait()
   }
+  
+  def showInDialogFromRoot(tit: String, nodeToAdd: DisplayablePage, commands: Button*) {
+    val buttons = commands :+ new Button(if(commands.length == 0) "Schliessen" else "Abbrechen")
+    // Create dialog
+    val dialogStage = new Stage {
+      outer => {
+        initModality(Modality.WINDOW_MODAL)
+        delegate.initOwner(KuTuApp.getStage.getScene.getWindow)
 
+        title = tit
+        scene = new Scene {
+          root = new BorderPane {
+            padding = Insets(15)
+            center = nodeToAdd.getPage
+            bottom = new HBox {
+              prefHeight = 50
+              alignment = Pos.BottomRight
+              hgrow = Priority.Always
+              children = buttons
+            }
+            var first = false
+            buttons.foreach { btn =>
+              if(!first) {
+                first = true
+                btn.defaultButton = true
+              }
+              btn.minWidth = 100
+              btn.filterEvent(ActionEvent.Action) { () => outer.close()}}
+          }
+        }
+      }
+    }
+    // Show dialog and wait till it is closed
+    dialogStage.showAndWait()
+  }
+  
+/*
+    val txtUsername = new TextField {
+          prefWidth = 500
+          promptText = "Username"
+          text = System.getProperty("user.name")
+        }
+    
+        val txtPassword = new PasswordField {
+          prefWidth = 500
+          promptText = "Internet Proxy Passwort"
+        }
+        "Internet Proxy authentication"
+        () =>
+            setProxyProperties(
+                host = Config.proxyHost.getOrElse(""), 
+                port = Config.proxyPort.getOrElse(""),
+                user = txtUsername.text.value.trim(),
+                password = txtPassword.text.value.trim())
+          }
+ * 
+ */
+  def askFor(caption: String, fields: (String, String)*): Option[Seq[String]] = {
+    val p = Promise[Option[Seq[String]]]
+    def ask {
+      val controls = fields.flatMap{
+        case f if(f._1.contains("*")) => 
+          val t = f._1.split('*')(0)
+          Seq(new Label(t), new PasswordField {
+            prefWidth = 500
+            promptText = t
+            text.value = f._2
+          })
+        case t =>
+          Seq(new Label(t._1), new TextField {
+            prefWidth = 500
+            promptText = t._2
+            text.value = t._2
+          })
+      }
+      val observedControls = controls.zipWithIndex.filter(x => x._2 % 2 != 0).map(_._1.asInstanceOf[TextField])
+      val observedControls2 = observedControls.map(c => c.text.asInstanceOf[Observable])
+      var ret: Option[Seq[String]] = None
+      showInDialogFromRoot(caption, new DisplayablePage() {
+          def getPage: Node = {
+            new BorderPane {
+              hgrow = Priority.Always
+              vgrow = Priority.Always
+              center = new VBox {
+                children = controls
+              }
+            }
+          }
+        }, new Button("OK") {
+//          disable <== when(Bindings.createBooleanBinding(() => {
+//                                observedControls.forall(c => !c.text.isEmpty.value)
+//                              },
+//                                observedControls2(0), observedControls2(Math.min(1, observedControls2.size-1)), observedControls2(Math.min(3, observedControls2.size-1)), observedControls2(Math.min(4, observedControls2.size-1))
+//                              )) choose true otherwise false
+          onAction = () => {
+            ret = Some(observedControls.map(c => c.text.value).toSeq)
+          }
+        })
+      p success ret      
+    }
+    if (Platform.isFxApplicationThread) ask else Platform.runLater{ask}      
+
+    Await.result(p.future, Duration.Inf)
+  }
+  
+  def showErrorDialog(caption: String) = (error: Throwable) => {
+    Platform.runLater{
+      showInDialogFromRoot(caption, 
+      new DisplayablePage() {
+        def getPage: Node = {
+          new BorderPane {
+            hgrow = Priority.Always
+            vgrow = Priority.Always
+            center = new VBox {
+              children = Seq(new HBox{ children = Seq(new ImageView {
+                image = errorIcon
+          	  }, new Label(s"Fehler beim Ausführen von '$caption'"))}, 
+          	  new Label(s"${error}"))
+            }
+          }
+        }
+      }
+    )
+    }
+  }
+  
   def choosePage(wettkampfmode: BooleanProperty, context: Option[Any], value: String = "dashBoard", tree: KuTuAppTree): Node = {
     value match {
       case "dashBoard" => displayPage(new DashboardPage(tree = tree))

@@ -37,9 +37,34 @@ import scalafx.stage.FileChooser.ExtensionFilter
 import scalafx.util.StringConverter
 import scala.collection.JavaConverters
 import ch.seidel.kutu.renderer.PrintUtil.FilenameDefault
+import scalafx.event.subscriptions.Subscription
+import ch.seidel.kutu.akka.KutuAppEvent
+import ch.seidel.kutu.http.WebSocketClient
+import scalafx.application.Platform
+import java.util.concurrent.TimeUnit
+import java.util.concurrent.ScheduledFuture
 
 abstract class DefaultRanglisteTab(override val service: KutuService) extends Tab with TabWithService with ScoreToHtmlRenderer {
+
   override val title = ""
+  var subscription: Option[Subscription] = None
+
+  override def release() {
+    subscription.foreach(_.cancel)
+  }
+  
+  var lazyPaneUpdater: Map[String, ScheduledFuture[_]] = Map.empty
+ 
+  def submitLazy(name: String, task: ()=>Unit, delay: Long) {
+    println("submitting " + name)
+    lazyPaneUpdater.get(name).foreach(_.cancel(true))
+    val ft = KuTuApp.lazyExecutor.schedule(new Runnable() { def run = { 
+      Platform.runLater{task()}
+    }}, delay, TimeUnit.SECONDS)
+    
+    lazyPaneUpdater = lazyPaneUpdater + (name -> ft)
+  }
+  
 
   /*
          * combo 1. Gruppierung [leer, Programm, Jahrgang, Disziplin, Verein]
@@ -159,7 +184,7 @@ abstract class DefaultRanglisteTab(override val service: KutuService) extends Ta
     def relevantGroup(cb: ComboBox[FilterBy]): Boolean = {
       if(!cb.selectionModel.value.isEmpty) {
         val grp = cb.selectionModel.value.getSelectedItem
-        grp != ByNothing
+        grp != ByNothing()
       }
       else {
         false
@@ -189,7 +214,7 @@ abstract class DefaultRanglisteTab(override val service: KutuService) extends Ta
       restoring = false
 
       if (cblist.isEmpty) {
-        ByWettkampfProgramm().groupBy(ByGeschlecht)
+        ByWettkampfProgramm().groupBy(ByGeschlecht())
       }
       else {
         cblist.foldLeft(cblist.head.asInstanceOf[GroupBy])((acc, cb) => if (acc != cb) acc.groupBy(cb) else acc)
@@ -199,7 +224,7 @@ abstract class DefaultRanglisteTab(override val service: KutuService) extends Ta
     def refreshRangliste(query: GroupBy, linesPerPage: Int = 0) = {
       restoring = true
     	val data = getData
-//    	println(query.chainToString)
+//    	logger.debug(query.chainToString)
       val filter = query.asInstanceOf[FilterBy]
       val filterLists = filter.traverse(Seq[Seq[DataObject]]()){ (f, acc) =>
         val allItems = f.asInstanceOf[FilterBy].analyze(data).sortBy { x => x.easyprint}
@@ -223,7 +248,12 @@ abstract class DefaultRanglisteTab(override val service: KutuService) extends Ta
     	  checked.filter(model.contains(_)).foreach(combf.getCheckModel.check(_))
     	}
       val combination = query.select(data).toList
-      //Map[Long,Map[String,List[Disziplin]]]
+      //Map[Long,Map[String,List[Disziplin]]] 
+//      val diszMap = data.groupBy { x => x.wettkampf.programmId }.map{ x =>
+//        x._1 -> Map(
+//              "W" -> service.listDisziplinesZuProgramm(x._1, Some("W"))
+//            , "M" -> service.listDisziplinesZuProgramm(x._1, Some("M")))
+//      }
       val diszMap = data.groupBy { x => x.wettkampf.programmId }.map{ x =>
         x._1 -> Map(
               "W" -> service.listDisziplinesZuWettkampf(x._2.head.wettkampf.id, Some("W"))
@@ -241,7 +271,7 @@ abstract class DefaultRanglisteTab(override val service: KutuService) extends Ta
     def restoreGrouper(query: GroupBy) {
       restoring = true
       query.traverse(combs.zip(combfs)){(grp, acc) =>
-        println(grp)
+        logger.debug(grp.toString)        
         if(acc.isEmpty) {
           acc
         }
@@ -251,7 +281,7 @@ abstract class DefaultRanglisteTab(override val service: KutuService) extends Ta
 //          cmb.selectionModel.value.select(grp.asInstanceOf[FilterBy])
 //          cmbf.selectionModel.value.clearSelection()
           grp.asInstanceOf[FilterBy].getFilter.foreach {f =>
-            println(f)
+            logger.debug(f.toString)
 //            cmbf.getSelectionModel.select(f)
           }
           acc.tail
@@ -260,7 +290,7 @@ abstract class DefaultRanglisteTab(override val service: KutuService) extends Ta
       restoring = false;
       refreshRangliste(buildGrouper)
     }
-
+  
     combs.zip(combfs).foreach{ case (comb, combfs) =>
       comb.onAction = handle {
         if(!restoring) {
@@ -281,7 +311,17 @@ abstract class DefaultRanglisteTab(override val service: KutuService) extends Ta
       if(!restoring)
         refreshRangliste(buildGrouper)
     }
-
+    println("subscribing for refreshing from websocket")
+    subscription = Some(WebSocketClient.modelWettkampfWertungChanged.onChange { (_, _, newItem) =>
+      if (selected.value) {
+        submitLazy("refreshRangliste", () => if (selected.value) {
+            println("refreshing rangliste from websocket", newItem)
+            refreshRangliste(buildGrouper)
+          }, 5
+        )
+      }
+    })
+    
     val btnSave = new Button {
       text = "Speichern als ..."
       onAction = handle {
@@ -321,7 +361,7 @@ abstract class DefaultRanglisteTab(override val service: KutuService) extends Ta
     def extractFilterText = {
       buildGrouper.traverse(""){(item, filename) =>
         item match {
-          case ByNothing => filename
+          case ByNothing() => filename
           case _ if(filename.isEmpty()) => filename + item.groupname
           case _ => filename + "-" + item.groupname
         }

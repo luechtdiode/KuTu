@@ -37,9 +37,12 @@ import com.sun.xml.internal.messaging.saaj.util.ByteInputStream
 import java.io.FileInputStream
 import java.io.BufferedInputStream
 import scala.io.Source
+import org.slf4j.LoggerFactory
 
 
 object PrintUtil {
+  val logger = LoggerFactory.getLogger(this.getClass)
+  
   private val PRINT_TO_BROWSER = new AtomicBoolean(false)
   
   case class FilenameDefault(filename: String, dir: java.io.File)
@@ -199,7 +202,7 @@ object PrintUtil {
           val in = new FileInputStream(file)
           val imagedata = try {
             val buffer = Source.fromInputStream(in).mkString;
-            "data:image/svg+xml;base64," + Base64.getMimeEncoder().encodeToString(buffer.getBytes())
+            "data:image/svg+xml;base64," + Base64.getEncoder().encodeToString(buffer.getBytes())
           } finally {
             in.close
           }
@@ -208,19 +211,19 @@ object PrintUtil {
         val imageBuffer = ImageIO.read(file)
         val output = new ByteArrayOutputStream()
         ImageIO.write(imageBuffer, "png", output)
-        val imagedata = "data:image/png;base64," + Base64.getMimeEncoder().encodeToString(output.toByteArray())
+        val imagedata = "data:image/png;base64," + Base64.getEncoder().encodeToString(output.toByteArray())
         imagedata
       } else if(file.getName.endsWith("jpg")) {
         val imageBuffer = ImageIO.read(file)
         val output = new ByteArrayOutputStream()
         ImageIO.write(imageBuffer, "jpg", output)
-        val imagedata = "data:image/jpg;base64," + Base64.getMimeEncoder().encodeToString(output.toByteArray())
+        val imagedata = "data:image/jpg;base64," + Base64.getEncoder().encodeToString(output.toByteArray())
         imagedata
       } else if(file.getName.endsWith("jpeg")) {
         val imageBuffer = ImageIO.read(file)
         val output = new ByteArrayOutputStream()
         ImageIO.write(imageBuffer, "jpeg", output)
-        val imagedata = "data:image/jpeg;base64," + Base64.getMimeEncoder().encodeToString(output.toByteArray())
+        val imagedata = "data:image/jpeg;base64," + Base64.getEncoder().encodeToString(output.toByteArray())
         imagedata        
       } else {
         file.toURI.toString

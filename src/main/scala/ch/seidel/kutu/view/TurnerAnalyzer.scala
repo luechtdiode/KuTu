@@ -35,9 +35,11 @@ import scalafx.scene.chart.BarChart.sfxBarChart2jfx
 import scalafx.scene.effect.Glow.sfxGlow2jfx
 import scalafx.scene.layout.VBox.sfxVBox2jfx
 import scalafx.scene.text.Text.sfxText2jfx
+import org.slf4j.LoggerFactory
 
 class TurnerAnalyzer(val verein: Option[Verein], val athlet: Option[Athlet], val wettkampfdisziplin: Option[WettkampfdisziplinView], override val service: KutuService) extends Tab with TabWithService {
-
+  val logger = LoggerFactory.getLogger(this.getClass)
+  
   def onDrillDown(a: Athlet) {
 
   }
@@ -85,7 +87,7 @@ class TurnerAnalyzer(val verein: Option[Verein], val athlet: Option[Athlet], val
               case d: WettkampfdisziplinView => onDrillDown(d)
               case _ =>
             }
-//            System.out.println(data.getXValue() + " : " + data.getYValue())
+//            System.out.logger.debug(data.getXValue() + " : " + data.getYValue())
           }
 
           node.parentProperty().addListener(new ChangeListener[Parent]() {
@@ -198,7 +200,7 @@ class TurnerAnalyzer(val verein: Option[Verein], val athlet: Option[Athlet], val
         (wettkampf, awertungen) <- pwg
       }
       {
-//        println(s"für Programm ${programm.easyprint} und Wettkampf ${wettkampf.easyprint}")
+//        logger.debug(s"für Programm ${programm.easyprint} und Wettkampf ${wettkampf.easyprint}")
         val sumPerDivider = awertungen.
         groupBy { x => athlet match {case None => x.athlet case _ => x.wettkampfdisziplin}}.
         map(x => (x._1.easyprint.take(30), x._1, x._2.map { x => x.endnote }.sum, x._2.map { x => x.noteD }.sum)).
@@ -218,7 +220,7 @@ class TurnerAnalyzer(val verein: Option[Verein], val athlet: Option[Athlet], val
         lineChart.minHeight = math.max(chartheight, ph)
         lineChart.prefHeight = lineChart.minHeight.value
         lineChart.maxHeight = lineChart.minHeight.value
-//        println(s"Wettkampf ${wettkampf.easyprint} berechnete Charthöhe ${chartheight} eff. ZH ${lineChart.minHeight.value} ${elemente}, ${pwg.size}")
+//        logger.debug(s"Wettkampf ${wettkampf.easyprint} berechnete Charthöhe ${chartheight} eff. ZH ${lineChart.minHeight.value} ${elemente}, ${pwg.size}")
       }
       if(hastoadd) {
         charts.getChildren.add(lineChart)

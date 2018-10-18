@@ -1,5 +1,6 @@
 package ch.seidel.kutu.data
 
+import scala.concurrent.ExecutionContext.Implicits.global
 import java.io.File
 import java.io.FileOutputStream
 import java.io.OutputStream
@@ -12,16 +13,58 @@ import scala.annotation.tailrec
 import ch.seidel.kutu.domain._
 import ch.seidel.kutu.view._
 import ch.seidel.kutu.squad.RiegenBuilder
+import org.slf4j.LoggerFactory
+import ch.seidel.kutu.akka._
+import scala.concurrent.Future
+import ch.seidel.kutu.Config
+import ch.seidel.kutu.renderer.PrintUtil
+import akka.stream.scaladsl.FileIO
+import java.io.BufferedInputStream
+import akka.actor.ActorRef
 
 /**
  */
 object ResourceExchanger extends KutuService with RiegenBuilder {
+  private val logger = LoggerFactory.getLogger(this.getClass)
   private val rm = reflect.runtime.universe.runtimeMirror(getClass.getClassLoader)
 
-  def importWettkampf(filename: String) = {
+  def processWSMessage[T](refresher: (Option[T], KutuAppEvent)=>Unit) = {
+    val cache = new java.util.ArrayList[MatchCode]()
+    
+    val opFn: (Option[T], KutuAppEvent)=>Unit = {  
+      case (sender, uw @ AthletWertungUpdated(athlet, wertung, wettkampfUUID, durchgang, geraet, programm)) =>
+        Future {
+          logger.info("received new " + uw)
+          val mappedverein = athlet.verein match {case Some(v) => findVereinLike(Verein(id = 0, name = v.name, verband = None)) case _ => None}
+          val mappedAthlet = findAthleteLike(cache)(athlet.toAthlet.copy(id = 0, verein = mappedverein))
+          val mappedWettkampf = readWettkampf(wettkampfUUID)
+          val mappedWertung = wertung.copy(athletId = mappedAthlet.id, wettkampfId = mappedWettkampf.id, wettkampfUUID = wettkampfUUID)
+          val verifiedWertung = try {
+            val vw = updateWertungWithIDMapping(mappedWertung, true)
+            logger.info("saved " + vw)
+            refresher(sender, uw.copy(wertung = vw))
+            vw
+          } catch {
+            case e: Exception =>
+              logger.error("not saved!", e)
+              refresher(sender, uw)
+          }
+        }
+      case (sender, MessageAck(_)) => 
+      case (sender, someOther) => 
+        refresher(sender, someOther)
+    }
+    
+    opFn
+  }
+  
+  def importWettkampf(file: InputStream) = {
+    val buffer = new BufferedInputStream(file)
+    buffer.mark(40*4096)
     type ZipStream = (ZipEntry,InputStream)
-    class ZipEntryTraversableClass(filename: String) extends Traversable[ZipStream] {
-      val zis = new ZipInputStream(new FileInputStream(filename))
+    class ZipEntryTraversableClass extends Traversable[ZipStream] {
+      buffer.reset
+      val zis = new ZipInputStream(buffer)
       def entryIsValid(ze: ZipEntry) = !ze.isDirectory
 
       def foreach[U](f: ZipStream => U) {
@@ -35,30 +78,30 @@ object ResourceExchanger extends KutuService with RiegenBuilder {
       }
     }
 
-    val zip: Traversable[ZipStream] = new ZipEntryTraversableClass(filename)
-    val collection = zip.foldLeft(Map[String, (Seq[String],Map[String,Int])]()) { (acc, entry) =>
-      val csv = Source.fromInputStream(entry._2, "utf-8").getLines().toList
-      val header = csv.take(1).map(_.dropWhile {_.isUnicodeIdentifierPart }).flatMap(parseLine).zipWithIndex.toMap
-      acc + (entry._1.getName -> (csv.drop(1), header))
+    val collection = new ZipEntryTraversableClass().foldLeft(Map[String, (Seq[String],Map[String,Int])]()) { (acc, entry) =>
+      if (entry._1.getName.endsWith(".csv")) {
+        val csv = Source.fromInputStream(entry._2, "utf-8").getLines().toList
+        val header = csv.take(1).map(_.dropWhile {_.isUnicodeIdentifierPart }).flatMap(DBService.parseLine).zipWithIndex.toMap
+        acc + (entry._1.getName -> (csv.drop(1), header))
+      } else acc
     }
 
     val (vereinCsv, vereinHeader) = collection("vereine.csv")
-    println("importing vereine ...", vereinHeader)
+    logger.debug("importing vereine ...", vereinHeader)
     val vereinNameIdx = vereinHeader("name")
     val vereinVerbandIdx = vereinHeader.getOrElse("verband", -1)
     val vereinIdIdx = vereinHeader("id")
-    val vereinInstances = vereinCsv.map(parseLine).filter(_.size == vereinHeader.size).map{fields =>
+    val vereinInstances = vereinCsv.map(DBService.parseLine).filter(_.size == vereinHeader.size).map{fields =>
       val candidate = Verein(id = 0, name = fields(vereinNameIdx), verband = if(vereinVerbandIdx > -1) Some(fields(vereinVerbandIdx)) else None)
       val verein = insertVerein(candidate)
       (fields(vereinIdIdx), verein)
     }.toMap
 
     val (athletCsv, athletHeader) = collection("athleten.csv")
-    println("importing athleten ...", athletHeader)
-    val cache = new java.util.ArrayList[MatchCode]()
-    val athletInstances = athletCsv.map(parseLine).filter(_.size == athletHeader.size).map{fields =>
+    logger.debug("importing athleten ...", athletHeader)
+    val mappedAthletes = athletCsv.map(DBService.parseLine).filter(_.size == athletHeader.size).map{fields =>
       val geb = fields(athletHeader("gebdat")).replace("Some(", "").replace(")","")
-      val importathlet = Athlet(
+      (fields(athletHeader("id")), Athlet(
           id = 0,
           js_id = fields(athletHeader("js_id")),
           geschlecht = fields(athletHeader("geschlecht")),
@@ -70,40 +113,85 @@ object ResourceExchanger extends KutuService with RiegenBuilder {
           ort = fields(athletHeader("ort")),
           verein = vereinInstances.get(fields(athletHeader("verein"))).map(v => v.id),
           activ = fields(athletHeader("activ")).toUpperCase() match {case "TRUE" => true case _ => false}
-          )
+          ))
+    }
+    val cache = new java.util.ArrayList[MatchCode]()
+    val athletInstanceCandidates = mappedAthletes.map{imported =>
+      val (csvId, importathlet) = imported
       val candidate = findAthleteLike(cache)(importathlet)
 
-      val athlet = if(candidate.id > 0) {
+      if(candidate.id > 0) {
         importathlet.gebdat match {
         case Some(d) =>
           candidate.gebdat match {
             case Some(cd) if(!f"${cd}%tF".endsWith("-01-01") || d.equals(cd)) =>
-              candidate
+              (csvId, candidate, false)
             case _ =>
-              insertAthlete(candidate.copy(gebdat = importathlet.gebdat))
+              (csvId, candidate.copy(gebdat = importathlet.gebdat), true)
           }
         case None =>
-          candidate
+          (csvId, candidate, false)
         }
       }
       else {
-         insertAthlete(candidate)
+         (csvId, candidate, true)
       }
-      (fields(athletHeader("id")), athlet)
-    }.toMap
-
+    }
+    val athletInstances = (athletInstanceCandidates
+      .filter(x => !x._3)
+      .map{toInsert =>
+        val (key, candidate, _) = toInsert
+        (key, candidate)
+      } ++ insertAthletes(athletInstanceCandidates.filter(x => x._3).map{toInsert =>
+        val (key, candidate, _) = toInsert
+        (key, candidate)
+      }))
+      .toMap
+      
     val (wettkampfCsv, wettkampfHeader) = collection("wettkampf.csv")
-    println("importing wettkampf ...", wettkampfHeader)
-    val wettkampfInstances = wettkampfCsv.map(parseLine).filter(_.size == wettkampfHeader.size).map{fields =>
+    logger.debug("importing wettkampf ...", wettkampfHeader)
+    val wettkampfInstances = wettkampfCsv.map(DBService.parseLine).filter(_.size == wettkampfHeader.size).map{fields =>
+      val uuid = wettkampfHeader.get("uuid").map(uuidIdx => Some(fields(uuidIdx))).getOrElse(None)
+      logger.debug("wettkampf uuid: " + uuid)
       val wettkampf = createWettkampf(
           auszeichnung = fields(wettkampfHeader("auszeichnung")),
           auszeichnungendnote = try {BigDecimal.valueOf(fields(wettkampfHeader("auszeichnungendnote")))} catch {case e:Exception => 0},
           datum = fields(wettkampfHeader("datum")),
           programmId = Set(fields(wettkampfHeader("programmId"))),
-          titel = fields(wettkampfHeader("titel"))
+          titel = fields(wettkampfHeader("titel")),
+          uuidOption = uuid
           )
+          
+      new ZipEntryTraversableClass().foreach{entry =>
+        if (entry._1.getName.startsWith("logo")) {
+          val filename = entry._1.getName
+          val logodir = new java.io.File(Config.homedir + "/" + wettkampf.easyprint.replace(" ", "_"))
+          if (!logodir.exists()) {
+            logodir.mkdir()
+          }
+          val logofile = new java.io.File(Config.homedir + "/" + wettkampf.easyprint.replace(" ", "_") + "/" + filename)
+          val fos = new FileOutputStream(logofile)
+          val bytes = new Array[Byte](1024) //1024 bytes - Buffer size
+          Iterator
+          .continually(entry._2.read(bytes))
+          .takeWhile(-1 !=)
+          .foreach(read=> fos.write(bytes, 0, read))
+          fos.flush()
+          fos.close()
+          logger.info("logo was written " + logofile.getName)
+        }
+      }
+      new ZipEntryTraversableClass().foreach{entry =>
+        if (entry._1.getName.startsWith(".at") && entry._1.getName.contains(Config.remoteHostOrigin) && !wettkampf.hasSecred(Config.homedir, Config.remoteHostOrigin)) {
+          val filename = entry._1.getName
+          val secretfile = new java.io.File(Config.homedir + "/" + wettkampf.easyprint.replace(" ", "_") + "/" + filename)
+          wettkampf.saveSecret(Config.homedir, Config.remoteHostOrigin, Source.fromInputStream(entry._2, "utf-8").mkString)
+          logger.info("secret was written " + filename)
+        }
+      }
       (fields(wettkampfHeader("id")), wettkampf)
     }.toMap
+    
     val wkdisziplines = wettkampfInstances.map{w =>
       (w._2.id, listWettkampfDisziplines(w._2.id).map(d => d.id -> d).toMap)
     }
@@ -117,8 +205,8 @@ object ResourceExchanger extends KutuService with RiegenBuilder {
       wkdisziplines(w.wettkampfId)(w.wettkampfdisziplinId).kurzbeschreibung
     }
     val (wertungenCsv, wertungenHeader) = collection("wertungen.csv")
-    println("importing wertungen ...", wertungenHeader)
-    val wertungInstances = wertungenCsv.map(parseLine).filter(_.size == wertungenHeader.size).map{fields =>
+    logger.debug("importing wertungen ...", wertungenHeader)
+    val wertungInstances = wertungenCsv.map(DBService.parseLine).filter(_.size == wertungenHeader.size).map{fields =>
       val athletid: Long = fields(wertungenHeader("athletId"))
       val wettkampfid: Long = fields(wertungenHeader("wettkampfId"))
       val w = Wertung(
@@ -132,6 +220,10 @@ object ResourceExchanger extends KutuService with RiegenBuilder {
           case Some(w) => w.id
           case None => wettkampfid
         },
+        wettkampfUUID = wettkampfInstances.get(wettkampfid + "") match {
+          case Some(w) => w.uuid.getOrElse("")
+          case None => ""
+        },
         noteD = fields(wertungenHeader("noteD")),
         noteE = fields(wertungenHeader("noteE")),
         endnote = fields(wertungenHeader("endnote")),
@@ -141,39 +233,50 @@ object ResourceExchanger extends KutuService with RiegenBuilder {
 //      println(w.athletId, getAthletName(w.athletId), w.endnote, w.wettkampfdisziplinId, w.wettkampfdisziplinId, getWettkampfDisziplinName(w))
       w
     }
+    val start = System.currentTimeMillis()
+    val inserted = wertungInstances.groupBy(w => w.wettkampfId).map{wkWertungen =>
+      val (wettkampfid, wertungen) = wkWertungen
+      val wettkampf = wettkampfInstances.values.find(w => w.id == wettkampfid).get
+      val wkDisziplines = wkdisziplines(wettkampf.id)
+      updateOrinsertWertungenZuWettkampf(wettkampf, wertungen.groupBy(w => w.athletId).flatMap { aw =>
+        val (athletid, wertungen) = aw
+        val programm = wkDisziplines(wertungen.head.wettkampfdisziplinId).programmId
+        val programms = wertungen.map(wertung => wkDisziplines(wertung.wettkampfdisziplinId).programmId).toSet
 
-    val inserted = wertungInstances.groupBy(w => w.athletId).map { aw =>
-      val (athletid, wertungen) = aw
-      lazy val empty = wertungen.forall { w => w.endnote < 1 }
-      wertungen.map { w =>
-        if(wkdisziplines(w.wettkampfId).contains(w.wettkampfdisziplinId)) {
-//          if(w.endnote < 1 && !empty) {
-//            println("WARNING: Importing zero-measure for " + getAthletName(w.athletId) + " and " + getWettkampfDisziplinName(w))
-//          }
-          updateOrinsertWertung(w)(1)
+        val requiredDisciplines = wkdisziplines(wettkampf.id).filter(wd => programms.contains(wd._2.programmId))
+        lazy val empty = wertungen.forall { w => w.endnote < 1 }
+        val filtered = wertungen.filter(w => requiredDisciplines.contains(w.wettkampfdisziplinId))
+        wertungen.filter(!filtered.contains(_)).foreach(w => logger.debug("WARNING: No matching Disciplin - " + w))
+  
+        val missing = requiredDisciplines.keys.filter(d => !filtered.exists(w => w.wettkampfdisziplinId == d))
+        missing.foreach(w => logger.debug("WARNING: missing Disciplin - " + requiredDisciplines(w).easyprint))
+        val completeWertungenSet = filtered ++ missing.map{missingDisziplin => 
+          Wertung(
+            id = 0L,
+            athletId = athletid,
+            wettkampfdisziplinId = missingDisziplin,
+            wettkampfId = wettkampf.id,
+            wettkampfUUID = wettkampfInstances.get(wettkampf.id + "") match {
+              case Some(w) => w.uuid.getOrElse("")
+              case None => ""
+            },
+            noteD = 0d,
+            noteE = 0d,
+            endnote = 0d,
+            riege = None,
+            riege2 = None
+          )      
         }
-        else {
-          println("WARNING: No matching Disciplin - " + w)
-          0
-        }
-      }.sum
+        completeWertungenSet
+      })
     }.sum
-    println(wertungInstances.size, inserted)
-    wettkampfInstances.foreach{w =>
-      val (_, wettkampf) = w
-      athletInstances.foreach{a =>
-        val (_, athlet) = a
-        val completed = completeDisziplinListOfAthletInWettkampf(wettkampf, athlet.id)
-        if(completed.nonEmpty) {
-          println("Completed missing disciplines for " + athlet.id + " " + athlet.easyprint, wettkampf.easyprint + ":")
-          println(completed.map(wkdisziplines(wettkampf.id)(_).toString).mkString("[", ", ", "]"))
-        }
-      }
-    }
+    // wertungen: 1857 / inserted: 1857, duration: 6335ms
+    logger.debug(s"wertungen: ${wertungInstances.size} / inserted: $inserted, duration: ${System.currentTimeMillis() - start}ms")
+    
     if(collection.contains("riegen.csv")) {
       val (riegenCsv, riegenHeader) = collection("riegen.csv")
-      println("importing riegen ...", riegenHeader)
-      riegenCsv.map(parseLine).filter(_.size == riegenHeader.size).foreach{fields =>
+      logger.debug("importing riegen ...", riegenHeader)
+      updateOrinsertRiegen(riegenCsv.map(DBService.parseLine).filter(_.size == riegenHeader.size).map{fields =>
         val wettkampfid = fields(riegenHeader("wettkampfId"))
         val riege = RiegeRaw(
             wettkampfId = wettkampfInstances.get(wettkampfid + "") match {
@@ -184,10 +287,11 @@ object ResourceExchanger extends KutuService with RiegenBuilder {
             durchgang = if(fields(riegenHeader("durchgang")).length > 0) Some(fields(riegenHeader("durchgang"))) else None,
             start = if(fields(riegenHeader("start")).length > 0) Some(fields(riegenHeader("start"))) else None
             )
-        updateOrinsertRiege(riege)
-      }
+        riege
+      })
     }
-    println("import finished")
+    
+    logger.debug("import finished")
     wettkampfInstances.head._2
   }
 
@@ -217,9 +321,13 @@ object ResourceExchanger extends KutuService with RiegenBuilder {
     }
     values.map("\"" + _ + "\"").mkString(",")
   }
-
+  
   def exportWettkampf(wettkampf: Wettkampf, filename: String) {
-    val zip = new ZipOutputStream(new FileOutputStream(filename));
+    exportWettkampfToStream(wettkampf, new FileOutputStream(filename), true)
+  }
+  
+  def exportWettkampfToStream(wettkampf: Wettkampf, os: OutputStream, withSecret: Boolean = false) {
+    val zip = new ZipOutputStream(os);
     zip.putNextEntry(new ZipEntry("wettkampf.csv"));
     zip.write((getHeader[Wettkampf] + "\n" + getValues(wettkampf)).getBytes("utf-8"))
     zip.closeEntry()
@@ -258,6 +366,32 @@ object ResourceExchanger extends KutuService with RiegenBuilder {
     }
     zip.closeEntry()
 
+    val competitionDir = new java.io.File(Config.homedir + "/" + wettkampf.easyprint.replace(" ", "_"))
+    
+    val logofile = PrintUtil.locateLogoFile(competitionDir);
+    if (logofile.exists()) {
+      zip.putNextEntry(new ZipEntry(logofile.getName));
+      val fis = new FileInputStream(logofile)
+      val bytes = new Array[Byte](1024) //1024 bytes - Buffer size
+      Iterator
+      .continually(fis.read(bytes))
+      .takeWhile(-1 !=)
+      .foreach(read=> zip.write(bytes, 0, read))
+      zip.closeEntry()
+      println("logo was taken " + logofile.getName)
+    }
+    if (withSecret && wettkampf.hasSecred(Config.homedir, Config.remoteHostOrigin)) {
+      val secretfile = wettkampf.filePath(Config.homedir, Config.remoteHostOrigin).toFile();
+      zip.putNextEntry(new ZipEntry(secretfile.getName));
+      val fis = new FileInputStream(secretfile)
+      val bytes = new Array[Byte](1024) //1024 bytes - Buffer size
+      Iterator
+      .continually(fis.read(bytes))
+      .takeWhile(-1 !=)
+      .foreach(read=> zip.write(bytes, 0, read))
+      zip.closeEntry()
+      println("secret was taken " + secretfile.getName)
+    }
     zip.finish()
     zip.close()
   }

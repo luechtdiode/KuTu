@@ -4,8 +4,10 @@ import ch.seidel.kutu.domain.Wertung
 import ch.seidel.kutu.domain.WertungView
 import java.io.File
 import PrintUtil._
+import org.slf4j.LoggerFactory
 
 trait BestenListeToHtmlRenderer {
+  val logger = LoggerFactory.getLogger(classOf[BestenListeToHtmlRenderer])
   val intro = """<html>
     <head>
       <meta charset="UTF-8" />
@@ -98,7 +100,7 @@ trait BestenListeToHtmlRenderer {
     </html>
   """
 
-  private def anmeldeListe(wertungen: Seq[WertungView], logo: File) = {
+  private def bestenListe(wertungen: Seq[WertungView], logo: File) = {
     val d = wertungen.map{wertung =>
       s"""<tr class="athletRow"><td>${wertung.athlet.verein.map(_.name).getOrElse("")}</td><td class="large">${wertung.athlet.name} ${wertung.athlet.vorname}</td><td class="large">${wertung.wettkampfdisziplin.disziplin.name}, ${wertung.wettkampfdisziplin.programm.name}</td><td class="totalCol">${wertung.endnote}</td></tr>"""
     }
@@ -122,14 +124,14 @@ trait BestenListeToHtmlRenderer {
   def toHTMListe(wertungen: Seq[WertungView], logo: File): String = {
     val kandidatenPerKategorie = wertungen.sortBy { k =>
       val krit = f"${k.endnote}%-10s ${k.wettkampfdisziplin.ord}%-10s ${k.athlet.easyprint}%-40s"
-      //println(krit)
+      //logger.debug(krit)
       krit
     }
     val rawpages = for {
       a4seitenmenge <- kandidatenPerKategorie.sliding(28, 28)
     }
     yield {
-      anmeldeListe(a4seitenmenge, logo)
+      bestenListe(a4seitenmenge, logo)
     }
 
     val pages = rawpages.mkString("</li></ul><ul><li>")

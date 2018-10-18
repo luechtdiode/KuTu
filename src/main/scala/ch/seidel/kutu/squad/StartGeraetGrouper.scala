@@ -3,8 +3,10 @@ package ch.seidel.kutu.squad
 import scala.annotation.tailrec
 import ch.seidel.kutu.domain._
 import ch.seidel.kutu.squad._
+import org.slf4j.LoggerFactory
 
 trait StartGeraetGrouper extends RiegenSplitter with Stager {
+  private val logger = LoggerFactory.getLogger(classOf[StartGeraetGrouper])
   
   def groupWertungen(programm: String, wertungen: Map[AthletView, Seq[WertungView]], 
       grp: List[WertungView => String], grpAll: List[WertungView => String], 
@@ -67,7 +69,7 @@ trait StartGeraetGrouper extends RiegenSplitter with Stager {
       val (rr, index) = r
       val startgeridx =  (index + startgeraete.size) % startgeraete.size
       rr.keys.map{riegenname =>
-        println(s"Durchgang $programm (${index / startgeraete.size + 1}), Start ${startgeraete(startgeridx).easyprint}, ${rr(riegenname).size} Tu/Ti der Riege $riegenname")
+        logger.debug(s"Durchgang $programm (${index / startgeraete.size + 1}), Start ${startgeraete(startgeridx).easyprint}, ${rr(riegenname).size} Tu/Ti der Riege $riegenname")
         (s"$programm (${if(maxRiegenSize > 0) index / startgeraete.size + 1 else 1})", riegenname, startgeraete(startgeridx), rr(riegenname))
       }
     }
@@ -99,7 +101,7 @@ trait StartGeraetGrouper extends RiegenSplitter with Stager {
           }
           match {
             case Some(zielriege) if ((zielriege ++ toMove).size <= maxRiegenSize2) =>
-              println(s"moving $toMove from ${geraetRiege} to ${zielriege}")
+              logger.debug(s"moving $toMove from ${geraetRiege} to ${zielriege}")
               val gt = geraetRiege -- toMove
               val sg = zielriege ++ toMove
               val r1 = acccStartriegen - zielriege
@@ -114,7 +116,7 @@ trait StartGeraetGrouper extends RiegenSplitter with Stager {
                 if (gt.size > maxRiegenSize2 || sg.size > maxRiegenSize2) {
                   acccStartriegen
                 } else {
-                  println(s"switching ${substitues} with toMove between ${geraetRiege} to ${zielriege}")
+                  logger.debug(s"switching ${substitues} with toMove between ${geraetRiege} to ${zielriege}")
                   acccStartriegen - zielriege - geraetRiege + gt + sg
                 }
               case None => acccStartriegen

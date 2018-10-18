@@ -1,0 +1,20 @@
+{
+  "name": "resultcatcher",
+  "integrations": {
+    "cordova": {}
+  },
+  "type": "ionic-angular",
+  "proxies": [
+    {
+      "path": "/api",
+      "proxyUrl_": "https://kutuapp.sharevic.net/api",
+      "proxyUrl": "http://mws-01:5757/api",
+      "rejectUnauthorized": false,
+      "autoRewrite": true,
+      "xfwd": true,
+      "secure": false,
+      "changeOrigin": true,
+      "logLevel": "debug"
+    }
+  ]
+}

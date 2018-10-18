@@ -2,8 +2,10 @@ package ch.seidel.kutu.squad
 
 import scala.annotation.tailrec
 import ch.seidel.kutu.domain._
+import org.slf4j.LoggerFactory
 
 trait RiegenSplitter {
+  private val logger = LoggerFactory.getLogger(classOf[RiegenSplitter])
   
   def groupKey(grplst: List[WertungView => String])(wertung: WertungView): String = {
     grplst.foldLeft(""){(acc, f) =>
@@ -14,12 +16,12 @@ trait RiegenSplitter {
   @tailrec
   final def splitToRiegenCount(sugg: Seq[(String, Seq[WertungViewsZuAthletView])], requiredRiegenCount: Int, cache: scala.collection.mutable.Map[String, Int]): Seq[(String, Seq[WertungViewsZuAthletView])] = {
     val ret = sugg.sortBy(_._2.size).reverse
-    //println((ret.size, riegencnt))
+    //logger.debug((ret.size, riegencnt))
     if(ret.size < requiredRiegenCount) {
       splitToRiegenCount(split(ret.head, ".", cache) ++ ret.tail, requiredRiegenCount, cache)
     }
     else {
-      //println(ret.mkString("\n"))
+      //logger.debug(ret.mkString("\n"))
       ret
     }
   }

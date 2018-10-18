@@ -1,32 +1,113 @@
-# just working on linux ...
-# sudo: false
-# addons:
-#   apt:
-#     packages:
-#       - oracle-java8-installer
+env:
+  global:
+    - OS=$(uname -s)
+    - PATH=$HOME/.local/bin:$PATH
+    - S3_BUCKET_CACHE=s3://rs-travis/kutuapp/build-cache
+    - S3_BUCKET_REQUISITES=s3://rs-travis/kutuapp/requisites
 
-# just working on osx ...
-# before_install:
-#   - "wget --no-cookies --no-check-certificate --header \"Cookie: gpw_e24=http%3A%2F%2Fwww.oracle.com%2F; oraclelicense=accept-securebackup-cookie\" http://download.oracle.com/otn-pub/java/jdk/8u152-b16/aa0333dd3019491ca4f6ddbe78cdb6d0/jdk-8u152-macosx-x64.dmg" 
-#   - hdiutil mount jdk-8u102-macosx-x64.dmg
-#   - sudo installer -pkg /Volumes/JDK\ 8\ Update\ 102/JDK\ 8\ Update\ 102.pkg -target LocalSystem
-#   - export JAVA_HOME=$(/usr/libexec/java_home)
+branches:
+  except:
+  - /^travisbuild-[0-9a-z\-]*/
+      
+# branches:
+#   only:
+#     - master
+#     - v2-networked
   
 cache:
   directories:
     - $HOME/.m2/repository
     - $HOME/.sbt
     - $HOME/.ivy2
-    
-language: java
 
-env:
-  global:
-    - OS=$(uname -s)
+before_script:
+  - mkdir -p $TRAVIS_BUILD_DIR/outputs/$OS
+  
+stages:
+  - client
+  - server
 
-# jdk:
-#   - oraclejdk8
+jobs:
+  include:
+  - stage: client
+    language: node_js
+    addons:
+      apt:
+        packages:
+        - oracle-java8-installer
+        - oracle-java8-set-default
+        - npm
+        - jq
+    before_install:
+      - nvm install 8
+      - npm install -g cordova ionic
+      - pip install --user awscli
+      - ./ecr_credentials.sh
+      - mkdir -p ~/$TRAVIS_BUILD_NUMBER
+      - aws s3 sync $S3_BUCKET_CACHE/$TRAVIS_BUILD_NUMBER ~/$TRAVIS_BUILD_NUMBER
+      - mkdir -p ~/requisites
+      - aws s3 sync $S3_BUCKET_REQUISITES ~/requisites
+    script:
+      - cd $TRAVIS_BUILD_DIR/client/resultcatcher
+      - npm install
+      - ionic build --prod
+      - cp -R -f ./www ~/$TRAVIS_BUILD_NUMBER/
+      - rm -rf ~/requisites
+    after_success:
+      - aws s3 sync ~/$TRAVIS_BUILD_NUMBER $S3_BUCKET_CACHE/$TRAVIS_BUILD_NUMBER  
+  - stage: server
+    language: java
+    os: osx
+    osx_image: xcode9.2
+    before_install:
+      - brew install awscli
+      - ./ecr_credentials.sh
+      - mkdir -p ~/$TRAVIS_BUILD_NUMBER
+      - aws s3 sync $S3_BUCKET_CACHE/$TRAVIS_BUILD_NUMBER ~/$TRAVIS_BUILD_NUMBER
+    script:
+      - cp -R -f ~/$TRAVIS_BUILD_NUMBER/www/* $TRAVIS_BUILD_DIR/src/main/resources/app
+      - mvn deploy --settings deploy-settings.xml
+      - cp -f $TRAVIS_BUILD_DIR/target/KuTu-app.jar $TRAVIS_BUILD_DIR/outputs/
+      - cp -f $TRAVIS_BUILD_DIR/target/$OS/bundles/*.dmg $TRAVIS_BUILD_DIR/outputs/$OS/
+      - cp -f $TRAVIS_BUILD_DIR/target/$OS/bundles/*.pkg $TRAVIS_BUILD_DIR/outputs/$OS/
+    after_success:
+      - git checkout "$TRAVIS_BRANCH"
+      - cp -R -f ~/$TRAVIS_BUILD_NUMBER/www/* $TRAVIS_BUILD_DIR/src/main/resources/app
+      - git status
+      - ls $TRAVIS_BUILD_DIR/src/main/resources/app
+      - git status
+      - git add $TRAVIS_BUILD_DIR/src/main/resources/app
+      - git commit -a -m "update with generated Client from TravisCI for build $TRAVIS_BUILD_NUMBER with [skip ci]"
+      - export GIT_TAG=travisbuild-$TRAVIS_BRANCH-$(date -u "+%Y-%m-%d")-$TRAVIS_BUILD_NUMBER
+      - git tag $GIT_TAG -a -m "TravisCI build $TRAVIS_BUILD_NUMBER"
+      - if ! git push -fq --follow-tags https://$GH_ACCESS_TOKEN@github.com/luechtdiode/KuTu.git $TRAVIS_BRANCH > /dev/null 2>&1; then err "failed to push git changes"; return1; fi
+      - aws s3 rm --recursive $S3_BUCKET_CACHE/$TRAVIS_BUILD_NUMBER # clean up after ourselves
 
+<<<<<<< HEAD
+# deploy: actually, deploy is managed by maven wagon
+#   # deploy build to s3
+#   - provider: s3
+#     access_key_id: $aws_user
+#     secret_access_key: $aws_accesskey
+#     region: "eu-west-1"
+#     bucket: "rs-travis"
+#     local_dir: $TRAVIS_BUILD_DIR/outputs
+#     upload_dir: kutuapp
+#     skip_cleanup: true
+#     on:
+#       all_branches: true
+      
+#   - provider: releases
+#     api_key: $GH_ACCESS_TOKEN
+#     file_glob: true
+#     file: $TRAVIS_BUILD_DIR/src/main/resources/app
+#     skip_cleanup: true
+#     on:
+#       all_branches: true
+#   #   on:
+#   #     tags: true
+  
+=======
 os:
 #   - linux
   - osx
@@ -38,3 +119,4 @@ script: mvn clean install wagon:upload --settings deploy-settings.xml
 branches:
   only:
     - master
+>>>>>>> refs/heads/master

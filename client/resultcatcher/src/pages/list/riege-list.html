@@ -1,0 +1,8 @@
+<ion-list *ngIf="items && items.length > 0">
+  <ion-item *ngFor='let w of items' (click)="itemTapped($event, w)">{{w.vorname + ' ' + w.name + ' (' + w.wertung.riege + ')'}}
+    <ion-avatar item-start>
+      <img src="assets/imgs/athlete.png">
+    </ion-avatar>
+    <ion-note item-end>{{w.wertung.endnote | number:'2.3-3'}}</ion-note>
+  </ion-item>
+</ion-list>

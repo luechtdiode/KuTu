@@ -3,12 +3,13 @@ package ch.seidel.kutu.renderer
 import ch.seidel.kutu.domain._
 import java.io.File
 import PrintUtil._
+import org.slf4j.LoggerFactory
 
 object RiegenBuilder {
+  val logger = LoggerFactory.getLogger(this.getClass)
+  def mapToGeraeteRiegen(kandidaten: Seq[Kandidat], printorder: Boolean = false, groupByProgramm: Boolean = true): List[GeraeteRiege] = {
 
-  def mapToGeraeteRiegen(kandidaten: List[Kandidat], printorder: Boolean = false): List[GeraeteRiege] = {
-
-    def pickStartformationen(geraete: List[(Option[Disziplin], List[Riege])], durchgang: Option[String], extractKandidatEinteilung: Kandidat => (Option[Riege], Seq[Disziplin])) = {
+    def pickStartformationen(geraete: Seq[(Option[Disziplin], Seq[Riege])], durchgang: Option[String], extractKandidatEinteilung: Kandidat => (Option[Riege], Seq[Disziplin])) = {
       geraete.flatMap{s =>
         val (startdisziplin, _) = s
         val splitpoint = geraete.indexWhere(g => g._1.equals(startdisziplin))
@@ -23,7 +24,7 @@ object RiegenBuilder {
               einteilung.start.equals(startdisziplin) &&
               diszipline.map(_.id).contains(disziplin.map(_.id).getOrElse(0))
             case None => false
-          })}.sortBy { x => x.verein + x.jahrgang}
+          })}.sortBy { x => (if (groupByProgramm) x.programm else "") + x.verein + x.jahrgang}
           
           val completed = tuti.
             flatMap(k => k.wertungen).

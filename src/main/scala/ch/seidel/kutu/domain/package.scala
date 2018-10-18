@@ -1,25 +1,76 @@
 package ch.seidel.kutu
 
-import scalafx.util.converter.DoubleStringConverter
 import java.io.ObjectInputStream
-import scalafx.collections.ObservableBuffer
 import java.time.LocalDate
 import java.time.ZoneId
-import scalafx.util.converter.IntStringConverter
-import scalafx.util.converter.LongStringConverter
 import java.text.SimpleDateFormat
 import org.apache.commons.codec.language.bm._
 import org.apache.commons.codec.language.ColognePhonetic
 import java.util.TimeZone
 import org.apache.commons.text.similarity.LevenshteinDistance
-import scalafx.util.converter.BigDecimalStringConverter
+import java.util.UUID
+import java.nio.file.Files
+import java.nio.file.StandardOpenOption
+import java.nio.file.LinkOption
+import java.net.URLEncoder
+import java.util.concurrent.TimeUnit
+import scala.concurrent.duration.Duration
 
 package object domain {
   implicit def dbl2Str(d: Double) = f"${d}%2.3f"
-  implicit def str2bd(d: String) = new BigDecimalStringConverter().fromString(d)
-  implicit def str2dbl(d: String) = new DoubleStringConverter().fromString(d)
-  implicit def str2Int(d: String) = new IntStringConverter().fromString(d)
-  implicit def str2Long(d: String) = new LongStringConverter().fromString(d)
+  implicit def str2bd(value: String): BigDecimal = {
+    if (value != null) {
+      val trimmed = value.trim()
+
+      if (trimmed.length() < 1) {
+          null
+      } else {
+          BigDecimal(trimmed) 
+      }
+    } else {
+        null          
+    }
+  }
+  implicit def str2dbl(value: String): Double = {
+    if (value != null) {
+      val trimmed = value.trim()
+
+      if (trimmed.length() < 1) {
+          0d
+      } else {
+          val bigd: BigDecimal = trimmed
+          bigd.toDouble
+      }
+    } else {
+        0d          
+    }    
+  }
+  implicit def str2Int(value: String): Int = {
+    if (value != null) {
+      val trimmed = value.trim()
+
+      if (trimmed.length() < 1) {
+        0
+      } else {
+        Integer.valueOf(trimmed)
+      }
+    } else {
+      0         
+    }    
+  }
+  implicit def str2Long(value: String): Long = {
+    if (value != null) {
+      val trimmed = value.trim()
+
+      if (trimmed.length() < 1) {
+        0L
+      } else {
+        java.lang.Long.valueOf(trimmed)
+      }
+    } else {
+      0L      
+    }    
+  }
   implicit def ld2SQLDate(ld: LocalDate): java.sql.Date = {
     if(ld==null) return null else {
       val inst = ld.atStartOfDay(ZoneId.of("UTC"))
@@ -32,13 +83,41 @@ package object domain {
     }
   }
 
+  def toTimeFormat(millis: Long) = if (millis <= 0) "" else f"${new java.util.Date(millis)}%tT"
+  def toDurationFormat(from: Long, to: Long) = { 
+    val too = if (to <= 0 && from > 0) System.currentTimeMillis() else to
+    if (too - from <= 0) "" else {
+      val d = Duration(too - from, TimeUnit.MILLISECONDS)
+      List((d.toDays, "d"), (d.toHours - d.toDays * 24, "h"), (d.toMinutes - d.toHours * 60, "m"), (d.toSeconds - d.toMinutes * 60, "s"))
+      .filter(_._1 > 0)
+      .map(p => s"${p._1}${p._2}")
+      .mkString(", ")
+    }
+  }
+
 //  implicit def dateOption2AthletJahrgang(gebdat: Option[Date]) = gebdat match {
 //        case Some(d) => AthletJahrgang(extractYear.format(d))
 //        case None    => AthletJahrgang("unbekannt")
 //      }
-
+  
+  val encodeInvalidURIRegEx =  "[,&.*+?/^${}()|\\[\\]\\\\]".r
+  def encodeURIComponent(uri: String) = encodeInvalidURIRegEx.replaceAllIn(uri, "_")
+  
+  def encodeURIParam(uri: String) = URLEncoder.encode(uri, "UTF-8")
+    .replaceAll(" ", "%20")
+    .replaceAll("\\+", "%20")
+    .replaceAll("\\%21", "!")
+    .replaceAll("\\%27", "'")
+    .replaceAll("\\%28", "(")
+    .replaceAll("\\%29", ")")
+    .replaceAll("\\%7E", "~")
+    
   trait DataObject {
     def easyprint: String = toString
+    def capsulatedprint: String = {
+      val ep = easyprint
+      if (ep.matches(".*[\\s,\\.;].*")) s""""$ep"""" else ep
+    }
   }
 
   case class NullObject(caption: String) extends DataObject {
@@ -73,6 +152,7 @@ package object domain {
   object Athlet {
     def apply(): Athlet = Athlet(0, 0, "", "", "", None, "", "", "", None, true)
     def apply(verein: Verein): Athlet = Athlet(0, 0, "M", "<Name>", "<Vorname>", None, "", "", "", Some(verein.id), true)
+    def apply(verein: Long): Athlet = Athlet(0, 0, "M", "<Name>", "<Vorname>", None, "", "", "", Some(verein), true)
   }
   case class Athlet(id: Long, js_id: Int, geschlecht: String, name: String, vorname: String, gebdat: Option[java.sql.Date], strasse: String, plz: String, ort: String, verein: Option[Long], activ: Boolean) extends DataObject {
     override def easyprint = name + " " + vorname + " " + (gebdat match {case Some(d) => f"$d%tY "; case _ => ""})
@@ -82,18 +162,44 @@ package object domain {
     def toAthlet = Athlet(id, js_id, geschlecht, name, vorname, gebdat, strasse, plz, ort, verein.map(_.id), activ)
   }
 
+  object Wertungsrichter {
+    def apply(): Wertungsrichter = Wertungsrichter(0, 0, "", "", "", None, "", "", "", None, true)
+  }
+  case class Wertungsrichter(id: Long, js_id: Int, geschlecht: String, name: String, vorname: String, gebdat: Option[java.sql.Date], strasse: String, plz: String, ort: String, verein: Option[Long], activ: Boolean) extends DataObject {
+    override def easyprint = "Wertungsrichter " + name
+  }
+  case class WertungsrichterView(id: Long, js_id: Int, geschlecht: String, name: String, vorname: String, gebdat: Option[java.sql.Date], strasse: String, plz: String, ort: String, verein: Option[Verein], activ: Boolean) extends DataObject {
+    override def easyprint = name + " " + vorname + " " + (gebdat match {case Some(d) => f"$d%tY "; case _ => " "}) + (verein match {case Some(v) => v.easyprint; case _ => ""})
+    def toWertungsrichter = Wertungsrichter(id, js_id, geschlecht, name, vorname, gebdat, strasse, plz, ort, verein.map(_.id), activ)
+  }
+  
+  object Durchgang {
+    def apply(): Durchgang = Durchgang(0, "nicht zugewiesen")
+  }
+  case class Durchgang(wettkampfId: Long, durchgang: String) extends DataObject {
+    override def easyprint = durchgang
+  }  
+  case class Durchgangstation(wettkampfId: Long, durchgang: String, d_Wertungsrichter1: Option[Long], e_Wertungsrichter1: Option[Long], d_Wertungsrichter2: Option[Long], e_Wertungsrichter2: Option[Long], geraet: Disziplin) extends DataObject {
+    override def easyprint = toString
+  }
+  case class DurchgangstationView(wettkampfId: Long, durchgang: String, d_Wertungsrichter1: Option[WertungsrichterView], e_Wertungsrichter1: Option[WertungsrichterView], d_Wertungsrichter2: Option[WertungsrichterView], e_Wertungsrichter2: Option[WertungsrichterView], geraet: Disziplin) extends DataObject {
+    override def easyprint = toString
+    def toDurchgangstation = Durchgangstation(wettkampfId, durchgang, d_Wertungsrichter1.map(_.id), e_Wertungsrichter1.map(_.id), d_Wertungsrichter2.map(_.id), e_Wertungsrichter2.map(_.id), geraet)
+  }
+  
   object AthletJahrgang {
     def apply(gebdat: Option[java.sql.Date]): AthletJahrgang = gebdat match {
-        case Some(d) => AthletJahrgang(f"$d%tY")
-        case None    => AthletJahrgang("unbekannt")
-      }
+      case Some(d) => AthletJahrgang(f"$d%tY")
+      case None    => AthletJahrgang("unbekannt")
+    }
   }
-  case class AthletJahrgang(hg: String) extends DataObject {
-    override def easyprint = "Jahrgang " + hg
+  
+  case class AthletJahrgang(jahrgang: String) extends DataObject {
+    override def easyprint = "Jahrgang " + jahrgang
   }
 
-  case class WettkampfJahr(hg: String) extends DataObject {
-    override def easyprint = "Wettkampf-Jahr " + hg
+  case class WettkampfJahr(wettkampfjahr: String) extends DataObject {
+    override def easyprint = "Wettkampf-Jahr " + wettkampfjahr
   }
   case class Disziplin(id: Long, name: String) extends DataObject {
     override def easyprint = name
@@ -154,24 +260,81 @@ package object domain {
     override def toString = toPath
   }
 
-  case class Wettkampf(id: Long, datum: java.sql.Date, titel: String, programmId: Long, auszeichnung: Int, auszeichnungendnote: scala.math.BigDecimal) extends DataObject {
+//  object Wettkampf {
+//    def apply(id: Long, datum: java.sql.Date, titel: String, programmId: Long, auszeichnung: Int, auszeichnungendnote: scala.math.BigDecimal): Wettkampf = 
+//      Wettkampf(id, datum, titel, programmId, auszeichnung, auszeichnungendnote, if(id == 0) Some(UUID.randomUUID().toString()) else None)
+//    def apply(id: Long, datum: java.sql.Date, titel: String, programmId: Long, auszeichnung: Int, auszeichnungendnote: scala.math.BigDecimal, uuid: String): Wettkampf = 
+//      if(uuid != null) Wettkampf(id, datum, titel, programmId, auszeichnung, auszeichnungendnote, Some(uuid))
+//      else apply(id, datum, titel, programmId, auszeichnung, auszeichnungendnote)
+//  }
+  case class Wettkampf(id: Long, uuid: Option[String], datum: java.sql.Date, titel: String, programmId: Long, auszeichnung: Int, auszeichnungendnote: scala.math.BigDecimal) extends DataObject {
     override def easyprint = f"$titel am $datum%td.$datum%tm.$datum%tY"
+    
     def toView(programm: ProgrammView) = {
-      WettkampfView(id, datum, titel, programm, auszeichnung, auszeichnungendnote)
+      WettkampfView(id, uuid, datum, titel, programm, auszeichnung, auszeichnungendnote)
     }
+    
+    def prepareFilePath(homedir: String) = {
+      val dir = new java.io.File(homedir + "/" + easyprint.replace(" ", "_"))
+      if(!dir.exists) {
+        dir.mkdirs;
+      }
+      dir
+    }
+    
+    def filePath(homedir: String, origin: String) = new java.io.File(prepareFilePath(homedir), ".at." + origin).toPath
+    
+    def saveSecret(homedir: String, origin: String, secret: String) {
+      val path = filePath(homedir, origin)
+      val fos = Files.newOutputStream(path, StandardOpenOption.CREATE_NEW)
+      try {
+        fos.write(secret.getBytes("utf-8"))
+        fos.flush
+      } finally {
+        fos.close
+      }
+      val os = System.getProperty("os.name").toLowerCase
+      if (os.indexOf("win") > -1) {
+        Files.setAttribute(path, "dos:hidden", true, LinkOption.NOFOLLOW_LINKS)
+      }
+    }
+    
+    def readSecret(homedir: String, origin: String): Option[String] = {
+      val path = filePath(homedir, origin)
+      if (path.toFile.exists) {
+        Some(new String(Files.readAllBytes(path), "utf-8"))
+      }
+      else {
+        None
+      }
+    }
+    def removeSecret(homedir: String, origin: String) {
+      val atFile = filePath(homedir, origin).toFile
+      if (atFile.exists) {
+        atFile.delete()
+      }
+    }
+    def hasSecred(homedir: String, origin: String): Boolean = readSecret(homedir, origin) match {case Some(_) => true case None => false }
   }
 
-  case class WettkampfView(id: Long, datum: java.sql.Date, titel: String, programm: ProgrammView, auszeichnung: Int, auszeichnungendnote: scala.math.BigDecimal) extends DataObject {
+//  object WettkampfView {
+//    def apply(id: Long, datum: java.sql.Date, titel: String, programm: ProgrammView, auszeichnung: Int, auszeichnungendnote: scala.math.BigDecimal): WettkampfView = 
+//      WettkampfView(id, datum, titel, programm, auszeichnung, auszeichnungendnote, if(id == 0) Some(UUID.randomUUID().toString()) else None)
+//    def apply(id: Long, datum: java.sql.Date, titel: String, programm: ProgrammView, auszeichnung: Int, auszeichnungendnote: scala.math.BigDecimal, uuid: String): WettkampfView = 
+//      if(uuid != null) WettkampfView(id, datum, titel, programm, auszeichnung, auszeichnungendnote, Some(uuid))
+//      else apply(id, datum, titel, programm, auszeichnung, auszeichnungendnote)
+//  }
+  case class WettkampfView(id: Long, uuid: Option[String], datum: java.sql.Date, titel: String, programm: ProgrammView, auszeichnung: Int, auszeichnungendnote: scala.math.BigDecimal) extends DataObject {
     override def easyprint = f"$titel am $datum%td.$datum%tm.$datum%tY"
-    def toWettkampf = Wettkampf(id, datum, titel, programm.id, auszeichnung, auszeichnungendnote)
+    def toWettkampf = Wettkampf(id, uuid, datum, titel, programm.id, auszeichnung, auszeichnungendnote)
   }
 
-  case class Wettkampfdisziplin(id: Long, programmId: Long, disziplinId: Long, kurzbeschreibung: String, detailbeschreibung: Option[java.sql.Blob], notenfaktor: scala.math.BigDecimal, ord: Int, masculin: Int, feminim: Int) extends DataObject {
+  case class Wettkampfdisziplin(id: Long, programmId: Long, disziplinId: Long, kurzbeschreibung: String, detailbeschreibung: Option[java.sql.Blob], notenfaktor: scala.math.BigDecimal, masculin: Int, feminim: Int, ord: Int) extends DataObject {
     override def easyprint = f"$disziplinId%02d: $kurzbeschreibung"
   }
-  case class WettkampfdisziplinView(id: Long, programm: ProgrammView, disziplin: Disziplin, kurzbeschreibung: String, detailbeschreibung: Option[Array[Byte]], notenSpez: NotenModus, ord: Int, masculin: Int, feminim: Int) extends DataObject {
+  case class WettkampfdisziplinView(id: Long, programm: ProgrammView, disziplin: Disziplin, kurzbeschreibung: String, detailbeschreibung: Option[Array[Byte]], notenSpez: NotenModus, masculin: Int, feminim: Int, ord: Int) extends DataObject {
     override def easyprint = disziplin.name
-    def toWettkampdisziplin = Wettkampfdisziplin(id, programm.id, disziplin.id, kurzbeschreibung, None, notenSpez.calcEndnote(0, 1), ord, masculin, feminim)
+    def toWettkampdisziplin = Wettkampfdisziplin(id, programm.id, disziplin.id, kurzbeschreibung, None, notenSpez.calcEndnote(0, 1), masculin, feminim, ord)
   }
 
   case class Resultat(noteD: scala.math.BigDecimal, noteE: scala.math.BigDecimal, endnote: scala.math.BigDecimal) extends DataObject {
@@ -183,14 +346,16 @@ package object domain {
     lazy val formattedEnd = if(endnote > 0) f"${endnote}%6.2f" else ""
     override def easyprint = f"${formattedD}%6s${formattedE}%6s${formattedEnd}%6s"
   }
-  case class Wertung(id: Long, athletId: Long, wettkampfdisziplinId: Long, wettkampfId: Long, noteD: scala.math.BigDecimal, noteE: scala.math.BigDecimal, endnote: scala.math.BigDecimal, riege: Option[String], riege2: Option[String]) extends DataObject {
+  case class Wertung(id: Long, athletId: Long, wettkampfdisziplinId: Long, wettkampfId: Long, wettkampfUUID: String, noteD: scala.math.BigDecimal, noteE: scala.math.BigDecimal, endnote: scala.math.BigDecimal, riege: Option[String], riege2: Option[String]) extends DataObject {
     lazy val resultat = Resultat(noteD, noteE, endnote)
+    def updatedWertung(valuesFrom: Wertung) = copy(noteD = valuesFrom.noteD, noteE = valuesFrom.noteE, endnote = valuesFrom.endnote)
   }
   case class WertungView(id: Long, athlet: AthletView, wettkampfdisziplin: WettkampfdisziplinView, wettkampf: Wettkampf, noteD: scala.math.BigDecimal, noteE: scala.math.BigDecimal, endnote: scala.math.BigDecimal, riege: Option[String], riege2: Option[String]) extends DataObject {
     lazy val resultat = Resultat(noteD, noteE, endnote)
     def + (r: Resultat) = resultat + r
-    def toWertung = Wertung(id, athlet.id, wettkampfdisziplin.id, wettkampf.id, noteD, noteE, endnote, riege, riege2)
-    def toWertung(riege: String) = Wertung(id, athlet.id, wettkampfdisziplin.id, wettkampf.id, noteD, noteE, endnote, Some(riege), riege2)
+    def toWertung = Wertung(id, athlet.id, wettkampfdisziplin.id, wettkampf.id, wettkampf.uuid.getOrElse(""), noteD, noteE, endnote, riege, riege2)
+    def toWertung(riege: String) = Wertung(id, athlet.id, wettkampfdisziplin.id, wettkampf.id, wettkampf.uuid.getOrElse(""), noteD, noteE, endnote, Some(riege), riege2)
+    def updatedWertung(valuesFrom: Wertung) = copy(noteD = valuesFrom.noteD, noteE = valuesFrom.noteE, endnote = valuesFrom.endnote)
     def showInScoreList = {
       (endnote > 0) || (athlet.geschlecht match {
         case "M" => wettkampfdisziplin.masculin > 0
@@ -210,14 +375,21 @@ package object domain {
     lazy val divider = if(withDNotes || resultate.isEmpty) 1 else resultate.filter{r => r.sum.endnote > 0}.size
   }
 
-  sealed trait NotenModus extends DoubleStringConverter /*with AutoFillTextBoxFactory.ItemComparator[String]*/ {
+  sealed trait NotenModus /*with AutoFillTextBoxFactory.ItemComparator[String]*/ {
     val isDNoteUsed: Boolean
     def selectableItems: Option[List[String]] = None
     def calcEndnote(dnote: Double, enote: Double): Double
-    override def toString(value: Double): String = value
+    def verifiedAndCalculatedWertung(wertung: Wertung) = {
+      if (isDNoteUsed) {
+        wertung.copy(endnote = calcEndnote(wertung.noteD.doubleValue(), wertung.noteE.doubleValue()))
+      } else {
+        wertung.copy(noteD = 0, endnote = calcEndnote(wertung.noteD.doubleValue(), wertung.noteE.doubleValue()))
+      }
+    }
+    
+    def toString(value: Double): String = value
     /*override*/ def shouldSuggest(item: String, query: String): Boolean = false
   }
-
   case class Athletiktest(punktemapping: Map[String,Double], punktgewicht: Double) extends NotenModus {
     override val isDNoteUsed = false
 //    override def shouldSuggest(item: String, query: String): Boolean = {
