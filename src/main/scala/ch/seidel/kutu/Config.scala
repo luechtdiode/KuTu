@@ -1,45 +1,44 @@
 package ch.seidel.kutu
 
-import com.typesafe.config.ConfigFactory
-import authentikat.jwt.JwtHeader
-import java.util.UUID
-import scala.util.Random
 import java.io.File
-import org.slf4j.LoggerFactory
-import java.nio.file.Files
-import java.nio.file.StandardOpenOption
-import java.nio.file.LinkOption
-import java.util.Properties
+import java.net.{Proxy, ProxySelector, URI}
+import java.nio.file.{Files, LinkOption, StandardOpenOption}
+import java.security.{NoSuchAlgorithmException, SecureRandom}
+
+import authentikat.jwt.JwtHeader
 import com.github.markusbernhardt.proxy.ProxySearch
-import java.net.ProxySelector
-import java.net.URI
-import java.net.Proxy
-import java.util.Collections
-import scala.collection.JavaConverters
-import java.security.SecureRandom
-import java.security.NoSuchAlgorithmException
+import com.typesafe.config.{Config, ConfigFactory}
 import javax.crypto.KeyGenerator
+import org.slf4j.LoggerFactory
+
+import scala.collection.JavaConverters
 
 object Config {
   private val logger = LoggerFactory.getLogger(this.getClass)
   logger.info("OS-Name: " + System.getProperty("os.name"))
   
-  val configPath = System.getProperty("user.dir")
+  val configPath: String = System.getProperty("user.dir")
   logger.info(s"user.dir Path where custom configurations (kutuapp.conf) are taken from: ${new File(configPath).getAbsolutePath}")
-  val userHomePath = System.getProperty("user.home") + "/kutuapp"
+  val userHomePath: String = System.getProperty("user.home") + "/kutuapp"
   logger.info(s"user.home Path: ${new File(userHomePath).getAbsolutePath}")
-  val userConfig = new File(configPath + "/kutuapp.conf")
-  val config = if (userConfig.exists()) ConfigFactory.parseFile(new File(configPath + "/kutuapp.conf")).withFallback(ConfigFactory.load()) else ConfigFactory.load()
+  val userConfig: File = new File(configPath + "/kutuapp.conf")
+  val config: Config = if (userConfig.exists()) ConfigFactory.parseFile(new File(configPath + "/kutuapp.conf")).withFallback(ConfigFactory.load()) else ConfigFactory.load()
 
-  val appVersion = if (config.hasPath("app.majorversion")) config.getString("app.majorversion") else "dev.dev.test"
-  val builddate = if (config.hasPath("app.builddate")) config.getString("app.builddate") else "today"
+  val appVersion: String = if (config.hasPath("app.majorversion")
+                   && !config.getString("app.majorversion").startsWith("${"))
+                      config.getString("app.majorversion")
+                   else "dev.dev.test"
+  val builddate: String = if (config.hasPath("app.builddate")
+                  && !config.getString("app.builddate").startsWith("${"))
+                    config.getString("app.builddate")
+                  else "today"
     
   logger.info(s"App-Version: $appVersion")
     
   private val jwtConfig = config.getConfig("jwt")
   private val appRemoteConfig = config.getConfig("app.remote")
 
-  def saveSecret(secret: String) {
+  def saveSecret(secret: String): Unit = {
     val path = new File(userHomePath + "/.jwt").toPath
     val fos = Files.newOutputStream(path, StandardOpenOption.CREATE_NEW)
     try {
@@ -65,7 +64,7 @@ object Config {
     }
   }
   
-  lazy val jwtSecretKey = {
+  lazy val jwtSecretKey: String = {
     readSecret match {
       case Some(secret) => secret
       case None =>
@@ -99,9 +98,9 @@ object Config {
         secret
     }
   }
-  val jwtAuthorizationKey = "x-access-token"
+  val jwtAuthorizationKey: String = "x-access-token"
   
-  lazy val homedir = if(new File("./data").exists()) {
+  lazy val homedir: String = if(new File("./data").exists()) {
     "./data"
   }
   else if(new File(userHomePath + "/data").exists()) {
@@ -115,8 +114,8 @@ object Config {
   
   // Use the static factory method getDefaultProxySearch to create a proxy search instance 
   // configured with the default proxy search strategies for the current environment.
-  val proxySearch = ProxySearch.getDefaultProxySearch()
-  val proxySelector = proxySearch.getProxySelector()
+  val proxySearch: ProxySearch = ProxySearch.getDefaultProxySearch()
+  val proxySelector: ProxySelector = proxySearch.getProxySelector()
   ProxySelector.setDefault(proxySelector)
 
 //  private val proxy = Proxy.NO_PROXY
@@ -127,7 +126,7 @@ object Config {
   } else { List() }
   
   // Find first proxy for HTTP/S. Any DIRECT proxy in the list returned is only second choice
-  val autoconfigProxy = proxies.filter(p => p.`type` match{
+  val autoconfigProxy: (Option[String], Some[String]) = proxies.filter(p => p.`type` match{
     case Proxy.Type.HTTP => true 
     case _ => false
   })

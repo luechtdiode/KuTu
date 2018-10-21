@@ -14,11 +14,7 @@
   <logger name="slick.basic" level="INFO"/>
   <logger name="slick.jdbc" level="INFO"/>
   
-<<<<<<< HEAD
-  <root level="INFO">
-=======
   <root level="DEBUG">
->>>>>>> refs/heads/master
     <appender-ref ref="STDOUT" />
   </root>
 </configuration>
