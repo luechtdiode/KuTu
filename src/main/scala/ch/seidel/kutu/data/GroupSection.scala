@@ -1,11 +1,13 @@
 package ch.seidel.kutu.data
 
-import scala.collection.mutable.StringBuilder
-import scala.math.BigDecimal.int2bigDecimal
-import scala.math.BigDecimal.double2bigDecimal
 import java.time._
 import java.time.temporal._
+
 import ch.seidel.kutu.domain._
+
+import scala.collection.mutable
+import scala.collection.mutable.StringBuilder
+import scala.math.BigDecimal.{double2bigDecimal, int2bigDecimal}
 
 object GroupSection {
   def programGrouper( w: WertungView): ProgrammView = w.wettkampfdisziplin.programm.aggregatorSubHead
@@ -68,7 +70,7 @@ case class GroupLeaf(override val groupKey: DataObject, list: Iterable[WertungVi
   override val sum: Resultat = list.map(_.resultat).reduce(_+_)
   override val avg: Resultat = sum / list.size
   override def easyprint = groupKey.easyprint + s" $sum, $avg"
-  val groups = GroupSection.groupWertungList(list).filter(_._2.size > 0)
+  val groups = GroupSection.groupWertungList(list).filter(_._2.nonEmpty)
 //  lazy val wkPerProgramm = list.filter(_.endnote > 0).groupBy { w => w.wettkampf.programmId }
   lazy val anzahWettkaempfe = list.filter(_.endnote > 0).groupBy { w => w.wettkampf }.size // Anzahl Wettkämpfe
   val withDNotes = list.filter(w => w.noteD > 0).nonEmpty
@@ -113,7 +115,7 @@ case class GroupLeaf(override val groupKey: DataObject, list: Iterable[WertungVi
           def colsum(gr: GroupRow) =
             gr.resultate.find { x =>
               x.title.equals(grKey.easyprint) }.getOrElse(
-                  LeafRow(grKey.easyprint, Resultat(0, 0, 0), Resultat(0, 0, 0), false))
+                  LeafRow(grKey.easyprint, Resultat(0, 0, 0), Resultat(0, 0, 0), auszeichnung = false))
 
           val clDnote = WKLeafCol[GroupRow](text = "D", prefWidth = 60, styleClass = Seq("hintdata"), valueMapper = gr => {
             val cs = colsum(gr)
@@ -148,7 +150,7 @@ case class GroupLeaf(override val groupKey: DataObject, list: Iterable[WertungVi
                 grKey.easyprint
               }
             , prefWidth = 240, styleClass = Seq("hintdata"), cols = {
-              val withDNotes = list.filter(w => w.noteD > 0).nonEmpty
+              val withDNotes = list.exists(w => w.noteD > 0)
               if(withDNotes) {
                 Seq(clDnote, clEnote, clEndnote, clRang)
               }
@@ -279,15 +281,15 @@ case class GroupLeaf(override val groupKey: DataObject, list: Iterable[WertungVi
 
   def getTableData(sortAlphabetically: Boolean = false, diszMap: Map[Long,Map[String,List[Disziplin]]]) = {
 
-    val programDiszMap = groups.map(pg => (pg._1, diszMap.map(dmp => (dmp._1, dmp._2.map(dmpg => (dmpg._1, dmpg._2.filter(d => pg._2.exists{_ == d})))))))
+    val programDiszMap = groups.map(pg => (pg._1, diszMap.map(dmp => (dmp._1, dmp._2.map(dmpg => (dmpg._1, dmpg._2.filter(d => pg._2.contains{d})))))))
 
-    def mapToRang(athlWertungen: Iterable[WertungView]) = {
-      val grouped = athlWertungen.groupBy { _.athlet }.map { x =>
-        val r = x._2.map(y => y.resultat).reduce(_+_)
-        (x._1, r, r / x._2.size)
-      }
-      GroupSection.mapRang(grouped).map(r => (r.groupKey.asInstanceOf[AthletView] -> r)).toMap
-    }
+//    def mapToRang(athlWertungen: Iterable[WertungView]) = {
+//      val grouped = athlWertungen.groupBy { _.athlet }.map { x =>
+//        val r = x._2.map(y => y.resultat).reduce(_+_)
+//        (x._1, r, r / x._2.size)
+//      }
+//      GroupSection.mapRang(grouped).map(r => (r.groupKey.asInstanceOf[AthletView] -> r)).toMap
+//    }
     def mapToAvgRang[A <: DataObject](grp: Iterable[(A, (Resultat, Resultat))]) = {
       GroupSection.mapAvgRang(grp.map { d => (d._1, d._2._1, d._2._2) }).map(r => (r.groupKey.asInstanceOf[A] -> r)).toMap
     }
@@ -306,8 +308,8 @@ case class GroupLeaf(override val groupKey: DataObject, list: Iterable[WertungVi
           1
         }
         else {
-          val gebdat = w.athlet.gebdat match {case Some(d) => d.toLocalDate() case None => hundredyears}
-          val alterInTagen = jet.toEpochDay() - gebdat.toEpochDay()
+          val gebdat = w.athlet.gebdat match {case Some(d) => d.toLocalDate case None => hundredyears}
+          val alterInTagen = jet.toEpochDay - gebdat.toEpochDay
           val alterInJahren = alterInTagen / 365
           val altersfaktor = 100L - alterInJahren
           val powered = Math.floor(Math.pow(1000, idx)).toLong
@@ -359,7 +361,7 @@ case class GroupLeaf(override val groupKey: DataObject, list: Iterable[WertungVi
         val xsum = x._2.map(_._2).reduce(_+_)
         (x._1, xsum, xsum / x._2.size, auszeichnung, auszeichnungEndnote)}
       .toList.sortBy(d => d._1._1)
-      .map(d => (d._1._2, d._1._3, d._2, d._3, d._4, d._5)).toIterable
+      .map(d => (d._1._2, d._1._3, d._2, d._3, d._4, d._5))
 
       val perProgrammAvgs = (for {
         wettkampf <- wks.keySet.toSeq
@@ -429,14 +431,14 @@ case class GroupLeaf(override val groupKey: DataObject, list: Iterable[WertungVi
             programDiszMap(groups.head._1)(disziplinResults.head._2)("M").toIndexedSeq.map{d =>
               dr.find(lr => lr.title == d.name) match {
                 case Some(lr) => lr
-                case None => LeafRow(d.name, Resultat(0,0,0), Resultat(0,0,0), false)
+                case None => LeafRow(d.name, Resultat(0,0,0), Resultat(0,0,0), auszeichnung = false)
               }
             }
           case "W" =>
             programDiszMap(groups.head._1)(disziplinResults.head._2)("W").toIndexedSeq.map{d =>
               dr.find(lr => lr.title == d.name) match {
                 case Some(lr) => lr
-                case None => LeafRow(d.name, Resultat(0,0,0), Resultat(0,0,0), false)
+                case None => LeafRow(d.name, Resultat(0,0,0), Resultat(0,0,0), auszeichnung = false)
               }
             }
           case _ => dr;
@@ -468,7 +470,7 @@ case class GroupLeaf(override val groupKey: DataObject, list: Iterable[WertungVi
       val posproz = 100d * gsrang.rang.endnote / teilnehmer
       val posprom = 10000d * gsrang.rang.endnote / teilnehmer
       val gs = mapToGroupSum(athlet, wd, wp)
-      val divider = if(withDNotes || gs.isEmpty) 1 else gs.filter{r => r.sum.endnote > 0}.size
+      val divider = if(withDNotes || gs.isEmpty) 1 else gs.count{r => r.sum.endnote > 0}
 
       GroupRow(athlet, gs, avg, gsrang.rang,
           gsrang.rang.endnote > 0
@@ -503,7 +505,7 @@ case class GroupNode(override val groupKey: DataObject, next: Iterable[GroupSect
   override val sum: Resultat = next.map(_.sum).reduce(_ + _)
   override val avg: Resultat = next.map(_.avg).reduce(_ + _) / next.size
   override def easyprint = {
-    val buffer = new StringBuilder()
+    val buffer = new mutable.StringBuilder()
     buffer.append(groupKey.easyprint).append("\n")
     for (gi <- next) {
       buffer.append(gi.easyprint).append("\n")

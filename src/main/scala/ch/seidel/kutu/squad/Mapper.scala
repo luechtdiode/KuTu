@@ -1,7 +1,5 @@
 package ch.seidel.kutu.squad
 
-import ch.seidel.kutu._
-import ch.seidel.kutu.squad._
 import ch.seidel.kutu.domain._
 import org.slf4j.LoggerFactory
 

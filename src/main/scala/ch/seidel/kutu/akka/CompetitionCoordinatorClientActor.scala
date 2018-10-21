@@ -1,39 +1,23 @@
 package ch.seidel.kutu.akka
 
-import scala.concurrent.Await
+import akka.actor.SupervisorStrategy.Stop
+import akka.actor.{Actor, ActorLogging, ActorRef, OneForOneStrategy, Props, Terminated}
+import akka.http.scaladsl.model.ws.{BinaryMessage, Message, TextMessage}
+import akka.pattern.ask
+import akka.stream.OverflowStrategy
+import akka.stream.scaladsl.{Flow, Sink, Source}
+import akka.util.Timeout
+import ch.seidel.kutu.data.ResourceExchanger
+import ch.seidel.kutu.domain._
+import ch.seidel.kutu.http.{EnrichedJson, JsonSupport}
+import org.slf4j.LoggerFactory
+import spray.json._
+
 import scala.concurrent.ExecutionContext.Implicits.global
-import scala.concurrent.Future
+import scala.concurrent.{Await, Future}
 import scala.concurrent.duration.DurationInt
 import scala.util.Failure
 import scala.util.control.NonFatal
-
-import akka.actor.Actor
-import akka.actor.ActorRef
-import akka.actor.OneForOneStrategy
-import akka.actor.Props
-import akka.actor.SupervisorStrategy.Stop
-import akka.actor.Terminated
-import akka.pattern.ask
-
-import spray.json._
-
-import akka.http.scaladsl.model.ws.BinaryMessage
-import akka.http.scaladsl.model.ws.Message
-import akka.http.scaladsl.model.ws.TextMessage
-import akka.stream.OverflowStrategy
-import akka.stream.scaladsl.Flow
-import akka.stream.scaladsl.Sink
-import akka.stream.scaladsl.Source
-import ch.seidel.kutu.domain.Wertung
-import ch.seidel.kutu.http.EnrichedJson
-import ch.seidel.kutu.http.JsonSupport
-import akka.util.Timeout
-import scala.concurrent.duration.FiniteDuration
-import ch.seidel.kutu.domain._
-import akka.stream.scaladsl.Keep
-import ch.seidel.kutu.data.ResourceExchanger
-import akka.actor.ActorLogging
-import org.slf4j.LoggerFactory
 
 class CompetitionCoordinatorClientActor(wettkampfUUID: String) extends Actor with JsonSupport with KutuService with ActorLogging {
   import context._
@@ -252,7 +236,7 @@ class CompetitionCoordinatorClientActor(wettkampfUUID: String) extends Actor wit
   }
   
   def updateLastWertungen(wertungContainer: WertungContainer) {
-    lastWertungen = lastWertungen.updated(wertungContainer.wertung.wettkampfdisziplinId, wertungContainer)
+    lastWertungen = lastWertungen.updated(wertungContainer.wertung.wettkampfdisziplinId.toString(), wertungContainer)
     if(wertungContainer.wertung.endnote >= 8.7) {
       putBestenResult(wertungContainer)
     }
@@ -268,7 +252,7 @@ class CompetitionCoordinatorClientActor(wettkampfUUID: String) extends Actor wit
   }
   
   def putBestenResult(wertungContainer: WertungContainer) {
-    bestenResults = bestenResults.updated(wertungContainer.id + ":" + wertungContainer.wertung.wettkampfdisziplinId, wertungContainer)
+    bestenResults = bestenResults.updated((wertungContainer.id + ":" + wertungContainer.wertung.wettkampfdisziplinId.toString()), wertungContainer)
   }
   
   def resetBestenResult() {

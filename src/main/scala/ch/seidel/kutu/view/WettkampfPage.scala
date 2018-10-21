@@ -1,11 +1,9 @@
 package ch.seidel.kutu.view
 
-import scalafx.scene.control.Tab
+import ch.seidel.commons.{DisplayablePage, LazyTabPane}
 import ch.seidel.kutu.domain._
-import ch.seidel.commons.DisplayablePage
-import ch.seidel.commons.LazyTabPane
-import ch.seidel.commons.TabWithService
 import scalafx.beans.property.BooleanProperty
+import scalafx.scene.control.Tab
 
 object WettkampfPage {
 
@@ -68,7 +66,6 @@ class WettkampfPage(tabPane: LazyTabPane)
   extends DisplayablePage {
 
   def getPage = {
-    import WettkampfPage._
 
     tabPane.init()
     tabPane

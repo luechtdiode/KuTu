@@ -1,9 +1,7 @@
 package ch.seidel.kutu.http
 
-import akka.http.scaladsl.server.RouteConcatenation
 import akka.http.scaladsl.model.StatusCodes
-import akka.http.scaladsl.server.Route
-import akka.http.scaladsl.model.headers.RawHeader
+import akka.http.scaladsl.server.RouteConcatenation
 import ch.seidel.kutu.domain.DBService
 
 trait ApiService extends RouteConcatenation

@@ -1,13 +1,12 @@
 package ch.seidel.kutu.http
 
-import akka.http.scaladsl.model.StatusCodes
-import akka.http.scaladsl.model.headers.RawHeader
-import akka.http.scaladsl.server.{ Directives, Directive1, Route }
-import authentikat.jwt._
-import java.util.concurrent.TimeUnit
-import akka.http.scaladsl.server.directives.Credentials
-import ch.seidel.kutu.Config._
 import java.util.Date
+import java.util.concurrent.TimeUnit
+
+import akka.http.scaladsl.model.StatusCodes
+import akka.http.scaladsl.server.{Directive1, Directives}
+import authentikat.jwt._
+import ch.seidel.kutu.Config._
 
 trait JwtSupport extends Directives {
   private lazy val userKey = "user"

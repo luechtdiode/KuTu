@@ -1,91 +1,45 @@
 package ch.seidel.kutu.view
 
-import scala.concurrent.ExecutionContext.Implicits.global
-import javafx.scene.{ control => jfxsc }
+import java.util.UUID
+import java.util.concurrent.{ScheduledFuture, TimeUnit}
+
+import ch.seidel.commons._
+import ch.seidel.kutu.Config._
+import ch.seidel.kutu.{KuTuApp, KuTuServer}
+import ch.seidel.kutu.akka.AthletWertungUpdated
+import ch.seidel.kutu.domain._
+import ch.seidel.kutu.http.WebSocketClient
+import ch.seidel.kutu.renderer.PrintUtil.FilenameDefault
+import ch.seidel.kutu.renderer._
+import javafx.scene.{control => jfxsc}
+import org.slf4j.LoggerFactory
 import scalafx.Includes._
-import scalafx.beans.property.DoubleProperty
-import scalafx.beans.property.ReadOnlyStringWrapper
+import scalafx.application.Platform
+import scalafx.beans.binding.Bindings
+import scalafx.beans.property.StringProperty.sfxStringProperty2jfx
+import scalafx.beans.property.{DoubleProperty, ReadOnlyStringWrapper, _}
 import scalafx.beans.value.ObservableValue
 import scalafx.collections.ObservableBuffer
-import scalafx.event.ActionEvent
-import scalafx.geometry._
-import scalafx.scene.Node
-import scalafx.scene.control.Button
-import scalafx.scene.control.Label
-import scalafx.scene.control.Tab
-import scalafx.scene.control.TableColumn
-import scalafx.scene.control.TableColumn._
-import scalafx.scene.control.TableView
-import scalafx.scene.control.TextField
-import scalafx.scene.control.ToolBar
-import scalafx.scene.input.KeyCode
-import scalafx.scene.input.KeyEvent
-import scalafx.scene.layout.BorderPane
-import scalafx.scene.layout.HBox
-import scalafx.scene.layout.Priority
-import scalafx.scene.layout.Region
-import scalafx.scene.layout.VBox
-import scalafx.util.converter.DefaultStringConverter
-import scalafx.scene.control.ComboBox
-import scalafx.scene.input.Clipboard
-import scala.io.Source
-import java.text.SimpleDateFormat
-import scalafx.scene.control.SelectionMode
-import scalafx.application.Platform
-import java.io.File
-import java.io.BufferedOutputStream
-import java.io.FileOutputStream
-import java.awt.Desktop
-import javafx.scene.{control => jfxsc}
-import scala.IndexedSeq
-import scalafx.beans.property._
-import scalafx.beans.property.StringProperty.sfxStringProperty2jfx
 import scalafx.collections.ObservableBuffer.observableBuffer2ObservableList
-import scalafx.scene.control.SelectionMode.sfxEnum2jfx
-import scalafx.scene.control.TableView.sfxTableView2jfx
-import scalafx.scene.control.cell.CheckBoxTableCell
-import scalafx.scene.layout.StackPane
-import scalafx.scene.web.WebView
-import ch.seidel.commons._
-import ch.seidel.kutu.renderer.NotenblattToHtmlRenderer
-import ch.seidel.kutu.domain._
-import scalafx.scene.control.CheckBox
-import scalafx.scene.control.SplitPane
-import ch.seidel.kutu.renderer.KategorieTeilnehmerToHtmlRenderer
-import scalafx.scene.control.cell.ComboBoxTableCell
-import scalafx.util.StringConverter
-import ch.seidel.kutu.KuTuApp
-import scala.concurrent.Await
-import scala.concurrent.duration.Duration
-import ch.seidel.kutu.data.ResourceExchanger
-import ch.seidel.kutu.renderer.BestenListeToHtmlRenderer
-import ch.seidel.kutu.renderer.RiegenblattToHtmlRenderer
-import ch.seidel.kutu.renderer.RiegenBuilder
-import scalafx.scene.control.ListCell
-import scalafx.beans.binding.Bindings
-import scalafx.scene.shape.Circle
-import scalafx.scene.paint.Color
-import scalafx.scene.control.ContentDisplay
-import scalafx.scene.image.Image
-import scalafx.scene.image.ImageView
+import scalafx.event.ActionEvent
 import scalafx.event.subscriptions.Subscription
-import ch.seidel.kutu.renderer.PrintUtil.FilenameDefault
-import ch.seidel.kutu.renderer.PrintUtil
+import scalafx.geometry._
 import scalafx.print.PageOrientation
-import org.slf4j.LoggerFactory
-import scalafx.util.converter.DoubleStringConverter
-import scala.concurrent.Future
-import ch.seidel.kutu.Config._
-import java.util.UUID
-import ch.seidel.kutu.akka.AthletWertungUpdated
-import ch.seidel.kutu.http.WebSocketClient
-import scala.util.Success
-import scala.util.Failure
-import java.util.concurrent.Executors
-import java.util.concurrent.Callable
-import java.util.concurrent.TimeUnit
-import java.util.concurrent.ScheduledFuture
-import ch.seidel.kutu.KuTuServer
+import scalafx.scene.Node
+import scalafx.scene.control.SelectionMode.sfxEnum2jfx
+import scalafx.scene.control.TableColumn._
+import scalafx.scene.control.TableView.sfxTableView2jfx
+import scalafx.scene.control._
+import scalafx.scene.image.{Image, ImageView}
+import scalafx.scene.input.{Clipboard, KeyEvent}
+import scalafx.scene.layout._
+import scalafx.util.converter.{DefaultStringConverter, DoubleStringConverter}
+
+import scala.concurrent.ExecutionContext.Implicits.global
+import scala.concurrent.{Await, Future}
+import scala.concurrent.duration.Duration
+import scala.io.Source
+import scala.util.{Failure, Success}
 
 trait TCAccess[R, E, IDX] {
   def getIndex: IDX
@@ -728,12 +682,12 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
         text = "Punkte"
         cellValueFactory = { x => new ReadOnlyStringWrapper(x.value, "punkte", { f"${x.value.map(w => w.endnote.value.toDouble).sum}%3.3f" })}
         prefWidth = 100
-        delegate.impl_setReorderable(false)
+        delegate.setReorderable(false)
         styleClass += "table-cell-with-value"
         editable = false
       })
     wkview.columns ++= athletCol ++ riegeCol ++ wertungenCols ++ sumCol
-    var isFilterRefreshing = false;
+    var isFilterRefreshing = false
     
     wkModel.onChange{(seq1, seq2) => 
       import scalafx.collections.ObservableBuffer._
@@ -1020,8 +974,8 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
     updateRiegen(true)
 
     def doPasteFromExcel(progrm: Option[ProgrammView])(implicit event: ActionEvent) = {
-      import scala.util.{Try, Success, Failure}
       import scala.concurrent.ExecutionContext.Implicits._
+      import scala.util.{Failure, Success}
       val athletModel = ObservableBuffer[(Long, Athlet, AthletView)]()
       val vereineList = service.selectVereine
       val vereineMap = vereineList.map(v => v.id -> v).toMap
@@ -1122,7 +1076,7 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
               }
             )
           }
-          athletTable.selectionModel.value.setSelectionMode(SelectionMode.MULTIPLE)
+          athletTable.selectionModel.value.setSelectionMode(SelectionMode.Multiple)
           val filter = new TextField() {
             promptText = "Such-Text"
             text.addListener{ (o: javafx.beans.value.ObservableValue[_ <: String], oldVal: String, newVal: String) =>

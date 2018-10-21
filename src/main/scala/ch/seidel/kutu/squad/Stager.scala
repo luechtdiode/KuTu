@@ -1,9 +1,8 @@
 package ch.seidel.kutu.squad
 
-import ch.seidel.kutu.domain._
-import scala.annotation.tailrec
-import ch.seidel.kutu.data._
 import org.slf4j.LoggerFactory
+
+import scala.annotation.tailrec
 
 trait Stager extends Mapper {
   private val logger = LoggerFactory.getLogger(classOf[Stager])

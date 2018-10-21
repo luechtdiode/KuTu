@@ -1,13 +1,13 @@
 package ch.seidel.kutu.renderer
 
-import ch.seidel.kutu.domain._
 import java.io.File
-import PrintUtil._
-import org.slf4j.LoggerFactory
 import java.util.Base64
+
+import ch.seidel.kutu.domain._
+import ch.seidel.kutu.renderer.PrintUtil._
 import net.glxn.qrgen.QRCode
 import net.glxn.qrgen.image.ImageType
-import java.util.UUID
+import org.slf4j.LoggerFactory
 
 case class WertungsrichterQRCode(wettkampfTitle: String, durchgangname: String, geraet: String, uri: String, imageData: String)
 
@@ -15,11 +15,11 @@ object WertungsrichterQRCode {
   val logger = LoggerFactory.getLogger(this.getClass)
   val enc = Base64.getUrlEncoder
   
-  def toURI(uuid: String, remoteBaseUrl: String, gr: GeraeteRiege) = s"$remoteBaseUrl?" + new String(enc.encodeToString((s"c=$uuid&d=${encodeURIComponent(gr.durchgang.get)}&g=${encodeURIComponent(gr.disziplin.get.id)}").getBytes))
+  def toURI(uuid: String, remoteBaseUrl: String, gr: GeraeteRiege) = s"$remoteBaseUrl?" + new String(enc.encodeToString((s"c=$uuid&d=${encodeURIComponent(gr.durchgang.get)}&g=${gr.disziplin.get.id}").getBytes))
   
   def toQRCodeImage(uri: String) = {
-    val out = QRCode.from(uri).to(ImageType.PNG).withSize(200, 200).stream();
-    val imagedata = "data:image/png;base64," + Base64.getMimeEncoder().encodeToString(out.toByteArray())
+    val out = QRCode.from(uri).to(ImageType.PNG).withSize(200, 200).stream()
+    val imagedata = "data:image/png;base64," + Base64.getMimeEncoder().encodeToString(out.toByteArray)
     imagedata
   }
   
@@ -163,7 +163,6 @@ trait WertungsrichterQRCodesToHtmlRenderer {
   val fcs = 20
 
   def toHTML(qrCodes: Seq[WertungsrichterQRCode], logo: File): String = {
-    import PrintUtil._
     val datenProGeraet = qrCodes.groupBy(_.geraet).map(geraetCodes => {
       val (geraet, codes) = geraetCodes
       (codes.head.wettkampfTitle, geraet, codes)

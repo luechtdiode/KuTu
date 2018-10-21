@@ -1,6 +1,5 @@
 package ch.seidel.kutu.squad
 
-import scala.annotation.tailrec
 import ch.seidel.kutu.domain._
 
 case object KuTuGeTuGrouper extends RiegenGrouper {

@@ -1,15 +1,10 @@
 package ch.seidel.kutu
 
-import scala.util.Try
-import scala.util.{ Success, Failure }
-import scala.io.StdIn
-import ch.seidel.kutu.http.KuTuAppHTTPServer
-import ch.seidel.kutu.http.Hashing
-import scala.concurrent.ExecutionContext
-import ch.seidel.kutu.http.Core
+import ch.seidel.kutu.http.{AuthSupport, Core, Hashing, KuTuAppHTTPServer}
 import org.slf4j.LoggerFactory
-import scala.concurrent.Future
-import ch.seidel.kutu.http.AuthSupport
+
+import scala.concurrent.{ExecutionContext, Future}
+import scala.io.StdIn
 
 object KuTuServer extends App with KuTuAppHTTPServer with AuthSupport with Hashing {
   private val logger = LoggerFactory.getLogger(this.getClass)

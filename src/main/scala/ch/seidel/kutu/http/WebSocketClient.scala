@@ -1,42 +1,26 @@
 package ch.seidel.kutu.http
 
 
-import scala.concurrent.ExecutionContext.Implicits.global
-import scala.concurrent.Future
-import scala.concurrent.Promise
-import scala.util.Failure
-
-import spray.json._
-
-import akka.http.scaladsl.Http
 import akka.http.scaladsl.marshallers.sprayjson.SprayJsonSupport
 import akka.http.scaladsl.model.headers.RawHeader
-import akka.http.scaladsl.model.ws.BinaryMessage
-import akka.http.scaladsl.model.ws.Message
-import akka.http.scaladsl.model.ws.TextMessage
-import akka.http.scaladsl.model.ws.WebSocketRequest
-import akka.stream.scaladsl.Flow
-import akka.stream.scaladsl.Keep
-import akka.stream.scaladsl.Sink
-import akka.stream.scaladsl.Source
-import ch.seidel.kutu.Config.homedir
-import ch.seidel.kutu.Config.jwtAuthorizationKey
-import ch.seidel.kutu.akka.KutuAppEvent
-import ch.seidel.kutu.akka.MessageAck
-import ch.seidel.kutu.domain.Wettkampf
-import ch.seidel.kutu.Config._
+import akka.http.scaladsl.model.ws.{BinaryMessage, Message, TextMessage, WebSocketRequest}
 import akka.stream.OverflowStrategy
-import ch.seidel.kutu.akka.KutuAppEvent
-import akka.stream.scaladsl.SourceQueueWithComplete
-import scala.util.Success
+import akka.stream.scaladsl.{Flow, Keep, Sink, Source, SourceQueueWithComplete}
+import ch.seidel.kutu.Config.{homedir, jwtAuthorizationKey, _}
+import ch.seidel.kutu.akka.{KutuAppEvent, MessageAck}
+import ch.seidel.kutu.domain.Wettkampf
 import javafx.beans.property.SimpleObjectProperty
-import scalafx.application.Platform
 import org.slf4j.LoggerFactory
+import scalafx.application.Platform
+import spray.json._
+
+import scala.concurrent.ExecutionContext.Implicits.global
+import scala.concurrent.{Future, Promise}
+import scala.util.{Failure, Success}
 
 object WebSocketClient extends SprayJsonSupport with JsonSupport with AuthSupport {
   private val logger = LoggerFactory.getLogger(this.getClass)
   import Core.materializer
-  import Core.system
 
   private var connectedOutgoingQueue: Option[SourceQueueWithComplete[Message]] = None
   private var connectedIncomingPromise: Option[Promise[Option[Message]]] = None

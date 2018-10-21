@@ -1,9 +1,11 @@
 package ch.seidel.kutu.data
 
 import java.text.SimpleDateFormat
+
 import ch.seidel.kutu.domain._
+
+import scala.collection.mutable
 import scala.collection.mutable.HashMap
-import scalafx.Includes._
 import scala.math.BigDecimal.int2bigDecimal
 
 sealed trait GroupBy {
@@ -19,7 +21,7 @@ sealed trait GroupBy {
 
   override def toString = groupname
   
-  def chainToString: String = s"$groupname (skipGrouper: $skipGrouper, ${allName})" + (next match {
+  def chainToString: String = s"$groupname (skipGrouper: $skipGrouper, $allName)" + (next match {
       case Some(gb) =>  "\n\t/" + gb.chainToString
       case _ => ""
     })
@@ -63,10 +65,10 @@ sealed trait GroupBy {
 
   def select(wvlist: Seq[WertungView]): Iterable[GroupSection] = {
    val grouped = if (skipGrouper) {
-        wvlist groupBy allgrouper filter(g => g._2.size > 0)
+        wvlist groupBy allgrouper filter(g => g._2.nonEmpty)
       }
       else {
-        wvlist groupBy grouper filter(g => g._2.size > 0)
+        wvlist groupBy grouper filter(g => g._2.nonEmpty)
       }
    
     next match {
@@ -108,7 +110,7 @@ sealed trait FilterBy extends GroupBy {
 
   def items(fromData: Seq[WertungView]): List[DataObject] = {
     val grp = fromData.groupBy(grouper)
-    grp.map(_._1).toList
+    grp.keys.toList
   }
 
   private[FilterBy] var filter: Set[DataObject] = Set.empty
@@ -249,7 +251,7 @@ case class ByJahrgang() extends GroupBy with FilterBy {
 
 case class ByDisziplin() extends GroupBy with FilterBy {
   override val groupname = "Disziplin"
-  private val ordering = HashMap[Long, Long]()
+  private val ordering = mutable.HashMap[Long, Long]()
 
   protected override val grouper = (v: WertungView) => {
     ordering.put(v.wettkampfdisziplin.disziplin.id, v.wettkampfdisziplin.ord.toLong)
@@ -276,7 +278,7 @@ case class ByVerein() extends GroupBy with FilterBy {
   override val groupname = "Verein"
   protected override val grouper = (v: WertungView) => {
     v.athlet.verein match {
-      case Some(v) => v
+      case Some(verein) => verein
       case _       => Verein(0, "kein", None)
     }
   }
@@ -289,7 +291,7 @@ case class ByVerband() extends GroupBy with FilterBy {
   override val groupname = "Verband"
   protected override val grouper = (v: WertungView) => {
     v.athlet.verein match {
-      case Some(v) => Verband(v.verband.getOrElse("kein"))
+      case Some(verein) => Verband(verein.verband.getOrElse("kein"))
       case _       => Verband("kein")
     }
   }

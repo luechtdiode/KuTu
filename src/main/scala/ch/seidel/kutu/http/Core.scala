@@ -1,31 +1,13 @@
 package ch.seidel.kutu.http
 
-import akka.util.ByteString
-import akka.actor.{ ActorRef, ActorSystem }
+import akka.actor.ActorSystem
 import akka.http.scaladsl.Http
-import akka.http.scaladsl.Http.ServerBinding
-import akka.http.scaladsl.server.Route
-import akka.http.scaladsl.server.Directives._
-import akka.http.scaladsl.settings.ServerSettings
-import akka.http.scaladsl.server.HttpApp
-import akka.http.scaladsl.model._
-import akka.http.scaladsl.model.headers._
-import akka.http.scaladsl.model.HttpHeader$ParsingResult._
-
 import akka.stream.ActorMaterializer
-import akka.stream.scaladsl._
-
-import scala.concurrent.{ ExecutionContext, Future }
-import scala.util.{ Failure, Success, Try }
-import com.typesafe.config.ConfigFactory
-import org.slf4j.LoggerFactory
-import java.net.Inet6Address
-import java.net.NetworkInterface
-import java.net.InetAddress
-import authentikat.jwt.JsonWebToken
-import scala.concurrent.Await
 import ch.seidel.kutu.Config._
 import ch.seidel.kutu.domain.DBService
+import org.slf4j.LoggerFactory
+
+import scala.concurrent.Future
 
 object Core extends KuTuSSLContext {
 //  val logger = LoggerFactory.getLogger(this.getClass)
@@ -62,8 +44,6 @@ trait KuTuAppHTTPServer extends ApiService with JsonSupport {
       sys.addShutdownHook(shutDown(getClass.getName))
       
       DBService.startDB()
-      
-      import collection.JavaConverters._
       val binding = if (hasHttpsConfig) {
         Http().setDefaultServerHttpContext(https)
         val b = Http().bindAndHandle(allroutes(userLookup), httpInterface, httpPort, connectionContext = https)

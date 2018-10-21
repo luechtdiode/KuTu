@@ -1,12 +1,9 @@
 package ch.seidel.kutu.view
 
-import ch.seidel.kutu.data._
-import ch.seidel.kutu.domain.KutuService
-import ch.seidel.kutu.domain.WertungView
-import ch.seidel.kutu.domain.WettkampfView
-import ch.seidel.kutu.domain.Durchgang
-import ch.seidel.kutu.renderer.PrintUtil.FilenameDefault
 import ch.seidel.kutu.Config._
+import ch.seidel.kutu.data._
+import ch.seidel.kutu.domain.{Durchgang, KutuService, WertungView, WettkampfView}
+import ch.seidel.kutu.renderer.PrintUtil.FilenameDefault
 
 class RanglisteTab(wettkampf: WettkampfView, override val service: KutuService) extends DefaultRanglisteTab(service) {
   override val title = wettkampf.easyprint

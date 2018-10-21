@@ -1,32 +1,21 @@
 package ch.seidel.kutu.http
 
-import scala.concurrent.Future
-import scala.concurrent.duration.DurationInt
-import scala.util.Failure
-import scala.util.Success
-
 import akka.http.scaladsl.marshallers.sprayjson.SprayJsonSupport
 import akka.http.scaladsl.model.StatusCodes
 import akka.http.scaladsl.server.Route
 import akka.util.Timeout
-import ch.seidel.kutu.akka.AthletWertungUpdated
-import ch.seidel.kutu.akka.CompetitionCoordinatorClientActor
-import ch.seidel.kutu.akka.FinishDurchgangStation
-import ch.seidel.kutu.akka.UpdateAthletWertung
-import ch.seidel.kutu.akka.WertungContainer
-import ch.seidel.kutu.domain.Disziplin
-import ch.seidel.kutu.domain.GeraeteRiege
-import ch.seidel.kutu.domain.KutuService
-import ch.seidel.kutu.domain.ProgrammRaw
-import ch.seidel.kutu.domain.Wertung
-import ch.seidel.kutu.domain.encodeURIComponent
-import ch.seidel.kutu.domain.str2Int
-import ch.seidel.kutu.domain.str2Long
+import ch.seidel.kutu.akka._
+import ch.seidel.kutu.domain.{Disziplin, GeraeteRiege, KutuService, ProgrammRaw, Wertung, encodeURIComponent, str2Int, str2Long}
 import ch.seidel.kutu.renderer.RiegenBuilder
 
+import scala.concurrent.Future
+import scala.concurrent.duration.DurationInt
+import scala.util.{Failure, Success}
+
 trait WertungenRoutes extends SprayJsonSupport with JsonSupport with JwtSupport with AuthSupport with RouterLogging with KutuService with IpToDeviceID {
-  import scala.concurrent.ExecutionContext.Implicits.global
   import spray.json.DefaultJsonProtocol._
+
+  import scala.concurrent.ExecutionContext.Implicits.global
   
   // Required by the `ask` (?) method below
   private implicit lazy val timeout = Timeout(5.seconds) // usually we'd obtain the timeout from the system's configuration

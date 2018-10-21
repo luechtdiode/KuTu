@@ -1,18 +1,14 @@
 package ch.seidel.kutu.domain
 
+import java.util.UUID
+
+import ch.seidel.kutu.squad.RiegenBuilder
+import org.slf4j.LoggerFactory
+import slick.jdbc.SQLiteProfile.api._
+
 import scala.concurrent.Await
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration.Duration
-
-import org.slf4j.LoggerFactory
-import java.sql.Date
-
-import slick.jdbc.GetResult
-import slick.jdbc.SQLiteProfile
-import slick.jdbc.SQLiteProfile.api._
-import scala.collection.JavaConverters
-import ch.seidel.kutu.squad.RiegenBuilder
-import java.util.UUID
 
 trait WettkampfService extends DBService 
   with WettkampfResultMapper 

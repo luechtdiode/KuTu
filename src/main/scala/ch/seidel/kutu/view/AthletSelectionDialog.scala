@@ -3,20 +3,18 @@ package ch.seidel.kutu.view
 import ch.seidel.commons._
 import ch.seidel.kutu.domain._
 import scalafx.Includes._
+import scalafx.application.Platform
 import scalafx.beans.property.ReadOnlyStringWrapper
 import scalafx.beans.property.StringProperty.sfxStringProperty2jfx
 import scalafx.collections.ObservableBuffer
 import scalafx.collections.ObservableBuffer.observableBuffer2ObservableList
 import scalafx.event.ActionEvent
 import scalafx.scene.Node
-import scalafx.scene.control._
 import scalafx.scene.control.SelectionMode.sfxEnum2jfx
 import scalafx.scene.control.TableColumn.sfxTableColumn2jfx
+import scalafx.scene.control._
+import scalafx.scene.input.{KeyCode, KeyEvent, MouseEvent}
 import scalafx.scene.layout._
-import scalafx.scene.input.KeyCode
-import scalafx.scene.input.KeyEvent
-import scalafx.scene.input.MouseEvent
-import scalafx.application.Platform
 
 class AthletSelectionDialog(actionTitle: String, progrm: ProgrammView, assignedAthleten: Seq[AthletView], service: KutuService, refreshPaneData: Set[Long]=>Unit) {
 
@@ -61,7 +59,7 @@ class AthletSelectionDialog(actionTitle: String, progrm: ProgrammView, assignedA
     )
   }
 
-  athletTable.selectionModel.value.setSelectionMode(SelectionMode.MULTIPLE)
+  athletTable.selectionModel.value.setSelectionMode(SelectionMode.Multiple)
 
   val filter = new TextField() {
     promptText = "Such-Text"

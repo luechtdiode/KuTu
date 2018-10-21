@@ -1,29 +1,22 @@
 package ch.seidel.commons
 
-import javafx.{collections => jfxc}
-import javafx.scene.{ control => jfxsc }
+import javafx.scene.control.{TextField, cell => jfxscc}
+import javafx.scene.{control => jfxsc}
 import javafx.{css => jfxcss}
-import javafx.scene.control.{cell => jfxscc}
-import javafx.{util => jfxu}
-import javafx.scene.control.{TextField}
 import scalafx.Includes._
-import scala.language.implicitConversions
-import scalafx.delegate.SFXDelegate
-import scalafx.scene.control.cell._
-import scalafx.scene.control.{TableCell, TableColumn}
-import scalafx.scene.input.KeyCode
-import scalafx.scene.input.KeyEvent
-import scalafx.event.subscriptions.Subscription
-import scalafx.event.Event
-import scalafx.event.EventType
-import scalafx.util.StringConverter
-import scalafx.css.PseudoClass
+import scalafx.application.Platform
 import scalafx.beans.value.ObservableValue
 import scalafx.collections.ObservableSet
-import scalafx.collections.ObservableSet.Change
-import scalafx.collections.ObservableSet.Remove
-import scalafx.scene.control._
-import scalafx.application.Platform
+import scalafx.collections.ObservableSet.{Change, Remove}
+import scalafx.css.PseudoClass
+import scalafx.delegate.SFXDelegate
+import scalafx.event.subscriptions.Subscription
+import scalafx.scene.control.cell._
+import scalafx.scene.control.{TableCell, TableColumn, _}
+import scalafx.scene.input.{KeyCode, KeyEvent}
+import scalafx.util.StringConverter
+
+import scala.language.implicitConversions
 
 object AutoCommitTextFieldTableCell {
   implicit def sfxAutoCommitTextFieldTableCell2jfx[S, T](cell: AutoCommitTextFieldTableCell[S, T]): jfxscc.TextFieldTableCell[S, T] = if (cell != null) cell.delegate else null
@@ -281,7 +274,7 @@ class AutoCommitTextFieldTableCell[S, T](override val delegate: jfxscc.TextField
 
   var textField: Option[TextField] = None
 
-  graphic.onChange( textField = if(graphic.value.isInstanceOf[TextField]) Some(graphic.value.asInstanceOf[TextField]) else None )
+  graphic.onChange({ textField = if(graphic.value.isInstanceOf[TextField]) Some(graphic.value.asInstanceOf[TextField]) else None })
   editing.onChange( handleEditingState )
 
   def handleEditingState {

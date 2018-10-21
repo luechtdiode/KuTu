@@ -1,66 +1,26 @@
 package ch.seidel.kutu.http
 
-import java.io.ByteArrayInputStream
-import java.io.ByteArrayOutputStream
-import java.io.FileInputStream
-import java.io.InputStreamReader
-import java.nio.file.LinkOption
-import java.nio.file.OpenOption
-import java.nio.file.StandardOpenOption
-import java.nio.file.Files
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.nio.file.attribute.FileAttribute
+import java.io.{ByteArrayOutputStream, FileInputStream}
 
-import scala.concurrent.duration.FiniteDuration
-import scala.concurrent.duration.Duration
-import scala.concurrent.Await
-import scala.util.Success
-import scala.util.Failure
-import scala.concurrent.Promise
-import scala.concurrent.Future
-import scala.concurrent.ExecutionContext.Implicits.global
-import scala.util.Try
-import java.util.concurrent.TimeUnit
-
-import akka.http.scaladsl._
+import akka.http.scaladsl.Http
+import akka.http.scaladsl.marshallers.sprayjson.SprayJsonSupport
 import akka.http.scaladsl.model._
 import akka.http.scaladsl.model.headers.RawHeader
 import akka.http.scaladsl.server.Route
-import akka.http.scaladsl.Http
-import akka.http.scaladsl.unmarshalling.Unmarshaller
-import akka.http.scaladsl.unmarshalling.Unmarshaller.EnhancedFromEntityUnmarshaller
 import akka.http.scaladsl.unmarshalling.Unmarshal
-import akka.http.scaladsl.marshallers.sprayjson.SprayJsonSupport
-
-import akka.stream.scaladsl.StreamConverters
-import akka.stream.scaladsl.Sink
-import akka.stream.scaladsl.Source
-
-import spray.json._
-import authentikat.jwt.JsonWebToken
-
-import ch.seidel.kutu.data.ResourceExchanger
-import ch.seidel.kutu.domain.Wettkampf
-import ch.seidel.kutu.domain.WettkampfService
-import ch.seidel.kutu.akka._
-import ch.seidel.kutu.Config._
-import java.util.UUID
-import akka.http.scaladsl.model.ws.WebSocketRequest
-import akka.stream.scaladsl.Flow
-import akka.http.scaladsl.model.ws.TextMessage
-import akka.stream.scaladsl.Keep
-import akka.http.scaladsl.model.ws.Message
-import akka.http.scaladsl.settings.ConnectionPoolSettings
-import ch.seidel.kutu.domain.WettkampfView
-import akka.http.scaladsl.marshalling.Marshal
+import akka.stream.scaladsl.{Sink, Source, StreamConverters}
 import akka.util.ByteString
-import akka.http.scaladsl.marshalling.Marshaller
-import ch.seidel.kutu.data.ByWettkampfProgramm
-import ch.seidel.kutu.data.ByGeschlecht
-import ch.seidel.kutu.renderer.ScoreToHtmlRenderer
-import java.io.File
-import ch.seidel.kutu.akka.StartDurchgang
+import authentikat.jwt.JsonWebToken
+import ch.seidel.kutu.Config._
+import ch.seidel.kutu.akka.{StartDurchgang, _}
+import ch.seidel.kutu.data.ResourceExchanger
+import ch.seidel.kutu.domain.{Wettkampf, WettkampfService, WettkampfView}
+import spray.json._
+
+import scala.concurrent.ExecutionContext.Implicits.global
+import scala.concurrent.{Await, Future, Promise}
+import scala.concurrent.duration.Duration
+import scala.util.Try
 
 trait WettkampfRoutes extends SprayJsonSupport with JsonSupport with JwtSupport with AuthSupport with RouterLogging with WettkampfService with IpToDeviceID {
   import DefaultJsonProtocol._
@@ -84,8 +44,6 @@ trait WettkampfRoutes extends SprayJsonSupport with JsonSupport with JwtSupport 
   }
   
   def startDurchgang(p: WettkampfView, durchgang: String) = {
-    import scala.concurrent.ExecutionContext.Implicits.global
-    import Core.system.dispatcher
     httpPostClientRequest(s"$remoteAdminBaseUrl/api/competition/${p.uuid.get}/start",
         HttpEntity(
             ContentTypes.`application/json`, 
@@ -94,8 +52,6 @@ trait WettkampfRoutes extends SprayJsonSupport with JsonSupport with JwtSupport 
     )
   }
   def finishDurchgangStep(p: WettkampfView) = {
-    import scala.concurrent.ExecutionContext.Implicits.global
-    import Core.system.dispatcher
     httpPostClientRequest(s"$remoteAdminBaseUrl/api/competition/${p.uuid.get}/finishedStep",
         HttpEntity(
             ContentTypes.`application/json`, 
@@ -104,8 +60,6 @@ trait WettkampfRoutes extends SprayJsonSupport with JsonSupport with JwtSupport 
     )
   }   
   def finishDurchgang(p: WettkampfView, durchgang: String) = {
-    import scala.concurrent.ExecutionContext.Implicits.global
-    import Core.system.dispatcher
     httpPostClientRequest(s"$remoteAdminBaseUrl/api/competition/${p.uuid.get}/stop",
         HttpEntity(
             ContentTypes.`application/json`, 
@@ -114,7 +68,6 @@ trait WettkampfRoutes extends SprayJsonSupport with JsonSupport with JwtSupport 
     )
   }  
   def httpUploadWettkampfRequest(wettkampf: Wettkampf) = {
-    import Core.system
     import Core.materializer
     val uuid = wettkampf.uuid match {
       case None => saveWettkampf(wettkampf.id, wettkampf.datum, wettkampf.titel, Set(wettkampf.programmId), wettkampf.auszeichnung, wettkampf.auszeichnungendnote, None).uuid.get

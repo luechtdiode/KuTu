@@ -1,26 +1,21 @@
 package ch.seidel.kutu.data
 
-import scala.concurrent.ExecutionContext.Implicits.global
-import java.io.File
-import java.io.FileOutputStream
-import java.io.OutputStream
-import java.io.InputStream
-import java.io.{BufferedReader, FileOutputStream, FileInputStream, File}
-import java.util.zip.{ZipEntry, ZipOutputStream, ZipInputStream}
-import reflect.runtime.universe._
-import scala.io.Source
-import scala.annotation.tailrec
-import ch.seidel.kutu.domain._
-import ch.seidel.kutu.view._
-import ch.seidel.kutu.squad.RiegenBuilder
-import org.slf4j.LoggerFactory
-import ch.seidel.kutu.akka._
-import scala.concurrent.Future
+import java.io._
+import java.util.zip.{ZipEntry, ZipInputStream, ZipOutputStream}
+
 import ch.seidel.kutu.Config
+import ch.seidel.kutu.akka._
+import ch.seidel.kutu.domain._
 import ch.seidel.kutu.renderer.PrintUtil
-import akka.stream.scaladsl.FileIO
-import java.io.BufferedInputStream
-import akka.actor.ActorRef
+import ch.seidel.kutu.squad.RiegenBuilder
+import ch.seidel.kutu.view._
+import org.slf4j.LoggerFactory
+
+import scala.annotation.tailrec
+import scala.concurrent.ExecutionContext.Implicits.global
+import scala.concurrent.Future
+import scala.io.Source
+import scala.reflect.runtime.universe._
 
 /**
  */
@@ -196,9 +191,10 @@ object ResourceExchanger extends KutuService with RiegenBuilder {
       (w._2.id, listWettkampfDisziplines(w._2.id).map(d => d.id -> d).toMap)
     }
     def getAthletName(athletid: Long): String = {
-      athletInstances.get(athletid + "") match {
+      val aid = s"$athletid"
+      athletInstances.get(aid) match {
         case Some(a) => a.easyprint
-        case None => athletInstances.find(a => a._2.id == athletid).map(_._2.easyprint).getOrElse(athletid + "")
+        case None => athletInstances.find(a => a._2.id == athletid).map(_._2.easyprint).getOrElse(aid)
       }
     }
     def getWettkampfDisziplinName(w: Wertung): String = {
@@ -211,16 +207,16 @@ object ResourceExchanger extends KutuService with RiegenBuilder {
       val wettkampfid: Long = fields(wertungenHeader("wettkampfId"))
       val w = Wertung(
         id = fields(wertungenHeader("id")),
-        athletId = athletInstances.get(athletid + "") match {
+        athletId = athletInstances.get(s"$athletid") match {
           case Some(a) => a.id
           case None => athletid
         },
         wettkampfdisziplinId = fields(wertungenHeader("wettkampfdisziplinId")),
-        wettkampfId = wettkampfInstances.get(wettkampfid + "") match {
+        wettkampfId = wettkampfInstances.get(s"$wettkampfid") match {
           case Some(w) => w.id
           case None => wettkampfid
         },
-        wettkampfUUID = wettkampfInstances.get(wettkampfid + "") match {
+        wettkampfUUID = wettkampfInstances.get(s"$wettkampfid") match {
           case Some(w) => w.uuid.getOrElse("")
           case None => ""
         },
@@ -256,7 +252,7 @@ object ResourceExchanger extends KutuService with RiegenBuilder {
             athletId = athletid,
             wettkampfdisziplinId = missingDisziplin,
             wettkampfId = wettkampf.id,
-            wettkampfUUID = wettkampfInstances.get(wettkampf.id + "") match {
+            wettkampfUUID = wettkampfInstances.get(s"${wettkampf.id}") match {
               case Some(w) => w.uuid.getOrElse("")
               case None => ""
             },

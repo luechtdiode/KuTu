@@ -1,27 +1,19 @@
 package ch.seidel.kutu.domain
 
 import java.io.File
-import java.nio.file.Files
-import java.nio.file.StandardOpenOption
-import java.text.ParseException
-import java.text.SimpleDateFormat
+import java.nio.file.{Files, StandardOpenOption}
+import java.text.{ParseException, SimpleDateFormat}
 import java.util.Properties
+
+import ch.seidel.kutu.Config.{appVersion, userHomePath}
+import org.slf4j.LoggerFactory
+import slick.jdbc.JdbcBackend.{Database, DatabaseDef}
+import slick.jdbc.SQLiteProfile.api.{AsyncExecutor, DBIO, actionBasedSQLInterpolation, jdbcActionExtensionMethods}
 
 import scala.annotation.tailrec
 import scala.concurrent.Await
 import scala.concurrent.duration.Duration
 import scala.io.Source
-
-import org.slf4j.LoggerFactory
-
-import ch.seidel.kutu.Config.appVersion
-import ch.seidel.kutu.Config.userHomePath
-import slick.jdbc.JdbcBackend.Database
-import slick.jdbc.SQLiteProfile.api.AsyncExecutor
-import slick.jdbc.SQLiteProfile.api.DBIO
-import slick.jdbc.SQLiteProfile.api.actionBasedSQLInterpolation
-import slick.jdbc.SQLiteProfile.api.jdbcActionExtensionMethods
-import slick.jdbc.JdbcBackend.DatabaseDef
 
 object DBService {
   private val logger = LoggerFactory.getLogger(this.getClass)

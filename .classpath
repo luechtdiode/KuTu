@@ -71,4 +71,61 @@
   <classpathentry kind="var" path="M2_REPO/org/scalactic/scalactic_2.12/3.0.3/scalactic_2.12-3.0.3.jar" sourcepath="M2_REPO/org/scalactic/scalactic_2.12/3.0.3/scalactic_2.12-3.0.3-sources.jar"/>
   <classpathentry kind="var" path="M2_REPO/junit/junit/4.12/junit-4.12.jar" sourcepath="M2_REPO/junit/junit/4.12/junit-4.12-sources.jar"/>
   <classpathentry kind="var" path="M2_REPO/org/hamcrest/hamcrest-core/1.3/hamcrest-core-1.3.jar" sourcepath="M2_REPO/org/hamcrest/hamcrest-core/1.3/hamcrest-core-1.3-sources.jar"/>
+  <classpathentry kind="var" path="M2_REPO/io/gatling/highcharts/gatling-charts-highcharts/3.0.0-RC4/gatling-charts-highcharts-3.0.0-RC4.jar" sourcepath="M2_REPO/io/gatling/highcharts/gatling-charts-highcharts/3.0.0-RC4/gatling-charts-highcharts-3.0.0-RC4-sources.jar"/>
+  <classpathentry kind="var" path="M2_REPO/io/gatling/gatling-charts/3.0.0-RC4/gatling-charts-3.0.0-RC4.jar" sourcepath="M2_REPO/io/gatling/gatling-charts/3.0.0-RC4/gatling-charts-3.0.0-RC4-sources.jar"/>
+  <classpathentry kind="var" path="M2_REPO/io/gatling/gatling-core/3.0.0-RC4/gatling-core-3.0.0-RC4.jar" sourcepath="M2_REPO/io/gatling/gatling-core/3.0.0-RC4/gatling-core-3.0.0-RC4-sources.jar"/>
+  <classpathentry kind="var" path="M2_REPO/io/gatling/gatling-commons/3.0.0-RC4/gatling-commons-3.0.0-RC4.jar" sourcepath="M2_REPO/io/gatling/gatling-commons/3.0.0-RC4/gatling-commons-3.0.0-RC4-sources.jar"/>
+  <classpathentry kind="var" path="M2_REPO/io/gatling/gatling-netty-util/3.0.0-RC4/gatling-netty-util-3.0.0-RC4.jar" sourcepath="M2_REPO/io/gatling/gatling-netty-util/3.0.0-RC4/gatling-netty-util-3.0.0-RC4-sources.jar"/>
+  <classpathentry kind="var" path="M2_REPO/io/netty/netty-buffer/4.1.30.Final/netty-buffer-4.1.30.Final.jar" sourcepath="M2_REPO/io/netty/netty-buffer/4.1.30.Final/netty-buffer-4.1.30.Final-sources.jar"/>
+  <classpathentry kind="var" path="M2_REPO/io/netty/netty-common/4.1.30.Final/netty-common-4.1.30.Final.jar" sourcepath="M2_REPO/io/netty/netty-common/4.1.30.Final/netty-common-4.1.30.Final-sources.jar"/>
+  <classpathentry kind="var" path="M2_REPO/com/dongxiguo/fastring_2.12/1.0.0/fastring_2.12-1.0.0.jar" sourcepath="M2_REPO/com/dongxiguo/fastring_2.12/1.0.0/fastring_2.12-1.0.0-sources.jar"/>
+  <classpathentry kind="var" path="M2_REPO/io/suzaku/boopickle_2.12/1.3.0/boopickle_2.12-1.3.0.jar" sourcepath="M2_REPO/io/suzaku/boopickle_2.12/1.3.0/boopickle_2.12-1.3.0-sources.jar"/>
+  <classpathentry kind="var" path="M2_REPO/org/typelevel/spire-macros_2.12/0.16.0/spire-macros_2.12-0.16.0.jar" sourcepath="M2_REPO/org/typelevel/spire-macros_2.12/0.16.0/spire-macros_2.12-0.16.0-sources.jar"/>
+  <classpathentry kind="var" path="M2_REPO/com/softwaremill/quicklens/quicklens_2.12/1.4.11/quicklens_2.12-1.4.11.jar" sourcepath="M2_REPO/com/softwaremill/quicklens/quicklens_2.12/1.4.11/quicklens_2.12-1.4.11-sources.jar"/>
+  <classpathentry kind="var" path="M2_REPO/com/eatthepath/fast-uuid/0.1/fast-uuid-0.1.jar" sourcepath="M2_REPO/com/eatthepath/fast-uuid/0.1/fast-uuid-0.1-sources.jar"/>
+  <classpathentry kind="var" path="M2_REPO/com/typesafe/scala-logging/scala-logging_2.12/3.9.0/scala-logging_2.12-3.9.0.jar" sourcepath="M2_REPO/com/typesafe/scala-logging/scala-logging_2.12/3.9.0/scala-logging_2.12-3.9.0-sources.jar"/>
+  <classpathentry kind="var" path="M2_REPO/com/typesafe/akka/akka-slf4j_2.12/2.5.17/akka-slf4j_2.12-2.5.17.jar" sourcepath="M2_REPO/com/typesafe/akka/akka-slf4j_2.12/2.5.17/akka-slf4j_2.12-2.5.17-sources.jar"/>
+  <classpathentry kind="var" path="M2_REPO/org/simpleflatmapper/lightning-csv/5.0.1/lightning-csv-5.0.1.jar" sourcepath="M2_REPO/org/simpleflatmapper/lightning-csv/5.0.1/lightning-csv-5.0.1-sources.jar"/>
+  <classpathentry kind="var" path="M2_REPO/org/simpleflatmapper/sfm-util/5.0.1/sfm-util-5.0.1.jar" sourcepath="M2_REPO/org/simpleflatmapper/sfm-util/5.0.1/sfm-util-5.0.1-sources.jar"/>
+  <classpathentry kind="var" path="M2_REPO/com/github/ben-manes/caffeine/caffeine/2.6.2/caffeine-2.6.2.jar" sourcepath="M2_REPO/com/github/ben-manes/caffeine/caffeine/2.6.2/caffeine-2.6.2-sources.jar"/>
+  <classpathentry kind="var" path="M2_REPO/io/pebbletemplates/pebble/3.0.5/pebble-3.0.5.jar" sourcepath="M2_REPO/io/pebbletemplates/pebble/3.0.5/pebble-3.0.5-sources.jar"/>
+  <classpathentry kind="var" path="M2_REPO/org/unbescape/unbescape/1.1.6.RELEASE/unbescape-1.1.6.RELEASE.jar" sourcepath="M2_REPO/org/unbescape/unbescape/1.1.6.RELEASE/unbescape-1.1.6.RELEASE-sources.jar"/>
+  <classpathentry kind="var" path="M2_REPO/com/github/scopt/scopt_2.12/3.7.0/scopt_2.12-3.7.0.jar" sourcepath="M2_REPO/com/github/scopt/scopt_2.12/3.7.0/scopt_2.12-3.7.0-sources.jar"/>
+  <classpathentry kind="var" path="M2_REPO/io/gatling/jsonpath_2.12/0.6.14/jsonpath_2.12-0.6.14.jar" sourcepath="M2_REPO/io/gatling/jsonpath_2.12/0.6.14/jsonpath_2.12-0.6.14-sources.jar"/>
+  <classpathentry kind="var" path="M2_REPO/org/jodd/jodd-json/5.0.5/jodd-json-5.0.5.jar" sourcepath="M2_REPO/org/jodd/jodd-json/5.0.5/jodd-json-5.0.5-sources.jar"/>
+  <classpathentry kind="var" path="M2_REPO/org/jodd/jodd-bean/5.0.5/jodd-bean-5.0.5.jar" sourcepath="M2_REPO/org/jodd/jodd-bean/5.0.5/jodd-bean-5.0.5-sources.jar"/>
+  <classpathentry kind="var" path="M2_REPO/org/jodd/jodd-core/5.0.5/jodd-core-5.0.5.jar" sourcepath="M2_REPO/org/jodd/jodd-core/5.0.5/jodd-core-5.0.5-sources.jar"/>
+  <classpathentry kind="var" path="M2_REPO/net/sf/saxon/Saxon-HE/9.9.0-1/Saxon-HE-9.9.0-1.jar" sourcepath="M2_REPO/net/sf/saxon/Saxon-HE/9.9.0-1/Saxon-HE-9.9.0-1-sources.jar"/>
+  <classpathentry kind="var" path="M2_REPO/org/jodd/jodd-lagarto/5.0.5/jodd-lagarto-5.0.5.jar" sourcepath="M2_REPO/org/jodd/jodd-lagarto/5.0.5/jodd-lagarto-5.0.5-sources.jar"/>
+  <classpathentry kind="var" path="M2_REPO/org/jodd/jodd-log/5.0.5/jodd-log-5.0.5.jar" sourcepath="M2_REPO/org/jodd/jodd-log/5.0.5/jodd-log-5.0.5-sources.jar"/>
+  <classpathentry kind="var" path="M2_REPO/com/tdunning/t-digest/3.1/t-digest-3.1.jar" sourcepath="M2_REPO/com/tdunning/t-digest/3.1/t-digest-3.1-sources.jar"/>
+  <classpathentry kind="var" path="M2_REPO/io/gatling/gatling-app/3.0.0-RC4/gatling-app-3.0.0-RC4.jar" sourcepath="M2_REPO/io/gatling/gatling-app/3.0.0-RC4/gatling-app-3.0.0-RC4-sources.jar"/>
+  <classpathentry kind="var" path="M2_REPO/io/gatling/gatling-http/3.0.0-RC4/gatling-http-3.0.0-RC4.jar" sourcepath="M2_REPO/io/gatling/gatling-http/3.0.0-RC4/gatling-http-3.0.0-RC4-sources.jar"/>
+  <classpathentry kind="var" path="M2_REPO/io/gatling/gatling-http-client/3.0.0-RC4/gatling-http-client-3.0.0-RC4.jar" sourcepath="M2_REPO/io/gatling/gatling-http-client/3.0.0-RC4/gatling-http-client-3.0.0-RC4-sources.jar"/>
+  <classpathentry kind="var" path="M2_REPO/io/netty/netty-codec-http/4.1.30.Final/netty-codec-http-4.1.30.Final.jar" sourcepath="M2_REPO/io/netty/netty-codec-http/4.1.30.Final/netty-codec-http-4.1.30.Final-sources.jar"/>
+  <classpathentry kind="var" path="M2_REPO/io/netty/netty-codec/4.1.30.Final/netty-codec-4.1.30.Final.jar" sourcepath="M2_REPO/io/netty/netty-codec/4.1.30.Final/netty-codec-4.1.30.Final-sources.jar"/>
+  <classpathentry kind="var" path="M2_REPO/io/netty/netty-transport/4.1.30.Final/netty-transport-4.1.30.Final.jar" sourcepath="M2_REPO/io/netty/netty-transport/4.1.30.Final/netty-transport-4.1.30.Final-sources.jar"/>
+  <classpathentry kind="var" path="M2_REPO/io/netty/netty-resolver/4.1.30.Final/netty-resolver-4.1.30.Final.jar" sourcepath="M2_REPO/io/netty/netty-resolver/4.1.30.Final/netty-resolver-4.1.30.Final-sources.jar"/>
+  <classpathentry kind="var" path="M2_REPO/io/netty/netty-handler/4.1.30.Final/netty-handler-4.1.30.Final.jar" sourcepath="M2_REPO/io/netty/netty-handler/4.1.30.Final/netty-handler-4.1.30.Final-sources.jar"/>
+  <classpathentry kind="var" path="M2_REPO/io/netty/netty-handler-proxy/4.1.30.Final/netty-handler-proxy-4.1.30.Final.jar" sourcepath="M2_REPO/io/netty/netty-handler-proxy/4.1.30.Final/netty-handler-proxy-4.1.30.Final-sources.jar"/>
+  <classpathentry kind="var" path="M2_REPO/io/netty/netty-codec-socks/4.1.30.Final/netty-codec-socks-4.1.30.Final.jar" sourcepath="M2_REPO/io/netty/netty-codec-socks/4.1.30.Final/netty-codec-socks-4.1.30.Final-sources.jar"/>
+  <classpathentry kind="var" path="M2_REPO/io/netty/netty-resolver-dns/4.1.30.Final/netty-resolver-dns-4.1.30.Final.jar" sourcepath="M2_REPO/io/netty/netty-resolver-dns/4.1.30.Final/netty-resolver-dns-4.1.30.Final-sources.jar"/>
+  <classpathentry kind="var" path="M2_REPO/io/netty/netty-codec-dns/4.1.30.Final/netty-codec-dns-4.1.30.Final.jar" sourcepath="M2_REPO/io/netty/netty-codec-dns/4.1.30.Final/netty-codec-dns-4.1.30.Final-sources.jar"/>
+  <classpathentry kind="var" path="M2_REPO/io/netty/netty-transport-native-epoll/4.1.30.Final/netty-transport-native-epoll-4.1.30.Final-linux-x86_64.jar"/>
+  <classpathentry kind="var" path="M2_REPO/io/netty/netty-transport-native-unix-common/4.1.30.Final/netty-transport-native-unix-common-4.1.30.Final.jar" sourcepath="M2_REPO/io/netty/netty-transport-native-unix-common/4.1.30.Final/netty-transport-native-unix-common-4.1.30.Final-sources.jar"/>
+  <classpathentry kind="var" path="M2_REPO/io/netty/netty-codec-http2/4.1.30.Final/netty-codec-http2-4.1.30.Final.jar" sourcepath="M2_REPO/io/netty/netty-codec-http2/4.1.30.Final/netty-codec-http2-4.1.30.Final-sources.jar"/>
+  <classpathentry kind="var" path="M2_REPO/io/netty/netty-tcnative-boringssl-static/2.0.15.Final/netty-tcnative-boringssl-static-2.0.15.Final.jar" sourcepath="M2_REPO/io/netty/netty-tcnative-boringssl-static/2.0.15.Final/netty-tcnative-boringssl-static-2.0.15.Final-sources.jar"/>
+  <classpathentry kind="var" path="M2_REPO/com/sun/activation/javax.activation/1.2.0/javax.activation-1.2.0.jar" sourcepath="M2_REPO/com/sun/activation/javax.activation/1.2.0/javax.activation-1.2.0-sources.jar"/>
+  <classpathentry kind="var" path="M2_REPO/io/gatling/gatling-jms/3.0.0-RC4/gatling-jms-3.0.0-RC4.jar" sourcepath="M2_REPO/io/gatling/gatling-jms/3.0.0-RC4/gatling-jms-3.0.0-RC4-sources.jar"/>
+  <classpathentry kind="var" path="M2_REPO/org/apache/geronimo/specs/geronimo-jms_1.1_spec/1.1.1/geronimo-jms_1.1_spec-1.1.1.jar" sourcepath="M2_REPO/org/apache/geronimo/specs/geronimo-jms_1.1_spec/1.1.1/geronimo-jms_1.1_spec-1.1.1-sources.jar"/>
+  <classpathentry kind="var" path="M2_REPO/io/gatling/gatling-jdbc/3.0.0-RC4/gatling-jdbc-3.0.0-RC4.jar" sourcepath="M2_REPO/io/gatling/gatling-jdbc/3.0.0-RC4/gatling-jdbc-3.0.0-RC4-sources.jar"/>
+  <classpathentry kind="var" path="M2_REPO/io/gatling/gatling-redis/3.0.0-RC4/gatling-redis-3.0.0-RC4.jar" sourcepath="M2_REPO/io/gatling/gatling-redis/3.0.0-RC4/gatling-redis-3.0.0-RC4-sources.jar"/>
+  <classpathentry kind="var" path="M2_REPO/net/debasishg/redisclient_2.12/3.7/redisclient_2.12-3.7.jar" sourcepath="M2_REPO/net/debasishg/redisclient_2.12/3.7/redisclient_2.12-3.7-sources.jar"/>
+  <classpathentry kind="var" path="M2_REPO/commons-pool/commons-pool/1.6/commons-pool-1.6.jar" sourcepath="M2_REPO/commons-pool/commons-pool/1.6/commons-pool-1.6-sources.jar"/>
+  <classpathentry kind="var" path="M2_REPO/io/gatling/gatling-graphite/3.0.0-RC4/gatling-graphite-3.0.0-RC4.jar" sourcepath="M2_REPO/io/gatling/gatling-graphite/3.0.0-RC4/gatling-graphite-3.0.0-RC4-sources.jar"/>
+  <classpathentry kind="var" path="M2_REPO/org/hdrhistogram/HdrHistogram/2.1.10/HdrHistogram-2.1.10.jar" sourcepath="M2_REPO/org/hdrhistogram/HdrHistogram/2.1.10/HdrHistogram-2.1.10-sources.jar"/>
+  <classpathentry kind="var" path="M2_REPO/io/gatling/gatling-recorder/3.0.0-RC4/gatling-recorder-3.0.0-RC4.jar" sourcepath="M2_REPO/io/gatling/gatling-recorder/3.0.0-RC4/gatling-recorder-3.0.0-RC4-sources.jar"/>
+  <classpathentry kind="var" path="M2_REPO/org/scala-lang/modules/scala-swing_2.12/2.0.1/scala-swing_2.12-2.0.1.jar" sourcepath="M2_REPO/org/scala-lang/modules/scala-swing_2.12/2.0.1/scala-swing_2.12-2.0.1-sources.jar"/>
+  <classpathentry kind="var" path="M2_REPO/org/bouncycastle/bcpkix-jdk15on/1.60/bcpkix-jdk15on-1.60.jar" sourcepath="M2_REPO/org/bouncycastle/bcpkix-jdk15on/1.60/bcpkix-jdk15on-1.60-sources.jar"/>
+  <classpathentry kind="var" path="M2_REPO/org/bouncycastle/bcprov-jdk15on/1.60/bcprov-jdk15on-1.60.jar" sourcepath="M2_REPO/org/bouncycastle/bcprov-jdk15on/1.60/bcprov-jdk15on-1.60-sources.jar"/>
 </classpath>

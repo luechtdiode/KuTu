@@ -1,16 +1,18 @@
 package ch.seidel.kutu
 
 import java.io.IOException
-import scala.collection.immutable.TreeMap
+
+import ch.seidel.kutu.domain._
 import scalafx.Includes._
 import scalafx.event.ActionEvent
 import scalafx.geometry.{Insets, Orientation}
+import scalafx.scene.Node
+import scalafx.scene.control.TreeItem.sfxTreeItemToJfx
 import scalafx.scene.control._
 import scalafx.scene.image.{Image, ImageView}
 import scalafx.scene.layout.{Region, TilePane}
-import scalafx.scene.control.TreeItem.sfxTreeItemToJfx
-import ch.seidel.kutu.domain._
-import scalafx.scene.Node
+
+import scala.collection.immutable.TreeMap
 
 object AppNavigationModel  {
   def create(service: KutuService): KuTuAppTree = new KuTuAppTree(service)
@@ -148,7 +150,7 @@ class KuTuAppTree(service: KutuService) {
     hgap = 4
     vgap = 4
     padding = Insets(10, 10, 10, 10)
-    orientation = Orientation.HORIZONTAL
+    orientation = Orientation.Horizontal
     styleClass += "category-page-flow"
     children = value.map(_.button)
   }

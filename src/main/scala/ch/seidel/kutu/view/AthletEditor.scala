@@ -1,9 +1,10 @@
 package ch.seidel.kutu.view
 
+import java.sql.Date
+import java.text.SimpleDateFormat
+
 import ch.seidel.kutu.domain._
 import scalafx.beans.property._
-import java.text.SimpleDateFormat
-import java.sql.Date
 
 object AthletEditor {
   def apply(init: Athlet) = new AthletEditor(init)
@@ -22,7 +23,7 @@ object AthletEditor {
 
 class AthletEditor(init: Athlet) {
   val sdf = new SimpleDateFormat("dd.MM.yyyy")
-  val jsid = new StringProperty(init.js_id + "")
+  val jsid = new StringProperty(s"${init.js_id}")
   val geschlecht = new StringProperty(if(init.geschlecht.toUpperCase.startsWith("M")) "M" else "W")
   val name = new StringProperty(init.name)
   val vorname = new StringProperty(init.vorname)
@@ -30,7 +31,11 @@ class AthletEditor(init: Athlet) {
   val strasse = new StringProperty(init.strasse)
   val plz = new StringProperty(init.plz)
   val ort = new StringProperty(init.ort)
-  val activ = new StringProperty(init.activ match {case true => "Aktiv" case _ => "Inaktiv"})
+  val activ = new StringProperty(if (init.activ) {
+    "Aktiv"
+  } else {
+    "Inaktiv"
+  })
 
   def isValid = {
     name.value.nonEmpty &&
@@ -40,14 +45,14 @@ class AthletEditor(init: Athlet) {
   }
 
   def reset {
-    jsid.value_=(init.js_id + "")
+    jsid.value_=(s"${init.js_id}")
   }
 
   private def optionOfGebDat: Option[Date] = {
     gebdat.value match {
       case "" => None
       case s: String => try {
-        Some(new java.sql.Date(sdf.parse(s).getTime()))
+        Some(new java.sql.Date(sdf.parse(s).getTime))
       }
       catch {
         case e: Exception => None

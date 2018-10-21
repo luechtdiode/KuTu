@@ -1,7 +1,8 @@
 package ch.seidel.kutu.renderer
 
 import java.io.File
-import PrintUtil._
+
+import ch.seidel.kutu.renderer.PrintUtil._
 import org.slf4j.LoggerFactory
 
 trait KategorieTeilnehmerToHtmlRenderer {

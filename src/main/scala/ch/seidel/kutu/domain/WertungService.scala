@@ -1,21 +1,15 @@
 package ch.seidel.kutu.domain
 
-import scala.concurrent.Await
-import scala.concurrent.ExecutionContext.Implicits.global
-import scala.concurrent.duration.Duration
-
-import org.slf4j.LoggerFactory
-import java.sql.Date
-
-import slick.jdbc.GetResult
-import slick.jdbc.SQLiteProfile
-import slick.jdbc.SQLiteProfile.api._
-import scala.collection.JavaConverters
 import java.util.UUID
-import ch.seidel.kutu.http.WebSocketClient
+
 import ch.seidel.kutu.akka.AthletWertungUpdated
-import scala.util.Try
-import scala.concurrent.Future
+import ch.seidel.kutu.http.WebSocketClient
+import org.slf4j.LoggerFactory
+import slick.jdbc.SQLiteProfile.api._
+
+import scala.concurrent.ExecutionContext.Implicits.global
+import scala.concurrent.{Await, Future}
+import scala.concurrent.duration.Duration
 
 object WertungServiceBestenResult {
   private val logger = LoggerFactory.getLogger(this.getClass)
@@ -28,7 +22,7 @@ object WertungServiceBestenResult {
       bestenResults = Map[String,WertungView]()
       shouldResetBestenResults = false;
     }
-    bestenResults = bestenResults.updated(wertung.athlet.id + ":" + wertung.wettkampfdisziplin.id, wertung)
+    bestenResults = bestenResults.updated(s"${wertung.athlet.id}:${wertung.wettkampfdisziplin.id}", wertung)
     logger.info(s"actually best-scored: \n${bestenResults.mkString("\n")}")
   }
   
@@ -195,7 +189,7 @@ abstract trait WertungService extends DBService with WertungResultMapper with Di
   def updateAllWertungenAsync(ws: Seq[Wertung]): Future[Seq[WertungView]] = {
     implicit val cache = scala.collection.mutable.Map[Long, ProgrammView]()
     implicit val mapper = getAthletViewResult
-    val ret = database.run(DBIO.sequence((for {
+    val ret = database.run(DBIO.sequence(for {
       w <- ws
     } yield {
       sqlu"""       UPDATE wertung
@@ -224,7 +218,7 @@ abstract trait WertungService extends DBService with WertungResultMapper with Di
                     WHERE w.id=${w.id}
                     order by wd.programm_id, wd.ord
        """.as[WertungView].head
-     })).transactionally)
+     }).transactionally)
     
     ret
   }

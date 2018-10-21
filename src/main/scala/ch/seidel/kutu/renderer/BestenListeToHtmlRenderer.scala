@@ -1,9 +1,9 @@
 package ch.seidel.kutu.renderer
 
-import ch.seidel.kutu.domain.Wertung
-import ch.seidel.kutu.domain.WertungView
 import java.io.File
-import PrintUtil._
+
+import ch.seidel.kutu.domain.WertungView
+import ch.seidel.kutu.renderer.PrintUtil._
 import org.slf4j.LoggerFactory
 
 trait BestenListeToHtmlRenderer {

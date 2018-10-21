@@ -1,18 +1,15 @@
 package ch.seidel.kutu.domain
 
+import java.sql.Date
+import java.time.{LocalDate, Period}
+
+import org.slf4j.LoggerFactory
+import slick.jdbc.SQLiteProfile.api._
+
+import scala.collection.JavaConverters
 import scala.concurrent.Await
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration.Duration
-
-import org.slf4j.LoggerFactory
-import java.sql.Date
-
-import slick.jdbc.GetResult
-import slick.jdbc.SQLiteProfile
-import slick.jdbc.SQLiteProfile.api._
-import scala.collection.JavaConverters
-import java.time.Period
-import java.time.LocalDate
 
 trait AthletService extends DBService with AthletResultMapper {
   private val logger = LoggerFactory.getLogger(this.getClass)
@@ -89,23 +86,23 @@ trait AthletService extends DBService with AthletResultMapper {
          """.as[Long].headOption
     }
     (if (athlete.id == 0) {
-      getId.flatMap(id => id match {
-        case Some(id) if(id > 0) =>
-            sqlu"""
+      getId.flatMap {
+        case Some(athletId) if (athletId > 0) =>
+          sqlu"""
                   replace into athlet
                   (id, js_id, geschlecht, name, vorname, gebdat, strasse, plz, ort, verein, activ)
-                  values (${id}, ${athlete.js_id}, ${athlete.geschlecht}, ${athlete.name}, ${athlete.vorname}, ${athlete.gebdat}, ${athlete.strasse}, ${athlete.plz}, ${athlete.ort}, ${athlete.verein}, ${athlete.activ})
+                  values (${athletId}, ${athlete.js_id}, ${athlete.geschlecht}, ${athlete.name}, ${athlete.vorname}, ${athlete.gebdat}, ${athlete.strasse}, ${athlete.plz}, ${athlete.ort}, ${athlete.verein}, ${athlete.activ})
             """ >>
-            sql"""select * from athlet where id = ${id}""".as[Athlet].head
-          
+            sql"""select * from athlet where id = ${athletId}""".as[Athlet].head
+
         case _ =>
-            sqlu"""
+          sqlu"""
                   replace into athlet
                   (js_id, geschlecht, name, vorname, gebdat, strasse, plz, ort, verein, activ)
                   values (${athlete.js_id}, ${athlete.geschlecht}, ${athlete.name}, ${athlete.vorname}, ${athlete.gebdat}, ${athlete.strasse}, ${athlete.plz}, ${athlete.ort}, ${athlete.verein}, ${athlete.activ})
             """ >>
             sql"""select * from athlet where id = (select max(athlet.id) from athlet)""".as[Athlet].head
-      })
+      }
     } else {
         sqlu"""
                   replace into athlet

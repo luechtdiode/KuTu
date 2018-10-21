@@ -2,14 +2,13 @@ package ch.seidel.kutu.http
 
 import java.nio.charset.StandardCharsets
 import java.security.MessageDigest
+import java.text.SimpleDateFormat
+import java.util.{Date, UUID}
 
-import spray.json.{ JsString, JsValue, JsonReader, JsonWriter, _ }
+import akka.http.scaladsl.model.RemoteAddress
+import spray.json.{JsString, JsValue, JsonReader, _}
 
 import scala.util.Try
-import java.util.Date
-import java.text.SimpleDateFormat
-import akka.http.scaladsl.model.RemoteAddress
-import java.util.UUID
 
 trait EnrichedJson {
   implicit class RichJson(jsValue: JsValue) {
@@ -69,7 +68,6 @@ trait EnrichedJson {
 
 
   import scala.reflect.ClassTag
-
   import scala.reflect.runtime.universe._
 
   def getObjectInstance(clsName: String): AnyRef = {

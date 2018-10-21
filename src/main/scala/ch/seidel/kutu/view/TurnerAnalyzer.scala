@@ -1,41 +1,32 @@
 package ch.seidel.kutu.view
 
-import scalafx.Includes._
-import scalafx.scene.control._
-import scalafx.scene.chart._
-import javafx.scene.chart.XYChart.Data
-import scalafx.scene.chart.XYChart.Series
-import scalafx.scene.control.Tab
-import scalafx.scene.layout.BorderPane
-import scalafx.scene.layout.Priority
-import scalafx.scene.layout.VBox
-import scalafx.scene.control.ScrollPane
-import scalafx.geometry.Side
 import ch.seidel.commons.TabWithService
 import ch.seidel.kutu.domain._
-import scalafx.scene.text.Text
-import javafx.beans.value.ChangeListener
-import javafx.scene.Parent
-import javafx.beans.value.ObservableValue
-import javafx.scene.Group
+import javafx.beans.value.{ChangeListener, ObservableValue}
 import javafx.geometry.Bounds
-import javafx.scene.Node
-import scalafx.application.Platform
+import javafx.scene.{Group, Node, Parent}
+import javafx.scene.chart.XYChart.Data
 import javafx.scene.transform.Scale
-import scalafx.print.Printer
-import scalafx.print.Paper
-import scalafx.print.PageOrientation
-import scalafx.print.PrinterJob
+import org.slf4j.LoggerFactory
+import scalafx.Includes._
+import scalafx.application.Platform
 import scalafx.event.ActionEvent
-import scalafx.scene.effect.Glow
-import scala.math.BigDecimal.int2bigDecimal
+import scalafx.geometry.Side
 import scalafx.print.PageLayout.sfxPageLayout2jfx
+import scalafx.print.{PageOrientation, Paper, Printer, PrinterJob}
 import scalafx.print.PrinterJob.sfxPrinterJob2jfx
 import scalafx.scene.chart.BarChart.sfxBarChart2jfx
+import scalafx.scene.chart.XYChart.Series
+import scalafx.scene.chart._
+import scalafx.scene.control.{ScrollPane, Tab, _}
+import scalafx.scene.effect.Glow
 import scalafx.scene.effect.Glow.sfxGlow2jfx
+import scalafx.scene.layout.{BorderPane, Priority, VBox}
 import scalafx.scene.layout.VBox.sfxVBox2jfx
+import scalafx.scene.text.Text
 import scalafx.scene.text.Text.sfxText2jfx
-import org.slf4j.LoggerFactory
+
+import scala.math.BigDecimal.int2bigDecimal
 
 class TurnerAnalyzer(val verein: Option[Verein], val athlet: Option[Athlet], val wettkampfdisziplin: Option[WettkampfdisziplinView], override val service: KutuService) extends Tab with TabWithService {
   val logger = LoggerFactory.getLogger(this.getClass)
