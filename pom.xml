@@ -465,7 +465,7 @@
 								<argument>-height</argument>
 								<argument>900</argument>
 								<argument>-title</argument>
-								<argument>"Turner Wettkampf"</argument>
+								<argument>Wettkampf</argument>
 								<argument>-BsystemWide=true</argument>
 								<!-- argument>-BjvmOptions=-Xmx512m</argument -->
 								<argument>-Bcopyright="Interpolar"</argument>
@@ -473,7 +473,7 @@
 								<!-- argument>-Bdescription="Wettkampf Verwaltung und Durchfuehrung"</argument -->
 								<argument>-Bmac.CFBundleIdentifier="ch.seidel.KuTuApp"</argument>
 								<argument>-Bmac.CFBundleName=Wettkampf</argument>
-								<argument>-Bmac.CFBundleVersion=210</argument>
+								<argument>-Bmac.CFBundleVersion=${parsedVersion.majorVersion}${parsedVersion.minorVersion}0</argument>
 							</arguments>
 						</configuration>
 					</execution>
