@@ -68,14 +68,11 @@ jobs:
       - cp -R -f ~/$TRAVIS_BUILD_NUMBER/www/* $TRAVIS_BUILD_DIR/src/main/resources/app
       - mvn deploy --settings deploy-settings.xml
       - cp -f $TRAVIS_BUILD_DIR/target/KuTu-app.jar $TRAVIS_BUILD_DIR/outputs/
-      - cp -f $TRAVIS_BUILD_DIR/target/$OS/bundles/*.dmg $TRAVIS_BUILD_DIR/outputs/$OS/
-      - cp -f $TRAVIS_BUILD_DIR/target/$OS/bundles/*.pkg $TRAVIS_BUILD_DIR/outputs/$OS/
+      - cp -f $TRAVIS_BUILD_DIR/target/$OS/*.dmg $TRAVIS_BUILD_DIR/outputs/$OS/
+      - cp -f $TRAVIS_BUILD_DIR/target/$OS/*.pkg $TRAVIS_BUILD_DIR/outputs/$OS/
     after_success:
       - git checkout "$TRAVIS_BRANCH"
       - cp -R -f ~/$TRAVIS_BUILD_NUMBER/www/* $TRAVIS_BUILD_DIR/src/main/resources/app
-      - git status
-      - ls $TRAVIS_BUILD_DIR/src/main/resources/app
-      - git status
       - git add $TRAVIS_BUILD_DIR/src/main/resources/app
       - git commit -a -m "update with generated Client from TravisCI for build $TRAVIS_BUILD_NUMBER with [skip ci]"
       - export GIT_TAG=travisbuild-$TRAVIS_BRANCH-$(date -u "+%Y-%m-%d")-$TRAVIS_BUILD_NUMBER
