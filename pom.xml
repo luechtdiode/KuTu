@@ -30,7 +30,7 @@
 			</activation>
 			<properties>
 				<javafx.os>mac</javafx.os>
-				<bundler.os>osx</bundler.os>
+				<bundler.os>Darwin</bundler.os>
 			</properties>
 		</profile>
 	</profiles>
