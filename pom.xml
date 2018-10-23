@@ -535,7 +535,7 @@
 					<!--  see https://stackoverflow.com/questions/20650514/upload-static-resource-to-amazon-s3-server-using-maven-plugin -->
 					<serverId>s3.release</serverId>
 					<url>s3://rs-travis/public/kutuapp/</url>
-					<fromDir>${basedir}/target/${bundler.os}/bundles</fromDir>
+					<fromDir>${basedir}/target/${bundler.os}</fromDir>
 					<includes>
 						**/*.msi, **/*.pkg, **/*.dmg, **/*.rpm, **/*.deb
 					</includes>
@@ -549,7 +549,7 @@
 							<goal>upload</goal>
 						</goals>
 						<configuration>
-							<fromDir>${basedir}/target/${bundler.os}/bundles</fromDir>
+							<fromDir>${basedir}/target/${bundler.os}</fromDir>
 							<includes>
 								**/*.msi, **/*.pkg, **/*.dmg, **/*.rpm, **/*.deb
 							</includes>
