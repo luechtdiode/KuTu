@@ -297,7 +297,7 @@ object ResourceExchanger extends KutuService with RiegenBuilder {
 
   private def getHeader[T: TypeTag] = {
     val fields = getCaseMethods[T]
-    fields.map(f => "\"" + f.name.encoded + "\"").mkString(",")
+    fields.map(f => "\"" + f.name.encodedName + "\"").mkString(",")
   }
 
   private def getValues[T: TypeTag: reflect.ClassTag](instance: T) = {

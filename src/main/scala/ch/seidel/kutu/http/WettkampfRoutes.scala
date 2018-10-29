@@ -1,6 +1,7 @@
 package ch.seidel.kutu.http
 
 import java.io.{ByteArrayOutputStream, FileInputStream}
+import java.util.concurrent.TimeUnit
 
 import akka.http.scaladsl.Http
 import akka.http.scaladsl.marshallers.sprayjson.SprayJsonSupport
@@ -19,7 +20,7 @@ import spray.json._
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.{Await, Future, Promise}
-import scala.concurrent.duration.Duration
+import scala.concurrent.duration.{Duration, FiniteDuration}
 import scala.util.Try
 
 trait WettkampfRoutes extends SprayJsonSupport with JsonSupport with JwtSupport with AuthSupport with RouterLogging with WettkampfService with IpToDeviceID {
@@ -229,14 +230,16 @@ trait WettkampfRoutes extends SprayJsonSupport with JsonSupport with JwtSupport 
           withoutRequestTimeout {
             onSuccess(wettkampfExistsAsync(wkuuid.toString())) {
               case exists if (!exists) =>
-                uploadedFile("zip") {
-                  case (metadata, file) =>
+                fileUpload("zip") {
+//                uploadedFile("zip") {
+                  case (metadata, file: Source[ByteString, Any]) =>
                     // do something with the file and file metadata ...
                     log.info(s"receiving wettkampf: $metadata, $wkuuid")
-                    val is = new FileInputStream(file)
+                    import Core.materializer;
+                    val is = file.runWith(StreamConverters.asInputStream(FiniteDuration(60, TimeUnit.SECONDS)))
                     ResourceExchanger.importWettkampf(is)
                     is.close()
-                    file.delete()
+//                    file.delete()
                     val claims = setClaims(wkuuid.toString(), Int.MaxValue)
                     respondWithHeader(RawHeader(jwtAuthorizationKey, JsonWebToken(jwtHeader, claims, jwtSecretKey))) {
                       complete(StatusCodes.OK)
@@ -251,14 +254,16 @@ trait WettkampfRoutes extends SprayJsonSupport with JsonSupport with JwtSupport 
         put {
           authenticated() { userId =>
             if (userId.equals(wkuuid.toString())) {
-              uploadedFile("zip") {
+              fileUpload("zip") {
+//              uploadedFile("zip") {
                 case (metadata, file) =>
                   // do something with the file and file metadata ...
                   log.info("receiving wettkampf: " + metadata)
-                  val is = new FileInputStream(file)
+                  import Core.materializer;
+                  val is = file.runWith(StreamConverters.asInputStream(FiniteDuration(60, TimeUnit.SECONDS)))
                   ResourceExchanger.importWettkampf(is)
                   is.close()
-                  file.delete()
+//                  file.delete()
                   complete(StatusCodes.OK)
               }
             }

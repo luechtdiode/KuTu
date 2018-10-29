@@ -119,7 +119,7 @@ object TurnerPage {
           }
 
           if(matches) {
-            wkModel.add(athlet)
+            wkModel :+ athlet
           }
         }
         athletenview.sortOrder.clear()

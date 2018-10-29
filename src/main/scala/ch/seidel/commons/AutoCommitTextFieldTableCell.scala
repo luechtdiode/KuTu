@@ -244,11 +244,11 @@ object AutoCommitTextFieldTableCell {
           ke.consume()
         }
 
-      case KeyCode.DELETE if(tableView.delegate.getEditingCell() == null) =>
+      case KeyCode.Delete if(tableView.delegate.getEditingCell() == null) =>
         tableView.edit(fc.row, tc)
 
       // Paste via CTRL+V or SHIFT+INSERT
-      case c if(ke.shiftDown && c == KeyCode.INSERT) || (ke.controlDown && ke.text.equals("v")) =>
+      case c if(ke.shiftDown && c == KeyCode.Insert) || (ke.controlDown && ke.text.equals("v")) =>
         tableView.edit(fc.row, tc)
 
       case c if((c.isLetterKey || c.isDigitKey) && tableView.editingCell.value == null) =>

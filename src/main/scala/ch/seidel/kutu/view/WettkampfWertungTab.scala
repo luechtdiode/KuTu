@@ -63,10 +63,11 @@ class WKTableColumn[T](val index: Int) extends TableColumn[IndexedSeq[WertungEdi
 class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[ProgrammView], riege: Option[String], wettkampf: WettkampfView, override val service: KutuService, athleten: => IndexedSeq[WertungView]) extends Tab with TabWithService {
   val logger = LoggerFactory.getLogger(this.getClass)
 
+  import language.implicitConversions
   implicit def doublePropertyToObservableValue(p: DoubleProperty): ObservableValue[Double,Double] = p.asInstanceOf[ObservableValue[Double,Double]]
   private var lazypane: Option[LazyTabPane] = None
-  def setLazyPane(pane: LazyTabPane) {
-    lazypane = Some(pane);
+  def setLazyPane(pane: LazyTabPane): Unit = {
+    lazypane = Some(pane)
   }
   def refreshLazyPane() {
     lazypane match {
@@ -234,20 +235,20 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
                 case Some(d) =>
                   setText(s"${item.durchgang.get}: ${item.disziplin.map(d => d.name).getOrElse("")}  (${item.halt + 1}. Gerät)");
                   if(!item.erfasst) {
-                    styleClass.add("incomplete");
+                    styleClass.add("incomplete")
                     imageView.image = nokIcon
                   }
                   else if (styleClass.indexOf("incomplete") > -1) {
-                    styleClass.remove(styleClass.indexOf("incomplete"));
+                    styleClass.remove(styleClass.indexOf("incomplete"))
                   }
                 case None =>
-                  setText(s"Alle");
+                  setText(s"Alle")
                   if(!erfasst) {
-                    styleClass.add("incomplete");
+                    styleClass.add("incomplete")
                     imageView.image = nokIcon
                   }
                   else if (styleClass.indexOf("incomplete") > -1) {
-                    styleClass.remove(styleClass.indexOf("incomplete"));
+                    styleClass.remove(styleClass.indexOf("incomplete"))
                   }
               }
               graphic = imageView
@@ -461,7 +462,7 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
         cellValueFactory = { x =>
           new ReadOnlyStringWrapper(x.value, "athlet", {
             val a = x.value.head.init.athlet
-            s"${a.vorname} ${a.name} ${(a.gebdat match {case Some(d) => f"$d%tY "; case _ => " "}) }"
+            s"${a.vorname} ${a.name} ${(a.gebdat match {case Some(d) => f"$d%tY " case _ => " "}) }"
           })
         }
 //        delegate.impl_setReorderable(false) // shame on me??? why this feature should not be a requirement?
@@ -548,7 +549,7 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
           if(!wettkampfmode.value) {
             onEditCommit = (evt: CellEditEvent[IndexedSeq[WertungEditor], String]) => {
               val rowIndex = wkModel.indexOf(evt.rowValue)
-              val newRiege = if(evt.newValue.trim.isEmpty() || evt.newValue.equals("keine Einteilung")) None 
+              val newRiege = if(evt.newValue.trim.isEmpty || evt.newValue.equals("keine Einteilung")) None
             	        else Some(evt.newValue)
             	logger.debug("start riege-rename")
             	service.updateAllWertungenAsync(
@@ -714,8 +715,8 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
       //if(!newVal.equalsIgnoreCase(lastFilter)) {
         lastFilter = newVal
         durchgangFilter = newDurchgang
-        val sortOrder = wkview.sortOrder.toList;
-        isFilterRefreshing = true;
+        val sortOrder = wkview.sortOrder.toList
+        isFilterRefreshing = true
         wkModel.clear()
         val searchQuery = newVal.toUpperCase().split(" ")
 //        val rd = riegendurchgaenge.values.toList
@@ -785,7 +786,7 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
           wkview.requestFocus()
           selected.foreach(s => wkview.selectionModel.value.selectedCells.add(s))          
         }
-        isFilterRefreshing = false;
+        isFilterRefreshing = false
       //}
   	}
   	val txtUserFilter = new TextField() {
@@ -885,7 +886,7 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
       }
 
       val columnrebuild = wertungen.isEmpty
-      isFilterRefreshing = true;
+      isFilterRefreshing = true
       wkModel.clear()
       wertungen = reloadWertungen()
 
@@ -905,7 +906,7 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
       try {
         for(ts <- coords) {
           if(ts._2 < -100) {
-            val toSelectParent = wkview.columns(ts._2 / -100);
+            val toSelectParent = wkview.columns(ts._2 / -100)
             val firstVisible = toSelectParent.getColumns.find(p => p.width.value > 50d).getOrElse(toSelectParent.columns(0))
             wkview.selectionModel.value.select(ts._1, firstVisible)
             wkview.scrollToColumn(firstVisible)
@@ -923,7 +924,7 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
       }
 //      setEditorPaneToDiscipline(idx)      
       updateEditorPane(if (wkview.focused.value) Some(wkview) else None)
-      isFilterRefreshing = false;
+      isFilterRefreshing = false
     }
     
     websocketsubscription = Some(WebSocketClient.modelWettkampfWertungChanged.onChange { (_, _, newItem) =>
@@ -1080,7 +1081,7 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
           val filter = new TextField() {
             promptText = "Such-Text"
             text.addListener{ (o: javafx.beans.value.ObservableValue[_ <: String], oldVal: String, newVal: String) =>
-              val sortOrder = athletTable.sortOrder.toList;
+              val sortOrder = athletTable.sortOrder.toList
               filteredModel.clear()
               val searchQuery = newVal.toUpperCase().split(" ")
               for{(progrid, athlet, vorschlag) <- athletModel
@@ -1308,7 +1309,7 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
           val filename = "Teilnehmerliste_" + wettkampf.easyprint.replace(" ", "_") + programm.map("_Programm_" + _.easyprint.replace(" ", "_")).getOrElse("") + riege.map("_Riege_" + _.replace(" ", "_")).getOrElse("") + ".html"
           val dir = new java.io.File(homedir + "/" + wettkampf.easyprint.replace(" ", "_"))
           if(!dir.exists()) {
-            dir.mkdirs();
+            dir.mkdirs()
           }
           val file = new java.io.File(dir.getPath + "/" + filename)
           def generate(lpp: Int) = toHTMLasKategorienListe(seriendaten, PrintUtil.locateLogoFile(dir))
@@ -1372,7 +1373,7 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
           val filename = "Notenblatt_" + wettkampf.easyprint.replace(" ", "_") + programm.map("_Programm_" + _.easyprint.replace(" ", "_")).getOrElse("") + riege.map("_Riege_" + _.replace(" ", "_")).getOrElse("") + ".html"
           val dir = new java.io.File(homedir + "/" + wettkampf.easyprint.replace(" ", "_"))
           if(!dir.exists()) {
-            dir.mkdirs();
+            dir.mkdirs()
           }
           val logofile = PrintUtil.locateLogoFile(dir)
           def generate(lpp: Int) = wettkampf.programm.head.id match {
@@ -1393,7 +1394,7 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
           val filename = "Bestenliste_" + wettkampf.easyprint.replace(" ", "_") + ".html"
           val dir = new java.io.File(homedir + "/" + wettkampf.easyprint.replace(" ", "_"))
           if(!dir.exists()) {
-            dir.mkdirs();
+            dir.mkdirs()
           }
           val logofile = PrintUtil.locateLogoFile(dir)
           

@@ -217,7 +217,7 @@ trait DBService {
   private val logger = LoggerFactory.getLogger(this.getClass)
   
   def database: DatabaseDef = DBService.startDB()
-  
+
 
   implicit def getSQLDate(date: String) = try {
     new java.sql.Date(DBService.sdf.parse(date).getTime)

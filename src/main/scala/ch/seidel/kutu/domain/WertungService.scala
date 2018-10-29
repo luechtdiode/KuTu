@@ -371,8 +371,8 @@ abstract trait WertungService extends DBService with WertungResultMapper with Di
       programm <- programme
       athletwertungen <- driver.map(we => we.filter { x => x.wettkampfdisziplin.programm.id == programm.id})
       if(athletwertungen.nonEmpty)
-      val einsatz = athletwertungen.head
-      val athlet = einsatz.athlet
+      einsatz = athletwertungen.head
+      athlet = einsatz.athlet
     }
     yield {
       val riegendurchgang1 = riegendurchgaenge.get(einsatz.riege.getOrElse(""))

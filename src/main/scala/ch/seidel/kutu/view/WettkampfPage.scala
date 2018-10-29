@@ -58,7 +58,7 @@ object WettkampfPage {
       }
     }
 
-    new WettkampfPage( new LazyTabPane(refresher, releaser))
+    new WettkampfPage( new LazyTabPane(refresher, () => releaser()))
   }
 }
 

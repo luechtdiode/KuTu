@@ -24,7 +24,7 @@ object WebSocketClient extends SprayJsonSupport with JsonSupport with AuthSuppor
 
   private var connectedOutgoingQueue: Option[SourceQueueWithComplete[Message]] = None
   private var connectedIncomingPromise: Option[Promise[Option[Message]]] = None
-  val modelWettkampfWertungChanged = new SimpleObjectProperty[KutuAppEvent]()
+  val modelWettkampfWertungChanged: SimpleObjectProperty[KutuAppEvent] = new SimpleObjectProperty[KutuAppEvent]()
   
   def connect[T](wettkampf: Wettkampf, messageProcessor: (Option[T], KutuAppEvent)=>Unit, handleError: Throwable=>Unit = println) = {
     val processorWithoutSender = (event: KutuAppEvent)=>{

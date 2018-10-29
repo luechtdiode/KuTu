@@ -177,7 +177,7 @@ class TurnerAnalyzer(val verein: Option[Verein], val athlet: Option[Athlet], val
           case None    => ""
           case Some(a) => " - " + a.easyprint
         }) + wettkampfdisziplin.map { " - " + _.disziplin.name }.getOrElse("")
-        legendSide = Side.RIGHT
+        legendSide = Side.Right
         legendVisible = true
         alternativeRowFillVisible = true
       }

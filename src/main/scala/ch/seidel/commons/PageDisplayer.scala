@@ -77,7 +77,7 @@ object PageDisplayer {
     // Create dialog
     val dialogStage = new Stage {
       outer => {
-        initModality(Modality.WINDOW_MODAL)
+        initModality(Modality.WindowModal)
         delegate.initOwner(KuTuApp.getStage.getScene.getWindow)
 
         title = tit

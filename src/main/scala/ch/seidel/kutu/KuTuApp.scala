@@ -206,7 +206,7 @@ object KuTuApp extends JFXApp with KutuService with JsonSupport with JwtSupport 
     else {
       cursorWaiters -= 1
       if(cursorWaiters > 0) {
-        Cursor.WAIT
+        Cursor.Wait
       }
       else {
         cursorWaiters = 0
@@ -282,7 +282,7 @@ object KuTuApp extends JFXApp with KutuService with JsonSupport with JwtSupport 
           text = dbl2Str(p.auszeichnung / 100d) + "%"
         }
         else {
-          text = p.auszeichnung + "%"
+          text = s"${p.auszeichnung}%"
         }
       }
       val txtAuszeichnungEndnote = new TextField {
