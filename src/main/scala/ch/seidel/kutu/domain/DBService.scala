@@ -60,7 +60,7 @@ object DBService {
       prop = proplite,
       user = "kutu",
       password = "kutu",
-      executor = AsyncExecutor("DB-Actions", 500, 10000)
+      executor = AsyncExecutor("DB-Actions", 256, 10000)
     )
   }
   

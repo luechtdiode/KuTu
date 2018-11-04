@@ -154,12 +154,12 @@ class CompetitionCoordinatorClientActor(wettkampfUUID: String) extends Actor wit
       (durchgangNormalized match {
         case Some(dgn) => // take last of requested durchgang
           startStopEvents.seq.reverse.filter {
-            case DurchgangStarted(w, d, t) => encodeURIComponent(d) == dgn
-            case DurchgangFinished(w, d, t) => encodeURIComponent(d) == dgn
+            case DurchgangStarted(_, d, _) => encodeURIComponent(d).equals(dgn)
+            case DurchgangFinished(_, d, _) => encodeURIComponent(d).equals(dgn)
             case _ => false
           }.take(1)
         case _ => //take first and last per durchgang
-          startStopEvents.groupBy { 
+          startStopEvents.groupBy {
             case DurchgangStarted(w, d, t) => d
             case DurchgangFinished(w, d, t) => d
             case _ => "_"
@@ -174,7 +174,8 @@ class CompetitionCoordinatorClientActor(wettkampfUUID: String) extends Actor wit
           }
         }
       )
-      .foreach(d => ref ! TextMessage(d.asInstanceOf[KutuAppEvent].toJson.compactPrint))
+      .foreach(d => {
+        ref ! TextMessage(d.asInstanceOf[KutuAppEvent].toJson.compactPrint)})
       ref ! TextMessage(NewLastResults(lastWertungen, lastBestenResults).asInstanceOf[KutuAppEvent].toJson.compactPrint)
 
     // system actions
