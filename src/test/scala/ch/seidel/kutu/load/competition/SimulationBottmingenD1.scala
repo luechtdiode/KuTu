@@ -9,10 +9,10 @@ import scala.util.Random
 //import io.gatling.core.feeder.SourceFeederBuilder
 
 class SimulationBottmingenD1 extends Simulation {
-  val jwtToken = "eyJhbGciOiJIUzUxMiIsImN0eSI6ImFwcGxpY2F0aW9uL2pzb24iLCJ0eXAiOiJKV1QifQ.eyJ1c2VyIjoiOTkxMTVkZmItODE5Yi00OGFhLWFkYTUtOTkzN2I4MmVlYmQ0IiwiZXhwaXJlZEF0S2V5IjoxNTQxNTQ1MTY2ODAwfQ.NoVuYn8E8L_XcJg9Ftte5YOiFMOQSHAkFrCKbmsiUy2Agpil-jIUOxZNkHC70h7LnQbIayy9T4KZR6xYKDFvXw"
+  val jwtToken = "eyJhbGciOiJIUzUxMiIsImN0eSI6ImFwcGxpY2F0aW9uL2pzb24iLCJ0eXAiOiJKV1QifQ.eyJ1c2VyIjoiOTkxMTVkZmItODE5Yi00OGFhLWFkYTUtOTkzN2I4MmVlYmQ0IiwiZXhwaXJlZEF0S2V5IjoxNTQxNjI0NjYxNzMzfQ.c8G_uJkc_S_lyIH_q4Sbhw0x8DjgdVJK6qsdeQVb2rwPrUg4c8EUxU5cDAJVXyZIqq3bD_z37aOWTlMbo5mn1A"
     //"eyJhbGciOiJIUzUxMiIsImN0eSI6ImFwcGxpY2F0aW9uL2pzb24iLCJ0eXAiOiJKV1QifQ.eyJ1c2VyIjoiOTkxMTVkZmItODE5Yi00OGFhLWFkYTUtOTkzN2I4MmVlYmQ0IiwiZXhwaXJlZEF0S2V5IjoxNTQxNTQyNDM4NjA2fQ.SpQKJuHDI2kQ-BGJLJkEqxO5tP-liwaonzF3zpc1PsVTacE7mljZB3Q3wiPIhouSG0FjHIDxLCHRxzWw46Opng"
   val competition = "99115dfb-819b-48aa-ada5-9937b82eebd4"
-  val originBaseUrl = "http://mws-01:5757"//, "https://kutuapp.sharevic.net", "http://pluto:5757"
+  val originBaseUrl = "https://kutuapp.sharevic.net"//,"http://mws-01:5757"//, "https://kutuapp.sharevic.net", "http://pluto:5757"
 
   val httpProtocol = http
     .baseUrl(originBaseUrl)
@@ -134,11 +134,13 @@ class SimulationBottmingenD1 extends Simulation {
       ),
     scnBrowseResultsPerDurchgangAndGeraet
       .inject(
+//        heavisideUsers(70) during (60 seconds)
 //      constantUsersPerSec(1) during (15 seconds) randomized,
 //      rampUsers(100) during (15 seconds),
 //      rampUsersPerSec(2) to 8 during (5 minutes) randomized,
-        constantConcurrentUsers(8) during (50 minutes),
-        constantConcurrentUsers(40) during (10 minutes),
+        constantConcurrentUsers(12) during (60 minutes),
+//        constantConcurrentUsers(8) during (50 minutes),
+//        constantConcurrentUsers(12) during (10 minutes),
 //      heavisideUsers(20) during (60 seconds)
     )
   ).protocols(httpProtocol)

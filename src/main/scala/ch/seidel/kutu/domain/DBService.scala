@@ -22,7 +22,6 @@ object DBService {
   lazy private val proplite = {
     val prop = new Properties()
     prop.setProperty("date_string_format", "yyyy-MM-dd")
-//    prop.setProperty("preferredTestQuery", "PRAGMA journal_mode=WAL;")
 //    prop.setProperty("connectionPool", "disabled")
     prop.setProperty("keepAliveConnection", "true")
     prop.setProperty("numberThreads ", "1")
@@ -66,7 +65,7 @@ object DBService {
     hikariConfig.setPassword("kutu")
 
     val dataSource = new HikariDataSource(hikariConfig)
-    Database.forDataSource(dataSource, Some(1), executor = AsyncExecutor("DB-Actions", 20, 10000), keepAliveConnection = true)
+    Database.forDataSource(dataSource, maxConnections = Some(20), executor = AsyncExecutor("DB-Actions", 20, 10000), keepAliveConnection = true)
 //    Database.forURL(
 //      url = "jdbc:sqlite:" + dbfile.getAbsolutePath,
 //      driver = "org.sqlite.JDBC",
