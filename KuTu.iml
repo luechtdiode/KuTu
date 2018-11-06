@@ -268,6 +268,8 @@
     <orderEntry type="library" name="Maven: org.scala-lang:scala-reflect:2.12.7" level="project" />
     <orderEntry type="library" name="Maven: org.controlsfx:controlsfx:9.0.0" level="project" />
     <orderEntry type="library" name="Maven: org.xerial:sqlite-jdbc:3.21.0.1" level="project" />
+    <orderEntry type="library" name="Maven: com.typesafe.slick:slick-hikaricp_2.12:3.2.3" level="project" />
+    <orderEntry type="library" name="Maven: com.zaxxer:HikariCP:3.1.0" level="project" />
     <orderEntry type="library" name="Maven: com.typesafe.akka:akka-http_2.12:10.1.5" level="project" />
     <orderEntry type="library" name="Maven: com.typesafe.akka:akka-http-core_2.12:10.1.5" level="project" />
     <orderEntry type="library" name="Maven: com.typesafe.akka:akka-parsing_2.12:10.1.5" level="project" />

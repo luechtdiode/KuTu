@@ -147,6 +147,17 @@
 			<artifactId>sqlite-jdbc</artifactId>
 			<version>3.21.0.1</version>
 		</dependency>
+		<dependency>
+			<groupId>com.typesafe.slick</groupId>
+			<artifactId>slick-hikaricp_2.12</artifactId>
+			<version>3.2.3</version>
+		</dependency>
+
+		<dependency>
+			<groupId>com.zaxxer</groupId>
+			<artifactId>HikariCP</artifactId>
+			<version>3.1.0</version>
+		</dependency>
 
 		<!-- akka / akkahttp -->
 		<dependency>

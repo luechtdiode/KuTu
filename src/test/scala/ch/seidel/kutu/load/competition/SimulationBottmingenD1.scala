@@ -9,7 +9,8 @@ import scala.util.Random
 //import io.gatling.core.feeder.SourceFeederBuilder
 
 class SimulationBottmingenD1 extends Simulation {
-  val jwtToken = "eyJhbGciOiJIUzUxMiIsImN0eSI6ImFwcGxpY2F0aW9uL2pzb24iLCJ0eXAiOiJKV1QifQ.eyJ1c2VyIjoiOTkxMTVkZmItODE5Yi00OGFhLWFkYTUtOTkzN2I4MmVlYmQ0IiwiZXhwaXJlZEF0S2V5IjoxNTQxNDM4NjQyODg4fQ.-R8YptzbfhpOG1oL22EJ6Ep0K9aOqatlQZJVK2_yRzTt7QouiKmgbxb0468zkKhM3yxgRZpFR3bqwuH-eTX74A"
+  val jwtToken = "eyJhbGciOiJIUzUxMiIsImN0eSI6ImFwcGxpY2F0aW9uL2pzb24iLCJ0eXAiOiJKV1QifQ.eyJ1c2VyIjoiOTkxMTVkZmItODE5Yi00OGFhLWFkYTUtOTkzN2I4MmVlYmQ0IiwiZXhwaXJlZEF0S2V5IjoxNTQxNTQ1MTY2ODAwfQ.NoVuYn8E8L_XcJg9Ftte5YOiFMOQSHAkFrCKbmsiUy2Agpil-jIUOxZNkHC70h7LnQbIayy9T4KZR6xYKDFvXw"
+    //"eyJhbGciOiJIUzUxMiIsImN0eSI6ImFwcGxpY2F0aW9uL2pzb24iLCJ0eXAiOiJKV1QifQ.eyJ1c2VyIjoiOTkxMTVkZmItODE5Yi00OGFhLWFkYTUtOTkzN2I4MmVlYmQ0IiwiZXhwaXJlZEF0S2V5IjoxNTQxNTQyNDM4NjA2fQ.SpQKJuHDI2kQ-BGJLJkEqxO5tP-liwaonzF3zpc1PsVTacE7mljZB3Q3wiPIhouSG0FjHIDxLCHRxzWw46Opng"
   val competition = "99115dfb-819b-48aa-ada5-9937b82eebd4"
   val originBaseUrl = "http://mws-01:5757"//, "https://kutuapp.sharevic.net", "http://pluto:5757"
 
@@ -92,7 +93,7 @@ class SimulationBottmingenD1 extends Simulation {
       .exec(getSteps)
       .exec(http(s"start durchgang")
         .post(s"/api/competition/$competition/start")
-        .body(StringBody(s"""{"type":"StartDurchgangStation","wettkampfUUID":"$competition","durchgang":"${"${durchgang}"}"}""")))
+        .body(StringBody(s"""{"type":"StartDurchgangStation","wettkampfUUID":"$competition","durchgang":"${"${durchgangOriginal}"}"}""")))
       .foreach("${steps}", "step") {
         exec(http("get Wertungen")
           .get(s"/api/durchgang/$competition/${"${durchgang}"}/${"${geraet}"}/${"${step}"}")
@@ -106,10 +107,10 @@ class SimulationBottmingenD1 extends Simulation {
             .body(StringBody("${wertung.wertung.jsonStringify()}"))
             .check(status.is(200))
           )
-          .pause(3 seconds, 10 seconds)
-          .exec(http("finish durchgangstation")
-            .post(s"/api/durchgang/$competition/${"${durchgang}"}/finish")
-            .body(StringBody(s"""{"type":"FinishDurchgangStation","wettkampfUUID":"$competition","durchgang:"${"${durchgangOriginal}"}","geraet":${"${geraet}"},"step":${"${step}"}}""")))
+          .pause(5 seconds, 20 seconds)
+//          .exec(http("finish durchgangstation")
+//            .post(s"/api/durchgang/$competition/${"${durchgang}"}/finish")
+//            .body(StringBody(s"""{"type":"FinishDurchgangStation","wettkampfUUID":"$competition","durchgang:"${"${durchgangOriginal}"}","geraet":${"${geraet}"},"step":${"${step}"}}""")))
         }
       }
   }
@@ -124,17 +125,20 @@ class SimulationBottmingenD1 extends Simulation {
 
   setUp(
     scnLanding
-      .inject(rampConcurrentUsers(50) to(150) during(2 minutes))
+      .inject(
+        rampConcurrentUsers(20) to(50) during(2 minutes),
+        constantConcurrentUsers(150) during(58 minutes))
       .throttle(
         reachRps(5) in (10 seconds),
-        holdFor(110 seconds)
+        holdFor(58 minutes)
       ),
     scnBrowseResultsPerDurchgangAndGeraet
       .inject(
 //      constantUsersPerSec(1) during (15 seconds) randomized,
 //      rampUsers(100) during (15 seconds),
 //      rampUsersPerSec(2) to 8 during (5 minutes) randomized,
-      constantConcurrentUsers(12) during (120 seconds)
+        constantConcurrentUsers(8) during (50 minutes),
+        constantConcurrentUsers(40) during (10 minutes),
 //      heavisideUsers(20) during (60 seconds)
     )
   ).protocols(httpProtocol)
