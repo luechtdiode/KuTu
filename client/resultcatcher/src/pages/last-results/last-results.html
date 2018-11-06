@@ -37,7 +37,9 @@
   <ion-grid no-padding>
     <ion-row>
       <ion-col align-self-start col-12 col-sm-6 col-lg-4 col-xl-2 *ngFor='let w of items' (click)="itemTapped($event, w)">
+        <div  [ngClass]="{'gradient-border':isNew(w)}">
           <result-display [item]="w" [title]="getTitle(w)"></result-display>
+        </div>
       </ion-col>
     </ion-row>
   </ion-grid>
