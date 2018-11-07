@@ -344,7 +344,7 @@ object CompetitionCoordinatorClientActor extends JsonSupport with EnrichedJson {
   val supervisor = system.actorOf(Props[ClientActorSupervisor])
   
   def publish(action: KutuAppAction) = {
-    implicit val timeout = Timeout(5000 milli)
+    implicit val timeout = Timeout(15000 milli)
     (supervisor ? action).mapTo[KutuAppEvent]
   }
  

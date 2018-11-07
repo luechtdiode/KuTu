@@ -2,10 +2,12 @@ package ch.seidel.kutu.base
 
 import java.io.File
 import java.util.Properties
+
 import org.slf4j.LoggerFactory
 import slick.jdbc.JdbcBackend.Database
 import slick.jdbc.SQLiteProfile.api.AsyncExecutor
 import ch.seidel.kutu.domain.DBService
+import com.zaxxer.hikari.{HikariConfig, HikariDataSource}
 
 object TestDBService {
   private val logger = LoggerFactory.getLogger(this.getClass)
@@ -27,15 +29,25 @@ object TestDBService {
     }
     
     logger.info(s"starting database with $dbfile ...")
-    val tempDatabase = Database.forURL(
-        //url = "jdbc:sqlite:file:kutu?mode=memory&cache=shared",
-        url = "jdbc:sqlite:" + dbfile,
-        driver = "org.sqlite.JDBC",
-        prop = proplite,
-        user = "kutu",
-        password = "kutu",
-        executor = AsyncExecutor("DB-Actions", 500, 10000)
-        )
+    val hikariConfig = new HikariConfig()
+    hikariConfig.setJdbcUrl("jdbc:sqlite:" + dbfile)
+    hikariConfig.setDriverClassName("org.sqlite.JDBC")
+    hikariConfig.setDataSourceProperties(proplite)
+    hikariConfig.setUsername("kutu")
+    hikariConfig.setPassword("kutu")
+
+    val dataSource = new HikariDataSource(hikariConfig)
+    val tempDatabase = Database.forDataSource(dataSource, maxConnections = Some(500), executor = AsyncExecutor("DB-Actions", 500, 10000), keepAliveConnection = true)
+
+//    val tempDatabase = Database.forURL(
+//        //url = "jdbc:sqlite:file:kutu?mode=memory&cache=shared",
+//        url = "jdbc:sqlite:" + dbfile,
+//        driver = "org.sqlite.JDBC",
+//        prop = proplite,
+//        user = "kutu",
+//        password = "kutu",
+//        executor = AsyncExecutor("DB-Actions", 500, 10000)
+//        )
     DBService.installDB(tempDatabase)
     DBService.updateDB(tempDatabase)
     logger.info("Database initialized")

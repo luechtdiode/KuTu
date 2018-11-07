@@ -1,6 +1,7 @@
 package ch.seidel.kutu.domain
 
 import java.util.UUID
+import java.util.concurrent.TimeUnit
 
 import ch.seidel.kutu.akka.AthletWertungUpdated
 import ch.seidel.kutu.http.WebSocketClient
@@ -268,14 +269,14 @@ abstract trait WertungService extends DBService with WertungResultMapper with Di
   @throws(classOf[Exception])
   def updateWertungSimple(w: Wertung, putToBestenresults: Boolean = false): Wertung = {
     val wv = readWettkampfDisziplinView(w.wettkampfdisziplinId).notenSpez.verifiedAndCalculatedWertung(w)
-    database.run(DBIO.sequence(Seq(sqlu"""
+    Await.result(database.run(DBIO.sequence(Seq(sqlu"""
                   UPDATE wertung
                   SET note_d=${wv.noteD}, note_e=${wv.noteE}, endnote=${wv.endnote}, riege=${wv.riege}, riege2=${wv.riege2}
                   WHERE 
                     athlet_Id=${wv.athletId} and wettkampfdisziplin_Id=${wv.wettkampfdisziplinId} and wettkampf_Id=${wv.wettkampfId}
           """//.transactionally
           ))
-    )
+    ), Duration(5, TimeUnit.SECONDS))
     wv
   }
   
