@@ -24,8 +24,9 @@ object DBService {
     prop.setProperty("date_string_format", "yyyy-MM-dd")
 //    prop.setProperty("connectionPool", "disabled")
     prop.setProperty("keepAliveConnection", "true")
-    prop.setProperty("numberThreads ", "1")
-    prop.setProperty("maxConnections ", "1")
+//    prop.setProperty("numberThreads ", "1")
+    prop.setProperty("maxConnections ", "256")
+    prop.setProperty("maximumPoolSize", "256")
     prop
   }
   lazy private val dbFilename = s"kutu-$appVersion.sqlite"
@@ -65,7 +66,7 @@ object DBService {
     hikariConfig.setPassword("kutu")
 
     val dataSource = new HikariDataSource(hikariConfig)
-    Database.forDataSource(dataSource, maxConnections = Some(20), executor = AsyncExecutor("DB-Actions", 20, 10000), keepAliveConnection = true)
+    Database.forDataSource(dataSource, maxConnections = Some(256), executor = AsyncExecutor("DB-Actions", 256, 10000), keepAliveConnection = true)
 //    Database.forURL(
 //      url = "jdbc:sqlite:" + dbfile.getAbsolutePath,
 //      driver = "org.sqlite.JDBC",
