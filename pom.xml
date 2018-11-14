@@ -221,13 +221,20 @@
 		<dependency>
 			<groupId>com.github.markusbernhardt</groupId>
 			<artifactId>proxy-vole</artifactId>
-			<version>1.0.4</version>
+			<version>1.0.5</version>
 		</dependency>
-		<!-- dependency> <groupId>org.apache.logging.log4j</groupId> <artifactId>log4j-api</artifactId>
-			<version>2.10.0</version> </dependency> <dependency> <groupId>org.apache.logging.log4j</groupId>
-			<artifactId>log4j-core</artifactId> <version>2.10.0</version> </dependency>
-			<dependency> <groupId>org.slf4j</groupId> <artifactId>slf4j-nop</artifactId>
-			<version>1.7.25</version> </dependency -->
+        <!-- https://mvnrepository.com/artifact/org.javadelight/delight-nashorn-sandbox -->
+        <dependency>
+            <groupId>org.javadelight</groupId>
+            <artifactId>delight-nashorn-sandbox</artifactId>
+            <version>0.1.16</version>
+        </dependency>
+
+        <!-- dependency> <groupId>org.apache.logging.log4j</groupId> <artifactId>log4j-api</artifactId>
+            <version>2.10.0</version> </dependency> <dependency> <groupId>org.apache.logging.log4j</groupId>
+            <artifactId>log4j-core</artifactId> <version>2.10.0</version> </dependency>
+            <dependency> <groupId>org.slf4j</groupId> <artifactId>slf4j-nop</artifactId>
+            <version>1.7.25</version> </dependency -->
 		<dependency>
 			<groupId>org.slf4j</groupId>
 			<artifactId>slf4j-api</artifactId>
