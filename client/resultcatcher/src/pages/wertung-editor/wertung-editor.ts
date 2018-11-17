@@ -2,7 +2,6 @@ import { Component, ViewChild } from '@angular/core';
 import { NavController, NavParams, Keyboard, Platform } from 'ionic-angular';
 import { WertungContainer, Wertung } from '../../app/backend-types';
 import { BackendService } from '../../app/backend.service';
-import { NgForm } from '@angular/forms';
 import { Subscription } from 'rxjs';
 
 /**
