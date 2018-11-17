@@ -489,6 +489,7 @@
 								<argument>-name</argument>
 								<argument>TurnerWettkampf-App-v${parsedVersion.majorVersion}r${parsedVersion.minorVersion}</argument>
 								<argument>-BappVersion=${parsedVersion.majorVersion}.${parsedVersion.minorVersion}</argument>
+                                <argument>-Bicon=${project.build.sourceDirectory}/../resources/images/app-logo.ico</argument>
 								<argument>-srcdir</argument>
 								<argument>${project.build.directory}</argument>
 								<argument>-srcfiles</argument>

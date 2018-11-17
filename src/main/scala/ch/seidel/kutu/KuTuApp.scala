@@ -1361,7 +1361,8 @@ object KuTuApp extends JFXApp with KutuService with JsonSupport with JwtSupport 
   stage = new PrimaryStage {
     //initStyle(StageStyle.TRANSPARENT);
     title = "KuTu Wettkampf-App"
-    scene = new Scene(1400, 900) {
+    icons += new Image(this.getClass.getResourceAsStream( "/images/app-logo.png" ))
+    scene = new Scene(1200, 750) {
       root = new BorderPane {
         top = headerContainer
         center = new BorderPane {
