@@ -1,8 +1,9 @@
 package ch.seidel.kutu.renderer
 
-import ch.seidel.kutu.domain._
 import java.io.File
-import PrintUtil._
+
+import ch.seidel.kutu.domain._
+import ch.seidel.kutu.renderer.PrintUtil._
 import org.slf4j.LoggerFactory
 
 object RiegenBuilder {
@@ -255,7 +256,6 @@ trait RiegenblattToHtmlRenderer {
   val fcs = 20
 
   def toHTML(kandidaten: Seq[Kandidat], logo: File): String = {
-    import PrintUtil._
     def splitToFitPage(riegen: List[GeraeteRiege]) = {
       riegen.foldLeft(List[(GeraeteRiege, Int)]()){(acc, item) =>
         if(item.kandidaten.size > fcs) {

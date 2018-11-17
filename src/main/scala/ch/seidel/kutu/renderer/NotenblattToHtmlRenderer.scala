@@ -1,8 +1,9 @@
 package ch.seidel.kutu.renderer
 
-import ch.seidel.kutu.domain._
 import java.io.File
-import PrintUtil._
+
+import ch.seidel.kutu.domain._
+import ch.seidel.kutu.renderer.PrintUtil._
 import org.slf4j.LoggerFactory
 
 trait NotenblattToHtmlRenderer {

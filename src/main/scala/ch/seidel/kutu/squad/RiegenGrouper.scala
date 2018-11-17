@@ -1,7 +1,8 @@
 package ch.seidel.kutu.squad
 
-import scala.annotation.tailrec
 import ch.seidel.kutu.domain._
+
+import scala.annotation.tailrec
 
 trait RiegenGrouper extends RiegenSplitter {
 

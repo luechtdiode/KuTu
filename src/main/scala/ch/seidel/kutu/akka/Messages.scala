@@ -2,7 +2,6 @@ package ch.seidel.kutu.akka
 
 import akka.actor.ActorRef
 import ch.seidel.kutu.domain._
-import java.time.Instant
 
 case class Subscribe(clientSource: ActorRef, deviceId: String, durchgang: Option[String])
 case class StopDevice(deviceId: String)

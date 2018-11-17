@@ -1,10 +1,11 @@
 package ch.seidel.kutu
 
-import scala.concurrent.ExecutionContext.Implicits.global
-import scalafx.beans.property._
-import javafx.application.Platform
-import scala.concurrent.Promise
 import ch.seidel.kutu.http.WebSocketClient
+import javafx.application.Platform
+import scalafx.beans.property._
+
+import scala.concurrent.ExecutionContext.Implicits.global
+import scala.concurrent.Promise
 
 object ConnectionStates {
   

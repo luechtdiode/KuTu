@@ -1,48 +1,33 @@
 package ch.seidel.kutu.view
 
 import java.awt.Desktop
-import java.io.BufferedOutputStream
-import java.io.File
-import java.io.FileInputStream
-import java.io.FileOutputStream
-import java.io.ObjectInputStream
-
-import scala.language.implicitConversions
-
-import org.controlsfx.control.CheckComboBox
+import java.io._
+import java.util.concurrent.{ScheduledFuture, TimeUnit}
 
 import ch.seidel.commons._
 import ch.seidel.kutu.KuTuApp
-import ch.seidel.kutu.data._
-import ch.seidel.kutu.data.FilterBy
+import ch.seidel.kutu.data.{FilterBy, _}
 import ch.seidel.kutu.domain._
-import ch.seidel.kutu.renderer.PrintUtil
-import ch.seidel.kutu.renderer.ScoreToHtmlRenderer
-import javafx.scene.{ control => jfxsc }
+import ch.seidel.kutu.http.WebSocketClient
+import ch.seidel.kutu.renderer.PrintUtil.FilenameDefault
+import ch.seidel.kutu.renderer.{PrintUtil, ScoreToHtmlRenderer}
+import javafx.scene.{control => jfxsc}
+
 import scalafx.Includes._
-import scalafx.beans.binding.Bindings
+import scalafx.application.Platform
 import scalafx.collections.ObservableBuffer
-import scalafx.event.ActionEvent
+import scalafx.event.subscriptions.Subscription
 import scalafx.geometry.Insets
-import scalafx.geometry.Pos
-import scalafx.print.PageOrientation
-import scalafx.print.Printer
-import scalafx.scene.Node
+import scalafx.print.{PageOrientation, Printer}
 import scalafx.scene.control._
+import org.controlsfx.control.CheckComboBox
 import scalafx.scene.layout._
-import scalafx.scene.web.WebEngine
 import scalafx.scene.web.WebView
 import scalafx.stage.FileChooser
 import scalafx.stage.FileChooser.ExtensionFilter
 import scalafx.util.StringConverter
-import scala.collection.JavaConverters
-import ch.seidel.kutu.renderer.PrintUtil.FilenameDefault
-import scalafx.event.subscriptions.Subscription
-import ch.seidel.kutu.akka.KutuAppEvent
-import ch.seidel.kutu.http.WebSocketClient
-import scalafx.application.Platform
-import java.util.concurrent.TimeUnit
-import java.util.concurrent.ScheduledFuture
+
+import scala.language.implicitConversions
 
 abstract class DefaultRanglisteTab(override val service: KutuService) extends Tab with TabWithService with ScoreToHtmlRenderer {
 

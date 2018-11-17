@@ -1,58 +1,25 @@
 package ch.seidel.kutu.http
 
-import scala.concurrent.ExecutionContext.Implicits.global
-import com.typesafe.config.ConfigFactory
-import org.slf4j.LoggerFactory
-import java.net.Inet6Address
-import java.net.NetworkInterface
-import java.net.InetAddress
+import java.net.{InetSocketAddress, PasswordAuthentication}
 
-import authentikat.jwt._
-import java.util.concurrent.TimeUnit
-
-import akka.util.ByteString
-import akka.actor.{ ActorRef, ActorSystem }
-import akka.http.scaladsl.Http
-import akka.http.scaladsl.Http.ServerBinding
-import akka.http.scaladsl.server.{ Directives, Directive1, Route }
-import akka.http.scaladsl.server.Directives._
-import akka.http.scaladsl.server.directives.Credentials
-import akka.http.scaladsl.settings.ServerSettings
-import akka.http.scaladsl.server.HttpApp
+import akka.http.scaladsl.{ClientTransport, Http}
+import akka.http.scaladsl.marshallers.sprayjson.SprayJsonSupport
+import akka.http.scaladsl.marshalling.Marshal
 import akka.http.scaladsl.model._
 import akka.http.scaladsl.model.headers._
-import akka.http.scaladsl.model.HttpHeader$ParsingResult._
-import akka.http.scaladsl.marshallers.sprayjson.SprayJsonSupport
-
-import akka.stream.ActorMaterializer
-import akka.stream.scaladsl._
-
-import scala.concurrent.{ ExecutionContext, Future }
-import scala.util.{ Failure, Success, Try }
-import spray.json.JsValue
-import akka.http.scaladsl.marshalling.Marshal
+import akka.http.scaladsl.model.ws.{Message, WebSocketRequest}
+import akka.http.scaladsl.server.Directives
+import akka.http.scaladsl.server.directives.Credentials
+import akka.http.scaladsl.settings.{ClientConnectionSettings, ConnectionPoolSettings}
 import akka.http.scaladsl.unmarshalling.Unmarshal
-import spray.json.JsObject
-import scala.concurrent.Await
-import scala.concurrent.duration.Duration
-import ch.seidel.kutu.Config._
-import akka.http.scaladsl.ClientTransport
-import java.net.InetSocketAddress
-import akka.http.scaladsl.settings.ClientConnectionSettings
-import akka.http.scaladsl.settings.ConnectionPoolSettings
-import scala.concurrent.Promise
-import akka.http.scaladsl.model.ws.Message
-import akka.http.scaladsl.model.ws.WebSocketRequest
-import java.net.PasswordAuthentication
-import java.net.Proxy
-import java.net.ProxySelector
-import ch.seidel.kutu.Config
-import java.net.URI
-import java.util.Collections
-import java.net.Authenticator
-import java.net.PasswordAuthentication
-import java.net.Authenticator.RequestorType
+import akka.stream.scaladsl._
 import ch.seidel.commons.PageDisplayer
+import ch.seidel.kutu.Config._
+import spray.json.JsObject
+
+import scala.concurrent.ExecutionContext.Implicits.global
+import scala.concurrent.{Await, Future, Promise}
+import scala.concurrent.duration.Duration
 
 object AuthSupport {
   private[AuthSupport] var proxyPort: Option[String] = None
@@ -67,8 +34,8 @@ object AuthSupport {
 }
 
 trait AuthSupport extends Directives with SprayJsonSupport with Hashing {
-  import spray.json.DefaultJsonProtocol._
   import AuthSupport._
+  import spray.json.DefaultJsonProtocol._
   
   implicit val credsFormat = jsonFormat2(UserCredentials)
   
@@ -182,8 +149,8 @@ trait AuthSupport extends Directives with SprayJsonSupport with Hashing {
    * Supports header- and body-based request->response with credentials->acces-token
    */
   def httpLoginRequest(uri: String, user: String, pw: String) = {
-    import HttpMethods._
     import Core._
+    import HttpMethods._
     Marshal(UserCredentials(user, pw)).to[RequestEntity] flatMap { entity =>
       Http().singleRequest(
           HttpRequest(method = POST, uri = uri, entity = entity).addHeader(Authorization(BasicHttpCredentials(user, pw))), settings = poolsettings).map {
@@ -210,8 +177,8 @@ trait AuthSupport extends Directives with SprayJsonSupport with Hashing {
   }
   
   def httpRenewLoginRequest(uri: String, wettkampfuuid: String, jwtToken: String) = {
-    import HttpMethods._
     import Core._
+    import HttpMethods._
     Marshal(UserCredentials(wettkampfuuid, jwtToken)).to[RequestEntity] flatMap { entity =>
       val request = HttpRequest(method = POST, uri = uri, entity = entity)
       Http().singleRequest(request.withHeaders(request.headers :+ RawHeader(jwtAuthorizationKey, jwtToken)), settings = poolsettings).map {

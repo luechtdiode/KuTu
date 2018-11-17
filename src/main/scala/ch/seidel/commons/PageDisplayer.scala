@@ -1,42 +1,23 @@
 package ch.seidel.commons
 
-import scala.concurrent.ExecutionContext.Implicits.global
-import scala.concurrent.Promise
-import scala.concurrent.Future
-import scala.concurrent.Await
-import scala.concurrent.duration.Duration
-import javafx.scene.{ control => jfxsc }
-import javafx.{ scene => jfxs }
-import scalafx.Includes._
-import scalafx.stage.Stage
-import scalafx.geometry.Insets
-import scalafx.scene.layout.{Priority, VBox}
-import scalafx.scene.Scene
-import scalafx.scene.layout.BorderPane
-import scalafx.scene.control.Button
-import scalafx.scene.control.ToolBar
-import scalafx.event.ActionEvent
-import scalafx.stage.Modality
-import scalafx.stage.Window
-import scalafx.scene.Node
-import scalafx.scene.layout.HBox
-import scalafx.geometry.Pos
-import scalafx.scene.control.TreeItem
-import scalafx.scene.Cursor
-import scalafx.scene.control.Label
-import ch.seidel.kutu.view._
+import ch.seidel.kutu.{KuTuApp, KuTuAppTree}
 import ch.seidel.kutu.domain._
-import ch.seidel.kutu.KuTuAppTree
-import ch.seidel.kutu.KuTuApp
-import scalafx.beans.property.BooleanProperty
+import ch.seidel.kutu.view._
+import javafx.{scene => jfxs}
+import scalafx.Includes._
 import scalafx.application.Platform
-import scalafx.scene.image._
-import scalafx.scene.control.Control
-import scalafx.scene.control.PasswordField
-import scalafx.scene.control.TextField
-import scalafx.beans.binding.Bindings
 import scalafx.beans.Observable
-import scalafx.collections.ObservableArray
+import scalafx.beans.property.BooleanProperty
+import scalafx.event.ActionEvent
+import scalafx.geometry.{Insets, Pos}
+import scalafx.scene.{Node, Scene}
+import scalafx.scene.control.{Button, Label, PasswordField, TextField}
+import scalafx.scene.image._
+import scalafx.scene.layout.{BorderPane, HBox, Priority, VBox}
+import scalafx.stage.{Modality, Stage}
+
+import scala.concurrent.{Await, Promise}
+import scala.concurrent.duration.Duration
 
 
 /**
@@ -96,7 +77,7 @@ object PageDisplayer {
     // Create dialog
     val dialogStage = new Stage {
       outer => {
-        initModality(Modality.WINDOW_MODAL)
+        initModality(Modality.WindowModal)
         delegate.initOwner(KuTuApp.getStage.getScene.getWindow)
 
         title = tit

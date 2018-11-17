@@ -1,14 +1,11 @@
 package ch.seidel.kutu.domain
 
+import org.slf4j.LoggerFactory
+import slick.jdbc.SQLiteProfile.api._
+
 import scala.concurrent.Await
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration.Duration
-
-import org.slf4j.LoggerFactory
-
-import slick.jdbc.GetResult
-import slick.jdbc.SQLiteProfile
-import slick.jdbc.SQLiteProfile.api._
 
 trait VereinService extends DBService with VereinResultMapper {
   private val logger = LoggerFactory.getLogger(this.getClass)

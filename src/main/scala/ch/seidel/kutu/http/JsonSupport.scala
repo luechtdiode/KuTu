@@ -1,10 +1,9 @@
 package ch.seidel.kutu.http
 
-import scala.reflect.ClassTag
 import akka.http.scaladsl.marshallers.sprayjson.SprayJsonSupport
-import spray.json._
-import ch.seidel.kutu.domain._
 import ch.seidel.kutu.akka._
+import ch.seidel.kutu.domain._
+import spray.json._
 
 
 trait JsonSupport extends SprayJsonSupport with EnrichedJson {

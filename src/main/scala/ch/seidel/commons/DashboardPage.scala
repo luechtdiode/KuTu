@@ -1,6 +1,5 @@
 package ch.seidel.commons
 
-import scalafx.Includes._
 import ch.seidel.kutu.KuTuAppTree
 import scalafx.scene.control.ScrollPane
 import scalafx.scene.layout.{Priority, VBox}
@@ -19,7 +18,7 @@ class DashboardPage(dashPart: String = "dashboard", tree: KuTuAppTree) extends D
       hgrow = Priority.Always
       fitToHeight = true
       fitToWidth = true
-      vbarPolicy = ScrollPane.ScrollBarPolicy.ALWAYS
+      vbarPolicy = ScrollPane.ScrollBarPolicy.Always
       content = new VBox {
         vgrow = Priority.Always
         hgrow = Priority.Always

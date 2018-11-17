@@ -1,27 +1,20 @@
 package ch.seidel.kutu.domain
 
 import java.io.File
-import java.nio.file.Files
-import java.nio.file.StandardOpenOption
-import java.text.ParseException
-import java.text.SimpleDateFormat
+import java.nio.file.{Files, StandardOpenOption}
+import java.text.{ParseException, SimpleDateFormat}
 import java.util.Properties
+
+import ch.seidel.kutu.Config.{appVersion, userHomePath}
+import com.zaxxer.hikari.{HikariConfig, HikariDataSource}
+import org.slf4j.LoggerFactory
+import slick.jdbc.JdbcBackend.{Database, DatabaseDef}
+import slick.jdbc.SQLiteProfile.api.{AsyncExecutor, DBIO, actionBasedSQLInterpolation, jdbcActionExtensionMethods}
 
 import scala.annotation.tailrec
 import scala.concurrent.Await
 import scala.concurrent.duration.Duration
 import scala.io.Source
-
-import org.slf4j.LoggerFactory
-
-import ch.seidel.kutu.Config.appVersion
-import ch.seidel.kutu.Config.userHomePath
-import slick.jdbc.JdbcBackend.Database
-import slick.jdbc.SQLiteProfile.api.AsyncExecutor
-import slick.jdbc.SQLiteProfile.api.DBIO
-import slick.jdbc.SQLiteProfile.api.actionBasedSQLInterpolation
-import slick.jdbc.SQLiteProfile.api.jdbcActionExtensionMethods
-import slick.jdbc.JdbcBackend.DatabaseDef
 
 object DBService {
   private val logger = LoggerFactory.getLogger(this.getClass)
@@ -29,8 +22,11 @@ object DBService {
   lazy private val proplite = {
     val prop = new Properties()
     prop.setProperty("date_string_format", "yyyy-MM-dd")
-    prop.setProperty("connectionPool", "disabled")
+//    prop.setProperty("connectionPool", "disabled")
     prop.setProperty("keepAliveConnection", "true")
+//    prop.setProperty("numberThreads ", "1")
+    prop.setProperty("maxConnections ", "256")
+    prop.setProperty("maximumPoolSize", "256")
     prop
   }
   lazy private val dbFilename = s"kutu-$appVersion.sqlite"
@@ -62,14 +58,23 @@ object DBService {
 
   private lazy val databaselite = {
     logger.info(s"Using Database at ${dbfile.getAbsolutePath}")
-    Database.forURL(
-      url = "jdbc:sqlite:" + dbfile.getAbsolutePath,
-      driver = "org.sqlite.JDBC",
-      prop = proplite,
-      user = "kutu",
-      password = "kutu",
-      executor = AsyncExecutor("DB-Actions", 500, 10000)
-    )
+    val hikariConfig = new HikariConfig()
+    hikariConfig.setJdbcUrl("jdbc:sqlite:" + dbfile.getAbsolutePath)
+    hikariConfig.setDriverClassName("org.sqlite.JDBC")
+    hikariConfig.setDataSourceProperties(proplite)
+    hikariConfig.setUsername("kutu")
+    hikariConfig.setPassword("kutu")
+
+    val dataSource = new HikariDataSource(hikariConfig)
+    Database.forDataSource(dataSource, maxConnections = Some(256), executor = AsyncExecutor("DB-Actions", 256, 10000), keepAliveConnection = true)
+//    Database.forURL(
+//      url = "jdbc:sqlite:" + dbfile.getAbsolutePath,
+//      driver = "org.sqlite.JDBC",
+//      prop = proplite,
+//      user = "kutu",
+//      password = "kutu",
+//      executor = AsyncExecutor("DB-Actions", 256, 10000)
+//    )
   }
   
   private var database: Option[DatabaseDef] = None  
@@ -78,6 +83,7 @@ object DBService {
 
   def updateDB(db: DatabaseDef) = {
     val sqlScripts = Seq(
+      "SetJournalWAL.sql"
 //        ,"AlterWettkampfUUID.sql"
         )
 
@@ -165,7 +171,17 @@ object DBService {
     }
     val statements = parse(script)
     val statementActions = statements.map(statement => sqlu"""#$statement""")
-    val counters = Await.result(db.run(DBIO.sequence(statementActions).transactionally), Duration.Inf)
+    val counters: Seq[Int] = if (statementActions.size == 1) {
+      if (statements(0).startsWith("PRAGMA")) {
+        Await.result(db.run(statementActions.head), Duration.Inf)
+        Seq(1)
+      } else {
+        Await.result(db.run(DBIO.sequence(statementActions)), Duration.Inf)
+      }
+    } else {
+      Await.result(db.run(DBIO.sequence(statementActions).transactionally), Duration.Inf)
+    }
+
     val log = statements.zip(counters).map(p => s"statements: ${p._1}\n\tupdate-cnt: ${p._2}").mkString("\n")
     log
   }
@@ -225,7 +241,7 @@ trait DBService {
   private val logger = LoggerFactory.getLogger(this.getClass)
   
   def database: DatabaseDef = DBService.startDB()
-  
+
 
   implicit def getSQLDate(date: String) = try {
     new java.sql.Date(DBService.sdf.parse(date).getTime)

@@ -1,6 +1,5 @@
 package ch.seidel.kutu.domain
 
-import slick.jdbc.PositionedResult
 import slick.jdbc.GetResult
 
 trait WertungsrichterResultMapper extends VereinResultMapper {

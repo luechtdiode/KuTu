@@ -1,16 +1,11 @@
 package ch.seidel.kutu.renderer
 
-import ch.seidel.kutu.data._
-import ch.seidel.kutu.domain.GroupRow
-import javafx.scene.{ control => jfxsc }
-import javafx.scene.{ control => jfxsc }
-import scalafx.Includes._
-import scalafx.scene.control.TableColumn.CellDataFeatures
-import scalafx.scene.control.TableView
-import ch.seidel.kutu.domain._
-import java.util.concurrent.atomic.AtomicBoolean
 import java.io.File
-import PrintUtil._
+import java.util.concurrent.atomic.AtomicBoolean
+
+import ch.seidel.kutu.data._
+import ch.seidel.kutu.domain.{GroupRow, _}
+import ch.seidel.kutu.renderer.PrintUtil._
 import org.slf4j.LoggerFactory
 
 trait ScoreToHtmlRenderer {
@@ -221,7 +216,7 @@ trait ScoreToHtmlRenderer {
                   gc.cols.foreach { thc =>
                     if(first) {
                       gsBlock.append(s"<th class='blockstart'>${thc.text}</th>")
-                      first = false;
+                      first = false
                     }
                     else {
                       gsBlock.append(s"<th>${thc.text}</th>")

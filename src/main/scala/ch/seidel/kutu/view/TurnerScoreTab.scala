@@ -1,12 +1,9 @@
 package ch.seidel.kutu.view
 
-import scalafx.Includes._
-import scalafx.scene.control.TableColumn._
+import ch.seidel.kutu.Config._
 import ch.seidel.kutu.data._
 import ch.seidel.kutu.domain._
-import ch.seidel.kutu.renderer.ScoreToHtmlRenderer
 import ch.seidel.kutu.renderer.PrintUtil.FilenameDefault
-import ch.seidel.kutu.Config._
 
 class TurnerScoreTab(val verein: Option[Verein], override val service: KutuService) extends DefaultRanglisteTab(service) {
   override val title = verein match {case Some(v) => v.easyprint case None => "Vereinsübergreifend"}
@@ -23,8 +20,8 @@ class TurnerScoreTab(val verein: Option[Verein], override val service: KutuServi
 
   override def isPopulated = {
     val combos = populate(groupers)
-    combos(0).selectionModel.value.select(ByWettkampfProgramm())
-    combos(1).selectionModel.value.select(ByGeschlecht())
+    combos.head.selectionModel.value.select(ByWettkampfProgramm())
+    combos.tail.head.selectionModel.value.select(ByGeschlecht())
 
     true
   }

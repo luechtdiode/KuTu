@@ -1,21 +1,16 @@
 package ch.seidel.kutu.domain
 
-import scala.concurrent.Await
-import scala.concurrent.ExecutionContext.Implicits.global
-import scala.concurrent.duration.Duration
-
-import org.slf4j.LoggerFactory
-import java.sql.Date
-
-import slick.jdbc.GetResult
-import slick.jdbc.SQLiteProfile
-import slick.jdbc.SQLiteProfile.api._
-import scala.collection.JavaConverters
 import java.util.UUID
-import ch.seidel.kutu.http.WebSocketClient
+import java.util.concurrent.TimeUnit
+
 import ch.seidel.kutu.akka.AthletWertungUpdated
-import scala.util.Try
-import scala.concurrent.Future
+import ch.seidel.kutu.http.WebSocketClient
+import org.slf4j.LoggerFactory
+import slick.jdbc.SQLiteProfile.api._
+
+import scala.concurrent.ExecutionContext.Implicits.global
+import scala.concurrent.{Await, Future}
+import scala.concurrent.duration.Duration
 
 object WertungServiceBestenResult {
   private val logger = LoggerFactory.getLogger(this.getClass)
@@ -28,7 +23,7 @@ object WertungServiceBestenResult {
       bestenResults = Map[String,WertungView]()
       shouldResetBestenResults = false;
     }
-    bestenResults = bestenResults.updated(wertung.athlet.id + ":" + wertung.wettkampfdisziplin.id, wertung)
+    bestenResults = bestenResults.updated(s"${wertung.athlet.id}:${wertung.wettkampfdisziplin.id}", wertung)
     logger.info(s"actually best-scored: \n${bestenResults.mkString("\n")}")
   }
   
@@ -195,7 +190,7 @@ abstract trait WertungService extends DBService with WertungResultMapper with Di
   def updateAllWertungenAsync(ws: Seq[Wertung]): Future[Seq[WertungView]] = {
     implicit val cache = scala.collection.mutable.Map[Long, ProgrammView]()
     implicit val mapper = getAthletViewResult
-    val ret = database.run(DBIO.sequence((for {
+    val ret = database.run(DBIO.sequence(for {
       w <- ws
     } yield {
       sqlu"""       UPDATE wertung
@@ -224,7 +219,7 @@ abstract trait WertungService extends DBService with WertungResultMapper with Di
                     WHERE w.id=${w.id}
                     order by wd.programm_id, wd.ord
        """.as[WertungView].head
-     })).transactionally)
+     }).transactionally)
     
     ret
   }
@@ -274,14 +269,14 @@ abstract trait WertungService extends DBService with WertungResultMapper with Di
   @throws(classOf[Exception])
   def updateWertungSimple(w: Wertung, putToBestenresults: Boolean = false): Wertung = {
     val wv = readWettkampfDisziplinView(w.wettkampfdisziplinId).notenSpez.verifiedAndCalculatedWertung(w)
-    val wvId = Await.result(database.run(DBIO.sequence(Seq(sqlu"""
+    Await.result(database.run(DBIO.sequence(Seq(sqlu"""
                   UPDATE wertung
                   SET note_d=${wv.noteD}, note_e=${wv.noteE}, endnote=${wv.endnote}, riege=${wv.riege}, riege2=${wv.riege2}
                   WHERE 
                     athlet_Id=${wv.athletId} and wettkampfdisziplin_Id=${wv.wettkampfdisziplinId} and wettkampf_Id=${wv.wettkampfId}
           """//.transactionally
           ))
-    ), Duration.Inf).head
+    ), Duration(5, TimeUnit.SECONDS))
     wv
   }
   
@@ -377,8 +372,8 @@ abstract trait WertungService extends DBService with WertungResultMapper with Di
       programm <- programme
       athletwertungen <- driver.map(we => we.filter { x => x.wettkampfdisziplin.programm.id == programm.id})
       if(athletwertungen.nonEmpty)
-      val einsatz = athletwertungen.head
-      val athlet = einsatz.athlet
+      einsatz = athletwertungen.head
+      athlet = einsatz.athlet
     }
     yield {
       val riegendurchgang1 = riegendurchgaenge.get(einsatz.riege.getOrElse(""))

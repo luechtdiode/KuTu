@@ -2,17 +2,10 @@ package ch.seidel.kutu.renderer
 
 import java.io.File
 
+import ch.seidel.kutu.data._
+import ch.seidel.kutu.domain.{Disziplin, GroupRow}
+import ch.seidel.kutu.renderer.PrintUtil.ImageFile
 import org.slf4j.LoggerFactory
-
-import PrintUtil.ImageFile
-import ch.seidel.kutu.data.GroupLeaf
-import ch.seidel.kutu.data.GroupNode
-import ch.seidel.kutu.data.GroupSection
-import ch.seidel.kutu.data.GroupSum
-import ch.seidel.kutu.data.WKGroupCol
-import ch.seidel.kutu.data.WKLeafCol
-import ch.seidel.kutu.domain.Disziplin
-import ch.seidel.kutu.domain.GroupRow
 
 object ScoreToJsonRenderer {
   val logger = LoggerFactory.getLogger(this.getClass)

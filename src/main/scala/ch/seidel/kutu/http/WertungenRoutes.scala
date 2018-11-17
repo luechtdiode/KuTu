@@ -1,32 +1,21 @@
 package ch.seidel.kutu.http
 
-import scala.concurrent.Future
-import scala.concurrent.duration.DurationInt
-import scala.util.Failure
-import scala.util.Success
-
 import akka.http.scaladsl.marshallers.sprayjson.SprayJsonSupport
 import akka.http.scaladsl.model.StatusCodes
 import akka.http.scaladsl.server.Route
 import akka.util.Timeout
-import ch.seidel.kutu.akka.AthletWertungUpdated
-import ch.seidel.kutu.akka.CompetitionCoordinatorClientActor
-import ch.seidel.kutu.akka.FinishDurchgangStation
-import ch.seidel.kutu.akka.UpdateAthletWertung
-import ch.seidel.kutu.akka.WertungContainer
-import ch.seidel.kutu.domain.Disziplin
-import ch.seidel.kutu.domain.GeraeteRiege
-import ch.seidel.kutu.domain.KutuService
-import ch.seidel.kutu.domain.ProgrammRaw
-import ch.seidel.kutu.domain.Wertung
-import ch.seidel.kutu.domain.encodeURIComponent
-import ch.seidel.kutu.domain.str2Int
-import ch.seidel.kutu.domain.str2Long
+import ch.seidel.kutu.akka._
+import ch.seidel.kutu.domain.{Disziplin, GeraeteRiege, KutuService, ProgrammRaw, Wertung, encodeURIComponent, str2Int, str2Long}
 import ch.seidel.kutu.renderer.RiegenBuilder
 
+import scala.concurrent.Future
+import scala.concurrent.duration.DurationInt
+import scala.util.{Failure, Success}
+
 trait WertungenRoutes extends SprayJsonSupport with JsonSupport with JwtSupport with AuthSupport with RouterLogging with KutuService with IpToDeviceID {
-  import scala.concurrent.ExecutionContext.Implicits.global
   import spray.json.DefaultJsonProtocol._
+
+  import scala.concurrent.ExecutionContext.Implicits.global
   
   // Required by the `ask` (?) method below
   private implicit lazy val timeout = Timeout(5.seconds) // usually we'd obtain the timeout from the system's configuration
@@ -164,7 +153,7 @@ trait WertungenRoutes extends SprayJsonSupport with JsonSupport with JwtSupport 
                     }
                     
                     if (wertung.wettkampfId == wkid) {
-                      gerateRiegen.filter(filter).flatMap(gr => gr.kandidaten
+                      val found: Option[UpdateAthletWertung] = gerateRiegen.filter(filter).flatMap(gr => gr.kandidaten
                           .filter(k => k.id == wertung.athletId)
                           .map(k => UpdateAthletWertung(
                               loadAthleteView(k.id), 
@@ -173,7 +162,14 @@ trait WertungenRoutes extends SprayJsonSupport with JsonSupport with JwtSupport 
                               gr.durchgang.get, 
                               gid, 
                               halt-1, k.programm))).headOption
+                      found match {
+                        case w @ Some(uw) => w
+                        case _ =>
+                          log.error(s"athlet-id not found (athletId:${wertung.athletId})")
+                          None
+                      }
                     } else {
+                      log.error(s"wkid != wertung.wettkampfId (wkid:$wkid, wettkampfId:${wertung.wettkampfId})")
                       None
                     }
                   }} {
@@ -188,23 +184,29 @@ trait WertungenRoutes extends SprayJsonSupport with JsonSupport with JwtSupport 
   //                      gid)))                  
                       complete(CompetitionCoordinatorClientActor.publish(wertung).andThen{
                         case Success(w) => w match {
-                          case a @ AthletWertungUpdated(athlet, verifiedWertung, wettkampfUUID, durchgang, geraet, programm) =>
+                          case AthletWertungUpdated(athlet, verifiedWertung, _, _, ger, programm) =>
                             val verein: String = athlet.verein.map(_.name).getOrElse("")
                             val wkPgmId = readWettkampf(competitionId.toString()).programmId
                             val isDNoteUsed = wkPgmId != 20 && wkPgmId != 1
                             WertungContainer(athlet.id, athlet.vorname, athlet.name, athlet.geschlecht, verein,
-                                verifiedWertung, geraet, programm, isDNoteUsed)
-                          case _ => StatusCodes.Conflict
+                                verifiedWertung, ger, programm, isDNoteUsed)
+                          case _ =>
+                            log.error(s"Conflict: unexpected Wertung value: $w")
+                            StatusCodes.Conflict
                         }
-                        case Failure(error) => StatusCodes.Conflict
+                        case Failure(error) =>
+                          log.error(s"Conflict: Error publishing Wertung: $wertung", error)
+                          StatusCodes.Conflict
                       })
                       
-                    case _ => 
+                    case x =>
+                      log.error(s"Conflict: unexpected Result: $x, Non-matching wertung: $wertung")
                       complete(StatusCodes.Conflict)
                   }
                 }
               }
             } else {
+              log.error(s"Unauthorized: Reject unauthenticated update of wertung")
               complete(StatusCodes.Unauthorized)
             }
           }

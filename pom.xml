@@ -1,24 +1,56 @@
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
+		 xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
 	<modelVersion>4.0.0</modelVersion>
 	<groupId>ch.seidel</groupId>
 	<artifactId>KuTu</artifactId>
-	<version>2.0.0-SNAPSHOT</version>
+	<version>2.0.1-SNAPSHOT</version>
 
 	<inceptionYear>2014</inceptionYear>
 
+	<profiles>
+		<profile>
+			<id>win</id>
+			<activation>
+				<os>
+					<family>windows</family>
+				</os>
+				<activeByDefault>true</activeByDefault>
+			</activation>
+			<properties>
+				<javafx.os>win</javafx.os>
+				<bundler.os>win64</bundler.os>
+			</properties>
+		</profile>
+		<profile>
+			<id>osx</id>
+			<activation>
+				<os>
+					<family>mac</family>
+				</os>
+			</activation>
+			<properties>
+				<javafx.os>mac</javafx.os>
+				<bundler.os>Darwin</bundler.os>
+			</properties>
+		</profile>
+	</profiles>
+
 	<properties>
-        <app.version>${parsedVersion.majorVersion}.${parsedVersion.minorVersion}</app.version>        
-        <buildDate>${maven.build.timestamp}</buildDate>
-   		<maven.build.timestamp.format>yyyy-MM-dd HH:mm</maven.build.timestamp.format>
+		<app.version>${parsedVersion.majorVersion}.${parsedVersion.minorVersion}</app.version>
+		<buildDate>${maven.build.timestamp}</buildDate>
+		<maven.build.timestamp.format>yyyy-MM-dd HH:mm</maven.build.timestamp.format>
 
 		<scala.majorversion>2.12</scala.majorversion>
-		<scala.version>${scala.majorversion}.4</scala.version>
-		<akkaHttp.version>10.1.0</akkaHttp.version>
-		<akka.version>2.5.4</akka.version>
-		<maven-scala-plugin.version>3.2.1</maven-scala-plugin.version>
-		<maven.compiler.source>1.8</maven.compiler.source>
-		<maven.compiler.target>1.8</maven.compiler.target>
+		<scala.version>${scala.majorversion}.7</scala.version>
+		<akkaHttp.version>10.1.5</akkaHttp.version>
+		<akka.version>2.5.17</akka.version>
+		<javafx.version>11</javafx.version>
+		<scalafx.version>11-R16</scalafx.version>
+		<maven-scala-plugin.version>3.4.1</maven-scala-plugin.version>
+		<gatling.version>3.0.0</gatling.version>
+		<gatling-plugin.version>3.0.0</gatling-plugin.version>
+		<maven.compiler.source>1.10</maven.compiler.source>
+		<maven.compiler.target>1.10</maven.compiler.target>
 		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
 	</properties>
 
@@ -70,17 +102,61 @@
 		<dependency>
 			<groupId>org.scalafx</groupId>
 			<artifactId>scalafx_${scala.majorversion}</artifactId>
-			<version>8.0.144-R12</version>
+			<version>${scalafx.version}</version>
 		</dependency>
+
+		<!-- for JDK11 relevant (not an option: javapackager is removed but needed) -->
+		<!--<dependency>-->
+			<!--<groupId>org.openjfx</groupId>-->
+			<!--<artifactId>javafx-base</artifactId>-->
+			<!--<version>${javafx.version}</version>-->
+			<!--<classifier>${javafx.os}</classifier>-->
+		<!--</dependency>-->
+		<!--<dependency>-->
+			<!--<groupId>org.openjfx</groupId>-->
+			<!--<artifactId>javafx-controls</artifactId>-->
+			<!--<version>${javafx.version}</version>-->
+			<!--<classifier>${javafx.os}</classifier>-->
+		<!--</dependency>-->
+		<!--<dependency>-->
+			<!--<groupId>org.openjfx</groupId>-->
+			<!--<artifactId>javafx-web</artifactId>-->
+			<!--<version>${javafx.version}</version>-->
+			<!--<classifier>${javafx.os}</classifier>-->
+		<!--</dependency>-->
+		<!--<dependency>-->
+			<!--<groupId>org.openjfx</groupId>-->
+			<!--<artifactId>javafx-graphics</artifactId>-->
+			<!--<version>${javafx.version}</version>-->
+			<!--<classifier>${javafx.os}</classifier>-->
+		<!--</dependency>-->
+		<!--<dependency>-->
+			<!--<groupId>org.openjfx</groupId>-->
+			<!--<artifactId>javafx-media</artifactId>-->
+			<!--<version>${javafx.version}</version>-->
+			<!--<classifier>${javafx.os}</classifier>-->
+		<!--</dependency>-->
+
 		<dependency>
 			<groupId>org.controlsfx</groupId>
 			<artifactId>controlsfx</artifactId>
-			<version>8.40.14</version>
+			<version>9.0.0</version>
 		</dependency>
 		<dependency>
 			<groupId>org.xerial</groupId>
 			<artifactId>sqlite-jdbc</artifactId>
 			<version>3.21.0.1</version>
+		</dependency>
+		<dependency>
+			<groupId>com.typesafe.slick</groupId>
+			<artifactId>slick-hikaricp_2.12</artifactId>
+			<version>3.2.3</version>
+		</dependency>
+
+		<dependency>
+			<groupId>com.zaxxer</groupId>
+			<artifactId>HikariCP</artifactId>
+			<version>3.1.0</version>
 		</dependency>
 
 		<!-- akka / akkahttp -->
@@ -143,15 +219,22 @@
 		</dependency>
 		<!-- proxy -->
 		<dependency>
-		    <groupId>com.github.markusbernhardt</groupId>
-		    <artifactId>proxy-vole</artifactId>
-		    <version>1.0.4</version>
-		</dependency>	
-		<!-- dependency> <groupId>org.apache.logging.log4j</groupId> <artifactId>log4j-api</artifactId> 
-			<version>2.10.0</version> </dependency> <dependency> <groupId>org.apache.logging.log4j</groupId> 
-			<artifactId>log4j-core</artifactId> <version>2.10.0</version> </dependency> 
-			<dependency> <groupId>org.slf4j</groupId> <artifactId>slf4j-nop</artifactId> 
-			<version>1.7.25</version> </dependency -->
+			<groupId>com.github.markusbernhardt</groupId>
+			<artifactId>proxy-vole</artifactId>
+			<version>1.0.5</version>
+		</dependency>
+        <!-- https://mvnrepository.com/artifact/org.javadelight/delight-nashorn-sandbox -->
+        <dependency>
+            <groupId>org.javadelight</groupId>
+            <artifactId>delight-nashorn-sandbox</artifactId>
+            <version>0.1.16</version>
+        </dependency>
+
+        <!-- dependency> <groupId>org.apache.logging.log4j</groupId> <artifactId>log4j-api</artifactId>
+            <version>2.10.0</version> </dependency> <dependency> <groupId>org.apache.logging.log4j</groupId>
+            <artifactId>log4j-core</artifactId> <version>2.10.0</version> </dependency>
+            <dependency> <groupId>org.slf4j</groupId> <artifactId>slf4j-nop</artifactId>
+            <version>1.7.25</version> </dependency -->
 		<dependency>
 			<groupId>org.slf4j</groupId>
 			<artifactId>slf4j-api</artifactId>
@@ -186,29 +269,35 @@
 			<scope>test</scope>
 		</dependency>
 		<dependency>
-		    <groupId>junit</groupId>
-		    <artifactId>junit</artifactId>
-		    <version>4.12</version>
-		    <scope>test</scope>
+			<groupId>junit</groupId>
+			<artifactId>junit</artifactId>
+			<version>4.12</version>
+			<scope>test</scope>
 		</dependency>
-		
+
+		<dependency>
+	        <groupId>io.gatling.highcharts</groupId>
+	        <artifactId>gatling-charts-highcharts</artifactId>
+	        <version>${gatling.version}</version>
+	        <scope>test</scope>
+		</dependency>
 	</dependencies>
-	<!-- distributionManagement> <repository> <id>ftp-repository</id> <url>ftp://ftp.interpolar.ch/snapshots</url> 
+	<!-- distributionManagement> <repository> <id>ftp-repository</id> <url>ftp://ftp.interpolar.ch/snapshots</url>
 		</repository> </distributionManagement -->
 	<distributionManagement>
-	 <site>
-	  <id>s3.site</id>
-	  <url>s3://rs-travis/kutuapp/site</url>
-	 </site>
-	 <repository>
-	  <id>s3.release</id>
-	  <url>s3://rs-travis/kutuapp/release</url>
-	 </repository>
-	 <snapshotRepository>
-	  <id>s3.snapshot</id>
-	  <url>s3://rs-travis/kutuapp/snapshot</url>
-	 </snapshotRepository>
-	</distributionManagement>		
+		<site>
+			<id>s3.site</id>
+			<url>s3://rs-travis/kutuapp/site</url>
+		</site>
+		<repository>
+			<id>s3.release</id>
+			<url>s3://rs-travis/kutuapp/release</url>
+		</repository>
+		<snapshotRepository>
+			<id>s3.snapshot</id>
+			<url>s3://rs-travis/kutuapp/snapshot</url>
+		</snapshotRepository>
+	</distributionManagement>
 
 	<build>
 		<resources>
@@ -228,19 +317,24 @@
 			</resource>
 		</resources>
 		<plugins>
+	        <plugin>
+	            <groupId>io.gatling</groupId>
+	            <artifactId>gatling-maven-plugin</artifactId>
+                <version>${gatling-plugin.version}</version>
+	        </plugin>
 			<plugin>
-	            <groupId>org.apache.maven.plugins</groupId>
-	            <artifactId>maven-surefire-plugin</artifactId>
-	            <version>2.21.0</version>
-	            <configuration>
-	                <includes>
-	                    <include>**/*Suite.class</include>
-	                    <include>**/*Test.class</include>
-	                    <include>**/*Tests.class</include>
-	                    <include>**/*Spec.class</include>
-	                    <include>**/*Specs.class</include>
-	                </includes>
-	            </configuration>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-surefire-plugin</artifactId>
+				<version>2.22.1</version>
+				<configuration>
+					<includes>
+						<include>**/*Suite.class</include>
+						<include>**/*Test.class</include>
+						<include>**/*Tests.class</include>
+						<include>**/*Spec.class</include>
+						<include>**/*Specs.class</include>
+					</includes>
+				</configuration>
 			</plugin>
 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
@@ -262,10 +356,10 @@
 							</artifactSet>
 							<transformers>
 								<transformer
-									implementation="org.apache.maven.plugins.shade.resource.AppendingTransformer">
+										implementation="org.apache.maven.plugins.shade.resource.AppendingTransformer">
 									<resource>reference.conf</resource>
 								</transformer>
-								<!-- transformer implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer"> 
+								<!-- transformer implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
 									<manifestEntries> <Main-Class>akka.Main</Main-Class> </manifestEntries> </transformer -->
 							</transformers>
 						</configuration>
@@ -287,7 +381,6 @@
 						<configuration>
 							<sources>
 								<source>src/main/scala</source>
-								<source>Scripts</source>
 							</sources>
 						</configuration>
 					</execution>
@@ -308,7 +401,8 @@
 			<plugin>
 				<groupId>net.alchim31.maven</groupId>
 				<artifactId>scala-maven-plugin</artifactId>
-				<version>3.2.1</version>
+				<version>3.2.2</version>
+				<!--<version>3.4.2</version>-->
 				<executions>
 					<execution>
 						<goals>
@@ -318,16 +412,25 @@
 					</execution>
 				</executions>
 				<configuration>
+					<args>
+						<arg>-unchecked</arg>
+						<arg>-deprecation</arg>
+						<arg>-explaintypes</arg>
+						<arg>-feature</arg>
+						<arg>-language:implicitConversions</arg>
+						<arg>-language:postfixOps</arg>
+						<arg>-language:existentials</arg>
+					</args>
 					<jvmArgs>
 						<jvmArg>-Xms64m</jvmArg>
 						<jvmArg>-Xmx1024m</jvmArg>
 					</jvmArgs>
 				</configuration>
 			</plugin>
-			<!-- plugin> <artifactId>maven-dependency-plugin</artifactId> <version>2.10</version> 
-				<executions> <execution> <id>unpack-dependencies</id> <phase>package</phase> 
-				<goals> <goal>unpack-dependencies</goal> </goals> <configuration> <excludeScope>system</excludeScope> 
-				<excludeGroupIds>junit,org.mockito,org.hamcrest</excludeGroupIds> <outputDirectory>${project.build.directory}/classes</outputDirectory> 
+			<!-- plugin> <artifactId>maven-dependency-plugin</artifactId> <version>2.10</version>
+				<executions> <execution> <id>unpack-dependencies</id> <phase>package</phase>
+				<goals> <goal>unpack-dependencies</goal> </goals> <configuration> <excludeScope>system</excludeScope>
+				<excludeGroupIds>junit,org.mockito,org.hamcrest</excludeGroupIds> <outputDirectory>${project.build.directory}/classes</outputDirectory>
 				</configuration> </execution> </executions> </plugin -->
 			<plugin>
 				<groupId>org.codehaus.mojo</groupId>
@@ -341,7 +444,7 @@
 							<goal>exec</goal>
 						</goals>
 						<configuration>
-							<executable>${env.JAVA_HOME}/bin/javapackager</executable>
+							<executable>${java.home}/bin/javapackager</executable>
 							<arguments>
 								<argument>-createjar</argument>
 								<argument>-nocss2bin</argument>
@@ -349,8 +452,10 @@
 								<argument>Permissions=all-permissions,Codebase=*,Application-Name=TurnerWettkampf-App-v${parsedVersion.majorVersion}r${parsedVersion.minorVersion}</argument>
 								<argument>-appclass</argument>
 								<argument>ch.seidel.kutu.KuTuApp</argument>
+								<argument>-srcdir</argument>
+								<argument>${project.build.directory}</argument>
 								<argument>-srcfiles</argument>
-								<argument>${project.build.directory}/${project.artifactId}-${project.version}-allinone.jar</argument>
+								<argument>${project.artifactId}-${project.version}-allinone.jar</argument>
 								<argument>-outdir</argument>
 								<argument>.</argument>
 								<argument>-outdir</argument>
@@ -361,13 +466,13 @@
 							</arguments>
 						</configuration>
 					</execution>
-					<!-- execution> <id>sign-jar</id> <phase>package</phase> <goals> <goal>exec</goal> 
-						</goals> <configuration> <executable>${env.JAVA_HOME}/bin/javapackager</executable> 
-						<arguments> <argument>-signjar</argument> <argument>-srcdir</argument> <argument>${project.build.directory}</argument> 
-						<argument>-outdir</argument> <argument>${project.build.directory}</argument> 
-						<argument>-keyStore</argument> <argument>ksdev.jks</argument> <argument>-storePass</argument> 
-						<argument>${keyPass}</argument> <argument>-keyPass</argument> <argument>${keyPass}</argument> 
-						<argument>-alias</argument> <argument>app.interpolar.ch</argument> </arguments> 
+					<!-- execution> <id>sign-jar</id> <phase>package</phase> <goals> <goal>exec</goal>
+						</goals> <configuration> <executable>${env.JAVA_HOME}/bin/javapackager</executable>
+						<arguments> <argument>-signjar</argument> <argument>-srcdir</argument> <argument>${project.build.directory}</argument>
+						<argument>-outdir</argument> <argument>${project.build.directory}</argument>
+						<argument>-keyStore</argument> <argument>ksdev.jks</argument> <argument>-storePass</argument>
+						<argument>${keyPass}</argument> <argument>-keyPass</argument> <argument>${keyPass}</argument>
+						<argument>-alias</argument> <argument>app.interpolar.ch</argument> </arguments>
 						</configuration> </execution -->
 					<execution>
 						<id>deploy-native</id>
@@ -376,7 +481,7 @@
 							<goal>exec</goal>
 						</goals>
 						<configuration>
-							<executable>${env.JAVA_HOME}/bin/javapackager</executable>
+							<executable>${java.home}/bin/javapackager</executable>
 							<arguments>
 								<argument>-deploy</argument>
 								<argument>-appclass</argument>
@@ -389,7 +494,7 @@
 								<argument>-srcfiles</argument>
 								<argument>${project.artifactId}-app.jar</argument>
 								<argument>-outdir</argument>
-								<argument>${project.build.directory}/${OS}</argument>
+								<argument>${project.build.directory}/${bundler.os}</argument>
 								<argument>-outfile</argument>
 								<argument>KuTuApp</argument>
 								<argument>-native</argument>
@@ -400,7 +505,7 @@
 								<argument>-height</argument>
 								<argument>900</argument>
 								<argument>-title</argument>
-								<argument>"Turner Wettkampf"</argument>
+								<argument>Wettkampf</argument>
 								<argument>-BsystemWide=true</argument>
 								<!-- argument>-BjvmOptions=-Xmx512m</argument -->
 								<argument>-Bcopyright="Interpolar"</argument>
@@ -408,7 +513,7 @@
 								<!-- argument>-Bdescription="Wettkampf Verwaltung und Durchfuehrung"</argument -->
 								<argument>-Bmac.CFBundleIdentifier="ch.seidel.KuTuApp"</argument>
 								<argument>-Bmac.CFBundleName=Wettkampf</argument>
-								<argument>-Bmac.CFBundleVersion=200</argument>
+								<argument>-Bmac.CFBundleVersion=${parsedVersion.majorVersion}${parsedVersion.minorVersion}0</argument>
 							</arguments>
 						</configuration>
 					</execution>
@@ -440,11 +545,11 @@
 					</sourceIncludes>
 				</configuration>
 			</plugin>
-			<!-- activate to import as Maven-Project into eclipse, then deactivate 
-				again plugin> <groupId>org.apache.maven.plugins</groupId> <artifactId>maven-compiler-plugin</artifactId> 
-				<configuration> <skipMain>true</skipMain> <skip>true</skip> </configuration> 
-				<executions> <execution> <id>default-compile</id> <goals><goal>compile</goal></goals> 
-				</execution> <execution> <id>default-testCompile</id> <goals><goal>testCompile</goal></goals> 
+			<!-- activate to import as Maven-Project into eclipse, then deactivate
+				again plugin> <groupId>org.apache.maven.plugins</groupId> <artifactId>maven-compiler-plugin</artifactId>
+				<configuration> <skipMain>true</skipMain> <skip>true</skip> </configuration>
+				<executions> <execution> <id>default-compile</id> <goals><goal>compile</goal></goals>
+				</execution> <execution> <id>default-testCompile</id> <goals><goal>testCompile</goal></goals>
 				</execution> </executions> </plugin -->
 			<!-- plugin>
 				<groupId>org.apache.maven.plugins</groupId>
@@ -470,11 +575,11 @@
 					<!--  see https://stackoverflow.com/questions/20650514/upload-static-resource-to-amazon-s3-server-using-maven-plugin -->
 					<serverId>s3.release</serverId>
 					<url>s3://rs-travis/public/kutuapp/</url>
-					<fromDir>${basedir}/target/${OS}/bundles</fromDir>
+					<fromDir>${basedir}/target/${bundler.os}</fromDir>
 					<includes>
-                            **/*.msi, **/*.pkg, **/*.dmg, **/*.rpm, **/*.deb
+						**/*.msi, **/*.pkg, **/*.dmg, **/*.rpm, **/*.deb
 					</includes>
-					<toDir>${project.version}/${OS}</toDir>
+					<toDir>${project.version}/${bundler.os}</toDir>
 				</configuration>
 				<executions>
 					<execution>
@@ -484,7 +589,7 @@
 							<goal>upload</goal>
 						</goals>
 						<configuration>
-							<fromDir>${basedir}/target/${OS}/bundles</fromDir>
+							<fromDir>${basedir}/target/${bundler.os}</fromDir>
 							<includes>
 								**/*.msi, **/*.pkg, **/*.dmg, **/*.rpm, **/*.deb
 							</includes>
@@ -495,10 +600,10 @@
 		</plugins>
 		<extensions>
 			<extension>
-			    <groupId>org.kuali.maven.wagons</groupId>
-			    <artifactId>maven-s3-wagon</artifactId>
-			    <version>1.2.1</version>
-		   </extension>
+				<groupId>org.kuali.maven.wagons</groupId>
+				<artifactId>maven-s3-wagon</artifactId>
+				<version>1.2.1</version>
+			</extension>
 			<!-- Enabling the use of FTP -->
 			<extension>
 				<groupId>org.apache.maven.wagon</groupId>

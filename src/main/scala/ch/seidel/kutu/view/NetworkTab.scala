@@ -1,57 +1,31 @@
 package ch.seidel.kutu.view
 
 import java.util.UUID
-import javafx.scene.{ control => jfxsc }
 
-import scalafx.Includes._
-import scalafx.scene.control.Tab
-import scalafx.scene.control.TabPane
-import scalafx.scene.control.TableView
-import scalafx.scene.control.TableColumn
-import scalafx.scene.control.TableColumn._
-import scalafx.scene.layout.BorderPane
-import scalafx.scene.layout.Priority
-import scalafx.geometry.Insets
-import scalafx.event.subscriptions.Subscription
-import scalafx.collections.ObservableBuffer
-import scalafx.beans.property.StringProperty
-import scalafx.beans.value.ObservableValue
-
-import ch.seidel.kutu.KuTuApp
-import ch.seidel.kutu.data._
-import ch.seidel.kutu.domain._
+import ch.seidel.commons.{DisplayablePage, PageDisplayer, TabWithService}
 import ch.seidel.kutu.Config._
-import ch.seidel.commons.TabWithService
-import ch.seidel.kutu.renderer.RiegenBuilder
-import scalafx.scene.control.TableCell
-import scalafx.scene.image.Image
-import scalafx.scene.image.ImageView
-import java.util.Date
-import scala.concurrent.duration.Duration
-import scalafx.event.ActionEvent
-import scalafx.scene.control.MenuItem
-import scala.concurrent.Await
-import ch.seidel.kutu.KuTuServer
-import scalafx.beans.binding.Bindings
-import ch.seidel.kutu.ConnectionStates
-import scalafx.scene.control.MenuButton
-import scalafx.scene.control.ContextMenu
-import scalafx.application.Platform
-import scala.concurrent.duration.Duration
-import java.util.concurrent.TimeUnit
-import ch.seidel.kutu.http.Core
-import scalafx.beans.property.ObjectProperty
+import ch.seidel.kutu.{ConnectionStates, KuTuApp, KuTuServer}
 import ch.seidel.kutu.akka._
+import ch.seidel.kutu.domain._
 import ch.seidel.kutu.http.WebSocketClient
-import scala.util.Success
-import ch.seidel.commons.PageDisplayer
-import scala.util.Failure
-import ch.seidel.commons.DisplayablePage
+import ch.seidel.kutu.renderer.RiegenBuilder
+import javafx.scene.{control => jfxsc}
+import scalafx.Includes._
+import scalafx.application.Platform
+import scalafx.beans.binding.Bindings
+import scalafx.beans.property.{ObjectProperty, StringProperty}
+import scalafx.collections.ObservableBuffer
+import scalafx.event.ActionEvent
+import scalafx.event.subscriptions.Subscription
 import scalafx.scene.Node
-import scalafx.scene.layout.VBox
-import scalafx.scene.control.Label
-import scalafx.scene.control.ToolBar
-import scalafx.scene.control.Button
+import scalafx.scene.control.TableColumn._
+import scalafx.scene.control._
+import scalafx.scene.image.{Image, ImageView}
+import scalafx.scene.layout.{BorderPane, Priority, VBox}
+
+import scala.concurrent.Await
+import scala.concurrent.duration.Duration
+import scala.util.{Failure, Success}
 
 case class DurchgangState(wettkampfUUID: String, name: String, started: Long, complete: Boolean, finished: Long, geraeteRiegen: List[GeraeteRiege]) {
   def start(time: Long = 0) = DurchgangState(wettkampfUUID, name, if (started == 0) if (time == 0) System.currentTimeMillis() else time else started, complete, 0, geraeteRiegen)

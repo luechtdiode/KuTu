@@ -1,43 +1,27 @@
 package ch.seidel.kutu.renderer
 
 import java.awt.Desktop
-import java.io.BufferedOutputStream
-import java.io.File
-import java.io.FileOutputStream
-
-import scala.language.implicitConversions
+import java.io._
+import java.util.Base64
+import java.util.concurrent.atomic.AtomicBoolean
 
 import ch.seidel.commons._
 import ch.seidel.kutu.KuTuApp
+import javax.imageio.ImageIO
+import org.slf4j.LoggerFactory
 import scalafx.Includes._
 import scalafx.beans.binding.Bindings
 import scalafx.event.ActionEvent
-import scalafx.geometry.Insets
-import scalafx.geometry.Pos
-import scalafx.print.PageOrientation
-import scalafx.print.Paper
-import scalafx.print.Printer
-import scalafx.print.PrinterJob
+import scalafx.geometry.{Insets, Pos}
+import scalafx.print.Printer.MarginType
+import scalafx.print._
 import scalafx.scene.Node
 import scalafx.scene.control._
 import scalafx.scene.layout._
 import scalafx.scene.web.WebEngine
-import scalafx.print.Printer.MarginType
-import java.io.ByteArrayOutputStream
-import javax.imageio.ImageIO
-import java.util.Base64
-import java.awt.image.RenderedImage
-import scalafx.print.PrintResolution
-import scalafx.print.PrintQuality
-import java.awt.image.BufferedImage
-import java.util.concurrent.atomic.AtomicBoolean
-import javax.print.attribute.ResolutionSyntax
-import javax.print.attribute.standard.PrinterResolution
-import com.sun.xml.internal.messaging.saaj.util.ByteInputStream
-import java.io.FileInputStream
-import java.io.BufferedInputStream
+
 import scala.io.Source
-import org.slf4j.LoggerFactory
+import scala.language.implicitConversions
 
 
 object PrintUtil {

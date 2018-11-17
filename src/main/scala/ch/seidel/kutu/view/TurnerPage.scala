@@ -1,31 +1,20 @@
 package ch.seidel.kutu.view
 
-import java.text.SimpleDateFormat
-import java.sql.Date
-import javafx.scene.{ control => jfxsc }
-import javafx.scene.{ control => jfxsc}
-import scala.collection.JavaConversions
+import ch.seidel.commons._
+import ch.seidel.kutu.domain._
+import javafx.scene.{control => jfxsc}
 import scalafx.Includes._
 import scalafx.beans.property.StringProperty
 import scalafx.collections.ObservableBuffer
-import scalafx.util.converter.DefaultStringConverter
 import scalafx.event.ActionEvent
-import scalafx.application.Platform
-import scalafx.scene.control._
-import scalafx.scene.control.TableColumn._
-import scalafx.scene.control.Tab.sfxTab2jfx
-import scalafx.scene.layout._
-import scalafx.scene.input.KeyEvent
-import scalafx.scene.input.KeyCode
-import scalafx.scene.Node
 import scalafx.geometry.Pos
-
-import ch.seidel.commons.AutoCommitTextFieldTableCell
-import ch.seidel.commons.DisplayablePage
-import ch.seidel.commons.TabWithService
-import ch.seidel.commons.LazyTabPane
-import ch.seidel.kutu.domain._
-import ch.seidel.commons.PageDisplayer
+import scalafx.scene.Node
+import scalafx.scene.control.Tab.sfxTab2jfx
+import scalafx.scene.control.TableColumn._
+import scalafx.scene.control._
+import scalafx.scene.input.KeyEvent
+import scalafx.scene.layout._
+import scalafx.util.converter.DefaultStringConverter
 
 object TurnerPage {
   var turnerAnalyzers = Map[Long, TurnerAnalyzer]()
@@ -67,12 +56,14 @@ object TurnerPage {
 
   class VereinTab(val verein: Verein, override val service: KutuService, val tabpane: LazyTabPane) extends Tab with TabWithService {
     import scala.collection.JavaConversions._
-    import slick.jdbc.SQLiteProfile
-    import slick.jdbc.SQLiteProfile.api._
     
     override def isPopulated: Boolean = {
       val athleten = service.selectAthletesOfVerein(verein.id)
-        .sortBy { a => (a.activ match {case true => "A" case _ => "X"}) + ":" + a.name + ":" + a.vorname }.map{a => AthletEditor(a)}
+        .sortBy { a => (if (a.activ) {
+          "A"
+        } else {
+          "X"
+        }) + ":" + a.name + ":" + a.vorname }.map{a => AthletEditor(a)}
 
       val wkModel = ObservableBuffer[AthletEditor](athleten)
 
@@ -110,13 +101,13 @@ object TurnerPage {
     def updateFilteredList(newVal: String) {
       //if(!newVal.equalsIgnoreCase(lastFilter)) {
         lastFilter = newVal
-        val sortOrder = athletenview.sortOrder.toList;
+        val sortOrder = athletenview.sortOrder.toList
         wkModel.clear()
         val searchQuery = newVal.toUpperCase().split(" ")
         for{athlet <- athleten} {
           val matches =
             searchQuery.forall{search =>
-            if(search.isEmpty() || athlet.name.value.toUpperCase().contains(search)) {
+            if(search.isEmpty || athlet.name.value.toUpperCase().contains(search)) {
               true
             }
             else if(athlet.vorname.value.toUpperCase().contains(search)) {
@@ -128,7 +119,7 @@ object TurnerPage {
           }
 
           if(matches) {
-            wkModel.add(athlet)
+            wkModel :+ athlet
           }
         }
         athletenview.sortOrder.clear()
@@ -145,7 +136,7 @@ object TurnerPage {
     }
     athletenview.selectionModel.value.setCellSelectionEnabled(true)
     athletenview.filterEvent(KeyEvent.KeyPressed) { (ke: KeyEvent) =>
-      AutoCommitTextFieldTableCell.handleDefaultEditingKeyEvents(athletenview, false, txtUserFilter)(ke)
+      AutoCommitTextFieldTableCell.handleDefaultEditingKeyEvents(athletenview, double = false, txtUserFilter)(ke)
     }
 
     val addButton = new Button {
@@ -155,8 +146,8 @@ object TurnerPage {
         val ae = new AthletEditor(Athlet(verein))
         wkModel.insert(0, ae)
         athletenview.requestFocus()
-        athletenview.selectionModel.value.select(0, athletenview.columns(0))
-        athletenview.scrollToColumn(athletenview.columns(0))
+        athletenview.selectionModel.value.select(0, athletenview.columns.head)
+        athletenview.scrollToColumn(athletenview.columns.head)
 //        athletenview.selectionModel().select(ae)
       }
     }
@@ -209,9 +200,9 @@ object TurnerPage {
 //        }
 //      }
 //    }
-    analyzeVereinButton.disable <== when(athletenview.selectionModel.value.selectedItemProperty.isNull()) choose true otherwise false
-//    analyzeButton.disable <== when(athletenview.selectionModel.value.selectedItemProperty.isNull()) choose true otherwise false
-    removeButton.disable <== when(athletenview.selectionModel.value.selectedItemProperty.isNull()) choose true otherwise false
+    analyzeVereinButton.disable <== when(athletenview.selectionModel.value.selectedItemProperty.isNull) choose true otherwise false
+//    analyzeButton.disable <== when(athletenview.selectionModel.value.selectedItemProperty.isNull choose true otherwise false
+    removeButton.disable <== when(athletenview.selectionModel.value.selectedItemProperty.isNull) choose true otherwise false
 
     val cont = new BorderPane {
       hgrow = Priority.Always
@@ -271,28 +262,22 @@ object TurnerPage {
         closable = false
       })
 
-      val retSorted = retUnsorted.sortBy(tab =>
-        if(tab.isInstanceOf[VereinTab]) {
+      val retSorted = retUnsorted.sortBy {
+        case _: VereinTab =>
           0
-        }
-        else if(tab.isInstanceOf[TurnerAnalyzer]) {
-          val ta = tab.asInstanceOf[TurnerAnalyzer]
+        case ta: TurnerAnalyzer =>
           ta.athlet match {
             case Some(a) => a.id
             case None => 1000
           }
-        }
-        else if(tab.isInstanceOf[TurnerScoreTab]) {
-          val ts = tab.asInstanceOf[TurnerScoreTab]
+        case ts: TurnerScoreTab =>
           ts.verein match {
             case Some(v) => 1001
             case None => 1002
           }
-        }
-        else {
+        case _ =>
           5000
-        }
-      )
+      }
       retSorted
     }
     new TurnerPage( new LazyTabPane(refresher, () => {}))
@@ -302,7 +287,6 @@ object TurnerPage {
 class TurnerPage(tabPane: LazyTabPane) extends DisplayablePage {
 
   def getPage = {
-    import WettkampfPage._
     TurnerPage.turnerAnalyzers = Map[Long, TurnerAnalyzer]()
     tabPane.init()
     tabPane

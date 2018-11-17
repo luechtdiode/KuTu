@@ -1,8 +1,6 @@
 package ch.seidel.commons
 
 import javafx.beans.value.WritableObjectValue
-import javafx.beans.value.ObservableValue
-import javafx.beans.value.ObservableValue
 
 trait Rollbackable[T] extends WritableObjectValue[T] {
 

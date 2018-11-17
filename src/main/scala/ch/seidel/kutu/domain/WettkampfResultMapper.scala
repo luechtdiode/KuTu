@@ -1,7 +1,6 @@
 package ch.seidel.kutu.domain
 
-import slick.jdbc.PositionedResult
-import slick.jdbc.GetResult
+import slick.jdbc.{GetResult, PositionedResult}
 
 /**
  * Wettkampf

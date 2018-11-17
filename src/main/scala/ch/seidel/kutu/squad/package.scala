@@ -1,7 +1,6 @@
 package ch.seidel.kutu
 
 import ch.seidel.kutu.domain._
-import scala.annotation.tailrec
 
 package object squad {
 
@@ -15,7 +14,7 @@ package object squad {
   case class GeraeteRiege(turnerriegen: Set[TurnerRiege]) {
     lazy val size = turnerriegen.foldLeft(0)((acc, item) => acc + item.size)
     lazy val smallestDividable: Option[TurnerRiege] = {
-      if(turnerriegen.size > 1) Some(turnerriegen.toSeq.sortBy(_.size).head)
+      if(turnerriegen.size > 1) Some(turnerriegen.toSeq.minBy(_.size))
       else                      None
     }
     def ++ (other: GeraeteRiege) = GeraeteRiege(turnerriegen ++ other.turnerriegen)
@@ -29,9 +28,9 @@ package object squad {
     def + (turnerRiege: TurnerRiege) = copy(turnerriegen + turnerRiege)
     def + (geraeteRiegen: GeraeteRiegen): GeraeteRiegen = geraeteRiegen + this
     def countVereine(like: Option[Verein]) = {
-      turnerriegen.filter{tr =>
+      turnerriegen.count{tr =>
         like.equals(tr.verein)
-      }.size
+      }
     }
     def withVerein(like: Option[Verein]) = GeraeteRiege(turnerriegen.filter(tv => like.equals(tv.verein)))
     def nonEmpty = turnerriegen.nonEmpty

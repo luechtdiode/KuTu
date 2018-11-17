@@ -3,24 +3,17 @@ package ch.seidel.kutu.view
 import java.awt.Desktop
 import java.util.UUID
 
-import javafx.scene.{ control => jfxsc }
+import ch.seidel.commons.{AutoCommitTextFieldTableCell, DisplayablePage, PageDisplayer, TabWithService}
+import ch.seidel.kutu.Config._
+import ch.seidel.kutu.KuTuApp
+import ch.seidel.kutu.data.ResourceExchanger
+import ch.seidel.kutu.domain.{Disziplin, GemischteRiegen, GemischterDurchgang, GetrennteDurchgaenge, KutuService, Riege, RiegeRaw, SexDivideRule, WettkampfView, str2Int}
+import ch.seidel.kutu.renderer.PrintUtil.FilenameDefault
+import ch.seidel.kutu.renderer.{PrintUtil, RiegenBuilder, WertungsrichterQRCode, WertungsrichterQRCodesToHtmlRenderer}
+import ch.seidel.kutu.squad.DurchgangBuilder
 import javafx.scene.text.Text
-import scalafx.Includes.eventClosureWrapperWithParam
-import scalafx.Includes.handle
-import scalafx.Includes.jfxActionEvent2sfx
-import scalafx.Includes.jfxBooleanBinding2sfx
-import scalafx.Includes.jfxBounds2sfx
-import scalafx.Includes.jfxCellEditEvent2sfx
-import scalafx.Includes.jfxKeyEvent2sfx
-import scalafx.Includes.jfxMouseEvent2sfx
-import scalafx.Includes.jfxObjectProperty2sfx
-import scalafx.Includes.jfxParent2sfx
-import scalafx.Includes.jfxPixelReader2sfx
-import scalafx.Includes.jfxReadOnlyBooleanProperty2sfx
-import scalafx.Includes.jfxTableViewSelectionModel2sfx
-import scalafx.Includes.jfxText2sfxText
-import scalafx.Includes.observableList2ObservableBuffer
-import scalafx.Includes.when
+import javafx.scene.{control => jfxsc}
+import scalafx.Includes.{eventClosureWrapperWithParam, handle, jfxActionEvent2sfx, jfxBooleanBinding2sfx, jfxBounds2sfx, jfxCellEditEvent2sfx, jfxKeyEvent2sfx, jfxMouseEvent2sfx, jfxObjectProperty2sfx, jfxParent2sfx, jfxPixelReader2sfx, jfxReadOnlyBooleanProperty2sfx, jfxTableViewSelectionModel2sfx, jfxText2sfxText, observableList2ObservableBuffer, when}
 import scalafx.application.Platform
 import scalafx.beans.binding.Bindings
 import scalafx.beans.property.StringProperty
@@ -28,77 +21,19 @@ import scalafx.beans.value.ObservableValue
 import scalafx.collections.ObservableBuffer
 import scalafx.collections.ObservableBuffer.observableBuffer2ObservableList
 import scalafx.event.ActionEvent
-import scalafx.geometry.BoundingBox
-import scalafx.geometry.Bounds
-import scalafx.geometry.Insets
-import scalafx.geometry.Point2D
-import scalafx.geometry.Pos
+import scalafx.geometry._
 import scalafx.print.PageOrientation
 import scalafx.scene.Node
-import scalafx.scene.control.Button
-import scalafx.scene.control.ButtonBase
-import scalafx.scene.control.CheckBox
-import scalafx.scene.control.ComboBox
-import scalafx.scene.control.ContextMenu
-import scalafx.scene.control.Label
-import scalafx.scene.control.ListView
-import scalafx.scene.control.Menu
-import scalafx.scene.control.MenuButton
-import scalafx.scene.control.MenuItem
-import scalafx.scene.control.SelectionMode
 import scalafx.scene.control.SelectionMode.sfxEnum2jfx
-import scalafx.scene.control.SeparatorMenuItem
-import scalafx.scene.control.Tab
-import scalafx.scene.control.TabPane
-import scalafx.scene.control.TableColumn
-import scalafx.scene.control.TableColumn.CellEditEvent
-import scalafx.scene.control.TableColumn.sfxTableColumn2jfx
-import scalafx.scene.control.TablePosition
-import scalafx.scene.control.TableView
+import scalafx.scene.control.TableColumn.{CellEditEvent, sfxTableColumn2jfx}
 import scalafx.scene.control.TableView.sfxTableView2jfx
-import scalafx.scene.control.TextField
-import scalafx.scene.control.ToolBar
-import scalafx.scene.control.cell.CheckBoxListCell
-import scalafx.scene.control.cell.CheckBoxTableCell
-import scalafx.scene.control.cell.ComboBoxTableCell
-import scalafx.scene.image.Image
-import scalafx.scene.image.ImageView
-import scalafx.scene.image.WritableImage
-import scalafx.scene.input.ClipboardContent
-import scalafx.scene.input.DataFormat
-import scalafx.scene.input.KeyEvent
-import scalafx.scene.input.TransferMode
-import scalafx.scene.layout.BorderPane
-import scalafx.scene.layout.GridPane
-import scalafx.scene.layout.HBox
-import scalafx.scene.layout.Priority
-import scalafx.scene.layout.VBox
+import scalafx.scene.control._
+import scalafx.scene.control.cell.{CheckBoxListCell, CheckBoxTableCell, ComboBoxTableCell}
+import scalafx.scene.image.{Image, ImageView, WritableImage}
+import scalafx.scene.input.{ClipboardContent, DataFormat, KeyEvent, TransferMode}
+import scalafx.scene.layout._
 import scalafx.util.StringConverter
 import scalafx.util.converter.DefaultStringConverter
-
-import ch.seidel.commons.AutoCommitTextFieldTableCell
-import ch.seidel.commons.DisplayablePage
-import ch.seidel.commons.PageDisplayer
-import ch.seidel.commons.TabWithService
-import ch.seidel.kutu.KuTuApp
-import ch.seidel.kutu.data.ResourceExchanger
-import ch.seidel.kutu.domain.Disziplin
-import ch.seidel.kutu.domain.GemischteRiegen
-import ch.seidel.kutu.domain.GemischterDurchgang
-import ch.seidel.kutu.domain.GetrennteDurchgaenge
-import ch.seidel.kutu.domain.KutuService
-import ch.seidel.kutu.domain.Riege
-import ch.seidel.kutu.domain.RiegeRaw
-import ch.seidel.kutu.domain.SexDivideRule
-import ch.seidel.kutu.domain.WettkampfView
-import ch.seidel.kutu.domain.str2Int
-import ch.seidel.kutu.Config._
-import ch.seidel.kutu.renderer.WertungsrichterQRCode
-import ch.seidel.kutu.renderer.WertungsrichterQRCodesToHtmlRenderer
-import ch.seidel.kutu.renderer.PrintUtil
-import ch.seidel.kutu.renderer.PrintUtil.FilenameDefault
-import ch.seidel.kutu.renderer.RiegenBuilder
-import ch.seidel.kutu.squad.DurchgangBuilder
 
 object DurchgangView {
   val DRAG_RIEGE = new DataFormat("application/x-drag-riege");

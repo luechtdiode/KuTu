@@ -3,18 +3,12 @@ package ch.seidel.kutu.view
 import ch.seidel.commons._
 import ch.seidel.kutu.domain._
 import scalafx.Includes._
-import scalafx.beans.property.ReadOnlyStringWrapper
-import scalafx.beans.property.StringProperty.sfxStringProperty2jfx
 import scalafx.collections.ObservableBuffer
-import scalafx.collections.ObservableBuffer.observableBuffer2ObservableList
 import scalafx.event.ActionEvent
+import scalafx.geometry.Pos
 import scalafx.scene.Node
 import scalafx.scene.control._
-import scalafx.scene.control.SelectionMode.sfxEnum2jfx
-import scalafx.scene.control.TableColumn.sfxTableColumn2jfx
 import scalafx.scene.layout._
-import scalafx.geometry.Pos
-import scalafx.geometry.Insets
 
 object AthletDialog {
   def apply(service: KutuService, onSelected: (Athlet)=>Unit) =

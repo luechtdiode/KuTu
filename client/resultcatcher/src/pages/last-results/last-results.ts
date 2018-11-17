@@ -21,6 +21,7 @@ export class LastResultsPage implements OnInit {
   @ViewChild(Header) header: Header;
 
   items: WertungContainer[] = [];
+  lastItems: number[];
   geraete: Geraet[];
 
   @HostListener('window:resize', ['$event'])
@@ -40,6 +41,7 @@ export class LastResultsPage implements OnInit {
     this.backendService.newLastResults
     .filter(r => !!r && !!r.results)
     .subscribe(newLastRes => {
+      this.lastItems = this.items.map(item => item.id);
       this.items = [];
       Object.keys(newLastRes.results).forEach(key => {
         this.items.push(newLastRes.results[key]);
@@ -60,7 +62,9 @@ export class LastResultsPage implements OnInit {
     }
     
   }
-
+  isNew(item: WertungContainer): boolean {
+    return this.lastItems.filter(id => id === item.id).length === 0;
+  }
   get stationFreezed(): Boolean {
     return this.backendService.stationFreezed;
   }

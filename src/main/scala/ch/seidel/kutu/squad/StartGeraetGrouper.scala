@@ -1,9 +1,9 @@
 package ch.seidel.kutu.squad
 
-import scala.annotation.tailrec
 import ch.seidel.kutu.domain._
-import ch.seidel.kutu.squad._
 import org.slf4j.LoggerFactory
+
+import scala.annotation.tailrec
 
 trait StartGeraetGrouper extends RiegenSplitter with Stager {
   private val logger = LoggerFactory.getLogger(classOf[StartGeraetGrouper])
@@ -187,7 +187,7 @@ trait StartGeraetGrouper extends RiegenSplitter with Stager {
     }
     stats.find{groessteGruppe =>
       val (geraeteRiege, _, anzGruppenAusGroessterGruppe, _, turnerRiege) = groessteGruppe
-      val b11 = turnerRiege != None && groessteGruppe != kleinsteGruppe
+      val b11 = turnerRiege.isDefined && groessteGruppe != kleinsteGruppe
       val b12 = checkSC(groessteGruppe, kleinsteGruppe)
       val b2 = anzGruppenAusGroessterGruppe > startriegen.averageSize
       val b3 = b11 && turnerRiege.size + anzGruppenAusKleinsterGruppe <= startriegen.averageSize

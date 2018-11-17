@@ -1,6 +1,5 @@
 package ch.seidel.kutu.squad
 
-import scala.annotation.tailrec
 import ch.seidel.kutu.domain._
 
 /** Riegenbuilder:
@@ -30,7 +29,7 @@ import ch.seidel.kutu.domain._
 trait RiegenBuilder {
   
   def suggestRiegen(rotationstation: Seq[Int], wertungen: Seq[WertungView]): Seq[(String, Seq[Wertung])] = {
-    val riegencount = rotationstation.reduce(_+_)
+    val riegencount = rotationstation.sum
     if(wertungen.head.wettkampfdisziplin.notenSpez.isInstanceOf[Athletiktest]) {
       ATTGrouper.suggestRiegen(riegencount, wertungen)
     } else {

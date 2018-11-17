@@ -1,19 +1,14 @@
 package ch.seidel.kutu
 
-import java.io.ObjectInputStream
-import java.time.LocalDate
-import java.time.ZoneId
-import java.text.SimpleDateFormat
-import org.apache.commons.codec.language.bm._
-import org.apache.commons.codec.language.ColognePhonetic
-import java.util.TimeZone
-import org.apache.commons.text.similarity.LevenshteinDistance
-import java.util.UUID
-import java.nio.file.Files
-import java.nio.file.StandardOpenOption
-import java.nio.file.LinkOption
 import java.net.URLEncoder
+import java.nio.file.{Files, LinkOption, StandardOpenOption}
+import java.time.{LocalDate, ZoneId}
 import java.util.concurrent.TimeUnit
+
+import org.apache.commons.codec.language.ColognePhonetic
+import org.apache.commons.codec.language.bm._
+import org.apache.commons.text.similarity.LevenshteinDistance
+
 import scala.concurrent.duration.Duration
 
 package object domain {
@@ -72,14 +67,14 @@ package object domain {
     }    
   }
   implicit def ld2SQLDate(ld: LocalDate): java.sql.Date = {
-    if(ld==null) return null else {
+    if(ld==null) null else {
       val inst = ld.atStartOfDay(ZoneId.of("UTC"))
-      new java.sql.Date(java.util.Date.from(inst.toInstant()).getTime())
+      new java.sql.Date(java.util.Date.from(inst.toInstant).getTime)
     }
   }
   implicit def sqlDate2ld(sd: java.sql.Date): LocalDate = {
-    if(sd==null) return null else {
-      sd.toLocalDate()//.toInstant().atZone(ZoneId.systemDefault()).toLocalDate()
+    if(sd==null) null else {
+      sd.toLocalDate//.toInstant().atZone(ZoneId.systemDefault()).toLocalDate()
     }
   }
 
@@ -150,9 +145,9 @@ package object domain {
   }
 
   object Athlet {
-    def apply(): Athlet = Athlet(0, 0, "", "", "", None, "", "", "", None, true)
-    def apply(verein: Verein): Athlet = Athlet(0, 0, "M", "<Name>", "<Vorname>", None, "", "", "", Some(verein.id), true)
-    def apply(verein: Long): Athlet = Athlet(0, 0, "M", "<Name>", "<Vorname>", None, "", "", "", Some(verein), true)
+    def apply(): Athlet = Athlet(0, 0, "", "", "", None, "", "", "", None, activ = true)
+    def apply(verein: Verein): Athlet = Athlet(0, 0, "M", "<Name>", "<Vorname>", None, "", "", "", Some(verein.id), activ = true)
+    def apply(verein: Long): Athlet = Athlet(0, 0, "M", "<Name>", "<Vorname>", None, "", "", "", Some(verein), activ = true)
   }
   case class Athlet(id: Long, js_id: Int, geschlecht: String, name: String, vorname: String, gebdat: Option[java.sql.Date], strasse: String, plz: String, ort: String, verein: Option[Long], activ: Boolean) extends DataObject {
     override def easyprint = name + " " + vorname + " " + (gebdat match {case Some(d) => f"$d%tY "; case _ => ""})
@@ -163,7 +158,7 @@ package object domain {
   }
 
   object Wertungsrichter {
-    def apply(): Wertungsrichter = Wertungsrichter(0, 0, "", "", "", None, "", "", "", None, true)
+    def apply(): Wertungsrichter = Wertungsrichter(0, 0, "", "", "", None, "", "", "", None, activ = true)
   }
   case class Wertungsrichter(id: Long, js_id: Int, geschlecht: String, name: String, vorname: String, gebdat: Option[java.sql.Date], strasse: String, plz: String, ort: String, verein: Option[Long], activ: Boolean) extends DataObject {
     override def easyprint = "Wertungsrichter " + name
@@ -277,7 +272,7 @@ package object domain {
     def prepareFilePath(homedir: String) = {
       val dir = new java.io.File(homedir + "/" + easyprint.replace(" ", "_"))
       if(!dir.exists) {
-        dir.mkdirs;
+        dir.mkdirs
       }
       dir
     }
@@ -371,8 +366,8 @@ package object domain {
   sealed trait DataRow {}
   case class LeafRow(title: String, sum: Resultat, rang: Resultat, auszeichnung: Boolean) extends DataRow
   case class GroupRow(athlet: AthletView, resultate: IndexedSeq[LeafRow], sum: Resultat, rang: Resultat, auszeichnung: Boolean) extends DataRow {
-    lazy val withDNotes = resultate.filter(w => w.sum.noteD > 0).nonEmpty
-    lazy val divider = if(withDNotes || resultate.isEmpty) 1 else resultate.filter{r => r.sum.endnote > 0}.size
+    lazy val withDNotes = resultate.exists(w => w.sum.noteD > 0)
+    lazy val divider = if(withDNotes || resultate.isEmpty) 1 else resultate.count{r => r.sum.endnote > 0}
   }
 
   sealed trait NotenModus /*with AutoFillTextBoxFactory.ItemComparator[String]*/ {

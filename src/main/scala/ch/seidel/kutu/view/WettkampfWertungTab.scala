@@ -1,91 +1,45 @@
 package ch.seidel.kutu.view
 
-import scala.concurrent.ExecutionContext.Implicits.global
-import javafx.scene.{ control => jfxsc }
+import java.util.UUID
+import java.util.concurrent.{ScheduledFuture, TimeUnit}
+
+import ch.seidel.commons._
+import ch.seidel.kutu.Config._
+import ch.seidel.kutu.{KuTuApp, KuTuServer}
+import ch.seidel.kutu.akka.AthletWertungUpdated
+import ch.seidel.kutu.domain._
+import ch.seidel.kutu.http.WebSocketClient
+import ch.seidel.kutu.renderer.PrintUtil.FilenameDefault
+import ch.seidel.kutu.renderer._
+import javafx.scene.{control => jfxsc}
+import org.slf4j.LoggerFactory
 import scalafx.Includes._
-import scalafx.beans.property.DoubleProperty
-import scalafx.beans.property.ReadOnlyStringWrapper
+import scalafx.application.Platform
+import scalafx.beans.binding.Bindings
+import scalafx.beans.property.StringProperty.sfxStringProperty2jfx
+import scalafx.beans.property.{DoubleProperty, ReadOnlyStringWrapper, _}
 import scalafx.beans.value.ObservableValue
 import scalafx.collections.ObservableBuffer
-import scalafx.event.ActionEvent
-import scalafx.geometry._
-import scalafx.scene.Node
-import scalafx.scene.control.Button
-import scalafx.scene.control.Label
-import scalafx.scene.control.Tab
-import scalafx.scene.control.TableColumn
-import scalafx.scene.control.TableColumn._
-import scalafx.scene.control.TableView
-import scalafx.scene.control.TextField
-import scalafx.scene.control.ToolBar
-import scalafx.scene.input.KeyCode
-import scalafx.scene.input.KeyEvent
-import scalafx.scene.layout.BorderPane
-import scalafx.scene.layout.HBox
-import scalafx.scene.layout.Priority
-import scalafx.scene.layout.Region
-import scalafx.scene.layout.VBox
-import scalafx.util.converter.DefaultStringConverter
-import scalafx.scene.control.ComboBox
-import scalafx.scene.input.Clipboard
-import scala.io.Source
-import java.text.SimpleDateFormat
-import scalafx.scene.control.SelectionMode
-import scalafx.application.Platform
-import java.io.File
-import java.io.BufferedOutputStream
-import java.io.FileOutputStream
-import java.awt.Desktop
-import javafx.scene.{control => jfxsc}
-import scala.IndexedSeq
-import scalafx.beans.property._
-import scalafx.beans.property.StringProperty.sfxStringProperty2jfx
 import scalafx.collections.ObservableBuffer.observableBuffer2ObservableList
-import scalafx.scene.control.SelectionMode.sfxEnum2jfx
-import scalafx.scene.control.TableView.sfxTableView2jfx
-import scalafx.scene.control.cell.CheckBoxTableCell
-import scalafx.scene.layout.StackPane
-import scalafx.scene.web.WebView
-import ch.seidel.commons._
-import ch.seidel.kutu.renderer.NotenblattToHtmlRenderer
-import ch.seidel.kutu.domain._
-import scalafx.scene.control.CheckBox
-import scalafx.scene.control.SplitPane
-import ch.seidel.kutu.renderer.KategorieTeilnehmerToHtmlRenderer
-import scalafx.scene.control.cell.ComboBoxTableCell
-import scalafx.util.StringConverter
-import ch.seidel.kutu.KuTuApp
-import scala.concurrent.Await
-import scala.concurrent.duration.Duration
-import ch.seidel.kutu.data.ResourceExchanger
-import ch.seidel.kutu.renderer.BestenListeToHtmlRenderer
-import ch.seidel.kutu.renderer.RiegenblattToHtmlRenderer
-import ch.seidel.kutu.renderer.RiegenBuilder
-import scalafx.scene.control.ListCell
-import scalafx.beans.binding.Bindings
-import scalafx.scene.shape.Circle
-import scalafx.scene.paint.Color
-import scalafx.scene.control.ContentDisplay
-import scalafx.scene.image.Image
-import scalafx.scene.image.ImageView
+import scalafx.event.ActionEvent
 import scalafx.event.subscriptions.Subscription
-import ch.seidel.kutu.renderer.PrintUtil.FilenameDefault
-import ch.seidel.kutu.renderer.PrintUtil
+import scalafx.geometry._
 import scalafx.print.PageOrientation
-import org.slf4j.LoggerFactory
-import scalafx.util.converter.DoubleStringConverter
-import scala.concurrent.Future
-import ch.seidel.kutu.Config._
-import java.util.UUID
-import ch.seidel.kutu.akka.AthletWertungUpdated
-import ch.seidel.kutu.http.WebSocketClient
-import scala.util.Success
-import scala.util.Failure
-import java.util.concurrent.Executors
-import java.util.concurrent.Callable
-import java.util.concurrent.TimeUnit
-import java.util.concurrent.ScheduledFuture
-import ch.seidel.kutu.KuTuServer
+import scalafx.scene.Node
+import scalafx.scene.control.SelectionMode.sfxEnum2jfx
+import scalafx.scene.control.TableColumn._
+import scalafx.scene.control.TableView.sfxTableView2jfx
+import scalafx.scene.control._
+import scalafx.scene.image.{Image, ImageView}
+import scalafx.scene.input.{Clipboard, KeyEvent}
+import scalafx.scene.layout._
+import scalafx.util.converter.{DefaultStringConverter, DoubleStringConverter}
+
+import scala.concurrent.ExecutionContext.Implicits.global
+import scala.concurrent.{Await, Future}
+import scala.concurrent.duration.Duration
+import scala.io.Source
+import scala.util.{Failure, Success}
 
 trait TCAccess[R, E, IDX] {
   def getIndex: IDX
@@ -109,10 +63,11 @@ class WKTableColumn[T](val index: Int) extends TableColumn[IndexedSeq[WertungEdi
 class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[ProgrammView], riege: Option[String], wettkampf: WettkampfView, override val service: KutuService, athleten: => IndexedSeq[WertungView]) extends Tab with TabWithService {
   val logger = LoggerFactory.getLogger(this.getClass)
 
+  import language.implicitConversions
   implicit def doublePropertyToObservableValue(p: DoubleProperty): ObservableValue[Double,Double] = p.asInstanceOf[ObservableValue[Double,Double]]
   private var lazypane: Option[LazyTabPane] = None
-  def setLazyPane(pane: LazyTabPane) {
-    lazypane = Some(pane);
+  def setLazyPane(pane: LazyTabPane): Unit = {
+    lazypane = Some(pane)
   }
   def refreshLazyPane() {
     lazypane match {
@@ -280,20 +235,20 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
                 case Some(d) =>
                   setText(s"${item.durchgang.get}: ${item.disziplin.map(d => d.name).getOrElse("")}  (${item.halt + 1}. Gerät)");
                   if(!item.erfasst) {
-                    styleClass.add("incomplete");
+                    styleClass.add("incomplete")
                     imageView.image = nokIcon
                   }
                   else if (styleClass.indexOf("incomplete") > -1) {
-                    styleClass.remove(styleClass.indexOf("incomplete"));
+                    styleClass.remove(styleClass.indexOf("incomplete"))
                   }
                 case None =>
-                  setText(s"Alle");
+                  setText(s"Alle")
                   if(!erfasst) {
-                    styleClass.add("incomplete");
+                    styleClass.add("incomplete")
                     imageView.image = nokIcon
                   }
                   else if (styleClass.indexOf("incomplete") > -1) {
-                    styleClass.remove(styleClass.indexOf("incomplete"));
+                    styleClass.remove(styleClass.indexOf("incomplete"))
                   }
               }
               graphic = imageView
@@ -507,7 +462,7 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
         cellValueFactory = { x =>
           new ReadOnlyStringWrapper(x.value, "athlet", {
             val a = x.value.head.init.athlet
-            s"${a.vorname} ${a.name} ${(a.gebdat match {case Some(d) => f"$d%tY "; case _ => " "}) }"
+            s"${a.vorname} ${a.name} ${(a.gebdat match {case Some(d) => f"$d%tY " case _ => " "}) }"
           })
         }
 //        delegate.impl_setReorderable(false) // shame on me??? why this feature should not be a requirement?
@@ -594,7 +549,7 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
           if(!wettkampfmode.value) {
             onEditCommit = (evt: CellEditEvent[IndexedSeq[WertungEditor], String]) => {
               val rowIndex = wkModel.indexOf(evt.rowValue)
-              val newRiege = if(evt.newValue.trim.isEmpty() || evt.newValue.equals("keine Einteilung")) None 
+              val newRiege = if(evt.newValue.trim.isEmpty || evt.newValue.equals("keine Einteilung")) None
             	        else Some(evt.newValue)
             	logger.debug("start riege-rename")
             	service.updateAllWertungenAsync(
@@ -728,12 +683,12 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
         text = "Punkte"
         cellValueFactory = { x => new ReadOnlyStringWrapper(x.value, "punkte", { f"${x.value.map(w => w.endnote.value.toDouble).sum}%3.3f" })}
         prefWidth = 100
-        delegate.impl_setReorderable(false)
+        delegate.setReorderable(false)
         styleClass += "table-cell-with-value"
         editable = false
       })
     wkview.columns ++= athletCol ++ riegeCol ++ wertungenCols ++ sumCol
-    var isFilterRefreshing = false;
+    var isFilterRefreshing = false
     
     wkModel.onChange{(seq1, seq2) => 
       import scalafx.collections.ObservableBuffer._
@@ -760,8 +715,8 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
       //if(!newVal.equalsIgnoreCase(lastFilter)) {
         lastFilter = newVal
         durchgangFilter = newDurchgang
-        val sortOrder = wkview.sortOrder.toList;
-        isFilterRefreshing = true;
+        val sortOrder = wkview.sortOrder.toList
+        isFilterRefreshing = true
         wkModel.clear()
         val searchQuery = newVal.toUpperCase().split(" ")
 //        val rd = riegendurchgaenge.values.toList
@@ -831,7 +786,7 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
           wkview.requestFocus()
           selected.foreach(s => wkview.selectionModel.value.selectedCells.add(s))          
         }
-        isFilterRefreshing = false;
+        isFilterRefreshing = false
       //}
   	}
   	val txtUserFilter = new TextField() {
@@ -931,7 +886,7 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
       }
 
       val columnrebuild = wertungen.isEmpty
-      isFilterRefreshing = true;
+      isFilterRefreshing = true
       wkModel.clear()
       wertungen = reloadWertungen()
 
@@ -951,7 +906,7 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
       try {
         for(ts <- coords) {
           if(ts._2 < -100) {
-            val toSelectParent = wkview.columns(ts._2 / -100);
+            val toSelectParent = wkview.columns(ts._2 / -100)
             val firstVisible = toSelectParent.getColumns.find(p => p.width.value > 50d).getOrElse(toSelectParent.columns(0))
             wkview.selectionModel.value.select(ts._1, firstVisible)
             wkview.scrollToColumn(firstVisible)
@@ -969,7 +924,7 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
       }
 //      setEditorPaneToDiscipline(idx)      
       updateEditorPane(if (wkview.focused.value) Some(wkview) else None)
-      isFilterRefreshing = false;
+      isFilterRefreshing = false
     }
     
     websocketsubscription = Some(WebSocketClient.modelWettkampfWertungChanged.onChange { (_, _, newItem) =>
@@ -1020,8 +975,8 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
     updateRiegen(true)
 
     def doPasteFromExcel(progrm: Option[ProgrammView])(implicit event: ActionEvent) = {
-      import scala.util.{Try, Success, Failure}
       import scala.concurrent.ExecutionContext.Implicits._
+      import scala.util.{Failure, Success}
       val athletModel = ObservableBuffer[(Long, Athlet, AthletView)]()
       val vereineList = service.selectVereine
       val vereineMap = vereineList.map(v => v.id -> v).toMap
@@ -1122,11 +1077,11 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
               }
             )
           }
-          athletTable.selectionModel.value.setSelectionMode(SelectionMode.MULTIPLE)
+          athletTable.selectionModel.value.setSelectionMode(SelectionMode.Multiple)
           val filter = new TextField() {
             promptText = "Such-Text"
             text.addListener{ (o: javafx.beans.value.ObservableValue[_ <: String], oldVal: String, newVal: String) =>
-              val sortOrder = athletTable.sortOrder.toList;
+              val sortOrder = athletTable.sortOrder.toList
               filteredModel.clear()
               val searchQuery = newVal.toUpperCase().split(" ")
               for{(progrid, athlet, vorschlag) <- athletModel
@@ -1354,7 +1309,7 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
           val filename = "Teilnehmerliste_" + wettkampf.easyprint.replace(" ", "_") + programm.map("_Programm_" + _.easyprint.replace(" ", "_")).getOrElse("") + riege.map("_Riege_" + _.replace(" ", "_")).getOrElse("") + ".html"
           val dir = new java.io.File(homedir + "/" + wettkampf.easyprint.replace(" ", "_"))
           if(!dir.exists()) {
-            dir.mkdirs();
+            dir.mkdirs()
           }
           val file = new java.io.File(dir.getPath + "/" + filename)
           def generate(lpp: Int) = toHTMLasKategorienListe(seriendaten, PrintUtil.locateLogoFile(dir))
@@ -1418,7 +1373,7 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
           val filename = "Notenblatt_" + wettkampf.easyprint.replace(" ", "_") + programm.map("_Programm_" + _.easyprint.replace(" ", "_")).getOrElse("") + riege.map("_Riege_" + _.replace(" ", "_")).getOrElse("") + ".html"
           val dir = new java.io.File(homedir + "/" + wettkampf.easyprint.replace(" ", "_"))
           if(!dir.exists()) {
-            dir.mkdirs();
+            dir.mkdirs()
           }
           val logofile = PrintUtil.locateLogoFile(dir)
           def generate(lpp: Int) = wettkampf.programm.head.id match {
@@ -1439,7 +1394,7 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
           val filename = "Bestenliste_" + wettkampf.easyprint.replace(" ", "_") + ".html"
           val dir = new java.io.File(homedir + "/" + wettkampf.easyprint.replace(" ", "_"))
           if(!dir.exists()) {
-            dir.mkdirs();
+            dir.mkdirs()
           }
           val logofile = PrintUtil.locateLogoFile(dir)
           

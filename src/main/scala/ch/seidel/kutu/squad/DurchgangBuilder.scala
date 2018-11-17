@@ -1,8 +1,6 @@
 package ch.seidel.kutu.squad
 
-import scala.annotation.tailrec
 import ch.seidel.kutu.domain._
-import ch.seidel.kutu.squad._
 import org.slf4j.LoggerFactory
 
 case class DurchgangBuilder(service: KutuService) extends Mapper with RiegenSplitter with StartGeraetGrouper {
@@ -16,7 +14,7 @@ case class DurchgangBuilder(service: KutuService) extends Mapper with RiegenSpli
     implicit val cache = scala.collection.mutable.Map[String, Int]()
     
     val filteredWert = prepareWertungen(wettkampfId) map wertungZuDurchgang(durchgangfilter, makeDurchgangMap(wettkampfId)) filter {x =>
-        x._2.size > 0 &&
+        x._2.nonEmpty &&
         (programmfilter.isEmpty || programmfilter.contains(x._2.head.wettkampfdisziplin.programm.id))
       }
     
@@ -34,7 +32,8 @@ case class DurchgangBuilder(service: KutuService) extends Mapper with RiegenSpli
       val wkGrouper = KuTuGeTuGrouper.wkGrouper
       val wkFilteredGrouper = wkGrouper.take(if(riegencnt == 0) wkGrouper.size-1 else wkGrouper.size)
       if(progAthlWertungen.keys.size > 1) {
-        logger.debug(progAthlWertungen.keys.size, progAthlWertungen.keys.map(k => (progAthlWertungen(k).size, progAthlWertungen(k).map(w => w._2.size).sum)))
+        val toDebug = (progAthlWertungen.keys.size, progAthlWertungen.keys.map(k => (progAthlWertungen(k).size, progAthlWertungen(k).map(w => w._2.size).sum))).toString
+        logger.debug(toDebug)
       }
       val riegen = progAthlWertungen.flatMap{x =>
         val (programm, wertungen) = x

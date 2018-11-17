@@ -1,82 +1,53 @@
 package ch.seidel.kutu
 
-import javafx.scene.{ control => jfxsc }
-import scalafx.Includes._
-import scalafx.application.JFXApp
-import scalafx.application.JFXApp.PrimaryStage
-import scalafx.geometry.Insets
-import scalafx.scene.Scene
-import scalafx.stage.Screen
-import scalafx.scene.Node
-import scalafx.scene.layout._
-import scalafx.scene.control._
-import scalafx.scene.image.{Image, ImageView}
-import scalafx.event.ActionEvent
-import scalafx.collections.ObservableBuffer
-import scalafx.scene.control.Alert.AlertType
-import scalafx.scene.Cursor
-import scalafx.application.Platform
-import scala.concurrent.Future
-import scalafx.stage.FileChooser
-import scalafx.stage.FileChooser.ExtensionFilter
-import scala.concurrent.ExecutionContext.Implicits
-import scalafx.beans.property.StringProperty.sfxStringProperty2jfx
-import scalafx.scene.Cursor.sfxCursor2jfx
-import scalafx.scene.Node.sfxNode2jfx
-import scalafx.scene.control._
-import scalafx.scene.control.TableColumn._
-import scalafx.scene.control.ComboBox.sfxComboBox2jfx
-import scalafx.scene.control.Label.sfxLabel2jfx
-import scalafx.scene.control.MenuItem.sfxMenuItem2jfx
-import scalafx.scene.control.ScrollPane.sfxScrollPane2jfx
-import scalafx.scene.control.TextField.sfxTextField2jfx
-import scalafx.scene.control.TreeItem.sfxTreeItemToJfx
-import ch.seidel.kutu.domain._
-import ch.seidel.commons.PageDisplayer
-import ch.seidel.commons.DisplayablePage
-import ch.seidel.kutu.data.ResourceExchanger
 import java.awt.Desktop
-import scala.concurrent.Promise
-import scala.util.Failure
-import scala.util.Success
-import scalafx.stage.StageStyle
-import scalafx.beans.property.BooleanProperty
-import scalafx.beans.binding.Bindings
-import scalafx.scene.web.WebView
-import scalafx.beans.property.ReadOnlyStringWrapper
-import org.slf4j.LoggerFactory
-import net.glxn.qrgen.QRCode
-import net.glxn.qrgen.image.ImageType
-import java.io.ByteArrayInputStream
-import java.io.FileInputStream
-import scala.concurrent.ExecutionContext
-import scala.concurrent.Await
-import scala.concurrent.duration.Duration
-import scala.io.Source
-import java.util.UUID
-import ch.seidel.kutu.http.Core
-import ch.seidel.kutu.http.WebSocketClient
-import ch.seidel.kutu.Config._
-import java.util.Base64
-import ch.seidel.kutu.http.KuTuAppHTTPServer
-import ch.seidel.kutu.akka.KutuAppEvent
-import ch.seidel.kutu.http.JsonSupport
-import spray.json._
+import java.io.{ByteArrayInputStream, FileInputStream}
+import java.net.URI
+import java.util.{Base64, Date, UUID}
+import java.util.concurrent.Executors
 
+import ch.seidel.commons.{DisplayablePage, PageDisplayer}
+import ch.seidel.kutu.Config._
+import ch.seidel.kutu.akka.KutuAppEvent
+import ch.seidel.kutu.data.ResourceExchanger
+import ch.seidel.kutu.domain._
+import ch.seidel.kutu.http.{AuthSupport, JsonSupport, JwtSupport, WebSocketClient}
 import javafx.beans.property.SimpleObjectProperty
 import javafx.scene.control.DatePicker
 import javafx.util.Callback
-import ch.seidel.kutu.akka.StartDurchgang
-import java.net.URI
-import java.util.Date
-import java.time.LocalDate
-import java.net.URLEncoder
-import ch.seidel.kutu.http.AuthSupport
-import ch.seidel.kutu.http.JwtSupport
-import java.util.concurrent.Executors
-import scalafx.scene.input.Clipboard
-import scalafx.scene.input.DataFormat
-import scalafx.scene.input.ClipboardContent
+import net.glxn.qrgen.QRCode
+import net.glxn.qrgen.image.ImageType
+import org.slf4j.LoggerFactory
+import scalafx.Includes._
+import scalafx.application.JFXApp.PrimaryStage
+import scalafx.application.{JFXApp, Platform}
+import scalafx.beans.binding.Bindings
+import scalafx.beans.property.{BooleanProperty, ReadOnlyStringWrapper}
+import scalafx.beans.property.StringProperty.sfxStringProperty2jfx
+import scalafx.collections.ObservableBuffer
+import scalafx.event.ActionEvent
+import scalafx.geometry.Insets
+import scalafx.scene.Node.sfxNode2jfx
+import scalafx.scene.{Cursor, Node, Scene}
+import scalafx.scene.control.Alert.AlertType
+import scalafx.scene.control.Label.sfxLabel2jfx
+import scalafx.scene.control.MenuItem.sfxMenuItem2jfx
+import scalafx.scene.control.ScrollPane.sfxScrollPane2jfx
+import scalafx.scene.control.TableColumn._
+import scalafx.scene.control.TextField.sfxTextField2jfx
+import scalafx.scene.control.TreeItem.sfxTreeItemToJfx
+import scalafx.scene.control._
+import scalafx.scene.image.{Image, ImageView}
+import scalafx.scene.input.{Clipboard, ClipboardContent, DataFormat}
+import scalafx.scene.layout._
+import scalafx.scene.web.WebView
+import scalafx.stage.FileChooser.ExtensionFilter
+import scalafx.stage.{FileChooser, Screen}
+import spray.json._
+
+import scala.concurrent.{Await, Future, Promise}
+import scala.concurrent.duration.Duration
+import scala.util.{Failure, Success}
 
 object KuTuApp extends JFXApp with KutuService with JsonSupport with JwtSupport {
   import WertungServiceBestenResult._
@@ -235,7 +206,7 @@ object KuTuApp extends JFXApp with KutuService with JsonSupport with JwtSupport 
     else {
       cursorWaiters -= 1
       if(cursorWaiters > 0) {
-        Cursor.WAIT
+        Cursor.Wait
       }
       else {
         cursorWaiters = 0
@@ -311,7 +282,7 @@ object KuTuApp extends JFXApp with KutuService with JsonSupport with JwtSupport 
           text = dbl2Str(p.auszeichnung / 100d) + "%"
         }
         else {
-          text = p.auszeichnung + "%"
+          text = s"${p.auszeichnung}%"
         }
       }
       val txtAuszeichnungEndnote = new TextField {
@@ -865,7 +836,7 @@ object KuTuApp extends JFXApp with KutuService with JsonSupport with JwtSupport 
     }
   }
   def makeWettkampfHerunterladenMenu: MenuItem = {
-    import DefaultJsonProtocol._ 
+    import DefaultJsonProtocol._
     makeMenuAction("Wettkampf herunterladen") {(caption, action) =>
       implicit val e = action  
       val wklist = server.httpGet(s"${remoteAdminBaseUrl}/api/competition").map{
@@ -897,7 +868,7 @@ object KuTuApp extends JFXApp with KutuService with JsonSupport with JwtSupport 
                 }
               )
             }
-            wkTable.selectionModel.value.setSelectionMode(SelectionMode.SINGLE)
+            wkTable.selectionModel.value.setSelectionMode(SelectionMode.Single)
             val filter = new TextField() {
               promptText = "Such-Text"
               text.addListener{ (o: javafx.beans.value.ObservableValue[_ <: String], oldVal: String, newVal: String) =>

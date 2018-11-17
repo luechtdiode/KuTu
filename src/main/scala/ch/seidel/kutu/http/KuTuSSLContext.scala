@@ -1,16 +1,11 @@
 package ch.seidel.kutu.http
 
 import java.io.InputStream
-import java.security.{ SecureRandom, KeyStore }
-import javax.net.ssl.{ SSLContext, TrustManagerFactory, KeyManagerFactory }
+import java.security.{KeyStore, SecureRandom}
 
-import akka.actor.ActorSystem
-import akka.http.scaladsl.server.{ Route, Directives }
-import akka.http.scaladsl.{ ConnectionContext, HttpsConnectionContext, Http }
-import akka.stream.ActorMaterializer
-import com.typesafe.sslconfig.akka.AkkaSSLConfig
-import scala.concurrent.ExecutionContextExecutor
+import akka.http.scaladsl.{ConnectionContext, HttpsConnectionContext}
 import ch.seidel.kutu.Config._
+import javax.net.ssl.{KeyManagerFactory, SSLContext, TrustManagerFactory}
 
 trait KuTuSSLContext {
 

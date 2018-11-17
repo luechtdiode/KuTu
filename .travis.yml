@@ -34,8 +34,8 @@ jobs:
     addons:
       apt:
         packages:
-        - oracle-java8-installer
-        - oracle-java8-set-default
+        - oracle-java9-installer
+        - oracle-java9-set-default
         - npm
         - jq
     before_install:
@@ -58,7 +58,7 @@ jobs:
   - stage: server
     language: java
     os: osx
-    osx_image: xcode9.2
+    # osx_image: xcode9.2
     before_install:
       - brew install awscli
       - ./ecr_credentials.sh
@@ -68,14 +68,11 @@ jobs:
       - cp -R -f ~/$TRAVIS_BUILD_NUMBER/www/* $TRAVIS_BUILD_DIR/src/main/resources/app
       - mvn deploy --settings deploy-settings.xml
       - cp -f $TRAVIS_BUILD_DIR/target/KuTu-app.jar $TRAVIS_BUILD_DIR/outputs/
-      - cp -f $TRAVIS_BUILD_DIR/target/$OS/bundles/*.dmg $TRAVIS_BUILD_DIR/outputs/$OS/
-      - cp -f $TRAVIS_BUILD_DIR/target/$OS/bundles/*.pkg $TRAVIS_BUILD_DIR/outputs/$OS/
+      - cp -f $TRAVIS_BUILD_DIR/target/$OS/*.dmg $TRAVIS_BUILD_DIR/outputs/$OS/
+      - cp -f $TRAVIS_BUILD_DIR/target/$OS/*.pkg $TRAVIS_BUILD_DIR/outputs/$OS/
     after_success:
       - git checkout "$TRAVIS_BRANCH"
       - cp -R -f ~/$TRAVIS_BUILD_NUMBER/www/* $TRAVIS_BUILD_DIR/src/main/resources/app
-      - git status
-      - ls $TRAVIS_BUILD_DIR/src/main/resources/app
-      - git status
       - git add $TRAVIS_BUILD_DIR/src/main/resources/app
       - git commit -a -m "update with generated Client from TravisCI for build $TRAVIS_BUILD_NUMBER with [skip ci]"
       - export GIT_TAG=travisbuild-$TRAVIS_BRANCH-$(date -u "+%Y-%m-%d")-$TRAVIS_BUILD_NUMBER
@@ -83,7 +80,6 @@ jobs:
       - if ! git push -fq --follow-tags https://$GH_ACCESS_TOKEN@github.com/luechtdiode/KuTu.git $TRAVIS_BRANCH > /dev/null 2>&1; then err "failed to push git changes"; return1; fi
       - aws s3 rm --recursive $S3_BUCKET_CACHE/$TRAVIS_BUILD_NUMBER # clean up after ourselves
 
-<<<<<<< HEAD
 # deploy: actually, deploy is managed by maven wagon
 #   # deploy build to s3
 #   - provider: s3
@@ -106,17 +102,3 @@ jobs:
 #       all_branches: true
 #   #   on:
 #   #     tags: true
-  
-=======
-os:
-#   - linux
-  - osx
-
-osx_image: xcode9.2
-
-script: mvn clean install wagon:upload --settings deploy-settings.xml
-
-branches:
-  only:
-    - master
->>>>>>> refs/heads/master

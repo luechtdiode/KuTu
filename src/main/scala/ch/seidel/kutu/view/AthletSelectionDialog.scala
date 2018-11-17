@@ -3,20 +3,18 @@ package ch.seidel.kutu.view
 import ch.seidel.commons._
 import ch.seidel.kutu.domain._
 import scalafx.Includes._
+import scalafx.application.Platform
 import scalafx.beans.property.ReadOnlyStringWrapper
 import scalafx.beans.property.StringProperty.sfxStringProperty2jfx
 import scalafx.collections.ObservableBuffer
 import scalafx.collections.ObservableBuffer.observableBuffer2ObservableList
 import scalafx.event.ActionEvent
 import scalafx.scene.Node
-import scalafx.scene.control._
 import scalafx.scene.control.SelectionMode.sfxEnum2jfx
 import scalafx.scene.control.TableColumn.sfxTableColumn2jfx
+import scalafx.scene.control._
+import scalafx.scene.input.{KeyCode, KeyEvent, MouseEvent}
 import scalafx.scene.layout._
-import scalafx.scene.input.KeyCode
-import scalafx.scene.input.KeyEvent
-import scalafx.scene.input.MouseEvent
-import scalafx.application.Platform
 
 class AthletSelectionDialog(actionTitle: String, progrm: ProgrammView, assignedAthleten: Seq[AthletView], service: KutuService, refreshPaneData: Set[Long]=>Unit) {
 
@@ -52,7 +50,11 @@ class AthletSelectionDialog(actionTitle: String, progrm: ProgrammView, assignedA
         text = "Status"
         cellValueFactory = { x =>
           new ReadOnlyStringWrapper(x.value, "status", {
-            x.value.activ match {case true => "Aktiv" case _ => "Inaktiv"}
+            if (x.value.activ) {
+              "Aktiv"
+            } else {
+              "Inaktiv"
+            }
           })
         }
         //prefWidth = 150
@@ -61,12 +63,41 @@ class AthletSelectionDialog(actionTitle: String, progrm: ProgrammView, assignedA
     )
   }
 
-  athletTable.selectionModel.value.setSelectionMode(SelectionMode.MULTIPLE)
+  athletTable.selectionModel.value.setSelectionMode(SelectionMode.Multiple)
+
+  val btnOK = new Button("OK") {
+    onAction = (event: ActionEvent) => {
+      if (!athletTable.selectionModel().isEmpty) {
+        val selectedAthleten = athletTable.items.value.zipWithIndex.filter {
+          x => athletTable.selectionModel.value.isSelected(x._2)
+        }.map(x => x._1.id)
+
+        refreshPaneData(selectedAthleten.toSet)
+      }
+    }
+  }
+
+  val btnOKAll = new Button("OK, Alle") {
+    onAction = (event: ActionEvent) => {
+      if (filteredModel.nonEmpty) refreshPaneData(filteredModel.map(_.id).toSet)
+    }
+  }
+
+  val btnNew = new Button("Neu erfassen ...") {
+    onAction = (event: ActionEvent) => {
+      val athlet = AthletDialog(service, (a: Athlet) => {
+    	  refreshPaneData(Set(a.id))
+      })
+      Platform.runLater {
+        athlet.execute(event)
+      }
+    }
+  }
 
   val filter = new TextField() {
     promptText = "Such-Text"
     text.addListener{ (o: javafx.beans.value.ObservableValue[_ <: String], oldVal: String, newVal: String) =>
-      val sortOrder = athletTable.sortOrder.toList;
+      val sortOrder = athletTable.sortOrder.toList
       filteredModel.clear()
       val searchQuery = newVal.toUpperCase().split(" ")
       for{athlet <- athletModel
@@ -92,38 +123,7 @@ class AthletSelectionDialog(actionTitle: String, progrm: ProgrammView, assignedA
       }
       athletTable.sortOrder.clear()
       val restored = athletTable.sortOrder ++= sortOrder
-      btnOKAll.disable.value = filteredModel.size == 0
-    }
-  }
-
-  val btnOK = new Button("OK") {
-    onAction = (event: ActionEvent) => {
-      if (!athletTable.selectionModel().isEmpty) {
-        val selectedAthleten = athletTable.items.value.zipWithIndex.filter {
-          x => athletTable.selectionModel.value.isSelected(x._2)
-        }.map(x => x._1.id)
-
-        refreshPaneData(selectedAthleten.toSet)
-      }
-    }
-  }
-
-  val btnOKAll = new Button("OK, Alle") {
-    onAction = (event: ActionEvent) => {
-      if (!filteredModel.isEmpty) {
-        refreshPaneData(filteredModel.map(_.id).toSet)
-      }
-    }
-  }
-
-  val btnNew = new Button("Neu erfassen ...") {
-    onAction = (event: ActionEvent) => {
-      val athlet = AthletDialog(service, (a: Athlet) => {
-    	  refreshPaneData(Set(a.id))
-      })
-      Platform.runLater {
-        athlet.execute(event)
-      }
+      btnOKAll.disable.value = filteredModel.isEmpty
     }
   }
 
@@ -134,7 +134,7 @@ class AthletSelectionDialog(actionTitle: String, progrm: ProgrammView, assignedA
 
   athletTable.onKeyPressed = (event: KeyEvent) => {
     event.code match {
-      case KeyCode.ENTER =>
+      case KeyCode.Enter =>
         if(!btnOK.disabled.value) {
           btnOK.fire()
         }

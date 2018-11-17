@@ -1,14 +1,13 @@
 package ch.seidel.commons
 
-import scalafx.scene.control.TabPane
+import scalafx.scene.control.{Tab, TabPane}
 import scalafx.scene.layout.Priority
-import scalafx.scene.control.Tab
 
-class LazyTabPane(refreshTabs: (LazyTabPane) => Seq[Tab], releaseTabs: () => Unit) extends TabPane {
+class LazyTabPane(refreshTabsFn: (LazyTabPane) => Seq[Tab], releaseTabs: () => Unit) extends TabPane {
   hgrow = Priority.Always
   vgrow = Priority.Always
   id = "source-tabs"
-  
+
   def init() {
 //    release()
     val selected = selectionModel.value.getSelectedItem
@@ -21,7 +20,7 @@ class LazyTabPane(refreshTabs: (LazyTabPane) => Seq[Tab], releaseTabs: () => Uni
       }
       -1
     }
-    val lazytabs = refreshTabs(this)
+    val lazytabs = refreshTabsFn(this)
     for(idx <- (0 until lazytabs.size)) {
       val existingIndex = indexOfTab(lazytabs(idx).text.value)
       if(existingIndex > -1) {
