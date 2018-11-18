@@ -14,14 +14,13 @@ trait KategorieTeilnehmerToHtmlRenderer {
   val intro = """<html>
     <head>
       <meta charset="UTF-8" />
-      <style>
+      <style type="text/css">
         @media print {
           ul {
             page-break-inside: avoid;
           }
         }
         .notenblatt {
-          width: 100%:
           display: block;
           padding: 15px;
           padding-left: 40px;
@@ -95,7 +94,7 @@ trait KategorieTeilnehmerToHtmlRenderer {
         }
         li {
           float: left;
-          width: 100%
+          width: 100%;
         }
       </style>
     </head>

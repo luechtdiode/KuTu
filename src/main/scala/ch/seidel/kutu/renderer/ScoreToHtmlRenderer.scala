@@ -118,7 +118,7 @@ trait ScoreToHtmlRenderer {
             }
             li {
               float: left;
-              width: 100%
+              width: 100%;
             }
             .headline {
               display: block;
