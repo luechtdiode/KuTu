@@ -10,3 +10,7 @@
 /kutuapp.conf
 .cache-main
 .cache-tests
+*.iml
+*.sqlite-wal
+*.sql.log
+*.sqlite-shm
