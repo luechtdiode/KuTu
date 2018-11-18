@@ -2,6 +2,7 @@ package ch.seidel.kutu.renderer
 
 import java.io.File
 
+import ch.seidel.kutu.domain.GeraeteRiege
 import ch.seidel.kutu.renderer.PrintUtil._
 import org.slf4j.LoggerFactory
 
@@ -36,6 +37,10 @@ trait KategorieTeilnehmerToHtmlRenderer {
           float: left;
           height: 100px;
           border-radius: 5px;
+          padding-right: 15px;
+        }
+        .title {
+          float: left;
         }
         .programm {
           float: right;
@@ -112,8 +117,9 @@ trait KategorieTeilnehmerToHtmlRenderer {
     s"""<div class=notenblatt>
       <div class=headline>
         $logoHtml
+        <div class=title><h4>${kandidaten.head.wettkampfTitel}</h4></div>
         <div class=programm>${kategorie}</br></div>
-        <h4>${kandidaten.head.wettkampfTitel}</h4>
+
       </div>
       <div class="showborder">
         <table width="100%">
@@ -123,6 +129,21 @@ trait KategorieTeilnehmerToHtmlRenderer {
       </div>
     </div>
   """
+  }
+
+  def riegenToKategorienListeAsHTML(riegen: Seq[GeraeteRiege], logo: File): String = {
+    val kandidaten = riegen
+        .filter(riege => riege.halt == 0)
+        // filter hauptdurchgang-startgeraet
+        .filter(riege => !riege.kandidaten.exists(k => k.einteilung2.exists(d => d.start == riege.disziplin)))
+        .flatMap(riege => {
+          riege.kandidaten
+            .map(kandidat => {
+            Kandidat(riege.wettkampfTitel, kandidat.geschlecht, kandidat.programm, kandidat.name, kandidat.vorname, kandidat.jahrgang, kandidat.verein, "", riege.durchgang.get, riege.disziplin.get.easyprint, Seq.empty)
+          })
+        })
+
+    toHTMLasKategorienListe(kandidaten, logo)
   }
 
   def toHTMLasKategorienListe(kandidaten: Seq[Kandidat], logo: File): String = {
