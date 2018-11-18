@@ -8,6 +8,7 @@ import { Subscription, BehaviorSubject } from 'rxjs';
 //import { tokenNotExpired } from 'angular2-jwt';
 import { interval } from 'rxjs/observable/interval';
 import { WebsocketService, encodeURIComponent2 } from './websocket.service';
+import { LoadingController, Loading } from 'ionic-angular';
 
 declare var location: any;
 
@@ -19,6 +20,8 @@ export class BackendService extends WebsocketService {
   loggedIn = false;
   stationFreezed = false;
   captionmode = false;
+  private loadingInstance: Loading;
+  private loadingStack: number = 0;
 
   competitions: Wettkampf[];
   durchgaenge: string[];
@@ -47,8 +50,9 @@ export class BackendService extends WebsocketService {
 
   private lastJWTChecked = 0;
 
-  constructor(public http: HttpClient) {
+  constructor(public http: HttpClient, public loadingCtrl: LoadingController) {
     super();
+    this.startLoading('App wird initialisiert. Bitte warten ...');
     this.externalLoaderSubscription = interval(1000).subscribe(latest => {
       this.checkJWT();
       const initWith = localStorage.getItem("external_load");
@@ -58,7 +62,38 @@ export class BackendService extends WebsocketService {
         this.initWithQuery(localStorage.getItem('current_station'));
       }
     });
-    this.showMessage.subscribe(msg => this.lastMessageAck = msg);
+    this.showMessage.subscribe(msg => {
+      this.loadingStack = 0;
+      this.resetLoading();
+      this.lastMessageAck = msg;
+    });
+    this.resetLoading();
+  }
+
+  public resetLoading() {
+    this.loadingStack -= 1;
+    if (this.loadingInstance && this.loadingStack < 1) {
+      this.loadingInstance.dismiss();
+      this.loadingInstance = undefined;
+      this.loadingStack = 0;
+    }
+  }
+
+  public startLoading(content: string, observable?: Observable<any>) {    
+    // console.log('starting ' + content + ' stack: ' + this.loadingStack);
+    this.loadingStack += 1;
+    if (!this.loadingInstance) {
+      this.loadingInstance = this.loadingCtrl.create({
+        content: content
+      });
+      this.loadingInstance.present();
+    } else {
+      this.loadingInstance.setContent(content);
+    }
+    if (observable) {
+      observable.subscribe(() => this.resetLoading());
+    }
+    return observable;
   }
 
   initWithQuery(initWith: string) {
@@ -93,6 +128,7 @@ export class BackendService extends WebsocketService {
       });
       this.externalLoaderSubscription.unsubscribe();
       localStorage.removeItem("external_load");
+      this.startLoading('Bitte warten ...')
       if (this._geraet) {
         this.getCompetitions();
         this.loadDurchgaenge();    
@@ -103,6 +139,7 @@ export class BackendService extends WebsocketService {
         this.getCompetitions();
         this.loadDurchgaenge();            
       }
+      this.resetLoading();
     }
   }
 
@@ -133,13 +170,13 @@ export class BackendService extends WebsocketService {
       return;
     }
 
-    this.http.options(backendUrl + 'api/isTokenExpired', { 
+    this.startLoading('Berechtigungen werden überprüft. Bitte warten ...', this.http.options(backendUrl + 'api/isTokenExpired', { 
       observe: 'response', 
       responseType: 'text',
       headers: {
         'x-access-token': `${jwt}`
       }
-    }).subscribe((data) => {
+    }).share()).subscribe((data) => {
       localStorage.setItem('auth_token', data.headers.get('x-access-token'));
       this.loggedIn = true;
     }, (err: HttpErrorResponse) => {
@@ -160,12 +197,12 @@ export class BackendService extends WebsocketService {
 
   login(username, password) {
     const headers = new HttpHeaders();
-    this.http.options(backendUrl + 'api/login', { 
+    this.startLoading('Login wird verarbeitet. Bitte warten ...', this.http.options(backendUrl + 'api/login', { 
       observe: 'response', 
       headers: headers.set('Authorization', 'Basic ' + btoa(username + ':' + password )),
       withCredentials: true,
       responseType: 'text'
-    }).subscribe((data) => {
+    }).share()).subscribe((data) => {
       console.log(data);
       localStorage.setItem('auth_token', data.headers.get('x-access-token'));
       this.loggedIn =true;
@@ -203,7 +240,7 @@ export class BackendService extends WebsocketService {
   }
 
   getCompetitions() {
-    this.http.get<Wettkampf[]>(backendUrl + 'api/competition').subscribe((data) => {
+    this.startLoading('Wettkampfliste wird geladen. Bitte warten ...', this.http.get<Wettkampf[]>(backendUrl + 'api/competition').share()).subscribe((data) => {
       this.competitions = data;
     }, this.standardErrorHandler);
   }
@@ -223,7 +260,7 @@ export class BackendService extends WebsocketService {
     this.loadDurchgaenge();    
   }
   loadDurchgaenge() {
-    this.http.get<string[]>(backendUrl + 'api/durchgang/' + this._competition).subscribe((data) => {
+    this.startLoading('Durchgangliste wird geladen. Bitte warten ...', this.http.get<string[]>(backendUrl + 'api/durchgang/' + this._competition).share()).subscribe((data) => {
       this.durchgaenge = data;
     }, this.standardErrorHandler);
   }
@@ -248,7 +285,7 @@ export class BackendService extends WebsocketService {
     } else {
       path = backendUrl + 'api/durchgang/' + this._competition + '/geraete';  
     }
-    const request = this.http.get<Geraet[]>(path).share();
+    const request =  this.startLoading('Geräte zum Durchgang werden geladen. Bitte warten ...', this.http.get<Geraet[]>(path).share());
     request.subscribe((data) => {
       this.geraete = data;
     }, this.standardErrorHandler);
@@ -269,7 +306,7 @@ export class BackendService extends WebsocketService {
   }
 
   loadSteps() {
-    this.http.get<string[]>(backendUrl + 'api/durchgang/' + this._competition + '/' + encodeURIComponent2(this._durchgang) + '/' + this._geraet).subscribe((data) => {
+    this.startLoading('Stationen zum Gerät werden geladen. Bitte warten ...', this.http.get<string[]>(backendUrl + 'api/durchgang/' + this._competition + '/' + encodeURIComponent2(this._durchgang) + '/' + this._geraet).share()).subscribe((data) => {
       this.steps = data.map(step => parseInt(step));
       if (this._step === undefined) {
         this._step = 1;
@@ -300,7 +337,7 @@ export class BackendService extends WebsocketService {
     this.initWebsocket();
     const lastStepToLoad = this._step;
     this.wertungenLoading = true;
-    this.http.get<WertungContainer[]>(backendUrl + 'api/durchgang/' + this._competition + '/' + encodeURIComponent2( this._durchgang) + '/' + this._geraet + '/' + this._step).subscribe((data) => {
+    this.startLoading('Riegenteilnehmer werden geladen. Bitte warten ...', this.http.get<WertungContainer[]>(backendUrl + 'api/durchgang/' + this._competition + '/' + encodeURIComponent2( this._durchgang) + '/' + this._geraet + '/' + this._step).share()).subscribe((data) => {
       this.wertungenLoading = false;
       if (this._step !== lastStepToLoad) {
         this.loadWertungen();
@@ -326,7 +363,7 @@ export class BackendService extends WebsocketService {
   updateWertung(durchgang: string, step: number, geraetId: number, wertung: Wertung): Observable<WertungContainer> {
     const competitionId = wertung.wettkampfUUID;
     const result = new Subject<WertungContainer>();
-    this.http.put<WertungContainer | MessageAck>(backendUrl + 'api/durchgang/' + competitionId + '/' + encodeURIComponent2(durchgang) + '/' + geraetId + '/' + step, wertung)
+    this.startLoading('Wertung wird gespeichert. Bitte warten ...', this.http.put<WertungContainer | MessageAck>(backendUrl + 'api/durchgang/' + competitionId + '/' + encodeURIComponent2(durchgang) + '/' + geraetId + '/' + step, wertung).share())
     .subscribe((data) => {
       if (!this.isMessageAck(data)) { 
         this.wertungen = this.wertungen.map(w => {
@@ -356,13 +393,13 @@ export class BackendService extends WebsocketService {
 
   finishStation(competitionId: string, durchgang: string, geraetId: number, step: number): Observable<number[]> {
     const result = new Subject<number[]>();
-    this.http.post<MessageAck>(backendUrl + 'api/durchgang/' + competitionId + '/finish', <FinishDurchgangStation>{
+    this.startLoading('Station wird abgeschlossen. Bitte warten ...', this.http.post<MessageAck>(backendUrl + 'api/durchgang/' + competitionId + '/finish', <FinishDurchgangStation>{
       type : "FinishDurchgangStation",
       wettkampfUUID : competitionId,
       durchgang : durchgang,
       geraet : geraetId,
       step : step
-    })
+    }).share())
     .subscribe((data) => {
       const nextSteps = this.steps.filter(s => s > this._step);
       if (nextSteps.length > 0) {
