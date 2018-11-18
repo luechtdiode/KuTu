@@ -59,7 +59,7 @@
         <dc:format>image/svg+xml</dc:format>
         <dc:type
            rdf:resource="http://purl.org/dc/dcmitype/StillImage" />
-        <dc:title></dc:title>
+        <dc:title />
       </cc:Work>
     </rdf:RDF>
   </metadata>
@@ -140,5 +140,41 @@
        sodipodi:ry="4.8660712"
        d="m 14.553572,10.276786 a 5.2232141,4.8660712 0 1 1 -10.4464286,0 5.2232141,4.8660712 0 1 1 10.4464286,0 z"
        transform="matrix(-21.058699,0,0,26.077695,410.69495,104.71631)" />
+    <text
+       xml:space="preserve"
+       style="font-size:191.2542572px;font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;text-align:start;line-height:125%;letter-spacing:0px;word-spacing:0px;writing-mode:lr-tb;text-anchor:start;fill:#fffdff;fill-opacity:1;stroke:none;font-family:Gadugi;-inkscape-font-specification:Gadugi Bold"
+       x="462.47235"
+       y="892.78558"
+       id="text2992"
+       sodipodi:linespacing="125%"
+       transform="scale(0.99366455,1.0063758)"><tspan
+         sodipodi:role="line"
+         id="tspan2994"
+         x="462.47235"
+         y="892.78558">1</tspan></text>
+    <text
+       xml:space="preserve"
+       style="font-size:191.2542572px;font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;text-align:start;line-height:125%;letter-spacing:0px;word-spacing:0px;writing-mode:lr-tb;text-anchor:start;fill:#fffdff;fill-opacity:1;stroke:none;font-family:Gadugi;-inkscape-font-specification:Gadugi Bold"
+       x="188.69734"
+       y="892.78558"
+       id="text2992-1"
+       sodipodi:linespacing="125%"
+       transform="scale(0.99366455,1.0063758)"><tspan
+         sodipodi:role="line"
+         id="tspan2994-7"
+         x="188.69734"
+         y="892.78558">2</tspan></text>
+    <text
+       xml:space="preserve"
+       style="font-size:191.2542572px;font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;text-align:start;line-height:125%;letter-spacing:0px;word-spacing:0px;writing-mode:lr-tb;text-anchor:start;fill:#fffdff;fill-opacity:1;stroke:none;font-family:Gadugi;-inkscape-font-specification:Gadugi Bold"
+       x="740.22394"
+       y="890.45099"
+       id="text2992-1-4"
+       sodipodi:linespacing="125%"
+       transform="scale(0.99366455,1.0063758)"><tspan
+         sodipodi:role="line"
+         id="tspan2994-7-0"
+         x="740.22394"
+         y="890.45099">3</tspan></text>
   </g>
 </svg>
