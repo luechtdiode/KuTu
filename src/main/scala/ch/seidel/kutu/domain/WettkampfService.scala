@@ -73,7 +73,7 @@ trait WettkampfService extends DBService
   }
 
   def listWettkaempfe = {
-     sql"""       select * from wettkampf """.as[Wettkampf]
+     sql"""       select * from wettkampf order by datum desc""".as[Wettkampf]
   }
   def listWettkaempfeAsync = {
      database.run{ listWettkaempfe.withPinnedSession }
@@ -82,7 +82,7 @@ trait WettkampfService extends DBService
   def listWettkaempfeViewAsync = {
     val cache = scala.collection.mutable.Map[Long, ProgrammView]()
     database.run{
-      sql"""      select * from wettkampf """.as[WettkampfView].withPinnedSession
+      sql"""      select * from wettkampf order by datum desc""".as[WettkampfView].withPinnedSession
     }
   }
   
