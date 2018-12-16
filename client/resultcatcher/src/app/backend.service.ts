@@ -54,12 +54,11 @@ export class BackendService extends WebsocketService {
     super();
     this.startLoading('App wird initialisiert. Bitte warten ...');
     this.externalLoaderSubscription = interval(1000).subscribe(latest => {
-      this.checkJWT();
-      const initWith = localStorage.getItem("external_load");
+      const initWith = localStorage.getItem("external_load") || localStorage.getItem('current_station');
       if (initWith) {
         this.initWithQuery(initWith);
       } else {
-        this.initWithQuery(localStorage.getItem('current_station'));
+        this.checkJWT();
       }
     });
     this.showMessage.subscribe(msg => {
@@ -91,7 +90,7 @@ export class BackendService extends WebsocketService {
       this.loadingInstance.setContent(content);
     }
     if (observable) {
-      observable.subscribe(() => this.resetLoading());
+      observable.subscribe(() => this.resetLoading(), (err) => {});
     }
     return observable;
   }
@@ -121,6 +120,7 @@ export class BackendService extends WebsocketService {
           case 'g':
             this._geraet = parseInt(value);
             localStorage.setItem('current_station', initWith);
+            this.checkJWT();
             this.stationFreezed = true;
           default:
             this._step = 1;
