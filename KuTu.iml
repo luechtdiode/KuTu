@@ -308,16 +308,12 @@
     <orderEntry type="library" name="Maven: net.glxn:qrgen:1.4" level="project" />
     <orderEntry type="library" name="Maven: com.google.zxing:javase:3.0.0" level="project" />
     <orderEntry type="library" name="Maven: com.google.zxing:core:3.0.0" level="project" />
-    <orderEntry type="library" name="Maven: com.github.markusbernhardt:proxy-vole:1.0.4" level="project" />
+    <orderEntry type="library" name="Maven: com.github.markusbernhardt:proxy-vole:1.0.5" level="project" />
+    <orderEntry type="library" name="Maven: net.java.dev.jna:jna:4.5.1" level="project" />
+    <orderEntry type="library" name="Maven: net.java.dev.jna:jna-platform:4.5.1" level="project" />
     <orderEntry type="library" name="Maven: org.ini4j:ini4j:0.5.4" level="project" />
-    <orderEntry type="library" name="Maven: net.java.dev.jna:jna:4.2.2" level="project" />
-    <orderEntry type="library" name="Maven: net.java.dev.jna:jna-platform:4.2.2" level="project" />
-    <orderEntry type="library" name="Maven: org.javadelight:delight-rhino-sandbox:0.0.6" level="project" />
-    <orderEntry type="library" name="Maven: org.mozilla:rhino:1.7.7" level="project" />
-    <orderEntry type="library" name="Maven: org.eclipse.xtend:org.eclipse.xtend.lib:2.8.3" level="project" />
-    <orderEntry type="library" name="Maven: org.eclipse.xtext:org.eclipse.xtext.xbase.lib:2.8.3" level="project" />
-    <orderEntry type="library" name="Maven: com.google.guava:guava:14.0.1" level="project" />
-    <orderEntry type="library" name="Maven: org.eclipse.xtend:org.eclipse.xtend.lib.macro:2.8.3" level="project" />
+    <orderEntry type="library" name="Maven: org.javadelight:delight-nashorn-sandbox:0.1.16" level="project" />
+    <orderEntry type="library" name="Maven: org.webjars.bower:js-beautify:1.6.12" level="project" />
     <orderEntry type="library" name="Maven: org.slf4j:slf4j-api:1.7.25" level="project" />
     <orderEntry type="library" name="Maven: ch.qos.logback:logback-classic:1.2.3" level="project" />
     <orderEntry type="library" name="Maven: ch.qos.logback:logback-core:1.2.3" level="project" />
