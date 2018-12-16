@@ -1,19 +1,21 @@
 package ch.seidel.kutu.http
 
-import java.io.InputStream
+import java.io.{File, FileInputStream, InputStream}
 import java.security.{KeyStore, SecureRandom}
 
 import akka.http.scaladsl.{ConnectionContext, HttpsConnectionContext}
 import ch.seidel.kutu.Config._
 import javax.net.ssl.{KeyManagerFactory, SSLContext, TrustManagerFactory}
 
+
 trait KuTuSSLContext {
 
     // Manual HTTPS configuration
   
   val ks: KeyStore = KeyStore.getInstance("JKS")
-  val keystore: InputStream = getClass.getClassLoader.getResourceAsStream(httpHostname + ".jks")
-  lazy val hasHttpsConfig = certPw != null && keystore != null
+  val jksfile = new File(httpHostname + ".jks")
+  lazy val keystore: InputStream = new FileInputStream(jksfile);
+  lazy val hasHttpsConfig = certPw != null && jksfile.exists()
   
   lazy val https: HttpsConnectionContext = {
     require(certPw != null, "Keystore Password required!")
