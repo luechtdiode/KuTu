@@ -6,6 +6,8 @@ env:
     - S3_BUCKET_REQUISITES=s3://rs-travis/kutuapp/requisites
     - S3_BUCKET_PUBLIC=s3://rs-travis/public/kutuapp
 
+# aws permissions see https://stackoverflow.com/questions/38774798/accessdenied-for-listobjects-for-s3-bucket-when-permissions-are-s3
+
 branches:
   except:
   - /^travisbuild-[0-9a-z\-]*/
@@ -33,14 +35,9 @@ jobs:
   - stage: client
     language: node_js
     node_js: lts/*
-    addons:
-      apt:
-        packages:
-          - python-pip
-          - jq
     before_install:
       - npm install -g cordova ionic
-      - pip install --user awscli
+      - pip install awscli --upgrade --user
       - ./ecr_credentials.sh
       - mkdir -p ~/$TRAVIS_BUILD_NUMBER
       - aws s3 sync $S3_BUCKET_CACHE/$TRAVIS_BUILD_NUMBER ~/$TRAVIS_BUILD_NUMBER
@@ -71,7 +68,7 @@ jobs:
       - cp -f $TRAVIS_BUILD_DIR/target/KuTu-app.jar $TRAVIS_BUILD_DIR/outputs/
       - cp -f $TRAVIS_BUILD_DIR/target/$OS/*.dmg $TRAVIS_BUILD_DIR/outputs/$OS/
       - cp -f $TRAVIS_BUILD_DIR/target/$OS/*.pkg $TRAVIS_BUILD_DIR/outputs/$OS/
-      - aws s3 cp $TRAVIS_BUILD_DIR/outputs/* $S3_BUCKET_PUBLIC/
+      - aws s3 cp -R -f $TRAVIS_BUILD_DIR/outputs/$OS/* $S3_BUCKET_PUBLIC/$OS/
     after_success:
       - git checkout "$TRAVIS_BRANCH"
       - cp -R -f ~/$TRAVIS_BUILD_NUMBER/www/* $TRAVIS_BUILD_DIR/src/main/resources/app
