@@ -32,16 +32,18 @@ jobs:
   include:
   - stage: client
     language: node_js
-    addons:
-      apt:
-        packages:
-        - oracle-java9-installer
-        - oracle-java9-set-default
-        - npm
-        - jq
+    node_js: lts/*
+#    addons:
+#      apt:
+#        packages:
+#        - oracle-java9-installer
+#        - oracle-java9-set-default
+#        - npm
+#        - jq
     before_install:
       - nvm install 8
       - npm install -g cordova ionic
+      - pip install --upgrade pip
       - pip install --user awscli
       - pip install urllib3[secure]
       - ./ecr_credentials.sh
@@ -56,7 +58,8 @@ jobs:
       - cp -R -f ./www ~/$TRAVIS_BUILD_NUMBER/
       - rm -rf ~/requisites
     after_success:
-      - aws s3 sync ~/$TRAVIS_BUILD_NUMBER $S3_BUCKET_CACHE/$TRAVIS_BUILD_NUMBER  
+      - aws s3 sync ~/$TRAVIS_BUILD_NUMBER $S3_BUCKET_CACHE/$TRAVIS_BUILD_NUMBER
+
   - stage: server
     language: java
     os: osx
