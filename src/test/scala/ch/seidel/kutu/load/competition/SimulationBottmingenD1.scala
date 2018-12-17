@@ -12,7 +12,7 @@ class SimulationBottmingenD1 extends Simulation {
   //  val jwtToken = "eyJhbGciOiJIUzUxMiIsImN0eSI6ImFwcGxpY2F0aW9uL2pzb24iLCJ0eXAiOiJKV1QifQ.eyJ1c2VyIjoiOTkxMTVkZmItODE5Yi00OGFhLWFkYTUtOTkzN2I4MmVlYmQ0IiwiZXhwaXJlZEF0S2V5IjoxNTQyMDQ4NzY2NjM2fQ.8XYEceYnUIAQVHZVZKP6aF-_7hRNjB7jNFzIGq52CUpmVeBqHmi16W28XQci4tj-IkZmHDqFVzSaW8P3Q3W_vA"
 
   //kutuapp.shrevic.net
-  val jwtToken = "eyJhbGciOiJIUzUxMiIsImN0eSI6ImFwcGxpY2F0aW9uL2pzb24iLCJ0eXAiOiJKV1QifQ.eyJ1c2VyIjoiOTkxMTVkZmItODE5Yi00OGFhLWFkYTUtOTkzN2I4MmVlYmQ0IiwiZXhwaXJlZEF0S2V5IjoxNTQyMDUxMTQxNjQ3fQ.aUPZCrxYryVy0jjACZOng-ONO1RdvRbwZJhDfIBYwx3QyriwnuYocpfBE8bvRh-D5tEqt2XYYgy-rdYMqRtE0A"
+  val jwtToken = "eyJhbGciOiJIUzUxMiIsImN0eSI6ImFwcGxpY2F0aW9uL2pzb24iLCJ0eXAiOiJKV1QifQ.eyJ1c2VyIjoiOTkxMTVkZmItODE5Yi00OGFhLWFkYTUtOTkzN2I4MmVlYmQ0IiwiZXhwaXJlZEF0S2V5IjoxNTQ0MTMyMjMzODAzfQ.d91wy5cqtuisG5YG-Hz92VnNfIMDlmsg3oM2YBPSX0nrHtadEmQQ4vvEaJ3O7eYemBfU1-nAfy9qmcC4jWXgeg"
 
   val competition = "99115dfb-819b-48aa-ada5-9937b82eebd4"
   val originBaseUrl = "https://kutuapp.sharevic.net" //,"http://pluto:5757"//, "https://kutuapp.sharevic.net" //,"https://kutuapp.sharevic.net"//,"http://mws-01:5757"//,
@@ -135,7 +135,7 @@ class SimulationBottmingenD1 extends Simulation {
       .inject(
         rampConcurrentUsers(20) to (150) during (2 minutes),
         //        constantConcurrentUsers(150) during(58 minutes),
-        constantConcurrentUsers(150) during (4 hours))
+        constantConcurrentUsers(150) during (10 hours))
       .throttle(
         reachRps(5) in (10 seconds),
         holdFor(4 hours)
@@ -147,7 +147,7 @@ class SimulationBottmingenD1 extends Simulation {
         //      rampUsers(100) during (15 seconds),
         //      rampUsersPerSec(2) to 8 during (5 minutes) randomized,
         //        constantConcurrentUsers(12) during (60 minutes),
-        rampConcurrentUsers(8) to 12 during (4 hours)
+        rampConcurrentUsers(8) to 32 during (10 hours)
         //constantConcurrentUsers(10) during (4 hours)
         //        constantConcurrentUsers(8) during (50 minutes),
         //        constantConcurrentUsers(12) during (10 minutes),

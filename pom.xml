@@ -93,6 +93,10 @@
 				<enabled>true</enabled>
 			</snapshots>
 		</pluginRepository>
+		<!--<pluginRepository>-->
+			<!--<id>clojars</id>-->
+			<!--<url>http://clojars.org/repo/</url>-->
+		<!--</pluginRepository>-->
 	</pluginRepositories>
 
 	<dependencies>
@@ -607,12 +611,29 @@
 				<artifactId>maven-s3-wagon</artifactId>
 				<version>1.2.1</version>
 			</extension>
+			<!--<extension>-->
+				<!--<groupId>org.springframework.build</groupId>-->
+				<!--<artifactId>aws-maven</artifactId>-->
+				<!--<version>5.0.0.RELEASE</version>-->
+			<!--</extension>-->
+			<!-- https://mvnrepository.com/artifact/pjstadig/maven-s3-wagon -->
+			<!--<extension>-->
+				<!--<groupId>pjstadig</groupId>-->
+				<!--<artifactId>maven-s3-wagon</artifactId>-->
+				<!--<version>1.3.4</version>-->
+			<!--</extension>-->
+
+			<!--<extension>-->
+				<!--<groupId>com.gkatzioura.maven.cloud</groupId>-->
+				<!--<artifactId>s3-storage-wagon</artifactId>-->
+				<!--<version>1.0</version>-->
+			<!--</extension>-->
 			<!-- Enabling the use of FTP -->
-			<extension>
-				<groupId>org.apache.maven.wagon</groupId>
-				<artifactId>wagon-ftp</artifactId>
-				<version>3.2.0</version>
-			</extension>
+			<!--<extension>-->
+				<!--<groupId>org.apache.maven.wagon</groupId>-->
+				<!--<artifactId>wagon-ftp</artifactId>-->
+				<!--<version>3.2.0</version>-->
+			<!--</extension>-->
 		</extensions>
 	</build>
 </project> 

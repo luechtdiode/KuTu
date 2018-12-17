@@ -43,6 +43,7 @@ jobs:
       - nvm install 8
       - npm install -g cordova ionic
       - pip install --user awscli
+      - pip install urllib3[secure]
       - ./ecr_credentials.sh
       - mkdir -p ~/$TRAVIS_BUILD_NUMBER
       - aws s3 sync $S3_BUCKET_CACHE/$TRAVIS_BUILD_NUMBER ~/$TRAVIS_BUILD_NUMBER
@@ -73,7 +74,7 @@ jobs:
       - cp -f $TRAVIS_BUILD_DIR/target/$OS/*.dmg $TRAVIS_BUILD_DIR/outputs/$OS/
       - cp -f $TRAVIS_BUILD_DIR/target/$OS/*.pkg $TRAVIS_BUILD_DIR/outputs/$OS/
       #- cp -f $TRAVIS_BUILD_DIR/target/$OS/*.msi $TRAVIS_BUILD_DIR/outputs/$OS/
-      - aws s3 cp $TRAVIS_BUILD_DIR/outputs S3_BUCKET_PUBLIC
+      - aws s3 cp $TRAVIS_BUILD_DIR/outputs $S3_BUCKET_PUBLIC
     after_success:
       - git checkout "$TRAVIS_BRANCH"
       - cp -R -f ~/$TRAVIS_BUILD_NUMBER/www/* $TRAVIS_BUILD_DIR/src/main/resources/app
