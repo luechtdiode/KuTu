@@ -43,7 +43,7 @@ jobs:
 #        - jq
     before_install:
       - npm install -g cordova ionic
-      - pip3 install --upgrade pip
+#      - pip3 install --upgrade pip
       - pip3 install --user awscli
 #      - pip install urllib3[secure]
       - ./ecr_credentials.sh
