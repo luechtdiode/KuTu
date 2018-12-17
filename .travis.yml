@@ -36,7 +36,7 @@ jobs:
     addons:
       apt:
         packages:
-          - pip3
+          - python3-pip
 #        - oracle-java9-installer
 #        - oracle-java9-set-default
 #        - npm
