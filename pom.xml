@@ -36,7 +36,7 @@
 	</profiles>
 
 	<properties>
-		<!--<app.version>${parsedVersion.majorVersion}.${parsedVersion.minorVersion}</app.version>-->
+		<app.majorminor.version>${parsedVersion.majorVersion}.${parsedVersion.minorVersion}</app.majorminor.version>
 		<app.version>${parsedVersion.majorVersion}.${parsedVersion.minorVersion}.${parsedVersion.incrementalVersion}</app.version>
 		<!--<app.version>${project.version}</app.version>-->
 		<buildDate>${maven.build.timestamp}</buildDate>

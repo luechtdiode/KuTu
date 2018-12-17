@@ -13,18 +13,16 @@ object KuTuServer extends App with KuTuAppHTTPServer with AuthSupport with Hashi
 
   import Core._
   implicit val executionContext: ExecutionContext = system.dispatcher
-  
-  override def shutDown(caller: String) {  
+
+  override def shutDown(caller: String) {
     if (binding  != null) {
       logger.info(s"$caller: Server stops ...")
       binding.flatMap(_.unbind()) // trigger unbinding from the port
-      .onComplete { done =>
+        .onComplete { done =>
         done.failed.map { ex => log.error(ex, "Failed unbinding") }
-        super.shutDown("KuTuServer")
-      }    
-    } else {
-      super.shutDown("KuTuServer")
+      }
     }
+    super.shutDown("KuTuServer")
   }
 
 

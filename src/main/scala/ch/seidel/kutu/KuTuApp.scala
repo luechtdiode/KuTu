@@ -592,13 +592,33 @@ object KuTuApp extends JFXApp with KutuService with JsonSupport with JwtSupport 
     })
   }
 
-  def makeStartServerMenu = makeMenuAction("Start local Server") { (caption, action) =>
-    KuTuApp.invokeWithBusyIndicator {
-      server.startServer { x => server.sha256(x) }
-      //          Await.result(server.httpLoginRequest(s"$remoteBaseUrl/api/login", txtUsername.text.value.trim(), txtPassword.text.value.trim()), Duration.Inf)
+  def makeStartServerMenu = {
+    val item = makeMenuAction("Start local Server") { (caption, action) =>
+      KuTuApp.invokeWithBusyIndicator {
+        server.startServer { x => server.sha256(x) }
+        setLocalHostServer(true)
+        // Await.result(server.httpLoginRequest(s"$remoteBaseUrl/api/login", txtUsername.text.value.trim(), txtPassword.text.value.trim()), Duration.Inf)
+      }
     }
+    item.disable <== when(Bindings.createBooleanBinding(() => isLocalHostServer(),
+      controlsView.selectionModel().selectedItem,
+      selectedWettkampfSecret,
+      ConnectionStates.connectedWithProperty)) choose true otherwise false
+    item
   }
-
+  def makeStopServerMenu = {
+    val item = makeMenuAction("Stop local Server") { (caption, action) =>
+      KuTuApp.invokeWithBusyIndicator {
+        server.stopServer("user stops local server")
+        setLocalHostServer(false)
+      }
+    }
+    item.disable <== when(Bindings.createBooleanBinding(() => isLocalHostServer(),
+      controlsView.selectionModel().selectedItem,
+      selectedWettkampfSecret,
+      ConnectionStates.connectedWithProperty)) choose false otherwise true
+    item
+  }
   def makeProxyLoginMenu = makeMenuAction("Internet Proxy ...") {(caption, action) =>
     implicit val e = action
     val txtProxyAddress = new TextField {
@@ -1189,6 +1209,7 @@ object KuTuApp extends JFXApp with KutuService with JsonSupport with JwtSupport 
             items += new Menu("Netzwerk") {
               //items += makeLoginMenu
               items += makeStartServerMenu
+              items += makeStopServerMenu
               items += makeProxyLoginMenu
               items += makeWettkampfHerunterladenMenu
             }

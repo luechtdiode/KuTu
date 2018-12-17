@@ -155,7 +155,13 @@ object Config {
   lazy val proxyPort = if (appRemoteConfig.hasPath("proxyPort")) Some(appRemoteConfig.getString("proxyPort")) else autoconfigProxy._2
   lazy val remoteHostOrigin = remoteHost.split(":")(0)
 
-  lazy val remoteBaseUrl = s"$remoteSchema://$remoteHost"
+  private var _isLocalHostServer = false
+  def setLocalHostServer(value: Boolean = true): Unit = {
+    _isLocalHostServer = value
+  }
+  def isLocalHostServer() = _isLocalHostServer
+  def remoteBaseUrl = if(_isLocalHostServer) s"$remoteSchema://$httpHostname:$httpPort" else s"$remoteSchema://$remoteHost"
+
   lazy val remoteOperatingBaseUrl = remoteBaseUrl //s"http://$remoteHost:$remotePort/operating"
   lazy val remoteAdminBaseUrl = remoteBaseUrl//s"$remoteBaseUrl/wkadmin"
   lazy val remoteWebSocketUrl = remoteBaseUrl.replace("http", "ws")

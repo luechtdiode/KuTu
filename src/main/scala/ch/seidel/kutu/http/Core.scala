@@ -7,7 +7,7 @@ import ch.seidel.kutu.Config._
 import ch.seidel.kutu.domain.DBService
 import org.slf4j.LoggerFactory
 
-import scala.concurrent.Future
+import scala.concurrent.{ExecutionContext, Future}
 
 object Core extends KuTuSSLContext {
 //  val logger = LoggerFactory.getLogger(this.getClass)
@@ -59,14 +59,26 @@ trait KuTuAppHTTPServer extends ApiService with JsonSupport {
       case Some(binding) => binding
     }
   }
-  
-  def shutDown(caller: String) {
-    Core.terminate()
+
+  def stopServer(caller: String): Unit = {
+    implicit val executionContext: ExecutionContext = system.dispatcher
+
     serverBinding match {
-      case Some(_) =>
+      case Some(binding) =>
+        binding.flatMap(_.unbind()) // trigger unbinding from the port
+          .onComplete { done =>
+          done.failed.map { ex => log.error(ex, "Failed unbinding") }
+        }
+
         serverBinding = None
-        println(caller + " System terminated")
+        println(caller + " Server stopped")
       case _ =>
     }
+  }
+
+  def shutDown(caller: String) {
+    Core.terminate()
+    stopServer(caller)
+    println(caller + " System terminated")
   }
 }
