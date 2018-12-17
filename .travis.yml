@@ -41,9 +41,10 @@ jobs:
 #        - npm
 #        - jq
     before_install:
-      - nvm install 8
+#      - nvm install 8
+      - brew update
+      - brew upgrade
       - npm install -g cordova ionic
-      - pip install --upgrade pip
       - pip install --user awscli
       - pip install urllib3[secure]
       - ./ecr_credentials.sh
