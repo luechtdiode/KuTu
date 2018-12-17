@@ -36,16 +36,11 @@ jobs:
     addons:
       apt:
         packages:
-          - python3-pip
-#        - oracle-java9-installer
-#        - oracle-java9-set-default
-#        - npm
-#        - jq
+          - python-pip
+          - jq
     before_install:
       - npm install -g cordova ionic
-#      - pip3 install --upgrade pip
-      - pip3 install --user awscli
-#      - pip install urllib3[secure]
+      - pip install --user awscli
       - ./ecr_credentials.sh
       - mkdir -p ~/$TRAVIS_BUILD_NUMBER
       - aws s3 sync $S3_BUCKET_CACHE/$TRAVIS_BUILD_NUMBER ~/$TRAVIS_BUILD_NUMBER
