@@ -28,6 +28,10 @@ object Config {
     && !config.getString("app.majorversion").startsWith("${"))
     config.getString("app.majorversion")
   else "dev.dev.test"
+  val appFullVersion: String = if (config.hasPath("app.fullversion")
+    && !config.getString("app.fullversion").startsWith("${"))
+    config.getString("app.fullversion")
+  else "dev.dev.test"
   val builddate: String = if (config.hasPath("app.builddate")
     && !config.getString("app.builddate").startsWith("${"))
     config.getString("app.builddate")

@@ -108,9 +108,9 @@ object KuTuApp extends JFXApp with KutuService with JsonSupport with JwtSupport 
     text <== createStringBinding(() => {
       ConnectionStates.connectedWithProperty.value match {
         case "" =>
-           s"Version: ${Config.appVersion}, Built: ${Config.builddate}"
+           s"Server: ${Config.remoteBaseUrl} offline\nVersion: ${Config.appFullVersion}, Built: ${Config.builddate}"
         case uuid =>
-           s"Server: ${Config.remoteBaseUrl}\nVersion: ${Config.appVersion}, Built: ${Config.builddate}"
+           s"Server: ${Config.remoteBaseUrl} online\nVersion: ${Config.appFullVersion}, Built: ${Config.builddate}"
       }      
     //visible <== ConnectionStates.connectedProperty
      }, ConnectionStates.connectedWithProperty)

@@ -493,7 +493,7 @@
 								<argument>-appclass</argument>
 								<argument>ch.seidel.kutu.KuTuApp</argument>
 								<argument>-name</argument>
-								<argument>TurnerWettkampf-App</argument>
+								<argument>TurnerWettkampf-App-v${parsedVersion.majorVersion}r${parsedVersion.minorVersion}</argument>
 								<argument>-BappVersion=${app.version}</argument>
                                 <argument>-Bicon=${project.build.sourceDirectory}/../resources/images/app-logo.ico</argument>
 								<argument>-srcdir</argument>
