@@ -111,7 +111,7 @@ package object domain {
     def easyprint: String = toString
     def capsulatedprint: String = {
       val ep = easyprint
-      if (ep.matches(".*[\\s,\\.;].*")) s""""$ep"""" else ep
+      if (ep.matches(".*\\s,\\.;.*")) s""""$ep"""" else ep
     }
   }
 

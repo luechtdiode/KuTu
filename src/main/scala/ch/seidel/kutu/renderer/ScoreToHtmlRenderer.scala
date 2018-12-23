@@ -14,7 +14,7 @@ trait ScoreToHtmlRenderer {
   protected val title: String
   
   def toHTML(gs: List[GroupSection], athletsPerPage: Int = 0, sortAlphabetically: Boolean = false, diszMap: Map[Long,Map[String,List[Disziplin]]], logoFile: File): String = {
-    toHTML(gs, "", 0, athletsPerPage, sortAlphabetically, diszMap, logoFile)
+    toHTML(gs, "", 0, athletsPerPage, sortAlphabetically, collectFilterTitles(gs, true), diszMap, logoFile)
   }
 
   val intro = s"""<html lang="de-CH"><head>
@@ -162,21 +162,46 @@ trait ScoreToHtmlRenderer {
   }
   val firstSiteRendered = new AtomicBoolean(false)
 
-  private def toHTML(gs: List[GroupSection], openedTitle: String, level: Int, athletsPerPage: Int, sortAlphabetically: Boolean, diszMap: Map[Long,Map[String,List[Disziplin]]], logoFile: File): String = {
+  def collectFilterTitles(gss: Iterable[GroupSection], falsePositives: Boolean, titles: Set[String] = Set.empty): Set[String] = {
+    val gssList = gss.toList
+    gssList.foldLeft(titles) { (acc, item) =>
+      val newTitles = if (!falsePositives && item.groupKey.isInstanceOf[NullObject]) {
+        val text = item.groupKey.capsulatedprint
+        if (text.length < 200) acc + text else acc
+      } else if (!falsePositives && gssList.size == 1) {
+        acc + item.groupKey.capsulatedprint
+      } else if (falsePositives && gssList.size > 1) {
+        acc + item.groupKey.capsulatedprint
+      } else acc
+      item match {
+        case gnx: GroupNode => collectFilterTitles(gnx.next, falsePositives, newTitles)
+        case _ => newTitles
+      }
+    }
+  }
+
+  private def toHTML(gs: List[GroupSection], openedTitle: String, level: Int, athletsPerPage: Int, sortAlphabetically: Boolean, falsePositives: Set[String], diszMap: Map[Long,Map[String,List[Disziplin]]], logoFile: File): String = {
     val gsBlock = new StringBuilder()
+
     if (level == 0) {
       gsBlock.append(firstSite(title, logoFile))
+      val subtitles = collectFilterTitles(gs, false) -- falsePositives
+      if (subtitles.nonEmpty) {
+        gsBlock.append(s"<em>${subtitles.mkString(", ")}</em><br>")
+      }
       firstSiteRendered.set(false)
     }
+    val gsSize = gs.size
     for (c <- gs) {
+      val levelText = if ((gsSize == 1 && !falsePositives.contains(c.groupKey.capsulatedprint)) || c.groupKey.isInstanceOf[NullObject]) "" else c.groupKey.capsulatedprint
       c match {
         case gl: GroupLeaf =>
           if(openedTitle.startsWith("<h")) {
             val closetag = openedTitle.substring(0, openedTitle.indexOf(">")+1).replace("<", "</")
-            gsBlock.append(s"${openedTitle + gl.groupKey.capsulatedprint}${closetag}")
+            gsBlock.append(s"${openedTitle + levelText}${closetag}")
           }
           else {
-            gsBlock.append(s"<h${level + 2}>${openedTitle + gl.groupKey.capsulatedprint}</h${level + 2}>")
+            gsBlock.append(s"<h${level + 2}>${openedTitle + levelText}</h${level + 2}>")
           }
           val cols = gl.buildColumns
           def renderListHead = {
@@ -293,10 +318,10 @@ trait ScoreToHtmlRenderer {
         case g: GroupNode => gsBlock.append(
             toHTML(g.next.toList,
                 if(openedTitle.length() > 0)
-                  openedTitle + s"${g.groupKey.capsulatedprint}, "
+                  openedTitle + s"${if (levelText.isEmpty) "" else (levelText + ", ")}"
                 else
-                  s"<h${level + 2}>${g.groupKey.capsulatedprint}, ",
-                level + 1, athletsPerPage, sortAlphabetically, diszMap, logoFile))
+                  s"<h${level + 2}>${if (levelText.isEmpty) "" else (levelText + ", ")}",
+                level + 1, athletsPerPage, sortAlphabetically, falsePositives, diszMap, logoFile))
 
         case s: GroupSum  =>
           gsBlock.append(s.easyprint)

@@ -11,7 +11,7 @@ import akka.util.Timeout
 import ch.seidel.kutu.Config
 import ch.seidel.kutu.akka.{CompetitionCoordinatorClientActor, MessageAck, ResponseMessage, StartedDurchgaenge}
 import ch.seidel.kutu.data._
-import ch.seidel.kutu.domain.{Durchgang, KutuService, WertungView, encodeURIParam}
+import ch.seidel.kutu.domain.{Durchgang, KutuService, NullObject, WertungView, encodeURIParam}
 import ch.seidel.kutu.renderer.{PrintUtil, ScoreToHtmlRenderer, ScoreToJsonRenderer}
 
 import scala.concurrent.Future
@@ -27,8 +27,8 @@ trait ScoreRoutes extends SprayJsonSupport with JsonSupport with AuthSupport wit
   private implicit lazy val timeout: Timeout = Timeout(5.seconds)
 
   val allGroupers = List(
-      ByWettkampfProgramm(), ByProgramm(), 
-      ByJahrgang(), ByGeschlecht(), ByVerband(), ByVerein(), 
+      ByWettkampfProgramm(), ByProgramm(), ByWettkampf(),
+      ByJahrgang(), ByGeschlecht(), ByVerband(), ByVerein(), ByAthlet(),
       ByRiege(), ByDisziplin(), ByJahr()
   )
                   
@@ -43,7 +43,7 @@ trait ScoreRoutes extends SprayJsonSupport with JsonSupport with AuthSupport wit
     val filterList = filter.map{flt =>
       val keyvalues = flt.split(":")
       val key = keyvalues(0)
-      val values = keyvalues(1).split("!")//.map(encodeURIParam(_)) // FIXME should be decode
+      val values = keyvalues(1).split("!")
       key -> values.toSet
     }.toMap
     
@@ -52,7 +52,7 @@ trait ScoreRoutes extends SprayJsonSupport with JsonSupport with AuthSupport wit
     }.filter{case Some(_) => true case None => false}.map(_.get)
     val cbllist = if(cblist.nonEmpty) cblist else Seq(ByWettkampfProgramm(), ByGeschlecht())
     
-    val cbflist = filterList.keys.map{groupername =>
+    val cbflist = filterList.keys.map {groupername =>
       groupers.find(grouper => grouper.groupname.equals(groupername))
     }
     .filter{case Some(_) => true case None => false}.map(_.get)
@@ -62,10 +62,12 @@ trait ScoreRoutes extends SprayJsonSupport with JsonSupport with AuthSupport wit
       gr.reset
       filterList.get(gr.groupname) match {
         case Some(filterValues) =>
-          gr.setFilter(gr.analyze(data).filter{f => 
-            val encFilterValueName = encodeURIParam(f.easyprint)
-            filterValues.contains(encFilterValueName)
-          }.toSet)
+          gr.setFilter(gr.analyze(data).filter{f =>
+            filterValues.exists(entry => {
+              val itemText = f.easyprint
+              entry.split(" ").forall(subentry => itemText.contains(subentry))
+            })
+          }.toSet ++ (if (filterValues.contains("all")) Set(NullObject("alle")) else Set.empty))
         case _ =>
       }
     }
@@ -146,7 +148,7 @@ trait ScoreRoutes extends SprayJsonSupport with JsonSupport with AuthSupport wit
         } ~
         pathPrefix("all") {
           val data = selectWertungen()
-          val logodir = new java.io.File(Config.homedir + "/" + data.head.wettkampf.easyprint.replace(" ", "_"))
+          val logodir = new java.io.File(Config.homedir)
           val logofile = PrintUtil.locateLogoFile(logodir)
 
 //          val programmText = data.head.wettkampf.programmId match {case 20 => "Kategorie" case _ => "Programm"}
@@ -211,7 +213,7 @@ trait ScoreRoutes extends SprayJsonSupport with JsonSupport with AuthSupport wit
                     val sd = startedDurchgaenge.asInstanceOf[Set[String]]
                     if (sd.nonEmpty) {
                           Future {queryScoreResults(s"${wettkampf.easyprint} - Zwischenresultate", None, 
-                              filter ++ Iterable(byDurchgangMat.groupname + ":" + sd.map(encodeURIParam).mkString("!")),
+                              filter ++ Iterable(byDurchgangMat.groupname + ":" + sd.mkString("!")),
                               html.nonEmpty, groupers, data, logofile)
                           }
                     } else {
