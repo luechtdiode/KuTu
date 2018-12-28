@@ -9,7 +9,7 @@ import java.util.concurrent.Executors
 import ch.seidel.commons.{DisplayablePage, PageDisplayer}
 import ch.seidel.kutu.Config._
 import ch.seidel.kutu.akka.KutuAppEvent
-import ch.seidel.kutu.data.ResourceExchanger
+import ch.seidel.kutu.data.{CaseObjectMetaUtil, ResourceExchanger, Surname}
 import ch.seidel.kutu.domain._
 import ch.seidel.kutu.http.{AuthSupport, JsonSupport, JwtSupport, WebSocketClient}
 import javafx.beans.property.SimpleObjectProperty
@@ -26,7 +26,7 @@ import scalafx.beans.property.{BooleanProperty, ReadOnlyStringWrapper}
 import scalafx.beans.property.StringProperty.sfxStringProperty2jfx
 import scalafx.collections.ObservableBuffer
 import scalafx.event.ActionEvent
-import scalafx.geometry.Insets
+import scalafx.geometry.{Insets, Pos}
 import scalafx.scene.Node.sfxNode2jfx
 import scalafx.scene.{Cursor, Node, Scene}
 import scalafx.scene.control.Alert.AlertType
@@ -590,6 +590,132 @@ object KuTuApp extends JFXApp with KutuService with JsonSupport with JwtSupport 
         }
       }
     })
+  }
+
+  def makeFindDuplicteAthletes = makeMenuAction("Doppelt erfasste Athleten finden ...") {(caption, action) =>
+    implicit val e = action
+    KuTuApp.invokeAsyncWithBusyIndicator { Future {
+
+      def mapSexPrediction(athlet: AthletView) = Surname
+        .isSurname(athlet.vorname)
+        .map{sn => if(sn.isMasculin == sn.isFeminin) athlet.geschlecht else if (sn.isMasculin) "M" else "W"}
+        .getOrElse("X")
+
+      val likeFinder = findAthleteLike(new java.util.ArrayList[MatchCode])_
+      for {
+        athleteView <- selectAthletesView
+        athlete = athleteView.toAthlet
+        like = likeFinder(athlete)
+        if (athleteView.id != like.id)
+      } yield {
+        val tupel = List(athleteView, loadAthleteView(like.id)).sortWith {(a, b) =>
+            if (a.gebdat.map(_.toLocalDate.getDayOfMonth).getOrElse(0) > b.gebdat.map(_.toLocalDate.getDayOfMonth).getOrElse(0)) true
+            else {
+              val asp = mapSexPrediction(a)
+              val bsp = mapSexPrediction(b)
+              if (asp == a.geschlecht && bsp != b.geschlecht) true
+              else if (bsp == b.geschlecht && asp != a.geschlecht) false
+              else if (a.id - b.id > 0) true
+              else false
+            }
+        }
+        (tupel(0), tupel(1), CaseObjectMetaUtil.mergeMissingProperties(tupel(0), tupel(1)))
+      }
+    }}.onComplete {
+      case Failure(t) => logger.debug(t.toString)
+      case Success(candidates) => Platform.runLater {
+        def cleanMirrorTuples = {
+          candidates.foldLeft(List[(AthletView, AthletView, AthletView)]()){(acc, triple) =>
+            acc.find(acctriple => acctriple._1 == triple._1 || acctriple._2 == triple._1) match {
+              case Some(_) => acc
+              case _ => acc :+ triple
+            }
+          }
+        }
+        val athletModel = ObservableBuffer[(AthletView, AthletView, AthletView)](cleanMirrorTuples)
+        def printAthlet(athlet: AthletView) = athlet.geschlecht match {
+          case "W" => s"Ti ${athlet.easyprint}"
+          case _ =>  s"Tu ${athlet.easyprint}"
+        }
+        val athletTable = new TableView[(AthletView, AthletView, AthletView)](athletModel) {
+          columns ++= List(
+            new TableColumn[(AthletView, AthletView, AthletView), String] {
+              text = "Athlet"
+              minWidth = 220
+              cellValueFactory = { x =>
+                new ReadOnlyStringWrapper(x.value, "athlet", {
+                  printAthlet(x.value._1)
+                })
+              }
+              minWidth = 220
+            },
+            new TableColumn[(AthletView, AthletView, AthletView), String] {
+              text = "Athlet-Duplette"
+              cellValueFactory = { x =>
+                new ReadOnlyStringWrapper(x.value, "athlet", {
+                  printAthlet(x.value._2)
+                })
+              }
+            },
+            new TableColumn[(AthletView, AthletView, AthletView), String] {
+              text = "Zusammenlege-Vorschlag"
+              minWidth = 220
+              cellValueFactory = { x =>
+                new ReadOnlyStringWrapper(x.value, "dbmatch", {
+                  printAthlet(x.value._3)
+                })
+              }
+            }
+          )
+        }
+        PageDisplayer.showInDialog(caption, new DisplayablePage() {
+          def getPage: Node = {
+            new BorderPane {
+              hgrow = Priority.Always
+              vgrow = Priority.Always
+              minWidth = 800
+              center = new BorderPane {
+                hgrow = Priority.Always
+                vgrow = Priority.Always
+                //              top = filter
+                center = athletTable
+                minWidth = 680
+              }
+              right = new VBox {
+                margin = Insets(0, 0, 0, 10)
+                children += new Button("Vorschlag austauschen") {
+                  disable <== when(athletTable.selectionModel.value.selectedItemProperty.isNull()) choose true otherwise false
+                  onAction = (event: ActionEvent) => {
+                    val index = athletTable.selectionModel.value.getSelectedIndex
+                    val (athlet1, athlet2, _) = athletTable.selectionModel.value.selectedItem.value
+                    athletModel.update(index, (athlet2, athlet1, CaseObjectMetaUtil.mergeMissingProperties(athlet2, athlet1)))
+                  }
+                }
+              }
+            }
+          }
+        },
+
+          new Button("OK, zusammenlegen") {
+            disable <== when(athletTable.selectionModel.value.selectedItemProperty.isNull()) choose true otherwise false
+            onAction = (event: ActionEvent) => {
+              val (athlet1, athlet2, athlet3) = athletTable.selectionModel.value.selectedItem.value
+              mergeAthletes(athlet2.id, athlet1.id)
+              insertAthlete(athlet3.toAthlet)
+            }
+          },
+
+          new Button("OK alle, zusammenlegen") {
+            disable <== when(createBooleanBinding(() => athletModel.isEmpty, athletModel)) choose true otherwise false
+            onAction = (event: ActionEvent) => {
+              athletModel.foreach{case (athlet1, athlet2, athlet3) => {
+                mergeAthletes(athlet2.id, athlet1.id)}
+                insertAthlete(athlet3.toAthlet)
+              }
+            }
+          })
+      }
+    }
   }
 
   def makeStartServerMenu = {
@@ -1201,6 +1327,7 @@ object KuTuApp extends JFXApp with KutuService with JsonSupport with JwtSupport 
         case "Athleten" =>
           controlsView.contextMenu = new ContextMenu() {
             items += makeNeuerVereinAnlegenMenu
+            items += makeFindDuplicteAthletes
           }
         case "Wettkämpfe" =>
           controlsView.contextMenu = new ContextMenu() {

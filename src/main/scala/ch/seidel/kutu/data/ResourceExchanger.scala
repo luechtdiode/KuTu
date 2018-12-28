@@ -15,13 +15,14 @@ import scala.annotation.tailrec
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 import scala.io.Source
+import CaseObjectMetaUtil._
+
 import scala.reflect.runtime.universe._
 
 /**
  */
 object ResourceExchanger extends KutuService with RiegenBuilder {
   private val logger = LoggerFactory.getLogger(this.getClass)
-  private val rm = reflect.runtime.universe.runtimeMirror(getClass.getClassLoader)
 
   def processWSMessage[T](refresher: (Option[T], KutuAppEvent)=>Unit) = {
     val cache = new java.util.ArrayList[MatchCode]()
@@ -291,33 +292,6 @@ object ResourceExchanger extends KutuService with RiegenBuilder {
     wettkampfInstances.head._2
   }
 
-  private def getCaseMethods[T: TypeTag] = typeOf[T].members.collect {
-    case m: MethodSymbol if m.isCaseAccessor => m
-  }.toList
-
-  private def getHeader[T: TypeTag] = {
-    val fields = getCaseMethods[T]
-    fields.map(f => "\"" + f.name.encodedName + "\"").mkString(",")
-  }
-
-  private def getValues[T: TypeTag: reflect.ClassTag](instance: T) = {
-    val im = rm.reflect(instance)
-    val values = typeOf[T].members.collect {
-      case m: MethodSymbol if m.isCaseAccessor =>
-        im.reflectMethod(m).apply() match {
-          case Some(verein: Verein) => verein.id + ""
-          case Some(programm: Programm) => programm.id + ""
-          case Some(athlet: Athlet) => athlet.id + ""
-          case Some(athlet: AthletView) => athlet.id + ""
-          case Some(disziplin: Disziplin) => disziplin.id + ""
-          case Some(value) => value.toString
-          case None => ""
-          case e => e.toString
-        }
-    }
-    values.map("\"" + _ + "\"").mkString(",")
-  }
-  
   def exportWettkampf(wettkampf: Wettkampf, filename: String) {
     exportWettkampfToStream(wettkampf, new FileOutputStream(filename), true)
   }
@@ -391,6 +365,30 @@ object ResourceExchanger extends KutuService with RiegenBuilder {
     zip.finish()
     zip.close()
   }
+
+  def getHeader[T: TypeTag] = {
+    val fields = getCaseMethods[T]
+    fields.map(f => "\"" + f.name.encodedName + "\"").mkString(",")
+  }
+
+  def getValues[T: TypeTag: reflect.ClassTag](instance: T) = {
+    val im = rm.reflect(instance)
+    val values = typeOf[T].members.collect {
+      case m: MethodSymbol if m.isCaseAccessor =>
+        im.reflectMethod(m).apply() match {
+          case Some(verein: Verein) => verein.id + ""
+          case Some(programm: Programm) => programm.id + ""
+          case Some(athlet: Athlet) => athlet.id + ""
+          case Some(athlet: AthletView) => athlet.id + ""
+          case Some(disziplin: Disziplin) => disziplin.id + ""
+          case Some(value) => value.toString
+          case None => ""
+          case e => e.toString
+        }
+    }
+    values.map("\"" + _ + "\"").mkString(",")
+  }
+
 
   def exportEinheiten(wettkampf: Wettkampf, filename: String) {
     val export = new FileOutputStream(filename);

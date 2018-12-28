@@ -3,6 +3,7 @@ package ch.seidel.kutu.domain
 import java.sql.Date
 import java.time.{LocalDate, Period}
 
+import ch.seidel.kutu.data.{CaseObjectMetaUtil, Surname}
 import org.slf4j.LoggerFactory
 import slick.jdbc.SQLiteProfile.api._
 
@@ -18,36 +19,48 @@ trait AthletService extends DBService with AthletResultMapper {
     sql"""          select * from athlet""".as[Athlet]
   }
   
-  def selectAthletesOfVerein(id: Long) = {
-    Await.result(database.run{(
+  def selectAthletesOfVerein(id: Long): List[Athlet] = {
+    Await.result(database.run{
       sql"""        select * from athlet
                     where verein=${id}
                     order by activ desc, name, vorname asc
-       """.as[Athlet]).withPinnedSession
+       """.as[Athlet].withPinnedSession
     }, Duration.Inf).toList
   }
   
   /**
    * id |js_id |geschlecht |name |vorname   |gebdat |strasse |plz |ort |activ |verein |id |name        |
    */
-  def selectAthletesView = {
+  def selectAthletesView: List[AthletView] = {
     Await.result(database.run{
-      (sql"""        select a.id, a.js_id, a.geschlecht, a.name, a.vorname, a.gebdat, a.strasse, a.plz, a.ort, a.activ, a.verein, 
+      sql"""        select a.id, a.js_id, a.geschlecht, a.name, a.vorname, a.gebdat, a.strasse, a.plz, a.ort, a.activ, a.verein,
                             v.* from athlet a inner join verein v on (v.id = a.verein) 
                      order by activ desc, name, vorname asc 
           """.as[AthletView]
-      ).withPinnedSession
+      .withPinnedSession
     }, Duration.Inf).toList
   }
   
-  def loadAthleteView(athletId: Long) = {
+  def loadAthleteView(athletId: Long): AthletView = {
     Await.result(database.run{
-      (sql"""        select a.id, a.js_id, a.geschlecht, a.name, a.vorname, a.gebdat, a.strasse, a.plz, a.ort, a.activ, a.verein, 
+      sql"""        select a.id, a.js_id, a.geschlecht, a.name, a.vorname, a.gebdat, a.strasse, a.plz, a.ort, a.activ, a.verein,
                             v.* from athlet a inner join verein v on (v.id = a.verein) 
                      where a.id = $athletId 
                      order by activ desc, name, vorname asc
           """.as[AthletView].head
-      ).withPinnedSession
+      .withPinnedSession
+    }, Duration.Inf)
+  }
+
+  def mergeAthletes(idToDelete: Long, idToKeep: Long) {
+    Await.result(database.run{(
+      sqlu"""       update wertung
+                    set athlet_id=${idToKeep}
+                    where athlet_id=${idToDelete}
+          """ >>
+      sqlu"""
+                    delete from athlet where id=${idToDelete}
+          """).transactionally
     }, Duration.Inf)
   }
 
@@ -118,19 +131,36 @@ trait AthletService extends DBService with AthletResultMapper {
     Await.result(database.run{
       DBIO.sequence(process).transactionally
     }, Duration.Inf).map(x => x._2).head
+
+    // TODO send message to replicat the new fact
+    //    val awu = AthletUpdated(wv.athlet, wv.toWertung, wv.wettkampf.uuid.get, "", wv.wettkampfdisziplin.disziplin.id, wv.wettkampfdisziplin.programm.easyprint)
+    //    WebSocketClient.publish(awu)
   }
 
-  def findAthleteLike(cache: java.util.List[MatchCode] = new java.util.ArrayList[MatchCode])(athlet: Athlet) = {
+  def startsSameInPercent(text1: String, text2: String) = 100 * text1.zip(text2).foldLeft((true, 0)){ (acc, pair) =>
+    val same = pair._1 == pair._2
+    (acc._1 && same, acc._2 + (if (acc._1 && same) 1 else 0))
+  }._2 / math.max(text1.length, text2.length)
+
+  def findAthleteLike(cache: java.util.List[MatchCode] = new java.util.ArrayList[MatchCode])(athlet: Athlet): Athlet = {
     val bmname = MatchCode.encode(athlet.name)
     val bmvorname = MatchCode.encode(athlet.vorname)
+
     def similarAthletFactor(code: MatchCode) = {
+      val maxthresholdCharCount = 8
+      def calcThreshold(text1: String, text2: String) =
+        80 - 60 / maxthresholdCharCount * math.min(maxthresholdCharCount, math.max(0, maxthresholdCharCount - math.max(text1.length, text2.length)))
       val encodedNamen = code.encodedNamen
-      val namenSimilarity = MatchCode.similarFactor(code.name, athlet.name) + (100 * encodedNamen.filter(bmname.contains(_)).toList.size / encodedNamen.size)
+      val namenSimilarity = MatchCode.similarFactor(code.name, athlet.name, calcThreshold(athlet.name, code.name)) + encodedNamen.find(bmname.contains(_)).map(_ => 100).getOrElse(
+        bmname.find(encodedNamen.contains(_)).map(_ => 100).getOrElse(0)
+      )
       val encodedVorNamen = code.encodedVorNamen
-      val vorNamenSimilarity = MatchCode.similarFactor(code.vorname, athlet.vorname) + (100 * encodedVorNamen.filter(bmvorname.contains(_)).toList.size / encodedVorNamen.size)
-      val jahrgangSimilarity = code.jahrgang.equals(AthletJahrgang(athlet.gebdat).jahrgang)
+      val vorNamenSimilarity = MatchCode.similarFactor(code.vorname, athlet.vorname, calcThreshold(athlet.vorname, code.vorname)) + startsSameInPercent(code.vorname, athlet.vorname) + encodedVorNamen.find(bmvorname.contains(_)).map(_ => 100).getOrElse(
+        bmvorname.find(encodedVorNamen.contains(_)).map(_ => 100).getOrElse(0)
+      )
+      val jahrgangSimilarity = athlet.gebdat.isEmpty || code.jahrgang.equals(AthletJahrgang(athlet.gebdat).jahrgang)
       val preret = namenSimilarity > 140 && vorNamenSimilarity > 140
-      val preret2 = (namenSimilarity + vorNamenSimilarity) > 220 && (math.max(namenSimilarity, vorNamenSimilarity) > 140)
+      val preret2 = namenSimilarity > 50 && (namenSimilarity + vorNamenSimilarity) > 200 && (math.max(namenSimilarity, vorNamenSimilarity) > 140)
       val vereinSimilarity = athlet.verein match {
         case Some(vid) => vid == code.verein
         case _ => true
@@ -152,28 +182,67 @@ trait AthletService extends DBService with AthletResultMapper {
       }
     }
     
-    val preselect = if(cache.isEmpty()) {
+    val preselect = if(cache.isEmpty) {
       Await.result(database.run{sql"""
          select id, name, vorname, gebdat, verein
          from athlet
          """.as[(Long, String, String, Option[Date], Long)].withPinnedSession
       }, Duration.Inf).
-      map{x =>
+        flatMap{x =>
         val (id, name, vorname, jahr, verein) = x
-        MatchCode(id, name, vorname, AthletJahrgang(jahr).jahrgang, verein)
+        val mc1 = MatchCode(id, name, vorname, AthletJahrgang(jahr).jahrgang, verein)
+          if (Surname.isSurname(mc1.name).isDefined) {
+            List(mc1, mc1.swappednames)
+          } else {
+            List(mc1)
+          }
+
       }.foreach{ cache.add }
       cache
     }
     else {
       cache
     }
-    val presel2 = JavaConverters.asScalaBuffer(preselect).map{matchcode =>
+    val presel2 = JavaConverters.asScalaBuffer(preselect).filter(mc => mc.id != athlet.id).map{matchcode =>
       (matchcode.id, similarAthletFactor(matchcode))
-    }.filter(_._2 > 0).toList.sortBy(_._2).reverse
-    presel2.headOption.flatMap(k =>
-      Await.result(database.run{(sql"""select * from athlet where id=${k._1}""".as[Athlet].
-      headOption).withPinnedSession}, Duration.Inf)
-    ).getOrElse(athlet)
+    }.filter(p => p._2 > 0).toList.sortBy(_._2).reverse
+    presel2.headOption.flatMap(k => loadAthlet(k._1)).getOrElse(athlet)
+  }
+
+  protected def loadAthlet(key: Long) = {
+    Await.result(database.run {
+      sql"""select * from athlet where id=${key}""".as[Athlet]
+        .headOption
+        .withPinnedSession
+    }, Duration.Inf)
+  }
+
+  def mapSexPrediction(athlet: Athlet): String = Surname
+    .isSurname(athlet.vorname)
+    .map{sn => if(sn.isMasculin == sn.isFeminin) athlet.geschlecht else if (sn.isMasculin) "M" else "W"}
+    .getOrElse("X")
+
+  def findDuplicates(): List[(AthletView, AthletView, AthletView)] = {
+    val likeFinder = findAthleteLike(new java.util.ArrayList[MatchCode])_
+    for {
+      athleteView <- selectAthletesView
+      athlete = athleteView.toAthlet
+      like = likeFinder(athlete)
+      if athleteView.id != like.id
+    } yield {
+      val tupel = List(athleteView, loadAthleteView(like.id)).sortWith {(a, b) =>
+        if (a.gebdat.map(_.toLocalDate.getDayOfMonth).getOrElse(0) > b.gebdat.map(_.toLocalDate.getDayOfMonth).getOrElse(0)) true
+        else {
+          val asp = mapSexPrediction(a.toAthlet)
+          val bsp = mapSexPrediction(b.toAthlet)
+          if (asp == a.geschlecht && bsp != b.geschlecht) true
+          else if (bsp == b.geschlecht && asp != a.geschlecht) false
+          else if (a.id - b.id > 0) true
+          else false
+        }
+      }
+      (tupel(0), tupel(1), CaseObjectMetaUtil.mergeMissingProperties(tupel(0), tupel(1)))
+    }
   }
 
   def altersfilter(pgm: ProgrammView, a: Athlet): Boolean = {
@@ -184,11 +253,5 @@ trait AthletService extends DBService with AthletResultMapper {
     pgm.alterVon <= alter && pgm.alterBis >= alter
   }
 
-  def altersfilter(pgm: ProgrammView, a: AthletView): Boolean = {
-    val alter = a.gebdat match {
-      case Some(d) => Period.between(d.toLocalDate, LocalDate.now).getYears
-      case None    => 7
-    }
-    pgm.alterVon <= alter && pgm.alterBis >= alter
-  }
+  def altersfilter(pgm: ProgrammView, a: AthletView): Boolean = altersfilter(pgm, a.toAthlet)
 }

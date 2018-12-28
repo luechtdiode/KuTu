@@ -5,6 +5,7 @@ import java.nio.file.{Files, LinkOption, StandardOpenOption}
 import java.time.{LocalDate, ZoneId}
 import java.util.concurrent.TimeUnit
 
+import ch.seidel.kutu.data.NameCodec
 import org.apache.commons.codec.language.ColognePhonetic
 import org.apache.commons.codec.language.bm._
 import org.apache.commons.text.similarity.LevenshteinDistance
@@ -463,13 +464,12 @@ package object domain {
       encArrToList(bmenc.encode(name)) ++
       encArrToList(bmenc2.encode(name)) ++
       encArrToList(bmenc3.encode(name)) ++
-      Seq(colenc.encode(name).mkString(""))
+      Seq(NameCodec.encode(name), colenc.encode(name).mkString(""))
 
-    def similarFactor(name1: String, name2: String) = {
+    def similarFactor(name1: String, name2: String, threshold: Int = 80) = {
       val diff = LevenshteinDistance.getDefaultInstance.apply(name1, name2)
       val diffproz = 100 * diff / name1.length()
       val similar = 100 - diffproz
-      val threshold = 80 //%
       if(similar >= threshold) {
         similar
       }
@@ -483,6 +483,7 @@ package object domain {
     import MatchCode._
     val encodedNamen = encode(name)
     val encodedVorNamen = encode(vorname)
+    def swappednames = MatchCode(id, vorname, name, jahrgang, verein)
   }
 
   case class Kandidat(wettkampfTitel: String, geschlecht: String, programm: String, id: Long,

@@ -63,9 +63,9 @@ trait WettkampfService extends DBService
             }
           }
           .filter(view => view.id == id)
-          .head
+          .headOption
         }
-    Await.result(database.run(allPgmsQuery.withPinnedSession), Duration.Inf)
+    Await.result(database.run(allPgmsQuery.withPinnedSession), Duration.Inf).getOrElse(ProgrammView(id, "<unknown>", 0, None, 0, 0, 0))
   }
   
   def readProgramm(id: Long, cache: scala.collection.mutable.Map[Long, ProgrammView]): ProgrammView = {
