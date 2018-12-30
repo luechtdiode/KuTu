@@ -13,7 +13,7 @@ import scalafx.delegate.SFXDelegate
 import scalafx.event.subscriptions.Subscription
 import scalafx.scene.control.cell._
 import scalafx.scene.control.{TableCell, TableColumn, _}
-import scalafx.scene.input.{KeyCode, KeyEvent}
+import scalafx.scene.input.{Clipboard, KeyCode, KeyEvent}
 import scalafx.util.StringConverter
 
 import scala.language.implicitConversions
@@ -21,6 +21,7 @@ import scala.language.implicitConversions
 object AutoCommitTextFieldTableCell {
   implicit def sfxAutoCommitTextFieldTableCell2jfx[S, T](cell: AutoCommitTextFieldTableCell[S, T]): jfxscc.TextFieldTableCell[S, T] = if (cell != null) cell.delegate else null
   protected val PSEUDO_CLASS_FOCUSED = PseudoClass("focused")
+  var lastKey: Option[String] = None
 
   def forTableColumn[S](): (TableColumn[S, String] => TableCell[S, String]) =
     (view: TableColumn[S, String]) => jfxscc.TextFieldTableCell.forTableColumn[S]().call(view)
@@ -196,6 +197,7 @@ object AutoCommitTextFieldTableCell {
     catch {
       case e: Exception =>
     }
+    lastKey = None
     ke.code match {
       case KeyCode.F if(ke.controlDown) =>
         if(filterText != null) filterText.requestFocus()
@@ -249,9 +251,11 @@ object AutoCommitTextFieldTableCell {
 
       // Paste via CTRL+V or SHIFT+INSERT
       case c if(ke.shiftDown && c == KeyCode.Insert) || (ke.controlDown && ke.text.equals("v")) =>
+        lastKey = Some(Clipboard.systemClipboard.string)
         tableView.edit(fc.row, tc)
 
       case c if((c.isLetterKey || c.isDigitKey) && tableView.editingCell.value == null) =>
+        lastKey = Some(ke.getText)
         tableView.edit(fc.row, tc)
 
       case _ =>
@@ -274,7 +278,16 @@ class AutoCommitTextFieldTableCell[S, T](override val delegate: jfxscc.TextField
 
   var textField: Option[TextField] = None
 
-  graphic.onChange({ textField = if(graphic.value.isInstanceOf[TextField]) Some(graphic.value.asInstanceOf[TextField]) else None })
+  graphic.onChange({
+    textField = if(graphic.value.isInstanceOf[TextField]) Some(graphic.value.asInstanceOf[TextField]) else None
+    (textField, AutoCommitTextFieldTableCell.lastKey) match {
+      case (Some(tf), Some(text)) => tf.setText(text)
+        Platform.runLater(() => {
+          tf.deselect
+          tf.end
+        })
+      case _ =>
+    }  })
   editing.onChange( handleEditingState )
 
   def handleEditingState {
@@ -303,6 +316,7 @@ class AutoCommitTextFieldTableCell[S, T](override val delegate: jfxscc.TextField
 
     def cancel() {
       fcs.cancel()
+      println(textField, "canceled")
     }
   }
 }

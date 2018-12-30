@@ -11,6 +11,7 @@ import ch.seidel.kutu.domain._
 import ch.seidel.kutu.http.WebSocketClient
 import ch.seidel.kutu.renderer.PrintUtil.FilenameDefault
 import ch.seidel.kutu.renderer._
+import javafx.scene.control.cell.PropertyValueFactory
 import javafx.scene.{control => jfxsc}
 import org.slf4j.LoggerFactory
 import scalafx.Includes._
@@ -30,6 +31,7 @@ import scalafx.scene.control.SelectionMode.sfxEnum2jfx
 import scalafx.scene.control.TableColumn._
 import scalafx.scene.control.TableView.sfxTableView2jfx
 import scalafx.scene.control._
+import scalafx.scene.control.cell.TextFieldTableCell
 import scalafx.scene.image.{Image, ImageView}
 import scalafx.scene.input.{Clipboard, KeyEvent}
 import scalafx.scene.layout._
@@ -399,30 +401,28 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
             val disciplin = evt.rowValue(index)
             disciplin.noteD.value = evt.newValue
             disciplin.endnote.value = wertung.init.wettkampfdisziplin.notenSpez.calcEndnote(disciplin.noteD.value, disciplin.noteE.value)
-            val rowIndex = wkModel.indexOf(evt.rowValue)
             if (disciplin.isDirty) {
               service.updateWertung(disciplin.commit)
             }
             evt.tableView.requestFocus()
           }
-          onEditCancel = (evt: CellEditEvent[IndexedSeq[WertungEditor], Double]) => {
+          onEditCancel = (_: CellEditEvent[IndexedSeq[WertungEditor], Double]) => {
           }
         }
         lazy val clEnote = new WKTableColumn[Double](indexerE.next) {
           text = "E"
           cellValueFactory = { x => if (x.value.size > index) x.value(index).noteE else wertung.noteE }
-          cellFactory = { x => new AutoCommitTextFieldTableCell[IndexedSeq[WertungEditor], Double](DoubleConverter(wertung.init.wettkampfdisziplin.notenSpez)) }
+
+          cellFactory = { _ => new AutoCommitTextFieldTableCell[IndexedSeq[WertungEditor], Double](DoubleConverter(wertung.init.wettkampfdisziplin.notenSpez)) }
 
           styleClass += "table-cell-with-value"
           prefWidth = 60
           editable = true
-          //logger.debug(text, index)
 
           onEditCommit = (evt: CellEditEvent[IndexedSeq[WertungEditor], Double]) => {
             val disciplin = evt.rowValue(index)
             disciplin.noteE.value = evt.newValue
             disciplin.endnote.value = wertung.init.wettkampfdisziplin.notenSpez.calcEndnote(disciplin.noteD.value, disciplin.noteE.value)
-            val rowIndex = wkModel.indexOf(evt.rowValue)
             if (disciplin.isDirty) {
               service.updateWertung(disciplin.commit)
             }
@@ -441,7 +441,6 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
         val cl: jfxsc.TableColumn[IndexedSeq[WertungEditor], _] =  if(withDNotes) {
           new TableColumn[IndexedSeq[WertungEditor], String] {
             text = wertung.init.wettkampfdisziplin.disziplin.name
-//            delegate.impl_setReorderable(false)
             columns ++= Seq(clDnote, clEnote, clEndnote)
           }
         }
@@ -542,7 +541,6 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
               s"${x.value.head.init.riege2.getOrElse("keine Einteilung")}"
             })
           }
-  //        delegate.impl_setReorderable(false)
           editable = !wettkampfmode.value
           visible = !wettkampfmode.value
           prefWidth = 100
@@ -570,7 +568,7 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
               evt.tableView.selectionModel.value.select(rowIndex, this)
               evt.tableView.requestFocus()
             }
-            onEditCancel = (evt: CellEditEvent[IndexedSeq[WertungEditor], String]) => {
+            onEditCancel = (_: CellEditEvent[IndexedSeq[WertungEditor], String]) => {
     //          logger.debug(evt)
             }
           }
@@ -593,7 +591,6 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
                   s"${x.value.find(we => we.init.wettkampfdisziplin.programm == p).flatMap(we => we.init.riege).getOrElse("keine Einteilung")}"
                 })
               }
-      //        delegate.impl_setReorderable(false)
               editable = !wettkampfmode.value
               visible = !wettkampfmode.value
               prefWidth = 100
@@ -629,7 +626,7 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
             new WKTableColumn[String](-1) {
               text = "Riege 2"
               if(!wettkampfmode.value) {
-                cellFactory = { x =>
+                cellFactory = { _ =>
                   new AutoCommitTextFieldTableCell[IndexedSeq[WertungEditor], String](new DefaultStringConverter())
                 }
               }
@@ -666,7 +663,7 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
                   evt.tableView.selectionModel.value.select(rowIndex, this)
                   evt.tableView.requestFocus()
                 }
-                onEditCancel = (evt: CellEditEvent[IndexedSeq[WertungEditor], String]) => {
+                onEditCancel = (_: CellEditEvent[IndexedSeq[WertungEditor], String]) => {
         //          logger.debug(evt)
                 }
               }
@@ -674,7 +671,7 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
            )
           }
         col
-      }.toList
+      }
       cols
     }
       
@@ -922,7 +919,6 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
       catch {
         case e: Exception =>
       }
-//      setEditorPaneToDiscipline(idx)      
       updateEditorPane(if (wkview.focused.value) Some(wkview) else None)
       isFilterRefreshing = false
     }
@@ -936,7 +932,6 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
               val index = wkModel.indexOf(aw)
               val newWertungen = aw.map{ w => 
                 if (w.init.id == wertung.id && w.endnote != wertung.endnote) {
-                  //KuTuApp.invokeWithBusyIndicator(reloadData())
                   WertungEditor(w.init.updatedWertung(wertung))
                 } else {
                   w
@@ -953,8 +948,6 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
             }
             updateEditorPane(tableSelected)
 
-            //updateFilteredList(lastFilter, durchgangFilter)
-            
           case _ =>
         }
       }
