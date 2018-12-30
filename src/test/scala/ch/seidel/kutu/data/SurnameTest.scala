@@ -16,7 +16,7 @@ class SurnameTest extends FunSuite {
     assert(Surname.isSurname("Roland").get.isFeminin === false)
   }
 
-  test("testIsFeminim") {
+  test("testIsFeminin") {
     assert(Surname.isSurname("Susanna").get.isMasculin === false)
     assert(Surname.isSurname("Susanna").get.isFeminin === true)
   }
