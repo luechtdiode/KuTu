@@ -19,10 +19,6 @@ object WertungServiceBestenResult {
   private var shouldResetBestenResults = false
   
   def putWertungToBestenResults(wertung: WertungView) {
-    if(shouldResetBestenResults) {
-      bestenResults = Map[String,WertungView]()
-      shouldResetBestenResults = false;
-    }
     bestenResults = bestenResults.updated(s"${wertung.athlet.id}:${wertung.wettkampfdisziplin.id}", wertung)
     logger.info(s"actually best-scored: \n${bestenResults.mkString("\n")}")
   }
@@ -40,7 +36,13 @@ object WertungServiceBestenResult {
   def resetBestenResults {
     shouldResetBestenResults = true;
   }
-  
+
+  def cleanBestenResults: Unit = {
+    if(shouldResetBestenResults) {
+      bestenResults = Map[String,WertungView]()
+      shouldResetBestenResults = false
+    }
+  }
 }
 
 abstract trait WertungService extends DBService with WertungResultMapper with DisziplinService with RiegenService {
@@ -256,8 +258,9 @@ abstract trait WertungService extends DBService with WertungResultMapper with Di
                     order by wd.programm_id, wd.ord
        """.as[WertungView].head).transactionally)
     
-    ret.map{wv => 
-      if(wv.endnote >= 8.7) {
+    ret.map{wv =>
+      cleanBestenResults
+      if(wv.endnote >= 9.0) {
         putWertungToBestenResults(wv)
       }
       val awu = AthletWertungUpdated(wv.athlet, wv.toWertung, wv.wettkampf.uuid.get, "", wv.wettkampfdisziplin.disziplin.id, wv.wettkampfdisziplin.programm.easyprint)
