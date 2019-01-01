@@ -24,29 +24,28 @@ import scala.reflect.runtime.universe._
 object ResourceExchanger extends KutuService with RiegenBuilder {
   private val logger = LoggerFactory.getLogger(this.getClass)
 
-  def processWSMessage[T](refresher: (Option[T], KutuAppEvent)=>Unit) = {
+  def processWSMessage[T](wettkampf: Wettkampf, refresher: (Option[T], KutuAppEvent)=>Unit) = {
     val cache = new java.util.ArrayList[MatchCode]()
     
     val opFn: (Option[T], KutuAppEvent)=>Unit = {  
       case (sender, uw @ AthletWertungUpdated(athlet, wertung, wettkampfUUID, durchgang, geraet, programm)) =>
-        Future {
+        if (wettkampf.uuid.contains(wettkampfUUID)) Future {
           logger.info("received new " + uw)
           val mappedverein = athlet.verein match {case Some(v) => findVereinLike(Verein(id = 0, name = v.name, verband = None)) case _ => None}
-          val mappedAthlet = findAthleteLike(cache)(athlet.toAthlet.copy(id = 0, verein = mappedverein))
-          val mappedWettkampf = readWettkampf(wettkampfUUID)
+          val mappedWettkampf = wettkampf
+          val mappedAthlet = findAthleteLike(cache, Some(mappedWettkampf.id))(athlet.toAthlet.copy(id = 0, verein = mappedverein))
           val mappedWertung = wertung.copy(athletId = mappedAthlet.id, wettkampfId = mappedWettkampf.id, wettkampfUUID = wettkampfUUID)
-          val verifiedWertung = try {
+          try {
             val vw = updateWertungWithIDMapping(mappedWertung, true)
             logger.info("saved " + vw)
-            refresher(sender, uw.copy(wertung = vw))
-            vw
+            refresher(sender, uw.copy(athlet.copy(id = mappedAthlet.id), wertung = vw))
           } catch {
             case e: Exception =>
               logger.error("not saved!", e)
               refresher(sender, uw)
           }
         }
-      case (sender, MessageAck(_)) => 
+      case (_, MessageAck(_)) => // ignore
       case (sender, someOther) => 
         refresher(sender, someOther)
     }

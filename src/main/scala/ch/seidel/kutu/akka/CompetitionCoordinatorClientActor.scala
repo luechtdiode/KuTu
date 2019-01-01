@@ -44,8 +44,9 @@ class CompetitionCoordinatorClientActor(wettkampfUUID: String) extends Actor wit
     self ! KeepAlive
   }
 
-  val websocketProcessor = ResourceExchanger.processWSMessage(handleWebsocketMessages)
-  val wkPgmId = readWettkampf(wettkampfUUID).programmId
+  val wettkampf = readWettkampf(wettkampfUUID)
+  val websocketProcessor = ResourceExchanger.processWSMessage(wettkampf, handleWebsocketMessages)
+  val wkPgmId = wettkampf.programmId
   val isDNoteUsed = wkPgmId != 20 && wkPgmId != 1
 
   override def preStart(): Unit = {

@@ -18,86 +18,90 @@ trait AthletService extends DBService with AthletResultMapper {
   def selectAthletes = {
     sql"""          select * from athlet""".as[Athlet]
   }
-  
+
   def selectAthletesOfVerein(id: Long): List[Athlet] = {
-    Await.result(database.run{
+    Await.result(database.run {
       sql"""        select * from athlet
                     where verein=${id}
                     order by activ desc, name, vorname asc
        """.as[Athlet].withPinnedSession
     }, Duration.Inf).toList
   }
-  
+
   /**
-   * id |js_id |geschlecht |name |vorname   |gebdat |strasse |plz |ort |activ |verein |id |name        |
-   */
+    * id |js_id |geschlecht |name |vorname   |gebdat |strasse |plz |ort |activ |verein |id |name        |
+    */
   def selectAthletesView: List[AthletView] = {
-    Await.result(database.run{
+    Await.result(database.run {
       sql"""        select a.id, a.js_id, a.geschlecht, a.name, a.vorname, a.gebdat, a.strasse, a.plz, a.ort, a.activ, a.verein,
                             v.* from athlet a inner join verein v on (v.id = a.verein) 
                      order by activ desc, name, vorname asc 
           """.as[AthletView]
-      .withPinnedSession
+        .withPinnedSession
     }, Duration.Inf).toList
   }
-  
+
   def loadAthleteView(athletId: Long): AthletView = {
-    Await.result(database.run{
+    Await.result(database.run {
       sql"""        select a.id, a.js_id, a.geschlecht, a.name, a.vorname, a.gebdat, a.strasse, a.plz, a.ort, a.activ, a.verein,
                             v.* from athlet a inner join verein v on (v.id = a.verein) 
-                     where a.id = $athletId 
+                     where a.id = $athletId
                      order by activ desc, name, vorname asc
           """.as[AthletView].head
-      .withPinnedSession
+        .withPinnedSession
     }, Duration.Inf)
   }
 
   def mergeAthletes(idToDelete: Long, idToKeep: Long) {
-    Await.result(database.run{(
-      sqlu"""       update wertung
+    Await.result(database.run {
+      (
+        sqlu"""       update wertung
                     set athlet_id=${idToKeep}
                     where athlet_id=${idToDelete}
           """ >>
-      sqlu"""
+        sqlu"""
                     delete from athlet where id=${idToDelete}
           """).transactionally
     }, Duration.Inf)
   }
 
   def deleteAthlet(id: Long) {
-    Await.result(database.run{(
-      sqlu"""       delete from wertung
+    Await.result(database.run {
+      (
+        sqlu"""       delete from wertung
                     where athlet_id=${id}
           """ >>
-      sqlu"""
+        sqlu"""
                     delete from athlet where id=${id}
           """).transactionally
     }, Duration.Inf)
   }
-  
-  def insertAthletes(athletes: Iterable[(String,Athlet)]): Iterable[(String,Athlet)] = {
+
+  def insertAthletes(athletes: Iterable[(String, Athlet)]): Iterable[(String, Athlet)] = {
     val process = athletes.map(a => insertAthlete2(a))
-    Await.result(database.run{
+    Await.result(database.run {
       DBIO.sequence(process).transactionally
     }, Duration.Inf)
   }
-  
-  private def insertAthlete2(importAthlet: (String,Athlet)) = {
+
+  private def insertAthlete2(importAthlet: (String, Athlet)) = {
     val (id, athlete) = importAthlet
+
     def getId = athlete.gebdat match {
       case Some(gebdat) =>
-         sql"""
+        sql"""
                   select max(athlet.id) as maxid
                   from athlet
                   where name=${athlete.name} and vorname=${athlete.vorname} and strftime('%Y', gebdat)=strftime('%Y',${gebdat}) and verein=${athlete.verein}
          """.as[Long].headOption
       case _ =>
-         sql"""
+        sql"""
                   select max(athlet.id) as maxid
                   from athlet
                   where name=${athlete.name} and vorname=${athlete.vorname} and verein=${athlete.verein}
          """.as[Long].headOption
     }
+
     (if (athlete.id == 0) {
       getId.flatMap {
         case Some(athletId) if (athletId > 0) =>
@@ -117,18 +121,18 @@ trait AthletService extends DBService with AthletResultMapper {
             sql"""select * from athlet where id = (select max(athlet.id) from athlet)""".as[Athlet].head
       }
     } else {
-        sqlu"""
+      sqlu"""
                   replace into athlet
                   (id, js_id, geschlecht, name, vorname, gebdat, strasse, plz, ort, verein, activ)
                   values (${athlete.id}, ${athlete.js_id}, ${athlete.geschlecht}, ${athlete.name}, ${athlete.vorname}, ${athlete.gebdat}, ${athlete.strasse}, ${athlete.plz}, ${athlete.ort}, ${athlete.verein}, ${athlete.activ})
           """.map(_ => athlete)
     })
-    .map(a => (id, a))
+      .map(a => (id, a))
   }
 
-  def insertAthlete(athlete: Athlet): Athlet = {   
+  def insertAthlete(athlete: Athlet): Athlet = {
     val process = Seq(("", athlete)).map(a => insertAthlete2(a))
-    Await.result(database.run{
+    Await.result(database.run {
       DBIO.sequence(process).transactionally
     }, Duration.Inf).map(x => x._2).head
 
@@ -137,19 +141,21 @@ trait AthletService extends DBService with AthletResultMapper {
     //    WebSocketClient.publish(awu)
   }
 
-  def startsSameInPercent(text1: String, text2: String) = 100 * text1.zip(text2).foldLeft((true, 0)){ (acc, pair) =>
+  def startsSameInPercent(text1: String, text2: String) = 100 * text1.zip(text2).foldLeft((true, 0)) { (acc, pair) =>
     val same = pair._1 == pair._2
     (acc._1 && same, acc._2 + (if (acc._1 && same) 1 else 0))
   }._2 / math.max(text1.length, text2.length)
 
-  def findAthleteLike(cache: java.util.List[MatchCode] = new java.util.ArrayList[MatchCode])(athlet: Athlet): Athlet = {
+  def findAthleteLike(cache: java.util.List[MatchCode] = new java.util.ArrayList[MatchCode], wettkampf: Option[Long] = None)(athlet: Athlet): Athlet = {
     val bmname = MatchCode.encode(athlet.name)
     val bmvorname = MatchCode.encode(athlet.vorname)
 
     def similarAthletFactor(code: MatchCode) = {
       val maxthresholdCharCount = 8
+
       def calcThreshold(text1: String, text2: String) =
         80 - 60 / maxthresholdCharCount * math.min(maxthresholdCharCount, math.max(0, maxthresholdCharCount - math.max(text1.length, text2.length)))
+
       val encodedNamen = code.encodedNamen
       val namenSimilarity = MatchCode.similarFactor(code.name, athlet.name, calcThreshold(athlet.name, code.name)) + encodedNamen.find(bmname.contains(_)).map(_ => 100).getOrElse(
         bmname.find(encodedNamen.contains(_)).map(_ => 100).getOrElse(0)
@@ -165,45 +171,55 @@ trait AthletService extends DBService with AthletResultMapper {
         case Some(vid) => vid == code.verein
         case _ => true
       }
-//      if (code.name.equals(athlet.name)) {
-//      print(athlet.easyprint, this)
-//      }
-      if(vereinSimilarity && preret && jahrgangSimilarity) {
-//        logger.debug(" factor " + (namenSimilarity + vorNamenSimilarity) * 2)
+      //      if (code.name.equals(athlet.name)) {
+      //      print(athlet.easyprint, this)
+      //      }
+      if (vereinSimilarity && preret && jahrgangSimilarity) {
+        //        logger.debug(" factor " + (namenSimilarity + vorNamenSimilarity) * 2)
         (namenSimilarity + vorNamenSimilarity) * 2
       }
-      else if(vereinSimilarity && (preret || (preret2 && jahrgangSimilarity))) {
-//        logger.debug(" factor " + (namenSimilarity + vorNamenSimilarity))
+      else if (vereinSimilarity && (preret || (preret2 && jahrgangSimilarity))) {
+        //        logger.debug(" factor " + (namenSimilarity + vorNamenSimilarity))
         namenSimilarity + vorNamenSimilarity
       }
       else {
-//        logger.debug(" factor 0")
+        //        logger.debug(" factor 0")
         0
       }
     }
-    
-    val preselect = if(cache.isEmpty) {
-      Await.result(database.run{sql"""
-         select id, name, vorname, gebdat, verein
-         from athlet
-         """.as[(Long, String, String, Option[Date], Long)].withPinnedSession
+
+    val preselect = if (cache.isEmpty) {
+      Await.result(database.run {
+        (wettkampf match {
+          case None => sql"""
+             select id, name, vorname, gebdat, verein
+             from athlet
+           """
+          case Some(wkid) => sql"""
+             select id, name, vorname, gebdat, verein
+             from athlet a
+             where exists (select w.id from wertung w where w.wettkampf_id = $wkid and w.athlet_id = a.id)
+           """
+        }).as[(Long, String, String, Option[Date], Long)].withPinnedSession
       }, Duration.Inf).
-        flatMap{x =>
-        val (id, name, vorname, jahr, verein) = x
-        val mc1 = MatchCode(id, name, vorname, AthletJahrgang(jahr).jahrgang, verein)
+        flatMap { x =>
+          val (id, name, vorname, jahr, verein) = x
+          val mc1 = MatchCode(id, name, vorname, AthletJahrgang(jahr).jahrgang, verein)
           if (Surname.isSurname(mc1.name).isDefined) {
             List(mc1, mc1.swappednames)
           } else {
             List(mc1)
           }
 
-      }.foreach{ cache.add }
+        }.foreach {
+        cache.add
+      }
       cache
     }
     else {
       cache
     }
-    val presel2 = JavaConverters.asScalaBuffer(preselect).filter(mc => mc.id != athlet.id).map{matchcode =>
+    val presel2 = JavaConverters.asScalaBuffer(preselect).filter(mc => mc.id != athlet.id).map { matchcode =>
       (matchcode.id, similarAthletFactor(matchcode))
     }.filter(p => p._2 > 0).toList.sortBy(_._2).reverse
     presel2.headOption.flatMap(k => loadAthlet(k._1)).getOrElse(athlet)
@@ -219,18 +235,18 @@ trait AthletService extends DBService with AthletResultMapper {
 
   def mapSexPrediction(athlet: Athlet): String = Surname
     .isSurname(athlet.vorname)
-    .map{sn => if(sn.isMasculin == sn.isFeminin) athlet.geschlecht else if (sn.isMasculin) "M" else "W"}
+    .map { sn => if (sn.isMasculin == sn.isFeminin) athlet.geschlecht else if (sn.isMasculin) "M" else "W" }
     .getOrElse("X")
 
   def findDuplicates(): List[(AthletView, AthletView, AthletView)] = {
-    val likeFinder = findAthleteLike(new java.util.ArrayList[MatchCode])_
+    val likeFinder = findAthleteLike(new java.util.ArrayList[MatchCode]) _
     for {
       athleteView <- selectAthletesView
       athlete = athleteView.toAthlet
       like = likeFinder(athlete)
       if athleteView.id != like.id
     } yield {
-      val tupel = List(athleteView, loadAthleteView(like.id)).sortWith {(a, b) =>
+      val tupel = List(athleteView, loadAthleteView(like.id)).sortWith { (a, b) =>
         if (a.gebdat.map(_.toLocalDate.getDayOfMonth).getOrElse(0) > b.gebdat.map(_.toLocalDate.getDayOfMonth).getOrElse(0)) true
         else {
           val asp = mapSexPrediction(a.toAthlet)
@@ -248,7 +264,7 @@ trait AthletService extends DBService with AthletResultMapper {
   def altersfilter(pgm: ProgrammView, a: Athlet): Boolean = {
     val alter = a.gebdat match {
       case Some(d) => Period.between(d.toLocalDate, LocalDate.now).getYears
-      case None    => 7
+      case None => 7
     }
     pgm.alterVon <= alter && pgm.alterBis >= alter
   }
