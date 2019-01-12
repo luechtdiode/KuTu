@@ -58,7 +58,10 @@ jobs:
 
     # osx_image: xcode9.2
     before_install:
-      - brew install awscli
+      - curl "https://s3.amazonaws.com/aws-cli/awscli-bundle.zip" -o "awscli-bundle.zip"
+      - unzip awscli-bundle.zip
+      - ./awscli-bundle/install -b ~/bin/aws
+      # - brew install awscli
       - ./ecr_credentials.sh
       - mkdir -p ~/$TRAVIS_BUILD_NUMBER
       - aws s3 sync $S3_BUCKET_CACHE/$TRAVIS_BUILD_NUMBER ~/$TRAVIS_BUILD_NUMBER
