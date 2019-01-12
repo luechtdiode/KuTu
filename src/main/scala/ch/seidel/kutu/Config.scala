@@ -6,6 +6,7 @@ import java.nio.file.{Files, LinkOption, StandardOpenOption}
 import java.security.{NoSuchAlgorithmException, SecureRandom}
 
 import authentikat.jwt.JwtHeader
+import ch.seidel.kutu.http.KuTuSSLContext
 import com.github.markusbernhardt.proxy.ProxySearch
 import com.typesafe.config.ConfigFactory
 import javax.crypto.KeyGenerator
@@ -13,7 +14,7 @@ import org.slf4j.LoggerFactory
 
 import scala.collection.JavaConverters
 
-object Config {
+object Config extends KuTuSSLContext {
   private val logger = LoggerFactory.getLogger(this.getClass)
   logger.info("OS-Name: " + System.getProperty("os.name"))
 
@@ -146,27 +147,31 @@ object Config {
 
   lazy val httpInterface = if (config.hasPath("http.interface")) config.getString("http.interface") else "0.0.0.0"
   lazy val httpPort = if (config.hasPath("http.port")) config.getInt("http.port") else 5757
-  lazy val httpHostname = if (config.hasPath("http.hostname")) config.getString("http.hostname") else "kutuapp.sharevic.net"
+  lazy val httpHostname = if (config.hasPath("http.hostname")) config.getString("http.hostname") else "localhost"
   lazy val certPw = if (config.hasPath("http.certPw")) config.getString("http.certPw") else null
 
   lazy val jwtTokenExpiryPeriodInDays = jwtConfig.getInt("tokenExpiryPeriodInDays")
   lazy val jwtHeader = JwtHeader(jwtConfig.getString("algorithm"), jwtConfig.getString("contenttype"))
 
   lazy val remoteHost = if (appRemoteConfig.hasPath("hostname")) appRemoteConfig.getString("hostname") else "kutuapp"
-  lazy val remoteSchema = if (appRemoteConfig.hasPath("schema")) appRemoteConfig.getString("schema") else "https"
+  def remoteSchema = if(_isLocalHostServer) {
+    if(hasHttpsConfig) "https" else "http"
+  } else if (appRemoteConfig.hasPath("schema")) {
+    appRemoteConfig.getString("schema")
+  } else "https"
 
   lazy val proxyHost = if (appRemoteConfig.hasPath("proxyHost")) Some(appRemoteConfig.getString("proxyHost")) else autoconfigProxy._1
   lazy val proxyPort = if (appRemoteConfig.hasPath("proxyPort")) Some(appRemoteConfig.getString("proxyPort")) else autoconfigProxy._2
-  lazy val remoteHostOrigin = remoteHost.split(":")(0)
+  def remoteHostOrigin = if(_isLocalHostServer) "localhost" else remoteHost.split(":")(0)
 
   private var _isLocalHostServer = false
-  def setLocalHostServer(value: Boolean = true): Unit = {
+  def setLocalHostServer(value: Boolean): Unit = {
     _isLocalHostServer = value
   }
   def isLocalHostServer() = _isLocalHostServer
-  def remoteBaseUrl = if(_isLocalHostServer) s"$remoteSchema://$httpHostname:$httpPort" else s"$remoteSchema://$remoteHost"
+  def remoteBaseUrl = if(_isLocalHostServer) if(hasHttpsConfig)s"https://$httpHostname:$httpPort" else s"http://$httpHostname:$httpPort" else s"$remoteSchema://$remoteHost"
 
-  lazy val remoteOperatingBaseUrl = remoteBaseUrl //s"http://$remoteHost:$remotePort/operating"
-  lazy val remoteAdminBaseUrl = remoteBaseUrl//s"$remoteBaseUrl/wkadmin"
-  lazy val remoteWebSocketUrl = remoteBaseUrl.replace("http", "ws")
+  def remoteOperatingBaseUrl = remoteBaseUrl //s"http://$remoteHost:$remotePort/operating"
+  def remoteAdminBaseUrl = remoteBaseUrl//s"$remoteBaseUrl/wkadmin"
+  def remoteWebSocketUrl = remoteBaseUrl.replace("http", "ws")
 }
