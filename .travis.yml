@@ -22,13 +22,16 @@ cache:
     - $HOME/.m2/repository
     - $HOME/.sbt
     - $HOME/.ivy2
+    - $TRAVIS_BUILD_DIR/target
 
 before_script:
   - mkdir -p $TRAVIS_BUILD_DIR/outputs/$OS
   
 stages:
   - client
-  - server
+  - serverosx
+  - serverlnx
+  - serverwin
 
 jobs:
   include:
@@ -52,10 +55,9 @@ jobs:
     after_success:
       - aws s3 sync ~/$TRAVIS_BUILD_NUMBER $S3_BUCKET_CACHE/$TRAVIS_BUILD_NUMBER
 
-  - stage: server
+  - stage: serverosx
     language: java
     os: osx
-
     # osx_image: xcode9.2
     before_install:
       - curl "https://s3.amazonaws.com/aws-cli/awscli-bundle.zip" -o "awscli-bundle.zip"
@@ -63,6 +65,7 @@ jobs:
       - ./awscli-bundle/install -b ~/bin/aws
       # - brew install awscli
       - ./ecr_credentials.sh
+      - ./prepare_jdk.sh
       - mkdir -p ~/$TRAVIS_BUILD_NUMBER
       - aws s3 sync $S3_BUCKET_CACHE/$TRAVIS_BUILD_NUMBER ~/$TRAVIS_BUILD_NUMBER
     script:
@@ -81,6 +84,35 @@ jobs:
       - git tag $GIT_TAG -a -m "TravisCI build $TRAVIS_BUILD_NUMBER"
       - if ! git push -fq --follow-tags https://$GH_ACCESS_TOKEN@github.com/luechtdiode/KuTu.git $TRAVIS_BRANCH > /dev/null 2>&1; then err "failed to push git changes"; return1; fi
       - aws s3 rm --recursive $S3_BUCKET_CACHE/$TRAVIS_BUILD_NUMBER # clean up after ourselves
+
+  - stage: serverlnx
+    language: java
+    os: linux
+
+    before_install:
+      - pip install awscli --upgrade --user
+      - ./ecr_credentials.sh
+      - ./prepare_jdk.sh
+    script:
+      - mvn package -DskipTest=true #deploy --settings deploy-settings.xml -Daws_default_region=eu-west-1
+      - cp -f $TRAVIS_BUILD_DIR/target/$OS/*.* $TRAVIS_BUILD_DIR/outputs/$OS/
+      - aws s3 cp --recursive $TRAVIS_BUILD_DIR/outputs/ $S3_BUCKET_PUBLIC/
+
+  - stage: serverwin
+    language: java
+    os: windows
+
+    before_install:
+      - curl "https://s3.amazonaws.com/aws-cli/awscli-bundle.zip" -o "awscli-bundle.zip"
+      - unzip awscli-bundle.zip
+      - ./awscli-bundle/install -b ~/bin/aws
+      - ./ecr_credentials.sh
+      - ./prepare_jdk.sh
+      - mkdir -p ~/$TRAVIS_BUILD_NUMBER
+    script:
+      - mvn package -DskipTest=true #deploy --settings deploy-settings.xml -Daws_default_region=eu-west-1
+      - cp -f $TRAVIS_BUILD_DIR/target/$OS/*.* $TRAVIS_BUILD_DIR/outputs/$OS/
+      - aws s3 cp --recursive $TRAVIS_BUILD_DIR/outputs/ $S3_BUCKET_PUBLIC/
 
 # deploy: actually, deploy is managed by maven wagon
 #   # deploy build to s3
