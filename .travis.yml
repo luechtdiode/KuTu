@@ -110,7 +110,7 @@ jobs:
       - choco install awscli -y
       - choco install maven -y
       - choco install openjdk -y
-      - refreshenv
+#      - powershell refreshenv
       - choco install nuget.commandline -y
       - nuget install WiX.Toolset -NonInteractive # https://travis-ci.community/t/unable-to-install-wix-toolset/1071
 #      - choco install wixtoolset -y

@@ -16,7 +16,8 @@ then
     # curl -L https://github.com/AdoptOpenJDK/openjdk11-binaries/releases/download/jdk-11.0.1%2B13/OpenJDK11U-jdk_x64_windows_openj9_jdk-11.0.1_13_openj9-0.11.0_11.0.1_13.zip -o "jdk-${OS}.zip"
     curl -L http://download2.gluonhq.com/jpackager/11/jdk.packager-windows.zip -o "javapackager-${OS}.zip"
     export JAVA_HOME="C:/Program Files/OpenJDK/jdk-11.0.1"
-    export PATH=${JAVA_HOME}/bin:$PATH
+    export MAVEN_HOME="C:\ProgramData\chocolatey\lib\maven"
+    export PATH=${JAVA_HOME}/bin:${MAVEN_HOME}/bin:$PATH
 fi
 
 if [ ${OS} == 'Linux' ]
