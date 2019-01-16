@@ -18,7 +18,7 @@
 			</activation>
 			<properties>
 				<javafx.os>win</javafx.os>
-				<bundler.os>win64</bundler.os>
+				<bundler.os>Win64</bundler.os>
 			</properties>
 		</profile>
 		<profile>
@@ -31,6 +31,18 @@
 			<properties>
 				<javafx.os>mac</javafx.os>
 				<bundler.os>Darwin</bundler.os>
+			</properties>
+		</profile>
+		<profile>
+			<id>linux</id>
+			<activation>
+				<os>
+					<family>linux</family>
+				</os>
+			</activation>
+			<properties>
+				<javafx.os>linux</javafx.os>
+				<bundler.os>Linux</bundler.os>
 			</properties>
 		</profile>
 	</profiles>
