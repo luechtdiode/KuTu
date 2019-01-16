@@ -23,7 +23,8 @@ cache:
     - $HOME/.sbt
     - $HOME/.ivy2
     - $TRAVIS_BUILD_DIR/target
-
+    - $HOME/apache-maven-3.5.0
+    
 before_script:
   - mkdir -p $TRAVIS_BUILD_DIR/outputs/$OS
   
@@ -102,8 +103,6 @@ jobs:
       - aws s3 cp --recursive $TRAVIS_BUILD_DIR/outputs/ $S3_BUCKET_PUBLIC/
 
   - stage: serverwin
-    language: java
-    jdk: openjdk11
     os: windows
 
     before_install:
@@ -112,6 +111,9 @@ jobs:
       - ./awscli-bundle/install -b ~/bin/aws
       - ./ecr_credentials.sh
       - ./prepare_jdk.sh
+      - export M2_HOME=$HOME/apache-maven-3.5.0
+      - if [ ! -d $M2_HOME/bin ]; then curl https://archive.apache.org/dist/maven/maven-3/3.5.0/binaries/apache-maven-3.5.0-bin.tar.gz | tar zxf - -C $HOME; fi
+      - export PATH=$M2_HOME/bin:$PATH
       - mkdir -p ~/$TRAVIS_BUILD_NUMBER
     script:
       - mvn package -DskipTest=true #deploy --settings deploy-settings.xml -Daws_default_region=eu-west-1
