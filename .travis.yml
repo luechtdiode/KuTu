@@ -107,15 +107,13 @@ jobs:
 
     before_install:
       - choco install python
-      - curl "https://s3.amazonaws.com/aws-cli/awscli-bundle.zip" -o "awscli-bundle.zip"
-      - unzip awscli-bundle.zip
-      - ./awscli-bundle/install -b ~/bin/aws
-      - ./ecr_credentials.sh
-      - ./prepare_jdk.sh
+      - choco install awscli
       - choco install openjdk
       - choco install maven
       - choco install wixtoolset
       - choco install innosetup
+      - ./ecr_credentials.sh
+      - ./prepare_jdk.sh
       - mkdir -p ~/$TRAVIS_BUILD_NUMBER
     script:
       - mvn clean package -DskipTest=true #deploy --settings deploy-settings.xml -Daws_default_region=eu-west-1
