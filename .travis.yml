@@ -106,14 +106,16 @@ jobs:
     language: sh
 
     before_install:
+      - choco install python
       - curl "https://s3.amazonaws.com/aws-cli/awscli-bundle.zip" -o "awscli-bundle.zip"
       - unzip awscli-bundle.zip
       - ./awscli-bundle/install -b ~/bin/aws
       - ./ecr_credentials.sh
       - ./prepare_jdk.sh
-      - export M2_HOME=$HOME/apache-maven-3.5.0
-      - if [ ! -d $M2_HOME/bin ]; then curl https://archive.apache.org/dist/maven/maven-3/3.5.0/binaries/apache-maven-3.5.0-bin.tar.gz | tar zxf - -C $HOME; fi
-      - export PATH=$M2_HOME/bin:$PATH
+      - choco install openjdk
+      - choco install maven
+      - choco install wixtoolset
+      - choco install innosetup
       - mkdir -p ~/$TRAVIS_BUILD_NUMBER
     script:
       - mvn clean package -DskipTest=true #deploy --settings deploy-settings.xml -Daws_default_region=eu-west-1
