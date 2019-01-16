@@ -125,7 +125,7 @@ jobs:
       - echo $JAVA_HOME
       - echo $MAVEN_HOME
       - echo $PATH
-      - mvn.bat clean package -DskipTest=true #deploy --settings deploy-settings.xml -Daws_default_region=eu-west-1
+      - mvn.sh clean package -DskipTest=true #deploy --settings deploy-settings.xml -Daws_default_region=eu-west-1
       - cp -f $TRAVIS_BUILD_DIR/target/$OS/*.* $TRAVIS_BUILD_DIR/outputs/$OS/
       - aws s3 cp --recursive $TRAVIS_BUILD_DIR/outputs/ $S3_BUCKET_PUBLIC/ >/dev/null 2>&1
 
