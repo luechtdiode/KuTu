@@ -57,6 +57,8 @@ jobs:
 
   - stage: serverosx
     language: java
+    jdk:
+      - openjdk11
     os: osx
     # osx_image: xcode9.2
     before_install:
@@ -87,6 +89,8 @@ jobs:
 
   - stage: serverlnx
     language: java
+    jdk:
+      - openjdk11
     os: linux
 
     before_install:
@@ -100,6 +104,8 @@ jobs:
 
   - stage: serverwin
     language: java
+    jdk:
+      - openjdk11
     os: windows
 
     before_install:
