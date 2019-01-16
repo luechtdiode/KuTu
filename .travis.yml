@@ -22,7 +22,6 @@ cache:
     - $HOME/.m2/repository
     - $HOME/.sbt
     - $HOME/.ivy2
-    - $TRAVIS_BUILD_DIR/target
     - $HOME/apache-maven-3.5.0
     
 before_script:
@@ -98,12 +97,13 @@ jobs:
       - ./prepare_jdk.sh
       - sudo apt-get install fakeroot
     script:
-      - mvn package -DskipTest=true #deploy --settings deploy-settings.xml -Daws_default_region=eu-west-1
+      - mvn clean package -DskipTest=true #deploy --settings deploy-settings.xml -Daws_default_region=eu-west-1
       - cp -f $TRAVIS_BUILD_DIR/target/$OS/*.* $TRAVIS_BUILD_DIR/outputs/$OS/
       - aws s3 cp --recursive $TRAVIS_BUILD_DIR/outputs/ $S3_BUCKET_PUBLIC/
 
   - stage: serverwin
     os: windows
+    language: sh
 
     before_install:
       - curl "https://s3.amazonaws.com/aws-cli/awscli-bundle.zip" -o "awscli-bundle.zip"
@@ -116,7 +116,7 @@ jobs:
       - export PATH=$M2_HOME/bin:$PATH
       - mkdir -p ~/$TRAVIS_BUILD_NUMBER
     script:
-      - mvn package -DskipTest=true #deploy --settings deploy-settings.xml -Daws_default_region=eu-west-1
+      - mvn clean package -DskipTest=true #deploy --settings deploy-settings.xml -Daws_default_region=eu-west-1
       - cp -f $TRAVIS_BUILD_DIR/target/$OS/*.* $TRAVIS_BUILD_DIR/outputs/$OS/
       - aws s3 cp --recursive $TRAVIS_BUILD_DIR/outputs/ $S3_BUCKET_PUBLIC/
 
