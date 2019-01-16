@@ -19,10 +19,10 @@ then
     curl -L http://download2.gluonhq.com/jpackager/11/jdk.packager-linux.zip -o "javapackager-linux.zip"
 fi
 
-if [ ${OS} == 'osx' ]
+if [ ${OS} == 'Darwin' ]
 then
-    curl -L https://github.com/AdoptOpenJDK/openjdk11-binaries/releases/download/jdk-11.0.1%2B13/OpenJDK11U-jdk_x64_mac_openj9_jdk-11.0.1_13_openj9-0.11.0_11.0.1_13.tar.gz -o "jdk-osx.zip"
-    curl -L http://download2.gluonhq.com/jpackager/11/jdk.packager-osx.zip -o "javapackager-osx.zip"
+    curl -L https://github.com/AdoptOpenJDK/openjdk11-binaries/releases/download/jdk-11.0.1%2B13/OpenJDK11U-jdk_x64_mac_openj9_jdk-11.0.1_13_openj9-0.11.0_11.0.1_13.tar.gz -o "jdk-Darwin.zip"
+    curl -L http://download2.gluonhq.com/jpackager/11/jdk.packager-osx.zip -o "javapackager-Darwin.zip"
 fi
 
 unzip -u "jdk-${OS}.zip" -d jdk
