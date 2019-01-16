@@ -17,7 +17,6 @@ if [ ${OS} == 'Linux' ]
 then
 #    curl -L https://github.com/AdoptOpenJDK/openjdk11-binaries/releases/download/jdk-11.0.1%2B13/OpenJDK11U-jdk_x64_linux_openj9_jdk-11.0.1_13_openj9-0.11.0_11.0.1_13.tar.gz -0 "jdk-Linux.zip"
     curl -L http://download2.gluonhq.com/jpackager/11/jdk.packager-linux.zip -o "javapackager-Linux.zip"
-    apt-get install fakeroot
 fi
 
 if [ ${OS} == 'Darwin' ]

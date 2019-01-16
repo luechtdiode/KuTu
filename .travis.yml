@@ -95,6 +95,7 @@ jobs:
       - pip install awscli --upgrade --user
       - ./ecr_credentials.sh
       - ./prepare_jdk.sh
+      - sudo apt-get install fakeroot
     script:
       - mvn package -DskipTest=true #deploy --settings deploy-settings.xml -Daws_default_region=eu-west-1
       - cp -f $TRAVIS_BUILD_DIR/target/$OS/*.* $TRAVIS_BUILD_DIR/outputs/$OS/
