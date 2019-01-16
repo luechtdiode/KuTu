@@ -105,6 +105,8 @@ jobs:
     os: windows
     language: sh
     filter_secrets: false # https://travis-ci.community/t/choco-install-hangs-forever/307/21
+    #skips default install - see script bellow
+    install: true
 
     before_install:
       - choco install awscli -y
@@ -118,16 +120,12 @@ jobs:
       - RefreshEnv.cmd
       - ./ecr_credentials.sh >/dev/null 2>&1
       - mkdir -p ~/$TRAVIS_BUILD_NUMBER
-    script:
       - export JAVA_HOME="C:/Program Files/OpenJDK/jdk-11.0.1"
       - export M2_HOME="C:/ProgramData/chocolatey/lib/maven"
-      - export PATH=${JAVA_HOME}/bin:${M2_HOME}/bin:$PATH
-      - echo $JAVA_HOME
-      - echo $M2_HOME
-      - echo $PATH
-      - java -version
+      - export PATH=${JAVA_HOME}/bin:${M2_HOME}/bin:"c:/program files (x86)/inno setup 5":"C:\Users\travis\build\luechtdiode\KuTu":$PATH
       - ./prepare_jdk.sh
-      - mvn clean package -DskipTest=true #deploy --settings deploy-settings.xml -Daws_default_region=eu-west-1
+    script:
+      - mvn clean package -DskipTest=true -DOS=$OS #deploy --settings deploy-settings.xml -Daws_default_region=eu-west-1
       - cp -f $TRAVIS_BUILD_DIR/target/$OS/*.* $TRAVIS_BUILD_DIR/outputs/$OS/
       - aws s3 cp --recursive $TRAVIS_BUILD_DIR/outputs/ $S3_BUCKET_PUBLIC/ >/dev/null 2>&1
 

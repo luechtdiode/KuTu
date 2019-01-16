@@ -478,7 +478,7 @@
 								<argument>--files</argument>
 								<argument>${project.artifactId}-${project.version}-allinone.jar</argument>
 								<argument>--output</argument>
-								<argument>${project.build.directory}/${bundler.os}</argument>
+								<argument>${project.build.directory}/${OS}</argument>
 								<argument>--name</argument>
 								<argument>TurnerWettkampf-App-v${parsedVersion.majorVersion}r${parsedVersion.minorVersion}</argument>
 								<argument>--version</argument>
