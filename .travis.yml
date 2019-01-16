@@ -105,8 +105,7 @@ jobs:
     os: windows
     language: sh
 
-    before_install:
-      - choco install python
+    install:
       - choco install awscli
       - choco install openjdk
       - choco install maven
