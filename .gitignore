@@ -14,3 +14,14 @@
 *.sqlite-wal
 *.sql.log
 *.sqlite-shm
+*.zip
+*.log
+*travis*.json
+jpack.sh
+deploy-aws.sh
+aws-policy.txt
+.at.*
+/jdk
+/jdk11
+/data
+/javapackager
