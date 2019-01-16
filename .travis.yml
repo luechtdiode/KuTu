@@ -115,11 +115,14 @@ jobs:
       - nuget install WiX.Toolset -NonInteractive # https://travis-ci.community/t/unable-to-install-wix-toolset/1071
 #      - choco install wixtoolset -y
       - choco install innosetup -y
+      - export JAVA_HOME="C:/Program Files/OpenJDK/jdk-11.0.1"
+      - export MAVEN_HOME="C:\ProgramData\chocolatey\lib\maven"
+      - export PATH=${JAVA_HOME}/bin:${MAVEN_HOME}/bin:$PATH
       - ./ecr_credentials.sh >/dev/null 2>&1
       - ./prepare_jdk.sh
       - mkdir -p ~/$TRAVIS_BUILD_NUMBER
     script:
-      - mvn clean package -DskipTest=true #deploy --settings deploy-settings.xml -Daws_default_region=eu-west-1
+      - ${MAVEN_HOME}/bin/mvn clean package -DskipTest=true #deploy --settings deploy-settings.xml -Daws_default_region=eu-west-1
       - cp -f $TRAVIS_BUILD_DIR/target/$OS/*.* $TRAVIS_BUILD_DIR/outputs/$OS/
       - aws s3 cp --recursive $TRAVIS_BUILD_DIR/outputs/ $S3_BUCKET_PUBLIC/ >/dev/null 2>&1
 
