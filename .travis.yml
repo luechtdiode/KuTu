@@ -110,7 +110,9 @@ jobs:
       - choco install awscli -y
       - choco install maven -y
       - choco install openjdk -y
-      - choco install wixtoolset -y
+      - choco install nuget.commandline -y
+      - nuget install WiX.Toolset NonInteractive
+#      - choco install wixtoolset -y
       - choco install innosetup -y
       - ./ecr_credentials.sh >/dev/null 2>&1
       - ./prepare_jdk.sh
