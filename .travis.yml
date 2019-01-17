@@ -123,8 +123,8 @@ jobs:
       - export JAVA_HOME="C:/Program Files/OpenJDK/jdk-11.0.1"
       - export M2_HOME="C:/ProgramData/chocolatey/lib/maven"
       - export ISCC_HOME="c:/program files (x86)/inno setup 5"
-      - export WiX_HOME=$TRAVIS_BUILD_DIR
-      - export PATH=${JAVA_HOME}/bin:${M2_HOME}/bin:${ISCC_HOME}:${WiX_HOME}:$PATH
+      - export WiX_HOME="${TRAVIS_BUILD_DIR}/WiX.Toolset.3.9.1208"
+      - export PATH=${JAVA_HOME}/bin:${M2_HOME}/bin:${ISCC_HOME}:${WiX_HOME}/bin:$PATH
       - ./prepare_jdk.sh
     script:
       - mvn clean package -DskipTest=true -DOS=$OS #deploy --settings deploy-settings.xml -Daws_default_region=eu-west-1
