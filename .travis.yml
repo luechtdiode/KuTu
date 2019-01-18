@@ -113,7 +113,7 @@ jobs:
       - choco install maven -y
 #      - choco install openjdk -y --version 11.0.1
       - choco install nuget.commandline -y
-      - nuget install WiX -NonInteractive --Version 3.11.1 # https://travis-ci.community/t/unable-to-install-wix-toolset/1071
+      - nuget install WiX -NonInteractive # https://travis-ci.community/t/unable-to-install-wix-toolset/1071
 #      - nuget install WiX.Toolset -NonInteractive # https://travis-ci.community/t/unable-to-install-wix-toolset/1071
 #      - choco install wixtoolset -y
       - choco install innosetup -y
