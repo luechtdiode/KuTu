@@ -126,8 +126,8 @@ jobs:
       - export WiX_HOME="${TRAVIS_BUILD_DIR}/WiX.3.11.1"
       - export ISCC_HOME="c:/program files (x86)/inno setup 5"
       - export PATH=${JAVA_HOME}/bin:${MAVEN_HOME}/bin:${ISCC_HOME}:${WiX_HOME}/tools:$PATH
-      - powershell refreshenv
-      - RefreshEnv.cmd
+#      - powershell refreshenv
+#      - RefreshEnv.cmd
       - ${JAVA_HOME}/bin/javac -version
       - mkdir -p ~/$TRAVIS_BUILD_NUMBER
     script:

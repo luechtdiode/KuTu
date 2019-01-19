@@ -48,7 +48,7 @@ fi
 
 echo "${JAVA_HOME}"
 
-unzip -u "javapackager-${OS}.zip" -d "jdk11/bin"
+#unzip -u "javapackager-${OS}.zip" -d "jdk11/bin"
 unzip -u "javapackager-${OS}.zip" -d "${JAVA_HOME}/bin"
 
 cp "${JAVA_HOME}/bin/jdk.packager.jar" "${JAVA_HOME}/jmods"
