@@ -112,7 +112,7 @@ jobs:
       - choco install awscli -y
       - choco install maven -y
       - export M2_HOME="C:/ProgramData/chocolatey/lib/maven"
-#      - choco install openjdk -y --version 11.0.1
+      - choco install openjdk -y --version 11.0.1
 #      - export JAVA_HOME="C:/Program Files/OpenJDK/jdk-11.0.1"
       - choco install nuget.commandline -y
       - nuget install WiX -NonInteractive # https://travis-ci.community/t/unable-to-install-wix-toolset/1071
