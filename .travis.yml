@@ -28,9 +28,9 @@ before_script:
   - mkdir -p $TRAVIS_BUILD_DIR/outputs/$OS
   
 stages:
-#  - client
-#  - serverosx
-#  - serverlnx
+  - client
+  - serverosx
+  - serverlnx
   - serverwin
 
 jobs:
@@ -113,14 +113,12 @@ jobs:
       - choco install maven -y
       - choco install adoptopenjdk
 #      - choco install openjdk -y #--version 11.0.1
-#      - export JAVA_HOME="C:/Program Files/OpenJDK/jdk-11.0.1"
       - choco install nuget.commandline -y
       - nuget install WiX -NonInteractive # https://travis-ci.community/t/unable-to-install-wix-toolset/1071
 #      - nuget install WiX.Toolset -NonInteractive # https://travis-ci.community/t/unable-to-install-wix-toolset/1071
 #      - choco install wixtoolset -y
       - choco install innosetup -y
       - ./ecr_credentials.sh >/dev/null 2>&1
-#      - powershell ls ${ISCC_HOME}/*.exe
       - export JAVA_HOME="C:\Program Files\AdoptOpenJDK\jdk-11+28"
       - export MAVEN_HOME="C:/ProgramData/chocolatey/lib/maven"
       - export WiX_HOME="${TRAVIS_BUILD_DIR}/WiX.3.11.1"
@@ -129,14 +127,10 @@ jobs:
       - powershell refreshenv
       - RefreshEnv.cmd
       - ./prepare_jdk.sh
-#      - ls ${JAVA_HOME}/bin/*.*
-      - mkdir -p ~/$TRAVIS_BUILD_NUMBER
     script:
-#      - "${JAVA_HOME}/bin/javac" -version
-#      - javac -version
       - mvn clean package -DskipTest=true -DOS=$OS #deploy --settings deploy-settings.xml -Daws_default_region=eu-west-1
       - cp -f $TRAVIS_BUILD_DIR/target/$OS/*.* $TRAVIS_BUILD_DIR/outputs/$OS/
-      - aws s3 cp --recursive $TRAVIS_BUILD_DIR/outputs/ $S3_BUCKET_PUBLIC/ >/dev/null 2>&1
+      - aws s3 cp --recursive $TRAVIS_BUILD_DIR/outputs/ $S3_BUCKET_PUBLIC/
 
 # deploy: actually, deploy is managed by maven wagon
 #   # deploy build to s3
