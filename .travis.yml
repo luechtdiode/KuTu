@@ -109,28 +109,27 @@ jobs:
     install: true
 
     before_install:
-#      - choco install awscli -y
-#      - choco install maven -y
+      - choco install awscli -y
+      - choco install maven -y
+      - export M2_HOME="C:/ProgramData/chocolatey/lib/maven"
 #      - choco install openjdk -y --version 11.0.1
+#      - export JAVA_HOME="C:/Program Files/OpenJDK/jdk-11.0.1"
       - choco install nuget.commandline -y
       - nuget install WiX -NonInteractive # https://travis-ci.community/t/unable-to-install-wix-toolset/1071
 #      - nuget install WiX.Toolset -NonInteractive # https://travis-ci.community/t/unable-to-install-wix-toolset/1071
 #      - choco install wixtoolset -y
-#      - choco install innosetup -y
-      - export JAVA_HOME="C:/Program Files/OpenJDK/jdk-11.0.1"
-      - export M2_HOME="C:/ProgramData/chocolatey/lib/maven"
-      - export ISCC_HOME="c:/program files (x86)/inno setup 5"
       - export WiX_HOME="${TRAVIS_BUILD_DIR}/WiX.3.11.1"
-      - export PATH=${JAVA_HOME}/bin:${M2_HOME}/bin:${ISCC_HOME}:${WiX_HOME}/bin:$PATH
+      - choco install innosetup -y
+      - export ISCC_HOME="c:/program files (x86)/inno setup 5"
       - powershell refreshenv
       - RefreshEnv.cmd
-      - powershell ls ${WiX_HOME}/tools/*.exe
-      - powershell ls ${ISCC_HOME}/*.exe
       - ./ecr_credentials.sh >/dev/null 2>&1
-      - mkdir -p ~/$TRAVIS_BUILD_NUMBER
       - ./prepare_jdk.sh
+      - export PATH=${JAVA_HOME}/bin:${M2_HOME}/bin:${ISCC_HOME}:${WiX_HOME}/tools:$PATH
+#      - powershell ls ${ISCC_HOME}/*.exe
       - powershell refreshenv
       - RefreshEnv.cmd
+      - mkdir -p ~/$TRAVIS_BUILD_NUMBER
     script:
       - mvn clean package -DskipTest=true -DOS=$OS #deploy --settings deploy-settings.xml -Daws_default_region=eu-west-1
       - cp -f $TRAVIS_BUILD_DIR/target/$OS/*.* $TRAVIS_BUILD_DIR/outputs/$OS/
