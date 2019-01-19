@@ -129,7 +129,7 @@ jobs:
       - powershell refreshenv
       - RefreshEnv.cmd
       - ./prepare_jdk.sh
-      - ${JAVA_HOME}/bin/javac -version
+      - ls ${JAVA_HOME}/bin/*.*
       - mkdir -p ~/$TRAVIS_BUILD_NUMBER
     script:
       - ${JAVA_HOME}/bin/javac -version
