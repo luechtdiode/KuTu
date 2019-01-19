@@ -17,13 +17,13 @@ fi
 
 if [ ${OS} == 'MSYS_NT-10.0' ]
 then
-    curl -L https://download.java.net/java/GA/jdk11/9/GPL/openjdk-11.0.2_windows-x64_bin.zip -o "jdk-${OS}.zip"
+#    curl -L https://download.java.net/java/GA/jdk11/9/GPL/openjdk-11.0.2_windows-x64_bin.zip -o "jdk-${OS}.zip"
     curl -L http://download2.gluonhq.com/jpackager/11/jdk.packager-windows.zip -o "javapackager-${OS}.zip"
-    unzip -u "jdk-${OS}.zip" -d jdk
-    mv jdk/*/ jdk11/
-    export JAVA_HOME="${PWD}/jdk11"
-    export PATH=${JAVA_HOME}/bin:$PATH
-    ${JAVA_HOME}/bin/javac -version
+#    unzip -u "jdk-${OS}.zip" -d jdk
+#    mv jdk/*/ jdk11/
+#    export JAVA_HOME="${PWD}/jdk11"
+#    export PATH=${JAVA_HOME}/bin:$PATH
+#    ${JAVA_HOME}/bin/javac -version
 fi
 
 if [ ${OS} == 'Linux' ]
