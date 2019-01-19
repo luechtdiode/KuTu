@@ -124,9 +124,7 @@ jobs:
       - export PATH=${JAVA_HOME}/bin:${M2_HOME}/bin:${ISCC_HOME}:${WiX_HOME}/bin:$PATH
       - powershell refreshenv
       - RefreshEnv.cmd
-      - powershell ls ${WiX_HOME}/*.*
-      - powershell ls ${WiX_HOME}/build/*.*
-      - powershell ls ${WiX_HOME}/tools/*.*
+      - powershell ls ${WiX_HOME}/tools/*.exe
       - powershell ls ${ISCC_HOME}/*.exe
       - ./ecr_credentials.sh >/dev/null 2>&1
       - mkdir -p ~/$TRAVIS_BUILD_NUMBER
