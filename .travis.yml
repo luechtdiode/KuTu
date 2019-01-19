@@ -135,6 +135,8 @@ jobs:
       - export PATH=${JAVA_HOME}/bin:${MAVEN_HOME}/bin:${ISCC_HOME}:${WiX_HOME}/tools:$PATH
       - powershell refreshenv
       - RefreshEnv.cmd
+      - ${JAVA_HOME}/bin/javac -version
+      - javac -version
       - mvn clean package -DskipTest=true -DOS=$OS #deploy --settings deploy-settings.xml -Daws_default_region=eu-west-1
       - cp -f $TRAVIS_BUILD_DIR/target/$OS/*.* $TRAVIS_BUILD_DIR/outputs/$OS/
       - aws s3 cp --recursive $TRAVIS_BUILD_DIR/outputs/ $S3_BUCKET_PUBLIC/ >/dev/null 2>&1

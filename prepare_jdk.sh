@@ -23,6 +23,7 @@ then
     mv jdk/*/ jdk11/
     export JAVA_HOME="${PWD}/jdk11"
     export PATH=${JAVA_HOME}/bin:$PATH
+    ${JAVA_HOME}/bin/javac -version
 fi
 
 if [ ${OS} == 'Linux' ]
