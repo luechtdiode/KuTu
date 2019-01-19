@@ -129,11 +129,11 @@ jobs:
       - powershell refreshenv
       - RefreshEnv.cmd
       - ./prepare_jdk.sh
-      - ls ${JAVA_HOME}/bin/*.*
+#      - ls ${JAVA_HOME}/bin/*.*
       - mkdir -p ~/$TRAVIS_BUILD_NUMBER
     script:
-      - ${JAVA_HOME}/bin/javac -version
-      - javac -version
+#      - "${JAVA_HOME}/bin/javac" -version
+#      - javac -version
       - mvn clean package -DskipTest=true -DOS=$OS #deploy --settings deploy-settings.xml -Daws_default_region=eu-west-1
       - cp -f $TRAVIS_BUILD_DIR/target/$OS/*.* $TRAVIS_BUILD_DIR/outputs/$OS/
       - aws s3 cp --recursive $TRAVIS_BUILD_DIR/outputs/ $S3_BUCKET_PUBLIC/ >/dev/null 2>&1
