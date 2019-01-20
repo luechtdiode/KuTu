@@ -119,12 +119,11 @@ jobs:
 #      - choco install wixtoolset -y
 #      - choco install innosetup -y
       - ./ecr_credentials.sh >/dev/null 2>&1
-#      - export JAVA_HOME="C:\Program Files\AdoptOpenJDK\jdk-11+28"
+      - export JAVA_HOME="C:\Program Files\AdoptOpenJDK\jdk-11+28"
       - export MAVEN_HOME="C:/ProgramData/chocolatey/lib/maven"
       - export WiX_HOME="${TRAVIS_BUILD_DIR}/WiX.3.11.1"
 #      - export ISCC_HOME="c:/program files (x86)/inno setup 5"
-      - export PATH=${MAVEN_HOME}/bin:${WiX_HOME}/tools:$PATH
-#      - export PATH=${JAVA_HOME}/bin:${MAVEN_HOME}/bin:${WiX_HOME}/tools:$PATH
+      - export PATH=${JAVA_HOME}/bin:${MAVEN_HOME}/bin:${WiX_HOME}/tools:$PATH
 #      - export PATH=${JAVA_HOME}/bin:${MAVEN_HOME}/bin:${ISCC_HOME}:${WiX_HOME}/tools:$PATH
       - powershell refreshenv
       - RefreshEnv.cmd
