@@ -117,14 +117,13 @@ jobs:
       - nuget install WiX -NonInteractive # https://travis-ci.community/t/unable-to-install-wix-toolset/1071
 #      - nuget install WiX.Toolset -NonInteractive # https://travis-ci.community/t/unable-to-install-wix-toolset/1071
 #      - choco install wixtoolset -y
-#      - choco install innosetup -y
+      - choco install innosetup -y
       - ./ecr_credentials.sh >/dev/null 2>&1
       - export JAVA_HOME="C:\Program Files\AdoptOpenJDK\jdk-11+28"
       - export MAVEN_HOME="C:/ProgramData/chocolatey/lib/maven"
       - export WiX_HOME="${TRAVIS_BUILD_DIR}/WiX.3.11.1"
-#      - export ISCC_HOME="c:/program files (x86)/inno setup 5"
-      - export PATH=${JAVA_HOME}/bin:${MAVEN_HOME}/bin:${WiX_HOME}/tools:$PATH
-#      - export PATH=${JAVA_HOME}/bin:${MAVEN_HOME}/bin:${ISCC_HOME}:${WiX_HOME}/tools:$PATH
+      - export ISCC_HOME="c:/program files (x86)/inno setup 5"
+      - export PATH=${JAVA_HOME}/bin:${MAVEN_HOME}/bin:${ISCC_HOME}:${WiX_HOME}/tools:$PATH
       - powershell refreshenv
       - RefreshEnv.cmd
       - ./prepare_jdk.sh
@@ -135,8 +134,10 @@ jobs:
       - cp -f $TRAVIS_BUILD_DIR/target/$OS/*.* $TRAVIS_BUILD_DIR/outputs/$OS/
     after_success:
       - bash -c 'echo $TRAVIS_BUILD_DIR/outputs/$OS'
-      - ls '$TRAVIS_BUILD_DIR/outputs/$OS'
+      - ls $TRAVIS_BUILD_DIR/outputs/$OS
       - choco install awscli -y
+      - powershell refreshenv
+      - RefreshEnv.cmd
       - aws s3 cp --recursive $TRAVIS_BUILD_DIR/outputs/ $S3_BUCKET_PUBLIC/
 
 # deploy: actually, deploy is managed by maven wagon

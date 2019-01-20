@@ -493,8 +493,6 @@
 								<argument>Interpolar</argument>
 								<argument>--vendor</argument>
 								<argument>Interpolar</argument>
-								<argument>--win-menu</argument>
-								<argument>Wettkampf App</argument>
 							</arguments>
 						</configuration>
 					</execution>
