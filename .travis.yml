@@ -60,6 +60,9 @@ jobs:
     language: java
     jdk: openjdk11
     os: osx
+    #    #skips default install - see script bellow
+    install: true
+
     # osx_image: xcode9.2
     before_install:
       - curl "https://s3.amazonaws.com/aws-cli/awscli-bundle.zip" -o "awscli-bundle.zip"
@@ -91,6 +94,8 @@ jobs:
     language: java
     jdk: openjdk11
     os: linux
+    #    #skips default install - see script bellow
+    install: true
 
     before_install:
       - pip install awscli --upgrade --user
@@ -108,7 +113,7 @@ jobs:
     language: sh
     filter_secrets: false # https://travis-ci.community/t/choco-install-hangs-forever/307/21
 #    #skips default install - see script bellow
-#    install: true
+    install: true
 
     before_install:
       - choco install awscli -y --version 1.16.92 # --params "'-b:${TRAVIS_BUILD_DIR}/aws'"
@@ -130,8 +135,8 @@ jobs:
       - java -Xmx32m -version
       - javac -J-Xmx32m -version
     script:
-      - mvn clean package -DskipTest=true -DOS=Win64
-      - cp -f $TRAVIS_BUILD_DIR/target/Win64/*.* $TRAVIS_BUILD_DIR/outputs/Win64/
+      - mvn clean package -DskipTest=true -DOS=$OS
+      - mv -f $TRAVIS_BUILD_DIR/target/${OS} $TRAVIS_BUILD_DIR/outputs/Win64
     after_success:
       - aws s3 cp --recursive $TRAVIS_BUILD_DIR/outputs/ $S3_BUCKET_PUBLIC/ >/dev/null 2>&1
 
