@@ -111,9 +111,6 @@ jobs:
 
     before_install:
       - choco install awscli -y # --params "'-b:${TRAVIS_BUILD_DIR}/aws'"
-      - powershell refreshenv
-      - ls 'C:\Program Files\Amazon\AWSCLI'
-      - aws --version
       - choco install maven -y
       - choco install adoptopenjdk -y
 #      - choco install openjdk -y #--version 11.0.1
@@ -123,7 +120,7 @@ jobs:
 #      - choco install wixtoolset -y
       - choco install innosetup -y
       - ./ecr_credentials.sh >/dev/null 2>&1
-      - export AWS_HOME="${TRAVIS_BUILD_DIR}/aws"
+      - export AWS_HOME="C:\Program Files\Amazon\AWSCLI"
       - export JAVA_HOME="C:\Program Files\AdoptOpenJDK\jdk-11+28"
       - export MAVEN_HOME="C:/ProgramData/chocolatey/lib/maven"
       - export WiX_HOME="${TRAVIS_BUILD_DIR}/WiX.3.11.1"
