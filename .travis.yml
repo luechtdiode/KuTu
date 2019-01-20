@@ -129,6 +129,7 @@ jobs:
       - powershell refreshenv
       - RefreshEnv.cmd
       - ./prepare_jdk.sh
+      - aws --version
       - java -Xmx32m -version
       - javac -J-Xmx32m -version
     script:
@@ -136,7 +137,7 @@ jobs:
       - cp -f $TRAVIS_BUILD_DIR/target/$OS/*.* $TRAVIS_BUILD_DIR/outputs/$OS/
     after_success:
       - ls $TRAVIS_BUILD_DIR/outputs/$OS
-      - ~/.local/lib/aws/aws s3 cp --recursive $TRAVIS_BUILD_DIR/outputs/ $S3_BUCKET_PUBLIC/
+      - aws s3 cp --recursive $TRAVIS_BUILD_DIR/outputs/ $S3_BUCKET_PUBLIC/
 
 # deploy: actually, deploy is managed by maven wagon
 #   # deploy build to s3
