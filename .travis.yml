@@ -111,6 +111,9 @@ jobs:
 
     before_install:
       - choco install awscli -y
+      - ~/.local/lib/aws --version
+      - aws --version
+      - powershell refreshenv
       - choco install maven -y
       - choco install adoptopenjdk -y
 #      - choco install openjdk -y #--version 11.0.1
@@ -135,7 +138,7 @@ jobs:
       - cp -f $TRAVIS_BUILD_DIR/target/$OS/*.* $TRAVIS_BUILD_DIR/outputs/$OS/
     after_success:
       - ls $TRAVIS_BUILD_DIR/outputs/$OS
-      - powershell aws s3 cp --recursive $TRAVIS_BUILD_DIR/outputs/ $S3_BUCKET_PUBLIC/
+      - ~/.local/lib/aws s3 cp --recursive $TRAVIS_BUILD_DIR/outputs/ $S3_BUCKET_PUBLIC/
 
 # deploy: actually, deploy is managed by maven wagon
 #   # deploy build to s3
