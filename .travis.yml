@@ -135,7 +135,7 @@ jobs:
       - cp -f $TRAVIS_BUILD_DIR/target/$OS/*.* $TRAVIS_BUILD_DIR/outputs/$OS/
     after_success:
       - ls $TRAVIS_BUILD_DIR/outputs/$OS
-      - aws s3 cp --recursive $TRAVIS_BUILD_DIR/outputs/ $S3_BUCKET_PUBLIC/
+      - powershell aws s3 cp --recursive $TRAVIS_BUILD_DIR/outputs/ $S3_BUCKET_PUBLIC/
 
 # deploy: actually, deploy is managed by maven wagon
 #   # deploy build to s3
