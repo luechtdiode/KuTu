@@ -23,7 +23,8 @@ cache:
     - $HOME/.sbt
     - $HOME/.ivy2
     - $HOME/apache-maven-3.5.0
-    
+    - $HOME/apache-maven-3.6.0
+
 before_script:
   - mkdir -p $TRAVIS_BUILD_DIR/outputs/$OS
   
