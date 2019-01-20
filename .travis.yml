@@ -110,9 +110,9 @@ jobs:
     install: true
 
     before_install:
-      - choco install awscli -y -dv # --params "'-b:${TRAVIS_BUILD_DIR}/aws'"
+      - choco install awscli -y # --params "'-b:${TRAVIS_BUILD_DIR}/aws'"
       - powershell refreshenv
-      - ~/.local/lib/aws/aws --version
+      - ls C:\ProgramData\chocolatey\lib\awscli
       - aws --version
       - choco install maven -y
       - choco install adoptopenjdk -y
