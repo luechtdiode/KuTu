@@ -118,14 +118,13 @@ jobs:
     before_install:
       - choco install awscli -y --version 1.16.92 # --params "'-b:${TRAVIS_BUILD_DIR}/aws'"
       - choco install maven -y
-#      - choco install adoptopenjdk -y --version 11.0.2
-      - choco install openjdk -y --version 11.0.2
-#      - choco install openjdk -y #--version 11.0.1
+      - choco install adoptopenjdk -y --version 11.28
+      #      - choco install openjdk -y #--version 11.0.1
       - choco install nuget.commandline -y
       - nuget install WiX -Version 3.11.1 -NonInteractive # https://travis-ci.community/t/unable-to-install-wix-toolset/1071
       - ./ecr_credentials.sh >/dev/null 2>&1
       - export AWS_HOME="C:\Program Files\Amazon\AWSCLI"
-      - export JAVA_HOME="C:\Program Files\OpenJDK\jdk-11.0.2"
+      - export JAVA_HOME="C:\Program Files\AdoptOpenJDK\jdk-11+28"
       - export MAVEN_HOME="C:/ProgramData/chocolatey/lib/maven"
       - export WiX_HOME="${TRAVIS_BUILD_DIR}/WiX.3.11.1"
       - export PATH=${JAVA_HOME}/bin:${MAVEN_HOME}/bin:${WiX_HOME}/tools:${AWS_HOME}:$PATH
