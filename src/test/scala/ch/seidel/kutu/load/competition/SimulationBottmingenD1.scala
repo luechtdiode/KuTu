@@ -14,7 +14,7 @@ class SimulationBottmingenD1 extends Simulation {
   //kutuapp.shrevic.net
   val jwtToken = "eyJhbGciOiJIUzUxMiIsImN0eSI6ImFwcGxpY2F0aW9uL2pzb24iLCJ0eXAiOiJKV1QifQ.eyJ1c2VyIjoiOTkxMTVkZmItODE5Yi00OGFhLWFkYTUtOTkzN2I4MmVlYmQ0IiwiZXhwaXJlZEF0S2V5IjoxNTQ1MjM4MTk3NDE3fQ.7I2-iMDWX_oYoyk7jt1UYpFJzQy77UVsTQFr0paGpXPyLW9oej0V0Dl88glCBB-s6BHKx7yfXluBHkUNnF-g7w"
 
-  val competition = "99115dfb-819b-48aa-ada5-9937b82eebd4"
+  val competition = "72f82423-65da-45c9-99a7-b3f19712f628"
   val originBaseUrl = "https://kutuapp.sharevic.net" //,"http://pluto:5757"//, "https://kutuapp.sharevic.net" //,"https://kutuapp.sharevic.net"//,"http://mws-01:5757"//,
   //  val originBaseUrl = "http://mws-01:5757"//, "https://kutuapp.sharevic.net"//,"http://mws-01:5757"//,
 

@@ -480,6 +480,7 @@ object KuTuApp extends JFXApp with KutuService with JsonSupport with JwtSupport 
       }
     }
     item.disable <== when(Bindings.createBooleanBinding(() =>
+      Config.isLocalHostServer() ||
       !p.toWettkampf.hasSecred(homedir, remoteHostOrigin)
         || modelWettkampfModus.value
         || !ConnectionStates.connectedWithProperty.value.equals(p.uuid.map(_.toString).getOrElse("")),
@@ -532,6 +533,7 @@ object KuTuApp extends JFXApp with KutuService with JsonSupport with JwtSupport 
         })
     }
     item.disable <== when(Bindings.createBooleanBinding(() =>
+      Config.isLocalHostServer() ||
       !p.toWettkampf.hasSecred(homedir, remoteHostOrigin) || !ConnectionStates.connectedWithProperty.value.equals(p.uuid.map(_.toString).getOrElse("")),
       controlsView.selectionModel().selectedItem,
       selectedWettkampfSecret,

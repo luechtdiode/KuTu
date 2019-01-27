@@ -266,6 +266,15 @@
     <orderEntry type="library" name="Maven: org.scala-lang:scala-library:2.12.7" level="project" />
     <orderEntry type="library" name="Maven: org.scalafx:scalafx_2.12:11-R16" level="project" />
     <orderEntry type="library" name="Maven: org.scala-lang:scala-reflect:2.12.7" level="project" />
+    <orderEntry type="library" name="Maven: org.openjfx:javafx-base:win:11.0.1" level="project" />
+    <orderEntry type="library" name="Maven: org.openjfx:javafx-controls:win:11.0.1" level="project" />
+    <orderEntry type="library" name="Maven: org.openjfx:javafx-graphics:11.0.1" level="project" />
+    <orderEntry type="library" name="Maven: org.openjfx:javafx-web:win:11.0.1" level="project" />
+    <orderEntry type="library" name="Maven: org.openjfx:javafx-controls:11.0.1" level="project" />
+    <orderEntry type="library" name="Maven: org.openjfx:javafx-media:11.0.1" level="project" />
+    <orderEntry type="library" name="Maven: org.openjfx:javafx-graphics:win:11.0.1" level="project" />
+    <orderEntry type="library" name="Maven: org.openjfx:javafx-base:11.0.1" level="project" />
+    <orderEntry type="library" name="Maven: org.openjfx:javafx-media:win:11.0.1" level="project" />
     <orderEntry type="library" name="Maven: org.controlsfx:controlsfx:9.0.0" level="project" />
     <orderEntry type="library" name="Maven: org.xerial:sqlite-jdbc:3.21.0.1" level="project" />
     <orderEntry type="library" name="Maven: com.typesafe.slick:slick-hikaricp_2.12:3.2.3" level="project" />

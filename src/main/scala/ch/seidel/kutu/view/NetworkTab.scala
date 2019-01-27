@@ -4,7 +4,7 @@ import java.util.UUID
 
 import ch.seidel.commons.{DisplayablePage, PageDisplayer, TabWithService}
 import ch.seidel.kutu.Config._
-import ch.seidel.kutu.{ConnectionStates, KuTuApp, KuTuServer}
+import ch.seidel.kutu.{Config, ConnectionStates, KuTuApp, KuTuServer}
 import ch.seidel.kutu.akka._
 import ch.seidel.kutu.domain._
 import ch.seidel.kutu.http.WebSocketClient
@@ -446,8 +446,8 @@ class NetworkTab(wettkampf: WettkampfView, override val service: KutuService) ex
           }
         })
       }
-      item.disable <== when(Bindings.createBooleanBinding(() => 
-        
+      item.disable <== when(Bindings.createBooleanBinding(() =>
+        Config.isLocalHostServer() ||
         (wettkampf.toWettkampf.hasSecred(homedir, remoteHostOrigin) 
         && !ConnectionStates.connectedProperty.value)
         || isRunning(wettkampf),
