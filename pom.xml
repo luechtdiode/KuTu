@@ -57,7 +57,7 @@
 		<scala.majorversion>2.12</scala.majorversion>
 		<scala.version>${scala.majorversion}.7</scala.version>
 		<akkaHttp.version>10.1.5</akkaHttp.version>
-		<akka.version>2.5.17</akka.version>
+		<akka.version>2.5.20</akka.version>
 		<javafx.version>11.0.1</javafx.version>
 		<scalafx.version>11-R16</scalafx.version>
 		<maven-scala-plugin.version>3.4.1</maven-scala-plugin.version>
@@ -213,6 +213,23 @@
 			<groupId>com.typesafe.akka</groupId>
 			<artifactId>akka-cluster-tools_${scala.majorversion}</artifactId>
 			<version>${akka.version}</version>
+		</dependency>
+
+		<!-- Event Sourcing, Akka Persitence -->
+		<dependency>
+			<groupId>com.typesafe.akka</groupId>
+			<artifactId>akka-persistence_${scala.majorversion}</artifactId>
+			<version>${akka.version}</version>
+		</dependency>
+		<dependency>
+			<groupId>org.fusesource.leveldbjni</groupId>
+			<artifactId>leveldbjni-all</artifactId>
+			<version>1.8</version>
+		</dependency>
+		<dependency>
+			<groupId>com.twitter</groupId>
+			<artifactId>chill-akka_${scala.majorversion}</artifactId>
+			<version>0.9.3</version>
 		</dependency>
 
 		<!-- JWT -->

@@ -22,6 +22,10 @@ object Config extends KuTuSSLContext {
   logger.info(s"user.dir Path where custom configurations (kutuapp.conf) are taken from: ${new File(configPath).getAbsolutePath}")
   val userHomePath: String = System.getProperty("user.home") + "/kutuapp"
   logger.info(s"user.home Path: ${new File(userHomePath).getAbsolutePath}")
+
+  System.setProperty("akka.persistence.snapshot-store.local.dir", userHomePath + "/snapshot")
+  System.setProperty("akka.persistence.journal.leveldb.dir", userHomePath + "/journal")
+
   val userConfig: File = new File(configPath + "/kutuapp.conf")
   val config: com.typesafe.config.Config = if (userConfig.exists()) ConfigFactory.parseFile(new File(configPath + "/kutuapp.conf")).withFallback(ConfigFactory.load()) else ConfigFactory.load()
 
