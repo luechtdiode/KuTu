@@ -11,8 +11,9 @@ import ch.seidel.kutu.domain._
 import ch.seidel.kutu.http.WebSocketClient
 import ch.seidel.kutu.renderer.PrintUtil.FilenameDefault
 import ch.seidel.kutu.renderer.{PrintUtil, ScoreToHtmlRenderer}
+import javafx.geometry.Bounds
+import javafx.scene.text.FontSmoothingType
 import javafx.scene.{control => jfxsc}
-
 import scalafx.Includes._
 import scalafx.application.Platform
 import scalafx.collections.ObservableBuffer
@@ -21,6 +22,7 @@ import scalafx.geometry.Insets
 import scalafx.print.{PageOrientation, Printer}
 import scalafx.scene.control._
 import org.controlsfx.control.CheckComboBox
+import scalafx.beans.property.ReadOnlyObjectProperty
 import scalafx.scene.layout._
 import scalafx.scene.web.WebView
 import scalafx.stage.FileChooser
@@ -65,7 +67,12 @@ abstract class DefaultRanglisteTab(override val service: KutuService) extends Ta
   def groupers: List[FilterBy] = ???
   def getData: Seq[WertungView] = ???
   def getSaveAsFilenameDefault: FilenameDefault = ???
-  val webView = new WebView
+  val webView = new WebView {
+    fontSmoothingType = FontSmoothingType.GRAY
+
+    //zoom = 1.2
+    //fontScale = 1.2
+  }
   var restoring = false
   val nullFilter = NullObject("alle")
   
