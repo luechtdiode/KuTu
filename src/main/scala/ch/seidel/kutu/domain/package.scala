@@ -446,8 +446,8 @@ package object domain {
     override val isDNoteUsed = false
     //override def fromString(input: String) = super.fromString(input)
     override def validated(dnote: Double, enote: Double): (Double, Double) =
-      ( BigDecimal(dnote).setScale(3, BigDecimal.RoundingMode.FLOOR).max(0).min(30).toDouble,
-        BigDecimal(enote).setScale(3, BigDecimal.RoundingMode.FLOOR).max(0).min(30).toDouble)
+      ( BigDecimal(dnote).setScale(2, BigDecimal.RoundingMode.FLOOR).max(0).min(10).toDouble,
+        BigDecimal(enote).setScale(2, BigDecimal.RoundingMode.FLOOR).max(0).min(10).toDouble)
     override def calcEndnote(dnote: Double, enote: Double) =
       BigDecimal(enote).setScale(2, BigDecimal.RoundingMode.FLOOR).max(0).min(10).toDouble
   }
