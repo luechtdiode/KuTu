@@ -1,5 +1,4 @@
 <configuration>
-
   <appender name="STDOUT" class="ch.qos.logback.core.ConsoleAppender">
     <!-- encoders are assigned the type
          ch.qos.logback.classic.encoder.PatternLayoutEncoder by default -->
@@ -7,11 +6,27 @@
       <pattern>%d{HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n</pattern>
     </encoder-->
     <encoder>
-      <pattern>%d{HH:mm:ss.SSS} - %msg%n</pattern>
+      <!--<pattern>%d{HH:mm:ss.SSS} - %msg%n</pattern>-->
+      <pattern>%d{HH:mm:ss.SSS} %-5level %logger{15} - %msg%n</pattern>
+    </encoder>
+  </appender>
+
+  <!-- SEE MORE AT http://logback.qos.ch/manual/appenders.html -->
+  <appender name="FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
+    <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+      <fileNamePattern>${user.home}/kutuapp/${HOSTNAME}-%d{yyyy-MM-dd}.log</fileNamePattern>
+      <!-- keep 30 days' worth of history capped at 500MB total size -->
+      <maxHistory>30</maxHistory>
+      <totalSizeCap>500MB</totalSizeCap>
+    </rollingPolicy>
+
+    <encoder>
+      <pattern>%d{HH:mm:ss.SSS} %-5level %logger{15} - %msg%n</pattern>
     </encoder>
   </appender>
 
   <root level="INFO">
     <appender-ref ref="STDOUT" />
+    <appender-ref ref="FILE" />
   </root>
 </configuration>

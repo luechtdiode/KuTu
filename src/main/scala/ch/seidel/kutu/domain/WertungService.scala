@@ -3,6 +3,7 @@ package ch.seidel.kutu.domain
 import java.util.UUID
 import java.util.concurrent.TimeUnit
 
+import ch.seidel.kutu.Config
 import ch.seidel.kutu.akka.AthletWertungUpdated
 import ch.seidel.kutu.http.WebSocketClient
 import org.slf4j.LoggerFactory
@@ -260,7 +261,7 @@ abstract trait WertungService extends DBService with WertungResultMapper with Di
     
     ret.map{wv =>
       cleanBestenResults
-      if(wv.endnote >= 9.0) {
+      if(wv.endnote >= Config.bestenlisteSchwellwert) {
         putWertungToBestenResults(wv)
       }
       val awu = AthletWertungUpdated(wv.athlet, wv.toWertung, wv.wettkampf.uuid.get, "", wv.wettkampfdisziplin.disziplin.id, wv.wettkampfdisziplin.programm.easyprint)

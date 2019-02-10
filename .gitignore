@@ -8,6 +8,7 @@
 /maven-eclipse.xml
 /scratchpad.sc
 /kutuapp.conf
+/journal
 .cache-main
 .cache-tests
 *.iml

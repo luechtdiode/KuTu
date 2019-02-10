@@ -82,7 +82,7 @@ object ResourceExchanger extends KutuService with RiegenBuilder {
     }
 
     val (vereinCsv, vereinHeader) = collection("vereine.csv")
-    logger.debug("importing vereine ...", vereinHeader)
+    logger.info("importing vereine ...", vereinHeader)
     val vereinNameIdx = vereinHeader("name")
     val vereinVerbandIdx = vereinHeader.getOrElse("verband", -1)
     val vereinIdIdx = vereinHeader("id")
@@ -93,7 +93,7 @@ object ResourceExchanger extends KutuService with RiegenBuilder {
     }.toMap
 
     val (athletCsv, athletHeader) = collection("athleten.csv")
-    logger.debug("importing athleten ...", athletHeader)
+    logger.info("importing athleten ...", athletHeader)
     val mappedAthletes = athletCsv.map(DBService.parseLine).filter(_.size == athletHeader.size).map{fields =>
       val geb = fields(athletHeader("gebdat")).replace("Some(", "").replace(")","")
       (fields(athletHeader("id")), Athlet(
@@ -144,10 +144,10 @@ object ResourceExchanger extends KutuService with RiegenBuilder {
       .toMap
       
     val (wettkampfCsv, wettkampfHeader) = collection("wettkampf.csv")
-    logger.debug("importing wettkampf ...", wettkampfHeader)
+    logger.info("importing wettkampf ...", wettkampfHeader)
     val wettkampfInstances = wettkampfCsv.map(DBService.parseLine).filter(_.size == wettkampfHeader.size).map{fields =>
       val uuid = wettkampfHeader.get("uuid").map(uuidIdx => Some(fields(uuidIdx))).getOrElse(None)
-      logger.debug("wettkampf uuid: " + uuid)
+      logger.info("wettkampf uuid: " + uuid)
       val wettkampf = createWettkampf(
           auszeichnung = fields(wettkampfHeader("auszeichnung")),
           auszeichnungendnote = try {BigDecimal.valueOf(fields(wettkampfHeader("auszeichnungendnote")))} catch {case e:Exception => 0},
@@ -201,7 +201,7 @@ object ResourceExchanger extends KutuService with RiegenBuilder {
       wkdisziplines(w.wettkampfId)(w.wettkampfdisziplinId).kurzbeschreibung
     }
     val (wertungenCsv, wertungenHeader) = collection("wertungen.csv")
-    logger.debug("importing wertungen ...", wertungenHeader)
+    logger.info("importing wertungen ...", wertungenHeader)
     val wertungInstances = wertungenCsv.map(DBService.parseLine).filter(_.size == wertungenHeader.size).map{fields =>
       val athletid: Long = fields(wertungenHeader("athletId"))
       val wettkampfid: Long = fields(wertungenHeader("wettkampfId"))
@@ -271,7 +271,7 @@ object ResourceExchanger extends KutuService with RiegenBuilder {
     
     if(collection.contains("riegen.csv")) {
       val (riegenCsv, riegenHeader) = collection("riegen.csv")
-      logger.debug("importing riegen ...", riegenHeader)
+      logger.info("importing riegen ...", riegenHeader)
       updateOrinsertRiegen(riegenCsv.map(DBService.parseLine).filter(_.size == riegenHeader.size).map{fields =>
         val wettkampfid = fields(riegenHeader("wettkampfId"))
         val riege = RiegeRaw(
@@ -287,7 +287,7 @@ object ResourceExchanger extends KutuService with RiegenBuilder {
       })
     }
     
-    logger.debug("import finished")
+    logger.info("import finished")
     wettkampfInstances.head._2
   }
 

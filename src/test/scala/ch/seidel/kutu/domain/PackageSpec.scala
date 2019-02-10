@@ -18,6 +18,28 @@ import scala.concurrent.duration.Duration
 
 @RunWith(classOf[JUnitRunner])
 class PackageSpec extends KuTuBaseSpec {
+  "GeTuWettkampf" should {
+    "min" in {
+      assert(GeTuWettkampf.calcEndnote(0d, -1d) == 0.00d)
+    }
+    "max" in {
+      assert(GeTuWettkampf.calcEndnote(0d, 10.01d) == 10.00d)
+    }
+    "scale" in {
+      assert(GeTuWettkampf.calcEndnote(0d, 8.123d) == 8.12d)
+    }
+  }
+  "KuTuWettkampf" should {
+    "min" in {
+      assert(KuTuWettkampf.calcEndnote(0.1d, -1d) == 0.000d)
+    }
+    "max" in {
+      assert(KuTuWettkampf.calcEndnote(0.5d, 30.01d) == 30.000d)
+    }
+    "scale" in {
+      assert(KuTuWettkampf.calcEndnote(1.1d, 8.1234d) == 9.223d)
+    }
+  }
   "toDurationFormat" should {
      //Duration(1, TimeUnit.DAYS) + Duration(15, TimeUnit.HOURS)
     "seconds" in {

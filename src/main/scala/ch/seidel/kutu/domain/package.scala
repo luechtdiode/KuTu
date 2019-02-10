@@ -438,12 +438,12 @@ package object domain {
   case object KuTuWettkampf extends NotenModus {
     override val isDNoteUsed = true
     //override def fromString(input: String) = super.fromString(input)
-    override def calcEndnote(dnote: Double, enote: Double) = dnote + enote
+    override def calcEndnote(dnote: Double, enote: Double) = BigDecimal(dnote + enote).setScale(3, BigDecimal.RoundingMode.FLOOR).max(0).min(30).toDouble
   }
   case object GeTuWettkampf extends NotenModus {
     override val isDNoteUsed = false
     //override def fromString(input: String) = super.fromString(input)
-    override def calcEndnote(dnote: Double, enote: Double) = enote
+    override def calcEndnote(dnote: Double, enote: Double) = BigDecimal(enote).setScale(2, BigDecimal.RoundingMode.FLOOR).max(0).min(10).toDouble
   }
 
   object MatchCode {

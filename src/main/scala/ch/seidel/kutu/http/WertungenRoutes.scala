@@ -146,6 +146,7 @@ trait WertungenRoutes extends SprayJsonSupport with JsonSupport with JwtSupport 
                     val gid: Long = geraet
                     val gerateRiegen = RiegenBuilder.mapToGeraeteRiegen(getAllKandidatenWertungen(competitionId).toList)
                     val wkid = gerateRiegen.head.kandidaten.head.wertungen.head.wettkampf.id
+                    val wkPgmId = gerateRiegen.head.kandidaten.head.wertungen.head.wettkampf.programmId
                     def filter(gr: GeraeteRiege): Boolean = {
                       gr.durchgang.exists(encodeURIComponent(_) == durchgang) && 
                       gr.disziplin.exists(_.id == gid) && 
@@ -163,7 +164,7 @@ trait WertungenRoutes extends SprayJsonSupport with JsonSupport with JwtSupport 
                               gid, 
                               halt-1, k.programm))).headOption
                       found match {
-                        case w @ Some(uw) => w
+                        case Some(uw) => Some((wkPgmId, uw))
                         case _ =>
                           log.error(s"athlet-id not found (athletId:${wertung.athletId})")
                           None
@@ -173,20 +174,11 @@ trait WertungenRoutes extends SprayJsonSupport with JsonSupport with JwtSupport 
                       None
                     }
                   }} {
-                    case Success(Some(wertung)) => 
-  //                  RiegenBuilder.mapToGeraeteRiegen(getAllKandidatenWertungen(competitionId).toList)
-  //                    .filter(gr => 
-  //                        gr.durchgang.exists(encodeURIComponent(_) == durchgang) && 
-  //                        gr.disziplin.exists(_.id == gid) && 
-  //                        gr.halt == halt -1)
-  //                    .flatMap(gr => gr.kandidaten.map(k => WertungContainer(k.id, k.vorname, k.name, k.geschlecht, k.verein, 
-  //                      k.wertungen.filter(w => w.wettkampfdisziplin.disziplin.id == gid).map(_.toWertung).head, 
-  //                      gid)))                  
+                    case Success(Some((wkPgmId, wertung))) =>
                       complete(CompetitionCoordinatorClientActor.publish(wertung).andThen{
                         case Success(w) => w match {
                           case AthletWertungUpdated(athlet, verifiedWertung, _, _, ger, programm) =>
                             val verein: String = athlet.verein.map(_.name).getOrElse("")
-                            val wkPgmId = readWettkampf(competitionId.toString()).programmId
                             val isDNoteUsed = wkPgmId != 20 && wkPgmId != 1
                             WertungContainer(athlet.id, athlet.vorname, athlet.name, athlet.geschlecht, verein,
                                 verifiedWertung, ger, programm, isDNoteUsed)

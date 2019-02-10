@@ -25,7 +25,7 @@ object RiegenBuilder {
               einteilung.start.equals(startdisziplin) &&
               diszipline.map(_.id).contains(disziplin.map(_.id).getOrElse(0))
             case None => false
-          })}.sortBy { x => (if (groupByProgramm) x.programm else "") + x.verein + x.jahrgang}
+          })}.sortBy { x => (if (groupByProgramm) x.programm else "") + x.verein + x.jahrgang + x.geschlecht + x.name}
           
           val completed = tuti.
             flatMap(k => k.wertungen).

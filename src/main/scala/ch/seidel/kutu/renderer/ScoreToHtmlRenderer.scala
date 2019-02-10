@@ -21,9 +21,16 @@ trait ScoreToHtmlRenderer {
           <meta charset="UTF-8" />
           <style type="text/css">
             @media print {
-              body { -webkit-print-color-adjust: economy; }
+              body {
+                -webkit-print-color-adjust: economy;
+              }
               ul {
                 page-break-inside: avoid;
+              }
+            }
+            @media only screen {
+              body {
+                 margin: 15px 15px 15px 20px;
               }
             }
             body {
