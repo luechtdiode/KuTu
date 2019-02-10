@@ -118,11 +118,13 @@ class CompetitionCoordinatorClientActor(wettkampfUUID: String) extends Persisten
       } else if (!state.startedDurchgaenge.exists(d => encodeURIComponent(d) == encodeURIComponent(durchgang))) {
         sender ! MessageAck("Dieser Durchgang ist noch nicht für die Resultaterfassung freigegeben.")
       } else try {
+        log.info("received new " + wertung)
         val verifiedWertung = updateWertungSimple(wertung, true)
         val awu: KutuAppEvent = AthletWertungUpdated(athlet, verifiedWertung, wettkampfUUID, durchgang, geraet, programm)
         persist(awu){case _ =>}
 //        persist(awu) { evt =>
           handleEvent(awu)
+          log.debug("completed " + awu)
           sender ! awu
 
           val toPublish = TextMessage(awu.toJson.compactPrint)
@@ -131,6 +133,7 @@ class CompetitionCoordinatorClientActor(wettkampfUUID: String) extends Persisten
 //        }
       } catch {
         case e: Exception =>
+          log.error("failed to complete new score", e)
           sender ! MessageAck(e.getMessage)
       }
 
