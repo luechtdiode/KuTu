@@ -1,5 +1,6 @@
 package ch.seidel.kutu.akka
 
+import ch.seidel.kutu.Config
 import ch.seidel.kutu.domain.encodeURIComponent
 
 case class CompetitionState(
@@ -69,7 +70,7 @@ case class CompetitionState(
   }
 
   def putBestenResult(wertungContainer: WertungContainer) =
-    if (wertungContainer.wertung.endnote >= 8.7) {
+    if (wertungContainer.wertung.endnote >= Config.bestenlisteSchwellwert) {
       val key = wertungContainer.id + ":" + wertungContainer.wertung.wettkampfdisziplinId.toString()
       bestenResults.updated(key, wertungContainer)
     } else {

@@ -44,6 +44,7 @@ object Config extends KuTuSSLContext {
 
   logger.info(s"App-Version: $appVersion")
 
+  val bestenlisteSchwellwert = if (config.hasPath("app.bestenlisteSchwellwert")) config.getDouble("app.bestenlisteSchwellwert") else 9.0
   private val jwtConfig = config.getConfig("jwt")
   private val appRemoteConfig = config.getConfig("app.remote")
 
