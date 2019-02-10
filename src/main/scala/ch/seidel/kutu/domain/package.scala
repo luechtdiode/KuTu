@@ -374,15 +374,12 @@ package object domain {
   sealed trait NotenModus /*with AutoFillTextBoxFactory.ItemComparator[String]*/ {
     val isDNoteUsed: Boolean
     def selectableItems: Option[List[String]] = None
+    def validated(dnote: Double, enote: Double): (Double, Double)
     def calcEndnote(dnote: Double, enote: Double): Double
     def verifiedAndCalculatedWertung(wertung: Wertung) = {
-      if (isDNoteUsed) {
-        wertung.copy(endnote = calcEndnote(wertung.noteD.doubleValue(), wertung.noteE.doubleValue()))
-      } else {
-        wertung.copy(noteD = 0, endnote = calcEndnote(wertung.noteD.doubleValue(), wertung.noteE.doubleValue()))
-      }
+      val (d, e) = validated(wertung.noteD.doubleValue(), wertung.noteE.doubleValue())
+      wertung.copy(noteD = d, noteE = e, endnote = calcEndnote(d, e))
     }
-    
     def toString(value: Double): String = value
     /*override*/ def shouldSuggest(item: String, query: String): Boolean = false
   }
@@ -432,18 +429,27 @@ package object domain {
 //    }
 //    override def toString(value: Double): String = punktemapping.find(p => p._2 == value).map(_._1).getOrElse(value)
     //override def fromString(input: String) = punktemapping.getOrElse(findLike(input), mapToDouble(input))
+    override def validated(dnote: Double, enote: Double): (Double, Double) = (0, enote)
     override def calcEndnote(dnote: Double, enote: Double) = enote * punktgewicht
     override def selectableItems: Option[List[String]] = Some(punktemapping.keys.toList.sortBy(punktemapping))
   }
   case object KuTuWettkampf extends NotenModus {
     override val isDNoteUsed = true
     //override def fromString(input: String) = super.fromString(input)
-    override def calcEndnote(dnote: Double, enote: Double) = BigDecimal(dnote + enote).setScale(3, BigDecimal.RoundingMode.FLOOR).max(0).min(30).toDouble
+    override def validated(dnote: Double, enote: Double): (Double, Double) =
+      ( BigDecimal(dnote).setScale(3, BigDecimal.RoundingMode.FLOOR).max(0).min(30).toDouble,
+        BigDecimal(enote).setScale(3, BigDecimal.RoundingMode.FLOOR).max(0).min(30).toDouble)
+    override def calcEndnote(dnote: Double, enote: Double) =
+      BigDecimal(dnote + enote).setScale(3, BigDecimal.RoundingMode.FLOOR).max(0).min(30).toDouble
   }
   case object GeTuWettkampf extends NotenModus {
     override val isDNoteUsed = false
     //override def fromString(input: String) = super.fromString(input)
-    override def calcEndnote(dnote: Double, enote: Double) = BigDecimal(enote).setScale(2, BigDecimal.RoundingMode.FLOOR).max(0).min(10).toDouble
+    override def validated(dnote: Double, enote: Double): (Double, Double) =
+      ( BigDecimal(dnote).setScale(3, BigDecimal.RoundingMode.FLOOR).max(0).min(30).toDouble,
+        BigDecimal(enote).setScale(3, BigDecimal.RoundingMode.FLOOR).max(0).min(30).toDouble)
+    override def calcEndnote(dnote: Double, enote: Double) =
+      BigDecimal(enote).setScale(2, BigDecimal.RoundingMode.FLOOR).max(0).min(10).toDouble
   }
 
   object MatchCode {
