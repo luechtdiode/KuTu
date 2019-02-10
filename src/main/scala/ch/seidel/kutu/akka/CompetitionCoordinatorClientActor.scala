@@ -120,6 +120,7 @@ class CompetitionCoordinatorClientActor(wettkampfUUID: String) extends Persisten
       } else try {
         val verifiedWertung = updateWertungSimple(wertung, true)
         val awu: KutuAppEvent = AthletWertungUpdated(athlet, verifiedWertung, wettkampfUUID, durchgang, geraet, programm)
+        persist(awu){case _ =>}
 //        persist(awu) { evt =>
           handleEvent(awu)
           sender ! awu
@@ -217,6 +218,7 @@ class CompetitionCoordinatorClientActor(wettkampfUUID: String) extends Persisten
     event match {
       case awuv: AthletWertungUpdated =>
         val senderWebSocket = actorWithSameDeviceIdOfSender(originSender.getOrElse(sender))
+        persist(awuv){case _ =>}
 //        persist(awuv) { evt =>
           handleEvent(awuv)
           val toPublish = TextMessage(event.toJson.compactPrint)
