@@ -926,7 +926,7 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
     websocketsubscription = Some(WebSocketClient.modelWettkampfWertungChanged.onChange { (_, _, newItem) =>
       if (selected.value) {
         newItem match {
-          case a @ AthletWertungUpdated(_, wertung, _, _, _, _) =>
+          case a @ AthletWertungUpdated(_, wertung, _, _, _, _, sequenceId) =>
             val tableSelected = if (wkview.focused.value) Some(wkview) else None
             wertungen = wertungen.map{aw => 
               val index = wkModel.indexOf(aw)

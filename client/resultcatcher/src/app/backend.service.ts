@@ -48,6 +48,11 @@ export class BackendService extends WebsocketService {
     return this._step;
   }
 
+  getCurrentStation(): string {
+    return localStorage.getItem('current_station')
+     || this.competition + '/' + this.durchgang + '/' + this.geraet + '/' + this.step;
+  }
+
   private lastJWTChecked = 0;
 
   constructor(public http: HttpClient, public loadingCtrl: LoadingController) {

@@ -7,7 +7,7 @@ import akka.http.scaladsl.model.ws.{BinaryMessage, Message, TextMessage, WebSock
 import akka.stream.OverflowStrategy
 import akka.stream.scaladsl.{Flow, Keep, Sink, Source, SourceQueueWithComplete}
 import ch.seidel.kutu.Config.{homedir, jwtAuthorizationKey, _}
-import ch.seidel.kutu.akka.{KutuAppEvent, MessageAck}
+import ch.seidel.kutu.akka.{AthletWertungUpdated, KutuAppEvent, LastResults, MessageAck}
 import ch.seidel.kutu.domain.Wettkampf
 import javafx.beans.property.SimpleObjectProperty
 import org.slf4j.LoggerFactory
@@ -17,6 +17,7 @@ import spray.json._
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.{Future, Promise}
 import scala.util.{Failure, Success}
+import ch.seidel.kutu.domain._
 
 object WebSocketClient extends SprayJsonSupport with JsonSupport with AuthSupport {
   private val logger = LoggerFactory.getLogger(this.getClass)
@@ -25,11 +26,24 @@ object WebSocketClient extends SprayJsonSupport with JsonSupport with AuthSuppor
   private var connectedOutgoingQueue: Option[SourceQueueWithComplete[Message]] = None
   private var connectedIncomingPromise: Option[Promise[Option[Message]]] = None
   val modelWettkampfWertungChanged: SimpleObjectProperty[KutuAppEvent] = new SimpleObjectProperty[KutuAppEvent]()
-  
+  var lastSequenceId = Long.MinValue
+  var lastWettkampf: Option[Wettkampf] = None
+
   def connect[T](wettkampf: Wettkampf, messageProcessor: (Option[T], KutuAppEvent)=>Unit, handleError: Throwable=>Unit = println) = {
-    val processorWithoutSender = (event: KutuAppEvent)=>{
-      messageProcessor(None, event)
+
+    def processorWithoutSender: KutuAppEvent=>Unit = {
+      case LastResults(results) =>
+        results.foreach(processorWithoutSender)
+
+      case event@AthletWertungUpdated(_, _, _, _, _, _, sequenceId) =>
+        if (sequenceId > lastSequenceId) {
+          messageProcessor(None, event)
+          lastSequenceId = sequenceId
+        }
+
+      case event => messageProcessor(None, event)
     }
+
     import scala.collection.immutable
     val flow: Flow[Message, Message, Promise[Option[Message]]] =
       Flow.fromSinkAndSourceMat(
@@ -38,10 +52,18 @@ object WebSocketClient extends SprayJsonSupport with JsonSupport with AuthSuppor
 
     val promise = websocketClientRequest(
         WebSocketRequest(
-            s"$remoteWebSocketUrl/api/competition/ws", 
+            s"$remoteWebSocketUrl/api/competition/ws?clientid=${encodeURIParam(System.getProperty("user.name") + ":" + deviceId)}&lastSequenceId=$lastSequenceId",
             extraHeaders = immutable.Seq(RawHeader(jwtAuthorizationKey, wettkampf.readSecret(homedir, remoteHostOrigin).get))),
         flow)
     connectedIncomingPromise = Some(promise)
+
+    lastWettkampf match {
+      case Some(wk) if (wk != wettkampf) =>
+        lastSequenceId = Long.MinValue
+      case _ =>
+    }
+    lastWettkampf = Some(wettkampf)
+
     promise.future.onComplete{
       case Success(_) => disconnect
       case Failure(error) => 
@@ -62,7 +84,7 @@ object WebSocketClient extends SprayJsonSupport with JsonSupport with AuthSuppor
   
   def publish(event: KutuAppEvent) {
     Platform.runLater {
-      WebSocketClient.modelWettkampfWertungChanged.set(event)
+      modelWettkampfWertungChanged.set(event)
       connectedOutgoingQueue.foreach(_.offer(tryMapEvent(event)))
     }
   }

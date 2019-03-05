@@ -4,7 +4,7 @@ import akka.actor.SupervisorStrategy.{Restart, Stop}
 import akka.actor.{Actor, ActorLogging, ActorRef, OneForOneStrategy, Props, Terminated}
 import akka.http.scaladsl.model.ws.{BinaryMessage, Message, TextMessage}
 import akka.pattern.ask
-import akka.persistence.{PersistentActor, SnapshotOffer}
+import akka.persistence.{PersistentActor, SnapshotOffer, SnapshotSelectionCriteria}
 import akka.stream.OverflowStrategy
 import akka.stream.scaladsl.{Flow, Sink, Source}
 import akka.util.Timeout
@@ -33,6 +33,7 @@ class CompetitionCoordinatorClientActor(wettkampfUUID: String) extends Persisten
   private var wsSend: Map[Option[String], List[ActorRef]] = Map.empty
   private var deviceWebsocketRefs: Map[String, ActorRef] = Map.empty
   private var pendingKeepAliveAck: Option[Int] = None
+  private var openDurchgangJournal: Map[Option[String], List[AthletWertungUpdated]] = Map.empty
 
   private var state: CompetitionState = CompetitionState()
 
@@ -74,8 +75,12 @@ class CompetitionCoordinatorClientActor(wettkampfUUID: String) extends Persisten
 
   def handleEvent(evt: KutuAppEvent) {
     state = state.updated(evt, isDNoteUsed)
-    if (lastSequenceNr % snapShotInterval == 0 && lastSequenceNr != 0)
+    if (lastSequenceNr % snapShotInterval == 0 && lastSequenceNr != 0) {
+      val criteria = SnapshotSelectionCriteria.Latest
       saveSnapshot(state)
+      deleteSnapshots(criteria)
+      deleteMessages(criteria.maxSequenceNr)
+    }
   }
 
   val receiveCommand: Receive = {
@@ -107,6 +112,7 @@ class CompetitionCoordinatorClientActor(wettkampfUUID: String) extends Persisten
         sender ! eventDurchgangFinished
         val toPublish = TextMessage(eventDurchgangFinished.asInstanceOf[KutuAppEvent].toJson.compactPrint)
         notifyWebSocketClients(senderWebSocket, toPublish, durchgang)
+        openDurchgangJournal = openDurchgangJournal - Some(encodeURIComponent(durchgang))
       }
 
     case UpdateAthletWertung(athlet, wertung, wettkampfUUID, durchgang, geraet, step, programm) =>
@@ -120,17 +126,24 @@ class CompetitionCoordinatorClientActor(wettkampfUUID: String) extends Persisten
       } else try {
         log.info("received new " + wertung)
         val verifiedWertung = updateWertungSimple(wertung, true)
-        val awu: KutuAppEvent = AthletWertungUpdated(athlet, verifiedWertung, wettkampfUUID, durchgang, geraet, programm)
-        persist(awu){case _ =>}
-//        persist(awu) { evt =>
-          handleEvent(awu)
-          log.debug("completed " + awu)
-          sender ! awu
+        val updated = AthletWertungUpdated(athlet, verifiedWertung, wettkampfUUID, durchgang, geraet, programm, lastSequenceNr)
+        val awu: KutuAppEvent = updated
+        persist(awu) { case _ => }
+        //        persist(awu) { evt =>
+        handleEvent(awu)
+        val handledEvent = updated
+          .asInstanceOf[AthletWertungUpdated]
+          .copy(sequenceId = state.lastSequenceId)
 
-          val toPublish = TextMessage(awu.toJson.compactPrint)
-          notifyWebSocketClients(senderWebSocket, toPublish, durchgang)
-          notifyBestenResult()
-//        }
+
+        log.debug("completed " + handledEvent)
+        sender ! handledEvent
+
+        addToDurchgangJournal(handledEvent, durchgang)
+        val toPublish = TextMessage(handledEvent.asInstanceOf[KutuAppEvent].toJson.compactPrint)
+        notifyWebSocketClients(senderWebSocket, toPublish, durchgang)
+        notifyBestenResult()
+        //        }
       } catch {
         case e: Exception =>
           log.error("failed to complete new score", e)
@@ -152,13 +165,36 @@ class CompetitionCoordinatorClientActor(wettkampfUUID: String) extends Persisten
         notifyBestenResult()
       }
 
-    case Subscribe(ref, deviceId, durchgang) =>
+    case GetResultsToReplicate(_, fromSequenceId) =>
+      openDurchgangJournal.get(None).foreach{list =>
+        sender ! TextMessage(
+          LastResults(list.filter(_.sequenceId >= fromSequenceId))
+            .asInstanceOf[KutuAppEvent].toJson.compactPrint)
+      }
+
+    case Subscribe(ref, deviceId, durchgang, lastSequenceIdOption) =>
       val durchgangNormalized = durchgang.map(encodeURIComponent)
       val durchgangClients = wsSend.getOrElse(durchgangNormalized, List.empty) :+ ref
       context.watch(ref)
       wsSend = wsSend + (durchgangNormalized -> durchgangClients)
       deviceWebsocketRefs = deviceWebsocketRefs + (deviceId -> ref)
-      ref ! TextMessage("Connection established.")
+
+      ref ! TextMessage("Connection established." + s"$deviceId@".split("@")(1))
+
+      Future {
+        lastSequenceIdOption match {
+        case Some(sid) =>
+          openDurchgangJournal.get(durchgang) match {
+            case Some(messages) =>
+              val lastResults = LastResults(
+                messages.filter(_.sequenceId >= sid)
+              )
+              val textmessage = TextMessage(lastResults.asInstanceOf[KutuAppEvent].toJson.compactPrint)
+              ref ! textmessage
+            case None =>
+          }
+        case _ =>
+      }}
       squashDurchgangEvents(durchgangNormalized).foreach { d =>
         ref ! TextMessage(d.asInstanceOf[KutuAppEvent].toJson.compactPrint)
       }
@@ -188,6 +224,13 @@ class CompetitionCoordinatorClientActor(wettkampfUUID: String) extends Persisten
       deviceWebsocketRefs = deviceWebsocketRefs.filter(x => x._2 != stoppedWebsocket)
       wsSend = wsSend.map { x => (x._1, x._2.filter(_ != stoppedWebsocket)) }.filter(x => x._2.nonEmpty)
       if (state.startedDurchgaenge.isEmpty && wsSend.isEmpty) handleStop
+
+    case Delete(wk) =>
+      val criteria = SnapshotSelectionCriteria.Latest
+      deleteSnapshots(criteria)
+      deleteMessages(lastSequenceNr)
+      log.info(s"Wetkampf will be deleted $wk")
+      handleStop
 
     case _ =>
   }
@@ -224,8 +267,11 @@ class CompetitionCoordinatorClientActor(wettkampfUUID: String) extends Persisten
         persist(awuv){case _ =>}
 //        persist(awuv) { evt =>
           handleEvent(awuv)
-          val toPublish = TextMessage(event.toJson.compactPrint)
-          notifyWebSocketClients(senderWebSocket, toPublish, awuv.durchgang)
+          val handledEvent = awuv.copy(sequenceId = state.lastSequenceId)
+          addToDurchgangJournal(handledEvent, handledEvent.durchgang)
+
+          val toPublish = TextMessage(handledEvent.asInstanceOf[KutuAppEvent].toJson.compactPrint)
+          notifyWebSocketClients(senderWebSocket, toPublish, handledEvent.durchgang)
           notifyBestenResult()
 //        }
       case _ =>
@@ -252,6 +298,26 @@ class CompetitionCoordinatorClientActor(wettkampfUUID: String) extends Persisten
       wsSend.get(None) match {
         case Some(wsList) => wsList.filter(ws => !senderWebSocket.exists(_ == ws)).foreach(ws => ws ! toPublish)
         case _ =>
+      }
+    }
+  }
+
+  private def addToDurchgangJournal(toPublish: AthletWertungUpdated, durchgang: String) = {
+    if (durchgang == "") {
+      openDurchgangJournal = openDurchgangJournal.map {
+        case (dgoption: Option[String], list: List[AthletWertungUpdated]) =>
+          dgoption -> (list :+ toPublish)
+        case x => x
+      }
+    } else {
+      val key = Some(encodeURIComponent(durchgang))
+      openDurchgangJournal.get(key) match {
+        case Some(list) => openDurchgangJournal = openDurchgangJournal + (key -> (list :+ toPublish))
+        case None => openDurchgangJournal = openDurchgangJournal + (key -> List(toPublish))
+      }
+      openDurchgangJournal.get(None) match {
+        case Some(list) => openDurchgangJournal = openDurchgangJournal + (None -> (list :+ toPublish))
+        case None => openDurchgangJournal = openDurchgangJournal + (None -> List(toPublish))
       }
     }
   }
@@ -305,14 +371,14 @@ class ClientActorSupervisor extends Actor with ActorLogging {
     case CreateClient(deviceID, wettkampfUUID) =>
       val coordinator = wettkampfCoordinators.get(wettkampfUUID) match {
         case Some(coordinator) =>
-          log.info(s"Connect new client to existing coordinator. Device: $deviceID, Wettkampf: $wettkampfUUID")
+          log.info(s"Connect new client to existing coordinator. Wettkampf: $wettkampfUUID, Device: $deviceID")
           coordinator
         case _ =>
           val coordinator = context.actorOf(
             CompetitionCoordinatorClientActor.props(wettkampfUUID), "client-" + wettkampfUUID)
           context.watch(coordinator)
           wettkampfCoordinators = wettkampfCoordinators + (wettkampfUUID -> coordinator)
-          log.info(s"Connect new client to new coordinator. Device: $deviceID, Wettkampf: $wettkampfUUID")
+          log.info(s"Connect new client to new coordinator. Wettkampf: $wettkampfUUID, Device: $deviceID")
           coordinator
       }
       sender ! coordinator
@@ -373,19 +439,22 @@ object CompetitionCoordinatorClientActor extends JsonSupport with EnrichedJson {
         case b: BinaryMessage => throw new Exception("Binary message cannot be handled")
       }.via(reportErrorsFlow)
 
-  def createActorSinkSource(deviceId: String, wettkampfUUID: String, durchgang: Option[String]): Flow[Message, Message, Any] = {
-    val clientActor = Await.result(ask(supervisor, CreateClient(deviceId, wettkampfUUID))(5000 milli).mapTo[ActorRef], 5000 milli)
+  // authenticated bidirectional streaming
+  def createActorSinkSource(deviceId: String, wettkampfUUID: String, durchgang: Option[String], lastSequenceId: Option[Long]): Flow[Message, Message, Any] = {
+    val clientActor = Await.result(
+      ask(supervisor, CreateClient(deviceId, wettkampfUUID))(5000 milli).mapTo[ActorRef], 5000 milli)
 
     val sink = websocketFlow.to(Sink.actorRef(clientActor, StopDevice(deviceId)).named(deviceId))
     val source: Source[Nothing, ActorRef] = Source.actorRef(256, OverflowStrategy.dropNew)
       .mapMaterializedValue { wsSource =>
-        clientActor ! Subscribe(wsSource, deviceId, durchgang)
+        clientActor ! Subscribe(wsSource, deviceId, durchgang, lastSequenceId)
         wsSource
       }.named(deviceId)
 
     Flow.fromSinkAndSource(sink, source)
   }
 
+  // unauthenticted oneway/readonly streaming
   def createActorSource(deviceId: String, wettkampfUUID: String, durchgang: Option[String]): Flow[Message, Message, Any] = {
     val clientActor = Await.result(
       ask(supervisor, CreateClient(deviceId, wettkampfUUID))(5000 milli).mapTo[ActorRef], 5000 milli)
@@ -398,7 +467,7 @@ object CompetitionCoordinatorClientActor extends JsonSupport with EnrichedJson {
     val source: Source[Nothing, ActorRef] = Source.actorRef(
       256,
       OverflowStrategy.dropNew).mapMaterializedValue { wsSource =>
-      clientActor ! Subscribe(wsSource, deviceId, durchgang)
+      clientActor ! Subscribe(wsSource, deviceId, durchgang, None)
       wsSource
     }.named(deviceId)
 

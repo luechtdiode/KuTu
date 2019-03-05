@@ -264,7 +264,7 @@ abstract trait WertungService extends DBService with WertungResultMapper with Di
       if(wv.endnote >= Config.bestenlisteSchwellwert) {
         putWertungToBestenResults(wv)
       }
-      val awu = AthletWertungUpdated(wv.athlet, wv.toWertung, wv.wettkampf.uuid.get, "", wv.wettkampfdisziplin.disziplin.id, wv.wettkampfdisziplin.programm.easyprint)
+      val awu = AthletWertungUpdated(wv.athlet, wv.toWertung, wv.wettkampf.uuid.get, "", wv.wettkampfdisziplin.disziplin.id, wv.wettkampfdisziplin.programm.easyprint, 0)
       WebSocketClient.publish(awu)
       wv
     }
@@ -273,6 +273,12 @@ abstract trait WertungService extends DBService with WertungResultMapper with Di
   @throws(classOf[Exception])
   def updateWertungSimple(w: Wertung, putToBestenresults: Boolean = false): Wertung = {
     val wv = readWettkampfDisziplinView(w.wettkampfdisziplinId).notenSpez.verifiedAndCalculatedWertung(w)
+    if (wv.noteD != w.noteD) {
+      throw new IllegalArgumentException(s"Erfasster D-Wert: ${w.noteD}, erlaubter D-Wert: ${wv.noteD}")
+    }
+    if (wv.noteE != w.noteE) {
+      throw new IllegalArgumentException(s"Erfasster E-Wert: ${w.noteE}, erlaubter E-Wert: ${wv.noteE}")
+    }
     Await.result(database.run(DBIO.sequence(Seq(sqlu"""
                   UPDATE wertung
                   SET note_d=${wv.noteD}, note_e=${wv.noteE}, endnote=${wv.endnote}, riege=${wv.riege}, riege2=${wv.riege2}

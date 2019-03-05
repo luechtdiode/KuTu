@@ -65,7 +65,7 @@ class KuTuWettkampfCollectResultsSpec extends KuTuBaseSpec {
 
     "collect results" in {
       println("start competition ...")
-      CompetitionCoordinatorClientActor.createActorSinkSource("testcase", testwettkampf.uuid.get, None).to(Sink.foreach(msg => println(s"from Sink: $msg")))
+      CompetitionCoordinatorClientActor.createActorSinkSource("testcase", testwettkampf.uuid.get, None, Some(Long.MinValue)).to(Sink.foreach(msg => println(s"from Sink: $msg")))
 
       println("read all riegen ...")
       val riegen = RiegenBuilder.mapToGeraeteRiegen(getAllKandidatenWertungen(UUID.fromString(testwettkampf.uuid.get)).toList)
@@ -120,7 +120,7 @@ class KuTuWettkampfCollectResultsSpec extends KuTuBaseSpec {
 
     "return scores for intermediate results (GET /scores)" in {
       println("start competition ...")
-      CompetitionCoordinatorClientActor.createActorSinkSource("testcase", testwettkampf.uuid.get, None).to(Sink.foreach(msg => println(s"from Sink: $msg")))
+      CompetitionCoordinatorClientActor.createActorSinkSource("testcase", testwettkampf.uuid.get, None, Some(Long.MinValue)).to(Sink.foreach(msg => println(s"from Sink: $msg")))
   
       println("read all riegen ...")
       val riegen = RiegenBuilder.mapToGeraeteRiegen(getAllKandidatenWertungen(UUID.fromString(testwettkampf.uuid.get)).toList)

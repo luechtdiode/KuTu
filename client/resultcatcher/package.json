@@ -15,7 +15,7 @@
   "dependencies": {
     "@angular/common": "5.2.11",
     "@angular/compiler": "5.2.11",
-    "@angular/compiler-cli": "5.2.11",
+    "@angular/compiler-cli": "^7.2.7",
     "@angular/core": "5.2.11",
     "@angular/forms": "5.2.11",
     "@angular/http": "5.2.11",
@@ -48,7 +48,7 @@
     "zone.js": "0.8.26"
   },
   "devDependencies": {
-    "@ionic/app-scripts": "^3.2.1",
+    "@ionic/app-scripts": "^3.2.3",
     "typescript": "2.4.2"
   },
   "description": "KuTuApp Mobile Client to capture results",

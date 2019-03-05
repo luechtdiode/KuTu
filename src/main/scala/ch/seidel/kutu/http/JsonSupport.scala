@@ -37,6 +37,7 @@ trait JsonSupport extends SprayJsonSupport with EnrichedJson {
 //  implicit val wertungViewFormat = jsonFormat(WertungView, "id", "athlet", "wettkampfdisziplin", "wettkampf", "noteD", "noteE", "endnote", "riege", "riege2")
   
   // actions (via rest-request)
+  implicit val getResultsToReplicate = jsonFormat2(GetResultsToReplicate)
   implicit val startDurchgangFormat = jsonFormat2(StartDurchgang)
   implicit val updateAthletWertungFormat = jsonFormat7(UpdateAthletWertung)
   implicit val finishDurchgangStationFormat = jsonFormat4(FinishDurchgangStation)
@@ -45,19 +46,21 @@ trait JsonSupport extends SprayJsonSupport with EnrichedJson {
 
   // events (via ws and rest-response)
   implicit val durchgangStartedFormat = jsonFormat3(DurchgangStarted)
-  implicit val wertungUpdatedFormat = jsonFormat6(AthletWertungUpdated)
+  implicit val wertungUpdatedFormat = jsonFormat7(AthletWertungUpdated)
   implicit val stationsWertungenCompletedFormat = jsonFormat1(StationWertungenCompleted)
   implicit val newLastResultsFormat = jsonFormat2(NewLastResults)
   implicit val durchgangFinishedFormat = jsonFormat3(DurchgangFinished)
+  implicit val lastResults = jsonFormat1(LastResults)
   implicit val messageAckFormat = jsonFormat1(MessageAck)
   
   // support for websocket incoming json-messages
-  val caseClassesJsonFormatter: Map[String, JsonFormat[_ <: KutuAppEvent]] = Map(      
+  val caseClassesJsonFormatter: Map[String, JsonFormat[_ <: KutuAppEvent]] = Map(
       classOf[DurchgangStarted].getSimpleName -> durchgangStartedFormat,
       classOf[AthletWertungUpdated].getSimpleName -> wertungUpdatedFormat,
       classOf[StationWertungenCompleted].getSimpleName -> stationsWertungenCompletedFormat,
       classOf[NewLastResults].getSimpleName -> newLastResultsFormat,
       classOf[DurchgangFinished].getSimpleName -> durchgangFinishedFormat,
+      classOf[LastResults].getSimpleName -> lastResults,
       classOf[MessageAck].getSimpleName -> messageAckFormat
   )
 

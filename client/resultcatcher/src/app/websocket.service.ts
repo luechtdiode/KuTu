@@ -1,4 +1,4 @@
-import { formatCurrentMoment } from './utils';
+import { formatCurrentMoment, clientID } from './utils';
 import { MessageAck } from './backend-types';
 import { Observable } from 'rxjs/Observable';
 import { Subject } from 'rxjs/Subject';
@@ -127,7 +127,7 @@ export abstract class WebsocketService {
       this.lastMessages = this.lastMessages.slice(Math.max(this.lastMessages.length - 50, 0));
     });
     this.logMessages.next('init');
-    this.backendUrl = this.getWebsocketBackendUrl();
+    this.backendUrl = this.getWebsocketBackendUrl() + `?clientid=${clientID()}`;
     this.logMessages.next('init with ' + this.backendUrl);
 
     this.connect(undefined);

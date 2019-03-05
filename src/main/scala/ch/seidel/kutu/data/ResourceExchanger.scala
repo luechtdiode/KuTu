@@ -28,7 +28,7 @@ object ResourceExchanger extends KutuService with RiegenBuilder {
     val cache = new java.util.ArrayList[MatchCode]()
     
     val opFn: (Option[T], KutuAppEvent)=>Unit = {  
-      case (sender, uw @ AthletWertungUpdated(athlet, wertung, wettkampfUUID, durchgang, geraet, programm)) =>
+      case (sender, uw @ AthletWertungUpdated(athlet, wertung, wettkampfUUID, durchgang, geraet, programm, sequenceId)) =>
         if (wettkampf.uuid.contains(wettkampfUUID)) Future {
           logger.info("received new " + uw)
           val mappedverein = athlet.verein match {case Some(v) => findVereinLike(Verein(id = 0, name = v.name, verband = None)) case _ => None}

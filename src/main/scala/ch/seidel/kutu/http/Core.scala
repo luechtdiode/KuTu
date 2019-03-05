@@ -4,6 +4,7 @@ import java.net.{DatagramSocket, InetAddress, NetworkInterface}
 
 import akka.actor.ActorSystem
 import akka.http.scaladsl.Http
+import akka.http.scaladsl.server.Route
 import akka.stream.ActorMaterializer
 import ch.seidel.kutu.Config
 import ch.seidel.kutu.Config._
@@ -48,13 +49,14 @@ trait KuTuAppHTTPServer extends ApiService with JsonSupport {
       sys.addShutdownHook(shutDown(getClass.getName))
       
       DBService.startDB()
-      val binding = if (hasHttpsConfig) {
+        val route: Route = allroutes(userLookup)
+        val binding = if (hasHttpsConfig) {
         Http().setDefaultServerHttpContext(https)
-        val b = Http().bindAndHandle(allroutes(userLookup), httpInterface, httpPort, connectionContext = https)
+        val b = Http().bindAndHandle(route, httpInterface, httpPort, connectionContext = https)
         logger.info(s"Server online at https://${httpInterface}:${httpPort}/")
         b
       } else {
-        val b = Http().bindAndHandle(allroutes(userLookup), httpInterface, httpPort)
+        val b = Http().bindAndHandle(route, httpInterface, httpPort)
         logger.info(s"Server online at http://${httpInterface}:${httpPort}/")
         b
       }
