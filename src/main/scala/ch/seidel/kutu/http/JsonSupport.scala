@@ -24,18 +24,7 @@ trait JsonSupport extends SprayJsonSupport with EnrichedJson {
       p.easyprint.toJson
     }
   }
-    
-  //  implicit val programmViewFormat: JsonFormat[ProgrammView] = lazyFormat(jsonFormat(ProgrammView, "id", "name", "aggregate", "parent", "ord", "alterVon", "alterBis"))
-//  implicit val wettkampfViewFormat: JsonFormat[WettkampfView] = jsonFormat(WettkampfView, "id", "datum", "titel", "programm", "auszeichnung", "auszeichnungendnote", "uuid")
 
-  //  implicit val attNotenModusFormat: JsonFormat[Athletiktest] = jsonFormat(Athletiktest, "punktemapping", "punktgewicht")
-//  implicit val kutuNotenModusFormat: JsonFormat[KuTuWettkampf] = jsonFormat0(KuTuWettkampf)
-//  implicit val getuNotenModusFormat: JsonFormat[GeTuWettkampf] = jsonFormat0(GeTuWettkampf)
-//  implicit object NotenModusJsonSupport extends CaseObjectJsonSupport[NotenModus]
-//  implicit val notenModusFormat: RootJsonFormat[NotenModus] = NotenModusJsonSupport
-//  implicit val wettkampfDisciplinViewFormat = jsonFormat(WettkampfdisziplinView, "id", "programm", "disziplin", "kurzbeschreibung", "detailbeschreibung", "notenSpez", "ord", "masculin", "feminim")
-//  implicit val wertungViewFormat = jsonFormat(WertungView, "id", "athlet", "wettkampfdisziplin", "wettkampf", "noteD", "noteE", "endnote", "riege", "riege2")
-  
   // actions (via rest-request)
   implicit val getResultsToReplicate = jsonFormat2(GetResultsToReplicate)
   implicit val startDurchgangFormat = jsonFormat2(StartDurchgang)
@@ -51,8 +40,10 @@ trait JsonSupport extends SprayJsonSupport with EnrichedJson {
   implicit val newLastResultsFormat = jsonFormat2(NewLastResults)
   implicit val durchgangFinishedFormat = jsonFormat3(DurchgangFinished)
   implicit val lastResults = jsonFormat1(LastResults)
+  implicit val athletRemovedFromWettkampf = jsonFormat2(AthletRemovedFromWettkampf)
+  implicit val athletMovedInWettkampf = jsonFormat3(AthletMovedInWettkampf)
   implicit val messageAckFormat = jsonFormat1(MessageAck)
-  
+
   // support for websocket incoming json-messages
   val caseClassesJsonFormatter: Map[String, JsonFormat[_ <: KutuAppEvent]] = Map(
       classOf[DurchgangStarted].getSimpleName -> durchgangStartedFormat,
@@ -61,6 +52,8 @@ trait JsonSupport extends SprayJsonSupport with EnrichedJson {
       classOf[NewLastResults].getSimpleName -> newLastResultsFormat,
       classOf[DurchgangFinished].getSimpleName -> durchgangFinishedFormat,
       classOf[LastResults].getSimpleName -> lastResults,
+      classOf[AthletRemovedFromWettkampf].getSimpleName -> athletRemovedFromWettkampf,
+      classOf[AthletMovedInWettkampf].getSimpleName -> athletMovedInWettkampf,
       classOf[MessageAck].getSimpleName -> messageAckFormat
   )
 

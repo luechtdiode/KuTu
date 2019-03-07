@@ -171,6 +171,8 @@ class CompetitionCoordinatorClientActor(wettkampfUUID: String) extends Persisten
       }
 
     case awu: AthletWertungUpdated => websocketProcessor(Some(sender), awu)
+    case awu: AthletMovedInWettkampf => websocketProcessor(Some(sender), awu)
+    case awu: AthletRemovedFromWettkampf => websocketProcessor(Some(sender), awu)
 
     case fds: FinishDurchgangStation =>
       persist(DurchgangStationFinished(fds.wettkampfUUID, fds.durchgang, fds.geraet, fds.step)) { evt =>
@@ -287,9 +289,9 @@ class CompetitionCoordinatorClientActor(wettkampfUUID: String) extends Persisten
   }
 
   def handleWebsocketMessages(originSender: Option[ActorRef], event: KutuAppEvent) {
+    val senderWebSocket = actorWithSameDeviceIdOfSender(originSender.getOrElse(sender))
     event match {
       case awuv: AthletWertungUpdated =>
-        val senderWebSocket = actorWithSameDeviceIdOfSender(originSender.getOrElse(sender))
         persist(awuv){case _ =>}
 //        persist(awuv) { evt =>
           handleEvent(awuv)
@@ -300,6 +302,15 @@ class CompetitionCoordinatorClientActor(wettkampfUUID: String) extends Persisten
           notifyWebSocketClients(senderWebSocket, toPublish, handledEvent.durchgang)
           notifyBestenResult()
 //        }
+
+      case awu: AthletMovedInWettkampf =>
+        val toPublish = TextMessage(event.toJson.compactPrint)
+        notifyWebSocketClients(senderWebSocket, toPublish, "")
+
+      case awu: AthletRemovedFromWettkampf =>
+        val toPublish = TextMessage(event.toJson.compactPrint)
+        notifyWebSocketClients(senderWebSocket, toPublish, "")
+
       case _ =>
     }
   }

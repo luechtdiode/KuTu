@@ -1478,6 +1478,7 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
           }, new Button("OK") {
             onAction = (event: ActionEvent) => {
               service.unassignAthletFromWettkampf(athletwertungen)
+              // TODO AthletRemovedFromWettkampf
               wkModel.remove(wkview.selectionModel().getSelectedIndex)
             }
           })
@@ -1506,7 +1507,7 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
         }, new Button("OK") {
           onAction = (event: ActionEvent) => {
             if (!wkview.selectionModel().isEmpty) {
-              service.moveToProgram(wettkampf.id, cbProgramms.selectionModel().selectedItem.value.id, wkview.selectionModel().getSelectedItem.head.init.athlet.id)
+              service.moveToProgram(wettkampf.id, cbProgramms.selectionModel().selectedItem.value.id, wkview.selectionModel().getSelectedItem.head.init.athlet)
               reloadData()
             }
           }

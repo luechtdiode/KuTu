@@ -37,8 +37,8 @@ object WebSocketClient extends SprayJsonSupport with JsonSupport with AuthSuppor
 
       case event@AthletWertungUpdated(_, _, _, _, _, _, sequenceId) =>
         if (sequenceId > lastSequenceId) {
-          messageProcessor(None, event)
           lastSequenceId = sequenceId
+          messageProcessor(None, event)
         }
 
       case event => messageProcessor(None, event)

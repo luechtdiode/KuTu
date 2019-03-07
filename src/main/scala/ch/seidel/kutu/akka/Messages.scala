@@ -30,6 +30,8 @@ case class DurchgangStationFinished(wettkampfUUID: String, durchgang: String, ge
 case class DurchgangStepFinished(wettkampfUUID: String, time: Long = System.currentTimeMillis()) extends KutuAppEvent
 case class DurchgangFinished(wettkampfUUID: String, durchgang: String, time: Long = System.currentTimeMillis()) extends KutuAppEvent
 case class AthletWertungUpdated(athlet: AthletView, wertung: Wertung, wettkampfUUID: String, durchgang: String, geraet: Long, programm: String, val sequenceId: Long) extends KutuAppEvent
+case class AthletRemovedFromWettkampf(athlet: AthletView, wettkampfUUID: String) extends KutuAppEvent
+case class AthletMovedInWettkampf(athlet: AthletView, wettkampfUUID: String, pgmId: Long) extends KutuAppEvent
 
 case class NewLastResults(results: Map[String, WertungContainer], lastTopResults: Map[String, WertungContainer]) extends KutuAppEvent
 case class LastResults(results: List[AthletWertungUpdated]) extends KutuAppEvent

@@ -270,7 +270,7 @@ abstract trait WertungService extends DBService with WertungResultMapper with Di
     }
   }
   
-  @throws(classOf[Exception])
+  @throws(classOf[Exception]) // called from mobile-client via coordinator-actor
   def updateWertungSimple(w: Wertung, putToBestenresults: Boolean = false): Wertung = {
     val wv = readWettkampfDisziplinView(w.wettkampfdisziplinId).notenSpez.verifiedAndCalculatedWertung(w)
     if (wv.noteD != w.noteD) {
@@ -290,7 +290,7 @@ abstract trait WertungService extends DBService with WertungResultMapper with Di
     wv
   }
   
-  @throws(classOf[Exception])
+  @throws(classOf[Exception]) // called from rich-client-app via ResourceExchanger
   def updateWertungWithIDMapping(w: Wertung, putToBestenresults: Boolean = false): Wertung = {
     val wv = readWettkampfDisziplinView(w.wettkampfdisziplinId).notenSpez.verifiedAndCalculatedWertung(w)
     val wvId = Await.result(database.run((for {
