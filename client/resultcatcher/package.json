@@ -48,8 +48,8 @@
     "zone.js": "0.8.26"
   },
   "devDependencies": {
-    "@ionic/app-scripts": "^3.2.3",
-    "typescript": "^3.2.3"
+    "@ionic/app-scripts": "^3.2.1",
+    "typescript": "2.4.2"
   },
   "description": "KuTuApp Mobile Client to capture results",
   "cordova": {
