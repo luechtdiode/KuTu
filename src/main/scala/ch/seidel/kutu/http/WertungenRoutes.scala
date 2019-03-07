@@ -78,7 +78,7 @@ trait WertungenRoutes extends SprayJsonSupport with JsonSupport with JwtSupport 
           post {
             authenticated() { userId =>
               entity(as[String]) { fd =>
-                complete(CompetitionCoordinatorClientActor.publish(fd.asType[FinishDurchgangStation]))
+                complete(CompetitionCoordinatorClientActor.publish(fd.asType[FinishDurchgangStation], clientId))
               }
             }
           }
@@ -189,7 +189,7 @@ trait WertungenRoutes extends SprayJsonSupport with JsonSupport with JwtSupport 
                       }
                     } {
                       case Success(Some((wkPgmId, wertung))) =>
-                        complete(CompetitionCoordinatorClientActor.publish(wertung).andThen {
+                        complete(CompetitionCoordinatorClientActor.publish(wertung, clientId).andThen {
                           case Success(w) => w match {
                             case AthletWertungUpdated(athlet, verifiedWertung, _, _, ger, programm, sequenceId) =>
                               val verein: String = athlet.verein.map(_.name).getOrElse("")

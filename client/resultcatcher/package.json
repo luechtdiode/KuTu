@@ -15,7 +15,7 @@
   "dependencies": {
     "@angular/common": "5.2.11",
     "@angular/compiler": "5.2.11",
-    "@angular/compiler-cli": "^7.2.7",
+    "@angular/compiler-cli": "5.2.11",
     "@angular/core": "5.2.11",
     "@angular/forms": "5.2.11",
     "@angular/http": "5.2.11",
@@ -49,7 +49,7 @@
   },
   "devDependencies": {
     "@ionic/app-scripts": "^3.2.3",
-    "typescript": "2.4.2"
+    "typescript": "^3.2.3"
   },
   "description": "KuTuApp Mobile Client to capture results",
   "cordova": {

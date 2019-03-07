@@ -19,7 +19,6 @@ export abstract class WebsocketService {
   private reconnectInterval: number = 30000; // pause between connections
   private reconnectAttempts: number = 480; // number of connection attempts
   private lstKeepAliveReceived: number = 0;
-  private keepAliveObserverTimerToken;
 
   connected = new BehaviorSubject<boolean>(false);
   identified = new BehaviorSubject<boolean>(false);
@@ -32,7 +31,7 @@ export abstract class WebsocketService {
   }
 
   private startKeepAliveObservation() {
-    this.keepAliveObserverTimerToken = setTimeout(() => {
+    setTimeout(() => {
       const yet = new Date().getTime();
       const lastSeenSince = yet - this.lstKeepAliveReceived;
       if (!this.explicitClosed

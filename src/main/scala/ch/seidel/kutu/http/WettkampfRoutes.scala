@@ -200,7 +200,7 @@ trait WettkampfRoutes extends SprayJsonSupport with JsonSupport with JwtSupport 
             authenticated() { userId =>
               entity(as[StartDurchgang]) { sd =>
                 if (userId.equals(wkuuid.toString())) {
-                  complete(CompetitionCoordinatorClientActor.publish(sd))
+                  complete(CompetitionCoordinatorClientActor.publish(sd, clientId))
                 } else {
                   complete(StatusCodes.Conflict)
                 }
@@ -213,7 +213,7 @@ trait WettkampfRoutes extends SprayJsonSupport with JsonSupport with JwtSupport 
               authenticated() { userId =>
                 entity(as[FinishDurchgang]) { fd =>
                   if (userId.equals(wkuuid.toString())) {
-                    complete(CompetitionCoordinatorClientActor.publish(fd))
+                    complete(CompetitionCoordinatorClientActor.publish(fd, clientId))
                   } else {
                     complete(StatusCodes.Conflict)
                   }
@@ -226,7 +226,7 @@ trait WettkampfRoutes extends SprayJsonSupport with JsonSupport with JwtSupport 
               authenticated() { userId =>
                 entity(as[FinishDurchgangStep]) { fd =>
                   if (userId.equals(wkuuid.toString())) {
-                    complete(CompetitionCoordinatorClientActor.publish(fd))
+                    complete(CompetitionCoordinatorClientActor.publish(fd, clientId))
                   } else {
                     complete(StatusCodes.Conflict)
                   }
@@ -287,7 +287,7 @@ trait WettkampfRoutes extends SprayJsonSupport with JsonSupport with JwtSupport 
                   if (userId.equals(wkuuid.toString())) {
                     onSuccess(readWettkampfAsync(wkuuid.toString())) { wettkampf =>
                       deleteWettkampf(wettkampf.id)
-                      CompetitionCoordinatorClientActor.publish(Delete(wkuuid.toString))
+                      CompetitionCoordinatorClientActor.publish(Delete(wkuuid.toString), clientId)
                       complete(StatusCodes.OK)
                     }
                   } else {

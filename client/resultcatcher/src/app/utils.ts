@@ -52,5 +52,5 @@ export function clientID() {
     clientid = guid();
     localStorage.setItem('clientid', clientid);
   }
-  return clientid;
+  return localStorage.getItem('current_username') + ':' + clientid;
 }

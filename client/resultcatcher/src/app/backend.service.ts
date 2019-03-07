@@ -29,6 +29,7 @@ export class BackendService extends WebsocketService {
   steps: number[];
   wertungen: WertungContainer[];
   newLastResults = new BehaviorSubject<NewLastResults>(undefined);
+  askForUsername = new Subject<BackendService>();
   lastMessageAck: MessageAck;
 
   private _competition: string = undefined;
@@ -46,6 +47,14 @@ export class BackendService extends WebsocketService {
   private _step: number = undefined;
   get step(): number {
     return this._step;
+  }
+
+  set currentUserName(username: string) {
+    localStorage.setItem('current_username', username);
+  }
+
+  get currentUserName() {
+    return localStorage.getItem('current_username');
   }
 
   getCurrentStation(): string {
@@ -106,12 +115,15 @@ export class BackendService extends WebsocketService {
         const [key, value] = param.split('=')
         switch (key) {
           case 's':
+            if (!this.currentUserName) {
+              this.askForUsername.next(this);
+            }
             localStorage.setItem('auth_token', value);
             this.checkJWT(value);
             const cs = localStorage.getItem('current_station');
             if (cs) {
               this.initWithQuery(cs);
-            }  
+            }
             break;
           case 'c':
             this._competition = value;

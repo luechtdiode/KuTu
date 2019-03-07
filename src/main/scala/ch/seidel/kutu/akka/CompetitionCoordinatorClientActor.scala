@@ -1,15 +1,18 @@
 package ch.seidel.kutu.akka
 
 import akka.actor.SupervisorStrategy.{Restart, Stop}
-import akka.actor.{Actor, ActorLogging, ActorRef, OneForOneStrategy, Props, Terminated}
+import akka.actor.{Actor, ActorLogging, ActorRef, ExtendedActorSystem, OneForOneStrategy, Props, Terminated}
+import akka.event.{BusLogging, DiagnosticLoggingAdapter}
 import akka.http.scaladsl.model.ws.{BinaryMessage, Message, TextMessage}
 import akka.pattern.ask
 import akka.persistence.{PersistentActor, SnapshotOffer, SnapshotSelectionCriteria}
 import akka.stream.OverflowStrategy
 import akka.stream.scaladsl.{Flow, Sink, Source}
 import akka.util.Timeout
+import ch.seidel.kutu.akka.CompetitionCoordinatorClientActor.PublishAction
 import ch.seidel.kutu.data.ResourceExchanger
 import ch.seidel.kutu.domain._
+import ch.seidel.kutu.http.Core.system
 import ch.seidel.kutu.http.{EnrichedJson, JsonSupport}
 import org.slf4j.LoggerFactory
 import spray.json._
@@ -20,7 +23,17 @@ import scala.concurrent.{Await, Future}
 import scala.util.Failure
 import scala.util.control.NonFatal
 
-class CompetitionCoordinatorClientActor(wettkampfUUID: String) extends PersistentActor with JsonSupport with KutuService with ActorLogging {
+class CompetitionCoordinatorClientActor(wettkampfUUID: String) extends PersistentActor with JsonSupport with KutuService /*with ActorLogging*/ {
+  def shortName = self.toString().split("/").last.split("#").head + "/" + clientId()
+  lazy val l = akka.event.Logging(system, this)
+  //  lazy val log = new BusLogging(system.eventStream, "RouterLogging", classOf[RouterLogging], system.asInstanceOf[ExtendedActorSystem].logFilter) with DiagnosticLoggingAdapter
+  object log {
+    def error(s: String): Unit = l.error(s"[$shortName] $s")
+    def error(s: String, ex: Throwable): Unit = l.error(s"[$shortName] $s", ex)
+    def warning(s: String): Unit = l.warning(s"[$shortName] $s")
+    def info(s: String): Unit = l.info(s"[$shortName] $s")
+    def debug(s: String): Unit = l.debug(s"[$shortName] $s")
+  }
 
   import context._
 
@@ -36,6 +49,7 @@ class CompetitionCoordinatorClientActor(wettkampfUUID: String) extends Persisten
   private var openDurchgangJournal: Map[Option[String], List[AthletWertungUpdated]] = Map.empty
 
   private var state: CompetitionState = CompetitionState()
+  private var clientId: ()=>String = ()=>sender().path.toString
 
   private def deviceIdOf(actor: ActorRef) = deviceWebsocketRefs.filter(_._2 == actor).map(_._1)
 
@@ -85,6 +99,11 @@ class CompetitionCoordinatorClientActor(wettkampfUUID: String) extends Persisten
 
   val receiveCommand: Receive = {
 
+    case PublishAction(id: String, action: KutuAppAction) =>
+      this.clientId = ()=>id
+      receiveCommand(action)
+      this.clientId = ()=>sender().path.toString
+
     case StartedDurchgaenge(_) => sender ! ResponseMessage(state.startedDurchgaenge)
 
     case StartDurchgang(wettkampfUUID, durchgang) =>
@@ -124,9 +143,10 @@ class CompetitionCoordinatorClientActor(wettkampfUUID: String) extends Persisten
       } else if (!state.startedDurchgaenge.exists(d => encodeURIComponent(d) == encodeURIComponent(durchgang))) {
         sender ! MessageAck("Dieser Durchgang ist noch nicht für die Resultaterfassung freigegeben.")
       } else try {
-        log.info("received new " + wertung)
+        log.info(s"received for ${athlet.vorname} ${athlet.name} (${athlet.verein}) im Pgm $programm new Wertung: D:${wertung.noteD}, E:${wertung.noteE}")
         val verifiedWertung = updateWertungSimple(wertung, true)
         val updated = AthletWertungUpdated(athlet, verifiedWertung, wettkampfUUID, durchgang, geraet, programm, lastSequenceNr)
+        log.info(s"saved for ${athlet.vorname} ${athlet.name} (${athlet.verein}) im Pgm $programm new Wertung: D:${verifiedWertung.noteD}, E:${verifiedWertung.noteE}")
         val awu: KutuAppEvent = updated
         persist(awu) { case _ => }
         //        persist(awu) { evt =>
@@ -213,7 +233,10 @@ class CompetitionCoordinatorClientActor(wettkampfUUID: String) extends Persisten
       log.info(s"stopped device $deviceId")
       deviceWebsocketRefs.get(deviceId).foreach { stoppedWebsocket =>
         deviceWebsocketRefs = deviceWebsocketRefs.filter(x => x._2 != stoppedWebsocket)
-        wsSend = wsSend.map { x => (x._1, x._2.filter(_ != stoppedWebsocket)) }.filter(x => x._2.nonEmpty)
+        wsSend = wsSend.map { x => (x._1, x._2
+          .filter(_ != stoppedWebsocket)
+          .filter(socket => deviceWebsocketRefs.exists(_._2 == socket)))
+        }.filter(x => x._2.nonEmpty)
       }
       if (state.startedDurchgaenge.isEmpty && wsSend.isEmpty) handleStop
 
@@ -222,7 +245,10 @@ class CompetitionCoordinatorClientActor(wettkampfUUID: String) extends Persisten
       val deviceId = deviceWebsocketRefs.filter(x => x._2 == stoppedWebsocket).map(_._1).headOption
       log.info(s"terminated device $deviceId")
       deviceWebsocketRefs = deviceWebsocketRefs.filter(x => x._2 != stoppedWebsocket)
-      wsSend = wsSend.map { x => (x._1, x._2.filter(_ != stoppedWebsocket)) }.filter(x => x._2.nonEmpty)
+      wsSend = wsSend.map { x => (x._1, x._2
+        .filter(_ != stoppedWebsocket)
+        .filter(socket => deviceWebsocketRefs.exists(_._2 == socket)))
+      }.filter(x => x._2.nonEmpty)
       if (state.startedDurchgaenge.isEmpty && wsSend.isEmpty) handleStop
 
     case Delete(wk) =>
@@ -383,8 +409,8 @@ class ClientActorSupervisor extends Actor with ActorLogging {
       }
       sender ! coordinator
 
-    case uw: KutuAppAction =>
-      wettkampfCoordinators.get(uw.wettkampfUUID) match {
+    case uw: PublishAction =>
+      wettkampfCoordinators.get(uw.action.wettkampfUUID) match {
         case Some(coordinator) => coordinator.forward(uw)
         case _ =>
           println("Action for unknown competition: " + uw)
@@ -401,14 +427,15 @@ class ClientActorSupervisor extends Actor with ActorLogging {
 
 object CompetitionCoordinatorClientActor extends JsonSupport with EnrichedJson {
   private val logger = LoggerFactory.getLogger(this.getClass)
+  case class PublishAction(id: String, action: KutuAppAction)
 
   import ch.seidel.kutu.http.Core._
 
-  val supervisor = system.actorOf(Props[ClientActorSupervisor])
+  val supervisor = system.actorOf(Props[ClientActorSupervisor], name = "Supervisor")
 
-  def publish(action: KutuAppAction) = {
+  def publish(action: KutuAppAction, context: String): Future[KutuAppEvent] = {
     implicit val timeout = Timeout(15000 milli)
-    (supervisor ? action).mapTo[KutuAppEvent]
+    (supervisor ? PublishAction(context, action)).mapTo[KutuAppEvent]
   }
 
   def props(wettkampfUUID: String) = Props(classOf[CompetitionCoordinatorClientActor], wettkampfUUID)
@@ -450,8 +477,7 @@ object CompetitionCoordinatorClientActor extends JsonSupport with EnrichedJson {
         clientActor ! Subscribe(wsSource, deviceId, durchgang, lastSequenceId)
         wsSource
       }.named(deviceId)
-
-    Flow.fromSinkAndSource(sink, source)
+    Flow.fromSinkAndSource(sink, source).log(name = deviceId)
   }
 
   // unauthenticted oneway/readonly streaming
@@ -471,6 +497,7 @@ object CompetitionCoordinatorClientActor extends JsonSupport with EnrichedJson {
       wsSource
     }.named(deviceId)
 
-    Flow.fromSinkAndSource(sink, source)
+    Flow.fromSinkAndSource(sink, source).log(name = deviceId)
+
   }
 }

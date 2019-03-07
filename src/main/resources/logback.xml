@@ -7,7 +7,7 @@
     </encoder-->
     <encoder>
       <!--<pattern>%d{HH:mm:ss.SSS} - %msg%n</pattern>-->
-      <pattern>%d{HH:mm:ss.SSS} %-5level [%X{CID}] %logger{15} - %msg%n</pattern>
+      <pattern>%d{HH:mm:ss.SSS} %-5level %logger{15} - %msg%n</pattern>
     </encoder>
   </appender>
 
@@ -21,7 +21,7 @@
     </rollingPolicy>
 
     <encoder>
-      <pattern>%d{HH:mm:ss.SSS} %-5level [%X{CID}] %logger{15} - %msg%n</pattern>
+      <pattern>%d{HH:mm:ss.SSS} %-5level %logger{15} - %msg%n</pattern>
     </encoder>
   </appender>
 

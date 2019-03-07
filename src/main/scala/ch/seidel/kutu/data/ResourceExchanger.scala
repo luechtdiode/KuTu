@@ -30,14 +30,14 @@ object ResourceExchanger extends KutuService with RiegenBuilder {
     val opFn: (Option[T], KutuAppEvent)=>Unit = {  
       case (sender, uw @ AthletWertungUpdated(athlet, wertung, wettkampfUUID, durchgang, geraet, programm, sequenceId)) =>
         if (wettkampf.uuid.contains(wettkampfUUID)) Future {
-          logger.info("received new " + uw)
+          logger.info(s"received for ${uw.athlet.vorname} ${uw.athlet.name} (${uw.athlet.verein}) im Pgm $programm new Wertung: D:${wertung.noteD}, E:${wertung.noteE}")
           val mappedverein = athlet.verein match {case Some(v) => findVereinLike(Verein(id = 0, name = v.name, verband = None)) case _ => None}
           val mappedWettkampf = wettkampf
           val mappedAthlet = findAthleteLike(cache, Some(mappedWettkampf.id))(athlet.toAthlet.copy(id = 0, verein = mappedverein))
           val mappedWertung = wertung.copy(athletId = mappedAthlet.id, wettkampfId = mappedWettkampf.id, wettkampfUUID = wettkampfUUID)
           try {
             val vw = updateWertungWithIDMapping(mappedWertung, true)
-            logger.info("saved " + vw)
+            logger.info(s"saved for ${mappedAthlet.vorname} ${mappedAthlet.name} (${uw.athlet.verein}) im Pgm $programm new Wertung: D:${vw.noteD}, E:${vw.noteE}")
             refresher(sender, uw.copy(athlet.copy(id = mappedAthlet.id), wertung = vw))
           } catch {
             case e: Exception =>
