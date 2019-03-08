@@ -111,6 +111,8 @@ export class BackendService extends WebsocketService {
 
   initWithQuery(initWith: string) {
     if (initWith && initWith.startsWith('c=') ) {
+      this._step = 1;
+
       initWith.split('&').forEach(param => {
         const [key, value] = param.split('=')
         switch (key) {
@@ -134,13 +136,15 @@ export class BackendService extends WebsocketService {
           case 'd':
             this._durchgang = value;
             break;
+          case 'st':
+            this._step = parseInt(value);
+            break;
           case 'g':
             this._geraet = parseInt(value);
             localStorage.setItem('current_station', initWith);
             this.checkJWT();
             this.stationFreezed = true;
           default:
-            this._step = 1;
         }
       });
       this.externalLoaderSubscription.unsubscribe();
@@ -325,7 +329,7 @@ export class BackendService extends WebsocketService {
   loadSteps() {
     this.startLoading('Stationen zum Gerät werden geladen. Bitte warten ...', this.http.get<string[]>(backendUrl + 'api/durchgang/' + this._competition + '/' + encodeURIComponent2(this._durchgang) + '/' + this._geraet).share()).subscribe((data) => {
       this.steps = data.map(step => parseInt(step));
-      if (this._step === undefined) {
+      if (this._step === undefined || this.steps.indexOf(this._step) < 0) {
         this._step = 1;
         this.loadWertungen();
       }

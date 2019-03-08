@@ -209,8 +209,7 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
       id = "kutu-table"
       editable = true
     }
-    val emptyRiege = GeraeteRiege("", None, 0, None, Seq(), false)
-    var riegendurchgaenge: List[GeraeteRiege] = List[GeraeteRiege]()
+    val emptyRiege = GeraeteRiege("", "", None, 0, None, Seq(), false)
  		var relevantRiegen: Map[String,(Boolean, Int)] = Map[String,(Boolean, Int)]()
  		var erfasst = false
  		
@@ -235,7 +234,7 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
             	}
               item.durchgang match {
                 case Some(d) =>
-                  setText(s"${item.durchgang.get}: ${item.disziplin.map(d => d.name).getOrElse("")}  (${item.halt + 1}. Gerät)");
+                  setText(s"${item.durchgang.get}: ${item.disziplin.map(d => d.name).getOrElse("")}  (${item.halt + 1}. Gerät)")
                   if(!item.erfasst) {
                     styleClass.add("incomplete")
                     imageView.image = nokIcon
@@ -317,9 +316,7 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
 
     val editorPane: EditorPane = new EditorPane(wkview)
     val disziplinlist = wertungen.headOption match {case Some(w) => w.map(_.init.wettkampfdisziplin.disziplin) case _ => IndexedSeq[Disziplin]()}
-    def disziplinCnt = wertungen.headOption match {case Some(w) => w.size case _ => 0}
     val withDNotes = wertungen.flatMap(w => w.filter(ww => ww.init.wettkampfdisziplin.notenSpez.isDNoteUsed)).nonEmpty
-    val withENotes = wettkampf.programm.id != 1
     var lastFilter = ""
     var durchgangFilter = emptyRiege
 

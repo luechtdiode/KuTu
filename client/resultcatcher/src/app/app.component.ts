@@ -68,14 +68,30 @@ export class MyApp {
             //localStorage.setItem("external_load", initializeWith.substring(4)); 
           } else {
             console.log("initializing with " + initializeWith);
-            localStorage.setItem("external_load", initializeWith); 
+            localStorage.setItem("external_load", initializeWith);
+            if (initializeWith.startsWith('c=') && initializeWith.indexOf("&st=") && initializeWith.indexOf("&g=")) {
+              this.pages = [
+                { title: 'Home', component: HomePage },
+                { title: 'Resultate', component: StationPage },
+              ];
+              this.rootPage = StationPage;
+            }
             window.history.replaceState({}, document.title, window.location.href.split('?')[0]);
           }
           
         } catch(e) {
           console.log(e);
         }
-      }
+      } else if (localStorage.getItem('current_station')) {
+        const cs = localStorage.getItem('current_station');
+        if (cs.startsWith('c=') && cs.indexOf("&st=") && cs.indexOf("&g=")) {
+          this.pages = [
+            { title: 'Home', component: HomePage },
+            { title: 'Resultate', component: StationPage },
+          ];
+          this.rootPage = StationPage;
+        }
+  }
       this.splashScreen.hide();
 
       this.backendService.askForUsername.subscribe(service => {

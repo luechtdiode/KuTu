@@ -1,4 +1,4 @@
-<ion-menu [content]="content" *ngIf="pages && pages.length > 1">
+<ion-menu [content]="content" *ngIf="pages">
   <ion-header>
     <ion-toolbar>
       <ion-title>Menu</ion-title>
@@ -6,14 +6,15 @@
   </ion-header>
 
   <ion-content>
-    <ion-list>
+    <ion-list *ngIf="pages && pages.length > 1">
       <button menuClose ion-item *ngFor="let p of pages" (click)="openPage(p)">
         {{p.title}}
       </button>
+    </ion-list>
+    <ion-list>
       <button menuClose ion-item (click)="askUserName()">
         Settings
       </button>
-
     </ion-list>
   </ion-content>
 

@@ -450,34 +450,52 @@ object KuTuApp extends JFXApp with KutuService with JsonSupport with JwtSupport 
 
   def makeWettkampfRemoteRemoveMenu(p: WettkampfView): MenuItem = {
     val item = makeMenuAction("Wettkampf im Netzwerk entfernen") { (caption, action) =>
-      val process = KuTuApp.invokeAsyncWithBusyIndicator {
-        Future {
-          server.httpRemoveWettkampfRequest(p.toWettkampf)
-          ConnectionStates.disconnected()
-        }
-      }
-      process.onComplete { resultTry =>
-        Platform.runLater {
-          val feedback = resultTry match {
-            case Success(response) =>
-              selectedWettkampfSecret.value = p.toWettkampf.readSecret(homedir, remoteHostOrigin)
-              "Wettkampf im Netzwerk entfernt."
-            case Failure(error) => error.getMessage.replace("(", "(\n")
-          }
-          implicit val e = action
-          PageDisplayer.showInDialog(caption, new DisplayablePage() {
-            def getPage: Node = {
-              new BorderPane {
-                hgrow = Priority.Always
-                vgrow = Priority.Always
-                center = new VBox {
-                  children.addAll(new Label(feedback))
-                }
-              }
+      implicit val e = action
+      PageDisplayer.showInDialog(caption, new DisplayablePage() {
+        def getPage: Node = {
+          new BorderPane {
+            hgrow = Priority.Always
+            vgrow = Priority.Always
+            center = new VBox {
+              children.addAll(new Label("Der Wettkampf wird inklusive allen Resultaten im Netzwerk entfernt und steht danach nicht mehr für andere Teilnehmer zur Verfügung."))
             }
-          })
+          }
+        }
+      },
+      new Button("OK") {
+        onAction = handleAction { implicit e: ActionEvent =>
+          val process = KuTuApp.invokeAsyncWithBusyIndicator {
+            Future {
+              server.httpRemoveWettkampfRequest(p.toWettkampf)
+              ConnectionStates.disconnected()
+            }
+          }
+          process.onComplete {
+            resultTry =>
+              Platform.runLater {
+                val feedback = resultTry match {
+                  case Success(response) =>
+                    selectedWettkampfSecret.value = p.toWettkampf.readSecret(homedir, remoteHostOrigin)
+                    "Wettkampf im Netzwerk entfernt."
+                  case Failure(error) => error.getMessage.replace("(", "(\n")
+                }
+                implicit val e = action
+                PageDisplayer.showInDialog(caption, new DisplayablePage() {
+                  def getPage: Node = {
+                    new BorderPane {
+                      hgrow = Priority.Always
+                      vgrow = Priority.Always
+                      center = new VBox {
+                        children.addAll(new Label(feedback))
+                      }
+                    }
+                  }
+                })
+              }
+          }
         }
       }
+      )
     }
     item.disable <== when(Bindings.createBooleanBinding(() =>
       Config.isLocalHostServer() ||
