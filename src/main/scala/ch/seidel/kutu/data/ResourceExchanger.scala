@@ -1,6 +1,7 @@
 package ch.seidel.kutu.data
 
 import java.io._
+import java.util
 import java.util.zip.{ZipEntry, ZipInputStream, ZipOutputStream}
 
 import ch.seidel.kutu.Config
@@ -23,34 +24,58 @@ import scala.reflect.runtime.universe._
  */
 object ResourceExchanger extends KutuService with RiegenBuilder {
   private val logger = LoggerFactory.getLogger(this.getClass)
-
   def processWSMessage[T](wettkampf: Wettkampf, refresher: (Option[T], KutuAppEvent)=>Unit) = {
     val cache = new java.util.ArrayList[MatchCode]()
-    
+    def mapToLocal(athlet: AthletView) = {
+      val mappedverein = athlet.verein match {
+        case Some(v) => findVereinLike(Verein(id = 0, name = v.name, verband = None))
+        case _ => None
+      }
+      val mappedAthlet = findAthleteLike(cache, Some(wettkampf.id))(athlet.toAthlet.copy(id = 0, verein = mappedverein))
+      val mappedAthletView = athlet.updatedWith(mappedAthlet)
+      mappedAthletView
+    }
+
     val opFn: (Option[T], KutuAppEvent)=>Unit = {  
-      case (sender, uw @ AthletWertungUpdated(athlet, wertung, wettkampfUUID, durchgang, geraet, programm, sequenceId)) =>
+      case (sender, uw @ AthletWertungUpdated(athlet, wertung, wettkampfUUID, _, _, programm, _)) =>
         if (wettkampf.uuid.contains(wettkampfUUID)) Future {
-          logger.info(s"received for ${uw.athlet.vorname} ${uw.athlet.name} (${uw.athlet.verein.getOrElse(()=>"")}) im Pgm $programm new Wertung: D:${wertung.noteD}, E:${wertung.noteE}")
-          val mappedverein = athlet.verein match {case Some(v) => findVereinLike(Verein(id = 0, name = v.name, verband = None)) case _ => None}
-          val mappedWettkampf = wettkampf
-          val mappedAthlet = findAthleteLike(cache, Some(mappedWettkampf.id))(athlet.toAthlet.copy(id = 0, verein = mappedverein))
-          val mappedWertung = wertung.copy(athletId = mappedAthlet.id, wettkampfId = mappedWettkampf.id, wettkampfUUID = wettkampfUUID)
+          logger.info(s"received for ${uw.athlet.vorname} ${uw.athlet.name} (${uw.athlet.verein.getOrElse(()=>"")}) " +
+            s"im Pgm $programm new Wertung: D:${wertung.noteD}, E:${wertung.noteE}")
+          val mappedAthletView: AthletView = mapToLocal(athlet)
+          val mappedWertung = wertung.copy(athletId = mappedAthletView.id, wettkampfId = wettkampf.id, wettkampfUUID = wettkampfUUID)
           try {
             val vw = updateWertungWithIDMapping(mappedWertung, true)
-            logger.info(s"saved for ${mappedAthlet.vorname} ${mappedAthlet.name} (${uw.athlet.verein.getOrElse(()=>"")}) im Pgm $programm new Wertung: D:${vw.noteD}, E:${vw.noteE}")
-            refresher(sender, uw.copy(athlet.copy(id = mappedAthlet.id), wertung = vw))
+            logger.info(s"saved for ${mappedAthletView.vorname} ${mappedAthletView.name} (${uw.athlet.verein.getOrElse(()=>"")}) " +
+              s"im Pgm $programm new Wertung: D:${vw.noteD}, E:${vw.noteE}")
+            refresher(sender, uw.copy(athlet.copy(id = mappedAthletView.id), wertung = vw))
           } catch {
             case e: Exception =>
               logger.error("not saved!", e)
               refresher(sender, uw)
           }
         }
-      case (_, awm: AthletMovedInWettkampf) =>
-        moveToProgram(awm)
-        logger.info(s"${awm.athlet.vorname} ${awm.athlet.name} (${awm.athlet.verein.getOrElse(()=>"")}) moved in competition ${awm.wettkampfUUID} to Program-Id:${awm.pgmId}")
-      case (_, arw: AthletRemovedFromWettkampf) =>
-        unassignAthletFromWettkampf(arw)
-        logger.info(s"${arw.athlet.vorname} ${arw.athlet.name} (${arw.athlet.verein.getOrElse(()=>"")}) removed from competition ${arw.wettkampfUUID}")
+      case (sender, awm @AthletMovedInWettkampf(athlet, wettkampfUUID, programm)) =>
+        if (wettkampf.uuid.contains(wettkampfUUID)) Future {
+          logger.info(s"received for ${awm.athlet.vorname} ${awm.athlet.name} (${awm.athlet.verein.getOrElse(() => "")}) " +
+            s"to be moved in competition ${awm.wettkampfUUID} to Program-Id:${programm}")
+          val mappedAthletView: AthletView = mapToLocal(athlet)
+          val mappedEvent = awm.copy(athlet = mappedAthletView)
+          moveToProgram(mappedEvent)
+          logger.info(s"${mappedAthletView.vorname} ${mappedAthletView.name} (${mappedAthletView.verein.getOrElse(() => "")}) " +
+            s"moved in competition ${awm.wettkampfUUID} to Program-Id:${awm.pgmId}")
+          refresher(sender, mappedEvent)
+        }
+      case (sender, arw @AthletRemovedFromWettkampf(athlet, wettkampfUUID)) =>
+        if (wettkampf.uuid.contains(wettkampfUUID)) Future {
+          logger.info(s"received for ${arw.athlet.vorname} ${arw.athlet.name} (${arw.athlet.verein.getOrElse(() => "")}) " +
+            s"to be removed from competition ${arw.wettkampfUUID}")
+          val mappedAthletView: AthletView = mapToLocal(athlet)
+          val mappedEvent = arw.copy(athlet = mappedAthletView)
+          unassignAthletFromWettkampf(mappedEvent)
+          logger.info(s"${mappedAthletView.vorname} ${mappedAthletView.name} (${mappedAthletView.verein.getOrElse(() => "")}) " +
+            s"removed from competition ${arw.wettkampfUUID}")
+          refresher(sender, mappedEvent)
+        }
       case (_, MessageAck(_)) => // ignore
       case (sender, someOther) => 
         refresher(sender, someOther)
@@ -58,7 +83,7 @@ object ResourceExchanger extends KutuService with RiegenBuilder {
     
     opFn
   }
-  
+
   def importWettkampf(file: InputStream) = {
     val buffer = new BufferedInputStream(file)
     buffer.mark(40*4096)

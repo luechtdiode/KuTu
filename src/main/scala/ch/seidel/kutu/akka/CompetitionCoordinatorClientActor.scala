@@ -82,14 +82,14 @@ class CompetitionCoordinatorClientActor(wettkampfUUID: String) extends Persisten
   }
 
   val receiveRecover: Receive = {
-    case evt: KutuAppEvent => handleEvent(evt)
+    case evt: KutuAppEvent => handleEvent(evt, true)
     case SnapshotOffer(_, snapshot: CompetitionState) => state = snapshot
     case _ =>
   }
 
-  def handleEvent(evt: KutuAppEvent) {
+  def handleEvent(evt: KutuAppEvent, recoveryMode: Boolean = false) {
     state = state.updated(evt, isDNoteUsed)
-    if (lastSequenceNr % snapShotInterval == 0 && lastSequenceNr != 0) {
+    if (!recoveryMode && lastSequenceNr % snapShotInterval == 0 && lastSequenceNr != 0) {
       val criteria = SnapshotSelectionCriteria.Latest
       saveSnapshot(state)
       deleteSnapshots(criteria)

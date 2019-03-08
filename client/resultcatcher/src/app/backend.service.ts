@@ -510,6 +510,10 @@ export class BackendService extends WebsocketService {
         this.wertungUpdated.next(updated);
         return true;
 
+      case 'AthletMovedInWettkampf':
+      case 'AthletRemovedFromWettkampf':
+        this.loadWertungen();  
+
       case 'NewLastResults':
         this.newLastResults.next((message as NewLastResults));
         return true;

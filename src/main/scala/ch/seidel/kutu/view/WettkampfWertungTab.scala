@@ -6,7 +6,7 @@ import java.util.concurrent.{ScheduledFuture, TimeUnit}
 import ch.seidel.commons._
 import ch.seidel.kutu.Config._
 import ch.seidel.kutu.{KuTuApp, KuTuServer}
-import ch.seidel.kutu.akka.AthletWertungUpdated
+import ch.seidel.kutu.akka.{AthletMovedInWettkampf, AthletRemovedFromWettkampf, AthletWertungUpdated}
 import ch.seidel.kutu.domain._
 import ch.seidel.kutu.http.WebSocketClient
 import ch.seidel.kutu.renderer.PrintUtil.FilenameDefault
@@ -948,6 +948,10 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
             }
             updateEditorPane(tableSelected)
 
+          case a @ AthletMovedInWettkampf(athlet, wettkampfUUID, pgmId) =>
+            reloadData()
+          case a @ AthletRemovedFromWettkampf(athlet, wettkampfUUID) =>
+            reloadData()
           case _ =>
         }
       }
@@ -1478,8 +1482,7 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
           }, new Button("OK") {
             onAction = (event: ActionEvent) => {
               service.unassignAthletFromWettkampf(athletwertungen)
-              // TODO AthletRemovedFromWettkampf
-              wkModel.remove(wkview.selectionModel().getSelectedIndex)
+//              wkModel.remove(wkview.selectionModel().getSelectedIndex)
             }
           })
         }
@@ -1508,7 +1511,7 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
           onAction = (event: ActionEvent) => {
             if (!wkview.selectionModel().isEmpty) {
               service.moveToProgram(wettkampf.id, cbProgramms.selectionModel().selectedItem.value.id, wkview.selectionModel().getSelectedItem.head.init.athlet)
-              reloadData()
+//              reloadData()
             }
           }
         })
