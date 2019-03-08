@@ -34,6 +34,16 @@ case class CompetitionState(
         lastWertungen, bestenResults, lastBestenResults, lastSequenceId
       )
 
+    case au: AthletWertungUpdatedSequenced =>
+      val wertungContainer: WertungContainer = mapToWertungContainer(au.toAthletWertungUpdated(), isDNoteUsed)
+      CompetitionState(
+        startedDurchgaenge,
+        finishedDurchgangSteps,
+        finishedDurchgaenge,
+        startStopEvents,
+        lastWertungen.updated(wertungContainer.wertung.wettkampfdisziplinId.toString(), wertungContainer),
+        putBestenResult(wertungContainer), lastBestenResults, lastSequenceId + 1
+      )
     case au: AthletWertungUpdated =>
       val wertungContainer: WertungContainer = mapToWertungContainer(au, isDNoteUsed)
       CompetitionState(

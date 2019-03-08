@@ -307,9 +307,14 @@ class NetworkTab(wettkampf: WettkampfView, override val service: KutuService) ex
       case df: DurchgangFinished =>
         println("refreshing network-dashboard from websocket", newItem) 
         refreshData(Some(df))
-      case AthletWertungUpdated(ahtlet: AthletView, wertung: Wertung, wettkampfUUID: String, durchgang: String, geraet: Long, programm: String, sequenceId) =>
+      case AthletWertungUpdated(ahtlet: AthletView, wertung: Wertung, wettkampfUUID: String, durchgang: String, geraet: Long, programm: String) =>
         if (selected.value) {
           println("refreshing network-dashboard from websocket", newItem) 
+          refreshData()
+        }
+      case AthletWertungUpdatedSequenced(ahtlet: AthletView, wertung: Wertung, wettkampfUUID: String, durchgang: String, geraet: Long, programm: String, sequenceId) =>
+        if (selected.value) {
+          println("refreshing network-dashboard from websocket", newItem)
           refreshData()
         }
       case _ =>

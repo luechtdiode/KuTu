@@ -6,7 +6,7 @@ import java.util.concurrent.{ScheduledFuture, TimeUnit}
 import ch.seidel.commons._
 import ch.seidel.kutu.Config._
 import ch.seidel.kutu.{KuTuApp, KuTuServer}
-import ch.seidel.kutu.akka.{AthletMovedInWettkampf, AthletRemovedFromWettkampf, AthletWertungUpdated}
+import ch.seidel.kutu.akka.{AthletMovedInWettkampf, AthletRemovedFromWettkampf, AthletWertungUpdated, AthletWertungUpdatedSequenced}
 import ch.seidel.kutu.domain._
 import ch.seidel.kutu.http.WebSocketClient
 import ch.seidel.kutu.renderer.PrintUtil.FilenameDefault
@@ -919,31 +919,37 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
       updateEditorPane(if (wkview.focused.value) Some(wkview) else None)
       isFilterRefreshing = false
     }
-    
+
+    def handleWertungUpdated(wertung: Wertung) = {
+      val tableSelected = if (wkview.focused.value) Some(wkview) else None
+      wertungen = wertungen.map { aw =>
+        val index = wkModel.indexOf(aw)
+        val newWertungen = aw.map { w =>
+          if (w.init.id == wertung.id && w.endnote != wertung.endnote) {
+            WertungEditor(w.init.updatedWertung(wertung))
+          } else {
+            w
+          }
+        }
+        if (index > -1 && wkModel(index).map(_.init.endnote).sum != newWertungen.map(_.init.endnote).sum) {
+          isFilterRefreshing = true
+          val selected = wkview.selectionModel.value.selectedCells
+          wkModel.update(index, newWertungen)
+          //selected.foreach(c => wkview.selectionModel.value.select(c.row, c.tableColumn.asInstanceOf[jfxsc.TableColumn[IndexedSeq[WertungEditor], _]]))
+          isFilterRefreshing = false
+        }
+        newWertungen
+      }
+      updateEditorPane(tableSelected)
+    }
+
     websocketsubscription = Some(WebSocketClient.modelWettkampfWertungChanged.onChange { (_, _, newItem) =>
       if (selected.value) {
         newItem match {
-          case a @ AthletWertungUpdated(_, wertung, _, _, _, _, sequenceId) =>
-            val tableSelected = if (wkview.focused.value) Some(wkview) else None
-            wertungen = wertungen.map{aw => 
-              val index = wkModel.indexOf(aw)
-              val newWertungen = aw.map{ w => 
-                if (w.init.id == wertung.id && w.endnote != wertung.endnote) {
-                  WertungEditor(w.init.updatedWertung(wertung))
-                } else {
-                  w
-                }
-              }
-              if (index > -1 && wkModel(index).map(_.init.endnote).sum != newWertungen.map(_.init.endnote).sum) {
-                isFilterRefreshing = true
-                val selected = wkview.selectionModel.value.selectedCells
-                wkModel.update(index, newWertungen)
-                //selected.foreach(c => wkview.selectionModel.value.select(c.row, c.tableColumn.asInstanceOf[jfxsc.TableColumn[IndexedSeq[WertungEditor], _]]))
-                isFilterRefreshing = false
-              }
-              newWertungen
-            }
-            updateEditorPane(tableSelected)
+          case a @ AthletWertungUpdated(_, wertung, _, _, _, _) =>
+            handleWertungUpdated(wertung)
+          case a @ AthletWertungUpdatedSequenced(_, wertung, _, _, _, _, _) =>
+            handleWertungUpdated(wertung)
 
           case a @ AthletMovedInWettkampf(athlet, wettkampfUUID, pgmId) =>
             reloadData()

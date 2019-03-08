@@ -1,8 +1,7 @@
 package ch.seidel.kutu.akka
 
-import akka.actor.SupervisorStrategy.{Restart, Stop}
-import akka.actor.{Actor, ActorLogging, ActorRef, ExtendedActorSystem, OneForOneStrategy, Props, Terminated}
-import akka.event.{BusLogging, DiagnosticLoggingAdapter}
+import akka.actor.SupervisorStrategy.{Restart, Resume, Stop}
+import akka.actor.{Actor, ActorLogging, ActorRef, OneForOneStrategy, Props, Terminated}
 import akka.http.scaladsl.model.ws.{BinaryMessage, Message, TextMessage}
 import akka.pattern.ask
 import akka.persistence.{PersistentActor, SnapshotOffer, SnapshotSelectionCriteria}
@@ -14,6 +13,7 @@ import ch.seidel.kutu.data.ResourceExchanger
 import ch.seidel.kutu.domain._
 import ch.seidel.kutu.http.Core.system
 import ch.seidel.kutu.http.{EnrichedJson, JsonSupport}
+import com.esotericsoftware.kryo.KryoException
 import org.slf4j.LoggerFactory
 import spray.json._
 
@@ -46,7 +46,7 @@ class CompetitionCoordinatorClientActor(wettkampfUUID: String) extends Persisten
   private var wsSend: Map[Option[String], List[ActorRef]] = Map.empty
   private var deviceWebsocketRefs: Map[String, ActorRef] = Map.empty
   private var pendingKeepAliveAck: Option[Int] = None
-  private var openDurchgangJournal: Map[Option[String], List[AthletWertungUpdated]] = Map.empty
+  private var openDurchgangJournal: Map[Option[String], List[AthletWertungUpdatedSequenced]] = Map.empty
 
   private var state: CompetitionState = CompetitionState()
   private var clientId: ()=>String = ()=>sender().path.toString
@@ -145,14 +145,14 @@ class CompetitionCoordinatorClientActor(wettkampfUUID: String) extends Persisten
       } else try {
         log.info(s"received for ${athlet.vorname} ${athlet.name} (${athlet.verein}) im Pgm $programm new Wertung: D:${wertung.noteD}, E:${wertung.noteE}")
         val verifiedWertung = updateWertungSimple(wertung, true)
-        val updated = AthletWertungUpdated(athlet, verifiedWertung, wettkampfUUID, durchgang, geraet, programm, lastSequenceNr)
+        val updated = AthletWertungUpdatedSequenced(athlet, verifiedWertung, wettkampfUUID, durchgang, geraet, programm, lastSequenceNr)
         log.info(s"saved for ${athlet.vorname} ${athlet.name} (${athlet.verein}) im Pgm $programm new Wertung: D:${verifiedWertung.noteD}, E:${verifiedWertung.noteE}")
         val awu: KutuAppEvent = updated
         persist(awu) { case _ => }
         //        persist(awu) { evt =>
         handleEvent(awu)
         val handledEvent = updated
-          .asInstanceOf[AthletWertungUpdated]
+          .asInstanceOf[AthletWertungUpdatedSequenced]
           .copy(sequenceId = state.lastSequenceId)
 
 
@@ -171,6 +171,7 @@ class CompetitionCoordinatorClientActor(wettkampfUUID: String) extends Persisten
       }
 
     case awu: AthletWertungUpdated => websocketProcessor(Some(sender), awu)
+    case awu: AthletWertungUpdatedSequenced => websocketProcessor(Some(sender), awu)
     case awu: AthletMovedInWettkampf => websocketProcessor(Some(sender), awu)
     case awu: AthletRemovedFromWettkampf => websocketProcessor(Some(sender), awu)
 
@@ -290,18 +291,29 @@ class CompetitionCoordinatorClientActor(wettkampfUUID: String) extends Persisten
 
   def handleWebsocketMessages(originSender: Option[ActorRef], event: KutuAppEvent) {
     val senderWebSocket = actorWithSameDeviceIdOfSender(originSender.getOrElse(sender))
+
+    def forwardToListeners(handledEvent: AthletWertungUpdatedSequenced) = {
+      addToDurchgangJournal(handledEvent, handledEvent.durchgang)
+      val toPublish = TextMessage(handledEvent.asInstanceOf[KutuAppEvent].toJson.compactPrint)
+      notifyWebSocketClients(senderWebSocket, toPublish, handledEvent.durchgang)
+      notifyBestenResult()
+    }
+
     event match {
       case awuv: AthletWertungUpdated =>
         persist(awuv){case _ =>}
 //        persist(awuv) { evt =>
           handleEvent(awuv)
-          val handledEvent = awuv.copy(sequenceId = state.lastSequenceId)
-          addToDurchgangJournal(handledEvent, handledEvent.durchgang)
-
-          val toPublish = TextMessage(handledEvent.asInstanceOf[KutuAppEvent].toJson.compactPrint)
-          notifyWebSocketClients(senderWebSocket, toPublish, handledEvent.durchgang)
-          notifyBestenResult()
-//        }
+          val handledEvent = awuv.toAthletWertungUpdatedSequenced(state.lastSequenceId)
+          forwardToListeners(handledEvent)
+      //        }
+      case awuv: AthletWertungUpdatedSequenced =>
+        persist(awuv){case _ =>}
+        //        persist(awuv) { evt =>
+        handleEvent(awuv)
+        val handledEvent = awuv.toAthletWertungUpdated().toAthletWertungUpdatedSequenced(state.lastSequenceId)
+        forwardToListeners(handledEvent)
+      //        }
 
       case awu: AthletMovedInWettkampf =>
         val toPublish = TextMessage(event.toJson.compactPrint)
@@ -339,10 +351,10 @@ class CompetitionCoordinatorClientActor(wettkampfUUID: String) extends Persisten
     }
   }
 
-  private def addToDurchgangJournal(toPublish: AthletWertungUpdated, durchgang: String) = {
+  private def addToDurchgangJournal(toPublish: AthletWertungUpdatedSequenced, durchgang: String) = {
     if (durchgang == "") {
       openDurchgangJournal = openDurchgangJournal.map {
-        case (dgoption: Option[String], list: List[AthletWertungUpdated]) =>
+        case (dgoption: Option[String], list: List[AthletWertungUpdatedSequenced]) =>
           dgoption -> (list :+ toPublish)
         case x => x
       }

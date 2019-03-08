@@ -191,11 +191,18 @@ trait WertungenRoutes extends SprayJsonSupport with JsonSupport with JwtSupport 
                       case Success(Some((wkPgmId, wertung))) =>
                         complete(CompetitionCoordinatorClientActor.publish(wertung, clientId).andThen {
                           case Success(w) => w match {
-                            case AthletWertungUpdated(athlet, verifiedWertung, _, _, ger, programm, sequenceId) =>
+                            case AthletWertungUpdatedSequenced(athlet, verifiedWertung, _, _, ger, programm, _) =>
                               val verein: String = athlet.verein.map(_.name).getOrElse("")
                               val isDNoteUsed = wkPgmId != 20 && wkPgmId != 1
                               WertungContainer(athlet.id, athlet.vorname, athlet.name, athlet.geschlecht, verein,
                                 verifiedWertung, ger, programm, isDNoteUsed)
+
+                            case AthletWertungUpdated(athlet, verifiedWertung, _, _, ger, programm) =>
+                              val verein: String = athlet.verein.map(_.name).getOrElse("")
+                              val isDNoteUsed = wkPgmId != 20 && wkPgmId != 1
+                              WertungContainer(athlet.id, athlet.vorname, athlet.name, athlet.geschlecht, verein,
+                                verifiedWertung, ger, programm, isDNoteUsed)
+
                             case _ =>
                               log.error(s"Conflict: unexpected Wertung value: $w")
                               StatusCodes.Conflict

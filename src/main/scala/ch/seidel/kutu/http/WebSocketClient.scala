@@ -7,7 +7,7 @@ import akka.http.scaladsl.model.ws.{BinaryMessage, Message, TextMessage, WebSock
 import akka.stream.OverflowStrategy
 import akka.stream.scaladsl.{Flow, Keep, Sink, Source, SourceQueueWithComplete}
 import ch.seidel.kutu.Config.{homedir, jwtAuthorizationKey, _}
-import ch.seidel.kutu.akka.{AthletWertungUpdated, KutuAppEvent, LastResults, MessageAck}
+import ch.seidel.kutu.akka._
 import ch.seidel.kutu.domain.Wettkampf
 import javafx.beans.property.SimpleObjectProperty
 import org.slf4j.LoggerFactory
@@ -35,7 +35,7 @@ object WebSocketClient extends SprayJsonSupport with JsonSupport with AuthSuppor
       case LastResults(results) =>
         results.foreach(processorWithoutSender)
 
-      case event@AthletWertungUpdated(_, _, _, _, _, _, sequenceId) =>
+      case event@AthletWertungUpdatedSequenced(_, _, _, _, _, _, sequenceId) =>
         if (sequenceId > lastSequenceId) {
           lastSequenceId = sequenceId
           messageProcessor(None, event)

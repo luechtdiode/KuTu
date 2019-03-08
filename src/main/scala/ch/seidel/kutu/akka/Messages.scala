@@ -29,11 +29,16 @@ case class StationWertungenCompleted(wertungen: List[UpdateAthletWertung]) exten
 case class DurchgangStationFinished(wettkampfUUID: String, durchgang: String, geraet: Long, step: Int) extends KutuAppEvent
 case class DurchgangStepFinished(wettkampfUUID: String, time: Long = System.currentTimeMillis()) extends KutuAppEvent
 case class DurchgangFinished(wettkampfUUID: String, durchgang: String, time: Long = System.currentTimeMillis()) extends KutuAppEvent
-case class AthletWertungUpdated(athlet: AthletView, wertung: Wertung, wettkampfUUID: String, durchgang: String, geraet: Long, programm: String, val sequenceId: Long) extends KutuAppEvent
+case class AthletWertungUpdated(athlet: AthletView, wertung: Wertung, wettkampfUUID: String, durchgang: String, geraet: Long, programm: String) extends KutuAppEvent {
+  def toAthletWertungUpdatedSequenced(sequenceId: Long) = AthletWertungUpdatedSequenced(athlet, wertung, wettkampfUUID, durchgang, geraet, programm, sequenceId)
+}
+case class AthletWertungUpdatedSequenced(athlet: AthletView, wertung: Wertung, wettkampfUUID: String, durchgang: String, geraet: Long, programm: String, val sequenceId: Long) extends KutuAppEvent {
+  def toAthletWertungUpdated() = AthletWertungUpdated(athlet, wertung, wettkampfUUID, durchgang, geraet, programm)
+}
 case class AthletRemovedFromWettkampf(athlet: AthletView, wettkampfUUID: String) extends KutuAppEvent
 case class AthletMovedInWettkampf(athlet: AthletView, wettkampfUUID: String, pgmId: Long) extends KutuAppEvent
 
 case class NewLastResults(results: Map[String, WertungContainer], lastTopResults: Map[String, WertungContainer]) extends KutuAppEvent
-case class LastResults(results: List[AthletWertungUpdated]) extends KutuAppEvent
+case class LastResults(results: List[AthletWertungUpdatedSequenced]) extends KutuAppEvent
 case class MessageAck(msg: String) extends KutuAppEvent
 case class ResponseMessage(data: Object) extends KutuAppEvent

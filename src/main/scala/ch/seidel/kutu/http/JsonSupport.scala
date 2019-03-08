@@ -35,7 +35,8 @@ trait JsonSupport extends SprayJsonSupport with EnrichedJson {
 
   // events (via ws and rest-response)
   implicit val durchgangStartedFormat = jsonFormat3(DurchgangStarted)
-  implicit val wertungUpdatedFormat = jsonFormat7(AthletWertungUpdated)
+  implicit val wertungUpdatedFormat = jsonFormat6(AthletWertungUpdated)
+  implicit val wertungUpdatedFormatSeq = jsonFormat7(AthletWertungUpdatedSequenced)
   implicit val stationsWertungenCompletedFormat = jsonFormat1(StationWertungenCompleted)
   implicit val newLastResultsFormat = jsonFormat2(NewLastResults)
   implicit val durchgangFinishedFormat = jsonFormat3(DurchgangFinished)
@@ -48,6 +49,7 @@ trait JsonSupport extends SprayJsonSupport with EnrichedJson {
   val caseClassesJsonFormatter: Map[String, JsonFormat[_ <: KutuAppEvent]] = Map(
       classOf[DurchgangStarted].getSimpleName -> durchgangStartedFormat,
       classOf[AthletWertungUpdated].getSimpleName -> wertungUpdatedFormat,
+      classOf[AthletWertungUpdatedSequenced].getSimpleName -> wertungUpdatedFormatSeq,
       classOf[StationWertungenCompleted].getSimpleName -> stationsWertungenCompletedFormat,
       classOf[NewLastResults].getSimpleName -> newLastResultsFormat,
       classOf[DurchgangFinished].getSimpleName -> durchgangFinishedFormat,
