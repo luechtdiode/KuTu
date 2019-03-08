@@ -145,17 +145,12 @@ class CompetitionCoordinatorClientActor(wettkampfUUID: String) extends Persisten
       } else try {
         log.info(s"received for ${athlet.vorname} ${athlet.name} (${athlet.verein}) im Pgm $programm new Wertung: D:${wertung.noteD}, E:${wertung.noteE}")
         val verifiedWertung = updateWertungSimple(wertung, true)
-        val updated = AthletWertungUpdatedSequenced(athlet, verifiedWertung, wettkampfUUID, durchgang, geraet, programm, lastSequenceNr)
+        val updated = AthletWertungUpdated(athlet, verifiedWertung, wettkampfUUID, durchgang, geraet, programm)
         log.info(s"saved for ${athlet.vorname} ${athlet.name} (${athlet.verein}) im Pgm $programm new Wertung: D:${verifiedWertung.noteD}, E:${verifiedWertung.noteE}")
-        val awu: KutuAppEvent = updated
-        persist(awu) { case _ => }
-        //        persist(awu) { evt =>
-        handleEvent(awu)
-        val handledEvent = updated
-          .asInstanceOf[AthletWertungUpdatedSequenced]
-          .copy(sequenceId = state.lastSequenceId)
 
-
+        persist(updated) { case _ => }
+        handleEvent(updated)
+        val handledEvent = updated.toAthletWertungUpdatedSequenced(state.lastSequenceId)
         log.debug("completed " + handledEvent)
         sender ! handledEvent
 

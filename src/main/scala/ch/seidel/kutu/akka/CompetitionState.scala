@@ -35,25 +35,10 @@ case class CompetitionState(
       )
 
     case au: AthletWertungUpdatedSequenced =>
-      val wertungContainer: WertungContainer = mapToWertungContainer(au.toAthletWertungUpdated(), isDNoteUsed)
-      CompetitionState(
-        startedDurchgaenge,
-        finishedDurchgangSteps,
-        finishedDurchgaenge,
-        startStopEvents,
-        lastWertungen.updated(wertungContainer.wertung.wettkampfdisziplinId.toString(), wertungContainer),
-        putBestenResult(wertungContainer), lastBestenResults, lastSequenceId + 1
-      )
+      newCompetitionStateWith(mapToWertungContainer(au.toAthletWertungUpdated(), isDNoteUsed))
+
     case au: AthletWertungUpdated =>
-      val wertungContainer: WertungContainer = mapToWertungContainer(au, isDNoteUsed)
-      CompetitionState(
-        startedDurchgaenge,
-        finishedDurchgangSteps,
-        finishedDurchgaenge,
-        startStopEvents,
-        lastWertungen.updated(wertungContainer.wertung.wettkampfdisziplinId.toString(), wertungContainer),
-        putBestenResult(wertungContainer), lastBestenResults, lastSequenceId + 1
-      )
+      newCompetitionStateWith(mapToWertungContainer(au, isDNoteUsed))
 
     case fds: DurchgangStationFinished =>
       CompetitionState(
@@ -95,5 +80,15 @@ case class CompetitionState(
       awuv.wertung,
       awuv.geraet, awuv.programm, isDNoteUsed)
   }
+
+  private def newCompetitionStateWith(wertungContainer: WertungContainer) =
+    CompetitionState(
+      startedDurchgaenge,
+      finishedDurchgangSteps,
+      finishedDurchgaenge,
+      startStopEvents,
+      lastWertungen.updated(wertungContainer.wertung.wettkampfdisziplinId.toString(), wertungContainer),
+      putBestenResult(wertungContainer), lastBestenResults, lastSequenceId + 1
+    )
 
 }
