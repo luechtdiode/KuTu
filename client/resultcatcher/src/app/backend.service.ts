@@ -502,6 +502,7 @@ export class BackendService extends WebsocketService {
         this.durchgangStarted.next(this.activeDurchgangList);
         return true;
 
+      case 'AthletWertungUpdatedSequenced':
       case 'AthletWertungUpdated':
         let updated = (message as AthletWertungUpdated)
         this.wertungen = this.wertungen.map(w => {

@@ -69,7 +69,7 @@ export class MyApp {
           } else {
             console.log("initializing with " + initializeWith);
             localStorage.setItem("external_load", initializeWith);
-            if (initializeWith.startsWith('c=') && initializeWith.indexOf("&st=") && initializeWith.indexOf("&g=")) {
+            if (initializeWith.startsWith('c=') && initializeWith.indexOf("&st=") > -1 && initializeWith.indexOf("&g=") > -1) {
               this.pages = [
                 { title: 'Home', component: HomePage },
                 { title: 'Resultate', component: StationPage },
@@ -91,7 +91,7 @@ export class MyApp {
           ];
           this.rootPage = StationPage;
         }
-  }
+      }
       this.splashScreen.hide();
 
       this.backendService.askForUsername.subscribe(service => {
