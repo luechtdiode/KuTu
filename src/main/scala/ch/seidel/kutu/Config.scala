@@ -4,6 +4,7 @@ import java.io.File
 import java.net.{Proxy, ProxySelector, URI}
 import java.nio.file.{Files, LinkOption, StandardOpenOption}
 import java.security.{NoSuchAlgorithmException, SecureRandom}
+import java.util.UUID
 
 import authentikat.jwt.JwtHeader
 import ch.seidel.kutu.http.KuTuSSLContext
@@ -120,6 +121,42 @@ object Config extends KuTuSSLContext {
     val f = new File(userHomePath + "/data")
     f.mkdirs();
     userHomePath + "/data"
+  }
+
+
+  def saveDeviceId(deviceId: String): Unit = {
+    val path = new File(userHomePath + "/.deviceId").toPath
+    val fos = Files.newOutputStream(path, StandardOpenOption.CREATE_NEW)
+    try {
+      fos.write(deviceId.getBytes("utf-8"))
+    } finally {
+      fos.close
+    }
+    if (System.getProperty("os.name").toLowerCase.indexOf("win") > -1) {
+      Files.setAttribute(path, "dos:hidden", true, LinkOption.NOFOLLOW_LINKS)
+    }
+    logger.info("DeviceId new createt " + path)
+  }
+
+  def readDeviceId: Option[String] = {
+    val path = new File(userHomePath + "/.deviceId").toPath
+    if (path.toFile.exists) {
+      logger.info("Secret found " + path)
+      Some(new String(Files.readAllBytes(path), "utf-8"))
+    }
+    else {
+      logger.info("No DeviceId found")
+      None
+    }
+  }
+  lazy val deviceId = {
+    readDeviceId match {
+      case Some(id) => id
+      case None =>
+        val newDeviceId = UUID.randomUUID().toString
+        saveDeviceId(newDeviceId)
+        newDeviceId
+    }
   }
 
   // Use the static factory method getDefaultProxySearch to create a proxy search instance

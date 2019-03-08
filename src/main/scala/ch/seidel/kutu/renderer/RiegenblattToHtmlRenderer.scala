@@ -105,9 +105,10 @@ object RiegenBuilder {
     val riegen = (hauptdurchgaenge ++ nebendurchgaenge).flatMap{item =>
       val (durchgang, starts) = item
       starts.map{start =>
-        GeraeteRiege(start._3.head.wettkampfTitel, durchgang, start._1, start._2, start._3, start._4)
+        GeraeteRiege(start._3.head.wettkampfTitel,start._3.head.wertungen.head.wettkampf.uuid.get,
+          durchgang, start._1, start._2, start._3, start._4)
       }
-    }.toList
+    }
 
     riegen
   }
@@ -228,7 +229,7 @@ trait RiegenblattToHtmlRenderer {
     }
   }
 
-  private def notenblatt(riegepart: (GeraeteRiege, Int), logo: File) = {
+  private def notenblatt(riegepart: (GeraeteRiege, Int), logo: File, baseUrl: String) = {
     val logoHtml = if (logo.exists()) s"""<img class=logo src="${logo.imageSrcForWebEngine}" title="Logo"/>""" else ""
     val (riege, tutioffset) = riegepart
     val d = riege.kandidaten.zip(Range(1, riege.kandidaten.size+1)).map{kandidat =>
@@ -237,9 +238,11 @@ trait RiegenblattToHtmlRenderer {
       s"""<tr class="turnerRow"><td class="large">${kandidat._2 + tutioffset}. ${kandidat._1.vorname} ${kandidat._1.name} <span class='sf'>${programm}</span></td><td><span class='sf'>${verein}</span></td><td>&nbsp;</td><td>&nbsp;</td><td class="totalCol">&nbsp;</td></tr>"""
     }.mkString("", "\n", "\n")
 
+    val stationlink = WertungsrichterQRCode.toURI(baseUrl, riege)
+    val imagedata = s"<a href='$stationlink' target='_blank'><img title='${stationlink}' width='140px' height='140px' src='${WertungsrichterQRCode.toQRCodeImage(stationlink)}'></a>"
     s"""<div class=riegenblatt>
       <div class=headline>
-        $logoHtml
+        $logoHtml $imagedata
         <div class=durchgang>${riege.durchgang.getOrElse("")}</br><div class=geraet>${riege.disziplin.map(d => d.easyprint).getOrElse("")} (${riege.halt + 1}. Gerät)</div></div>
       </div>
       <h1>${riege.wettkampfTitel}</h1>
@@ -255,7 +258,7 @@ trait RiegenblattToHtmlRenderer {
 
   val fcs = 20
 
-  def toHTML(kandidaten: Seq[Kandidat], logo: File): String = {
+  def toHTML(kandidaten: Seq[Kandidat], logo: File, baseUrl: String): String = {
     def splitToFitPage(riegen: List[GeraeteRiege]) = {
       riegen.foldLeft(List[(GeraeteRiege, Int)]()){(acc, item) =>
         if(item.kandidaten.size > fcs) {
@@ -283,7 +286,7 @@ trait RiegenblattToHtmlRenderer {
       }
     }
     val riegendaten = splitToFitPage(RiegenBuilder.mapToGeraeteRiegen(kandidaten.toList, true))
-    val blaetter = riegendaten.map(notenblatt(_, logo))
+    val blaetter = riegendaten.map(notenblatt(_, logo, baseUrl))
     val pages = blaetter.sliding(1, 1).map { _.mkString("</li><li>") }.mkString("</li></ul><ul><li>")
     intro + pages + outro
   }

@@ -35,6 +35,8 @@ import scalafx.scene.layout._
 import scalafx.util.StringConverter
 import scalafx.util.converter.DefaultStringConverter
 
+import scala.concurrent.Future
+
 object DurchgangView {
   val DRAG_RIEGE = new DataFormat("application/x-drag-riege");
   def getVisibleBounds(aNode: Node): Bounds = {
@@ -1000,6 +1002,8 @@ class RiegenTab(wettkampf: WettkampfView, override val service: KutuService) ext
     }
     
     def doRiegenBelatterExport(event: ActionEvent) {
+      import scala.concurrent.ExecutionContext.Implicits.global
+
       val seriendaten = service.getAllKandidatenWertungen(wettkampf.uuid.map(UUID.fromString(_)).get)
       val filename = "Riegenblatt_" + wettkampf.easyprint.replace(" ", "_") + ".html"
       val dir = new java.io.File(homedir + "/" + wettkampf.easyprint.replace(" ", "_"))
@@ -1007,8 +1011,13 @@ class RiegenTab(wettkampf: WettkampfView, override val service: KutuService) ext
         dir.mkdirs();
       }
       val logofile = PrintUtil.locateLogoFile(dir)
-      def generate(lpp: Int) = (new Object with ch.seidel.kutu.renderer.RiegenblattToHtmlRenderer).toHTML(seriendaten, logofile)
-      PrintUtil.printDialog(text.value, FilenameDefault(filename, dir), false, generate, orientation = PageOrientation.Portrait)(event)
+      def generate = (lpp: Int) => KuTuApp.invokeAsyncWithBusyIndicator { Future {
+        (new Object with ch.seidel.kutu.renderer.RiegenblattToHtmlRenderer).toHTML(seriendaten, logofile, remoteBaseUrl)
+      }}
+      Platform.runLater {
+        PrintUtil.printDialogFuture(text.value, FilenameDefault(filename, dir), false, generate, orientation = PageOrientation.Portrait)(event)
+      }
+
     }
     
     def makeRiegenBlaetterExport(): MenuItem = {

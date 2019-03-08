@@ -312,6 +312,11 @@ class NetworkTab(wettkampf: WettkampfView, override val service: KutuService) ex
           println("refreshing network-dashboard from websocket", newItem) 
           refreshData()
         }
+      case AthletWertungUpdatedSequenced(ahtlet: AthletView, wertung: Wertung, wettkampfUUID: String, durchgang: String, geraet: Long, programm: String, sequenceId) =>
+        if (selected.value) {
+          println("refreshing network-dashboard from websocket", newItem)
+          refreshData()
+        }
       case _ =>
     }
   }
@@ -447,10 +452,9 @@ class NetworkTab(wettkampf: WettkampfView, override val service: KutuService) ex
         })
       }
       item.disable <== when(Bindings.createBooleanBinding(() =>
-        Config.isLocalHostServer() ||
-        (wettkampf.toWettkampf.hasSecred(homedir, remoteHostOrigin) 
-        && !ConnectionStates.connectedProperty.value)
-        || isRunning(wettkampf),
+        Config.isLocalHostServer()
+          || (wettkampf.toWettkampf.hasSecred(homedir, remoteHostOrigin) && !ConnectionStates.connectedProperty.value)
+          || isRunning(wettkampf),
         
         KuTuApp.selectedWettkampfSecret, 
         ConnectionStates.connectedProperty,

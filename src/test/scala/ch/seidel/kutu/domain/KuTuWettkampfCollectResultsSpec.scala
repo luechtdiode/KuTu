@@ -26,6 +26,7 @@ import scala.concurrent.Future
 @RunWith(classOf[JUnitRunner])
 class KuTuWettkampfCollectResultsSpec extends KuTuBaseSpec {
   val testwettkampf = insertGeTuWettkampf("TestGetuWK", 4)
+  val clientId = "testclientid"
 
   println("suggest riegen ...")
   val riegenzuteilungen = DurchgangBuilder(this).suggestDurchgaenge(testwettkampf.id, 0)
@@ -65,7 +66,7 @@ class KuTuWettkampfCollectResultsSpec extends KuTuBaseSpec {
 
     "collect results" in {
       println("start competition ...")
-      CompetitionCoordinatorClientActor.createActorSinkSource("testcase", testwettkampf.uuid.get, None).to(Sink.foreach(msg => println(s"from Sink: $msg")))
+      CompetitionCoordinatorClientActor.createActorSinkSource("testcase", testwettkampf.uuid.get, None, Some(Long.MinValue)).to(Sink.foreach(msg => println(s"from Sink: $msg")))
 
       println("read all riegen ...")
       val riegen = RiegenBuilder.mapToGeraeteRiegen(getAllKandidatenWertungen(UUID.fromString(testwettkampf.uuid.get)).toList)
@@ -77,10 +78,10 @@ class KuTuWettkampfCollectResultsSpec extends KuTuBaseSpec {
       // open all durchgaenge
       durchgaenge.foreach{d =>
          println("starting durchgang :" + d)
-         Await.result(CompetitionCoordinatorClientActor.publish(StartDurchgang(testwettkampf.uuid.get, d)), Duration.Inf)
-         println("intermediates:" + Await.result(CompetitionCoordinatorClientActor.publish(StartedDurchgaenge(testwettkampf.uuid.get)), Duration.Inf))
+         Await.result(CompetitionCoordinatorClientActor.publish(StartDurchgang(testwettkampf.uuid.get, d), clientId), Duration.Inf)
+         println("intermediates:" + Await.result(CompetitionCoordinatorClientActor.publish(StartedDurchgaenge(testwettkampf.uuid.get), clientId), Duration.Inf))
       }
-      val allIntermediates = Await.result(CompetitionCoordinatorClientActor.publish(StartedDurchgaenge(testwettkampf.uuid.get)), Duration.Inf).asInstanceOf[ResponseMessage].data
+      val allIntermediates = Await.result(CompetitionCoordinatorClientActor.publish(StartedDurchgaenge(testwettkampf.uuid.get), clientId), Duration.Inf).asInstanceOf[ResponseMessage].data
       val expectedIntermediates = durchgaenge.toSet
       assert(expectedIntermediates.equals(allIntermediates))
 
@@ -99,7 +100,7 @@ class KuTuWettkampfCollectResultsSpec extends KuTuBaseSpec {
                 wertung.wettkampfdisziplin.disziplin.id,
                 0, k.programm)
             }
-            .map{command => (System.currentTimeMillis(), CompetitionCoordinatorClientActor.publish(command))}
+            .map{command => (System.currentTimeMillis(), CompetitionCoordinatorClientActor.publish(command, clientId))}
           }
         }.toList
         val results = step.foldLeft(Seq[(KutuAppEvent, Long, Long)]()){(acc, item) => acc :+ (Await.result(item._2,Duration.Inf), item._1, System.currentTimeMillis())}
@@ -113,14 +114,14 @@ class KuTuWettkampfCollectResultsSpec extends KuTuBaseSpec {
       // cleanup
       durchgaenge.foreach{d =>
          println("finish durchgang :" + d)
-         Await.result(CompetitionCoordinatorClientActor.publish(FinishDurchgang(testwettkampf.uuid.get, d)), Duration.Inf)
-         println("intermediates:" + Await.result(CompetitionCoordinatorClientActor.publish(StartedDurchgaenge(testwettkampf.uuid.get)), Duration.Inf))
+         Await.result(CompetitionCoordinatorClientActor.publish(FinishDurchgang(testwettkampf.uuid.get, d), clientId), Duration.Inf)
+         println("intermediates:" + Await.result(CompetitionCoordinatorClientActor.publish(StartedDurchgaenge(testwettkampf.uuid.get), clientId), Duration.Inf))
       }
     }
 
     "return scores for intermediate results (GET /scores)" in {
       println("start competition ...")
-      CompetitionCoordinatorClientActor.createActorSinkSource("testcase", testwettkampf.uuid.get, None).to(Sink.foreach(msg => println(s"from Sink: $msg")))
+      CompetitionCoordinatorClientActor.createActorSinkSource("testcase", testwettkampf.uuid.get, None, Some(Long.MinValue)).to(Sink.foreach(msg => println(s"from Sink: $msg")))
   
       println("read all riegen ...")
       val riegen = RiegenBuilder.mapToGeraeteRiegen(getAllKandidatenWertungen(UUID.fromString(testwettkampf.uuid.get)).toList)
@@ -132,8 +133,8 @@ class KuTuWettkampfCollectResultsSpec extends KuTuBaseSpec {
       // open first 2 durchgaenge
       durchgaenge.foreach{d =>
          println("starting durchgang :" + d)
-         Await.result(CompetitionCoordinatorClientActor.publish(StartDurchgang(testwettkampf.uuid.get, d)), Duration.Inf)
-         println("intermediates:" + Await.result(CompetitionCoordinatorClientActor.publish(StartedDurchgaenge(testwettkampf.uuid.get)), Duration.Inf))
+         Await.result(CompetitionCoordinatorClientActor.publish(StartDurchgang(testwettkampf.uuid.get, d), clientId), Duration.Inf)
+         println("intermediates:" + Await.result(CompetitionCoordinatorClientActor.publish(StartedDurchgaenge(testwettkampf.uuid.get), clientId), Duration.Inf))
       }
       println("submit new wertungen ...")
       riegen.filter(gr => durchgaenge.exists(gr.durchgang.contains(_))).groupBy(gr => (gr.durchgang, gr.halt)).map{grd =>
@@ -150,7 +151,7 @@ class KuTuWettkampfCollectResultsSpec extends KuTuBaseSpec {
                 wertung.wettkampfdisziplin.disziplin.id, 
                 0, k.programm)
             }
-            .map{command => (System.currentTimeMillis(), CompetitionCoordinatorClientActor.publish(command))}
+            .map{command => (System.currentTimeMillis(), CompetitionCoordinatorClientActor.publish(command, clientId))}
           }
         }.toList
         
@@ -158,8 +159,8 @@ class KuTuWettkampfCollectResultsSpec extends KuTuBaseSpec {
       }
       durchgaenge.foreach{d =>
          println("finish durchgang :" + d)
-         Await.result(CompetitionCoordinatorClientActor.publish(FinishDurchgang(testwettkampf.uuid.get, d)), Duration.Inf)
-         println("intermediates:" + Await.result(CompetitionCoordinatorClientActor.publish(StartedDurchgaenge(testwettkampf.uuid.get)), Duration.Inf))
+         Await.result(CompetitionCoordinatorClientActor.publish(FinishDurchgang(testwettkampf.uuid.get, d), clientId), Duration.Inf)
+         println("intermediates:" + Await.result(CompetitionCoordinatorClientActor.publish(StartedDurchgaenge(testwettkampf.uuid.get), clientId), Duration.Inf))
       }
   
       val request = HttpRequest(uri = "/api/scores/" + testwettkampf.uuid.get + "/intermediate")
@@ -177,8 +178,8 @@ class KuTuWettkampfCollectResultsSpec extends KuTuBaseSpec {
       }
       durchgaenge.foreach{d =>
          println("start durchgang :" + d)
-         Await.result(CompetitionCoordinatorClientActor.publish(StartDurchgang(testwettkampf.uuid.get, d)), Duration.Inf)
-         println("intermediates:" + Await.result(CompetitionCoordinatorClientActor.publish(StartedDurchgaenge(testwettkampf.uuid.get)), Duration.Inf))
+         Await.result(CompetitionCoordinatorClientActor.publish(StartDurchgang(testwettkampf.uuid.get, d), clientId), Duration.Inf)
+         println("intermediates:" + Await.result(CompetitionCoordinatorClientActor.publish(StartedDurchgaenge(testwettkampf.uuid.get), clientId), Duration.Inf))
       }
       request ~> allroutes(x => x) ~> check {
         status should ===(StatusCodes.OK)
@@ -193,8 +194,8 @@ class KuTuWettkampfCollectResultsSpec extends KuTuBaseSpec {
       }
       durchgaenge.take(1).foreach{d =>
          println("finish durchgang :" + d)
-         Await.result(CompetitionCoordinatorClientActor.publish(FinishDurchgang(testwettkampf.uuid.get, d)), Duration.Inf)
-         println("intermediates:" + Await.result(CompetitionCoordinatorClientActor.publish(StartedDurchgaenge(testwettkampf.uuid.get)), Duration.Inf))
+         Await.result(CompetitionCoordinatorClientActor.publish(FinishDurchgang(testwettkampf.uuid.get, d), clientId), Duration.Inf)
+         println("intermediates:" + Await.result(CompetitionCoordinatorClientActor.publish(StartedDurchgaenge(testwettkampf.uuid.get), clientId), Duration.Inf))
       }
       request ~> allroutes(x => x) ~> check {
         status should ===(StatusCodes.OK)

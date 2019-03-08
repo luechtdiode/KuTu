@@ -15,8 +15,12 @@ object WertungsrichterQRCode {
   val logger = LoggerFactory.getLogger(this.getClass)
   val enc = Base64.getUrlEncoder
   
-  def toURI(uuid: String, remoteBaseUrl: String, gr: GeraeteRiege) = s"$remoteBaseUrl?" + new String(enc.encodeToString((s"c=$uuid&d=${encodeURIComponent(gr.durchgang.get)}&g=${gr.disziplin.get.id}").getBytes))
-  
+  def toURI(uuid: String, remoteBaseUrl: String, gr: GeraeteRiege) =
+    s"$remoteBaseUrl?" + new String(enc.encodeToString((s"c=$uuid&d=${encodeURIComponent(gr.durchgang.get)}&g=${gr.disziplin.get.id}").getBytes))
+
+  def toURI(remoteBaseUrl: String, gr: GeraeteRiege) =
+    s"$remoteBaseUrl?" + new String(enc.encodeToString((s"c=${gr.wettkampfUUID}&d=${encodeURIComponent(gr.durchgang.get)}&st=${gr.halt +1}&g=${gr.disziplin.get.id}").getBytes))
+
   def toQRCodeImage(uri: String) = {
     val out = QRCode.from(uri).to(ImageType.PNG).withSize(200, 200).stream()
     val imagedata = "data:image/png;base64," + Base64.getMimeEncoder().encodeToString(out.toByteArray)
@@ -139,8 +143,8 @@ trait WertungsrichterQRCodesToHtmlRenderer {
     val d = divided.map{durchgangspalten =>
       val (d1, d2) = durchgangspalten
       s"""<tr class="turnerRow">
-            <td class="large"><a href='${d1.uri}'>${d1.durchgangname}</a></td><td class="large"><img title='${d1.uri}' width='140px' height='140px' src='${d1.imageData}'</td>
-            <td class="totalCol"><a href='${d2.uri}'>${d2.durchgangname}</a></td><td class="large"><img title='${d2.uri}' width='140px' height='140px' src='${d2.imageData}'</td>
+            <td class="large"><a href='${d1.uri}'>${d1.durchgangname}</a></td><td class="large"><img title='${d1.uri}' width='140px' height='140px' src='${d1.imageData}'></td>
+            <td class="totalCol"><a href='${d2.uri}'>${d2.durchgangname}</a></td><td class="large"><img title='${d2.uri}' width='140px' height='140px' src='${d2.imageData}'></td>
           </tr>"""
     }.mkString("", "\n", "\n")
 

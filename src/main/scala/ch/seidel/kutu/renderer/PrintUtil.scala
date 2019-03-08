@@ -19,14 +19,17 @@ import scalafx.scene.Node
 import scalafx.scene.control._
 import scalafx.scene.layout._
 import scalafx.scene.web.WebEngine
+import scalafx.application.Platform
 
+import scala.concurrent.Future
 import scala.io.Source
 import scala.language.implicitConversions
+import scala.util.Success
 
 
 object PrintUtil {
   val logger = LoggerFactory.getLogger(this.getClass)
-  
+  import scala.concurrent.ExecutionContext.Implicits.global
   private val PRINT_TO_BROWSER = new AtomicBoolean(false)
   
   case class FilenameDefault(filename: String, dir: java.io.File)
@@ -35,8 +38,11 @@ object PrintUtil {
     text = "Drucken ..."
     onAction = printDialog(title, defaults, adjustLinesPerPage, onGenerateOutput, engine, orientation)
   }
-  
-  def printDialog(title: String, defaults: FilenameDefault, adjustLinesPerPage: Boolean = false, onGenerateOutput: (Int)=>String, engine: WebEngine = KuTuApp.invisibleWebView.engine, orientation: PageOrientation = PageOrientation.Portrait)(action: ActionEvent) {
+  def printDialog(title: String, defaults: FilenameDefault, adjustLinesPerPage: Boolean = false, onGenerateOutput: (Int)=>String, engine: WebEngine = KuTuApp.invisibleWebView.engine, orientation: PageOrientation = PageOrientation.Portrait)(action: ActionEvent): Unit = {
+    printDialogFuture(title, defaults, adjustLinesPerPage, (x: Int) => Future {onGenerateOutput(x)}, engine, orientation)(action)
+  }
+
+  def printDialogFuture(title: String, defaults: FilenameDefault, adjustLinesPerPage: Boolean = false, onGenerateOutput: (Int)=>Future[String], engine: WebEngine = KuTuApp.invisibleWebView.engine, orientation: PageOrientation = PageOrientation.Portrait)(action: ActionEvent) {
 
       val dir = defaults.dir
       if(!dir.exists()) {
@@ -97,20 +103,28 @@ object PrintUtil {
               case e: Exception =>
             }
             PRINT_TO_BROWSER.set(chkViaBrowser.selected.value)
-            val toSave = onGenerateOutput(lpp)
             if(chkViaBrowser.selected.value) {
-              val os = new BufferedOutputStream(new FileOutputStream(file))
-              os.write(toSave.getBytes("UTF-8"))
-              os.flush()
-              os.close()
-              Desktop.getDesktop().open(file)
-            }
-            else {
-          	  engine.loadContent(toSave)
-          	  KuTuApp.invokeWithBusyIndicator{
-          	    printWebContent(engine, cmbDrucker.getSelectionModel.getSelectedItem, orientation)
-          	    onGenerateOutput(0)
-          	  }
+              onGenerateOutput(lpp).onComplete {
+                case Success(toSave) => Platform.runLater {
+                  val os = new BufferedOutputStream(new FileOutputStream(file))
+                  os.write(toSave.getBytes("UTF-8"))
+                  os.flush()
+                  os.close()
+                  Desktop.getDesktop().open(file)
+                }
+                case _ =>
+              }
+            } else {
+              onGenerateOutput(lpp).onComplete {
+                case Success(toSave) => Platform.runLater {
+                  engine.loadContent(toSave)
+                  KuTuApp.invokeWithBusyIndicator {
+                    printWebContent(engine, cmbDrucker.getSelectionModel.getSelectedItem, orientation)
+                    onGenerateOutput(0)
+                  }
+                }
+                case _ =>
+              }
             }
     		  }
     	  }

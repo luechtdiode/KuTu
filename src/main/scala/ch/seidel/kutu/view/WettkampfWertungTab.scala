@@ -6,7 +6,7 @@ import java.util.concurrent.{ScheduledFuture, TimeUnit}
 import ch.seidel.commons._
 import ch.seidel.kutu.Config._
 import ch.seidel.kutu.{KuTuApp, KuTuServer}
-import ch.seidel.kutu.akka.AthletWertungUpdated
+import ch.seidel.kutu.akka.{AthletMovedInWettkampf, AthletRemovedFromWettkampf, AthletWertungUpdated, AthletWertungUpdatedSequenced}
 import ch.seidel.kutu.domain._
 import ch.seidel.kutu.http.WebSocketClient
 import ch.seidel.kutu.renderer.PrintUtil.FilenameDefault
@@ -209,8 +209,7 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
       id = "kutu-table"
       editable = true
     }
-    val emptyRiege = GeraeteRiege("", None, 0, None, Seq(), false)
-    var riegendurchgaenge: List[GeraeteRiege] = List[GeraeteRiege]()
+    val emptyRiege = GeraeteRiege("", "", None, 0, None, Seq(), false)
  		var relevantRiegen: Map[String,(Boolean, Int)] = Map[String,(Boolean, Int)]()
  		var erfasst = false
  		
@@ -235,7 +234,7 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
             	}
               item.durchgang match {
                 case Some(d) =>
-                  setText(s"${item.durchgang.get}: ${item.disziplin.map(d => d.name).getOrElse("")}  (${item.halt + 1}. Gerät)");
+                  setText(s"${item.durchgang.get}: ${item.disziplin.map(d => d.name).getOrElse("")}  (${item.halt + 1}. Gerät)")
                   if(!item.erfasst) {
                     styleClass.add("incomplete")
                     imageView.image = nokIcon
@@ -317,9 +316,7 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
 
     val editorPane: EditorPane = new EditorPane(wkview)
     val disziplinlist = wertungen.headOption match {case Some(w) => w.map(_.init.wettkampfdisziplin.disziplin) case _ => IndexedSeq[Disziplin]()}
-    def disziplinCnt = wertungen.headOption match {case Some(w) => w.size case _ => 0}
     val withDNotes = wertungen.flatMap(w => w.filter(ww => ww.init.wettkampfdisziplin.notenSpez.isDNoteUsed)).nonEmpty
-    val withENotes = wettkampf.programm.id != 1
     var lastFilter = ""
     var durchgangFilter = emptyRiege
 
@@ -922,32 +919,42 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
       updateEditorPane(if (wkview.focused.value) Some(wkview) else None)
       isFilterRefreshing = false
     }
-    
+
+    def handleWertungUpdated(wertung: Wertung) = {
+      val tableSelected = if (wkview.focused.value) Some(wkview) else None
+      wertungen = wertungen.map { aw =>
+        val index = wkModel.indexOf(aw)
+        val newWertungen = aw.map { w =>
+          if (w.init.id == wertung.id && w.endnote != wertung.endnote) {
+            WertungEditor(w.init.updatedWertung(wertung))
+          } else {
+            w
+          }
+        }
+        if (index > -1 && wkModel(index).map(_.init.endnote).sum != newWertungen.map(_.init.endnote).sum) {
+          isFilterRefreshing = true
+          val selected = wkview.selectionModel.value.selectedCells
+          wkModel.update(index, newWertungen)
+          //selected.foreach(c => wkview.selectionModel.value.select(c.row, c.tableColumn.asInstanceOf[jfxsc.TableColumn[IndexedSeq[WertungEditor], _]]))
+          isFilterRefreshing = false
+        }
+        newWertungen
+      }
+      updateEditorPane(tableSelected)
+    }
+
     websocketsubscription = Some(WebSocketClient.modelWettkampfWertungChanged.onChange { (_, _, newItem) =>
       if (selected.value) {
         newItem match {
           case a @ AthletWertungUpdated(_, wertung, _, _, _, _) =>
-            val tableSelected = if (wkview.focused.value) Some(wkview) else None
-            wertungen = wertungen.map{aw => 
-              val index = wkModel.indexOf(aw)
-              val newWertungen = aw.map{ w => 
-                if (w.init.id == wertung.id && w.endnote != wertung.endnote) {
-                  WertungEditor(w.init.updatedWertung(wertung))
-                } else {
-                  w
-                }
-              }
-              if (index > -1 && wkModel(index).map(_.init.endnote).sum != newWertungen.map(_.init.endnote).sum) {
-                isFilterRefreshing = true
-                val selected = wkview.selectionModel.value.selectedCells
-                wkModel.update(index, newWertungen)
-                //selected.foreach(c => wkview.selectionModel.value.select(c.row, c.tableColumn.asInstanceOf[jfxsc.TableColumn[IndexedSeq[WertungEditor], _]]))
-                isFilterRefreshing = false
-              }
-              newWertungen
-            }
-            updateEditorPane(tableSelected)
+            handleWertungUpdated(wertung)
+          case a @ AthletWertungUpdatedSequenced(_, wertung, _, _, _, _, _) =>
+            handleWertungUpdated(wertung)
 
+          case a @ AthletMovedInWettkampf(athlet, wettkampfUUID, pgmId) =>
+            reloadData()
+          case a @ AthletRemovedFromWettkampf(athlet, wettkampfUUID) =>
+            reloadData()
           case _ =>
         }
       }
@@ -1478,7 +1485,7 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
           }, new Button("OK") {
             onAction = (event: ActionEvent) => {
               service.unassignAthletFromWettkampf(athletwertungen)
-              wkModel.remove(wkview.selectionModel().getSelectedIndex)
+//              wkModel.remove(wkview.selectionModel().getSelectedIndex)
             }
           })
         }
@@ -1506,8 +1513,8 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
         }, new Button("OK") {
           onAction = (event: ActionEvent) => {
             if (!wkview.selectionModel().isEmpty) {
-              service.moveToProgram(wettkampf.id, cbProgramms.selectionModel().selectedItem.value.id, wkview.selectionModel().getSelectedItem.head.init.athlet.id)
-              reloadData()
+              service.moveToProgram(wettkampf.id, cbProgramms.selectionModel().selectedItem.value.id, wkview.selectionModel().getSelectedItem.head.init.athlet)
+//              reloadData()
             }
           }
         })

@@ -270,9 +270,15 @@ abstract trait WertungService extends DBService with WertungResultMapper with Di
     }
   }
   
-  @throws(classOf[Exception])
+  @throws(classOf[Exception]) // called from mobile-client via coordinator-actor
   def updateWertungSimple(w: Wertung, putToBestenresults: Boolean = false): Wertung = {
     val wv = readWettkampfDisziplinView(w.wettkampfdisziplinId).notenSpez.verifiedAndCalculatedWertung(w)
+    if (wv.noteD != w.noteD) {
+      throw new IllegalArgumentException(s"Erfasster D-Wert: ${w.noteD}, erlaubter D-Wert: ${wv.noteD}")
+    }
+    if (wv.noteE != w.noteE) {
+      throw new IllegalArgumentException(s"Erfasster E-Wert: ${w.noteE}, erlaubter E-Wert: ${wv.noteE}")
+    }
     Await.result(database.run(DBIO.sequence(Seq(sqlu"""
                   UPDATE wertung
                   SET note_d=${wv.noteD}, note_e=${wv.noteE}, endnote=${wv.endnote}, riege=${wv.riege}, riege2=${wv.riege2}
@@ -284,7 +290,7 @@ abstract trait WertungService extends DBService with WertungResultMapper with Di
     wv
   }
   
-  @throws(classOf[Exception])
+  @throws(classOf[Exception]) // called from rich-client-app via ResourceExchanger
   def updateWertungWithIDMapping(w: Wertung, putToBestenresults: Boolean = false): Wertung = {
     val wv = readWettkampfDisziplinView(w.wettkampfdisziplinId).notenSpez.verifiedAndCalculatedWertung(w)
     val wvId = Await.result(database.run((for {

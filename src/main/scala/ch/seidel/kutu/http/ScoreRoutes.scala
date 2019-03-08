@@ -207,8 +207,8 @@ trait ScoreRoutes extends SprayJsonSupport with JsonSupport with AuthSupport wit
           } ~
           path("intermediate") {
             get {
-              parameters('filter.*, 'html.?) { (filter, html) =>
-                complete(CompetitionCoordinatorClientActor.publish(StartedDurchgaenge(competitionId.toString())).flatMap {
+              (parameters('filter.*, 'html.?) & optionalHeaderValueByName("clientid")) { (filter, html, clientid) =>
+                complete(CompetitionCoordinatorClientActor.publish(StartedDurchgaenge(competitionId.toString()), clientid.getOrElse("")).flatMap {
                   case ResponseMessage(startedDurchgaenge) =>
                     val sd = startedDurchgaenge.asInstanceOf[Set[String]]
                     if (sd.nonEmpty) {

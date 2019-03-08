@@ -68,16 +68,65 @@ export class MyApp {
             //localStorage.setItem("external_load", initializeWith.substring(4)); 
           } else {
             console.log("initializing with " + initializeWith);
-            localStorage.setItem("external_load", initializeWith); 
+            localStorage.setItem("external_load", initializeWith);
+            if (initializeWith.startsWith('c=') && initializeWith.indexOf("&st=") > -1 && initializeWith.indexOf("&g=") > -1) {
+              this.pages = [
+                { title: 'Home', component: HomePage },
+                { title: 'Resultate', component: StationPage },
+              ];
+              this.rootPage = StationPage;
+            }
             window.history.replaceState({}, document.title, window.location.href.split('?')[0]);
           }
           
         } catch(e) {
           console.log(e);
         }
+      } else if (localStorage.getItem('current_station')) {
+        const cs = localStorage.getItem('current_station');
+        if (cs.startsWith('c=') && cs.indexOf("&st=") && cs.indexOf("&g=")) {
+          this.pages = [
+            { title: 'Home', component: HomePage },
+            { title: 'Resultate', component: StationPage },
+          ];
+          this.rootPage = StationPage;
+        }
       }
       this.splashScreen.hide();
 
+      this.backendService.askForUsername.subscribe(service => {
+        let alert = this.alertCtrl.create({
+          title: service.currentUserName ? 'Dein Benutzername' : 'Du bist das erste Mal hier. Bitte gib einen Benutzernamen an',
+          inputs: [
+            {
+              name: 'username',
+              placeholder: 'Benutzername',
+              value: service.currentUserName
+            }
+          ],
+          buttons: [
+            {
+              text: 'Abbrechen',
+              role: 'cancel',
+              handler: data => {
+                console.log('Cancel clicked');
+              }
+            },
+            {
+              text: 'Speichern',
+              handler: data => {
+                if (data.username && data.username.trim().length > 1) {
+                  service.currentUserName = data.username.trim();
+                } else {
+                  // invalid name
+                  return false;
+                }
+              }
+            }
+          ]
+        });
+        alert.present();
+      });
       this.backendService.showMessage.subscribe(message => {
         let msg = message.msg;
         if (!msg || msg.trim().length === 0) {
@@ -93,6 +142,9 @@ export class MyApp {
     });
   }
 
+  askUserName() {
+    this.backendService.askForUsername.next(this.backendService);
+  }
   openPage(page) {
     // Reset the content nav to have just this page
     // we wouldn't want the back button to show in this scenario

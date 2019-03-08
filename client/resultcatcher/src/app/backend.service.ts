@@ -29,6 +29,7 @@ export class BackendService extends WebsocketService {
   steps: number[];
   wertungen: WertungContainer[];
   newLastResults = new BehaviorSubject<NewLastResults>(undefined);
+  askForUsername = new Subject<BackendService>();
   lastMessageAck: MessageAck;
 
   private _competition: string = undefined;
@@ -46,6 +47,19 @@ export class BackendService extends WebsocketService {
   private _step: number = undefined;
   get step(): number {
     return this._step;
+  }
+
+  set currentUserName(username: string) {
+    localStorage.setItem('current_username', username);
+  }
+
+  get currentUserName() {
+    return localStorage.getItem('current_username');
+  }
+
+  getCurrentStation(): string {
+    return localStorage.getItem('current_station')
+     || this.competition + '/' + this.durchgang + '/' + this.geraet + '/' + this.step;
   }
 
   private lastJWTChecked = 0;
@@ -97,16 +111,21 @@ export class BackendService extends WebsocketService {
 
   initWithQuery(initWith: string) {
     if (initWith && initWith.startsWith('c=') ) {
+      this._step = 1;
+
       initWith.split('&').forEach(param => {
         const [key, value] = param.split('=')
         switch (key) {
           case 's':
+            if (!this.currentUserName) {
+              this.askForUsername.next(this);
+            }
             localStorage.setItem('auth_token', value);
             this.checkJWT(value);
             const cs = localStorage.getItem('current_station');
             if (cs) {
               this.initWithQuery(cs);
-            }  
+            }
             break;
           case 'c':
             this._competition = value;
@@ -117,13 +136,15 @@ export class BackendService extends WebsocketService {
           case 'd':
             this._durchgang = value;
             break;
+          case 'st':
+            this._step = parseInt(value);
+            break;
           case 'g':
             this._geraet = parseInt(value);
             localStorage.setItem('current_station', initWith);
             this.checkJWT();
             this.stationFreezed = true;
           default:
-            this._step = 1;
         }
       });
       this.externalLoaderSubscription.unsubscribe();
@@ -308,7 +329,7 @@ export class BackendService extends WebsocketService {
   loadSteps() {
     this.startLoading('Stationen zum Gerät werden geladen. Bitte warten ...', this.http.get<string[]>(backendUrl + 'api/durchgang/' + this._competition + '/' + encodeURIComponent2(this._durchgang) + '/' + this._geraet).share()).subscribe((data) => {
       this.steps = data.map(step => parseInt(step));
-      if (this._step === undefined) {
+      if (this._step === undefined || this.steps.indexOf(this._step) < 0) {
         this._step = 1;
         this.loadWertungen();
       }
@@ -481,6 +502,7 @@ export class BackendService extends WebsocketService {
         this.durchgangStarted.next(this.activeDurchgangList);
         return true;
 
+      case 'AthletWertungUpdatedSequenced':
       case 'AthletWertungUpdated':
         let updated = (message as AthletWertungUpdated)
         this.wertungen = this.wertungen.map(w => {
@@ -492,6 +514,10 @@ export class BackendService extends WebsocketService {
         }); 
         this.wertungUpdated.next(updated);
         return true;
+
+      case 'AthletMovedInWettkampf':
+      case 'AthletRemovedFromWettkampf':
+        this.loadWertungen();  
 
       case 'NewLastResults':
         this.newLastResults.next((message as NewLastResults));

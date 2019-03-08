@@ -35,3 +35,22 @@ export function formatDate(d: Date, withSeconds: boolean = false) {
   }
   return datestring;
 }
+
+export function guid() {
+  function s4() {
+    return Math.floor((1 + Math.random()) * 0x10000)
+      .toString(16)
+      .substring(1);
+  }
+  return s4() + s4() + '-' + s4() + '-' + s4() + '-' +
+    s4() + '-' + s4() + s4() + s4();
+}
+
+export function clientID() {
+  let clientid = localStorage.getItem('clientid');
+  if (!clientid) {
+    clientid = guid();
+    localStorage.setItem('clientid', clientid);
+  }
+  return localStorage.getItem('current_username') + ':' + clientid;
+}

@@ -73,4 +73,5 @@ export interface AthletWertungUpdated {
   durchgang: string;
   geraet: number;
   type: string;
+  sequenceId: number;
 }

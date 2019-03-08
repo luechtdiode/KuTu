@@ -10,7 +10,8 @@ case class CompetitionState(
                              startStopEvents: List[KutuAppEvent] = List.empty,
                              lastWertungen: Map[String, WertungContainer] = Map.empty,
                              bestenResults: Map[String, WertungContainer] = Map.empty,
-                             lastBestenResults: Map[String, WertungContainer] = Map.empty
+                             lastBestenResults: Map[String, WertungContainer] = Map.empty,
+                             lastSequenceId: Long = Long.MinValue
                            ) {
 
   def updated(event: KutuAppEvent, isDNoteUsed: Boolean): CompetitionState = event match {
@@ -21,7 +22,7 @@ case class CompetitionState(
           .filter(fds => encodeURIComponent(fds.durchgang) != encodeURIComponent(eventDurchgangStarted.durchgang)),
         finishedDurchgaenge - eventDurchgangStarted.durchgang,
         startStopEvents :+ eventDurchgangStarted,
-        lastWertungen, bestenResults, lastBestenResults
+        lastWertungen, bestenResults, lastBestenResults, lastSequenceId
       )
 
     case eventDurchgangFinished: DurchgangFinished =>
@@ -30,19 +31,14 @@ case class CompetitionState(
         finishedDurchgangSteps,
         finishedDurchgaenge + eventDurchgangFinished.durchgang,
         startStopEvents :+ eventDurchgangFinished,
-        lastWertungen, bestenResults, lastBestenResults
+        lastWertungen, bestenResults, lastBestenResults, lastSequenceId
       )
 
+    case au: AthletWertungUpdatedSequenced =>
+      newCompetitionStateWith(mapToWertungContainer(au.toAthletWertungUpdated(), isDNoteUsed))
+
     case au: AthletWertungUpdated =>
-      val wertungContainer: WertungContainer = mapToWertungContainer(au, isDNoteUsed)
-      CompetitionState(
-        startedDurchgaenge,
-        finishedDurchgangSteps,
-        finishedDurchgaenge,
-        startStopEvents,
-        lastWertungen.updated(wertungContainer.wertung.wettkampfdisziplinId.toString(), wertungContainer),
-        putBestenResult(wertungContainer), lastBestenResults
-      )
+      newCompetitionStateWith(mapToWertungContainer(au, isDNoteUsed))
 
     case fds: DurchgangStationFinished =>
       CompetitionState(
@@ -50,7 +46,7 @@ case class CompetitionState(
         finishedDurchgangSteps + fds,
         finishedDurchgaenge,
         startStopEvents,
-        lastWertungen, bestenResults, lastBestenResults
+        lastWertungen, bestenResults, lastBestenResults, lastSequenceId
       )
 
     case _: DurchgangStepFinished =>
@@ -60,7 +56,7 @@ case class CompetitionState(
           finishedDurchgangSteps,
           finishedDurchgaenge,
           startStopEvents,
-          Map.empty, Map.empty, bestenResults
+          Map.empty, Map.empty, bestenResults, lastSequenceId
         )
       } else {
         this
@@ -84,5 +80,15 @@ case class CompetitionState(
       awuv.wertung,
       awuv.geraet, awuv.programm, isDNoteUsed)
   }
+
+  private def newCompetitionStateWith(wertungContainer: WertungContainer) =
+    CompetitionState(
+      startedDurchgaenge,
+      finishedDurchgangSteps,
+      finishedDurchgaenge,
+      startStopEvents,
+      lastWertungen.updated(wertungContainer.wertung.wettkampfdisziplinId.toString(), wertungContainer),
+      putBestenResult(wertungContainer), lastBestenResults, lastSequenceId + 1
+    )
 
 }
