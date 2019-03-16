@@ -899,22 +899,28 @@ object KuTuApp extends JFXApp with KutuService with JsonSupport with JwtSupport 
     })
     process.onComplete{
       case Success((response, wspromise)) =>
-        ConnectionStates.connectedWith(p.uuid.get, wspromise)
-        Platform.runLater{
-        PageDisplayer.showInDialog(caption,
-          new DisplayablePage() {
-            def getPage: Node = {
-              new BorderPane {
-                hgrow = Priority.Always
-                vgrow = Priority.Always
-                center = new VBox {
-                  children.addAll(new Label(s"Verbindung mit ${p.easyprint} erfolgreich hergestellt."))
+        if (!wspromise.isCompleted) {
+          ConnectionStates.connectedWith(p.uuid.get, wspromise)
+          Platform.runLater {
+            PageDisplayer.showInDialog(caption,
+              new DisplayablePage() {
+                def getPage: Node = {
+                  new BorderPane {
+                    hgrow = Priority.Always
+                    vgrow = Priority.Always
+                    center = new VBox {
+                      children.addAll(new Label(s"Verbindung mit ${p.easyprint} erfolgreich hergestellt."))
+                    }
+                  }
                 }
               }
-            }
+            )
           }
-        )
         }
+        else {
+          ConnectionStates.disconnected()
+        }
+
       case Failure(error) => PageDisplayer.showErrorDialog(caption)(error)
     }
   }

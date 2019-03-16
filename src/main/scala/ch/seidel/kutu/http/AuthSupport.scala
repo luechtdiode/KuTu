@@ -228,7 +228,12 @@ trait AuthSupport extends Directives with SprayJsonSupport with Hashing {
   
   def websocketClientRequest(request: WebSocketRequest, flow: Flow[Message, Message, Promise[Option[Message]]]) : Promise[Option[Message]] = {
     import Core._
-    Http().singleWebSocketRequest(request, clientFlow = flow, settings = clientsettings)._2
+    val (response, streamTerminationPromise) = Http().singleWebSocketRequest(request, clientFlow = flow, settings = clientsettings)
+
+    // make sure that the connection could be established
+    Await.result(response, Duration.Inf)
+
+    streamTerminationPromise
   }
   
   def httpPutClientRequest(uri: String, entity: RequestEntity): Future[HttpResponse] = {
