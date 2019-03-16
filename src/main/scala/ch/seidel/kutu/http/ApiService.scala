@@ -1,10 +1,11 @@
 package ch.seidel.kutu.http
 
-import akka.http.scaladsl.model.StatusCodes
-import akka.http.scaladsl.server.RouteConcatenation
+import akka.http.scaladsl.model.StatusCodes._
+import akka.http.scaladsl.model.{HttpResponse, StatusCodes, Uri}
+import akka.http.scaladsl.server.{ExceptionHandler, RouteConcatenation}
 import ch.seidel.kutu.domain.DBService
 
-trait ApiService extends RouteConcatenation
+trait ApiService extends RouteConcatenation with CIDSupport with RouterLogging
   with LoginRoutes
   with WertungenRoutes
   with WettkampfRoutes
@@ -16,15 +17,26 @@ trait ApiService extends RouteConcatenation
 
   //  private implicit lazy val _ = ch.seidel.kutu.http.Core.system.dispatcher
 
-  def allroutes(userLookup: (String) => String) =
-    resourceRoutes ~
-      pathPrefix("api") {
-        login(userLookup) ~
-        wertungenRoutes ~
-        wettkampfRoutes ~
-        scoresRoutes ~
-        reportRoutes
-        //      websocket
-      } ~
-      complete(StatusCodes.NotFound)
+  def allroutes(userLookup: (String) => String) = {
+    def myExceptionHandler: ExceptionHandler = ExceptionHandler {
+      case e: Exception =>
+        (handleCID & extractUri) { (clientId: String, uri: Uri) =>
+          log.error(e, s"Request from $clientId to $uri could not be handled normally")
+          complete(HttpResponse(InternalServerError, entity = "Bad Request"))
+        }
+    }
+
+    handleExceptions(myExceptionHandler) {
+      resourceRoutes ~
+        pathPrefix("api") {
+          login(userLookup) ~
+            wertungenRoutes ~
+            wettkampfRoutes ~
+            scoresRoutes ~
+            reportRoutes
+          //      websocket
+        } ~
+        complete(StatusCodes.NotFound)
+    }
+  }
 }
