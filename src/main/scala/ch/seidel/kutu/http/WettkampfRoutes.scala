@@ -145,7 +145,11 @@ trait WettkampfRoutes extends SprayJsonSupport with JsonSupport with JwtSupport 
 
     def importData(httpResponse: HttpResponse) = {
       val is = httpResponse.entity.dataBytes.runWith(StreamConverters.asInputStream())
-      ResourceExchanger.importWettkampf(is)
+      val wettkampf = ResourceExchanger.importWettkampf(is)
+      if (!wettkampf.hasRemote(homedir, remoteHostOrigin)) {
+        wettkampf.saveRemoteOrigin(homedir, remoteHostOrigin)
+      }
+      wettkampf
     }
 
     val wettkampf = source.via(requestResponseFlow)
@@ -159,6 +163,7 @@ trait WettkampfRoutes extends SprayJsonSupport with JsonSupport with JwtSupport 
   def httpRemoveWettkampfRequest(wettkampf: Wettkampf) = {
     httpDeleteClientRequest(s"$remoteAdminBaseUrl/api/competition/${wettkampf.uuid.get}")
     wettkampf.removeSecret(homedir, remoteHostOrigin)
+    wettkampf.removeRemote(homedir, remoteHostOrigin)
   }
 
   def extractWettkampfUUID: HttpHeader => Option[String] = {

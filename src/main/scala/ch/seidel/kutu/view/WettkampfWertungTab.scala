@@ -207,7 +207,7 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
  		val wkModel = ObservableBuffer[IndexedSeq[WertungEditor]](wertungen)
     val wkview = new TableView[IndexedSeq[WertungEditor]](wkModel) {
       id = "kutu-table"
-      editable = true
+      editable = !wettkampf.toWettkampf.isReadonly(homedir, remoteHostOrigin)
     }
     val emptyRiege = GeraeteRiege("", "", None, 0, None, Seq(), false)
  		var relevantRiegen: Map[String,(Boolean, Int)] = Map[String,(Boolean, Int)]()
@@ -392,7 +392,7 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
 
           styleClass += "table-cell-with-value"
           prefWidth = if(wertung.init.wettkampfdisziplin.notenSpez.isDNoteUsed) 60 else 0
-          editable = wertung.init.wettkampfdisziplin.notenSpez.isDNoteUsed
+          editable = !wettkampf.toWettkampf.isReadonly(homedir, remoteHostOrigin) && wertung.init.wettkampfdisziplin.notenSpez.isDNoteUsed
           visible = wertung.init.wettkampfdisziplin.notenSpez.isDNoteUsed
           onEditCommit = (evt: CellEditEvent[IndexedSeq[WertungEditor], Double]) => {
             val disciplin = evt.rowValue(index)
@@ -414,7 +414,7 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
 
           styleClass += "table-cell-with-value"
           prefWidth = 60
-          editable = true
+          editable = !wettkampf.toWettkampf.isReadonly(homedir, remoteHostOrigin)
 
           onEditCommit = (evt: CellEditEvent[IndexedSeq[WertungEditor], Double]) => {
             val disciplin = evt.rowValue(index)
@@ -494,7 +494,7 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
             })
           }
   //        delegate.impl_setReorderable(false)
-          editable = !wettkampfmode.value
+          editable = !wettkampf.toWettkampf.isReadonly(homedir, remoteHostOrigin) && !wettkampfmode.value
           visible = !wettkampfmode.value
           prefWidth = 100
           if(!wettkampfmode.value) {
@@ -538,7 +538,7 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
               s"${x.value.head.init.riege2.getOrElse("keine Einteilung")}"
             })
           }
-          editable = !wettkampfmode.value
+          editable = !wettkampf.toWettkampf.isReadonly(homedir, remoteHostOrigin) && !wettkampfmode.value
           visible = !wettkampfmode.value
           prefWidth = 100
           if(!wettkampfmode.value) {
@@ -588,7 +588,7 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
                   s"${x.value.find(we => we.init.wettkampfdisziplin.programm == p).flatMap(we => we.init.riege).getOrElse("keine Einteilung")}"
                 })
               }
-              editable = !wettkampfmode.value
+              editable = !wettkampf.toWettkampf.isReadonly(homedir, remoteHostOrigin) && !wettkampfmode.value
               visible = !wettkampfmode.value
               prefWidth = 100
               if(!wettkampfmode.value) {
@@ -633,7 +633,7 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
                 })
               }
       //        delegate.impl_setReorderable(false)
-              editable = !wettkampfmode.value
+              editable = !wettkampf.toWettkampf.isReadonly(homedir, remoteHostOrigin) && !wettkampfmode.value
               visible = !wettkampfmode.value
               prefWidth = 100
               if(!wettkampfmode.value) {
@@ -1388,7 +1388,7 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
     val generateBestenliste = new Button with BestenListeToHtmlRenderer {
       text = "Bestenliste erstellen"
       minWidth = 75
-
+      disable.value = wettkampf.toWettkampf.isReadonly(homedir, remoteHostOrigin)
       onAction = (event: ActionEvent) => {
         if (!WebSocketClient.isConnected) {          
           val filename = "Bestenliste_" + wettkampf.easyprint.replace(" ", "_") + ".html"
@@ -1725,7 +1725,7 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
             minHeight = Region.USE_PREF_SIZE
             styleClass += "toolbar-header"
           }
-        ) ++ (if(wettkampfmode.value) List(cmbDurchgangFilter, txtUserFilter, generateBestenliste) else actionButtons :+ clearButton :+ cmbDurchgangFilter :+ txtUserFilter)
+        ) ++ (if(wettkampfmode.value || wettkampf.toWettkampf.isReadonly(homedir, remoteHostOrigin)) List(cmbDurchgangFilter, txtUserFilter, generateBestenliste) else actionButtons :+ clearButton :+ cmbDurchgangFilter :+ txtUserFilter)
       }
       center = new SplitPane {
         orientation = Orientation.Horizontal

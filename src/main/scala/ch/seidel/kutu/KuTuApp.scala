@@ -552,7 +552,8 @@ object KuTuApp extends JFXApp with KutuService with JsonSupport with JwtSupport 
     }
     item.disable <== when(Bindings.createBooleanBinding(() =>
       Config.isLocalHostServer() ||
-      !p.toWettkampf.hasSecred(homedir, remoteHostOrigin) || !ConnectionStates.connectedWithProperty.value.equals(p.uuid.map(_.toString).getOrElse("")),
+        (!p.toWettkampf.hasSecred(homedir, remoteHostOrigin) && !p.toWettkampf.hasRemote(homedir, remoteHostOrigin)) ||
+        !ConnectionStates.connectedWithProperty.value.equals(p.uuid.map(_.toString).getOrElse("")),
       controlsView.selectionModel().selectedItem,
       selectedWettkampfSecret,
       ConnectionStates.connectedWithProperty
@@ -882,7 +883,11 @@ object KuTuApp extends JFXApp with KutuService with JsonSupport with JwtSupport 
           case Some((uuid, secret)) =>
             server.httpRenewLoginRequest(s"$remoteBaseUrl/api/loginrenew", uuid, secret)
           case None =>
-            server.httpUploadWettkampfRequest(p.toWettkampf)
+            if (p.toWettkampf.hasRemote(homedir, remoteHostOrigin)) {
+              Future{}
+            } else {
+              server.httpUploadWettkampfRequest(p.toWettkampf)
+            }
         }
       }
     }.map(response => {

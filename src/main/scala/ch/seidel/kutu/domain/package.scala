@@ -265,13 +265,14 @@ package object domain {
 //      else apply(id, datum, titel, programmId, auszeichnung, auszeichnungendnote)
 //  }
   case class Wettkampf(id: Long, uuid: Option[String], datum: java.sql.Date, titel: String, programmId: Long, auszeichnung: Int, auszeichnungendnote: scala.math.BigDecimal) extends DataObject {
+
     override def easyprint = f"$titel am $datum%td.$datum%tm.$datum%tY"
     
     def toView(programm: ProgrammView) = {
       WettkampfView(id, uuid, datum, titel, programm, auszeichnung, auszeichnungendnote)
     }
     
-    def prepareFilePath(homedir: String) = {
+    private def prepareFilePath(homedir: String) = {
       val dir = new java.io.File(homedir + "/" + easyprint.replace(" ", "_"))
       if(!dir.exists) {
         dir.mkdirs
@@ -280,7 +281,33 @@ package object domain {
     }
     
     def filePath(homedir: String, origin: String) = new java.io.File(prepareFilePath(homedir), ".at." + origin).toPath
-    
+    def fromOriginFilePath(homedir: String, origin: String) = new java.io.File(prepareFilePath(homedir), ".from." + origin).toPath
+
+    def saveRemoteOrigin(homedir: String, origin: String) {
+      val path = fromOriginFilePath(homedir, origin)
+      val fos = Files.newOutputStream(path, StandardOpenOption.CREATE_NEW)
+      try {
+        fos.write(uuid.toString.getBytes("utf-8"))
+        fos.flush
+      } finally {
+        fos.close
+      }
+      val os = System.getProperty("os.name").toLowerCase
+      if (os.indexOf("win") > -1) {
+        Files.setAttribute(path, "dos:hidden", true, LinkOption.NOFOLLOW_LINKS)
+      }
+    }
+    def hasRemote(homedir: String, origin: String): Boolean = {
+      val path = fromOriginFilePath(homedir, origin)
+      return path.toFile.exists
+    }
+    def removeRemote(homedir: String, origin: String) {
+      val atFile = fromOriginFilePath(homedir, origin).toFile
+      if (atFile.exists) {
+        atFile.delete()
+      }
+    }
+
     def saveSecret(homedir: String, origin: String, secret: String) {
       val path = filePath(homedir, origin)
       val fos = Files.newOutputStream(path, StandardOpenOption.CREATE_NEW)
@@ -312,6 +339,7 @@ package object domain {
       }
     }
     def hasSecred(homedir: String, origin: String): Boolean = readSecret(homedir, origin) match {case Some(_) => true case None => false }
+    def isReadonly(homedir: String, origin: String): Boolean = !hasSecred(homedir, origin) && hasRemote(homedir, origin)
   }
 
 //  object WettkampfView {

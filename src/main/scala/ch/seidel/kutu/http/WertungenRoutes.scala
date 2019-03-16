@@ -1,7 +1,7 @@
 package ch.seidel.kutu.http
 
 import akka.http.scaladsl.marshallers.sprayjson.SprayJsonSupport
-import akka.http.scaladsl.model.StatusCodes
+import akka.http.scaladsl.model.{StatusCodes, Uri}
 import akka.http.scaladsl.server.Route
 import akka.util.Timeout
 import ch.seidel.kutu.akka._
@@ -22,7 +22,8 @@ trait WertungenRoutes extends SprayJsonSupport with JsonSupport with JwtSupport 
   private implicit lazy val timeout = Timeout(5.seconds) // usually we'd obtain the timeout from the system's configuration
 
   lazy val wertungenRoutes: Route = {
-    handleCID { clientId: String =>
+    (handleCID & extractUri) { (clientId: String, uri: Uri) =>
+      log.debug(s"$clientId is calling $uri")
       pathPrefix("programm") {
         pathEnd {
           get {
@@ -47,9 +48,9 @@ trait WertungenRoutes extends SprayJsonSupport with JsonSupport with JwtSupport 
             }
           }
         } ~
-        path(Segment / "ws") { durchgang =>
-          parameters('jwt.as[String], 'lastSequenceId.?) { (jwt, lastSequenceId: Option[String]) =>
-            val lastSequenceIdOption: Option[Long] = lastSequenceId.map(str2Long)
+        (path(Segment / "ws") & parameters('lastSequenceId.?)) { (durchgang: String, lastSequenceId: Option[String]) =>
+          val lastSequenceIdOption: Option[Long] = lastSequenceId.map(str2Long)
+          parameters('jwt.as[String]) { jwt =>
             authenticateWith(Some(jwt), true) { id =>
               if (id == competitionId.toString) {
                 if (durchgang.equalsIgnoreCase("all")) {
@@ -62,16 +63,19 @@ trait WertungenRoutes extends SprayJsonSupport with JsonSupport with JwtSupport 
               }
             }
           } ~
-          (authenticated(true) & parameters('lastSequenceId.?)) { (id, lastSequenceId: Option[String]) =>
+          authenticated(true) { id =>
             if (id == competitionId.toString) {
-              val lastSequenceIdOption: Option[Long] = lastSequenceId.map(str2Long)
               handleWebSocketMessages(CompetitionCoordinatorClientActor.createActorSinkSource(clientId, competitionId.toString, Some(durchgang), lastSequenceIdOption))
             } else {
               complete(StatusCodes.Unauthorized)
             }
           } ~
           pathEnd {
-            handleWebSocketMessages(CompetitionCoordinatorClientActor.createActorSource(clientId, competitionId.toString, Some(durchgang)))
+            if (durchgang.equalsIgnoreCase("all")) {
+              handleWebSocketMessages(CompetitionCoordinatorClientActor.createActorSource(clientId, competitionId.toString, None, lastSequenceIdOption))
+            } else {
+              handleWebSocketMessages(CompetitionCoordinatorClientActor.createActorSource(clientId, competitionId.toString, Some(durchgang)))
+            }
           }
         } ~
         path("finish") {

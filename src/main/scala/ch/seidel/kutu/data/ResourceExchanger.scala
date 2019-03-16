@@ -211,9 +211,19 @@ object ResourceExchanger extends KutuService with RiegenBuilder {
       new ZipEntryTraversableClass().foreach{entry =>
         if (entry._1.getName.startsWith(".at") && entry._1.getName.contains(Config.remoteHostOrigin) && !wettkampf.hasSecred(Config.homedir, Config.remoteHostOrigin)) {
           val filename = entry._1.getName
-          val secretfile = new java.io.File(Config.homedir + "/" + wettkampf.easyprint.replace(" ", "_") + "/" + filename)
-          wettkampf.saveSecret(Config.homedir, Config.remoteHostOrigin, Source.fromInputStream(entry._2, "utf-8").mkString)
-          logger.info("secret was written " + filename)
+          if (!wettkampf.hasSecred(Config.homedir, Config.remoteHostOrigin)) {
+            wettkampf.saveSecret(Config.homedir, Config.remoteHostOrigin, Source.fromInputStream(entry._2, "utf-8").mkString)
+            logger.info("secret was written " + filename)
+          }
+        }
+      }
+      new ZipEntryTraversableClass().foreach{entry =>
+        if (entry._1.getName.startsWith(".from") && entry._1.getName.contains(Config.remoteHostOrigin) && !wettkampf.hasRemote(Config.homedir, Config.remoteHostOrigin)) {
+          val filename = entry._1.getName
+          if (!wettkampf.hasRemote(Config.homedir, Config.remoteHostOrigin)) {
+            wettkampf.saveRemoteOrigin(Config.homedir, Config.remoteHostOrigin)
+            logger.info("remote-info was written " + filename)
+          }
         }
       }
       (fields(wettkampfHeader("id")), wettkampf)
@@ -392,6 +402,18 @@ object ResourceExchanger extends KutuService with RiegenBuilder {
       .foreach(read=> zip.write(bytes, 0, read))
       zip.closeEntry()
       println("secret was taken " + secretfile.getName)
+    }
+    if (withSecret && wettkampf.hasRemote(Config.homedir, Config.remoteHostOrigin)) {
+      val secretfile = wettkampf.fromOriginFilePath(Config.homedir, Config.remoteHostOrigin).toFile();
+      zip.putNextEntry(new ZipEntry(secretfile.getName));
+      val fis = new FileInputStream(secretfile)
+      val bytes = new Array[Byte](1024) //1024 bytes - Buffer size
+      Iterator
+        .continually(fis.read(bytes))
+        .takeWhile(-1 !=)
+        .foreach(read=> zip.write(bytes, 0, read))
+      zip.closeEntry()
+      println("remote-info was taken " + secretfile.getName)
     }
     zip.finish()
     zip.close()

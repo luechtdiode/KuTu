@@ -504,7 +504,7 @@ object CompetitionCoordinatorClientActor extends JsonSupport with EnrichedJson {
   }
 
   // unauthenticted oneway/readonly streaming
-  def createActorSource(deviceId: String, wettkampfUUID: String, durchgang: Option[String]): Flow[Message, Message, Any] = {
+  def createActorSource(deviceId: String, wettkampfUUID: String, durchgang: Option[String], lastSequenceId: Option[Long] = None): Flow[Message, Message, Any] = {
     val clientActor = Await.result(
       ask(supervisor, CreateClient(deviceId, wettkampfUUID))(5000 milli).mapTo[ActorRef], 5000 milli)
 
@@ -513,11 +513,11 @@ object CompetitionCoordinatorClientActor extends JsonSupport with EnrichedJson {
       case _ => false
     }.to(Sink.actorRef(clientActor, StopDevice(deviceId)).named(deviceId))
 
-    val source = fromCoordinatorActorToWebsocketFlow(None,
+    val source = fromCoordinatorActorToWebsocketFlow(lastSequenceId,
       Source.actorRef(
         256,
         OverflowStrategy.dropNew).mapMaterializedValue { wsSource =>
-        clientActor ! Subscribe(wsSource, deviceId, durchgang, None)
+        clientActor ! Subscribe(wsSource, deviceId, durchgang, lastSequenceId)
         wsSource
       }.named(deviceId))
 

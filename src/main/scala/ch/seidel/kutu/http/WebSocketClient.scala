@@ -51,10 +51,17 @@ object WebSocketClient extends SprayJsonSupport with JsonSupport with AuthSuppor
         websocketOutgoingSource.concatMat(Source.maybe[Message])(Keep.right))(Keep.right)
 
     val promise = websocketClientRequest(
+      if (wettkampf.hasSecred(homedir, remoteHostOrigin)) {
         WebSocketRequest(
-            s"$remoteWebSocketUrl/api/competition/ws?clientid=${encodeURIParam(System.getProperty("user.name") + ":" + deviceId)}&lastSequenceId=$lastSequenceId",
-            extraHeaders = immutable.Seq(RawHeader(jwtAuthorizationKey, wettkampf.readSecret(homedir, remoteHostOrigin).get))),
-        flow)
+          s"$remoteWebSocketUrl/api/competition/ws?clientid=${encodeURIParam(System.getProperty("user.name") + ":" + deviceId)}&lastSequenceId=$lastSequenceId",
+          extraHeaders = immutable.Seq(RawHeader(jwtAuthorizationKey, wettkampf.readSecret(homedir, remoteHostOrigin).get)))
+      } else if (wettkampf.hasRemote(homedir, remoteHostOrigin)) {
+        WebSocketRequest(
+          s"$remoteWebSocketUrl/api/durchgang/${wettkampf.uuid.get}/all/ws?clientid=${encodeURIParam(System.getProperty("user.name") + ":" + deviceId)}&lastSequenceId=$lastSequenceId")
+      } else {
+        throw new IllegalStateException("Competition has no remote-origin")
+      },
+      flow)
     connectedIncomingPromise = Some(promise)
 
     lastWettkampf match {

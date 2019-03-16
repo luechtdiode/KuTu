@@ -1,7 +1,5 @@
 package ch.seidel.kutu.http
 
-import akka.actor.{Actor, ExtendedActorSystem}
-import akka.event.{BusLogging, DiagnosticLoggingAdapter}
 import ch.seidel.kutu.http.Core._
 
 trait RouterLogging {

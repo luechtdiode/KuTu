@@ -481,6 +481,7 @@ class NetworkTab(wettkampf: WettkampfView, override val service: KutuService) ex
       center = view
     }
     def updateButtons {
+      if (!wettkampf.toWettkampf.isReadonly(homedir, remoteHostOrigin)) {
       val dgs = makeDurchgangStartenMenu(wettkampf)
       val dga = makeDurchgangAbschliessenMenu(wettkampf)
       view.contextMenu = new ContextMenu() {
@@ -521,7 +522,23 @@ class NetworkTab(wettkampf: WettkampfView, override val service: KutuService) ex
             onAction = removeRemoteMenu.onAction.get
             text <== removeRemoteMenu.text
             disable <== removeRemoteMenu.disable
-          })      
+          })
+      } else {
+        toolbar.content = List(
+          new Button {
+            onAction = connectAndShareMenu.onAction.get
+            text <== connectAndShareMenu.text
+            disable <== connectAndShareMenu.disable
+          }, new Button {
+            onAction = downloadMenu.onAction.get
+            text <== downloadMenu.text
+            disable <== downloadMenu.disable
+          }, new Button {
+            onAction = disconnectMenu.onAction.get
+            text <== disconnectMenu.text
+            disable <== disconnectMenu.disable
+          })
+      }
     }
     updateButtons
 //    val showQRCode = make
