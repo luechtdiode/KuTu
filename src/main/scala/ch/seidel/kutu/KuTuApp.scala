@@ -1,10 +1,10 @@
 package ch.seidel.kutu
 
-import java.awt.Desktop
+import java.awt.{Desktop, EventQueue}
 import java.io.{ByteArrayInputStream, FileInputStream}
 import java.net.URI
-import java.util.{Base64, Date, UUID}
 import java.util.concurrent.Executors
+import java.util.{Base64, Date, UUID}
 
 import authentikat.jwt.JsonWebToken
 import ch.seidel.commons.{DisplayablePage, PageDisplayer}
@@ -16,7 +16,6 @@ import ch.seidel.kutu.http.{AuthSupport, JsonSupport, JwtSupport, WebSocketClien
 import javafx.beans.property.SimpleObjectProperty
 import javafx.scene.control.DatePicker
 import javafx.util.Callback
-import javax.swing.SwingUtilities
 import net.glxn.qrgen.QRCode
 import net.glxn.qrgen.image.ImageType
 import org.slf4j.LoggerFactory
@@ -24,32 +23,32 @@ import scalafx.Includes._
 import scalafx.application.JFXApp.PrimaryStage
 import scalafx.application.{JFXApp, Platform}
 import scalafx.beans.binding.Bindings
-import scalafx.beans.property.{BooleanProperty, ReadOnlyStringWrapper}
 import scalafx.beans.property.StringProperty.sfxStringProperty2jfx
+import scalafx.beans.property.{BooleanProperty, ReadOnlyStringWrapper}
 import scalafx.collections.ObservableBuffer
 import scalafx.event.ActionEvent
-import scalafx.geometry.{Insets, Pos, Side}
+import scalafx.geometry.{Insets, Side}
 import scalafx.scene.Node.sfxNode2jfx
-import scalafx.scene.{Cursor, Node, Scene}
 import scalafx.scene.control.Alert.AlertType
 import scalafx.scene.control.Label.sfxLabel2jfx
 import scalafx.scene.control.MenuItem.sfxMenuItem2jfx
 import scalafx.scene.control.ScrollPane.sfxScrollPane2jfx
+import scalafx.scene.control.Tab.sfxTab2jfx
 import scalafx.scene.control.TableColumn._
 import scalafx.scene.control.TextField.sfxTextField2jfx
 import scalafx.scene.control.TreeItem.sfxTreeItemToJfx
-import scalafx.scene.control.Tab.sfxTab2jfx
 import scalafx.scene.control._
 import scalafx.scene.image.{Image, ImageView}
 import scalafx.scene.input.{Clipboard, ClipboardContent, DataFormat}
 import scalafx.scene.layout._
 import scalafx.scene.web.WebView
+import scalafx.scene.{Cursor, Node, Scene}
 import scalafx.stage.FileChooser.ExtensionFilter
 import scalafx.stage.{FileChooser, Screen}
 import spray.json._
 
-import scala.concurrent.{Await, Future, Promise}
 import scala.concurrent.duration.Duration
+import scala.concurrent.{Await, Future, Promise}
 import scala.util.{Failure, Success}
 
 object KuTuApp extends JFXApp with KutuService with JsonSupport with JwtSupport {
@@ -1234,11 +1233,11 @@ object KuTuApp extends JFXApp with KutuService with JsonSupport with JwtSupport 
             val view = new ImageView(image)
             val urlLabel = new Hyperlink("Link (24h gültig) im Browser öffnen")
             urlLabel.onMouseClicked = handle {
-              SwingUtilities.invokeLater(() => {
-                Clipboard.systemClipboard.content = ClipboardContent(
-                  DataFormat.PlainText -> shortConnectionString,
-                  DataFormat.Html -> s"<a href='$shortConnectionString' target='_blank'>Link (24h gültig) im Browser öffnen</a> text"
-                )
+              Clipboard.systemClipboard.content = ClipboardContent(
+                DataFormat.PlainText -> shortConnectionString,
+                DataFormat.Html -> s"<a href='$shortConnectionString' target='_blank'>Link (24h gültig) im Browser öffnen</a> text"
+              )
+              EventQueue.invokeLater(() => {
                 Desktop.getDesktop().browse(new URI(shortConnectionString))
               })
             }
@@ -1260,7 +1259,7 @@ object KuTuApp extends JFXApp with KutuService with JsonSupport with JwtSupport 
                  |  Wertungsrichter-Einsatzplanung
                 """.stripMargin))
               val mailURI = new URI(mailURIStr)
-              SwingUtilities.invokeLater(() => {
+              EventQueue.invokeLater(() => {
                 Desktop.getDesktop().mail(mailURI)
               })
             }
@@ -1272,11 +1271,11 @@ object KuTuApp extends JFXApp with KutuService with JsonSupport with JwtSupport 
             val viewLast = new ImageView(imageLast)
             val urlLabelLast = new Hyperlink("Letzte Resultate Link im Browser öffnen")
             urlLabelLast.onMouseClicked = handle {
-              SwingUtilities.invokeLater(() => {
-                Clipboard.systemClipboard.content = ClipboardContent(
-                  DataFormat.PlainText -> lastResultsConnectionString,
-                  DataFormat.Html -> s"<a href='$lastResultsConnectionString' target='_blank'>Letzte Resultate Link im Browser öffnen</a> text"
-                )
+              Clipboard.systemClipboard.content = ClipboardContent(
+                DataFormat.PlainText -> lastResultsConnectionString,
+                DataFormat.Html -> s"<a href='$lastResultsConnectionString' target='_blank'>Letzte Resultate Link im Browser öffnen</a> text"
+              )
+              EventQueue.invokeLater(() => {
                 Desktop.getDesktop().browse(new URI(lastResultsConnectionString))
               })
             }
@@ -1294,7 +1293,7 @@ object KuTuApp extends JFXApp with KutuService with JsonSupport with JwtSupport 
                      |  Einsatzplanung
                 """.stripMargin))
               val mailURI = new URI(mailURIStr)
-              SwingUtilities.invokeLater(() => {
+              EventQueue.invokeLater(() => {
                 Desktop.getDesktop().mail(mailURI)
               })
             }
@@ -1307,11 +1306,11 @@ object KuTuApp extends JFXApp with KutuService with JsonSupport with JwtSupport 
             val viewTop = new ImageView(imageTop)
             val urlLabelTop = new Hyperlink("Top Resultate Link im Browser öffnen")
             urlLabelTop.onMouseClicked = handle {
-              SwingUtilities.invokeLater(() => {
-                Clipboard.systemClipboard.content = ClipboardContent(
-                  DataFormat.PlainText -> topResultsConnectionString,
-                  DataFormat.Html -> s"<a href='$topResultsConnectionString' target='_blank'>Top Resultate im Browser öffnen</a> text"
-                )
+              Clipboard.systemClipboard.content = ClipboardContent(
+                DataFormat.PlainText -> topResultsConnectionString,
+                DataFormat.Html -> s"<a href='$topResultsConnectionString' target='_blank'>Top Resultate im Browser öffnen</a> text"
+              )
+              EventQueue.invokeLater(() => {
                 Desktop.getDesktop().browse(new URI(topResultsConnectionString))
               })
             }
@@ -1329,27 +1328,27 @@ object KuTuApp extends JFXApp with KutuService with JsonSupport with JwtSupport 
                      |  Einsatzplanung
                 """.stripMargin))
               val mailURI = new URI(mailURIStr)
-              SwingUtilities.invokeLater(() => {
+              EventQueue.invokeLater(() => {
                 Desktop.getDesktop().mail(mailURI)
               })
             }
             val urlLastLabel = new Hyperlink("Link auf 'Letzte Resultate'")
             urlLastLabel.onMouseClicked = handle {
-              SwingUtilities.invokeLater(() => {
-                Clipboard.systemClipboard.content = ClipboardContent(
-                  DataFormat.PlainText -> lastResultsConnectionString,
-                  DataFormat.Html -> s"<a href='$lastResultsConnectionString' target='_blank'>Link auf 'Letzte Resultate'</a> text"
-                )
+              Clipboard.systemClipboard.content = ClipboardContent(
+                DataFormat.PlainText -> lastResultsConnectionString,
+                DataFormat.Html -> s"<a href='$lastResultsConnectionString' target='_blank'>Link auf 'Letzte Resultate'</a> text"
+              )
+              EventQueue.invokeLater(() => {
                 Desktop.getDesktop().browse(new URI(lastResultsConnectionString))
               })
             }
             val urlTopLabel = new Hyperlink("Link auf 'Top-Resultate'")
             urlTopLabel.onMouseClicked = handle {
-              SwingUtilities.invokeLater(() => {
-                Clipboard.systemClipboard.content = ClipboardContent(
-                  DataFormat.PlainText -> topResultsConnectionString,
-                  DataFormat.Html -> s"<a href='$topResultsConnectionString' target='_blank'>Link auf 'Top-Resultate'</a> text"
-                )
+              Clipboard.systemClipboard.content = ClipboardContent(
+                DataFormat.PlainText -> topResultsConnectionString,
+                DataFormat.Html -> s"<a href='$topResultsConnectionString' target='_blank'>Link auf 'Top-Resultate'</a> text"
+              )
+              EventQueue.invokeLater(() => {
                 Desktop.getDesktop().browse(new URI(topResultsConnectionString))
               })
             }
@@ -1450,7 +1449,7 @@ object KuTuApp extends JFXApp with KutuService with JsonSupport with JwtSupport 
     if(!dir.exists()) {
       dir.mkdirs();
     }
-    SwingUtilities.invokeLater(() => {
+    EventQueue.invokeLater(() => {
       Desktop.getDesktop().open(dir)
     })
   }

@@ -1,6 +1,6 @@
 package ch.seidel.kutu.view
 
-import java.awt.Desktop
+import java.awt.{Desktop, EventQueue}
 import java.util.UUID
 
 import ch.seidel.commons.{AutoCommitTextFieldTableCell, DisplayablePage, PageDisplayer, TabWithService}
@@ -13,7 +13,6 @@ import ch.seidel.kutu.renderer.{PrintUtil, RiegenBuilder, WertungsrichterQRCode,
 import ch.seidel.kutu.squad.DurchgangBuilder
 import javafx.scene.text.Text
 import javafx.scene.{control => jfxsc}
-import javax.swing.SwingUtilities
 import scalafx.Includes.{eventClosureWrapperWithParam, handle, jfxActionEvent2sfx, jfxBooleanBinding2sfx, jfxBounds2sfx, jfxCellEditEvent2sfx, jfxKeyEvent2sfx, jfxMouseEvent2sfx, jfxObjectProperty2sfx, jfxParent2sfx, jfxPixelReader2sfx, jfxReadOnlyBooleanProperty2sfx, jfxTableViewSelectionModel2sfx, jfxText2sfxText, observableList2ObservableBuffer, when}
 import scalafx.application.Platform
 import scalafx.beans.binding.Bindings
@@ -875,7 +874,7 @@ class RiegenTab(wettkampf: WettkampfView, override val service: KutuService) ext
 			  val file = new java.io.File(dir.getPath + "/" + filename)
 
 			  ResourceExchanger.exportEinheiten(wettkampf.toWettkampf, file.getPath)
-        SwingUtilities.invokeLater(() => {
+        EventQueue.invokeLater(() => {
           Desktop.getDesktop().open(file)
         })
 		  }
@@ -899,7 +898,7 @@ class RiegenTab(wettkampf: WettkampfView, override val service: KutuService) ext
 			  val file = new java.io.File(dir.getPath + "/" + filename)
 
 			  ResourceExchanger.exportDurchgaenge(wettkampf.toWettkampf, file.getPath)
-        SwingUtilities.invokeLater(() => {
+        EventQueue.invokeLater(() => {
           Desktop.getDesktop().open(file)
         })
 		  }

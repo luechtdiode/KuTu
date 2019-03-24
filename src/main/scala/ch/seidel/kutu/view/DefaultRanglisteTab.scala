@@ -1,6 +1,6 @@
 package ch.seidel.kutu.view
 
-import java.awt.Desktop
+import java.awt.{Desktop, EventQueue}
 import java.io._
 import java.util.concurrent.{ScheduledFuture, TimeUnit}
 
@@ -11,10 +11,9 @@ import ch.seidel.kutu.domain._
 import ch.seidel.kutu.http.WebSocketClient
 import ch.seidel.kutu.renderer.PrintUtil.FilenameDefault
 import ch.seidel.kutu.renderer.{PrintUtil, ScoreToHtmlRenderer}
-import javafx.geometry.Bounds
 import javafx.scene.text.FontSmoothingType
 import javafx.scene.{control => jfxsc}
-import javax.swing.SwingUtilities
+import org.controlsfx.control.CheckComboBox
 import scalafx.Includes._
 import scalafx.application.Platform
 import scalafx.collections.ObservableBuffer
@@ -22,8 +21,6 @@ import scalafx.event.subscriptions.Subscription
 import scalafx.geometry.Insets
 import scalafx.print.{PageOrientation, Printer}
 import scalafx.scene.control._
-import org.controlsfx.control.CheckComboBox
-import scalafx.beans.property.ReadOnlyObjectProperty
 import scalafx.scene.layout._
 import scalafx.scene.web.WebView
 import scalafx.stage.FileChooser
@@ -345,7 +342,7 @@ abstract class DefaultRanglisteTab(override val service: KutuService) extends Ta
           os.write(toSave)
           os.flush()
           os.close()
-          SwingUtilities.invokeLater(() => {
+          EventQueue.invokeLater(() => {
             Desktop.getDesktop().open(selectedFile)
           })
         }

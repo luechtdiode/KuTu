@@ -1,6 +1,6 @@
 package ch.seidel.kutu.renderer
 
-import java.awt.Desktop
+import java.awt.{Desktop, EventQueue}
 import java.io._
 import java.util.Base64
 import java.util.concurrent.atomic.AtomicBoolean
@@ -8,9 +8,9 @@ import java.util.concurrent.atomic.AtomicBoolean
 import ch.seidel.commons._
 import ch.seidel.kutu.KuTuApp
 import javax.imageio.ImageIO
-import javax.swing.SwingUtilities
 import org.slf4j.LoggerFactory
 import scalafx.Includes._
+import scalafx.application.Platform
 import scalafx.beans.binding.Bindings
 import scalafx.event.ActionEvent
 import scalafx.geometry.{Insets, Pos}
@@ -20,7 +20,6 @@ import scalafx.scene.Node
 import scalafx.scene.control._
 import scalafx.scene.layout._
 import scalafx.scene.web.WebEngine
-import scalafx.application.Platform
 
 import scala.concurrent.Future
 import scala.io.Source
@@ -111,7 +110,7 @@ object PrintUtil {
                   os.write(toSave.getBytes("UTF-8"))
                   os.flush()
                   os.close()
-                  SwingUtilities.invokeLater(() => {
+                  EventQueue.invokeLater(() => {
                     Desktop.getDesktop().open(file)
                   })
                 }
