@@ -14,6 +14,7 @@ import ch.seidel.kutu.renderer.{PrintUtil, ScoreToHtmlRenderer}
 import javafx.geometry.Bounds
 import javafx.scene.text.FontSmoothingType
 import javafx.scene.{control => jfxsc}
+import javax.swing.SwingUtilities
 import scalafx.Includes._
 import scalafx.application.Platform
 import scalafx.collections.ObservableBuffer
@@ -344,7 +345,9 @@ abstract class DefaultRanglisteTab(override val service: KutuService) extends Ta
           os.write(toSave)
           os.flush()
           os.close()
-          Desktop.getDesktop().open(selectedFile);
+          SwingUtilities.invokeLater(() => {
+            Desktop.getDesktop().open(selectedFile)
+          })
         }
       }
     }

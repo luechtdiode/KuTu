@@ -16,6 +16,7 @@ import ch.seidel.kutu.http.{AuthSupport, JsonSupport, JwtSupport, WebSocketClien
 import javafx.beans.property.SimpleObjectProperty
 import javafx.scene.control.DatePicker
 import javafx.util.Callback
+import javax.swing.SwingUtilities
 import net.glxn.qrgen.QRCode
 import net.glxn.qrgen.image.ImageType
 import org.slf4j.LoggerFactory
@@ -1233,11 +1234,13 @@ object KuTuApp extends JFXApp with KutuService with JsonSupport with JwtSupport 
             val view = new ImageView(image)
             val urlLabel = new Hyperlink("Link (24h gültig) im Browser öffnen")
             urlLabel.onMouseClicked = handle {
-              Clipboard.systemClipboard.content = ClipboardContent(
-                DataFormat.PlainText -> shortConnectionString,
-                DataFormat.Html -> s"<a href='$shortConnectionString' target='_blank'>Link (24h gültig) im Browser öffnen</a> text"
-              )
-              Desktop.getDesktop().browse(new URI(shortConnectionString))
+              SwingUtilities.invokeLater(() => {
+                Clipboard.systemClipboard.content = ClipboardContent(
+                  DataFormat.PlainText -> shortConnectionString,
+                  DataFormat.Html -> s"<a href='$shortConnectionString' target='_blank'>Link (24h gültig) im Browser öffnen</a> text"
+                )
+                Desktop.getDesktop().browse(new URI(shortConnectionString))
+              })
             }
             val mailLabel = new Hyperlink("Link (24h gültig) als EMail versenden")
             mailLabel.onMouseClicked = handle {
@@ -1257,7 +1260,9 @@ object KuTuApp extends JFXApp with KutuService with JsonSupport with JwtSupport 
                  |  Wertungsrichter-Einsatzplanung
                 """.stripMargin))
               val mailURI = new URI(mailURIStr)
-              Desktop.getDesktop().mail(mailURI)
+              SwingUtilities.invokeLater(() => {
+                Desktop.getDesktop().mail(mailURI)
+              })
             }
 
             val outLast = QRCode.from(lastResultsConnectionString).to(ImageType.PNG).withSize(500, 500).stream()
@@ -1267,11 +1272,13 @@ object KuTuApp extends JFXApp with KutuService with JsonSupport with JwtSupport 
             val viewLast = new ImageView(imageLast)
             val urlLabelLast = new Hyperlink("Letzte Resultate Link im Browser öffnen")
             urlLabelLast.onMouseClicked = handle {
-              Clipboard.systemClipboard.content = ClipboardContent(
-                DataFormat.PlainText -> lastResultsConnectionString,
-                DataFormat.Html -> s"<a href='$lastResultsConnectionString' target='_blank'>Letzte Resultate Link im Browser öffnen</a> text"
-              )
-              Desktop.getDesktop().browse(new URI(lastResultsConnectionString))
+              SwingUtilities.invokeLater(() => {
+                Clipboard.systemClipboard.content = ClipboardContent(
+                  DataFormat.PlainText -> lastResultsConnectionString,
+                  DataFormat.Html -> s"<a href='$lastResultsConnectionString' target='_blank'>Letzte Resultate Link im Browser öffnen</a> text"
+                )
+                Desktop.getDesktop().browse(new URI(lastResultsConnectionString))
+              })
             }
             val mailLabelLast = new Hyperlink("Letzte Resultate Link als EMail versenden")
             mailLabelLast.onMouseClicked = handle {
@@ -1287,7 +1294,9 @@ object KuTuApp extends JFXApp with KutuService with JsonSupport with JwtSupport 
                      |  Einsatzplanung
                 """.stripMargin))
               val mailURI = new URI(mailURIStr)
-              Desktop.getDesktop().mail(mailURI)
+              SwingUtilities.invokeLater(() => {
+                Desktop.getDesktop().mail(mailURI)
+              })
             }
 
 
@@ -1298,11 +1307,13 @@ object KuTuApp extends JFXApp with KutuService with JsonSupport with JwtSupport 
             val viewTop = new ImageView(imageTop)
             val urlLabelTop = new Hyperlink("Top Resultate Link im Browser öffnen")
             urlLabelTop.onMouseClicked = handle {
-              Clipboard.systemClipboard.content = ClipboardContent(
-                DataFormat.PlainText -> topResultsConnectionString,
-                DataFormat.Html -> s"<a href='$topResultsConnectionString' target='_blank'>Top Resultate im Browser öffnen</a> text"
-              )
-              Desktop.getDesktop().browse(new URI(topResultsConnectionString))
+              SwingUtilities.invokeLater(() => {
+                Clipboard.systemClipboard.content = ClipboardContent(
+                  DataFormat.PlainText -> topResultsConnectionString,
+                  DataFormat.Html -> s"<a href='$topResultsConnectionString' target='_blank'>Top Resultate im Browser öffnen</a> text"
+                )
+                Desktop.getDesktop().browse(new URI(topResultsConnectionString))
+              })
             }
             val mailLabelTop = new Hyperlink("Top Resultate Link als EMail versenden")
             mailLabelTop.onMouseClicked = handle {
@@ -1318,23 +1329,29 @@ object KuTuApp extends JFXApp with KutuService with JsonSupport with JwtSupport 
                      |  Einsatzplanung
                 """.stripMargin))
               val mailURI = new URI(mailURIStr)
-              Desktop.getDesktop().mail(mailURI)
+              SwingUtilities.invokeLater(() => {
+                Desktop.getDesktop().mail(mailURI)
+              })
             }
             val urlLastLabel = new Hyperlink("Link auf 'Letzte Resultate'")
             urlLastLabel.onMouseClicked = handle {
-              Clipboard.systemClipboard.content = ClipboardContent(
-                DataFormat.PlainText -> lastResultsConnectionString,
-                DataFormat.Html -> s"<a href='$lastResultsConnectionString' target='_blank'>Link auf 'Letzte Resultate'</a> text"
-              )
-              Desktop.getDesktop().browse(new URI(lastResultsConnectionString))
+              SwingUtilities.invokeLater(() => {
+                Clipboard.systemClipboard.content = ClipboardContent(
+                  DataFormat.PlainText -> lastResultsConnectionString,
+                  DataFormat.Html -> s"<a href='$lastResultsConnectionString' target='_blank'>Link auf 'Letzte Resultate'</a> text"
+                )
+                Desktop.getDesktop().browse(new URI(lastResultsConnectionString))
+              })
             }
             val urlTopLabel = new Hyperlink("Link auf 'Top-Resultate'")
             urlTopLabel.onMouseClicked = handle {
-              Clipboard.systemClipboard.content = ClipboardContent(
-                DataFormat.PlainText -> topResultsConnectionString,
-                DataFormat.Html -> s"<a href='$topResultsConnectionString' target='_blank'>Link auf 'Top-Resultate'</a> text"
-              )
-              Desktop.getDesktop().browse(new URI(topResultsConnectionString))
+              SwingUtilities.invokeLater(() => {
+                Clipboard.systemClipboard.content = ClipboardContent(
+                  DataFormat.PlainText -> topResultsConnectionString,
+                  DataFormat.Html -> s"<a href='$topResultsConnectionString' target='_blank'>Link auf 'Top-Resultate'</a> text"
+                )
+                Desktop.getDesktop().browse(new URI(topResultsConnectionString))
+              })
             }
             view.setStyle("-fx-stroke-width: 2; -fx-stroke: blue")
             viewTop.setStyle("-fx-stroke-width: 2; -fx-stroke: blue")
@@ -1433,7 +1450,9 @@ object KuTuApp extends JFXApp with KutuService with JsonSupport with JwtSupport 
     if(!dir.exists()) {
       dir.mkdirs();
     }
-    Desktop.getDesktop().open(dir);
+    SwingUtilities.invokeLater(() => {
+      Desktop.getDesktop().open(dir)
+    })
   }
 
   def makeVereinLoeschenMenu(v: Verein) = makeMenuAction("Verein löschen") {(caption, action) =>

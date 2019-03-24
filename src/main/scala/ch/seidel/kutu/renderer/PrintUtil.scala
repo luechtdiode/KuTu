@@ -8,6 +8,7 @@ import java.util.concurrent.atomic.AtomicBoolean
 import ch.seidel.commons._
 import ch.seidel.kutu.KuTuApp
 import javax.imageio.ImageIO
+import javax.swing.SwingUtilities
 import org.slf4j.LoggerFactory
 import scalafx.Includes._
 import scalafx.beans.binding.Bindings
@@ -110,7 +111,9 @@ object PrintUtil {
                   os.write(toSave.getBytes("UTF-8"))
                   os.flush()
                   os.close()
-                  Desktop.getDesktop().open(file)
+                  SwingUtilities.invokeLater(() => {
+                    Desktop.getDesktop().open(file)
+                  })
                 }
                 case _ =>
               }
