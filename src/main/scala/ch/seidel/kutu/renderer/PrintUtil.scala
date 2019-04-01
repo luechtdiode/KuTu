@@ -1,12 +1,12 @@
 package ch.seidel.kutu.renderer
 
-import java.awt.{Desktop, EventQueue}
 import java.io._
 import java.util.Base64
 import java.util.concurrent.atomic.AtomicBoolean
 
 import ch.seidel.commons._
 import ch.seidel.kutu.KuTuApp
+import ch.seidel.kutu.KuTuApp.hostServices
 import javax.imageio.ImageIO
 import org.slf4j.LoggerFactory
 import scalafx.Includes._
@@ -110,9 +110,7 @@ object PrintUtil {
                   os.write(toSave.getBytes("UTF-8"))
                   os.flush()
                   os.close()
-                  EventQueue.invokeLater(() => {
-                    Desktop.getDesktop().open(file)
-                  })
+                  hostServices.showDocument(file.toURI.toString)
                 }
                 case _ =>
               }

@@ -6,6 +6,7 @@ import java.util.concurrent.{ScheduledFuture, TimeUnit}
 
 import ch.seidel.commons._
 import ch.seidel.kutu.KuTuApp
+import ch.seidel.kutu.KuTuApp.hostServices
 import ch.seidel.kutu.data.{FilterBy, _}
 import ch.seidel.kutu.domain._
 import ch.seidel.kutu.http.WebSocketClient
@@ -342,9 +343,7 @@ abstract class DefaultRanglisteTab(override val service: KutuService) extends Ta
           os.write(toSave)
           os.flush()
           os.close()
-          EventQueue.invokeLater(() => {
-            Desktop.getDesktop().open(selectedFile)
-          })
+          hostServices.showDocument(selectedFile.toURI.toString)
         }
       }
     }

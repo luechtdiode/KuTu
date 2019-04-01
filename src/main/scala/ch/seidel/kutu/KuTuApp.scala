@@ -1237,9 +1237,7 @@ object KuTuApp extends JFXApp with KutuService with JsonSupport with JwtSupport 
                 DataFormat.PlainText -> shortConnectionString,
                 DataFormat.Html -> s"<a href='$shortConnectionString' target='_blank'>Link (24h gültig) im Browser öffnen</a> text"
               )
-              EventQueue.invokeLater(() => {
-                Desktop.getDesktop().browse(new URI(shortConnectionString))
-              })
+              hostServices.showDocument(shortConnectionString)
             }
             val mailLabel = new Hyperlink("Link (24h gültig) als EMail versenden")
             mailLabel.onMouseClicked = handle {
@@ -1258,10 +1256,7 @@ object KuTuApp extends JFXApp with KutuService with JsonSupport with JwtSupport 
                  |  Sportliche Grüsse,
                  |  Wertungsrichter-Einsatzplanung
                 """.stripMargin))
-              val mailURI = new URI(mailURIStr)
-              EventQueue.invokeLater(() => {
-                Desktop.getDesktop().mail(mailURI)
-              })
+              hostServices.showDocument(mailURIStr)
             }
 
             val outLast = QRCode.from(lastResultsConnectionString).to(ImageType.PNG).withSize(500, 500).stream()
@@ -1275,9 +1270,7 @@ object KuTuApp extends JFXApp with KutuService with JsonSupport with JwtSupport 
                 DataFormat.PlainText -> lastResultsConnectionString,
                 DataFormat.Html -> s"<a href='$lastResultsConnectionString' target='_blank'>Letzte Resultate Link im Browser öffnen</a> text"
               )
-              EventQueue.invokeLater(() => {
-                Desktop.getDesktop().browse(new URI(lastResultsConnectionString))
-              })
+              hostServices.showDocument(lastResultsConnectionString)
             }
             val mailLabelLast = new Hyperlink("Letzte Resultate Link als EMail versenden")
             mailLabelLast.onMouseClicked = handle {
@@ -1292,10 +1285,7 @@ object KuTuApp extends JFXApp with KutuService with JsonSupport with JwtSupport 
                      |  Sportliche Grüsse,
                      |  Einsatzplanung
                 """.stripMargin))
-              val mailURI = new URI(mailURIStr)
-              EventQueue.invokeLater(() => {
-                Desktop.getDesktop().mail(mailURI)
-              })
+              hostServices.showDocument(mailURIStr)
             }
 
 
@@ -1310,9 +1300,7 @@ object KuTuApp extends JFXApp with KutuService with JsonSupport with JwtSupport 
                 DataFormat.PlainText -> topResultsConnectionString,
                 DataFormat.Html -> s"<a href='$topResultsConnectionString' target='_blank'>Top Resultate im Browser öffnen</a> text"
               )
-              EventQueue.invokeLater(() => {
-                Desktop.getDesktop().browse(new URI(topResultsConnectionString))
-              })
+              hostServices.showDocument(topResultsConnectionString)
             }
             val mailLabelTop = new Hyperlink("Top Resultate Link als EMail versenden")
             mailLabelTop.onMouseClicked = handle {
@@ -1327,10 +1315,7 @@ object KuTuApp extends JFXApp with KutuService with JsonSupport with JwtSupport 
                      |  Sportliche Grüsse,
                      |  Einsatzplanung
                 """.stripMargin))
-              val mailURI = new URI(mailURIStr)
-              EventQueue.invokeLater(() => {
-                Desktop.getDesktop().mail(mailURI)
-              })
+              hostServices.showDocument(mailURIStr)
             }
             val urlLastLabel = new Hyperlink("Link auf 'Letzte Resultate'")
             urlLastLabel.onMouseClicked = handle {
@@ -1338,9 +1323,7 @@ object KuTuApp extends JFXApp with KutuService with JsonSupport with JwtSupport 
                 DataFormat.PlainText -> lastResultsConnectionString,
                 DataFormat.Html -> s"<a href='$lastResultsConnectionString' target='_blank'>Link auf 'Letzte Resultate'</a> text"
               )
-              EventQueue.invokeLater(() => {
-                Desktop.getDesktop().browse(new URI(lastResultsConnectionString))
-              })
+              hostServices.showDocument(lastResultsConnectionString)
             }
             val urlTopLabel = new Hyperlink("Link auf 'Top-Resultate'")
             urlTopLabel.onMouseClicked = handle {
@@ -1348,9 +1331,7 @@ object KuTuApp extends JFXApp with KutuService with JsonSupport with JwtSupport 
                 DataFormat.PlainText -> topResultsConnectionString,
                 DataFormat.Html -> s"<a href='$topResultsConnectionString' target='_blank'>Link auf 'Top-Resultate'</a> text"
               )
-              EventQueue.invokeLater(() => {
-                Desktop.getDesktop().browse(new URI(topResultsConnectionString))
-              })
+              hostServices.showDocument(topResultsConnectionString)
             }
             view.setStyle("-fx-stroke-width: 2; -fx-stroke: blue")
             viewTop.setStyle("-fx-stroke-width: 2; -fx-stroke: blue")
@@ -1447,11 +1428,9 @@ object KuTuApp extends JFXApp with KutuService with JsonSupport with JwtSupport 
   def makeWettkampfDataDirectoryMenu(w: WettkampfView) = makeMenuAction("Wettkampf Verzeichnis öffnen") {(caption, action) =>
     val dir = new java.io.File(homedir + "/" + w.easyprint.replace(" ", "_"))
     if(!dir.exists()) {
-      dir.mkdirs();
+      dir.mkdirs()
     }
-    EventQueue.invokeLater(() => {
-      Desktop.getDesktop().open(dir)
-    })
+    hostServices.showDocument(dir.toURI.toString)
   }
 
   def makeVereinLoeschenMenu(v: Verein) = makeMenuAction("Verein löschen") {(caption, action) =>

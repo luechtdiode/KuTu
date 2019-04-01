@@ -6,6 +6,7 @@ import java.util.UUID
 import ch.seidel.commons.{AutoCommitTextFieldTableCell, DisplayablePage, PageDisplayer, TabWithService}
 import ch.seidel.kutu.Config._
 import ch.seidel.kutu.KuTuApp
+import ch.seidel.kutu.KuTuApp.hostServices
 import ch.seidel.kutu.data.ResourceExchanger
 import ch.seidel.kutu.domain.{Disziplin, GemischteRiegen, GemischterDurchgang, GetrennteDurchgaenge, KutuService, Riege, RiegeRaw, SexDivideRule, WettkampfView, str2Int}
 import ch.seidel.kutu.renderer.PrintUtil.FilenameDefault
@@ -874,9 +875,7 @@ class RiegenTab(wettkampf: WettkampfView, override val service: KutuService) ext
 			  val file = new java.io.File(dir.getPath + "/" + filename)
 
 			  ResourceExchanger.exportEinheiten(wettkampf.toWettkampf, file.getPath)
-        EventQueue.invokeLater(() => {
-          Desktop.getDesktop().open(file)
-        })
+        hostServices.showDocument(file.toURI.toString)
 		  }
     }
     
@@ -898,9 +897,7 @@ class RiegenTab(wettkampf: WettkampfView, override val service: KutuService) ext
 			  val file = new java.io.File(dir.getPath + "/" + filename)
 
 			  ResourceExchanger.exportDurchgaenge(wettkampf.toWettkampf, file.getPath)
-        EventQueue.invokeLater(() => {
-          Desktop.getDesktop().open(file)
-        })
+        hostServices.showDocument(file.toURI.toString)
 		  }
     }
     

@@ -142,10 +142,10 @@ class CompetitionCoordinatorClientActor(wettkampfUUID: String) extends Persisten
       } else if (!state.startedDurchgaenge.exists(d => encodeURIComponent(d) == encodeURIComponent(durchgang))) {
         sender ! MessageAck("Dieser Durchgang ist noch nicht für die Resultaterfassung freigegeben.")
       } else try {
-        log.info(s"received for ${athlet.vorname} ${athlet.name} (${athlet.verein}) im Pgm $programm new Wertung: D:${wertung.noteD}, E:${wertung.noteE}")
+        log.debug(s"received for ${athlet.vorname} ${athlet.name} (${athlet.verein.getOrElse("")}) im Pgm $programm new Wertung: D:${wertung.noteD}, E:${wertung.noteE}")
         val verifiedWertung = updateWertungSimple(wertung, true)
         val updated = AthletWertungUpdated(athlet, verifiedWertung, wettkampfUUID, durchgang, geraet, programm)
-        log.info(s"saved for ${athlet.vorname} ${athlet.name} (${athlet.verein}) im Pgm $programm new Wertung: D:${verifiedWertung.noteD}, E:${verifiedWertung.noteE}")
+        log.info(s"saved for ${athlet.vorname} ${athlet.name} (${athlet.verein.getOrElse("")}) im Pgm $programm new Wertung: D:${verifiedWertung.noteD}, E:${verifiedWertung.noteE}")
 
         persist(updated) { case _ => }
         handleEvent(updated)
@@ -222,7 +222,7 @@ class CompetitionCoordinatorClientActor(wettkampfUUID: String) extends Persisten
     case MessageAck(txt) => if (txt.equals("keepAlive")) handleKeepAliveAck else println(txt)
 
     case StopDevice(deviceId) =>
-      log.info(s"stopped device $deviceId")
+      log.debug(s"stopped device $deviceId")
       deviceWebsocketRefs.get(deviceId).foreach { stoppedWebsocket =>
         deviceWebsocketRefs = deviceWebsocketRefs.filter(x => x._2 != stoppedWebsocket)
         wsSend = wsSend.map { x =>
@@ -402,14 +402,14 @@ class ClientActorSupervisor extends Actor with ActorLogging {
     case CreateClient(deviceID, wettkampfUUID) =>
       val coordinator = wettkampfCoordinators.get(wettkampfUUID) match {
         case Some(coordinator) =>
-          log.info(s"Connect new client to existing coordinator. Wettkampf: $wettkampfUUID, Device: $deviceID")
+          log.debug(s"Connect new client to existing coordinator. Wettkampf: $wettkampfUUID, Device: $deviceID")
           coordinator
         case _ =>
           val coordinator = context.actorOf(
             CompetitionCoordinatorClientActor.props(wettkampfUUID), "client-" + wettkampfUUID)
           context.watch(coordinator)
           wettkampfCoordinators = wettkampfCoordinators + (wettkampfUUID -> coordinator)
-          log.info(s"Connect new client to new coordinator. Wettkampf: $wettkampfUUID, Device: $deviceID")
+          log.debug(s"Connect new client to new coordinator. Wettkampf: $wettkampfUUID, Device: $deviceID")
           coordinator
       }
       sender ! coordinator
@@ -418,7 +418,7 @@ class ClientActorSupervisor extends Actor with ActorLogging {
       wettkampfCoordinators.get(uw.action.wettkampfUUID) match {
         case Some(coordinator) => coordinator.forward(uw)
         case _ =>
-          println("Action for unknown competition: " + uw)
+          log.warning("Action for unknown competition: " + uw)
           sender ! MessageAck("Action for unknown competition: " + uw)
       }
 
@@ -451,15 +451,15 @@ object CompetitionCoordinatorClientActor extends JsonSupport with EnrichedJson {
       .watchTermination()((_, f) => f.onComplete {
         case Failure(cause) =>
           logger.error(s"WS-Server stream failed with $cause")
-        case s => // ignore regular completion
-          logger.info(s"WS-Server stream closed")
+        case _ => // ignore regular completion
+          logger.debug(s"WS-Server stream closed")
       })
 
 
   def tryMapText(text: String): KutuAppEvent = try {
     text.asType[KutuAppEvent]
   } catch {
-    case e: Exception =>
+    case _: Exception =>
       logger.debug("unparsable json mapped to MessageAck: " + text)
       MessageAck(text)
   }
@@ -469,7 +469,7 @@ object CompetitionCoordinatorClientActor extends JsonSupport with EnrichedJson {
       .mapAsync(1) {
         case TextMessage.Strict(text) => Future.successful(tryMapText(text))
         case TextMessage.Streamed(stream) => stream.runFold("")(_ + _).map(tryMapText(_))
-        case b: BinaryMessage => throw new Exception("Binary message cannot be handled")
+        case _: BinaryMessage => throw new Exception("Binary message cannot be handled")
       }.via(reportErrorsFlow)
 
   def fromCoordinatorActorToWebsocketFlow(lastSequenceId: Option[Long], source: Source[Any, ActorRef]) =
