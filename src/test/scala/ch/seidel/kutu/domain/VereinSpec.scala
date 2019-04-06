@@ -56,7 +56,9 @@ class VereinSpec extends KuTuBaseSpec {
       val idToDelete = vereinToDelete.id
       val athlet = Athlet(vereinToDelete)
       val persistedAthlet = insertAthlete(athlet)
-      val w = updateOrinsertWertung(Wertung(0, athlet.id, 1, 1, "", scala.math.BigDecimal(1.0), scala.math.BigDecimal(1.0), scala.math.BigDecimal(1.0), Some("R1"), Some("R2")))
+      val w = updateOrinsertWertung(Wertung(0, athlet.id, 1, 1, "",
+        Some(scala.math.BigDecimal(1.0)), Some(scala.math.BigDecimal(1.0)), Some(scala.math.BigDecimal(1.0)),
+        Some("R1"), Some("R2")))
       deleteVerein(idToDelete)
       val remainingId = selectVereine.sortBy(_.id).toList.last.id
       remainingId should !==(idToDelete)

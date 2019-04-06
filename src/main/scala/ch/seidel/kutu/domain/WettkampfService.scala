@@ -356,8 +356,8 @@ trait WettkampfService extends DBService
                """ >>
            sqlu"""
                    insert into wertung
-                   (athlet_Id, wettkampfdisziplin_Id, wettkampf_Id, note_d, note_e, endnote)
-                   values (${aid}, ${disciplin}, ${wettkampfId}, 0, 0, 0)
+                   (athlet_Id, wettkampfdisziplin_Id, wettkampf_Id)
+                   values (${aid}, ${disciplin}, ${wettkampfId})
               """).transactionally
         }, Duration.Inf)
       })           

@@ -109,12 +109,12 @@ export class WertungEditorPage {
   }
   
   ensureInitialValues(wertung: Wertung): Wertung {
-    if (!wertung.noteD) {
-      wertung.noteD = 0;
-    }
-    if (!wertung.noteE) {
-      wertung.noteE = 0;
-    }
+    // if (!wertung.noteD) {
+    //   wertung.noteD = 0.00;
+    // }
+    // if (!wertung.noteE) {
+    //   wertung.noteE = 0.00;
+    // }
     return wertung;
   }
 

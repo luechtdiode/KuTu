@@ -66,7 +66,7 @@ case class CompetitionState(
   }
 
   def putBestenResult(wertungContainer: WertungContainer) =
-    if (wertungContainer.wertung.endnote >= Config.bestenlisteSchwellwert) {
+    if (wertungContainer.wertung.endnote.sum >= Config.bestenlisteSchwellwert) {
       val key = wertungContainer.id + ":" + wertungContainer.wertung.wettkampfdisziplinId.toString()
       bestenResults.updated(key, wertungContainer)
     } else {

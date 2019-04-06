@@ -1,3 +1,11 @@
 page-wertung-editor {
-
+  input:invalid+span:after {
+    content: '✖';
+    padding-left: 5px;
+  }
+  
+  input:valid+span:after {
+    content: '✓';
+    padding-left: 5px;
+  }
 }

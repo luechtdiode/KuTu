@@ -84,6 +84,7 @@ object DBService {
   def updateDB(db: DatabaseDef) = {
     val sqlScripts = Seq(
       "SetJournalWAL.sql"
+      ,"OptionalWertungen.sql"
 //        ,"AlterWettkampfUUID.sql"
         )
 
@@ -190,7 +191,7 @@ object DBService {
   def installDB(db: DatabaseDef) = {
     val sqlScripts = Seq(
          "kutu-sqllite-ddl.sql"
-        ,"kutu-sqllite-initialdata.sql"        
+        ,"kutu-sqllite-initialdata.sql"
         )
 
     sqlScripts.map { filename =>

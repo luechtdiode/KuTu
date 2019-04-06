@@ -19,22 +19,23 @@ object RiegenBuilder {
           val ((disziplin, _), offset) = ss
           val tuti = kandidaten.filter{k =>
             val (einteilung, diszipline) = extractKandidatEinteilung(k)
-            (einteilung match {
-            case Some(einteilung) =>
-              einteilung.durchgang.equals(durchgang) &&
-              einteilung.start.equals(startdisziplin) &&
-              diszipline.map(_.id).contains(disziplin.map(_.id).getOrElse(0))
-            case None => false
-          })}.sortBy { x => (if (groupByProgramm) x.programm else "") + x.verein + x.jahrgang + x.geschlecht + x.name}
+            einteilung match {
+              case Some(einteilung) =>
+                einteilung.durchgang.equals(durchgang) &&
+                einteilung.start.equals(startdisziplin) &&
+                diszipline.map(_.id).contains(disziplin.map(_.id).getOrElse(0))
+              case None => false
+            }
+          }.sortBy { x => (if (groupByProgramm) x.programm else "") + x.verein + x.jahrgang + x.geschlecht + x.name}
           
           val completed = tuti.
             flatMap(k => k.wertungen).
             filter(wertung => disziplin.forall(_.equals(wertung.wettkampfdisziplin.disziplin))).
-            forall(_.endnote > 0d)
+            forall(_.endnote.nonEmpty)
             
-          if(tuti.size > 0) {
+          if(tuti.nonEmpty) {
             val mo = (tuti.size * geraete.size + offset) % tuti.size
-            (offset, disziplin, (tuti.drop(mo) ++ tuti.take(mo)), completed)
+            (offset, disziplin, tuti.drop(mo) ++ tuti.take(mo), completed)
           }
           else {
             (offset, disziplin, tuti, completed)

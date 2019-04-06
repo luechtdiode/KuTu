@@ -261,7 +261,7 @@ abstract trait WertungService extends DBService with WertungResultMapper with Di
     
     ret.map{wv =>
       cleanBestenResults
-      if(wv.endnote >= Config.bestenlisteSchwellwert) {
+      if(wv.endnote.sum >= Config.bestenlisteSchwellwert) {
         putWertungToBestenResults(wv)
       }
       val awu = AthletWertungUpdated(wv.athlet, wv.toWertung, wv.wettkampf.uuid.get, "", wv.wettkampfdisziplin.disziplin.id, wv.wettkampfdisziplin.programm.easyprint)

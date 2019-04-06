@@ -72,8 +72,8 @@ case class GroupLeaf(override val groupKey: DataObject, list: Iterable[WertungVi
   override def easyprint = groupKey.easyprint + s" $sum, $avg"
   val groups = GroupSection.groupWertungList(list).filter(_._2.nonEmpty)
 //  lazy val wkPerProgramm = list.filter(_.endnote > 0).groupBy { w => w.wettkampf.programmId }
-  lazy val anzahWettkaempfe = list.filter(_.endnote > 0).groupBy { w => w.wettkampf }.size // Anzahl Wettkämpfe
-  val withDNotes = list.filter(w => w.noteD > 0).nonEmpty
+  lazy val anzahWettkaempfe = list.filter(_.endnote.nonEmpty).groupBy { w => w.wettkampf }.size // Anzahl Wettkämpfe
+  val withDNotes = list.filter(w => w.noteD.nonEmpty).nonEmpty
   val withENotes = list.filter(w => w.wettkampf.programmId != 1).nonEmpty
   val isDivided = !(withDNotes || groups.isEmpty)
   val divider = if(!isDivided) 1 else groups.head._2.size
@@ -150,7 +150,7 @@ case class GroupLeaf(override val groupKey: DataObject, list: Iterable[WertungVi
                 grKey.easyprint
               }
             , prefWidth = 240, styleClass = Seq("hintdata"), cols = {
-              val withDNotes = list.exists(w => w.noteD > 0)
+              val withDNotes = list.exists(w => w.noteD.sum > 0)
               if(withDNotes) {
                 Seq(clDnote, clEnote, clEndnote, clRang)
               }
@@ -294,7 +294,7 @@ case class GroupLeaf(override val groupKey: DataObject, list: Iterable[WertungVi
       GroupSection.mapAvgRang(grp.map { d => (d._1, d._2._1, d._2._2) }).map(r => (r.groupKey.asInstanceOf[A] -> r)).toMap
     }
     def mapToAvgRowSummary(athlWertungen: Iterable[WertungView]): (Resultat, Resultat, Iterable[(Disziplin, Long, Resultat, Resultat, Option[Int], Option[BigDecimal])], Iterable[(ProgrammView, Resultat, Resultat, Option[Int], Option[BigDecimal])], Resultat) = {
-      val wks = athlWertungen.filter(_.endnote > 0).groupBy { w => w.wettkampf }
+      val wks = athlWertungen.filter(_.endnote.nonEmpty).groupBy { w => w.wettkampf }
       val wksums = wks.map {wk => wk._2.map(w => w.resultat).reduce(_+_)}
       val rsum = if(wksums.nonEmpty) wksums.reduce(_+_) else Resultat(0,0,0)
       lazy val wksENOrdered = wks.map(wk => wk._1 -> wk._2.toList.sortBy(w => w.resultat.endnote))

@@ -262,9 +262,9 @@ object ResourceExchanger extends KutuService with RiegenBuilder {
           case Some(w) => w.uuid.getOrElse("")
           case None => ""
         },
-        noteD = fields(wertungenHeader("noteD")),
-        noteE = fields(wertungenHeader("noteE")),
-        endnote = fields(wertungenHeader("endnote")),
+        noteD = fields(wertungenHeader("noteD")) match {case "" => None case value => Some(value)},
+        noteE = fields(wertungenHeader("noteE")) match {case "" => None case value => Some(value)},
+        endnote = fields(wertungenHeader("endnote")) match {case "" => None case value => Some(value)},
         riege = if(fields(wertungenHeader("riege")).length > 0) Some(fields(wertungenHeader("riege"))) else None,
         riege2 = if(fields(wertungenHeader("riege2")).length > 0) Some(fields(wertungenHeader("riege2"))) else None
       )
@@ -278,11 +278,9 @@ object ResourceExchanger extends KutuService with RiegenBuilder {
       val wkDisziplines = wkdisziplines(wettkampf.id)
       updateOrinsertWertungenZuWettkampf(wettkampf, wertungen.groupBy(w => w.athletId).flatMap { aw =>
         val (athletid, wertungen) = aw
-        val programm = wkDisziplines(wertungen.head.wettkampfdisziplinId).programmId
         val programms = wertungen.map(wertung => wkDisziplines(wertung.wettkampfdisziplinId).programmId).toSet
 
         val requiredDisciplines = wkdisziplines(wettkampf.id).filter(wd => programms.contains(wd._2.programmId))
-        lazy val empty = wertungen.forall { w => w.endnote < 1 }
         val filtered = wertungen.filter(w => requiredDisciplines.contains(w.wettkampfdisziplinId))
         wertungen.filter(!filtered.contains(_)).foreach(w => logger.debug("WARNING: No matching Disciplin - " + w))
   
@@ -298,9 +296,9 @@ object ResourceExchanger extends KutuService with RiegenBuilder {
               case Some(w) => w.uuid.getOrElse("")
               case None => ""
             },
-            noteD = 0d,
-            noteE = 0d,
-            endnote = 0d,
+            noteD = None,
+            noteE = None,
+            endnote = None,
             riege = None,
             riege2 = None
           )      

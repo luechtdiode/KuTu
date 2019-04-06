@@ -12,7 +12,7 @@ class SimulationBottmingenD1 extends Simulation {
   //  val jwtToken = "eyJhbGciOiJIUzUxMiIsImN0eSI6ImFwcGxpY2F0aW9uL2pzb24iLCJ0eXAiOiJKV1QifQ.eyJ1c2VyIjoiOTkxMTVkZmItODE5Yi00OGFhLWFkYTUtOTkzN2I4MmVlYmQ0IiwiZXhwaXJlZEF0S2V5IjoxNTQyMDQ4NzY2NjM2fQ.8XYEceYnUIAQVHZVZKP6aF-_7hRNjB7jNFzIGq52CUpmVeBqHmi16W28XQci4tj-IkZmHDqFVzSaW8P3Q3W_vA"
 
   //kutuapp.shrevic.net
-  val jwtToken = "eyJhbGciOiJIUzUxMiIsImN0eSI6ImFwcGxpY2F0aW9uL2pzb24iLCJ0eXAiOiJKV1QifQ.eyJ1c2VyIjoiOTkxMTVkZmItODE5Yi00OGFhLWFkYTUtOTkzN2I4MmVlYmQ0IiwiZXhwaXJlZEF0S2V5IjoxNTQ1MjM4MTk3NDE3fQ.7I2-iMDWX_oYoyk7jt1UYpFJzQy77UVsTQFr0paGpXPyLW9oej0V0Dl88glCBB-s6BHKx7yfXluBHkUNnF-g7w"
+  val jwtToken = "eyJhbGciOiJIUzUxMiIsImN0eSI6ImFwcGxpY2F0aW9uL2pzb24iLCJ0eXAiOiJKV1QifQ.eyJ1c2VyIjoiNzJmODI0MjMtNjVkYS00NWM5LTk5YTctYjNmMTk3MTJmNjI4IiwiZXhwaXJlZEF0S2V5IjoxNTUyMTQ2MTMxMzA2fQ.sqDZrLmjfbZraXQ-Wkc_Kd79xqEJQlQBnMEoitjmEx-pHE9V8jFbYtaMtUlt2d9aADwmMxY9VqrnLVmFlo3LBg"
 
   val competition = "72f82423-65da-45c9-99a7-b3f19712f628"
   val originBaseUrl = "https://kutuapp.sharevic.net" //,"http://pluto:5757"//, "https://kutuapp.sharevic.net" //,"https://kutuapp.sharevic.net"//,"http://mws-01:5757"//,
@@ -148,7 +148,7 @@ class SimulationBottmingenD1 extends Simulation {
         //      rampUsers(100) during (15 seconds),
         //      rampUsersPerSec(2) to 8 during (5 minutes) randomized,
 //                constantConcurrentUsers(12) during (60 minutes),
-        rampConcurrentUsers(8) to 110 during (20 minutes)
+        rampConcurrentUsers(4) to 110 during (20 minutes)
 //        rampConcurrentUsers(8) to 32 during (10 hours)
         //constantConcurrentUsers(10) during (4 hours)
         //        constantConcurrentUsers(8) during (50 minutes),

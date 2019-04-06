@@ -31,7 +31,7 @@ case class DurchgangState(wettkampfUUID: String, name: String, started: Long, co
   def start(time: Long = 0) = DurchgangState(wettkampfUUID, name, if (started == 0) if (time == 0) System.currentTimeMillis() else time else started, complete, 0, geraeteRiegen)
   def finish(time: Long = 0) = DurchgangState(wettkampfUUID, name, started, complete, if (time == 0) System.currentTimeMillis() else time, geraeteRiegen)
   def update(newGeraeteRiegen: List[GeraeteRiege]) = {
-    if (newGeraeteRiegen.forall(gr => geraeteRiegen.exists(egr => egr == gr))) this 
+    if (newGeraeteRiegen.forall(gr => geraeteRiegen.contains(gr))) this
     else DurchgangState(wettkampfUUID, name, started, complete, finished, newGeraeteRiegen)
   }
   def ~ (other: DurchgangState) = name == other.name && geraeteRiegen != other.geraeteRiegen
@@ -41,16 +41,16 @@ case class DurchgangState(wettkampfUUID: String, name: String, started: Long, co
   lazy val statsBase = geraeteRiegen.groupBy(_.disziplin).map(_._2.map(_.kandidaten.size).sum)
   lazy val statsCompletedBase = geraeteRiegen.groupBy(gr => gr.disziplin).map{gr =>  
     val (disziplin, grd) = gr
-    def hasWertungInDisciplin(wertungen: Seq[WertungView]) = wertungen.filter(w => disziplin.exists(d => d ==  w.wettkampfdisziplin.disziplin)).exists(_.endnote > 0)
+    def hasWertungInDisciplin(wertungen: Seq[WertungView]) = wertungen.filter(w => disziplin.contains(w.wettkampfdisziplin.disziplin)).exists(_.endnote.nonEmpty)
     
     val grdStats = grd.groupBy(grds => grds.halt).map{grdsh => 
         val totalCnt = grdsh._2.map(_.kandidaten.size).sum
-        val completedCnt = grdsh._2.map(_.kandidaten.filter(k => hasWertungInDisciplin(k.wertungen)).size).sum
+        val completedCnt = grdsh._2.map(_.kandidaten.count(k => hasWertungInDisciplin(k.wertungen))).sum
         (grdsh._1, 100 * completedCnt / totalCnt, completedCnt, totalCnt)
       }.toList.sortBy(grdsh => grdsh._1)
     
     val totalCnt = gr._2.map(_.kandidaten.size).sum
-    val completedCnt = gr._2.map(_.kandidaten.filter(k => hasWertungInDisciplin(k.wertungen)).size).sum    
+    val completedCnt = gr._2.map(_.kandidaten.count(k => hasWertungInDisciplin(k.wertungen))).sum
     // (geraet, complete%, completeCnt, totalCnt, haltStats(halt, complete%, completeCnt, totalCnt))
     (disziplin, 100 * completedCnt / gr._2.map(_.kandidaten.size).sum, completedCnt, totalCnt, grdStats) 
   }  

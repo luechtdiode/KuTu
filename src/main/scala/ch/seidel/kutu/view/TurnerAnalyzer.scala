@@ -156,7 +156,7 @@ class TurnerAnalyzer(val verein: Option[Verein], val athlet: Option[Athlet], val
     val qry = service.selectWertungen(vereinId = verein.map(_.id), athletId = athlet.map(_.id))
     val charts = new VBox
     for {
-      (programm, pwertungen) <- qry.filter(x => x.endnote > 0).groupBy { x => x.wettkampfdisziplin.programm.wettkampfprogramm }.toList.sortBy(x => x._1.ord)
+      (programm, pwertungen) <- qry.filter(x => x.endnote.nonEmpty).groupBy { x => x.wettkampfdisziplin.programm.wettkampfprogramm }.toList.sortBy(x => x._1.ord)
     }
     {
       var hastoadd = false
@@ -181,7 +181,7 @@ class TurnerAnalyzer(val verein: Option[Verein], val athlet: Option[Athlet], val
         legendVisible = true
         alternativeRowFillVisible = true
       }
-      val withDNotes = pwg.map(x => x._2).flatMap(x => x.filter(x => x.noteD > 0).map(_.wettkampfdisziplin.id)).toSet.size > 0
+      val withDNotes = pwg.map(x => x._2).flatMap(x => x.filter(x => x.noteD.sum > 0).map(_.wettkampfdisziplin.id)).toSet.nonEmpty
       val elemente = athlet match {
         case None => pwg.map(x => x._2).flatMap(x => x.map(_.athlet.id)).toSet.size
         case _    => pwg.map(x => x._2).flatMap(x => x.map(_.wettkampfdisziplin.id)).toSet.size * (if(withDNotes) 2 else 1)
@@ -194,7 +194,10 @@ class TurnerAnalyzer(val verein: Option[Verein], val athlet: Option[Athlet], val
 //        logger.debug(s"für Programm ${programm.easyprint} und Wettkampf ${wettkampf.easyprint}")
         val sumPerDivider = awertungen.
         groupBy { x => athlet match {case None => x.athlet case _ => x.wettkampfdisziplin}}.
-        map(x => (x._1.easyprint.take(30), x._1, x._2.map { x => x.endnote }.sum, x._2.map { x => x.noteD }.sum)).
+        map{x =>
+          val resultate = x._2.map(_.resultat)
+          (x._1.easyprint.take(30), x._1, resultate.map(x => x.endnote).sum, resultate.map(x => x.noteD).sum)
+        }.
         filter(x => x._3 > 1).
         toSeq.sortBy(x => x._3)
         if(sumPerDivider.nonEmpty) {

@@ -381,6 +381,11 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
 
     case class DoubleConverter(notenModus: NotenModus) extends DoubleStringConverter {
       override def toString(value: Double) = notenModus.toString(value)
+
+      override def fromString(var1: String): Double = if (var1 == null || var1.trim.isEmpty) Double.NaN
+      else {
+        super.fromString(var1)
+      }
     }
     
     def wertungenCols = if (wertungen.nonEmpty) {
@@ -396,8 +401,16 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
           visible = wertung.init.wettkampfdisziplin.notenSpez.isDNoteUsed
           onEditCommit = (evt: CellEditEvent[IndexedSeq[WertungEditor], Double]) => {
             val disciplin = evt.rowValue(index)
-            disciplin.noteD.value = evt.newValue
-            disciplin.endnote.value = wertung.init.wettkampfdisziplin.notenSpez.calcEndnote(disciplin.noteD.value, disciplin.noteE.value)
+            if (evt.newValue.toString == "NaN") {
+              disciplin.noteD.value = evt.newValue
+              disciplin.noteE.value = evt.newValue
+              disciplin.endnote.value = evt.newValue
+            } else {
+              val (d, e) = wertung.init.wettkampfdisziplin.notenSpez.validated(disciplin.toOption(evt.newValue).getOrElse(BigDecimal(0)).doubleValue(),
+                disciplin.toOption(disciplin.noteE.value).getOrElse(BigDecimal(0)).doubleValue())
+              disciplin.noteD.value = d
+              disciplin.endnote.value = wertung.init.wettkampfdisziplin.notenSpez.calcEndnote(disciplin.noteD.value, disciplin.noteE.value)
+            }
             if (disciplin.isDirty) {
               service.updateWertung(disciplin.commit)
             }
@@ -418,8 +431,16 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
 
           onEditCommit = (evt: CellEditEvent[IndexedSeq[WertungEditor], Double]) => {
             val disciplin = evt.rowValue(index)
-            disciplin.noteE.value = evt.newValue
-            disciplin.endnote.value = wertung.init.wettkampfdisziplin.notenSpez.calcEndnote(disciplin.noteD.value, disciplin.noteE.value)
+            if (evt.newValue.toString == "NaN") {
+              disciplin.noteD.value = evt.newValue
+              disciplin.noteE.value = evt.newValue
+              disciplin.endnote.value = evt.newValue
+            } else {
+              val (d, e) = wertung.init.wettkampfdisziplin.notenSpez.validated(disciplin.toOption(disciplin.noteD.value).getOrElse(BigDecimal(0)).doubleValue(),
+                disciplin.toOption(evt.newValue).getOrElse(BigDecimal(0)).doubleValue())
+              disciplin.noteE.value = e
+              disciplin.endnote.value = wertung.init.wettkampfdisziplin.notenSpez.calcEndnote(disciplin.noteD.value, disciplin.noteE.value)
+            }
             if (disciplin.isDirty) {
               service.updateWertung(disciplin.commit)
             }
@@ -675,7 +696,12 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
     val sumCol: List[jfxsc.TableColumn[IndexedSeq[WertungEditor], _]] = List(
       new WKTableColumn[String](-1) {
         text = "Punkte"
-        cellValueFactory = { x => new ReadOnlyStringWrapper(x.value, "punkte", { f"${x.value.map(w => w.endnote.value.toDouble).sum}%3.3f" })}
+        cellValueFactory = { x => new ReadOnlyStringWrapper(x.value, "punkte", {
+          f"${x.value
+            .filter(_.init.endnote.nonEmpty)
+            .map(w => w.init.endnote.get).sum
+          }%3.3f"
+        })}
         prefWidth = 100
         delegate.setReorderable(false)
         styleClass += "table-cell-with-value"
@@ -931,7 +957,8 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
             w
           }
         }
-        if (index > -1 && wkModel(index).map(_.init.endnote).sum != newWertungen.map(_.init.endnote).sum) {
+        if (index > -1 && wkModel(index).map(_.init.endnote.getOrElse(BigDecimal(0))).sum !=
+          newWertungen.map(_.init.endnote.getOrElse(BigDecimal(0))).sum) {
           isFilterRefreshing = true
           val selected = wkview.selectionModel.value.selectedCells
           wkModel.update(index, newWertungen)
@@ -1631,9 +1658,9 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
               val rowIndex = wkModel.indexOf(selected)
               if(rowIndex > -1) {
                 for (disciplin <- selected) {
-                  disciplin.noteD.value = 0
-                  disciplin.noteE.value = 0
-                  disciplin.endnote.value = 0
+                  disciplin.noteD.value = Double.NaN
+                  disciplin.noteE.value = Double.NaN
+                  disciplin.endnote.value = Double.NaN
                   if (disciplin.isDirty) {
                     wkModel.update(rowIndex, selected.updated(index, WertungEditor(service.updateWertung(disciplin.commit))))
                     wkview.requestFocus()

@@ -371,21 +371,21 @@ package object domain {
     lazy val formattedEnd = if(endnote > 0) f"${endnote}%6.2f" else ""
     override def easyprint = f"${formattedD}%6s${formattedE}%6s${formattedEnd}%6s"
   }
-  case class Wertung(id: Long, athletId: Long, wettkampfdisziplinId: Long, wettkampfId: Long, wettkampfUUID: String, noteD: scala.math.BigDecimal, noteE: scala.math.BigDecimal, endnote: scala.math.BigDecimal, riege: Option[String], riege2: Option[String]) extends DataObject {
-    lazy val resultat = Resultat(noteD, noteE, endnote)
+  case class Wertung(id: Long, athletId: Long, wettkampfdisziplinId: Long, wettkampfId: Long, wettkampfUUID: String, noteD: Option[scala.math.BigDecimal], noteE: Option[scala.math.BigDecimal], endnote: Option[scala.math.BigDecimal], riege: Option[String], riege2: Option[String]) extends DataObject {
+    lazy val resultat = Resultat(noteD.getOrElse(0), noteE.getOrElse(0), endnote.getOrElse(0))
     def updatedWertung(valuesFrom: Wertung) = copy(noteD = valuesFrom.noteD, noteE = valuesFrom.noteE, endnote = valuesFrom.endnote)
   }
-  case class WertungView(id: Long, athlet: AthletView, wettkampfdisziplin: WettkampfdisziplinView, wettkampf: Wettkampf, noteD: scala.math.BigDecimal, noteE: scala.math.BigDecimal, endnote: scala.math.BigDecimal, riege: Option[String], riege2: Option[String]) extends DataObject {
-    lazy val resultat = Resultat(noteD, noteE, endnote)
+  case class WertungView(id: Long, athlet: AthletView, wettkampfdisziplin: WettkampfdisziplinView, wettkampf: Wettkampf, noteD: Option[scala.math.BigDecimal], noteE: Option[scala.math.BigDecimal], endnote: Option[scala.math.BigDecimal], riege: Option[String], riege2: Option[String]) extends DataObject {
+    lazy val resultat = Resultat(noteD.getOrElse(0), noteE.getOrElse(0), endnote.getOrElse(0))
     def + (r: Resultat) = resultat + r
     def toWertung = Wertung(id, athlet.id, wettkampfdisziplin.id, wettkampf.id, wettkampf.uuid.getOrElse(""), noteD, noteE, endnote, riege, riege2)
     def toWertung(riege: String) = Wertung(id, athlet.id, wettkampfdisziplin.id, wettkampf.id, wettkampf.uuid.getOrElse(""), noteD, noteE, endnote, Some(riege), riege2)
     def updatedWertung(valuesFrom: Wertung) = copy(noteD = valuesFrom.noteD, noteE = valuesFrom.noteE, endnote = valuesFrom.endnote)
     def showInScoreList = {
-      (endnote > 0) || (athlet.geschlecht match {
+      (endnote.isDefined) || (athlet.geschlecht match {
         case "M" => wettkampfdisziplin.masculin > 0
         case "W" => wettkampfdisziplin.feminim > 0
-        case _ => endnote > 0
+        case _ => endnote.sum > 0
       })
     }
     override def easyprint = {
@@ -406,10 +406,15 @@ package object domain {
     def validated(dnote: Double, enote: Double): (Double, Double)
     def calcEndnote(dnote: Double, enote: Double): Double
     def verifiedAndCalculatedWertung(wertung: Wertung) = {
-      val (d, e) = validated(wertung.noteD.doubleValue(), wertung.noteE.doubleValue())
-      wertung.copy(noteD = d, noteE = e, endnote = calcEndnote(d, e))
+      if (wertung.noteE.isEmpty) {
+        wertung.copy(noteD = None, noteE = None, endnote = None)
+      } else {
+        val (d, e) = validated(wertung.noteD.getOrElse(BigDecimal(0)).doubleValue(), wertung.noteE.getOrElse(BigDecimal(0)).doubleValue())
+        wertung.copy(noteD = Some(d), noteE = Some(e), endnote = Some(calcEndnote(d, e)))
+      }
     }
-    def toString(value: Double): String = value
+    def toString(value: Double): String = if (value.toString == Double.NaN.toString) ""
+    else value
     /*override*/ def shouldSuggest(item: String, query: String): Boolean = false
   }
   case class Athletiktest(punktemapping: Map[String,Double], punktgewicht: Double) extends NotenModus {
