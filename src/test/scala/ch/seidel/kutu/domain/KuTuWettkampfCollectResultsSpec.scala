@@ -145,7 +145,8 @@ class KuTuWettkampfCollectResultsSpec extends KuTuBaseSpec {
             k.wertungen.map{ wertung => 
               UpdateAthletWertung(
                 loadAthleteView(k.id), 
-                k.wertungen.filter(w => w.id == wertung.id).map(_.toWertung.updatedWertung(wertung.copy(noteE = Some(scala.math.BigDecimal(8.5))).toWertung)).head,
+                k.wertungen.filter(w => w.id == wertung.id).map(_.toWertung.updatedWertung(
+                  wertung.copy(noteD = Some(BigDecimal(0)), noteE = Some(scala.math.BigDecimal(8.5)), endnote = Some(scala.math.BigDecimal(8.5))).toWertung)).head,
                 testwettkampf.uuid.get, 
                 gr.durchgang.get, 
                 wertung.wettkampfdisziplin.disziplin.id, 

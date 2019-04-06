@@ -272,8 +272,9 @@ abstract trait WertungService extends DBService with WertungResultMapper with Di
   
   @throws(classOf[Exception]) // called from mobile-client via coordinator-actor
   def updateWertungSimple(w: Wertung, putToBestenresults: Boolean = false): Wertung = {
-    val wv = readWettkampfDisziplinView(w.wettkampfdisziplinId).notenSpez.verifiedAndCalculatedWertung(w)
-    if (wv.noteD != w.noteD) {
+    val notenspez = readWettkampfDisziplinView(w.wettkampfdisziplinId).notenSpez
+    val wv = notenspez.verifiedAndCalculatedWertung(w)
+    if (notenspez.isDNoteUsed && wv.noteD != w.noteD) {
       throw new IllegalArgumentException(s"Erfasster D-Wert: ${w.noteD}, erlaubter D-Wert: ${wv.noteD}")
     }
     if (wv.noteE != w.noteE) {
