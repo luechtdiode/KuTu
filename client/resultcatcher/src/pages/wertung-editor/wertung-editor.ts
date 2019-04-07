@@ -32,13 +32,7 @@ export class WertungEditorPage {
       this.step = navParams.get('step');
       this.geraetId = navParams.get('geraetId');
       
-      this.itemOriginal = navParams.get('item');
-      this.item = Object.assign({}, this.itemOriginal);
-      this.wertung = Object.assign({
-        noteD: undefined,
-        noteE: undefined,
-        endnote: undefined
-      }, this.item.wertung);
+      this.updateUI(navParams.get('item'));
       this.isDNoteUsed = this.item.isDNoteUsed;
 
   }
@@ -132,9 +126,7 @@ export class WertungEditorPage {
       this.updateUI(wc);
       this.navCtrl.pop();
     }, (err) => {
-      this.waiting = false;
-      this.item = Object.assign({}, this.itemOriginal);
-      this.wertung = Object.assign({}, this.itemOriginal.wertung);
+      this.updateUI(this.itemOriginal);
       console.log(err);      
     });
   }
@@ -144,9 +136,7 @@ export class WertungEditorPage {
     this.backendService.updateWertung(this.durchgang, this.step, this.geraetId, this.ensureInitialValues(form.value)).subscribe((wc) => {
         this.updateUI(wc);
     }, (err) => {
-      this.waiting = false;
-      this.item = Object.assign({}, this.itemOriginal);
-      this.wertung = Object.assign({}, this.itemOriginal.wertung);
+      this.updateUI(this.itemOriginal);
       console.log(err);      
     });
   }
@@ -166,9 +156,7 @@ export class WertungEditorPage {
       form.resetForm();
       this.updateUI(this.backendService.wertungen[nextItemIndex]);
     }, (err) => {
-      this.waiting = false;
-      this.item = Object.assign({}, this.itemOriginal);
-      this.wertung = Object.assign({}, this.itemOriginal.wertung);
+      this.updateUI(this.itemOriginal);
       console.log(err);      
     });
   }
