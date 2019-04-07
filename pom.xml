@@ -393,9 +393,10 @@
 							<goal>shade</goal>
 						</goals>
 						<configuration>
-							<shadedArtifactAttached>true</shadedArtifactAttached>
-							<shadedClassifierName>allinone</shadedClassifierName>
+							<shadedArtifactAttached>false</shadedArtifactAttached>
+							<!--<shadedClassifierName>allinone</shadedClassifierName>-->
 							<!--<minimizeJar>true</minimizeJar>-->
+							<finalName>${project.artifactId}-${app.version}-app</finalName>
 							<artifactSet>
 								<includes>
 									<include>*:*</include>
@@ -504,7 +505,7 @@
 								<argument>--input</argument>
 								<argument>${project.build.directory}</argument>
 								<argument>--files</argument>
-								<argument>${project.artifactId}-${project.version}-allinone.jar</argument>
+								<argument>${project.artifactId}-${app.version}-app.jar</argument>
 								<argument>--output</argument>
 								<argument>${project.build.directory}/${OS}</argument>
 								<argument>--name</argument>
@@ -512,7 +513,7 @@
 								<argument>--version</argument>
 								<argument>${app.version}</argument>
 								<argument>--main-jar</argument>
-								<argument>${project.artifactId}-${project.version}.jar</argument>
+								<argument>${project.artifactId}-${app.version}-app.jar</argument>
 								<argument>--icon</argument>
 								<argument>${project.build.sourceDirectory}/../resources/images/app-logo.ico</argument>
 								<argument>--category</argument>
