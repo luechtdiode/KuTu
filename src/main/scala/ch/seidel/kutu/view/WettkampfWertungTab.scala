@@ -323,7 +323,6 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
     var lazyEditorPaneUpdater: Map[String, ScheduledFuture[_]] = Map.empty
    
     def submitLazy(name: String, task: ()=>Unit, delay: Long) {
-      println("submitting " + name)
       lazyEditorPaneUpdater.get(name).foreach(_.cancel(true))
       val ft = KuTuApp.lazyExecutor.schedule(new Runnable() { def run = { 
         Platform.runLater{task()}
@@ -335,7 +334,9 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
     def updateEditorPane(focusHolder: Option[Node] = None) {
       submitLazy("updateEditorPane", () => {
         if(selected.value) {
-          println("updating EditorPane ")
+          if (logger.isDebugEnabled()) {
+            logger.debug("updating EditorPane ")
+          }
     		  editorPane.adjust
           val model = cmbDurchgangFilter.items.getValue
   		    val raw = emptyRiege +: rebuildDurchgangFilterList
@@ -1693,15 +1694,22 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
           }
         }, new Button("OK") {
           onAction = (event: ActionEvent) => {
-            for ((wertungen, rowIndex) <- wkModel.zipWithIndex) {
-              for ((disciplin, index) <- wertungen.zipWithIndex) {
-                disciplin.noteD.value = Double.NaN
-                disciplin.noteE.value = Double.NaN
-                disciplin.endnote.value = Double.NaN
-                if (disciplin.isDirty) {
-                  wkModel.update(rowIndex, wertungen.updated(index, WertungEditor(service.updateWertung(disciplin.commit))))
+            isFilterRefreshing = true
+            try {
+              for ((wertungen, rowIndex) <- wkModel.zipWithIndex) {
+                for ((disciplin, index) <- wertungen.zipWithIndex) {
+                  if (durchgangFilter == emptyRiege
+                    || durchgangFilter.disziplin.isEmpty
+                    || index == disziplinlist.indexOf(durchgangFilter.disziplin.get)) {
+                    disciplin.clearInput()
+                    if (disciplin.isDirty) {
+                      wkModel.update(rowIndex, wertungen.updated(index, WertungEditor(service.updateWertung(disciplin.commit))))
+                    }
+                  }
                 }
               }
+            } finally {
+              isFilterRefreshing = false
             }
             wkview.requestFocus()
           }

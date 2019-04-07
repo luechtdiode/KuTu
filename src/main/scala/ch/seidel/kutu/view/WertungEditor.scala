@@ -29,6 +29,12 @@ case class WertungEditor(init: WertungView) {
     }
   }
 
+  def clearInput(): Unit = {
+    noteD.value = Double.NaN
+    noteE.value = Double.NaN
+    endnote.value = Double.NaN
+  }
+
   def isDirty =
     changed(noteD.value, init.noteD) || changed(noteE.value, init.noteE) || changed(endnote.value, init.endnote)
 

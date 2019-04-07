@@ -1,6 +1,5 @@
 package ch.seidel.kutu.view
 
-import java.awt.{Desktop, EventQueue}
 import java.io._
 import java.util.concurrent.{ScheduledFuture, TimeUnit}
 
@@ -42,7 +41,6 @@ abstract class DefaultRanglisteTab(override val service: KutuService) extends Ta
   var lazyPaneUpdater: Map[String, ScheduledFuture[_]] = Map.empty
  
   def submitLazy(name: String, task: ()=>Unit, delay: Long) {
-    println("submitting " + name)
     lazyPaneUpdater.get(name).foreach(_.cancel(true))
     val ft = KuTuApp.lazyExecutor.schedule(new Runnable() { def run = { 
       Platform.runLater{task()}
@@ -302,11 +300,15 @@ abstract class DefaultRanglisteTab(override val service: KutuService) extends Ta
       if(!restoring)
         refreshRangliste(buildGrouper)
     }
-    println("subscribing for refreshing from websocket")
+    if (logger.isDebugEnabled()) {
+      logger.debug("subscribing for refreshing from websocket")
+    }
     subscription = Some(WebSocketClient.modelWettkampfWertungChanged.onChange { (_, _, newItem) =>
       if (selected.value) {
         submitLazy("refreshRangliste", () => if (selected.value) {
-            println("refreshing rangliste from websocket", newItem)
+            if (logger.isDebugEnabled()) {
+              logger.debug("refreshing rangliste from websocket", newItem)
+            }
             refreshRangliste(buildGrouper)
           }, 5
         )
