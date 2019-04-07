@@ -275,10 +275,10 @@ abstract trait WertungService extends DBService with WertungResultMapper with Di
     val notenspez = readWettkampfDisziplinView(w.wettkampfdisziplinId).notenSpez
     val wv = notenspez.verifiedAndCalculatedWertung(w)
     if (notenspez.isDNoteUsed && wv.noteD != w.noteD) {
-      throw new IllegalArgumentException(s"Erfasster D-Wert: ${w.noteD}, erlaubter D-Wert: ${wv.noteD}")
+      throw new IllegalArgumentException(s"Erfasster D-Wert: ${w.noteDasText}, erlaubter D-Wert: ${wv.noteDasText}")
     }
     if (wv.noteE != w.noteE) {
-      throw new IllegalArgumentException(s"Erfasster E-Wert: ${w.noteE}, erlaubter E-Wert: ${wv.noteE}")
+      throw new IllegalArgumentException(s"Erfasster E-Wert: ${w.noteEasText}, erlaubter E-Wert: ${wv.noteEasText}")
     }
     Await.result(database.run(DBIO.sequence(Seq(sqlu"""
                   UPDATE wertung

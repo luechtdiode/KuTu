@@ -8,6 +8,7 @@ import akka.persistence.{PersistentActor, SnapshotOffer, SnapshotSelectionCriter
 import akka.stream.OverflowStrategy
 import akka.stream.scaladsl.{Flow, Sink, Source}
 import akka.util.Timeout
+import ch.seidel.kutu.Config
 import ch.seidel.kutu.akka.CompetitionCoordinatorClientActor.PublishAction
 import ch.seidel.kutu.data.ResourceExchanger
 import ch.seidel.kutu.domain._
@@ -68,7 +69,7 @@ class CompetitionCoordinatorClientActor(wettkampfUUID: String) extends Persisten
     self ! KeepAlive
   }
 
-  override def persistenceId = wettkampfUUID
+  override def persistenceId = s"$wettkampfUUID/${Config.appFullVersion}"
 
   override val supervisorStrategy = OneForOneStrategy() {
     case NonFatal(e) =>
@@ -77,7 +78,7 @@ class CompetitionCoordinatorClientActor(wettkampfUUID: String) extends Persisten
   }
 
   override def preStart(): Unit = {
-    log.info("Starting CompetitionCoordinatorClientActor")
+    log.info(s"Starting CompetitionCoordinatorClientActor for $persistenceId")
   }
 
   override def postStop: Unit = {
@@ -86,6 +87,10 @@ class CompetitionCoordinatorClientActor(wettkampfUUID: String) extends Persisten
     wsSend.values.flatten.foreach(context.stop)
   }
 
+  override def onRecoveryFailure(cause: Throwable, event: Option[Any]): Unit = {
+    log.info(event.toString)
+    super.onRecoveryFailure(cause, event)
+  }
   val receiveRecover: Receive = {
     case evt: KutuAppEvent => handleEvent(evt, true)
     case SnapshotOffer(_, snapshot: CompetitionState) => state = snapshot

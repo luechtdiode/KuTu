@@ -13,7 +13,7 @@
 </ion-header>
 
 <ion-content>
-  <form #wertungsform="ngForm" (ngSubmit)="saveNext(wertung)">
+  <form #wertungsform="ngForm" (ngSubmit)="saveNext(wertungsform)">
     <ion-list>
       <ion-item>
           <ion-title>{{item.vorname + ' ' + item.name}}</ion-title>
@@ -21,22 +21,22 @@
       </ion-item>
       <ion-item [hidden]="!isDNoteUsed">
         <ion-label>D-Note</ion-label>
-        <ion-input autofocus #dnote [readonly]='!editable()' type="number" [disabled]="waiting" [(ngModel)]='wertung.noteD' name="noteD"></ion-input>
+        <ion-input autofocus #dnote [readonly]='!editable()' type="number" [disabled]="waiting" [ngModel]='wertung.noteD' name="noteD"></ion-input>
       </ion-item>
       <ion-item>
         <ion-label>E-Note</ion-label>
-        <ion-input autofocus #enote [readonly]='!editable()' type="number"  [disabled]="waiting" [(ngModel)]='wertung.noteE' name="noteE"
+        <ion-input autofocus #enote [readonly]='!editable()' type="number"  [disabled]="waiting" [ngModel]='wertung.noteE' name="noteE"
         step="0.01" min="0" max="100" required></ion-input>
       </ion-item>
       <ion-item>
         <ion-label>Endnote</ion-label>
-        <ion-input [value]='wertung.endnote' readonly></ion-input>
+        <ion-input #endnote [ngModel]='wertung.endnote' readonly name="endnote"></ion-input>
       </ion-item>
     </ion-list>
     <ion-list>
       <button type="submit" #btnSaveNext *ngIf='editable()' [disabled]="waiting || !wertungsform.valid" ion-button large block icon-left color="favorite">
         <ion-icon name="arrow-dropright-circle"></ion-icon>Speichern & Weiter</button>
-      <button *ngIf='editable()' [disabled]="waiting || !wertungsform.valid" ion-button large block icon-left color="secondary" (click)='saveClose(wertung)'>
+      <button *ngIf='editable()' [disabled]="waiting || !wertungsform.valid" ion-button large block icon-left color="secondary" (click)='saveClose(wertungsform)'>
         <ion-icon name="checkmark-circle"></ion-icon>Speichern</button>
     </ion-list>
   </form>

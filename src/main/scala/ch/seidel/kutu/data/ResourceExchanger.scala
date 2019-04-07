@@ -39,7 +39,9 @@ object ResourceExchanger extends KutuService with RiegenBuilder {
     def opFn: (Option[T], KutuAppEvent)=>Unit = {
       case (sender, uws: AthletWertungUpdatedSequenced) => opFn(sender, uws.toAthletWertungUpdated())
       case (sender, uw @ AthletWertungUpdated(athlet, wertung, wettkampfUUID, _, _, programm)) =>
-        if (wettkampf.uuid.contains(wettkampfUUID)) Future {
+        if (Config.isLocalHostServer()) {
+          refresher(sender, uw)
+        } else if (wettkampf.uuid.contains(wettkampfUUID)) Future {
           logger.info(s"received for ${uw.athlet.vorname} ${uw.athlet.name} (${uw.athlet.verein.getOrElse(()=>"")}) " +
             s"im Pgm $programm new Wertung: D:${wertung.noteD}, E:${wertung.noteE}")
           val mappedAthletView: AthletView = mapToLocal(athlet)

@@ -3,6 +3,7 @@
     <ion-avatar item-start>
       <img src="assets/imgs/athlete.png">
     </ion-avatar>
-    <ion-note item-end>{{w.wertung.endnote | number:'2.3-3'}}</ion-note>
+    <ion-note *ngIf="w.wertung.endnote" item-end>{{w.wertung.endnote | number:'2.3-3'}}</ion-note>
+    <ion-note *ngIf="!w.wertung.endnote" item-end>Kein Resultat</ion-note>
   </ion-item>
 </ion-list>

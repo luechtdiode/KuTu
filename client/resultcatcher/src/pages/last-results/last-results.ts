@@ -56,7 +56,7 @@ export class LastResultsPage implements OnInit {
         p = this.geraetOrder(a.geraet) - this.geraetOrder(b.geraet);
       }
       return p;
-    });
+    }).filter(w => w.wertung.endnote !== undefined);
     if (this.content) {
       this.content.resize();      
     }

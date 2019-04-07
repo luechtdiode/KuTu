@@ -5,7 +5,7 @@ import { Subject } from 'rxjs/Subject';
 import { BehaviorSubject } from 'rxjs';
 
 export function encodeURIComponent2(uri: string): string {
-  return encodeURIComponent(uri.replace(/[,&.*+?/^${}()|[\]\\]/g, "_"));
+  return !!uri ? encodeURIComponent(uri.replace(/[,&.*+?/^${}()|[\]\\]/g, "_")) : '';
 }
 
 export abstract class WebsocketService {

@@ -1675,6 +1675,44 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
     }
     clearButton.disable <== when(wkview.selectionModel.value.selectedItemProperty.isNull()) choose true otherwise false
 
+    val clearAllButton = new Button {
+      text = "Alle angezeigten Resultate zurücksetzen"
+      minWidth = 75
+      onAction = (event: ActionEvent) => {
+        implicit val impevent = event
+        PageDisplayer.showInDialog(text.value, new DisplayablePage() {
+          def getPage: Node = {
+            new HBox {
+              prefHeight = 50
+              alignment = Pos.BottomRight
+              hgrow = Priority.Always
+              children = Seq(
+                new Label(
+                  s"Sollen wirklich alle angezeigten, in diesem Wettkampf erfassten Resultate zurückgesetzt werden?"))
+            }
+          }
+        }, new Button("OK") {
+          onAction = (event: ActionEvent) => {
+            for ((wertungen, rowIndex) <- wkModel.zipWithIndex) {
+              for ((disciplin, index) <- wertungen.zipWithIndex) {
+                disciplin.noteD.value = Double.NaN
+                disciplin.noteE.value = Double.NaN
+                disciplin.endnote.value = Double.NaN
+                if (disciplin.isDirty) {
+                  wkModel.update(rowIndex, wertungen.updated(index, WertungEditor(service.updateWertung(disciplin.commit))))
+                }
+              }
+            }
+            wkview.requestFocus()
+          }
+        })
+      }
+    }
+    clearAllButton.disable <== when(Bindings.createBooleanBinding(() => {
+      wkModel.isEmpty
+    },
+      wkModel
+    )) choose true otherwise false
     wkview.selectionModel.value.setCellSelectionEnabled(true)
     wkview.filterEvent(KeyEvent.KeyPressed) { (ke: KeyEvent) =>
       AutoCommitTextFieldTableCell.handleDefaultEditingKeyEvents(wkview, true, txtUserFilter)(ke)
@@ -1752,7 +1790,12 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
             minHeight = Region.USE_PREF_SIZE
             styleClass += "toolbar-header"
           }
-        ) ++ (if(wettkampfmode.value || wettkampf.toWettkampf.isReadonly(homedir, remoteHostOrigin)) List(cmbDurchgangFilter, txtUserFilter, generateBestenliste) else actionButtons :+ clearButton :+ cmbDurchgangFilter :+ txtUserFilter)
+        ) ++ (
+          if(wettkampfmode.value || wettkampf.toWettkampf.isReadonly(homedir, remoteHostOrigin))
+            List(cmbDurchgangFilter, txtUserFilter, generateBestenliste)
+          else
+            actionButtons :+ clearButton :+ clearAllButton :+ cmbDurchgangFilter :+ txtUserFilter
+        )
       }
       center = new SplitPane {
         orientation = Orientation.Horizontal

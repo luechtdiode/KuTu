@@ -3,6 +3,7 @@ import { NavController, NavParams, Keyboard, Platform } from 'ionic-angular';
 import { WertungContainer, Wertung } from '../../app/backend-types';
 import { BackendService } from '../../app/backend.service';
 import { Subscription } from 'rxjs';
+import { NgForm } from '@angular/forms';
 
 /**
  * Generated class for the WertungEditorPage page.
@@ -33,7 +34,11 @@ export class WertungEditorPage {
       
       this.itemOriginal = navParams.get('item');
       this.item = Object.assign({}, this.itemOriginal);
-      this.wertung = Object.assign({}, this.item.wertung);
+      this.wertung = Object.assign({
+        noteD: undefined,
+        noteE: undefined,
+        endnote: undefined
+      }, this.item.wertung);
       this.isDNoteUsed = this.item.isDNoteUsed;
 
   }
@@ -58,7 +63,11 @@ export class WertungEditorPage {
         // console.log("updateing wertung from service");
         this.item.wertung = Object.assign({}, wc.wertung);
         this.itemOriginal.wertung = Object.assign({}, wc.wertung);
-        this.wertung = Object.assign({}, this.itemOriginal.wertung);
+        this.wertung = Object.assign({
+          noteD: 0.00,
+          noteE: 0.00,
+          endnote: 0.00
+        }, this.item.wertung);
       }
     });
     this.platform.ready().then(() => {
@@ -103,24 +112,23 @@ export class WertungEditorPage {
     this.waiting = false;
     this.item = Object.assign({}, wc);
     this.itemOriginal = Object.assign({}, wc);
-    this.wertung = Object.assign({}, this.itemOriginal.wertung);
+    this.wertung = Object.assign({
+      noteD: 0.00,
+      noteE: 0.00,
+      endnote: 0.00
+    }, this.itemOriginal.wertung);
     
     this.ionViewWillEnter();
+    
   }
   
   ensureInitialValues(wertung: Wertung): Wertung {
-    // if (!wertung.noteD) {
-    //   wertung.noteD = 0.00;
-    // }
-    // if (!wertung.noteE) {
-    //   wertung.noteE = 0.00;
-    // }
-    return wertung;
+    return Object.assign(this.wertung, wertung);
   }
 
-  saveClose(wertung: Wertung) {
+  saveClose(form: NgForm) {
     this.waiting = true;
-    this.backendService.updateWertung(this.durchgang, this.step, this.geraetId, this.ensureInitialValues(wertung)).subscribe((wc) => {
+    this.backendService.updateWertung(this.durchgang, this.step, this.geraetId, this.ensureInitialValues(form.value)).subscribe((wc) => {
       this.updateUI(wc);
       this.navCtrl.pop();
     }, (err) => {
@@ -131,9 +139,9 @@ export class WertungEditorPage {
     });
   }
   
-  save(wertung: Wertung) {
+  save(form: NgForm) {
     this.waiting = true;
-    this.backendService.updateWertung(this.durchgang, this.step, this.geraetId, this.ensureInitialValues(wertung)).subscribe((wc) => {
+    this.backendService.updateWertung(this.durchgang, this.step, this.geraetId, this.ensureInitialValues(form.value)).subscribe((wc) => {
         this.updateUI(wc);
     }, (err) => {
       this.waiting = false;
@@ -143,18 +151,19 @@ export class WertungEditorPage {
     });
   }
 
-  saveNext(wertung: Wertung) {
+  saveNext(form: NgForm) {
     this.waiting = true;
-    this.backendService.updateWertung(this.durchgang, this.step, this.geraetId, this.ensureInitialValues(wertung)).subscribe((wc) => {
+    this.backendService.updateWertung(this.durchgang, this.step, this.geraetId, this.ensureInitialValues(form.value)).subscribe((wc) => {
       this.waiting = false;
-      const currentItemIndex = this.backendService.wertungen.findIndex(wc => wc.wertung.id === wertung.id);
+      const currentItemIndex = this.backendService.wertungen.findIndex(wc => wc.wertung.id === this.wertung.id);
       let nextItemIndex = currentItemIndex + 1;
       if (currentItemIndex < 0) {
         nextItemIndex = 0;
       } else if (currentItemIndex >= this.backendService.wertungen.length-1) {
-        this.saveClose(wertung);
+        this.navCtrl.pop();
         return;
       }
+      form.resetForm();
       this.updateUI(this.backendService.wertungen[nextItemIndex]);
     }, (err) => {
       this.waiting = false;

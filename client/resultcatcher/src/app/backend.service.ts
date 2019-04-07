@@ -167,12 +167,21 @@ export class BackendService extends WebsocketService {
   standardErrorHandler = (err: HttpErrorResponse) => {
     console.log(err);
     this.wertungenLoading = false;
-    const msgAck = <MessageAck>{
-      msg : '<em>' + err.statusText + '</em><br>' + err.message,
-      type : err.name
-    };
-    if (!this.lastMessageAck || this.lastMessageAck.msg !== msgAck.msg) {
-      this.showMessage.next(msgAck);  
+    if (err.status === 401) {
+      localStorage.removeItem('auth_token');
+      this.loggedIn = false;
+      this.showMessage.next(<MessageAck> {
+        msg: 'Die Berechtigung zum erfassen von Wertungen ist abgelaufen.',
+        type:'Berechtigung'
+      });
+    } else {
+      const msgAck = <MessageAck>{
+        msg : '<em>' + err.statusText + '</em><br>' + err.message,
+        type : err.name
+      };
+      if (!this.lastMessageAck || this.lastMessageAck.msg !== msgAck.msg) {
+        this.showMessage.next(msgAck);  
+      }
     }
   }
 
@@ -401,14 +410,7 @@ export class BackendService extends WebsocketService {
         this.showMessage.next(msg);
         result.error(msg.msg);
       }
-  }, (err: HttpErrorResponse)=> {
-      const msg = <MessageAck>{
-        msg : err.statusText + ': ' + err.message,
-        type : err.name
-      };
-      this.showMessage.next(msg);
-      result.error(err);
-    });    
+    }, this.standardErrorHandler);    
     return result;
   }
 
