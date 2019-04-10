@@ -41,7 +41,7 @@ object ResourceExchanger extends KutuService with RiegenBuilder {
       case (sender, uw @ AthletWertungUpdated(athlet, wertung, wettkampfUUID, _, _, programm)) =>
         if (Config.isLocalHostServer()) {
           refresher(sender, uw)
-        } else if (wettkampf.uuid.contains(wettkampfUUID)) Future {
+        } else if (wettkampf.uuid.contains(wettkampfUUID)) /*Future*/ {
           logger.info(s"received for ${uw.athlet.vorname} ${uw.athlet.name} (${uw.athlet.verein.getOrElse(()=>"")}) " +
             s"im Pgm $programm new Wertung: D:${wertung.noteD}, E:${wertung.noteE}")
           val mappedAthletView: AthletView = mapToLocal(athlet)
@@ -53,12 +53,14 @@ object ResourceExchanger extends KutuService with RiegenBuilder {
             refresher(sender, uw.copy(athlet.copy(id = mappedAthletView.id), wertung = vw))
           } catch {
             case e: Exception =>
-              logger.error("not saved!", e)
+              logger.error(s"failed to complete save new score for " +
+                s"${mappedAthletView.vorname} ${mappedAthletView.name} (${mappedAthletView.verein.getOrElse("")}) " +
+                s"im Pgm $programm new Wertung: D:${mappedWertung.noteD}, E:${mappedWertung.noteE}", e)
               refresher(sender, uw)
           }
         }
       case (sender, awm @AthletMovedInWettkampf(athlet, wettkampfUUID, programm)) =>
-        if (wettkampf.uuid.contains(wettkampfUUID)) Future {
+        if (wettkampf.uuid.contains(wettkampfUUID)) /*Future*/ {
           logger.info(s"received for ${awm.athlet.vorname} ${awm.athlet.name} (${awm.athlet.verein.getOrElse(() => "")}) " +
             s"to be moved in competition ${awm.wettkampfUUID} to Program-Id:${programm}")
           val mappedAthletView: AthletView = mapToLocal(athlet)
@@ -69,7 +71,7 @@ object ResourceExchanger extends KutuService with RiegenBuilder {
           refresher(sender, mappedEvent)
         }
       case (sender, arw @AthletRemovedFromWettkampf(athlet, wettkampfUUID)) =>
-        if (wettkampf.uuid.contains(wettkampfUUID)) Future {
+        if (wettkampf.uuid.contains(wettkampfUUID)) /*Future*/ {
           logger.info(s"received for ${arw.athlet.vorname} ${arw.athlet.name} (${arw.athlet.verein.getOrElse(() => "")}) " +
             s"to be removed from competition ${arw.wettkampfUUID}")
           val mappedAthletView: AthletView = mapToLocal(athlet)

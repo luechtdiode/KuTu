@@ -164,7 +164,7 @@ class CompetitionCoordinatorClientActor(wettkampfUUID: String) extends Persisten
         //        }
       } catch {
         case e: Exception =>
-          log.error("failed to complete new score", e)
+          log.error(s"failed to complete save new score for  ${athlet.vorname} ${athlet.name} (${athlet.verein.getOrElse("")}) im Pgm $programm new Wertung: D:${wertung.noteD}, E:${wertung.noteE}", e)
           sender ! MessageAck(e.getMessage)
       }
 
