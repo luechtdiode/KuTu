@@ -73,7 +73,7 @@ case class GroupLeaf(override val groupKey: DataObject, list: Iterable[WertungVi
   val groups = GroupSection.groupWertungList(list).filter(_._2.nonEmpty)
 //  lazy val wkPerProgramm = list.filter(_.endnote > 0).groupBy { w => w.wettkampf.programmId }
   lazy val anzahWettkaempfe = list.filter(_.endnote.nonEmpty).groupBy { w => w.wettkampf }.size // Anzahl Wettkämpfe
-  val withDNotes = list.filter(w => w.noteD.nonEmpty).nonEmpty
+  val withDNotes = list.filter(w => w.noteD.sum > 0).nonEmpty
   val withENotes = list.filter(w => w.wettkampf.programmId != 1).nonEmpty
   val isDivided = !(withDNotes || groups.isEmpty)
   val divider = if(!isDivided) 1 else groups.head._2.size

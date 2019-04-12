@@ -389,7 +389,7 @@ package object domain {
     def toWertung(riege: String) = Wertung(id, athlet.id, wettkampfdisziplin.id, wettkampf.id, wettkampf.uuid.getOrElse(""), noteD, noteE, endnote, Some(riege), riege2)
     def updatedWertung(valuesFrom: Wertung) = copy(noteD = valuesFrom.noteD, noteE = valuesFrom.noteE, endnote = valuesFrom.endnote)
     def showInScoreList = {
-      (endnote.isDefined) || (athlet.geschlecht match {
+      (endnote.sum > 0) || (athlet.geschlecht match {
         case "M" => wettkampfdisziplin.masculin > 0
         case "W" => wettkampfdisziplin.feminim > 0
         case _ => endnote.sum > 0
