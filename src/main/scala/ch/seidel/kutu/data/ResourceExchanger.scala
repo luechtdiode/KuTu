@@ -37,7 +37,7 @@ object ResourceExchanger extends KutuService with RiegenBuilder {
         val mappedWertungen: Seq[AthletWertungUpdatedSequenced] = results.groupBy(_.athlet).flatMap{ tuple =>
           val (athlet, wertungen) = tuple
           val mappedAthletView: AthletView = mapToLocal(athlet)
-          wertungen.map{ updatedSequenced =>
+          wertungen.groupBy(_.wertung.wettkampfdisziplinId).map{_._2.sortBy(_.sequenceId).last}.map{ updatedSequenced =>
             val programm = updatedSequenced.programm
             val mappedWertung = updatedSequenced.wertung.copy(
                 athletId = mappedAthletView.id,

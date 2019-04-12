@@ -156,8 +156,7 @@ trait WertungenRoutes extends SprayJsonSupport with JsonSupport with JwtSupport 
               if (userId.equals(competitionId.toString())) {
                 entity(as[Wertung]) { wertung =>
                   segments match {
-                    case List(durchgang, geraet, step) => onComplete {
-                      Future {
+                    case List(durchgang, geraet, step) => {
                         val halt: Int = step
                         val gid: Long = geraet
                         val gerateRiegen = RiegenBuilder.mapToGeraeteRiegen(getAllKandidatenWertungen(competitionId).toList)
@@ -190,9 +189,8 @@ trait WertungenRoutes extends SprayJsonSupport with JsonSupport with JwtSupport 
                           log.error(s"wkid != wertung.wettkampfId (wkid:$wkid, wettkampfId:${wertung.wettkampfId})")
                           None
                         }
-                      }
-                    } {
-                      case Success(Some((wkPgmId, wertung))) =>
+                      } match {
+                      case Some((wkPgmId, wertung)) =>
                         complete(CompetitionCoordinatorClientActor.publish(wertung, clientId).andThen {
                           case Success(w) => w match {
                             case AthletWertungUpdatedSequenced(athlet, verifiedWertung, _, _, ger, programm, _) =>

@@ -66,7 +66,7 @@ object DBService {
     hikariConfig.setPassword("kutu")
 
     val dataSource = new HikariDataSource(hikariConfig)
-    Database.forDataSource(dataSource, maxConnections = Some(256), executor = AsyncExecutor("DB-Actions", 256, 10000), keepAliveConnection = true)
+    Database.forDataSource(dataSource, maxConnections = Some(500), executor = AsyncExecutor("DB-Actions", 500, 10000), keepAliveConnection = true)
 //    Database.forURL(
 //      url = "jdbc:sqlite:" + dbfile.getAbsolutePath,
 //      driver = "org.sqlite.JDBC",
