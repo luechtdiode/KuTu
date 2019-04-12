@@ -316,7 +316,7 @@ class AutoCommitTextFieldTableCell[S, T](override val delegate: jfxscc.TextField
 
     def cancel() {
       fcs.cancel()
-      println(textField, "canceled")
+//      println(textField, "canceled")
     }
   }
 }

@@ -33,7 +33,12 @@ object WebSocketClient extends SprayJsonSupport with JsonSupport with AuthSuppor
 
     def processorWithoutSender: KutuAppEvent=>Unit = {
       case LastResults(results) =>
-        results.foreach(processorWithoutSender)
+        val relevantResults = results.filter(_.sequenceId > lastSequenceId)
+        val sequenceId = relevantResults.foldLeft(lastSequenceId){(accumulator, b) => Math.max(accumulator, b.sequenceId)}
+        if (sequenceId > lastSequenceId) {
+          messageProcessor(None, LastResults(relevantResults))
+          lastSequenceId = sequenceId
+        }
 
       case event@AthletWertungUpdatedSequenced(_, _, _, _, _, _, sequenceId) =>
         if (sequenceId > lastSequenceId) {

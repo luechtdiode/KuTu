@@ -148,7 +148,7 @@ class CompetitionCoordinatorClientActor(wettkampfUUID: String) extends Persisten
         sender ! MessageAck("Dieser Durchgang ist noch nicht für die Resultaterfassung freigegeben.")
       } else try {
         log.debug(s"received for ${athlet.vorname} ${athlet.name} (${athlet.verein.getOrElse("")}) im Pgm $programm new Wertung: D:${wertung.noteD}, E:${wertung.noteE}")
-        val verifiedWertung = updateWertungSimple(wertung, true)
+        val verifiedWertung = updateWertungSimple(wertung)
         val updated = AthletWertungUpdated(athlet, verifiedWertung, wettkampfUUID, durchgang, geraet, programm)
         log.info(s"saved for ${athlet.vorname} ${athlet.name} (${athlet.verein.getOrElse("")}) im Pgm $programm new Wertung: D:${verifiedWertung.noteD}, E:${verifiedWertung.noteE}")
 

@@ -1,11 +1,11 @@
 package ch.seidel.kutu.data
 
 import java.io._
-import java.util
 import java.util.zip.{ZipEntry, ZipInputStream, ZipOutputStream}
 
 import ch.seidel.kutu.Config
 import ch.seidel.kutu.akka._
+import ch.seidel.kutu.data.CaseObjectMetaUtil._
 import ch.seidel.kutu.domain._
 import ch.seidel.kutu.renderer.PrintUtil
 import ch.seidel.kutu.squad.RiegenBuilder
@@ -13,11 +13,7 @@ import ch.seidel.kutu.view._
 import org.slf4j.LoggerFactory
 
 import scala.annotation.tailrec
-import scala.concurrent.ExecutionContext.Implicits.global
-import scala.concurrent.Future
 import scala.io.Source
-import CaseObjectMetaUtil._
-
 import scala.reflect.runtime.universe._
 
 /**
@@ -37,6 +33,30 @@ object ResourceExchanger extends KutuService with RiegenBuilder {
     }
 
     def opFn: (Option[T], KutuAppEvent)=>Unit = {
+      case (sender, LastResults(results)) =>
+        val mappedWertungen: Seq[AthletWertungUpdatedSequenced] = results.groupBy(_.athlet).flatMap{ tuple =>
+          val (athlet, wertungen) = tuple
+          val mappedAthletView: AthletView = mapToLocal(athlet)
+          wertungen.map{ updatedSequenced =>
+            val programm = updatedSequenced.programm
+            val mappedWertung = updatedSequenced.wertung.copy(
+                athletId = mappedAthletView.id,
+                wettkampfId = wettkampf.id,
+                wettkampfUUID = updatedSequenced.wettkampfUUID)
+            logger.info(s"received for ${athlet.vorname} ${athlet.name} (${athlet.verein.getOrElse(() => "")}) " +
+              s"im Pgm $programm new Wertung: D:${mappedWertung.noteD}, E:${mappedWertung.noteE}")
+            updatedSequenced.copy(athlet = athlet, wertung = mappedWertung)
+          }
+        }.toSeq
+        try {
+          mappedWertungen.zip(updateWertungWithIDMapping(mappedWertungen.map(_.wertung))).foreach { x =>
+            refresher(sender, x._1.copy(wertung = x._2))
+          }
+        } catch {
+          case e: Exception =>
+            logger.error(s"failed to complete save LastResults ", e)
+        }
+
       case (sender, uws: AthletWertungUpdatedSequenced) => opFn(sender, uws.toAthletWertungUpdated())
       case (sender, uw @ AthletWertungUpdated(athlet, wertung, wettkampfUUID, _, _, programm)) =>
         if (Config.isLocalHostServer()) {
@@ -47,7 +67,7 @@ object ResourceExchanger extends KutuService with RiegenBuilder {
           val mappedAthletView: AthletView = mapToLocal(athlet)
           val mappedWertung = wertung.copy(athletId = mappedAthletView.id, wettkampfId = wettkampf.id, wettkampfUUID = wettkampfUUID)
           try {
-            val vw = updateWertungWithIDMapping(mappedWertung, true)
+            val vw = updateWertungWithIDMapping(mappedWertung)
             logger.info(s"saved for ${mappedAthletView.vorname} ${mappedAthletView.name} (${uw.athlet.verein.getOrElse(()=>"")}) " +
               s"im Pgm $programm new Wertung: D:${vw.noteD}, E:${vw.noteE}")
             refresher(sender, uw.copy(athlet.copy(id = mappedAthletView.id), wertung = vw))

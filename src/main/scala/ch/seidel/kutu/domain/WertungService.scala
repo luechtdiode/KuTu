@@ -271,7 +271,7 @@ abstract trait WertungService extends DBService with WertungResultMapper with Di
   }
   
   @throws(classOf[Exception]) // called from mobile-client via coordinator-actor
-  def updateWertungSimple(w: Wertung, putToBestenresults: Boolean = false): Wertung = {
+  def updateWertungSimple(w: Wertung): Wertung = {
     val notenspez = readWettkampfDisziplinView(w.wettkampfdisziplinId).notenSpez
     val wv = notenspez.verifiedAndCalculatedWertung(w)
     if (notenspez.isDNoteUsed && wv.noteD != w.noteD) {
@@ -292,7 +292,7 @@ abstract trait WertungService extends DBService with WertungResultMapper with Di
   }
   
   @throws(classOf[Exception]) // called from rich-client-app via ResourceExchanger
-  def updateWertungWithIDMapping(w: Wertung, putToBestenresults: Boolean = false): Wertung = {
+  def updateWertungWithIDMapping(w: Wertung): Wertung = {
     val wv = readWettkampfDisziplinView(w.wettkampfdisziplinId).notenSpez.verifiedAndCalculatedWertung(w)
     val wvId = Await.result(database.run((for {
         updated <- sqlu"""
@@ -311,6 +311,29 @@ abstract trait WertungService extends DBService with WertungResultMapper with Di
       }).transactionally
     ), Duration.Inf).head
     val result = wv.copy(id = wvId)
+    result
+  }
+
+  @throws(classOf[Exception]) // called from rich-client-app via ResourceExchanger
+  def updateWertungWithIDMapping(ws: Seq[Wertung]): Seq[Wertung] = {
+    val wvs = ws.map(w => readWettkampfDisziplinView(w.wettkampfdisziplinId).notenSpez.verifiedAndCalculatedWertung(w))
+    val wvId: Seq[Long] = Await.result(database.run(DBIO.sequence(for {
+      wv <- wvs
+    } yield {
+      sqlu"""
+                  UPDATE wertung
+                  SET note_d=${wv.noteD}, note_e=${wv.noteE}, endnote=${wv.endnote}, riege=${wv.riege}, riege2=${wv.riege2}
+                  WHERE
+                    athlet_Id=${wv.athletId} and wettkampfdisziplin_Id=${wv.wettkampfdisziplinId} and wettkampf_Id=${wv.wettkampfId}
+          """>>
+      sql"""
+                  SELECT id FROM wertung
+                  WHERE
+                    athlet_Id=${wv.athletId} and wettkampfdisziplin_Id=${wv.wettkampfdisziplinId} and wettkampf_Id=${wv.wettkampfId}
+        """.as[Long].head
+    }).transactionally
+    ), Duration.Inf)
+    val result = wvs.zip(wvId).map{z => z._1.copy(id = z._2)}
     result
   }
 
