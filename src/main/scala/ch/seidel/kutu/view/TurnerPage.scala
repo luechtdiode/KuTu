@@ -55,8 +55,7 @@ object TurnerPage {
   }
 
   class VereinTab(val verein: Verein, override val service: KutuService, val tabpane: LazyTabPane) extends Tab with TabWithService {
-    import scala.collection.JavaConversions._
-    
+
     override def isPopulated: Boolean = {
       val athleten = service.selectAthletesOfVerein(verein.id)
         .sortBy { a => (if (a.activ) {
@@ -119,7 +118,7 @@ object TurnerPage {
           }
 
           if(matches) {
-            wkModel :+ athlet
+            wkModel += athlet
           }
         }
         athletenview.sortOrder.clear()
