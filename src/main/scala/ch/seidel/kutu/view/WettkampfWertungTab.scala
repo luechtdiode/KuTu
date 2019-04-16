@@ -332,48 +332,50 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
     }
     
     def updateEditorPane(focusHolder: Option[Node] = None) {
-      submitLazy("updateEditorPane", () => {
+      def task: () => Unit = () => {
         if(selected.value) {
           if (logger.isDebugEnabled()) {
             logger.debug("updating EditorPane ")
           }
-    		  editorPane.adjust
+          editorPane.adjust
           val model = cmbDurchgangFilter.items.getValue
-  		    val raw = emptyRiege +: rebuildDurchgangFilterList
-  		    val selected = cmbDurchgangFilter.selectionModel.value.selectedItem.value
-  		    model.foreach { x => 
-  		      raw.find {_.softEquals(x)} match {
-  		        case Some(item) => 
-  		          val reselect = selected == x
-  		          model.set(model.indexOf(x), item)
-  		          if(reselect) {
-  		            durchgangFilter = item
-  		            cmbDurchgangFilter.selectionModel.value.select(item)
-  		          }
-  		        case None =>
-  		      }
-  		    }
-      	  val toRemove =
-      	    for{
-      	      o <- model 
-      	      i = raw.find { _ == o}
-      	      if(i.isEmpty && o != emptyRiege)
-      	    }
-      	    yield {model.indexOf(o)}
-      	  for{i <- toRemove.sorted.reverse} {
-      	    model.remove(i)
-      	  }
-  
-      	  for{
-      	    o <- raw 
+          val raw = emptyRiege +: rebuildDurchgangFilterList
+          val selected = cmbDurchgangFilter.selectionModel.value.selectedItem.value
+          model.foreach { x =>
+            raw.find {_.softEquals(x)} match {
+              case Some(item) =>
+                val reselect = selected == x
+                model.set(model.indexOf(x), item)
+                if(reselect) {
+                  durchgangFilter = item
+                  cmbDurchgangFilter.selectionModel.value.select(item)
+                }
+              case None =>
+            }
+          }
+          val toRemove =
+            for{
+              o <- model
+              i = raw.find { _ == o}
+              if(i.isEmpty && o != emptyRiege)
+            }
+              yield {model.indexOf(o)}
+          for{i <- toRemove.sorted.reverse} {
+            model.remove(i)
+          }
+
+          for{
+            o <- raw
             i = model.find { _ == o}
-      	    if(i.isEmpty)
-      	  }{
-      	    model.insert(raw.indexWhere { rx => rx.softEquals(o)}, o)
-      	  }
-      	  focusHolder.foreach(_.requestFocus())
-        }        
-      }, 5)
+            if(i.isEmpty)
+          }{
+            model.insert(raw.indexWhere { rx => rx.softEquals(o)}, o)
+          }
+          focusHolder.foreach(_.requestFocus())
+        }
+      }
+
+      submitLazy("updateEditorPane", task, 5)
     }
 
     val indexerE = Iterator.from(0)
@@ -401,19 +403,21 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
           editable = !wettkampf.toWettkampf.isReadonly(homedir, remoteHostOrigin) && wertung.init.wettkampfdisziplin.notenSpez.isDNoteUsed
           visible = wertung.init.wettkampfdisziplin.notenSpez.isDNoteUsed
           onEditCommit = (evt: CellEditEvent[IndexedSeq[WertungEditor], Double]) => {
-            val disciplin = evt.rowValue(index)
-            if (evt.newValue.toString == "NaN") {
-              disciplin.noteD.value = evt.newValue
-              disciplin.noteE.value = evt.newValue
-              disciplin.endnote.value = evt.newValue
-            } else {
-              val (d, e) = wertung.init.wettkampfdisziplin.notenSpez.validated(disciplin.toOption(evt.newValue).getOrElse(BigDecimal(0)).doubleValue(),
-                disciplin.toOption(disciplin.noteE.value).getOrElse(BigDecimal(0)).doubleValue())
-              disciplin.noteD.value = d
-              disciplin.endnote.value = wertung.init.wettkampfdisziplin.notenSpez.calcEndnote(disciplin.noteD.value, disciplin.noteE.value)
-            }
-            if (disciplin.isDirty) {
-              service.updateWertung(disciplin.commit)
+            if (evt.rowValue != null) {
+              val disciplin = evt.rowValue(index)
+              if (evt.newValue.toString == "NaN") {
+                disciplin.noteD.value = evt.newValue
+                disciplin.noteE.value = evt.newValue
+                disciplin.endnote.value = evt.newValue
+              } else {
+                val (d, e) = wertung.init.wettkampfdisziplin.notenSpez.validated(disciplin.toOption(evt.newValue).getOrElse(BigDecimal(0)).doubleValue(),
+                  disciplin.toOption(disciplin.noteE.value).getOrElse(BigDecimal(0)).doubleValue())
+                disciplin.noteD.value = d
+                disciplin.endnote.value = wertung.init.wettkampfdisziplin.notenSpez.calcEndnote(disciplin.noteD.value, disciplin.noteE.value)
+              }
+              if (disciplin.isDirty) {
+                service.updateWertung(disciplin.commit)
+              }
             }
             evt.tableView.requestFocus()
           }
@@ -431,19 +435,21 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
           editable = !wettkampf.toWettkampf.isReadonly(homedir, remoteHostOrigin)
 
           onEditCommit = (evt: CellEditEvent[IndexedSeq[WertungEditor], Double]) => {
-            val disciplin = evt.rowValue(index)
-            if (evt.newValue.toString == "NaN") {
-              disciplin.noteD.value = evt.newValue
-              disciplin.noteE.value = evt.newValue
-              disciplin.endnote.value = evt.newValue
-            } else {
-              val (d, e) = wertung.init.wettkampfdisziplin.notenSpez.validated(disciplin.toOption(disciplin.noteD.value).getOrElse(BigDecimal(0)).doubleValue(),
-                disciplin.toOption(evt.newValue).getOrElse(BigDecimal(0)).doubleValue())
-              disciplin.noteE.value = e
-              disciplin.endnote.value = wertung.init.wettkampfdisziplin.notenSpez.calcEndnote(disciplin.noteD.value, disciplin.noteE.value)
-            }
-            if (disciplin.isDirty) {
-              service.updateWertung(disciplin.commit)
+            if (evt.rowValue != null) {
+              val disciplin = evt.rowValue(index)
+              if (evt.newValue.toString == "NaN") {
+                disciplin.noteD.value = evt.newValue
+                disciplin.noteE.value = evt.newValue
+                disciplin.endnote.value = evt.newValue
+              } else {
+                val (d, e) = wertung.init.wettkampfdisziplin.notenSpez.validated(disciplin.toOption(disciplin.noteD.value).getOrElse(BigDecimal(0)).doubleValue(),
+                  disciplin.toOption(evt.newValue).getOrElse(BigDecimal(0)).doubleValue())
+                disciplin.noteE.value = e
+                disciplin.endnote.value = wertung.init.wettkampfdisziplin.notenSpez.calcEndnote(disciplin.noteD.value, disciplin.noteE.value)
+              }
+              if (disciplin.isDirty) {
+                service.updateWertung(disciplin.commit)
+              }
             }
             evt.tableView.requestFocus()
           }
@@ -948,27 +954,30 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
     }
 
     def handleWertungUpdated(wertung: Wertung) = {
-      val tableSelected = if (wkview.focused.value) Some(wkview) else None
-      wertungen = wertungen.map { aw =>
-        val index = wkModel.indexOf(aw)
-        val newWertungen = aw.map { w =>
-          if (w.init.id == wertung.id && w.endnote != wertung.endnote) {
-            WertungEditor(w.init.updatedWertung(wertung))
-          } else {
-            w
+        AutoCommitTextFieldTableCell.doWhenEditmodeEnds(() => {
+          wertungen = wertungen.map { aw =>
+            val index = wkModel.indexOf(aw)
+            val newWertungen = aw.map { w =>
+              if (w.init.id == wertung.id && w.endnote != wertung.endnote) {
+                WertungEditor(w.init.updatedWertung(wertung))
+              } else {
+                w
+              }
+            }
+            if (index > -1 && wkModel(index).map(_.init.endnote.getOrElse(BigDecimal(0))).sum !=
+              newWertungen.map(_.init.endnote.getOrElse(BigDecimal(0))).sum) {
+              isFilterRefreshing = true
+              val selected = wkview.selectionModel.value.selectedCells
+              wkModel.update(index, newWertungen)
+              //selected.foreach(c => wkview.selectionModel.value.select(c.row, c.tableColumn.asInstanceOf[jfxsc.TableColumn[IndexedSeq[WertungEditor], _]]))
+              isFilterRefreshing = false
+            }
+            newWertungen
           }
-        }
-        if (index > -1 && wkModel(index).map(_.init.endnote.getOrElse(BigDecimal(0))).sum !=
-          newWertungen.map(_.init.endnote.getOrElse(BigDecimal(0))).sum) {
-          isFilterRefreshing = true
-          val selected = wkview.selectionModel.value.selectedCells
-          wkModel.update(index, newWertungen)
-          //selected.foreach(c => wkview.selectionModel.value.select(c.row, c.tableColumn.asInstanceOf[jfxsc.TableColumn[IndexedSeq[WertungEditor], _]]))
-          isFilterRefreshing = false
-        }
-        newWertungen
-      }
-      updateEditorPane(tableSelected)
+
+          val tableSelected = if (wkview.focused.value) Some(wkview) else None
+          updateEditorPane(tableSelected)
+        })
     }
 
     websocketsubscription = Some(WebSocketClient.modelWettkampfWertungChanged.onChange { (_, _, newItem) =>

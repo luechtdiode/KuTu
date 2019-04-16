@@ -5,6 +5,7 @@ import javafx.scene.{control => jfxsc}
 import javafx.{css => jfxcss}
 import scalafx.Includes._
 import scalafx.application.Platform
+import scalafx.beans.property.{BooleanProperty, ReadOnlyBooleanProperty}
 import scalafx.beans.value.ObservableValue
 import scalafx.collections.ObservableSet
 import scalafx.collections.ObservableSet.{Change, Remove}
@@ -22,7 +23,23 @@ object AutoCommitTextFieldTableCell {
   implicit def sfxAutoCommitTextFieldTableCell2jfx[S, T](cell: AutoCommitTextFieldTableCell[S, T]): jfxscc.TextFieldTableCell[S, T] = if (cell != null) cell.delegate else null
   protected val PSEUDO_CLASS_FOCUSED = PseudoClass("focused")
   var lastKey: Option[String] = None
+  val editmode = BooleanProperty(false)
+  var editModeTerminationListener: List[()=>Unit] = List.empty
+  editmode.onChange {
+    editModeTerminationListener.foreach(task => task())
+    editModeTerminationListener = List.empty
+  }
 
+  def doWhenEditmodeEnds(task: () => Unit): Unit = {
+    if(!editmode.value) {
+      task()
+    } else {
+      editModeTerminationListener = editModeTerminationListener :+ task
+    }
+  }
+  protected def setEditMode(flag: Boolean) {
+    editmode.setValue(flag)
+  }
   def forTableColumn[S](): (TableColumn[S, String] => TableCell[S, String]) =
     (view: TableColumn[S, String]) => jfxscc.TextFieldTableCell.forTableColumn[S]().call(view)
 
@@ -297,11 +314,12 @@ class AutoCommitTextFieldTableCell[S, T](override val delegate: jfxscc.TextField
   }
 
   def connect = new Subscription() {
-
+    AutoCommitTextFieldTableCell.setEditMode(true)
     pseudoClassStates.onChange{(set: ObservableSet[jfxcss.PseudoClass], change: Change[jfxcss.PseudoClass]) =>
       change match {
         case Remove(PSEUDO_CLASS_FOCUSED) if(delegate.isEditing) =>
           val value = textField match {case Some(tf) => tf.text.value case None => "" }
+          AutoCommitTextFieldTableCell.setEditMode(false)
           commitEdit(converter.value.fromString(value))
 
         case _ =>
@@ -315,6 +333,7 @@ class AutoCommitTextFieldTableCell[S, T](override val delegate: jfxscc.TextField
     }
 
     def cancel() {
+      AutoCommitTextFieldTableCell.setEditMode(false)
       fcs.cancel()
 //      println(textField, "canceled")
     }
