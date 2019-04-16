@@ -12,6 +12,7 @@ class AthletServiceTest extends FunSuite with AthletService {
 
   val gebdat1 = java.sql.Date.valueOf(LocalDate.of(2012, 1, 1))
   val gebdat2 = java.sql.Date.valueOf(LocalDate.of(2013, 1, 1))
+  val gebdat3 = java.sql.Date.valueOf(LocalDate.of(2012, 4, 28))
 
   val verein = 33
   val athleteList = List(
@@ -28,11 +29,13 @@ class AthletServiceTest extends FunSuite with AthletService {
     Athlet(verein).copy(id=11L, name = "Maier", vorname ="Maria", gebdat = Some(gebdat1)),
     Athlet(verein).copy(id=12L, name = "Müller", vorname ="Maria", gebdat = Some(gebdat1)),
     Athlet(verein).copy(id=13L, name = "Huber", vorname ="Lina", gebdat = Some(gebdat1)),
-    Athlet(verein).copy(id=14L, name = "Huber", vorname ="Mia", gebdat = Some(gebdat1))
-
+    Athlet(verein).copy(id=14L, name = "Huber", vorname ="Mia", gebdat = Some(gebdat1)),
+    Athlet(verein).copy(id=15L, name = "Villiger", vorname ="Zoé", gebdat = Some(gebdat3)),
+    Athlet(verein).copy(id=16L, name = "Villiger", vorname ="Freia", gebdat = Some(gebdat3)),
+    Athlet(verein).copy(id=17L, name = "Villiger", vorname ="Anina", gebdat = Some(gebdat3))
   )
 
-  val athletes = athleteList.map(a => a.id -> a).toMap
+  var athletes = athleteList.map(a => a.id -> a).toMap
 
   override def loadAthlet(key: Long) = {
     athletes.get(key)
@@ -46,7 +49,7 @@ class AthletServiceTest extends FunSuite with AthletService {
     val cache = new util.ArrayList[MatchCode]
     athletes.values
       .foreach(a =>
-        cache.add(MatchCode(a.id, a.name, a.vorname, AthletJahrgang(a.gebdat).jahrgang, a.verein.getOrElse(0))))
+        cache.add(MatchCode(a.id, a.name, a.vorname, a.gebdat, a.verein.getOrElse(0))))
 
     assert(findAthleteLike(cache)(athletes(2L)) === athletes(1L))
     assert(findAthleteLike(cache)(athletes(4L)) !== athletes(3L))
@@ -55,6 +58,27 @@ class AthletServiceTest extends FunSuite with AthletService {
     assert(findAthleteLike(cache)(athletes(10L)) === athletes(9L))
     assert(findAthleteLike(cache)(athletes(12L)) !== athletes(11L))
     assert(findAthleteLike(cache)(athletes(14L)) !== athletes(13L))
+
+    // trillings
+    assert(findAthleteLike(cache)(athletes(15L)) !== athletes(16L))
+    assert(findAthleteLike(cache)(athletes(16L)) !== athletes(17L))
+    assert(findAthleteLike(cache)(athletes(17L)) !== athletes(15L))
+
+  }
+
+  test("Sophia and Simone") {
+    val gebdat1 = java.sql.Date.valueOf(LocalDate.of(2012, 7, 20))
+    val gebdat2 = java.sql.Date.valueOf(LocalDate.of(2012, 7, 28))
+    val a1 = Athlet(verein).copy(id=15L, name = "Brodbeck", vorname ="Simone", gebdat = Some(gebdat1))
+    val a2 = Athlet(verein).copy(id=16L, name = "Brodbeck", vorname ="Sophia", gebdat = Some(gebdat2))
+    val athleteList = List(a1, a2)
+    athletes = athleteList.map(a => a.id -> a).toMap
+    val cache = new util.ArrayList[MatchCode]
+    athleteList
+      .foreach(a =>
+        cache.add(MatchCode(a.id, a.name, a.vorname, a.gebdat, a.verein.getOrElse(0))))
+
+    assert(findAthleteLike(cache)(a1) !== a2)
   }
 
 

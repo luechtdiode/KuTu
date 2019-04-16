@@ -84,7 +84,7 @@ object CaseObjectMetaUtil {
           case (None, None) => None
           case (b1: Boolean, b2: Boolean) => b1 || b2
           case (s1: String, s2: String) => if (s1.trim.length == 0) s2 else s1
-          case (n1: Number, n2: Number) => if (n1 == 0) n2 else n1
+          case (n1: Number, n2: Number) => if (n1.intValue() == 0) n2 else n1
           case (c1, c2) => if (c1.toString.compareTo(c2.toString) > 0) c1 else c2
         }
         case Some(fn) => fn(v1, v2)

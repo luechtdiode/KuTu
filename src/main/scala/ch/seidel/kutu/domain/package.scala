@@ -526,11 +526,12 @@ package object domain {
     }
   }
 
-  case class MatchCode(id: Long, name: String, vorname: String, jahrgang: String, verein: Long) {
+  case class MatchCode(id: Long, name: String, vorname: String, gebdat: Option[java.sql.Date], verein: Long) {
     import MatchCode._
+    val jahrgang = AthletJahrgang(gebdat).jahrgang
     val encodedNamen = encode(name)
     val encodedVorNamen = encode(vorname)
-    def swappednames = MatchCode(id, vorname, name, jahrgang, verein)
+    def swappednames = MatchCode(id, vorname, name, gebdat, verein)
   }
 
   case class Kandidat(wettkampfTitel: String, geschlecht: String, programm: String, id: Long,

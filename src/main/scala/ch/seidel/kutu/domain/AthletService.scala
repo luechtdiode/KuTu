@@ -164,6 +164,7 @@ trait AthletService extends DBService with AthletResultMapper {
       val vorNamenSimilarity = MatchCode.similarFactor(code.vorname, athlet.vorname, calcThreshold(athlet.vorname, code.vorname)) + startsSameInPercent(code.vorname, athlet.vorname) + encodedVorNamen.find(bmvorname.contains(_)).map(_ => 100).getOrElse(
         bmvorname.find(encodedVorNamen.contains(_)).map(_ => 100).getOrElse(0)
       )
+      val gebdatSimilarity = athlet.gebdat.isEmpty || code.gebdat.equals(athlet.gebdat)
       val jahrgangSimilarity = athlet.gebdat.isEmpty || code.jahrgang.equals(AthletJahrgang(athlet.gebdat).jahrgang)
       val preret = namenSimilarity > 140 && vorNamenSimilarity > 140
       val preret2 = namenSimilarity > 50 && (namenSimilarity + vorNamenSimilarity) > 200 && (math.max(namenSimilarity, vorNamenSimilarity) > 140)
@@ -178,7 +179,7 @@ trait AthletService extends DBService with AthletResultMapper {
         //        logger.debug(" factor " + (namenSimilarity + vorNamenSimilarity) * 2)
         (namenSimilarity + vorNamenSimilarity) * 2
       }
-      else if (vereinSimilarity && (preret || (preret2 && jahrgangSimilarity))) {
+      else if (vereinSimilarity && (preret || (preret2 && gebdatSimilarity))) {
         //        logger.debug(" factor " + (namenSimilarity + vorNamenSimilarity))
         namenSimilarity + vorNamenSimilarity
       }
@@ -203,8 +204,8 @@ trait AthletService extends DBService with AthletResultMapper {
         }).as[(Long, String, String, Option[Date], Long)].withPinnedSession
       }, Duration.Inf).
         flatMap { x =>
-          val (id, name, vorname, jahr, verein) = x
-          val mc1 = MatchCode(id, name, vorname, AthletJahrgang(jahr).jahrgang, verein)
+          val (id, name, vorname, gebdat, verein) = x
+          val mc1 = MatchCode(id, name, vorname, gebdat, verein)
           if (Surname.isSurname(mc1.name).isDefined) {
             List(mc1, mc1.swappednames)
           } else {
