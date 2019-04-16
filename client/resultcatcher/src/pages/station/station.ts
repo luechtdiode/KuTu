@@ -21,7 +21,8 @@ export class StationPage {
     });
   }
   durchgangstate() {
-    return (this.durchgangopen && this.backendService.isWebsocketConnected()) ? 'gestartet' : 'gesperrt';
+    const connected = this.backendService.isWebsocketConnected() ? (this.durchgangopen ? 'gestartet' : 'gesperrt') : ' (offline)';
+    return connected;
   }
   set competition(competitionId: string) {
     if(!this.stationFreezed) {

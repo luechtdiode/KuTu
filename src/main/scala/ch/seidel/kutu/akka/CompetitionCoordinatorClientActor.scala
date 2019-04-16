@@ -1,6 +1,6 @@
 package ch.seidel.kutu.akka
 
-import akka.actor.SupervisorStrategy.{Restart, Stop}
+import akka.actor.SupervisorStrategy.{Restart, Resume, Stop}
 import akka.actor.{Actor, ActorLogging, ActorRef, OneForOneStrategy, Props, Terminated}
 import akka.http.scaladsl.model.ws.{BinaryMessage, Message, TextMessage}
 import akka.pattern.ask
@@ -65,7 +65,7 @@ class CompetitionCoordinatorClientActor(wettkampfUUID: String) extends Persisten
   // send keepalive messages to prevent closing the websocket connection
   private case object KeepAlive
 
-  private val liveticker = context.system.scheduler.schedule(15.second, 15.second) {
+  private val liveticker = context.system.scheduler.schedule(10.second, 10.second) {
     self ! KeepAlive
   }
 
@@ -226,6 +226,8 @@ class CompetitionCoordinatorClientActor(wettkampfUUID: String) extends Persisten
 
     case MessageAck(txt) => if (txt.equals("keepAlive")) handleKeepAliveAck else println(txt)
 
+    case Stop => handleStop
+
     case StopDevice(deviceId) =>
       log.debug(s"stopped device $deviceId")
       deviceWebsocketRefs.get(deviceId).foreach { stoppedWebsocket =>
@@ -241,7 +243,7 @@ class CompetitionCoordinatorClientActor(wettkampfUUID: String) extends Persisten
     case Terminated(stoppedWebsocket) =>
       context.unwatch(stoppedWebsocket)
       val deviceId = deviceWebsocketRefs.filter(x => x._2 == stoppedWebsocket).map(_._1).headOption
-      log.info(s"terminated device $deviceId")
+      log.debug(s"terminated device $deviceId")
       deviceWebsocketRefs = deviceWebsocketRefs.filter(x => x._2 != stoppedWebsocket)
       wsSend = wsSend.map { x =>
         (x._1, x._2
@@ -393,14 +395,25 @@ class CompetitionCoordinatorClientActor(wettkampfUUID: String) extends Persisten
 
 }
 
+case object StopAll
+
 class ClientActorSupervisor extends Actor with ActorLogging {
 
   var wettkampfCoordinators = Map[String, ActorRef]()
 
   override val supervisorStrategy = OneForOneStrategy() {
     case NonFatal(e) =>
-      log.error("Error in WettkampfCoordinator actor", e)
+      log.error("Error in WettkampfCoordinator actor.", e)
       Stop
+  }
+
+  override def preStart(): Unit = {
+    log.info("Starting ClientActorSupervisor")
+    super.preStart()
+  }
+
+  override def postStop(): Unit = {
+    super.postStop()
   }
 
   override def receive = {
@@ -410,14 +423,18 @@ class ClientActorSupervisor extends Actor with ActorLogging {
           log.debug(s"Connect new client to existing coordinator. Wettkampf: $wettkampfUUID, Device: $deviceID")
           coordinator
         case _ =>
+          log.info(s"Connect new client to new coordinator. Wettkampf: $wettkampfUUID, Device: $deviceID")
           val coordinator = context.actorOf(
             CompetitionCoordinatorClientActor.props(wettkampfUUID), "client-" + wettkampfUUID)
           context.watch(coordinator)
           wettkampfCoordinators = wettkampfCoordinators + (wettkampfUUID -> coordinator)
-          log.debug(s"Connect new client to new coordinator. Wettkampf: $wettkampfUUID, Device: $deviceID")
           coordinator
       }
       sender ! coordinator
+
+    case StopAll =>
+      wettkampfCoordinators.foreach(coordinator => coordinator._2 ! Stop)
+      sender ! "OK"
 
     case uw: PublishAction =>
       wettkampfCoordinators.get(uw.action.wettkampfUUID) match {
@@ -432,6 +449,8 @@ class ClientActorSupervisor extends Actor with ActorLogging {
       wettkampfCoordinators = wettkampfCoordinators.filter(_._2 != wettkampfActor)
 
     case MessageAck(text) => println(text)
+
+    case s => println(s)
   }
 }
 
@@ -447,6 +466,11 @@ object CompetitionCoordinatorClientActor extends JsonSupport with EnrichedJson {
   def publish(action: KutuAppAction, context: String): Future[KutuAppEvent] = {
     implicit val timeout = Timeout(15000 milli)
     (supervisor ? PublishAction(context, action)).mapTo[KutuAppEvent]
+  }
+
+  def stopAll(): Future[String] = {
+    implicit val timeout = Timeout(15000 milli)
+    (supervisor ? StopAll).mapTo[String]
   }
 
   def props(wettkampfUUID: String) = Props(classOf[CompetitionCoordinatorClientActor], wettkampfUUID)

@@ -150,6 +150,7 @@ export class WertungEditorPage {
       if (currentItemIndex < 0) {
         nextItemIndex = 0;
       } else if (currentItemIndex >= this.backendService.wertungen.length-1) {
+        this.backendService.loadWertungen();
         this.navCtrl.pop();
         return;
       }

@@ -57,6 +57,7 @@ export abstract class WebsocketService {
 
   disconnectWS(explicit = true) {
     this.explicitClosed = explicit;
+    this.lstKeepAliveReceived = 0;
     if (this.websocket) {
       this.websocket.close();
       if (explicit) {
@@ -70,6 +71,7 @@ export abstract class WebsocketService {
   private close() {
     this.websocket = undefined;
     this.identifiedState = false;
+    this.lstKeepAliveReceived = 0;
     this.identified.next(this.identifiedState);
     this.connectedState = false;
     this.connected.next(this.connectedState);
@@ -81,7 +83,7 @@ export abstract class WebsocketService {
   private isWebsocketConnecting(): boolean {
     return this.websocket && this.websocket.readyState === this.websocket.CONNECTING;
   }
-  private shouldConnectAgain(): boolean {
+  public shouldConnectAgain(): boolean {
     return !(this.isWebsocketConnected() || this.isWebsocketConnecting());
   }
 

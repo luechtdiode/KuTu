@@ -8,11 +8,13 @@ import akka.http.scaladsl.server.Route
 import akka.stream.ActorMaterializer
 import ch.seidel.kutu.Config
 import ch.seidel.kutu.Config._
+import ch.seidel.kutu.akka.CompetitionCoordinatorClientActor
 import ch.seidel.kutu.domain.DBService
 import org.slf4j.LoggerFactory
 
 import scala.concurrent.duration.Duration
 import scala.concurrent.{Await, ExecutionContext, Future}
+import scala.util.Try
 
 object Core extends KuTuSSLContext {
 //  val logger = LoggerFactory.getLogger(this.getClass)
@@ -76,8 +78,10 @@ trait KuTuAppHTTPServer extends ApiService with JsonSupport {
           done.failed.map { ex => log.error(ex, "Failed unbinding") }
         }
 
-        serverBinding = None
-        println(caller + " Server stopped")
+        CompetitionCoordinatorClientActor.stopAll().onComplete(_ => {
+          serverBinding = None
+          println(caller + " Server stopped")
+        })
       case _ =>
     }
   }

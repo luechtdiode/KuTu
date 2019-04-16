@@ -393,6 +393,9 @@ export class BackendService extends WebsocketService {
   updateWertung(durchgang: string, step: number, geraetId: number, wertung: Wertung): Observable<WertungContainer> {
     const competitionId = wertung.wettkampfUUID;
     const result = new Subject<WertungContainer>();
+    if(this.shouldConnectAgain()) {
+      this.reconnect();
+    }
     this.startLoading('Wertung wird gespeichert. Bitte warten ...', this.http.put<WertungContainer | MessageAck>(backendUrl + 'api/durchgang/' + competitionId + '/' + encodeURIComponent2(durchgang) + '/' + geraetId + '/' + step, wertung).share())
     .subscribe((data) => {
       if (!this.isMessageAck(data)) { 
