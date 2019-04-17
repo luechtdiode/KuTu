@@ -977,7 +977,7 @@ class RiegenTab(wettkampf: WettkampfView, override val service: KutuService) ext
 		  disable <== when(makeDurchgangActiveBinding) choose true otherwise false
 		  onAction = (event: ActionEvent) => {
 			  implicit val impevent = event
-			  val selectedDurchgang = riegenFilterView.selectionModel.value.getSelectedItem.durchgang.value
+			  val selectedDurchgang = durchgangView.selectionModel.value.getSelectedItem.initname
 			  val txtDurchgangName = new TextField {
     		  text.value = selectedDurchgang
     	  }
