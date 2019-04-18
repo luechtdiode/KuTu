@@ -532,6 +532,7 @@ class RiegenTab(wettkampf: WettkampfView, override val service: KutuService) ext
       }
       tcpl map tgi filter { _ > -1 } map { disziplinlist(_).id }
     }
+    def toGeraetName(id: Long) = disziplinlist.find(p => p.id == id).map(_.name).getOrElse("")
 
     def makeMoveDurchganMenu(durchgang: DurchgangEditor, cells: List[TablePosition[_, _]]): Menu = {
       val selectedGerate = toGeraetId(cells.map(c => c.column))
@@ -581,6 +582,21 @@ class RiegenTab(wettkampf: WettkampfView, override val service: KutuService) ext
         }
         disable.value = items.size() == 0
       }
+    }
+    def makeSetEmptyRiegeMenu(durchgang: DurchgangEditor, cells: List[TablePosition[_, _]]): MenuItem = {
+      val selectedGerate = toGeraetId(cells.map(c => c.column))
+      val menu = KuTuApp.makeMenuAction("Mit leerer Riege besetzen") {(caption, action) =>
+        KuTuApp.invokeWithBusyIndicator {
+          service.updateOrinsertRiege(RiegeRaw(wettkampf.id,
+            s"Leere Riege ${durchgang.initname}/${toGeraetName(selectedGerate.headOption.getOrElse(0))}",
+            Some(durchgang.initname), selectedGerate.headOption))
+          reloadData()
+          riegenFilterView.sort
+          durchgangView.sort
+        }
+      }
+      //menu.disable.value = items.size() == 0
+      menu
     }
     def makeRenameDurchgangMenu: MenuItem = {
       val m = KuTuApp.makeMenuAction("Durchgang umbenennen ...") {(caption, action) =>
@@ -716,6 +732,10 @@ class RiegenTab(wettkampf: WettkampfView, override val service: KutuService) ext
             items += makeRegenereateDurchgangMenu(actSelection.toSet)
             items += makeMergeDurchganMenu(actSelection.toSet)
             items += makeRenameDurchgangMenu
+            if (as.size == 1) {
+              items += new SeparatorMenuItem()
+              items += makeSetEmptyRiegeMenu(durchgangView.selectionModel().selectedItems.head, focusedCells)
+            }
             if (actSelection.size == 1) {
               items += new SeparatorMenuItem()
               items += makeMoveDurchganMenu(durchgangView.selectionModel().selectedItems.head, focusedCells)
@@ -728,6 +748,10 @@ class RiegenTab(wettkampf: WettkampfView, override val service: KutuService) ext
           btnEditDurchgang.items += makeRegenereateDurchgangMenu(actSelection.toSet)
           btnEditDurchgang.items += makeMergeDurchganMenu(actSelection.toSet)
           btnEditDurchgang.items += makeRenameDurchgangMenu
+          if (as.size == 1) {
+            btnEditDurchgang.items += new SeparatorMenuItem()
+            btnEditDurchgang.items += makeSetEmptyRiegeMenu(durchgangView.selectionModel().selectedItems.head, focusedCells)
+          }
           if (actSelection.size == 1) {
             btnEditDurchgang.items += new SeparatorMenuItem()
             btnEditDurchgang.items += makeMoveDurchganMenu(durchgangView.selectionModel().selectedItems.head, focusedCells)

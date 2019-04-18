@@ -51,9 +51,8 @@ object RiegenBuilder {
     .sortBy(d => d._1)
     .map{d =>
       val (durchgang, kandidatriegen) = d
-      val riegen1 = kandidatriegen.map(_._2)
       val dzl1 = kandidatriegen.flatMap(_._1.diszipline)
-      val riegen = riegen1.sortBy(r => r.start.map( dzl1.indexOf(_)))
+      val riegen = kandidatriegen.map(_._2).sortBy(r => r.start.map( dzl1.indexOf(_)))
       val dzl2 = dzl1.toSet.toList
       val dzl = dzl2.sortBy{dzl1.indexOf(_)}
 

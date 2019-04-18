@@ -85,8 +85,8 @@ object DBService {
     val sqlScripts = Seq(
       "SetJournalWAL.sql"
       ,"OptionalWertungen.sql"
-//        ,"AlterWettkampfUUID.sql"
-        )
+      ,"AddRiegenIndicies.sql"
+    )
 
     sqlScripts.filter{ filename =>
       val f = new File(dbhomedir + s"/$appVersion-$filename.log")

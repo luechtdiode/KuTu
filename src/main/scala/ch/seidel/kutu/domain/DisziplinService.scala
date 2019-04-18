@@ -16,20 +16,56 @@ abstract trait DisziplinService extends DBService with WettkampfResultMapper {
   
   def listDisziplinesZuDurchgang(durchgang: Set[String], wettkampf: Long, riege1: Boolean): Map[String, IndexedSeq[Disziplin]] = {
     Await.result(database.run{
-      val ret = sql""" select distinct wd.disziplin_id, d.name, r.durchgang
+      val ret = if (riege1) sql"""
+             select distinct wd.disziplin_id, d.name, r.durchgang, wd.ord
              from wettkampfdisziplin wd
              inner join disziplin d on (wd.disziplin_id = d.id)
              inner join wertung w on (w.wettkampfdisziplin_id = wd.id)
-             inner join riege r on (r.wettkampf_id = $wettkampf
-                                    and r.start = d.id
-                                    and r.durchgang in (#${durchgang.mkString("'","','","'")})
-                                    and #${if(riege1) "r.name = w.riege" else "r.name = w.riege2"}
-                                    )
+             inner join riege r on (
+               r.wettkampf_id = $wettkampf
+               and r.start = d.id
+               and r.durchgang in (#${durchgang.mkString("'","','","'")})
+               and r.name = w.riege
+               and r.wettkampf_id = w.wettkampf_id
+             )
+             where
+               w.wettkampf_id = $wettkampf
+             union all select distinct wd.disziplin_id, d.name, r.durchgang, wd.ord
+             from wettkampfdisziplin wd
+             inner join disziplin d on (wd.disziplin_id = d.id)
+             inner join riege r on (
+               r.start = d.id
+               and r.durchgang in (#${durchgang.mkString("'", "','", "'")})
+             )
+             inner join wettkampf wk on (wk.id = r.wettkampf_id)
+             inner join programm pg on (pg.parent_id = wk.programm_id and pg.id = wd.programm_id)
+             left outer join wertung w on (
+               w.wettkampf_id = r.wettkampf_id
+               and (w.riege = r.name or w.riege2 = r.name)
+             )
+             where
+               r.wettkampf_id = $wettkampf
+               and w.id is null
+             order by
+               wd.ord
+       """.as[(Long, String, String, Int)]
+      else sql"""
+             select distinct wd.disziplin_id, d.name, r.durchgang, wd.ord
+             from wettkampfdisziplin wd
+             inner join disziplin d on (wd.disziplin_id = d.id)
+             inner join wertung w on (w.wettkampfdisziplin_id = wd.id)
+             inner join riege r on (
+               r.wettkampf_id = $wettkampf
+               and r.start = d.id
+               and r.durchgang in (#${durchgang.mkString("'","','","'")})
+               and r.name = w.riege2
+               and r.wettkampf_id = w.wettkampf_id
+             )
              where
                w.wettkampf_id = $wettkampf
              order by
               wd.ord
-       """.as[(Long, String, String)]
+       """.as[(Long, String, String, Int)]
        ret.withPinnedSession.map{_.map{tupel => (Disziplin(tupel._1, tupel._2), tupel._3)}.groupBy(_._2).map(x => x._1 -> x._2.map(_._1))}
     }, Duration.Inf)
   }

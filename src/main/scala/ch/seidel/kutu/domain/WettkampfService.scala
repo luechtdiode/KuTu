@@ -109,6 +109,12 @@ trait WettkampfService extends DBService
                   left outer join disziplin d on (d.id = r.start)
                   where w.riege2 not null and w.wettkampf_id = $wettkampf
                   group by w.riege2
+                  union SELECT distinct r.name, 0 as cnt, r.durchgang, d.*
+                  FROM riege r
+                  inner join disziplin d on (d.id = r.start)
+                  where
+                    r.wettkampf_id = $wettkampf
+                    and not exists (select 1 from wertung w where w.riege = r.name or w.riege2 = r.name and r.wettkampf_id = w.wettkampf_id)
        """.as[(String, Int, Option[String], Option[Disziplin])]).withPinnedSession
     }, Duration.Inf)
   }
