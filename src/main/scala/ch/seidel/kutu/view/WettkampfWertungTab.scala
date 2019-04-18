@@ -11,8 +11,9 @@ import ch.seidel.kutu.domain._
 import ch.seidel.kutu.http.WebSocketClient
 import ch.seidel.kutu.renderer.PrintUtil.FilenameDefault
 import ch.seidel.kutu.renderer._
+import javafx.event.EventHandler
 import javafx.scene.control.cell.PropertyValueFactory
-import javafx.scene.{control => jfxsc}
+import javafx.scene.{input, control => jfxsc}
 import org.slf4j.LoggerFactory
 import scalafx.Includes._
 import scalafx.application.Platform
@@ -209,7 +210,7 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
       id = "kutu-table"
       editable = !wettkampf.toWettkampf.isReadonly(homedir, remoteHostOrigin)
     }
-    val emptyRiege = GeraeteRiege("", "", None, 0, None, Seq(), false)
+    val emptyRiege = GeraeteRiege("", "", None, 0, None, Seq(), false, "")
  		var relevantRiegen: Map[String,(Boolean, Int)] = Map[String,(Boolean, Int)]()
  		var erfasst = false
  		
@@ -234,7 +235,7 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
             	}
               item.durchgang match {
                 case Some(d) =>
-                  setText(s"${item.durchgang.get}: ${item.disziplin.map(d => d.name).getOrElse("")}  (${item.halt + 1}. Gerät)")
+                  setText(s"${item.sequenceId} ${item.durchgang.get}: ${item.disziplin.map(d => d.name).getOrElse("")}  (${item.halt + 1}. Gerät)")
                   if(!item.erfasst) {
                     styleClass.add("incomplete")
                     imageView.image = nokIcon
@@ -264,8 +265,58 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
       buttonCell = new GeraeteRiegeListCell()
       cellFactory = { p => new GeraeteRiegeListCell() }
 
+      var textbuffer = ""
+
+      onKeyPressed = (event) => {
+        if (event.getText.equalsIgnoreCase("R")) {
+          textbuffer = "R"
+          if (tooltip.value == null) {
+            tooltip = new Tooltip()
+            tooltip.value.autoHide = false
+          }
+          tooltip.value.text = textbuffer
+          tooltip.value.show(scene.value.getWindow)
+
+        } else if (textbuffer.startsWith("R") && event.getText.isDecimalFloat) {
+          textbuffer += event.getText
+          tooltip.value.text = textbuffer
+          tooltip.value.show(scene.value.getWindow)
+        }
+        if (textbuffer.length == 5) {
+          tooltip.value.text = textbuffer
+          tooltip.value.show(scene.value.getWindow)
+          items.value.find(p => p.sequenceId == textbuffer) match {
+            case Some(riege) =>
+              textbuffer = ""
+              selectionModel.value.select(riege)
+              val focusSetter = AutoCommitTextFieldTableCell.selectFirstEditable(wkview)
+              Platform.runLater(new Runnable() {
+                override def run = {
+                  focusSetter()
+                  if (tooltip.value != null) {
+                    tooltip.value.hide
+                    tooltip.value = null
+                  }
+                }
+              })
+
+            case _ =>
+              textbuffer = ""
+              if (tooltip.value != null) {
+                tooltip.value.hide
+                tooltip.value = null
+              }
+          }
+        }
+      }
+
       focused.onChange({
         if(!focused.value) {
+          textbuffer = ""
+          if (tooltip.value != null) {
+            tooltip.value.hide
+            tooltip.value = null
+          }
           val focusSetter = AutoCommitTextFieldTableCell.selectFirstEditable(wkview)
           Platform.runLater(new Runnable() {
             override def run = {

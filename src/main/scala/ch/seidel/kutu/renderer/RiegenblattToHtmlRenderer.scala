@@ -106,8 +106,11 @@ object RiegenBuilder {
       val (durchgang, starts) = item
       starts.map{start =>
         GeraeteRiege(start._3.head.wettkampfTitel,start._3.head.wertungen.head.wettkampf.uuid.get,
-          durchgang, start._1, start._2, start._3, start._4)
+          durchgang, start._1, start._2, start._3, start._4, "")
       }
+    }.zipWithIndex.map{x =>
+      val (riege, index) = x
+      riege.copy(sequenceId = f"R${index}%04d")
     }
 
     riegen
@@ -243,7 +246,7 @@ trait RiegenblattToHtmlRenderer {
     s"""<div class=riegenblatt>
       <div class=headline>
         $logoHtml $imagedata
-        <div class=durchgang>${riege.durchgang.getOrElse("")}</br><div class=geraet>${riege.disziplin.map(d => d.easyprint).getOrElse("")} (${riege.halt + 1}. Gerät)</div></div>
+        <div class=durchgang>${riege.durchgang.getOrElse("")}</br><div class=geraet>${riege.disziplin.map(d => d.easyprint).getOrElse("")} (${riege.halt + 1}. Gerät)<br>Riegencode: ${riege.sequenceId}</div></div>
       </div>
       <h1>${riege.wettkampfTitel}</h1>
       <div class="showborder">
