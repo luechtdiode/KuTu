@@ -464,7 +464,8 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
                 val (d, e) = wertung.init.wettkampfdisziplin.notenSpez.validated(disciplin.toOption(evt.newValue).getOrElse(BigDecimal(0)).doubleValue(),
                   disciplin.toOption(disciplin.noteE.value).getOrElse(BigDecimal(0)).doubleValue())
                 disciplin.noteD.value = d
-                disciplin.endnote.value = wertung.init.wettkampfdisziplin.notenSpez.calcEndnote(disciplin.noteD.value, disciplin.noteE.value)
+                disciplin.noteE.value = e
+                disciplin.endnote.value = wertung.init.wettkampfdisziplin.notenSpez.calcEndnote(d, e)
               }
               if (disciplin.isDirty) {
                 service.updateWertung(disciplin.commit)
@@ -496,7 +497,7 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
                 val (d, e) = wertung.init.wettkampfdisziplin.notenSpez.validated(disciplin.toOption(disciplin.noteD.value).getOrElse(BigDecimal(0)).doubleValue(),
                   disciplin.toOption(evt.newValue).getOrElse(BigDecimal(0)).doubleValue())
                 disciplin.noteE.value = e
-                disciplin.endnote.value = wertung.init.wettkampfdisziplin.notenSpez.calcEndnote(disciplin.noteD.value, disciplin.noteE.value)
+                disciplin.endnote.value = wertung.init.wettkampfdisziplin.notenSpez.calcEndnote(d, e)
               }
               if (disciplin.isDirty) {
                 service.updateWertung(disciplin.commit)
@@ -509,7 +510,8 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
         }
         lazy val clEndnote = new WKTableColumn[Double](indexerF.next) {
           text = "Endnote"
-          cellValueFactory = { x => if (x.value.size > index) x.value(index).endnote else wertung.endnote }
+          cellValueFactory = { x => if (x.value.size > index) x.value(index).endnote else wertung.endnote}
+          cellFactory = { _ => new AutoCommitTextFieldTableCell[IndexedSeq[WertungEditor], Double](DoubleConverter(wertung.init.wettkampfdisziplin.notenSpez)) }
           styleClass += "table-cell-with-value"
           prefWidth = 80
           editable = false
