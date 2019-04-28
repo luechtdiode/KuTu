@@ -17,7 +17,7 @@ then
     curl -L http://download2.gluonhq.com/jpackager/11/jdk.packager-windows.zip -o "javapackager-${OS}.zip"
     mv jdk/*/ jdk11/
     unzip -u "javapackager-${OS}.zip" -d jdk11/bin
-    cp "${JAVA_HOME}/bin/jdk.packager.jar" jdk11/jmods
+    cp jdk11/bin/jdk.packager.jar jdk11/jmods
     export JAVA_HOME="${PWD}/jdk11"
     export JRE_HOME="${PWD}/jdk11"
     export PATH=${JAVA_HOME}/bin:$PATH
@@ -30,7 +30,7 @@ then
     curl -L http://download2.gluonhq.com/jpackager/11/jdk.packager-windows.zip -o "javapackager-${OS}.zip"
     mv jdk/*/ jdk11/
     unzip -u "javapackager-${OS}.zip" -d jdk11/bin
-    cp "${JAVA_HOME}/bin/jdk.packager.jar" jdk11/jmods
+    cp jdk11/bin/jdk.packager.jar jdk11/jmods
     export JAVA_HOME="${PWD}/jdk11"
     export JRE_HOME="${PWD}/jdk11"
     export PATH=${JAVA_HOME}/bin:$PATH
@@ -43,7 +43,7 @@ then
     curl -L http://download2.gluonhq.com/jpackager/11/jdk.packager-linux.zip -o "javapackager-${OS}.zip"
     mv jdk/*/ jdk11/
     unzip -u "javapackager-${OS}.zip" -d jdk11/bin
-    cp "${JAVA_HOME}/bin/jdk.packager.jar" jdk11/jmods
+    cp jdk11/bin/jdk.packager.jar jdk11/jmods
     export JAVA_HOME="${PWD}/jdk11"
     export JRE_HOME="${PWD}/jdk11"
     export PATH=${JAVA_HOME}/bin:$PATH
@@ -57,7 +57,7 @@ then
     curl -L http://download2.gluonhq.com/jpackager/11/jdk.packager-osx.zip -o "javapackager-${OS}.zip"
     echo "download jdk11 for ${OS} finished"
     unzip -u "javapackager-${OS}.zip" -d jdk/Contents/Home/bin
-    cp "${JAVA_HOME}/bin/jdk.packager.jar" jdk/Contents/Home/jmods
+    cp jdk/Contents/Home/bin/jdk.packager.jar jdk/Contents/Home/jmod
     sudo mv jdk/*/ /Library/Java/JavaVirtualMachines/jdk-11.jdk
     sudo ln -s /Library/Java/JavaVirtualMachines/jdk-11.jdk/Contents/Home jdk11
     export JAVA_HOME="${PWD}/jdk11"
