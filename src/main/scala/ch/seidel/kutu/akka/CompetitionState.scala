@@ -31,7 +31,7 @@ case class CompetitionState(
         finishedDurchgangSteps,
         finishedDurchgaenge + eventDurchgangFinished.durchgang,
         startStopEvents :+ eventDurchgangFinished,
-        lastWertungen, bestenResults, lastBestenResults, lastSequenceId
+        Map.empty, bestenResults, lastBestenResults, lastSequenceId
       )
 
     case au: AthletWertungUpdatedSequenced =>

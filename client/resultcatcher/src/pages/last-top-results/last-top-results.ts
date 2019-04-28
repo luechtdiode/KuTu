@@ -18,6 +18,7 @@ export class LastTopResultsPage {
   @ViewChild(Content) content: Content;
 
   items: WertungContainer[] = [];
+  toptop = {};
   geraete: Geraet[];
 
   @HostListener('window:resize', ['$event'])
@@ -36,8 +37,19 @@ export class LastTopResultsPage {
     .filter(r => !!r && !!r.lastTopResults)
     .subscribe(newLastRes => {
       this.items = [];
+      this.toptop = {};
       Object.keys(newLastRes.lastTopResults).forEach(key => {
-        this.items.push(newLastRes.lastTopResults[key]);
+        const top = newLastRes.lastTopResults[key];
+        let topt = this.toptop[top.wertung.wettkampfdisziplinId]
+        if (!topt) {
+          this.toptop[top.wertung.wettkampfdisziplinId] = top
+        } else if (topt.wertung.endnote < top.wertung.endnote) {
+          this.toptop[top.wertung.wettkampfdisziplinId] = top
+        }
+      });
+      Object.keys(this.toptop).forEach(key => {
+        const top = this.toptop[key];
+        this.items.push(top);
       });
       this.sortItems();
     });
