@@ -53,7 +53,7 @@
 		<!--<app.version>${project.version}</app.version>-->
 		<buildDate>${maven.build.timestamp}</buildDate>
 		<maven.build.timestamp.format>yyyy-MM-dd HH:mm</maven.build.timestamp.format>
-
+		<jdk-home>${project.basedir}/jdk11</jdk-home>
 		<scala.majorversion>2.12</scala.majorversion>
 		<scala.version>${scala.majorversion}.8</scala.version>
 		<akkaHttp.version>10.1.7</akkaHttp.version>
@@ -495,11 +495,11 @@
 							<goal>exec</goal>
 						</goals>
 						<configuration>
-							<executable>${java.home}/bin/jpackager</executable>
+							<executable>${jdk-home}/bin/jpackager</executable>
 							<arguments>
 								<argument>create-installer</argument>
 								<argument>--module-path</argument>
-								<argument>${java.home}/jmods</argument>
+								<argument>${jdk-home}/jmods</argument>
 								<argument>--class</argument>
 								<argument>ch.seidel.kutu.KuTuApp</argument>
 								<argument>--input</argument>
@@ -540,7 +540,7 @@
 							<!--<goal>exec</goal>-->
 						<!--</goals>-->
 						<!--<configuration>-->
-							<!--<executable>${java.home}/bin/jpackager</executable>-->
+							<!--<executable>${jdk-home}/bin/jpackager</executable>-->
 							<!--<arguments>-->
 								<!--<argument>-deploy</argument>-->
 								<!--<argument>-appclass</argument>-->
