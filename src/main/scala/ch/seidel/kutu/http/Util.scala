@@ -134,6 +134,6 @@ trait Hashing {
 
 trait IpToDeviceID {
   def makeDeviceId(ip: RemoteAddress, context: Option[String]) =
-    ip.toOption.map(_.getHostAddress).getOrElse("unknown") + "@" + context.getOrElse(UUID.randomUUID().toString)
+    ip.toOption.map(_.getHostAddress).getOrElse("unknown") + context.map("@" + _).getOrElse("")
 
 }
