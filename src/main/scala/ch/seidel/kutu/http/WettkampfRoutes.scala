@@ -160,10 +160,15 @@ trait WettkampfRoutes extends SprayJsonSupport with JsonSupport with JwtSupport 
     wettkampf
   }
 
-  def httpRemoveWettkampfRequest(wettkampf: Wettkampf) = {
-    httpDeleteClientRequest(s"$remoteAdminBaseUrl/api/competition/${wettkampf.uuid.get}")
-    wettkampf.removeSecret(homedir, remoteHostOrigin)
-    wettkampf.removeRemote(homedir, remoteHostOrigin)
+  def httpRemoveWettkampfRequest(wettkampf: Wettkampf): Future[HttpResponse] = {
+    val eventualResponse: Future[HttpResponse] = httpDeleteClientRequest(s"$remoteAdminBaseUrl/api/competition/${wettkampf.uuid.get}")
+    eventualResponse.onComplete {
+      case scala.util.Success(_) =>
+        wettkampf.removeSecret(homedir, remoteHostOrigin)
+        wettkampf.removeRemote(homedir, remoteHostOrigin)
+      case _ =>
+    }
+    eventualResponse
   }
 
   def extractWettkampfUUID: HttpHeader => Option[String] = {
@@ -291,9 +296,14 @@ trait WettkampfRoutes extends SprayJsonSupport with JsonSupport with JwtSupport 
                 authenticated() { userId =>
                   if (userId.equals(wkuuid.toString())) {
                     onSuccess(readWettkampfAsync(wkuuid.toString())) { wettkampf =>
-                      deleteWettkampf(wettkampf.id)
-                      CompetitionCoordinatorClientActor.publish(Delete(wkuuid.toString), clientId)
-                      complete(StatusCodes.OK)
+                      complete(
+                        CompetitionCoordinatorClientActor.publish(Delete(wkuuid.toString), clientId)
+                        .andThen {
+                          case _ =>
+                            deleteWettkampf(wettkampf.id)
+                            StatusCodes.OK
+                        }
+                      )
                     }
                   } else {
                     complete(StatusCodes.Unauthorized)

@@ -1,7 +1,7 @@
 package ch.seidel.kutu.akka
 
 import akka.actor.SupervisorStrategy.{Restart, Resume, Stop}
-import akka.actor.{Actor, ActorLogging, ActorRef, OneForOneStrategy, Props, Terminated}
+import akka.actor.{Actor, ActorLogging, ActorRef, OneForOneStrategy, PoisonPill, Props, Terminated}
 import akka.http.scaladsl.model.ws.{BinaryMessage, Message, TextMessage}
 import akka.pattern.ask
 import akka.persistence.{PersistentActor, SnapshotOffer, SnapshotSelectionCriteria}
@@ -256,8 +256,15 @@ class CompetitionCoordinatorClientActor(wettkampfUUID: String) extends Persisten
       val criteria = SnapshotSelectionCriteria.Latest
       deleteSnapshots(criteria)
       deleteMessages(lastSequenceNr)
-      log.info(s"Wetkampf will be deleted $wk")
-      handleStop
+      log.info(s"Wettkampf will be deleted $wk")
+      sender ! MessageAck(s"OK, Wettkampf $wk deleted")
+      wsSend.values.foreach(_.foreach(_.actorRef ! PoisonPill))
+      deviceWebsocketRefs = Map.empty
+      wsSend = Map.empty
+      openDurchgangJournal = Map.empty
+      pendingKeepAliveAck = None
+      state = CompetitionState()
+      self ! handleStop
 
     case _ =>
   }

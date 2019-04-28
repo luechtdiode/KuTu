@@ -465,13 +465,11 @@ object KuTuApp extends JFXApp with KutuService with JsonSupport with JwtSupport 
       new Button("OK") {
         onAction = handleAction { implicit e: ActionEvent =>
           val process = KuTuApp.invokeAsyncWithBusyIndicator {
-            Future {
-              server.httpRemoveWettkampfRequest(p.toWettkampf)
-              ConnectionStates.disconnected()
-            }
+            server.httpRemoveWettkampfRequest(p.toWettkampf)
           }
           process.onComplete {
             resultTry =>
+              ConnectionStates.disconnected()
               Platform.runLater {
                 val feedback = resultTry match {
                   case Success(response) =>

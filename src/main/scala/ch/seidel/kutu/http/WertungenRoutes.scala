@@ -38,6 +38,9 @@ trait WertungenRoutes extends SprayJsonSupport with JsonSupport with JwtSupport 
       pathPrefix("durchgang" / JavaUUID) { competitionId =>
         pathEnd {
           get {
+            if (!wettkampfExists(competitionId.toString)) {
+              complete(StatusCodes.NotFound)
+            } else
             complete {
               Future {
                 RiegenBuilder.mapToGeraeteRiegen(getAllKandidatenWertungen(competitionId).toList)
@@ -52,7 +55,10 @@ trait WertungenRoutes extends SprayJsonSupport with JsonSupport with JwtSupport 
           val lastSequenceIdOption: Option[Long] = lastSequenceId.map(str2Long)
           parameters('jwt.as[String]) { jwt =>
             authenticateWith(Some(jwt), true) { id =>
-              if (id == competitionId.toString) {
+              if (!wettkampfExists(competitionId.toString)) {
+                complete(StatusCodes.NotFound)
+              }
+              else if (id == competitionId.toString) {
                 if (durchgang.equalsIgnoreCase("all")) {
                   handleWebSocketMessages(CompetitionCoordinatorClientActor.createActorSinkSource(clientId, competitionId.toString, None, lastSequenceIdOption))
                 } else {
@@ -64,14 +70,18 @@ trait WertungenRoutes extends SprayJsonSupport with JsonSupport with JwtSupport 
             }
           } ~
           authenticated(true) { id =>
-            if (id == competitionId.toString) {
+            if (!wettkampfExists(competitionId.toString)) {
+              complete(StatusCodes.NotFound)
+            } else if (id == competitionId.toString) {
               handleWebSocketMessages(CompetitionCoordinatorClientActor.createActorSinkSource(clientId, competitionId.toString, Some(durchgang), lastSequenceIdOption))
             } else {
               complete(StatusCodes.Unauthorized)
             }
           } ~
           pathEnd {
-            if (durchgang.equalsIgnoreCase("all")) {
+            if (!wettkampfExists(competitionId.toString)) {
+              complete(StatusCodes.NotFound)
+            } else if (durchgang.equalsIgnoreCase("all")) {
               handleWebSocketMessages(CompetitionCoordinatorClientActor.createActorSource(clientId, competitionId.toString, None, lastSequenceIdOption))
             } else {
               handleWebSocketMessages(CompetitionCoordinatorClientActor.createActorSource(clientId, competitionId.toString, Some(durchgang)))
@@ -89,6 +99,9 @@ trait WertungenRoutes extends SprayJsonSupport with JsonSupport with JwtSupport 
         } ~
         path("geraete") {
           get {
+            if (!wettkampfExists(competitionId.toString)) {
+              complete(StatusCodes.NotFound)
+            } else
             complete {
               Future {
                 RiegenBuilder.mapToGeraeteRiegen(getAllKandidatenWertungen(competitionId).toList)
@@ -101,6 +114,9 @@ trait WertungenRoutes extends SprayJsonSupport with JsonSupport with JwtSupport 
         } ~
         path("diszipline") {
           get {
+            if (!wettkampfExists(competitionId.toString)) {
+              complete(StatusCodes.NotFound)
+            } else
             complete {
               Future {
                 RiegenBuilder.mapToGeraeteRiegen(getAllKandidatenWertungen(competitionId).toList)
@@ -113,85 +129,81 @@ trait WertungenRoutes extends SprayJsonSupport with JsonSupport with JwtSupport 
         } ~
         path(Segments) { segments =>
           get {
-            val wkPgmId = readWettkampf(competitionId.toString()).programmId
-            val isDNoteUsed = wkPgmId != 20 && wkPgmId != 1
-            // Durchgang/Geraet/Step
-            segments match {
-              case List(durchgang) => complete {
-                Future {
-                  RiegenBuilder.mapToGeraeteRiegen(getAllKandidatenWertungen(competitionId).toList)
-                    .filter(gr => gr.durchgang.exists(encodeURIComponent(_) == durchgang) && gr.disziplin.nonEmpty)
-                    .map(gr => gr.disziplin.get)
-                    .foldLeft(List[Disziplin]())((acc, geraet) => if (acc.contains(geraet)) acc else acc :+ geraet)
+            if (!wettkampfExists(competitionId.toString)) {
+              complete(StatusCodes.NotFound)
+            }
+            else {
+              val wkPgmId = readWettkampf(competitionId.toString()).programmId
+              val isDNoteUsed = wkPgmId != 20 && wkPgmId != 1
+              // Durchgang/Geraet/Step
+              segments match {
+                case List(durchgang) => complete {
+                  Future {
+                    RiegenBuilder.mapToGeraeteRiegen(getAllKandidatenWertungen(competitionId).toList)
+                      .filter(gr => gr.durchgang.exists(encodeURIComponent(_) == durchgang) && gr.disziplin.nonEmpty)
+                      .map(gr => gr.disziplin.get)
+                      .foldLeft(List[Disziplin]())((acc, geraet) => if (acc.contains(geraet)) acc else acc :+ geraet)
+                  }
                 }
-              }
-              case List(durchgang, geraet) => complete {
-                Future {
-                  val gid: Long = geraet
-                  RiegenBuilder.mapToGeraeteRiegen(getAllKandidatenWertungen(competitionId).toList)
-                    .filter(gr => gr.durchgang.exists(encodeURIComponent(_) == durchgang) && gr.disziplin.exists(_.id == gid))
-                    .map(gr => gr.halt + 1)
-                    .toSet.toList.sorted
+                case List(durchgang, geraet) => complete {
+                  Future {
+                    val gid: Long = geraet
+                    RiegenBuilder.mapToGeraeteRiegen(getAllKandidatenWertungen(competitionId).toList)
+                      .filter(gr => gr.durchgang.exists(encodeURIComponent(_) == durchgang) && gr.disziplin.exists(_.id == gid))
+                      .map(gr => gr.halt + 1)
+                      .toSet.toList.sorted
+                  }
                 }
-              }
-              case List(durchgang, geraet, step) => complete {
-                Future {
-                  val halt: Int = step
-                  val gid: Long = geraet
-                  RiegenBuilder.mapToGeraeteRiegen(getAllKandidatenWertungen(competitionId).toList)
-                    .filter(gr =>
-                      gr.durchgang.exists(encodeURIComponent(_) == durchgang) &&
-                        gr.disziplin.exists(_.id == gid) &&
-                        gr.halt == halt - 1)
-                    .flatMap(gr => gr.kandidaten.map(k =>
-                      WertungContainer(k.id, k.vorname, k.name, k.geschlecht, k.verein,
-                        k.wertungen.filter(w => w.wettkampfdisziplin.disziplin.id == gid).map(_.toWertung).head,
-                        gid, k.programm, isDNoteUsed)))
+                case List(durchgang, geraet, step) => complete {
+                  Future {
+                    val halt: Int = step
+                    val gid: Long = geraet
+                    RiegenBuilder.mapToGeraeteRiegen(getAllKandidatenWertungen(competitionId).toList)
+                      .filter(gr =>
+                        gr.durchgang.exists(encodeURIComponent(_) == durchgang) &&
+                          gr.disziplin.exists(_.id == gid) &&
+                          gr.halt == halt - 1)
+                      .flatMap(gr => gr.kandidaten.map(k =>
+                        WertungContainer(k.id, k.vorname, k.name, k.geschlecht, k.verein,
+                          k.wertungen.filter(w => w.wettkampfdisziplin.disziplin.id == gid).map(_.toWertung).head,
+                          gid, k.programm, isDNoteUsed)))
+                  }
                 }
               }
             }
           } ~
           put {
             authenticated() { userId =>
-              if (userId.equals(competitionId.toString())) {
+              if (!wettkampfExists(competitionId.toString)) {
+                complete(StatusCodes.NotFound)
+              } else if (userId.equals(competitionId.toString())) {
                 entity(as[Wertung]) { wertung =>
                   segments match {
                     case List(durchgang, geraet, step) => {
                         val halt: Int = step
                         val gid: Long = geraet
-                        val gerateRiegen = RiegenBuilder.mapToGeraeteRiegen(getAllKandidatenWertungen(competitionId).toList)
-                        val wkid = gerateRiegen.head.kandidaten.head.wertungen.head.wettkampf.id
-                        val wkPgmId = gerateRiegen.head.kandidaten.head.wertungen.head.wettkampf.programmId
-
-                        def filter(gr: GeraeteRiege): Boolean = {
-                          gr.durchgang.exists(encodeURIComponent(_) == durchgang) &&
-                            gr.disziplin.exists(_.id == gid) &&
-                            gr.halt == halt - 1
-                        }
-
-                        if (wertung.wettkampfId == wkid) {
-                          val found: Option[UpdateAthletWertung] = gerateRiegen.filter(filter).flatMap(gr => gr.kandidaten
-                            .filter(k => k.id == wertung.athletId)
-                            .map(k => UpdateAthletWertung(
-                              loadAthleteView(k.id),
-                              k.wertungen.filter(w => w.wettkampfdisziplin.disziplin.id == gid && w.id == wertung.id).map(_.toWertung.updatedWertung(wertung)).head,
+                        getCurrentWertung(wertung) match {
+                          case None => None
+                          case Some(currentWertung) =>
+                            val durchgangEff = selectRiegenRaw(currentWertung.wettkampf.id).filter(ds => encodeURIComponent(ds.durchgang.getOrElse("")) == durchgang)
+                              .map(_.durchgang.get)
+                              .headOption.getOrElse(durchgang)
+                            /*selectDurchgangstationen(currentWertung.wettkampf.id)
+                              .filter(ds => encodeURIComponent(ds.durchgang) == durchgang)
+                              .map(_.durchgang)
+                              .headOption.getOrElse(durchgang)*/
+                            val normalizedwertung = UpdateAthletWertung(
+                              loadAthleteView(wertung.athletId),
+                              currentWertung.toWertung.updatedWertung(wertung),
                               competitionId.toString,
-                              gr.durchgang.get,
+                              durchgangEff,
                               gid,
-                              halt - 1, k.programm))).headOption
-                          found match {
-                            case Some(uw) => Some((wkPgmId, uw))
-                            case _ =>
-                              log.error(s"athlet-id not found (athletId:${wertung.athletId})")
-                              None
-                          }
-                        } else {
-                          log.error(s"wkid != wertung.wettkampfId (wkid:$wkid, wettkampfId:${wertung.wettkampfId})")
-                          None
+                              halt - 1, currentWertung.wettkampfdisziplin.programm.name)
+                            Some(currentWertung.wettkampfdisziplin.programm.id, normalizedwertung)
                         }
                       } match {
-                      case Some((wkPgmId, wertung)) =>
-                        complete(CompetitionCoordinatorClientActor.publish(wertung, clientId).andThen {
+                      case Some((wkPgmId, normalizedwertung)) =>
+                        complete(CompetitionCoordinatorClientActor.publish(normalizedwertung, clientId).andThen {
                           case Success(w) => w match {
                             case AthletWertungUpdatedSequenced(athlet, verifiedWertung, _, _, ger, programm, _) =>
                               val verein: String = athlet.verein.map(_.name).getOrElse("")

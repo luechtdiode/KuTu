@@ -107,7 +107,30 @@ abstract trait WertungService extends DBService with WertungResultMapper with Di
          """.as[WertungView]).withPinnedSession
     }, Duration.Inf).head
   }
-  
+
+  def getCurrentWertung(wertung: Wertung): Option[WertungView] = {
+    implicit val cache = scala.collection.mutable.Map[Long, ProgrammView]()
+
+    Await.result(database.run{(
+      sql"""
+                    SELECT w.id, a.id, a.js_id, a.geschlecht, a.name, a.vorname, a.gebdat, a.strasse, a.plz, a.ort, a.activ, a.verein, v.*,
+                      wd.id, wd.programm_id, d.*, wd.kurzbeschreibung, wd.detailbeschreibung, wd.notenfaktor, wd.masculin, wd.feminim, wd.ord,
+                      wk.*,
+                      w.note_d as difficulty, w.note_e as execution, w.endnote, w.riege, w.riege2
+                    FROM wertung w
+                    inner join athlet a on (a.id = w.athlet_id)
+                    left outer join verein v on (a.verein = v.id)
+                    inner join wettkampfdisziplin wd on (wd.id = w.wettkampfdisziplin_id)
+                    inner join disziplin d on (d.id = wd.disziplin_id)
+                    inner join programm p on (p.id = wd.programm_id)
+                    inner join wettkampf wk on (wk.id = w.wettkampf_id)
+                    where a.id = ${wertung.athletId}
+                      and wk.uuid = ${wertung.wettkampfUUID}
+                      and wd.id = ${wertung.wettkampfdisziplinId}
+         """.as[WertungView]).withPinnedSession
+    }, Duration.Inf).headOption
+  }
+
   def updateOrinsertWertungenZuWettkampf(wettkampf: Wettkampf, wertungen: Iterable[Wertung]) = {
     val insertWertungenAction = DBIO.sequence(for {
       w <- wertungen

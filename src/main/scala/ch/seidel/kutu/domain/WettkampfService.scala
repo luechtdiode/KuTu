@@ -128,7 +128,11 @@ trait WettkampfService extends DBService
          """.as[AthletView]).withPinnedSession
     }, Duration.Inf)
   }
-   
+
+
+  def wettkampfExists(uuid: String): Boolean = {
+    Await.result(wettkampfExistsAsync(uuid), Duration.Inf)
+  }
   def wettkampfExistsAsync(uuid: String) = {
     database.run{
       (sql"""      select count(*) from wettkampf where uuid=$uuid""".as[Int].head.map(_ > 0)).withPinnedSession
