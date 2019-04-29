@@ -58,19 +58,20 @@ jobs:
 
   - stage: serverosx
     language: java
-    jdk: openjdk11
+    # jdk: openjdk11
     os: osx
     #    #skips default install - see script bellow
     install: true
 
-    # osx_image: xcode9.2
+    # osx_image: Xcode 10.1//xcode9.2
     before_install:
+      - export OS="Darwin"
       - curl "https://s3.amazonaws.com/aws-cli/awscli-bundle.zip" -o "awscli-bundle.zip"
       - unzip awscli-bundle.zip
       - ./awscli-bundle/install -b ~/bin/aws
       # - brew install awscli
       - ./ecr_credentials.sh >/dev/null 2>&1
-      - ./prepare_jdk.sh
+      - source ./prepare_jdk.sh
       - mkdir -p ~/$TRAVIS_BUILD_NUMBER
       - aws s3 sync $S3_BUCKET_CACHE/$TRAVIS_BUILD_NUMBER ~/$TRAVIS_BUILD_NUMBER >/dev/null 2>&1
     script:
@@ -92,7 +93,7 @@ jobs:
 
   - stage: serverlnx
     language: java
-    jdk: openjdk11
+    # jdk: openjdk11
     os: linux
     #    #skips default install - see script bellow
     install: true
@@ -100,7 +101,7 @@ jobs:
     before_install:
       - pip install awscli --upgrade --user
       - ./ecr_credentials.sh >/dev/null 2>&1
-      - ./prepare_jdk.sh
+      - source ./prepare_jdk.sh
       - sudo apt-get install fakeroot
     script:
       - mvn clean package -DskipTest=true #deploy --settings deploy-settings.xml -Daws_default_region=eu-west-1
@@ -116,15 +117,16 @@ jobs:
     install: true
 
     before_install:
+      - source ./prepare_jdk.sh
       - choco install awscli -y --version 1.16.92 # --params "'-b:${TRAVIS_BUILD_DIR}/aws'"
       - choco install maven -y
-      - choco install adoptopenjdk -y --version 11.28
+      # - choco install adoptopenjdk -y --version 11.28 # 11.0.2.9
       #      - choco install openjdk -y #--version 11.0.1
       - choco install nuget.commandline -y
       - nuget install WiX -Version 3.11.1 -NonInteractive # https://travis-ci.community/t/unable-to-install-wix-toolset/1071
       - ./ecr_credentials.sh >/dev/null 2>&1
       - export AWS_HOME="C:\Program Files\Amazon\AWSCLI"
-      - export JAVA_HOME="C:\Program Files\AdoptOpenJDK\jdk-11+28"
+      #- export JAVA_HOME="C:\Program Files\AdoptOpenJDK\jdk-11+28"
       - export MAVEN_HOME="C:/ProgramData/chocolatey/lib/maven"
       - export WiX_HOME="${TRAVIS_BUILD_DIR}/WiX.3.11.1"
       - export PATH=${JAVA_HOME}/bin:${MAVEN_HOME}/bin:${WiX_HOME}/tools:${AWS_HOME}:$PATH
@@ -140,7 +142,7 @@ jobs:
     after_success:
       - aws s3 cp --recursive $TRAVIS_BUILD_DIR/outputs/ $S3_BUCKET_PUBLIC/ >/dev/null 2>&1
 
-# deploy: actually, deploy is managed by maven wagon
+#deploy: #actually, deploy is managed by maven wagon
 #   # deploy build to s3
 #   - provider: s3
 #     access_key_id: $aws_user
@@ -162,3 +164,10 @@ jobs:
 #       all_branches: true
 #   #   on:
 #   #     tags: true
+  #  provider: releases
+  #  api_key: $GH_ACCESS_TOKEN
+  #  file_glob: true
+  #  file: $TRAVIS_BUILD_DIR/target/${OS}/*
+  #  skip_cleanup: true
+    #  on:
+#    tags: true

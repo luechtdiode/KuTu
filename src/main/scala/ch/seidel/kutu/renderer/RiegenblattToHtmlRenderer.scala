@@ -48,9 +48,9 @@ object RiegenBuilder {
     .filter(k => k.einteilung.nonEmpty)
     .map(k => (k, k.einteilung.get))
     .groupBy(e => e._2.durchgang).toList
-    .sortBy(d => d._1)
+    .sortBy(d => d._1).zipWithIndex
     .map{d =>
-      val (durchgang, kandidatriegen) = d
+      val ((durchgang, kandidatriegen), durchgangIndex) = d
       val dzl1 = kandidatriegen.flatMap(_._1.diszipline)
       val riegen = kandidatriegen.map(_._2).sortBy(r => r.start.map( dzl1.indexOf(_)))
       val dzl2 = dzl1.toSet.toList
@@ -65,6 +65,12 @@ object RiegenBuilder {
         }
       }
       val startformationen = pickStartformationen(geraete, durchgang, k => (k.einteilung, k.diszipline))
+        .zipWithIndex
+        .map(x => {
+          val (sf, index) = x
+          (sf._1, sf._2, sf._3, sf._4, durchgangIndex*100 + index + 1)
+        })
+
       if (printorder) {
         (durchgang, startformationen.sortBy(d => d._2.map( dzl.indexOf(_)).getOrElse(0) * 100 + d._1))        
       }
@@ -72,13 +78,14 @@ object RiegenBuilder {
         (durchgang, startformationen.sortBy(d => d._1 * 100 + d._2.map( dzl.indexOf(_)).getOrElse(0)))
       }
     }
+
     val nebendurchgaenge = kandidaten
     .filter(k => k.einteilung2.nonEmpty)
     .map(k => (k, k.einteilung2.get))
     .groupBy(e => e._2.durchgang).toList
-    .sortBy(d => d._1)
+    .sortBy(d => d._1).zipWithIndex
     .map{d =>
-      val (durchgang, kandidatriegen) = d
+      val ((durchgang, kandidatriegen), durchgangIndex) = d
       val riegen1 = kandidatriegen.map(_._2)
       val dzl1 = kandidatriegen.flatMap(_._1.diszipline2)
       val riegen = riegen1.sortBy(r => r.start.map( dzl1.indexOf(_)))
@@ -94,6 +101,11 @@ object RiegenBuilder {
         }
       }
       val startformationen = pickStartformationen(geraete, durchgang, k => (k.einteilung2, k.diszipline2))
+        .zipWithIndex
+        .map(x => {
+          val (sf: (Int, Option[Disziplin], Seq[Kandidat], Boolean), index) = x
+          (sf._1, sf._2, sf._3, sf._4, durchgangIndex*100 + 100 - index)
+        })
 
       if (printorder) {
         (durchgang, startformationen)        
@@ -106,11 +118,8 @@ object RiegenBuilder {
       val (durchgang, starts) = item
       starts.map{start =>
         GeraeteRiege(start._3.head.wettkampfTitel,start._3.head.wertungen.head.wettkampf.uuid.get,
-          durchgang, start._1, start._2, start._3, start._4, "")
+          durchgang, start._1, start._2, start._3, start._4, f"R${start._5}%04d")
       }
-    }.zipWithIndex.map{x =>
-      val (riege, index) = x
-      riege.copy(sequenceId = f"R${index}%04d")
     }
 
     riegen
