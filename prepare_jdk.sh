@@ -18,9 +18,6 @@ then
     mv jdk/*/ jdk11/
     unzip -u "javapackager-${OS}.zip" -d jdk11/bin
     cp jdk11/bin/jdk.packager.jar jdk11/jmods
-    export JAVA_HOME="${PWD}/jdk11"
-    export JRE_HOME="${PWD}/jdk11"
-    export PATH=${JAVA_HOME}/bin:$PATH
 fi
 
 if [ ${OS} == 'MSYS_NT-10.0' ]
@@ -31,9 +28,6 @@ then
     mv jdk/*/ jdk11/
     unzip -u "javapackager-${OS}.zip" -d jdk11/bin
     cp jdk11/bin/jdk.packager.jar jdk11/jmods
-    export JAVA_HOME="${PWD}/jdk11"
-    export JRE_HOME="${PWD}/jdk11"
-    export PATH=${JAVA_HOME}/bin:$PATH
 fi
 
 if [ ${OS} == 'Linux' ]
@@ -44,9 +38,6 @@ then
     mv jdk/*/ jdk11/
     unzip -u "javapackager-${OS}.zip" -d jdk11/bin
     cp jdk11/bin/jdk.packager.jar jdk11/jmods
-    export JAVA_HOME="${PWD}/jdk11"
-    export JRE_HOME="${PWD}/jdk11"
-    export PATH=${JAVA_HOME}/bin:$PATH
 fi
 
 if [ ${OS} == 'Darwin' ]
@@ -60,13 +51,13 @@ then
     cp jdk/jdk-11.0.3+7/Contents/Home/bin/jdk.packager.jar jdk/jdk-11.0.3+7/Contents/Home/jmods
     sudo mv jdk/*/ /Library/Java/JavaVirtualMachines/jdk-11.jdk
     sudo ln -s /Library/Java/JavaVirtualMachines/jdk-11.jdk/Contents/Home jdk11
-    export JAVA_HOME="${PWD}/jdk11"
-    export JRE_HOME="${PWD}/jdk11"
-    export PATH=${JAVA_HOME}/bin:$PATH
 fi
 
 ls jdk11/bin/*
 
+export JAVA_HOME="${PWD}/jdk11"
+export JRE_HOME="${PWD}/jdk11"
+export PATH=${JAVA_HOME}/bin:$PATH
 echo "JAVA_HOME=${JAVA_HOME}" >> ~/.mavenrc
 
 echo "JAVA_HOME after install jdk11 ${JAVA_HOME}"
