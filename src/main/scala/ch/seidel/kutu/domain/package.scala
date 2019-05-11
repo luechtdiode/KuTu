@@ -542,7 +542,9 @@ package object domain {
       durchgang,
       halt, disziplin).hashCode()
     }
-    
+    def caption = {
+      s"(${sequenceId}) ${durchgang.getOrElse("")}: ${disziplin.map(_.name).getOrElse("")}, ${halt+1}. Gerät"
+    }
     def softEquals(other: GeraeteRiege) = {
       hash == other.hash
     }

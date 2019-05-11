@@ -5,15 +5,13 @@ import java.util.concurrent.{ScheduledFuture, TimeUnit}
 
 import ch.seidel.commons._
 import ch.seidel.kutu.Config._
-import ch.seidel.kutu.{KuTuApp, KuTuServer}
 import ch.seidel.kutu.akka.{AthletMovedInWettkampf, AthletRemovedFromWettkampf, AthletWertungUpdated, AthletWertungUpdatedSequenced}
 import ch.seidel.kutu.domain._
 import ch.seidel.kutu.http.WebSocketClient
 import ch.seidel.kutu.renderer.PrintUtil.FilenameDefault
 import ch.seidel.kutu.renderer._
-import javafx.event.EventHandler
-import javafx.scene.control.cell.PropertyValueFactory
-import javafx.scene.{input, control => jfxsc}
+import ch.seidel.kutu.{KuTuApp, KuTuServer}
+import javafx.scene.{control => jfxsc}
 import org.slf4j.LoggerFactory
 import scalafx.Includes._
 import scalafx.application.Platform
@@ -32,15 +30,14 @@ import scalafx.scene.control.SelectionMode.sfxEnum2jfx
 import scalafx.scene.control.TableColumn._
 import scalafx.scene.control.TableView.sfxTableView2jfx
 import scalafx.scene.control._
-import scalafx.scene.control.cell.TextFieldTableCell
 import scalafx.scene.image.{Image, ImageView}
 import scalafx.scene.input.{Clipboard, KeyEvent}
 import scalafx.scene.layout._
 import scalafx.util.converter.{DefaultStringConverter, DoubleStringConverter}
 
 import scala.concurrent.ExecutionContext.Implicits.global
-import scala.concurrent.{Await, Future}
 import scala.concurrent.duration.Duration
+import scala.concurrent.{Await, Future}
 import scala.io.Source
 import scala.util.{Failure, Success}
 
@@ -63,7 +60,7 @@ class WKTableColumn[T](val index: Int) extends TableColumn[IndexedSeq[WertungEdi
   override def valueEditor(selectedRow: IndexedSeq[WertungEditor]): WertungEditor = selectedRow(index)
 }
 
-class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[ProgrammView], riege: Option[String], wettkampf: WettkampfView, override val service: KutuService, athleten: => IndexedSeq[WertungView]) extends Tab with TabWithService {
+class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[ProgrammView], riege: Option[GeraeteRiege], wettkampf: WettkampfView, override val service: KutuService, athleten: => IndexedSeq[WertungView]) extends Tab with TabWithService {
   val logger = LoggerFactory.getLogger(this.getClass)
 
   import language.implicitConversions
@@ -329,24 +326,42 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
 
     def rebuildDurchgangFilterList = {
       val kandidaten = service.getAllKandidatenWertungen(UUID.fromString(wettkampf.uuid.get))
-      val ret = RiegenBuilder.mapToGeraeteRiegen(kandidaten).filter(r => wertungen.exists { p => r.kandidaten.exists { k => p.head.init.athlet.id == k.id } })
+      val ret = RiegenBuilder.mapToGeraeteRiegen(kandidaten)
+        .filter(r => riege.isEmpty || riege.get.sequenceId == r.sequenceId)
+        .filter(r => wertungen.exists { p => r.kandidaten.exists { k => p.head.init.athlet.id == k.id } })
       erfasst = ret.forall { riege => riege == emptyRiege || riege.erfasst }
       ret
     }
 
     def computeRelevantRiegen = {
-      relevantRiegen = (if(wertungen.size > 0) wertungen.
+      val prefilteredRiegen: Set[(String, Int)] =
+        if (wertungen.size > 0)
+          wertungen.
           flatMap(x => x.flatMap(x => Seq(x.init.riege, x.init.riege2).flatten).toSet).
-          groupBy(x => x).map(x => (x._1, x._2.size)).toSet else Set.empty[(String,Int)]).
-          map(x => x._1 -> (relevantRiegen.getOrElse(x._1, (true, x._2))._1, x._2)).toMap
+          groupBy(x => x).map(x => (x._1, x._2.size)).toSet
+        else
+          Set.empty[(String, Int)]
 
-//      riegendurchgaenge = service.selectRiegen(wettkampf.id).filter(p => relevantRiegen.contains(p.r)).map(r => r.r -> r.durchgang.getOrElse("")).toMap
-       val lastDurchgangSelection = cmbDurchgangFilter.selectionModel.value.getSelectedItem
-      cmbDurchgangFilter.items = ObservableBuffer[GeraeteRiege](emptyRiege  +: rebuildDurchgangFilterList)
-      if (cmbDurchgangFilter.items.value.contains(lastDurchgangSelection)) {
-        cmbDurchgangFilter.selectionModel.value.select(lastDurchgangSelection)
+      // preserve filter-selections
+      relevantRiegen = prefilteredRiegen.
+          map(x => x._1 -> (relevantRiegen.getOrElse(x._1, (true, x._2))._1, x._2))
+        .toMap
+
+      val lastDurchgangSelection = cmbDurchgangFilter.selectionModel.value.getSelectedItem
+      if (riege.isEmpty) {
+        cmbDurchgangFilter.items = ObservableBuffer[GeraeteRiege](emptyRiege  +: rebuildDurchgangFilterList)
+        if (cmbDurchgangFilter.items.value.contains(lastDurchgangSelection)) {
+          cmbDurchgangFilter.selectionModel.value.select(lastDurchgangSelection)
+        }
+      } else {
+        cmbDurchgangFilter.items = ObservableBuffer[GeraeteRiege](rebuildDurchgangFilterList)
+        cmbDurchgangFilter.items.value.headOption match {
+          case Some(item) =>
+            cmbDurchgangFilter.selectionModel.value.select(item)
+          case None =>
+        }
+
       }
-      //riegendurchgaenge.map(_._2).toSet.toList.sorted)
       relevantRiegen
     }
     computeRelevantRiegen
@@ -952,6 +967,9 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
       riegenFilterModel.clear()
       riegen(onSelectedChange, initial).foreach(riegenFilterModel.add(_))
       if(initial) {
+        if (riege.nonEmpty) {
+          updateFilteredList(lastFilter, riege.get)
+        }
         updateAlleRiegenCheck()
       }
     }
@@ -1396,7 +1414,10 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
             }.map(_.init.wettkampfdisziplin.disziplin.easyprint)
             )
           }
-          val filename = "Teilnehmerliste_" + wettkampf.easyprint.replace(" ", "_") + programm.map("_Programm_" + _.easyprint.replace(" ", "_")).getOrElse("") + riege.map("_Riege_" + _.replace(" ", "_")).getOrElse("") + ".html"
+          val filename = "Teilnehmerliste_" +
+            wettkampf.easyprint.replace(" ", "_") +
+            programm.map("_Programm_" + _.easyprint.replace(" ", "_")).getOrElse("") +
+            riege.map("_Riege_" + _.caption.replace(" ", "_")).getOrElse("") + ".html"
           val dir = new java.io.File(homedir + "/" + wettkampf.easyprint.replace(" ", "_"))
           if(!dir.exists()) {
             dir.mkdirs()
@@ -1460,7 +1481,10 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
             athletwertungen.toSeq.map(_.view)
             )
           }
-          val filename = "Notenblatt_" + wettkampf.easyprint.replace(" ", "_") + programm.map("_Programm_" + _.easyprint.replace(" ", "_")).getOrElse("") + riege.map("_Riege_" + _.replace(" ", "_")).getOrElse("") + ".html"
+          val filename = "Notenblatt_" +
+            wettkampf.easyprint.replace(" ", "_") +
+            programm.map("_Programm_" + _.easyprint.replace(" ", "_")).getOrElse("") +
+            riege.map("_Riege_" + _.caption.replace(" ", "_")).getOrElse("") + ".html"
           val dir = new java.io.File(homedir + "/" + wettkampf.easyprint.replace(" ", "_"))
           if(!dir.exists()) {
             dir.mkdirs()
@@ -1853,7 +1877,7 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
               case None => ""
             }) + " " + (riege match {
               case Some(r) =>
-                s"Riege ${r}  "
+                s"${r.caption}  "
               case None => ""
             }).trim
             maxWidth = Double.MaxValue
@@ -1861,20 +1885,29 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
             styleClass += "toolbar-header"
           }
         ) ++ (
-          if(wettkampfmode.value || wettkampf.toWettkampf.isReadonly(homedir, remoteHostOrigin))
-            List(cmbDurchgangFilter, txtUserFilter, generateBestenliste)
-          else
-            actionButtons :+ clearButton :+ clearAllButton :+ cmbDurchgangFilter :+ txtUserFilter
+          riege match {
+            case None =>
+              if(wettkampfmode.value || wettkampf.toWettkampf.isReadonly(homedir, remoteHostOrigin))
+                List(cmbDurchgangFilter, txtUserFilter, generateBestenliste)
+              else
+                actionButtons :+ clearButton :+ clearAllButton :+ cmbDurchgangFilter :+ txtUserFilter
+            case _ =>
+              List(txtUserFilter, generateBestenliste)
+          }
         )
       }
-      center = new SplitPane {
-        orientation = Orientation.Horizontal
-     		items += riegenFilterPane
-        items += editTablePane
+      center = riege match {
+        case None =>
+          new SplitPane {
+            orientation = Orientation.Horizontal
+            items += riegenFilterPane
+            items += editTablePane
 
-        setDividerPosition(0, 0.3d)
+            setDividerPosition(0, 0.3d)
 
-        SplitPane.setResizableWithParent(riegenFilterPane, false)
+            SplitPane.setResizableWithParent(riegenFilterPane, false)
+        }
+        case _ => editTablePane
       }
     }
 
