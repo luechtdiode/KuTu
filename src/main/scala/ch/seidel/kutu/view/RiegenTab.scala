@@ -899,7 +899,7 @@ class RiegenTab(wettkampf: WettkampfView, override val service: KutuService) ext
 			  val file = new java.io.File(dir.getPath + "/" + filename)
 
 			  ResourceExchanger.exportEinheiten(wettkampf.toWettkampf, file.getPath)
-        hostServices.showDocument(file.toURI.toString)
+        hostServices.showDocument(file.toURI.toASCIIString)
 		  }
     }
     
@@ -921,7 +921,7 @@ class RiegenTab(wettkampf: WettkampfView, override val service: KutuService) ext
 			  val file = new java.io.File(dir.getPath + "/" + filename)
 
 			  ResourceExchanger.exportDurchgaenge(wettkampf.toWettkampf, file.getPath)
-        hostServices.showDocument(file.toURI.toString)
+        hostServices.showDocument(file.toURI.toASCIIString)
 		  }
     }
     

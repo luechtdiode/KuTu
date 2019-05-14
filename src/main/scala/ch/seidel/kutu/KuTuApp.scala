@@ -360,9 +360,9 @@ object KuTuApp extends JFXApp with KutuService with JsonSupport with JwtSupport 
           }
         }
       )
+
     }
   }
-
   def makeWettkampfExportierenMenu(p: WettkampfView): MenuItem = {
     makeMenuAction("Wettkampf exportieren") { (caption, action) =>
       implicit val e = action
@@ -1428,7 +1428,8 @@ object KuTuApp extends JFXApp with KutuService with JsonSupport with JwtSupport 
     if(!dir.exists()) {
       dir.mkdirs()
     }
-    hostServices.showDocument(dir.toURI.toString)
+
+    hostServices.showDocument(dir.toURI.toASCIIString)
   }
 
   def makeVereinLoeschenMenu(v: Verein) = makeMenuAction("Verein löschen") {(caption, action) =>

@@ -345,7 +345,7 @@ abstract class DefaultRanglisteTab(override val service: KutuService) extends Ta
           os.write(toSave)
           os.flush()
           os.close()
-          hostServices.showDocument(selectedFile.toURI.toString)
+          hostServices.showDocument(selectedFile.toURI.toASCIIString)
         }
       }
     }

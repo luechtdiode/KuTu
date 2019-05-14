@@ -110,7 +110,7 @@ object PrintUtil {
                   os.write(toSave.getBytes("UTF-8"))
                   os.flush()
                   os.close()
-                  hostServices.showDocument(file.toURI.toString)
+                  hostServices.showDocument(file.toURI.toASCIIString)
                 }
                 case _ =>
               }
@@ -224,7 +224,7 @@ object PrintUtil {
         val imagedata = "data:image/jpeg;base64," + Base64.getEncoder().encodeToString(output.toByteArray())
         imagedata        
       } else {
-        file.toURI.toString
+        file.toURI.toASCIIString
       }
     }
   }
