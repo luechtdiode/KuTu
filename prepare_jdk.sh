@@ -43,7 +43,7 @@ fi
 if [ ${OS} == 'Darwin' ]
 then
     echo "install jdk11 for ${OS}"
-    curl -L https://github.com/AdoptOpenJDK/openjdk11-binaries/releases/download/jdk-11.0.3%2B7_openj9-0.14.0/OpenJDK11U-jdk_x64_mac_openj9_11.0.3_7_openj9-0.14.0.tar.gz -o "jdk-${OS}.tar.gz"
+    curl -L https://github.com/AdoptOpenJDK/openjdk11-binaries/releases/download/jdk-11.0.3%2B7/OpenJDK11U-jdk_x64_mac_hotspot_11.0.3_7.tar.gz -o "jdk-${OS}.tar.gz"
     tar -xzf "jdk-${OS}.tar.gz" -C jdk
     curl -L http://download2.gluonhq.com/jpackager/11/jdk.packager-osx.zip -o "javapackager-${OS}.zip"
     echo "download jdk11 for ${OS} finished"
