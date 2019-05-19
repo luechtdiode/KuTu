@@ -2,11 +2,10 @@ package ch.seidel.kutu.domain
 
 import java.util.UUID
 
-import ch.seidel.kutu.akka.{AthletMovedInWettkampf, AthletRemovedFromWettkampf, AthletWertungUpdated}
+import ch.seidel.kutu.akka.{AthletMovedInWettkampf, AthletRemovedFromWettkampf, DurchgangChanged}
 import ch.seidel.kutu.http.WebSocketClient
 import ch.seidel.kutu.squad.RiegenBuilder
 import org.slf4j.LoggerFactory
-import slick.jdbc.GetResult
 import slick.jdbc.SQLiteProfile.api._
 
 import scala.concurrent.Await
@@ -286,8 +285,25 @@ trait WettkampfService extends DBService
 //    completed    
 //  }
 
-  def unassignAthletFromWettkampf(raw: AthletRemovedFromWettkampf): Unit = {
+  def unassignAthletFromWettkampf(raw: AthletRemovedFromWettkampf) = {
     val athlet = raw.athlet
+    val durchgaenge: Set[String] = Await.result(database.run{
+      sql"""      select distinct durchgang from riege r inner join wertung w on (
+                    w.riege = r.name or w.riege2 = r.name
+                  )
+                  where
+                     athlet_id = (select id
+                       from athlet
+                       where name=${athlet.name}
+                         and vorname=${athlet.vorname}
+                         and geschlecht=${athlet.geschlecht}
+                         and verein=${athlet.verein.get.id})
+                     and wettkampf_Id = (select id
+                       from wettkampf
+                       where uuid=${raw.wettkampfUUID})
+              """.as[(String)].transactionally
+    }, Duration.Inf).toSet
+
     Await.result(database.run{
       sqlu"""      delete from wertung
                    where
@@ -302,10 +318,20 @@ trait WettkampfService extends DBService
                        where uuid=${raw.wettkampfUUID})
               """.transactionally
     }, Duration.Inf)
+
+    durchgaenge
   }
 
   def unassignAthletFromWettkampf(wertungId: Set[Long]) {
     val wertung = getWertung(wertungId.head)
+    val durchgaenge: Set[String] = Await.result(database.run{
+      sql"""      select distinct durchgang from riege r inner join wertung w on (
+                    w.riege = r.name or w.riege2 = r.name
+                  )
+                  where
+                     w.id in (#${wertungId.mkString(",")})
+              """.as[(String)].transactionally
+    }, Duration.Inf).toSet
 
     Await.result(database.run{
       sqlu"""
@@ -316,6 +342,9 @@ trait WettkampfService extends DBService
 
     val awu = AthletRemovedFromWettkampf(wertung.athlet, wertung.wettkampf.uuid.get)
     WebSocketClient.publish(awu)
+    for(durchgang <- durchgaenge) {
+      WebSocketClient.publish(DurchgangChanged(durchgang, wertung.wettkampf.uuid.get.toString, wertung.athlet))
+    }
   }
 
   def assignAthletsToWettkampf(wettkampfId: Long, programmIds: Set[Long], withAthlets: Set[Long] = Set.empty) {
@@ -324,65 +353,56 @@ trait WettkampfService extends DBService
     assignAthletsToWettkampfS(wettkampfId, programs, withAthlets)
   }
 
-//
-//  def assignAthletsToWettkampfF(wettkampfId: Long, programs: Set[ProgrammView], withAthlets: Set[Long] = Set.empty) {
-//    if (withAthlets.nonEmpty) {
-//      val athletsFilter = withAthlets.mkString("(", ",", ")")
-//      def assignAction(aid: Long, disciplin: Long) = sqlu"""
-//                   delete from wertung where
-//                   athlet_Id=${aid} and wettkampfdisziplin_Id=${disciplin} and wettkampf_Id=${wettkampfId}
-//               """ >>
-//           sqlu"""
-//                   insert into wertung
-//                   (athlet_Id, wettkampfdisziplin_Id, wettkampf_Id, note_d, note_e, endnote)
-//                   values (${aid}, ${disciplin}, ${wettkampfId}, 0, 0, 0)
-//              """
-//      val dbActions = sql"""
-//                   select id from wettkampfdisziplin
-//                   where programm_Id in #${programs.map(_.id).mkString("(", ",", ")")}
-//           """.as[Long].
-////      .flatMap{disciplines =>
-//////        disciplines.flatMap{disciplin =>
-//////          ???//withAthlets.flatMap(aid => assignAction(aid, disciplin))
-//////        }
-////      }
-//     Await.result(database.run{dbActions}, Duration.Inf)
-//    }
-//  }
-//  
   def assignAthletsToWettkampfS(wettkampfId: Long, programs: Set[ProgrammView], withAthlets: Set[Long] = Set.empty) {
     if (withAthlets.nonEmpty) {
-      val athletsFilter = withAthlets.mkString("(", ",", ")")
       val disciplines = Await.result(database.run{(sql"""
                    select id from wettkampfdisziplin
                    where programm_Id in #${programs.map(_.id).mkString("(", ",", ")")}
            """.as[Long]).withPinnedSession}, Duration.Inf)
            
-      withAthlets.foreach(aid => disciplines.foreach{case disciplin =>
-        Await.result(database.run{(
-          sqlu"""
-                   delete from wertung where
-                   athlet_Id=${aid} and wettkampfdisziplin_Id=${disciplin} and wettkampf_Id=${wettkampfId}
-               """ >>
-           sqlu"""
-                   insert into wertung
-                   (athlet_Id, wettkampfdisziplin_Id, wettkampf_Id)
-                   values (${aid}, ${disciplin}, ${wettkampfId})
-              """).transactionally
-        }, Duration.Inf)
-      })           
+      withAthlets.foreach{aid =>
+        disciplines.foreach{case disciplin =>
+          Await.result(database.run{(
+            sqlu"""
+                     delete from wertung where
+                     athlet_Id=${aid} and wettkampfdisziplin_Id=${disciplin} and wettkampf_Id=${wettkampfId}
+                 """ >>
+             sqlu"""
+                     insert into wertung
+                     (athlet_Id, wettkampfdisziplin_Id, wettkampf_Id)
+                     values (${aid}, ${disciplin}, ${wettkampfId})
+                """).transactionally
+          }, Duration.Inf)
+        }
+      }
+      val wertungen = Await.result(database.run{sql"""
+                   select wd.id, w.id from wertung w inner join wettkampfdisziplin wd on (w.wettkampfdisziplin_Id = wd.id)
+                   where
+                     athlet_Id in (#${withAthlets.mkString(",")})
+                     and wettkampf_Id = $wettkampfId
+              """.as[(Long,Long)].transactionally
+      }, Duration.Inf)
+        .map(t => (t._2, generateRiegenName(getWertung(t._2).copy(wettkampfdisziplin = readWettkampfDisziplinView(t._1)))))
 
+      Await.result(database.run{
+        DBIO.sequence(for(w <- wertungen) yield {
+          sqlu"""    UPDATE wertung
+                   SET riege=${w._2}
+                   WHERE id=${w._1}
+          """
+        }).transactionally
+      }, Duration.Inf)
     }
   }
 
-  def moveToProgram(event: AthletMovedInWettkampf): Unit = {
+  def moveToProgram(event: AthletMovedInWettkampf) = {
     val wkIDs = Await.result(database.run{sql"""
                    select disziplin_id, id from wettkampfdisziplin
                    where programm_Id = ${event.pgmId}
                 """.as[(Long,Long)].withPinnedSession}, Duration.Inf).toMap
     val athlet = event.athlet
     val wertungen = Await.result(database.run{sql"""
-                   select wd.id, w.id from wertung w inner join wettkampfdisziplin wd on (w.wettkampfdisziplin_Id = wd.id)
+                   select wd.id, w.id, w.riege from wertung w inner join wettkampfdisziplin wd on (w.wettkampfdisziplin_Id = wd.id)
                    where
                      athlet_id = (select id
                        from athlet
@@ -393,14 +413,14 @@ trait WettkampfService extends DBService
                      and wettkampf_Id = (select id
                        from wettkampf
                        where uuid=${event.wettkampfUUID})
-              """.as[(Long,Long)].transactionally
+              """.as[(Long,Long, String)].transactionally
     }, Duration.Inf)
-      .map(t => (t._2, wkIDs(t._1), getWertung(t._2)))
+      .map(t => (t._2, wkIDs(t._1), getWertung(t._2), t._3))
       .map(t => {
         val wkDiszView = readWettkampfDisziplinView(wkIDs(t._3.wettkampfdisziplin.disziplin.id))
-        (t._1, t._2, t._3.copy(wettkampfdisziplin = wkDiszView))
+        (t._1, t._2, t._3.copy(wettkampfdisziplin = wkDiszView), t._4)
       })
-      .map(t => (t._1, t._2, generateRiegenName(t._3)))
+      .map(t => (t._1, t._2, generateRiegenName(t._3), t._4))
 
     Await.result(database.run{
       DBIO.sequence(for(w <- wertungen) yield {
@@ -411,6 +431,19 @@ trait WettkampfService extends DBService
           """
       }).transactionally
     }, Duration.Inf)
+
+    val riegenset = wertungen.map(w => (w._3, w._4)).toSet.toVector
+    Await.result(database.run{
+      DBIO.sequence(for(w <- riegenset) yield {
+        sql"""    select distinct durchgang from riege
+                  where wettkampf_id = (select id
+                    from wettkampf
+                    where uuid=${event.wettkampfUUID})
+                  and name in ('#${w._1}', '#${w._2}')
+        """.as[String]
+      }).transactionally
+    }, Duration.Inf).flatten
+
   }
 
   def moveToProgram(wId: Long, pgmId: Long, athelteView: AthletView) {
@@ -424,7 +457,7 @@ trait WettkampfService extends DBService
         val wkDiszView = readWettkampfDisziplinView(wkIDs(w.wettkampfdisziplin.disziplin.id))
         w.copy(wettkampfdisziplin = wkDiszView)
       })
-      .map(w => (w.id, w.wettkampfdisziplin.id,generateRiegenName(w)))
+      .map(w => (w.id, w.wettkampfdisziplin.id,generateRiegenName(w), w.riege.getOrElse(() => generateRiegenName(w))))
 
     val wettkampf = Await.result(database.run{(
       DBIO.sequence(for(w <- updates) yield {
@@ -439,6 +472,20 @@ trait WettkampfService extends DBService
 
     val awu = AthletMovedInWettkampf(athelteView, wettkampf.uuid.get, pgmId)
     WebSocketClient.publish(awu)
+
+    val riegenset = updates.map(w => (w._3, w._4)).toSet.toVector
+    val durchgaenge = Await.result(database.run{
+      DBIO.sequence(for(w <- riegenset) yield {
+        sql"""    select distinct durchgang from riege
+                  where wettkampf_id = $wId
+                  and name in ('#${w._1}', '#${w._2}')
+        """.as[String]
+      }).transactionally
+    }, Duration.Inf).flatten
+
+    for(durchgang <- durchgaenge) {
+      WebSocketClient.publish(DurchgangChanged(durchgang, wettkampf.uuid.get.toString, athelteView))
+    }
   }
 //  def moveToProgram(wId: Long, pgmId: Long, athelteView: AthletView) {
 //    val wkIDs = Await.result(database.run{(sql"""
