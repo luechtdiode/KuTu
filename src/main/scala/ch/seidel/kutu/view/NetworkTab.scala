@@ -590,12 +590,12 @@ class NetworkTab(wettkampfmode: BooleanProperty, wettkampf: WettkampfView, overr
     }
 
     def updateButtons {
+      val navigate = makeNavigateToMenu(wettkampf)
+      btnEditRiege.items.clear()
+      btnEditRiege.items.addAll(navigate.items)
       if (!wettkampf.toWettkampf.isReadonly(homedir, remoteHostOrigin)) {
         val dgs = makeDurchgangStartenMenu(wettkampf)
         val dga = makeDurchgangAbschliessenMenu(wettkampf)
-        val navigate = makeNavigateToMenu(wettkampf)
-        btnEditRiege.items.clear()
-        btnEditRiege.items.addAll(navigate.items)
         view.contextMenu = new ContextMenu() {
           items += dgs
           items += navigate
@@ -642,7 +642,7 @@ class NetworkTab(wettkampfmode: BooleanProperty, wettkampf: WettkampfView, overr
             onAction = connectAndShareMenu.onAction.get
             text <== connectAndShareMenu.text
             disable <== connectAndShareMenu.disable
-          }, new Button {
+          }, btnEditRiege, new Button {
             onAction = downloadMenu.onAction.get
             text <== downloadMenu.text
             disable <== downloadMenu.disable
