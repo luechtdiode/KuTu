@@ -85,7 +85,10 @@ object ResourceExchanger extends KutuService with RiegenBuilder {
             s"to be moved in competition ${awm.wettkampfUUID} to Program-Id:${programm}")
           val mappedAthletView: AthletView = mapToLocal(athlet)
           val mappedEvent = awm.copy(athlet = mappedAthletView)
-          moveToProgram(mappedEvent)
+          for(durchgang <- moveToProgram(mappedEvent)) {
+            logger.info(s"durchgang $durchgang changed competition ${wettkampfUUID}")
+            refresher(sender, DurchgangChanged(durchgang, wettkampfUUID, mappedEvent.athlet))
+          }
           logger.info(s"${mappedAthletView.vorname} ${mappedAthletView.name} (${mappedAthletView.verein.getOrElse(() => "")}) " +
             s"moved in competition ${awm.wettkampfUUID} to Program-Id:${awm.pgmId}")
           refresher(sender, mappedEvent)
@@ -96,10 +99,14 @@ object ResourceExchanger extends KutuService with RiegenBuilder {
             s"to be removed from competition ${arw.wettkampfUUID}")
           val mappedAthletView: AthletView = mapToLocal(athlet)
           val mappedEvent = arw.copy(athlet = mappedAthletView)
-          unassignAthletFromWettkampf(mappedEvent)
+          for(durchgang <- unassignAthletFromWettkampf(mappedEvent)) {
+            logger.info(s"durchgang $durchgang changed competition ${wettkampfUUID}")
+            refresher(sender, DurchgangChanged(durchgang, wettkampfUUID, mappedEvent.athlet))
+          }
           logger.info(s"${mappedAthletView.vorname} ${mappedAthletView.name} (${mappedAthletView.verein.getOrElse(() => "")}) " +
             s"removed from competition ${arw.wettkampfUUID}")
           refresher(sender, mappedEvent)
+
         }
       case (_, MessageAck(_)) => // ignore
       case (sender, someOther) => 

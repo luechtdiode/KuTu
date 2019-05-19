@@ -37,6 +37,7 @@ case class AthletWertungUpdatedSequenced(athlet: AthletView, wertung: Wertung, w
 }
 case class AthletRemovedFromWettkampf(athlet: AthletView, wettkampfUUID: String) extends KutuAppEvent
 case class AthletMovedInWettkampf(athlet: AthletView, wettkampfUUID: String, pgmId: Long) extends KutuAppEvent
+case class DurchgangChanged(durchgang: String, wettkampfUUID: String, athlet: AthletView) extends KutuAppEvent
 
 case class NewLastResults(results: Map[String, WertungContainer], lastTopResults: Map[String, WertungContainer]) extends KutuAppEvent
 case class LastResults(results: List[AthletWertungUpdatedSequenced]) extends KutuAppEvent

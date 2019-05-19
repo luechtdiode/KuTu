@@ -1,17 +1,19 @@
 package ch.seidel.kutu.view
 
-import java.awt.{Desktop, EventQueue}
 import java.util.UUID
 
 import ch.seidel.commons.{AutoCommitTextFieldTableCell, DisplayablePage, PageDisplayer, TabWithService}
 import ch.seidel.kutu.Config._
 import ch.seidel.kutu.KuTuApp
 import ch.seidel.kutu.KuTuApp.hostServices
+import ch.seidel.kutu.akka._
 import ch.seidel.kutu.data.ResourceExchanger
 import ch.seidel.kutu.domain.{Disziplin, GemischteRiegen, GemischterDurchgang, GetrennteDurchgaenge, KutuService, Riege, RiegeRaw, SexDivideRule, WettkampfView, str2Int}
+import ch.seidel.kutu.http.WebSocketClient
 import ch.seidel.kutu.renderer.PrintUtil.FilenameDefault
 import ch.seidel.kutu.renderer.{PrintUtil, RiegenBuilder, WertungsrichterQRCode, WertungsrichterQRCodesToHtmlRenderer}
 import ch.seidel.kutu.squad.DurchgangBuilder
+import javafx.beans.property.SimpleObjectProperty
 import javafx.scene.text.Text
 import javafx.scene.{control => jfxsc}
 import scalafx.Includes.{eventClosureWrapperWithParam, handle, jfxActionEvent2sfx, jfxBooleanBinding2sfx, jfxBounds2sfx, jfxCellEditEvent2sfx, jfxKeyEvent2sfx, jfxMouseEvent2sfx, jfxObjectProperty2sfx, jfxParent2sfx, jfxPixelReader2sfx, jfxReadOnlyBooleanProperty2sfx, jfxTableViewSelectionModel2sfx, jfxText2sfxText, observableList2ObservableBuffer, when}
@@ -362,6 +364,21 @@ class RiegenTab(wettkampf: WettkampfView, override val service: KutuService) ext
     tooltip = "Max. Gruppengrösse oder 0 für gleichmässige Verteilung mit einem Durchgang."
   }
 
+  val reprintItems: SimpleObjectProperty[Set[DurchgangChanged]] = new SimpleObjectProperty[Set[DurchgangChanged]]()
+  reprintItems.set(Set.empty)
+  println("subscribing RiegenTab for refreshing from websocket")
+  val subscription = WebSocketClient.modelWettkampfWertungChanged.onChange { (_, _, newItem) =>
+    newItem match {
+      case d: DurchgangChanged =>
+        reprintItems.set(reprintItems.get() + d)
+      case _ =>
+    }
+  }
+
+  override def release: Unit = {
+    subscription.cancel();
+  }
+
   override def isPopulated = {
 
     val riegenFilterView = new RiegenFilterView(true,
@@ -524,6 +541,63 @@ class RiegenTab(wettkampf: WettkampfView, override val service: KutuService) ext
       }
       ret.setDisable(durchgang.size < 2)
       ret
+    }
+
+    def doSelectedRiegenBelatterExport(event: ActionEvent, durchgang: Set[String]) {
+      import scala.concurrent.ExecutionContext.Implicits.global
+
+      val seriendaten = service.getAllKandidatenWertungen(wettkampf.uuid.map(UUID.fromString(_)).get)
+      val durchgangFileQualifier = durchgang.mkString("(","-",")").replace(" ", "_")
+      val filename = "Riegenblatt_" + wettkampf.easyprint.replace(" ", "_") + durchgangFileQualifier + ".html"
+      val dir = new java.io.File(homedir + "/" + wettkampf.easyprint.replace(" ", "_"))
+      if(!dir.exists()) {
+        dir.mkdirs();
+      }
+      val logofile = PrintUtil.locateLogoFile(dir)
+      def generate = (lpp: Int) => KuTuApp.invokeAsyncWithBusyIndicator { Future {
+        Platform.runLater {
+          reprintItems.set(reprintItems.get().filter(p => !durchgang.contains(p.durchgang)))
+        }
+        (new Object with ch.seidel.kutu.renderer.RiegenblattToHtmlRenderer).toHTML(seriendaten, logofile, remoteBaseUrl, durchgang)
+      }}
+      Platform.runLater {
+        PrintUtil.printDialogFuture(text.value, FilenameDefault(filename, dir), false, generate, orientation = PageOrientation.Portrait)(event)
+      }
+    }
+
+    def makeSelectedRiegenBlaetterExport(selectedDurchgaenge: Set[String]): Menu = {
+      new Menu {
+        text = "Riegenblätter nachdrucken"
+        updateItems
+        reprintItems.onChange {
+          updateItems
+        }
+
+        private def updateItems = {
+          items.clear()
+          val affectedDurchgaenge: Set[String] = reprintItems.get.map(_.durchgang)
+          if (selectedDurchgaenge.nonEmpty) {
+            val allSelectedItem = KuTuApp.makeMenuAction(s"Alle selektierten") { (caption: String, action: ActionEvent) =>
+              doSelectedRiegenBelatterExport(action, selectedDurchgaenge)
+            }
+
+            items += allSelectedItem
+          }
+          if (affectedDurchgaenge.nonEmpty) {
+            val allItem = KuTuApp.makeMenuAction(s"Alle betroffenen (${affectedDurchgaenge.size})") { (caption: String, action: ActionEvent) =>
+              doSelectedRiegenBelatterExport(action, affectedDurchgaenge)
+            }
+            items += allItem
+            items += new SeparatorMenuItem()
+            affectedDurchgaenge.toList.sorted.foreach { durchgang =>
+              items += KuTuApp.makeMenuAction(s"${durchgang}") { (caption: String, action: ActionEvent) =>
+                doSelectedRiegenBelatterExport(action, Set(durchgang))
+              }
+            }
+          }
+          disable.value = items.isEmpty
+        }
+      }
     }
 
     def toGeraetId(tcpl: List[Int]): List[Long] = {
@@ -741,6 +815,8 @@ class RiegenTab(wettkampf: WettkampfView, override val service: KutuService) ext
               items += makeMoveDurchganMenu(durchgangView.selectionModel().selectedItems.head, focusedCells)
               items += makeMoveStartgeraetMenu(durchgangView.selectionModel().selectedItems.head, focusedCells)
             }
+            items += new SeparatorMenuItem()
+            items += makeSelectedRiegenBlaetterExport(actSelection.toSet)
           }
 
           btnEditDurchgang.text.value = "Durchgang " + actSelection.mkString("[", ", ", "]") + " bearbeiten"
@@ -757,6 +833,8 @@ class RiegenTab(wettkampf: WettkampfView, override val service: KutuService) ext
             btnEditDurchgang.items += makeMoveDurchganMenu(durchgangView.selectionModel().selectedItems.head, focusedCells)
             btnEditDurchgang.items += makeMoveStartgeraetMenu(durchgangView.selectionModel().selectedItems.head, focusedCells)
           }
+          btnEditDurchgang.items += new SeparatorMenuItem()
+          btnEditDurchgang.items += makeSelectedRiegenBlaetterExport(actSelection.toSet)
         }
       }
     }
@@ -1046,7 +1124,7 @@ class RiegenTab(wettkampf: WettkampfView, override val service: KutuService) ext
       }
 
     }
-    
+
     def makeRiegenBlaetterExport(): MenuItem = {
       val m = KuTuApp.makeMenuAction("Riegenblätter erstellen") {(caption: String, action: ActionEvent) =>
         doRiegenBelatterExport(action)
