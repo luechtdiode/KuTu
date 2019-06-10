@@ -1,11 +1,12 @@
 import { Component, ViewChild } from '@angular/core';
 import { WertungContainer, Wertung } from '../backend-types';
 import { Subscription } from 'rxjs';
-import { NavController, NavParams, Platform, ToastController } from '@ionic/angular';
+import { NavController, Platform, ToastController, AlertController } from '@ionic/angular';
 import { BackendService } from '../services/backend.service';
 import { NgForm } from '@angular/forms';
 import { ActivatedRoute } from '@angular/router';
 import { Keyboard } from '@ionic-native/keyboard/ngx';
+import { DomSanitizer } from '@angular/platform-browser';
 
 @Component({
   selector: 'app-wertung-editor',
@@ -16,16 +17,18 @@ export class WertungEditorPage /*implements OnInit*/ {
 
   constructor(public navCtrl: NavController,
               private route: ActivatedRoute,
-              public backendService: BackendService,
+              private sanitizer: DomSanitizer,
+              private alertCtrl: AlertController,
               public toastController: ToastController,
               public keyboard: Keyboard,
+              public backendService: BackendService,
               public platform: Platform) {
       // If we navigated to this page, we will have an item available as a nav param
       this.durchgang = backendService.durchgang;
       this.step = backendService.step;
       this.geraetId = backendService.geraet;
       // tslint:disable-next-line:radix
-      const itemId = parseInt(route.snapshot.paramMap.get('itemId'));
+      const itemId = parseInt(this.route.snapshot.paramMap.get('itemId'));
       this.updateUI(backendService.wertungen.find(w => w.id === itemId));
       this.isDNoteUsed = this.item.isDNoteUsed;
 
@@ -214,16 +217,14 @@ export class WertungEditorPage /*implements OnInit*/ {
   }
 
   async toastMissingResult(form: NgForm, athlet: string) {
-    const toast = await this.toastController.create({
-      header: 'Fehlendes Resultat!',
+    const alert = await this.alertCtrl.create({
+      header: 'Achtung',
+      subHeader: 'Fehlendes Resultat!',
       message: 'Nach der Erfassung der letzen Wertung in dieser Riege scheint es noch leere Wertungen zu geben. '
-                + 'Bitte prüfen, ob ' + athlet.toUpperCase() + ' nicht geturnt hat.',
-      animated: true,
-      position: 'middle',
-      buttons: [
+                + 'Bitte prüfen, ob ' + athlet.toUpperCase() + ' geturnt hat.',
+      buttons:  [
         {
           text: 'Nicht geturnt',
-          icon: 'checkmark-circle',
           role: 'edit',
           handler: () => {
             this.nextEmptyOrFinish(form);
@@ -231,7 +232,6 @@ export class WertungEditorPage /*implements OnInit*/ {
         },
         {
           text: 'Korrigieren',
-          icon: '<ion-icon name="create"></ion-icon>',
           role: 'cancel',
           handler: () => {
             console.log('Korrigieren clicked');
@@ -239,6 +239,32 @@ export class WertungEditorPage /*implements OnInit*/ {
         }
       ]
     });
-    toast.present();
+    alert.present();
+    // const toast = await this.toastController.create({
+    //   header: 'Fehlendes Resultat!',
+    //   message: 'Nach der Erfassung der letzen Wertung in dieser Riege scheint es noch leere Wertungen zu geben. '
+    //             + 'Bitte prüfen, ob ' + athlet.toUpperCase() + ' nicht geturnt hat.',
+    //   animated: true,
+    //   position: 'middle',
+    //   buttons: [
+    //     {
+    //       text: 'Nicht geturnt',
+    //       icon: 'checkmark-circle',
+    //       role: 'edit',
+    //       handler: () => {
+    //         this.nextEmptyOrFinish(form);
+    //       }
+    //     },
+    //     {
+    //       text: 'Korrigieren',
+    //       icon: '<ion-icon name="create"></ion-icon>',
+    //       role: 'cancel',
+    //       handler: () => {
+    //         console.log('Korrigieren clicked');
+    //       }
+    //     }
+    //   ]
+    // });
+    // toast.present();
   }
 }

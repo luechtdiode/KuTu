@@ -43,7 +43,7 @@
                   </button>
                 </ion-item-options>          
           </ion-item-sliding>
-          <ion-button size="large" expand="block" *ngIf="true || isLoggedIn() && durchgangopen" color="success"
+          <ion-button size="large" expand="block" *ngIf="isLoggedIn() && durchgangopen" color="success"
                       (click)="finish()" [disabled]="!(geraet && getSteps())">
             <ion-icon slot="start" name="git-commit"></ion-icon>
             Eingaben abschliessen
