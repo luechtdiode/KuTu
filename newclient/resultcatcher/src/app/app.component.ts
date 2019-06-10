@@ -105,7 +105,7 @@ export class AppComponent {
             this.navController.navigateRoot('/top-results');
           } else if (initializeWith.startsWith('last')) {
             this.appPages = [
-              { title: 'Letzte Resultate', url: '/last-results', icon: 'radio' }
+              { title: 'Aktuelle Resultate', url: '/last-results', icon: 'radio' }
             ];
             this.navController.navigateRoot('/last-results');
             this.backendService.initWithQuery(initializeWith.substring(5));
