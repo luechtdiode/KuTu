@@ -10,7 +10,7 @@
 </ion-header>
 
 <ion-content>
-  <form #wertungsform="ngForm" (ngSubmit)="saveNext(wertungsform)">
+  <form #wertungsform="ngForm" (ngSubmit)="saveNext(wertungsform)" (keyup.enter)="saveNext(wertungsform)">
     <ion-list>
       <ion-item [hidden]="!isDNoteUsed">
         <ion-label>D-Note</ion-label>

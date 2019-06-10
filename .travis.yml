@@ -48,9 +48,9 @@ jobs:
       - mkdir -p ~/requisites
       - aws s3 sync $S3_BUCKET_REQUISITES ~/requisites >/dev/null 2>&1
     script:
-      - cd $TRAVIS_BUILD_DIR/client/resultcatcher
+      - cd $TRAVIS_BUILD_DIR/newclient/resultcatcher
       - npm install
-      - ionic build --prod
+      - ionic build --prod --engine=browser
       - cp -R -f ./www ~/$TRAVIS_BUILD_NUMBER/
       - rm -rf ~/requisites
     after_success:
