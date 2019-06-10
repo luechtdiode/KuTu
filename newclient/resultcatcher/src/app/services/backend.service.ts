@@ -1,7 +1,7 @@
 import { Injectable } from '@angular/core';
 import { WebsocketService, encodeURIComponent2 } from './websocket.service';
 import { HttpClient, HttpHeaders, HttpErrorResponse } from '@angular/common/http';
-import { LoadingController, AlertController } from '@ionic/angular';
+import { LoadingController } from '@ionic/angular';
 import { interval, of, Subscription, BehaviorSubject, Subject, Observable } from 'rxjs';
 import { share} from 'rxjs/operators';
 import { DurchgangStarted, Wettkampf, Geraet, WertungContainer, NewLastResults,

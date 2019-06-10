@@ -5,6 +5,11 @@
 // file can hold Sass mixins, functions, and placeholder classes to be imported 
 // and used throughout the application.
 
+.stateinfo {
+  font-family: 'Courier New', Courier, monospace;
+  font-weight: bold;
+  font-size: smaller;
+}
 
 .gradient-border {
    --borderWidth: 3px;

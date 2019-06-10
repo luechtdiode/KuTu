@@ -1,6 +1,16 @@
 // Ionic Variables and Theming. For more info, please see:
 // http://ionicframework.com/docs/theming/
-
+:test {
+  primary: #3880ff;
+  secondary: #0cd1e8;
+  tertiary: #7044ff;
+  success: #10dc60;
+  warning: #ffce00;
+  danger: #f04141;
+  dark: #222428;
+  medium: #989aa2;
+  light: #f4f5f8;
+}
 /** Ionic CSS Variables **/
 :root {
   /** primary **/
@@ -74,4 +84,6 @@
   --ion-color-light-contrast-rgb: 0, 0, 0;
   --ion-color-light-shade: #d7d8da;
   --ion-color-light-tint: #f5f6f9;
+
+  --ion-default-font: "Helvetica Neue", "Roboto", sans-serif;
 }

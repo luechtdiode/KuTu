@@ -7,7 +7,7 @@
       <ion-title>Resultate</ion-title>
     </div>
     <div *ngIf="isLoggedIn()">
-      <ion-title>Resultaterfassung<br><em>{{durchgangstate()}}</em></ion-title>
+      <ion-title>Resultaterfassung<div class="stateinfo" [ngClass]='durchgangstateClass'>{{durchgangstate()}}</div></ion-title>
     </div>
     <ion-note slot="end" class="ion-padding-end" [innerHtml]="competitionName()">
     </ion-note>

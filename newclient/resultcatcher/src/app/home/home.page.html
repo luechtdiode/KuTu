@@ -101,10 +101,10 @@
       </ion-button>
     </ion-list>
     <ion-list *ngIf="isLoggedIn">
-      <ion-button *ngIf="isLoggedIn && isOpenAndActive" size="large" expand="block" color="success" (click)="finish()"
+      <!-- <ion-button *ngIf="isLoggedIn && isOpenAndActive" size="large" expand="block" color="success" (click)="finish()"
         [disabled]="!(geraet && getSteps())">
         <ion-icon slot="start" name="git-commit"></ion-icon>Eingaben abschliessen
-      </ion-button>
+      </ion-button> -->
       <ion-button size="large" expand="block" color="danger" (click)="logout()">
         <ion-icon slot="start" name="log-out"></ion-icon>Abmelden
       </ion-button>

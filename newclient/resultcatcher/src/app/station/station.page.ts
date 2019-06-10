@@ -28,9 +28,18 @@ export class StationPage {
     });
   }
   durchgangstate() {
-    const connected = this.backendService.isWebsocketConnected() ? (this.durchgangopen ? 'gestartet' : 'gesperrt') : ' (offline)';
+    const connected = this.backendService.isWebsocketConnected() ? (this.durchgangopen ? 'gestartet' : 'gesperrt') : 'offline';
     return connected;
   }
+  get durchgangstateClass() {
+    const classes = {
+      open: this.backendService.isWebsocketConnected() && this.durchgangopen,
+      closed: this.backendService.isWebsocketConnected() && !this.durchgangopen,
+      offline: !this.backendService.isWebsocketConnected()
+    };
+    return classes;
+  }
+
   set competition(competitionId: string) {
     if (!this.stationFreezed) {
       this.backendService.getDurchgaenge(competitionId);

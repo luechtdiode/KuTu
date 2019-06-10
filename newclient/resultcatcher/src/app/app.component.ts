@@ -6,16 +6,18 @@ import { StatusBar } from '@ionic-native/status-bar/ngx';
 import { BackendService } from './services/backend.service';
 import { HomePage } from './home/home.page';
 import { StationPage } from './station/station.page';
+import { ThemeSwitcherService } from './services/theme-switcher.service';
+import { ThemeSwitcher2Service } from './services/theme-switcher2.service';
 
 @Component({
   selector: 'app-root',
   templateUrl: 'app.component.html'
 })
 export class AppComponent {
-  public appPages: Array<{title: string, url: string, icon: string}>;
 
   constructor(public platform: Platform, public statusBar: StatusBar, public splashScreen: SplashScreen,
               private navController: NavController,
+              public themeSwitcher: ThemeSwitcherService, public themeSwitcher2: ThemeSwitcher2Service,
               public backendService: BackendService, private alertCtrl: AlertController) {
 
     this.appPages = [
@@ -26,6 +28,49 @@ export class AppComponent {
     ];
 
     this.initializeApp();
+  }
+  public appPages: Array<{title: string, url: string, icon: string}>;
+
+  themes = {
+    /*autumn: {
+      primary: '#F78154',
+      secondary: '#4D9078',
+      tertiary: '#B4436C',
+      light: '#FDE8DF',
+      medium: '#FCD0A2',
+      dark: '#B89876'
+    },*/
+    Sport: {
+      primary: '#ffa238',
+      secondary: '#a19137',
+      tertiary: '#421804',
+      success: '#0eb651',
+      warning: '#ff7b00',
+      danger: '#f04141',
+      dark: '#03163d',
+      medium: '#606ea7',
+      light: '#fffdf5'
+    },
+    Dunkel: {
+      primary: '#8CBA80',
+      secondary: '#FCFF6C',
+      tertiary: '#FE5F55',
+      medium: '#BCC2C7',
+      dark: '#F7F7FF',
+      light: '#363232'
+    },
+    Neon: {
+      primary: '#39BFBD',
+      secondary: '#4CE0B3',
+      tertiary: '#FF5E79',
+      light: '#F4EDF2',
+      medium: '#B682A5',
+      dark: '#34162A'
+    }
+  };
+
+  get themeKeys() {
+    return Object.keys(this.themes);
   }
 
   initializeApp() {
@@ -143,6 +188,13 @@ export class AppComponent {
     this.backendService.askForUsername.next(this.backendService);
   }
 
+  cycleTheme() {
+    this.themeSwitcher.cycleTheme();
+  }
+  
+  changeTheme(name: string) {
+    this.themeSwitcher2.setTheme(this.themes[name]);
+  }
   openPage(url: string) {
     this.navController.navigateRoot(url);
   }

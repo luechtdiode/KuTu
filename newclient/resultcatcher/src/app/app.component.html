@@ -21,6 +21,22 @@
                 Settings
               </ion-label>
             </ion-item>
+            <ion-item-divider>&nbsp;<br>
+              Farbschema</ion-item-divider>
+            <ion-item menuClose (click)="changeTheme('')">
+              <ion-icon slot="start" name="color-palette"></ion-icon>
+              <ion-label>
+                Standardfarben
+              </ion-label>
+            </ion-item>
+            <ion-item *ngFor="let t of themeKeys" menuClose (click)="changeTheme(t)"
+              [style.background-color]="themes[t].light" 
+              [style.color]="themes[t].dark">
+              <ion-icon slot="start" name="color-palette"></ion-icon>
+              <ion-label [style.background-color]="themes[t].light" [style.color]="themes[t].dark">
+                {{t}}
+              </ion-label>
+            </ion-item>
           </ion-menu-toggle>
         </ion-list>
       </ion-content>
