@@ -40,6 +40,17 @@ export class AppComponent {
       medium: '#FCD0A2',
       dark: '#B89876'
     },*/
+    Blau: {
+      primary: '#ffa238',
+      secondary: '#a19137',
+      tertiary: '#421804',
+      success: '#0eb651',
+      warning: '#ff7b00',
+      danger: '#f04141',
+      dark: '#fffdf5',
+      medium: '#606ea7',
+      light: '#03163d'
+    },
     Sport: {
       primary: '#ffa238',
       secondary: '#a19137',
@@ -57,7 +68,7 @@ export class AppComponent {
       tertiary: '#FE5F55',
       medium: '#BCC2C7',
       dark: '#F7F7FF',
-      light: '#363232'
+      light: '#1c1b1a'
     },
     Neon: {
       primary: '#39BFBD',

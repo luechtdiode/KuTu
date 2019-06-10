@@ -41,7 +41,7 @@ export class LastResultsPage implements OnInit {
     this.backendService.newLastResults
     .filter(r => !!r && !!r.results)
     .subscribe(newLastRes => {
-      this.lastItems = this.items.map(item => item.id);
+      this.lastItems = this.items.map(item => item.id * this.geraete.length + item.geraet);
       this.items = [];
       Object.keys(newLastRes.results).forEach(key => {
         this.items.push(newLastRes.results[key]);
@@ -63,7 +63,7 @@ export class LastResultsPage implements OnInit {
     
   }
   isNew(item: WertungContainer): boolean {
-    return this.lastItems.filter(id => id === item.id).length === 0;
+    return this.lastItems.filter(id => id === item.id * this.geraete.length + item.geraet).length === 0;
   }
   get stationFreezed(): Boolean {
     return this.backendService.stationFreezed;

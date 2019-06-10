@@ -75,7 +75,7 @@ export class LastTopResultsPage implements OnInit {
     return this.backendService.competition || '';
   }
   getCompetitions(): Wettkampf[] {
-    return this.backendService.competitions;
+    return this.backendService.competitions || [];
   }
   competitionName(): string {
     if (!this.backendService.competitions) { return ''; }
