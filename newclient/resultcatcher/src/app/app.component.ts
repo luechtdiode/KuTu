@@ -53,7 +53,7 @@ export class AppComponent {
     },
     Sport: {
       primary: '#ffa238',
-      secondary: '#a19137',
+      secondary: '#7dc0ff',
       tertiary: '#421804',
       success: '#0eb651',
       warning: '#ff7b00',
@@ -63,17 +63,19 @@ export class AppComponent {
       light: '#fffdf5'
     },
     Dunkel: {
-      primary: '#8CBA80',
+      primary: '#8DBB82',
       secondary: '#FCFF6C',
       tertiary: '#FE5F55',
+      warning: '#ffce00',
       medium: '#BCC2C7',
-      dark: '#F7F7FF',
-      light: '#1c1b1a'
+      dark: '#DADFE1', // #F7F7FF
+      light: '#363232' //#1c1b1a
     },
     Neon: {
       primary: '#39BFBD',
       secondary: '#4CE0B3',
       tertiary: '#FF5E79',
+      warning: '#ff7b00',
       light: '#F4EDF2',
       medium: '#B682A5',
       dark: '#34162A'

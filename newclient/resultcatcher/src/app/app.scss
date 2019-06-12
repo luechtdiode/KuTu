@@ -7,7 +7,7 @@
 .alert-head {  
   // background-color: var(--ion-color-step-500, #2e2e2e);
   background-color:  var(--ion-item-background-color);
-  color: var(--ion-item-text-color);
+  color: #7dc0ff;//var(--ion-item-text-color);
 }
 ion-icon {
   //background-color:  var(--ion-item-background-color);
@@ -22,7 +22,9 @@ ion-toolbar {
   }
 }
 
-.alert-head.sc-ion-alert-md + .alert-message.sc-ion-alert-md {
+// .alert-head.sc-ion-alert-md + .alert-message.sc-ion-alert-md {
+
+.alert-head + .alert-message {
   padding-top: 15px;
 }
 

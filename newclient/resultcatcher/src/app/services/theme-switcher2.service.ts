@@ -42,7 +42,7 @@ const defaults = {
   secondary: '#0cd1e8',
   tertiary: '#7044ff',
   success: '#10dc60',
-  warning: '#ffce00',
+  warning: '#ff7b00',
   danger: '#f04141',
   dark: '#222428',
   medium: '#989aa2',
