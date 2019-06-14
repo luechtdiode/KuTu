@@ -4,10 +4,16 @@
 // styles are for the entire app and not just one component. Additionally, this 
 // file can hold Sass mixins, functions, and placeholder classes to be imported 
 // and used throughout the application.
-.alert-head {  
+.alert-head, .alert-head-md, .alert-head-ios {  
   // background-color: var(--ion-color-step-500, #2e2e2e);
   background-color:  var(--ion-item-background-color);
-  color: #7dc0ff;//var(--ion-item-text-color);
+  color: var(--ion-item-text-color);
+}
+.alert-radio-label.sc-ion-alert-ios {
+  color: var(--ion-color-step-850,#262626);
+}
+.alert-input-group.sc-ion-alert-ios, .alert-message.sc-ion-alert-ios  {
+  color: var(--ion-color-step-850,#262626);
 }
 ion-icon {
   //background-color:  var(--ion-item-background-color);
@@ -24,7 +30,7 @@ ion-toolbar {
 
 // .alert-head.sc-ion-alert-md + .alert-message.sc-ion-alert-md {
 
-.alert-head + .alert-message {
+.alert-head + .alert-message, .alert-head.sc-ion-alert-md + .alert-message.sc-ion-alert-md {
   padding-top: 15px;
 }
 
