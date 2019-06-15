@@ -637,6 +637,9 @@ class NetworkTab(wettkampfmode: BooleanProperty, wettkampf: WettkampfView, overr
             disable <== removeRemoteMenu.disable
           })
       } else {
+        view.contextMenu = new ContextMenu() {
+          items += navigate
+        }
         toolbar.content = List(
           new Button {
             onAction = connectAndShareMenu.onAction.get
