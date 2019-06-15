@@ -40,42 +40,8 @@ trait ScoreRoutes extends SprayJsonSupport with JsonSupport with AuthSupport wit
             "W" -> listDisziplinesZuWettkampf(x._2.head.wettkampf.id, Some("W"))
           , "M" -> listDisziplinesZuWettkampf(x._2.head.wettkampf.id, Some("M")))
     }
-    val filterList = filter.map{flt =>
-      val keyvalues = flt.split(":")
-      val key = keyvalues(0)
-      val values = keyvalues(1).split("!")
-      key -> values.toSet
-    }.toMap
-    
-    val cblist = groupby.toSeq.flatMap(gb => gb.split(":")).map{groupername =>
-      groupers.find(grouper => grouper.groupname.equals(groupername))
-    }.filter{case Some(_) => true case None => false}.map(_.get)
-    val cbllist = if(cblist.nonEmpty) cblist else Seq(ByWettkampfProgramm(), ByGeschlecht())
-    
-    val cbflist = filterList.keys.map {groupername =>
-      groupers.find(grouper => grouper.groupname.equals(groupername))
-    }
-    .filter{case Some(_) => true case None => false}.map(_.get)
-    .filter(grouper => !cbllist.contains(grouper)) ++ cbllist
-    
-    cbflist.foreach{gr =>
-      gr.reset
-      filterList.get(gr.groupname) match {
-        case Some(filterValues) =>
-          gr.setFilter(gr.analyze(data).filter{f =>
-            filterValues.exists(entry => {
-              val itemText = f.easyprint
-              entry.split(" ").forall(subentry => itemText.contains(subentry))
-            })
-          }.toSet ++ (if (filterValues.contains("all")) Set(NullObject("alle")) else Set.empty))
-        case _ =>
-      }
-    }
-    val query = if (cbflist.nonEmpty) {
-      cbflist.foldLeft(cbflist.head.asInstanceOf[GroupBy])((acc, cb) => if (acc != cb) acc.groupBy(cb) else acc)
-    } else {      
-      ByWettkampfProgramm().groupBy(ByGeschlecht())
-    }
+    val query = GroupBy(groupby, filter, data);
+
     if (html) {
       HttpEntity(ContentTypes.`text/html(UTF-8)`, new ScoreToHtmlRenderer(){override val title: String = wettkampf}
       .toHTML(query.select(data).toList, athletsPerPage = 0, sortAlphabetically = false, diszMap, logofile))
