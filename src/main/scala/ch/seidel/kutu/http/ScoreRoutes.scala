@@ -40,7 +40,7 @@ trait ScoreRoutes extends SprayJsonSupport with JsonSupport with AuthSupport wit
             "W" -> listDisziplinesZuWettkampf(x._2.head.wettkampf.id, Some("W"))
           , "M" -> listDisziplinesZuWettkampf(x._2.head.wettkampf.id, Some("M")))
     }
-    val query = GroupBy(groupby, filter, data);
+    val query = GroupBy(groupby, filter, data, groupers);
 
     if (html) {
       HttpEntity(ContentTypes.`text/html(UTF-8)`, new ScoreToHtmlRenderer(){override val title: String = wettkampf}

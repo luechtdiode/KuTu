@@ -143,9 +143,9 @@ sealed trait FilterBy extends GroupBy {
         gb match {
           case f: FilterBy if f.getFilter.nonEmpty =>
             if (f.skipGrouper) {
-              filter :+ s"&filter=${gb.groupname}:${f.getFilter.map(_.easyprint).mkString("!")}"
+              filter :+ s"&filter=${gb.groupname}:${f.getFilter.map(s => encodeURIParam(s.easyprint)).mkString("!")}"
             } else {
-              filter :+ s"&filter=${gb.groupname}:${f.getFilter.map(_.easyprint).mkString("!")}"
+              filter :+ s"&filter=${gb.groupname}:${f.getFilter.map(s => encodeURIParam(s.easyprint)).mkString("!")}"
             }
           case _ =>
             filter
@@ -376,7 +376,7 @@ object GroupBy {
     apply(groupby, filter, data)
   }
 
-  def apply(groupby: Option[String], filter: Iterable[String], data: Seq[WertungView]): GroupBy = {
+  def apply(groupby: Option[String], filter: Iterable[String], data: Seq[WertungView], groupers: List[FilterBy] = allGroupers): GroupBy = {
     val filterList = filter.map { flt =>
       val keyvalues = flt.split(":")
       val key = keyvalues(0)
@@ -385,12 +385,12 @@ object GroupBy {
     }.toMap
 
     val cblist = groupby.toSeq.flatMap(gb => gb.split(":")).map { groupername =>
-      allGroupers.find(grouper => grouper.groupname.equals(groupername))
+      groupers.find(grouper => grouper.groupname.equals(groupername))
     }.filter { case Some(_) => true case None => false }.map(_.get)
     val cbllist = if (cblist.nonEmpty) cblist else Seq(ByWettkampfProgramm(), ByGeschlecht())
 
     val cbflist = filterList.keys.map { groupername =>
-      allGroupers.find(grouper => grouper.groupname.equals(groupername))
+      groupers.find(grouper => grouper.groupname.equals(groupername))
     }.filter {
       case Some(_) => true
       case None => false
