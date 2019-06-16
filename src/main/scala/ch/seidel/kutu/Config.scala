@@ -135,13 +135,13 @@ object Config extends KuTuSSLContext {
     if (System.getProperty("os.name").toLowerCase.indexOf("win") > -1) {
       Files.setAttribute(path, "dos:hidden", true, LinkOption.NOFOLLOW_LINKS)
     }
-    logger.info("DeviceId new createt " + path)
+    logger.info("DeviceId new created " + path)
   }
 
   def readDeviceId: Option[String] = {
     val path = new File(userHomePath + "/.deviceId").toPath
     if (path.toFile.exists) {
-      logger.info("Secret found " + path)
+      logger.info("DeviceId found " + path)
       Some(new String(Files.readAllBytes(path), "utf-8"))
     }
     else {
@@ -213,7 +213,7 @@ object Config extends KuTuSSLContext {
     _localHostRemoteIP = localHostRemoteIP
   }
   def isLocalHostServer() = _isLocalHostServer
-  def remoteBaseUrl = if(_isLocalHostServer) if(hasHttpsConfig)s"https://${_localHostRemoteIP.getOrElse(httpHostname)}:$httpPort" else s"http://${_localHostRemoteIP.getOrElse(httpHostname)}:$httpPort" else s"$remoteSchema://$remoteHost"
+  def remoteBaseUrl = if(_isLocalHostServer) if(hasHttpsConfig)s"https://${_localHostRemoteIP.getOrElse(httpHostname)}:$httpPort" else s"http://${_localHostRemoteIP.getOrElse(httpHostname)}:$httpPort" else s"$remoteSchema://$remoteHost:$httpPort"
 
   def remoteOperatingBaseUrl = remoteBaseUrl //s"http://$remoteHost:$remotePort/operating"
   def remoteAdminBaseUrl = remoteBaseUrl//s"$remoteBaseUrl/wkadmin"
