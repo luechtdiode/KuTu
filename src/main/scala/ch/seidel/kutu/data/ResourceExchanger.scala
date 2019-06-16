@@ -79,6 +79,12 @@ object ResourceExchanger extends KutuService with RiegenBuilder {
               refresher(sender, uw)
           }
         }
+      case (sender, scorePublished @ScoresPublished(title: String, query: String, wettkampfUUID: String)) =>
+        if (wettkampf.uuid.contains(wettkampfUUID)) /*Future*/ {
+          logger.info(s"received ${scorePublished}")
+          savePublishedScore(wettkampf.id, title, query, false)
+          refresher(sender, scorePublished)
+        }
       case (sender, awm @AthletMovedInWettkampf(athlet, wettkampfUUID, programm)) =>
         if (wettkampf.uuid.contains(wettkampfUUID)) /*Future*/ {
           logger.info(s"received for ${awm.athlet.vorname} ${awm.athlet.name} (${awm.athlet.verein.getOrElse(() => "")}) " +
@@ -237,6 +243,25 @@ object ResourceExchanger extends KutuService with RiegenBuilder {
           fos.flush()
           fos.close()
           logger.info("logo was written " + logofile.getName)
+        }
+      }
+      new ZipEntryTraversableClass().foreach{entry =>
+        if (entry._1.getName.endsWith(".scoredef")) {
+          val filename = entry._1.getName
+          val wettkampfDir = new java.io.File(Config.homedir + "/" + wettkampf.easyprint.replace(" ", "_"))
+          if (!wettkampfDir.exists()) {
+            wettkampfDir.mkdir()
+          }
+          val scoredefFile = new java.io.File(Config.homedir + "/" + wettkampf.easyprint.replace(" ", "_") + "/" + filename)
+          val fos = new FileOutputStream(scoredefFile)
+          val bytes = new Array[Byte](1024) //1024 bytes - Buffer size
+          Iterator
+            .continually(entry._2.read(bytes))
+            .takeWhile(-1 !=)
+            .foreach(read=> fos.write(bytes, 0, read))
+          fos.flush()
+          fos.close()
+          logger.info("scoredef-file was written " + scoredefFile.getName)
         }
       }
       new ZipEntryTraversableClass().foreach{entry =>
@@ -420,6 +445,22 @@ object ResourceExchanger extends KutuService with RiegenBuilder {
       zip.closeEntry()
       println("logo was taken " + logofile.getName)
     }
+    // pick score-defs
+    competitionDir
+      .listFiles()
+      .filter(f => f.getName.endsWith(".scoredef"))
+      .toList
+      .foreach { scoredefFile =>
+        zip.putNextEntry(new ZipEntry(scoredefFile.getName));
+        val fis = new FileInputStream(scoredefFile)
+        val bytes = new Array[Byte](1024) //1024 bytes - Buffer size
+        Iterator
+          .continually(fis.read(bytes))
+          .takeWhile(-1 !=)
+          .foreach(read=> zip.write(bytes, 0, read))
+        zip.closeEntry()
+        println("scoredef-file was taken " + scoredefFile.getName)
+      }
     if (withSecret && wettkampf.hasSecred(Config.homedir, Config.remoteHostOrigin)) {
       val secretfile = wettkampf.filePath(Config.homedir, Config.remoteHostOrigin).toFile();
       zip.putNextEntry(new ZipEntry(secretfile.getName));

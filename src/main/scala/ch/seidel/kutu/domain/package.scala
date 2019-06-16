@@ -354,6 +354,11 @@ package object domain {
     def toWettkampf = Wettkampf(id, uuid, datum, titel, programm.id, auszeichnung, auszeichnungendnote)
   }
 
+  case class PublishedScoreView(id: Long, title: String, query: String, wettkampf: Wettkampf) extends DataObject {
+    override def easyprint = f"PublishedScore($title - ${wettkampf.easyprint})"
+    def isAlphanumericOrdered = query.contains("&alphanumeric")
+  }
+
   case class Wettkampfdisziplin(id: Long, programmId: Long, disziplinId: Long, kurzbeschreibung: String, detailbeschreibung: Option[java.sql.Blob], notenfaktor: scala.math.BigDecimal, masculin: Int, feminim: Int, ord: Int) extends DataObject {
     override def easyprint = f"$disziplinId%02d: $kurzbeschreibung"
   }

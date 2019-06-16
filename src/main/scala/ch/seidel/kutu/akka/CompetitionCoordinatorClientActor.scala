@@ -172,6 +172,7 @@ class CompetitionCoordinatorClientActor(wettkampfUUID: String) extends Persisten
     case awu: AthletWertungUpdatedSequenced => websocketProcessor(Some(sender), awu)
     case awu: AthletMovedInWettkampf => websocketProcessor(Some(sender), awu)
     case awu: AthletRemovedFromWettkampf => websocketProcessor(Some(sender), awu)
+    case awu: ScoresPublished => websocketProcessor(Some(sender), awu)
 
     case fds: FinishDurchgangStation =>
       persist(DurchgangStationFinished(fds.wettkampfUUID, fds.durchgang, fds.geraet, fds.step)) { evt =>
@@ -315,6 +316,9 @@ class CompetitionCoordinatorClientActor(wettkampfUUID: String) extends Persisten
         handleEvent(awuv)
         val handledEvent = awuv.toAthletWertungUpdated().toAthletWertungUpdatedSequenced(state.lastSequenceId)
         forwardToListeners(handledEvent)
+
+      case scoresPublished: ScoresPublished =>
+        notifyWebSocketClients(senderWebSocket, scoresPublished, "")
 
       case awu: AthletMovedInWettkampf =>
         notifyWebSocketClients(senderWebSocket, awu, "")

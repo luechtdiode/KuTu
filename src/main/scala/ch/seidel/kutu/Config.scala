@@ -21,7 +21,7 @@ object Config extends KuTuSSLContext {
 
   val configPath: String = System.getProperty("user.dir")
   logger.info(s"user.dir Path where custom configurations (kutuapp.conf) are taken from: ${new File(configPath).getAbsolutePath}")
-  val userHomePath: String = System.getProperty("user.home") + "/kutuapp"
+  val userHomePath: String = configPath//System.getProperty("user.home") + "/kutuapp"
   logger.info(s"user.home Path: ${new File(userHomePath).getAbsolutePath}")
 
   System.setProperty("akka.persistence.snapshot-store.local.dir", userHomePath + "/snapshot")

@@ -88,6 +88,7 @@ object DBService {
       "SetJournalWAL.sql"
       ,"OptionalWertungen.sql"
       ,"AddRiegenIndicies.sql"
+      ,"PublishedScores.sql"
     )
 
     sqlScripts.filter{ filename =>

@@ -10,6 +10,7 @@ import scala.math.BigDecimal.int2bigDecimal
 sealed trait GroupBy {
   val groupname: String
   protected var next: Option[GroupBy] = None
+  protected var isANO: Boolean = false
 
   protected def allName = groupname
 
@@ -22,6 +23,15 @@ sealed trait GroupBy {
 
   override def toString = groupname
 
+  def isAlphanumericOrdered = isANO
+
+  def setAlphanumericOrdered(value: Boolean) {
+    traverse(value){ (gb, acc) =>
+      gb.isANO = acc
+      acc
+    }
+  }
+
   def toRestQuery: String = {
     val groupby = traverse("") { (gb, acc) =>
       acc match {
@@ -31,7 +41,7 @@ sealed trait GroupBy {
           acc + "," + gb.groupname
       }
     }
-    s"groupby=${groupby}"
+    s"groupby=${groupby}" + (if (isANO) "&alphanumeric" else "")
   }
 
   def chainToString: String = s"$groupname (skipGrouper: $skipGrouper, $allName)" + (next match {
@@ -76,6 +86,7 @@ sealed trait GroupBy {
   }
 
   def reset {
+    setAlphanumericOrdered(false)
     next = None
   }
 
@@ -152,7 +163,7 @@ sealed trait FilterBy extends GroupBy {
         }
       )
     }
-    s"groupby=$groupby${filter.mkString}"
+    s"groupby=$groupby${filter.mkString}" + (if (isANO) "&alphanumeric" else "")
   }
 
   private[FilterBy] var filter: Set[DataObject] = Set.empty
@@ -373,10 +384,10 @@ object GroupBy {
     val arguments = query.split("&")
     val groupby = arguments.filter(_.startsWith("groupby=")).map(_.split("=")(1)).headOption
     val filter = arguments.filter(_.startsWith("filter=")).map(_.split("=")(1))
-    apply(groupby, filter, data)
+    apply(groupby, filter, data, query.contains("&alphanumeric"))
   }
 
-  def apply(groupby: Option[String], filter: Iterable[String], data: Seq[WertungView], groupers: List[FilterBy] = allGroupers): GroupBy = {
+  def apply(groupby: Option[String], filter: Iterable[String], data: Seq[WertungView], alphanumeric: Boolean, groupers: List[FilterBy] = allGroupers): GroupBy = {
     val filterList = filter.map { flt =>
       val keyvalues = flt.split(":")
       val key = keyvalues(0)
@@ -422,6 +433,7 @@ object GroupBy {
     } else {
       ByWettkampfProgramm().groupBy(ByGeschlecht())
     }
+    query.setAlphanumericOrdered(alphanumeric)
     query
   }
 }

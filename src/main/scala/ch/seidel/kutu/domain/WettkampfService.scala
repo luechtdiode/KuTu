@@ -2,13 +2,13 @@ package ch.seidel.kutu.domain
 
 import java.util.UUID
 
-import ch.seidel.kutu.akka.{AthletMovedInWettkampf, AthletRemovedFromWettkampf, DurchgangChanged}
+import ch.seidel.kutu.akka.{AthletMovedInWettkampf, AthletRemovedFromWettkampf, DurchgangChanged, PublishScores, ScoresPublished}
 import ch.seidel.kutu.http.WebSocketClient
 import ch.seidel.kutu.squad.RiegenBuilder
 import org.slf4j.LoggerFactory
 import slick.jdbc.SQLiteProfile.api._
 
-import scala.concurrent.Await
+import scala.concurrent.{Await, Future}
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration.Duration
 
@@ -54,19 +54,47 @@ trait WettkampfService extends DBService
     Await.result(database.run(allPgmsQuery.withPinnedSession), Duration.Inf)
   }
 
+  def listPublishedScores(wettkampfUUID: UUID): Future[List[PublishedScoreView]] = {
+    database.run(sql"""select sc.id, sc.title, sc.query, wk.*
+           from published_scores sc
+           inner join wettkampf wk on wk.id = sc.wettkampf_id
+           where wk.uuid = ${wettkampfUUID.toString}
+         """.as[PublishedScoreView].withPinnedSession).map(_.toList)
+  }
+
+  def savePublishedScore(wettkampfId: Long, title: String, query: String, propagate: Boolean) = {
+    val process: DBIOAction[PublishedScoreView, NoStream, Effect] =
+      sqlu"""
+                    delete from published_scores where title = $title and wettkampf_id = $wettkampfId""" >>
+      sqlu"""
+                    insert into published_scores
+                    (title, query, wettkampf_id) values ($title, $query, $wettkampfId)""" >>
+      sql"""
+                    select sc.id as sc_id, sc.title, sc.query, wk.*
+                    from published_scores sc
+                    inner join wettkampf wk on wk.id = sc.wettkampf_id
+                    where sc.id in (select max(id) from published_scores)
+         """.as[PublishedScoreView].head
+
+    val publishedScoreView = Await.result(database.run(process), Duration.Inf)
+    if (propagate) {
+      val ps = ScoresPublished(publishedScoreView.title, publishedScoreView.query, publishedScoreView.wettkampf.uuid.get)
+      WebSocketClient.publish(ps)
+    }
+    publishedScoreView
+  }
+
   def readProgramm(id: Long): ProgrammView = {
     val allPgmsQuery = sql"""select * from programm""".as[ProgrammRaw]
         .map{l => l.map(p => p.id -> p).toMap}
-        .map{map => map.foldLeft(List[ProgrammView]()){(acc, pgmEntry) =>
-            val (id, pgm) = pgmEntry
-            if (pgm.parentId > 0) {
-              acc :+ pgm.withParent(map(pgm.parentId).toView)
-            } else {
-              acc :+ pgm.toView            
-            }
+        .map{map => map.foldLeft(List[ProgrammView]()) { (acc, pgmEntry) =>
+          val (id, pgm) = pgmEntry
+          if (pgm.parentId > 0) {
+            acc :+ pgm.withParent(map(pgm.parentId).toView)
+          } else {
+            acc :+ pgm.toView
           }
-          .filter(view => view.id == id)
-          .headOption
+        }.find(view => view.id == id)
         }
     Await.result(database.run(allPgmsQuery.withPinnedSession), Duration.Inf).getOrElse(ProgrammView(id, "<unknown>", 0, None, 0, 0, 0))
   }
@@ -254,6 +282,7 @@ trait WettkampfService extends DBService
   
   def deleteWettkampf(wettkampfid: Long) {
     Await.result(database.run{(
+      sqlu"""      delete from published_scores where wettkampf_id=${wettkampfid}""" >>
       sqlu"""      delete from riege where wettkampf_id=${wettkampfid}""" >>
       sqlu"""      delete from wertung where wettkampf_id=${wettkampfid}""" >>
       sqlu"""      delete from wettkampf where id=${wettkampfid}""").transactionally

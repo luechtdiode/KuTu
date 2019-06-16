@@ -29,13 +29,14 @@ import scalafx.stage.FileChooser
 import scalafx.stage.FileChooser.ExtensionFilter
 import scalafx.util.StringConverter
 
+import scala.concurrent.Await
 import scala.language.implicitConversions
 
 abstract class DefaultRanglisteTab(override val service: KutuService) extends Tab with TabWithService with ScoreToHtmlRenderer {
 
   override val title = ""
   var subscription: Option[Subscription] = None
-
+  var lastScoreDef: Option[FilterBy] = None
   override def release() {
     subscription.foreach(_.cancel)
   }
@@ -66,6 +67,9 @@ abstract class DefaultRanglisteTab(override val service: KutuService) extends Ta
   def groupers: List[FilterBy] = ???
   def getData: Seq[WertungView] = ???
   def getSaveAsFilenameDefault: FilenameDefault = ???
+  def getPublishedScores: List[PublishedScoreView] = List.empty
+  def getActionButtons: List[Button] = List.empty
+
   val webView = new WebView {
     fontSmoothingType = FontSmoothingType.GRAY
 
@@ -194,20 +198,21 @@ abstract class DefaultRanglisteTab(override val service: KutuService) extends Ta
         }
         grp
       }
-      restoring = false
-
-      if (cblist.isEmpty) {
+      val groupBy = if (cblist.isEmpty) {
         ByWettkampfProgramm().groupBy(ByGeschlecht())
       }
       else {
         cblist.foldLeft(cblist.head.asInstanceOf[GroupBy])((acc, cb) => if (acc != cb) acc.groupBy(cb) else acc)
       }
+      groupBy.setAlphanumericOrdered(cbModus.selected.value)
+      restoring = false
+
+      groupBy
     }
 
     def refreshRangliste(query: GroupBy, linesPerPage: Int = 0) = {
       restoring = true
     	val data = getData
-
       val filter = query.asInstanceOf[FilterBy]
       val filterLists = filter.traverse(Seq[Seq[DataObject]]()){ (f, acc) =>
         val allItems = f.asInstanceOf[FilterBy].analyze(data).sortBy { x => x.easyprint}
@@ -227,16 +232,18 @@ abstract class DefaultRanglisteTab(override val service: KutuService) extends Ta
       
     	  checked.filter(model.contains(_)).foreach(combf.getCheckModel.check(_))
     	}
-
+      query.setAlphanumericOrdered(cbModus.selected.value)
       val combination = query.select(data).toList
-      //Map[Long,Map[String,List[Disziplin]]] 
+      lastScoreDef = Some(query.asInstanceOf[FilterBy])
+
+      //Map[Long,Map[String,List[Disziplin]]]
       val diszMap = data.groupBy { x => x.wettkampf.programmId }.map{ x =>
         x._1 -> Map(
               "W" -> service.listDisziplinesZuWettkampf(x._2.head.wettkampf.id, Some("W"))
             , "M" -> service.listDisziplinesZuWettkampf(x._2.head.wettkampf.id, Some("M")))
         }
       val logofile = PrintUtil.locateLogoFile(getSaveAsFilenameDefault.dir)
-      val ret = toHTML(combination, linesPerPage, cbModus.selected.value, diszMap, logofile)
+      val ret = toHTML(combination, linesPerPage, query.isAlphanumericOrdered, diszMap, logofile)
       if(linesPerPage == 0){
         webView.engine.loadContent(ret)
       }
@@ -274,6 +281,7 @@ abstract class DefaultRanglisteTab(override val service: KutuService) extends Ta
           acc.tail
         }
       }
+      cbModus.selected.value = query.isAlphanumericOrdered
       restoring = false
       refreshRangliste(query)
     }
@@ -298,35 +306,10 @@ abstract class DefaultRanglisteTab(override val service: KutuService) extends Ta
       if(!restoring)
         refreshRangliste(buildGrouper)
     }
-    if (logger.isDebugEnabled()) {
-      logger.debug("subscribing for refreshing from websocket")
-    }
-    subscription = Some(WebSocketClient.modelWettkampfWertungChanged.onChange { (_, _, newItem) =>
-      if (selected.value) {
-        submitLazy("refreshRangliste", () => if (selected.value) {
-            if (logger.isDebugEnabled()) {
-              logger.debug("refreshing rangliste from websocket", newItem)
-            }
-            refreshRangliste(buildGrouper)
-          }, 5
-        )
-      }
-    })
 
     val btnPrint = PrintUtil.btnPrint(text.value, getSaveAsFilenameDefault, true, (lpp:Int)=>refreshRangliste(buildGrouper, lpp))
-    
-    def extractFilterText = {
-      buildGrouper.toRestQuery
-        .replace("/", "_")
-        .replace(".", "_")
-        .replace("?", "_")
-        .replace("&", "+")
-        .replace("=", "-")
-        .replace(":", "-")
-        .replace("!", "-")
-        .replace("groupby", "Gruppiert")
-        .replace("filter", "Gefiltert")
-    }
+
+    def extractFilterText = normalizeFilterText(buildGrouper.toRestQuery)
 
     def getFilterSaveAsFilenameDefault: FilenameDefault = {
       val default = getSaveAsFilenameDefault
@@ -353,9 +336,27 @@ abstract class DefaultRanglisteTab(override val service: KutuService) extends Ta
       items.add(menu)
     }
 
+    def addPublishedFilter(items: ObservableList[javafx.scene.control.MenuItem])(filter: PublishedScoreView): Unit = {
+      val menu = KuTuApp.makeMenuAction("Publiziert: " + filter.title) { (caption, action) =>
+        val grouper = GroupBy(filter.query, getData)
+        restoreGrouper(grouper)
+      }
+      items.add(menu)
+    }
+
+    def refreshScorePresets(items: ObservableList[javafx.scene.control.MenuItem]): Unit = {
+      items.clear
+      val addPublished: PublishedScoreView => Unit = addPublishedFilter(items)
+      val addSaved: File => Unit = addPredefinedFilter(items)
+      getPublishedScores.foreach(addPublished(_))
+      if (items.nonEmpty) {
+        items.add(new SeparatorMenuItem())
+      }
+      listFilter.foreach(addSaved(_))
+    }
+
     val cbfSaved = new MenuButton("Gespeicherte Einstellungen") {
-      val add: File => Unit = addPredefinedFilter(items)
-      listFilter.foreach(add(_))
+      refreshScorePresets(items)
       disable <== when(createBooleanBinding(() => items.isEmpty, items)) choose true otherwise false
     }
 
@@ -397,6 +398,23 @@ abstract class DefaultRanglisteTab(override val service: KutuService) extends Ta
         refreshRangliste(buildGrouper)
       }
     }
+
+    if (logger.isDebugEnabled()) {
+      logger.debug("subscribing for refreshing from websocket")
+    }
+    subscription = Some(WebSocketClient.modelWettkampfWertungChanged.onChange { (_, _, newItem) =>
+      if (selected.value) {
+        submitLazy("refreshRangliste", () => if (selected.value) {
+          if (logger.isDebugEnabled()) {
+            logger.debug("refreshing rangliste from websocket", newItem)
+          }
+          refreshRangliste(buildGrouper)
+          refreshScorePresets(cbfSaved.items)
+        }, 5
+        )
+      }
+    })
+
     content = new BorderPane {
       vgrow = Priority.Always
       hgrow = Priority.Always
@@ -431,7 +449,7 @@ abstract class DefaultRanglisteTab(override val service: KutuService) extends Ta
         hgrow = Priority.Always
         children = List(
           new ToolBar {
-            content = List(cbfSaved, btnSaveFilter, btnPrint, cbModus)
+            content = List(cbfSaved, btnSaveFilter) ++ getActionButtons ++ List(btnPrint, cbModus)
           },
           new ToolBar {
             content = (topBox +: topCombos)
@@ -442,4 +460,16 @@ abstract class DefaultRanglisteTab(override val service: KutuService) extends Ta
     }
     combs
   }
+
+  def normalizeFilterText(text: String) = text.replace("/", "_")
+    .replace(".", "_")
+    .replace("?", "_")
+    .replace("&", "+")
+    .replace("=", "-")
+    .replace(":", "-")
+    .replace("!", "-")
+    .replace("groupby", "Gruppiert")
+    .replace("filter", "Gefiltert")
+    .replace("alphanumeric", "Sortierung_nach_Namen")
+
 }
