@@ -764,7 +764,7 @@ object KuTuApp extends JFXApp with KutuService with JsonSupport with JwtSupport 
     val item = makeMenuAction("Start local Server") { (caption, action) =>
       KuTuApp.invokeWithBusyIndicator {
         server.startServer { x => server.sha256(x) }
-        LocalServerStates.startLocalServer
+        LocalServerStates.startLocalServer(() => server.listNetworkAdresses)
       }
     }
     item.disable <== when(Bindings.createBooleanBinding(() => isLocalHostServer(),

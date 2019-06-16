@@ -207,11 +207,13 @@ object Config extends KuTuSSLContext {
   def remoteHostOrigin = if(_isLocalHostServer) "localhost" else remoteHost.split(":")(0)
 
   private var _isLocalHostServer = false
-  def setLocalHostServer(value: Boolean): Unit = {
+  private var _localHostRemoteIP: Option[String] = None
+  def setLocalHostServer(value: Boolean, localHostRemoteIP: Option[String]): Unit = {
     _isLocalHostServer = value
+    _localHostRemoteIP = localHostRemoteIP
   }
   def isLocalHostServer() = _isLocalHostServer
-  def remoteBaseUrl = if(_isLocalHostServer) if(hasHttpsConfig)s"https://$httpHostname:$httpPort" else s"http://$httpHostname:$httpPort" else s"$remoteSchema://$remoteHost"
+  def remoteBaseUrl = if(_isLocalHostServer) if(hasHttpsConfig)s"https://${_localHostRemoteIP.getOrElse(httpHostname)}:$httpPort" else s"http://${_localHostRemoteIP.getOrElse(httpHostname)}:$httpPort" else s"$remoteSchema://$remoteHost"
 
   def remoteOperatingBaseUrl = remoteBaseUrl //s"http://$remoteHost:$remotePort/operating"
   def remoteAdminBaseUrl = remoteBaseUrl//s"$remoteBaseUrl/wkadmin"
