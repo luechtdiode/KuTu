@@ -213,7 +213,8 @@ object Config extends KuTuSSLContext {
     _localHostRemoteIP = localHostRemoteIP
   }
   def isLocalHostServer() = _isLocalHostServer
-  def remoteBaseUrl = if(_isLocalHostServer) if(hasHttpsConfig)s"https://${_localHostRemoteIP.getOrElse(httpHostname)}:$httpPort" else s"http://${_localHostRemoteIP.getOrElse(httpHostname)}:$httpPort" else s"$remoteSchema://$remoteHost:$httpPort"
+  lazy val remoteHostPort = if (appRemoteConfig.hasPath("port")) appRemoteConfig.getString("port") else "443"
+  def remoteBaseUrl = if(_isLocalHostServer) if(hasHttpsConfig)s"https://${_localHostRemoteIP.getOrElse(httpHostname)}:$httpPort" else s"http://${_localHostRemoteIP.getOrElse(httpHostname)}:$httpPort" else s"$remoteSchema://$remoteHost:$remoteHostPort"
 
   def remoteOperatingBaseUrl = remoteBaseUrl //s"http://$remoteHost:$remotePort/operating"
   def remoteAdminBaseUrl = remoteBaseUrl//s"$remoteBaseUrl/wkadmin"
