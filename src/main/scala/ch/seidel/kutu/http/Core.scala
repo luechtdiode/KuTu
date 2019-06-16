@@ -88,8 +88,8 @@ trait KuTuAppHTTPServer extends ApiService with JsonSupport {
   }
 
   def shutDown(caller: String) {
-    Core.terminate()
     stopServer(caller)
+    Core.terminate()
     println(caller + " System terminated")
   }
 
