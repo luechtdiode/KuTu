@@ -4,10 +4,9 @@ import { Platform, AlertController, NavController } from '@ionic/angular';
 import { SplashScreen } from '@ionic-native/splash-screen/ngx';
 import { StatusBar } from '@ionic-native/status-bar/ngx';
 import { BackendService } from './services/backend.service';
-import { HomePage } from './home/home.page';
-import { StationPage } from './station/station.page';
 import { ThemeSwitcherService } from './services/theme-switcher.service';
 import { ThemeSwitcher2Service } from './services/theme-switcher2.service';
+import { ActivatedRoute, Router } from '@angular/router';
 
 @Component({
   selector: 'app-root',
@@ -16,7 +15,7 @@ import { ThemeSwitcher2Service } from './services/theme-switcher2.service';
 export class AppComponent {
 
   constructor(public platform: Platform, public statusBar: StatusBar, public splashScreen: SplashScreen,
-              private navController: NavController,
+              private navController: NavController, private route: ActivatedRoute, private router: Router,
               public themeSwitcher: ThemeSwitcherService, public themeSwitcher2: ThemeSwitcher2Service,
               public backendService: BackendService, private alertCtrl: AlertController) {
 
@@ -86,11 +85,19 @@ export class AppComponent {
     return Object.keys(this.themes);
   }
 
+  clearPosParam() {
+    this.router.navigate(
+      ['.'], 
+      { relativeTo: this.route, queryParams: {} }
+    );
+  }
+
   initializeApp() {
     this.platform.ready().then(() => {
       // Okay, so the platform is ready and our plugins are available.
       // Here you can do any higher level native things you might need.
       this.statusBar.styleDefault();
+
       if (window.location.href.indexOf('?') > 0) {
         try {
           const initializeWithEncoded = window.location.href.split('?')[1];
@@ -122,6 +129,7 @@ export class AppComponent {
             // localStorage.setItem("external_load", initializeWith.substring(4));
           } else {
             window.history.replaceState({}, document.title, window.location.href.split('?')[0]);
+            this.clearPosParam();
             console.log('initializing with ' + initializeWith);
             localStorage.setItem('external_load', initializeWith);
             if (initializeWith.startsWith('c=') && initializeWith.indexOf('&st=') > -1 && initializeWith.indexOf('&g=') > -1) {
@@ -163,7 +171,7 @@ export class AppComponent {
             {
               text: 'Abbrechen',
               role: 'cancel',
-              handler: data => {
+              handler: () => {
                 console.log('Cancel clicked');
               }
             },
