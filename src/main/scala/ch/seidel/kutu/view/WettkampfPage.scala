@@ -27,7 +27,7 @@ object WettkampfPage {
     }) :+ alleWertungenTab
    
     lazy val ranglisteSite: Seq[Tab] = Seq(
-      new RanglisteTab(wettkampf, service) {
+      new RanglisteTab(wettkampfmode, wettkampf, service) {
         text = "Rangliste"
         closable = false
       }

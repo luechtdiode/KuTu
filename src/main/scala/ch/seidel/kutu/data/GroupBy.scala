@@ -1,5 +1,6 @@
 package ch.seidel.kutu.data
 
+import java.net.{URLDecoder, URLEncoder}
 import java.text.SimpleDateFormat
 
 import ch.seidel.kutu.domain._
@@ -382,8 +383,8 @@ object GroupBy {
 
   def apply(query: String, data: Seq[WertungView]): GroupBy = {
     val arguments = query.split("&")
-    val groupby = arguments.filter(_.startsWith("groupby=")).map(_.split("=")(1)).headOption
-    val filter = arguments.filter(_.startsWith("filter=")).map(_.split("=")(1))
+    val groupby = arguments.filter(x => x.length > 8 && x.startsWith("groupby=")).map(x => URLDecoder.decode(x.split("=")(1), "UTF-8")).headOption
+    val filter = arguments.filter(x => x.length > 7 && x.startsWith("filter=")).map(x => URLDecoder.decode(x.split("=")(1), "UTF-8"))
     apply(groupby, filter, data, query.contains("&alphanumeric"))
   }
 

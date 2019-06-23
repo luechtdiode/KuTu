@@ -7,6 +7,7 @@ import java.util.concurrent.{ScheduledFuture, TimeUnit}
 import ch.seidel.commons._
 import ch.seidel.kutu.KuTuApp
 import ch.seidel.kutu.KuTuApp.hostServices
+import ch.seidel.kutu.akka.ScoresPublished
 import ch.seidel.kutu.data.{FilterBy, _}
 import ch.seidel.kutu.domain._
 import ch.seidel.kutu.http.WebSocketClient
@@ -18,6 +19,7 @@ import javafx.scene.{control => jfxsc}
 import org.controlsfx.control.CheckComboBox
 import scalafx.Includes._
 import scalafx.application.Platform
+import scalafx.beans.property.{BooleanProperty, ObjectProperty, StringProperty}
 import scalafx.collections.ObservableBuffer
 import scalafx.event.subscriptions.Subscription
 import scalafx.geometry.Insets
@@ -32,13 +34,20 @@ import scalafx.util.StringConverter
 import scala.concurrent.Await
 import scala.language.implicitConversions
 
-abstract class DefaultRanglisteTab(override val service: KutuService) extends Tab with TabWithService with ScoreToHtmlRenderer {
+abstract class DefaultRanglisteTab(wettkampfmode: BooleanProperty, override val service: KutuService) extends Tab with TabWithService with ScoreToHtmlRenderer {
 
   override val title = ""
-  var subscription: Option[Subscription] = None
-  var lastScoreDef: Option[FilterBy] = None
+  var subscription: List[Subscription] = List.empty
+
+  var lastScoreDef = new ObjectProperty[Option[FilterBy]]()
+  lastScoreDef.setValue(None)
+
+  var lastPublishedScoreView = new ObjectProperty[Option[PublishedScoreView]]()
+  lastPublishedScoreView.setValue(None)
+
   override def release() {
     subscription.foreach(_.cancel)
+    subscription = List.empty
   }
   
   var lazyPaneUpdater: Map[String, ScheduledFuture[_]] = Map.empty
@@ -234,7 +243,7 @@ abstract class DefaultRanglisteTab(override val service: KutuService) extends Ta
     	}
       query.setAlphanumericOrdered(cbModus.selected.value)
       val combination = query.select(data).toList
-      lastScoreDef = Some(query.asInstanceOf[FilterBy])
+      lastScoreDef.setValue(Some(query.asInstanceOf[FilterBy]))
 
       //Map[Long,Map[String,List[Disziplin]]]
       val diszMap = data.groupBy { x => x.wettkampf.programmId }.map{ x =>
@@ -332,14 +341,18 @@ abstract class DefaultRanglisteTab(override val service: KutuService) extends Ta
       val menu = KuTuApp.makeMenuAction(filter.getName
         .replace(".scoredef", "")
         .replace("-", " ")
-        .capitalize) { (caption, action) => loadFilter(filter) }
+        .capitalize) { (caption, action) =>
+          lastPublishedScoreView.setValue(None)
+          loadFilter(filter)
+        }
       items.add(menu)
     }
 
     def addPublishedFilter(items: ObservableList[javafx.scene.control.MenuItem])(filter: PublishedScoreView): Unit = {
-      val menu = KuTuApp.makeMenuAction("Publiziert: " + filter.title) { (caption, action) =>
+      val menu = KuTuApp.makeMenuAction(toMenuText(filter)) { (caption, action) =>
         val grouper = GroupBy(filter.query, getData)
         restoreGrouper(grouper)
+        lastPublishedScoreView.setValue(Some(filter))
       }
       items.add(menu)
     }
@@ -362,6 +375,7 @@ abstract class DefaultRanglisteTab(override val service: KutuService) extends Ta
 
     val btnSaveFilter = new Button {
       text = "Einstellung speichern als ..."
+      visible <== when(wettkampfmode) choose false otherwise true
       onAction = handle {
           val defaults = getFilterSaveAsFilenameDefault
           val filename = defaults.filename
@@ -392,6 +406,14 @@ abstract class DefaultRanglisteTab(override val service: KutuService) extends Ta
         }
       }
     }
+    lastPublishedScoreView.onChange {
+      lastPublishedScoreView.value match {
+        case Some(filter) =>
+          cbfSaved.text = toMenuText(filter)
+        case _ =>
+          cbfSaved.text = "Gespeicherte Einstellungen"
+      }
+    }
 
     onSelectionChanged = handle {
       if(selected.value) {
@@ -402,7 +424,7 @@ abstract class DefaultRanglisteTab(override val service: KutuService) extends Ta
     if (logger.isDebugEnabled()) {
       logger.debug("subscribing for refreshing from websocket")
     }
-    subscription = Some(WebSocketClient.modelWettkampfWertungChanged.onChange { (_, _, newItem) =>
+    subscription = subscription :+ WebSocketClient.modelWettkampfWertungChanged.onChange { (_, _, newItem) =>
       if (selected.value) {
         submitLazy("refreshRangliste", () => if (selected.value) {
           if (logger.isDebugEnabled()) {
@@ -413,7 +435,7 @@ abstract class DefaultRanglisteTab(override val service: KutuService) extends Ta
         }, 5
         )
       }
-    })
+    }
 
     content = new BorderPane {
       vgrow = Priority.Always
@@ -447,18 +469,38 @@ abstract class DefaultRanglisteTab(override val service: KutuService) extends Ta
       top = new VBox{
         vgrow = Priority.Always
         hgrow = Priority.Always
-        children = List(
-          new ToolBar {
-            content = List(cbfSaved, btnSaveFilter) ++ getActionButtons ++ List(btnPrint, cbModus)
-          },
-          new ToolBar {
-            content = (topBox +: topCombos)
-          })
+        buildToolbars
+        wettkampfmode.onChange {
+          buildToolbars
+        }
 
+        private def buildToolbars = {
+          if (wettkampfmode.value) {
+            children = List(
+              new ToolBar {
+                content = List(cbfSaved) ++ getActionButtons ++ List(btnPrint, cbModus)
+              },
+              new ToolBar {
+                content = (topBox +: topCombos)
+              })
+          } else {
+            children = List(
+              new ToolBar {
+                content = List(cbfSaved, btnSaveFilter) ++ getActionButtons ++ List(btnPrint, cbModus)
+              },
+              new ToolBar {
+                content = (topBox +: topCombos)
+              })
+          }
+        }
       }
       center = webView
     }
     combs
+  }
+
+  private def toMenuText(filter: PublishedScoreView) = {
+    (if (filter.published) "Publiziert: " else "Bereitgestellt: ") + filter.title
   }
 
   def normalizeFilterText(text: String) = text.replace("/", "_")

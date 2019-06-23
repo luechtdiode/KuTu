@@ -3,6 +3,7 @@ package ch.seidel.kutu
 import java.net.URLEncoder
 import java.nio.file.{Files, LinkOption, StandardOpenOption}
 import java.time.{LocalDate, ZoneId}
+import java.util.UUID
 import java.util.concurrent.TimeUnit
 
 import ch.seidel.kutu.data.NameCodec
@@ -126,6 +127,7 @@ package object domain {
 
   case class Riege(r: String, durchgang: Option[String], start: Option[Disziplin]) extends DataObject {
     override def easyprint = r
+    def toRaw(wettkampfId: Long) = RiegeRaw(wettkampfId, r, durchgang, start.map(_.id))
   }
 
   case class TurnerGeschlecht(geschlecht: String) extends DataObject {
@@ -353,10 +355,17 @@ package object domain {
     override def easyprint = f"$titel am $datum%td.$datum%tm.$datum%tY"
     def toWettkampf = Wettkampf(id, uuid, datum, titel, programm.id, auszeichnung, auszeichnungendnote)
   }
-
-  case class PublishedScoreView(id: Long, title: String, query: String, wettkampf: Wettkampf) extends DataObject {
+  case class PublishedScoreRaw(id: String, title: String, query: String, published: Boolean, publishedDate: java.sql.Date, wettkampfId: Long) extends DataObject {
+    override def easyprint = f"PublishedScore($title)"
+  }
+  object PublishedScoreRaw {
+    def apply(title: String, query: String, published: Boolean, publishedDate: java.sql.Date, wettkampfId: Long): PublishedScoreRaw =
+      PublishedScoreRaw(UUID.randomUUID().toString, title, query, published, publishedDate, wettkampfId)
+  }
+  case class PublishedScoreView(id: String, title: String, query: String, published: Boolean, publishedDate: java.sql.Date, wettkampf: Wettkampf) extends DataObject {
     override def easyprint = f"PublishedScore($title - ${wettkampf.easyprint})"
     def isAlphanumericOrdered = query.contains("&alphanumeric")
+    def toRaw = PublishedScoreRaw(id, title, query, published, publishedDate, wettkampf.id)
   }
 
   case class Wettkampfdisziplin(id: Long, programmId: Long, disziplinId: Long, kurzbeschreibung: String, detailbeschreibung: Option[java.sql.Blob], notenfaktor: scala.math.BigDecimal, masculin: Int, feminim: Int, ord: Int) extends DataObject {

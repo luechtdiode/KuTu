@@ -89,6 +89,7 @@ object DBService {
       ,"OptionalWertungen.sql"
       ,"AddRiegenIndicies.sql"
       ,"PublishedScores.sql"
+      ,"PublishedScores3.sql"
     )
 
     sqlScripts.filter{ filename =>
@@ -96,13 +97,24 @@ object DBService {
       !f.exists()
     }.foreach { filename =>
       val file = getClass.getResourceAsStream("/dbscripts/" + filename)
+      val sqlscript = Source.fromInputStream(file, "utf-8").getLines().toList
       val log = try {
         logger.info(s"running sql-script: $filename")
 
-        executeDBScript(Source.fromInputStream(file, "utf-8").getLines(), db)
+        executeDBScript(sqlscript, db)
       }
       catch {
-        case e: Exception => e.getMessage
+        case e: Exception =>
+          val fos = Files.newOutputStream(new File(dbhomedir + s"/$appVersion-$filename.err").toPath, StandardOpenOption.CREATE, StandardOpenOption.APPEND)
+          try {
+            fos.write(e.getMessage.getBytes("utf-8"))
+            fos.write("\n\nStatement:\n".getBytes("utf-8"));
+            fos.write(sqlscript.mkString("\n").getBytes("utf-8"))
+            fos.write("\n".getBytes("utf-8"))
+          } finally {
+            fos.close
+          }
+          throw e
       }
       
       val fos = Files.newOutputStream(new File(dbhomedir + s"/$appVersion-$filename.log").toPath, StandardOpenOption.CREATE_NEW)
@@ -158,7 +170,7 @@ object DBService {
     cutFields(s, IndexedSeq[String]())
   }
 
-  def executeDBScript(script: Iterator[String], db: DatabaseDef) = {
+  def executeDBScript(script: Seq[String], db: DatabaseDef) = {
     def filterCommentLines(line: String) = {
       !line.trim().startsWith("-- ")
     }
@@ -170,7 +182,7 @@ object DBService {
         acc.updated(acc.size -1, acc.last + line)
       }
     }
-    def parse(lines: Iterator[String]): List[String] = {
+    def parse(lines: Seq[String]): List[String] = {
       lines.filter(filterCommentLines).foldLeft(List(""))(combineMultilineStatement).filter(_.trim().length() > 0)
     }
     val statements = parse(script)
@@ -200,7 +212,7 @@ object DBService {
     sqlScripts.map { filename =>
       logger.info(s"running sql-script: $filename")
       val file = getClass.getResourceAsStream("/dbscripts/" + filename)
-      executeDBScript(Source.fromInputStream(file, "utf-8").getLines(), db)
+      executeDBScript(Source.fromInputStream(file, "utf-8").getLines().toSeq, db)
     }
   }
 

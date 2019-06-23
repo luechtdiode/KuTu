@@ -1,6 +1,7 @@
 package ch.seidel.kutu.http
 
 import java.io.File
+import java.time.LocalDate
 import java.util.Base64
 
 import akka.http.scaladsl.marshallers.sprayjson.SprayJsonSupport
@@ -134,6 +135,7 @@ trait ScoreRoutes extends SprayJsonSupport with JsonSupport with AuthSupport wit
         } ~
         pathPrefix(JavaUUID) { competitionId =>
           val wettkampf = readWettkampf(competitionId.toString)
+          val wkdate: LocalDate = ch.seidel.kutu.domain.sqlDate2ld(wettkampf.datum)
           val data = selectWertungen(wkuuid = Some(competitionId.toString))
           val logodir = new java.io.File(Config.homedir + "/" + wettkampf.easyprint.replace(" ", "_"))
           val logofile = PrintUtil.locateLogoFile(logodir)
@@ -156,10 +158,13 @@ trait ScoreRoutes extends SprayJsonSupport with JsonSupport with AuthSupport wit
                     case None =>
                       ToResponseMarshallable(
                         scores.map(score =>
-                          competitionId.toString + score.title ->
+                          score.title ->
                             Map(
-                              "scores-href" -> s"/api/scores/${competitionId.toString}/query?${score.query}",
-                              "name" -> score.title
+                              "scores-href" -> s"/api/scores/${competitionId.toString}/${score.id}?html",
+                              "scores-query" -> s"/api/scores/${competitionId.toString}/query?${score.query}",
+                              "name" -> score.title,
+                              "published" -> s"${score.published}",
+                              "published-date" -> s"${score.publishedDate}"
                             )
                         ).toMap + ("generic" -> Map(
                           "intermediate-scores-href" -> s"/api/scores/${competitionId.toString}/intermediate",
@@ -172,8 +177,10 @@ trait ScoreRoutes extends SprayJsonSupport with JsonSupport with AuthSupport wit
                     case Some(_) =>
                       ToResponseMarshallable(HttpEntity(ContentTypes.`text/html(UTF-8)`,
                         (scores
-                          .map(score => s"""
-                                |<li><a href='/api/scores/${competitionId.toString}/query?html&${score.query}'>${score.title}</a></li>""".stripMargin)
+                          .map(score => (if (score.published) s"""
+                                |<li><a href='/api/scores/${competitionId.toString}/${score.id}/?html'>${score.title}</a></li>""".stripMargin else s"""
+                                |<li><a href='/api/scores/${competitionId.toString}/${score.id}/?html'>${score.title} (unveröffentlicht)</a></li>""".stripMargin
+                          ))
                           :+ s"""
                                 |<li><a href='/api/scores/${competitionId.toString}/intermediate?html'>Zwischenresultate</a></li>
                                 |<li><a href='/?${new String(Base64.getUrlEncoder.encodeToString(s"last&c=${competitionId.toString}".getBytes))}'>Letzte Resultate</a></li>
@@ -188,16 +195,52 @@ trait ScoreRoutes extends SprayJsonSupport with JsonSupport with AuthSupport wit
               }
             }
           } ~
+          pathPrefix(JavaUUID) { scoreUUID =>
+            get {
+              parameters('html.?) { html =>
+                val scoreId = scoreUUID.toString
+                complete(
+                  listPublishedScores(competitionId)
+                    .map(sc => sc.filter(c => {
+                      c.id == scoreId && c.published
+                    }))
+                    .map {list => ToResponseMarshallable {
+                      val (score, publishedData) = list match {
+                        case Nil => (None,Seq[WertungView]())
+                        case c::_ => (Some(c), data)
+                      }
+                      val diszMap = publishedData.groupBy { x => x.wettkampf.programmId }.map { x =>
+                        x._1 -> Map(
+                          "W" -> listDisziplinesZuWettkampf(x._2.head.wettkampf.id, Some("W"))
+                          , "M" -> listDisziplinesZuWettkampf(x._2.head.wettkampf.id, Some("M")))
+                      }
+                      val query = GroupBy(score.map(_.query).getOrElse(""), publishedData)
+                      if (html.nonEmpty) {
+                        HttpEntity(ContentTypes.`text/html(UTF-8)`, new ScoreToHtmlRenderer() {
+                          override val title: String = wettkampf.easyprint // + " - " + score.map(_.title).getOrElse(wettkampf.easyprint)
+                        }
+                          .toHTML(query.select(publishedData).toList, athletsPerPage = 0, sortAlphabetically = score.map(_.isAlphanumericOrdered).getOrElse(false), diszMap, logofile))
+                      } else {
+                        HttpEntity(ContentTypes.`application/json`, ScoreToJsonRenderer
+                          .toJson(wettkampf.easyprint, query.select(publishedData).toList, sortAlphabetically = score.map(_.isAlphanumericOrdered).getOrElse(false), diszMap, logofile))
+                      }
+                    }
+                    }
+                )
+              }
+            }
+          } ~
           path("query") {
             get {
               parameters('groupby.?, 'filter.*, 'html.?, 'alphanumeric.?) { (groupby, filter, html, alphanumeric) =>
                 complete(
-                  if (groupby == None && filter.isEmpty) {
+                  if (!wkdate.atStartOfDay().isBefore(LocalDate.now.atStartOfDay) || (groupby == None && filter.isEmpty)) {
                     ToResponseMarshallable(HttpEntity(ContentTypes.`text/html(UTF-8)`,
-                      s"""
+                      f"""
                          |<html>
                          |<body>
                          |  <h1>Ranglisten dynamisch abfragen zu ${wettkampf.easyprint}</h1>
+                         |  <p>Nach dem Wettkampf-Tag (ab dem '${wkdate.plusDays(1)}') können die Resultate dynamisch abgefragt werden.</p>
                          |  <h2>Syntax</h2>
                          |  <p>
                          |  <pre>
@@ -261,13 +304,18 @@ trait ScoreRoutes extends SprayJsonSupport with JsonSupport with AuthSupport wit
                               html.nonEmpty, groupers, Seq(), false, logofile)
                           }
                     }
-                  case MessageAck(msg) => Future {
-                    if (html.nonEmpty) {
-                      HttpEntity(ContentTypes.`text/html(UTF-8)`, s"""<html><body><h1>Meldung</h1><p>$msg</p></body><html>""")
-                    } else {
-                      HttpEntity(ContentTypes.`application/json`, s"""{"message":"$msg"}""")
+                  case MessageAck(msg) =>
+                    Future {queryScoreResults(s"${wettkampf.easyprint} - Zwischenresultate", None,
+                      filter,
+                      html.nonEmpty, groupers, Seq(), false, logofile)
                     }
-                  }
+//                    Future {
+//                    if (html.nonEmpty) {
+//                      HttpEntity(ContentTypes.`text/html(UTF-8)`, s"""<html><body><h1>Meldung</h1><p>$msg</p></body><html>""")
+//                    } else {
+//                      HttpEntity(ContentTypes.`application/json`, s"""{"message":"$msg"}""")
+//                    }
+//                  }
                   case _ => Future { throw new IllegalArgumentException("unknown competition/arguments") }
                 })
               }

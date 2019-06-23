@@ -1,6 +1,7 @@
 package ch.seidel.kutu.data
 
 import java.io._
+import java.util.UUID
 import java.util.zip.{ZipEntry, ZipInputStream, ZipOutputStream}
 
 import ch.seidel.kutu.Config
@@ -13,6 +14,8 @@ import ch.seidel.kutu.view._
 import org.slf4j.LoggerFactory
 
 import scala.annotation.tailrec
+import scala.concurrent.Await
+import scala.concurrent.duration.Duration
 import scala.io.Source
 import scala.reflect.runtime.universe._
 
@@ -79,10 +82,10 @@ object ResourceExchanger extends KutuService with RiegenBuilder {
               refresher(sender, uw)
           }
         }
-      case (sender, scorePublished @ScoresPublished(title: String, query: String, wettkampfUUID: String)) =>
+      case (sender, scorePublished @ScoresPublished(scoreId: String, title: String, query: String, published: Boolean, wettkampfUUID: String)) =>
         if (wettkampf.uuid.contains(wettkampfUUID)) /*Future*/ {
           logger.info(s"received ${scorePublished}")
-          savePublishedScore(wettkampf.id, title, query, false)
+          updatePublishedScore(wettkampf.id, scoreId, title, query, published, false)
           refresher(sender, scorePublished)
         }
       case (sender, awm @AthletMovedInWettkampf(athlet, wettkampfUUID, programm)) =>
@@ -382,7 +385,26 @@ object ResourceExchanger extends KutuService with RiegenBuilder {
         riege
       })
     }
-    
+
+    if(collection.contains("scoredefs.csv")) {
+      val (scoredefsCsv, scoreDefHeader) = collection("scoredefs.csv")
+      logger.info("importing scoredefs ...", scoreDefHeader)
+      updateOrinsertScoreDefs(scoredefsCsv.map(DBService.parseLine).filter(_.size == scoreDefHeader.size).map{fields =>
+        val wettkampfid = fields(scoreDefHeader("wettkampfId"))
+        PublishedScoreRaw(
+          wettkampfId = wettkampfInstances.get(wettkampfid + "") match {
+            case Some(w) => w.id
+            case None => wettkampfid
+          },
+          id = fields(scoreDefHeader("id")),
+          title = fields(scoreDefHeader("title")),
+          query = fields(scoreDefHeader("query")),
+          published = fields(scoreDefHeader("published")).toBoolean,
+          publishedDate = fields(scoreDefHeader("publishedDate"))
+        )
+      })
+    }
+
     logger.info("import finished")
     wettkampfInstances.head._2
   }
@@ -428,6 +450,14 @@ object ResourceExchanger extends KutuService with RiegenBuilder {
     zip.write((getHeader[RiegeRaw] + "\n").getBytes("utf-8"))
     for(riege <- riegenRaw) {
       zip.write((getValues(riege) + "\n").getBytes("utf-8"))
+    }
+    zip.closeEntry()
+
+    val scores = Await.result(listPublishedScores(UUID.fromString(wettkampf.uuid.get)), Duration.Inf).map(sv => sv.toRaw)
+    zip.putNextEntry(new ZipEntry("scoredefs.csv"));
+    zip.write((getHeader[PublishedScoreRaw] + "\n").getBytes("utf-8"))
+    for(score <- scores) {
+      zip.write((getValues(score) + "\n").getBytes("utf-8"))
     }
     zip.closeEntry()
 
@@ -500,6 +530,7 @@ object ResourceExchanger extends KutuService with RiegenBuilder {
       case m: MethodSymbol if m.isCaseAccessor =>
         im.reflectMethod(m).apply() match {
           case Some(verein: Verein) => verein.id + ""
+          case Some(wk: Wettkampf) => wk.id + ""
           case Some(programm: Programm) => programm.id + ""
           case Some(athlet: Athlet) => athlet.id + ""
           case Some(athlet: AthletView) => athlet.id + ""
