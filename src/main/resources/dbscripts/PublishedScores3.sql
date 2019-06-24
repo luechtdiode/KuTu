@@ -9,7 +9,7 @@ CREATE TABLE IF NOT EXISTS `published_scores2` (
     FOREIGN KEY (`wettkampf_id`) REFERENCES `wettkampf` (`id`)
 );
 
-DROP TABLE published_scores;
+DROP TABLE IF EXISTS published_scores;
 
 ALTER TABLE published_scores2
     RENAME TO published_scores;
