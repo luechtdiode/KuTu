@@ -83,7 +83,7 @@ object DBService {
   //  lazy val database = databasemysql
 
 
-  def updateDB(db: DatabaseDef) = {
+  def updateDB(db: DatabaseDef, ignoreImportedScripts: Boolean = false) = {
     val sqlScripts = Seq(
       "SetJournalWAL.sql"
       , "OptionalWertungen.sql"
@@ -94,7 +94,7 @@ object DBService {
 
     sqlScripts.filter { filename =>
       val f = new File(dbhomedir + s"/$appVersion-$filename.log")
-      !f.exists()
+      ignoreImportedScripts || !f.exists()
     }.foreach { filename =>
       val file = getClass.getResourceAsStream("/dbscripts/" + filename)
       val sqlscript = Source.fromInputStream(file, "utf-8").getLines().toList
@@ -117,11 +117,13 @@ object DBService {
           throw e
       }
 
-      val fos = Files.newOutputStream(new File(dbhomedir + s"/$appVersion-$filename.log").toPath, StandardOpenOption.CREATE_NEW)
-      try {
-        fos.write(log.getBytes("utf-8"))
-      } finally {
-        fos.close
+      if(!ignoreImportedScripts) {
+        val fos = Files.newOutputStream(new File(dbhomedir + s"/$appVersion-$filename.log").toPath, StandardOpenOption.CREATE_NEW)
+        try {
+          fos.write(log.getBytes("utf-8"))
+        } finally {
+          fos.close
+        }
       }
       log
     }
