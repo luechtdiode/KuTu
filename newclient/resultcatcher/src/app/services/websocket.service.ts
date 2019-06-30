@@ -72,6 +72,13 @@ export abstract class WebsocketService {
   }
 
   private close() {
+    if (this.websocket) {
+      this.websocket.onerror = undefined;
+      this.websocket.onclose = undefined;
+      this.websocket.onopen = undefined;
+      this.websocket.onmessage = undefined;
+      this.websocket.close();
+    }
     this.websocket = undefined;
     this.identifiedState = false;
     this.lstKeepAliveReceived = 0;
@@ -139,6 +146,7 @@ export abstract class WebsocketService {
   }
 
   private connect(message?: string) {
+    this.disconnectWS();
     this.explicitClosed = false;
     this.websocket = new WebSocket(this.backendUrl);
     this.websocket.onopen = () => {
@@ -156,6 +164,9 @@ export abstract class WebsocketService {
       this.close();
       switch (evt.code) {
         case 1001: this.logMessages.next('Going Away');
+                   if (!this.explicitClosed) {
+            this.reconnect();
+          }
                    break;
         case 1002: this.logMessages.next('Protocol error');
                    if (!this.explicitClosed) {
@@ -230,20 +241,20 @@ export abstract class WebsocketService {
         return;
       }
       if (evt.data === 'keepAlive') {
-        sendMessageAck(evt);
+        // sendMessageAck(evt);
         return;
       }
       try {
-        const message = JSON.parse(evt.data);
-        const type = message.type;
+        const jsonMessage = JSON.parse(evt.data);
+        const type = jsonMessage.type;
         switch (type) {
           case 'MessageAck':
-            console.log((message as MessageAck).msg);
-            this.showMessage.next((message as MessageAck));
+            console.log((jsonMessage as MessageAck).msg);
+            this.showMessage.next((jsonMessage as MessageAck));
             break;
           default:
-            if (!this.handleWebsocketMessage(message)) {
-              console.log(message);
+            if (!this.handleWebsocketMessage(jsonMessage)) {
+              console.log(jsonMessage);
               this.logMessages.next('unknown message: ' + evt.data);
             }
         }
@@ -253,7 +264,8 @@ export abstract class WebsocketService {
     };
 
     this.websocket.onerror = (e: ErrorEvent) => {
-      this.close();
+      this.logMessages.next(e.message + ', ' + e.type);
+      // this.close();
     };
   }
 

@@ -223,7 +223,7 @@ class CompetitionCoordinatorClientActor(wettkampfUUID: String) extends Persisten
       ref ! NewLastResults(state.lastWertungen, state.lastBestenResults)
 
     // system actions
-    case KeepAlive => wsSend.flatMap(_._2).foreach(ws => ws ! TextMessage("KeepAlive"))
+    case KeepAlive => wsSend.flatMap(_._2).foreach(ws => ws ! TextMessage("keepAlive"))
 
     case MessageAck(txt) => if (txt.equals("keepAlive")) handleKeepAliveAck else println(txt)
 
@@ -497,7 +497,11 @@ object CompetitionCoordinatorClientActor extends JsonSupport with EnrichedJson {
 
 
   def tryMapText(text: String): KutuAppEvent = try {
-    text.asType[KutuAppEvent]
+    if ("keepAlive".equalsIgnoreCase(text)) {
+      MessageAck(text)
+    } else {
+      text.asType[KutuAppEvent]
+    }
   } catch {
     case _: Exception =>
       logger.debug("unparsable json mapped to MessageAck: " + text)
@@ -549,7 +553,7 @@ object CompetitionCoordinatorClientActor extends JsonSupport with EnrichedJson {
       ask(supervisor, CreateClient(deviceId, wettkampfUUID))(5000 milli).mapTo[ActorRef], 5000 milli)
 
     val sink = fromWebsocketToActorFlow.filter {
-      case MessageAck(msg) if (msg.equals("keepAlive")) => true
+      case MessageAck(msg) if (msg.equalsIgnoreCase("keepAlive")) => true
       case _ => false
     }.to(Sink.actorRef(clientActor, StopDevice(deviceId)).named(deviceId))
 
