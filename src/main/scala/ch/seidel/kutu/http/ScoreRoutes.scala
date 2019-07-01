@@ -14,6 +14,7 @@ import ch.seidel.kutu.akka.{CompetitionCoordinatorClientActor, MessageAck, Respo
 import ch.seidel.kutu.data._
 import ch.seidel.kutu.domain.{Durchgang, KutuService, NullObject, PublishedScoreView, WertungView, encodeURIParam}
 import ch.seidel.kutu.renderer.{PrintUtil, ScoreToHtmlRenderer, ScoreToJsonRenderer}
+import ch.seidel.kutu.renderer.PrintUtil._
 
 import scala.concurrent.Future
 import scala.concurrent.duration.DurationInt
@@ -150,6 +151,7 @@ trait ScoreRoutes extends SprayJsonSupport with JsonSupport with AuthSupport wit
                 ByJahrgang(), ByGeschlecht(), ByVerband(), ByVerein(), byDurchgangMat, 
                 ByRiege(), ByDisziplin(), ByJahr())
           }
+          val logoHtml = if (logofile.exists()) s"""<img class=logo src="${logofile.imageSrcForWebEngine}" title="Logo"/>""" else ""
           pathEnd {
             get {
               parameters('html.?) { html =>
@@ -172,7 +174,8 @@ trait ScoreRoutes extends SprayJsonSupport with JsonSupport with AuthSupport wit
                           "filter-href" -> s"/api/scores/${competitionId.toString}/filter",
                           "lastresults-href" -> s"/?${new String(Base64.getUrlEncoder.encodeToString(s"last&c=${competitionId.toString}".getBytes))}",
                           "topresults-href" -> s"/?${new String(Base64.getUrlEncoder.encodeToString(s"top&c=${competitionId.toString}".getBytes))}",
-                          "name" -> "Zwischenresultate"
+                          "name" -> "Zwischenresultate",
+                          "logo" -> logoHtml
                         )))
                     case Some(_) =>
                       ToResponseMarshallable(HttpEntity(ContentTypes.`text/html(UTF-8)`,
@@ -187,7 +190,34 @@ trait ScoreRoutes extends SprayJsonSupport with JsonSupport with AuthSupport wit
                                 |<li><a href='/?${new String(Base64.getUrlEncoder.encodeToString(s"top&c=${competitionId.toString}".getBytes))}'>Top Resultate</a></li>
                                 |<li><a href='/api/scores/${competitionId.toString}/query?html'>Generische Abfragen</a></li>
                                 |""".stripMargin
-                        ).mkString(s"<html><body><h1>Ranglisten zu ${wettkampf.easyprint}</h1>\n", "\n", "</body></html>")
+                        ).mkString(s"""<html><head>
+                          <style type="text/css">
+                            .headline {
+                              display: block;
+                              border: 0px;
+                              overflow: auto;
+                              margin-top: 10px;
+                              padding: 10px;
+                            }
+                            .logo {
+                              float: right;
+                              height: 100px;
+                              border-radius: 5px;
+                            }
+                            .title {
+                              float: left;
+                            }
+                            .content {
+                              display: block;
+                              margin-top: 10px;
+                              padding: 10px;
+                            }                            
+                            body {
+                              font-family: "Arial", "Verdana", sans-serif;
+                            }
+                          </style></head><body><div class=headline>
+                          $logoHtml
+                          <div class=title><h1>Ranglisten zu ${wettkampf.easyprint}</h1></div></div><div class="content">\n""", "\n", "</div></body></html>")
                       ))
                   }
                   }
@@ -238,17 +268,44 @@ trait ScoreRoutes extends SprayJsonSupport with JsonSupport with AuthSupport wit
                     ToResponseMarshallable(HttpEntity(ContentTypes.`text/html(UTF-8)`,
                       f"""
                          |<html>
-                         |<body>
-                         |  <h1>Ranglisten dynamisch abfragen zu ${wettkampf.easyprint}</h1>
+                         |<head>
+                         |                          <style type="text/css">
+                         |                            .headline {
+                         |                              display: block;
+                         |                              border: 0px;
+                         |                              overflow: auto;
+                         |                              margin-top: 10px;
+                         |                              padding: 10px;
+                         |                            }
+                         |                            .logo {
+                         |                              float: right;
+                         |                              height: 100px;
+                         |                              border-radius: 5px;
+                         |                            }
+                         |                            .title {
+                         |                              float: left;
+                         |                            }
+                         |                            .content {
+                         |                              display: block;
+                         |                              margin-top: 10px;
+                         |                              padding: 10px;
+                         |                            }
+                         |                            body {
+                         |                              font-family: "Arial", "Verdana", sans-serif;
+                         |                            }
+                         |                          </style></head><body><div class=headline>
+                         |                          $logoHtml
+                         |                          <div class=title><h1>Ranglisten dynamisch abfragen</h1><h2>${wettkampf.easyprint}</h2></div></div><div class="content">\n
                          |  <p>Nach dem Wettkampf-Tag (ab dem '${wkdate.plusDays(1)}') können die Resultate dynamisch abgefragt werden.</p>
                          |  <h2>Syntax</h2>
                          |  <p>
                          |  <pre>
-                         |  /api/scores/${competitionId.toString}/query?html
-                         |    &<em>groupby=<b>grouper #1 </b>[:<b>grouper #n] </b></em>
-                         |    [ & <em>filter=<b>filtername #1</b>:<b>filtervalue #1 </b>[!<b>filtervalue #n] </b></em> ]
-                         |    [ & <em>filter=<b>filtername #n</b>:<b>filtervalue #1 </b>[!<b>filtervalue #n] </b></em> ]
-                         |    [ & <em><b>alphanumeric</b></em> ]
+                         |  /api/scores/${competitionId.toString}/query?
+                         |    <em>groupby=<b>grouper #1 </b>[:<b>grouper #n] </b></em>
+                         |    [ &<em>filter=<b>filtername #1</b>:<b>filtervalue #1 </b>[!<b>filtervalue #n] </b></em> ]
+                         |    [ &<em>filter=<b>filtername #n</b>:<b>filtervalue #1 </b>[!<b>filtervalue #n] </b></em> ]
+                         |    [ &<em><b>alphanumeric</b></em> ]
+                         |    [ &<em><b>html</b></em> ]
                          |  </pre>
                          |  </p>
                          |  <h2>Grouper Syntax (erforderlich)</h2>
@@ -274,7 +331,10 @@ trait ScoreRoutes extends SprayJsonSupport with JsonSupport with AuthSupport wit
                          |  <ul>${queryFilters(groupby, groupers, data).map(filter => s"<li><pre>${filter}</pre></li>").mkString("\n")}</ul>
                          |  <h2>Alphanumerische Sortierung (optional)</h2>
                          |  <p>Mit dem Parameter '<b>alphanumeric</b>' kann die Auflistung alphanumerisch (alphabetisch) auf dem Namen sortiert werden.
-                         |  Ohne Angabe ist die Sortierung numerisch gem&auml;ss der Rangierung.</p>
+                         |  Ohne Angabe ist die Sortierung numerisch gem&auml;ss der Rangierung.</p></div>
+                         |  <h2>HTML-Ausgabe (optional)</h2>
+                         |  <p>Mit dem Parameter '<b>html</b>' wird die Rangliste in lesbarer Form als HTML generiert.
+                         |  Ohne Angabe werden die Rohdaten der Rangliste als JSON generiert.</p></div>
                          |</body>
                          |</html>
                        """.stripMargin))
