@@ -15,6 +15,25 @@ export interface NewLastResults {
   lastTopResults: WertungContainer[];
 }
 
+export interface Teilnehmer {
+  athlet: string;
+  athletid: number;
+  durchgang: string;
+  start: string;
+  verein: string;
+}
+
+export interface ProgrammItem {
+  programm: string;
+  teilnehmer: Teilnehmer[];
+}
+
+export interface StartList {
+  logo: string;
+  title: string;
+  programme: ProgrammItem[];
+}
+
 export interface Wertung {
   id: number;
   wettkampfId: number;

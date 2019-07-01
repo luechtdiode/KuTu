@@ -4,7 +4,7 @@ import { HttpClient, HttpHeaders, HttpErrorResponse } from '@angular/common/http
 import { LoadingController } from '@ionic/angular';
 import { interval, of, Subscription, BehaviorSubject, Subject, Observable } from 'rxjs';
 import { share} from 'rxjs/operators';
-import { DurchgangStarted, Wettkampf, Geraet, WertungContainer, NewLastResults,
+import { DurchgangStarted, Wettkampf, Geraet, WertungContainer, NewLastResults, StartList,
          MessageAck, AthletWertungUpdated, Wertung, FinishDurchgangStation,
          DurchgangFinished } from '../backend-types';
 import { backendUrl } from '../utils';
@@ -403,6 +403,10 @@ export class BackendService extends WebsocketService {
       } else {
         return of(this.geraete);
       }
+    }
+
+    loadStartlist(): Observable<StartList> {
+      return this.http.get<StartList>(backendUrl + 'api/report/' + this._competition + '/startlist')
     }
 
     isMessageAck(test: WertungContainer | MessageAck): test is MessageAck { return (test as MessageAck).type === 'MessageAck'; }
