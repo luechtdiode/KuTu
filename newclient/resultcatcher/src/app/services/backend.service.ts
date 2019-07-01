@@ -475,7 +475,7 @@ export class BackendService extends WebsocketService {
         return nextSteps[0];
       } else {
         return 1;
-      }
+      }        
     }
 
     prevStep(): number {
@@ -484,6 +484,52 @@ export class BackendService extends WebsocketService {
         return prevSteps[prevSteps.length - 1];
       } else {
         return this.steps[this.steps.length - 1];
+      }
+    }
+
+    nextGeraet(): number {
+      const nextSteps = this.steps.filter(s => s > this._step);
+      if (this.loggedIn) {
+        if (nextSteps.length > 0) {
+          return nextSteps[0];
+        } else {
+          return 1;
+        }        
+      } else {      
+        let nextGeraetIdx = this.geraete.indexOf(this.geraete.find(s => s.id === this._geraet)) + 1;
+        if (nextGeraetIdx >= this.geraete.length) {
+          nextGeraetIdx = 0;
+        }
+        this._geraet = this.geraete[nextGeraetIdx].id;
+        if (nextSteps.length > 0) {
+          return nextSteps[0];
+        } else {
+          return 1;
+        }        
+      }
+    }
+
+    prevGeraet(): number {
+      const prevSteps = this.steps.filter(s => s < this._step);
+      if (this.loggedIn) {
+        if (prevSteps.length > 0) {
+          return prevSteps[prevSteps.length - 1];
+        } else {
+          return this.steps[this.steps.length - 1];
+        }
+      } else {
+        let prevGeraeteIdx = this.geraete.indexOf(this.geraete.find(s => s.id === this._geraet)) - 1;
+        if (prevGeraeteIdx < 0) {
+          prevGeraeteIdx = this.geraete.length -1;
+        }
+        this._geraet = this.geraete[prevGeraeteIdx].id;
+        
+        const prevSteps = this.steps.filter(s => s < this._step);
+        if (prevSteps.length > 0) {
+          return prevSteps[prevSteps.length - 1];
+        } else {
+          return this.steps[this.steps.length - 1];
+        }
       }
     }
 

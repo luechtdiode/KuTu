@@ -82,12 +82,12 @@ export class StationPage {
   }
 
   nextStep(slidingItem: IonItemSliding) {
-    this.step = this.backendService.nextStep();
+    this.step = this.backendService.nextGeraet();
     slidingItem.close();
   }
 
   prevStep(slidingItem: IonItemSliding) {
-    this.step = this.backendService.prevStep();
+    this.step = this.backendService.prevGeraet();
     slidingItem.close();
   }
 
