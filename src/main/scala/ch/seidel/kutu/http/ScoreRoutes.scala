@@ -12,7 +12,7 @@ import akka.util.Timeout
 import ch.seidel.kutu.Config
 import ch.seidel.kutu.akka.{CompetitionCoordinatorClientActor, MessageAck, ResponseMessage, StartedDurchgaenge}
 import ch.seidel.kutu.data._
-import ch.seidel.kutu.domain.{Durchgang, KutuService, NullObject, PublishedScoreView, WertungView, encodeURIParam}
+import ch.seidel.kutu.domain.{Durchgang, Kandidat, KutuService, NullObject, PublishedScoreView, WertungView, encodeURIParam}
 import ch.seidel.kutu.renderer.{PrintUtil, ScoreToHtmlRenderer, ScoreToJsonRenderer}
 import ch.seidel.kutu.renderer.PrintUtil._
 
@@ -349,14 +349,34 @@ trait ScoreRoutes extends SprayJsonSupport with JsonSupport with AuthSupport wit
           } ~
           path("intermediate") {
             get {
-              (parameters('filter.*, 'html.?) & optionalHeaderValueByName("clientid")) { (filter, html, clientid) =>
+              (parameters('q.?, 'filter.*, 'html.?) & optionalHeaderValueByName("clientid")) { (q, filter, html, clientid) =>
+
+                def filterMatchingWertungenToQuery = {
+                  val queryTokens = q.toList.flatMap(x => x.split(" ")).map(_.toLowerCase)
+                  w: WertungView => {
+                    queryTokens.isEmpty ||
+                      queryTokens.forall {
+                        case s: String if s == w.athlet.id + "" => true
+                        case s: String if s == w.athlet.name.toLowerCase => true
+                        case s: String if s == w.athlet.vorname.toLowerCase => true
+                        case s: String if s == w.athlet.verein.mkString.toLowerCase => true
+                        case s: String if s == w.wettkampfdisziplin.programm.name.toLowerCase => true
+                        case s: String if s == w.athlet.geschlecht.toLowerCase => true
+                        case s: String if s.nonEmpty => {
+                          w.athlet.verein.mkString.toLowerCase.contains(s) ||
+                            w.riege.exists(_.toLowerCase.contains(s))
+                        }
+                        case _ => false
+                      }
+                  }
+                }
                 complete(CompetitionCoordinatorClientActor.publish(StartedDurchgaenge(competitionId.toString()), clientid.getOrElse("")).flatMap {
                   case ResponseMessage(startedDurchgaenge) =>
                     val sd = startedDurchgaenge.asInstanceOf[Set[String]]
                     if (sd.nonEmpty) {
                           Future {queryScoreResults(s"${wettkampf.easyprint} - Zwischenresultate", None, 
                               filter ++ Iterable(byDurchgangMat.groupname + ":" + sd.mkString("!")),
-                              html.nonEmpty, groupers, data, false, logofile)
+                              html.nonEmpty, groupers, data.filter(filterMatchingWertungenToQuery), false, logofile)
                           }
                     } else {
                           Future {queryScoreResults(s"${wettkampf.easyprint} - Zwischenresultate", None, 
