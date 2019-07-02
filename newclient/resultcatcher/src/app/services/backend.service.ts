@@ -3,7 +3,7 @@ import { WebsocketService, encodeURIComponent2 } from './websocket.service';
 import { HttpClient, HttpHeaders, HttpErrorResponse } from '@angular/common/http';
 import { LoadingController } from '@ionic/angular';
 import { interval, of, Subscription, BehaviorSubject, Subject, Observable } from 'rxjs';
-import { share} from 'rxjs/operators';
+import { share, map} from 'rxjs/operators';
 import { DurchgangStarted, Wettkampf, Geraet, WertungContainer, NewLastResults, StartList,
          MessageAck, AthletWertungUpdated, Wertung, FinishDurchgangStation,
          DurchgangFinished } from '../backend-types';
@@ -301,11 +301,14 @@ export class BackendService extends WebsocketService {
       this.startLoading('Durchgangliste wird geladen. Bitte warten ...',
         this.http.get<string[]>(backendUrl + 'api/durchgang/' + this._competition).pipe(share())).subscribe((data) => {
         this.durchgaenge = data;
+        this.captionmode = true;
       }, this.standardErrorHandler);
     }
 
     getGeraete(competitionId: string, durchgang: string) {
-      if (this.geraete !== undefined && this._competition === competitionId && this._durchgang === durchgang) { return; }
+      if (this.geraete !== undefined && this._competition === competitionId && this._durchgang === durchgang) {
+        return of(this.geraete);
+      }
       this.geraete = [];
       this.steps = undefined;
       this.wertungen = undefined;
@@ -315,7 +318,7 @@ export class BackendService extends WebsocketService {
       this._geraet = undefined;
       this._step = undefined;
 
-      this.loadGeraete();
+      return this.loadGeraete();
     }
     loadGeraete() {
       let path = '';
@@ -334,7 +337,9 @@ export class BackendService extends WebsocketService {
 
     getSteps(competitionId: string, durchgang: string, geraetId: number) {
       if (this.steps !== undefined && this._competition === competitionId
-        && this._durchgang === durchgang && this._geraet === geraetId) { return; }
+        && this._durchgang === durchgang && this._geraet === geraetId) {
+          return of(this.steps);
+      }
       this.steps = [];
       this.wertungen = undefined;
 
@@ -343,20 +348,24 @@ export class BackendService extends WebsocketService {
       this._geraet = geraetId;
       this._step = undefined;
 
-      this.loadSteps();
+      return this.loadSteps();
     }
 
     loadSteps() {
-      this.startLoading('Stationen zum Gerät werden geladen. Bitte warten ...',
+      const stepsloader = this.startLoading('Stationen zum Gerät werden geladen. Bitte warten ...',
         this.http.get<string[]>(
           backendUrl + 'api/durchgang/' + this._competition + '/' + encodeURIComponent2(this._durchgang) + '/' + this._geraet
-        ).pipe(share())).subscribe((data) => {
+        ).pipe(share()));
+
+      stepsloader.subscribe((data) => {
         this.steps = data.map(step => parseInt(step));
         if (this._step === undefined || this.steps.indexOf(this._step) < 0) {
-          this._step = 1;
+          this._step = this.steps[0];
           this.loadWertungen();
         }
       }, this.standardErrorHandler);
+
+      return stepsloader;
     }
     getWertungen(competitionId: string, durchgang: string, geraetId: number, step: number) {
       if (this.wertungen !== undefined && this._competition === competitionId
@@ -405,8 +414,19 @@ export class BackendService extends WebsocketService {
       }
     }
 
-    loadStartlist(): Observable<StartList> {
-      return this.http.get<StartList>(backendUrl + 'api/report/' + this._competition + '/startlist')
+    loadStartlist(query: string): Observable<StartList> {
+      if (this._competition) {
+        this.captionmode = true;
+        if (query) {
+          return this.startLoading('Teilnehmerliste wird geladen. Bitte warten ...',
+          this.http.get<StartList>(backendUrl + 'api/report/' + this._competition + '/startlist?q=' + query).pipe(share()));
+        } else {
+          return this.startLoading('Teilnehmerliste wird geladen. Bitte warten ...',
+          this.http.get<StartList>(backendUrl + 'api/report/' + this._competition + '/startlist').pipe(share()));
+        }
+      } else {
+        return of();
+      }
     }
 
     isMessageAck(test: WertungContainer | MessageAck): test is MessageAck { return (test as MessageAck).type === 'MessageAck'; }
@@ -460,7 +480,7 @@ export class BackendService extends WebsocketService {
           localStorage.removeItem('current_station');
           this.checkJWT();
           this.stationFreezed = false;
-          this._step = 1;
+          this._step = this.steps[0];
         }
         this.loadWertungen();
         result.next(nextSteps);
@@ -474,8 +494,8 @@ export class BackendService extends WebsocketService {
       if (nextSteps.length > 0) {
         return nextSteps[0];
       } else {
-        return 1;
-      }        
+        return this.steps[0];
+      }
     }
 
     prevStep(): number {
@@ -487,55 +507,60 @@ export class BackendService extends WebsocketService {
       }
     }
 
-    nextGeraet(): number {
-      const nextSteps = this.steps.filter(s => s > this._step);
+    nextGeraet(): Observable<number> {
       if (this.loggedIn) {
+        const nextSteps = this.steps.filter(s => s > this._step);
         if (nextSteps.length > 0) {
-          return nextSteps[0];
+          return of(nextSteps[0]);
         } else {
-          return 1;
-        }        
-      } else {      
+          return of(this.steps[0]);
+        }
+      } else {
         let nextGeraetIdx = this.geraete.indexOf(this.geraete.find(s => s.id === this._geraet)) + 1;
         if (nextGeraetIdx >= this.geraete.length) {
           nextGeraetIdx = 0;
         }
-        this._geraet = this.geraete[nextGeraetIdx].id;
-        if (nextSteps.length > 0) {
-          return nextSteps[0];
-        } else {
-          return 1;
-        }        
+        const actualStep = this._step;
+        return this.getSteps(this.competition, this.durchgang, this.geraete[nextGeraetIdx].id).pipe(map(steps => {
+          const nextSteps = steps.filter(s => s > actualStep);
+          if (nextSteps.length > 0) {
+            return nextSteps[0];
+          } else {
+            return this.steps[0];
+          }
+        }));
       }
     }
 
-    prevGeraet(): number {
-      const prevSteps = this.steps.filter(s => s < this._step);
+    prevGeraet(): Observable<number> {
       if (this.loggedIn) {
+        const prevSteps = this.steps.filter(s => s < this._step);
         if (prevSteps.length > 0) {
-          return prevSteps[prevSteps.length - 1];
+          return of(prevSteps[prevSteps.length - 1]);
         } else {
-          return this.steps[this.steps.length - 1];
+          return of(this.steps[this.steps.length - 1]);
         }
       } else {
         let prevGeraeteIdx = this.geraete.indexOf(this.geraete.find(s => s.id === this._geraet)) - 1;
         if (prevGeraeteIdx < 0) {
-          prevGeraeteIdx = this.geraete.length -1;
+          prevGeraeteIdx = this.geraete.length - 1;
         }
-        this._geraet = this.geraete[prevGeraeteIdx].id;
-        
-        const prevSteps = this.steps.filter(s => s < this._step);
-        if (prevSteps.length > 0) {
-          return prevSteps[prevSteps.length - 1];
-        } else {
-          return this.steps[this.steps.length - 1];
-        }
+
+        const actualStep = this._step;
+        return this.getSteps(this.competition, this.durchgang, this.geraete[prevGeraeteIdx].id).pipe(map(steps => {
+          const prevSteps = this.steps.filter(s => s < actualStep);
+          if (prevSteps.length > 0) {
+            return prevSteps[prevSteps.length - 1];
+          } else {
+            return this.steps[this.steps.length - 1];
+          }
+        }));
       }
     }
 
     protected getWebsocketBackendUrl(): string {
       let host = location.host;
-      const path = '/'; //location.pathname;
+      const path = '/'; // location.pathname;
       const protocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
       let apiPath = 'api/';
       if (this._durchgang && this.captionmode) {

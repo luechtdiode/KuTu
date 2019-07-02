@@ -61,31 +61,31 @@
       </ion-item> -->
       <ion-item >
         <ion-icon slot="start" *ngIf="(geraet && getSteps())" name="arrow-dropleft"></ion-icon>
-        <ion-note slot="end" *ngIf="(geraet && getSteps())">(1 bis {{getSteps().length}})</ion-note>
+        <ion-note slot="end" *ngIf="(geraet && getSteps() && getSteps().length > 0)">({{getSteps()[0]}} bis {{getSteps()[getSteps().length-1]}})</ion-note>
         <ion-label>{{(geraet && getSteps()) ? "Riege " + step : "Keine Daten"}}</ion-label>
         <ion-icon slot="end" *ngIf="(geraet && getSteps())" name="arrow-dropright"></ion-icon>
       </ion-item>     
         <ion-item-options side="start">
-        <button ion-button color="secondary" (click)="prevStep(slidingStepItem)" [disabled]="!geraet || !getSteps()">
+        <ion-item-option color="secondary" (click)="prevStep(slidingStepItem)" [disabled]="!geraet || !getSteps()">
           <ion-icon name="arrow-dropleft-circle" ios="md-arrow-dropleft-circle"></ion-icon>
           Vorherige Riege
-        </button>
+        </ion-item-option>
       </ion-item-options>
       <ion-item-options side="end">
-        <button ion-button color="secondary" (click)="nextStep(slidingStepItem)" [disabled]="!geraet || !getSteps()">
+        <ion-item-option color="secondary" (click)="nextStep(slidingStepItem)" [disabled]="!geraet || !getSteps()">
           <ion-icon name="arrow-dropright-circle" ios="md-arrow-dropright-circle"></ion-icon>
           Nächste Riege
-        </button>
+        </ion-item-option>
       </ion-item-options>
     </ion-item-sliding>
   </ion-list>
   <ion-list>
-    <ion-button *ngIf="!isLoggedIn" size="large" expand="block" color="secondary" (click)="navToStation()"
+    <ion-button *ngIf="!isLoggedIn" size="large" expand="block" color="primary" (click)="navToStation()"
       [disabled]="!(geraet && getSteps())">
       <ion-icon slot="start" name="list"></ion-icon>
       Resultate
     </ion-button>
-    <ion-button *ngIf="isLoggedIn" size="large" expand="block" color="secondary" (click)="navToStation()"
+    <ion-button *ngIf="isLoggedIn" size="large" expand="block" color="primary" (click)="navToStation()"
       [disabled]="!(geraet && getSteps())">
       <ion-icon slot="start" name="create"></ion-icon>
       Resultate

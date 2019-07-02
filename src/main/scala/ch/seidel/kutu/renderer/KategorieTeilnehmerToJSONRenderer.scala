@@ -20,17 +20,17 @@ trait KategorieTeilnehmerToJSONRenderer {
 
     val d = kandidaten.map{kandidat =>
       s"""      {
-         |        'verein' : '${kandidat.verein}',
-         |        'athlet' : '${kandidat.name} ${kandidat.vorname} (${kandidat.jahrgang})',
-         |        'athletid' : '${kandidat.id}',
-         |        'durchgang' : '${kandidat.durchgang}',
-         |        'start' : '${kandidat.start}'
+         |        "verein" : "${kandidat.verein}",
+         |        "athlet" : "${kandidat.name} ${kandidat.vorname} (${kandidat.jahrgang})",
+         |        "athletid" : ${kandidat.id},
+         |        "durchgang" : "${kandidat.durchgang}",
+         |        "start" : "${kandidat.start}"
          |      }""".stripMargin
     }
     val dt = d.mkString("[\n", ",\n", "]\n")
     s"""  {
-       |    'programm' : '${kategorie}',
-       |    'teilnehmer' : $dt
+       |    "programm" : "${kategorie}",
+       |    "teilnehmer" : $dt
        |  }""".stripMargin
   }
 
@@ -65,9 +65,9 @@ trait KategorieTeilnehmerToJSONRenderer {
       anmeldeListe(kategorie, kandidatenPerKategorie(kategorie))
     }
 
-    val pages = rawpages.mkString(s"""'logo' : '$logoHtml',
-                                     |  'title' : '${kandidaten.head.wettkampfTitel}',
-                                     |  'programme' : [\n""".stripMargin, ",\n", "]\n")
+    val pages = rawpages.mkString(s""""logo" : "$logoHtml",
+                                     |  "title" : "${kandidaten.head.wettkampfTitel}",
+                                     |  "programme" : [\n""".stripMargin, ",\n", "]\n")
     intro + pages + outro
   }
 }

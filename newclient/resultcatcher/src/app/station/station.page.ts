@@ -11,7 +11,7 @@ import { DomSanitizer } from '@angular/platform-browser';
   templateUrl: './station.page.html',
   styleUrls: ['./station.page.scss'],
 })
-export class StationPage {
+export class StationPage implements OnInit  {
 
   durchgangopen = false;
 
@@ -27,6 +27,11 @@ export class StationPage {
       this.durchgangopen = dg;
     });
   }
+
+  ngOnInit(): void {
+    this.backendService.captionmode = true;
+  }
+
   durchgangstate() {
     const connected = this.backendService.isWebsocketConnected() ? (this.durchgangopen ? 'gestartet' : 'gesperrt') : 'offline';
     return connected;
@@ -83,29 +88,32 @@ export class StationPage {
 
   get nextStepCaption(): string {
     if (this.isLoggedIn()) {
-      return "Nächste Riege";
+      return 'Nächste Riege';
     } else {
-      return "Nächstes Gerät";
+      return 'Nächstes Gerät';
     }
   }
 
-  
   get prevStepCaption(): string {
     if (this.isLoggedIn()) {
-      return "Vorherige Riege";
+      return 'Vorherige Riege';
     } else {
-      return "Vorheriges Gerät";
+      return 'Vorheriges Gerät';
     }
   }
 
   nextStep(slidingItem: IonItemSliding) {
-    this.step = this.backendService.nextGeraet();
-    slidingItem.close();
+    this.backendService.nextGeraet().subscribe(step => {
+      this.step = step;
+      slidingItem.close();
+    });
   }
 
   prevStep(slidingItem: IonItemSliding) {
-    this.step = this.backendService.prevGeraet();
-    slidingItem.close();
+    this.backendService.prevGeraet().subscribe(step => {
+      this.step = step;
+      slidingItem.close();
+    });
   }
 
   get station() {

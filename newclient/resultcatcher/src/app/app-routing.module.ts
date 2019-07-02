@@ -20,7 +20,9 @@ const routes: Routes = [
     loadChildren: './wertung-editor/wertung-editor.module#WertungEditorPageModule'
   },
   { path: 'last-results', loadChildren: './last-results/last-results.module#LastResultsPageModule' },
-  { path: 'top-results', loadChildren: './last-top-results/last-top-results.module#LastTopResultsPageModule' }
+  { path: 'top-results', loadChildren: './last-top-results/last-top-results.module#LastTopResultsPageModule' },
+  { path: 'search-athlet', loadChildren: './search-athlet/search-athlet.module#SearchAthletPageModule' },
+  { path: 'athlet-view/:athletId', loadChildren: './athlet-view/athlet-view.module#AthletViewPageModule' }
 ];
 
 @NgModule({

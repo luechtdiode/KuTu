@@ -1,0 +1,61 @@
+<ion-header>
+  <ion-toolbar>
+    <ion-buttons slot="start">
+      <ion-menu-toggle>
+        <ion-button>
+          <ion-icon slot="icon-only" name="menu"></ion-icon>
+        </ion-button>
+      </ion-menu-toggle>
+    </ion-buttons>
+    <ion-title>
+      <ion-grid no-padding>
+        <ion-row>
+          <ion-col>
+            <ion-label>Suche Turner/-in</ion-label>
+          </ion-col>
+          <ion-col *ngIf="!competition">
+            <ion-item>
+              <ion-label>Wettkampf</ion-label>
+              <ion-select placeholder='Bitte auswählen' *ngIf="getCompetitions().length > 0" [(ngModel)]='competition' okText='Okay' cancelText='Abbrechen'>
+                  <ion-select-option *ngFor='let comp of getCompetitions()' [value]='comp.uuid'>
+                    {{comp.titel + ' ' + (comp.datum | date:'dd-MM-yy')}}</ion-select-option>
+                </ion-select>
+            </ion-item>
+          </ion-col>
+        </ion-row>
+      </ion-grid>
+    </ion-title>
+    <ion-note slot="end" *ngIf="competition">
+      {{competitionName()}}
+    </ion-note>    
+  </ion-toolbar>
+  <!--ion-item-divider color="light"-->
+      <ion-searchbar placeholder="Search" 
+        [(ngModel)]="myQuery" [showCancelButton]="false" 
+        (ionInput)="reloadList($event)"
+        (ionCancel)="reloadList($event)">
+      </ion-searchbar>
+      <!--ion-badge item-end>{{unsubscribedItems.length}}</ion-badge-->
+    <!--/ion-item-divider-->
+</ion-header>
+
+<ion-content *ngIf="competition && startlist && startlist.programme">
+  <ion-list>
+    <div *ngFor="let pgm of filteredStartList.programme">
+      <ion-item-divider>{{pgm.programm}}</ion-item-divider>
+      <ion-item-sliding #slidingAthletItem *ngFor="let tn of pgm.teilnehmer">
+        <startlist-item [teilnehmer]="tn" [programm]="pgm"></startlist-item>
+        <ion-item-options side="end">
+          <ion-item-option color="primary" (click)="followAthlet(tn, slidingAthletItem)">
+              <ion-icon name="arrow-dropright-circle" ios="md-arrow-dropright-circle"></ion-icon>         
+            Athlet verfolgen
+          </ion-item-option>
+          <ion-item-option color="secondary" (click)="followRiege(tn, slidingAthletItem)">
+              <ion-icon name="arrow-dropright-circle" ios="md-arrow-dropright-circle"></ion-icon> 
+            Riege verfolgen
+          </ion-item-option>
+        </ion-item-options>
+      </ion-item-sliding>
+    </div>
+  </ion-list>
+</ion-content>

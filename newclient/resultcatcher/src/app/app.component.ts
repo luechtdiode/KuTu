@@ -23,7 +23,8 @@ export class AppComponent {
       { title: 'Home', url: '/home', icon: 'home' },
       { title: 'Resultate', url: '/station', icon: 'list' },
       { title: 'Letzte Resultate', url: 'last-results', icon: 'radio' },
-      { title: 'Top Resultate', url: 'top-results', icon: 'medal' }
+      { title: 'Top Resultate', url: 'top-results', icon: 'medal' },
+      { title: 'Athlet/-In suchen', url: 'search-athlet', icon: 'search' }
     ];
 
     this.initializeApp();
@@ -68,7 +69,7 @@ export class AppComponent {
       warning: '#ffce00',
       medium: '#BCC2C7',
       dark: '#DADFE1', // #F7F7FF
-      light: '#363232' //#1c1b1a
+      light: '#363232' // #1c1b1a
     },
     Neon: {
       primary: '#39BFBD',
@@ -87,7 +88,7 @@ export class AppComponent {
 
   clearPosParam() {
     this.router.navigate(
-      ['.'], 
+      ['.'],
       { relativeTo: this.route, queryParams: {} }
     );
   }
@@ -212,7 +213,7 @@ export class AppComponent {
   cycleTheme() {
     this.themeSwitcher.cycleTheme();
   }
-  
+
   changeTheme(name: string) {
     this.themeSwitcher2.setTheme(this.themes[name]);
   }
