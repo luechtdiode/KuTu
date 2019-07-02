@@ -33,13 +33,13 @@
                   <ion-item-options side="start">
                   <button ion-button color="secondary" (click)="prevStep(slidingStepItem)" [disabled]="!geraet || !getSteps()">
                     <ion-icon name="arrow-dropleft-circle" ios="md-arrow-dropleft-circle"></ion-icon>
-                    Vorherige Riege
+                    {{prevStepCaption}}
                   </button>
                 </ion-item-options>
                 <ion-item-options side="end">
                   <button ion-button color="secondary" (click)="nextStep(slidingStepItem)" [disabled]="!geraet || !getSteps()">
                     <ion-icon name="arrow-dropright-circle" ios="md-arrow-dropright-circle"></ion-icon>
-                    Nächste Riege
+                    {{nextStepCaption}}
                   </button>
                 </ion-item-options>          
           </ion-item-sliding>

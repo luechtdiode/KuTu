@@ -81,6 +81,23 @@ export class StationPage {
     return this.backendService.loggedIn;
   }
 
+  get nextStepCaption(): string {
+    if (this.isLoggedIn()) {
+      return "Nächste Riege";
+    } else {
+      return "Nächstes Gerät";
+    }
+  }
+
+  
+  get prevStepCaption(): string {
+    if (this.isLoggedIn()) {
+      return "Vorherige Riege";
+    } else {
+      return "Vorheriges Gerät";
+    }
+  }
+
   nextStep(slidingItem: IonItemSliding) {
     this.step = this.backendService.nextGeraet();
     slidingItem.close();
@@ -92,7 +109,11 @@ export class StationPage {
   }
 
   get station() {
-    return this.step + '. Riege ' + this.geraetName() + ', ' + this.durchgang;
+    if (this.isLoggedIn()) {
+      return this.step + '. Riege ' + this.geraetName() + ', ' + this.durchgang;
+    } else {
+      return this.step + '. Gerät ' + this.geraetName() + ', ' + this.durchgang;
+    }
   }
 
   finish() {
