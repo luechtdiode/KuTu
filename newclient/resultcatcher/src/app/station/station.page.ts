@@ -30,6 +30,7 @@ export class StationPage implements OnInit  {
 
   ngOnInit(): void {
     this.backendService.captionmode = true;
+    this.backendService.loadGeraete();
   }
 
   durchgangstate() {

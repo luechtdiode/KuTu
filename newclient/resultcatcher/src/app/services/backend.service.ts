@@ -284,7 +284,9 @@ export class BackendService extends WebsocketService {
     }
 
     getDurchgaenge(competitionId: string) {
-      if (this.durchgaenge !== undefined && this._competition === competitionId) { return; }
+      if (this.durchgaenge !== undefined && this._competition === competitionId) {
+        return of(this.durchgaenge);
+      }
       this.durchgaenge = [];
       this.geraete = undefined;
       this.steps = undefined;
@@ -295,10 +297,10 @@ export class BackendService extends WebsocketService {
       this._geraet = undefined;
       this._step = undefined;
 
-      this.loadDurchgaenge();
+      return this.loadDurchgaenge();
     }
     loadDurchgaenge() {
-      this.startLoading('Durchgangliste wird geladen. Bitte warten ...',
+      return this.startLoading('Durchgangliste wird geladen. Bitte warten ...',
         this.http.get<string[]>(backendUrl + 'api/durchgang/' + this._competition).pipe(share())).subscribe((data) => {
         this.durchgaenge = data;
         this.captionmode = true;
@@ -333,7 +335,7 @@ export class BackendService extends WebsocketService {
         this.geraete = data;
       }, this.standardErrorHandler);
       return request;
-  }
+    }
 
     getSteps(competitionId: string, durchgang: string, geraetId: number) {
       if (this.steps !== undefined && this._competition === competitionId
@@ -401,6 +403,20 @@ export class BackendService extends WebsocketService {
           this.wertungen = data;
         }
       }, this.standardErrorHandler);
+    }
+
+    loadAthletWertungen(competitionId: string, athletId: number): Observable<WertungContainer[]> {
+      this.captionmode = false;
+      this._competition = competitionId;
+      this.disconnectWS(true);
+      this.initWebsocket();
+      const loader = this.startLoading('Wertungen werden geladen. Bitte warten ...',
+        this.http.get<WertungContainer[]>(
+          backendUrl + `api/athlet/${this._competition}/${athletId}`
+        ).pipe(share()));
+
+      loader.subscribe((data) => this.loadGeraete(), this.standardErrorHandler);
+      return loader;
     }
 
     loadAlleResultate(): Observable<Geraet[]> {

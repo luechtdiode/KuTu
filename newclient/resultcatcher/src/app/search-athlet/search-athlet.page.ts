@@ -102,15 +102,11 @@ export class SearchAthletPage implements OnInit {
     };
     setTimeout(this.sFilterTask, 1800);
 
-/*    this.backendService.loadStartlist(this.myQuery).subscribe(startlist => {
-      console.log(startlist);
-      this.startlist = startlist;
-    });
-    */
   }
 
   followAthlet(item: Teilnehmer, slidingItem: IonItemSliding) {
     slidingItem.close();
+    this.navCtrl.navigateForward(`athlet-view/${this.backendService.competition}/${item.athletid}`);
   }
 
   followRiege(item: Teilnehmer, slidingItem: IonItemSliding) {

@@ -11,8 +11,8 @@ export interface WertungContainer {
 }
 
 export interface NewLastResults {
-  results: WertungContainer[];
-  lastTopResults: WertungContainer[];
+  results: {string: WertungContainer};
+  lastTopResults: {string: WertungContainer};
 }
 
 export interface Teilnehmer {

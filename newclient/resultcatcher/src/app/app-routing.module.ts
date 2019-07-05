@@ -22,7 +22,7 @@ const routes: Routes = [
   { path: 'last-results', loadChildren: './last-results/last-results.module#LastResultsPageModule' },
   { path: 'top-results', loadChildren: './last-top-results/last-top-results.module#LastTopResultsPageModule' },
   { path: 'search-athlet', loadChildren: './search-athlet/search-athlet.module#SearchAthletPageModule' },
-  { path: 'athlet-view/:athletId', loadChildren: './athlet-view/athlet-view.module#AthletViewPageModule' }
+  { path: 'athlet-view/:wkId/:athletId', loadChildren: './athlet-view/athlet-view.module#AthletViewPageModule' }
 ];
 
 @NgModule({

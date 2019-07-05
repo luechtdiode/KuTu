@@ -35,6 +35,37 @@ trait WertungenRoutes extends SprayJsonSupport with JsonSupport with JwtSupport 
           }
         }
       } ~
+      pathPrefix("athlet" / JavaUUID / LongNumber) { (competitionId, athletId) =>
+        pathEnd {
+          get {
+            complete {
+              Future {
+                val wettkampf = readWettkampf(competitionId.toString())
+                val wkPgmId = wettkampf.programmId
+                val isDNoteUsed = wkPgmId != 20 && wkPgmId != 1
+                val wertungen = selectWertungen(wettkampfId = Some(wettkampf.id), athletId = Some(athletId))
+                wertungen.filter{wertung =>
+                  if(wertung.wettkampfdisziplin.feminim == 0 && !wertung.athlet.geschlecht.equalsIgnoreCase("M")) {
+                    false
+                  }
+                  else if(wertung.wettkampfdisziplin.masculin == 0 && wertung.athlet.geschlecht.equalsIgnoreCase("M")) {
+                    false
+                  }
+                  else {
+                    true
+                  }
+                }.map{w =>
+                  WertungContainer(
+                    w.athlet.id, w.athlet.vorname, w.athlet.name, w.athlet.geschlecht,
+                    w.athlet.verein.map(_.easyprint).getOrElse(""),
+                    w.toWertung,
+                    w.wettkampfdisziplin.disziplin.id, w.wettkampfdisziplin.programm.name, isDNoteUsed)
+                }
+              }
+            }
+          }
+        }
+      } ~
       pathPrefix("durchgang" / JavaUUID) { competitionId =>
         pathEnd {
           get {
@@ -46,7 +77,7 @@ trait WertungenRoutes extends SprayJsonSupport with JsonSupport with JwtSupport 
                 RiegenBuilder.mapToGeraeteRiegen(getAllKandidatenWertungen(competitionId).toList)
                   .filter(gr => gr.durchgang.nonEmpty)
                   .map(gr => gr.durchgang.get)
-                  .toSet.toList.sorted
+                  .distinct.sorted
               }
             }
           }
