@@ -40,7 +40,7 @@
     "hoek": ">=4.2.1",
     "ionic-angular": "3.9.2",
     "ionicons": "4.2.6",
-    "lodash": ">=4.17.5",
+    "lodash": ">=4.17.13",
     "randomatic": ">=3.0.0",
     "rxjs": "5.5.2",
     "sshpk": ">=1.13.2",
