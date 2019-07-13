@@ -3,9 +3,9 @@
 echo "JAVA_HOME before install jdk11 ${JAVA_HOME}"
 echo "JRE_HOME before install jdk11 ${JRE_HOME}"
 
-# rm -rf jdk
-# rm -rf jdk11
-# mkdir jdk
+rm -rf jdk
+rm -rf jdk11
+mkdir jdk
 
 # https://mail.openjdk.java.net/pipermail/openjfx-dev/2018-September/022500.html
 
@@ -47,9 +47,9 @@ then
     curl -L http://download2.gluonhq.com/jpackager/11/jdk.packager-osx.zip -o "javapackager-${OS}.zip"
     echo "download jdk11 for ${OS} finished"
     unzip -u "javapackager-${OS}.zip" -d jdk/jdk-11.0.3+7/Contents/Home/bin  >/dev/null 2>&1
-    cp jdk/jdk-11.0.3+7/Contents/Home/bin/jdk.packager.jar jdk/jdk-11.0.3+7/Contents/Home/jmods  >/dev/null 2>&1
-    sudo mv jdk/*/ /Library/Java/JavaVirtualMachines/jdk-11.jdk  >/dev/null 2>&1
-    sudo ln -s /Library/Java/JavaVirtualMachines/jdk-11.jdk/Contents/Home jdk11  >/dev/null 2>&1
+    cp jdk/jdk-11.0.3+7/Contents/Home/bin/jdk.packager.jar jdk/jdk-11.0.3+7/Contents/Home/jmods
+    sudo mv jdk/*/ /Library/Java/JavaVirtualMachines/jdk-11.jdk
+    sudo ln -s /Library/Java/JavaVirtualMachines/jdk-11.jdk/Contents/Home jdk11
 fi
 
 export JAVA_HOME="${PWD}/jdk11"
