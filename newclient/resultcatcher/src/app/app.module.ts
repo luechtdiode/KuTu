@@ -12,6 +12,7 @@ import { BackendService } from './services/backend.service';
 import { HTTP_INTERCEPTORS } from '@angular/common/http';
 import { TokenInterceptor } from './services/token-interceptor';
 import { StationGuardService } from './services/station-guard.service';
+import { ThemeSwitcherService } from './services/theme-switcher.service';
 
 @NgModule({
   declarations: [AppComponent],
@@ -28,6 +29,7 @@ import { StationGuardService } from './services/station-guard.service';
     StationGuardService,
     { provide: RouteReuseStrategy, useClass: IonicRouteStrategy },
     BackendService,
+    ThemeSwitcherService,
     TokenInterceptor,
     {
       provide: HTTP_INTERCEPTORS,

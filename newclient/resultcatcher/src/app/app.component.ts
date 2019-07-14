@@ -5,7 +5,6 @@ import { SplashScreen } from '@ionic-native/splash-screen/ngx';
 import { StatusBar } from '@ionic-native/status-bar/ngx';
 import { BackendService } from './services/backend.service';
 import { ThemeSwitcherService } from './services/theme-switcher.service';
-import { ThemeSwitcher2Service } from './services/theme-switcher2.service';
 import { ActivatedRoute, Router } from '@angular/router';
 
 @Component({
@@ -16,7 +15,7 @@ export class AppComponent {
 
   constructor(public platform: Platform, public statusBar: StatusBar, public splashScreen: SplashScreen,
               private navController: NavController, private route: ActivatedRoute, private router: Router,
-              public themeSwitcher: ThemeSwitcherService, public themeSwitcher2: ThemeSwitcher2Service,
+              public themeSwitcher: ThemeSwitcherService,
               public backendService: BackendService, private alertCtrl: AlertController) {
 
     this.appPages = [
@@ -48,7 +47,7 @@ export class AppComponent {
       warning: '#ff7b00',
       danger: '#f04141',
       dark: '#fffdf5',
-      medium: '#606ea7',
+      medium: '#454259', // '#707eb7', // '#606ea7',
       light: '#03163d'
     },
     Sport: {
@@ -59,7 +58,7 @@ export class AppComponent {
       warning: '#ff7b00',
       danger: '#f04141',
       dark: '#03163d',
-      medium: '#606ea7',
+      medium: '#8092dd', // '#606ea7',
       light: '#fffdf5'
     },
     Dunkel: {
@@ -72,7 +71,7 @@ export class AppComponent {
       light: '#363232' // #1c1b1a
     },
     Neon: {
-      primary: '#39BFBD',
+      primary: '#23ff00', // '#39BFBD',
       secondary: '#4CE0B3',
       tertiary: '#FF5E79',
       warning: '#ff7b00',
@@ -105,29 +104,32 @@ export class AppComponent {
           const initializeWith = atob(initializeWithEncoded);
           if (initializeWithEncoded.startsWith('all')) {
             this.appPages = [
-              { title: 'Alle Resultate', url: '/all-results', icon: 'radio' }
+              { title: 'Alle Resultate', url: '/all-results', icon: 'radio' },
+              { title: 'Athlet/-In suchen', url: 'search-athlet', icon: 'search' }
             ];
             this.navController.navigateRoot('/last-results');
           } else if (initializeWithEncoded.startsWith('top')) {
             this.appPages = [
-              { title: 'Top Resultate', url: '/top-results', icon: 'medal' }
+              { title: 'Top Resultate', url: '/top-results', icon: 'medal' },
+              { title: 'Athlet/-In suchen', url: 'search-athlet', icon: 'search' }
             ];
             this.navController.navigateRoot('/top-results');
           } else if (initializeWith.startsWith('last')) {
             this.appPages = [
-              { title: 'Aktuelle Resultate', url: '/last-results', icon: 'radio' }
+              { title: 'Aktuelle Resultate', url: '/last-results', icon: 'radio' },
+              { title: 'Athlet/-In suchen', url: 'search-athlet', icon: 'search' }
             ];
             this.navController.navigateRoot('/last-results');
             this.backendService.initWithQuery(initializeWith.substring(5));
             // localStorage.setItem("external_load", initializeWith.substring(5));
           } else if (initializeWith.startsWith('top')) {
             this.appPages = [
-              { title: 'Top Resultate', url: '/top-results', icon: 'medal' }
+              { title: 'Top Resultate', url: '/top-results', icon: 'medal' },
+              { title: 'Athlet/-In suchen', url: 'search-athlet', icon: 'search' }
             ];
             this.navController.navigateRoot('/top-results');
 
             this.backendService.initWithQuery(initializeWith.substring(4));
-            // localStorage.setItem("external_load", initializeWith.substring(4));
           } else {
             window.history.replaceState({}, document.title, window.location.href.split('?')[0]);
             this.clearPosParam();
@@ -210,12 +212,8 @@ export class AppComponent {
     this.backendService.askForUsername.next(this.backendService);
   }
 
-  cycleTheme() {
-    this.themeSwitcher.cycleTheme();
-  }
-
   changeTheme(name: string) {
-    this.themeSwitcher2.setTheme(this.themes[name]);
+    this.themeSwitcher.setTheme(this.themes[name]);
   }
   openPage(url: string) {
     this.navController.navigateRoot(url);
