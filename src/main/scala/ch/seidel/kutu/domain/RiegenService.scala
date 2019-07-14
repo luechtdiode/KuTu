@@ -120,6 +120,36 @@ trait RiegenService extends DBService with RiegenResultMapper {
     }, Duration.Inf).head
   }
 
+  def findAndStoreMatchingRiege(riege: RiegeRaw): RiegeRaw = {
+    val existingRiegen = selectRiegenRaw(riege.wettkampfId)
+    val riegenParts = riege.r.split(",")
+
+    val (matchingRiege, matchscore) = existingRiegen.map { er =>
+      (er, er.r.split(",").zip(riegenParts).filter{ case (existing, newpart) =>
+        existing.equalsIgnoreCase(newpart)
+      }.length)
+    }.sortBy(t => t._2).reverse.headOption.getOrElse((riege, 0))
+
+    if (matchscore > 2) {
+      matchingRiege
+    } else if (matchscore > 0) {
+      updateOrinsertRiege(riege.copy(durchgang = matchingRiege.durchgang, start = matchingRiege.start))
+        .toRaw(riege.wettkampfId)
+    } else {
+      updateOrinsertRiege(riege).toRaw(riege.wettkampfId)
+    }
+  }
+
+  def cleanUnusedRiegen(wettkampfid: Long): Unit = {
+    Await.result(database.run{(
+      sqlu"""
+                DELETE from riege where wettkampf_id=${wettkampfid} and not exists(
+                  select 1 from wertung w where w.riege = riege.name or w.riege2 = riege.name and w.wettkampf_id = riege.wettkampf_id
+                )
+          """).transactionally
+    }, Duration.Inf)
+  }
+
   def deleteRiege(wettkampfid: Long, oldname: String) {
     Await.result(database.run{(
       sqlu"""

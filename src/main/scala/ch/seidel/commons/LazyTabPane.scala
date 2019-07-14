@@ -27,7 +27,7 @@ class LazyTabPane(refreshTabsFn: (LazyTabPane) => Seq[Tab], releaseTabs: () => U
 //        println("removing " + tabs.get(existingIndex).textProperty().getValue)
         tabs.remove(existingIndex)
 //        println("inserting " + lazytabs(idx).text.value)
-        tabs.add(existingIndex, lazytabs(idx))
+        tabs.add(idx, lazytabs(idx))
       }
       else {
 //        println("inserting " + lazytabs(idx).text.value)

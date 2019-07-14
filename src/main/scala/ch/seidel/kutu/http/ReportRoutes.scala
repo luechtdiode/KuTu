@@ -7,8 +7,8 @@ import akka.http.scaladsl.model.{ContentTypes, HttpEntity}
 import akka.http.scaladsl.server.Route
 import akka.util.Timeout
 import ch.seidel.kutu.Config
-import ch.seidel.kutu.domain.KutuService
-import ch.seidel.kutu.renderer.{KategorieTeilnehmerToHtmlRenderer, PrintUtil, RiegenBuilder}
+import ch.seidel.kutu.domain.{Kandidat, KutuService}
+import ch.seidel.kutu.renderer.{KategorieTeilnehmerToHtmlRenderer, KategorieTeilnehmerToJSONRenderer, PrintUtil, RiegenBuilder}
 
 import scala.concurrent.duration.DurationInt
 
@@ -18,6 +18,7 @@ trait ReportRoutes extends SprayJsonSupport with JsonSupport with AuthSupport wi
   // usually we'd obtain the timeout from the system's configuration
   private implicit lazy val timeout: Timeout = Timeout(5.seconds)
   val renderer = new KategorieTeilnehmerToHtmlRenderer() {}
+  val jsonrenderer = new KategorieTeilnehmerToJSONRenderer() {}
 
   lazy val reportRoutes: Route = {
     extractClientIP { ip =>
@@ -29,12 +30,23 @@ trait ReportRoutes extends SprayJsonSupport with JsonSupport with AuthSupport wi
 
           path("startlist") {
             get {
-              complete({
-                val kandidaten = getAllKandidatenWertungen(UUID.fromString(wettkampf.uuid.get))
-                val riegen = RiegenBuilder.mapToGeraeteRiegen(kandidaten)
-
-                HttpEntity(ContentTypes.`text/html(UTF-8)`, renderer.riegenToKategorienListeAsHTML(riegen, logofile))
-              })
+              parameters('html.?, 'q.?) { (html, q) => html match {
+                case Some(_) =>
+                  complete({
+                    val kandidaten = getAllKandidatenWertungen(UUID.fromString(wettkampf.uuid.get))
+                      .filter(filterMatchingCandidatesToQuery(q))
+                    val riegen = RiegenBuilder.mapToGeraeteRiegen(kandidaten)
+                    HttpEntity(ContentTypes.`text/html(UTF-8)`, renderer.riegenToKategorienListeAsHTML(riegen, logofile))
+                  })
+                case None =>
+                  complete({
+                    val kandidaten = getAllKandidatenWertungen(UUID.fromString(wettkampf.uuid.get))
+                      .filter(filterMatchingCandidatesToQuery(q))
+                    val riegen = RiegenBuilder.mapToGeraeteRiegen(kandidaten)
+                    HttpEntity(ContentTypes.`application/json`, jsonrenderer.riegenToKategorienListeAsJSON(riegen, logofile))
+                  })
+              }
+              }
             }
           }
         }
@@ -42,4 +54,23 @@ trait ReportRoutes extends SprayJsonSupport with JsonSupport with AuthSupport wi
     }
   }
 
+  private def filterMatchingCandidatesToQuery(q: Option[String]) = {
+    val queryTokens = q.toList.flatMap(x => x.split(" ")).map(_.toLowerCase)
+    k: Kandidat => {
+      queryTokens.isEmpty ||
+      queryTokens.forall {
+        case s: String if s == k.id + "" => true
+        case s: String if s == k.name.toLowerCase => true
+        case s: String if s == k.vorname.toLowerCase => true
+        case s: String if s == k.verein.toLowerCase => true
+        case s: String if s == k.programm.toLowerCase => true
+        case s: String if s == k.geschlecht.toLowerCase => true
+        case s: String if s.nonEmpty => {
+          k.verein.toLowerCase.contains(s) ||
+          k.einteilung.exists(_.easyprint.toLowerCase.contains(s))
+        }
+        case _ => false
+      }
+    }
+  }
 }

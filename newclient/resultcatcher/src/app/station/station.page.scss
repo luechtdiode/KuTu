@@ -1,0 +1,15 @@
+
+.stateinfo.closed {
+  padding-left: 5px;
+  border-left: 6px solid var(--ion-color-danger);
+}
+
+.stateinfo.open {
+  padding-left: 5px;
+  border-left: 6px solid var(--ion-color-success);
+}
+
+.stateinfo.offline {
+  padding-left: 5px;
+  border-left: 6px solid var(--ion-color-warning);
+}

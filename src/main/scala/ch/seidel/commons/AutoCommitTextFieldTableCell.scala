@@ -26,8 +26,10 @@ object AutoCommitTextFieldTableCell {
   val editmode = BooleanProperty(false)
   var editModeTerminationListener: List[()=>Unit] = List.empty
   editmode.onChange {
-    editModeTerminationListener.foreach(task => task())
-    editModeTerminationListener = List.empty
+    if (!editmode.value) {
+      editModeTerminationListener.foreach(task => task())
+      editModeTerminationListener = List.empty
+    }
   }
 
   def doWhenEditmodeEnds(task: () => Unit): Unit = {
@@ -317,10 +319,10 @@ class AutoCommitTextFieldTableCell[S, T](override val delegate: jfxscc.TextField
     AutoCommitTextFieldTableCell.setEditMode(true)
     pseudoClassStates.onChange{(set: ObservableSet[jfxcss.PseudoClass], change: Change[jfxcss.PseudoClass]) =>
       change match {
-        case Remove(PSEUDO_CLASS_FOCUSED) if(delegate.isEditing) =>
+        case Remove(PSEUDO_CLASS_FOCUSED) if(delegate.isEditing || AutoCommitTextFieldTableCell.editmode.value) =>
           val value = textField match {case Some(tf) => tf.text.value case None => "" }
-          AutoCommitTextFieldTableCell.setEditMode(false)
           commitEdit(converter.value.fromString(value))
+          AutoCommitTextFieldTableCell.setEditMode(false)
 
         case _ =>
       }

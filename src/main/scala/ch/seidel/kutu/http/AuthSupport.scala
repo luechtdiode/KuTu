@@ -181,7 +181,8 @@ trait AuthSupport extends Directives with SprayJsonSupport with Hashing {
     import HttpMethods._
     Marshal(UserCredentials(wettkampfuuid, jwtToken)).to[RequestEntity] flatMap { entity =>
       val request = HttpRequest(method = POST, uri = uri, entity = entity)
-      Http().singleRequest(request.withHeaders(request.headers :+ RawHeader(jwtAuthorizationKey, jwtToken)), settings = poolsettings).map {
+      val requestWithHeader = request.withHeaders(request.headers :+ RawHeader(jwtAuthorizationKey, jwtToken))
+      Http().singleRequest(requestWithHeader, settings = poolsettings).map {
         case response @ HttpResponse(StatusCodes.OK, headers, entity, _) =>
           clientheader = headers.filter(h => h.is(jwtAuthorizationKey)).headOption.flatMap {
             case HttpHeader(_, token) => 

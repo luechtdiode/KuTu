@@ -8,7 +8,7 @@ import org.slf4j.LoggerFactory
 
 object RiegenBuilder {
   val logger = LoggerFactory.getLogger(this.getClass)
-  def mapToGeraeteRiegen(kandidaten: Seq[Kandidat], printorder: Boolean = false, groupByProgramm: Boolean = true): List[GeraeteRiege] = {
+  def mapToGeraeteRiegen(kandidaten: Seq[Kandidat], printorder: Boolean = false, groupByProgramm: Boolean = true, durchgangFilter: Set[String] = Set.empty): List[GeraeteRiege] = {
 
     def pickStartformationen(geraete: Seq[(Option[Disziplin], Seq[Riege])], durchgang: Option[String], extractKandidatEinteilung: Kandidat => (Option[Riege], Seq[Disziplin])) = {
       geraete.flatMap{s =>
@@ -114,11 +114,21 @@ object RiegenBuilder {
         (durchgang, startformationen.sortBy(d => d._1 * 100 + d._2.map( dzl.indexOf(_))))
       }
     }
-    val riegen = (hauptdurchgaenge ++ nebendurchgaenge).flatMap{item =>
-      val (durchgang, starts) = item
-      starts.map{start =>
-        GeraeteRiege(start._3.head.wettkampfTitel,start._3.head.wertungen.head.wettkampf.uuid.get,
-          durchgang, start._1, start._2, start._3, start._4, f"R${start._5}%04d")
+    val riegen = (hauptdurchgaenge ++ nebendurchgaenge).flatMap { item =>
+      val (durchgang, starts: Seq[(Int, Option[Disziplin], Seq[Kandidat], Boolean, Int)]) = item
+      durchgang match {
+        case Some(dg) if (durchgangFilter.isEmpty || durchgangFilter.contains(dg)) =>
+          starts.map { start =>
+            GeraeteRiege(start._3.head.wettkampfTitel, start._3.head.wertungen.head.wettkampf.uuid.get,
+              durchgang, start._1, start._2, start._3, start._4, f"R${start._5}%04d")
+          }
+        case None =>
+          starts.map { start =>
+            GeraeteRiege(start._3.head.wettkampfTitel, start._3.head.wertungen.head.wettkampf.uuid.get,
+              durchgang, start._1, start._2, start._3, start._4, f"R${start._5}%04d")
+
+          }
+        case _ => Seq.empty
       }
     }
 
@@ -270,7 +280,7 @@ trait RiegenblattToHtmlRenderer {
 
   val fcs = 20
 
-  def toHTML(kandidaten: Seq[Kandidat], logo: File, baseUrl: String): String = {
+  def toHTML(kandidaten: Seq[Kandidat], logo: File, baseUrl: String, durchgangFilter: Set[String] = Set.empty): String = {
     def splitToFitPage(riegen: List[GeraeteRiege]) = {
       riegen.foldLeft(List[(GeraeteRiege, Int)]()){(acc, item) =>
         if(item.kandidaten.size > fcs) {
@@ -297,7 +307,7 @@ trait RiegenblattToHtmlRenderer {
         }
       }
     }
-    val riegendaten = splitToFitPage(RiegenBuilder.mapToGeraeteRiegen(kandidaten.toList, true))
+    val riegendaten = splitToFitPage(RiegenBuilder.mapToGeraeteRiegen(kandidaten.toList, printorder = true, durchgangFilter = durchgangFilter))
     val blaetter = riegendaten.map(notenblatt(_, logo, baseUrl))
     val pages = blaetter.sliding(1, 1).map { _.mkString("</li><li>") }.mkString("</li></ul><ul><li>")
     intro + pages + outro

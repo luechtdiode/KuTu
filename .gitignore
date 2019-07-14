@@ -3,6 +3,9 @@
 /classes/
 /.*
 *.exe
+*.gz
+*.sqlite
+*.iml
 
 /lib/
 /maven-eclipse.xml

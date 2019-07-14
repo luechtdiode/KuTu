@@ -28,15 +28,15 @@ trait ApiService extends RouteConcatenation with CIDSupport with RouterLogging
 
     handleExceptions(myExceptionHandler) {
       resourceRoutes ~
-        pathPrefix("api") {
-          login(userLookup) ~
-            wertungenRoutes ~
-            wettkampfRoutes ~
-            scoresRoutes ~
-            reportRoutes
-          //      websocket
-        } ~
+      pathPrefix("api") {
+        login(userLookup) ~
+          wertungenRoutes ~
+          wettkampfRoutes ~
+          scoresRoutes ~
+          reportRoutes ~
+        //      websocket
         complete(StatusCodes.NotFound)
+      } ~ fallbackRoute
     }
   }
 }

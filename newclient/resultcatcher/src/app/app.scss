@@ -1,0 +1,120 @@
+// App Styles
+// ----------------------------------------------------------------------------
+// Put style rules here that you want to apply to the entire application. These 
+// styles are for the entire app and not just one component. Additionally, this 
+// file can hold Sass mixins, functions, and placeholder classes to be imported 
+// and used throughout the application.
+.alert-head, .alert-head-md, .alert-head-ios {  
+  // background-color: var(--ion-color-step-500, #2e2e2e);
+  background-color:  var(--ion-item-background-color);
+  color: var(--ion-item-text-color);
+}
+
+.alert-radio-label.sc-ion-alert-md,
+.alert-radio-label.sc-ion-alert-ios {
+    color: var(--ion-item-text-color);
+}
+[aria-checked=true].sc-ion-alert-md .alert-radio-label.sc-ion-alert-md,
+[aria-checked=true].sc-ion-alert-ios .alert-radio-label.sc-ion-alert-ios {
+  color: var(--ion-color-primary);
+}
+
+.sc-ion-loading-md-h,
+.sc-ion-loading-ios-h {
+    --background: var(--ion-color-step-50,#f2f2f2);
+    --spinner-color: var(--ion-color-primary,#666);
+    color: var(--ion-color-step-850);
+}
+
+ion-icon {
+  //background-color:  var(--ion-item-background-color);
+  color: var(--ion-color-step-500);
+}
+ion-toolbar {
+  --background: var(--ion-toolbar-background-color);
+  > ion-note {
+    font-size: small;
+    padding-right: 16px;
+    color: var(--ion-color-primary);
+  }
+}
+.sc-ion-searchbar-md-h,
+.sc-ion-searchbar-ios-h {
+  --color: var(--ion-item-text-color);
+}
+.alert-head.sc-ion-alert-md + .alert-message.sc-ion-alert-md:empty,
+.alert-head.sc-ion-alert-ios + .alert-message.sc-ion-alert-ios:empty {
+  padding-top: 0px;
+  padding-bottom: 0px;
+}
+
+.alert-head + .alert-message, 
+.alert-head.sc-ion-alert-md + .alert-message.sc-ion-alert-md,
+.alert-head.sc-ion-alert-ios + .alert-message.sc-ion-alert-ios {
+    padding-top: 15px;
+}
+
+.stateinfo {
+  font-family: 'Courier New', Courier, monospace;
+  font-weight: bold;
+  font-size: smaller;
+}
+
+ion-note {
+  color: var(--ion-color-warning);
+}
+
+.gradient-border {
+  --borderWidth: 3px;
+  //background: #1D1F20;
+  position: relative;
+  border-radius: var(--borderWidth);
+
+  background-clip: padding-box; /* !importanté */
+  border: solid var(--borderWidth) transparent; /* !importanté */
+
+  ion-card {
+    margin: auto;
+    position: relative;
+    //background: #1D1F20;
+    color: var(--ion-card-color);
+    background-color: var(--ion-card-background-color);
+  }
+
+  &:before {
+    content: '';
+    position: absolute;
+    top: calc(-1 * var(--borderWidth));
+    left: calc(-1 * var(--borderWidth));
+    height: calc(100% + var(--borderWidth) * 2);
+    width: calc(100% + var(--borderWidth) * 2);
+    background: linear-gradient(60deg, #f79533, #f37055, #ef4e7b, #a166ab, #5073b8, #1098ad, #07b39b, #6fba82);
+    border-radius: calc(2 * var(--borderWidth));
+
+    animation: animatedgradient 10s ease alternate;
+    background-size: 300% 300%;
+    }
+}
+
+@keyframes animatedgradient {
+	0% {
+		background-position: 0% 50%;
+	}
+	50% {
+		background-position: 100% 50%;
+	}
+	100% {
+		background-position: 0% 50%;
+	}
+}
+
+ion-select {
+//   width: 80%;
+  max-width: 80% !important;
+}
+
+.select-alert {
+   --width: 80%;
+   --max-width: auto;
+   --min-width: 250px;
+}

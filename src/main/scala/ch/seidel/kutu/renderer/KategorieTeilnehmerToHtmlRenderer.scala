@@ -9,8 +9,8 @@ import org.slf4j.LoggerFactory
 trait KategorieTeilnehmerToHtmlRenderer {
   val logger = LoggerFactory.getLogger(classOf[KategorieTeilnehmerToHtmlRenderer])
   case class Kandidat(wettkampfTitel: String, geschlecht: String, programm: String,
-                      name: String, vorname: String, jahrgang: String, verein: String, riege: String, durchgang: String, start: String, diszipline: Seq[String])
-
+                      name: String, vorname: String, jahrgang: String, verein: String,
+                      riege: String, durchgang: String, start: String, diszipline: Seq[String])
   val intro = """<html>
     <head>
       <meta charset="UTF-8" />

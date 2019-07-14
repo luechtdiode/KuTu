@@ -1,5 +1,7 @@
 package ch.seidel.kutu.domain
 
+import java.util.UUID
+
 import slick.jdbc.{GetResult, PositionedResult}
 
 /**
@@ -32,5 +34,7 @@ abstract trait WettkampfResultMapper extends DisziplinResultMapper {
     
   implicit val getProgrammRawResult = GetResult(r =>
     ProgrammRaw(r.<<, r.<<, r.<<, r.<<, r.<<, r.<<, r.<<))
-  
+
+  implicit val getPublishedScoreViewResult = GetResult(r =>
+    PublishedScoreView(r.<<, r.<<, r.<<, r.<<, r.<<[java.sql.Date], r.<<))
 }
