@@ -14,7 +14,7 @@ then
     curl -L https://github.com/AdoptOpenJDK/openjdk11-binaries/releases/download/jdk-11.0.3%2B7_openj9-0.14.0/OpenJDK11U-jdk_x64_windows_openj9_11.0.3_7_openj9-0.14.0.zip -o "jdk-${OS}.zip"
     unzip -u "jdk-${OS}.zip" -d jdk  >/dev/null 2>&1
     curl -L http://download2.gluonhq.com/jpackager/11/jdk.packager-windows.zip -o "javapackager-${OS}.zip"
-    mv jdk/*/* jdk11/  >/dev/null 2>&1
+    mv jdk/*/ jdk11/  >/dev/null 2>&1
     unzip -u "javapackager-${OS}.zip" -d jdk11/bin  >/dev/null 2>&1
     cp jdk11/bin/jdk.packager.jar jdk11/jmods
 fi
