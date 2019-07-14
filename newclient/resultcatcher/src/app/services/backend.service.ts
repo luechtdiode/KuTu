@@ -173,6 +173,7 @@ export class BackendService extends WebsocketService {
 
     standardErrorHandler = (err: HttpErrorResponse) => {
       console.log(err);
+      this.resetLoading();
       this.wertungenLoading = false;
       if (err.status === 401) {
         localStorage.removeItem('auth_token');
@@ -350,15 +351,7 @@ export class BackendService extends WebsocketService {
       this._geraet = geraetId;
       this._step = undefined;
 
-      return this.loadSteps();
-    }
-
-    loadSteps() {
-      const stepsloader = this.startLoading('Stationen zum Gerät werden geladen. Bitte warten ...',
-        this.http.get<string[]>(
-          backendUrl + 'api/durchgang/' + this._competition + '/' + encodeURIComponent2(this._durchgang) + '/' + this._geraet
-        ).pipe(share()));
-
+      const stepsloader = this.loadSteps();
       stepsloader.subscribe((data) => {
         this.steps = data.map(step => parseInt(step));
         if (this._step === undefined || this.steps.indexOf(this._step) < 0) {
@@ -368,6 +361,14 @@ export class BackendService extends WebsocketService {
       }, this.standardErrorHandler);
 
       return stepsloader;
+    }
+
+    loadSteps() {
+      return this.startLoading('Stationen zum Gerät werden geladen. Bitte warten ...',
+        this.http.get<string[]>(
+          backendUrl + 'api/durchgang/' + this._competition + '/' + encodeURIComponent2(this._durchgang) + '/' + this._geraet
+        ).pipe(share()));
+
     }
     getWertungen(competitionId: string, durchgang: string, geraetId: number, step: number) {
       if (this.wertungen !== undefined && this._competition === competitionId
@@ -537,7 +538,8 @@ export class BackendService extends WebsocketService {
           nextGeraetIdx = 0;
         }
         const actualStep = this._step;
-        return this.getSteps(this.competition, this.durchgang, this.geraete[nextGeraetIdx].id).pipe(map(steps => {
+        this._geraet = this.geraete[nextGeraetIdx].id;
+        return this.loadSteps().pipe(map(steps => {
           const nextSteps = steps.filter(s => s > actualStep);
           if (nextSteps.length > 0) {
             return nextSteps[0];
@@ -563,7 +565,8 @@ export class BackendService extends WebsocketService {
         }
 
         const actualStep = this._step;
-        return this.getSteps(this.competition, this.durchgang, this.geraete[prevGeraeteIdx].id).pipe(map(steps => {
+        this._geraet = this.geraete[prevGeraeteIdx].id;
+        return this.loadSteps().pipe(map(steps => {
           const prevSteps = this.steps.filter(s => s < actualStep);
           if (prevSteps.length > 0) {
             return prevSteps[prevSteps.length - 1];

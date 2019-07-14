@@ -31,7 +31,8 @@
   </ion-toolbar>
   <!--ion-item-divider color="light"-->
       <ion-searchbar placeholder="Search" 
-        [(ngModel)]="sMyQuery" [showCancelButton]="false" 
+        [(ngModel)]="sMyQuery" [showCancelButton]="false"  
+        [debounce]="600" [color]="primary"
         (ionInput)="reloadList($event)"
         (ionCancel)="reloadList($event)">
       </ion-searchbar>
@@ -43,12 +44,13 @@
   <ion-list>
     <div *ngFor="let pgm of filteredStartList.programme">
       <ion-item-divider>{{pgm.programm}}</ion-item-divider>
-      <ion-item-sliding #slidingAthletItem *ngFor="let tn of pgm.teilnehmer">
+      <ion-item-sliding #slidingAthletItem *ngFor="let tn of pgm.teilnehmer"
+        (click)='itemTapped(tn, slidingAthletItem)'>
         <startlist-item [teilnehmer]="tn" [programm]="pgm"></startlist-item>
         <ion-item-options side="end">
           <ion-item-option color="primary" (click)="followAthlet(tn, slidingAthletItem)">
               <ion-icon name="arrow-dropright-circle" ios="md-arrow-dropright-circle"></ion-icon>         
-            Athlet verfolgen
+            {{tn.athlet}} verfolgen
           </ion-item-option>
           <ion-item-option color="secondary" (click)="followRiege(tn, slidingAthletItem)">
               <ion-icon name="arrow-dropright-circle" ios="md-arrow-dropright-circle"></ion-icon> 

@@ -28,9 +28,15 @@ export class StationPage implements OnInit  {
     });
   }
 
+  ionViewWillEnter() {
+    if (!this.backendService.captionmode) {
+      this.backendService.captionmode = true;
+      this.backendService.loadGeraete();
+    }
+  }
   ngOnInit(): void {
-    this.backendService.captionmode = true;
-    this.backendService.loadGeraete();
+    // this.backendService.captionmode = true;
+    // this.backendService.loadGeraete();
   }
 
   durchgangstate() {

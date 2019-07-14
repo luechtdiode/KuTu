@@ -15,6 +15,8 @@ export class SearchAthletPage implements OnInit {
   sStartList: StartList;
   sFilteredStartList: StartList;
   sMyQuery: string;
+  tMyQuery: string;
+
   sFilterTask: () => void = undefined;
 
   constructor(public navCtrl: NavController, public backendService: BackendService) {
@@ -50,22 +52,21 @@ export class SearchAthletPage implements OnInit {
     return this.sStartList;
   }
   get filteredStartList() {
+    if (!this.sMyQuery || this.sMyQuery.length < 2) {
+      return [];
+    }
     return this.sFilteredStartList || {
       programme : []
     } as StartList;
   }
   reloadList(event: any) {
-    if (!event || !event.target.value) {
-      this.sFilteredStartList = this.sStartList;
+    if (!event || !event.target.value || event.target.value.trim().length === 0) {
       return;
     }
-    if (this.sMyQuery === event.target.value.trim()) {
+    if (this.tMyQuery === event.target.value.trim()) {
       return;
     }
-    this.sMyQuery = event.target.value.trim();
-    this.sFilteredStartList = {
-      programme : []
-    } as StartList;
+    this.tMyQuery = event.target.value.trim();
 
     if (this.sFilterTask) {
       return;
@@ -73,16 +74,18 @@ export class SearchAthletPage implements OnInit {
 
     const finishedPromise = new Subject();
     this.sFilterTask = () => {
-/*      this.backendService.startLoading(
-        'Filter wird angewendet ...',
-        finishedPromise.asObservable() );*/
-      let q;
+      let q: string;
       do {
-        q = this.sMyQuery;
+        this.sFilteredStartList = {
+          programme : []
+        } as StartList;
+        q = this.tMyQuery;
         if (event && this.sStartList) {
-          this.sStartList.programme.forEach(programm => {
+          this.sStartList.programme.filter(pgm => q === this.sMyQuery).forEach(programm => {
             const filter = this.filter(q);
-            const tnFiltered = programm.teilnehmer.filter(tn => filter(tn, programm.programm));
+            const tnFiltered = programm.teilnehmer
+              .filter(pgm => q === this.sMyQuery)
+              .filter(tn => filter(tn, programm.programm));
             if (tnFiltered.length > 0) {
               const pgItem = {
                 programm : programm.programm,
@@ -94,14 +97,25 @@ export class SearchAthletPage implements OnInit {
             }
           });
         }
-      } while (q !== this.sMyQuery);
+      } while (q !== this.tMyQuery);
 
       this.sFilterTask = undefined;
+      this.sMyQuery = this.tMyQuery;
       finishedPromise.complete();
       this.backendService.resetLoading();
     };
-    setTimeout(this.sFilterTask, 1800);
+    setTimeout(this.sFilterTask, 1500);
 
+  }
+
+  itemTapped(item: Teilnehmer, slidingItem: IonItemSliding) {
+    slidingItem.getOpenAmount().then(amount => {
+        if (amount > 0) {
+        slidingItem.close();
+      } else {
+        slidingItem.open('end');
+      }
+    });
   }
 
   followAthlet(item: Teilnehmer, slidingItem: IonItemSliding) {
