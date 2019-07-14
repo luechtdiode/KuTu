@@ -138,7 +138,7 @@ jobs:
       - java -Xmx32m -version
       - javac -J-Xmx32m -version
     script:
-      - mvn clean package -DskipTest=true -DOS=$OS
+      - mvn clean package -q -DskipTest=true -DOS=$OS
       - mv -f $TRAVIS_BUILD_DIR/target/${OS} $TRAVIS_BUILD_DIR/outputs/Win64
     after_success:
       - aws s3 cp --recursive $TRAVIS_BUILD_DIR/outputs/ $S3_BUCKET_PUBLIC/ >/dev/null 2>&1
