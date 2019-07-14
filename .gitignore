@@ -4,8 +4,11 @@
 /.*
 *.exe
 *.gz
-*.sqlite
 *.iml
+*.sqlite
+*.sqlite-wal
+*.sql.log
+*.sqlite-shm
 
 /lib/
 /maven-eclipse.xml
@@ -15,9 +18,6 @@
 .cache-main
 .cache-tests
 *.iml
-*.sqlite-wal
-*.sql.log
-*.sqlite-shm
 *.zip
 *.log
 *travis*.json
