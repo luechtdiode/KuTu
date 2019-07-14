@@ -1094,7 +1094,7 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
         items = vereine
         //selectionModel.value.selectFirst()
       }
-      val programms = programm.map(p => service.readWettkampfLeafs(p.head.id)).toSeq.flatten
+      val programms = progrm.map(p => service.readWettkampfLeafs(p.head.id)).toSeq.flatten
       val clipboardlines = Source.fromString(Clipboard.systemClipboard.getString + "").getLines()
       val cache = new java.util.ArrayList[MatchCode]()
       val cliprawf = KuTuApp.invokeAsyncWithBusyIndicator { Future {
