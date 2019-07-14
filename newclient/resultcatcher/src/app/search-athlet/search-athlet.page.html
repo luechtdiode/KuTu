@@ -32,7 +32,7 @@
   <!--ion-item-divider color="light"-->
       <ion-searchbar placeholder="Search" 
         [(ngModel)]="sMyQuery" [showCancelButton]="false"  
-        [debounce]="600" [color]="primary"
+        debounce="600"
         (ionInput)="reloadList($event)"
         (ionCancel)="reloadList($event)">
       </ion-searchbar>
