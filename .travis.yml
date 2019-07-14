@@ -75,6 +75,7 @@ jobs:
       - mkdir -p ~/$TRAVIS_BUILD_NUMBER
       - aws s3 sync $S3_BUCKET_CACHE/$TRAVIS_BUILD_NUMBER ~/$TRAVIS_BUILD_NUMBER >/dev/null 2>&1
     script:
+      - rm -rf $TRAVIS_BUILD_DIR/src/main/resources/app/*
       - cp -R -f ~/$TRAVIS_BUILD_NUMBER/www/* $TRAVIS_BUILD_DIR/src/main/resources/app
       - mvn clean package -q #deploy --settings deploy-settings.xml -Daws_default_region=eu-west-1
       - cp -f $TRAVIS_BUILD_DIR/target/*.jar $TRAVIS_BUILD_DIR/outputs/
