@@ -14,17 +14,26 @@ object LocalServerStates {
 
   localServerProperty.onChange(println)
 
-  def startLocalServer: Unit = {
-    setLocalHostServer(true)
+  def startLocalServer(listNetworkAdresses: () => TraversableOnce[String]): Unit = {
+    setLocalHostServer(true, None)
     Platform.runLater(
       () => {
+        listNetworkAdresses().toList match {
+          case xs::_ =>
+            val firstColon = xs.indexOf("://") + 3
+            val secondColon = xs.indexOf(":", firstColon)
+            setLocalHostServer(true, Some(xs.substring(firstColon, secondColon)))
+          case _ =>
+            setLocalHostServer(true, None)
+        }
+        println("local server is listening on " + Config.remoteBaseUrl)
         _localServerProperty.setValue(true)
       }
     )
   }
 
   def stopLocalServer: Unit = {
-    setLocalHostServer(false)
+    setLocalHostServer(false, None)
     Platform.runLater(
       () => {
         ConnectionStates.disconnect

@@ -1,0 +1,12 @@
+<ion-item (click)="selected.emit(teilnehmer)">
+  <ion-avatar slot="start">
+    <img src="assets/imgs/athlete.png">
+  </ion-avatar>
+  <ion-label>{{teilnehmer.athlet}}&nbsp;<small>{{teilnehmer.verein + ', ' + programm.programm}}</small><br>
+    <small><em>{{teilnehmer.durchgang}}</em></small>
+  </ion-label>
+  <ion-note slot="end" >
+    Startgerät:<br>
+    <b>{{teilnehmer.start}}</b>
+  </ion-note>
+</ion-item>

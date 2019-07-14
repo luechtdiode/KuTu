@@ -32,6 +32,7 @@ trait JsonSupport extends SprayJsonSupport with EnrichedJson {
   implicit val finishDurchgangStationFormat = jsonFormat4(FinishDurchgangStation)
   implicit val finishDurchgangFormat = jsonFormat2(FinishDurchgang)
   implicit val finishDurchgangStepFormat = jsonFormat1(FinishDurchgangStep)
+  implicit val publishScores = jsonFormat4(PublishScores)
 
   // events (via ws and rest-response)
   implicit val durchgangStartedFormat = jsonFormat3(DurchgangStarted)
@@ -40,6 +41,7 @@ trait JsonSupport extends SprayJsonSupport with EnrichedJson {
   implicit val stationsWertungenCompletedFormat = jsonFormat1(StationWertungenCompleted)
   implicit val newLastResultsFormat = jsonFormat2(NewLastResults)
   implicit val durchgangFinishedFormat = jsonFormat3(DurchgangFinished)
+  implicit val scoresPublished = jsonFormat5(ScoresPublished)
   implicit val lastResults = jsonFormat1(LastResults)
   implicit val athletRemovedFromWettkampf = jsonFormat2(AthletRemovedFromWettkampf)
   implicit val athletMovedInWettkampf = jsonFormat3(AthletMovedInWettkampf)
@@ -53,6 +55,7 @@ trait JsonSupport extends SprayJsonSupport with EnrichedJson {
       classOf[StationWertungenCompleted].getSimpleName -> stationsWertungenCompletedFormat,
       classOf[NewLastResults].getSimpleName -> newLastResultsFormat,
       classOf[DurchgangFinished].getSimpleName -> durchgangFinishedFormat,
+      classOf[ScoresPublished].getSimpleName -> scoresPublished,
       classOf[LastResults].getSimpleName -> lastResults,
       classOf[AthletRemovedFromWettkampf].getSimpleName -> athletRemovedFromWettkampf,
       classOf[AthletMovedInWettkampf].getSimpleName -> athletMovedInWettkampf,

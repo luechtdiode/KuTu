@@ -14,23 +14,22 @@ import org.slf4j.LoggerFactory
 
 import scala.concurrent.duration.Duration
 import scala.concurrent.{Await, ExecutionContext, Future}
-import scala.util.Try
 
 object Core extends KuTuSSLContext {
-//  val logger = LoggerFactory.getLogger(this.getClass)
+  //  val logger = LoggerFactory.getLogger(this.getClass)
   /**
-   * Construct the ActorSystem we will use in our application
-   */
+    * Construct the ActorSystem we will use in our application
+    */
   implicit lazy val system: ActorSystem = ActorSystem("KuTuApp") // , Config.config
   implicit lazy val materializer: ActorMaterializer = ActorMaterializer()
-  
-//  val eventRegistryActor: ActorRef = system.actorOf(EventRegistryActor.props, "eventRegistryActor")
-//  val userRegistryActor: ActorRef = system.actorOf(UserRegistryActor.props(eventRegistryActor), "userRegistryActor")
+
+  //  val eventRegistryActor: ActorRef = system.actorOf(EventRegistryActor.props, "eventRegistryActor")
+  //  val userRegistryActor: ActorRef = system.actorOf(UserRegistryActor.props(eventRegistryActor), "userRegistryActor")
   private var terminated = false;
   var serverBinding: Option[Future[Http.ServerBinding]] = None
 
   def terminate() {
-    if(!terminated) {        
+    if (!terminated) {
       terminated = true
       system.terminate()
     }
@@ -39,31 +38,33 @@ object Core extends KuTuSSLContext {
 
 trait KuTuAppHTTPServer extends ApiService with JsonSupport {
   private val logger = LoggerFactory.getLogger(this.getClass)
+
   import Core._
 
-  
+
   def startServer(userLookup: (String) => String) = {
     serverBinding match {
       case None =>
-      /**
-       * Ensure that the constructed ActorSystem is shut down when the JVM shuts down
-       */
-      sys.addShutdownHook(shutDown(getClass.getName))
-      
-      DBService.startDB()
+
+        /**
+          * Ensure that the constructed ActorSystem is shut down when the JVM shuts down
+          */
+        sys.addShutdownHook(shutDown(getClass.getName))
+
+        DBService.startDB()
         val route: Route = allroutes(userLookup)
         val binding = if (hasHttpsConfig) {
-        Http().setDefaultServerHttpContext(https)
-        val b = Http().bindAndHandle(route, httpInterface, httpPort, connectionContext = https)
-        logger.info(s"Server online at https://${httpInterface}:${httpPort}/")
-        b
-      } else {
-        val b = Http().bindAndHandle(route, httpInterface, httpPort)
-        logger.info(s"Server online at http://${httpInterface}:${httpPort}/")
-        b
-      }
-      serverBinding = Some(binding)
-      binding
+          Http().setDefaultServerHttpContext(https)
+          val b = Http().bindAndHandle(route, httpInterface, httpPort, connectionContext = https)
+          logger.info(s"Server online at https://${httpInterface}:${httpPort}/")
+          b
+        } else {
+          val b = Http().bindAndHandle(route, httpInterface, httpPort)
+          logger.info(s"Server online at http://${httpInterface}:${httpPort}/")
+          b
+        }
+        serverBinding = Some(binding)
+        binding
       case Some(binding) => binding
     }
   }
@@ -87,8 +88,8 @@ trait KuTuAppHTTPServer extends ApiService with JsonSupport {
   }
 
   def shutDown(caller: String) {
-    Core.terminate()
     stopServer(caller)
+    Core.terminate()
     println(caller + " System terminated")
   }
 
@@ -122,20 +123,22 @@ trait KuTuAppHTTPServer extends ApiService with JsonSupport {
         .getByInetAddress(dgs.getLocalAddress)
       val internetAccessAdresses = if (networkInterface == null) List.empty else networkInterface
         .getInetAddresses.asIterator().asScala.map(mapToInteraceInfo)
-        .filter{
+        .filter {
           case (_, _, 200) => true
           case _ => false
         }
         .map(_._2)
-//        .toList.mkString("\n"))
+      //        .toList.mkString("\n"))
 
       if (internetAccessAdresses.nonEmpty) {
         internetAccessAdresses
       } else {
         NetworkInterface
           .getNetworkInterfaces.asIterator().asScala
-          .flatMap{_.getInetAddresses.asIterator().asScala.map(mapToInteraceInfo)}
-          .filter{
+          .flatMap {
+            _.getInetAddresses.asIterator().asScala.map(mapToInteraceInfo)
+          }
+          .filter {
             case (_, _, 200) => true
             case _ => false
           }

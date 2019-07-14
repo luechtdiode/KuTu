@@ -1,17 +1,20 @@
 package ch.seidel.kutu.data
 
+import java.net.{URLDecoder, URLEncoder}
 import java.text.SimpleDateFormat
 
 import ch.seidel.kutu.domain._
 
 import scala.collection.mutable
-import scala.collection.mutable.HashMap
 import scala.math.BigDecimal.int2bigDecimal
 
 sealed trait GroupBy {
   val groupname: String
   protected var next: Option[GroupBy] = None
+  protected var isANO: Boolean = false
+
   protected def allName = groupname
+
   protected val allgrouper = (w: WertungView) => NullObject(allName).asInstanceOf[DataObject]
   protected val grouper: (WertungView) => DataObject
   protected val sorter: Option[(GroupSection, GroupSection) => Boolean] //= leafsorter
@@ -20,32 +23,56 @@ sealed trait GroupBy {
   })
 
   override def toString = groupname
-  
+
+  def isAlphanumericOrdered = isANO
+
+  def setAlphanumericOrdered(value: Boolean) {
+    traverse(value){ (gb, acc) =>
+      gb.isANO = acc
+      acc
+    }
+  }
+
+  def toRestQuery: String = {
+    val groupby = traverse("") { (gb, acc) =>
+      acc match {
+        case "" =>
+          gb.groupname
+        case _ =>
+          acc + "," + gb.groupname
+      }
+    }
+    s"groupby=${groupby}" + (if (isANO) "&alphanumeric" else "")
+  }
+
   def chainToString: String = s"$groupname (skipGrouper: $skipGrouper, $allName)" + (next match {
-      case Some(gb) =>  "\n\t/" + gb.chainToString
-      case _ => ""
-    })
-  
+    case Some(gb) => "\n\t/" + gb.chainToString
+    case _ => ""
+  })
+
   def skipGrouper: Boolean = false
+
   def canSkipGrouper: Boolean = false
-  
+
   def /(next: GroupBy): GroupBy = groupBy(next)
 
   def traverse[T >: GroupBy, A](accumulator: A)(op: (T, A) => A): A = {
     next match {
-      case Some(gb) => gb.traverse(op(this, accumulator)) { op }
+      case Some(gb) => gb.traverse(op(this, accumulator)) {
+        op
+      }
       case _ => op(this, accumulator)
     }
   }
 
   def groupBy[T >: GroupBy](next: T): T = {
-    if(this == next) {
+    if (this == next) {
       next
     }
     else {
       this.next match {
         case Some(n) =>
-          if(n != this) {
+          if (n != this) {
             n.groupBy(next)
             this
           }
@@ -60,20 +87,21 @@ sealed trait GroupBy {
   }
 
   def reset {
+    setAlphanumericOrdered(false)
     next = None
   }
 
   def select(wvlist: Seq[WertungView]): Iterable[GroupSection] = {
-   val grouped = if (skipGrouper) {
-        wvlist groupBy allgrouper filter(g => g._2.nonEmpty)
-      }
-      else {
-        wvlist groupBy grouper filter(g => g._2.nonEmpty)
-      }
-   
+    val grouped = if (skipGrouper) {
+      wvlist groupBy allgrouper filter (g => g._2.nonEmpty)
+    }
+    else {
+      wvlist groupBy grouper filter (g => g._2.nonEmpty)
+    }
+
     next match {
       case Some(ng) => mapAndSortNode(ng, grouped)
-      case None     => mapAndSortLeaf(grouped)
+      case None => mapAndSortLeaf(grouped)
     }
   }
 
@@ -81,6 +109,7 @@ sealed trait GroupBy {
     def reduce(switch: DataObject, list: Seq[WertungView]): Seq[GroupSection] = {
       Seq(GroupLeaf(switch, list))
     }
+
     sort(grouped.flatMap(x => reduce(x._1, x._2)).filter(g => g.sum.endnote > 0), sorter)
   }
 
@@ -88,7 +117,7 @@ sealed trait GroupBy {
     sort(grouped.map { x =>
       val (grp, seq) = x
       val list = ng.select(seq)
-      if(list.isEmpty) {
+      if (list.isEmpty) {
         GroupNode(grp, Seq(GroupSum(grp, Resultat(0, 0, 0), Resultat(0, 0, 0), Resultat(0, 0, 0))))
       }
       else {
@@ -100,46 +129,86 @@ sealed trait GroupBy {
   private def sort(mapped: Iterable[GroupSection], sorter: Option[(GroupSection, GroupSection) => Boolean]) = {
     sorter match {
       case Some(s) => mapped.toList.sortWith(s)
-      case None    => mapped
+      case None => mapped
     }
   }
 }
 
 sealed trait FilterBy extends GroupBy {
-  def filterItems: List[DataObject] = filtItems
 
   def items(fromData: Seq[WertungView]): List[DataObject] = {
     val grp = fromData.groupBy(grouper)
     grp.keys.toList
   }
 
+  override def toRestQuery: String = {
+    val (groupby, filter) = traverse(("", List[String]())) { (gb, acc) =>
+      val (groupby, filter) = acc
+      (
+        if (gb.skipGrouper) {
+          groupby
+        } else if (groupby.isEmpty) {
+          gb.groupname
+        } else {
+          groupby + ":" + gb.groupname
+        },
+        gb match {
+          case f: FilterBy if f.getFilter.nonEmpty =>
+            if (f.skipGrouper) {
+              filter :+ s"&filter=${gb.groupname}:${f.getFilter.map(s => encodeURIParam(s.easyprint)).mkString("!")}"
+            } else {
+              filter :+ s"&filter=${gb.groupname}:${f.getFilter.map(s => encodeURIParam(s.easyprint)).mkString("!")}"
+            }
+          case _ =>
+            filter
+        }
+      )
+    }
+    s"groupby=$groupby${filter.mkString}" + (if (isANO) "&alphanumeric" else "")
+  }
+
   private[FilterBy] var filter: Set[DataObject] = Set.empty
   private[FilterBy] var filtItems: List[DataObject] = List.empty
-  private[FilterBy] def nullObjectFilter = (d: DataObject) => d match { case NullObject(_) => true case _ => false }
-  
+
+  private[FilterBy] def nullObjectFilter = (d: DataObject) => d match {
+    case NullObject(_) => true
+    case _ => false
+  }
+  def filterItems: List[DataObject] =
+    if (skipGrouper) {
+      filtItems ++ getFilter.filter(nullObjectFilter)
+    } else {
+      filtItems
+    }
+
   def analyze(wvlist: Seq[WertungView]): Seq[DataObject] = {
     filtItems = items(wvlist)
     filtItems
   }
-  
+
   override protected def allName = {
     getFilter.filterNot(nullObjectFilter).map(_.easyprint).mkString("[", ", ", "]")
   }
-  
+
   override def select(wvlist: Seq[WertungView]): Iterable[GroupSection] = {
     filtItems = items(wvlist)
-    super.select(wvlist.filter(g => if(getFilter.nonEmpty) getFilter.contains(grouper(g)) else true))
+    super.select(wvlist.filter(g => if (getFilter.nonEmpty) getFilter.contains(grouper(g)) else true))
   }
 
   override def canSkipGrouper = getFilter.filterNot(nullObjectFilter).size > 1
-  override def skipGrouper = getFilter.exists{nullObjectFilter} && canSkipGrouper
-  
+
+  override def skipGrouper = getFilter.exists {
+    nullObjectFilter
+  } && canSkipGrouper
+
   def setFilter(f: Set[DataObject]) {
     filter = f
   }
+
   def getFilter = {
     filter
   }
+
   override def reset {
     super.reset
     filter = Set.empty
@@ -168,7 +237,7 @@ case class ByAthlet() extends GroupBy with FilterBy {
 }
 
 
-case class ByDurchgang(riegenZuDurchgang: Map[String,Durchgang]) extends GroupBy with FilterBy {
+case class ByDurchgang(riegenZuDurchgang: Map[String, Durchgang]) extends GroupBy with FilterBy {
   override val groupname = "Durchgang"
   protected override val grouper = (v: WertungView) => {
     riegenZuDurchgang.getOrElse(v.riege.getOrElse(""), riegenZuDurchgang.getOrElse(v.riege2.getOrElse(""), Durchgang()))
@@ -177,6 +246,7 @@ case class ByDurchgang(riegenZuDurchgang: Map[String,Durchgang]) extends GroupBy
     gs1.groupKey.asInstanceOf[Durchgang].durchgang.compareTo(gs2.groupKey.asInstanceOf[Durchgang].durchgang) < 0
   })
 }
+
 case class ByProgramm(text: String = "Programm/Kategorie") extends GroupBy with FilterBy {
   override val groupname = text
   protected override val grouper = (v: WertungView) => {
@@ -196,6 +266,7 @@ case class ByWettkampfProgramm(text: String = "Programm/Kategorie") extends Grou
     gs1.groupKey.asInstanceOf[ProgrammView].ord.compareTo(gs2.groupKey.asInstanceOf[ProgrammView].ord) < 0
   })
 }
+
 case class ByWettkampfArt() extends GroupBy with FilterBy {
   override val groupname = "Wettkampf-Art"
   protected override val grouper = (v: WertungView) => {
@@ -205,6 +276,7 @@ case class ByWettkampfArt() extends GroupBy with FilterBy {
     gs1.groupKey.asInstanceOf[ProgrammView].ord.compareTo(gs2.groupKey.asInstanceOf[ProgrammView].ord) < 0
   })
 }
+
 case class ByWettkampf() extends GroupBy with FilterBy {
   override val groupname = "Wettkampf"
   protected override val grouper = (v: WertungView) => {
@@ -218,7 +290,7 @@ case class ByWettkampf() extends GroupBy with FilterBy {
 case class ByRiege() extends GroupBy with FilterBy {
   override val groupname = "Riege"
   protected override val grouper = (v: WertungView) => {
-    Riege(v.riege match {case Some(r) => r case None => "keine Einteilung"}, None, None)
+    Riege(v.riege match { case Some(r) => r case None => "keine Einteilung" }, None, None)
   }
   protected override val sorter: Option[(GroupSection, GroupSection) => Boolean] = Some((gs1: GroupSection, gs2: GroupSection) => {
     gs1.groupKey.easyprint.compareTo(gs2.groupKey.easyprint) < 0
@@ -241,7 +313,7 @@ case class ByJahrgang() extends GroupBy with FilterBy {
   protected override val grouper = (v: WertungView) => {
     v.athlet.gebdat match {
       case Some(d) => AthletJahrgang(f"$d%tY")
-      case None    => AthletJahrgang("unbekannt")
+      case None => AthletJahrgang("unbekannt")
     }
   }
   protected override val sorter: Option[(GroupSection, GroupSection) => Boolean] = Some((gs1: GroupSection, gs2: GroupSection) => {
@@ -279,7 +351,7 @@ case class ByVerein() extends GroupBy with FilterBy {
   protected override val grouper = (v: WertungView) => {
     v.athlet.verein match {
       case Some(verein) => verein
-      case _       => Verein(0, "kein", None)
+      case _ => Verein(0, "kein", None)
     }
   }
   protected override val sorter: Option[(GroupSection, GroupSection) => Boolean] = Some((gs1: GroupSection, gs2: GroupSection) => {
@@ -292,10 +364,77 @@ case class ByVerband() extends GroupBy with FilterBy {
   protected override val grouper = (v: WertungView) => {
     v.athlet.verein match {
       case Some(verein) => Verband(verein.verband.getOrElse("kein"))
-      case _       => Verband("kein")
+      case _ => Verband("kein")
     }
   }
   protected override val sorter: Option[(GroupSection, GroupSection) => Boolean] = Some((gs1: GroupSection, gs2: GroupSection) => {
     gs1.groupKey.asInstanceOf[Verband].name.compareTo(gs2.groupKey.asInstanceOf[Verband].name) < 0
   })
+}
+
+object GroupBy {
+  private val allGroupers = List(
+    ByWettkampfProgramm(), ByProgramm(),
+    ByWettkampfProgramm("Kategorie"), ByProgramm("Kategorie"),
+    ByWettkampfProgramm("Programm"), ByProgramm("Programm"), ByWettkampf(),
+    ByJahrgang(), ByGeschlecht(), ByVerband(), ByVerein(), ByAthlet(),
+    ByRiege(), ByDisziplin(), ByJahr()
+  )
+
+  def apply(query: String, data: Seq[WertungView]): GroupBy = {
+    val arguments = query.split("&")
+    val groupby = arguments.filter(x => x.length > 8 && x.startsWith("groupby=")).map(x => URLDecoder.decode(x.split("=")(1), "UTF-8")).headOption
+    val filter = arguments.filter(x => x.length > 7 && x.startsWith("filter=")).map(x => URLDecoder.decode(x.split("=")(1), "UTF-8"))
+    apply(groupby, filter, data, query.contains("&alphanumeric"))
+  }
+
+  def apply(groupby: Option[String], filter: Iterable[String], data: Seq[WertungView], alphanumeric: Boolean, groupers: List[FilterBy] = allGroupers): GroupBy = {
+    val filterList = filter.map { flt =>
+      val keyvalues = flt.split(":")
+      val key = keyvalues(0)
+      val values = keyvalues(1).split("!")
+      key -> values.toSet
+    }.toMap
+
+    val cblist = groupby.toSeq.flatMap(gb => gb.split(":")).map { groupername =>
+      groupers.find(grouper => grouper.groupname.equals(groupername))
+    }.filter { case Some(_) => true case None => false }.map(_.get)
+    val cbllist = if (cblist.nonEmpty) cblist else Seq(ByWettkampfProgramm(), ByGeschlecht())
+
+    val cbflist = filterList.keys.map { groupername =>
+      groupers.find(grouper => grouper.groupname.equals(groupername))
+    }.filter {
+      case Some(_) => true
+      case None => false
+    }.map(_.get).filter(grouper => !cbllist.contains(grouper)) ++ cbllist
+
+    cbflist.foreach { gr =>
+      gr.reset
+      filterList.get(gr.groupname) match {
+        case Some(filterValues) =>
+          gr.setFilter(gr.analyze(data).filter { f =>
+            filterValues.exists(entry => {
+              val itemText = f.easyprint
+              val exists = if (entry.contains(" ")) {
+                entry.split(" ").forall(subentry => itemText.contains(subentry))
+              } else {
+                entry.equalsIgnoreCase(itemText)
+              }
+              exists
+            })
+          }.toSet ++ (
+            if (filterValues.contains("all") || filterValues.contains("alle")) Set(NullObject("alle"))
+            else Set.empty)
+          )
+        case _ =>
+      }
+    }
+    val query = if (cbflist.nonEmpty) {
+      cbflist.foldLeft(cbflist.head.asInstanceOf[GroupBy])((acc, cb) => if (acc != cb) acc.groupBy(cb) else acc)
+    } else {
+      ByWettkampfProgramm().groupBy(ByGeschlecht())
+    }
+    query.setAlphanumericOrdered(alphanumeric)
+    query
+  }
 }

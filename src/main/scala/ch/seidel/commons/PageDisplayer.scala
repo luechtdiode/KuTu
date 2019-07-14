@@ -202,7 +202,7 @@ object PageDisplayer {
       case "dashBoard" => displayPage(new DashboardPage(tree = tree))
       case _           => context match {
         case Some(w: WettkampfView) => chooseWettkampfPage(wettkampfmode, w, tree)
-        case Some(v: Verein)        => chooseVereinPage(v, tree)
+        case Some(v: Verein)        => chooseVereinPage(wettkampfmode, v, tree)
         case _                      => displayPage(new DashboardPage(value.split("-")(1).trim(), tree))
       }
     }
@@ -210,8 +210,8 @@ object PageDisplayer {
   private def chooseWettkampfPage(wettkampfmode: BooleanProperty, wettkampf: WettkampfView, tree: KuTuAppTree): Node = {
     displayPage(WettkampfPage.buildTab(wettkampfmode, wettkampf, tree.getService))
   }
-  private def chooseVereinPage(verein: Verein, tree: KuTuAppTree): Node = {
-    displayPage(TurnerPage.buildTab(verein, tree.getService))
+  private def chooseVereinPage(wettkampfmode: BooleanProperty, verein: Verein, tree: KuTuAppTree): Node = {
+    displayPage(TurnerPage.buildTab(wettkampfmode, verein, tree.getService))
   }
 
   var activePage: Option[DisplayablePage] = None

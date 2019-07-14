@@ -172,6 +172,7 @@ class CompetitionCoordinatorClientActor(wettkampfUUID: String) extends Persisten
     case awu: AthletWertungUpdatedSequenced => websocketProcessor(Some(sender), awu)
     case awu: AthletMovedInWettkampf => websocketProcessor(Some(sender), awu)
     case awu: AthletRemovedFromWettkampf => websocketProcessor(Some(sender), awu)
+    case awu: ScoresPublished => websocketProcessor(Some(sender), awu)
 
     case fds: FinishDurchgangStation =>
       persist(DurchgangStationFinished(fds.wettkampfUUID, fds.durchgang, fds.geraet, fds.step)) { evt =>
@@ -222,7 +223,7 @@ class CompetitionCoordinatorClientActor(wettkampfUUID: String) extends Persisten
       ref ! NewLastResults(state.lastWertungen, state.lastBestenResults)
 
     // system actions
-    case KeepAlive => wsSend.flatMap(_._2).foreach(ws => ws ! TextMessage("KeepAlive"))
+    case KeepAlive => wsSend.flatMap(_._2).foreach(ws => ws ! TextMessage("keepAlive"))
 
     case MessageAck(txt) => if (txt.equals("keepAlive")) handleKeepAliveAck else println(txt)
 
@@ -315,6 +316,9 @@ class CompetitionCoordinatorClientActor(wettkampfUUID: String) extends Persisten
         handleEvent(awuv)
         val handledEvent = awuv.toAthletWertungUpdated().toAthletWertungUpdatedSequenced(state.lastSequenceId)
         forwardToListeners(handledEvent)
+
+      case scoresPublished: ScoresPublished =>
+        notifyWebSocketClients(senderWebSocket, scoresPublished, "")
 
       case awu: AthletMovedInWettkampf =>
         notifyWebSocketClients(senderWebSocket, awu, "")
@@ -493,7 +497,11 @@ object CompetitionCoordinatorClientActor extends JsonSupport with EnrichedJson {
 
 
   def tryMapText(text: String): KutuAppEvent = try {
-    text.asType[KutuAppEvent]
+    if ("keepAlive".equalsIgnoreCase(text)) {
+      MessageAck(text)
+    } else {
+      text.asType[KutuAppEvent]
+    }
   } catch {
     case _: Exception =>
       logger.debug("unparsable json mapped to MessageAck: " + text)
@@ -545,7 +553,7 @@ object CompetitionCoordinatorClientActor extends JsonSupport with EnrichedJson {
       ask(supervisor, CreateClient(deviceId, wettkampfUUID))(5000 milli).mapTo[ActorRef], 5000 milli)
 
     val sink = fromWebsocketToActorFlow.filter {
-      case MessageAck(msg) if (msg.equals("keepAlive")) => true
+      case MessageAck(msg) if (msg.equalsIgnoreCase("keepAlive")) => true
       case _ => false
     }.to(Sink.actorRef(clientActor, StopDevice(deviceId)).named(deviceId))
 

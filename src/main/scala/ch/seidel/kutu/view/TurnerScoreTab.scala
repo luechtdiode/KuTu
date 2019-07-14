@@ -4,8 +4,9 @@ import ch.seidel.kutu.Config._
 import ch.seidel.kutu.data._
 import ch.seidel.kutu.domain._
 import ch.seidel.kutu.renderer.PrintUtil.FilenameDefault
+import scalafx.beans.property.BooleanProperty
 
-class TurnerScoreTab(val verein: Option[Verein], override val service: KutuService) extends DefaultRanglisteTab(service) {
+class TurnerScoreTab(wettkampfmode: BooleanProperty, val verein: Option[Verein], override val service: KutuService) extends DefaultRanglisteTab(wettkampfmode, service) {
   override val title = verein match {case Some(v) => v.easyprint case None => "Vereinsübergreifend"}
 
   override def groupers: List[FilterBy] =
