@@ -22,22 +22,23 @@ object DBService {
   lazy private val proplite = {
     val prop = new Properties()
     prop.setProperty("date_string_format", "yyyy-MM-dd")
-//    prop.setProperty("connectionPool", "disabled")
-    prop.setProperty("keepAliveConnection", "true")
-//    prop.setProperty("numberThreads ", "1")
-    prop.setProperty("maxConnections ", "256")
-    prop.setProperty("maximumPoolSize", "256")
+    //    prop.setProperty("connectionPool", "disabled")
+    //    prop.setProperty("keepAliveConnection", "true")
+    //    prop.setProperty("numberThreads ", "500")
+    //    prop.setProperty("maxConnections ", "500")
+    //    prop.setProperty("maximumPoolSize", "500")
+    //    prop.setProperty("maxThreads", "500")
     prop
   }
   lazy private val dbFilename = s"kutu-$appVersion.sqlite"
-  lazy private val dbhomedir = if(new File("./db/" + dbFilename).exists()) {
+  lazy private val dbhomedir = if (new File("./db/" + dbFilename).exists()) {
     logger.info("using db at: " + new File("./db/" + dbFilename).getAbsolutePath);
     "./db"
   }
-  else if(new File(userHomePath + "/db").exists()) {
+  else if (new File(userHomePath + "/db").exists()) {
     logger.info("using db at: " + userHomePath + "/db");
     userHomePath + "/db"
-//    "./db"
+    //    "./db"
   }
   else {
     val f = new File(userHomePath + "/db")
@@ -47,7 +48,7 @@ object DBService {
       logger.info("using db at: " + f);
       userHomePath + "/db"
     } catch {
-      case _ : Throwable =>
+      case _: Throwable =>
         val f = new File(".db")
         logger.warn("try to create for installing the db: " + f.getAbsolutePath);
         f.mkdirs();
@@ -64,49 +65,65 @@ object DBService {
     hikariConfig.setDataSourceProperties(proplite)
     hikariConfig.setUsername("kutu")
     hikariConfig.setPassword("kutu")
+    hikariConfig.setMaximumPoolSize(500)
 
     val dataSource = new HikariDataSource(hikariConfig)
-    Database.forDataSource(dataSource, maxConnections = Some(500), executor = AsyncExecutor("DB-Actions", 500, 10000), keepAliveConnection = true)
-//    Database.forURL(
-//      url = "jdbc:sqlite:" + dbfile.getAbsolutePath,
-//      driver = "org.sqlite.JDBC",
-//      prop = proplite,
-//      user = "kutu",
-//      password = "kutu",
-//      executor = AsyncExecutor("DB-Actions", 256, 10000)
-//    )
+    Database.forDataSource(dataSource, maxConnections = Some(500), executor = AsyncExecutor(name = "DB-Actions", minThreads = 500, maxThreads = 500, queueSize = 10000, maxConnections = 500), keepAliveConnection = true)
+    //    Database.forURL(
+    //      url = "jdbc:sqlite:" + dbfile.getAbsolutePath,
+    //      driver = "org.sqlite.JDBC",
+    //      prop = proplite,
+    //      user = "kutu",
+    //      password = "kutu",
+    //      executor = AsyncExecutor("DB-Actions", 256, 10000)
+    //    )
   }
-  
-  private var database: Option[DatabaseDef] = None  
-//  lazy val database = databasemysql
-  
 
-  def updateDB(db: DatabaseDef) = {
+  private var database: Option[DatabaseDef] = None
+  //  lazy val database = databasemysql
+
+
+  def updateDB(db: DatabaseDef, ignoreImportedScripts: Boolean = false) = {
     val sqlScripts = Seq(
       "SetJournalWAL.sql"
-      ,"OptionalWertungen.sql"
-      ,"AddRiegenIndicies.sql"
+      , "OptionalWertungen.sql"
+      , "AddRiegenIndicies.sql"
+      , "PublishedScores.sql"
+      , "PublishedScores3.sql"
     )
 
-    sqlScripts.filter{ filename =>
+    sqlScripts.filter { filename =>
       val f = new File(dbhomedir + s"/$appVersion-$filename.log")
-      !f.exists()
+      ignoreImportedScripts || !f.exists()
     }.foreach { filename =>
       val file = getClass.getResourceAsStream("/dbscripts/" + filename)
+      val sqlscript = Source.fromInputStream(file, "utf-8").getLines().toList
       val log = try {
         logger.info(s"running sql-script: $filename")
 
-        executeDBScript(Source.fromInputStream(file, "utf-8").getLines(), db)
+        executeDBScript(sqlscript, db)
       }
       catch {
-        case e: Exception => e.getMessage
+        case e: Exception =>
+          val fos = Files.newOutputStream(new File(dbhomedir + s"/$appVersion-$filename.err").toPath, StandardOpenOption.CREATE, StandardOpenOption.APPEND)
+          try {
+            fos.write(e.getMessage.getBytes("utf-8"))
+            fos.write("\n\nStatement:\n".getBytes("utf-8"));
+            fos.write(sqlscript.mkString("\n").getBytes("utf-8"))
+            fos.write("\n".getBytes("utf-8"))
+          } finally {
+            fos.close
+          }
+          throw e
       }
-      
-      val fos = Files.newOutputStream(new File(dbhomedir + s"/$appVersion-$filename.log").toPath, StandardOpenOption.CREATE_NEW)
-      try {
-        fos.write(log.getBytes("utf-8"))
-      } finally {
-        fos.close
+
+      if(!ignoreImportedScripts) {
+        val fos = Files.newOutputStream(new File(dbhomedir + s"/$appVersion-$filename.log").toPath, StandardOpenOption.CREATE_NEW)
+        try {
+          fos.write(log.getBytes("utf-8"))
+        } finally {
+          fos.close
+        }
       }
       log
     }
@@ -115,66 +132,72 @@ object DBService {
   def parseLine(s: String): IndexedSeq[String] = {
     @tailrec
     def cutFields(s: String, acc: IndexedSeq[String]): IndexedSeq[String] = {
-      if(s.isEmpty()) {
+      if (s.isEmpty()) {
         acc
       }
-      else if(s.startsWith("\"")) {
+      else if (s.startsWith("\"")) {
         val splitter = s.indexOf("\",", 1)
-        if(splitter == -1) {
+        if (splitter == -1) {
           val splitter2 = s.indexOf("\"", 1)
-          if(splitter2 == 0) {
+          if (splitter2 == 0) {
             acc :+ ""
           }
           else {
-            acc :+ s.drop(1).take(splitter2-1)
+            acc :+ s.drop(1).take(splitter2 - 1)
           }
         }
-        else if(splitter == 0) {
-          cutFields(s.drop(splitter+2), acc :+ "")
+        else if (splitter == 0) {
+          cutFields(s.drop(splitter + 2), acc :+ "")
         }
         else {
-          cutFields(s.drop(splitter+2), acc :+ s.drop(1).take(splitter-1))
+          cutFields(s.drop(splitter + 2), acc :+ s.drop(1).take(splitter - 1))
         }
       }
-      else if(s.startsWith(",")) {
+      else if (s.startsWith(",")) {
         cutFields(s.drop(1), acc :+ "")
       }
       else {
         val splitter = s.indexOf(",", 1)
-        if(splitter == -1) {
+        if (splitter == -1) {
           acc :+ s
         }
-        else if(splitter == 0){
+        else if (splitter == 0) {
           cutFields(s.drop(1), acc :+ "")
         }
         else {
-          cutFields(s.drop(splitter+1), acc :+ s.take(splitter))
+          cutFields(s.drop(splitter + 1), acc :+ s.take(splitter))
         }
       }
     }
+
     cutFields(s, IndexedSeq[String]())
   }
 
-  def executeDBScript(script: Iterator[String], db: DatabaseDef) = {
+  def executeDBScript(script: Seq[String], db: DatabaseDef) = {
     def filterCommentLines(line: String) = {
       !line.trim().startsWith("-- ")
     }
+
     def combineMultilineStatement(acc: List[String], line: String) = {
-      if(line.endsWith(";")) {
-        acc.updated(acc.size -1, acc.last + line) :+ ""
+      if (line.endsWith(";")) {
+        acc.updated(acc.size - 1, acc.last + line) :+ ""
       }
       else {
-        acc.updated(acc.size -1, acc.last + line)
+        acc.updated(acc.size - 1, acc.last + line)
       }
     }
-    def parse(lines: Iterator[String]): List[String] = {
+
+    def parse(lines: Seq[String]): List[String] = {
       lines.filter(filterCommentLines).foldLeft(List(""))(combineMultilineStatement).filter(_.trim().length() > 0)
     }
+
     val statements = parse(script)
-    val statementActions = statements.map(statement => sqlu"""#$statement""")
+    val statementActions = statements.map { statement =>
+      sqlu"""#$statement"""
+    }
     val counters: Seq[Int] = if (statementActions.size == 1) {
       if (statements(0).startsWith("PRAGMA")) {
-        Await.result(db.run(statementActions.head), Duration.Inf)
+        Await.result(db.run(sql"""#${statements(0)}""".as[String]), Duration.Inf)
         Seq(1)
       } else {
         Await.result(db.run(DBIO.sequence(statementActions)), Duration.Inf)
@@ -190,37 +213,37 @@ object DBService {
 
   def installDB(db: DatabaseDef) = {
     val sqlScripts = Seq(
-         "kutu-sqllite-ddl.sql"
-        ,"kutu-sqllite-initialdata.sql"
-        )
+      "kutu-sqllite-ddl.sql"
+      , "kutu-sqllite-initialdata.sql"
+    )
 
     sqlScripts.map { filename =>
       logger.info(s"running sql-script: $filename")
       val file = getClass.getResourceAsStream("/dbscripts/" + filename)
-      executeDBScript(Source.fromInputStream(file, "utf-8").getLines(), db)
+      executeDBScript(Source.fromInputStream(file, "utf-8").getLines().toSeq, db)
     }
   }
 
   lazy val _startDB = {
     logger.info("starting database ...")
     database = database match {
-      case None => 
-        if(!dbfile.exists() || dbfile.length() == 0) {
+      case None =>
+        if (!dbfile.exists() || dbfile.length() == 0) {
           dbfile.createNewFile()
           installDB(databaselite)
         }
         updateDB(databaselite)
         Some(databaselite)
-      case Some(db) => 
+      case Some(db) =>
         Some(db)
     }
     logger.info("Database initialized")
     true
   }
-  
+
   def startDB(alternativDB: Option[DatabaseDef] = None) = {
     alternativDB match {
-      case Some(db) => 
+      case Some(db) =>
         database = Some(db)
       case None =>
     }
@@ -230,7 +253,7 @@ object DBService {
     }
     database.get
   }
-  
+
   val sdf = new SimpleDateFormat("dd.MM.yyyy")
   val sdfShort = new SimpleDateFormat("dd.MM.yy")
   val sdfExported = new SimpleDateFormat("yyyy-MM-dd")
@@ -240,7 +263,7 @@ object DBService {
 
 trait DBService {
   private val logger = LoggerFactory.getLogger(this.getClass)
-  
+
   def database: DatabaseDef = DBService.startDB()
 
 
@@ -249,7 +272,7 @@ trait DBService {
   }
   catch {
     case d: ParseException => try {
-    	new java.sql.Date(DBService.sdfExported.parse(date).getTime)
+      new java.sql.Date(DBService.sdfExported.parse(date).getTime)
     }
     catch {
       case dd: ParseException =>

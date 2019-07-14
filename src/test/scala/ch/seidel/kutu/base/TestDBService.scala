@@ -49,7 +49,7 @@ object TestDBService {
 //        executor = AsyncExecutor("DB-Actions", 500, 10000)
 //        )
     DBService.installDB(tempDatabase)
-    DBService.updateDB(tempDatabase)
+    DBService.updateDB(tempDatabase, true)
     logger.info("Database initialized")
     tempDatabase
   }  

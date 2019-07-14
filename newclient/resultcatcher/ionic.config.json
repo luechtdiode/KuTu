@@ -1,0 +1,7 @@
+{
+  "name": "resultcatcher",
+  "integrations": {
+    "cordova": {}
+  },
+  "type": "angular"
+}

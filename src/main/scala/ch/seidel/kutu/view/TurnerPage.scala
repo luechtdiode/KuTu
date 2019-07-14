@@ -4,7 +4,7 @@ import ch.seidel.commons._
 import ch.seidel.kutu.domain._
 import javafx.scene.{control => jfxsc}
 import scalafx.Includes._
-import scalafx.beans.property.StringProperty
+import scalafx.beans.property.{BooleanProperty, StringProperty}
 import scalafx.collections.ObservableBuffer
 import scalafx.event.ActionEvent
 import scalafx.geometry.Pos
@@ -226,7 +226,7 @@ object TurnerPage {
     }
   }
 
-  def buildTab(club: Verein, service: KutuService) = {
+  def buildTab(wettkampfmode: BooleanProperty, club: Verein, service: KutuService) = {
     def refresher(pane: LazyTabPane) = {
       val retUnsorted = Seq(new VereinTab(club, service, pane) {
         text = verein.name
@@ -252,11 +252,11 @@ object TurnerPage {
           drillDownInDisziplin(None, w, service, pane)
         }
       },
-      new TurnerScoreTab(Some(club), service){
+      new TurnerScoreTab(wettkampfmode, Some(club), service){
         text = club.easyprint + "-übergreifende Turner-Auswertung"
         closable = false
       },
-      new TurnerScoreTab(None, service){
+      new TurnerScoreTab(wettkampfmode, None, service){
         text = "Übergreifende Turner-Auswertung"
         closable = false
       })

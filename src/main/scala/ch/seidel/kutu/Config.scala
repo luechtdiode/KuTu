@@ -135,13 +135,13 @@ object Config extends KuTuSSLContext {
     if (System.getProperty("os.name").toLowerCase.indexOf("win") > -1) {
       Files.setAttribute(path, "dos:hidden", true, LinkOption.NOFOLLOW_LINKS)
     }
-    logger.info("DeviceId new createt " + path)
+    logger.info("DeviceId new created " + path)
   }
 
   def readDeviceId: Option[String] = {
     val path = new File(userHomePath + "/.deviceId").toPath
     if (path.toFile.exists) {
-      logger.info("Secret found " + path)
+      logger.info("DeviceId found " + path)
       Some(new String(Files.readAllBytes(path), "utf-8"))
     }
     else {
@@ -207,11 +207,14 @@ object Config extends KuTuSSLContext {
   def remoteHostOrigin = if(_isLocalHostServer) "localhost" else remoteHost.split(":")(0)
 
   private var _isLocalHostServer = false
-  def setLocalHostServer(value: Boolean): Unit = {
+  private var _localHostRemoteIP: Option[String] = None
+  def setLocalHostServer(value: Boolean, localHostRemoteIP: Option[String]): Unit = {
     _isLocalHostServer = value
+    _localHostRemoteIP = localHostRemoteIP
   }
   def isLocalHostServer() = _isLocalHostServer
-  def remoteBaseUrl = if(_isLocalHostServer) if(hasHttpsConfig)s"https://$httpHostname:$httpPort" else s"http://$httpHostname:$httpPort" else s"$remoteSchema://$remoteHost"
+  lazy val remoteHostPort = if (appRemoteConfig.hasPath("port")) appRemoteConfig.getString("port") else "443"
+  def remoteBaseUrl = if(_isLocalHostServer) if(hasHttpsConfig)s"https://${_localHostRemoteIP.getOrElse(httpHostname)}:$httpPort" else s"http://${_localHostRemoteIP.getOrElse(httpHostname)}:$httpPort" else s"$remoteSchema://$remoteHost:$remoteHostPort"
 
   def remoteOperatingBaseUrl = remoteBaseUrl //s"http://$remoteHost:$remotePort/operating"
   def remoteAdminBaseUrl = remoteBaseUrl//s"$remoteBaseUrl/wkadmin"

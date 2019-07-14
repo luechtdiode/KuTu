@@ -1,0 +1,10 @@
+{
+  "/api": {
+    "target": "https://kutuapp.sharevic.net",
+    "_target": "http://mws-01:5757",
+    "secure": false,
+    "ws": true,
+    "changeOrigin": true,  
+    "logLevel": "debug"
+  }
+}
