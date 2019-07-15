@@ -12,11 +12,11 @@ export class LastTopResultsPage implements OnInit {
 
   items: WertungContainer[] = [];
   toptop = {};
-  geraete: Geraet[];
+  geraete: Geraet[] = [];
 
   ngOnInit() {
     this.backendService.loadAlleResultate().subscribe(geraete => {
-      this.geraete = geraete;
+      this.geraete = geraete || [];
       this.sortItems();
     });
     this.backendService.newLastResults.pipe(
@@ -66,7 +66,7 @@ export class LastTopResultsPage implements OnInit {
     if (!this.stationFreezed) {
       this.backendService.getDurchgaenge(competitionId);
       this.backendService.loadAlleResultate().subscribe(geraete => {
-        this.geraete = geraete;
+        this.geraete = geraete || [];
         this.sortItems();
       });
     }

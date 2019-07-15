@@ -15,7 +15,7 @@ export class LastResultsPage implements OnInit {
 
   items: WertungContainer[] = [];
   lastItems: number[];
-  geraete: Geraet[];
+  geraete: Geraet[] = [];
 
   // @HostListener('window:resize', ['$event'])
   // onResize(event: any) {
@@ -30,7 +30,7 @@ export class LastResultsPage implements OnInit {
 
   ngOnInit(): void {
     this.backendService.loadAlleResultate().subscribe(geraete => {
-      this.geraete = geraete;
+      this.geraete = geraete || [];
       this.sortItems();
     });
     this.backendService.newLastResults.pipe(
@@ -67,7 +67,7 @@ export class LastResultsPage implements OnInit {
     if (!this.stationFreezed) {
       this.backendService.getDurchgaenge(competitionId);
       this.backendService.loadAlleResultate().subscribe(geraete => {
-        this.geraete = geraete;
+        this.geraete = geraete || [];
         this.sortItems();
       });
     }
