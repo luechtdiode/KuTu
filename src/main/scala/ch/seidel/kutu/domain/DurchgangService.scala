@@ -1,5 +1,7 @@
 package ch.seidel.kutu.domain
 
+import java.util.UUID
+
 import org.slf4j.LoggerFactory
 import slick.jdbc.SQLiteProfile.api._
 
@@ -53,5 +55,25 @@ trait DurchgangService extends DBService with DurchgangResultMapper {
                 wettkampf_id=${wettkampfid} and durchgang=${oldname}
         """).transactionally
     }, Duration.Inf)
+  }
+
+
+  def selectDurchgaenge(wettkampfUUID: UUID) = {
+    Await.result(selectDurchgaengeAsync(wettkampfUUID), Duration.Inf)
+  }
+
+  def selectDurchgaengeAsync(wettkampfUUID: UUID) = {
+    database.run{(
+      sql"""select distinct wk.id, r.durchgang
+             from riege r inner join wettkampf wk on r.wettkampf_id = wk.id
+             where wk.uuid=${wettkampfUUID.toString}
+          """.as[Durchgang]).withPinnedSession
+    }
+//    database.run{(
+//      sql"""select r.wettkampf_id, r.durchgang
+//             from durchgangstation r inner join wettkampf wk on r.wettkampf_id = wk.id
+//             where wk.uuid=${wettkampfUUID.toString}
+//          """.as[Durchgang]).withPinnedSession
+//    }
   }
 }

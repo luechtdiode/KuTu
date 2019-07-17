@@ -183,7 +183,7 @@ trait WettkampfRoutes extends SprayJsonSupport with JsonSupport with JwtSupport 
           authenticated() { wettkampfUUID =>
             val claims = setClaims(wettkampfUUID, jwtTokenExpiryPeriodInDays)
             respondWithHeader(RawHeader(jwtAuthorizationKey, JsonWebToken(jwtHeader, claims, jwtSecretKey))) {
-              complete(StatusCodes.OK)
+              complete(wettkampfUUID.toString)
             }
           }
         }

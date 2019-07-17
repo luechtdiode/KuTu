@@ -29,19 +29,19 @@
       {{competitionName()}}
     </ion-note>    
   </ion-toolbar>
-  <!--ion-item-divider color="light"-->
       <ion-searchbar placeholder="Search" 
         [(ngModel)]="sMyQuery" [showCancelButton]="false"  
-        debounce="600"
         (ionInput)="reloadList($event)"
         (ionCancel)="reloadList($event)">
       </ion-searchbar>
-      <!--ion-badge item-end>{{unsubscribedItems.length}}</ion-badge-->
-    <!--/ion-item-divider-->
 </ion-header>
 
 <ion-content *ngIf="competition && startlist && startlist.programme">
-  <ion-list>
+  <ion-list >
+    <ion-item *ngIf="(isBusy | async)">
+      <ion-label>loading ...</ion-label>
+      <ion-spinner></ion-spinner>
+    </ion-item>
     <div *ngFor="let pgm of filteredStartList.programme">
       <ion-item-divider>{{pgm.programm}}</ion-item-divider>
       <ion-item-sliding #slidingAthletItem *ngFor="let tn of pgm.teilnehmer"

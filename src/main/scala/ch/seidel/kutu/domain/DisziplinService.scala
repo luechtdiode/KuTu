@@ -4,9 +4,9 @@ import org.slf4j.LoggerFactory
 import slick.jdbc.GetResult
 import slick.jdbc.SQLiteProfile.api._
 
-import scala.concurrent.Await
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration.Duration
+import scala.concurrent.{Await, Future}
 
 abstract trait DisziplinService extends DBService with WettkampfResultMapper {
   private val logger = LoggerFactory.getLogger(this.getClass)
@@ -77,10 +77,17 @@ abstract trait DisziplinService extends DBService with WettkampfResultMapper {
       sql""" select id from wettkampfdisziplin where programm_Id in #$programme""".as[Long].withPinnedSession
     }, Duration.Inf).toList
   }
+  def listDisziplinZuWettkampf(wettkampf: Wettkampf): Future[Vector[Disziplin]] = {
+    database.run{
+      val programme = readWettkampfLeafs(wettkampf.programmId).map(p => p.id).mkString("(", ",", ")")
+      sql""" select distinct d.id, d.name from disziplin d inner join wettkampfdisziplin wd on d.id = wd.disziplin_id
+             where wd.programm_Id in #$programme""".as[Disziplin].withPinnedSession
+    }
+  }
   
   def listDisziplinesZuProgramm(programmId: Long, geschlecht: Option[String] = None): List[Disziplin] = {
     Await.result(database.run{
-      sql""" select distinct wd.disziplin_id, d.name
+      sql""" select distinct d.id, d.name
              from wettkampfdisziplin wd, disziplin d, programm p
              where
               wd.disziplin_id = d.id

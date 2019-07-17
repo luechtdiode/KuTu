@@ -3,7 +3,9 @@ import { StartList, Wettkampf, Teilnehmer, ProgrammItem } from '../backend-types
 import { NavController, IonItemSliding } from '@ionic/angular';
 import { BackendService } from '../services/backend.service';
 import { async } from 'rxjs/internal/scheduler/async';
-import { BehaviorSubject, Subject } from 'rxjs';
+import { BehaviorSubject, Subject, of, Observable } from 'rxjs';
+import { ActivatedRoute } from '@angular/router';
+import { debounceTime, distinctUntilChanged, map, filter, switchMap, tap, share } from 'rxjs/operators';
 
 @Component({
   selector: 'app-search-athlet',
@@ -15,18 +17,25 @@ export class SearchAthletPage implements OnInit {
   sStartList: StartList;
   sFilteredStartList: StartList;
   sMyQuery: string;
-  tMyQuery: string;
+
+  tMyQueryStream = new Subject<any>();
 
   sFilterTask: () => void = undefined;
 
-  constructor(public navCtrl: NavController, public backendService: BackendService) {
+  private busy = new BehaviorSubject(false);
+
+  constructor(public navCtrl: NavController,
+              private route: ActivatedRoute,
+              public backendService: BackendService) {
     this.backendService.getCompetitions();
   }
 
   ngOnInit(): void {
-    this.backendService.loadStartlist(undefined).subscribe(startlist => {
-      this.startlist = startlist;
-    });
+    this.busy.next(true);
+    const wkId = this.route.snapshot.paramMap.get('wkId');
+    if (wkId) {
+      this.competition = wkId;
+    }
   }
 
   get stationFreezed(): boolean {
@@ -34,13 +43,33 @@ export class SearchAthletPage implements OnInit {
   }
 
   set competition(competitionId: string) {
-    if (!this.stationFreezed) {
+    if (!this.startlist || competitionId !== this.backendService.competition) {
+      this.busy.next(true);
+      this.startlist = {} as StartList;
       this.backendService.getDurchgaenge(competitionId);
-      this.backendService.loadStartlist(this.sMyQuery).subscribe(startlist => {
+      this.backendService.loadStartlist(/*this.sMyQuery*/undefined).subscribe(startlist => {
         this.startlist = startlist;
+        this.busy.next(false);
+        const pipeBeforeAction = this.tMyQueryStream.pipe(
+          filter(event => !!event && !!event.target && !!event.target.value),
+          map(event => event.target.value),
+          debounceTime(1000),
+          distinctUntilChanged(),
+          share()
+        );
+        pipeBeforeAction.subscribe(startSearchWith => {
+          this.busy.next(true);
+        });
+        pipeBeforeAction.pipe(
+          switchMap(this.runQuery(startlist))
+        ).subscribe(filteredList => {
+          this.sFilteredStartList = filteredList;
+          this.busy.next(false);
+        });
       });
     }
   }
+
   get competition(): string {
     return this.backendService.competition || '';
   }
@@ -52,60 +81,47 @@ export class SearchAthletPage implements OnInit {
     return this.sStartList;
   }
   get filteredStartList() {
-    if (!this.sMyQuery || this.sMyQuery.length < 2) {
-      return [];
-    }
     return this.sFilteredStartList || {
       programme : []
     } as StartList;
   }
-  reloadList(event: any) {
-    if (!event || !event.target.value || event.target.value.trim().length === 0) {
-      return;
-    }
-    if (this.tMyQuery === event.target.value.trim()) {
-      return;
-    }
-    this.tMyQuery = event.target.value.trim();
 
-    if (this.sFilterTask) {
-      return;
-    }
+  get isBusy(): Observable<boolean> {
+    return this.busy;
+  }
 
-    const finishedPromise = new Subject();
-    this.sFilterTask = () => {
-      let q: string;
-      do {
-        this.sFilteredStartList = {
-          programme : []
-        } as StartList;
-        q = this.tMyQuery;
-        if (event && this.sStartList) {
-          this.sStartList.programme.filter(pgm => q === this.sMyQuery).forEach(programm => {
-            const filter = this.filter(q);
-            const tnFiltered = programm.teilnehmer
-              .filter(pgm => q === this.sMyQuery)
-              .filter(tn => filter(tn, programm.programm));
-            if (tnFiltered.length > 0) {
-              const pgItem = {
-                programm : programm.programm,
-                teilnehmer: tnFiltered
-              } as ProgrammItem;
-              this.sFilteredStartList = Object.assign({}, this.sStartList, {
-                programme : [...this.sFilteredStartList.programme, pgItem]
-              });
-            }
-          });
-        }
-      } while (q !== this.tMyQuery);
+  runQuery(startlist: StartList) {
+    return (query: string) => {
+      const q = query.trim();
+      let result: StartList;
 
-      this.sFilterTask = undefined;
-      this.sMyQuery = this.tMyQuery;
-      finishedPromise.complete();
-      this.backendService.resetLoading();
+      result = {
+        programme : []
+      } as StartList;
+
+      if (q && startlist) {
+
+        startlist.programme.forEach(programm => {
+          const filterFn = this.filter(q);
+          const tnFiltered = programm.teilnehmer.filter(tn => filterFn(tn, programm.programm));
+          if (tnFiltered.length > 0) {
+            const pgItem = {
+              programm : programm.programm,
+              teilnehmer: tnFiltered
+            } as ProgrammItem;
+            result = Object.assign({}, startlist, {
+              programme : [...result.programme, pgItem]
+            });
+          }
+        });
+      }
+
+      return of(result);
     };
-    setTimeout(this.sFilterTask, 1500);
+  }
 
+  reloadList(event: any) {
+    this.tMyQueryStream.next(event);
   }
 
   itemTapped(item: Teilnehmer, slidingItem: IonItemSliding) {
@@ -144,6 +160,9 @@ export class SearchAthletPage implements OnInit {
       .map(c => c.titel + ', am ' + (c.datum + 'T').split('T')[0].split('-').reverse().join('-'));
 
     if (candidate.length === 1) {
+      if (!this.startlist) {
+        this.competition = this.backendService.competition;
+      }
       return candidate[0];
     } else {
       return '';

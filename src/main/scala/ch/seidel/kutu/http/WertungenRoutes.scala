@@ -73,12 +73,7 @@ trait WertungenRoutes extends SprayJsonSupport with JsonSupport with JwtSupport 
               complete(StatusCodes.NotFound)
             } else
             complete {
-              Future {
-                RiegenBuilder.mapToGeraeteRiegen(getAllKandidatenWertungen(competitionId).toList)
-                  .filter(gr => gr.durchgang.nonEmpty)
-                  .map(gr => gr.durchgang.get)
-                  .distinct.sorted
-              }
+              selectDurchgaengeAsync(competitionId).map(_.map(_.durchgang).distinct.sorted)
             }
           }
         } ~
@@ -134,27 +129,7 @@ trait WertungenRoutes extends SprayJsonSupport with JsonSupport with JwtSupport 
               complete(StatusCodes.NotFound)
             } else
             complete {
-              Future {
-                RiegenBuilder.mapToGeraeteRiegen(getAllKandidatenWertungen(competitionId).toList)
-                  .filter(gr => gr.disziplin.nonEmpty)
-                  .map(gr => gr.disziplin.get)
-                  .foldLeft(List[Disziplin]())((acc, geraet) => if (acc.contains(geraet)) acc else acc :+ geraet)
-              }
-            }
-          }
-        } ~
-        path("diszipline") {
-          get {
-            if (!wettkampfExists(competitionId.toString)) {
-              complete(StatusCodes.NotFound)
-            } else
-            complete {
-              Future {
-                RiegenBuilder.mapToGeraeteRiegen(getAllKandidatenWertungen(competitionId).toList)
-                  .filter(gr => gr.disziplin.nonEmpty)
-                  .map(gr => gr.disziplin.get)
-                  .foldLeft(List[Disziplin]())((acc, geraet) => if (acc.contains(geraet)) acc else acc :+ geraet)
-              }
+              listDisziplinZuWettkampf(readWettkampf(competitionId.toString()))
             }
           }
         } ~
@@ -164,25 +139,33 @@ trait WertungenRoutes extends SprayJsonSupport with JsonSupport with JwtSupport 
               complete(StatusCodes.NotFound)
             }
             else {
-              val wkPgmId = readWettkampf(competitionId.toString()).programmId
+              val wettkampf = readWettkampf(competitionId.toString())
+              val wkPgmId = wettkampf.programmId
               val isDNoteUsed = wkPgmId != 20 && wkPgmId != 1
               // Durchgang/Geraet/Step
               segments match {
                 case List(durchgang) => complete {
                   Future {
-                    RiegenBuilder.mapToGeraeteRiegen(getAllKandidatenWertungen(competitionId).toList)
-                      .filter(gr => gr.durchgang.exists(encodeURIComponent(_) == durchgang) && gr.disziplin.nonEmpty)
-                      .map(gr => gr.disziplin.get)
-                      .foldLeft(List[Disziplin]())((acc, geraet) => if (acc.contains(geraet)) acc else acc :+ geraet)
+                    val decodedDurchgangMap = selectDurchgaenge(competitionId).map{durchgang =>
+                      encodeURIComponent(durchgang.durchgang) -> durchgang.durchgang
+                    }.toMap
+                    val decodedDurchgang = decodedDurchgangMap(durchgang)
+                    val durchgaengeWithDisziplins =
+                         listDisziplinesZuDurchgang(Set(decodedDurchgang), wettkampf.id, true) ++
+                           listDisziplinesZuDurchgang(Set(decodedDurchgang), wettkampf.id, false)
+
+                    durchgaengeWithDisziplins(decodedDurchgang).distinct
                   }
                 }
                 case List(durchgang, geraet) => complete {
                   Future {
-                    val gid: Long = geraet
                     RiegenBuilder.mapToGeraeteRiegen(getAllKandidatenWertungen(competitionId).toList)
-                      .filter(gr => gr.durchgang.exists(encodeURIComponent(_) == durchgang) && gr.disziplin.exists(_.id == gid))
+                      .filter(gr => {
+                        val gid: Long = geraet
+                        gr.durchgang.exists(encodeURIComponent(_) == durchgang) && gr.disziplin.exists(_.id == gid)
+                      })
                       .map(gr => gr.halt + 1)
-                      .toSet.toList.sorted
+                      .distinct.sorted
                   }
                 }
                 case List(durchgang, geraet, step) => complete {

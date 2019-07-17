@@ -217,6 +217,13 @@ export class BackendService extends WebsocketService {
       }).pipe(share())).subscribe((data) => {
         localStorage.setItem('auth_token', data.headers.get('x-access-token'));
         this.loggedIn = true;
+        if (!this.competitions || this.competitions.length === 0) {
+          this.getCompetitions().subscribe(d => {
+            this.getDurchgaenge( data.body);
+          });
+        } else {
+          this.getDurchgaenge( data.body);
+        }
       }, (err: HttpErrorResponse) => {
         console.log(err);
         if (err.status === 401) {
@@ -278,10 +285,12 @@ export class BackendService extends WebsocketService {
     }
 
     getCompetitions() {
-      this.startLoading('Wettkampfliste wird geladen. Bitte warten ...',
-        this.http.get<Wettkampf[]>(backendUrl + 'api/competition').pipe(share())).subscribe((data) => {
+      const loader = this.startLoading('Wettkampfliste wird geladen. Bitte warten ...',
+      this.http.get<Wettkampf[]>(backendUrl + 'api/competition').pipe(share()));
+      loader.subscribe((data) => {
         this.competitions = data;
       }, this.standardErrorHandler);
+      return loader;
     }
 
     getDurchgaenge(competitionId: string) {
@@ -303,6 +312,7 @@ export class BackendService extends WebsocketService {
     loadDurchgaenge() {
       return this.startLoading('Durchgangliste wird geladen. Bitte warten ...',
         this.http.get<string[]>(backendUrl + 'api/durchgang/' + this._competition).pipe(share())).subscribe((data) => {
+        localStorage.setItem('current_competition', this._competition);
         this.durchgaenge = data;
         this.captionmode = true;
       }, this.standardErrorHandler);
