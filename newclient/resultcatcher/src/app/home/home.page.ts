@@ -70,6 +70,16 @@ export class HomePage {
     return this.backendService.step || -1;
   }
 
+  itemTapped(slidingItem: IonItemSliding) {
+    slidingItem.getOpenAmount().then(amount => {
+        if (amount > 10 || amount < -10) {
+        slidingItem.close();
+      } else {
+        slidingItem.open('end');
+      }
+    });
+  }
+
   nextStep(slidingItem: IonItemSliding) {
     this.step = this.backendService.nextStep();
     slidingItem.close();
@@ -118,7 +128,7 @@ export class HomePage {
 
   getSteps(): number[] {
     if (! this.backendService.steps && this.backendService.geraet) {
-      this.backendService.getWertungen(this.competition, this.durchgang, this.geraet, 1);
+      this.backendService.getSteps(this.competition, this.durchgang, this.geraet);
     }
     return this.backendService.steps;
   }

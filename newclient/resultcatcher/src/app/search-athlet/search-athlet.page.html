@@ -44,9 +44,9 @@
     </ion-item>
     <div *ngFor="let pgm of filteredStartList.programme">
       <ion-item-divider>{{pgm.programm}}</ion-item-divider>
-      <ion-item-sliding #slidingAthletItem *ngFor="let tn of pgm.teilnehmer"
-        (click)='itemTapped(tn, slidingAthletItem)'>
-        <startlist-item [teilnehmer]="tn" [programm]="pgm"></startlist-item>
+      <ion-item-sliding #slidingAthletItem *ngFor="let tn of pgm.teilnehmer">
+        <startlist-item [teilnehmer]="tn" [programm]="pgm"
+        (click)='itemTapped(tn, slidingAthletItem)'></startlist-item>
         <ion-item-options side="end">
           <ion-item-option color="primary" (click)="followAthlet(tn, slidingAthletItem)">
               <ion-icon name="arrow-dropright-circle" ios="md-arrow-dropright-circle"></ion-icon>         

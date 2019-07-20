@@ -394,7 +394,7 @@ export class BackendService extends WebsocketService {
     }
     loadWertungen() {
       // prevent denial of service fired from the step-slider
-      if (this.wertungenLoading) {
+      if (this.wertungenLoading || !this._step) {
         return;
       }
       this.captionmode = true;

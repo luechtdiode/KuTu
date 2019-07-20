@@ -109,6 +109,16 @@ export class StationPage implements OnInit  {
     }
   }
 
+  itemTapped(slidingItem: IonItemSliding) {
+    slidingItem.getOpenAmount().then(amount => {
+        if (amount > 10 || amount < -10) {
+        slidingItem.close();
+      } else {
+        slidingItem.open('end');
+      }
+    });
+  }
+  
   nextStep(slidingItem: IonItemSliding) {
     this.backendService.nextGeraet().subscribe(step => {
       this.step = step;
