@@ -39,6 +39,11 @@ jobs:
   - stage: client
     language: node_js
     node_js: lts/*
+    env: PYTHON=3.6
+    addons:
+      apt:
+        packages:
+          - python3.6
     before_install:
       - npm install -g cordova ionic
       - pip install awscli --upgrade --user
