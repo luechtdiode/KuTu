@@ -23,6 +23,9 @@
     <ion-item-sliding #slidingStepItem>
       <ion-item (click)='itemTapped(slidingStepItem)'>
         <ion-label>{{(geraet && getSteps()) ? "Riege (" + getSteps()[0] + " bis " + getSteps()[getSteps().length-1] + ")" : "Keine Daten"}}</ion-label>
+        <ion-note slot="end" *ngIf="(geraet && getSteps() && getSteps().length > 0)">
+          {{"Riege " + step}}
+        </ion-note>
         <ion-icon slot="end" *ngIf="(geraet && getSteps())" name="arrow-dropright"></ion-icon>
       </ion-item>     
         <ion-item-options side="start">
@@ -70,10 +73,10 @@
         </ion-range>Riege {{step}}        
       </ion-item> -->
       <ion-item (click)='itemTapped(slidingStepItem)'>
+        <ion-label>{{(geraet && getSteps()) ? "Riege (" + getSteps()[0] + " bis " + getSteps()[getSteps().length-1] + ")" : "Keine Daten"}}</ion-label>
         <ion-note slot="end" *ngIf="(geraet && getSteps() && getSteps().length > 0)">
           {{"Riege " + step}}
         </ion-note>
-        <ion-label>{{(geraet && getSteps()) ? "Riege (" + getSteps()[0] + " bis " + getSteps()[getSteps().length-1] + ")" : "Keine Daten"}}</ion-label>
         <ion-icon slot="end" *ngIf="(geraet && getSteps())" name="arrow-dropright"></ion-icon>
       </ion-item>     
         <ion-item-options side="start">

@@ -4,7 +4,6 @@ import { BackendService } from '../services/backend.service';
 import { encodeURIComponent2 } from '../services/websocket.service';
 import { Wettkampf, Geraet, WertungContainer } from '../backend-types';
 import { map } from 'rxjs/operators';
-import { DomSanitizer } from '@angular/platform-browser';
 
 @Component({
   selector: 'app-station',
@@ -14,9 +13,9 @@ import { DomSanitizer } from '@angular/platform-browser';
 export class StationPage implements OnInit  {
 
   durchgangopen = false;
+  geraete: Geraet[] = [];
 
   constructor(public navCtrl: NavController, public backendService: BackendService,
-              private sanitizer: DomSanitizer,
               private alertCtrl: AlertController) {
     this.backendService.durchgangStarted.pipe(
       map(dgl =>
@@ -29,14 +28,16 @@ export class StationPage implements OnInit  {
   }
 
   ionViewWillEnter() {
-    if (!this.backendService.captionmode) {
-      this.backendService.captionmode = true;
-      this.backendService.loadGeraete();
+    if (this.geraete.length > 0 && !this.backendService.captionmode) {
+      this.backendService.activateCaptionMode();
     }
   }
   ngOnInit(): void {
-    // this.backendService.captionmode = true;
-    // this.backendService.loadGeraete();
+    this.backendService.geraeteSubject.subscribe(geraete => {
+      if (this.backendService.captionmode) {
+        this.geraete = geraete;
+      }
+    });
   }
 
   durchgangstate() {
@@ -118,7 +119,7 @@ export class StationPage implements OnInit  {
       }
     });
   }
-  
+
   nextStep(slidingItem: IonItemSliding) {
     this.backendService.nextGeraet().subscribe(step => {
       this.step = step;
@@ -176,15 +177,15 @@ export class StationPage implements OnInit  {
       .map(c => c.titel + '<br>' + (c.datum + 'T').split('T')[0].split('-').reverse().join('-'));
 
     if (candidate.length === 1) {
-      return this.sanitizer.bypassSecurityTrustHtml(candidate[0]);
+      return candidate[0];
     } else {
       return '';
     }
   }
 
   geraetName(): string {
-    if (!this.backendService.geraete) { return ''; }
-    const candidate = this.backendService.geraete
+    if (!this.geraete || this.geraete.length === 0) { return ''; }
+    const candidate = this.geraete
       .filter(c => c.id === this.backendService.geraet)
       .map(c => c.name);
 
@@ -199,13 +200,17 @@ export class StationPage implements OnInit  {
   }
 
   getGeraete(): Geraet[] {
-    return this.backendService.geraete;
+    return this.geraete;
   }
 
   getSteps(): number[] {
-    if (! this.backendService.steps && this.backendService.geraet) {
-      this.backendService.getWertungen(this.competition, this.durchgang, this.geraet, 1);
-    }
+    // if (! this.backendService.steps && this.backendService.geraet) {
+    //   this.backendService.getSteps(this.competition, this.durchgang, this.geraet);
+    //   /*.subscribe(steps => {
+    //     this.backendService.getWertungen(this.competition, this.durchgang, this.geraet, 1);
+    //   })
+    //   */
+    // }
     return this.backendService.steps;
   }
 

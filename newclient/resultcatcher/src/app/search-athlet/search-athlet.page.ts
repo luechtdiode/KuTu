@@ -27,7 +27,9 @@ export class SearchAthletPage implements OnInit {
   constructor(public navCtrl: NavController,
               private route: ActivatedRoute,
               public backendService: BackendService) {
-    this.backendService.getCompetitions();
+    if (! this.backendService.competitions) {
+      this.backendService.getCompetitions();
+    }
   }
 
   ngOnInit(): void {

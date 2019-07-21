@@ -25,11 +25,13 @@ export class LastResultsPage implements OnInit {
   // }
 
   constructor(public navCtrl: NavController, public backendService: BackendService) {
-    this.backendService.getCompetitions();
+    if (! this.backendService.competitions) {
+      this.backendService.getCompetitions();
+    }
   }
 
   ngOnInit(): void {
-    this.backendService.loadAlleResultate().subscribe(geraete => {
+    this.backendService.activateNonCaptionMode(this.backendService.competition).subscribe(geraete => {
       this.geraete = geraete || [];
       this.sortItems();
     });
@@ -66,7 +68,7 @@ export class LastResultsPage implements OnInit {
   set competition(competitionId: string) {
     if (!this.stationFreezed) {
       this.backendService.getDurchgaenge(competitionId);
-      this.backendService.loadAlleResultate().subscribe(geraete => {
+      this.backendService.activateNonCaptionMode(this.backendService.competition).subscribe(geraete => {
         this.geraete = geraete || [];
         this.sortItems();
       });

@@ -135,13 +135,15 @@ export class AppComponent {
             this.clearPosParam();
             console.log('initializing with ' + initializeWith);
             localStorage.setItem('external_load', initializeWith);
-            if (initializeWith.startsWith('c=') && initializeWith.indexOf('&st=') > -1 && initializeWith.indexOf('&g=') > -1) {
-              this.appPages = [
-                { title: 'Home', url: '/home', icon: 'home' },
-                { title: 'Resultate', url: '/station', icon: 'list' },
-              ];
-              this.navController.navigateRoot('/station');
-            }
+            this.backendService.initWithQuery(initializeWith).subscribe(fin => {
+              if (initializeWith.startsWith('c=') && initializeWith.indexOf('&st=') > -1 && initializeWith.indexOf('&g=') > -1) {
+                this.appPages = [
+                  { title: 'Home', url: '/home', icon: 'home' },
+                  { title: 'Resultate', url: '/station', icon: 'list' },
+                ];
+                this.navController.navigateRoot('/station');
+              }
+            });
           }
 
         } catch (e) {
@@ -149,13 +151,14 @@ export class AppComponent {
         }
       } else if (localStorage.getItem('current_station')) {
         const cs = localStorage.getItem('current_station');
-        if (cs.startsWith('c=') && cs.indexOf('&st=') && cs.indexOf('&g=')) {
+        this.backendService.initWithQuery(cs).subscribe(fin => {
+          if (cs.startsWith('c=') && cs.indexOf('&st=') && cs.indexOf('&g=')) {
           this.appPages = [
             { title: 'Home', url: '/home', icon: 'home' },
             { title: 'Resultate', url: '/station', icon: 'list' },
           ];
           this.navController.navigateRoot('/station');
-        }
+        }});
       }
       this.splashScreen.hide();
 

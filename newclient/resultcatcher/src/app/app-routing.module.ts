@@ -11,7 +11,6 @@ const routes: Routes = [
   {
     path: 'home',
     loadChildren: './home/home.module#HomePageModule'
-    // loadChildren: './station/station.module#StationPageModule'
   },
   { path: 'station', canActivate: [StationGuardService], loadChildren: './station/station.module#StationPageModule' },
   {

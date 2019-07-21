@@ -3,7 +3,7 @@ import { WebsocketService, encodeURIComponent2 } from './websocket.service';
 import { HttpClient, HttpHeaders, HttpErrorResponse } from '@angular/common/http';
 import { LoadingController } from '@ionic/angular';
 import { interval, of, Subscription, BehaviorSubject, Subject, Observable } from 'rxjs';
-import { share, map} from 'rxjs/operators';
+import { share, map, switchMap} from 'rxjs/operators';
 import { DurchgangStarted, Wettkampf, Geraet, WertungContainer, NewLastResults, StartList,
          MessageAck, AthletWertungUpdated, Wertung, FinishDurchgangStation,
          DurchgangFinished } from '../backend-types';
@@ -39,15 +39,6 @@ export class BackendService extends WebsocketService {
 
     constructor(public http: HttpClient, public loadingCtrl: LoadingController) {
       super();
-      this.startLoading('App wird initialisiert. Bitte warten ...');
-      this.externalLoaderSubscription = interval(1000).subscribe(latest => {
-        const initWith = localStorage.getItem('external_load') || localStorage.getItem('current_station');
-        if (initWith) {
-          this.initWithQuery(initWith);
-        } else {
-          this.checkJWT();
-        }
-      });
       this.showMessage.subscribe(msg => {
         this.resetLoading();
         this.lastMessageAck = msg;
@@ -68,6 +59,7 @@ export class BackendService extends WebsocketService {
     competitions: Wettkampf[];
     durchgaenge: string[];
     geraete: Geraet[];
+    geraeteSubject = new BehaviorSubject<Geraet[]>([]);
     steps: number[];
     wertungen: WertungContainer[];
     newLastResults = new BehaviorSubject<NewLastResults>(undefined);
@@ -116,6 +108,7 @@ export class BackendService extends WebsocketService {
     }
 
     initWithQuery(initWith: string) {
+      const finished = new BehaviorSubject<boolean>(false);
       if (initWith && initWith.startsWith('c=') ) {
         this._step = 1;
 
@@ -140,7 +133,7 @@ export class BackendService extends WebsocketService {
               this._competition = undefined;
               break;
             case 'd':
-              this._durchgang = value;
+              this._durchgang = value.replace('_', '&');
               break;
             case 'st':
               this._step = parseInt(value);
@@ -154,21 +147,34 @@ export class BackendService extends WebsocketService {
             default:
           }
         });
-        this.externalLoaderSubscription.unsubscribe();
+        // this.externalLoaderSubscription.unsubscribe();
         localStorage.removeItem('external_load');
         this.startLoading('Bitte warten ...');
         if (this._geraet) {
-          this.getCompetitions();
-          this.loadDurchgaenge();
-          this.loadGeraete();
-          this.loadSteps();
-          this.loadWertungen();
+          this.getCompetitions().pipe(
+            switchMap(() => this.loadDurchgaenge()),
+            switchMap(() => this.loadGeraete()),
+            switchMap(() => this.loadSteps()),
+            switchMap(() => this.loadWertungen())
+          ).subscribe(fin =>
+            finished.next(true)
+          );
         } else if (this._competition) {
-          this.getCompetitions();
-          this.loadDurchgaenge();
+          this.getCompetitions().pipe(
+            switchMap(() => this.loadDurchgaenge())
+          ).subscribe(fin => finished.next(true));
         }
-        this.resetLoading();
+      } else {
+        finished.next(true);
       }
+
+      finished.subscribe(fin => {
+        if (fin) {
+          this.resetLoading();
+        }
+      });
+
+      return finished;
     }
 
     standardErrorHandler = (err: HttpErrorResponse) => {
@@ -272,11 +278,6 @@ export class BackendService extends WebsocketService {
       localStorage.removeItem('current_station');
       this.checkJWT();
       this.stationFreezed = false;
-      // this._competition = undefined;
-      this._durchgang = undefined;
-      this._geraet = undefined;
-      this._step = undefined;
-      this.getCompetitions();
     }
 
     logout() {
@@ -309,13 +310,17 @@ export class BackendService extends WebsocketService {
 
       return this.loadDurchgaenge();
     }
-    loadDurchgaenge() {
-      return this.startLoading('Durchgangliste wird geladen. Bitte warten ...',
-        this.http.get<string[]>(backendUrl + 'api/durchgang/' + this._competition).pipe(share())).subscribe((data) => {
+
+    loadDurchgaenge(): Observable<string> {
+      const loader = this.startLoading('Durchgangliste wird geladen. Bitte warten ...',
+        this.http.get<string[]>(backendUrl + 'api/durchgang/' + this._competition).pipe(share()));
+
+      loader.subscribe((data) => {
         localStorage.setItem('current_competition', this._competition);
         this.durchgaenge = data;
-        this.captionmode = true;
       }, this.standardErrorHandler);
+
+      return loader;
     }
 
     getGeraete(competitionId: string, durchgang: string) {
@@ -331,11 +336,14 @@ export class BackendService extends WebsocketService {
       this._geraet = undefined;
       this._step = undefined;
 
+      this.captionmode = true;
+
       return this.loadGeraete();
     }
     loadGeraete() {
+      this.geraete = [];
       let path = '';
-      if (this.captionmode) {
+      if (this.captionmode && this._durchgang) {
         path = backendUrl + 'api/durchgang/' + this._competition + '/' + encodeURIComponent2(this._durchgang);
       } else {
         path = backendUrl + 'api/durchgang/' + this._competition + '/geraete';
@@ -344,6 +352,7 @@ export class BackendService extends WebsocketService {
         this.http.get<Geraet[]>(path).pipe(share()));
       request.subscribe((data) => {
         this.geraete = data;
+        this.geraeteSubject.next(this.geraete);
       }, this.standardErrorHandler);
       return request;
     }
@@ -374,12 +383,17 @@ export class BackendService extends WebsocketService {
     }
 
     loadSteps() {
-      return this.startLoading('Stationen zum Gerät werden geladen. Bitte warten ...',
+      this.steps = [];
+      const request = this.startLoading('Stationen zum Gerät werden geladen. Bitte warten ...',
         this.http.get<string[]>(
           backendUrl + 'api/durchgang/' + this._competition + '/' + encodeURIComponent2(this._durchgang) + '/' + this._geraet
         ).pipe(share()));
-
+      request.subscribe((data) => {
+        this.steps = data;
+      }, this.standardErrorHandler);
+      return request;
     }
+
     getWertungen(competitionId: string, durchgang: string, geraetId: number, step: number) {
       if (this.wertungen !== undefined && this._competition === competitionId
         && this._durchgang === durchgang && this._geraet === geraetId && this._step === step) { return; }
@@ -392,47 +406,72 @@ export class BackendService extends WebsocketService {
 
       this.loadWertungen();
     }
+
+    activateCaptionMode() {
+      if (!this.competitions) {
+        this.getCompetitions();
+      }
+      if (!this.durchgaenge) {
+        this.loadDurchgaenge();
+      }
+      if (!this.captionmode || !this.geraete) {
+        this.captionmode = true;
+        this.loadGeraete();
+      }
+      if (this.geraet && !this.steps) {
+        this.loadSteps();
+      }
+      if (this.geraet) {
+        this.disconnectWS(true);
+        this.initWebsocket();
+      }
+    }
+
     loadWertungen() {
       // prevent denial of service fired from the step-slider
       if (this.wertungenLoading || !this._step) {
         return;
       }
-      this.captionmode = true;
-      this.disconnectWS(true);
-      this.initWebsocket();
+      this.activateCaptionMode();
       const lastStepToLoad = this._step;
       this.wertungenLoading = true;
-      this.startLoading('Riegenteilnehmer werden geladen. Bitte warten ...',
+      const loader = this.startLoading('Riegenteilnehmer werden geladen. Bitte warten ...',
         this.http.get<WertungContainer[]>(
           backendUrl + 'api/durchgang/' + this._competition + '/'
           + encodeURIComponent2( this._durchgang) + '/' + this._geraet + '/' + this._step
-        ).pipe(share())).subscribe((data) => {
+        ).pipe(
+          share()
+        ));
+
+      loader.subscribe((data) => {
         this.wertungenLoading = false;
         if (this._step !== lastStepToLoad) {
           this.loadWertungen();
         } else {
           this.wertungen = data;
-        }
+      }
       }, this.standardErrorHandler);
+
+      return loader;
     }
 
     loadAthletWertungen(competitionId: string, athletId: number): Observable<WertungContainer[]> {
-      this.captionmode = false;
-      this._competition = competitionId;
-      this.disconnectWS(true);
-      this.initWebsocket();
+      this.activateNonCaptionMode(competitionId);
       const loader = this.startLoading('Wertungen werden geladen. Bitte warten ...',
         this.http.get<WertungContainer[]>(
           backendUrl + `api/athlet/${this._competition}/${athletId}`
         ).pipe(share()));
 
-      loader.subscribe((data) => this.loadGeraete(), this.standardErrorHandler);
       return loader;
     }
 
-    loadAlleResultate(): Observable<Geraet[]> {
-      if (this._competition) {
+    activateNonCaptionMode(competitionId: string): Observable<Geraet[]> {
+      if (this._competition !== competitionId
+        || this.captionmode
+        || (competitionId && !this.isWebsocketConnected())
+        ) {
         this.captionmode = false;
+        this._competition = competitionId;
         this.disconnectWS(true);
         this.initWebsocket();
         return this.loadGeraete();
@@ -443,13 +482,14 @@ export class BackendService extends WebsocketService {
 
     loadStartlist(query: string): Observable<StartList> {
       if (this._competition) {
-        this.captionmode = true;
         if (query) {
           return this.startLoading('Teilnehmerliste wird geladen. Bitte warten ...',
-          this.http.get<StartList>(backendUrl + 'api/report/' + this._competition + '/startlist?q=' + query).pipe(share()));
+            this.http.get<StartList>(backendUrl + 'api/report/' + this._competition + '/startlist?q=' + query).pipe(share())
+          );
         } else {
           return this.startLoading('Teilnehmerliste wird geladen. Bitte warten ...',
-          this.http.get<StartList>(backendUrl + 'api/report/' + this._competition + '/startlist').pipe(share()));
+            this.http.get<StartList>(backendUrl + 'api/report/' + this._competition + '/startlist').pipe(share())
+          );
         }
       } else {
         return of();

@@ -15,7 +15,7 @@
 </ion-header>
 
 <ion-content>
-  <riege-list *ngIf="geraet && durchgang && step && getWertungen()" [items] = 'getWertungen()'></riege-list>
+   <riege-list *ngIf="geraet && durchgang && step && getWertungen()" [items] = 'getWertungen()'></riege-list>
 </ion-content>
 
 
@@ -25,8 +25,8 @@
 
           <ion-item-sliding #slidingStepItem>
               <ion-item (click)='itemTapped(slidingStepItem)'>                
-                <ion-note slot="end" *ngIf="getSteps() && getSteps().length > 0">({{getSteps()[0]}} bis {{getSteps()[getSteps().length-1]}})</ion-note>
                 <ion-label>{{station}}</ion-label>
+                <ion-note slot="end" *ngIf="getSteps() && getSteps().length > 0">({{getSteps()[0]}} bis {{getSteps()[getSteps().length-1]}})</ion-note>
                 <ion-icon slot="end" *ngIf="(geraet && getSteps())" name="arrow-dropright"></ion-icon>
               </ion-item>
                   <ion-item-options side="start">

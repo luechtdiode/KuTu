@@ -17,14 +17,11 @@ export class AthletViewPage  implements OnInit {
 
   items: WertungContainer[] = [];
   lastItems: number[] = [];
+  geraete: Geraet[] = [];
 
   constructor(public navCtrl: NavController,
               private route: ActivatedRoute,
               public backendService: BackendService) {
-  }
-
-  get geraete(): Geraet[] {
-    return this.backendService.geraete;
   }
 
   ngOnInit(): void {
@@ -37,7 +34,11 @@ export class AthletViewPage  implements OnInit {
       this.items = athletWertungen;
       this.sortItems(athletId);
     });
-
+    this.backendService.geraeteSubject.subscribe(geraete => {
+      if (!this.backendService.captionmode) {
+        this.geraete = geraete;
+      }
+    });
     const changeHandler = (wcs: {string: WertungContainer}) => {
       this.lastItems = this.items.map(item => item.id * this.geraete.length + item.geraet);
       this.items = this.items.map(item => {
