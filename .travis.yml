@@ -37,6 +37,8 @@ stages:
 jobs:
   include:
   - stage: client
+    os: linux
+    dist: xenial
     language: node_js
     node_js: lts/*
     env: PYTHON=3.6
