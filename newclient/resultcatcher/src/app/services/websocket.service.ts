@@ -4,8 +4,11 @@ import { MessageAck } from '../backend-types';
 import { formatCurrentMoment, clientID } from '../utils';
 import { takeWhile } from 'rxjs/operators';
 
+export function encodeURIComponent1(uri: string): string {
+  return !!uri ? uri.replace(/[,&.*+?/^${}()|[\]\\]/g, '_') : '';
+}
 export function encodeURIComponent2(uri: string): string {
-  return !!uri ? encodeURIComponent(uri.replace(/[,&.*+?/^${}()|[\]\\]/g, '_')) : '';
+  return !!uri ? encodeURIComponent(encodeURIComponent1(uri)) : '';
 }
 
 @Injectable({

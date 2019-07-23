@@ -1,6 +1,6 @@
 import { Component, ViewChild } from '@angular/core';
 import { WertungContainer, Wertung } from '../backend-types';
-import { Subscription } from 'rxjs';
+import { Subscription, defer } from 'rxjs';
 import { NavController, Platform, ToastController, AlertController } from '@ionic/angular';
 import { BackendService } from '../services/backend.service';
 import { NgForm } from '@angular/forms';
@@ -67,11 +67,11 @@ export class WertungEditorPage /*implements OnInit*/ {
       this.subscription = undefined;
     }
     this.subscription = this.backendService.wertungUpdated.subscribe(wc => {
-      // console.log("incoming wertung from service", wc);
+      console.log('incoming wertung from service', wc);
       if (wc.wertung.athletId === this.wertung.athletId
          && wc.wertung.wettkampfdisziplinId === this.wertung.wettkampfdisziplinId
          && wc.wertung.endnote !== this.wertung.endnote) {
-        // console.log("updateing wertung from service");
+        console.log('updateing wertung from service');
         this.item.wertung = Object.assign({}, wc.wertung);
         this.itemOriginal.wertung = Object.assign({}, wc.wertung);
         this.wertung = Object.assign({
@@ -149,24 +149,28 @@ export class WertungEditorPage /*implements OnInit*/ {
     this.waiting = true;
     this.backendService.updateWertung(this.durchgang, this.step, this.geraetId, this.ensureInitialValues(form.value)).subscribe((wc) => {
       this.waiting = false;
-      const currentItemIndex = this.backendService.wertungen.findIndex(w => w.wertung.id === this.wertung.id);
-      let nextItemIndex = currentItemIndex + 1;
-      if (currentItemIndex < 0) {
-        nextItemIndex = 0;
-      } else if (currentItemIndex >= this.backendService.wertungen.length - 1) {
-        this.backendService.loadWertungen();
-        if (this.backendService.wertungen.filter(w => w.wertung.endnote === undefined).length === 0) {
-          this.navCtrl.pop();
-          this.toastSuggestCompletnessCheck();
-          return;
-        } else {
-          nextItemIndex = this.backendService.wertungen.findIndex(w => w.wertung.endnote === undefined);
-          this.toastMissingResult(form, this.backendService.wertungen[nextItemIndex].vorname
-            + ' ' + this.backendService.wertungen[nextItemIndex].name);
+      defer(() => {
+        const currentItemIndex = this.backendService.wertungen.findIndex(w => w.id === wc.id);
+        if (currentItemIndex < 0) {
+          console.log('unexpected wertung - id matches not with current wertung: ' + wc.id);
         }
-      }
-      form.resetForm();
-      this.updateUI(this.backendService.wertungen[nextItemIndex]);
+        let nextItemIndex = currentItemIndex + 1;
+        if (currentItemIndex < 0) {
+          nextItemIndex = 0;
+        } else if (currentItemIndex >= this.backendService.wertungen.length - 1) {
+          if (this.backendService.wertungen.filter(w => w.wertung.endnote === undefined).length === 0) {
+            this.navCtrl.pop();
+            this.toastSuggestCompletnessCheck();
+            return;
+          } else {
+            nextItemIndex = this.backendService.wertungen.findIndex(w => w.wertung.endnote === undefined);
+            this.toastMissingResult(form, this.backendService.wertungen[nextItemIndex].vorname
+              + ' ' + this.backendService.wertungen[nextItemIndex].name);
+          }
+        }
+        form.resetForm();
+        this.updateUI(this.backendService.wertungen[nextItemIndex]);
+      });
     }, (err) => {
       this.updateUI(this.itemOriginal);
       console.log(err);

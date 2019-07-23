@@ -1,5 +1,5 @@
 import { Injectable } from '@angular/core';
-import { WebsocketService, encodeURIComponent2 } from './websocket.service';
+import { WebsocketService, encodeURIComponent2, encodeURIComponent1 } from './websocket.service';
 import { HttpClient, HttpHeaders, HttpErrorResponse } from '@angular/common/http';
 import { LoadingController } from '@ionic/angular';
 import { interval, of, Subscription, BehaviorSubject, Subject, Observable } from 'rxjs';
@@ -74,6 +74,7 @@ export class BackendService extends WebsocketService {
     private lastJWTChecked = 0;
 
     wertungenLoading = false;
+    isInitializing = false;
 
     //// Websocket implementations
 
@@ -108,6 +109,7 @@ export class BackendService extends WebsocketService {
     }
 
     initWithQuery(initWith: string) {
+      this.isInitializing = true;
       const finished = new BehaviorSubject<boolean>(false);
       if (initWith && initWith.startsWith('c=') ) {
         this._step = 1;
@@ -133,7 +135,7 @@ export class BackendService extends WebsocketService {
               this._competition = undefined;
               break;
             case 'd':
-              this._durchgang = value.replace('_', '&');
+              this._durchgang = value;
               break;
             case 'st':
               this._step = parseInt(value);
@@ -170,6 +172,7 @@ export class BackendService extends WebsocketService {
 
       finished.subscribe(fin => {
         if (fin) {
+          this.isInitializing = false;
           this.resetLoading();
         }
       });
@@ -181,6 +184,7 @@ export class BackendService extends WebsocketService {
       console.log(err);
       this.resetLoading();
       this.wertungenLoading = false;
+      this.isInitializing = false;
       if (err.status === 401) {
         localStorage.removeItem('auth_token');
         this.loggedIn = false;
@@ -295,8 +299,8 @@ export class BackendService extends WebsocketService {
     }
 
     getDurchgaenge(competitionId: string) {
-      if (this.durchgaenge !== undefined && this._competition === competitionId) {
-        return of(this.durchgaenge);
+      if ((this.durchgaenge !== undefined && this._competition === competitionId) || this.isInitializing) {
+        return of(this.durchgaenge || []);
       }
       this.durchgaenge = [];
       this.geraete = undefined;
@@ -315,17 +319,31 @@ export class BackendService extends WebsocketService {
       const loader = this.startLoading('Durchgangliste wird geladen. Bitte warten ...',
         this.http.get<string[]>(backendUrl + 'api/durchgang/' + this._competition).pipe(share()));
 
+      const actualDg = this._durchgang;
+
       loader.subscribe((data) => {
         localStorage.setItem('current_competition', this._competition);
         this.durchgaenge = data;
+        if (actualDg) {
+          // const actualDgParts = actualDg.split('_');
+          const candidates = this.durchgaenge.filter(dg => {
+            const encodedDg = encodeURIComponent1(dg);
+            return actualDg === dg
+              || actualDg === encodedDg;
+              // || (actualDgParts.filter(d => actualDg.indexOf(d) > -1).length === actualDgParts.length);
+          });
+          if (candidates.length === 1) {
+            this._durchgang = candidates[0];
+          }
+        }
       }, this.standardErrorHandler);
 
       return loader;
     }
 
     getGeraete(competitionId: string, durchgang: string) {
-      if (this.geraete !== undefined && this._competition === competitionId && this._durchgang === durchgang) {
-        return of(this.geraete);
+      if ((this.geraete !== undefined && this._competition === competitionId && this._durchgang === durchgang) || this.isInitializing) {
+        return of(this.geraete || []);
       }
       this.geraete = [];
       this.steps = undefined;
@@ -358,9 +376,9 @@ export class BackendService extends WebsocketService {
     }
 
     getSteps(competitionId: string, durchgang: string, geraetId: number) {
-      if (this.steps !== undefined && this._competition === competitionId
-        && this._durchgang === durchgang && this._geraet === geraetId) {
-          return of(this.steps);
+      if ((this.steps !== undefined && this._competition === competitionId
+        && this._durchgang === durchgang && this._geraet === geraetId) || this.isInitializing) {
+          return of(this.steps || []);
       }
       this.steps = [];
       this.wertungen = undefined;
@@ -395,8 +413,8 @@ export class BackendService extends WebsocketService {
     }
 
     getWertungen(competitionId: string, durchgang: string, geraetId: number, step: number) {
-      if (this.wertungen !== undefined && this._competition === competitionId
-        && this._durchgang === durchgang && this._geraet === geraetId && this._step === step) { return; }
+      if ((this.wertungen !== undefined && this._competition === competitionId
+        && this._durchgang === durchgang && this._geraet === geraetId && this._step === step) || this.isInitializing) { return; }
       this.wertungen = [];
 
       this._competition = competitionId;
@@ -510,20 +528,25 @@ export class BackendService extends WebsocketService {
           wertung
       ).pipe(share()))
       .subscribe((data) => {
-        if (!this.isMessageAck(data)) {
+        if (!this.isMessageAck(data) && (data as WertungContainer).id) {
+          let wertungFound = false;
           this.wertungen = this.wertungen.map(w => {
             if (w.id === data.id) {
+              wertungFound = true;
               return data;
             } else {
               return w;
             }
           });
           result.next(data);
-          result.complete();
+          if (wertungFound) {
+            result.complete();
+          }
         } else {
           const msg = data as MessageAck;
           this.showMessage.next(msg);
           result.error(msg.msg);
+          result.complete();
         }
       }, this.standardErrorHandler);
       return result;
