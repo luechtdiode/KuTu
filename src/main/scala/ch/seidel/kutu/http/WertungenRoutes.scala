@@ -1,6 +1,7 @@
 package ch.seidel.kutu.http
 
 import akka.http.scaladsl.marshallers.sprayjson.SprayJsonSupport
+import akka.http.scaladsl.marshalling.ToResponseMarshallable
 import akka.http.scaladsl.model.{StatusCodes, Uri}
 import akka.http.scaladsl.server.Route
 import akka.util.Timeout
@@ -217,28 +218,25 @@ trait WertungenRoutes extends SprayJsonSupport with JsonSupport with JwtSupport 
                         }
                       } match {
                       case Some((wkPgmId, normalizedwertung)) =>
-                        complete(CompetitionCoordinatorClientActor.publish(normalizedwertung, clientId).andThen {
-                          case Success(w) => w match {
-                            case AthletWertungUpdatedSequenced(athlet, verifiedWertung, _, _, ger, programm, _) =>
-                              val verein: String = athlet.verein.map(_.name).getOrElse("")
-                              val isDNoteUsed = wkPgmId != 20 && wkPgmId != 1
-                              WertungContainer(athlet.id, athlet.vorname, athlet.name, athlet.geschlecht, verein,
-                                verifiedWertung, ger, programm, isDNoteUsed)
+                        val eventualKutuAppEvent: Future[KutuAppEvent] = CompetitionCoordinatorClientActor.publish(normalizedwertung, clientId)
+                        val toResponseMarshallable: Future[ToResponseMarshallable] = eventualKutuAppEvent.map {
+                          case AthletWertungUpdatedSequenced(athlet, verifiedWertung, _, _, ger, programm, _) =>
+                            val verein: String = athlet.verein.map(_.name).getOrElse("")
+                            val isDNoteUsed = wkPgmId != 20 && wkPgmId != 1
+                            WertungContainer(athlet.id, athlet.vorname, athlet.name, athlet.geschlecht, verein,
+                              verifiedWertung, ger, programm, isDNoteUsed)
 
-                            case AthletWertungUpdated(athlet, verifiedWertung, _, _, ger, programm) =>
-                              val verein: String = athlet.verein.map(_.name).getOrElse("")
-                              val isDNoteUsed = wkPgmId != 20 && wkPgmId != 1
-                              WertungContainer(athlet.id, athlet.vorname, athlet.name, athlet.geschlecht, verein,
-                                verifiedWertung, ger, programm, isDNoteUsed)
+                          case AthletWertungUpdated(athlet, verifiedWertung, _, _, ger, programm) =>
+                            val verein: String = athlet.verein.map(_.name).getOrElse("")
+                            val isDNoteUsed = wkPgmId != 20 && wkPgmId != 1
+                            WertungContainer(athlet.id, athlet.vorname, athlet.name, athlet.geschlecht, verein,
+                              verifiedWertung, ger, programm, isDNoteUsed)
 
-                            case _ =>
-                              log.error(s"Conflict: unexpected Wertung value: $w")
-                              StatusCodes.Conflict
-                          }
-                          case Failure(error) =>
-                            log.error(s"Conflict: Error publishing Wertung: $wertung", error)
+                          case _ =>
+                            log.error(s"Conflict: unexpected Wertung value: $wertung")
                             StatusCodes.Conflict
-                        })
+                        }
+                        complete(toResponseMarshallable)
 
                       case x =>
                         log.error(s"Conflict: unexpected Result: $x, Non-matching wertung: $wertung")
