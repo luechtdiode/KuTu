@@ -632,4 +632,78 @@ object ResourceExchanger extends KutuService with RiegenBuilder {
     export.close()
   }
 
+  def exportSimpleDurchgaenge(wettkampf: Wettkampf, filename: String) {
+    val export = new FileOutputStream(filename);
+    val diszipline = listDisziplinesZuWettkampf(wettkampf.id)
+    val sep = ";"
+    export.write(f"""sep=${sep}\nDurchgang${sep}Summe${sep}Min${sep}Max""".getBytes("ISO-8859-1"))
+
+    diszipline.foreach { x =>
+      export.write(f"${sep}${x.name}${sep}Ti${sep}Tu".getBytes("ISO-8859-1"))
+    }
+    export.write("\r\n".getBytes("ISO-8859-1"))
+
+    val riege2Map = listRiegen2ToRiegenMapZuWettkampf(wettkampf.id)
+
+    val allRiegen = listRiegenZuWettkampf(wettkampf.id)
+      .sortBy(r => r._1)
+      .map(x =>
+        RiegeEditor(
+          wettkampf.id,
+          x._1,
+          x._2,
+          0,
+          true,
+          x._3,
+          x._4,
+          None))
+    val allRiegenIndex = allRiegen.map(r => r.initname -> r).toMap
+    allRiegen
+      .flatMap(riege => {
+        riege2Map.get(riege.initname) match {
+          case Some(barrenRiegen) => barrenRiegen
+            .map(allRiegenIndex)
+              .map(br => br.copy(initstart = riege.initstart, initdurchgang = riege.initdurchgang))
+          case None => List(riege)
+        }
+      })
+      .groupBy(re => re.initdurchgang).toSeq
+      .sortBy(re => re._1)
+      .map{res =>
+        val (name, rel) = res
+        DurchgangEditor(wettkampf.id, name.getOrElse(""), rel)
+      }
+      .foreach { x =>
+        export.write(f"""${x.initname}${sep}${x.anz.value}${sep}${x.min.value}${sep}${x.max.value}""".getBytes("ISO-8859-1"))
+        val riegen = x.riegenWithMergedClubs()
+        val rows = riegen.values.map(_.size).max
+        val riegenFields = for {
+          row <- (0 to rows)
+          d <- diszipline
+          r = riegen.getOrElse(d, Seq())
+        } yield {
+          (row, if (r.size > row) {
+            f"${sep}${r(row)._1}${sep}${r(row)._2}${sep}${r(row)._3}"
+          } else {
+            f"${sep}${sep}${sep}"
+          })
+        }
+        val rs = riegenFields.groupBy(_._1).toList
+          .sortBy(_._1)
+          .map(r => {
+            val tuples = r._2
+            val strings = tuples.map(_._2)
+            val fieldsString = strings.mkString("", "", f"\r\n${sep}${sep}${sep}")
+            fieldsString
+          }) :+ "\r\n"
+
+        rs.foreach(row => {
+            export.write(row.getBytes("ISO-8859-1"))
+          })
+        export.write("\r\n".getBytes("ISO-8859-1"))
+      }
+
+    export.flush()
+    export.close()
+  }
 }

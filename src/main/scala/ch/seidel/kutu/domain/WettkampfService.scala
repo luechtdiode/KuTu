@@ -168,6 +168,16 @@ trait WettkampfService extends DBService
     Await.result(listWettkaempfeViewAsync, Duration.Inf)
   }
 
+  def listRiegen2ToRiegenMapZuWettkampf(wettkampf: Long) = {
+    Await.result(database.run{(
+      sql"""
+                  SELECT distinct w.riege2, w.riege
+                  FROM wertung w
+                  where w.riege not null and w.riege2 not null and w.wettkampf_id = $wettkampf
+       """.as[(String, String)]).withPinnedSession
+    }, Duration.Inf).groupBy(_._1).map(x => (x._1, x._2.map(_._2).toList))
+  }
+
   def listRiegenZuWettkampf(wettkampf: Long) = {
     Await.result(database.run{(
       sql"""

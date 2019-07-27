@@ -24,6 +24,22 @@ case class DurchgangEditor(wettkampfid: Long, initname: String, initstartriegen:
   val max = IntegerProperty(if(initstartriegen.size > 0) initstartriegen.map(r => r._2.map(rr => rr.initanz).sum).max else 0)
   val avg = IntegerProperty(if(initstartriegen.size > 0) anz.value / initstartriegen.size else 0)
 
+  def riegenWithMergedClubs(): Map[Disziplin, Seq[(String,Int,Int)]] = {
+    initstartriegen.map{
+      case (key, riegen) =>
+        (key -> riegen
+          .groupBy(d => {
+            val parts = d.initname.split(",")
+            if (parts.length > 2) {
+              parts(2) + " " + parts(1)
+            } else d.initname
+          })
+            .map(r => (r._1, r._2.filter(_.initname.contains("W,")).map(_.initanz).sum, r._2.filter(!_.initname.contains("W,")).map(_.initanz).sum))
+            .toSeq
+        )
+    }
+  }
+
 //  def reset {
 //    name.value = initname
 //  }

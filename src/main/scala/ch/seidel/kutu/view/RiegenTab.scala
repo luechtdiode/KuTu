@@ -1009,7 +1009,27 @@ class RiegenTab(wettkampf: WettkampfView, override val service: KutuService) ext
       }
       m
     }
-    
+    def doDurchgangExport2(event: ActionEvent) {
+      implicit val impevent = event
+      KuTuApp.invokeWithBusyIndicator {
+        val filename = "Durchgaenge-Einfach.csv"
+        val dir = new java.io.File(homedir + "/" + wettkampf.easyprint.replace(" ", "_"))
+        if(!dir.exists()) {
+          dir.mkdirs();
+        }
+        val file = new java.io.File(dir.getPath + "/" + filename)
+
+        ResourceExchanger.exportSimpleDurchgaenge(wettkampf.toWettkampf, file.getPath)
+        hostServices.showDocument(file.toURI.toASCIIString)
+      }
+    }
+
+    def makeDurchgangExport2(): MenuItem = {
+      val m = KuTuApp.makeMenuAction("Durchgang-Planung export (einfach)") {(caption: String, action: ActionEvent) =>
+        doDurchgangExport2(action)
+      }
+      m
+    }
     val riegenRemoveButton = new Button {
   	  text = "Riege löschen"
 		  minWidth = 75
@@ -1159,6 +1179,7 @@ class RiegenTab(wettkampf: WettkampfView, override val service: KutuService) ext
     val btnExport = new MenuButton("Export") {
       items += makeRiegenEinheitenExport()
       items += makeDurchgangExport()
+      items += makeDurchgangExport2()
       items += makeRiegenBlaetterExport()
       items += makeSelectedRiegenBlaetterExport(Set.empty)
       items += makeRiegenQRCodesExport()
