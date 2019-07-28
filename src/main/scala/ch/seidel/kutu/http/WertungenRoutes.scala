@@ -152,8 +152,10 @@ trait WertungenRoutes extends SprayJsonSupport with JsonSupport with JwtSupport 
                         }.toMap
                         val decodedDurchgang = decodedDurchgangMap(durchgang)
                         val durchgaengeWithDisziplins =
-                          listDisziplinesZuDurchgang(Set(decodedDurchgang), wettkampf.id, true) ++
-                            listDisziplinesZuDurchgang(Set(decodedDurchgang), wettkampf.id, false)
+                          (listDisziplinesZuDurchgang(Set(decodedDurchgang), wettkampf.id, true).toSeq ++
+                            listDisziplinesZuDurchgang(Set(decodedDurchgang), wettkampf.id, false).toSeq)
+                              .groupBy(_._1)
+                              .mapValues(_.flatMap(_._2).toList)
 
                         durchgaengeWithDisziplins(decodedDurchgang).distinct
                       }

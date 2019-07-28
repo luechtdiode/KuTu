@@ -1,4 +1,4 @@
-import { Component, ViewChild } from '@angular/core';
+import { Component, ViewChild, NgZone } from '@angular/core';
 import { WertungContainer, Wertung } from '../backend-types';
 import { Subscription, defer, of } from 'rxjs';
 import { NavController, Platform, ToastController, AlertController } from '@ionic/angular';
@@ -22,7 +22,8 @@ export class WertungEditorPage /*implements OnInit*/ {
               public toastController: ToastController,
               public keyboard: Keyboard,
               public backendService: BackendService,
-              public platform: Platform) {
+              public platform: Platform,
+              private zone: NgZone) {
       // If we navigated to this page, we will have an item available as a nav param
       this.durchgang = backendService.durchgang;
       this.step = backendService.step;
@@ -107,17 +108,18 @@ export class WertungEditorPage /*implements OnInit*/ {
   }
 
   updateUI(wc: WertungContainer) {
-    this.waiting = false;
-    this.item = Object.assign({}, wc);
-    this.itemOriginal = Object.assign({}, wc);
-    this.wertung = Object.assign({
-      noteD: 0.00,
-      noteE: 0.00,
-      endnote: 0.00
-    }, this.itemOriginal.wertung);
+    this.zone.run(() => {
+      this.waiting = false;
+      this.item = Object.assign({}, wc);
+      this.itemOriginal = Object.assign({}, wc);
+      this.wertung = Object.assign({
+        noteD: 0.00,
+        noteE: 0.00,
+        endnote: 0.00
+      }, this.itemOriginal.wertung);
 
-    this.ionViewWillEnter();
-
+      this.ionViewWillEnter();
+    });
   }
 
   ensureInitialValues(wertung: Wertung): Wertung {
