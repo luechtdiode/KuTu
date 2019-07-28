@@ -1220,7 +1220,7 @@ object KuTuApp extends JFXApp with KutuService with JsonSupport with JwtSupport 
         val longtimeout = getExpiration(secret).getOrElse(new Date())
 
         val connectionList = if (Config.isLocalHostServer()) {
-          server.listNetworkAdresses.toList
+          List(Config.remoteBaseUrl) //server.listNetworkAdresses.toList
         } else List(remoteBaseUrl)
         val tablist = connectionList.map { address =>
           val connectionString = s"$address/?" + new String(enc.encodeToString((s"c=$uuid&s=$secret").getBytes))
