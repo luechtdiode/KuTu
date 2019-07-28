@@ -62,6 +62,7 @@ export class BackendService extends WebsocketService {
     geraeteSubject = new BehaviorSubject<Geraet[]>([]);
     steps: number[];
     wertungen: WertungContainer[];
+    wertungenSubject = new BehaviorSubject<WertungContainer[]>([]);
     newLastResults = new BehaviorSubject<NewLastResults>(undefined);
     askForUsername = new Subject<BackendService>();
     lastMessageAck: MessageAck;
@@ -203,7 +204,7 @@ export class BackendService extends WebsocketService {
       }
     }
 
-    private checkJWT(jwt?: string) {
+    public checkJWT(jwt?: string) {
       if (!jwt) {
         jwt = localStorage.getItem('auth_token');
       }
@@ -299,6 +300,7 @@ export class BackendService extends WebsocketService {
     }
 
     getDurchgaenge(competitionId: string) {
+      this.checkJWT();
       if ((this.durchgaenge !== undefined && this._competition === competitionId) || this.isInitializing) {
         return of(this.durchgaenge || []);
       }
@@ -315,7 +317,7 @@ export class BackendService extends WebsocketService {
       return this.loadDurchgaenge();
     }
 
-    loadDurchgaenge(): Observable<string> {
+    loadDurchgaenge(): Observable<string[]> {
       const loader = this.startLoading('Durchgangliste wird geladen. Bitte warten ...',
         this.http.get<string[]>(backendUrl + 'api/durchgang/' + this._competition).pipe(share()));
 
@@ -467,6 +469,7 @@ export class BackendService extends WebsocketService {
           this.loadWertungen();
         } else {
           this.wertungen = data;
+          this.wertungenSubject.next(this.wertungen);
       }
       }, this.standardErrorHandler);
 
@@ -528,16 +531,17 @@ export class BackendService extends WebsocketService {
           wertung
       ).pipe(share()))
       .subscribe((data) => {
-        if (!this.isMessageAck(data) && (data as WertungContainer).id) {
+        if (!this.isMessageAck(data) && (data as WertungContainer).wertung) {
           let wertungFound = false;
           this.wertungen = this.wertungen.map(w => {
-            if (w.id === data.id) {
+            if (w.wertung.id === (data as WertungContainer).wertung.id) {
               wertungFound = true;
               return data;
             } else {
               return w;
             }
           });
+          this.wertungenSubject.next(this.wertungen);
           result.next(data);
           if (wertungFound) {
             result.complete();
@@ -563,7 +567,7 @@ export class BackendService extends WebsocketService {
         step
       } as FinishDurchgangStation).pipe(share()))
       .subscribe((data) => {
-        const nextSteps = this.steps.filter(s => s > this._step);
+        const nextSteps = this.steps.filter(s => s > step);
         if (nextSteps.length > 0) {
           this._step = nextSteps[0];
         } else {
@@ -572,8 +576,9 @@ export class BackendService extends WebsocketService {
           this.stationFreezed = false;
           this._step = this.steps[0];
         }
-        this.loadWertungen();
-        result.next(nextSteps);
+        this.loadWertungen().subscribe(wertungen => {
+          result.next(nextSteps);
+        });
       }, this.standardErrorHandler);
 
       return result.asObservable();
@@ -697,6 +702,7 @@ export class BackendService extends WebsocketService {
               return w;
             }
           });
+          this.wertungenSubject.next(this.wertungen);
           this.wertungUpdated.next(updated);
           return true;
 

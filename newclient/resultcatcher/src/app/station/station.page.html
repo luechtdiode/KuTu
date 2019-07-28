@@ -15,7 +15,7 @@
 </ion-header>
 
 <ion-content>
-   <riege-list *ngIf="geraet && durchgang && step && getWertungen()" [items] = 'getWertungen()'></riege-list>
+   <riege-list *ngIf="geraet && durchgang && step && (getWertungen() | async)" [items] = 'getWertungen() | async'></riege-list>
 </ion-content>
 
 

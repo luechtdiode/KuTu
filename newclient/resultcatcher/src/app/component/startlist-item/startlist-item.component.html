@@ -1,4 +1,4 @@
-<ion-item (click)="selected.emit(teilnehmer)">
+<ion-item (click)="selected ? selected.emit(teilnehmer) : {}">
   <ion-avatar slot="start">
     <img src="assets/imgs/athlete.png">
   </ion-avatar>

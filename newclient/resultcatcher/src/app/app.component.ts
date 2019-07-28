@@ -159,6 +159,9 @@ export class AppComponent {
           ];
           this.navController.navigateRoot('/station');
         }});
+      } else if (localStorage.getItem('current_competition')) {
+        const cs = localStorage.getItem('current_competition');
+        this.backendService.getDurchgaenge(cs);
       }
       this.splashScreen.hide();
 

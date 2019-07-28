@@ -1,6 +1,6 @@
 import { Component, ViewChild } from '@angular/core';
 import { WertungContainer, Wertung } from '../backend-types';
-import { Subscription, defer } from 'rxjs';
+import { Subscription, defer, of } from 'rxjs';
 import { NavController, Platform, ToastController, AlertController } from '@ionic/angular';
 import { BackendService } from '../services/backend.service';
 import { NgForm } from '@angular/forms';
@@ -149,28 +149,26 @@ export class WertungEditorPage /*implements OnInit*/ {
     this.waiting = true;
     this.backendService.updateWertung(this.durchgang, this.step, this.geraetId, this.ensureInitialValues(form.value)).subscribe((wc) => {
       this.waiting = false;
-      defer(() => {
-        const currentItemIndex = this.backendService.wertungen.findIndex(w => w.id === wc.id);
-        if (currentItemIndex < 0) {
-          console.log('unexpected wertung - id matches not with current wertung: ' + wc.id);
+      const currentItemIndex = this.backendService.wertungen.findIndex(w => w.wertung.id === wc.wertung.id);
+      if (currentItemIndex < 0) {
+        console.log('unexpected wertung - id matches not with current wertung: ' + wc.wertung.id);
+      }
+      let nextItemIndex = currentItemIndex + 1;
+      if (currentItemIndex < 0) {
+        nextItemIndex = 0;
+      } else if (currentItemIndex >= this.backendService.wertungen.length - 1) {
+        if (this.backendService.wertungen.filter(w => w.wertung.endnote === undefined).length === 0) {
+          this.navCtrl.pop();
+          this.toastSuggestCompletnessCheck();
+          return;
+        } else {
+          nextItemIndex = this.backendService.wertungen.findIndex(w => w.wertung.endnote === undefined);
+          this.toastMissingResult(form, this.backendService.wertungen[nextItemIndex].vorname
+            + ' ' + this.backendService.wertungen[nextItemIndex].name);
         }
-        let nextItemIndex = currentItemIndex + 1;
-        if (currentItemIndex < 0) {
-          nextItemIndex = 0;
-        } else if (currentItemIndex >= this.backendService.wertungen.length - 1) {
-          if (this.backendService.wertungen.filter(w => w.wertung.endnote === undefined).length === 0) {
-            this.navCtrl.pop();
-            this.toastSuggestCompletnessCheck();
-            return;
-          } else {
-            nextItemIndex = this.backendService.wertungen.findIndex(w => w.wertung.endnote === undefined);
-            this.toastMissingResult(form, this.backendService.wertungen[nextItemIndex].vorname
-              + ' ' + this.backendService.wertungen[nextItemIndex].name);
-          }
-        }
-        form.resetForm();
-        this.updateUI(this.backendService.wertungen[nextItemIndex]);
-      });
+      }
+      form.resetForm();
+      this.updateUI(this.backendService.wertungen[nextItemIndex]);
     }, (err) => {
       this.updateUI(this.itemOriginal);
       console.log(err);
@@ -224,7 +222,7 @@ export class WertungEditorPage /*implements OnInit*/ {
     const alert = await this.alertCtrl.create({
       header: 'Achtung',
       subHeader: 'Fehlendes Resultat!',
-      message: 'Nach der Erfassung der letzen Wertung in dieser Riege scheint es noch leere Wertungen zu geben. '
+      message: 'Nach der Erfassung der letzten Wertung in dieser Riege scheint es noch leere Wertungen zu geben. '
                 + 'Bitte prüfen, ob ' + athlet.toUpperCase() + ' geturnt hat.',
       buttons:  [
         {
@@ -244,31 +242,5 @@ export class WertungEditorPage /*implements OnInit*/ {
       ]
     });
     alert.present();
-    // const toast = await this.toastController.create({
-    //   header: 'Fehlendes Resultat!',
-    //   message: 'Nach der Erfassung der letzen Wertung in dieser Riege scheint es noch leere Wertungen zu geben. '
-    //             + 'Bitte prüfen, ob ' + athlet.toUpperCase() + ' nicht geturnt hat.',
-    //   animated: true,
-    //   position: 'middle',
-    //   buttons: [
-    //     {
-    //       text: 'Nicht geturnt',
-    //       icon: 'checkmark-circle',
-    //       role: 'edit',
-    //       handler: () => {
-    //         this.nextEmptyOrFinish(form);
-    //       }
-    //     },
-    //     {
-    //       text: 'Korrigieren',
-    //       icon: '<ion-icon name="create"></ion-icon>',
-    //       role: 'cancel',
-    //       handler: () => {
-    //         console.log('Korrigieren clicked');
-    //       }
-    //     }
-    //   ]
-    // });
-    // toast.present();
   }
 }

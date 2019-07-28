@@ -24,6 +24,10 @@ export class AthletViewPage  implements OnInit {
               public backendService: BackendService) {
   }
 
+  makeItemHash(item: WertungContainer) {
+    return item.id * this.geraete.length * 200 + item.geraet * 100 + (item.wertung.endnote || -1);
+  }
+
   ngOnInit(): void {
     // tslint:disable-next-line:radix
     const athletId = parseInt(this.route.snapshot.paramMap.get('athletId'));
@@ -40,7 +44,7 @@ export class AthletViewPage  implements OnInit {
       }
     });
     const changeHandler = (wcs: {string: WertungContainer}) => {
-      this.lastItems = this.items.map(item => item.id * this.geraete.length + item.geraet);
+      this.lastItems = this.items.map(item => this.makeItemHash(item));
       this.items = this.items.map(item => {
         const newItem: WertungContainer = wcs[item.wertung.wettkampfdisziplinId];
         if (newItem && newItem.id === item.id) {
@@ -66,7 +70,8 @@ export class AthletViewPage  implements OnInit {
     });
   }
   isNew(item: WertungContainer): boolean {
-    return this.lastItems.filter(id => id === item.id * this.geraete.length + item.geraet).length === 0;
+    const itemhash = this.makeItemHash(item);
+    return this.lastItems.filter(id => id === itemhash).length === 0;
   }
   get stationFreezed(): boolean {
     return this.backendService.stationFreezed;

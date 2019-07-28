@@ -1,14 +1,15 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, ChangeDetectionStrategy, NgZone } from '@angular/core';
 import { NavController, AlertController, IonItemSliding } from '@ionic/angular';
 import { BackendService } from '../services/backend.service';
 import { encodeURIComponent2 } from '../services/websocket.service';
 import { Wettkampf, Geraet, WertungContainer } from '../backend-types';
-import { map } from 'rxjs/operators';
+import { map, tap } from 'rxjs/operators';
+import { Observable } from 'rxjs';
 
 @Component({
   selector: 'app-station',
   templateUrl: './station.page.html',
-  styleUrls: ['./station.page.scss'],
+  styleUrls: ['./station.page.scss']
 })
 export class StationPage implements OnInit  {
 
@@ -16,7 +17,7 @@ export class StationPage implements OnInit  {
   geraete: Geraet[] = [];
 
   constructor(public navCtrl: NavController, public backendService: BackendService,
-              private alertCtrl: AlertController) {
+              private alertCtrl: AlertController, private zone: NgZone) {
     this.backendService.durchgangStarted.pipe(
       map(dgl =>
       dgl.filter(dg =>
@@ -142,7 +143,7 @@ export class StationPage implements OnInit  {
     }
   }
 
-  finish() {
+  async showCompleteAlert() {
     const alert = this.alertCtrl.create({
       header: 'Achtung',
       message: 'Nach dem Abschliessen der Station "'
@@ -152,13 +153,15 @@ export class StationPage implements OnInit  {
         {text: 'Abbrechen', role: 'cancel', handler: () => {}},
         {text: 'OKAY', handler: () => {
           const navTransition = alert.then(a => a.dismiss());
-          this.backendService.finishStation(this.competition, this.durchgang, this.geraet, this.step)
-          .subscribe(nextSteps => {
-            if (nextSteps.length === 0) {
-              navTransition.then(() => {
-                this.navCtrl.pop();
-              });
-            }
+          this.zone.run(() => {
+            this.backendService.finishStation(this.competition, this.durchgang, this.geraet, this.step)
+            .subscribe(nextSteps => {
+              if (nextSteps.length === 0) {
+                navTransition.then(() => {
+                  this.navCtrl.pop();
+                });
+              }
+            });
           });
           return false;
         }
@@ -167,6 +170,52 @@ export class StationPage implements OnInit  {
     });
     alert.then(a => a.present());
   }
+
+  async toastMissingResult(undefinedItems: WertungContainer[]) {
+    const firstUndefinedAthlet = undefinedItems[0].vorname.toUpperCase() + ' '
+      + undefinedItems[0].name.toUpperCase()
+      + ' (' + undefinedItems[0].verein + ')';
+
+    const alert = await this.alertCtrl.create({
+      header: 'Achtung',
+      subHeader: 'Fehlendes Resultat!',
+      message: 'In dieser Riege gibt es noch ' + undefinedItems.length + ' leere Wertungen! - '
+                + 'Bitte prüfen, ob ' + firstUndefinedAthlet + ' geturnt hat.',
+      buttons:  [
+        {
+          text: 'Nicht geturnt',
+          role: 'edit',
+          handler: () => {
+            undefinedItems.splice(0, 1);
+            if (undefinedItems.length > 0) {
+              this.toastMissingResult(undefinedItems);
+            } else {
+              this.showCompleteAlert();
+            }
+          }
+        },
+        {
+          text: 'Korrigieren',
+          role: 'cancel',
+          handler: () => {
+            this.navCtrl.navigateForward('wertung-editor/' + undefinedItems[0].id);
+          }
+        }
+      ]
+    });
+    alert.present();
+  }
+
+  finish() {
+    const undefinedItems = this.backendService.wertungen.filter(w => w.wertung.endnote === undefined);
+    if (undefinedItems.length === 0) {
+      this.showCompleteAlert();
+      return;
+    } else {
+      this.toastMissingResult(undefinedItems);
+    }
+  }
+
   getCompetitions(): Wettkampf[] {
     return this.backendService.competitions;
   }
@@ -214,8 +263,8 @@ export class StationPage implements OnInit  {
     return this.backendService.steps;
   }
 
-  getWertungen(): WertungContainer[] {
-    return this.backendService.wertungen;
+  getWertungen(): Observable<WertungContainer[]> {
+    return this.backendService.wertungenSubject;
   }
 
 }
