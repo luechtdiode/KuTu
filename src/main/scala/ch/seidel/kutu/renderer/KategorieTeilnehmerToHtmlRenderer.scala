@@ -106,7 +106,7 @@ trait KategorieTeilnehmerToHtmlRenderer {
     </html>
   """
 
-  private def anmeldeListe(kategorie: String, kandidaten: Seq[Kandidat], logo: File) = {
+  private def anmeldeListeProKategorie(kategorie: String, kandidaten: Seq[Kandidat], logo: File) = {
     val logoHtml = if (logo.exists()) s"""<img class=logo src="${logo.imageSrcForWebEngine}" title="Logo"/>""" else ""
       
     val d = kandidaten.map{kandidat =>
@@ -130,8 +130,33 @@ trait KategorieTeilnehmerToHtmlRenderer {
   """
   }
 
+  private def anmeldeListeProVerein(verein: String, kandidaten: Seq[Kandidat], logo: File) = {
+    val logoHtml = if (logo.exists()) s"""<img class=logo src="${logo.imageSrcForWebEngine}" title="Logo"/>""" else ""
+
+    val d = kandidaten.map{kandidat =>
+      s"""<tr class="athletRow"><td>${kandidat.programm}</td><td class="large">${kandidat.name} ${kandidat.vorname} (${kandidat.jahrgang})</td><td>${kandidat.durchgang}</td><td>${kandidat.start}</td><td class="totalCol">&nbsp;</td></tr>"""
+    }
+    val dt = d.mkString("", "\n", "\n")
+    s"""<div class=notenblatt>
+      <div class=headline>
+        $logoHtml
+        <div class=title><h4>${kandidaten.head.wettkampfTitel}</h4></div>
+        <div class=programm>${verein}</br></div>
+
+      </div>
+      <div class="showborder">
+        <table width="100%">
+          <tr class="totalRow heavyRow"><td></td><td>Name</td><td>Einteilung</td><td>Start</td><td class="totalCol">Bemerkung</td></tr>
+          ${dt}
+        </table>
+      </div>
+    </div>
+  """
+  }
+
   def riegenToKategorienListeAsHTML(riegen: Seq[GeraeteRiege], logo: File): String = {
     val kandidaten = riegen
+        // filter startgeraet
         .filter(riege => riege.halt == 0)
         // filter hauptdurchgang-startgeraet
         .filter(riege => !riege.kandidaten.exists(k => k.einteilung2.exists(d => d.start == riege.disziplin)))
@@ -142,10 +167,26 @@ trait KategorieTeilnehmerToHtmlRenderer {
           })
         })
 
-    toHTMLasKategorienListe(kandidaten, logo)
+    toHTMLasKategorienListe(kandidaten, logo, 0)
   }
 
-  def toHTMLasKategorienListe(kandidaten: Seq[Kandidat], logo: File): String = {
+  def riegenToVereinListeAsHTML(riegen: Seq[GeraeteRiege], logo: File): String = {
+    val kandidaten = riegen
+      // filter startgeraet
+      .filter(riege => riege.halt == 0)
+      // filter hauptdurchgang-startgeraet
+      .filter(riege => !riege.kandidaten.exists(k => k.einteilung2.exists(d => d.start == riege.disziplin)))
+      .flatMap(riege => {
+        riege.kandidaten
+          .map(kandidat => {
+            Kandidat(riege.wettkampfTitel, kandidat.geschlecht, kandidat.programm, kandidat.name, kandidat.vorname, kandidat.jahrgang, kandidat.verein, "", riege.durchgang.get, riege.disziplin.get.easyprint, Seq.empty)
+          })
+      })
+
+    toHTMLasVereinsListe(kandidaten, logo, 0)
+  }
+
+  def toHTMLasKategorienListe(kandidaten: Seq[Kandidat], logo: File, rowsPerPage: Int = 28): String = {
     val kandidatenPerKategorie = kandidaten.sortBy { k =>
       val krit = f"${k.verein}%-40s ${k.name}%-40s ${k.vorname}%-40s"
       //logger.debug(krit)
@@ -153,11 +194,29 @@ trait KategorieTeilnehmerToHtmlRenderer {
     }.groupBy(k => k.programm)
     val rawpages = for {
       kategorie <- kandidatenPerKategorie.keys.toList.sorted
-      a4seitenmenge <- kandidatenPerKategorie(kategorie).sliding(28, 28)
+      a4seitenmenge <- if(rowsPerPage == 0) kandidatenPerKategorie(kategorie).sliding(kandidatenPerKategorie(kategorie).size, kandidatenPerKategorie(kategorie).size) else kandidatenPerKategorie(kategorie).sliding(rowsPerPage, rowsPerPage)
     }
     yield {
-      anmeldeListe(kategorie, a4seitenmenge, logo)
+      anmeldeListeProKategorie(kategorie, a4seitenmenge, logo)
     }
+
+    val pages = rawpages.mkString("</li></ul><ul><li>")
+    intro + pages + outro
+  }
+
+  def toHTMLasVereinsListe(kandidaten: Seq[Kandidat], logo: File, rowsPerPage: Int = 28): String = {
+    val kandidatenPerKategorie = kandidaten.sortBy { k =>
+      val krit = f"${k.programm}%-40s ${k.name}%-40s ${k.vorname}%-40s"
+      //logger.debug(krit)
+      krit
+    }.groupBy(k => k.verein)
+    val rawpages = for {
+      verein <- kandidatenPerKategorie.keys.toList.sorted
+      a4seitenmenge <- if(rowsPerPage == 0) kandidatenPerKategorie(verein).sliding(kandidatenPerKategorie(verein).size, kandidatenPerKategorie(verein).size) else kandidatenPerKategorie(verein).sliding(rowsPerPage, rowsPerPage)
+    }
+      yield {
+        anmeldeListeProVerein(verein, a4seitenmenge, logo)
+      }
 
     val pages = rawpages.mkString("</li></ul><ul><li>")
     intro + pages + outro

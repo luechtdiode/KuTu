@@ -1429,6 +1429,68 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
         }
       }
     }
+    val generateVereinsTeilnehmerListe = new Button with KategorieTeilnehmerToHtmlRenderer {
+      text = "Vereins-Teilnehmerliste erstellen"
+      minWidth = 75
+      onAction = (event: ActionEvent) => {
+        if (wkModel.nonEmpty) {
+          val driver = wkModel.toSeq
+          val programme = driver.flatten.map(x => x.init.wettkampfdisziplin.programm).foldLeft(Seq[ProgrammView]()){(acc, pgm) =>
+            if(!acc.exists { x => x.id == pgm.id }) {
+              acc :+ pgm
+            }
+            else {
+              acc
+            }
+          }
+          logger.debug(programme.toString)
+          val riegen = service.selectRiegen(wettkampf.id).map(r => r.r -> (r.start.map(_.name).getOrElse(""), r.durchgang.getOrElse(""))).toMap
+          val seriendaten = for {
+            programm <- programme
+
+            athletwertungen <- driver.map(we => we.filter { x => x.init.wettkampfdisziplin.programm.id == programm.id})
+            if(athletwertungen.nonEmpty)
+          }
+            yield {
+              val einsatz = athletwertungen.head.init
+              val athlet = einsatz.athlet
+              Kandidat(
+                einsatz.wettkampf.easyprint
+                ,athlet.geschlecht match {case "M" => "Turner"  case _ => "Turnerin"}
+                ,einsatz.wettkampfdisziplin.programm.easyprint
+                ,athlet.name
+                ,athlet.vorname
+                ,AthletJahrgang(athlet.gebdat).jahrgang
+                ,athlet.verein match {case Some(v) => v.easyprint case _ => ""}
+                ,einsatz.riege.getOrElse("")
+                ,riegen.getOrElse(einsatz.riege.getOrElse(""), ("", ""))._2
+                ,riegen.getOrElse(einsatz.riege.getOrElse(""), ("", ""))._1
+                ,athletwertungen.filter{wertung =>
+                  if(wertung.init.wettkampfdisziplin.feminim == 0 && !wertung.init.athlet.geschlecht.equalsIgnoreCase("M")) {
+                    false
+                  }
+                  else if(wertung.init.wettkampfdisziplin.masculin == 0 && wertung.init.athlet.geschlecht.equalsIgnoreCase("M")) {
+                    false
+                  }
+                  else {
+                    true
+                  }
+                }.map(_.init.wettkampfdisziplin.disziplin.easyprint)
+              )
+            }
+          val filename = "Vereins-Teilnehmerliste_" +
+            wettkampf.easyprint.replace(" ", "_") +
+            programm.map("_Programm_" + _.easyprint.replace(" ", "_")).getOrElse("") +
+            riege.map("_Riege_" + _.caption.replace(" ", "_")).getOrElse("") + ".html"
+          val dir = new java.io.File(homedir + "/" + wettkampf.easyprint.replace(" ", "_"))
+          if(!dir.exists()) {
+            dir.mkdirs()
+          }
+          def generate(lpp: Int) = toHTMLasVereinsListe(seriendaten, PrintUtil.locateLogoFile(dir))
+          PrintUtil.printDialog(text.value,FilenameDefault(filename, dir), false, generate, orientation = PageOrientation.Portrait)(event)
+        }
+      }
+    }
     val generateNotenblaetter = new Button with NotenblattToHtmlRenderer {
       text = "Notenblätter erstellen"
       minWidth = 75
@@ -1689,7 +1751,7 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
               ).execute(event)
             }
           }
-          List[Button](addButton, removeButton, setRiege2ForAllButton, riegeRenameButton, riegenRemoveButton, generateTeilnehmerListe, generateNotenblaetter)
+          List[Button](addButton, removeButton, setRiege2ForAllButton, riegeRenameButton, riegenRemoveButton, generateTeilnehmerListe, generateVereinsTeilnehmerListe, generateNotenblaetter)
           
         case _ => // andere
           val pasteFromExcel = new Button("Aus Excel einfügen ...") {
@@ -1697,7 +1759,7 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
               doPasteFromExcel(Some(wettkampf.programm))(event)
             }
           }
-          List[Button](pasteFromExcel, removeButton, setRiege2ForAllButton, riegeRenameButton, riegenRemoveButton, generateTeilnehmerListe, generateNotenblaetter)
+          List[Button](pasteFromExcel, removeButton, setRiege2ForAllButton, riegeRenameButton, riegenRemoveButton, generateTeilnehmerListe, generateVereinsTeilnehmerListe, generateNotenblaetter)
       }
       case Some(progrm) =>
         val addButton = new Button {

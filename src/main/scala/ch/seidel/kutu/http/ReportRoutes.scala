@@ -30,13 +30,18 @@ trait ReportRoutes extends SprayJsonSupport with JsonSupport with AuthSupport wi
 
           path("startlist") {
             get {
-              parameters('html.?, 'q.?) { (html, q) => html match {
+              parameters('html.?, 'q.?, 'gr.?) { (html, q, gr) => html match {
                 case Some(_) =>
                   complete({
                     val kandidaten = getAllKandidatenWertungen(UUID.fromString(wettkampf.uuid.get))
                       .filter(filterMatchingCandidatesToQuery(q))
                     val riegen = RiegenBuilder.mapToGeraeteRiegen(kandidaten)
-                    HttpEntity(ContentTypes.`text/html(UTF-8)`, renderer.riegenToKategorienListeAsHTML(riegen, logofile))
+                    gr match {
+                      case Some(grv) if (grv.equalsIgnoreCase("verein")) =>
+                        HttpEntity(ContentTypes.`text/html(UTF-8)`, renderer.riegenToVereinListeAsHTML(riegen, logofile))
+                      case _ =>
+                        HttpEntity(ContentTypes.`text/html(UTF-8)`, renderer.riegenToKategorienListeAsHTML(riegen, logofile))
+                    }
                   })
                 case None =>
                   complete({
