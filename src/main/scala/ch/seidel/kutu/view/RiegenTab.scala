@@ -290,7 +290,7 @@ class RiegenFilterView(isEditable: Boolean, wettkampf: WettkampfView, service: K
   )
 }
 
-class RiegenTab(wettkampf: WettkampfView, override val service: KutuService) extends Tab with TabWithService {
+class RiegenTab(override val wettkampf: WettkampfView, override val service: KutuService) extends Tab with TabWithService with ExportFunctions {
   val programmText = wettkampf.programm.id match {case 20 => "Kategorie" case _ => "Programm"}
   val riegenFilterModel = ObservableBuffer[RiegeEditor]()
   val durchgangModel = ObservableBuffer[DurchgangEditor]()
@@ -362,17 +362,6 @@ class RiegenTab(wettkampf: WettkampfView, override val service: KutuService) ext
   val txtGruppengroesse = new TextField() {
     text = if(isAthletikTest) "0" else "11"
     tooltip = "Max. Gruppengrösse oder 0 für gleichmässige Verteilung mit einem Durchgang."
-  }
-
-  val reprintItems: SimpleObjectProperty[Set[DurchgangChanged]] = new SimpleObjectProperty[Set[DurchgangChanged]]()
-  reprintItems.set(Set.empty)
-  println("subscribing RiegenTab for refreshing from websocket")
-  val subscription = WebSocketClient.modelWettkampfWertungChanged.onChange { (_, _, newItem) =>
-    newItem match {
-      case d: DurchgangChanged =>
-        reprintItems.set(reprintItems.get() + d)
-      case _ =>
-    }
   }
 
   override def release: Unit = {
@@ -543,28 +532,6 @@ class RiegenTab(wettkampf: WettkampfView, override val service: KutuService) ext
       ret
     }
 
-    def doSelectedRiegenBelatterExport(event: ActionEvent, durchgang: Set[String]) {
-      import scala.concurrent.ExecutionContext.Implicits.global
-
-      val seriendaten = service.getAllKandidatenWertungen(wettkampf.uuid.map(UUID.fromString(_)).get)
-      val durchgangFileQualifier = durchgang.mkString("(","-",")").replace(" ", "_")
-      val filename = "Riegenblatt_" + wettkampf.easyprint.replace(" ", "_") + durchgangFileQualifier + ".html"
-      val dir = new java.io.File(homedir + "/" + wettkampf.easyprint.replace(" ", "_"))
-      if(!dir.exists()) {
-        dir.mkdirs();
-      }
-      val logofile = PrintUtil.locateLogoFile(dir)
-      def generate = (lpp: Int) => KuTuApp.invokeAsyncWithBusyIndicator { Future {
-        Platform.runLater {
-          reprintItems.set(reprintItems.get().filter(p => !durchgang.contains(p.durchgang)))
-        }
-        (new Object with ch.seidel.kutu.renderer.RiegenblattToHtmlRenderer).toHTML(seriendaten, logofile, remoteBaseUrl, durchgang)
-      }}
-      Platform.runLater {
-        PrintUtil.printDialogFuture(text.value, FilenameDefault(filename, dir), false, generate, orientation = PageOrientation.Portrait)(event)
-      }
-    }
-
     def makeSelectedRiegenBlaetterExport(selectedDurchgaenge: Set[String]): Menu = {
       new Menu {
         text = "Riegenblätter nachdrucken"
@@ -577,21 +544,28 @@ class RiegenTab(wettkampf: WettkampfView, override val service: KutuService) ext
           items.clear()
           val affectedDurchgaenge: Set[String] = reprintItems.get.map(_.durchgang)
           if (selectedDurchgaenge.nonEmpty) {
-            val allSelectedItem = KuTuApp.makeMenuAction(s"Alle selektierten") { (caption: String, action: ActionEvent) =>
-              doSelectedRiegenBelatterExport(action, selectedDurchgaenge)
+            items += KuTuApp.makeMenuAction(s"Alle selektierten") { (caption: String, action: ActionEvent) =>
+              doSelectedRiegenBelatterExport(text.value, selectedDurchgaenge)(action)
             }
-
-            items += allSelectedItem
+            items += KuTuApp.makeMenuAction(s"Alle selektierten, nur 1. Gerät") { (caption: String, action: ActionEvent) =>
+              doSelectedRiegenBelatterExport(text.value, selectedDurchgaenge, Set(0))(action)
+            }
+            items += KuTuApp.makeMenuAction(s"Alle selektierten, ab 2. Gerät") { (caption: String, action: ActionEvent) =>
+              doSelectedRiegenBelatterExport(text.value, selectedDurchgaenge, Set(-1))(action)
+            }
+          }
+          if (affectedDurchgaenge.nonEmpty && selectedDurchgaenge.nonEmpty) {
+            items += new SeparatorMenuItem()
           }
           if (affectedDurchgaenge.nonEmpty) {
             val allItem = KuTuApp.makeMenuAction(s"Alle betroffenen (${affectedDurchgaenge.size})") { (caption: String, action: ActionEvent) =>
-              doSelectedRiegenBelatterExport(action, affectedDurchgaenge)
+              doSelectedRiegenBelatterExport(text.value, affectedDurchgaenge)(action)
             }
             items += allItem
             items += new SeparatorMenuItem()
             affectedDurchgaenge.toList.sorted.foreach { durchgang =>
               items += KuTuApp.makeMenuAction(s"${durchgang}") { (caption: String, action: ActionEvent) =>
-                doSelectedRiegenBelatterExport(action, Set(durchgang))
+                doSelectedRiegenBelatterExport(text.value, Set(durchgang))(action)
               }
             }
           }
