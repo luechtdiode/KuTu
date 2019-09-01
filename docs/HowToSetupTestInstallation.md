@@ -35,8 +35,9 @@ Menu start -> "PowerShell" eingeben, Windows PowerShell wählen:
 
 Dann folgenden Inhalt einfügen:
 
-```function set-shortcut {
-param ( [string]$SourceLnk, [string]$DestinationPath )
+```
+function set-shortcut {
+    param ( [string]$SourceLnk, [string]$DestinationPath )
     $WshShell = New-Object -comObject WScript.Shell
     $Shortcut = $WshShell.CreateShortcut($SourceLnk)
     $Shortcut.TargetPath = $DestinationPath
