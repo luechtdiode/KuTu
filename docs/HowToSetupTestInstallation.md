@@ -10,11 +10,11 @@ Aktuell wird _v2r0 verwendet.
 
 Mac OS (Terminal):
 ------------------
-Copy & Paste folgendes Script im Terminal, unter dem User-Home verzeichnis:
+Copy & Paste folgendes Script im Terminal, ev. mit `sudo` notwendig:
 ```
-rm -rf ./Applications/Test-KutuApp
+rm -rf ~/Applications/Test-KutuApp.app
 
-cp -r ./Applications/TurnerWettkampf-App-v2r0.app/ ./Applications/Test-KutuApp.app
+cp -r /Applications/TurnerWettkampf-App-v2r0.app/ ~/Applications/Test-KutuApp.app
 
 echo 'app {
   majorversion = "latest-testversion"
@@ -22,7 +22,7 @@ echo 'app {
     schema = "https"
     hostname = "test-kutuapp.sharevic.net"
   }
-}' > ./Applications/Test-Kutuapp/Contents/Java/kutuapp.conf
+}' > ~/Applications/Test-KutuApp.app/Contents/Java/kutuapp.conf
 
 ```
 Dann starten mit:
