@@ -157,12 +157,28 @@ class RanglisteTab(wettkampfmode: BooleanProperty, wettkampf: WettkampfView, ove
     }, ConnectionStates.connectedWithProperty, lastPublishedScoreView, lastScoreDef
     )) choose true otherwise false
 
-    onAction = handleAction { action: ActionEvent =>
-      lastPublishedScoreView.getValue.foreach { filter =>
-        lastPublishedScoreView.setValue(Some(
-          service.updatePublishedScore(wettkampf.id, filter.id, filter.title, filter.query, true, true)
-        ))
-      }
+    onAction = handleAction { implicit action: ActionEvent =>
+      PageDisplayer.showInDialog(text.value, new DisplayablePage() {
+        def getPage: Node = {
+          new BorderPane {
+            hgrow = Priority.Always
+            vgrow = Priority.Always
+            center = new VBox {
+              children.addAll(new Label("Die freigegebene Publikation einer Rangliste kann nicht rückgängig gemacht werden!"))
+            }
+          }
+        }
+      },
+        new Button("OK") {
+          onAction = handleAction { implicit e: ActionEvent =>
+            lastPublishedScoreView.getValue.foreach { filter =>
+              lastPublishedScoreView.setValue(Some(
+                service.updatePublishedScore(wettkampf.id, filter.id, filter.title, filter.query, true, true)
+              ))
+            }
+          }
+        }
+      )
     }
   }
 

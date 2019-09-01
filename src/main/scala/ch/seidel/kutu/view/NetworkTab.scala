@@ -4,10 +4,12 @@ import java.util.UUID
 
 import ch.seidel.commons.{DisplayablePage, LazyTabPane, PageDisplayer, TabWithService}
 import ch.seidel.kutu.Config._
+import ch.seidel.kutu.KuTuApp.enc
 import ch.seidel.kutu.akka._
 import ch.seidel.kutu.domain._
 import ch.seidel.kutu.http.WebSocketClient
-import ch.seidel.kutu.renderer.RiegenBuilder
+import ch.seidel.kutu.renderer.PrintUtil.FilenameDefault
+import ch.seidel.kutu.renderer.{BestenListeToHtmlRenderer, PrintUtil, RiegenBuilder}
 import ch.seidel.kutu.{Config, ConnectionStates, KuTuApp, KuTuServer}
 import javafx.scene.{control => jfxsc}
 import scalafx.Includes._
@@ -17,6 +19,7 @@ import scalafx.beans.property.{BooleanProperty, ObjectProperty, StringProperty}
 import scalafx.collections.ObservableBuffer
 import scalafx.event.ActionEvent
 import scalafx.event.subscriptions.Subscription
+import scalafx.print.PageOrientation
 import scalafx.scene.Node
 import scalafx.scene.control.TableColumn._
 import scalafx.scene.control._
@@ -617,8 +620,37 @@ class NetworkTab(wettkampfmode: BooleanProperty, override val wettkampf: Wettkam
     val disconnectMenu = KuTuApp.makeDisconnectMenu(wettkampf)
     val removeRemoteMenu = KuTuApp.makeWettkampfRemoteRemoveMenu(wettkampf)
 
+    val generateBestenliste = new Button with BestenListeToHtmlRenderer {
+      text = "Bestenliste erstellen"
+      minWidth = 75
+      disable.value = wettkampf.toWettkampf.isReadonly(homedir, remoteHostOrigin)
+      onAction = (event: ActionEvent) => {
+        if (!WebSocketClient.isConnected) {
+          val filename = "Bestenliste_" + wettkampf.easyprint.replace(" ", "_") + ".html"
+          val dir = new java.io.File(homedir + "/" + wettkampf.easyprint.replace(" ", "_"))
+          if(!dir.exists()) {
+            dir.mkdirs()
+          }
+          val logofile = PrintUtil.locateLogoFile(dir)
+
+          def generate(lpp: Int) = toHTMListe(WertungServiceBestenResult.getBestenResults, logofile)
+          PrintUtil.printDialog(text.value,FilenameDefault(filename, dir), false, generate, orientation = PageOrientation.Portrait)(event)
+        } else {
+          Await.result(KuTuServer.finishDurchgangStep(wettkampf), Duration.Inf)
+          val topResults = s"${Config.remoteBaseUrl}/?" + new String(enc.encodeToString((s"top&c=${wettkampf.uuid.get}").getBytes))
+          KuTuApp.hostServices.showDocument(topResults)
+        }
+        WertungServiceBestenResult.resetBestenResults
+      }
+    }
+
     view.contextMenu = new ContextMenu() {
       items += makeDurchgangStartenMenu(wettkampf)
+      items += new SeparatorMenuItem()
+      items += makeMenuAction("Bestenliste erstellen") {(_, action) =>
+        generateBestenliste.onAction.value.handle(action)
+      }
+      items += new SeparatorMenuItem()
       items += makeDurchgangAbschliessenMenu(wettkampf)
     }
     val toolbar = new ToolBar {
@@ -632,19 +664,36 @@ class NetworkTab(wettkampfmode: BooleanProperty, override val wettkampf: Wettkam
     val btnEditRiege = new MenuButton("Gehe zu ...") {
       disable <== when(createBooleanBinding(() => items.isEmpty, items)) choose true otherwise false
     }
+    val btnDurchgang = new MenuButton("Durchgang ...") {
+      disable <== when(createBooleanBinding(() => items.isEmpty, items)) choose true otherwise false
+    }
 
     def updateButtons {
       val navigate = makeNavigateToMenu(wettkampf)
       btnEditRiege.items.clear()
       btnEditRiege.items.addAll(navigate.items)
+
       if (!wettkampf.toWettkampf.isReadonly(homedir, remoteHostOrigin)) {
-        val dgs = makeDurchgangStartenMenu(wettkampf)
-        val dga = makeDurchgangAbschliessenMenu(wettkampf)
+        btnDurchgang.items.clear()
+        btnDurchgang.items += makeDurchgangStartenMenu(wettkampf)
+        btnDurchgang.items += new SeparatorMenuItem()
+        btnDurchgang.items += makeSelectedRiegenBlaetterExport()
+        btnDurchgang.items += makeMenuAction("Bestenliste erstellen") {(_, action) =>
+          generateBestenliste.onAction.value.handle(action)
+        }
+        btnDurchgang.items += new SeparatorMenuItem()
+        btnDurchgang.items += makeDurchgangAbschliessenMenu(wettkampf)
+
         view.contextMenu = new ContextMenu() {
-          items += dgs
+          items += makeDurchgangStartenMenu(wettkampf)
+          items += new SeparatorMenuItem()
           items += makeSelectedRiegenBlaetterExport()
           items += navigate
-          items += dga
+          items += makeMenuAction("Bestenliste erstellen") {(_, action) =>
+            generateBestenliste.onAction.value.handle(action)
+          }
+          items += new SeparatorMenuItem()
+          items += makeDurchgangAbschliessenMenu(wettkampf)
         }
         toolbar.content = List(
           new Button {
@@ -655,23 +704,16 @@ class NetworkTab(wettkampfmode: BooleanProperty, override val wettkampf: Wettkam
             onAction = qrcodeMenu.onAction.get
             text <== qrcodeMenu.text
             disable <== qrcodeMenu.disable
-          }, new Button {
-            onAction = dgs.onAction.get
-            text <== dgs.text
-            disable <== dgs.disable
-          }, btnEditRiege, new Button {
-            val act = makeDurchgangAbschliessenMenu(wettkampf)
-            onAction = dga.onAction.get
-            text <== dga.text
-            disable <== dga.disable
-          }, new Button {
+          }, btnDurchgang, btnEditRiege, new Button {
             onAction = uploadMenu.onAction.get
             text <== uploadMenu.text
             disable <== uploadMenu.disable
+            visible <== when(wettkampfmode) choose false otherwise true
           }, new Button {
             onAction = downloadMenu.onAction.get
             text <== downloadMenu.text
             disable <== downloadMenu.disable
+            visible <== when(wettkampfmode) choose false otherwise true
           }, new Button {
             onAction = disconnectMenu.onAction.get
             text <== disconnectMenu.text
@@ -680,7 +722,8 @@ class NetworkTab(wettkampfmode: BooleanProperty, override val wettkampf: Wettkam
             onAction = removeRemoteMenu.onAction.get
             text <== removeRemoteMenu.text
             disable <== removeRemoteMenu.disable
-          })
+            visible <== when(wettkampfmode) choose false otherwise true
+          }).filter(_.isVisible)
       } else {
         view.contextMenu = new ContextMenu() {
           items += navigate

@@ -5,13 +5,14 @@ import java.util.concurrent.{ScheduledFuture, TimeUnit}
 
 import ch.seidel.commons._
 import ch.seidel.kutu.Config._
+import ch.seidel.kutu.KuTuApp.enc
 import ch.seidel.kutu.akka._
 import ch.seidel.kutu.data.ResourceExchanger.{logger, unassignAthletFromWettkampf}
 import ch.seidel.kutu.domain._
 import ch.seidel.kutu.http.WebSocketClient
 import ch.seidel.kutu.renderer.PrintUtil.FilenameDefault
 import ch.seidel.kutu.renderer._
-import ch.seidel.kutu.{KuTuApp, KuTuServer}
+import ch.seidel.kutu.{Config, KuTuApp, KuTuServer}
 import javafx.scene.{control => jfxsc}
 import org.slf4j.LoggerFactory
 import scalafx.Includes._
@@ -1578,7 +1579,9 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
           def generate(lpp: Int) = toHTMListe(WertungServiceBestenResult.getBestenResults, logofile)
           PrintUtil.printDialog(text.value,FilenameDefault(filename, dir), false, generate, orientation = PageOrientation.Portrait)(event)
         } else {
-          Await.result(KuTuServer.finishDurchgangStep(wettkampf), Duration.Inf)          
+          Await.result(KuTuServer.finishDurchgangStep(wettkampf), Duration.Inf)
+          val topResults = s"${Config.remoteBaseUrl}/?" + new String(enc.encodeToString((s"top&c=${wettkampf.uuid.get}").getBytes))
+          KuTuApp.hostServices.showDocument(topResults)
         }
         WertungServiceBestenResult.resetBestenResults
       }
