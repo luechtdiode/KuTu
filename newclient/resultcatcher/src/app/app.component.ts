@@ -26,6 +26,53 @@ export class AppComponent {
       { title: 'Athlet/-In suchen', url: 'search-athlet', icon: 'search' }
     ];
 
+    this.backendService.askForUsername.subscribe(service => {
+      const alert = this.alertCtrl.create({
+        header: 'Settings',
+        message: service.currentUserName ? 'Dein Benutzername' : 'Du bist das erste Mal hier. Bitte gib einen Benutzernamen an',
+        inputs: [
+          {
+            name: 'username',
+            placeholder: 'Benutzername',
+            value: service.currentUserName
+          }
+        ],
+        buttons: [
+          {
+            text: 'Abbrechen',
+            role: 'cancel',
+            handler: () => {
+              console.log('Cancel clicked');
+            }
+          },
+          {
+            text: 'Speichern',
+            handler: data => {
+              if (data.username && data.username.trim().length > 1) {
+                service.currentUserName = data.username.trim();
+              } else {
+                // invalid name
+                return false;
+              }
+            }
+          }
+        ]
+      });
+      alert.then(a => a.present());
+    });
+    this.backendService.showMessage.subscribe(message => {
+      let msg = message.msg;
+      if (!msg || msg.trim().length === 0) {
+        msg = 'Die gewünschte Aktion ist aktuell nicht möglich.';
+      }
+      const alert = this.alertCtrl.create({
+        header: 'Achtung',
+        message: msg,
+        buttons: ['OK']
+      });
+      alert.then(a => a.present());
+    });
+
     this.initializeApp();
   }
   public appPages: Array<{title: string, url: string, icon: string}>;
@@ -164,53 +211,6 @@ export class AppComponent {
         this.backendService.getDurchgaenge(cs);
       }
       this.splashScreen.hide();
-
-      this.backendService.askForUsername.subscribe(service => {
-        const alert = this.alertCtrl.create({
-          header: 'Settings',
-          message: service.currentUserName ? 'Dein Benutzername' : 'Du bist das erste Mal hier. Bitte gib einen Benutzernamen an',
-          inputs: [
-            {
-              name: 'username',
-              placeholder: 'Benutzername',
-              value: service.currentUserName
-            }
-          ],
-          buttons: [
-            {
-              text: 'Abbrechen',
-              role: 'cancel',
-              handler: () => {
-                console.log('Cancel clicked');
-              }
-            },
-            {
-              text: 'Speichern',
-              handler: data => {
-                if (data.username && data.username.trim().length > 1) {
-                  service.currentUserName = data.username.trim();
-                } else {
-                  // invalid name
-                  return false;
-                }
-              }
-            }
-          ]
-        });
-        alert.then(a => a.present());
-      });
-      this.backendService.showMessage.subscribe(message => {
-        let msg = message.msg;
-        if (!msg || msg.trim().length === 0) {
-          msg = 'Die gewünschte Aktion ist aktuell nicht möglich.';
-        }
-        const alert = this.alertCtrl.create({
-          header: 'Achtung',
-          message: msg,
-          buttons: ['OK']
-        });
-        alert.then(a => a.present());
-      });
     });
   }
 
