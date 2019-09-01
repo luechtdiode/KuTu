@@ -1,3 +1,32 @@
+Einrichten einer Test-Installation
+==================================
+
+Zunächst muss die App ordentlich heruntergeladen und installiert werden.
+
+Danach kann mit Hilfe folgender Beschreibung eine Test-Instanz konfiguriert werden.
+
+Die Versionsbezeichnungen können im Laufe geändert haben und müssen ggf. in den Scripts angepasst werden.
+Aktuell wird _v2r0 verwendet.
+
+Mac OS:
+-------
+```
+rm -rf ./Applications/Test-KutuApp
+
+cp -r ./Applications/TurnerWettkampf-App-v2r0.app/ ./Applications/Test-KutuApp.app
+
+echo 'app {
+  majorversion = "latest-testversion"
+  remote {
+    schema = "https"
+    hostname = "test-kutuapp.sharevic.net"
+  }
+}' > ./Applications/Test-Kutuapp/Contents/Java/kutuapp.conf
+
+```
+Dann starten mit:
+```open -a Test-KutuApp```
+
 Windows 10:
 -----------
 
@@ -32,6 +61,10 @@ Set-Content $Env:USERPROFILE\TurnerWettkampf-App-v2r0\app\kutuapp.conf -Value 'a
 $DesktopPath = [Environment]::GetFolderPath("Desktop")
 set-shortcut "$DesktopPath\Test-TurnerWettkampf-App-v2r0.lnk" "$Env:USERPROFILE\TurnerWettkampf-App-v2r0\TurnerWettkampf-App-v2r0.exe"
 ```
+Dann starten via Desktop-Verknüpfung oder via PowerShell mit
+```
+$Env:USERPROFILE\TurnerWettkampf-App-v2r0\TurnerWettkampf-App-v2r0.exe
+```
 
 Linux (Terminal):
 -----------------
@@ -53,4 +86,7 @@ echo 'app {
 Dann starten mit:
 ```~/TurnerWettkampf-App-v2r0/TurnerWettkampf-App-v2r0```
 
-Wenn die App oben rechts die URL `"https://test-kutuapp.sharevic.net:443"` anzeigt, dann hat alles geklappt.
+
+Verifikation, dass die Testversion korrekt funktioniert:
+--------------------------------------------------------
+Wenn die App nach dem Start oben rechts im blauen Feld die URL `"https://test-kutuapp.sharevic.net:443"` anzeigt, dann hat alles geklappt.
