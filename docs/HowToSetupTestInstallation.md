@@ -8,8 +8,9 @@ Danach kann mit Hilfe folgender Beschreibung eine Test-Instanz konfiguriert werd
 Die Versionsbezeichnungen können im Laufe geändert haben und müssen ggf. in den Scripts angepasst werden.
 Aktuell wird _v2r0 verwendet.
 
-Mac OS:
--------
+Mac OS (Terminal):
+------------------
+Copy & Paste folgendes Script im Terminal, unter dem User-Home verzeichnis:
 ```
 rm -rf ./Applications/Test-KutuApp
 
@@ -27,8 +28,8 @@ echo 'app {
 Dann starten mit:
 ```open -a Test-KutuApp```
 
-Windows 10:
------------
+Windows 10 (PowerShell):
+------------------------
 
 Menu start -> "PowerShell" eingeben, Windows PowerShell wählen:
 
