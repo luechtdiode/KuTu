@@ -424,7 +424,7 @@ object ResourceExchanger extends KutuService with RiegenBuilder {
     val vereine = wertungen.flatMap(_.athlet.verein).toSet
     zip.putNextEntry(new ZipEntry("vereine.csv"));
     zip.write((getHeader[Verein] + "\n").getBytes("utf-8"))
-    for(verein <- vereine) {
+    for (verein <- vereine) {
       zip.write((getValues(verein) + "\n").getBytes("utf-8"))
     }
     zip.closeEntry()
@@ -432,7 +432,7 @@ object ResourceExchanger extends KutuService with RiegenBuilder {
     val athleten = wertungen.map(_.athlet).toSet
     zip.putNextEntry(new ZipEntry("athleten.csv"));
     zip.write((getHeader[Athlet] + "\n").getBytes("utf-8"))
-    for(athlet <- athleten) {
+    for (athlet <- athleten) {
       zip.write((getValues(athlet) + "\n").getBytes("utf-8"))
     }
     zip.closeEntry()
@@ -440,7 +440,7 @@ object ResourceExchanger extends KutuService with RiegenBuilder {
     val wertungenRaw = wertungen.map(_.toWertung)
     zip.putNextEntry(new ZipEntry("wertungen.csv"));
     zip.write((getHeader[Wertung] + "\n").getBytes("utf-8"))
-    for(wertung <- wertungenRaw) {
+    for (wertung <- wertungenRaw) {
       zip.write((getValues(wertung) + "\n").getBytes("utf-8"))
     }
     zip.closeEntry()
@@ -448,7 +448,7 @@ object ResourceExchanger extends KutuService with RiegenBuilder {
     val riegenRaw = selectRiegenRaw(wettkampf.id)
     zip.putNextEntry(new ZipEntry("riegen.csv"));
     zip.write((getHeader[RiegeRaw] + "\n").getBytes("utf-8"))
-    for(riege <- riegenRaw) {
+    for (riege <- riegenRaw) {
       zip.write((getValues(riege) + "\n").getBytes("utf-8"))
     }
     zip.closeEntry()
@@ -456,41 +456,43 @@ object ResourceExchanger extends KutuService with RiegenBuilder {
     val scores = Await.result(listPublishedScores(UUID.fromString(wettkampf.uuid.get)), Duration.Inf).map(sv => sv.toRaw)
     zip.putNextEntry(new ZipEntry("scoredefs.csv"));
     zip.write((getHeader[PublishedScoreRaw] + "\n").getBytes("utf-8"))
-    for(score <- scores) {
+    for (score <- scores) {
       zip.write((getValues(score) + "\n").getBytes("utf-8"))
     }
     zip.closeEntry()
 
     val competitionDir = new java.io.File(Config.homedir + "/" + wettkampf.easyprint.replace(" ", "_"))
-    
+
     val logofile = PrintUtil.locateLogoFile(competitionDir);
     if (logofile.exists()) {
       zip.putNextEntry(new ZipEntry(logofile.getName));
       val fis = new FileInputStream(logofile)
       val bytes = new Array[Byte](1024) //1024 bytes - Buffer size
       Iterator
-      .continually(fis.read(bytes))
-      .takeWhile(-1 !=)
-      .foreach(read=> zip.write(bytes, 0, read))
+        .continually(fis.read(bytes))
+        .takeWhile(-1 !=)
+        .foreach(read => zip.write(bytes, 0, read))
       zip.closeEntry()
       println("logo was taken " + logofile.getName)
     }
     // pick score-defs
-    competitionDir
-      .listFiles()
-      .filter(f => f.getName.endsWith(".scoredef"))
-      .toList
-      .foreach { scoredefFile =>
-        zip.putNextEntry(new ZipEntry(scoredefFile.getName));
-        val fis = new FileInputStream(scoredefFile)
-        val bytes = new Array[Byte](1024) //1024 bytes - Buffer size
-        Iterator
-          .continually(fis.read(bytes))
-          .takeWhile(-1 !=)
-          .foreach(read=> zip.write(bytes, 0, read))
-        zip.closeEntry()
-        println("scoredef-file was taken " + scoredefFile.getName)
-      }
+    if (competitionDir.exists()) {
+      competitionDir
+        .listFiles()
+        .filter(f => f.getName.endsWith(".scoredef"))
+        .toList
+        .foreach { scoredefFile =>
+          zip.putNextEntry(new ZipEntry(scoredefFile.getName));
+          val fis = new FileInputStream(scoredefFile)
+          val bytes = new Array[Byte](1024) //1024 bytes - Buffer size
+          Iterator
+            .continually(fis.read(bytes))
+            .takeWhile(-1 !=)
+            .foreach(read => zip.write(bytes, 0, read))
+          zip.closeEntry()
+          println("scoredef-file was taken " + scoredefFile.getName)
+        }
+    }
     if (withSecret && wettkampf.hasSecred(Config.homedir, Config.remoteHostOrigin)) {
       val secretfile = wettkampf.filePath(Config.homedir, Config.remoteHostOrigin).toFile();
       zip.putNextEntry(new ZipEntry(secretfile.getName));
