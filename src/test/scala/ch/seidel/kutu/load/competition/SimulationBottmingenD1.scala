@@ -9,17 +9,14 @@ import scala.concurrent.duration._
 
 class SimulationBottmingenD1 extends Simulation {
   // mws-01
-  //  val jwtToken = "eyJhbGciOiJIUzUxMiIsImN0eSI6ImFwcGxpY2F0aW9uL2pzb24iLCJ0eXAiOiJKV1QifQ.eyJ1c2VyIjoiNzJmODI0MjMtNjVkYS00NWM5LTk5YTctYjNmMTk3MTJmNjI4IiwiZXhwaXJlZEF0S2V5IjoxNTY2NTkyNTgwODk2fQ.etL4TRKiAp-XHjl5tcQN5LgI5MKg7D8vIfgQ7jNGR6RNL-wbxwgpYDtwFQGIs7Da9kdCtviy4ScHcEYLysTCWw"
+  //  val jwtToken = "eyJhbGciOiJIUzUxMiIsImN0eSI6ImFwcGxpY2F0aW9uL2pzb24iLCJ0eXAiOiJKV1QifQ.eyJ1c2VyIjoiOTkxMTVkZmItODE5Yi00OGFhLWFkYTUtOTkzN2I4MmVlYmQ0IiwiZXhwaXJlZEF0S2V5IjoxNTQyMDQ4NzY2NjM2fQ.8XYEceYnUIAQVHZVZKP6aF-_7hRNjB7jNFzIGq52CUpmVeBqHmi16W28XQci4tj-IkZmHDqFVzSaW8P3Q3W_vA"
 
-  //test-kutuapp.shrevic.net
-  // val jwtToken = "eyJhbGciOiJIUzUxMiIsImN0eSI6ImFwcGxpY2F0aW9uL2pzb24iLCJ0eXAiOiJKV1QifQ.eyJ1c2VyIjoiNzJmODI0MjMtNjVkYS00NWM5LTk5YTctYjNmMTk3MTJmNjI4IiwiZXhwaXJlZEF0S2V5IjoxNTY0ODIzMTgwMDg2fQ.Bu8RIlvWv_v7QFeheQ2ltL_8KM_Tbw1iRoAMajQHC2C7QvCQ34p9z-INOAGvIPdHxfkbRE1eE_-MT8QJdHcsAg"
   //kutuapp.shrevic.net
-  val jwtToken = "eyJhbGciOiJIUzUxMiIsImN0eSI6ImFwcGxpY2F0aW9uL2pzb24iLCJ0eXAiOiJKV1QifQ.eyJ1c2VyIjoiNzJmODI0MjMtNjVkYS00NWM5LTk5YTctYjNmMTk3MTJmNjI4IiwiZXhwaXJlZEF0S2V5IjoxNTY2NTkyNTgwODk2fQ.etL4TRKiAp-XHjl5tcQN5LgI5MKg7D8vIfgQ7jNGR6RNL-wbxwgpYDtwFQGIs7Da9kdCtviy4ScHcEYLysTCWw"
+  val jwtToken = "eyJhbGciOiJIUzUxMiIsImN0eSI6ImFwcGxpY2F0aW9uL2pzb24iLCJ0eXAiOiJKV1QifQ.eyJ1c2VyIjoiNzJmODI0MjMtNjVkYS00NWM5LTk5YTctYjNmMTk3MTJmNjI4IiwiZXhwaXJlZEF0S2V5IjoxNTUyMTQ2MTMxMzA2fQ.sqDZrLmjfbZraXQ-Wkc_Kd79xqEJQlQBnMEoitjmEx-pHE9V8jFbYtaMtUlt2d9aADwmMxY9VqrnLVmFlo3LBg"
 
   val competition = "72f82423-65da-45c9-99a7-b3f19712f628"
-  // val originBaseUrl = "https://test-kutuapp.sharevic.net" //,"http://pluto:5757"//, "https://kutuapp.sharevic.net" //,"https://kutuapp.sharevic.net"//,"http://mws-01:5757"//,
-  // val originBaseUrl = "http://mws-01:5757"//, "https://kutuapp.sharevic.net"//,"http://mws-01:5757"//,
-  val originBaseUrl = "https://kutuapp.sharevic.net"
+  val originBaseUrl = "https://kutuapp.sharevic.net" //,"http://pluto:5757"//, "https://kutuapp.sharevic.net" //,"https://kutuapp.sharevic.net"//,"http://mws-01:5757"//,
+  //  val originBaseUrl = "http://mws-01:5757"//, "https://kutuapp.sharevic.net"//,"http://mws-01:5757"//,
 
   val httpProtocol = http
     .baseUrl(originBaseUrl)
@@ -48,7 +45,7 @@ class SimulationBottmingenD1 extends Simulation {
         http("get competitions").get("/api/competition"),
         http("check jwt-token expired")
           .options("/api/isTokenExpired")))
-    .pause(30 minutes)
+    .pause(5 minutes)
 
   object BrowseResults {
     val encodeInvalidURIRegEx = "[,&.*+?/^${}()|\\[\\]\\\\]".r
@@ -116,7 +113,7 @@ class SimulationBottmingenD1 extends Simulation {
                 .body(StringBody("${wertung.wertung.jsonStringify()}"))
                 .check(status.is(200))
               )
-                .pause(5 seconds, 40 seconds)
+                .pause(5 seconds, 20 seconds)
               //          .exec(http("finish durchgangstation")
               //            .post(s"/api/durchgang/$competition/${"${durchgang}"}/finish")
               //            .body(StringBody(s"""{"type":"FinishDurchgangStation","wettkampfUUID":"$competition","durchgang:"${"${durchgangOriginal}"}","geraet":${"${geraet}"},"step":${"${step}"}}""")))
@@ -136,8 +133,8 @@ class SimulationBottmingenD1 extends Simulation {
   setUp(
     scnLanding
       .inject(
-        rampConcurrentUsers(20) to (100) during (10 minutes),
-                constantConcurrentUsers(100) during(10 minutes)
+        rampConcurrentUsers(20) to (150) during (2 minutes),
+                constantConcurrentUsers(150) during(18 minutes)
 //        constantConcurrentUsers(150) during (10 hours)
         )
       .throttle(
@@ -151,9 +148,7 @@ class SimulationBottmingenD1 extends Simulation {
         //      rampUsers(100) during (15 seconds),
         //      rampUsersPerSec(2) to 8 during (5 minutes) randomized,
 //                constantConcurrentUsers(12) during (60 minutes),
-//        rampConcurrentUsers(4) to 110 during (20 minutes)
-        rampConcurrentUsers(1) to 20 during (2 minutes),
-        constantConcurrentUsers(20) during (18 minutes)
+        rampConcurrentUsers(4) to 110 during (20 minutes)
 //        rampConcurrentUsers(8) to 32 during (10 hours)
         //constantConcurrentUsers(10) during (4 hours)
         //        constantConcurrentUsers(8) during (50 minutes),
