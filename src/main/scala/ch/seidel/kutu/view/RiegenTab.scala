@@ -6,20 +6,17 @@ import ch.seidel.commons.{AutoCommitTextFieldTableCell, DisplayablePage, PageDis
 import ch.seidel.kutu.Config._
 import ch.seidel.kutu.KuTuApp
 import ch.seidel.kutu.KuTuApp.hostServices
-import ch.seidel.kutu.akka._
 import ch.seidel.kutu.data.ResourceExchanger
 import ch.seidel.kutu.domain.{Disziplin, GemischteRiegen, GemischterDurchgang, GetrennteDurchgaenge, KutuService, Riege, RiegeRaw, SexDivideRule, WettkampfView, str2Int}
-import ch.seidel.kutu.http.WebSocketClient
 import ch.seidel.kutu.renderer.PrintUtil.FilenameDefault
 import ch.seidel.kutu.renderer.{PrintUtil, RiegenBuilder, WertungsrichterQRCode, WertungsrichterQRCodesToHtmlRenderer}
 import ch.seidel.kutu.squad.DurchgangBuilder
-import javafx.beans.property.SimpleObjectProperty
 import javafx.scene.text.Text
 import javafx.scene.{control => jfxsc}
 import scalafx.Includes.{eventClosureWrapperWithParam, handle, jfxActionEvent2sfx, jfxBooleanBinding2sfx, jfxBounds2sfx, jfxCellEditEvent2sfx, jfxKeyEvent2sfx, jfxMouseEvent2sfx, jfxObjectProperty2sfx, jfxParent2sfx, jfxPixelReader2sfx, jfxReadOnlyBooleanProperty2sfx, jfxTableViewSelectionModel2sfx, jfxText2sfxText, observableList2ObservableBuffer, when}
 import scalafx.application.Platform
 import scalafx.beans.binding.Bindings
-import scalafx.beans.property.StringProperty
+import scalafx.beans.property.{BooleanProperty, StringProperty}
 import scalafx.beans.value.ObservableValue
 import scalafx.collections.ObservableBuffer
 import scalafx.collections.ObservableBuffer.observableBuffer2ObservableList
@@ -149,7 +146,7 @@ class DurchgangView(wettkampf: WettkampfView, service: KutuService, disziplinlis
 
 }
 
-class RiegenFilterView(isEditable: Boolean, wettkampf: WettkampfView, service: KutuService, disziplinlist: () => Seq[Disziplin], asFilter: Boolean, riegenFilterModel: ObservableBuffer[RiegeEditor]) extends TableView[RiegeEditor] {
+class RiegenFilterView(isEditable: BooleanProperty, wettkampf: WettkampfView, service: KutuService, disziplinlist: () => Seq[Disziplin], asFilter: Boolean, riegenFilterModel: ObservableBuffer[RiegeEditor]) extends TableView[RiegeEditor] {
   type RigenChangeListener = RiegeEditor => Unit
   var changeListeners = List[RigenChangeListener]()
 
@@ -184,26 +181,28 @@ class RiegenFilterView(isEditable: Boolean, wettkampf: WettkampfView, service: K
       text = "Riege"
       prefWidth = 190
       cellValueFactory = { x => x.value.name }
-      editable = !wettkampf.toWettkampf.isReadonly(homedir, remoteHostOrigin) && isEditable
-      if(isEditable) {
-        cellFactory = { _ => new AutoCommitTextFieldTableCell[RiegeEditor, String](new DefaultStringConverter()) }
-        onEditCommit = (evt: CellEditEvent[RiegeEditor, String]) => {
-          val editor = evt.rowValue
-          editor.name.value = evt.newValue
-          val updated = RiegeEditor(
-              editor.wettkampfid,
-              editor.initanz,
-              editor.initviewanz,
-              editor.enabled,
-              Riege(editor.name.value, editor.initdurchgang, editor.initstart),
-              editor.onSelectedChange)
-          service.renameRiege(wettkampf.id, editor.initname, evt.newValue)
-          fireRiegeChanged(updated)
-          val rowIndex = riegenFilterModel.indexOf(evt.rowValue)
-          evt.tableView.selectionModel.value.select(rowIndex, this)
-          evt.tableView.sort()
-          evt.tableView.requestFocus()
-        }
+      editable  <== when(Bindings.createBooleanBinding(() => {
+        !wettkampf.toWettkampf.isReadonly(homedir, remoteHostOrigin) && isEditable.value
+      },
+        isEditable
+      )) choose true otherwise false
+      cellFactory = { _ => new AutoCommitTextFieldTableCell[RiegeEditor, String](new DefaultStringConverter()) }
+      onEditCommit = (evt: CellEditEvent[RiegeEditor, String]) => {
+        val editor = evt.rowValue
+        editor.name.value = evt.newValue
+        val updated = RiegeEditor(
+            editor.wettkampfid,
+            editor.initanz,
+            editor.initviewanz,
+            editor.enabled,
+            Riege(editor.name.value, editor.initdurchgang, editor.initstart),
+            editor.onSelectedChange)
+        service.renameRiege(wettkampf.id, editor.initname, evt.newValue)
+        fireRiegeChanged(updated)
+        val rowIndex = riegenFilterModel.indexOf(evt.rowValue)
+        evt.tableView.selectionModel.value.select(rowIndex, this)
+        evt.tableView.sort()
+        evt.tableView.requestFocus()
       }
     }
   )
@@ -233,27 +232,27 @@ class RiegenFilterView(isEditable: Boolean, wettkampf: WettkampfView, service: K
     , new TableColumn[RiegeEditor, String] {
       text = "Durchgang"
       prefWidth = 130
-      if(isEditable) {
-        cellValueFactory = { x => x.value.durchgang }
-      }
+      cellValueFactory = { x => x.value.durchgang }
       cellFactory = { _ => new AutoCommitTextFieldTableCell[RiegeEditor, String](new DefaultStringConverter()) }
-      editable = !wettkampf.toWettkampf.isReadonly(homedir, remoteHostOrigin) && isEditable
-      if(isEditable) {
-        onEditCommit = (evt: CellEditEvent[RiegeEditor, String]) => {
-          val editor = evt.rowValue
-          editor.durchgang.value = evt.newValue
-          val updated = RiegeEditor(
-              evt.rowValue.wettkampfid,
-              evt.rowValue.initanz,
-              evt.rowValue.initviewanz,
-              evt.rowValue.enabled,
-              service.updateOrinsertRiege(editor.commit),
-              evt.rowValue.onSelectedChange)
-          fireRiegeChanged(updated)
-          val rowIndex = riegenFilterModel.indexOf(evt.rowValue)
-          evt.tableView.selectionModel.value.select(rowIndex, this)
-          evt.tableView.requestFocus()
-        }
+      editable  <== when(Bindings.createBooleanBinding(() => {
+        !wettkampf.toWettkampf.isReadonly(homedir, remoteHostOrigin) && isEditable.value
+      },
+        isEditable
+      )) choose true otherwise false
+      onEditCommit = (evt: CellEditEvent[RiegeEditor, String]) => {
+        val editor = evt.rowValue
+        editor.durchgang.value = evt.newValue
+        val updated = RiegeEditor(
+            evt.rowValue.wettkampfid,
+            evt.rowValue.initanz,
+            evt.rowValue.initviewanz,
+            evt.rowValue.enabled,
+            service.updateOrinsertRiege(editor.commit),
+            evt.rowValue.onSelectedChange)
+        fireRiegeChanged(updated)
+        val rowIndex = riegenFilterModel.indexOf(evt.rowValue)
+        evt.tableView.selectionModel.value.select(rowIndex, this)
+        evt.tableView.requestFocus()
       }
     }
     , new TableColumn[RiegeEditor, Disziplin] {
@@ -264,27 +263,27 @@ class RiegenFilterView(isEditable: Boolean, wettkampf: WettkampfView, service: K
         override def fromString(s: String) = if(s != null) disziplinlist().find { d => d.name.equals(s) }.getOrElse(null) else null
       }
       val list = ObservableBuffer[Disziplin](disziplinlist())
-      if(isEditable) {
-        cellValueFactory = { x => x.value.start.asInstanceOf[ObservableValue[Disziplin,Disziplin]] }
-      }
+      cellValueFactory = { x => x.value.start.asInstanceOf[ObservableValue[Disziplin,Disziplin]] }
       cellFactory = { _ => new ComboBoxTableCell[RiegeEditor, Disziplin](converter, list) }
-      editable = !wettkampf.toWettkampf.isReadonly(homedir, remoteHostOrigin) && isEditable
-      if(isEditable) {
-        onEditCommit = (evt: CellEditEvent[RiegeEditor, Disziplin]) => {
-          val editor = evt.rowValue
-          editor.start.value = evt.newValue
-          val updated = RiegeEditor(
-              evt.rowValue.wettkampfid,
-              evt.rowValue.initanz,
-              evt.rowValue.initviewanz,
-              evt.rowValue.enabled,
-              service.updateOrinsertRiege(evt.rowValue.commit),
-              evt.rowValue.onSelectedChange)
-          fireRiegeChanged(updated)
-          val rowIndex = riegenFilterModel.indexOf(evt.rowValue)
-          evt.tableView.selectionModel.value.select(rowIndex, this)
-          evt.tableView.requestFocus()
-        }
+      editable  <== when(Bindings.createBooleanBinding(() => {
+        !wettkampf.toWettkampf.isReadonly(homedir, remoteHostOrigin) && isEditable.value
+      },
+        isEditable
+      )) choose true otherwise false
+      onEditCommit = (evt: CellEditEvent[RiegeEditor, Disziplin]) => {
+        val editor = evt.rowValue
+        editor.start.value = evt.newValue
+        val updated = RiegeEditor(
+            evt.rowValue.wettkampfid,
+            evt.rowValue.initanz,
+            evt.rowValue.initviewanz,
+            evt.rowValue.enabled,
+            service.updateOrinsertRiege(evt.rowValue.commit),
+            evt.rowValue.onSelectedChange)
+        fireRiegeChanged(updated)
+        val rowIndex = riegenFilterModel.indexOf(evt.rowValue)
+        evt.tableView.selectionModel.value.select(rowIndex, this)
+        evt.tableView.requestFocus()
       }
     }
   )
@@ -368,9 +367,11 @@ class RiegenTab(override val wettkampf: WettkampfView, override val service: Kut
     subscription.cancel();
   }
 
-  override def isPopulated = {
+  val editableProperty: BooleanProperty = new BooleanProperty()
 
-    val riegenFilterView = new RiegenFilterView(true,
+  override def isPopulated = {
+    editableProperty.set(true)
+    val riegenFilterView = new RiegenFilterView(editableProperty,
         wettkampf, service,
         () => {disziplinlist},
         false,
