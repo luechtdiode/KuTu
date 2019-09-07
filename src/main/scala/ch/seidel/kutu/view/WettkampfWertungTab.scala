@@ -7,7 +7,6 @@ import ch.seidel.commons._
 import ch.seidel.kutu.Config._
 import ch.seidel.kutu.KuTuApp.enc
 import ch.seidel.kutu.akka._
-import ch.seidel.kutu.data.ResourceExchanger.{logger, unassignAthletFromWettkampf}
 import ch.seidel.kutu.domain._
 import ch.seidel.kutu.http.WebSocketClient
 import ch.seidel.kutu.renderer.PrintUtil.FilenameDefault
