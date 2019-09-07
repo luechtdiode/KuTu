@@ -95,7 +95,7 @@ object NetworkTab {
   }
 
   def finishDurchgangStep(w: WettkampfView) = {
-    activeDurchgaengeStepFinishedProp.set(FinishDurchgangStep(w.id));
+    activeDurchgaengeStepFinishedProp.set(FinishDurchgangStep(w.uuid.get));
   }
 
   def finishDurchgang(w: WettkampfView, d: DurchgangState, t: Long) = {
