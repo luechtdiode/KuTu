@@ -95,7 +95,7 @@ object NetworkTab {
   }
 
   def finishDurchgangStep(w: WettkampfView) = {
-    activeDurchgaengeStepFinishedProp.set(FinishDurchgangStep(w.id));
+    activeDurchgaengeStepFinishedProp.set(FinishDurchgangStep(w.uuid.get));
   }
 
   def finishDurchgang(w: WettkampfView, d: DurchgangState, t: Long) = {
@@ -306,48 +306,20 @@ class NetworkTab(wettkampfmode: BooleanProperty, override val wettkampf: Wettkam
     toUpdate.foreach(zd => model.set(zd._1, zd._2.get))
 
     newList.filter(d => !model.exists(p => p.name == d.name)).foreach(d => model += d)
+    updateButtons
   }
 
   var subscriptions: List[Subscription] = List.empty
 
   override def release() {
+    subscription.cancel()
     subscriptions.foreach(_.cancel)
     subscriptions = List.empty
-  }
-
-
-  println("subscribing for network modus changes")
-  subscriptions = subscriptions :+ KuTuApp.modelWettkampfModus.onChange { (_, _, newItem) =>
-    println("refreshing Wettkampfmodus", newItem)
   }
 
   onSelectionChanged = handle {
     if (selected.value) {
       refreshData()
-    }
-  }
-
-  println("subscribing for refreshing from websocket")
-  subscriptions = subscriptions :+ WebSocketClient.modelWettkampfWertungChanged.onChange { (_, _, newItem) =>
-    newItem match {
-      case ds: DurchgangStarted =>
-        println("refreshing network-dashboard from websocket", newItem)
-        refreshData(Some(ds))
-      //      case StationWertungenCompleted(wertungen: List[UpdateAthletWertung]) =>
-      case df: DurchgangFinished =>
-        println("refreshing network-dashboard from websocket", newItem)
-        refreshData(Some(df))
-      case AthletWertungUpdated(ahtlet: AthletView, wertung: Wertung, wettkampfUUID: String, durchgang: String, geraet: Long, programm: String) =>
-        if (selected.value) {
-          println("refreshing network-dashboard from websocket", newItem)
-          refreshData()
-        }
-      case AthletWertungUpdatedSequenced(ahtlet: AthletView, wertung: Wertung, wettkampfUUID: String, durchgang: String, geraet: Long, programm: String, sequenceId) =>
-        if (selected.value) {
-          println("refreshing network-dashboard from websocket", newItem)
-          refreshData()
-        }
-      case _ =>
     }
   }
 
@@ -382,377 +354,407 @@ class NetworkTab(wettkampfmode: BooleanProperty, override val wettkampf: Wettkam
     }
   }
 
-  override def isPopulated = {
-    refreshData()
-    val view = new DurchgangStationView(
-      wettkampf, service,
-      () => {
-        disziplinlist
-      },
-      model)
+  val view = new DurchgangStationView(
+    wettkampf, service,
+    () => {
+      disziplinlist
+    },
+    model)
 
-    type MenuActionHandler = (String, ActionEvent) => Unit
+  type MenuActionHandler = (String, ActionEvent) => Unit
 
-    def handleAction[J <: javafx.event.ActionEvent, R](handler: scalafx.event.ActionEvent => R) = new javafx.event.EventHandler[J] {
-      def handle(event: J) {
-        handler(event)
+  def handleAction[J <: javafx.event.ActionEvent, R](handler: scalafx.event.ActionEvent => R) = new javafx.event.EventHandler[J] {
+    def handle(event: J) {
+      handler(event)
+    }
+  }
+
+  def makeMenuAction(caption: String)(handler: MenuActionHandler): MenuItem = {
+    new MenuItem(caption) {
+      onAction = handleAction { e: ActionEvent =>
+        handler(caption, e)
       }
     }
+  }
 
-    def makeMenuAction(caption: String)(handler: MenuActionHandler): MenuItem = {
-      new MenuItem(caption) {
-        onAction = handleAction { e: ActionEvent =>
-          handler(caption, e)
-        }
+  def makeDurchgangStartenMenu(p: WettkampfView): MenuItem = {
+    val item = makeMenuAction("Durchgang starten") { (caption, action) =>
+      val actSelection = view.selectionModel().selectedItems.headOption match {
+        case Some(d: DurchgangState) =>
+          KuTuApp.invokeWithBusyIndicator {
+            Await.result(KuTuServer.startDurchgang(p, d.name), Duration.Inf)
+            startDurchgang(p, d, 0)
+            refreshData()
+          }
+        case _ =>
       }
     }
+    item.disable <== when(Bindings.createBooleanBinding(() =>
+      !p.toWettkampf.hasSecred(homedir, remoteHostOrigin)
+        || !ConnectionStates.connectedWithProperty.value.equals(p.uuid.map(_.toString).getOrElse(""))
+        || (view.selectionModel().selectedItems.headOption match {
+        case Some(d) => (d.started > 0 && d.finished == 0)
+        case _ => true
+      }),
+      view.selectionModel().selectedItem,
+      activeDurchgaengeProp,
+      ConnectionStates.connectedWithProperty
+    )) choose true otherwise false
+    item
+  }
 
-    def makeDurchgangStartenMenu(p: WettkampfView): MenuItem = {
-      val item = makeMenuAction("Durchgang starten") { (caption, action) =>
-        val actSelection = view.selectionModel().selectedItems.headOption match {
-          case Some(d: DurchgangState) =>
-            KuTuApp.invokeWithBusyIndicator {
-              Await.result(KuTuServer.startDurchgang(p, d.name), Duration.Inf)
-              startDurchgang(p, d, 0)
-              refreshData()
-            }
-          case _ =>
-        }
+  def makeDurchgangAbschliessenMenu(p: WettkampfView): MenuItem = {
+    val item = makeMenuAction("Durchgang abschliessen") { (caption, action) =>
+      val actSelection = view.selectionModel().selectedItems.headOption match {
+        case Some(d: DurchgangState) =>
+          KuTuApp.invokeWithBusyIndicator {
+            Await.result(KuTuServer.finishDurchgang(p, d.name), Duration.Inf)
+            finishDurchgang(p, d, 0)
+            refreshData()
+          }
+        case _ =>
       }
-      item.disable <== when(Bindings.createBooleanBinding(() =>
-        !p.toWettkampf.hasSecred(homedir, remoteHostOrigin)
-          || !ConnectionStates.connectedWithProperty.value.equals(p.uuid.map(_.toString).getOrElse(""))
-          || (view.selectionModel().selectedItems.headOption match {
-          case Some(d) => (d.started > 0 && d.finished == 0)
-          case _ => true
-        }),
-        view.selectionModel().selectedItem,
-        activeDurchgaengeProp,
-        ConnectionStates.connectedWithProperty
-      )) choose true otherwise false
-      item
     }
+    item.disable <== when(Bindings.createBooleanBinding(() =>
+      !p.toWettkampf.hasSecred(homedir, remoteHostOrigin)
+        || !ConnectionStates.connectedWithProperty.value.equals(p.uuid.map(_.toString).getOrElse(""))
+        || (view.selectionModel().selectedItems.headOption match {
+        case Some(d) => (d.started == 0 || d.finished > 0)
+        case _ => true
+      }),
+      view.selectionModel().selectedItem,
+      activeDurchgaengeProp,
+      ConnectionStates.connectedWithProperty
+    )) choose true otherwise false
+    item
+  }
 
-    def makeDurchgangAbschliessenMenu(p: WettkampfView): MenuItem = {
-      val item = makeMenuAction("Durchgang abschliessen") { (caption, action) =>
-        val actSelection = view.selectionModel().selectedItems.headOption match {
-          case Some(d: DurchgangState) =>
-            KuTuApp.invokeWithBusyIndicator {
-              Await.result(KuTuServer.finishDurchgang(p, d.name), Duration.Inf)
-              finishDurchgang(p, d, 0)
-              refreshData()
-            }
-          case _ =>
-        }
-      }
-      item.disable <== when(Bindings.createBooleanBinding(() =>
-        !p.toWettkampf.hasSecred(homedir, remoteHostOrigin)
-          || !ConnectionStates.connectedWithProperty.value.equals(p.uuid.map(_.toString).getOrElse(""))
-          || (view.selectionModel().selectedItems.headOption match {
-          case Some(d) => (d.started == 0 || d.finished > 0)
-          case _ => true
-        }),
-        view.selectionModel().selectedItem,
-        activeDurchgaengeProp,
-        ConnectionStates.connectedWithProperty
-      )) choose true otherwise false
-      item
-    }
+  var okIcon: Image = null
+  try {
+    okIcon = new Image(getClass().getResourceAsStream("/images/GreenOk.png"))
+  } catch {
+    case e: Exception => e.printStackTrace()
+  }
+  var nokIcon: Image = null
+  try {
+    nokIcon = new Image(getClass().getResourceAsStream("/images/RedException.png"))
+  } catch {
+    case e: Exception => e.printStackTrace()
+  }
 
-    var okIcon: Image = null
-    try {
-      okIcon = new Image(getClass().getResourceAsStream("/images/GreenOk.png"))
-    } catch {
-      case e: Exception => e.printStackTrace()
-    }
-    var nokIcon: Image = null
-    try {
-      nokIcon = new Image(getClass().getResourceAsStream("/images/RedException.png"))
-    } catch {
-      case e: Exception => e.printStackTrace()
-    }
-
-    def makeSelectedRiegenBlaetterExport(): Menu = {
-      val option: Option[DurchgangState] = view.selectionModel().selectedItems.headOption
-      val selectedDurchgaenge = option.toSet.map((_: DurchgangState).name)
-      new Menu {
-        text = "Riegenblätter nachdrucken"
+  def makeSelectedRiegenBlaetterExport(): Menu = {
+    val option: Option[DurchgangState] = view.selectionModel().selectedItems.headOption
+    val selectedDurchgaenge = option.toSet.map((_: DurchgangState).name)
+    new Menu {
+      text = "Riegenblätter nachdrucken"
+      updateItems
+      reprintItems.onChange {
         updateItems
-        reprintItems.onChange {
-          updateItems
-        }
+      }
 
-        private def updateItems = {
-          items.clear()
-          val affectedDurchgaenge: Set[String] = reprintItems.get.map(_.durchgang)
-          if (selectedDurchgaenge.nonEmpty) {
-            items += KuTuApp.makeMenuAction(s"Alle Stationen im Durchgang") { (caption: String, action: ActionEvent) =>
-              doSelectedRiegenBelatterExport(text.value, selectedDurchgaenge)(action)
-            }
-            items += KuTuApp.makeMenuAction(s"Nur 1. Station pro Gerät im Durchgang") { (caption: String, action: ActionEvent) =>
-              doSelectedRiegenBelatterExport(text.value, selectedDurchgaenge, Set(0))(action)
-            }
-            items += KuTuApp.makeMenuAction(s"Alle ab 2. Station pro Gerät im Durchgang") { (caption: String, action: ActionEvent) =>
-              doSelectedRiegenBelatterExport(text.value, selectedDurchgaenge, Set(-1))(action)
-            }
+      private def updateItems = {
+        items.clear()
+        val affectedDurchgaenge: Set[String] = reprintItems.get.map(_.durchgang)
+        if (selectedDurchgaenge.nonEmpty) {
+          items += KuTuApp.makeMenuAction(s"Alle Stationen im Durchgang") { (caption: String, action: ActionEvent) =>
+            doSelectedRiegenBelatterExport(text.value, selectedDurchgaenge)(action)
           }
-          if (affectedDurchgaenge.nonEmpty && selectedDurchgaenge.nonEmpty) {
-            items += new SeparatorMenuItem()
+          items += KuTuApp.makeMenuAction(s"Nur 1. Station pro Gerät im Durchgang") { (caption: String, action: ActionEvent) =>
+            doSelectedRiegenBelatterExport(text.value, selectedDurchgaenge, Set(0))(action)
           }
-          if (affectedDurchgaenge.nonEmpty) {
-            val allItem = KuTuApp.makeMenuAction(s"Alle betroffenen (${affectedDurchgaenge.size})") { (caption: String, action: ActionEvent) =>
-              doSelectedRiegenBelatterExport(text.value, affectedDurchgaenge)(action)
-            }
-            items += allItem
-            items += new SeparatorMenuItem()
-            affectedDurchgaenge.toList.sorted.foreach { durchgang =>
-              items += KuTuApp.makeMenuAction(s"${durchgang}") { (caption: String, action: ActionEvent) =>
-                doSelectedRiegenBelatterExport(text.value, Set(durchgang))(action)
-              }
-            }
+          items += KuTuApp.makeMenuAction(s"Alle ab 2. Station pro Gerät im Durchgang") { (caption: String, action: ActionEvent) =>
+            doSelectedRiegenBelatterExport(text.value, selectedDurchgaenge, Set(-1))(action)
           }
-          disable.value = items.isEmpty
         }
+        if (affectedDurchgaenge.nonEmpty && selectedDurchgaenge.nonEmpty) {
+          items += new SeparatorMenuItem()
+        }
+        if (affectedDurchgaenge.nonEmpty) {
+          val allItem = KuTuApp.makeMenuAction(s"Alle betroffenen (${affectedDurchgaenge.size})") { (caption: String, action: ActionEvent) =>
+            doSelectedRiegenBelatterExport(text.value, affectedDurchgaenge)(action)
+          }
+          items += allItem
+          items += new SeparatorMenuItem()
+          affectedDurchgaenge.toList.sorted.foreach { durchgang =>
+            items += KuTuApp.makeMenuAction(s"${durchgang}") { (caption: String, action: ActionEvent) =>
+              doSelectedRiegenBelatterExport(text.value, Set(durchgang))(action)
+            }
+          }
+        }
+        disable.value = items.isEmpty
       }
     }
+  }
 
-    def makeNavigateToMenu(p: WettkampfView): Menu = {
-      new Menu("Gehe zu Riege ...") {
-        def addRiegenMenuItems(row: Int, column: DurchgangStationTCAccess) = {
-          val disziplin = column.getDisziplin
-          val durchgang: DurchgangState = view.items.getValue.get(row)
-          val selection = durchgang.geraeteRiegen.filter {
-            _.disziplin.contains(disziplin)
+  def makeNavigateToMenu(p: WettkampfView): Menu = {
+    new Menu("Gehe zu Riege ...") {
+      def addRiegenMenuItems(row: Int, column: DurchgangStationTCAccess) = {
+        val disziplin = column.getDisziplin
+        val durchgang: DurchgangState = view.items.getValue.get(row)
+        val selection = durchgang.geraeteRiegen.filter {
+          _.disziplin.contains(disziplin)
+        }
+        items = selection.map { r =>
+          val menu = KuTuApp.makeMenuAction(r.caption) { (caption, action) =>
+            lazypane match {
+              case Some(pane) =>
+                val wertungTab: WettkampfWertungTab = new WettkampfWertungTab(wettkampfmode, None, Some(r), wettkampf, service, {
+                  val progs = service.readWettkampfLeafs(wettkampf.programm.id)
+                  service.listAthletenWertungenZuProgramm(progs map (p => p.id), wettkampf.id)
+                }) {
+                  text = r.caption
+                  closable = true
+                }
+                pane.tabs.add(pane.tabs.size() + (if (wettkampfmode.value) -2 else -1), wertungTab.asInstanceOf[Tab])
+                pane.selectionModel.value.select(wertungTab)
+                wertungTab.tabPaneProperty.onChange {
+                  if (wertungTab.getTabPane == null) {
+                    wertungTab.release
+                  }
+                }
+                wertungTab.populated
+              case _ =>
+            }
           }
-          items = selection.map { r =>
-            val menu = KuTuApp.makeMenuAction(r.caption) { (caption, action) =>
-              lazypane match {
-                case Some(pane) =>
-                  val wertungTab: WettkampfWertungTab = new WettkampfWertungTab(wettkampfmode, None, Some(r), wettkampf, service, {
-                    val progs = service.readWettkampfLeafs(wettkampf.programm.id)
-                    service.listAthletenWertungenZuProgramm(progs map (p => p.id), wettkampf.id)
-                  }) {
-                    text = r.caption
-                    closable = true
-                  }
-                  pane.tabs.add(pane.tabs.size() + (if (wettkampfmode.value) -2 else -1), wertungTab.asInstanceOf[Tab])
-                  pane.selectionModel.value.select(wertungTab)
-                  wertungTab.tabPaneProperty.onChange {
-                    if (wertungTab.getTabPane == null) {
-                      wertungTab.release
-                    }
-                  }
-                  wertungTab.populated
+          menu.graphic = new ImageView {
+            image = if (r.erfasst) okIcon else nokIcon
+          }
+          menu
+        }
+      }
+
+      items.clear
+      view.selectionModel.value.selectedCells.toList.headOption match {
+        case None =>
+        case Some(cell) =>
+          cell.tableColumn match {
+            case column: DurchgangStationTCAccess =>
+              addRiegenMenuItems(cell.row, column)
+            case _ => if (cell.tableColumn.parentColumn.value != null && cell.tableColumn.parentColumn.value.columns.size == 2) {
+              val col = cell.tableColumn.getParentColumn().getColumns().head
+              col match {
+                case column: DurchgangStationJFSCTableColumn[_] =>
+                  addRiegenMenuItems(cell.row, column)
+                case column: DurchgangStationTCAccess =>
+                  addRiegenMenuItems(cell.row, column)
                 case _ =>
               }
             }
-            menu.graphic = new ImageView {
-              image = if (r.erfasst) okIcon else nokIcon
-            }
-            menu
           }
-        }
-
-        items.clear
-        view.selectionModel.value.selectedCells.toList.headOption match {
-          case None =>
-          case Some(cell) =>
-            cell.tableColumn match {
-              case column: DurchgangStationTCAccess =>
-                addRiegenMenuItems(cell.row, column)
-              case _ => if (cell.tableColumn.parentColumn.value != null && cell.tableColumn.parentColumn.value.columns.size == 2) {
-                val col = cell.tableColumn.getParentColumn().getColumns().head
-                col match {
-                  case column: DurchgangStationJFSCTableColumn[_] =>
-                    addRiegenMenuItems(cell.row, column)
-                  case column: DurchgangStationTCAccess =>
-                    addRiegenMenuItems(cell.row, column)
-                  case _ =>
-                }
-              }
-            }
-        }
-        disable = items.size() == 0
       }
+      disable = items.size() == 0
     }
+  }
 
-    val qrcodeMenu: MenuItem = KuTuApp.makeShowQRCodeMenu(wettkampf)
-    val connectAndShareMenu = KuTuApp.makeConnectAndShareMenu(wettkampf)
+  val qrcodeMenu: MenuItem = KuTuApp.makeShowQRCodeMenu(wettkampf)
+  val connectAndShareMenu = KuTuApp.makeConnectAndShareMenu(wettkampf)
 
-    val uploadMenu: MenuItem = {
-      val item = makeMenuAction("Upload") { (caption, action) =>
-        implicit val e = action
-        PageDisplayer.showInDialog(caption, new DisplayablePage() {
-          def getPage: Node = {
-            new BorderPane {
-              hgrow = Priority.Always
-              vgrow = Priority.Always
-              center = new VBox {
-                if (wettkampf.toWettkampf.hasSecred(homedir, remoteHostOrigin)) {
-                  children.addAll(new Label("Die Resultate zu diesem Wettkampf werden im Netzwerk hochgeladen und\nersetzen dort die Resultate, die zu diesem Wettkampf erfasst wurden."))
-                } else {
-                  children.addAll(new Label("Die Resultate zu diesem Wettkampf werden neu im Netzwerk bereitgestellt."))
-                }
+  val uploadMenu: MenuItem = {
+    val item = makeMenuAction("Upload") { (caption, action) =>
+      implicit val e = action
+      PageDisplayer.showInDialog(caption, new DisplayablePage() {
+        def getPage: Node = {
+          new BorderPane {
+            hgrow = Priority.Always
+            vgrow = Priority.Always
+            center = new VBox {
+              if (wettkampf.toWettkampf.hasSecred(homedir, remoteHostOrigin)) {
+                children.addAll(new Label("Die Resultate zu diesem Wettkampf werden im Netzwerk hochgeladen und\nersetzen dort die Resultate, die zu diesem Wettkampf erfasst wurden."))
+              } else {
+                children.addAll(new Label("Die Resultate zu diesem Wettkampf werden neu im Netzwerk bereitgestellt."))
               }
             }
           }
-        },
-          new Button("OK") {
-            onAction = handleAction { implicit e: ActionEvent =>
-              uploadResults(caption)
-            }
-          })
-      }
-      item.disable <== when(Bindings.createBooleanBinding(() =>
-        Config.isLocalHostServer()
-          || (wettkampf.toWettkampf.hasSecred(homedir, remoteHostOrigin) && !ConnectionStates.connectedProperty.value)
-          || isRunning(wettkampf),
-
-        KuTuApp.selectedWettkampfSecret,
-        ConnectionStates.connectedProperty,
-        activeDurchgaengeProp
-      )) choose true otherwise false
-      item
-    }
-
-    val downloadMenu: MenuItem = KuTuApp.makeWettkampfDownloadMenu(wettkampf)
-
-    val disconnectMenu = KuTuApp.makeDisconnectMenu(wettkampf)
-    val removeRemoteMenu = KuTuApp.makeWettkampfRemoteRemoveMenu(wettkampf)
-
-    val generateBestenliste = new Button with BestenListeToHtmlRenderer {
-      text = "Bestenliste erstellen"
-      minWidth = 75
-      disable.value = wettkampf.toWettkampf.isReadonly(homedir, remoteHostOrigin)
-      onAction = (event: ActionEvent) => {
-        if (!WebSocketClient.isConnected) {
-          val filename = "Bestenliste_" + wettkampf.easyprint.replace(" ", "_") + ".html"
-          val dir = new java.io.File(homedir + "/" + wettkampf.easyprint.replace(" ", "_"))
-          if(!dir.exists()) {
-            dir.mkdirs()
-          }
-          val logofile = PrintUtil.locateLogoFile(dir)
-
-          def generate(lpp: Int) = toHTMListe(WertungServiceBestenResult.getBestenResults, logofile)
-          PrintUtil.printDialog(text.value,FilenameDefault(filename, dir), false, generate, orientation = PageOrientation.Portrait)(event)
-        } else {
-          Await.result(KuTuServer.finishDurchgangStep(wettkampf), Duration.Inf)
-          val topResults = s"${Config.remoteBaseUrl}/?" + new String(enc.encodeToString((s"top&c=${wettkampf.uuid.get}").getBytes))
-          KuTuApp.hostServices.showDocument(topResults)
         }
-        WertungServiceBestenResult.resetBestenResults
-      }
+      },
+        new Button("OK") {
+          onAction = handleAction { implicit e: ActionEvent =>
+            uploadResults(caption)
+          }
+        })
     }
+    item.disable <== when(Bindings.createBooleanBinding(() =>
+      Config.isLocalHostServer()
+        || (wettkampf.toWettkampf.hasSecred(homedir, remoteHostOrigin) && !ConnectionStates.connectedProperty.value)
+        || isRunning(wettkampf),
 
-    view.contextMenu = new ContextMenu() {
-      items += makeDurchgangStartenMenu(wettkampf)
-      items += new SeparatorMenuItem()
-      items += makeMenuAction("Bestenliste erstellen") {(_, action) =>
+      KuTuApp.selectedWettkampfSecret,
+      ConnectionStates.connectedProperty,
+      activeDurchgaengeProp
+    )) choose true otherwise false
+    item
+  }
+
+  val downloadMenu: MenuItem = KuTuApp.makeWettkampfDownloadMenu(wettkampf)
+
+  val disconnectMenu = KuTuApp.makeDisconnectMenu(wettkampf)
+  val removeRemoteMenu = KuTuApp.makeWettkampfRemoteRemoveMenu(wettkampf)
+
+  val generateBestenliste = new Button with BestenListeToHtmlRenderer {
+    text = "Bestenliste erstellen"
+    minWidth = 75
+    disable.value = wettkampf.toWettkampf.isReadonly(homedir, remoteHostOrigin)
+    onAction = (event: ActionEvent) => {
+      if (!WebSocketClient.isConnected) {
+        val filename = "Bestenliste_" + wettkampf.easyprint.replace(" ", "_") + ".html"
+        val dir = new java.io.File(homedir + "/" + wettkampf.easyprint.replace(" ", "_"))
+        if(!dir.exists()) {
+          dir.mkdirs()
+        }
+        val logofile = PrintUtil.locateLogoFile(dir)
+
+        def generate(lpp: Int) = toHTMListe(WertungServiceBestenResult.getBestenResults, logofile)
+        PrintUtil.printDialog(text.value,FilenameDefault(filename, dir), false, generate, orientation = PageOrientation.Portrait)(event)
+      } else {
+        Await.result(KuTuServer.finishDurchgangStep(wettkampf), Duration.Inf)
+        val topResults = s"${Config.remoteBaseUrl}/?" + new String(enc.encodeToString((s"top&c=${wettkampf.uuid.get}").getBytes))
+        KuTuApp.hostServices.showDocument(topResults)
+      }
+      WertungServiceBestenResult.resetBestenResults
+    }
+  }
+
+  view.contextMenu = new ContextMenu() {
+    items += makeDurchgangStartenMenu(wettkampf)
+    items += new SeparatorMenuItem()
+    items += makeMenuAction("Bestenliste erstellen") {(_, action) =>
+      generateBestenliste.onAction.value.handle(action)
+    }
+    items += new SeparatorMenuItem()
+    items += makeDurchgangAbschliessenMenu(wettkampf)
+  }
+  val toolbar = new ToolBar {
+  }
+  val rootpane = new BorderPane {
+    hgrow = Priority.Always
+    vgrow = Priority.Always
+    top = toolbar
+    center = view
+  }
+  val btnEditRiege = new MenuButton("Gehe zu ...") {
+    disable <== when(createBooleanBinding(() => items.isEmpty, items)) choose true otherwise false
+  }
+  val btnDurchgang = new MenuButton("Durchgang ...") {
+    disable <== when(createBooleanBinding(() => items.isEmpty, items)) choose true otherwise false
+  }
+
+  def updateButtons {
+    val navigate = makeNavigateToMenu(wettkampf)
+    btnEditRiege.items.clear()
+    btnEditRiege.items.addAll(navigate.items)
+
+    if (!wettkampf.toWettkampf.isReadonly(homedir, remoteHostOrigin)) {
+      btnDurchgang.items.clear()
+      btnDurchgang.items += makeDurchgangStartenMenu(wettkampf)
+      btnDurchgang.items += new SeparatorMenuItem()
+      btnDurchgang.items += makeSelectedRiegenBlaetterExport()
+      btnDurchgang.items += makeMenuAction("Bestenliste erstellen") {(_, action) =>
         generateBestenliste.onAction.value.handle(action)
       }
-      items += new SeparatorMenuItem()
-      items += makeDurchgangAbschliessenMenu(wettkampf)
-    }
-    val toolbar = new ToolBar {
-    }
-    val rootpane = new BorderPane {
-      hgrow = Priority.Always
-      vgrow = Priority.Always
-      top = toolbar
-      center = view
-    }
-    val btnEditRiege = new MenuButton("Gehe zu ...") {
-      disable <== when(createBooleanBinding(() => items.isEmpty, items)) choose true otherwise false
-    }
-    val btnDurchgang = new MenuButton("Durchgang ...") {
-      disable <== when(createBooleanBinding(() => items.isEmpty, items)) choose true otherwise false
-    }
+      btnDurchgang.items += new SeparatorMenuItem()
+      btnDurchgang.items += makeDurchgangAbschliessenMenu(wettkampf)
 
-    def updateButtons {
-      val navigate = makeNavigateToMenu(wettkampf)
-      btnEditRiege.items.clear()
-      btnEditRiege.items.addAll(navigate.items)
-
-      if (!wettkampf.toWettkampf.isReadonly(homedir, remoteHostOrigin)) {
-        btnDurchgang.items.clear()
-        btnDurchgang.items += makeDurchgangStartenMenu(wettkampf)
-        btnDurchgang.items += new SeparatorMenuItem()
-        btnDurchgang.items += makeSelectedRiegenBlaetterExport()
-        btnDurchgang.items += makeMenuAction("Bestenliste erstellen") {(_, action) =>
+      view.contextMenu = new ContextMenu() {
+        items += makeDurchgangStartenMenu(wettkampf)
+        items += new SeparatorMenuItem()
+        items += makeSelectedRiegenBlaetterExport()
+        items += navigate
+        items += makeMenuAction("Bestenliste erstellen") {(_, action) =>
           generateBestenliste.onAction.value.handle(action)
         }
-        btnDurchgang.items += new SeparatorMenuItem()
-        btnDurchgang.items += makeDurchgangAbschliessenMenu(wettkampf)
+        items += new SeparatorMenuItem()
+        items += makeDurchgangAbschliessenMenu(wettkampf)
+      }
+      toolbar.content = List(
+        new Button {
+          onAction = connectAndShareMenu.onAction.get
+          text <== connectAndShareMenu.text
+          disable <== connectAndShareMenu.disable
+        }, new Button {
+          onAction = qrcodeMenu.onAction.get
+          text <== qrcodeMenu.text
+          disable <== qrcodeMenu.disable
+        }, btnDurchgang, btnEditRiege, new Button {
+          onAction = uploadMenu.onAction.get
+          text <== uploadMenu.text
+          disable <== uploadMenu.disable
+          visible <== when(wettkampfmode) choose false otherwise true
+        }, new Button {
+          onAction = downloadMenu.onAction.get
+          text <== downloadMenu.text
+          disable <== downloadMenu.disable
+          visible <== when(wettkampfmode) choose false otherwise true
+        }, new Button {
+          onAction = disconnectMenu.onAction.get
+          text <== disconnectMenu.text
+          disable <== disconnectMenu.disable
+        }, new Button {
+          onAction = removeRemoteMenu.onAction.get
+          text <== removeRemoteMenu.text
+          disable <== removeRemoteMenu.disable
+          visible <== when(wettkampfmode) choose false otherwise true
+        }).filter(_.isVisible)
+    } else {
+      view.contextMenu = new ContextMenu() {
+        items += navigate
+      }
+      toolbar.content = List(
+        new Button {
+          onAction = connectAndShareMenu.onAction.get
+          text <== connectAndShareMenu.text
+          disable <== connectAndShareMenu.disable
+        }, btnEditRiege, new Button {
+          onAction = downloadMenu.onAction.get
+          text <== downloadMenu.text
+          disable <== downloadMenu.disable
+        }, new Button {
+          onAction = disconnectMenu.onAction.get
+          text <== disconnectMenu.text
+          disable <== disconnectMenu.disable
+        })
+    }
+  }
 
-        view.contextMenu = new ContextMenu() {
-          items += makeDurchgangStartenMenu(wettkampf)
-          items += new SeparatorMenuItem()
-          items += makeSelectedRiegenBlaetterExport()
-          items += navigate
-          items += makeMenuAction("Bestenliste erstellen") {(_, action) =>
-            generateBestenliste.onAction.value.handle(action)
-          }
-          items += new SeparatorMenuItem()
-          items += makeDurchgangAbschliessenMenu(wettkampf)
+  //    val showQRCode = make
+  view.selectionModel().setSelectionMode(SelectionMode.Single)
+  view.selectionModel().setCellSelectionEnabled(true);
+  view.selectionModel().getSelectedCells().onChange { (_, newItem) =>
+    updateButtons
+  }
+  content = rootpane
+
+  override def isPopulated = {
+    if(subscriptions.isEmpty) {
+      println("subscribing for network modus changes")
+      subscriptions = subscriptions :+ KuTuApp.modelWettkampfModus.onChange { (_, _, newItem) =>
+        println("refreshing Wettkampfmodus", newItem)
+        updateButtons
+      }
+      println("subscribing for refreshing from websocket")
+      subscriptions = subscriptions :+ WebSocketClient.modelWettkampfWertungChanged.onChange { (_, _, newItem) =>
+        newItem match {
+          case ds: DurchgangStarted =>
+            println("refreshing network-dashboard from websocket", newItem)
+            refreshData(Some(ds))
+          //      case StationWertungenCompleted(wertungen: List[UpdateAthletWertung]) =>
+          case df: DurchgangFinished =>
+            println("refreshing network-dashboard from websocket", newItem)
+            refreshData(Some(df))
+          case AthletWertungUpdated(ahtlet: AthletView, wertung: Wertung, wettkampfUUID: String, durchgang: String, geraet: Long, programm: String) =>
+            if (selected.value) {
+              println("refreshing network-dashboard from websocket", newItem)
+              refreshData()
+            }
+          case AthletWertungUpdatedSequenced(ahtlet: AthletView, wertung: Wertung, wettkampfUUID: String, durchgang: String, geraet: Long, programm: String, sequenceId) =>
+            if (selected.value) {
+              println("refreshing network-dashboard from websocket", newItem)
+              refreshData()
+            }
+          case _ =>
         }
-        toolbar.content = List(
-          new Button {
-            onAction = connectAndShareMenu.onAction.get
-            text <== connectAndShareMenu.text
-            disable <== connectAndShareMenu.disable
-          }, new Button {
-            onAction = qrcodeMenu.onAction.get
-            text <== qrcodeMenu.text
-            disable <== qrcodeMenu.disable
-          }, btnDurchgang, btnEditRiege, new Button {
-            onAction = uploadMenu.onAction.get
-            text <== uploadMenu.text
-            disable <== uploadMenu.disable
-            visible <== when(wettkampfmode) choose false otherwise true
-          }, new Button {
-            onAction = downloadMenu.onAction.get
-            text <== downloadMenu.text
-            disable <== downloadMenu.disable
-            visible <== when(wettkampfmode) choose false otherwise true
-          }, new Button {
-            onAction = disconnectMenu.onAction.get
-            text <== disconnectMenu.text
-            disable <== disconnectMenu.disable
-          }, new Button {
-            onAction = removeRemoteMenu.onAction.get
-            text <== removeRemoteMenu.text
-            disable <== removeRemoteMenu.disable
-            visible <== when(wettkampfmode) choose false otherwise true
-          }).filter(_.isVisible)
-      } else {
-        view.contextMenu = new ContextMenu() {
-          items += navigate
-        }
-        toolbar.content = List(
-          new Button {
-            onAction = connectAndShareMenu.onAction.get
-            text <== connectAndShareMenu.text
-            disable <== connectAndShareMenu.disable
-          }, btnEditRiege, new Button {
-            onAction = downloadMenu.onAction.get
-            text <== downloadMenu.text
-            disable <== downloadMenu.disable
-          }, new Button {
-            onAction = disconnectMenu.onAction.get
-            text <== disconnectMenu.text
-            disable <== disconnectMenu.disable
-          })
       }
     }
-
-    updateButtons
-    //    val showQRCode = make
-    view.selectionModel().setSelectionMode(SelectionMode.Single)
-    view.selectionModel().setCellSelectionEnabled(true);
-    view.selectionModel().getSelectedCells().onChange { (_, newItem) =>
-      updateButtons
-    }
-    content = rootpane
+    refreshData()
     true
   }
 }

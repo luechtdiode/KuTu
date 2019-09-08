@@ -1,10 +1,12 @@
 package ch.seidel.kutu.view
 
 import ch.seidel.commons.{DisplayablePage, LazyTabPane}
+import ch.seidel.kutu.KuTuApp
 import ch.seidel.kutu.domain._
 import scalafx.beans.property.BooleanProperty
 import scalafx.scene.control.Tab
 import scalafx.beans.binding.Bindings._
+import scalafx.event.subscriptions.Subscription
 
 object WettkampfPage {
 
@@ -35,13 +37,22 @@ object WettkampfPage {
     lazy val networkSite: Seq[Tab] = Seq(
         new NetworkTab(wettkampfmode, wettkampf, service)
       )
-        
+    lazy val riegenSite: Seq[Tab] = Seq(new RiegenTab(wettkampf, service))
+    var subscription: Option[Subscription] = None
+
     def releaser() {
+      subscription match {
+        case Some(s) => s.cancel()
+        case _ =>
+      }
       (progSites).foreach { t => 
         t.asInstanceOf[WettkampfWertungTab].release
       }
       ranglisteSite.foreach{t => 
         t.asInstanceOf[RanglisteTab].release
+      }
+      riegenSite.foreach{t =>
+        t.asInstanceOf[RiegenTab].release
       }
       networkSite.foreach{t => 
         t.asInstanceOf[NetworkTab].release
@@ -59,11 +70,17 @@ object WettkampfPage {
         networkSite ++ Seq[Tab](alleWertungenTab) ++ ranglisteSite
       }
       else {
-        progSites ++ Seq[Tab](new RiegenTab(wettkampf, service)) ++ networkSite ++ ranglisteSite
+        progSites ++ riegenSite ++ networkSite ++ ranglisteSite
       }
     }
 
-    new WettkampfPage( new LazyTabPane(refresher, () => releaser()))
+    val lazyPane = new LazyTabPane(refresher, () => releaser())
+    subscription = Some(wettkampfmode.onChange {
+        KuTuApp.invokeWithBusyIndicator {
+          lazyPane.init()
+        }
+      })
+    new WettkampfPage(lazyPane)
   }
 }
 

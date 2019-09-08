@@ -387,12 +387,7 @@ trait WettkampfService extends DBService
                     w.riege = r.name or w.riege2 = r.name
                   )
                   where
-                     athlet_id = (select id
-                       from athlet
-                       where name=${athlet.name}
-                         and vorname=${athlet.vorname}
-                         and geschlecht=${athlet.geschlecht}
-                         and verein=${athlet.verein.get.id})
+                     athlet_id = ${athlet.id}
                      and w.wettkampf_Id = (select id
                        from wettkampf
                        where uuid=${raw.wettkampfUUID})
@@ -402,12 +397,7 @@ trait WettkampfService extends DBService
     Await.result(database.run{
       sqlu"""      delete from wertung
                    where
-                     athlet_id = (select id
-                       from athlet
-                       where name=${athlet.name}
-                         and vorname=${athlet.vorname}
-                         and geschlecht=${athlet.geschlecht}
-                         and verein=${athlet.verein.get.id})
+                     athlet_id = ${athlet.id}
                      and wettkampf_Id = (select id
                        from wettkampf
                        where uuid=${raw.wettkampfUUID})
