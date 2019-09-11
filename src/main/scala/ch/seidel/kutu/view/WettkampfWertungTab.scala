@@ -1809,6 +1809,8 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
         websocketsubscription = Some(WebSocketClient.modelWettkampfWertungChanged.onChange { (_, _, newItem) =>
           if (selected.value) {
             newItem match {
+              case LastResults(results) =>
+                reloadData()
               case a@AthletWertungUpdated(_, wertung, _, _, _, _) =>
                 handleWertungUpdated(wertung)
               case a@AthletWertungUpdatedSequenced(_, wertung, _, _, _, _, _) =>
