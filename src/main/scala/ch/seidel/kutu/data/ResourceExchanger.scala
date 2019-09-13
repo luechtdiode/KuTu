@@ -4,13 +4,13 @@ import java.io._
 import java.util.UUID
 import java.util.zip.{ZipEntry, ZipInputStream, ZipOutputStream}
 
-import ch.seidel.kutu.Config
 import ch.seidel.kutu.akka._
 import ch.seidel.kutu.data.CaseObjectMetaUtil._
 import ch.seidel.kutu.domain._
 import ch.seidel.kutu.renderer.PrintUtil
 import ch.seidel.kutu.squad.RiegenBuilder
 import ch.seidel.kutu.view._
+import ch.seidel.kutu.{Config, KuTuApp}
 import org.slf4j.LoggerFactory
 
 import scala.annotation.tailrec
@@ -52,8 +52,11 @@ object ResourceExchanger extends KutuService with RiegenBuilder {
           }
         }.toSeq
         try {
-          mappedWertungen.zip(updateWertungWithIDMapping(mappedWertungen.map(_.wertung))).foreach { x =>
-            refresher(sender, x._1.copy(wertung = x._2))
+          KuTuApp.invokeWithBusyIndicator {
+            refresher(sender, LastResults(
+              mappedWertungen.zip(updateWertungWithIDMapping(mappedWertungen.map(_.wertung))).map {
+                x => x._1.copy(wertung = x._2)
+              }.toList))
           }
         } catch {
           case e: Exception =>
