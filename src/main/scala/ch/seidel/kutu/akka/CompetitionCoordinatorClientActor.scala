@@ -5,7 +5,7 @@ import akka.actor.{Actor, ActorLogging, ActorRef, OneForOneStrategy, PoisonPill,
 import akka.http.scaladsl.model.ws.{BinaryMessage, Message, TextMessage}
 import akka.pattern.ask
 import akka.persistence.{PersistentActor, SnapshotOffer, SnapshotSelectionCriteria}
-import akka.stream.OverflowStrategy
+import akka.stream.{CompletionStrategy, OverflowStrategy}
 import akka.stream.scaladsl.{Flow, Sink, Source}
 import akka.util.Timeout
 import ch.seidel.kutu.Config
@@ -65,9 +65,7 @@ class CompetitionCoordinatorClientActor(wettkampfUUID: String) extends Persisten
   // send keepalive messages to prevent closing the websocket connection
   private case object KeepAlive
 
-  private val liveticker = context.system.scheduler.schedule(10.second, 10.second) {
-    self ! KeepAlive
-  }
+  private val liveticker = context.system.scheduler.scheduleAtFixedRate(10.second, 10.second, self, KeepAlive)
 
   override def persistenceId = s"$wettkampfUUID/${Config.appFullVersion}"
 
@@ -530,15 +528,21 @@ object CompetitionCoordinatorClientActor extends JsonSupport with EnrichedJson {
       case msg: TextMessage => msg
     })
 
+  val completionMatcher: PartialFunction[scala.Any, akka.stream.CompletionStrategy] = {
+    case StopDevice(_) => CompletionStrategy.immediately
+  }
+  val failureMatcher: PartialFunction[scala.Any, scala.Throwable] = {
+    case Err(x) => x
+  }
 
   // authenticated bidirectional streaming
   def createActorSinkSource(deviceId: String, wettkampfUUID: String, durchgang: Option[String], lastSequenceId: Option[Long]): Flow[Message, Message, Any] = {
     val clientActor = Await.result(
       ask(supervisor, CreateClient(deviceId, wettkampfUUID))(5000 milli).mapTo[ActorRef], 5000 milli)
 
-    val sink = fromWebsocketToActorFlow.to(Sink.actorRef(clientActor, StopDevice(deviceId)).named(deviceId))
+    val sink = fromWebsocketToActorFlow.to(Sink.actorRef(clientActor, StopDevice(deviceId), _ => StopDevice(deviceId)).named(deviceId))
     val source = fromCoordinatorActorToWebsocketFlow(lastSequenceId,
-      Source.actorRef(256, OverflowStrategy.dropNew)
+      Source.actorRef(completionMatcher, failureMatcher,256, OverflowStrategy.dropNew)
         .mapMaterializedValue { wsSource: ActorRef =>
           clientActor ! Subscribe(wsSource, deviceId, durchgang, lastSequenceId)
           wsSource
@@ -555,10 +559,10 @@ object CompetitionCoordinatorClientActor extends JsonSupport with EnrichedJson {
     val sink = fromWebsocketToActorFlow.filter {
       case MessageAck(msg) if (msg.equalsIgnoreCase("keepAlive")) => true
       case _ => false
-    }.to(Sink.actorRef(clientActor, StopDevice(deviceId)).named(deviceId))
+    }.to(Sink.actorRef(clientActor, StopDevice(deviceId), _ => StopDevice(deviceId)).named(deviceId))
 
     val source = fromCoordinatorActorToWebsocketFlow(lastSequenceId,
-      Source.actorRef(
+      Source.actorRef(completionMatcher, failureMatcher,
         256,
         OverflowStrategy.dropNew).mapMaterializedValue { wsSource =>
         clientActor ! Subscribe(wsSource, deviceId, durchgang, lastSequenceId)

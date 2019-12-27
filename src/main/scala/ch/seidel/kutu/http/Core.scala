@@ -5,7 +5,7 @@ import java.net.{DatagramSocket, InetAddress, NetworkInterface}
 import akka.actor.ActorSystem
 import akka.http.scaladsl.Http
 import akka.http.scaladsl.server.Route
-import akka.stream.ActorMaterializer
+import akka.stream.Materializer
 import ch.seidel.kutu.Config
 import ch.seidel.kutu.Config._
 import ch.seidel.kutu.akka.CompetitionCoordinatorClientActor
@@ -21,7 +21,7 @@ object Core extends KuTuSSLContext {
     * Construct the ActorSystem we will use in our application
     */
   implicit lazy val system: ActorSystem = ActorSystem("KuTuApp") // , Config.config
-  implicit lazy val materializer: ActorMaterializer = ActorMaterializer()
+  implicit lazy val materializer: Materializer = Materializer(system)
 
   //  val eventRegistryActor: ActorRef = system.actorOf(EventRegistryActor.props, "eventRegistryActor")
   //  val userRegistryActor: ActorRef = system.actorOf(UserRegistryActor.props(eventRegistryActor), "userRegistryActor")

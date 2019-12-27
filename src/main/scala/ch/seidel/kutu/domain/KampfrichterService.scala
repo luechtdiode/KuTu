@@ -9,55 +9,52 @@ import scala.concurrent.duration.Duration
 trait WertungsrichterService extends DBService with WertungsrichterResultMapper {
   private val logger = LoggerFactory.getLogger(this.getClass)
 
-  def createOrUpdateWertungsrichter(Wertungsrichter: Wertungsrichter): Wertungsrichter = {
-    def getId: Option[Long] = Wertungsrichter.gebdat match {
-      case Some(gebdat) =>
-         Await.result(database.run{sql"""
+  def createOrUpdateWertungsrichter(wertungsrichter: Wertungsrichter): Wertungsrichter = {
+    def getId: Option[Long] = wertungsrichter.id match {
+      case 0 => wertungsrichter.gebdat match {
+        case Some(gebdat) =>
+          Await.result(database.run{sql"""
                   select max(Wertungsrichter.id) as maxid
                   from Wertungsrichter
-                  where name=${Wertungsrichter.name} and vorname=${Wertungsrichter.vorname} and strftime('%Y', gebdat)=strftime('%Y',${gebdat}) and verein=${Wertungsrichter.verein}
+                  where name=${wertungsrichter.name} and vorname=${wertungsrichter.vorname} and gebdat=${gebdat} and verein=${wertungsrichter.verein}
          """.as[Long].headOption}, Duration.Inf)
-      case _ =>
-         Await.result(database.run{sql"""
+        case _ =>
+          Await.result(database.run{sql"""
                   select max(Wertungsrichter.id) as maxid
                   from Wertungsrichter
-                  where name=${Wertungsrichter.name} and vorname=${Wertungsrichter.vorname} and verein=${Wertungsrichter.verein}
+                  where name=${wertungsrichter.name} and vorname=${wertungsrichter.vorname} and verein=${wertungsrichter.verein}
+         """.as[Long].headOption}, Duration.Inf)
+      }
+      case id =>Await.result(database.run{sql"""
+                  select max(Wertungsrichter.id) as maxid
+                  from Wertungsrichter
+                  where id=${id}
          """.as[Long].headOption}, Duration.Inf)
     }
 
-    if (Wertungsrichter.id == 0) {
-      getId match {
-        case Some(id) if(id > 0) =>
-          Await.result(database.run{
-            sqlu"""
-                  replace into Wertungsrichter
-                  (id, js_id, geschlecht, name, vorname, gebdat, strasse, plz, ort, verein, activ)
-                  values (${id}, ${Wertungsrichter.js_id}, ${Wertungsrichter.geschlecht}, ${Wertungsrichter.name}, ${Wertungsrichter.vorname}, 
-                                 ${Wertungsrichter.gebdat}, ${Wertungsrichter.strasse}, ${Wertungsrichter.plz}, ${Wertungsrichter.ort}, ${Wertungsrichter.verein}, 
-                                 ${Wertungsrichter.activ})
-            """ >>
-            sql"""select * from Wertungsrichter where id = ${id}""".as[Wertungsrichter].head
-          }, Duration.Inf)
-        case _ =>
-          Await.result(database.run{
-            sqlu"""
-                  replace into Wertungsrichter
-                  (js_id, geschlecht, name, vorname, gebdat, strasse, plz, ort, verein, activ)
-                  values (${Wertungsrichter.js_id}, ${Wertungsrichter.geschlecht}, ${Wertungsrichter.name}, ${Wertungsrichter.vorname}, ${Wertungsrichter.gebdat}, ${Wertungsrichter.strasse}, ${Wertungsrichter.plz}, ${Wertungsrichter.ort}, ${Wertungsrichter.verein}, ${Wertungsrichter.activ})
-            """ >>
-            sql"""select * from Wertungsrichter where id = (select max(Wertungsrichter.id) from Wertungsrichter)""".as[Wertungsrichter].head
-          }, Duration.Inf)
-      }
-    }
-    else {
-      Await.result(database.run{
-        sqlu"""
-                  replace into Wertungsrichter
-                  (id, js_id, geschlecht, name, vorname, gebdat, strasse, plz, ort, verein, activ)
-                  values (${Wertungsrichter.id}, ${Wertungsrichter.js_id}, ${Wertungsrichter.geschlecht}, ${Wertungsrichter.name}, ${Wertungsrichter.vorname}, ${Wertungsrichter.gebdat}, ${Wertungsrichter.strasse}, ${Wertungsrichter.plz}, ${Wertungsrichter.ort}, ${Wertungsrichter.verein}, ${Wertungsrichter.activ})
-          """
-      }, Duration.Inf)
-      Wertungsrichter
+    getId match {
+      case Some(id) if(id > 0) =>
+        Await.result(database.run{
+          sqlu"""     delete from Wertungsrichter where id = ${id}""" >>
+          sqlu"""
+                insert into Wertungsrichter
+                (id, js_id, geschlecht, name, vorname, gebdat, strasse, plz, ort, verein, activ)
+                values (${id}, ${wertungsrichter.js_id}, ${wertungsrichter.geschlecht}, ${wertungsrichter.name}, ${wertungsrichter.vorname},
+                               ${wertungsrichter.gebdat}, ${wertungsrichter.strasse}, ${wertungsrichter.plz}, ${wertungsrichter.ort}, ${wertungsrichter.verein},
+                               ${wertungsrichter.activ})
+          """ >>
+          sql"""select * from Wertungsrichter where id = ${id}""".as[Wertungsrichter].head
+        }, Duration.Inf)
+      case _ =>
+        Await.result(database.run{
+          sqlu"""     delete from Wertungsrichter where id = ${wertungsrichter.id}""" >>
+          sqlu"""
+                insert into Wertungsrichter
+                (js_id, geschlecht, name, vorname, gebdat, strasse, plz, ort, verein, activ)
+                values (${wertungsrichter.js_id}, ${wertungsrichter.geschlecht}, ${wertungsrichter.name}, ${wertungsrichter.vorname}, ${wertungsrichter.gebdat}, ${wertungsrichter.strasse}, ${wertungsrichter.plz}, ${wertungsrichter.ort}, ${wertungsrichter.verein}, ${wertungsrichter.activ})
+          """ >>
+          sql"""select * from Wertungsrichter where id = (select max(Wertungsrichter.id) from Wertungsrichter)""".as[Wertungsrichter].head
+        }, Duration.Inf)
     }
   }
   

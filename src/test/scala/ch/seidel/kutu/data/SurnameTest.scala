@@ -1,11 +1,8 @@
 package ch.seidel.kutu.data
 
-import org.junit.runner.RunWith
-import org.scalatest.FunSuite
-import org.scalatest.junit.JUnitRunner
+import org.scalatest.funsuite.AnyFunSuite
 
-@RunWith(classOf[JUnitRunner])
-class SurnameTest extends FunSuite {
+class SurnameTest extends AnyFunSuite {
 
   test("testIsSurname") {
     assert(Surname.isSurname("Roland").isDefined === true)
