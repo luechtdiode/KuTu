@@ -35,7 +35,7 @@ trait AthletService extends DBService with AthletResultMapper {
     Await.result(database.run {
       sql"""        select a.id, a.js_id, a.geschlecht, a.name, a.vorname, a.gebdat, a.strasse, a.plz, a.ort, a.activ, a.verein,
                             v.* from athlet a inner join verein v on (v.id = a.verein) 
-                     order by activ desc, name, vorname asc 
+                     order by a.activ desc, a.name, a.vorname asc
           """.as[AthletView]
         .withPinnedSession
     }, Duration.Inf).toList
@@ -46,7 +46,7 @@ trait AthletService extends DBService with AthletResultMapper {
       sql"""        select a.id, a.js_id, a.geschlecht, a.name, a.vorname, a.gebdat, a.strasse, a.plz, a.ort, a.activ, a.verein,
                             v.* from athlet a inner join verein v on (v.id = a.verein) 
                      where a.id = $athletId
-                     order by activ desc, name, vorname asc
+                     order by a.activ desc, a.name, a.vorname asc
           """.as[AthletView].head
         .withPinnedSession
     }, Duration.Inf)
@@ -87,47 +87,58 @@ trait AthletService extends DBService with AthletResultMapper {
   private def insertAthlete2(importAthlet: (String, Athlet)) = {
     val (id, athlete) = importAthlet
 
-    def getId = athlete.gebdat match {
-      case Some(gebdat) =>
-        sql"""
+    def getId = athlete.id match {
+      case 0 => athlete.gebdat match {
+        case Some(gebdat) =>
+          sql"""
                   select max(athlet.id) as maxid
                   from athlet
-                  where name=${athlete.name} and vorname=${athlete.vorname} and strftime('%Y', gebdat)=strftime('%Y',${gebdat}) and verein=${athlete.verein}
+                  where name=${athlete.name} and vorname=${athlete.vorname} and gebdat=${gebdat} and verein=${athlete.verein}
          """.as[Long].headOption
-      case _ =>
-        sql"""
+        case _ =>
+          sql"""
                   select max(athlet.id) as maxid
                   from athlet
                   where name=${athlete.name} and vorname=${athlete.vorname} and verein=${athlete.verein}
          """.as[Long].headOption
+      }
+
+      case id =>
+        sql"""
+                  select max(athlet.id) as maxid
+                  from athlet
+                  where id=${id}
+         """.as[Long].headOption
     }
 
-    (if (athlete.id == 0) {
-      getId.flatMap {
-        case Some(athletId) if (athletId > 0) =>
-          sqlu"""
-                  replace into athlet
-                  (id, js_id, geschlecht, name, vorname, gebdat, strasse, plz, ort, verein, activ)
-                  values (${athletId}, ${athlete.js_id}, ${athlete.geschlecht}, ${athlete.name}, ${athlete.vorname}, ${athlete.gebdat}, ${athlete.strasse}, ${athlete.plz}, ${athlete.ort}, ${athlete.verein}, ${athlete.activ})
-            """ >>
-            sql"""select * from athlet where id = ${athletId}""".as[Athlet].head
 
-        case _ =>
-          sqlu"""
-                  replace into athlet
-                  (js_id, geschlecht, name, vorname, gebdat, strasse, plz, ort, verein, activ)
-                  values (${athlete.js_id}, ${athlete.geschlecht}, ${athlete.name}, ${athlete.vorname}, ${athlete.gebdat}, ${athlete.strasse}, ${athlete.plz}, ${athlete.ort}, ${athlete.verein}, ${athlete.activ})
-            """ >>
-            sql"""select * from athlet where id = (select max(athlet.id) from athlet)""".as[Athlet].head
-      }
-    } else {
-      sqlu"""
-                  replace into athlet
-                  (id, js_id, geschlecht, name, vorname, gebdat, strasse, plz, ort, verein, activ)
-                  values (${athlete.id}, ${athlete.js_id}, ${athlete.geschlecht}, ${athlete.name}, ${athlete.vorname}, ${athlete.gebdat}, ${athlete.strasse}, ${athlete.plz}, ${athlete.ort}, ${athlete.verein}, ${athlete.activ})
-          """.map(_ => athlete)
-    })
-      .map(a => (id, a))
+    getId.flatMap {
+      case Some(athletId) if (athletId > 0) =>
+        sqlu"""
+                update athlet
+                set js_id=${athlete.js_id},
+                    geschlecht = ${athlete.geschlecht},
+                    name = ${athlete.name},
+                    vorname = ${athlete.vorname},
+                    gebdat = ${athlete.gebdat},
+                    strasse = ${athlete.strasse},
+                    plz = ${athlete.plz},
+                    ort = ${athlete.ort},
+                    verein = ${athlete.verein},
+                    activ = ${athlete.activ}
+                where id=${athletId}
+          """ >>
+          sql"""select * from athlet where id = ${athletId}""".as[Athlet].head
+
+      case _ =>
+        sqlu"""
+                insert into athlet
+                (js_id, geschlecht, name, vorname, gebdat, strasse, plz, ort, verein, activ)
+                values (${athlete.js_id}, ${athlete.geschlecht}, ${athlete.name}, ${athlete.vorname}, ${athlete.gebdat}, ${athlete.strasse}, ${athlete.plz}, ${athlete.ort}, ${athlete.verein}, ${athlete.activ})
+          """ >>
+          sql"""select * from athlet where id = (select max(athlet.id) from athlet)""".as[Athlet].head
+    }
+    .map(a => (id, a))
   }
 
   def insertAthlete(athlete: Athlet): Athlet = {

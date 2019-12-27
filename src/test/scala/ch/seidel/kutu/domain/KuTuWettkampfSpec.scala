@@ -1,12 +1,13 @@
 package ch.seidel.kutu.domain
 
 import java.util.Date
-import org.scalatest.WordSpec
-import org.scalatest.Matchers
-import scala.annotation.tailrec
 
-//@RunWith(classOf[JUnitRunner])
-class KuTuWettkampfSpec extends WordSpec with Matchers with KutuService {
+import org.scalatest.Ignore
+import org.scalatest.matchers.should.Matchers
+import org.scalatest.wordspec.AnyWordSpec
+
+@Ignore
+class KuTuWettkampfSpec extends AnyWordSpec with Matchers with KutuService {
   print(f"${new Date()}%tF")
 //  print(suggestRiegen(7, Seq(6)))
   // Open a database connection
