@@ -5,11 +5,12 @@ import java.nio.file.{Files, StandardOpenOption}
 import java.text.{ParseException, SimpleDateFormat}
 import java.util.Properties
 
+import ch.seidel.kutu.Config
 import ch.seidel.kutu.Config.{appVersion, userHomePath}
 import com.zaxxer.hikari.{HikariConfig, HikariDataSource}
 import org.slf4j.LoggerFactory
 import slick.jdbc.JdbcBackend.{Database, DatabaseDef}
-import slick.jdbc.SQLiteProfile.api.{AsyncExecutor, DBIO, actionBasedSQLInterpolation, jdbcActionExtensionMethods}
+import slick.jdbc.PostgresProfile.api.{DBIO, actionBasedSQLInterpolation, jdbcActionExtensionMethods}
 
 import scala.annotation.tailrec
 import scala.concurrent.Await
@@ -19,24 +20,13 @@ import scala.io.Source
 object DBService {
   private val logger = LoggerFactory.getLogger(this.getClass)
 
-  lazy private val proplite = {
-    val prop = new Properties()
-    prop.setProperty("date_string_format", "yyyy-MM-dd")
-    //    prop.setProperty("connectionPool", "disabled")
-    //    prop.setProperty("keepAliveConnection", "true")
-    //    prop.setProperty("numberThreads ", "500")
-    //    prop.setProperty("maxConnections ", "500")
-    //    prop.setProperty("maximumPoolSize", "500")
-    //    prop.setProperty("maxThreads", "500")
-    prop
-  }
   lazy private val dbFilename = s"kutu-$appVersion.sqlite"
   lazy private val dbhomedir = if (new File("./db/" + dbFilename).exists()) {
-    logger.info("using db at: " + new File("./db/" + dbFilename).getAbsolutePath);
+    logger.info("dbhomedir at: " + new File("./db/" + dbFilename).getAbsolutePath);
     "./db"
   }
   else if (new File(userHomePath + "/db").exists()) {
-    logger.info("using db at: " + userHomePath + "/db");
+    logger.info("dbhomedir at: " + userHomePath + "/db");
     userHomePath + "/db"
     //    "./db"
   }
@@ -45,7 +35,7 @@ object DBService {
     logger.info("try to create for installing the db: " + f);
     try {
       f.mkdirs();
-      logger.info("using db at: " + f);
+      logger.info("dbhomedir at: " + f);
       userHomePath + "/db"
     } catch {
       case _: Throwable =>
@@ -57,8 +47,21 @@ object DBService {
   }
   private lazy val dbfile = new File(dbhomedir + "/" + dbFilename)
 
-  private lazy val databaselite = {
+  private lazy val databaseLite = {
     logger.info(s"Using Database at ${dbfile.getAbsolutePath}")
+    if (!dbfile.exists() || dbfile.length() == 0) {
+      dbfile.createNewFile()
+    }
+
+    val proplite = new Properties()
+    proplite.setProperty("date_string_format", "yyyy-MM-dd")
+      //    prop.setProperty("connectionPool", "disabled")
+      //    prop.setProperty("keepAliveConnection", "true")
+      //    prop.setProperty("numberThreads ", "500")
+      //    prop.setProperty("maxConnections ", "500")
+      //    prop.setProperty("maximumPoolSize", "500")
+      //    prop.setProperty("maxThreads", "500")
+
     val hikariConfig = new HikariConfig()
     hikariConfig.setJdbcUrl("jdbc:sqlite:" + dbfile.getAbsolutePath)
     hikariConfig.setDriverClassName("org.sqlite.JDBC")
@@ -68,65 +71,72 @@ object DBService {
     hikariConfig.setMaximumPoolSize(500)
 
     val dataSource = new HikariDataSource(hikariConfig)
-    Database.forDataSource(dataSource, maxConnections = Some(500), executor = AsyncExecutor(name = "DB-Actions", minThreads = 500, maxThreads = 500, queueSize = 10000, maxConnections = 500), keepAliveConnection = true)
-    //    Database.forURL(
-    //      url = "jdbc:sqlite:" + dbfile.getAbsolutePath,
-    //      driver = "org.sqlite.JDBC",
-    //      prop = proplite,
-    //      user = "kutu",
-    //      password = "kutu",
-    //      executor = AsyncExecutor("DB-Actions", 256, 10000)
-    //    )
+    import slick.jdbc.SQLiteProfile.api.{AsyncExecutor}
+    def createDS = Database.forDataSource(dataSource, maxConnections = Some(500), executor = AsyncExecutor(name = "DB-Actions", minThreads = 500, maxThreads = 500, queueSize = 10000, maxConnections = 500), keepAliveConnection = true)
+    var db = createDS
+    val sqlScripts = List(
+        "kutu-sqllite-ddl.sql"
+      , "SetJournalWAL.sql"
+      , "kutu-initialdata.sql"
+    )
+    try {
+      installDB(db, sqlScripts)
+    } catch {
+      case _: DatabaseNotInitializedException =>
+        db.close()
+        val backupFile = {
+          var cnt = 1;
+          while(new File(s"${dbfile.getAbsolutePath}.backup-$cnt").exists()) cnt = cnt + 1
+          new File(s"${dbfile.getName}.backup-$cnt")
+        }
+        dbfile.renameTo(backupFile)
+        dbfile.createNewFile()
+        db = createDS
+        installDB(db, sqlScripts)
+    }
+    db
+  }
+
+  private lazy val databaseDef = {
+    val postgresDBConfig = "kutudb_pg"
+    if (Config.config.hasPath(postgresDBConfig)) try {
+      val db = Database.forConfig(postgresDBConfig, Config.config)
+      val sqlScripts = List(
+          "kutu-pg-ddl.sql"
+        , "kutu-initialdata.sql"
+      )
+      installDB(db, sqlScripts)
+      db
+    } catch {
+      case e: Exception =>
+        e.printStackTrace()
+        databaseLite
+    } else {
+      databaseLite
+    }
   }
 
   private var database: Option[DatabaseDef] = None
-  //  lazy val database = databasemysql
 
-
-  def updateDB(db: DatabaseDef, ignoreImportedScripts: Boolean = false) = {
-    val sqlScripts = Seq(
-      "SetJournalWAL.sql"
-      , "OptionalWertungen.sql"
-      , "AddRiegenIndicies.sql"
-      , "PublishedScores.sql"
-      , "PublishedScores3.sql"
-    )
-
-    sqlScripts.filter { filename =>
-      val f = new File(dbhomedir + s"/$appVersion-$filename.log")
-      ignoreImportedScripts || !f.exists()
-    }.foreach { filename =>
-      val file = getClass.getResourceAsStream("/dbscripts/" + filename)
-      val sqlscript = Source.fromInputStream(file, "utf-8").getLines().toList
-      val log = try {
-        logger.info(s"running sql-script: $filename")
-
-        executeDBScript(sqlscript, db)
-      }
-      catch {
-        case e: Exception =>
-          val fos = Files.newOutputStream(new File(dbhomedir + s"/$appVersion-$filename.err").toPath, StandardOpenOption.CREATE, StandardOpenOption.APPEND)
-          try {
-            fos.write(e.getMessage.getBytes("utf-8"))
-            fos.write("\n\nStatement:\n".getBytes("utf-8"));
-            fos.write(sqlscript.mkString("\n").getBytes("utf-8"))
-            fos.write("\n".getBytes("utf-8"))
-          } finally {
-            fos.close
-          }
-          throw e
-      }
-
-      if(!ignoreImportedScripts) {
-        val fos = Files.newOutputStream(new File(dbhomedir + s"/$appVersion-$filename.log").toPath, StandardOpenOption.CREATE_NEW)
-        try {
-          fos.write(log.getBytes("utf-8"))
-        } finally {
-          fos.close
-        }
-      }
-      log
+  def checkMigrationDone(db: DatabaseDef, script: String): Boolean = {
+    try {
+      0 < Await.result(db.run {
+          sql"""
+          select count(*) from migrations where name = $script
+         """.as[Int].withPinnedSession
+      }, Duration.Inf).headOption.getOrElse(0)
+    } catch {
+      case _: Throwable => false
     }
+  }
+
+  def migrationDone(db: DatabaseDef, script: String, log: String): Unit = {
+    Await.result(db.run{
+      sqlu"""
+          insert into migrations (name, result) values ($script, $log)
+         """.transactionally
+    }, Duration.Inf)
+    logger.info(s"... sql-script finished successfully.")
   }
 
   def parseLine(s: String): IndexedSeq[String] = {
@@ -188,13 +198,15 @@ object DBService {
     }
 
     def parse(lines: Seq[String]): List[String] = {
-      lines.filter(filterCommentLines).foldLeft(List(""))(combineMultilineStatement).filter(_.trim().length() > 0)
+      lines.filter(filterCommentLines).foldLeft(List(""))(combineMultilineStatement)
+        .filter(_.trim().length() > 0)
     }
 
     val statements = parse(script)
     val statementActions = statements.map { statement =>
       sqlu"""#$statement"""
     }
+
     val counters: Seq[Int] = if (statementActions.size == 1) {
       if (statements(0).startsWith("PRAGMA")) {
         Await.result(db.run(sql"""#${statements(0)}""".as[String]), Duration.Inf)
@@ -211,34 +223,31 @@ object DBService {
   }
 
 
-  def installDB(db: DatabaseDef) = {
-    val sqlScripts = Seq(
-      "kutu-sqllite-ddl.sql"
-      , "kutu-sqllite-initialdata.sql"
-    )
-
-    sqlScripts.map { filename =>
-      logger.info(s"running sql-script: $filename")
+  def installDB(db: DatabaseDef, sqlScripts: List[String]) = {
+    sqlScripts.filter{ filename =>
+      !checkMigrationDone(db, filename)
+    }.map { filename =>
+      logger.info(s"running sql-script: $filename ...")
       val file = getClass.getResourceAsStream("/dbscripts/" + filename)
-      executeDBScript(Source.fromInputStream(file, "utf-8").getLines().toSeq, db)
+      val sqlscript = Source.fromInputStream(file, "utf-8").getLines().toList
+      try {
+        migrationDone(db, filename,
+          executeDBScript(sqlscript, db))
+      }
+      catch {
+        case e: Exception =>
+          val fos = Files.newOutputStream(new File(dbhomedir + s"/$appVersion-$filename.err").toPath, StandardOpenOption.CREATE, StandardOpenOption.APPEND)
+          try {
+            fos.write(e.getMessage.getBytes("utf-8"))
+            fos.write("\n\nStatement:\n".getBytes("utf-8"));
+            fos.write(sqlscript.mkString("\n").getBytes("utf-8"))
+            fos.write("\n".getBytes("utf-8"))
+          } finally {
+            fos.close
+          }
+          throw new DatabaseNotInitializedException()
+      }
     }
-  }
-
-  lazy val _startDB = {
-    logger.info("starting database ...")
-    database = database match {
-      case None =>
-        if (!dbfile.exists() || dbfile.length() == 0) {
-          dbfile.createNewFile()
-          installDB(databaselite)
-        }
-        updateDB(databaselite)
-        Some(databaselite)
-      case Some(db) =>
-        Some(db)
-    }
-    logger.info("Database initialized")
-    true
   }
 
   def startDB(alternativDB: Option[DatabaseDef] = None) = {
@@ -246,10 +255,7 @@ object DBService {
       case Some(db) =>
         database = Some(db)
       case None =>
-    }
-    if (!_startDB) {
-      logger.error("Database not initialized!!!")
-      System.exit(-1)
+        database = Some(database.getOrElse(databaseDef))
     }
     database.get
   }
@@ -264,7 +270,7 @@ object DBService {
 trait DBService {
   private val logger = LoggerFactory.getLogger(this.getClass)
 
-  def database: DatabaseDef = DBService.startDB()
+  lazy val database: DatabaseDef = DBService.startDB()
 
 
   implicit def getSQLDate(date: String) = try {
