@@ -12,6 +12,7 @@ import ch.seidel.kutu.squad.RiegenBuilder
 import ch.seidel.kutu.view._
 import ch.seidel.kutu.{Config, KuTuApp}
 import org.slf4j.LoggerFactory
+import slick.jdbc
 
 import scala.annotation.tailrec
 import scala.concurrent.Await
@@ -410,6 +411,24 @@ object ResourceExchanger extends KutuService with RiegenBuilder {
 
     logger.info("import finished")
     wettkampfInstances.head._2
+  }
+
+  def moveAll(source: jdbc.JdbcBackend.DatabaseDef, target: jdbc.JdbcBackend.DatabaseDef): Unit = {
+    try {
+      DBService.startDB(Some(source))
+      val wettkampfliste = listWettkaempfeView
+      for {
+        wk <- wettkampfliste
+      } {
+        val copyStream = new CopyStream(100000)
+        DBService.startDB(Some(source))
+        exportWettkampfToStream(wk.toWettkampf, copyStream)
+        DBService.startDB(Some(target))
+        importWettkampf(copyStream.toInputStream)
+      }
+    } finally {
+      DBService.startDB(Some(target))
+    }
   }
 
   def exportWettkampf(wettkampf: Wettkampf, filename: String) {
