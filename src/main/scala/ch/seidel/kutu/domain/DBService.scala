@@ -7,8 +7,11 @@ import java.util.Properties
 
 import ch.seidel.kutu.Config
 import ch.seidel.kutu.Config.{appVersion, userHomePath}
+import ch.seidel.kutu.data.ResourceExchanger
 import com.zaxxer.hikari.{HikariConfig, HikariDataSource}
 import org.slf4j.LoggerFactory
+import slick.jdbc
+import slick.jdbc.JdbcBackend
 import slick.jdbc.JdbcBackend.{Database, DatabaseDef}
 import slick.jdbc.PostgresProfile.api.{DBIO, actionBasedSQLInterpolation, jdbcActionExtensionMethods}
 
@@ -20,7 +23,9 @@ import scala.io.Source
 object DBService {
   private val logger = LoggerFactory.getLogger(this.getClass)
 
-  lazy private val dbFilename = s"kutu-$appVersion.sqlite"
+  def buildFilename(version: String) = s"kutu-$version.sqlite"
+
+  lazy private val dbFilename = buildFilename(appVersion)
   lazy private val dbhomedir = if (new File("./db/" + dbFilename).exists()) {
     logger.info("dbhomedir at: " + new File("./db/" + dbFilename).getAbsolutePath);
     "./db"
@@ -49,36 +54,38 @@ object DBService {
 
   private lazy val databaseLite = {
     logger.info(s"Using Database at ${dbfile.getAbsolutePath}")
-    if (!dbfile.exists() || dbfile.length() == 0) {
-      dbfile.createNewFile()
+
+    def createDS(dbfn: String) = {
+      import slick.jdbc.SQLiteProfile.api.AsyncExecutor
+      val proplite = new Properties()
+      proplite.setProperty("date_string_format", "yyyy-MM-dd")
+      val config = new HikariConfig()
+      config.setJdbcUrl(s"jdbc:sqlite:$dbfn")
+      config.setDriverClassName("org.sqlite.JDBC")
+      config.setDataSourceProperties(proplite)
+      config.setUsername("kutu")
+      config.setPassword("kutu")
+      config.setMaximumPoolSize(500)
+      val dataSource = new HikariDataSource(config)
+
+      Database.forDataSource(dataSource, maxConnections = Some(500), executor = AsyncExecutor(name = "DB-Actions", minThreads = 500, maxThreads = 500, queueSize = 10000, maxConnections = 500), keepAliveConnection = true)
     }
 
-    val proplite = new Properties()
-    proplite.setProperty("date_string_format", "yyyy-MM-dd")
-      //    prop.setProperty("connectionPool", "disabled")
-      //    prop.setProperty("keepAliveConnection", "true")
-      //    prop.setProperty("numberThreads ", "500")
-      //    prop.setProperty("maxConnections ", "500")
-      //    prop.setProperty("maximumPoolSize", "500")
-      //    prop.setProperty("maxThreads", "500")
-
-    val hikariConfig = new HikariConfig()
-    hikariConfig.setJdbcUrl("jdbc:sqlite:" + dbfile.getAbsolutePath)
-    hikariConfig.setDriverClassName("org.sqlite.JDBC")
-    hikariConfig.setDataSourceProperties(proplite)
-    hikariConfig.setUsername("kutu")
-    hikariConfig.setPassword("kutu")
-    hikariConfig.setMaximumPoolSize(500)
-
-    val dataSource = new HikariDataSource(hikariConfig)
-    import slick.jdbc.SQLiteProfile.api.{AsyncExecutor}
-    def createDS = Database.forDataSource(dataSource, maxConnections = Some(500), executor = AsyncExecutor(name = "DB-Actions", minThreads = 500, maxThreads = 500, queueSize = 10000, maxConnections = 500), keepAliveConnection = true)
-    var db = createDS
     val sqlScripts = List(
-        "kutu-sqllite-ddl.sql"
+      "kutu-sqllite-ddl.sql"
       , "SetJournalWAL.sql"
       , "kutu-initialdata.sql"
     )
+
+    (!dbfile.exists() || dbfile.length() == 0, Config.importDataFrom) match {
+      case (true, Some(version)) =>
+        migrateFrom(createDS, sqlScripts, version)
+      case (false, _) =>
+        dbfile.createNewFile()
+      case _ => // nothing to do
+    }
+
+    var db = createDS(dbfile.getAbsolutePath)
     try {
       installDB(db, sqlScripts)
     } catch {
@@ -86,15 +93,46 @@ object DBService {
         db.close()
         val backupFile = {
           var cnt = 1;
-          while(new File(s"${dbfile.getAbsolutePath}.backup-$cnt").exists()) cnt = cnt + 1
-          new File(s"${dbfile.getName}.backup-$cnt")
+          while (new File(s"${dbfile.getAbsolutePath}.backup-$cnt").exists()) cnt = cnt + 1
+          new File(s"${dbfile.getAbsolutePath}.backup-$cnt")
         }
         dbfile.renameTo(backupFile)
         dbfile.createNewFile()
-        db = createDS
+        db = createDS(dbfile.getAbsolutePath)
         installDB(db, sqlScripts)
     }
     db
+  }
+
+  private def migrateFrom(dsCreate: String => JdbcBackend.DatabaseDef, initialPreloadedSqlScripts: List[String], version: String) {
+    val preversion = new File(dbhomedir + "/" + buildFilename(version))
+    if (preversion.exists()) {
+      logger.info(s"Migrating Database from ${preversion.getAbsolutePath}")
+      try {
+        Files.copy(preversion.toPath, dbfile.toPath)
+        val db = dsCreate(dbfile.getAbsolutePath)
+        try {
+          logger.info(s"applying migration scripts to ${dbfile.getAbsolutePath}")
+          migrateFromPreviousVersion(db)
+          initialPreloadedSqlScripts.foreach(script => {
+            logger.info(s"registering script ${script} to ${dbfile.getAbsolutePath}")
+            migrationDone(db, script, "from migration")
+          })
+        } finally {
+          db.close()
+        }
+      } catch {
+        case e: Exception =>
+          logger.error("Migration failed! Create a new Database instead ...", e)
+          dbfile.createNewFile()
+      }
+    } else {
+      dbfile.createNewFile()
+    }
+  }
+
+  def transferData(source: jdbc.JdbcBackend.DatabaseDef, target: jdbc.JdbcBackend.DatabaseDef): Unit = {
+    ResourceExchanger.moveAll(source, target)
   }
 
   private lazy val databaseDef = {
@@ -102,10 +140,19 @@ object DBService {
     if (Config.config.hasPath(postgresDBConfig)) try {
       val db = Database.forConfig(postgresDBConfig, Config.config)
       val sqlScripts = List(
-          "kutu-pg-ddl.sql"
+        "kutu-pg-ddl.sql"
         , "kutu-initialdata.sql"
       )
       installDB(db, sqlScripts)
+      Config.importDataFrom match {
+        case Some(version) =>
+          val scriptname = s"MigratedFrom-$version"
+          if (!checkMigrationDone(db, scriptname)) {
+            transferData(databaseLite, db)
+            migrationDone(db, scriptname, "from migration")
+          }
+        case _ =>
+      }
       db
     } catch {
       case e: Exception =>
@@ -121,7 +168,7 @@ object DBService {
   def checkMigrationDone(db: DatabaseDef, script: String): Boolean = {
     try {
       0 < Await.result(db.run {
-          sql"""
+        sql"""
           select count(*) from migrations where name = $script
          """.as[Int].withPinnedSession
       }, Duration.Inf).headOption.getOrElse(0)
@@ -131,7 +178,7 @@ object DBService {
   }
 
   def migrationDone(db: DatabaseDef, script: String, log: String): Unit = {
-    Await.result(db.run{
+    Await.result(db.run {
       sqlu"""
           insert into migrations (name, result) values ($script, $log)
          """.transactionally
@@ -224,7 +271,7 @@ object DBService {
 
 
   def installDB(db: DatabaseDef, sqlScripts: List[String]) = {
-    sqlScripts.filter{ filename =>
+    sqlScripts.filter { filename =>
       !checkMigrationDone(db, filename)
     }.map { filename =>
       logger.info(s"running sql-script: $filename ...")
@@ -253,6 +300,45 @@ object DBService {
     }
   }
 
+  def migrateFromPreviousVersion(db: DatabaseDef) = {
+    val sqlScripts = Seq(
+      "SetJournalWAL.sql"
+      , "AddMigrationTable.sql"
+    )
+
+    sqlScripts.filter { filename =>
+      !new File(dbhomedir + s"/$appVersion-$filename.log").exists()
+    }.foreach { filename =>
+      val file = getClass.getResourceAsStream("/dbscripts/" + filename)
+      val sqlscript = Source.fromInputStream(file, "utf-8").getLines().toList
+      val log = try {
+        logger.info(s"running sql-script: $filename")
+
+        executeDBScript(sqlscript, db)
+      }
+      catch {
+        case e: Exception =>
+          val fos = Files.newOutputStream(new File(dbhomedir + s"/$appVersion-$filename.err").toPath, StandardOpenOption.CREATE, StandardOpenOption.APPEND)
+          try {
+            fos.write(e.getMessage.getBytes("utf-8"))
+            fos.write("\n\nStatement:\n".getBytes("utf-8"));
+            fos.write(sqlscript.mkString("\n").getBytes("utf-8"))
+            fos.write("\n".getBytes("utf-8"))
+          } finally {
+            fos.close
+          }
+          throw e
+      }
+
+      val fos = Files.newOutputStream(new File(dbhomedir + s"/$appVersion-$filename.log").toPath, StandardOpenOption.CREATE_NEW)
+      try {
+        fos.write(log.getBytes("utf-8"))
+      } finally {
+        fos.close
+      }
+    }
+  }
+
   def startDB(alternativDB: Option[DatabaseDef] = None) = {
     alternativDB match {
       case Some(db) =>
@@ -273,8 +359,7 @@ object DBService {
 trait DBService {
   private val logger = LoggerFactory.getLogger(this.getClass)
 
-  lazy val database: DatabaseDef = DBService.startDB()
-
+  def database: DatabaseDef = DBService.startDB()
 
   implicit def getSQLDate(date: String) = try {
     new java.sql.Date(DBService.sdf.parse(date).getTime)
