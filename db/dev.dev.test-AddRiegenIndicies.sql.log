@@ -1,6 +1,0 @@
-statements: CREATE INDEX `xwertungwettkampfgeraetriege1` ON `wertung` (`wettkampf_id`, `wettkampfdisziplin_id`, `riege`);
-	update-cnt: 0
-statements: CREATE INDEX `xwertungwettkampfgeraetriege2` ON `wertung` (`wettkampf_id`, `wettkampfdisziplin_id`, `riege2`);
-	update-cnt: 0
-statements: CREATE INDEX `xwertungwettkampfgeraetriegen` ON `wertung` (`wettkampf_id`, `wettkampfdisziplin_id`, `riege`, `riege2`);
-	update-cnt: 0
