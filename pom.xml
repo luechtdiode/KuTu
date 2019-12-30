@@ -45,7 +45,7 @@
 			<properties>
 				<javafx.os>linux</javafx.os>
 				<bundler.os>Linux</bundler.os>
-				<app.logo>app-logo.svg</app.logo>
+				<app.logo>app-logo.png</app.logo>
 			</properties>
 		</profile>
 	</profiles>
