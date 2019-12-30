@@ -8,6 +8,7 @@ import java.util.Properties
 import ch.seidel.kutu.Config
 import ch.seidel.kutu.Config.{appVersion, userHomePath}
 import ch.seidel.kutu.data.ResourceExchanger
+import com.typesafe.config.ConfigFactory
 import com.zaxxer.hikari.{HikariConfig, HikariDataSource}
 import org.slf4j.LoggerFactory
 import slick.jdbc
@@ -136,9 +137,11 @@ object DBService {
   }
 
   private lazy val databaseDef = {
-    val postgresDBConfig = "kutudb_pg"
-    if (Config.config.hasPath(postgresDBConfig)) try {
-      val db = Database.forConfig(postgresDBConfig, Config.config)
+    val dbconfigname_key = "X_DB_CONFIG_NAME"
+    if (Config.config.hasPath(dbconfigname_key) && Config.config.hasPath(Config.config.getString(dbconfigname_key))) try {
+      val dbconfig_key = Config.config.getString(dbconfigname_key)
+      println("load db-config with " + dbconfig_key);
+      val db = Database.forConfig(dbconfig_key, Config.config)
       val sqlScripts = List(
         "kutu-pg-ddl.sql"
         , "kutu-initialdata.sql"

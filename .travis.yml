@@ -94,6 +94,8 @@ jobs:
 
     - stage: serverlnx
       language: java
+      services:
+        - docker
       # jdk: openjdk11
       os: linux
       #    #skips default install - see script bellow
@@ -109,6 +111,17 @@ jobs:
         - cp -f $TRAVIS_BUILD_DIR/target/$OS/*.* $TRAVIS_BUILD_DIR/outputs/$OS/
       after_success:
         - aws s3 cp --recursive $TRAVIS_BUILD_DIR/outputs/ $S3_BUCKET_PUBLIC/ >/dev/null 2>&1
+        - cp target/*-app.jar docker/
+        - export COMMIT=${TRAVIS_COMMIT::7}
+        - export COMMIT_TAG=$(echo $TRAVIS_BRANCH-$COMMIT | tr "/" ".")
+        - export TAG=`if [ ! -z "$TRAVIS_TAG" ]; then echo "$TRAVIS_TAG"; else echo "$COMMIT_TAG";
+          fi`
+        - echo "$DOCKER_ACCESSTOKEN" | docker login -u "$DOCKER_USER" --password-stdin  >/dev/null 2>&1
+        - docker build ./docker -t $IMAGE_NAME:latest
+        - docker tag $IMAGE_NAME:latest $IMAGE_NAME:$TAG
+        - docker push $IMAGE_NAME:latest
+        - docker push $IMAGE_NAME:$TAG
+        - echo "$IMAGE_NAME:$TAG is built properly and pushed to Dockerhub"
 
     - stage: serverwin
       os: windows
