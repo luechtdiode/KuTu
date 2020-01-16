@@ -332,14 +332,16 @@ trait WettkampfService extends DBService
       if (hasWertungen.head > 0 && !heads.forall { h => h.id == heads.head.id }) {
         throw new IllegalArgumentException("Es kann keine Programmanpassung gemacht werden, wenn bereits Turner zum Wettkampf verknüpft sind.")
       }
-      sqlu"""     delete from wettkampf where id = $id""" >>
-      sqlu"""
-                  insert into wettkampf
-                  (id, datum, titel, programm_Id, auszeichnung, auszeichnungendnote, uuid)
-                  values ($id, $datum, $titel, ${heads.head.id}, $auszeichnung, $auszeichnungendnote, $uuid)
+      sqlu"""     update wettkampf
+                  set datum=$datum,
+                      titel=$titel,
+                      programm_Id=${heads.head.id},
+                      auszeichnung=$auszeichnung,
+                      auszeichnungendnote=$auszeichnungendnote,
+                      uuid=$uuid
+                  where id=$id
           """ >>
-       sql"""
-                  select * from wettkampf
+       sql"""     select * from wettkampf
                   where id = $id
           """.as[Wettkampf].head
     }
