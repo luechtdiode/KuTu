@@ -1,11 +1,8 @@
 package ch.seidel.kutu.data
 
-import org.junit.runner.RunWith
-import org.scalatest.FunSuite
-import org.scalatest.junit.JUnitRunner
+import org.scalatest.funsuite.AnyFunSuite
 
-@RunWith(classOf[JUnitRunner])
-class NameCodecTest extends FunSuite {
+class NameCodecTest extends AnyFunSuite {
 
   test("testEncode") {
     assert(NameCodec.encode("Maier") === NameCodec.encode("Meier"))

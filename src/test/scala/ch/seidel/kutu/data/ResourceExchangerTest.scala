@@ -1,12 +1,9 @@
 package ch.seidel.kutu.data
 
 import ch.seidel.kutu.domain.{Athlet, AthletView}
-import org.junit.runner.RunWith
-import org.scalatest.FunSuite
-import org.scalatest.junit.JUnitRunner
+import org.scalatest.funsuite.AnyFunSuite
 
-@RunWith(classOf[JUnitRunner])
-class ResourceExchangerTest extends FunSuite {
+class ResourceExchangerTest extends AnyFunSuite {
 
   test("testGetValues") {
     assert(ResourceExchanger.getValues(Athlet(33)) ===

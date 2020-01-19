@@ -3,12 +3,9 @@ package ch.seidel.kutu.domain
 import java.time.LocalDate
 import java.util
 
-import org.junit.runner.RunWith
-import org.scalatest.FunSuite
-import org.scalatest.junit.JUnitRunner
+import org.scalatest.funsuite.AnyFunSuite
 
-@RunWith(classOf[JUnitRunner])
-class AthletServiceTest extends FunSuite with AthletService {
+class AthletServiceTest extends AnyFunSuite with AthletService {
 
   val gebdat1 = java.sql.Date.valueOf(LocalDate.of(2012, 1, 1))
   val gebdat2 = java.sql.Date.valueOf(LocalDate.of(2013, 1, 1))
@@ -16,23 +13,23 @@ class AthletServiceTest extends FunSuite with AthletService {
 
   val verein = 33
   val athleteList = List(
-    Athlet(verein).copy(id=1L, name = "Bolliquèr", vorname ="Sophia"),
-    Athlet(verein).copy(id=2L, name = "Boliger", vorname ="Sofia"),
-    Athlet(verein).copy(id=3L, name = "Gwerder", vorname ="Noelia", gebdat = Some(gebdat1)),
-    Athlet(verein).copy(id=4L, name = "Gwerder", vorname ="Alicia", gebdat = Some(gebdat2)),
-    Athlet(verein).copy(id=5L, name = "Wittwer", vorname ="Noelia", gebdat = Some(gebdat1)),
-    Athlet(verein).copy(id=6L, name = "Wittwer", vorname ="Alicia", gebdat = Some(gebdat1)),
-    Athlet(verein).copy(id=7L, name = "Wittwer", vorname ="Noelia", gebdat = Some(gebdat2)),
-    Athlet(verein).copy(id=8L, name = "Witwer", vorname ="Noelja", gebdat = Some(gebdat2)),
-    Athlet(verein).copy(id=9L, name = "Müller", vorname ="Lilian", gebdat = Some(gebdat2)),
-    Athlet(verein).copy(id=10L, name = "Muller", vorname ="Lilly", gebdat = Some(gebdat2)),
-    Athlet(verein).copy(id=11L, name = "Maier", vorname ="Maria", gebdat = Some(gebdat1)),
-    Athlet(verein).copy(id=12L, name = "Müller", vorname ="Maria", gebdat = Some(gebdat1)),
-    Athlet(verein).copy(id=13L, name = "Huber", vorname ="Lina", gebdat = Some(gebdat1)),
-    Athlet(verein).copy(id=14L, name = "Huber", vorname ="Mia", gebdat = Some(gebdat1)),
-    Athlet(verein).copy(id=15L, name = "Villiger", vorname ="Zoé", gebdat = Some(gebdat3)),
-    Athlet(verein).copy(id=16L, name = "Villiger", vorname ="Freia", gebdat = Some(gebdat3)),
-    Athlet(verein).copy(id=17L, name = "Villiger", vorname ="Anina", gebdat = Some(gebdat3))
+    Athlet(verein).copy(id = 1L, name = "Bolliquèr", vorname = "Sophia"),
+    Athlet(verein).copy(id = 2L, name = "Boliger", vorname = "Sofia"),
+    Athlet(verein).copy(id = 3L, name = "Gwerder", vorname = "Noelia", gebdat = Some(gebdat1)),
+    Athlet(verein).copy(id = 4L, name = "Gwerder", vorname = "Alicia", gebdat = Some(gebdat2)),
+    Athlet(verein).copy(id = 5L, name = "Wittwer", vorname = "Noelia", gebdat = Some(gebdat1)),
+    Athlet(verein).copy(id = 6L, name = "Wittwer", vorname = "Alicia", gebdat = Some(gebdat1)),
+    Athlet(verein).copy(id = 7L, name = "Wittwer", vorname = "Noelia", gebdat = Some(gebdat2)),
+    Athlet(verein).copy(id = 8L, name = "Witwer", vorname = "Noelja", gebdat = Some(gebdat2)),
+    Athlet(verein).copy(id = 9L, name = "Müller", vorname = "Lilian", gebdat = Some(gebdat2)),
+    Athlet(verein).copy(id = 10L, name = "Muller", vorname = "Lilly", gebdat = Some(gebdat2)),
+    Athlet(verein).copy(id = 11L, name = "Maier", vorname = "Maria", gebdat = Some(gebdat1)),
+    Athlet(verein).copy(id = 12L, name = "Müller", vorname = "Maria", gebdat = Some(gebdat1)),
+    Athlet(verein).copy(id = 13L, name = "Huber", vorname = "Lina", gebdat = Some(gebdat1)),
+    Athlet(verein).copy(id = 14L, name = "Huber", vorname = "Mia", gebdat = Some(gebdat1)),
+    Athlet(verein).copy(id = 15L, name = "Villiger", vorname = "Zoé", gebdat = Some(gebdat3)),
+    Athlet(verein).copy(id = 16L, name = "Villiger", vorname = "Freia", gebdat = Some(gebdat3)),
+    Athlet(verein).copy(id = 17L, name = "Villiger", vorname = "Anina", gebdat = Some(gebdat3))
   )
 
   var athletes = athleteList.map(a => a.id -> a).toMap
@@ -69,8 +66,8 @@ class AthletServiceTest extends FunSuite with AthletService {
   test("Sophia and Simone") {
     val gebdat1 = java.sql.Date.valueOf(LocalDate.of(2012, 7, 20))
     val gebdat2 = java.sql.Date.valueOf(LocalDate.of(2012, 7, 28))
-    val a1 = Athlet(verein).copy(id=15L, name = "Brodbeck", vorname ="Simone", gebdat = Some(gebdat1))
-    val a2 = Athlet(verein).copy(id=16L, name = "Brodbeck", vorname ="Sophia", gebdat = Some(gebdat2))
+    val a1 = Athlet(verein).copy(id = 15L, name = "Brodbeck", vorname = "Simone", gebdat = Some(gebdat1))
+    val a2 = Athlet(verein).copy(id = 16L, name = "Brodbeck", vorname = "Sophia", gebdat = Some(gebdat2))
     val athleteList = List(a1, a2)
     athletes = athleteList.map(a => a.id -> a).toMap
     val cache = new util.ArrayList[MatchCode]
@@ -80,7 +77,6 @@ class AthletServiceTest extends FunSuite with AthletService {
 
     assert(findAthleteLike(cache)(a1) !== a2)
   }
-
 
 
 }

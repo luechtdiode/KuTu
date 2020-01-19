@@ -4,7 +4,7 @@
 DROP TABLE IF EXISTS verein;
 
 CREATE TABLE IF NOT EXISTS verein (
-  id integer primary key,
+  id SERIAL  primary key,
   name varchar(100) NOT NULL,
   verband varchar(100) DEFAULT NULL
 );
@@ -18,7 +18,7 @@ CREATE UNIQUE INDEX xvereinpk ON verein (id);
 DROP TABLE IF EXISTS athlet;
 
 CREATE TABLE IF NOT EXISTS athlet (
-  id integer primary key,
+  id SERIAL primary key,
   js_id int DEFAULT NULL,
   geschlecht char(1) NOT NULL DEFAULT 'M',
   name varchar(35) NOT NULL,
@@ -41,7 +41,7 @@ CREATE INDEX xathletnameverein ON athlet (name, verein);
 DROP TABLE IF EXISTS programm;
 
 CREATE TABLE IF NOT EXISTS programm (
-  id integer primary key,
+  id SERIAL primary key,
   name varchar(100) NOT NULL,
   aggregate INT NOT NULL,
   parent_id integer,
@@ -60,7 +60,7 @@ CREATE INDEX xprogrammparent ON programm (parent_id);
 DROP TABLE IF EXISTS wettkampf;
 
 CREATE TABLE IF NOT EXISTS wettkampf (
-  id integer primary key,
+  id SERIAL primary key,
   uuid varchar(70),
   datum date NOT NULL,
   titel varchar(100) NOT NULL,
@@ -80,7 +80,7 @@ CREATE INDEX xwettkampfprogramm ON wettkampf (programm_id);
 DROP TABLE IF EXISTS disziplin;
 
 CREATE TABLE IF NOT EXISTS disziplin (
-  id integer primary key,
+  id SERIAL primary key,
   name varchar(100) NOT NULL
 );
 
@@ -92,11 +92,11 @@ CREATE UNIQUE INDEX xdisziplinpk ON disziplin (id);
 DROP TABLE IF EXISTS wettkampfdisziplin;
 
 CREATE TABLE IF NOT EXISTS wettkampfdisziplin (
-  id integer primary key,
+  id SERIAL primary key,
   programm_id integer NOT NULL,
   disziplin_id integer NOT NULL,
   kurzbeschreibung varchar(100) NOT NULL DEFAULT '',
-  detailbeschreibung BLOB,
+  detailbeschreibung TEXT,
   notenfaktor decimal(10,3) NOT NULL DEFAULT 1.0,
   masculin INTEGER NOT NULL DEFAULT 1,
   feminim INTEGER NOT NULL DEFAULT 1,
@@ -116,7 +116,7 @@ CREATE INDEX xwettkampfdisziplinprogramm2 ON wettkampfdisziplin (disziplin_id, p
 DROP TABLE IF EXISTS notenskala;
 
 CREATE TABLE IF NOT EXISTS notenskala (
-  id integer primary key,
+  id SERIAL primary key,
   wettkampfdisziplin_id integer NOT NULL,
   kurzbeschreibung varchar(500) NOT NULL DEFAULT '',
   punktwert decimal(10,3) NOT NULL,
@@ -130,7 +130,7 @@ CREATE TABLE IF NOT EXISTS notenskala (
 DROP TABLE IF EXISTS wertung;
 
 CREATE TABLE IF NOT EXISTS wertung (
-  id integer primary key,
+  id SERIAL primary key,
   athlet_id integer NOT NULL,
   wettkampfdisziplin_id integer NOT NULL,
   wettkampf_id integer NOT NULL,
@@ -172,7 +172,7 @@ CREATE TABLE IF NOT EXISTS riege (
 -- Table kampfrichter
 -- -----------------------------------------------------
 CREATE TABLE IF NOT EXISTS kampfrichter (
-  id integer primary key,
+  id SERIAL primary key,
   js_id int DEFAULT NULL,
   geschlecht char(1) NOT NULL DEFAULT 'M',
   name varchar(35) NOT NULL,
@@ -229,5 +229,5 @@ DROP TABLE IF EXISTS migrations;
 CREATE TABLE IF NOT EXISTS migrations (
     name varchar primary key,
     insert_date timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    result BLOB NOT NULL
+    result TEXT NOT NULL
 );

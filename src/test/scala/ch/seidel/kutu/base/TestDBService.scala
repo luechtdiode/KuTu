@@ -48,8 +48,12 @@ object TestDBService {
 //        password = "kutu",
 //        executor = AsyncExecutor("DB-Actions", 500, 10000)
 //        )
-    DBService.installDB(tempDatabase)
-    DBService.updateDB(tempDatabase, true)
+    val sqlScripts = List(
+        "kutu-sqllite-ddl.sql"
+      , "SetJournalWAL.sql"
+      , "kutu-initialdata.sql"
+    )
+    DBService.installDB(tempDatabase, sqlScripts)
     logger.info("Database initialized")
     tempDatabase
   }  
