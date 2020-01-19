@@ -8,7 +8,8 @@ import ch.seidel.kutu.akka.{AthletMovedInWettkampf, AthletRemovedFromWettkampf, 
 import ch.seidel.kutu.http.WebSocketClient
 import ch.seidel.kutu.squad.RiegenBuilder
 import org.slf4j.LoggerFactory
-import slick.jdbc.SQLiteProfile.api._
+//import slick.jdbc.SQLiteProfile.api._
+import slick.jdbc.PostgresProfile.api._//{DBIO, actionBasedSQLInterpolation, jdbcActionExtensionMethods}
 
 import scala.concurrent.{Await, Future}
 import scala.concurrent.ExecutionContext.Implicits.global
@@ -94,7 +95,7 @@ trait WettkampfService extends DBService
                 delete from published_scores where
                 wettkampf_id=${score.wettkampfId} and (id=${score.id} or title=${score.title})
         """>>
-    sqlu"""     replace into published_scores (id, title, query, wettkampf_id, published, published_date)
+    sqlu"""     insert into published_scores (id, title, query, wettkampf_id, published, published_date)
                 values
                 (${score.id}, ${score.title}, ${score.query}, ${score.wettkampfId}, ${score.published}, ${score.publishedDate})""">>
     sql"""
@@ -173,7 +174,7 @@ trait WettkampfService extends DBService
       sql"""
                   SELECT distinct w.riege2, w.riege
                   FROM wertung w
-                  where w.riege not null and w.riege2 not null and w.wettkampf_id = $wettkampf
+                  where w.riege is not null and w.riege2 is not null and w.wettkampf_id = $wettkampf
        """.as[(String, String)]).withPinnedSession
     }, Duration.Inf).groupBy(_._1).map(x => (x._1, x._2.map(_._2).toList))
   }
@@ -185,14 +186,14 @@ trait WettkampfService extends DBService
                   FROM wertung w
                   left outer join riege r on (r.name = w.riege and r.wettkampf_id = w.wettkampf_id)
                   left outer join disziplin d on (d.id = r.start)
-                  where w.riege not null and w.wettkampf_id = $wettkampf
-                  group by w.riege
+                  where w.riege is not null and w.wettkampf_id = $wettkampf
+                  group by w.riege, r.durchgang, d.id
                   union SELECT distinct w.riege2 as riege, count(distinct w.athlet_id), r.durchgang, d.*
                   FROM wertung w
                   left outer join riege r on (r.name = w.riege2 and r.wettkampf_id = w.wettkampf_id)
                   left outer join disziplin d on (d.id = r.start)
-                  where w.riege2 not null and w.wettkampf_id = $wettkampf
-                  group by w.riege2
+                  where w.riege2 is not null and w.wettkampf_id = $wettkampf
+                  group by w.riege2, r.durchgang, d.id
                   union SELECT distinct r.name, 0 as cnt, r.durchgang, d.*
                   FROM riege r
                   inner join disziplin d on (d.id = r.start)
@@ -331,15 +332,18 @@ trait WettkampfService extends DBService
       if (hasWertungen.head > 0 && !heads.forall { h => h.id == heads.head.id }) {
         throw new IllegalArgumentException("Es kann keine Programmanpassung gemacht werden, wenn bereits Turner zum Wettkampf verknüpft sind.")
       }
-      sqlu"""
-                  replace into wettkampf
-                  (id, datum, titel, programm_Id, auszeichnung, auszeichnungendnote, uuid)
-                  values ($id, $datum, $titel, ${heads.head.id}, $auszeichnung, $auszeichnungendnote, $uuid)
+      sqlu"""     update wettkampf
+                  set datum=$datum,
+                      titel=$titel,
+                      programm_Id=${heads.head.id},
+                      auszeichnung=$auszeichnung,
+                      auszeichnungendnote=$auszeichnungendnote,
+                      uuid=$uuid
+                  where id=$id
           """ >>
-          sql"""
-                  select * from wettkampf
+       sql"""     select * from wettkampf
                   where id = $id
-         """.as[Wettkampf].head
+          """.as[Wettkampf].head
     }
     
     

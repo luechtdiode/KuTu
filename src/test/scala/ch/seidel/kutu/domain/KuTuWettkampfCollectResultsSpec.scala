@@ -1,29 +1,17 @@
 package ch.seidel.kutu.domain
 
-import org.junit.runner.RunWith
-import org.scalatest.Matchers
-import org.scalatest.WordSpec
-import org.scalatest.concurrent.ScalaFutures
-import org.slf4j.LoggerFactory
+import java.util.UUID
 
-import akka.http.scaladsl.model.ContentTypes
-import akka.http.scaladsl.model.HttpRequest
-import akka.http.scaladsl.model.StatusCodes
-import akka.http.scaladsl.testkit.ScalatestRouteTest
-import ch.seidel.kutu.http.ApiService
+import akka.http.scaladsl.model.{ContentTypes, HttpRequest, StatusCodes}
+import akka.stream.scaladsl.Sink
 import ch.seidel.kutu.akka._
-import org.scalatest.junit.JUnitRunner
 import ch.seidel.kutu.base.KuTuBaseSpec
 import ch.seidel.kutu.renderer.RiegenBuilder
-import java.util.UUID
+import ch.seidel.kutu.squad.DurchgangBuilder
+
 import scala.concurrent.Await
 import scala.concurrent.duration.Duration
-import akka.stream.scaladsl.Sink
-import ch.seidel.kutu.squad.DurchgangBuilder
-import scala.util.Success
-import scala.concurrent.Future
 
-@RunWith(classOf[JUnitRunner])
 class KuTuWettkampfCollectResultsSpec extends KuTuBaseSpec {
   val testwettkampf = insertGeTuWettkampf("TestGetuWK", 4)
   val clientId = "testclientid"

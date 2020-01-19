@@ -17,7 +17,7 @@ abstract trait DisziplinService extends DBService with WettkampfResultMapper {
   def listDisziplinesZuDurchgang(durchgang: Set[String], wettkampf: Long, riege1: Boolean): Map[String, IndexedSeq[Disziplin]] = {
     Await.result(database.run{
       val ret = if (riege1) sql"""
-             select distinct wd.disziplin_id, d.name, r.durchgang, wd.ord
+             select distinct d.id, d.name, r.durchgang, wd.ord
              from wettkampfdisziplin wd
              inner join disziplin d on (wd.disziplin_id = d.id)
              inner join wertung w on (w.wettkampfdisziplin_id = wd.id)
@@ -30,7 +30,7 @@ abstract trait DisziplinService extends DBService with WettkampfResultMapper {
              )
              where
                w.wettkampf_id = $wettkampf
-             union all select distinct wd.disziplin_id, d.name, r.durchgang, wd.ord
+             union all select distinct d.id, d.name, r.durchgang, wd.ord
              from wettkampfdisziplin wd
              inner join disziplin d on (wd.disziplin_id = d.id)
              inner join riege r on (
@@ -47,10 +47,10 @@ abstract trait DisziplinService extends DBService with WettkampfResultMapper {
                r.wettkampf_id = $wettkampf
                and w.id is null
              order by
-               wd.ord
+               4 --wd.ord
        """.as[(Long, String, String, Int)]
       else sql"""
-             select distinct wd.disziplin_id, d.name, r.durchgang, wd.ord
+             select distinct d.id, d.name, r.durchgang, wd.ord
              from wettkampfdisziplin wd
              inner join disziplin d on (wd.disziplin_id = d.id)
              inner join wertung w on (w.wettkampfdisziplin_id = wd.id)
@@ -87,7 +87,7 @@ abstract trait DisziplinService extends DBService with WettkampfResultMapper {
   
   def listDisziplinesZuProgramm(programmId: Long, geschlecht: Option[String] = None): List[Disziplin] = {
     Await.result(database.run{
-      sql""" select distinct d.id, d.name
+      sql""" select distinct d.id, d.name, wd.ord
              from wettkampfdisziplin wd, disziplin d, programm p
              where
               wd.disziplin_id = d.id
@@ -110,7 +110,7 @@ abstract trait DisziplinService extends DBService with WettkampfResultMapper {
     Await.result(database.run{
       val wettkampf: Wettkampf = readWettkampf(wettkampfId)
       val programme = readWettkampfLeafs(wettkampf.programmId).map(p => p.id).mkString("(", ",", ")")
-      sql""" select distinct wd.disziplin_id, d.name
+      sql""" select distinct d.id, d.name, wd.ord
              from wettkampfdisziplin wd, disziplin d, programm p
              where
               wd.disziplin_id = d.id
@@ -133,7 +133,7 @@ abstract trait DisziplinService extends DBService with WettkampfResultMapper {
     Await.result(database.run{
       val wettkampf: Wettkampf = readWettkampf(wettkampfId)
       val programme = readWettkampfLeafs(wettkampf.programmId).map(p => p.id).mkString("(", ",", ")")
-      sql""" select wd.id, wd.programm_id, wd.disziplin_id, printf('%s (%s)',d.name, p.name) as kurzbeschreibung, wd.masculin, wd.feminim, wd.ord
+      sql""" select wd.id, wd.programm_id, wd.disziplin_id, d.name as diszname, p.name as progname, wd.masculin, wd.feminim, wd.ord
              from wettkampfdisziplin wd, disziplin d, programm p
              where
               wd.disziplin_id = d.id
@@ -141,9 +141,9 @@ abstract trait DisziplinService extends DBService with WettkampfResultMapper {
               programm_Id in #$programme
              order by
               wd.ord
-         """.as[(Long, Long, Long, String, Int, Int, Int)].withPinnedSession
-    }, Duration.Inf)
-    .map{t => Wettkampfdisziplin(t._1, t._2, t._3, t._4, None, 0, t._5, t._6, t._7) }.toList
+         """.as[(Long, Long, Long, String, String, Int, Int, Int)].withPinnedSession
+    }, Duration.Inf)//
+    .map{t => Wettkampfdisziplin(t._1, t._2, t._3, s"${t._4} (${t._5})", None, 0, t._6, t._7, t._8) }.toList
   }
   
   def readWettkampfDisziplinView(wettkampfDisziplinId: Long): WettkampfdisziplinView = {

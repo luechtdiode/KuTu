@@ -169,7 +169,10 @@ trait RiegenService extends DBService with RiegenResultMapper {
   def insertRiegenWertungen(riege: RiegeRaw, wertungen: Seq[Wertung]) {
     Await.result(database.run{(
       sqlu"""
-                  replace into riege
+                  DELETE from riege where name=${riege.r} and wettkampf_id=${riege.wettkampfId}
+          """ >>
+      sqlu"""
+                  insert into riege
                   (wettkampf_Id, name, durchgang, start)
                   values (${riege.wettkampfId}, ${riege.r}, ${riege.durchgang}, ${riege.start})
           """ >>

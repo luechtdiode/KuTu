@@ -46,3 +46,4 @@ case class NewLastResults(results: Map[String, WertungContainer], lastTopResults
 case class LastResults(results: List[AthletWertungUpdatedSequenced]) extends KutuAppEvent
 case class MessageAck(msg: String) extends KutuAppEvent
 case class ResponseMessage(data: Object) extends KutuAppEvent
+case class Err(e: Exception) extends KutuAppEvent
