@@ -28,7 +28,12 @@ object Config extends KuTuSSLContext {
   System.setProperty("akka.persistence.journal.leveldb.dir", userHomePath + "/journal")
 
   val userConfig: File = new File(configPath + "/kutuapp.conf")
-  val config: com.typesafe.config.Config = if (userConfig.exists()) ConfigFactory.parseFile(new File(configPath + "/kutuapp.conf")).withFallback(ConfigFactory.load()) else ConfigFactory.load()
+  val config: com.typesafe.config.Config =
+    ConfigFactory.systemEnvironment().withFallback(
+      if (userConfig.exists())
+        ConfigFactory.parseFile(new File(configPath + "/kutuapp.conf")).withFallback(ConfigFactory.load())
+      else
+        ConfigFactory.load())
 
   val appVersion: String = if (config.hasPath("app.majorversion")
     && !config.getString("app.majorversion").startsWith("${"))
@@ -44,6 +49,12 @@ object Config extends KuTuSSLContext {
   else "today"
 
   logger.info(s"App-Version: $appVersion")
+
+  val importDataFrom: Option[String] = if(config.hasPath("app.import.data.fromversion")) {
+    Some(config.getString("app.import.data.fromversion"))
+  } else {
+    None
+  }
 
   val bestenlisteSchwellwert = if (config.hasPath("app.bestenlisteSchwellwert")) config.getDouble("app.bestenlisteSchwellwert") else 9.0
   private val jwtConfig = config.getConfig("jwt")

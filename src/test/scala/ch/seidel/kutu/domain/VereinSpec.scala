@@ -1,20 +1,7 @@
 package ch.seidel.kutu.domain
 
-import org.junit.runner.RunWith
-import org.scalatest.Matchers
-import org.scalatest.WordSpec
-import org.scalatest.concurrent.ScalaFutures
-import org.slf4j.LoggerFactory
-
-import akka.http.scaladsl.model.ContentTypes
-import akka.http.scaladsl.model.HttpRequest
-import akka.http.scaladsl.model.StatusCodes
-import akka.http.scaladsl.testkit.ScalatestRouteTest
-import ch.seidel.kutu.http.ApiService
-import org.scalatest.junit.JUnitRunner
 import ch.seidel.kutu.base.KuTuBaseSpec
 
-@RunWith(classOf[JUnitRunner])
 class VereinSpec extends KuTuBaseSpec {
   "verein" should {
     "create" in {

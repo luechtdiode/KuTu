@@ -1,17 +1,17 @@
 package ch.seidel.kutu.base
 
-import org.scalatest.WordSpec
-import org.scalatest.Matchers
-import ch.seidel.kutu.domain._
-import org.scalatest.concurrent.ScalaFutures
-import org.slf4j.LoggerFactory
-import ch.seidel.kutu.http.ApiService
-import org.scalactic.source.Position.apply
-import akka.http.scaladsl.testkit.ScalatestRouteTest
-import java.util.UUID
 import java.sql.Date
+import java.util.UUID
 
-trait KuTuBaseSpec extends WordSpec with Matchers with DBService with KutuService with ApiService with ScalaFutures with ScalatestRouteTest {
+import akka.http.scaladsl.testkit.ScalatestRouteTest
+import ch.seidel.kutu.domain._
+import ch.seidel.kutu.http.ApiService
+import org.scalatest.concurrent.ScalaFutures
+import org.scalatest.matchers.should.Matchers
+import org.scalatest.wordspec.AnyWordSpec
+import org.slf4j.LoggerFactory
+
+trait KuTuBaseSpec extends AnyWordSpec with Matchers with DBService with KutuService with ApiService with ScalaFutures with ScalatestRouteTest {
   private val logger = LoggerFactory.getLogger(this.getClass)
   DBService.startDB(Some(TestDBService.db))
 

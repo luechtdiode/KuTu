@@ -1,12 +1,9 @@
 package ch.seidel.kutu.data
 
 import ch.seidel.kutu.domain._
-import org.junit.runner.RunWith
-import org.scalatest.FunSuite
-import org.scalatest.junit.JUnitRunner
+import org.scalatest.funsuite.AnyFunSuite
 
-@RunWith(classOf[JUnitRunner])
-class CaseObjectMetaUtilTest extends FunSuite {
+class CaseObjectMetaUtilTest extends AnyFunSuite {
   private val rm = reflect.runtime.universe.runtimeMirror(getClass.getClassLoader)
 
   test("testCopyWithValues") {
