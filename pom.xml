@@ -32,6 +32,7 @@
 			<properties>
 				<javafx.os>mac</javafx.os>
 				<bundler.os>Darwin</bundler.os>
+				<app.logo>AppIcon.icns</app.logo>
 			</properties>
 		</profile>
 		<profile>
@@ -44,6 +45,7 @@
 			<properties>
 				<javafx.os>linux</javafx.os>
 				<bundler.os>Linux</bundler.os>
+				<app.logo>app-logo.svg</app.logo>
 			</properties>
 		</profile>
 	</profiles>
