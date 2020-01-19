@@ -57,6 +57,105 @@ trait WettkampfService extends DBService
     Await.result(database.run(allPgmsQuery.withPinnedSession), Duration.Inf)
   }
 
+  def initPlanZeitenActions(wettkampfUUID: UUID) =
+      sqlu"""
+                    DELETE FROM wettkampf_plan_zeiten where wettkampf_id = (
+                    select id from wettkampf wk where wk.uuid= ${wettkampfUUID.toString})""" >>
+      sqlu"""       INSERT INTO wettkampf_plan_zeiten
+                        (wettkampfdisziplin_id, wettkampf_id, wechsel, einturnen, uebung, wertung)
+                    SELECT
+                        wkd.id as wettkampfdisziplin_id,
+                        wk.id as wettkampf_id,
+                        30000 as wechsel,
+                        30000 as eintrunen,
+                        case
+                            when pd.name in ('K1', 'K2', 'K3', 'K4') then 40000
+                            when pd.name like 'P%' then 60000
+                            else 50000
+                        end as uebung,
+                        case
+                            when pd.name in ('K1', 'K2', 'K3', 'K4') then 40000
+                            when pd.name like 'P%' then 60000
+                            else 50000
+                        end as wertung
+                    FROM
+                        wettkampf wk
+                        inner join programm p on (wk.programm_id = p.id)
+                        inner join programm pd on (p.id = pd.parent_id)
+                        inner join wettkampfdisziplin wkd on (pd.id = wkd.programm_id)
+                        inner join disziplin d on (d.id = wkd.disziplin_id)
+                     where wk.uuid = ${wettkampfUUID.toString}
+      """
+
+  def selectPlanZeitenAction(wettkampfUUID: UUID) =
+    sql"""
+                    select
+                        wpt.id,
+                        wk.*, wd.id, wd.programm_id,
+                        d.*,
+                        wd.kurzbeschreibung, wd.detailbeschreibung, wd.notenfaktor, wd.masculin, wd.feminim, wd.ord,
+                        wpt.wechsel, wpt.einturnen, wpt.uebung, wpt.wertung
+                    from wettkampf_plan_zeiten wpt
+                        inner join wettkampf wk on (wk.id = wpt.wettkampf_id)
+                        inner join wettkampfdisziplin wd on (wd.id = wpt.wettkampfdisziplin_id)
+                        inner join disziplin d on (wd.disziplin_id = d.id)
+                    where wk.uuid = ${wettkampfUUID.toString}
+      """
+
+  def initWettkampfDisziplinTimes(wettkampfUUID: UUID): List[WettkampfPlanTimeView] = {
+    implicit val cache = scala.collection.mutable.Map[Long, ProgrammView]()
+    Await.result(database.run(
+      initPlanZeitenActions(wettkampfUUID) >>
+      selectPlanZeitenAction(wettkampfUUID)
+      .as[WettkampfPlanTimeView].withPinnedSession).map(_.toList), Duration.Inf)
+  }
+
+  def loadWettkampfDisziplinTimes(wettkampfUUID: UUID): List[WettkampfPlanTimeView] = {
+    implicit val cache = scala.collection.mutable.Map[Long, ProgrammView]()
+    Await.result(database.run(
+      selectPlanZeitenAction(wettkampfUUID)
+      .as[WettkampfPlanTimeView].withPinnedSession).map(_.toList), Duration.Inf)
+  }
+
+  def updateWettkampfPlanTimeView(planTime: WettkampfPlanTimeRaw): Unit = {
+    Await.result(database.run(
+      sqlu"""
+                    update wettkampf_plan_zeiten
+                        set wechsel = ${planTime.wechsel},
+                            einturnen = ${planTime.einturnen},
+                            uebung = ${planTime.uebung},
+                            wertung = ${planTime.wertung}
+                    where
+                        wettkampf_id = ${planTime.wettkampfId}
+                        and wettkampfdisziplin_id = ${planTime.wettkampfDisziplinId}
+      """), Duration.Inf)
+  }
+
+  def updateOrInsertPlanTimes(planTimes: Iterable[WettkampfPlanTimeRaw]) {
+    def insertPlanTime(rs: Iterable[WettkampfPlanTimeRaw]) = DBIO.sequence(for {
+      planTime <- rs
+    } yield {
+      sqlu"""
+                insert into wettkampf_plan_zeiten
+                (wettkampf_Id, wettkampfdisziplin_id, wechsel, einturnen, uebung, wertung)
+                values (${planTime.wettkampfId}, ${planTime.wettkampfDisziplinId}, ${planTime.wechsel}, ${planTime.einturnen},
+                ${planTime.uebung}, ${planTime.wertung})
+        """
+    })
+
+    val process = DBIO.sequence(for {
+      (wettkampfid, planTime) <- planTimes.groupBy(_.wettkampfId)
+    } yield {
+      sqlu"""
+                delete from wettkampf_plan_zeiten where
+                wettkampf_id=${wettkampfid}
+        """>>
+        insertPlanTime(planTime)
+    })
+
+    Await.result(database.run{process.transactionally}, Duration.Inf)
+  }
+
   def listPublishedScores(wettkampfUUID: UUID): Future[List[PublishedScoreView]] = {
     database.run(sql"""select sc.id, sc.title, sc.query, sc.published, sc.published_date, wk.*
            from published_scores sc
@@ -159,7 +258,6 @@ trait WettkampfService extends DBService
   }
   
   def listWettkaempfeViewAsync = {
-    val cache = scala.collection.mutable.Map[Long, ProgrammView]()
     database.run{
       sql"""      select * from wettkampf order by datum desc""".as[WettkampfView].withPinnedSession
     }
@@ -294,9 +392,13 @@ trait WettkampfService extends DBService
     val process = initialCheck
       .headOption
       .flatMap{
-        case Some(cid) if(cid > 0) => 
-          sqlu""" delete from riege where wettkampf_id=${cid}""" >>
-          sqlu""" delete from wertung where wettkampf_id=${cid}""" >>
+        case Some(cid) if(cid > 0) =>
+          deleteWettkampfActions(cid) >>
+          sqlu"""
+                insert into wettkampf
+                (id, datum, titel, programm_Id, auszeichnung, auszeichnungendnote, uuid)
+                values (${cid}, ${datum}, ${titel}, ${heads.head.id}, $auszeichnung, $auszeichnungendnote, $uuid)
+            """ >>
           sql"""
                   select * from wettkampf
                   where id=$cid
@@ -345,17 +447,22 @@ trait WettkampfService extends DBService
                   where id = $id
           """.as[Wettkampf].head
     }
-    
-    
     Await.result(database.run{(process.flatten).transactionally}, Duration.Inf)
   }
-  
-  def deleteWettkampf(wettkampfid: Long) {
-    Await.result(database.run{(
+
+  def deleteWettkampfActions(wettkampfid: Long) = {
       sqlu"""      delete from published_scores where wettkampf_id=${wettkampfid}""" >>
+      sqlu"""      delete from durchgangstation where wettkampf_id=${wettkampfid}""" >>
+      sqlu"""      delete from durchgang where wettkampf_id=${wettkampfid}""" >>
+      sqlu"""      delete from wettkampf_plan_zeiten where wettkampf_id=${wettkampfid}""" >>
       sqlu"""      delete from riege where wettkampf_id=${wettkampfid}""" >>
       sqlu"""      delete from wertung where wettkampf_id=${wettkampfid}""" >>
-      sqlu"""      delete from wettkampf where id=${wettkampfid}""").transactionally
+      sqlu"""      delete from wettkampf where id=${wettkampfid}"""
+  }
+
+  def deleteWettkampf(wettkampfid: Long) {
+    Await.result(database.run{
+      deleteWettkampfActions(wettkampfid).transactionally
     }, Duration.Inf)
   }
 //  

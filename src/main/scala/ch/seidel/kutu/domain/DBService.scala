@@ -76,6 +76,10 @@ object DBService {
       "kutu-sqllite-ddl.sql"
       , "SetJournalWAL.sql"
       , "kutu-initialdata.sql"
+      , "AddTimeTable-sqllite.sql"
+      , "InitTimeTable.sql"
+      , "AddDurchgangTable-sqllite.sql"
+      , "InitDurchgangTable.sql"
     )
 
     (!dbfile.exists() || dbfile.length() == 0, Config.importDataFrom) match {
@@ -145,6 +149,10 @@ object DBService {
       val sqlScripts = List(
         "kutu-pg-ddl.sql"
         , "kutu-initialdata.sql"
+        , "AddTimeTable-pg.sql"
+        , "InitTimeTable.sql"
+        , "AddDurchgangTable-pg.sql"
+        , "InitDurchgangTable.sql"
       )
       installDB(db, sqlScripts)
       Config.importDataFrom match {
@@ -235,7 +243,7 @@ object DBService {
 
   def executeDBScript(script: Seq[String], db: DatabaseDef) = {
     def filterCommentLines(line: String) = {
-      !line.trim().startsWith("-- ")
+      !line.trim().startsWith("--")
     }
 
     def combineMultilineStatement(acc: List[String], line: String) = {
