@@ -74,7 +74,7 @@ trait WertungenRoutes extends SprayJsonSupport with JsonSupport with JwtSupport 
                 complete(StatusCodes.NotFound)
               } else
                 complete {
-                  selectDurchgaengeAsync(competitionId).map(_.map(_.durchgang).distinct.sorted)
+                  selectDurchgaengeAsync(competitionId).map(_.map(_.name).distinct.sorted)
                 }
             }
           } ~
@@ -148,7 +148,7 @@ trait WertungenRoutes extends SprayJsonSupport with JsonSupport with JwtSupport 
                     case List(durchgang) => complete {
                       Future {
                         val decodedDurchgangMap = selectDurchgaenge(competitionId).map { durchgang =>
-                          encodeURIComponent(durchgang.durchgang) -> durchgang.durchgang
+                          encodeURIComponent(durchgang.name) -> durchgang.name
                         }.toMap
                         val decodedDurchgang = decodedDurchgangMap(durchgang)
                         val durchgaengeWithDisziplins =
