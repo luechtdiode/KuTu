@@ -72,14 +72,14 @@
 		<repository>
 			<id>typesafe</id>
 			<name>Typesafe - releases</name>
-			<url>http://repo.typesafe.com/typesafe/releases/</url>
+			<url>https://repo.typesafe.com/typesafe/releases/</url>
 			<snapshots>
 				<enabled>false</enabled>
 			</snapshots>
 		</repository>
 		<repository>
 			<id>central</id>
-			<url>http://repo1.maven.org/maven2/</url>
+			<url>https://repo1.maven.org/maven2/</url>
 			<releases>
 				<enabled>true</enabled>
 			</releases>
@@ -97,7 +97,7 @@
 		</pluginRepository>
 		<pluginRepository>
 			<id>central</id>
-			<url>http://repo1.maven.org/maven2/</url>
+			<url>https://repo1.maven.org/maven2/</url>
 			<releases>
 				<enabled>true</enabled>
 			</releases>
@@ -659,11 +659,11 @@
 			</plugin>
 		</plugins>
 		<extensions>
-			<extension>
-				<groupId>org.kuali.maven.wagons</groupId>
-				<artifactId>maven-s3-wagon</artifactId>
-				<version>1.2.1</version>
-			</extension>
+<!--			<extension>-->
+<!--				<groupId>org.kuali.maven.wagons</groupId>-->
+<!--				<artifactId>maven-s3-wagon</artifactId>-->
+<!--				<version>1.2.1</version>-->
+<!--			</extension>-->
 			<!--<extension>-->
 				<!--<groupId>org.springframework.build</groupId>-->
 				<!--<artifactId>aws-maven</artifactId>-->
