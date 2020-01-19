@@ -8,7 +8,6 @@ import java.util.Properties
 import ch.seidel.kutu.Config
 import ch.seidel.kutu.Config.{appVersion, userHomePath}
 import ch.seidel.kutu.data.ResourceExchanger
-import com.typesafe.config.ConfigFactory
 import com.zaxxer.hikari.{HikariConfig, HikariDataSource}
 import org.slf4j.LoggerFactory
 import slick.jdbc
@@ -76,6 +75,10 @@ object DBService {
       "kutu-sqllite-ddl.sql"
       , "SetJournalWAL.sql"
       , "kutu-initialdata.sql"
+      , "AddTimeTable-sqllite.sql"
+      , "InitTimeTable.sql"
+      , "AddDurchgangTable-sqllite.sql"
+      , "InitDurchgangTable.sql"
     )
 
     (!dbfile.exists() || dbfile.length() == 0, Config.importDataFrom) match {
@@ -145,6 +148,10 @@ object DBService {
       val sqlScripts = List(
         "kutu-pg-ddl.sql"
         , "kutu-initialdata.sql"
+        , "AddTimeTable-pg.sql"
+        , "InitTimeTable.sql"
+        , "AddDurchgangTable-pg.sql"
+        , "InitDurchgangTable.sql"
       )
       installDB(db, sqlScripts)
       Config.importDataFrom match {
@@ -235,7 +242,7 @@ object DBService {
 
   def executeDBScript(script: Seq[String], db: DatabaseDef) = {
     def filterCommentLines(line: String) = {
-      !line.trim().startsWith("-- ")
+      !line.trim().startsWith("--")
     }
 
     def combineMultilineStatement(acc: List[String], line: String) = {

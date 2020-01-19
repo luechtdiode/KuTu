@@ -52,6 +52,10 @@ object TestDBService {
         "kutu-sqllite-ddl.sql"
       , "SetJournalWAL.sql"
       , "kutu-initialdata.sql"
+      , "AddTimeTable-sqllite.sql"
+      , "InitTimeTable.sql"
+      , "AddDurchgangTable-sqllite.sql"
+      , "InitDurchgangTable.sql"
     )
     DBService.installDB(tempDatabase, sqlScripts)
     logger.info("Database initialized")

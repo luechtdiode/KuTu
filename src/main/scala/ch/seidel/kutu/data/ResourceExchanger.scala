@@ -618,8 +618,10 @@ object ResourceExchanger extends KutuService with RiegenBuilder {
   def exportDurchgaenge(wettkampf: Wettkampf, filename: String) {
     val export = new FileOutputStream(filename);
     val diszipline = listDisziplinesZuWettkampf(wettkampf.id)
+    val durchgaenge = selectDurchgaenge(UUID.fromString(wettkampf.uuid.get)).map(d => d.name -> d).toMap
+
     val sep = ";"
-    export.write(f"""sep=${sep}\nDurchgang${sep}Summe${sep}Min${sep}Max${sep}Durchschn.""".getBytes("ISO-8859-1"))
+    export.write(f"""sep=${sep}\nDurchgang${sep}Summe${sep}Min${sep}Max${sep}Durchschn.${sep}Total-Zeit${sep}Einturn-Zeit${sep}Gerät-Zeit""".getBytes("ISO-8859-1"))
 
     diszipline.foreach { x =>
         export.write(f"${sep}${x.name}${sep}Anz".getBytes("ISO-8859-1"))
@@ -642,10 +644,10 @@ object ResourceExchanger extends KutuService with RiegenBuilder {
       .sortBy(re => re._1)
       .map{res =>
         val (name, rel) = res
-        DurchgangEditor(wettkampf.id, name.getOrElse(""), rel)
+        DurchgangEditor(wettkampf.id, durchgaenge(name.getOrElse("")), rel)
       }
       .foreach { x =>
-        export.write(f"""${x.initname}${sep}${x.anz.value}${sep}${x.min.value}${sep}${x.max.value}${sep}${x.avg.value}""".getBytes("ISO-8859-1"))
+        export.write(f"""${x.initname}${sep}${x.anz.value}${sep}${x.min.value}${sep}${x.max.value}${sep}${x.avg.value}${sep}${toShortDurationFormat(x.durchgang.planTotal)}${sep}${toShortDurationFormat(x.durchgang.planEinturnen)}${sep}${toShortDurationFormat(x.durchgang.planGeraet)}""".getBytes("ISO-8859-1"))
         diszipline.foreach { d =>
           export.write(f"${sep}${x.initstartriegen.getOrElse(d, Seq[RiegeEditor]()).map(r => f"${r.name.value.replace("M,", "Tu,").replace("W,", "Ti,")} (${r.anz.value})").mkString("\"","\n", "\"")}${sep}${x.initstartriegen.getOrElse(d, Seq[RiegeEditor]()).map(r => r.anz.value).sum}".getBytes("ISO-8859-1"))
         }
@@ -659,8 +661,10 @@ object ResourceExchanger extends KutuService with RiegenBuilder {
   def exportSimpleDurchgaenge(wettkampf: Wettkampf, filename: String) {
     val export = new FileOutputStream(filename);
     val diszipline = listDisziplinesZuWettkampf(wettkampf.id)
+    val durchgaenge = selectDurchgaenge(UUID.fromString(wettkampf.uuid.get)).map(d => d.name -> d).toMap
+
     val sep = ";"
-    export.write(f"""sep=${sep}\nDurchgang${sep}Summe${sep}Min${sep}Max""".getBytes("ISO-8859-1"))
+    export.write(f"""sep=${sep}\nDurchgang${sep}Summe${sep}Min${sep}Max${sep}Total-Zeit${sep}Einturn-Zeit${sep}Gerät-Zeit""".getBytes("ISO-8859-1"))
 
     diszipline.foreach { x =>
       export.write(f"${sep}${x.name}${sep}Ti${sep}Tu".getBytes("ISO-8859-1"))
@@ -695,10 +699,10 @@ object ResourceExchanger extends KutuService with RiegenBuilder {
       .sortBy(re => re._1)
       .map{res =>
         val (name, rel) = res
-        DurchgangEditor(wettkampf.id, name.getOrElse(""), rel)
+        DurchgangEditor(wettkampf.id, durchgaenge(name.getOrElse("")), rel)
       }
       .foreach { x =>
-        export.write(f"""${x.initname}${sep}${x.anz.value}${sep}${x.min.value}${sep}${x.max.value}""".getBytes("ISO-8859-1"))
+        export.write(f"""${x.initname}${sep}${x.anz.value}${sep}${x.min.value}${sep}${x.max.value}${sep}${toShortDurationFormat(x.durchgang.planTotal)}${sep}${toShortDurationFormat(x.durchgang.planEinturnen)}${sep}${toShortDurationFormat(x.durchgang.planGeraet)}""".getBytes("ISO-8859-1"))
         val riegen = x.riegenWithMergedClubs()
         val rows = riegen.values.map(_.size).max
         val riegenFields = for {
@@ -717,7 +721,7 @@ object ResourceExchanger extends KutuService with RiegenBuilder {
           .map(r => {
             val tuples = r._2
             val strings = tuples.map(_._2)
-            val fieldsString = strings.mkString("", "", f"\r\n${sep}${sep}${sep}")
+            val fieldsString = strings.mkString("", "", f"\r\n${sep}${sep}${sep}${sep}${sep}${sep}")
             fieldsString
           }) :+ "\r\n"
 

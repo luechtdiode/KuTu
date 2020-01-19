@@ -62,11 +62,15 @@ trait RiegenService extends DBService with RiegenResultMapper {
   def cleanAllRiegenDurchgaenge(wettkampfid: Long) {
     Await.result(database.run{(
       sqlu"""
-                delete from riege where
+                delete from durchgang where
                 wettkampf_id=${wettkampfid}
         """ >>
       sqlu"""
                 delete from durchgangstation where
+                wettkampf_id=${wettkampfid}
+        """ >>
+      sqlu"""
+                delete from riege where
                 wettkampf_id=${wettkampfid}
         """ >>
       sqlu"""   UPDATE wertung
@@ -81,11 +85,7 @@ trait RiegenService extends DBService with RiegenResultMapper {
     def insertRiegen(rs: Iterable[RiegeRaw]) = DBIO.sequence(for {
         riege <- rs
       } yield {
-      sqlu"""
-                insert into riege
-                (wettkampf_Id, name, durchgang, start)
-                values (${riege.wettkampfId}, ${riege.r}, ${riege.durchgang}, ${riege.start})
-        """      
+        updateOrInsertRiegeRawAction(riege)
       })
 
     val process = DBIO.sequence(for {
@@ -100,18 +100,35 @@ trait RiegenService extends DBService with RiegenResultMapper {
             
     Await.result(database.run{process.transactionally}, Duration.Inf)
   }
-  
-  def updateOrinsertRiege(riege: RiegeRaw): Riege = {
-    Await.result(database.run{(
-      sqlu"""
+
+  def updateOrInsertRiegeRawAction(riege: RiegeRaw) =
+    sqlu"""
                 delete from riege where
                 wettkampf_id=${riege.wettkampfId} and name=${riege.r}
         """ >>
-      sqlu"""
+    sqlu"""
                 insert into riege
                 (wettkampf_Id, name, durchgang, start)
                 values (${riege.wettkampfId}, ${riege.r}, ${riege.durchgang}, ${riege.start})
         """ >>
+    sqlu"""
+                insert into durchgang (wettkampf_id, title, name, durchgangtype, ordinal, planStartOffset)
+                SELECT
+                    zp.wettkampf_id,
+                    zp.durchgang as title,
+                    zp.durchgang as name,
+                    1 as durchgangType,
+                    coalesce((SELECT max(ordinal)+1 FROM durchgang dd WHERE dd.wettkampf_id = zp.wettkampf_id), 0) as ordinal,
+                    0 as planStartOffset
+                FROM
+                    zeitplan zp
+                WHERE
+                    zp.wettkampf_id = ${riege.wettkampfId}
+                    AND NOT EXISTS (SELECT 1 FROM durchgang dd WHERE dd.wettkampf_id = zp.wettkampf_id and dd.name = zp.durchgang)
+        """
+  def updateOrinsertRiege(riege: RiegeRaw): Riege = {
+    Await.result(database.run{(
+      updateOrInsertRiegeRawAction(riege) >>
        sql"""select r.name as riegenname, r.durchgang, d.*
              from riege r
              left outer join disziplin d on (r.start = d.id)
@@ -146,7 +163,12 @@ trait RiegenService extends DBService with RiegenResultMapper {
                 DELETE from riege where wettkampf_id=${wettkampfid} and not exists(
                   select 1 from wertung w where w.riege = riege.name or w.riege2 = riege.name and w.wettkampf_id = riege.wettkampf_id
                 )
-          """).transactionally
+          """ >>
+      sqlu"""
+              DELETE from durchgang wherewettkampf_id=${wettkampfid} and durchgangtype = 1 and not exists(
+                  select 1 from riege w where w.durchgang = druchgang.name and w.wettkampf_id = durchgang.wettkampf_id
+                )
+            """).transactionally
     }, Duration.Inf)
   }
 
@@ -168,14 +190,7 @@ trait RiegenService extends DBService with RiegenResultMapper {
 
   def insertRiegenWertungen(riege: RiegeRaw, wertungen: Seq[Wertung]) {
     Await.result(database.run{(
-      sqlu"""
-                  DELETE from riege where name=${riege.r} and wettkampf_id=${riege.wettkampfId}
-          """ >>
-      sqlu"""
-                  insert into riege
-                  (wettkampf_Id, name, durchgang, start)
-                  values (${riege.wettkampfId}, ${riege.r}, ${riege.durchgang}, ${riege.start})
-          """ >>
+      updateOrInsertRiegeRawAction(riege) >>
       DBIO.sequence(for(w <- wertungen) yield {
         sqlu"""     UPDATE wertung
                     SET riege=${riege.r}
