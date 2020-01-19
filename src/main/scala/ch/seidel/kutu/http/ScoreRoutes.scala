@@ -143,7 +143,7 @@ trait ScoreRoutes extends SprayJsonSupport with JsonSupport with AuthSupport wit
           val programmText = wettkampf.programmId match {case 20 => "Kategorie" case _ => "Programm"}
           def riegenZuDurchgang: Map[String, Durchgang] = {
             val riegen = listRiegenZuWettkampf(wettkampf.id)
-            riegen.map(riege => riege._1 -> riege._3.map(riege => Durchgang(0, riege)).getOrElse(Durchgang())).toMap
+            riegen.map(riege => riege._1 -> riege._3.map(durchgangName => Durchgang(0, durchgangName)).getOrElse(Durchgang())).toMap
           }
           val byDurchgangMat = ByDurchgang(riegenZuDurchgang)
           val groupers: List[FilterBy] = {

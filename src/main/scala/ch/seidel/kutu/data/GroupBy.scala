@@ -243,7 +243,7 @@ case class ByDurchgang(riegenZuDurchgang: Map[String, Durchgang]) extends GroupB
     riegenZuDurchgang.getOrElse(v.riege.getOrElse(""), riegenZuDurchgang.getOrElse(v.riege2.getOrElse(""), Durchgang()))
   }
   protected override val sorter: Option[(GroupSection, GroupSection) => Boolean] = Some((gs1: GroupSection, gs2: GroupSection) => {
-    gs1.groupKey.asInstanceOf[Durchgang].durchgang.compareTo(gs2.groupKey.asInstanceOf[Durchgang].durchgang) < 0
+    gs1.groupKey.asInstanceOf[Durchgang].name.compareTo(gs2.groupKey.asInstanceOf[Durchgang].name) < 0
   })
 }
 

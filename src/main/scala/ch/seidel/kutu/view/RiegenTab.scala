@@ -7,7 +7,7 @@ import ch.seidel.kutu.Config._
 import ch.seidel.kutu.KuTuApp
 import ch.seidel.kutu.KuTuApp.hostServices
 import ch.seidel.kutu.data.ResourceExchanger
-import ch.seidel.kutu.domain.{Disziplin, GemischteRiegen, GemischterDurchgang, GetrennteDurchgaenge, KutuService, Riege, RiegeRaw, SexDivideRule, WettkampfView, str2Int}
+import ch.seidel.kutu.domain.{Disziplin, Durchgang, GemischteRiegen, GemischterDurchgang, GetrennteDurchgaenge, KutuService, Riege, RiegeRaw, SexDivideRule, WettkampfView, str2Int, toDurationFormat}
 import ch.seidel.kutu.renderer.PrintUtil.FilenameDefault
 import ch.seidel.kutu.renderer.{PrintUtil, RiegenBuilder, WertungsrichterQRCode, WertungsrichterQRCodesToHtmlRenderer}
 import ch.seidel.kutu.squad.DurchgangBuilder
@@ -111,6 +111,14 @@ class DurchgangView(wettkampf: WettkampfView, service: KutuService, disziplinlis
       prefWidth = 30
       text = "ø"
       cellValueFactory = { x => x.value.avg.asInstanceOf[ObservableValue[String,String]]}
+    }
+    , new TableColumn[DurchgangEditor, String] {
+      prefWidth = 110
+      text = "Zeitbedarf"
+      cellValueFactory = { x => StringProperty(
+        s"""Tot:     ${toDurationFormat(x.value.durchgang.planTotal)}
+           |Eint.:    ${toDurationFormat(x.value.durchgang.planEinturnen)}
+           |Gerät.: ${toDurationFormat(x.value.durchgang.planGeraet)}""".stripMargin)}
     }
   )
 
@@ -309,9 +317,10 @@ class RiegenTab(override val wettkampf: WettkampfView, override val service: Kut
 
   def reloadDurchgaenge() {
     durchgangModel.clear()
+    val durchgaenge = service.selectDurchgaenge(wettkampf.uuid.map(UUID.fromString(_)).get).map(d => d.name->d).toMap
     riegenFilterModel.groupBy(re => re.initdurchgang).toList.sortBy(_._1).map{res =>
-      val (name, rel) = res
-      DurchgangEditor(wettkampf.id, name.getOrElse(""), rel)
+      val (durchgang, rel) = res
+      DurchgangEditor(wettkampf.id, durchgaenge(durchgang.get), rel)
     }.foreach {durchgangModel.add(_)}
   }
 
