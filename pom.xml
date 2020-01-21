@@ -58,7 +58,7 @@
 		<maven.build.timestamp.format>yyyy-MM-dd HH:mm</maven.build.timestamp.format>
 		<jdk-home>${project.basedir}/jdk11</jdk-home>
 		<scala.majorversion>2.12</scala.majorversion>
-		<scala.version>${scala.majorversion}.8</scala.version>
+		<scala.version>${scala.majorversion}.9</scala.version>
 		<akkaHttp.version>10.1.11</akkaHttp.version>
 		<akka.version>2.6.1</akka.version>
 		<javafx.version>12.0.2</javafx.version>
@@ -76,14 +76,14 @@
 		<repository>
 			<id>typesafe</id>
 			<name>Typesafe - releases</name>
-			<url>http://repo.typesafe.com/typesafe/releases/</url>
+			<url>https://repo.typesafe.com/typesafe/releases/</url>
 			<snapshots>
 				<enabled>false</enabled>
 			</snapshots>
 		</repository>
 		<repository>
 			<id>central</id>
-			<url>http://repo1.maven.org/maven2/</url>
+			<url>https://repo1.maven.org/maven2/</url>
 			<releases>
 				<enabled>true</enabled>
 			</releases>
@@ -101,7 +101,7 @@
 		</pluginRepository>
 		<pluginRepository>
 			<id>central</id>
-			<url>http://repo1.maven.org/maven2/</url>
+			<url>https://repo1.maven.org/maven2/</url>
 			<releases>
 				<enabled>true</enabled>
 			</releases>
