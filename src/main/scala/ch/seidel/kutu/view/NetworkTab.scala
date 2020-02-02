@@ -30,14 +30,14 @@ import scala.concurrent.Await
 import scala.concurrent.duration.Duration
 import scala.util.{Failure, Success}
 
-case class DurchgangState(wettkampfUUID: String, name: String, started: Long, complete: Boolean, finished: Long, geraeteRiegen: List[GeraeteRiege]) {
-  def start(time: Long = 0) = DurchgangState(wettkampfUUID, name, if (started == 0) if (time == 0) System.currentTimeMillis() else time else started, complete, 0, geraeteRiegen)
+case class DurchgangState(wettkampfUUID: String, name: String, started: Long, complete: Boolean, finished: Long, geraeteRiegen: List[GeraeteRiege], durchgang: Durchgang) {
+  def start(time: Long = 0) = DurchgangState(wettkampfUUID, name, if (started == 0) if (time == 0) System.currentTimeMillis() else time else started, complete, 0, geraeteRiegen, durchgang)
 
-  def finish(time: Long = 0) = DurchgangState(wettkampfUUID, name, started, complete, if (time == 0) System.currentTimeMillis() else time, geraeteRiegen)
+  def finish(time: Long = 0) = DurchgangState(wettkampfUUID, name, started, complete, if (time == 0) System.currentTimeMillis() else time, geraeteRiegen, durchgang)
 
   def update(newGeraeteRiegen: List[GeraeteRiege]) = {
     if (newGeraeteRiegen.forall(gr => geraeteRiegen.contains(gr))) this
-    else DurchgangState(wettkampfUUID, name, started, complete, finished, newGeraeteRiegen)
+    else DurchgangState(wettkampfUUID, name, started, complete, finished, newGeraeteRiegen, durchgang)
   }
 
   def ~(other: DurchgangState) = name == other.name && geraeteRiegen != other.geraeteRiegen
@@ -188,10 +188,18 @@ class DurchgangStationView(wettkampf: WettkampfView, service: KutuService, diszi
       cellValueFactory = { x => StringProperty(toDurationFormat(x.value.started, x.value.finished))
       }
     }
+//    , new TableColumn[DurchgangState, String] {
+//      prefWidth = 40
+//      text = "Anzahl"
+//      cellValueFactory = { x => StringProperty(x.value.anz) }
+//    }
     , new TableColumn[DurchgangState, String] {
-      prefWidth = 40
-      text = "Anzahl"
-      cellValueFactory = { x => StringProperty(x.value.anz) }
+      prefWidth = 110
+      text = "Plandauer"
+      cellValueFactory = { x => StringProperty(
+        s"""Tot:     ${toDurationFormat(x.value.durchgang.planTotal)}
+           |Eint.:    ${toDurationFormat(x.value.durchgang.planEinturnen)}
+           |Gerät.: ${toDurationFormat(x.value.durchgang.planGeraet)}""".stripMargin)}
     }
     , new TableColumn[DurchgangState, String] {
       prefWidth = 80
@@ -275,15 +283,26 @@ class NetworkTab(wettkampfmode: BooleanProperty, override val wettkampf: Wettkam
 
   lazy val disziplinlist = service.listDisziplinesZuWettkampf(wettkampf.id)
 
-  def loadDurchgaenge = RiegenBuilder.mapToGeraeteRiegen(service.getAllKandidatenWertungen(UUID.fromString(wettkampf.uuid.get)).toList)
-    .filter(gr => gr.durchgang.nonEmpty)
-    .groupBy(gr => gr.durchgang.get)
-    .map { t =>
-      getDurchgang(wettkampf, t._1)
-        .map(d => d.update(t._2))
-        .getOrElse(DurchgangState(wettkampf.uuid.getOrElse(""), t._1, 0, t._2.forall { riege => riege.erfasst }, 0, t._2))
-    }
-    .toList.sortBy(_.name)
+  /*
+    val durchgaenge = service.selectDurchgaenge(wettkampf.uuid.map(UUID.fromString(_)).get).map(d => d.name->d).toMap
+    riegenFilterModel.groupBy(re => re.initdurchgang).toList.sortBy(_._1).map{res =>
+      val (durchgang, rel) = res
+      DurchgangEditor(wettkampf.id, durchgaenge(durchgang.get), rel)
+    }.foreach {durchgangModel.add(_)}
+
+   */
+  def loadDurchgaenge = {
+    val durchgaenge = service.selectDurchgaenge(wettkampf.uuid.map(UUID.fromString(_)).get).map(d => d.name->d).toMap
+    RiegenBuilder.mapToGeraeteRiegen(service.getAllKandidatenWertungen(UUID.fromString(wettkampf.uuid.get)).toList)
+      .filter(gr => gr.durchgang.nonEmpty)
+      .groupBy(gr => gr.durchgang.get)
+      .map { t =>
+        getDurchgang(wettkampf, t._1)
+          .map(d => d.update(t._2))
+          .getOrElse(DurchgangState(wettkampf.uuid.getOrElse(""), t._1, 0, t._2.forall { riege => riege.erfasst }, 0, t._2, durchgaenge(t._1)))
+      }
+      .toList.sortBy(_.name)
+  }
 
   val model = ObservableBuffer[DurchgangState]()
 
