@@ -399,6 +399,7 @@ trait WettkampfService extends DBService
                 (id, datum, titel, programm_Id, auszeichnung, auszeichnungendnote, uuid)
                 values (${cid}, ${datum}, ${titel}, ${heads.head.id}, $auszeichnung, $auszeichnungendnote, $uuid)
             """ >>
+          initPlanZeitenActions(UUID.fromString(uuid)) >>
           sql"""
                   select * from wettkampf
                   where id=$cid
@@ -409,6 +410,7 @@ trait WettkampfService extends DBService
                   (datum, titel, programm_Id, auszeichnung, auszeichnungendnote, uuid)
                   values (${datum}, ${titel}, ${heads.head.id}, $auszeichnung, $auszeichnungendnote, $uuid)
               """ >>
+          initPlanZeitenActions(UUID.fromString(uuid)) >>
           sql"""
                   select * from wettkampf
                   where id in (select max(id) from wettkampf)
