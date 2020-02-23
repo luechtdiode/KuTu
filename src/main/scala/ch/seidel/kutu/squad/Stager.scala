@@ -29,7 +29,7 @@ trait Stager extends Mapper {
           case _ => (0, Set.empty)
         }
       }
-      if(nextCandidates.isEmpty) {
+      if(nextCandidates.isEmpty || acc.size > 500) {
         finish(acc)
       }
       else {
@@ -116,17 +116,23 @@ trait Stager extends Mapper {
           val pair = pairOption.get
           val (s, b) = pair
           val (merged, newEinteilung) = merge(s, b)
-          val pr = preferredRiege.map(p => p.copy(preferred = p.basepreferred, pairs = p.pairs + pair)).orElse(Some(PreferredAccumulator(merged, einteilung, b, Set(pair))))
-          mergeCandidates(geraete, targetGeraeteRiegeSize, pr.get.base, acc + newEinteilung, pr)
+          if ( !acc.contains(newEinteilung)) {
+            val pr = preferredRiege.map(p => p.copy(preferred = p.basepreferred, pairs = p.pairs + pair)).orElse(Some(PreferredAccumulator(merged, einteilung, b, Set(pair))))
+            mergeCandidates(geraete, targetGeraeteRiegeSize, pr.get.base, acc + newEinteilung, pr)
+          } else {
+            acc
+          }
         case Some(pair) =>
           val (s, b) = pair
           val (merged, newEinteilung) = merge(s, b)
           if(keepUnmerged == 1) {
 //            logger.debug("staging not optimal")
             acc + newEinteilung
-          } else {
+          } else if ( !acc.contains(newEinteilung)) {
             val pr = preferredRiege.map(p => p.copy(preferred = merged, pairs = p.pairs + pair)).orElse(Some(PreferredAccumulator(merged, einteilung, b, Set(pair))))
             mergeCandidates(geraete, targetGeraeteRiegeSize, newEinteilung, acc, pr)
+          } else {
+            acc
           }
         case None => acc
       }
