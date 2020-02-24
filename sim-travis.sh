@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-export OS=Win64 #$(uname -s)
+export OS=Darwin #$(uname -s)
 
 . ./prepare_jdk.sh
 

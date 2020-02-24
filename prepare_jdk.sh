@@ -39,14 +39,14 @@ fi
 if [ ${OS} == 'Darwin' ]
 then
     echo "install jdk for ${OS}"
-    curl -L "https://github.com/AdoptOpenJDK/openjdk${jremajor}-binaries/releases/download/${jreversion}/OpenJDK13${jremajor}U-jdk_x64_mac_hotspot_${jrefversion}.tar.gz" -o "jdk-${OS}.tar.gz"
+    curl -L "https://github.com/AdoptOpenJDK/openjdk${jremajor}-binaries/releases/download/${jreversion}/OpenJDK${jremajor}U-jdk_x64_mac_hotspot_${jrefversion}.tar.gz" -o "jdk-${OS}.tar.gz"
     tar -xzf "jdk-${OS}.tar.gz" -C .  >/dev/null 2>&1
     curl -L http://download2.gluonhq.com/jpackager/11/jdk.packager-osx.zip -o "javapackager-${OS}.zip"
     echo "download jdk for ${OS} finished"
     unzip -u "javapackager-${OS}.zip" -d "${jreversion}/Contents/Home/bin"  >/dev/null 2>&1
     cp "${jreversion}/Contents/Home/bin/jdk.packager.jar" "${jreversion}/Contents/Home/jmods"
     sudo rm -rf "/Library/Java/JavaVirtualMachines/${jreversion}.jdk"
-    sudo mv "${jreversion}/*/" "/Library/Java/JavaVirtualMachines/${jreversion}.jdk"
+    sudo mv "${jreversion}/Contents/" "/Library/Java/JavaVirtualMachines/${jreversion}.jdk"
     sudo ln -s "/Library/Java/JavaVirtualMachines/${jreversion}.jdk/Contents/Home" "jdk${jremajor}"
 fi
 
