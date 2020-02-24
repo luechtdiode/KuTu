@@ -1,69 +1,66 @@
 #!/usr/bin/env bash
 
-echo "JAVA_HOME before install jdk11 ${JAVA_HOME}"
-echo "JRE_HOME before install jdk11 ${JRE_HOME}"
+export jremajor=11
+export jreversion="jdk-11.0.6+10"
+export jrefversion="11.0.6_10"
 
-rm -rf jdk
-rm -rf jdk11
-mkdir jdk
+echo "JAVA_HOME before install jdk${jremajor} ${JAVA_HOME}"
+echo "JRE_HOME before install jdk${jremajor} ${JRE_HOME}"
 
 # https://mail.openjdk.java.net/pipermail/openjfx-dev/2018-September/022500.html
 
 if [ ${OS} == 'Win64' ]
 then
-    curl -L https://github.com/AdoptOpenJDK/openjdk11-binaries/releases/download/jdk-11.0.5%2B10/OpenJDK11U-jdk_x64_windows_hotspot_11.0.5_10.zip -o "jdk-${OS}.zip"
-    unzip -u "jdk-${OS}.zip" -d jdk  >/dev/null 2>&1
+    curl -L "https://github.com/AdoptOpenJDK/openjdk${jremajor}-binaries/releases/download/${jreversion}/OpenJDK${jremajor}U-jdk_x64_windows_hotspot_${jrefversion}.zip" -o "jdk-${OS}.zip"
+    unzip -u "jdk-${OS}.zip" -d .  >/dev/null 2>&1
     curl -L http://download2.gluonhq.com/jpackager/11/jdk.packager-windows.zip -o "javapackager-${OS}.zip"
-    mv jdk/*/ jdk11/  >/dev/null 2>&1
-    unzip -u "javapackager-${OS}.zip" -d jdk11/bin  >/dev/null 2>&1
-    cp jdk11/bin/jdk.packager.jar jdk11/jmods
+    unzip -u "javapackager-${OS}.zip" -d "${jreversion}/bin"  >/dev/null 2>&1
+    cp "${jreversion}/bin/jdk.packager.jar" "${jreversion}/jmods"
 fi
 
 if [ ${OS} == 'MSYS_NT-10.0' ]
 then
-    curl -L https://github.com/AdoptOpenJDK/openjdk11-binaries/releases/download/jdk-11.0.5%2B10/OpenJDK11U-jdk_x64_windows_hotspot_11.0.5_10.zip -o "jdk-${OS}.zip"
-    unzip -u "jdk-${OS}.zip" -d jdk  >/dev/null 2>&1
+    curl -L "https://github.com/AdoptOpenJDK/openjdk${jremajor}-binaries/releases/download/${jreversion}/OpenJDK${jremajor}U-jdk_x64_windows_hotspot_${jrefversion}.zip" -o "jdk-${OS}.zip"
+    unzip -u "jdk-${OS}.zip" -d .  >/dev/null 2>&1
     curl -L http://download2.gluonhq.com/jpackager/11/jdk.packager-windows.zip -o "javapackager-${OS}.zip"
-    mv jdk/*/ jdk11/  >/dev/null 2>&1
-    unzip -u "javapackager-${OS}.zip" -d jdk11/bin  >/dev/null 2>&1
-    cp jdk11/bin/jdk.packager.jar jdk11/jmods
+    unzip -u "javapackager-${OS}.zip" -d "${jreversion}/bin"  >/dev/null 2>&1
+    cp "${jreversion}/bin/jdk.packager.jar" "${jreversion}/jmods"
 fi
 
 if [ ${OS} == 'Linux' ]
 then
-    curl -L https://github.com/AdoptOpenJDK/openjdk11-binaries/releases/download/jdk-11.0.5%2B10/OpenJDK11U-jdk_x64_linux_hotspot_11.0.5_10.tar.gz -o "jdk-${OS}.tar.gz"
-    tar -xzf "jdk-${OS}.tar.gz" -C jdk  >/dev/null 2>&1
+    curl -L "https://github.com/AdoptOpenJDK/openjdk${jremajor}-binaries/releases/download/${jreversion}/OpenJDK${jremajor}U-jdk_x64_linux_hotspot_${jrefversion}.tar.gz" -o "jdk-${OS}.tar.gz"
+    tar -xzf "jdk-${OS}.tar.gz" -C .  >/dev/null 2>&1
     curl -L http://download2.gluonhq.com/jpackager/11/jdk.packager-linux.zip -o "javapackager-${OS}.zip"
-    mv jdk/*/ jdk11/  >/dev/null 2>&1
-    unzip -u "javapackager-${OS}.zip" -d jdk11/bin  >/dev/null 2>&1
-    cp jdk11/bin/jdk.packager.jar jdk11/jmods
+    unzip -u "javapackager-${OS}.zip" -d "${jreversion}/bin"  >/dev/null 2>&1
+    cp "${jreversion}/bin/jdk.packager.jar" "${jreversion}/jmods"
 fi
 
 if [ ${OS} == 'Darwin' ]
 then
-    echo "install jdk11 for ${OS}"
-    curl -L https://github.com/AdoptOpenJDK/openjdk11-binaries/releases/download/jdk-11.0.5%2B10/OpenJDK11U-jdk_x64_mac_hotspot_11.0.5_10.tar.gz -o "jdk-${OS}.tar.gz"
-    tar -xzf "jdk-${OS}.tar.gz" -C jdk  >/dev/null 2>&1
+    echo "install jdk for ${OS}"
+    curl -L "https://github.com/AdoptOpenJDK/openjdk${jremajor}-binaries/releases/download/${jreversion}/OpenJDK13${jremajor}U-jdk_x64_mac_hotspot_${jrefversion}.tar.gz" -o "jdk-${OS}.tar.gz"
+    tar -xzf "jdk-${OS}.tar.gz" -C .  >/dev/null 2>&1
     curl -L http://download2.gluonhq.com/jpackager/11/jdk.packager-osx.zip -o "javapackager-${OS}.zip"
-    echo "download jdk11 for ${OS} finished"
-    unzip -u "javapackager-${OS}.zip" -d jdk/jdk-11.0.5+10/Contents/Home/bin  >/dev/null 2>&1
-    cp jdk/jdk-11.0.5+10/Contents/Home/bin/jdk.packager.jar jdk/jdk-11.0.5+10/Contents/Home/jmods
-    sudo rm -rf /Library/Java/JavaVirtualMachines/jdk-11.jdk
-    sudo mv jdk/*/ /Library/Java/JavaVirtualMachines/jdk-11.jdk
-    sudo ln -s /Library/Java/JavaVirtualMachines/jdk-11.jdk/Contents/Home jdk11
+    echo "download jdk for ${OS} finished"
+    unzip -u "javapackager-${OS}.zip" -d "${jreversion}/Contents/Home/bin"  >/dev/null 2>&1
+    cp "${jreversion}/Contents/Home/bin/jdk.packager.jar" "${jreversion}/Contents/Home/jmods"
+    sudo rm -rf "/Library/Java/JavaVirtualMachines/${jreversion}.jdk"
+    sudo mv "${jreversion}/*/" "/Library/Java/JavaVirtualMachines/${jreversion}.jdk"
+    sudo ln -s "/Library/Java/JavaVirtualMachines/${jreversion}.jdk/Contents/Home" "jdk${jremajor}"
 fi
 
-export JAVA_HOME="${PWD}/jdk11"
-export JRE_HOME="${PWD}/jdk11"
+export JAVA_HOME="${PWD}/${jreversion}"
+export JRE_HOME="${PWD}/${jreversion}"
 export PATH=${JAVA_HOME}/bin:$PATH
 echo "JAVA_HOME=${JAVA_HOME}" >> ~/.mavenrc
 
-echo "JAVA_HOME after install jdk11 ${JAVA_HOME}"
-echo "JRE_HOME after install jdk11 ${JRE_HOME}"
+echo "JAVA_HOME after install jdk${jremajor} ${JAVA_HOME}"
+echo "JRE_HOME after install jdk${jremajor} ${JRE_HOME}"
 
 echo "javac version on path:"
 javac -version
 echo "mvn version on path:"
 mvn -version
 
-echo "install jdk11 for ${OS} finished"
+echo "install jdk for ${OS} finished"

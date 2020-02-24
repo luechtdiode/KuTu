@@ -56,7 +56,7 @@
 		<!--<app.version>${project.version}</app.version>-->
 		<buildDate>${maven.build.timestamp}</buildDate>
 		<maven.build.timestamp.format>yyyy-MM-dd HH:mm</maven.build.timestamp.format>
-		<jdk-home>${project.basedir}/jdk11</jdk-home>
+		<jdk-home>${JAVA_HOME}</jdk-home>
 		<scala.majorversion>2.12</scala.majorversion>
 		<scala.version>${scala.majorversion}.9</scala.version>
 		<akkaHttp.version>10.1.11</akkaHttp.version>

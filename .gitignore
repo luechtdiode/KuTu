@@ -26,6 +26,6 @@ deploy-aws.sh
 aws-policy.txt
 .at.*
 /jdk
-/jdk11
+/jdk*
 /data
 /javapackager

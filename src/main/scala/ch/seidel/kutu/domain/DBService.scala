@@ -65,10 +65,10 @@ object DBService {
       config.setDataSourceProperties(proplite)
       config.setUsername("kutu")
       config.setPassword("kutu")
-      config.setMaximumPoolSize(500)
+      //config.setMaximumPoolSize(500)
       val dataSource = new HikariDataSource(config)
 
-      Database.forDataSource(dataSource, maxConnections = Some(500), executor = AsyncExecutor(name = "DB-Actions", minThreads = 500, maxThreads = 500, queueSize = 10000, maxConnections = 500), keepAliveConnection = true)
+      Database.forDataSource(dataSource, maxConnections = Some(10), executor = AsyncExecutor(name = "DB-Actions", minThreads = 10, maxThreads = 10, queueSize = 10000, maxConnections = 10), keepAliveConnection = true)
     }
 
     val sqlScripts = List(
@@ -118,10 +118,19 @@ object DBService {
         try {
           logger.info(s"applying migration scripts to ${dbfile.getAbsolutePath}")
           migrateFromPreviousVersion(db)
-          initialPreloadedSqlScripts.foreach(script => {
+          List("kutu-sqllite-ddl.sql"
+            , "SetJournalWAL.sql"
+            , "kutu-initialdata.sql").foreach(script => {
             logger.info(s"registering script ${script} to ${dbfile.getAbsolutePath}")
             migrationDone(db, script, "from migration")
           })
+          val sqlScripts = List(
+            "AddTimeTable-sqllite.sql"
+            , "InitTimeTable.sql"
+            , "AddDurchgangTable-sqllite.sql"
+            , "InitDurchgangTable.sql"
+          )
+          installDB(db, sqlScripts)
         } finally {
           db.close()
         }
@@ -347,6 +356,7 @@ object DBService {
         fos.close
       }
     }
+    sqlScripts
   }
 
   def startDB(alternativDB: Option[DatabaseDef] = None) = {
