@@ -318,7 +318,9 @@ class RiegenTab(override val wettkampf: WettkampfView, override val service: Kut
   def reloadDurchgaenge() {
     durchgangModel.clear()
     val durchgaenge = service.selectDurchgaenge(wettkampf.uuid.map(UUID.fromString(_)).get).map(d => d.name->d).toMap
-    riegenFilterModel.groupBy(re => re.initdurchgang).toList.sortBy(_._1).map{res =>
+    riegenFilterModel.groupBy(re => re.initdurchgang)
+      .filter(_._1 != None)
+      .toList.sortBy(_._1).map{res =>
       val (durchgang, rel) = res
       DurchgangEditor(wettkampf.id, durchgaenge(durchgang.get), rel)
     }.foreach {durchgangModel.add(_)}
