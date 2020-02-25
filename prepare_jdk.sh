@@ -46,8 +46,8 @@ then
     unzip -u "javapackager-${OS}.zip" -d "${jreversion}/Contents/Home/bin"  >/dev/null 2>&1
     cp "${jreversion}/Contents/Home/bin/jdk.packager.jar" "${jreversion}/Contents/Home/jmods"
     sudo rm -rf "/Library/Java/JavaVirtualMachines/${jreversion}.jdk"
-    sudo mv "${jreversion}/Contents/" "/Library/Java/JavaVirtualMachines/${jreversion}.jdk"
-    sudo ln -s "/Library/Java/JavaVirtualMachines/${jreversion}.jdk/Contents/Home" "jdk${jremajor}"
+    sudo mv "${jreversion}/" "/Library/Java/JavaVirtualMachines/${jreversion}.jdk"
+    sudo ln -s "/Library/Java/JavaVirtualMachines/${jreversion}.jdk/Contents/Home" "${jreversion}"
 fi
 
 export JAVA_HOME="${PWD}/${jreversion}"
