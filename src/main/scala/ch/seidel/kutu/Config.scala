@@ -33,7 +33,7 @@ object Config extends KuTuSSLContext {
       if (userConfig.exists())
         ConfigFactory.parseFile(new File(configPath + "/kutuapp.conf")).withFallback(ConfigFactory.load())
       else
-        ConfigFactory.load())
+        ConfigFactory.load()).resolve()
 
   val appVersion: String = if (config.hasPath("app.majorversion")
     && !config.getString("app.majorversion").startsWith("${"))
