@@ -152,8 +152,9 @@ object DBService {
     val dbconfigname_key = "X_DB_CONFIG_NAME"
     if (Config.config.hasPath(dbconfigname_key) && Config.config.hasPath(Config.config.getString(dbconfigname_key))) try {
       val dbconfig_key = Config.config.getString(dbconfigname_key)
-      println("load db-config with " + dbconfig_key);
+      logger.info("load db-config with " + dbconfig_key);
       val db = Database.forConfig(dbconfig_key, Config.config)
+      logger.info("db-config with " + dbconfig_key + " loaded");
       val sqlScripts = List(
         "kutu-pg-ddl.sql"
         , "kutu-initialdata.sql"
@@ -165,19 +166,24 @@ object DBService {
       installDB(db, sqlScripts)
       Config.importDataFrom match {
         case Some(version) =>
+          logger.info("try to migrate from version " + version);
           val scriptname = s"MigratedFrom-$version"
           if (!checkMigrationDone(db, scriptname)) {
+            logger.info("migration from version " + version);
             transferData(databaseLite, db)
             migrationDone(db, scriptname, "from migration")
+            logger.info("migration from version " + version + " done");
           }
         case _ =>
       }
+      logger.info("databe initialization ready with config " + dbconfig_key);
       db
     } catch {
       case e: Exception =>
-        e.printStackTrace()
+        logger.error("Could not initialize database as expected. Try initialize the fallback with sqlite", e);
         databaseLite
     } else {
+      logger.info("No dedicated db-config defined. Initialize the fallback with sqlite");
       databaseLite
     }
   }
