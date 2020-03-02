@@ -332,7 +332,7 @@ class NetworkTab(wettkampfmode: BooleanProperty, override val wettkampf: Wettkam
 
   var subscriptions: List[Subscription] = List.empty
 
-  override def release() {
+  override def release {
     subscription.cancel()
     subscriptions.foreach(_.cancel)
     subscriptions = List.empty

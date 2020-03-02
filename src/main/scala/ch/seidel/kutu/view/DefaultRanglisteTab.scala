@@ -45,7 +45,7 @@ abstract class DefaultRanglisteTab(wettkampfmode: BooleanProperty, override val 
   var lastPublishedScoreView = new ObjectProperty[Option[PublishedScoreView]]()
   lastPublishedScoreView.setValue(None)
 
-  override def release() {
+  override def release {
     subscription.foreach(_.cancel)
     subscription = List.empty
   }
