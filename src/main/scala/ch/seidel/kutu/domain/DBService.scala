@@ -310,7 +310,7 @@ object DBService {
         case e: Exception =>
           logger.error("Error on executing database setup script", e);
           val errorfile = new File(dbhomedir + s"/$appVersion-$filename.err")
-          errorfile.mkdirs()
+          errorfile.getParentFile.mkdirs()
           val fos = Files.newOutputStream(errorfile.toPath, StandardOpenOption.CREATE, StandardOpenOption.APPEND)
           try {
             fos.write(e.getMessage.getBytes("utf-8"))
