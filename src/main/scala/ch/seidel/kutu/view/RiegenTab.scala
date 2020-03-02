@@ -397,11 +397,25 @@ class RiegenTab(override val wettkampf: WettkampfView, override val service: Kut
       text = "Riegen"
       content = riegenFilterView
       closable = false
+      onSelectionChanged = handle {
+        if(selected.value && editableProperty.get) {
+          reloadData()
+        }
+      }
     }
     val durchgangTab = new Tab {
       text = "Durchgänge"
       content = durchgangView
       closable = false
+      onSelectionChanged = handle {
+        if(selected.value && editableProperty.get) {
+          reloadData()
+        }
+      }
+    }
+    val zeitenTab = new WettkampfZeitenTab(editableProperty, wettkampf, service) {
+      closable = false
+      isPopulated
     }
     def makeRiegenFilterActiveBinding = {
       Bindings.createBooleanBinding(() => {
@@ -1197,6 +1211,7 @@ class RiegenTab(override val wettkampf: WettkampfView, override val service: Kut
         center = new TabPane {
         	tabs += durchgangTab
           tabs += riegenFilterTab
+          tabs += zeitenTab
         }
       }
     }
