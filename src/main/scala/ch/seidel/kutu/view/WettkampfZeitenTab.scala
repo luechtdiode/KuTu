@@ -16,7 +16,7 @@ import scalafx.scene.input.KeyEvent
 import scalafx.scene.layout._
 import scalafx.util.converter.DefaultStringConverter
 
-class WettkampfZeitenTab(editableProperty: BooleanProperty, wettkampf: WettkampfView, override val service: KutuService) extends Tab with TabWithService {
+class WettkampfZeitenTab(editableProperty: Boolean, wettkampf: WettkampfView, override val service: KutuService) extends Tab with TabWithService {
 
   var subscription: List[Subscription] = List.empty
 
@@ -71,7 +71,7 @@ class WettkampfZeitenTab(editableProperty: BooleanProperty, wettkampf: Wettkampf
           cellFactory = { _ => new AutoCommitTextFieldTableCell[ZeitenEditor, String](new DefaultStringConverter()) }
           styleClass += "table-cell-with-value"
           prefWidth = ZeitenEditor.coldef(field.getName)
-          editable <== editableProperty
+          editable = editableProperty
           onEditCommit = (evt: CellEditEvent[ZeitenEditor, String]) => {
             field.get(evt.rowValue).asInstanceOf[StringProperty].value = evt.newValue
             val rowIndex = model.indexOf(evt.rowValue)

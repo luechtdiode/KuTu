@@ -382,6 +382,7 @@ class RiegenTab(override val wettkampf: WettkampfView, override val service: Kut
 
   override def isPopulated = {
     editableProperty.set(true)
+    val wettkampfEditable = !wettkampf.toWettkampf.isReadonly(homedir, remoteHostOrigin)
     val riegenFilterView = new RiegenFilterView(editableProperty,
         wettkampf, service,
         () => {disziplinlist},
@@ -398,7 +399,7 @@ class RiegenTab(override val wettkampf: WettkampfView, override val service: Kut
       content = riegenFilterView
       closable = false
       onSelectionChanged = handle {
-        if(selected.value && editableProperty.get) {
+        if(selected.value && wettkampfEditable) {
           reloadData()
         }
       }
@@ -408,12 +409,12 @@ class RiegenTab(override val wettkampf: WettkampfView, override val service: Kut
       content = durchgangView
       closable = false
       onSelectionChanged = handle {
-        if(selected.value && editableProperty.get) {
+        if(selected.value && wettkampfEditable) {
           reloadData()
         }
       }
     }
-    val zeitenTab = new WettkampfZeitenTab(editableProperty, wettkampf, service) {
+    val zeitenTab = new WettkampfZeitenTab(wettkampfEditable, wettkampf, service) {
       closable = false
       isPopulated
     }
@@ -1186,7 +1187,7 @@ class RiegenTab(override val wettkampf: WettkampfView, override val service: Kut
     }
     
     val riegenFilterControl = new ToolBar {
-      if (!wettkampf.toWettkampf.isReadonly(homedir, remoteHostOrigin)) {
+      if (wettkampfEditable) {
         content = List[ButtonBase](
             btnRiegen
           , btnEditDurchgang
