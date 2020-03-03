@@ -12,6 +12,7 @@ object WettkampfPage {
 
   def buildTab(wettkampfmode: BooleanProperty, wettkampf: WettkampfView, service: KutuService) = {
 	  lazy val progs = service.readWettkampfLeafs(wettkampf.programm.id)
+    val overview = new WettkampfOverviewTab(wettkampf, service)
     lazy val alleWertungenTab = new WettkampfWertungTab(wettkampfmode, None, None, wettkampf, service, {
       service.listAthletenWertungenZuProgramm(progs map (p => p.id), wettkampf.id)
     }) {
@@ -45,6 +46,7 @@ object WettkampfPage {
         case Some(s) => s.cancel()
         case _ =>
       }
+      overview.release
       (progSites).foreach { t => 
         t.asInstanceOf[WettkampfWertungTab].release
       }
@@ -60,6 +62,7 @@ object WettkampfPage {
     }
     
     def refresher(pane: LazyTabPane): Seq[Tab] = {
+      overview.setLazyPane(pane)
       (progSites).foreach { t => 
         t.asInstanceOf[WettkampfWertungTab].setLazyPane(pane)
       }
@@ -67,10 +70,12 @@ object WettkampfPage {
         t => t.asInstanceOf[NetworkTab].setLazyPane(pane)
       }
       if(wettkampfmode.value) {
-        networkSite ++ Seq[Tab](alleWertungenTab) ++ ranglisteSite
+        Seq[Tab](overview) ++
+                networkSite ++ Seq[Tab](alleWertungenTab) ++ ranglisteSite
       }
       else {
-        progSites ++ riegenSite ++ networkSite ++ ranglisteSite
+        Seq[Tab](overview) ++
+                progSites ++ riegenSite ++ networkSite ++ ranglisteSite
       }
     }
 

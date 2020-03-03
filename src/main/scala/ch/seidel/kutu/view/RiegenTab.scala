@@ -322,7 +322,7 @@ class RiegenTab(override val wettkampf: WettkampfView, override val service: Kut
       .filter(_._1 != None)
       .toList.sortBy(_._1).map{res =>
       val (durchgang, rel) = res
-      DurchgangEditor(wettkampf.id, durchgaenge(durchgang.get), rel)
+      DurchgangEditor(wettkampf.id, durchgaenge.getOrElse(durchgang.get, Durchgang(wettkampf.id, durchgang.get)), rel)
     }.foreach {durchgangModel.add(_)}
   }
 
