@@ -1,8 +1,5 @@
 package ch.seidel.kutu.view
 
-import java.sql.Date
-import java.text.SimpleDateFormat
-
 import ch.seidel.kutu.domain._
 import scalafx.beans.property._
 

@@ -6,7 +6,7 @@ import ch.seidel.commons._
 import ch.seidel.kutu.domain._
 import javafx.scene.{control => jfxsc}
 import scalafx.Includes._
-import scalafx.beans.property.{BooleanProperty, ReadOnlyStringProperty, StringProperty}
+import scalafx.beans.property.{ReadOnlyStringProperty, StringProperty}
 import scalafx.collections.ObservableBuffer
 import scalafx.event.subscriptions.Subscription
 import scalafx.scene.Node
@@ -40,7 +40,9 @@ class WettkampfZeitenTab(editableProperty: Boolean, wettkampf: WettkampfView, ov
 
   override def isPopulated(): Boolean = {
 
-    val planTimeViews = service.loadWettkampfDisziplinTimes(UUID.fromString(wettkampf.uuid.getOrElse(UUID.randomUUID().toString))).map { a => ZeitenEditor(a) }
+    val planTimeViews = service
+      .loadWettkampfDisziplinTimes(UUID.fromString(wettkampf.uuid.get))
+      .map { a => ZeitenEditor(a) }
     val model = ObservableBuffer[ZeitenEditor](planTimeViews)
 
     val cols: List[jfxsc.TableColumn[ZeitenEditor, _]] = classOf[ZeitenEditor].getDeclaredFields.filter { f =>
@@ -52,7 +54,6 @@ class WettkampfZeitenTab(editableProperty: Boolean, wettkampf: WettkampfView, ov
         cellValueFactory = { x =>
           field.get(x.value).asInstanceOf[ReadOnlyStringProperty]
         }
-        // cellFactory = { _ => new AutoCommitTextFieldTableCell[ZeitenEditor, String](new DefaultStringConverter()) }
         styleClass += "table-cell-with-value"
         prefWidth = ZeitenEditor.coldef(field.getName)
         editable = false
@@ -94,7 +95,6 @@ class WettkampfZeitenTab(editableProperty: Boolean, wettkampf: WettkampfView, ov
     var lastFilter: String = ""
 
     def updateFilteredList(newVal: String) {
-      //if(!newVal.equalsIgnoreCase(lastFilter)) {
       lastFilter = newVal
       val sortOrder = zeitenView.sortOrder.toList
       model.clear()
@@ -112,7 +112,7 @@ class WettkampfZeitenTab(editableProperty: Boolean, wettkampf: WettkampfView, ov
         }
       }
       zeitenView.sortOrder.clear()
-      val restored = zeitenView.sortOrder ++= sortOrder
+      zeitenView.sortOrder ++= sortOrder
     }
 
     val txtFilter = new TextField() {
