@@ -43,6 +43,32 @@ trait DurchgangService extends DBService with DurchgangResultMapper {
                 where
                 wettkampf_id=${wettkampfid} and durchgang=${oldname}
         """ >>  // prevent constraints-violations
+          sqlu"""
+                delete from durchgang
+                where
+                wettkampf_id=${wettkampfid} and name=${newname.trim}
+        """  >>
+          sqlu"""
+                update durchgang
+                set name=${newname.trim}
+                where
+                wettkampf_id=${wettkampfid} and name=${oldname}
+        """  >>
+        sqlu"""
+                insert into durchgang (wettkampf_id, title, name, durchgangtype, ordinal, planStartOffset)
+                SELECT
+                    zp.wettkampf_id,
+                    zp.durchgang as title,
+                    zp.durchgang as name,
+                    1 as durchgangType,
+                    coalesce((SELECT max(ordinal)+1 FROM durchgang dd WHERE dd.wettkampf_id = zp.wettkampf_id), 0) as ordinal,
+                    0 as planStartOffset
+                FROM
+                    zeitplan zp
+                WHERE
+                    zp.wettkampf_id = $wettkampfid
+                    AND NOT EXISTS (SELECT 1 FROM durchgang dd WHERE dd.wettkampf_id = zp.wettkampf_id and dd.name = zp.durchgang)
+        """ >>  // prevent constraints-violations
         sqlu""" 
                 delete from durchgangstation
                 where
@@ -57,6 +83,30 @@ trait DurchgangService extends DBService with DurchgangResultMapper {
     }, Duration.Inf)
   }
 
+  def updateOrInsertDurchgaenge(durchgaenge: Iterable[Durchgang]) {
+    def insertDurchgang(rs: Iterable[Durchgang]) = DBIO.sequence(for {
+      durchgang <- rs
+    } yield {
+      sqlu"""
+                insert into durchgang
+                (wettkampf_id, title, name, durchgangtype, ordinal, planStartOffset, effectiveStartTime, effectiveEndTime)
+                values (${durchgang.wettkampfId}, ${durchgang.title}, ${durchgang.name}, ${durchgang.durchgangtype},
+                ${durchgang.ordinal}, ${durchgang.planStartOffset}, ${durchgang.effectiveStartTime}, ${durchgang.effectiveEndTime})
+        """
+    })
+
+    val process = DBIO.sequence(for {
+      (wettkampfid, planTime) <- durchgaenge.groupBy(_.wettkampfId)
+    } yield {
+      sqlu"""
+                delete from durchgang where
+                wettkampf_id=${wettkampfid}
+        """>>
+        insertDurchgang(planTime)
+    })
+
+    Await.result(database.run{process.transactionally}, Duration.Inf)
+  }
 
   def selectDurchgaenge(wettkampfUUID: UUID) = {
     Await.result(selectDurchgaengeAsync(wettkampfUUID), Duration.Inf)
@@ -64,16 +114,15 @@ trait DurchgangService extends DBService with DurchgangResultMapper {
 
   def selectDurchgaengeAsync(wettkampfUUID: UUID) = {
     database.run{(
-      sql"""select distinct wk.id, r.durchgang
-             from riege r inner join wettkampf wk on r.wettkampf_id = wk.id
+      sql"""select
+               d.id, d.wettkampf_id, d.title, d.name, d.durchgangtype, d.ordinal,
+               d.planStartOffset, d.effectiveStartTime, d.effectiveEndTime,
+               zp.einturnen, zp.geraet, zp.total
+             from durchgang d
+               inner join wettkampf wk on d.wettkampf_id = wk.id
+               inner join zeitplan zp on d.wettkampf_id = zp.wettkampf_id and d.name = zp.durchgang
              where wk.uuid=${wettkampfUUID.toString}
           """.as[Durchgang]).withPinnedSession
     }
-//    database.run{(
-//      sql"""select r.wettkampf_id, r.durchgang
-//             from durchgangstation r inner join wettkampf wk on r.wettkampf_id = wk.id
-//             where wk.uuid=${wettkampfUUID.toString}
-//          """.as[Durchgang]).withPinnedSession
-//    }
   }
 }

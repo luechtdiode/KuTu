@@ -1,4 +1,4 @@
-FROM openjdk:11-jre-slim
+FROM adoptopenjdk/openjdk11:jre-11.0.6_10-alpine
 
 # Create kutu user and group
 RUN echo "kutu:x:1497:1495:user for kutu:/home:/bin/false" >> /etc/passwd

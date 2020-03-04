@@ -8,7 +8,6 @@ import java.util.Properties
 import ch.seidel.kutu.Config
 import ch.seidel.kutu.Config.{appVersion, userHomePath}
 import ch.seidel.kutu.data.ResourceExchanger
-import com.typesafe.config.ConfigFactory
 import com.zaxxer.hikari.{HikariConfig, HikariDataSource}
 import org.slf4j.LoggerFactory
 import slick.jdbc
@@ -66,16 +65,20 @@ object DBService {
       config.setDataSourceProperties(proplite)
       config.setUsername("kutu")
       config.setPassword("kutu")
-      config.setMaximumPoolSize(500)
+      //config.setMaximumPoolSize(500)
       val dataSource = new HikariDataSource(config)
 
-      Database.forDataSource(dataSource, maxConnections = Some(500), executor = AsyncExecutor(name = "DB-Actions", minThreads = 500, maxThreads = 500, queueSize = 10000, maxConnections = 500), keepAliveConnection = true)
+      Database.forDataSource(dataSource, maxConnections = Some(10), executor = AsyncExecutor(name = "DB-Actions", minThreads = 10, maxThreads = 10, queueSize = 10000, maxConnections = 10), keepAliveConnection = true)
     }
 
     val sqlScripts = List(
       "kutu-sqllite-ddl.sql"
       , "SetJournalWAL.sql"
       , "kutu-initialdata.sql"
+      , "AddTimeTable-sqllite.sql"
+      , "InitTimeTable.sql"
+      , "AddDurchgangTable-sqllite.sql"
+      , "InitDurchgangTable.sql"
     )
 
     (!dbfile.exists() || dbfile.length() == 0, Config.importDataFrom) match {
@@ -115,10 +118,19 @@ object DBService {
         try {
           logger.info(s"applying migration scripts to ${dbfile.getAbsolutePath}")
           migrateFromPreviousVersion(db)
-          initialPreloadedSqlScripts.foreach(script => {
+          List("kutu-sqllite-ddl.sql"
+            , "SetJournalWAL.sql"
+            , "kutu-initialdata.sql").foreach(script => {
             logger.info(s"registering script ${script} to ${dbfile.getAbsolutePath}")
             migrationDone(db, script, "from migration")
           })
+          val sqlScripts = List(
+            "AddTimeTable-sqllite.sql"
+            , "InitTimeTable.sql"
+            , "AddDurchgangTable-sqllite.sql"
+            , "InitDurchgangTable.sql"
+          )
+          installDB(db, sqlScripts)
         } finally {
           db.close()
         }
@@ -140,28 +152,38 @@ object DBService {
     val dbconfigname_key = "X_DB_CONFIG_NAME"
     if (Config.config.hasPath(dbconfigname_key) && Config.config.hasPath(Config.config.getString(dbconfigname_key))) try {
       val dbconfig_key = Config.config.getString(dbconfigname_key)
-      println("load db-config with " + dbconfig_key);
+      logger.info("load db-config with " + dbconfig_key);
       val db = Database.forConfig(dbconfig_key, Config.config)
+      logger.info("db-config with " + dbconfig_key + " loaded");
       val sqlScripts = List(
         "kutu-pg-ddl.sql"
         , "kutu-initialdata.sql"
+        , "AddTimeTable-pg.sql"
+        , "InitTimeTable.sql"
+        , "AddDurchgangTable-pg.sql"
+        , "InitDurchgangTable.sql"
       )
       installDB(db, sqlScripts)
       Config.importDataFrom match {
         case Some(version) =>
+          logger.info("try to migrate from version " + version);
           val scriptname = s"MigratedFrom-$version"
           if (!checkMigrationDone(db, scriptname)) {
+            logger.info("migration from version " + version);
             transferData(databaseLite, db)
             migrationDone(db, scriptname, "from migration")
+            logger.info("migration from version " + version + " done");
           }
         case _ =>
       }
+      logger.info("databe initialization ready with config " + dbconfig_key);
       db
     } catch {
       case e: Exception =>
-        e.printStackTrace()
+        logger.error("Could not initialize database as expected. Try initialize the fallback with sqlite", e);
         databaseLite
     } else {
+      logger.info("No dedicated db-config defined. Initialize the fallback with sqlite");
       databaseLite
     }
   }
@@ -235,7 +257,7 @@ object DBService {
 
   def executeDBScript(script: Seq[String], db: DatabaseDef) = {
     def filterCommentLines(line: String) = {
-      !line.trim().startsWith("-- ")
+      !line.trim().startsWith("--")
     }
 
     def combineMultilineStatement(acc: List[String], line: String) = {
@@ -288,7 +310,7 @@ object DBService {
         case e: Exception =>
           logger.error("Error on executing database setup script", e);
           val errorfile = new File(dbhomedir + s"/$appVersion-$filename.err")
-          errorfile.mkdirs()
+          errorfile.getParentFile.mkdirs()
           val fos = Files.newOutputStream(errorfile.toPath, StandardOpenOption.CREATE, StandardOpenOption.APPEND)
           try {
             fos.write(e.getMessage.getBytes("utf-8"))
@@ -340,6 +362,7 @@ object DBService {
         fos.close
       }
     }
+    sqlScripts
   }
 
   def startDB(alternativDB: Option[DatabaseDef] = None) = {

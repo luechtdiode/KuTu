@@ -37,4 +37,7 @@ abstract trait WettkampfResultMapper extends DisziplinResultMapper {
 
   implicit val getPublishedScoreViewResult = GetResult(r =>
     PublishedScoreView(r.<<, r.<<, r.<<, r.<<, r.<<[java.sql.Date], r.<<))
+
+  implicit def getWettkampfPlanTimeView(implicit cache: scala.collection.mutable.Map[Long, ProgrammView]): GetResult[WettkampfPlanTimeView] = GetResult(r =>
+    WettkampfPlanTimeView(r.<<, r, r, r.<<, r.<<, r.<<, r.<<))
 }

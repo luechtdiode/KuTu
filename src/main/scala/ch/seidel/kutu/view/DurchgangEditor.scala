@@ -4,10 +4,10 @@ import ch.seidel.kutu.domain._
 import scalafx.beans.property._
 
 object DurchgangEditor {
-  def apply(wettkampfid: Long, name: String, initstartriegen: Seq[RiegeEditor]): DurchgangEditor = {
-      new DurchgangEditor(wettkampfid, name,
+  def apply(wettkampfid: Long, durchgang: Durchgang, initstartriegen: Seq[RiegeEditor]): DurchgangEditor = {
+      new DurchgangEditor(wettkampfid, durchgang,
           initstartriegen.filter{riege => riege.initstart match {
-              case Some(s) => name.equalsIgnoreCase(riege.durchgang.value)
+              case Some(s) => durchgang.name.equalsIgnoreCase(riege.durchgang.value)
               case _ => false
             }
           }.map{riege =>
@@ -17,7 +17,8 @@ object DurchgangEditor {
   }
 }
 
-case class DurchgangEditor(wettkampfid: Long, initname: String, initstartriegen: Map[Disziplin, Seq[RiegeEditor]]) {
+case class DurchgangEditor(wettkampfid: Long, durchgang: Durchgang, initstartriegen: Map[Disziplin, Seq[RiegeEditor]]) {
+  val initname = durchgang.name
   val name = StringProperty(initname)
   val anz = IntegerProperty(initstartriegen.map(r => r._2.map(rr => rr.initanz).sum).sum)
   val min = IntegerProperty(if(initstartriegen.size > 0) initstartriegen.map(r => r._2.map(rr => rr.initanz).sum).min else 0)

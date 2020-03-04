@@ -390,6 +390,50 @@ object ResourceExchanger extends KutuService with RiegenBuilder {
       })
     }
 
+    if(collection.contains("plan_times.csv")) {
+      val (planTimesCsv, planTimesHeader) = collection("plan_times.csv")
+      logger.info("importing plan times ...", planTimesHeader)
+      updateOrInsertPlanTimes(planTimesCsv.map(DBService.parseLine).filter(_.size == planTimesHeader.size).map{fields =>
+        val wettkampfid = fields(planTimesHeader("wettkampfId"))
+        val planTimeRaw = WettkampfPlanTimeRaw(
+          id = 0L,
+          wettkampfId = wettkampfInstances.get(wettkampfid + "") match {
+            case Some(w) => w.id
+            case None => wettkampfid
+          },
+          wettkampfDisziplinId = fields(planTimesHeader("wettkampfDisziplinId")),
+          wechsel = fields(planTimesHeader("wechsel")),
+          einturnen = fields(planTimesHeader("einturnen")),
+          uebung = fields(planTimesHeader("uebung")),
+          wertung = fields(planTimesHeader("wertung"))
+        )
+        planTimeRaw
+      })
+    }
+
+    if(collection.contains("durchgaenge.csv")) {
+      val (durchgangCsv, durchgangHeader) = collection("durchgaenge.csv")
+      logger.info("importing durchgaenge ...", durchgangHeader)
+      updateOrInsertDurchgaenge(durchgangCsv.map(DBService.parseLine).filter(_.size == durchgangHeader.size).map{fields =>
+        val wettkampfid = fields(durchgangHeader("wettkampfId"))
+        val durchgang = Durchgang(
+          id = 0L,
+          wettkampfId = wettkampfInstances.get(wettkampfid + "") match {
+            case Some(w) => w.id
+            case None => wettkampfid
+          },
+          title = fields(durchgangHeader("title")),
+          name = fields(durchgangHeader("name")),
+          durchgangtype = fields(durchgangHeader("durchgangtype")),
+          ordinal = fields(durchgangHeader("ordinal")),
+          planStartOffset = fields(durchgangHeader("planStartOffset")),
+          effectiveStartTime = if(fields(durchgangHeader("effectiveStartTime")).length > 0) Some(fields(durchgangHeader("effectiveStartTime"))) else None,
+          effectiveEndTime = if(fields(durchgangHeader("effectiveEndTime")).length > 0) Some(fields(durchgangHeader("effectiveEndTime"))) else None,
+        )
+        durchgang
+      })
+    }
+
     if(collection.contains("scoredefs.csv")) {
       val (scoredefsCsv, scoreDefHeader) = collection("scoredefs.csv")
       logger.info("importing scoredefs ...", scoreDefHeader)
@@ -472,6 +516,22 @@ object ResourceExchanger extends KutuService with RiegenBuilder {
     zip.write((getHeader[RiegeRaw] + "\n").getBytes("utf-8"))
     for (riege <- riegenRaw) {
       zip.write((getValues(riege) + "\n").getBytes("utf-8"))
+    }
+    zip.closeEntry()
+
+    val planTimes = loadWettkampfDisziplinTimes(UUID.fromString(wettkampf.uuid.get))
+    zip.putNextEntry(new ZipEntry("plan_times.csv"));
+    zip.write((getHeader[WettkampfPlanTimeRaw] + "\n").getBytes("utf-8"))
+    for (planTime <- planTimes) {
+      zip.write((getValues(planTime.toWettkampfPlanTimeRaw) + "\n").getBytes("utf-8"))
+    }
+    zip.closeEntry()
+
+    val durchgaenge = selectDurchgaenge(UUID.fromString(wettkampf.uuid.get))
+    zip.putNextEntry(new ZipEntry("durchgaenge.csv"));
+    zip.write((getHeader[Durchgang] + "\n").getBytes("utf-8"))
+    for (durchgang <- durchgaenge) {
+      zip.write((getValues(durchgang) + "\n").getBytes("utf-8"))
     }
     zip.closeEntry()
 
@@ -618,8 +678,10 @@ object ResourceExchanger extends KutuService with RiegenBuilder {
   def exportDurchgaenge(wettkampf: Wettkampf, filename: String) {
     val export = new FileOutputStream(filename);
     val diszipline = listDisziplinesZuWettkampf(wettkampf.id)
+    val durchgaenge = selectDurchgaenge(UUID.fromString(wettkampf.uuid.get)).map(d => d.name -> d).toMap
+
     val sep = ";"
-    export.write(f"""sep=${sep}\nDurchgang${sep}Summe${sep}Min${sep}Max${sep}Durchschn.""".getBytes("ISO-8859-1"))
+    export.write(f"""sep=${sep}\nDurchgang${sep}Summe${sep}Min${sep}Max${sep}Durchschn.${sep}Total-Zeit${sep}Einturn-Zeit${sep}Gerät-Zeit""".getBytes("ISO-8859-1"))
 
     diszipline.foreach { x =>
         export.write(f"${sep}${x.name}${sep}Anz".getBytes("ISO-8859-1"))
@@ -642,10 +704,10 @@ object ResourceExchanger extends KutuService with RiegenBuilder {
       .sortBy(re => re._1)
       .map{res =>
         val (name, rel) = res
-        DurchgangEditor(wettkampf.id, name.getOrElse(""), rel)
+        DurchgangEditor(wettkampf.id, durchgaenge(name.getOrElse("")), rel)
       }
       .foreach { x =>
-        export.write(f"""${x.initname}${sep}${x.anz.value}${sep}${x.min.value}${sep}${x.max.value}${sep}${x.avg.value}""".getBytes("ISO-8859-1"))
+        export.write(f"""${x.initname}${sep}${x.anz.value}${sep}${x.min.value}${sep}${x.max.value}${sep}${x.avg.value}${sep}${toShortDurationFormat(x.durchgang.planTotal)}${sep}${toShortDurationFormat(x.durchgang.planEinturnen)}${sep}${toShortDurationFormat(x.durchgang.planGeraet)}""".getBytes("ISO-8859-1"))
         diszipline.foreach { d =>
           export.write(f"${sep}${x.initstartriegen.getOrElse(d, Seq[RiegeEditor]()).map(r => f"${r.name.value.replace("M,", "Tu,").replace("W,", "Ti,")} (${r.anz.value})").mkString("\"","\n", "\"")}${sep}${x.initstartriegen.getOrElse(d, Seq[RiegeEditor]()).map(r => r.anz.value).sum}".getBytes("ISO-8859-1"))
         }
@@ -659,8 +721,10 @@ object ResourceExchanger extends KutuService with RiegenBuilder {
   def exportSimpleDurchgaenge(wettkampf: Wettkampf, filename: String) {
     val export = new FileOutputStream(filename);
     val diszipline = listDisziplinesZuWettkampf(wettkampf.id)
+    val durchgaenge = selectDurchgaenge(UUID.fromString(wettkampf.uuid.get)).map(d => d.name -> d).toMap
+
     val sep = ";"
-    export.write(f"""sep=${sep}\nDurchgang${sep}Summe${sep}Min${sep}Max""".getBytes("ISO-8859-1"))
+    export.write(f"""sep=${sep}\nDurchgang${sep}Summe${sep}Min${sep}Max${sep}Total-Zeit${sep}Einturn-Zeit${sep}Gerät-Zeit""".getBytes("ISO-8859-1"))
 
     diszipline.foreach { x =>
       export.write(f"${sep}${x.name}${sep}Ti${sep}Tu".getBytes("ISO-8859-1"))
@@ -695,10 +759,10 @@ object ResourceExchanger extends KutuService with RiegenBuilder {
       .sortBy(re => re._1)
       .map{res =>
         val (name, rel) = res
-        DurchgangEditor(wettkampf.id, name.getOrElse(""), rel)
+        DurchgangEditor(wettkampf.id, durchgaenge(name.getOrElse("")), rel)
       }
       .foreach { x =>
-        export.write(f"""${x.initname}${sep}${x.anz.value}${sep}${x.min.value}${sep}${x.max.value}""".getBytes("ISO-8859-1"))
+        export.write(f"""${x.initname}${sep}${x.anz.value}${sep}${x.min.value}${sep}${x.max.value}${sep}${toShortDurationFormat(x.durchgang.planTotal)}${sep}${toShortDurationFormat(x.durchgang.planEinturnen)}${sep}${toShortDurationFormat(x.durchgang.planGeraet)}""".getBytes("ISO-8859-1"))
         val riegen = x.riegenWithMergedClubs()
         val rows = riegen.values.map(_.size).max
         val riegenFields = for {
@@ -717,7 +781,7 @@ object ResourceExchanger extends KutuService with RiegenBuilder {
           .map(r => {
             val tuples = r._2
             val strings = tuples.map(_._2)
-            val fieldsString = strings.mkString("", "", f"\r\n${sep}${sep}${sep}")
+            val fieldsString = strings.mkString("", "", f"\r\n${sep}${sep}${sep}${sep}${sep}${sep}")
             fieldsString
           }) :+ "\r\n"
 

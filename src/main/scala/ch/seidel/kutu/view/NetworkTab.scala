@@ -30,14 +30,22 @@ import scala.concurrent.Await
 import scala.concurrent.duration.Duration
 import scala.util.{Failure, Success}
 
-case class DurchgangState(wettkampfUUID: String, name: String, started: Long, complete: Boolean, finished: Long, geraeteRiegen: List[GeraeteRiege]) {
-  def start(time: Long = 0) = DurchgangState(wettkampfUUID, name, if (started == 0) if (time == 0) System.currentTimeMillis() else time else started, complete, 0, geraeteRiegen)
+case class DurchgangState(wettkampfUUID: String, name: String, complete: Boolean, geraeteRiegen: List[GeraeteRiege], durchgang: Durchgang) {
+  val started: Long = durchgang.effectiveStartTime.map(_.getTime).getOrElse(0)
+  val finished: Long = durchgang.effectiveEndTime.map(_.getTime).getOrElse(0)
+  def start(time: Long = 0) = {
+    val s = if (started == 0) if (time == 0) System.currentTimeMillis() else time else started
+    DurchgangState(wettkampfUUID, name, complete, geraeteRiegen, durchgang.copy(effectiveStartTime = Some(new java.sql.Date(s)), effectiveEndTime = None))
+  }
 
-  def finish(time: Long = 0) = DurchgangState(wettkampfUUID, name, started, complete, if (time == 0) System.currentTimeMillis() else time, geraeteRiegen)
+  def finish(time: Long = 0) = {
+    val s = if (time == 0) System.currentTimeMillis() else time
+    DurchgangState(wettkampfUUID, name, complete, geraeteRiegen, durchgang.copy(effectiveEndTime = Some(new java.sql.Date(s))))
+  }
 
-  def update(newGeraeteRiegen: List[GeraeteRiege]) = {
-    if (newGeraeteRiegen.forall(gr => geraeteRiegen.contains(gr))) this
-    else DurchgangState(wettkampfUUID, name, started, complete, finished, newGeraeteRiegen)
+  def update(newGeraeteRiegen: List[GeraeteRiege], dg: Durchgang) = {
+    if (this.durchgang == dg && newGeraeteRiegen.forall(gr => geraeteRiegen.contains(gr))) this
+    else DurchgangState(wettkampfUUID, name, complete, newGeraeteRiegen, dg)
   }
 
   def ~(other: DurchgangState) = name == other.name && geraeteRiegen != other.geraeteRiegen
@@ -188,10 +196,18 @@ class DurchgangStationView(wettkampf: WettkampfView, service: KutuService, diszi
       cellValueFactory = { x => StringProperty(toDurationFormat(x.value.started, x.value.finished))
       }
     }
+//    , new TableColumn[DurchgangState, String] {
+//      prefWidth = 40
+//      text = "Anzahl"
+//      cellValueFactory = { x => StringProperty(x.value.anz) }
+//    }
     , new TableColumn[DurchgangState, String] {
-      prefWidth = 40
-      text = "Anzahl"
-      cellValueFactory = { x => StringProperty(x.value.anz) }
+      prefWidth = 110
+      text = "Plandauer"
+      cellValueFactory = { x => StringProperty(
+        s"""Tot:     ${toDurationFormat(x.value.durchgang.planTotal)}
+           |Eint.:    ${toDurationFormat(x.value.durchgang.planEinturnen)}
+           |Gerät.: ${toDurationFormat(x.value.durchgang.planGeraet)}""".stripMargin)}
     }
     , new TableColumn[DurchgangState, String] {
       prefWidth = 80
@@ -275,20 +291,24 @@ class NetworkTab(wettkampfmode: BooleanProperty, override val wettkampf: Wettkam
 
   lazy val disziplinlist = service.listDisziplinesZuWettkampf(wettkampf.id)
 
-  def loadDurchgaenge = RiegenBuilder.mapToGeraeteRiegen(service.getAllKandidatenWertungen(UUID.fromString(wettkampf.uuid.get)).toList)
-    .filter(gr => gr.durchgang.nonEmpty)
-    .groupBy(gr => gr.durchgang.get)
-    .map { t =>
-      getDurchgang(wettkampf, t._1)
-        .map(d => d.update(t._2))
-        .getOrElse(DurchgangState(wettkampf.uuid.getOrElse(""), t._1, 0, t._2.forall { riege => riege.erfasst }, 0, t._2))
-    }
-    .toList.sortBy(_.name)
+  def loadDurchgaenge = {
+    val durchgaenge = service.selectDurchgaenge(wettkampf.uuid.map(UUID.fromString(_)).get).map(d => d.name->d).toMap
+    RiegenBuilder.mapToGeraeteRiegen(service.getAllKandidatenWertungen(UUID.fromString(wettkampf.uuid.get)).toList)
+      .filter(gr => gr.durchgang.nonEmpty)
+      .groupBy(gr => gr.durchgang.get)
+      .map { t =>
+        getDurchgang(wettkampf, t._1)
+          .map(d => d.update(t._2, durchgaenge(t._1)))
+          .getOrElse(DurchgangState(wettkampf.uuid.getOrElse(""), t._1, t._2.forall { riege => riege.erfasst }, t._2, durchgaenge(t._1)))
+      }
+      .toList.sortBy(_.name)
+  }
 
   val model = ObservableBuffer[DurchgangState]()
 
   def refreshData(event: Option[KutuAppEvent] = None) {
-    val newList = loadDurchgaenge.map { d =>
+    val oldList = loadDurchgaenge
+    val newList = oldList.map { d =>
       event match {
         case Some(DurchgangStarted(wettkampfUUID: String, durchgang: String, time: Long)) if (d.wettkampfUUID == wettkampfUUID && d.name == durchgang) =>
           startDurchgang(wettkampf, d, time)
@@ -306,12 +326,13 @@ class NetworkTab(wettkampfmode: BooleanProperty, override val wettkampf: Wettkam
     toUpdate.foreach(zd => model.set(zd._1, zd._2.get))
 
     newList.filter(d => !model.exists(p => p.name == d.name)).foreach(d => model += d)
+    if (oldList != newList) service.updateOrInsertDurchgaenge(newList.map(_.durchgang))
     updateButtons
   }
 
   var subscriptions: List[Subscription] = List.empty
 
-  override def release() {
+  override def release {
     subscription.cancel()
     subscriptions.foreach(_.cancel)
     subscriptions = List.empty
@@ -383,8 +404,6 @@ class NetworkTab(wettkampfmode: BooleanProperty, override val wettkampf: Wettkam
         case Some(d: DurchgangState) =>
           KuTuApp.invokeWithBusyIndicator {
             Await.result(KuTuServer.startDurchgang(p, d.name), Duration.Inf)
-            startDurchgang(p, d, 0)
-            refreshData()
           }
         case _ =>
       }
@@ -409,8 +428,6 @@ class NetworkTab(wettkampfmode: BooleanProperty, override val wettkampf: Wettkam
         case Some(d: DurchgangState) =>
           KuTuApp.invokeWithBusyIndicator {
             Await.result(KuTuServer.finishDurchgang(p, d.name), Duration.Inf)
-            finishDurchgang(p, d, 0)
-            refreshData()
           }
         case _ =>
       }
