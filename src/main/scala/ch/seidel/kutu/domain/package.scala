@@ -600,4 +600,6 @@ package object domain {
   case object GetrennteDurchgaenge extends SexDivideRule {
     override val name = "getrennte Durchgänge"
   }
+
+  type OverviewStatTuple = (String, String, Int, Int, Int)
 }

@@ -156,6 +156,29 @@ trait WettkampfService extends DBService
     Await.result(database.run{process.transactionally}, Duration.Inf)
   }
 
+  def listOverviewStats(wettkampfUUID: UUID): List[OverviewStatTuple] = Await.result(
+    database.run {
+      sql"""
+           with s as (
+                select distinct v.name as verein, p.name as programm, p.ord as ord, a.geschlecht, a.id
+                from verein v
+                inner join athlet a on a.verein = v.id
+                inner join wertung w on w.athlet_id = a.id
+                inner join wettkampf wk on wk.id = w.wettkampf_id
+                inner join wettkampfdisziplin wd on wd.id = w.wettkampfdisziplin_id
+                inner join programm p on wd.programm_id = p.id
+                where wk.uuid = ${wettkampfUUID.toString}
+                )
+           select verein, programm, ord,
+                count(case geschlecht when 'M' then 1 else null end) as m,
+                count(case geschlecht when 'W' then 1 else null end) as w
+           from s
+           group by verein, programm, ord
+           order by verein, ord
+         """.as[OverviewStatTuple].withPinnedSession
+        .map(_.toList)
+    }, Duration.Inf)
+
   def listPublishedScores(wettkampfUUID: UUID): Future[List[PublishedScoreView]] = {
     database.run(sql"""select sc.id, sc.title, sc.query, sc.published, sc.published_date, wk.*
            from published_scores sc
