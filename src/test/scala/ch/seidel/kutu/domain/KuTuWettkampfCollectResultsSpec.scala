@@ -4,15 +4,16 @@ import java.util.UUID
 
 import akka.http.scaladsl.model.{ContentTypes, HttpRequest, StatusCodes}
 import akka.stream.scaladsl.Sink
+import ch.seidel.kutu.Config.homedir
 import ch.seidel.kutu.akka._
 import ch.seidel.kutu.base.KuTuBaseSpec
-import ch.seidel.kutu.renderer.RiegenBuilder
+import ch.seidel.kutu.renderer.{PrintUtil, RiegenBuilder, WettkampfOverviewToHtmlRenderer}
 import ch.seidel.kutu.squad.DurchgangBuilder
 
 import scala.concurrent.Await
 import scala.concurrent.duration.Duration
 
-class KuTuWettkampfCollectResultsSpec extends KuTuBaseSpec {
+class KuTuWettkampfCollectResultsSpec extends KuTuBaseSpec with WettkampfOverviewToHtmlRenderer {
   val testwettkampf = insertGeTuWettkampf("TestGetuWK", 4)
   val clientId = "testclientid"
 
@@ -50,6 +51,11 @@ class KuTuWettkampfCollectResultsSpec extends KuTuBaseSpec {
         assert(entityAs[String].contains("\"titel\":\"TestGetuWK\""))
       }
 
+    }
+
+    "render overview" in {
+      val logofile = PrintUtil.locateLogoFile(new java.io.File(homedir + "/" + testwettkampf.easyprint.replace(" ", "_")))
+      val document = toHTML(testwettkampf.toView(readProgramm(testwettkampf.programmId)), listOverviewStats(UUID.fromString(testwettkampf.uuid.get)), logofile)
     }
 
     "collect results" in {

@@ -133,9 +133,31 @@ trait WettkampfOverviewToHtmlRenderer {
   """
 
   private def blatt(wettkampf: WettkampfView, programme: Seq[(String, Int, Int, Int)], vereinRows: List[(String, Map[String, (Int, Int)], Int, Int)], logo: File) = {
+    val programHeader1 = programme.map(p => p._1)
+      .mkString("<th class='blockstart' colspan='2'>", "</th><th class='blockstart' colspan='2'>", "</th>")
+    val programHeader2 = programme.map(_ => "Ti</th><th>Tu")
+      .mkString("<th class='blockstart'>", "</th><th class='blockstart'>", "</th>")
     val rows = vereinRows.map(v =>
-      s"""<tr><td class='data'>${v._1}</td>${programme.map(p => s"""${v._2.getOrElse(p._1, (0,0))._2}</td><td class='valuedata'>${v._2.getOrElse(p._1, (0,0))._1}</td>""").mkString("<td class='valuedata blockstart'>", "</td><td class='valuedata blockstart'>", "</td>")}<td class='valuedata blockstart'>${v._4}</td><td class='valuedata'>${v._3}</td><td class='valuedata'>${v._3 + v._4}</td></tr>"""
+      s"""<tr><td class='data'>${v._1}</td>${
+        programme.map(p =>
+          s"""${
+            v._2.getOrElse(p._1, (0,0))._2
+          }</td><td class='valuedata'>${
+            v._2.getOrElse(p._1, (0,0))._1
+          }</td>"""
+        ).mkString("<td class='valuedata blockstart'>", "</td><td class='valuedata blockstart'>", "</td>")
+      }<td class='valuedata blockstart'>${v._4}</td><td class='valuedata'>${v._3}</td><td class='valuedata'>${v._3 + v._4}</td></tr>"""
     ).mkString("")
+
+    val totalDetails = programme.map(p => s"${p._4}</td><td class='valuedata'>${p._3}")
+      .mkString("<td class='valuedata blockstart'>", "</td><td class='valuedata blockstart'>", "</td>")
+
+    val totalTuTiDetails = programme.map(p => s"${p._3 + p._4}")
+      .mkString("<td class='tuti blockstart' colspan='2'>", "</td><td class='tuti blockstart' colspan='2'>", "</td>")
+
+    val tiSum = programme.map(_._4).sum
+    val tuSum = programme.map(_._3).sum
+    val totSum = tiSum + tuSum
 
     val logoHtml = (if (logo.exists) s"""<img class=logo src="${logo.imageSrcForWebEngine}" title="Logo"/>""" else s"")
     val auszSchwelle = (if (wettkampf.auszeichnung > 100) {
@@ -153,10 +175,41 @@ trait WettkampfOverviewToHtmlRenderer {
       (p._1, if (p._4 > 0) 1 else 0, if (p._4 > 1) 1 else 0, if (p._4 > 2) 1 else 0, Math.max(Math.floor(p._4*auszSchwelle-3), 0).toInt,
              if (p._3 > 0) 1 else 0, if (p._3 > 1) 1 else 0, if (p._3 > 2) 1 else 0, Math.max(Math.floor(p._3*auszSchwelle-3), 0).toInt)
     }
+    val auszHint = if (wettkampf.auszeichnungendnote.compare(BigDecimal.valueOf(0)) != 0)
+      s"<em>Auszeichnungs-Mindes-Notenschnitt: ${wettkampf.auszeichnungendnote}</em>"
+    else
+      s"<em>Auszeichnungs-Schwelle: ${auszeichnung}</em>"
+
+    val medallienHeader1 = medallienbedarf.map(p => p._1)
+      .mkString("<th class='blockstart' colspan='2'>", "</th><th class='blockstart' colspan='2'>", "</th>")
+
+    val medallienHeader2 = medallienbedarf.map(p => "Ti</th><th>Tu")
+      .mkString("<th class='blockstart'>", "</th><th class='blockstart'>", "</th>")
+
+    val goldDetails = medallienbedarf.map(p => s"${p._2}</td><td class='valuedata'>${p._6}")
+      .mkString("<td class='blockstart valuedata'>", "</td><td class='blockstart valuedata'>", "</td>")
+
+    val silverDetails = medallienbedarf.map(p => s"${p._3}</td><td class='valuedata'>${p._7}")
+      .mkString("<td class='blockstart valuedata'>", "</td><td class='blockstart valuedata'>", "</td>")
+
+    val bronzeDetails = medallienbedarf.map(p => s"${p._4}</td><td class='valuedata'>${p._8}")
+      .mkString("<td class='blockstart valuedata'>", "</td><td class='blockstart valuedata'>", "</td>")
+
+    val auszDetails = medallienbedarf.map(p => s"${p._5}</td><td class='valuedata'>${p._9}")
+      .mkString("<td class='blockstart valuedata'>", "</td><td class='blockstart valuedata'>", "</td>")
+
     val goldSum = medallienbedarf.map(p => p._2 + p._6).sum
     val silverSum = medallienbedarf.map(p => p._3 + p._7).sum
     val bronzeSum = medallienbedarf.map(p => p._4 + p._8).sum
     val auszSum = medallienbedarf.map(p => p._5 + p._9).sum
+
+    val medalrows = s"""
+    <tr><td class='data'>Goldmedallie</td>${goldDetails}<td class='blockstart valuedata'>${goldSum}</td></tr>
+    <tr><td class='data'>Silbermedallie</td>${silverDetails}<td class='blockstart valuedata'>${silverSum}</td></tr>
+    <tr><td class='data'>Bronzemedallie</td>${bronzeDetails}<td class='blockstart valuedata'>${bronzeSum}</td></tr>
+    <tr><td class='data'>Ab 4. Rang</td>${auszDetails}<td class='blockstart valuedata'>${auszSum}</td></tr>
+    """
+
     s"""<div class=blatt>
       <div class=headline>
         $logoHtml
@@ -166,30 +219,28 @@ trait WettkampfOverviewToHtmlRenderer {
       <div class="showborder">
         <table width="100%">
           <thead>
-            <tr class='head'><th>&nbsp;</th>${programme.map(p => s"""${p._1}""").mkString("<th class='blockstart' colspan='2'>", "</th><th class='blockstart' colspan='2'>", "</th>")}<th class='blockstart' colspan="3">Total</th></tr>
-            <tr class='head'><th>Verein</th>${programme.map(p => s"""Ti</th><th>Tu""").mkString("<th class='blockstart'>", "</th><th class='blockstart'>", "</th>")}<th class='blockstart'>Ti</th><th>Tu</th><th>Total</th></tr>
+            <tr class='head'><th>&nbsp;</th>${programHeader1}<th class='blockstart' colspan="3">Total</th></tr>
+            <tr class='head'><th>Verein</th>${programHeader2}<th class='blockstart'>Ti</th><th>Tu</th><th>Total</th></tr>
           </thead>
           <tbody>
           ${rows}
           </tbody>
           <tfoot>
-          <tr><td class="data">Total</td>${programme.map(p => s"""${p._4}</td><td class='valuedata'>${p._3}""").mkString("<td class='valuedata blockstart'>", "</td><td class='valuedata blockstart'>", "</td>")}<td class='valuedata blockstart'>${programme.map(_._4).sum}</td><td class="valuedata">${programme.map(_._3).sum}</td><td class="valuedata">${programme.map(s => s._3 + s._4).sum}</td></tr>
-          <tr><td class="data">Total Ti & Tu</td>${programme.map(p => s"""${p._3 + p._4}""").mkString("<td class='tuti blockstart' colspan='2'>", "</td><td class='tuti blockstart' colspan='2'>", "</td>")}<td class='tuti blockstart' colspan='3'>&nbsp;</td></tr>
+          <tr><td class="data">Total</td>${totalDetails}<td class='valuedata blockstart'>${tiSum}</td><td class="valuedata">${tuSum}</td><td class="valuedata">${totSum}</td></tr>
+          <tr><td class="data">Total Ti & Tu</td>${totalTuTiDetails}<td class='tuti blockstart' colspan='3'>&nbsp;</td></tr>
           </tfoot>
         </table>
       </div>
       <h2>Medallien-Bedarf</h2>
-        ${if (wettkampf.auszeichnungendnote.compare(BigDecimal.valueOf(0)) != 0) s"<em>Auszeichnungs-Mindes-Notenschnitt: ${wettkampf.auszeichnungendnote}</em>" else s"<em>Auszeichnungs-Schwelle: ${auszeichnung}</em>"}      <div class="showborder">
+        ${auszHint}
+        <div class="showborder">
         <table width="100%">
           <thead>
-            <tr class='head'><th>&nbsp;</th>${medallienbedarf.map(p => s"""${p._1}""").mkString("<th class='blockstart' colspan='2'>", "</th><th class='blockstart' colspan='2'>", "</th>")}<th class='blockstart'>&nbsp;</th></tr>
-            <tr class='head'><th>Auszeichnung</th>${medallienbedarf.map(p => s"""Ti</th><th>Tu""").mkString("<th class='blockstart'>", "</th><th class='blockstart'>", "</th>")}<th class='blockstart'>Total</th></tr>
+            <tr class='head'><th>&nbsp;</th>${medallienHeader1}<th class='blockstart'>&nbsp;</th></tr>
+            <tr class='head'><th>Auszeichnung</th>${medallienHeader2}<th class='blockstart'>Total</th></tr>
           </thead>
             <tbody>
-              <tr><td class='data'>Goldmedallie</td>${medallienbedarf.map(p => s"""${p._2}</td><td class='valuedata'>${p._6}""").mkString("<td class='blockstart valuedata'>", "</td><td class='blockstart valuedata'>", "</td>")}<td class='blockstart valuedata'>${goldSum}</td></tr>
-              <tr><td class='data'>Silberdallie</td>${medallienbedarf.map(p => s"""${p._3}</td><td class='valuedata'>${p._7}""").mkString("<td class='blockstart valuedata'>", "</td><td class='blockstart valuedata'>", "</td>")}<td class='blockstart valuedata'>${silverSum}</td></tr>
-              <tr><td class='data'>Bronzemedallie</td>${medallienbedarf.map(p => s"""${p._4}</td><td class='valuedata'>${p._8}""").mkString("<td class='blockstart valuedata'>", "</td><td class='blockstart valuedata'>", "</td>")}<td class='blockstart valuedata'>${bronzeSum}</td></tr>
-              <tr><td class='data'>Ab 4. Rang</td>${medallienbedarf.map(p => s"""${p._5}</td><td class='valuedata'>${p._9}""").mkString("<td class='blockstart valuedata'>", "</td><td class='blockstart valuedata'>", "</td>")}<td class='blockstart valuedata'>${auszSum}</td></tr>
+            $medalrows
             </tbody>
         </table>
       </div><br>
