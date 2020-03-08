@@ -25,8 +25,11 @@ import scalafx.geometry._
 import scalafx.print.PageOrientation
 import scalafx.scene.Node
 import scalafx.scene.control.SelectionMode.sfxEnum2jfx
-import scalafx.scene.control.TableColumn.{CellEditEvent, sfxTableColumn2jfx}
+import scalafx.scene.control.TableColumn.{sfxTableColumn2jfx, CellEditEvent => TableCellEditEvent}
+import scalafx.scene.control.TreeTableColumn.{CellEditEvent, sfxTreeTableColumn2jfx}
 import scalafx.scene.control.TableView.sfxTableView2jfx
+import scalafx.scene.control.TreeTableView.sfxTreeTableView2jfx
+import scalafx.scene.control.TreeTablePosition.sfxTreeTablePosition2jfx
 import scalafx.scene.control._
 import scalafx.scene.control.cell.{CheckBoxListCell, CheckBoxTableCell, ComboBoxTableCell}
 import scalafx.scene.image.{Image, ImageView, WritableImage}
@@ -73,76 +76,111 @@ trait DurchgangTCAccess extends TCAccess[DurchgangEditor, Seq[RiegeEditor],Diszi
 }
 class DurchgangJFSCTableColumn[T](val index: Disziplin) extends jfxsc.TableColumn[DurchgangEditor, T] with DurchgangTCAccess {
   override def getIndex: Disziplin = index
-  override def valueEditor(selectedRow: DurchgangEditor): Seq[RiegeEditor] = selectedRow.initstartriegen(index)
+  override def valueEditor(selectedRow: DurchgangEditor): Seq[RiegeEditor] = selectedRow.valueEditor(index)
 }
 class DurchgangTableColumn[T](val index: Disziplin) extends TableColumn[DurchgangEditor, T] with DurchgangTCAccess {
   override val delegate: jfxsc.TableColumn[DurchgangEditor, T] = new DurchgangJFSCTableColumn[T](index)
   override def getIndex: Disziplin = index
-  override def valueEditor(selectedRow: DurchgangEditor): Seq[RiegeEditor] = selectedRow.initstartriegen(index)
+  override def valueEditor(selectedRow: DurchgangEditor): Seq[RiegeEditor] = selectedRow.valueEditor(index)
+}
+class DurchgangJFSCTreeTableColumn[T](val index: Disziplin) extends jfxsc.TreeTableColumn[DurchgangEditor, T] with DurchgangTCAccess {
+  override def getIndex: Disziplin = index
+  override def valueEditor(selectedRow: DurchgangEditor): Seq[RiegeEditor] = selectedRow.valueEditor(index)
+}
+class DurchgangTreeTableColumn[T](val index: Disziplin) extends TreeTableColumn[DurchgangEditor, T] with DurchgangTCAccess {
+  override val delegate: jfxsc.TreeTableColumn[DurchgangEditor, T] = new DurchgangJFSCTreeTableColumn[T](index)
+  override def getIndex: Disziplin = index
+  override def valueEditor(selectedRow: DurchgangEditor): Seq[RiegeEditor] = selectedRow.valueEditor(index)
 }
 
-class DurchgangView(wettkampf: WettkampfView, service: KutuService, disziplinlist: () => Seq[Disziplin], durchgangModel: ObservableBuffer[DurchgangEditor]) extends TableView[DurchgangEditor] {
+class DurchgangView(wettkampf: WettkampfView, service: KutuService, disziplinlist: () => Seq[Disziplin], durchgangModel: ObservableBuffer[TreeItem[DurchgangEditor]]) extends TreeTableView[DurchgangEditor] {
     
   id = "durchgang-table"
-  items = durchgangModel
+//  items = durchgangModel
+  showRoot = false
+  tableMenuButtonVisible = true
+
+  private val rootEditor = DurchgangEditor(wettkampf.id, Durchgang(), List.empty)
+
+  root = new TreeItem[DurchgangEditor](rootEditor) {
+    durchgangModel.onChange{
+      children = durchgangModel
+    }
+    styleClass.add("parentrow")
+    expanded = true
+  }
 
   columns ++= Seq(
-    new TableColumn[DurchgangEditor, String] {
+    new TreeTableColumn[DurchgangEditor, String] {
       prefWidth = 130
       text = "Durchgang"
-      cellValueFactory = { x => x.value.name }
+      cellValueFactory = { x => x.value.getValue.cellvalue }
+//      cellFactory = { _ =>
+//        new TableCell[DurchgangEditor, String] {
+//          val l = new WebView()
+//          graphic = l
+//          item.onChange { (_, _, newValue) =>
+//            l.engine.loadContent("")
+//            l.autosize()
+//            l.setPrefHeight(height.value)
+//            l.engine.loadContent(newValue)
+//            val webPage: WebPage = com.sun.javafx.webkit.Accessor.getPageFor(l.engine)
+//            webPage.setBackgroundColor(0)
+//          }
+//        }
+//      }
     }
-    , new TableColumn[DurchgangEditor, String] {
+    , new TreeTableColumn[DurchgangEditor, String] {
       prefWidth = 40
       text = "Sum"
-      cellValueFactory = { x => x.value.anz.asInstanceOf[ObservableValue[String,String]]}
+      cellValueFactory = { x => x.value.getValue.anz.asInstanceOf[ObservableValue[String,String]]}
     }
-    , new TableColumn[DurchgangEditor, String] {
+    , new TreeTableColumn[DurchgangEditor, String] {
       prefWidth = 40
       text = "Min"
-      cellValueFactory = { x => x.value.min.asInstanceOf[ObservableValue[String,String]]}
+      cellValueFactory = { x => x.value.getValue.min.asInstanceOf[ObservableValue[String,String]]}
     }
-    , new TableColumn[DurchgangEditor, String] {
+    , new TreeTableColumn[DurchgangEditor, String] {
       prefWidth = 40
       text = "Max"
-      cellValueFactory = { x => x.value.max.asInstanceOf[ObservableValue[String,String]]}
+      cellValueFactory = { x => x.value.getValue.max.asInstanceOf[ObservableValue[String,String]]}
     }
-    , new TableColumn[DurchgangEditor, String] {
+    , new TreeTableColumn[DurchgangEditor, String] {
       prefWidth = 30
       text = "ø"
-      cellValueFactory = { x => x.value.avg.asInstanceOf[ObservableValue[String,String]]}
+      cellValueFactory = { x => x.value.getValue.avg.asInstanceOf[ObservableValue[String,String]]}
     }
-    , new TableColumn[DurchgangEditor, String] {
+    , new TreeTableColumn[DurchgangEditor, String] {
       prefWidth = 110
       text = "Zeitbedarf"
       cellValueFactory = { x => StringProperty(
-        s"""Tot:     ${toDurationFormat(x.value.durchgang.planTotal)}
-           |Eint.:    ${toDurationFormat(x.value.durchgang.planEinturnen)}
-           |Gerät.: ${toDurationFormat(x.value.durchgang.planGeraet)}""".stripMargin)}
+        s"""Tot:     ${toDurationFormat(x.value.getValue.durchgang.planTotal)}
+           |Eint.:    ${toDurationFormat(x.value.getValue.durchgang.planEinturnen)}
+           |Gerät.: ${toDurationFormat(x.value.getValue.durchgang.planGeraet)}""".stripMargin)}
     }
   )
 
   columns ++= disziplinlist().map {disziplin =>
-    val dc: jfxsc.TableColumn[DurchgangEditor, String] = new TableColumn[DurchgangEditor, String] {
+    val dc: jfxsc.TreeTableColumn[DurchgangEditor, String] = new TreeTableColumn[DurchgangEditor, String] {
       text = disziplin.name
       prefWidth = 230
       columns ++= Seq(
-          new DurchgangTableColumn[String](disziplin) {
+          new DurchgangTreeTableColumn[String](disziplin) {
             text = "Riege"
             prefWidth = 190
             cellValueFactory = { x =>
-              x.value.initstartriegen.get(disziplin) match {
-                case Some(re) => StringProperty(re.map(rs => s"${rs.name.value} (${rs.anz.value})").mkString("\n"))
+              x.value.getValue.valueEditor(disziplin) match {
+                case re: Seq[RiegeEditor] if (re.nonEmpty) => StringProperty(re.map(rs => s"${rs.name.value} (${rs.anz.value})").mkString("\n"))
                 case _ => StringProperty("")
               }
             }
           }
-          , new TableColumn[DurchgangEditor, String] {
+          , new TreeTableColumn[DurchgangEditor, String] {
             text = "Anz"
             prefWidth = 40
             cellValueFactory = { x =>
-              x.value.initstartriegen.get(disziplin) match {
-                case Some(re) => StringProperty(re.map(rs => rs.anz.value).sum.toString)
+              x.value.getValue.valueEditor(disziplin) match {
+                case re: Seq[RiegeEditor] if (re.nonEmpty) => StringProperty(re.map(rs => rs.anz.value).sum.toString)
                 case _ => StringProperty("0")
               }
             }
@@ -195,7 +233,7 @@ class RiegenFilterView(isEditable: BooleanProperty, wettkampf: WettkampfView, se
         isEditable
       )) choose true otherwise false
       cellFactory = { _ => new AutoCommitTextFieldTableCell[RiegeEditor, String](new DefaultStringConverter()) }
-      onEditCommit = (evt: CellEditEvent[RiegeEditor, String]) => {
+      onEditCommit = (evt: TableCellEditEvent[RiegeEditor, String]) => {
         val editor = evt.rowValue
         editor.name.value = evt.newValue
         val updated = RiegeEditor(
@@ -247,7 +285,7 @@ class RiegenFilterView(isEditable: BooleanProperty, wettkampf: WettkampfView, se
       },
         isEditable
       )) choose true otherwise false
-      onEditCommit = (evt: CellEditEvent[RiegeEditor, String]) => {
+      onEditCommit = (evt: TableCellEditEvent[RiegeEditor, String]) => {
         val editor = evt.rowValue
         editor.durchgang.value = evt.newValue
         val updated = RiegeEditor(
@@ -278,7 +316,7 @@ class RiegenFilterView(isEditable: BooleanProperty, wettkampf: WettkampfView, se
       },
         isEditable
       )) choose true otherwise false
-      onEditCommit = (evt: CellEditEvent[RiegeEditor, Disziplin]) => {
+      onEditCommit = (evt: TableCellEditEvent[RiegeEditor, Disziplin]) => {
         val editor = evt.rowValue
         editor.start.value = evt.newValue
         val updated = RiegeEditor(
@@ -300,7 +338,7 @@ class RiegenFilterView(isEditable: BooleanProperty, wettkampf: WettkampfView, se
 class RiegenTab(override val wettkampf: WettkampfView, override val service: KutuService) extends Tab with TabWithService with ExportFunctions {
   val programmText = wettkampf.programm.id match {case 20 => "Kategorie" case _ => "Programm"}
   val riegenFilterModel = ObservableBuffer[RiegeEditor]()
-  val durchgangModel = ObservableBuffer[DurchgangEditor]()
+  val durchgangModel = ObservableBuffer[TreeItem[DurchgangEditor]]()
   lazy val disziplinlist = service.listDisziplinesZuWettkampf(wettkampf.id)
 
   closable = false
@@ -316,14 +354,29 @@ class RiegenTab(override val wettkampf: WettkampfView, override val service: Kut
   }
 
   def reloadDurchgaenge() {
+    val expandedStates = durchgangModel
+        .filter(_.isExpanded)
+        .map(_.value.value.title.value)
+        .toSet
     durchgangModel.clear()
     val durchgaenge = service.selectDurchgaenge(wettkampf.uuid.map(UUID.fromString(_)).get).map(d => d.name->d).toMap
-    riegenFilterModel.groupBy(re => re.initdurchgang)
+    val durchgangEditors = riegenFilterModel.groupBy(re => re.initdurchgang)
       .filter(_._1 != None)
-      .toList.sortBy(_._1).map{res =>
-      val (durchgang, rel) = res
-      DurchgangEditor(wettkampf.id, durchgaenge.getOrElse(durchgang.get, Durchgang(wettkampf.id, durchgang.get)), rel)
-    }.foreach {durchgangModel.add(_)}
+      .toList.sortBy(_._1)
+      .map{res =>
+        val (durchgang, rel) = res
+        DurchgangEditor(wettkampf.id, durchgaenge.getOrElse(durchgang.get, Durchgang(wettkampf.id, durchgang.get)), rel)
+      }
+    for (group <- DurchgangEditor(durchgangEditors)) {
+      durchgangModel.add(new TreeItem[DurchgangEditor](group) {
+        for (d <- group.aggregates) {
+          children.add(new TreeItem[DurchgangEditor](d))
+        }
+
+//        styleableParent.styleClass.add("parentrow")
+        expanded = expandedStates.contains(group.title.value)
+      })
+    }
   }
 
   def reloadData() {
@@ -428,7 +481,7 @@ class RiegenTab(override val wettkampf: WettkampfView, override val service: Kut
     }
     def makeDurchgangActiveBinding = {
       Bindings.createBooleanBinding(() => {
-        ! (durchgangView.selectionModel.value.selectedItem.isNotNull().value && durchgangTab.selectedProperty.value)
+        ! (!durchgangView.selectionModel.value.getSelectedCells.isEmpty && durchgangTab.selectedProperty.value)
       },
         durchgangView.selectionModel.value.selectedItemProperty().isNull(),
         durchgangTab.selectedProperty
@@ -511,7 +564,7 @@ class RiegenTab(override val wettkampf: WettkampfView, override val service: Kut
 
     val btnRegenerateDurchgang = new Button("Durchgang neu einteilen ...") {
       onAction = (ae: ActionEvent) => {
-        val actSelection = durchgangView.selectionModel().selectedItems.map(d => d.initname)
+        val actSelection = durchgangView.selectionModel().getSelectedCells.map(d => d.getTreeItem.getValue.durchgang.name)
         if(actSelection.nonEmpty) {
           doRegenerateDurchgang(actSelection.toSet)(ae)
         }
@@ -556,6 +609,40 @@ class RiegenTab(override val wettkampf: WettkampfView, override val service: Kut
 			  })
       }
       ret.setDisable(durchgang.size < 2)
+      ret
+    }
+
+    def makeAggregateDurchganMenu(durchgang: Set[String]): MenuItem = {
+      val ret = KuTuApp.makeMenuAction("Durchgänge in Gruppe zusammenfassen ...") {(caption, action) =>
+        implicit val e = action
+        val allDurchgaenge = durchgangModel.flatMap(_.children)
+        val selectedDurchgaenge = allDurchgaenge.map(_.getValue.durchgang).filter {case d: Durchgang => durchgang.contains(d.name)}
+        val txtNeuerDurchgangName = new TextField() {
+          text = selectedDurchgaenge.head.title
+        }
+
+        PageDisplayer.showInDialog(text.value, new DisplayablePage() {
+          def getPage: Node = {
+            new VBox {
+              children = Seq(new Label("Name der Durchgang-Gruppe: "), txtNeuerDurchgangName)
+            }
+          }
+        }, new Button("OK") {
+          onAction = (event: ActionEvent) => {
+            if (!txtNeuerDurchgangName.text.value.isEmpty) {
+              KuTuApp.invokeWithBusyIndicator {
+                val toStore = allDurchgaenge.map(_.getValue.durchgang)
+                    .map {case d: Durchgang => if (durchgang.contains(d.name)) d.copy(title = txtNeuerDurchgangName.text.value) else d}
+                service.updateOrInsertDurchgaenge(toStore)
+                reloadData()
+                riegenFilterView.sort
+                durchgangView.sort
+              }
+            }
+          }
+        })
+      }
+      ret.setDisable(durchgang.size < 1)
       ret
     }
 
@@ -609,8 +696,8 @@ class RiegenTab(override val wettkampf: WettkampfView, override val service: Kut
     }
     def toGeraetName(id: Long) = disziplinlist.find(p => p.id == id).map(_.name).getOrElse("")
 
-    def makeMoveDurchganMenu(durchgang: DurchgangEditor, cells: List[TablePosition[_, _]]): Menu = {
-      val selectedGerate = toGeraetId(cells.map(c => c.column))
+    def makeMoveDurchganMenu(durchgang: DurchgangEditor, cells: List[jfxsc.TreeTablePosition[DurchgangEditor, _]]): Menu = {
+      val selectedGerate = toGeraetId(cells.map(c => c.getColumn))
       new Menu("In anderen Durchgang verschieben") {
         durchgang.initstartriegen
         .filter(d => selectedGerate.isEmpty || selectedGerate.contains(d._1.id))
@@ -618,9 +705,9 @@ class RiegenTab(override val wettkampf: WettkampfView, override val service: Kut
         .toList.sortBy(r => r.initanz)
         .foreach{riege =>
           items += new Menu(riege.initname + " ("+riege.initanz+")") {
-            durchgangModel.filter(d => !d.equals(durchgang)).foreach{durchgang =>
-        	    items += KuTuApp.makeMenuAction(durchgang.initname) {(caption, action) =>
-        	      val toSave = riege.copy(initdurchgang = Some(durchgang.initname))
+            durchgangModel.map(_.getValue).filter(d => !d.equals(durchgang)).foreach{durchgang =>
+        	    items += KuTuApp.makeMenuAction(durchgang.durchgang.name) {(caption, action) =>
+        	      val toSave = riege.copy(initdurchgang = Some(durchgang.durchgang.name))
   						  KuTuApp.invokeWithBusyIndicator {
         				  service.updateOrinsertRiege(toSave.commit)
         				  reloadData()
@@ -634,8 +721,8 @@ class RiegenTab(override val wettkampf: WettkampfView, override val service: Kut
         disable.value = items.size() == 0
       }
     }
-    def makeMoveStartgeraetMenu(durchgang: DurchgangEditor, cells: List[TablePosition[_, _]]): Menu = {
-      val selectedGerate = toGeraetId(cells.map(c => c.column))
+    def makeMoveStartgeraetMenu(durchgang: DurchgangEditor, cells: List[jfxsc.TreeTablePosition[DurchgangEditor, _]]): Menu = {
+      val selectedGerate = toGeraetId(cells.map(c => c.getColumn))
       new Menu("Auf anderes Startgerät verschieben") {
         durchgang.initstartriegen.filter(d => selectedGerate.isEmpty || selectedGerate.contains(d._1.id)).flatMap(_._2).toList.sortBy(r => r.initanz).foreach{riege =>
           val von = "Von " + riege.initstart.map(d => d.name + " (" + durchgang.initstartriegen.get(d).map(r => r.map(re => re.initanz).sum).getOrElse(0) + ")").getOrElse("?") + " auf "
@@ -658,13 +745,13 @@ class RiegenTab(override val wettkampf: WettkampfView, override val service: Kut
         disable.value = items.size() == 0
       }
     }
-    def makeSetEmptyRiegeMenu(durchgang: DurchgangEditor, cells: List[TablePosition[_, _]]): MenuItem = {
-      val selectedGerate = toGeraetId(cells.map(c => c.column))
+    def makeSetEmptyRiegeMenu(durchgang: DurchgangEditor, cells: List[jfxsc.TreeTablePosition[DurchgangEditor, _]]): MenuItem = {
+      val selectedGerate = toGeraetId(cells.map(c => c.getColumn))
       val menu = KuTuApp.makeMenuAction("Mit leerer Riege besetzen") {(caption, action) =>
         KuTuApp.invokeWithBusyIndicator {
           service.updateOrinsertRiege(RiegeRaw(wettkampf.id,
-            s"Leere Riege ${durchgang.initname}/${toGeraetName(selectedGerate.headOption.getOrElse(0))}",
-            Some(durchgang.initname), selectedGerate.headOption))
+            s"Leere Riege ${durchgang.durchgang.name}/${toGeraetName(selectedGerate.headOption.getOrElse(0))}",
+            Some(durchgang.durchgang.name), selectedGerate.headOption))
           reloadData()
           riegenFilterView.sort
           durchgangView.sort
@@ -676,7 +763,7 @@ class RiegenTab(override val wettkampf: WettkampfView, override val service: Kut
     def makeRenameDurchgangMenu: MenuItem = {
       val m = KuTuApp.makeMenuAction("Durchgang umbenennen ...") {(caption, action) =>
       			  implicit val impevent = action
-			  val selectedDurchgang = durchgangView.selectionModel.value.selectedItem.value.initname
+			  val selectedDurchgang = durchgangView.selectionModel.value.getSelectedCells.head.getTreeItem.getValue.durchgang.name
 			  val txtDurchgangName = new TextField {
     		  text.value = selectedDurchgang
     	  }
@@ -701,7 +788,7 @@ class RiegenTab(override val wettkampf: WettkampfView, override val service: Kut
       	  }
       	)
       }
-      m.disable = durchgangView.selectionModel.value.selectedItems.size != 1
+      m.disable = durchgangView.selectionModel.value.getSelectedItems.size() != 1
       m
     }
 
@@ -713,9 +800,9 @@ class RiegenTab(override val wettkampf: WettkampfView, override val service: Kut
     durchgangView.selectionModel.value.setCellSelectionEnabled(true)
     if (!wettkampf.toWettkampf.isReadonly(homedir, remoteHostOrigin)) {
       durchgangView.setOnDragDetected((event) => {
-        val focusedCells = durchgangView.selectionModel.value.selectedCells.toList
-        val selectedGerate = toGeraetId(focusedCells.map(c => c.column))
-        val actDurchgangSelection = focusedCells.map(c => durchgangView.items.value.get(c.row)).toSet.filter(_ != null)
+        val focusedCells = durchgangView.selectionModel.value.getSelectedCells.toList
+        val selectedGerate = toGeraetId(focusedCells.map(c => c.getColumn))
+        val actDurchgangSelection = focusedCells.map(c => c.getTreeItem.getValue).toSet.filter(_ != null)
         if (actDurchgangSelection.size == 1 && selectedGerate.size == 1) {
           val startgeraet = selectedGerate.head
           val durchgangEditor = actDurchgangSelection.head
@@ -739,7 +826,7 @@ class RiegenTab(override val wettkampf: WettkampfView, override val service: Kut
             val db = durchgangView.startDragAndDrop(TransferMode.Move)
             db.setDragView(croppedImage)
             val content = new ClipboardContent()
-            content.put(DurchgangView.DRAG_RIEGE, (durchgangEditor.initname, hoveredText, startgeraet))
+            content.put(DurchgangView.DRAG_RIEGE, (durchgangEditor.durchgang.name, hoveredText, startgeraet))
             content.putString(hoveredText)
             db.setContent(content)
 
@@ -753,12 +840,12 @@ class RiegenTab(override val wettkampf: WettkampfView, override val service: Kut
         if (db.hasContent(DurchgangView.DRAG_RIEGE)) {
           val (selecteddurchgang, selectedriege, selectedGeraet) = db.getContent(DurchgangView.DRAG_RIEGE).asInstanceOf[(String, String, Long)]
           val fromDisziplin = disziplinlist.filter(_.id == selectedGeraet).head
-          val dg = durchgangView.items.value.toList.filter(dge => dge.initname == selecteddurchgang).head
-          dg.initstartriegen.filter(d => d._1.id == selectedGeraet).flatMap(_._2).filter(r => r.initname == selectedriege).headOption match {
+          val dg = durchgangView.root.value.getChildren.toList.flatMap(d => d +: d.getChildren).map(_.getValue).filter(dge =>  dge.durchgang.name == selecteddurchgang).head
+          dg.initstartriegen.filter(d => d._1.id == selectedGeraet).flatMap(_._2).filter(r => r.name.value == selectedriege).headOption match {
             case Some(riege) =>
-              def findTableCell(node: Object): Option[jfxsc.TableCell[DurchgangEditor, _]] =
-                if (node.isInstanceOf[jfxsc.TableCell[_, _]]) {
-                  Some(node.asInstanceOf[jfxsc.TableCell[DurchgangEditor, _]])
+              def findTableCell(node: Object): Option[jfxsc.TreeTableCell[DurchgangEditor, _]] =
+                if (node.isInstanceOf[jfxsc.TreeTableCell[_, _]]) {
+                  Some(node.asInstanceOf[jfxsc.TreeTableCell[DurchgangEditor, _]])
                 } else if (node.isInstanceOf[Text]) {
                   findTableCell(node.asInstanceOf[Text].getParent)
                 } else {
@@ -766,13 +853,13 @@ class RiegenTab(override val wettkampf: WettkampfView, override val service: Kut
                 }
 
               findTableCell(event.getPickResult.getIntersectedNode) match {
-                case Some(selectedCell) =>
-                  val durchgang = selectedCell.getTableRow
+                case Some(selectedCell) if (!selectedCell.getTreeTableRow.getItem.isHeader) =>
+                  val durchgang = selectedCell.getTreeTableRow
                   val startGeraetColumn = selectedCell.getTableColumn
                   if (startGeraetColumn.isInstanceOf[DurchgangTCAccess]) {
                     val targetStartgeraet = startGeraetColumn.asInstanceOf[DurchgangTCAccess].getDisziplin
                     if (targetStartgeraet != fromDisziplin || !durchgang.getItem.equals(dg)) {
-                      val targetDurchgang = durchgang.getItem.asInstanceOf[DurchgangEditor].initname
+                      val targetDurchgang = durchgang.getItem.durchgang.name
                       val toSave = riege.copy(initstart = Some(targetStartgeraet), initdurchgang = Some(targetDurchgang))
                       println(targetDurchgang, targetStartgeraet)
                       KuTuApp.invokeWithBusyIndicator {
@@ -783,12 +870,16 @@ class RiegenTab(override val wettkampf: WettkampfView, override val service: Kut
                       }
                     }
                   }
-                case None =>
+
+                case _ =>
+                  PageDisplayer.showErrorDialog("Drag & Drop", "Die Riege kann hier nicht zugewiesen werden.")
               }
-              event.setDropCompleted(true)
-            case None => event.setDropCompleted(false)
+
+            case None =>
+              PageDisplayer.showErrorDialog("Drag & Drop", "Die Riege kann hier nicht zugewiesen werden.")
           }
         }
+        event.setDropCompleted(true)
         event.consume()
       })
       durchgangView.setOnDragOver((event) => {
@@ -800,42 +891,50 @@ class RiegenTab(override val wettkampf: WettkampfView, override val service: Kut
 
       durchgangView.getSelectionModel().getSelectedCells().onChange { (_, newItem) =>
         Platform.runLater {
-          val focusedCells = durchgangView.selectionModel.value.selectedCells.toList
-          val as = focusedCells.map(c => durchgangView.items.value.get(c.row)).toSet
-          val actSelection = as /*durchgangView.selectionModel.value.selectedItems.toList*/ .filter(_ != null).map(d => d.initname)
+          val focusedCells: List[jfxsc.TreeTablePosition[DurchgangEditor, _]] = durchgangView.selectionModel.value.getSelectedCells.toList
+          val selectedDurchgaenge = focusedCells.flatMap(_.getTreeItem.getChildren).map(c => c.getValue).toSet
+          val selectedDurchgangHeader = focusedCells.filter(c => c.getTreeItem.getValue.isHeader).map(c => c.getTreeItem.getValue).toSet
+          val actDurchgangSelection = selectedDurchgaenge.filter(_ != null).map(d => d.durchgang.name)
+          val selectedEditor = if (focusedCells.nonEmpty) focusedCells.head.getTreeItem.getValue else null
           durchgangView.contextMenu = new ContextMenu() {
-            items += makeRegenereateDurchgangMenu(actSelection.toSet)
-            items += makeMergeDurchganMenu(actSelection.toSet)
+            items += makeRegenereateDurchgangMenu(actDurchgangSelection.toSet)
+            items += makeMergeDurchganMenu(actDurchgangSelection.toSet)
             items += makeRenameDurchgangMenu
-            if (as.size == 1) {
-              items += new SeparatorMenuItem()
-              items += makeSetEmptyRiegeMenu(durchgangView.selectionModel().selectedItems.head, focusedCells)
+            if (selectedDurchgaenge.filter(_.isHeader).isEmpty) {
+              items += makeAggregateDurchganMenu(actDurchgangSelection.toSet)
             }
-            if (actSelection.size == 1) {
+            if (selectedDurchgaenge.size == 1 && !selectedDurchgaenge.head.isHeader) {
               items += new SeparatorMenuItem()
-              items += makeMoveDurchganMenu(durchgangView.selectionModel().selectedItems.head, focusedCells)
-              items += makeMoveStartgeraetMenu(durchgangView.selectionModel().selectedItems.head, focusedCells)
+              items += makeSetEmptyRiegeMenu(selectedEditor, focusedCells)
+            }
+            if (actDurchgangSelection.size == 1 && !selectedDurchgaenge.head.isHeader) {
+              items += new SeparatorMenuItem()
+              items += makeMoveDurchganMenu(selectedEditor, focusedCells)
+              items += makeMoveStartgeraetMenu(selectedEditor, focusedCells)
             }
             items += new SeparatorMenuItem()
-            items += makeSelectedRiegenBlaetterExport(actSelection.toSet)
+            items += makeSelectedRiegenBlaetterExport(actDurchgangSelection.toSet)
           }
 
-          btnEditDurchgang.text.value = "Durchgang " + actSelection.mkString("[", ", ", "]") + " bearbeiten"
+          btnEditDurchgang.text.value = "Durchgang " + actDurchgangSelection.mkString("[", ", ", "]") + " bearbeiten"
           btnEditDurchgang.items.clear
-          btnEditDurchgang.items += makeRegenereateDurchgangMenu(actSelection.toSet)
-          btnEditDurchgang.items += makeMergeDurchganMenu(actSelection.toSet)
+          btnEditDurchgang.items += makeRegenereateDurchgangMenu(actDurchgangSelection.toSet)
+          btnEditDurchgang.items += makeMergeDurchganMenu(actDurchgangSelection.toSet)
           btnEditDurchgang.items += makeRenameDurchgangMenu
-          if (as.size == 1) {
-            btnEditDurchgang.items += new SeparatorMenuItem()
-            btnEditDurchgang.items += makeSetEmptyRiegeMenu(durchgangView.selectionModel().selectedItems.head, focusedCells)
+          if (selectedDurchgaenge.filter(_.isHeader).isEmpty) {
+            btnEditDurchgang.items += makeAggregateDurchganMenu(actDurchgangSelection.toSet)
           }
-          if (actSelection.size == 1) {
+          if (selectedDurchgaenge.size == 1 && !selectedDurchgaenge.head.isHeader) {
             btnEditDurchgang.items += new SeparatorMenuItem()
-            btnEditDurchgang.items += makeMoveDurchganMenu(durchgangView.selectionModel().selectedItems.head, focusedCells)
-            btnEditDurchgang.items += makeMoveStartgeraetMenu(durchgangView.selectionModel().selectedItems.head, focusedCells)
+            btnEditDurchgang.items += makeSetEmptyRiegeMenu(selectedEditor, focusedCells)
+          }
+          if (actDurchgangSelection.size == 1 && !selectedDurchgaenge.head.isHeader) {
+            btnEditDurchgang.items += new SeparatorMenuItem()
+            btnEditDurchgang.items += makeMoveDurchganMenu(selectedEditor, focusedCells)
+            btnEditDurchgang.items += makeMoveStartgeraetMenu(selectedEditor, focusedCells)
           }
           btnEditDurchgang.items += new SeparatorMenuItem()
-          btnEditDurchgang.items += makeSelectedRiegenBlaetterExport(actSelection.toSet)
+          btnEditDurchgang.items += makeSelectedRiegenBlaetterExport(actDurchgangSelection.toSet)
         }
       }
     }
@@ -1100,7 +1199,7 @@ class RiegenTab(override val wettkampf: WettkampfView, override val service: Kut
 		  disable <== when(makeDurchgangActiveBinding) choose true otherwise false
 		  onAction = (event: ActionEvent) => {
 			  implicit val impevent = event
-			  val selectedDurchgang = durchgangView.selectionModel.value.getSelectedItem.initname
+			  val selectedDurchgang = durchgangView.selectionModel.value.getSelectedItem.getValue.durchgang.name
 			  val txtDurchgangName = new TextField {
     		  text.value = selectedDurchgang
     	  }

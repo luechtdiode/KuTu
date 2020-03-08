@@ -869,3 +869,55 @@
 
 #cmbDurchgaenge .complete {
 }
+.tree-table-row-cell {
+    -fx-background-color: -fx-table-cell-border-color, -fx-control-inner-background;
+    -fx-background-insets: 0, 0 0 1 0;
+}
+
+.tree-table-row-cell:odd {
+    -fx-background-color: -fx-table-cell-border-color, #F9F9F9;
+    -fx-background-insets: 0, 0 0 1 0;
+}
+
+.tree-table-row-cell:selected,
+.tree-table-row-cell:selected:odd {
+    -fx-background-color: -fx-focus-color, -fx-cell-focus-inner-border, -fx-focus-color;
+    -fx-background-insets: 0, 1, 2;
+}
+
+.tree-table-row-cell:selected .tree-table-cell {
+    -fx-text-fill: white;
+}
+
+.tree-table-row-cell:empty {
+    -fx-background-color: transparent;
+}
+
+.tree-table-row-cell:empty .tree-table-cell {
+    -fx-border-width: 0px;
+}
+/*
+.tree-table-row-cell {
+    -fx-background-color: -fx-table-cell-border-color, -fx-control-inner-background;
+    -fx-background-insets: 0, 0 0 1 0;
+    -fx-padding: 0.0em;
+    -fx-text-fill: -fx-text-inner-color;
+}
+.tree-table-row-cell:selected {
+    -fx-background-color: -fx-focus-color, -fx-cell-focus-inner-border, -fx-focus-color;
+    -fx-background-insets: 0, 1, 2;
+}
+
+.tree-table-row-cell:odd {
+    -fx-background-color: -fx-table-cell-border-color, derive(-fx-control-inner-background,-5%);
+    -fx-background-insets: 0, 0 0 1 0;
+}
+
+.tree-table-row-cell:selected:odd {
+    -fx-background-color: -fx-focus-color, -fx-cell-focus-inner-border, -fx-focus-color;
+    -fx-background-insets: 0, 1, 2;
+}
+*/
+.tree-table-row-cell:expanded {
+    -fx-background-color: -fx-table-cell-border-color, derive(-fx-control-inner-background,-15%);
+}
