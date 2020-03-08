@@ -90,7 +90,7 @@ trait DurchgangService extends DBService with DurchgangResultMapper {
       sqlu"""
                 insert into durchgang
                 (wettkampf_id, title, name, durchgangtype, ordinal, planStartOffset, effectiveStartTime, effectiveEndTime)
-                values (${durchgang.wettkampfId}, ${durchgang.title}, ${durchgang.name}, ${durchgang.durchgangtype},
+                values (${durchgang.wettkampfId}, ${durchgang.title}, ${durchgang.name}, ${durchgang.durchgangtype.code},
                 ${durchgang.ordinal}, ${durchgang.planStartOffset}, ${durchgang.effectiveStartTime}, ${durchgang.effectiveEndTime})
         """
     })
