@@ -424,7 +424,7 @@ object ResourceExchanger extends KutuService with RiegenBuilder {
           },
           title = fields(durchgangHeader("title")),
           name = fields(durchgangHeader("name")),
-          durchgangtype = fields(durchgangHeader("durchgangtype")),
+          durchgangtype = DurchgangType(fields(durchgangHeader("durchgangtype"))),
           ordinal = fields(durchgangHeader("ordinal")),
           planStartOffset = fields(durchgangHeader("planStartOffset")),
           effectiveStartTime = if(fields(durchgangHeader("effectiveStartTime")).length > 0) Some(fields(durchgangHeader("effectiveStartTime"))) else None,
