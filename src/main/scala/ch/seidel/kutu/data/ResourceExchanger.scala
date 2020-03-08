@@ -295,16 +295,6 @@ object ResourceExchanger extends KutuService with RiegenBuilder {
     val wkdisziplines = wettkampfInstances.map{w =>
       (w._2.id, listWettkampfDisziplines(w._2.id).map(d => d.id -> d).toMap)
     }
-    def getAthletName(athletid: Long): String = {
-      val aid = s"$athletid"
-      athletInstances.get(aid) match {
-        case Some(a) => a.easyprint
-        case None => athletInstances.find(a => a._2.id == athletid).map(_._2.easyprint).getOrElse(aid)
-      }
-    }
-    def getWettkampfDisziplinName(w: Wertung): String = {
-      wkdisziplines(w.wettkampfId)(w.wettkampfdisziplinId).kurzbeschreibung
-    }
     val (wertungenCsv, wertungenHeader) = collection("wertungen.csv")
     logger.info("importing wertungen ...", wertungenHeader)
     val wertungInstances = wertungenCsv.map(DBService.parseLine).filter(_.size == wertungenHeader.size).map{fields =>
