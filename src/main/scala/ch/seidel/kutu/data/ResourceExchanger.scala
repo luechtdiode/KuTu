@@ -697,7 +697,7 @@ object ResourceExchanger extends KutuService with RiegenBuilder {
         DurchgangEditor(wettkampf.id, durchgaenge(name.getOrElse("")), rel)
       }
       .foreach { x =>
-        export.write(f"""${x.initname}${sep}${x.anz.value}${sep}${x.min.value}${sep}${x.max.value}${sep}${x.avg.value}${sep}${toShortDurationFormat(x.durchgang.planTotal)}${sep}${toShortDurationFormat(x.durchgang.planEinturnen)}${sep}${toShortDurationFormat(x.durchgang.planGeraet)}""".getBytes("ISO-8859-1"))
+        export.write(f"""${x.durchgang.name}${sep}${x.anz.value}${sep}${x.min.value}${sep}${x.max.value}${sep}${x.avg.value}${sep}${toShortDurationFormat(x.durchgang.planTotal)}${sep}${toShortDurationFormat(x.durchgang.planEinturnen)}${sep}${toShortDurationFormat(x.durchgang.planGeraet)}""".getBytes("ISO-8859-1"))
         diszipline.foreach { d =>
           export.write(f"${sep}${x.initstartriegen.getOrElse(d, Seq[RiegeEditor]()).map(r => f"${r.name.value.replace("M,", "Tu,").replace("W,", "Ti,")} (${r.anz.value})").mkString("\"","\n", "\"")}${sep}${x.initstartriegen.getOrElse(d, Seq[RiegeEditor]()).map(r => r.anz.value).sum}".getBytes("ISO-8859-1"))
         }
@@ -752,7 +752,7 @@ object ResourceExchanger extends KutuService with RiegenBuilder {
         DurchgangEditor(wettkampf.id, durchgaenge(name.getOrElse("")), rel)
       }
       .foreach { x =>
-        export.write(f"""${x.initname}${sep}${x.anz.value}${sep}${x.min.value}${sep}${x.max.value}${sep}${toShortDurationFormat(x.durchgang.planTotal)}${sep}${toShortDurationFormat(x.durchgang.planEinturnen)}${sep}${toShortDurationFormat(x.durchgang.planGeraet)}""".getBytes("ISO-8859-1"))
+        export.write(f"""${x.durchgang.name}${sep}${x.anz.value}${sep}${x.min.value}${sep}${x.max.value}${sep}${toShortDurationFormat(x.durchgang.planTotal)}${sep}${toShortDurationFormat(x.durchgang.planEinturnen)}${sep}${toShortDurationFormat(x.durchgang.planGeraet)}""".getBytes("ISO-8859-1"))
         val riegen = x.riegenWithMergedClubs()
         val rows = riegen.values.map(_.size).max
         val riegenFields = for {
