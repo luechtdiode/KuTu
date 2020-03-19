@@ -6,7 +6,7 @@ Zunächst muss die App ordentlich heruntergeladen und installiert werden.
 Danach kann mit Hilfe folgender Beschreibung eine Test-Instanz konfiguriert werden.
 
 Die Versionsbezeichnungen können im Laufe geändert haben und müssen ggf. in den Scripts angepasst werden.
-Aktuell wird _v2r0 verwendet.
+Aktuell wird -v2r0 verwendet.
 
 Mac OS (Terminal):
 ------------------
