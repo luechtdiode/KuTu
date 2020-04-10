@@ -1,5 +1,6 @@
 package ch.seidel.kutu.view
 
+import java.util
 import java.util.UUID
 
 import ch.seidel.commons.{AutoCommitTextFieldTableCell, DisplayablePage, PageDisplayer, TabWithService}
@@ -349,8 +350,9 @@ class RiegenTab(override val wettkampf: WettkampfView, override val service: Kut
   }
 
   def reloadRiegen() {
+    import collection.JavaConverters._
     riegenFilterModel.clear()
-    riegen().foreach(riegenFilterModel.add(_))
+    riegenFilterModel.addAll(riegen().asJavaCollection)
   }
 
   def reloadDurchgaenge() {
@@ -407,6 +409,7 @@ class RiegenTab(override val wettkampf: WettkampfView, override val service: Kut
   }
 
   def riegen(): IndexedSeq[RiegeEditor] = {
+    println("loading riegen ...")
     service.listRiegenZuWettkampf(wettkampf.id).sortBy(r => r._1).map(x =>
       RiegeEditor(
           wettkampf.id,
@@ -475,7 +478,7 @@ class RiegenTab(override val wettkampf: WettkampfView, override val service: Kut
       Bindings.createBooleanBinding(() => {
         ! (riegenFilterView.selectionModel.value.selectedItem.isNotNull().value && riegenFilterTab.selectedProperty.value)
       },
-        riegenFilterView.selectionModel.value.selectedItemProperty().isNull(),
+        riegenFilterView.selectionModel.value.getSelectedItems(),
         riegenFilterTab.selectedProperty
       )
     }
@@ -483,7 +486,7 @@ class RiegenTab(override val wettkampf: WettkampfView, override val service: Kut
       Bindings.createBooleanBinding(() => {
         ! (!durchgangView.selectionModel.value.getSelectedCells.isEmpty && durchgangTab.selectedProperty.value)
       },
-        durchgangView.selectionModel.value.selectedItemProperty().isNull(),
+        durchgangView.selectionModel.value.getSelectedItems(),
         durchgangTab.selectedProperty
       )
     }
@@ -705,7 +708,14 @@ class RiegenTab(override val wettkampf: WettkampfView, override val service: Kut
         .toList.sortBy(r => r.initanz)
         .foreach{riege =>
           items += new Menu(riege.initname + " ("+riege.initanz+")") {
-            durchgangModel.map(_.getValue).filter(d => !d.equals(durchgang)).foreach{durchgang =>
+            durchgangModel
+              .flatMap(d => d.getValue match {
+                case gd: GroupDurchgangEditor =>
+                  gd.aggregates
+                case ce: CompetitionDurchgangEditor =>
+                  List(ce)
+              })
+              .filter(d => !d.equals(durchgang)).foreach{durchgang =>
         	    items += KuTuApp.makeMenuAction(durchgang.durchgang.name) {(caption, action) =>
         	      val toSave = riege.copy(initdurchgang = Some(durchgang.durchgang.name))
   						  KuTuApp.invokeWithBusyIndicator {
@@ -892,22 +902,31 @@ class RiegenTab(override val wettkampf: WettkampfView, override val service: Kut
       durchgangView.getSelectionModel().getSelectedCells().onChange { (_, newItem) =>
         Platform.runLater {
           val focusedCells: List[jfxsc.TreeTablePosition[DurchgangEditor, _]] = durchgangView.selectionModel.value.getSelectedCells.toList
-          val selectedDurchgaenge = focusedCells.flatMap(_.getTreeItem.getChildren).map(c => c.getValue).toSet
-          val selectedDurchgangHeader = focusedCells.filter(c => c.getTreeItem.getValue.isHeader).map(c => c.getTreeItem.getValue).toSet
+          val selectedDurchgaenge = focusedCells.flatMap(c => c.getTreeItem.getValue.isHeader match {
+            case true =>
+              c.getTreeItem.getChildren
+            case false => List(c.getTreeItem)
+          }).map(c => c.getValue).toSet
+          val selectedDurchgangHeader = focusedCells
+            .filter(c => c.getTreeItem.getValue match {
+              case gd: GroupDurchgangEditor if (gd.aggregates.size > 1) => true
+              case _ => false
+            })
+            .map(c => c.getTreeItem.getValue).toSet
           val actDurchgangSelection = selectedDurchgaenge.filter(_ != null).map(d => d.durchgang.name)
           val selectedEditor = if (focusedCells.nonEmpty) focusedCells.head.getTreeItem.getValue else null
           durchgangView.contextMenu = new ContextMenu() {
             items += makeRegenereateDurchgangMenu(actDurchgangSelection.toSet)
             items += makeMergeDurchganMenu(actDurchgangSelection.toSet)
             items += makeRenameDurchgangMenu
-            if (selectedDurchgaenge.filter(_.isHeader).isEmpty) {
+            if (selectedDurchgangHeader.isEmpty) {
               items += makeAggregateDurchganMenu(actDurchgangSelection.toSet)
             }
-            if (selectedDurchgaenge.size == 1 && !selectedDurchgaenge.head.isHeader) {
+            if (focusedCells.size == 1 && selectedEditor != null && selectedDurchgangHeader.isEmpty) {
               items += new SeparatorMenuItem()
               items += makeSetEmptyRiegeMenu(selectedEditor, focusedCells)
             }
-            if (actDurchgangSelection.size == 1 && !selectedDurchgaenge.head.isHeader) {
+            if (focusedCells.size == 1 && selectedEditor != null) {
               items += new SeparatorMenuItem()
               items += makeMoveDurchganMenu(selectedEditor, focusedCells)
               items += makeMoveStartgeraetMenu(selectedEditor, focusedCells)
@@ -921,14 +940,14 @@ class RiegenTab(override val wettkampf: WettkampfView, override val service: Kut
           btnEditDurchgang.items += makeRegenereateDurchgangMenu(actDurchgangSelection.toSet)
           btnEditDurchgang.items += makeMergeDurchganMenu(actDurchgangSelection.toSet)
           btnEditDurchgang.items += makeRenameDurchgangMenu
-          if (selectedDurchgaenge.filter(_.isHeader).isEmpty) {
+          if (selectedDurchgangHeader.isEmpty) {
             btnEditDurchgang.items += makeAggregateDurchganMenu(actDurchgangSelection.toSet)
           }
-          if (selectedDurchgaenge.size == 1 && !selectedDurchgaenge.head.isHeader) {
+          if (focusedCells.size == 1 && selectedEditor != null && selectedDurchgangHeader.isEmpty) {
             btnEditDurchgang.items += new SeparatorMenuItem()
             btnEditDurchgang.items += makeSetEmptyRiegeMenu(selectedEditor, focusedCells)
           }
-          if (actDurchgangSelection.size == 1 && !selectedDurchgaenge.head.isHeader) {
+          if (focusedCells.size == 1 && selectedEditor != null) {
             btnEditDurchgang.items += new SeparatorMenuItem()
             btnEditDurchgang.items += makeMoveDurchganMenu(selectedEditor, focusedCells)
             btnEditDurchgang.items += makeMoveStartgeraetMenu(selectedEditor, focusedCells)
