@@ -120,7 +120,7 @@ class CompetitionCoordinatorClientActor(wettkampfUUID: String) extends Persisten
       persist(started) { evt =>
         handleEvent(evt)
         sender ! started
-
+        storeDurchgangStarted(started)
         notifyWebSocketClients(senderWebSocket, started, durchgang)
         val msg = NewLastResults(state.lastWertungen, state.lastBestenResults)
         notifyWebSocketClients(senderWebSocket, msg, durchgang)
@@ -132,6 +132,7 @@ class CompetitionCoordinatorClientActor(wettkampfUUID: String) extends Persisten
       persist(eventDurchgangFinished) { evt =>
         handleEvent(evt)
         sender ! eventDurchgangFinished
+        storeDurchgangFinished(eventDurchgangFinished)
         notifyWebSocketClients(senderWebSocket, eventDurchgangFinished, durchgang)
         openDurchgangJournal = openDurchgangJournal - Some(encodeURIComponent(durchgang))
       }
@@ -215,9 +216,10 @@ class CompetitionCoordinatorClientActor(wettkampfUUID: String) extends Persisten
           case _ =>
         }
       }
-      squashDurchgangEvents(durchgangNormalized).foreach { d =>
-        ref ! d
-      }
+      ref ! BulkEvent(wettkampfUUID, squashDurchgangEvents(durchgangNormalized).toList)
+//      squashDurchgangEvents(durchgangNormalized).foreach { d =>
+//        ref ! d
+//      }
       ref ! NewLastResults(state.lastWertungen, state.lastBestenResults)
 
     // system actions
