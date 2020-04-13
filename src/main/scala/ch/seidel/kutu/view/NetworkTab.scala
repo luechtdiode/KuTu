@@ -21,16 +21,19 @@ import scalafx.event.ActionEvent
 import scalafx.event.subscriptions.Subscription
 import scalafx.print.PageOrientation
 import scalafx.scene.Node
-import scalafx.scene.control.TableColumn._
+import scalafx.scene.control.TreeTableColumn._
 import scalafx.scene.control._
 import scalafx.scene.image.{Image, ImageView}
 import scalafx.scene.layout.{BorderPane, Priority, VBox}
 
+import scala.collection.immutable
 import scala.concurrent.Await
 import scala.concurrent.duration.Duration
 import scala.util.{Failure, Success}
 
-case class DurchgangState(wettkampfUUID: String, name: String, complete: Boolean, geraeteRiegen: List[GeraeteRiege], durchgang: Durchgang) {
+trait DurchgangItem
+
+case class DurchgangState(wettkampfUUID: String, name: String, complete: Boolean, geraeteRiegen: List[GeraeteRiege], durchgang: Durchgang) extends DurchgangItem {
   val started: Long = durchgang.effectiveStartTime.map(_.getTime).getOrElse(0)
   val finished: Long = durchgang.effectiveEndTime.map(_.getTime).getOrElse(0)
   def start(time: Long = 0) = {
@@ -143,24 +146,35 @@ trait DurchgangStationTCAccess extends TCAccess[DurchgangState, Object, Diszipli
   def getDisziplin = getIndex
 }
 
-class DurchgangStationJFSCTableColumn[T](val index: Disziplin) extends jfxsc.TableColumn[DurchgangState, T] with DurchgangStationTCAccess {
+class DurchgangStationJFSCTreeTableColumn[T](val index: Disziplin) extends jfxsc.TreeTableColumn[DurchgangState, T] with DurchgangStationTCAccess {
   override def getIndex: Disziplin = index
 
   override def valueEditor(selectedRow: DurchgangState): Object = new Object()
 }
 
-class DurchgangStationTableColumn[T](val index: Disziplin) extends TableColumn[DurchgangState, T] with DurchgangStationTCAccess {
-  override val delegate: jfxsc.TableColumn[DurchgangState, T] = new DurchgangStationJFSCTableColumn[T](index)
+class DurchgangStationTreeTableColumn[T](val index: Disziplin) extends TreeTableColumn[DurchgangState, T] with DurchgangStationTCAccess {
+  override val delegate: jfxsc.TreeTableColumn[DurchgangState, T] = new DurchgangStationJFSCTreeTableColumn[T](index)
 
   override def getIndex: Disziplin = index
 
   override def valueEditor(selectedRow: DurchgangState): Object = new Object()
 }
 
-class DurchgangStationView(wettkampf: WettkampfView, service: KutuService, disziplinlist: () => Seq[Disziplin], durchgangModel: ObservableBuffer[DurchgangState]) extends TableView[DurchgangState] {
+class DurchgangStationView(wettkampf: WettkampfView, service: KutuService, disziplinlist: () => Seq[Disziplin], durchgangModel: ObservableBuffer[TreeItem[DurchgangState]]) extends TreeTableView[DurchgangState] {
 
   id = "durchgang-table"
-  items = durchgangModel
+  //items = durchgangModel
+  showRoot = false
+  tableMenuButtonVisible = true
+
+  root = new TreeItem[DurchgangState]() {
+    durchgangModel.onChange{
+      children = durchgangModel
+    }
+    styleClass.add("parentrow")
+    expanded = true
+  }
+
   var okIcon: Image = null
   try {
     okIcon = new Image(getClass().getResourceAsStream("/images/GreenOk.png"))
@@ -175,95 +189,87 @@ class DurchgangStationView(wettkampf: WettkampfView, service: KutuService, diszi
   }
 
   columns ++= List(
-    new TableColumn[DurchgangState, String] {
+    new TreeTableColumn[DurchgangState, String] {
       prefWidth = 130
       text = "Durchgang"
-      cellValueFactory = { x => StringProperty(x.value.name) }
+      cellValueFactory = { x => StringProperty(if (x.value.getValue != null) x.value.getValue.name else "Durchgänge") }
     }
-    , new TableColumn[DurchgangState, String] {
+    , new TreeTableColumn[DurchgangState, String] {
       prefWidth = 85
       text = "Start"
-      cellValueFactory = { x => StringProperty(toTimeFormat(x.value.started)) }
+      cellValueFactory = { x => StringProperty(if (x.value.getValue == null) "" else toTimeFormat(x.value.getValue.started)) }
     }
-    , new TableColumn[DurchgangState, String] {
+    , new TreeTableColumn[DurchgangState, String] {
       prefWidth = 85
       text = "Ende"
-      cellValueFactory = { x => StringProperty(toTimeFormat(x.value.finished)) }
+      cellValueFactory = { x => StringProperty(if (x.value.getValue == null) "" else toTimeFormat(x.value.getValue.finished)) }
     }
-    , new TableColumn[DurchgangState, String] {
+    , new TreeTableColumn[DurchgangState, String] {
       prefWidth = 85
       text = "Dauer"
-      cellValueFactory = { x => StringProperty(toDurationFormat(x.value.started, x.value.finished))
+      cellValueFactory = { x => StringProperty(if (x.value.getValue == null) "" else toDurationFormat(x.value.getValue.started, x.value.getValue.finished))
       }
     }
-//    , new TableColumn[DurchgangState, String] {
+//    , new TreeTableColumn[DurchgangState, String] {
 //      prefWidth = 40
 //      text = "Anzahl"
-//      cellValueFactory = { x => StringProperty(x.value.anz) }
+//      cellValueFactory = { x => StringProperty(x.value.getValueanz) }
 //    }
-    , new TableColumn[DurchgangState, String] {
+    , new TreeTableColumn[DurchgangState, String] {
       prefWidth = 110
       text = "Plandauer"
-      cellValueFactory = { x => StringProperty(
-        s"""Tot:     ${toDurationFormat(x.value.durchgang.planTotal)}
-           |Eint.:    ${toDurationFormat(x.value.durchgang.planEinturnen)}
-           |Gerät.: ${toDurationFormat(x.value.durchgang.planGeraet)}""".stripMargin)}
+      cellValueFactory = { x => StringProperty(if (x.value.getValue == null) "" else
+        s"""Tot:     ${toDurationFormat(x.value.getValue.durchgang.planTotal)}
+           |Eint.:    ${toDurationFormat(x.value.getValue.durchgang.planEinturnen)}
+           |Gerät.: ${toDurationFormat(x.value.getValue.durchgang.planGeraet)}""".stripMargin)}
     }
-    , new TableColumn[DurchgangState, String] {
+    , new TreeTableColumn[DurchgangState, String] {
       prefWidth = 80
       text = "Fertig"
       cellFactory = { _ =>
-        new TableCell[DurchgangState, String] {
+        new TreeTableCell[DurchgangState, String] {
           val image = new ImageView()
           graphic = image
           item.onChange { (_, _, newValue) =>
             text = newValue
-            image.image =
-              if ("100%" == newValue || "0%" == newValue || "0" == newValue || "" == newValue)
-                okIcon
-              else
-                nokIcon
+            image.image = toIcon(newValue)
           }
         }
       }
-      cellValueFactory = { x => StringProperty(x.value.avg) }
+      cellValueFactory = { x => StringProperty(if (x.value.getValue == null) "" else x.value.getValue.avg) }
     }
   )
 
   columns ++= disziplinlist().map { disziplin =>
-    val dc = new TableColumn[DurchgangState, String] {
+    val dc = new TreeTableColumn[DurchgangState, String] {
       text = disziplin.name
       prefWidth = 230
       columns ++= Seq(
-        new DurchgangStationTableColumn[String](disziplin) {
+        new DurchgangStationTreeTableColumn[String](disziplin) {
           text = "Stationen"
           prefWidth = 120
-          cellValueFactory = { x =>
-            x.value.percentPerRiegeComplete.get(Some(disziplin)) match {
+          cellValueFactory = { x => if (x.value.getValue == null) StringProperty("") else
+            x.value.getValue.percentPerRiegeComplete.get(Some(disziplin)) match {
               case Some(re) => StringProperty(re._2)
               case _ => StringProperty("")
             }
           }
         }
-        , new TableColumn[DurchgangState, String] {
+        , new TreeTableColumn[DurchgangState, String] {
           text = "Fertig"
           prefWidth = 80
           cellFactory = { _ =>
-            new TableCell[DurchgangState, String] {
+            new TreeTableCell[DurchgangState, String] {
               val image = new ImageView()
               graphic = image
               item.onChange { (_, _, newValue) =>
                 text = newValue
-                image.image =
-                  if ("100%" == newValue || "0%" == newValue || "0" == newValue || "" == newValue)
-                    okIcon
-                  else
-                    nokIcon
+                image.image = toIcon(newValue)
               }
             }
           }
-          cellValueFactory = { x =>
-            x.value.percentPerRiegeComplete.get(Some(disziplin)) match {
+          cellValueFactory = { x => if (x.value.getValue == null) StringProperty("") else
+            x.value.getValue.percentPerRiegeComplete.get(Some(disziplin)) match {
               case Some(re) => StringProperty(re._1)
               case _ => StringProperty("0")
             }
@@ -271,9 +277,19 @@ class DurchgangStationView(wettkampf: WettkampfView, service: KutuService, diszi
         }
       )
     }
-    TableColumn.sfxTableColumn2jfx(dc)
+    TreeTableColumn.sfxTreeTableColumn2jfx(dc)
   }
 
+  private def toIcon(newValue: String) = {
+    newValue match {
+      case "100%" => okIcon
+      case "0%" => null
+      case "0" => null
+      case "" => null
+      case null => null
+      case _ => nokIcon
+    }
+  }
 }
 
 class NetworkTab(wettkampfmode: BooleanProperty, override val wettkampf: WettkampfView, override val service: KutuService) extends Tab with TabWithService with ExportFunctions {
@@ -304,11 +320,15 @@ class NetworkTab(wettkampfmode: BooleanProperty, override val wettkampf: Wettkam
       .toList.sortBy(_.name)
   }
 
-  val model = ObservableBuffer[DurchgangState]()
+  val model = ObservableBuffer[TreeItem[DurchgangState]]()
 
   def refreshData(event: Option[KutuAppEvent] = None) {
-    val oldList = loadDurchgaenge
-    val newList = oldList.map { d =>
+    val expandedStates = model
+      .filter(_.isExpanded)
+      .map(_.value.value.durchgang.title)
+      .toSet
+    val oldList: immutable.Seq[DurchgangState] = loadDurchgaenge
+    val newList: immutable.Seq[DurchgangState] = oldList.map { d =>
       event match {
         case Some(DurchgangStarted(wettkampfUUID: String, durchgang: String, time: Long)) if (d.wettkampfUUID == wettkampfUUID && d.name == durchgang) =>
           startDurchgang(wettkampf, d, time)
@@ -319,14 +339,44 @@ class NetworkTab(wettkampfmode: BooleanProperty, override val wettkampf: Wettkam
       }
     }
 
-    val toRemove = model.toSeq.filter(d => newList.exists(p => p.name == d.name))
+    model.clear()
+    /*
+    val toRemove = model.toSeq.filter(d => newList.exists(p => p.name == d.getValue.name))
     toRemove.foreach(model -= _)
 
-    val toUpdate = model.toSeq.zipWithIndex.map(zd => (zd._2, newList.find(p => p ~ zd._1))).filter(zd => zd._2.nonEmpty)
-    toUpdate.foreach(zd => model.set(zd._1, zd._2.get))
+    val toUpdate = model.toSeq.zipWithIndex.map(zd => (zd._2, newList.find(p => p ~ zd._1.getValue))).filter(zd => zd._2.nonEmpty)
+    toUpdate.foreach(zd => model.set(zd._1, new TreeItem(zd._2.get)))
 
-    newList.filter(d => !model.exists(p => p.name == d.name)).foreach(d => model += d)
+    newList.filter(d => !model.exists(p => p.getValue.name == d.name)).foreach(d => model += new TreeItem(d))
+    */
+
     if (oldList != newList) service.updateOrInsertDurchgaenge(newList.map(_.durchgang))
+
+    val groupMap = newList.groupBy(d => d.durchgang.title)
+    for (group <- groupMap.keySet.toList.sorted) {
+      val dgList = groupMap(group).sortBy(_.name)
+      if (dgList.size > 1 || dgList.head.name != dgList.head.durchgang.title) {
+        val dgh = dgList.foldLeft(Durchgang())((acc, dg) => {
+          if (acc.planTotal > dg.durchgang.planTotal) acc else dg.durchgang
+        })
+        val groupDurchgangState = DurchgangState(
+          wettkampfUUID = dgList.head.wettkampfUUID ,
+          name = dgh.title,
+          complete = dgList.forall(_.complete),
+          geraeteRiegen = dgList.flatMap(_.geraeteRiegen).toList,
+          durchgang = dgh)
+        model.add(new TreeItem[DurchgangState](groupDurchgangState) {
+          for (d <- dgList) {
+            children.add(new TreeItem[DurchgangState](d))
+          }
+          expanded = expandedStates.contains(group)
+        })
+      } else {
+        model.add(new TreeItem[DurchgangState](dgList.head) {
+          expanded = false
+        })
+      }
+    }
     updateButtons
   }
 
@@ -400,7 +450,7 @@ class NetworkTab(wettkampfmode: BooleanProperty, override val wettkampf: Wettkam
 
   def makeDurchgangStartenMenu(p: WettkampfView): MenuItem = {
     val item = makeMenuAction("Durchgang starten") { (caption, action) =>
-      val actSelection = view.selectionModel().selectedItems.headOption match {
+      val actSelection = view.selectionModel().selectedItems.headOption.map(_.getValue) match {
         case Some(d: DurchgangState) =>
           KuTuApp.invokeWithBusyIndicator {
             Await.result(KuTuServer.startDurchgang(p, d.name), Duration.Inf)
@@ -412,7 +462,7 @@ class NetworkTab(wettkampfmode: BooleanProperty, override val wettkampf: Wettkam
       !p.toWettkampf.hasSecred(homedir, remoteHostOrigin)
         || !ConnectionStates.connectedWithProperty.value.equals(p.uuid.map(_.toString).getOrElse(""))
         || (view.selectionModel().selectedItems.headOption match {
-        case Some(d) => (d.started > 0 && d.finished == 0)
+        case Some(d) => (d.getValue.started > 0 && d.getValue.finished == 0)
         case _ => true
       }),
       view.selectionModel().selectedItem,
@@ -424,7 +474,7 @@ class NetworkTab(wettkampfmode: BooleanProperty, override val wettkampf: Wettkam
 
   def makeDurchgangAbschliessenMenu(p: WettkampfView): MenuItem = {
     val item = makeMenuAction("Durchgang abschliessen") { (caption, action) =>
-      val actSelection = view.selectionModel().selectedItems.headOption match {
+      val actSelection = view.selectionModel().selectedItems.headOption.map(_.getValue) match {
         case Some(d: DurchgangState) =>
           KuTuApp.invokeWithBusyIndicator {
             Await.result(KuTuServer.finishDurchgang(p, d.name), Duration.Inf)
@@ -436,7 +486,7 @@ class NetworkTab(wettkampfmode: BooleanProperty, override val wettkampf: Wettkam
       !p.toWettkampf.hasSecred(homedir, remoteHostOrigin)
         || !ConnectionStates.connectedWithProperty.value.equals(p.uuid.map(_.toString).getOrElse(""))
         || (view.selectionModel().selectedItems.headOption match {
-        case Some(d) => (d.started == 0 || d.finished > 0)
+        case Some(d) => (d.getValue.started == 0 || d.getValue.finished > 0)
         case _ => true
       }),
       view.selectionModel().selectedItem,
@@ -460,7 +510,7 @@ class NetworkTab(wettkampfmode: BooleanProperty, override val wettkampf: Wettkam
   }
 
   def makeSelectedRiegenBlaetterExport(): Menu = {
-    val option: Option[DurchgangState] = view.selectionModel().selectedItems.headOption
+    val option: Option[DurchgangState] = view.selectionModel().selectedItems.headOption.map(_.getValue)
     val selectedDurchgaenge = option.toSet.map((_: DurchgangState).name)
     new Menu {
       text = "Riegenblätter nachdrucken"
@@ -505,9 +555,8 @@ class NetworkTab(wettkampfmode: BooleanProperty, override val wettkampf: Wettkam
 
   def makeNavigateToMenu(p: WettkampfView): Menu = {
     new Menu("Gehe zu Riege ...") {
-      def addRiegenMenuItems(row: Int, column: DurchgangStationTCAccess) = {
+      def addRiegenMenuItems(durchgang: DurchgangState, column: DurchgangStationTCAccess) = {
         val disziplin = column.getDisziplin
-        val durchgang: DurchgangState = view.items.getValue.get(row)
         val selection = durchgang.geraeteRiegen.filter {
           _.disziplin.contains(disziplin)
         }
@@ -544,16 +593,16 @@ class NetworkTab(wettkampfmode: BooleanProperty, override val wettkampf: Wettkam
       view.selectionModel.value.selectedCells.toList.headOption match {
         case None =>
         case Some(cell) =>
-          cell.tableColumn match {
-            case column: DurchgangStationTCAccess =>
-              addRiegenMenuItems(cell.row, column)
-            case _ => if (cell.tableColumn.parentColumn.value != null && cell.tableColumn.parentColumn.value.columns.size == 2) {
-              val col = cell.tableColumn.getParentColumn().getColumns().head
+          cell.getTableColumn match {
+            case column: DurchgangStationTCAccess => 
+              addRiegenMenuItems(cell.treeItem.getValue, column)
+            case _ => if (cell.getTableColumn.parentColumn.value != null && cell.getTableColumn.parentColumn.value.columns.size == 2) {
+              val col = cell.getTableColumn.getParentColumn().getColumns().head
               col match {
-                case column: DurchgangStationJFSCTableColumn[_] =>
-                  addRiegenMenuItems(cell.row, column)
+                case column: DurchgangStationJFSCTreeTableColumn[_] =>
+                  addRiegenMenuItems(cell.treeItem.getValue, column)
                 case column: DurchgangStationTCAccess =>
-                  addRiegenMenuItems(cell.row, column)
+                  addRiegenMenuItems(cell.treeItem.getValue, column)
                 case _ =>
               }
             }
