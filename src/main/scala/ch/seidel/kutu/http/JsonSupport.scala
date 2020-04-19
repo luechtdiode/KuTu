@@ -3,7 +3,7 @@ package ch.seidel.kutu.http
 import akka.http.scaladsl.marshallers.sprayjson.SprayJsonSupport
 import ch.seidel.kutu.akka._
 import ch.seidel.kutu.domain._
-import spray.json._
+import spray.json.{JsValue, _}
 
 
 trait JsonSupport extends SprayJsonSupport with EnrichedJson {
@@ -43,6 +43,7 @@ trait JsonSupport extends SprayJsonSupport with EnrichedJson {
   implicit val durchgangFinishedFormat = jsonFormat3(DurchgangFinished)
   implicit val scoresPublished = jsonFormat5(ScoresPublished)
   implicit val lastResults = jsonFormat1(LastResults)
+  implicit val bulkEvents = jsonFormat2(BulkEvent)
   implicit val athletRemovedFromWettkampf = jsonFormat2(AthletRemovedFromWettkampf)
   implicit val athletMovedInWettkampf = jsonFormat3(AthletMovedInWettkampf)
   implicit val messageAckFormat = jsonFormat1(MessageAck)
@@ -57,24 +58,43 @@ trait JsonSupport extends SprayJsonSupport with EnrichedJson {
       classOf[DurchgangFinished].getSimpleName -> durchgangFinishedFormat,
       classOf[ScoresPublished].getSimpleName -> scoresPublished,
       classOf[LastResults].getSimpleName -> lastResults,
+      classOf[BulkEvent].getSimpleName -> bulkEvents,
       classOf[AthletRemovedFromWettkampf].getSimpleName -> athletRemovedFromWettkampf,
       classOf[AthletMovedInWettkampf].getSimpleName -> athletMovedInWettkampf,
       classOf[MessageAck].getSimpleName -> messageAckFormat
   )
 
   implicit val messagesFormatter: RootJsonFormat[KutuAppEvent] = new RootJsonFormat[KutuAppEvent] { 
-    override def read(json: JsValue) = 
-      json.asOpt[JsObject].flatMap(_.fields.get("type").flatMap(_.asOpt[String])).map(caseClassesJsonFormatter) match {
-      case Some(jsonReader) =>
-        val plain = json.withoutFields("type")
-        jsonReader.read(plain)
-      case _ => throw new Exception(s"Unable to parse $json to KutuAppProtokoll")
+    override def read(json: JsValue) = json.asJsObject.fields("type").asOpt[String] match {
+      case Some(s) if s.contains("BulkEvent") =>
+        val list = json.asJsObject.fields("events").asInstanceOf[JsArray].elements
+            .toList
+            .map{this.read(_)}
+        BulkEvent( json.asJsObject.fields("wettkampfUUID").convertTo[String], list)
+      case _ => json.asOpt[JsObject].flatMap(_.fields.get("type").flatMap(_.asOpt[String])).map(caseClassesJsonFormatter) match {
+        case Some(jsonReader) =>
+          val plain = json.withoutFields("type")
+          jsonReader.read(plain)
+        case _ => throw new Exception(s"Unable to parse $json to KutuAppProtokoll")
+      }
     }
-    override def write(obj: KutuAppEvent): JsValue = 
-      caseClassesJsonFormatter.get(obj.getClass.getSimpleName) match {
-      case Some(jsonWriter) => 
-        jsonWriter.asInstanceOf[JsonFormat[KutuAppEvent]].write(obj).addFields(Map(("type" -> JsString(obj.getClass.getSimpleName))))
-      case _ => throw new Exception(s"Unable to find jsonFormatter for $obj")
+
+    override def write(obj: KutuAppEvent): JsValue = {
+      obj match {
+        case be: BulkEvent =>
+          val jv = JsObject()
+          jv.addFields(Map(
+            "type" -> JsString(be.getClass.getSimpleName),
+            "wettkampfUUID" -> JsString(be.wettkampfUUID),
+            "events" -> JsArray(be.events.map(ev => write(ev)).toVector)
+          ))
+        case _ =>
+          caseClassesJsonFormatter.get(obj.getClass.getSimpleName) match {
+            case Some(jsonWriter) =>
+              jsonWriter.asInstanceOf[JsonFormat[KutuAppEvent]].write(obj).addFields(Map(("type" -> JsString(obj.getClass.getSimpleName))))
+            case _ => throw new Exception(s"Unable to find jsonFormatter for $obj")
+          }
+      }
     }
   }
 }

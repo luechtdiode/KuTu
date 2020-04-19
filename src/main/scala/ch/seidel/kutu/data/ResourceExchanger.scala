@@ -1,6 +1,8 @@
 package ch.seidel.kutu.data
 
 import java.io._
+import java.sql.Timestamp
+import java.time.format.DateTimeFormatterBuilder
 import java.util.UUID
 import java.util.zip.{ZipEntry, ZipInputStream, ZipOutputStream}
 
@@ -63,6 +65,25 @@ object ResourceExchanger extends KutuService with RiegenBuilder {
           case e: Exception =>
             logger.error(s"failed to complete save LastResults ", e)
         }
+      case (sender, bulkEvent @ BulkEvent(wettkampfUUID, events)) =>
+        if (!Config.isLocalHostServer() && wettkampf.uuid.contains(wettkampfUUID)) {
+          events.foreach {
+            case ds@DurchgangStarted(_, _, _) => storeDurchgangStarted(ds)
+            case df@DurchgangFinished(_, _, _) => storeDurchgangFinished(df)
+          }
+          refresher(sender, bulkEvent)
+        }
+      case (sender, ds @ DurchgangStarted(wettkampfUUID, _, _)) =>
+        if (!Config.isLocalHostServer() && wettkampf.uuid.contains(wettkampfUUID)) {
+          storeDurchgangStarted(ds)
+        }
+        refresher(sender, ds)
+
+      case (sender, df @ DurchgangFinished(wettkampfUUID, _, _)) =>
+        if (!Config.isLocalHostServer() && wettkampf.uuid.contains(wettkampfUUID)) {
+          storeDurchgangFinished(df)
+        }
+        refresher(sender, df)
 
       case (sender, uws: AthletWertungUpdatedSequenced) => opFn(sender, uws.toAthletWertungUpdated())
       case (sender, uw @ AthletWertungUpdated(athlet, wertung, wettkampfUUID, _, _, programm)) =>
@@ -406,6 +427,13 @@ object ResourceExchanger extends KutuService with RiegenBuilder {
       logger.info("importing durchgaenge ...", durchgangHeader)
       updateOrInsertDurchgaenge(durchgangCsv.map(DBService.parseLine).filter(_.size == durchgangHeader.size).map{fields =>
         val wettkampfid = fields(durchgangHeader("wettkampfId"))
+        implicit def toTS(tsString: String): Option[Timestamp] = tsString match {
+          case s if (s.isEmpty) => None
+          case _ => Timestamp.valueOf(tsString) match {
+            case ts: Timestamp if (ts.getTime == 0) => None
+            case ts => Some(ts)
+          }
+        }
         val durchgang = Durchgang(
           id = 0L,
           wettkampfId = wettkampfInstances.get(wettkampfid + "") match {
@@ -417,8 +445,8 @@ object ResourceExchanger extends KutuService with RiegenBuilder {
           durchgangtype = DurchgangType(fields(durchgangHeader("durchgangtype"))),
           ordinal = fields(durchgangHeader("ordinal")),
           planStartOffset = fields(durchgangHeader("planStartOffset")),
-          effectiveStartTime = if(fields(durchgangHeader("effectiveStartTime")).length > 0) Some(fields(durchgangHeader("effectiveStartTime"))) else None,
-          effectiveEndTime = if(fields(durchgangHeader("effectiveEndTime")).length > 0) Some(fields(durchgangHeader("effectiveEndTime"))) else None,
+          effectiveStartTime = if(fields(durchgangHeader("effectiveStartTime")).length > 0) fields(durchgangHeader("effectiveStartTime")) else None,
+          effectiveEndTime = if(fields(durchgangHeader("effectiveEndTime")).length > 0) fields(durchgangHeader("effectiveEndTime")) else None,
         )
         durchgang
       })
