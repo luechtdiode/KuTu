@@ -514,7 +514,7 @@ class NetworkTab(wettkampfmode: BooleanProperty, override val wettkampf: Wettkam
       items.clear
       view.selectionModel.value.selectedCells.toList.headOption match {
         case None =>
-        case Some(cell) =>
+        case Some(cell) if cell.treeItem != null && cell.treeItem.getValue != null =>
           cell.getTableColumn match {
             case column: DurchgangStationTCAccess =>
               addRiegenMenuItems(cell.treeItem.getValue, column)
@@ -529,6 +529,7 @@ class NetworkTab(wettkampfmode: BooleanProperty, override val wettkampf: Wettkam
               }
             }
           }
+        case _ =>
       }
       disable = items.size() == 0
     }
