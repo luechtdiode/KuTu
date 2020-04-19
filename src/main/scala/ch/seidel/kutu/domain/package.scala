@@ -184,14 +184,40 @@ package object domain {
     def toWertungsrichter = Wertungsrichter(id, js_id, geschlecht, name, vorname, gebdat, strasse, plz, ort, verein.map(_.id), activ)
   }
 
+  object DurchgangType {
+    def apply(code: Int) = code match {
+      case 1 => Competition
+      case 2 => WarmUp
+      case 3 => AwardCeremony
+      case 4 => Pause
+      case _ => Competition // default-type
+    }
+  }
+  abstract sealed trait DurchgangType {
+    val code: Int
+    override def toString(): String = code.toString
+  }
+  case object Competition extends DurchgangType {
+    override val code = 1
+  }
+  case object WarmUp extends DurchgangType {
+    override val code = 2
+  }
+  case object AwardCeremony extends DurchgangType {
+    override val code = 3
+  }
+  case object Pause extends DurchgangType {
+    override val code = 4
+  }
   object Durchgang {
     def apply(): Durchgang = Durchgang(0, "nicht zugewiesen")
-    def apply(wettkampfId: Long, name: String): Durchgang = Durchgang(0, wettkampfId, name, name, 1, 50, 0, None, None, 0, 0, 0)
-    def apply(id: Long, wettkampfId: Long, title: String, name: String, durchgangtype: Int, ordinal: Int, planStartOffset: Long, effectiveStartTime: Option[java.sql.Date], effectiveEndTime: Option[java.sql.Date]): Durchgang =
+    def apply(wettkampfId: Long, name: String): Durchgang = Durchgang(0, wettkampfId, name, name, Competition, 50, 0, None, None, 0, 0, 0)
+    def apply(id: Long, wettkampfId: Long, title: String, name: String, durchgangtype: DurchgangType, ordinal: Int, planStartOffset: Long, effectiveStartTime: Option[java.sql.Timestamp], effectiveEndTime: Option[java.sql.Timestamp]): Durchgang =
       Durchgang(id, wettkampfId, title, name, durchgangtype, ordinal, planStartOffset, effectiveStartTime, effectiveEndTime, 0, 0, 0)
   }
-  case class Durchgang(id: Long, wettkampfId: Long, title: String, name: String, durchgangtype: Int, ordinal: Int, planStartOffset: Long, effectiveStartTime: Option[java.sql.Date], effectiveEndTime: Option[java.sql.Date], planEinturnen: Long, planGeraet: Long, planTotal: Long) extends DataObject {
+  case class Durchgang(id: Long, wettkampfId: Long, title: String, name: String, durchgangtype: DurchgangType, ordinal: Int, planStartOffset: Long, effectiveStartTime: Option[java.sql.Timestamp], effectiveEndTime: Option[java.sql.Timestamp], planEinturnen: Long, planGeraet: Long, planTotal: Long) extends DataObject {
     override def easyprint = name
+    def toAggregator(other: Durchgang) = Durchgang(0, wettkampfId, title, title, durchgangtype, Math.min(ordinal, other.ordinal), Math.min(planStartOffset, planStartOffset), effectiveStartTime, effectiveEndTime, Math.max(planEinturnen, other.planEinturnen), Math.max(planGeraet, other.planGeraet), Math.max(planTotal, other.planTotal))
   }  
   case class Durchgangstation(wettkampfId: Long, durchgang: String, d_Wertungsrichter1: Option[Long], e_Wertungsrichter1: Option[Long], d_Wertungsrichter2: Option[Long], e_Wertungsrichter2: Option[Long], geraet: Disziplin) extends DataObject {
     override def easyprint = toString

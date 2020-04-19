@@ -196,7 +196,26 @@ object PageDisplayer {
     )
     }
   }
-  
+  def showErrorDialog(caption: String, message: String) {
+    Platform.runLater{
+      showInDialogFromRoot("Fehler",
+        new DisplayablePage() {
+          def getPage: Node = {
+            new BorderPane {
+              hgrow = Priority.Always
+              vgrow = Priority.Always
+              center = new VBox {
+                children = Seq(new HBox{ children = Seq(new ImageView {
+                  image = errorIcon
+                }, new Label(caption))},
+                  new Label(message))
+              }
+            }
+          }
+        }
+      )
+    }
+  }
   def choosePage(wettkampfmode: BooleanProperty, context: Option[Any], value: String = "dashBoard", tree: KuTuAppTree): Node = {
     value match {
       case "dashBoard" => displayPage(new DashboardPage(tree = tree))

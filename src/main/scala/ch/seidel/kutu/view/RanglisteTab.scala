@@ -9,7 +9,6 @@ import ch.seidel.kutu.KuTuApp.handleAction
 import ch.seidel.kutu.data._
 import ch.seidel.kutu.domain.{Durchgang, KutuService, WertungView, WettkampfView}
 import ch.seidel.kutu.renderer.PrintUtil.FilenameDefault
-import ch.seidel.kutu.view.NetworkTab.activeDurchgaengeProp
 import scalafx.Includes.when
 import scalafx.beans.binding.Bindings
 import scalafx.beans.property.BooleanProperty

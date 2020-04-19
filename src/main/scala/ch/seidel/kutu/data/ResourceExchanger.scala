@@ -1,6 +1,8 @@
 package ch.seidel.kutu.data
 
 import java.io._
+import java.sql.Timestamp
+import java.time.format.DateTimeFormatterBuilder
 import java.util.UUID
 import java.util.zip.{ZipEntry, ZipInputStream, ZipOutputStream}
 
@@ -63,6 +65,26 @@ object ResourceExchanger extends KutuService with RiegenBuilder {
           case e: Exception =>
             logger.error(s"failed to complete save LastResults ", e)
         }
+      case (sender, bulkEvent @ BulkEvent(wettkampfUUID, events)) =>
+        if (!Config.isLocalHostServer() && wettkampf.uuid.contains(wettkampfUUID)) {
+          events.foreach {
+            case ds:DurchgangStarted => storeDurchgangStarted(ds)
+            case df:DurchgangFinished => storeDurchgangFinished(df)
+            case _ =>
+          }
+          refresher(sender, bulkEvent)
+        }
+      case (sender, ds @ DurchgangStarted(wettkampfUUID, _, _)) =>
+        if (!Config.isLocalHostServer() && wettkampf.uuid.contains(wettkampfUUID)) {
+          storeDurchgangStarted(ds)
+        }
+        refresher(sender, ds)
+
+      case (sender, df @ DurchgangFinished(wettkampfUUID, _, _)) =>
+        if (!Config.isLocalHostServer() && wettkampf.uuid.contains(wettkampfUUID)) {
+          storeDurchgangFinished(df)
+        }
+        refresher(sender, df)
 
       case (sender, uws: AthletWertungUpdatedSequenced) => opFn(sender, uws.toAthletWertungUpdated())
       case (sender, uw @ AthletWertungUpdated(athlet, wertung, wettkampfUUID, _, _, programm)) =>
@@ -295,16 +317,6 @@ object ResourceExchanger extends KutuService with RiegenBuilder {
     val wkdisziplines = wettkampfInstances.map{w =>
       (w._2.id, listWettkampfDisziplines(w._2.id).map(d => d.id -> d).toMap)
     }
-    def getAthletName(athletid: Long): String = {
-      val aid = s"$athletid"
-      athletInstances.get(aid) match {
-        case Some(a) => a.easyprint
-        case None => athletInstances.find(a => a._2.id == athletid).map(_._2.easyprint).getOrElse(aid)
-      }
-    }
-    def getWettkampfDisziplinName(w: Wertung): String = {
-      wkdisziplines(w.wettkampfId)(w.wettkampfdisziplinId).kurzbeschreibung
-    }
     val (wertungenCsv, wertungenHeader) = collection("wertungen.csv")
     logger.info("importing wertungen ...", wertungenHeader)
     val wertungInstances = wertungenCsv.map(DBService.parseLine).filter(_.size == wertungenHeader.size).map{fields =>
@@ -416,6 +428,13 @@ object ResourceExchanger extends KutuService with RiegenBuilder {
       logger.info("importing durchgaenge ...", durchgangHeader)
       updateOrInsertDurchgaenge(durchgangCsv.map(DBService.parseLine).filter(_.size == durchgangHeader.size).map{fields =>
         val wettkampfid = fields(durchgangHeader("wettkampfId"))
+        implicit def toTS(tsString: String): Option[Timestamp] = tsString match {
+          case s if (s.isEmpty) => None
+          case _ => Timestamp.valueOf(tsString) match {
+            case ts: Timestamp if (ts.getTime == 0) => None
+            case ts => Some(ts)
+          }
+        }
         val durchgang = Durchgang(
           id = 0L,
           wettkampfId = wettkampfInstances.get(wettkampfid + "") match {
@@ -424,11 +443,11 @@ object ResourceExchanger extends KutuService with RiegenBuilder {
           },
           title = fields(durchgangHeader("title")),
           name = fields(durchgangHeader("name")),
-          durchgangtype = fields(durchgangHeader("durchgangtype")),
+          durchgangtype = DurchgangType(fields(durchgangHeader("durchgangtype"))),
           ordinal = fields(durchgangHeader("ordinal")),
           planStartOffset = fields(durchgangHeader("planStartOffset")),
-          effectiveStartTime = if(fields(durchgangHeader("effectiveStartTime")).length > 0) Some(fields(durchgangHeader("effectiveStartTime"))) else None,
-          effectiveEndTime = if(fields(durchgangHeader("effectiveEndTime")).length > 0) Some(fields(durchgangHeader("effectiveEndTime"))) else None,
+          effectiveStartTime = if(fields(durchgangHeader("effectiveStartTime")).length > 0) fields(durchgangHeader("effectiveStartTime")) else None,
+          effectiveEndTime = if(fields(durchgangHeader("effectiveEndTime")).length > 0) fields(durchgangHeader("effectiveEndTime")) else None,
         )
         durchgang
       })
@@ -707,7 +726,7 @@ object ResourceExchanger extends KutuService with RiegenBuilder {
         DurchgangEditor(wettkampf.id, durchgaenge(name.getOrElse("")), rel)
       }
       .foreach { x =>
-        export.write(f"""${x.initname}${sep}${x.anz.value}${sep}${x.min.value}${sep}${x.max.value}${sep}${x.avg.value}${sep}${toShortDurationFormat(x.durchgang.planTotal)}${sep}${toShortDurationFormat(x.durchgang.planEinturnen)}${sep}${toShortDurationFormat(x.durchgang.planGeraet)}""".getBytes("ISO-8859-1"))
+        export.write(f"""${x.durchgang.name}${sep}${x.anz.value}${sep}${x.min.value}${sep}${x.max.value}${sep}${x.avg.value}${sep}${toShortDurationFormat(x.durchgang.planTotal)}${sep}${toShortDurationFormat(x.durchgang.planEinturnen)}${sep}${toShortDurationFormat(x.durchgang.planGeraet)}""".getBytes("ISO-8859-1"))
         diszipline.foreach { d =>
           export.write(f"${sep}${x.initstartriegen.getOrElse(d, Seq[RiegeEditor]()).map(r => f"${r.name.value.replace("M,", "Tu,").replace("W,", "Ti,")} (${r.anz.value})").mkString("\"","\n", "\"")}${sep}${x.initstartriegen.getOrElse(d, Seq[RiegeEditor]()).map(r => r.anz.value).sum}".getBytes("ISO-8859-1"))
         }
@@ -762,7 +781,7 @@ object ResourceExchanger extends KutuService with RiegenBuilder {
         DurchgangEditor(wettkampf.id, durchgaenge(name.getOrElse("")), rel)
       }
       .foreach { x =>
-        export.write(f"""${x.initname}${sep}${x.anz.value}${sep}${x.min.value}${sep}${x.max.value}${sep}${toShortDurationFormat(x.durchgang.planTotal)}${sep}${toShortDurationFormat(x.durchgang.planEinturnen)}${sep}${toShortDurationFormat(x.durchgang.planGeraet)}""".getBytes("ISO-8859-1"))
+        export.write(f"""${x.durchgang.name}${sep}${x.anz.value}${sep}${x.min.value}${sep}${x.max.value}${sep}${toShortDurationFormat(x.durchgang.planTotal)}${sep}${toShortDurationFormat(x.durchgang.planEinturnen)}${sep}${toShortDurationFormat(x.durchgang.planGeraet)}""".getBytes("ISO-8859-1"))
         val riegen = x.riegenWithMergedClubs()
         val rows = riegen.values.map(_.size).max
         val riegenFields = for {
