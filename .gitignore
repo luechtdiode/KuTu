@@ -32,3 +32,4 @@ aws-policy.txt
 /jdk*
 /data
 /javapackager
+docker/libs

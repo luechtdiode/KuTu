@@ -10,8 +10,9 @@ RUN mkdir /home/kutuapp
 RUN chown kutu:kutu /home/kutuapp
 RUN chmod -R g+rwx /home/kutuapp
 
+COPY --chown=kutu:kutu libs /kutuapp/libs
 COPY --chown=kutu:kutu *.conf /kutuapp/
-COPY --chown=kutu:kutu *-app.jar /kutuapp/app.jar
+COPY --chown=kutu:kutu *.jar /kutuapp/app.jar
 
 USER kutu
 
@@ -22,7 +23,7 @@ ENV X_POSTGRES_HOST ""
 ENV X_POSTGRES_USER ""
 ENV X_POSTGRES_PASSWORD ""
 
-ENTRYPOINT [ "java", "-cp", ".:app.jar" \
+ENTRYPOINT [ "java", "-cp", ".:app.jar:libs/*" \
     , "-Duser.home=/home" \
     , "-server" \
     , "-XX:+UseG1GC" \
