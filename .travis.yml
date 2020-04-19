@@ -111,7 +111,12 @@ jobs:
         - cp -f $TRAVIS_BUILD_DIR/target/$OS/*.* $TRAVIS_BUILD_DIR/outputs/$OS/
       after_success:
         - aws s3 cp --recursive $TRAVIS_BUILD_DIR/outputs/ $S3_BUCKET_PUBLIC/ >/dev/null 2>&1
-        - cp target/*-app.jar docker/
+        - rm -rf docker/libs
+        - mkdir docker/libs
+        - cp target/dependency/*.jar docker/libs/
+        - cp target/*.jar docker/
+        - rm docker/libs/javafx*.jar
+        - rm docker/*-app.jar
         - export COMMIT=${TRAVIS_COMMIT::7}
         - export COMMIT_TAG=$(echo $TRAVIS_BRANCH-$COMMIT | tr "/" ".")
         - export TAG=`if [ ! -z "$TRAVIS_TAG" ]; then echo "$TRAVIS_TAG"; else echo "$COMMIT_TAG";

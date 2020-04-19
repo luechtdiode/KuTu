@@ -6,7 +6,13 @@ export OS=Darwin #$(uname -s)
 
 mvn clean install
 
-cp target/*-app.jar docker/
+
+rm -rf docker/libs
+mkdir docker/libs
+cp target/dependency/*.jar docker/libs/
+cp target/*.jar docker/
+rm docker/libs/javafx*.jar
+rm docker/*-app.jar
 
 docker build ./docker -t luechtdiode/kutuapp:test
 
