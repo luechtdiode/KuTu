@@ -58,10 +58,10 @@
 		<maven.build.timestamp.format>yyyy-MM-dd HH:mm</maven.build.timestamp.format>
 		<jdk-home>${JAVA_HOME}</jdk-home>
 		<scala.majorversion>2.12</scala.majorversion>
-		<scala.version>${scala.majorversion}.9</scala.version>
+		<scala.version>${scala.majorversion}.11</scala.version>
 		<akkaHttp.version>10.1.11</akkaHttp.version>
-		<akka.version>2.6.1</akka.version>
-		<javafx.version>12.0.2</javafx.version>
+		<akka.version>2.6.4</akka.version>
+		<javafx.version>14.0.1</javafx.version>
 		<scalafx.version>12.0.2-R18</scalafx.version>
 		<scalatest.version>3.1.0</scalatest.version>
 		<maven-scala-plugin.version>3.4.1</maven-scala-plugin.version>
@@ -172,7 +172,7 @@
 		<dependency>
 			<groupId>org.postgresql</groupId>
 			<artifactId>postgresql</artifactId>
-			<version>42.2.9</version>
+			<version>42.2.12</version>
 		</dependency>
 		<dependency>
 			<groupId>com.typesafe.slick</groupId>
@@ -183,7 +183,7 @@
 		<dependency>
 			<groupId>com.zaxxer</groupId>
 			<artifactId>HikariCP</artifactId>
-			<version>3.4.1</version>
+			<version>3.4.2</version>
 		</dependency>
 
 		<!-- akka / akkahttp -->
@@ -277,7 +277,7 @@
         <dependency>
             <groupId>org.javadelight</groupId>
             <artifactId>delight-nashorn-sandbox</artifactId>
-            <version>0.1.27</version>
+            <version>0.1.28</version>
         </dependency>
 
         <!-- dependency> <groupId>org.apache.logging.log4j</groupId> <artifactId>log4j-api</artifactId>
@@ -304,12 +304,12 @@
 		<dependency>
 			<groupId>commons-codec</groupId>
 			<artifactId>commons-codec</artifactId>
-			<version>1.13</version>
+			<version>1.14</version>
 		</dependency>
 		<dependency>
 			<groupId>org.apache.commons</groupId>
 			<artifactId>commons-lang3</artifactId>
-			<version>3.9</version>
+			<version>3.10</version>
 		</dependency>
 		<dependency>
 			<groupId>org.apache.commons</groupId>
@@ -326,7 +326,7 @@
 		<dependency>
 			<groupId>junit</groupId>
 			<artifactId>junit</artifactId>
-			<version>4.12</version>
+			<version>4.13</version>
 			<scope>test</scope>
 		</dependency>
 
