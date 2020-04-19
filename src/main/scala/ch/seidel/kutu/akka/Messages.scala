@@ -26,6 +26,7 @@ case class Delete(override val wettkampfUUID: String) extends KutuAppAction
 case class PublishScores(override val wettkampfUUID: String, title: String, query: String, published: Boolean) extends KutuAppAction
 
 sealed trait KutuAppEvent extends KutuAppProtokoll
+case class BulkEvent(wettkampfUUID: String, events: List[KutuAppEvent]) extends KutuAppEvent
 case class DurchgangStarted(wettkampfUUID: String, durchgang: String, time: Long = System.currentTimeMillis()) extends KutuAppEvent
 case class StationWertungenCompleted(wertungen: List[UpdateAthletWertung]) extends KutuAppEvent
 case class DurchgangStationFinished(wettkampfUUID: String, durchgang: String, geraet: Long, step: Int) extends KutuAppEvent

@@ -1,7 +1,9 @@
 package ch.seidel.kutu.domain
 
+import java.sql.{Date, Timestamp}
 import java.util.UUID
 
+import ch.seidel.kutu.akka.{DurchgangFinished, DurchgangStarted}
 import org.slf4j.LoggerFactory
 import slick.jdbc.SQLiteProfile.api._
 
@@ -81,6 +83,48 @@ trait DurchgangService extends DBService with DurchgangResultMapper {
                 wettkampf_id=${wettkampfid} and durchgang=${oldname}
         """).transactionally
     }, Duration.Inf)
+  }
+
+  def storeDurchgangStarted(started: DurchgangStarted): Unit = {
+    if (started.time > 0) {
+      val t = new Timestamp(started.time)
+      Await.result(database.run {
+        sqlu"""
+                update durchgang
+                set effectiveStartTime=$t
+                where
+                wettkampf_id = (select id from wettkampf wk where wk.uuid = ${started.wettkampfUUID})
+                and name = ${started.durchgang}
+                and (effectiveStartTime is null
+                  or effectiveStartTime = ${new Date(0)}
+                  or $t < effectiveStartTime)
+        """ >>
+        sqlu"""
+                update durchgang
+                set effectiveEndTime=null
+                where
+                wettkampf_id = (select id from wettkampf wk where wk.uuid = ${started.wettkampfUUID})
+                and name = ${started.durchgang}
+        """.transactionally
+      }, Duration.Inf)
+    }
+  }
+
+  def storeDurchgangFinished(finished: DurchgangFinished): Unit = {
+    if (finished.time > 0) {
+      val t = new Timestamp(finished.time)
+      Await.result(database.run {
+        sqlu"""
+                update durchgang
+                set effectiveEndTime=$t
+                where
+                wettkampf_id = (select id from wettkampf wk where wk.uuid = ${finished.wettkampfUUID})
+                and name = ${finished.durchgang}
+                and (effectiveEndTime is null
+                  or $t > effectiveEndTime)
+        """.transactionally
+      }, Duration.Inf)
+    }
   }
 
   def updateOrInsertDurchgaenge(durchgaenge: Iterable[Durchgang]) {
