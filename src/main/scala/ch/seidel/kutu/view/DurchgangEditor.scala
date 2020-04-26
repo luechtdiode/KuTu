@@ -76,8 +76,10 @@ case class GroupDurchgangEditor(wettkampfid: Long, durchgang: Durchgang, aggrega
     .foldLeft(Map[Disziplin, Seq[RiegeEditor]]()){ case (acc, (disz, riegen)) =>
       acc.updated(disz, acc.getOrElse(disz, Seq.empty) ++ riegen)
     }
+  def getGroupMin = if(initstartriegen.size > 0) aggregates.map(r => r.min.value).min else 0
+  def getGroupMax = if(initstartriegen.size > 0) aggregates.map(r => r.max.value).max else 0
   override val anz = IntegerProperty(getAnz)
-  override val min = IntegerProperty(getMin)
-  override val max = IntegerProperty(getMax)
-  override val avg = IntegerProperty(getAvg)
+  override val min = IntegerProperty(getGroupMin)
+  override val max = IntegerProperty(getGroupMax)
+  override val avg = IntegerProperty(getAvg / aggregates.size)
 }
