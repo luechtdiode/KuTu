@@ -133,7 +133,6 @@ jobs:
       env:
         - OS=Win64
       language: sh
-      filter_secrets: false # https://travis-ci.community/t/choco-install-hangs-forever/307/21
       #    #skips default install - see script bellow
       install: true
       before_install:
