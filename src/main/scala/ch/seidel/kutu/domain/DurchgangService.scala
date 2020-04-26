@@ -70,8 +70,14 @@ trait DurchgangService extends DBService with DurchgangResultMapper {
                 WHERE
                     zp.wettkampf_id = $wettkampfid
                     AND NOT EXISTS (SELECT 1 FROM durchgang dd WHERE dd.wettkampf_id = zp.wettkampf_id and dd.name = zp.durchgang)
+        """ >>
+        sqlu"""
+                update durchgang
+                set title=${newname.trim}
+                where
+                wettkampf_id=${wettkampfid} and title=${oldname}
         """ >>  // prevent constraints-violations
-        sqlu""" 
+        sqlu"""
                 delete from durchgangstation
                 where
                 wettkampf_id=${wettkampfid} and durchgang=${newname.trim}
@@ -82,6 +88,17 @@ trait DurchgangService extends DBService with DurchgangResultMapper {
                 where
                 wettkampf_id=${wettkampfid} and durchgang=${oldname}
         """).transactionally
+    }, Duration.Inf)
+  }
+
+  def renameDurchgangGroup(wettkampfid: Long, oldname: String, newname: String) = {
+    Await.result(database.run{
+      sqlu"""
+                update durchgang
+                set title=${newname.trim}
+                where
+                wettkampf_id=${wettkampfid} and title=${oldname}
+      """
     }, Duration.Inf)
   }
 
