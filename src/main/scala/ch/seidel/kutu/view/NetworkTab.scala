@@ -236,7 +236,7 @@ class DurchgangStationView(wettkampf: WettkampfView, service: KutuService, diszi
   }
 }
 
-class NetworkTab(wettkampfmode: BooleanProperty, override val wettkampf: WettkampfView, override val service: KutuService) extends Tab with TabWithService with ExportFunctions {
+class NetworkTab(wettkampfmode: BooleanProperty, override val wettkampfInfo: WettkampfInfo, override val service: KutuService) extends Tab with TabWithService with ExportFunctions {
 
   private var lazypane: Option[LazyTabPane] = None
 
@@ -247,7 +247,7 @@ class NetworkTab(wettkampfmode: BooleanProperty, override val wettkampf: Wettkam
   closable = false
   text = "Netzwerk-Dashboard"
 
-  lazy val disziplinlist = service.listDisziplinesZuWettkampf(wettkampf.id)
+  val disziplinlist = wettkampfInfo.disziplinList
 
   def loadDurchgaenge = {
     val durchgaenge = service.selectDurchgaenge(wettkampf.uuid.map(UUID.fromString(_)).get).map(d => d.name -> d).toMap
@@ -486,7 +486,7 @@ class NetworkTab(wettkampfmode: BooleanProperty, override val wettkampf: Wettkam
           val menu = KuTuApp.makeMenuAction(r.caption) { (caption, action) =>
             lazypane match {
               case Some(pane) =>
-                val wertungTab: WettkampfWertungTab = new WettkampfWertungTab(wettkampfmode, None, Some(r), wettkampf, service, {
+                val wertungTab: WettkampfWertungTab = new WettkampfWertungTab(wettkampfmode, None, Some(r), wettkampfInfo, service, {
                   val progs = service.readWettkampfLeafs(wettkampf.programm.id)
                   service.listAthletenWertungenZuProgramm(progs map (p => p.id), wettkampf.id)
                 }) {

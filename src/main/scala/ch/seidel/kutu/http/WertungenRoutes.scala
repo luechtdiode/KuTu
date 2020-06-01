@@ -42,8 +42,7 @@ trait WertungenRoutes extends SprayJsonSupport with JsonSupport with JwtSupport 
               complete {
                 Future {
                   val wettkampf = readWettkampf(competitionId.toString())
-                  val wkPgmId = wettkampf.programmId
-                  val isDNoteUsed = wkPgmId != 20 && wkPgmId != 1
+                  val isDNoteUsed = listWettkampfDisziplineViews(wettkampf).exists(wd => wd.notenSpez.isDNoteUsed)
                   val wertungen = selectWertungen(wettkampfId = Some(wettkampf.id), athletId = Some(athletId))
                   wertungen.filter { wertung =>
                     if (wertung.wettkampfdisziplin.feminim == 0 && !wertung.athlet.geschlecht.equalsIgnoreCase("M")) {

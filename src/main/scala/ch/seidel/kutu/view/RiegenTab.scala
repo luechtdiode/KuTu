@@ -336,18 +336,14 @@ class RiegenFilterView(isEditable: BooleanProperty, wettkampf: WettkampfView, se
   )
 }
 
-class RiegenTab(override val wettkampf: WettkampfView, override val service: KutuService) extends Tab with TabWithService with ExportFunctions {
+class RiegenTab(override val wettkampfInfo: WettkampfInfo, override val service: KutuService) extends Tab with TabWithService with ExportFunctions {
   val programmText = wettkampf.programm.id match {case 20 => "Kategorie" case _ => "Programm"}
   val riegenFilterModel = ObservableBuffer[RiegeEditor]()
   val durchgangModel = ObservableBuffer[TreeItem[DurchgangEditor]]()
-  lazy val disziplinlist = service.listDisziplinesZuWettkampf(wettkampf.id)
+  val disziplinlist = wettkampfInfo.disziplinList
 
   closable = false
   text = "Riegeneinteilung"
-
-  def isAthletikTest() = {
-    wettkampf.programm.aggregatorHead.id == 1
-  }
 
   def reloadRiegen() {
     import collection.JavaConverters._
@@ -426,7 +422,7 @@ class RiegenTab(override val wettkampf: WettkampfView, override val service: Kut
   }
 
   val txtGruppengroesse = new TextField() {
-    text = if(isAthletikTest) "0" else "11"
+    text = if(wettkampfInfo.isAthletikTest) "0" else "11"
     tooltip = "Max. Gruppengrösse oder 0 für gleichmässige Verteilung mit einem Durchgang."
   }
 

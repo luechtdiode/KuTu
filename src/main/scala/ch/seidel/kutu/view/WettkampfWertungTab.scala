@@ -31,7 +31,6 @@ import scalafx.scene.control.SelectionMode.sfxEnum2jfx
 import scalafx.scene.control.TableColumn._
 import scalafx.scene.control.TableView.sfxTableView2jfx
 import scalafx.scene.control._
-import scalafx.scene.image.{Image, ImageView}
 import scalafx.scene.input.{Clipboard, KeyEvent}
 import scalafx.scene.layout._
 import scalafx.util.converter.{DefaultStringConverter, DoubleStringConverter}
@@ -42,9 +41,10 @@ import scala.concurrent.{Await, Future}
 import scala.io.Source
 import scala.util.{Failure, Success}
 
-class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[ProgrammView], riege: Option[GeraeteRiege], wettkampf: WettkampfView, override val service: KutuService, athleten: => IndexedSeq[WertungView]) extends Tab with TabWithService {
+class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[ProgrammView], riege: Option[GeraeteRiege], wettkampfInfo: WettkampfInfo, override val service: KutuService, athleten: => IndexedSeq[WertungView]) extends Tab with TabWithService {
   val logger = LoggerFactory.getLogger(this.getClass)
-
+  val wettkampf = wettkampfInfo.wettkampf
+  logger.debug("create Wertungen Tab for " + programm)
   import language.implicitConversions
   implicit def doublePropertyToObservableValue(p: DoubleProperty): ObservableValue[Double,Double] = p.asInstanceOf[ObservableValue[Double,Double]]
   private var lazypane: Option[LazyTabPane] = None
@@ -95,136 +95,25 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
       map(wvg => wvg._2.map(WertungEditor)).toIndexedSeq
   }
 
-  var wertungen = reloadWertungen()
+  var wertungen = Seq[IndexedSeq[WertungEditor]]()
   val wkModel = ObservableBuffer[IndexedSeq[WertungEditor]](wertungen)
   val wkview = new TableView[IndexedSeq[WertungEditor]](wkModel) {
     id = "kutu-table"
     editable = !wettkampf.toWettkampf.isReadonly(homedir, remoteHostOrigin)
   }
-  val emptyRiege = GeraeteRiege("", "", None, 0, None, Seq(), false, "")
+  var emptyRiege = GeraeteRiege("", "", None, 0, None, Seq(), false, "")
   var relevantRiegen: Map[String,(Boolean, Int)] = Map[String,(Boolean, Int)]()
-  var erfasst = false
 
-  val cmbDurchgangFilter = new ComboBox[GeraeteRiege]() {
-    id = "cmbDurchgaenge"
-    var okIcon: Image = null
-    try {
-      okIcon = new Image(getClass().getResourceAsStream("/images/GreenOk.png"))
-    }catch{case e: Exception => e.printStackTrace()}
-    var nokIcon: Image = null
-    try {
-      nokIcon = new Image(getClass().getResourceAsStream("/images/RedException.png"))
-    }catch{case e: Exception => e.printStackTrace()}
-
-    class GeraeteRiegeListCell extends ListCell[GeraeteRiege] {
-      override val delegate: jfxsc.ListCell[GeraeteRiege] = new jfxsc.ListCell[GeraeteRiege] {
-        override protected def updateItem(item: GeraeteRiege, empty: Boolean) {
-          super.updateItem(item, empty)
-          if (item != null) {
-            val imageView = new ImageView {
-              image = okIcon
-            }
-            item.durchgang match {
-              case Some(d) =>
-                setText(s"${item.sequenceId} ${item.durchgang.get}: ${item.disziplin.map(d => d.name).getOrElse("")}  (${item.halt + 1}. Gerät)")
-                if(!item.erfasst) {
-                  styleClass.add("incomplete")
-                  imageView.image = nokIcon
-                }
-                else if (styleClass.indexOf("incomplete") > -1) {
-                  styleClass.remove(styleClass.indexOf("incomplete"))
-                }
-              case None =>
-                setText(s"Alle")
-                if(!erfasst) {
-                  styleClass.add("incomplete")
-                  imageView.image = nokIcon
-                }
-                else if (styleClass.indexOf("incomplete") > -1) {
-                  styleClass.remove(styleClass.indexOf("incomplete"))
-                }
-            }
-            graphic = imageView
-          }
-          else {
-            graphic = null
-          }
-        }
-      }
-    }
-    promptText = "Durchgang-Filter"
-    buttonCell = new GeraeteRiegeListCell()
-    cellFactory = { p => new GeraeteRiegeListCell() }
-
-    var textbuffer = ""
-
-    onKeyPressed = (event) => {
-      if (event.getText.equalsIgnoreCase("R")) {
-        textbuffer = "R"
-        if (tooltip.value == null) {
-          tooltip = new Tooltip()
-          tooltip.value.autoHide = false
-        }
-        tooltip.value.text = textbuffer
-        tooltip.value.show(scene.value.getWindow)
-
-      } else if (textbuffer.startsWith("R") && event.getText.isDecimalFloat) {
-        textbuffer += event.getText
-        tooltip.value.text = textbuffer
-        tooltip.value.show(scene.value.getWindow)
-      }
-      if (textbuffer.length == 5) {
-        tooltip.value.text = textbuffer
-        tooltip.value.show(scene.value.getWindow)
-        items.value.find(p => p.sequenceId == textbuffer) match {
-          case Some(riege) =>
-            textbuffer = ""
-            selectionModel.value.select(riege)
-            val focusSetter = AutoCommitTextFieldTableCell.selectFirstEditable(wkview)
-            Platform.runLater(new Runnable() {
-              override def run = {
-                focusSetter()
-                if (tooltip.value != null) {
-                  tooltip.value.hide
-                  tooltip.value = null
-                }
-              }
-            })
-
-          case _ =>
-            textbuffer = ""
-            if (tooltip.value != null) {
-              tooltip.value.hide
-              tooltip.value = null
-            }
-        }
-      }
-    }
-
-    focused.onChange({
-      if(!focused.value) {
-        textbuffer = ""
-        if (tooltip.value != null) {
-          tooltip.value.hide
-          tooltip.value = null
-        }
-        val focusSetter = AutoCommitTextFieldTableCell.selectFirstEditable(wkview)
-        Platform.runLater(new Runnable() {
-          override def run = {
-            focusSetter()
-          }
-        })
-      }
-    })
-  }
+  val cmbDurchgangFilter = new GeraeteRiegeComboBox(wkview)
 
   def rebuildDurchgangFilterList = {
     val kandidaten = service.getAllKandidatenWertungen(UUID.fromString(wettkampf.uuid.get))
-    val ret = RiegenBuilder.mapToGeraeteRiegen(kandidaten)
+    val alleRiegen = RiegenBuilder.mapToGeraeteRiegen(kandidaten)
+    val ret = alleRiegen
       .filter(r => riege.isEmpty || riege.get.sequenceId == r.sequenceId)
       .filter(r => wertungen.exists { p => r.kandidaten.exists { k => p.head.init.athlet.id == k.id } })
-    erfasst = ret.forall { riege => riege == emptyRiege || riege.erfasst }
-    ret
+    emptyRiege = GeraeteRiege("", "", None, 0, None, Seq(), ret.forall(r => r.erfasst), "")
+    emptyRiege +: ret
   }
 
   def computeRelevantRiegen = {
@@ -243,7 +132,7 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
 
     val lastDurchgangSelection = cmbDurchgangFilter.selectionModel.value.getSelectedItem
     if (riege.isEmpty) {
-      cmbDurchgangFilter.items = ObservableBuffer[GeraeteRiege](emptyRiege  +: rebuildDurchgangFilterList)
+      cmbDurchgangFilter.items = ObservableBuffer[GeraeteRiege](rebuildDurchgangFilterList)
       if (cmbDurchgangFilter.items.value.contains(lastDurchgangSelection)) {
         cmbDurchgangFilter.selectionModel.value.select(lastDurchgangSelection)
       }
@@ -252,6 +141,7 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
       cmbDurchgangFilter.items.value.headOption match {
         case Some(item) =>
           cmbDurchgangFilter.selectionModel.value.select(item)
+//          updateFilteredList(lastFilter, item)
         case None =>
       }
 
@@ -259,14 +149,14 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
     relevantRiegen
   }
 
-  def riegen(onSelectedChange: (String, Boolean) => Boolean, initial: Boolean): IndexedSeq[RiegeEditor] = {
+  def riegen(onSelectedChange: (String, Boolean) => Boolean): IndexedSeq[RiegeEditor] = {
     service.listRiegenZuWettkampf(wettkampf.id).sortBy(r => r._1).filter{r => relevantRiegen.contains(r._1)}.map(x =>
       RiegeEditor(
         wettkampf.id,
         x._1,
         x._2,
         if(relevantRiegen.contains(x._1)) relevantRiegen(x._1)._2 else 0,
-        relevantRiegen.contains(x._1) && (initial || relevantRiegen(x._1)._1),
+        relevantRiegen.contains(x._1) && relevantRiegen(x._1)._1,
         x._3,
         x._4,
         Some(onSelectedChange)))
@@ -274,10 +164,13 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
   val riegenFilterModel = ObservableBuffer[RiegeEditor]()
 
   val athletHeaderPane: AthletHeaderPane = new AthletHeaderPane(wkview)
-  val disziplinlist = wertungen.headOption match {case Some(w) => w.map(_.init.wettkampfdisziplin.disziplin) case _ => IndexedSeq[Disziplin]()}
-  val withDNotes = wertungen.flatMap(w => w.filter(ww => ww.init.wettkampfdisziplin.notenSpez.isDNoteUsed)).nonEmpty
+  val disziplinlist = wettkampfInfo.disziplinList
+  val withDNotes = wettkampfInfo.isDNoteUsed
   var lastFilter = ""
-  var durchgangFilter = emptyRiege
+  var durchgangFilter = riege match {
+    case Some(riege) => riege
+    case None => emptyRiege
+  }
 
   var lazyEditorPaneUpdater: Map[String, ScheduledFuture[_]] = Map.empty
 
@@ -298,7 +191,7 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
         }
         athletHeaderPane.adjust
         val model = cmbDurchgangFilter.items.getValue
-        val raw = emptyRiege +: rebuildDurchgangFilterList
+        val raw = rebuildDurchgangFilterList
         val selected = cmbDurchgangFilter.selectionModel.value.selectedItem.value
         model.foreach { x =>
           raw.find {_.softEquals(x)} match {
@@ -463,9 +356,8 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
       editable = false
     }
   )
-  val leafprograms = wertungen.flatMap(a => a.map(w => w.init.wettkampfdisziplin.programm)).filter(p => p.aggregate != 0).toSet.toList.sortWith((a, b) => a.ord > b.ord)
 
-  val riegeCol: List[jfxsc.TableColumn[IndexedSeq[WertungEditor], _]] = if(leafprograms.size < 2) {
+  val riegeCol: List[jfxsc.TableColumn[IndexedSeq[WertungEditor], _]] = if(wettkampfInfo.leafprograms.size < 2) {
     List(new WKTableColumn[String](-1) {
       text = "Riege"
       cellFactory = { x =>
@@ -556,7 +448,7 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
           }
       }})
   } else {
-    val cols: List[jfxsc.TableColumn[IndexedSeq[WertungEditor], _]] = leafprograms.map{p =>
+    val cols: List[jfxsc.TableColumn[IndexedSeq[WertungEditor], _]] = wettkampfInfo.leafprograms.map{p =>
       val col: jfxsc.TableColumn[IndexedSeq[WertungEditor], _] = new TableColumn[IndexedSeq[WertungEditor], String] {
         text = s"${p.name}"
         //            delegate.impl_setReorderable(false)
@@ -735,7 +627,7 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
     for{athlet <- orderedWertungen} {
       def isRiegenFilterConform(athletRiegen: Set[Option[String]]) = {
         val undefined = athletRiegen.forall{case None => true case _ => false}
-        val durchgangKonform = durchgangFilter.equals(emptyRiege) ||
+        val durchgangKonform = durchgangFilter.sequenceId.equals(emptyRiege.sequenceId) ||
           durchgangFilter.kandidaten.filter { k => athletRiegen.contains(k.einteilung.map(_.r))}.nonEmpty
         durchgangKonform && (undefined || !athletRiegen.forall{case Some(riege) => !relevantRiegen.getOrElse(riege, (false, 0))._1 case _ => true})
       }
@@ -815,7 +707,7 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
     if(toggle) {
       relevantRiegen = relevantRiegen.map(r => (r._1, (newAllSelected, r._2._2)))
       updateFilteredList(lastFilter, durchgangFilter)
-      updateRiegen(false)
+      updateRiegen()
     }
     else {
       alleRiegenCheckBox.selected.value = newAllSelected
@@ -841,7 +733,7 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
     }
   }
 
-  def updateRiegen(initial: Boolean) {
+  def updateRiegen() {
     def onSelectedChange(name: String, selected: Boolean) = {
       if(relevantRiegen.contains(name)) {
         relevantRiegen = relevantRiegen.updated(name, (selected, relevantRiegen(name)._2))
@@ -854,13 +746,7 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
       }
     }
     riegenFilterModel.clear()
-    riegen(onSelectedChange, initial).foreach(riegenFilterModel.add(_))
-    if(initial) {
-      if (riege.nonEmpty) {
-        updateFilteredList(lastFilter, riege.get)
-      }
-      updateAlleRiegenCheck()
-    }
+    riegen(onSelectedChange).foreach(riegenFilterModel.add(_))
   }
 
   def reloadData() = {
@@ -879,7 +765,7 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
 
     relevantRiegen = computeRelevantRiegen
 
-    updateRiegen(false)
+    updateRiegen()
 
     lastFilter = ""
     updateFilteredList(lastFilter, durchgangFilter)
@@ -1790,6 +1676,8 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
   }
 
   override def isPopulated = {
+    logger.debug("populate Wertungen Tab for " + programm)
+
     subscription match {
       case None =>
         subscription = Some(wettkampfmode.onChange {
@@ -1802,7 +1690,6 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
       case _ =>
         // logger.debug("was populated and subscription active "+ programm+ wettkampf + hashCode())
     }
-    computeRelevantRiegen
 
     websocketsubscription match {
       case None =>
@@ -1829,7 +1716,7 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
         logger.debug("ws was populated and subscription active "+ programm+ wettkampf + hashCode())
     }
 
-    updateRiegen(true)
+    alleRiegenCheckBox.selected.value = true
 
     if(wettkampfmode.value) {
       riegenFilterView.selectionModel.value.setCellSelectionEnabled(false)
@@ -1890,7 +1777,9 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
     }
 
     content = cont
+    logger.debug("Wertungen Tab for " + programm + " populated.")
 
     true
   }
+  logger.debug("Wertungen Tab for " + programm + " created.")
 }

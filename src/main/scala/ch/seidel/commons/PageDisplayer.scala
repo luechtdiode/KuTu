@@ -4,6 +4,7 @@ import ch.seidel.kutu.{KuTuApp, KuTuAppTree}
 import ch.seidel.kutu.domain._
 import ch.seidel.kutu.view._
 import javafx.{scene => jfxs}
+import org.slf4j.LoggerFactory
 import scalafx.Includes._
 import scalafx.application.Platform
 import scalafx.beans.Observable
@@ -25,6 +26,7 @@ import scala.concurrent.duration.Duration
  * based on the TreeItem selected from left pane
  */
 object PageDisplayer {
+  val logger = LoggerFactory.getLogger(this.getClass)
   var errorIcon: Image = null
   try {
     errorIcon = new Image(getClass().getResourceAsStream("/images/RedException.png"))
@@ -227,7 +229,7 @@ object PageDisplayer {
     }
   }
   private def chooseWettkampfPage(wettkampfmode: BooleanProperty, wettkampf: WettkampfView, tree: KuTuAppTree): Node = {
-    displayPage(WettkampfPage.buildTab(wettkampfmode, wettkampf, tree.getService))
+    displayPage(WettkampfPage.buildTab(wettkampfmode, WettkampfInfo(wettkampf, tree.getService), tree.getService))
   }
   private def chooseVereinPage(wettkampfmode: BooleanProperty, verein: Verein, tree: KuTuAppTree): Node = {
     displayPage(TurnerPage.buildTab(wettkampfmode, verein, tree.getService))
@@ -254,7 +256,9 @@ object PageDisplayer {
       children = Seq(indicator)
     }
     def op = {
+      logger.debug("start nodeToAdd.getPage")
       val p = nodeToAdd.getPage
+      logger.debug("end nodeToAdd.getPage")
       ret.children = p
       ret.requestLayout()
     }

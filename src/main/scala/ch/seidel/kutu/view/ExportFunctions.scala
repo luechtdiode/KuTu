@@ -18,7 +18,8 @@ import scalafx.print.PageOrientation
 import scala.concurrent.Future
 
 trait ExportFunctions {
-  val wettkampf: WettkampfView
+  val wettkampfInfo: WettkampfInfo
+  val wettkampf = wettkampfInfo.wettkampf
   val service: KutuService
   val reprintItems: SimpleObjectProperty[Set[DurchgangChanged]] = new SimpleObjectProperty[Set[DurchgangChanged]]()
   reprintItems.set(Set.empty)

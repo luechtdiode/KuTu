@@ -145,15 +145,29 @@ abstract trait DisziplinService extends DBService with WettkampfResultMapper {
     }, Duration.Inf)//
     .map{t => Wettkampfdisziplin(t._1, t._2, t._3, s"${t._4} (${t._5})", None, 0, t._6, t._7, t._8) }.toList
   }
-  
-  def readWettkampfDisziplinView(wettkampfDisziplinId: Long): WettkampfdisziplinView = {
-    
-    implicit def getWettkampfDisziplinViewResult = GetResult{r =>
-      val id = r.<<[Long]
-      val pgm = readProgramm(r.<<)
-      WettkampfdisziplinView(id, pgm, r, r.<<[String], r.nextBytesOption(), readNotenModus(id, pgm, r.<<), r.<<, r.<<, r.<<)
-    }
 
+  implicit def getWettkampfDisziplinViewResult = GetResult{r =>
+    val id = r.<<[Long]
+    val pgm = readProgramm(r.<<)
+    WettkampfdisziplinView(id, pgm, r, r.<<[String], r.nextBytesOption(), readNotenModus(id, pgm, r.<<), r.<<, r.<<, r.<<)
+  }
+
+  def listWettkampfDisziplineViews(wettkampf: Wettkampf): List[WettkampfdisziplinView] = {
+    Await.result(database.run{
+      val programme = readWettkampfLeafs(wettkampf.programmId).map(p => p.id).mkString("(", ",", ")")
+      sql""" select wd.id, wd.programm_id, d.*, wd.kurzbeschreibung, wd.detailbeschreibung, wd.notenfaktor, wd.masculin, wd.feminim, wd.ord
+             from wettkampfdisziplin wd, disziplin d, programm p
+             where
+                  wd.disziplin_id = d.id
+              and wd.programm_id = p.id
+              and programm_Id in #$programme
+             order by
+              wd.ord
+         """.as[WettkampfdisziplinView].withPinnedSession
+    }, Duration.Inf).toList
+  }
+
+  def readWettkampfDisziplinView(wettkampfDisziplinId: Long): WettkampfdisziplinView = {
     val wd = Await.result(database.run{
       sql""" select wd.id, wd.programm_id, d.*, wd.kurzbeschreibung, wd.detailbeschreibung, wd.notenfaktor, wd.masculin, wd.feminim, wd.ord
              from wettkampfdisziplin wd, disziplin d
