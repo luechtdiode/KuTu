@@ -56,6 +56,7 @@ object TestDBService {
       , "InitTimeTable.sql"
       , "AddDurchgangTable-sqllite.sql"
       , "InitDurchgangTable.sql"
+      , "FixEmptyRiegeTimeTableIssue-sqllite.sql"
     )
     DBService.installDB(tempDatabase, sqlScripts)
     logger.info("Database initialized")
