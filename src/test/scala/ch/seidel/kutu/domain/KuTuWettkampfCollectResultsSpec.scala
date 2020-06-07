@@ -31,7 +31,8 @@ class KuTuWettkampfCollectResultsSpec extends KuTuBaseSpec with WettkampfOvervie
 	    wettkampfId = testwettkampf.id,
 	    r = riege,
 	    durchgang = Some(durchgang),
-	    start = Some(start.id)
+	    start = Some(start.id),
+      kind = RiegeRaw.KIND_STANDARD
 	  ), wertungen)
   }  
   

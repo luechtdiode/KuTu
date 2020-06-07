@@ -5,8 +5,8 @@ import slick.jdbc.GetResult
 trait RiegenResultMapper extends DisziplinResultMapper {
       
   implicit val getRiegeRawResult = GetResult(r =>
-    RiegeRaw(r.<<, r.<<, r.<<, r.<<))
+    RiegeRaw(r.<<, r.<<, r.<<, r.<<, r.<<))
     
   implicit val getRiegeResult = GetResult(r =>
-    Riege(r.<<, r.<<, r))
+    Riege(r.<<, r.<<, r, r.<<))
 }

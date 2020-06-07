@@ -290,7 +290,7 @@ case class ByWettkampf() extends GroupBy with FilterBy {
 case class ByRiege() extends GroupBy with FilterBy {
   override val groupname = "Riege"
   protected override val grouper = (v: WertungView) => {
-    Riege(v.riege match { case Some(r) => r case None => "keine Einteilung" }, None, None)
+    Riege(v.riege match { case Some(r) => r case None => "keine Einteilung" }, None, None, 0)
   }
   protected override val sorter: Option[(GroupSection, GroupSection) => Boolean] = Some((gs1: GroupSection, gs2: GroupSection) => {
     gs1.groupKey.easyprint.compareTo(gs2.groupKey.easyprint) < 0

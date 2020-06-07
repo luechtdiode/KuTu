@@ -256,7 +256,7 @@ class NetworkTab(wettkampfmode: BooleanProperty, override val wettkampfInfo: Wet
       .filter(gr => gr.durchgang.nonEmpty)
       .groupBy(gr => gr.durchgang.get)
       .map { t =>
-        DurchgangState(wettkampf.uuid.getOrElse(""), t._1, t._2.forall { riege => riege.erfasst }, t._2, durchgaenge(t._1))
+        DurchgangState(wettkampf.uuid.getOrElse(""), t._1, t._2.forall { riege => riege.erfasst }, t._2, durchgaenge.getOrElse(t._1, Durchgang(wettkampf.id,t._1)))
       }
       .toList.sortBy(_.name)
   }
