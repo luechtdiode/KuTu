@@ -396,7 +396,8 @@ object ResourceExchanger extends KutuService with RiegenBuilder {
             },
             r = fields(riegenHeader("r")),
             durchgang = if(fields(riegenHeader("durchgang")).length > 0) Some(fields(riegenHeader("durchgang"))) else None,
-            start = if(fields(riegenHeader("start")).length > 0) Some(fields(riegenHeader("start"))) else None
+            start = if(fields(riegenHeader("start")).length > 0) Some(fields(riegenHeader("start"))) else None,
+            kind = if(fields(riegenHeader("kind")).length > 0) fields(riegenHeader("kind")) else 0
             )
         riege
       })

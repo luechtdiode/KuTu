@@ -79,6 +79,7 @@ object DBService {
       , "InitTimeTable.sql"
       , "AddDurchgangTable-sqllite.sql"
       , "InitDurchgangTable.sql"
+      , "FixEmptyRiegeTimeTableIssue-sqllite.sql"
     )
 
     (!dbfile.exists() || dbfile.length() == 0, Config.importDataFrom) match {
@@ -129,6 +130,7 @@ object DBService {
             , "InitTimeTable.sql"
             , "AddDurchgangTable-sqllite.sql"
             , "InitDurchgangTable.sql"
+            , "FixEmptyRiegeTimeTableIssue-sqllite.sql"
           )
           installDB(db, sqlScripts)
         } finally {
@@ -162,6 +164,7 @@ object DBService {
         , "InitTimeTable.sql"
         , "AddDurchgangTable-pg.sql"
         , "InitDurchgangTable.sql"
+        , "FixEmptyRiegeTimeTableIssue-pg.sql"
       )
       installDB(db, sqlScripts)
       Config.importDataFrom match {

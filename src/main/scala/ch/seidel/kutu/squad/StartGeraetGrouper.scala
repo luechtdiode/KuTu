@@ -4,6 +4,7 @@ import ch.seidel.kutu.domain._
 import org.slf4j.LoggerFactory
 
 import scala.annotation.tailrec
+import scala.collection.immutable
 
 trait StartGeraetGrouper extends RiegenSplitter with Stager {
   private val logger = LoggerFactory.getLogger(classOf[StartGeraetGrouper])
@@ -62,17 +63,25 @@ trait StartGeraetGrouper extends RiegenSplitter with Stager {
 
     // Startgeräteverteilung
     distributeToStartgeraete(programm, startgeraete, maxRiegenSize, rebuildWertungen(alignedriegen, riegenindex))
-  }  
-  
-  private def distributeToStartgeraete(programm: String, startgeraete: List[Disziplin], maxRiegenSize: Int, alignedriegen: Seq[RiegeAthletWertungen]) = 
-    alignedriegen.zipWithIndex.flatMap{ r =>
-      val (rr, index) = r
-      val startgeridx =  (index + startgeraete.size) % startgeraete.size
-      rr.keys.map{riegenname =>
-        logger.debug(s"Durchgang $programm (${index / startgeraete.size + 1}), Start ${startgeraete(startgeridx).easyprint}, ${rr(riegenname).size} Tu/Ti der Riege $riegenname")
-        (s"$programm (${if(maxRiegenSize > 0) index / startgeraete.size + 1 else 1})", riegenname, startgeraete(startgeridx), rr(riegenname))
+  }
+
+  private def distributeToStartgeraete(programm: String, startgeraete: List[Disziplin], maxRiegenSize: Int, alignedriegen: Seq[RiegeAthletWertungen]): Seq[(String, String, Disziplin, Seq[(AthletView, Seq[WertungView])])] = {
+    val missingStartOffset = math.min(startgeraete.size, alignedriegen.size)
+    val emptyGeraeteRiegen = Range(missingStartOffset, math.max(missingStartOffset, startgeraete.size))
+      .map{startgeridx =>
+        (s"$programm (1)", s"Leere Riege ${programm}/${startgeraete(startgeridx).easyprint}", startgeraete(startgeridx), Seq[(AthletView, Seq[WertungView])]())
       }
-    }
+
+    alignedriegen
+      .zipWithIndex.flatMap { r =>
+      val (rr, index) = r
+      val startgeridx = (index + startgeraete.size) % startgeraete.size
+      rr.keys.map { riegenname =>
+        logger.debug(s"Durchgang $programm (${index / startgeraete.size + 1}), Start ${startgeraete(startgeridx).easyprint}, ${rr(riegenname).size} Tu/Ti der Riege $riegenname")
+        (s"$programm (${if (maxRiegenSize > 0) index / startgeraete.size + 1 else 1})", riegenname, startgeraete(startgeridx), rr(riegenname))
+      }
+    } ++ emptyGeraeteRiegen
+  }
   
 
   private def bringVereineTogether(startriegen: GeraeteRiegen, maxRiegenSize2: Int, splitSex: SexDivideRule): GeraeteRiegen = {

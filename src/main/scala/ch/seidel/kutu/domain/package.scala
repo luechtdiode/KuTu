@@ -133,13 +133,17 @@ package object domain {
     override def easyprint = caption
   }
 
-  case class RiegeRaw(wettkampfId: Long, r: String, durchgang: Option[String], start: Option[Long]) extends DataObject {
+  object RiegeRaw {
+    val KIND_STANDARD = 0;
+    val KIND_EMPTY_RIEGE = 1;
+  }
+  case class RiegeRaw(wettkampfId: Long, r: String, durchgang: Option[String], start: Option[Long], kind: Int) extends DataObject {
     override def easyprint = r
   }
 
-  case class Riege(r: String, durchgang: Option[String], start: Option[Disziplin]) extends DataObject {
+  case class Riege(r: String, durchgang: Option[String], start: Option[Disziplin], kind: Int) extends DataObject {
     override def easyprint = r
-    def toRaw(wettkampfId: Long) = RiegeRaw(wettkampfId, r, durchgang, start.map(_.id))
+    def toRaw(wettkampfId: Long) = RiegeRaw(wettkampfId, r, durchgang, start.map(_.id), kind)
   }
 
   case class TurnerGeschlecht(geschlecht: String) extends DataObject {

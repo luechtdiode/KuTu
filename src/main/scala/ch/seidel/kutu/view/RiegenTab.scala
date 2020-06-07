@@ -49,7 +49,7 @@ object DurchgangView {
         new BoundingBox(0,0,-1,-1)
       } else if(aNode.getClip != null) {
         aNode.getClip.getBoundsInParent
-      } else {            
+      } else {
         // If node has parent, get parent visible bounds in node coords
         val bounds = if (aNode.getParent()!=null) getVisibleBounds(aNode.getParent()) else null
         if(bounds != null && !bounds.isEmpty) aNode.parentToLocal(bounds) else bounds
@@ -95,7 +95,7 @@ class DurchgangTreeTableColumn[T](val index: Disziplin) extends TreeTableColumn[
 }
 
 class DurchgangView(wettkampf: WettkampfView, service: KutuService, disziplinlist: () => Seq[Disziplin], durchgangModel: ObservableBuffer[TreeItem[DurchgangEditor]]) extends TreeTableView[DurchgangEditor] {
-    
+
   id = "durchgang-table"
 //  items = durchgangModel
   showRoot = false
@@ -242,7 +242,7 @@ class RiegenFilterView(isEditable: BooleanProperty, wettkampf: WettkampfView, se
             editor.initanz,
             editor.initviewanz,
             editor.enabled,
-            Riege(editor.name.value, editor.initdurchgang, editor.initstart),
+            Riege(editor.name.value, editor.initdurchgang, editor.initstart, editor.kind),
             editor.onSelectedChange)
         service.renameRiege(wettkampf.id, editor.initname, evt.newValue)
         fireRiegeChanged(updated)
@@ -549,9 +549,11 @@ class RiegenTab(override val wettkampfInfo: WettkampfInfo, override val service:
 							    wettkampfId = wettkampf.id,
 							    r = riege,
 							    durchgang = Some(durchgang),
-							    start = Some(start.id)
-							  ), wertungen)
+							    start = Some(start.id),
+                  kind = if (wertungen.nonEmpty) RiegeRaw.KIND_STANDARD else RiegeRaw.KIND_EMPTY_RIEGE
+                ), wertungen)
 						  }
+              service.updateDurchgaenge(wettkampf.id)
 						  reloadData()
               riegenFilterView.sort
               durchgangView.sort
@@ -701,8 +703,10 @@ class RiegenTab(override val wettkampfInfo: WettkampfInfo, override val service:
         durchgang.initstartriegen
         .filter(d => selectedGerate.isEmpty || selectedGerate.contains(d._1.id))
         .flatMap(_._2)
+        .filter(r => r.kind != RiegeRaw.KIND_EMPTY_RIEGE)
         .toList.sortBy(r => r.initanz)
         .foreach{riege =>
+          val riegenAmStart: Seq[RiegeEditor] = riege.initstart.map(durchgang.initstartriegen(_)).getOrElse(List.empty)
           items += new Menu(riege.initname + " ("+riege.initanz+")") {
             durchgangModel
               .flatMap(d => d.getValue match {
@@ -715,6 +719,12 @@ class RiegenTab(override val wettkampfInfo: WettkampfInfo, override val service:
         	    items += KuTuApp.makeMenuAction(durchgang.durchgang.name) {(caption, action) =>
         	      val toSave = riege.copy(initdurchgang = Some(durchgang.durchgang.name))
   						  KuTuApp.invokeWithBusyIndicator {
+                  if (riegenAmStart.size == 1) {
+                    service.updateOrinsertRiege(RiegeRaw(wettkampf.id,
+                      s"Leere Riege ${durchgang.durchgang.name}/${toGeraetName(riege.start.value.id)}",
+                      Some(durchgang.durchgang.name), Some(riege.start.value.id), RiegeRaw.KIND_EMPTY_RIEGE
+                    ))
+                  }
         				  service.updateOrinsertRiege(toSave.commit)
         				  reloadData()
                   riegenFilterView.sort
@@ -727,43 +737,94 @@ class RiegenTab(override val wettkampfInfo: WettkampfInfo, override val service:
         disable.value = items.size() == 0
       }
     }
+
     def makeMoveStartgeraetMenu(durchgang: DurchgangEditor, cells: List[jfxsc.TreeTablePosition[DurchgangEditor, _]]): Menu = {
       val selectedGerate = toGeraetId(cells.map(c => c.getColumn))
       new Menu("Auf anderes Startgerät verschieben") {
-        durchgang.initstartriegen.filter(d => selectedGerate.isEmpty || selectedGerate.contains(d._1.id)).flatMap(_._2).toList.sortBy(r => r.initanz).foreach{riege =>
-          val von = "Von " + riege.initstart.map(d => d.name + " (" + durchgang.initstartriegen.get(d).map(r => r.map(re => re.initanz).sum).getOrElse(0) + ")").getOrElse("?") + " auf "
-          items += new Menu(riege.initname+ " ("+riege.initanz+")") {
+        durchgang.initstartriegen
+          .filter(d => selectedGerate.isEmpty || selectedGerate.contains(d._1.id))
+          .flatMap(_._2)
+          .filter(r => r.kind != RiegeRaw.KIND_EMPTY_RIEGE)
+          .toList.sortBy(r => r.initanz).foreach { riege =>
+          val riegenAmStart: Seq[RiegeEditor] = riege.initstart.map(durchgang.initstartriegen(_)).getOrElse(List.empty)
+          val von = "Von " + riege.initstart.map(d => {
+            d.name + " (" + riegenAmStart.map(re => re.initanz).sum + ")"
+          }).getOrElse("?") + " auf "
+          items += new Menu(riege.initname + " (" + riege.initanz + ")") {
             disziplinlist
-            .filter(d => riege.initstart match {case Some(dd) if(dd.equals(d)) => false case _ => true})
-            .foreach{start =>
-        	    items += KuTuApp.makeMenuAction(von + start.name + " (" + durchgang.initstartriegen.get(start).map(r => r.map(re => re.initanz).sum).getOrElse(0) + ")") {(caption, action) =>
-        	      val toSave = riege.copy(initstart = Some(start))
-  						  KuTuApp.invokeWithBusyIndicator {
-        				  service.updateOrinsertRiege(toSave.commit)
-        				  reloadData()
-                  riegenFilterView.sort
-                  durchgangView.sort
-  						  }
-        	    }
-            }
+              .filter(d => riege.initstart match {
+                case Some(dd) if (dd.equals(d)) => false
+                case _ => true
+              })
+              .foreach { start =>
+                items += KuTuApp.makeMenuAction(von + start.name + " (" + durchgang.initstartriegen.get(start).map(r => r.map(re => re.initanz).sum).getOrElse(0) + ")") { (caption, action) =>
+                  val toSave = riege.copy(initstart = Some(start))
+                  KuTuApp.invokeWithBusyIndicator {
+                    if (riegenAmStart.size == 1) {
+                      service.updateOrinsertRiege(RiegeRaw(wettkampf.id,
+                        s"Leere Riege ${durchgang.durchgang.name}/${toGeraetName(riege.start.value.id)}",
+                        Some(durchgang.durchgang.name), Some(riege.start.value.id), RiegeRaw.KIND_EMPTY_RIEGE
+                      ))
+                    }
+                    service.updateOrinsertRiege(toSave.commit)
+                    reloadData()
+                    riegenFilterView.sort
+                    durchgangView.sort
+                  }
+                }
+              }
           }.asInstanceOf[MenuItem]
         }
         disable.value = items.size() == 0
       }
     }
     def makeSetEmptyRiegeMenu(durchgang: DurchgangEditor, cells: List[jfxsc.TreeTablePosition[DurchgangEditor, _]]): MenuItem = {
-      val selectedGerate = toGeraetId(cells.map(c => c.getColumn))
-      val menu = KuTuApp.makeMenuAction("Mit leerer Riege besetzen") {(caption, action) =>
+      val assignedGeraete = durchgang.initstartriegen
+        .filter(_._2.forall(_.kind != RiegeRaw.KIND_EMPTY_RIEGE))
+        .map(_._1.id).toSet
+      val selectedCellsGeraete = toGeraetId(cells.map(c => c.getColumn))
+      val selectedGerate: List[Long] = if (selectedCellsGeraete.nonEmpty)
+        selectedCellsGeraete
+      else
+        wettkampfInfo.disziplinList.map(_.id).filter(!assignedGeraete.contains(_))
+
+      val emptyRiegen = durchgang.initstartriegen
+        .filter(d => selectedGerate.isEmpty || selectedGerate.contains(d._1.id))
+        .flatMap(_._2).toList
+        .filter(r => r.kind == RiegeRaw.KIND_EMPTY_RIEGE)
+        .map(r => r.initname)
+      val menu = KuTuApp.makeMenuAction(if (selectedGerate.size == 1) "Mit leerer Riege besetzen" else "Mit leeren Riegen besetzen") {(caption, action) =>
         KuTuApp.invokeWithBusyIndicator {
-          service.updateOrinsertRiege(RiegeRaw(wettkampf.id,
-            s"Leere Riege ${durchgang.durchgang.name}/${toGeraetName(selectedGerate.headOption.getOrElse(0))}",
-            Some(durchgang.durchgang.name), selectedGerate.headOption))
+          selectedGerate.foreach(selectedGeraet => {
+            service.updateOrinsertRiege(RiegeRaw(wettkampf.id,
+              s"Leere Riege ${durchgang.durchgang.name}/${toGeraetName(selectedGeraet)}",
+              Some(durchgang.durchgang.name), Some(selectedGeraet), RiegeRaw.KIND_EMPTY_RIEGE
+            ))
+          })
           reloadData()
           riegenFilterView.sort
           durchgangView.sort
         }
       }
-      //menu.disable.value = items.size() == 0
+      menu.disable.value = emptyRiegen.size > 0 || selectedGerate.isEmpty
+      menu
+    }
+    def makeRemoveEmptyRiegeMenu(durchgang: DurchgangEditor, cells: List[jfxsc.TreeTablePosition[DurchgangEditor, _]]): MenuItem = {
+      val selectedGerate = toGeraetId(cells.map(c => c.getColumn))
+      val emptyRiegen = durchgang.initstartriegen
+        .filter(d => selectedGerate.isEmpty || selectedGerate.contains(d._1.id))
+        .flatMap(_._2).toList
+        .filter(r => r.kind == RiegeRaw.KIND_EMPTY_RIEGE)
+        .map(r => r.initname)
+      val menu = KuTuApp.makeMenuAction(if (emptyRiegen.size == 1) "Leere Riege entfernen" else "Leere Riegen entfernen") {(caption, action) =>
+        KuTuApp.invokeWithBusyIndicator {
+          emptyRiegen.foreach(service.deleteRiege(wettkampf.id, _))
+          reloadData()
+          riegenFilterView.sort
+          durchgangView.sort
+        }
+      }
+      menu.disable.value = emptyRiegen.size == 0
       menu
     }
     def makeRenameDurchgangMenu: MenuItem = {
@@ -812,8 +873,12 @@ class RiegenTab(override val wettkampfInfo: WettkampfInfo, override val service:
         if (actDurchgangSelection.size == 1 && selectedGerate.size == 1) {
           val startgeraet = selectedGerate.head
           val durchgangEditor = actDurchgangSelection.head
-          val riegenEditorCandidates = durchgangEditor.initstartriegen.filter(d => selectedGerate.isEmpty || selectedGerate.contains(d._1.id)).flatMap(_._2).toList.sortBy(r => r.initname).map(r => r.initname)
-          if (event.pickResult.getIntersectedNode.isInstanceOf[Text]) {
+          val riegenEditorCandidates = durchgangEditor.initstartriegen
+            .filter(d => selectedGerate.isEmpty || selectedGerate.contains(d._1.id))
+            .flatMap(_._2).toList.sortBy(r => r.initname)
+            .filter(r => r.kind != RiegeRaw.KIND_EMPTY_RIEGE)
+            .map(r => r.initname)
+          if (riegenEditorCandidates.nonEmpty && event.pickResult.getIntersectedNode.isInstanceOf[Text]) {
             val text = event.pickResult.getIntersectedNode.asInstanceOf[Text]
             val vb = DurchgangView.positionInScene(text.parent.value)
             val pointInText = new Point2D(event.getSceneX - vb.x, event.getSceneY - vb.y)
@@ -849,6 +914,7 @@ class RiegenTab(override val wettkampfInfo: WettkampfInfo, override val service:
           val dg = durchgangView.root.value.getChildren.toList.flatMap(d => d +: d.getChildren).map(_.getValue).filter(dge =>  dge.durchgang.name == selecteddurchgang).head
           dg.initstartriegen.filter(d => d._1.id == selectedGeraet).flatMap(_._2).filter(r => r.name.value == selectedriege).headOption match {
             case Some(riege) =>
+              val riegenAmStart: Seq[RiegeEditor] = riege.initstart.map(dg.initstartriegen(_)).getOrElse(List.empty)
               def findTableCell(node: Object): Option[jfxsc.TreeTableCell[DurchgangEditor, _]] =
                 if (node.isInstanceOf[jfxsc.TreeTableCell[_, _]]) {
                   Some(node.asInstanceOf[jfxsc.TreeTableCell[DurchgangEditor, _]])
@@ -869,6 +935,12 @@ class RiegenTab(override val wettkampfInfo: WettkampfInfo, override val service:
                       val toSave = riege.copy(initstart = Some(targetStartgeraet), initdurchgang = Some(targetDurchgang))
                       println(targetDurchgang, targetStartgeraet)
                       KuTuApp.invokeWithBusyIndicator {
+                        if (riegenAmStart.size == 1) {
+                          service.updateOrinsertRiege(RiegeRaw(wettkampf.id,
+                            s"Leere Riege ${dg.durchgang.name}/${toGeraetName(riege.start.value.id)}",
+                            Some(dg.durchgang.name), Some(riege.start.value.id), RiegeRaw.KIND_EMPTY_RIEGE
+                          ))
+                        }
                         service.updateOrinsertRiege(toSave.commit)
                         reloadData()
                         riegenFilterView.sort
@@ -921,6 +993,7 @@ class RiegenTab(override val wettkampfInfo: WettkampfInfo, override val service:
             if (focusedCells.size == 1 && selectedEditor != null && selectedDurchgangHeader.isEmpty) {
               items += new SeparatorMenuItem()
               items += makeSetEmptyRiegeMenu(selectedEditor, focusedCells)
+              items += makeRemoveEmptyRiegeMenu(selectedEditor, focusedCells)
             }
             if (focusedCells.size == 1 && selectedEditor != null) {
               items += new SeparatorMenuItem()
@@ -942,6 +1015,7 @@ class RiegenTab(override val wettkampfInfo: WettkampfInfo, override val service:
           if (focusedCells.size == 1 && selectedEditor != null && selectedDurchgangHeader.isEmpty) {
             btnEditDurchgang.items += new SeparatorMenuItem()
             btnEditDurchgang.items += makeSetEmptyRiegeMenu(selectedEditor, focusedCells)
+            btnEditDurchgang.items += makeRemoveEmptyRiegeMenu(selectedEditor, focusedCells)
           }
           if (focusedCells.size == 1 && selectedEditor != null) {
             btnEditDurchgang.items += new SeparatorMenuItem()
@@ -959,7 +1033,7 @@ class RiegenTab(override val wettkampfInfo: WettkampfInfo, override val service:
     } catch {
       case e: Exception => e.printStackTrace()
     }
-    
+
     def makeRiegenSuggestMenu(): MenuItem = {
       val m = KuTuApp.makeMenuAction("Riegen & Durchgänge frisch einteilen ...") {(caption: String, action: ActionEvent) =>
         doRiegenSuggest(action)
@@ -979,7 +1053,7 @@ class RiegenTab(override val wettkampfInfo: WettkampfInfo, override val service:
     	}
       m
     }
-    
+
     def computeRiegenSuggest(event: ActionEvent, gruppengroesse: Int) {
       implicit val impevent = event
       PageDisplayer.showInDialog("Riegen neu einteilen ...", new DisplayablePage() {
@@ -1015,13 +1089,15 @@ class RiegenTab(override val wettkampfInfo: WettkampfInfo, override val service:
 						    wettkampfId = wettkampf.id,
 						    r = riege,
 						    durchgang = Some(durchgang),
-						    start = Some(start.id)
+						    start = Some(start.id),
+                kind = if (wertungen.nonEmpty) RiegeRaw.KIND_STANDARD else RiegeRaw.KIND_EMPTY_RIEGE
 						  ), wertungen)
 					  }
+            service.updateDurchgaenge(wettkampf.id)
 					  reloadData()
             riegenFilterView.sort
             durchgangView.sort
-				  } 
+				  }
         }
       })
     }
@@ -1050,15 +1126,15 @@ class RiegenTab(override val wettkampfInfo: WettkampfInfo, override val service:
 					  reloadData()
             riegenFilterView.sort
             durchgangView.sort
-				  } 
+				  }
         }
-      })    
+      })
     }
-    
+
     def doRiegenSuggest(event: ActionEvent) {
 		  implicit val impevent = event
   	  val txtGruppengroesse2 = new TextField() {
-  	    text <==> txtGruppengroesse.text 
+  	    text <==> txtGruppengroesse.text
   	    tooltip = "Max. Gruppengrösse oder 0 für gleichmässige Verteilung mit einem Durchgang."
   	  }
 		  PageDisplayer.showInDialog("Riegen neu einteilen ...", new DisplayablePage() {
@@ -1080,7 +1156,7 @@ class RiegenTab(override val wettkampfInfo: WettkampfInfo, override val service:
 			  }
 		  })
     }
-      
+
     def doRiegenEinheitenExport(event: ActionEvent) {
 		  implicit val impevent = event
 		  KuTuApp.invokeWithBusyIndicator {
@@ -1095,14 +1171,14 @@ class RiegenTab(override val wettkampfInfo: WettkampfInfo, override val service:
         hostServices.showDocument(file.toURI.toASCIIString)
 		  }
     }
-    
+
     def makeRiegenEinheitenExport(): MenuItem = {
       val m = KuTuApp.makeMenuAction("Riegen Einheiten export") {(caption: String, action: ActionEvent) =>
         doRiegenEinheitenExport(action)
       }
       m
     }
-    
+
     def doDurchgangExport(event: ActionEvent) {
 		  implicit val impevent = event
 		  KuTuApp.invokeWithBusyIndicator {
@@ -1117,7 +1193,7 @@ class RiegenTab(override val wettkampfInfo: WettkampfInfo, override val service:
         hostServices.showDocument(file.toURI.toASCIIString)
 		  }
     }
-    
+
     def makeDurchgangExport(): MenuItem = {
       val m = KuTuApp.makeMenuAction("Durchgang-Planung export") {(caption: String, action: ActionEvent) =>
         doDurchgangExport(action)
@@ -1175,7 +1251,7 @@ class RiegenTab(override val wettkampfInfo: WettkampfInfo, override val service:
           })
 		  }
     }
-    
+
     val riegeRenameButton = new Button {
   	  text = "Riege umbenennen"
 		  minWidth = 75
@@ -1240,7 +1316,7 @@ class RiegenTab(override val wettkampfInfo: WettkampfInfo, override val service:
       	)
 		  }
     }
-    
+
     def doRiegenBelatterExport(event: ActionEvent) {
       import scala.concurrent.ExecutionContext.Implicits.global
 
@@ -1269,9 +1345,9 @@ class RiegenTab(override val wettkampfInfo: WettkampfInfo, override val service:
 
     def makeRiegenQRCodesExport(): MenuItem = {
       val m = KuTuApp.makeMenuAction("QR-Codes für Wertungsrichter erstellen") {(caption: String, action: ActionEvent) =>
-        
+
         val seriendaten = RiegenBuilder.mapToGeraeteRiegen(service.getAllKandidatenWertungen(wettkampf.uuid.map(UUID.fromString(_)).get).toList)
-              .filter(gr => gr.durchgang.nonEmpty && gr.disziplin.nonEmpty) 
+              .filter(gr => gr.durchgang.nonEmpty && gr.disziplin.nonEmpty)
               .map(WertungsrichterQRCode.toMobileConnectData(wettkampf, remoteBaseUrl))
               .toSet.toList
         val filename = "WertungsrichterConnectQRCodes_" + wettkampf.easyprint.replace(" ", "_") + ".html"
@@ -1285,12 +1361,12 @@ class RiegenTab(override val wettkampfInfo: WettkampfInfo, override val service:
       }
       m
     }
-    
+
     val btnRiegen = new MenuButton("Riegen- & Durchgangs-Einteilung") {
       items += makeRiegenSuggestMenu()
       items += makeRiegenResetMenu()
     }
-    
+
     val btnExport = new MenuButton("Export") {
       items += makeRiegenEinheitenExport()
       items += makeDurchgangExport()
@@ -1299,7 +1375,7 @@ class RiegenTab(override val wettkampfInfo: WettkampfInfo, override val service:
       items += makeSelectedRiegenBlaetterExport(Set.empty)
       items += makeRiegenQRCodesExport()
     }
-    
+
     val riegenFilterControl = new ToolBar {
       if (wettkampfEditable) {
         content = List[ButtonBase](

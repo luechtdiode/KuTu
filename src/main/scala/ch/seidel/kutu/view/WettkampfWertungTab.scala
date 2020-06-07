@@ -209,7 +209,7 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
           for{
             o <- model
             i = raw.find { _ == o}
-            if(i.isEmpty && o != emptyRiege)
+            if(i.isEmpty && o.softEquals(emptyRiege))
           }
             yield {model.indexOf(o)}
         for{i <- toRemove.sorted.reverse} {
@@ -357,7 +357,7 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
     }
   )
 
-  val riegeCol: List[jfxsc.TableColumn[IndexedSeq[WertungEditor], _]] = if(wettkampfInfo.leafprograms.size < 2) {
+  val riegeCol: List[jfxsc.TableColumn[IndexedSeq[WertungEditor], _]] = if(wettkampfInfo.rootprograms.size < 2) {
     List(new WKTableColumn[String](-1) {
       text = "Riege"
       cellFactory = { x =>
@@ -448,7 +448,7 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
           }
       }})
   } else {
-    val cols: List[jfxsc.TableColumn[IndexedSeq[WertungEditor], _]] = wettkampfInfo.leafprograms.map{p =>
+    val cols: List[jfxsc.TableColumn[IndexedSeq[WertungEditor], _]] = wettkampfInfo.rootprograms.map{p =>
       val col: jfxsc.TableColumn[IndexedSeq[WertungEditor], _] = new TableColumn[IndexedSeq[WertungEditor], String] {
         text = s"${p.name}"
         //            delegate.impl_setReorderable(false)
@@ -617,7 +617,7 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
       col.columns.foreach(hideIfNotUsed(_))
     }
 
-    val orderedWertungen = if(durchgangFilter.equals(emptyRiege)){
+    val orderedWertungen = if(durchgangFilter.softEquals(emptyRiege)){
       wkview.columns.foreach{restoreVisibility(_)}
       wertungen}
     else {
@@ -627,7 +627,7 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
     for{athlet <- orderedWertungen} {
       def isRiegenFilterConform(athletRiegen: Set[Option[String]]) = {
         val undefined = athletRiegen.forall{case None => true case _ => false}
-        val durchgangKonform = durchgangFilter.sequenceId.equals(emptyRiege.sequenceId) ||
+        val durchgangKonform = durchgangFilter.softEquals(emptyRiege) ||
           durchgangFilter.kandidaten.filter { k => athletRiegen.contains(k.einteilung.map(_.r))}.nonEmpty
         durchgangKonform && (undefined || !athletRiegen.forall{case Some(riege) => !relevantRiegen.getOrElse(riege, (false, 0))._1 case _ => true})
       }
@@ -760,19 +760,15 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
 
     val columnrebuild = wertungen.isEmpty
     isFilterRefreshing = true
-    wkModel.clear()
     wertungen = reloadWertungen()
-
     relevantRiegen = computeRelevantRiegen
-
     updateRiegen()
-
     lastFilter = ""
     updateFilteredList(lastFilter, durchgangFilter)
     txtUserFilter.text.value = lastFilter
-    if(columnrebuild) {
+    if(columnrebuild && wertungen.nonEmpty) {
       wkview.columns.clear()
-      wkview.columns ++= athletCol ++ wertungenCols ++ sumCol
+      wkview.columns ++= athletCol ++ riegeCol ++ wertungenCols ++ sumCol
     }
 
     try {
@@ -1602,7 +1598,7 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
           try {
             for ((wertungen, rowIndex) <- wkModel.zipWithIndex) {
               for ((disciplin, index) <- wertungen.zipWithIndex) {
-                if (durchgangFilter == emptyRiege
+                if (durchgangFilter.sequenceId.equals(emptyRiege.sequenceId)
                   || durchgangFilter.disziplin.isEmpty
                   || index == disziplinlist.indexOf(durchgangFilter.disziplin.get)) {
                   disciplin.clearInput()

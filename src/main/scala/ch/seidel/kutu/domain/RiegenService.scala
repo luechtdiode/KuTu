@@ -12,7 +12,7 @@ trait RiegenService extends DBService with RiegenResultMapper {
   def renameRiege(wettkampfid: Long, oldname: String, newname: String): Riege = {
     val existing = Await.result(database.run{
         (if (newname.trim == oldname) {
-          sql"""select r.wettkampf_id, r.name, r.durchgang, r.start
+          sql"""select r.wettkampf_id, r.name, r.durchgang, r.start, r.kind
              from riege r
              where wettkampf_id=$wettkampfid and name=${oldname}
           """.as[RiegeRaw]
@@ -20,7 +20,7 @@ trait RiegenService extends DBService with RiegenResultMapper {
           sqlu"""
                 DELETE from riege where name=${newname.trim} and wettkampf_id=${wettkampfid}
                 """  >>
-          sql"""select r.wettkampf_id, r.name, r.durchgang, r.start
+          sql"""select r.wettkampf_id, r.name, r.durchgang, r.start, r.kind
              from riege r
              where wettkampf_id=$wettkampfid and name=${oldname}
           """.as[RiegeRaw]}).transactionally
@@ -51,12 +51,12 @@ trait RiegenService extends DBService with RiegenResultMapper {
                   SET riege2=${newname}
                   WHERE wettkampf_id=${wettkampfid} and riege2=${oldname}
             """ >>
-        sql"""   select r.name as riegenname, r.durchgang, d.*
+        sql"""   select r.name as riegenname, r.durchgang, d.*, r.kind
                  from riege r
                  left outer join disziplin d on (r.start = d.id)
                  where r.wettkampf_id=${wettkampfid} and r.name=${newname}
            """.as[Riege].headOption).transactionally
-    }, Duration.Inf).getOrElse(Riege(newname, None, None))
+    }, Duration.Inf).getOrElse(Riege(newname, None, None, 0))
   }
 
   def cleanAllRiegenDurchgaenge(wettkampfid: Long) {
@@ -106,6 +106,10 @@ trait RiegenService extends DBService with RiegenResultMapper {
     Await.result(database.run{process.transactionally}, Duration.Inf)
   }
 
+  def updateDurchgaenge(wettkampfId: Long): Unit = {
+    Await.result(database.run{ updateDurchgaengeAction(wettkampfId).transactionally}, Duration.Inf)
+  }
+
   def updateDurchgaengeAction(wettkampfId: Long) =
       sqlu"""
                 insert into durchgang (wettkampf_id, title, name, durchgangtype, ordinal, planStartOffset)
@@ -137,16 +141,20 @@ trait RiegenService extends DBService with RiegenResultMapper {
                 wettkampf_id=${riege.wettkampfId} and name=${riege.r}
         """ >>
     sqlu"""
+                delete from riege where
+                wettkampf_id=${riege.wettkampfId} and kind=1 and start=${riege.start} and durchgang=${riege.durchgang}
+        """ >>
+    sqlu"""
                 insert into riege
-                (wettkampf_Id, name, durchgang, start)
-                values (${riege.wettkampfId}, ${riege.r}, ${riege.durchgang}, ${riege.start})
+                (wettkampf_Id, name, durchgang, start, kind)
+                values (${riege.wettkampfId}, ${riege.r}, ${riege.durchgang}, ${riege.start}, ${riege.kind})
         """
 
   def updateOrinsertRiege(riege: RiegeRaw): Riege = {
     Await.result(database.run{(
       updateOrInsertRiegeRawAction(riege) >>
       updateDurchgaengeAction(riege.wettkampfId) >>
-       sql"""select r.name as riegenname, r.durchgang, d.*
+       sql"""select r.name as riegenname, r.durchgang, d.*, r.kind
              from riege r
              left outer join disziplin d on (r.start = d.id)
              where r.wettkampf_id=${riege.wettkampfId} and r.name=${riege.r}
@@ -177,12 +185,12 @@ trait RiegenService extends DBService with RiegenResultMapper {
   def cleanUnusedRiegen(wettkampfid: Long): Unit = {
     Await.result(database.run{(
       sqlu"""
-                DELETE from riege where wettkampf_id=${wettkampfid} and not exists(
+                DELETE from riege where wettkampf_id=${wettkampfid} and and kind=0 and not exists(
                   select 1 from wertung w where w.riege = riege.name or w.riege2 = riege.name and w.wettkampf_id = riege.wettkampf_id
                 )
           """ >>
       sqlu"""
-              DELETE from durchgang wherewettkampf_id=${wettkampfid} and durchgangtype = 1 and not exists(
+              DELETE from durchgang where wettkampf_id=${wettkampfid} and durchgangtype = 1 and not exists(
                   select 1 from riege w where w.durchgang = druchgang.name and w.wettkampf_id = durchgang.wettkampf_id
                 )
             """ >>
@@ -221,7 +229,7 @@ trait RiegenService extends DBService with RiegenResultMapper {
 
   def selectRiegenRaw(wettkampfId: Long) = {
     Await.result(database.run{(
-       sql"""select r.wettkampf_id, r.name, r.durchgang, r.start
+       sql"""select r.wettkampf_id, r.name, r.durchgang, r.start, r.kind
              from riege r
              where wettkampf_id=$wettkampfId
           """.as[RiegeRaw]).withPinnedSession
@@ -230,7 +238,7 @@ trait RiegenService extends DBService with RiegenResultMapper {
   
   def selectRiegen(wettkampfId: Long) = {
     Await.result(database.run{(
-       sql"""select r.name as riegenname, r.durchgang, d.*
+       sql"""select r.name as riegenname, r.durchgang, d.*, r.kind
              from riege r
              left outer join disziplin d on (r.start = d.id)
              where wettkampf_id=$wettkampfId
