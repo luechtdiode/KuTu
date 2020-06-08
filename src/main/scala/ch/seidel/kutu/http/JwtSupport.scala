@@ -4,6 +4,7 @@ import java.util.Date
 import java.util.concurrent.TimeUnit
 
 import akka.http.scaladsl.model.StatusCodes
+import akka.http.scaladsl.model.headers.RawHeader
 import akka.http.scaladsl.server.{Directive1, Directives}
 import authentikat.jwt._
 import ch.seidel.kutu.Config._
@@ -30,7 +31,12 @@ trait JwtSupport extends Directives {
     case _ =>
       if (rejectRequest) reject else complete(StatusCodes.Unauthorized)
   }
-  
+
+  def respondWithJwtHeader(userId: String): akka.http.scaladsl.server.Directive0 = {
+    val claims = setClaims(userId, jwtTokenExpiryPeriodInDays)
+    respondWithHeader(RawHeader(jwtAuthorizationKey, JsonWebToken(jwtHeader, claims, jwtSecretKey)))
+  }
+
   def setClaims(userid: String, expiryPeriodInDays: Long) = JwtClaimsSet(
     Map(
       userKey -> userid,
