@@ -179,6 +179,10 @@ object ResourceExchanger extends KutuService with RiegenBuilder {
       } else acc
     }
 
+    def getValue(header: Map[String, Int], fields: IndexedSeq[String], key: String, default: String): String = {
+      if (header.contains(key) && fields(header(key)).length > 0) fields(header(key)) else default
+    }
+
     val (vereinCsv, vereinHeader) = collection("vereine.csv")
     logger.info("importing vereine ...", vereinHeader)
     val vereinNameIdx = vereinHeader("name")
@@ -383,7 +387,7 @@ object ResourceExchanger extends KutuService with RiegenBuilder {
     }.sum
     // wertungen: 1857 / inserted: 1857, duration: 6335ms
     logger.debug(s"wertungen: ${wertungInstances.size} / inserted: $inserted, duration: ${System.currentTimeMillis() - start}ms")
-    
+
     if(collection.contains("riegen.csv")) {
       val (riegenCsv, riegenHeader) = collection("riegen.csv")
       logger.info("importing riegen ...", riegenHeader)
@@ -397,8 +401,8 @@ object ResourceExchanger extends KutuService with RiegenBuilder {
             r = fields(riegenHeader("r")),
             durchgang = if(fields(riegenHeader("durchgang")).length > 0) Some(fields(riegenHeader("durchgang"))) else None,
             start = if(fields(riegenHeader("start")).length > 0) Some(fields(riegenHeader("start"))) else None,
-            kind = if(fields(riegenHeader("kind")).length > 0) fields(riegenHeader("kind")) else 0
-            )
+            kind = getValue(riegenHeader, fields, "kind", "0")
+        )
         riege
       })
     }
