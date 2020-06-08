@@ -1,11 +1,14 @@
 package ch.seidel.kutu.http
 
 import java.nio.charset.StandardCharsets
-import java.security.MessageDigest
+import java.security.spec.InvalidKeySpecException
+import java.security.{MessageDigest, NoSuchAlgorithmException, SecureRandom}
 import java.text.SimpleDateFormat
-import java.util.{Date, UUID}
+import java.util.{Base64, Date}
 
 import akka.http.scaladsl.model.RemoteAddress
+import javax.crypto.SecretKeyFactory
+import javax.crypto.spec.PBEKeySpec
 import spray.json.{JsString, JsValue, JsonReader, _}
 
 import scala.util.Try
@@ -125,10 +128,40 @@ trait EnrichedJson {
 }
 
 trait Hashing {
+  private val random = new SecureRandom
+
   def sha256(text: String): String = {
     // Create a message digest every time since it isn't thread safe!
     val digest = MessageDigest.getInstance("SHA-256")
     digest.digest(text.getBytes(StandardCharsets.UTF_8)).map("%02X".format(_)).mkString
+  }
+
+  def matchHashed(saltedSecretHash: String)(secret: String) = {
+    val split = saltedSecretHash.split(":")
+    val salt = Base64.getDecoder.decode(split(0))
+    hashedWithSalt(secret, salt)
+  }
+
+  def hashed(secret: String) = {
+    val saltb = new Array[Byte](16)
+    random.nextBytes(saltb)
+    hashedWithSalt(secret, saltb)
+  }
+
+  private def hashedWithSalt(secret: String, saltb: Array[Byte]) = {
+    val iterationCount = 65536
+    val spec = new PBEKeySpec(secret.toCharArray, saltb, iterationCount, 256)
+    val salt = Base64.getEncoder.encodeToString(saltb)
+    try {
+      val factory = SecretKeyFactory.getInstance("PBKDF2WithHmacSHA256")
+      salt + ":" + Base64.getEncoder.encodeToString(factory.generateSecret(spec).getEncoded)
+    } catch {
+      case e@(_: NoSuchAlgorithmException | _: InvalidKeySpecException) =>
+        for (i <- 0 until iterationCount) {
+          random.reseed()
+        }
+        salt + ":" + (salt + secret).hashCode
+    }
   }
 }
 

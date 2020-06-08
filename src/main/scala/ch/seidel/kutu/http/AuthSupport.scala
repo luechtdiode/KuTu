@@ -2,7 +2,6 @@ package ch.seidel.kutu.http
 
 import java.net.{InetSocketAddress, PasswordAuthentication}
 
-import akka.http.scaladsl.{ClientTransport, Http}
 import akka.http.scaladsl.marshallers.sprayjson.SprayJsonSupport
 import akka.http.scaladsl.marshalling.Marshal
 import akka.http.scaladsl.model._
@@ -10,16 +9,18 @@ import akka.http.scaladsl.model.headers._
 import akka.http.scaladsl.model.ws.{Message, WebSocketRequest}
 import akka.http.scaladsl.server.Directives
 import akka.http.scaladsl.server.directives.Credentials
+import akka.http.scaladsl.server.directives.Credentials.Provided
 import akka.http.scaladsl.settings.{ClientConnectionSettings, ConnectionPoolSettings}
 import akka.http.scaladsl.unmarshalling.Unmarshal
+import akka.http.scaladsl.{ClientTransport, Http}
 import akka.stream.scaladsl._
 import ch.seidel.commons.PageDisplayer
 import ch.seidel.kutu.Config._
 import spray.json.JsObject
 
 import scala.concurrent.ExecutionContext.Implicits.global
-import scala.concurrent.{Await, Future, Promise}
 import scala.concurrent.duration.Duration
+import scala.concurrent.{Await, Future, Promise}
 
 object AuthSupport {
   private[AuthSupport] var proxyPort: Option[String] = None
@@ -139,12 +140,16 @@ trait AuthSupport extends Directives with SprayJsonSupport with Hashing {
   }
 
   def poolsettings = ConnectionPoolSettings(Core.system).withConnectionSettings(clientsettings)
- 
-  def userPassAuthenticator(userSecretHashLookup: (String) => String): AuthenticatorPF[String] = {
-    case p @ Credentials.Provided(id) if p.verify(userSecretHashLookup(id), sha256) => id
+
+  def verify(credentials: Provided, userSecretHashLookup: (String) => String): Boolean = {
+    val hash = userSecretHashLookup(credentials.identifier)
+    credentials.verify(hash, matchHashed(hash))
   }
-  
-  
+
+  def userPassAuthenticator(userSecretHashLookup: (String) => String): AuthenticatorPF[String] = {
+    case p @ Credentials.Provided(id) if verify(p, userSecretHashLookup) => id
+  }
+
   /**
    * Supports header- and body-based request->response with credentials->acces-token
    */

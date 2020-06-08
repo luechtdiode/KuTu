@@ -2,7 +2,8 @@ package ch.seidel.kutu
 
 import java.net.URLEncoder
 import java.nio.file.{Files, LinkOption, StandardOpenOption}
-import java.time.{LocalDate, ZoneId}
+import java.sql.Timestamp
+import java.time.{LocalDate, LocalDateTime, ZoneId}
 import java.util.UUID
 import java.util.concurrent.TimeUnit
 
@@ -632,4 +633,11 @@ package object domain {
   }
 
   type OverviewStatTuple = (String, String, Int, Int, Int)
+
+
+  case class NewRegistration(wettkampfId: Long, vereinname: String, verband: String, respName: String, respVorname: String, mobilephone: String, mail: String, secret: String) {
+    def toRegistration = Registration(0, wettkampfId, None, vereinname, verband, respName, respVorname, mobilephone, mail, Timestamp.valueOf(LocalDateTime.now()).getTime)
+  }
+  case class Registration(id: Long, wettkampfId: Long, vereinId: Option[Long], vereinname: String, verband: String, respName: String, respVorname: String, phone: String, mail: String, registrationTime: Long) extends DataObject
+
 }
