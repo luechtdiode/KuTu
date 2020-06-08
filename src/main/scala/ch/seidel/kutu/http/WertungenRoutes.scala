@@ -42,7 +42,6 @@ trait WertungenRoutes extends SprayJsonSupport with JsonSupport with JwtSupport 
               complete {
                 Future {
                   val wettkampf = readWettkampf(competitionId.toString())
-                  val isDNoteUsed = listWettkampfDisziplineViews(wettkampf).exists(wd => wd.notenSpez.isDNoteUsed)
                   val wertungen = selectWertungen(wettkampfId = Some(wettkampf.id), athletId = Some(athletId))
                   wertungen.filter { wertung =>
                     if (wertung.wettkampfdisziplin.feminim == 0 && !wertung.athlet.geschlecht.equalsIgnoreCase("M")) {
@@ -59,7 +58,7 @@ trait WertungenRoutes extends SprayJsonSupport with JsonSupport with JwtSupport 
                       w.athlet.id, w.athlet.vorname, w.athlet.name, w.athlet.geschlecht,
                       w.athlet.verein.map(_.easyprint).getOrElse(""),
                       w.toWertung,
-                      w.wettkampfdisziplin.disziplin.id, w.wettkampfdisziplin.programm.name, isDNoteUsed)
+                      w.wettkampfdisziplin.disziplin.id, w.wettkampfdisziplin.programm.name, w.wettkampfdisziplin.notenSpez.isDNoteUsed)
                   }
                 }
               }
@@ -141,7 +140,6 @@ trait WertungenRoutes extends SprayJsonSupport with JsonSupport with JwtSupport 
                 else {
                   val wettkampf = readWettkampf(competitionId.toString())
                   val wkPgmId = wettkampf.programmId
-                  val isDNoteUsed = wkPgmId != 20 && wkPgmId != 1
                   // Durchgang/Geraet/Step
                   segments match {
                     case List(durchgang) => complete {
@@ -179,10 +177,12 @@ trait WertungenRoutes extends SprayJsonSupport with JsonSupport with JwtSupport 
                             gr.durchgang.exists(encodeURIComponent(_) == durchgang) &&
                               gr.disziplin.exists(_.id == gid) &&
                               gr.halt == halt - 1)
-                          .flatMap(gr => gr.kandidaten.map(k =>
+                          .flatMap(gr => gr.kandidaten.map(k => {
+                            val wertungView = k.wertungen.filter(w => w.wettkampfdisziplin.disziplin.id == gid).head
                             WertungContainer(k.id, k.vorname, k.name, k.geschlecht, k.verein,
-                              k.wertungen.filter(w => w.wettkampfdisziplin.disziplin.id == gid).map(_.toWertung).head,
-                              gid, k.programm, isDNoteUsed)))
+                              wertungView.toWertung,
+                              gid, k.programm, wertungView.wettkampfdisziplin.notenSpez.isDNoteUsed)
+                          }))
                       }
                     }
                   }
@@ -203,7 +203,7 @@ trait WertungenRoutes extends SprayJsonSupport with JsonSupport with JwtSupport 
                               case None => None
                               case Some(currentWertung) =>
                                 val wkPgmId = currentWertung.wettkampfdisziplin.programm.head.id
-                                val isDNoteUsed = wkPgmId != 20 && wkPgmId != 1
+                                val isDNoteUsed = currentWertung.wettkampfdisziplin.notenSpez.isDNoteUsed
                                 val durchgangEff = selectRiegenRaw(currentWertung.wettkampf.id).filter(ds => encodeURIComponent(ds.durchgang.getOrElse("")) == durchgang)
                                   .map(_.durchgang.get)
                                   .headOption.getOrElse(durchgang)

@@ -116,20 +116,6 @@ class DurchgangView(wettkampf: WettkampfView, service: KutuService, disziplinlis
       prefWidth = 130
       text = "Durchgang"
       cellValueFactory = { x => x.value.getValue.cellvalue }
-//      cellFactory = { _ =>
-//        new TableCell[DurchgangEditor, String] {
-//          val l = new WebView()
-//          graphic = l
-//          item.onChange { (_, _, newValue) =>
-//            l.engine.loadContent("")
-//            l.autosize()
-//            l.setPrefHeight(height.value)
-//            l.engine.loadContent(newValue)
-//            val webPage: WebPage = com.sun.javafx.webkit.Accessor.getPageFor(l.engine)
-//            webPage.setBackgroundColor(0)
-//          }
-//        }
-//      }
     }
     , new TreeTableColumn[DurchgangEditor, String] {
       prefWidth = 40
