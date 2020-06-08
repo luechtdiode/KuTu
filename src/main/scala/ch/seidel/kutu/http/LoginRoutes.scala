@@ -12,8 +12,11 @@ trait LoginRoutes extends SprayJsonSupport with EnrichedJson with JwtSupport wit
   def login(userLookup: (String) => String) = pathPrefix("login") {
     pathEndOrSingleSlash {
       authenticateBasicPF(realm = "secure site", userPassAuthenticator(userLookup)) { userId =>
-        val claims = setClaims(userId, jwtTokenExpiryPeriodInDays)
-        respondWithHeader(RawHeader(jwtAuthorizationKey, JsonWebToken(jwtHeader, claims, jwtSecretKey))) {
+        respondWithJwtHeader(userId) {
+          complete(StatusCodes.OK)
+        }
+      } ~ authenticated() { userId =>
+        respondWithJwtHeader(userId) {
           complete(StatusCodes.OK)
         }
       }
@@ -22,12 +25,10 @@ trait LoginRoutes extends SprayJsonSupport with EnrichedJson with JwtSupport wit
   pathPrefix("loginrenew") {
     pathEndOrSingleSlash {
       authenticated() { userId =>
-        val claims = setClaims(userId, jwtTokenExpiryPeriodInDays)
-        respondWithHeader(RawHeader(jwtAuthorizationKey, JsonWebToken(jwtHeader, claims, jwtSecretKey))) {
+        respondWithJwtHeader(userId) {
           complete(StatusCodes.OK)
         }
       }
     }
   }
-  
 }
