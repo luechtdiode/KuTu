@@ -411,7 +411,7 @@ object KuTuApp extends JFXApp with KutuService with JsonSupport with JwtSupport 
           onAction = handleAction { implicit e: ActionEvent =>
             val process = KuTuApp.invokeAsyncWithBusyIndicator {
               if (remoteBaseUrl.indexOf("localhost") > -1) {
-                server.startServer { uuid => server.sha256(uuid) }
+                server.startServer()
               }
               server.httpUploadWettkampfRequest(p.toWettkampf)
             }
@@ -762,7 +762,7 @@ object KuTuApp extends JFXApp with KutuService with JsonSupport with JwtSupport 
   def makeStartServerMenu = {
     val item = makeMenuAction("Start local Server") { (caption, action) =>
       KuTuApp.invokeWithBusyIndicator {
-        server.startServer { x => server.sha256(x) }
+        server.startServer()
         LocalServerStates.startLocalServer(() => server.listNetworkAdresses)
       }
     }

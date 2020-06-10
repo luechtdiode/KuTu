@@ -38,6 +38,9 @@ trait RegistrationRoutes extends SprayJsonSupport with JwtSupport with JsonSuppo
             if (extractRegistrationId(userId).exists(id => id == registrationId)) {
               respondWithJwtHeader(registrationId + "") {
                 pathEndOrSingleSlash {
+                  get {
+                    complete(selectRegistration(registrationId))
+                  } ~
                   put { // update Vereinsregistration
                     entity(as[Registration]) { registration =>
                       complete(updateRegistration(registration))
