@@ -99,6 +99,7 @@ function CSSTextGenerator(colors) {
     --ion-toolbar-background-color: ${Color(light).lighten(tintRatio)};
     --ion-toolbar-text-color: ${contrast(dark, 0.2)};
     --ion-item-background-color: ${contrast(light, 0.1)};
+    --ion-item-background-activated: ${contrast(light, 0.3)};
     --ion-item-text-color: ${contrast(dark, 0.1)};
     --ion-item-border-color: ${Color(medium).lighten(tintRatio)};
     --ion-overlay-background-color: ${accentuate(light, 0.1)};
