@@ -78,7 +78,7 @@ trait RegistrationService extends DBService with RegistrationResultMapper with H
               set verein_id=${registration.vereinId},
                   vereinname=${registration.vereinname}, verband=${registration.verband},
                   responsible_name=${registration.respName}, responsible_vorname=${registration.respVorname},
-                  mobilephone=${registration.phone}, mail=${registration.mail}
+                  mobilephone=${registration.mobilephone}, mail=${registration.mail}
               where id=${registration.id}
      """.as[Long].headOption
     }, Duration.Inf)

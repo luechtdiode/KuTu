@@ -1,0 +1,259 @@
+import { Component, OnInit } from '@angular/core';
+import { Wettkampf, ClubRegistration } from '../backend-types';
+import { NavController, IonItemSliding, AlertController } from '@ionic/angular';
+import { BackendService } from '../services/backend.service';
+import { BehaviorSubject, Subject, of, Observable } from 'rxjs';
+import { ActivatedRoute } from '@angular/router';
+import { debounceTime, distinctUntilChanged, map, filter, switchMap, share, take } from 'rxjs/operators';
+
+@Component({
+  selector: 'app-registration',
+  templateUrl: './registration.page.html',
+  styleUrls: ['./registration.page.scss'],
+})
+export class RegistrationPage implements OnInit {
+
+
+  sClubRegistrationList: ClubRegistration[];
+  sFilteredRegistrationList: ClubRegistration[];
+  sMyQuery: string;
+
+  tMyQueryStream = new Subject<any>();
+
+  sFilterTask: () => void = undefined;
+
+  private busy = new BehaviorSubject(false);
+
+  constructor(public navCtrl: NavController,
+              private route: ActivatedRoute,
+              public backendService: BackendService, 
+              private alertCtrl: AlertController) {
+    if (! this.backendService.competitions) {
+      this.backendService.getCompetitions();
+    }
+  }
+
+  ngOnInit(): void {
+    this.busy.next(true);
+    const wkId = this.route.snapshot.paramMap.get('wkId');
+    if (wkId) {
+      this.competition = wkId;
+    } else if (this.backendService.competition) {
+      this.competition = this.backendService.competition;
+    }
+  }
+
+  get stationFreezed(): boolean {
+    return this.backendService.stationFreezed;
+  }
+
+  set competition(competitionId: string) {
+    if (!this.clubregistrations || competitionId !== this.backendService.competition) {
+      this.busy.next(true);
+      this.clubregistrations = [];
+      this.backendService.getClubRegistrations(competitionId).subscribe(list => {
+        this.clubregistrations = list;
+        this.busy.next(false);
+        const pipeBeforeAction = this.tMyQueryStream.pipe(
+          filter(event => !!event && !!event.target && !!event.target.value),
+          map(event => event.target.value),
+          debounceTime(1000),
+          distinctUntilChanged(),
+          share()
+        );
+        pipeBeforeAction.subscribe(() => {
+          this.busy.next(true);
+        });
+        pipeBeforeAction.pipe(
+          switchMap(this.runQuery(list))
+        ).subscribe(filteredList => {
+          this.sFilteredRegistrationList = filteredList;
+          this.busy.next(false);
+        });
+      });
+    }
+  }
+
+  get competition(): string {
+    return this.backendService.competition || '';
+  }
+  set clubregistrations(list: ClubRegistration[]) {
+    this.sClubRegistrationList = list;
+    this.reloadList(this.sMyQuery);
+  }
+  get clubregistrations() {
+    return this.sClubRegistrationList;
+  }
+  get filteredStartList() {
+    return this.sFilteredRegistrationList || this.sClubRegistrationList;
+  }
+
+  get isBusy(): Observable<boolean> {
+    return this.busy;
+  }
+
+  runQuery(list: ClubRegistration[]) {
+    return (query: string) => {
+      const q = query.trim();
+      let result: ClubRegistration[] = [];
+
+      if (q && list) {
+
+        list.forEach(registration => {
+          const filterFn = this.filter(q);
+          if (filterFn(registration)){
+            result.push(registration);
+          }
+        });
+      }
+
+      return of(result);
+    };
+  }
+
+  reloadList(event: any) {
+    this.tMyQueryStream.next(event);
+  }
+
+  itemTapped(club: ClubRegistration, slidingItem: IonItemSliding) {
+    slidingItem.getOpenAmount().then(amount => {
+        if (amount > 0) {
+        slidingItem.close();
+      } else {
+        slidingItem.open('end');
+      }
+    });
+  }
+
+  isLoggedIn(club: ClubRegistration): boolean {
+    return this.backendService.loggedIn && this.backendService.authenticatedClubId === club.id + '';
+  }
+
+  isLoggedInAsClub(): boolean {
+    return this.backendService.loggedIn && !!this.backendService.authenticatedClubId
+  }
+
+  logout(slidingItem: IonItemSliding) {
+    if (slidingItem) {
+      slidingItem.close();
+    }
+    const alert = this.alertCtrl.create({
+      header: 'Achtung',
+      // tslint:disable-next-line:max-line-length
+      message: 'Für spätere Bearbeitungen an der Registrierung des Vereins am Wettkampf ist ein erneutes Login notwendig.',
+      buttons: [
+        {text: 'ABBRECHEN', role: 'cancel', handler: () => {}},
+        {text: 'OKAY', handler: () => {
+          this.backendService.clublogout();
+          }
+        },
+      ]
+    });
+    alert.then(a => a.present());   
+  }
+  
+  delete(club: ClubRegistration, slidingItem: IonItemSliding) {
+    slidingItem.close();
+    const alert = this.alertCtrl.create({
+      header: 'Achtung',
+      // tslint:disable-next-line:max-line-length
+      subHeader: 'Löschen der Vereins-Registrierung und dessen Anmeldungen am Wettkampf',
+      message: 'Hiermit wird die Vereinsanmeldung am Wettkampf komplett gelöscht.',
+      buttons: [
+        {text: 'ABBRECHEN', role: 'cancel', handler: () => {}},
+        {text: 'OKAY', handler: () => {
+          this.backendService.deleteClubRegistration(this.competition, club.id);
+          }
+        },
+      ]
+    });
+    alert.then(a => a.present());    
+    
+  }
+
+  login(club: ClubRegistration, slidingItem: IonItemSliding) {
+    slidingItem.close();
+    if (this.isLoggedIn(club)) {
+      this.navCtrl.navigateForward(`registration/${this.competition}/${club.id}`);
+    } else {
+      const alert = this.alertCtrl.create({
+        header: 'Vereins-Login',
+        message: `Login für die Bearbeitung der Vereinsanmeldung am Wettkampf ${this.competitionName()}`,
+        inputs: [
+          {
+            name: 'mail',
+            label: 'EMail',
+            placeholder: 'Email',
+            value: `${club.mail}`,
+            type: 'email'
+          },
+          {
+            name: 'pw',
+            label: 'Passwort',
+            placeholder: 'Passwort',
+            type: 'password'
+          }
+        ],
+        buttons: [
+          {
+            text: 'Abbrechen',
+            role: 'cancel',
+            handler: () => {
+              console.log('Cancel clicked');
+            }
+          },
+          {
+            text: 'Login',
+            handler: data => {
+              if (data.pw && data.pw.trim().length > 0) {
+                this.backendService.clublogin(club.id, data.pw).pipe(take(1)).subscribe(() => {
+                  this.navCtrl.navigateForward(`registration/${this.competition}/${club.id}`);
+                });
+                return true;
+              } else {
+                // invalid name
+                return false;
+              }
+            }
+          }
+        ]
+      });
+      alert.then(a => a.present());   
+    } 
+  }
+
+  createRegistration() {
+    this.navCtrl.navigateForward(`registration/${this.competition}/${0}`);
+  }
+
+  getCompetitions(): Wettkampf[] {
+    return this.backendService.competitions || [];
+  }
+
+  competitionName(): string {
+    return this.backendService.competitionName;
+  }
+
+  filter(query: string) {
+    const queryTokens = query.toUpperCase().split(' ');
+    return (tn: ClubRegistration): boolean => {
+      return queryTokens.filter(token => {
+        if (tn.vereinname.toUpperCase().indexOf(token) > -1) {
+          return true;
+        }
+        if (tn.verband.toUpperCase().indexOf(token) > -1) {
+          return true;
+        }
+        if (tn.mail.toUpperCase().indexOf(token) > -1) {
+          return true;
+        }
+        if (tn.respName.toUpperCase().indexOf(token) > -1) {
+          return true;
+        }
+        if (tn.respVorname.toUpperCase().indexOf(token) > -1) {
+          return true;
+        }
+      }).length === queryTokens.length;
+    };
+  }
+}

@@ -1,4 +1,4 @@
-import { Component, CUSTOM_ELEMENTS_SCHEMA } from '@angular/core';
+import { Component, CUSTOM_ELEMENTS_SCHEMA, OnInit } from '@angular/core';
 import { Wettkampf, Geraet } from '../../app/backend-types';
 import { NavController, AlertController, IonItemSliding } from '@ionic/angular';
 import { BackendService } from '../services/backend.service';
@@ -10,7 +10,7 @@ import { map } from 'rxjs/operators';
   selector: 'app-page-home',
   templateUrl: 'home.page.html'
 })
-export class HomePage {
+export class HomePage implements OnInit {
 
   durchgangstate: string;
   durchgangopen = false;
@@ -24,6 +24,12 @@ export class HomePage {
       this.durchgangstate = dg ? 'gestartet' : 'gesperrt';
       this.durchgangopen = dg;
     });
+  }
+
+  ngOnInit() {
+    if (this.backendService.competition) {
+      this.backendService.getDurchgaenge(this.backendService.competition);
+    }
   }
 
   get isLocked(): boolean {
