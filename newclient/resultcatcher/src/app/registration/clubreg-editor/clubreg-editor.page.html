@@ -1,0 +1,65 @@
+<ion-header>
+  <ion-toolbar>
+    <ion-buttons slot="start">
+      <ion-back-button defaultHref="/"></ion-back-button>
+    </ion-buttons>
+    <ion-title>Vereins-Anmeldung</ion-title>  
+    <ion-note slot="end"><div class="athlet">für {{wettkampf}}</div></ion-note>  
+  </ion-toolbar>
+</ion-header>
+
+<ion-content *ngIf="registration">
+  <form #clubRegistrationform="ngForm" (ngSubmit)="save(clubRegistrationform.value)" (keyup.enter)="save(clubRegistrationform.value)">
+    <ion-list>
+      <ion-item-divider color="primary">Verein</ion-item-divider>
+      <ion-item>
+        <ion-avatar slot="start">
+          <img src="assets/imgs/verein.png">
+        </ion-avatar>
+        <!-- <ion-label color="primary">Name</ion-label> -->
+        <ion-input [readonly]='false' placeholder="Vereinsname" type="text"  [disabled]="false" [ngModel]='registration.vereinname' name="vereinname" required></ion-input>
+        <!-- <ion-label color="primary">Verband</ion-label> -->
+        <ion-input [readonly]='false'  placeholder="Verband" type="text"  [disabled]="false" [ngModel]='registration.verband' name="verband" required></ion-input>
+      </ion-item>
+      <ion-item-divider color="primary">Verantwortliche Person</ion-item-divider>
+      <ion-item>
+        <ion-avatar slot="start">
+          <img src="assets/imgs/chief.png">
+        </ion-avatar>
+        <!-- <ion-label color="primary">Vorname</ion-label> -->
+        <ion-input [readonly]='false'  placeholder="Vorname" type="text"  [disabled]="false" [ngModel]='registration.respVorname' name="respVorname" required></ion-input>
+        <!-- <ion-label color="primary">Name</ion-label> -->
+        <ion-input [readonly]='false'  placeholder="Nachname" type="text"  [disabled]="false" [ngModel]='registration.respName' name="respName" required></ion-input>
+      </ion-item>
+      <ion-item *ngIf="regId === 0">
+        <ion-avatar slot="start">
+          <img src="assets/imgs/password.png">
+        </ion-avatar>
+        <!-- <ion-label color="primary">Passwort</ion-label> -->
+        <ion-input [readonly]='false'  placeholder="Passwort" type="password"  [disabled]="false" [ngModel]='registration.secret' name="secret" required></ion-input>
+      </ion-item>
+      <ion-item-divider color="primary">Kontakt</ion-item-divider>
+      <ion-item>
+        <ion-avatar slot="start">
+          <img src="assets/imgs/atmail.png">
+        </ion-avatar>
+        <!-- <ion-label color="primary">Mail</ion-label> -->
+        <ion-input [readonly]='false'  placeholder="Mail" type="email" pattern="^[_a-z0-9-]+(\.[_a-z0-9-]+)*@[a-z0-9-]+(\.[a-z0-9-]+)*(\.[a-z]{2,3})$" [disabled]="false" [ngModel]='registration.mail' name="mail" required></ion-input>
+        <!-- <ion-label color="primary">Mobile/SMS</ion-label> -->
+        <ion-input [readonly]='false'  placeholder="Mobile/SMS (+4179...)" type="tel" pattern="[+]{1}[0-9]{11,14}" [disabled]="false" [ngModel]='registration.mobilephone' name="mobilephone" required></ion-input>
+      </ion-item>
+    </ion-list>
+    <ion-list>
+      <ion-button size="large" expand="block" type="submit" #btnSaveNext [disabled]="waiting || !clubRegistrationform.valid || clubRegistrationform.untouched" color="success">
+        <ion-icon slot="start" name=""></ion-icon>Speichern</ion-button>
+      </ion-list>
+  </form>
+</ion-content>
+<ion-footer>
+  <ion-toolbar>
+    <ion-list>
+      <ion-button *ngIf="regId > 0"size="large" expand="block" #btnDelete [disabled]="waiting" color="danger" (click)='delete()'>
+        <ion-icon slot="start" name="trash"></ion-icon>Registrierung löschen</ion-button>
+    </ion-list>
+  </ion-toolbar>
+</ion-footer>

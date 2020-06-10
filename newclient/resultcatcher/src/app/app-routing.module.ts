@@ -1,6 +1,7 @@
 import { NgModule } from '@angular/core';
 import { PreloadAllModules, RouterModule, Routes } from '@angular/router';
 import { StationGuardService } from './services/station-guard.service';
+import { VereinsRegistrationGuardService } from './services/vereins-registration-guard.service';
 
 const routes: Routes = [
   {
@@ -22,7 +23,12 @@ const routes: Routes = [
   { path: 'top-results', loadChildren: './last-top-results/last-top-results.module#LastTopResultsPageModule' },
   { path: 'search-athlet', loadChildren: './search-athlet/search-athlet.module#SearchAthletPageModule' },
   { path: 'search-athlet/:wkId', loadChildren: './search-athlet/search-athlet.module#SearchAthletPageModule' },
-  { path: 'athlet-view/:wkId/:athletId', loadChildren: './athlet-view/athlet-view.module#AthletViewPageModule' }
+  { path: 'athlet-view/:wkId/:athletId', loadChildren: './athlet-view/athlet-view.module#AthletViewPageModule' },
+  { path: 'registration', loadChildren: './registration/registration.module#RegistrationPageModule' }, 
+  { path: 'registration/:wkId', loadChildren: './registration/registration.module#RegistrationPageModule' }, 
+  { path: 'registration/:wkId/:regId', 
+    canActivate: [VereinsRegistrationGuardService],
+    loadChildren: './registration/clubreg-editor/clubreg-editor.module#ClubregEditorPageModule' }
 ];
 
 @NgModule({

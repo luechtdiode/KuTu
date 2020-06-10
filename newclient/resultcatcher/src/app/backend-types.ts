@@ -34,6 +34,30 @@ export interface StartList {
   programme: ProgrammItem[];
 }
 
+export interface ClubRegistration {
+  id: number;
+  mail: string;
+  mobilephone: string;
+  registrationTime: number
+  respName: string;
+  respVorname: string;
+  verband: string;
+  vereinId?: string;
+  vereinname: string;
+  wettkampfId: number;
+}
+
+export interface NewClubRegistration {
+  mail: string;
+  mobilephone: string;
+  respName: string;
+  respVorname: string;
+  verband: string;
+  vereinname: string;
+  wettkampfId: number;
+  secret: string;
+}
+
 export interface Wertung {
   id: number;
   wettkampfId: number;

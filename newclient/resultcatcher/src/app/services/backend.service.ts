@@ -6,7 +6,9 @@ import { interval, of, Subscription, BehaviorSubject, Subject, Observable } from
 import { share, map, switchMap} from 'rxjs/operators';
 import { DurchgangStarted, Wettkampf, Geraet, WertungContainer, NewLastResults, StartList,
          MessageAck, AthletWertungUpdated, Wertung, FinishDurchgangStation,
-         DurchgangFinished } from '../backend-types';
+         DurchgangFinished, 
+         ClubRegistration,
+         NewClubRegistration} from '../backend-types';
 import { backendUrl } from '../utils';
 
 // tslint:disable:radix
@@ -16,6 +18,7 @@ import { backendUrl } from '../utils';
   providedIn: 'root'
 })
 export class BackendService extends WebsocketService {
+
     get competition(): string {
       return this._competition;
     }
@@ -49,6 +52,23 @@ export class BackendService extends WebsocketService {
       return this._activeDurchgangList;
     }
 
+    get authenticatedClubId() {
+      return localStorage.getItem('auth_clubid');
+    }
+
+    get competitionName(): string {
+      if (!this.competitions) { return ''; }
+      const candidate = this.competitions
+        .filter(c => c.uuid === this.competition)
+        .map(c => c.titel + ', am ' + (c.datum + 'T').split('T')[0].split('-').reverse().join('-'));
+  
+      if (candidate.length === 1) {
+        return candidate[0];
+      } else {
+        return '';
+      }
+    }
+
     externalLoaderSubscription: Subscription;
 
     loggedIn = false;
@@ -58,12 +78,15 @@ export class BackendService extends WebsocketService {
 
     competitions: Wettkampf[];
     durchgaenge: string[];
+    
     geraete: Geraet[];
     geraeteSubject = new BehaviorSubject<Geraet[]>([]);
     steps: number[];
     wertungen: WertungContainer[];
     wertungenSubject = new BehaviorSubject<WertungContainer[]>([]);
     newLastResults = new BehaviorSubject<NewLastResults>(undefined);
+    _clubregistrations = [];
+    clubRegistrations = new BehaviorSubject<ClubRegistration[]>([]);
     askForUsername = new Subject<BackendService>();
     lastMessageAck: MessageAck;
 
@@ -123,6 +146,7 @@ export class BackendService extends WebsocketService {
                 this.askForUsername.next(this);
               }
               localStorage.setItem('auth_token', value);
+              localStorage.removeItem('auth_clubid');
               this.checkJWT(value);
               const cs = localStorage.getItem('current_station');
               if (cs) {
@@ -230,10 +254,12 @@ export class BackendService extends WebsocketService {
         this.loggedIn = true;
         if (!this.competitions || this.competitions.length === 0) {
           this.getCompetitions().subscribe(d => {
-            this.getDurchgaenge( data.body);
+            if (this._competition) {
+              this.getDurchgaenge(this._competition);
+            }
           });
-        } else {
-          this.getDurchgaenge( data.body);
+        } else if (this._competition) {
+          this.getDurchgaenge(this._competition);
         }
       }, (err: HttpErrorResponse) => {
         console.log(err);
@@ -241,7 +267,7 @@ export class BackendService extends WebsocketService {
           localStorage.removeItem('auth_token');
           this.loggedIn = false;
           this.showMessage.next({
-            msg: 'Die Berechtigung zum erfassen von Wertungen ist abgelaufen.',
+            msg: 'Die Berechtigung ist abgelaufen. Bitte neu anmelden',
             type: 'Berechtigung'
           } as MessageAck);
         } else {
@@ -251,32 +277,79 @@ export class BackendService extends WebsocketService {
       this.lastJWTChecked = new Date().getTime();
     }
 
-    login(username, password) {
+    saveClubRegistration(competitionId: string, registration: ClubRegistration) {
+      let save = this.startLoading('Vereins-Anmeldung wird gespeichert. Bitte warten ...',
+        this.http.put<MessageAck>(backendUrl + 'api/registrations/' + competitionId + '/' + registration.id,
+        registration
+      ).pipe(share()));
+      save.subscribe((data) => {
+        this._clubregistrations = [...this._clubregistrations.filter(r => r.id != registration.id), data];
+        this.clubRegistrations.next(this._clubregistrations);        
+        }, this.standardErrorHandler);
+      return save;
+    }
+
+    createClubRegistration(competitionId: string, registration: NewClubRegistration) {
+      let creater = this.startLoading('Vereins-Anmeldung wird registriert. Bitte warten ...',
+        this.http.post<MessageAck>(backendUrl + 'api/registrations/' + competitionId,
+        registration
+      ).pipe(share()));
+      creater.subscribe((data) => {
+        this._clubregistrations = [...this._clubregistrations, data];
+        this.clubRegistrations.next(this._clubregistrations);        
+        }, this.standardErrorHandler);
+      return creater;
+    }
+
+    deleteClubRegistration(competitionId: string, clubid: number) {      
+      let deleter = this.startLoading('Vereins-Anmeldung wird gelöscht. Bitte warten ...',
+        this.http.delete(backendUrl + 'api/registrations/' + competitionId + '/' + clubid, {
+          responseType: 'text'
+        }
+      ).pipe(share()));
+      deleter.subscribe((data) => {
+        this.clublogout();
+        this._clubregistrations = this._clubregistrations.filter(r => r.id != clubid);
+        this.clubRegistrations.next(this._clubregistrations);
+        }, this.standardErrorHandler);
+      return deleter;
+    }
+
+    clublogout() {
+      this.logout();
+    }
+
+    clublogin(username, password) {
+      localStorage.removeItem('auth_clubid');
       const headers = new HttpHeaders();
-      this.startLoading('Login wird verarbeitet. Bitte warten ...', this.http.options(backendUrl + 'api/login', {
-        observe: 'response',
-        headers: headers.set('Authorization', 'Basic ' + btoa(username + ':' + password )),
-        withCredentials: true,
-        responseType: 'text'
-      }).pipe(share())).subscribe((data) => {
+      const loader = this.startLoading('Login wird verarbeitet. Bitte warten ...', 
+        this.http.options(backendUrl + 'api/login', {
+          observe: 'response',
+          headers: headers.set('Authorization', 'Basic ' + btoa(username + ':' + password )),
+          withCredentials: true,
+          responseType: 'text'
+        }
+      ).pipe(share()));
+      loader.subscribe((data) => {
         console.log(data);
         localStorage.setItem('auth_token', data.headers.get('x-access-token'));
+        localStorage.setItem('auth_clubid', username);
         this.loggedIn = true;
       }, (err) => {
         console.log(err);
-        localStorage.removeItem('auth_token');
-        this.loggedIn = false;
+        this.clublogout();
         if (err.status === 401) {
           localStorage.removeItem('auth_token');
           this.loggedIn = false;
           this.showMessage.next({
-            msg: 'Die Berechtigung zum erfassen von Wertungen ist nicht gültig oder abgelaufen.',
+            msg: 'Die Anmeldung ist nicht gültig oder abgelaufen.',
             type: 'Berechtigung'
           } as MessageAck);
         } else {
           this.standardErrorHandler(err);
         }
       });
+      return loader;
     }
 
     unlock() {
@@ -287,6 +360,8 @@ export class BackendService extends WebsocketService {
 
     logout() {
       localStorage.removeItem('auth_token');
+      localStorage.removeItem('auth_clubid');
+      this.loggedIn = false;
       this.unlock();
     }
 
@@ -299,12 +374,46 @@ export class BackendService extends WebsocketService {
       return loader;
     }
 
+    getClubRegistrations(competitionId: string) {
+      this.checkJWT();
+      if ((this._clubregistrations !== undefined && this._competition === competitionId) || this.isInitializing) {
+        return this.loadClubRegistrations();
+      }
+      this.durchgaenge = [];      
+      this._clubregistrations = [];
+      this.geraete = undefined;
+      this.steps = undefined;
+      this.wertungen = undefined;
+
+      this._competition = competitionId;
+      this._durchgang = undefined;
+      this._geraet = undefined;
+      this._step = undefined;
+
+      return this.loadClubRegistrations();
+    }
+
+    loadClubRegistrations(): Observable<ClubRegistration[]>{
+      const loader = this.startLoading('Clubanmeldungen werden geladen. Bitte warten ...',
+        this.http.get<string[]>(backendUrl + 'api/registrations/' + this._competition).pipe(share()));
+
+      loader.subscribe((data) => {
+        localStorage.setItem('current_competition', this._competition);
+        this._clubregistrations = data;
+        this.clubRegistrations.next(data);
+      }, this.standardErrorHandler);
+
+      return this.clubRegistrations;
+    }
+
     getDurchgaenge(competitionId: string) {
       this.checkJWT();
       if ((this.durchgaenge !== undefined && this._competition === competitionId) || this.isInitializing) {
         return of(this.durchgaenge || []);
       }
       this.durchgaenge = [];
+      this._clubregistrations = [];
+      this.clubRegistrations.next([]);
       this.geraete = undefined;
       this.steps = undefined;
       this.wertungen = undefined;
