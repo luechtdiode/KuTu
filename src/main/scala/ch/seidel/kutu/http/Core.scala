@@ -42,7 +42,7 @@ trait KuTuAppHTTPServer extends ApiService with JsonSupport {
   import Core._
 
 
-  def startServer(userLookup: (String) => String) = {
+  def startServer() = {
     serverBinding match {
       case None =>
 
@@ -52,7 +52,7 @@ trait KuTuAppHTTPServer extends ApiService with JsonSupport {
         sys.addShutdownHook(shutDown(getClass.getName))
 
         DBService.startDB()
-        val route: Route = allroutes(userLookup)
+        val route: Route = allroutes(id => vereinSecretHashLookup(id))
         val binding = if (hasHttpsConfig) {
           Http().setDefaultServerHttpContext(https)
           val b = Http().bindAndHandle(route, httpInterface, httpPort, connectionContext = https)

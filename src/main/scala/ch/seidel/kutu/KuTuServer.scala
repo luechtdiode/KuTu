@@ -9,7 +9,7 @@ import scala.io.StdIn
 object KuTuServer extends App with KuTuAppHTTPServer with AuthSupport with Hashing {
   private val logger = LoggerFactory.getLogger(this.getClass)
   
-  val binding = startServer(user => sha256(user))
+  val binding = startServer()
 
   import Core._
   implicit val executionContext: ExecutionContext = system.dispatcher

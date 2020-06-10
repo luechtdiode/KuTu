@@ -91,6 +91,12 @@ trait RegistrationService extends DBService with RegistrationResultMapper with H
     }, Duration.Inf).toList
   }
 
+  def selectRegistration(id: Long) = {
+    Await.result(database.run {
+      sql"""          select * from vereinregistration where id=${id}""".as[Registration]
+    }, Duration.Inf).head
+  }
+
   def selectRegistrationsLike(registration: Registration) = {
     Await.result(database.run {
       sql"""          select * from vereinregistration r

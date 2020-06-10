@@ -80,12 +80,13 @@ object DBService {
       , "AddDurchgangTable-sqllite.sql"
       , "InitDurchgangTable.sql"
       , "FixEmptyRiegeTimeTableIssue-sqllite.sql"
+      , "AddAnmeldungTables-sqllite.sql"
     )
 
     (!dbfile.exists() || dbfile.length() == 0, Config.importDataFrom) match {
       case (true, Some(version)) =>
         migrateFrom(createDS, sqlScripts, version)
-      case (false, _) =>
+      case (true, _) =>
         dbfile.createNewFile()
       case _ => // nothing to do
     }
@@ -131,6 +132,7 @@ object DBService {
             , "AddDurchgangTable-sqllite.sql"
             , "InitDurchgangTable.sql"
             , "FixEmptyRiegeTimeTableIssue-sqllite.sql"
+            , "AddAnmeldungTables-sqllite.sql"
           )
           installDB(db, sqlScripts)
         } finally {
@@ -165,6 +167,7 @@ object DBService {
         , "AddDurchgangTable-pg.sql"
         , "InitDurchgangTable.sql"
         , "FixEmptyRiegeTimeTableIssue-pg.sql"
+        , "AddAnmeldungTables-pg.sql"
       )
       installDB(db, sqlScripts)
       Config.importDataFrom match {
