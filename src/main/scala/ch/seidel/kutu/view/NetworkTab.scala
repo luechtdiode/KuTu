@@ -320,7 +320,7 @@ class NetworkTab(wettkampfmode: BooleanProperty, override val wettkampfInfo: Wet
     import scala.concurrent.ExecutionContext.Implicits.global
     val process = KuTuApp.invokeAsyncWithBusyIndicator {
       if (remoteBaseUrl.indexOf("localhost") > -1) {
-        KuTuServer.startServer { uuid => KuTuServer.sha256(uuid) }
+        KuTuServer.startServer()
       }
       KuTuServer.httpUploadWettkampfRequest(wettkampf.toWettkampf)
     }
