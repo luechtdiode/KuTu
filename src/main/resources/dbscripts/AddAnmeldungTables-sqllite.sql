@@ -11,8 +11,8 @@ CREATE TABLE vereinregistration (
     responsible_vorname varchar(70) NOT NULL,
     mobilephone varchar(70) NOT NULL,
     mail varchar(70) NOT NULL,
-    registrationtime TIMESTAMP,
     secrethash varchar NOT NULL,
+    registrationtime TIMESTAMP,
     FOREIGN KEY (wettkampf_id) REFERENCES wettkampf (id),
     FOREIGN KEY (verein_id) REFERENCES verein (id)
 );

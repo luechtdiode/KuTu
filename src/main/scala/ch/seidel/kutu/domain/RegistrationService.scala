@@ -26,7 +26,10 @@ trait RegistrationService extends DBService with RegistrationResultMapper with H
                           ${Timestamp.valueOf(LocalDateTime.now())})
               """ >>
         sql"""
-                  select *
+                  select
+                      id, wettkampf_id, verein_id, vereinname, verband,
+                      responsible_name, responsible_vorname, mobilephone, mail,
+                      registrationtime
                   from vereinregistration
                   where id = (select max(vr.id)
                               from vereinregistration vr
@@ -87,34 +90,53 @@ trait RegistrationService extends DBService with RegistrationResultMapper with H
 
   def selectRegistrations() = {
     Await.result(database.run {
-      sql"""          select * from vereinregistration""".as[Registration]
+      sql"""
+        select
+                      id, wettkampf_id, verein_id, vereinname, verband,
+                      responsible_name, responsible_vorname, mobilephone, mail,
+                      registrationtime
+        from vereinregistration""".as[Registration]
     }, Duration.Inf).toList
   }
 
   def selectRegistration(id: Long) = {
     Await.result(database.run {
-      sql"""          select * from vereinregistration where id=${id}""".as[Registration]
+      sql"""
+        select
+                     id, wettkampf_id, verein_id, vereinname, verband,
+                     responsible_name, responsible_vorname, mobilephone, mail,
+                     registrationtime
+        from vereinregistration where id=${id}""".as[Registration]
     }, Duration.Inf).head
   }
 
   def selectRegistrationsLike(registration: Registration) = {
     Await.result(database.run {
-      sql"""          select * from vereinregistration r
-                      where r.vereinname=${registration.vereinname}
-                        and r.verband=${registration.verband}
-                        and r.mail=${registration.mail}
-                        and r.wettkampf_id <> ${registration.wettkampfId}
-                        and exists (select 1 from verein v where v.id = r.verein_id)
-
+      sql"""
+        select
+                     id, wettkampf_id, verein_id, vereinname, verband,
+                     responsible_name, responsible_vorname, mobilephone, mail,
+                     registrationtime
+        from vereinregistration r
+        where r.vereinname=${registration.vereinname}
+                     and r.verband=${registration.verband}
+                     and r.mail=${registration.mail}
+                     and r.wettkampf_id <> ${registration.wettkampfId}
+                     and exists (select 1 from verein v where v.id = r.verein_id)
            """.as[Registration]
     }, Duration.Inf).toList
   }
 
   def selectRegistrationsOfWettkampf(id: UUID) = {
     Await.result(database.run {
-      sql"""        select * from vereinregistration
-                    where wettkampf_id in (select id from wettkampf where uuid = ${id.toString})
-                    order by registrationtime asc
+      sql"""
+        select
+                     id, wettkampf_id, verein_id, vereinname, verband,
+                     responsible_name, responsible_vorname, mobilephone, mail,
+                     registrationtime
+        from vereinregistration
+        where wettkampf_id in (select id from wettkampf where uuid = ${id.toString})
+        order by registrationtime asc
        """.as[Registration]
     }, Duration.Inf).toList
   }

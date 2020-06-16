@@ -182,7 +182,7 @@ object DBService {
           }
         case _ =>
       }
-      logger.info("databe initialization ready with config " + dbconfig_key);
+      logger.info("database initialization ready with config " + dbconfig_key);
       db
     } catch {
       case e: Exception =>
@@ -197,7 +197,8 @@ object DBService {
   private var database: Option[DatabaseDef] = None
 
   def checkMigrationDone(db: DatabaseDef, script: String): Boolean = {
-    try {
+    logger.info(s"checking installation-status for ${script} ...")
+    val ret = try {
       0 < Await.result(db.run {
         sql"""
           select count(*) from migrations where name = $script
@@ -206,6 +207,12 @@ object DBService {
     } catch {
       case _: Throwable => false
     }
+    if (ret) {
+      logger.info(s"the script ${script} is already installed")
+    } else {
+      logger.info(s"the script ${script} should be executed")
+    }
+    ret
   }
 
   def migrationDone(db: DatabaseDef, script: String, log: String): Unit = {
