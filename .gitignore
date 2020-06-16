@@ -23,6 +23,8 @@ scratch.*
 *.zip
 *.log
 *.code-workspace
+.classpath
+.project
 *travis*.json
 jpack.sh
 deploy-aws.sh
