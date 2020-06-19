@@ -4,7 +4,7 @@ import { NavController, IonItemSliding, AlertController } from '@ionic/angular';
 import { BackendService } from '../services/backend.service';
 import { BehaviorSubject, Subject, of, Observable } from 'rxjs';
 import { ActivatedRoute } from '@angular/router';
-import { debounceTime, distinctUntilChanged, map, filter, switchMap, share, take } from 'rxjs/operators';
+import { debounceTime, distinctUntilChanged, map, filter, switchMap, share, take, tap } from 'rxjs/operators';
 
 @Component({
   selector: 'app-registration',
@@ -26,7 +26,7 @@ export class RegistrationPage implements OnInit {
 
   constructor(public navCtrl: NavController,
               private route: ActivatedRoute,
-              public backendService: BackendService, 
+              public backendService: BackendService,
               private alertCtrl: AlertController) {
     if (! this.backendService.competitions) {
       this.backendService.getCompetitions();
@@ -55,18 +55,16 @@ export class RegistrationPage implements OnInit {
         this.clubregistrations = list;
         this.busy.next(false);
         const pipeBeforeAction = this.tMyQueryStream.pipe(
-          filter(event => !!event && !!event.target && !!event.target.value),
-          map(event => event.target.value),
-          debounceTime(1000),
+          filter(event => !!event && !!event.target),
+          map(event => event.target.value || '*'),
+          debounceTime(300),
           distinctUntilChanged(),
+          tap(event => this.busy.next(true)),
+          switchMap(this.runQuery(list)),
           share()
         );
-        pipeBeforeAction.subscribe(() => {
-          this.busy.next(true);
-        });
-        pipeBeforeAction.pipe(
-          switchMap(this.runQuery(list))
-        ).subscribe(filteredList => {
+
+        pipeBeforeAction.subscribe(filteredList => {
           this.sFilteredRegistrationList = filteredList;
           this.busy.next(false);
         });
@@ -95,13 +93,13 @@ export class RegistrationPage implements OnInit {
   runQuery(list: ClubRegistration[]) {
     return (query: string) => {
       const q = query.trim();
-      let result: ClubRegistration[] = [];
+      const result: ClubRegistration[] = [];
 
       if (q && list) {
 
         list.forEach(registration => {
           const filterFn = this.filter(q);
-          if (filterFn(registration)){
+          if (filterFn(registration)) {
             result.push(registration);
           }
         });
@@ -130,7 +128,7 @@ export class RegistrationPage implements OnInit {
   }
 
   isLoggedInAsClub(): boolean {
-    return this.backendService.loggedIn && !!this.backendService.authenticatedClubId
+    return this.backendService.loggedIn && !!this.backendService.authenticatedClubId;
   }
 
   logout(slidingItem: IonItemSliding) {
@@ -149,9 +147,9 @@ export class RegistrationPage implements OnInit {
         },
       ]
     });
-    alert.then(a => a.present());   
+    alert.then(a => a.present());
   }
-  
+
   delete(club: ClubRegistration, slidingItem: IonItemSliding) {
     slidingItem.close();
     const alert = this.alertCtrl.create({
@@ -167,8 +165,8 @@ export class RegistrationPage implements OnInit {
         },
       ]
     });
-    alert.then(a => a.present());    
-    
+    alert.then(a => a.present());
+
   }
 
   login(club: ClubRegistration, slidingItem: IonItemSliding) {
@@ -218,8 +216,8 @@ export class RegistrationPage implements OnInit {
           }
         ]
       });
-      alert.then(a => a.present());   
-    } 
+      alert.then(a => a.present());
+    }
   }
 
   createRegistration() {
@@ -237,7 +235,7 @@ export class RegistrationPage implements OnInit {
   filter(query: string) {
     const queryTokens = query.toUpperCase().split(' ');
     return (tn: ClubRegistration): boolean => {
-      return queryTokens.filter(token => {
+      return query.trim() === '*' || queryTokens.filter(token => {
         if (tn.vereinname.toUpperCase().indexOf(token) > -1) {
           return true;
         }
