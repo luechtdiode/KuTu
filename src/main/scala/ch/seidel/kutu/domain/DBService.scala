@@ -168,6 +168,7 @@ object DBService {
         , "InitDurchgangTable.sql"
         , "FixEmptyRiegeTimeTableIssue-pg.sql"
         , "AddAnmeldungTables-pg.sql"
+        , "AddAnmeldungTables-u1-pg.sql"
       )
       installDB(db, sqlScripts)
       Config.importDataFrom match {
