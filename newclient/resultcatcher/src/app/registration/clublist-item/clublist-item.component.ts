@@ -13,7 +13,7 @@ export class ClublistItemComponent implements OnInit {
   clubregistration: ClubRegistration;
 
   @Output()
-  selected: EventEmitter<ClubRegistration>;
+  selected = new EventEmitter<ClubRegistration>();
 
   constructor() { }
 
