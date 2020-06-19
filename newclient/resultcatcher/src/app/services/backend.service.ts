@@ -6,10 +6,13 @@ import { interval, of, Subscription, BehaviorSubject, Subject, Observable } from
 import { share, map, switchMap} from 'rxjs/operators';
 import { DurchgangStarted, Wettkampf, Geraet, WertungContainer, NewLastResults, StartList,
          MessageAck, AthletWertungUpdated, Wertung, FinishDurchgangStation,
-         DurchgangFinished, 
+         DurchgangFinished,
          ClubRegistration,
-         NewClubRegistration} from '../backend-types';
+         NewClubRegistration,
+         AthletRegistration,
+         ProgrammRaw} from '../backend-types';
 import { backendUrl } from '../utils';
+import { ProgrammItem } from '../backend-types';
 
 // tslint:disable:radix
 // tslint:disable:variable-name
@@ -61,7 +64,7 @@ export class BackendService extends WebsocketService {
       const candidate = this.competitions
         .filter(c => c.uuid === this.competition)
         .map(c => c.titel + ', am ' + (c.datum + 'T').split('T')[0].split('-').reverse().join('-'));
-  
+
       if (candidate.length === 1) {
         return candidate[0];
       } else {
@@ -78,7 +81,7 @@ export class BackendService extends WebsocketService {
 
     competitions: Wettkampf[];
     durchgaenge: string[];
-    
+
     geraete: Geraet[];
     geraeteSubject = new BehaviorSubject<Geraet[]>([]);
     steps: number[];
@@ -278,31 +281,31 @@ export class BackendService extends WebsocketService {
     }
 
     saveClubRegistration(competitionId: string, registration: ClubRegistration) {
-      let save = this.startLoading('Vereins-Anmeldung wird gespeichert. Bitte warten ...',
+      const save = this.startLoading('Vereins-Anmeldung wird gespeichert. Bitte warten ...',
         this.http.put<MessageAck>(backendUrl + 'api/registrations/' + competitionId + '/' + registration.id,
         registration
       ).pipe(share()));
       save.subscribe((data) => {
         this._clubregistrations = [...this._clubregistrations.filter(r => r.id != registration.id), data];
-        this.clubRegistrations.next(this._clubregistrations);        
+        this.clubRegistrations.next(this._clubregistrations);
         }, this.standardErrorHandler);
       return save;
     }
 
     createClubRegistration(competitionId: string, registration: NewClubRegistration) {
-      let creater = this.startLoading('Vereins-Anmeldung wird registriert. Bitte warten ...',
+      const creater = this.startLoading('Vereins-Anmeldung wird registriert. Bitte warten ...',
         this.http.post<MessageAck>(backendUrl + 'api/registrations/' + competitionId,
         registration
       ).pipe(share()));
       creater.subscribe((data) => {
         this._clubregistrations = [...this._clubregistrations, data];
-        this.clubRegistrations.next(this._clubregistrations);        
+        this.clubRegistrations.next(this._clubregistrations);
         }, this.standardErrorHandler);
       return creater;
     }
 
-    deleteClubRegistration(competitionId: string, clubid: number) {      
-      let deleter = this.startLoading('Vereins-Anmeldung wird gelöscht. Bitte warten ...',
+    deleteClubRegistration(competitionId: string, clubid: number) {
+      const deleter = this.startLoading('Vereins-Anmeldung wird gelöscht. Bitte warten ...',
         this.http.delete(backendUrl + 'api/registrations/' + competitionId + '/' + clubid, {
           responseType: 'text'
         }
@@ -315,6 +318,70 @@ export class BackendService extends WebsocketService {
       return deleter;
     }
 
+    loadProgramsForCompetition(competitionId: string) {
+      const loader = this.startLoading('Programmliste zum Wettkampf wird geladen. Bitte warten ...',
+        this.http.get<ProgrammRaw[]>(
+          backendUrl + 'api/registrations/' + competitionId + '/programmlist'
+          ).pipe(share()));
+
+      loader.subscribe((data) => {
+      }, this.standardErrorHandler);
+
+      return loader;
+    }
+
+    loadAthletRegistrations(competitionId: string, clubid: number) {
+      const loader = this.startLoading('Athletliste zum Club wird geladen. Bitte warten ...',
+        this.http.get<AthletRegistration[]>(
+          backendUrl + 'api/registrations/' + competitionId + '/' + clubid + '/athletes'
+          ).pipe(share()));
+
+      loader.subscribe((data) => {
+      }, this.standardErrorHandler);
+
+      return loader;
+    }
+
+    createAthletRegistration(competitionId: string, clubid: number, registration: AthletRegistration) {
+      const loader = this.startLoading('Anmeldung wird gespeichert. Bitte warten ...',
+        this.http.post<AthletRegistration>(
+          backendUrl + 'api/registrations/' + competitionId + '/' + clubid + '/athletes',
+          registration
+          ).pipe(share()));
+
+      loader.subscribe((data) => {
+      }, this.standardErrorHandler);
+
+      return loader;
+    }
+
+    saveAthletRegistration(competitionId: string, clubid: number, registration: AthletRegistration) {
+      const loader = this.startLoading('Anmeldung wird gespeichert. Bitte warten ...',
+        this.http.put<AthletRegistration>(
+          backendUrl + 'api/registrations/' + competitionId + '/' + clubid + '/athletes/' + registration.id,
+          registration
+          ).pipe(share()));
+
+      loader.subscribe((data) => {
+      }, this.standardErrorHandler);
+
+      return loader;
+    }
+
+    deleteAthletRegistration(competitionId: string, clubid: number, registration: AthletRegistration) {
+      const loader = this.startLoading('Anmeldung wird gespeichert. Bitte warten ...',
+        this.http.delete(
+          backendUrl + 'api/registrations/' + competitionId + '/' + clubid + '/athletes/' + registration.id, {
+            responseType: 'text'
+          }
+          ).pipe(share()));
+
+      loader.subscribe((data) => {
+      }, this.standardErrorHandler);
+
+      return loader;
+    }
+
     clublogout() {
       this.logout();
     }
@@ -322,7 +389,7 @@ export class BackendService extends WebsocketService {
     clublogin(username, password) {
       localStorage.removeItem('auth_clubid');
       const headers = new HttpHeaders();
-      const loader = this.startLoading('Login wird verarbeitet. Bitte warten ...', 
+      const loader = this.startLoading('Login wird verarbeitet. Bitte warten ...',
         this.http.options(backendUrl + 'api/login', {
           observe: 'response',
           headers: headers.set('Authorization', 'Basic ' + btoa(username + ':' + password )),
@@ -379,7 +446,7 @@ export class BackendService extends WebsocketService {
       if ((this._clubregistrations !== undefined && this._competition === competitionId) || this.isInitializing) {
         return this.loadClubRegistrations();
       }
-      this.durchgaenge = [];      
+      this.durchgaenge = [];
       this._clubregistrations = [];
       this.geraete = undefined;
       this.steps = undefined;
@@ -393,7 +460,7 @@ export class BackendService extends WebsocketService {
       return this.loadClubRegistrations();
     }
 
-    loadClubRegistrations(): Observable<ClubRegistration[]>{
+    loadClubRegistrations(): Observable<ClubRegistration[]> {
       const loader = this.startLoading('Clubanmeldungen werden geladen. Bitte warten ...',
         this.http.get<string[]>(backendUrl + 'api/registrations/' + this._competition).pipe(share()));
 

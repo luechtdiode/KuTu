@@ -5,8 +5,9 @@ import akka.http.scaladsl.model.{ContentTypes, HttpEntity, StatusCodes}
 import akka.http.scaladsl.server.Route
 import akka.util.Timeout
 import ch.seidel.kutu.Config
-import ch.seidel.kutu.domain.{KutuService, NewRegistration, Registration}
+import ch.seidel.kutu.domain.{AthletRegistration, KutuService, NewRegistration, ProgrammRaw, Registration, Verein}
 import ch.seidel.kutu.renderer.PrintUtil
+import ch.seidel.kutu.view.WettkampfInfo
 
 import scala.concurrent.duration.DurationInt
 
@@ -33,15 +34,34 @@ trait RegistrationRoutes extends SprayJsonSupport with JwtSupport with JsonSuppo
               }
             }
           }
-        } ~ path(LongNumber) { registrationId =>
+        } ~ path("programmlist") {
+          get {
+            complete {
+              val wi = WettkampfInfo(wettkampf.toView(readProgramm(wettkampf.programmId)), this)
+              wi.leafprograms.map(p => ProgrammRaw(p.id, p.name, 0, 0, p.ord, p.alterVon, p.alterBis))
+            }
+          }
+        } ~ pathPrefix(LongNumber) { registrationId =>
           authenticated() { userId =>
-            if (extractRegistrationId(userId).exists(id => id == registrationId)) {
+            if (userId.equals(competitionId.toString)) {
+              // approve registration - means assign verein-id if missing, and apply registrations
+              // This is made from the FX-Client
+              // 1. get all
+              pathPrefix("athletes") {
+                pathEndOrSingleSlash {
+                  get { // list Athletes
+                    complete(
+                      selectAthletRegistrations(registrationId) // also judges
+                    )
+                  }
+                }
+              }
+            } else if (extractRegistrationId(userId).contains(registrationId)) {
               respondWithJwtHeader(registrationId + "") {
                 pathEndOrSingleSlash {
                   get {
                     complete(selectRegistration(registrationId))
-                  } ~
-                  put { // update Vereinsregistration
+                  } ~ put { // update Vereinsregistration
                     entity(as[Registration]) { registration =>
                       complete(updateRegistration(registration))
                     }
@@ -49,32 +69,49 @@ trait RegistrationRoutes extends SprayJsonSupport with JwtSupport with JsonSuppo
                     deleteRegistration(registrationId)
                     complete(StatusCodes.OK)
                   }
-                } ~ path("athletes") {
+                } ~ pathPrefix("athletlist") {
+                  pathEndOrSingleSlash {
+                    get { // list Athletes
+                      complete {
+                        val reg = selectRegistration(registrationId)
+                        selectAthletesView(Verein(reg.vereinId.getOrElse(0), reg.vereinname, Some(reg.verband)))
+                      }
+                    }
+                  }
+                } ~ pathPrefix("athletes") {
                   pathEndOrSingleSlash {
                     get { // list Athletes
                       complete(
-                        HttpEntity(ContentTypes.`application/json`, "")
+                        selectAthletRegistrations(registrationId)
                       )
                     } ~ post { // create Athletes
-                      complete(
-                        HttpEntity(ContentTypes.`application/json`, "")
-                      )
+                      log.info("post athletreistration")
+                      entity(as[AthletRegistration]) { athletRegistration =>
+                        complete(
+                          createAthletRegistration(athletRegistration)
+                        )
+                      }
                     }
-                  } ~ path(LongNumber) { id =>
+                  } ~ pathPrefix(LongNumber) { id =>
                     pathEndOrSingleSlash {
-                      put { // update Athletes
+                      get {
                         complete(
-                          HttpEntity(ContentTypes.`application/json`, "")
+                          selectAthletRegistration(id)
                         )
+                      } ~ put { // update Athletes
+                        entity(as[AthletRegistration]) { athletRegistration =>
+                          complete(
+                            updateAthletRegistration(athletRegistration)
+                          )
+                        }
                       } ~ delete { // delete  Athletes
-                        complete(
-                          HttpEntity(ContentTypes.`application/json`, "")
-                        )
+                        deleteAthletRegistration(id)
+                        complete(StatusCodes.OK)
                       }
                     }
                   }
                 }
-              } ~ path("judges") {
+              } ~ pathPrefix("judges") {
                 pathEndOrSingleSlash {
                   get { // list judges
                     complete(
@@ -85,9 +122,13 @@ trait RegistrationRoutes extends SprayJsonSupport with JwtSupport with JsonSuppo
                       HttpEntity(ContentTypes.`application/json`, "")
                     )
                   }
-                } ~ path(LongNumber) { id =>
+                } ~ pathPrefix(LongNumber) { id =>
                   pathEndOrSingleSlash {
-                    put { // update judges
+                    get {
+                      complete(
+                        HttpEntity(ContentTypes.`application/json`, "")
+                      )
+                    } ~ put { // update judges
                       complete(
                         HttpEntity(ContentTypes.`application/json`, "")
                       )

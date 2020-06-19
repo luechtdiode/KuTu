@@ -34,15 +34,24 @@ export interface StartList {
   programme: ProgrammItem[];
 }
 
+export interface ProgrammRaw {
+  id: number;
+  name: string;
+  aggregate: number;
+  parent: number;
+  ord: number;
+  vonAlter: number;
+  bisAlter: number;
+}
 export interface ClubRegistration {
   id: number;
   mail: string;
   mobilephone: string;
-  registrationTime: number
+  registrationTime: number;
   respName: string;
   respVorname: string;
   verband: string;
-  vereinId?: string;
+  vereinId?: number;
   vereinname: string;
   wettkampfId: number;
 }
@@ -56,6 +65,18 @@ export interface NewClubRegistration {
   vereinname: string;
   wettkampfId: number;
   secret: string;
+}
+
+export interface AthletRegistration {
+  id: number;
+  vereinregistrationId: number;
+  athletId?: number;
+  name: string;
+  vorname: string;
+  geschlecht: string;
+  gebdat: string;
+  programId: number;
+  registrationTime: number;
 }
 
 export interface Wertung {
