@@ -41,6 +41,20 @@ trait AthletService extends DBService with AthletResultMapper {
     }, Duration.Inf).toList
   }
 
+  /**
+    * id |js_id |geschlecht |name |vorname   |gebdat |strasse |plz |ort |activ |verein |id |name        |
+    */
+  def selectAthletesView(verein: Verein): List[AthletView] = {
+    Await.result(database.run {
+      sql"""        select a.id, a.js_id, a.geschlecht, a.name, a.vorname, a.gebdat, a.strasse, a.plz, a.ort, a.activ, a.verein,
+                            v.* from athlet a inner join verein v on (v.id = a.verein)
+                    where v.id = ${verein.id} or (v.name = ${verein.name} and v.verband = ${verein.verband})
+                    order by a.activ desc, a.name, a.vorname asc
+          """.as[AthletView]
+        .withPinnedSession
+    }, Duration.Inf).toList
+  }
+
   def loadAthleteView(athletId: Long): AthletView = {
     Await.result(database.run {
       sql"""        select a.id, a.js_id, a.geschlecht, a.name, a.vorname, a.gebdat, a.strasse, a.plz, a.ort, a.activ, a.verein,

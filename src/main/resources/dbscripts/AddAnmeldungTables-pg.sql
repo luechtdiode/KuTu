@@ -22,7 +22,7 @@ CREATE UNIQUE INDEX xidentity ON vereinregistration (wettkampf_id,vereinname, ve
 CREATE TABLE IF NOT EXISTS athletregistration (
     id SERIAL PRIMARY KEY,
     vereinregistration_id integer NOT NULL REFERENCES vereinregistration (id),
-    athlet_id integer NOT NULL REFERENCES athlet (id),
+    athlet_id integer REFERENCES athlet (id),
     geschlecht char(1) NOT NULL DEFAULT 'M',
     name varchar(35) NOT NULL,
     vorname varchar(35) NOT NULL,

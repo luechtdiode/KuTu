@@ -1,10 +1,11 @@
 package ch.seidel.kutu.domain
 
 import java.sql.Timestamp
-import java.time.LocalDateTime
+import java.text.SimpleDateFormat
+import java.time.{LocalDate, LocalDateTime}
 import java.util.UUID
 
-import ch.seidel.kutu.http.Hashing
+import ch.seidel.kutu.http.{EnrichedJson, Hashing}
 import slick.jdbc.PostgresProfile.api._
 
 import scala.concurrent.Await
@@ -163,5 +164,110 @@ trait RegistrationService extends DBService with RegistrationResultMapper with H
       sqlu"""       delete from judgeregistration where vereinregistration_id=${registrationId}""" >>
       sqlu"""       delete from athletregistration where vereinregistration_id=${registrationId}""" >>
       sqlu"""       delete from vereinregistration where id=${registrationId}"""
+  }
+
+
+  // AthletRegistration
+
+
+  def createAthletRegistration(newReg: AthletRegistration): AthletRegistration = {
+    val similarRegistrations = selectAthletRegistrationsLike(newReg)
+    val athletId = similarRegistrations.headOption.flatMap(_.athletId)
+    val gebdat: java.sql.Date = str2SQLDate(newReg.gebdat)
+    Await.result(database.run {
+      sqlu"""
+                  insert into athletregistration
+                  (vereinregistration_id, athlet_id, geschlecht, name, vorname, gebdat, program_id, registrationtime)
+                  values (${newReg.vereinregistrationId}, ${athletId},
+                          ${newReg.geschlecht}, ${newReg.name},
+                          ${newReg.vorname}, ${gebdat},
+                          ${newReg.programId},
+                          ${Timestamp.valueOf(LocalDateTime.now())})
+              """ >>
+        sql"""
+                  select
+                      id, vereinregistration_id,
+                      athlet_id, geschlecht, name, vorname, gebdat,
+                      program_id, registrationtime
+                  from athletregistration
+                  where id = (select max(ar.id)
+                              from athletregistration ar
+                              where ar.vereinregistration_id=${newReg.vereinregistrationId}
+                                and ar.geschlecht=${newReg.geschlecht}
+                                and ar.name=${newReg.name}
+                                and ar.vorname=${newReg.vorname}
+                                )
+         """.as[AthletRegistration].head.transactionally
+    }, Duration.Inf)
+  }
+
+
+  def selectAthletRegistrationsLike(registration: AthletRegistration) = {
+    Await.result(database.run {
+      sql"""
+                  select
+                      ar.id, ar.vereinregistration_id,
+                      ar.athlet_id, ar.geschlecht, ar.name, ar.vorname, ar.gebdat,
+                      ar.program_id, ar.registrationtime
+                  from athletregistration ar
+                  inner join vereinregistration vr on ar.vereinregistration_id = vr.id
+                  where ar.geschlecht=${registration.geschlecht}
+                    and ar.name=${registration.name}
+                    and ar.vorname=${registration.vorname}
+                    and ar.vereinregistration_id <> ${registration.vereinregistrationId}
+                    and exists (select 1 from athlet a where a.id = ar.athlet_id and a.verein = vr.verein_id)
+           """.as[AthletRegistration]
+    }, Duration.Inf).toList
+  }
+
+  def updateAthletRegistration(registration: AthletRegistration) = {
+    if (registration.id == 0L) {
+      throw new IllegalArgumentException("AthletRegistration with id=0 can not be updated")
+    }
+    val gebdat: java.sql.Date = str2SQLDate(registration.gebdat)
+    Await.result(database.run {
+      sql"""
+              update athletregistration
+              set athlet_id=${registration.athletId},
+                  name=${registration.name}, vorname=${registration.vorname},
+                  gebdat=${gebdat}, geschlecht=${registration.geschlecht},
+                  program_id=${registration.programId}
+              where id=${registration.id}
+     """.as[Long].headOption
+    }, Duration.Inf)
+    registration
+  }
+
+  def selectAthletRegistration(id: Long) = {
+    Await.result(database.run {
+      sql"""
+                  select
+                      ar.id, ar.vereinregistration_id,
+                      ar.athlet_id, ar.geschlecht, ar.name, ar.vorname, ar.gebdat,
+                      ar.program_id, ar.registrationtime
+                  from athletregistration ar
+                  where ar.id = ${id}
+       """.as[AthletRegistration]
+    }, Duration.Inf).head
+  }
+
+  def selectAthletRegistrations(id: Long) = {
+    Await.result(database.run {
+      sql"""
+                  select
+                      ar.id, ar.vereinregistration_id,
+                      ar.athlet_id, ar.geschlecht, ar.name, ar.vorname, ar.gebdat,
+                      ar.program_id, ar.registrationtime
+                  from athletregistration ar
+        where ar.vereinregistration_id = $id
+        order by ar.registrationtime asc
+       """.as[AthletRegistration]
+    }, Duration.Inf).toList
+  }
+
+  def deleteAthletRegistration(id: Long): Unit = {
+    Await.result(database.run {
+      sqlu""" delete from athletregistration where id = $id"""
+    }, Duration.Inf)
   }
 }

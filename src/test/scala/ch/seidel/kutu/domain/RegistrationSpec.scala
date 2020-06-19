@@ -1,5 +1,6 @@
 package ch.seidel.kutu.domain
 
+import java.time.LocalDate
 import java.util.UUID
 
 import akka.http.scaladsl.model.HttpMethods._
@@ -16,7 +17,7 @@ class RegistrationSpec extends KuTuBaseSpec {
   val testwettkampf2 = insertGeTuWettkampf("TestGetuWK2", 2)
   val myverysecretpassword = "vkyvf%gMnvXs"
   var registration: Option[Registration] = None
-  var registrationJwt: Option[RawHeader] = None
+  var athletregistration: Option[AthletRegistration] = None
 
   def createTestRegistration = {
     registration = registration match {
@@ -28,9 +29,16 @@ class RegistrationSpec extends KuTuBaseSpec {
           "0796664420", "a@b.com", myverysecretpassword)))
       case Some(r) => Some(r)
     }
-    val claims = setClaims(registration.get.id + "", jwtTokenExpiryPeriodInDays)
-    registrationJwt = Some(RawHeader(jwtAuthorizationKey, JsonWebToken(jwtHeader, claims, jwtSecretKey)))
     registration.get
+  }
+
+  def createTestAthletRegistration(reg: Registration) = {
+    athletregistration = athletregistration match {
+      case None =>
+        Some(createAthletRegistration(AthletRegistration(0, reg.id, None, "M", "Tester", "Test", "2010-05-05", 20, 0)))
+      case Some(r) => Some(r)
+    }
+    athletregistration.get
   }
 
   "registration" should {
@@ -38,65 +46,6 @@ class RegistrationSpec extends KuTuBaseSpec {
       val reg = createTestRegistration
       assert(reg.id > 0L)
       assert(reg.vereinId === None)
-    }
-
-    "create via rest" in {
-      HttpRequest(method = POST, uri = "/api/registrations/" + testwettkampf.uuid.get, entity = HttpEntity(
-        ContentTypes.`application/json`,
-        ByteString(newregistrationFormat.write(NewRegistration(
-          testwettkampf.id,
-          "Verein-2", "Verband-2",
-          "TestResponsibleName", "TestResponsibleSurname",
-          "0796664420", "a@b.com", myverysecretpassword)).compactPrint)
-      )) ~>
-        allroutes(x => vereinSecretHashLookup(x)) ~> check {
-        status should ===(StatusCodes.OK)
-        header(Config.jwtAuthorizationKey) should not be empty
-        val reg = entityAs[Registration]
-        reg.vereinname should ===("Verein-2")
-      }
-    }
-
-    "protect by unauthorized login" in {
-      val reg = createTestRegistration
-      // test login via rest-api
-      val unauthorizedRequest = HttpRequest(method = POST, uri = "/api/login", entity = "")
-        .addHeader(Authorization(BasicHttpCredentials(reg.id.toString, "wrong password")))
-      unauthorizedRequest ~> allroutes(x => vereinSecretHashLookup(x)) ~> check {
-        status should ===(StatusCodes.Unauthorized)
-        header(Config.jwtAuthorizationKey) shouldBe empty
-      }
-    }
-
-    "protect by login with regristration id" in {
-      val reg = createTestRegistration
-      val request = HttpRequest(method = POST, uri = "/api/login", entity = "")
-        .addHeader(Authorization(BasicHttpCredentials(reg.id.toString, myverysecretpassword)))
-      request ~> allroutes(x => vereinSecretHashLookup(x)) ~> check {
-        status should ===(StatusCodes.OK)
-        header(Config.jwtAuthorizationKey) should not be empty
-      }
-    }
-
-    "protect by login with jwt" in {
-      val reg = createTestRegistration
-      val request = HttpRequest(method = POST, uri = "/api/login", entity = "")
-        .addHeader(registrationJwt.get)
-      request ~> allroutes(x => vereinSecretHashLookup(x)) ~> check {
-        status should ===(StatusCodes.OK)
-        header(Config.jwtAuthorizationKey) should not be empty
-      }
-    }
-
-    "protect by login with competition/clubname" in {
-      val reg = createTestRegistration
-      val username = testwettkampf.uuid.get + ":" + reg.vereinname
-      val request2 = HttpRequest(method = POST, uri = "/api/login", entity = "")
-        .addHeader(Authorization(BasicHttpCredentials(username, myverysecretpassword)))
-      request2 ~> allroutes(x => vereinSecretHashLookup(x)) ~> check {
-        status should ===(StatusCodes.OK)
-        header(Config.jwtAuthorizationKey) should not be empty
-      }
     }
 
     "updateRegistration" in {
@@ -109,31 +58,37 @@ class RegistrationSpec extends KuTuBaseSpec {
       updatedRegistration.verband should ===("Other Verband")
     }
 
-    "updateRegistration via rest" in {
+    "add athlet-registration" in {
       val reg = createTestRegistration
-      HttpRequest(method = PUT, uri = "/api/registrations/" + testwettkampf.uuid.get + "/" + reg.id, entity = HttpEntity(
-        ContentTypes.`application/json`,
-        ByteString(registrationFormat.write(reg.copy(
-          verband = "Next Verband")).compactPrint)
-      )).addHeader(registrationJwt.get) ~>
-        allroutes(x => vereinSecretHashLookup(x)) ~> check {
-        status should ===(StatusCodes.OK)
-        header(Config.jwtAuthorizationKey) should not be empty
-        val reg = entityAs[Registration]
-        reg.verband should ===("Next Verband")
-      }
+      val athletRegistration: AthletRegistration = createTestAthletRegistration(reg)
+      athletRegistration.id should ===(reg.id)
+      athletRegistration.vereinregistrationId should ===(reg.id)
+      athletRegistration.name should ===("Tester")
     }
 
-    "updateRegistration via rest unauthorized" in {
-      val reg = createTestRegistration
-      HttpRequest(method = PUT, uri = "/api/registrations/" + testwettkampf.uuid.get + "/" + reg.id, entity = HttpEntity(
-        ContentTypes.`application/json`,
-        ByteString(registrationFormat.write(reg.copy(
-          verband = "Next Verband")).compactPrint)
-      )) ~>
-        allroutes(x => vereinSecretHashLookup(x)) ~> check {
-        status should ===(StatusCodes.Unauthorized)
-      }
+    "selectAthletRegistration" in {
+      val registration = createTestRegistration
+      val athletRegistration: AthletRegistration = createTestAthletRegistration(registration)
+      val selectedregistration = selectAthletRegistration(athletRegistration.id)
+      selectedregistration.id should ===(athletRegistration.id)
+    }
+
+    "selectAthletRegistrations" in {
+      val registration = createTestRegistration
+      val athletRegistration: AthletRegistration = createTestAthletRegistration(registration)
+      val registrations = selectAthletRegistrations(registration.id)
+      registrations should not be empty
+      assert(registrations.exists(r => r.id === athletRegistration.id) === true)
+    }
+
+    "delete AthletRegistration" in {
+      val registration = createTestRegistration
+      val athletRegistration: AthletRegistration = createTestAthletRegistration(registration)
+      deleteAthletRegistration(athletRegistration.id)
+      val registrations = selectAthletRegistrations(registration.id)
+      // registrations shouldBe empty
+      assert(registrations.exists(r => r.id === athletRegistration.id) === false)
+      athletregistration = None
     }
 
     "auto-approve similar registration as already registered for earlier competitions" in {
@@ -147,6 +102,30 @@ class RegistrationSpec extends KuTuBaseSpec {
         "TestResponsibleName", "TestResponsibleSurname",
         "0796664420", "a@b.com", myverysecretpassword))
       sedondRegistration.vereinId should ===(Some(1L))
+    }
+
+    "auto-approve similar athlet-registration as already registered for earlier competitions" in {
+      val reg = createTestRegistration
+      updateRegistration(reg.copy(
+        vereinId = Some(1L),
+        verband = "Verband-1"))
+      val athlet1 = createTestAthletRegistration(reg)
+      updateAthletRegistration(athlet1.copy(athletId = Some(1L)))
+
+      val secondRegistration = try {
+        selectRegistrationsOfWettkampf(UUID.fromString(testwettkampf2.uuid.get)).filter(r => r.vereinId == Some(1L)).head
+      } catch {
+        case e: Exception =>
+        createRegistration(NewRegistration(
+          testwettkampf2.id,
+          "Verein-1", "Verband-1",
+          "TestResponsibleName", "TestResponsibleSurname",
+          "0796664420", "a@b.com", myverysecretpassword))
+      }
+      val athlet2 = createAthletRegistration(
+        AthletRegistration(0, secondRegistration.id, None,
+          "M", "Tester", "Test", "2010-05-05", 20, 0))
+      athlet2.athletId should ===(Some(1L))
     }
 
     "selectRegistrations" in {
@@ -170,6 +149,7 @@ class RegistrationSpec extends KuTuBaseSpec {
       val remainingId = selectRegistrations().filter(id => id === idToDelete)
       remainingId.size shouldBe 0
       registration = None
+      athletregistration = None
     }
 
     "delete all from competition" in {
@@ -179,27 +159,8 @@ class RegistrationSpec extends KuTuBaseSpec {
       val remainingId = selectRegistrations().filter(id => id === idToDelete)
       remainingId.size shouldBe 0
       registration = None
-    }
-
-    "delete via rest" in {
-      val registrationToDelete = createTestRegistration
-      val idToDelete = registrationToDelete.id
-      HttpRequest(method = DELETE, uri = "/api/registrations/" + testwettkampf.uuid.get + "/" + idToDelete)
-        .addHeader(registrationJwt.get) ~>
-        allroutes(x => vereinSecretHashLookup(x)) ~>
-        check {
-          status should ===(StatusCodes.OK)
-        }
-      registration = None
-    }
-    "delete via rest unauthorized" in {
-      val registrationToDelete = createTestRegistration
-      val idToDelete = registrationToDelete.id
-      HttpRequest(method = DELETE, uri = "/api/registrations/" + testwettkampf.uuid.get + "/" + idToDelete) ~>
-      allroutes(x => vereinSecretHashLookup(x)) ~>
-      check {
-        status should ===(StatusCodes.Unauthorized)
-      }
+      athletregistration = None
     }
   }
+
 }

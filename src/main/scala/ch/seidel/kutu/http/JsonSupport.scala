@@ -1,5 +1,7 @@
 package ch.seidel.kutu.http
 
+import java.time.LocalDate
+
 import akka.http.scaladsl.marshallers.sprayjson.SprayJsonSupport
 import ch.seidel.kutu.akka._
 import ch.seidel.kutu.domain._
@@ -12,16 +14,21 @@ trait JsonSupport extends SprayJsonSupport with EnrichedJson {
   
   implicit val wkFormat = jsonFormat(Wettkampf, "id", "uuid", "datum", "titel", "programmId", "auszeichnung", "auszeichnungendnote")
   implicit val pgmFormat = jsonFormat7(ProgrammRaw)
+  implicit val pgmListFormat = listFormat(pgmFormat)
   implicit val disziplinFormat = jsonFormat2(Disziplin)
-  implicit val wertungFormat = jsonFormat(Wertung, "id", "athletId", "wettkampfdisziplinId", "wettkampfId", "wettkampfUUID", "noteD", "noteE", "endnote", "riege", "riege2")  
+  implicit val wertungFormat = jsonFormat(Wertung, "id", "athletId", "wettkampfdisziplinId", "wettkampfId", "wettkampfUUID", "noteD", "noteE", "endnote", "riege", "riege2")
   implicit val vereinFormat = jsonFormat(Verein, "id", "name", "verband")
   implicit val atheltViewFormat = jsonFormat(AthletView, "id", "js_id", "geschlecht", "name", "vorname", "gebdat", "strasse", "plz", "ort", "verein", "activ")
+  implicit val athletListFormat = listFormat(atheltViewFormat)
   implicit val wertungContainerFormat = jsonFormat9(WertungContainer)
   implicit val registrationFormat = jsonFormat10(Registration)
   implicit val registrationListFormat = listFormat(registrationFormat)
   implicit val newregistrationFormat = jsonFormat8(NewRegistration)
+  implicit val athletregistrationFormat = jsonFormat9(AthletRegistration)
+  implicit val athletregistrationListFormat = listFormat(athletregistrationFormat)
 
   implicit val resultatFormat = jsonFormat(Resultat, "noteD", "noteE", "endnote")
+
   implicit val dataObjectFormat = new RootJsonWriter[DataObject]{
     def write(p: DataObject) = {
       p.easyprint.toJson

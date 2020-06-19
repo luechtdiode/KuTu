@@ -1,0 +1,10 @@
+<ion-item (click)="selected ? selected.emit(athletregistration) : {}">
+  <ion-avatar slot="start">
+    <img src="assets/imgs/athlete.png">
+  </ion-avatar>
+  <ion-label>{{athletregistration.name}}, {{athletregistration.vorname}} ({{athletregistration.geschlecht}})<br><small>({{athletregistration.gebdat | date}})</small>
+  </ion-label>
+  <ion-note slot="end" >
+    Programm/Kategorie<br>{{getProgrammText(athletregistration.programId)}}
+  </ion-note>
+</ion-item>

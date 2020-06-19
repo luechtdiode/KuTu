@@ -1,6 +1,7 @@
 package ch.seidel.kutu.http
 
 import java.io.ByteArrayOutputStream
+import java.util.UUID
 import java.util.concurrent.TimeUnit
 
 import akka.http.scaladsl.Http
@@ -15,7 +16,7 @@ import authentikat.jwt.JsonWebToken
 import ch.seidel.kutu.Config._
 import ch.seidel.kutu.akka.{StartDurchgang, _}
 import ch.seidel.kutu.data.ResourceExchanger
-import ch.seidel.kutu.domain.{Wettkampf, WettkampfService, WettkampfView}
+import ch.seidel.kutu.domain.{RegistrationService, Wettkampf, WettkampfService, WettkampfView}
 import spray.json._
 
 import scala.concurrent.ExecutionContext.Implicits.global
@@ -23,7 +24,9 @@ import scala.concurrent.duration.{Duration, FiniteDuration}
 import scala.concurrent.{Await, Future, Promise}
 import scala.util.Try
 
-trait WettkampfRoutes extends SprayJsonSupport with JsonSupport with JwtSupport with AuthSupport with RouterLogging with WettkampfService with CIDSupport {
+trait WettkampfRoutes extends SprayJsonSupport
+  with JsonSupport with JwtSupport with AuthSupport with RouterLogging with WettkampfService with RegistrationService
+  with CIDSupport {
 
   import DefaultJsonProtocol._
 
@@ -300,6 +303,7 @@ trait WettkampfRoutes extends SprayJsonSupport with JsonSupport with JwtSupport 
                         CompetitionCoordinatorClientActor.publish(Delete(wkuuid.toString), clientId)
                         .andThen {
                           case _ =>
+                            deleteRegistrations(UUID.fromString(wettkampf.uuid.get))
                             deleteWettkampf(wettkampf.id)
                             StatusCodes.OK
                         }
