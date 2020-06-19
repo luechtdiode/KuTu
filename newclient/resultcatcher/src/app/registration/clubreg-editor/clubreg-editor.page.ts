@@ -14,10 +14,10 @@ export class ClubregEditorPage implements OnInit {
   constructor(
     public navCtrl: NavController,
     private route: ActivatedRoute,
-    public backendService: BackendService, 
+    public backendService: BackendService,
     private alertCtrl: AlertController,
     private zone: NgZone
-    ) { 
+    ) {
   }
 
   waiting = false;
@@ -27,18 +27,20 @@ export class ClubregEditorPage implements OnInit {
   wkId: string;
   wettkampfId: number;
 
-  ngOnInit() {    
+  ngOnInit() {
     this.waiting = true;
     this.wkId = this.route.snapshot.paramMap.get('wkId');
+    // tslint:disable-next-line: radix
     this.regId = parseInt(this.route.snapshot.paramMap.get('regId'));
     this.backendService.getCompetitions().subscribe(comps => {
+      // tslint:disable-next-line: radix
       this.wettkampfId = parseInt(comps.find(c => c.uuid === this.wkId).id);
       if (this.regId) {
         this.backendService.getClubRegistrations(this.wkId).subscribe(regs => {
           this.updateUI(regs.find(reg => reg.id === this.regId));
-        })
+        });
       } else {
-        this.updateUI({} as NewClubRegistration)
+        this.updateUI({} as NewClubRegistration);
       }
     });
   }
@@ -48,16 +50,16 @@ export class ClubregEditorPage implements OnInit {
   }
 
   updateUI(registration: ClubRegistration | NewClubRegistration) {
-    this.zone.run(() => {      
+    this.zone.run(() => {
       this.waiting = false;
-      this.wettkampf = this.backendService.competitionName
+      this.wettkampf = this.backendService.competitionName;
       this.registration = registration;
     });
   }
 
   save(registration: ClubRegistration | NewClubRegistration) {
     if (this.regId === 0) {
-      let reg = <NewClubRegistration>{
+      const reg =  {
         mail: registration.mail,
         mobilephone: registration.mobilephone,
         respName: registration.respName,
@@ -66,12 +68,12 @@ export class ClubregEditorPage implements OnInit {
         vereinname: registration.vereinname,
         wettkampfId: registration.wettkampfId || this.wettkampfId,
         secret: (registration as NewClubRegistration).secret
-      };      
+      } as NewClubRegistration;
       this.backendService.createClubRegistration(this.wkId, reg).subscribe(() => {
         this.navCtrl.pop();
       });
     } else {
-      let reg = <ClubRegistration>{
+      const reg =  {
         id: (this.registration as ClubRegistration).id,
         registrationTime: (this.registration as ClubRegistration).registrationTime,
         vereinId: (this.registration as ClubRegistration).vereinId,
@@ -82,7 +84,7 @@ export class ClubregEditorPage implements OnInit {
         verband: registration.verband,
         vereinname: registration.vereinname,
         wettkampfId: registration.wettkampfId || this.wettkampfId,
-      };
+      } as ClubRegistration;
       this.backendService.saveClubRegistration(this.wkId, reg).subscribe(() => {
         this.navCtrl.pop();
       });
@@ -105,6 +107,10 @@ export class ClubregEditorPage implements OnInit {
         },
       ]
     });
-    alert.then(a => a.present());    
+    alert.then(a => a.present());
+  }
+
+  editAthletRegistrations() {
+    this.navCtrl.navigateForward(`reg-athletlist/${this.backendService.competition}/${this.regId}`);
   }
 }
