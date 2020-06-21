@@ -325,16 +325,6 @@ trait WettkampfService extends DBService
     }, Duration.Inf)
   }
 
-  def listAthletenZuWettkampf(progids: Seq[Long]) = {
-    Await.result(database.run{(
-      sql"""      select a.* from athlet a
-                  inner join wertung w on (a.id = w.athlet_id)
-                  inner join wettkampfdisziplin wd on (wd.id = w.wettkampfdisziplin_id)
-                  where wd.programm_id in (#${progids.mkString(",")})
-         """.as[AthletView]).withPinnedSession
-    }, Duration.Inf)
-  }
-
   def listAthletenZuWettkampf(wettkampf: UUID) = {
     database.run{(
       sql"""      select a.* from athlet a
@@ -632,7 +622,7 @@ trait WettkampfService extends DBService
                        where name=${athlet.name}
                          and vorname=${athlet.vorname}
                          and geschlecht=${athlet.geschlecht}
-                         and verein=${athlet.verein.get.id})
+                         and verein=${athlet.verein.map(_.id)})
                      and wettkampf_Id = (select id
                        from wettkampf
                        where uuid=${event.wettkampfUUID})

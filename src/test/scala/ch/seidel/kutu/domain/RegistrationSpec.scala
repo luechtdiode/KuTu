@@ -36,7 +36,9 @@ class RegistrationSpec extends KuTuBaseSpec {
     athletregistration = athletregistration match {
       case None =>
         Some(createAthletRegistration(AthletRegistration(0, reg.id, None, "M", "Tester", "Test", "2010-05-05", 20, 0)))
-      case Some(r) => Some(r)
+      case Some(r) =>
+        if (r.vereinregistrationId == reg.id)
+        Some(r) else Some(createAthletRegistration(AthletRegistration(0, reg.id, None, "M", "Tester", "Test", "2010-05-05", 20, 0)))
     }
     athletregistration.get
   }
@@ -61,7 +63,7 @@ class RegistrationSpec extends KuTuBaseSpec {
     "add athlet-registration" in {
       val reg = createTestRegistration
       val athletRegistration: AthletRegistration = createTestAthletRegistration(reg)
-      athletRegistration.id should ===(reg.id)
+      assert(athletRegistration.id > 0L)
       athletRegistration.vereinregistrationId should ===(reg.id)
       athletRegistration.name should ===("Tester")
     }

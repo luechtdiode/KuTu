@@ -372,7 +372,7 @@ object KuTuApp extends JFXApp with KutuService with JsonSupport with JwtSupport 
           new ExtensionFilter("Zip-Files", "*.zip"),
           new ExtensionFilter("All Files", "*.*")
         )
-        initialFileName.value = p.titel.replace(" ", "_") + "_" + DBService.sdfYear.format(p.datum) + ".zip"
+        initialFileName.value = p.titel.replace(" ", "_") + "_" + sdfYear.format(p.datum) + ".zip"
       }
       val selectedFile = fileChooser.showSaveDialog(stage)
       if (selectedFile != null) {

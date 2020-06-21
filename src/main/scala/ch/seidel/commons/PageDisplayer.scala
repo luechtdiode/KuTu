@@ -177,7 +177,33 @@ object PageDisplayer {
 
     Await.result(p.future, Duration.Inf)
   }
-  
+
+  def confirm[T](caption: String, lines: Seq[String], okAction: () => T): Option[T] = {
+    val p = Promise[Option[T]]
+    def ask {
+      var ret: Option[T] = None
+      showInDialogFromRoot(caption, new DisplayablePage() {
+          def getPage: Node = {
+            new BorderPane {
+              hgrow = Priority.Always
+              vgrow = Priority.Always
+              center = new VBox {
+                children = lines.map(text => new Label(text))
+              }
+            }
+          }
+        }, new Button("OK") {
+          onAction = () => {
+            ret = Some(okAction())
+          }
+        })
+      p success ret
+    }
+    if (Platform.isFxApplicationThread) ask else Platform.runLater{ask}
+
+    Await.result(p.future, Duration.Inf)
+  }
+
   def showErrorDialog(caption: String) = (error: Throwable) => {
     Platform.runLater{
       showInDialogFromRoot(caption, 
