@@ -4,7 +4,7 @@ import java.util.UUID
 
 import ch.seidel.commons._
 import ch.seidel.kutu.Config.{homedir, remoteHostOrigin}
-import ch.seidel.kutu.KuTuApp
+import ch.seidel.kutu.{ConnectionStates, KuTuApp, KuTuServer}
 import ch.seidel.kutu.KuTuApp.stage
 import ch.seidel.kutu.domain._
 import ch.seidel.kutu.renderer.PrintUtil.FilenameDefault
@@ -12,6 +12,7 @@ import ch.seidel.kutu.renderer.{PrintUtil, WettkampfOverviewToHtmlRenderer}
 import javafx.scene.text.FontSmoothingType
 import scalafx.Includes._
 import scalafx.application.Platform
+import scalafx.beans.binding.Bindings
 import scalafx.event.ActionEvent
 import scalafx.event.subscriptions.Subscription
 import scalafx.print.PageOrientation
@@ -64,6 +65,12 @@ class WettkampfOverviewTab(wettkampf: WettkampfView, override val service: KutuS
       reloadData()
     }
   }
+
+
+  def importAnmeldungen(implicit event: ActionEvent) = {
+    RegistrationAdmin.importRegistrations(WettkampfInfo(wettkampf, service), KuTuServer, () => reloadData())
+  }
+
   override def isPopulated(): Boolean = {
     val wettkampfEditable = !wettkampf.toWettkampf.isReadonly(homedir, remoteHostOrigin)
     reloadData()
@@ -112,6 +119,14 @@ class WettkampfOverviewTab(wettkampf: WettkampfView, override val service: KutuS
                 }
               }
             }
+          },
+          new Button {
+            text = "Online Anmeldungen importieren ..."
+            disable <== when(Bindings.createBooleanBinding(() =>
+              !wettkampf.toWettkampf.hasSecred(homedir, remoteHostOrigin),
+              ConnectionStates.connectedWithProperty
+            )) choose true otherwise false
+            onAction = (e: ActionEvent) => importAnmeldungen(e)
           },
           new Button {
             text = "Übersicht drucken ..."

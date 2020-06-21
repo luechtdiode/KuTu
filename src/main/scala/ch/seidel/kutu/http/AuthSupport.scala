@@ -14,8 +14,12 @@ import akka.http.scaladsl.settings.{ClientConnectionSettings, ConnectionPoolSett
 import akka.http.scaladsl.unmarshalling.Unmarshal
 import akka.http.scaladsl.{ClientTransport, Http}
 import akka.stream.scaladsl._
+import authentikat.jwt.JsonWebToken
 import ch.seidel.commons.PageDisplayer
+import ch.seidel.kutu.Config
 import ch.seidel.kutu.Config._
+import ch.seidel.kutu.KuTuApp.{server, setClaims}
+import ch.seidel.kutu.domain.Wettkampf
 import spray.json.JsObject
 
 import scala.concurrent.ExecutionContext.Implicits.global
@@ -180,7 +184,21 @@ trait AuthSupport extends Directives with SprayJsonSupport with Hashing {
       }
     }
   }
-  
+
+  def loginWithWettkampf(p: Wettkampf) = if (Config.isLocalHostServer()) {
+    if (!p.hasSecred(homedir, "localhost")) {
+      p.saveSecret(homedir, "localhost", JsonWebToken(jwtHeader, setClaims(p.uuid.get, Int.MaxValue), jwtSecretKey))
+    }
+    httpRenewLoginRequest(s"$remoteBaseUrl/api/loginrenew", p.uuid.get, p.readSecret(homedir, "localhost").get)
+  } else {
+    p.uuid.zip(p.readSecret(homedir, remoteHostOrigin)).headOption match {
+      case Some((uuid, secret)) =>
+        httpRenewLoginRequest(s"$remoteBaseUrl/api/loginrenew", uuid, secret)
+      case None =>
+        throw new IllegalStateException(s"Der Wettkampf ${p.easyprint} wurde noch nicht im Netz bereitgestellt.")
+    }
+  }
+
   def httpRenewLoginRequest(uri: String, wettkampfuuid: String, jwtToken: String) = {
     import Core._
     import HttpMethods._
