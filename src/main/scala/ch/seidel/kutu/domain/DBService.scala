@@ -389,10 +389,6 @@ object DBService {
     database.get
   }
 
-  val sdf = new SimpleDateFormat("dd.MM.yyyy")
-  val sdfShort = new SimpleDateFormat("dd.MM.yy")
-  val sdfExported = new SimpleDateFormat("yyyy-MM-dd")
-  val sdfYear = new SimpleDateFormat("yyyy")
 
 }
 
@@ -401,16 +397,5 @@ trait DBService {
 
   def database: DatabaseDef = DBService.startDB()
 
-  implicit def getSQLDate(date: String) = try {
-    new java.sql.Date(DBService.sdf.parse(date).getTime)
-  }
-  catch {
-    case d: ParseException => try {
-      new java.sql.Date(DBService.sdfExported.parse(date).getTime)
-    }
-    catch {
-      case dd: ParseException =>
-        new java.sql.Date(DBService.sdfShort.parse(date).getTime)
-    }
-  }
+  implicit def getSQLDate(date: String) = str2SQLDate(date)
 }

@@ -3,7 +3,7 @@ package ch.seidel.kutu
 import java.net.URLEncoder
 import java.nio.file.{Files, LinkOption, StandardOpenOption}
 import java.sql.Timestamp
-import java.text.SimpleDateFormat
+import java.text.{ParseException, SimpleDateFormat}
 import java.time.{LocalDate, LocalDateTime, ZoneId}
 import java.util.UUID
 import java.util.concurrent.TimeUnit
@@ -88,16 +88,34 @@ package object domain {
     }
   }
 
+  val sdf = new SimpleDateFormat("dd.MM.yyyy")
+  val sdfShort = new SimpleDateFormat("dd.MM.yy")
+  val sdfExported = new SimpleDateFormat("yyyy-MM-dd")
+  val sdfYear = new SimpleDateFormat("yyyy")
+
   def str2SQLDate(date: String) = {
-    if (date == null) null else {
-      val time = try {
-        str2Long(date)
-      } catch {
-        case e: NumberFormatException =>
-          val sdf = new SimpleDateFormat("yyyy-MM-dd")
-          sdf.parse(date.split("T")(0)).getTime()
+    if (date == null) null else try {
+      new java.sql.Date(sdf.parse(date).getTime)
+    }
+    catch {
+      case _: ParseException => try {
+        new java.sql.Date(sdfExported.parse(date).getTime)
       }
-      new java.sql.Date(time)
+      catch {
+        case _: ParseException => try {
+          new java.sql.Date(sdfShort.parse(date).getTime)
+        } catch {
+          case _: Exception => {
+            val time = try {
+              str2Long(date)
+            } catch {
+              case _: NumberFormatException =>
+                sdf.parse(date.split("T")(0)).getTime()
+            }
+            new java.sql.Date(time)
+          }
+        }
+      }
     }
   }
 
@@ -784,6 +802,22 @@ package object domain {
 
   case class AthletRegistration(id: Long, vereinregistrationId: Long,
                                 athletId: Option[Long], geschlecht: String, name: String, vorname: String, gebdat: String,
-                                programId: Long, registrationTime: Long) extends DataObject
+                                programId: Long, registrationTime: Long) extends DataObject {
+    def toAthlet: Athlet = {
+      Athlet(
+        id = athletId match{case Some(id) => id case None => 0},
+        js_id = "",
+        geschlecht = geschlecht,
+        name = name,
+        vorname = vorname,
+        gebdat = Some(str2SQLDate(gebdat)),
+        strasse = "",
+        plz = "",
+        ort = "",
+        verein = None,
+        activ = true
+      )
+    }
+  }
 
 }
