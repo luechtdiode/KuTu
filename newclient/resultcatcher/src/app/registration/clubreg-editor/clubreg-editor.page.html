@@ -3,8 +3,8 @@
     <ion-buttons slot="start">
       <ion-back-button defaultHref="/"></ion-back-button>
     </ion-buttons>
-    <ion-title>Vereins-Anmeldung</ion-title>  
-    <ion-note slot="end"><div class="athlet">für {{wettkampf}}</div></ion-note>  
+    <ion-title>Vereins-Anmeldung</ion-title>
+    <ion-note slot="end"><div class="athlet">für {{wettkampf}}</div></ion-note>
   </ion-toolbar>
 </ion-header>
 
@@ -51,11 +51,11 @@
     </ion-list>
     <ion-list>
       <ion-button size="large" expand="block" type="submit" #btnSaveNext [disabled]="waiting || !clubRegistrationform.valid || clubRegistrationform.untouched" color="success">
-        <ion-icon slot="start" name=""></ion-icon>Speichern</ion-button>
+        <ion-icon slot="start" name="save"></ion-icon>Speichern</ion-button>
       </ion-list>
       <ion-list>
       <ion-button size="large" expand="block" (click)='editAthletRegistrations()' [disabled]="waiting || regId === 0" color="secondary">
-        <ion-icon slot="start" name=""></ion-icon>Athlet-Anmeldungen...</ion-button>
+        <ion-icon slot="start" name="list"></ion-icon>Athlet-Anmeldungen...</ion-button>
       </ion-list>
   </form>
 </ion-content>
