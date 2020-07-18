@@ -14,6 +14,9 @@ export class RegAthletItemComponent implements OnInit {
   athletregistration: AthletRegistration;
 
   @Input()
+  status: string;
+
+  @Input()
   programmlist: ProgrammRaw[];
 
   @Output()
