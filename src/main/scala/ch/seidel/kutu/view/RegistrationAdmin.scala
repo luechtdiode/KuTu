@@ -3,7 +3,7 @@ package ch.seidel.kutu.view
 import akka.http.javadsl.model.HttpResponse
 import ch.seidel.commons.{DisplayablePage, PageDisplayer}
 import ch.seidel.kutu.KuTuApp
-import ch.seidel.kutu.domain.{Athlet, AthletRegistration, AthletView, MatchCode, Registration, Verein, WertungView}
+import ch.seidel.kutu.domain.{Athlet, AthletRegistration, AthletView, EmptyAthletRegistration, MatchCode, Registration, Verein, WertungView}
 import ch.seidel.kutu.http.RegistrationRoutes
 import scalafx.Includes._
 import scalafx.application.Platform
@@ -78,7 +78,7 @@ object RegistrationAdmin {
     val mutationActions: Seq[SyncAction] = registrations.filter(r => nonmatching.get("Unverändert") match {
       case None => true
       case Some(list) => !list.exists(p => p.athlet.id == r._4.id)
-    }).map { r =>
+    }).flatMap{ r =>
       (nonmatching.get("Umteilen") match {
         case Some(list) => list.find(p => p.athlet.id == r._4.id) match {
           case Some(wertungView) => Some(MoveRegistration(wertungView.wettkampfdisziplin.programm.id, r._2.programId, r._3, r._4))
@@ -87,8 +87,9 @@ object RegistrationAdmin {
         case _ => None
 
       }) match {
-        case Some(moveRegistration) => moveRegistration
-        case None => AddRegistration(r._2.programId, r._3, r._4)
+        case Some(moveRegistration) => Some(moveRegistration)
+        case None if (!r._2.isEmptyRegistration) => Some(AddRegistration(r._2.programId, r._3, r._4))
+        case None => None
       }
     }
     val actions = removeActions ++ mutationActions
@@ -112,10 +113,10 @@ object RegistrationAdmin {
               case Some(verein) => List(verein)
               case None => importVereinRegistration(service, verein, reloader)
             }
-            athlet <- athleten
+            athlet <- (athleten :+ EmptyAthletRegistration(verein.id))
           } yield {
             val parsed = athlet.toAthlet.copy(verein = Some(resolvedVerein.id))
-            val candidate = service.findAthleteLike(cache)(parsed)
+            val candidate = if (athlet.isEmptyRegistration) parsed else service.findAthleteLike(cache)(parsed)
             (verein, athlet, parsed, AthletView(
               candidate.id, candidate.js_id,
               candidate.geschlecht, candidate.name, candidate.vorname, candidate.gebdat,

@@ -818,6 +818,10 @@ package object domain {
         activ = true
       )
     }
+    def isEmptyRegistration = geschlecht.isEmpty
   }
 
+  object EmptyAthletRegistration {
+    def apply(vereinregistrationId: Long) = AthletRegistration(0L, vereinregistrationId, None, "", "", "", "", 0L, 0L)
+  }
 }
