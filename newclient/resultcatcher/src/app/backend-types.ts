@@ -79,7 +79,10 @@ export interface AthletRegistration {
   programId: number;
   registrationTime: number;
 }
-
+ export interface SyncAction {
+   caption: string;
+   verein: ClubRegistration;
+ }
 export interface Wertung {
   id: number;
   wettkampfId: number;

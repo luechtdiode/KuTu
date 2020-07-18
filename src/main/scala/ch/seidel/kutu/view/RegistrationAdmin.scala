@@ -54,7 +54,9 @@ object RegistrationAdmin {
       .map { wertung: WertungView =>
         (relevantClubs.find(club => wertung.athlet.verein.map(_.id) == club.vereinId), wertung)
       }
-      .filter {_._1 != None}
+      .filter {
+        _._1 != None
+      }
       .map(t => (t._1.get, t._2))
       .groupBy { t =>
         val (verein, wertung: WertungView) = t

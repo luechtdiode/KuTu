@@ -10,7 +10,8 @@ import { DurchgangStarted, Wettkampf, Geraet, WertungContainer, NewLastResults, 
          ClubRegistration,
          NewClubRegistration,
          AthletRegistration,
-         ProgrammRaw} from '../backend-types';
+         ProgrammRaw,
+         SyncAction} from '../backend-types';
 import { backendUrl } from '../utils';
 import { ProgrammItem } from '../backend-types';
 
@@ -481,6 +482,16 @@ export class BackendService extends WebsocketService {
       }, this.standardErrorHandler);
 
       return this.clubRegistrations;
+    }
+
+    loadRegistrationSyncActions(): Observable<SyncAction[]> {
+      const loader = this.startLoading('Pendente An-/Abmeldungen werden geladen. Bitte warten ...',
+        this.http.get<string[]>(backendUrl + 'api/registrations/' + this._competition + '/syncactions').pipe(share()));
+
+      loader.subscribe((data) => {
+      }, this.standardErrorHandler);
+
+      return loader;
     }
 
     getDurchgaenge(competitionId: string) {

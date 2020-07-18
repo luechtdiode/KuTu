@@ -1,5 +1,5 @@
 import { Component, OnInit } from '@angular/core';
-import { Wettkampf, ClubRegistration } from '../backend-types';
+import { Wettkampf, ClubRegistration, SyncAction } from '../backend-types';
 import { NavController, IonItemSliding, AlertController } from '@ionic/angular';
 import { BackendService } from '../services/backend.service';
 import { BehaviorSubject, Subject, of, Observable } from 'rxjs';
@@ -17,6 +17,7 @@ export class RegistrationPage implements OnInit {
   sClubRegistrationList: ClubRegistration[];
   sFilteredRegistrationList: ClubRegistration[];
   sMyQuery: string;
+  sSyncActions: SyncAction[] = [];
 
   tMyQueryStream = new Subject<any>();
 
@@ -43,6 +44,10 @@ export class RegistrationPage implements OnInit {
     }
   }
 
+  ionViewWillEnter() {
+    this.getSyncActions();
+  }
+  
   get stationFreezed(): boolean {
     return this.backendService.stationFreezed;
   }
@@ -51,6 +56,7 @@ export class RegistrationPage implements OnInit {
     if (!this.clubregistrations || competitionId !== this.backendService.competition) {
       this.busy.next(true);
       this.clubregistrations = [];
+      
       this.backendService.getClubRegistrations(competitionId).subscribe(list => {
         this.clubregistrations = list;
         this.busy.next(false);
@@ -76,7 +82,7 @@ export class RegistrationPage implements OnInit {
     return this.backendService.competition || '';
   }
   set clubregistrations(list: ClubRegistration[]) {
-    this.sClubRegistrationList = list;
+    this.sClubRegistrationList = list;    
     this.reloadList(this.sMyQuery);
   }
   get clubregistrations() {
@@ -90,6 +96,25 @@ export class RegistrationPage implements OnInit {
     return this.busy;
   }
 
+  getSyncActions() {
+    this.backendService.loadRegistrationSyncActions().pipe(
+      take(1)
+    ).subscribe(sa => {
+      this.sSyncActions = sa;
+    });
+  }
+
+  getStatus(verein: ClubRegistration) {
+    if (this.sSyncActions) {
+      if (this.sSyncActions.find(a => a.verein.id === verein.id)) {
+        return "pending";
+      } else {
+        return "in sync";
+      }
+    } else {
+      return "n/a";
+    }
+  }  
   runQuery(list: ClubRegistration[]) {
     return (query: string) => {
       const q = query.trim();

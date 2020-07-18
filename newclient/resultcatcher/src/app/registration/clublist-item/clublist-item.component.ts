@@ -12,6 +12,9 @@ export class ClublistItemComponent implements OnInit {
   @Input()
   clubregistration: ClubRegistration;
 
+  @Input()
+  status: string;
+
   @Output()
   selected = new EventEmitter<ClubRegistration>();
 
