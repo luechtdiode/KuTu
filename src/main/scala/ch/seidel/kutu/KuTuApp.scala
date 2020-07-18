@@ -22,7 +22,7 @@ import scalafx.application.JFXApp.PrimaryStage
 import scalafx.application.{JFXApp, Platform}
 import scalafx.beans.binding.Bindings
 import scalafx.beans.property.StringProperty.sfxStringProperty2jfx
-import scalafx.beans.property.{BooleanProperty, ReadOnlyStringWrapper}
+import scalafx.beans.property.{BooleanProperty, ReadOnlyStringWrapper, StringProperty}
 import scalafx.collections.ObservableBuffer
 import scalafx.event.ActionEvent
 import scalafx.geometry.{Insets, Side}
@@ -121,8 +121,35 @@ object KuTuApp extends JFXApp with KutuService with JsonSupport with JwtSupport 
   var centerPane = PageDisplayer.choosePage(modelWettkampfModus, None, "dashBoard", tree)
 
   def updateTree {
-    tree = AppNavigationModel.create(KuTuApp.this)
-    rootTreeItem.children = tree.getTree
+    def selectionPathToRoot(node: TreeItem[String]): List[TreeItem[String]] = {
+      if (node == null) {
+        List.empty
+      }
+      else if (node.parent.value != null) {
+        selectionPathToRoot(node.parent.value) :+ node
+      } else{
+        List(node)
+      }
+    }
+
+    val oldselected = selectionPathToRoot(controlsView.selectionModel().getSelectedItem)
+
+    lastSelected.value = "Updating"
+    var lastNode = rootTreeItem
+    try {
+      tree = AppNavigationModel.create(KuTuApp.this)
+      rootTreeItem.children = tree.getTree
+      for {node <- oldselected}{
+        lastNode.setExpanded(true)
+        lastNode.children.find(n => n.value.value.equals(node.value.value)) match {
+          case Some(n) => lastNode = n
+          case _ =>
+        }
+      }
+    } finally {
+      lastSelected.value = oldselected.lastOption.map(_.value.value).getOrElse("")
+    }
+    controlsView.selectionModel().select(lastNode)
   }
 
   def handleAction[J <: javafx.event.ActionEvent, R](handler: scalafx.event.ActionEvent => R) = new javafx.event.EventHandler[J] {
@@ -1517,83 +1544,87 @@ object KuTuApp extends JFXApp with KutuService with JsonSupport with JwtSupport 
   }
 
   controlsView.selectionModel().selectionMode = SelectionMode.Single
+  val lastSelected = StringProperty("")
   controlsView.selectionModel().selectedItem.onChange { (_, _, newItem) =>
-    btnWettkampfModus.disable.value = true
-    if (newItem != null) {
-      newItem.value.value match {
-        case "Athleten" =>
-          controlsView.contextMenu = new ContextMenu() {
-            items += makeNeuerVereinAnlegenMenu
-            items += makeFindDuplicteAthletes
-          }
-        case "Wettkämpfe" =>
-          controlsView.contextMenu = new ContextMenu() {
-            items += makeNeuerWettkampfAnlegenMenu
-            items += makeNeuerWettkampfImportierenMenu
-            items += new Menu("Netzwerk") {
-              //items += makeLoginMenu
-              items += makeStartServerMenu
-              items += makeStopServerMenu
-              items += makeProxyLoginMenu
-              items += makeWettkampfHerunterladenMenu
+    if (!lastSelected.value.equals("Updating")) {
+      btnWettkampfModus.disable.value = true
+      if (newItem != null && !newItem.value.value.equals(lastSelected.value)) {
+        lastSelected.value = newItem.value.value
+        newItem.value.value match {
+          case "Athleten" =>
+            controlsView.contextMenu = new ContextMenu() {
+              items += makeNeuerVereinAnlegenMenu
+              items += makeFindDuplicteAthletes
             }
+          case "Wettkämpfe" =>
+            controlsView.contextMenu = new ContextMenu() {
+              items += makeNeuerWettkampfAnlegenMenu
+              items += makeNeuerWettkampfImportierenMenu
+              items += new Menu("Netzwerk") {
+                //items += makeLoginMenu
+                items += makeStartServerMenu
+                items += makeStopServerMenu
+                items += makeProxyLoginMenu
+                items += makeWettkampfHerunterladenMenu
+              }
+            }
+          case _ => (newItem.isLeaf, Option(newItem.getParent)) match {
+            case (true, Some(parent)) => {
+              tree.getThumbs(parent.getValue).find(p => p.button.text.getValue.equals(newItem.getValue)) match {
+                case Some(KuTuAppThumbNail(p: WettkampfView, _, newItem)) =>
+                  btnWettkampfModus.disable.value = false
+                  selectedWettkampf.value = p
+                  selectedWettkampfSecret.value = p.toWettkampf.readSecret(homedir, remoteHostOrigin)
+                  //                  val networkMenu = new Menu("Netzwerk") {
+                  //                    items += makeShowQRCodeMenu(p)
+                  //                    items += makeWettkampfUploadMenu(p)
+                  //                    items += makeConnectAndShareMenu(p)
+                  //                    items += makeWettkampfDownloadMenu(p)
+                  //                    items += makeDisconnectMenu(p)
+                  //                    items += makeWettkampfRemoteRemoveMenu(p)
+                  //                  }
+
+                  controlsView.contextMenu = new ContextMenu() {
+                    items += makeWettkampfDurchfuehrenMenu(p)
+                    items += makeWettkampfBearbeitenMenu(p)
+                    items += makeWettkampfExportierenMenu(p)
+                    items += makeWettkampfDataDirectoryMenu(p)
+                    items += makeWettkampfLoeschenMenu(p)
+                    //                    items += networkMenu
+                  }
+                case Some(KuTuAppThumbNail(v: Verein, _, newItem)) =>
+                  controlsView.contextMenu = new ContextMenu() {
+                    items += makeVereinUmbenennenMenu(v)
+                    items += makeVereinLoeschenMenu(v)
+                  }
+                case _ => controlsView.contextMenu = new ContextMenu()
+              }
+            }
+            case _ => controlsView.contextMenu = new ContextMenu()
           }
-        case _ => (newItem.isLeaf, Option(newItem.getParent)) match {
+
+        }
+        val centerPane = (newItem.isLeaf, Option(newItem.getParent)) match {
           case (true, Some(parent)) => {
             tree.getThumbs(parent.getValue).find(p => p.button.text.getValue.equals(newItem.getValue)) match {
               case Some(KuTuAppThumbNail(p: WettkampfView, _, newItem)) =>
-                btnWettkampfModus.disable.value = false
-                selectedWettkampf.value = p
-                selectedWettkampfSecret.value = p.toWettkampf.readSecret(homedir, remoteHostOrigin)
-                //                  val networkMenu = new Menu("Netzwerk") {
-                //                    items += makeShowQRCodeMenu(p)
-                //                    items += makeWettkampfUploadMenu(p)
-                //                    items += makeConnectAndShareMenu(p)
-                //                    items += makeWettkampfDownloadMenu(p)
-                //                    items += makeDisconnectMenu(p)
-                //                    items += makeWettkampfRemoteRemoveMenu(p)
-                //                  }
-
-                controlsView.contextMenu = new ContextMenu() {
-                  items += makeWettkampfDurchfuehrenMenu(p)
-                  items += makeWettkampfBearbeitenMenu(p)
-                  items += makeWettkampfExportierenMenu(p)
-                  items += makeWettkampfDataDirectoryMenu(p)
-                  items += makeWettkampfLoeschenMenu(p)
-                  //                    items += networkMenu
-                }
+                PageDisplayer.choosePage(modelWettkampfModus, Some(p), "dashBoard - " + newItem.getValue, tree)
               case Some(KuTuAppThumbNail(v: Verein, _, newItem)) =>
-                controlsView.contextMenu = new ContextMenu() {
-                  items += makeVereinUmbenennenMenu(v)
-                  items += makeVereinLoeschenMenu(v)
-                }
-              case _ => controlsView.contextMenu = new ContextMenu()
+                PageDisplayer.choosePage(modelWettkampfModus, Some(v), "dashBoard - " + newItem.getValue, tree)
+              case _ =>
+                PageDisplayer.choosePage(modelWettkampfModus, None, "dashBoard - " + newItem.getValue, tree)
             }
           }
-          case _ => controlsView.contextMenu = new ContextMenu()
+          case (false, Some(_)) =>
+            PageDisplayer.choosePage(modelWettkampfModus, None, "dashBoard - " + newItem.getValue, tree)
+          case (_, _) =>
+            PageDisplayer.choosePage(modelWettkampfModus, None, "dashBoard", tree)
         }
-
-      }
-      val centerPane = (newItem.isLeaf, Option(newItem.getParent)) match {
-        case (true, Some(parent)) => {
-          tree.getThumbs(parent.getValue).find(p => p.button.text.getValue.equals(newItem.getValue)) match {
-            case Some(KuTuAppThumbNail(p: WettkampfView, _, newItem)) =>
-              PageDisplayer.choosePage(modelWettkampfModus, Some(p), "dashBoard - " + newItem.getValue, tree)
-            case Some(KuTuAppThumbNail(v: Verein, _, newItem)) =>
-              PageDisplayer.choosePage(modelWettkampfModus, Some(v), "dashBoard - " + newItem.getValue, tree)
-            case _ =>
-              PageDisplayer.choosePage(modelWettkampfModus, None, "dashBoard - " + newItem.getValue, tree)
-          }
+        if (splitPane.items.size > 1) {
+          splitPane.items.remove(1)
         }
-        case (false, Some(_)) =>
-          PageDisplayer.choosePage(modelWettkampfModus, None, "dashBoard - " + newItem.getValue, tree)
-        case (_, _) =>
-          PageDisplayer.choosePage(modelWettkampfModus, None, "dashBoard", tree)
+        splitPane.items.add(1, centerPane)
       }
-      if (splitPane.items.size > 1) {
-        splitPane.items.remove(1)
-      }
-      splitPane.items.add(1, centerPane)
     }
   }
 

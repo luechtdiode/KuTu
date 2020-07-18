@@ -27,7 +27,7 @@ object RegistrationAdmin {
 
   case class RemoveRegistration(programId: Long, athlet: Athlet, suggestion: AthletView) extends SyncAction
 
-  def importVereinRegistration(service: RegistrationRoutes, verein: Registration) = {
+  def importVereinRegistration(service: RegistrationRoutes, verein: Registration, reloader: Boolean => Unit) = {
     verein.vereinId match {
       case Some(id) => List(service.insertVerein(Verein(id, verein.vereinname, Some(verein.verband))))
       case None => PageDisplayer.confirm(
@@ -40,6 +40,7 @@ object RegistrationAdmin {
         ),
         () => {
           val v = service.insertVerein(Verein(verein.vereinId.getOrElse(0), verein.vereinname, Some(verein.verband)))
+          reloader(true);
           // TODO update registration with verein_id or better do this operation remote and download verein
           v
         }
@@ -95,7 +96,7 @@ object RegistrationAdmin {
     actions.toList
   }
 
-  def importRegistrations(wkInfo: WettkampfInfo, service: RegistrationRoutes, reloader: () => Unit)(implicit event: ActionEvent): Unit = {
+  def importRegistrations(wkInfo: WettkampfInfo, service: RegistrationRoutes, reloader: Boolean => Unit)(implicit event: ActionEvent): Unit = {
     import scala.concurrent.ExecutionContext.Implicits._
     import scala.util.{Failure, Success}
     val athletModel = ObservableBuffer[SyncAction]()
@@ -109,7 +110,7 @@ object RegistrationAdmin {
             (verein, athleten) <- service.getAllRegistrations(wkInfo.wettkampf.toWettkampf)
             resolvedVerein <- vereineList.find(v => v.name.equals(verein.vereinname) && (v.verband.isEmpty || v.verband.get.equals(verein.verband))) match {
               case Some(verein) => List(verein)
-              case None => importVereinRegistration(service, verein)
+              case None => importVereinRegistration(service, verein, reloader)
             }
             athlet <- athleten
           } yield {
@@ -280,13 +281,13 @@ object RegistrationAdmin {
                   x => athletTable.selectionModel.value.isSelected(x._2)
                 }.map(_._1)
                 processSync(wkInfo, service, selectedAthleten)
-                reloader()
+                reloader(false)
               }
             }
           }, new Button("OK Alle") {
             onAction = (event: ActionEvent) => {
               processSync(wkInfo, service, filteredModel)
-              reloader()
+              reloader(false)
             }
           })
         } else {
