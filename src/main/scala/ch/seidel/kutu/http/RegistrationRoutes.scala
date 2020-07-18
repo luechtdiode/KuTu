@@ -9,7 +9,7 @@ import ch.seidel.kutu.Config
 import ch.seidel.kutu.Config.remoteAdminBaseUrl
 import ch.seidel.kutu.domain.{AthletRegistration, KutuService, NewRegistration, ProgrammRaw, Registration, Verein, Wettkampf}
 import ch.seidel.kutu.renderer.PrintUtil
-import ch.seidel.kutu.view.WettkampfInfo
+import ch.seidel.kutu.view.{RegistrationAdmin, WettkampfInfo}
 
 import scala.concurrent.duration.{Duration, DurationInt}
 import scala.concurrent.{Await, Future}
@@ -17,7 +17,7 @@ import scala.concurrent.{Await, Future}
 trait RegistrationRoutes extends SprayJsonSupport with JwtSupport with JsonSupport with AuthSupport with RouterLogging with KutuService with IpToDeviceID {
 
   import Core._
-
+  import spray.json.DefaultJsonProtocol._
   import scala.concurrent.ExecutionContext.Implicits.global
 
   // Required by the `ask` (?) method below
@@ -74,6 +74,14 @@ trait RegistrationRoutes extends SprayJsonSupport with JwtSupport with JsonSuppo
             complete {
               val wi = WettkampfInfo(wettkampf.toView(readProgramm(wettkampf.programmId)), this)
               wi.leafprograms.map(p => ProgrammRaw(p.id, p.name, 0, 0, p.ord, p.alterVon, p.alterBis))
+            }
+          }
+        } ~ path("syncactions") {
+          get {
+            val wi = WettkampfInfo(wettkampf.toView(readProgramm(wettkampf.programmId)), this)
+            complete {
+              RegistrationAdmin.computeSyncActions(wi, this)
+                .map(synclist => synclist.map(_.caption))
             }
           }
         } ~ pathPrefix(LongNumber) { registrationId =>
