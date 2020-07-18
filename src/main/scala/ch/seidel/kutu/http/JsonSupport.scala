@@ -27,6 +27,11 @@ trait JsonSupport extends SprayJsonSupport with EnrichedJson {
   implicit val athletregistrationFormat = jsonFormat9(AthletRegistration)
   implicit val athletregistrationListFormat = listFormat(athletregistrationFormat)
 
+//  implicit val syncAddVereinActionFormat = jsonFormat1(AddVereinAction)
+//  implicit val syncAddRegistrationActionFormat = jsonFormat3(AddRegistration)
+//  implicit val syncMoveRegistrationActionFormat = jsonFormat4(MoveRegistration)
+//  implicit val syncRemoveRegistrationActionFormat = jsonFormat3(RemoveRegistration)
+
   implicit val resultatFormat = jsonFormat(Resultat, "noteD", "noteE", "endnote")
 
   implicit val dataObjectFormat = new RootJsonWriter[DataObject]{

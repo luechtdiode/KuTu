@@ -793,12 +793,30 @@ package object domain {
 
   type OverviewStatTuple = (String, String, Int, Int, Int)
 
+  sealed trait SyncAction {
+    val caption: String
+    val verein: Registration
+  }
+  case class AddVereinAction(verein: Registration) extends SyncAction {
+    override val caption = s"Verein Hinzufügen: ${verein.vereinname}"
+  }
+  case class AddRegistration(verein: Registration, programId: Long, athlet: Athlet, suggestion: AthletView) extends SyncAction {
+    override val caption = s"Neue Anmeldung verarbeiten: ${suggestion.easyprint}"
+  }
+  case class MoveRegistration(verein: Registration, fromProgramId: Long, toProgramid: Long, athlet: Athlet, suggestion: AthletView) extends SyncAction {
+    override val caption = s"Umteilung verarbeiten: ${suggestion.easyprint}"
+  }
+  case class RemoveRegistration(verein: Registration, programId: Long, athlet: Athlet, suggestion: AthletView) extends SyncAction {
+    override val caption = s"Abmeldung verarbeiten: ${suggestion.easyprint}"
+  }
 
   case class NewRegistration(wettkampfId: Long, vereinname: String, verband: String, respName: String, respVorname: String, mobilephone: String, mail: String, secret: String) {
     def toRegistration = Registration(0, wettkampfId, None, vereinname, verband, respName, respVorname, mobilephone, mail, Timestamp.valueOf(LocalDateTime.now()).getTime)
   }
 
-  case class Registration(id: Long, wettkampfId: Long, vereinId: Option[Long], vereinname: String, verband: String, respName: String, respVorname: String, mobilephone: String, mail: String, registrationTime: Long) extends DataObject
+  case class Registration(id: Long, wettkampfId: Long, vereinId: Option[Long], vereinname: String, verband: String, respName: String, respVorname: String, mobilephone: String, mail: String, registrationTime: Long) extends DataObject {
+    def toVerein = Verein(0L, vereinname, Some(verband))
+  }
 
   case class AthletRegistration(id: Long, vereinregistrationId: Long,
                                 athletId: Option[Long], geschlecht: String, name: String, vorname: String, gebdat: String,
