@@ -4,11 +4,11 @@ import java.util.UUID
 
 import ch.seidel.commons._
 import ch.seidel.kutu.Config.{homedir, remoteHostOrigin}
-import ch.seidel.kutu.{ConnectionStates, KuTuApp, KuTuServer}
 import ch.seidel.kutu.KuTuApp.{controlsView, selectedWettkampfSecret, stage}
 import ch.seidel.kutu.domain._
 import ch.seidel.kutu.renderer.PrintUtil.FilenameDefault
 import ch.seidel.kutu.renderer.{PrintUtil, WettkampfOverviewToHtmlRenderer}
+import ch.seidel.kutu.{ConnectionStates, KuTuApp, KuTuServer}
 import javafx.scene.text.FontSmoothingType
 import scalafx.Includes._
 import scalafx.application.Platform
@@ -48,6 +48,8 @@ class WettkampfOverviewTab(wettkampf: WettkampfView, override val service: KutuS
   }
   val webView = new WebView {
     fontSmoothingType = FontSmoothingType.GRAY
+    import ch.seidel.javafx.webview.HyperLinkRedirectListener
+    engine.getLoadWorker.stateProperty.addListener(new HyperLinkRedirectListener(this.delegate))
   }
 
   def reloadData(): Unit = {
