@@ -2,9 +2,11 @@ package ch.seidel.kutu.renderer
 
 import java.io.File
 
+import ch.seidel.kutu.Config.remoteBaseUrl
 import ch.seidel.kutu.domain._
 import ch.seidel.kutu.renderer.PrintUtil._
 import org.slf4j.LoggerFactory
+
 import scala.collection.immutable._
 
 trait WettkampfOverviewToHtmlRenderer {
@@ -160,6 +162,8 @@ trait WettkampfOverviewToHtmlRenderer {
     val totSum = tiSum + tuSum
 
     val logoHtml = (if (logo.exists) s"""<img class=logo src="${logo.imageSrcForWebEngine}" title="Logo"/>""" else s"")
+    val registrationURL = s"$remoteBaseUrl/registration/${wettkampf.uuid.get}"
+
     val auszSchwelle = (if (wettkampf.auszeichnung > 100) {
       wettkampf.auszeichnung / 100d
     } else {
@@ -216,6 +220,9 @@ trait WettkampfOverviewToHtmlRenderer {
         <h1>Wettkampf-Übersicht</h1><h2>${wettkampf.easyprint}</h2></div>
       </div>
       <h2>Anmeldungen</h2>
+      <p>Link für die Online-Anmeldung zum Versenden an die Vereinsverantwortlichen oder für in die Wettkampf-Ausschreibung:<br>
+      <a href="$registrationURL" target="_blank">$registrationURL</a>
+      </p>
       <div class="showborder">
         <table width="100%">
           <thead>
