@@ -59,19 +59,33 @@ export class ClubregEditorPage implements OnInit {
 
   save(registration: ClubRegistration | NewClubRegistration) {
     if (this.regId === 0) {
-      const reg =  {
-        mail: registration.mail,
-        mobilephone: registration.mobilephone,
-        respName: registration.respName,
-        respVorname: registration.respVorname,
-        verband: registration.verband,
-        vereinname: registration.vereinname,
-        wettkampfId: registration.wettkampfId || this.wettkampfId,
-        secret: (registration as NewClubRegistration).secret
-      } as NewClubRegistration;
-      this.backendService.createClubRegistration(this.wkId, reg).subscribe(() => {
-        this.navCtrl.pop();
-      });
+      const nereg = registration as NewClubRegistration;
+      if (nereg.secret !== nereg.verification) {
+        const alert = this.alertCtrl.create({
+              header: 'Achtung',
+              subHeader: 'Passwort-Verifikation',
+              message: 'Das Passwort stimmt nicht mit der Verifikation überein. Beide müssen genau gleich erfasst sein.',
+              buttons: [
+                {text: 'OKAY', role: 'cancel', handler: () => {}},
+              ]
+            });
+            alert.then(a => a.present());
+      } else {
+        const reg =  {
+          mail: nereg.mail,
+          mobilephone: nereg.mobilephone,
+          respName: nereg.respName,
+          respVorname: nereg.respVorname,
+          verband: nereg.verband,
+          vereinname: nereg.vereinname,
+          wettkampfId: nereg.wettkampfId || this.wettkampfId,
+          secret: nereg.secret
+        } as NewClubRegistration;
+        this.backendService.createClubRegistration(this.wkId, reg).subscribe((data) => {
+          this.regId = data.id;
+          this.editAthletRegistrations()
+        });
+      }
     } else {
       const reg =  {
         id: (this.registration as ClubRegistration).id,
@@ -85,7 +99,7 @@ export class ClubregEditorPage implements OnInit {
         vereinname: registration.vereinname,
         wettkampfId: registration.wettkampfId || this.wettkampfId,
       } as ClubRegistration;
-      this.backendService.saveClubRegistration(this.wkId, reg).subscribe(() => {
+      this.backendService.saveClubRegistration(this.wkId, reg).subscribe((data) => {
         this.navCtrl.pop();
       });
     }

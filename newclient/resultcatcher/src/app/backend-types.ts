@@ -65,6 +65,7 @@ export interface NewClubRegistration {
   vereinname: string;
   wettkampfId: number;
   secret: string;
+  verification?: string;
 }
 
 export interface AthletRegistration {

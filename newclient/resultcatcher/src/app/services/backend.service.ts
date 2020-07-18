@@ -294,9 +294,19 @@ export class BackendService extends WebsocketService {
 
     createClubRegistration(competitionId: string, registration: NewClubRegistration) {
       const creater = this.startLoading('Vereins-Anmeldung wird registriert. Bitte warten ...',
-        this.http.post<MessageAck>(backendUrl + 'api/registrations/' + competitionId,
-        registration
-      ).pipe(share()));
+        this.http.post<ClubRegistration>(backendUrl + 'api/registrations/' + competitionId, 
+        registration, {
+          observe: 'response',
+        }
+      ).pipe(
+        map((data) => {
+          console.log(data);
+          localStorage.setItem('auth_token', data.headers.get('x-access-token'));
+          localStorage.setItem('auth_clubid', data.body.id + '');
+          this.loggedIn = true;
+          return data.body;          
+        }),
+        share()));
       creater.subscribe((data) => {
         this._clubregistrations = [...this._clubregistrations, data];
         this.clubRegistrations.next(this._clubregistrations);
