@@ -4,7 +4,7 @@ import { ActivatedRoute } from '@angular/router';
 import { BackendService } from 'src/app/services/backend.service';
 import { BehaviorSubject, Subject, of, TimeoutError } from 'rxjs';
 import { filter, map, debounceTime, distinctUntilChanged, share, switchMap, take, tap } from 'rxjs/operators';
-import { ClubRegistration, ProgrammRaw, AthletRegistration, Wettkampf } from '../../backend-types';
+import { ClubRegistration, ProgrammRaw, AthletRegistration, Wettkampf, SyncAction } from '../../backend-types';
 import { ProviderMeta } from '@angular/compiler';
 
 @Component({
@@ -24,6 +24,7 @@ export class RegAthletlistPage implements OnInit {
   sFilteredRegistrationList: AthletRegistration[];
   sAthletRegistrationList: AthletRegistration[];
   sMyQuery: string;
+  sSyncActions: SyncAction[] = [];
 
   constructor(public navCtrl: NavController,
               private route: ActivatedRoute,
@@ -50,9 +51,31 @@ export class RegAthletlistPage implements OnInit {
     this.refreshList();
   }
 
+  getSyncActions() {
+    this.backendService.loadRegistrationSyncActions().pipe(
+      take(1)
+    ).subscribe(sa => {
+      this.sSyncActions = sa;
+    });
+  }
+
+  getStatus(reg: AthletRegistration) {
+    if (this.sSyncActions) {
+      const action = this.sSyncActions.find(a => a.verein.id === reg.vereinregistrationId && a.caption.indexOf(reg.name) > -1 && a.caption.indexOf(reg.vorname) > -1)
+      if (action) {
+        return "pending"; // (" + action.caption + ")";
+      } else {
+        return "in sync";
+      }
+    } else {
+      return "n/a";
+    }
+  }
+
   refreshList() {
     this.busy.next(true);
     this.currentRegistration = undefined;
+    this.getSyncActions();
     this.backendService.getClubRegistrations(this.competition).pipe(
       filter(regs => !!regs.find(reg => reg.id === this.currentRegId))
       , take(1)).subscribe(regs => {

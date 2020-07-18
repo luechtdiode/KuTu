@@ -797,16 +797,16 @@ package object domain {
     val caption: String
     val verein: Registration
   }
-  case class AddVereinAction(verein: Registration) extends SyncAction {
+  case class AddVereinAction(override val verein: Registration) extends SyncAction {
     override val caption = s"Verein Hinzufügen: ${verein.vereinname}"
   }
-  case class AddRegistration(verein: Registration, programId: Long, athlet: Athlet, suggestion: AthletView) extends SyncAction {
+  case class AddRegistration(override val verein: Registration, programId: Long, athlet: Athlet, suggestion: AthletView) extends SyncAction {
     override val caption = s"Neue Anmeldung verarbeiten: ${suggestion.easyprint}"
   }
-  case class MoveRegistration(verein: Registration, fromProgramId: Long, toProgramid: Long, athlet: Athlet, suggestion: AthletView) extends SyncAction {
+  case class MoveRegistration(override val verein: Registration, fromProgramId: Long, toProgramid: Long, athlet: Athlet, suggestion: AthletView) extends SyncAction {
     override val caption = s"Umteilung verarbeiten: ${suggestion.easyprint}"
   }
-  case class RemoveRegistration(verein: Registration, programId: Long, athlet: Athlet, suggestion: AthletView) extends SyncAction {
+  case class RemoveRegistration(override val verein: Registration, programId: Long, athlet: Athlet, suggestion: AthletView) extends SyncAction {
     override val caption = s"Abmeldung verarbeiten: ${suggestion.easyprint}"
   }
 

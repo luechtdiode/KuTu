@@ -46,7 +46,7 @@
       <ion-spinner></ion-spinner>
     </ion-item>
     <ion-item-sliding #slidingAthletRegistrationItem *ngFor="let reg of filteredStartList">
-      <app-reg-athlet-item [athletregistration]="reg" [programmlist]="wkPgms" (click)='itemTapped(reg, slidingAthletRegistrationItem)'></app-reg-athlet-item>
+      <app-reg-athlet-item [athletregistration]="reg" [status]=getStatus(reg) [programmlist]="wkPgms" (click)='itemTapped(reg, slidingAthletRegistrationItem)'></app-reg-athlet-item>
       <ion-item-options side="end">
         <ion-item-option color="primary" (click)="edit(reg, slidingAthletRegistrationItem)">
             <ion-icon name="arrow-dropright-circle" ios="md-arrow-dropright-circle"></ion-icon>         

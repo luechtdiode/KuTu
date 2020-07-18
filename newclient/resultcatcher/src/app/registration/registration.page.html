@@ -31,7 +31,7 @@
       <ion-spinner></ion-spinner>
     </ion-item>
     <ion-item-sliding #slidingClubRegistrationItem *ngFor="let reg of filteredStartList">
-      <clublist-item [clubregistration]="reg" (click)='itemTapped(reg, slidingClubRegistrationItem)'></clublist-item>
+      <clublist-item [clubregistration]="reg" [status]=getStatus(reg) (click)='itemTapped(reg, slidingClubRegistrationItem)'></clublist-item>
       <ion-item-options side="end">
         <ion-item-option color="primary" (click)="login(reg, slidingClubRegistrationItem)">
             <ion-icon name="arrow-dropright-circle" ios="md-arrow-dropright-circle"></ion-icon>

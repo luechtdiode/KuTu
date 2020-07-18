@@ -81,7 +81,7 @@ trait RegistrationRoutes extends SprayJsonSupport with JwtSupport with JsonSuppo
             val wi = WettkampfInfo(wettkampf.toView(readProgramm(wettkampf.programmId)), this)
             complete {
               RegistrationAdmin.computeSyncActions(wi, this)
-                .map(synclist => synclist.map(_.caption))
+                //.map(synclist => synclist.map(sa => sa_.caption))
             }
           }
         } ~ pathPrefix(LongNumber) { registrationId =>
