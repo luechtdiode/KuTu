@@ -68,9 +68,8 @@ class WettkampfOverviewTab(wettkampf: WettkampfView, override val service: KutuS
     }
   }
 
-
   def importAnmeldungen(implicit event: ActionEvent) = {
-    RegistrationAdmin.importRegistrations(WettkampfInfo(wettkampf, service), KuTuServer, vereinsupdated =>
+    RegistrationAdminDialog.importRegistrations(WettkampfInfo(wettkampf, service), KuTuServer, vereinsupdated =>
       if (vereinsupdated) KuTuApp.updateTree else reloadData()
     )
   }
