@@ -47,7 +47,7 @@ export class RegistrationPage implements OnInit {
   ionViewWillEnter() {
     this.getSyncActions();
   }
-  
+
   get stationFreezed(): boolean {
     return this.backendService.stationFreezed;
   }
@@ -56,7 +56,7 @@ export class RegistrationPage implements OnInit {
     if (!this.clubregistrations || competitionId !== this.backendService.competition) {
       this.busy.next(true);
       this.clubregistrations = [];
-      
+
       this.backendService.getClubRegistrations(competitionId).subscribe(list => {
         this.clubregistrations = list;
         this.busy.next(false);
@@ -82,7 +82,7 @@ export class RegistrationPage implements OnInit {
     return this.backendService.competition || '';
   }
   set clubregistrations(list: ClubRegistration[]) {
-    this.sClubRegistrationList = list;    
+    this.sClubRegistrationList = list;
     this.reloadList(this.sMyQuery);
   }
   get clubregistrations() {
@@ -107,14 +107,15 @@ export class RegistrationPage implements OnInit {
   getStatus(verein: ClubRegistration) {
     if (this.sSyncActions) {
       if (this.sSyncActions.find(a => a.verein.id === verein.id)) {
-        return "pending";
+        return 'Abgleich ausstehend';
       } else {
-        return "in sync";
+        return 'Nachgeführt';
       }
     } else {
-      return "n/a";
+      return 'n/a';
     }
-  }  
+  }
+
   runQuery(list: ClubRegistration[]) {
     return (query: string) => {
       const q = query.trim();
@@ -204,11 +205,11 @@ export class RegistrationPage implements OnInit {
         message: `Login für die Bearbeitung der Vereinsanmeldung am Wettkampf ${this.competitionName()}`,
         inputs: [
           {
-            name: 'mail',
-            label: 'EMail',
-            placeholder: 'Email',
-            value: `${club.mail}`,
-            type: 'email'
+            name: 'username',
+            label: 'Benutzername',
+            placeholder: 'Benutzername',
+            value: `${this.backendService.currentUserName}`,
+            type: 'text'
           },
           {
             name: 'pw',
