@@ -52,7 +52,7 @@ object RegistrationAdminDialog {
       service.loginWithWettkampf(wkInfo.wettkampf.toWettkampf).map {
         case r: HttpResponse if r.status.isSuccess() =>
           (for {
-            (verein, athleten) <- service.getAllRegistrations(wkInfo.wettkampf.toWettkampf)
+            (verein, athleten) <- service.getAllRegistrationsRemote(wkInfo.wettkampf.toWettkampf)
             resolvedVerein <- vereineList.find(v => v.name.equals(verein.vereinname) && (v.verband.isEmpty || v.verband.get.equals(verein.verband))) match {
               case Some(v) => List(verein.copy(vereinId = Some(v.id)))
               case None => List(verein/*.copy(vereinId = importVereinRegistration(service, verein, reloader).map(_.id).headOption)*/)

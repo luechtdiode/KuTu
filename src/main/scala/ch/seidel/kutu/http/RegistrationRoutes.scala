@@ -39,7 +39,7 @@ trait RegistrationRoutes extends SprayJsonSupport with JwtSupport with JsonSuppo
     }
     , Duration.Inf)
 
-  def getAllRegistrations(p: Wettkampf): Map[Registration, List[AthletRegistration]] = Await.result(
+  def getAllRegistrationsRemote(p: Wettkampf): Map[Registration, List[AthletRegistration]] = Await.result(
     httpGetClientRequest(s"$remoteAdminBaseUrl/api/registrations/${p.uuid.get}").flatMap {
       case HttpResponse(StatusCodes.OK, headers, entity, _) =>
         Unmarshal(entity).to[List[Registration]].map {

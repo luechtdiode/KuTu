@@ -1,5 +1,7 @@
 package ch.seidel.kutu.view
 
+import java.util.UUID
+
 import ch.seidel.kutu.domain.{AddRegistration, AddVereinAction, Athlet, AthletRegistration, AthletView, EmptyAthletRegistration, MatchCode, MoveRegistration, Registration, RemoveRegistration, SyncAction, WertungView}
 import ch.seidel.kutu.http.RegistrationRoutes
 
@@ -8,18 +10,17 @@ import scala.concurrent.Future
 object RegistrationAdmin {
   type RegTuple = (Registration, AthletRegistration, Athlet, AthletView)
 
-  // TODO Sync with existing assignments
   def doSyncUnassignedClubRegistrations(wkInfo: WettkampfInfo, service: RegistrationRoutes)(registrations: List[RegTuple]): Vector[SyncAction] = {
     val relevantClubs = registrations.map(_._1).toSet
     val existingPgmAthletes: Map[Long, List[Long]] = registrations.filter(!_._2.isEmptyRegistration).groupBy(_._2.programId).map(group => (group._1 -> group._2.map(_._4.id)))
     val existingAthletes: Set[Long] = registrations.map(_._4.id).filter(_ > 0).toSet
 
-    val addClubActions = registrations.filter(r => r._1.vereinId == None).map(r => AddVereinAction(r._1)).toSet.toVector
+    val addClubActions = registrations.filter(r => r._1.vereinId == None && !r._2.isEmptyRegistration).map(r => AddVereinAction(r._1)).toSet.toVector
 
     val nonmatching: Map[String, Seq[(Registration, WertungView)]] = service.
       selectWertungen(wkuuid = wkInfo.wettkampf.uuid)
       .map { wertung: WertungView =>
-        (relevantClubs.find(club => wertung.athlet.verein.map(_.id) == club.vereinId), wertung)
+        (relevantClubs.find(club => wertung.athlet.verein.map(_.id).equals(club.vereinId)), wertung)
       }
       .filter {
         _._1 != None
@@ -70,14 +71,13 @@ object RegistrationAdmin {
     Future {
       val vereineList = service.selectVereine
       val cache = new java.util.ArrayList[MatchCode]()
-
-      doSyncUnassignedClubRegistrations(wkInfo, service)((for {
-        (verein, athleten) <- service.getAllRegistrations(wkInfo.wettkampf.toWettkampf)
+      val changelist: List[RegTuple] = for {
+        verein <- service.selectRegistrationsOfWettkampf(UUID.fromString(wkInfo.wettkampf.uuid.get))
+        athlet <- service.selectAthletRegistrations(verein.id) :+ EmptyAthletRegistration(verein.id)
         resolvedVerein <- vereineList.find(v => v.name.equals(verein.vereinname) && (v.verband.isEmpty || v.verband.get.equals(verein.verband))) match {
           case Some(v) => List(verein.copy(vereinId = Some(v.id)))
           case None => List(verein)
         }
-        athlet <- (athleten :+ EmptyAthletRegistration(verein.id))
       } yield {
         val parsed = athlet.toAthlet.copy(verein = resolvedVerein.vereinId)
         val candidate = if (athlet.isEmptyRegistration) parsed else service.findAthleteLike(cache)(parsed)
@@ -86,7 +86,8 @@ object RegistrationAdmin {
           candidate.geschlecht, candidate.name, candidate.vorname, candidate.gebdat,
           candidate.strasse, candidate.plz, candidate.ort,
           vereineList.find(v => resolvedVerein.vereinId.contains(v.id)), true))
-      }).toList)
+      }
+      doSyncUnassignedClubRegistrations(wkInfo, service)(changelist)
     }
   }
 

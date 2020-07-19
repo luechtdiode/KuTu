@@ -559,7 +559,9 @@ object KuTuApp extends JFXApp with KutuService with JsonSupport with JwtSupport 
                 Platform.runLater {
                   ft match {
                     case Success(w) =>
+                      PageDisplayer.showMessageDialog("Download", "Erfolgreich heruntergeladen.")
                       updateTree
+                      controlsView.selectionModel().select(controlsView.root.value)
                       val text = s"${w.titel} ${w.datum}"
                       tree.getLeaves("Wettkämpfe").find { item => text.equals(item.value.value) } match {
                         case Some(node) => controlsView.selectionModel().select(node)
