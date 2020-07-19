@@ -248,6 +248,7 @@ object PageDisplayer {
 
       // Set expandable Exception into the dialog pane.
       alert.getDialogPane.expandableContent = expContent
+      alert.initOwner(KuTuApp.getStage.getScene.getWindow)
       alert.show()
     }
   }
@@ -259,6 +260,7 @@ object PageDisplayer {
       alert.setTitle("Fehler")
       alert.setHeaderText(caption)
       alert.setContentText(message)
+      alert.initOwner(KuTuApp.getStage.getScene.getWindow)
       alert.show()
     }
   }
@@ -270,6 +272,7 @@ object PageDisplayer {
       alert.setTitle("Achtung")
       alert.setHeaderText(caption)
       alert.setContentText(message)
+      alert.initOwner(KuTuApp.getStage.getScene.getWindow)
       alert.show()
     }
   }
@@ -281,6 +284,7 @@ object PageDisplayer {
       alert.setTitle("Information")
       alert.setHeaderText(caption)
       alert.setContentText(message)
+      alert.initOwner(KuTuApp.getStage.getScene.getWindow)
       alert.show()
     }
   }
