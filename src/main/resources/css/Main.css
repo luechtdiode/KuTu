@@ -3,6 +3,13 @@
 	-fx-padding: 1px;
 }
 
+.root{
+    -fx-font-size: 1.1em;
+}
+.dialog-pane:header .header-panel .label {
+    -fx-font-size: 1.167em; /* 14px */
+    -fx-wrap-text: true;
+}
 #ModalDimmer {
 	-fx-background-color: rgb(0, 0, 0, 0.5);
 }
@@ -34,7 +41,7 @@
   -fx-background-color: null;
 }
 
-#wettkampfmodusButton_ { /* .toggle-button*/ 
+#wettkampfmodusButton_ { /* .toggle-button*/
     -fx-background-color:
         linear-gradient(#d6d6d6 50%, white 100%),
         radial-gradient(center 50% -40%, radius 200%, #e6e6e6 45%, rgba(230,230,230,0));
@@ -50,7 +57,7 @@
         radial-gradient(center 50% -40%, radius 200%, #b8ee36 45%, #80c800 50%);
   -fx-font-weight: bold;
 }
-.toggle-button { 
+.toggle-button {
   -fx-background-color: null;
   -fx-label-padding: 5 40 5 10;
   -fx-padding: -0 -38 -0 -8;
@@ -169,7 +176,7 @@
 #connected-info {
 	-fx-padding: 5 0 5 5;
 	-fx-text-fill: white;
-		
+
 	-fx-border-image-source: url("../images/info-bg.png");
 	-fx-border-image-slice: 10 20 10 10 fill;
 	-fx-border-image-width: 10 20 10 10;
@@ -583,7 +590,7 @@
 	-fx-graphic-vpos: top;
 	-fx-alignment: center;
 	-fx-padding: 4px 4px 3px 4px;
-    -fx-font-size: 14px;
+    -fx-font-size: 1.3em;
 }
 
 .sample-tile .text {
