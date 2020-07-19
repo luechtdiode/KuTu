@@ -406,11 +406,12 @@ trait WettkampfService extends DBService
       .headOption
       .flatMap{
         case Some(cid) if(cid > 0) =>
-          deleteWettkampfActions(cid) >>
+          deleteWettkampfRelationActions(cid) >>
           sqlu"""
-                insert into wettkampf
-                (id, datum, titel, programm_Id, auszeichnung, auszeichnungendnote, uuid)
-                values (${cid}, ${datum}, ${titel}, ${heads.head.id}, $auszeichnung, $auszeichnungendnote, $uuid)
+                update wettkampf
+                set datum=$datum, titel=$titel, programm_Id=${heads.head.id},
+                    auszeichnung=$auszeichnung, auszeichnungendnote=$auszeichnungendnote
+                where id=$cid and uuid=$uuid
             """ >>
           initPlanZeitenActions(UUID.fromString(uuid)) >>
           sql"""
@@ -465,13 +466,16 @@ trait WettkampfService extends DBService
     Await.result(database.run{(process.flatten).transactionally}, Duration.Inf)
   }
 
-  def deleteWettkampfActions(wettkampfid: Long) = {
+  def deleteWettkampfRelationActions(wettkampfid: Long) = {
       sqlu"""      delete from published_scores where wettkampf_id=${wettkampfid}""" >>
       sqlu"""      delete from durchgangstation where wettkampf_id=${wettkampfid}""" >>
       sqlu"""      delete from durchgang where wettkampf_id=${wettkampfid}""" >>
       sqlu"""      delete from wettkampf_plan_zeiten where wettkampf_id=${wettkampfid}""" >>
       sqlu"""      delete from riege where wettkampf_id=${wettkampfid}""" >>
-      sqlu"""      delete from wertung where wettkampf_id=${wettkampfid}""" >>
+      sqlu"""      delete from wertung where wettkampf_id=${wettkampfid}"""
+  }
+  def deleteWettkampfActions(wettkampfid: Long) = {
+    deleteWettkampfRelationActions(wettkampfid) >>
       sqlu"""      delete from wettkampf where id=${wettkampfid}"""
   }
 
