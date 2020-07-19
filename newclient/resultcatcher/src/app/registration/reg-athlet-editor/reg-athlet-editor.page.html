@@ -25,7 +25,7 @@
           &nbsp;
         </ion-avatar>
         <ion-label color="primary">Geburtsdatum</ion-label>
-        <ion-input [readonly]='false' placeholder="Geburtsdatum" type="date"  [disabled]="false" [(ngModel)]='registration.gebdat' name="gebdat" required></ion-input>
+        <ion-input [readonly]='false' placeholder="Geburtsdatum" type="date" display-timezone="utc" [disabled]="false" [(ngModel)]='registration.gebdat' name="gebdat" required></ion-input>
       </ion-item>
       <ion-item>
         <ion-avatar slot="start">

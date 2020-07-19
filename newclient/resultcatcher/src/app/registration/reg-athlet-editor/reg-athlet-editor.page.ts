@@ -4,6 +4,7 @@ import { NavController, AlertController } from '@ionic/angular';
 import { ActivatedRoute } from '@angular/router';
 import { BackendService } from 'src/app/services/backend.service';
 import { NewClubRegistration, ClubRegistration, AthletRegistration, ProgrammRaw } from 'src/app/backend-types';
+import { isNumber } from 'util';
 
 @Component({
   selector: 'app-reg-athlet-editor',
@@ -73,7 +74,23 @@ export class RegAthletEditorPage implements OnInit {
       this.waiting = false;
       this.wettkampf = this.backendService.competitionName;
       this.registration = registration;
+      this.registration.gebdat = this.toDateString(this.registration.gebdat);
     });
+  }
+
+  private toDateString(datestr: string): string {
+    let date: Date = new Date();
+    try {
+      // tslint:disable-next-line: radix
+      date = new Date(parseInt(datestr));
+    } catch (error) {
+      date = new Date(Date.parse(datestr));
+    }
+    const d = (`${date.getFullYear().toString()}-${('0' + (date.getMonth() + 1)).slice(-2)}-${('0' + (date.getDate())).slice(-2)}`);
+      //  const d = (`${date.getFullYear().toString()}-${('0' + (date.getMonth() + 1)).slice(-2)}-${('0' + (date.getDate())).slice(-2)}`)
+      //  + 'T' + date.toTimeString().slice(0, 8) + 'Z';
+    console.log(d);
+    return d;
   }
 
   save(newreg: AthletRegistration) {
