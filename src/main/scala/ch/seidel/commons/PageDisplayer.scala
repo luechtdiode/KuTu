@@ -1,5 +1,7 @@
 package ch.seidel.commons
 
+import java.io.StringWriter
+
 import ch.seidel.kutu.{KuTuApp, KuTuAppTree}
 import ch.seidel.kutu.domain._
 import ch.seidel.kutu.view._
@@ -12,9 +14,9 @@ import scalafx.beans.property.BooleanProperty
 import scalafx.event.ActionEvent
 import scalafx.geometry.{Insets, Pos}
 import scalafx.scene.{Node, Scene}
-import scalafx.scene.control.{Button, Label, PasswordField, TextField}
+import scalafx.scene.control.{Alert, Button, Label, PasswordField, TextArea, TextField}
 import scalafx.scene.image._
-import scalafx.scene.layout.{BorderPane, HBox, Priority, VBox}
+import scalafx.scene.layout.{BorderPane, GridPane, HBox, Priority, VBox}
 import scalafx.stage.{Modality, Stage}
 
 import scala.concurrent.{Await, Promise}
@@ -33,7 +35,19 @@ object PageDisplayer {
   } catch {
     case e: Exception => e.printStackTrace()
   }
-    
+  var warnIcon: Image = null
+  try {
+    warnIcon = new Image(getClass().getResourceAsStream("/images/OrangeWarning.png"))
+  } catch {
+    case e: Exception => e.printStackTrace()
+  }
+  var infoIcon: Image = null
+  try {
+    infoIcon = new Image(getClass().getResourceAsStream("/images/GreenOk.png"))
+  } catch {
+    case e: Exception => e.printStackTrace()
+  }
+
   def showInDialog(tit: String, nodeToAdd: DisplayablePage, commands: Button*)(implicit event: ActionEvent) {
     val buttons = commands :+ new Button(if(commands.length == 0) "Schliessen" else "Abbrechen")
     // Create dialog
@@ -205,45 +219,72 @@ object PageDisplayer {
   }
 
   def showErrorDialog(caption: String) = (error: Throwable) => {
-    Platform.runLater{
-      showInDialogFromRoot(caption, 
-      new DisplayablePage() {
-        def getPage: Node = {
-          new BorderPane {
-            hgrow = Priority.Always
-            vgrow = Priority.Always
-            center = new VBox {
-              children = Seq(new HBox{ children = Seq(new ImageView {
-                image = errorIcon
-          	  }, new Label(s"Fehler beim Ausführen von '$caption'"))}, 
-          	  new Label(s"${error}"))
-            }
-          }
-        }
-      }
-    )
+    Platform.runLater {
+      import javafx.scene.control.Alert.AlertType
+      val alert = new Alert(AlertType.ERROR)
+      alert.setTitle("Unerwarteter Fehler")
+      alert.setHeaderText(s"Fehler beim Ausführen von '$caption'")
+      alert.setContentText(s"${error}")
+
+      val label = new Label(s"Details:")
+      import java.io.PrintWriter
+      val sw = new StringWriter()
+      val pw = new PrintWriter(sw)
+      error.printStackTrace(pw)
+      val exceptionText = sw.toString
+      val textArea = new TextArea(exceptionText)
+      textArea.setEditable(false)
+      textArea.setWrapText(true)
+
+      textArea.setMaxWidth(100000)
+      textArea.setMaxHeight(100000)
+      GridPane.setVgrow(textArea, Priority.Always)
+      GridPane.setHgrow(textArea, Priority.Always)
+
+      val expContent = new GridPane()
+      expContent.setMaxWidth(100000)
+      expContent.add(label, 0, 0)
+      expContent.add(textArea, 0, 1)
+
+      // Set expandable Exception into the dialog pane.
+      alert.getDialogPane.expandableContent = expContent
+      alert.show()
     }
   }
+
   def showErrorDialog(caption: String, message: String) {
-    Platform.runLater{
-      showInDialogFromRoot("Fehler",
-        new DisplayablePage() {
-          def getPage: Node = {
-            new BorderPane {
-              hgrow = Priority.Always
-              vgrow = Priority.Always
-              center = new VBox {
-                children = Seq(new HBox{ children = Seq(new ImageView {
-                  image = errorIcon
-                }, new Label(caption))},
-                  new Label(message))
-              }
-            }
-          }
-        }
-      )
+    import javafx.scene.control.Alert.AlertType
+    Platform.runLater {
+      val alert = new javafx.scene.control.Alert(AlertType.ERROR)
+      alert.setTitle("Fehler")
+      alert.setHeaderText(caption)
+      alert.setContentText(message)
+      alert.show()
     }
   }
+
+  def showWarnDialog(caption: String, message: String) {
+    import javafx.scene.control.Alert.AlertType
+    Platform.runLater {
+      val alert = new javafx.scene.control.Alert(AlertType.WARNING)
+      alert.setTitle("Achtung")
+      alert.setHeaderText(caption)
+      alert.setContentText(message)
+      alert.show()
+    }
+  }
+
+  def showMessageDialog(caption: String, message: String) {
+    import javafx.scene.control.Alert.AlertType
+    Platform.runLater {
+      val alert = new javafx.scene.control.Alert(AlertType.INFORMATION)
+      alert.setTitle("Information")
+      alert.setHeaderText(caption)
+      alert.setContentText(message)
+      alert.show()
+    }
+  }
+
   def choosePage(wettkampfmode: BooleanProperty, context: Option[Any], value: String = "dashBoard", tree: KuTuAppTree): Node = {
     value match {
       case "dashBoard" => displayPage(new DashboardPage(tree = tree))
