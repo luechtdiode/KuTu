@@ -40,7 +40,7 @@ export class ClubregEditorPage implements OnInit {
           this.updateUI(regs.find(reg => reg.id === this.regId));
         });
       } else {
-        this.updateUI({} as NewClubRegistration);
+        this.updateUI({mobilephone: '+417'} as NewClubRegistration);
       }
     });
   }
@@ -54,6 +54,9 @@ export class ClubregEditorPage implements OnInit {
       this.waiting = false;
       this.wettkampf = this.backendService.competitionName;
       this.registration = registration;
+      if (this.registration.mail.length > 1) {
+        this.backendService.currentUserName = this.registration.mail;
+      }
     });
   }
 
@@ -69,7 +72,7 @@ export class ClubregEditorPage implements OnInit {
                 {text: 'OKAY', role: 'cancel', handler: () => {}},
               ]
             });
-            alert.then(a => a.present());
+        alert.then(a => a.present());
       } else {
         const reg =  {
           mail: nereg.mail,
@@ -83,7 +86,8 @@ export class ClubregEditorPage implements OnInit {
         } as NewClubRegistration;
         this.backendService.createClubRegistration(this.wkId, reg).subscribe((data) => {
           this.regId = data.id;
-          this.editAthletRegistrations()
+          this.backendService.currentUserName = data.mail;
+          this.editAthletRegistrations();
         });
       }
     } else {

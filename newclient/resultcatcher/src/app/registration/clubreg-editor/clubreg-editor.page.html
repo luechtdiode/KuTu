@@ -45,7 +45,8 @@
           <img src="assets/imgs/atmail.png">
         </ion-avatar>
         <!-- <ion-label color="primary">Mail</ion-label> -->
-        <ion-input [readonly]='false'  placeholder="Mail" type="email" pattern="^[_a-z0-9-]+(\.[_a-z0-9-]+)*@[a-z0-9-]+(\.[a-z0-9-]+)*(\.[a-z]{2,3})$" [disabled]="false" [ngModel]='registration.mail' name="mail" required></ion-input>
+        <ion-input [readonly]='false'  placeholder="Mail" type="email" 
+        pattern="^[_a-z0-9-]+(\.[_a-z0-9-]+)*@[a-z0-9-]+(\.[a-z0-9-]+)*(\.[a-z]{2,5})$" [disabled]="false" [ngModel]='registration.mail' name="mail" required></ion-input>
         <!-- <ion-label color="primary">Mobile/SMS</ion-label> -->
         <ion-input [readonly]='false'  placeholder="Mobile/SMS (+4179...)" type="tel" pattern="[+]{1}[0-9]{11,14}" [disabled]="false" [ngModel]='registration.mobilephone' name="mobilephone" required></ion-input>
       </ion-item>
