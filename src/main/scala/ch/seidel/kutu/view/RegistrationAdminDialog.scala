@@ -48,24 +48,21 @@ object RegistrationAdminDialog {
     val athletModel = ObservableBuffer[SyncAction]()
     val vereineList = service.selectVereine
     val cache = new java.util.ArrayList[MatchCode]()
-    val cliprawf: Future[Vector[SyncAction]] = KuTuApp.invokeAsyncWithBusyIndicator {
+    val cliprawf: Future[(Set[Verein],Vector[SyncAction])] = KuTuApp.invokeAsyncWithBusyIndicator {
       service.loginWithWettkampf(wkInfo.wettkampf.toWettkampf).map {
         case r: HttpResponse if r.status.isSuccess() =>
           (for {
-            (verein, athleten) <- service.getAllRegistrationsRemote(wkInfo.wettkampf.toWettkampf)
-            resolvedVerein <- vereineList.find(v => v.name.equals(verein.vereinname) && (v.verband.isEmpty || v.verband.get.equals(verein.verband))) match {
-              case Some(v) => List(verein.copy(vereinId = Some(v.id)))
-              case None => List(verein/*.copy(vereinId = importVereinRegistration(service, verein, reloader).map(_.id).headOption)*/)
-            }
-            athlet <- (athleten :+ EmptyAthletRegistration(verein.id))
+            (registration, athleten) <- service.getAllRegistrationsRemote(wkInfo.wettkampf.toWettkampf)
+            athlet <- athleten :+ EmptyAthletRegistration(registration.id)
           } yield {
-            val parsed = athlet.toAthlet.copy(verein = resolvedVerein.vereinId)
+            val resolvedVerein = vereineList.find(v => v.name.equals(registration.vereinname) && (v.verband.isEmpty || v.verband.get.equals(registration.verband)))
+            val parsed = athlet.toAthlet.copy(verein = resolvedVerein.map(_.id))
             val candidate = if (athlet.isEmptyRegistration) parsed else service.findAthleteLike(cache)(parsed)
-            (resolvedVerein, athlet, parsed, AthletView(
+            (registration, athlet, parsed, AthletView(
               candidate.id, candidate.js_id,
               candidate.geschlecht, candidate.name, candidate.vorname, candidate.gebdat,
               candidate.strasse, candidate.plz, candidate.ort,
-              vereineList.find(v => resolvedVerein.vereinId.contains(v.id)), true))
+              resolvedVerein, true))
           }).toList
         case r: HttpResponse if !r.status.isSuccess() =>
           throw new IllegalStateException(s"Es konnten keine Anmeldungen abgefragt werden: ${r.status.reason()}, ${r.status.defaultMessage()}")
@@ -74,7 +71,7 @@ object RegistrationAdminDialog {
     cliprawf.onComplete {
       case Failure(t) => PageDisplayer.showErrorDialog("Online-Anmeldungen abfragen", t.getMessage)
       case Success(clipraw) => Platform.runLater {
-        if (clipraw.nonEmpty) {
+        if (clipraw._2.nonEmpty) {
           showImportDialog(wkInfo, service, reloader, athletModel, clipraw)(event)
         } else {
           PageDisplayer.showMessageDialog("Anmeldungen verarbeiten", "Keine neuen Daten zum verarbeiten.")
@@ -83,8 +80,8 @@ object RegistrationAdminDialog {
     }
   }
 
-  private def showImportDialog(wkInfo: WettkampfInfo, service: RegistrationRoutes, reloader: Boolean => Unit, athletModel: ObservableBuffer[SyncAction], clipraw: Vector[SyncAction])(implicit event: ActionEvent) = {
-    athletModel.appendAll(clipraw)
+  private def showImportDialog(wkInfo: WettkampfInfo, service: RegistrationRoutes, reloader: Boolean => Unit, athletModel: ObservableBuffer[SyncAction], clipraw: (Set[Verein],Vector[SyncAction]))(implicit event: ActionEvent) = {
+    athletModel.appendAll(clipraw._2)
     val programms = wkInfo.leafprograms
     val filteredModel = ObservableBuffer[SyncAction](athletModel)
     val athletTable = new TableView[SyncAction](filteredModel) {
@@ -244,7 +241,7 @@ object RegistrationAdminDialog {
           val selectedAthleten = athletTable.items.value.zipWithIndex.filter {
             x => athletTable.selectionModel.value.isSelected(x._2)
           }.map(_._1)
-          processSync(wkInfo, service, selectedAthleten.toList)
+          processSync(wkInfo, service, selectedAthleten.toList, clipraw._1)
           reloader(selectedAthleten.exists {
             case AddVereinAction(_) => true
             case _ => false
@@ -261,7 +258,7 @@ object RegistrationAdminDialog {
       }
     }, new Button("OK Alle") {
       onAction = (event: ActionEvent) => {
-        processSync(wkInfo, service, filteredModel.toList)
+        processSync(wkInfo, service, filteredModel.toList, clipraw._1)
         reloader(filteredModel.exists {
           case AddVereinAction(_) => true
           case _ => false

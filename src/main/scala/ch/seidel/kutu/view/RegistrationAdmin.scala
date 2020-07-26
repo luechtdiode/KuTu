@@ -2,28 +2,29 @@ package ch.seidel.kutu.view
 
 import java.util.UUID
 
-import ch.seidel.kutu.domain.{AddRegistration, AddVereinAction, Athlet, AthletRegistration, AthletView, EmptyAthletRegistration, MatchCode, MoveRegistration, Registration, RemoveRegistration, SyncAction, WertungView}
+import ch.seidel.kutu.domain.{AddRegistration, AddVereinAction, Athlet, AthletRegistration, AthletView, EmptyAthletRegistration, MatchCode, MoveRegistration, Registration, RemoveRegistration, SyncAction, Verein, WertungView, Wettkampf}
 import ch.seidel.kutu.http.RegistrationRoutes
 
+import scala.collection.immutable
 import scala.concurrent.Future
 
 object RegistrationAdmin {
   type RegTuple = (Registration, AthletRegistration, Athlet, AthletView)
 
-  def doSyncUnassignedClubRegistrations(wkInfo: WettkampfInfo, service: RegistrationRoutes)(registrations: List[RegTuple]): Vector[SyncAction] = {
-    val relevantClubs = registrations.map(_._1).toSet
+  def doSyncUnassignedClubRegistrations(wkInfo: WettkampfInfo, service: RegistrationRoutes)(registrations: List[RegTuple]): (Set[Verein],Vector[SyncAction]) = {
+    val registrationSet = registrations.map(_._1).toSet
     val existingPgmAthletes: Map[Long, List[Long]] = registrations.filter(!_._2.isEmptyRegistration).groupBy(_._2.programId).map(group => (group._1 -> group._2.map(_._4.id)))
     val existingAthletes: Set[Long] = registrations.map(_._4.id).filter(_ > 0).toSet
 
-    val addClubActions = registrations.filter(r => r._1.vereinId == None && !r._2.isEmptyRegistration).map(r => AddVereinAction(r._1)).toSet.toVector
-
+    val addClubActions = registrations.filter(r => r._4.verein.isEmpty && !r._2.isEmptyRegistration).map(r => AddVereinAction(r._1)).toSet.toVector
+    val validatedClubs = registrations.filter(r => r._1.vereinId.isEmpty).flatMap(r => r._4.verein).toSet
     val nonmatching: Map[String, Seq[(Registration, WertungView)]] = service.
       selectWertungen(wkuuid = wkInfo.wettkampf.uuid)
       .map { wertung: WertungView =>
-        (relevantClubs.find(club => wertung.athlet.verein.map(_.id).equals(club.vereinId)), wertung)
+        (registrationSet.find(club => wertung.athlet.verein.map(_.id).equals(club.vereinId)), wertung)
       }
       .filter {
-        _._1 != None
+        _._1.isDefined
       }
       .map(t => (t._1.get, t._2))
       .groupBy { t =>
@@ -63,56 +64,58 @@ object RegistrationAdmin {
       }
     }
 
-    addClubActions ++ removeActions ++ mutationActions
+    (validatedClubs, addClubActions ++ removeActions ++ mutationActions)
   }
 
-  def computeSyncActions(wkInfo: WettkampfInfo, service: RegistrationRoutes): Future[Vector[SyncAction]] = {
+  def computeSyncActions(wkInfo: WettkampfInfo, service: RegistrationRoutes): Future[(Set[Verein],Vector[SyncAction])] = {
     import scala.concurrent.ExecutionContext.Implicits._
     Future {
       val vereineList = service.selectVereine
       val cache = new java.util.ArrayList[MatchCode]()
       val changelist: List[RegTuple] = for {
-        verein <- service.selectRegistrationsOfWettkampf(UUID.fromString(wkInfo.wettkampf.uuid.get))
-        athlet <- service.selectAthletRegistrations(verein.id) :+ EmptyAthletRegistration(verein.id)
-        resolvedVerein <- vereineList.find(v => v.name.equals(verein.vereinname) && (v.verband.isEmpty || v.verband.get.equals(verein.verband))) match {
-          case Some(v) => List(verein.copy(vereinId = Some(v.id)))
-          case None => List(verein)
-        }
+        registration <- service.selectRegistrationsOfWettkampf(UUID.fromString(wkInfo.wettkampf.uuid.get))
+        athlet <- service.selectAthletRegistrations(registration.id) :+ EmptyAthletRegistration(registration.id)
       } yield {
-        val parsed = athlet.toAthlet.copy(verein = resolvedVerein.vereinId)
+        val resolvedVerein = vereineList.find(v => v.name.equals(registration.vereinname) && (v.verband.isEmpty || v.verband.get.equals(registration.verband)))
+        val parsed = athlet.toAthlet.copy(verein = resolvedVerein.map(_.id))
         val candidate = if (athlet.isEmptyRegistration) parsed else service.findAthleteLike(cache)(parsed)
-        (resolvedVerein, athlet, parsed, AthletView(
+        (registration, athlet, parsed, AthletView(
           candidate.id, candidate.js_id,
           candidate.geschlecht, candidate.name, candidate.vorname, candidate.gebdat,
           candidate.strasse, candidate.plz, candidate.ort,
-          vereineList.find(v => resolvedVerein.vereinId.contains(v.id)), true))
+          resolvedVerein, true))
       }
       doSyncUnassignedClubRegistrations(wkInfo, service)(changelist)
     }
   }
 
-  def processSync(wkInfo: WettkampfInfo, service: RegistrationRoutes, selectedAthleten: List[SyncAction]) = {
+  def processSync(wkInfo: WettkampfInfo, service: RegistrationRoutes, selectedAthleten: List[SyncAction], approvedClubs: Set[Verein]) = {
     val newClubs = for (addVereinAction: AddVereinAction <- selectedAthleten.flatMap {
       case av: AddVereinAction => Some(av)
       case _ => None
     }) yield {
       service.insertVerein(addVereinAction.verein.toVerein)
     }
-
-    for ((progId, athletes) <- selectedAthleten.flatMap {
-      case AddRegistration(reg, programId, importathlet, candidateView) =>
-        if (candidateView.verein == None) {
+    val addRegistrations: immutable.Seq[AddRegistration] = selectedAthleten.flatMap {
+      case ar@AddRegistration(reg, _, _, candidateView) =>
+        if (candidateView.verein.isEmpty) {
           newClubs.find(c => c.name.equals(reg.vereinname) && c.verband.getOrElse("").equals(reg.verband)) match {
             case Some(verein) =>
-              Some(mapAddRegistration(service, programId, importathlet, candidateView.copy(verein = Some(verein))))
+              val registration = ar.copy(verein = ar.verein.copy(vereinId = Some(verein.id)))
+              Some(registration)
             case None =>
               None
           }
         } else {
-          Some(mapAddRegistration(service, programId, importathlet, candidateView))
+          Some(ar)
         }
 
       case _ => None
+    }
+
+    for ((progId, athletes) <- addRegistrations.map {
+      case AddRegistration(_, programId, importathlet, candidateView) =>
+        mapAddRegistration(service, programId, importathlet, candidateView)
     }.groupBy(_._1).map(x => (x._1, x._2.map(_._2)))) {
       service.assignAthletsToWettkampf(wkInfo.wettkampf.id, Set(progId), athletes.toSet)
     }
@@ -129,6 +132,13 @@ object RegistrationAdmin {
       case _ => None
     }) {
       service.unassignAthletFromWettkampf(wertungenIds)
+    }
+
+    for {
+      club <- approvedClubs
+      registration <- addRegistrations.find(r => r.suggestion.verein.equals(Some(club)))
+    } {
+      service.joinVereinWithRegistration(wkInfo.wettkampf.toWettkampf, registration.verein, club)
     }
   }
 
