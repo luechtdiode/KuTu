@@ -11,17 +11,20 @@
 <ion-content *ngIf="registration">
   <form #athletRegistrationForm="ngForm" (ngSubmit)="save(athletRegistrationForm.value)" (keyup.enter)="save(athletRegistrationForm.value)">
     <ion-list>
-      <ion-item-divider color="primary">Athlet / Athletin</ion-item-divider>
-      <ion-item>
+      <ion-item-divider>
         <ion-avatar slot="start">
           <img src="assets/imgs/athlete.png">
+        </ion-avatar><ion-label>Athlet / Athletin</ion-label>
+      </ion-item-divider>
+      <ion-item>
+        <ion-avatar slot="start">
+          &nbsp;
         </ion-avatar>
-          <ion-input [readonly]='false' placeholder="Name" type="text"  [disabled]="false" [(ngModel)]='registration.name' name="name" required></ion-input>
-          <ion-input [readonly]='false' placeholder="Vorname" type="text"  [disabled]="false" [(ngModel)]='registration.vorname' name="vorname" required></ion-input>          
+        <ion-input [readonly]='false' placeholder="Name" type="text"  [disabled]="false" [(ngModel)]='registration.name' name="name" required></ion-input>
+        <ion-input [readonly]='false' placeholder="Vorname" type="text"  [disabled]="false" [(ngModel)]='registration.vorname' name="vorname" required></ion-input>          
       </ion-item>
       <ion-item>
         <ion-avatar slot="start">
-          <!--img src="assets/imgs/athlete.png"-->
           &nbsp;
         </ion-avatar>
         <ion-label color="primary">Geburtsdatum</ion-label>
@@ -29,7 +32,6 @@
       </ion-item>
       <ion-item>
         <ion-avatar slot="start">
-          <!--img src="assets/imgs/athlete.png"-->
           &nbsp;
         </ion-avatar>
         <ion-label color="primary">Geschlecht</ion-label>
@@ -38,11 +40,17 @@
           <ion-select-option [value]='"M"'>männlich</ion-select-option>
         </ion-select>
       </ion-item>
-      <ion-item-divider color="primary">Einteilung</ion-item-divider>
-      <ion-item>
+      <ion-item-divider>
         <ion-avatar slot="start">
           <img src="assets/imgs/wettkampf.png">
         </ion-avatar>
+        <ion-label>Einteilung</ion-label>
+      </ion-item-divider>
+      <ion-item>
+        <ion-avatar slot="start">
+          &nbsp;
+        </ion-avatar>
+        <ion-label>Programm/Kategorie</ion-label>
         <ion-select placeholder='Programm/Kategorie' [(ngModel)]='registration.programId' name="programId" okText='Okay' cancelText='Abbrechen'>
           <ion-select-option *ngFor='let pgm of wkPgms' [value]='pgm.id'>{{pgm.name}}</ion-select-option>
         </ion-select>

@@ -23,6 +23,28 @@ const path = '/';
 const protocol = location.protocol;
 export const backendUrl = (protocol + '//' + host + path).replace('index.html', '');
 
+
+export function isNumber(value: string | number): boolean {
+  return ((value != null) &&
+          (value !== '') &&
+          !isNaN(Number(value.toString())));
+}
+
+export function toDateString(datestr: string): string {
+  let date: Date = new Date();
+  if (isNumber(datestr)) {
+    // tslint:disable-next-line: radix
+    date = new Date(parseInt(datestr));
+  } else {
+    date = new Date(Date.parse(datestr));
+  }
+  const d = (`${date.getFullYear().toString()}-${('0' + (date.getMonth() + 1)).slice(-2)}-${('0' + (date.getDate())).slice(-2)}`);
+    //  const d = (`${date.getFullYear().toString()}-${('0' + (date.getMonth() + 1)).slice(-2)}-${('0' + (date.getDate())).slice(-2)}`)
+    //  + 'T' + date.toTimeString().slice(0, 8) + 'Z';
+  console.log(d);
+  return d;
+}
+
 export function formatCurrentMoment(withSeconds: boolean = false) {
   return formatDate(new Date(), withSeconds);
 }
