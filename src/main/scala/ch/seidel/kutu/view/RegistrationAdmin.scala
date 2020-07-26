@@ -67,7 +67,7 @@ object RegistrationAdmin {
     (validatedClubs, addClubActions ++ removeActions ++ mutationActions)
   }
 
-  def computeSyncActions(wkInfo: WettkampfInfo, service: RegistrationRoutes): Future[(Set[Verein],Vector[SyncAction])] = {
+  def computeSyncActions(wkInfo: WettkampfInfo, service: RegistrationRoutes): Future[Vector[SyncAction]] = {
     import scala.concurrent.ExecutionContext.Implicits._
     Future {
       val vereineList = service.selectVereine
@@ -85,7 +85,7 @@ object RegistrationAdmin {
           candidate.strasse, candidate.plz, candidate.ort,
           resolvedVerein, true))
       }
-      doSyncUnassignedClubRegistrations(wkInfo, service)(changelist)
+      doSyncUnassignedClubRegistrations(wkInfo, service)(changelist)._2
     }
   }
 

@@ -341,6 +341,18 @@ export class BackendService extends WebsocketService {
       return loader;
     }
 
+    loadAthletListForClub(competitionId: string, clubid: number) {
+      const loader = this.startLoading('Athletliste zum Club wird geladen. Bitte warten ...',
+        this.http.get<AthletRegistration[]>(
+          backendUrl + 'api/registrations/' + competitionId + '/' + clubid + '/athletlist'
+          ).pipe(share()));
+
+      loader.subscribe((data) => {
+      }, this.standardErrorHandler);
+
+      return loader;
+    }
+
     loadAthletRegistrations(competitionId: string, clubid: number) {
       const loader = this.startLoading('Athletliste zum Club wird geladen. Bitte warten ...',
         this.http.get<AthletRegistration[]>(

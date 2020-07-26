@@ -1,7 +1,6 @@
 package ch.seidel.kutu.http
 
 import spray.json._
-
 import akka.http.scaladsl.marshallers.sprayjson.SprayJsonSupport
 import akka.http.scaladsl.model.{ContentTypes, HttpEntity, HttpResponse, StatusCodes}
 import akka.http.scaladsl.server.Route
@@ -9,7 +8,7 @@ import akka.http.scaladsl.unmarshalling.Unmarshal
 import akka.util.{ByteString, Timeout}
 import ch.seidel.kutu.Config
 import ch.seidel.kutu.Config.remoteAdminBaseUrl
-import ch.seidel.kutu.domain.{AthletRegistration, KutuService, NewRegistration, ProgrammRaw, Registration, Verein, Wettkampf}
+import ch.seidel.kutu.domain.{AthletRegistration, AthletView, KutuService, NewRegistration, ProgrammRaw, Registration, Verein, Wettkampf, dateToExportedStr}
 import ch.seidel.kutu.renderer.PrintUtil
 import ch.seidel.kutu.view.{RegistrationAdmin, WettkampfInfo}
 
@@ -93,7 +92,6 @@ trait RegistrationRoutes extends SprayJsonSupport with JwtSupport with JsonSuppo
             val wi = WettkampfInfo(wettkampf.toView(readProgramm(wettkampf.programmId)), this)
             complete {
               RegistrationAdmin.computeSyncActions(wi, this)
-                //.map(synclist => synclist.map(sa => sa_.caption))
             }
           }
         } ~ pathPrefix(LongNumber) { registrationId =>
@@ -147,7 +145,16 @@ trait RegistrationRoutes extends SprayJsonSupport with JwtSupport with JsonSuppo
                     get { // list Athletes
                       complete {
                         val reg = selectRegistration(registrationId)
+                        val existingAthletRegs = selectAthletRegistrations(registrationId)
                         selectAthletesView(Verein(reg.vereinId.getOrElse(0), reg.vereinname, Some(reg.verband)))
+                          .filter(_.activ)
+                          .filter(r => !existingAthletRegs.exists{er =>
+                            er.athletId.contains(r.id) || (er.name == r.name && er.vorname == r.vorname)
+                          })
+                          .map{
+                            case AthletView(id, _, geschlecht, name, vorname, gebdat, _, _, _, _, _) =>
+                              AthletRegistration(0L, reg.id, Some(id), geschlecht, name, vorname, gebdat.map(dateToExportedStr).getOrElse(""), 0L, 0)
+                          }
                       }
                     }
                   }
@@ -158,11 +165,21 @@ trait RegistrationRoutes extends SprayJsonSupport with JwtSupport with JsonSuppo
                         selectAthletRegistrations(registrationId)
                       )
                     } ~ post { // create Athletes
-                      log.info("post athletreistration")
+                      log.info("post athletregistration")
                       entity(as[AthletRegistration]) { athletRegistration =>
-                        complete(
-                          createAthletRegistration(athletRegistration)
-                        )
+                        complete {
+                          val x: Option[AthletView] = athletRegistration.athletId.map(loadAthleteView)
+                          if (athletRegistration.athletId.isDefined && x.isEmpty) {
+                            StatusCodes.BadRequest
+                          } else {
+                            val reg = selectRegistration(registrationId)
+                            if (x.isEmpty || x.map(_.verein).flatMap(_.map(_.id)).equals(reg.vereinId)) {
+                              createAthletRegistration(athletRegistration)
+                            } else {
+                              StatusCodes.BadRequest
+                            }
+                          }
+                        }
                       }
                     }
                   } ~ pathPrefix(LongNumber) { id =>
