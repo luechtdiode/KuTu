@@ -169,10 +169,12 @@ trait RegistrationService extends DBService with RegistrationResultMapper with H
 
   // AthletRegistration
 
-
   def createAthletRegistration(newReg: AthletRegistration): AthletRegistration = {
-    val similarRegistrations = selectAthletRegistrationsLike(newReg)
-    val athletId = similarRegistrations.headOption.flatMap(_.athletId)
+    val athletId: Option[Long] = if (newReg.athletId.isDefined) {
+      newReg.athletId
+    } else {
+      selectAthletRegistrationsLike(newReg).headOption.flatMap(_.athletId)
+    }
     val gebdat: java.sql.Date = str2SQLDate(newReg.gebdat)
     Await.result(database.run {
       sqlu"""

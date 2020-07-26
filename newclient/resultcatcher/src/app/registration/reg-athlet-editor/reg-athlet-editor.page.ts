@@ -31,6 +31,9 @@ export class RegAthletEditorPage implements OnInit {
   wkId: string;
   wettkampfId: number;
   private wkPgms: ProgrammRaw[];
+  clubAthletList: AthletRegistration[];
+  // tslint:disable-next-line: variable-name
+  private _selectedClubAthletId: number;
 
   ngOnInit() {
     this.waiting = true;
@@ -52,6 +55,10 @@ export class RegAthletEditorPage implements OnInit {
           this.updateUI(regs.find(athlet => athlet.id === this.athletId));
         });
       } else {
+        this.backendService.loadAthletListForClub(this.wkId, this.regId).subscribe(regs => {
+          this.clubAthletList = regs;
+        });
+
         this.updateUI({
           id: 0,
           vereinregistrationId: this.regId,
@@ -64,6 +71,15 @@ export class RegAthletEditorPage implements OnInit {
         } as AthletRegistration);
       }
     });
+  }
+
+  get selectedClubAthletId() {
+    return this._selectedClubAthletId;
+  }
+
+  set selectedClubAthletId(id: number) {
+    this._selectedClubAthletId = id;
+    this.registration = this.clubAthletList.find(r => r.athletId === id);
   }
 
   editable() {
@@ -79,9 +95,21 @@ export class RegAthletEditorPage implements OnInit {
     });
   }
 
+  isFormValid(): boolean {
+    return !!this.registration.gebdat &&
+           !!this.registration.geschlecht &&
+           this.registration.geschlecht.length > 0 &&
+           !!this.registration.name &&
+           this.registration.name.length > 0 &&
+           !!this.registration.vorname &&
+           this.registration.vorname.length > 0 &&
+           !!this.registration.programId &&
+           this.registration.programId > 0;
+
+  }
   save(newreg: AthletRegistration) {
     const reg = Object.assign({}, this.registration, {gebdat: new Date(newreg.gebdat).toJSON()});
-    if (this.athletId === 0) {
+    if (this.athletId === 0 || reg.id === 0) {
       this.backendService.createAthletRegistration(this.wkId, this.regId, reg).subscribe(() => {
         this.navCtrl.pop();
       });

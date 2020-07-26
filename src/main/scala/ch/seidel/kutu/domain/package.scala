@@ -2,7 +2,7 @@ package ch.seidel.kutu
 
 import java.net.URLEncoder
 import java.nio.file.{Files, LinkOption, StandardOpenOption}
-import java.sql.Timestamp
+import java.sql.{Date, Timestamp}
 import java.text.{ParseException, SimpleDateFormat}
 import java.time.{LocalDate, LocalDateTime, ZoneId}
 import java.util.UUID
@@ -92,6 +92,10 @@ package object domain {
   val sdfShort = new SimpleDateFormat("dd.MM.yy")
   val sdfExported = new SimpleDateFormat("yyyy-MM-dd")
   val sdfYear = new SimpleDateFormat("yyyy")
+
+  def dateToExportedStr(date: Date) = {
+    sdfExported.format(date)
+  }
 
   def str2SQLDate(date: String) = {
     if (date == null) null else try {

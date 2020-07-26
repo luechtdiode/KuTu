@@ -146,7 +146,7 @@ class RegistrationRestSpec extends KuTuBaseSpec {
         .addHeader(registrationJwt.get) ~>
         allroutes(x => vereinSecretHashLookup(x)) ~> check {
         status should ===(StatusCodes.OK)
-        val list = entityAs[List[AthletView]]
+        val list = entityAs[List[AthletRegistration]]
         list.nonEmpty shouldBe true
       }
     }
