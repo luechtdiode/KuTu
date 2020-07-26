@@ -1,10 +1,12 @@
 package ch.seidel.kutu.http
 
+import spray.json._
+
 import akka.http.scaladsl.marshallers.sprayjson.SprayJsonSupport
 import akka.http.scaladsl.model.{ContentTypes, HttpEntity, HttpResponse, StatusCodes}
 import akka.http.scaladsl.server.Route
 import akka.http.scaladsl.unmarshalling.Unmarshal
-import akka.util.Timeout
+import akka.util.{ByteString, Timeout}
 import ch.seidel.kutu.Config
 import ch.seidel.kutu.Config.remoteAdminBaseUrl
 import ch.seidel.kutu.domain.{AthletRegistration, KutuService, NewRegistration, ProgrammRaw, Registration, Verein, Wettkampf}
@@ -18,12 +20,22 @@ trait RegistrationRoutes extends SprayJsonSupport with JwtSupport with JsonSuppo
 
   import Core._
   import spray.json.DefaultJsonProtocol._
+
   import scala.concurrent.ExecutionContext.Implicits.global
 
   // Required by the `ask` (?) method below
   // usually we'd obtain the timeout from the system's configuration
   private implicit lazy val timeout: Timeout = Timeout(5.seconds)
 
+
+  def joinVereinWithRegistration(p: Wettkampf, reg: Registration, verein: Verein): Unit = {
+    Await.result(httpPutClientRequest(
+      s"$remoteAdminBaseUrl/api/registrations/${p.uuid.get}/${reg.id}",
+      HttpEntity(
+        ContentTypes.`application/json`,
+        ByteString(verein.toJson.compactPrint)
+      )), Duration.Inf)
+  }
 
   def getRegistrations(p: Wettkampf): List[Registration] = Await.result(
     httpGetClientRequest(s"$remoteAdminBaseUrl/api/registrations/${p.uuid.get}").flatMap {
@@ -43,9 +55,9 @@ trait RegistrationRoutes extends SprayJsonSupport with JwtSupport with JsonSuppo
     httpGetClientRequest(s"$remoteAdminBaseUrl/api/registrations/${p.uuid.get}").flatMap {
       case HttpResponse(StatusCodes.OK, headers, entity, _) =>
         Unmarshal(entity).to[List[Registration]].map {
-          case registrations: List[Registration] =>
+          registrations: List[Registration] =>
             (for (r <- registrations) yield {
-              (r -> getAthletRegistrations(p, r))
+              r -> getAthletRegistrations(p, r)
             }).toMap
         }
       case _ => Future(Map[Registration, List[AthletRegistration]]())
@@ -98,6 +110,20 @@ trait RegistrationRoutes extends SprayJsonSupport with JwtSupport with JsonSuppo
                     )
                   }
                 }
+              } ~ put {
+                entity(as[Verein]) { verein =>
+                  val registration = selectRegistration(registrationId)
+                  if (registration.vereinId.isEmpty) {
+                    selectVereine.find(v => v.name.equals(verein.name) && (v.verband.isEmpty || v.verband.equals(verein.verband))) match {
+                      case Some(v) => complete(updateRegistration(registration.copy(vereinId = Some(v.id))))
+                      case None =>
+                        val insertedVerein = insertVerein(verein)
+                        complete(updateRegistration(registration.copy(vereinId = Some(insertedVerein.id))))
+                    }
+                  } else {
+                    complete(StatusCodes.Conflict)
+                  }
+                }
               }
             } else if (extractRegistrationId(userId).contains(registrationId)) {
               respondWithJwtHeader(registrationId + "") {
@@ -106,7 +132,11 @@ trait RegistrationRoutes extends SprayJsonSupport with JwtSupport with JsonSuppo
                     complete(selectRegistration(registrationId))
                   } ~ put { // update Vereinsregistration
                     entity(as[Registration]) { registration =>
-                      complete(updateRegistration(registration))
+                      if (selectRegistration(registrationId).vereinId.equals(registration.vereinId)) {
+                        complete(updateRegistration(registration))
+                      } else {
+                        complete(StatusCodes.Conflict)
+                      }
                     }
                   } ~ delete { // delete  Vereinsregistration
                     deleteRegistration(registrationId)
