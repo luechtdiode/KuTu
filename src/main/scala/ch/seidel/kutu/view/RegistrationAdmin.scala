@@ -12,7 +12,7 @@ object RegistrationAdmin {
   type RegTuple = (Registration, AthletRegistration, Athlet, AthletView)
 
   def doSyncUnassignedClubRegistrations(wkInfo: WettkampfInfo, service: RegistrationRoutes)(registrations: List[RegTuple]): (Set[Verein],Vector[SyncAction]) = {
-    val registrationSet = registrations.map(_._1).toSet
+    val registrationSet = registrations.map(r => (r._4.verein, r._1)).toSet
     val existingPgmAthletes: Map[Long, List[Long]] = registrations.filter(!_._2.isEmptyRegistration).groupBy(_._2.programId).map(group => (group._1 -> group._2.map(_._4.id)))
     val existingAthletes: Set[Long] = registrations.map(_._4.id).filter(_ > 0).toSet
 
@@ -21,7 +21,7 @@ object RegistrationAdmin {
     val nonmatching: Map[String, Seq[(Registration, WertungView)]] = service.
       selectWertungen(wkuuid = wkInfo.wettkampf.uuid)
       .map { wertung: WertungView =>
-        (registrationSet.find(club => wertung.athlet.verein.map(_.id).equals(club.vereinId)), wertung)
+        (registrationSet.find(club => wertung.athlet.verein.equals(club._1)).map(_._2), wertung)
       }
       .filter {
         _._1.isDefined
