@@ -151,28 +151,72 @@ class RegistrationRestSpec extends KuTuBaseSpec {
       }
     }
 
-    "add AthletRegistration via rest" in {
+    "add AthletRegistration with unreal input via rest" should {
+      val vereinsreg = createTestRegistration
+
+      def testConflict(reg: AthletRegistration) = {
+        val json = athletregistrationFormat.write(reg).compactPrint
+        HttpRequest(method = POST, uri = s"/api/registrations/${testwettkampf.uuid.get}/${vereinsreg.id}/athletes", entity = HttpEntity(
+          ContentTypes.`application/json`,
+          ByteString(json)
+        )).addHeader(registrationJwt.get) ~>
+          allroutes(x => vereinSecretHashLookup(x)) ~> check {
+          status should ===(StatusCodes.Conflict)
+        }
+      }
+
+      "zero age should be rejected" in {
+        testConflict(AthletRegistration(0, vereinsreg.id, None, "M", "Markus", "Meier", dateToExportedStr(ld2SQLDate(LocalDate.now())), 20, 0))
+      }
+      "age < 1 should be rejected" in {
+        testConflict(AthletRegistration(0, vereinsreg.id, None, "M", "Markus", "Meier", dateToExportedStr(ld2SQLDate(LocalDate.now().plusYears(1))), 20, 0))
+      }
+      "age > 110 should be rejected" in {
+        testConflict(AthletRegistration(0, vereinsreg.id, None, "M", "Markus", "Meier", dateToExportedStr(ld2SQLDate(LocalDate.now().minusYears(121))), 20, 0))
+      }
+    }
+
+    "add AthletRegistration via rest" should {
       val reg = createTestRegistration
-      val json = athletregistrationFormat.write(
-        AthletRegistration(0, reg.id, None, "M", "Tester", "Test", "2020-05-05", 20, 0)
-      ).compactPrint
-      HttpRequest(method = POST, uri = s"/api/registrations/${testwettkampf.uuid.get}/${reg.id}/athletes", entity = HttpEntity(
-        ContentTypes.`application/json`,
-        ByteString(json)
-      )).addHeader(registrationJwt.get) ~>
-        allroutes(x => vereinSecretHashLookup(x)) ~> check {
-        status should ===(StatusCodes.OK)
-        header(Config.jwtAuthorizationKey) should not be empty
-        val athletreg = entityAs[AthletRegistration]
-        athletreg.vereinregistrationId should ===(reg.id)
+      val gebDat: String = dateToExportedStr(ld2SQLDate(LocalDate.now().minusYears(10)))
+
+      def testSuccessfulRequest(testAthletReg: AthletRegistration, expectedName: String, expectedVorname: String, expectedSex: String) = {
+        val json = athletregistrationFormat.write(testAthletReg).compactPrint
+        HttpRequest(method = POST, uri = s"/api/registrations/${testwettkampf.uuid.get}/${reg.id}/athletes", entity = HttpEntity(
+          ContentTypes.`application/json`,
+          ByteString(json)
+        )).addHeader(registrationJwt.get) ~>
+          allroutes(x => vereinSecretHashLookup(x)) ~> check {
+          status should ===(StatusCodes.OK)
+          header(Config.jwtAuthorizationKey) should not be empty
+          val athletreg = entityAs[AthletRegistration]
+          athletreg.vereinregistrationId should ===(reg.id)
+          athletreg.vorname should ===(expectedVorname)
+          athletreg.name should ===(expectedName)
+          athletreg.geschlecht should ===(expectedSex)
+        }
+      }
+      "switch name and vorname if required" in {
+        testSuccessfulRequest(AthletRegistration(0, reg.id, None, "M", "Markus", "Schneider", gebDat, 20, 0), "Schneider", "Markus", "M")
+      }
+      "switch fix sex if required" in {
+        testSuccessfulRequest(AthletRegistration(0, reg.id, None, "M", "Schneider", "Gabriela", gebDat, 20, 0), "Schneider", "Gabriela", "W")
+      }
+      "switch keep sex with ambigous surname" in {
+        testSuccessfulRequest(AthletRegistration(0, reg.id, None, "W", "Schneider", "Robin", gebDat, 20, 0), "Schneider", "Robin", "W")
+        testSuccessfulRequest(AthletRegistration(0, reg.id, None, "M", "Schneider", "Robin", gebDat, 20, 0), "Schneider", "Robin", "M")
+      }
+      "switch take as is if all is right" in {
+        testSuccessfulRequest(AthletRegistration(0, reg.id, None, "M", "Schneider", "Markus", gebDat, 20, 0), "Schneider", "Markus", "M")
       }
     }
     "add AthletRegistration via rest2" in {
       val reg = createTestRegistration
+      val gebDat: String = dateToExportedStr(ld2SQLDate(LocalDate.now().minusYears(10)))
       HttpRequest(method = POST, uri = s"/api/registrations/${testwettkampf.uuid.get}/${reg.id}/athletes", entity = HttpEntity(
         ContentTypes.`application/json`,
              //       {"gebdat":"2020-05-05T02:00:00.000+0200","geschlecht":"M","id":0,"name":"Tester","programId":20,"registrationTime":0,"vereinregistrationId":1,"vorname":"Test"}
-        ByteString("""{"id":0,"vereinregistrationId":1,"name":"a","vorname":"b","geschlecht":"W","gebdat":"2003-02-01T00:00:00.000Z","programId":23,"registrationTime":0}""")
+        ByteString(s"""{"id":0,"vereinregistrationId":1,"name":"a","vorname":"b","geschlecht":"W","gebdat":"${gebDat}","programId":23,"registrationTime":0}""")
       )).addHeader(registrationJwt.get) ~>
         allroutes(x => vereinSecretHashLookup(x)) ~> check {
         status should ===(StatusCodes.OK)

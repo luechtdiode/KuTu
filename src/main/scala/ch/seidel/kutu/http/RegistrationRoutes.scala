@@ -145,16 +145,20 @@ trait RegistrationRoutes extends SprayJsonSupport with JwtSupport with JsonSuppo
                     get { // list Athletes
                       complete {
                         val reg = selectRegistration(registrationId)
-                        val existingAthletRegs = selectAthletRegistrations(registrationId)
-                        selectAthletesView(Verein(reg.vereinId.getOrElse(0), reg.vereinname, Some(reg.verband)))
-                          .filter(_.activ)
-                          .filter(r => !existingAthletRegs.exists{er =>
-                            er.athletId.contains(r.id) || (er.name == r.name && er.vorname == r.vorname)
-                          })
-                          .map{
-                            case AthletView(id, _, geschlecht, name, vorname, gebdat, _, _, _, _, _) =>
-                              AthletRegistration(0L, reg.id, Some(id), geschlecht, name, vorname, gebdat.map(dateToExportedStr).getOrElse(""), 0L, 0)
-                          }
+                        if (reg.vereinId.isEmpty) {
+                          List[AthletRegistration]()
+                        } else {
+                          val existingAthletRegs = selectAthletRegistrations(registrationId)
+                          selectAthletesView(Verein(reg.vereinId.getOrElse(0), reg.vereinname, Some(reg.verband)))
+                            .filter(_.activ)
+                            .filter(r => !existingAthletRegs.exists { er =>
+                              er.athletId.contains(r.id) || (er.name == r.name && er.vorname == r.vorname)
+                            })
+                            .map {
+                              case AthletView(id, _, geschlecht, name, vorname, gebdat, _, _, _, _, _) =>
+                                AthletRegistration(0L, reg.id, Some(id), geschlecht, name, vorname, gebdat.map(dateToExportedStr).getOrElse(""), 0L, 0)
+                            }
+                        }
                       }
                     }
                   }
@@ -174,7 +178,13 @@ trait RegistrationRoutes extends SprayJsonSupport with JwtSupport with JsonSuppo
                           } else {
                             val reg = selectRegistration(registrationId)
                             if (x.isEmpty || x.map(_.verein).flatMap(_.map(_.id)).equals(reg.vereinId)) {
-                              createAthletRegistration(athletRegistration)
+                              try {
+                                createAthletRegistration(athletRegistration)
+                              } catch {
+                                case e: IllegalArgumentException =>
+                                log.error(e.getMessage())
+                                  StatusCodes.Conflict
+                              }
                             } else {
                               StatusCodes.BadRequest
                             }
