@@ -847,6 +847,7 @@ package object domain {
           if(feminim && !masculin) "W" else "M"
         case "W" =>
           if(masculin && !feminim) "M" else "W"
+        case _ => geschlecht
       }
       val currentDate = LocalDate.now()
       val gebDatRaw = str2SQLDate(gebdat)
