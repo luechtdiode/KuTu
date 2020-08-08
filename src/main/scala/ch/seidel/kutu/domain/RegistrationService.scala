@@ -175,14 +175,15 @@ trait RegistrationService extends DBService with RegistrationResultMapper with H
     } else {
       selectAthletRegistrationsLike(newReg).headOption.flatMap(_.athletId)
     }
-    val gebdat: java.sql.Date = str2SQLDate(newReg.gebdat)
+    val nomralizedAthlet = newReg.toAthlet
+
     Await.result(database.run {
       sqlu"""
                   insert into athletregistration
                   (vereinregistration_id, athlet_id, geschlecht, name, vorname, gebdat, program_id, registrationtime)
                   values (${newReg.vereinregistrationId}, ${athletId},
-                          ${newReg.geschlecht}, ${newReg.name},
-                          ${newReg.vorname}, ${gebdat},
+                          ${nomralizedAthlet.geschlecht}, ${nomralizedAthlet.name},
+                          ${nomralizedAthlet.vorname}, ${nomralizedAthlet.gebdat},
                           ${newReg.programId},
                           ${Timestamp.valueOf(LocalDateTime.now())})
               """ >>
@@ -195,9 +196,9 @@ trait RegistrationService extends DBService with RegistrationResultMapper with H
                   where id = (select max(ar.id)
                               from athletregistration ar
                               where ar.vereinregistration_id=${newReg.vereinregistrationId}
-                                and ar.geschlecht=${newReg.geschlecht}
-                                and ar.name=${newReg.name}
-                                and ar.vorname=${newReg.vorname}
+                                and ar.geschlecht=${nomralizedAthlet.geschlecht}
+                                and ar.name=${nomralizedAthlet.name}
+                                and ar.vorname=${nomralizedAthlet.vorname}
                                 )
          """.as[AthletRegistration].head.transactionally
     }, Duration.Inf)
@@ -205,6 +206,7 @@ trait RegistrationService extends DBService with RegistrationResultMapper with H
 
 
   def selectAthletRegistrationsLike(registration: AthletRegistration) = {
+    val nomralizedAthlet = registration.toAthlet
     Await.result(database.run {
       sql"""
                   select
@@ -213,9 +215,9 @@ trait RegistrationService extends DBService with RegistrationResultMapper with H
                       ar.program_id, ar.registrationtime
                   from athletregistration ar
                   inner join vereinregistration vr on ar.vereinregistration_id = vr.id
-                  where ar.geschlecht=${registration.geschlecht}
-                    and ar.name=${registration.name}
-                    and ar.vorname=${registration.vorname}
+                  where ar.geschlecht=${nomralizedAthlet.geschlecht}
+                    and ar.name=${nomralizedAthlet.name}
+                    and ar.vorname=${nomralizedAthlet.vorname}
                     and ar.vereinregistration_id <> ${registration.vereinregistrationId}
                     and exists (select 1 from athlet a where a.id = ar.athlet_id and a.verein = vr.verein_id)
            """.as[AthletRegistration]
