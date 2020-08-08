@@ -5,6 +5,7 @@ import scala.io.Source
 case class Surname(name: String, feminimCount: Int, masculinCount: Int) {
   val isFeminin = feminimCount > 0
   val isMasculin = masculinCount > 0
+  def matchesSex(sex: String) = (isFeminin && "F".equalsIgnoreCase(sex)) || (isMasculin && "M".equalsIgnoreCase(sex))
 }
 
 object Surname {

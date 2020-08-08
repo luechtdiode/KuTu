@@ -4,11 +4,11 @@ import java.net.URLEncoder
 import java.nio.file.{Files, LinkOption, StandardOpenOption}
 import java.sql.{Date, Timestamp}
 import java.text.{ParseException, SimpleDateFormat}
-import java.time.{LocalDate, LocalDateTime, ZoneId}
+import java.time.{LocalDate, LocalDateTime, Period, ZoneId}
 import java.util.UUID
 import java.util.concurrent.TimeUnit
 
-import ch.seidel.kutu.data.NameCodec
+import ch.seidel.kutu.data.{NameCodec, Surname}
 import org.apache.commons.codec.language.ColognePhonetic
 import org.apache.commons.codec.language.bm._
 import org.apache.commons.text.similarity.LevenshteinDistance
@@ -221,6 +221,11 @@ package object domain {
     def apply(verein: Verein): Athlet = Athlet(0, 0, "M", "<Name>", "<Vorname>", None, "", "", "", Some(verein.id), activ = true)
 
     def apply(verein: Long): Athlet = Athlet(0, 0, "M", "<Name>", "<Vorname>", None, "", "", "", Some(verein), activ = true)
+
+    def mapSexPrediction(athlet: Athlet): String = Surname
+      .isSurname(athlet.vorname)
+      .map { sn => if (sn.isMasculin == sn.isFeminin) athlet.geschlecht else if (sn.isMasculin) "M" else "W" }
+      .getOrElse("X")
   }
 
   case class Athlet(id: Long, js_id: Int, geschlecht: String, name: String, vorname: String, gebdat: Option[java.sql.Date], strasse: String, plz: String, ort: String, verein: Option[Long], activ: Boolean) extends DataObject {
@@ -826,19 +831,44 @@ package object domain {
                                 athletId: Option[Long], geschlecht: String, name: String, vorname: String, gebdat: String,
                                 programId: Long, registrationTime: Long) extends DataObject {
     def toAthlet: Athlet = {
-      Athlet(
-        id = athletId match{case Some(id) => id case None => 0},
-        js_id = "",
-        geschlecht = geschlecht,
-        name = name,
-        vorname = vorname,
-        gebdat = Some(str2SQLDate(gebdat)),
-        strasse = "",
-        plz = "",
-        ort = "",
-        verein = None,
-        activ = true
-      )
+      val nameNorm = name.trim
+      val vornameNorm = vorname.trim
+      val nameMasculinTest = Surname.isMasculin(nameNorm)
+      val nameFeminimTest = Surname.isFeminim(nameNorm)
+      val vornameMasculinTest = Surname.isMasculin(vornameNorm)
+      val vornameFeminimTest = Surname.isFeminim(vornameNorm)
+      val nameVornameSwitched = (nameMasculinTest || nameFeminimTest) && !(vornameMasculinTest || vornameFeminimTest)
+      val defName = if (nameVornameSwitched) vornameNorm else nameNorm
+      val defVorName = if (nameVornameSwitched) nameNorm else vornameNorm
+      val feminim = nameFeminimTest || vornameFeminimTest
+      val masculin = nameMasculinTest || vornameMasculinTest
+      val defGeschlecht = geschlecht match {
+        case "M" =>
+          if(feminim && !masculin) "W" else "M"
+        case "W" =>
+          if(masculin && !feminim) "M" else "W"
+      }
+      val currentDate = LocalDate.now()
+      val gebDatRaw = str2SQLDate(gebdat)
+      val gebDatLocal = gebDatRaw.toLocalDate
+      val age = Period.between(gebDatLocal, currentDate).getYears()
+      if (age > 0 && age < 120) {
+        Athlet(
+          id = athletId match{case Some(id) => id case None => 0},
+          js_id = "",
+          geschlecht = defGeschlecht,
+          name = defName,
+          vorname = defVorName,
+          gebdat = Some(gebDatRaw),
+          strasse = "",
+          plz = "",
+          ort = "",
+          verein = None,
+          activ = true
+        )
+      } else {
+        throw new IllegalArgumentException(s"Geburtsdatum ergibt ein unrealistisches Alter von ${age}.")
+      }
     }
     def isEmptyRegistration = geschlecht.isEmpty
   }

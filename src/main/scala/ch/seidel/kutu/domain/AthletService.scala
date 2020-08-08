@@ -259,11 +259,6 @@ trait AthletService extends DBService with AthletResultMapper {
     }, Duration.Inf)
   }
 
-  def mapSexPrediction(athlet: Athlet): String = Surname
-    .isSurname(athlet.vorname)
-    .map { sn => if (sn.isMasculin == sn.isFeminin) athlet.geschlecht else if (sn.isMasculin) "M" else "W" }
-    .getOrElse("X")
-
   def findDuplicates(): List[(AthletView, AthletView, AthletView)] = {
     val likeFinder = findAthleteLike(new java.util.ArrayList[MatchCode]) _
     for {
@@ -275,8 +270,8 @@ trait AthletService extends DBService with AthletResultMapper {
       val tupel = List(athleteView, loadAthleteView(like.id)).sortWith { (a, b) =>
         if (a.gebdat.map(_.toLocalDate.getDayOfMonth).getOrElse(0) > b.gebdat.map(_.toLocalDate.getDayOfMonth).getOrElse(0)) true
         else {
-          val asp = mapSexPrediction(a.toAthlet)
-          val bsp = mapSexPrediction(b.toAthlet)
+          val asp = Athlet.mapSexPrediction(a.toAthlet)
+          val bsp = Athlet.mapSexPrediction(b.toAthlet)
           if (asp == a.geschlecht && bsp != b.geschlecht) true
           else if (bsp == b.geschlecht && asp != a.geschlecht) false
           else if (a.id - b.id > 0) true
