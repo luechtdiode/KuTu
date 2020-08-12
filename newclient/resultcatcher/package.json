@@ -59,7 +59,7 @@
     "kind-of": ">=6.0.3",
     "minimist": ">=1.2.3",
     "npm-registry-fetch": ">=4.0.5",
-    "serialize-javascript": ">=2.1.1",
+    "serialize-javascript": ">=3.1.0",
     "jasmine-core": "~2.99.1",
     "jasmine-spec-reporter": "~4.2.1",
     "karma": "~4.1.0",
