@@ -245,7 +245,16 @@ package object domain {
     })
 
     def toAthlet = Athlet(id, js_id, geschlecht, name, vorname, gebdat, strasse, plz, ort, verein.map(_.id), activ)
-
+    def withBestMatchingGebDat(importedGebDat: Option[Date]) = {
+      copy(gebdat = importedGebDat match {
+        case Some(d) =>
+          gebdat match {
+            case Some(cd) if (cd.toLocalDate.getYear == d.toLocalDate.getYear) && f"${cd}%tF".endsWith("-01-01") => Some(d)
+            case _ => gebdat
+          }
+        case _ => gebdat
+      })
+    }
     def updatedWith(athlet: Athlet) = AthletView(athlet.id, athlet.js_id, athlet.geschlecht, athlet.name, athlet.vorname, athlet.gebdat, athlet.strasse, athlet.plz, athlet.ort, verein, athlet.activ)
   }
 
@@ -847,6 +856,9 @@ package object domain {
           if(feminim && !masculin) "W" else "M"
         case "W" =>
           if(masculin && !feminim) "M" else "W"
+        case s: String =>
+          println(s"invalid geschlecht: '$s' from $this")
+          "M"
       }
       val currentDate = LocalDate.now()
       val gebDatRaw = str2SQLDate(gebdat)
