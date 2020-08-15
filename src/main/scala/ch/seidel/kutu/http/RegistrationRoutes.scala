@@ -8,6 +8,7 @@ import akka.http.scaladsl.unmarshalling.Unmarshal
 import akka.util.{ByteString, Timeout}
 import ch.seidel.kutu.Config
 import ch.seidel.kutu.Config.remoteAdminBaseUrl
+import ch.seidel.kutu.akka.{AskRegistrationSyncActions, CompetitionRegistrationClientActor, RegistrationChanged, RegistrationSyncActions}
 import ch.seidel.kutu.domain.{AthletRegistration, AthletView, KutuService, NewRegistration, ProgrammRaw, Registration, Verein, Wettkampf, dateToExportedStr}
 import ch.seidel.kutu.renderer.PrintUtil
 import ch.seidel.kutu.view.{RegistrationAdmin, WettkampfInfo}
@@ -15,7 +16,7 @@ import ch.seidel.kutu.view.{RegistrationAdmin, WettkampfInfo}
 import scala.concurrent.duration.{Duration, DurationInt}
 import scala.concurrent.{Await, Future}
 
-trait RegistrationRoutes extends SprayJsonSupport with JwtSupport with JsonSupport with AuthSupport with RouterLogging with KutuService with IpToDeviceID {
+trait RegistrationRoutes extends SprayJsonSupport with JwtSupport with JsonSupport with AuthSupport with RouterLogging with KutuService with IpToDeviceID with CIDSupport {
 
   import Core._
   import spray.json.DefaultJsonProtocol._
@@ -64,7 +65,7 @@ trait RegistrationRoutes extends SprayJsonSupport with JwtSupport with JsonSuppo
     , Duration.Inf)
 
   lazy val registrationRoutes: Route = {
-    extractClientIP { ip =>
+    (handleCID & extractClientIP) { (clientId, ip) =>
       pathPrefix("registrations" / JavaUUID) { competitionId =>
         val wettkampf = readWettkampf(competitionId.toString)
         val logodir = new java.io.File(Config.homedir + "/" + wettkampf.easyprint.replace(" ", "_"))
@@ -89,10 +90,10 @@ trait RegistrationRoutes extends SprayJsonSupport with JwtSupport with JsonSuppo
           }
         } ~ path("syncactions") {
           get {
-            val wi = WettkampfInfo(wettkampf.toView(readProgramm(wettkampf.programmId)), this)
-            complete {
-              RegistrationAdmin.computeSyncActions(wi, this)
-            }
+            complete(CompetitionRegistrationClientActor.publish(AskRegistrationSyncActions(wettkampf.uuid.get), clientId).map{
+              case RegistrationSyncActions(actions) => actions
+              case _ => Vector()
+            })
           }
         } ~ pathPrefix(LongNumber) { registrationId =>
           authenticated() { userId =>
@@ -114,9 +115,12 @@ trait RegistrationRoutes extends SprayJsonSupport with JwtSupport with JsonSuppo
                   if (registration.vereinId.isEmpty) {
                     selectVereine.find(v => v.name.equals(verein.name) && (v.verband.isEmpty || v.verband.equals(verein.verband))) match {
                       case Some(v) => complete(updateRegistration(registration.copy(vereinId = Some(v.id))))
-                      case None =>
+                      case None => complete(Future {
                         val insertedVerein = insertVerein(verein)
-                        complete(updateRegistration(registration.copy(vereinId = Some(insertedVerein.id))))
+                        val reg = updateRegistration(registration.copy(vereinId = Some(insertedVerein.id)))
+                        CompetitionRegistrationClientActor.publish(RegistrationChanged(wettkampf.uuid.get), clientId)
+                        reg
+                      })
                     }
                   } else {
                     complete(StatusCodes.Conflict)
@@ -131,14 +135,21 @@ trait RegistrationRoutes extends SprayJsonSupport with JwtSupport with JsonSuppo
                   } ~ put { // update Vereinsregistration
                     entity(as[Registration]) { registration =>
                       if (selectRegistration(registrationId).vereinId.equals(registration.vereinId)) {
-                        complete(updateRegistration(registration))
+                        complete(Future {
+                          val reg = updateRegistration(registration)
+                          CompetitionRegistrationClientActor.publish(RegistrationChanged(wettkampf.uuid.get), clientId)
+                          reg
+                        })
                       } else {
                         complete(StatusCodes.Conflict)
                       }
                     }
                   } ~ delete { // delete  Vereinsregistration
-                    deleteRegistration(registrationId)
-                    complete(StatusCodes.OK)
+                    complete(Future {
+                      deleteRegistration(registrationId)
+                      CompetitionRegistrationClientActor.publish(RegistrationChanged(wettkampf.uuid.get), clientId)
+                      StatusCodes.OK
+                    })
                   }
                 } ~ pathPrefix("athletlist") {
                   pathEndOrSingleSlash {
@@ -179,7 +190,9 @@ trait RegistrationRoutes extends SprayJsonSupport with JwtSupport with JsonSuppo
                             val reg = selectRegistration(registrationId)
                             if (x.isEmpty || x.map(_.verein).flatMap(_.map(_.id)).equals(reg.vereinId)) {
                               try {
-                                createAthletRegistration(athletRegistration)
+                                val reg = createAthletRegistration(athletRegistration)
+                                CompetitionRegistrationClientActor.publish(RegistrationChanged(wettkampf.uuid.get), clientId)
+                                reg
                               } catch {
                                 case e: IllegalArgumentException =>
                                 log.error(e.getMessage())
@@ -200,13 +213,18 @@ trait RegistrationRoutes extends SprayJsonSupport with JwtSupport with JsonSuppo
                         )
                       } ~ put { // update Athletes
                         entity(as[AthletRegistration]) { athletRegistration =>
-                          complete(
-                            updateAthletRegistration(athletRegistration)
-                          )
+                          complete(Future {
+                            val reg = updateAthletRegistration(athletRegistration)
+                            CompetitionRegistrationClientActor.publish(RegistrationChanged(wettkampf.uuid.get), clientId)
+                            reg
+                          })
                         }
                       } ~ delete { // delete  Athletes
-                        deleteAthletRegistration(id)
-                        complete(StatusCodes.OK)
+                        complete(Future {
+                          deleteAthletRegistration(id)
+                          CompetitionRegistrationClientActor.publish(RegistrationChanged(wettkampf.uuid.get), clientId)
+                          StatusCodes.OK
+                        })
                       }
                     }
                   }
