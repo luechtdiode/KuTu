@@ -284,6 +284,7 @@ trait WettkampfRoutes extends SprayJsonSupport
                           import Core.materializer;
                           val is = file.runWith(StreamConverters.asInputStream(FiniteDuration(120, TimeUnit.SECONDS)))
                           ResourceExchanger.importWettkampf(is)
+                          CompetitionRegistrationClientActor.publish(RegistrationChanged(wkuuid.toString()), clientId)
                           is.close()
                         }) {
                           complete(StatusCodes.OK)

@@ -2,7 +2,7 @@ package ch.seidel.kutu.view
 
 import java.util.UUID
 
-import ch.seidel.kutu.domain.{AddRegistration, AddVereinAction, Athlet, AthletRegistration, AthletView, EmptyAthletRegistration, MatchCode, MoveRegistration, Registration, RemoveRegistration, SyncAction, Verein, WertungView, Wettkampf}
+import ch.seidel.kutu.domain.{AddRegistration, AddVereinAction, Athlet, AthletRegistration, AthletView, EmptyAthletRegistration, KutuService, MatchCode, MoveRegistration, Registration, RemoveRegistration, SyncAction, Verein, WertungView, Wettkampf}
 import ch.seidel.kutu.http.RegistrationRoutes
 
 import scala.collection.immutable
@@ -11,7 +11,7 @@ import scala.concurrent.Future
 object RegistrationAdmin {
   type RegTuple = (Registration, AthletRegistration, Athlet, AthletView)
 
-  def doSyncUnassignedClubRegistrations(wkInfo: WettkampfInfo, service: RegistrationRoutes)(registrations: List[RegTuple]): (Set[Verein], Vector[SyncAction]) = {
+  def doSyncUnassignedClubRegistrations(wkInfo: WettkampfInfo, service: KutuService)(registrations: List[RegTuple]): (Set[Verein], Vector[SyncAction]) = {
     val registrationSet = registrations.map(r => (r._4.verein, r._1)).toSet
     val existingPgmAthletes: Map[Long, List[Long]] = registrations.filter(!_._2.isEmptyRegistration).groupBy(_._2.programId).map(group => (group._1 -> group._2.map(_._4.id)))
     val existingAthletes: Set[Long] = registrations.map(_._4.id).filter(_ > 0).toSet
@@ -67,7 +67,7 @@ object RegistrationAdmin {
     (validatedClubs, addClubActions ++ removeActions ++ mutationActions)
   }
 
-  def computeSyncActions(wkInfo: WettkampfInfo, service: RegistrationRoutes): Future[Vector[SyncAction]] = {
+  def computeSyncActions(wkInfo: WettkampfInfo, service: KutuService): Future[Vector[SyncAction]] = {
     import scala.concurrent.ExecutionContext.Implicits._
     Future {
       val vereineList = service.selectVereine
