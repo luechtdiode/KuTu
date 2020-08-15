@@ -11,7 +11,7 @@ import scala.concurrent.Future
 object RegistrationAdmin {
   type RegTuple = (Registration, AthletRegistration, Athlet, AthletView)
 
-  def doSyncUnassignedClubRegistrations(wkInfo: WettkampfInfo, service: RegistrationRoutes)(registrations: List[RegTuple]): (Set[Verein],Vector[SyncAction]) = {
+  def doSyncUnassignedClubRegistrations(wkInfo: WettkampfInfo, service: RegistrationRoutes)(registrations: List[RegTuple]): (Set[Verein], Vector[SyncAction]) = {
     val registrationSet = registrations.map(r => (r._4.verein, r._1)).toSet
     val existingPgmAthletes: Map[Long, List[Long]] = registrations.filter(!_._2.isEmptyRegistration).groupBy(_._2.programId).map(group => (group._1 -> group._2.map(_._4.id)))
     val existingAthletes: Set[Long] = registrations.map(_._4.id).filter(_ > 0).toSet
@@ -101,7 +101,11 @@ object RegistrationAdmin {
         if (candidateView.verein.isEmpty) {
           newClubs.find(c => c.name.equals(reg.vereinname) && c.verband.getOrElse("").equals(reg.verband)) match {
             case Some(verein) =>
-              val registration = ar.copy(verein = ar.verein.copy(vereinId = Some(verein.id)))
+              val registration = ar.copy(
+                verein = ar.verein.copy(vereinId = Some(verein.id)),
+                athlet = ar.athlet.copy(verein = Some(verein.id)),
+                suggestion = ar.suggestion.withBestMatchingGebDat(ar.athlet.gebdat).copy(verein = Some(verein))
+              )
               Some(registration)
             case None =>
               None
@@ -143,50 +147,8 @@ object RegistrationAdmin {
   }
 
   private def mapAddRegistration(service: RegistrationRoutes, programId: Long, importathlet: Athlet, candidateView: AthletView) = {
-    val id = if (candidateView.id > 0 &&
-      (importathlet.gebdat match {
-        case Some(d) =>
-          candidateView.gebdat match {
-            case Some(cd) => f"${cd}%tF".endsWith("-01-01")
-            case _ => true
-          }
-        case _ => false
-      })) {
-      val athlet = service.insertAthlete(Athlet(
-        id = candidateView.id,
-        js_id = candidateView.js_id,
-        geschlecht = candidateView.geschlecht,
-        name = candidateView.name,
-        vorname = candidateView.vorname,
-        gebdat = importathlet.gebdat,
-        strasse = candidateView.strasse,
-        plz = candidateView.plz,
-        ort = candidateView.ort,
-        verein = candidateView.verein.map(_.id),
-        activ = true
-      ))
-      athlet.id
-    }
-    else if (candidateView.id > 0) {
-      candidateView.id
-    }
-    else {
-      val athlet = service.insertAthlete(Athlet(
-        id = 0,
-        js_id = candidateView.js_id,
-        geschlecht = candidateView.geschlecht,
-        name = candidateView.name,
-        vorname = candidateView.vorname,
-        gebdat = candidateView.gebdat,
-        strasse = candidateView.strasse,
-        plz = candidateView.plz,
-        ort = candidateView.ort,
-        verein = candidateView.verein.map(_.id),
-        activ = true
-      ))
-      // TODO update athletregistration with athlet_id or better do this operation remote and download athlet
-      athlet.id
-    }
+    val id = service.insertAthlete(candidateView.toAthlet).id
+    // TODO update athletregistration with athlet_id or better do this operation remote and download athlet
     (programId, id)
   }
 }

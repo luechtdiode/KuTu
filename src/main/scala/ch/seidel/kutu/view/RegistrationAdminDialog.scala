@@ -56,7 +56,7 @@ object RegistrationAdminDialog {
             athlet <- athleten :+ EmptyAthletRegistration(registration.id)
           } yield {
             val resolvedVerein = vereineList.find(v => v.name.equals(registration.vereinname) && (v.verband.isEmpty || v.verband.get.equals(registration.verband)))
-            val parsed = athlet.toAthlet.copy(verein = resolvedVerein.map(_.id))
+            val parsed = athlet.toAthlet.copy(id = 0L, verein = resolvedVerein.map(_.id))
             val candidate = if (athlet.isEmptyRegistration) parsed else service.findAthleteLike(cache)(parsed)
             (registration, athlet, parsed, AthletView(
               candidate.id, candidate.js_id,
