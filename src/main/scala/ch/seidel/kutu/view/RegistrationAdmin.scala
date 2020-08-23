@@ -2,22 +2,29 @@ package ch.seidel.kutu.view
 
 import java.util.UUID
 
-import ch.seidel.kutu.domain.{AddRegistration, AddVereinAction, Athlet, AthletRegistration, AthletView, EmptyAthletRegistration, KutuService, MatchCode, MoveRegistration, Registration, RemoveRegistration, SyncAction, Verein, WertungView, Wettkampf}
+import ch.seidel.kutu.akka.{AthletIndexActor, AthletLikeFound, FindAthletLike}
+import ch.seidel.kutu.domain.{AddRegistration, AddVereinAction, Athlet, AthletRegistration, AthletView, EmptyAthletRegistration, KutuService, MoveRegistration, Registration, RemoveRegistration, SyncAction, Verein, WertungView}
 import ch.seidel.kutu.http.RegistrationRoutes
+import org.slf4j.LoggerFactory
 
 import scala.collection.immutable
-import scala.concurrent.Future
+import scala.concurrent.duration.Duration
+import scala.concurrent.{Await, Future}
 
 object RegistrationAdmin {
+  private val logger = LoggerFactory.getLogger(this.getClass)
+
   type RegTuple = (Registration, AthletRegistration, Athlet, AthletView)
 
   def doSyncUnassignedClubRegistrations(wkInfo: WettkampfInfo, service: KutuService)(registrations: List[RegTuple]): (Set[Verein], Vector[SyncAction]) = {
+    val starttime = System.currentTimeMillis()
     val registrationSet = registrations.map(r => (r._4.verein, r._1)).toSet
     val existingPgmAthletes: Map[Long, List[Long]] = registrations.filter(!_._2.isEmptyRegistration).groupBy(_._2.programId).map(group => (group._1 -> group._2.map(_._4.id)))
     val existingAthletes: Set[Long] = registrations.map(_._4.id).filter(_ > 0).toSet
 
     val addClubActions = registrations.filter(r => r._4.verein.isEmpty && !r._2.isEmptyRegistration).map(r => AddVereinAction(r._1)).toSet.toVector
     val validatedClubs = registrations.filter(r => r._1.vereinId.isEmpty).flatMap(r => r._4.verein).toSet
+    logger.info(s"start with mapping of ${registrations.size} registrations to sync-actions")
     val nonmatching: Map[String, Seq[(Registration, WertungView)]] = service.
       selectWertungen(wkuuid = wkInfo.wettkampf.uuid)
       .map { wertung: WertungView =>
@@ -64,21 +71,34 @@ object RegistrationAdmin {
       }
     }
 
-    (validatedClubs, addClubActions ++ removeActions ++ mutationActions)
+    val syncActions = addClubActions ++ removeActions ++ mutationActions
+    logger.info(s"mapping of ${registrations.size} registrations to ${syncActions.size} sync-actions in ${System.currentTimeMillis() - starttime}ms")
+    (validatedClubs, syncActions)
   }
+
+  def findAthletLike(athlet: Athlet) =
+    Await.result(AthletIndexActor.publish(FindAthletLike(athlet)), Duration.Inf) match {
+      case AthletLikeFound(_, found) => found
+      case _ => athlet
+    }
 
   def computeSyncActions(wkInfo: WettkampfInfo, service: KutuService): Future[Vector[SyncAction]] = {
     import scala.concurrent.ExecutionContext.Implicits._
     Future {
+      logger.info("start computing SyncActions ...")
       val vereineList = service.selectVereine
-      val cache = new java.util.ArrayList[MatchCode]()
       val changelist: List[RegTuple] = for {
         registration <- service.selectRegistrationsOfWettkampf(UUID.fromString(wkInfo.wettkampf.uuid.get))
         athlet <- service.selectAthletRegistrations(registration.id) :+ EmptyAthletRegistration(registration.id)
       } yield {
+        logger.info(s"start processing Registration ${registration.vereinname}")
+        val startime = System.currentTimeMillis()
         val resolvedVerein = vereineList.find(v => v.name.equals(registration.vereinname) && (v.verband.isEmpty || v.verband.get.equals(registration.verband)))
+        logger.info(s"resolved Verein for Registration ${registration.vereinname}")
         val parsed = athlet.toAthlet.copy(verein = resolvedVerein.map(_.id))
-        val candidate = if (athlet.isEmptyRegistration) parsed else service.findAthleteLike(cache)(parsed)
+        val candidate = if (athlet.isEmptyRegistration) parsed else findAthletLike(parsed)
+
+        logger.info(s"resolved candidate for ${parsed} in ${System.currentTimeMillis() - startime}ms")
         (registration, athlet, parsed, AthletView(
           candidate.id, candidate.js_id,
           candidate.geschlecht, candidate.name, candidate.vorname, candidate.gebdat,
@@ -118,8 +138,8 @@ object RegistrationAdmin {
     }
 
     for ((progId, athletes) <- addRegistrations.map {
-      case AddRegistration(_, programId, importathlet, candidateView) =>
-        mapAddRegistration(service, programId, importathlet, candidateView)
+      case AddRegistration(_, programId, _, candidateView) =>
+        mapAddRegistration(service, programId, candidateView)
     }.groupBy(_._1).map(x => (x._1, x._2.map(_._2)))) {
       service.assignAthletsToWettkampf(wkInfo.wettkampf.id, Set(progId), athletes.toSet)
     }
@@ -146,7 +166,7 @@ object RegistrationAdmin {
     }
   }
 
-  private def mapAddRegistration(service: RegistrationRoutes, programId: Long, importathlet: Athlet, candidateView: AthletView) = {
+  private def mapAddRegistration(service: RegistrationRoutes, programId: Long, candidateView: AthletView) = {
     val id = service.insertAthlete(candidateView.toAthlet).id
     // TODO update athletregistration with athlet_id or better do this operation remote and download athlet
     (programId, id)
