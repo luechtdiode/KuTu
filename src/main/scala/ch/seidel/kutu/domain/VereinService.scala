@@ -89,6 +89,10 @@ trait VereinService extends DBService with VereinResultMapper {
   
   def deleteVerein(vereinid: Long) {
     Await.result(database.run {(
+      sqlu""" update athletregistration set athlet_id = null where vereinregistration_id in (
+          select id from vereinregistration where verein_id = $vereinid
+        )""" >>
+      sqlu""" update vereinregistration set verein_id = null where verein_id = $vereinid""" >>
       sqlu"""       delete from wertung where athlet_id in (select id from athlet where verein=${vereinid})""" >>
       sqlu"""       delete from athlet where verein=${vereinid}""" >>
       sqlu"""       delete from verein where id=${vereinid}""").transactionally
