@@ -5,8 +5,9 @@ import ch.seidel.commons.{DisplayablePage, PageDisplayer}
 import ch.seidel.kutu.KuTuApp
 import ch.seidel.kutu.domain.{AddRegistration, AddVereinAction, Athlet, AthletView, EmptyAthletRegistration, MatchCode, MoveRegistration, Registration, RemoveRegistration, SyncAction, Verein}
 import ch.seidel.kutu.http.RegistrationRoutes
-import ch.seidel.kutu.view.RegistrationAdmin.{doSyncUnassignedClubRegistrations, processSync}
+import ch.seidel.kutu.view.RegistrationAdmin.{doSyncUnassignedClubRegistrations, findAthletLike, logger, processSync}
 import javafx.beans.value.ObservableValue
+import org.slf4j.LoggerFactory
 import scalafx.Includes._
 import scalafx.application.Platform
 import scalafx.beans.property.ReadOnlyStringWrapper
@@ -20,6 +21,7 @@ import scalafx.scene.layout.{BorderPane, Priority}
 import scala.concurrent.Future
 
 object RegistrationAdminDialog {
+  private val logger = LoggerFactory.getLogger(this.getClass)
 
   def importVereinRegistration(service: RegistrationRoutes, verein: Registration, reloader: Boolean => Unit) = {
     verein.vereinId match {
@@ -48,6 +50,7 @@ object RegistrationAdminDialog {
     val athletModel = ObservableBuffer[SyncAction]()
     val vereineList = service.selectVereine
     val cache = new java.util.ArrayList[MatchCode]()
+    logger.info("start import Registration Analyse ...")
     val cliprawf: Future[(Set[Verein],Vector[SyncAction])] = KuTuApp.invokeAsyncWithBusyIndicator {
       service.loginWithWettkampf(wkInfo.wettkampf.toWettkampf).map {
         case r: HttpResponse if r.status.isSuccess() =>
@@ -55,9 +58,13 @@ object RegistrationAdminDialog {
             (registration, athleten) <- service.getAllRegistrationsRemote(wkInfo.wettkampf.toWettkampf)
             athlet <- athleten :+ EmptyAthletRegistration(registration.id)
           } yield {
+            logger.info(s"start processing Registration ${registration.vereinname}")
+            val startime = System.currentTimeMillis()
             val resolvedVerein = vereineList.find(v => v.name.equals(registration.vereinname) && (v.verband.isEmpty || v.verband.get.equals(registration.verband)))
+            logger.info(s"resolved Verein for Registration ${registration.vereinname}")
             val parsed = athlet.toAthlet.copy(id = 0L, verein = resolvedVerein.map(_.id))
-            val candidate = if (athlet.isEmptyRegistration) parsed else service.findAthleteLike(cache)(parsed)
+            val candidate = if (athlet.isEmptyRegistration) parsed else findAthletLike(parsed)
+            logger.info(s"resolved candidate for ${parsed} in ${System.currentTimeMillis() - startime}ms")
             (registration, athlet, parsed, AthletView(
               candidate.id, candidate.js_id,
               candidate.geschlecht, candidate.name, candidate.vorname, candidate.gebdat,

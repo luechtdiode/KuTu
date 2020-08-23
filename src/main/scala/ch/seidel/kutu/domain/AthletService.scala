@@ -3,6 +3,7 @@ package ch.seidel.kutu.domain
 import java.sql.Date
 import java.time.{LocalDate, Period}
 
+import ch.seidel.kutu.akka.{AthletIndexActor, RemoveAthlet, SaveAthlet}
 import ch.seidel.kutu.data.{CaseObjectMetaUtil, Surname}
 import org.slf4j.LoggerFactory
 import slick.jdbc.SQLiteProfile.api._
@@ -66,7 +67,11 @@ trait AthletService extends DBService with AthletResultMapper {
     }, Duration.Inf)
   }
 
+  def publishChanged(athlet: Athlet) = AthletIndexActor.publish(SaveAthlet(athlet))
+  def publishRemoved(athlet: Athlet) = AthletIndexActor.publish(RemoveAthlet(athlet))
+
   def mergeAthletes(idToDelete: Long, idToKeep: Long) {
+    val toDelete = loadAthlet(idToDelete)
     Await.result(database.run {
       (
         sqlu"""       update wertung
@@ -77,9 +82,11 @@ trait AthletService extends DBService with AthletResultMapper {
                     delete from athlet where id=${idToDelete}
           """).transactionally
     }, Duration.Inf)
+    toDelete.map(publishRemoved)
   }
 
   def deleteAthlet(id: Long) {
+    val toDelete = loadAthlet(id)
     Await.result(database.run {
       (
         sqlu"""       delete from wertung
@@ -89,6 +96,7 @@ trait AthletService extends DBService with AthletResultMapper {
                     delete from athlet where id=${id}
           """).transactionally
     }, Duration.Inf)
+    toDelete.map(publishRemoved)
   }
 
   def insertAthletes(athletes: Iterable[(String, Athlet)]): Iterable[(String, Athlet)] = {
@@ -152,7 +160,10 @@ trait AthletService extends DBService with AthletResultMapper {
           """ >>
           sql"""select * from athlet where id = (select max(athlet.id) from athlet)""".as[Athlet].head
     }
-    .map(a => (id, a))
+    .map { a: Athlet =>
+      publishChanged(a)
+      (id, a)
+    }
   }
 
   def insertAthlete(athlete: Athlet): Athlet = {
