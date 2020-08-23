@@ -166,6 +166,12 @@ trait RegistrationService extends DBService with RegistrationResultMapper with H
       sqlu"""       delete from vereinregistration where id=${registrationId}"""
   }
 
+  private def removeVereinAndAthletIds(vereinId: Long) = {
+    sqlu""" update athletregistration set athlet_id = null where vereinregistration_id in (
+          select id from vereinregistration where verein_id = $vereinId
+        )""" >>
+    sqlu""" update vereinregistration set verein_id = null where verein_id = $vereinId"""
+  }
 
   // AthletRegistration
 
@@ -272,6 +278,12 @@ trait RegistrationService extends DBService with RegistrationResultMapper with H
   def deleteAthletRegistration(id: Long): Unit = {
     Await.result(database.run {
       sqlu""" delete from athletregistration where id = $id"""
+    }, Duration.Inf)
+  }
+
+  def removeVereinAthletReferencesRegistration(vereinId: Long): Unit = {
+    Await.result(database.run {
+      removeVereinAndAthletIds(vereinId)
     }, Duration.Inf)
   }
 }
