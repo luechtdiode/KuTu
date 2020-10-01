@@ -14,11 +14,11 @@
       <ion-select placeholder='Bitte auswählen' *ngIf="getCompetitions().length > 0" [(ngModel)]='competition' okText='Okay' cancelText='Abbrechen'>
         <ion-select-option *ngFor='let comp of getCompetitions()' [value]='comp.uuid'>
           {{comp.titel + ' ' + (comp.datum | date:'dd-MM-yy')}}</ion-select-option>
-      </ion-select>      
+      </ion-select>
     </ion-buttons>
   </ion-toolbar>
-      <ion-searchbar placeholder="Search"
-        [(ngModel)]="sMyQuery" [showCancelButton]="false"
+      <ion-searchbar placeholder="Search" showCancelButton="never"
+        [(ngModel)]="sMyQuery"
         (ionInput)="reloadList($event)"
         (ionCancel)="reloadList($event)">
       </ion-searchbar>
