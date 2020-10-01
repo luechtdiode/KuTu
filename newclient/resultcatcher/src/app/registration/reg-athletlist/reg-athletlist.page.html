@@ -30,10 +30,10 @@
     </ion-title>
     <ion-note slot="end" *ngIf="competition">
       {{competitionName()}}
-    </ion-note>    
+    </ion-note>
   </ion-toolbar>
-      <ion-searchbar placeholder="Search" 
-        [(ngModel)]="sMyQuery" [showCancelButton]="false"  
+      <ion-searchbar placeholder="Search" showCancelButton="never"
+        [(ngModel)]="sMyQuery"
         (ionInput)="reloadList($event)"
         (ionCancel)="reloadList($event)">
       </ion-searchbar>
@@ -49,11 +49,11 @@
       <app-reg-athlet-item [athletregistration]="reg" [status]=getStatus(reg) [programmlist]="wkPgms" (click)='itemTapped(reg, slidingAthletRegistrationItem)'></app-reg-athlet-item>
       <ion-item-options side="end">
         <ion-item-option color="primary" (click)="edit(reg, slidingAthletRegistrationItem)">
-            <ion-icon name="arrow-dropright-circle" ios="md-arrow-dropright-circle"></ion-icon>         
+            <ion-icon name="arrow-dropright-circle" ios="md-arrow-dropright-circle"></ion-icon>
           {{isLoggedInAsClub() ? 'Bearbeiten' : isLoggedIn() ? "Bestätigen" : "Anzeigen"}}
         </ion-item-option>
         <ion-item-option *ngIf='isLoggedInAsClub()' color="danger" (click)="delete(reg, slidingAthletRegistrationItem)">
-          <ion-icon name="arrow-dropright-circle" ios="md-arrow-dropright-circle"></ion-icon> 
+          <ion-icon name="arrow-dropright-circle" ios="md-arrow-dropright-circle"></ion-icon>
           Löschen
         </ion-item-option>
       </ion-item-options>

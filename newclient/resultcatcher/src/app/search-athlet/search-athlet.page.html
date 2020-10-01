@@ -27,10 +27,10 @@
     </ion-title>
     <ion-note slot="end" *ngIf="competition">
       {{competitionName()}}
-    </ion-note>    
+    </ion-note>
   </ion-toolbar>
-      <ion-searchbar placeholder="Search" 
-        [(ngModel)]="sMyQuery" [showCancelButton]="false"  
+      <ion-searchbar placeholder="Search" showCancelButton="never"
+        [(ngModel)]="sMyQuery"
         (ionInput)="reloadList($event)"
         (ionCancel)="reloadList($event)">
       </ion-searchbar>
@@ -49,11 +49,11 @@
         (click)='itemTapped(tn, slidingAthletItem)'></startlist-item>
         <ion-item-options side="end">
           <ion-item-option color="primary" (click)="followAthlet(tn, slidingAthletItem)">
-              <ion-icon name="arrow-dropright-circle" ios="md-arrow-dropright-circle"></ion-icon>         
+              <ion-icon name="arrow-dropright-circle" ios="md-arrow-dropright-circle"></ion-icon>
             {{tn.athlet}} verfolgen
           </ion-item-option>
           <ion-item-option color="secondary" (click)="followRiege(tn, slidingAthletItem)">
-              <ion-icon name="arrow-dropright-circle" ios="md-arrow-dropright-circle"></ion-icon> 
+              <ion-icon name="arrow-dropright-circle" ios="md-arrow-dropright-circle"></ion-icon>
             Riege verfolgen
           </ion-item-option>
         </ion-item-options>
