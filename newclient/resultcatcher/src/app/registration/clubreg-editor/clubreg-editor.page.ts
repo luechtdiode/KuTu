@@ -103,9 +103,7 @@ export class ClubregEditorPage implements OnInit {
         vereinname: registration.vereinname,
         wettkampfId: registration.wettkampfId || this.wettkampfId,
       } as ClubRegistration;
-      this.backendService.saveClubRegistration(this.wkId, reg).subscribe((data) => {
-        this.navCtrl.pop();
-      });
+      this.backendService.saveClubRegistration(this.wkId, reg);
     }
   }
 

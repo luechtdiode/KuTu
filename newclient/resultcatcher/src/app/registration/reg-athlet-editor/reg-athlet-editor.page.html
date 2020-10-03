@@ -59,7 +59,7 @@
         <ion-avatar slot="start">
           &nbsp;
         </ion-avatar>
-        <ion-label>Programm/Kategorie</ion-label>
+        <ion-label color="primary">Programm/Kategorie</ion-label>
         <ion-select required placeholder='Programm/Kategorie' [(ngModel)]='registration.programId' name="programId" okText='Okay' cancelText='Abbrechen'>
           <ion-select-option *ngFor='let pgm of wkPgms' [value]='pgm.id'>{{pgm.name}}</ion-select-option>
         </ion-select>

@@ -51,21 +51,22 @@
         <ion-input [readonly]='false'  placeholder="Mobile/SMS (+4179...)" type="tel" pattern="[+]{1}[0-9]{11,14}" [disabled]="false" [ngModel]='registration.mobilephone' name="mobilephone" required></ion-input>
       </ion-item>
     </ion-list>
-    <ion-list>
-      <ion-button size="large" expand="block" type="submit" #btnSaveNext [disabled]="waiting || !clubRegistrationform.valid || clubRegistrationform.untouched" color="success">
-        <ion-icon slot="start" name="save"></ion-icon>Speichern</ion-button>
-      </ion-list>
-      <ion-list>
-      <ion-button size="large" expand="block" (click)='editAthletRegistrations()' [disabled]="waiting || regId === 0" color="secondary">
-        <ion-icon slot="start" name="list"></ion-icon>Athlet-Anmeldungen...</ion-button>
-      </ion-list>
+    <ion-button size="large" expand="block" type="submit" #btnSaveNext [disabled]="waiting || !clubRegistrationform.valid || clubRegistrationform.untouched" color="success">
+      <ion-icon slot="start" name="save"></ion-icon>Speichern
+    </ion-button>
   </form>
 </ion-content>
 <ion-footer>
   <ion-toolbar>
-    <ion-list>
-      <ion-button *ngIf="regId > 0"size="large" expand="block" #btnDelete [disabled]="waiting" color="danger" (click)='delete()'>
-        <ion-icon slot="start" name="trash"></ion-icon>Registrierung löschen</ion-button>
-    </ion-list>
+  <ion-buttons slot="start">
+    <ion-button size="large"  (click)='editAthletRegistrations()' [disabled]="waiting || regId === 0" color="secondary">
+    <ion-icon slot="start" name="list"></ion-icon>Anmeldungen...
+    </ion-button>
+  </ion-buttons>
+  <ion-buttons slot="end">
+    <ion-button *ngIf="regId > 0"size="large" slot="end" #btnDelete [disabled]="waiting" color="danger" (click)='delete()'>
+      <ion-icon slot="start" name="trash"></ion-icon>Reg. löschen
+    </ion-button>
+  </ion-buttons>
   </ion-toolbar>
 </ion-footer>

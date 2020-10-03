@@ -1,10 +1,8 @@
 import { Component, OnInit, NgZone } from '@angular/core';
-import { constructor } from 'color';
 import { NavController, AlertController } from '@ionic/angular';
 import { ActivatedRoute } from '@angular/router';
 import { BackendService } from 'src/app/services/backend.service';
-import { NewClubRegistration, ClubRegistration, AthletRegistration, ProgrammRaw } from 'src/app/backend-types';
-import { isNumber } from 'util';
+import { AthletRegistration, ProgrammRaw } from 'src/app/backend-types';
 import { toDateString } from '../../utils';
 
 @Component({
@@ -29,8 +27,8 @@ export class RegAthletEditorPage implements OnInit {
   regId: number;
   athletId: number;
   wkId: string;
+  wkPgms: ProgrammRaw[];
   wettkampfId: number;
-  private wkPgms: ProgrammRaw[];
   clubAthletList: AthletRegistration[];
   // tslint:disable-next-line: variable-name
   private _selectedClubAthletId: number;
@@ -49,27 +47,27 @@ export class RegAthletEditorPage implements OnInit {
       this.wettkampfId = parseInt(wk.id);
       this.backendService.loadProgramsForCompetition(wk.uuid).subscribe(pgms => {
         this.wkPgms = pgms;
+        if (this.athletId) {
+          this.backendService.loadAthletRegistrations(this.wkId, this.regId).subscribe(regs => {
+            this.updateUI(regs.find(athlet => athlet.id === this.athletId));
+          });
+        } else {
+          this.backendService.loadAthletListForClub(this.wkId, this.regId).subscribe(regs => {
+            this.clubAthletList = regs;
+          });
+  
+          this.updateUI({
+            id: 0,
+            vereinregistrationId: this.regId,
+            name: '',
+            vorname: '',
+            geschlecht: 'W',
+            gebdat: undefined,
+            programId: undefined,
+            registrationTime: 0
+          } as AthletRegistration);
+        }
       });
-      if (this.athletId) {
-        this.backendService.loadAthletRegistrations(this.wkId, this.regId).subscribe(regs => {
-          this.updateUI(regs.find(athlet => athlet.id === this.athletId));
-        });
-      } else {
-        this.backendService.loadAthletListForClub(this.wkId, this.regId).subscribe(regs => {
-          this.clubAthletList = regs;
-        });
-
-        this.updateUI({
-          id: 0,
-          vereinregistrationId: this.regId,
-          name: '',
-          vorname: '',
-          geschlecht: 'W',
-          gebdat: undefined,
-          programId: undefined,
-          registrationTime: 0
-        } as AthletRegistration);
-      }
     });
   }
 
