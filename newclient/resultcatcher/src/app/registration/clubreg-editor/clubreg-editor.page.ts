@@ -1,8 +1,9 @@
 import { Component, OnInit, NgZone } from '@angular/core';
-import { ClubRegistration, NewClubRegistration } from 'src/app/backend-types';
+import { ClubRegistration, NewClubRegistration, SyncAction } from 'src/app/backend-types';
 import { ActivatedRoute } from '@angular/router';
 import { BackendService } from 'src/app/services/backend.service';
 import { NavController, AlertController } from '@ionic/angular';
+import { take } from 'rxjs/operators';
 
 @Component({
   selector: 'app-clubreg-editor',
@@ -22,6 +23,7 @@ export class ClubregEditorPage implements OnInit {
 
   waiting = false;
   registration: ClubRegistration | NewClubRegistration;
+  sSyncActions: string[] = [];
   wettkampf: string;
   regId: number;
   wkId: string;
@@ -47,6 +49,22 @@ export class ClubregEditorPage implements OnInit {
 
   editable() {
     return this.backendService.loggedIn;
+  }
+
+  ionViewWillEnter() {
+    this.getSyncActions();
+  }
+
+  getSyncActions() {
+    if (this.regId > 0) {
+      this.backendService.loadRegistrationSyncActions().pipe(
+        take(1)
+      ).subscribe(sa => {
+        this.sSyncActions = sa
+        .filter(action => action.verein.id === (this.registration as ClubRegistration).id)
+        .map(action => action.caption);
+      });
+    }
   }
 
   updateUI(registration: ClubRegistration | NewClubRegistration) {

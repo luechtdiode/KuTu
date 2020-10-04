@@ -55,6 +55,12 @@
       <ion-icon slot="start" name="save"></ion-icon>Speichern
     </ion-button>
   </form>
+  <ion-list>
+    <ion-item-divider color="primary">Pendente Verarbeitungen ({{sSyncActions.length}})</ion-item-divider>
+    <ion-item *ngFor="let action of sSyncActions">
+      {{action}}
+    </ion-item>
+  </ion-list>
 </ion-content>
 <ion-footer>
   <ion-toolbar>
