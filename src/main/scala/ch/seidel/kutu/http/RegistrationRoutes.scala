@@ -2,6 +2,7 @@ package ch.seidel.kutu.http
 
 import spray.json._
 import akka.http.scaladsl.marshallers.sprayjson.SprayJsonSupport
+import akka.http.scaladsl.marshalling.ToResponseMarshallable
 import akka.http.scaladsl.model.{ContentTypes, HttpEntity, HttpResponse, StatusCodes}
 import akka.http.scaladsl.server.Route
 import akka.http.scaladsl.unmarshalling.Unmarshal
@@ -10,13 +11,14 @@ import ch.seidel.kutu.Config
 import ch.seidel.kutu.Config.remoteAdminBaseUrl
 import ch.seidel.kutu.akka.{AskRegistrationSyncActions, CompetitionRegistrationClientActor, RegistrationChanged, RegistrationSyncActions}
 import ch.seidel.kutu.domain.{AthletRegistration, AthletView, KutuService, NewRegistration, ProgrammRaw, Registration, Verein, Wettkampf, dateToExportedStr}
-import ch.seidel.kutu.renderer.PrintUtil
+import ch.seidel.kutu.renderer.{CompetitionsClubsToHtmlRenderer, PrintUtil}
 import ch.seidel.kutu.view.{RegistrationAdmin, WettkampfInfo}
 
 import scala.concurrent.duration.{Duration, DurationInt}
 import scala.concurrent.{Await, Future}
 
-trait RegistrationRoutes extends SprayJsonSupport with JwtSupport with JsonSupport with AuthSupport with RouterLogging with KutuService with IpToDeviceID with CIDSupport {
+trait RegistrationRoutes extends SprayJsonSupport with JwtSupport with JsonSupport with AuthSupport with RouterLogging
+  with KutuService with CompetitionsClubsToHtmlRenderer with IpToDeviceID with CIDSupport {
 
   import Core._
   import spray.json.DefaultJsonProtocol._
@@ -72,7 +74,16 @@ trait RegistrationRoutes extends SprayJsonSupport with JwtSupport with JsonSuppo
         val logofile = PrintUtil.locateLogoFile(logodir)
         pathEndOrSingleSlash {
           get { // list Vereinsregistration
-            complete(selectRegistrationsOfWettkampf(competitionId))
+            parameters('html.?) { (html) =>
+              html match {
+                case None =>
+                  complete(selectRegistrationsOfWettkampf(competitionId))
+                case _ =>
+                  val logodir = new java.io.File(Config.homedir + "/" + wettkampf.easyprint.replace(" ", "_"))
+                  val logofile = PrintUtil.locateLogoFile(logodir)
+                  complete(ToResponseMarshallable(HttpEntity(ContentTypes.`text/html(UTF-8)`,toHTMLasClubRegistrationsList(wettkampf, selectRegistrationsOfWettkampf(competitionId), logofile))))
+              }
+            }
           } ~ post { // create Vereinsregistration
             entity(as[NewRegistration]) { newRegistration =>
               val registration = createRegistration(newRegistration)

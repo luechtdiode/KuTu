@@ -19,7 +19,8 @@ import ch.seidel.kutu.renderer.PrintUtil._
 import scala.concurrent.Future
 import scala.concurrent.duration.DurationInt
 
-trait ScoreRoutes extends SprayJsonSupport with JsonSupport with AuthSupport with RouterLogging with KutuService with IpToDeviceID {
+trait
+ScoreRoutes extends SprayJsonSupport with JsonSupport with AuthSupport with RouterLogging with KutuService with IpToDeviceID {
   import spray.json.DefaultJsonProtocol._
 
   import scala.concurrent.ExecutionContext.Implicits.global

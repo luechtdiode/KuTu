@@ -10,9 +10,9 @@ import org.slf4j.LoggerFactory
 import scala.collection.immutable._
 
 trait WettkampfOverviewToHtmlRenderer {
-  val logger = LoggerFactory.getLogger(classOf[WettkampfOverviewToHtmlRenderer])
-  val intro2 = """<html><body><ul><li>"""
-  val intro = s"""<html lang="de-CH"><head>
+  private val logger = LoggerFactory.getLogger(classOf[WettkampfOverviewToHtmlRenderer])
+  private val intro2 = """<html><body><ul><li>"""
+  private val intro = s"""<html lang="de-CH"><head>
           <meta charset="UTF-8" />
           <style type="text/css">
             @media print {
@@ -163,6 +163,7 @@ trait WettkampfOverviewToHtmlRenderer {
 
     val logoHtml = (if (logo.exists) s"""<img class=logo src="${logo.imageSrcForWebEngine}" title="Logo"/>""" else s"")
     val registrationURL = s"$remoteBaseUrl/registration/${wettkampf.uuid.get}"
+    val registrationContactsURL = s"$remoteBaseUrl/api/registrations/${wettkampf.uuid.get}?html"
 
     val auszSchwelle = (if (wettkampf.auszeichnung > 100) {
       wettkampf.auszeichnung / 100d
@@ -221,7 +222,9 @@ trait WettkampfOverviewToHtmlRenderer {
       </div>
       <h2>Anmeldungen</h2>
       <p>Link für die Online-Anmeldung zum Versenden an die Vereinsverantwortlichen oder für in die Wettkampf-Ausschreibung:<br>
-      <a href="$registrationURL" target="_blank">$registrationURL</a>
+      <a href="$registrationURL" target="_blank">$registrationURL</a></p>
+      <p>Link für die komplette Kontaktliste der auf dem Server registrierten Vereine:<br>
+      <a href="$registrationContactsURL" target="_blank">$registrationContactsURL</a>
       </p>
       <div class="showborder">
         <table width="100%">
