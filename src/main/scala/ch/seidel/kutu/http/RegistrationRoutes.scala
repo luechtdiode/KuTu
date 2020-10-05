@@ -101,10 +101,12 @@ trait RegistrationRoutes extends SprayJsonSupport with JwtSupport with JsonSuppo
           }
         } ~ path("syncactions") {
           get {
-            complete(CompetitionRegistrationClientActor.publish(AskRegistrationSyncActions(wettkampf.uuid.get), clientId).map{
-              case RegistrationSyncActions(actions) => actions
-              case _ => Vector()
-            })
+            withRequestTimeout(60.seconds) {
+              complete(CompetitionRegistrationClientActor.publish(AskRegistrationSyncActions(wettkampf.uuid.get), clientId).map {
+                case RegistrationSyncActions(actions) => actions
+                case _ => Vector()
+              })
+            }
           }
         } ~ pathPrefix(LongNumber) { registrationId =>
           authenticated() { userId =>
