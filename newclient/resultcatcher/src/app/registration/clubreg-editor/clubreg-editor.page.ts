@@ -147,4 +147,8 @@ export class ClubregEditorPage implements OnInit {
   editAthletRegistrations() {
     this.navCtrl.navigateForward(`reg-athletlist/${this.backendService.competition}/${this.regId}`);
   }
+  
+  editJudgeRegistrations() {
+    this.navCtrl.navigateForward(`reg-judgelist/${this.backendService.competition}/${this.regId}`);
+  }
 }

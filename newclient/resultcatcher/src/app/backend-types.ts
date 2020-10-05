@@ -79,6 +79,23 @@ export interface AthletRegistration {
   programId: number;
   registrationTime: number;
 }
+
+export interface JudgeRegistration {
+  id: number;
+  vereinregistrationId: number;
+  geschlecht: string;
+  name: string;
+  vorname: string;
+  mobilephone: string;
+  mail: string;
+  comment: string;
+  registrationTime: number;
+}
+export interface JudgeRegistrationProgramItem {
+  program: string;
+  disziplin: string;
+  disziplinId: number;
+}
  export interface SyncAction {
    caption: string;
    verein: ClubRegistration;

@@ -11,7 +11,7 @@ import { DurchgangStarted, Wettkampf, Geraet, WertungContainer, NewLastResults, 
          NewClubRegistration,
          AthletRegistration,
          ProgrammRaw,
-         SyncAction} from '../backend-types';
+         SyncAction, JudgeRegistration, JudgeRegistrationProgramItem} from '../backend-types';
 import { backendUrl } from '../utils';
 import { ProgrammItem } from '../backend-types';
 
@@ -395,6 +395,70 @@ export class BackendService extends WebsocketService {
       const loader = this.startLoading('Anmeldung wird gespeichert. Bitte warten ...',
         this.http.delete(
           backendUrl + 'api/registrations/' + competitionId + '/' + clubid + '/athletes/' + registration.id, {
+            responseType: 'text'
+          }
+          ).pipe(share()));
+
+      loader.subscribe((data) => {
+      }, this.standardErrorHandler);
+
+      return loader;
+    }
+
+    loadJudgeProgramDisziplinList(competitionId: string) {
+      const loader = this.startLoading('Athletliste zum Club wird geladen. Bitte warten ...',
+        this.http.get<JudgeRegistrationProgramItem[]>(
+          backendUrl + 'api/registrations/' + competitionId + '/programmdisziplinlist'
+          ).pipe(share()));
+
+      loader.subscribe((data) => {
+      }, this.standardErrorHandler);
+
+      return loader;
+    }
+
+    loadJudgeRegistrations(competitionId: string, clubid: number) {
+      const loader = this.startLoading('Wertungsrichter-Liste zum Club wird geladen. Bitte warten ...',
+        this.http.get<JudgeRegistration[]>(
+          backendUrl + 'api/registrations/' + competitionId + '/' + clubid + '/judges'
+          ).pipe(share()));
+
+      loader.subscribe((data) => {
+      }, this.standardErrorHandler);
+
+      return loader;
+    }
+
+    createJudgeRegistration(competitionId: string, clubid: number, registration: JudgeRegistration) {
+      const loader = this.startLoading('Anmeldung wird gespeichert. Bitte warten ...',
+        this.http.post<JudgeRegistration>(
+          backendUrl + 'api/registrations/' + competitionId + '/' + clubid + '/judges',
+          registration
+          ).pipe(share()));
+
+      loader.subscribe((data) => {
+      }, this.standardErrorHandler);
+
+      return loader;
+    }
+
+    saveJudgeRegistration(competitionId: string, clubid: number, registration: JudgeRegistration) {
+      const loader = this.startLoading('Anmeldung wird gespeichert. Bitte warten ...',
+        this.http.put<JudgeRegistration>(
+          backendUrl + 'api/registrations/' + competitionId + '/' + clubid + '/judges/' + registration.id,
+          registration
+          ).pipe(share()));
+
+      loader.subscribe((data) => {
+      }, this.standardErrorHandler);
+
+      return loader;
+    }
+
+    deleteJudgeRegistration(competitionId: string, clubid: number, registration: JudgeRegistration) {
+      const loader = this.startLoading('Anmeldung wird gespeichert. Bitte warten ...',
+        this.http.delete(
+          backendUrl + 'api/registrations/' + competitionId + '/' + clubid + '/judges/' + registration.id, {
             responseType: 'text'
           }
           ).pipe(share()));

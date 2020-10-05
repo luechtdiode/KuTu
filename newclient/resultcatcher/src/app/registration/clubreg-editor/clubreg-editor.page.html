@@ -60,13 +60,25 @@
     <ion-item *ngFor="let action of sSyncActions">
       {{action}}
     </ion-item>
+    <ion-buttons slot="start">
+      <ion-button size="large"  (click)='editAthletRegistrations()' [disabled]="waiting || regId === 0" color="secondary">
+        <ion-icon slot="start" name="list"></ion-icon>Athlet-Anmeldungen...
+      </ion-button>
+       <ion-button size="large"  (click)='editJudgeRegistrations()' [disabled]="waiting || regId === 0" color="secondary">
+        <ion-icon slot="start" name="list"></ion-icon>WR-Anmeldungen...
+      </ion-button>
+    </ion-buttons>
+  
   </ion-list>
 </ion-content>
 <ion-footer>
   <ion-toolbar>
   <ion-buttons slot="start">
     <ion-button size="large"  (click)='editAthletRegistrations()' [disabled]="waiting || regId === 0" color="secondary">
-    <ion-icon slot="start" name="list"></ion-icon>Anmeldungen...
+      <ion-icon slot="start" name="list"></ion-icon>Athlet-Anmeldungen...
+    </ion-button>
+     <ion-button size="large"  (click)='editJudgeRegistrations()' [disabled]="waiting || regId === 0" color="secondary">
+      <ion-icon slot="start" name="list"></ion-icon>WR-Anmeldungen...
     </ion-button>
   </ion-buttons>
   <ion-buttons slot="end">

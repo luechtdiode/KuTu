@@ -34,7 +34,17 @@ const routes: Routes = [
     loadChildren: './registration/reg-athletlist/reg-athletlist.module#RegAthletlistPageModule' },
   { path: 'reg-athletlist/:wkId/:regId/:athletId',
     canActivate: [VereinsRegistrationGuardService],
-    loadChildren: './registration/reg-athlet-editor/reg-athlet-editor.module#RegAthletEditorPageModule' }
+    loadChildren: './registration/reg-athlet-editor/reg-athlet-editor.module#RegAthletEditorPageModule' },
+  {
+    path: 'reg-judgelist/:wkId/:regId',
+    canActivate: [VereinsRegistrationGuardService],
+    loadChildren: './registration/reg-judgelist/reg-judgelist.module#RegJudgelistPageModule'},
+  {
+    path: 'reg-judgelist/:wkId/:regId/:judgeId',
+    canActivate: [VereinsRegistrationGuardService],
+    loadChildren: './registration/reg-judge-editor/reg-judge-editor.module#RegJudgeEditorPageModule'
+  }
+
 ];
 
 @NgModule({

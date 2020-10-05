@@ -1,0 +1,70 @@
+<ion-header>
+  <ion-toolbar>
+    <ion-buttons slot="start">
+      <ion-back-button defaultHref="/"></ion-back-button>
+    </ion-buttons>
+    <ion-title>Wertungsrichter-Anmeldung</ion-title>  
+    <ion-note slot="end"><div class="judge">für {{wettkampf}}</div></ion-note>  
+  </ion-toolbar>
+</ion-header>
+
+<ion-content *ngIf="registration">
+  <form #judgeRegistrationForm="ngForm" (ngSubmit)="save(judgeRegistrationForm.value)" (keyup.enter)="save(judgeRegistrationForm.value)">
+    <ion-list>
+      <ion-item-divider color="primary">Wertungsrichter/-in</ion-item-divider>
+      <ion-item>
+        <ion-avatar slot="start">
+          <img src="assets/imgs/chief.png">
+        </ion-avatar>
+        <ion-input required placeholder="Name" type="text"  [disabled]="false" [(ngModel)]='registration.name' name="name" required></ion-input>
+        <ion-input required placeholder="Vorname" type="text"  [disabled]="false" [(ngModel)]='registration.vorname' name="vorname" required></ion-input>          
+      </ion-item>
+      <ion-item>
+        <ion-avatar slot="start">
+          &nbsp;
+        </ion-avatar>
+        <ion-label color="primary">Geschlecht</ion-label>
+        <ion-select required [disabled]="registration.athletId > 0" placeholder='Geschlecht' [(ngModel)]='registration.geschlecht' name="geschlecht" okText='Okay' cancelText='Abbrechen' required>
+          <ion-select-option [value]='"W"'>weiblich</ion-select-option>
+          <ion-select-option [value]='"M"'>männlich</ion-select-option>
+        </ion-select>
+      </ion-item>
+      <ion-item-divider color="primary">Kontakt</ion-item-divider>
+      <ion-item>
+        <ion-avatar slot="start">
+          <img src="assets/imgs/atmail.png">
+        </ion-avatar>
+        <!-- <ion-label color="primary">Mail</ion-label> -->
+        <ion-input [readonly]='false'  placeholder="Mail" type="email" 
+        pattern="^[_a-z0-9-]+(\.[_a-z0-9-]+)*@[a-z0-9-]+(\.[a-z0-9-]+)*(\.[a-z]{2,5})$" [disabled]="false" [ngModel]='registration.mail' name="mail" required></ion-input>
+        <!-- <ion-label color="primary">Mobile/SMS</ion-label> -->
+        <ion-input [readonly]='false'  placeholder="Mobile/SMS (+4179...)" type="tel" pattern="[+]{1}[0-9]{11,14}" [disabled]="false" [ngModel]='registration.mobilephone' name="mobilephone" required></ion-input>
+      </ion-item>
+      <ion-item-divider>
+        <ion-avatar slot="start">
+          <img src="assets/imgs/wettkampf.png">
+        </ion-avatar>
+        <ion-label>Einteilung</ion-label>
+      </ion-item-divider>
+      <ion-item>
+        <ion-avatar slot="start">
+          &nbsp;
+        </ion-avatar>
+        <ion-label color="primary">Kommentar</ion-label>
+        <ion-textarea placeholder="Kommentar zur Einteilung als Wertungsrichter" [disabled]="false" [(ngModel)]='registration.comment' name="comment"></ion-textarea>          
+      </ion-item>
+    </ion-list>
+    <ion-list>
+      <ion-button size="large" expand="block" type="submit" #btnSaveNext [disabled]="waiting || !judgeRegistrationForm.valid || judgeRegistrationForm.untouched" color="success">
+        <ion-icon slot="start" name=""></ion-icon>Speichern</ion-button>
+    </ion-list>
+  </form>
+</ion-content>
+<ion-footer>
+  <ion-toolbar>
+    <ion-list>
+      <ion-button *ngIf="judgeId > 0"size="large" expand="block" #btnDelete [disabled]="waiting" color="danger" (click)='delete()'>
+        <ion-icon slot="start" name="trash"></ion-icon>Anmeldung löschen</ion-button>
+    </ion-list>
+  </ion-toolbar>
+</ion-footer>
