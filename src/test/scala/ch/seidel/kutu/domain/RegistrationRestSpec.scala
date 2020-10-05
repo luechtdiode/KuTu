@@ -18,6 +18,7 @@ class RegistrationRestSpec extends KuTuBaseSpec {
   val myverysecretpassword = "vkyvf%gMnvXs"
   var registration: Option[Registration] = None
   var athletregistration: Option[AthletRegistration] = None
+  var judgeregistration: Option[JudgeRegistration] = None
   var registrationJwt: Option[RawHeader] = None
 
   def createTestRegistration = {
@@ -44,12 +45,29 @@ class RegistrationRestSpec extends KuTuBaseSpec {
     athletregistration.get
   }
 
+  def createTestJudgeRegistration(reg: Registration) = {
+    judgeregistration = judgeregistration match {
+      case None =>
+        Some(createJudgeRegistration(JudgeRegistration(0, reg.id, "M", "Tester", "Test", "04176123456", "mail@mail.ch", "Comment", 0)))
+      case Some(r) => Some(r)
+    }
+    judgeregistration.get
+  }
   "read programmList" in {
     val reg = createTestRegistration
     HttpRequest(method = GET, uri = s"/api/registrations/${testwettkampf.uuid.get}/programmlist") ~>
       allroutes(x => vereinSecretHashLookup(x)) ~> check {
       status should ===(StatusCodes.OK)
       val list = entityAs[List[ProgrammRaw]]
+      list.nonEmpty shouldBe true
+    }
+  }
+  "read programmdisziplinlist" in {
+    val reg = createTestRegistration
+    HttpRequest(method = GET, uri = s"/api/registrations/${testwettkampf.uuid.get}/programmdisziplinlist") ~>
+      allroutes(x => vereinSecretHashLookup(x)) ~> check {
+      status should ===(StatusCodes.OK)
+      val list = entityAs[List[JudgeRegistrationProgramItem]]
       list.nonEmpty shouldBe true
     }
   }
@@ -136,6 +154,98 @@ class RegistrationRestSpec extends KuTuBaseSpec {
         header(Config.jwtAuthorizationKey) should not be empty
         val reg = entityAs[Registration]
         reg.verband should ===("Next Verband")
+      }
+    }
+
+    def testJudgeConflict(vereinsreg: Registration, testJudgeReg: JudgeRegistration) = {
+      val json = judgeregistrationFormat.write(testJudgeReg).compactPrint
+      HttpRequest(method = POST, uri = s"/api/registrations/${testwettkampf.uuid.get}/${vereinsreg.id}/judges", entity = HttpEntity(
+        ContentTypes.`application/json`,
+        ByteString(json)
+      )).addHeader(registrationJwt.get) ~>
+        allroutes(x => vereinSecretHashLookup(x)) ~> check {
+        status should ===(StatusCodes.Conflict)
+      }
+    }
+
+    def testJudgeSuccessfulRequest(vereinsreg: Registration, testJudgeReg: JudgeRegistration, expectedName: String, expectedVorname: String, expectedSex: String) = {
+      val json = judgeregistrationFormat.write(testJudgeReg).compactPrint
+      HttpRequest(method = POST, uri = s"/api/registrations/${testwettkampf.uuid.get}/${vereinsreg.id}/judges", entity = HttpEntity(
+        ContentTypes.`application/json`,
+        ByteString(json)
+      )).addHeader(registrationJwt.get) ~>
+        allroutes(x => vereinSecretHashLookup(x)) ~> check {
+        status should ===(StatusCodes.OK)
+        header(Config.jwtAuthorizationKey) should not be empty
+        val testJudgeRegEntity = entityAs[JudgeRegistration]
+        testJudgeRegEntity.vereinregistrationId should ===(vereinsreg.id)
+        testJudgeRegEntity.vorname should ===(expectedVorname)
+        testJudgeRegEntity.name should ===(expectedName)
+        testJudgeRegEntity.geschlecht should ===(expectedSex)
+      }
+    }
+    "add JudgeRegistration via rest empty fields" in {
+      val reg = createTestRegistration
+      testJudgeConflict(reg, JudgeRegistration(0, reg.id, "M", "Markus", "", "+4176123456", "a@b.ch", "Comment", 0))
+      testJudgeConflict(reg, JudgeRegistration(0, reg.id, "M", "", "Schneider", "+4176123456", "a@b.ch", "Comment", 0))
+      testJudgeConflict(reg, JudgeRegistration(0, reg.id, "M", "Markus", "Schneider", "", "a@b.ch", "Comment", 0))
+      testJudgeConflict(reg, JudgeRegistration(0, reg.id, "M", "Markus", "Schneider", "+4176123456", "", "Comment", 0))
+    }
+    "add JudgeRegistration via rest switch name and vorname if required" in {
+      val reg = createTestRegistration
+      testJudgeSuccessfulRequest(reg, JudgeRegistration(0, reg.id, "M", "Markus", "Schneider", "+4176123456", "a@b.ch", "Comment", 0), "Schneider", "Markus", "M")
+    }
+    "add JudgeRegistration via rest switch fix sex if required" in {
+      val reg = createTestRegistration
+      testJudgeSuccessfulRequest(reg, JudgeRegistration(0, reg.id, "M", "Schneider", "Gabriela", "+4176123456", "a@b.ch", "Comment", 0), "Schneider", "Gabriela", "W")
+    }
+    "add JudgeRegistration via restswitch keep sex with ambigous surname" in {
+      val reg = createTestRegistration
+      testJudgeSuccessfulRequest(reg, JudgeRegistration(0, reg.id, "W", "Schneider", "Robin", "+4176123456", "a@b.ch", "Comment", 0), "Schneider", "Robin", "W")
+      testJudgeSuccessfulRequest(reg, JudgeRegistration(0, reg.id, "M", "Schneider", "Robin", "+4176123456", "a@b.ch", "Comment", 0), "Schneider", "Robin", "M")
+    }
+    "add JudgeRegistration via restswitch take as is if all is right" in {
+      val reg = createTestRegistration
+      testJudgeSuccessfulRequest(reg, JudgeRegistration(0, reg.id, "M", "Schneider", "Markus", "+4176123456", "a@b.ch", "Comment", 0), "Schneider", "Markus", "M")
+    }
+
+    "update JudgeRegistration via rest" in {
+      val reg = createTestRegistration
+      val judgeReg = createTestJudgeRegistration(reg)
+      HttpRequest(method = PUT, uri = s"/api/registrations/${testwettkampf.uuid.get}/${reg.id}/judges/${judgeReg.id}", entity = HttpEntity(
+        ContentTypes.`application/json`,
+        ByteString(judgeregistrationFormat.write(
+          judgeReg.copy(mail = "new@mail.ch")
+        ).compactPrint)
+      )).addHeader(registrationJwt.get) ~>
+        allroutes(x => vereinSecretHashLookup(x)) ~> check {
+        status should ===(StatusCodes.OK)
+        header(Config.jwtAuthorizationKey) should not be empty
+        val athletreg = entityAs[JudgeRegistration]
+        athletreg.mail should ===("new@mail.ch")
+      }
+    }
+
+    "list JudgeRegistration via rest" in {
+      val reg = createTestRegistration
+      val jugeReg = createTestJudgeRegistration(reg)
+      HttpRequest(method = GET, uri = s"/api/registrations/${testwettkampf.uuid.get}/${reg.id}/judges/")
+        .addHeader(registrationJwt.get) ~>
+        allroutes(x => vereinSecretHashLookup(x)) ~> check {
+        status should ===(StatusCodes.OK)
+        header(Config.jwtAuthorizationKey) should not be empty
+        val list = entityAs[List[JudgeRegistration]]
+        list.filter(a => a.id == jugeReg.id).nonEmpty shouldBe true
+      }
+    }
+
+    "delete JudgeRegistration via rest" in {
+      val reg = createTestRegistration
+      val judgeReg = createTestJudgeRegistration(reg)
+      HttpRequest(method = DELETE, uri = s"/api/registrations/${testwettkampf.uuid.get}/${reg.id}/athletes/${judgeReg.id}")
+        .addHeader(registrationJwt.get) ~>
+        allroutes(x => vereinSecretHashLookup(x)) ~> check {
+        status should ===(StatusCodes.OK)
       }
     }
 

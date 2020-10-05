@@ -10,7 +10,7 @@ import akka.util.{ByteString, Timeout}
 import ch.seidel.kutu.Config
 import ch.seidel.kutu.Config.remoteAdminBaseUrl
 import ch.seidel.kutu.akka.{AskRegistrationSyncActions, CompetitionRegistrationClientActor, RegistrationChanged, RegistrationSyncActions}
-import ch.seidel.kutu.domain.{AthletRegistration, AthletView, KutuService, NewRegistration, ProgrammRaw, Registration, Verein, Wettkampf, dateToExportedStr}
+import ch.seidel.kutu.domain.{AthletRegistration, AthletView, JudgeRegistration, KutuService, NewRegistration, ProgrammRaw, Registration, Verein, Wettkampf, dateToExportedStr}
 import ch.seidel.kutu.renderer.{CompetitionsClubsToHtmlRenderer, PrintUtil}
 import ch.seidel.kutu.view.{RegistrationAdmin, WettkampfInfo}
 
@@ -106,6 +106,12 @@ trait RegistrationRoutes extends SprayJsonSupport with JwtSupport with JsonSuppo
                 case RegistrationSyncActions(actions) => actions
                 case _ => Vector()
               })
+            }
+          }
+        } ~ pathPrefix("programmdisziplinlist") {
+          pathEndOrSingleSlash {
+            get {
+              complete(listJudgeRegistrationProgramItems(readWettkampfLeafs(wettkampf.programmId).map(p => p.id)))
             }
           }
         } ~ pathPrefix(LongNumber) { registrationId =>
@@ -208,7 +214,7 @@ trait RegistrationRoutes extends SprayJsonSupport with JwtSupport with JsonSuppo
                                 reg
                               } catch {
                                 case e: IllegalArgumentException =>
-                                log.error(e.getMessage())
+                                  log.error(e.getMessage())
                                   StatusCodes.Conflict
                               }
                             } else {
@@ -241,32 +247,49 @@ trait RegistrationRoutes extends SprayJsonSupport with JwtSupport with JsonSuppo
                       }
                     }
                   }
-                }
-              } ~ pathPrefix("judges") {
-                pathEndOrSingleSlash {
-                  get { // list judges
-                    complete(
-                      HttpEntity(ContentTypes.`application/json`, "")
-                    )
-                  } ~ post { // create judges
-                    complete(
-                      HttpEntity(ContentTypes.`application/json`, "")
-                    )
-                  }
-                } ~ pathPrefix(LongNumber) { id =>
+                } ~ pathPrefix("judges") {
                   pathEndOrSingleSlash {
-                    get {
+                    get { // list judges
                       complete(
-                        HttpEntity(ContentTypes.`application/json`, "")
+                        selectJudgeRegistrations(registrationId)
                       )
-                    } ~ put { // update judges
-                      complete(
-                        HttpEntity(ContentTypes.`application/json`, "")
-                      )
-                    } ~ delete { // delete  judges
-                      complete(
-                        HttpEntity(ContentTypes.`application/json`, "")
-                      )
+                    } ~ post { // create judges
+                      log.info("post athletregistration")
+                      entity(as[JudgeRegistration]) { judgeRegistration =>
+                        complete {
+                          try {
+                            val reg = createJudgeRegistration(judgeRegistration)
+                            CompetitionRegistrationClientActor.publish(RegistrationChanged(wettkampf.uuid.get), clientId)
+                            reg
+                          } catch {
+                            case e: IllegalArgumentException =>
+                              log.error(e.getMessage())
+                              StatusCodes.Conflict
+                          }
+                        }
+                      }
+                    }
+                  } ~ pathPrefix(LongNumber) { id =>
+                    pathEndOrSingleSlash {
+                      get {
+                        complete(
+                          selectJudgeRegistration(id)
+                        )
+                      } ~ put { // update judges
+                        entity(as[JudgeRegistration]) { athletRegistration =>
+                          complete(Future {
+                            val reg = updateJudgeRegistration(athletRegistration)
+                            CompetitionRegistrationClientActor.publish(RegistrationChanged(wettkampf.uuid.get), clientId)
+                            reg
+                          })
+                        }
+                      } ~ delete { // delete  judges
+                        complete(Future {
+                          deleteJudgeRegistration(id)
+                          CompetitionRegistrationClientActor.publish(RegistrationChanged(wettkampf.uuid.get), clientId)
+                          StatusCodes.OK
+                        })
+                      }
                     }
                   }
                 }

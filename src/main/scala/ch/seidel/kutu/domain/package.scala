@@ -886,4 +886,63 @@ package object domain {
   object EmptyAthletRegistration {
     def apply(vereinregistrationId: Long) = AthletRegistration(0L, vereinregistrationId, None, "", "", "", "", 0L, 0L)
   }
+
+  case class JudgeRegistration(id: Long, vereinregistrationId: Long,
+                                geschlecht: String, name: String, vorname: String,
+                                mobilephone: String, mail: String, comment: String,
+                                registrationTime: Long) extends DataObject {
+    def validate() = {
+      if (name == null || name.trim.isEmpty) throw new IllegalArgumentException("JudgeRegistration with empty name")
+      if (vorname == null || vorname.trim.isEmpty) throw new IllegalArgumentException("JudgeRegistration with empty vorname")
+      if (mobilephone == null || mobilephone.trim.isEmpty) throw new IllegalArgumentException("JudgeRegistration with empty mobilephone")
+      if (mail == null || mail.trim.isEmpty) throw new IllegalArgumentException("JudgeRegistration with empty mail")
+    }
+
+    def normalized: JudgeRegistration = {
+      validate()
+      val nameNorm = name.trim
+      val vornameNorm = vorname.trim
+      val nameMasculinTest = Surname.isMasculin(nameNorm)
+      val nameFeminimTest = Surname.isFeminim(nameNorm)
+      val vornameMasculinTest = Surname.isMasculin(vornameNorm)
+      val vornameFeminimTest = Surname.isFeminim(vornameNorm)
+      val nameVornameSwitched = (nameMasculinTest || nameFeminimTest) && !(vornameMasculinTest || vornameFeminimTest)
+      val defName = if (nameVornameSwitched) vornameNorm else nameNorm
+      val defVorName = if (nameVornameSwitched) nameNorm else vornameNorm
+      val feminim = nameFeminimTest || vornameFeminimTest
+      val masculin = nameMasculinTest || vornameMasculinTest
+      val defGeschlecht = geschlecht match {
+        case "M" =>
+          if(feminim && !masculin) "W" else "M"
+        case "W" =>
+          if(masculin && !feminim) "M" else "W"
+        case s: String => "M"
+      }
+      JudgeRegistration(id, vereinregistrationId, defGeschlecht, defName, defVorName, mobilephone, mail, comment, registrationTime)
+    }
+    def toWertungsrichter: Wertungsrichter = {
+      val nj = normalized
+      Wertungsrichter(
+        id = 0L,
+        js_id = "",
+        geschlecht = nj.geschlecht,
+        name = nj.name,
+        vorname = nj.vorname,
+        gebdat = None,
+        strasse = "",
+        plz = "",
+        ort = "",
+        verein = None,
+        activ = true
+      )
+    }
+    def isEmptyRegistration = geschlecht.isEmpty
+  }
+
+  object EmptyJudgeRegistration {
+    def apply(vereinregistrationId: Long) = JudgeRegistration(0L, vereinregistrationId, "", "", "", "", "", "", 0L)
+  }
+
+  case class JudgeRegistrationProgram(id: Long, judgeregistrationId: Long, vereinregistrationId: Long, program: Long, comment: String)
+  case class JudgeRegistrationProgramItem(program: String, disziplin: String, disziplinId: Long)
 }

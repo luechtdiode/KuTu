@@ -81,6 +81,7 @@ object DBService {
       , "InitDurchgangTable.sql"
       , "FixEmptyRiegeTimeTableIssue-sqllite.sql"
       , "AddAnmeldungTables-sqllite.sql"
+      , "AddAnmeldungTables-u2-sqllite.sql"
     )
 
     (!dbfile.exists() || dbfile.length() == 0, Config.importDataFrom) match {
@@ -133,6 +134,7 @@ object DBService {
             , "InitDurchgangTable.sql"
             , "FixEmptyRiegeTimeTableIssue-sqllite.sql"
             , "AddAnmeldungTables-sqllite.sql"
+            , "AddAnmeldungTables-u2-sqllite.sql"
           )
           installDB(db, sqlScripts)
         } finally {
@@ -169,6 +171,7 @@ object DBService {
         , "FixEmptyRiegeTimeTableIssue-pg.sql"
         , "AddAnmeldungTables-pg.sql"
         , "AddAnmeldungTables-u1-pg.sql"
+        , "AddAnmeldungTables-u2-pg.sql"
       )
       installDB(db, sqlScripts)
       Config.importDataFrom match {

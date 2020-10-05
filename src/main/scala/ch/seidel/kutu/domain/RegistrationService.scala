@@ -1,14 +1,13 @@
 package ch.seidel.kutu.domain
 
 import java.sql.Timestamp
-import java.text.SimpleDateFormat
-import java.time.{LocalDate, LocalDateTime}
+import java.time.LocalDateTime
 import java.util.UUID
 
-import ch.seidel.kutu.http.{EnrichedJson, Hashing}
+import ch.seidel.kutu.http.Hashing
 import slick.jdbc.PostgresProfile.api._
 
-import scala.concurrent.Await
+import scala.concurrent.{Await, Future}
 import scala.concurrent.duration.Duration
 
 trait RegistrationService extends DBService with RegistrationResultMapper with Hashing {
@@ -284,6 +283,161 @@ trait RegistrationService extends DBService with RegistrationResultMapper with H
   def removeVereinAthletReferencesRegistration(vereinId: Long): Unit = {
     Await.result(database.run {
       removeVereinAndAthletIds(vereinId)
+    }, Duration.Inf)
+  }
+
+
+  // JudgeRegistration
+
+  def createJudgeRegistration(newReg: JudgeRegistration): JudgeRegistration = {
+    val nomralizedJudge = newReg.normalized
+
+    Await.result(database.run {
+      sqlu"""
+                  insert into judgeregistration
+                  (vereinregistration_id, geschlecht, name, vorname, mobilephone, mail, comment, registrationtime)
+                  values (${newReg.vereinregistrationId},
+                          ${nomralizedJudge.geschlecht}, ${nomralizedJudge.name},
+                          ${nomralizedJudge.vorname}, ${nomralizedJudge.mobilephone}, ${nomralizedJudge.mail}, ${nomralizedJudge.comment},
+                          ${Timestamp.valueOf(LocalDateTime.now())})
+              """ >>
+        sql"""
+                  select
+                      id, vereinregistration_id,
+                      geschlecht, name, vorname, mobilephone, mail, comment,
+                      registrationtime
+                  from judgeregistration
+                  where id = (select max(ar.id)
+                              from judgeregistration ar
+                              where ar.vereinregistration_id=${newReg.vereinregistrationId}
+                                and ar.geschlecht=${nomralizedJudge.geschlecht}
+                                and ar.name=${nomralizedJudge.name}
+                                and ar.vorname=${nomralizedJudge.vorname}
+                                )
+         """.as[JudgeRegistration].head.transactionally
+    }, Duration.Inf)
+  }
+//
+//
+//  def selectJudgeRegistrationLike(registration: JudgeRegistration) = {
+//    val nomralizedJudge = registration.toWertungsrichter
+//    Await.result(database.run {
+//      sql"""
+//                  select
+//                      ar.id, ar.vereinregistration_id,
+//                      ar.geschlecht, ar.name, ar.vorname, ar.mobliephone, ar.mail,
+//                      ar.registrationtime
+//                  from judgeregistration ar
+//                  inner join vereinregistration vr on ar.vereinregistration_id = vr.id
+//                  where ar.geschlecht=${nomralizedJudge.geschlecht}
+//                    and ar.name=${nomralizedJudge.name}
+//                    and ar.vorname=${nomralizedJudge.vorname}
+//                    and ar.vereinregistration_id <> ${registration.vereinregistrationId}
+//                    and exists (select 1 from kampfrichter a where a.id = ar.judge_id and a.verein = vr.verein_id)
+//           """.as[JudgeRegistration]
+//    }, Duration.Inf).toList
+//  }
+
+  def updateJudgeRegistration(registration: JudgeRegistration) = {
+    if (registration.id == 0L) {
+      throw new IllegalArgumentException("JudgeRegistration with id=0 can not be updated")
+    }
+    registration.validate()
+    Await.result(database.run {
+      sql"""
+              update judgeregistration
+              set name=${registration.name}, vorname=${registration.vorname}, geschlecht=${registration.geschlecht},
+                  mobilephone=${registration.mobilephone}, mail=${registration.mail}, comment=${registration.comment}
+              where id=${registration.id}
+     """.as[Long].headOption
+    }, Duration.Inf)
+    registration
+  }
+
+  def selectJudgeRegistration(id: Long) = {
+    Await.result(database.run {
+      sql"""
+                  select
+                      ar.id, ar.vereinregistration_id,
+                      ar.geschlecht, ar.name, ar.vorname,
+                      ar.mobilephone, ar.mail, ar.comment,
+                      ar.registrationtime
+                  from judgeregistration ar
+                  where ar.id = ${id}
+       """.as[JudgeRegistration]
+    }, Duration.Inf).head
+  }
+
+  def selectJudgeRegistrations(id: Long) = {
+    Await.result(database.run {
+      sql"""
+                  select
+                      ar.id, ar.vereinregistration_id,
+                      ar.geschlecht, ar.name, ar.vorname,
+                      ar.mobilephone, ar.mail, ar.comment,
+                      ar.registrationtime
+                  from judgeregistration ar
+        where ar.vereinregistration_id = $id
+        order by ar.registrationtime asc
+       """.as[JudgeRegistration]
+    }, Duration.Inf).toList
+  }
+
+  def deleteJudgeRegistration(id: Long): Unit = {
+    Await.result(database.run {
+      sqlu""" delete from judgeregistration_pgm where judgeregistration_id = $id""" >>
+      sqlu""" delete from judgeregistration where id = $id"""
+    }, Duration.Inf)
+  }
+
+  def listJudgeRegistrationProgramItems(programme: Seq[Long]): Future[Vector[JudgeRegistrationProgramItem]] = {
+    // program: String, disziplin: String, disziplinId: Long
+    database.run{
+      val pgms = programme.mkString("(", ",", ")")
+      sql""" select distinct p.name, d.name, wd.id
+             from disziplin d
+             inner join wettkampfdisziplin wd on d.id = wd.disziplin_id
+             inner join programm p on p.id = wd.programm_id
+             where wd.programm_id in #$pgms
+             order by p.ord, wd.ord""".as[JudgeRegistrationProgramItem]
+    }
+  }
+
+  def listJudgePgmRegistrations(judgeId: Long) = {
+    Await.result(database.run {
+      sql"""
+                  select
+                      ar.id, ar.vereinregistration_id,
+                      ar.judgeregistration_id,
+                      ar.wettkampfdisziplin_id,
+                      ar.comment
+                  from judgeregistration_pgm ar
+        where ar.judgeregistration_id = $judgeId
+        order by ar.wettkampfdisziplin_id asc
+       """.as[JudgeRegistrationProgram]
+    }, Duration.Inf).toList
+  }
+
+  def saveJudgePgmRegistrations(judgeId: Long, wettkampfDisziplinIds: List[Long]) = {
+    val vereinregistrationId = selectJudgeRegistration(judgeId).id
+    Await.result(database.run {
+      sqlu""" delete from judgeregistration_pgm where id = $judgeId""" >>
+        DBIO.sequence(for{wkid <- wettkampfDisziplinIds} yield
+          sqlu"""
+                  insert into judgeregistration_pgm
+                  (vereinregistration_id, judgeregistration_id, wettkampfdisziplin_id, comment)
+                  values (${vereinregistrationId}, $judgeId}, ${wkid}, ${""})
+              """) >>
+          sql"""  select id, vereinregistration_id, judgeregistration_id, wettkampfdisziplin_id, comment
+                  from judgeregistration_pgm
+                  where judgeregistration_id=$judgeId
+             """.as[JudgeRegistrationProgram].head.transactionally
+    }, Duration.Inf)
+  }
+
+  def deleteJudgePgmRegistration(id: Long): Unit = {
+    Await.result(database.run {
+      sqlu""" delete from judgeregistration_pgm where id = $id"""
     }, Duration.Inf)
   }
 }
