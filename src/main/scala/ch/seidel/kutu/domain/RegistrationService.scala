@@ -435,6 +435,18 @@ trait RegistrationService extends DBService with RegistrationResultMapper with H
     }, Duration.Inf)
   }
 
+  def loadAllJudgesOfCompetition(wettkampf: UUID): Map[Registration,List[JudgeRegistration]] = {
+    (for {
+      reg <- selectRegistrationsOfWettkampf(wettkampf)
+      judge <- selectJudgeRegistrations(reg.id)
+    } yield {
+      (reg, judge)
+    }).foldLeft(Map[Registration,List[JudgeRegistration]]()) {(acc, entry) =>
+      val registrations = acc.getOrElse(entry._1, List[JudgeRegistration]())
+      acc + (entry._1 -> (registrations :+ entry._2))
+    }
+  }
+
   def deleteJudgePgmRegistration(id: Long): Unit = {
     Await.result(database.run {
       sqlu""" delete from judgeregistration_pgm where id = $id"""

@@ -1,14 +1,12 @@
 package ch.seidel.kutu.renderer
 
 import java.io.File
-import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
 
-import ch.seidel.kutu.domain.{GeraeteRiege, Registration, Wettkampf, toTimeFormat}
+import ch.seidel.kutu.domain.{JudgeRegistration, Registration, Verein, Wettkampf}
 import ch.seidel.kutu.renderer.PrintUtil._
-import org.slf4j.LoggerFactory
 
-trait CompetitionsClubsToHtmlRenderer {
+trait CompetitionsJudgeToHtmlRenderer {
 
   private val intro = """<html>
     <head>
@@ -105,24 +103,23 @@ trait CompetitionsClubsToHtmlRenderer {
     </html>
   """
 
-  private def anmeldeListeProVerein(wettkampf: Wettkampf, vereine: List[Registration], logo: File) = {
+  private def anmeldeListeProVerein(wettkampf: Wettkampf, verein: Registration, anmeldungenCnt: Int, wrs: Seq[JudgeRegistration], logo: File) = {
     val logoHtml = if (logo.exists()) s"""<img class=logo src="${logo.imageSrcForWebEngine}" title="Logo"/>""" else ""
 
-    val d = vereine.map{ registration =>
-      s"""<tr class="athletRow"><td>${registration.vereinname}</td><td>(${registration.verband})</td><td class="large">${registration.respName} ${registration.respVorname}</td><td>${registration.mobilephone}</td><td>${registration.mail}</td><td>${
-        DateTimeFormatter.ofPattern("dd-MM-yyyy HH:mm").format(new java.sql.Timestamp(registration.registrationTime).toLocalDateTime)
-      }</td><td class="totalCol">&nbsp;</td></tr>"""
+    val d = wrs.map{ registration =>
+      s"""<tr class="athletRow"><td class="large">${registration.name} ${registration.vorname}</td><td>${registration.mobilephone}</td><td>${registration.mail}</td><td class="totalCol">${
+        registration.comment.split("\n").toList.map(xml.Utility.escape(_)).mkString("", "<br>", "")}</td></tr>"""
     }
     val dt = d.mkString("", "\n", "\n")
     s"""<div class=notenblatt>
       <div class=headline>
         $logoHtml
         <div class=title><h4>${wettkampf.easyprint}</h4></div>
-        <div class=programm>Vereinsverantwortliche</br></div>
+        <div class=programm>${anmeldungenCnt} Wertungsrichter, gestellt durch ${verein.toVerein.easyprint}</br></div>
       </div>
       <div class="showborder">
         <table width="100%">
-          <tr class="totalRow heavyRow"><td>Vereinname</td><td>Verband</td><td>Verantwortlicher</td><td>Mobil-Telefon</td><td>EMail</td><td>Registriert am</td><td class="totalCol">Bemerkung</td></tr>
+          <tr class="totalRow heavyRow"><td>Wertungsrichter/-in</td><td>Mobil-Telefon</td><td>EMail</td><td class="totalCol">Bemerkung</td></tr>
           ${dt}
         </table>
       </div>
@@ -130,14 +127,14 @@ trait CompetitionsClubsToHtmlRenderer {
   """
   }
 
-  def toHTMLasClubRegistrationsList(wettkampf: Wettkampf, vereine: List[Registration], logo: File, rowsPerPage: Int = 28): String = {
-    val sortedList = vereine.sortBy(_.vereinname)
+  def toHTMLasJudgeRegistrationsList(wettkampf: Wettkampf, vereine: Map[Registration,Seq[JudgeRegistration]], logo: File, rowsPerPage: Int = 28): String = {
+    val sortedList = vereine.keys.toList.sortBy(_.vereinname)
     val rawpages = for {
-      a4seitenmenge <- if(rowsPerPage == 0) sortedList.sliding(sortedList.size, sortedList.size) else sortedList.sliding(rowsPerPage, rowsPerPage)
+      verein <- sortedList
+      a4seitenmenge <- if(rowsPerPage == 0) vereine(verein).sliding(vereine(verein).size, vereine(verein).size) else vereine(verein).sliding(rowsPerPage, rowsPerPage)
+    } yield {
+      anmeldeListeProVerein(wettkampf, verein, vereine(verein).size, a4seitenmenge, logo)
     }
-      yield {
-        anmeldeListeProVerein(wettkampf, a4seitenmenge, logo)
-      }
 
     val pages = rawpages.mkString("</li></ul><ul><li>")
     intro + pages + outro

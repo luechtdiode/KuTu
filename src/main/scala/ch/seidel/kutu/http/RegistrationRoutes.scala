@@ -1,5 +1,7 @@
 package ch.seidel.kutu.http
 
+import java.util.UUID
+
 import spray.json._
 import akka.http.scaladsl.marshallers.sprayjson.SprayJsonSupport
 import akka.http.scaladsl.marshalling.ToResponseMarshallable
@@ -7,18 +9,18 @@ import akka.http.scaladsl.model.{ContentTypes, HttpEntity, HttpResponse, StatusC
 import akka.http.scaladsl.server.Route
 import akka.http.scaladsl.unmarshalling.Unmarshal
 import akka.util.{ByteString, Timeout}
-import ch.seidel.kutu.Config
-import ch.seidel.kutu.Config.remoteAdminBaseUrl
+import ch.seidel.kutu.{Config, KuTuServer}
+import ch.seidel.kutu.Config.{homedir, remoteAdminBaseUrl}
 import ch.seidel.kutu.akka.{AskRegistrationSyncActions, CompetitionRegistrationClientActor, RegistrationChanged, RegistrationSyncActions}
 import ch.seidel.kutu.domain.{AthletRegistration, AthletView, JudgeRegistration, KutuService, NewRegistration, ProgrammRaw, Registration, Verein, Wettkampf, dateToExportedStr}
-import ch.seidel.kutu.renderer.{CompetitionsClubsToHtmlRenderer, PrintUtil}
+import ch.seidel.kutu.renderer.{CompetitionsClubsToHtmlRenderer, CompetitionsJudgeToHtmlRenderer, PrintUtil}
 import ch.seidel.kutu.view.{RegistrationAdmin, WettkampfInfo}
 
 import scala.concurrent.duration.{Duration, DurationInt}
 import scala.concurrent.{Await, Future}
 
 trait RegistrationRoutes extends SprayJsonSupport with JwtSupport with JsonSupport with AuthSupport with RouterLogging
-  with KutuService with CompetitionsClubsToHtmlRenderer with IpToDeviceID with CIDSupport {
+  with KutuService with CompetitionsClubsToHtmlRenderer with CompetitionsJudgeToHtmlRenderer with IpToDeviceID with CIDSupport {
 
   import Core._
   import spray.json.DefaultJsonProtocol._
@@ -66,6 +68,14 @@ trait RegistrationRoutes extends SprayJsonSupport with JwtSupport with JsonSuppo
     }
     , Duration.Inf)
 
+  def getAllJudgesRemote(p: Wettkampf): String = Await.result(
+    httpGetClientRequest(s"$remoteAdminBaseUrl/api/registrations/${p.uuid.get}/judges").flatMap {
+      case HttpResponse(StatusCodes.OK, headers, entity, _) =>
+        Unmarshal(entity).to[String]
+      case _ => Future("")
+    }
+    , Duration.Inf)
+
   lazy val registrationRoutes: Route = {
     (handleCID & extractClientIP) { (clientId, ip) =>
       pathPrefix("registrations" / JavaUUID) { competitionId =>
@@ -79,8 +89,6 @@ trait RegistrationRoutes extends SprayJsonSupport with JwtSupport with JsonSuppo
                 case None =>
                   complete(selectRegistrationsOfWettkampf(competitionId))
                 case _ =>
-                  val logodir = new java.io.File(Config.homedir + "/" + wettkampf.easyprint.replace(" ", "_"))
-                  val logofile = PrintUtil.locateLogoFile(logodir)
                   complete(ToResponseMarshallable(HttpEntity(ContentTypes.`text/html(UTF-8)`,toHTMLasClubRegistrationsList(wettkampf, selectRegistrationsOfWettkampf(competitionId), logofile))))
               }
             }
@@ -114,6 +122,17 @@ trait RegistrationRoutes extends SprayJsonSupport with JwtSupport with JsonSuppo
               complete(listJudgeRegistrationProgramItems(readWettkampfLeafs(wettkampf.programmId).map(p => p.id)))
             }
           }
+        } ~ pathPrefix("judges") {
+          authenticated() { userId =>
+            pathEndOrSingleSlash {
+              get { // list Judges per club
+                complete(Future {
+                  toHTMLasJudgeRegistrationsList(wettkampf, loadAllJudgesOfCompetition(wettkampf.uuid.map(UUID.fromString(_)).get), logofile)
+                }
+                )
+              }
+            }
+          }
         } ~ pathPrefix(LongNumber) { registrationId =>
           authenticated() { userId =>
             if (userId.equals(competitionId.toString)) {
@@ -124,7 +143,7 @@ trait RegistrationRoutes extends SprayJsonSupport with JwtSupport with JsonSuppo
                 pathEndOrSingleSlash {
                   get { // list Athletes
                     complete(
-                      selectAthletRegistrations(registrationId) // also judges
+                      selectAthletRegistrations(registrationId)
                     )
                   }
                 }

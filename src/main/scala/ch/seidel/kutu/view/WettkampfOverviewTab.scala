@@ -7,7 +7,7 @@ import ch.seidel.kutu.Config.{homedir, remoteHostOrigin}
 import ch.seidel.kutu.KuTuApp.{controlsView, selectedWettkampfSecret, stage}
 import ch.seidel.kutu.domain._
 import ch.seidel.kutu.renderer.PrintUtil.FilenameDefault
-import ch.seidel.kutu.renderer.{PrintUtil, WettkampfOverviewToHtmlRenderer}
+import ch.seidel.kutu.renderer.{CompetitionsJudgeToHtmlRenderer, PrintUtil, WettkampfOverviewToHtmlRenderer}
 import ch.seidel.kutu.{ConnectionStates, KuTuApp, KuTuServer}
 import javafx.scene.text.FontSmoothingType
 import scalafx.Includes._
@@ -25,7 +25,8 @@ import scalafx.stage.FileChooser.ExtensionFilter
 
 import scala.concurrent.Future
 
-class WettkampfOverviewTab(wettkampf: WettkampfView, override val service: KutuService) extends Tab with TabWithService with WettkampfOverviewToHtmlRenderer {
+class WettkampfOverviewTab(wettkampf: WettkampfView, override val service: KutuService) extends Tab with TabWithService
+  with WettkampfOverviewToHtmlRenderer with CompetitionsJudgeToHtmlRenderer {
 
   var subscription: List[Subscription] = List.empty
 
@@ -137,6 +138,35 @@ class WettkampfOverviewTab(wettkampf: WettkampfView, override val service: KutuS
 //              ConnectionStates.connectedWithProperty
 //            )) choose true otherwise false
             onAction = (e: ActionEvent) => importAnmeldungen(e)
+          },
+          new Button {
+            text = "Online-Anmeldungen der Wertungsrichter ..."
+            disable <== when(Bindings.createBooleanBinding(() =>
+              !wettkampf.toWettkampf.hasSecred(homedir, remoteHostOrigin)
+                || !ConnectionStates.connectedWithProperty.value.equals(wettkampf.uuid.getOrElse("")),
+              ConnectionStates.connectedWithProperty,
+              selectedWettkampfSecret,
+              controlsView.selectionModel().selectedItem)
+            ) choose true otherwise false
+            //            disable <== when(Bindings.createBooleanBinding(() =>
+            //              !wettkampf.toWettkampf.hasSecred(homedir, remoteHostOrigin),
+            //              ConnectionStates.connectedWithProperty
+            //            )) choose true otherwise false
+            onAction = (event: ActionEvent) => {
+              import scala.concurrent.ExecutionContext.Implicits.global
+              val filename = "WRAnmeldungen_" + wettkampf.easyprint.replace(" ", "_") + ".html"
+              val dir = new java.io.File(homedir + "/" + wettkampf.easyprint.replace(" ", "_"))
+              if(!dir.exists()) {
+                dir.mkdirs();
+              }
+
+              def generate = (lpp: Int) => KuTuApp.invokeAsyncWithBusyIndicator {Future{
+                KuTuServer.getAllJudgesRemote(wettkampf.toWettkampf)
+              }}
+              Platform.runLater {
+                PrintUtil.printDialogFuture("Wertungsrichter Online-Anmeldungen drucken ...", FilenameDefault(filename, dir), false, generate, orientation = PageOrientation.Portrait)(event)
+              }
+            }
           },
           new Button {
             text = "Übersicht drucken ..."
