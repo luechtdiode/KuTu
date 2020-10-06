@@ -474,7 +474,7 @@ export class BackendService extends WebsocketService {
     }
 
     clublogin(username, password) {
-      localStorage.removeItem('auth_clubid');
+      this.clublogout();
       const headers = new HttpHeaders();
       const loader = this.startLoading('Login wird verarbeitet. Bitte warten ...',
         this.http.options(backendUrl + 'api/login', {

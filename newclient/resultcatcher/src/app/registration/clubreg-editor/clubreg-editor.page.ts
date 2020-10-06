@@ -2,7 +2,7 @@ import { Component, OnInit, NgZone } from '@angular/core';
 import { ClubRegistration, NewClubRegistration, SyncAction } from 'src/app/backend-types';
 import { ActivatedRoute } from '@angular/router';
 import { BackendService } from 'src/app/services/backend.service';
-import { NavController, AlertController } from '@ionic/angular';
+import { NavController, AlertController, ActionSheetController } from '@ionic/angular';
 import { take } from 'rxjs/operators';
 
 @Component({
@@ -17,6 +17,7 @@ export class ClubregEditorPage implements OnInit {
     private route: ActivatedRoute,
     public backendService: BackendService,
     private alertCtrl: AlertController,
+    public actionSheetController: ActionSheetController,
     private zone: NgZone
     ) {
   }
@@ -45,6 +46,47 @@ export class ClubregEditorPage implements OnInit {
         this.updateUI({mobilephone: '+417'} as NewClubRegistration);
       }
     });
+  }
+
+  async presentActionSheet() {
+    const actionSheet = await this.actionSheetController.create({
+      header: 'Anmeldungen',
+      cssClass: 'my-actionsheet-class',
+      buttons: [{
+        text: 'Athlet & Athletinnen',
+        icon: 'list',
+        handler: () => {
+          this.editAthletRegistrations();
+        }
+      }, {
+        text: 'Wertungsrichter',
+        icon: 'glasses',
+        handler: () => {
+          this.editJudgeRegistrations();
+        }
+      }, {
+        text: 'Kopieren aus anderem Wettkampf',
+        icon: 'share',
+        handler: () => {
+          console.log('Share clicked');
+        }
+      }, {
+        text: 'Registrierung löschen',
+        role: 'destructive',
+        icon: 'trash',
+        handler: () => {
+          this.delete();
+        }
+      }, {
+        text: 'Abbrechen',
+        icon: 'close',
+        role: 'cancel',
+        handler: () => {
+          console.log('Cancel clicked');
+        }
+      }]
+    });
+    await actionSheet.present();
   }
 
   editable() {

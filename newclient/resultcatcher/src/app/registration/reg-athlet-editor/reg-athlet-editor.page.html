@@ -15,7 +15,7 @@
         <ion-avatar slot="start">
           <img src="assets/imgs/athlete.png">
         </ion-avatar><ion-label>Athlet / Athletin</ion-label>
-        <ion-select *ngIf="registration.id === 0" placeholder='Auswahl aus Liste' name="clubAthletid" [(ngModel)]='selectedClubAthletId' okText='Okay' cancelText='Abbrechen'>
+        <ion-select *ngIf="registration.id === 0 && clubAthletList.length > 0" placeholder='Auswahl aus Liste' name="clubAthletid" [(ngModel)]='selectedClubAthletId' okText='Okay' cancelText='Abbrechen'>
           <ion-select-option *ngFor='let athlet of clubAthletList' [value]='athlet.athletId'>
             <ion-avatar slot="end">
               <img src="assets/imgs/athlete.png">
