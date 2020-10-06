@@ -50,7 +50,7 @@ export class RegJudgeEditorPage  implements OnInit {
           this.backendService.loadJudgeRegistrations(this.wkId, this.regId).subscribe(regs => {
             this.updateUI(regs.find(judge => judge.id === this.judgeId));
           });
-        } else {  
+        } else {
           this.updateUI({
             id: 0,
             vereinregistrationId: this.regId,
@@ -58,6 +58,7 @@ export class RegJudgeEditorPage  implements OnInit {
             vorname: '',
             mobilephone: '+417',
             mail: '',
+            comment: '',
             registrationTime: 0
           } as JudgeRegistration);
         }

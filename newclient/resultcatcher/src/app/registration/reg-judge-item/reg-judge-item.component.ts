@@ -1,3 +1,4 @@
+import { isNgTemplate } from '@angular/compiler';
 import { Component, EventEmitter, Input, OnInit, Output } from '@angular/core';
 import { JudgeRegistration, JudgeRegistrationProgramItem } from 'src/app/backend-types';
 
@@ -42,5 +43,9 @@ export class RegJudgeItemComponent implements OnInit {
 
   getProgrammText(item: JudgeRegistrationProgramItem) {
     return item.program;
+  }
+
+  getCommentLines() {
+    return this.judgeregistration.comment.split('\n');
   }
 }

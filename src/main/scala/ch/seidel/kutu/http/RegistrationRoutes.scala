@@ -285,7 +285,7 @@ trait RegistrationRoutes extends SprayJsonSupport with JwtSupport with JsonSuppo
                         selectJudgeRegistrations(registrationId)
                       )
                     } ~ post { // create judges
-                      log.info("post athletregistration")
+                      log.info("post judgesregistration")
                       entity(as[JudgeRegistration]) { judgeRegistration =>
                         complete {
                           try {
@@ -307,9 +307,9 @@ trait RegistrationRoutes extends SprayJsonSupport with JwtSupport with JsonSuppo
                           selectJudgeRegistration(id)
                         )
                       } ~ put { // update judges
-                        entity(as[JudgeRegistration]) { athletRegistration =>
+                        entity(as[JudgeRegistration]) { judgesRegistration =>
                           complete(Future {
-                            val reg = updateJudgeRegistration(athletRegistration)
+                            val reg = updateJudgeRegistration(judgesRegistration)
                             CompetitionRegistrationClientActor.publish(RegistrationChanged(wettkampf.uuid.get), clientId)
                             reg
                           })
