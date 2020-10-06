@@ -135,12 +135,12 @@ trait WettkampfOverviewToHtmlRenderer {
   """
 
   private def blatt(wettkampf: WettkampfView, programme: Seq[(String, Int, Int, Int)], vereinRows: List[(String, Map[String, (Int, Int)], Int, Int)], logo: File) = {
-    val programHeader1 = programme.map(p => p._1)
+    val programHeader1 = programme.map(p => escaped(p._1))
       .mkString("<th class='blockstart' colspan='2'>", "</th><th class='blockstart' colspan='2'>", "</th>")
     val programHeader2 = programme.map(_ => "Ti</th><th>Tu")
       .mkString("<th class='blockstart'>", "</th><th class='blockstart'>", "</th>")
     val rows = vereinRows.map(v =>
-      s"""<tr><td class='data'>${v._1}</td>${
+      s"""<tr><td class='data'>${escaped(v._1)}</td>${
         programme.map(p =>
           s"""${
             v._2.getOrElse(p._1, (0,0))._2
@@ -218,7 +218,7 @@ trait WettkampfOverviewToHtmlRenderer {
     s"""<div class=blatt>
       <div class=headline>
         $logoHtml
-        <h1>Wettkampf-Übersicht</h1><h2>${wettkampf.easyprint}</h2></div>
+        <h1>Wettkampf-Übersicht</h1><h2>${escaped(wettkampf.easyprint)}</h2></div>
       </div>
       <h2>Anmeldungen</h2>
       <p>Link für die Online-Anmeldung zum Versenden an die Vereinsverantwortlichen oder für in die Wettkampf-Ausschreibung:<br>

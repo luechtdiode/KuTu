@@ -110,14 +110,14 @@ trait KategorieTeilnehmerToHtmlRenderer {
     val logoHtml = if (logo.exists()) s"""<img class=logo src="${logo.imageSrcForWebEngine}" title="Logo"/>""" else ""
       
     val d = kandidaten.map{kandidat =>
-      s"""<tr class="athletRow"><td>${kandidat.verein}</td><td class="large">${kandidat.name} ${kandidat.vorname} (${kandidat.jahrgang})</td><td>${kandidat.durchgang}</td><td>${kandidat.start}</td><td class="totalCol">&nbsp;</td></tr>"""
+      s"""<tr class="athletRow"><td>${escaped(kandidat.verein)}</td><td class="large">${escaped(kandidat.name)} ${escaped(kandidat.vorname)} (${escaped(kandidat.jahrgang)})</td><td>${escaped(kandidat.durchgang)}</td><td>${escaped(kandidat.start)}</td><td class="totalCol">&nbsp;</td></tr>"""
     }
     val dt = d.mkString("", "\n", "\n")
     s"""<div class=notenblatt>
       <div class=headline>
         $logoHtml
-        <div class=title><h4>${kandidaten.head.wettkampfTitel}</h4></div>
-        <div class=programm>${kategorie}</br></div>
+        <div class=title><h4>${escaped(kandidaten.head.wettkampfTitel)}</h4></div>
+        <div class=programm>${escaped(kategorie)}</br></div>
 
       </div>
       <div class="showborder">
@@ -134,14 +134,14 @@ trait KategorieTeilnehmerToHtmlRenderer {
     val logoHtml = if (logo.exists()) s"""<img class=logo src="${logo.imageSrcForWebEngine}" title="Logo"/>""" else ""
 
     val d = kandidaten.map{kandidat =>
-      s"""<tr class="athletRow"><td>${kandidat.programm}</td><td class="large">${kandidat.name} ${kandidat.vorname} (${kandidat.jahrgang})</td><td>${kandidat.durchgang}</td><td>${kandidat.start}</td><td class="totalCol">&nbsp;</td></tr>"""
+      s"""<tr class="athletRow"><td>${escaped(kandidat.programm)}</td><td class="large">${escaped(kandidat.name)} ${escaped(kandidat.vorname)} (${escaped(kandidat.jahrgang)})</td><td>${escaped(kandidat.durchgang)}</td><td>${escaped(kandidat.start)}</td><td class="totalCol">&nbsp;</td></tr>"""
     }
     val dt = d.mkString("", "\n", "\n")
     s"""<div class=notenblatt>
       <div class=headline>
         $logoHtml
-        <div class=title><h4>${kandidaten.head.wettkampfTitel}</h4></div>
-        <div class=programm>${verein}</br></div>
+        <div class=title><h4>${escaped(kandidaten.head.wettkampfTitel)}</h4></div>
+        <div class=programm>${escaped(verein)}</br></div>
 
       </div>
       <div class="showborder">
@@ -206,7 +206,7 @@ trait KategorieTeilnehmerToHtmlRenderer {
 
   def toHTMLasVereinsListe(kandidaten: Seq[Kandidat], logo: File, rowsPerPage: Int = 28): String = {
     val kandidatenPerKategorie = kandidaten.sortBy { k =>
-      val krit = f"${k.programm}%-40s ${k.name}%-40s ${k.vorname}%-40s"
+      val krit = f"${escaped(k.programm)}%-40s ${escaped(k.name)}%-40s ${escaped(k.vorname)}%-40s"
       //logger.debug(krit)
       krit
     }.groupBy(k => k.verein)

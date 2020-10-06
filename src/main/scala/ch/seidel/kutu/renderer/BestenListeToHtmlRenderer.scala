@@ -102,14 +102,14 @@ trait BestenListeToHtmlRenderer {
 
   private def bestenListe(wertungen: Seq[WertungView], logo: File) = {
     val d = wertungen.map{wertung =>
-      s"""<tr class="athletRow"><td>${wertung.athlet.verein.map(_.name).getOrElse("")}</td><td class="large">${wertung.athlet.name} ${wertung.athlet.vorname}</td><td class="large">${wertung.wettkampfdisziplin.disziplin.name}, ${wertung.wettkampfdisziplin.programm.name}</td><td class="totalCol">${wertung.endnote}</td></tr>"""
+      s"""<tr class="athletRow"><td>${escaped(wertung.athlet.verein.map(_.name).getOrElse(""))}</td><td class="large">${escaped(wertung.athlet.name)} ${escaped(wertung.athlet.vorname)}</td><td class="large">${wertung.wettkampfdisziplin.disziplin.name}, ${wertung.wettkampfdisziplin.programm.name}</td><td class="totalCol">${wertung.endnote}</td></tr>"""
     }
     val dt = d.mkString("", "\n", "\n")
     val logoHtml = if (logo.exists()) s"""<img class=logo src="${logo.imageSrcForWebEngine}" title="Logo"/>""" else ""
     s"""<div class=notenblatt>
       <div class=headline>
         $logoHtml
-        <h4>Besten-Noten, ${wertungen.head.wettkampf.titel}</h4>
+        <h4>Besten-Noten, ${escaped(wertungen.head.wettkampf.titel)}</h4>
       </div>
       <div class="showborder">
         <table width="100%">

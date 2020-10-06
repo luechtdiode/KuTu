@@ -107,15 +107,15 @@ trait CompetitionsJudgeToHtmlRenderer {
     val logoHtml = if (logo.exists()) s"""<img class=logo src="${logo.imageSrcForWebEngine}" title="Logo"/>""" else ""
 
     val d = wrs.map{ registration =>
-      s"""<tr class="athletRow"><td class="large">${registration.name} ${registration.vorname}</td><td>${registration.mobilephone}</td><td>${registration.mail}</td><td class="totalCol">${
-        registration.comment.split("\n").toList.map(xml.Utility.escape(_)).mkString("", "<br>", "")}</td></tr>"""
+      s"""<tr class="athletRow"><td class="large">${escaped(registration.name)} ${escaped(registration.vorname)}</td><td>${escaped(registration.mobilephone)}</td><td>${escaped(registration.mail)}</td><td class="totalCol">${
+        escaped(registration.comment)}</td></tr>"""
     }
     val dt = d.mkString("", "\n", "\n")
     s"""<div class=notenblatt>
       <div class=headline>
         $logoHtml
-        <div class=title><h4>${wettkampf.easyprint}</h4></div>
-        <div class=programm>${anmeldungenCnt} Wertungsrichter, gestellt durch ${verein.toVerein.easyprint}</br></div>
+        <div class=title><h4>${escaped(wettkampf.easyprint)}</h4></div>
+        <div class=programm>${anmeldungenCnt} Wertungsrichter, gestellt durch ${escaped(verein.toVerein.easyprint)}</br></div>
       </div>
       <div class="showborder">
         <table width="100%">

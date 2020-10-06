@@ -149,10 +149,10 @@ trait ScoreToHtmlRenderer {
   def firstSite(title: String, logoFile: File) = intro + (if (logoFile.exists) s"""
       <div class='headline'>
         <img class='logo' src="${logoFile.imageSrcForWebEngine}" title="Logo"/>
-        <h1>Rangliste</h1><h2>${title}</h2></div>
+        <h1>Rangliste</h1><h2>${escaped(title)}</h2></div>
       </div>\n""" else s"""
       <div class='headline'>
-        <h1>Rangliste</h1><h2>${title}</h2></div>
+        <h1>Rangliste</h1><h2>${escaped(title)}</h2></div>
       </div>\n""")
         
   val nextSite = "</li></ul><ul><li>\n"
@@ -194,13 +194,13 @@ trait ScoreToHtmlRenderer {
       gsBlock.append(firstSite(title, logoFile))
       val subtitles = collectFilterTitles(gs, false) -- falsePositives
       if (subtitles.nonEmpty) {
-        gsBlock.append(s"<em>${subtitles.mkString(", ")}</em><br>")
+        gsBlock.append(s"<em>${escaped(subtitles.mkString(", "))}</em><br>")
       }
       firstSiteRendered.set(false)
     }
     val gsSize = gs.size
     for (c <- gs) {
-      val levelText = if ((gsSize == 1 && !falsePositives.contains(c.groupKey.capsulatedprint)) || c.groupKey.isInstanceOf[NullObject]) "" else c.groupKey.capsulatedprint
+      val levelText = if ((gsSize == 1 && !falsePositives.contains(escaped(c.groupKey.capsulatedprint))) || c.groupKey.isInstanceOf[NullObject]) "" else escaped(c.groupKey.capsulatedprint)
       c match {
         case gl: GroupLeaf =>
           if(openedTitle.startsWith("<h")) {
@@ -235,9 +235,9 @@ trait ScoreToHtmlRenderer {
               }
               th match {
                 case gc: WKGroupCol =>
-                  gsBlock.append(s"<th $style colspan=${gc.cols.size}>${gc.text}</th>")
+                  gsBlock.append(s"<th $style colspan=${gc.cols.size}>${escaped(gc.text)}</th>")
                 case _ =>
-                  gsBlock.append(s"<th $style rowspan=2>${th.text}</th>")
+                  gsBlock.append(s"<th $style rowspan=2>${escaped(th.text)}</th>")
               }
             }
             gsBlock.append(s"</tr><tr>\n")
@@ -247,11 +247,11 @@ trait ScoreToHtmlRenderer {
                   var first = true
                   gc.cols.foreach { thc =>
                     if(first) {
-                      gsBlock.append(s"<th class='blockstart'>${thc.text}</th>")
+                      gsBlock.append(s"<th class='blockstart'>${escaped(thc.text)}</th>")
                       first = false
                     }
                     else {
-                      gsBlock.append(s"<th>${thc.text}</th>")
+                      gsBlock.append(s"<th>${escaped(thc.text)}</th>")
                     }
                   }
                 case _ =>
@@ -272,13 +272,13 @@ trait ScoreToHtmlRenderer {
                     val t = c.valueMapper(row)
                     val smallfont = if(t.length() > 17) " sf2" else if(t.length() > 13) " sf1" else ""
                     if (c.styleClass.contains("hintdata")) {
-                      gsBlock.append(s"<td class='data blockstart$smallfont'><div class='hintdata'>${c.valueMapper(row)}</div></td>")
+                      gsBlock.append(s"<td class='data blockstart$smallfont'><div class='hintdata'>${escaped(t)}</div></td>")
                     }
                     else if (c.styleClass.contains("data")) {
-                      gsBlock.append(s"<td class='data blockstart$smallfont'>${c.valueMapper(row)}</td>")
+                      gsBlock.append(s"<td class='data blockstart$smallfont'>${escaped(t)}</td>")
                     }
                     else {
-                      gsBlock.append(s"<td class='data blockstart$smallfont'><div class='valuedata'>${c.valueMapper(row)}</div></td>")
+                      gsBlock.append(s"<td class='data blockstart$smallfont'><div class='valuedata'>${escaped(t)}</div></td>")
                     }
                   case gc: WKGroupCol =>
                     var first = true
@@ -289,14 +289,15 @@ trait ScoreToHtmlRenderer {
                           "data blockstart"
                         }
                         else "data"
+                      val t = escaped(c.valueMapper(row))
                       if (c.styleClass.contains("hintdata")) {
-                        gsBlock.append(s"<td class='$style'><div class='hintdata'>${c.valueMapper(row)}</div></td>")
+                        gsBlock.append(s"<td class='$style'><div class='hintdata'>$t</div></td>")
                       }
                       else if (c.styleClass.contains("data")) {
-                        gsBlock.append(s"<td class='$style'>${c.valueMapper(row)}</td>")
+                        gsBlock.append(s"<td class='$style'>$t</td>")
                       }
                       else {
-                        gsBlock.append(s"<td class='$style'><div class='valuedata'>${c.valueMapper(row)}</div></td>")
+                        gsBlock.append(s"<td class='$style'><div class='valuedata'>$t</div></td>")
                       }
                     }
                 }

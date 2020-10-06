@@ -118,21 +118,21 @@ trait NotenblattToHtmlRenderer {
 // for loading logo see https://stackoverflow.com/questions/26447451/javafx-in-webview-img-tag-is-not-loading-local-images
   private def notenblattForGeTu(kandidat: Kandidat, logo: File) = {
     val d = kandidat.diszipline.zip(Range(1, kandidat.diszipline.size+1)).map{dis =>
-      s"""<tr class="geraeteRow"><td class="large">${dis._2}. ${dis._1.easyprint}</td><td>&nbsp;</td><td>&nbsp;</td><td class="totalCol">&nbsp;</td></tr>"""
+      s"""<tr class="geraeteRow"><td class="large">${escaped(dis._2)}. ${escaped(dis._1.easyprint)}</td><td>&nbsp;</td><td>&nbsp;</td><td class="totalCol">&nbsp;</td></tr>"""
     }
     val dt = d.updated(d.size-1, d.last.replace("geraeteRow", "totalRow")).mkString("", "\n", "\n")
     val logoHtml = (if (logo.exists) s"""<img class=logo src="${logo.imageSrcForWebEngine}" title="Logo"/>""" else s"")
     s"""<div class=notenblatt>
       <div class=headline>
         $logoHtml
-        <div class='programm'>${kandidat.programm}</br><div class='geschlecht'>${kandidat.geschlecht}</div></div>
+        <div class='programm'>${escaped(kandidat.programm)}</br><div class='geschlecht'>${escaped(kandidat.geschlecht)}</div></div>
       </div>
-      <h1>${kandidat.wettkampfTitel}</h1>
+      <h1>${escaped(kandidat.wettkampfTitel)}</h1>
       <table class='dataTable' width="100%">
-        <tr><td class='dataTd' width="30%">Name:</td><td>${kandidat.name}</td></tr>
-        <tr><td class='dataTd'>Vorname:</td><td>${kandidat.vorname}</td></tr>
-        <tr><td class='dataTd'>Jahrgang:</td><td>${kandidat.jahrgang}</td></tr>
-        <tr><td class='dataTd'>Verein:</td><td>${kandidat.verein}</td></tr>
+        <tr><td class='dataTd' width="30%">Name:</td><td>${escaped(kandidat.name)}</td></tr>
+        <tr><td class='dataTd'>Vorname:</td><td>${escaped(kandidat.vorname)}</td></tr>
+        <tr><td class='dataTd'>Jahrgang:</td><td>${escaped(kandidat.jahrgang)}</td></tr>
+        <tr><td class='dataTd'>Verein:</td><td>${escaped(kandidat.verein)}</td></tr>
       </table>
       <div class="showborder">
         <table class='dataTable' width="100%">
@@ -148,17 +148,17 @@ trait NotenblattToHtmlRenderer {
 
   private def notenblattForATT(kandidat: Kandidat, logo: File) = {
     val d = kandidat.diszipline.zip(Range(1, kandidat.diszipline.size+1)).map{dis =>
-      s"""<tr class="geraeteRow"><td class="large dataTd">${dis._2}. ${dis._1.easyprint}</td><td class="totalCol dataTd">&nbsp;</td></tr>"""
+      s"""<tr class="geraeteRow"><td class="large dataTd">${escaped(dis._2)}. ${escaped(dis._1.easyprint)}</td><td class="totalCol dataTd">&nbsp;</td></tr>"""
     }
     val dt = d.mkString("", "\n", "\n")
     s"""<div class=notenblatt>
       <div class=headline>
-        <div class="logo" style="height: 10px;"><h1>${kandidat.wettkampfTitel}</h1></div>
-        <div class=programm>${kandidat.programm}</br>
-          <div class=geschlecht>${kandidat.geschlecht}</div></div>
+        <div class="logo" style="height: 10px;"><h1>${escaped(kandidat.wettkampfTitel)}</h1></div>
+        <div class=programm>${escaped(kandidat.programm)}</br>
+          <div class=geschlecht>${escaped(kandidat.geschlecht)}</div></div>
       </div>
       <table width="100%">
-        <tr><td class='dataTd' width="15%">Name:</td><td class='dataTd'>${kandidat.name}</td><td class='dataTd' width="15%">Vorname:</td><td class='dataTd'>${kandidat.vorname}</td><td class='dataTd' width="10%">Jahrgang:</td><td class='dataTd'>${kandidat.jahrgang}</td></tr>
+        <tr><td class='dataTd' width="15%">Name:</td><td class='dataTd'>${escaped(kandidat.name)}</td><td class='dataTd' width="15%">Vorname:</td><td class='dataTd'>${escaped(kandidat.vorname)}</td><td class='dataTd' width="10%">Jahrgang:</td><td class='dataTd'>${escaped(kandidat.jahrgang)}</td></tr>
       </table>
       <div class="showborder">
         <table class="dataTable" width="100%">
@@ -172,19 +172,19 @@ trait NotenblattToHtmlRenderer {
 
   private def notenblattForKuTu(kandidat: Kandidat, logo: File) = {
     val d = kandidat.diszipline.zip(Range(1, kandidat.diszipline.size+1)).map{dis =>
-      s"""<tr class="geraeteRow"><td class="large">${dis._2}. ${dis._1.easyprint}</td><td>&nbsp;</td><td>&nbsp;</td><td class="totalCol">&nbsp;</td></tr>"""
+      s"""<tr class="geraeteRow"><td class="large">${escaped(dis._2)}. ${escaped(dis._1.easyprint)}</td><td>&nbsp;</td><td>&nbsp;</td><td class="totalCol">&nbsp;</td></tr>"""
     }
     val dt = d.updated(d.size-1, d.last.replace("geraeteRow", "totalRow")).mkString("", "\n", "\n")
     val logoHtml = (if (logo.exists) s"""<img class=logo src="${logo.imageSrcForWebEngine}" title="Logo"/>""" else s"")
     s"""<div class=notenblatt>
       <div class=headline>
         ${logoHtml}
-        <div class=programm>${kandidat.programm}</br><div class=geschlecht>${kandidat.geschlecht}</div></div>
+        <div class=programm>${escaped(kandidat.programm)}</br><div class=geschlecht>${escaped(kandidat.geschlecht)}</div></div>
       </div>
-      <h1>${kandidat.wettkampfTitel}</h1>
+      <h1>${escaped(kandidat.wettkampfTitel)}</h1>
       <table width="100%">
-        <tr><td class='dataTd' width="20%">Name:</td><td class='dataTd'>${kandidat.name}</td><td class='dataTd' width="20%">Vorname:</td><td class='dataTd'>${kandidat.vorname}</td></tr>
-        <tr><td class='dataTd'>Verein:</td><td class='dataTd'>${kandidat.verein}</td><td class='dataTd'>Jahrgang:</td><td class='dataTd'>${kandidat.jahrgang}</td></tr>
+        <tr><td class='dataTd' width="20%">Name:</td><td class='dataTd'>${escaped(kandidat.name)}</td><td class='dataTd' width="20%">Vorname:</td><td class='dataTd'>${escaped(kandidat.vorname)}</td></tr>
+        <tr><td class='dataTd'>Verein:</td><td class='dataTd'>${escaped(kandidat.verein)}</td><td class='dataTd'>Jahrgang:</td><td class='dataTd'>${escaped(kandidat.jahrgang)}</td></tr>
       </table>
       <div class="showborder">
         <table class="dataTable" width="100%">

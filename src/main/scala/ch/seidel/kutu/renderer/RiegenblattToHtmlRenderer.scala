@@ -261,8 +261,8 @@ trait RiegenblattToHtmlRenderer {
     val (riege, tutioffset) = riegepart
     val d = riege.kandidaten.zip(Range(1, riege.kandidaten.size+1)).map{kandidat =>
       val programm = if(kandidat._1.programm.isEmpty())"" else "(" + shorten(kandidat._1.programm) + ")"
-      val verein = if(kandidat._1.verein.isEmpty())"" else shorten(kandidat._1.verein, 15) 
-      s"""<tr class="turnerRow"><td class="large">${kandidat._2 + tutioffset}. ${kandidat._1.vorname} ${kandidat._1.name} <span class='sf'>${programm}</span></td><td><span class='sf'>${verein}</span></td><td>&nbsp;</td><td>&nbsp;</td><td class="totalCol">&nbsp;</td></tr>"""
+      val verein = if(kandidat._1.verein.isEmpty())"" else shorten(kandidat._1.verein, 15)
+      s"""<tr class="turnerRow"><td class="large">${kandidat._2 + tutioffset}. ${escaped(kandidat._1.vorname)} ${escaped(kandidat._1.name)} <span class='sf'>${escaped(programm)}</span></td><td><span class='sf'>${escaped(verein)}</span></td><td>&nbsp;</td><td>&nbsp;</td><td class="totalCol">&nbsp;</td></tr>"""
     }.mkString("", "\n", "\n")
 
     val stationlink = WertungsrichterQRCode.toURI(baseUrl, riege)
@@ -270,9 +270,9 @@ trait RiegenblattToHtmlRenderer {
     s"""<div class=riegenblatt>
       <div class=headline>
         $logoHtml $imagedata
-        <div class=durchgang>${riege.durchgang.getOrElse("")}</br><div class=geraet>${riege.disziplin.map(d => d.easyprint).getOrElse("")} (${riege.halt + 1}. Gerät)<br>Riegencode: ${riege.sequenceId}</div></div>
+        <div class=durchgang>${escaped(riege.durchgang.getOrElse(""))}</br><div class=geraet>${escaped(riege.disziplin.map(d => d.easyprint).getOrElse(""))} (${riege.halt + 1}. Gerät)<br>Riegencode: ${riege.sequenceId}</div></div>
       </div>
-      <h1>${riege.wettkampfTitel}</h1>
+      <h1>${escaped(riege.wettkampfTitel)}</h1>
       <div class="showborder">
         <table width="100%">
           <tr class="totalRow heavyRow"><td>Turner/Turnerin</td><td>Verein</td><td>1. Wertung</td><td>2. Wertung</td><td class="totalCol">Endnote</td></tr>

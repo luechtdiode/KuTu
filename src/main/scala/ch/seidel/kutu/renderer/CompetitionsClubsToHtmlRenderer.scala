@@ -109,7 +109,7 @@ trait CompetitionsClubsToHtmlRenderer {
     val logoHtml = if (logo.exists()) s"""<img class=logo src="${logo.imageSrcForWebEngine}" title="Logo"/>""" else ""
 
     val d = vereine.map{ registration =>
-      s"""<tr class="athletRow"><td>${registration.vereinname}</td><td>(${registration.verband})</td><td class="large">${registration.respName} ${registration.respVorname}</td><td>${registration.mobilephone}</td><td>${registration.mail}</td><td>${
+      s"""<tr class="athletRow"><td>${escaped(registration.vereinname)}</td><td>(${escaped(registration.verband)})</td><td class="large">${escaped(registration.respName)} ${escaped(registration.respVorname)}</td><td>${escaped(registration.mobilephone)}</td><td>${escaped(registration.mail)}</td><td>${
         DateTimeFormatter.ofPattern("dd-MM-yyyy HH:mm").format(new java.sql.Timestamp(registration.registrationTime).toLocalDateTime)
       }</td><td class="totalCol">&nbsp;</td></tr>"""
     }
@@ -117,7 +117,7 @@ trait CompetitionsClubsToHtmlRenderer {
     s"""<div class=notenblatt>
       <div class=headline>
         $logoHtml
-        <div class=title><h4>${wettkampf.easyprint}</h4></div>
+        <div class=title><h4>${escaped(wettkampf.easyprint)}</h4></div>
         <div class=programm>Vereinsverantwortliche</br></div>
       </div>
       <div class="showborder">

@@ -4,7 +4,7 @@ import java.io.File
 
 import ch.seidel.kutu.data._
 import ch.seidel.kutu.domain.{Disziplin, GroupRow}
-import ch.seidel.kutu.renderer.PrintUtil.ImageFile
+import ch.seidel.kutu.renderer.PrintUtil.{ImageFile, escaped}
 import org.slf4j.LoggerFactory
 
 object ScoreToJsonRenderer {
@@ -19,11 +19,11 @@ object ScoreToJsonRenderer {
   """
   def firstSite(title: String, logoFile: File) = intro + (if (logoFile.exists) s"""
       "logo":"${logoFile.imageSrcForWebEngine}",
-      "title":"${title}",
+      "title":"${escaped(title)}",
       "scoreblocks":[
       """
     else s"""
-      "title":"${title}",
+      "title":"${escaped(title)}",
       "scoreblocks":[
       """)
         
@@ -42,10 +42,10 @@ object ScoreToJsonRenderer {
           def renderListHead = {
             gsBlock.append("{")
             if(openedTitle.startsWith("\"title\":{")) {
-              gsBlock.append(s"""${openedTitle + gl.groupKey.capsulatedprint}"},""")
+              gsBlock.append(s"""${openedTitle + escaped(gl.groupKey.capsulatedprint)}"},""")
             }
             else {
-              gsBlock.append(s""""title":{"level":"${level + 2}", "text":"${openedTitle + gl.groupKey.capsulatedprint}"},""")
+              gsBlock.append(s""""title":{"level":"${level + 2}", "text":"${openedTitle + escaped(gl.groupKey.capsulatedprint)}"},""")
             }
           }
 
@@ -57,12 +57,12 @@ object ScoreToJsonRenderer {
                 col match {
                   case ccol: WKLeafCol[_] =>
                     val c = ccol.asInstanceOf[WKLeafCol[GroupRow]]
-                    gsBlock.append(s""""${c.text}":"${c.valueMapper(row)}",""")
+                    gsBlock.append(s""""${escaped(c.text)}":"${escaped(c.valueMapper(row))}",""")
                   case gc: WKGroupCol =>
-                    gsBlock.append(s""""${gc.text}":{""")
+                    gsBlock.append(s""""${escaped(gc.text)}":{""")
                     gc.cols.foreach { ccol =>
                       val c = ccol.asInstanceOf[WKLeafCol[GroupRow]]
-                      gsBlock.append(s""""${c.text}":"${c.valueMapper(row)}",""")
+                      gsBlock.append(s""""${escaped(c.text)}":"${escaped(c.valueMapper(row))}",""")
                     }
                     gsBlock.deleteCharAt(gsBlock.size-1)
                     gsBlock.append("},")
@@ -92,9 +92,9 @@ object ScoreToJsonRenderer {
         case g: GroupNode => gsBlock.append(
             toJsonString(title, g.next.toList,
                 if(openedTitle.length() > 0)
-                  openedTitle + s"${g.groupKey.capsulatedprint}, "
+                  openedTitle + s"${escaped(g.groupKey.capsulatedprint)}, "
                 else
-                  s""""title":{"level":"${level + 2}", "text":"${g.groupKey.capsulatedprint}, """,
+                  s""""title":{"level":"${level + 2}", "text":"${escaped(g.groupKey.capsulatedprint)}, """,
                 level + 1, sortAlphabetically, diszMap, logoFile))
 
         case s: GroupSum  =>

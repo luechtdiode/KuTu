@@ -164,7 +164,7 @@ class WettkampfOverviewTab(wettkampf: WettkampfView, override val service: KutuS
                 KuTuServer.getAllJudgesRemote(wettkampf.toWettkampf)
               }}
               Platform.runLater {
-                PrintUtil.printDialogFuture("Wertungsrichter Online-Anmeldungen drucken ...", FilenameDefault(filename, dir), false, generate, orientation = PageOrientation.Portrait)(event)
+                PrintUtil.printDialogFuture("Wertungsrichter Online-Anmeldungen drucken ...", FilenameDefault(filename, dir), false, generate, orientation = PageOrientation.Landscape)(event)
               }
             }
           },

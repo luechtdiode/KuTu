@@ -394,7 +394,7 @@ trait RegistrationService extends DBService with RegistrationResultMapper with H
     // program: String, disziplin: String, disziplinId: Long
     database.run{
       val pgms = programme.mkString("(", ",", ")")
-      sql""" select distinct p.name, d.name, wd.id
+      sql""" select distinct p.name, d.name, wd.id, p.ord, wd.ord
              from disziplin d
              inner join wettkampfdisziplin wd on d.id = wd.disziplin_id
              inner join programm p on p.id = wd.programm_id
