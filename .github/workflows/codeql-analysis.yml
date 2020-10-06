@@ -53,7 +53,7 @@ jobs:
     - uses: actions/setup-java@v1
       with:
         java-version: '11.0.8' # The JDK version to make available on the path.
-        java-package: jdk+fx # (jre, jdk, or jdk+fx) - defaults to jdk
+        java-package: jdk # (jre, jdk, or jdk+fx) - defaults to jdk
         architecture: x64 # (x64 or x86) - defaults to x64
         
     # Autobuild attempts to build any compiled languages  (C/C++, C#, or Java).
