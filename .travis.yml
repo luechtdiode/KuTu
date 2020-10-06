@@ -30,9 +30,7 @@ before_script:
 
 stages:
   - client
-  - serverosx
-  - serverlnx
-  - serverwin
+  - server
 
 jobs:
   include:
@@ -62,7 +60,8 @@ jobs:
         - git tag $GIT_TAG -a -m "TravisCI client build $TRAVIS_BUILD_NUMBER"
         - if ! git push -fq --follow-tags https://$GH_ACCESS_TOKEN@github.com/luechtdiode/KuTu.git $TRAVIS_BRANCH > /dev/null 2>&1; then err "failed to push git changes"; return1; fi
 
-    - stage: serverosx
+    - stage: server
+      name: serverosx
       language: java
       # jdk: openjdk11
       os: osx
@@ -93,7 +92,8 @@ jobs:
         - git tag $GIT_TAG -a -m "TravisCI build $TRAVIS_BUILD_NUMBER"
         - if ! git push -fq --follow-tags https://$GH_ACCESS_TOKEN@github.com/luechtdiode/KuTu.git $TRAVIS_BRANCH > /dev/null 2>&1; then err "failed to push git changes"; return1; fi
 
-    - stage: serverlnx
+    - stage: server
+      name: serverlnx
       language: java
       services:
         - docker
@@ -136,7 +136,8 @@ jobs:
         - docker push $IMAGE_NAME:$TAG
         - echo "$IMAGE_NAME:$TAG is built properly and pushed to Dockerhub"
 
-    - stage: serverwin
+    - stage: server
+      name: serverwin
       os: windows
       env:
         - OS=Win64
