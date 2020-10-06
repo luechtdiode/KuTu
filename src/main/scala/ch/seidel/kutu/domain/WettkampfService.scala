@@ -279,7 +279,17 @@ trait WettkampfService extends DBService
   def listWettkaempfeAsync = {
      database.run{ listWettkaempfe.withPinnedSession }
   }
-  
+
+  def listWettkaempfeByVereinId(vereinId: Long) = {
+     sql"""       select wk.* from wettkampf wk where exists (
+                    select 1 from wertung wr, athlet a where wr.wettkampf_id = wk.id and wr.athlet_id = a.id and a.verein = $vereinId
+                  )
+                  order by wk.datum desc""".as[Wettkampf]
+  }
+  def listWettkaempfeByVereinIdAsync(vereinId: Long) = {
+     database.run{ listWettkaempfeByVereinId(vereinId).withPinnedSession }
+  }
+
   def listWettkaempfeViewAsync = {
     database.run{
       sql"""      select * from wettkampf order by datum desc""".as[WettkampfView].withPinnedSession

@@ -118,7 +118,11 @@ ion-select {
    --max-width: auto;
    --min-width: 250px;
 }
-
+.my-optionselection-class .alert-wrapper {
+  --width: 80%;
+  --max-width: auto;
+  --min-width: 250px;
+}
 
 .my-actionsheet-class .action-sheet-group {
   --background: var(--ion-item-background-color);

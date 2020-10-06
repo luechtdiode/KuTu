@@ -4,6 +4,7 @@ import { ActivatedRoute } from '@angular/router';
 import { BackendService } from 'src/app/services/backend.service';
 import { NavController, AlertController, ActionSheetController } from '@ionic/angular';
 import { take } from 'rxjs/operators';
+import { toDateString } from 'src/app/utils';
 
 @Component({
   selector: 'app-clubreg-editor',
@@ -49,43 +50,79 @@ export class ClubregEditorPage implements OnInit {
   }
 
   async presentActionSheet() {
-    const actionSheet = await this.actionSheetController.create({
-      header: 'Anmeldungen',
-      cssClass: 'my-actionsheet-class',
-      buttons: [{
-        text: 'Athlet & Athletinnen',
-        icon: 'list',
-        handler: () => {
-          this.editAthletRegistrations();
-        }
-      }, {
-        text: 'Wertungsrichter',
-        icon: 'glasses',
-        handler: () => {
-          this.editJudgeRegistrations();
-        }
-      }, {
-        text: 'Kopieren aus anderem Wettkampf',
-        icon: 'share',
-        handler: () => {
-          console.log('Share clicked');
-        }
-      }, {
-        text: 'Registrierung löschen',
-        role: 'destructive',
-        icon: 'trash',
-        handler: () => {
-          this.delete();
-        }
-      }, {
-        text: 'Abbrechen',
-        icon: 'close',
-        role: 'cancel',
-        handler: () => {
-          console.log('Cancel clicked');
-        }
-      }]
-    });
+    let actionconfig: any = {};
+    if ((this.registration as ClubRegistration).vereinId) {
+      actionconfig = {
+        header: 'Anmeldungen',
+        cssClass: 'my-actionsheet-class',
+        buttons: [{
+          text: 'Athlet & Athletinnen',
+          icon: 'list',
+          handler: () => {
+            this.editAthletRegistrations();
+          }
+        }, {
+          text: 'Wertungsrichter',
+          icon: 'glasses',
+          handler: () => {
+            this.editJudgeRegistrations();
+          }
+        }, {
+          text: 'Kopieren aus anderem Wettkampf',
+          icon: 'share',
+          handler: () => {
+            this.copyFromOthers();
+          }
+        }, {
+          text: 'Registrierung löschen',
+          role: 'destructive',
+          icon: 'trash',
+          handler: () => {
+            this.delete();
+          }
+        }, {
+          text: 'Abbrechen',
+          icon: 'close',
+          role: 'cancel',
+          handler: () => {
+            console.log('Cancel clicked');
+          }
+        }]
+      };
+    } else {
+      actionconfig = {
+        header: 'Anmeldungen',
+        cssClass: 'my-actionsheet-class',
+        buttons: [{
+          text: 'Athlet & Athletinnen',
+          icon: 'list',
+          handler: () => {
+            this.editAthletRegistrations();
+          }
+        }, {
+          text: 'Wertungsrichter',
+          icon: 'glasses',
+          handler: () => {
+            this.editJudgeRegistrations();
+          }
+        }, {
+          text: 'Registrierung löschen',
+          role: 'destructive',
+          icon: 'trash',
+          handler: () => {
+            this.delete();
+          }
+        }, {
+          text: 'Abbrechen',
+          icon: 'close',
+          role: 'cancel',
+          handler: () => {
+            console.log('Cancel clicked');
+          }
+        }]
+      };      
+    }
+    const actionSheet = await this.actionSheetController.create(actionconfig);
     await actionSheet.present();
   }
 
@@ -146,6 +183,7 @@ export class ClubregEditorPage implements OnInit {
         } as NewClubRegistration;
         this.backendService.createClubRegistration(this.wkId, reg).subscribe((data) => {
           this.regId = data.id;
+          this.registration = data;
           this.backendService.currentUserName = data.mail;
           this.editAthletRegistrations();
         });
@@ -192,5 +230,48 @@ export class ClubregEditorPage implements OnInit {
   
   editJudgeRegistrations() {
     this.navCtrl.navigateForward(`reg-judgelist/${this.backendService.competition}/${this.regId}`);
+  }
+
+  copyFromOthers() {
+    this.backendService.findCompetitionsByVerein((this.registration as ClubRegistration).vereinId).subscribe(list => {
+      const selectOptions = list.map(wk => {
+        return {
+          type: 'radio',
+          label: wk.titel + ' (' + toDateString(wk.datum) + ')',
+          value: wk,
+        };
+      });
+      this.alertCtrl.create({
+        header: 'Anmeldungen kopieren',
+        cssClass: 'my-optionselection-class',
+        // tslint:disable-next-line:max-line-length
+        // subHeader: 'Schritt #1',
+        message: 'Aus welchem Wettkampf sollen die Anmeldungen kopiert werden?',
+        inputs: selectOptions,
+        buttons: [
+          {text: 'ABBRECHEN', role: 'cancel', handler: () => {}},
+          {text: 'OKAY', handler: (data) => {
+            this.backendService.copyClubRegsFromCompetition(data.uuid, this.backendService.competition, (this.registration as ClubRegistration).id).subscribe(() => {
+              this.getSyncActions();
+              this.alertCtrl.create({
+                header: 'Anmeldungen kopieren',
+                // tslint:disable-next-line:max-line-length
+                // subHeader: 'Schritt #2',
+                message: 'Alle nicht bereits erfassten Anmeldungen wurden übernommen.',
+                buttons: [
+                  {text: 'OKAY', role: 'cancel', handler: () => {}},
+                  {text: '> Athlet-Anmeldungen', handler: () => {
+                    this.editAthletRegistrations();
+                  }},
+                  {text: '> WR Anmeldungen', handler: () => {
+                    this.editJudgeRegistrations();
+                  }}
+                ]
+              }).then(a => a.present());
+            });
+          }},
+        ]
+      }).then(a => a.present());
+    });
   }
 }

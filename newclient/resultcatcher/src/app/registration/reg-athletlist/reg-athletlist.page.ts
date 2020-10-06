@@ -212,7 +212,6 @@ export class RegAthletlistPage implements OnInit {
         {text: 'OKAY', handler: () => {
           this.backendService.deleteAthletRegistration(this.backendService.competition, this.currentRegId, reg).subscribe(() => {
             this.refreshList();
-            this.navCtrl.pop();
           });
           }
         },

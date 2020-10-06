@@ -199,7 +199,15 @@ trait WettkampfRoutes extends SprayJsonSupport
         }
       } ~
       pathPrefix("competition") {
-        pathEnd {
+        pathPrefix("byVerein" / LongNumber) { vereinId =>
+          pathEnd {
+            get {
+              complete {
+                listWettkaempfeByVereinIdAsync(vereinId)
+              }
+            }
+          }
+        } ~ pathEnd {
           get {
             complete {
               listWettkaempfeAsync

@@ -91,14 +91,14 @@ object RegistrationAdmin {
         registration <- service.selectRegistrationsOfWettkampf(UUID.fromString(wkInfo.wettkampf.uuid.get))
         athlet <- service.selectAthletRegistrations(registration.id) :+ EmptyAthletRegistration(registration.id)
       } yield {
-        logger.info(s"start processing Registration ${registration.vereinname}")
+//        logger.info(s"start processing Registration ${registration.vereinname}")
         val startime = System.currentTimeMillis()
         val resolvedVerein = vereineList.find(v => v.name.equals(registration.vereinname) && (v.verband.isEmpty || v.verband.get.equals(registration.verband)))
-        logger.info(s"resolved Verein for Registration ${registration.vereinname}")
+//        logger.info(s"resolved Verein for Registration ${registration.vereinname}")
         val parsed = athlet.toAthlet.copy(verein = resolvedVerein.map(_.id))
         val candidate = if (athlet.isEmptyRegistration) parsed else findAthletLike(parsed)
 
-        logger.info(s"resolved candidate for ${parsed} in ${System.currentTimeMillis() - startime}ms")
+//        logger.info(s"resolved candidate for ${parsed} in ${System.currentTimeMillis() - startime}ms")
         (registration, athlet, parsed, AthletView(
           candidate.id, candidate.js_id,
           candidate.geschlecht, candidate.name, candidate.vorname, candidate.gebdat,

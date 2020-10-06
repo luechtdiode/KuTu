@@ -405,6 +405,29 @@ export class BackendService extends WebsocketService {
       return loader;
     }
 
+    findCompetitionsByVerein(vereinId: number) {
+      const loader = this.startLoading(
+        'Es werden frühere Anmeldungen gesucht. Bitte warten ...',
+        this.http.get<Wettkampf>(backendUrl + 'api/competition/byVerein/' + vereinId).pipe(share()));
+
+      loader.subscribe((data) => {}, this.standardErrorHandler);
+
+      return loader;      
+    }
+
+    copyClubRegsFromCompetition(fromCompetitionId: string, toCompetitionId: string, clubid: number) {
+      const loader = this.startLoading('Anmeldung wird gespeichert. Bitte warten ...',
+        this.http.put(
+          backendUrl + 'api/registrations/' + toCompetitionId + '/' + clubid + '/copyfrom', fromCompetitionId, {
+            responseType: 'text'
+          }).pipe(share()));
+
+      loader.subscribe((data) => {
+      }, this.standardErrorHandler);
+
+      return loader;
+    }
+
     loadJudgeProgramDisziplinList(competitionId: string) {
       const loader = this.startLoading('Athletliste zum Club wird geladen. Bitte warten ...',
         this.http.get<JudgeRegistrationProgramItem[]>(

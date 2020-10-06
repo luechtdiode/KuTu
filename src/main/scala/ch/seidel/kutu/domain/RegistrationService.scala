@@ -158,6 +158,100 @@ trait RegistrationService extends DBService with RegistrationResultMapper with H
     }, Duration.Inf)
   }
 
+  def copyClubRegsFromCompetition(wettkampfCopyFrom: String, registrationId: Long) {
+    /*
+select
+                `$registrationId` as vereinregistration_id,
+                ar.athlet_id,
+                ar.geschlecht,
+                ar.name,
+                ar.vorname,
+                ar.gebdat,
+                ar.program_id,
+                ${Timestamp.valueOf(LocalDateTime.now())} as registrationtime
+              from athletregistration ar
+              where ar.vereinregistration_id = (
+                select distinct vrthen.id
+                from vereinregistration vrthen
+                inner join vereinregistration vrnow on (vrthen.verein_id = vrnow.verein_id)
+                inner join wettkampf wkthen on (vrthen.wettkampf_id = wkthen.id)
+                inner join wettkampf wknow on (vrnow.wettkampf_id = wknow.id)
+                where wkthen.uuid = $wettkampfCopyFrom
+                  and vrthen.id <> $registrationId
+              )
+              and not exists (
+                select 1
+                from athletregistration arex
+                where arex.vereinregistration_id = $registrationId
+                  and arex.name = ar.name
+                  and arex.vorname = ar.vorname
+                  and arex.gebdat = ar.gebdat
+                  and arex.geschlecht = ar.geschlecht
+              )
+              union ...
+     */
+    Await.result(database.run {
+      sqlu"""
+              insert into athletregistration (vereinregistration_id, athlet_id, geschlecht, name, vorname, gebdat, program_id, registrationtime)
+              select distinct
+                #$registrationId as vereinregistration_id,
+                a.id,
+                a.geschlecht,
+                a.name,
+                a.vorname,
+                a.gebdat,
+                wkd.programm_id,
+                ${Timestamp.valueOf(LocalDateTime.now())} as registrationtime
+              from athlet a
+              inner join wertung w on (w.athlet_id = a.id)
+              inner join wettkampfdisziplin wkd on (w.wettkampfdisziplin_id = wkd.id)
+              inner join vereinregistration vrnow on (vrnow.verein_id = a.verein)
+              inner join wettkampf wkthen on (w.wettkampf_id = wkthen.id)
+              where wkthen.uuid = $wettkampfCopyFrom
+                  and not exists (
+                    select 1
+                    from athletregistration arex
+                    where arex.vereinregistration_id = $registrationId
+                      and arex.name = a.name
+                      and arex.vorname = a.vorname
+                      and arex.gebdat = a.gebdat
+                      and arex.geschlecht = a.geschlecht
+                  )
+          """ >>
+        sqlu"""
+              insert into judgeregistration (vereinregistration_id, geschlecht, name, vorname, mobilephone, mail,comment, registrationtime)
+              select
+                #$registrationId as vereinregistration_id,
+                ar.geschlecht,
+                ar.name,
+                ar.vorname,
+                ar.mobilephone,
+                ar.mail,
+                ar.comment,
+                ${Timestamp.valueOf(LocalDateTime.now())} as registrationtime
+              from judgeregistration ar
+              where ar.vereinregistration_id = (
+                select distinct vrthen.id
+                from vereinregistration vrthen
+                inner join vereinregistration vrnow on (vrthen.verein_id = vrnow.verein_id)
+                inner join wettkampf wkthen on (vrthen.wettkampf_id = wkthen.id)
+                inner join wettkampf wknow on (vrnow.wettkampf_id = wknow.id)
+                where wkthen.uuid = $wettkampfCopyFrom
+                  and vrthen.id <> $registrationId
+              )
+              and not exists (
+                select 1
+                from judgeregistration arex
+                where arex.vereinregistration_id = $registrationId
+                  and arex.name = ar.name
+                  and arex.vorname = ar.vorname
+                  and arex.geschlecht = ar.geschlecht
+              )
+          """
+
+    }, Duration.Inf)
+  }
+
   private def deleteRegistrationAction(registrationId: Long) = {
     sqlu"""       delete from judgeregistration_pgm where vereinregistration_id=${registrationId}""" >>
       sqlu"""       delete from judgeregistration where vereinregistration_id=${registrationId}""" >>

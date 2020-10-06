@@ -189,6 +189,18 @@ trait RegistrationRoutes extends SprayJsonSupport with JwtSupport with JsonSuppo
                       StatusCodes.OK
                     })
                   }
+                } ~ pathPrefix("copyfrom") {
+                  pathEndOrSingleSlash {
+                    put {
+                      entity(as[String]) { wettkampfCopyFrom =>
+                        complete {
+                          copyClubRegsFromCompetition(wettkampfCopyFrom, registrationId)
+                          CompetitionRegistrationClientActor.publish(RegistrationChanged(wettkampf.uuid.get), clientId)
+                          StatusCodes.OK
+                        }
+                      }
+                    }
+                  }
                 } ~ pathPrefix("athletlist") {
                   pathEndOrSingleSlash {
                     get { // list Athletes
