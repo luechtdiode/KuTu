@@ -6,6 +6,6 @@
     <small>{{judgeregistration.mobilephone}}, {{judgeregistration.mail}}</small>
   </ion-label>
   <ion-note *ngIf="judgeregistration.comment" slot="end">
-    <small *ngFor="let cmt of getCommentLines()">{{cmt}}<br></small>
+    <span *ngFor="let cmt of getCommentLines()">{{cmt}}<br></span>
   </ion-note>
 </ion-item>
