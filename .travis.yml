@@ -171,6 +171,8 @@ jobs:
         - mvn clean package -q -DskipTest=true -DOS=$OS
         - cp -f $TRAVIS_BUILD_DIR/target/$OS/*.* $TRAVIS_BUILD_DIR/outputs/$OS/
       after_success:
+        - git config user.email "travis@example.org"
+        - git config user.name "TravisCI"
         - export GIT_TAG=travisbuild-$OS-$TRAVIS_BRANCH-$(date -u "+%Y-%m-%d")-$TRAVIS_BUILD_NUMBER
         - git tag $GIT_TAG -a -m "TravisCI build $TRAVIS_BUILD_NUMBER"
         - if ! git push -fq --follow-tags https://$GH_ACCESS_TOKEN@github.com/luechtdiode/KuTu.git $TRAVIS_BRANCH > /dev/null 2>&1; then err "failed to push git changes"; return1; fi
