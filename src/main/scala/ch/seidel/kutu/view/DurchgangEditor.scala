@@ -18,7 +18,7 @@ object DurchgangEditor {
   def apply(group: List[DurchgangEditor]): List[_ >: DurchgangEditor] = group.groupBy(_.durchgang.title)
     .map { case (durchgangTitle, editors) =>
       val childDGs = editors.filter(_.durchgang.title == durchgangTitle)
-      if (childDGs.size > 1) {
+      if (childDGs.size > 1 || !durchgangTitle.equals(editors.head.durchgang.name)) {
         GroupDurchgangEditor(
           editors.head.wettkampfid,
           editors.map(_.durchgang).foldLeft(editors.head.durchgang) { (acc, dg) => acc.toAggregator(dg) },
