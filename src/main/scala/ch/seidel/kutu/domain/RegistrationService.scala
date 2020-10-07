@@ -14,6 +14,11 @@ trait RegistrationService extends DBService with RegistrationResultMapper with H
 
   def createRegistration(newReg: NewRegistration): Registration = {
     val similarRegistrations = selectRegistrationsLike(newReg.toRegistration)
+      .filter{(reg: Registration) =>
+        val oldHash = vereinSecretHashLookup(s"${reg.id}")
+        val newHash = matchHashed(oldHash)(newReg.secret)
+        oldHash.equals(newHash)
+      }
     val vereinId = similarRegistrations.headOption.flatMap(_.vereinId)
     Await.result(database.run {
       sqlu"""
