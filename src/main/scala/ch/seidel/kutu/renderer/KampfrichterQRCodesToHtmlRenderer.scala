@@ -143,8 +143,8 @@ trait WertungsrichterQRCodesToHtmlRenderer {
     val d = divided.map{durchgangspalten =>
       val (d1, d2) = durchgangspalten
       s"""<tr class="turnerRow">
-            <td class="large"><a href='${d1.uri}'>${d1.durchgangname}</a></td><td class="large"><img title='${d1.uri}' width='140px' height='140px' src='${d1.imageData}'></td>
-            <td class="totalCol"><a href='${d2.uri}'>${d2.durchgangname}</a></td><td class="large"><img title='${d2.uri}' width='140px' height='140px' src='${d2.imageData}'></td>
+            <td class="large"><a href='${d1.uri}'>${escaped(d1.durchgangname)}</a></td><td class="large"><img title='${d1.uri}' width='140px' height='140px' src='${d1.imageData}'></td>
+            <td class="totalCol"><a href='${d2.uri}'>${escaped(d2.durchgangname)}</a></td><td class="large"><img title='${d2.uri}' width='140px' height='140px' src='${d2.imageData}'></td>
           </tr>"""
     }.mkString("", "\n", "\n")
 
@@ -153,7 +153,7 @@ trait WertungsrichterQRCodesToHtmlRenderer {
         $logoHtml
         <div class=geraet>${geraet}</div></div>
       </div>
-      <h1>${wettkampfTitel}</h1>
+      <h1>${escaped(wettkampfTitel)}</h1>
       <div class="showborder">
         <table width="100%">
           <tr class="totalRow heavyRow"><td>Durchgang</td><td>QRCode für Mobile-Connect</td><td class="totalCol">Durchgang</td><td>QRCode für Mobile-Connect</td></tr>

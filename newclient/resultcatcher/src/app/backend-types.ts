@@ -34,6 +34,72 @@ export interface StartList {
   programme: ProgrammItem[];
 }
 
+export interface ProgrammRaw {
+  id: number;
+  name: string;
+  aggregate: number;
+  parent: number;
+  ord: number;
+  vonAlter: number;
+  bisAlter: number;
+}
+export interface ClubRegistration {
+  id: number;
+  mail: string;
+  mobilephone: string;
+  registrationTime: number;
+  respName: string;
+  respVorname: string;
+  verband: string;
+  vereinId?: number;
+  vereinname: string;
+  wettkampfId: number;
+}
+
+export interface NewClubRegistration {
+  mail: string;
+  mobilephone: string;
+  respName: string;
+  respVorname: string;
+  verband: string;
+  vereinname: string;
+  wettkampfId: number;
+  secret: string;
+  verification?: string;
+}
+
+export interface AthletRegistration {
+  id: number;
+  vereinregistrationId: number;
+  athletId?: number;
+  name: string;
+  vorname: string;
+  geschlecht: string;
+  gebdat: string;
+  programId: number;
+  registrationTime: number;
+}
+
+export interface JudgeRegistration {
+  id: number;
+  vereinregistrationId: number;
+  geschlecht: string;
+  name: string;
+  vorname: string;
+  mobilephone: string;
+  mail: string;
+  comment: string;
+  registrationTime: number;
+}
+export interface JudgeRegistrationProgramItem {
+  program: string;
+  disziplin: string;
+  disziplinId: number;
+}
+ export interface SyncAction {
+   caption: string;
+   verein: ClubRegistration;
+ }
 export interface Wertung {
   id: number;
   wettkampfId: number;

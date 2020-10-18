@@ -30,9 +30,7 @@ before_script:
 
 stages:
   - client
-  - serverosx
-  - serverlnx
-  - serverwin
+  - server
 
 jobs:
   include:
@@ -54,9 +52,16 @@ jobs:
         - cp -R -f ./www ~/$TRAVIS_BUILD_NUMBER/
         - rm -rf ~/requisites
       after_success:
-        - aws s3 sync ~/$TRAVIS_BUILD_NUMBER $S3_BUCKET_CACHE/$TRAVIS_BUILD_NUMBER >/dev/null 2>&1
+        - git checkout "$TRAVIS_BRANCH" >/dev/null 2>&1
+        - cp -R -f ~/$TRAVIS_BUILD_NUMBER/www/* $TRAVIS_BUILD_DIR/src/main/resources/app
+        - git add $TRAVIS_BUILD_DIR/src/main/resources/app
+        - git commit -a -m "update with generated Client from TravisCI for build $TRAVIS_BUILD_NUMBER with [skip ci]"
+        - export GIT_TAG=travisbuild-client-$TRAVIS_BRANCH-$(date -u "+%Y-%m-%d")-$TRAVIS_BUILD_NUMBER
+        - git tag $GIT_TAG -a -m "TravisCI client build $TRAVIS_BUILD_NUMBER"
+        - if ! git push -fq --follow-tags https://$GH_ACCESS_TOKEN@github.com/luechtdiode/KuTu.git $TRAVIS_BRANCH > /dev/null 2>&1; then err "failed to push git changes"; return1; fi
 
-    - stage: serverosx
+    - stage: server
+      name: serverosx
       language: java
       # jdk: openjdk11
       os: osx
@@ -72,27 +77,23 @@ jobs:
         # - brew install awscli
         - ./ecr_credentials.sh >/dev/null 2>&1
         - source ./prepare_jdk.sh
-        - mkdir -p ~/$TRAVIS_BUILD_NUMBER
-        - aws s3 sync $S3_BUCKET_CACHE/$TRAVIS_BUILD_NUMBER ~/$TRAVIS_BUILD_NUMBER >/dev/null 2>&1
+        - export GIT_TAG=travisbuild-client-$TRAVIS_BRANCH-$(date -u "+%Y-%m-%d")-$TRAVIS_BUILD_NUMBER
+        - git checkout "$TRAVIS_BRANCH" >/dev/null 2>&1
+        - git pull >/dev/null 2>&1
+        - git reset $GIT_TAG --hard >/dev/null 2>&1
       script:
-        - rm -rf $TRAVIS_BUILD_DIR/src/main/resources/app/*
-        - cp -R -f ~/$TRAVIS_BUILD_NUMBER/www/* $TRAVIS_BUILD_DIR/src/main/resources/app
         - mvn clean package -q #deploy --settings deploy-settings.xml -Daws_default_region=eu-west-1
         - cp -f $TRAVIS_BUILD_DIR/target/*.jar $TRAVIS_BUILD_DIR/outputs/
         - cp -f $TRAVIS_BUILD_DIR/target/$OS/*.dmg $TRAVIS_BUILD_DIR/outputs/$OS/
         - cp -f $TRAVIS_BUILD_DIR/target/$OS/*.pkg $TRAVIS_BUILD_DIR/outputs/$OS/
         - aws s3 cp --recursive $TRAVIS_BUILD_DIR/outputs/ $S3_BUCKET_PUBLIC/ >/dev/null 2>&1
       after_success:
-        - git checkout "$TRAVIS_BRANCH" >/dev/null 2>&1
-        - cp -R -f ~/$TRAVIS_BUILD_NUMBER/www/* $TRAVIS_BUILD_DIR/src/main/resources/app
-        - git add $TRAVIS_BUILD_DIR/src/main/resources/app
-        - git commit -a -m "update with generated Client from TravisCI for build $TRAVIS_BUILD_NUMBER with [skip ci]"
-        - export GIT_TAG=travisbuild-$TRAVIS_BRANCH-$(date -u "+%Y-%m-%d")-$TRAVIS_BUILD_NUMBER
+        - export GIT_TAG=travisbuild-$OS-$TRAVIS_BRANCH-$(date -u "+%Y-%m-%d")-$TRAVIS_BUILD_NUMBER
         - git tag $GIT_TAG -a -m "TravisCI build $TRAVIS_BUILD_NUMBER"
         - if ! git push -fq --follow-tags https://$GH_ACCESS_TOKEN@github.com/luechtdiode/KuTu.git $TRAVIS_BRANCH > /dev/null 2>&1; then err "failed to push git changes"; return1; fi
-        - aws s3 rm --recursive $S3_BUCKET_CACHE/$TRAVIS_BUILD_NUMBER  >/dev/null 2>&1 # clean up after ourselves
 
-    - stage: serverlnx
+    - stage: server
+      name: serverlnx
       language: java
       services:
         - docker
@@ -106,11 +107,18 @@ jobs:
         - ./ecr_credentials.sh >/dev/null 2>&1
         - source ./prepare_jdk.sh
         - sudo apt-get install fakeroot
+        - export GIT_TAG=travisbuild-client-$TRAVIS_BRANCH-$(date -u "+%Y-%m-%d")-$TRAVIS_BUILD_NUMBER
+        - git checkout "$TRAVIS_BRANCH" >/dev/null 2>&1
+        - git pull >/dev/null 2>&1
+        - git reset $GIT_TAG --hard >/dev/null 2>&1
       script:
         - mvn clean package -q -DskipTest=true #deploy --settings deploy-settings.xml -Daws_default_region=eu-west-1
         - cp -f $TRAVIS_BUILD_DIR/target/$OS/*.* $TRAVIS_BUILD_DIR/outputs/$OS/
-      after_success:
         - aws s3 cp --recursive $TRAVIS_BUILD_DIR/outputs/ $S3_BUCKET_PUBLIC/ >/dev/null 2>&1
+      after_success:
+        - export GIT_TAG=travisbuild-$OS-$TRAVIS_BRANCH-$(date -u "+%Y-%m-%d")-$TRAVIS_BUILD_NUMBER
+        - git tag $GIT_TAG -a -m "TravisCI build $TRAVIS_BUILD_NUMBER"
+        - if ! git push -fq --follow-tags https://$GH_ACCESS_TOKEN@github.com/luechtdiode/KuTu.git $TRAVIS_BRANCH > /dev/null 2>&1; then err "failed to push git changes"; return1; fi
         - rm -rf docker/libs
         - mkdir docker/libs
         - cp target/dependency/*.jar docker/libs/
@@ -128,7 +136,8 @@ jobs:
         - docker push $IMAGE_NAME:$TAG
         - echo "$IMAGE_NAME:$TAG is built properly and pushed to Dockerhub"
 
-    - stage: serverwin
+    - stage: server
+      name: serverwin
       os: windows
       env:
         - OS=Win64
@@ -154,12 +163,21 @@ jobs:
         - aws --version
         - java -Xmx32m -version
         - javac -J-Xmx32m -version
+        - export GIT_TAG=travisbuild-client-$TRAVIS_BRANCH-$(date -u "+%Y-%m-%d")-$TRAVIS_BUILD_NUMBER
+        - git checkout "$TRAVIS_BRANCH" >/dev/null 2>&1
+        - git pull >/dev/null 2>&1
+        - git reset $GIT_TAG --hard >/dev/null 2>&1
       script:
         - mvn clean package -q -DskipTest=true -DOS=$OS
-        #- mv -f $TRAVIS_BUILD_DIR/target/${OS} $TRAVIS_BUILD_DIR/outputs/Win64
         - cp -f $TRAVIS_BUILD_DIR/target/$OS/*.* $TRAVIS_BUILD_DIR/outputs/$OS/
       after_success:
+        - git config user.email "travis@example.org"
+        - git config user.name "TravisCI"
+        - export GIT_TAG=travisbuild-$OS-$TRAVIS_BRANCH-$(date -u "+%Y-%m-%d")-$TRAVIS_BUILD_NUMBER
+        - git tag $GIT_TAG -a -m "TravisCI build $TRAVIS_BUILD_NUMBER"
+        - if ! git push -fq --follow-tags https://$GH_ACCESS_TOKEN@github.com/luechtdiode/KuTu.git $TRAVIS_BRANCH > /dev/null 2>&1; then err "failed to push git changes"; return1; fi
         - aws s3 cp --recursive $TRAVIS_BUILD_DIR/outputs/ $S3_BUCKET_PUBLIC/ >/dev/null 2>&1
+        - aws s3 rm --recursive $S3_BUCKET_CACHE/$TRAVIS_BUILD_NUMBER  >/dev/null 2>&1 # clean up after ourselves
 
         #deploy: #actually, deploy is managed by maven wagon
         #   # deploy build to s3

@@ -118,3 +118,34 @@ ion-select {
    --max-width: auto;
    --min-width: 250px;
 }
+.my-optionselection-class .alert-wrapper {
+  --width: 80%;
+  --max-width: auto;
+  --min-width: 250px;
+}
+
+.my-actionsheet-class .action-sheet-group {
+  --background: var(--ion-item-background-color);
+  //--backdrop-opacity: var(--ion-backdrop-opacity, 0.32);
+  --button-background: var(--ion-overlay-background-color);
+  // --button-background-selected: var(--ion-color-primary);
+  --button-background-selected-opacity: 0;
+  --button-background-activated: var(----ion-item-background-activated);
+  // --button-background-activated-opacity: 0;
+  // --button-background-hover:  var(--ion-color-primary);
+  // --button-background-hover-opacity: .04;
+  // --button-background-focused: currentColor;
+  // --button-background-focused-opacity: .12;
+  --button-color: var(--ion-item-text-color);
+  --button-color-hover: var(--ion-color-primary);
+  --button-color-focused: var(--ion-color-primary);
+  --color: var(--ion-item-text-color);
+  .action-sheet-destructive {
+    --color: var(--ion-color-danger);
+    --button-color: var(--ion-color-danger);
+  }
+  .action-sheet-cancel {
+    --color: var(--ion-color-secondary);
+    --button-color: var(--ion-color-secondary);
+  }
+}

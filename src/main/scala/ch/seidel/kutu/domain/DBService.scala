@@ -80,12 +80,14 @@ object DBService {
       , "AddDurchgangTable-sqllite.sql"
       , "InitDurchgangTable.sql"
       , "FixEmptyRiegeTimeTableIssue-sqllite.sql"
+      , "AddAnmeldungTables-sqllite.sql"
+      , "AddAnmeldungTables-u2-sqllite.sql"
     )
 
     (!dbfile.exists() || dbfile.length() == 0, Config.importDataFrom) match {
       case (true, Some(version)) =>
         migrateFrom(createDS, sqlScripts, version)
-      case (false, _) =>
+      case (true, _) =>
         dbfile.createNewFile()
       case _ => // nothing to do
     }
@@ -131,6 +133,8 @@ object DBService {
             , "AddDurchgangTable-sqllite.sql"
             , "InitDurchgangTable.sql"
             , "FixEmptyRiegeTimeTableIssue-sqllite.sql"
+            , "AddAnmeldungTables-sqllite.sql"
+            , "AddAnmeldungTables-u2-sqllite.sql"
           )
           installDB(db, sqlScripts)
         } finally {
@@ -165,6 +169,9 @@ object DBService {
         , "AddDurchgangTable-pg.sql"
         , "InitDurchgangTable.sql"
         , "FixEmptyRiegeTimeTableIssue-pg.sql"
+        , "AddAnmeldungTables-pg.sql"
+        , "AddAnmeldungTables-u1-pg.sql"
+        , "AddAnmeldungTables-u2-pg.sql"
       )
       installDB(db, sqlScripts)
       Config.importDataFrom match {
@@ -179,7 +186,7 @@ object DBService {
           }
         case _ =>
       }
-      logger.info("databe initialization ready with config " + dbconfig_key);
+      logger.info("database initialization ready with config " + dbconfig_key);
       db
     } catch {
       case e: Exception =>
@@ -194,7 +201,8 @@ object DBService {
   private var database: Option[DatabaseDef] = None
 
   def checkMigrationDone(db: DatabaseDef, script: String): Boolean = {
-    try {
+    logger.info(s"checking installation-status for ${script} ...")
+    val ret = try {
       0 < Await.result(db.run {
         sql"""
           select count(*) from migrations where name = $script
@@ -203,6 +211,12 @@ object DBService {
     } catch {
       case _: Throwable => false
     }
+    if (ret) {
+      logger.info(s"the script ${script} is already installed")
+    } else {
+      logger.info(s"the script ${script} should be executed")
+    }
+    ret
   }
 
   def migrationDone(db: DatabaseDef, script: String, log: String): Unit = {
@@ -378,10 +392,6 @@ object DBService {
     database.get
   }
 
-  val sdf = new SimpleDateFormat("dd.MM.yyyy")
-  val sdfShort = new SimpleDateFormat("dd.MM.yy")
-  val sdfExported = new SimpleDateFormat("yyyy-MM-dd")
-  val sdfYear = new SimpleDateFormat("yyyy")
 
 }
 
@@ -390,16 +400,5 @@ trait DBService {
 
   def database: DatabaseDef = DBService.startDB()
 
-  implicit def getSQLDate(date: String) = try {
-    new java.sql.Date(DBService.sdf.parse(date).getTime)
-  }
-  catch {
-    case d: ParseException => try {
-      new java.sql.Date(DBService.sdfExported.parse(date).getTime)
-    }
-    catch {
-      case dd: ParseException =>
-        new java.sql.Date(DBService.sdfShort.parse(date).getTime)
-    }
-  }
+  implicit def getSQLDate(date: String) = str2SQLDate(date)
 }

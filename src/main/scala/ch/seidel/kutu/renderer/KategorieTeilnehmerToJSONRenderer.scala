@@ -20,16 +20,16 @@ trait KategorieTeilnehmerToJSONRenderer {
 
     val d = kandidaten.map{kandidat =>
       s"""      {
-         |        "verein" : "${kandidat.verein}",
-         |        "athlet" : "${kandidat.name} ${kandidat.vorname} (${kandidat.jahrgang})",
+         |        "verein" : "${escaped(kandidat.verein)}",
+         |        "athlet" : "${escaped(kandidat.name)} ${escaped(kandidat.vorname)} (${escaped(kandidat.jahrgang)})",
          |        "athletid" : ${kandidat.id},
-         |        "durchgang" : "${kandidat.durchgang}",
-         |        "start" : "${kandidat.start}"
+         |        "durchgang" : "${escaped(kandidat.durchgang)}",
+         |        "start" : "${escaped(kandidat.start)}"
          |      }""".stripMargin
     }
     val dt = d.mkString("[\n", ",\n", "]\n")
     s"""  {
-       |    "programm" : "${kategorie}",
+       |    "programm" : "${escaped(kategorie)}",
        |    "teilnehmer" : $dt
        |  }""".stripMargin
   }
@@ -54,7 +54,7 @@ trait KategorieTeilnehmerToJSONRenderer {
   def toJSONasKategorienListe(kandidaten: Seq[Kandidat], logo: File): String = {
     val logoHtml = if (logo.exists()) logo.imageSrcForWebEngine else ""
     val kandidatenPerKategorie = kandidaten.sortBy { k =>
-      val krit = f"${k.verein}%-40s ${k.name}%-40s ${k.vorname}%-40s"
+      val krit = f"${escaped(k.verein)}%-40s ${escaped(k.name)}%-40s ${escaped(k.vorname)}%-40s"
       //logger.debug(krit)
       krit
     }.groupBy(k => k.programm)
@@ -66,7 +66,7 @@ trait KategorieTeilnehmerToJSONRenderer {
     }
 
     val pages = rawpages.mkString(s""""logo" : "$logoHtml",
-                                     |  "title" : "${kandidaten.head.wettkampfTitel}",
+                                     |  "title" : "${escaped(kandidaten.head.wettkampfTitel)}",
                                      |  "programme" : [\n""".stripMargin, ",\n", "]\n")
     intro + pages + outro
   }

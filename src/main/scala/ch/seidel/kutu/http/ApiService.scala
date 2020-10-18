@@ -11,9 +11,9 @@ trait ApiService extends RouteConcatenation with CIDSupport with RouterLogging
   with WettkampfRoutes
   with ScoreRoutes
   with ReportRoutes
+  with RegistrationRoutes
   //    with WebSockets
-  with ResourceService
-  with DBService {
+  with ResourceService {
 
   //  private implicit lazy val _ = ch.seidel.kutu.http.Core.system.dispatcher
 
@@ -34,6 +34,7 @@ trait ApiService extends RouteConcatenation with CIDSupport with RouterLogging
           wettkampfRoutes ~
           scoresRoutes ~
           reportRoutes ~
+          registrationRoutes ~
         //      websocket
         complete(StatusCodes.NotFound)
       } ~ fallbackRoute

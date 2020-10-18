@@ -31,7 +31,15 @@ object PrintUtil {
   val logger = LoggerFactory.getLogger(this.getClass)
   import scala.concurrent.ExecutionContext.Implicits.global
   private val PRINT_TO_BROWSER = new AtomicBoolean(false)
-  
+
+  def escaped(text: String) =
+    if(text == null) {
+      ""
+    }
+    else {
+      text.split("\n").toList.map(xml.Utility.escape(_)).mkString("", "<br>", "")
+    }
+
   case class FilenameDefault(filename: String, dir: java.io.File)
 
   def btnPrint(title: String, defaults: FilenameDefault, adjustLinesPerPage: Boolean = false, onGenerateOutput: (Int)=>String, engine: WebEngine = KuTuApp.invisibleWebView.engine, orientation: PageOrientation = PageOrientation.Portrait) = new Button {

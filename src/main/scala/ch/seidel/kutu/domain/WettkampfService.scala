@@ -279,7 +279,17 @@ trait WettkampfService extends DBService
   def listWettkaempfeAsync = {
      database.run{ listWettkaempfe.withPinnedSession }
   }
-  
+
+  def listWettkaempfeByVereinId(vereinId: Long) = {
+     sql"""       select wk.* from wettkampf wk where exists (
+                    select 1 from wertung wr, athlet a where wr.wettkampf_id = wk.id and wr.athlet_id = a.id and a.verein = $vereinId
+                  )
+                  order by wk.datum desc""".as[Wettkampf]
+  }
+  def listWettkaempfeByVereinIdAsync(vereinId: Long) = {
+     database.run{ listWettkaempfeByVereinId(vereinId).withPinnedSession }
+  }
+
   def listWettkaempfeViewAsync = {
     database.run{
       sql"""      select * from wettkampf order by datum desc""".as[WettkampfView].withPinnedSession
@@ -322,16 +332,6 @@ trait WettkampfService extends DBService
                     r.wettkampf_id = $wettkampf
                     and not exists (select 1 from wertung w where w.riege = r.name or w.riege2 = r.name and r.wettkampf_id = w.wettkampf_id)
        """.as[(String, Int, Option[String], Option[Disziplin])]).withPinnedSession
-    }, Duration.Inf)
-  }
-
-  def listAthletenZuWettkampf(progids: Seq[Long]) = {
-    Await.result(database.run{(
-      sql"""      select a.* from athlet a
-                  inner join wertung w on (a.id = w.athlet_id)
-                  inner join wettkampfdisziplin wd on (wd.id = w.wettkampfdisziplin_id)
-                  where wd.programm_id in (#${progids.mkString(",")})
-         """.as[AthletView]).withPinnedSession
     }, Duration.Inf)
   }
 
@@ -416,11 +416,12 @@ trait WettkampfService extends DBService
       .headOption
       .flatMap{
         case Some(cid) if(cid > 0) =>
-          deleteWettkampfActions(cid) >>
+          deleteWettkampfRelationActions(cid) >>
           sqlu"""
-                insert into wettkampf
-                (id, datum, titel, programm_Id, auszeichnung, auszeichnungendnote, uuid)
-                values (${cid}, ${datum}, ${titel}, ${heads.head.id}, $auszeichnung, $auszeichnungendnote, $uuid)
+                update wettkampf
+                set datum=$datum, titel=$titel, programm_Id=${heads.head.id},
+                    auszeichnung=$auszeichnung, auszeichnungendnote=$auszeichnungendnote
+                where id=$cid and uuid=$uuid
             """ >>
           initPlanZeitenActions(UUID.fromString(uuid)) >>
           sql"""
@@ -475,13 +476,16 @@ trait WettkampfService extends DBService
     Await.result(database.run{(process.flatten).transactionally}, Duration.Inf)
   }
 
-  def deleteWettkampfActions(wettkampfid: Long) = {
+  def deleteWettkampfRelationActions(wettkampfid: Long) = {
       sqlu"""      delete from published_scores where wettkampf_id=${wettkampfid}""" >>
       sqlu"""      delete from durchgangstation where wettkampf_id=${wettkampfid}""" >>
       sqlu"""      delete from durchgang where wettkampf_id=${wettkampfid}""" >>
       sqlu"""      delete from wettkampf_plan_zeiten where wettkampf_id=${wettkampfid}""" >>
       sqlu"""      delete from riege where wettkampf_id=${wettkampfid}""" >>
-      sqlu"""      delete from wertung where wettkampf_id=${wettkampfid}""" >>
+      sqlu"""      delete from wertung where wettkampf_id=${wettkampfid}"""
+  }
+  def deleteWettkampfActions(wettkampfid: Long) = {
+    deleteWettkampfRelationActions(wettkampfid) >>
       sqlu"""      delete from wettkampf where id=${wettkampfid}"""
   }
 
@@ -632,7 +636,7 @@ trait WettkampfService extends DBService
                        where name=${athlet.name}
                          and vorname=${athlet.vorname}
                          and geschlecht=${athlet.geschlecht}
-                         and verein=${athlet.verein.get.id})
+                         and verein=${athlet.verein.map(_.id)})
                      and wettkampf_Id = (select id
                        from wettkampf
                        where uuid=${event.wettkampfUUID})

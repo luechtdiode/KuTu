@@ -16,5 +16,12 @@ Wettkampf-App für Kunst- und Geräteturnen
   * Import und Export von Wettkampfdaten
   * Analysen (grafische Auswertung) auf den Ebenen Turner, Verein, Gerät mit div. Gruppierungskriterien, Jahr- und Wettkampfübergreifend.
 
+# Online-Features:
+  Die App kann selbst als Server betrieben werden, oder sich am zentral bereitgestellten Server verbinden.
+  Es steht ein Docker-Image zur Verfügung, um den Server unter einer eigenen Domäne zu betreiben.
+  * Wettkampfanmeldungen für Vereine
+  * Mobile-App für die Resultaterfassung
+  * Mobile-App für die Resultat-Anzeige
+  * API für die Abfrage diverser Listen und Reports zu einem Wettkampf
 
 [Homepage](http://luechtdiode.github.io/KuTu/)

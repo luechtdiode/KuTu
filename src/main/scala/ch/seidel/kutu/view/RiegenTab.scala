@@ -352,14 +352,18 @@ class RiegenTab(override val wettkampfInfo: WettkampfInfo, override val service:
         DurchgangEditor(wettkampf.id, durchgaenge.getOrElse(durchgang.get, Durchgang(wettkampf.id, durchgang.get)), rel)
       }
     for (group <- DurchgangEditor(durchgangEditors)) {
-      durchgangModel.add(new TreeItem[DurchgangEditor](group) {
-        for (d <- group.aggregates) {
-          children.add(new TreeItem[DurchgangEditor](d))
-        }
-
-//        styleableParent.styleClass.add("parentrow")
-        expanded = expandedStates.contains(group.title.value)
-      })
+      group match {
+        case gd: GroupDurchgangEditor =>
+          durchgangModel.add(new TreeItem[DurchgangEditor](gd) {
+            for (d <- gd.aggregates) {
+              children.add(new TreeItem[DurchgangEditor](d))
+            }
+            //        styleableParent.styleClass.add("parentrow")
+            expanded = expandedStates.contains(gd.title.value)
+          })
+        case g: DurchgangEditor =>
+          durchgangModel.add(new TreeItem[DurchgangEditor](g))
+      }
     }
   }
 
@@ -602,7 +606,13 @@ class RiegenTab(override val wettkampfInfo: WettkampfInfo, override val service:
     def makeAggregateDurchganMenu(durchgang: Set[String]): MenuItem = {
       val ret = KuTuApp.makeMenuAction("Durchgänge in Gruppe zusammenfassen ...") {(caption, action) =>
         implicit val e = action
-        val allDurchgaenge = durchgangModel.flatMap(_.children)
+        val allDurchgaenge = durchgangModel.flatMap(group => {
+          if (group.children.isEmpty) {
+            ObservableBuffer[jfxsc.TreeItem[DurchgangEditor]](group)
+          } else {
+            group.children
+          }
+        })
         val selectedDurchgaenge = allDurchgaenge.map(_.getValue.durchgang).filter {case d: Durchgang => durchgang.contains(d.name)}
         val txtNeuerDurchgangName = new TextField() {
           text = selectedDurchgaenge.head.title

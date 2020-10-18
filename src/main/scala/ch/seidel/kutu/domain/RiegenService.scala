@@ -185,13 +185,13 @@ trait RiegenService extends DBService with RiegenResultMapper {
   def cleanUnusedRiegen(wettkampfid: Long): Unit = {
     Await.result(database.run{(
       sqlu"""
-                DELETE from riege where wettkampf_id=${wettkampfid} and and kind=0 and not exists(
+                DELETE from riege where wettkampf_id=${wettkampfid} and kind=0 and not exists(
                   select 1 from wertung w where w.riege = riege.name or w.riege2 = riege.name and w.wettkampf_id = riege.wettkampf_id
                 )
           """ >>
       sqlu"""
-              DELETE from durchgang where wettkampf_id=${wettkampfid} and durchgangtype = 1 and not exists(
-                  select 1 from riege w where w.durchgang = druchgang.name and w.wettkampf_id = durchgang.wettkampf_id
+              DELETE from durchgang d where d.wettkampf_id=${wettkampfid} and d.durchgangtype = 1 and not exists(
+                  select 1 from riege r where r.durchgang = d.name and r.wettkampf_id = d.wettkampf_id
                 )
             """ >>
       updateDurchgaengeAction(wettkampfid)).transactionally
