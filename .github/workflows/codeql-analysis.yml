@@ -70,6 +70,7 @@ jobs:
 
     - run: |
         export OS=Linux
+        . ./prepare_jdk.sh
         mvn clean install
 
     - name: Perform CodeQL Analysis
