@@ -335,12 +335,8 @@ class CompetitionCoordinatorClientActor(wettkampfUUID: String) extends Persisten
                                       toPublish: KutuAppEvent,
                                       durchgang: String) = Future {
     if (durchgang == "") {
-      wsSend.foreach(entry => {
-        val (dgoption, _) = entry
-        wsSend.get(dgoption) match {
-          case Some(wsList) => wsList.filter(ws => !senderWebSocket.exists(_ == ws)).foreach(ws => ws ! toPublish)
-          case _ =>
-        }
+      wsSend.values.foreach(wsList => {
+        wsList.filter(ws => !senderWebSocket.exists(_ == ws)).foreach(ws => ws ! toPublish)
       })
     } else {
       wsSend.get(Some(encodeURIComponent(durchgang))) match {
