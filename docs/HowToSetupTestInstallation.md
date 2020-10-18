@@ -6,7 +6,7 @@ Zunächst muss die App ordentlich heruntergeladen und installiert werden.
 Danach kann mit Hilfe folgender Beschreibung eine Test-Instanz konfiguriert werden.
 
 Die Versionsbezeichnungen können im Laufe geändert haben und müssen ggf. in den Scripts angepasst werden.
-Aktuell wird -v2r2 verwendet.
+Aktuell wird -v2r3 verwendet.
 
 Mac OS (Terminal):
 ------------------
@@ -14,7 +14,7 @@ Copy & Paste folgendes Script im Terminal, ev. mit `sudo` notwendig:
 ```
 rm -rf ~/Applications/Test-KutuApp.app
 
-cp -r /Applications/TurnerWettkampf-App-v2r2.app/ ~/Applications/Test-KutuApp.app
+cp -r /Applications/TurnerWettkampf-App-v2r3.app/ ~/Applications/Test-KutuApp.app
 
 echo 'app {
   majorversion = "latest-testversion"
@@ -45,14 +45,14 @@ function set-shortcut {
     }
 
 
-$rmjob = Start-Job -ScriptBlock { rm $Env:USERPROFILE\TurnerWettkampf-App-v2r2 -Recurse }
+$rmjob = Start-Job -ScriptBlock { rm $Env:USERPROFILE\TurnerWettkampf-App-v2r3 -Recurse }
 Wait-Job $rmjob
 Receive-Job $rmjob
-$cpjob = Start-Job -ScriptBlock { cp $Env:ProgramFiles\TurnerWettkampf-App-v2r2 $Env:USERPROFILE -Recurse }
+$cpjob = Start-Job -ScriptBlock { cp $Env:ProgramFiles\TurnerWettkampf-App-v2r3 $Env:USERPROFILE -Recurse }
 Wait-Job $cpjob
 Receive-Job $cpjob
 
-Set-Content $Env:USERPROFILE\TurnerWettkampf-App-v2r2\app\kutuapp.conf -Value 'app {
+Set-Content $Env:USERPROFILE\TurnerWettkampf-App-v2r3\app\kutuapp.conf -Value 'app {
   majorversion = "latest-testversion"
   remote {
     schema = "https"
@@ -61,20 +61,20 @@ Set-Content $Env:USERPROFILE\TurnerWettkampf-App-v2r2\app\kutuapp.conf -Value 'a
 }'
 
 $DesktopPath = [Environment]::GetFolderPath("Desktop")
-set-shortcut "$DesktopPath\Test-TurnerWettkampf-App-v2r2.lnk" "$Env:USERPROFILE\TurnerWettkampf-App-v2r2\TurnerWettkampf-App-v2r2.exe"
+set-shortcut "$DesktopPath\Test-TurnerWettkampf-App-v2r3.lnk" "$Env:USERPROFILE\TurnerWettkampf-App-v2r3\TurnerWettkampf-App-v2r3.exe"
 ```
 Dann starten via Desktop-Verknüpfung oder via PowerShell mit
 ```
-$Env:USERPROFILE\TurnerWettkampf-App-v2r2\TurnerWettkampf-App-v2r2.exe
+$Env:USERPROFILE\TurnerWettkampf-App-v2r3\TurnerWettkampf-App-v2r3.exe
 ```
 
 Linux (Terminal):
 -----------------
 
 ```
-rm -rf ./TurnerWettkampf-App-v2r2
+rm -rf ./TurnerWettkampf-App-v2r3
 
-cp -r /opt/TurnerWettkampf-App-v2r2 ./
+cp -r /opt/TurnerWettkampf-App-v2r3 ./
 
 echo 'app {
   majorversion = "latest-testversion"
@@ -82,11 +82,11 @@ echo 'app {
     schema = "https"
     hostname = "test-kutuapp.sharevic.net"
   }
-}' > TurnerWettkampf-App-v2r2/app/kutuapp.conf
+}' > TurnerWettkampf-App-v2r3/app/kutuapp.conf
 ```
 
 Dann starten mit:
-```~/TurnerWettkampf-App-v2r2/TurnerWettkampf-App-v2r2```
+```~/TurnerWettkampf-App-v2r3/TurnerWettkampf-App-v2r3```
 
 
 Verifikation, dass die Testversion korrekt funktioniert:

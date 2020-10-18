@@ -12,14 +12,15 @@ class SimulationBottmingenD1 extends Simulation {
   //  val jwtToken = "eyJhbGciOiJIUzUxMiIsImN0eSI6ImFwcGxpY2F0aW9uL2pzb24iLCJ0eXAiOiJKV1QifQ.eyJ1c2VyIjoiOTkxMTVkZmItODE5Yi00OGFhLWFkYTUtOTkzN2I4MmVlYmQ0IiwiZXhwaXJlZEF0S2V5IjoxNTQyMDQ4NzY2NjM2fQ.8XYEceYnUIAQVHZVZKP6aF-_7hRNjB7jNFzIGq52CUpmVeBqHmi16W28XQci4tj-IkZmHDqFVzSaW8P3Q3W_vA"
 
   //test-kutuapp.shrevic.net
-  //val jwtToken = "eyJhbGciOiJIUzUxMiIsImN0eSI6ImFwcGxpY2F0aW9uL2pzb24iLCJ0eXAiOiJKV1QifQ.eyJ1c2VyIjoiNzJmODI0MjMtNjVkYS00NWM5LTk5YTctYjNmMTk3MTJmNjI4IiwiZXhwaXJlZEF0S2V5IjoxNTY4MDI2NDE4ODkyfQ.S2LH8F1KFw47OxLKsHmAnBq19MHxOeuU5fdi40lZ3wn3QRS5oscdfy9dRujJhnwG8_tQb4WISKAaQ7yAHB7DHg"
+  val jwtToken = "eyJhbGciOiJIUzUxMiIsImN0eSI6ImFwcGxpY2F0aW9uL2pzb24iLCJ0eXAiOiJKV1QifQ.eyJ1c2VyIjoiNzJmODI0MjMtNjVkYS00NWM5LTk5YTctYjNmMTk3MTJmNjI4IiwiZXhwaXJlZEF0S2V5IjoxNjAyNDI4MzkzMTMwfQ.DB2maxABqRuz5oadPwCcVrU5-f9Yb3yL23pcy3XR--K3jRNempyIhtxMlw2NZoxxsXBOql2wvZ4MR6NY9iKX6w"
   //kutuapp.shrevic.net
-  val jwtToken = "eyJhbGciOiJIUzUxMiIsImN0eSI6ImFwcGxpY2F0aW9uL2pzb24iLCJ0eXAiOiJKV1QifQ.eyJ1c2VyIjoiNzJmODI0MjMtNjVkYS00NWM5LTk5YTctYjNmMTk3MTJmNjI4IiwiZXhwaXJlZEF0S2V5IjoxNTY4MDMxMzM4OTk4fQ.-Blh4u2AlFYWGzNW7lgreIUulzLrG09jqo8h9HvCdbgKF-pU4IV97SPYQdYBEh8y04MnSjiQ-TM3wEasmafLFw"
+  //val jwtToken = "eyJhbGciOiJIUzUxMiIsImN0eSI6ImFwcGxpY2F0aW9uL2pzb24iLCJ0eXAiOiJKV1QifQ.eyJ1c2VyIjoiNzJmODI0MjMtNjVkYS00NWM5LTk5YTctYjNmMTk3MTJmNjI4IiwiZXhwaXJlZEF0S2V5IjoxNTY4MDMxMzM4OTk4fQ.-Blh4u2AlFYWGzNW7lgreIUulzLrG09jqo8h9HvCdbgKF-pU4IV97SPYQdYBEh8y04MnSjiQ-TM3wEasmafLFw"
 
   val competition = "72f82423-65da-45c9-99a7-b3f19712f628"
   //val originBaseUrl = "https://test-kutuapp.sharevic.net" //,"http://pluto:5757"//, "https://kutuapp.sharevic.net" //,"https://kutuapp.sharevic.net"//,"http://mws-01:5757"//,
   // val originBaseUrl = "http://mws-01:5757"//, "https://kutuapp.sharevic.net"//,"http://mws-01:5757"//,
-  val originBaseUrl = "https://kutuapp.sharevic.net"
+  //val originBaseUrl = "https://kutuapp.sharevic.net"
+  val originBaseUrl = "https://competition.sharevic.net"
 
   val httpProtocol = http
     .baseUrl(originBaseUrl)
