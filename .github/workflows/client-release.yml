@@ -34,7 +34,7 @@ jobs:
     - name: Pack output
       working-directory: newclient/resultcatcher
       run: |
-        zip --junk-paths resultcatcher www
+        zip -r resultcatcher ./www
     - name: Create Release
       id: create_release
       uses: actions/create-release@v1
