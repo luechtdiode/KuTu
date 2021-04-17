@@ -153,7 +153,7 @@ jobs:
         #      - choco install openjdk -y #--version 11.0.1
         - source ./prepare_jdk.sh
         - choco install nuget.commandline -y
-        - nuget install WiX -Version 3.11.1 -NonInteractive # https://travis-ci.community/t/unable-to-install-wix-toolset/1071
+        - nuget install WiX -Version 3.11.2 -NonInteractive # https://travis-ci.community/t/unable-to-install-wix-toolset/1071
         - ./ecr_credentials.sh >/dev/null 2>&1
         - export AWS_HOME="C:\Program Files\Amazon\AWSCLI"
         - export MAVEN_HOME="C:/ProgramData/chocolatey/lib/maven"
