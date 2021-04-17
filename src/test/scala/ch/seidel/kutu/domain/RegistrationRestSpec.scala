@@ -1,7 +1,6 @@
 package ch.seidel.kutu.domain
 
 import java.time.LocalDate
-import java.util.UUID
 
 import akka.http.scaladsl.model.HttpMethods._
 import akka.http.scaladsl.model.headers.{Authorization, BasicHttpCredentials, RawHeader}
@@ -13,15 +12,15 @@ import ch.seidel.kutu.Config.{jwtAuthorizationKey, jwtHeader, jwtSecretKey, jwtT
 import ch.seidel.kutu.base.KuTuBaseSpec
 
 class RegistrationRestSpec extends KuTuBaseSpec {
-  val testwettkampf = insertGeTuWettkampf("TestGetuWK", 2)
-  val testwettkampf2 = insertGeTuWettkampf("TestGetuWK2", 2)
+  val testwettkampf: Wettkampf = insertGeTuWettkampf("TestGetuWK", 2)
+  val testwettkampf2: Wettkampf = insertGeTuWettkampf("TestGetuWK2", 2)
   val myverysecretpassword = "vkyvf%gMnvXs"
   var registration: Option[Registration] = None
   var athletregistration: Option[AthletRegistration] = None
   var judgeregistration: Option[JudgeRegistration] = None
   var registrationJwt: Option[RawHeader] = None
 
-  def createTestRegistration = {
+  def createTestRegistration: Registration = {
     registration = registration match {
       case None =>
         Some(createRegistration(NewRegistration(
@@ -36,7 +35,7 @@ class RegistrationRestSpec extends KuTuBaseSpec {
     registration.get
   }
 
-  def createTestAthletRegistration(reg: Registration) = {
+  def createTestAthletRegistration(reg: Registration): AthletRegistration = {
     athletregistration = athletregistration match {
       case None =>
         Some(createAthletRegistration(AthletRegistration(0, reg.id, None, "M", "Tester", "Test", "2010-05-05", 20, 0)))
@@ -45,7 +44,7 @@ class RegistrationRestSpec extends KuTuBaseSpec {
     athletregistration.get
   }
 
-  def createTestJudgeRegistration(reg: Registration) = {
+  def createTestJudgeRegistration(reg: Registration): JudgeRegistration = {
     judgeregistration = judgeregistration match {
       case None =>
         Some(createJudgeRegistration(JudgeRegistration(0, reg.id, "M", "Tester", "Test", "04176123456", "mail@mail.ch", "Comment", 0)))
@@ -53,8 +52,9 @@ class RegistrationRestSpec extends KuTuBaseSpec {
     }
     judgeregistration.get
   }
+
   "read programmList" in {
-    val reg = createTestRegistration
+    createTestRegistration
     HttpRequest(method = GET, uri = s"/api/registrations/${testwettkampf.uuid.get}/programmlist") ~>
       allroutes(x => vereinSecretHashLookup(x)) ~> check {
       status should ===(StatusCodes.OK)
@@ -63,7 +63,7 @@ class RegistrationRestSpec extends KuTuBaseSpec {
     }
   }
   "read programmdisziplinlist" in {
-    val reg = createTestRegistration
+    createTestRegistration
     HttpRequest(method = GET, uri = s"/api/registrations/${testwettkampf.uuid.get}/programmdisziplinlist") ~>
       allroutes(x => vereinSecretHashLookup(x)) ~> check {
       status should ===(StatusCodes.OK)
@@ -96,7 +96,7 @@ class RegistrationRestSpec extends KuTuBaseSpec {
         allroutes(x => vereinSecretHashLookup(x)) ~> check {
         status should ===(StatusCodes.OK)
         val list = entityAs[List[Registration]]
-        list.filter(a => a.id == reg.id).nonEmpty shouldBe true
+        list.exists(a => a.id == reg.id) shouldBe true
       }
     }
 
@@ -122,7 +122,7 @@ class RegistrationRestSpec extends KuTuBaseSpec {
     }
 
     "protect by login with jwt" in {
-      val reg = createTestRegistration
+      createTestRegistration
       val request = HttpRequest(method = POST, uri = "/api/login", entity = "")
         .addHeader(registrationJwt.get)
       request ~> allroutes(x => vereinSecretHashLookup(x)) ~> check {
@@ -184,6 +184,7 @@ class RegistrationRestSpec extends KuTuBaseSpec {
         testJudgeRegEntity.geschlecht should ===(expectedSex)
       }
     }
+
     "add JudgeRegistration via rest empty fields" in {
       val reg = createTestRegistration
       testJudgeConflict(reg, JudgeRegistration(0, reg.id, "M", "Markus", "", "+4176123456", "a@b.ch", "Comment", 0))
@@ -235,7 +236,7 @@ class RegistrationRestSpec extends KuTuBaseSpec {
         status should ===(StatusCodes.OK)
         header(Config.jwtAuthorizationKey) should not be empty
         val list = entityAs[List[JudgeRegistration]]
-        list.filter(a => a.id == jugeReg.id).nonEmpty shouldBe true
+        list.exists(a => a.id == jugeReg.id) shouldBe true
       }
     }
 
@@ -329,8 +330,8 @@ class RegistrationRestSpec extends KuTuBaseSpec {
       val gebDat: String = dateToExportedStr(ld2SQLDate(LocalDate.now().minusYears(10)))
       HttpRequest(method = POST, uri = s"/api/registrations/${testwettkampf.uuid.get}/${reg.id}/athletes", entity = HttpEntity(
         ContentTypes.`application/json`,
-             //       {"gebdat":"2020-05-05T02:00:00.000+0200","geschlecht":"M","id":0,"name":"Tester","programId":20,"registrationTime":0,"vereinregistrationId":1,"vorname":"Test"}
-        ByteString(s"""{"id":0,"vereinregistrationId":1,"name":"a","vorname":"b","geschlecht":"W","gebdat":"${gebDat}","programId":23,"registrationTime":0}""")
+        //       {"gebdat":"2020-05-05T02:00:00.000+0200","geschlecht":"M","id":0,"name":"Tester","programId":20,"registrationTime":0,"vereinregistrationId":1,"vorname":"Test"}
+        ByteString(s"""{"id":0,"vereinregistrationId":1,"name":"a","vorname":"b","geschlecht":"W","gebdat":"$gebDat","programId":23,"registrationTime":0}""")
       )).addHeader(registrationJwt.get) ~>
         allroutes(x => vereinSecretHashLookup(x)) ~> check {
         status should ===(StatusCodes.OK)
@@ -366,7 +367,7 @@ class RegistrationRestSpec extends KuTuBaseSpec {
         status should ===(StatusCodes.OK)
         header(Config.jwtAuthorizationKey) should not be empty
         val list = entityAs[List[AthletRegistration]]
-        list.filter(a => a.id == athletreg.id).nonEmpty shouldBe true
+        list.exists(a => a.id == athletreg.id) shouldBe true
       }
     }
 
@@ -408,10 +409,10 @@ class RegistrationRestSpec extends KuTuBaseSpec {
       val registrationToDelete = createTestRegistration
       val idToDelete = registrationToDelete.id
       HttpRequest(method = DELETE, uri = "/api/registrations/" + testwettkampf.uuid.get + "/" + idToDelete) ~>
-      allroutes(x => vereinSecretHashLookup(x)) ~>
-      check {
-        status should ===(StatusCodes.Unauthorized)
-      }
+        allroutes(x => vereinSecretHashLookup(x)) ~>
+        check {
+          status should ===(StatusCodes.Unauthorized)
+        }
     }
   }
 

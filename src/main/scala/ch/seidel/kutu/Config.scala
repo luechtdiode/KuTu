@@ -7,6 +7,7 @@ import java.security.{NoSuchAlgorithmException, SecureRandom}
 import java.util.UUID
 
 import authentikat.jwt.JwtHeader
+import ch.seidel.commons.IOUtils.withResources
 import ch.seidel.kutu.http.KuTuSSLContext
 import com.github.markusbernhardt.proxy.ProxySearch
 import com.typesafe.config.ConfigFactory
@@ -62,12 +63,10 @@ object Config extends KuTuSSLContext {
 
   def saveSecret(secret: String): Unit = {
     val path = new File(userHomePath + "/.jwt").toPath
-    val fos = Files.newOutputStream(path, StandardOpenOption.CREATE_NEW)
-    try {
-      fos.write(secret.getBytes("utf-8"))
-    } finally {
-      fos.close
+    withResources(Files.newOutputStream(path, StandardOpenOption.CREATE_NEW)) {
+      _.write(secret.getBytes("utf-8"))
     }
+
     if (System.getProperty("os.name").toLowerCase.indexOf("win") > -1) {
       Files.setAttribute(path, "dos:hidden", true, LinkOption.NOFOLLOW_LINKS)
     }
