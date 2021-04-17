@@ -157,7 +157,7 @@ jobs:
         - ./ecr_credentials.sh >/dev/null 2>&1
         - export AWS_HOME="C:\Program Files\Amazon\AWSCLI"
         - export MAVEN_HOME="C:/ProgramData/chocolatey/lib/maven"
-        - export WiX_HOME="${TRAVIS_BUILD_DIR}/WiX.3.11.1"
+        - export WiX_HOME="${TRAVIS_BUILD_DIR}/WiX.3.11.2"
         - export PATH=${JAVA_HOME}/bin:${MAVEN_HOME}/bin:${WiX_HOME}/tools:${AWS_HOME}:$PATH
         - powershell refreshenv
         - RefreshEnv.cmd
