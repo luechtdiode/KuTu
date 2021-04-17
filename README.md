@@ -2,6 +2,7 @@
 Wettkampf-App für Kunst- und Geräteturnen
 
 [![Build Status](https://travis-ci.org/luechtdiode/KuTu.svg?branch=master,osx)](https://travis-ci.org/luechtdiode/KuTu)
+[![codecov](https://codecov.io/gh/luechtdiode/KuTu/branch/master/graph/badge.svg?token=MHS3C84GA5)](https://codecov.io/gh/luechtdiode/KuTu)
 
 # Features:
 

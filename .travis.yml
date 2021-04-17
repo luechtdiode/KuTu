@@ -71,6 +71,7 @@ jobs:
       # osx_image: Xcode 10.1//xcode9.2
       before_install:
         - export OS="Darwin"
+        - export CODECOV_TOKEN='d03b4d79-1273-44ff-9206-69b56dbc4058'
         - curl "https://s3.amazonaws.com/aws-cli/awscli-bundle.zip" -o "awscli-bundle.zip"
         - unzip awscli-bundle.zip
         - ./awscli-bundle/install -b ~/bin/aws
@@ -88,6 +89,7 @@ jobs:
         - cp -f $TRAVIS_BUILD_DIR/target/$OS/*.pkg $TRAVIS_BUILD_DIR/outputs/$OS/
         - aws s3 cp --recursive $TRAVIS_BUILD_DIR/outputs/ $S3_BUCKET_PUBLIC/ >/dev/null 2>&1
       after_success:
+        - bash <(curl -s https://codecov.io/bash)
         - export GIT_TAG=travisbuild-$OS-$TRAVIS_BRANCH-$(date -u "+%Y-%m-%d")-$TRAVIS_BUILD_NUMBER
         - git tag $GIT_TAG -a -m "TravisCI build $TRAVIS_BUILD_NUMBER"
         - if ! git push -fq --follow-tags https://$GH_ACCESS_TOKEN@github.com/luechtdiode/KuTu.git $TRAVIS_BRANCH > /dev/null 2>&1; then err "failed to push git changes"; return1; fi

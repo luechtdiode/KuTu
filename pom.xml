@@ -70,6 +70,10 @@
 		<maven.compiler.source>11</maven.compiler.source>
 		<maven.compiler.target>11</maven.compiler.target>
 		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+
+		<scoverage.plugin.version>1.4.1</scoverage.plugin.version>
+		<project-info-reports.plugin.version>3.0.0</project-info-reports.plugin.version>
+		<site.plugin.version>3.7.1</site.plugin.version>
 	</properties>
 
 	<repositories>
@@ -244,7 +248,7 @@
 		<dependency>
 			<groupId>com.twitter</groupId>
 			<artifactId>chill-akka_${scala.majorversion}</artifactId>
-			<version>0.9.4</version>
+			<version>0.9.5</version>
 		</dependency>
 
 		<!-- JWT -->
@@ -411,6 +415,11 @@
 				</executions>
 			</plugin>
 			<plugin>
+				<groupId>org.scoverage</groupId>
+				<artifactId>scoverage-maven-plugin</artifactId>
+				<version>${scoverage.plugin.version}</version>
+			</plugin>
+			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-dependency-plugin</artifactId>
 				<version>3.1.2</version>
@@ -516,12 +525,32 @@
 						<arg>-language:implicitConversions</arg>
 						<arg>-language:postfixOps</arg>
 						<arg>-language:existentials</arg>
+						<arg>-g:line</arg>
 					</args>
 					<jvmArgs>
 						<jvmArg>-Xms64m</jvmArg>
 						<jvmArg>-Xmx1024m</jvmArg>
 					</jvmArgs>
 				</configuration>
+			</plugin>
+			<plugin>
+				<groupId>org.jacoco</groupId>
+				<artifactId>jacoco-maven-plugin</artifactId>
+				<version>0.8.6</version>
+				<executions>
+					<execution>
+						<goals>
+							<goal>prepare-agent</goal>
+						</goals>
+					</execution>
+					<execution>
+						<id>report</id>
+						<phase>test</phase>
+						<goals>
+							<goal>report</goal>
+						</goals>
+					</execution>
+				</executions>
 			</plugin>
 			<!-- plugin> <artifactId>maven-dependency-plugin</artifactId> <version>2.10</version>
 				<executions> <execution> <id>unpack-dependencies</id> <phase>package</phase>
@@ -570,58 +599,6 @@
 							</arguments>
 						</configuration>
 					</execution>
-					<!-- execution> <id>sign-jar</id> <phase>package</phase> <goals> <goal>exec</goal>
-						</goals> <configuration> <executable>${env.JAVA_HOME}/bin/javapackager</executable>
-						<arguments> <argument>-signjar</argument> <argument>-srcdir</argument> <argument>${project.build.directory}</argument>
-						<argument>-outdir</argument> <argument>${project.build.directory}</argument>
-						<argument>-keyStore</argument> <argument>ksdev.jks</argument> <argument>-storePass</argument>
-						<argument>${keyPass}</argument> <argument>-keyPass</argument> <argument>${keyPass}</argument>
-						<argument>-alias</argument> <argument>app.interpolar.ch</argument> </arguments>
-						</configuration> </execution -->
-					<!--<execution>-->
-						<!--<id>deploy-native</id>-->
-						<!--<phase>package</phase>-->
-						<!--<goals>-->
-							<!--<goal>exec</goal>-->
-						<!--</goals>-->
-						<!--<configuration>-->
-							<!--<executable>${jdk-home}/bin/jpackager</executable>-->
-							<!--<arguments>-->
-								<!--<argument>-deploy</argument>-->
-								<!--<argument>-appclass</argument>-->
-								<!--<argument>ch.seidel.kutu.KuTuApp</argument>-->
-								<!--<argument>-name</argument>-->
-								<!--<argument>TurnerWettkampf-App-v${parsedVersion.majorVersion}r${parsedVersion.minorVersion}</argument>-->
-								<!--<argument>-BappVersion=${app.version}</argument>-->
-                                <!--<argument>-Bicon=${project.build.sourceDirectory}/../resources/images/app-logo.ico</argument>-->
-								<!--<argument>-srcdir</argument>-->
-								<!--<argument>${project.build.directory}</argument>-->
-								<!--<argument>-srcfiles</argument>-->
-								<!--<argument>${project.artifactId}-app.jar</argument>-->
-								<!--<argument>-outdir</argument>-->
-								<!--<argument>${project.build.directory}/${bundler.os}</argument>-->
-								<!--<argument>-outfile</argument>-->
-								<!--<argument>KuTuApp</argument>-->
-								<!--<argument>-native</argument>-->
-								<!--<argument>-nosign</argument>-->
-								<!--<argument>-allpermissions</argument>-->
-								<!--<argument>-width</argument>-->
-								<!--<argument>1024</argument>-->
-								<!--<argument>-height</argument>-->
-								<!--<argument>900</argument>-->
-								<!--<argument>-title</argument>-->
-								<!--<argument>Wettkampf</argument>-->
-								<!--<argument>-BsystemWide=true</argument>-->
-								<!--&lt;!&ndash; argument>-BjvmOptions=-Xmx512m</argument &ndash;&gt;-->
-								<!--<argument>-Bcopyright="Interpolar"</argument>-->
-								<!--<argument>-Bvendor="Interpolar"</argument>-->
-								<!--&lt;!&ndash; argument>-Bdescription="Wettkampf Verwaltung und Durchfuehrung"</argument &ndash;&gt;-->
-								<!--<argument>-Bmac.CFBundleIdentifier="ch.seidel.KuTuApp"</argument>-->
-								<!--<argument>-Bmac.CFBundleName=Wettkampf</argument>-->
-								<!--<argument>-Bmac.CFBundleVersion=${parsedVersion.majorVersion}${parsedVersion.minorVersion}${parsedVersion.incrementalVersion}</argument>-->
-							<!--</arguments>-->
-						<!--</configuration>-->
-					<!--</execution>-->
 				</executions>
 			</plugin>
 			<plugin>
@@ -654,36 +631,43 @@
 					</execution>
 				</executions>
 			</plugin>
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-site-plugin</artifactId>
+				<version>${site.plugin.version}</version>
+			</plugin>
 		</plugins>
 		<extensions>
-<!--			<extension>-->
-<!--				<groupId>org.kuali.maven.wagons</groupId>-->
-<!--				<artifactId>maven-s3-wagon</artifactId>-->
-<!--				<version>1.2.1</version>-->
-<!--			</extension>-->
-			<!--<extension>-->
-				<!--<groupId>org.springframework.build</groupId>-->
-				<!--<artifactId>aws-maven</artifactId>-->
-				<!--<version>5.0.0.RELEASE</version>-->
-			<!--</extension>-->
-			<!-- https://mvnrepository.com/artifact/pjstadig/maven-s3-wagon -->
-			<!--<extension>-->
-				<!--<groupId>pjstadig</groupId>-->
-				<!--<artifactId>maven-s3-wagon</artifactId>-->
-				<!--<version>1.3.4</version>-->
-			<!--</extension>-->
-
-			<!--<extension>-->
-				<!--<groupId>com.gkatzioura.maven.cloud</groupId>-->
-				<!--<artifactId>s3-storage-wagon</artifactId>-->
-				<!--<version>1.0</version>-->
-			<!--</extension>-->
-			<!-- Enabling the use of FTP -->
-			<!--<extension>-->
-				<!--<groupId>org.apache.maven.wagon</groupId>-->
-				<!--<artifactId>wagon-ftp</artifactId>-->
-				<!--<version>3.2.0</version>-->
-			<!--</extension>-->
 		</extensions>
 	</build>
+
+	<reporting>
+		<plugins>
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-project-info-reports-plugin</artifactId>
+				<version>${project-info-reports.plugin.version}</version>
+				<reportSets>
+					<reportSet>
+						<reports>
+							<report>index</report>
+						</reports>
+					</reportSet>
+				</reportSets>
+			</plugin>
+
+			<plugin>
+				<groupId>org.scoverage</groupId>
+				<artifactId>scoverage-maven-plugin</artifactId>
+				<version>${scoverage.plugin.version}</version>
+				<reportSets>
+					<reportSet>
+						<reports>
+							<report>report</report> <!-- select only one report from: report, integration-report and report-only reporters -->
+						</reports>
+					</reportSet>
+				</reportSets>
+			</plugin>
+		</plugins>
+	</reporting>
 </project>
