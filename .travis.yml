@@ -24,6 +24,7 @@ cache:
     - $HOME/.ivy2
     - $HOME/apache-maven-3.5.0
     - $HOME/apache-maven-3.6.0
+    - $HOME/apache-maven-3.6.2
 
 before_script:
   - mkdir -p $TRAVIS_BUILD_DIR/outputs/$OS
@@ -149,7 +150,7 @@ jobs:
       before_install:
         - choco feature enable -n allowGlobalConfirmation;
         - choco install awscli -y --version 1.16.92 # --params "'-b:${TRAVIS_BUILD_DIR}/aws'"
-        - choco install maven -y --version 3.6.1
+        - choco install maven -y --version 3.6.2
         # - choco install adoptopenjdk -y --version 11.28 # 11.0.2.9
         #      - choco install openjdk -y #--version 11.0.1
         - source ./prepare_jdk.sh
@@ -158,7 +159,7 @@ jobs:
         - nuget install WiX -ExcludeVersion -NonInteractive
         - ./ecr_credentials.sh >/dev/null 2>&1
         - export AWS_HOME="C:\Program Files\Amazon\AWSCLI"
-        - export MAVEN_HOME="C:/ProgramData/chocolatey/lib/maven"
+        - export MAVEN_HOME="/c/ProgramData/chocolatey/lib/maven/apache-maven-3.6.2"
         - export WiX_HOME="${TRAVIS_BUILD_DIR}/WiX"
         - export PATH=${JAVA_HOME}/bin:${MAVEN_HOME}/bin:${WiX_HOME}/tools:${AWS_HOME}:$PATH
         - powershell refreshenv
