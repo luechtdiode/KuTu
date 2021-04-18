@@ -153,13 +153,13 @@ jobs:
         # - choco install adoptopenjdk -y --version 11.28 # 11.0.2.9
         #      - choco install openjdk -y #--version 11.0.1
         - source ./prepare_jdk.sh
-#        - choco install nuget.commandline -y
-        - choco install wixtoolset -y --version 3.11.2
-        # - nuget install WiX -Version 3.11.2 -NonInteractive # https://travis-ci.community/t/unable-to-install-wix-toolset/1071
+        - choco install nuget.commandline -y
+        - nuget sources Add -Name nuget.org -Source https://api.nuget.org/v3/index.json
+        - nuget install WiX -ExcludeVersion -NonInteractive
         - ./ecr_credentials.sh >/dev/null 2>&1
         - export AWS_HOME="C:\Program Files\Amazon\AWSCLI"
         - export MAVEN_HOME="C:/ProgramData/chocolatey/lib/maven"
-        - export WiX_HOME="${TRAVIS_BUILD_DIR}/WiX.3.11.2"
+        - export WiX_HOME="${TRAVIS_BUILD_DIR}/WiX"
         - export PATH=${JAVA_HOME}/bin:${MAVEN_HOME}/bin:${WiX_HOME}/tools:${AWS_HOME}:$PATH
         - powershell refreshenv
         - RefreshEnv.cmd
