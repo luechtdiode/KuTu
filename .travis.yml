@@ -5,12 +5,16 @@ env:
     - S3_BUCKET_CACHE=s3://rs-travis/kutuapp/build-cache
     - S3_BUCKET_REQUISITES=s3://rs-travis/kutuapp/requisites
     - S3_BUCKET_PUBLIC=s3://rs-travis/public/kutuapp
+    - COMMIT=${TRAVIS_COMMIT::7}
+    - COMMIT_TAG=$(echo $TRAVIS_BRANCH-$COMMIT | tr "/" ".")
+    - TAG=`if [ ! -z "$TRAVIS_TAG" ]; then echo "$TRAVIS_TAG"; else echo "$COMMIT_TAG"; fi`
 
 # aws permissions see https://stackoverflow.com/questions/38774798/accessdenied-for-listobjects-for-s3-bucket-when-permissions-are-s3
 
 branches:
   except:
     - /^travisbuild-[0-9a-z\-]*/
+    - /^untagged/
 
   # branches:
   #   only:
@@ -128,10 +132,6 @@ jobs:
         - cp target/*.jar docker/
         - rm docker/libs/javafx*.jar
         - rm docker/*-app.jar
-        - export COMMIT=${TRAVIS_COMMIT::7}
-        - export COMMIT_TAG=$(echo $TRAVIS_BRANCH-$COMMIT | tr "/" ".")
-        - export TAG=`if [ ! -z "$TRAVIS_TAG" ]; then echo "$TRAVIS_TAG"; else echo "$COMMIT_TAG";
-          fi`
         - echo "$DOCKER_ACCESSTOKEN" | docker login -u "$DOCKER_USER" --password-stdin  >/dev/null 2>&1
         - docker build ./docker -t $IMAGE_NAME:latest
         - docker tag $IMAGE_NAME:latest $IMAGE_NAME:$TAG
@@ -183,33 +183,12 @@ jobs:
         - if ! git push -fq --follow-tags https://$GH_ACCESS_TOKEN@github.com/luechtdiode/KuTu.git $TRAVIS_BRANCH > /dev/null 2>&1; then err "failed to push git changes"; return1; fi
         - aws s3 cp --recursive $TRAVIS_BUILD_DIR/outputs/ $S3_BUCKET_PUBLIC/ >/dev/null 2>&1
         - aws s3 rm --recursive $S3_BUCKET_CACHE/$TRAVIS_BUILD_NUMBER  >/dev/null 2>&1 # clean up after ourselves
-
-        #deploy: #actually, deploy is managed by maven wagon
-        #   # deploy build to s3
-        #   - provider: s3
-        #     access_key_id: $aws_user
-        #     secret_access_key: $aws_accesskey
-        #     region: "eu-west-1"
-        #     bucket: "rs-travis"
-        #     local_dir: $TRAVIS_BUILD_DIR/outputs
-        #     upload_dir: kutuapp
-        #     skip_cleanup: true
-        #     on:
-        #       all_branches: true
-
-      #   - provider: releases
-      #     api_key: $GH_ACCESS_TOKEN
-      #     file_glob: true
-      #     file: $TRAVIS_BUILD_DIR/src/main/resources/app
-      #     skip_cleanup: true
-      #     on:
-      #       all_branches: true
-      #   #   on:
-      #   #     tags: true
-      #  provider: releases
-      #  api_key: $GH_ACCESS_TOKEN
-      #  file_glob: true
-      #  file: $TRAVIS_BUILD_DIR/target/${OS}/*
-      #  skip_cleanup: true
-      #  on:
-#    tags: true
+      deploy:
+        provider: releases
+        token: $GH_ACCESS_TOKEN
+        file_glob: true
+        file: $TRAVIS_BUILD_DIR/outputs/$OS/*
+        cleanup: false
+        tag_name: $TAG
+        on:
+          tags: true
