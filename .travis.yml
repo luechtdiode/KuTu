@@ -207,7 +207,7 @@ jobs:
         provider: releases
         token: $GH_ACCESS_TOKEN
         file_glob: true
-        file: $TRAVIS_BUILD_DIR/outputs/$OS/*
+        file: $TRAVIS_BUILD_DIR/outputs/$OS/*.msi
         cleanup: false
         skip_cleanup: true
         tag_name: $TAG
