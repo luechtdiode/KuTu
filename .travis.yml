@@ -98,6 +98,15 @@ jobs:
         - export GIT_TAG=travisbuild-$OS-$TRAVIS_BRANCH-$(date -u "+%Y-%m-%d")-$TRAVIS_BUILD_NUMBER
         - git tag $GIT_TAG -a -m "TravisCI build $TRAVIS_BUILD_NUMBER"
         - if ! git push -fq --follow-tags https://$GH_ACCESS_TOKEN@github.com/luechtdiode/KuTu.git $TRAVIS_BRANCH > /dev/null 2>&1; then err "failed to push git changes"; return1; fi
+      deploy:
+        provider: releases
+        token: $GH_ACCESS_TOKEN
+        file_glob: true
+        file: $TRAVIS_BUILD_DIR/outputs/$OS/*
+        cleanup: false
+        tag_name: $TAG
+        on:
+          tags: true
 
     - stage: server
       name: serverlnx
@@ -138,6 +147,15 @@ jobs:
         - docker push $IMAGE_NAME:latest
         - docker push $IMAGE_NAME:$TAG
         - echo "$IMAGE_NAME:$TAG is built properly and pushed to Dockerhub"
+      deploy:
+        provider: releases
+        token: $GH_ACCESS_TOKEN
+        file_glob: true
+        file: $TRAVIS_BUILD_DIR/outputs/$OS/*
+        cleanup: false
+        tag_name: $TAG
+        on:
+          tags: true
 
     - stage: server
       name: serverwin
