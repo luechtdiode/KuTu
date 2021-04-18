@@ -104,6 +104,7 @@ jobs:
         file_glob: true
         file: $TRAVIS_BUILD_DIR/outputs/$OS/*
         cleanup: false
+        skip_cleanup: true
         tag_name: $TAG
         on:
           tags: true
@@ -153,6 +154,7 @@ jobs:
         file_glob: true
         file: $TRAVIS_BUILD_DIR/outputs/$OS/*
         cleanup: false
+        skip_cleanup: true
         tag_name: $TAG
         on:
           tags: true
@@ -207,6 +209,7 @@ jobs:
         file_glob: true
         file: $TRAVIS_BUILD_DIR/outputs/$OS/*
         cleanup: false
+        skip_cleanup: true
         tag_name: $TAG
         on:
           tags: true
