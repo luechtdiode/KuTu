@@ -147,12 +147,13 @@ jobs:
       #    #skips default install - see script bellow
       install: true
       before_install:
+        - choco feature enable -n allowGlobalConfirmation;
         - choco install awscli -y --version 1.16.92 # --params "'-b:${TRAVIS_BUILD_DIR}/aws'"
         - choco install maven -y --version 3.6.1
         # - choco install adoptopenjdk -y --version 11.28 # 11.0.2.9
         #      - choco install openjdk -y #--version 11.0.1
         - source ./prepare_jdk.sh
-        - choco install nuget.commandline -y
+#        - choco install nuget.commandline -y
         - choco install wixtoolset -y --version 3.11.2
         # - nuget install WiX -Version 3.11.2 -NonInteractive # https://travis-ci.community/t/unable-to-install-wix-toolset/1071
         - ./ecr_credentials.sh >/dev/null 2>&1
