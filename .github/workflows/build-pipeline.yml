@@ -41,7 +41,7 @@ jobs:
           npm i
           ionic build --prod --engine=browser
           cd ../..
-          rm -rf ./src/main/resources/app/*
+          rm -rf ./src/main/resources/app
           cp -R -f ./newclient/resultcatcher/www/* ./src/main/resources/app
           // git add ./src/main/resources/app
           //git commit -a -m "update with generated Client from Github Actions CI for build ${{env.GITHUB_RUN_NUMBER}} with [skip ci]"
