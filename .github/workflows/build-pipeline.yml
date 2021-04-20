@@ -44,12 +44,12 @@ jobs:
           rm -rf ./src/main/resources/app
           mkdir ./src/main/resources/app
           cp -R -f ./newclient/resultcatcher/www/* ./src/main/resources/app
-          // git add ./src/main/resources/app
-          //git commit -a -m "update with generated Client from Github Actions CI for build ${{env.GITHUB_RUN_NUMBER}} with [skip ci]"
+          # git add ./src/main/resources/app
+          # sgit commit -a -m "update with generated Client from Github Actions CI for build ${{env.GITHUB_RUN_NUMBER}} with [skip ci]"
           export GIT_TAG=ci-build-client-${{env.GITHUB_REF}}-$(date -u "+%Y-%m-%d")-${{env.GITHUB_RUN_NUMBER}}
           echo $GIT_TAG
-          //git tag $GIT_TAG -a -m "TravisCI client build $TRAVIS_BUILD_NUMBER"
-          // if ! git push -fq --follow-tags https://$GH_ACCESS_TOKEN@github.com/luechtdiode/KuTu.git ${{env.GITHUB_REF}} > /dev/null 2>&1; then err "failed to push git changes"; return1; fi
+          # git tag $GIT_TAG -a -m "TravisCI client build $TRAVIS_BUILD_NUMBER"
+          # if ! git push -fq --follow-tags https://$GH_ACCESS_TOKEN@github.com/luechtdiode/KuTu.git ${{env.GITHUB_REF}} > /dev/null 2>&1; then err "failed to push git changes"; return1; fi
 
       - name: Archive production artifacts
         uses: actions/upload-artifact@v2
