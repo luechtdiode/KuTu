@@ -184,6 +184,7 @@ jobs:
         #     echo ::set-output name=PATH::$(echo ${PATH})
         env:
           OS: Win64
+        shell: bash  
       - name: Download a single artifact
         uses: actions/download-artifact@v2
         with:
@@ -208,7 +209,7 @@ jobs:
 
   build-osx-distribution:
     needs: build-app
-    runs-on: windows-latest
+    runs-on: macos-latest
     steps:
       - name: Build Tags
         id: build_tags
@@ -295,6 +296,7 @@ jobs:
           
       - name: Build, Tag & Push Dockerfile
         run: |
+          mkdir -p docker/libs
           cp target/dependency/*.jar docker/libs/
           cp target/*.jar docker/
           rm docker/libs/javafx*.jar
