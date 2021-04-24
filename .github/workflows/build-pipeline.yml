@@ -121,9 +121,6 @@ jobs:
       - name: Java Setup
         run: |
           . ./prepare_jdk.sh
-        #     echo ::set-output name=JAVA_HOME::$(echo ${JAVA_HOME})
-        #     echo ::set-output name=JRE_HOME::$(echo ${JRE_HOME})
-        #     echo ::set-output name=PATH::$(echo ${PATH})
         env:
           OS: Linux
       - name: Download a single artifact
@@ -136,17 +133,15 @@ jobs:
           java -version
           mvn -version
           mvn package
-        # env:
-        #   JAVA_HOME: ${{ steps.branch_name.outputs.JAVA_HOME }}
-        #   JRE_HOME: ${{ steps.branch_name.outputs.JRE_HOME }}
-        #   PATH: ${{ steps.branch_name.outputs.PATH }}
+        env:
+          OS: Linux
       - name: Archive production artifacts
         uses: actions/upload-artifact@v2
         with:
           name: linux-app
           path: |
-            target/*.deb
-            target/*.rpm
+            target/Linux/*.deb
+            target/Linux/*.rpm
 
   build-win64-distribution:
     needs: build-app
@@ -176,36 +171,25 @@ jobs:
           path: ~/.m2
           key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
           restore-keys: ${{ runner.os }}-m2
-      - name: Java Setup
-        run: |
-          . ./prepare_jdk.sh
-        #     echo ::set-output name=JAVA_HOME::$(echo ${JAVA_HOME})
-        #     echo ::set-output name=JRE_HOME::$(echo ${JRE_HOME})
-        #     echo ::set-output name=PATH::$(echo ${PATH})
-        env:
-          OS: Win64
-        shell: bash  
       - name: Download a single artifact
         uses: actions/download-artifact@v2
         with:
           name: app
           path: target
-      - name: Maven Build
+      - name: Java Setup & Package-Build
         run: |
-          java -version
-          mvn -version
+          . ./prepare_jdk.sh
           mvn package
-        # env:
-        #   JAVA_HOME: ${{ steps.branch_name.outputs.JAVA_HOME }}
-        #   JRE_HOME: ${{ steps.branch_name.outputs.JRE_HOME }}
-        #   PATH: ${{ steps.branch_name.outputs.PATH }}
+        env:
+          OS: Win64
+        shell: bash  
       - name: Archive production artifacts
         uses: actions/upload-artifact@v2
         with:
           name: win64-app
           path: |
-            target/*.msi
-            target/*.exe
+            target/Win64/*.msi
+            target/Win64/*.exe
 
   build-osx-distribution:
     needs: build-app
@@ -239,9 +223,6 @@ jobs:
         id: jdk
         run: |
           . ./prepare_jdk.sh
-        #     echo ::set-output name=JAVA_HOME::$(echo ${JAVA_HOME})
-        #     echo ::set-output name=JRE_HOME::$(echo ${JRE_HOME})
-        #     echo ::set-output name=PATH::$(echo ${PATH})
         env:
           OS: Darwin
       - name: Download a single artifact
@@ -254,17 +235,15 @@ jobs:
           java -version
           mvn -version
           mvn package
-        # env:
-        #   JAVA_HOME: ${{ steps.branch_name.outputs.JAVA_HOME }}
-        #   JRE_HOME: ${{ steps.branch_name.outputs.JRE_HOME }}
-        #   PATH: ${{ steps.branch_name.outputs.PATH }}
+        env:
+          OS: Darwin
       - name: Archive production artifacts
         uses: actions/upload-artifact@v2
         with:
           name: osx-app
           path: |
-            target/*.pkg
-            target/*.dmg
+            target/Darwin/*.pkg
+            target/Darwin/*.dmg
 
   build-docker-distribution:
     needs: build-app
