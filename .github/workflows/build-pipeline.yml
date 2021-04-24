@@ -66,9 +66,9 @@ jobs:
           path: ~/.m2
           key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
           restore-keys: ${{ runner.os }}-m2
-      # - name: Java Setup
-      #   run: |
-      #     . ./prepare_jdk.sh
+      - name: Java Setup
+        run: |
+          . ./prepare_jdk.sh
       #     echo ::set-output name=JAVA_HOME::$(echo ${JAVA_HOME})
       #     echo ::set-output name=JRE_HOME::$(echo ${JRE_HOME})
       #     echo ::set-output name=PATH::$(echo ${PATH})
@@ -118,14 +118,14 @@ jobs:
           path: ~/.m2
           key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
           restore-keys: ${{ runner.os }}-m2
-      # - name: Java Setup
-      #   run: |
-      #     . ./prepare_jdk.sh
+      - name: Java Setup
+        run: |
+          . ./prepare_jdk.sh
       #     echo ::set-output name=JAVA_HOME::$(echo ${JAVA_HOME})
       #     echo ::set-output name=JRE_HOME::$(echo ${JRE_HOME})
       #     echo ::set-output name=PATH::$(echo ${PATH})
-      #   env:
-      #     OS: Linux
+        env:
+          OS: Linux
       - name: Download a single artifact
         uses: actions/download-artifact@v2
         with:
@@ -176,14 +176,14 @@ jobs:
           path: ~/.m2
           key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
           restore-keys: ${{ runner.os }}-m2
-      # - name: Java Setup
-      #   run: |
-      #     . ./prepare_jdk.sh
+      - name: Java Setup
+        run: |
+          . ./prepare_jdk.sh
       #     echo ::set-output name=JAVA_HOME::$(echo ${JAVA_HOME})
       #     echo ::set-output name=JRE_HOME::$(echo ${JRE_HOME})
       #     echo ::set-output name=PATH::$(echo ${PATH})
-      #   env:
-      #     OS: Win64
+        env:
+          OS: Win64
       - name: Download a single artifact
         uses: actions/download-artifact@v2
         with:
@@ -234,15 +234,15 @@ jobs:
           path: ~/.m2
           key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
           restore-keys: ${{ runner.os }}-m2
-      # - name: Java Setup
-      #   id: jdk
-      #   run: |
-      #     . ./prepare_jdk.sh
+      - name: Java Setup
+        id: jdk
+        run: |
+          . ./prepare_jdk.sh
       #     echo ::set-output name=JAVA_HOME::$(echo ${JAVA_HOME})
       #     echo ::set-output name=JRE_HOME::$(echo ${JRE_HOME})
       #     echo ::set-output name=PATH::$(echo ${PATH})
-      #   env:
-      #     OS: Darwin
+        env:
+          OS: Darwin
       - name: Download a single artifact
         uses: actions/download-artifact@v2
         with:
