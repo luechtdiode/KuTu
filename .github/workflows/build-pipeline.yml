@@ -69,9 +69,6 @@ jobs:
       - name: Java Setup
         run: |
           . ./prepare_jdk.sh
-      #     echo ::set-output name=JAVA_HOME::$(echo ${JAVA_HOME})
-      #     echo ::set-output name=JRE_HOME::$(echo ${JRE_HOME})
-      #     echo ::set-output name=PATH::$(echo ${PATH})
         env:
           OS: Linux
       - name: Maven Build
@@ -79,10 +76,7 @@ jobs:
           java -version
           mvn -version
           mvn clean install
-        # env:
-        #   JAVA_HOME: ${{ steps.branch_name.outputs.JAVA_HOME }}
-        #   JRE_HOME: ${{ steps.branch_name.outputs.JRE_HOME }}
-        #   PATH: ${{ steps.branch_name.outputs.PATH }}
+          bash <(curl -s https://codecov.io/bash)
       - name: Archive production artifacts
         uses: actions/upload-artifact@v2
         with:
@@ -233,17 +227,18 @@ jobs:
         id: build_tags
         run: |
           export COMMIT=${GITHUB_SHA::7}
-          export COMMIT_TAG=$(echo ${GITHUB_REF#refs/tags/} | tr "refs/tags/", "" | tr "/" ".")-$COMMIT
+          export COMMIT_TAG=$(echo ${GITHUB_REF#refs/tags/} | tr "refs/tags/", "" | tr "/" ".")
           export COMMIT_BRANCH=$(echo ${GITHUB_REF#refs/heads/} | tr "refs/heads/", "" | tr "/" ".")
-          export TAG=`if [ ! -z "$COMMIT_TAG" ]; then echo "$COMMIT_TAG"; else echo "$COMMIT_BRANCH"; fi`
+          export TAG=`if [ ! -z "$COMMIT_TAG" ]; then echo "$COMMIT_TAG-$COMMIT"; else echo "$COMMIT_BRANCH"; fi`
           echo GITHUB_SHA=$GITHUB_SHA
           echo COMMIT=$COMMIT
           echo COMMIT_TAG=$COMMIT_TAG
+          echo COMMIT_BRANCH=$COMMIT_BRANCH
           echo TAG=$TAG
           echo ::set-output name=SHA_TAG::$GITHUB_SHA
-          echo ::set-output name=SOURCE_NAME::COMMIT_TAG
+          echo ::set-output name=DOCKER_TAG::$TAG
+          echo ::set-output name=SOURCE_TAG::COMMIT_TAG
           echo ::set-output name=SOURCE_BRANCH::$COMMIT_BRANCH
-          echo ::set-output name=SOURCE_TAG::$TAG
       - name: Checkout repository
         uses: actions/checkout@v2
         with:
@@ -276,7 +271,7 @@ jobs:
           docker push ${{secrets.IMAGE_NAME}}:$TAG
           echo "$TAG is built properly and pushed to Dockerhub"
         env:
-          TAG: ${{ steps.build_tags.outputs.SOURCE_TAG }}
+          TAG: ${{ steps.build_tags.outputs.DOCKER_TAG }}
 
   upload-release-assets:
     name: Upload Release-Assets and Cleanup Workflow-Files
@@ -295,7 +290,10 @@ jobs:
         uses: softprops/action-gh-release@v1
         if: startsWith(github.ref, 'refs/tags/')
         with:
-          files: dist/*
+          files: |
+            dist/win64-app/*
+            dist/osx-app/*
+            dist/linux-app/*
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}    
       - uses: geekyeggo/delete-artifact@v1
@@ -304,19 +302,3 @@ jobs:
             osx-app
             win64-app
             linux-app
-
-#  build-linux-binary:
-#    needs: build
-#    runs-on: ubuntu-latest
-#    steps:
-#      - run: ./build-linux-binary.sh
-#  build-win-binary:
-#    needs: build
-#    runs-on: windows-latest
-#    steps:
-#      - run: ./build-win-binary.sh
-#  build-osx-binary:
-#    needs: build
-#    runs-on: macos-latest
-#    steps:
-#      - run: ./build-osx-binary.sh
