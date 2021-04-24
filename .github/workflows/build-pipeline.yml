@@ -66,21 +66,23 @@ jobs:
           path: ~/.m2
           key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
           restore-keys: ${{ runner.os }}-m2
-      - name: Java Setup
-        run: |
-          . ./prepare_jdk.sh
-          echo ::set-output name=JAVA_HOME::$(echo ${JAVA_HOME})
-          echo ::set-output name=JRE_HOME::$(echo ${JRE_HOME})
-          echo ::set-output name=PATH::$(echo ${PATH})
-        env:
-          OS: Linux
+      # - name: Java Setup
+      #   run: |
+      #     . ./prepare_jdk.sh
+      #     echo ::set-output name=JAVA_HOME::$(echo ${JAVA_HOME})
+      #     echo ::set-output name=JRE_HOME::$(echo ${JRE_HOME})
+      #     echo ::set-output name=PATH::$(echo ${PATH})
+      #   env:
+      #     OS: Linux
       - name: Maven Build
         run: |
+          java -version
+          mvn -version
           mvn clean install
-        env:
-          JAVA_HOME: ${{ steps.branch_name.outputs.JAVA_HOME }}
-          JRE_HOME: ${{ steps.branch_name.outputs.JRE_HOME }}
-          PATH: ${{ steps.branch_name.outputs.PATH }}
+        # env:
+        #   JAVA_HOME: ${{ steps.branch_name.outputs.JAVA_HOME }}
+        #   JRE_HOME: ${{ steps.branch_name.outputs.JRE_HOME }}
+        #   PATH: ${{ steps.branch_name.outputs.PATH }}
       - name: Archive production artifacts
         uses: actions/upload-artifact@v2
         with:
@@ -116,14 +118,14 @@ jobs:
           path: ~/.m2
           key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
           restore-keys: ${{ runner.os }}-m2
-      - name: Java Setup
-        run: |
-          . ./prepare_jdk.sh
-          echo ::set-output name=JAVA_HOME::$(echo ${JAVA_HOME})
-          echo ::set-output name=JRE_HOME::$(echo ${JRE_HOME})
-          echo ::set-output name=PATH::$(echo ${PATH})
-        env:
-          OS: Linux
+      # - name: Java Setup
+      #   run: |
+      #     . ./prepare_jdk.sh
+      #     echo ::set-output name=JAVA_HOME::$(echo ${JAVA_HOME})
+      #     echo ::set-output name=JRE_HOME::$(echo ${JRE_HOME})
+      #     echo ::set-output name=PATH::$(echo ${PATH})
+      #   env:
+      #     OS: Linux
       - name: Download a single artifact
         uses: actions/download-artifact@v2
         with:
@@ -131,11 +133,13 @@ jobs:
           path: target
       - name: Maven Build
         run: |
+          java -version
+          mvn -version
           mvn package
-        env:
-          JAVA_HOME: ${{ steps.branch_name.outputs.JAVA_HOME }}
-          JRE_HOME: ${{ steps.branch_name.outputs.JRE_HOME }}
-          PATH: ${{ steps.branch_name.outputs.PATH }}
+        # env:
+        #   JAVA_HOME: ${{ steps.branch_name.outputs.JAVA_HOME }}
+        #   JRE_HOME: ${{ steps.branch_name.outputs.JRE_HOME }}
+        #   PATH: ${{ steps.branch_name.outputs.PATH }}
       - name: Archive production artifacts
         uses: actions/upload-artifact@v2
         with:
@@ -172,14 +176,14 @@ jobs:
           path: ~/.m2
           key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
           restore-keys: ${{ runner.os }}-m2
-      - name: Java Setup
-        run: |
-          . ./prepare_jdk.sh
-          echo ::set-output name=JAVA_HOME::$(echo ${JAVA_HOME})
-          echo ::set-output name=JRE_HOME::$(echo ${JRE_HOME})
-          echo ::set-output name=PATH::$(echo ${PATH})
-        env:
-          OS: Win64
+      # - name: Java Setup
+      #   run: |
+      #     . ./prepare_jdk.sh
+      #     echo ::set-output name=JAVA_HOME::$(echo ${JAVA_HOME})
+      #     echo ::set-output name=JRE_HOME::$(echo ${JRE_HOME})
+      #     echo ::set-output name=PATH::$(echo ${PATH})
+      #   env:
+      #     OS: Win64
       - name: Download a single artifact
         uses: actions/download-artifact@v2
         with:
@@ -187,11 +191,13 @@ jobs:
           path: target
       - name: Maven Build
         run: |
+          java -version
+          mvn -version
           mvn package
-        env:
-          JAVA_HOME: ${{ steps.branch_name.outputs.JAVA_HOME }}
-          JRE_HOME: ${{ steps.branch_name.outputs.JRE_HOME }}
-          PATH: ${{ steps.branch_name.outputs.PATH }}
+        # env:
+        #   JAVA_HOME: ${{ steps.branch_name.outputs.JAVA_HOME }}
+        #   JRE_HOME: ${{ steps.branch_name.outputs.JRE_HOME }}
+        #   PATH: ${{ steps.branch_name.outputs.PATH }}
       - name: Archive production artifacts
         uses: actions/upload-artifact@v2
         with:
@@ -228,15 +234,15 @@ jobs:
           path: ~/.m2
           key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
           restore-keys: ${{ runner.os }}-m2
-      - name: Java Setup
-        id: jdk
-        run: |
-          . ./prepare_jdk.sh
-          echo ::set-output name=JAVA_HOME::$(echo ${JAVA_HOME})
-          echo ::set-output name=JRE_HOME::$(echo ${JRE_HOME})
-          echo ::set-output name=PATH::$(echo ${PATH})
-        env:
-          OS: Darwin
+      # - name: Java Setup
+      #   id: jdk
+      #   run: |
+      #     . ./prepare_jdk.sh
+      #     echo ::set-output name=JAVA_HOME::$(echo ${JAVA_HOME})
+      #     echo ::set-output name=JRE_HOME::$(echo ${JRE_HOME})
+      #     echo ::set-output name=PATH::$(echo ${PATH})
+      #   env:
+      #     OS: Darwin
       - name: Download a single artifact
         uses: actions/download-artifact@v2
         with:
@@ -244,11 +250,13 @@ jobs:
           path: target
       - name: Maven Build
         run: |
+          java -version
+          mvn -version
           mvn package
-        env:
-          JAVA_HOME: ${{ steps.branch_name.outputs.JAVA_HOME }}
-          JRE_HOME: ${{ steps.branch_name.outputs.JRE_HOME }}
-          PATH: ${{ steps.branch_name.outputs.PATH }}
+        # env:
+        #   JAVA_HOME: ${{ steps.branch_name.outputs.JAVA_HOME }}
+        #   JRE_HOME: ${{ steps.branch_name.outputs.JRE_HOME }}
+        #   PATH: ${{ steps.branch_name.outputs.PATH }}
       - name: Archive production artifacts
         uses: actions/upload-artifact@v2
         with:
@@ -257,7 +265,7 @@ jobs:
             target/*.pkg
             target/*.dmg
 
-  build-docker:
+  build-docker-distribution:
     needs: build-app
     runs-on: ubuntu-latest
     steps:
