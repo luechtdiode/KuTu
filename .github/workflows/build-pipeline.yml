@@ -72,8 +72,8 @@ jobs:
       #     echo ::set-output name=JAVA_HOME::$(echo ${JAVA_HOME})
       #     echo ::set-output name=JRE_HOME::$(echo ${JRE_HOME})
       #     echo ::set-output name=PATH::$(echo ${PATH})
-      #   env:
-      #     OS: Linux
+        env:
+          OS: Linux
       - name: Maven Build
         run: |
           java -version
@@ -121,9 +121,9 @@ jobs:
       - name: Java Setup
         run: |
           . ./prepare_jdk.sh
-      #     echo ::set-output name=JAVA_HOME::$(echo ${JAVA_HOME})
-      #     echo ::set-output name=JRE_HOME::$(echo ${JRE_HOME})
-      #     echo ::set-output name=PATH::$(echo ${PATH})
+        #     echo ::set-output name=JAVA_HOME::$(echo ${JAVA_HOME})
+        #     echo ::set-output name=JRE_HOME::$(echo ${JRE_HOME})
+        #     echo ::set-output name=PATH::$(echo ${PATH})
         env:
           OS: Linux
       - name: Download a single artifact
@@ -179,9 +179,9 @@ jobs:
       - name: Java Setup
         run: |
           . ./prepare_jdk.sh
-      #     echo ::set-output name=JAVA_HOME::$(echo ${JAVA_HOME})
-      #     echo ::set-output name=JRE_HOME::$(echo ${JRE_HOME})
-      #     echo ::set-output name=PATH::$(echo ${PATH})
+        #     echo ::set-output name=JAVA_HOME::$(echo ${JAVA_HOME})
+        #     echo ::set-output name=JRE_HOME::$(echo ${JRE_HOME})
+        #     echo ::set-output name=PATH::$(echo ${PATH})
         env:
           OS: Win64
       - name: Download a single artifact
@@ -238,9 +238,9 @@ jobs:
         id: jdk
         run: |
           . ./prepare_jdk.sh
-      #     echo ::set-output name=JAVA_HOME::$(echo ${JAVA_HOME})
-      #     echo ::set-output name=JRE_HOME::$(echo ${JRE_HOME})
-      #     echo ::set-output name=PATH::$(echo ${PATH})
+        #     echo ::set-output name=JAVA_HOME::$(echo ${JAVA_HOME})
+        #     echo ::set-output name=JRE_HOME::$(echo ${JRE_HOME})
+        #     echo ::set-output name=PATH::$(echo ${PATH})
         env:
           OS: Darwin
       - name: Download a single artifact
