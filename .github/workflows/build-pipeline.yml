@@ -233,8 +233,8 @@ jobs:
         id: build_tags
         run: |
           export COMMIT=${GITHUB_SHA::7}
-          export COMMIT_TAG=$(echo ${GITHUB_REF#refs/tags/} | tr "/" ".")
-          export COMMIT_BRANCH=$(echo ${GITHUB_REF#refs/heads/} | tr "/" ".")
+          export COMMIT_TAG=$(echo ${GITHUB_REF#refs/tags/} | tr "refs/tags/", "" | tr "/" ".")-$COMMIT
+          export COMMIT_BRANCH=$(echo ${GITHUB_REF#refs/heads/} | tr "refs/heads/", "" | tr "/" ".")
           export TAG=`if [ ! -z "$COMMIT_TAG" ]; then echo "$COMMIT_TAG"; else echo "$COMMIT_BRANCH"; fi`
           echo GITHUB_SHA=$GITHUB_SHA
           echo COMMIT=$COMMIT
@@ -269,10 +269,6 @@ jobs:
           rm docker/*-app.jar
       - name: Build, Tag & Push Dockerfile
         run: |
-          echo ${{ steps.branch_name.outputs.SOURCE_NAME }}
-          echo ${{ steps.branch_name.outputs.SOURCE_BRANCH }}
-          echo ${{ steps.branch_name.outputs.SOURCE_TAG }}
-          echo ${{ steps.branch_name.outputs.SHA_TAG }}
           echo ${{ secrets.DOCKER_ACCESSTOKEN }} | docker login -u ${{ secrets.DOCKER_USER }} --password-stdin
           docker build ./docker -t ${{secrets.IMAGE_NAME}}:latest
           docker tag ${{secrets.IMAGE_NAME}}:latest ${{secrets.IMAGE_NAME}}:$TAG
@@ -280,7 +276,7 @@ jobs:
           docker push ${{secrets.IMAGE_NAME}}:$TAG
           echo "$TAG is built properly and pushed to Dockerhub"
         env:
-          TAG: ${{ steps.branch_name.outputs.SOURCE_TAG }}
+          TAG: ${{ steps.build_tags.outputs.SOURCE_TAG }}
 
   upload-release-assets:
     name: Upload Release-Assets and Cleanup Workflow-Files
