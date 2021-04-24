@@ -284,10 +284,7 @@ jobs:
 
   upload-release-assets:
     name: Upload Release-Assets and Cleanup Workflow-Files
-    needs: |
-      build-lnx-distribution
-      build-win64-distribution
-      build-osx-distribution
+    needs: [build-lnx-distribution, build-win64-distribution, build-osx-distribution]      
     runs-on: ubuntu-latest
     steps:
       - uses: geekyeggo/delete-artifact@v1
