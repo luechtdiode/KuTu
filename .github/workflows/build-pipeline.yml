@@ -6,7 +6,7 @@
 name: "Build-Pipeline"
 
 on: [push]
-#    branches: [master]
+#   branches: [master]
 #  pull_request:
 #    # The branches below must be a subset of the branches above
 #    branches: [master]
@@ -28,14 +28,15 @@ jobs:
       # the head of the pull request instead of the merge commit.
       - run: git checkout HEAD^2
         if: ${{ github.event_name == 'pull_request' }}
-      # - run: ./build-client.sh
-      - name: Build Mobile-App
+      - name: Setup NPM
         uses: actions/setup-node@v1
         with:
           languages: javascript
           # with:
           #  node-version: 12.x
-      - run: |
+      - name: Build Mobile-App
+        # run: ./build-client.sh
+        run: |
           cd newclient/resultcatcher
           npm install -g cordova ionic
           npm i
@@ -44,47 +45,78 @@ jobs:
           rm -rf ./src/main/resources/app
           mkdir ./src/main/resources/app
           cp -R -f ./newclient/resultcatcher/www/* ./src/main/resources/app
-          # git add ./src/main/resources/app
-          # sgit commit -a -m "update with generated Client from Github Actions CI for build ${{env.GITHUB_RUN_NUMBER}} with [skip ci]"
-          export GIT_TAG=ci-build-client-${{env.GITHUB_REF}}-$(date -u "+%Y-%m-%d")-${{env.GITHUB_RUN_NUMBER}}
-          echo $GIT_TAG
-          # git tag $GIT_TAG -a -m "TravisCI client build $TRAVIS_BUILD_NUMBER"
-          # if ! git push -fq --follow-tags https://$GH_ACCESS_TOKEN@github.com/luechtdiode/KuTu.git ${{env.GITHUB_REF}} > /dev/null 2>&1; then err "failed to push git changes"; return1; fi
-
-      - name: Archive production artifacts
-        uses: actions/upload-artifact@v2
+      - name: Autocommit Client
+        uses: stefanzweifel/git-auto-commit-action@v4
         with:
-          name: mobile-client-app
-          path: |
-            newclient/resultcatcher/www
+          commit_message: update with generated Client from Github Actions CI for build ${{env.GITHUB_RUN_NUMBER}} with [skip ci]
+
   build-server:
     needs: build-client
     runs-on: ubuntu-latest
     steps:
+      - name: Checkout repository
+        uses: actions/checkout@v2
+        with:
+          # We must fetch at least the immediate parents so that if this is
+          # a pull request then we can checkout the head.
+          fetch-depth: 2
+
+      # If this run was triggered by a pull request event, then checkout
+      # the head of the pull request instead of the merge commit.
+      - run: git checkout HEAD^2
+        if: ${{ github.event_name == 'pull_request' }}
       - name: Cache Maven packages
         uses: actions/cache@v2
         with:
           path: ~/.m2
           key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
           restore-keys: ${{ runner.os }}-m2
-      - name: Download a single artifact
-        uses: actions/download-artifact@v2
-        with:
-          name: mobile-client-app
       - name: Java Setup
         run: |
           export OS=Linux
           . ./prepare_jdk.sh
       - name: Maven Build
         run: |
-          mvn clean install
+          mvn clean package
+      - name: Archive production artifacts
+        uses: actions/upload-artifact@v2
+        with:
+          name: app
+          path: |
+            target
 
+  build-docker:
+    needs: build-server
+    runs-on: ubuntu-latest
+    steps:
+      - name: Build Tags
+        id: build_tags
+        run: |
+          echo ::set-output name=SHA_TAG::$(echo ${GITHUB_SHA})
+          echo ::set-output name=SOURCE_NAME::${GITHUB_REF#refs/*/}
+          echo ::set-output name=SOURCE_BRANCH::${GITHUB_REF#refs/heads/}
+          echo ::set-output name=SOURCE_TAG::${GITHUB_REF#refs/tags/}
+      - name: Download a single artifact
+        uses: actions/download-artifact@v2
+        with:
+          name: app
+      - name: Build, Tag & Push Dockerfile
+        run: |
+          rm -rf docker/libs
+          mkdir docker/libs
+          cp target/dependency/*.jar docker/libs/
+          cp target/*.jar docker/
+          rm docker/libs/javafx*.jar
+          rm docker/*-app.jar
+          echo ${{ secrets.DOCKER_ACCESSTOKEN }} | docker login -u ${{ secrets.DOCKER_USER }} --password-stdin >/dev/null 2>&1
+          docker build ./docker -t ${{secrets.IMAGE_NAME}}:latest
+          docker tag ${{secrets.IMAGE_NAME}}:latest ${{secrets.IMAGE_NAME}}:$TAG
+          docker push ${{secrets.IMAGE_NAME}}:latest
+          docker push ${{secrets.IMAGE_NAME}}:$TAG
+          echo "$TAG is built properly and pushed to Dockerhub"
+        env:
+          TAG: ${{ steps.branch_name.outputs.SOURCE_TAG }}
 
-#  build-docker:
-#    needs: build
-#    runs-on: ubuntu-latest
-#    steps:
-#      - run: ./build-docker.sh
 #  build-linux-binary:
 #    needs: build
 #    runs-on: ubuntu-latest
