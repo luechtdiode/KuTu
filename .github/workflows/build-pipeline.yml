@@ -30,12 +30,7 @@ jobs:
         if: ${{ github.event_name == 'pull_request' }}
       - name: Setup NPM
         uses: actions/setup-node@v1
-        with:
-          languages: javascript
-          # with:
-          #  node-version: 12.x
       - name: Build Mobile-App
-        # run: ./build-client.sh
         run: |
           cd newclient/resultcatcher
           npm install -g cordova ionic
@@ -73,11 +68,19 @@ jobs:
           restore-keys: ${{ runner.os }}-m2
       - name: Java Setup
         run: |
-          export OS=Linux
           . ./prepare_jdk.sh
+          echo ::set-output name=JAVA_HOME::$(echo ${JAVA_HOME})
+          echo ::set-output name=JRE_HOME::$(echo ${JRE_HOME})
+          echo ::set-output name=PATH::$(echo ${PATH})
+        env:
+          - OS: Linux
       - name: Maven Build
         run: |
           mvn clean install
+        env:
+          JAVA_HOME: ${{ steps.branch_name.outputs.JAVA_HOME }}
+          JRE_HOME: ${{ steps.branch_name.outputs.JRE_HOME }}
+          PATH: ${{ steps.branch_name.outputs.PATH }}
       - name: Archive production artifacts
         uses: actions/upload-artifact@v2
         with:
@@ -115,15 +118,24 @@ jobs:
           restore-keys: ${{ runner.os }}-m2
       - name: Java Setup
         run: |
-          export OS=Linux
           . ./prepare_jdk.sh
+          echo ::set-output name=JAVA_HOME::$(echo ${JAVA_HOME})
+          echo ::set-output name=JRE_HOME::$(echo ${JRE_HOME})
+          echo ::set-output name=PATH::$(echo ${PATH})
+        env:
+          - OS: Linux
       - name: Download a single artifact
         uses: actions/download-artifact@v2
         with:
           name: app
+          path: target
       - name: Maven Build
         run: |
           mvn package
+        env:
+          JAVA_HOME: ${{ steps.branch_name.outputs.JAVA_HOME }}
+          JRE_HOME: ${{ steps.branch_name.outputs.JRE_HOME }}
+          PATH: ${{ steps.branch_name.outputs.PATH }}
       - name: Archive production artifacts
         uses: actions/upload-artifact@v2
         with:
@@ -162,15 +174,24 @@ jobs:
           restore-keys: ${{ runner.os }}-m2
       - name: Java Setup
         run: |
-          export OS=Win64
           . ./prepare_jdk.sh
+          echo ::set-output name=JAVA_HOME::$(echo ${JAVA_HOME})
+          echo ::set-output name=JRE_HOME::$(echo ${JRE_HOME})
+          echo ::set-output name=PATH::$(echo ${PATH})
+        env:
+          - OS: Win64
       - name: Download a single artifact
         uses: actions/download-artifact@v2
         with:
           name: app
+          path: target
       - name: Maven Build
         run: |
           mvn package
+        env:
+          JAVA_HOME: ${{ steps.branch_name.outputs.JAVA_HOME }}
+          JRE_HOME: ${{ steps.branch_name.outputs.JRE_HOME }}
+          PATH: ${{ steps.branch_name.outputs.PATH }}
       - name: Archive production artifacts
         uses: actions/upload-artifact@v2
         with:
@@ -208,16 +229,26 @@ jobs:
           key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
           restore-keys: ${{ runner.os }}-m2
       - name: Java Setup
+        id: jdk
         run: |
-          export OS=Darwin
           . ./prepare_jdk.sh
+          echo ::set-output name=JAVA_HOME::$(echo ${JAVA_HOME})
+          echo ::set-output name=JRE_HOME::$(echo ${JRE_HOME})
+          echo ::set-output name=PATH::$(echo ${PATH})
+        env:
+          - OS: Darwin
       - name: Download a single artifact
         uses: actions/download-artifact@v2
         with:
           name: app
+          path: target
       - name: Maven Build
         run: |
           mvn package
+        env:
+          JAVA_HOME: ${{ steps.branch_name.outputs.JAVA_HOME }}
+          JRE_HOME: ${{ steps.branch_name.outputs.JRE_HOME }}
+          PATH: ${{ steps.branch_name.outputs.PATH }}
       - name: Archive production artifacts
         uses: actions/upload-artifact@v2
         with:
@@ -252,10 +283,10 @@ jobs:
         uses: actions/download-artifact@v2
         with:
           name: app
+          path: target
+          
       - name: Build, Tag & Push Dockerfile
         run: |
-          rm -rf docker/libs
-          mkdir docker/libs
           cp target/dependency/*.jar docker/libs/
           cp target/*.jar docker/
           rm docker/libs/javafx*.jar
