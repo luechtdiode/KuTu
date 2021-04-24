@@ -227,9 +227,9 @@ jobs:
         id: build_tags
         run: |
           export COMMIT=${GITHUB_SHA::7}
-          export COMMIT_TAG=$(echo ${GITHUB_REF#refs/tags/} | tr "refs/tags/", "" | tr "/" ".")
-          export COMMIT_BRANCH=$(echo ${GITHUB_REF#refs/heads/} | tr "refs/heads/", "" | tr "/" ".")
-          export TAG=`if [ ! -z "$COMMIT_TAG" ]; then echo "$COMMIT_TAG-$COMMIT"; else echo "$COMMIT_BRANCH"; fi`
+          export COMMIT_TAG=$(if [[ $GITHUB_REF == refs/tags/* ]]; then echo ${GITHUB_REF#refs/tags/} | tr "/" "."; else echo ""; fi)
+          export COMMIT_BRANCH=$(if [[ $GITHUB_REF == refs/heads/* ]]; then echo ${GITHUB_REF#refs/heads/} | tr "/" "."; else echo ""; fi)
+          export TAG=`if [ ! -z "$COMMIT_TAG" ]; then echo "$COMMIT_TAG"; else echo "$COMMIT_BRANCH-$COMMIT"; fi`
           echo GITHUB_SHA=$GITHUB_SHA
           echo COMMIT=$COMMIT
           echo COMMIT_TAG=$COMMIT_TAG
