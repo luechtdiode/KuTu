@@ -273,13 +273,17 @@ jobs:
           name: app
           path: target
           
-      - name: Build, Tag & Push Dockerfile
+      - name: Prepare Build, Tag & Push Dockerfile
         run: |
+          ls -lna
+          ls target -lna
           mkdir -p docker/libs
           cp target/dependency/*.jar docker/libs/
           cp target/*.jar docker/
           rm docker/libs/javafx*.jar
           rm docker/*-app.jar
+      - name: Build, Tag & Push Dockerfile
+        run: |
           echo ${{ secrets.DOCKER_ACCESSTOKEN }} | docker login -u ${{ secrets.DOCKER_USER }} --password-stdin >/dev/null 2>&1
           docker build ./docker -t ${{secrets.IMAGE_NAME}}:latest
           docker tag ${{secrets.IMAGE_NAME}}:latest ${{secrets.IMAGE_NAME}}:$TAG
