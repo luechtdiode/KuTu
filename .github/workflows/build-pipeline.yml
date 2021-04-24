@@ -73,7 +73,7 @@ jobs:
           echo ::set-output name=JRE_HOME::$(echo ${JRE_HOME})
           echo ::set-output name=PATH::$(echo ${PATH})
         env:
-          - OS: Linux
+          OS: Linux
       - name: Maven Build
         run: |
           mvn clean install
@@ -123,7 +123,7 @@ jobs:
           echo ::set-output name=JRE_HOME::$(echo ${JRE_HOME})
           echo ::set-output name=PATH::$(echo ${PATH})
         env:
-          - OS: Linux
+          OS: Linux
       - name: Download a single artifact
         uses: actions/download-artifact@v2
         with:
@@ -179,7 +179,7 @@ jobs:
           echo ::set-output name=JRE_HOME::$(echo ${JRE_HOME})
           echo ::set-output name=PATH::$(echo ${PATH})
         env:
-          - OS: Win64
+          OS: Win64
       - name: Download a single artifact
         uses: actions/download-artifact@v2
         with:
@@ -236,7 +236,7 @@ jobs:
           echo ::set-output name=JRE_HOME::$(echo ${JRE_HOME})
           echo ::set-output name=PATH::$(echo ${PATH})
         env:
-          - OS: Darwin
+          OS: Darwin
       - name: Download a single artifact
         uses: actions/download-artifact@v2
         with:
