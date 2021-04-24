@@ -248,6 +248,7 @@ jobs:
   build-docker-distribution:
     needs: build-app
     runs-on: ubuntu-latest
+    environment: Dockerhub
     steps:
       - name: Build Tags
         id: build_tags
@@ -271,12 +272,9 @@ jobs:
         uses: actions/download-artifact@v2
         with:
           name: app
-          path: target
-          
-      - name: Prepare Build, Tag & Push Dockerfile
+          path: target          
+      - name: Prepare Docker-Build
         run: |
-          ls -lna
-          ls target -lna
           mkdir -p docker/libs
           cp target/dependency/*.jar docker/libs/
           cp target/*.jar docker/
@@ -284,7 +282,7 @@ jobs:
           rm docker/*-app.jar
       - name: Build, Tag & Push Dockerfile
         run: |
-          echo ${{ secrets.DOCKER_ACCESSTOKEN }} | docker login -u ${{ secrets.DOCKER_USER }} --password-stdin >/dev/null 2>&1
+          echo ${{ secrets.DOCKER_ACCESSTOKEN }} | docker login -u ${{ secrets.DOCKER_USER }} --password-stdin
           docker build ./docker -t ${{secrets.IMAGE_NAME}}:latest
           docker tag ${{secrets.IMAGE_NAME}}:latest ${{secrets.IMAGE_NAME}}:$TAG
           docker push ${{secrets.IMAGE_NAME}}:latest
