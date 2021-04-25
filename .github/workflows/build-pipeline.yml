@@ -5,11 +5,26 @@
 # or to provide custom queries or build logic.
 name: "Build-Pipeline"
 
-on: [push]
-#   branches: [master]
-#  pull_request:
-#    # The branches below must be a subset of the branches above
-#    branches: [master]
+on:
+  push:
+    branches-ignore:
+    - 'gh-pages'
+  paths:
+    - 'newclient/**'
+    - 'src/**'
+    - 'docker/**'
+    - '**.xml'
+    - '**.yml'
+    - '**.sh'
+    - '!data/**'
+    - '!db/**'
+    - '!docs/**'
+    - '!Diagrams/**'
+    - '!Screenshots/**'
+
+  pull_request:
+    # The branches below must be a subset of the branches above
+    branches: [master]
 #  schedule:
 #    - cron: '0 9 * * 2'
 
