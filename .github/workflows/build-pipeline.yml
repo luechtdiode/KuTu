@@ -21,10 +21,11 @@ on:
     - '!docs/**'
     - '!Diagrams/**'
     - '!Screenshots/**'
-
-  pull_request:
-    # The branches below must be a subset of the branches above
-    branches: [master]
+    tags:
+    - '*'
+  # pull_request:
+  # The branches below must be a subset of the branches above
+  #  branches: [master]
 #  schedule:
 #    - cron: '0 9 * * 2'
 
@@ -245,8 +246,11 @@ jobs:
         run: |
           export COMMIT=${GITHUB_SHA::7}
           export COMMIT_TAG=$(if [[ $GITHUB_REF == refs/tags/* ]]; then echo ${GITHUB_REF#refs/tags/} | tr "/" "."; else echo ""; fi)
-          export COMMIT_BRANCH=$(if [[ $GITHUB_REF == refs/heads/* ]]; then echo ${GITHUB_REF#refs/heads/} | tr "/" "."; else echo ""; fi)
+          export COMMIT_BRANCH=$(if [[ $GITHUB_REF == refs/heads/* ]]; then echo ${GITHUB_REF#refs/heads/} | tr "/" "."; else echo "br"; fi)
           export TAG=`if [ ! -z "$COMMIT_TAG" ]; then echo "$COMMIT_TAG"; else echo "$COMMIT_BRANCH-$COMMIT"; fi`
+          echo GITHUB_REF=$GITHUB_REF
+          echo GITHUB_REF#refs/tags/=GITHUB_REF#refs/tags/
+          echo GITHUB_REF#refs/heads/=GITHUB_REF#refs/heads/
           echo GITHUB_SHA=$GITHUB_SHA
           echo COMMIT=$COMMIT
           echo COMMIT_TAG=$COMMIT_TAG
