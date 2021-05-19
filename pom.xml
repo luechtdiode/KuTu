@@ -60,7 +60,7 @@
 		<scala.majorversion>2.12</scala.majorversion>
 		<scala.version>${scala.majorversion}.11</scala.version>
 		<akkaHttp.version>10.1.11</akkaHttp.version>
-		<akka.version>2.6.4</akka.version>
+		<akka.version>2.6.14</akka.version>
 		<javafx.version>16</javafx.version>
 		<scalafx.version>12.0.2-R18</scalafx.version>
 		<scalatest.version>3.1.0</scalatest.version>
