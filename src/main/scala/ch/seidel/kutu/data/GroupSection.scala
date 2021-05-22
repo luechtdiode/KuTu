@@ -81,13 +81,11 @@ case class GroupLeaf(override val groupKey: DataObject, list: Iterable[WertungVi
   def buildColumns: List[WKCol] = {
     val athletCols: List[WKCol] = List(
       WKLeafCol[GroupRow](text = "Rang", prefWidth = 20, styleClass = Seq("data"), valueMapper = gr => {
-        if(gr.auszeichnung) {
-          gr.rang.endnote.intValue() match {
-            case 1 => f"${gr.rang.endnote}%3.0f G"
-            case 2 => f"${gr.rang.endnote}%3.0f S"
-            case 3 => f"${gr.rang.endnote}%3.0f B"
-            case _ => f"${gr.rang.endnote}%3.0f *"
-          }
+        if(gr.auszeichnung) gr.rang.endnote.intValue match {
+          case 1 => f"${gr.rang.endnote}%3.0f G"
+          case 2 => f"${gr.rang.endnote}%3.0f S"
+          case 3 => f"${gr.rang.endnote}%3.0f B"
+          case _ => f"${gr.rang.endnote}%3.0f *"
         }
         else f"${gr.rang.endnote}%3.0f"
       }),
@@ -167,7 +165,7 @@ case class GroupLeaf(override val groupKey: DataObject, list: Iterable[WertungVi
       }
       else {
         groups.head._2.map { disziplin =>
-          val index = indexer.next
+          val index = indexer.next()
           lazy val clDnote = WKLeafCol[GroupRow](text = "D", prefWidth = 60, styleClass = Seq("hintdata"), valueMapper = gr => {
             if (gr.resultate.size > index) {
                   val best = if (gr.resultate(index).sum.noteD > 0

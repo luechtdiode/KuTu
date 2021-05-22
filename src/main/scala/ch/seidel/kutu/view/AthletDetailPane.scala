@@ -64,7 +64,7 @@ case class AthletHeaderPane(wkview: TableView[IndexedSeq[WertungEditor]]) extend
   VBox.setMargin(lblAthlet, Insets(0d, 10d, 0d, 20d))
   VBox.setMargin(lblDisciplin, Insets(0d, 10d, 0d, 40d))
 
-  def adjust {
+  def adjust: Unit = {
     if (selected != null && index > -1 && index < selected.size) {
       lblAthlet.text.value = selected(index).init.athlet.easyprint
       lblDisciplin.text.value = " : " + selected(index).init.wettkampfdisziplin.easyprint

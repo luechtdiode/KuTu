@@ -20,8 +20,8 @@ class WettkampfZeitenTab(editableProperty: Boolean, wettkampf: WettkampfView, ov
 
   var subscription: List[Subscription] = List.empty
 
-  override def release {
-    subscription.foreach(_.cancel)
+  override def release: Unit = {
+    subscription.foreach(_.cancel())
     subscription = List.empty
   }
 
@@ -31,19 +31,19 @@ class WettkampfZeitenTab(editableProperty: Boolean, wettkampf: WettkampfView, ov
     lazypane = Some(pane)
   }
 
-  def refreshLazyPane() {
+  def refreshLazyPane(): Unit = {
     lazypane match {
       case Some(pane) => pane.refreshTabs()
       case _ =>
     }
   }
 
-  override def isPopulated(): Boolean = {
+  override def isPopulated: Boolean = {
 
     val planTimeViews = service
       .loadWettkampfDisziplinTimes(UUID.fromString(wettkampf.uuid.get))
       .map { a => ZeitenEditor(a) }
-    val model = ObservableBuffer[ZeitenEditor](planTimeViews)
+    val model = ObservableBuffer.from(planTimeViews)
 
     val cols: List[jfxsc.TableColumn[ZeitenEditor, _]] = classOf[ZeitenEditor].getDeclaredFields.filter { f =>
       f.getType.equals(classOf[ReadOnlyStringProperty])
@@ -69,7 +69,7 @@ class WettkampfZeitenTab(editableProperty: Boolean, wettkampf: WettkampfView, ov
           cellValueFactory = { x =>
             field.get(x.value).asInstanceOf[StringProperty]
           }
-          cellFactory = { _ => new AutoCommitTextFieldTableCell[ZeitenEditor, String](new DefaultStringConverter()) }
+          cellFactory = { _:Any => new AutoCommitTextFieldTableCell[ZeitenEditor, String](new DefaultStringConverter()) }
           styleClass += "table-cell-with-value"
           prefWidth = ZeitenEditor.coldef(field.getName)
           editable = editableProperty
@@ -94,7 +94,7 @@ class WettkampfZeitenTab(editableProperty: Boolean, wettkampf: WettkampfView, ov
 
     var lastFilter: String = ""
 
-    def updateFilteredList(newVal: String) {
+    def updateFilteredList(newVal: String): Unit = {
       lastFilter = newVal
       val sortOrder = zeitenView.sortOrder.toList
       model.clear()

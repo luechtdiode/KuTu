@@ -45,14 +45,14 @@ abstract class DefaultRanglisteTab(wettkampfmode: BooleanProperty, override val 
   var lastPublishedScoreView = new ObjectProperty[Option[PublishedScoreView]]()
   lastPublishedScoreView.setValue(None)
 
-  override def release {
-    subscription.foreach(_.cancel)
+  override def release: Unit = {
+    subscription.foreach(_.cancel())
     subscription = List.empty
   }
   
   var lazyPaneUpdater: Map[String, ScheduledFuture[_]] = Map.empty
  
-  def submitLazy(name: String, task: ()=>Unit, delay: Long) {
+  def submitLazy(name: String, task: ()=>Unit, delay: Long): Unit = {
     lazyPaneUpdater.get(name).foreach(_.cancel(true))
     val ft = KuTuApp.lazyExecutor.schedule(new Runnable() { def run = { 
       Platform.runLater{task()}
@@ -88,17 +88,17 @@ abstract class DefaultRanglisteTab(wettkampfmode: BooleanProperty, override val 
   var restoring = false
   val nullFilter = NullObject("alle")
   
-  def print(printer: Printer) {
+  def print(printer: Printer): Unit = {
     PrintUtil.printWebContent(webView.engine, printer, PageOrientation.Portrait)
   }
   
   def populate(groupers: List[FilterBy]): Seq[ComboBox[FilterBy]] = {
-    val gr1Model = ObservableBuffer[FilterBy](groupers)
+    val gr1Model = ObservableBuffer.from(groupers)
     
-    val grf1Model = ObservableBuffer[DataObject](Seq())
-    val grf2Model = ObservableBuffer[DataObject](Seq())
-    val grf3Model = ObservableBuffer[DataObject](Seq())
-    val grf4Model = ObservableBuffer[DataObject](Seq())
+    val grf1Model = ObservableBuffer.empty[DataObject]
+    val grf2Model = ObservableBuffer.empty[DataObject]
+    val grf3Model = ObservableBuffer.empty[DataObject]
+    val grf4Model = ObservableBuffer.empty[DataObject]
 
     class DataObjectConverter extends StringConverter[DataObject] {
       def fromString(text: String) = {
@@ -110,7 +110,7 @@ abstract class DefaultRanglisteTab(wettkampfmode: BooleanProperty, override val 
    
     class DataObjectListCell extends ListCell[DataObject] {
       override val delegate: jfxsc.ListCell[DataObject] = new jfxsc.ListCell[DataObject] {
-        override protected def updateItem(item: DataObject, empty: Boolean) {
+        override protected def updateItem(item: DataObject, empty: Boolean): Unit = {
           super.updateItem(item, empty)
           if (item != null) {
               setText(item.easyprint);
@@ -237,7 +237,7 @@ abstract class DefaultRanglisteTab(wettkampfmode: BooleanProperty, override val 
     	  combf.getCheckModel.clearChecks()
     	  model.retainAll(expected)
     	  model.insertAll(model.size, expected.filter(!model.contains(_)))
-    	  model.sort{case (a, b) => a.easyprint.compareTo(b.easyprint) < 0}
+    	  model.sort{ (a, b) => a.easyprint.compareTo(b.easyprint) < 0}
       
     	  checked.filter(model.contains(_)).foreach(combf.getCheckModel.check(_))
     	}
@@ -260,7 +260,7 @@ abstract class DefaultRanglisteTab(wettkampfmode: BooleanProperty, override val 
       ret
     }
     
-    def restoreGrouper(query: GroupBy) {
+    def restoreGrouper(query: GroupBy): Unit = {
       restoring = true
 
       combos.foreach{cb =>
@@ -296,7 +296,7 @@ abstract class DefaultRanglisteTab(wettkampfmode: BooleanProperty, override val 
     }
   
     combos.foreach{ case (comb, combfs) =>
-      comb.onAction = handle {
+      comb.onAction = _ => {
         if(!restoring) {
           restoring = true
           combfs.getCheckModel.clearChecks()
@@ -311,7 +311,7 @@ abstract class DefaultRanglisteTab(wettkampfmode: BooleanProperty, override val 
       })        
     }
     
-    cbModus.onAction = handle {
+    cbModus.onAction = _ => {
       if(!restoring)
         refreshRangliste(buildGrouper)
     }
@@ -325,7 +325,7 @@ abstract class DefaultRanglisteTab(wettkampfmode: BooleanProperty, override val 
       FilenameDefault(extractFilterText + ".scoredef", default.dir)
     }
 
-    def loadFilter(selectedFile: File) {
+    def loadFilter(selectedFile: File): Unit = {
       val ios = new ObjectInputStream(new FileInputStream(selectedFile))
       val grouper = GroupBy(ios.readObject().toString, getData)
       restoreGrouper(grouper)
@@ -376,7 +376,7 @@ abstract class DefaultRanglisteTab(wettkampfmode: BooleanProperty, override val 
     val btnSaveFilter = new Button {
       text = "Einstellung speichern als ..."
       visible <== when(wettkampfmode) choose false otherwise true
-      onAction = handle {
+      onAction = _ => {
           val defaults = getFilterSaveAsFilenameDefault
           val filename = defaults.filename
           val dir = defaults.dir
@@ -415,7 +415,7 @@ abstract class DefaultRanglisteTab(wettkampfmode: BooleanProperty, override val 
       }
     }
 
-    onSelectionChanged = handle {
+    onSelectionChanged = _ => {
       if(selected.value) {
         refreshRangliste(buildGrouper)
       }

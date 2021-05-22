@@ -28,7 +28,7 @@ object Core extends KuTuSSLContext {
   private var terminated = false;
   var serverBinding: Option[Future[Http.ServerBinding]] = None
 
-  def terminate() {
+  def terminate(): Unit = {
     if (!terminated) {
       terminated = true
       system.terminate()
@@ -87,17 +87,17 @@ trait KuTuAppHTTPServer extends ApiService with JsonSupport {
     }
   }
 
-  def shutDown(caller: String) {
+  def shutDown(caller: String): Unit = {
     stopServer(caller)
     Core.terminate()
     println(caller + " System terminated")
   }
 
   def listNetworkAdresses = {
-    import collection.JavaConverters._
+    import scala.jdk.CollectionConverters._
     val dgs = new DatagramSocket()
 
-    def mapToInteraceInfo(n: InetAddress) = {
+    def mapToInterfaceInfo(n: InetAddress) = {
       val url = if (n.getHostAddress.contains(":")) {
         s"${Config.remoteSchema}://[${n.getHostAddress}]:${Config.httpPort}"
       } else {
@@ -122,7 +122,7 @@ trait KuTuAppHTTPServer extends ApiService with JsonSupport {
       val networkInterface = NetworkInterface
         .getByInetAddress(dgs.getLocalAddress)
       val internetAccessAdresses = if (networkInterface == null) List.empty else networkInterface
-        .getInetAddresses.asIterator().asScala.map(mapToInteraceInfo)
+        .getInetAddresses.asIterator().asScala.map(mapToInterfaceInfo)
         .filter {
           case (_, _, 200) => true
           case _ => false
@@ -136,7 +136,7 @@ trait KuTuAppHTTPServer extends ApiService with JsonSupport {
         NetworkInterface
           .getNetworkInterfaces.asIterator().asScala
           .flatMap {
-            _.getInetAddresses.asIterator().asScala.map(mapToInteraceInfo)
+            _.getInetAddresses.asIterator().asScala.map(mapToInterfaceInfo)
           }
           .filter {
             case (_, _, 200) => true

@@ -70,7 +70,7 @@ trait AthletService extends DBService with AthletResultMapper {
   def publishChanged(athlet: Athlet) = AthletIndexActor.publish(SaveAthlet(athlet))
   def publishRemoved(athlet: Athlet) = AthletIndexActor.publish(RemoveAthlet(athlet))
 
-  def mergeAthletes(idToDelete: Long, idToKeep: Long) {
+  def mergeAthletes(idToDelete: Long, idToKeep: Long): Unit = {
     val toDelete = loadAthlet(idToDelete)
     Await.result(database.run {
       (
@@ -85,7 +85,7 @@ trait AthletService extends DBService with AthletResultMapper {
     toDelete.map(publishRemoved)
   }
 
-  def deleteAthlet(id: Long) {
+  def deleteAthlet(id: Long): Unit = {
     val toDelete = loadAthlet(id)
     Await.result(database.run {
       (

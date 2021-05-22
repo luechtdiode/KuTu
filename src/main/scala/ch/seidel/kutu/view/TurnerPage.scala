@@ -19,15 +19,15 @@ import scalafx.util.converter.DefaultStringConverter
 object TurnerPage {
   var turnerAnalyzers = Map[Long, TurnerAnalyzer]()
 
-  def drillDownInAthlet(vverein: Option[Verein], a: Athlet, service: KutuService, tabpane: LazyTabPane) {
+  def drillDownInAthlet(vverein: Option[Verein], a: Athlet, service: KutuService, tabpane: LazyTabPane): Unit = {
     val newtab = new TurnerAnalyzer(vverein, Some(a), None, service) {
       text = a.easyprint + "-Analyse"
       closable = true
-      override def onDrillDown(w: WettkampfdisziplinView) {
+      override def onDrillDown(w: WettkampfdisziplinView): Unit = {
         drillDownInDisziplin(vverein, w, service, tabpane)
       }
 
-      onClosed = handle {
+      onClosed = _ => {
         turnerAnalyzers = turnerAnalyzers.filter(x => !x._1.equals(a.id))
         tabpane.selectionModel.value.select(0)
       }
@@ -37,14 +37,14 @@ object TurnerPage {
     tabpane.selectionModel.value.select(newtab)
   }
 
-  def drillDownInDisziplin(vverein: Option[Verein], w: WettkampfdisziplinView, service: KutuService, tabpane: LazyTabPane) {
+  def drillDownInDisziplin(vverein: Option[Verein], w: WettkampfdisziplinView, service: KutuService, tabpane: LazyTabPane): Unit = {
     val newtab = new TurnerAnalyzer(vverein, None, Some(w), service) {
       text = w.easyprint + "-Analyse"
       closable = true
-      override def onDrillDown(a: Athlet) {
+      override def onDrillDown(a: Athlet): Unit = {
         drillDownInAthlet(vverein, a, service, tabpane)
       }
-      onClosed = handle {
+      onClosed = _ => {
         turnerAnalyzers = turnerAnalyzers.filter(x => !x._1.equals(w.id * -1))
         tabpane.selectionModel.value.select(0)
       }
@@ -64,7 +64,7 @@ object TurnerPage {
           "X"
         }) + ":" + a.name + ":" + a.vorname }.map{a => AthletEditor(a)}
 
-      val wkModel = ObservableBuffer[AthletEditor](athleten)
+      val wkModel = ObservableBuffer.from(athleten)
 
       val cols: List[jfxsc.TableColumn[AthletEditor, _]] = classOf[AthletEditor].getDeclaredFields.filter{f =>
           f.getType.equals(classOf[StringProperty])
@@ -74,7 +74,7 @@ object TurnerPage {
             text =  field.getName.take(1).toUpperCase() + field.getName.drop(1)
             cellValueFactory = { x =>
               field.get(x.value).asInstanceOf[StringProperty] }
-            cellFactory = { _ => new AutoCommitTextFieldTableCell[AthletEditor, String](new DefaultStringConverter()) }
+            cellFactory = { _:Any => new AutoCommitTextFieldTableCell[AthletEditor, String](new DefaultStringConverter()) }
             styleClass += "table-cell-with-value"
             prefWidth = AthletEditor.coldef(field.getName)
             editable = true
@@ -97,7 +97,7 @@ object TurnerPage {
 
     var lastFilter: String = ""
 
-    def updateFilteredList(newVal: String) {
+    def updateFilteredList(newVal: String): Unit = {
       //if(!newVal.equalsIgnoreCase(lastFilter)) {
         lastFilter = newVal
         val sortOrder = athletenview.sortOrder.toList
@@ -235,20 +235,20 @@ object TurnerPage {
       new TurnerAnalyzer(Some(club), None, None, service) {
         text = club.easyprint + " Turner-Analyse"
         closable = false
-        override def onDrillDown(a: Athlet) {
+        override def onDrillDown(a: Athlet): Unit = {
           drillDownInAthlet(Some(club), a, service, pane)
         }
-        override def onDrillDown(w: WettkampfdisziplinView) {
+        override def onDrillDown(w: WettkampfdisziplinView): Unit = {
           drillDownInDisziplin(Some(club), w, service, pane)
         }
       },
       new TurnerAnalyzer(None, None, None, service) {
         text = "Turner-Analyse"
         closable = false
-        override def onDrillDown(a: Athlet) {
+        override def onDrillDown(a: Athlet): Unit = {
           drillDownInAthlet(None, a, service, pane)
         }
-        override def onDrillDown(w: WettkampfdisziplinView) {
+        override def onDrillDown(w: WettkampfdisziplinView): Unit = {
           drillDownInDisziplin(None, w, service, pane)
         }
       },

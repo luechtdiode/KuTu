@@ -26,7 +26,7 @@ sealed trait GroupBy {
 
   def isAlphanumericOrdered = isANO
 
-  def setAlphanumericOrdered(value: Boolean) {
+  def setAlphanumericOrdered(value: Boolean): Unit = {
     traverse(value){ (gb, acc) =>
       gb.isANO = acc
       acc
@@ -86,7 +86,7 @@ sealed trait GroupBy {
     }
   }
 
-  def reset {
+  def reset: Unit = {
     setAlphanumericOrdered(false)
     next = None
   }
@@ -201,15 +201,15 @@ sealed trait FilterBy extends GroupBy {
     nullObjectFilter
   } && canSkipGrouper
 
-  def setFilter(f: Set[DataObject]) {
+  def setFilter(f: Set[DataObject]): Unit = {
     filter = f
   }
 
-  def getFilter = {
+  def getFilter: Set[DataObject] = {
     filter
   }
 
-  override def reset {
+  override def reset: Unit = {
     super.reset
     filter = Set.empty
   }

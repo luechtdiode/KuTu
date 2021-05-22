@@ -18,13 +18,13 @@ import scalafx.scene.layout._
 
 class AthletSelectionDialog(actionTitle: String, progrm: ProgrammView, assignedAthleten: Seq[AthletView], service: KutuService, refreshPaneData: Set[Long]=>Unit) {
 
-  val athletModel = ObservableBuffer[AthletView](
+  val athletModel = ObservableBuffer.from(
     service.selectAthletesView.filter(service.altersfilter(progrm, _)).
     filter { p => /*p.activ &&*/ assignedAthleten.forall { wp => wp.id != p.id } }.
     sortBy { a => (a.activ match {case true => "A" case _ => "X"}) + ":" + a.name + ":" + a.vorname }
   )
 
-  val filteredModel = ObservableBuffer[AthletView](athletModel)
+  val filteredModel = ObservableBuffer.from(athletModel)
 
   val athletTable = new TableView[AthletView](filteredModel) {
     columns ++= List(

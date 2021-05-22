@@ -21,12 +21,12 @@ case class RiegeEditor(wettkampfid: Long, initname: String, initanz: Int, initvi
       selected.value = onSelectedChange.get(initname, selected.value)
     }
   }
-  def reset {
+  def reset: Unit = {
     name.value = initname
     durchgang.value = initdurchgang.getOrElse("")
     start.value = initstart.getOrElse(null)
   }
-  def commit = {
+  def commit: RiegeRaw = {
     RiegeRaw (
       wettkampfId = wettkampfid,
       r = name.value,

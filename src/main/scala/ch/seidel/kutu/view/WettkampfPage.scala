@@ -51,7 +51,7 @@ object WettkampfPage {
 
     var subscription: Option[Subscription] = None
 
-    def releaser() {
+    def releaser(): Unit = {
       subscription match {
         case Some(s) => s.cancel()
         case _ =>
@@ -109,7 +109,7 @@ class WettkampfPage(tabPane: LazyTabPane)
     tabPane
   }
   
-  override def release() {
+  override def release(): Unit = {
     tabPane.release()
   }
 }

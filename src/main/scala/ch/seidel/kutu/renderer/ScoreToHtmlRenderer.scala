@@ -161,7 +161,7 @@ trait ScoreToHtmlRenderer {
     </html>
   """
 
-  def splitToAutonomPages(html: String, printjob: String => Unit) {
+  def splitToAutonomPages(html: String, printjob: String => Unit): Unit = {
     val pages = html.split(nextSite)
     pages.foreach{p => 
       val partpage = if(!p.startsWith(intro)) intro + p + outro else p + outro

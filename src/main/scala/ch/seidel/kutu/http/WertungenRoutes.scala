@@ -76,9 +76,9 @@ trait WertungenRoutes extends SprayJsonSupport with JsonSupport with JwtSupport 
                 }
             }
           } ~
-            (path(Segment / "ws") & parameters('lastSequenceId.?)) { (durchgang: String, lastSequenceId: Option[String]) =>
+            (path(Segment / "ws") & parameters(Symbol("lastSequenceId").?)) { (durchgang: String, lastSequenceId: Option[String]) =>
               val lastSequenceIdOption: Option[Long] = lastSequenceId.map(str2Long)
-              parameters('jwt.as[String]) { jwt =>
+              parameters(Symbol("jwt").as[String]) { jwt =>
                 authenticateWith(Some(jwt), true) { id =>
                   if (!wettkampfExists(competitionId.toString)) {
                     complete(StatusCodes.NotFound)

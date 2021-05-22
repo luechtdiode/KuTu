@@ -131,7 +131,7 @@ trait WettkampfService extends DBService
       """), Duration.Inf)
   }
 
-  def updateOrInsertPlanTimes(planTimes: Iterable[WettkampfPlanTimeRaw]) {
+  def updateOrInsertPlanTimes(planTimes: Iterable[WettkampfPlanTimeRaw]): Unit = {
     def insertPlanTime(rs: Iterable[WettkampfPlanTimeRaw]) = DBIO.sequence(for {
       planTime <- rs
     } yield {
@@ -240,7 +240,7 @@ trait WettkampfService extends DBService
     publishedScoreView
   }
 
-  def updateOrinsertScoreDefs(scores: Iterable[PublishedScoreRaw]) {
+  def updateOrinsertScoreDefs(scores: Iterable[PublishedScoreRaw]): Unit = {
     val process = DBIO.sequence(for {
       (wettkampfid, scores) <- scores.groupBy(_.wettkampfId)
     } yield {
@@ -489,7 +489,7 @@ trait WettkampfService extends DBService
       sqlu"""      delete from wettkampf where id=${wettkampfid}"""
   }
 
-  def deleteWettkampf(wettkampfid: Long) {
+  def deleteWettkampf(wettkampfid: Long): Unit = {
     Await.result(database.run{
       deleteWettkampfActions(wettkampfid).transactionally
     }, Duration.Inf)
@@ -547,7 +547,7 @@ trait WettkampfService extends DBService
     durchgaenge
   }
 
-  def unassignAthletFromWettkampf(wertungId: Set[Long]) {
+  def unassignAthletFromWettkampf(wertungId: Set[Long]): Unit = {
     val wertung = getWertung(wertungId.head)
     val durchgaenge: Set[String] = Await.result(database.run{
       sql"""      select distinct durchgang from riege r inner join wertung w on (
@@ -572,13 +572,13 @@ trait WettkampfService extends DBService
     }
   }
 
-  def assignAthletsToWettkampf(wettkampfId: Long, programmIds: Set[Long], withAthlets: Set[Long] = Set.empty) {
+  def assignAthletsToWettkampf(wettkampfId: Long, programmIds: Set[Long], withAthlets: Set[Long] = Set.empty): Unit = {
     val cache = scala.collection.mutable.Map[Long, ProgrammView]()
     val programs = programmIds map (p => readProgramm(p, cache))
     assignAthletsToWettkampfS(wettkampfId, programs, withAthlets)
   }
 
-  def assignAthletsToWettkampfS(wettkampfId: Long, programs: Set[ProgrammView], withAthlets: Set[Long] = Set.empty) {
+  def assignAthletsToWettkampfS(wettkampfId: Long, programs: Set[ProgrammView], withAthlets: Set[Long] = Set.empty): Unit = {
     if (withAthlets.nonEmpty) {
       val disciplines = Await.result(database.run{(sql"""
                    select id from wettkampfdisziplin
@@ -685,7 +685,7 @@ trait WettkampfService extends DBService
     }, Duration.Inf).flatten
   }
 
-  def moveToProgram(wId: Long, pgmId: Long, athelteView: AthletView) {
+  def moveToProgram(wId: Long, pgmId: Long, athelteView: AthletView): Unit = {
     val wettkampf = readWettkampf(wId)
     val movedInWettkampf = AthletMovedInWettkampf(athelteView, wettkampf.uuid.getOrElse(""), pgmId)
     val durchgaenge = moveToProgram(movedInWettkampf)

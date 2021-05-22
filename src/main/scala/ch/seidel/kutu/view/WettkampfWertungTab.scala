@@ -2,7 +2,6 @@ package ch.seidel.kutu.view
 
 import java.util.UUID
 import java.util.concurrent.{ScheduledFuture, TimeUnit}
-
 import ch.seidel.commons._
 import ch.seidel.kutu.Config._
 import ch.seidel.kutu.KuTuApp.enc
@@ -11,7 +10,7 @@ import ch.seidel.kutu.domain._
 import ch.seidel.kutu.http.WebSocketClient
 import ch.seidel.kutu.renderer.PrintUtil.FilenameDefault
 import ch.seidel.kutu.renderer._
-import ch.seidel.kutu.{Config, KuTuApp, KuTuServer}
+import ch.seidel.kutu.{Config, KuTuApp, KuTuServer, squad}
 import javafx.scene.{control => jfxsc}
 import org.slf4j.LoggerFactory
 import scalafx.Includes._
@@ -51,13 +50,13 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
   def setLazyPane(pane: LazyTabPane): Unit = {
     lazypane = Some(pane)
   }
-  def refreshLazyPane() {
+  def refreshLazyPane(): Unit = {
     lazypane match {
       case Some(pane) => pane.refreshTabs()
       case _=>
     }
   }
-  def refreshOtherLazyPanes() {
+  def refreshOtherLazyPanes(): Unit = {
     lazypane match {
       case Some(pane) => pane.refreshTabs()
       case _=>
@@ -67,12 +66,12 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
   var subscription: Option[Subscription] = None
   var websocketsubscription: Option[Subscription] = None
 
-  override def release {
-    websocketsubscription.foreach(_.cancel)
+  override def release: Unit = {
+    websocketsubscription.foreach(_.cancel())
     websocketsubscription = None
     subscription match {
       case Some(s) =>
-        s.cancel
+        s.cancel()
         subscription = None
       case None =>
     }
@@ -96,7 +95,7 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
   }
 
   var wertungen = Seq[IndexedSeq[WertungEditor]]()
-  val wkModel = ObservableBuffer[IndexedSeq[WertungEditor]](wertungen)
+  val wkModel = ObservableBuffer.from(wertungen)
   val wkview = new TableView[IndexedSeq[WertungEditor]](wkModel) {
     id = "kutu-table"
     editable = !wettkampf.toWettkampf.isReadonly(homedir, remoteHostOrigin)
@@ -155,7 +154,7 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
 
   var lazyEditorPaneUpdater: Map[String, ScheduledFuture[_]] = Map.empty
 
-  def submitLazy(name: String, task: ()=>Unit, delay: Long) {
+  def submitLazy(name: String, task: ()=>Unit, delay: Long): Unit = {
     lazyEditorPaneUpdater.get(name).foreach(_.cancel(true))
     val ft = KuTuApp.lazyExecutor.schedule(new Runnable() { def run = {
       Platform.runLater{task()}
@@ -164,7 +163,7 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
     lazyEditorPaneUpdater = lazyEditorPaneUpdater + (name -> ft)
   }
 
-  def updateEditorPane(focusHolder: Option[Node] = None) {
+  def updateEditorPane(focusHolder: Option[Node] = None): Unit = {
     def task: () => Unit = () => {
       if(selected.value) {
         if (logger.isDebugEnabled()) {
@@ -225,10 +224,10 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
     val indexerD = Iterator.from(0)
     val indexerF = Iterator.from(0)
     wertungen.head.map { wertung =>
-      lazy val clDnote = new WKTableColumn[Double](indexerD.next) {
+      lazy val clDnote = new WKTableColumn[Double](indexerD.next()) {
         text = "D"
         cellValueFactory = { x => if (x.value.size > index) x.value(index).noteD else wertung.noteD }
-        cellFactory = { _ => new AutoCommitTextFieldTableCell[IndexedSeq[WertungEditor], Double](DoubleConverter(wertung.init.wettkampfdisziplin.notenSpez))}
+        cellFactory = { _:Any => new AutoCommitTextFieldTableCell[IndexedSeq[WertungEditor], Double](DoubleConverter(wertung.init.wettkampfdisziplin.notenSpez))}
 
         styleClass += "table-cell-with-value"
         prefWidth = if(wertung.init.wettkampfdisziplin.notenSpez.isDNoteUsed) 60 else 0
@@ -242,11 +241,11 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
               disciplin.noteE.value = evt.newValue
               disciplin.endnote.value = evt.newValue
             } else {
-              val (d, e) = wertung.init.wettkampfdisziplin.notenSpez.validated(disciplin.toOption(evt.newValue).getOrElse(BigDecimal(0)).doubleValue(),
-                disciplin.toOption(disciplin.noteE.value).getOrElse(BigDecimal(0)).doubleValue())
-              disciplin.noteD.value = d
-              disciplin.noteE.value = e
-              disciplin.endnote.value = wertung.init.wettkampfdisziplin.notenSpez.calcEndnote(d, e)
+              val (d, e) = wertung.init.wettkampfdisziplin.notenSpez.validated(disciplin.toOption(evt.newValue).getOrElse(BigDecimal(0)).doubleValue,
+                disciplin.toOption(disciplin.noteE.value).getOrElse(BigDecimal(0)).doubleValue)
+              disciplin.noteD.set(d)
+              disciplin.noteE.set(e)
+              disciplin.endnote.set( wertung.init.wettkampfdisziplin.notenSpez.calcEndnote(d, e))
             }
             if (disciplin.isDirty) {
               service.updateWertung(disciplin.commit)
@@ -255,11 +254,11 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
           evt.tableView.requestFocus()
         }
       }
-      lazy val clEnote = new WKTableColumn[Double](indexerE.next) {
+      lazy val clEnote = new WKTableColumn[Double](indexerE.next()) {
         text = "E"
         cellValueFactory = { x => if (x.value.size > index) x.value(index).noteE else wertung.noteE }
 
-        cellFactory = { _ => new AutoCommitTextFieldTableCell[IndexedSeq[WertungEditor], Double](DoubleConverter(wertung.init.wettkampfdisziplin.notenSpez)) }
+        cellFactory = { _:Any => new AutoCommitTextFieldTableCell[IndexedSeq[WertungEditor], Double](DoubleConverter(wertung.init.wettkampfdisziplin.notenSpez)) }
 
         styleClass += "table-cell-with-value"
         prefWidth = 60
@@ -273,10 +272,10 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
               disciplin.noteE.value = evt.newValue
               disciplin.endnote.value = evt.newValue
             } else {
-              val (d, e) = wertung.init.wettkampfdisziplin.notenSpez.validated(disciplin.toOption(disciplin.noteD.value).getOrElse(BigDecimal(0)).doubleValue(),
-                disciplin.toOption(evt.newValue).getOrElse(BigDecimal(0)).doubleValue())
-              disciplin.noteE.value = e
-              disciplin.endnote.value = wertung.init.wettkampfdisziplin.notenSpez.calcEndnote(d, e)
+              val (d, e) = wertung.init.wettkampfdisziplin.notenSpez.validated(disciplin.toOption(disciplin.noteD.value).getOrElse(BigDecimal(0)).doubleValue,
+                disciplin.toOption(evt.newValue).getOrElse(BigDecimal(0)).doubleValue)
+              disciplin.noteE.set(e)
+              disciplin.endnote.set( wertung.init.wettkampfdisziplin.notenSpez.calcEndnote(d, e))
             }
             if (disciplin.isDirty) {
               service.updateWertung(disciplin.commit)
@@ -285,10 +284,10 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
           evt.tableView.requestFocus()
         }
       }
-      lazy val clEndnote = new WKTableColumn[Double](indexerF.next) {
+      lazy val clEndnote = new WKTableColumn[Double](indexerF.next()) {
         text = "Endnote"
         cellValueFactory = { x => if (x.value.size > index) x.value(index).endnote else wertung.endnote}
-        cellFactory = { _ => new AutoCommitTextFieldTableCell[IndexedSeq[WertungEditor], Double](DoubleConverter(wertung.init.wettkampfdisziplin.notenSpez)) }
+        cellFactory = { _:Any => new AutoCommitTextFieldTableCell[IndexedSeq[WertungEditor], Double](DoubleConverter(wertung.init.wettkampfdisziplin.notenSpez)) }
         styleClass += "table-cell-with-value"
         prefWidth = 80
         editable = false
@@ -340,7 +339,7 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
   val riegeCol: List[jfxsc.TableColumn[IndexedSeq[WertungEditor], _]] = if(wettkampfInfo.leafprograms.size > 2) {
     List(new WKTableColumn[String](-1) {
       text = "Riege"
-      cellFactory = { x =>
+      cellFactory = { _:Any =>
           new AutoCommitTextFieldTableCell[IndexedSeq[WertungEditor], String](new DefaultStringConverter())
       }
       cellValueFactory = { x =>
@@ -385,7 +384,7 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
     },
       new WKTableColumn[String](-1) {
         text = "Riege 2"
-        cellFactory = { x =>
+        cellFactory = { _:Any =>
             new AutoCommitTextFieldTableCell[IndexedSeq[WertungEditor], String](new DefaultStringConverter())
         }
 
@@ -435,7 +434,7 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
         columns ++= Seq(
           new WKTableColumn[String](-1) {
             text = "Riege"
-            cellFactory = { x =>
+            cellFactory = { _:Any =>
                 new AutoCommitTextFieldTableCell[IndexedSeq[WertungEditor], String](new DefaultStringConverter())
             }
             cellValueFactory = { x =>
@@ -479,7 +478,7 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
           },
           new WKTableColumn[String](-1) {
             text = "Riege 2"
-            cellFactory = { _ =>
+            cellFactory = { _:Any =>
                 new AutoCommitTextFieldTableCell[IndexedSeq[WertungEditor], String](new DefaultStringConverter())
             }
             cellValueFactory = { x =>
@@ -549,7 +548,7 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
   wkModel.onChange{(seq1, seq2) =>
     import scalafx.collections.ObservableBuffer._
     if(!isFilterRefreshing) {
-      def updateWertungen(index: Int) {
+      def updateWertungen(index: Int): Unit = {
         val changed = wkModel.get(index)
         val idx = wertungen.indexWhere { x => x.head.init.athlet.id == changed.head.init.athlet.id }
         wertungen = wertungen.updated(idx, changed)
@@ -565,7 +564,7 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
       }
     }
   }
-  def updateFilteredList(newVal: String, newDurchgang: GeraeteRiege) {
+  def updateFilteredList(newVal: String, newDurchgang: GeraeteRiege): Unit = {
     val wkListHadFocus = wkview.focused.value
     val selected = wkview.selectionModel.value.selectedCells
     val sortOrder = wkview.sortOrder.toList
@@ -575,7 +574,7 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
     isFilterRefreshing = true
     wkModel.clear()
 
-    def restoreVisibility(col: TableColumn[_, _]) {
+    def restoreVisibility(col: TableColumn[_, _]): Unit = {
       col.sortable.value = true
       if(col.delegate.isInstanceOf[WKTCAccess]) {
         val tca = col.delegate.asInstanceOf[WKTCAccess]
@@ -586,7 +585,7 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
       col.columns.foreach(restoreVisibility(_))
     }
 
-    def hideIfNotUsed(col: TableColumn[_, _]) {
+    def hideIfNotUsed(col: TableColumn[_, _]): Unit = {
       col.sortable.value = false
       if(col.delegate.isInstanceOf[WKTCAccess]) {
         val tca = col.delegate.asInstanceOf[WKTCAccess]
@@ -681,7 +680,7 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
     margin = Insets(5, 0, 5, 5)
   }
 
-  def updateAlleRiegenCheck(toggle: Boolean = false) {
+  def updateAlleRiegenCheck(toggle: Boolean = false): Unit = {
     val allselected = relevantRiegen.values.forall{x => x._1}
     val newAllSelected = if(toggle) !allselected else allselected
     if(toggle) {
@@ -701,7 +700,7 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
   alleRiegenCheckBox onAction = (event: ActionEvent) => {
     updateAlleRiegenCheck(true)
   }
-  cmbDurchgangFilter.onAction = handle {
+  cmbDurchgangFilter.onAction = _ => {
     val d = if(!cmbDurchgangFilter.selectionModel.value.isEmpty) {
       cmbDurchgangFilter.selectionModel.value.getSelectedItem
     }
@@ -713,7 +712,7 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
     }
   }
 
-  def updateRiegen() {
+  def updateRiegen(): Unit = {
     def onSelectedChange(name: String, selected: Boolean) = {
       if(relevantRiegen.contains(name)) {
         relevantRiegen = relevantRiegen.updated(name, (selected, relevantRiegen(name)._2))
@@ -752,7 +751,7 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
     }
     val lastDurchgangSelection = cmbDurchgangFilter.selectionModel.value.getSelectedItem
     if (riege.isEmpty) {
-      cmbDurchgangFilter.items = ObservableBuffer[GeraeteRiege](rebuildDurchgangFilterList)
+      cmbDurchgangFilter.items = ObservableBuffer.from(rebuildDurchgangFilterList)
       cmbDurchgangFilter.items.value.filter(x => lastDurchgangSelection == null || x.softEquals(lastDurchgangSelection)).headOption match {
         case Some(item) =>
           cmbDurchgangFilter.selectionModel.value.select(item)
@@ -760,7 +759,7 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
         case None =>
       }
     } else {
-      cmbDurchgangFilter.items = ObservableBuffer[GeraeteRiege](rebuildDurchgangFilterList.filter(x => x.softEquals(riege.get)))
+      cmbDurchgangFilter.items = ObservableBuffer.from(rebuildDurchgangFilterList.filter(x => x.softEquals(riege.get)))
       cmbDurchgangFilter.items.value.headOption match {
         case Some(item) =>
           cmbDurchgangFilter.selectionModel.value.select(item)
@@ -843,7 +842,7 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
     val athletModel = ObservableBuffer[(Long, Athlet, AthletView)]()
     val vereineList = service.selectVereine
     val vereineMap = vereineList.map(v => v.id -> v).toMap
-    val vereine = ObservableBuffer[Verein](vereineList)
+    val vereine = ObservableBuffer.from(vereineList)
     val cbVereine = new ComboBox[Verein] {
       items = vereine
       //selectionModel.value.selectFirst()
@@ -910,7 +909,7 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
               cbVereine.selectionModel.value.select(candidate.verein.get)
             case _ =>
           }
-          val filteredModel = ObservableBuffer[(Long, Athlet, AthletView)](athletModel)
+          val filteredModel = ObservableBuffer.from(athletModel)
           val athletTable = new TableView[(Long, Athlet, AthletView)](filteredModel) {
             columns ++= List(
               new TableColumn[(Long, Athlet, AthletView), String] {
@@ -1429,7 +1428,7 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
     onAction = (event: ActionEvent) => {
       implicit val impevent = event
       val programms = programm.map(p => service.readWettkampfLeafs(p.head.id)).get
-      val prmodel = ObservableBuffer[ProgrammView](programms)
+      val prmodel = ObservableBuffer.from(programms)
       val cbProgramms = new ComboBox[ProgrammView] {
         items = prmodel
       }
@@ -1482,7 +1481,7 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
   }
 
   //addButton.disable <== when (wkview.selectionModel.value.selectedItemProperty.isNull()) choose true otherwise false
-  val moveAvaillable = programm.forall { p => p.head.id != 1l }
+  val moveAvaillable = programm.forall { p => p.head.id != 1L }
   moveToOtherProgramButton.disable <== when(wkview.selectionModel.value.selectedItemProperty.isNull()) choose moveAvaillable otherwise false
   setRiege2ForAllButton.disable <== when(Bindings.createBooleanBinding(() => {
     wkModel.isEmpty
@@ -1632,7 +1631,7 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
     AutoCommitTextFieldTableCell.handleDefaultEditingKeyEvents(wkview, true, txtUserFilter)(ke)
   }
 
-  onSelectionChanged = handle {
+  onSelectionChanged = _ => {
     if(selected.value) {
       reloadData()
     }

@@ -144,7 +144,7 @@ trait DurchgangService extends DBService with DurchgangResultMapper {
     }
   }
 
-  def updateOrInsertDurchgaenge(durchgaenge: Iterable[Durchgang]) {
+  def updateOrInsertDurchgaenge(durchgaenge: Iterable[Durchgang]): Unit = {
     def insertDurchgang(rs: Iterable[Durchgang]) = DBIO.sequence(for {
       durchgang <- rs
     } yield {

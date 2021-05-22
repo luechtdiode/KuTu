@@ -90,7 +90,7 @@ object RegistrationAdminDialog {
   private def showImportDialog(wkInfo: WettkampfInfo, service: RegistrationRoutes, reloader: Boolean => Unit, athletModel: ObservableBuffer[SyncAction], clipraw: (Set[Verein],Vector[SyncAction]))(implicit event: ActionEvent) = {
     athletModel.appendAll(clipraw._2)
     val programms = wkInfo.leafprograms
-    val filteredModel = ObservableBuffer[SyncAction](athletModel)
+    val filteredModel = ObservableBuffer.from(athletModel)
     val athletTable = new TableView[SyncAction](filteredModel) {
       columns ++= List(
         new TableColumn[SyncAction, String] {

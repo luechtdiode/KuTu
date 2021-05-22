@@ -18,10 +18,10 @@ object ZeitenEditor {
 class ZeitenEditor(init: WettkampfPlanTimeView) {
   val kategorie = new ReadOnlyStringProperty(new StringProperty(init.wettkampfdisziplin.programm.easyprint))
   val disziplin = new ReadOnlyStringProperty(new StringProperty(init.wettkampfdisziplin.disziplin.easyprint))
-  val wechsel = new StringProperty(f"${init.wechsel / 1000}%1.0f ''")
-  val einturnen = new StringProperty(f"${init.einturnen / 1000}%1.0f ''")
-  val uebung = new StringProperty(f"${init.uebung / 1000}%1.0f ''")
-  val wertung = new StringProperty(f"${init.wertung / 1000}%1.0f ''")
+  val wechsel = new StringProperty(f"${init.wechsel.toDouble / 1000}%1.0f ''")
+  val einturnen = new StringProperty(f"${init.einturnen.toDouble / 1000}%1.0f ''")
+  val uebung = new StringProperty(f"${init.uebung.toDouble / 1000}%1.0f ''")
+  val wertung = new StringProperty(f"${init.wertung.toDouble / 1000}%1.0f ''")
 
   def stripNonNumeric(value: String) = value.filter(_.isDigit)
   def checkValid(value: String): Boolean = {
@@ -40,7 +40,7 @@ class ZeitenEditor(init: WettkampfPlanTimeView) {
     checkValid(wertung.value)
   }
 
-  def reset {
+  def reset: Unit = {
 
   }
 

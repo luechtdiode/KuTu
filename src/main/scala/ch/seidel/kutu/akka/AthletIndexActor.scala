@@ -53,13 +53,13 @@ class AthletIndexActor extends Actor with JsonSupport with KutuService {
     log.info(s"Starting AthletIndexActor")
   }
 
-  override def postStop: Unit = {
+  override def postStop(): Unit = {
     log.info(s"Stop AthletIndexActor")
   }
 
   private val index = new util.ArrayList[MatchCode]()
 
-  private def invalidateIndex() {
+  private def invalidateIndex(): Unit = {
     index.clear()
   }
 
@@ -70,20 +70,20 @@ class AthletIndexActor extends Actor with JsonSupport with KutuService {
 
   override def receive = {
     case FindAthletLike(athlet) =>
-      sender ! AthletLikeFound(athlet, findAthleteLike(index)(athlet))
+      sender() ! AthletLikeFound(athlet, findAthleteLike(index)(athlet))
     case SaveAthlet(athlet) => mcOfId(athlet.id) match {
       case None =>
         invalidateIndex()
-        sender ! AthletIndexChanged(athlet)
+        sender() ! AthletIndexChanged(athlet)
       case Some(mc) =>
         index.set(
           index.indexOf(mc),
           MatchCode(athlet.id, athlet.name, athlet.vorname, athlet.gebdat, athlet.verein.getOrElse(0)))
-        sender ! AthletIndexChanged(athlet)
+        sender() ! AthletIndexChanged(athlet)
     }
     case RemoveAthlet(athlet) =>
       index.removeIf(mc => mc.id == athlet.id)
-      sender ! AthletIndexChanged(athlet)
+      sender() ! AthletIndexChanged(athlet)
   }
 }
 
@@ -130,7 +130,7 @@ class AthletIndexActorSupervisor extends Actor with ActorLogging {
 
   override def receive: Actor.Receive = {
     case a: AthletIndexAction =>
-      statshedActions = statshedActions :+ (sender, a)
+      statshedActions = statshedActions :+ (sender(), a)
     case Terminated(wettkampfActor) =>
       context.unwatch(wettkampfActor)
   }
@@ -138,7 +138,7 @@ class AthletIndexActorSupervisor extends Actor with ActorLogging {
 
 object AthletIndexActor {
 
-  val supervisor = system.actorOf(Props[AthletIndexActorSupervisor], name = "AthletIndex-Supervisor")
+  val supervisor = system.actorOf(Props[AthletIndexActorSupervisor](), name = "AthletIndex-Supervisor")
 
   def publish(action: AthletIndexAction): Future[AthletIndexEvent] = {
     implicit val timeout = Timeout(31000 milli)

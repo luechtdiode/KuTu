@@ -94,7 +94,7 @@ object WebSocketClient extends SprayJsonSupport with JsonSupport with AuthSuppor
   
   def isConnected = connectedIncomingPromise.nonEmpty
   
-  def publish(event: KutuAppEvent) {
+  def publish(event: KutuAppEvent): Unit = {
     val message = tryMapEvent(event)
     Platform.runLater {
       modelWettkampfWertungChanged.set(event)

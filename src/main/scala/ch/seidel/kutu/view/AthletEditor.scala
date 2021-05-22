@@ -44,7 +44,7 @@ class AthletEditor(init: Athlet) {
     (optionOfGebDat match {case Some(d) => true case _ => false})
   }
 
-  def reset {
+  def reset: Unit = {
     jsid.value_=(s"${init.js_id}")
   }
 

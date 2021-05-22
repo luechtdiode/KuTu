@@ -9,7 +9,7 @@ import javafx.scene.control.TableCell;
 import javafx.scene.control.TableColumn;
 
 public class TableCellSkin<S, T> extends TableCellSkinBase<S, T, TableCell<S, T>> {
-    private final BehaviorBase<TableCell<S, T>> behavior;
+    private final TableCellBehavior behavior;
 
     public TableCellSkin(TableCell<S, T> var1) {
         super(var1);
@@ -25,11 +25,11 @@ public class TableCellSkin<S, T> extends TableCellSkinBase<S, T, TableCell<S, T>
     }
 
     public ReadOnlyObjectProperty<TableColumn<S, T>> tableColumnProperty() {
-        TableCell skinnable = this.getSkinnable();
+        TableCell<S, T> skinnable = this.getSkinnable();
         if (skinnable != null) {
             return skinnable.tableColumnProperty();
         } else {
-            return new ReadOnlyObjectProperty<TableColumn<S, T>>() {
+            return new ReadOnlyObjectProperty<>() {
                 @Override
                 public Object getBean() {
                     return null;

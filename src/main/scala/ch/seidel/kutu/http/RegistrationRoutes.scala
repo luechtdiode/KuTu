@@ -84,7 +84,7 @@ trait RegistrationRoutes extends SprayJsonSupport with JwtSupport with JsonSuppo
         val logofile = PrintUtil.locateLogoFile(logodir)
         pathEndOrSingleSlash {
           get { // list Vereinsregistration
-            parameters('html.?) { (html) =>
+            parameters(Symbol("html").?) { (html) =>
               html match {
                 case None =>
                   complete(selectRegistrationsOfWettkampf(competitionId))

@@ -111,7 +111,7 @@ object DBService {
     db
   }
 
-  private def migrateFrom(dsCreate: String => JdbcBackend.DatabaseDef, initialPreloadedSqlScripts: List[String], version: String) {
+  private def migrateFrom(dsCreate: String => JdbcBackend.DatabaseDef, initialPreloadedSqlScripts: List[String], version: String): Unit = {
     val preversion = new File(dbhomedir + "/" + buildFilename(version))
     if (preversion.exists()) {
       logger.info(s"Migrating Database from ${preversion.getAbsolutePath}")

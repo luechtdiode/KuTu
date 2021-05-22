@@ -6,9 +6,9 @@ trait Rollbackable[T] extends WritableObjectValue[T] {
 
   protected var originalValue: Option[T] = None
 
-  def isDirty(): Boolean = !originalValue.isEmpty
+  def isDirty(): Boolean = originalValue.isDefined
 
-  def rollback() = {
+  def rollback(): Unit = {
     originalValue match {
       case Some(v) => {
         set(v)
@@ -17,5 +17,5 @@ trait Rollbackable[T] extends WritableObjectValue[T] {
       case None =>
     }
   }
-  def commit() = originalValue = None
+  def commit(): Unit = originalValue = None
 }
