@@ -64,7 +64,7 @@
 		<javafx.version>16</javafx.version>
 		<scalafx.version>16.0.0-R24</scalafx.version>
 		<scalatest.version>3.1.0</scalatest.version>
-		<maven-scala-plugin.version>4.5.1</maven-scala-plugin.version>
+		<scala-maven-plugin.version>4.5.2</scala-maven-plugin.version>
 		<gatling.version>3.6.0</gatling.version>
 		<gatling-plugin.version>3.0.0</gatling-plugin.version>
 		<maven.compiler.source>11</maven.compiler.source>
@@ -74,9 +74,11 @@
 		<scoverage.plugin.version>1.4.1</scoverage.plugin.version>
 		<project-info-reports.plugin.version>3.0.0</project-info-reports.plugin.version>
 		<site.plugin.version>3.7.1</site.plugin.version>
+		<maven-compiler-plugin.version>3.8.1</maven-compiler-plugin.version>
+		<slick.version>3.3.3</slick.version>
 	</properties>
 
-	<repositories>
+	<!--<repositories>
 		<repository>
 			<id>typesafe</id>
 			<name>Typesafe - releases</name>
@@ -95,29 +97,29 @@
 				<enabled>true</enabled>
 			</snapshots>
 		</repository>
-	</repositories>
+	</repositories>-->
 
-	<pluginRepositories>
-		<pluginRepository>
-			<id>scala-tools.org</id>
-			<name>Scala-Tools Maven2 Repository</name>
-			<url>https://oss.sonatype.org/content/groups/scala-tools</url>
-		</pluginRepository>
-		<pluginRepository>
-			<id>central</id>
-			<url>https://repo1.maven.org/maven2/</url>
-			<releases>
-				<enabled>true</enabled>
-			</releases>
-			<snapshots>
-				<enabled>true</enabled>
-			</snapshots>
-		</pluginRepository>
-		<!--<pluginRepository>-->
-			<!--<id>clojars</id>-->
-			<!--<url>http://clojars.org/repo/</url>-->
-		<!--</pluginRepository>-->
-	</pluginRepositories>
+<!--	<pluginRepositories>-->
+<!--		<pluginRepository>-->
+<!--			<id>scala-tools.org</id>-->
+<!--			<name>Scala-Tools Maven2 Repository</name>-->
+<!--			<url>https://oss.sonatype.org/content/groups/scala-tools</url>-->
+<!--		</pluginRepository>-->
+<!--		<pluginRepository>-->
+<!--			<id>central</id>-->
+<!--			<url>https://repo1.maven.org/maven2/</url>-->
+<!--			<releases>-->
+<!--				<enabled>true</enabled>-->
+<!--			</releases>-->
+<!--			<snapshots>-->
+<!--				<enabled>true</enabled>-->
+<!--			</snapshots>-->
+<!--		</pluginRepository>-->
+<!--		&lt;!&ndash;<pluginRepository>&ndash;&gt;-->
+<!--			&lt;!&ndash;<id>clojars</id>&ndash;&gt;-->
+<!--			&lt;!&ndash;<url>http://clojars.org/repo/</url>&ndash;&gt;-->
+<!--		&lt;!&ndash;</pluginRepository>&ndash;&gt;-->
+<!--	</pluginRepositories>-->
 
 	<dependencies>
 		<dependency>
@@ -279,7 +281,7 @@
 		<dependency>
 			<groupId>com.typesafe.slick</groupId>
 			<artifactId>slick_${scala.majorversion}</artifactId>
-			<version>3.3.2</version>
+			<version>${slick.version}</version>
 		</dependency>
 
 		<!-- QRCode -->
@@ -358,22 +360,6 @@
 	        <scope>test</scope>
 		</dependency>
 	</dependencies>
-	<!-- distributionManagement> <repository> <id>ftp-repository</id> <url>ftp://ftp.interpolar.ch/snapshots</url>
-		</repository> </distributionManagement -->
-	<distributionManagement>
-		<site>
-			<id>s3.site</id>
-			<url>s3://rs-travis/kutuapp/site</url>
-		</site>
-		<repository>
-			<id>s3.release</id>
-			<url>s3://rs-travis/kutuapp/release</url>
-		</repository>
-		<snapshotRepository>
-			<id>s3.snapshot</id>
-			<url>s3://rs-travis/kutuapp/snapshot</url>
-		</snapshotRepository>
-	</distributionManagement>
 
 	<build>
 		<resources>
@@ -491,7 +477,7 @@
 			<plugin>
 				<groupId>net.alchim31.maven</groupId>
 				<artifactId>scala-maven-plugin</artifactId>
-				<version>${maven-scala-plugin.version}</version>
+				<version>${scala-maven-plugin.version}</version>
 				<executions>
 					<execution>
 						<id>scala-compile-first</id>
@@ -510,8 +496,8 @@
 					</execution>
 				</executions>
 				<configuration>
-					<scalaVersion>${scala.version}</scalaVersion>
-					<recompileMode>incremental</recompileMode>
+					<recompileMode>all</recompileMode>
+					<compileOrder>JavaThenScala</compileOrder>
 					<args>
 						<arg>-unchecked</arg>
 						<arg>-deprecation</arg>
@@ -527,42 +513,12 @@
 						<javacArg>-Xlint:deprecation</javacArg>
 					</javacArgs>
 					<jvmArgs>
-						<jvmArg>-Xms64m</jvmArg>
-						<jvmArg>-Xmx1024m</jvmArg>
+						<jvmArg>-server</jvmArg>
+						<jvmArg>-Xss2m</jvmArg>
+						<jvmArg>-XX:+UseParallelGC</jvmArg>
+						<jvmArg>-XX:MaxInlineLevel=20</jvmArg>
 					</jvmArgs>
 				</configuration>
-			</plugin>
-			<plugin>
-				<groupId>org.codehaus.mojo</groupId>
-				<artifactId>build-helper-maven-plugin</artifactId>
-				<version>3.1.0</version>
-				<executions>
-					<execution>
-						<id>add-source</id>
-						<phase>generate-sources</phase>
-						<goals>
-							<goal>add-source</goal>
-							<goal>parse-version</goal>
-						</goals>
-						<configuration>
-							<sources>
-								<source>src/main/scala</source>
-							</sources>
-						</configuration>
-					</execution>
-					<execution>
-						<id>add-test-source</id>
-						<phase>generate-sources</phase>
-						<goals>
-							<goal>add-test-source</goal>
-						</goals>
-						<configuration>
-							<sources>
-								<source>src/test/scala</source>
-							</sources>
-						</configuration>
-					</execution>
-				</executions>
 			</plugin>
 			<plugin>
 				<groupId>org.jacoco</groupId>
@@ -583,11 +539,6 @@
 					</execution>
 				</executions>
 			</plugin>
-			<!-- plugin> <artifactId>maven-dependency-plugin</artifactId> <version>2.10</version>
-				<executions> <execution> <id>unpack-dependencies</id> <phase>package</phase>
-				<goals> <goal>unpack-dependencies</goal> </goals> <configuration> <excludeScope>system</excludeScope>
-				<excludeGroupIds>junit,org.mockito,org.hamcrest</excludeGroupIds> <outputDirectory>${project.build.directory}/classes</outputDirectory>
-				</configuration> </execution> </executions> </plugin -->
 			<plugin>
 				<groupId>org.codehaus.mojo</groupId>
 				<artifactId>exec-maven-plugin</artifactId>
@@ -633,36 +584,6 @@
 				</executions>
 			</plugin>
 			<plugin>
-				<groupId>org.codehaus.mojo</groupId>
-				<artifactId>wagon-maven-plugin</artifactId>
-				<version>2.0.0</version>
-				<configuration>
-					<!--  see https://stackoverflow.com/questions/20650514/upload-static-resource-to-amazon-s3-server-using-maven-plugin -->
-					<serverId>s3.release</serverId>
-					<url>s3://rs-travis/public/kutuapp/</url>
-					<fromDir>${basedir}/target/${bundler.os}</fromDir>
-					<includes>
-						**/*.msi, **/*.pkg, **/*.dmg, **/*.rpm, **/*.deb
-					</includes>
-					<toDir>${project.version}/${bundler.os}</toDir>
-				</configuration>
-				<executions>
-					<execution>
-						<id>upload-binaries</id>
-						<phase>deploy</phase>
-						<goals>
-							<goal>upload</goal>
-						</goals>
-						<configuration>
-							<fromDir>${basedir}/target/${bundler.os}</fromDir>
-							<includes>
-								**/*.msi, **/*.pkg, **/*.dmg, **/*.rpm, **/*.deb
-							</includes>
-						</configuration>
-					</execution>
-				</executions>
-			</plugin>
-			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-site-plugin</artifactId>
 				<version>${site.plugin.version}</version>
@@ -675,18 +596,10 @@
 	<reporting>
 		<plugins>
 			<plugin>
-				<groupId>org.apache.maven.plugins</groupId>
-				<artifactId>maven-project-info-reports-plugin</artifactId>
-				<version>${project-info-reports.plugin.version}</version>
-				<reportSets>
-					<reportSet>
-						<reports>
-							<report>index</report>
-						</reports>
-					</reportSet>
-				</reportSets>
+				<groupId>net.alchim31.maven</groupId>
+				<artifactId>scala-maven-plugin</artifactId>
+				<version>${scala-maven-plugin.version}</version>
 			</plugin>
-
 			<plugin>
 				<groupId>org.scoverage</groupId>
 				<artifactId>scoverage-maven-plugin</artifactId>

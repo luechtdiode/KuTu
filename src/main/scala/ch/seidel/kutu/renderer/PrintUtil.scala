@@ -197,8 +197,8 @@ object PrintUtil {
   }
   
   def locateLogoFile(wettkampfDir: File) = {
-    val prefferedLogoFileNames = (List("logo.svg", "logo.png", "logo.jpg", "logo.jpeg").map(name => new java.io.File(wettkampfDir.getPath + "/" + name)) ++ 
-                                List("logo.svg", "logo.png", "logo.jpg", "logo.jpeg").map(name => new java.io.File(wettkampfDir.getParentFile + "/" + name)))
+    val prefferedLogoFileNames = (List("logo.svg", "logo.png", "logo.jpg", "logo.jpeg").map(name => new java.io.File(s"${wettkampfDir.getPath}/$name")) ++
+                                List("logo.svg", "logo.png", "logo.jpg", "logo.jpeg").map(name => new java.io.File(s"${wettkampfDir.getParentFile }/$name")))
     prefferedLogoFileNames.find(_.exists).getOrElse(prefferedLogoFileNames.head);
   }
   

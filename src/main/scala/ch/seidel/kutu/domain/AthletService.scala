@@ -2,7 +2,6 @@ package ch.seidel.kutu.domain
 
 import java.sql.Date
 import java.time.{LocalDate, Period}
-
 import ch.seidel.kutu.akka.{AthletIndexActor, RemoveAthlet, SaveAthlet}
 import ch.seidel.kutu.data.{CaseObjectMetaUtil, Surname}
 import org.slf4j.LoggerFactory
@@ -12,6 +11,7 @@ import scala.collection.JavaConverters
 import scala.concurrent.Await
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration.Duration
+import scala.jdk.CollectionConverters.ListHasAsScala
 
 trait AthletService extends DBService with AthletResultMapper {
   private val logger = LoggerFactory.getLogger(this.getClass)
@@ -256,7 +256,7 @@ trait AthletService extends DBService with AthletResultMapper {
     else {
       cache
     }
-    val presel2 = JavaConverters.asScalaBuffer(preselect).filter(mc => mc.id != athlet.id).map { matchcode =>
+    val presel2 = preselect.asScala.filter(mc => mc.id != athlet.id).map { matchcode =>
       (matchcode.id, similarAthletFactor(matchcode))
     }.filter(p => p._2 > 0).toList.sortBy(_._2).reverse
     presel2.headOption.flatMap(k => loadAthlet(k._1)).getOrElse(athlet)

@@ -20,7 +20,7 @@ trait Stager extends Mapper {
     logger.debug(s"sum: $sum, eqsize: $eqsize, geraete: $geraete, gerateOriginal: $geraeteOriginal")
 
     @tailrec
-    def _buildPairs(acc: Set[(Long, GeraeteRiegen)], nextCandidates: Stream[GeraeteRiegen]): (Long, GeraeteRiegen) = {
+    def _buildPairs(acc: Set[(Long, GeraeteRiegen)], nextCandidates: LazyList[GeraeteRiegen]): (Long, GeraeteRiegen) = {
       def finish(finalAcc: Set[(Long, GeraeteRiegen)]): (Long, GeraeteRiegen) = {
         val sorted = finalAcc.toList.sortBy(_._1)
 //        logger.debug("finishing with", sorted.take(3).zipWithIndex.mkString("\n(\n\t", "\n\t", "\n)"))
@@ -33,17 +33,17 @@ trait Stager extends Mapper {
         finish(acc)
       }
       else {
-        val withNewCandidates = nextCandidates #::: (for{
+        val withNewCandidates = nextCandidates :++ (for{
           neweinteilung <- mergeCandidates(geraete, eqsize, nextCandidates.head, Set.empty)
           s = score(geraete, eqsize, neweinteilung)
-          if(neweinteilung.size >= geraete && !acc.contains((s, neweinteilung))) 
+          if neweinteilung.size >= geraete && !acc.contains((s, neweinteilung))
         } yield {
           neweinteilung
-        }).toStream
+        })
         
         withNewCandidates match {
-          case candidate #:: tail if(tail.isEmpty) => 
-//            logger.debug("found end of stream")
+          case candidate #:: tail if tail.isEmpty =>
+//            logger.debug("found end of LazyList")
             val sc = (score(geraete, eqsize, candidate), candidate)
             finish(acc + sc)
           case candidate #:: tail => score(geraete, eqsize, candidate) match {
@@ -58,7 +58,7 @@ trait Stager extends Mapper {
         }
       }
     }
-    val (rank, pairs) = _buildPairs(Set(), Stream(geraeteriegen))
+    val (rank, pairs) = _buildPairs(Set(), LazyList(geraeteriegen))
     //logger.debug(rank, pairs.mkString("\n ", "\n ", ""))
     pairs
   }
@@ -104,7 +104,7 @@ trait Stager extends Mapper {
           case None => true 
           case Some(pr) => !pr.pairs.contains(pair)
         })
-        .sortBy(p => ((targetGeraeteRiegeSize - p._1.size - p._2.size) * 10 + p._1 ~ p._2))
+        .sortBy(p => (targetGeraeteRiegeSize - p._1.size - p._2.size) * 10 + p._1 ~ p._2)
         
       def merge(s: GeraeteRiege, b: GeraeteRiege): (GeraeteRiege, GeraeteRiegen) = {
         val merged = s ++ b
@@ -112,7 +112,7 @@ trait Stager extends Mapper {
         (merged, cleaned + merged)
       }
       validPairs.headOption match {
-        case pairOption @ Some((s, b)) if(s.size + b.size - targetGeraeteRiegeSize == 0) =>
+        case pairOption @ Some((s, b)) if s.size + b.size - targetGeraeteRiegeSize == 0 =>
           val pair = pairOption.get
           val (s, b) = pair
           val (merged, newEinteilung) = merge(s, b)

@@ -640,12 +640,12 @@ object ResourceExchanger extends KutuService with RiegenBuilder {
     val values = typeOf[T].members.collect {
       case m: MethodSymbol if m.isCaseAccessor =>
         im.reflectMethod(m).apply() match {
-          case Some(verein: Verein) => verein.id + ""
-          case Some(wk: Wettkampf) => wk.id + ""
-          case Some(programm: Programm) => programm.id + ""
-          case Some(athlet: Athlet) => athlet.id + ""
-          case Some(athlet: AthletView) => athlet.id + ""
-          case Some(disziplin: Disziplin) => disziplin.id + ""
+          case Some(verein: Verein) => s"${verein.id}"
+          case Some(wk: Wettkampf) => s"${wk.id}"
+          case Some(programm: Programm) => s"${programm.id}"
+          case Some(athlet: Athlet) => s"${athlet.id}"
+          case Some(athlet: AthletView) => s"${athlet.id}"
+          case Some(disziplin: Disziplin) => s"${disziplin.id}"
           case Some(value) => value.toString
           case None => ""
           case e => e.toString
