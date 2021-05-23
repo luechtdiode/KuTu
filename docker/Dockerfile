@@ -29,12 +29,11 @@ ENTRYPOINT [ "java", "-cp", ".:app.jar:libs/*" \
     , "-XX:+UseG1GC" \
     , "-XX:MaxGCPauseMillis=30" \
     , "-XX:G1HeapRegionSize=16m" \
-    , "-XX:InitiatingHeapOccupancyPercent=75" \
+    , "-XX:InitiatingHeapOccupancyPercent=70" \
+    , "-XX:MaxRAMPercentage=80" \
     , "-XX:+ParallelRefProcEnabled" \
     , "-XX:+PerfDisableSharedMem" \
     , "-XX:+OptimizeStringConcat" \
     , "-XX:+HeapDumpOnOutOfMemoryError" \
-    , "-Xms1000M" \
-    , "-Xmx1000M" \
     , "-XX:MetaspaceSize=96M" \
     , "ch.seidel.kutu.KuTuServer"]
