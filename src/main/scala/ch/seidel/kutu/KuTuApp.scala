@@ -15,8 +15,8 @@ import net.glxn.qrgen.QRCode
 import net.glxn.qrgen.image.ImageType
 import org.slf4j.LoggerFactory
 import scalafx.Includes._
-import scalafx.application.JFXApp.PrimaryStage
-import scalafx.application.{JFXApp, Platform}
+import scalafx.application.JFXApp3.PrimaryStage
+import scalafx.application.{JFXApp3, Platform}
 import scalafx.beans.binding.Bindings
 import scalafx.beans.property.StringProperty.sfxStringProperty2jfx
 import scalafx.beans.property.{BooleanProperty, ReadOnlyStringWrapper, StringProperty}
@@ -49,7 +49,7 @@ import scala.concurrent.duration.Duration
 import scala.concurrent.{Await, Future, Promise}
 import scala.util.{Failure, Success}
 
-object KuTuApp extends JFXApp with KutuService with JsonSupport with JwtSupport {
+object KuTuApp extends JFXApp3 with KutuService with JsonSupport with JwtSupport {
 
   import WertungServiceBestenResult._
 
@@ -1489,7 +1489,7 @@ object KuTuApp extends JFXApp with KutuService with JsonSupport with JwtSupport 
 
   def getStage() = stage
 
-  def start(): Unit = {
+  override def start(): Unit = {
 
     val btnWettkampfModus = new ToggleButton("Wettkampf-Modus") {
       id = "wettkampfmodusButton"
@@ -1546,7 +1546,7 @@ object KuTuApp extends JFXApp with KutuService with JsonSupport with JwtSupport 
       root = rootTreeItem
       id = "page-tree"
     }
-    var centerPane = PageDisplayer.choosePage(modelWettkampfModus, None, "dashBoard", tree)
+    val centerPane = PageDisplayer.choosePage(modelWettkampfModus, None, "dashBoard", tree)
     val scrollPane = new ScrollPane {
       minWidth = 5
       maxWidth = 400
@@ -1712,29 +1712,27 @@ object KuTuApp extends JFXApp with KutuService with JsonSupport with JwtSupport 
       icons += new Image(this.getClass.getResourceAsStream("/images/app-logo.png"))
       scene = new Scene(1200, 750) {
         root = new BorderPane {
-            top = headerContainer
-            center = new BorderPane {
-          center = splitPane
+          top = headerContainer
+          center = new BorderPane {
+            center = splitPane
+          }
+          styleClass += "application"
         }
-        styleClass += "application"
-      }
 
-    }
-    val st = this.getClass.getResource("/css/Main.css")
-    if (st == null) {
-      logger.debug("Ressource /css/main.css not found. Class-Anchor: " + this.getClass)
-    }
-    else if (scene() == null) {
-      logger.debug("scene() == null")
-    }
-    else if (scene().getStylesheets == null) {
-      logger.debug("scene().getStylesheets == null")
-    }
-    else {
-      scene().stylesheets.add(st.toExternalForm)
+      }
+      val st = this.getClass.getResource("/css/Main.css")
+      if (st == null) {
+        logger.debug("Ressource /css/main.css not found. Class-Anchor: " + this.getClass)
+      }
+      else if (scene() == null) {
+        logger.debug("scene() == null")
+      }
+      else if (scene().getStylesheets == null) {
+        logger.debug("scene().getStylesheets == null")
+      }
+      else {
+        scene().stylesheets.add(st.toExternalForm)
+      }
     }
   }
-}
-
-  start()
 }

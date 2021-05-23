@@ -152,7 +152,7 @@ trait WertungenRoutes extends SprayJsonSupport with JsonSupport with JwtSupport 
                           (listDisziplinesZuDurchgang(Set(decodedDurchgang), wettkampf.id, true).toSeq ++
                             listDisziplinesZuDurchgang(Set(decodedDurchgang), wettkampf.id, false).toSeq)
                               .groupBy(_._1)
-                              .mapValues(_.flatMap(_._2).toList)
+                              .view.mapValues(_.flatMap(_._2).toList)
 
                         durchgaengeWithDisziplins(decodedDurchgang).distinct
                       }
@@ -185,6 +185,7 @@ trait WertungenRoutes extends SprayJsonSupport with JsonSupport with JwtSupport 
                           }))
                       }
                     }
+                    case _ => complete(StatusCodes.Conflict)
                   }
                 }
               } ~
@@ -192,7 +193,7 @@ trait WertungenRoutes extends SprayJsonSupport with JsonSupport with JwtSupport 
                   authenticated() { userId =>
                     if (!wettkampfExists(competitionId.toString)) {
                       complete(StatusCodes.NotFound)
-                    } else if (userId.equals(competitionId.toString())) {
+                    } else if (userId.equals(competitionId.toString)) {
                       entity(as[Wertung]) { wertung =>
                         segments match {
                           case List(dg, geraet, step) => {
@@ -243,6 +244,7 @@ trait WertungenRoutes extends SprayJsonSupport with JsonSupport with JwtSupport 
                               log.error(s"Conflict: unexpected Result: $x, Non-matching wertung: $wertung")
                               complete(StatusCodes.Conflict)
                           }
+                          case _ => complete(StatusCodes.Conflict)
                         }
                       }
                     } else {

@@ -357,7 +357,7 @@ ScoreRoutes extends SprayJsonSupport with JsonSupport with AuthSupport with Rout
                   w: WertungView => {
                     queryTokens.isEmpty ||
                       queryTokens.forall {
-                        case s: String if s == w.athlet.id + "" => true
+                        case s: String if s == s"${w.athlet.id}" => true
                         case s: String if s == w.athlet.name.toLowerCase => true
                         case s: String if s == w.athlet.vorname.toLowerCase => true
                         case s: String if s == w.athlet.verein.mkString.toLowerCase => true

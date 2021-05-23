@@ -64,7 +64,7 @@ trait ReportRoutes extends SprayJsonSupport with JsonSupport with AuthSupport wi
     k: Kandidat => {
       queryTokens.isEmpty ||
       queryTokens.forall {
-        case s: String if s == k.id + "" => true
+        case s: String if s == s"${k.id}" => true
         case s: String if s == k.name.toLowerCase => true
         case s: String if s == k.vorname.toLowerCase => true
         case s: String if s == k.verein.toLowerCase => true

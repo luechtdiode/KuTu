@@ -95,7 +95,7 @@ trait RegistrationRoutes extends SprayJsonSupport with JwtSupport with JsonSuppo
           } ~ post { // create Vereinsregistration
             entity(as[NewRegistration]) { newRegistration =>
               val registration = createRegistration(newRegistration)
-              respondWithJwtHeader(registration.id + "") {
+              respondWithJwtHeader(s"${registration.id}") {
                 complete(registration)
               }
             }
@@ -166,7 +166,7 @@ trait RegistrationRoutes extends SprayJsonSupport with JwtSupport with JsonSuppo
                 }
               }
             } else if (extractRegistrationId(userId).contains(registrationId)) {
-              respondWithJwtHeader(registrationId + "") {
+              respondWithJwtHeader(s"${registrationId}") {
                 pathEndOrSingleSlash {
                   get {
                     complete(selectRegistration(registrationId))

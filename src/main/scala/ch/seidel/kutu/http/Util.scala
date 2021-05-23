@@ -97,12 +97,12 @@ trait EnrichedJson {
   def objectBy[T: ClassTag](name: String): T = {
     val c = implicitly[ClassTag[T]]
     try {
-      getObjectInstance(c + "$" + name + "$").asInstanceOf[T]
+      getObjectInstance(s"$c$$$name$$").asInstanceOf[T]
     } catch {
       case e: Exception => {
         val cnn = c.toString
         val cn = cnn.substring(0, cnn.lastIndexOf("."))
-        getObjectInstance(cn + "." + name + "$").asInstanceOf[T]
+        getObjectInstance(s"$cn.$name$$").asInstanceOf[T]
       }
     }
   }

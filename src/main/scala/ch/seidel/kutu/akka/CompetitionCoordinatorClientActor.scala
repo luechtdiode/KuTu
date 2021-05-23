@@ -273,7 +273,7 @@ class CompetitionCoordinatorClientActor(wettkampfUUID: String) extends Persisten
   private def squashDurchgangEvents(durchgangNormalized: Option[String]) = {
     durchgangNormalized match {
       case Some(dgn) => // take last of requested durchgang
-        state.startStopEvents.seq.reverse.filter {
+        state.startStopEvents.reverse.filter {
           case DurchgangStarted(_, d, _) => encodeURIComponent(d).equals(dgn)
           case DurchgangFinished(_, d, _) => encodeURIComponent(d).equals(dgn)
           case _ => false
