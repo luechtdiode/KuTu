@@ -78,49 +78,6 @@
 		<slick.version>3.3.3</slick.version>
 	</properties>
 
-	<!--<repositories>
-		<repository>
-			<id>typesafe</id>
-			<name>Typesafe - releases</name>
-			<url>https://repo.typesafe.com/typesafe/releases/</url>
-			<snapshots>
-				<enabled>false</enabled>
-			</snapshots>
-		</repository>
-		<repository>
-			<id>central</id>
-			<url>https://repo1.maven.org/maven2/</url>
-			<releases>
-				<enabled>true</enabled>
-			</releases>
-			<snapshots>
-				<enabled>true</enabled>
-			</snapshots>
-		</repository>
-	</repositories>-->
-
-<!--	<pluginRepositories>-->
-<!--		<pluginRepository>-->
-<!--			<id>scala-tools.org</id>-->
-<!--			<name>Scala-Tools Maven2 Repository</name>-->
-<!--			<url>https://oss.sonatype.org/content/groups/scala-tools</url>-->
-<!--		</pluginRepository>-->
-<!--		<pluginRepository>-->
-<!--			<id>central</id>-->
-<!--			<url>https://repo1.maven.org/maven2/</url>-->
-<!--			<releases>-->
-<!--				<enabled>true</enabled>-->
-<!--			</releases>-->
-<!--			<snapshots>-->
-<!--				<enabled>true</enabled>-->
-<!--			</snapshots>-->
-<!--		</pluginRepository>-->
-<!--		&lt;!&ndash;<pluginRepository>&ndash;&gt;-->
-<!--			&lt;!&ndash;<id>clojars</id>&ndash;&gt;-->
-<!--			&lt;!&ndash;<url>http://clojars.org/repo/</url>&ndash;&gt;-->
-<!--		&lt;!&ndash;</pluginRepository>&ndash;&gt;-->
-<!--	</pluginRepositories>-->
-
 	<dependencies>
 		<dependency>
 			<groupId>org.scala-lang</groupId>
@@ -258,7 +215,7 @@
 			<version>0.9.5</version>
 		</dependency>
 
-		<!-- JWT -->
+		<!-- JWT actually substituted by a local pach-copy until 2.13 is suppored -->
 <!--		<dependency>-->
 <!--			<groupId>com.jason-goodwin</groupId>-->
 <!--			<artifactId>authentikat-jwt_${scala.majorversion}</artifactId>-->
@@ -303,11 +260,6 @@
             <version>0.1.28</version>
         </dependency>
 
-        <!-- dependency> <groupId>org.apache.logging.log4j</groupId> <artifactId>log4j-api</artifactId>
-            <version>2.10.0</version> </dependency> <dependency> <groupId>org.apache.logging.log4j</groupId>
-            <artifactId>log4j-core</artifactId> <version>2.10.0</version> </dependency>
-            <dependency> <groupId>org.slf4j</groupId> <artifactId>slf4j-nop</artifactId>
-            <version>1.7.25</version> </dependency -->
 		<dependency>
 			<groupId>org.slf4j</groupId>
 			<artifactId>slf4j-api</artifactId>
@@ -421,6 +373,38 @@
 				<groupId>org.scoverage</groupId>
 				<artifactId>scoverage-maven-plugin</artifactId>
 				<version>${scoverage.plugin.version}</version>
+			</plugin>
+			<plugin>
+				<groupId>org.codehaus.mojo</groupId>
+				<artifactId>build-helper-maven-plugin</artifactId>
+				<version>3.2.0</version>
+				<executions>
+					<execution>
+						<id>add-source</id>
+						<phase>generate-sources</phase>
+						<goals>
+							<goal>add-source</goal>
+							<goal>parse-version</goal>
+						</goals>
+						<configuration>
+							<sources>
+								<source>src/main/scala</source>
+							</sources>
+						</configuration>
+					</execution>
+					<execution>
+						<id>add-test-source</id>
+						<phase>generate-sources</phase>
+						<goals>
+							<goal>add-test-source</goal>
+						</goals>
+						<configuration>
+							<sources>
+								<source>src/test/scala</source>
+							</sources>
+						</configuration>
+					</execution>
+				</executions>
 			</plugin>
 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
