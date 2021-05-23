@@ -31,15 +31,15 @@ import scala.math.BigDecimal.int2bigDecimal
 class TurnerAnalyzer(val verein: Option[Verein], val athlet: Option[Athlet], val wettkampfdisziplin: Option[WettkampfdisziplinView], override val service: KutuService) extends Tab with TabWithService {
   val logger = LoggerFactory.getLogger(this.getClass)
   
-  def onDrillDown(a: Athlet) {
+  def onDrillDown(a: Athlet): Unit = {
 
   }
 
-  def onDrillDown(a: WettkampfdisziplinView) {
+  def onDrillDown(a: WettkampfdisziplinView): Unit = {
 
   }
 
-  def print(node: Node) {
+  def print(node: Node): Unit = {
     val printer = Printer.defaultPrinter;
     val pageLayout = printer.createPageLayout(Paper.A4, PageOrientation.Portrait, Printer.MarginType.Default);
     val scaleX = pageLayout.getPrintableWidth() / node.getBoundsInParent().getWidth();
@@ -63,16 +63,16 @@ class TurnerAnalyzer(val verein: Option[Verein], val athlet: Option[Athlet], val
     val (dataText, isLandscape) = if(data.getYValue().isInstanceOf[String]) (new Text(data.getXValue() + ""), true) else (new Text(data.getYValue() + ""), false)
 
     data.nodeProperty().addListener(new ChangeListener[Node]() {
-      override def changed(ov: ObservableValue[_<: Node], oldNode: Node, node: Node) {
+      override def changed(ov: ObservableValue[_<: Node], oldNode: Node, node: Node): Unit = {
         if(node != null) {
           node.setEffect(null)
-          node.onMouseEntered = handle {
+          node.onMouseEntered = _ => {
             node.setEffect(glow)
           }
-          node.onMouseExited = handle {
+          node.onMouseExited = _ => {
             node.setEffect(null)
           }
-          node.onMouseClicked = handle {
+          node.onMouseClicked = _ => {
             data.extraValue.value match {
               case a: AthletView => onDrillDown(a.toAthlet)
               case d: WettkampfdisziplinView => onDrillDown(d)
@@ -82,13 +82,13 @@ class TurnerAnalyzer(val verein: Option[Verein], val athlet: Option[Athlet], val
           }
 
           node.parentProperty().addListener(new ChangeListener[Parent]() {
-            override def changed(ov: ObservableValue[_<: Parent], oldParent: Parent, parent: Parent) {
+            override def changed(ov: ObservableValue[_<: Parent], oldParent: Parent, parent: Parent): Unit = {
               val parentGroup = parent.asInstanceOf[Group]
               parentGroup.getChildren().add(dataText)
             }
           })
           node.boundsInParentProperty().addListener(new ChangeListener[Bounds]() {
-            override def changed(ov: ObservableValue[_<: Bounds], oldBounds: Bounds, bounds: Bounds) {
+            override def changed(ov: ObservableValue[_<: Bounds], oldBounds: Bounds, bounds: Bounds): Unit = {
               dataText.setLayoutX(bounds.getMinX)
               dataText.setVisible(false)
               Platform.runLater{
@@ -96,7 +96,7 @@ class TurnerAnalyzer(val verein: Option[Verein], val athlet: Option[Athlet], val
               if(isLandscape) {
                 dataText.setLayoutX(
                   Math.min(
-                      Math.round(bounds.getWidth + dataText.prefWidth(-1) * 0.5),
+                      Math.round(bounds.getWidth + dataText.prefWidth(-1) * 0.5).toDouble,
                       dataText.parent.value.boundsInLocalProperty().get.getWidth - dataText.prefWidth(-1)
                   )
                 )
@@ -111,11 +111,11 @@ class TurnerAnalyzer(val verein: Option[Verein], val athlet: Option[Athlet], val
                 dataText.setLayoutX(
                   Math.round(
                     bounds.getMinX() + bounds.getWidth() / 2 - dataText.prefWidth(-1) / 2
-                  )
+                  ).toDouble
                 )
                 dataText.setLayoutY(
                   Math.max(
-                      Math.round(bounds.getMinY() - dataText.prefHeight(-1) * 0.5),
+                      Math.round(bounds.getMinY() - dataText.prefHeight(-1) * 0.5).toDouble,
                       dataText.parent.value.boundsInLocalProperty().get.getMinY
                   )
                 )

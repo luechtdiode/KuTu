@@ -1,12 +1,11 @@
 package ch.seidel.kutu.domain
 
 import java.time.LocalDate
-
 import akka.http.scaladsl.model.HttpMethods._
 import akka.http.scaladsl.model.headers.{Authorization, BasicHttpCredentials, RawHeader}
 import akka.http.scaladsl.model.{ContentTypes, HttpEntity, HttpRequest, StatusCodes}
 import akka.util.ByteString
-import authentikat.jwt.JsonWebToken
+import ch.seidel.jwt.JsonWebToken
 import ch.seidel.kutu.Config
 import ch.seidel.kutu.Config.{jwtAuthorizationKey, jwtHeader, jwtSecretKey, jwtTokenExpiryPeriodInDays}
 import ch.seidel.kutu.base.KuTuBaseSpec
@@ -331,7 +330,7 @@ class RegistrationRestSpec extends KuTuBaseSpec {
       HttpRequest(method = POST, uri = s"/api/registrations/${testwettkampf.uuid.get}/${reg.id}/athletes", entity = HttpEntity(
         ContentTypes.`application/json`,
         //       {"gebdat":"2020-05-05T02:00:00.000+0200","geschlecht":"M","id":0,"name":"Tester","programId":20,"registrationTime":0,"vereinregistrationId":1,"vorname":"Test"}
-        ByteString(s"""{"id":0,"vereinregistrationId":1,"name":"a","vorname":"b","geschlecht":"W","gebdat":"$gebDat","programId":23,"registrationTime":0}""")
+        ByteString(s"""{"id":0,"vereinregistrationId":${reg.id},"name":"a","vorname":"b","geschlecht":"W","gebdat":"$gebDat","programId":23,"registrationTime":0}""")
       )).addHeader(registrationJwt.get) ~>
         allroutes(x => vereinSecretHashLookup(x)) ~> check {
         status should ===(StatusCodes.OK)

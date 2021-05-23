@@ -38,8 +38,8 @@ case class KuTuAppThumbNail(context: Any, button: Button, item: TreeItem[String]
  */
 class KuTuAppTree(service: KutuService) {
 
-  val thumbnails: Map[String, (List[KuTuAppThumbNail], Boolean, Int)] = createThumbnails()
-	val tree: Map[String, (List[TreeItem[String]], Boolean, Int)] = createTree()
+  lazy val thumbnails: Map[String, (List[KuTuAppThumbNail], Boolean, Int)] = createThumbnails()
+	lazy val tree: Map[String, (List[TreeItem[String]], Boolean, Int)] = createTree()
 
   def getService = service
 
@@ -117,16 +117,18 @@ class KuTuAppTree(service: KutuService) {
   /**
    * returns the entire tree
    */
-  def getTree: List[TreeItem[String]] = tree.toList.sortBy(_._2._3).map {
+  def getTree: List[TreeItem[String]] =
+    tree.toList.sortBy(_._2._3).map {
     case (name, (items, exp, ord)) => new TreeItem[String](name) {
       expanded = exp
       children = items
     }
-  }.toList
+  }
 
-  def getThumbs(keyName: String) = thumbnails.getOrElse(keyName, (List[KuTuAppThumbNail](), false, 0))._1
+  def getThumbs(keyName: String): List[KuTuAppThumbNail] =
+    thumbnails.getOrElse(keyName, (List[KuTuAppThumbNail](), false, 0))._1
 
-  def getDashThumbsCtrl =
+  def getDashThumbsCtrl: List[Node] =
     thumbnails.map {
       case (heading, ts) => (Seq[Node](createCategoryLabel(heading), createTiles(ts._1)), ts._3)
     }.toList.sortBy(_._2).flatMap(_._1)

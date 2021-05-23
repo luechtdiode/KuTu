@@ -5,16 +5,17 @@ import java.net.{Proxy, ProxySelector, URI}
 import java.nio.file.{Files, LinkOption, StandardOpenOption}
 import java.security.{NoSuchAlgorithmException, SecureRandom}
 import java.util.UUID
-
-import authentikat.jwt.JwtHeader
 import ch.seidel.commons.IOUtils.withResources
+import ch.seidel.jwt.JwtHeader
 import ch.seidel.kutu.http.KuTuSSLContext
 import com.github.markusbernhardt.proxy.ProxySearch
 import com.typesafe.config.ConfigFactory
+
 import javax.crypto.KeyGenerator
 import org.slf4j.LoggerFactory
 
 import scala.collection.JavaConverters
+import scala.jdk.javaapi.CollectionConverters
 
 object Config extends KuTuSSLContext {
   private val logger = LoggerFactory.getLogger(this.getClass)
@@ -171,15 +172,15 @@ object Config extends KuTuSSLContext {
 
   // Use the static factory method getDefaultProxySearch to create a proxy search instance
   // configured with the default proxy search strategies for the current environment.
-  val proxySearch: ProxySearch = ProxySearch.getDefaultProxySearch()
-  val proxySelector: ProxySelector = proxySearch.getProxySelector()
+  val proxySearch: ProxySearch = ProxySearch.getDefaultProxySearch
+  val proxySelector: ProxySelector = proxySearch.getProxySelector
   ProxySelector.setDefault(proxySelector)
 
   //  private val proxy = Proxy.NO_PROXY
 
   // Get list of proxies from default ProxySelector available for given URL
-  private val proxies: List[Proxy] = if (ProxySelector.getDefault() != null) {
-    JavaConverters.asScalaIterator(ProxySelector.getDefault().select(new URI(Config.remoteBaseUrl)).iterator()).toList
+  private val proxies: List[Proxy] = if (ProxySelector.getDefault != null) {
+    CollectionConverters.asScala(ProxySelector.getDefault.select(new URI(Config.remoteBaseUrl)).iterator()).toList
   } else {
     List()
   }

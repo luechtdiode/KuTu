@@ -155,20 +155,23 @@ object ResourceExchanger extends KutuService with RiegenBuilder {
     val buffer = new BufferedInputStream(file)
     buffer.mark(40*4096)
     type ZipStream = (ZipEntry,InputStream)
-    class ZipEntryTraversableClass extends Traversable[ZipStream] {
+    class ZipEntryTraversableClass extends Iterator[ZipStream] {
       buffer.reset
       val zis = new ZipInputStream(buffer)
-      def entryIsValid(ze: ZipEntry) = !ze.isDirectory
+      var currentEntry: Option[ZipEntry] = None
+      val zisIterator = Iterator.continually(zis.getNextEntry)
+        .map(entry => {
+          currentEntry match {
+            case Some(entry) => zis.closeEntry()
+            case _ =>
+          }
+          entry
+        })
+        .filter(ze => ze == null || !ze.isDirectory)
+        .takeWhile(ze => ze != null).iterator
 
-      def foreach[U](f: ZipStream => U) {
-        @tailrec
-        def loop(x: ZipEntry): Unit = if (x != null && entryIsValid(x)) {
-          f(x, zis)
-          zis.closeEntry()
-          loop(zis.getNextEntry())
-        }
-        loop(zis.getNextEntry())
-      }
+      override def hasNext: Boolean = zisIterator.hasNext
+      override def next(): (ZipEntry, InputStream) = (zisIterator.next(), zis)
     }
 
     val collection = new ZipEntryTraversableClass().foldLeft(Map[String, (Seq[String],Map[String,Int])]()) { (acc, entry) =>
@@ -499,11 +502,11 @@ object ResourceExchanger extends KutuService with RiegenBuilder {
     }
   }
 
-  def exportWettkampf(wettkampf: Wettkampf, filename: String) {
+  def exportWettkampf(wettkampf: Wettkampf, filename: String): Unit = {
     exportWettkampfToStream(wettkampf, new FileOutputStream(filename), true)
   }
   
-  def exportWettkampfToStream(wettkampf: Wettkampf, os: OutputStream, withSecret: Boolean = false) {
+  def exportWettkampfToStream(wettkampf: Wettkampf, os: OutputStream, withSecret: Boolean = false): Unit = {
     val zip = new ZipOutputStream(os);
     zip.putNextEntry(new ZipEntry("wettkampf.csv"));
     zip.write((getHeader[Wettkampf] + "\n" + getValues(wettkampf)).getBytes("utf-8"))
@@ -652,7 +655,7 @@ object ResourceExchanger extends KutuService with RiegenBuilder {
   }
 
 
-  def exportEinheiten(wettkampf: Wettkampf, filename: String) {
+  def exportEinheiten(wettkampf: Wettkampf, filename: String): Unit = {
     val export = new FileOutputStream(filename);
     val riegenRaw = suggestRiegen(Seq(0), selectWertungen(wettkampfId = Some(wettkampf.id)))
     val mapVereinVerband = selectVereine.map(v => v.name -> v.verband.getOrElse("")).toMap
@@ -699,7 +702,7 @@ object ResourceExchanger extends KutuService with RiegenBuilder {
     export.close()
   }
 
-  def exportDurchgaenge(wettkampf: Wettkampf, filename: String) {
+  def exportDurchgaenge(wettkampf: Wettkampf, filename: String): Unit = {
     val export = new FileOutputStream(filename);
     val diszipline = listDisziplinesZuWettkampf(wettkampf.id)
     val durchgaenge = selectDurchgaenge(UUID.fromString(wettkampf.uuid.get)).map(d => d.name -> d).toMap
@@ -742,7 +745,7 @@ object ResourceExchanger extends KutuService with RiegenBuilder {
     export.close()
   }
 
-  def exportSimpleDurchgaenge(wettkampf: Wettkampf, filename: String) {
+  def exportSimpleDurchgaenge(wettkampf: Wettkampf, filename: String): Unit = {
     val export = new FileOutputStream(filename);
     val diszipline = listDisziplinesZuWettkampf(wettkampf.id)
     val durchgaenge = selectDurchgaenge(UUID.fromString(wettkampf.uuid.get)).map(d => d.name -> d).toMap

@@ -1,7 +1,6 @@
 package ch.seidel.kutu.http
 
 import java.net.{InetSocketAddress, PasswordAuthentication}
-
 import akka.http.scaladsl.marshallers.sprayjson.SprayJsonSupport
 import akka.http.scaladsl.marshalling.Marshal
 import akka.http.scaladsl.model._
@@ -14,8 +13,9 @@ import akka.http.scaladsl.settings.{ClientConnectionSettings, ConnectionPoolSett
 import akka.http.scaladsl.unmarshalling.Unmarshal
 import akka.http.scaladsl.{ClientTransport, Http}
 import akka.stream.scaladsl._
-import authentikat.jwt.JsonWebToken
 import ch.seidel.commons.PageDisplayer
+import ch.seidel.jwt
+import ch.seidel.jwt.JsonWebToken
 import ch.seidel.kutu.Config
 import ch.seidel.kutu.Config._
 import ch.seidel.kutu.KuTuApp.{server, setClaims}
@@ -51,7 +51,7 @@ trait AuthSupport extends Directives with SprayJsonSupport with Hashing {
     case _ =>
   }
   
-  def setProxyProperties(port: String, host: String, user: String, password: String) {
+  def setProxyProperties(port: String, host: String, user: String, password: String): Unit = {
     proxyPort = Some(port)
     proxyHost = Some(host)
     proxyUser = Some(user)
@@ -187,7 +187,7 @@ trait AuthSupport extends Directives with SprayJsonSupport with Hashing {
 
   def loginWithWettkampf(p: Wettkampf) = if (Config.isLocalHostServer()) {
     if (!p.hasSecred(homedir, "localhost")) {
-      p.saveSecret(homedir, "localhost", JsonWebToken(jwtHeader, setClaims(p.uuid.get, Int.MaxValue), jwtSecretKey))
+      p.saveSecret(homedir, "localhost", jwt.JsonWebToken(jwtHeader, setClaims(p.uuid.get, Int.MaxValue), jwtSecretKey))
     }
     httpRenewLoginRequest(s"$remoteBaseUrl/api/loginrenew", p.uuid.get, p.readSecret(homedir, "localhost").get)
   } else {

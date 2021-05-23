@@ -39,13 +39,13 @@ case class WertungEditor(init: WertungView) {
     changed(noteD.value, init.noteD) || changed(noteE.value, init.noteE) || changed(endnote.value, init.endnote)
 
   var listeners = Set[WertungChangeListener]()
-  def addListener(l: WertungChangeListener) {
+  def addListener(l: WertungChangeListener): Unit = {
    listeners += l
   }
-  def removeListener(l: WertungChangeListener) {
+  def removeListener(l: WertungChangeListener): Unit = {
     listeners -= l
   }
-  def reset {
+  def reset: Unit = {
     init.noteD match {
       case Some(d) => noteD.value = d.toDouble case _ => noteD.value = Double.NaN
     }

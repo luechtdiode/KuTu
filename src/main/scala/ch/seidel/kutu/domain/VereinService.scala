@@ -78,7 +78,7 @@ trait VereinService extends DBService with VereinResultMapper {
     }, Duration.Inf)
   }
 
-  def updateVerein(verein: Verein) {
+  def updateVerein(verein: Verein): Unit = {
     Await.result(database.run {(
       sqlu"""       update verein
                     set name = ${verein.name}, verband = ${verein.verband}
@@ -87,7 +87,7 @@ trait VereinService extends DBService with VereinResultMapper {
     }, Duration.Inf)
   }
   
-  def deleteVerein(vereinid: Long) {
+  def deleteVerein(vereinid: Long): Unit = {
     Await.result(database.run {(
       sqlu""" update athletregistration set athlet_id = null where vereinregistration_id in (
           select id from vereinregistration where verein_id = $vereinid

@@ -19,7 +19,7 @@ class GeraeteRiegeListCell extends ListCell[GeraeteRiege] {
   }
 
   override val delegate: jfxsc.ListCell[GeraeteRiege] = new jfxsc.ListCell[GeraeteRiege] {
-    override protected def updateItem(item: GeraeteRiege, empty: Boolean) {
+    override protected def updateItem(item: GeraeteRiege, empty: Boolean): Unit = {
       super.updateItem(item, empty)
       if (item != null) {
         val imageView = new ImageView {

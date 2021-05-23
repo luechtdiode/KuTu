@@ -3,7 +3,6 @@ package ch.seidel.kutu.http
 import java.io.ByteArrayOutputStream
 import java.util.UUID
 import java.util.concurrent.TimeUnit
-
 import akka.http.scaladsl.Http
 import akka.http.scaladsl.marshallers.sprayjson.SprayJsonSupport
 import akka.http.scaladsl.model._
@@ -12,7 +11,7 @@ import akka.http.scaladsl.server.Route
 import akka.http.scaladsl.unmarshalling.Unmarshal
 import akka.stream.scaladsl.{Sink, Source, StreamConverters}
 import akka.util.ByteString
-import authentikat.jwt.JsonWebToken
+import ch.seidel.jwt.JsonWebToken
 import ch.seidel.kutu.Config._
 import ch.seidel.kutu.akka.{StartDurchgang, _}
 import ch.seidel.kutu.data.ResourceExchanger
@@ -193,7 +192,7 @@ trait WettkampfRoutes extends SprayJsonSupport
       } ~
       path("competition" / "ws") {
         pathEnd {
-          (authenticated() & parameters('lastSequenceId.?)) { (wettkampfUUID, lastSequenceId: Option[String]) =>
+          (authenticated() & parameters(Symbol("lastSequenceId").?)) { (wettkampfUUID, lastSequenceId: Option[String]) =>
             handleWebSocketMessages(CompetitionCoordinatorClientActor.createActorSinkSource(clientId, wettkampfUUID, None, lastSequenceId.map(_.toLong)))
           }
         }

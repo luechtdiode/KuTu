@@ -271,7 +271,7 @@ trait WettkampfOverviewToHtmlRenderer {
     val vereinRows: List[(String, Map[String, (Int, Int)], Int, Int)] = stats
       .groupBy(_._1)
       .mapValues(_.groupBy(_._2).mapValues(stats => (stats.head._4, stats.head._5)))
-      .map(t => (t._1, t._2, t._2.values.map(_._1).sum, t._2.values.map(_._2).sum))
+      .map(t => (t._1, t._2.toMap, t._2.values.map(_._1).sum, t._2.values.map(_._2).sum))
       .toList
       .sortBy(_._1)
 

@@ -80,7 +80,7 @@ trait WertungsrichterService extends DBService with WertungsrichterResultMapper 
     }, Duration.Inf).toList
   }
 
-  def deleteKamprichter(kamprichterid: Long) {
+  def deleteKamprichter(kamprichterid: Long): Unit = {
     Await.result(database.run{
       sqlu"""       update durchgangstation set d_Wertungsrichter1 = 0 where d_Wertungsrichter1 =${kamprichterid}""" >>
       sqlu"""       update durchgangstation set e_Wertungsrichter1 = 0 where e_Wertungsrichter1 =${kamprichterid}""" >>

@@ -1,6 +1,7 @@
 package ch.seidel.kutu.squad
 
 import ch.seidel.kutu.domain._
+import ch.seidel.kutu.squad
 import org.slf4j.LoggerFactory
 
 import scala.annotation.tailrec
@@ -149,11 +150,11 @@ trait StartGeraetGrouper extends RiegenSplitter with Stager {
     _bringVereineTogether(startriegen, Set(startriegen))
   }
     
-  private def findSubstitutesFor(riegeToReplace: GeraeteRiege, zielriege: GeraeteRiege): Option[GeraeteRiege] = {
+  private def findSubstitutesFor(riegeToReplace: squad.GeraeteRiege, zielriege: squad.GeraeteRiege): Option[squad.GeraeteRiege] = {
     val replaceCnt = riegeToReplace.size
     val reducedZielriege = zielriege -- riegeToReplace
 
-    val candidates = reducedZielriege.turnerriegen.toSeq.sortBy(_.size).reverse.foldLeft(GeraeteRiege()){(acc, candidate) =>
+    val candidates = reducedZielriege.turnerriegen.toSeq.sortBy(_.size).reverse.foldLeft(squad.GeraeteRiege()){(acc, candidate) =>
       val grouped = acc + candidate
       if (grouped.size <= replaceCnt) {
         grouped
@@ -184,7 +185,7 @@ trait StartGeraetGrouper extends RiegenSplitter with Stager {
     }.toSeq.sortBy(_._4).reverse // Abweichung  
     
     val kleinsteGruppe @ (geraeteRiegeAusKleinsterGruppe, _, anzGruppenAusKleinsterGruppe, _, turnerRiegeAusKleinsterGruppe) = stats.last
-    type GrpStats = (GeraeteRiege, Int, Int, Int, Option[TurnerRiege])
+    type GrpStats = (squad.GeraeteRiege, Int, Int, Int, Option[TurnerRiege])
     def checkSC(p1: GrpStats, p2: GrpStats): Boolean = {
       splitSex match {
         case GemischterDurchgang =>

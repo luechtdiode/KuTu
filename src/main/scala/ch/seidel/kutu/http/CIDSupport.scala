@@ -10,7 +10,7 @@ trait CIDSupport extends Directives with RouterLogging with IpToDeviceID {
 
   def handleCID: Directive1[String] = {
     val value: Directive[(RemoteAddress, Option[String], Option[String])] =
-      (extractClientIP & parameter('clientid.?) & optionalHeaderValueByName(clientIdKey))
+      (extractClientIP & parameter(Symbol("clientid").?) & optionalHeaderValueByName(clientIdKey))
     value.tflatMap(handleCIDWith)
   }
 

@@ -59,7 +59,7 @@ trait RiegenService extends DBService with RiegenResultMapper {
     }, Duration.Inf).getOrElse(Riege(newname, None, None, 0))
   }
 
-  def cleanAllRiegenDurchgaenge(wettkampfid: Long) {
+  def cleanAllRiegenDurchgaenge(wettkampfid: Long): Unit = {
     Await.result(database.run{(
       sqlu"""
                 delete from durchgang where
@@ -81,14 +81,15 @@ trait RiegenService extends DBService with RiegenResultMapper {
     }, Duration.Inf)
   }
 
-  def updateOrinsertRiegen(riegen: Iterable[RiegeRaw]) {
-    val riegenList = riegen.groupBy(_.wettkampfId).toList
-    def insertRiegen(rs: Iterable[RiegeRaw]) = DBIO.sequence(for {
+  def updateOrinsertRiegen(riegen: Iterable[RiegeRaw]): Unit = {
+    val riegenList: List[(Long, Iterable[RiegeRaw])] = riegen.groupBy(_.wettkampfId).toList
+    def insertRiegen(rs: Iterable[RiegeRaw]): DBIOAction[Iterable[Int], NoStream, Effect] = DBIO.sequence(for {
         riege <- rs
       } yield {
         updateOrInsertRiegeRawAction(riege)
       })
 
+    val wettkampfList: List[Long] = riegenList.map(_._1).toSet.toList
     val process = DBIO.sequence(for {
       (wettkampfid, riegen) <- riegenList.toIterable
     } yield {
@@ -97,11 +98,11 @@ trait RiegenService extends DBService with RiegenResultMapper {
                 wettkampf_id=${wettkampfid}
         """>>
       insertRiegen(riegen)
-    }) >> DBIO.sequence(for {
-      wettkampfId <- riegenList.map(_._1).toSet.toIterable
+    }) >> DBIO.sequence((for {
+      wettkampfId <- wettkampfList
     } yield {
       updateDurchgaengeAction(wettkampfId)
-    })
+    }))
 
     Await.result(database.run{process.transactionally}, Duration.Inf)
   }
@@ -110,7 +111,7 @@ trait RiegenService extends DBService with RiegenResultMapper {
     Await.result(database.run{ updateDurchgaengeAction(wettkampfId).transactionally}, Duration.Inf)
   }
 
-  def updateDurchgaengeAction(wettkampfId: Long) =
+  def updateDurchgaengeAction(wettkampfId: Long): DBIOAction[Int, NoStream, Effect] =
       sqlu"""
                 insert into durchgang (wettkampf_id, title, name, durchgangtype, ordinal, planStartOffset)
                 SELECT
@@ -198,7 +199,7 @@ trait RiegenService extends DBService with RiegenResultMapper {
     }, Duration.Inf)
   }
 
-  def deleteRiege(wettkampfid: Long, oldname: String) {
+  def deleteRiege(wettkampfid: Long, oldname: String): Unit = {
     Await.result(database.run{(
       sqlu"""
                 DELETE from riege where name=${oldname.trim} and wettkampf_id=${wettkampfid}
@@ -215,7 +216,7 @@ trait RiegenService extends DBService with RiegenResultMapper {
     }, Duration.Inf)
   }
 
-  def insertRiegenWertungen(riege: RiegeRaw, wertungen: Seq[Wertung]) {
+  def insertRiegenWertungen(riege: RiegeRaw, wertungen: Seq[Wertung]): Unit = {
     Await.result(database.run{(
       updateOrInsertRiegeRawAction(riege) >>
       DBIO.sequence(for(w <- wertungen) yield {

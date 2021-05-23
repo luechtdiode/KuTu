@@ -21,7 +21,7 @@ class AthletDialog(init: Athlet, actionTitle: String, service: KutuService, onSe
   val athletEditor = AthletEditor(init)
   val vereineList = service.selectVereine
   val vereineMap = vereineList.map(v => v.id -> v).toMap
-  val vereine = ObservableBuffer[Verein](vereineList)
+  val vereine = ObservableBuffer.from(vereineList)
 
   val lblGeschlecht = new Label {
     text = "Geschlecht (M/W)"
@@ -99,7 +99,7 @@ class AthletDialog(init: Athlet, actionTitle: String, service: KutuService, onSe
 
   btnOK.disable.value = true
 
-  def changeHandler {
+  def changeHandler: Unit = {
     btnOK.disable.value = !athletEditor.isValid || cmbVerein.selectionModel.value.isEmpty()
   }
   cmbVerein.value.onChange(changeHandler)

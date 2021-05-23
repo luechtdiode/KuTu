@@ -31,7 +31,7 @@ trait ExportFunctions {
       case _ =>
     }
   }
-  def doSelectedRiegenBelatterExport(dialogText: String, durchgang: Set[String], halts: Set[Int] = Set.empty)(implicit event: ActionEvent) {
+  def doSelectedRiegenBelatterExport(dialogText: String, durchgang: Set[String], halts: Set[Int] = Set.empty)(implicit event: ActionEvent): Unit = {
     import scala.concurrent.ExecutionContext.Implicits.global
 
     val seriendaten = service.getAllKandidatenWertungen(wettkampf.uuid.map(UUID.fromString(_)).get)

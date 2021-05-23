@@ -1,11 +1,8 @@
 package ch.seidel.kutu
 
-import java.io.{ByteArrayInputStream, FileInputStream}
-import java.util.concurrent.Executors
-import java.util.{Base64, Date, UUID}
-
-import authentikat.jwt.JsonWebToken
 import ch.seidel.commons.{DisplayablePage, PageDisplayer}
+import ch.seidel.jwt
+import ch.seidel.jwt.JsonWebToken
 import ch.seidel.kutu.Config._
 import ch.seidel.kutu.akka.KutuAppEvent
 import ch.seidel.kutu.data.{CaseObjectMetaUtil, ResourceExchanger, Surname}
@@ -45,6 +42,9 @@ import scalafx.stage.FileChooser.ExtensionFilter
 import scalafx.stage.{FileChooser, Screen}
 import spray.json._
 
+import java.io.{ByteArrayInputStream, FileInputStream}
+import java.util.concurrent.{Executors, ScheduledExecutorService}
+import java.util.{Base64, Date, UUID}
 import scala.concurrent.duration.Duration
 import scala.concurrent.{Await, Future, Promise}
 import scala.util.{Failure, Success}
@@ -55,79 +55,34 @@ object KuTuApp extends JFXApp with KutuService with JsonSupport with JwtSupport 
 
   private val logger = LoggerFactory.getLogger(this.getClass)
   private lazy val server = KuTuServer
+  val enc = Base64.getUrlEncoder
 
   import scala.concurrent.ExecutionContext.Implicits.global
 
-  val lazyExecutor = Executors.newScheduledThreadPool(1)
+  val lazyExecutor: ScheduledExecutorService = Executors.newScheduledThreadPool(1)
 
-  override def stopApp() {
+  override def stopApp(): Unit = {
     lazyExecutor.shutdownNow()
-    ConnectionStates.disconnected()
     server.shutDown("KuTuApp")
+    ConnectionStates.disconnected()
   }
 
   var tree = AppNavigationModel.create(KuTuApp.this)
-  val rootTreeItem = new TreeItem[String]("Dashboard") {
-    expanded = true
-    children = tree.getTree
-  }
   val modelWettkampfModus = new BooleanProperty()
   val selectedWettkampf = new SimpleObjectProperty[WettkampfView]()
   val selectedWettkampfSecret = new SimpleObjectProperty[Option[String]]()
+  var controlsView: TreeView[String] = null
+  var rootTreeItem: TreeItem[String] = null
+  var invisibleWebView: WebView = null
 
-  val btnWettkampfModus = new ToggleButton("Wettkampf-Modus") {
-    id = "wettkampfmodusButton"
-    selected <==> modelWettkampfModus
-    disable = true
-  }
-
-  val btnConnectStatus = new ToggleButton() {
-    //id = "connected-info"
-    disable <== btnWettkampfModus.disable
-    onAction = handleAction { action =>
-      if (ConnectionStates.connectedProperty.value) {
-        ConnectionStates.disconnected
-      } else {
-        connectAndShare(selectedWettkampf.value, "Share", action)
-      }
-      Platform.runLater {
-        selected.value = ConnectionStates.connectedProperty.value
-      }
-    }
-    //    selected <== ConnectionStates.connectedProperty
-    text <== createStringBinding(() => {
-      ConnectionStates.connectedWithProperty.value match {
-        case "" =>
-          selected.value = false
-          "nicht verbunden"
-        case uuid =>
-          selected.value = true
-          s"Verbunden mit ${readWettkampf(uuid).easyprint}"
-      }
-    }, ConnectionStates.connectedWithProperty)
-  }
-  val lblRemoteAddress = new Label() {
-    id = "connected-info"
-    text <== createStringBinding(() => {
-      ConnectionStates.connectedWithProperty.value match {
-        case "" =>
-          s"Server: ${Config.remoteBaseUrl} offline\nVersion: ${Config.appFullVersion}, Built: ${Config.builddate}"
-        case uuid =>
-          s"Server: ${Config.remoteBaseUrl} online\nVersion: ${Config.appFullVersion}, Built: ${Config.builddate}"
-      }
-      //visible <== ConnectionStates.connectedProperty
-    }, ConnectionStates.connectedWithProperty, LocalServerStates.localServerProperty)
-  }
-  var centerPane = PageDisplayer.choosePage(modelWettkampfModus, None, "dashBoard", tree)
-
-  def updateTree {
+  def updateTree: Unit = {
     def selectionPathToRoot(node: TreeItem[String]): List[TreeItem[String]] = {
       if (node == null) {
         List.empty
       }
       else if (node.parent.value != null) {
         selectionPathToRoot(node.parent.value) :+ node
-      } else{
+      } else {
         List(node)
       }
     }
@@ -139,7 +94,7 @@ object KuTuApp extends JFXApp with KutuService with JsonSupport with JwtSupport 
     try {
       tree = AppNavigationModel.create(KuTuApp.this)
       rootTreeItem.children = tree.getTree
-      for {node <- oldselected}{
+      for {node <- oldselected} {
         lastNode.setExpanded(true)
         lastNode.children.find(n => n.value.value.equals(node.value.value)) match {
           case Some(n) => lastNode = n
@@ -153,7 +108,7 @@ object KuTuApp extends JFXApp with KutuService with JsonSupport with JwtSupport 
   }
 
   def handleAction[J <: javafx.event.ActionEvent, R](handler: scalafx.event.ActionEvent => R) = new javafx.event.EventHandler[J] {
-    def handle(event: J) {
+    def handle(event: J): Unit = {
       setCursor(Cursor.Wait)
       try {
         handler(event)
@@ -164,7 +119,7 @@ object KuTuApp extends JFXApp with KutuService with JsonSupport with JwtSupport 
     }
   }
 
-  def invokeWithBusyIndicator(task: => Unit) {
+  def invokeWithBusyIndicator(task: => Unit): Unit = {
     setCursor(Cursor.Wait)
     val f = Future[Boolean] {
       Thread.sleep(10L) // currentThread().wait(1L)
@@ -182,7 +137,7 @@ object KuTuApp extends JFXApp with KutuService with JsonSupport with JwtSupport 
 
   def invokeAsyncWithBusyIndicator[R](task: => Future[R]): Future[R] = {
     setCursor(Cursor.Wait)
-    val p = Promise[R]
+    val p = Promise[R]()
     val f = Future[Boolean] {
       try {
         task.onComplete {
@@ -229,7 +184,7 @@ object KuTuApp extends JFXApp with KutuService with JsonSupport with JwtSupport 
 
   var cursorWaiters = 0
 
-  def setCursor(c: Cursor) {
+  def setCursor(c: Cursor): Unit = {
     val ctoSet = if (c.equals(Cursor.Wait)) {
       cursorWaiters += 1
       c
@@ -252,7 +207,7 @@ object KuTuApp extends JFXApp with KutuService with JsonSupport with JwtSupport 
   }
 
   class ProgrammListCell extends javafx.scene.control.ListCell[ProgrammView] {
-    override def updateItem(item: ProgrammView, empty: Boolean) {
+    override def updateItem(item: ProgrammView, empty: Boolean): Unit = {
       super.updateItem(item, empty)
       if (item != null) {
         textProperty().setValue(item.easyprint)
@@ -260,18 +215,7 @@ object KuTuApp extends JFXApp with KutuService with JsonSupport with JwtSupport 
     }
   }
 
-  val screen = Screen.primary
-  val controlsView = new TreeView[String]() {
-    minWidth = 200
-    maxWidth = 400
-    editable = true
-    root = rootTreeItem
-    id = "page-tree"
-  }
-  controlsView.onContextMenuRequested = handle {
-    val sel = controlsView.selectionModel().selectedItem
-    sel.value.value.value
-  }
+  val lastSelected = StringProperty("")
 
   type MenuActionHandler = (String, ActionEvent) => Unit
 
@@ -296,7 +240,7 @@ object KuTuApp extends JFXApp with KutuService with JsonSupport with JwtSupport 
         promptText = "Wettkampf-Titel"
         text = p.titel
       }
-      val cmbProgramm = new ComboBox(ObservableBuffer[ProgrammView](listRootProgramme)) {
+      val cmbProgramm = new ComboBox(ObservableBuffer.from(listRootProgramme())) {
         prefWidth = 500
         buttonCell = new ProgrammListCell
         cellFactory = new Callback[ListView[ProgrammView], ListCell[ProgrammView]]() {
@@ -401,7 +345,7 @@ object KuTuApp extends JFXApp with KutuService with JsonSupport with JwtSupport 
         )
         initialFileName.value = p.titel.replace(" ", "_") + "_" + sdfYear.format(p.datum) + ".zip"
       }
-      val selectedFile = fileChooser.showSaveDialog(stage)
+      val selectedFile = fileChooser.showSaveDialog(getStage())
       if (selectedFile != null) {
         KuTuApp.invokeWithBusyIndicator {
           val file = if (!selectedFile.getName.endsWith(".zip")) {
@@ -690,7 +634,7 @@ object KuTuApp extends JFXApp with KutuService with JsonSupport with JwtSupport 
     }.onComplete {
       case Failure(t) => logger.debug(t.toString)
       case Success(candidates) => Platform.runLater {
-        def cleanMirrorTuples = {
+        def cleanMirrorTuples(): List[(AthletView, AthletView, AthletView)] = {
           candidates.foldLeft(List[(AthletView, AthletView, AthletView)]()) { (acc, triple) =>
             acc.find(acctriple => acctriple._1 == triple._1 || acctriple._2 == triple._1) match {
               case Some(_) => acc
@@ -699,7 +643,7 @@ object KuTuApp extends JFXApp with KutuService with JsonSupport with JwtSupport 
           }
         }
 
-        val athletModel = ObservableBuffer[(AthletView, AthletView, AthletView)](cleanMirrorTuples)
+        val athletModel = ObservableBuffer.from(cleanMirrorTuples())
 
         def printAthlet(athlet: AthletView) = athlet.geschlecht match {
           case "W" => s"Ti ${athlet.easyprint}"
@@ -806,7 +750,7 @@ object KuTuApp extends JFXApp with KutuService with JsonSupport with JwtSupport 
   def makeStopServerMenu = {
     val item = makeMenuAction("Stop local Server") { (caption, action) =>
       KuTuApp.invokeWithBusyIndicator {
-        LocalServerStates.stopLocalServer
+        LocalServerStates.stopLocalServer()
         server.stopServer("user stops local server")
       }
     }
@@ -882,7 +826,7 @@ object KuTuApp extends JFXApp with KutuService with JsonSupport with JwtSupport 
 
   def makeDisconnectMenu(p: WettkampfView) = {
     val item = makeMenuAction("Verbindung stoppen") { (caption, action) =>
-      ConnectionStates.disconnected
+      ConnectionStates.disconnected()
     }
     item.disable <== when(Bindings.createBooleanBinding(() =>
       !ConnectionStates.connectedWithProperty.value.equals(p.uuid.map(_.toString).getOrElse("")),
@@ -901,7 +845,7 @@ object KuTuApp extends JFXApp with KutuService with JsonSupport with JwtSupport 
       //      }
       if (Config.isLocalHostServer()) {
         if (!p.toWettkampf.hasSecred(homedir, "localhost")) {
-          p.toWettkampf.saveSecret(homedir, "localhost", JsonWebToken(jwtHeader, setClaims(p.uuid.get, Int.MaxValue), jwtSecretKey))
+          p.toWettkampf.saveSecret(homedir, "localhost", jwt.JsonWebToken(jwtHeader, setClaims(p.uuid.get, Int.MaxValue), jwtSecretKey))
         }
         server.httpRenewLoginRequest(s"$remoteBaseUrl/api/loginrenew", p.uuid.get, p.toWettkampf.readSecret(homedir, "localhost").get)
       } else {
@@ -975,7 +919,7 @@ object KuTuApp extends JFXApp with KutuService with JsonSupport with JwtSupport 
         prefWidth = 500
         promptText = "Wettkampf-Titel"
       }
-      val cmbProgramm = new ComboBox(ObservableBuffer[ProgrammView](listRootProgramme)) {
+      val cmbProgramm = new ComboBox(ObservableBuffer.from(listRootProgramme())) {
         prefWidth = 500
         buttonCell = new ProgrammListCell
         cellFactory = new Callback[ListView[ProgrammView], ListCell[ProgrammView]]() {
@@ -1061,9 +1005,9 @@ object KuTuApp extends JFXApp with KutuService with JsonSupport with JwtSupport 
         case _ => List[Wettkampf]()
       }
       wklist.onComplete {
-        case Success(wkl) =>
+        case Success(wkl: List[Wettkampf]) =>
           Platform.runLater {
-            val filteredModel = ObservableBuffer[Wettkampf](wkl)
+            val filteredModel = ObservableBuffer.from(wkl)
             val wkTable = new TableView[Wettkampf](filteredModel) {
               columns ++= List(
                 new TableColumn[Wettkampf, String] {
@@ -1093,7 +1037,7 @@ object KuTuApp extends JFXApp with KutuService with JsonSupport with JwtSupport 
                 filteredModel.clear()
                 val searchQuery = newVal.toUpperCase().split(" ")
                 for {wettkampf <- wkl
-                } {
+                     } {
                   val matches = searchQuery.forall { search =>
                     if (search.isEmpty() || wettkampf.easyprint.toUpperCase().contains(search)) {
                       true
@@ -1180,7 +1124,7 @@ object KuTuApp extends JFXApp with KutuService with JsonSupport with JwtSupport 
           new ExtensionFilter("All Files", "*.*")
         )
       }
-      val selectedFile = fileChooser.showOpenDialog(stage)
+      val selectedFile = fileChooser.showOpenDialog(getStage())
       import scala.concurrent.ExecutionContext.Implicits._
       if (selectedFile != null) {
         val wf = KuTuApp.invokeAsyncWithBusyIndicator[Wettkampf] {
@@ -1225,8 +1169,6 @@ object KuTuApp extends JFXApp with KutuService with JsonSupport with JwtSupport 
     }
   }
 
-  val enc = Base64.getUrlEncoder
-
   def makeShowQRCodeMenu(p: WettkampfView) = {
     val item = makeMenuAction("Mobile App Connections ...") { (caption, action) =>
       showQRCode(caption, p)
@@ -1239,7 +1181,7 @@ object KuTuApp extends JFXApp with KutuService with JsonSupport with JwtSupport 
   def showQRCode(caption: String, p: WettkampfView) = {
     val secretOrigin = if (Config.isLocalHostServer()) {
       if (!p.toWettkampf.hasSecred(homedir, "localhost")) {
-        p.toWettkampf.saveSecret(homedir, "localhost", JsonWebToken(jwtHeader, setClaims(p.uuid.get, Int.MaxValue), jwtSecretKey))
+        p.toWettkampf.saveSecret(homedir, "localhost", jwt.JsonWebToken(jwtHeader, setClaims(p.uuid.get, Int.MaxValue), jwtSecretKey))
       }
       "localhost"
     } else remoteHostOrigin
@@ -1267,7 +1209,7 @@ object KuTuApp extends JFXApp with KutuService with JsonSupport with JwtSupport 
           val image = new Image(in)
           val view = new ImageView(image)
           val urlLabel = new Hyperlink("Link (24h gültig) im Browser öffnen")
-          urlLabel.onMouseClicked = handle {
+          urlLabel.onMouseClicked = _ => {
             Clipboard.systemClipboard.content = ClipboardContent(
               DataFormat.PlainText -> shortConnectionString,
               DataFormat.Html -> s"<a href='$shortConnectionString' target='_blank'>Link (24h gültig) im Browser öffnen</a> text"
@@ -1275,20 +1217,20 @@ object KuTuApp extends JFXApp with KutuService with JsonSupport with JwtSupport 
             hostServices.showDocument(shortConnectionString)
           }
           val mailLabel = new Hyperlink("Link (24h gültig) als EMail versenden")
-          mailLabel.onMouseClicked = handle {
+          mailLabel.onMouseClicked = _ => {
             val mailURIStr = String.format("mailto:%s?subject=%s&cc=%s&body=%s",
               "", encodeURIParam(s"Link für Datenerfassung im Wettkampf (${p.easyprint})"), "", encodeURIParam(
                 s"""  Geschätze(r) Wertungsrichter(in)
                    |
-                 |  mit dem folgenden Link kommst Du in die App, in der Du die Wettkampf-Resultate
+                   |  mit dem folgenden Link kommst Du in die App, in der Du die Wettkampf-Resultate
                    |  für den Wettkampf '${p.easyprint}' erfassen kannst:
                    |  ${shortConnectionString}
                    |
-                 |  Wichtig:
+                   |  Wichtig:
                    |  * Dieser Link ist bis am ${formatDateTime(shorttimeout)} Uhr gültig.
                    |  * Bitte den Link vertraulich behandeln - nur Du darfst mit diesem Link einsteigen.
                    |
-                 |  Sportliche Grüsse,
+                   |  Sportliche Grüsse,
                    |  Wertungsrichter-Einsatzplanung
                 """.stripMargin))
             hostServices.showDocument(mailURIStr)
@@ -1300,7 +1242,7 @@ object KuTuApp extends JFXApp with KutuService with JsonSupport with JwtSupport 
           val imageLast = new Image(inLast)
           val viewLast = new ImageView(imageLast)
           val urlLabelLast = new Hyperlink("Letzte Resultate Link im Browser öffnen")
-          urlLabelLast.onMouseClicked = handle {
+          urlLabelLast.onMouseClicked = _ => {
             Clipboard.systemClipboard.content = ClipboardContent(
               DataFormat.PlainText -> lastResultsConnectionString,
               DataFormat.Html -> s"<a href='$lastResultsConnectionString' target='_blank'>Letzte Resultate Link im Browser öffnen</a> text"
@@ -1308,16 +1250,16 @@ object KuTuApp extends JFXApp with KutuService with JsonSupport with JwtSupport 
             hostServices.showDocument(lastResultsConnectionString)
           }
           val mailLabelLast = new Hyperlink("Letzte Resultate Link als EMail versenden")
-          mailLabelLast.onMouseClicked = handle {
+          mailLabelLast.onMouseClicked = _ => {
             val mailURIStr = String.format("mailto:%s?subject=%s&cc=%s&body=%s",
               "", encodeURIParam(s"Link auf die Anzeige der letzten Resultate im Wettkampf (${p.easyprint})"), "", encodeURIParam(
                 s"""  Guten Tag
                    |
-                     |  mit dem folgenden Link kommst Du in die App, in der Du die aktuellsten Resultate
+                   |  mit dem folgenden Link kommst Du in die App, in der Du die aktuellsten Resultate
                    |  für den Wettkampf '${p.easyprint}' verfolgen kannst:
                    |  ${lastResultsConnectionString}
                    |
-                     |  Sportliche Grüsse,
+                   |  Sportliche Grüsse,
                    |  Einsatzplanung
                 """.stripMargin))
             hostServices.showDocument(mailURIStr)
@@ -1330,7 +1272,7 @@ object KuTuApp extends JFXApp with KutuService with JsonSupport with JwtSupport 
           val imageTop = new Image(inTop)
           val viewTop = new ImageView(imageTop)
           val urlLabelTop = new Hyperlink("Top Resultate Link im Browser öffnen")
-          urlLabelTop.onMouseClicked = handle {
+          urlLabelTop.onMouseClicked = _ => {
             Clipboard.systemClipboard.content = ClipboardContent(
               DataFormat.PlainText -> topResultsConnectionString,
               DataFormat.Html -> s"<a href='$topResultsConnectionString' target='_blank'>Top Resultate im Browser öffnen</a> text"
@@ -1338,22 +1280,22 @@ object KuTuApp extends JFXApp with KutuService with JsonSupport with JwtSupport 
             hostServices.showDocument(topResultsConnectionString)
           }
           val mailLabelTop = new Hyperlink("Top Resultate Link als EMail versenden")
-          mailLabelTop.onMouseClicked = handle {
+          mailLabelTop.onMouseClicked = _ => {
             val mailURIStr = String.format("mailto:%s?subject=%s&cc=%s&body=%s",
               "", encodeURIParam(s"Link Top Resultate im Wettkampf (${p.easyprint})"), "", encodeURIParam(
                 s"""  Guten Tag
                    |
-                     |  mit dem folgenden Link kommst Du in die App, in der Du die Top-Resultate (Bestenliste)
+                   |  mit dem folgenden Link kommst Du in die App, in der Du die Top-Resultate (Bestenliste)
                    |  für den Wettkampf '${p.easyprint}' verfolgen kannst:
                    |  ${topResultsConnectionString}
                    |
-                     |  Sportliche Grüsse,
+                   |  Sportliche Grüsse,
                    |  Einsatzplanung
                 """.stripMargin))
             hostServices.showDocument(mailURIStr)
           }
           val urlLastLabel = new Hyperlink("Link auf 'Letzte Resultate'")
-          urlLastLabel.onMouseClicked = handle {
+          urlLastLabel.onMouseClicked = _ => {
             Clipboard.systemClipboard.content = ClipboardContent(
               DataFormat.PlainText -> lastResultsConnectionString,
               DataFormat.Html -> s"<a href='$lastResultsConnectionString' target='_blank'>Link auf 'Letzte Resultate'</a> text"
@@ -1361,7 +1303,7 @@ object KuTuApp extends JFXApp with KutuService with JsonSupport with JwtSupport 
             hostServices.showDocument(lastResultsConnectionString)
           }
           val urlTopLabel = new Hyperlink("Link auf 'Top-Resultate'")
-          urlTopLabel.onMouseClicked = handle {
+          urlTopLabel.onMouseClicked = _ => {
             Clipboard.systemClipboard.content = ClipboardContent(
               DataFormat.PlainText -> topResultsConnectionString,
               DataFormat.Html -> s"<a href='$topResultsConnectionString' target='_blank'>Link auf 'Top-Resultate'</a> text"
@@ -1545,177 +1487,233 @@ object KuTuApp extends JFXApp with KutuService with JsonSupport with JwtSupport 
       })
   }
 
-  controlsView.selectionModel().selectionMode = SelectionMode.Single
-  val lastSelected = StringProperty("")
-  controlsView.selectionModel().selectedItem.onChange { (_, _, newItem) =>
-    if (!lastSelected.value.equals("Updating")) {
-      btnWettkampfModus.disable.value = true
-      if (newItem != null && !newItem.value.value.equals(lastSelected.value)) {
-        lastSelected.value = newItem.value.value
-        newItem.value.value match {
-          case "Athleten" =>
-            controlsView.contextMenu = new ContextMenu() {
-              items += makeNeuerVereinAnlegenMenu
-              items += makeFindDuplicteAthletes
-            }
-          case "Wettkämpfe" =>
-            controlsView.contextMenu = new ContextMenu() {
-              items += makeNeuerWettkampfAnlegenMenu
-              items += makeNeuerWettkampfImportierenMenu
-              items += new Menu("Netzwerk") {
-                //items += makeLoginMenu
-                items += makeStartServerMenu
-                items += makeStopServerMenu
-                items += makeProxyLoginMenu
-                items += makeWettkampfHerunterladenMenu
+  def getStage() = stage
+
+  def start(): Unit = {
+
+    val btnWettkampfModus = new ToggleButton("Wettkampf-Modus") {
+      id = "wettkampfmodusButton"
+      selected <==> modelWettkampfModus
+      disable = true
+    }
+
+    val btnConnectStatus = new ToggleButton() {
+      //id = "connected-info"
+      disable <== btnWettkampfModus.disable
+      onAction = handleAction { action =>
+        if (ConnectionStates.connectedProperty.value) {
+          ConnectionStates.disconnected()
+        } else {
+          connectAndShare(selectedWettkampf.value, "Share", action)
+        }
+        Platform.runLater {
+          selected.value = ConnectionStates.connectedProperty.value
+        }
+      }
+      //    selected <== ConnectionStates.connectedProperty
+      text <== createStringBinding(() => {
+        ConnectionStates.connectedWithProperty.value match {
+          case "" =>
+            selected.value = false
+            "nicht verbunden"
+          case uuid =>
+            selected.value = true
+            s"Verbunden mit ${readWettkampf(uuid).easyprint}"
+        }
+      }, ConnectionStates.connectedWithProperty)
+    }
+    val lblRemoteAddress = new Label() {
+      id = "connected-info"
+      text <== createStringBinding(() => {
+        ConnectionStates.connectedWithProperty.value match {
+          case "" =>
+            s"Server: ${Config.remoteBaseUrl} offline\nVersion: ${Config.appFullVersion}, Built: ${Config.builddate}"
+          case uuid =>
+            s"Server: ${Config.remoteBaseUrl} online\nVersion: ${Config.appFullVersion}, Built: ${Config.builddate}"
+        }
+        //visible <== ConnectionStates.connectedProperty
+      }, ConnectionStates.connectedWithProperty, LocalServerStates.localServerProperty)
+    }
+    val screen = Screen.primary
+    rootTreeItem = new TreeItem[String]("Dashboard") {
+      expanded = true
+      children = tree.getTree
+    }
+    controlsView = new TreeView[String]() {
+      minWidth = 200
+      maxWidth = 400
+      editable = true
+      root = rootTreeItem
+      id = "page-tree"
+    }
+    var centerPane = PageDisplayer.choosePage(modelWettkampfModus, None, "dashBoard", tree)
+    val scrollPane = new ScrollPane {
+      minWidth = 5
+      maxWidth = 400
+      prefWidth = 200
+      fitToWidth = true
+      fitToHeight = true
+      id = "page-tree"
+      content = controlsView
+    }
+    val splitPane = new SplitPane {
+      dividerPositions = 0.2
+      id = "page-splitpane"
+      items.addAll(scrollPane, centerPane)
+    }
+    val header = new BorderPane {
+      vgrow = Priority.Always
+      hgrow = Priority.Always
+      prefHeight = 76
+      maxHeight = 76
+      id = "mainHeader"
+      left = new ImageView {
+        image = new Image(this.getClass.getResourceAsStream("/images/logo.png"))
+        margin = Insets(15, 0, 0, 10)
+      }
+      right = new ToolBar {
+        id = "mainToolBar"
+        vgrow = Priority.Always
+        hgrow = Priority.Always
+        content = List(btnWettkampfModus, btnConnectStatus, lblRemoteAddress)
+      }
+    }
+    invisibleWebView = new WebView()
+    val webViewContainer = new ScrollPane() {
+      vgrow = Priority.Always
+      hgrow = Priority.Always
+      prefHeight = 76
+      maxHeight = 76
+      //    maxWidth = 0
+      //    maxHeight = 0
+      //    prefHeight = 0
+      //    prefWidth = 0
+      id = "invisible-webView"
+      content = invisibleWebView
+    }
+    val headerContainer = new StackPane() {
+      vgrow = Priority.Always
+      hgrow = Priority.Always
+      prefHeight = 76
+      maxHeight = 76
+      children = Seq(webViewContainer, header)
+    }
+    controlsView.onContextMenuRequested = _ => {
+      val sel = controlsView.selectionModel().selectedItem
+      sel.value.value.value
+    }
+    controlsView.selectionModel().selectionMode = SelectionMode.Single
+    controlsView.selectionModel().selectedItem.onChange { (_, _, newItem) =>
+      if (!lastSelected.value.equals("Updating")) {
+        btnWettkampfModus.disable.value = true
+        if (newItem != null && !newItem.value.value.equals(lastSelected.value)) {
+          lastSelected.value = newItem.value.value
+          newItem.value.value match {
+            case "Athleten" =>
+              controlsView.contextMenu = new ContextMenu() {
+                items += makeNeuerVereinAnlegenMenu
+                items += makeFindDuplicteAthletes
               }
+            case "Wettkämpfe" =>
+              controlsView.contextMenu = new ContextMenu() {
+                items += makeNeuerWettkampfAnlegenMenu
+                items += makeNeuerWettkampfImportierenMenu
+                items += new Menu("Netzwerk") {
+                  //items += makeLoginMenu
+                  items += makeStartServerMenu
+                  items += makeStopServerMenu
+                  items += makeProxyLoginMenu
+                  items += makeWettkampfHerunterladenMenu
+                }
+              }
+            case _ => (newItem.isLeaf, Option(newItem.getParent)) match {
+              case (true, Some(parent)) => {
+                tree.getThumbs(parent.getValue).find(p => p.button.text.getValue.equals(newItem.getValue)) match {
+                  case Some(KuTuAppThumbNail(p: WettkampfView, _, newItem)) =>
+                    btnWettkampfModus.disable.value = false
+                    selectedWettkampf.value = p
+                    selectedWettkampfSecret.value = p.toWettkampf.readSecret(homedir, remoteHostOrigin)
+                    //                  val networkMenu = new Menu("Netzwerk") {
+                    //                    items += makeShowQRCodeMenu(p)
+                    //                    items += makeWettkampfUploadMenu(p)
+                    //                    items += makeConnectAndShareMenu(p)
+                    //                    items += makeWettkampfDownloadMenu(p)
+                    //                    items += makeDisconnectMenu(p)
+                    //                    items += makeWettkampfRemoteRemoveMenu(p)
+                    //                  }
+
+                    controlsView.contextMenu = new ContextMenu() {
+                      items += makeWettkampfDurchfuehrenMenu(p)
+                      items += makeWettkampfBearbeitenMenu(p)
+                      items += makeWettkampfExportierenMenu(p)
+                      items += makeWettkampfDataDirectoryMenu(p)
+                      items += makeWettkampfLoeschenMenu(p)
+                      //                    items += networkMenu
+                    }
+                  case Some(KuTuAppThumbNail(v: Verein, _, newItem)) =>
+                    controlsView.contextMenu = new ContextMenu() {
+                      items += makeVereinUmbenennenMenu(v)
+                      items += makeVereinLoeschenMenu(v)
+                    }
+                  case _ => controlsView.contextMenu = new ContextMenu()
+                }
+              }
+              case _ => controlsView.contextMenu = new ContextMenu()
             }
-          case _ => (newItem.isLeaf, Option(newItem.getParent)) match {
+
+          }
+          val centerPane = (newItem.isLeaf, Option(newItem.getParent)) match {
             case (true, Some(parent)) => {
               tree.getThumbs(parent.getValue).find(p => p.button.text.getValue.equals(newItem.getValue)) match {
                 case Some(KuTuAppThumbNail(p: WettkampfView, _, newItem)) =>
-                  btnWettkampfModus.disable.value = false
-                  selectedWettkampf.value = p
-                  selectedWettkampfSecret.value = p.toWettkampf.readSecret(homedir, remoteHostOrigin)
-                  //                  val networkMenu = new Menu("Netzwerk") {
-                  //                    items += makeShowQRCodeMenu(p)
-                  //                    items += makeWettkampfUploadMenu(p)
-                  //                    items += makeConnectAndShareMenu(p)
-                  //                    items += makeWettkampfDownloadMenu(p)
-                  //                    items += makeDisconnectMenu(p)
-                  //                    items += makeWettkampfRemoteRemoveMenu(p)
-                  //                  }
-
-                  controlsView.contextMenu = new ContextMenu() {
-                    items += makeWettkampfDurchfuehrenMenu(p)
-                    items += makeWettkampfBearbeitenMenu(p)
-                    items += makeWettkampfExportierenMenu(p)
-                    items += makeWettkampfDataDirectoryMenu(p)
-                    items += makeWettkampfLoeschenMenu(p)
-                    //                    items += networkMenu
-                  }
+                  PageDisplayer.choosePage(modelWettkampfModus, Some(p), "dashBoard - " + newItem.getValue, tree)
                 case Some(KuTuAppThumbNail(v: Verein, _, newItem)) =>
-                  controlsView.contextMenu = new ContextMenu() {
-                    items += makeVereinUmbenennenMenu(v)
-                    items += makeVereinLoeschenMenu(v)
-                  }
-                case _ => controlsView.contextMenu = new ContextMenu()
+                  PageDisplayer.choosePage(modelWettkampfModus, Some(v), "dashBoard - " + newItem.getValue, tree)
+                case _ =>
+                  PageDisplayer.choosePage(modelWettkampfModus, None, "dashBoard - " + newItem.getValue, tree)
               }
             }
-            case _ => controlsView.contextMenu = new ContextMenu()
+            case (false, Some(_)) =>
+              PageDisplayer.choosePage(modelWettkampfModus, None, "dashBoard - " + newItem.getValue, tree)
+            case (_, _) =>
+              PageDisplayer.choosePage(modelWettkampfModus, None, "dashBoard", tree)
           }
-
-        }
-        val centerPane = (newItem.isLeaf, Option(newItem.getParent)) match {
-          case (true, Some(parent)) => {
-            tree.getThumbs(parent.getValue).find(p => p.button.text.getValue.equals(newItem.getValue)) match {
-              case Some(KuTuAppThumbNail(p: WettkampfView, _, newItem)) =>
-                PageDisplayer.choosePage(modelWettkampfModus, Some(p), "dashBoard - " + newItem.getValue, tree)
-              case Some(KuTuAppThumbNail(v: Verein, _, newItem)) =>
-                PageDisplayer.choosePage(modelWettkampfModus, Some(v), "dashBoard - " + newItem.getValue, tree)
-              case _ =>
-                PageDisplayer.choosePage(modelWettkampfModus, None, "dashBoard - " + newItem.getValue, tree)
-            }
+          if (splitPane.items.size > 1) {
+            splitPane.items.remove(1)
           }
-          case (false, Some(_)) =>
-            PageDisplayer.choosePage(modelWettkampfModus, None, "dashBoard - " + newItem.getValue, tree)
-          case (_, _) =>
-            PageDisplayer.choosePage(modelWettkampfModus, None, "dashBoard", tree)
+          splitPane.items.add(1, centerPane)
         }
-        if (splitPane.items.size > 1) {
-          splitPane.items.remove(1)
-        }
-        splitPane.items.add(1, centerPane)
       }
     }
-  }
 
-  val scrollPane = new ScrollPane {
-    minWidth = 5
-    maxWidth = 400
-    prefWidth = 200
-    fitToWidth = true
-    fitToHeight = true
-    id = "page-tree"
-    content = controlsView
-  }
-
-  val splitPane = new SplitPane {
-    dividerPositions = 0.2
-    id = "page-splitpane"
-    items.addAll(scrollPane, centerPane)
-  }
-
-  var divider: Option[Double] = None
-
-  modelWettkampfModus.onChange {
-    if (modelWettkampfModus.value) {
-      divider = Some(splitPane.dividerPositions(0))
+    var divider: Option[Double] = None
+    modelWettkampfModus.onChange {
+      if (modelWettkampfModus.value) {
+        divider = Some(splitPane.dividerPositions(0))
+      }
+      if (!modelWettkampfModus.value && (divider match {
+        case Some(_) => true
+        case _ => false
+      })) {
+        splitPane.dividerPositions = divider.get
+      }
+      else {
+        splitPane.dividerPositions = 0d
+      }
+      resetBestenResults
     }
-    if (!modelWettkampfModus.value && (divider match {
-      case Some(_) => true
-      case _ => false
-    })) {
-      splitPane.dividerPositions = divider.get
-    }
-    else {
-      splitPane.dividerPositions = 0d
-    }
-    resetBestenResults
-  }
 
-  val header = new BorderPane {
-    vgrow = Priority.Always
-    hgrow = Priority.Always
-    prefHeight = 76
-    maxHeight = 76
-    id = "mainHeader"
-    left = new ImageView {
-      image = new Image(this.getClass.getResourceAsStream("/images/logo.png"))
-      margin = Insets(15, 0, 0, 10)
-    }
-    right = new ToolBar {
-      id = "mainToolBar"
-      vgrow = Priority.Always
-      hgrow = Priority.Always
-      content = List(btnWettkampfModus, btnConnectStatus, lblRemoteAddress)
-    }
-  }
-
-  val invisibleWebView = new WebView()
-  val webViewContainer = new ScrollPane() {
-    vgrow = Priority.Always
-    hgrow = Priority.Always
-    prefHeight = 76
-    maxHeight = 76
-    //    maxWidth = 0
-    //    maxHeight = 0
-    //    prefHeight = 0
-    //    prefWidth = 0
-    id = "invisible-webView"
-    content = invisibleWebView
-  }
-  val headerContainer = new StackPane() {
-    vgrow = Priority.Always
-    hgrow = Priority.Always
-    prefHeight = 76
-    maxHeight = 76
-    children = Seq(webViewContainer, header)
-  }
-
-  def getStage() = stage
-
-  //
-  // Layout the main stage
-  //
-  stage = new PrimaryStage {
-    //initStyle(StageStyle.TRANSPARENT);
-    title = "KuTu Wettkampf-App"
-    icons += new Image(this.getClass.getResourceAsStream("/images/app-logo.png"))
-    scene = new Scene(1200, 750) {
-      root = new BorderPane {
-        top = headerContainer
-        center = new BorderPane {
+    //
+    // Layout the main stage
+    //
+    stage = new PrimaryStage {
+      //initStyle(StageStyle.TRANSPARENT);
+      title = "KuTu Wettkampf-App"
+      icons += new Image(this.getClass.getResourceAsStream("/images/app-logo.png"))
+      scene = new Scene(1200, 750) {
+        root = new BorderPane {
+            top = headerContainer
+            center = new BorderPane {
           center = splitPane
         }
         styleClass += "application"
@@ -1736,5 +1734,7 @@ object KuTuApp extends JFXApp with KutuService with JsonSupport with JwtSupport 
       scene().stylesheets.add(st.toExternalForm)
     }
   }
+}
 
+  start()
 }

@@ -30,7 +30,7 @@ trait ReportRoutes extends SprayJsonSupport with JsonSupport with AuthSupport wi
 
           path("startlist") {
             get {
-              parameters('html.?, 'q.?, 'gr.?) { (html, q, gr) => html match {
+              parameters(Symbol("html").?, Symbol("q").?, Symbol("gr").?) { (html, q, gr) => html match {
                 case Some(_) =>
                   complete({
                     val kandidaten = getAllKandidatenWertungen(UUID.fromString(wettkampf.uuid.get))

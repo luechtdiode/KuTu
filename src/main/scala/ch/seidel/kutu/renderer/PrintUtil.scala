@@ -50,7 +50,7 @@ object PrintUtil {
     printDialogFuture(title, defaults, adjustLinesPerPage, (x: Int) => Future {onGenerateOutput(x)}, engine, orientation)(action)
   }
 
-  def printDialogFuture(title: String, defaults: FilenameDefault, adjustLinesPerPage: Boolean = false, onGenerateOutput: (Int)=>Future[String], engine: WebEngine = KuTuApp.invisibleWebView.engine, orientation: PageOrientation = PageOrientation.Portrait)(action: ActionEvent) {
+  def printDialogFuture(title: String, defaults: FilenameDefault, adjustLinesPerPage: Boolean = false, onGenerateOutput: (Int)=>Future[String], engine: WebEngine = KuTuApp.invisibleWebView.engine, orientation: PageOrientation = PageOrientation.Portrait)(action: ActionEvent): Unit = {
 
       val dir = defaults.dir
       if(!dir.exists()) {
@@ -148,12 +148,12 @@ object PrintUtil {
     }
   }
     
-  def printWebContentToPdf(engine: WebEngine, orientation: PageOrientation) {
+  def printWebContentToPdf(engine: WebEngine, orientation: PageOrientation): Unit = {
     pdfPrinter.foreach(p => printWebContent(engine, p, orientation))
   }
   
   
-  def printWebContent(engine: WebEngine, printdevice: Printer, orientation: PageOrientation) {
+  def printWebContent(engine: WebEngine, printdevice: Printer, orientation: PageOrientation): Unit = {
     // clear margins
     
 	  val inchToMM = 25.4d

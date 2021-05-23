@@ -19,7 +19,7 @@ object WertungServiceBestenResult {
   private var bestenResults = Map[String,WertungView]()
   private var shouldResetBestenResults = false
   
-  def putWertungToBestenResults(wertung: WertungView) {
+  def putWertungToBestenResults(wertung: WertungView): Unit = {
     bestenResults = bestenResults.updated(s"${wertung.athlet.id}:${wertung.wettkampfdisziplin.id}", wertung)
     logger.info(s"actually best-scored: \n${bestenResults.mkString("\n")}")
   }
@@ -34,7 +34,7 @@ object WertungServiceBestenResult {
     .toList
   }
   
-  def resetBestenResults {
+  def resetBestenResults: Unit = {
     shouldResetBestenResults = true;
   }
 

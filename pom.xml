@@ -57,15 +57,15 @@
 		<buildDate>${maven.build.timestamp}</buildDate>
 		<maven.build.timestamp.format>yyyy-MM-dd HH:mm</maven.build.timestamp.format>
 		<jdk-home>${JAVA_HOME}</jdk-home>
-		<scala.majorversion>2.12</scala.majorversion>
-		<scala.version>${scala.majorversion}.11</scala.version>
+		<scala.majorversion>2.13</scala.majorversion>
+		<scala.version>${scala.majorversion}.6</scala.version>
 		<akkaHttp.version>10.1.11</akkaHttp.version>
-		<akka.version>2.6.4</akka.version>
+		<akka.version>2.6.14</akka.version>
 		<javafx.version>16</javafx.version>
-		<scalafx.version>12.0.2-R18</scalafx.version>
+		<scalafx.version>16.0.0-R24</scalafx.version>
 		<scalatest.version>3.1.0</scalatest.version>
 		<maven-scala-plugin.version>3.4.1</maven-scala-plugin.version>
-		<gatling.version>3.0.0</gatling.version>
+		<gatling.version>3.6.0</gatling.version>
 		<gatling-plugin.version>3.0.0</gatling-plugin.version>
 		<maven.compiler.source>11</maven.compiler.source>
 		<maven.compiler.target>11</maven.compiler.target>
@@ -166,7 +166,7 @@
 		<dependency>
 			<groupId>org.controlsfx</groupId>
 			<artifactId>controlsfx</artifactId>
-			<version>11.0.1</version>
+			<version>11.0.3</version>
 		</dependency>
 		<dependency>
 			<groupId>org.xerial</groupId>
@@ -180,7 +180,7 @@
 		</dependency>
 		<dependency>
 			<groupId>com.typesafe.slick</groupId>
-			<artifactId>slick-hikaricp_2.12</artifactId>
+			<artifactId>slick-hikaricp_${scala.majorversion}</artifactId>
 			<version>3.3.2</version>
 		</dependency>
 
@@ -211,6 +211,11 @@
 			<artifactId>akka-http-testkit_${scala.majorversion}</artifactId>
 			<version>${akkaHttp.version}</version>
 			<scope>test</scope>
+		</dependency>
+		<dependency>
+			<groupId>com.typesafe.akka</groupId>
+			<artifactId>akka-actor_${scala.majorversion}</artifactId>
+			<version>${akka.version}</version>
 		</dependency>
 		<dependency>
 			<groupId>com.typesafe.akka</groupId>
@@ -252,10 +257,22 @@
 		</dependency>
 
 		<!-- JWT -->
+<!--		<dependency>-->
+<!--			<groupId>com.jason-goodwin</groupId>-->
+<!--			<artifactId>authentikat-jwt_${scala.majorversion}</artifactId>-->
+<!--			<version>0.4.5</version>-->
+<!--		</dependency>-->
+		<!-- https://mvnrepository.com/artifact/org.json4s/json4s-native -->
 		<dependency>
-			<groupId>com.jason-goodwin</groupId>
-			<artifactId>authentikat-jwt_${scala.majorversion}</artifactId>
-			<version>0.4.5</version>
+			<groupId>org.json4s</groupId>
+			<artifactId>json4s-native_${scala.majorversion}</artifactId>
+			<version>3.6.11</version>
+		</dependency>
+		<!-- https://mvnrepository.com/artifact/org.json4s/json4s-jackson -->
+		<dependency>
+			<groupId>org.json4s</groupId>
+			<artifactId>json4s-jackson_${scala.majorversion}</artifactId>
+			<version>3.6.11</version>
 		</dependency>
 
 		<!-- Slick -->
@@ -472,9 +489,53 @@
 				</executions>
 			</plugin>
 			<plugin>
+				<groupId>net.alchim31.maven</groupId>
+				<artifactId>scala-maven-plugin</artifactId>
+				<version>${maven-scala-plugin.version}</version>
+				<executions>
+					<execution>
+						<id>scala-compile-first</id>
+						<phase>process-resources</phase>
+						<goals>
+							<goal>add-source</goal>
+							<goal>compile</goal>
+						</goals>
+					</execution>
+					<execution>
+						<id>scala-test-compile</id>
+						<phase>process-test-resources</phase>
+						<goals>
+							<goal>testCompile</goal>
+						</goals>
+					</execution>
+				</executions>
+				<configuration>
+					<scalaVersion>${scala.version}</scalaVersion>
+					<recompileMode>incremental</recompileMode>
+					<args>
+						<arg>-unchecked</arg>
+						<arg>-deprecation</arg>
+						<arg>-explaintypes</arg>
+						<arg>-feature</arg>
+						<arg>-language:implicitConversions</arg>
+						<arg>-language:postfixOps</arg>
+						<arg>-language:existentials</arg>
+						<arg>-g:line</arg>
+					</args>
+					<javacArgs>
+						<javacArg>-Xlint:unchecked</javacArg>
+						<javacArg>-Xlint:deprecation</javacArg>
+					</javacArgs>
+					<jvmArgs>
+						<jvmArg>-Xms64m</jvmArg>
+						<jvmArg>-Xmx1024m</jvmArg>
+					</jvmArgs>
+				</configuration>
+			</plugin>
+			<plugin>
 				<groupId>org.codehaus.mojo</groupId>
 				<artifactId>build-helper-maven-plugin</artifactId>
-				<version>3.0.0</version>
+				<version>3.1.0</version>
 				<executions>
 					<execution>
 						<id>add-source</id>
@@ -502,36 +563,6 @@
 						</configuration>
 					</execution>
 				</executions>
-			</plugin>
-			<plugin>
-				<groupId>net.alchim31.maven</groupId>
-				<artifactId>scala-maven-plugin</artifactId>
-				<version>${maven-scala-plugin.version}</version>
-				<!--<version>3.4.2</version>-->
-				<executions>
-					<execution>
-						<goals>
-							<goal>compile</goal>
-							<goal>testCompile</goal>
-						</goals>
-					</execution>
-				</executions>
-				<configuration>
-					<args>
-						<arg>-unchecked</arg>
-						<arg>-deprecation</arg>
-						<arg>-explaintypes</arg>
-						<arg>-feature</arg>
-						<arg>-language:implicitConversions</arg>
-						<arg>-language:postfixOps</arg>
-						<arg>-language:existentials</arg>
-						<arg>-g:line</arg>
-					</args>
-					<jvmArgs>
-						<jvmArg>-Xms64m</jvmArg>
-						<jvmArg>-Xmx1024m</jvmArg>
-					</jvmArgs>
-				</configuration>
 			</plugin>
 			<plugin>
 				<groupId>org.jacoco</groupId>

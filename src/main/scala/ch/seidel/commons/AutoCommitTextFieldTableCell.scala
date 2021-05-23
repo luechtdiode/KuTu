@@ -7,7 +7,7 @@ import scalafx.Includes._
 import scalafx.application.Platform
 import scalafx.beans.property.{BooleanProperty, ReadOnlyBooleanProperty}
 import scalafx.beans.value.ObservableValue
-import scalafx.collections.ObservableSet
+import scalafx.collections.{ObservableBuffer, ObservableSet}
 import scalafx.collections.ObservableSet.{Change, Remove}
 import scalafx.css.PseudoClass
 import scalafx.delegate.SFXDelegate
@@ -41,7 +41,7 @@ object AutoCommitTextFieldTableCell {
     }
   }
 
-  protected def setEditMode(flag: Boolean) {
+  protected def setEditMode(flag: Boolean): Unit = {
     editmode.setValue(flag)
   }
 
@@ -56,10 +56,10 @@ object AutoCommitTextFieldTableCell {
   def getEditableColums[T](tableView: TableView[T]) =
     tableView.columns.toList.flatMap(p => p +: p.columns.toList).filter(isEditableColumn(_))
 
-  def selectFirstEditable[T](tableView: TableView[T]) = {
+  def selectFirstEditable[T](tableView: TableView[T]): () => Unit = {
     val editableColumns = getEditableColums(tableView)
     val ret = () => {
-      if (editableColumns.size > 0) {
+      if (editableColumns.nonEmpty) {
         val nextEditable = editableColumns.head
         tableView.selectionModel.value.select(0, nextEditable)
         tableView.scrollToColumn(nextEditable)
@@ -69,7 +69,7 @@ object AutoCommitTextFieldTableCell {
     ret
   }
 
-  def selectNextEditable[T](tableView: TableView[T]) = {
+  def selectNextEditable[T](tableView: TableView[T]): () => Unit = {
     val editableColumns = getEditableColums(tableView)
     tableView.selectionModel.value.selectedCells.headOption match {
       case Some(selected) =>
@@ -105,7 +105,7 @@ object AutoCommitTextFieldTableCell {
     }
   }
 
-  def selectPrevEditable[T](tableView: TableView[T]) = {
+  def selectPrevEditable[T](tableView: TableView[T]): () => Unit = {
     val editableColumns = getEditableColums(tableView)
     tableView.selectionModel.value.selectedCells.headOption match {
       case Some(selected) =>
@@ -141,11 +141,11 @@ object AutoCommitTextFieldTableCell {
     }
   }
 
-  def selectBelowEditable[T](tableView: TableView[T]) = {
+  def selectBelowEditable[T](tableView: TableView[T]): () => Unit = {
     val editableColumns = getEditableColums(tableView)
     tableView.selectionModel.value.selectedCells.headOption match {
       case Some(selected) =>
-        val remaining = if (selected.tableColumn.isEditable()) editableColumns.dropWhile(_ != selected.tableColumn) else editableColumns
+        val remaining = if (selected.tableColumn.isEditable) editableColumns.dropWhile(_ != selected.tableColumn) else editableColumns
         val newSelectedRowIdx = if (selected.getRow == tableView.items.value.size() - 1) 0 else selected.getRow + 1
         val movedDown = selected.getRow < newSelectedRowIdx
         val ret = () => {
@@ -171,12 +171,12 @@ object AutoCommitTextFieldTableCell {
     }
   }
 
-  def selectAboveEditable[T](tableView: TableView[T]) = {
+  def selectAboveEditable[T](tableView: TableView[T]): () => Unit = {
     val editableColumns = getEditableColums(tableView)
     tableView.selectionModel.value.selectedCells.headOption match {
       case Some(selected) =>
 
-        val remaining = if (selected.tableColumn.isEditable()) editableColumns.reverse.dropWhile(_ != selected.tableColumn) else editableColumns
+        val remaining = if (selected.tableColumn.isEditable) editableColumns.reverse.dropWhile(_ != selected.tableColumn) else editableColumns
         val newSelectedRowIdx = if (selected.getRow == 0) tableView.items.value.size() - 1 else selected.getRow - 1
         val movedUp = selected.getRow > newSelectedRowIdx
         val ret = () => {
@@ -202,16 +202,15 @@ object AutoCommitTextFieldTableCell {
     }
   }
 
-  def handleDefaultEditingKeyEvents[A, B](tableView: TableView[A], double: Boolean, filterText: TextField)(ke: KeyEvent) = {
+  def handleDefaultEditingKeyEvents[A, B](tableView: TableView[A], double: Boolean, filterText: TextField)(ke: KeyEvent): Unit = {
 
     val fc = tableView.focusModel.value.focusedCell.value
     val tc = fc.tableColumn.asInstanceOf[jfxsc.TableColumn[A, B]]
 
     val selectionstore = tableView.selectionModel.value.getSelectedCells
 
-    def extractCoords = for (ts <- selectionstore) yield {
+    def extractCoords: ObservableBuffer[(Int, Seq[Int])] = for (ts <- selectionstore) yield {
       if (ts.getColumn > -1 && ts.getTableColumn.getParentColumn != null)
-      //(ts.getRow, wkview.columns.indexOf(ts.getTableColumn.getParentColumn))
         (ts.getRow, Seq(tableView.columns.indexOf(ts.getTableColumn.getParentColumn), ts.getColumn))
       else
         (ts.getRow, Seq(ts.getColumn))
@@ -219,10 +218,10 @@ object AutoCommitTextFieldTableCell {
 
     val coords = extractCoords
 
-    def restoreSelection = if (!coords.equals(extractCoords)) try {
+    def restoreSelection(): Unit = if (!coords.equals(extractCoords)) try {
       for (ts <- coords) {
         if (ts._2.size > 1) {
-          val toSelectParent = tableView.columns(ts._2.head);
+          val toSelectParent = tableView.columns(ts._2.head)
           val firstVisible = toSelectParent.getColumns.get(ts._2.tail.head) //toSelectParent.columns(0)
           tableView.selectionModel.value.select(ts._1, firstVisible)
           tableView.scrollToColumn(firstVisible)
@@ -241,15 +240,15 @@ object AutoCommitTextFieldTableCell {
 
     lastKey = None
     ke.code match {
-      case KeyCode.F if (ke.controlDown) =>
+      case KeyCode.F if ke.controlDown =>
         if (filterText != null) filterText.requestFocus()
         ke.consume()
 
-      case KeyCode.Tab if (!ke.controlDown) =>
+      case KeyCode.Tab if !ke.controlDown =>
         val toSelectNextOp = selectNextEditable(tableView)
         val toSelectPrevOp = selectPrevEditable(tableView)
         val action = new Runnable() {
-          override def run = {
+          override def run(): Unit = {
             if (ke.shiftDown)
               toSelectPrevOp()
             else {
@@ -257,7 +256,7 @@ object AutoCommitTextFieldTableCell {
             }
           }
         }
-        val wasEditing = tableView.delegate.getEditingCell() != null
+        val wasEditing = tableView.delegate.getEditingCell != null
         ke.consume()
         action.run()
         if (wasEditing) {
@@ -267,9 +266,8 @@ object AutoCommitTextFieldTableCell {
       case KeyCode.Enter =>
         val toSelectAboveOp = selectAboveEditable(tableView)
         val toSelectBelowOp = selectBelowEditable(tableView)
-        val index = tableView.selectionModel.value.getSelectedIndex
         val action = new Runnable() {
-          override def run = {
+          override def run(): Unit = {
             if (ke.shiftDown) {
               toSelectAboveOp()
             }
@@ -278,7 +276,7 @@ object AutoCommitTextFieldTableCell {
             }
           }
         }
-        val wasEditing = tableView.delegate.getEditingCell() != null
+        val wasEditing = tableView.delegate.getEditingCell != null
         action.run()
         if (wasEditing) {
           ke.consume()
@@ -288,7 +286,7 @@ object AutoCommitTextFieldTableCell {
           ke.consume()
         }
 
-      case KeyCode.Delete if (tableView.delegate.getEditingCell() == null) =>
+      case KeyCode.Delete if tableView.delegate.getEditingCell == null =>
         tableView.edit(fc.row, tc)
 
       // Paste via CTRL+V or SHIFT+INSERT
@@ -296,7 +294,7 @@ object AutoCommitTextFieldTableCell {
         lastKey = Some(Clipboard.systemClipboard.string)
         tableView.edit(fc.row, tc)
 
-      case c if ((c.isLetterKey || c.isDigitKey) && tableView.editingCell.value == null) =>
+      case c if (c.isLetterKey || c.isDigitKey) && tableView.editingCell.value == null =>
         lastKey = Some(ke.getText)
         tableView.edit(fc.row, tc)
 
@@ -321,29 +319,32 @@ class AutoCommitTextFieldTableCell[S, T](override val delegate: jfxscc.TextField
   var textField: Option[TextField] = None
 
   graphic.onChange({
-    textField = if (graphic.value.isInstanceOf[TextField]) Some(graphic.value.asInstanceOf[TextField]) else None
+    textField = graphic.value match {
+      case field: TextField => Some(field)
+      case _ => None
+    }
     (textField, AutoCommitTextFieldTableCell.lastKey) match {
       case (Some(tf), Some(text)) => tf.setText(text)
         Platform.runLater(() => {
-          tf.deselect
-          tf.end
+          tf.deselect()
+          tf.end()
         })
       case _ =>
     }
   })
   editing.onChange(handleEditingState)
 
-  def handleEditingState {
+  def handleEditingState: Unit = {
     if (editing.value) {
       connect
     }
   }
 
-  def connect = new Subscription() {
+  def connect: Subscription = new Subscription() {
     AutoCommitTextFieldTableCell.setEditMode(true)
     pseudoClassStates.onChange { (set: ObservableSet[jfxcss.PseudoClass], change: Change[jfxcss.PseudoClass]) =>
       change match {
-        case Remove(PSEUDO_CLASS_FOCUSED) if (delegate.isEditing || AutoCommitTextFieldTableCell.editmode.value) =>
+        case Remove(PSEUDO_CLASS_FOCUSED) if delegate.isEditing || AutoCommitTextFieldTableCell.editmode.value =>
           val value = textField match {
             case Some(tf) => tf.text.value
             case None => ""
@@ -355,13 +356,13 @@ class AutoCommitTextFieldTableCell[S, T](override val delegate: jfxscc.TextField
       }
     }
 
-    private val fcs = focused.onChange[java.lang.Boolean] { (value: ObservableValue[scala.Boolean, java.lang.Boolean], oldValue: java.lang.Boolean, newValue: java.lang.Boolean) =>
+    private val fcs = focused.onChange[java.lang.Boolean] { (_: ObservableValue[scala.Boolean, java.lang.Boolean], oldValue: java.lang.Boolean, newValue: java.lang.Boolean) =>
       if (oldValue == true && newValue == false) {
-        cancel
+        cancel()
       }
     }
 
-    def cancel() {
+    def cancel(): Unit = {
       AutoCommitTextFieldTableCell.setEditMode(false)
       fcs.cancel()
       //      println(textField, "canceled")

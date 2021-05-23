@@ -72,7 +72,7 @@ ScoreRoutes extends SprayJsonSupport with JsonSupport with AuthSupport with Rout
       pathPrefix("scores") {
         pathEnd {
           get {
-            parameters('html.?) { html =>
+            parameters(Symbol("html").?) { html =>
               complete(
                 listWettkaempfeAsync.map{competitions => html match {
                   case None => 
@@ -111,7 +111,7 @@ ScoreRoutes extends SprayJsonSupport with JsonSupport with AuthSupport with Rout
 //          val programmText = data.head.wettkampf.programmId match {case 20 => "Kategorie" case _ => "Programm"}
           pathEnd {
             get {
-              parameters('groupby.?, 'filter.*, 'html.?, 'alphanumeric.?) { (groupby, filter, html, alphanumeric) =>
+              parameters(Symbol("groupby").?, Symbol("filter").*, Symbol("html").?, Symbol("alphanumeric").?) { (groupby, filter, html, alphanumeric) =>
                 complete(Future{
                   queryScoreResults("Alle Wettkämpfe", groupby, filter, html.nonEmpty, allGroupers, data, alphanumeric.nonEmpty, logofile)
                 })
@@ -127,7 +127,7 @@ ScoreRoutes extends SprayJsonSupport with JsonSupport with AuthSupport with Rout
           } ~
           path("filter") {
             get {
-              parameters('groupby.?) { groupby =>
+              parameters(Symbol("groupby").?) { groupby =>
                 complete{ Future {
                   queryFilters(groupby, allGroupers, data)
                 }}
@@ -155,7 +155,7 @@ ScoreRoutes extends SprayJsonSupport with JsonSupport with AuthSupport with Rout
           val logoHtml = if (logofile.exists()) s"""<img class=logo src="${logofile.imageSrcForWebEngine}" title="Logo"/>""" else ""
           pathEnd {
             get {
-              parameters('html.?) { html =>
+              parameters(Symbol("html").?) { html =>
                 complete(
                   listPublishedScores(competitionId).map{scores:List[PublishedScoreView] => html match {
                     case None =>
@@ -228,7 +228,7 @@ ScoreRoutes extends SprayJsonSupport with JsonSupport with AuthSupport with Rout
           } ~
           pathPrefix(JavaUUID) { scoreUUID =>
             get {
-              parameters('html.?) { html =>
+              parameters(Symbol("html").?) { html =>
                 val scoreId = scoreUUID.toString
                 complete(
                   listPublishedScores(competitionId)
@@ -263,7 +263,7 @@ ScoreRoutes extends SprayJsonSupport with JsonSupport with AuthSupport with Rout
           } ~
           path("query") {
             get {
-              parameters('groupby.?, 'filter.*, 'html.?, 'alphanumeric.?) { (groupby, filter, html, alphanumeric) =>
+              parameters(Symbol("groupby").?, Symbol("filter").*, Symbol("html").?, Symbol("alphanumeric").?) { (groupby, filter, html, alphanumeric) =>
                 complete(
                   if (!wkdate.atStartOfDay().isBefore(LocalDate.now.atStartOfDay) || (groupby == None && filter.isEmpty)) {
                     ToResponseMarshallable(HttpEntity(ContentTypes.`text/html(UTF-8)`,
@@ -350,7 +350,7 @@ ScoreRoutes extends SprayJsonSupport with JsonSupport with AuthSupport with Rout
           } ~
           path("intermediate") {
             get {
-              (parameters('q.?, 'filter.*, 'html.?) & optionalHeaderValueByName("clientid")) { (q, filter, html, clientid) =>
+              (parameters(Symbol("q").?, Symbol("filter").*, Symbol("html").?) & optionalHeaderValueByName("clientid")) { (q, filter, html, clientid) =>
 
                 def filterMatchingWertungenToQuery = {
                   val queryTokens = q.toList.flatMap(x => x.split(" ")).map(_.toLowerCase)
@@ -411,7 +411,7 @@ ScoreRoutes extends SprayJsonSupport with JsonSupport with AuthSupport with Rout
           } ~
           path("filter") {
             get {
-              parameters('groupby.?) { (groupby) =>
+              parameters(Symbol("groupby").?) { (groupby) =>
                 complete{ Future {
                   queryFilters(groupby, groupers, data)
                 }}

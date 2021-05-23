@@ -1,18 +1,19 @@
 package ch.seidel.commons
 
-import org.slf4j.LoggerFactory
+import javafx.scene.control
+import org.slf4j.{Logger, LoggerFactory}
 import scalafx.scene.control.{Tab, TabPane}
 import scalafx.scene.layout.Priority
 
-import scala.collection.JavaConverters
+import scala.jdk.CollectionConverters.IterableHasAsJava
 
 class LazyTabPane(refreshTabsFn: (LazyTabPane) => Seq[Tab], releaseTabs: () => Unit) extends TabPane {
-  val logger = LoggerFactory.getLogger(this.getClass)
+  val logger: Logger = LoggerFactory.getLogger(this.getClass)
   hgrow = Priority.Always
   vgrow = Priority.Always
   id = "source-tabs"
 
-  def init() {
+  def init(): Unit = {
 //    release()
     val selected = selectionModel.value.getSelectedItem
 
@@ -25,21 +26,22 @@ class LazyTabPane(refreshTabsFn: (LazyTabPane) => Seq[Tab], releaseTabs: () => U
       -1
     }
     val lazytabs: Seq[Tab] = refreshTabsFn(this)
-    tabs.setAll(JavaConverters.asJavaCollection(lazytabs.map(t => {
-      val fxtab: javafx.scene.control.Tab = t
+    val lazyJFXTabs = lazytabs.map(t => {
+      val fxtab: control.Tab = t
       fxtab
-    })))
-    tabs.sort((tab1, tab2) => lazytabs.indexOf(tab1) - lazytabs.indexOf(tab2))
+    })
+    tabs.setAll(lazyJFXTabs.asJavaCollection)
+    tabs.sort((tab1, tab2) => lazyJFXTabs.indexOf(tab2) - lazyJFXTabs.indexOf(tab1) > 0)
     lazytabs.foreach(_.asInstanceOf[TabWithService].populated)
     if(selected != null && indexOfTab(selected.textProperty().getValue) > -1) {
       selectionModel.value.select(indexOfTab(selected.textProperty().getValue))
     }
   }
 
-  def refreshTabs() {
+  def refreshTabs(): Unit = {
     init()
   }
-  def release() {
+  def release(): Unit = {
     releaseTabs()
   }
 }

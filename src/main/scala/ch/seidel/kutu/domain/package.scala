@@ -443,7 +443,7 @@ package object domain {
 
     def fromOriginFilePath(homedir: String, origin: String) = new java.io.File(prepareFilePath(homedir), ".from." + origin).toPath
 
-    def saveRemoteOrigin(homedir: String, origin: String) {
+    def saveRemoteOrigin(homedir: String, origin: String): Unit = {
       val path = fromOriginFilePath(homedir, origin)
       val fos = Files.newOutputStream(path, StandardOpenOption.CREATE_NEW)
       try {
@@ -463,14 +463,14 @@ package object domain {
       return path.toFile.exists
     }
 
-    def removeRemote(homedir: String, origin: String) {
+    def removeRemote(homedir: String, origin: String): Unit = {
       val atFile = fromOriginFilePath(homedir, origin).toFile
       if (atFile.exists) {
         atFile.delete()
       }
     }
 
-    def saveSecret(homedir: String, origin: String, secret: String) {
+    def saveSecret(homedir: String, origin: String, secret: String): Unit = {
       val path = filePath(homedir, origin)
       val fos = Files.newOutputStream(path, StandardOpenOption.CREATE_NEW)
       try {
@@ -495,7 +495,7 @@ package object domain {
       }
     }
 
-    def removeSecret(homedir: String, origin: String) {
+    def removeSecret(homedir: String, origin: String): Unit = {
       val atFile = filePath(homedir, origin).toFile
       if (atFile.exists) {
         atFile.delete()
@@ -633,11 +633,11 @@ package object domain {
 
     def calcEndnote(dnote: Double, enote: Double): Double
 
-    def verifiedAndCalculatedWertung(wertung: Wertung) = {
+    def verifiedAndCalculatedWertung(wertung: Wertung): Wertung = {
       if (wertung.noteE.isEmpty) {
         wertung.copy(noteD = None, noteE = None, endnote = None)
       } else {
-        val (d, e) = validated(wertung.noteD.getOrElse(BigDecimal(0)).doubleValue(), wertung.noteE.getOrElse(BigDecimal(0)).doubleValue())
+        val (d, e) = validated(wertung.noteD.getOrElse(BigDecimal(0)).doubleValue, wertung.noteE.getOrElse(BigDecimal(0)).doubleValue)
         wertung.copy(noteD = Some(d), noteE = Some(e), endnote = Some(calcEndnote(d, e)))
       }
     }
@@ -740,7 +740,7 @@ package object domain {
     bmenc3.setNameType(NameType.ASHKENAZI)
     val colenc = new ColognePhonetic()
 
-    def encArrToList(enc: String) = enc.split("-").flatMap(_.split("\\|"))
+    def encArrToList(enc: String) = enc.split("-").flatMap(_.split("\\|")).toList
 
     def encode(name: String): Seq[String] =
       encArrToList(bmenc.encode(name)) ++

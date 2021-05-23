@@ -22,7 +22,7 @@ object Surname {
     val bufferedSource = Source.fromResource("vornamen.csv")("UTF-8")
     try {
       (for {
-        line <- bufferedSource.getLines
+        line <- bufferedSource.getLines()
         cols = line.split("\t").map(_.trim)
         if (cols.size == 3)
       } yield {

@@ -157,13 +157,13 @@ trait RegistrationService extends DBService with RegistrationResultMapper with H
     )
   }
 
-  def deleteRegistration(registrationId: Long) {
+  def deleteRegistration(registrationId: Long): Unit = {
     Await.result(database.run {
       deleteRegistrationAction(registrationId)
     }, Duration.Inf)
   }
 
-  def copyClubRegsFromCompetition(wettkampfCopyFrom: String, registrationId: Long) {
+  def copyClubRegsFromCompetition(wettkampfCopyFrom: String, registrationId: Long): Unit = {
     /*
 select
                 `$registrationId` as vereinregistration_id,

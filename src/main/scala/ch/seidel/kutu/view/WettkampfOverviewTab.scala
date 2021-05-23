@@ -1,10 +1,9 @@
 package ch.seidel.kutu.view
 
 import java.util.UUID
-
 import ch.seidel.commons._
 import ch.seidel.kutu.Config.{homedir, remoteHostOrigin}
-import ch.seidel.kutu.KuTuApp.{controlsView, selectedWettkampfSecret, stage}
+import ch.seidel.kutu.KuTuApp.{controlsView, getStage, selectedWettkampfSecret, stage}
 import ch.seidel.kutu.domain._
 import ch.seidel.kutu.renderer.PrintUtil.FilenameDefault
 import ch.seidel.kutu.renderer.{CompetitionsJudgeToHtmlRenderer, PrintUtil, WettkampfOverviewToHtmlRenderer}
@@ -30,8 +29,8 @@ class WettkampfOverviewTab(wettkampf: WettkampfView, override val service: KutuS
 
   var subscription: List[Subscription] = List.empty
 
-  override def release {
-    subscription.foreach(_.cancel)
+  override def release: Unit = {
+    subscription.foreach(_.cancel())
     subscription = List.empty
   }
 
@@ -41,7 +40,7 @@ class WettkampfOverviewTab(wettkampf: WettkampfView, override val service: KutuS
     lazypane = Some(pane)
   }
 
-  def refreshLazyPane() {
+  def refreshLazyPane(): Unit = {
     lazypane match {
       case Some(pane) => pane.refreshTabs()
       case _ =>
@@ -63,19 +62,19 @@ class WettkampfOverviewTab(wettkampf: WettkampfView, override val service: KutuS
     document
   }
 
-  onSelectionChanged = handle {
+  onSelectionChanged = _ => {
     if(selected.value) {
       reloadData()
     }
   }
 
-  def importAnmeldungen(implicit event: ActionEvent) = {
+  def importAnmeldungen(implicit event: ActionEvent): Unit = {
     RegistrationAdminDialog.importRegistrations(WettkampfInfo(wettkampf, service), KuTuServer, vereinsupdated =>
       if (vereinsupdated) KuTuApp.updateTree else reloadData()
     )
   }
 
-  override def isPopulated(): Boolean = {
+  override def isPopulated: Boolean = {
     val wettkampfEditable = !wettkampf.toWettkampf.isReadonly(homedir, remoteHostOrigin)
     reloadData()
     text = "Übersicht"
@@ -102,7 +101,7 @@ class WettkampfOverviewTab(wettkampf: WettkampfView, override val service: KutuS
                 )
                 initialFileName.value = "logo.jpg"
               }
-              val selectedFile = fileChooser.showOpenDialog(stage)
+              val selectedFile = fileChooser.showOpenDialog(getStage())
               if (selectedFile != null) {
                 KuTuApp.invokeWithBusyIndicator {
                   import java.nio.file.{Files, StandardCopyOption}

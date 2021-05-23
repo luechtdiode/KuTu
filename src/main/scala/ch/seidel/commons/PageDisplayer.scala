@@ -1,12 +1,11 @@
 package ch.seidel.commons
 
 import java.io.StringWriter
-
 import ch.seidel.kutu.{KuTuApp, KuTuAppTree}
 import ch.seidel.kutu.domain._
 import ch.seidel.kutu.view._
 import javafx.{scene => jfxs}
-import org.slf4j.LoggerFactory
+import org.slf4j.{Logger, LoggerFactory}
 import scalafx.Includes._
 import scalafx.application.Platform
 import scalafx.beans.Observable
@@ -28,37 +27,37 @@ import scala.concurrent.duration.Duration
  * based on the TreeItem selected from left pane
  */
 object PageDisplayer {
-  val logger = LoggerFactory.getLogger(this.getClass)
+  val logger: Logger = LoggerFactory.getLogger(this.getClass)
   var errorIcon: Image = null
   try {
-    errorIcon = new Image(getClass().getResourceAsStream("/images/RedException.png"))
+    errorIcon = new Image(getClass.getResourceAsStream("/images/RedException.png"))
   } catch {
     case e: Exception => e.printStackTrace()
   }
   var warnIcon: Image = null
   try {
-    warnIcon = new Image(getClass().getResourceAsStream("/images/OrangeWarning.png"))
+    warnIcon = new Image(getClass.getResourceAsStream("/images/OrangeWarning.png"))
   } catch {
     case e: Exception => e.printStackTrace()
   }
   var infoIcon: Image = null
   try {
-    infoIcon = new Image(getClass().getResourceAsStream("/images/GreenOk.png"))
+    infoIcon = new Image(getClass.getResourceAsStream("/images/GreenOk.png"))
   } catch {
     case e: Exception => e.printStackTrace()
   }
 
-  def showInDialog(tit: String, nodeToAdd: DisplayablePage, commands: Button*)(implicit event: ActionEvent) {
-    val buttons = commands :+ new Button(if(commands.length == 0) "Schliessen" else "Abbrechen")
+  def showInDialog(tit: String, nodeToAdd: DisplayablePage, commands: Button*)(implicit event: ActionEvent): Unit = {
+    val buttons = commands :+ new Button(if(commands.isEmpty) "Schliessen" else "Abbrechen")
     // Create dialog
     val dialogStage = new Stage {
       outer => {
         initModality(Modality.WindowModal)
         event.source match {
-          case n: jfxs.Node if(n.getScene.getRoot == KuTuApp.getStage.getScene.getRoot) =>
+          case n: jfxs.Node if n.getScene.getRoot == KuTuApp.getStage().getScene.getRoot =>
             delegate.initOwner(n.getScene.getWindow)
           case _ =>
-            delegate.initOwner(KuTuApp.getStage.getScene.getWindow)
+            delegate.initOwner(KuTuApp.getStage().getScene.getWindow)
         }
 
         title = tit
@@ -88,13 +87,13 @@ object PageDisplayer {
     dialogStage.showAndWait()
   }
   
-  def showInDialogFromRoot(tit: String, nodeToAdd: DisplayablePage, commands: Button*) {
-    val buttons = commands :+ new Button(if(commands.length == 0) "Schliessen" else "Abbrechen")
+  def showInDialogFromRoot(tit: String, nodeToAdd: DisplayablePage, commands: Button*): Unit = {
+    val buttons = commands :+ new Button(if(commands.isEmpty) "Schliessen" else "Abbrechen")
     // Create dialog
     val dialogStage = new Stage {
       outer => {
         initModality(Modality.WindowModal)
-        delegate.initOwner(KuTuApp.getStage.getScene.getWindow)
+        delegate.initOwner(KuTuApp.getStage().getScene.getWindow)
 
         title = tit
         scene = new Scene {
@@ -145,10 +144,10 @@ object PageDisplayer {
  * 
  */
   def askFor(caption: String, fields: (String, String)*): Option[Seq[String]] = {
-    val p = Promise[Option[Seq[String]]]
-    def ask {
+    val p = Promise[Option[Seq[String]]]()
+    def ask(): Unit = {
       val controls = fields.flatMap{
-        case f if(f._1.contains("*")) => 
+        case f if f._1.contains("*") =>
           val t = f._1.split('*')(0)
           Seq(new Label(t), new PasswordField {
             prefWidth = 500
@@ -163,7 +162,6 @@ object PageDisplayer {
           })
       }
       val observedControls = controls.zipWithIndex.filter(x => x._2 % 2 != 0).map(_._1.asInstanceOf[TextField])
-      val observedControls2 = observedControls.map(c => c.text.asInstanceOf[Observable])
       var ret: Option[Seq[String]] = None
       showInDialogFromRoot(caption, new DisplayablePage() {
           def getPage: Node = {
@@ -182,19 +180,19 @@ object PageDisplayer {
 //                                observedControls2(0), observedControls2(Math.min(1, observedControls2.size-1)), observedControls2(Math.min(3, observedControls2.size-1)), observedControls2(Math.min(4, observedControls2.size-1))
 //                              )) choose true otherwise false
           onAction = () => {
-            ret = Some(observedControls.map(c => c.text.value).toSeq)
+            ret = Some(observedControls.map(c => c.text.value))
           }
         })
       p success ret      
     }
-    if (Platform.isFxApplicationThread) ask else Platform.runLater{ask}      
+    if (Platform.isFxApplicationThread) ask() else Platform.runLater{ask()}
 
     Await.result(p.future, Duration.Inf)
   }
 
   def confirm[T](caption: String, lines: Seq[String], okAction: () => T): Option[T] = {
-    val p = Promise[Option[T]]
-    def ask {
+    val p = Promise[Option[T]]()
+    def ask(): Unit = {
       var ret: Option[T] = None
       showInDialogFromRoot(caption, new DisplayablePage() {
           def getPage: Node = {
@@ -213,18 +211,18 @@ object PageDisplayer {
         })
       p success ret
     }
-    if (Platform.isFxApplicationThread) ask else Platform.runLater{ask}
+    if (Platform.isFxApplicationThread) ask() else Platform.runLater{ask()}
 
     Await.result(p.future, Duration.Inf)
   }
 
-  def showErrorDialog(caption: String) = (error: Throwable) => {
+  def showErrorDialog(caption: String): Throwable => Unit = (error: Throwable) => {
     Platform.runLater {
       import javafx.scene.control.Alert.AlertType
       val alert = new Alert(AlertType.ERROR)
       alert.setTitle("Unerwarteter Fehler")
       alert.setHeaderText(s"Fehler beim Ausführen von '$caption'")
-      alert.setContentText(s"${error}")
+      alert.setContentText(s"$error")
 
       val label = new Label(s"Details:")
       import java.io.PrintWriter
@@ -248,43 +246,43 @@ object PageDisplayer {
 
       // Set expandable Exception into the dialog pane.
       alert.getDialogPane.expandableContent = expContent
-      alert.initOwner(KuTuApp.getStage.getScene.getWindow)
+      alert.initOwner(KuTuApp.getStage().getScene.getWindow)
       alert.show()
     }
   }
 
-  def showErrorDialog(caption: String, message: String) {
+  def showErrorDialog(caption: String, message: String): Unit = {
     import javafx.scene.control.Alert.AlertType
     Platform.runLater {
       val alert = new javafx.scene.control.Alert(AlertType.ERROR)
       alert.setTitle("Fehler")
       alert.setHeaderText(caption)
       alert.setContentText(message)
-      alert.initOwner(KuTuApp.getStage.getScene.getWindow)
+      alert.initOwner(KuTuApp.getStage().getScene.getWindow)
       alert.show()
     }
   }
 
-  def showWarnDialog(caption: String, message: String) {
+  def showWarnDialog(caption: String, message: String): Unit = {
     import javafx.scene.control.Alert.AlertType
     Platform.runLater {
       val alert = new javafx.scene.control.Alert(AlertType.WARNING)
       alert.setTitle("Achtung")
       alert.setHeaderText(caption)
       alert.setContentText(message)
-      alert.initOwner(KuTuApp.getStage.getScene.getWindow)
+      alert.initOwner(KuTuApp.getStage().getScene.getWindow)
       alert.show()
     }
   }
 
-  def showMessageDialog(caption: String, message: String) {
+  def showMessageDialog(caption: String, message: String): Unit = {
     import javafx.scene.control.Alert.AlertType
     Platform.runLater {
       val alert = new javafx.scene.control.Alert(AlertType.INFORMATION)
       alert.setTitle("Information")
       alert.setHeaderText(caption)
       alert.setContentText(message)
-      alert.initOwner(KuTuApp.getStage.getScene.getWindow)
+      alert.initOwner(KuTuApp.getStage().getScene.getWindow)
       alert.show()
     }
   }
@@ -310,15 +308,15 @@ object PageDisplayer {
   
   private def displayPage(nodeToAdd: DisplayablePage): Node = {
     activePage match {
-      case Some(p) if(p != nodeToAdd) => 
+      case Some(p) if p != nodeToAdd =>
         p.release()
       case _ =>
     }
     activePage = Some(nodeToAdd)
-    val ret = new VBox {
+    val ret: VBox = new VBox {
       vgrow = Priority.Always
       hgrow = Priority.Always
-      val indicator = new VBox {
+      val indicator: VBox = new VBox {
         vgrow = Priority.Always
         hgrow = Priority.Always
         children = Seq(new Label("loading ..."))
@@ -326,14 +324,14 @@ object PageDisplayer {
       }
       children = Seq(indicator)
     }
-    def op = {
+    def op(): Unit = {
       logger.debug("start nodeToAdd.getPage")
       val p = nodeToAdd.getPage
       logger.debug("end nodeToAdd.getPage")
       ret.children = p
       ret.requestLayout()
     }
-    KuTuApp.invokeWithBusyIndicator(op)
+    KuTuApp.invokeWithBusyIndicator(op())
     ret
   }
 }

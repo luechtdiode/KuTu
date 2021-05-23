@@ -62,17 +62,17 @@ class CompetitionRegistrationClientActor(wettkampfUUID: String) extends Actor wi
     log.info(s"Starting CompetitionRegistrationClientActor for $wettkampf")
   }
 
-  override def postStop: Unit = {
+  override def postStop(): Unit = {
     log.info(s"Stop CompetitionRegistrationClientActor for $wettkampf")
   }
 
   override def receive = {
-    case RegistrationChanged(_) => retrieveSyncActions(sender)
+    case RegistrationChanged(_) => retrieveSyncActions(sender())
     case AskRegistrationSyncActions(_) =>
       if (this.syncActions.nonEmpty)
-        sender ! RegistrationSyncActions(this.syncActions)
+        sender() ! RegistrationSyncActions(this.syncActions)
       else
-        retrieveSyncActions(sender)
+        retrieveSyncActions(sender())
     case a@RegistrationSyncActions(actions) =>
       this.syncActions = actions
       if (syncActionReceivers.nonEmpty) {

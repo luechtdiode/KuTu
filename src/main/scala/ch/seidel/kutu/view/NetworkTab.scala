@@ -109,7 +109,7 @@ class DurchgangStationView(wettkampf: WettkampfView, service: KutuService, diszi
 
   root = new TreeItem[DurchgangState]() {
     durchgangModel.onChange {
-      children = durchgangModel
+      children = durchgangModel.toList
     }
     styleClass.add("parentrow")
     expanded = true
@@ -168,7 +168,7 @@ class DurchgangStationView(wettkampf: WettkampfView, service: KutuService, diszi
     , new TreeTableColumn[DurchgangState, String] {
       prefWidth = 80
       text = "Fertig"
-      cellFactory = { _ =>
+      cellFactory = { (_:Any) =>
         new TreeTableCell[DurchgangState, String] {
           val image = new ImageView()
           graphic = image
@@ -201,7 +201,7 @@ class DurchgangStationView(wettkampf: WettkampfView, service: KutuService, diszi
         , new TreeTableColumn[DurchgangState, String] {
           text = "Fertig"
           prefWidth = 80
-          cellFactory = { _ =>
+          cellFactory = { _:Any =>
             new TreeTableCell[DurchgangState, String] {
               val image = new ImageView()
               graphic = image
@@ -265,7 +265,7 @@ class NetworkTab(wettkampfmode: BooleanProperty, override val wettkampfInfo: Wet
 
   val isRunning = BooleanProperty(false)
 
-  def refreshData(event: Option[KutuAppEvent] = None) {
+  def refreshData(event: Option[KutuAppEvent] = None): Unit = {
     val expandedStates = model
       .filter(_.isExpanded)
       .map(_.value.value.durchgang.title)
@@ -304,19 +304,19 @@ class NetworkTab(wettkampfmode: BooleanProperty, override val wettkampfInfo: Wet
 
   var subscriptions: List[Subscription] = List.empty
 
-  override def release {
+  override def release: Unit = {
     subscription.cancel()
-    subscriptions.foreach(_.cancel)
+    subscriptions.foreach(_.cancel())
     subscriptions = List.empty
   }
 
-  onSelectionChanged = handle {
+  onSelectionChanged = _ => {
     if (selected.value) {
       refreshData()
     }
   }
 
-  def uploadResults(caption: String) {
+  def uploadResults(caption: String): Unit = {
     import scala.concurrent.ExecutionContext.Implicits.global
     val process = KuTuApp.invokeAsyncWithBusyIndicator {
       if (remoteBaseUrl.indexOf("localhost") > -1) {
@@ -357,7 +357,7 @@ class NetworkTab(wettkampfmode: BooleanProperty, override val wettkampfInfo: Wet
   type MenuActionHandler = (String, ActionEvent) => Unit
 
   def handleAction[J <: javafx.event.ActionEvent, R](handler: scalafx.event.ActionEvent => R) = new javafx.event.EventHandler[J] {
-    def handle(event: J) {
+    def handle(event: J): Unit = {
       handler(event)
     }
   }
@@ -511,7 +511,7 @@ class NetworkTab(wettkampfmode: BooleanProperty, override val wettkampfInfo: Wet
         }
       }
 
-      items.clear
+      items.clear()
       view.selectionModel.value.selectedCells.toList.headOption match {
         case None =>
         case Some(cell) if cell.treeItem != null && cell.treeItem.getValue != null =>
@@ -628,7 +628,7 @@ class NetworkTab(wettkampfmode: BooleanProperty, override val wettkampfInfo: Wet
     disable <== when(createBooleanBinding(() => items.isEmpty, items)) choose true otherwise false
   }
 
-  def updateButtons {
+  def updateButtons: Unit = {
     val navigate = makeNavigateToMenu(wettkampf)
     btnEditRiege.items.clear()
     btnEditRiege.items.addAll(navigate.items)
