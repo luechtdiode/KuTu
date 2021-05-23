@@ -4,22 +4,20 @@ import io.gatling.core.Predef.{constantConcurrentUsers, holdFor, _}
 import io.gatling.http.Predef._
 
 import scala.concurrent.duration._
-//import io.gatling.core.check.extractor.jsonpath.JsonFilter._
-//import io.gatling.core.feeder.SourceFeederBuilder
 
 class SimulationBottmingenD1 extends Simulation {
   // mws-01
   //  val jwtToken = "eyJhbGciOiJIUzUxMiIsImN0eSI6ImFwcGxpY2F0aW9uL2pzb24iLCJ0eXAiOiJKV1QifQ.eyJ1c2VyIjoiOTkxMTVkZmItODE5Yi00OGFhLWFkYTUtOTkzN2I4MmVlYmQ0IiwiZXhwaXJlZEF0S2V5IjoxNTQyMDQ4NzY2NjM2fQ.8XYEceYnUIAQVHZVZKP6aF-_7hRNjB7jNFzIGq52CUpmVeBqHmi16W28XQci4tj-IkZmHDqFVzSaW8P3Q3W_vA"
 
   //test-kutuapp.shrevic.net
-  //val jwtToken = "eyJhbGciOiJIUzUxMiIsImN0eSI6ImFwcGxpY2F0aW9uL2pzb24iLCJ0eXAiOiJKV1QifQ.eyJ1c2VyIjoiNzJmODI0MjMtNjVkYS00NWM5LTk5YTctYjNmMTk3MTJmNjI4IiwiZXhwaXJlZEF0S2V5IjoxNTY4MDI2NDE4ODkyfQ.S2LH8F1KFw47OxLKsHmAnBq19MHxOeuU5fdi40lZ3wn3QRS5oscdfy9dRujJhnwG8_tQb4WISKAaQ7yAHB7DHg"
+  val jwtToken = "eyJhbGciOiJIUzUxMiIsImN0eSI6ImFwcGxpY2F0aW9uL2pzb24iLCJ0eXAiOiJKV1QifQ.eyJ1c2VyIjoiNzJmODI0MjMtNjVkYS00NWM5LTk5YTctYjNmMTk3MTJmNjI4IiwiZXhwaXJlZEF0S2V5IjoxNjIxODg1ODk5MTMwfQ.pW8GtMcBSi9cqmEdzl_SeHGuZwIjtaj0oR9ce7gfD8FQm-12a4Q12tG9j1xg9xWyvoijEDMuHVla4A4exEp-Eg"
   //kutuapp.shrevic.net
-  val jwtToken = "eyJhbGciOiJIUzUxMiIsImN0eSI6ImFwcGxpY2F0aW9uL2pzb24iLCJ0eXAiOiJKV1QifQ.eyJ1c2VyIjoiNzJmODI0MjMtNjVkYS00NWM5LTk5YTctYjNmMTk3MTJmNjI4IiwiZXhwaXJlZEF0S2V5IjoxNTY4MDMxMzM4OTk4fQ.-Blh4u2AlFYWGzNW7lgreIUulzLrG09jqo8h9HvCdbgKF-pU4IV97SPYQdYBEh8y04MnSjiQ-TM3wEasmafLFw"
+  //val jwtToken = "eyJhbGciOiJIUzUxMiIsImN0eSI6ImFwcGxpY2F0aW9uL2pzb24iLCJ0eXAiOiJKV1QifQ.eyJ1c2VyIjoiNzJmODI0MjMtNjVkYS00NWM5LTk5YTctYjNmMTk3MTJmNjI4IiwiZXhwaXJlZEF0S2V5IjoxNTY4MDMxMzM4OTk4fQ.-Blh4u2AlFYWGzNW7lgreIUulzLrG09jqo8h9HvCdbgKF-pU4IV97SPYQdYBEh8y04MnSjiQ-TM3wEasmafLFw"
 
   val competition = "72f82423-65da-45c9-99a7-b3f19712f628"
-  //val originBaseUrl = "https://test-kutuapp.sharevic.net" //,"http://pluto:5757"//, "https://kutuapp.sharevic.net" //,"https://kutuapp.sharevic.net"//,"http://mws-01:5757"//,
+  val originBaseUrl = "https://test-kutuapp.sharevic.net" //,"http://pluto:5757"//, "https://kutuapp.sharevic.net" //,"https://kutuapp.sharevic.net"//,"http://mws-01:5757"//,
   // val originBaseUrl = "http://mws-01:5757"//, "https://kutuapp.sharevic.net"//,"http://mws-01:5757"//,
-  val originBaseUrl = "https://kutuapp.sharevic.net"
+  //val originBaseUrl = "https://kutuapp.sharevic.net"
 
   val httpProtocol = http
     .baseUrl(originBaseUrl)
@@ -70,7 +68,7 @@ class SimulationBottmingenD1 extends Simulation {
         jsonPath("$").ofType[Seq[Any]].find.saveAs("geraete"))
 
     def chooseDurchgang(session: Session) = {
-      val list = session("durchgaenge").as[List[Any]]
+      val list = session("durchgaenge").as[Vector[Any]]
       val listIdx = durchgangListIdx.getOrElse(competition, 0)
       val durchgangOriginal = list(listIdx).toString
       val randomEntry = encodeURIComponent(durchgangOriginal)
@@ -80,7 +78,7 @@ class SimulationBottmingenD1 extends Simulation {
     }
 
     def chooseGeraet(session: Session) = {
-      val list = session("geraete").as[Seq[Map[String, Int]]].toList
+      val list = session("geraete").as[Vector[Map[String, Int]]].toList
       val listIdx = geraetListIdx.getOrElse(session("durchgang").as[String], 0)
       val randomEntry = list(listIdx)("id")
       geraetListIdx = geraetListIdx.updated(session("durchgang").as[String], if (listIdx < list.size - 1) listIdx + 1 else 0)
@@ -157,6 +155,9 @@ class SimulationBottmingenD1 extends Simulation {
         //        constantConcurrentUsers(8) during (50 minutes),
         //        constantConcurrentUsers(12) during (10 minutes),
         //      heavisideUsers(20) during (60 seconds)
-      )
+      ).throttle(
+      reachRps(5) in (10 seconds),
+      holdFor(4 hours)
+    )
   ).protocols(httpProtocol)
 }

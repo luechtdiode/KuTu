@@ -13,7 +13,7 @@ object Constants {
   val pause: FiniteDuration = 2000 milliseconds//System.getProperty("pauseBetweenRequestsMs").toInt.millisecond
   val responseTimeMs = 500
   val responseSuccessPercentage = 99
-  private val url: String = "http://mws-01:5757"//System.getProperty("url")
+  private val url: String = "http://localhost:5757"//System.getProperty("url")
   private val repeatTimes: Int = 1//System.getProperty("numberOfRepetitions").toInt
   private val successStatus: Int = 200
   private val isDebug = System.getProperty("debug").toBoolean
