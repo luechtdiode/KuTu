@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 
 export jremajor=11
-export jreversion="jdk-11.0.10+9"
-export jrefversion="11.0.10_9"
+export jreversion="jdk-11.0.11+9"
+export jrefversion="11.0.11_9"
 
 echo "JAVA_HOME before install jdk${jremajor} ${JAVA_HOME}"
 echo "JRE_HOME before install jdk${jremajor} ${JRE_HOME}"
