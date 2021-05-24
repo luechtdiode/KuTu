@@ -3,7 +3,7 @@ package ch.seidel.kutu.akka
 import ch.seidel.kutu.Config
 import ch.seidel.kutu.domain.encodeURIComponent
 
-case class CompetitionState(
+case class CompetitionState (
                              startedDurchgaenge: Set[String] = Set.empty,
                              finishedDurchgangSteps: Set[DurchgangStationFinished] = Set.empty,
                              finishedDurchgaenge: Set[String] = Set.empty,
