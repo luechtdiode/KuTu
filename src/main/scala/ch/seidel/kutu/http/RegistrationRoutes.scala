@@ -84,13 +84,11 @@ trait RegistrationRoutes extends SprayJsonSupport with JwtSupport with JsonSuppo
         val logofile = PrintUtil.locateLogoFile(logodir)
         pathEndOrSingleSlash {
           get { // list Vereinsregistration
-            parameters(Symbol("html").?) { (html) =>
-              html match {
-                case None =>
-                  complete(selectRegistrationsOfWettkampf(competitionId))
-                case _ =>
-                  complete(ToResponseMarshallable(HttpEntity(ContentTypes.`text/html(UTF-8)`,toHTMLasClubRegistrationsList(wettkampf, selectRegistrationsOfWettkampf(competitionId), logofile))))
-              }
+            parameters(Symbol("html").?) {
+              case None =>
+                complete(selectRegistrationsOfWettkampf(competitionId))
+              case _ =>
+                complete(ToResponseMarshallable(HttpEntity(ContentTypes.`text/html(UTF-8)`, toHTMLasClubRegistrationsList(wettkampf, selectRegistrationsOfWettkampf(competitionId), logofile))))
             }
           } ~ post { // create Vereinsregistration
             entity(as[NewRegistration]) { newRegistration =>
@@ -192,9 +190,9 @@ trait RegistrationRoutes extends SprayJsonSupport with JwtSupport with JsonSuppo
                 } ~ pathPrefix("copyfrom") {
                   pathEndOrSingleSlash {
                     put {
-                      entity(as[String]) { wettkampfCopyFrom =>
+                      entity(as[Wettkampf]) { wettkampfCopyFrom =>
                         complete {
-                          copyClubRegsFromCompetition(wettkampfCopyFrom, registrationId)
+                          copyClubRegsFromCompetition(wettkampfCopyFrom.uuid.get, registrationId)
                           CompetitionRegistrationClientActor.publish(RegistrationChanged(wettkampf.uuid.get), clientId)
                           StatusCodes.OK
                         }

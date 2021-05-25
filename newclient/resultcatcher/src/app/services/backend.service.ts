@@ -295,7 +295,7 @@ export class BackendService extends WebsocketService {
 
     createClubRegistration(competitionId: string, registration: NewClubRegistration) {
       const creater = this.startLoading('Vereins-Anmeldung wird registriert. Bitte warten ...',
-        this.http.post<ClubRegistration>(backendUrl + 'api/registrations/' + competitionId, 
+        this.http.post<ClubRegistration>(backendUrl + 'api/registrations/' + competitionId,
         registration, {
           observe: 'response',
         }
@@ -305,7 +305,7 @@ export class BackendService extends WebsocketService {
           localStorage.setItem('auth_token', data.headers.get('x-access-token'));
           localStorage.setItem('auth_clubid', data.body.id + '');
           this.loggedIn = true;
-          return data.body;          
+          return data.body;
         }),
         share()));
       creater.subscribe((data) => {
@@ -412,13 +412,13 @@ export class BackendService extends WebsocketService {
 
       loader.subscribe((data) => {}, this.standardErrorHandler);
 
-      return loader;      
+      return loader;
     }
 
-    copyClubRegsFromCompetition(fromCompetitionId: string, toCompetitionId: string, clubid: number) {
+    copyClubRegsFromCompetition(copyFromWk: Wettkampf, toCompetitionId: string, clubid: number) {
       const loader = this.startLoading('Anmeldung wird gespeichert. Bitte warten ...',
         this.http.put(
-          backendUrl + 'api/registrations/' + toCompetitionId + '/' + clubid + '/copyfrom', fromCompetitionId, {
+          backendUrl + 'api/registrations/' + toCompetitionId + '/' + clubid + '/copyfrom', copyFromWk, {
             responseType: 'text'
           }).pipe(share()));
 

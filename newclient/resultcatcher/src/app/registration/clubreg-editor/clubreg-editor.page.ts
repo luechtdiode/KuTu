@@ -251,7 +251,7 @@ export class ClubregEditorPage implements OnInit {
         buttons: [
           {text: 'ABBRECHEN', role: 'cancel', handler: () => {}},
           {text: 'OKAY', handler: (data) => {
-            this.backendService.copyClubRegsFromCompetition(data.uuid, this.backendService.competition, (this.registration as ClubRegistration).id).subscribe(() => {
+            this.backendService.copyClubRegsFromCompetition(data, this.backendService.competition, (this.registration as ClubRegistration).id).subscribe(() => {
               this.getSyncActions();
               this.alertCtrl.create({
                 header: 'Anmeldungen kopieren',
