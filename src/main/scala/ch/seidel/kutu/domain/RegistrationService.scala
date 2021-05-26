@@ -164,37 +164,6 @@ trait RegistrationService extends DBService with RegistrationResultMapper with H
   }
 
   def copyClubRegsFromCompetition(wettkampfCopyFrom: String, registrationId: Long): Unit = {
-    /*
-select
-                `$registrationId` as vereinregistration_id,
-                ar.athlet_id,
-                ar.geschlecht,
-                ar.name,
-                ar.vorname,
-                ar.gebdat,
-                ar.program_id,
-                ${Timestamp.valueOf(LocalDateTime.now())} as registrationtime
-              from athletregistration ar
-              where ar.vereinregistration_id = (
-                select distinct vrthen.id
-                from vereinregistration vrthen
-                inner join vereinregistration vrnow on (vrthen.verein_id = vrnow.verein_id)
-                inner join wettkampf wkthen on (vrthen.wettkampf_id = wkthen.id)
-                inner join wettkampf wknow on (vrnow.wettkampf_id = wknow.id)
-                where wkthen.uuid = $wettkampfCopyFrom
-                  and vrthen.id <> $registrationId
-              )
-              and not exists (
-                select 1
-                from athletregistration arex
-                where arex.vereinregistration_id = $registrationId
-                  and arex.name = ar.name
-                  and arex.vorname = ar.vorname
-                  and arex.gebdat = ar.gebdat
-                  and arex.geschlecht = ar.geschlecht
-              )
-              union ...
-     */
     Await.result(database.run {
       sqlu"""
               insert into athletregistration (vereinregistration_id, athlet_id, geschlecht, name, vorname, gebdat, program_id, registrationtime)
@@ -206,7 +175,7 @@ select
                 a.vorname,
                 a.gebdat,
                 wkd.programm_id,
-                ${Timestamp.valueOf(LocalDateTime.now())} as registrationtime
+                current_timestamp as registrationtime
               from athlet a
               inner join wertung w on (w.athlet_id = a.id)
               inner join wettkampfdisziplin wkd on (w.wettkampfdisziplin_id = wkd.id)
@@ -233,7 +202,7 @@ select
                 ar.mobilephone,
                 ar.mail,
                 ar.comment,
-                ${Timestamp.valueOf(LocalDateTime.now())} as registrationtime
+                current_timestamp as registrationtime
               from judgeregistration ar
               where ar.vereinregistration_id = (
                 select distinct vrthen.id
