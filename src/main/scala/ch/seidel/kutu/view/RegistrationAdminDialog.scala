@@ -237,18 +237,19 @@ object RegistrationAdminDialog {
         new BorderPane {
           hgrow = Priority.Always
           vgrow = Priority.Always
-          minWidth = 900
+          minWidth = 1000
           center = new BorderPane {
             hgrow = Priority.Always
             vgrow = Priority.Always
             top = filter
             center = athletTable
-            minWidth = 900
+            minWidth = 1000
           }
 
         }
       }
     }, new Button("OK") {
+      disable <== when(athletTable.selectionModel.value.selectedItemProperty.isNull()) choose true otherwise false
       onAction = (event: ActionEvent) => {
         if (!athletTable.selectionModel().isEmpty) {
           val selectedAthleten = athletTable.items.value.zipWithIndex.filter {
