@@ -818,6 +818,9 @@ package object domain {
   case class AddVereinAction(override val verein: Registration) extends SyncAction {
     override val caption = s"Verein Hinzufügen: ${verein.vereinname}"
   }
+  case class ApproveVereinAction(override val verein: Registration) extends SyncAction {
+    override val caption = s"Verein bestätigen: ${verein.vereinname}"
+  }
   case class AddRegistration(override val verein: Registration, programId: Long, athlet: Athlet, suggestion: AthletView) extends SyncAction {
     override val caption = s"Neue Anmeldung verarbeiten: ${suggestion.easyprint}"
   }

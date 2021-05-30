@@ -3,7 +3,7 @@ package ch.seidel.kutu.view
 import akka.http.javadsl.model.HttpResponse
 import ch.seidel.commons.{DisplayablePage, PageDisplayer}
 import ch.seidel.kutu.KuTuApp
-import ch.seidel.kutu.domain.{AddRegistration, AddVereinAction, Athlet, AthletView, EmptyAthletRegistration, MatchCode, MoveRegistration, Registration, RemoveRegistration, SyncAction, Verein}
+import ch.seidel.kutu.domain.{AddRegistration, AddVereinAction, ApproveVereinAction, Athlet, AthletView, EmptyAthletRegistration, MatchCode, MoveRegistration, Registration, RemoveRegistration, SyncAction, Verein}
 import ch.seidel.kutu.http.RegistrationRoutes
 import ch.seidel.kutu.view.RegistrationAdmin.{doSyncUnassignedClubRegistrations, findAthletLike, logger, processSync}
 import javafx.beans.value.ObservableValue
@@ -99,6 +99,7 @@ object RegistrationAdminDialog {
             new ReadOnlyStringWrapper(x.value, "verein", {
               x.value match {
                 case AddVereinAction(verein) => s"${verein.vereinname} (${verein.verband})"
+                case ApproveVereinAction(verein) => s"${verein.vereinname} (${verein.verband})"
                 case AddRegistration(reg, programId, athlet, suggestion) =>
                   s"${suggestion.verein.map(_.name).getOrElse(reg.vereinname)} (${suggestion.verein.flatMap(_.verband).getOrElse(reg.verband)})"
                 case MoveRegistration(reg, fromProgramId, toProgramid, athlet, suggestion) =>
@@ -122,6 +123,7 @@ object RegistrationAdminDialog {
 
               x.value match {
                 case AddVereinAction(verein) => s"${verein.respVorname} ${verein.respName}, ${verein.mail}, ${verein.mobilephone}"
+                case ApproveVereinAction(verein) => s"${verein.respVorname} ${verein.respName}, ${verein.mail}, ${verein.mobilephone}"
                 case AddRegistration(reg, programId, athlet, suggestion) => renderAthlet(athlet)
                 case MoveRegistration(reg, fromProgramId, toProgramid, athlet, suggestion) => renderAthlet(athlet)
                 case RemoveRegistration(reg, programId, athlet, suggestion) => renderAthlet(athlet)
@@ -136,6 +138,7 @@ object RegistrationAdminDialog {
             new ReadOnlyStringWrapper(x.value, "programm", {
               val programId = x.value match {
                 case AddVereinAction(verein) => 0L
+                case ApproveVereinAction(verein) => 0L
                 case AddRegistration(reg, programId, athlet, suggestion) => programId
                 case MoveRegistration(reg, fromProgramId, toProgramid, athlet, suggestion) => toProgramid
                 case RemoveRegistration(reg, programId, athlet, suggestion) => programId
@@ -153,6 +156,7 @@ object RegistrationAdminDialog {
             new ReadOnlyStringWrapper(x.value, "dbmatch", {
               x.value match {
                 case AddVereinAction(verein) => s"Verein ${verein.vereinname} wird neu importiert"
+                case ApproveVereinAction(verein) => s"Verein ${verein.vereinname} wird bestätigt"
                 case AddRegistration(reg, programId, athlet, suggestion) =>
                   if (suggestion.id > 0) "als " + suggestion.easyprint else "wird neu importiert"
                 case MoveRegistration(reg, fromProgramId, toProgramid, athlet, suggestion) =>
@@ -169,6 +173,7 @@ object RegistrationAdminDialog {
             new ReadOnlyStringWrapper(x.value, "assignaction", {
               x.value match {
                 case AddVereinAction(verein) => "hinzufügen"
+                case ApproveVereinAction(verein) => "bestätigen"
                 case AddRegistration(reg, programId, athlet, suggestion) =>
                   "hinzufügen"
                 case MoveRegistration(reg, fromProgramId, toProgramid, athlet, suggestion) =>
@@ -196,6 +201,7 @@ object RegistrationAdminDialog {
              } {
           val (athlet, verein) = syncAction match {
             case AddVereinAction(verein) => (Athlet(), Some(verein.toVerein))
+            case ApproveVereinAction(verein) => (Athlet(), Some(verein.toVerein))
             case AddRegistration(reg, programId, athlet, suggestion) => (athlet, suggestion.verein)
             case MoveRegistration(reg, fromProgramId, toProgramid, athlet, suggestion) => (athlet, suggestion.verein)
             case RemoveRegistration(reg, programId, athlet, suggestion) => (athlet, suggestion.verein)

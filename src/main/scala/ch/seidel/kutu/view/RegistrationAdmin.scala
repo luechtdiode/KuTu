@@ -1,9 +1,8 @@
 package ch.seidel.kutu.view
 
 import java.util.UUID
-
 import ch.seidel.kutu.akka.{AthletIndexActor, AthletLikeFound, FindAthletLike}
-import ch.seidel.kutu.domain.{AddRegistration, AddVereinAction, Athlet, AthletRegistration, AthletView, EmptyAthletRegistration, KutuService, MoveRegistration, Registration, RemoveRegistration, SyncAction, Verein, WertungView}
+import ch.seidel.kutu.domain.{AddRegistration, AddVereinAction, ApproveVereinAction, Athlet, AthletRegistration, AthletView, EmptyAthletRegistration, KutuService, MoveRegistration, Registration, RemoveRegistration, SyncAction, Verein, WertungView}
 import ch.seidel.kutu.http.RegistrationRoutes
 import org.slf4j.LoggerFactory
 
@@ -24,6 +23,7 @@ object RegistrationAdmin {
 
     val addClubActions = registrations.filter(r => r._4.verein.isEmpty && !r._2.isEmptyRegistration).map(r => AddVereinAction(r._1)).toSet.toVector
     val validatedClubs = registrations.filter(r => r._1.vereinId.isEmpty).flatMap(r => r._4.verein).toSet
+    val approvedClubActions = registrations.filter(r => r._1.vereinId.isEmpty && r._4.verein.nonEmpty).map(r => ApproveVereinAction(r._1.copy(vereinId=r._4.verein.map(_.id)))).toSet.toVector
     logger.info(s"start with mapping of ${registrations.size} registrations to sync-actions")
     val nonmatching: Map[String, Seq[(Registration, WertungView)]] = service.
       selectWertungen(wkuuid = wkInfo.wettkampf.uuid)
@@ -71,7 +71,7 @@ object RegistrationAdmin {
       }
     }
 
-    val syncActions = addClubActions ++ removeActions ++ mutationActions
+    val syncActions = addClubActions ++ approvedClubActions ++ removeActions ++ mutationActions
     logger.info(s"mapping of ${registrations.size} registrations to ${syncActions.size} sync-actions in ${System.currentTimeMillis() - starttime}ms")
     (validatedClubs, syncActions)
   }
@@ -156,6 +156,18 @@ object RegistrationAdmin {
       case _ => None
     }) {
       service.unassignAthletFromWettkampf(wertungenIds)
+    }
+
+    val approvedClubRegistrations = selectedAthleten.flatMap {
+      case mr: ApproveVereinAction => Some(mr)
+      case _ => None
+    }
+    for {
+      registration: ApproveVereinAction <- approvedClubRegistrations
+      club: Verein <- approvedClubs.find(c => c.id == registration.verein.vereinId.get)
+    }
+    {
+      service.joinVereinWithRegistration(wkInfo.wettkampf.toWettkampf, registration.verein, club)
     }
 
     for {
