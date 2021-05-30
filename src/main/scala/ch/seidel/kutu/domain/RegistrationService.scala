@@ -181,7 +181,8 @@ trait RegistrationService extends DBService with RegistrationResultMapper with H
               inner join wettkampfdisziplin wkd on (w.wettkampfdisziplin_id = wkd.id)
               inner join vereinregistration vrnow on (vrnow.verein_id = a.verein)
               inner join wettkampf wkthen on (w.wettkampf_id = wkthen.id)
-              where wkthen.uuid = $wettkampfCopyFrom
+              where vrnow.id = $registrationId
+                  and wkthen.uuid = $wettkampfCopyFrom
                   and not exists (
                     select 1
                     from athletregistration arex
@@ -212,6 +213,7 @@ trait RegistrationService extends DBService with RegistrationResultMapper with H
                 inner join wettkampf wknow on (vrnow.wettkampf_id = wknow.id)
                 where wkthen.uuid = $wettkampfCopyFrom
                   and vrthen.id <> $registrationId
+                  and vrnow.id = $registrationId
               )
               and not exists (
                 select 1
