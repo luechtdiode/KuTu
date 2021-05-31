@@ -140,7 +140,7 @@
 		<dependency>
 			<groupId>com.typesafe.slick</groupId>
 			<artifactId>slick-hikaricp_${scala.majorversion}</artifactId>
-			<version>3.3.2</version>
+			<version>3.3.3</version>
 		</dependency>
 
 		<dependency>
