@@ -23,7 +23,8 @@ export class AppComponent {
       { title: 'Resultate', url: '/station', icon: 'list' },
       { title: 'Letzte Resultate', url: 'last-results', icon: 'radio' },
       { title: 'Top Resultate', url: 'top-results', icon: 'medal' },
-      { title: 'Athlet/-In suchen', url: 'search-athlet', icon: 'search' }
+      { title: 'Athlet/-In suchen', url: 'search-athlet', icon: 'search' },
+      { title: 'Wettkampfanmeldungen', url: '/registration', icon: 'contacts' }
     ];
 
     this.backendService.askForUsername.subscribe(service => {
