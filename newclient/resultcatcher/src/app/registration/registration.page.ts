@@ -206,9 +206,9 @@ export class RegistrationPage implements OnInit {
         inputs: [
           {
             name: 'username',
-            label: 'Benutzername',
-            placeholder: 'Benutzername',
-            value: `${this.backendService.currentUserName}`,
+            label: 'Vereinsname',
+            placeholder: 'Vereinsname',
+            value: `${club.vereinname}`,
             type: 'text'
           },
           {
