@@ -24,7 +24,7 @@ export class AppComponent {
       { title: 'Letzte Resultate', url: 'last-results', icon: 'radio' },
       { title: 'Top Resultate', url: 'top-results', icon: 'medal' },
       { title: 'Athlet/-In suchen', url: 'search-athlet', icon: 'search' },
-      { title: 'Wettkampfanmeldungen', url: '/registration', icon: 'contacts' }
+      { title: 'Wettkampfanmeldungen', url: '/registration', icon: 'people-outline' }
     ];
 
     this.backendService.askForUsername.subscribe(service => {
