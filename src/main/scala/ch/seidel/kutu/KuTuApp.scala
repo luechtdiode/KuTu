@@ -1490,7 +1490,7 @@ object KuTuApp extends JFXApp3 with KutuService with JsonSupport with JwtSupport
   def getStage() = stage
 
   override def start(): Unit = {
-
+    markAthletesInactiveOlderThan(3)
     val btnWettkampfModus = new ToggleButton("Wettkampf-Modus") {
       id = "wettkampfmodusButton"
       selected <==> modelWettkampfModus

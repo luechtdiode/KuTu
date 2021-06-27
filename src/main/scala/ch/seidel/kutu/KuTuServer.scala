@@ -33,7 +33,12 @@ object KuTuServer extends App with KuTuAppHTTPServer with AuthSupport with Hashi
         case s: String if (s.endsWith("quit")) =>
           shutDown("KuTuServer")
           false
-        case s: String => 
+
+        case s: String if (s.endsWith("cleanathletes")) =>
+          markAthletesInactiveOlderThan(3)
+          true
+
+        case s: String =>
           println(s"command submited: '$s'")
           true
         //      case s =>
