@@ -60,7 +60,7 @@
 		<scala.majorversion>2.13</scala.majorversion>
 		<scala.version>${scala.majorversion}.6</scala.version>
 		<akkaHttp.version>10.2.4</akkaHttp.version>
-		<akka.version>2.6.14</akka.version>
+		<akka.version>2.6.15</akka.version>
 		<javafx.version>16</javafx.version>
 		<scalafx.version>16.0.0-R24</scalafx.version>
 		<scalatest.version>3.3.0-SNAP3</scalatest.version>
@@ -212,7 +212,7 @@
 		<dependency>
 			<groupId>com.twitter</groupId>
 			<artifactId>chill-akka_${scala.majorversion}</artifactId>
-			<version>0.9.5</version>
+			<version>0.10.0</version>
 		</dependency>
 
 		<!-- JWT actually substituted by a local pach-copy until 2.13 is suppored -->
@@ -225,13 +225,13 @@
 		<dependency>
 			<groupId>org.json4s</groupId>
 			<artifactId>json4s-native_${scala.majorversion}</artifactId>
-			<version>3.6.11</version>
+			<version>4.0.0</version>
 		</dependency>
 		<!-- https://mvnrepository.com/artifact/org.json4s/json4s-jackson -->
 		<dependency>
 			<groupId>org.json4s</groupId>
 			<artifactId>json4s-jackson_${scala.majorversion}</artifactId>
-			<version>3.6.11</version>
+			<version>4.0.0</version>
 		</dependency>
 
 		<!-- Slick -->
