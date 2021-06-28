@@ -212,7 +212,7 @@
 		<dependency>
 			<groupId>com.twitter</groupId>
 			<artifactId>chill-akka_${scala.majorversion}</artifactId>
-			<version>0.9.5</version>
+			<version>0.10.0</version>
 		</dependency>
 
 		<!-- JWT actually substituted by a local pach-copy until 2.13 is suppored -->
