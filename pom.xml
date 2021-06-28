@@ -225,7 +225,7 @@
 		<dependency>
 			<groupId>org.json4s</groupId>
 			<artifactId>json4s-native_${scala.majorversion}</artifactId>
-			<version>3.6.11</version>
+			<version>4.0.0</version>
 		</dependency>
 		<!-- https://mvnrepository.com/artifact/org.json4s/json4s-jackson -->
 		<dependency>
@@ -409,7 +409,7 @@
 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-dependency-plugin</artifactId>
-				<version>3.1.2</version>
+				<version>3.2.0</version>
 				<executions>
 					<execution>
 						<id>copy-dependencies</id>
