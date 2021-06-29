@@ -302,4 +302,22 @@ trait AthletService extends DBService with AthletResultMapper {
   }
 
   def altersfilter(pgm: ProgrammView, a: AthletView): Boolean = altersfilter(pgm, a.toAthlet)
+
+  def markAthletesInactiveOlderThan(nYears: Int): Unit = {
+    Await.result(database.run {
+      sqlu"""
+        update athlet
+        set activ = false
+        where exists (
+          select distinct 1 from athlet a
+              inner join verein v on v.id = a.verein
+              left outer join wertung w on a.id = w.athlet_id
+              left outer join wettkampf wk on w.wettkampf_id = wk.id
+          group by a.id
+          having (current_date - max(coalesce(wk.datum, current_date))) > ${nYears * 365}
+              and a.id = athlet.id
+        );
+       """
+    }, Duration.Inf)
+  }
 }
