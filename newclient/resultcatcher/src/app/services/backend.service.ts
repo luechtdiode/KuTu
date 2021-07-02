@@ -496,13 +496,21 @@ export class BackendService extends WebsocketService {
       this.logout();
     }
 
+    utf8_to_b64( str: string ): string {
+      return window.btoa(unescape(encodeURIComponent( str )));
+    }
+    
+    b64_to_utf8( str: string ): string {
+      return decodeURIComponent(escape(window.atob( str )));
+    }    
+
     clublogin(username, password) {
       this.clublogout();
       const headers = new HttpHeaders();
       const loader = this.startLoading('Login wird verarbeitet. Bitte warten ...',
         this.http.options(backendUrl + 'api/login', {
           observe: 'response',
-          headers: headers.set('Authorization', 'Basic ' + btoa(username + ':' + password )),
+          headers: headers.set('Authorization', 'Basic ' + this.utf8_to_b64(`${username}:${password}`)),
           withCredentials: true,
           responseType: 'text'
         }
