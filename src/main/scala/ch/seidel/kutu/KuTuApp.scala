@@ -653,7 +653,7 @@ object KuTuApp extends JFXApp3 with KutuService with JsonSupport with JwtSupport
         val athletTable = new TableView[(AthletView, AthletView, AthletView)](athletModel) {
           columns ++= List(
             new TableColumn[(AthletView, AthletView, AthletView), String] {
-              text = "Athlet"
+              text = "#1 Name Vorname Geb.Dat"
               minWidth = 220
               cellValueFactory = { x =>
                 new ReadOnlyStringWrapper(x.value, "athlet", {
@@ -663,7 +663,7 @@ object KuTuApp extends JFXApp3 with KutuService with JsonSupport with JwtSupport
               minWidth = 220
             },
             new TableColumn[(AthletView, AthletView, AthletView), String] {
-              text = "Athlet-Duplette"
+              text = "#2 Name Vorname Geb.Dat"
               cellValueFactory = { x =>
                 new ReadOnlyStringWrapper(x.value, "athlet", {
                   printAthlet(x.value._2)
