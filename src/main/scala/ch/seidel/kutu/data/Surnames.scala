@@ -37,10 +37,18 @@ object Surname {
     }
   }
 
-  def isFeminim(name: String) = names.find(sn => sn.isFeminin && sn.name.equalsIgnoreCase(name)).isDefined
+  def isFeminim(name: String): Boolean = {
+    val namen = name.split(" ")
+    namen.forall(sn => isSurname(sn).exists(sn => sn.isFeminin))
+  }
 
-  def isMasculin(name: String) = names.find(sn => sn.isMasculin && sn.name.equalsIgnoreCase(name)).isDefined
-
-  def isSurname(name: String) = names.find(sn => sn.name.equalsIgnoreCase(name))
+  def isMasculin(name: String): Boolean ={
+    val namen = name.split(" ")
+    namen.forall(sn => isSurname(sn).exists(sn => sn.isMasculin))
+  }
+  def isSurname(name: String): Option[Surname] = {
+    val namen = name.split(" ")
+    names.find(sn => namen.exists(nn => sn.name.equalsIgnoreCase(nn)))
+  }
 }
 
