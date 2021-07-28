@@ -75,14 +75,18 @@ object Config extends KuTuSSLContext {
   }
 
   def readSecret: Option[String] = {
-    val path = new File(userHomePath + "/.jwt").toPath
-    if (path.toFile.exists) {
-      logger.info("Secret found " + path)
-      Some(new String(Files.readAllBytes(path), "utf-8"))
-    }
-    else {
-      logger.info("No secret found")
-      None
+    if (config.hasPath("X_KUTU_SECRET") && !config.getString("X_KUTU_SECRET").isEmpty) {
+      Some(config.getString("X_KUTU_SECRET"))
+    } else {
+      val path = new File(userHomePath + "/.jwt").toPath
+      if (path.toFile.exists) {
+        logger.info("Secret found " + path)
+        Some(new String(Files.readAllBytes(path), "utf-8"))
+      }
+      else {
+        logger.info("No secret found")
+        None
+      }
     }
   }
 

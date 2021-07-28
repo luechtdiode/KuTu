@@ -34,12 +34,22 @@ object KuTuServer extends App with KuTuAppHTTPServer with AuthSupport with Hashi
           shutDown("KuTuServer")
           false
 
+        case s: String if (s.endsWith("showsecret")) =>
+          println(Config.jwtSecretKey)
+          true
+
         case s: String if (s.endsWith("cleanathletes")) =>
           markAthletesInactiveOlderThan(3)
+          println("done")
           true
 
         case s: String =>
-          println(s"command submited: '$s'")
+          println(
+            s"""command unknown: '$s'
+               |type 'quit' to stop the server
+               |     'showsecret' to print secret to the console
+               |     'cleanathletes' to cleanup (move) inactive athletes to inatctiv state
+               |""".stripMargin)
           true
         //      case s =>
         //        println(s"cached unknown comand: '$s'")
