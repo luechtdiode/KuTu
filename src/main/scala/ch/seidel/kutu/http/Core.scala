@@ -1,14 +1,13 @@
 package ch.seidel.kutu.http
 
 import java.net.{DatagramSocket, InetAddress, NetworkInterface}
-
 import akka.actor.ActorSystem
 import akka.http.scaladsl.Http
 import akka.http.scaladsl.server.Route
 import akka.stream.Materializer
 import ch.seidel.kutu.Config
 import ch.seidel.kutu.Config._
-import ch.seidel.kutu.akka.CompetitionCoordinatorClientActor
+import ch.seidel.kutu.akka.{AthletIndexActor, CompetitionCoordinatorClientActor, ResyncIndex}
 import ch.seidel.kutu.domain.DBService
 import org.slf4j.LoggerFactory
 
@@ -53,17 +52,18 @@ trait KuTuAppHTTPServer extends ApiService with JsonSupport {
 
         DBService.startDB()
         val route: Route = allroutes(id => vereinSecretHashLookup(id))
+        val serverBuilder = Http().newServerAt(httpInterface, httpPort)
         val binding = if (hasHttpsConfig) {
-          Http().setDefaultServerHttpContext(https)
-          val b = Http().bindAndHandle(route, httpInterface, httpPort, connectionContext = https)
+          val b = serverBuilder.enableHttps(https).bindFlow(route)
           logger.info(s"Server online at https://${httpInterface}:${httpPort}/")
           b
         } else {
-          val b = Http().bindAndHandle(route, httpInterface, httpPort)
+          val b = serverBuilder.bindFlow(route)
           logger.info(s"Server online at http://${httpInterface}:${httpPort}/")
           b
         }
         serverBinding = Some(binding)
+        AthletIndexActor.publish(ResyncIndex)
         binding
       case Some(binding) => binding
     }
@@ -79,6 +79,7 @@ trait KuTuAppHTTPServer extends ApiService with JsonSupport {
           done.failed.map { ex => log.error(ex, "Failed unbinding") }
         }
 
+        AthletIndexActor.stopAll()
         CompetitionCoordinatorClientActor.stopAll().onComplete(_ => {
           serverBinding = None
           println(caller + " Server stopped")

@@ -1,5 +1,6 @@
 package ch.seidel.kutu
 
+import ch.seidel.kutu.akka.{AthletIndexActor, ResyncIndex}
 import ch.seidel.kutu.http.{AuthSupport, Core, Hashing, KuTuAppHTTPServer}
 import org.slf4j.LoggerFactory
 
@@ -43,10 +44,16 @@ object KuTuServer extends App with KuTuAppHTTPServer with AuthSupport with Hashi
           println("done")
           true
 
+        case s: String if (s.endsWith("refresh")) =>
+          AthletIndexActor.publish(ResyncIndex)
+          println("done")
+          true
+
         case s: String =>
           println(
             s"""command unknown: '$s'
                |type 'quit' to stop the server
+               |     'refresh' to refresh Athlet Matching Index
                |     'showsecret' to print secret to the console
                |     'cleanathletes' to cleanup (move) inactive athletes to inatctiv state
                |""".stripMargin)

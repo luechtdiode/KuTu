@@ -1,15 +1,14 @@
 package ch.seidel.kutu.akka
 
-import java.util
-
 import akka.actor.SupervisorStrategy.{Restart, Stop}
-import akka.actor.{Actor, ActorLogging, ActorRef, OneForOneStrategy, Props, Terminated}
+import akka.actor.{Actor, ActorLogging, ActorRef, OneForOneStrategy, PoisonPill, Props, Terminated}
 import akka.pattern.ask
 import akka.util.Timeout
 import ch.seidel.kutu.domain._
 import ch.seidel.kutu.http.Core.system
 import ch.seidel.kutu.http.JsonSupport
 
+import java.util
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 import scala.concurrent.duration.DurationInt
@@ -22,6 +21,8 @@ sealed trait AthletIndexAction extends AthletIndexProtokoll
 
 sealed trait AthletIndexEvent extends AthletIndexProtokoll
 
+case object StopAthletIndex extends AthletIndexAction
+case object ResyncIndex extends AthletIndexAction
 case class SaveAthlet(athlet: Athlet) extends AthletIndexAction
 case class RemoveAthlet(athlet: Athlet) extends AthletIndexAction
 case class FindAthletLike(athlet: Athlet) extends AthletIndexAction
@@ -50,7 +51,7 @@ class AthletIndexActor extends Actor with JsonSupport with KutuService {
   }
 
   override def preStart(): Unit = {
-    log.info(s"Starting AthletIndexActor")
+    log.info(s"Start AthletIndexActor")
   }
 
   override def postStop(): Unit = {
@@ -69,6 +70,12 @@ class AthletIndexActor extends Actor with JsonSupport with KutuService {
   }
 
   override def receive = {
+    case ResyncIndex =>
+      log.info("Resync Athlet Index ...")
+      invalidateIndex()
+      sender() ! AthletLikeFound(Athlet(), findAthleteLike(index)(Athlet()))
+      log.info("ResyncIndex Athlet Index finished")
+
     case FindAthletLike(athlet) =>
       sender() ! AthletLikeFound(athlet, findAthleteLike(index)(athlet))
     case SaveAthlet(athlet) => mcOfId(athlet.id) match {
@@ -113,7 +120,7 @@ class AthletIndexActorSupervisor extends Actor with ActorLogging {
         athletIndexActor = Some(system.actorOf(Props(classOf[AthletIndexActor]), name = s"AthletIndex"))
         context.watch(athletIndexActor.get)
         context.become(receiveCommands)
-        log.info("AthletIndexActor ready")
+        log.info("AthletIndexActor started")
         statshedActions.foreach(s => self.tell(s._2, s._1))
     }
   }
@@ -133,6 +140,8 @@ class AthletIndexActorSupervisor extends Actor with ActorLogging {
       statshedActions = statshedActions :+ (sender(), a)
     case Terminated(wettkampfActor) =>
       context.unwatch(wettkampfActor)
+    case StopAthletIndex => athletIndexActor.foreach(_.forward(PoisonPill))
+      self ! PoisonPill
   }
 }
 
@@ -143,5 +152,9 @@ object AthletIndexActor {
   def publish(action: AthletIndexAction): Future[AthletIndexEvent] = {
     implicit val timeout = Timeout(31000 milli)
     (supervisor ? action).mapTo[AthletIndexEvent]
+  }
+
+  def stopAll(): Unit = {
+    supervisor ! StopAthletIndex
   }
 }

@@ -11,13 +11,21 @@ import scala.collection.JavaConverters
 import scala.concurrent.Await
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration.Duration
-import scala.jdk.CollectionConverters.ListHasAsScala
+import scala.jdk.CollectionConverters.CollectionHasAsScala
 
 trait AthletService extends DBService with AthletResultMapper {
   private val logger = LoggerFactory.getLogger(this.getClass)
 
-  def selectAthletes = {
+  def selectAthletesAction = {
     sql"""          select * from athlet""".as[Athlet]
+  }
+
+  def selectAthletes: List[Athlet] = {
+    Await.result(database.run {
+      sql"""        select * from athlet
+                    order by activ desc, name, vorname asc
+       """.as[Athlet].withPinnedSession
+    }, Duration.Inf).toList
   }
 
   def selectAthletesOfVerein(id: Long): List[Athlet] = {
@@ -82,7 +90,7 @@ trait AthletService extends DBService with AthletResultMapper {
                     delete from athlet where id=${idToDelete}
           """).transactionally
     }, Duration.Inf)
-    toDelete.map(publishRemoved)
+    toDelete.foreach(publishRemoved)
   }
 
   def deleteAthlet(id: Long): Unit = {
@@ -96,7 +104,7 @@ trait AthletService extends DBService with AthletResultMapper {
                     delete from athlet where id=${id}
           """).transactionally
     }, Duration.Inf)
-    toDelete.map(publishRemoved)
+    toDelete.foreach(publishRemoved)
   }
 
   def insertAthletes(athletes: Iterable[(String, Athlet)]): Iterable[(String, Athlet)] = {
@@ -182,7 +190,7 @@ trait AthletService extends DBService with AthletResultMapper {
     (acc._1 && same, acc._2 + (if (acc._1 && same) 1 else 0))
   }._2 / math.max(text1.length, text2.length)
 
-  def findAthleteLike(cache: java.util.List[MatchCode] = new java.util.ArrayList[MatchCode], wettkampf: Option[Long] = None)(athlet: Athlet): Athlet = {
+  def findAthleteLike(cache: java.util.Collection[MatchCode] = new java.util.ArrayList[MatchCode], wettkampf: Option[Long] = None)(athlet: Athlet): Athlet = {
     val bmname = MatchCode.encode(athlet.name)
     val bmvorname = MatchCode.encode(athlet.vorname)
 

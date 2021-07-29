@@ -25,6 +25,8 @@ sealed trait RegistrationEvent extends RegistrationProtokoll
 
 case class RegistrationChanged(wettkampfUUID: String) extends RegistrationAction
 
+case class RegistrationResync(wettkampfUUID: String) extends RegistrationAction
+
 case class AskRegistrationSyncActions(wettkampfUUID: String) extends RegistrationAction
 
 case class RegistrationSyncActions(syncActions: Vector[SyncAction]) extends RegistrationEvent
@@ -48,7 +50,7 @@ class CompetitionRegistrationClientActor(wettkampfUUID: String) extends Actor wi
 
   private val wettkampf = readWettkampf(wettkampfUUID)
   private val wettkampfInfo = WettkampfInfo(wettkampf.toView(readProgramm(wettkampf.programmId)), this)
-  private var syncActions: Vector[SyncAction] = Vector()
+  private var syncActions: Option[Vector[SyncAction]] = None
   private var syncActionReceivers: List[ActorRef] = List()
   private var clientId: () => String = () => sender().path.toString
 
@@ -67,14 +69,17 @@ class CompetitionRegistrationClientActor(wettkampfUUID: String) extends Actor wi
   }
 
   override def receive = {
+    case RegistrationResync(_) =>
+      retrieveSyncActions(sender())
+
     case RegistrationChanged(_) => retrieveSyncActions(sender())
     case AskRegistrationSyncActions(_) =>
       if (this.syncActions.nonEmpty)
-        sender() ! RegistrationSyncActions(this.syncActions)
+        sender() ! RegistrationSyncActions(this.syncActions.get)
       else
         retrieveSyncActions(sender())
     case a@RegistrationSyncActions(actions) =>
-      this.syncActions = actions
+      this.syncActions = Some(actions)
       if (syncActionReceivers.nonEmpty) {
         syncActionReceivers.foreach(_ ! a)
         syncActionReceivers = List()
@@ -82,15 +87,18 @@ class CompetitionRegistrationClientActor(wettkampfUUID: String) extends Actor wi
   }
 
   private def retrieveSyncActions(syncActionReceiver: ActorRef) = {
-    syncActions = Vector()
+    syncActions = None
     if (syncActionReceivers.nonEmpty) {
       syncActionReceivers = syncActionReceivers :+ syncActionReceiver
     } else {
+      log.info("Rebuild Competition SyncActions ...")
       syncActionReceivers = syncActionReceivers :+ syncActionReceiver
       RegistrationAdmin.computeSyncActions(wettkampfInfo, this).andThen {
         case Success(actions) =>
+          log.info("Rebuild Competition SyncActions finished")
           self ! RegistrationSyncActions(actions)
         case _ =>
+          log.info("Rebuild Competition SyncActions failed")
           self ! RegistrationSyncActions(Vector.empty)
       }(global)
     }

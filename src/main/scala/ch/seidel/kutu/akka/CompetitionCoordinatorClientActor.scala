@@ -1,12 +1,12 @@
 package ch.seidel.kutu.akka
 
-import akka.actor.SupervisorStrategy.{Restart, Resume, Stop}
+import akka.actor.SupervisorStrategy.{Restart, Stop}
 import akka.actor.{Actor, ActorLogging, ActorRef, OneForOneStrategy, PoisonPill, Props, Terminated}
 import akka.http.scaladsl.model.ws.{BinaryMessage, Message, TextMessage}
 import akka.pattern.ask
 import akka.persistence.{PersistentActor, SnapshotOffer, SnapshotSelectionCriteria}
-import akka.stream.{CompletionStrategy, OverflowStrategy}
 import akka.stream.scaladsl.{Flow, Sink, Source}
+import akka.stream.{CompletionStrategy, OverflowStrategy}
 import akka.util.Timeout
 import ch.seidel.kutu.Config
 import ch.seidel.kutu.akka.CompetitionCoordinatorClientActor.PublishAction
@@ -415,11 +415,12 @@ class ClientActorSupervisor extends Actor with ActorLogging {
   }
 
   override def preStart(): Unit = {
-    log.info("Starting ClientActorSupervisor")
+    log.info("Start ClientActorSupervisor")
     super.preStart()
   }
 
   override def postStop(): Unit = {
+    log.info("Stop ClientActorSupervisor")
     super.postStop()
   }
 

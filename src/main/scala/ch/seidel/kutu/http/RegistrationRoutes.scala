@@ -1,7 +1,6 @@
 package ch.seidel.kutu.http
 
 import java.util.UUID
-
 import spray.json._
 import akka.http.scaladsl.marshallers.sprayjson.SprayJsonSupport
 import akka.http.scaladsl.marshalling.ToResponseMarshallable
@@ -11,7 +10,7 @@ import akka.http.scaladsl.unmarshalling.Unmarshal
 import akka.util.{ByteString, Timeout}
 import ch.seidel.kutu.{Config, KuTuServer}
 import ch.seidel.kutu.Config.{homedir, remoteAdminBaseUrl}
-import ch.seidel.kutu.akka.{AskRegistrationSyncActions, CompetitionRegistrationClientActor, RegistrationChanged, RegistrationSyncActions}
+import ch.seidel.kutu.akka.{AskRegistrationSyncActions, AthletIndexActor, CompetitionRegistrationClientActor, RegistrationChanged, RegistrationResync, RegistrationSyncActions, ResyncIndex}
 import ch.seidel.kutu.domain.{AthletRegistration, AthletView, JudgeRegistration, KutuService, NewRegistration, ProgrammRaw, Registration, Verein, Wettkampf, dateToExportedStr}
 import ch.seidel.kutu.renderer.{CompetitionsClubsToHtmlRenderer, CompetitionsJudgeToHtmlRenderer, PrintUtil}
 import ch.seidel.kutu.view.{RegistrationAdmin, WettkampfInfo}
@@ -104,6 +103,14 @@ trait RegistrationRoutes extends SprayJsonSupport with JwtSupport with JsonSuppo
               val wi = WettkampfInfo(wettkampf.toView(readProgramm(wettkampf.programmId)), this)
               wi.leafprograms.map(p => ProgrammRaw(p.id, p.name, 0, 0, p.ord, p.alterVon, p.alterBis))
             }
+          }
+        } ~ path("refreshsyncs") {
+          get {
+            complete(
+              AthletIndexActor.publish(ResyncIndex).map { _ =>
+                CompetitionRegistrationClientActor.publish(RegistrationResync(wettkampf.uuid.get), clientId)
+                StatusCodes.OK
+            })
           }
         } ~ path("syncactions") {
           get {

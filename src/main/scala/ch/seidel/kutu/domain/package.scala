@@ -884,6 +884,7 @@ package object domain {
       }
     }
     def isEmptyRegistration = geschlecht.isEmpty
+    def isLocalIdentified = athletId match{case Some(id) if id > 0 => true case None => false}
   }
 
   object EmptyAthletRegistration {
