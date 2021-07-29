@@ -41,6 +41,7 @@ trait JsonSupport extends SprayJsonSupport with EnrichedJson {
   }
 
   // actions (via rest-request)
+  implicit val refresWettkampfMap = jsonFormat1(RefreshWettkampfMap)
   implicit val getResultsToReplicate = jsonFormat2(GetResultsToReplicate)
   implicit val startDurchgangFormat = jsonFormat2(StartDurchgang)
   implicit val updateAthletWertungFormat = jsonFormat7(UpdateAthletWertung)

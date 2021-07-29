@@ -15,6 +15,8 @@ sealed trait KutuAppProtokoll
 sealed trait KutuAppAction extends KutuAppProtokoll {
   val wettkampfUUID: String
 }
+case class RefreshWettkampfMap(override val wettkampfUUID: String) extends KutuAppAction
+case class GetGeraeteRiegeList(override val wettkampfUUID: String) extends KutuAppAction
 case class GetResultsToReplicate(override val wettkampfUUID: String, fromSequenceId: Long) extends KutuAppAction
 case class StartedDurchgaenge(override val wettkampfUUID: String) extends KutuAppAction
 case class StartDurchgang(override val wettkampfUUID: String, durchgang: String) extends KutuAppAction
@@ -42,6 +44,7 @@ case class AthletRemovedFromWettkampf(athlet: AthletView, wettkampfUUID: String)
 case class AthletMovedInWettkampf(athlet: AthletView, wettkampfUUID: String, pgmId: Long) extends KutuAppEvent
 case class DurchgangChanged(durchgang: String, wettkampfUUID: String, athlet: AthletView) extends KutuAppEvent
 case class ScoresPublished(scoreId: String, title: String, query: String, published: Boolean, wettkampfUUID: String) extends KutuAppEvent
+case class GeraeteRiegeList(list: List[GeraeteRiege], wettkampfUUID: String) extends KutuAppEvent
 
 case class NewLastResults(results: Map[String, WertungContainer], lastTopResults: Map[String, WertungContainer]) extends KutuAppEvent
 case class LastResults(results: List[AthletWertungUpdatedSequenced]) extends KutuAppEvent

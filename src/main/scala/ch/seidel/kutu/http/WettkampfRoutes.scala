@@ -289,8 +289,10 @@ trait WettkampfRoutes extends SprayJsonSupport
                         log.info("receiving wettkampf: " + metadata)
                         onSuccess(Future {
                           import Core.materializer;
-                          val is = file.runWith(StreamConverters.asInputStream(FiniteDuration(120, TimeUnit.SECONDS)))
+                          val is = file.runWith(StreamConverters.asInputStream(FiniteDuration(180, TimeUnit.SECONDS)))
                           ResourceExchanger.importWettkampf(is)
+                          AthletIndexActor.publish(ResyncIndex)
+                          CompetitionCoordinatorClientActor.publish(RefreshWettkampfMap(wkuuid.toString()), clientId)
                           CompetitionRegistrationClientActor.publish(RegistrationChanged(wkuuid.toString()), clientId)
                           is.close()
                         }) {

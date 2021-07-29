@@ -1,9 +1,10 @@
 package ch.seidel.kutu.akka
 
 import ch.seidel.kutu.Config
-import ch.seidel.kutu.domain.encodeURIComponent
+import ch.seidel.kutu.domain.{Disziplin, encodeURIComponent}
 
 case class CompetitionState (
+           //                  durchgangGeraetMap: Map[String, List[Disziplin]] = Map.empty,
                              startedDurchgaenge: Set[String] = Set.empty,
                              finishedDurchgangSteps: Set[DurchgangStationFinished] = Set.empty,
                              finishedDurchgaenge: Set[String] = Set.empty,

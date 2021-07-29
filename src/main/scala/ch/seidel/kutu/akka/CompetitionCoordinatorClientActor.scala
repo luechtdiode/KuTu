@@ -8,15 +8,18 @@ import akka.persistence.{PersistentActor, SnapshotOffer, SnapshotSelectionCriter
 import akka.stream.scaladsl.{Flow, Sink, Source}
 import akka.stream.{CompletionStrategy, OverflowStrategy}
 import akka.util.Timeout
-import ch.seidel.kutu.Config
+import ch.seidel.kutu.{Config, domain}
 import ch.seidel.kutu.akka.CompetitionCoordinatorClientActor.PublishAction
 import ch.seidel.kutu.data.ResourceExchanger
 import ch.seidel.kutu.domain._
 import ch.seidel.kutu.http.Core.system
 import ch.seidel.kutu.http.{EnrichedJson, JsonSupport}
+import ch.seidel.kutu.renderer.RiegenBuilder
 import org.slf4j.LoggerFactory
 import spray.json._
 
+import java.util.UUID
+import scala.collection.MapView
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration.DurationInt
 import scala.concurrent.{Await, Future}
@@ -53,9 +56,16 @@ class CompetitionCoordinatorClientActor(wettkampfUUID: String) extends Persisten
   private var deviceWebsocketRefs: Map[String, ActorRef] = Map.empty
   private var pendingKeepAliveAck: Option[Int] = None
   private var openDurchgangJournal: Map[Option[String], List[AthletWertungUpdatedSequenced]] = Map.empty
-
   private var state: CompetitionState = CompetitionState()
+  private var geraeteRigeListe: List[GeraeteRiege] = List.empty
   private var clientId: () => String = () => sender().path.toString
+
+  def rebuildWettkampfMap(): Unit = {
+    openDurchgangJournal = Map.empty
+    geraeteRigeListe = RiegenBuilder.mapToGeraeteRiegen(
+      getAllKandidatenWertungen(UUID.fromString(wettkampfUUID))
+        .toList)
+  }
 
   private def deviceIdOf(actor: ActorRef) = deviceWebsocketRefs.filter(_._2 == actor).map(_._1)
 
@@ -64,6 +74,7 @@ class CompetitionCoordinatorClientActor(wettkampfUUID: String) extends Persisten
 
   // send keepalive messages to prevent closing the websocket connection
   private case object KeepAlive
+  private case object TryStop
 
   private val liveticker = context.system.scheduler.scheduleAtFixedRate(10.second, 10.second, self, KeepAlive)
 
@@ -77,6 +88,7 @@ class CompetitionCoordinatorClientActor(wettkampfUUID: String) extends Persisten
 
   override def preStart(): Unit = {
     log.info(s"Starting CompetitionCoordinatorClientActor for $persistenceId")
+    rebuildWettkampfMap()
   }
 
   override def postStop(): Unit = {
@@ -106,6 +118,12 @@ class CompetitionCoordinatorClientActor(wettkampfUUID: String) extends Persisten
   }
 
   val receiveCommand: Receive = {
+
+    case RefreshWettkampfMap(_) =>
+      rebuildWettkampfMap()
+
+    case GetGeraeteRiegeList(_) =>
+      sender() ! GeraeteRiegeList(geraeteRigeListe, wettkampfUUID)
 
     case PublishAction(id: String, action: KutuAppAction) =>
       this.clientId = () => id
@@ -239,6 +257,9 @@ class CompetitionCoordinatorClientActor(wettkampfUUID: String) extends Persisten
             .filter(socket => deviceWebsocketRefs.exists(_._2 == socket)))
         }.filter(x => x._2.nonEmpty)
       }
+      context.system.scheduler.scheduleOnce(30.second, self, TryStop)
+
+    case TryStop =>
       if (state.startedDurchgaenge.isEmpty && wsSend.isEmpty) handleStop
 
     case Terminated(stoppedWebsocket) =>
@@ -251,7 +272,7 @@ class CompetitionCoordinatorClientActor(wettkampfUUID: String) extends Persisten
           .filter(_ != stoppedWebsocket)
           .filter(socket => deviceWebsocketRefs.exists(_._2 == socket)))
       }.filter(x => x._2.nonEmpty)
-      if (state.startedDurchgaenge.isEmpty && wsSend.isEmpty) handleStop
+      context.system.scheduler.scheduleOnce(30.second, self, TryStop)
 
     case Delete(wk) =>
       val criteria = SnapshotSelectionCriteria.Latest
@@ -448,8 +469,14 @@ class ClientActorSupervisor extends Actor with ActorLogging {
       wettkampfCoordinators.get(uw.action.wettkampfUUID) match {
         case Some(coordinator) => coordinator.forward(uw)
         case _ =>
-          log.warning("Action for unknown competition: " + uw)
-          sender() ! MessageAck("Action for unknown competition: " + uw)
+          log.info(s"Connect new client to new coordinator. Wettkampf: $uw.action.wettkampfUUID, via Rest-API (Sessionless)")
+          val coordinator = context.actorOf(
+            CompetitionCoordinatorClientActor.props(uw.action.wettkampfUUID), "client-" + uw.action.wettkampfUUID)
+          context.watch(coordinator)
+          wettkampfCoordinators = wettkampfCoordinators + (uw.action.wettkampfUUID -> coordinator)
+          coordinator.forward(uw)
+          //log.warning("Action for unknown competition: " + uw)
+          //sender() ! MessageAck("Action for unknown competition: " + uw)
       }
 
     case Terminated(wettkampfActor) =>
