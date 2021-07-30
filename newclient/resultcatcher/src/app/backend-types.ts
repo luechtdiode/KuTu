@@ -10,6 +10,10 @@ export interface WertungContainer {
   isDNoteUsed: boolean;
 }
 
+export interface BulkEvent {
+  events: any[];
+  wettkampfUUID: string;
+}
 export interface NewLastResults {
   results: {string: WertungContainer};
   lastTopResults: {string: WertungContainer};

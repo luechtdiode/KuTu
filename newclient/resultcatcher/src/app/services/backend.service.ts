@@ -11,7 +11,7 @@ import { DurchgangStarted, Wettkampf, Geraet, WertungContainer, NewLastResults, 
          NewClubRegistration,
          AthletRegistration,
          ProgrammRaw,
-         SyncAction, JudgeRegistration, JudgeRegistrationProgramItem} from '../backend-types';
+         SyncAction, JudgeRegistration, JudgeRegistrationProgramItem, BulkEvent} from '../backend-types';
 import { backendUrl } from '../utils';
 import { ProgrammItem } from '../backend-types';
 
@@ -499,10 +499,10 @@ export class BackendService extends WebsocketService {
     utf8_to_b64( str: string ): string {
       return window.btoa(unescape(encodeURIComponent( str )));
     }
-    
+
     b64_to_utf8( str: string ): string {
       return decodeURIComponent(escape(window.atob( str )));
-    }    
+    }
 
     clublogin(username, password) {
       this.clublogout();
@@ -984,6 +984,11 @@ export class BackendService extends WebsocketService {
     protected handleWebsocketMessage(message: any): boolean {
       const type = message.type;
       switch (type) {
+        case 'BulkEvent':
+           return (message as BulkEvent).events.map( e => {
+             return this.handleWebsocketMessage(e);
+           }).reduce((a, b) => a && b);
+
         case 'DurchgangStarted':
           this._activeDurchgangList = [...this.activeDurchgangList, (message as DurchgangStarted)];
           this.durchgangStarted.next(this.activeDurchgangList);
