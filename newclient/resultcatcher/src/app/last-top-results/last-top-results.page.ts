@@ -118,4 +118,6 @@ export class LastTopResultsPage implements OnInit {
     return wertungContainer.programm + ' - ' + this.geraetText(wertungContainer.geraet);
   }
 
+  itemTapped(event, item) {
+  }
 }

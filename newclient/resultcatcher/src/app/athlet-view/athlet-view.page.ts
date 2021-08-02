@@ -4,7 +4,6 @@ import { NavController } from '@ionic/angular';
 import { BackendService } from '../services/backend.service';
 import { filter, map } from 'rxjs/operators';
 import { ActivatedRoute } from '@angular/router';
-import { isArray } from 'util';
 
 @Component({
   selector: 'app-athlet-view',

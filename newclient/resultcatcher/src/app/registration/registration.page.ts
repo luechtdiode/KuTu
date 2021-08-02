@@ -23,7 +23,7 @@ export class RegistrationPage implements OnInit {
 
   sFilterTask: () => void = undefined;
 
-  private busy = new BehaviorSubject(false);
+  busy = new BehaviorSubject(false);
 
   constructor(public navCtrl: NavController,
               private route: ActivatedRoute,

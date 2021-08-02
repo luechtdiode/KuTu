@@ -1,10 +1,10 @@
 // App Styles
 // ----------------------------------------------------------------------------
-// Put style rules here that you want to apply to the entire application. These 
-// styles are for the entire app and not just one component. Additionally, this 
-// file can hold Sass mixins, functions, and placeholder classes to be imported 
+// Put style rules here that you want to apply to the entire application. These
+// styles are for the entire app and not just one component. Additionally, this
+// file can hold Sass mixins, functions, and placeholder classes to be imported
 // and used throughout the application.
-.alert-head, .alert-head-md, .alert-head-ios {  
+.alert-head, .alert-head-md, .alert-head-ios {
   // background-color: var(--ion-color-step-500, #2e2e2e);
   background-color:  var(--ion-item-background-color);
   color: var(--ion-item-text-color);
@@ -48,7 +48,7 @@ ion-toolbar {
   padding-bottom: 0px;
 }
 
-.alert-head + .alert-message, 
+.alert-head + .alert-message,
 .alert-head.sc-ion-alert-md + .alert-message.sc-ion-alert-md,
 .alert-head.sc-ion-alert-ios + .alert-message.sc-ion-alert-ios {
     padding-top: 15px;

@@ -41,7 +41,7 @@
 
 <ion-content *ngIf="wkPgms && wkPgms.length > 0">
   <ion-list >
-    <ion-item *ngIf="(isBusy | async) || !(competition && currentRegistration && this.sAthletRegistrationList)">
+    <ion-item *ngIf="(busy | async) || !(competition && currentRegistration && this.sAthletRegistrationList)">
       <ion-label>loading ...</ion-label>
       <ion-spinner></ion-spinner>
     </ion-item>
