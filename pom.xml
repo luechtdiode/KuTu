@@ -59,7 +59,7 @@
 		<jdk-home>${JAVA_HOME}</jdk-home>
 		<scala.majorversion>2.13</scala.majorversion>
 		<scala.version>${scala.majorversion}.6</scala.version>
-		<akkaHttp.version>10.2.4</akkaHttp.version>
+		<akkaHttp.version>10.2.5</akkaHttp.version>
 		<akka.version>2.6.15</akka.version>
 		<javafx.version>16</javafx.version>
 		<scalafx.version>16.0.0-R24</scalafx.version>
@@ -263,7 +263,7 @@
 		<dependency>
 			<groupId>org.slf4j</groupId>
 			<artifactId>slf4j-api</artifactId>
-			<version>1.7.31</version>
+			<version>1.7.32</version>
 		</dependency>
 		<dependency>
 			<groupId>ch.qos.logback</groupId>
