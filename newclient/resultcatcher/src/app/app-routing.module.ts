@@ -11,45 +11,45 @@ const routes: Routes = [
   },
   {
     path: 'home',
-    loadChildren: './home/home.module#HomePageModule'
+    loadChildren: () => import('./home/home.module').then( m => m.HomePageModule)
   },
-  { path: 'station', canActivate: [StationGuardService], loadChildren: './station/station.module#StationPageModule' },
+  { path: 'station', canActivate: [StationGuardService], loadChildren: () => import('./station/station.module').then( m => m.StationPageModule) },
   {
     path: 'wertung-editor/:itemId',
     canActivate: [StationGuardService],
-    loadChildren: './wertung-editor/wertung-editor.module#WertungEditorPageModule'
+    loadChildren: () => import('./wertung-editor/wertung-editor.module').then( m => m.WertungEditorPageModule)
   },
-  { path: 'last-results', loadChildren: './last-results/last-results.module#LastResultsPageModule' },
-  { path: 'top-results', loadChildren: './last-top-results/last-top-results.module#LastTopResultsPageModule' },
-  { path: 'search-athlet', loadChildren: './search-athlet/search-athlet.module#SearchAthletPageModule' },
-  { path: 'search-athlet/:wkId', loadChildren: './search-athlet/search-athlet.module#SearchAthletPageModule' },
-  { path: 'athlet-view/:wkId/:athletId', loadChildren: './athlet-view/athlet-view.module#AthletViewPageModule' },
-  { path: 'registration', loadChildren: './registration/registration.module#RegistrationPageModule' },
-  { path: 'registration/:wkId', loadChildren: './registration/registration.module#RegistrationPageModule' },
+  { path: 'last-results', loadChildren: () => import('./last-results/last-results.module').then( m => m.LastResultsPageModule) },
+  { path: 'top-results', loadChildren: () => import('./last-top-results/last-top-results.module').then( m => m.LastTopResultsPageModule) },
+  { path: 'search-athlet', loadChildren: () => import('./search-athlet/search-athlet.module').then( m => m.SearchAthletPageModule) },
+  { path: 'search-athlet/:wkId', loadChildren: () => import('./search-athlet/search-athlet.module').then( m => m.SearchAthletPageModule) },
+  { path: 'athlet-view/:wkId/:athletId', loadChildren: () => import('./athlet-view/athlet-view.module').then( m => m.AthletViewPageModule) },
+  { path: 'registration', loadChildren: () => import('./registration/registration.module').then( m => m.RegistrationPageModule) },
+  { path: 'registration/:wkId', loadChildren: () => import('./registration/registration.module').then( m => m.RegistrationPageModule) },
   { path: 'registration/:wkId/:regId',
     canActivate: [VereinsRegistrationGuardService],
-    loadChildren: './registration/clubreg-editor/clubreg-editor.module#ClubregEditorPageModule' },
+    loadChildren: () => import('./registration/clubreg-editor/clubreg-editor.module').then( m => m.ClubregEditorPageModule) },
   { path: 'reg-athletlist/:wkId/:regId',
     canActivate: [VereinsRegistrationGuardService],
-    loadChildren: './registration/reg-athletlist/reg-athletlist.module#RegAthletlistPageModule' },
+    loadChildren: () => import('./registration/reg-athletlist/reg-athletlist.module').then( m => m.RegAthletlistPageModule) },
   { path: 'reg-athletlist/:wkId/:regId/:athletId',
     canActivate: [VereinsRegistrationGuardService],
-    loadChildren: './registration/reg-athlet-editor/reg-athlet-editor.module#RegAthletEditorPageModule' },
+    loadChildren: () => import('./registration/reg-athlet-editor/reg-athlet-editor.module').then( m => m.RegAthletEditorPageModule) },
   {
     path: 'reg-judgelist/:wkId/:regId',
     canActivate: [VereinsRegistrationGuardService],
-    loadChildren: './registration/reg-judgelist/reg-judgelist.module#RegJudgelistPageModule'},
+    loadChildren: () => import('./registration/reg-judgelist/reg-judgelist.module').then( m => m.RegJudgelistPageModule) },
   {
     path: 'reg-judgelist/:wkId/:regId/:judgeId',
     canActivate: [VereinsRegistrationGuardService],
-    loadChildren: './registration/reg-judge-editor/reg-judge-editor.module#RegJudgeEditorPageModule'
+    loadChildren: () => import('./registration/reg-judge-editor/reg-judge-editor.module').then( m => m.RegJudgeEditorPageModule)
   }
 
 ];
 
 @NgModule({
   imports: [
-    RouterModule.forRoot(routes, { preloadingStrategy: PreloadAllModules, relativeLinkResolution: 'legacy' })
+    RouterModule.forRoot(routes, { preloadingStrategy: PreloadAllModules/*, relativeLinkResolution: 'legacy'*/ })
   ],
   exports: [RouterModule]
 })

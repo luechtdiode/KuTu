@@ -12,10 +12,10 @@ import { BackendService } from 'src/app/services/backend.service';
   styleUrls: ['./reg-judgelist.page.scss'],
 })
 export class RegJudgelistPage  implements OnInit {
-  private busy = new BehaviorSubject(false);
+  busy = new BehaviorSubject(false);
 
-  private currentRegistration: ClubRegistration;
-  private currentRegId: number;
+  currentRegistration: ClubRegistration;
+  currentRegId: number;
   wkPgms: JudgeRegistrationProgramItem[];
   tMyQueryStream = new Subject<any>();
 
@@ -147,6 +147,10 @@ export class RegJudgelistPage  implements OnInit {
 
   isLoggedInAsAdmin(): boolean {
     return this.backendService.loggedIn && !!this.backendService.authenticatedClubId;
+  }
+
+  isLoggedIn(): boolean {
+    return this.backendService.loggedIn;
   }
 
   filter(query: string) {

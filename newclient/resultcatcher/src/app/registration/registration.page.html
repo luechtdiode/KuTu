@@ -56,7 +56,7 @@
         <ion-icon slot="start" name="add"></ion-icon>
         Neue Anmeldung...
       </ion-button>
-      <ion-button *ngIf="isLoggedInAsClub()" size="large" expand="block" #btnDelete [disabled]="waiting" color="danger" (click)='logout()'>
+      <ion-button *ngIf="isLoggedInAsClub()" size="large" expand="block" #btnDelete [disabled]="(isBusy | async)" color="danger" (click)='logout(null)'>
         <ion-icon slot="start" name="log-out"></ion-icon>Vereins-Login Abmelden</ion-button>
     </ion-list>
   </ion-toolbar>

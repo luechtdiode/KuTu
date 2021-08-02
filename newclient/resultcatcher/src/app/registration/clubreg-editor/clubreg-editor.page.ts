@@ -25,6 +25,7 @@ export class ClubregEditorPage implements OnInit {
 
   waiting = false;
   registration: ClubRegistration | NewClubRegistration;
+  newRegistration: NewClubRegistration;
   sSyncActions: string[] = [];
   wettkampf: string;
   regId: number;
@@ -120,7 +121,7 @@ export class ClubregEditorPage implements OnInit {
             console.log('Cancel clicked');
           }
         }]
-      };      
+      };
     }
     const actionSheet = await this.actionSheetController.create(actionconfig);
     await actionSheet.present();
@@ -151,6 +152,9 @@ export class ClubregEditorPage implements OnInit {
       this.waiting = false;
       this.wettkampf = this.backendService.competitionName;
       this.registration = registration;
+      if (this.regId === 0) {
+         this.newRegistration = registration as NewClubRegistration;
+      }
       if (this.registration.mail.length > 1) {
         this.backendService.currentUserName = this.registration.mail;
       }
@@ -227,7 +231,7 @@ export class ClubregEditorPage implements OnInit {
   editAthletRegistrations() {
     this.navCtrl.navigateForward(`reg-athletlist/${this.backendService.competition}/${this.regId}`);
   }
-  
+
   editJudgeRegistrations() {
     this.navCtrl.navigateForward(`reg-judgelist/${this.backendService.competition}/${this.regId}`);
   }

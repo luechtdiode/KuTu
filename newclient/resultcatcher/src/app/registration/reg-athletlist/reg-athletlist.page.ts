@@ -13,10 +13,9 @@ import { ProviderMeta } from '@angular/compiler';
   styleUrls: ['./reg-athletlist.page.scss'],
 })
 export class RegAthletlistPage implements OnInit {
-  private busy = new BehaviorSubject(false);
-
-  private currentRegistration: ClubRegistration;
-  private currentRegId: number;
+  busy = new BehaviorSubject(false);
+  currentRegistration: ClubRegistration;
+  currentRegId: number;
   wkPgms: ProgrammRaw[];
   tMyQueryStream = new Subject<any>();
 
@@ -169,6 +168,10 @@ export class RegAthletlistPage implements OnInit {
 
   isLoggedInAsAdmin(): boolean {
     return this.backendService.loggedIn && !!this.backendService.authenticatedClubId;
+  }
+
+  isLoggedIn(): boolean {
+    return this.backendService.loggedIn;
   }
 
   filter(query: string) {

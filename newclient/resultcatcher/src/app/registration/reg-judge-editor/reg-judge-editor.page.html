@@ -3,8 +3,8 @@
     <ion-buttons slot="start">
       <ion-back-button defaultHref="/"></ion-back-button>
     </ion-buttons>
-    <ion-title>Wertungsrichter-Anmeldung</ion-title>  
-    <ion-note slot="end"><div class="judge">für {{wettkampf}}</div></ion-note>  
+    <ion-title>Wertungsrichter-Anmeldung</ion-title>
+    <ion-note slot="end"><div class="judge">für {{wettkampf}}</div></ion-note>
   </ion-toolbar>
 </ion-header>
 
@@ -17,14 +17,14 @@
           <img src="assets/imgs/chief.png">
         </ion-avatar>
         <ion-input required placeholder="Name" type="text"  [disabled]="false" [(ngModel)]='registration.name' name="name" required></ion-input>
-        <ion-input required placeholder="Vorname" type="text"  [disabled]="false" [(ngModel)]='registration.vorname' name="vorname" required></ion-input>          
+        <ion-input required placeholder="Vorname" type="text"  [disabled]="false" [(ngModel)]='registration.vorname' name="vorname" required></ion-input>
       </ion-item>
       <ion-item>
         <ion-avatar slot="start">
           &nbsp;
         </ion-avatar>
         <ion-label color="primary">Geschlecht</ion-label>
-        <ion-select required [disabled]="registration.athletId > 0" placeholder='Geschlecht' [(ngModel)]='registration.geschlecht' name="geschlecht" okText='Okay' cancelText='Abbrechen' required>
+        <ion-select required placeholder='Geschlecht' [(ngModel)]='registration.geschlecht' name="geschlecht" okText='Okay' cancelText='Abbrechen' required>
           <ion-select-option [value]='"W"'>weiblich</ion-select-option>
           <ion-select-option [value]='"M"'>männlich</ion-select-option>
         </ion-select>
@@ -35,7 +35,7 @@
           <img src="assets/imgs/atmail.png">
         </ion-avatar>
         <!-- <ion-label color="primary">Mail</ion-label> -->
-        <ion-input [readonly]='false'  placeholder="Mail" type="email" 
+        <ion-input [readonly]='false'  placeholder="Mail" type="email"
         pattern="^[_a-z0-9-]+(\.[_a-z0-9-]+)*@[a-z0-9-]+(\.[a-z0-9-]+)*(\.[a-z]{2,5})$" [disabled]="false" [ngModel]='registration.mail' name="mail" required></ion-input>
         <!-- <ion-label color="primary">Mobile/SMS</ion-label> -->
         <ion-input [readonly]='false'  placeholder="Mobile/SMS (+4179...)" type="tel" pattern="[+]{1}[0-9]{11,14}" [disabled]="false" [ngModel]='registration.mobilephone' name="mobilephone" required></ion-input>
@@ -51,7 +51,7 @@
           &nbsp;
         </ion-avatar>
         <ion-label color="primary">Kommentar</ion-label>
-        <ion-textarea placeholder="Kommentar zur Einteilung als Wertungsrichter" [disabled]="false" [(ngModel)]='registration.comment' name="comment"></ion-textarea>          
+        <ion-textarea placeholder="Kommentar zur Einteilung als Wertungsrichter" [disabled]="false" [(ngModel)]='registration.comment' name="comment"></ion-textarea>
       </ion-item>
     </ion-list>
     <ion-list>
