@@ -46,6 +46,8 @@ jobs:
         if: ${{ github.event_name == 'pull_request' }}
       - name: Setup NPM
         uses: actions/setup-node@v1
+        with:
+          node-version: 12.x
       - name: Build Mobile-App
         run: |
           cd newclient/resultcatcher
