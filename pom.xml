@@ -130,12 +130,12 @@
 		<dependency>
 			<groupId>org.xerial</groupId>
 			<artifactId>sqlite-jdbc</artifactId>
-			<version>3.36.0</version>
+			<version>3.36.0.1</version>
 		</dependency>
 		<dependency>
 			<groupId>org.postgresql</groupId>
 			<artifactId>postgresql</artifactId>
-			<version>42.2.22</version>
+			<version>42.2.23</version>
 		</dependency>
 		<dependency>
 			<groupId>com.typesafe.slick</groupId>
@@ -225,13 +225,13 @@
 		<dependency>
 			<groupId>org.json4s</groupId>
 			<artifactId>json4s-native_${scala.majorversion}</artifactId>
-			<version>4.0.0</version>
+			<version>4.0.3</version>
 		</dependency>
 		<!-- https://mvnrepository.com/artifact/org.json4s/json4s-jackson -->
 		<dependency>
 			<groupId>org.json4s</groupId>
 			<artifactId>json4s-jackson_${scala.majorversion}</artifactId>
-			<version>4.0.0</version>
+			<version>4.0.3</version>
 		</dependency>
 
 		<!-- Slick -->
