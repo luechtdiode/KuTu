@@ -32,7 +32,7 @@ object KuTuSSLContext {
     val sslContext: SSLContext = SSLContext.getInstance("TLS")
     sslContext.init(keyManagerFactory.getKeyManagers, tmf.getTrustManagers, new SecureRandom)
 
-    ConnectionContext.https(sslContext)
+    ConnectionContext.httpsServer(sslContext)
   }
 }
 trait KuTuSSLContext {

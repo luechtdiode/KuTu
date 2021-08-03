@@ -864,7 +864,7 @@ package object domain {
       val currentDate = LocalDate.now()
       val gebDatRaw = str2SQLDate(gebdat)
       val gebDatLocal = gebDatRaw.toLocalDate
-      val age = Period.between(gebDatLocal, currentDate).getYears()
+      val age = Period.between(gebDatLocal, currentDate).getYears
       if (age > 0 && age < 120) {
         Athlet(
           id = athletId match{case Some(id) => id case None => 0},
@@ -883,19 +883,24 @@ package object domain {
         throw new IllegalArgumentException(s"Geburtsdatum ergibt ein unrealistisches Alter von ${age}.")
       }
     }
-    def isEmptyRegistration = geschlecht.isEmpty
-    def isLocalIdentified = athletId match{case Some(id) if id > 0 => true case None => false}
+    def isEmptyRegistration: Boolean = geschlecht.isEmpty
+    def isLocalIdentified: Boolean = {
+      athletId match {
+        case Some(id) if id > 0L => true
+        case None => false
+      }
+    }
   }
 
   object EmptyAthletRegistration {
-    def apply(vereinregistrationId: Long) = AthletRegistration(0L, vereinregistrationId, None, "", "", "", "", 0L, 0L)
+    def apply(vereinregistrationId: Long): AthletRegistration = AthletRegistration(0L, vereinregistrationId, None, "", "", "", "", 0L, 0L)
   }
 
   case class JudgeRegistration(id: Long, vereinregistrationId: Long,
                                 geschlecht: String, name: String, vorname: String,
                                 mobilephone: String, mail: String, comment: String,
                                 registrationTime: Long) extends DataObject {
-    def validate() = {
+    def validate(): Unit = {
       if (name == null || name.trim.isEmpty) throw new IllegalArgumentException("JudgeRegistration with empty name")
       if (vorname == null || vorname.trim.isEmpty) throw new IllegalArgumentException("JudgeRegistration with empty vorname")
       if (mobilephone == null || mobilephone.trim.isEmpty) throw new IllegalArgumentException("JudgeRegistration with empty mobilephone")
