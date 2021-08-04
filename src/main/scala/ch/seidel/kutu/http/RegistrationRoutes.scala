@@ -11,7 +11,7 @@ import akka.util.{ByteString, Timeout}
 import ch.seidel.kutu.{Config, KuTuServer}
 import ch.seidel.kutu.Config.{homedir, remoteAdminBaseUrl}
 import ch.seidel.kutu.akka.{AskRegistrationSyncActions, AthletIndexActor, CompetitionRegistrationClientActor, RegistrationChanged, RegistrationResync, RegistrationSyncActions, ResyncIndex}
-import ch.seidel.kutu.domain.{AthletRegistration, AthletView, JudgeRegistration, KutuService, NewRegistration, ProgrammRaw, Registration, Verein, Wettkampf, dateToExportedStr}
+import ch.seidel.kutu.domain.{AthletRegistration, AthletView, JudgeRegistration, KutuService, NewRegistration, ProgrammRaw, Registration, RegistrationResetPW, Verein, Wettkampf, dateToExportedStr}
 import ch.seidel.kutu.renderer.{CompetitionsClubsToHtmlRenderer, CompetitionsJudgeToHtmlRenderer, PrintUtil}
 import ch.seidel.kutu.view.{RegistrationAdmin, WettkampfInfo}
 
@@ -132,7 +132,7 @@ trait RegistrationRoutes extends SprayJsonSupport with JwtSupport with JsonSuppo
             pathEndOrSingleSlash {
               get { // list Judges per club
                 complete(Future {
-                  toHTMLasJudgeRegistrationsList(wettkampf, loadAllJudgesOfCompetition(wettkampf.uuid.map(UUID.fromString(_)).get), logofile)
+                  toHTMLasJudgeRegistrationsList(wettkampf, loadAllJudgesOfCompetition(wettkampf.uuid.map(UUID.fromString).get), logofile)
                 }
                 )
               }
@@ -193,6 +193,21 @@ trait RegistrationRoutes extends SprayJsonSupport with JwtSupport with JsonSuppo
                       CompetitionRegistrationClientActor.publish(RegistrationChanged(wettkampf.uuid.get), clientId)
                       StatusCodes.OK
                     })
+                  }
+                } ~ pathPrefix("pwchange") {
+                  pathEndOrSingleSlash {
+                    put { // update/reset Password
+                      entity(as[RegistrationResetPW]) { regPwReset =>
+                        if (selectRegistration(registrationId).id.equals(regPwReset.id)) {
+                          val registration = resetRegistrationPW(regPwReset)
+                          respondWithJwtHeader(s"${registration.id}") {
+                            complete(registration)
+                          }
+                        } else {
+                          complete(StatusCodes.Conflict)
+                        }
+                      }
+                    }
                   }
                 } ~ pathPrefix("copyfrom") {
                   pathEndOrSingleSlash {

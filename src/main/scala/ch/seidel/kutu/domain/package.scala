@@ -832,12 +832,13 @@ package object domain {
   }
 
   case class NewRegistration(wettkampfId: Long, vereinname: String, verband: String, respName: String, respVorname: String, mobilephone: String, mail: String, secret: String) {
-    def toRegistration = Registration(0, wettkampfId, None, vereinname, verband, respName, respVorname, mobilephone, mail, Timestamp.valueOf(LocalDateTime.now()).getTime)
+    def toRegistration: Registration = Registration(0, wettkampfId, None, vereinname, verband, respName, respVorname, mobilephone, mail, Timestamp.valueOf(LocalDateTime.now()).getTime)
   }
 
   case class Registration(id: Long, wettkampfId: Long, vereinId: Option[Long], vereinname: String, verband: String, respName: String, respVorname: String, mobilephone: String, mail: String, registrationTime: Long) extends DataObject {
-    def toVerein = Verein(0L, vereinname, Some(verband))
+    def toVerein: Verein = Verein(0L, vereinname, Some(verband))
   }
+  case class RegistrationResetPW(id: Long, wettkampfId: Long, secret: String) extends DataObject
 
   case class AthletRegistration(id: Long, vereinregistrationId: Long,
                                 athletId: Option[Long], geschlecht: String, name: String, vorname: String, gebdat: String,

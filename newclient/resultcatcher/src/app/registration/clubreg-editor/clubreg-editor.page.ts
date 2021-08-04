@@ -5,6 +5,7 @@ import { BackendService } from 'src/app/services/backend.service';
 import { NavController, AlertController, ActionSheetController } from '@ionic/angular';
 import { take } from 'rxjs/operators';
 import { toDateString } from 'src/app/utils';
+import { RegistrationResetPW } from '../../backend-types';
 
 @Component({
   selector: 'app-clubreg-editor',
@@ -26,6 +27,7 @@ export class ClubregEditorPage implements OnInit {
   waiting = false;
   registration: ClubRegistration | NewClubRegistration;
   newRegistration: NewClubRegistration;
+  changePassword: RegistrationResetPW;
   sSyncActions: string[] = [];
   wettkampf: string;
   regId: number;
@@ -154,11 +156,24 @@ export class ClubregEditorPage implements OnInit {
       this.registration = registration;
       if (this.regId === 0) {
          this.newRegistration = registration as NewClubRegistration;
+      } else {
+        this.changePassword = {
+          id: this.regId,
+          wettkampfId: registration.wettkampfId || this.wettkampfId,
+          secret: '',
+          verification: ''
+        } as RegistrationResetPW;
       }
       if (this.registration.mail.length > 1) {
         this.backendService.currentUserName = this.registration.mail;
       }
     });
+  }
+
+  savePWChange() {
+    if (this.changePassword && this.changePassword.secret && this.changePassword.secret === this.changePassword.verification) {
+      this.backendService.saveClubRegistrationPW(this.wkId, this.changePassword);
+    }
   }
 
   save(registration: ClubRegistration | NewClubRegistration) {

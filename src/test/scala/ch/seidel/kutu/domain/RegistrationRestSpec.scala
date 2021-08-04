@@ -156,6 +156,22 @@ class RegistrationRestSpec extends KuTuBaseSpec {
       }
     }
 
+    "updateRegistration password via rest" in {
+      val reg = createTestRegistration
+      val testPwChange = RegistrationResetPW(reg.id, testwettkampf.id, myverysecretpassword)
+      val json = resetRegistrationPWFormat.write(testPwChange).compactPrint
+      HttpRequest(method = PUT, uri = s"/api/registrations/${testwettkampf.uuid.get}/${reg.id}/pwchange", entity = HttpEntity(
+        ContentTypes.`application/json`,
+        ByteString(json)
+      )).addHeader(registrationJwt.get) ~>
+        allroutes(x => vereinSecretHashLookup(x)) ~> check {
+        status should ===(StatusCodes.OK)
+        header(Config.jwtAuthorizationKey) should not be empty
+        val savedRegistration = entityAs[Registration]
+        savedRegistration.copy(verband = reg.verband) should ===(reg)
+      }
+    }
+
     def testJudgeConflict(vereinsreg: Registration, testJudgeReg: JudgeRegistration) = {
       val json = judgeregistrationFormat.write(testJudgeReg).compactPrint
       HttpRequest(method = POST, uri = s"/api/registrations/${testwettkampf.uuid.get}/${vereinsreg.id}/judges", entity = HttpEntity(
