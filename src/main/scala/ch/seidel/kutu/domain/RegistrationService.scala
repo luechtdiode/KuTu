@@ -46,6 +46,26 @@ trait RegistrationService extends DBService with RegistrationResultMapper with H
     }, Duration.Inf)
   }
 
+  def resetRegistrationPW(resetPW: RegistrationResetPW): Registration = {
+    if (resetPW.id == 0L) {
+      throw new IllegalArgumentException("Registration with id=0 can not be updated")
+    }
+    Await.result(database.run {
+      sqlu"""
+              update vereinregistration
+              set secrethash=${hashed(resetPW.secret)}
+              where id=${resetPW.id}
+      """ >>
+      sql"""
+              select
+              id, wettkampf_id, verein_id, vereinname, verband,
+              responsible_name, responsible_vorname, mobilephone, mail,
+              registrationtime
+              from vereinregistration where id=${resetPW.id}
+      """.as[Registration].head.transactionally
+    }, Duration.Inf)
+  }
+
   def extractRegistrationId(uuid: String): Option[Long] = {
     try {
       val vereinid: Long = uuid
