@@ -72,6 +72,12 @@ export interface NewClubRegistration {
   verification?: string;
 }
 
+export interface RegistrationResetPW {
+  id: number;
+  wettkampfId: number;
+  secret: string;
+  verification?: string;
+}
 export interface AthletRegistration {
   id: number;
   vereinregistrationId: number;

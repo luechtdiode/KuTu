@@ -13,7 +13,7 @@ import { DurchgangStarted, Wettkampf, Geraet, WertungContainer, NewLastResults, 
          ProgrammRaw,
          SyncAction, JudgeRegistration, JudgeRegistrationProgramItem, BulkEvent} from '../backend-types';
 import { backendUrl } from '../utils';
-import { ProgrammItem } from '../backend-types';
+import { ProgrammItem, RegistrationResetPW } from '../backend-types';
 
 // tslint:disable:radix
 // tslint:disable:variable-name
@@ -288,6 +288,18 @@ export class BackendService extends WebsocketService {
       ).pipe(share()));
       save.subscribe((data) => {
         this._clubregistrations = [...this._clubregistrations.filter(r => r.id != registration.id), data];
+        this.clubRegistrations.next(this._clubregistrations);
+        }, this.standardErrorHandler);
+      return save;
+    }
+
+    saveClubRegistrationPW(competitionId: string, pwchange: RegistrationResetPW) {
+      const save = this.startLoading('Neues Password wird gespeichert. Bitte warten ...',
+        this.http.put<MessageAck>(backendUrl + 'api/registrations/' + competitionId + '/' + pwchange.id + "/pwchange",
+        pwchange
+      ).pipe(share()));
+      save.subscribe((data) => {
+        this._clubregistrations = [...this._clubregistrations.filter(r => r.id != pwchange.id), data];
         this.clubRegistrations.next(this._clubregistrations);
         }, this.standardErrorHandler);
       return save;
