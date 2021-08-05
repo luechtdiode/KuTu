@@ -63,7 +63,7 @@
     "karma-jasmine-html-reporter": "^1.6.0",
     "protractor": "~7.0.0",
     "ts-node": "~8.3.0",
-    "typescript": "~4.2.4"
+    "typescript": "~4.3.5"
   },
   "description": "Resultcatcher"
 }
