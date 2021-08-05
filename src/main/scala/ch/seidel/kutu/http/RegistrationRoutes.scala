@@ -10,7 +10,7 @@ import akka.http.scaladsl.unmarshalling.Unmarshal
 import akka.util.{ByteString, Timeout}
 import ch.seidel.kutu.{Config, KuTuServer}
 import ch.seidel.kutu.Config.{homedir, remoteAdminBaseUrl}
-import ch.seidel.kutu.akka.{AskRegistrationSyncActions, AthletIndexActor, CompetitionRegistrationClientActor, RegistrationChanged, RegistrationResync, RegistrationSyncActions, ResyncIndex}
+import ch.seidel.kutu.akka.{AskRegistrationSyncActions, AthletIndexActor, CompetitionRegistrationClientActor, KuTuMailerActor, RegistrationChanged, RegistrationResync, RegistrationSyncActions, ResyncIndex, SimpleMail}
 import ch.seidel.kutu.domain.{AthletRegistration, AthletView, JudgeRegistration, KutuService, NewRegistration, ProgrammRaw, Registration, RegistrationResetPW, Verein, Wettkampf, dateToExportedStr}
 import ch.seidel.kutu.renderer.{CompetitionsClubsToHtmlRenderer, CompetitionsJudgeToHtmlRenderer, PrintUtil}
 import ch.seidel.kutu.view.{RegistrationAdmin, WettkampfInfo}
@@ -137,6 +137,24 @@ trait RegistrationRoutes extends SprayJsonSupport with JwtSupport with JsonSuppo
                 )
               }
             }
+          }
+        } ~ pathPrefix(LongNumber / "loginreset") { registrationId =>
+          get {// TODO protect with secret after unsuccessful login
+            val registration = selectRegistration(registrationId)
+            val link = s"https://kutuapp.sharevic.net/registration/${wettkampf.uuid.get}/${registrationId}?secret"
+            KuTuMailerActor.send(SimpleMail(
+              "Kutuapp Passwort-Reset",
+              s"""Hallo ${registration.respVorname}
+                |
+                |Mit dem folgenden Link kann in den nächsten 2h das Login zur Vereins-Registrierung
+                |  für den Verein ${registration.vereinname} (${registration.verband})
+                |  zur Wettkampf-Anmeldung '${wettkampf.easyprint}' gemacht werden.
+                |
+                |  ${link}
+                |
+                |  LG, die Kutuapp""".stripMargin,
+              registration.mail))
+            complete(StatusCodes.OK)
           }
         } ~ pathPrefix(LongNumber) { registrationId =>
           authenticated() { userId =>

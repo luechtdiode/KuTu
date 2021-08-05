@@ -142,6 +142,11 @@
 			<artifactId>slick-hikaricp_${scala.majorversion}</artifactId>
 			<version>3.3.3</version>
 		</dependency>
+		<dependency>
+			<groupId>com.github.daddykotex</groupId>
+			<artifactId>courier_${scala.majorversion}</artifactId>
+			<version>3.0.1</version>
+		</dependency>
 
 		<dependency>
 			<groupId>com.zaxxer</groupId>
