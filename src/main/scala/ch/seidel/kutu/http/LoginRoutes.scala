@@ -10,9 +10,9 @@ import ch.seidel.kutu.http.AuthSupport.OPTION_LOGINRESET
 
 trait LoginRoutes extends SprayJsonSupport with EnrichedJson with JwtSupport with AuthSupport with RouterLogging with KutuService {
 
-  def login(userLookup: (String) => String) = pathPrefix("login") {
+  def login(userLookup: (String) => String, userIdLookup: (String) => Option[Long]) = pathPrefix("login") {
     pathEndOrSingleSlash {
-      authenticateBasicPF(realm = "secure site", userPassAuthenticator(userLookup)) { userId =>
+      authenticateBasicPF(realm = "secure site", userPassAuthenticator(userLookup, userIdLookup)) { userId =>
         respondWithJwtHeader(userId) {
           if(userId.endsWith(OPTION_LOGINRESET)) {
             complete(StatusCodes.Unauthorized)

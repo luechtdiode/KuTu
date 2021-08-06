@@ -1,6 +1,5 @@
 package ch.seidel.kutu.http
 
-import java.net.{InetSocketAddress, PasswordAuthentication}
 import akka.http.scaladsl.marshallers.sprayjson.SprayJsonSupport
 import akka.http.scaladsl.marshalling.Marshal
 import akka.http.scaladsl.model._
@@ -15,13 +14,12 @@ import akka.http.scaladsl.{ClientTransport, Http}
 import akka.stream.scaladsl._
 import ch.seidel.commons.PageDisplayer
 import ch.seidel.jwt
-import ch.seidel.jwt.JsonWebToken
 import ch.seidel.kutu.Config
 import ch.seidel.kutu.Config._
-import ch.seidel.kutu.KuTuApp.{extractRegistrationId, server, setClaims}
 import ch.seidel.kutu.domain.Wettkampf
 import spray.json.JsObject
 
+import java.net.{InetSocketAddress, PasswordAuthentication}
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration.Duration
 import scala.concurrent.{Await, Future, Promise}
@@ -40,7 +38,7 @@ object AuthSupport {
   def getClientSecret = clientheader.map(_.value)
 }
 
-trait AuthSupport extends Directives with SprayJsonSupport with Hashing {
+trait AuthSupport extends Directives with SprayJsonSupport with Hashing with JwtSupport {
   import AuthSupport._
   import spray.json.DefaultJsonProtocol._
   
@@ -122,8 +120,8 @@ trait AuthSupport extends Directives with SprayJsonSupport with Hashing {
     case Some(Seq(username, password)) => 
       proxyUser = Some(username)
       proxyPassword = Some(password)
-      new PasswordAuthentication(username, proxyPassword.get.toCharArray())
-    case _ => new PasswordAuthentication(proxyUser.get, proxyPassword.get.toCharArray())
+      new PasswordAuthentication(username, proxyPassword.get.toCharArray)
+    case _ => new PasswordAuthentication(proxyUser.get, proxyPassword.get.toCharArray)
   }
   
   def httpsProxyTransport = proxyHost.flatMap(h => 
@@ -152,30 +150,30 @@ trait AuthSupport extends Directives with SprayJsonSupport with Hashing {
     credentials.verify(hash, matchHashed(hash))
   }
 
-  def knownVerein(credentials: Provided): Boolean = {
-    extractRegistrationId(credentials.identifier) match {
-      case Some(vereinid) => true
-      case None           => false
+  def knownVerein(credentials: Provided, userLookup: (String) => Option[Long]): Boolean = {
+    userLookup(credentials.identifier) match {
+      case Some(_) => true
+      case None    => false
     }
   }
 
-  def userPassAuthenticator(userSecretHashLookup: (String) => String): AuthenticatorPF[String] = {
+  def userPassAuthenticator(userSecretHashLookup: (String) => String, userLookup: (String) => Option[Long]): AuthenticatorPF[String] = {
     case p @ Credentials.Provided(id) if verify(p, userSecretHashLookup) => id
-    case p @ Credentials.Provided(id) if knownVerein(p) =>
+    case p @ Credentials.Provided(id) if knownVerein(p, userLookup) =>
       id + OPTION_LOGINRESET
   }
 
   /**
    * Supports header- and body-based request->response with credentials->acces-token
    */
-  def httpLoginRequest(uri: String, user: String, pw: String) = {
+  def httpLoginRequest(uri: String, user: String, pw: String): Future[Unit] = {
     import Core._
     import HttpMethods._
     Marshal(UserCredentials(user, pw)).to[RequestEntity] flatMap { entity =>
       Http().singleRequest(
           HttpRequest(method = POST, uri = uri, entity = entity).addHeader(Authorization(BasicHttpCredentials(user, pw))), settings = poolsettings).map {
         case HttpResponse(StatusCodes.OK, headers, entity, _) =>
-          clientheader = headers.filter(h => h.is(jwtAuthorizationKey)).headOption.flatMap {
+          clientheader = headers.find(h => h.is(jwtAuthorizationKey)).flatMap {
             case HttpHeader(_, token) => 
               entity.discardBytes()
               Some(RawHeader(jwtAuthorizationKey, token))
@@ -202,7 +200,7 @@ trait AuthSupport extends Directives with SprayJsonSupport with Hashing {
     }
     httpRenewLoginRequest(s"$remoteBaseUrl/api/loginrenew", p.uuid.get, p.readSecret(homedir, "localhost").get)
   } else {
-    p.uuid.zip(p.readSecret(homedir, remoteHostOrigin)).headOption match {
+    p.uuid.zip(p.readSecret(homedir, remoteHostOrigin)) match {
       case Some((uuid, secret)) =>
         httpRenewLoginRequest(s"$remoteBaseUrl/api/loginrenew", uuid, secret)
       case None =>
@@ -218,7 +216,7 @@ trait AuthSupport extends Directives with SprayJsonSupport with Hashing {
       val requestWithHeader = request.withHeaders(request.headers :+ RawHeader(jwtAuthorizationKey, jwtToken))
       Http().singleRequest(requestWithHeader, settings = poolsettings).map {
         case response @ HttpResponse(StatusCodes.OK, headers, entity, _) =>
-          clientheader = headers.filter(h => h.is(jwtAuthorizationKey)).headOption.flatMap {
+          clientheader = headers.find(h => h.is(jwtAuthorizationKey)).flatMap {
             case HttpHeader(_, token) => 
               entity.discardBytes()
               Some(RawHeader(jwtAuthorizationKey, token))

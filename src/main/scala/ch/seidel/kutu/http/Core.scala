@@ -51,7 +51,7 @@ trait KuTuAppHTTPServer extends ApiService with JsonSupport {
         sys.addShutdownHook(shutDown(getClass.getName))
 
         DBService.startDB()
-        val route: Route = allroutes(id => vereinSecretHashLookup(id))
+        val route: Route = allroutes(id => vereinSecretHashLookup(id), id => extractRegistrationId(id))
         val serverBuilder = Http().newServerAt(httpInterface, httpPort)
         val binding = if (hasHttpsConfig) {
           val b = serverBuilder.enableHttps(https).bindFlow(route)

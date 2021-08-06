@@ -42,7 +42,7 @@ class KuTuWettkampfCollectResultsSpec extends KuTuBaseSpec with WettkampfOvervie
       // note that there's no need for the host part in the uri:
       val request = HttpRequest(uri = "/api/competition")
 
-      request ~> allroutes(x => x) ~> check {
+      request ~> allroutes(x => x, id => extractRegistrationId(id)) ~> check {
         status should ===(StatusCodes.OK)
 
         // we expect the response to be json:
@@ -161,7 +161,7 @@ class KuTuWettkampfCollectResultsSpec extends KuTuBaseSpec with WettkampfOvervie
 
       val request = HttpRequest(uri = "/api/scores/" + testwettkampf.uuid.get + "/intermediate")
 
-      request ~> allroutes(x => x) ~> check {
+      request ~> allroutes(x => x, id => extractRegistrationId(id)) ~> check {
         status should ===(StatusCodes.OK)
 
         // we expect the response to be json:
@@ -177,7 +177,7 @@ class KuTuWettkampfCollectResultsSpec extends KuTuBaseSpec with WettkampfOvervie
         Await.result(CompetitionCoordinatorClientActor.publish(StartDurchgang(testwettkampf.uuid.get, d), clientId), Duration.Inf)
         println("intermediates:" + Await.result(CompetitionCoordinatorClientActor.publish(StartedDurchgaenge(testwettkampf.uuid.get), clientId), Duration.Inf))
       }
-      request ~> allroutes(x => x) ~> check {
+      request ~> allroutes(x => x, id => extractRegistrationId(id)) ~> check {
         status should ===(StatusCodes.OK)
 
         // we expect the response to be json:
@@ -193,7 +193,7 @@ class KuTuWettkampfCollectResultsSpec extends KuTuBaseSpec with WettkampfOvervie
         Await.result(CompetitionCoordinatorClientActor.publish(FinishDurchgang(testwettkampf.uuid.get, d), clientId), Duration.Inf)
         println("intermediates:" + Await.result(CompetitionCoordinatorClientActor.publish(StartedDurchgaenge(testwettkampf.uuid.get), clientId), Duration.Inf))
       }
-      request ~> allroutes(x => x) ~> check {
+      request ~> allroutes(x => x, id => extractRegistrationId(id)) ~> check {
         status should ===(StatusCodes.OK)
 
         // we expect the response to be json:
