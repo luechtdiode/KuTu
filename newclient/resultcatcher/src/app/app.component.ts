@@ -178,7 +178,17 @@ export class AppComponent {
             this.navController.navigateRoot('/top-results');
 
             this.backendService.initWithQuery(initializeWith.substring(4));
-          } else {
+          } else if (initializeWith.startsWith('registration')) {
+            window.history.replaceState({}, document.title, window.location.href.split('?')[0]);
+            this.clearPosParam();
+            // "registration&rid=$registrationId&c=$competitionUUID&rs=$token"
+            console.log('initializing with ' + initializeWith);
+            localStorage.setItem('external_load', initializeWith);
+            this.backendService.initWithQuery(initializeWith.substring(13)).subscribe(fin => {
+              console.log('clubreg initialzed. navigate to clubreg-editor');
+              this.navController.navigateRoot('/registration/' + this.backendService.competition + '/' +localStorage.getItem('auth_clubid'));
+            });
+          }else {
             window.history.replaceState({}, document.title, window.location.href.split('?')[0]);
             this.clearPosParam();
             console.log('initializing with ' + initializeWith);
