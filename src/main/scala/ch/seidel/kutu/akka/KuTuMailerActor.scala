@@ -3,11 +3,15 @@ package ch.seidel.kutu.akka
 import akka.actor.SupervisorStrategy.Restart
 import akka.actor.{Actor, ActorRef, OneForOneStrategy, Props}
 import akka.event.LoggingAdapter
+import akka.http.scaladsl.model.{StatusCode, StatusCodes}
+import akka.pattern.ask
+import akka.util.Timeout
 import ch.seidel.kutu.Config
 import ch.seidel.kutu.http.Core.system
 import courier.Defaults._
 import courier._
 
+import scala.concurrent.Future
 import scala.concurrent.duration.DurationInt
 import scala.util._
 import scala.util.control.NonFatal
@@ -23,7 +27,7 @@ case class SimpleMail(override val subject: String, messageText: String, overrid
 
 case class MultipartMail(override val subject: String, messageText: String, messageHTML: String, override val to: String) extends Mail
 
-case class SendRetry(mail: Mail, retries: Int) extends SendMailAction
+case class SendRetry(mail: Mail, retries: Int, sender: ActorRef) extends SendMailAction
 
 class KuTuMailerActor(smtpHost: String, smtpPort: Int, smtpUsername: String, smtpDomain: String, smtpPassword: String)
   extends Actor {
@@ -70,32 +74,36 @@ class KuTuMailerActor(smtpHost: String, smtpPort: Int, smtpUsername: String, smt
   override def receive: Receive = {
     case mail: Mail =>
       log.warning(s"smtp environment is not configured. Could not send $mail")
+      sender() ! StatusCodes.OK
 
     case _ =>
   }
 
   def receiveHot: Receive = {
     case mail: Mail =>
-      send(mail).onComplete(observeMailComletion(mail, 0))
+      send(mail).onComplete(observeMailComletion(mail, 0, sender()))
 
-    case SendRetry(action, retries) => action match {
+    case SendRetry(action, retries, sender) => action match {
       case mail: Mail =>
-        send(mail).onComplete(observeMailComletion(mail, retries))
+        send(mail).onComplete(observeMailComletion(mail, retries, sender))
     }
 
     case _ =>
   }
 
-  private def observeMailComletion(mail: Mail, retries: Int): Function1[Try[Unit], _] = {
+  private def observeMailComletion(mail: Mail, retries: Int, sender: ActorRef): Function1[Try[Unit], _] = {
     val completionObserver: Function1[Try[Unit], _] = {
       case Success(_) =>
         log.info(s"mail ${mail.subject} to ${mail.to} delivered successfully")
+        sender ! StatusCodes.OK
       case Failure(e) =>
+        e.printStackTrace()
         if (retries < 3) {
           log.warning(s"mail ${mail.subject} to ${mail.to} delivery failed: " + e.toString)
-          this.context.system.scheduler.scheduleOnce((5 * retries) minutes, self, SendRetry(mail, retries + 1))
+          this.context.system.scheduler.scheduleOnce((5 * retries + 1) minutes, self, SendRetry(mail, retries + 1, sender))
         } else {
           log.error(s"could not send message ${mail.subject} after 3 retries to ${mail.to}")
+          sender ! StatusCodes.ExpectationFailed
         }
     }
     completionObserver
@@ -149,7 +157,8 @@ object KuTuMailerActor {
 
   private val kutuapMailer: ActorRef = system.actorOf(props(), name = "KutuappMailer")
 
-  def send(mail: Mail): Unit = {
-    kutuapMailer ! mail
+  def send(mail: Mail): Future[StatusCode] = {
+    implicit lazy val timeout: Timeout = Timeout(30 minutes)
+    (kutuapMailer ? mail).asInstanceOf[Future[StatusCode]]
   }
 }

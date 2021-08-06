@@ -1,9 +1,10 @@
 package ch.seidel.kutu.domain
 
+import ch.seidel.kutu.http.AuthSupport.OPTION_LOGINRESET
+
 import java.sql.Timestamp
 import java.time.LocalDateTime
 import java.util.UUID
-
 import ch.seidel.kutu.http.Hashing
 import slick.jdbc.PostgresProfile.api._
 
@@ -73,7 +74,7 @@ trait RegistrationService extends DBService with RegistrationResultMapper with H
     } catch {
       case e: NumberFormatException =>
         val parts = uuid.split(":")
-        if (parts.length == 2) {
+        if (!uuid.endsWith(OPTION_LOGINRESET) && parts.length == 2) {
           Await.result(database.run {
             sql"""     select id
                        from vereinregistration

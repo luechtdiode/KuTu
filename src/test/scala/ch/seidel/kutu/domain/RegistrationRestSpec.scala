@@ -1,6 +1,5 @@
 package ch.seidel.kutu.domain
 
-import java.time.LocalDate
 import akka.http.scaladsl.model.HttpMethods._
 import akka.http.scaladsl.model.headers.{Authorization, BasicHttpCredentials, RawHeader}
 import akka.http.scaladsl.model.{ContentTypes, HttpEntity, HttpRequest, StatusCodes}
@@ -8,7 +7,15 @@ import akka.util.ByteString
 import ch.seidel.jwt.JsonWebToken
 import ch.seidel.kutu.Config
 import ch.seidel.kutu.Config.{jwtAuthorizationKey, jwtHeader, jwtSecretKey, jwtTokenExpiryPeriodInDays}
+import ch.seidel.kutu.akka.KuTuMailerActor
 import ch.seidel.kutu.base.KuTuBaseSpec
+import ch.seidel.kutu.mail.MockedSMTPProvider
+import courier.Defaults
+
+import java.time.LocalDate
+import java.util.Properties
+import javax.mail.Provider
+import org.jvnet.mock_javamail.{Mailbox, MockTransport}
 
 class RegistrationRestSpec extends KuTuBaseSpec {
   val testwettkampf: Wettkampf = insertGeTuWettkampf("TestGetuWK", 2)
@@ -18,6 +25,10 @@ class RegistrationRestSpec extends KuTuBaseSpec {
   var athletregistration: Option[AthletRegistration] = None
   var judgeregistration: Option[JudgeRegistration] = None
   var registrationJwt: Option[RawHeader] = None
+
+
+  Defaults.session.getProperties.put("mail.transport.protocol.rfc822", "mocked")
+  Defaults.session.setProvider(new MockedSMTPProvider)
 
   def createTestRegistration: Registration = {
     registration = registration match {
@@ -102,11 +113,38 @@ class RegistrationRestSpec extends KuTuBaseSpec {
     "protect by unauthorized login" in {
       val reg = createTestRegistration
       // test login via rest-api
-      val unauthorizedRequest = HttpRequest(method = POST, uri = "/api/login", entity = "")
+      val unsuccessfulLogin = HttpRequest(method = POST, uri = "/api/login", entity = "")
         .addHeader(Authorization(BasicHttpCredentials(reg.id.toString, "wrong password")))
-      unauthorizedRequest ~> allroutes(x => vereinSecretHashLookup(x)) ~> check {
+      unsuccessfulLogin ~> allroutes(x => vereinSecretHashLookup(x)) ~> check {
         status should ===(StatusCodes.Unauthorized)
-        header(Config.jwtAuthorizationKey) shouldBe empty
+        header(Config.jwtAuthorizationKey) should not be empty
+        HttpRequest(method = GET, uri = "/api/registrations/" + testwettkampf.uuid.get + "/" + reg.id)
+          .addHeader(header(Config.jwtAuthorizationKey).get) ~>
+          allroutes(x => vereinSecretHashLookup(x)) ~> check {
+          status should ===(StatusCodes.Forbidden)
+          header(Config.jwtAuthorizationKey) shouldBe empty
+        }
+      }
+    }
+
+    "enable password-reset option after unsuccessful login with correct username" in {
+      val reg = createTestRegistration
+      // test login via rest-api
+      val unsuccessfulLogin = HttpRequest(method = POST, uri = "/api/login", entity = "")
+        .addHeader(Authorization(BasicHttpCredentials(reg.id.toString, "wrong password")))
+      unsuccessfulLogin ~> allroutes(x => vereinSecretHashLookup(x)) ~> check {
+        status should ===(StatusCodes.Unauthorized)
+        header(Config.jwtAuthorizationKey) should not be empty
+        HttpRequest(method = POST, uri = "/api/registrations/" + testwettkampf.uuid.get + "/" + reg.id + "/loginreset", entity = "https://test-origin.ch:5678")
+          .addHeader(header(Config.jwtAuthorizationKey).get) ~>
+          allroutes(x => vereinSecretHashLookup(x)) ~> check {
+          status should ===(StatusCodes.OK)
+          header(Config.jwtAuthorizationKey) shouldBe empty
+          val inbox = Mailbox.get("a@b.com")
+          inbox.size should ===(1)
+          val msg = inbox.get(0)
+          msg.getContent.toString.contains("https://test-origin.ch:5678") should ===(true)
+        }
       }
     }
 

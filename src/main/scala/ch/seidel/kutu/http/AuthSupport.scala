@@ -18,7 +18,7 @@ import ch.seidel.jwt
 import ch.seidel.jwt.JsonWebToken
 import ch.seidel.kutu.Config
 import ch.seidel.kutu.Config._
-import ch.seidel.kutu.KuTuApp.{server, setClaims}
+import ch.seidel.kutu.KuTuApp.{extractRegistrationId, server, setClaims}
 import ch.seidel.kutu.domain.Wettkampf
 import spray.json.JsObject
 
@@ -27,6 +27,8 @@ import scala.concurrent.duration.Duration
 import scala.concurrent.{Await, Future, Promise}
 
 object AuthSupport {
+  val OPTION_LOGINRESET = ":option-loginreset"
+
   private[AuthSupport] var proxyPort: Option[String] = None
   private[AuthSupport] var proxyHost: Option[String] = None
   private[AuthSupport] var proxyUser: Option[String] = None
@@ -150,8 +152,17 @@ trait AuthSupport extends Directives with SprayJsonSupport with Hashing {
     credentials.verify(hash, matchHashed(hash))
   }
 
+  def knownVerein(credentials: Provided): Boolean = {
+    extractRegistrationId(credentials.identifier) match {
+      case Some(vereinid) => true
+      case None           => false
+    }
+  }
+
   def userPassAuthenticator(userSecretHashLookup: (String) => String): AuthenticatorPF[String] = {
     case p @ Credentials.Provided(id) if verify(p, userSecretHashLookup) => id
+    case p @ Credentials.Provided(id) if knownVerein(p) =>
+      id + OPTION_LOGINRESET
   }
 
   /**
