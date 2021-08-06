@@ -176,8 +176,8 @@ export class BackendService extends WebsocketService {
               this.stationFreezed = true;
               break;
             case 'rs':
-              this.unlock();
               localStorage.setItem('auth_token', value);
+              this.unlock();
               this.loggedIn = true;
               //this.checkJWT(value);
               console.log('club auth-token initialized');
