@@ -6,10 +6,8 @@ import akka.http.scaladsl.model.{ContentTypes, HttpEntity, HttpResponse, StatusC
 import akka.http.scaladsl.server.Route
 import akka.http.scaladsl.unmarshalling.Unmarshal
 import akka.util.{ByteString, Timeout}
-import ch.seidel.jwt
 import ch.seidel.kutu.Config
-import ch.seidel.kutu.Config.{jwtHeader, jwtSecretKey, remoteAdminBaseUrl}
-import ch.seidel.kutu.KuTuApp.setClaims
+import ch.seidel.kutu.Config.remoteAdminBaseUrl
 import ch.seidel.kutu.akka._
 import ch.seidel.kutu.domain.{AthletRegistration, AthletView, JudgeRegistration, KutuService, NewRegistration, ProgrammRaw, Registration, RegistrationResetPW, Verein, Wettkampf, dateToExportedStr}
 import ch.seidel.kutu.http.AuthSupport.OPTION_LOGINRESET
