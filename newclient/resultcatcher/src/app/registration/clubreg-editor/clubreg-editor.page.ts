@@ -22,6 +22,9 @@ export class ClubregEditorPage implements OnInit {
     public actionSheetController: ActionSheetController,
     private zone: NgZone
     ) {
+      if (! this.backendService.competitions) {
+        this.backendService.getCompetitions();
+      }
   }
 
   waiting = false;
@@ -44,7 +47,9 @@ export class ClubregEditorPage implements OnInit {
       this.wettkampfId = parseInt(comps.find(c => c.uuid === this.wkId).id);
       if (this.regId) {
         this.backendService.getClubRegistrations(this.wkId).subscribe(regs => {
-          this.updateUI(regs.find(reg => reg.id === this.regId));
+          if (regs && regs.length > 0) {
+            this.updateUI(regs.find(reg => reg.id === this.regId));
+          }
         });
       } else {
         this.updateUI({mobilephone: '+417'} as NewClubRegistration);

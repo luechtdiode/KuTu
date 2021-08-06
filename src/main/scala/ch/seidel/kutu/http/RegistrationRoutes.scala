@@ -1,20 +1,22 @@
 package ch.seidel.kutu.http
 
-import java.util.UUID
-import spray.json._
 import akka.http.scaladsl.marshallers.sprayjson.SprayJsonSupport
 import akka.http.scaladsl.marshalling.ToResponseMarshallable
 import akka.http.scaladsl.model.{ContentTypes, HttpEntity, HttpResponse, StatusCodes}
 import akka.http.scaladsl.server.Route
 import akka.http.scaladsl.unmarshalling.Unmarshal
 import akka.util.{ByteString, Timeout}
-import ch.seidel.kutu.{Config, KuTuServer}
-import ch.seidel.kutu.Config.{homedir, remoteAdminBaseUrl}
-import ch.seidel.kutu.akka.{AskRegistrationSyncActions, AthletIndexActor, CompetitionRegistrationClientActor, RegistrationChanged, RegistrationResync, RegistrationSyncActions, ResyncIndex}
+import ch.seidel.kutu.Config
+import ch.seidel.kutu.Config.remoteAdminBaseUrl
+import ch.seidel.kutu.akka._
 import ch.seidel.kutu.domain.{AthletRegistration, AthletView, JudgeRegistration, KutuService, NewRegistration, ProgrammRaw, Registration, RegistrationResetPW, Verein, Wettkampf, dateToExportedStr}
+import ch.seidel.kutu.http.AuthSupport.OPTION_LOGINRESET
+import ch.seidel.kutu.renderer.MailTemplates.createPasswordResetMail
 import ch.seidel.kutu.renderer.{CompetitionsClubsToHtmlRenderer, CompetitionsJudgeToHtmlRenderer, PrintUtil}
-import ch.seidel.kutu.view.{RegistrationAdmin, WettkampfInfo}
+import ch.seidel.kutu.view.WettkampfInfo
+import spray.json._
 
+import java.util.UUID
 import scala.concurrent.duration.{Duration, DurationInt}
 import scala.concurrent.{Await, Future}
 
@@ -110,7 +112,7 @@ trait RegistrationRoutes extends SprayJsonSupport with JwtSupport with JsonSuppo
               AthletIndexActor.publish(ResyncIndex).map { _ =>
                 CompetitionRegistrationClientActor.publish(RegistrationResync(wettkampf.uuid.get), clientId)
                 StatusCodes.OK
-            })
+              })
           }
         } ~ path("syncactions") {
           get {
@@ -136,6 +138,29 @@ trait RegistrationRoutes extends SprayJsonSupport with JwtSupport with JsonSuppo
                 }
                 )
               }
+            }
+          }
+        } ~ pathPrefix(LongNumber / "loginreset") { registrationId =>
+          authenticated() { loginresetToken =>
+            if (loginresetToken.endsWith(OPTION_LOGINRESET)) {
+              val userId = loginresetToken.substring(0, loginresetToken.length - OPTION_LOGINRESET.length)
+              if (extractRegistrationId(userId).contains(registrationId)) {
+                post {
+                  entity(as[String]) { origin =>
+                    val wkid: String = wettkampf.uuid.get
+                    val registration = selectRegistration(registrationId)
+                    val resetLoginQuery = createOneTimeResetRegistrationLoginToken(wkid, registrationId)
+                    val link = s"$origin/registration/${wkid}/${registrationId}?$resetLoginQuery"
+                    complete(
+                      KuTuMailerActor.send(createPasswordResetMail(wettkampf, registration, link))
+                    )
+                  }
+                }
+              } else {
+                complete(StatusCodes.Forbidden)
+              }
+            } else {
+              complete(StatusCodes.Conflict)
             }
           }
         } ~ pathPrefix(LongNumber) { registrationId =>
@@ -353,4 +378,5 @@ trait RegistrationRoutes extends SprayJsonSupport with JwtSupport with JsonSuppo
       }
     }
   }
+
 }

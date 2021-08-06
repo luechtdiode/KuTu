@@ -888,7 +888,7 @@ package object domain {
     def isLocalIdentified: Boolean = {
       athletId match {
         case Some(id) if id > 0L => true
-        case None => false
+        case _ => false
       }
     }
   }

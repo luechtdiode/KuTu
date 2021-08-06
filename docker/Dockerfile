@@ -24,6 +24,12 @@ ENV X_POSTGRES_HOST ""
 ENV X_POSTGRES_USER ""
 ENV X_POSTGRES_PASSWORD ""
 
+ENV X_SMTP_HOST "undefined"
+ENV X_SMTP_PORT 0
+ENV X_SMTP_USERNAME = "undefined"
+ENV X_SMTP_DOMAIN = "undefined"
+ENV X_SMTP_PASSWORD = "undefined"
+
 ENTRYPOINT [ "java", "-cp", ".:app.jar:libs/*" \
     , "-Duser.home=/home" \
     , "-server" \

@@ -17,7 +17,7 @@ trait ApiService extends RouteConcatenation with CIDSupport with RouterLogging
 
   //  private implicit lazy val _ = ch.seidel.kutu.http.Core.system.dispatcher
 
-  def allroutes(userLookup: (String) => String) = {
+  def allroutes(userLookup: (String) => String, userIdLookup: (String) => Option[Long]) = {
     def myExceptionHandler: ExceptionHandler = ExceptionHandler {
       case e: Exception =>
         (handleCID & extractUri) { (clientId: String, uri: Uri) =>
@@ -29,7 +29,7 @@ trait ApiService extends RouteConcatenation with CIDSupport with RouterLogging
     handleExceptions(myExceptionHandler) {
       resourceRoutes ~
       pathPrefix("api") {
-        login(userLookup) ~
+        login(userLookup, userIdLookup) ~
           wertungenRoutes ~
           wettkampfRoutes ~
           scoresRoutes ~

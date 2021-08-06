@@ -131,7 +131,7 @@ export class BackendService extends WebsocketService {
       });
       this.loadingInstance.then(alert => alert.present());
       if (observable) {
-        observable.subscribe(() => this.resetLoading(), (err) => {});
+        observable.subscribe(() => this.resetLoading(), (err) => this.resetLoading());
       }
       return observable;
     }
@@ -175,6 +175,17 @@ export class BackendService extends WebsocketService {
               this.checkJWT();
               this.stationFreezed = true;
               break;
+            case 'rs':
+              localStorage.setItem('auth_token', value);
+              this.unlock();
+              this.loggedIn = true;
+              //this.checkJWT(value);
+              console.log('club auth-token initialized');
+              break;
+            case 'rid':
+              localStorage.setItem('auth_clubid', value);
+              console.log('club id initialized', value);
+              break;
             default:
           }
         });
@@ -190,6 +201,9 @@ export class BackendService extends WebsocketService {
           ).subscribe(fin =>
             finished.next(true)
           );
+        } else if (!!!this._competition || this._competition === 'undefined' && !!!localStorage.getItem('auth_clubid')) {
+          console.log('initializing clubreg ...');
+          this.getClubRegistrations(this._competition).subscribe(fin => finished.next(true));
         } else if (this._competition) {
           this.getCompetitions().pipe(
             switchMap(() => this.loadDurchgaenge())
@@ -516,6 +530,12 @@ export class BackendService extends WebsocketService {
       return decodeURIComponent(escape(window.atob( str )));
     }
 
+    resetRegistration(clubId: number) {
+      const loader = this.startLoading('Mail für Login-Reset wird versendet. Bitte warten ...',
+      this.http.post<string[]>(backendUrl + 'api/registrations/' + this._competition + '/' + clubId + '/loginreset', backendUrl).pipe(share()));
+      return loader;
+    }
+
     clublogin(username, password) {
       this.clublogout();
       const headers = new HttpHeaders();
@@ -535,13 +555,14 @@ export class BackendService extends WebsocketService {
       }, (err) => {
         console.log(err);
         this.clublogout();
+        this.resetLoading();
         if (err.status === 401) {
-          localStorage.removeItem('auth_token');
+          localStorage.setItem('auth_token', err.headers.get('x-access-token'));
           this.loggedIn = false;
-          this.showMessage.next({
+          /*this.showMessage.next({
             msg: 'Die Anmeldung ist nicht gültig oder abgelaufen.',
             type: 'Berechtigung'
-          } as MessageAck);
+          } as MessageAck);*/
         } else {
           this.standardErrorHandler(err);
         }
@@ -591,6 +612,9 @@ export class BackendService extends WebsocketService {
     }
 
     loadClubRegistrations(): Observable<ClubRegistration[]> {
+      if (!!!this._competition || this._competition === 'undefined') {
+        return of([]);
+      }
       const loader = this.startLoading('Clubanmeldungen werden geladen. Bitte warten ...',
         this.http.get<string[]>(backendUrl + 'api/registrations/' + this._competition).pipe(share()));
 
@@ -604,6 +628,9 @@ export class BackendService extends WebsocketService {
     }
 
     loadRegistrationSyncActions(): Observable<SyncAction[]> {
+      if (!!!this._competition || this._competition === 'undefined') {
+        return of([]);
+      }
       const loader = this.startLoading('Pendente An-/Abmeldungen werden geladen. Bitte warten ...',
         this.http.get<string[]>(backendUrl + 'api/registrations/' + this._competition + '/syncactions').pipe(share()));
 
@@ -634,6 +661,9 @@ export class BackendService extends WebsocketService {
     }
 
     loadDurchgaenge(): Observable<string[]> {
+      if (!!!this._competition || this._competition === 'undefined') {
+        return of([]);
+      }
       const loader = this.startLoading('Durchgangliste wird geladen. Bitte warten ...',
         this.http.get<string[]>(backendUrl + 'api/durchgang/' + this._competition).pipe(share()));
 
@@ -678,6 +708,9 @@ export class BackendService extends WebsocketService {
     }
     loadGeraete() {
       this.geraete = [];
+      if (!!!this._competition || this._competition === 'undefined') {
+        return of([]);
+      }
       let path = '';
       if (this.captionmode && this._durchgang) {
         path = backendUrl + 'api/durchgang/' + this._competition + '/' + encodeURIComponent2(this._durchgang);
@@ -720,6 +753,9 @@ export class BackendService extends WebsocketService {
 
     loadSteps() {
       this.steps = [];
+      if (!!!this._competition || this._competition === 'undefined') {
+        return of([]);
+      }
       const request = this.startLoading('Stationen zum Gerät werden geladen. Bitte warten ...',
         this.http.get<string[]>(
           backendUrl + 'api/durchgang/' + this._competition + '/' + encodeURIComponent2(this._durchgang) + '/' + this._geraet
@@ -766,7 +802,7 @@ export class BackendService extends WebsocketService {
     loadWertungen() {
       // prevent denial of service fired from the step-slider
       if (this.wertungenLoading || !this._step) {
-        return;
+        return of([]);
       }
       this.activateCaptionMode();
       const lastStepToLoad = this._step;

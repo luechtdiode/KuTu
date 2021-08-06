@@ -230,8 +230,34 @@ export class RegistrationPage implements OnInit {
             text: 'Login',
             handler: data => {
               if (data.pw && data.pw.trim().length > 0) {
-                this.backendService.clublogin(club.id, data.pw).pipe(take(1)).subscribe(() => {
+                this.backendService.clublogin(club.id, data.pw).pipe(take(1)).subscribe((success) => {
                   this.navCtrl.navigateForward(`registration/${this.competition}/${club.id}`);
+                }, (err) => {
+                  if (err.status === 401) {
+                    const resetAlert = this.alertCtrl.create({
+                      header: 'Vereins-Login Fehlgeschlagen',
+                      message: `Soll für diese Vereinsanmeldung am Wettkampf ${this.competitionName()} ein Passwort-Reset Vorgang gestartet werden?`,
+                      inputs: [],
+                      buttons: [
+                        {
+                          text: 'Abbrechen',
+                          role: 'cancel',
+                          handler: () => {
+                            console.log('Cancel clicked');
+                            return false;
+                          }
+                        },
+                        {
+                          text: 'Passwort-Reset',
+                          handler: () => {
+                            this.backendService.resetRegistration(club.id).pipe(take(1)).subscribe(() => {});
+                            return true;
+                          }
+                        }
+                      ]
+                    });
+                    resetAlert.then(a => a.present());
+                  }
                 });
                 return true;
               } else {

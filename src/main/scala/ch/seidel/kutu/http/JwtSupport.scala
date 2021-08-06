@@ -1,6 +1,6 @@
 package ch.seidel.kutu.http
 
-import java.util.Date
+import java.util.{Base64, Date}
 import java.util.concurrent.TimeUnit
 import akka.http.scaladsl.model.StatusCodes
 import akka.http.scaladsl.model.headers.RawHeader
@@ -35,6 +35,11 @@ trait JwtSupport extends Directives {
   def respondWithJwtHeader(userId: String): akka.http.scaladsl.server.Directive0 = {
     val claims = setClaims(userId, jwtTokenExpiryPeriodInDays)
     respondWithHeader(RawHeader(jwtAuthorizationKey, jwt.JsonWebToken(jwtHeader, claims, jwtSecretKey)))
+  }
+
+  def createOneTimeResetRegistrationLoginToken(competitionUUID: String, registrationId: Long) = {
+    val token = jwt.JsonWebToken(jwtHeader, setClaims(registrationId.toString, 1), jwtSecretKey)
+    new String(Base64.getUrlEncoder.encodeToString((s"registration&c=$competitionUUID&rid=$registrationId&rs=$token").getBytes))
   }
 
   def setClaims(userid: String, expiryPeriodInDays: Long) = JwtClaimsSet(
