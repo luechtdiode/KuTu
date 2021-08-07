@@ -837,6 +837,7 @@ package object domain {
 
   case class Registration(id: Long, wettkampfId: Long, vereinId: Option[Long], vereinname: String, verband: String, respName: String, respVorname: String, mobilephone: String, mail: String, registrationTime: Long) extends DataObject {
     def toVerein: Verein = Verein(0L, vereinname, Some(verband))
+    def toPublicView: Registration = Registration(id, wettkampfId, vereinId, vereinname, verband, respName, respVorname, "***", "***", registrationTime)
   }
   case class RegistrationResetPW(id: Long, wettkampfId: Long, secret: String) extends DataObject
 

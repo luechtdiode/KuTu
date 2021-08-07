@@ -75,10 +75,50 @@ class WettkampfOverviewTab(wettkampf: WettkampfView, override val service: KutuS
   }
 
   override def isPopulated: Boolean = {
+    import scala.concurrent.ExecutionContext.Implicits.global
     val wettkampfEditable = !wettkampf.toWettkampf.isReadonly(homedir, remoteHostOrigin)
     reloadData()
     text = "Übersicht"
     closable = false
+    val reportMenu = new MenuButton {
+      text = "Liste erstellen"
+      disable <== when(Bindings.createBooleanBinding(() =>
+        !wettkampf.toWettkampf.hasSecred(homedir, remoteHostOrigin)
+          || !ConnectionStates.connectedWithProperty.value.equals(wettkampf.uuid.getOrElse("")),
+        ConnectionStates.connectedWithProperty,
+        selectedWettkampfSecret,
+        controlsView.selectionModel().selectedItem)
+      ) choose true otherwise false
+      items += KuTuApp.makeMenuAction(s"Liste der Online Vereins-Registrierungen ...") { (caption: String, action: ActionEvent) =>
+        val filename = "VereinsRegistrierungen_" + wettkampf.easyprint.replace(" ", "_") + ".html"
+        val dir = new java.io.File(homedir + "/" + wettkampf.easyprint.replace(" ", "_"))
+        if(!dir.exists()) {
+          dir.mkdirs();
+        }
+
+        def generate = (lpp: Int) => KuTuApp.invokeAsyncWithBusyIndicator {Future{
+          //toHTMLasClubRegistrationsList(wettkampf, KuTuServer.getAllRegistrationsRemote(wettkampf.toWettkampf), logofile)
+          KuTuServer.getAllRegistrationsHtmlRemote(wettkampf.toWettkampf)
+        }}
+        Platform.runLater {
+          PrintUtil.printDialogFuture(caption, FilenameDefault(filename, dir), false, generate, orientation = PageOrientation.Landscape)(action)
+        }
+      }
+      items += KuTuApp.makeMenuAction(s"Liste der Online Wertungsrichter-Anmeldungen ...") { (caption: String, action: ActionEvent) =>
+        val filename = "WRAnmeldungen_" + wettkampf.easyprint.replace(" ", "_") + ".html"
+        val dir = new java.io.File(homedir + "/" + wettkampf.easyprint.replace(" ", "_"))
+        if(!dir.exists()) {
+          dir.mkdirs();
+        }
+
+        def generate = (lpp: Int) => KuTuApp.invokeAsyncWithBusyIndicator {Future{
+          KuTuServer.getAllJudgesRemote(wettkampf.toWettkampf)
+        }}
+        Platform.runLater {
+          PrintUtil.printDialogFuture(caption, FilenameDefault(filename, dir), false, generate, orientation = PageOrientation.Landscape)(action)
+        }
+      }
+    }
     content = new BorderPane {
       hgrow = Priority.Always
       vgrow = Priority.Always
@@ -138,35 +178,7 @@ class WettkampfOverviewTab(wettkampf: WettkampfView, override val service: KutuS
 //            )) choose true otherwise false
             onAction = (e: ActionEvent) => importAnmeldungen(e)
           },
-          new Button {
-            text = "Online-Anmeldungen der Wertungsrichter ..."
-            disable <== when(Bindings.createBooleanBinding(() =>
-              !wettkampf.toWettkampf.hasSecred(homedir, remoteHostOrigin)
-                || !ConnectionStates.connectedWithProperty.value.equals(wettkampf.uuid.getOrElse("")),
-              ConnectionStates.connectedWithProperty,
-              selectedWettkampfSecret,
-              controlsView.selectionModel().selectedItem)
-            ) choose true otherwise false
-            //            disable <== when(Bindings.createBooleanBinding(() =>
-            //              !wettkampf.toWettkampf.hasSecred(homedir, remoteHostOrigin),
-            //              ConnectionStates.connectedWithProperty
-            //            )) choose true otherwise false
-            onAction = (event: ActionEvent) => {
-              import scala.concurrent.ExecutionContext.Implicits.global
-              val filename = "WRAnmeldungen_" + wettkampf.easyprint.replace(" ", "_") + ".html"
-              val dir = new java.io.File(homedir + "/" + wettkampf.easyprint.replace(" ", "_"))
-              if(!dir.exists()) {
-                dir.mkdirs();
-              }
-
-              def generate = (lpp: Int) => KuTuApp.invokeAsyncWithBusyIndicator {Future{
-                KuTuServer.getAllJudgesRemote(wettkampf.toWettkampf)
-              }}
-              Platform.runLater {
-                PrintUtil.printDialogFuture("Wertungsrichter Online-Anmeldungen drucken ...", FilenameDefault(filename, dir), false, generate, orientation = PageOrientation.Landscape)(event)
-              }
-            }
-          },
+          reportMenu,
           new Button {
             text = "Übersicht drucken ..."
             minWidth = 75
