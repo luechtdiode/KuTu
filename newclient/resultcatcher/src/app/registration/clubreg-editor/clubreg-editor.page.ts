@@ -209,7 +209,7 @@ export class ClubregEditorPage implements OnInit {
           this.regId = data.id;
           this.registration = data;
           this.backendService.currentUserName = data.mail;
-          this.editAthletRegistrations();
+          this.presentActionSheet();
         });
       }
     } else {
