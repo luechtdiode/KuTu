@@ -1,8 +1,8 @@
 import { Injectable } from '@angular/core';
 import { WebsocketService, encodeURIComponent2, encodeURIComponent1 } from './websocket.service';
-import { HttpClient, HttpHeaders, HttpErrorResponse } from '@angular/common/http';
+import { HttpClient, HttpHeaders, HttpErrorResponse, HttpResponse } from '@angular/common/http';
 import { LoadingController } from '@ionic/angular';
-import { interval, of, Subscription, BehaviorSubject, Subject, Observable } from 'rxjs';
+import { of, Subscription, BehaviorSubject, Subject, Observable } from 'rxjs';
 import { share, map, switchMap} from 'rxjs/operators';
 import { DurchgangStarted, Wettkampf, Geraet, WertungContainer, NewLastResults, StartList,
          MessageAck, AthletWertungUpdated, Wertung, FinishDurchgangStation,
@@ -13,7 +13,7 @@ import { DurchgangStarted, Wettkampf, Geraet, WertungContainer, NewLastResults, 
          ProgrammRaw,
          SyncAction, JudgeRegistration, JudgeRegistrationProgramItem, BulkEvent} from '../backend-types';
 import { backendUrl } from '../utils';
-import { ProgrammItem, RegistrationResetPW } from '../backend-types';
+import { RegistrationResetPW } from '../backend-types';
 
 // tslint:disable:radix
 // tslint:disable:variable-name
@@ -531,8 +531,14 @@ export class BackendService extends WebsocketService {
     }
 
     resetRegistration(clubId: number) {
-      const loader = this.startLoading('Mail für Login-Reset wird versendet. Bitte warten ...',
-      this.http.post<string[]>(backendUrl + 'api/registrations/' + this._competition + '/' + clubId + '/loginreset', backendUrl).pipe(share()));
+      const obs: Observable<HttpResponse<String>> = this.http.post(
+        backendUrl + 'api/registrations/' + this._competition + '/' + clubId + '/loginreset', 
+        backendUrl,{
+          observe: 'response',
+          responseType: 'text'
+        }
+      ).pipe(share());
+      const loader = this.startLoading('Mail für Login-Reset wird versendet. Bitte warten ...', obs);
       return loader;
     }
 

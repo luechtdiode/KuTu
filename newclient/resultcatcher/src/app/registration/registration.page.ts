@@ -1,6 +1,6 @@
 import { Component, OnInit } from '@angular/core';
 import { Wettkampf, ClubRegistration, SyncAction } from '../backend-types';
-import { NavController, IonItemSliding, AlertController } from '@ionic/angular';
+import { NavController, IonItemSliding, AlertController, ToastController } from '@ionic/angular';
 import { BackendService } from '../services/backend.service';
 import { BehaviorSubject, Subject, of, Observable } from 'rxjs';
 import { ActivatedRoute } from '@angular/router';
@@ -28,6 +28,7 @@ export class RegistrationPage implements OnInit {
   constructor(public navCtrl: NavController,
               private route: ActivatedRoute,
               public backendService: BackendService,
+              public toastController: ToastController,
               private alertCtrl: AlertController) {
     if (! this.backendService.competitions) {
       this.backendService.getCompetitions();
@@ -194,6 +195,21 @@ export class RegistrationPage implements OnInit {
     alert.then(a => a.present());
 
   }
+  async showPasswordResetSuccess() {
+    const toast = await this.toastController.create({
+      header: 'Passwort-Reset',
+      message: 'Es wurde eine EMail mit dem Reset-Link versendet!',
+      animated: true,
+      position: 'middle',
+      buttons: [
+        {
+          text: 'OK',
+          role: 'cancel',
+        }
+      ]
+    });
+    toast.present();
+  }
 
   login(club: ClubRegistration, slidingItem: IonItemSliding) {
     slidingItem.close();
@@ -208,7 +224,7 @@ export class RegistrationPage implements OnInit {
             name: 'username',
             label: 'Vereinsname',
             placeholder: 'Vereinsname',
-            value: `${club.vereinname}`,
+            value: `${club.vereinname} (${club.verband})`,
             type: 'text'
           },
           {
@@ -250,13 +266,17 @@ export class RegistrationPage implements OnInit {
                         {
                           text: 'Passwort-Reset',
                           handler: () => {
-                            this.backendService.resetRegistration(club.id).pipe(take(1)).subscribe(() => {});
+                            this.backendService.resetRegistration(club.id).pipe(take(1)).subscribe(() => {
+                              this.showPasswordResetSuccess();
+                            });
                             return true;
                           }
                         }
                       ]
                     });
-                    resetAlert.then(a => a.present());
+                    resetAlert.then(a => {
+                      a.present();
+                    });
                   }
                 });
                 return true;
@@ -268,7 +288,14 @@ export class RegistrationPage implements OnInit {
           }
         ]
       });
-      alert.then(a => a.present());
+      alert.then(a => {
+        a.onkeypress = (ev: KeyboardEvent) => {
+          if (ev.code === 'Enter') {
+            (a.getElementsByClassName('ion-activatable')[1] as HTMLIonButtonElement).click();
+          }
+        };
+        a.present();
+      });
     }
   }
 

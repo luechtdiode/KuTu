@@ -3,7 +3,7 @@
     <ion-buttons slot="start">
       <ion-back-button defaultHref="/"></ion-back-button>
     </ion-buttons>
-    <ion-title>Vereins-Anmeldung</ion-title>
+    <ion-title>Vereins-Registrierung</ion-title>
     <ion-note slot="end"><div class="athlet">für {{wettkampf}}</div></ion-note>
   </ion-toolbar>
 </ion-header>
@@ -46,6 +46,8 @@
         <!-- <ion-label color="primary">Passwort</ion-label> -->
         <ion-input [readonly]='false'  placeholder="Passwort" type="password"  [disabled]="false" [(ngModel)]='changePassword.secret' name="secret"></ion-input>
         <ion-input [readonly]='false'  placeholder="Passwort bestätigen" type="password"  [disabled]="false" [(ngModel)]='changePassword.verification' name="verification"></ion-input>
+      </ion-item>
+      <ion-item *ngIf="regId > 0">
         <ion-button size="small" (click)="savePWChange()" #btnChangePassword [disabled]="waiting || !changePassword.secret || changePassword.secret !== changePassword.verification" color="danger">
           <ion-icon slot="start" name="save"></ion-icon>Passwort ändern
         </ion-button>
