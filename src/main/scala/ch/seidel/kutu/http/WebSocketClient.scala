@@ -105,9 +105,13 @@ object WebSocketClient extends SprayJsonSupport with JsonSupport with AuthSuppor
   def reportErrorsFlow[T](handleError: Throwable=>Unit): Flow[T, T, Any] =
     Flow[T]
       .watchTermination()((_, f) => f.onComplete {
-        case Failure(cause) =>
-          logger.error(s"WS-Client stream failed with $cause")
-          handleError(cause)
+        case Failure(cause) => cause match {
+          case akka.stream.SubscriptionWithCancelException.StageWasCompleted =>
+            logger.info(s"WS-Client stream closed")
+          case _ =>
+            logger.error(s"WS-Client stream failed with $cause")
+            handleError(cause)
+        }
         case _ => // ignore regular completion
           logger.info(s"WS-Client stream closed")
       })

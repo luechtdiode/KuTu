@@ -77,6 +77,15 @@ trait RegistrationRoutes extends SprayJsonSupport with JwtSupport with JsonSuppo
     }
     , Duration.Inf)
 
+  def getAllRegistrationsHtmlRemote(p: Wettkampf): String = Await.result(
+    httpGetClientRequest(s"$remoteAdminBaseUrl/api/registrations/${p.uuid.get}?html").flatMap {
+      case HttpResponse(StatusCodes.OK, headers, entity, _) =>
+        Unmarshal(entity).to[String]
+
+      case _ => Future("")
+    }
+    , Duration.Inf)
+
   lazy val registrationRoutes: Route = {
     (handleCID & extractClientIP) { (clientId, ip) =>
       pathPrefix("registrations" / JavaUUID) { competitionId =>
@@ -84,12 +93,21 @@ trait RegistrationRoutes extends SprayJsonSupport with JwtSupport with JsonSuppo
         val logodir = new java.io.File(Config.homedir + "/" + wettkampf.easyprint.replace(" ", "_"))
         val logofile = PrintUtil.locateLogoFile(logodir)
         pathEndOrSingleSlash {
-          get { // list Vereinsregistration
+          authenticated(true) { id =>
+            get {
+              parameters(Symbol("html").?) {
+                case None =>
+                  complete(selectRegistrationsOfWettkampf(competitionId))
+                case _ =>
+                  complete(ToResponseMarshallable(HttpEntity(ContentTypes.`text/html(UTF-8)`, toHTMLasClubRegistrationsList(wettkampf, selectRegistrationsOfWettkampf(competitionId), logofile))))
+              }
+            }
+          } ~ get { // list Vereinsregistration
             parameters(Symbol("html").?) {
               case None =>
-                complete(selectRegistrationsOfWettkampf(competitionId))
+                complete(selectRegistrationsOfWettkampf(competitionId).map(_.toPublicView))
               case _ =>
-                complete(ToResponseMarshallable(HttpEntity(ContentTypes.`text/html(UTF-8)`, toHTMLasClubRegistrationsList(wettkampf, selectRegistrationsOfWettkampf(competitionId), logofile))))
+                complete(ToResponseMarshallable(HttpEntity(ContentTypes.`text/html(UTF-8)`, toHTMLasClubRegistrationsList(wettkampf, selectRegistrationsOfWettkampf(competitionId).map(_.toPublicView), logofile))))
             }
           } ~ post { // create Vereinsregistration
             entity(as[NewRegistration]) { newRegistration =>

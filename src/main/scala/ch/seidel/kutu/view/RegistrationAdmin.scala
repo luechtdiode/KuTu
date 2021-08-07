@@ -112,7 +112,7 @@ object RegistrationAdmin {
         }
 
         //        logger.info(s"resolved candidate for ${parsed} in ${System.currentTimeMillis() - startime}ms")
-        (vereinregistration, athletRegistration, parsed, AthletView(
+        (vereinregistration.toPublicView, athletRegistration, parsed, AthletView(
           candidate.id, candidate.js_id,
           candidate.geschlecht, candidate.name, candidate.vorname, candidate.gebdat,
           candidate.strasse, candidate.plz, candidate.ort,

@@ -163,7 +163,6 @@ trait WettkampfOverviewToHtmlRenderer {
 
     val logoHtml = (if (logo.exists) s"""<img class=logo src="${logo.imageSrcForWebEngine}" title="Logo"/>""" else s"")
     val registrationURL = s"$remoteBaseUrl/registration/${wettkampf.uuid.get}"
-    val registrationContactsURL = s"$remoteBaseUrl/api/registrations/${wettkampf.uuid.get}?html"
 
     val auszSchwelle = (if (wettkampf.auszeichnung > 100) {
       wettkampf.auszeichnung / 100d
@@ -222,9 +221,7 @@ trait WettkampfOverviewToHtmlRenderer {
       </div>
       <h2>Anmeldungen</h2>
       <p>Link für die Online-Anmeldung zum Versenden an die Vereinsverantwortlichen oder für in die Wettkampf-Ausschreibung:<br>
-      <a href="$registrationURL" target="_blank">$registrationURL</a></p>
-      <p>Link für die komplette Kontaktliste der auf dem Server registrierten Vereine:<br>
-      <a href="$registrationContactsURL" target="_blank">$registrationContactsURL</a>
+      <a href="$registrationURL" target="_blank">$registrationURL</a>
       </p>
       <div class="showborder">
         <table width="100%">
