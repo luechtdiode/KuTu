@@ -135,8 +135,12 @@ class RegistrationRestSpec extends KuTuBaseSpec {
       unsuccessfulLogin ~> allroutes(x => vereinSecretHashLookup(x), id => extractRegistrationId(id)) ~> check {
         status should ===(StatusCodes.Unauthorized)
         header(Config.jwtAuthorizationKey) should not be empty
-        val encodedOrigin = Base64.getEncoder.encodeToString("https://test-origin.ch:5678".getBytes("utf-8"))
-        HttpRequest(method = POST, uri = "/api/registrations/" + testwettkampf.uuid.get + "/" + reg.id + "/loginreset", entity = encodedOrigin)
+        val host = "test-origin.ch:5678"
+        val encodedOrigin = s"https://$host"
+        val path = "/api/registrations/" + testwettkampf.uuid.get + "/" + reg.id + "/loginreset"
+        HttpRequest(method = OPTIONS, uri = path)
+          .addHeader(RawHeader("Host", host))
+          .addHeader(RawHeader("Referer", encodedOrigin + path))
           .addHeader(header(Config.jwtAuthorizationKey).get) ~>
           allroutes(x => vereinSecretHashLookup(x), id => extractRegistrationId(id)) ~> check {
           status should ===(StatusCodes.OK)

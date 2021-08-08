@@ -170,22 +170,18 @@ trait RegistrationRoutes extends SprayJsonSupport with JwtSupport with JsonSuppo
             }
           }
         } ~ pathPrefix(LongNumber / "loginreset") { registrationId =>
-          authenticated() { loginresetToken =>
+          (authenticated() & extractHost & optionalHeaderValueByName("Referer")) { (loginresetToken, host, refererOption) =>
             if (loginresetToken.endsWith(OPTION_LOGINRESET)) {
               val userId = loginresetToken.substring(0, loginresetToken.length - OPTION_LOGINRESET.length)
               if (extractRegistrationId(userId).contains(registrationId)) {
-                post {
-                  entity(as[String]) { origin =>
-                    val decodedorigin = new String(Base64.getDecoder().decode(origin))
-                    val wkid: String = wettkampf.uuid.get
-                    val registration = selectRegistration(registrationId)
-                    val resetLoginQuery = createOneTimeResetRegistrationLoginToken(wkid, registrationId)
-                    val link = s"$decodedorigin/registration/${wkid}/${registrationId}?$resetLoginQuery"
-                    complete(
-                      KuTuMailerActor.send(createPasswordResetMail(wettkampf, registration, link))
-                    )
-                  }
-                }
+                val decodedorigin = refererOption.map(r => r.substring(0, r.indexOf("/registration"))).getOrElse(s"https://$host")
+                val wkid: String = wettkampf.uuid.get
+                val registration = selectRegistration(registrationId)
+                val resetLoginQuery = createOneTimeResetRegistrationLoginToken(wkid, registrationId)
+                val link = s"$decodedorigin/registration/${wkid}/${registrationId}?$resetLoginQuery"
+                complete(
+                  KuTuMailerActor.send(createPasswordResetMail(wettkampf, registration, link))
+                )
               } else {
                 complete(StatusCodes.Forbidden)
               }
