@@ -2,9 +2,6 @@ package ch.seidel.kutu.http
 
 import akka.http.scaladsl.marshallers.sprayjson.SprayJsonSupport
 import akka.http.scaladsl.model.StatusCodes
-import akka.http.scaladsl.model.headers.RawHeader
-import ch.seidel.jwt.JsonWebToken
-import ch.seidel.kutu.Config._
 import ch.seidel.kutu.domain._
 import ch.seidel.kutu.http.AuthSupport.OPTION_LOGINRESET
 
