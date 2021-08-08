@@ -16,7 +16,7 @@ import ch.seidel.kutu.renderer.{CompetitionsClubsToHtmlRenderer, CompetitionsJud
 import ch.seidel.kutu.view.WettkampfInfo
 import spray.json._
 
-import java.util.UUID
+import java.util.{Base64, UUID}
 import scala.concurrent.duration.{Duration, DurationInt}
 import scala.concurrent.{Await, Future}
 
@@ -165,10 +165,11 @@ trait RegistrationRoutes extends SprayJsonSupport with JwtSupport with JsonSuppo
               if (extractRegistrationId(userId).contains(registrationId)) {
                 post {
                   entity(as[String]) { origin =>
+                    val decodedorigin = new String(Base64.getDecoder().decode(origin))
                     val wkid: String = wettkampf.uuid.get
                     val registration = selectRegistration(registrationId)
                     val resetLoginQuery = createOneTimeResetRegistrationLoginToken(wkid, registrationId)
-                    val link = s"$origin/registration/${wkid}/${registrationId}?$resetLoginQuery"
+                    val link = s"$decodedorigin/registration/${wkid}/${registrationId}?$resetLoginQuery"
                     complete(
                       KuTuMailerActor.send(createPasswordResetMail(wettkampf, registration, link))
                     )

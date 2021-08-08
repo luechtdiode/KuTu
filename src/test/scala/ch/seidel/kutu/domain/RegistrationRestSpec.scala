@@ -13,7 +13,7 @@ import ch.seidel.kutu.mail.MockedSMTPProvider
 import courier.Defaults
 
 import java.time.LocalDate
-import java.util.Properties
+import java.util.{Base64, Properties}
 import javax.mail.Provider
 import org.jvnet.mock_javamail.{Mailbox, MockTransport}
 
@@ -135,7 +135,8 @@ class RegistrationRestSpec extends KuTuBaseSpec {
       unsuccessfulLogin ~> allroutes(x => vereinSecretHashLookup(x), id => extractRegistrationId(id)) ~> check {
         status should ===(StatusCodes.Unauthorized)
         header(Config.jwtAuthorizationKey) should not be empty
-        HttpRequest(method = POST, uri = "/api/registrations/" + testwettkampf.uuid.get + "/" + reg.id + "/loginreset", entity = "https://test-origin.ch:5678")
+        val encodedOrigin = Base64.getEncoder.encodeToString("https://test-origin.ch:5678".getBytes("utf-8"))
+        HttpRequest(method = POST, uri = "/api/registrations/" + testwettkampf.uuid.get + "/" + reg.id + "/loginreset", entity = encodedOrigin)
           .addHeader(header(Config.jwtAuthorizationKey).get) ~>
           allroutes(x => vereinSecretHashLookup(x), id => extractRegistrationId(id)) ~> check {
           status should ===(StatusCodes.OK)
@@ -143,7 +144,8 @@ class RegistrationRestSpec extends KuTuBaseSpec {
           val inbox = Mailbox.get("a@b.com")
           inbox.size should ===(1)
           val msg = inbox.get(0)
-          msg.getContent.toString.contains("https://test-origin.ch:5678") should ===(true)
+          val msgContent = msg.getContent.toString
+          msgContent.contains("https://test-origin.ch:5678") should ===(true)
         }
       }
     }

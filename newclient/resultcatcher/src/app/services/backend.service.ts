@@ -533,7 +533,7 @@ export class BackendService extends WebsocketService {
     resetRegistration(clubId: number) {
       const obs: Observable<HttpResponse<String>> = this.http.post(
         backendUrl + 'api/registrations/' + this._competition + '/' + clubId + '/loginreset', 
-        backendUrl,{
+        this.utf8_to_b64(backendUrl), {
           observe: 'response',
           responseType: 'text'
         }
