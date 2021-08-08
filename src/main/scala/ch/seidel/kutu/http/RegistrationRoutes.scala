@@ -222,7 +222,7 @@ trait RegistrationRoutes extends SprayJsonSupport with JwtSupport with JsonSuppo
                 }
               }
             } else if (extractRegistrationId(userId).contains(registrationId)) {
-              respondWithJwtHeader(s"${registrationId}") {
+              respondWithJwtHeader(s"$registrationId") {
                 pathEndOrSingleSlash {
                   get {
                     complete(selectRegistration(registrationId))
@@ -316,7 +316,7 @@ trait RegistrationRoutes extends SprayJsonSupport with JwtSupport with JsonSuppo
                                 reg
                               } catch {
                                 case e: IllegalArgumentException =>
-                                  log.error(e.getMessage())
+                                  log.error(e.getMessage)
                                   StatusCodes.Conflict
                               }
                             } else {
@@ -365,7 +365,7 @@ trait RegistrationRoutes extends SprayJsonSupport with JwtSupport with JsonSuppo
                             reg
                           } catch {
                             case e: IllegalArgumentException =>
-                              log.error(e.getMessage())
+                              log.error(e.getMessage)
                               StatusCodes.Conflict
                           }
                         }
