@@ -11,7 +11,7 @@ import { DurchgangStarted, Wettkampf, Geraet, WertungContainer, NewLastResults, 
          NewClubRegistration,
          AthletRegistration,
          ProgrammRaw,
-         SyncAction, JudgeRegistration, JudgeRegistrationProgramItem, BulkEvent} from '../backend-types';
+         SyncAction, JudgeRegistration, JudgeRegistrationProgramItem, BulkEvent, Verein} from '../backend-types';
 import { backendUrl } from '../utils';
 import { RegistrationResetPW } from '../backend-types';
 
@@ -530,10 +530,26 @@ export class BackendService extends WebsocketService {
       return decodeURIComponent(escape(window.atob( str )));
     }
 
+    clublist: Verein[] = [];
+
+    getClubList() {
+      if (!!this.clublist && this.clublist.length > 0) {
+        return of(this.clublist);
+      }
+      const loader = this.startLoading('Clubliste wird geladen. Bitte warten ...',
+        this.http.get<string[]>(backendUrl + 'api/registrations/clubnames').pipe(share()));
+
+      loader.subscribe((data) => {
+        this.clublist = data;
+      }, this.standardErrorHandler);
+
+      return loader;
+    }
+
     resetRegistration(clubId: number) {
       const obs: Observable<HttpResponse<String>> = this.http.post(
         backendUrl + 'api/registrations/' + this._competition + '/' + clubId + '/loginreset', 
-        backendUrl,{
+        this.utf8_to_b64(backendUrl), {
           observe: 'response',
           responseType: 'text'
         }

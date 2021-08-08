@@ -16,8 +16,9 @@ import ch.seidel.kutu.renderer.{CompetitionsClubsToHtmlRenderer, CompetitionsJud
 import ch.seidel.kutu.view.WettkampfInfo
 import spray.json._
 
-import java.util.UUID
-import scala.concurrent.duration.{Duration, DurationInt}
+import java.time.Instant
+import java.util.{Base64, UUID}
+import scala.concurrent.duration.{DAYS, Duration, DurationInt}
 import scala.concurrent.{Await, Future}
 
 trait RegistrationRoutes extends SprayJsonSupport with JwtSupport with JsonSupport with AuthSupport with RouterLogging
@@ -88,7 +89,17 @@ trait RegistrationRoutes extends SprayJsonSupport with JwtSupport with JsonSuppo
 
   lazy val registrationRoutes: Route = {
     (handleCID & extractClientIP) { (clientId, ip) =>
-      pathPrefix("registrations" / JavaUUID) { competitionId =>
+      pathPrefix("registrations" / "clubnames") {
+        pathEndOrSingleSlash {
+          get {
+            val since1Year = System.currentTimeMillis() - Duration(365, DAYS).toMillis
+            complete(selectRegistrations()
+              .filter(_.registrationTime > since1Year)
+              .map(r => r.toVerein).distinct
+              .sortBy(v => v.easyprint))
+          }
+        }
+      } ~ pathPrefix("registrations" / JavaUUID) { competitionId =>
         val wettkampf = readWettkampf(competitionId.toString)
         val logodir = new java.io.File(Config.homedir + "/" + wettkampf.easyprint.replace(" ", "_"))
         val logofile = PrintUtil.locateLogoFile(logodir)
@@ -165,10 +176,11 @@ trait RegistrationRoutes extends SprayJsonSupport with JwtSupport with JsonSuppo
               if (extractRegistrationId(userId).contains(registrationId)) {
                 post {
                   entity(as[String]) { origin =>
+                    val decodedorigin = new String(Base64.getDecoder().decode(origin))
                     val wkid: String = wettkampf.uuid.get
                     val registration = selectRegistration(registrationId)
                     val resetLoginQuery = createOneTimeResetRegistrationLoginToken(wkid, registrationId)
-                    val link = s"$origin/registration/${wkid}/${registrationId}?$resetLoginQuery"
+                    val link = s"$decodedorigin/registration/${wkid}/${registrationId}?$resetLoginQuery"
                     complete(
                       KuTuMailerActor.send(createPasswordResetMail(wettkampf, registration, link))
                     )

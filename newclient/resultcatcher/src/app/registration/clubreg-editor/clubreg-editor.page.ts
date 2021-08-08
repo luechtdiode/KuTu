@@ -1,11 +1,12 @@
 import { Component, OnInit, NgZone } from '@angular/core';
-import { ClubRegistration, NewClubRegistration, SyncAction } from 'src/app/backend-types';
+import { ClubRegistration, NewClubRegistration, Verein } from 'src/app/backend-types';
 import { ActivatedRoute } from '@angular/router';
 import { BackendService } from 'src/app/services/backend.service';
 import { NavController, AlertController, ActionSheetController } from '@ionic/angular';
 import { take } from 'rxjs/operators';
 import { toDateString } from 'src/app/utils';
 import { RegistrationResetPW } from '../../backend-types';
+import { AutoCompleteOptions, AutoCompleteService } from 'ionic4-auto-complete';
 
 @Component({
   selector: 'app-clubreg-editor',
@@ -25,6 +26,45 @@ export class ClubregEditorPage implements OnInit {
       if (! this.backendService.competitions) {
         this.backendService.getCompetitions();
       }
+      this.backendService.getClubList().subscribe(list => {
+        this.clublist = list;
+      });
+      this.options = new AutoCompleteOptions();
+
+      this.options.autocomplete = 'on';
+      this.options.autocorrect = 'off';
+      this.options.noItems = 'Kein passender Vereinsname bekannt';
+      //this.options.debounce = 100;
+      this.options.placeholder = 'Vereinsname übernehmen ...';
+  }
+
+  public options: AutoCompleteOptions;
+  public provider: AutoCompleteService = {
+    // autocomplete service interface
+    getResults: (query: any) => {
+      const q = (query || '').trim();
+      const result: Verein[] = [];
+
+      if (q && this.clublist && this.clublist.length > 0) {
+        this.clublist.forEach(verein => {
+          const filterFn = this.filter(q);
+          if (filterFn(verein)) {
+            result.push(verein);
+          }
+        });
+      }
+
+      return result;
+    },
+
+    getItemLabel: (item: Verein) => {
+      return item.name + ' (' + item.verband + ')';
+    }
+  };
+
+  vereinSelected(selection: Verein) {
+    this.newRegistration.vereinname = selection.name;
+    this.newRegistration.verband = selection.verband;
   }
 
   waiting = false;
@@ -32,6 +72,7 @@ export class ClubregEditorPage implements OnInit {
   newRegistration: NewClubRegistration;
   changePassword: RegistrationResetPW;
   sSyncActions: string[] = [];
+  clublist: Verein[] = [];
   wettkampf: string;
   regId: number;
   wkId: string;
@@ -55,6 +96,20 @@ export class ClubregEditorPage implements OnInit {
         this.updateUI({mobilephone: '+417'} as NewClubRegistration);
       }
     });
+  }
+  
+  filter(query: string) {
+    const queryTokens = query.toUpperCase().split(' ');
+    return (tn: Verein): boolean => {
+      return query.trim() === '*' || queryTokens.filter(token => {
+        if (tn.name.toUpperCase().indexOf(token) > -1) {
+          return true;
+        }
+        if (tn.verband.toUpperCase().indexOf(token) > -1) {
+          return true;
+        }
+      }).length === queryTokens.length;
+    };
   }
 
   async presentActionSheet() {
@@ -169,7 +224,7 @@ export class ClubregEditorPage implements OnInit {
           verification: ''
         } as RegistrationResetPW;
       }
-      if (this.registration.mail.length > 1) {
+      if (!!this.registration.mail && this.registration.mail.length > 1) {
         this.backendService.currentUserName = this.registration.mail;
       }
     });

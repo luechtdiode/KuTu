@@ -47,6 +47,12 @@ export interface ProgrammRaw {
   vonAlter: number;
   bisAlter: number;
 }
+
+export interface Verein {
+  id: number;
+  name: string;
+  verband: string;
+}
 export interface ClubRegistration {
   id: number;
   mail: string;
