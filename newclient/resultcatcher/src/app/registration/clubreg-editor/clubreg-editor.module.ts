@@ -6,6 +6,7 @@ import { Routes, RouterModule } from '@angular/router';
 import { IonicModule } from '@ionic/angular';
 
 import { ClubregEditorPage } from './clubreg-editor.page';
+import { AutoCompleteModule } from 'ionic4-auto-complete';
 
 const routes: Routes = [
   {
@@ -19,6 +20,7 @@ const routes: Routes = [
     CommonModule,
     FormsModule,
     IonicModule,
+    AutoCompleteModule,
     RouterModule.forChild(routes)
   ],
   declarations: [ClubregEditorPage]
