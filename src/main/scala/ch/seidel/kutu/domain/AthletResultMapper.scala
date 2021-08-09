@@ -18,6 +18,11 @@ trait AthletResultMapper extends VereinResultMapper {
         plz = r.<<,
         ort = r.<<,
         activ = r.<<,
-        verein = r))
+        verein = r
+    ))
 
+  implicit val getAthletOptionResult = GetResult(r => r.nextLongOption() match {
+    case Some(id) => Some(getAthletViewResult(r))
+    case _ => { r.skip; r.skip; r.skip; r.skip; r.skip; r.skip; r.skip; r.skip; r.skip; r.skip; None }
+  })
 }

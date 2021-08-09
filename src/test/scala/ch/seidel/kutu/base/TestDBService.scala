@@ -15,11 +15,8 @@ object TestDBService {
   private val proplite = {
     val prop = new Properties()
     prop.setProperty("date_string_format", "yyyy-MM-dd")
-    prop.setProperty("connectionPool", "disabled")
-    prop.setProperty("keepAliveConnection", "true")
     prop
   }
-    
 
   val db = {
     val dbfile = {
@@ -27,7 +24,9 @@ object TestDBService {
       tf.deleteOnExit
       tf.getAbsolutePath
     }
-    
+
+    import slick.jdbc.SQLiteProfile.api.AsyncExecutor
+
     logger.info(s"starting database with $dbfile ...")
     val hikariConfig = new HikariConfig()
     hikariConfig.setJdbcUrl("jdbc:sqlite:" + dbfile)
@@ -37,7 +36,9 @@ object TestDBService {
     hikariConfig.setPassword("kutu")
 
     val dataSource = new HikariDataSource(hikariConfig)
-    val tempDatabase = Database.forDataSource(dataSource, maxConnections = Some(500), executor = AsyncExecutor("DB-Actions", 500, 10000), keepAliveConnection = true)
+    //val tempDatabase = Database.forDataSource(dataSource, maxConnections = Some(500), executor = AsyncExecutor("DB-Actions", 500, 10000), keepAliveConnection = true)
+    val tempDatabase = Database.forDataSource(dataSource, maxConnections = Some(10), executor = AsyncExecutor(name = "DB-Actions", minThreads = 10, maxThreads = 10, queueSize = 10000, maxConnections = 10), keepAliveConnection = true)
+
 
 //    val tempDatabase = Database.forURL(
 //        //url = "jdbc:sqlite:file:kutu?mode=memory&cache=shared",

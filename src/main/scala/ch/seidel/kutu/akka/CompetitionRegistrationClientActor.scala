@@ -29,7 +29,7 @@ case class RegistrationResync(wettkampfUUID: String) extends RegistrationAction
 
 case class AskRegistrationSyncActions(wettkampfUUID: String) extends RegistrationAction
 
-case class RegistrationSyncActions(syncActions: Vector[SyncAction]) extends RegistrationEvent
+case class RegistrationSyncActions(syncActions: List[SyncAction]) extends RegistrationEvent
 
 class CompetitionRegistrationClientActor(wettkampfUUID: String) extends Actor with JsonSupport with KutuService {
   def shortName = self.toString().split("/").last.split("#").head + "/" + clientId()
@@ -50,7 +50,7 @@ class CompetitionRegistrationClientActor(wettkampfUUID: String) extends Actor wi
 
   private val wettkampf = readWettkampf(wettkampfUUID)
   private val wettkampfInfo = WettkampfInfo(wettkampf.toView(readProgramm(wettkampf.programmId)), this)
-  private var syncActions: Option[Vector[SyncAction]] = None
+  private var syncActions: Option[List[SyncAction]] = None
   private var syncActionReceivers: List[ActorRef] = List()
   private var clientId: () => String = () => sender().path.toString
 
@@ -99,7 +99,7 @@ class CompetitionRegistrationClientActor(wettkampfUUID: String) extends Actor wi
           self ! RegistrationSyncActions(actions)
         case _ =>
           log.info("Rebuild Competition SyncActions failed")
-          self ! RegistrationSyncActions(Vector.empty)
+          self ! RegistrationSyncActions(List.empty)
       }(global)
     }
   }

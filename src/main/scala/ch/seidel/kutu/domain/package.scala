@@ -1,5 +1,10 @@
 package ch.seidel.kutu
 
+import ch.seidel.kutu.data.{NameCodec, Surname}
+import org.apache.commons.codec.language.ColognePhonetic
+import org.apache.commons.codec.language.bm._
+import org.apache.commons.text.similarity.LevenshteinDistance
+
 import java.net.URLEncoder
 import java.nio.file.{Files, LinkOption, StandardOpenOption}
 import java.sql.{Date, Timestamp}
@@ -7,12 +12,6 @@ import java.text.{ParseException, SimpleDateFormat}
 import java.time.{LocalDate, LocalDateTime, Period, ZoneId}
 import java.util.UUID
 import java.util.concurrent.TimeUnit
-
-import ch.seidel.kutu.data.{NameCodec, Surname}
-import org.apache.commons.codec.language.ColognePhonetic
-import org.apache.commons.codec.language.bm._
-import org.apache.commons.text.similarity.LevenshteinDistance
-
 import scala.concurrent.duration.Duration
 
 package object domain {
@@ -205,7 +204,7 @@ package object domain {
 
   case class Verein(id: Long, name: String, verband: Option[String]) extends DataObject {
     override def easyprint = name
-
+    def extendedprint = s"$name ${verband.getOrElse("")}"
     override def toString = name
   }
 
@@ -229,10 +228,19 @@ package object domain {
   }
 
   case class Athlet(id: Long, js_id: Int, geschlecht: String, name: String, vorname: String, gebdat: Option[java.sql.Date], strasse: String, plz: String, ort: String, verein: Option[Long], activ: Boolean) extends DataObject {
-    override def easyprint = name + " " + vorname + " " + (gebdat match {
+    override def easyprint: String = name + " " + vorname + " " + (gebdat match {
       case Some(d) => f"$d%tY ";
       case _ => ""
     })
+    def extendedprint: String = geschlecht match {
+      case "W" => s"Ti ${easyprint}"
+      case _ => s"Tu ${easyprint}"
+    }
+    def toAthletView(verein: Option[Verein]): AthletView = AthletView(
+      id, js_id,
+      geschlecht, name, vorname, gebdat,
+      strasse, plz, ort,
+      verein, activ)
   }
 
   case class AthletView(id: Long, js_id: Int, geschlecht: String, name: String, vorname: String, gebdat: Option[java.sql.Date], strasse: String, plz: String, ort: String, verein: Option[Verein], activ: Boolean) extends DataObject {
@@ -243,7 +251,10 @@ package object domain {
       case Some(v) => v.easyprint;
       case _ => ""
     })
-
+    def extendedprint: String = geschlecht match {
+      case "W" => s"Ti ${easyprint}"
+      case _ => s"Tu ${easyprint}"
+    }
     def toAthlet = Athlet(id, js_id, geschlecht, name, vorname, gebdat, strasse, plz, ort, verein.map(_.id), activ)
     def withBestMatchingGebDat(importedGebDat: Option[Date]) = {
       copy(gebdat = importedGebDat match {
@@ -782,11 +793,11 @@ package object domain {
         halt, disziplin).hashCode()
     }
 
-    def caption = {
+    def caption: String = {
       s"(${sequenceId}) ${durchgang.getOrElse("")}: ${disziplin.map(_.name).getOrElse("")}, ${halt + 1}. Gerät"
     }
 
-    def softEquals(other: GeraeteRiege) = {
+    def softEquals(other: GeraeteRiege): Boolean = {
       hash == other.hash
     }
   }
@@ -794,7 +805,7 @@ package object domain {
   sealed trait SexDivideRule {
     val name: String
 
-    override def toString = name
+    override def toString: String = name
   }
 
   case object GemischteRiegen extends SexDivideRule {
@@ -815,8 +826,24 @@ package object domain {
     val caption: String
     val verein: Registration
   }
+  object PublicSyncAction {
+    def apply(syncation: SyncAction): SyncAction = syncation match {
+      case AddVereinAction(verein) => AddVereinAction(verein.toPublicView)
+      case ApproveVereinAction(verein) => ApproveVereinAction(verein.toPublicView)
+      case RenameVereinAction(verein, oldVerein) => RenameVereinAction(verein.toPublicView, oldVerein)
+      case RenameAthletAction(verein, existing, expected) => RenameAthletAction(verein.toPublicView, existing, expected)
+      case AddRegistration(verein, programId, athlet, suggestion) => AddRegistration(verein.toPublicView, programId, athlet, suggestion)
+      case MoveRegistration(verein, fromProgramId, toProgramid, athlet, suggestion) => MoveRegistration(verein.toPublicView, fromProgramId, toProgramid, athlet, suggestion)
+      case RemoveRegistration(verein, programId, athlet, suggestion) => RemoveRegistration(verein.toPublicView, programId, athlet, suggestion)
+    }
+  }
   case class AddVereinAction(override val verein: Registration) extends SyncAction {
-    override val caption = s"Verein Hinzufügen: ${verein.vereinname}"
+    override val caption = s"Verein hinzufügen: ${verein.vereinname}"
+  }
+  case class RenameVereinAction(override val verein: Registration, oldVerein: Verein) extends SyncAction {
+    override val caption = s"Verein umbenennen: ${oldVerein.easyprint} zu ${verein.toVerein.easyprint}"
+    def prepareLocalUpdate: Verein = verein.toVerein.copy(id = oldVerein.id)
+    def prepareRemoteUpdate: Option[Verein] = verein.selectedInitialClub.map(club => verein.toVerein.copy(id = club.id))
   }
   case class ApproveVereinAction(override val verein: Registration) extends SyncAction {
     override val caption = s"Verein bestätigen: ${verein.vereinname}"
@@ -835,18 +862,44 @@ package object domain {
     def toRegistration: Registration = Registration(0, wettkampfId, None, vereinname, verband, respName, respVorname, mobilephone, mail, Timestamp.valueOf(LocalDateTime.now()).getTime)
   }
 
-  case class Registration(id: Long, wettkampfId: Long, vereinId: Option[Long], vereinname: String, verband: String, respName: String, respVorname: String, mobilephone: String, mail: String, registrationTime: Long) extends DataObject {
+  case class Registration(id: Long, wettkampfId: Long, vereinId: Option[Long], vereinname: String, verband: String, respName: String, respVorname: String, mobilephone: String, mail: String, registrationTime: Long, selectedInitialClub: Option[Verein] = None) extends DataObject {
     def toVerein: Verein = Verein(0L, vereinname, Some(verband))
     def toPublicView: Registration = Registration(id, wettkampfId, vereinId, vereinname, verband, respName, respVorname, "***", "***", registrationTime)
+    def matchesVerein(v: Verein): Boolean = {
+      (v.name.equals(vereinname) && (v.verband.isEmpty || v.verband.get.equals(verband))) || selectedInitialClub.map(_.extendedprint).contains(v.extendedprint)
+    }
+    def matchesClubRelation(): Boolean = {
+      selectedInitialClub.nonEmpty && selectedInitialClub.exists(v => (v.name.equals(vereinname) && (v.verband.isEmpty || v.verband.get.equals(verband))))
+    }
   }
+
+  case class RenameAthletAction(override val verein: Registration, existing: Athlet, expected: Athlet) extends SyncAction {
+    override val caption = s"Athlet im Verein ${verein.vereinname} ${verein.verband} umbenennen: ${existing.extendedprint} zu ${expected.extendedprint}"
+    def applyChange: Athlet = existing.copy(
+      geschlecht = expected.geschlecht,
+      name = expected.name,
+      vorname = expected.vorname,
+      gebdat = expected.gebdat
+    )
+  }
+
   case class RegistrationResetPW(id: Long, wettkampfId: Long, secret: String) extends DataObject
 
   case class AthletRegistration(id: Long, vereinregistrationId: Long,
                                 athletId: Option[Long], geschlecht: String, name: String, vorname: String, gebdat: String,
-                                programId: Long, registrationTime: Long) extends DataObject {
+                                programId: Long, registrationTime: Long, athlet: Option[AthletView]) extends DataObject {
+
+    def capitalizeIfBlockCase(s: String): String = {
+      if (s.length > 2 && (s.toUpperCase.equals(s) || s.toLowerCase.equals(s))) {
+        s.substring(0,1).toUpperCase + s.substring(1).toLowerCase
+      } else {
+        s
+      }
+    }
+
     def toAthlet: Athlet = {
-      val nameNorm = name.trim
-      val vornameNorm = vorname.trim
+      val nameNorm = capitalizeIfBlockCase(name.trim)
+      val vornameNorm = capitalizeIfBlockCase(vorname.trim)
       val nameMasculinTest = Surname.isMasculin(nameNorm)
       val nameFeminimTest = Surname.isFeminim(nameNorm)
       val vornameMasculinTest = Surname.isMasculin(vornameNorm)
@@ -892,10 +945,16 @@ package object domain {
         case _ => false
       }
     }
+    def matchesAthlet(v: Athlet): Boolean = {
+      toAthlet.extendedprint.equals(v.extendedprint)
+    }
+    def matchesAthlet(): Boolean = {
+      athlet.nonEmpty && athlet.map(_.toAthlet).exists(matchesAthlet)
+    }
   }
 
   object EmptyAthletRegistration {
-    def apply(vereinregistrationId: Long): AthletRegistration = AthletRegistration(0L, vereinregistrationId, None, "", "", "", "", 0L, 0L)
+    def apply(vereinregistrationId: Long): AthletRegistration = AthletRegistration(0L, vereinregistrationId, None, "", "", "", "", 0L, 0L, None)
   }
 
   case class JudgeRegistration(id: Long, vereinregistrationId: Long,

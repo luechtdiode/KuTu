@@ -43,6 +43,16 @@ trait RegistrationRoutes extends SprayJsonSupport with JwtSupport with JsonSuppo
       )), Duration.Inf)
   }
 
+  def updateVereinRemote(p: Wettkampf, vereinToUpdate: Option[Verein]): Unit = {
+    vereinToUpdate.foreach(verein => Await.result(httpPutClientRequest(
+      s"$remoteAdminBaseUrl/api/registrations/${p.uuid.get}/verein",
+      HttpEntity(
+        ContentTypes.`application/json`,
+        ByteString(verein.toJson.compactPrint)
+      )), Duration.Inf))
+  }
+
+
   def getRegistrations(p: Wettkampf): List[Registration] = Await.result(
     httpGetClientRequest(s"$remoteAdminBaseUrl/api/registrations/${p.uuid.get}").flatMap {
       case HttpResponse(StatusCodes.OK, headers, entity, _) => Unmarshal(entity).to[List[Registration]]
@@ -147,7 +157,7 @@ trait RegistrationRoutes extends SprayJsonSupport with JwtSupport with JsonSuppo
           get {
             withRequestTimeout(60.seconds) {
               complete(CompetitionRegistrationClientActor.publish(AskRegistrationSyncActions(wettkampf.uuid.get), clientId).map {
-                case RegistrationSyncActions(actions) => actions
+                case RegistrationSyncActions(actions) => actions.toVector
                 case _ => Vector()
               })
             }
@@ -167,6 +177,21 @@ trait RegistrationRoutes extends SprayJsonSupport with JwtSupport with JsonSuppo
                 }
                 )
               }
+            }
+          }
+        } ~ pathPrefix("verein") {
+          pathEndOrSingleSlash {
+            authenticated() { userId =>
+              if (userId.equals(competitionId.toString)) {
+                put {
+                  entity(as[Verein]) { verein =>
+                    val reg = updateVerein(verein)
+                    CompetitionRegistrationClientActor.publish(RegistrationChanged(wettkampf.uuid.get), clientId)
+                    complete(StatusCodes.OK)
+                  }
+                }
+              } else
+                complete(StatusCodes.Conflict)
             }
           }
         } ~ pathPrefix(LongNumber / "loginreset") { registrationId =>
@@ -287,8 +312,8 @@ trait RegistrationRoutes extends SprayJsonSupport with JwtSupport with JsonSuppo
                               er.athletId.contains(r.id) || (er.name == r.name && er.vorname == r.vorname)
                             })
                             .map {
-                              case AthletView(id, _, geschlecht, name, vorname, gebdat, _, _, _, _, _) =>
-                                AthletRegistration(0L, reg.id, Some(id), geschlecht, name, vorname, gebdat.map(dateToExportedStr).getOrElse(""), 0L, 0)
+                              case a @ AthletView(id, _, geschlecht, name, vorname, gebdat, _, _, _, _, _) =>
+                                AthletRegistration(0L, reg.id, Some(id), geschlecht, name, vorname, gebdat.map(dateToExportedStr).getOrElse(""), 0L, 0, Some(a))
                             }
                         }
                       }
