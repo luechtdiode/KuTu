@@ -255,6 +255,9 @@ package object domain {
       case "W" => s"Ti ${easyprint}"
       case _ => s"Tu ${easyprint}"
     }
+    def toPublicView: AthletView = {
+      AthletView(id, 0, geschlecht, name, vorname, gebdat, "", "", "", verein, activ)
+    }
     def toAthlet = Athlet(id, js_id, geschlecht, name, vorname, gebdat, strasse, plz, ort, verein.map(_.id), activ)
     def withBestMatchingGebDat(importedGebDat: Option[Date]) = {
       copy(gebdat = importedGebDat match {
@@ -831,7 +834,7 @@ package object domain {
       case AddVereinAction(verein) => AddVereinAction(verein.toPublicView)
       case ApproveVereinAction(verein) => ApproveVereinAction(verein.toPublicView)
       case RenameVereinAction(verein, oldVerein) => RenameVereinAction(verein.toPublicView, oldVerein)
-      case RenameAthletAction(verein, existing, expected) => RenameAthletAction(verein.toPublicView, existing, expected)
+      case RenameAthletAction(verein, athlet, existing, expected) => RenameAthletAction(verein.toPublicView, athlet, existing, expected)
       case AddRegistration(verein, programId, athlet, suggestion) => AddRegistration(verein.toPublicView, programId, athlet, suggestion)
       case MoveRegistration(verein, fromProgramId, toProgramid, athlet, suggestion) => MoveRegistration(verein.toPublicView, fromProgramId, toProgramid, athlet, suggestion)
       case RemoveRegistration(verein, programId, athlet, suggestion) => RemoveRegistration(verein.toPublicView, programId, athlet, suggestion)
@@ -873,14 +876,27 @@ package object domain {
     }
   }
 
-  case class RenameAthletAction(override val verein: Registration, existing: Athlet, expected: Athlet) extends SyncAction {
+  case class RenameAthletAction(override val verein: Registration, athletReg: AthletRegistration, existing: Athlet, expected: Athlet) extends SyncAction {
     override val caption = s"Athlet/-In korrigieren: Von ${existing.extendedprint} zu ${expected.extendedprint}"
-    def applyChange: Athlet = existing.copy(
+    def applyLocalChange: Athlet = existing.copy(
       geschlecht = expected.geschlecht,
       name = expected.name,
       vorname = expected.vorname,
       gebdat = expected.gebdat
     )
+
+    def applyRemoteChange: AthletView = athletReg
+      .toAthlet
+      .toAthletView(Some(verein
+        .toVerein
+        .copy(id = verein.vereinId.get)))
+      .copy(
+        id = athletReg.athletId.get,
+        geschlecht = expected.geschlecht,
+        name = expected.name,
+        vorname = expected.vorname,
+        gebdat = expected.gebdat
+      )
   }
 
   case class RegistrationResetPW(id: Long, wettkampfId: Long, secret: String) extends DataObject

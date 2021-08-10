@@ -106,7 +106,7 @@ object RegistrationAdminDialog {
                 case AddVereinAction(verein) => s"${verein.vereinname} (${verein.verband})"
                 case ApproveVereinAction(verein) => s"${verein.vereinname} (${verein.verband})"
                 case RenameVereinAction(verein, oldVerein) => s"${oldVerein.easyprint})"
-                case RenameAthletAction(verein, _, _) => s"${verein.vereinname} (${verein.verband})"
+                case RenameAthletAction(verein, _, _, _) => s"${verein.vereinname} (${verein.verband})"
                 case AddRegistration(reg, programId, athlet, suggestion) =>
                   s"${suggestion.verein.map(_.name).getOrElse(reg.vereinname)} (${suggestion.verein.flatMap(_.verband).getOrElse(reg.verband)})"
                 case MoveRegistration(reg, fromProgramId, toProgramid, athlet, suggestion) =>
@@ -125,7 +125,7 @@ object RegistrationAdminDialog {
                 case AddVereinAction(verein) => s"${verein.respVorname} ${verein.respName}, ${verein.mail}, ${verein.mobilephone}"
                 case ApproveVereinAction(verein) => s"${verein.respVorname} ${verein.respName}, ${verein.mail}, ${verein.mobilephone}"
                 case RenameVereinAction(verein, oldVerein) => s"${verein.respVorname} ${verein.respName}, ${verein.mail}, ${verein.mobilephone}"
-                case RenameAthletAction(_, existing, _) => s"${existing.extendedprint}"
+                case RenameAthletAction(_, _, existing, _) => s"${existing.extendedprint}"
                 case AddRegistration(reg, programId, athlet, suggestion) => athlet.extendedprint
                 case MoveRegistration(reg, fromProgramId, toProgramid, athlet, suggestion) => athlet.extendedprint
                 case RemoveRegistration(reg, programId, athlet, suggestion) => athlet.extendedprint
@@ -161,7 +161,7 @@ object RegistrationAdminDialog {
                 case AddVereinAction(verein) => s"Verein ${verein.vereinname} wird neu importiert"
                 case ApproveVereinAction(verein) => s"Verein ${verein.vereinname} wird bestätigt"
                 case RenameVereinAction(verein, oldVerein) => s"Verein wird auf ${verein.toVerein.easyprint} umbenannt"
-                case RenameAthletAction(verein, _, expected) => s"Athlet wird auf ${expected.extendedprint} korrigiert"
+                case RenameAthletAction(verein, _, _, expected) => s"Athlet wird auf ${expected.extendedprint} korrigiert"
                 case AddRegistration(reg, programId, athlet, suggestion) =>
                   suggestImportAthletText(athlet, suggestion)
                 case MoveRegistration(reg, fromProgramId, toProgramid, athlet, suggestion) =>
@@ -180,7 +180,7 @@ object RegistrationAdminDialog {
                 case AddVereinAction(verein) => "hinzufügen"
                 case ApproveVereinAction(verein) => "bestätigen"
                 case RenameVereinAction(verein, _) => ""
-                case RenameAthletAction(verein, _, _) => ""
+                case RenameAthletAction(verein, _, _, _) => ""
                 case AddRegistration(reg, programId, athlet, suggestion) => "hinzufügen"
                 case MoveRegistration(reg, fromProgramId, toProgramid, athlet, suggestion) =>
                   val pgmText = programms.find { p => p.id == fromProgramId || p.aggregatorHead.id == fromProgramId } match {
@@ -211,7 +211,7 @@ object RegistrationAdminDialog {
             case MoveRegistration(reg, fromProgramId, toProgramid, athlet, suggestion) => (athlet, suggestion.verein)
             case RemoveRegistration(reg, programId, athlet, suggestion) => (athlet, suggestion.verein)
             case RenameVereinAction(verein, oldVerein) => (Athlet(), Some(verein.toVerein))
-            case RenameAthletAction(verein, existing, expected) => (expected, Some(verein.toVerein))
+            case RenameAthletAction(verein, athlet, existing, expected) => (expected, Some(verein.toVerein))
           }
           val matches = searchQuery.forall { search =>
             if (search.isEmpty() || athlet.name.toUpperCase().contains(search)) {

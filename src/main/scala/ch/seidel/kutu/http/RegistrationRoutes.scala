@@ -6,7 +6,7 @@ import akka.http.scaladsl.model.{ContentTypes, HttpEntity, HttpResponse, StatusC
 import akka.http.scaladsl.server.Route
 import akka.http.scaladsl.unmarshalling.Unmarshal
 import akka.util.{ByteString, Timeout}
-import ch.seidel.kutu.Config
+import ch.seidel.kutu.{Config, domain}
 import ch.seidel.kutu.Config.remoteAdminBaseUrl
 import ch.seidel.kutu.akka._
 import ch.seidel.kutu.domain.{AthletRegistration, AthletView, JudgeRegistration, KutuService, NewRegistration, ProgrammRaw, Registration, RegistrationResetPW, Verein, Wettkampf, dateToExportedStr}
@@ -52,6 +52,14 @@ trait RegistrationRoutes extends SprayJsonSupport with JwtSupport with JsonSuppo
       )), Duration.Inf))
   }
 
+  def updateRemoteAthletes(p: Wettkampf, athleteRemoteUpdates: List[AthletView]): Unit = {
+    athleteRemoteUpdates.foreach(verein => Await.result(httpPutClientRequest(
+      s"$remoteAdminBaseUrl/api/registrations/${p.uuid.get}/athletes",
+      HttpEntity(
+        ContentTypes.`application/json`,
+        ByteString(athleteRemoteUpdates.toJson.compactPrint)
+      )), Duration.Inf))
+  }
 
   def getRegistrations(p: Wettkampf): List[Registration] = Await.result(
     httpGetClientRequest(s"$remoteAdminBaseUrl/api/registrations/${p.uuid.get}").flatMap {
@@ -185,7 +193,22 @@ trait RegistrationRoutes extends SprayJsonSupport with JwtSupport with JsonSuppo
               if (userId.equals(competitionId.toString)) {
                 put {
                   entity(as[Verein]) { verein =>
-                    val reg = updateVerein(verein)
+                    updateVerein(verein)
+                    CompetitionRegistrationClientActor.publish(RegistrationChanged(wettkampf.uuid.get), clientId)
+                    complete(StatusCodes.OK)
+                  }
+                }
+              } else
+                complete(StatusCodes.Conflict)
+            }
+          }
+        } ~ pathPrefix("athletes") {
+          pathEndOrSingleSlash {
+            authenticated() { userId =>
+              if (userId.equals(competitionId.toString)) {
+                put {
+                  entity(as[List[AthletView]]) { athletlist =>
+                    val reg = insertAthletes(athletlist.map(aw => (aw.id.toString, aw.toAthlet)))
                     CompetitionRegistrationClientActor.publish(RegistrationChanged(wettkampf.uuid.get), clientId)
                     complete(StatusCodes.OK)
                   }

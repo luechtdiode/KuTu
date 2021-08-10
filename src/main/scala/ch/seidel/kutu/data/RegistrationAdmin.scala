@@ -51,7 +51,7 @@ object RegistrationAdmin {
       .map(r => RenameVereinAction(r._1, r._4.verein.get)).distinct
     val renameAthletActions = registrations
       .filter(isChangedAthletnameFilter)
-      .map(r => RenameAthletAction(r._1, r._4.toAthlet, r._3)).distinct
+      .map(r => RenameAthletAction(r._1, r._2, r._4.toAthlet, r._3)).distinct
     val approvedClubActions = registrations
       .filter(isApprovedVereinFilter)
       .map(r => ApproveVereinAction(r._1.copy(vereinId = r._4.verein.map(_.id)))).distinct
@@ -185,13 +185,21 @@ object RegistrationAdmin {
       service.assignAthletsToWettkampf(wkInfo.wettkampf.id, Set(progId), athletes.toSet)
     }
 
-    val athleteUpdates = for (renameAthlete: RenameAthletAction <- syncActions.flatMap {
+    val athleteLocalUpdates = for (renameAthlete: RenameAthletAction <- syncActions.flatMap {
       case mr: RenameAthletAction => Some(mr)
       case _ => None
     }) yield {
-      (renameAthlete.existing.id.toString, renameAthlete.expected)
+      val preparedUpdate = renameAthlete.applyLocalChange
+      (preparedUpdate.id.toString, preparedUpdate)
     }
-    service.insertAthletes(athleteUpdates)
+    service.insertAthletes(athleteLocalUpdates)
+    val athleteRemoteUpdates = for (renameAthlete: RenameAthletAction <- syncActions.flatMap {
+      case mr: RenameAthletAction => Some(mr)
+      case _ => None
+    }) yield {
+      renameAthlete.applyRemoteChange
+    }
+    service.updateRemoteAthletes(wkInfo.wettkampf.toWettkampf, athleteRemoteUpdates)
 
     for (renameVereinAction: RenameVereinAction <- syncActions.flatMap {
       case mr: RenameVereinAction => Some(mr)
