@@ -30,6 +30,7 @@ export class RegAthletEditorPage implements OnInit {
   wkPgms: ProgrammRaw[];
   wettkampfId: number;
   clubAthletList: AthletRegistration[];
+  clubAthletListCurrent: AthletRegistration[];
   // tslint:disable-next-line: variable-name
   private _selectedClubAthletId: number;
 
@@ -47,26 +48,26 @@ export class RegAthletEditorPage implements OnInit {
       this.wettkampfId = parseInt(wk.id);
       this.backendService.loadProgramsForCompetition(wk.uuid).subscribe(pgms => {
         this.wkPgms = pgms;
-        if (this.athletId) {
-          this.backendService.loadAthletRegistrations(this.wkId, this.regId).subscribe(regs => {
-            this.updateUI(regs.find(athlet => athlet.id === this.athletId));
-          });
-        } else {
-          this.backendService.loadAthletListForClub(this.wkId, this.regId).subscribe(regs => {
-            this.clubAthletList = regs;
-          });
-  
-          this.updateUI({
-            id: 0,
-            vereinregistrationId: this.regId,
-            name: '',
-            vorname: '',
-            geschlecht: 'W',
-            gebdat: undefined,
-            programId: undefined,
-            registrationTime: 0
-          } as AthletRegistration);
-        }
+        this.backendService.loadAthletListForClub(this.wkId, this.regId).subscribe(regs => {
+          this.clubAthletList = regs;
+          if (this.athletId) {
+            this.backendService.loadAthletRegistrations(this.wkId, this.regId).subscribe(regs => {
+              this.clubAthletListCurrent = regs;
+              this.updateUI(regs.find(athlet => athlet.id === this.athletId));
+            });
+          } else {
+            this.updateUI({
+              id: 0,
+              vereinregistrationId: this.regId,
+              name: '',
+              vorname: '',
+              geschlecht: 'W',
+              gebdat: undefined,
+              programId: undefined,
+              registrationTime: 0
+            } as AthletRegistration);
+          }
+        });
       });
     });
   }
@@ -88,7 +89,7 @@ export class RegAthletEditorPage implements OnInit {
     this.zone.run(() => {
       this.waiting = false;
       this.wettkampf = this.backendService.competitionName;
-      this.registration = registration;
+      this.registration = Object.assign({}, registration) as AthletRegistration;
       this.registration.gebdat = toDateString(this.registration.gebdat);
     });
   }
@@ -105,16 +106,50 @@ export class RegAthletEditorPage implements OnInit {
            this.registration.programId > 0;
 
   }
+
+  checkPersonOverride(reg: AthletRegistration) {
+    if (reg.athletId) {
+      const originalReg = [...this.clubAthletListCurrent, ...this.clubAthletList].find(r => r.athletId === reg.athletId);
+      if (originalReg.geschlecht !== reg.geschlecht ||
+          new Date(toDateString(originalReg.gebdat)).toJSON() !== new Date(reg.gebdat).toJSON()||
+          originalReg.name !== reg.name ||
+          originalReg.vorname !== reg.vorname) {
+            return true;
+          }
+    }
+    return false;
+  }
+
   save(newreg: AthletRegistration) {
     const reg = Object.assign({}, this.registration, {gebdat: new Date(newreg.gebdat).toJSON()});
+
     if (this.athletId === 0 || reg.id === 0) {
       this.backendService.createAthletRegistration(this.wkId, this.regId, reg).subscribe(() => {
         this.navCtrl.pop();
       });
     } else {
-      this.backendService.saveAthletRegistration(this.wkId, this.regId, reg).subscribe(() => {
-        this.navCtrl.pop();
-      });
+      let ask: boolean = this.checkPersonOverride(reg);
+      if (ask) {
+        const alert = this.alertCtrl.create({
+          header: 'Achtung',
+          subHeader: 'Person überschreiben vs korrigieren',
+          message: 'Es wurden Änderungen an den Personen-Feldern vorgenommen. Diese sind ausschliesslich für Korrekturen zulässig. Die Identität der Person darf dadurch nicht geändert werden!',
+          buttons: [
+            {text: 'ABBRECHEN', role: 'cancel', handler: () => {}},
+            {text: 'Korektur durchführen', handler: () => {
+              this.backendService.saveAthletRegistration(this.wkId, this.regId, reg).subscribe(() => {
+                this.navCtrl.pop();
+              });
+              }
+            }
+          ]
+        });
+        alert.then(a => a.present());
+      } else {
+        this.backendService.saveAthletRegistration(this.wkId, this.regId, reg).subscribe(() => {
+          this.navCtrl.pop();
+        });
+      }
     }
   }
 
