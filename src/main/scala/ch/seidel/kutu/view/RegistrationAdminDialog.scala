@@ -5,7 +5,7 @@ import ch.seidel.commons.{DisplayablePage, PageDisplayer}
 import ch.seidel.kutu.KuTuApp
 import ch.seidel.kutu.domain.{AddRegistration, AddVereinAction, ApproveVereinAction, Athlet, AthletView, EmptyAthletRegistration, MoveRegistration, Registration, RemoveRegistration, RenameAthletAction, RenameVereinAction, SyncAction, Verein}
 import ch.seidel.kutu.http.RegistrationRoutes
-import ch.seidel.kutu.view.RegistrationAdmin.{doSyncUnassignedClubRegistrations, findAthletLike, processSync}
+import ch.seidel.kutu.data.RegistrationAdmin.{doSyncUnassignedClubRegistrations, findAthletLike, processSync}
 import javafx.beans.value.ObservableValue
 import org.slf4j.LoggerFactory
 import scalafx.Includes._

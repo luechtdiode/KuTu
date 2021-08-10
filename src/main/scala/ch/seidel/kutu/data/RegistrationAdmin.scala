@@ -1,8 +1,9 @@
-package ch.seidel.kutu.view
+package ch.seidel.kutu.data
 
 import ch.seidel.kutu.akka.{AthletIndexActor, AthletLikeFound, FindAthletLike}
 import ch.seidel.kutu.domain.{AddRegistration, AddVereinAction, ApproveVereinAction, Athlet, AthletRegistration, AthletView, EmptyAthletRegistration, KutuService, MoveRegistration, PublicSyncAction, Registration, RemoveRegistration, RenameAthletAction, RenameVereinAction, SyncAction, Verein, WertungView}
 import ch.seidel.kutu.http.RegistrationRoutes
+import ch.seidel.kutu.view.WettkampfInfo
 import org.slf4j.LoggerFactory
 
 import java.time.Instant
@@ -24,18 +25,18 @@ object RegistrationAdmin {
     val validatedClubs = registrations.filter(r => r._1.vereinId.isEmpty).flatMap(r => r._4.verein).toSet
 
     val isNewVereinFilter: RegTuple => Boolean = r =>
-      r._4.verein.isEmpty  && !r._2.isEmptyRegistration
+      r._4.verein.isEmpty && !r._2.isEmptyRegistration
 
     val isApprovedVereinFilter: RegTuple => Boolean = r =>
-      r._4.verein.nonEmpty &&  r._1.vereinId.isEmpty
+      r._4.verein.nonEmpty && r._1.vereinId.isEmpty
 
-    val isChangedClubnameFilter: RegTuple => Boolean= r =>
+    val isChangedClubnameFilter: RegTuple => Boolean = r =>
       r._1.vereinId.nonEmpty &&
         !r._2.isEmptyRegistration &&
         r._4.verein.nonEmpty &&
         !(r._1.matchesClubRelation() && r._1.matchesVerein(r._4.verein.get))
 
-    val isChangedAthletnameFilter: RegTuple => Boolean= r =>
+    val isChangedAthletnameFilter: RegTuple => Boolean = r =>
       r._1.vereinId.nonEmpty &&
         !r._2.isEmptyRegistration &&
         r._4.verein.nonEmpty &&
@@ -184,12 +185,13 @@ object RegistrationAdmin {
       service.assignAthletsToWettkampf(wkInfo.wettkampf.id, Set(progId), athletes.toSet)
     }
 
-    service.insertAthletes(for (renameAthlete: RenameAthletAction <- syncActions.flatMap {
+    val athleteUpdates = for (renameAthlete: RenameAthletAction <- syncActions.flatMap {
       case mr: RenameAthletAction => Some(mr)
       case _ => None
     }) yield {
       (renameAthlete.existing.id.toString, renameAthlete.expected)
-    })
+    }
+    service.insertAthletes(athleteUpdates)
 
     for (renameVereinAction: RenameVereinAction <- syncActions.flatMap {
       case mr: RenameVereinAction => Some(mr)

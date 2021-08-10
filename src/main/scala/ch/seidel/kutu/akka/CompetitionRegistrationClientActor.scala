@@ -4,10 +4,11 @@ import akka.actor.SupervisorStrategy.Restart
 import akka.actor.{Actor, ActorRef, OneForOneStrategy, Props}
 import akka.pattern.ask
 import akka.util.Timeout
+import ch.seidel.kutu.data.RegistrationAdmin
 import ch.seidel.kutu.domain._
 import ch.seidel.kutu.http.Core.system
 import ch.seidel.kutu.http.JsonSupport
-import ch.seidel.kutu.view.{RegistrationAdmin, WettkampfInfo}
+import ch.seidel.kutu.view.WettkampfInfo
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration.DurationInt
