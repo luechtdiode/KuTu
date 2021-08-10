@@ -3,9 +3,9 @@ package ch.seidel.kutu.view
 import akka.http.javadsl.model.HttpResponse
 import ch.seidel.commons.{DisplayablePage, PageDisplayer}
 import ch.seidel.kutu.KuTuApp
-import ch.seidel.kutu.domain.{AddRegistration, AddVereinAction, ApproveVereinAction, Athlet, AthletView, EmptyAthletRegistration, MatchCode, MoveRegistration, Registration, RemoveRegistration, SyncAction, Verein}
+import ch.seidel.kutu.domain.{AddRegistration, AddVereinAction, ApproveVereinAction, Athlet, AthletView, EmptyAthletRegistration, MoveRegistration, Registration, RemoveRegistration, RenameAthletAction, RenameVereinAction, SyncAction, Verein}
 import ch.seidel.kutu.http.RegistrationRoutes
-import ch.seidel.kutu.view.RegistrationAdmin.{doSyncUnassignedClubRegistrations, findAthletLike, logger, processSync}
+import ch.seidel.kutu.data.RegistrationAdmin.{doSyncUnassignedClubRegistrations, findAthletLike, processSync}
 import javafx.beans.value.ObservableValue
 import org.slf4j.LoggerFactory
 import scalafx.Includes._
@@ -49,9 +49,8 @@ object RegistrationAdminDialog {
     import scala.util.{Failure, Success}
     val athletModel = ObservableBuffer[SyncAction]()
     val vereineList = service.selectVereine
-    val cache = new java.util.ArrayList[MatchCode]()
     logger.info("start import Registration Analyse ...")
-    val cliprawf: Future[(Set[Verein],Vector[SyncAction])] = KuTuApp.invokeAsyncWithBusyIndicator {
+    val cliprawf: Future[(Set[Verein],List[SyncAction])] = KuTuApp.invokeAsyncWithBusyIndicator {
       service.loginWithWettkampf(wkInfo.wettkampf.toWettkampf).map {
         case r: HttpResponse if r.status.isSuccess() =>
           (for {
@@ -60,16 +59,12 @@ object RegistrationAdminDialog {
           } yield {
             logger.info(s"start processing Registration ${registration.vereinname}")
             val startime = System.currentTimeMillis()
-            val resolvedVerein = vereineList.find(v => v.name.equals(registration.vereinname) && (v.verband.isEmpty || v.verband.get.equals(registration.verband)))
+            val resolvedVerein = vereineList.find(v => registration.matchesVerein(v))
             logger.info(s"resolved Verein for Registration ${registration.vereinname}")
             val parsed = athlet.toAthlet.copy(id = 0L, verein = resolvedVerein.map(_.id))
             val candidate = if (athlet.isEmptyRegistration) parsed else findAthletLike(parsed)
             logger.info(s"resolved candidate for ${parsed} in ${System.currentTimeMillis() - startime}ms")
-            (registration, athlet, parsed, AthletView(
-              candidate.id, candidate.js_id,
-              candidate.geschlecht, candidate.name, candidate.vorname, candidate.gebdat,
-              candidate.strasse, candidate.plz, candidate.ort,
-              resolvedVerein, true))
+            (registration, athlet, parsed, candidate.toAthletView(resolvedVerein))
           }).toList
         case r: HttpResponse if !r.status.isSuccess() =>
           throw new IllegalStateException(s"Es konnten keine Anmeldungen abgefragt werden: ${r.status.reason()}, ${r.status.defaultMessage()}")
@@ -87,10 +82,20 @@ object RegistrationAdminDialog {
     }
   }
 
-  private def showImportDialog(wkInfo: WettkampfInfo, service: RegistrationRoutes, reloader: Boolean => Unit, athletModel: ObservableBuffer[SyncAction], clipraw: (Set[Verein],Vector[SyncAction]))(implicit event: ActionEvent) = {
+  private def showImportDialog(wkInfo: WettkampfInfo, service: RegistrationRoutes, reloader: Boolean => Unit, athletModel: ObservableBuffer[SyncAction], clipraw: (Set[Verein],List[SyncAction]))(implicit event: ActionEvent) = {
     athletModel.appendAll(clipraw._2)
     val programms = wkInfo.leafprograms
     val filteredModel = ObservableBuffer.from(athletModel)
+
+    def suggestImportAthletText(parsed: Athlet, suggestion: AthletView) = {
+      if (suggestion.id > 0) {
+        "als " + suggestion.toAthlet.extendedprint
+      }
+      else {
+        "wird neu importiert"
+      }
+    }
+
     val athletTable = new TableView[SyncAction](filteredModel) {
       columns ++= List(
         new TableColumn[SyncAction, String] {
@@ -100,6 +105,8 @@ object RegistrationAdminDialog {
               x.value match {
                 case AddVereinAction(verein) => s"${verein.vereinname} (${verein.verband})"
                 case ApproveVereinAction(verein) => s"${verein.vereinname} (${verein.verband})"
+                case RenameVereinAction(verein, oldVerein) => s"${oldVerein.easyprint})"
+                case RenameAthletAction(verein, _, _, _) => s"${verein.vereinname} (${verein.verband})"
                 case AddRegistration(reg, programId, athlet, suggestion) =>
                   s"${suggestion.verein.map(_.name).getOrElse(reg.vereinname)} (${suggestion.verein.flatMap(_.verband).getOrElse(reg.verband)})"
                 case MoveRegistration(reg, fromProgramId, toProgramid, athlet, suggestion) =>
@@ -111,22 +118,17 @@ object RegistrationAdminDialog {
           }
           minWidth = 200
         }, new TableColumn[SyncAction, String] {
-          text = "Athlet"
+          text = "Person (Name, Vorname, Geb.)"
           cellValueFactory = { x =>
             new ReadOnlyStringWrapper(x.value, "athlet", {
-              def renderAthlet(athlet: Athlet) = s"${athlet.name} ${athlet.vorname}, ${
-                athlet.gebdat.map(d => f"$d%tY") match {
-                  case None => ""
-                  case Some(t) => t
-                }
-              }"
-
               x.value match {
                 case AddVereinAction(verein) => s"${verein.respVorname} ${verein.respName}, ${verein.mail}, ${verein.mobilephone}"
                 case ApproveVereinAction(verein) => s"${verein.respVorname} ${verein.respName}, ${verein.mail}, ${verein.mobilephone}"
-                case AddRegistration(reg, programId, athlet, suggestion) => renderAthlet(athlet)
-                case MoveRegistration(reg, fromProgramId, toProgramid, athlet, suggestion) => renderAthlet(athlet)
-                case RemoveRegistration(reg, programId, athlet, suggestion) => renderAthlet(athlet)
+                case RenameVereinAction(verein, oldVerein) => s"${verein.respVorname} ${verein.respName}, ${verein.mail}, ${verein.mobilephone}"
+                case RenameAthletAction(_, _, existing, _) => s"${existing.extendedprint}"
+                case AddRegistration(reg, programId, athlet, suggestion) => athlet.extendedprint
+                case MoveRegistration(reg, fromProgramId, toProgramid, athlet, suggestion) => athlet.extendedprint
+                case RemoveRegistration(reg, programId, athlet, suggestion) => athlet.extendedprint
               }
             })
           }
@@ -142,6 +144,7 @@ object RegistrationAdminDialog {
                 case AddRegistration(reg, programId, athlet, suggestion) => programId
                 case MoveRegistration(reg, fromProgramId, toProgramid, athlet, suggestion) => toProgramid
                 case RemoveRegistration(reg, programId, athlet, suggestion) => programId
+                case _ => ""
               }
               programms.find { p => p.id == programId || p.aggregatorHead.id == programId } match {
                 case Some(programm) => programm.name
@@ -157,12 +160,14 @@ object RegistrationAdminDialog {
               x.value match {
                 case AddVereinAction(verein) => s"Verein ${verein.vereinname} wird neu importiert"
                 case ApproveVereinAction(verein) => s"Verein ${verein.vereinname} wird bestätigt"
+                case RenameVereinAction(verein, oldVerein) => s"Verein wird auf ${verein.toVerein.easyprint} umbenannt"
+                case RenameAthletAction(verein, _, _, expected) => s"Athlet wird auf ${expected.extendedprint} korrigiert"
                 case AddRegistration(reg, programId, athlet, suggestion) =>
-                  if (suggestion.id > 0) "als " + suggestion.easyprint else "wird neu importiert"
+                  suggestImportAthletText(athlet, suggestion)
                 case MoveRegistration(reg, fromProgramId, toProgramid, athlet, suggestion) =>
-                  if (suggestion.id > 0) "als " + suggestion.easyprint else "wird neu importiert"
+                  suggestImportAthletText(athlet, suggestion)
                 case RemoveRegistration(reg, programId, athlet, suggestion) =>
-                  if (suggestion.id > 0) "als " + suggestion.easyprint else "wird neu importiert"
+                  suggestImportAthletText(athlet, suggestion)
               }
             })
           }
@@ -174,8 +179,9 @@ object RegistrationAdminDialog {
               x.value match {
                 case AddVereinAction(verein) => "hinzufügen"
                 case ApproveVereinAction(verein) => "bestätigen"
-                case AddRegistration(reg, programId, athlet, suggestion) =>
-                  "hinzufügen"
+                case RenameVereinAction(verein, _) => ""
+                case RenameAthletAction(verein, _, _, _) => ""
+                case AddRegistration(reg, programId, athlet, suggestion) => "hinzufügen"
                 case MoveRegistration(reg, fromProgramId, toProgramid, athlet, suggestion) =>
                   val pgmText = programms.find { p => p.id == fromProgramId || p.aggregatorHead.id == fromProgramId } match {
                     case Some(programm) => programm.name
@@ -197,14 +203,15 @@ object RegistrationAdminDialog {
         val sortOrder = athletTable.sortOrder.toList
         filteredModel.clear()
         val searchQuery = newVal.toUpperCase().split(" ")
-        for {syncAction <- athletModel
-             } {
+        for {syncAction <- athletModel } {
           val (athlet, verein) = syncAction match {
             case AddVereinAction(verein) => (Athlet(), Some(verein.toVerein))
             case ApproveVereinAction(verein) => (Athlet(), Some(verein.toVerein))
             case AddRegistration(reg, programId, athlet, suggestion) => (athlet, suggestion.verein)
             case MoveRegistration(reg, fromProgramId, toProgramid, athlet, suggestion) => (athlet, suggestion.verein)
             case RemoveRegistration(reg, programId, athlet, suggestion) => (athlet, suggestion.verein)
+            case RenameVereinAction(verein, oldVerein) => (Athlet(), Some(verein.toVerein))
+            case RenameAthletAction(verein, athlet, existing, expected) => (expected, Some(verein.toVerein))
           }
           val matches = searchQuery.forall { search =>
             if (search.isEmpty() || athlet.name.toUpperCase().contains(search)) {
@@ -258,6 +265,7 @@ object RegistrationAdminDialog {
           processSync(wkInfo, service, selectedAthleten.toList, clipraw._1)
           reloader(selectedAthleten.exists {
             case AddVereinAction(_) => true
+            case _: RenameVereinAction => true
             case _ => false
           })
           PageDisplayer.showMessageDialog(

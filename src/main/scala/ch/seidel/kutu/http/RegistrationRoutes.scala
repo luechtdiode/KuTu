@@ -6,7 +6,7 @@ import akka.http.scaladsl.model.{ContentTypes, HttpEntity, HttpResponse, StatusC
 import akka.http.scaladsl.server.Route
 import akka.http.scaladsl.unmarshalling.Unmarshal
 import akka.util.{ByteString, Timeout}
-import ch.seidel.kutu.Config
+import ch.seidel.kutu.{Config, domain}
 import ch.seidel.kutu.Config.remoteAdminBaseUrl
 import ch.seidel.kutu.akka._
 import ch.seidel.kutu.domain.{AthletRegistration, AthletView, JudgeRegistration, KutuService, NewRegistration, ProgrammRaw, Registration, RegistrationResetPW, Verein, Wettkampf, dateToExportedStr}
@@ -41,6 +41,24 @@ trait RegistrationRoutes extends SprayJsonSupport with JwtSupport with JsonSuppo
         ContentTypes.`application/json`,
         ByteString(verein.toJson.compactPrint)
       )), Duration.Inf)
+  }
+
+  def updateVereinRemote(p: Wettkampf, vereinToUpdate: Option[Verein]): Unit = {
+    vereinToUpdate.foreach(verein => Await.result(httpPutClientRequest(
+      s"$remoteAdminBaseUrl/api/registrations/${p.uuid.get}/verein",
+      HttpEntity(
+        ContentTypes.`application/json`,
+        ByteString(verein.toJson.compactPrint)
+      )), Duration.Inf))
+  }
+
+  def updateRemoteAthletes(p: Wettkampf, athleteRemoteUpdates: List[AthletView]): Unit = {
+    athleteRemoteUpdates.foreach(verein => Await.result(httpPutClientRequest(
+      s"$remoteAdminBaseUrl/api/registrations/${p.uuid.get}/athletes",
+      HttpEntity(
+        ContentTypes.`application/json`,
+        ByteString(athleteRemoteUpdates.toJson.compactPrint)
+      )), Duration.Inf))
   }
 
   def getRegistrations(p: Wettkampf): List[Registration] = Await.result(
@@ -92,7 +110,7 @@ trait RegistrationRoutes extends SprayJsonSupport with JwtSupport with JsonSuppo
       pathPrefix("registrations" / "clubnames") {
         pathEndOrSingleSlash {
           get {
-            val since1Year = System.currentTimeMillis() - Duration(365, DAYS).toMillis
+            val since1Year = System.currentTimeMillis() - Duration(500, DAYS).toMillis
             complete(selectRegistrations()
               .filter(_.registrationTime > since1Year)
               .map(r => r.toVerein).distinct
@@ -147,7 +165,7 @@ trait RegistrationRoutes extends SprayJsonSupport with JwtSupport with JsonSuppo
           get {
             withRequestTimeout(60.seconds) {
               complete(CompetitionRegistrationClientActor.publish(AskRegistrationSyncActions(wettkampf.uuid.get), clientId).map {
-                case RegistrationSyncActions(actions) => actions
+                case RegistrationSyncActions(actions) => actions.toVector
                 case _ => Vector()
               })
             }
@@ -167,6 +185,36 @@ trait RegistrationRoutes extends SprayJsonSupport with JwtSupport with JsonSuppo
                 }
                 )
               }
+            }
+          }
+        } ~ pathPrefix("verein") {
+          pathEndOrSingleSlash {
+            authenticated() { userId =>
+              if (userId.equals(competitionId.toString)) {
+                put {
+                  entity(as[Verein]) { verein =>
+                    updateVerein(verein)
+                    CompetitionRegistrationClientActor.publish(RegistrationChanged(wettkampf.uuid.get), clientId)
+                    complete(StatusCodes.OK)
+                  }
+                }
+              } else
+                complete(StatusCodes.Conflict)
+            }
+          }
+        } ~ pathPrefix("athletes") {
+          pathEndOrSingleSlash {
+            authenticated() { userId =>
+              if (userId.equals(competitionId.toString)) {
+                put {
+                  entity(as[List[AthletView]]) { athletlist =>
+                    val reg = insertAthletes(athletlist.map(aw => (aw.id.toString, aw.toAthlet)))
+                    CompetitionRegistrationClientActor.publish(RegistrationChanged(wettkampf.uuid.get), clientId)
+                    complete(StatusCodes.OK)
+                  }
+                }
+              } else
+                complete(StatusCodes.Conflict)
             }
           }
         } ~ pathPrefix(LongNumber / "loginreset") { registrationId =>
@@ -287,8 +335,8 @@ trait RegistrationRoutes extends SprayJsonSupport with JwtSupport with JsonSuppo
                               er.athletId.contains(r.id) || (er.name == r.name && er.vorname == r.vorname)
                             })
                             .map {
-                              case AthletView(id, _, geschlecht, name, vorname, gebdat, _, _, _, _, _) =>
-                                AthletRegistration(0L, reg.id, Some(id), geschlecht, name, vorname, gebdat.map(dateToExportedStr).getOrElse(""), 0L, 0)
+                              case a @ AthletView(id, _, geschlecht, name, vorname, gebdat, _, _, _, _, _) =>
+                                AthletRegistration(0L, reg.id, Some(id), geschlecht, name, vorname, gebdat.map(dateToExportedStr).getOrElse(""), 0L, 0, Some(a))
                             }
                         }
                       }

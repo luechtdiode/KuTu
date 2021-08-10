@@ -33,11 +33,12 @@ trait RegistrationService extends DBService with RegistrationResultMapper with H
               """ >>
         sql"""
                   select
-                      id, wettkampf_id, verein_id, vereinname, verband,
-                      responsible_name, responsible_vorname, mobilephone, mail,
-                      registrationtime
-                  from vereinregistration
-                  where id = (select max(vr.id)
+                      r.id, r.wettkampf_id, r.verein_id, r.vereinname, r.verband,
+                      r.responsible_name, r.responsible_vorname, r.mobilephone, r.mail,
+                      r.registrationtime, r.verein_id, v.*
+                  from vereinregistration r
+                  left join verein v on (v.id = r.verein_id)
+                  where r.id = (select max(vr.id)
                               from vereinregistration vr
                               where vr.wettkampf_id=${newReg.wettkampfId}
                                 and vr.responsible_name=${newReg.respName}
@@ -59,10 +60,12 @@ trait RegistrationService extends DBService with RegistrationResultMapper with H
       """ >>
       sql"""
               select
-              id, wettkampf_id, verein_id, vereinname, verband,
-              responsible_name, responsible_vorname, mobilephone, mail,
-              registrationtime
-              from vereinregistration where id=${resetPW.id}
+                  r.id, r.wettkampf_id, r.verein_id, r.vereinname, r.verband,
+                  r.responsible_name, r.responsible_vorname, r.mobilephone, r.mail,
+                  r.registrationtime, r.verein_id, v.*
+              from vereinregistration r
+              left join verein v on (v.id = r.verein_id)
+              where r.id=${resetPW.id}
       """.as[Registration].head.transactionally
     }, Duration.Inf)
   }
@@ -102,14 +105,23 @@ trait RegistrationService extends DBService with RegistrationResultMapper with H
       throw new IllegalArgumentException("Registration with id=0 can not be updated")
     }
     Await.result(database.run {
-      sql"""
+      sqlu"""
               update vereinregistration
               set verein_id=${registration.vereinId},
                   vereinname=${registration.vereinname}, verband=${registration.verband},
                   responsible_name=${registration.respName}, responsible_vorname=${registration.respVorname},
                   mobilephone=${registration.mobilephone}, mail=${registration.mail}
               where id=${registration.id}
-     """.as[Long].headOption
+        """ >>
+        sql"""
+              select
+                  r.id, r.wettkampf_id, r.verein_id, r.vereinname, r.verband,
+                  r.responsible_name, r.responsible_vorname, r.mobilephone, r.mail,
+                  r.registrationtime, r.verein_id, v.*
+              from vereinregistration r
+              left join verein v on (v.id = r.verein_id)
+              where r.id=${registration.id}
+      """.as[Long].headOption
     }, Duration.Inf)
     registration
   }
@@ -118,10 +130,12 @@ trait RegistrationService extends DBService with RegistrationResultMapper with H
     Await.result(database.run {
       sql"""
         select
-                      id, wettkampf_id, verein_id, vereinname, verband,
-                      responsible_name, responsible_vorname, mobilephone, mail,
-                      registrationtime
-        from vereinregistration""".as[Registration]
+            r.id, r.wettkampf_id, r.verein_id, r.vereinname, r.verband,
+            r.responsible_name, r.responsible_vorname, r.mobilephone, r.mail,
+            r.registrationtime, r.verein_id, v.*
+        from vereinregistration r
+        left join verein v on (v.id = r.verein_id)
+        """.as[Registration]
     }, Duration.Inf).toList
   }
 
@@ -129,10 +143,12 @@ trait RegistrationService extends DBService with RegistrationResultMapper with H
     Await.result(database.run {
       sql"""
         select
-                     id, wettkampf_id, verein_id, vereinname, verband,
-                     responsible_name, responsible_vorname, mobilephone, mail,
-                     registrationtime
-        from vereinregistration where id=${id}""".as[Registration]
+            r.id, r.wettkampf_id, r.verein_id, r.vereinname, r.verband,
+            r.responsible_name, r.responsible_vorname, r.mobilephone, r.mail,
+            r.registrationtime, r.verein_id, v.*
+        from vereinregistration r
+        left join verein v on (v.id = r.verein_id)
+        where r.id=${id}""".as[Registration]
     }, Duration.Inf).head
   }
 
@@ -140,10 +156,11 @@ trait RegistrationService extends DBService with RegistrationResultMapper with H
     Await.result(database.run {
       sql"""
         select
-                     id, wettkampf_id, verein_id, vereinname, verband,
-                     responsible_name, responsible_vorname, mobilephone, mail,
-                     registrationtime
+            r.id, r.wettkampf_id, r.verein_id, r.vereinname, r.verband,
+            r.responsible_name, r.responsible_vorname, r.mobilephone, r.mail,
+            r.registrationtime, r.verein_id, v.*
         from vereinregistration r
+        left join verein v on (v.id = r.verein_id)
         where r.vereinname=${registration.vereinname}
                      and r.verband=${registration.verband}
                      and r.mail=${registration.mail}
@@ -157,11 +174,12 @@ trait RegistrationService extends DBService with RegistrationResultMapper with H
     Await.result(database.run {
       sql"""
         select
-                     id, wettkampf_id, verein_id, vereinname, verband,
-                     responsible_name, responsible_vorname, mobilephone, mail,
-                     registrationtime
-        from vereinregistration
-        where wettkampf_id in (select id from wettkampf where uuid = ${id.toString})
+            r.id, r.wettkampf_id, r.verein_id, r.vereinname, r.verband,
+            r.responsible_name, r.responsible_vorname, r.mobilephone, r.mail,
+            r.registrationtime, r.verein_id, v.*
+        from vereinregistration r
+        left join verein v on (v.id = r.verein_id)
+        where r.wettkampf_id in (select id from wettkampf where uuid = ${id.toString})
         order by registrationtime asc
        """.as[Registration]
     }, Duration.Inf).toList
@@ -285,11 +303,13 @@ trait RegistrationService extends DBService with RegistrationResultMapper with H
               """ >>
         sql"""
                   select
-                      id, vereinregistration_id,
-                      athlet_id, geschlecht, name, vorname, gebdat,
-                      program_id, registrationtime
-                  from athletregistration
-                  where id = (select max(ar.id)
+                      r.id, r.vereinregistration_id,
+                      r.athlet_id, r.geschlecht, r.name, r.vorname, r.gebdat,
+                      r.program_id, r.registrationtime, r.athlet_id, a.*, v.*
+                  from athletregistration r
+                  left join athlet a on (r.athlet_id = a.id)
+                  left join verein v on (a.verein = v.id)
+                  where r.id = (select max(ar.id)
                               from athletregistration ar
                               where ar.vereinregistration_id=${newReg.vereinregistrationId}
                                 and ar.geschlecht=${nomralizedAthlet.geschlecht}
@@ -308,14 +328,15 @@ trait RegistrationService extends DBService with RegistrationResultMapper with H
                   select
                       ar.id, ar.vereinregistration_id,
                       ar.athlet_id, ar.geschlecht, ar.name, ar.vorname, ar.gebdat,
-                      ar.program_id, ar.registrationtime
+                      ar.program_id, ar.registrationtime, ar.athlet_id, a.*, v.*
                   from athletregistration ar
-                  inner join vereinregistration vr on ar.vereinregistration_id = vr.id
+                  inner join vereinregistration vr on (ar.vereinregistration_id = vr.id)
+                  inner join athlet a on (a.id = ar.athlet_id and a.verein = vr.verein_id)
+                  left join verein v on (a.verein = v.id)
                   where ar.geschlecht=${nomralizedAthlet.geschlecht}
                     and ar.name=${nomralizedAthlet.name}
                     and ar.vorname=${nomralizedAthlet.vorname}
                     and ar.vereinregistration_id <> ${registration.vereinregistrationId}
-                    and exists (select 1 from athlet a where a.id = ar.athlet_id and a.verein = vr.verein_id)
            """.as[AthletRegistration]
     }, Duration.Inf).toList
   }
@@ -326,27 +347,38 @@ trait RegistrationService extends DBService with RegistrationResultMapper with H
     }
     val gebdat: java.sql.Date = str2SQLDate(registration.gebdat)
     Await.result(database.run {
-      sql"""
+      sqlu"""
               update athletregistration
               set athlet_id=${registration.athletId},
                   name=${registration.name}, vorname=${registration.vorname},
                   gebdat=${gebdat}, geschlecht=${registration.geschlecht},
                   program_id=${registration.programId}
               where id=${registration.id}
-     """.as[Long].headOption
+     """ >>
+      sql"""
+              select
+                  r.id, r.vereinregistration_id,
+                  r.athlet_id, r.geschlecht, r.name, r.vorname, r.gebdat,
+                  r.program_id, r.registrationtime, r.athlet_id, a.*, v.*
+              from athletregistration r
+              left join athlet a on (r.athlet_id = a.id)
+              left join verein v on (a.verein = v.id)
+              where r.id = ${registration.id}
+      """.as[AthletRegistration].headOption
     }, Duration.Inf)
-    registration
   }
 
   def selectAthletRegistration(id: Long) = {
     Await.result(database.run {
       sql"""
                   select
-                      ar.id, ar.vereinregistration_id,
-                      ar.athlet_id, ar.geschlecht, ar.name, ar.vorname, ar.gebdat,
-                      ar.program_id, ar.registrationtime
-                  from athletregistration ar
-                  where ar.id = ${id}
+                      r.id, r.vereinregistration_id,
+                      r.athlet_id, r.geschlecht, r.name, r.vorname, r.gebdat,
+                      r.program_id, r.registrationtime, r.athlet_id, a.*, v.*
+                  from athletregistration r
+                  left join athlet a on (r.athlet_id = a.id)
+                  left join verein v on (a.verein = v.id)
+                  where r.id = ${id}
        """.as[AthletRegistration]
     }, Duration.Inf).head
   }
@@ -355,12 +387,14 @@ trait RegistrationService extends DBService with RegistrationResultMapper with H
     Await.result(database.run {
       sql"""
                   select
-                      ar.id, ar.vereinregistration_id,
-                      ar.athlet_id, ar.geschlecht, ar.name, ar.vorname, ar.gebdat,
-                      ar.program_id, ar.registrationtime
-                  from athletregistration ar
-        where ar.vereinregistration_id = $id
-        order by ar.registrationtime asc
+                      r.id, r.vereinregistration_id,
+                      r.athlet_id, r.geschlecht, r.name, r.vorname, r.gebdat,
+                      r.program_id, r.registrationtime, r.athlet_id, a.*, v.*
+                  from athletregistration r
+                  left join athlet a on (r.athlet_id = a.id)
+                  left join verein v on (a.verein = v.id)
+                  where r.vereinregistration_id = $id
+                  order by r.registrationtime asc
        """.as[AthletRegistration]
     }, Duration.Inf).toList
   }

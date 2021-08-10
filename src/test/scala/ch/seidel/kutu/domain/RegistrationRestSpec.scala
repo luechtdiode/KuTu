@@ -7,15 +7,12 @@ import akka.util.ByteString
 import ch.seidel.jwt.JsonWebToken
 import ch.seidel.kutu.Config
 import ch.seidel.kutu.Config.{jwtAuthorizationKey, jwtHeader, jwtSecretKey, jwtTokenExpiryPeriodInDays}
-import ch.seidel.kutu.akka.KuTuMailerActor
 import ch.seidel.kutu.base.KuTuBaseSpec
 import ch.seidel.kutu.mail.MockedSMTPProvider
 import courier.Defaults
+import org.jvnet.mock_javamail.Mailbox
 
 import java.time.LocalDate
-import java.util.{Base64, Properties}
-import javax.mail.Provider
-import org.jvnet.mock_javamail.{Mailbox, MockTransport}
 
 class RegistrationRestSpec extends KuTuBaseSpec {
   val testwettkampf: Wettkampf = insertGeTuWettkampf("TestGetuWK", 2)
@@ -48,7 +45,7 @@ class RegistrationRestSpec extends KuTuBaseSpec {
   def createTestAthletRegistration(reg: Registration): AthletRegistration = {
     athletregistration = athletregistration match {
       case None =>
-        Some(createAthletRegistration(AthletRegistration(0, reg.id, None, "M", "Tester", "Test", "2010-05-05", 20, 0)))
+        Some(createAthletRegistration(AthletRegistration(0, reg.id, None, "M", "Tester", "Test", "2010-05-05", 20, 0, None)))
       case Some(r) => Some(r)
     }
     athletregistration.get
@@ -321,6 +318,16 @@ class RegistrationRestSpec extends KuTuBaseSpec {
       }
     }
 
+    "read recent clubregistrations for preselection" in {
+      val reg = createTestRegistration
+      updateRegistration(reg.copy(vereinId = Some(1L)))
+      HttpRequest(method = GET, uri = s"/api/registrations/clubnames") ~>
+        allroutes(x => vereinSecretHashLookup(x), id => extractRegistrationId(id)) ~> check {
+        status should ===(StatusCodes.OK)
+        val list = entityAs[List[Verein]]
+        list.nonEmpty shouldBe true
+      }
+    }
     def testConflict(vereinsreg: Registration, athletRegistration: AthletRegistration) = {
       val json = athletregistrationFormat.write(athletRegistration).compactPrint
       HttpRequest(method = POST, uri = s"/api/registrations/${testwettkampf.uuid.get}/${vereinsreg.id}/athletes", entity = HttpEntity(
@@ -351,37 +358,37 @@ class RegistrationRestSpec extends KuTuBaseSpec {
 
     "add AthletRegistration with unreal input via rest zero age should be rejected" in {
       val vereinsreg = createTestRegistration
-      testConflict(vereinsreg, AthletRegistration(0, vereinsreg.id, None, "M", "Markus", "Meier", dateToExportedStr(ld2SQLDate(LocalDate.now())), 20, 0))
+      testConflict(vereinsreg, AthletRegistration(0, vereinsreg.id, None, "M", "Markus", "Meier", dateToExportedStr(ld2SQLDate(LocalDate.now())), 20, 0, None))
     }
     "add AthletRegistration with unreal input via rest age < 1 should be rejected" in {
       val vereinsreg = createTestRegistration
-      testConflict(vereinsreg, AthletRegistration(0, vereinsreg.id, None, "M", "Markus", "Meier", dateToExportedStr(ld2SQLDate(LocalDate.now().plusYears(1))), 20, 0))
+      testConflict(vereinsreg, AthletRegistration(0, vereinsreg.id, None, "M", "Markus", "Meier", dateToExportedStr(ld2SQLDate(LocalDate.now().plusYears(1))), 20, 0, None))
     }
     "add AthletRegistration with unreal input via rest age > 110 should be rejected" in {
       val vereinsreg = createTestRegistration
-      testConflict(vereinsreg, AthletRegistration(0, vereinsreg.id, None, "M", "Markus", "Meier", dateToExportedStr(ld2SQLDate(LocalDate.now().minusYears(121))), 20, 0))
+      testConflict(vereinsreg, AthletRegistration(0, vereinsreg.id, None, "M", "Markus", "Meier", dateToExportedStr(ld2SQLDate(LocalDate.now().minusYears(121))), 20, 0, None))
     }
 
     "add AthletRegistration via rest switch name and vorname if required" in {
       val reg = createTestRegistration
       val gebDat: String = dateToExportedStr(ld2SQLDate(LocalDate.now().minusYears(10)))
-      testSuccessfulRequest(reg, AthletRegistration(0, reg.id, None, "M", "Markus", "Schneider", gebDat, 20, 0), "Schneider", "Markus", "M")
+      testSuccessfulRequest(reg, AthletRegistration(0, reg.id, None, "M", "Markus", "Schneider", gebDat, 20, 0, None), "Schneider", "Markus", "M")
     }
     "add AthletRegistration via rest switch fix sex if required" in {
       val reg = createTestRegistration
       val gebDat: String = dateToExportedStr(ld2SQLDate(LocalDate.now().minusYears(10)))
-      testSuccessfulRequest(reg, AthletRegistration(0, reg.id, None, "M", "Schneider", "Gabriela", gebDat, 20, 0), "Schneider", "Gabriela", "W")
+      testSuccessfulRequest(reg, AthletRegistration(0, reg.id, None, "M", "Schneider", "Gabriela", gebDat, 20, 0, None), "Schneider", "Gabriela", "W")
     }
     "add AthletRegistration via restswitch keep sex with ambigous surname" in {
       val reg = createTestRegistration
       val gebDat: String = dateToExportedStr(ld2SQLDate(LocalDate.now().minusYears(10)))
-      testSuccessfulRequest(reg, AthletRegistration(0, reg.id, None, "W", "Schneider", "Robin", gebDat, 20, 0), "Schneider", "Robin", "W")
-      testSuccessfulRequest(reg, AthletRegistration(0, reg.id, None, "M", "Schneider", "Robin", gebDat, 20, 0), "Schneider", "Robin", "M")
+      testSuccessfulRequest(reg, AthletRegistration(0, reg.id, None, "W", "Schneider", "Robin", gebDat, 20, 0, None), "Schneider", "Robin", "W")
+      testSuccessfulRequest(reg, AthletRegistration(0, reg.id, None, "M", "Schneider", "Robin", gebDat, 20, 0, None), "Schneider", "Robin", "M")
     }
     "add AthletRegistration via restswitch take as is if all is right" in {
       val reg = createTestRegistration
       val gebDat: String = dateToExportedStr(ld2SQLDate(LocalDate.now().minusYears(10)))
-      testSuccessfulRequest(reg, AthletRegistration(0, reg.id, None, "M", "Schneider", "Markus", gebDat, 20, 0), "Schneider", "Markus", "M")
+      testSuccessfulRequest(reg, AthletRegistration(0, reg.id, None, "M", "Schneider", "Markus", gebDat, 20, 0, None), "Schneider", "Markus", "M")
     }
 
     "add AthletRegistration via rest2" in {

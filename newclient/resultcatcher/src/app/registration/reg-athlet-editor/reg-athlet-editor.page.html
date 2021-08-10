@@ -29,22 +29,22 @@
         <ion-avatar slot="start">
           &nbsp;
         </ion-avatar>
-        <ion-input required [readonly]='registration.athletId > 0' placeholder="Name" type="text"  [disabled]="false" [(ngModel)]='registration.name' name="name" required></ion-input>
-        <ion-input required [readonly]='registration.athletId > 0' placeholder="Vorname" type="text"  [disabled]="false" [(ngModel)]='registration.vorname' name="vorname" required></ion-input>          
+        <ion-input required placeholder="Name" type="text"  [disabled]="false" [(ngModel)]='registration.name' name="name" required></ion-input>
+        <ion-input required placeholder="Vorname" type="text"  [disabled]="false" [(ngModel)]='registration.vorname' name="vorname" required></ion-input>          
       </ion-item>
       <ion-item>
         <ion-avatar slot="start">
           &nbsp;
         </ion-avatar>
         <ion-label color="primary">Geburtsdatum</ion-label>
-        <ion-input required [readonly]='registration.athletId > 0' placeholder="Geburtsdatum" type="date" display-timezone="utc" [disabled]="false" [(ngModel)]='registration.gebdat' name="gebdat" required></ion-input>
+        <ion-input required placeholder="Geburtsdatum" type="date" display-timezone="utc" [disabled]="false" [(ngModel)]='registration.gebdat' name="gebdat" required></ion-input>
       </ion-item>
       <ion-item>
         <ion-avatar slot="start">
           &nbsp;
         </ion-avatar>
         <ion-label color="primary">Geschlecht</ion-label>
-        <ion-select required [disabled]="registration.athletId > 0" placeholder='Geschlecht' [(ngModel)]='registration.geschlecht' name="geschlecht" okText='Okay' cancelText='Abbrechen' required>
+        <ion-select required placeholder='Geschlecht' [(ngModel)]='registration.geschlecht' name="geschlecht" okText='Okay' cancelText='Abbrechen' required>
           <ion-select-option [value]='"W"'>weiblich</ion-select-option>
           <ion-select-option [value]='"M"'>männlich</ion-select-option>
         </ion-select>
