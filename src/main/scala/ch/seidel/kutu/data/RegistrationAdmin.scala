@@ -39,6 +39,7 @@ object RegistrationAdmin {
     val isChangedAthletnameFilter: RegTuple => Boolean = r =>
       r._1.vereinId.nonEmpty &&
         !r._2.isEmptyRegistration &&
+        r._2.athlet.nonEmpty &&
         r._4.verein.nonEmpty &&
         r._1.matchesClubRelation() &&
         !(r._2.matchesAthlet() && r._2.matchesAthlet(r._4.toAthlet))

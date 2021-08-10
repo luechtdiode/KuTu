@@ -305,7 +305,7 @@ trait RegistrationService extends DBService with RegistrationResultMapper with H
                   select
                       r.id, r.vereinregistration_id,
                       r.athlet_id, r.geschlecht, r.name, r.vorname, r.gebdat,
-                      r.program_id, r.registrationtime, r.athlet_id, a.*, v.*
+                      r.program_id, r.registrationtime, a.id, a.js_id, a.geschlecht, a.name, a.vorname, a.gebdat, a.strasse, a.plz, a.ort, a.activ, a.verein, v.*
                   from athletregistration r
                   left join athlet a on (r.athlet_id = a.id)
                   left join verein v on (a.verein = v.id)
@@ -328,7 +328,7 @@ trait RegistrationService extends DBService with RegistrationResultMapper with H
                   select
                       ar.id, ar.vereinregistration_id,
                       ar.athlet_id, ar.geschlecht, ar.name, ar.vorname, ar.gebdat,
-                      ar.program_id, ar.registrationtime, ar.athlet_id, a.*, v.*
+                      ar.program_id, ar.registrationtime, a.id, a.js_id, a.geschlecht, a.name, a.vorname, a.gebdat, a.strasse, a.plz, a.ort, a.activ, a.verein, v.*
                   from athletregistration ar
                   inner join vereinregistration vr on (ar.vereinregistration_id = vr.id)
                   inner join athlet a on (a.id = ar.athlet_id and a.verein = vr.verein_id)
@@ -359,7 +359,7 @@ trait RegistrationService extends DBService with RegistrationResultMapper with H
               select
                   r.id, r.vereinregistration_id,
                   r.athlet_id, r.geschlecht, r.name, r.vorname, r.gebdat,
-                  r.program_id, r.registrationtime, r.athlet_id, a.*, v.*
+                  r.program_id, r.registrationtime, a.id, a.js_id, a.geschlecht, a.name, a.vorname, a.gebdat, a.strasse, a.plz, a.ort, a.activ, a.verein, v.*
               from athletregistration r
               left join athlet a on (r.athlet_id = a.id)
               left join verein v on (a.verein = v.id)
@@ -374,7 +374,7 @@ trait RegistrationService extends DBService with RegistrationResultMapper with H
                   select
                       r.id, r.vereinregistration_id,
                       r.athlet_id, r.geschlecht, r.name, r.vorname, r.gebdat,
-                      r.program_id, r.registrationtime, r.athlet_id, a.*, v.*
+                      r.program_id, r.registrationtime, a.id, a.js_id, a.geschlecht, a.name, a.vorname, a.gebdat, a.strasse, a.plz, a.ort, a.activ, a.verein, v.*
                   from athletregistration r
                   left join athlet a on (r.athlet_id = a.id)
                   left join verein v on (a.verein = v.id)
@@ -389,7 +389,7 @@ trait RegistrationService extends DBService with RegistrationResultMapper with H
                   select
                       r.id, r.vereinregistration_id,
                       r.athlet_id, r.geschlecht, r.name, r.vorname, r.gebdat,
-                      r.program_id, r.registrationtime, r.athlet_id, a.*, v.*
+                      r.program_id, r.registrationtime, a.id, a.js_id, a.geschlecht, a.name, a.vorname, a.gebdat, a.strasse, a.plz, a.ort, a.activ, a.verein, v.*
                   from athletregistration r
                   left join athlet a on (r.athlet_id = a.id)
                   left join verein v on (a.verein = v.id)
