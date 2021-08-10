@@ -874,7 +874,7 @@ package object domain {
   }
 
   case class RenameAthletAction(override val verein: Registration, existing: Athlet, expected: Athlet) extends SyncAction {
-    override val caption = s"Athlet im Verein ${verein.vereinname} ${verein.verband} umbenennen: ${existing.extendedprint} zu ${expected.extendedprint}"
+    override val caption = s"Athlet/-In korrigieren: Von ${existing.extendedprint} zu ${expected.extendedprint}"
     def applyChange: Athlet = existing.copy(
       geschlecht = expected.geschlecht,
       name = expected.name,

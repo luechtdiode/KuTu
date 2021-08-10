@@ -7,15 +7,12 @@ import akka.util.ByteString
 import ch.seidel.jwt.JsonWebToken
 import ch.seidel.kutu.Config
 import ch.seidel.kutu.Config.{jwtAuthorizationKey, jwtHeader, jwtSecretKey, jwtTokenExpiryPeriodInDays}
-import ch.seidel.kutu.akka.KuTuMailerActor
 import ch.seidel.kutu.base.KuTuBaseSpec
 import ch.seidel.kutu.mail.MockedSMTPProvider
 import courier.Defaults
+import org.jvnet.mock_javamail.Mailbox
 
 import java.time.LocalDate
-import java.util.{Base64, Properties}
-import javax.mail.Provider
-import org.jvnet.mock_javamail.{Mailbox, MockTransport}
 
 class RegistrationRestSpec extends KuTuBaseSpec {
   val testwettkampf: Wettkampf = insertGeTuWettkampf("TestGetuWK", 2)
@@ -321,6 +318,16 @@ class RegistrationRestSpec extends KuTuBaseSpec {
       }
     }
 
+    "read recent clubregistrations for preselection" in {
+      val reg = createTestRegistration
+      updateRegistration(reg.copy(vereinId = Some(1L)))
+      HttpRequest(method = GET, uri = s"/api/registrations/clubnames") ~>
+        allroutes(x => vereinSecretHashLookup(x), id => extractRegistrationId(id)) ~> check {
+        status should ===(StatusCodes.OK)
+        val list = entityAs[List[Verein]]
+        list.nonEmpty shouldBe true
+      }
+    }
     def testConflict(vereinsreg: Registration, athletRegistration: AthletRegistration) = {
       val json = athletregistrationFormat.write(athletRegistration).compactPrint
       HttpRequest(method = POST, uri = s"/api/registrations/${testwettkampf.uuid.get}/${vereinsreg.id}/athletes", entity = HttpEntity(

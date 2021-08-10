@@ -102,7 +102,7 @@ trait RegistrationRoutes extends SprayJsonSupport with JwtSupport with JsonSuppo
       pathPrefix("registrations" / "clubnames") {
         pathEndOrSingleSlash {
           get {
-            val since1Year = System.currentTimeMillis() - Duration(365, DAYS).toMillis
+            val since1Year = System.currentTimeMillis() - Duration(500, DAYS).toMillis
             complete(selectRegistrations()
               .filter(_.registrationTime > since1Year)
               .map(r => r.toVerein).distinct
