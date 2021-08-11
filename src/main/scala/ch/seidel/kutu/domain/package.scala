@@ -914,44 +914,69 @@ package object domain {
     }
 
     def toAthlet: Athlet = {
-      val nameNorm = capitalizeIfBlockCase(name.trim)
-      val vornameNorm = capitalizeIfBlockCase(vorname.trim)
-      val nameMasculinTest = Surname.isMasculin(nameNorm)
-      val nameFeminimTest = Surname.isFeminim(nameNorm)
-      val vornameMasculinTest = Surname.isMasculin(vornameNorm)
-      val vornameFeminimTest = Surname.isFeminim(vornameNorm)
-      val nameVornameSwitched = (nameMasculinTest || nameFeminimTest) && !(vornameMasculinTest || vornameFeminimTest)
-      val defName = if (nameVornameSwitched) vornameNorm else nameNorm
-      val defVorName = if (nameVornameSwitched) nameNorm else vornameNorm
-      val feminim = nameFeminimTest || vornameFeminimTest
-      val masculin = nameMasculinTest || vornameMasculinTest
-      val defGeschlecht = geschlecht match {
-        case "M" =>
-          if(feminim && !masculin) "W" else "M"
-        case "W" =>
-          if(masculin && !feminim) "M" else "W"
-        case s: String => "M"
+      if(id == 0 && athletId == None) {
+        val nameNorm = capitalizeIfBlockCase(name.trim)
+        val vornameNorm = capitalizeIfBlockCase(vorname.trim)
+        val nameMasculinTest = Surname.isMasculin(nameNorm)
+        val nameFeminimTest = Surname.isFeminim(nameNorm)
+        val vornameMasculinTest = Surname.isMasculin(vornameNorm)
+        val vornameFeminimTest = Surname.isFeminim(vornameNorm)
+        val nameVornameSwitched = (nameMasculinTest || nameFeminimTest) && !(vornameMasculinTest || vornameFeminimTest)
+        val defName = if (nameVornameSwitched) vornameNorm else nameNorm
+        val defVorName = if (nameVornameSwitched) nameNorm else vornameNorm
+        val feminim = nameFeminimTest || vornameFeminimTest
+        val masculin = nameMasculinTest || vornameMasculinTest
+        val defGeschlecht = geschlecht match {
+          case "M" =>
+            if(feminim && !masculin) "W" else "M"
+          case "W" =>
+            if(masculin && !feminim) "M" else "W"
+          case s: String => "M"
+        }
+        val currentDate = LocalDate.now()
+        val gebDatRaw = str2SQLDate(gebdat)
+        val gebDatLocal = gebDatRaw.toLocalDate
+        val age = Period.between(gebDatLocal, currentDate).getYears
+        if (age > 0 && age < 120) {
+          Athlet(
+            id = athletId match{case Some(id) => id case None => 0},
+            js_id = "",
+            geschlecht = defGeschlecht,
+            name = defName,
+            vorname = defVorName,
+            gebdat = Some(gebDatRaw),
+            strasse = "",
+            plz = "",
+            ort = "",
+            verein = None,
+            activ = true
+          )
+        } else {
+          throw new IllegalArgumentException(s"Geburtsdatum ergibt ein unrealistisches Alter von ${age}.")
+        }
       }
-      val currentDate = LocalDate.now()
-      val gebDatRaw = str2SQLDate(gebdat)
-      val gebDatLocal = gebDatRaw.toLocalDate
-      val age = Period.between(gebDatLocal, currentDate).getYears
-      if (age > 0 && age < 120) {
-        Athlet(
-          id = athletId match{case Some(id) => id case None => 0},
-          js_id = "",
-          geschlecht = defGeschlecht,
-          name = defName,
-          vorname = defVorName,
-          gebdat = Some(gebDatRaw),
-          strasse = "",
-          plz = "",
-          ort = "",
-          verein = None,
-          activ = true
-        )
-      } else {
-        throw new IllegalArgumentException(s"Geburtsdatum ergibt ein unrealistisches Alter von ${age}.")
+      else {
+        val currentDate = LocalDate.now()
+        val gebDatRaw = str2SQLDate(gebdat)
+        val gebDatLocal = gebDatRaw.toLocalDate
+        val age = Period.between(gebDatLocal, currentDate).getYears
+        if (age > 0 && age < 120) {
+          Athlet(
+            id = athletId match{case Some(id) => id case None => 0},
+            js_id = "",
+            geschlecht = geschlecht,
+            name = name,
+            vorname = vorname,
+            gebdat = Some(gebDatRaw),
+            strasse = "",
+            plz = "",
+            ort = "",
+            verein = None,
+            activ = true
+          )
+        } else {
+          throw new IllegalArgumentException(s"Geburtsdatum ergibt ein unrealistisches Alter von ${age}.")
+        }
       }
     }
     def isEmptyRegistration: Boolean = geschlecht.isEmpty
