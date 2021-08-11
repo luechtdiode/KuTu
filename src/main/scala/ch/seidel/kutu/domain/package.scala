@@ -844,7 +844,7 @@ package object domain {
     override val caption = s"Verein hinzufügen: ${verein.vereinname}"
   }
   case class RenameVereinAction(override val verein: Registration, oldVerein: Verein) extends SyncAction {
-    override val caption = s"Verein umbenennen: ${oldVerein.easyprint} zu ${verein.toVerein.easyprint}"
+    override val caption = s"Verein korrigieren: ${oldVerein.easyprint} zu ${verein.toVerein.easyprint}"
     def prepareLocalUpdate: Verein = verein.toVerein.copy(id = oldVerein.id)
     def prepareRemoteUpdate: Option[Verein] = verein.selectedInitialClub.map(club => verein.toVerein.copy(id = club.id))
   }
@@ -962,10 +962,18 @@ package object domain {
       }
     }
     def matchesAthlet(v: Athlet): Boolean = {
-      toAthlet.extendedprint.equals(v.extendedprint)
+      val bool = toAthlet.extendedprint.equals(v.extendedprint)
+      if(!bool) {
+        println(s"nonmatch athlet: ${v.extendedprint}, ${toAthlet.extendedprint}")
+      }
+      bool
     }
     def matchesAthlet(): Boolean = {
-      athlet.nonEmpty && athlet.map(_.toAthlet).exists(matchesAthlet)
+      val bool = athlet.nonEmpty && athlet.map(_.toAthlet).exists(matchesAthlet)
+      if(!bool) {
+        println(s"nonmatch athlet: ${athlet.nonEmpty}, ${athlet.map(_.toAthlet)}, '${athlet.map(_.toAthlet.extendedprint)}' <> '${toAthlet.extendedprint}'")
+      }
+      bool
     }
   }
 

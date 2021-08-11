@@ -160,7 +160,7 @@ object RegistrationAdminDialog {
               x.value match {
                 case AddVereinAction(verein) => s"Verein ${verein.vereinname} wird neu importiert"
                 case ApproveVereinAction(verein) => s"Verein ${verein.vereinname} wird bestätigt"
-                case RenameVereinAction(verein, oldVerein) => s"Verein wird auf ${verein.toVerein.easyprint} umbenannt"
+                case RenameVereinAction(verein, oldVerein) => s"Verein wird auf ${verein.toVerein.easyprint} korrigiert"
                 case RenameAthletAction(verein, _, _, expected) => s"Athlet wird auf ${expected.extendedprint} korrigiert"
                 case AddRegistration(reg, programId, athlet, suggestion) =>
                   suggestImportAthletText(athlet, suggestion)
