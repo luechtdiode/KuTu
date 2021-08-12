@@ -57,8 +57,8 @@ class PackageSpec extends KuTuBaseSpec {
   }
 
   "toAthlet" should {
-    "initial capitalize name and surname" in {
-      val ar = AthletRegistration(0, 1, None, "W", "SANER", "claudia", "2007-10-20", 1L, 1L, None)
+    "initial trim and capitalize name and surname" in {
+      val ar = AthletRegistration(0, 1, None, "W", " SANER ", " claudia", "2007-10-20", 1L, 1L, None)
 
       assert(ar.matchesAthlet(AthletView(2, 0, "W", "Saner", "Claudia", Some(str2SQLDate("2007-10-20")), "", "", "", Some(
         Verein(1, "Verein", Some("Verband"))), true).toAthlet).==(true))
@@ -75,8 +75,8 @@ class PackageSpec extends KuTuBaseSpec {
       assert(ar.matchesAthlet(AthletView(2, 0, "W", "Meier", "Claudia", Some(str2SQLDate("2007-10-20")), "", "", "", Some(
         Verein(1, "Verein", Some("Verband"))), true).toAthlet).==(true))
     }
-    "pass all attributes if its just an update" in {
-      val ar = AthletRegistration(1, 1, Some(2), "W", "Saner", "Waiata", "2007-10-20", 1L, 1L, Some(
+    "pass all attributes just trimmed if its just an update" in {
+      val ar = AthletRegistration(1, 1, Some(2), "W", "Saner ", " Waiata ", "2007-10-20", 1L, 1L, Some(
         AthletView(2, 0, "W", "Saner", "Waiata", Some(str2SQLDate("2007-10-20")), "", "", "", Some(
           Verein(1, "Verein", Some("Verband"))), true)))
       assert(ar.matchesAthlet().==(true))
