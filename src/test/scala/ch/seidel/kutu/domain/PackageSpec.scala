@@ -2,6 +2,8 @@ package ch.seidel.kutu.domain
 
 import ch.seidel.kutu.base.KuTuBaseSpec
 
+import java.time.LocalDate
+
 class PackageSpec extends KuTuBaseSpec {
   "GeTuWettkampf" should {
     "min" in {
@@ -56,6 +58,38 @@ class PackageSpec extends KuTuBaseSpec {
     }
   }
 
+  "toPublicView" should {
+    val testverein = Verein(1, "Testverein", Some("Testverband"))
+    val vereinRegistration = Registration(
+      1, 1L, Some(1L),
+      "Testverein", "Testverband", "Max", "Muster", "0791234567", "a@b.com", 2L,
+      Some(testverein))
+
+    val athletRegistration = AthletRegistration(1, 1, Some(2), "W", "Saner ", " Waiata ", "2007-10-20", 1L, 1L, Some(
+      AthletView(2, 0, "W", "Saner", "Waiata", Some(str2SQLDate("2007-10-20")), "", "", "",
+        Some(testverein), activ = true)))
+
+    val athletView = athletRegistration.athlet.get
+    val athlet = athletView.toAthlet
+
+    "clear sensitiv vereinRegistration data" in {
+      assert(vereinRegistration.toPublicView.mail ==("***"))
+      assert(vereinRegistration.toPublicView.mobilephone ==("***"))
+    }
+    "clear sensitiv athlet data" in {
+      assert(athlet.toPublicView.gebdat.map(_.toLocalDate.getDayOfMonth) ==(Some(1)))
+      assert(athlet.toPublicView.gebdat.map(_.toLocalDate.getMonthValue) ==(Some(1)))
+    }
+    "clear sensitiv athletView data" in {
+      assert(athletView.toPublicView.gebdat.map(_.toLocalDate.getDayOfMonth) ==(Some(1)))
+      assert(athletView.toPublicView.gebdat.map(_.toLocalDate.getMonthValue) ==(Some(1)))
+    }
+    "clear sensitiv athletRegistration data" in {
+      val gebdat = sqlDate2ld(str2SQLDate(athletRegistration.toPublicView.gebdat))
+      assert(gebdat.getDayOfMonth ==(1))
+      assert(gebdat.getMonthValue ==(1))
+    }
+  }
   "toAthlet" should {
     "initial trim and capitalize name and surname" in {
       val ar = AthletRegistration(0, 1, None, "W", " SANER ", " claudia", "2007-10-20", 1L, 1L, None)

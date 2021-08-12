@@ -236,6 +236,13 @@ package object domain {
       case "W" => s"Ti ${easyprint}"
       case _ => s"Tu ${easyprint}"
     }
+    def toPublicView: Athlet = {
+      Athlet(id, 0, geschlecht, name, vorname, gebdat
+        .map(d => sqlDate2ld(d))
+        .map(ld => LocalDate.of(ld.getYear, 1,1))
+        .map(ld => ld2SQLDate(ld))
+        , "", "", "", verein, activ)
+    }
     def toAthletView(verein: Option[Verein]): AthletView = AthletView(
       id, js_id,
       geschlecht, name, vorname, gebdat,
@@ -256,7 +263,11 @@ package object domain {
       case _ => s"Tu ${easyprint}"
     }
     def toPublicView: AthletView = {
-      AthletView(id, 0, geschlecht, name, vorname, gebdat, "", "", "", verein, activ)
+      AthletView(id, 0, geschlecht, name, vorname, gebdat
+        .map(d => sqlDate2ld(d))
+        .map(ld => LocalDate.of(ld.getYear, 1,1))
+        .map(ld => ld2SQLDate(ld))
+        , "", "", "", verein, activ)
     }
     def toAthlet = Athlet(id, js_id, geschlecht, name, vorname, gebdat, strasse, plz, ort, verein.map(_.id), activ)
     def withBestMatchingGebDat(importedGebDat: Option[Date]) = {
@@ -830,14 +841,20 @@ package object domain {
     val verein: Registration
   }
   object PublicSyncAction {
+    /**
+     * Hides some attributes to protect privacy.
+     * The product is only and only used by the web-client showing sync-states with some summary-infos
+     * @param syncation
+     * @return transformed SyncAction toPublicView applied
+     */
     def apply(syncation: SyncAction): SyncAction = syncation match {
       case AddVereinAction(verein) => AddVereinAction(verein.toPublicView)
       case ApproveVereinAction(verein) => ApproveVereinAction(verein.toPublicView)
       case RenameVereinAction(verein, oldVerein) => RenameVereinAction(verein.toPublicView, oldVerein)
-      case RenameAthletAction(verein, athlet, existing, expected) => RenameAthletAction(verein.toPublicView, athlet, existing, expected)
-      case AddRegistration(verein, programId, athlet, suggestion) => AddRegistration(verein.toPublicView, programId, athlet, suggestion)
-      case MoveRegistration(verein, fromProgramId, toProgramid, athlet, suggestion) => MoveRegistration(verein.toPublicView, fromProgramId, toProgramid, athlet, suggestion)
-      case RemoveRegistration(verein, programId, athlet, suggestion) => RemoveRegistration(verein.toPublicView, programId, athlet, suggestion)
+      case RenameAthletAction(verein, athlet, existing, expected) => RenameAthletAction(verein.toPublicView, athlet.toPublicView, existing.toPublicView, expected.toPublicView)
+      case AddRegistration(verein, programId, athlet, suggestion) => AddRegistration(verein.toPublicView, programId, athlet.toPublicView, suggestion.toPublicView)
+      case MoveRegistration(verein, fromProgramId, toProgramid, athlet, suggestion) => MoveRegistration(verein.toPublicView, fromProgramId, toProgramid, athlet.toPublicView, suggestion.toPublicView)
+      case RemoveRegistration(verein, programId, athlet, suggestion) => RemoveRegistration(verein.toPublicView, programId, athlet.toPublicView, suggestion.toPublicView)
     }
   }
   case class AddVereinAction(override val verein: Registration) extends SyncAction {
@@ -904,7 +921,7 @@ package object domain {
   case class AthletRegistration(id: Long, vereinregistrationId: Long,
                                 athletId: Option[Long], geschlecht: String, name: String, vorname: String, gebdat: String,
                                 programId: Long, registrationTime: Long, athlet: Option[AthletView]) extends DataObject {
-
+    def toPublicView = AthletRegistration(id, vereinregistrationId, athletId, geschlecht, name, vorname, gebdat.substring(0,4) + "-01-01", programId, registrationTime, athlet.map(_.toPublicView))
     def capitalizeIfBlockCase(s: String): String = {
       if (s.length > 2 && (s.toUpperCase.equals(s) || s.toLowerCase.equals(s))) {
         s.substring(0,1).toUpperCase + s.substring(1).toLowerCase
