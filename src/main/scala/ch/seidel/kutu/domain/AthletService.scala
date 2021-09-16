@@ -211,7 +211,7 @@ trait AthletService extends DBService with AthletResultMapper {
       val gebdatSimilarity = athlet.gebdat.isEmpty || code.gebdat.equals(athlet.gebdat)
       val jahrgangSimilarity = athlet.gebdat.isEmpty || code.jahrgang.equals(AthletJahrgang(athlet.gebdat).jahrgang)
       val preret = namenSimilarity > 140 && vorNamenSimilarity > 140
-      val preret2 = namenSimilarity > 50 && (namenSimilarity + vorNamenSimilarity) > 200 && (math.max(namenSimilarity, vorNamenSimilarity) > 140)
+      val preret2 = namenSimilarity > 50 && vorNamenSimilarity > 25 && (namenSimilarity + vorNamenSimilarity) > 200 && (math.max(namenSimilarity, vorNamenSimilarity) > 140)
       val vereinSimilarity = athlet.verein match {
         case Some(vid) => vid == code.verein
         case _ => true

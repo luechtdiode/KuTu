@@ -98,8 +98,10 @@ object RegistrationAdmin {
         case _ => None
 
       }) match {
-        case Some(moveRegistration) => Some(moveRegistration)
-        case None if !r._2.isEmptyRegistration => Some(AddRegistration(r._1, r._2.programId, r._3, r._4))
+        case Some(moveRegistration) =>
+          Some(moveRegistration)
+        case None if !r._2.isEmptyRegistration =>
+          Some(AddRegistration(r._1, r._2.programId, r._3, r._4))
         case None => None
       }
     }
