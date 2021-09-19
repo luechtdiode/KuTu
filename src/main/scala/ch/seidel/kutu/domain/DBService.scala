@@ -156,7 +156,8 @@ object DBService {
 
   private lazy val databaseDef = {
     val dbconfigname_key = "X_DB_CONFIG_NAME"
-    if (Config.config.hasPath(dbconfigname_key) && Config.config.hasPath(Config.config.getString(dbconfigname_key))) try {
+
+    def startExternalDB = {
       val dbconfig_key = Config.config.getString(dbconfigname_key)
       logger.info("load db-config with " + dbconfig_key);
       val db = Database.forConfig(dbconfig_key, Config.config)
@@ -174,7 +175,7 @@ object DBService {
         , "AddAnmeldungTables-u2-pg.sql"
       )
       installDB(db, sqlScripts)
-      Config.importDataFrom match {
+      /*Config.importDataFrom match {
         case Some(version) =>
           logger.info("try to migrate from version " + version);
           val scriptname = s"MigratedFrom-$version"
@@ -185,13 +186,25 @@ object DBService {
             logger.info("migration from version " + version + " done");
           }
         case _ =>
-      }
+      }*/
       logger.info("database initialization ready with config " + dbconfig_key);
       db
+    }
+
+    if (Config.config.hasPath(dbconfigname_key) && Config.config.hasPath(Config.config.getString(dbconfigname_key))) try {
+      startExternalDB
     } catch {
       case e: Exception =>
-        logger.error("Could not initialize database as expected. Try initialize the fallback with sqlite", e);
-        databaseLite
+        logger.error("Could not initialize database as expected.", e);
+        Thread.sleep(30000L)
+        try {
+          startExternalDB
+        } catch {
+          case ee: Exception =>
+            logger.error("Could not initialize database as expected.", ee);
+            Thread.sleep(60000L)
+            startExternalDB
+        }
     } else {
       logger.info("No dedicated db-config defined. Initialize the fallback with sqlite");
       databaseLite
