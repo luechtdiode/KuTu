@@ -1,11 +1,5 @@
 package ch.seidel.kutu.data
 
-import java.io._
-import java.sql.Timestamp
-import java.time.format.DateTimeFormatterBuilder
-import java.util.UUID
-import java.util.zip.{ZipEntry, ZipInputStream, ZipOutputStream}
-
 import ch.seidel.kutu.akka._
 import ch.seidel.kutu.data.CaseObjectMetaUtil._
 import ch.seidel.kutu.domain._
@@ -16,7 +10,11 @@ import ch.seidel.kutu.{Config, KuTuApp}
 import org.slf4j.LoggerFactory
 import slick.jdbc
 
-import scala.annotation.tailrec
+import java.io._
+import java.sql.Timestamp
+import java.time.Instant
+import java.util.UUID
+import java.util.zip.{ZipEntry, ZipInputStream, ZipOutputStream}
 import scala.concurrent.Await
 import scala.concurrent.duration.Duration
 import scala.io.Source
@@ -432,14 +430,19 @@ object ResourceExchanger extends KutuService with RiegenBuilder {
     }
 
     if(collection.contains("durchgaenge.csv")) {
+      import java.time.format.DateTimeFormatter
+      import java.util.TimeZone
+      val formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss.SSSSSS")
+        .withZone(TimeZone.getTimeZone("UTC").toZoneId)
       val (durchgangCsv, durchgangHeader) = collection("durchgaenge.csv")
       logger.info("importing durchgaenge ...", durchgangHeader)
       updateOrInsertDurchgaenge(durchgangCsv.map(DBService.parseLine).filter(_.size == durchgangHeader.size).map{fields =>
         val wettkampfid = fields(durchgangHeader("wettkampfId"))
         implicit def toTS(tsString: String): Option[Timestamp] = tsString match {
           case s if (s.isEmpty) => None
-          case _ => Timestamp.valueOf(tsString) match {
-            case ts: Timestamp if (ts.getTime == 0) => None
+          case _ =>
+            Timestamp.from(Instant.from(formatter.parse(tsString))) match {
+            case ts: Timestamp if ts.getTime == 0 => None
             case ts => Some(ts)
           }
         }
@@ -646,6 +649,12 @@ object ResourceExchanger extends KutuService with RiegenBuilder {
           case Some(athlet: Athlet) => s"${athlet.id}"
           case Some(athlet: AthletView) => s"${athlet.id}"
           case Some(disziplin: Disziplin) => s"${disziplin.id}"
+          case Some(ts: Timestamp) =>
+            import java.time.format.DateTimeFormatter
+            import java.util.TimeZone
+            var formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss.SSSSSS")
+            formatter = formatter.withZone(TimeZone.getTimeZone("UTC").toZoneId)
+            Some(formatter.format(ts.toInstant))
           case Some(value) => value.toString
           case None => ""
           case e => e.toString
