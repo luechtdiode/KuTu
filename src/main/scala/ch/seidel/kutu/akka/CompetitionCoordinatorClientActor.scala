@@ -8,7 +8,7 @@ import akka.persistence.{PersistentActor, SnapshotOffer, SnapshotSelectionCriter
 import akka.stream.scaladsl.{Flow, Sink, Source}
 import akka.stream.{CompletionStrategy, OverflowStrategy}
 import akka.util.Timeout
-import ch.seidel.kutu.{Config, domain}
+import ch.seidel.kutu.Config
 import ch.seidel.kutu.akka.CompetitionCoordinatorClientActor.PublishAction
 import ch.seidel.kutu.data.ResourceExchanger
 import ch.seidel.kutu.domain._
@@ -19,7 +19,6 @@ import org.slf4j.LoggerFactory
 import spray.json._
 
 import java.util.UUID
-import scala.collection.MapView
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration.DurationInt
 import scala.concurrent.{Await, Future}
@@ -101,6 +100,7 @@ class CompetitionCoordinatorClientActor(wettkampfUUID: String) extends Persisten
     log.info(event.toString)
     super.onRecoveryFailure(cause, event)
   }
+
   val receiveRecover: Receive = {
     case evt: KutuAppEvent => handleEvent(evt, true)
     case SnapshotOffer(_, snapshot: CompetitionState) => state = snapshot
@@ -173,6 +173,8 @@ class CompetitionCoordinatorClientActor(wettkampfUUID: String) extends Persisten
         handleEvent(updated)
         val handledEvent = updated.toAthletWertungUpdatedSequenced(state.lastSequenceId)
         log.debug("completed " + handledEvent)
+        updategeraeteRigeListe(handledEvent)
+        log.debug("updated riegenliste " + handledEvent)
         sender() ! handledEvent
 
         addToDurchgangJournal(handledEvent, durchgang)
@@ -235,9 +237,9 @@ class CompetitionCoordinatorClientActor(wettkampfUUID: String) extends Persisten
         }
       }
       ref ! BulkEvent(wettkampfUUID, squashDurchgangEvents(durchgangNormalized).toList)
-//      squashDurchgangEvents(durchgangNormalized).foreach { d =>
-//        ref ! d
-//      }
+      //      squashDurchgangEvents(durchgangNormalized).foreach { d =>
+      //        ref ! d
+      //      }
       ref ! NewLastResults(state.lastWertungen, state.lastBestenResults)
 
     // system actions
@@ -320,6 +322,7 @@ class CompetitionCoordinatorClientActor(wettkampfUUID: String) extends Persisten
     val senderWebSocket = actorWithSameDeviceIdOfSender(originSender.getOrElse(sender()))
 
     def forwardToListeners(handledEvent: AthletWertungUpdatedSequenced) = {
+      updategeraeteRigeListe(handledEvent)
       addToDurchgangJournal(handledEvent, handledEvent.durchgang)
       notifyWebSocketClients(senderWebSocket, handledEvent, handledEvent.durchgang)
       notifyBestenResult()
@@ -369,6 +372,11 @@ class CompetitionCoordinatorClientActor(wettkampfUUID: String) extends Persisten
         case _ =>
       }
     }
+  }
+
+  private def updategeraeteRigeListe(toPublish: AthletWertungUpdatedSequenced): Unit = {
+    val wertung = toPublish.wertung
+    geraeteRigeListe = geraeteRigeListe.map(_.updated(wertung))
   }
 
   private def addToDurchgangJournal(toPublish: AthletWertungUpdatedSequenced, durchgang: String) = {
@@ -475,8 +483,8 @@ class ClientActorSupervisor extends Actor with ActorLogging {
           context.watch(coordinator)
           wettkampfCoordinators = wettkampfCoordinators + (uw.action.wettkampfUUID -> coordinator)
           coordinator.forward(uw)
-          //log.warning("Action for unknown competition: " + uw)
-          //sender() ! MessageAck("Action for unknown competition: " + uw)
+        //log.warning("Action for unknown competition: " + uw)
+        //sender() ! MessageAck("Action for unknown competition: " + uw)
       }
 
     case Terminated(wettkampfActor) =>
@@ -568,7 +576,7 @@ object CompetitionCoordinatorClientActor extends JsonSupport with EnrichedJson {
 
     val sink = fromWebsocketToActorFlow.to(Sink.actorRef(clientActor, StopDevice(deviceId), _ => StopDevice(deviceId)).named(deviceId))
     val source = fromCoordinatorActorToWebsocketFlow(lastSequenceId,
-      Source.actorRef(completionMatcher, failureMatcher,256, OverflowStrategy.dropNew)
+      Source.actorRef(completionMatcher, failureMatcher, 256, OverflowStrategy.dropNew)
         .mapMaterializedValue { wsSource: ActorRef =>
           clientActor ! Subscribe(wsSource, deviceId, durchgang, lastSequenceId)
           wsSource
