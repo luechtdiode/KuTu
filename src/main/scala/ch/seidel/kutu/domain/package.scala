@@ -798,13 +798,36 @@ package object domain {
   }
 
   case class Kandidat(wettkampfTitel: String, geschlecht: String, programm: String, id: Long,
-                      name: String, vorname: String, jahrgang: String, verein: String, einteilung: Option[Riege], einteilung2: Option[Riege], diszipline: Seq[Disziplin], diszipline2: Seq[Disziplin], wertungen: Seq[WertungView])
+                      name: String, vorname: String, jahrgang: String, verein: String, einteilung: Option[Riege], einteilung2: Option[Riege], diszipline: Seq[Disziplin], diszipline2: Seq[Disziplin], wertungen: Seq[WertungView]) {
+    def matches(w1: Wertung, w2: WertungView): Boolean = {
+       w2.wettkampfdisziplin.id == w1.wettkampfdisziplinId && w2.athlet.id == w1.athletId
+    }
+    def indexOf(wertung: Wertung): Int = wertungen.indexWhere(w => matches(wertung, w))
+    def updated(idx: Int, wertung: Wertung): Kandidat = {
+      if (idx > -1 && matches(wertung, wertungen(idx)))
+        copy(wertungen = wertungen.updated(idx, wertungen(idx).updatedWertung(wertung)))
+      else this
+    }
+  }
 
   case class GeraeteRiege(wettkampfTitel: String, wettkampfUUID: String, durchgang: Option[String], halt: Int, disziplin: Option[Disziplin], kandidaten: Seq[Kandidat], erfasst: Boolean, sequenceId: String) {
     private val hash: Long = {
       Seq(wettkampfUUID,
         durchgang,
         halt, disziplin).hashCode()
+    }
+    def updated(wertung: Wertung): GeraeteRiege = {
+      kandidaten.foldLeft((false, Seq[Kandidat]()))((acc,kandidat) => {
+        if (acc._1) (acc._1, acc._2 :+ kandidat) else {
+          val idx = kandidat.indexOf(wertung)
+          if(idx > -1)
+            (true, acc._2 :+ kandidat.updated(idx, wertung))
+          else (acc._1, acc._2 :+ kandidat)
+        }
+      }) match {
+        case (found, kandidaten) if found => copy(kandidaten = kandidaten)
+        case _ => this
+      }
     }
 
     def caption: String = {
