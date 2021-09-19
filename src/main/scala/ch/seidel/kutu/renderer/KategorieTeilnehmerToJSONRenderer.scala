@@ -20,16 +20,16 @@ trait KategorieTeilnehmerToJSONRenderer {
 
     val d = kandidaten.map{kandidat =>
       s"""      {
-         |        "verein" : "${escaped(kandidat.verein)}",
-         |        "athlet" : "${escaped(kandidat.name)} ${escaped(kandidat.vorname)} (${escaped(kandidat.jahrgang)})",
+         |        "verein" : "${kandidat.verein}",
+         |        "athlet" : "${kandidat.name} ${kandidat.vorname} (${kandidat.jahrgang})",
          |        "athletid" : ${kandidat.id},
-         |        "durchgang" : "${escaped(kandidat.durchgang)}",
-         |        "start" : "${escaped(kandidat.start)}"
+         |        "durchgang" : "${kandidat.durchgang}",
+         |        "start" : "${kandidat.start}"
          |      }""".stripMargin
     }
     val dt = d.mkString("[\n", ",\n", "]\n")
     s"""  {
-       |    "programm" : "${escaped(kategorie)}",
+       |    "programm" : "${kategorie}",
        |    "teilnehmer" : $dt
        |  }""".stripMargin
   }
@@ -66,7 +66,7 @@ trait KategorieTeilnehmerToJSONRenderer {
     }
 
     val pages = rawpages.mkString(s""""logo" : "$logoHtml",
-                                     |  "title" : "${escaped(kandidaten.head.wettkampfTitel)}",
+                                     |  "title" : "${kandidaten.head.wettkampfTitel}",
                                      |  "programme" : [\n""".stripMargin, ",\n", "]\n")
     intro + pages + outro
   }
