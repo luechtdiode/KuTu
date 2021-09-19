@@ -477,6 +477,10 @@ trait WettkampfService extends DBService
   }
 
   def deleteWettkampfRelationActions(wettkampfid: Long) = {
+      sqlu"""      delete from athletregistration where vereinregistration_id in (select id from vereinregistration where wettkampf_id=${wettkampfid})""" >>
+      sqlu"""      delete from judgeregistration_pgm where vereinregistration_id in (select id from vereinregistration where wettkampf_id=${wettkampfid})""" >>
+      sqlu"""      delete from judgeregistration where vereinregistration_id in (select id from vereinregistration where wettkampf_id=${wettkampfid})""" >>
+      sqlu"""      delete from vereinregistration where wettkampf_id=${wettkampfid}""" >>
       sqlu"""      delete from published_scores where wettkampf_id=${wettkampfid}""" >>
       sqlu"""      delete from durchgangstation where wettkampf_id=${wettkampfid}""" >>
       sqlu"""      delete from durchgang where wettkampf_id=${wettkampfid}""" >>
