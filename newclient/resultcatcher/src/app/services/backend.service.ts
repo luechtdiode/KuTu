@@ -731,7 +731,8 @@ export class BackendService extends WebsocketService {
     }
     loadGeraete() {
       this.geraete = [];
-      if (!!!this._competition || this._competition === 'undefined') {
+      if (!!!this._competition || this._competition === 'undefined' ||
+          !!!this._durchgang || this._durchgnag === 'undefined') {
         return of([]);
       }
       let path = '';
@@ -776,7 +777,9 @@ export class BackendService extends WebsocketService {
 
     loadSteps() {
       this.steps = [];
-      if (!!!this._competition || this._competition === 'undefined') {
+      if (!!!this._competition || this._competition === 'undefined' ||
+          !!!this._durchgang || this._durchgnag === 'undefined' ||
+          !!!this._geraet || this._geraet === 'undefined') {
         return of([]);
       }
       const request = this.startLoading('Stationen zum Gerät werden geladen. Bitte warten ...',

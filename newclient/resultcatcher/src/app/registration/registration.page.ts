@@ -59,6 +59,7 @@ export class RegistrationPage implements OnInit {
       this.clubregistrations = [];
 
       this.backendService.getClubRegistrations(competitionId).subscribe(list => {
+        this.getSyncActions();
         this.clubregistrations = list;
         this.busy.next(false);
         const pipeBeforeAction = this.tMyQueryStream.pipe(
