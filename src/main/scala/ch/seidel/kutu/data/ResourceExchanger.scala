@@ -432,7 +432,7 @@ object ResourceExchanger extends KutuService with RiegenBuilder {
     if(collection.contains("durchgaenge.csv")) {
       import java.time.format.DateTimeFormatter
       import java.util.TimeZone
-      val formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss.SSSSS")
+      val formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss.SSSSSS")
         .withZone(TimeZone.getTimeZone("UTC").toZoneId)
       val (durchgangCsv, durchgangHeader) = collection("durchgaenge.csv")
       logger.info("importing durchgaenge ...", durchgangHeader)
