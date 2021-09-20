@@ -1396,6 +1396,7 @@ object KuTuApp extends JFXApp3 with KutuService with JsonSupport with JwtSupport
     },
       new Button("OK") {
         onAction = handleAction { implicit e: ActionEvent =>
+          deleteRegistrations(p.uuid.map(UUID.fromString).get)
           deleteWettkampf(p.id)
           updateTree
         }
