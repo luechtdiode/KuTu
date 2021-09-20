@@ -732,7 +732,7 @@ export class BackendService extends WebsocketService {
     loadGeraete() {
       this.geraete = [];
       if (!!!this._competition || this._competition === 'undefined' ||
-          !!!this._durchgang || this._durchgnag === 'undefined') {
+          !!!this._durchgang || this._durchgang === 'undefined') {
         return of([]);
       }
       let path = '';
@@ -778,7 +778,7 @@ export class BackendService extends WebsocketService {
     loadSteps() {
       this.steps = [];
       if (!!!this._competition || this._competition === 'undefined' ||
-          !!!this._durchgang || this._durchgnag === 'undefined' ||
+          !!!this._durchgang || this._durchgang === 'undefined' ||
           !!!this._geraet || this._geraet === 'undefined') {
         return of([]);
       }
