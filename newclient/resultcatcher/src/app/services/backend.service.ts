@@ -779,7 +779,7 @@ export class BackendService extends WebsocketService {
       this.steps = [];
       if (!!!this._competition || this._competition === 'undefined' ||
           !!!this._durchgang || this._durchgang === 'undefined' ||
-          !!!this._geraet) {
+          this._geraet === undefined) {
         return of([]);
       }
       const request = this.startLoading('Stationen zum Gerät werden geladen. Bitte warten ...',
@@ -827,7 +827,7 @@ export class BackendService extends WebsocketService {
 
     loadWertungen() {
       // prevent denial of service fired from the step-slider
-      if (this.wertungenLoading || this._geraet !== undefined || this._step !== undefined) {
+      if (this.wertungenLoading || this._geraet === undefined || this._step === undefined) {
         return of([]);
       }
       this.activateCaptionMode();
