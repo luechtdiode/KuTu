@@ -28,15 +28,19 @@ object AutoCommitTextFieldTableCell {
   var editModeTerminationListener: List[() => Unit] = List.empty
   editmode.onChange {
     if (!editmode.value) {
+      println(s"executing ${editModeTerminationListener.size} waiting tasks ...")
       editModeTerminationListener.foreach(task => task())
       editModeTerminationListener = List.empty
+      println(s"all tasks completed")
     }
   }
 
   def doWhenEditmodeEnds(task: () => Unit): Unit = {
     if (!editmode.value) {
+      println("not in editmode ... execute update-tasks immediately")
       task()
     } else {
+      println("in editmode ... execute update-tasks later")
       editModeTerminationListener = editModeTerminationListener :+ task
     }
   }
