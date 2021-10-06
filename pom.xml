@@ -62,7 +62,7 @@
 		<akkaHttp.version>10.2.6</akkaHttp.version>
 		<akka.version>2.6.16</akka.version>
 		<javafx.version>16</javafx.version>
-		<scalafx.version>16.0.0-R24</scalafx.version>
+		<scalafx.version>16.0.0-R25</scalafx.version>
 		<scalatest.version>3.3.0-SNAP3</scalatest.version>
 		<scala-maven-plugin.version>4.5.4</scala-maven-plugin.version>
 		<gatling.version>3.6.0</gatling.version>
