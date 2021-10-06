@@ -731,12 +731,11 @@ export class BackendService extends WebsocketService {
     }
     loadGeraete() {
       this.geraete = [];
-      if (!!!this._competition || this._competition === 'undefined' ||
-          !!!this._durchgang || this._durchgang === 'undefined') {
+      if (!!!this._competition || this._competition === 'undefined') {
         return of([]);
       }
       let path = '';
-      if (this.captionmode && this._durchgang) {
+      if (this.captionmode && !!this._durchgang && this._durchgang !== 'undefined') {
         path = backendUrl + 'api/durchgang/' + this._competition + '/' + encodeURIComponent2(this._durchgang);
       } else {
         path = backendUrl + 'api/durchgang/' + this._competition + '/geraete';
@@ -1038,7 +1037,7 @@ export class BackendService extends WebsocketService {
       const path = '/'; // location.pathname;
       const protocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
       let apiPath = 'api/';
-      if (this._durchgang && this.captionmode) {
+      if (!!this._durchgang && this.captionmode) {
         apiPath = apiPath + 'durchgang/' + this._competition + '/' + encodeURIComponent2(this._durchgang) + '/ws';
       } else {
         apiPath = apiPath + 'durchgang/' + this._competition + '/all/ws';
