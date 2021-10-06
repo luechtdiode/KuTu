@@ -441,7 +441,8 @@ object ResourceExchanger extends KutuService with RiegenBuilder {
         implicit def toTS(tsString: String): Option[Timestamp] = tsString match {
           case s if (s.isEmpty) => None
           case _ =>
-            Timestamp.from(Instant.from(formatter.parse(tsString))) match {
+            val paddedTs = s"${tsString}000000".substring(0, 26)
+            Timestamp.from(Instant.from(formatter.parse(paddedTs))) match {
             case ts: Timestamp if ts.getTime == 0 => None
             case ts => Some(ts)
           }
