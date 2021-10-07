@@ -5,15 +5,15 @@ import javafx.scene.{control => jfxsc}
 import javafx.{css => jfxcss}
 import scalafx.Includes._
 import scalafx.application.Platform
-import scalafx.beans.property.{BooleanProperty, ReadOnlyBooleanProperty}
+import scalafx.beans.property.BooleanProperty
 import scalafx.beans.value.ObservableValue
-import scalafx.collections.{ObservableBuffer, ObservableSet}
 import scalafx.collections.ObservableSet.{Change, Remove}
+import scalafx.collections.{ObservableBuffer, ObservableSet}
 import scalafx.css.PseudoClass
 import scalafx.delegate.SFXDelegate
 import scalafx.event.subscriptions.Subscription
 import scalafx.scene.control.cell._
-import scalafx.scene.control.{TableCell, TableColumn, _}
+import scalafx.scene.control._
 import scalafx.scene.input.{Clipboard, KeyCode, KeyEvent}
 import scalafx.util.StringConverter
 

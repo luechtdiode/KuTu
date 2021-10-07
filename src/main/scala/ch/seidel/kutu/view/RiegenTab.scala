@@ -462,7 +462,7 @@ class RiegenTab(override val wettkampfInfo: WettkampfInfo, override val service:
     }
     def makeRiegenFilterActiveBinding = {
       Bindings.createBooleanBinding(() => {
-        ! (riegenFilterView.selectionModel.value.selectedItem.isNotNull().value && riegenFilterTab.selectedProperty.value)
+        ! (riegenFilterView.selectionModel.value.selectedItem.isNotNull.value && riegenFilterTab.selectedProperty.value)
       },
         riegenFilterView.selectionModel.value.getSelectedItems(),
         riegenFilterTab.selectedProperty
@@ -477,7 +477,7 @@ class RiegenTab(override val wettkampfInfo: WettkampfInfo, override val service:
       )
     }
 
-    def doRegenerateDurchgang(durchgang: Set[String])(implicit action: ActionEvent) = {
+    def doRegenerateDurchgang(durchgang: Set[String])(implicit action: ActionEvent): Unit = {
     	  val cbSplitSex = new ComboBox[SexDivideRule]() {
           items.get.addAll(GemischteRiegen, GemischterDurchgang, GetrennteDurchgaenge)
           selectionModel.value.selectFirst()
@@ -493,7 +493,7 @@ class RiegenTab(override val wettkampfInfo: WettkampfInfo, override val service:
             cde.selected.value = d.id != 5 || !isGeTU
             items.get.add(cde)
           }
-          cellFactory = CheckBoxListCell.forListView(_.selected)
+          cellFactory = CheckBoxListCell.forListView[CheckListBoxEditor[Disziplin]](_.selected)
         }
         def getSelectedDisziplines = {
           val ret = lvOnDisziplines.items.get.filter { item => item.selected.value }.map(item => item.value).toSet
