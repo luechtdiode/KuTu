@@ -27,6 +27,17 @@ object AbuseHandler {
     }
   }
 
+  def handleAbuse(clientId: String, uri: Uri): String = {
+    abuseMap.get(keyOfClientId(clientId, uri)) match {
+      case Some(AbuseCounter(counter, _)) =>
+        toAbuseMap(clientId, uri, counter)
+        s"Request from $clientId with $counter fails to $uri could not be found"
+      case None =>
+        toAbuseMap(clientId, uri)
+        s"Request from $clientId with first fail to $uri could not be found"
+    }
+  }
+
   def findAbusedClient(clientId: String, uri: Uri): Option[AbuseCounter] = {
     val key = keyOfClientId(clientId, uri)
     val maybeCounter = abuseMap.get(key)

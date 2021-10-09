@@ -138,7 +138,7 @@ ScoreRoutes extends SprayJsonSupport with JsonSupport with AuthSupport with Rout
         pathPrefix(JavaUUID) { competitionId =>
           import AbuseHandler._
           if (!wettkampfExists(competitionId.toString)) {
-            toAbuseMap(clientId, uri)
+            log.error(handleAbuse(clientId, uri))
             complete(StatusCodes.NotFound)
           } else {
             val wettkampf = readWettkampf(competitionId.toString)

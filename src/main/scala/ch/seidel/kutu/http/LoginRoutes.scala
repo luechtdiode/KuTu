@@ -14,7 +14,7 @@ trait LoginRoutes extends SprayJsonSupport with EnrichedJson with JwtSupport wit
         extractUri { uri =>
           respondWithJwtHeader(userId) {
             if (userId.endsWith(OPTION_LOGINRESET)) {
-              toAbuseMap(userId, uri)
+              log.error(handleAbuse(userId, uri))
               complete(StatusCodes.Unauthorized)
             } else {
               complete(StatusCodes.OK)

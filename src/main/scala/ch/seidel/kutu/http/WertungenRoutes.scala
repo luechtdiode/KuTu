@@ -67,7 +67,7 @@ trait WertungenRoutes extends SprayJsonSupport with JsonSupport with JwtSupport 
         } ~
         pathPrefix("durchgang" / JavaUUID) { competitionId =>
           if (!wettkampfExists(competitionId.toString)) {
-            toAbuseMap(clientId, uri)
+            log.error(handleAbuse(clientId, uri))
             complete(StatusCodes.NotFound)
           } else
           pathEnd {

@@ -121,7 +121,7 @@ trait RegistrationRoutes extends SprayJsonSupport with JwtSupport with JsonSuppo
       } ~ pathPrefix("registrations" / JavaUUID) { competitionId =>
         import AbuseHandler._
         if (!wettkampfExists(competitionId.toString)) {
-          toAbuseMap(clientId, uri)
+          log.error(handleAbuse(clientId, uri))
           complete(StatusCodes.NotFound)
         } else {
           val wettkampf = readWettkampf(competitionId.toString)
