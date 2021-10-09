@@ -1,5 +1,6 @@
 package ch.seidel.kutu.http
 
+import akka.http.scaladsl.model.{ContentTypes, HttpEntity}
 import akka.http.scaladsl.server.Directives
 
 trait ResourceService extends Directives {
@@ -11,14 +12,7 @@ trait ResourceService extends Directives {
         fallbackRoute
       }
     } ~
-    path("robots.txt") {
-      complete(
-        """
-          |User-agent: *
-          |Disallow: /
-          |""".stripMargin)
-    } ~
-    getFromResourceDirectory("app")
+    getFromResourceDirectory("app") ~ getFromResourceDirectory("static")
   }
 
   val resourceRoutes = appRoute
