@@ -11,6 +11,13 @@ trait ResourceService extends Directives {
         fallbackRoute
       }
     } ~
+    path("robots.txt") {
+      complete(
+        """
+          |User-agent: *
+          |Disallow: /
+          |""".stripMargin)
+    } ~
     getFromResourceDirectory("app")
   }
 
