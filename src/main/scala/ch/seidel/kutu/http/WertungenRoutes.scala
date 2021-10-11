@@ -20,6 +20,7 @@ trait WertungenRoutes extends SprayJsonSupport with JsonSupport with JwtSupport 
 
   // Required by the `ask` (?) method below
   private implicit lazy val timeout = Timeout(5.seconds) // usually we'd obtain the timeout from the system's configuration
+  import AbuseHandler._
 
   lazy val wertungenRoutes: Route = {
     (handleCID & extractUri) { (clientId: String, uri: Uri) =>
@@ -65,33 +66,31 @@ trait WertungenRoutes extends SprayJsonSupport with JsonSupport with JwtSupport 
           }
         } ~
         pathPrefix("durchgang" / JavaUUID) { competitionId =>
+          if (!wettkampfExists(competitionId.toString)) {
+            log.error(handleAbuse(clientId, uri))
+            complete(StatusCodes.NotFound)
+          } else
           pathEnd {
             get {
-              if (!wettkampfExists(competitionId.toString)) {
-                complete(StatusCodes.NotFound)
-              } else
-                complete {
-                  val eventualKutuAppEvent: Future[KutuAppEvent] = CompetitionCoordinatorClientActor.publish(GetGeraeteRiegeList(competitionId.toString), clientId)
-                  val toResponseMarshallable: Future[ToResponseMarshallable] = eventualKutuAppEvent.map {
-                    case GeraeteRiegeList(list, _) =>
-                      list
-                        .flatMap(gr => gr.durchgang)
-                        .distinct
-                    case _ =>
-                      StatusCodes.Conflict
-                  }
-                  toResponseMarshallable
+              complete {
+                val eventualKutuAppEvent: Future[KutuAppEvent] = CompetitionCoordinatorClientActor.publish(GetGeraeteRiegeList(competitionId.toString), clientId)
+                val toResponseMarshallable: Future[ToResponseMarshallable] = eventualKutuAppEvent.map {
+                  case GeraeteRiegeList(list, _) =>
+                    list
+                      .flatMap(gr => gr.durchgang)
+                      .distinct
+                  case _ =>
+                    StatusCodes.Conflict
                 }
+                toResponseMarshallable
+              }
             }
           } ~
             (path(Segment / "ws") & parameters(Symbol("lastSequenceId").?)) { (durchgang: String, lastSequenceId: Option[String]) =>
               val lastSequenceIdOption: Option[Long] = lastSequenceId.map(str2Long)
               parameters(Symbol("jwt").as[String]) { jwt =>
                 authenticateWith(Some(jwt), true) { id =>
-                  if (!wettkampfExists(competitionId.toString)) {
-                    complete(StatusCodes.NotFound)
-                  }
-                  else if (id == competitionId.toString) {
+                  if (id == competitionId.toString) {
                     if (durchgang.equalsIgnoreCase("all")) {
                       handleWebSocketMessages(CompetitionCoordinatorClientActor.createActorSinkSource(clientId, competitionId.toString, None, lastSequenceIdOption))
                     } else {
@@ -103,18 +102,14 @@ trait WertungenRoutes extends SprayJsonSupport with JsonSupport with JwtSupport 
                 }
               } ~
                 authenticated(true) { id =>
-                  if (!wettkampfExists(competitionId.toString)) {
-                    complete(StatusCodes.NotFound)
-                  } else if (id == competitionId.toString) {
+                  if (id == competitionId.toString) {
                     handleWebSocketMessages(CompetitionCoordinatorClientActor.createActorSinkSource(clientId, competitionId.toString, Some(durchgang), lastSequenceIdOption))
                   } else {
                     complete(StatusCodes.Unauthorized)
                   }
                 } ~
                 pathEnd {
-                  if (!wettkampfExists(competitionId.toString)) {
-                    complete(StatusCodes.NotFound)
-                  } else if (durchgang.equalsIgnoreCase("all")) {
+                  if (durchgang.equalsIgnoreCase("all")) {
                     handleWebSocketMessages(CompetitionCoordinatorClientActor.createActorSource(clientId, competitionId.toString, None, lastSequenceIdOption))
                   } else {
                     handleWebSocketMessages(CompetitionCoordinatorClientActor.createActorSource(clientId, competitionId.toString, Some(durchgang)))
@@ -142,73 +137,66 @@ trait WertungenRoutes extends SprayJsonSupport with JsonSupport with JwtSupport 
             } ~
             path(Segments) { segments =>
               get {
-                if (!wettkampfExists(competitionId.toString)) {
-                  complete(StatusCodes.NotFound)
-                }
-                else {
-                  // Durchgang/Geraet/Step
-                  segments match {
-                    case List(durchgang) => complete {
-                      val dg = encodeURIComponent(durchgang)
-                      val eventualKutuAppEvent: Future[KutuAppEvent] = CompetitionCoordinatorClientActor.publish(GetGeraeteRiegeList(competitionId.toString), clientId)
-                      val toResponseMarshallable: Future[ToResponseMarshallable] = eventualKutuAppEvent.map {
-                        case GeraeteRiegeList(list, _) =>
-                          list
-                            .filter(_.durchgang.exists(encodeURIComponent(_) == dg))
-                            .flatMap(gr => gr.disziplin)
-                            .distinct
-                        case _ =>
-                          StatusCodes.Conflict
-                      }
-                      toResponseMarshallable
+                // Durchgang/Geraet/Step
+                segments match {
+                  case List(durchgang) => complete {
+                    val dg = encodeURIComponent(durchgang)
+                    val eventualKutuAppEvent: Future[KutuAppEvent] = CompetitionCoordinatorClientActor.publish(GetGeraeteRiegeList(competitionId.toString), clientId)
+                    val toResponseMarshallable: Future[ToResponseMarshallable] = eventualKutuAppEvent.map {
+                      case GeraeteRiegeList(list, _) =>
+                        list
+                          .filter(_.durchgang.exists(encodeURIComponent(_) == dg))
+                          .flatMap(gr => gr.disziplin)
+                          .distinct
+                      case _ =>
+                        StatusCodes.Conflict
                     }
-                    case List(durchgang, geraet) => complete {
-                      val dg = encodeURIComponent(durchgang)
-                      val gid: Long = geraet
-                      val eventualKutuAppEvent: Future[KutuAppEvent] = CompetitionCoordinatorClientActor.publish(GetGeraeteRiegeList(competitionId.toString), clientId)
-                      val toResponseMarshallable: Future[ToResponseMarshallable] = eventualKutuAppEvent.map {
-                        case GeraeteRiegeList(list, _) =>
-                          list.filter(gr => {
-                            gr.durchgang.exists(encodeURIComponent(_) == dg) && gr.disziplin.exists(_.id == gid)
-                          })
-                            .map(gr => gr.halt + 1)
-                            .distinct.sorted
-                        case _ =>
-                          StatusCodes.Conflict
-                      }
-                      toResponseMarshallable
-                    }
-                    case List(durchgang, geraet, step) => complete {
-                      val dg = encodeURIComponent(durchgang)
-                      val halt: Int = step
-                      val gid: Long = geraet
-                      val eventualKutuAppEvent: Future[KutuAppEvent] = CompetitionCoordinatorClientActor.publish(GetGeraeteRiegeList(competitionId.toString), clientId)
-                      val toResponseMarshallable: Future[ToResponseMarshallable] = eventualKutuAppEvent.map {
-                        case GeraeteRiegeList(list, _) =>
-                          list.filter(gr =>
-                            gr.durchgang.exists(encodeURIComponent(_) == dg) &&
-                              gr.disziplin.exists(_.id == gid) &&
-                              gr.halt == halt - 1)
-                            .flatMap(gr => gr.kandidaten.map(k => {
-                              val wertungView = k.wertungen.filter(w => w.wettkampfdisziplin.disziplin.id == gid).head
-                              WertungContainer(k.id, k.vorname, k.name, k.geschlecht, k.verein,
-                                wertungView.toWertung,
-                                gid, k.programm, wertungView.wettkampfdisziplin.notenSpez.isDNoteUsed)
-                            }))
-                        case _ =>
-                          StatusCodes.Conflict
-                      }
-                      toResponseMarshallable
-                    }
-                    case _ => complete(StatusCodes.Conflict)
+                    toResponseMarshallable
                   }
+                  case List(durchgang, geraet) => complete {
+                    val dg = encodeURIComponent(durchgang)
+                    val gid: Long = geraet
+                    val eventualKutuAppEvent: Future[KutuAppEvent] = CompetitionCoordinatorClientActor.publish(GetGeraeteRiegeList(competitionId.toString), clientId)
+                    val toResponseMarshallable: Future[ToResponseMarshallable] = eventualKutuAppEvent.map {
+                      case GeraeteRiegeList(list, _) =>
+                        list.filter(gr => {
+                          gr.durchgang.exists(encodeURIComponent(_) == dg) && gr.disziplin.exists(_.id == gid)
+                        })
+                          .map(gr => gr.halt + 1)
+                          .distinct.sorted
+                      case _ =>
+                        StatusCodes.Conflict
+                    }
+                    toResponseMarshallable
+                  }
+                  case List(durchgang, geraet, step) => complete {
+                    val dg = encodeURIComponent(durchgang)
+                    val halt: Int = step
+                    val gid: Long = geraet
+                    val eventualKutuAppEvent: Future[KutuAppEvent] = CompetitionCoordinatorClientActor.publish(GetGeraeteRiegeList(competitionId.toString), clientId)
+                    val toResponseMarshallable: Future[ToResponseMarshallable] = eventualKutuAppEvent.map {
+                      case GeraeteRiegeList(list, _) =>
+                        list.filter(gr =>
+                          gr.durchgang.exists(encodeURIComponent(_) == dg) &&
+                            gr.disziplin.exists(_.id == gid) &&
+                            gr.halt == halt - 1)
+                          .flatMap(gr => gr.kandidaten.map(k => {
+                            val wertungView = k.wertungen.filter(w => w.wettkampfdisziplin.disziplin.id == gid).head
+                            WertungContainer(k.id, k.vorname, k.name, k.geschlecht, k.verein,
+                              wertungView.toWertung,
+                              gid, k.programm, wertungView.wettkampfdisziplin.notenSpez.isDNoteUsed)
+                          }))
+                      case _ =>
+                        StatusCodes.Conflict
+                    }
+                    toResponseMarshallable
+                  }
+                  case _ => complete(StatusCodes.Conflict)
                 }
               } ~
                 put {
                   authenticated() { userId =>
-                    if (!wettkampfExists(competitionId.toString)) {
-                      complete(StatusCodes.NotFound)
-                    } else if (userId.equals(competitionId.toString)) {
+                    if (userId.equals(competitionId.toString)) {
                       entity(as[Wertung]) { wertung =>
                         segments match {
                           case List(dg, geraet, step) => {

@@ -3,9 +3,11 @@ package ch.seidel.kutu.http
 import akka.http.scaladsl.model.StatusCodes._
 import akka.http.scaladsl.model.{HttpResponse, StatusCodes, Uri}
 import akka.http.scaladsl.server.{ExceptionHandler, RouteConcatenation}
-import ch.seidel.kutu.domain.DBService
+import ch.seidel.kutu.domain.toDurationFormat
 
-trait ApiService extends RouteConcatenation with CIDSupport with RouterLogging
+
+
+trait ApiService extends RouteConcatenation with CIDSupport with RouterLogging with IpToDeviceID
   with LoginRoutes
   with WertungenRoutes
   with WettkampfRoutes
@@ -16,28 +18,43 @@ trait ApiService extends RouteConcatenation with CIDSupport with RouterLogging
   with ResourceService {
 
   //  private implicit lazy val _ = ch.seidel.kutu.http.Core.system.dispatcher
+  import AbuseHandler._
 
   def allroutes(userLookup: (String) => String, userIdLookup: (String) => Option[Long]) = {
     def myExceptionHandler: ExceptionHandler = ExceptionHandler {
       case e: Exception =>
         (handleCID & extractUri) { (clientId: String, uri: Uri) =>
-          log.error(e, s"Request from $clientId to $uri could not be handled normally")
+          log.error(handleExceptionAbuse(e, clientId, uri))
           complete(HttpResponse(InternalServerError, entity = "Bad Request"))
         }
     }
 
-    handleExceptions(myExceptionHandler) {
-      resourceRoutes ~
-      pathPrefix("api") {
+    val standardRoutes = resourceRoutes ~
+      pathPrefix ("api") {
         login(userLookup, userIdLookup) ~
           wertungenRoutes ~
           wettkampfRoutes ~
           scoresRoutes ~
           reportRoutes ~
           registrationRoutes ~
-        //      websocket
-        complete(StatusCodes.NotFound)
+          //      websocket
+          complete (StatusCodes.NotFound)
       } ~ fallbackRoute
+
+    handleExceptions(myExceptionHandler) {
+      extractClientIP { ip =>
+        extractUri { uri =>
+          handleCID { clientId: String =>
+            findAbusedClient(clientId, uri) match {
+              case Some(AbuseCounter(counter, lastSeen)) =>
+                log.warning(s"abused request from $clientId to $uri. $counter times failed, last exception since ${toDurationFormat(lastSeen, System.currentTimeMillis())}")
+                //toAbuseMap(clientId, uri, counter)
+                complete(StatusCodes.NotFound)
+              case None => standardRoutes
+            }
+          }
+        }
+      }
     }
   }
 }
