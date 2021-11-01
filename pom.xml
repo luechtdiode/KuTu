@@ -58,7 +58,7 @@
 		<maven.build.timestamp.format>yyyy-MM-dd HH:mm</maven.build.timestamp.format>
 		<jdk-home>${JAVA_HOME}</jdk-home>
 		<scala.majorversion>2.13</scala.majorversion>
-		<scala.version>${scala.majorversion}.6</scala.version>
+		<scala.version>2.13.7</scala.version>
 		<akkaHttp.version>10.2.6</akkaHttp.version>
 		<akka.version>2.6.17</akka.version>
 		<javafx.version>16</javafx.version>
