@@ -56,6 +56,7 @@ class KuTuMailerActor(smtpHost: String, smtpPort: Int, smtpUsername: String, smt
   lazy val mailer: Mailer = Mailer(smtpHost, smtpPort)
     .auth(true)
     .as(smtpMailerUser, smtpPassword)
+    .startTls(true)
     .ssl(true)()
 
   override def preStart(): Unit = {

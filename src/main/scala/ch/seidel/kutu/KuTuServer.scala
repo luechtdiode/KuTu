@@ -1,6 +1,6 @@
 package ch.seidel.kutu
 
-import ch.seidel.kutu.akka.{AthletIndexActor, ResyncIndex}
+import ch.seidel.kutu.akka.{AthletIndexActor, KuTuMailerActor, ResyncIndex, SimpleMail}
 import ch.seidel.kutu.http.{AuthSupport, Core, Hashing, KuTuAppHTTPServer}
 import org.slf4j.LoggerFactory
 
@@ -26,6 +26,10 @@ object KuTuServer extends App with KuTuAppHTTPServer with AuthSupport with Hashi
     super.shutDown("KuTuServer")
   }
 
+  KuTuMailerActor.send(SimpleMail("Mailsend-Test", "Mailsender has been started up", "btv@interpolar.ch")).onComplete{
+    println("test sendmail completed")
+    println(_)
+  }
 
   Future {
     logger.info(s"Server started\ntype 'quit' to stop...")
@@ -48,7 +52,11 @@ object KuTuServer extends App with KuTuAppHTTPServer with AuthSupport with Hashi
           AthletIndexActor.publish(ResyncIndex)
           println("done")
           true
-
+        case s: String if (s.startsWith("sendmail")) =>
+          KuTuMailerActor.send(SimpleMail("Mailsend-Test", s, "btv@interpolar.ch")).onComplete{
+            println(_)
+          }
+          true
         case s: String =>
           println(
             s"""command unknown: '$s'
