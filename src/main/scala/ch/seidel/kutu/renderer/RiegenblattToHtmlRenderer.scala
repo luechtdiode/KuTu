@@ -266,7 +266,7 @@ trait RiegenblattToHtmlRenderer {
     }.mkString("", "\n", "\n")
 
     val stationlink = WertungsrichterQRCode.toURI(baseUrl, riege)
-    val imagedata = s"<a href='$stationlink' target='_blank'><img title='${stationlink}' width='140px' height='140px' src='${WertungsrichterQRCode.toQRCodeImage(stationlink)}'></a>"
+    val imagedata = s"<a href='$stationlink' target='_blank'><img title='${stationlink}' width='140px' height='140px' src='${PrintUtil.toQRCodeImage(stationlink)}'></a>"
     s"""<div class=riegenblatt>
       <div class=headline>
         $logoHtml $imagedata

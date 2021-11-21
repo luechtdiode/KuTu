@@ -8,11 +8,12 @@ import ch.seidel.jwt.JsonWebToken
 import ch.seidel.kutu.Config
 import ch.seidel.kutu.Config.{jwtAuthorizationKey, jwtHeader, jwtSecretKey, jwtTokenExpiryPeriodInDays}
 import ch.seidel.kutu.base.KuTuBaseSpec
-import ch.seidel.kutu.mail.MockedSMTPProvider
-import courier.Defaults
+import ch.seidel.kutu.mail.MockedSMTPMailer
 import org.jvnet.mock_javamail.Mailbox
 
+import java.awt.datatransfer.DataFlavor
 import java.time.LocalDate
+import javax.mail.internet.MimeMultipart
 
 class RegistrationRestSpec extends KuTuBaseSpec {
   val testwettkampf: Wettkampf = insertGeTuWettkampf("TestGetuWK", 2)
@@ -23,9 +24,7 @@ class RegistrationRestSpec extends KuTuBaseSpec {
   var judgeregistration: Option[JudgeRegistration] = None
   var registrationJwt: Option[RawHeader] = None
 
-
-  Defaults.session.getProperties.put("mail.transport.protocol.rfc822", "mocked")
-  Defaults.session.setProvider(new MockedSMTPProvider)
+  val mailer = new MockedSMTPMailer()
 
   def createTestRegistration: Registration = {
     registration = registration match {
@@ -145,7 +144,8 @@ class RegistrationRestSpec extends KuTuBaseSpec {
           val inbox = Mailbox.get("a@b.com")
           inbox.size should ===(1)
           val msg = inbox.get(0)
-          val msgContent = msg.getContent.toString
+          val msgContent = mailer.getTextFromMessage(inbox.get(0))
+          println(msgContent)
           msgContent.contains("https://test-origin.ch:5678") should ===(true)
         }
       }
@@ -328,6 +328,7 @@ class RegistrationRestSpec extends KuTuBaseSpec {
         list.nonEmpty shouldBe true
       }
     }
+
     def testConflict(vereinsreg: Registration, athletRegistration: AthletRegistration) = {
       val json = athletregistrationFormat.write(athletRegistration).compactPrint
       HttpRequest(method = POST, uri = s"/api/registrations/${testwettkampf.uuid.get}/${vereinsreg.id}/athletes", entity = HttpEntity(

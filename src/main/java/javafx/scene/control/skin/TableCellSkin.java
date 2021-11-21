@@ -1,6 +1,5 @@
 package javafx.scene.control.skin;
 
-import com.sun.javafx.scene.control.behavior.BehaviorBase;
 import com.sun.javafx.scene.control.behavior.TableCellBehavior;
 import javafx.beans.InvalidationListener;
 import javafx.beans.property.ReadOnlyObjectProperty;

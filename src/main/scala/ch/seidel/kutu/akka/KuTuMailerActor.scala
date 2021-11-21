@@ -8,9 +8,12 @@ import akka.pattern.ask
 import akka.util.Timeout
 import ch.seidel.kutu.Config
 import ch.seidel.kutu.http.Core.system
-import courier.Defaults._
-import courier._
+import org.simplejavamail.api.mailer.CustomMailer
+import org.simplejavamail.api.mailer.config.TransportStrategy
+import org.simplejavamail.email.EmailBuilder
+import org.simplejavamail.mailer.MailerBuilder
 
+import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 import scala.concurrent.duration.DurationInt
 import scala.util._
@@ -29,7 +32,7 @@ case class MultipartMail(override val subject: String, messageText: String, mess
 
 case class SendRetry(mail: Mail, retries: Int, sender: ActorRef) extends SendMailAction
 
-class KuTuMailerActor(smtpHost: String, smtpPort: Int, smtpUsername: String, smtpDomain: String, smtpPassword: String)
+class KuTuMailerActor(smtpHost: String, smtpPort: Int, smtpUsername: String, smtpDomain: String, smtpPassword: String, customMailer: Option[CustomMailer])
   extends Actor {
   lazy val l: LoggingAdapter = akka.event.Logging(system, this)
 
@@ -53,11 +56,19 @@ class KuTuMailerActor(smtpHost: String, smtpPort: Int, smtpUsername: String, smt
 
   private val smtpMailerUser = s"$smtpUsername@$smtpDomain"
 
-  lazy val mailer: Mailer = Mailer(smtpHost, smtpPort)
-    .auth(true)
-    .as(smtpMailerUser, smtpPassword)
-    .startTls(true)
-    .ssl(true)()
+  def mailer = {
+    val builder = MailerBuilder
+      .withSMTPServerHost(smtpHost)
+      .withSMTPServerPort(smtpPort)
+      .withSMTPServerUsername(smtpMailerUser)
+      .withSMTPServerPassword(smtpPassword)
+      .withTransportStrategy(TransportStrategy.SMTPS)
+
+    customMailer match {
+      case None => builder.buildMailer()
+      case Some(mailer) => builder.withCustomMailer(mailer).buildMailer()
+    }
+  }
 
   override def preStart(): Unit = {
     log.info(s"Start KuTuMailerActor")
@@ -82,11 +93,17 @@ class KuTuMailerActor(smtpHost: String, smtpPort: Int, smtpUsername: String, smt
 
   def receiveHot: Receive = {
     case mail: Mail =>
-      send(mail).onComplete(observeMailComletion(mail, 0, sender()))
+      val completionObserver = observeMailComletion(mail, 0, sender())
+      val asyncResponse = send(mail)
+      asyncResponse.onException(e => completionObserver(Failure(e)))
+      asyncResponse.onSuccess { () => completionObserver(Success({})) }
 
     case SendRetry(action, retries, sender) => action match {
       case mail: Mail =>
-        send(mail).onComplete(observeMailComletion(mail, retries, sender))
+        val completionObserver = observeMailComletion(mail, retries, sender)
+        val asyncResponse = send(mail)
+        asyncResponse.onException(e => completionObserver(Failure(e)))
+        asyncResponse.onSuccess { () => completionObserver(Success({})) }
     }
 
     case _ =>
@@ -113,27 +130,26 @@ class KuTuMailerActor(smtpHost: String, smtpPort: Int, smtpUsername: String, smt
   private def send(mail: Mail) = {
     mail match {
       case SimpleMail(subject, messageText, to) =>
-        mailer(
-          Envelope.from(smtpMailerUser.addr)
-            .to(to.addr)
-            .subject(subject)
-            .content(Text(messageText))
-        )
+        mailer.sendMail(EmailBuilder.startingBlank()
+          .from("KuTu-App", smtpMailerUser)
+          .to(to)
+          .withSubject(subject)
+          .withPlainText(messageText)
+          .buildEmail(), true)
       case MultipartMail(subject, messageText, messageHTML, to) =>
-        mailer(
-          Envelope.from(smtpMailerUser.addr)
-            .to(to.addr)
-            .subject(subject)
-            .content(Multipart()
-              .text(messageText)
-              .html(messageHTML)
-            )
-        )
+        mailer.sendMail(EmailBuilder.startingBlank()
+          .from("KuTu-App", smtpMailerUser)
+          .to(to)
+          .withSubject(subject)
+          .withPlainText(messageText)
+          .withHTMLText(messageHTML)
+          .buildEmail(), true)
     }
   }
 }
 
 object KuTuMailerActor {
+  private var customMailer: Option[CustomMailer] = None;
 
   def props() = {
     if (Config.config.hasPath("X_SMTP_USERNAME")
@@ -145,18 +161,23 @@ object KuTuMailerActor {
       Props(classOf[KuTuMailerActor],
         Config.config.getString("X_SMTP_HOST"), Config.config.getInt("X_SMTP_PORT"),
         Config.config.getString("X_SMTP_USERNAME"), Config.config.getString("X_SMTP_DOMAIN"),
-        Config.config.getString("X_SMTP_PASSWORD")
+        Config.config.getString("X_SMTP_PASSWORD"), customMailer
       )
     } else {
       Props(classOf[KuTuMailerActor],
         "undefined", 0,
         "undefined", "undefined",
-        ""
+        "",
+        customMailer
       )
     }
   }
 
-  private val kutuapMailer: ActorRef = system.actorOf(props(), name = "KutuappMailer")
+  def setProvider(customMailer: CustomMailer): Unit = {
+    this.customMailer = Some(customMailer)
+  }
+
+  private lazy val kutuapMailer: ActorRef = system.actorOf(props(), name = "KutuappMailer")
 
   def send(mail: Mail): Future[StatusCode] = {
     implicit lazy val timeout: Timeout = Timeout(30 minutes)

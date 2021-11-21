@@ -21,12 +21,6 @@ object WertungsrichterQRCode {
   def toURI(remoteBaseUrl: String, gr: GeraeteRiege) =
     s"$remoteBaseUrl?" + new String(enc.encodeToString((s"c=${gr.wettkampfUUID}&d=${encodeURIComponent(gr.durchgang.get)}&st=${gr.halt +1}&g=${gr.disziplin.get.id}").getBytes))
 
-  def toQRCodeImage(uri: String) = {
-    val out = QRCode.from(uri).to(ImageType.PNG).withSize(200, 200).stream()
-    val imagedata = "data:image/png;base64," + Base64.getMimeEncoder().encodeToString(out.toByteArray)
-    imagedata
-  }
-  
   def toMobileConnectData(wettkampf: WettkampfView, baseUrl: String)(gr: GeraeteRiege) =
     WertungsrichterQRCode(wettkampf.titel, gr.durchgang.get, gr.disziplin.get.name, toURI(wettkampf.uuid.get, baseUrl, gr), toQRCodeImage(toURI(wettkampf.uuid.get, baseUrl, gr)))
 }

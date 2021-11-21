@@ -3,10 +3,12 @@ package ch.seidel.kutu.renderer
 import java.io._
 import java.util.Base64
 import java.util.concurrent.atomic.AtomicBoolean
-
 import ch.seidel.commons._
 import ch.seidel.kutu.KuTuApp
 import ch.seidel.kutu.KuTuApp.hostServices
+import net.glxn.qrgen.QRCode
+import net.glxn.qrgen.image.ImageType
+
 import javax.imageio.ImageIO
 import org.slf4j.LoggerFactory
 import scalafx.Includes._
@@ -200,6 +202,12 @@ object PrintUtil {
     val prefferedLogoFileNames = (List("logo.svg", "logo.png", "logo.jpg", "logo.jpeg").map(name => new java.io.File(s"${wettkampfDir.getPath}/$name")) ++
                                 List("logo.svg", "logo.png", "logo.jpg", "logo.jpeg").map(name => new java.io.File(s"${wettkampfDir.getParentFile }/$name")))
     prefferedLogoFileNames.find(_.exists).getOrElse(prefferedLogoFileNames.head);
+  }
+
+  def toQRCodeImage(uri: String) = {
+    val out = QRCode.from(uri).to(ImageType.PNG).withSize(200, 200).stream()
+    val imagedata = "data:image/png;base64," + Base64.getMimeEncoder().encodeToString(out.toByteArray)
+    imagedata
   }
   
   implicit class ImageFile(file: File) {

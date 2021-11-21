@@ -3,7 +3,7 @@
 	<modelVersion>4.0.0</modelVersion>
 	<groupId>ch.seidel</groupId>
 	<artifactId>KuTu</artifactId>
-	<version>2.2.6</version>
+	<version>2.2.8</version>
 
 	<inceptionYear>2014</inceptionYear>
 
@@ -143,9 +143,9 @@
 			<version>3.3.3</version>
 		</dependency>
 		<dependency>
-			<groupId>com.github.daddykotex</groupId>
-			<artifactId>courier_${scala.majorversion}</artifactId>
-			<version>3.0.1</version>
+			<groupId>org.simplejavamail</groupId>
+			<artifactId>simple-java-mail</artifactId>
+			<version>6.6.1</version>
 		</dependency>
 		<dependency>
 			<groupId>org.jvnet.mock-javamail</groupId>

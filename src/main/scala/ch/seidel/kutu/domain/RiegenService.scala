@@ -89,9 +89,9 @@ trait RiegenService extends DBService with RiegenResultMapper {
         updateOrInsertRiegeRawAction(riege)
       })
 
-    val wettkampfList: List[Long] = riegenList.map(_._1).toSet.toList
+    val wettkampfList: List[Long] = riegenList.map(_._1).distinct
     val process = DBIO.sequence(for {
-      (wettkampfid, riegen) <- riegenList.toIterable
+      (wettkampfid, riegen) <- riegenList
     } yield {
       sqlu"""
                 delete from riege where
