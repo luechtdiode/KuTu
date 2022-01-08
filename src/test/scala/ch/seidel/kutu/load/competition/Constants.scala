@@ -39,7 +39,7 @@ object Constants {
       }
     } else {
       // Loop forever, it is important to put maxDuration() in Simulation setUp() method
-      scenario(name).feed(feed).forever() {
+      scenario(name).feed(feed).forever(name) {
         exec(chains).pause(Constants.pause)
       }
     }
