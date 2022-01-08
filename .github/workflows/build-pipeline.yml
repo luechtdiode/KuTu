@@ -47,11 +47,11 @@ jobs:
       - name: Setup NPM
         uses: actions/setup-node@v1
         with:
-          node-version: 12.x
+          node-version: 16.x
       - name: Build Mobile-App
         run: |
           cd newclient/resultcatcher
-          npm install -g cordova ionic
+          npm install -g cordova @ionic/cli
           npm i
           ionic build --prod --engine=browser
           cd ../..
