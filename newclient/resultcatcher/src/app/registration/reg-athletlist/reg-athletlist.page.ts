@@ -5,7 +5,6 @@ import { BackendService } from 'src/app/services/backend.service';
 import { BehaviorSubject, Subject, of, TimeoutError } from 'rxjs';
 import { filter, map, debounceTime, distinctUntilChanged, share, switchMap, take, tap } from 'rxjs/operators';
 import { ClubRegistration, ProgrammRaw, AthletRegistration, Wettkampf, SyncAction } from '../../backend-types';
-import { ProviderMeta } from '@angular/compiler';
 
 @Component({
   selector: 'app-reg-athletlist',
