@@ -38,6 +38,9 @@
             ],
             "styles": ["src/theme/variables.scss", "src/app/app.scss", "src/global.scss"],
             "scripts": [],
+            "allowedCommonJsDependencies": [
+              "color"
+           ],
             "aot": false,
             "vendorChunk": true,
             "extractLicenses": false,
