@@ -147,12 +147,6 @@
 			<artifactId>simple-java-mail</artifactId>
 			<version>7.0.0</version>
 		</dependency>
-		<dependency>
-			<groupId>org.jvnet.mock-javamail</groupId>
-			<artifactId>mock-javamail</artifactId>
-			<version>1.9</version>
-			<scope>Test</scope>
-		</dependency>
 
 		<dependency>
 			<groupId>com.zaxxer</groupId>

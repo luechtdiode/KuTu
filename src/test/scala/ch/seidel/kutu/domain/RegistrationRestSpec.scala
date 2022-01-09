@@ -8,12 +8,9 @@ import ch.seidel.jwt.JsonWebToken
 import ch.seidel.kutu.Config
 import ch.seidel.kutu.Config.{jwtAuthorizationKey, jwtHeader, jwtSecretKey, jwtTokenExpiryPeriodInDays}
 import ch.seidel.kutu.base.KuTuBaseSpec
-import ch.seidel.kutu.mail.MockedSMTPMailer
-import org.jvnet.mock_javamail.Mailbox
+import ch.seidel.kutu.mail.{Mailbox, MockedSMTPMailer}
 
-import java.awt.datatransfer.DataFlavor
 import java.time.LocalDate
-import javax.mail.internet.MimeMultipart
 
 class RegistrationRestSpec extends KuTuBaseSpec {
   val testwettkampf: Wettkampf = insertGeTuWettkampf("TestGetuWK", 2)
@@ -144,7 +141,7 @@ class RegistrationRestSpec extends KuTuBaseSpec {
           val inbox = Mailbox.get("a@b.com")
           inbox.size should ===(1)
           val msg = inbox.get(0)
-          val msgContent = mailer.getTextFromMessage(inbox.get(0))
+          val msgContent = mailer.getTextFromMessage(msg)
           println(msgContent)
           msgContent.contains("https://test-origin.ch:5678") should ===(true)
         }
