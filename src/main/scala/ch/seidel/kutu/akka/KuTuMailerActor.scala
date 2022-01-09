@@ -94,16 +94,24 @@ class KuTuMailerActor(smtpHost: String, smtpPort: Int, smtpUsername: String, smt
   def receiveHot: Receive = {
     case mail: Mail =>
       val completionObserver = observeMailComletion(mail, 0, sender())
-      val asyncResponse = send(mail)
-      asyncResponse.onException(e => completionObserver(Failure(e)))
-      asyncResponse.onSuccess { () => completionObserver(Success({})) }
+      send(mail).handleAsync {(v,e) =>
+        if (e != null) {
+          completionObserver(Failure(e))
+        } else {
+          completionObserver(Success(v))
+        }
+      }
 
     case SendRetry(action, retries, sender) => action match {
       case mail: Mail =>
         val completionObserver = observeMailComletion(mail, retries, sender)
-        val asyncResponse = send(mail)
-        asyncResponse.onException(e => completionObserver(Failure(e)))
-        asyncResponse.onSuccess { () => completionObserver(Success({})) }
+        send(mail).handleAsync {(v,e) =>
+          if (e != null) {
+            completionObserver(Failure(e))
+          } else {
+            completionObserver(Success(v))
+          }
+        }
     }
 
     case _ =>
