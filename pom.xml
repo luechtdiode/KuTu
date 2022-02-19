@@ -59,7 +59,7 @@
 		<jdk-home>${JAVA_HOME}</jdk-home>
 		<scala.majorversion>2.13</scala.majorversion>
 		<scala.version>2.13.8</scala.version>
-		<akkaHttp.version>10.2.7</akkaHttp.version>
+		<akkaHttp.version>10.2.8</akkaHttp.version>
 		<akka.version>2.6.18</akka.version>
 		<javafx.version>17.0.2</javafx.version>
 		<scalafx.version>17.0.1-R26</scalafx.version>
