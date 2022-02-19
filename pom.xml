@@ -59,7 +59,7 @@
 		<jdk-home>${JAVA_HOME}</jdk-home>
 		<scala.majorversion>2.13</scala.majorversion>
 		<scala.version>2.13.8</scala.version>
-		<akkaHttp.version>10.2.7</akkaHttp.version>
+		<akkaHttp.version>10.2.8</akkaHttp.version>
 		<akka.version>2.6.18</akka.version>
 		<javafx.version>17.0.2</javafx.version>
 		<scalafx.version>17.0.1-R26</scalafx.version>
@@ -145,7 +145,7 @@
 		<dependency>
 			<groupId>org.simplejavamail</groupId>
 			<artifactId>simple-java-mail</artifactId>
-			<version>7.0.2</version>
+			<version>7.1.0</version>
 		</dependency>
 
 		<dependency>
@@ -268,7 +268,7 @@
 		<dependency>
 			<groupId>org.slf4j</groupId>
 			<artifactId>slf4j-api</artifactId>
-			<version>1.7.35</version>
+			<version>1.7.36</version>
 		</dependency>
 		<dependency>
 			<groupId>ch.qos.logback</groupId>

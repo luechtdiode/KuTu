@@ -32,6 +32,8 @@ case class AskRegistrationSyncActions(wettkampfUUID: String) extends Registratio
 
 case class RegistrationSyncActions(syncActions: List[SyncAction]) extends RegistrationEvent
 
+case class RegistrationActionWithContext(action: RegistrationAction, context: String) extends RegistrationProtokoll
+
 class CompetitionRegistrationClientActor(wettkampfUUID: String) extends Actor with JsonSupport with KutuService {
   def shortName = self.toString().split("/").last.split("#").head + "/" + clientId()
 
@@ -53,7 +55,7 @@ class CompetitionRegistrationClientActor(wettkampfUUID: String) extends Actor wi
   private val wettkampfInfo = WettkampfInfo(wettkampf.toView(readProgramm(wettkampf.programmId)), this)
   private var syncActions: Option[List[SyncAction]] = None
   private var syncActionReceivers: List[ActorRef] = List()
-  private var clientId: () => String = () => sender().path.toString
+  private var clientId: () => String = () => ""
 
   override val supervisorStrategy = OneForOneStrategy() {
     case NonFatal(e) =>
@@ -70,6 +72,11 @@ class CompetitionRegistrationClientActor(wettkampfUUID: String) extends Actor wi
   }
 
   override def receive = {
+    case RegistrationActionWithContext(action, context) =>
+      clientId = () => context
+      receive(action)
+      clientId = () => ""
+
     case RegistrationResync(_) =>
       retrieveSyncActions(sender())
 
@@ -117,9 +124,9 @@ object CompetitionRegistrationClientActor {
     implicit val timeout = Timeout(60000 milli)
     system.actorSelection(s"user/Registration-${action.wettkampfUUID}").resolveOne().onComplete {
       case Success(actorRef) =>
-        prom.completeWith((actorRef ? action).mapTo[RegistrationEvent])
+        prom.completeWith((actorRef ? RegistrationActionWithContext(action, context)).mapTo[RegistrationEvent])
       case Failure(ex) =>
-        prom.completeWith((system.actorOf(props(action.wettkampfUUID), name = s"Registration-${action.wettkampfUUID}") ? action).mapTo[RegistrationEvent])
+        prom.completeWith((system.actorOf(props(action.wettkampfUUID), name = s"Registration-${action.wettkampfUUID}") ? RegistrationActionWithContext(action, context)).mapTo[RegistrationEvent])
     }
     prom.future
   }

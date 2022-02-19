@@ -239,19 +239,19 @@ trait WertungenRoutes extends SprayJsonSupport with JsonSupport with JwtSupport 
                               complete(toResponseMarshallable.andThen {
                                 case Success(w) => w
                                 case Failure(error) =>
-                                  log.error(s"Conflict: Error publishing Wertung: $wertung", error)
+                                  log.error(s"[$clientId/$userId] Conflict: Error publishing Wertung: $wertung", error)
                                   StatusCodes.Conflict
                               })
 
                             case x =>
-                              log.error(s"Conflict: unexpected Result: $x, Non-matching wertung: $wertung")
+                              log.error(s"[$clientId/$userId] Conflict: unexpected Result: $x, Non-matching wertung: $wertung")
                               complete(StatusCodes.Conflict)
                           }
                           case _ => complete(StatusCodes.Conflict)
                         }
                       }
                     } else {
-                      log.error(s"Unauthorized: Reject unauthenticated update of wertung")
+                      log.error(s"[$clientId/$userId] Unauthorized: Reject unauthenticated update of wertung")
                       complete(StatusCodes.Unauthorized)
                     }
                   }

@@ -223,6 +223,7 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
         } {
           model.insert(raw.indexWhere { rx => rx.softEquals(o) }, o)
         }
+        updateAlleRiegenCheck()
         focusHolder.foreach(_.requestFocus())
       }
     }

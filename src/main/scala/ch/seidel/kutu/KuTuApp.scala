@@ -1541,14 +1541,15 @@ object KuTuApp extends JFXApp3 with KutuService with JsonSupport with JwtSupport
       children = tree.getTree
     }
     controlsView = new TreeView[String]() {
-      minWidth = 200
+      minWidth = 5
       maxWidth = 400
+      prefWidth = 200
       editable = true
       root = rootTreeItem
       id = "page-tree"
     }
     val centerPane = PageDisplayer.choosePage(modelWettkampfModus, None, "dashBoard", tree)
-    val scrollPane = new ScrollPane {
+    val sscrollPane = new ScrollPane {
       minWidth = 5
       maxWidth = 400
       prefWidth = 200
@@ -1560,13 +1561,15 @@ object KuTuApp extends JFXApp3 with KutuService with JsonSupport with JwtSupport
     val splitPane = new SplitPane {
       dividerPositions = 0.2
       id = "page-splitpane"
-      items.addAll(scrollPane, centerPane)
+      //items.addAll(scrollPane, centerPane)
+      items.addAll(controlsView, centerPane)
     }
     val header = new BorderPane {
       vgrow = Priority.Always
       hgrow = Priority.Always
       prefHeight = 76
       maxHeight = 76
+      minWidth = 5
       id = "mainHeader"
       left = new ImageView {
         image = new Image(this.getClass.getResourceAsStream("/images/logo.png"))
@@ -1574,6 +1577,7 @@ object KuTuApp extends JFXApp3 with KutuService with JsonSupport with JwtSupport
       }
       right = new ToolBar {
         id = "mainToolBar"
+        minWidth = 5
         vgrow = Priority.Always
         hgrow = Priority.Always
         content = List(btnWettkampfModus, btnConnectStatus, lblRemoteAddress)
@@ -1597,6 +1601,7 @@ object KuTuApp extends JFXApp3 with KutuService with JsonSupport with JwtSupport
       hgrow = Priority.Always
       prefHeight = 76
       maxHeight = 76
+      minWidth = 5
       children = Seq(webViewContainer, header)
     }
     controlsView.onContextMenuRequested = _ => {
