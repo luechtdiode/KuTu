@@ -57,7 +57,7 @@ class CompetitionCoordinatorClientActor(wettkampfUUID: String) extends Persisten
   private var openDurchgangJournal: Map[Option[String], List[AthletWertungUpdatedSequenced]] = Map.empty
   private var state: CompetitionState = CompetitionState()
   private var geraeteRigeListe: List[GeraeteRiege] = List.empty
-  private var clientId: () => String = () => sender().path.toString
+  private var clientId: () => String = () => ""
 
   def rebuildWettkampfMap(): Unit = {
     openDurchgangJournal = Map.empty
@@ -128,7 +128,7 @@ class CompetitionCoordinatorClientActor(wettkampfUUID: String) extends Persisten
     case PublishAction(id: String, action: KutuAppAction) =>
       this.clientId = () => id
       receiveCommand(action)
-      this.clientId = () => sender().path.toString
+      this.clientId = () => ""
 
     case StartedDurchgaenge(_) => sender() ! ResponseMessage(state.startedDurchgaenge)
 
@@ -352,6 +352,9 @@ class CompetitionCoordinatorClientActor(wettkampfUUID: String) extends Persisten
 
       case _ =>
     }
+    val s = sender()
+    s ! MessageAck("OK")
+    originSender.foreach(os => if (!os.equals(s)) {os ! MessageAck("OK")})
   }
 
   private def notifyWebSocketClients(
@@ -477,7 +480,7 @@ class ClientActorSupervisor extends Actor with ActorLogging {
       wettkampfCoordinators.get(uw.action.wettkampfUUID) match {
         case Some(coordinator) => coordinator.forward(uw)
         case _ =>
-          log.info(s"Connect new client to new coordinator. Wettkampf: $uw.action.wettkampfUUID, via Rest-API (Sessionless)")
+          log.info(s"Connect new client to new coordinator. Wettkampf: ${uw.action.wettkampfUUID}, Context: ${uw.id} via Rest-API (Sessionless)")
           val coordinator = context.actorOf(
             CompetitionCoordinatorClientActor.props(uw.action.wettkampfUUID), "client-" + uw.action.wettkampfUUID)
           context.watch(coordinator)
