@@ -11,6 +11,7 @@ import ch.seidel.kutu.domain.{KutuService, ProgrammRaw, Wertung, encodeURICompon
 import scala.concurrent.Future
 import scala.concurrent.duration.DurationInt
 import scala.util.{Failure, Success}
+import fr.davit.akka.http.metrics.core.scaladsl.server.HttpMetricsDirectives._
 
 trait WertungenRoutes extends SprayJsonSupport with JsonSupport with JwtSupport with AuthSupport with RouterLogging with KutuService with CIDSupport {
 
@@ -25,7 +26,7 @@ trait WertungenRoutes extends SprayJsonSupport with JsonSupport with JwtSupport 
   lazy val wertungenRoutes: Route = {
     (handleCID & extractUri) { (clientId: String, uri: Uri) =>
       log.debug(s"$clientId is calling $uri")
-      pathPrefix("programm") {
+      pathPrefixLabeled("programm", "programm") {
         pathEnd {
           get {
             complete {
@@ -36,7 +37,7 @@ trait WertungenRoutes extends SprayJsonSupport with JsonSupport with JwtSupport 
           }
         }
       } ~
-        pathPrefix("athlet" / JavaUUID / LongNumber) { (competitionId, athletId) =>
+        pathPrefixLabeled("athlet" / JavaUUID / LongNumber, "athlet/:competition-id/:athlet-id") { (competitionId, athletId) =>
           pathEnd {
             get {
               complete {
@@ -65,7 +66,7 @@ trait WertungenRoutes extends SprayJsonSupport with JsonSupport with JwtSupport 
             }
           }
         } ~
-        pathPrefix("durchgang" / JavaUUID) { competitionId =>
+        pathPrefixLabeled("durchgang" / JavaUUID, "durchgang/:competition-id") { competitionId =>
           if (!wettkampfExists(competitionId.toString)) {
             log.error(handleAbuse(clientId, uri))
             complete(StatusCodes.NotFound)
@@ -86,7 +87,7 @@ trait WertungenRoutes extends SprayJsonSupport with JsonSupport with JwtSupport 
               }
             }
           } ~
-            (path(Segment / "ws") & parameters(Symbol("lastSequenceId").?)) { (durchgang: String, lastSequenceId: Option[String]) =>
+            (pathLabeled(Segment / "ws", ":durchgang/ws") & parameters(Symbol("lastSequenceId").?)) { (durchgang: String, lastSequenceId: Option[String]) =>
               val lastSequenceIdOption: Option[Long] = lastSequenceId.map(str2Long)
               parameters(Symbol("jwt").as[String]) { jwt =>
                 authenticateWith(Some(jwt), true) { id =>
@@ -116,7 +117,7 @@ trait WertungenRoutes extends SprayJsonSupport with JsonSupport with JwtSupport 
                   }
                 }
             } ~
-            path("finish") {
+            pathLabeled("finish", "finish") {
               post {
                 authenticated() { userId =>
                   entity(as[String]) { fd =>
@@ -125,7 +126,7 @@ trait WertungenRoutes extends SprayJsonSupport with JsonSupport with JwtSupport 
                 }
               }
             } ~
-            path("geraete") {
+            pathLabeled("geraete", "geraete") {
               get {
                 if (!wettkampfExists(competitionId.toString)) {
                   complete(StatusCodes.NotFound)
@@ -135,7 +136,7 @@ trait WertungenRoutes extends SprayJsonSupport with JsonSupport with JwtSupport 
                   }
               }
             } ~
-            path(Segments) { segments =>
+            pathLabeled(Segments, ":durchgang/:geraet/:step") { segments =>
               get {
                 // Durchgang/Geraet/Step
                 segments match {

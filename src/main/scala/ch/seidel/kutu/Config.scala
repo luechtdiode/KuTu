@@ -37,6 +37,12 @@ object Config extends KuTuSSLContext {
       else
         ConfigFactory.load()).resolve()
 
+  val metricsNamespaceName = if (config.hasPath("NAMESPACE")) {
+    config.getString("NAMESPACE")
+  } else {
+    "kutuapp"
+  }
+
   val appVersion: String = if (config.hasPath("app.majorversion")
     && !config.getString("app.majorversion").startsWith("${"))
     config.getString("app.majorversion")

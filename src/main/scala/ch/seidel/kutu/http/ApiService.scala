@@ -4,6 +4,7 @@ import akka.http.scaladsl.model.StatusCodes._
 import akka.http.scaladsl.model.{HttpResponse, StatusCodes, Uri}
 import akka.http.scaladsl.server.{ExceptionHandler, RouteConcatenation}
 import ch.seidel.kutu.domain.toDurationFormat
+import fr.davit.akka.http.metrics.core.scaladsl.server.HttpMetricsDirectives.pathPrefixLabeled
 
 
 
@@ -15,7 +16,8 @@ trait ApiService extends RouteConcatenation with CIDSupport with RouterLogging w
   with ReportRoutes
   with RegistrationRoutes
   //    with WebSockets
-  with ResourceService {
+  with ResourceService
+  with MetricsController {
 
   //  private implicit lazy val _ = ch.seidel.kutu.http.Core.system.dispatcher
   import AbuseHandler._
@@ -28,9 +30,8 @@ trait ApiService extends RouteConcatenation with CIDSupport with RouterLogging w
           complete(HttpResponse(InternalServerError, entity = "Bad Request"))
         }
     }
-
     val standardRoutes = resourceRoutes ~
-      pathPrefix ("api") {
+      pathPrefixLabeled("api", "api") {
         login(userLookup, userIdLookup) ~
           wertungenRoutes ~
           wettkampfRoutes ~
@@ -39,7 +40,7 @@ trait ApiService extends RouteConcatenation with CIDSupport with RouterLogging w
           registrationRoutes ~
           //      websocket
           complete (StatusCodes.NotFound)
-      } ~ fallbackRoute
+      } ~ metricsroute ~ fallbackRoute
 
     handleExceptions(myExceptionHandler) {
       extractClientIP { ip =>

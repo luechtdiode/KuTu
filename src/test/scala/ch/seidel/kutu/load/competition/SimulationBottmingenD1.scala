@@ -7,14 +7,10 @@ import scala.concurrent.duration._
 
 class SimulationBottmingenD1 extends Simulation {
   // mws-01
-  //  val jwtToken = "eyJhbGciOiJIUzUxMiIsImN0eSI6ImFwcGxpY2F0aW9uL2pzb24iLCJ0eXAiOiJKV1QifQ.eyJ1c2VyIjoiOTkxMTVkZmItODE5Yi00OGFhLWFkYTUtOTkzN2I4MmVlYmQ0IiwiZXhwaXJlZEF0S2V5IjoxNTQyMDQ4NzY2NjM2fQ.8XYEceYnUIAQVHZVZKP6aF-_7hRNjB7jNFzIGq52CUpmVeBqHmi16W28XQci4tj-IkZmHDqFVzSaW8P3Q3W_vA"
-
-  //test-kutuapp.shrevic.net
-  val jwtToken = "eyJhbGciOiJIUzUxMiIsImN0eSI6ImFwcGxpY2F0aW9uL2pzb24iLCJ0eXAiOiJKV1QifQ.eyJ1c2VyIjoiNzJmODI0MjMtNjVkYS00NWM5LTk5YTctYjNmMTk3MTJmNjI4IiwiZXhwaXJlZEF0S2V5IjoxNjIxODg1ODk5MTMwfQ.pW8GtMcBSi9cqmEdzl_SeHGuZwIjtaj0oR9ce7gfD8FQm-12a4Q12tG9j1xg9xWyvoijEDMuHVla4A4exEp-Eg"
-  //kutuapp.shrevic.net
-  //val jwtToken = "eyJhbGciOiJIUzUxMiIsImN0eSI6ImFwcGxpY2F0aW9uL2pzb24iLCJ0eXAiOiJKV1QifQ.eyJ1c2VyIjoiNzJmODI0MjMtNjVkYS00NWM5LTk5YTctYjNmMTk3MTJmNjI4IiwiZXhwaXJlZEF0S2V5IjoxNTY4MDMxMzM4OTk4fQ.-Blh4u2AlFYWGzNW7lgreIUulzLrG09jqo8h9HvCdbgKF-pU4IV97SPYQdYBEh8y04MnSjiQ-TM3wEasmafLFw"
-
+  val jwtToken = "eyJhbGciOiJIUzUxMiIsImN0eSI6ImFwcGxpY2F0aW9uL2pzb24iLCJ0eXAiOiJKV1QifQ.eyJ1c2VyIjoiNzJmODI0MjMtNjVkYS00NWM5LTk5YTctYjNmMTk3MTJmNjI4IiwiZXhwaXJlZEF0S2V5IjoxNjQxNzY2ODY2ODUyfQ.VSYh5texoNr2CrIdRsusn-r3LY6DEBcCUjXA3FuMtFJlhh_tSl3OH8ef_qZ6RbzVZqC3M4amVI-c_2gBkMK0Dg"
   val competition = "72f82423-65da-45c9-99a7-b3f19712f628"
+
+  //val originBaseUrl = "https://kutuapp-test.interpolar.ch:8443"//,
   val originBaseUrl = "https://test-kutuapp.sharevic.net" //,"http://pluto:5757"//, "https://kutuapp.sharevic.net" //,"https://kutuapp.sharevic.net"//,"http://mws-01:5757"//,
   // val originBaseUrl = "http://mws-01:5757"//, "https://kutuapp.sharevic.net"//,"http://mws-01:5757"//,
   //val originBaseUrl = "https://kutuapp.sharevic.net"

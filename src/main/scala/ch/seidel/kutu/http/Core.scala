@@ -1,6 +1,5 @@
 package ch.seidel.kutu.http
 
-import java.net.{DatagramSocket, InetAddress, NetworkInterface}
 import akka.actor.ActorSystem
 import akka.http.scaladsl.Http
 import akka.http.scaladsl.server.Route
@@ -11,14 +10,15 @@ import ch.seidel.kutu.akka.{AthletIndexActor, CompetitionCoordinatorClientActor,
 import ch.seidel.kutu.domain.DBService
 import org.slf4j.LoggerFactory
 
+import java.net.{DatagramSocket, InetAddress, NetworkInterface}
 import scala.concurrent.duration.Duration
 import scala.concurrent.{Await, ExecutionContext, Future}
 
 object Core extends KuTuSSLContext {
   //  val logger = LoggerFactory.getLogger(this.getClass)
   /**
-    * Construct the ActorSystem we will use in our application
-    */
+   * Construct the ActorSystem we will use in our application
+   */
   implicit lazy val system: ActorSystem = ActorSystem("KuTuApp") // , Config.config
   implicit lazy val materializer: Materializer = Materializer(system)
 
@@ -39,26 +39,31 @@ trait KuTuAppHTTPServer extends ApiService with JsonSupport {
   private val logger = LoggerFactory.getLogger(this.getClass)
 
   import Core._
-
+  import fr.davit.akka.http.metrics.core.HttpMetrics._ // import extension methods
 
   def startServer() = {
     serverBinding match {
       case None =>
 
         /**
-          * Ensure that the constructed ActorSystem is shut down when the JVM shuts down
-          */
+         * Ensure that the constructed ActorSystem is shut down when the JVM shuts down
+         */
         sys.addShutdownHook(shutDown(getClass.getName))
 
         DBService.startDB()
         val route: Route = allroutes(id => vereinSecretHashLookup(id), id => extractRegistrationId(id))
-        val serverBuilder = Http().newServerAt(httpInterface, httpPort)
+
+        val serverBuilder = Http()
+          .newMeteredServerAt(httpInterface, httpPort, MetricsController.registry)
         val binding = if (hasHttpsConfig) {
-          val b = serverBuilder.enableHttps(https).bindFlow(route)
+          val b = serverBuilder
+            .enableHttps(https)
+            .bindFlow(route)
           logger.info(s"Server online at https://${httpInterface}:${httpPort}/")
           b
         } else {
-          val b = serverBuilder.bindFlow(route)
+          val b = serverBuilder
+            .bindFlow(route)
           logger.info(s"Server online at http://${httpInterface}:${httpPort}/")
           b
         }
@@ -76,8 +81,8 @@ trait KuTuAppHTTPServer extends ApiService with JsonSupport {
       case Some(binding) =>
         binding.flatMap(_.unbind()) // trigger unbinding from the port
           .onComplete { done =>
-          done.failed.map { ex => log.error(ex, "Failed unbinding") }
-        }
+            done.failed.map { ex => log.error(ex, "Failed unbinding") }
+          }
 
         AthletIndexActor.stopAll()
         CompetitionCoordinatorClientActor.stopAll().onComplete(_ => {

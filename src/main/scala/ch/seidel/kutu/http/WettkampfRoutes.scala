@@ -22,6 +22,7 @@ import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration.{Duration, FiniteDuration}
 import scala.concurrent.{Await, Future, Promise}
 import scala.util.Try
+import fr.davit.akka.http.metrics.core.scaladsl.server.HttpMetricsDirectives._
 
 trait WettkampfRoutes extends SprayJsonSupport
   with JsonSupport with JwtSupport with AuthSupport with RouterLogging with WettkampfService with RegistrationService
@@ -180,7 +181,7 @@ trait WettkampfRoutes extends SprayJsonSupport
 
   lazy val wettkampfRoutes: Route = {
     handleCID { clientId: String =>
-      path("isTokenExpired") {
+      pathLabeled("isTokenExpired", "isTokenExpired") {
         pathEnd {
           authenticated() { wettkampfUUID =>
             val claims = setClaims(wettkampfUUID, jwtTokenExpiryPeriodInDays)
@@ -190,15 +191,15 @@ trait WettkampfRoutes extends SprayJsonSupport
           }
         }
       } ~
-      path("competition" / "ws") {
+      pathLabeled("competition" / "ws", "competition/ws") {
         pathEnd {
           (authenticated() & parameters(Symbol("lastSequenceId").?)) { (wettkampfUUID, lastSequenceId: Option[String]) =>
             handleWebSocketMessages(CompetitionCoordinatorClientActor.createActorSinkSource(clientId, wettkampfUUID, None, lastSequenceId.map(_.toLong)))
           }
         }
       } ~
-      pathPrefix("competition") {
-        pathPrefix("byVerein" / LongNumber) { vereinId =>
+      pathPrefixLabeled("competition", "competition") {
+        pathPrefixLabeled("byVerein" / LongNumber, "byVerein/:verein-id") { vereinId =>
           pathEnd {
             get {
               complete {
@@ -214,8 +215,8 @@ trait WettkampfRoutes extends SprayJsonSupport
           }
         }
       } ~
-      pathPrefix("competition" / JavaUUID) { wkuuid =>
-        path("start") {
+      pathPrefixLabeled("competition" / JavaUUID, "competition/:competition-id") { wkuuid =>
+        pathLabeled("start", "start") {
           post {
             authenticated() { userId =>
               entity(as[StartDurchgang]) { sd =>
@@ -228,7 +229,7 @@ trait WettkampfRoutes extends SprayJsonSupport
             }
           }
         } ~
-          path("stop") {
+          pathLabeled("stop", "stop") {
             post {
               authenticated() { userId =>
                 entity(as[FinishDurchgang]) { fd =>
@@ -241,7 +242,7 @@ trait WettkampfRoutes extends SprayJsonSupport
               }
             }
           } ~
-          path("finishedStep") {
+          pathLabeled("finishedStep", "finishedStep") {
             post {
               authenticated() { userId =>
                 entity(as[FinishDurchgangStep]) { fd =>

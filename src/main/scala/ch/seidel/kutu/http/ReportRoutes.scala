@@ -11,6 +11,7 @@ import ch.seidel.kutu.renderer.{KategorieTeilnehmerToHtmlRenderer, KategorieTeil
 
 import java.util.UUID
 import scala.concurrent.duration.DurationInt
+import fr.davit.akka.http.metrics.core.scaladsl.server.HttpMetricsDirectives._
 
 trait ReportRoutes extends SprayJsonSupport with JsonSupport with AuthSupport with RouterLogging with KutuService with IpToDeviceID {
 
@@ -23,7 +24,7 @@ trait ReportRoutes extends SprayJsonSupport with JsonSupport with AuthSupport wi
 
   lazy val reportRoutes: Route = {
     (handleCID & extractUri) { (clientId: String, uri: Uri) =>
-      pathPrefix("report") {
+      pathPrefixLabeled("report", "report") {
         pathPrefix(JavaUUID) { competitionId =>
           import AbuseHandler._
           if (!wettkampfExists(competitionId.toString)) {
@@ -35,7 +36,7 @@ trait ReportRoutes extends SprayJsonSupport with JsonSupport with AuthSupport wi
             val logodir = new java.io.File(Config.homedir + "/" + wettkampf.easyprint.replace(" ", "_"))
             val logofile = PrintUtil.locateLogoFile(logodir)
 
-            path("startlist") {
+            pathLabeled("startlist", "startlist") {
               get {
                 parameters(Symbol("html").?, Symbol("q").?, Symbol("gr").?) { (html, q, gr) =>
                   html match {
