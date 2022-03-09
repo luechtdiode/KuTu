@@ -10,7 +10,7 @@ import akka.stream.scaladsl.{Flow, Sink, Source}
 import akka.stream.{CompletionStrategy, OverflowStrategy}
 import akka.util.Timeout
 import ch.seidel.kutu.Config
-import ch.seidel.kutu.akka.CompetitionCoordinatorClientActor.{PublishAction, allWebsocketConnectionsActive, competitionWebsocketConnectionsActive, competitionsActive}
+import ch.seidel.kutu.akka.CompetitionCoordinatorClientActor.{PublishAction, competitionWebsocketConnectionsActive, competitionsActive}
 import ch.seidel.kutu.data.ResourceExchanger
 import ch.seidel.kutu.domain._
 import ch.seidel.kutu.http.Core.system
@@ -228,7 +228,6 @@ class CompetitionCoordinatorClientActor(wettkampfUUID: String) extends Persisten
       competitionWebsocketConnectionsActive
         .labels(wettkampf.easyprint, durchgangNormalized.getOrElse("all"))
         .set(durchgangClients.size)
-      allWebsocketConnectionsActive.inc()
 
       ref ! TextMessage("Connection established." + s"$deviceId@".split("@")(1))
 
@@ -274,7 +273,6 @@ class CompetitionCoordinatorClientActor(wettkampfUUID: String) extends Persisten
       val deviceId = deviceWebsocketRefs.filter(x => x._2 == stoppedWebsocket).keys.headOption
       log.debug(s"terminated device $deviceId")
       cleanupWebsocketRefs(stoppedWebsocket)
-      allWebsocketConnectionsActive.dec()
 
       context.system.scheduler.scheduleOnce(30.second, self, TryStop)
 
@@ -530,12 +528,6 @@ object CompetitionCoordinatorClientActor extends JsonSupport with EnrichedJson {
     .namespace(Collector.sanitizeMetricName(Config.metricsNamespaceName))
     .name("competitions_active")
     .help("Active competitions")
-    .create().register()
-  lazy val allWebsocketConnectionsActive: client.Gauge = io.prometheus.client.Gauge
-    .build()
-    .namespace(Collector.sanitizeMetricName(Config.metricsNamespaceName))
-    .name("websockets_active")
-    .help("Active websocket connections")
     .create().register()
   lazy val competitionWebsocketConnectionsActive: client.Gauge = io.prometheus.client.Gauge
     .build()
