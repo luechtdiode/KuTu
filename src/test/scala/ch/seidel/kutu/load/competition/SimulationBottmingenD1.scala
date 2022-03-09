@@ -1,27 +1,23 @@
 package ch.seidel.kutu.load.competition
 
-import io.gatling.core.Predef.{constantConcurrentUsers, holdFor, _}
+import io.gatling.core.Predef.{constantConcurrentUsers, exec, _}
 import io.gatling.http.Predef._
 
 import scala.concurrent.duration._
 
 class SimulationBottmingenD1 extends Simulation {
   // mws-01
-  //  val jwtToken = "eyJhbGciOiJIUzUxMiIsImN0eSI6ImFwcGxpY2F0aW9uL2pzb24iLCJ0eXAiOiJKV1QifQ.eyJ1c2VyIjoiOTkxMTVkZmItODE5Yi00OGFhLWFkYTUtOTkzN2I4MmVlYmQ0IiwiZXhwaXJlZEF0S2V5IjoxNTQyMDQ4NzY2NjM2fQ.8XYEceYnUIAQVHZVZKP6aF-_7hRNjB7jNFzIGq52CUpmVeBqHmi16W28XQci4tj-IkZmHDqFVzSaW8P3Q3W_vA"
-
-  //test-kutuapp.shrevic.net
-  val jwtToken = "eyJhbGciOiJIUzUxMiIsImN0eSI6ImFwcGxpY2F0aW9uL2pzb24iLCJ0eXAiOiJKV1QifQ.eyJ1c2VyIjoiNzJmODI0MjMtNjVkYS00NWM5LTk5YTctYjNmMTk3MTJmNjI4IiwiZXhwaXJlZEF0S2V5IjoxNjIxODg1ODk5MTMwfQ.pW8GtMcBSi9cqmEdzl_SeHGuZwIjtaj0oR9ce7gfD8FQm-12a4Q12tG9j1xg9xWyvoijEDMuHVla4A4exEp-Eg"
-  //kutuapp.shrevic.net
-  //val jwtToken = "eyJhbGciOiJIUzUxMiIsImN0eSI6ImFwcGxpY2F0aW9uL2pzb24iLCJ0eXAiOiJKV1QifQ.eyJ1c2VyIjoiNzJmODI0MjMtNjVkYS00NWM5LTk5YTctYjNmMTk3MTJmNjI4IiwiZXhwaXJlZEF0S2V5IjoxNTY4MDMxMzM4OTk4fQ.-Blh4u2AlFYWGzNW7lgreIUulzLrG09jqo8h9HvCdbgKF-pU4IV97SPYQdYBEh8y04MnSjiQ-TM3wEasmafLFw"
-
+  val jwtToken = "eyJhbGciOiJIUzUxMiIsImN0eSI6ImFwcGxpY2F0aW9uL2pzb24iLCJ0eXAiOiJKV1QifQ.eyJ1c2VyIjoiNzJmODI0MjMtNjVkYS00NWM5LTk5YTctYjNmMTk3MTJmNjI4IiwiZXhwaXJlZEF0S2V5IjoxNjQxNzY2ODY2ODUyfQ.VSYh5texoNr2CrIdRsusn-r3LY6DEBcCUjXA3FuMtFJlhh_tSl3OH8ef_qZ6RbzVZqC3M4amVI-c_2gBkMK0Dg"
   val competition = "72f82423-65da-45c9-99a7-b3f19712f628"
+
+  //val originBaseUrl = "https://kutuapp-test.interpolar.ch:8443"//,
   val originBaseUrl = "https://test-kutuapp.sharevic.net" //,"http://pluto:5757"//, "https://kutuapp.sharevic.net" //,"https://kutuapp.sharevic.net"//,"http://mws-01:5757"//,
   // val originBaseUrl = "http://mws-01:5757"//, "https://kutuapp.sharevic.net"//,"http://mws-01:5757"//,
   //val originBaseUrl = "https://kutuapp.sharevic.net"
 
   val httpProtocol = http
     .baseUrl(originBaseUrl)
-    .wsBaseUrl(originBaseUrl).wsReconnect.wsMaxReconnects(100)
+    .wsBaseUrl(originBaseUrl.replace("http", "ws")).wsReconnect.wsMaxReconnects(100)
     .inferHtmlResources()
     .doNotTrackHeader("1")
     .userAgentHeader("Mozilla/5.0 (iPad; CPU OS 11_0 like Mac OS X) AppleWebKit/604.1.34 (KHTML, like Gecko) Version/11.0 Mobile/15A5341f Safari/604.1")
@@ -47,6 +43,22 @@ class SimulationBottmingenD1 extends Simulation {
         http("check jwt-token expired")
           .options("/api/isTokenExpired")))
     .pause(5 minutes)
+
+  val scnWebsocketUser = scenario("WebSocket with Competition")
+    .exec(ws("openSocket")
+      .wsName("${sessionDgUser}")
+      .connect("/api/durchgang/" + competition + "/${durchgang}/ws?clientid=${sessionUserId}")
+      .onConnected(
+        exec(ws("sendMessage").wsName("${sessionDgUser}")
+          .sendText("keepAlive")
+          .await(5 seconds)(ws.checkTextMessage("check1")
+            .check(regex("Connection established(.*)").saveAs("wsgreetingmessage"))
+            .silent)
+        )
+      )
+    )
+  val scnCloseWebsocketUser = scenario("WebSocket with Competition")
+    .exec(ws("closeConnection").wsName("${sessionDgUser}").close)
 
   object BrowseResults {
     val encodeInvalidURIRegEx = "[,&.*+?/^${}()|\\[\\]\\\\]".r
@@ -94,9 +106,19 @@ class SimulationBottmingenD1 extends Simulation {
           jsonPath("$").ofType[Seq[Any]].find.saveAs("steps")))
     }
 
+    def chooseWSConnection(session: Session) = {
+      val dg = session("durchgang").as[String]
+      val sessionDgUser = s"${dg}-${session.userId}"
+      println(s"ws connection-key: $sessionDgUser")
+      session
+        .set("sessionDgUser", sessionDgUser)
+        .set("sessionUserId", session.userId)
+    }
+
     val diveToWertungen =
       exec(session => chooseDurchgang(session))
-        .exec(session => chooseGeraet(session))
+        .exec(session => chooseGeraet(chooseWSConnection(session)))
+        .exec(scnWebsocketUser)
         .exec(getSteps)
         .exec(http(s"start durchgang")
           .post(s"/api/competition/$competition/start")
@@ -107,7 +129,7 @@ class SimulationBottmingenD1 extends Simulation {
             .check(
               jsonPath("$").exists,
               jsonPath("$").ofType[Seq[Any]].find.saveAs("wertungen")))
-            .pause(2 seconds, 10 seconds)
+            .pause(1 minutes, 3 minutes)
             .foreach("${wertungen}", "wertung") {
               exec(http("save wertung")
                 .put(s"/api/durchgang/$competition/${"${durchgang}"}/${"${geraet}"}/${"${step}"}")
@@ -129,13 +151,14 @@ class SimulationBottmingenD1 extends Simulation {
     .exec(BrowseResults.loadAndSaveDurchgaenge)
     .exec(BrowseResults.loadAndSaveGeraete)
     .exec(BrowseResults.diveToWertungen)
+    .exec(scnCloseWebsocketUser)
   //    .pause(20 seconds, 30 seconds)
 
   setUp(
     scnLanding
       .inject(
-        rampConcurrentUsers(20) to (150) during (2 minutes),
-                constantConcurrentUsers(150) during(18 minutes)
+        rampConcurrentUsers(20) to (600) during (10 minutes),
+                constantConcurrentUsers(600) during(50 minutes)
 //        constantConcurrentUsers(150) during (10 hours)
         )
       .throttle(
@@ -149,15 +172,15 @@ class SimulationBottmingenD1 extends Simulation {
         //      rampUsers(100) during (15 seconds),
         //      rampUsersPerSec(2) to 8 during (5 minutes) randomized,
 //                constantConcurrentUsers(12) during (60 minutes),
-        rampConcurrentUsers(4) to 110 during (20 minutes)
+        rampConcurrentUsers(4) to 400 during (20 minutes)
 //        rampConcurrentUsers(8) to 32 during (10 hours)
-        //constantConcurrentUsers(10) during (4 hours)
+        , constantConcurrentUsers(400) during (40 minutes)
         //        constantConcurrentUsers(8) during (50 minutes),
         //        constantConcurrentUsers(12) during (10 minutes),
-        //      heavisideUsers(20) during (60 seconds)
+        //        heavisideUsers(20) during (60 seconds)
       ).throttle(
-      reachRps(5) in (10 seconds),
-      holdFor(4 hours)
+      reachRps(40) in (30 minutes),
+      holdFor(30 minutes)
     )
   ).protocols(httpProtocol)
 }

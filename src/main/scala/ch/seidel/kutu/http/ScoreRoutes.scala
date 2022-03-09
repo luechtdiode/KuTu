@@ -18,6 +18,7 @@ import ch.seidel.kutu.renderer.PrintUtil._
 
 import scala.concurrent.Future
 import scala.concurrent.duration.DurationInt
+import fr.davit.akka.http.metrics.core.scaladsl.server.HttpMetricsDirectives._
 
 trait
 ScoreRoutes extends SprayJsonSupport with JsonSupport with AuthSupport with RouterLogging with KutuService with IpToDeviceID {
@@ -69,7 +70,7 @@ ScoreRoutes extends SprayJsonSupport with JsonSupport with AuthSupport with Rout
   
   lazy val scoresRoutes: Route = {
     (handleCID & extractUri) { (clientId: String, uri: Uri) =>
-      pathPrefix("scores") {
+      pathPrefixLabeled("scores", "scores") {
         pathEnd {
           get {
             parameters(Symbol("html").?) { html =>
@@ -103,7 +104,7 @@ ScoreRoutes extends SprayJsonSupport with JsonSupport with AuthSupport with Rout
             }
           }
         } ~
-        pathPrefix("all") {
+        pathPrefixLabeled("all", "all") {
           val data = selectWertungen()
           val logodir = new java.io.File(Config.homedir)
           val logofile = PrintUtil.locateLogoFile(logodir)
@@ -118,14 +119,14 @@ ScoreRoutes extends SprayJsonSupport with JsonSupport with AuthSupport with Rout
               }
             }
           } ~
-          path("grouper") {
+          pathLabeled("grouper", "grouper") {
             get {
               complete{ Future { 
                 allGroupers.map(g => encodeURIParam(g.groupname))
               }}
             }
           } ~
-          path("filter") {
+          pathLabeled("filter", "filter") {
             get {
               parameters(Symbol("groupby").?) { groupby =>
                 complete{ Future {
@@ -135,7 +136,7 @@ ScoreRoutes extends SprayJsonSupport with JsonSupport with AuthSupport with Rout
             }
           }
         } ~
-        pathPrefix(JavaUUID) { competitionId =>
+        pathPrefixLabeled(JavaUUID, ":competition-id") { competitionId =>
           import AbuseHandler._
           if (!wettkampfExists(competitionId.toString)) {
             log.error(handleAbuse(clientId, uri))
@@ -231,7 +232,7 @@ ScoreRoutes extends SprayJsonSupport with JsonSupport with AuthSupport with Rout
                 }
               }
             } ~
-            pathPrefix(JavaUUID) { scoreUUID =>
+            pathPrefixLabeled(JavaUUID, ":score-id") { scoreUUID =>
               get {
                 parameters(Symbol("html").?) { html =>
                   val scoreId = scoreUUID.toString
@@ -266,7 +267,7 @@ ScoreRoutes extends SprayJsonSupport with JsonSupport with AuthSupport with Rout
                 }
               }
             } ~
-            path("query") {
+            pathLabeled("query", "query") {
               get {
                 parameters(Symbol("groupby").?, Symbol("filter").*, Symbol("html").?, Symbol("alphanumeric").?) { (groupby, filter, html, alphanumeric) =>
                   complete(
@@ -353,7 +354,7 @@ ScoreRoutes extends SprayJsonSupport with JsonSupport with AuthSupport with Rout
                 }
               }
             } ~
-            path("intermediate") {
+            pathLabeled("intermediate", "intermediate") {
               get {
                 (parameters(Symbol("q").?, Symbol("filter").*, Symbol("html").?) & optionalHeaderValueByName("clientid")) { (q, filter, html, clientid) =>
 
@@ -407,14 +408,14 @@ ScoreRoutes extends SprayJsonSupport with JsonSupport with AuthSupport with Rout
                 }
               }
             } ~
-            path("grouper") {
+            pathLabeled("grouper", "grouper") {
               get {
                 complete{ Future {
                   groupers.map(g => encodeURIParam(g.groupname))
                 }}
               }
             } ~
-            path("filter") {
+            pathLabeled("filter", "filter") {
               get {
                 parameters(Symbol("groupby").?) { (groupby) =>
                   complete{ Future {

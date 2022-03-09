@@ -4,11 +4,12 @@ import akka.http.scaladsl.marshallers.sprayjson.SprayJsonSupport
 import akka.http.scaladsl.model.StatusCodes
 import ch.seidel.kutu.domain._
 import ch.seidel.kutu.http.AuthSupport.OPTION_LOGINRESET
+import fr.davit.akka.http.metrics.core.scaladsl.server.HttpMetricsDirectives._
 
 trait LoginRoutes extends SprayJsonSupport with EnrichedJson with JwtSupport with AuthSupport with RouterLogging with KutuService {
   import AbuseHandler._
 
-  def login(userLookup: (String) => String, userIdLookup: (String) => Option[Long]) = pathPrefix("login") {
+  def login(userLookup: (String) => String, userIdLookup: (String) => Option[Long]) = pathPrefixLabeled("login", "login") {
     pathEndOrSingleSlash {
       authenticateBasicPF(realm = "secure site", userPassAuthenticator(userLookup, userIdLookup)) { userId =>
         extractUri { uri =>
@@ -28,7 +29,7 @@ trait LoginRoutes extends SprayJsonSupport with EnrichedJson with JwtSupport wit
       }
     }
   }~
-  pathPrefix("loginrenew") {
+  pathPrefixLabeled("loginrenew", "loginrenew") {
     pathEndOrSingleSlash {
       authenticated() { userId =>
         respondWithJwtHeader(userId) {

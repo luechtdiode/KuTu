@@ -202,7 +202,11 @@
 			<artifactId>akka-cluster-tools_${scala.majorversion}</artifactId>
 			<version>${akka.version}</version>
 		</dependency>
-
+		<dependency>
+			<groupId>fr.davit</groupId>
+			<artifactId>akka-http-metrics-prometheus_${scala.majorversion}</artifactId>
+			<version>1.6.0</version>
+		</dependency>
 		<!-- Event Sourcing, Akka Persitence -->
 		<dependency>
 			<groupId>com.typesafe.akka</groupId>

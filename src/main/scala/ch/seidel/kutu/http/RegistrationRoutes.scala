@@ -21,6 +21,7 @@ import java.time.Instant
 import java.util.{Base64, UUID}
 import scala.concurrent.duration.{DAYS, Duration, DurationInt}
 import scala.concurrent.{Await, Future}
+import fr.davit.akka.http.metrics.core.scaladsl.server.HttpMetricsDirectives._
 
 trait RegistrationRoutes extends SprayJsonSupport with JwtSupport with JsonSupport with AuthSupport with RouterLogging
   with KutuService with CompetitionsClubsToHtmlRenderer with CompetitionsJudgeToHtmlRenderer with IpToDeviceID with CIDSupport {
@@ -108,7 +109,7 @@ trait RegistrationRoutes extends SprayJsonSupport with JwtSupport with JsonSuppo
 
   lazy val registrationRoutes: Route = {
     (handleCID & extractUri) { (clientId: String, uri: Uri) =>
-      pathPrefix("registrations" / "clubnames") {
+      pathPrefixLabeled("registrations" / "clubnames", "registration/clubnames") {
         pathEndOrSingleSlash {
           get {
             val since1Year = System.currentTimeMillis() - Duration(500, DAYS).toMillis
@@ -118,7 +119,7 @@ trait RegistrationRoutes extends SprayJsonSupport with JwtSupport with JsonSuppo
               .sortBy(v => v.easyprint))
           }
         }
-      } ~ pathPrefix("registrations" / JavaUUID) { competitionId =>
+      } ~ pathPrefixLabeled("registrations" / JavaUUID, "registrations/:competition-id") { competitionId =>
         import AbuseHandler._
         if (!wettkampfExists(competitionId.toString)) {
           log.error(handleAbuse(clientId, uri))
@@ -152,14 +153,14 @@ trait RegistrationRoutes extends SprayJsonSupport with JwtSupport with JsonSuppo
                 }
               }
             }
-          } ~ path("programmlist") {
+          } ~ pathLabeled("programmlist", "programmlist") {
             get {
               complete {
                 val wi = WettkampfInfo(wettkampf.toView(readProgramm(wettkampf.programmId)), this)
                 wi.leafprograms.map(p => ProgrammRaw(p.id, p.name, 0, 0, p.ord, p.alterVon, p.alterBis))
               }
             }
-          } ~ path("refreshsyncs") {
+          } ~ pathLabeled("refreshsyncs", "refreshsyncs") {
             get {
               complete(
                 AthletIndexActor.publish(ResyncIndex).map { _ =>
@@ -167,7 +168,7 @@ trait RegistrationRoutes extends SprayJsonSupport with JwtSupport with JsonSuppo
                   StatusCodes.OK
                 })
             }
-          } ~ path("syncactions") {
+          } ~ pathLabeled("syncactions", "syncactions") {
             get {
               withRequestTimeout(60.seconds) {
                 complete(CompetitionRegistrationClientActor.publish(AskRegistrationSyncActions(wettkampf.uuid.get), clientId).map {
@@ -176,13 +177,13 @@ trait RegistrationRoutes extends SprayJsonSupport with JwtSupport with JsonSuppo
                 })
               }
             }
-          } ~ pathPrefix("programmdisziplinlist") {
+          } ~ pathPrefixLabeled("programmdisziplinlist", "programmdisziplinlist") {
             pathEndOrSingleSlash {
               get {
                 complete(listJudgeRegistrationProgramItems(readWettkampfLeafs(wettkampf.programmId).map(p => p.id)))
               }
             }
-          } ~ pathPrefix("judges") {
+          } ~ pathPrefixLabeled("judges", "judges") {
             authenticated() { userId =>
               pathEndOrSingleSlash {
                 get { // list Judges per club
@@ -193,7 +194,7 @@ trait RegistrationRoutes extends SprayJsonSupport with JwtSupport with JsonSuppo
                 }
               }
             }
-          } ~ pathPrefix("verein") {
+          } ~ pathPrefixLabeled("verein", "verein") {
             pathEndOrSingleSlash {
               authenticated() { userId =>
                 if (userId.equals(competitionId.toString)) {
@@ -208,7 +209,7 @@ trait RegistrationRoutes extends SprayJsonSupport with JwtSupport with JsonSuppo
                   complete(StatusCodes.Conflict)
               }
             }
-          } ~ pathPrefix("athletes") {
+          } ~ pathPrefixLabeled("athletes", "athletes") {
             pathEndOrSingleSlash {
               authenticated() { userId =>
                 if (userId.equals(competitionId.toString)) {
@@ -223,7 +224,7 @@ trait RegistrationRoutes extends SprayJsonSupport with JwtSupport with JsonSuppo
                   complete(StatusCodes.Conflict)
               }
             }
-          } ~ pathPrefix(LongNumber / "loginreset") { registrationId =>
+          } ~ pathPrefixLabeled(LongNumber / "loginreset", ":registration-id/loginreset") { registrationId =>
             (authenticated() & extractHost & optionalHeaderValueByName("Referer")) { (loginresetToken, host, refererOption) =>
               if (loginresetToken.endsWith(OPTION_LOGINRESET)) {
                 val userId = loginresetToken.substring(0, loginresetToken.length - OPTION_LOGINRESET.length)
@@ -243,13 +244,13 @@ trait RegistrationRoutes extends SprayJsonSupport with JwtSupport with JsonSuppo
                 complete(StatusCodes.Conflict)
               }
             }
-          } ~ pathPrefix(LongNumber) { registrationId =>
+          } ~ pathPrefixLabeled(LongNumber, ":registration-id") { registrationId =>
             authenticated() { userId =>
               if (userId.equals(competitionId.toString)) {
                 // approve registration - means assign verein-id if missing, and apply registrations
                 // This is made from the FX-Client
                 // 1. get all
-                pathPrefix("athletes") {
+                pathPrefixLabeled("athletes", "athletes") {
                   pathEndOrSingleSlash {
                     get { // list Athletes
                       complete(
@@ -299,7 +300,7 @@ trait RegistrationRoutes extends SprayJsonSupport with JwtSupport with JsonSuppo
                         StatusCodes.OK
                       })
                     }
-                  } ~ pathPrefix("pwchange") {
+                  } ~ pathPrefixLabeled("pwchange", "pwchange") {
                     pathEndOrSingleSlash {
                       put { // update/reset Password
                         entity(as[RegistrationResetPW]) { regPwReset =>
@@ -314,7 +315,7 @@ trait RegistrationRoutes extends SprayJsonSupport with JwtSupport with JsonSuppo
                         }
                       }
                     }
-                  } ~ pathPrefix("copyfrom") {
+                  } ~ pathPrefixLabeled("copyfrom", "copyfrom") {
                     pathEndOrSingleSlash {
                       put {
                         entity(as[Wettkampf]) { wettkampfCopyFrom =>
@@ -326,7 +327,7 @@ trait RegistrationRoutes extends SprayJsonSupport with JwtSupport with JsonSuppo
                         }
                       }
                     }
-                  } ~ pathPrefix("athletlist") {
+                  } ~ pathPrefixLabeled("athletlist", "athletlist") {
                     pathEndOrSingleSlash {
                       get { // list Athletes
                         complete {
@@ -348,7 +349,7 @@ trait RegistrationRoutes extends SprayJsonSupport with JwtSupport with JsonSuppo
                         }
                       }
                     }
-                  } ~ pathPrefix("athletes") {
+                  } ~ pathPrefixLabeled("athletes", "athletes") {
                     pathEndOrSingleSlash {
                       get { // list Athletes
                         complete(
@@ -380,7 +381,7 @@ trait RegistrationRoutes extends SprayJsonSupport with JwtSupport with JsonSuppo
                           }
                         }
                       }
-                    } ~ pathPrefix(LongNumber) { id =>
+                    } ~ pathPrefixLabeled(LongNumber, ":athlet-id") { id =>
                       pathEndOrSingleSlash {
                         get {
                           complete(
@@ -403,7 +404,7 @@ trait RegistrationRoutes extends SprayJsonSupport with JwtSupport with JsonSuppo
                         }
                       }
                     }
-                  } ~ pathPrefix("judges") {
+                  } ~ pathPrefixLabeled("judges", "judges") {
                     pathEndOrSingleSlash {
                       get { // list judges
                         complete(
@@ -425,7 +426,7 @@ trait RegistrationRoutes extends SprayJsonSupport with JwtSupport with JsonSuppo
                           }
                         }
                       }
-                    } ~ pathPrefix(LongNumber) { id =>
+                    } ~ pathPrefixLabeled(LongNumber, ":judgereg-id") { id =>
                       pathEndOrSingleSlash {
                         get {
                           complete(
