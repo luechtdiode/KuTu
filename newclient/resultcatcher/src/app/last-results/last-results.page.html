@@ -27,7 +27,7 @@
     </ion-title>
     <ion-note slot="end" *ngIf="competition">
       {{competitionName()}}
-    </ion-note>    
+    </ion-note>
   </ion-toolbar>
   <ion-searchbar *ngIf="scorelistAvailable()" placeholder="Search" showCancelButton="never"
     [(ngModel)]="sMyQuery"
@@ -53,26 +53,21 @@
       <ion-item-divider>{{block.title.text}}</ion-item-divider>
       <ion-item-sliding #slidingAthletScoreItem *ngFor="let tn of block.rows">
         <scorelist-item [teilnehmer]="tn" (click)='scoreItemTapped(tn, slidingAthletScoreItem)'></scorelist-item>
-        <!--ion-item-options side="end">
-          <ion-item-option color="primary" (click)="followAthlet(tn, slidingAthletItem)">
+        <ion-item-options side="end">
+          <ion-item-option color="primary" (click)="followAthlet(tn, slidingAthletScoreItem)">
               <ion-icon name="arrow-dropright-circle" ios="md-arrow-dropright-circle"></ion-icon>
-            Detail-Wertungen {{tn.athlet}}
+            Detail-Wertungen {{tn.Athlet}}
           </ion-item-option>
-        </ion-item-options-->
+        </ion-item-options>
       </ion-item-sliding>
-    </div>    
+    </div>
   </ion-list>
 </ion-content>
 
 <ion-footer *ngIf="scorelistAvailable()">
   <ion-toolbar>
-    <ion-list>
-      <ion-button size="large" (click)="open()">
-        <ion-icon slot="start" name="open"></ion-icon>Rangliste öffnen ...
-      </ion-button>
-      <ion-button size="large" (click)="share()" *ngIf="isShareAvailable()">
-        <ion-icon slot="start" name="share"></ion-icon>Share/Teilen ...
-      </ion-button>
-    </ion-list>
+    <ion-button size="large" expand="block" (click)='presentActionSheet()' color="primary">
+      <ion-icon slot="start" name="list"></ion-icon>
+    </ion-button>
   </ion-toolbar>
 </ion-footer>

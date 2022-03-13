@@ -144,6 +144,7 @@ export interface Wettkampf {
 }
 
 export interface ScoreRow {
+  "athletID": number,
   "Rang": string,
   "Athlet": string,
   "Jahrgang": string,

@@ -1,6 +1,7 @@
 import { Component, OnInit, ViewChild, HostListener } from '@angular/core';
 import { WertungContainer, Geraet, Wettkampf, ScoreBlock, ScoreRow } from '../backend-types';
-import { IonItemSliding, NavController } from '@ionic/angular';
+import { IonItemSliding, NavController, ActionSheetController } from '@ionic/angular';
+
 import { BackendService } from '../services/backend.service';
 import { debounceTime, distinctUntilChanged, filter, map, share, switchMap } from 'rxjs/operators';
 import { backendUrl } from '../utils';
@@ -37,7 +38,10 @@ export class LastResultsPage implements OnInit {
   //   }
   // }
 
-  constructor(public navCtrl: NavController, public backendService: BackendService) {
+  constructor(public navCtrl: NavController,
+    public backendService: BackendService,
+    public actionSheetController: ActionSheetController
+    ) {
     if (! this.backendService.competitions) {
       this.backendService.getCompetitions();
     }
@@ -57,7 +61,7 @@ export class LastResultsPage implements OnInit {
         this.items.push(newLastRes.results[key]);
       });
       this.sortItems();
-      if (this.scorelistAvailable()) {        
+      if (this.scorelistAvailable()) {
         this.backendService.getScoreList().pipe(
           map(scorelist => {
             if (!!scorelist.title && !!scorelist.scoreblocks) {
@@ -132,7 +136,7 @@ export class LastResultsPage implements OnInit {
       uuid: undefined,
       programmId: 0
     };
-    
+
     if (!this.backendService.competitions) { return emptyCandidate; }
     const candidate = this.backendService.competitions
       .filter(c => c.uuid === this.backendService.competition);
@@ -240,14 +244,13 @@ export class LastResultsPage implements OnInit {
   reloadList(event: any) {
     this.tMyQueryStream.next(event);
   }
-  
+
   makeScoreListLink(): string {
-    // https://kutuapp.sharevic.net/api/scores/e68fe1a0-72b1-4768-8fbe-1747753f0206/query?groupby=Kategorie:Geschlecht
     const c = this.competitionContainer();
     return `${backendUrl}api/scores/${c.uuid}/query?groupby=Kategorie:Geschlecht&html`;
   }
 
-  getScoreListItems(): ScoreBlock[] {    
+  getScoreListItems(): ScoreBlock[] {
     return this.scoreblocks;
   }
   scoreItemTapped(item: ScoreRow, slidingItem: IonItemSliding) {
@@ -262,7 +265,7 @@ export class LastResultsPage implements OnInit {
 
   followAthlet(item: ScoreRow, slidingItem: IonItemSliding) {
     slidingItem.close();
-    //this.navCtrl.navigateForward(`athlet-view/${this.backendService.competition}/${item.id}`);
+    this.navCtrl.navigateForward(`athlet-view/${this.backendService.competition}/${item["athletID"]}`);
   }
 
   open() {
@@ -285,10 +288,10 @@ export class LastResultsPage implements OnInit {
     if (c.titel !== '') {
       sport = SPORT_MAPPING[c.programmId];
     }    // API is fairly new, check if it is supported
-    let text = `${this.competitionName()} #${sport}-${c.titel.split(' ').join('_')}`;
-    if(this.isShareAvailable()) {	
+    let text = `${this.competitionName()} #${sport}-${c.titel.replace(',', ' ').split(' ').join('_')}`;
+    if(this.isShareAvailable()) {
       navigator.share({
-        title: `Rangliste ${this.competitionName()}`,
+        title: `${sport} Rangliste`,
         text: text,
         url: this.makeScoreListLink()
       })
@@ -301,5 +304,35 @@ export class LastResultsPage implements OnInit {
         console.log(e.message);
       });
     }
+  }
+
+  async presentActionSheet() {
+    let buttons: any[] = [
+      {
+        text: 'Rangliste öffnen ...',
+        icon: 'open',
+        handler: () => {
+          this.open();
+        }
+      }
+    ];
+    if (this.isShareAvailable()) {
+      buttons = [...buttons,
+        {
+          text: 'Teilen / Share ...',
+          icon: 'share',
+          handler: () => {
+            this.share();
+          }
+        }
+      ];
+    }
+    let actionconfig: any = {
+      header: 'Aktionen',
+      cssClass: 'my-actionsheet-class',
+      buttons: buttons
+    };
+    const actionSheet = await this.actionSheetController.create(actionconfig);
+    await actionSheet.present();
   }
 }
