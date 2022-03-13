@@ -8,7 +8,7 @@ import { ScoreRow } from 'src/app/backend-types';
   styleUrls: ['./scorelist-item.component.scss'],
 })
 export class ScorelistItemComponent implements OnInit {
-  knownKeys: string[] = ["Rang", "Athlet", "Jahrgang", "Verein", "ø Gerät", "Total Punkte"];
+  knownKeys: string[] = ["athletID", "Rang", "Athlet", "Jahrgang", "Verein", "ø Gerät", "Total Punkte"];
   teilnehmerSubResults = '';
 
   @Input()
