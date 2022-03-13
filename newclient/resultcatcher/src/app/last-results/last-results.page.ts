@@ -250,8 +250,7 @@ export class LastResultsPage implements OnInit {
   getScoreListItems(): ScoreBlock[] {    
     return this.scoreblocks;
   }
-
-  itemTapped(item: ScoreRow, slidingItem: IonItemSliding) {
+  scoreItemTapped(item: ScoreRow, slidingItem: IonItemSliding) {
     slidingItem.getOpenAmount().then(amount => {
         if (amount > 0) {
         slidingItem.close();
@@ -270,6 +269,10 @@ export class LastResultsPage implements OnInit {
     window.open(this.makeScoreListLink(), '_blank');
   }
 
+  isShareAvailable():boolean {
+    return !!navigator && !!navigator.share && navigator.canShare();
+  }
+
   share() {
     let sport = 'GeTu';
     const SPORT_MAPPING = {
@@ -283,7 +286,7 @@ export class LastResultsPage implements OnInit {
       sport = SPORT_MAPPING[c.programmId];
     }    // API is fairly new, check if it is supported
     let text = `${this.competitionName()} #${sport}-${c.titel.split(' ').join('_')}`;
-    if(!!navigator && !!navigator.share && navigator.canShare()) {	
+    if(this.isShareAvailable()) {	
       navigator.share({
         title: `Rangliste ${this.competitionName()}`,
         text: text,

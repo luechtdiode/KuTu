@@ -143,6 +143,10 @@ export class AthletViewPage  implements OnInit {
     return wertungContainer.programm + ' - ' + this.geraetText(wertungContainer.geraet);
   }
 
+  isShareAvailable():boolean {
+    return !!navigator && !!navigator.share && navigator.canShare();
+  }
+
   share() {
     let sport = 'GeTu';
     const SPORT_MAPPING = {
@@ -162,7 +166,7 @@ export class AthletViewPage  implements OnInit {
     } else {
       text = "Geschafft! Wettkampf Resultate von " + text;
     }
-    if(navigator.share && navigator.canShare) {	
+    if(this.isShareAvailable()) {	
       navigator.share({
         title: this.competitionName(),
         text: text,
