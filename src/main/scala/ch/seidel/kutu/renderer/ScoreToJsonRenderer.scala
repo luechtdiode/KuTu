@@ -53,20 +53,19 @@ object ScoreToJsonRenderer {
             gsBlock.append("\"rows\":[")
             list.foreach{ row =>
               gsBlock.append("{")
-              cols.foreach { col =>
-                col match {
-                  case ccol: WKLeafCol[_] =>
+              gsBlock.append(s""""athletID": "${row.athlet.id}",""")
+              cols.foreach {
+                case ccol: WKLeafCol[_] =>
+                  val c = ccol.asInstanceOf[WKLeafCol[GroupRow]]
+                  gsBlock.append(s""""${escaped(c.text)}":"${escaped(c.valueMapper(row))}",""")
+                case gc: WKGroupCol =>
+                  gsBlock.append(s""""${escaped(gc.text)}":{""")
+                  gc.cols.foreach { ccol =>
                     val c = ccol.asInstanceOf[WKLeafCol[GroupRow]]
                     gsBlock.append(s""""${escaped(c.text)}":"${escaped(c.valueMapper(row))}",""")
-                  case gc: WKGroupCol =>
-                    gsBlock.append(s""""${escaped(gc.text)}":{""")
-                    gc.cols.foreach { ccol =>
-                      val c = ccol.asInstanceOf[WKLeafCol[GroupRow]]
-                      gsBlock.append(s""""${escaped(c.text)}":"${escaped(c.valueMapper(row))}",""")
-                    }
-                    gsBlock.deleteCharAt(gsBlock.size-1)
-                    gsBlock.append("},")
-                }
+                  }
+                  gsBlock.deleteCharAt(gsBlock.size - 1)
+                  gsBlock.append("},")
               }
               gsBlock.deleteCharAt(gsBlock.size-1)
               gsBlock.append("},")
@@ -87,8 +86,6 @@ object ScoreToJsonRenderer {
             renderListRows(section)
             renderListEnd
           }
-
-
         case g: GroupNode => gsBlock.append(
             toJsonString(title, g.next.toList,
                 if(openedTitle.length() > 0)
