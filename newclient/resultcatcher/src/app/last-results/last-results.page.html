@@ -27,21 +27,47 @@
     </ion-title>
     <ion-note slot="end" *ngIf="competition">
       {{competitionName()}}
-    </ion-note>    
+    </ion-note>
   </ion-toolbar>
+  <ion-searchbar *ngIf="scorelistAvailable()" placeholder="Search" showCancelButton="never"
+    [(ngModel)]="sMyQuery"
+    (ionInput)="reloadList($event)"
+    (ionCancel)="reloadList($event)">
+  </ion-searchbar>
 </ion-header>
 
 <ion-content>
-  <ion-grid no-padding>
+  <ion-grid no-padding *ngIf="items.length > 0">
     <ion-row>
       <ion-col class="align-self-start"
         size-xs="12" size-md="6" size-lg="4" size-xl="2"
-       col-12 col-sm-6 col-lg-4 col-xl-2 *ngFor='let w of items'
-        (click)="itemTapped($event, w)">
+       col-12 col-sm-6 col-lg-4 col-xl-2 *ngFor='let w of items'>
         <div [ngClass]="{'gradient-border':isNew(w)}">
           <result-display [item]="w" [title]="getTitle(w)"></result-display>
         </div>
       </ion-col>
     </ion-row>
   </ion-grid>
+  <ion-list *ngIf="scorelistAvailable()">
+    <div *ngFor="let block of filteredScoreList">
+      <ion-item-divider>{{block.title.text}}</ion-item-divider>
+      <ion-item-sliding #slidingAthletScoreItem *ngFor="let tn of block.rows">
+        <scorelist-item [teilnehmer]="tn" (click)='scoreItemTapped(tn, slidingAthletScoreItem)'></scorelist-item>
+        <ion-item-options side="end">
+          <ion-item-option color="primary" (click)="followAthlet(tn, slidingAthletScoreItem)">
+              <ion-icon name="arrow-dropright-circle" ios="md-arrow-dropright-circle"></ion-icon>
+            Detail-Wertungen {{tn.Athlet}}
+          </ion-item-option>
+        </ion-item-options>
+      </ion-item-sliding>
+    </div>
+  </ion-list>
 </ion-content>
+
+<ion-footer *ngIf="scorelistAvailable()">
+  <ion-toolbar>
+    <ion-button size="large" expand="block" (click)='presentActionSheet()' color="primary">
+      <ion-icon slot="start" name="list"></ion-icon>
+    </ion-button>
+  </ion-toolbar>
+</ion-footer>

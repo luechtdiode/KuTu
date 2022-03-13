@@ -2,6 +2,7 @@
     <ion-toolbar>
       <ion-buttons slot="start">
           <ion-back-button defaultHref="/"></ion-back-button>
+
       </ion-buttons>
       <ion-title>
         <ion-grid no-padding>
@@ -9,16 +10,21 @@
             <ion-col>
               <ion-label>Aktuelle Resultate</ion-label>
             </ion-col>
-            
           </ion-row>
         </ion-grid>
       </ion-title>
-      <ion-note slot="end" *ngIf="competition">
-        {{competitionName()}}
-      </ion-note>    
+      <ion-buttons slot="end">
+        <ion-note slot="start" *ngIf="competition">
+          {{competitionName()}}
+        </ion-note>
+        <ion-button slot="end" (click)="share()" *ngIf="isShareAvailable()">
+          <ion-icon name="share"></ion-icon>
+        </ion-button>
+      </ion-buttons>
+
     </ion-toolbar>
   </ion-header>
-  
+
   <ion-content>
     <ion-grid no-padding>
       <ion-row>

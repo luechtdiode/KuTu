@@ -143,6 +143,30 @@ export interface Wettkampf {
   uuid: string;
 }
 
+export interface ScoreRow {
+  "athletID": number,
+  "Rang": string,
+  "Athlet": string,
+  "Jahrgang": string,
+  "Verein": string,
+  "ø Gerät": string,
+  "Total Punkte": string
+}
+
+export interface ScoreBlockTitle {
+  level: number;
+  text: string;
+}
+export interface ScoreBlock {
+  title: ScoreBlockTitle;
+  rows: ScoreRow[];
+}
+export interface Score {
+  logo?: string;
+  title?: string;
+  scoreblocks?: ScoreBlock[];
+}
+
 // actions
 export interface FinishDurchgangStation {
   wettkampfUUID: string;
