@@ -4,6 +4,8 @@ import { NavController } from '@ionic/angular';
 import { BackendService } from '../services/backend.service';
 import { filter, map } from 'rxjs/operators';
 import { ActivatedRoute } from '@angular/router';
+import { backendUrl } from '../utils';
+
 
 @Component({
   selector: 'app-athlet-view',
@@ -17,6 +19,8 @@ export class AthletViewPage  implements OnInit {
   items: WertungContainer[] = [];
   lastItems: number[] = [];
   geraete: Geraet[] = [];
+  athletId: number;
+  wkId: string;
 
   constructor(public navCtrl: NavController,
               private route: ActivatedRoute,
@@ -29,13 +33,13 @@ export class AthletViewPage  implements OnInit {
 
   ngOnInit(): void {
     // tslint:disable-next-line:radix
-    const athletId = parseInt(this.route.snapshot.paramMap.get('athletId'));
-    const wkId = this.route.snapshot.paramMap.get('wkId');
-    this.backendService.loadAthletWertungen(wkId, athletId).pipe(
+    this.athletId = parseInt(this.route.snapshot.paramMap.get('athletId'));
+    this.wkId = this.route.snapshot.paramMap.get('wkId');
+    this.backendService.loadAthletWertungen(this.wkId, this.athletId).pipe(
       filter(r => !!r && r.length > 0)
     ).subscribe(athletWertungen => {
       this.items = athletWertungen;
-      this.sortItems(athletId);
+      this.sortItems(this.athletId);
     });
     this.backendService.geraeteSubject.subscribe(geraete => {
       if (!this.backendService.captionmode) {
@@ -81,17 +85,36 @@ export class AthletViewPage  implements OnInit {
   getCompetitions(): Wettkampf[] {
     return this.backendService.competitions || [];
   }
-  competitionName(): string {
-    if (!this.backendService.competitions) { return ''; }
+
+  competitionContainer(): Wettkampf {
+
+    const emptyCandidate = <Wettkampf>{
+      titel: "",
+      datum: new Date(),
+      auszeichnung: undefined,
+      auszeichnungendnote: undefined,
+      id: undefined,
+      uuid: undefined,
+      programmId: 0
+    };
+    
+    if (!this.backendService.competitions) { return emptyCandidate; }
     const candidate = this.backendService.competitions
-      .filter(c => c.uuid === this.backendService.competition)
-      .map(c => c.titel + ', am ' + (c.datum + 'T').split('T')[0].split('-').reverse().join('-'));
+      .filter(c => c.uuid === this.backendService.competition);
 
     if (candidate.length === 1) {
       return candidate[0];
     } else {
+      return emptyCandidate;
+    }
+  }
+
+  competitionName(): string {
+    const c = this.competitionContainer();
+    if (c.titel === '') {
       return '';
     }
+    return c.titel + ', am ' + (c.datum + 'T').split('T')[0].split('-').reverse().join('-');
   }
 
   geraetOrder(geraetId: number): number {
@@ -118,5 +141,41 @@ export class AthletViewPage  implements OnInit {
 
   getTitle(wertungContainer: WertungContainer): string {
     return wertungContainer.programm + ' - ' + this.geraetText(wertungContainer.geraet);
+  }
+
+  share() {
+    let sport = 'GeTu';
+    const SPORT_MAPPING = {
+      1: "Athletik",
+      11: "KuTu",
+      20: "GeTu",
+      31: "KuTu"
+    };
+    const c = this.competitionContainer();
+    if (c.titel !== '') {
+      sport = SPORT_MAPPING[c.programmId];
+    }    // API is fairly new, check if it is supported
+    let text = `${this.items[0].vorname} ${this.items[0].name}, ${this.items[0].verein} #${sport}-${c.titel.split(' ').join('_')}} - #${this.items[0].verein} #${this.items[0].programm}`;
+
+    if (c.datum.getDate > Date.now) {
+      text = "Hoffe das Beste für " + text;
+    } else {
+      text = "Geschafft! Wettkampf Resultate von " + text;
+    }
+    if(navigator.share && navigator.canShare) {	
+      navigator.share({
+        title: this.competitionName(),
+        text: text,
+        url: `${backendUrl}athlet-view/${this.wkId}/${this.athletId}`
+      })
+      .then(function() {
+        // success
+        console.log("Article shared");
+      })
+      .catch(function(e) {
+        // error message
+        console.log(e.message);
+      });
+    }
   }
 }

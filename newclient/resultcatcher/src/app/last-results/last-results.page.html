@@ -29,10 +29,15 @@
       {{competitionName()}}
     </ion-note>    
   </ion-toolbar>
+  <ion-searchbar *ngIf="scorelistAvailable()" placeholder="Search" showCancelButton="never"
+    [(ngModel)]="sMyQuery"
+    (ionInput)="reloadList($event)"
+    (ionCancel)="reloadList($event)">
+  </ion-searchbar>
 </ion-header>
 
 <ion-content>
-  <ion-grid no-padding>
+  <ion-grid no-padding *ngIf="items.length > 0">
     <ion-row>
       <ion-col class="align-self-start"
         size-xs="12" size-md="6" size-lg="4" size-xl="2"
@@ -44,4 +49,32 @@
       </ion-col>
     </ion-row>
   </ion-grid>
+  <ion-list *ngIf="scorelistAvailable()">
+    <div *ngFor="let block of filteredScoreList">
+      <ion-item-divider>{{block.title.text}}</ion-item-divider>
+      <ion-item-sliding #slidingAthletItem *ngFor="let tn of block.rows">
+        <scorelist-item [teilnehmer]="tn"
+        (click)='itemTapped(tn, slidingAthletItem)'></scorelist-item>
+        <!--ion-item-options side="end">
+          <ion-item-option color="primary" (click)="followAthlet(tn, slidingAthletItem)">
+              <ion-icon name="arrow-dropright-circle" ios="md-arrow-dropright-circle"></ion-icon>
+            Detail-Wertungen {{tn.athlet}}
+          </ion-item-option>
+        </ion-item-options-->
+      </ion-item-sliding>
+    </div>    
+  </ion-list>
 </ion-content>
+
+<ion-footer *ngIf="!!navigator && !!navigator.share && scorelistAvailable()">
+  <ion-toolbar>
+    <ion-list>
+      <ion-button size="large" (click)="open()">
+        <ion-icon slot="start" name="open"></ion-icon>Rangliste öffnen ...
+      </ion-button>
+      <ion-button size="large" (click)="share()">
+        <ion-icon slot="start" name="share"></ion-icon>Share/Teilen ...
+      </ion-button>
+    </ion-list>
+  </ion-toolbar>
+</ion-footer>

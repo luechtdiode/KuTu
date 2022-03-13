@@ -148,7 +148,7 @@ export class WertungEditorPage /*implements OnInit*/ {
       error: (err) => {
         this.updateUI(this.itemOriginal);
         console.log(err);
-    });
+    }});
   }
 
   saveNext(form: NgForm) {

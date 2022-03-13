@@ -11,7 +11,7 @@ import { DurchgangStarted, Wettkampf, Geraet, WertungContainer, NewLastResults, 
          NewClubRegistration,
          AthletRegistration,
          ProgrammRaw,
-         SyncAction, JudgeRegistration, JudgeRegistrationProgramItem, BulkEvent, Verein} from '../backend-types';
+         SyncAction, JudgeRegistration, JudgeRegistrationProgramItem, BulkEvent, Verein, Score} from '../backend-types';
 import { backendUrl } from '../utils';
 import { RegistrationResetPW } from '../backend-types';
 
@@ -1070,6 +1070,17 @@ export class BackendService extends WebsocketService {
             return this.steps[this.steps.length - 1];
           }
         }));
+      }
+    }
+
+    getScoreList(): Observable<Score> {
+      if (this._competition) {
+        const link = `${backendUrl}api/scores/${this._competition}/query?groupby=Kategorie:Geschlecht`;
+        return this.startLoading('Rangliste wird geladen. Bitte warten ...',
+          this.http.get<Score>(link).pipe(share())
+        );
+      } else {
+        return of(<Score>{});
       }
     }
 
