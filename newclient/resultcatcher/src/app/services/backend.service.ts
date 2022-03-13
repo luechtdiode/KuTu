@@ -131,7 +131,7 @@ export class BackendService extends WebsocketService {
       });
       this.loadingInstance.then(alert => alert.present());
       if (observable) {
-        observable.subscribe(() => this.resetLoading(), (err) => this.resetLoading());
+        observable.subscribe({next: () => this.resetLoading(), error: (err) => this.resetLoading()});
       }
       return observable;
     }
@@ -267,29 +267,32 @@ export class BackendService extends WebsocketService {
         headers: {
           'x-access-token': `${jwt}`
         }
-      }).pipe(share())).subscribe((data) => {
-        localStorage.setItem('auth_token', data.headers.get('x-access-token'));
-        this.loggedIn = true;
-        if (!this.competitions || this.competitions.length === 0) {
-          this.getCompetitions().subscribe(d => {
-            if (this._competition) {
-              this.getDurchgaenge(this._competition);
-            }
-          });
-        } else if (this._competition) {
-          this.getDurchgaenge(this._competition);
-        }
-      }, (err: HttpErrorResponse) => {
-        console.log(err);
-        if (err.status === 401) {
-          localStorage.removeItem('auth_token');
-          this.loggedIn = false;
-          this.showMessage.next({
-            msg: 'Die Berechtigung ist abgelaufen. Bitte neu anmelden',
-            type: 'Berechtigung'
-          } as MessageAck);
-        } else {
-          this.standardErrorHandler(err);
+      }).pipe(share())).subscribe({
+        next: (data) => {
+          localStorage.setItem('auth_token', data.headers.get('x-access-token'));
+          this.loggedIn = true;
+          if (!this.competitions || this.competitions.length === 0) {
+            this.getCompetitions().subscribe(d => {
+              if (this._competition) {
+                this.getDurchgaenge(this._competition);
+              }
+            });
+          } else if (this._competition) {
+            this.getDurchgaenge(this._competition);
+          }
+        }, 
+        error: (err: HttpErrorResponse) => {
+          console.log(err);
+          if (err.status === 401) {
+            localStorage.removeItem('auth_token');
+            this.loggedIn = false;
+            this.showMessage.next({
+              msg: 'Die Berechtigung ist abgelaufen. Bitte neu anmelden',
+              type: 'Berechtigung'
+            } as MessageAck);
+          } else {
+            this.standardErrorHandler(err);
+          }
         }
       });
       this.lastJWTChecked = new Date().getTime();
@@ -300,10 +303,13 @@ export class BackendService extends WebsocketService {
         this.http.put<MessageAck>(backendUrl + 'api/registrations/' + competitionId + '/' + registration.id,
         registration
       ).pipe(share()));
-      save.subscribe((data) => {
-        this._clubregistrations = [...this._clubregistrations.filter(r => r.id != registration.id), data];
-        this.clubRegistrations.next(this._clubregistrations);
-        }, this.standardErrorHandler);
+      save.subscribe({
+        next: (data) => {
+          this._clubregistrations = [...this._clubregistrations.filter(r => r.id != registration.id), data];
+          this.clubRegistrations.next(this._clubregistrations);
+        }, 
+        error: this.standardErrorHandler
+      });
       return save;
     }
 
@@ -312,10 +318,13 @@ export class BackendService extends WebsocketService {
         this.http.put<MessageAck>(backendUrl + 'api/registrations/' + competitionId + '/' + pwchange.id + "/pwchange",
         pwchange
       ).pipe(share()));
-      save.subscribe((data) => {
-        this._clubregistrations = [...this._clubregistrations.filter(r => r.id != pwchange.id), data];
-        this.clubRegistrations.next(this._clubregistrations);
-        }, this.standardErrorHandler);
+      save.subscribe({
+        next: (data) => {
+          this._clubregistrations = [...this._clubregistrations.filter(r => r.id != pwchange.id), data];
+          this.clubRegistrations.next(this._clubregistrations);
+        }, 
+        error: this.standardErrorHandler
+      });
       return save;
     }
 
@@ -334,10 +343,13 @@ export class BackendService extends WebsocketService {
           return data.body;
         }),
         share()));
-      creater.subscribe((data) => {
-        this._clubregistrations = [...this._clubregistrations, data];
-        this.clubRegistrations.next(this._clubregistrations);
-        }, this.standardErrorHandler);
+      creater.subscribe({
+        next: (data) => {
+          this._clubregistrations = [...this._clubregistrations, data];
+          this.clubRegistrations.next(this._clubregistrations);
+        },
+        error: this.standardErrorHandler
+      });
       return creater;
     }
 
@@ -347,11 +359,14 @@ export class BackendService extends WebsocketService {
           responseType: 'text'
         }
       ).pipe(share()));
-      deleter.subscribe((data) => {
-        this.clublogout();
-        this._clubregistrations = this._clubregistrations.filter(r => r.id != clubid);
-        this.clubRegistrations.next(this._clubregistrations);
-        }, this.standardErrorHandler);
+      deleter.subscribe({
+        next: (data) => {
+          this.clublogout();
+          this._clubregistrations = this._clubregistrations.filter(r => r.id != clubid);
+          this.clubRegistrations.next(this._clubregistrations);
+        }, 
+        error: this.standardErrorHandler
+      });
       return deleter;
     }
 
@@ -361,8 +376,9 @@ export class BackendService extends WebsocketService {
           backendUrl + 'api/registrations/' + competitionId + '/programmlist'
           ).pipe(share()));
 
-      loader.subscribe((data) => {
-      }, this.standardErrorHandler);
+      loader.subscribe({
+        error: this.standardErrorHandler
+      });
 
       return loader;
     }
@@ -373,8 +389,11 @@ export class BackendService extends WebsocketService {
           backendUrl + 'api/registrations/' + competitionId + '/' + clubid + '/athletlist'
           ).pipe(share()));
 
-      loader.subscribe((data) => {
-      }, this.standardErrorHandler);
+      loader.subscribe({
+        next: (data) => {
+        }, 
+        error: this.standardErrorHandler
+      });
 
       return loader;
     }
@@ -385,8 +404,7 @@ export class BackendService extends WebsocketService {
           backendUrl + 'api/registrations/' + competitionId + '/' + clubid + '/athletes'
           ).pipe(share()));
 
-      loader.subscribe((data) => {
-      }, this.standardErrorHandler);
+      loader.subscribe({error: this.standardErrorHandler});
 
       return loader;
     }
@@ -398,8 +416,7 @@ export class BackendService extends WebsocketService {
           registration
           ).pipe(share()));
 
-      loader.subscribe((data) => {
-      }, this.standardErrorHandler);
+      loader.subscribe({error: this.standardErrorHandler});
 
       return loader;
     }
@@ -411,8 +428,7 @@ export class BackendService extends WebsocketService {
           registration
           ).pipe(share()));
 
-      loader.subscribe((data) => {
-      }, this.standardErrorHandler);
+      loader.subscribe({error: this.standardErrorHandler});
 
       return loader;
     }
@@ -425,8 +441,7 @@ export class BackendService extends WebsocketService {
           }
           ).pipe(share()));
 
-      loader.subscribe((data) => {
-      }, this.standardErrorHandler);
+      loader.subscribe({error: this.standardErrorHandler});
 
       return loader;
     }
@@ -436,7 +451,7 @@ export class BackendService extends WebsocketService {
         'Es werden frühere Anmeldungen gesucht. Bitte warten ...',
         this.http.get<Wettkampf>(backendUrl + 'api/competition/byVerein/' + vereinId).pipe(share()));
 
-      loader.subscribe((data) => {}, this.standardErrorHandler);
+      loader.subscribe({error: this.standardErrorHandler});
 
       return loader;
     }
@@ -448,8 +463,7 @@ export class BackendService extends WebsocketService {
             responseType: 'text'
           }).pipe(share()));
 
-      loader.subscribe((data) => {
-      }, this.standardErrorHandler);
+      loader.subscribe({error: this.standardErrorHandler});
 
       return loader;
     }
@@ -460,8 +474,7 @@ export class BackendService extends WebsocketService {
           backendUrl + 'api/registrations/' + competitionId + '/programmdisziplinlist'
           ).pipe(share()));
 
-      loader.subscribe((data) => {
-      }, this.standardErrorHandler);
+      loader.subscribe({error: this.standardErrorHandler});
 
       return loader;
     }
@@ -472,8 +485,7 @@ export class BackendService extends WebsocketService {
           backendUrl + 'api/registrations/' + competitionId + '/' + clubid + '/judges'
           ).pipe(share()));
 
-      loader.subscribe((data) => {
-      }, this.standardErrorHandler);
+      loader.subscribe({error: this.standardErrorHandler});
 
       return loader;
     }
@@ -485,8 +497,7 @@ export class BackendService extends WebsocketService {
           registration
           ).pipe(share()));
 
-      loader.subscribe((data) => {
-      }, this.standardErrorHandler);
+      loader.subscribe({error: this.standardErrorHandler});
 
       return loader;
     }
@@ -498,8 +509,7 @@ export class BackendService extends WebsocketService {
           registration
           ).pipe(share()));
 
-      loader.subscribe((data) => {
-      }, this.standardErrorHandler);
+      loader.subscribe({error: this.standardErrorHandler});
 
       return loader;
     }
@@ -512,8 +522,7 @@ export class BackendService extends WebsocketService {
           }
           ).pipe(share()));
 
-      loader.subscribe((data) => {
-      }, this.standardErrorHandler);
+      loader.subscribe({error: this.standardErrorHandler});
 
       return loader;
     }
@@ -539,9 +548,12 @@ export class BackendService extends WebsocketService {
       const loader = this.startLoading('Clubliste wird geladen. Bitte warten ...',
         this.http.get<string[]>(backendUrl + 'api/registrations/clubnames').pipe(share()));
 
-      loader.subscribe((data) => {
-        this.clublist = data;
-      }, this.standardErrorHandler);
+      loader.subscribe({
+        next: (data) => {
+          this.clublist = data;
+        }, 
+        error: this.standardErrorHandler
+      });
 
       return loader;
     }
@@ -570,24 +582,27 @@ export class BackendService extends WebsocketService {
           responseType: 'text'
         }
       ).pipe(share()));
-      loader.subscribe((data) => {
-        console.log(data);
-        localStorage.setItem('auth_token', data.headers.get('x-access-token'));
-        localStorage.setItem('auth_clubid', username);
-        this.loggedIn = true;
-      }, (err) => {
-        console.log(err);
-        this.clublogout();
-        this.resetLoading();
-        if (err.status === 401) {
-          localStorage.setItem('auth_token', err.headers.get('x-access-token'));
-          this.loggedIn = false;
-          /*this.showMessage.next({
-            msg: 'Die Anmeldung ist nicht gültig oder abgelaufen.',
-            type: 'Berechtigung'
-          } as MessageAck);*/
-        } else {
-          this.standardErrorHandler(err);
+      loader.subscribe({
+        next: (data) => {
+          console.log(data);
+          localStorage.setItem('auth_token', data.headers.get('x-access-token'));
+          localStorage.setItem('auth_clubid', username);
+          this.loggedIn = true;
+        }, 
+        error: (err) => {
+          console.log(err);
+          this.clublogout();
+          this.resetLoading();
+          if (err.status === 401) {
+            localStorage.setItem('auth_token', err.headers.get('x-access-token'));
+            this.loggedIn = false;
+            /*this.showMessage.next({
+              msg: 'Die Anmeldung ist nicht gültig oder abgelaufen.',
+              type: 'Berechtigung'
+            } as MessageAck);*/
+          } else {
+            this.standardErrorHandler(err);
+          }
         }
       });
       return loader;
@@ -609,9 +624,12 @@ export class BackendService extends WebsocketService {
     getCompetitions() {
       const loader = this.startLoading('Wettkampfliste wird geladen. Bitte warten ...',
       this.http.get<Wettkampf[]>(backendUrl + 'api/competition').pipe(share()));
-      loader.subscribe((data) => {
-        this.competitions = data;
-      }, this.standardErrorHandler);
+      loader.subscribe({
+          next: (data) => {
+            this.competitions = data;
+          }, 
+          error: this.standardErrorHandler
+        });
       return loader;
     }
 
@@ -641,11 +659,14 @@ export class BackendService extends WebsocketService {
       const loader = this.startLoading('Clubanmeldungen werden geladen. Bitte warten ...',
         this.http.get<string[]>(backendUrl + 'api/registrations/' + this._competition).pipe(share()));
 
-      loader.subscribe((data) => {
-        localStorage.setItem('current_competition', this._competition);
-        this._clubregistrations = data;
-        this.clubRegistrations.next(data);
-      }, this.standardErrorHandler);
+      loader.subscribe({
+        next: (data) => {
+          localStorage.setItem('current_competition', this._competition);
+          this._clubregistrations = data;
+          this.clubRegistrations.next(data);
+        }, 
+        error: this.standardErrorHandler
+      });
 
       return this.clubRegistrations;
     }
@@ -657,8 +678,7 @@ export class BackendService extends WebsocketService {
       const loader = this.startLoading('Pendente An-/Abmeldungen werden geladen. Bitte warten ...',
         this.http.get<string[]>(backendUrl + 'api/registrations/' + this._competition + '/syncactions').pipe(share()));
 
-      loader.subscribe((data) => {
-      }, this.standardErrorHandler);
+      loader.subscribe({error: this.standardErrorHandler});
 
       return loader;
     }
@@ -692,22 +712,25 @@ export class BackendService extends WebsocketService {
 
       const actualDg = this._durchgang;
 
-      loader.subscribe((data) => {
-        localStorage.setItem('current_competition', this._competition);
-        this.durchgaenge = data;
-        if (actualDg) {
-          // const actualDgParts = actualDg.split('_');
-          const candidates = this.durchgaenge.filter(dg => {
-            const encodedDg = encodeURIComponent1(dg);
-            return actualDg === dg
-              || actualDg === encodedDg;
-              // || (actualDgParts.filter(d => actualDg.indexOf(d) > -1).length === actualDgParts.length);
-          });
-          if (candidates.length === 1) {
-            this._durchgang = candidates[0];
+      loader.subscribe({
+        next: (data) => {
+          localStorage.setItem('current_competition', this._competition);
+          this.durchgaenge = data;
+          if (actualDg) {
+            // const actualDgParts = actualDg.split('_');
+            const candidates = this.durchgaenge.filter(dg => {
+              const encodedDg = encodeURIComponent1(dg);
+              return actualDg === dg
+                || actualDg === encodedDg;
+                // || (actualDgParts.filter(d => actualDg.indexOf(d) > -1).length === actualDgParts.length);
+            });
+            if (candidates.length === 1) {
+              this._durchgang = candidates[0];
+            }
           }
-        }
-      }, this.standardErrorHandler);
+        },
+        error: this.standardErrorHandler
+      });
 
       return loader;
     }
@@ -742,10 +765,13 @@ export class BackendService extends WebsocketService {
       }
       const request =  this.startLoading('Geräte zum Durchgang werden geladen. Bitte warten ...',
         this.http.get<Geraet[]>(path).pipe(share()));
-      request.subscribe((data) => {
-        this.geraete = data;
-        this.geraeteSubject.next(this.geraete);
-      }, this.standardErrorHandler);
+      request.subscribe({
+        next: (data) => {
+          this.geraete = data;
+          this.geraeteSubject.next(this.geraete);
+        }, 
+        error: this.standardErrorHandler
+      });
       return request;
     }
 
@@ -763,13 +789,16 @@ export class BackendService extends WebsocketService {
       this._step = undefined;
 
       const stepsloader = this.loadSteps();
-      stepsloader.subscribe((data) => {
-        this.steps = data.map(step => parseInt(step));
-        if (this._step === undefined || this.steps.indexOf(this._step) < 0) {
-          this._step = this.steps[0];
-          this.loadWertungen();
-        }
-      }, this.standardErrorHandler);
+      stepsloader.subscribe({
+        next: (data) => {
+          this.steps = data.map(step => parseInt(step));
+          if (this._step === undefined || this.steps.indexOf(this._step) < 0) {
+            this._step = this.steps[0];
+            this.loadWertungen();
+          }
+        }, 
+        error: this.standardErrorHandler
+      });
 
       return stepsloader;
     }
@@ -785,9 +814,12 @@ export class BackendService extends WebsocketService {
         this.http.get<string[]>(
           backendUrl + 'api/durchgang/' + this._competition + '/' + encodeURIComponent2(this._durchgang) + '/' + this._geraet
         ).pipe(share()));
-      request.subscribe((data) => {
-        this.steps = data;
-      }, this.standardErrorHandler);
+      request.subscribe({
+        next: (data) => {
+          this.steps = data;
+        }, 
+        error: this.standardErrorHandler
+      });
       return request;
     }
 
@@ -840,15 +872,18 @@ export class BackendService extends WebsocketService {
           share()
         ));
 
-      loader.subscribe((data) => {
-        this.wertungenLoading = false;
-        if (this._step !== lastStepToLoad) {
-          this.loadWertungen();
-        } else {
-          this.wertungen = data;
-          this.wertungenSubject.next(this.wertungen);
-      }
-      }, this.standardErrorHandler);
+      loader.subscribe({
+        next: (data) => {
+          this.wertungenLoading = false;
+          if (this._step !== lastStepToLoad) {
+            this.loadWertungen();
+          } else {
+            this.wertungen = data;
+            this.wertungenSubject.next(this.wertungen);
+        }
+        }, 
+        error: this.standardErrorHandler
+      });
 
       return loader;
     }
@@ -907,29 +942,32 @@ export class BackendService extends WebsocketService {
           backendUrl + 'api/durchgang/' + competitionId + '/' + encodeURIComponent2(durchgang) + '/' + geraetId + '/' + step,
           wertung
       ).pipe(share()))
-      .subscribe((data) => {
-        if (!this.isMessageAck(data) && (data as WertungContainer).wertung) {
-          let wertungFound = false;
-          this.wertungen = this.wertungen.map(w => {
-            if (w.wertung.id === (data as WertungContainer).wertung.id) {
-              wertungFound = true;
-              return data;
-            } else {
-              return w;
+      .subscribe({
+        next: (data) => {
+          if (!this.isMessageAck(data) && (data as WertungContainer).wertung) {
+            let wertungFound = false;
+            this.wertungen = this.wertungen.map(w => {
+              if (w.wertung.id === (data as WertungContainer).wertung.id) {
+                wertungFound = true;
+                return data;
+              } else {
+                return w;
+              }
+            });
+            this.wertungenSubject.next(this.wertungen);
+            result.next(data);
+            if (wertungFound) {
+              result.complete();
             }
-          });
-          this.wertungenSubject.next(this.wertungen);
-          result.next(data);
-          if (wertungFound) {
+          } else {
+            const msg = data as MessageAck;
+            this.showMessage.next(msg);
+            result.error(msg.msg);
             result.complete();
           }
-        } else {
-          const msg = data as MessageAck;
-          this.showMessage.next(msg);
-          result.error(msg.msg);
-          result.complete();
-        }
-      }, this.standardErrorHandler);
+        }, 
+        error: this.standardErrorHandler
+      });
       return result;
     }
 
@@ -943,20 +981,23 @@ export class BackendService extends WebsocketService {
         geraet : geraetId,
         step
       } as FinishDurchgangStation).pipe(share()))
-      .subscribe((data) => {
-        const nextSteps = this.steps.filter(s => s > step);
-        if (nextSteps.length > 0) {
-          this._step = nextSteps[0];
-        } else {
-          localStorage.removeItem('current_station');
-          this.checkJWT();
-          this.stationFreezed = false;
-          this._step = this.steps[0];
-        }
-        this.loadWertungen().subscribe(wertungen => {
-          result.next(nextSteps);
-        });
-      }, this.standardErrorHandler);
+      .subscribe({
+        next: (data) => {
+          const nextSteps = this.steps.filter(s => s > step);
+          if (nextSteps.length > 0) {
+            this._step = nextSteps[0];
+          } else {
+            localStorage.removeItem('current_station');
+            this.checkJWT();
+            this.stationFreezed = false;
+            this._step = this.steps[0];
+          }
+          this.loadWertungen().subscribe(wertungen => {
+            result.next(nextSteps);
+          });
+        }, 
+        error: this.standardErrorHandler
+      });
 
       return result.asObservable();
     }

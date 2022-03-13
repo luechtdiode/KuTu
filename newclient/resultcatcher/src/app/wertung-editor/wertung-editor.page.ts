@@ -128,53 +128,59 @@ export class WertungEditorPage /*implements OnInit*/ {
 
   saveClose(form: NgForm) {
     this.waiting = true;
-    this.backendService.updateWertung(this.durchgang, this.step, this.geraetId, this.ensureInitialValues(form.value)).subscribe((wc) => {
-      this.updateUI(wc);
-      this.navCtrl.pop();
-    }, (err) => {
-      this.updateUI(this.itemOriginal);
-      console.log(err);
-    });
+    this.backendService.updateWertung(this.durchgang, this.step, this.geraetId, this.ensureInitialValues(form.value)).subscribe({
+      next: (wc) => {
+        this.updateUI(wc);
+        this.navCtrl.pop();
+      },
+      error: (err) => {
+        this.updateUI(this.itemOriginal);
+        console.log(err);
+    }});
   }
 
   save(form: NgForm) {
     this.waiting = true;
-    this.backendService.updateWertung(this.durchgang, this.step, this.geraetId, this.ensureInitialValues(form.value)).subscribe((wc) => {
+    this.backendService.updateWertung(this.durchgang, this.step, this.geraetId, this.ensureInitialValues(form.value)).subscribe({
+      next: (wc) => {
         this.updateUI(wc);
-    }, (err) => {
-      this.updateUI(this.itemOriginal);
-      console.log(err);
+      }, 
+      error: (err) => {
+        this.updateUI(this.itemOriginal);
+        console.log(err);
     });
   }
 
   saveNext(form: NgForm) {
     this.waiting = true;
-    this.backendService.updateWertung(this.durchgang, this.step, this.geraetId, this.ensureInitialValues(form.value)).subscribe((wc) => {
-      this.waiting = false;
-      const currentItemIndex = this.backendService.wertungen.findIndex(w => w.wertung.id === wc.wertung.id);
-      if (currentItemIndex < 0) {
-        console.log('unexpected wertung - id matches not with current wertung: ' + wc.wertung.id);
-      }
-      let nextItemIndex = currentItemIndex + 1;
-      if (currentItemIndex < 0) {
-        nextItemIndex = 0;
-      } else if (currentItemIndex >= this.backendService.wertungen.length - 1) {
-        if (this.backendService.wertungen.filter(w => w.wertung.endnote === undefined).length === 0) {
-          this.navCtrl.pop();
-          this.toastSuggestCompletnessCheck();
-          return;
-        } else {
-          nextItemIndex = this.backendService.wertungen.findIndex(w => w.wertung.endnote === undefined);
-          this.toastMissingResult(form, this.backendService.wertungen[nextItemIndex].vorname
-            + ' ' + this.backendService.wertungen[nextItemIndex].name);
+    this.backendService.updateWertung(this.durchgang, this.step, this.geraetId, this.ensureInitialValues(form.value)).subscribe({
+      next: (wc) => {
+        this.waiting = false;
+        const currentItemIndex = this.backendService.wertungen.findIndex(w => w.wertung.id === wc.wertung.id);
+        if (currentItemIndex < 0) {
+          console.log('unexpected wertung - id matches not with current wertung: ' + wc.wertung.id);
         }
-      }
-      form.resetForm();
-      this.updateUI(this.backendService.wertungen[nextItemIndex]);
-    }, (err) => {
-      this.updateUI(this.itemOriginal);
-      console.log(err);
-    });
+        let nextItemIndex = currentItemIndex + 1;
+        if (currentItemIndex < 0) {
+          nextItemIndex = 0;
+        } else if (currentItemIndex >= this.backendService.wertungen.length - 1) {
+          if (this.backendService.wertungen.filter(w => w.wertung.endnote === undefined).length === 0) {
+            this.navCtrl.pop();
+            this.toastSuggestCompletnessCheck();
+            return;
+          } else {
+            nextItemIndex = this.backendService.wertungen.findIndex(w => w.wertung.endnote === undefined);
+            this.toastMissingResult(form, this.backendService.wertungen[nextItemIndex].vorname
+              + ' ' + this.backendService.wertungen[nextItemIndex].name);
+          }
+        }
+        form.resetForm();
+        this.updateUI(this.backendService.wertungen[nextItemIndex]);
+      }, 
+      error: (err) => {
+        this.updateUI(this.itemOriginal);
+        console.log(err);
+    }});
   }
 
   nextEmptyOrFinish(form: NgForm) {
