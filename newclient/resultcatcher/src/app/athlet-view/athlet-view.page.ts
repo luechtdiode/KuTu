@@ -144,7 +144,7 @@ export class AthletViewPage  implements OnInit {
   }
 
   isShareAvailable():boolean {
-    return !!navigator && !!navigator.share && navigator.canShare();
+    return !!navigator && !!navigator.share;
   }
 
   share() {

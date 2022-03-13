@@ -244,7 +244,7 @@ export class LastResultsPage implements OnInit {
   makeScoreListLink(): string {
     // https://kutuapp.sharevic.net/api/scores/e68fe1a0-72b1-4768-8fbe-1747753f0206/query?groupby=Kategorie:Geschlecht
     const c = this.competitionContainer();
-    return `${backendUrl}api/scores/${c.uuid}/query?groupby=Kategorie:Geschlecht`;
+    return `${backendUrl}api/scores/${c.uuid}/query?groupby=Kategorie:Geschlecht&html`;
   }
 
   getScoreListItems(): ScoreBlock[] {    
@@ -270,7 +270,7 @@ export class LastResultsPage implements OnInit {
   }
 
   isShareAvailable():boolean {
-    return !!navigator && !!navigator.share && navigator.canShare();
+    return !!navigator && !!navigator.share;
   }
 
   share() {
