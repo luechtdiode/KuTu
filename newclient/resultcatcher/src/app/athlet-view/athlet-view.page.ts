@@ -161,7 +161,7 @@ export class AthletViewPage  implements OnInit {
     }    // API is fairly new, check if it is supported
     let text = `${this.items[0].vorname} ${this.items[0].name}, ${this.items[0].verein} #${sport}-${c.titel.replace(',', ' ').split(' ').join('_')} - #${this.items[0].verein.replace(',', ' ').split(' ').join('_')} #${this.items[0].programm}`;
 
-    if (c.datum.getDate > Date.now) {
+    if (new Date(c.datum).getTime() > Date.now() {
       text = "Hoffe das Beste für " + text;
     } else {
       text = "Geschafft! Wettkampf Resultate von " + text;
