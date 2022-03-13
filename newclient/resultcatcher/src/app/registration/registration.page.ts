@@ -247,9 +247,9 @@ export class RegistrationPage implements OnInit {
             text: 'Login',
             handler: data => {
               if (data.pw && data.pw.trim().length > 0) {
-                this.backendService.clublogin(club.id, data.pw).pipe(take(1)).subscribe((success) => {
+                this.backendService.clublogin(club.id, data.pw).pipe(take(1)).subscribe({next: (success) => {
                   this.navCtrl.navigateForward(`registration/${this.competition}/${club.id}`);
-                }, (err) => {
+                }, error: (err) => {
                   if (err.status === 401) {
                     const resetAlert = this.alertCtrl.create({
                       header: 'Vereins-Login Fehlgeschlagen',
@@ -279,7 +279,7 @@ export class RegistrationPage implements OnInit {
                       a.present();
                     });
                   }
-                });
+                }});
                 return true;
               } else {
                 // invalid name
