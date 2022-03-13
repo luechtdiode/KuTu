@@ -33,7 +33,7 @@
     </ion-grid>
   </ion-content>
 
-  <ion-footer *ngIf="!!navigator && !!navigator.share">
+  <ion-footer *ngIf="isShareAvailable()">
     <ion-toolbar>
       <ion-list>
         <ion-button size="large" (click)="share()">
