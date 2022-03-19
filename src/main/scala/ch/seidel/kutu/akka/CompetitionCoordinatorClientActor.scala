@@ -90,15 +90,13 @@ class CompetitionCoordinatorClientActor(wettkampfUUID: String) extends Persisten
   }
 
   override def preStart(): Unit = {
-    log.info(s"Starting CompetitionCoordinatorClientActor for $persistenceId")
+    log.info(s"Starting CompetitionCoordinatorClientActor for $persistenceId, $wettkampf")
     rebuildWettkampfMap()
-    competitionsActive.inc()
   }
 
   override def postStop(): Unit = {
-    competitionsActive.dec()
     liveticker.cancel()
-    log.info("CompetitionCoordinatorClientActor stopped")
+    log.info(s"CompetitionCoordinatorClientActor stopped: $persistenceId, $wettkampf")
     wsSend.values.flatten.foreach(context.stop)
   }
 
@@ -510,6 +508,7 @@ class ClientActorSupervisor extends Actor with ActorLogging {
           context.watch(coordinator)
           wettkampfCoordinators = wettkampfCoordinators + (uw.action.wettkampfUUID -> coordinator)
           coordinator.forward(uw)
+          competitionsActive.set(wettkampfCoordinators.size)
         //log.warning("Action for unknown competition: " + uw)
         //sender() ! MessageAck("Action for unknown competition: " + uw)
       }
@@ -517,6 +516,7 @@ class ClientActorSupervisor extends Actor with ActorLogging {
     case Terminated(wettkampfActor) =>
       context.unwatch(wettkampfActor)
       wettkampfCoordinators = wettkampfCoordinators.filter(_._2 != wettkampfActor)
+      competitionsActive.set(wettkampfCoordinators.size)
 
     case MessageAck(text) => println(text)
 
