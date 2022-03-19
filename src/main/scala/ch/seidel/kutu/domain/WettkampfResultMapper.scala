@@ -15,7 +15,7 @@ abstract trait WettkampfResultMapper extends DisziplinResultMapper {
   def readProgramm(id: Long): ProgrammView
   
   implicit val getWettkampfResult = GetResult(r =>
-    Wettkampf(r.<<, r.nextStringOption(), r.<<[java.sql.Date], r.<<, r.<<, r.<<, r.<<[BigDecimal]))
+    Wettkampf(r.<<, r.nextStringOption(), r.<<[java.sql.Date], r.<<, r.<<, r.<<, r.<<[BigDecimal], r.<<))
     
   implicit val getWettkampfDisziplinResult = GetResult(r =>
     Wettkampfdisziplin(r.<<, r.<<, r.<<, r.<<, r.nextBlobOption(), r.<<, r.<<, r.<<, r.<<))
@@ -27,10 +27,10 @@ abstract trait WettkampfResultMapper extends DisziplinResultMapper {
   }
   
   implicit def getWettkampfViewResultCached(implicit cache: scala.collection.mutable.Map[Long, ProgrammView]) = GetResult(r =>
-    WettkampfView(r.<<, r.nextStringOption(), r.<<[java.sql.Date], r.<<[String], readProgramm(r.<<, cache), r.<<, r.<<[BigDecimal]))
+    WettkampfView(r.<<, r.nextStringOption(), r.<<[java.sql.Date], r.<<[String], readProgramm(r.<<, cache), r.<<, r.<<[BigDecimal], r.<<))
     
   implicit def getWettkampfViewResult = GetResult(r =>
-    WettkampfView(r.<<, r.nextStringOption(), r.<<[java.sql.Date], r.<<, readProgramm(r.<<), r.<<, r.<<[BigDecimal]))
+    WettkampfView(r.<<, r.nextStringOption(), r.<<[java.sql.Date], r.<<, readProgramm(r.<<), r.<<, r.<<[BigDecimal], r.<<))
     
   implicit val getProgrammRawResult = GetResult(r =>
     ProgrammRaw(r.<<, r.<<, r.<<, r.<<, r.<<, r.<<, r.<<))

@@ -291,7 +291,7 @@ class CompetitionCoordinatorClientActor(wettkampfUUID: String) extends Persisten
       openDurchgangJournal = Map.empty
       pendingKeepAliveAck = None
       state = CompetitionState()
-      self ! handleStop
+      handleStop()
 
     case _ =>
   }

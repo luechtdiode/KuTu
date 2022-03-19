@@ -91,7 +91,7 @@ trait WettkampfService extends DBService
     sql"""
                     select
                         wpt.id,
-                        wk.*, wd.id, wd.programm_id,
+                        wk.id, wk.uuid, wk.datum, wk.titel, wk.programm_id, wk.auszeichnung, wk.auszeichnungendnote, wk.notificationEMail, wd.id, wd.programm_id,
                         d.*,
                         wd.kurzbeschreibung, wd.detailbeschreibung, wd.notenfaktor, wd.masculin, wd.feminim, wd.ord,
                         wpt.wechsel, wpt.einturnen, wpt.uebung, wpt.wertung
@@ -392,7 +392,7 @@ trait WettkampfService extends DBService
     seek(programmid, Seq.empty)
   }
 
-  def createWettkampf(datum: java.sql.Date, titel: String, programmId: Set[Long], auszeichnung: Int, auszeichnungendnote: scala.math.BigDecimal, uuidOption: Option[String]): Wettkampf = {
+  def createWettkampf(datum: java.sql.Date, titel: String, programmId: Set[Long], notificationEMail: String, auszeichnung: Int, auszeichnungendnote: scala.math.BigDecimal, uuidOption: Option[String]): Wettkampf = {
     val cache = scala.collection.mutable.Map[Long, ProgrammView]()
     val programs = programmId map (p => readProgramm(p, cache))
     val heads = programs map (_.head)
@@ -420,6 +420,7 @@ trait WettkampfService extends DBService
           sqlu"""
                 update wettkampf
                 set datum=$datum, titel=$titel, programm_Id=${heads.head.id},
+                    notificationEMail=$notificationEMail,
                     auszeichnung=$auszeichnung, auszeichnungendnote=$auszeichnungendnote
                 where id=$cid and uuid=$uuid
             """ >>
@@ -431,8 +432,8 @@ trait WettkampfService extends DBService
         case _ => 
           sqlu"""
                   insert into wettkampf
-                  (datum, titel, programm_Id, auszeichnung, auszeichnungendnote, uuid)
-                  values (${datum}, ${titel}, ${heads.head.id}, $auszeichnung, $auszeichnungendnote, $uuid)
+                  (datum, titel, programm_Id, notificationEMail, auszeichnung, auszeichnungendnote, uuid)
+                  values (${datum}, ${titel}, ${heads.head.id}, $notificationEMail, $auszeichnung, $auszeichnungendnote, $uuid)
               """ >>
           initPlanZeitenActions(UUID.fromString(uuid)) >>
           sql"""
@@ -444,7 +445,20 @@ trait WettkampfService extends DBService
     Await.result(database.run(process.transactionally), Duration.Inf)
   }
 
-  def saveWettkampf(id: Long, datum: java.sql.Date, titel: String, programmId: Set[Long], auszeichnung: Int, auszeichnungendnote: scala.math.BigDecimal, uuidOption: Option[String]): Wettkampf = {
+  def createUUIDForWettkampf(id: Long): Wettkampf = {
+    val uuid = UUID.randomUUID()
+    Await.result(database.run {
+      sqlu"""     update wettkampf
+                  set uuid=${uuid.toString}
+                  where id=$id
+          """ >>
+      sql"""      select * from wettkampf
+                  where id = $id
+         """.as[Wettkampf].head.transactionally
+    }, Duration.Inf)
+  }
+
+  def saveWettkampf(id: Long, datum: java.sql.Date, titel: String, programmId: Set[Long], notificationEMail: String, auszeichnung: Int, auszeichnungendnote: scala.math.BigDecimal, uuidOption: Option[String]): Wettkampf = {
     val uuid = uuidOption.getOrElse(UUID.randomUUID().toString())
     val cache = scala.collection.mutable.Map[Long, ProgrammView]()
     val process = for {
@@ -464,6 +478,7 @@ trait WettkampfService extends DBService
                   set datum=$datum,
                       titel=$titel,
                       programm_Id=${heads.head.id},
+                      notificationEMail=$notificationEMail,
                       auszeichnung=$auszeichnung,
                       auszeichnungendnote=$auszeichnungendnote,
                       uuid=$uuid

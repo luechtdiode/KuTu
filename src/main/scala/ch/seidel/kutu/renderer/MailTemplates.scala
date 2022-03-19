@@ -2,7 +2,7 @@ package ch.seidel.kutu.renderer
 
 import ch.seidel.kutu.Config
 import ch.seidel.kutu.akka.{Mail, MultipartMail}
-import ch.seidel.kutu.domain.{Registration, Wettkampf}
+import ch.seidel.kutu.domain.{Registration, SyncAction, Wettkampf}
 import ch.seidel.kutu.renderer.PrintUtil._
 
 object MailTemplates {
@@ -53,6 +53,64 @@ object MailTemplates {
        |        }
        |      </style>
        |    </head>""".stripMargin
+
+  def createSyncNotificationMail(wettkampf: Wettkampf, syncActions: List[SyncAction]): Mail = {
+    val logodir = new java.io.File(Config.homedir + "/" + wettkampf.easyprint.replace(" ", "_"))
+    val logofile = PrintUtil.locateLogoFile(logodir)
+    val logoHtml = if (logofile.exists()) s"""<img class=logo src="${logofile.imageSrcForWebEngine}" title="Logo"/>""" else ""
+    MultipartMail("Mutationen bei Wettkampfanmeldungen",
+      s"""Salut Wettkampf-Administrator/-In
+         |
+         |In der Zwischenzeit wurden folgende Änderungen bei den Anmeldungen für den Wettkampf
+         |${wettkampf.easyprint} nachzuführen:
+         |${syncActions.groupBy(_.verein).map{ gr =>
+            val (verein: Registration, actions: List[SyncAction]) = gr
+            val actionstext = actions.map(action => s"""  ** ${escaped(action.caption)}""").mkString("\n|  ")
+            s"""  * ${escaped(verein.vereinname)} (${escaped(verein.respVorname)} ${escaped(verein.respName)})
+               |  ${actionstext}"""
+          }.mkString("\n")}
+         |
+         |Dieses Mail wird erneut versendet, wenn sich weitere Änderungen ergeben.
+         |
+         |LG, die Kutuapp
+         |
+         |PS: Dies ist eine automatisch versendete EMail. Bitte nicht auf diese Mail antworten.""".stripMargin,
+      s"""<html>$htmlhead<body>
+         |    <div class=textbody>
+         |      <div class=headline>
+         |        $logoHtml
+         |        <div class=title><h4>${escaped(wettkampf.easyprint)}</h4></div>
+         |        <div class=subtitle>Mutationen bei Wettkampfanmeldungen</br></div>
+         |      </div>
+         |      <div class="textblock">
+         |        <h4>Salut Wettkampf-Administrator/-In</h4>
+         |        <p>
+         |          In der Zwischenzeit wurden folgende Änderungen bei den Anmeldungen für den Wettkampf
+         |          ${wettkampf.easyprint} nachzuführen:
+         |        </p><ul>
+         ${syncActions.groupBy(_.verein).map{ gr =>
+                      val (verein: Registration, actions: List[SyncAction]) = gr
+                      val actionstext = actions.map(action => s"""<li>${escaped(action.caption)}</li>""").mkString("\n|            ")
+     s"""|          <li>${escaped(verein.vereinname)} (${escaped(verein.respVorname)} ${escaped(verein.respName)})<br>
+         |            <ul>
+         |              ${actionstext}
+         |            </ul>
+         |          </li>"""
+                  }.mkString("\n")}
+         |        </ul><p>
+         |          Dieses Mail wird erneut versendet, wenn sich weitere Änderungen ergeben.
+         |        </p><p>
+         |          LG, die KuTu-App
+         |        </p>
+         |        <hr>
+         |        <p>
+         |           <b>PS:</b> <em>Dies ist eine automatisch versendete EMail. Bitte nicht auf diese Mail antworten.</em>
+         |        </p>
+         |      </div>
+         |    </div>
+         |</body></html>""".stripMargin,
+      wettkampf.notificationEMail)
+  }
 
   def createPasswordResetMail(wettkampf: Wettkampf, registration: Registration, link: String): Mail = {
     val logodir = new java.io.File(Config.homedir + "/" + wettkampf.easyprint.replace(" ", "_"))

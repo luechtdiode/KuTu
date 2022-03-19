@@ -251,6 +251,11 @@ object KuTuApp extends JFXApp3 with KutuService with JsonSupport with JwtSupport
         promptText = "Programm"
         selectionModel.value.select(p.programm)
       }
+      val txtNotificationEMail = new TextField {
+        prefWidth = 500
+        promptText = "EMail für die Notifikation von Online-Mutationen"
+        text = p.notificationEMail
+      }
       val txtAuszeichnung = new TextField {
         prefWidth = 500
         promptText = "%-Angabe, wer eine Auszeichnung bekommt"
@@ -276,6 +281,7 @@ object KuTuApp extends JFXApp3 with KutuService with JsonSupport with JwtSupport
                 new Label(txtDatum.promptText.value), txtDatum,
                 new Label(txtTitel.promptText.value), txtTitel,
                 new Label(cmbProgramm.promptText.value), cmbProgramm,
+                new Label(txtNotificationEMail.promptText.value), txtNotificationEMail,
                 new Label(txtAuszeichnung.promptText.value), txtAuszeichnung,
                 new Label(txtAuszeichnungEndnote.promptText.value), txtAuszeichnungEndnote)
             }
@@ -296,6 +302,7 @@ object KuTuApp extends JFXApp3 with KutuService with JsonSupport with JwtSupport
                 ld2SQLDate(txtDatum.valueProperty().value),
                 txtTitel.text.value,
                 Set(cmbProgramm.selectionModel.value.getSelectedItem.id),
+                txtNotificationEMail.text.value,
                 txtAuszeichnung.text.value.filter(c => c.isDigit || c == '.' || c == ',').toString match {
                   case "" => 0
                   case s: String if (s.indexOf(".") > -1 || s.indexOf(",") > -1) => math.round(str2dbl(s) * 100).toInt
@@ -929,6 +936,11 @@ object KuTuApp extends JFXApp3 with KutuService with JsonSupport with JwtSupport
         }
         promptText = "Programm"
       }
+      val txtNotificationEMail = new TextField {
+        prefWidth = 500
+        promptText = "EMail für die Notifikation von Online-Mutationen"
+        text = ""
+      }
       val txtAuszeichnung = new TextField {
         prefWidth = 500
         promptText = "%-Angabe, wer eine Auszeichnung bekommt"
@@ -949,6 +961,7 @@ object KuTuApp extends JFXApp3 with KutuService with JsonSupport with JwtSupport
                 new Label(txtDatum.promptText.value), txtDatum,
                 new Label(txtTitel.promptText.value), txtTitel,
                 new Label(cmbProgramm.promptText.value), cmbProgramm,
+                new Label(txtNotificationEMail.promptText.value), txtNotificationEMail,
                 new Label(txtAuszeichnung.promptText.value), txtAuszeichnung,
                 new Label(txtAuszeichnungEndnote.promptText.value), txtAuszeichnungEndnote)
             }
@@ -966,6 +979,7 @@ object KuTuApp extends JFXApp3 with KutuService with JsonSupport with JwtSupport
             ld2SQLDate(txtDatum.valueProperty().value),
             txtTitel.text.value,
             Set(cmbProgramm.selectionModel.value.getSelectedItem.id),
+            txtNotificationEMail.text.value,
             txtAuszeichnung.text.value.filter(c => c.isDigit || c == '.' || c == ',').toString match {
               case "" => 0
               case s: String if (s.indexOf(".") > -1 || s.indexOf(",") > -1) => math.round(str2dbl(s) * 100).toInt

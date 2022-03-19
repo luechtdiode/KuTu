@@ -72,7 +72,7 @@ abstract trait WertungService extends DBService with WertungResultMapper with Di
       sql"""
                     SELECT w.id, a.id, a.js_id, a.geschlecht, a.name, a.vorname, a.gebdat, a.strasse, a.plz, a.ort, a.activ, a.verein, v.*,
                       wd.id, wd.programm_id, d.*, wd.kurzbeschreibung, wd.detailbeschreibung, wd.notenfaktor, wd.masculin, wd.feminim, wd.ord,
-                      wk.*,
+                      wk.id, wk.uuid, wk.datum, wk.titel, wk.programm_id, wk.auszeichnung, wk.auszeichnungendnote, wk.notificationEMail,
                       w.note_d as difficulty, w.note_e as execution, w.endnote, w.riege, w.riege2
                     FROM wertung w
                     inner join athlet a on (a.id = w.athlet_id)
@@ -93,7 +93,7 @@ abstract trait WertungService extends DBService with WertungResultMapper with Di
       sql"""
                     SELECT w.id, a.id, a.js_id, a.geschlecht, a.name, a.vorname, a.gebdat, a.strasse, a.plz, a.ort, a.activ, a.verein, v.*,
                       wd.id, wd.programm_id, d.*, wd.kurzbeschreibung, wd.detailbeschreibung, wd.notenfaktor, wd.masculin, wd.feminim, wd.ord,
-                      wk.*,
+                      wk.id, wk.uuid, wk.datum, wk.titel, wk.programm_id, wk.auszeichnung, wk.auszeichnungendnote, wk.notificationEMail,
                       w.note_d as difficulty, w.note_e as execution, w.endnote, w.riege, w.riege2
                     FROM wertung w
                     inner join athlet a on (a.id = w.athlet_id)
@@ -115,7 +115,7 @@ abstract trait WertungService extends DBService with WertungResultMapper with Di
       sql"""
                     SELECT w.id, a.id, a.js_id, a.geschlecht, a.name, a.vorname, a.gebdat, a.strasse, a.plz, a.ort, a.activ, a.verein, v.*,
                       wd.id, wd.programm_id, d.*, wd.kurzbeschreibung, wd.detailbeschreibung, wd.notenfaktor, wd.masculin, wd.feminim, wd.ord,
-                      wk.*,
+                      wk.id, wk.uuid, wk.datum, wk.titel, wk.programm_id, wk.auszeichnung, wk.auszeichnungendnote, wk.notificationEMail,
                       w.note_d as difficulty, w.note_e as execution, w.endnote, w.riege, w.riege2
                     FROM wertung w
                     inner join athlet a on (a.id = w.athlet_id)
@@ -233,7 +233,7 @@ abstract trait WertungService extends DBService with WertungResultMapper with Di
       sql"""
                     SELECT w.id, a.id, a.js_id, a.geschlecht, a.name, a.vorname, a.gebdat, a.strasse, a.plz, a.ort, a.activ, a.verein, v.*,
                       wd.id, wd.programm_id, d.*, wd.kurzbeschreibung, wd.detailbeschreibung, wd.notenfaktor, wd.masculin, wd.feminim, wd.ord, 
-                      wk.*,
+                      wk.id, wk.uuid, wk.datum, wk.titel, wk.programm_id, wk.auszeichnung, wk.auszeichnungendnote, wk.notificationEMail,
                       w.note_d as difficulty, w.note_e as execution, w.endnote, w.riege, w.riege2
                     FROM wertung w
                     inner join athlet a on (a.id = w.athlet_id)
@@ -269,7 +269,7 @@ abstract trait WertungService extends DBService with WertungResultMapper with Di
       sql"""
                     SELECT w.id, a.id, a.js_id, a.geschlecht, a.name, a.vorname, a.gebdat, a.strasse, a.plz, a.ort, a.activ, a.verein, v.*,
                       wd.id, wd.programm_id, d.*, wd.kurzbeschreibung, wd.detailbeschreibung, wd.notenfaktor, wd.masculin, wd.feminim, wd.ord, 
-                      wk.*,
+                      wk.id, wk.uuid, wk.datum, wk.titel, wk.programm_id, wk.auszeichnung, wk.auszeichnungendnote, wk.notificationEMail,
                       w.note_d as difficulty, w.note_e as execution, w.endnote, w.riege, w.riege2
                     FROM wertung w
                     inner join athlet a on (a.id = w.athlet_id)
@@ -366,7 +366,7 @@ abstract trait WertungService extends DBService with WertungResultMapper with Di
       (sql"""
                    SELECT w.id, a.id, a.js_id, a.geschlecht, a.name, a.vorname, a.gebdat, a.strasse, a.plz, a.ort, a.activ, a.verein, v.*,
                      wd.id, wd.programm_id, d.*, wd.kurzbeschreibung, wd.detailbeschreibung, wd.notenfaktor, wd.masculin, wd.feminim, wd.ord,
-                     wk.*,
+                     wk.id, wk.uuid, wk.datum, wk.titel, wk.programm_id, wk.auszeichnung, wk.auszeichnungendnote, wk.notificationEMail,
                      w.note_d as difficulty, w.note_e as execution, w.endnote, w.riege, w.riege2
                    FROM wertung w
                    inner join athlet a on (a.id = w.athlet_id)
@@ -388,7 +388,7 @@ abstract trait WertungService extends DBService with WertungResultMapper with Di
       (sql"""
                    SELECT w.id, a.id, a.js_id, a.geschlecht, a.name, a.vorname, a.gebdat, a.strasse, a.plz, a.ort, a.activ, a.verein, v.*,
                      wd.id, wd.programm_id, d.*, wd.kurzbeschreibung, wd.detailbeschreibung, wd.notenfaktor, wd.masculin, wd.feminim, wd.ord,
-                     wk.*,
+                     wk.id, wk.uuid, wk.datum, wk.titel, wk.programm_id, wk.auszeichnung, wk.auszeichnungendnote, wk.notificationEMail,
                      w.note_d as difficulty, w.note_e as execution, w.endnote, w.riege, w.riege2
                    FROM wertung w
                    inner join athlet a on (a.id = w.athlet_id)
