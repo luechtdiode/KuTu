@@ -105,9 +105,10 @@ class CompetitionRegistrationClientActor(wettkampfUUID: String) extends Actor wi
         && this.syncActions.get.nonEmpty
         && this.syncActions != this.syncActionsNotified) {
         syncActionsNotified = this.syncActions
-        if(wettkampf.notificationEMail.nonEmpty) {
+        val wk = readWettkampf(wettkampfUUID)
+        if(wk.notificationEMail.nonEmpty) {
           KuTuMailerActor.send(
-            MailTemplates.createSyncNotificationMail(wettkampf, syncActionsNotified.get)
+            MailTemplates.createSyncNotificationMail(wk, syncActionsNotified.get)
           )
         }
       }
