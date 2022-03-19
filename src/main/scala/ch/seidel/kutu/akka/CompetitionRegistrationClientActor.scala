@@ -8,6 +8,7 @@ import ch.seidel.kutu.data.RegistrationAdmin
 import ch.seidel.kutu.domain._
 import ch.seidel.kutu.http.Core.system
 import ch.seidel.kutu.http.JsonSupport
+import ch.seidel.kutu.renderer.MailTemplates
 import ch.seidel.kutu.view.WettkampfInfo
 
 import scala.concurrent.ExecutionContext.Implicits.global
@@ -51,11 +52,15 @@ class CompetitionRegistrationClientActor(wettkampfUUID: String) extends Actor wi
     def debug(s: String): Unit = l.debug(s"[$shortName] $s")
   }
 
+  object CheckSyncChangedForNotifier
+
   private val wettkampf = readWettkampf(wettkampfUUID)
   private val wettkampfInfo = WettkampfInfo(wettkampf.toView(readProgramm(wettkampf.programmId)), this)
   private var syncActions: Option[List[SyncAction]] = None
+  private var syncActionsNotified: Option[List[SyncAction]] = None
   private var syncActionReceivers: List[ActorRef] = List()
   private var clientId: () => String = () => ""
+  private var rescheduleSyncNotificationCheck = context.system.scheduler.scheduleOnce(1.hour, self, CheckSyncChangedForNotifier)
 
   override val supervisorStrategy = OneForOneStrategy() {
     case NonFatal(e) =>
@@ -69,6 +74,7 @@ class CompetitionRegistrationClientActor(wettkampfUUID: String) extends Actor wi
 
   override def postStop(): Unit = {
     log.info(s"Stop CompetitionRegistrationClientActor for $wettkampf")
+    rescheduleSyncNotificationCheck.cancel()
   }
 
   override def receive = {
@@ -88,14 +94,28 @@ class CompetitionRegistrationClientActor(wettkampfUUID: String) extends Actor wi
         retrieveSyncActions(sender())
     case a@RegistrationSyncActions(actions) =>
       this.syncActions = Some(actions)
+      rescheduleSyncActionNotifier
       if (syncActionReceivers.nonEmpty) {
         syncActionReceivers.foreach(_ ! a)
         syncActionReceivers = List()
+      }
+
+    case CheckSyncChangedForNotifier =>
+      if (this.syncActions.nonEmpty
+        && this.syncActions.get.nonEmpty
+        && this.syncActions != this.syncActionsNotified) {
+        syncActionsNotified = this.syncActions
+        if(wettkampf.notificationEMail.nonEmpty) {
+          KuTuMailerActor.send(
+            MailTemplates.createSyncNotificationMail(wettkampf, syncActionsNotified.get)
+          )
+        }
       }
   }
 
   private def retrieveSyncActions(syncActionReceiver: ActorRef) = {
     syncActions = None
+
     if (syncActionReceivers.nonEmpty) {
       syncActionReceivers = syncActionReceivers :+ syncActionReceiver
     } else {
@@ -110,6 +130,11 @@ class CompetitionRegistrationClientActor(wettkampfUUID: String) extends Actor wi
           self ! RegistrationSyncActions(List.empty)
       }(global)
     }
+  }
+
+  private def rescheduleSyncActionNotifier = {
+    this.rescheduleSyncNotificationCheck.cancel()
+    this.rescheduleSyncNotificationCheck = context.system.scheduler.scheduleOnce(1.hour, self, CheckSyncChangedForNotifier)
   }
 }
 
