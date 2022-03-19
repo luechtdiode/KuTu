@@ -271,6 +271,7 @@ object ResourceExchanger extends KutuService with RiegenBuilder {
         datum = fields(wettkampfHeader("datum")),
         programmId = Set(fields(wettkampfHeader("programmId"))),
         titel = fields(wettkampfHeader("titel")),
+        notificationEMail = wettkampfHeader.get("notificationEMail").map(fields).getOrElse(""),
         uuidOption = uuid
       )
 

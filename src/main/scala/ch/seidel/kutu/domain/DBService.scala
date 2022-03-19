@@ -82,6 +82,7 @@ object DBService {
       , "FixEmptyRiegeTimeTableIssue-sqllite.sql"
       , "AddAnmeldungTables-sqllite.sql"
       , "AddAnmeldungTables-u2-sqllite.sql"
+      , "AddNotificationMailToWettkampf-sqllite.sql"
     )
 
     (!dbfile.exists() || dbfile.length() == 0, Config.importDataFrom) match {
@@ -173,6 +174,7 @@ object DBService {
         , "AddAnmeldungTables-pg.sql"
         , "AddAnmeldungTables-u1-pg.sql"
         , "AddAnmeldungTables-u2-pg.sql"
+        , "AddNotificationMailToWettkampf-pg.sql"
       )
       installDB(db, sqlScripts)
       /*Config.importDataFrom match {

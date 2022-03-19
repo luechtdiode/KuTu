@@ -78,7 +78,7 @@ trait WettkampfRoutes extends SprayJsonSupport
   def httpUploadWettkampfRequest(wettkampf: Wettkampf): Future[HttpResponse] = {
     import Core.materializer
     val uuid = wettkampf.uuid match {
-      case None => saveWettkampf(wettkampf.id, wettkampf.datum, wettkampf.titel, Set(wettkampf.programmId), wettkampf.auszeichnung, wettkampf.auszeichnungendnote, None).uuid.get
+      case None => createUUIDForWettkampf(wettkampf.id).uuid.get
       case Some(uuid) => uuid
     }
     val wettkampfEntity = toHttpEntity(wettkampf)
@@ -203,14 +203,14 @@ trait WettkampfRoutes extends SprayJsonSupport
           pathEnd {
             get {
               complete {
-                listWettkaempfeByVereinIdAsync(vereinId)
+                listWettkaempfeByVereinIdAsync(vereinId).map(list => list.map(_.toPublic))
               }
             }
           }
         } ~ pathEnd {
           get {
             complete {
-              listWettkaempfeAsync
+              listWettkaempfeAsync.map(list => list.map(_.toPublic))
             }
           }
         }

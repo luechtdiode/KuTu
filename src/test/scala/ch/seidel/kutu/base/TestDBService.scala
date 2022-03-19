@@ -60,6 +60,7 @@ object TestDBService {
       , "FixEmptyRiegeTimeTableIssue-sqllite.sql"
       , "AddAnmeldungTables-sqllite.sql"
       , "AddAnmeldungTables-u2-sqllite.sql"
+      , "AddNotificationMailToWettkampf-sqllite.sql"
     )
     DBService.installDB(tempDatabase, sqlScripts)
     logger.info("Database initialized")

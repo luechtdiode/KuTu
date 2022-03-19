@@ -16,7 +16,7 @@ trait KuTuBaseSpec extends AnyWordSpec with Matchers with DBService with KutuSer
   DBService.startDB(Some(TestDBService.db))
 
   def insertGeTuWettkampf(name: String, anzvereine: Int) = {
-    val wettkampf = createWettkampf(new Date(System.currentTimeMillis()), name, Set(20L), 3333, 7.5d, Some(UUID.randomUUID().toString))
+    val wettkampf = createWettkampf(new Date(System.currentTimeMillis()), name, Set(20L), "testmail@test.com", 3333, 7.5d, Some(UUID.randomUUID().toString))
     val programme: Seq[ProgrammView] = readWettkampfLeafs(wettkampf.programmId)
     val pgIds = programme.map(_.id)// 20 * 9 * 2 = 360
     val vereine = for (v <- (1 to anzvereine)) yield {

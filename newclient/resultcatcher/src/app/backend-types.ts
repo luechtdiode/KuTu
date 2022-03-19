@@ -141,6 +141,7 @@ export interface Wettkampf {
   auszeichnung: number;
   auszeichnungendnote: number;
   uuid: string;
+  notificationEMail?: string;
 }
 
 export interface ScoreRow {
