@@ -61,8 +61,9 @@ object MailTemplates {
     MultipartMail("Mutationen bei Wettkampfanmeldungen",
       s"""Salut Wettkampf-Administrator/-In
          |
-         |In der Zwischenzeit wurden folgende Änderungen bei den Anmeldungen für den Wettkampf
-         |${wettkampf.easyprint} nachzuführen:
+         |In der Zwischenzeit sind folgende Änderungen bei den Anmeldungen für den Wettkampf
+         |** ${wettkampf.easyprint} **
+         |nachzuführen:
          |${syncActions.groupBy(_.verein).map{ gr =>
             val (verein: Registration, actions: List[SyncAction]) = gr
             val actionstext = actions.map(action => s"""  ** ${escaped(action.caption)}""").mkString("\n|  ")
@@ -85,8 +86,8 @@ object MailTemplates {
          |      <div class="textblock">
          |        <h4>Salut Wettkampf-Administrator/-In</h4>
          |        <p>
-         |          In der Zwischenzeit wurden folgende Änderungen bei den Anmeldungen für den Wettkampf
-         |          ${wettkampf.easyprint} nachzuführen:
+         |          In der Zwischenzeit sind folgende Änderungen bei den Anmeldungen für den Wettkampf
+         |          <em>${wettkampf.easyprint}</em> nachzuführen:
          |        </p><ul>
          ${syncActions.groupBy(_.verein).map{ gr =>
                       val (verein: Registration, actions: List[SyncAction]) = gr
