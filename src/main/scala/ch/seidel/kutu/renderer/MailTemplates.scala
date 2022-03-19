@@ -71,6 +71,9 @@ object MailTemplates {
                |  ${actionstext}"""
           }.mkString("\n")}
          |
+         |Falls Du Hilfe benötigst, findest Du hier die Anleitung dazu:
+         |  https://luechtdiode.gitbook.io/turner-wettkampf-app/v/v2r2/wettkampf-vorbereitung/wettkampf_uebersicht/turneranmeldungen_verarbeiten_online#sync-registrations-1
+         |
          |Dieses Mail wird erneut versendet, wenn sich weitere Änderungen ergeben.
          |
          |LG, die Kutuapp
@@ -99,6 +102,9 @@ object MailTemplates {
          |          </li>"""
                   }.mkString("\n")}
          |        </ul><p>
+         |          Falls Du Hilfe benötigst, findest Du hier die Anleitung dazu:
+         |          <a href="https://luechtdiode.gitbook.io/turner-wettkampf-app/v/v2r2/wettkampf-vorbereitung/wettkampf_uebersicht/turneranmeldungen_verarbeiten_online#sync-registrations-1" target="_blank">Online Bedienungsanleitung</a>
+         |        </p><p>
          |          Dieses Mail wird erneut versendet, wenn sich weitere Änderungen ergeben.
          |        </p><p>
          |          LG, die KuTu-App
