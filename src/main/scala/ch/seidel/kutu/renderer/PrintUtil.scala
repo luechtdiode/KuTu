@@ -48,6 +48,10 @@ object PrintUtil {
     text = "Drucken ..."
     onAction = printDialog(title, defaults, adjustLinesPerPage, onGenerateOutput, engine, orientation)
   }
+  def btnPrintFuture(title: String, defaults: FilenameDefault, adjustLinesPerPage: Boolean = false, onGenerateOutput: (Int)=>Future[String], engine: WebEngine = KuTuApp.invisibleWebView.engine, orientation: PageOrientation = PageOrientation.Portrait) = new Button {
+    text = "Drucken ..."
+    onAction = printDialogFuture(title, defaults, adjustLinesPerPage, onGenerateOutput, engine, orientation)
+  }
   def printDialog(title: String, defaults: FilenameDefault, adjustLinesPerPage: Boolean = false, onGenerateOutput: (Int)=>String, engine: WebEngine = KuTuApp.invisibleWebView.engine, orientation: PageOrientation = PageOrientation.Portrait)(action: ActionEvent): Unit = {
     printDialogFuture(title, defaults, adjustLinesPerPage, (x: Int) => Future {onGenerateOutput(x)}, engine, orientation)(action)
   }

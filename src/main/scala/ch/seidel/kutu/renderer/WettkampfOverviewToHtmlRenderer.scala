@@ -1,10 +1,12 @@
 package ch.seidel.kutu.renderer
 
 import java.io.File
-
 import ch.seidel.kutu.Config.remoteBaseUrl
+import ch.seidel.kutu.KuTuApp.enc
 import ch.seidel.kutu.domain._
 import ch.seidel.kutu.renderer.PrintUtil._
+import net.glxn.qrgen.QRCode
+import net.glxn.qrgen.image.ImageType
 import org.slf4j.LoggerFactory
 
 import scala.collection.immutable._
@@ -74,6 +76,10 @@ trait WettkampfOverviewToHtmlRenderer {
               font-size: 11px;
               text-align: right
             }
+            td.link td>a {
+              font-size: 12px;
+
+            }
             td.hintdata {
               color: rgb(50,100,150);
               font-size: 9px;
@@ -115,10 +121,17 @@ trait WettkampfOverviewToHtmlRenderer {
               border: 0px;
               overflow: auto;
             }
+            .wordwrapper {
+              word-wrap:break-word;
+            }
             .logo {
               float: right;
               max-height: 100px;
               border-radius: 5px;
+            }
+            .qrcode {
+              float: right;
+              max-height: 200px;
             }
             .showborder {
               padding: 1px;
@@ -163,6 +176,12 @@ trait WettkampfOverviewToHtmlRenderer {
 
     val logoHtml = (if (logo.exists) s"""<img class=logo src="${logo.imageSrcForWebEngine}" title="Logo"/>""" else s"")
     val registrationURL = s"$remoteBaseUrl/registration/${wettkampf.uuid.get}"
+    val regQRUrl = toQRCodeImage(registrationURL)
+
+    val startlistURL = s"$remoteBaseUrl/api/report/${wettkampf.uuid.get}/startlist?gr=verein&html"
+    val startlistQRUrl = toQRCodeImage(startlistURL)
+    val lastResultsURL = s"$remoteBaseUrl/?" + new String(enc.encodeToString((s"last&c=${wettkampf.uuid.get}").getBytes))
+    val lastQRUrl = toQRCodeImage(lastResultsURL)
 
     val auszSchwelle = (if (wettkampf.auszeichnung > 100) {
       wettkampf.auszeichnung / 100d
@@ -220,9 +239,18 @@ trait WettkampfOverviewToHtmlRenderer {
         <h1>Wettkampf-Übersicht</h1><h2>${escaped(wettkampf.easyprint)}</h2></div>
       </div>
       <h2>Anmeldungen</h2>
-      <p>Link für die Online-Anmeldung zum Versenden an die Vereinsverantwortlichen oder für in die Wettkampf-Ausschreibung:<br>
-      <a href="$registrationURL" target="_blank">$registrationURL</a>
-      </p>
+      <div class=headline>
+        <img class=qrcode src="$regQRUrl"/>
+        <h3>Wettkampf-Registrierung / Online-Anmeldungen</h3>
+        <p class=wordwrapper>Zum Versenden an die Vereinsverantwortlichen oder für in die Wettkampf-Ausschreibung.<br>
+        <a href="$registrationURL" target="_blank">$registrationURL</a>
+        </p>
+        <h3>EMail des Wettkampf-Administrators</h3>
+        <p>An diese EMail Adresse werden Notifikations-Meldungen versendet, sobald sich an den Anmeldungen Mutationen ergeben.<br>
+        ${if (wettkampf.notificationEMail.nonEmpty) s"""<a href="mailto://${wettkampf.notificationEMail}" target="_blank">${wettkampf.notificationEMail}</a>""" else "<strong>Keine EMail hinterlegt!</strong>"}
+        </p>
+        <h3>Zusammenstellung der Anmeldungen</h3>
+      </div>
       <div class="showborder">
         <table width="100%">
           <thead>
@@ -249,9 +277,22 @@ trait WettkampfOverviewToHtmlRenderer {
             <tbody>
             $medalrows
             </tbody>
-        </table>
-      </div><br>
+        </table><br>
+      </div>
       <em>(Ohne Reserven)</em>
+      <h2 id="usefullinks">Weitere nützliche Links</h2>
+      <div class=headline>
+        <img class=qrcode src="$startlistQRUrl"/>
+        <h3>Online Liste der Teilnehmer/-Innen</h3><p class=wordwrapper>
+        Liste aller angemeldeten Teilnehmer/-Innen mit ihrer Starteinteilung.<br>
+        <a href="$startlistURL" target="_blank">$startlistURL</a>
+        </p>
+      </div>
+      <div class=headline>
+        <img class=qrcode src="$lastQRUrl"/>
+        <h3>Online Wettkampfresultate</h3><p class=wordwrapper>Direkter Link in die Online App, wo die letzten Resultate publiziert werden.<br>
+        <a href="$lastResultsURL" target="_blank">$lastResultsURL</a>
+      </div>
     </div>
     """
   }

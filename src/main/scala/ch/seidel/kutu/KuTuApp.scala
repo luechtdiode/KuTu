@@ -325,6 +325,7 @@ object KuTuApp extends JFXApp3 with KutuService with JsonSupport with JwtSupport
               val text = s"${w.titel} ${w.datum}"
               tree.getLeaves("Wettkämpfe").find { item => text.equals(item.value.value) } match {
                 case Some(node) =>
+                  controlsView.selectionModel().select(node.parent.value)
                   controlsView.selectionModel().select(node)
                 case None =>
               }
