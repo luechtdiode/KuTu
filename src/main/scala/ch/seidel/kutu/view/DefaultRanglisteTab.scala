@@ -3,7 +3,6 @@ package ch.seidel.kutu.view
 import java.io._
 import java.net.URI
 import java.util.concurrent.{ScheduledFuture, TimeUnit}
-
 import ch.seidel.commons._
 import ch.seidel.kutu.KuTuApp
 import ch.seidel.kutu.KuTuApp.hostServices
@@ -31,7 +30,7 @@ import scalafx.stage.FileChooser
 import scalafx.stage.FileChooser.ExtensionFilter
 import scalafx.util.StringConverter
 
-import scala.concurrent.Await
+import scala.concurrent.{Await, Future, Promise}
 import scala.language.implicitConversions
 
 abstract class DefaultRanglisteTab(wettkampfmode: BooleanProperty, override val service: KutuService) extends Tab with TabWithService with ScoreToHtmlRenderer {
@@ -316,7 +315,17 @@ abstract class DefaultRanglisteTab(wettkampfmode: BooleanProperty, override val 
         refreshRangliste(buildGrouper)
     }
 
-    val btnPrint = PrintUtil.btnPrint(text.value, getSaveAsFilenameDefault, true, (lpp:Int)=>refreshRangliste(buildGrouper, lpp))
+    val btnPrint = PrintUtil.btnPrintFuture(text.value, getSaveAsFilenameDefault, true,
+      (lpp:Int) => {
+        val retProm = Promise[String]()
+        if (Platform.isFxApplicationThread) {
+          retProm.success(refreshRangliste(buildGrouper, lpp))
+        } else Platform.runLater(() => {
+          retProm.success(refreshRangliste(buildGrouper, lpp))
+        })
+        retProm.future
+      }
+    )
 
     def extractFilterText = normalizeFilterText(buildGrouper.toRestQuery)
 
