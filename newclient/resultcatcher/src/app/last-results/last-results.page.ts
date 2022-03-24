@@ -1,5 +1,5 @@
 import { Component, OnInit, ViewChild, HostListener } from '@angular/core';
-import { WertungContainer, Geraet, Wettkampf, ScoreBlock, ScoreRow } from '../backend-types';
+import { WertungContainer, Geraet, Wettkampf, ScoreBlock, ScoreRow, ScoreLink } from '../backend-types';
 import { IonItemSliding, NavController, ActionSheetController } from '@ionic/angular';
 
 import { BackendService } from '../services/backend.service';
@@ -20,6 +20,8 @@ export class LastResultsPage implements OnInit {
   items: WertungContainer[] = [];
   lastItems: number[];
   geraete: Geraet[] = [];
+  scorelinks: ScoreLink[] = [];
+  defaultPath: string = undefined;
   scoreblocks: ScoreBlock[] = [];
   sFilteredScoreList: ScoreBlock[] = [];
   sMyQuery: string;
@@ -62,34 +64,71 @@ export class LastResultsPage implements OnInit {
       });
       this.sortItems();
       if (this.scorelistAvailable()) {
-        this.backendService.getScoreList().pipe(
-          map(scorelist => {
-            if (!!scorelist.title && !!scorelist.scoreblocks) {
-              return scorelist.scoreblocks;
-            } else {
-              return [];
-            }
-          })).subscribe(scoreblocks => {
-            this.scoreblocks = scoreblocks
-            const pipeBeforeAction = this.tMyQueryStream.pipe(
-              filter(event => !!event && !!event.target && !!event.target.value),
-              map(event => event.target.value),
-              debounceTime(1000),
-              distinctUntilChanged(),
-              share()
-            );
-            pipeBeforeAction.subscribe(scoreSearchWith => {
-              this.busy.next(true);
-            });
-            pipeBeforeAction.pipe(
-              switchMap(this.runQuery(scoreblocks))
-            ).subscribe(filteredList => {
-              this.sFilteredScoreList = filteredList;
-              this.busy.next(false);
-            });
-          });
+        this.backendService.getScoreLists().subscribe(scorelists => {
+          const c = this.competitionContainer();
+          const genericLink = `/api/scores/${c.uuid}/query?groupby=Kategorie:Geschlecht`;
+          if (!!scorelists) {
+            const values = Object.values(scorelists)
+            this.scorelinks = [...values.filter(l => l.name != 'Zwischenresultate'), <ScoreLink>{
+                name: 'Generische Rangliste',
+                published: true,
+                "published-date": '',
+                "scores-href": genericLink,
+                "scores-query": genericLink
+              }];          
+            this.refreshScoreList(this.scorelinks[0]);
+          }
+        });
       }
     });
+  }
+
+  _title: string = 'Aktuelle Resultate';
+  get title() {
+    return this._title;
+  }
+  set title(title) {
+    this._title = title;
+  }
+
+  refreshScoreList(link: ScoreLink) {
+    let path = link['scores-href'];
+    if (!link.published) {
+      path = link['scores-query'];
+    }
+    if (path.startsWith('/')) {
+      path = path.substring(1);
+    }
+    path = path.replace('html', '');
+    this.title = link.name
+    
+    this.defaultPath = path;
+    this.backendService.getScoreList(this.defaultPath).pipe(
+      map(scorelist => {
+        if (!!scorelist.title && !!scorelist.scoreblocks) {
+          return scorelist.scoreblocks;
+        } else {
+          return [];
+        }
+      })).subscribe(scoreblocks => {
+        this.scoreblocks = scoreblocks
+        const pipeBeforeAction = this.tMyQueryStream.pipe(
+          filter(event => !!event && !!event.target && !!event.target.value),
+          map(event => event.target.value),
+          debounceTime(1000),
+          distinctUntilChanged(),
+          share()
+        );
+        pipeBeforeAction.subscribe(scoreSearchWith => {
+          this.busy.next(true);
+        });
+        pipeBeforeAction.pipe(
+          switchMap(this.runQuery(scoreblocks))
+        ).subscribe(filteredList => {
+          this.sFilteredScoreList = filteredList;
+          this.busy.next(false);
+        });
+      });          
   }
 
   sortItems() {
@@ -245,9 +284,8 @@ export class LastResultsPage implements OnInit {
     this.tMyQueryStream.next(event);
   }
 
-  makeScoreListLink(): string {
-    const c = this.competitionContainer();
-    return `${backendUrl}api/scores/${c.uuid}/query?groupby=Kategorie:Geschlecht&html`;
+  makeGenericScoreListLink(): string {
+    return `${backendUrl}${this.defaultPath}&html`;
   }
 
   getScoreListItems(): ScoreBlock[] {
@@ -269,7 +307,7 @@ export class LastResultsPage implements OnInit {
   }
 
   open() {
-    window.open(this.makeScoreListLink(), '_blank');
+    window.open(this.makeGenericScoreListLink(), '_blank');
   }
 
   isShareAvailable():boolean {
@@ -293,7 +331,7 @@ export class LastResultsPage implements OnInit {
       navigator.share({
         title: `${sport} Rangliste`,
         text: text,
-        url: this.makeScoreListLink()
+        url: this.makeGenericScoreListLink()
       })
       .then(function() {
         // success
@@ -307,7 +345,25 @@ export class LastResultsPage implements OnInit {
   }
 
   async presentActionSheet() {
-    let buttons: any[] = [
+    let buttons: any[] = [ ...this.scorelinks.map(link => {
+      if (link.published) {
+        return {
+          text: `${link.name} anzeigen ...`,
+          icon: 'document',
+          handler: () => {
+            this.refreshScoreList(link);
+          }
+        };
+      } else {
+        return {
+          text: `${link.name} (unveröffentlicht) anzeigen ...`,
+          icon: 'document',
+          handler: () => {
+            this.refreshScoreList(link);
+          }
+        };
+      }
+    }),
       {
         text: 'Rangliste öffnen ...',
         icon: 'open',

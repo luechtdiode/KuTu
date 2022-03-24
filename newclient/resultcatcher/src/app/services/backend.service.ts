@@ -11,7 +11,7 @@ import { DurchgangStarted, Wettkampf, Geraet, WertungContainer, NewLastResults, 
          NewClubRegistration,
          AthletRegistration,
          ProgrammRaw,
-         SyncAction, JudgeRegistration, JudgeRegistrationProgramItem, BulkEvent, Verein, Score} from '../backend-types';
+         SyncAction, JudgeRegistration, JudgeRegistrationProgramItem, BulkEvent, Verein, Score, ScoreLink} from '../backend-types';
 import { backendUrl } from '../utils';
 import { RegistrationResetPW } from '../backend-types';
 
@@ -1073,14 +1073,25 @@ export class BackendService extends WebsocketService {
       }
     }
 
-    getScoreList(): Observable<Score> {
+    getScoreList(path: string): Observable<Score> {
       if (this._competition) {
-        const link = `${backendUrl}api/scores/${this._competition}/query?groupby=Kategorie:Geschlecht`;
+        const link = `${backendUrl}${path}`;
         return this.startLoading('Rangliste wird geladen. Bitte warten ...',
           this.http.get<Score>(link).pipe(share())
         );
       } else {
         return of(<Score>{});
+      }
+    }
+
+    getScoreLists(): Observable<Map<any,ScoreLink>> {
+      if (this._competition) {
+        const link = `${backendUrl}api/scores/${this._competition}`;
+        return this.startLoading('Ranglisten werden geladen. Bitte warten ...',
+          this.http.get<Map<any,ScoreLink>>(link).pipe(share())
+        );
+      } else {
+        return of(Object.assign({}));
       }
     }
 

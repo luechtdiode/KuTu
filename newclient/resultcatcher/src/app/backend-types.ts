@@ -168,6 +168,14 @@ export interface Score {
   scoreblocks?: ScoreBlock[];
 }
 
+export interface ScoreLink {
+  name?: string;
+  published?: boolean;
+  "published-date"?: string;
+  "scores-href"?: string;
+  "scores-query"?: string;
+}
+
 // actions
 export interface FinishDurchgangStation {
   wettkampfUUID: string;
