@@ -11,6 +11,7 @@ import ch.seidel.kutu.http.JsonSupport
 import ch.seidel.kutu.renderer.MailTemplates
 import ch.seidel.kutu.view.WettkampfInfo
 
+import java.util.UUID
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration.DurationInt
 import scala.concurrent.{Future, Promise}
@@ -58,6 +59,7 @@ class CompetitionRegistrationClientActor(wettkampfUUID: String) extends Actor wi
   private val wettkampfInfo = WettkampfInfo(wettkampf.toView(readProgramm(wettkampf.programmId)), this)
   private var syncActions: Option[List[SyncAction]] = None
   private var syncActionsNotified: Option[List[SyncAction]] = None
+  private var syncLastJudgeList: List[JudgeRegistration] = List()
   private var syncActionReceivers: List[ActorRef] = List()
   private var clientId: () => String = () => ""
   private var rescheduleSyncNotificationCheck = context.system.scheduler.scheduleOnce(1.hour, self, CheckSyncChangedForNotifier)
@@ -101,14 +103,21 @@ class CompetitionRegistrationClientActor(wettkampfUUID: String) extends Actor wi
       }
 
     case CheckSyncChangedForNotifier =>
-      if (this.syncActions.nonEmpty
-        && this.syncActions.get.nonEmpty
-        && this.syncActions != this.syncActionsNotified) {
+      val currentJudgeList = loadAllJudgesOfCompetition(UUID.fromString(wettkampf.uuid.get)).flatMap(_._2).toList
+      println(currentJudgeList)
+      if ((this.syncActions.nonEmpty
+          && this.syncActions.get.nonEmpty
+          && this.syncActions != this.syncActionsNotified)
+          || currentJudgeList != syncLastJudgeList) {
         syncActionsNotified = this.syncActions
+        val changed = syncLastJudgeList.filter(j => currentJudgeList.exists(jj => jj.id == j.id && jj != j))
+        val removed = syncLastJudgeList.filter(j => !currentJudgeList.exists(jj => jj.id == j.id))
+        val added = currentJudgeList.filter(j => !syncLastJudgeList.exists(jj => jj.id == j.id))
+        syncLastJudgeList = currentJudgeList
         val wk = readWettkampf(wettkampfUUID)
         if(wk.notificationEMail.nonEmpty) {
           KuTuMailerActor.send(
-            MailTemplates.createSyncNotificationMail(wk, syncActionsNotified.get)
+            MailTemplates.createSyncNotificationMail(wk, syncActionsNotified.get, changed, removed, added)
           )
         }
       }

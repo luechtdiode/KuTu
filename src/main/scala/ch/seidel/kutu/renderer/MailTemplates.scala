@@ -2,7 +2,7 @@ package ch.seidel.kutu.renderer
 
 import ch.seidel.kutu.Config
 import ch.seidel.kutu.akka.{Mail, MultipartMail}
-import ch.seidel.kutu.domain.{Registration, SyncAction, Wettkampf}
+import ch.seidel.kutu.domain.{JudgeRegistration, Registration, SyncAction, Wettkampf}
 import ch.seidel.kutu.renderer.PrintUtil._
 
 object MailTemplates {
@@ -54,7 +54,7 @@ object MailTemplates {
        |      </style>
        |    </head>""".stripMargin
 
-  def createSyncNotificationMail(wettkampf: Wettkampf, syncActions: List[SyncAction]): Mail = {
+  def createSyncNotificationMail(wettkampf: Wettkampf, syncActions: List[SyncAction], changedJudges: List[JudgeRegistration], removedJudges: List[JudgeRegistration], addedJudges: List[JudgeRegistration]): Mail = {
     val logodir = new java.io.File(Config.homedir + "/" + wettkampf.easyprint.replace(" ", "_"))
     val logofile = PrintUtil.locateLogoFile(logodir)
     val logoHtml = if (logofile.exists()) s"""<img class=logo src="${logofile.imageSrcForWebEngine}" title="Logo"/>""" else ""
@@ -66,9 +66,17 @@ object MailTemplates {
          |nachzuführen:
          |${syncActions.groupBy(_.verein).map{ gr =>
             val (verein: Registration, actions: List[SyncAction]) = gr
-            val actionstext = actions.map(action => s"""  ** ${escaped(action.caption)}""").mkString("\n|  ")
-            s"""  * ${escaped(verein.vereinname)} (${escaped(verein.respVorname)} ${escaped(verein.respName)})
-               |  ${actionstext}"""
+            val actionstext = actions.map(action => s"""  ** ${escaped(action.caption)}""").mkString("\n|    ")
+            val judgestext = (addedJudges.filter(j => j.vereinregistrationId == verein.id).map{j =>
+              s"""  ** Wertungsrichter hinzufügen: ${escaped(j.vorname)} ${escaped(j.name)}, ${escaped(j.mail)}, ${escaped(j.mobilephone)}, ${escaped(j.comment)}"""
+            } ++ removedJudges.filter(j => j.vereinregistrationId == verein.id).map{j =>
+              s"""  ** Wertungsrichter entfernen: ${escaped(j.vorname)} ${escaped(j.name)}, ${escaped(j.mail)}, ${escaped(j.mobilephone)}, ${escaped(j.comment)}"""
+            } ++ changedJudges.filter(j => j.vereinregistrationId == verein.id).map{j =>
+              s"""  ** Wertungsrichter ändern: ${escaped(j.vorname)} ${escaped(j.name)}, ${escaped(j.mail)}, ${escaped(j.mobilephone)}, ${escaped(j.comment)}"""
+            }).mkString("\n|    ")
+        s"""  * ${escaped(verein.vereinname)} (${escaped(verein.respVorname)} ${escaped(verein.respName)})
+               |  ${actionstext}
+               |  ${judgestext}"""
           }.mkString("\n")}
          |
          |Falls Du Hilfe benötigst, findest Du hier die Anleitung dazu:
@@ -95,9 +103,17 @@ object MailTemplates {
          ${syncActions.groupBy(_.verein).map{ gr =>
                       val (verein: Registration, actions: List[SyncAction]) = gr
                       val actionstext = actions.map(action => s"""<li>${escaped(action.caption)}</li>""").mkString("\n|            ")
+                      val judgestext = (addedJudges.filter(j => j.vereinregistrationId == verein.id).map{j =>
+                        s"""<li>Wertungsrichter hinzufügen: ${escaped(j.vorname)} ${escaped(j.name)}, ${escaped(j.mail)}, ${escaped(j.mobilephone)}, ${escaped(j.comment)}</li>"""
+                      } ++ removedJudges.filter(j => j.vereinregistrationId == verein.id).map{j =>
+                        s"""<li>Wertungsrichter entfernen: ${escaped(j.vorname)} ${escaped(j.name)}, ${escaped(j.mail)}, ${escaped(j.mobilephone)}, ${escaped(j.comment)}</li>"""
+                      } ++ changedJudges.filter(j => j.vereinregistrationId == verein.id).map{j =>
+                        s"""<li>Wertungsrichter ändern: ${escaped(j.vorname)} ${escaped(j.name)}, ${escaped(j.mail)}, ${escaped(j.mobilephone)}, ${escaped(j.comment)}</li>"""
+                      }).mkString("\n|            ")
      s"""|          <li>${escaped(verein.vereinname)} (${escaped(verein.respVorname)} ${escaped(verein.respName)})<br>
          |            <ul>
          |              ${actionstext}
+         |              ${judgestext}
          |            </ul>
          |          </li>"""
                   }.mkString("\n")}
