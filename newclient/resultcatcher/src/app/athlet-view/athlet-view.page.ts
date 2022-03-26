@@ -159,7 +159,7 @@ export class AthletViewPage  implements OnInit {
     if (c.titel !== '') {
       sport = SPORT_MAPPING[c.programmId];
     }    // API is fairly new, check if it is supported
-    let text = `${this.items[0].vorname} ${this.items[0].name}, ${this.items[0].verein} #${sport}-${c.titel.replace(',', ' ').split(' ').join('_')} - #${this.items[0].verein.replace(',', ' ').split(' ').join('_')} #${this.items[0].programm}`;
+    let text = `${this.items[0].vorname} ${this.items[0].name}, ${this.items[0].verein} #${sport}-${c.titel.replace(',', ' ').split(' ').join('_')}_${this.items[0].programm} #${this.items[0].verein.replace(',', ' ').split(' ').join('_')}`;
 
     if (new Date(c.datum).getTime() > Date.now()) {
       text = "Hoffe das Beste für " + text;

@@ -75,8 +75,9 @@ export class LastResultsPage implements OnInit {
                 "published-date": '',
                 "scores-href": genericLink,
                 "scores-query": genericLink
-              }];          
-            this.refreshScoreList(this.scorelinks[0]);
+              }];
+            const publishedLists = this.scorelinks.filter(s => s.published)
+            this.refreshScoreList(publishedLists[0]);
           }
         });
       }
@@ -101,7 +102,7 @@ export class LastResultsPage implements OnInit {
     }
     path = path.replace('html', '');
     this.title = link.name
-    
+
     this.defaultPath = path;
     this.backendService.getScoreList(this.defaultPath).pipe(
       map(scorelist => {
@@ -128,7 +129,7 @@ export class LastResultsPage implements OnInit {
           this.sFilteredScoreList = filteredList;
           this.busy.next(false);
         });
-      });          
+      });
   }
 
   sortItems() {
@@ -356,8 +357,8 @@ export class LastResultsPage implements OnInit {
         };
       } else {
         return {
-          text: `${link.name} (unveröffentlicht) anzeigen ...`,
-          icon: 'document',
+          text: `${link.name} (unveröffentlicht)`,
+          icon: 'today-outline',
           handler: () => {
             this.refreshScoreList(link);
           }

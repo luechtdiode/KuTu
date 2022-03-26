@@ -13,12 +13,12 @@
   },
   "private": true,
   "dependencies": {
-    "@angular/common": "~13.2.3",
+    "@angular/common": "~13.2.6",
     "@angular/core": "~13.2.3",
     "@angular/forms": "~13.2.3",
     "@angular/platform-browser": "~13.2.3",
-    "@angular/platform-browser-dynamic": "~13.2.3",
-    "@angular/router": "~13.2.3",
+    "@angular/platform-browser-dynamic": "~13.2.6",
+    "@angular/router": "~13.2.6",
     "@ionic-native/core": "^5.36.0",
     "@ionic-native/keyboard": "^5.36.0",
     "@ionic-native/splash-screen": "^5.36.0",
@@ -30,7 +30,7 @@
     "ionic4-auto-complete": "^2.9.9",
     "rxjs": "~7.5.4",
     "tslib": "^2.3.1",
-    "zone.js": "~0.11.4"
+    "zone.js": "~0.11.5"
   },
   "devDependencies": {
     "@angular-devkit/build-angular": "^13.2.4",
@@ -62,7 +62,7 @@
     "karma-jasmine": "~4.0.1",
     "karma-jasmine-html-reporter": "^1.7.0",
     "protractor": "~7.0.0",
-    "ts-node": "~10.5.0",
+    "ts-node": "~10.7.0",
     "typescript": "~4.5.5"
   },
   "description": "Resultcatcher"
