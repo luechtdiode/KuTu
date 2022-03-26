@@ -76,7 +76,7 @@ export class LastResultsPage implements OnInit {
                 "scores-href": genericLink,
                 "scores-query": genericLink
               }];
-            const publishedLists = this.scorelinks.filter(s => s.published)
+            const publishedLists = this.scorelinks.filter(s => ''+s.published === 'true')
             this.refreshScoreList(publishedLists[0]);
           }
         });
@@ -347,7 +347,7 @@ export class LastResultsPage implements OnInit {
 
   async presentActionSheet() {
     let buttons: any[] = [ ...this.scorelinks.map(link => {
-      if (link.published) {
+      if (''+link.published === 'true') {
         return {
           text: `${link.name} anzeigen ...`,
           icon: 'document',
