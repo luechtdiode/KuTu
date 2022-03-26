@@ -18,7 +18,7 @@
     "@angular/forms": "~13.2.3",
     "@angular/platform-browser": "~13.2.3",
     "@angular/platform-browser-dynamic": "~13.2.6",
-    "@angular/router": "~13.2.3",
+    "@angular/router": "~13.2.6",
     "@ionic-native/core": "^5.36.0",
     "@ionic-native/keyboard": "^5.36.0",
     "@ionic-native/splash-screen": "^5.36.0",
