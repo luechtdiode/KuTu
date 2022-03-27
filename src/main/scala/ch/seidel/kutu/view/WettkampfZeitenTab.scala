@@ -1,10 +1,10 @@
 package ch.seidel.kutu.view
 
 import java.util.UUID
-
 import ch.seidel.commons._
 import ch.seidel.kutu.domain._
 import javafx.scene.{control => jfxsc}
+import javafx.util.Callback
 import scalafx.Includes._
 import scalafx.beans.property.{ReadOnlyStringProperty, StringProperty}
 import scalafx.collections.ObservableBuffer
@@ -69,7 +69,7 @@ class WettkampfZeitenTab(editableProperty: Boolean, wettkampf: WettkampfView, ov
           cellValueFactory = { x =>
             field.get(x.value).asInstanceOf[StringProperty]
           }
-          cellFactory = { _:Any => new AutoCommitTextFieldTableCell[ZeitenEditor, String](new DefaultStringConverter()) }
+          cellFactory.value = { _:Any => new AutoCommitTextFieldTableCell[ZeitenEditor, String](new DefaultStringConverter()) }
           styleClass += "table-cell-with-value"
           prefWidth = ZeitenEditor.coldef(field.getName)
           editable = editableProperty

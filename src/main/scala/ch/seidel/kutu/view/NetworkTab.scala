@@ -168,7 +168,7 @@ class DurchgangStationView(wettkampf: WettkampfView, service: KutuService, diszi
     , new TreeTableColumn[DurchgangState, String] {
       prefWidth = 80
       text = "Fertig"
-      cellFactory = { (_:Any) =>
+      cellFactory.value = { (_:Any) =>
         new TreeTableCell[DurchgangState, String] {
           val image = new ImageView()
           graphic = image
@@ -201,7 +201,7 @@ class DurchgangStationView(wettkampf: WettkampfView, service: KutuService, diszi
         , new TreeTableColumn[DurchgangState, String] {
           text = "Fertig"
           prefWidth = 80
-          cellFactory = { _:Any =>
+          cellFactory.value = { _:Any =>
             new TreeTableCell[DurchgangState, String] {
               val image = new ImageView()
               graphic = image

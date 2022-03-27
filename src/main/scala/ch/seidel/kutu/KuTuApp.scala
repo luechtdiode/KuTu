@@ -243,11 +243,12 @@ object KuTuApp extends JFXApp3 with KutuService with JsonSupport with JwtSupport
       val cmbProgramm = new ComboBox(ObservableBuffer.from(listRootProgramme())) {
         prefWidth = 500
         buttonCell = new ProgrammListCell
-        cellFactory = new Callback[ListView[ProgrammView], ListCell[ProgrammView]]() {
+        cellFactory.value = {_:Any => new ProgrammListCell}
+        /*cellFactory = new Callback[ListView[ProgrammView], ListCell[ProgrammView]]() {
           def call(p: ListView[ProgrammView]): ListCell[ProgrammView] = {
             new ProgrammListCell
           }
-        }
+        }*/
         promptText = "Programm"
         selectionModel.value.select(p.programm)
       }
@@ -930,11 +931,13 @@ object KuTuApp extends JFXApp3 with KutuService with JsonSupport with JwtSupport
       val cmbProgramm = new ComboBox(ObservableBuffer.from(listRootProgramme())) {
         prefWidth = 500
         buttonCell = new ProgrammListCell
-        cellFactory = new Callback[ListView[ProgrammView], ListCell[ProgrammView]]() {
+        cellFactory.value = {_:Any => new ProgrammListCell}
+        /*cellFactory = new Callback[ListView[ProgrammView], ListCell[ProgrammView]]() {
           def call(p: ListView[ProgrammView]): ListCell[ProgrammView] = {
             new ProgrammListCell
           }
-        }
+        }*/
+
         promptText = "Programm"
       }
       val txtNotificationEMail = new TextField {

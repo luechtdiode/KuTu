@@ -204,7 +204,7 @@ class RiegenFilterView(isEditable: BooleanProperty, wettkampf: WettkampfView, se
     new TableColumn[RiegeEditor, Boolean] {
       text = "Filter"
       cellValueFactory = { x => x.value.selected.asInstanceOf[ObservableValue[Boolean,Boolean]] }
-      cellFactory = { _:Any => new CheckBoxTableCell[RiegeEditor, Boolean]() }
+      cellFactory.value = { _:Any => new CheckBoxTableCell[RiegeEditor, Boolean]() }
       editable = true
     })
   }
@@ -219,7 +219,7 @@ class RiegenFilterView(isEditable: BooleanProperty, wettkampf: WettkampfView, se
       },
         isEditable
       )) choose true otherwise false
-      cellFactory = { _:Any => new AutoCommitTextFieldTableCell[RiegeEditor, String](new DefaultStringConverter()) }
+      cellFactory.value = { _:Any => new AutoCommitTextFieldTableCell[RiegeEditor, String](new DefaultStringConverter()) }
       onEditCommit = (evt: TableCellEditEvent[RiegeEditor, String]) => {
         val editor = evt.rowValue
         editor.name.value = evt.newValue
@@ -266,7 +266,7 @@ class RiegenFilterView(isEditable: BooleanProperty, wettkampf: WettkampfView, se
       text = "Durchgang"
       prefWidth = 130
       cellValueFactory = { x => x.value.durchgang }
-      cellFactory = { _:Any => new AutoCommitTextFieldTableCell[RiegeEditor, String](new DefaultStringConverter()) }
+      cellFactory.value = { _:Any => new AutoCommitTextFieldTableCell[RiegeEditor, String](new DefaultStringConverter()) }
       editable  <== when(Bindings.createBooleanBinding(() => {
         !wettkampf.toWettkampf.isReadonly(homedir, remoteHostOrigin) && isEditable.value
       },
@@ -297,7 +297,7 @@ class RiegenFilterView(isEditable: BooleanProperty, wettkampf: WettkampfView, se
       }
       val list = ObservableBuffer.from(disziplinlist())
       cellValueFactory = { x => x.value.start.asInstanceOf[ObservableValue[Disziplin,Disziplin]] }
-      cellFactory = { _:Any => new ComboBoxTableCell[RiegeEditor, Disziplin](converter, list) }
+      cellFactory.value = { _:Any => new ComboBoxTableCell[RiegeEditor, Disziplin](converter, list) }
       editable  <== when(Bindings.createBooleanBinding(() => {
         !wettkampf.toWettkampf.isReadonly(homedir, remoteHostOrigin) && isEditable.value
       },
@@ -921,8 +921,8 @@ class RiegenTab(override val wettkampfInfo: WettkampfInfo, override val service:
                 }
 
               findTableCell(event.getPickResult.getIntersectedNode) match {
-                case Some(selectedCell) if (!selectedCell.getTreeTableRow.getItem.isHeader) =>
-                  val durchgang = selectedCell.getTreeTableRow
+                case Some(selectedCell) if (!selectedCell.getTableRow.getItem.isHeader) =>
+                  val durchgang = selectedCell.getTableRow
                   val startGeraetColumn = selectedCell.getTableColumn
                   if (startGeraetColumn.isInstanceOf[DurchgangTCAccess]) {
                     val targetStartgeraet = startGeraetColumn.asInstanceOf[DurchgangTCAccess].getDisziplin

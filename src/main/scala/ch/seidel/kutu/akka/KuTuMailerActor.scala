@@ -8,7 +8,7 @@ import akka.pattern.ask
 import akka.util.Timeout
 import ch.seidel.kutu.Config
 import ch.seidel.kutu.http.Core.system
-import org.simplejavamail.api.mailer.CustomMailer
+import org.simplejavamail.api.mailer.{CustomMailer, Mailer}
 import org.simplejavamail.api.mailer.config.TransportStrategy
 import org.simplejavamail.email.EmailBuilder
 import org.simplejavamail.mailer.MailerBuilder
@@ -56,7 +56,7 @@ class KuTuMailerActor(smtpHost: String, smtpPort: Int, smtpUsername: String, smt
 
   private val smtpMailerUser = s"$smtpUsername@$smtpDomain"
 
-  def mailer = {
+  def mailer: Mailer = {
     val builder = MailerBuilder
       .withSMTPServerHost(smtpHost)
       .withSMTPServerPort(smtpPort)
@@ -93,23 +93,24 @@ class KuTuMailerActor(smtpHost: String, smtpPort: Int, smtpUsername: String, smt
 
   def receiveHot: Receive = {
     case mail: Mail =>
-      val completionObserver = observeMailComletion(mail, 0, sender())
+      val completionObserver: Try[String] => Unit = observeMailComletion(mail, 0, sender())
       send(mail).handleAsync {(v,e) =>
         if (e != null) {
           completionObserver(Failure(e))
         } else {
-          completionObserver(Success(v))
+          completionObserver(Success("OK"))
         }
       }
 
     case SendRetry(action, retries, sender) => action match {
       case mail: Mail =>
-        val completionObserver = observeMailComletion(mail, retries, sender)
+        val completionObserver: Try[String] => Unit = observeMailComletion(mail, retries, sender)
         send(mail).handleAsync {(v,e) =>
           if (e != null) {
             completionObserver(Failure(e))
           } else {
-            completionObserver(Success(v))
+            completionObserver(
+              Success("OK"))
           }
         }
     }
@@ -117,22 +118,19 @@ class KuTuMailerActor(smtpHost: String, smtpPort: Int, smtpUsername: String, smt
     case _ =>
   }
 
-  private def observeMailComletion(mail: Mail, retries: Int, sender: ActorRef): Function1[Try[Unit], _] = {
-    val completionObserver: Function1[Try[Unit], _] = {
-      case Success(_) =>
-        log.info(s"mail ${mail.subject} to ${mail.to} delivered successfully")
-        sender ! StatusCodes.OK
-      case Failure(e) =>
-        e.printStackTrace()
-        if (retries < 3) {
-          log.warning(s"mail ${mail.subject} to ${mail.to} delivery failed: " + e.toString)
-          this.context.system.scheduler.scheduleOnce((5 * retries + 1) minutes, self, SendRetry(mail, retries + 1, sender))
-        } else {
-          log.error(s"could not send message ${mail.subject} after 3 retries to ${mail.to}")
-          sender ! StatusCodes.ExpectationFailed
-        }
-    }
-    completionObserver
+  private def observeMailComletion(mail: Mail, retries: Int, sender: ActorRef): Try[String] => Unit = {
+    case Success(_) =>
+      log.info(s"mail ${mail.subject} to ${mail.to} delivered successfully")
+      sender ! StatusCodes.OK
+    case Failure(e) =>
+      e.printStackTrace()
+      if (retries < 3) {
+        log.warning(s"mail ${mail.subject} to ${mail.to} delivery failed: " + e.toString)
+        this.context.system.scheduler.scheduleOnce((5 * retries + 1) minutes, self, SendRetry(mail, retries + 1, sender))
+      } else {
+        log.error(s"could not send message ${mail.subject} after 3 retries to ${mail.to}")
+        sender ! StatusCodes.ExpectationFailed
+      }
   }
 
   private def send(mail: Mail) = {
@@ -159,7 +157,7 @@ class KuTuMailerActor(smtpHost: String, smtpPort: Int, smtpUsername: String, smt
 object KuTuMailerActor {
   private var customMailer: Option[CustomMailer] = None;
 
-  def props() = {
+  def props(): Props = {
     if (Config.config.hasPath("X_SMTP_USERNAME")
       && Config.config.hasPath("X_SMTP_DOMAIN")
       && Config.config.hasPath("X_SMTP_HOST")
