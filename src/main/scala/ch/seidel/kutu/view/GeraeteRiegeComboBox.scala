@@ -16,7 +16,7 @@ class GeraeteRiegeComboBox[T](tableView: TableView[T]) extends ComboBox[GeraeteR
 
   var textbuffer = ""
 
-  onKeyPressed = (event) => {
+  onKeyPressed = event => {
     if (event.getText.equalsIgnoreCase("R")) {
       textbuffer = "R"
       if (tooltip.value == null) {
@@ -39,20 +39,18 @@ class GeraeteRiegeComboBox[T](tableView: TableView[T]) extends ComboBox[GeraeteR
           textbuffer = ""
           selectionModel.value.select(riege)
           val focusSetter = AutoCommitTextFieldTableCell.selectFirstEditable(tableView)
-          Platform.runLater(new Runnable() {
-            override def run = {
+          Platform.runLater{
               focusSetter()
               if (tooltip.value != null) {
-                tooltip.value.hide
+                tooltip.value.hide()
                 tooltip.value = null
               }
-            }
-          })
+          }
 
         case _ =>
           textbuffer = ""
           if (tooltip.value != null) {
-            tooltip.value.hide
+            tooltip.value.hide()
             tooltip.value = null
           }
       }
@@ -63,15 +61,13 @@ class GeraeteRiegeComboBox[T](tableView: TableView[T]) extends ComboBox[GeraeteR
     if (!focused.value) {
       textbuffer = ""
       if (tooltip.value != null) {
-        tooltip.value.hide
+        tooltip.value.hide()
         tooltip.value = null
       }
       val focusSetter = AutoCommitTextFieldTableCell.selectFirstEditable(tableView)
-      Platform.runLater(new Runnable() {
-        override def run = {
-          focusSetter()
-        }
-      })
+      Platform.runLater{
+        focusSetter()
+      }
     }
   })
 }
