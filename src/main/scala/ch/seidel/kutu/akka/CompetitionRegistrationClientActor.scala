@@ -63,7 +63,7 @@ class CompetitionRegistrationClientActor(wettkampfUUID: String) extends Persiste
   private var syncActions: Option[RegistrationState] = None
   private var syncActionReceivers: List[ActorRef] = List()
   private var clientId: () => String = () => ""
-  private val notifierInterval: FiniteDuration = 1.minute
+  private val notifierInterval: FiniteDuration = 1.hour
   private var rescheduleSyncNotificationCheck = context.system.scheduler.scheduleOnce(notifierInterval, self, CheckSyncChangedForNotifier)
 
   override def persistenceId = s"$wettkampfUUID/regs/${Config.appFullVersion}"
