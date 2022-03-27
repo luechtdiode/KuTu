@@ -66,14 +66,14 @@ object MailTemplates {
          |nachzuführen:
          |${syncActions.groupBy(_.verein).map{ gr =>
             val (verein: Registration, actions: List[SyncAction]) = gr
-            val actionstext = actions.map(action => s"""  ** ${escaped(action.caption)}""").mkString("\n|    ")
+            val actionstext = actions.map(action => s"""  ** ${escaped(action.caption)}""").mkString("\n|  ")
             val judgestext = (addedJudges.filter(j => j.vereinregistrationId == verein.id).map{j =>
               s"""  ** Wertungsrichter hinzufügen: ${escaped(j.vorname)} ${escaped(j.name)}, ${escaped(j.mail)}, ${escaped(j.mobilephone)}, ${escaped(j.comment)}"""
             } ++ removedJudges.filter(j => j.vereinregistrationId == verein.id).map{j =>
               s"""  ** Wertungsrichter entfernen: ${escaped(j.vorname)} ${escaped(j.name)}, ${escaped(j.mail)}, ${escaped(j.mobilephone)}, ${escaped(j.comment)}"""
             } ++ changedJudges.filter(j => j.vereinregistrationId == verein.id).map{j =>
               s"""  ** Wertungsrichter ändern: ${escaped(j.vorname)} ${escaped(j.name)}, ${escaped(j.mail)}, ${escaped(j.mobilephone)}, ${escaped(j.comment)}"""
-            }).mkString("\n|    ")
+            }).mkString("\n|  ")
         s"""  * ${escaped(verein.vereinname)} (${escaped(verein.respVorname)} ${escaped(verein.respName)})
                |  ${actionstext}
                |  ${judgestext}"""
@@ -102,14 +102,14 @@ object MailTemplates {
          |        </p><ul>
          ${syncActions.groupBy(_.verein).map{ gr =>
                       val (verein: Registration, actions: List[SyncAction]) = gr
-                      val actionstext = actions.map(action => s"""<li>${escaped(action.caption)}</li>""").mkString("\n|            ")
+                      val actionstext = actions.map(action => s"""<li>${escaped(action.caption)}</li>""").mkString("\n|              ")
                       val judgestext = (addedJudges.filter(j => j.vereinregistrationId == verein.id).map{j =>
                         s"""<li>Wertungsrichter hinzufügen: ${escaped(j.vorname)} ${escaped(j.name)}, ${escaped(j.mail)}, ${escaped(j.mobilephone)}, ${escaped(j.comment)}</li>"""
                       } ++ removedJudges.filter(j => j.vereinregistrationId == verein.id).map{j =>
                         s"""<li>Wertungsrichter entfernen: ${escaped(j.vorname)} ${escaped(j.name)}, ${escaped(j.mail)}, ${escaped(j.mobilephone)}, ${escaped(j.comment)}</li>"""
                       } ++ changedJudges.filter(j => j.vereinregistrationId == verein.id).map{j =>
                         s"""<li>Wertungsrichter ändern: ${escaped(j.vorname)} ${escaped(j.name)}, ${escaped(j.mail)}, ${escaped(j.mobilephone)}, ${escaped(j.comment)}</li>"""
-                      }).mkString("\n|            ")
+                      }).mkString("\n|              ")
      s"""|          <li>${escaped(verein.vereinname)} (${escaped(verein.respVorname)} ${escaped(verein.respName)})<br>
          |            <ul>
          |              ${actionstext}

@@ -3,7 +3,9 @@ package ch.seidel.kutu.akka
 import akka.actor.SupervisorStrategy.Restart
 import akka.actor.{Actor, ActorRef, OneForOneStrategy, Props}
 import akka.pattern.ask
+import akka.persistence.{PersistentActor, SnapshotOffer, SnapshotSelectionCriteria}
 import akka.util.Timeout
+import ch.seidel.kutu.Config
 import ch.seidel.kutu.data.RegistrationAdmin
 import ch.seidel.kutu.domain._
 import ch.seidel.kutu.http.Core.system
@@ -13,7 +15,7 @@ import ch.seidel.kutu.view.WettkampfInfo
 
 import java.util.UUID
 import scala.concurrent.ExecutionContext.Implicits.global
-import scala.concurrent.duration.DurationInt
+import scala.concurrent.duration.{DurationInt, FiniteDuration}
 import scala.concurrent.{Future, Promise}
 import scala.util.control.NonFatal
 import scala.util.{Failure, Success}
@@ -36,7 +38,7 @@ case class RegistrationSyncActions(syncActions: List[SyncAction]) extends Regist
 
 case class RegistrationActionWithContext(action: RegistrationAction, context: String) extends RegistrationProtokoll
 
-class CompetitionRegistrationClientActor(wettkampfUUID: String) extends Actor with JsonSupport with KutuService {
+class CompetitionRegistrationClientActor(wettkampfUUID: String) extends PersistentActor with JsonSupport with KutuService {
   def shortName = self.toString().split("/").last.split("#").head + "/" + clientId()
 
   lazy val l = akka.event.Logging(system, this)
@@ -57,12 +59,14 @@ class CompetitionRegistrationClientActor(wettkampfUUID: String) extends Actor wi
 
   private val wettkampf = readWettkampf(wettkampfUUID)
   private val wettkampfInfo = WettkampfInfo(wettkampf.toView(readProgramm(wettkampf.programmId)), this)
-  private var syncActions: Option[List[SyncAction]] = None
-  private var syncActionsNotified: Option[List[SyncAction]] = None
-  private var syncLastJudgeList: List[JudgeRegistration] = List()
+  private var syncState: RegistrationState = RegistrationState()
+  private var syncActions: Option[RegistrationState] = None
   private var syncActionReceivers: List[ActorRef] = List()
   private var clientId: () => String = () => ""
-  private var rescheduleSyncNotificationCheck = context.system.scheduler.scheduleOnce(1.hour, self, CheckSyncChangedForNotifier)
+  private val notifierInterval: FiniteDuration = 1.minute
+  private var rescheduleSyncNotificationCheck = context.system.scheduler.scheduleOnce(notifierInterval, self, CheckSyncChangedForNotifier)
+
+  override def persistenceId = s"$wettkampfUUID/regs/${Config.appFullVersion}"
 
   override val supervisorStrategy = OneForOneStrategy() {
     case NonFatal(e) =>
@@ -77,9 +81,22 @@ class CompetitionRegistrationClientActor(wettkampfUUID: String) extends Actor wi
   override def postStop(): Unit = {
     log.info(s"Stop CompetitionRegistrationClientActor for $wettkampf")
     rescheduleSyncNotificationCheck.cancel()
+    notifyChangesToEMail()
   }
 
-  override def receive = {
+  override def onRecoveryFailure(cause: Throwable, event: Option[Any]): Unit = {
+    log.info(event.toString)
+    super.onRecoveryFailure(cause, event)
+  }
+
+  val receiveRecover: Receive = {
+    //case evt: KutuAppEvent => handleEvent(evt, recoveryMode = true)
+    case SnapshotOffer(_, snapshot: RegistrationState) => syncState = snapshot
+    case _ =>
+  }
+
+  //override def receive = {
+  val receiveCommand: Receive = {
     case RegistrationActionWithContext(action, context) =>
       clientId = () => context
       receive(action)
@@ -91,36 +108,37 @@ class CompetitionRegistrationClientActor(wettkampfUUID: String) extends Actor wi
     case RegistrationChanged(_) => retrieveSyncActions(sender())
     case AskRegistrationSyncActions(_) =>
       if (this.syncActions.nonEmpty)
-        sender() ! RegistrationSyncActions(this.syncActions.get)
+        sender() ! RegistrationSyncActions(this.syncState.syncActions)
       else
         retrieveSyncActions(sender())
     case a@RegistrationSyncActions(actions) =>
-      this.syncActions = Some(actions)
-      rescheduleSyncActionNotifier
+      this.syncState = syncState.resynced(actions, loadAllJudgesOfCompetition(UUID.fromString(wettkampf.uuid.get)).flatMap(_._2).toList)
+      this.syncActions = Some(syncState)
+      rescheduleSyncActionNotifier()
       if (syncActionReceivers.nonEmpty) {
         syncActionReceivers.foreach(_ ! a)
         syncActionReceivers = List()
       }
 
     case CheckSyncChangedForNotifier =>
-      val currentJudgeList = loadAllJudgesOfCompetition(UUID.fromString(wettkampf.uuid.get)).flatMap(_._2).toList
-      println(currentJudgeList)
-      if ((this.syncActions.nonEmpty
-          && this.syncActions.get.nonEmpty
-          && this.syncActions != this.syncActionsNotified)
-          || currentJudgeList != syncLastJudgeList) {
-        syncActionsNotified = this.syncActions
-        val changed = syncLastJudgeList.filter(j => currentJudgeList.exists(jj => jj.id == j.id && jj != j))
-        val removed = syncLastJudgeList.filter(j => !currentJudgeList.exists(jj => jj.id == j.id))
-        val added = currentJudgeList.filter(j => !syncLastJudgeList.exists(jj => jj.id == j.id))
-        syncLastJudgeList = currentJudgeList
-        val wk = readWettkampf(wettkampfUUID)
-        if(wk.notificationEMail.nonEmpty) {
-          KuTuMailerActor.send(
-            MailTemplates.createSyncNotificationMail(wk, syncActionsNotified.get, changed, removed, added)
-          )
-        }
+      notifyChangesToEMail()
+  }
+
+  private def notifyChangesToEMail(): Unit = {
+    if (this.syncState.hasChanges) {
+      val regChanges = this.syncState.syncActions
+      val judgeChanges = this.syncState.judgeSyncActions
+      this.syncState = this.syncState.notified()
+      val wk = readWettkampf(wettkampfUUID)
+      if (wk.notificationEMail.nonEmpty) {
+        KuTuMailerActor.send(
+          MailTemplates.createSyncNotificationMail(wk, regChanges, judgeChanges.changed, judgeChanges.removed, judgeChanges.added)
+        )
+        val criteria = SnapshotSelectionCriteria.Latest
+        saveSnapshot(syncState)
+        deleteSnapshots(criteria)
       }
+    }
   }
 
   private def retrieveSyncActions(syncActionReceiver: ActorRef) = {
@@ -142,9 +160,9 @@ class CompetitionRegistrationClientActor(wettkampfUUID: String) extends Actor wi
     }
   }
 
-  private def rescheduleSyncActionNotifier = {
+  private def rescheduleSyncActionNotifier() = {
     this.rescheduleSyncNotificationCheck.cancel()
-    this.rescheduleSyncNotificationCheck = context.system.scheduler.scheduleOnce(1.hour, self, CheckSyncChangedForNotifier)
+    this.rescheduleSyncNotificationCheck = context.system.scheduler.scheduleOnce(notifierInterval, self, CheckSyncChangedForNotifier)
   }
 }
 
