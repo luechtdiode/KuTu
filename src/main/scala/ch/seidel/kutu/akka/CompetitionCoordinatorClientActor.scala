@@ -316,7 +316,7 @@ class CompetitionCoordinatorClientActor(wettkampfUUID: String) extends Persisten
   }
 
   private def squashDurchgangEvents(durchgangNormalized: Option[String]) = {
-    durchgangNormalized match {
+    (durchgangNormalized match {
       case Some(dgn) => // take last of requested durchgang
         state.startStopEvents.reverse.filter {
           case DurchgangStarted(_, d, _) => encodeURIComponent(d).equals(dgn)
@@ -337,6 +337,9 @@ class CompetitionCoordinatorClientActor(wettkampfUUID: String) extends Persisten
               d._2
             }
           }
+    }).toList.sortBy {
+      case DurchgangStarted(_, _, t) => t
+      case DurchgangFinished(_, _, t) => t
     }
   }
 
