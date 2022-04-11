@@ -205,7 +205,7 @@
 		<dependency>
 			<groupId>fr.davit</groupId>
 			<artifactId>akka-http-metrics-prometheus_${scala.majorversion}</artifactId>
-			<version>1.6.0</version>
+			<version>1.7.0</version>
 		</dependency>
 		<!-- Event Sourcing, Akka Persitence -->
 		<dependency>
