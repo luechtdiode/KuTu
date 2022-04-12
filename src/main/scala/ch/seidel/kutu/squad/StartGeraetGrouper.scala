@@ -99,7 +99,7 @@ trait StartGeraetGrouper extends RiegenSplitter with Stager {
         vereinraw._1 -> vereinraw._2.map(_._2).toSet // (Option[Verein] -> GeraeteRiegen)
       }.foldLeft(startriegen){(accStartriegen, item) =>
         val (verein, riegen) = item
-        val ret = riegen.map(f => (f, f.withVerein(verein))).foldLeft(accStartriegen.toSet){(acccStartriegen, riegen2) =>
+        val ret = riegen.map(f => (f, f.withVerein(verein))).foldLeft(accStartriegen){(acccStartriegen, riegen2) =>
           val (geraetRiege, toMove) = riegen2
 //            val vereinTurnerRiege = Map(filteredRiege -> toMove)
           val v1 = geraetRiege.countVereine(verein)
@@ -168,9 +168,9 @@ trait StartGeraetGrouper extends RiegenSplitter with Stager {
       None
     }
   }
-      
+
   @tailrec
-  private def spreadEven(startriegen: GeraeteRiegen, splitSex: SexDivideRule): GeraeteRiegen = {
+  private def spreadEven(startriegen: GeraeteRiegen, splitSex: SexDivideRule, mustIncreaseQuality: Boolean = false): GeraeteRiegen = {
     /*
      * 1. Durchschnittsgrösse ermitteln
      * 2. Grösste Abweichungen ermitteln (kleinste, grösste)
@@ -213,7 +213,12 @@ trait StartGeraetGrouper extends RiegenSplitter with Stager {
       case Some(groessteTeilbare @ (geraeteRiege, _, _, _, Some(turnerRiege))) =>
         val gt = geraeteRiege - turnerRiege
         val sg = geraeteRiegeAusKleinsterGruppe + turnerRiege
-        spreadEven(gt + startriegen.filter(sr => sr != groessteTeilbare._1 && sr != kleinsteGruppe._1) + sg, splitSex)
+        val nextCombi = gt + startriegen.filter(sr => sr != geraeteRiege && sr != geraeteRiegeAusKleinsterGruppe) + sg
+        if (mustIncreaseQuality && nextCombi.quality > startriegen.quality) {
+          spreadEven(nextCombi, splitSex, mustIncreaseQuality)
+        } else {
+          startriegen
+        }
       case _ => stats.find {
         case groessteGruppe @ (geraeteRiegeAusGroessterGruppe, _, anzGruppenAusGroessterGruppe, _, Some(turnerRiegeAusGroessterGruppe)) =>
                   groessteGruppe != kleinsteGruppe && 
@@ -225,7 +230,7 @@ trait StartGeraetGrouper extends RiegenSplitter with Stager {
             case Some(groessteGruppe @ (geraeteRiegeAusGroessterGruppe, _, _, _, Some(turnerRiegeAusGroessterGruppe))) =>
               val gt = geraeteRiegeAusGroessterGruppe - turnerRiegeAusGroessterGruppe
               val sg = geraeteRiegeAusKleinsterGruppe + turnerRiegeAusGroessterGruppe
-              spreadEven(gt + startriegen.filter(sr => sr != geraeteRiegeAusGroessterGruppe && sr != geraeteRiegeAusKleinsterGruppe) + sg, splitSex)
+              spreadEven(gt + startriegen.filter(sr => sr != geraeteRiegeAusGroessterGruppe && sr != geraeteRiegeAusKleinsterGruppe) + sg, splitSex, true)
             case _ => startriegen
           } // inner stats find match
     } // stats find match
