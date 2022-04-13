@@ -236,7 +236,7 @@ jobs:
         run: |
           export COMMIT=${GITHUB_SHA::7}
           export COMMIT_TAG=$(if [[ $GITHUB_REF == refs/tags/* ]]; then echo ${GITHUB_REF#refs/tags/} | tr "/" "."; else echo ""; fi)
-          export COMMIT_BRANCH=$(if [[ $GITHUB_REF == refs/heads/* ]]; then echo ${GITHUB_REF#refs/heads/} | tr "/" "."; else echo "br"; fi)
+          export COMMIT_BRANCH=$(if [[ $GITHUB_REF == refs/heads/* ]]; then echo ${GITHUB_REF#refs/heads/:0:2} | tr "/" "."; else echo "br"; fi)
           export TAG=`if [ ! -z "$COMMIT_TAG" ]; then echo "$COMMIT_TAG"; else echo "$COMMIT_BRANCH-$COMMIT"; fi`
           echo GITHUB_REF=$GITHUB_REF
           echo GITHUB_REF#refs/tags/=GITHUB_REF#refs/tags/
