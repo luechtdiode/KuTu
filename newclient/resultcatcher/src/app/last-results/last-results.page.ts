@@ -80,6 +80,8 @@ export class LastResultsPage implements OnInit {
             this.refreshScoreList(publishedLists[0]);
           }
         });
+      } else {
+        this.title = 'Aktuelle Resultate'
       }
     });
   }
@@ -224,7 +226,9 @@ export class LastResultsPage implements OnInit {
   }
 
   scorelistAvailable(): boolean {
-    return !!this.items && this.items.length === 0 && new Date(this.competitionContainer().datum).getTime() <  Date.now();
+    return !!this.items
+    && this.items.length === 0
+    && new Date(this.competitionContainer().datum).getTime() <  new Date(Date.now() - 3600 * 1000 * 24).getTime();
   }
   get filteredScoreList() {
     if (!!this.sFilteredScoreList && this.sFilteredScoreList.length > 0) {
