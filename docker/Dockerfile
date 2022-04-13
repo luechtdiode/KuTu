@@ -1,4 +1,4 @@
-FROM adoptopenjdk/openjdk11:jre-11.0.11_9-alpine
+FROM amd64/eclipse-temurin:17.0.2_8-jre-alpine
 
 # Create kutu user and group
 RUN echo "kutu:x:1497:1495:user for kutu:/home:/bin/false" >> /etc/passwd
@@ -35,7 +35,6 @@ ENTRYPOINT [ "java", "-cp", ".:app.jar:libs/*" \
     , "-server" \
     , "-XX:+UseG1GC" \
     , "-XX:MaxGCPauseMillis=30" \
-    , "-XX:G1HeapRegionSize=16m" \
     , "-XX:InitiatingHeapOccupancyPercent=70" \
     , "-XX:MaxRAMPercentage=80" \
     , "-XX:+ParallelRefProcEnabled" \
