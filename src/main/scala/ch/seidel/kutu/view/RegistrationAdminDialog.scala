@@ -256,41 +256,63 @@ object RegistrationAdminDialog {
         }
       }
     }, new Button("OK") {
-      disable <== when(athletTable.selectionModel.value.selectedItemProperty.isNull()) choose true otherwise false
+      disable <== when(athletTable.selectionModel.value.selectedItemProperty.isNull) choose true otherwise false
       onAction = (event: ActionEvent) => {
         if (!athletTable.selectionModel().isEmpty) {
           val selectedAthleten = athletTable.items.value.zipWithIndex.filter {
             x => athletTable.selectionModel.value.isSelected(x._2)
           }.map(_._1)
-          processSync(wkInfo, service, selectedAthleten.toList, clipraw._1)
+          val localAttentionNeeded = processSync(wkInfo, service, selectedAthleten.toList, clipraw._1)
           reloader(selectedAthleten.exists {
             case AddVereinAction(_) => true
             case _: RenameVereinAction => true
             case _ => false
           })
-          PageDisplayer.showMessageDialog(
-            "Anmeldungen verarbeiten",
-            "Die ausgewählten Mutationen sind durchgeführt. \n" +
-              "Die Anpassungen sind nur lokal und müssen bei Bedarf über 'upload' noch im Neztwerk bereitgestellt werden.\n" +
-              "Bitte auch die Einteilung kontrollieren. Wenn neue Vereine oder Programme/Kategorien eingeteilt werden,\n" +
-              "müssen dort die Einteilungen in Riegen, Durchgang und Startgerät manuell nachgeführt werden.")
+          if (localAttentionNeeded.nonEmpty) {
+            println(localAttentionNeeded)
+            PageDisplayer.showMessageDialog(
+              "Anmeldungen verarbeiten",
+              s"""Die ausgewählten Mutationen sind durchgeführt.
+                |Es gab ${localAttentionNeeded.size} neue Riegen, welche noch frisch eingeteilt werden müssen.
+                |
+                |Bitte die Einteilungen in Riegen, Durchgang und Startgerät manuell nachführen und dann den
+                |Wettkampf wieder hochladen.""".stripMargin)
+          } else {
+            PageDisplayer.showMessageDialog(
+              "Anmeldungen verarbeiten",
+              """Die ausgewählten Mutationen sind vollständig automatisiert durchgeführt.
+                |
+                |Es sind keine weiteren Aktionen notwendig.
+                """.stripMargin)
+          }
         } else {
           PageDisplayer.showWarnDialog("Anmeldungen verarbeiten", "Keine Verarbeitung!\nEs wurde nichts in der Liste ausgewählt.")
         }
       }
     }, new Button("OK Alle") {
       onAction = (event: ActionEvent) => {
-        processSync(wkInfo, service, filteredModel.toList, clipraw._1)
+        val localAttentionNeeded = processSync(wkInfo, service, filteredModel.toList, clipraw._1)
         reloader(filteredModel.exists {
           case AddVereinAction(_) => true
           case _ => false
         })
-        PageDisplayer.showMessageDialog(
-          "Anmeldungen verarbeiten",
-          "Die Mutationen sind durchgeführt. \n" +
-            "Die Anpassungen sind nur lokal und müssen bei Bedarf über 'upload' noch im Neztwerk bereitgestellt werden.\n" +
-            "Bitte auch die Einteilung kontrollieren. Wenn neue Vereine oder Programme/Kategorien eingeteilt werden,\n" +
-            "müssen dort die Einteilungen in Riegen, Durchgang und Startgerät manuell nachgeführt werden.")
+        if (localAttentionNeeded.nonEmpty) {
+          println(localAttentionNeeded)
+          PageDisplayer.showMessageDialog(
+            "Anmeldungen verarbeiten",
+            s"""Die ausgewählten Mutationen sind durchgeführt.
+               |Es gab ${localAttentionNeeded.size} neue Riegen, welche noch frisch eingeteilt werden müssen.
+               |${localAttentionNeeded.mkString("* ", "\n  ", "")}
+               |Bitte die Einteilungen in Riegen, Durchgang und Startgerät manuell nachführen und dann den
+               |Wettkampf wieder hochladen.""".stripMargin)
+        } else {
+          PageDisplayer.showMessageDialog(
+            "Anmeldungen verarbeiten",
+            """Die ausgewählten Mutationen sind vollständig automatisiert durchgeführt.
+              |
+              |Es sind keine weiteren Aktionen notwendig.
+                """.stripMargin)
+        }
       }
     })
   }

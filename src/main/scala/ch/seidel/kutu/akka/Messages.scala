@@ -20,6 +20,7 @@ case class GetGeraeteRiegeList(override val wettkampfUUID: String) extends KutuA
 case class GetResultsToReplicate(override val wettkampfUUID: String, fromSequenceId: Long) extends KutuAppAction
 case class StartedDurchgaenge(override val wettkampfUUID: String) extends KutuAppAction
 case class StartDurchgang(override val wettkampfUUID: String, durchgang: String) extends KutuAppAction
+case class AddAthletsToWettkampf(athlets: List[AthletView], wettkampfUUID: String, pgmId: Long) extends KutuAppAction
 case class UpdateAthletWertung(athlet: AthletView, wertung: Wertung, override val wettkampfUUID: String, durchgang: String, geraet: Long, step: Int, programm: String) extends KutuAppAction
 case class FinishDurchgangStation(override val wettkampfUUID: String, durchgang: String, geraet: Long, step: Int) extends KutuAppAction
 case class FinishDurchgang(override val wettkampfUUID: String, durchgang: String) extends KutuAppAction
@@ -42,6 +43,7 @@ case class AthletWertungUpdatedSequenced(athlet: AthletView, wertung: Wertung, w
 }
 case class AthletRemovedFromWettkampf(athlet: AthletView, wettkampfUUID: String) extends KutuAppEvent
 case class AthletMovedInWettkampf(athlet: AthletView, wettkampfUUID: String, pgmId: Long) extends KutuAppEvent
+case class AthletsAddedToWettkampf(athlet: List[AthletView], wettkampfUUID: String, pgmId: Long) extends KutuAppEvent
 case class DurchgangChanged(durchgang: String, wettkampfUUID: String, athlet: AthletView) extends KutuAppEvent
 case class ScoresPublished(scoreId: String, title: String, query: String, published: Boolean, wettkampfUUID: String) extends KutuAppEvent
 case class GeraeteRiegeList(list: List[GeraeteRiege], wettkampfUUID: String) extends KutuAppEvent

@@ -44,7 +44,7 @@ object ResourceExchanger extends KutuService with RiegenBuilder {
           val (athlet, wertungen) = tuple
           val mappedAthletView: AthletView = mapToLocal(athlet)
           wertungen.groupBy(_.wertung.wettkampfdisziplinId).map {
-            _._2.sortBy(_.sequenceId).last
+            _._2.maxBy(_.sequenceId)
           }.map { updatedSequenced =>
             val programm = updatedSequenced.programm
             val mappedWertung = updatedSequenced.wertung.copy(
@@ -115,6 +115,24 @@ object ResourceExchanger extends KutuService with RiegenBuilder {
           logger.info(s"received ${scorePublished}")
           updatePublishedScore(wettkampf.id, scoreId, title, query, published, false)
           refresher(sender, scorePublished)
+        }
+      case (sender, awm@AthletsAddedToWettkampf(athlets, wettkampfUUID, programm)) =>
+        if (wettkampf.uuid.contains(wettkampfUUID)) /*Future*/ {
+          val insertedAthlets = athlets
+            .map { athlet =>
+              logger.info(s"received for ${athlet.vorname} ${athlet.name} (${athlet.verein.getOrElse(() => "")}) " +
+                s"to be added to competition ${awm.wettkampfUUID} to Program-Id:${programm}")
+              val mappedAthletView: AthletView = mapToLocal(athlet)
+              if (mappedAthletView.id == 0) {
+                insertAthlete(mappedAthletView.toAthlet).id
+              } else {
+                mappedAthletView.id
+              }
+            }
+            .toSet
+          assignAthletsToWettkampf(wettkampf.id, Set(programm), insertedAthlets)
+          refresher(sender, awm)
+          logger.info(s"${athlets.size} assigned to competition ${awm.wettkampfUUID} to Program-Id:${awm.pgmId}")
         }
       case (sender, awm@AthletMovedInWettkampf(athlet, wettkampfUUID, programm)) =>
         if (wettkampf.uuid.contains(wettkampfUUID)) /*Future*/ {

@@ -193,6 +193,7 @@ class CompetitionCoordinatorClientActor(wettkampfUUID: String) extends Persisten
 
     case awu: AthletWertungUpdated => websocketProcessor(Some(sender()), awu)
     case awu: AthletWertungUpdatedSequenced => websocketProcessor(Some(sender()), awu)
+    case awu: AthletsAddedToWettkampf => websocketProcessor(Some(sender()), awu)
     case awu: AthletMovedInWettkampf => websocketProcessor(Some(sender()), awu)
     case awu: AthletRemovedFromWettkampf => websocketProcessor(Some(sender()), awu)
     case awu: ScoresPublished => websocketProcessor(Some(sender()), awu)
@@ -340,6 +341,7 @@ class CompetitionCoordinatorClientActor(wettkampfUUID: String) extends Persisten
     }).toList.sortBy {
       case DurchgangStarted(_, _, t) => t
       case DurchgangFinished(_, _, t) => t
+      case _ => 0L
     }
   }
 
@@ -369,10 +371,20 @@ class CompetitionCoordinatorClientActor(wettkampfUUID: String) extends Persisten
       case scoresPublished: ScoresPublished =>
         notifyWebSocketClients(senderWebSocket, scoresPublished, "")
 
+      case add: AthletsAddedToWettkampf =>
+        AthletIndexActor.publish(ResyncIndex)
+        CompetitionCoordinatorClientActor.publish(RefreshWettkampfMap(wettkampf.uuid.get), "WK-Admin")
+        CompetitionRegistrationClientActor.publish(RegistrationResync(wettkampf.uuid.get), "WK-Admin")
+        notifyWebSocketClients(senderWebSocket, add, "")
+
       case awu: AthletMovedInWettkampf =>
+        CompetitionCoordinatorClientActor.publish(RefreshWettkampfMap(wettkampf.uuid.get), "WK-Admin")
+        CompetitionRegistrationClientActor.publish(RegistrationResync(wettkampf.uuid.get), "WK-Admin")
         notifyWebSocketClients(senderWebSocket, awu, "")
 
       case arw: AthletRemovedFromWettkampf =>
+        CompetitionCoordinatorClientActor.publish(RefreshWettkampfMap(wettkampf.uuid.get), "WK-Admin")
+        CompetitionRegistrationClientActor.publish(RegistrationResync(wettkampf.uuid.get), "WK-Admin")
         notifyWebSocketClients(senderWebSocket, arw, "")
 
       case _ =>

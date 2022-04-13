@@ -64,6 +64,7 @@ trait JsonSupport extends SprayJsonSupport with EnrichedJson {
   implicit val bulkEvents = jsonFormat2(BulkEvent)
   implicit val athletRemovedFromWettkampf = jsonFormat2(AthletRemovedFromWettkampf)
   implicit val athletMovedInWettkampf = jsonFormat3(AthletMovedInWettkampf)
+  implicit val athletAddedToettkampf = jsonFormat3(AthletsAddedToWettkampf)
   implicit val messageAckFormat = jsonFormat1(MessageAck)
 
   // support for websocket incoming json-messages
@@ -79,6 +80,7 @@ trait JsonSupport extends SprayJsonSupport with EnrichedJson {
     classOf[BulkEvent].getSimpleName -> bulkEvents,
     classOf[AthletRemovedFromWettkampf].getSimpleName -> athletRemovedFromWettkampf,
     classOf[AthletMovedInWettkampf].getSimpleName -> athletMovedInWettkampf,
+    classOf[AthletsAddedToWettkampf].getSimpleName -> athletAddedToettkampf,
     classOf[MessageAck].getSimpleName -> messageAckFormat
   )
 
