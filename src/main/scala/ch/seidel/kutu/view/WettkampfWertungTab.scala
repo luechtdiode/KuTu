@@ -262,11 +262,12 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
               disciplin.noteE.value = evt.newValue
               disciplin.endnote.value = evt.newValue
             } else {
-              val (d, e) = wertung.init.wettkampfdisziplin.notenSpez.validated(disciplin.toOption(evt.newValue).getOrElse(BigDecimal(0)).doubleValue,
-                disciplin.toOption(disciplin.noteE.value).getOrElse(BigDecimal(0)).doubleValue)
-              disciplin.noteD.set(d)
-              disciplin.noteE.set(e)
-              disciplin.endnote.set(wertung.init.wettkampfdisziplin.notenSpez.calcEndnote(d, e))
+              val updatedWertung = disciplin.init.validatedResult(
+                disciplin.toDouble(evt.newValue),
+                disciplin.toDouble(disciplin.noteE.value))
+              disciplin.noteD.set(updatedWertung.noteD.doubleValue)
+              disciplin.noteE.set(updatedWertung.noteE.doubleValue)
+              disciplin.endnote.set(updatedWertung.endnote.doubleValue)
             }
             if (disciplin.isDirty) {
               service.updateWertung(disciplin.commit)
@@ -293,10 +294,12 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
               disciplin.noteE.value = evt.newValue
               disciplin.endnote.value = evt.newValue
             } else {
-              val (d, e) = wertung.init.wettkampfdisziplin.notenSpez.validated(disciplin.toOption(disciplin.noteD.value).getOrElse(BigDecimal(0)).doubleValue,
-                disciplin.toOption(evt.newValue).getOrElse(BigDecimal(0)).doubleValue)
-              disciplin.noteE.set(e)
-              disciplin.endnote.set(wertung.init.wettkampfdisziplin.notenSpez.calcEndnote(d, e))
+              val result = disciplin.init.validatedResult(
+                disciplin.toDouble(disciplin.noteD.value),
+                disciplin.toDouble(evt.newValue)
+              )
+              disciplin.noteE.set(result.noteE.doubleValue)
+              disciplin.endnote.set(result.endnote.doubleValue)
             }
             if (disciplin.isDirty) {
               service.updateWertung(disciplin.commit)

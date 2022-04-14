@@ -60,6 +60,11 @@ case class WertungEditor(init: WertungView) {
     if (propertyValue.toString == Double.NaN.toString) None
     else Some(scala.math.BigDecimal(propertyValue))
 
+  def toDouble(propertyValue: Double) = {
+    if (propertyValue.toString == Double.NaN.toString) 0d
+    else scala.math.BigDecimal(propertyValue).doubleValue
+  }
+
   def toString(propertyValue: Double): String =
     if (propertyValue.toString == Double.NaN.toString) ""
     else propertyValue
