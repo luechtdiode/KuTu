@@ -36,12 +36,22 @@ trait RiegenBuilder {
       KuTuGeTuGrouper.suggestRiegen(riegencount, wertungen)
     }
   }
-  
+}
+
+object RiegenBuilder {
+
   def generateRiegenName(w: WertungView) = {
     w.wettkampfdisziplin.notenSpez match {
       case a: Athletiktest => ATTGrouper.generateRiegenName(w)
       case _ => KuTuGeTuGrouper.generateRiegenName(w)
     }
   }
-  
+
+  def generateRiegen2Name(w: WertungView): Option[String] = {
+    w.wettkampfdisziplin.notenSpez match {
+      case GeTuWettkampf if (w.athlet.geschlecht.equalsIgnoreCase("M")) =>
+        Some(s"Barren ${w.wettkampfdisziplin.programm.name}")
+      case _ => None
+    }
+  }
 }

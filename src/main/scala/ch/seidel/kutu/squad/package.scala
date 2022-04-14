@@ -2,6 +2,8 @@ package ch.seidel.kutu
 
 import ch.seidel.kutu.domain._
 
+import scala.math.abs
+
 package object squad {
 
   case class PreferredAccumulator(preferred: GeraeteRiege, base: GeraeteRiegen, basepreferred: GeraeteRiege, pairs: Set[(GeraeteRiege, GeraeteRiege)])
@@ -51,6 +53,7 @@ package object squad {
   implicit class RichGeraeteRiegen(geraeteRiegen: GeraeteRiegen) {
     lazy val sizeOfAll = geraeteRiegen.foldLeft(0)((acc, item) => acc + item.size)
     lazy val averageSize = sizeOfAll / geraeteRiegen.size
+    lazy val quality = sizeOfAll*sizeOfAll - geraeteRiegen.foldLeft(0)((acc, item) => acc + abs(item.size - averageSize))
     def + (geraeteRiege: GeraeteRiege): GeraeteRiegen = geraeteRiegen + geraeteRiege
   }
   

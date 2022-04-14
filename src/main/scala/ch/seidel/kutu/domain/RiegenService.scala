@@ -168,9 +168,9 @@ trait RiegenService extends DBService with RiegenResultMapper {
     val riegenParts = riege.r.split(",")
 
     val (matchingRiege, matchscore) = existingRiegen.map { er =>
-      (er, er.r.split(",").zip(riegenParts).filter{ case (existing, newpart) =>
+      (er, er.r.split(",").zip(riegenParts).count { case (existing, newpart) =>
         existing.equalsIgnoreCase(newpart)
-      }.length)
+      })
     }.sortBy(t => t._2).reverse.headOption.getOrElse((riege, 0))
 
     if (matchscore > 2) {
@@ -187,13 +187,18 @@ trait RiegenService extends DBService with RiegenResultMapper {
     Await.result(database.run{(
       sqlu"""
                 DELETE from riege where wettkampf_id=${wettkampfid} and kind=0 and not exists(
-                  select 1 from wertung w where w.riege = riege.name or w.riege2 = riege.name and w.wettkampf_id = riege.wettkampf_id
+                  select 1 from wertung w where (w.riege = riege.name or w.riege2 = riege.name) and w.wettkampf_id = riege.wettkampf_id
                 )
           """ >>
       sqlu"""
-              DELETE from durchgang d where d.wettkampf_id=${wettkampfid} and d.durchgangtype = 1 and not exists(
-                  select 1 from riege r where r.durchgang = d.name and r.wettkampf_id = d.wettkampf_id
-                )
+              DELETE from durchgang
+              where wettkampf_id=${wettkampfid}
+              and durchgangtype=1
+              and not exists (
+                select 1 from riege r
+                where r.durchgang = durchgang.name
+                and r.wettkampf_id = durchgang.wettkampf_id
+              )
             """ >>
       updateDurchgaengeAction(wettkampfid)).transactionally
     }, Duration.Inf)
@@ -217,13 +222,31 @@ trait RiegenService extends DBService with RiegenResultMapper {
   }
 
   def insertRiegenWertungen(riege: RiegeRaw, wertungen: Seq[Wertung]): Unit = {
+    val barrenDisziplinId = Some(5L)
+    val riege2List = wertungen.flatMap(w => w.riege2)
+      .toSet
+      .map{(r2: String) =>
+        updateOrInsertRiegeRawAction(
+          RiegeRaw(riege.wettkampfId, r2, riege.durchgang, barrenDisziplinId, RiegeRaw.KIND_STANDARD))
+      }
+      .toList
     Await.result(database.run{(
       updateOrInsertRiegeRawAction(riege) >>
+      DBIO.sequence(riege2List) >>
       DBIO.sequence(for(w <- wertungen) yield {
-        sqlu"""     UPDATE wertung
+        w.riege2 match {
+          case Some(riege2) =>
+            sqlu"""     UPDATE wertung
+                    SET riege=${riege.r}
+                      , riege2=${riege2}
+                    WHERE id=${w.id}
+          """
+          case _ =>
+            sqlu"""     UPDATE wertung
                     SET riege=${riege.r}
                     WHERE id=${w.id}
           """
+        }
       })).transactionally
     }, Duration.Inf)
   }
@@ -236,7 +259,7 @@ trait RiegenService extends DBService with RiegenResultMapper {
           """.as[RiegeRaw]).withPinnedSession
     }, Duration.Inf).toList
   }
-  
+
   def selectRiegen(wettkampfId: Long) = {
     Await.result(database.run{(
        sql"""select r.name as riegenname, r.durchgang, d.*, r.kind

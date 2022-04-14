@@ -10,7 +10,8 @@ import ch.seidel.kutu.{Config, domain}
 import ch.seidel.kutu.Config.remoteAdminBaseUrl
 import ch.seidel.kutu.KuTuServer.handleCID
 import ch.seidel.kutu.akka._
-import ch.seidel.kutu.domain.{AthletRegistration, AthletView, JudgeRegistration, KutuService, NewRegistration, ProgrammRaw, Registration, RegistrationResetPW, Verein, Wettkampf, dateToExportedStr}
+import ch.seidel.kutu.data.RegistrationAdmin.{adjustWertungRiegen, mapAddRegistration}
+import ch.seidel.kutu.domain.{AddRegistration, AthletRegistration, AthletView, JudgeRegistration, KutuService, NewRegistration, ProgrammRaw, Registration, RegistrationResetPW, Verein, Wettkampf, dateToExportedStr}
 import ch.seidel.kutu.http.AuthSupport.OPTION_LOGINRESET
 import ch.seidel.kutu.renderer.MailTemplates.createPasswordResetMail
 import ch.seidel.kutu.renderer.{CompetitionsClubsToHtmlRenderer, CompetitionsJudgeToHtmlRenderer, PrintUtil}
@@ -55,12 +56,12 @@ trait RegistrationRoutes extends SprayJsonSupport with JwtSupport with JsonSuppo
   }
 
   def updateRemoteAthletes(p: Wettkampf, athleteRemoteUpdates: List[AthletView]): Unit = {
-    athleteRemoteUpdates.foreach(verein => Await.result(httpPutClientRequest(
+    Await.result(httpPutClientRequest(
       s"$remoteAdminBaseUrl/api/registrations/${p.uuid.get}/athletes",
       HttpEntity(
         ContentTypes.`application/json`,
         ByteString(athleteRemoteUpdates.toJson.compactPrint)
-      )), Duration.Inf))
+      )), Duration.Inf)
   }
 
   def getRegistrations(p: Wettkampf): List[Registration] = Await.result(
@@ -215,7 +216,13 @@ trait RegistrationRoutes extends SprayJsonSupport with JwtSupport with JsonSuppo
                 if (userId.equals(competitionId.toString)) {
                   put {
                     entity(as[List[AthletView]]) { athletlist =>
+                      val sexchanges = athletlist
+                        .map(a => (a, loadAthlet(a.id).get))
+                        .filter(aa => aa._1.geschlecht != aa._2.geschlecht)
                       val reg = insertAthletes(athletlist.map(aw => (aw.id.toString, aw.toAthlet)))
+                      sexchanges.foreach(aa => adjustWertungRiegen(wettkampf, this, aa._1.toAthlet))
+                      AthletIndexActor.publish(ResyncIndex)
+                      CompetitionCoordinatorClientActor.publish(RefreshWettkampfMap(wettkampf.uuid.get), clientId)
                       CompetitionRegistrationClientActor.publish(RegistrationChanged(wettkampf.uuid.get), clientId)
                       complete(StatusCodes.OK)
                     }

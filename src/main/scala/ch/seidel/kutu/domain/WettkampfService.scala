@@ -3,10 +3,10 @@ package ch.seidel.kutu.domain
 import java.sql.Date
 import java.time.LocalDate
 import java.util.UUID
-
 import ch.seidel.kutu.akka.{AthletMovedInWettkampf, AthletRemovedFromWettkampf, DurchgangChanged, PublishScores, ScoresPublished}
 import ch.seidel.kutu.http.WebSocketClient
 import ch.seidel.kutu.squad.RiegenBuilder
+import ch.seidel.kutu.squad.RiegenBuilder.{generateRiegen2Name, generateRiegenName}
 import org.slf4j.LoggerFactory
 //import slick.jdbc.SQLiteProfile.api._
 import slick.jdbc.PostgresProfile.api._//{DBIO, actionBasedSQLInterpolation, jdbcActionExtensionMethods}
@@ -588,7 +588,7 @@ trait WettkampfService extends DBService
     val awu = AthletRemovedFromWettkampf(wertung.athlet, wertung.wettkampf.uuid.get)
     WebSocketClient.publish(awu)
     for(durchgang <- durchgaenge) {
-      WebSocketClient.publish(DurchgangChanged(durchgang, wertung.wettkampf.uuid.get.toString, wertung.athlet))
+      WebSocketClient.publish(DurchgangChanged(durchgang, wertung.wettkampf.uuid.get, wertung.athlet))
     }
   }
 
@@ -627,14 +627,30 @@ trait WettkampfService extends DBService
                      and wettkampf_Id = $wettkampfId
               """.as[(Long,Long)].transactionally
       }, Duration.Inf)
-        .map(t => (t._2, generateRiegenName(getWertung(t._2).copy(wettkampfdisziplin = readWettkampfDisziplinView(t._1)))))
+        .map(t => {
+          val wertung = getWertung(t._2).copy(wettkampfdisziplin = readWettkampfDisziplinView(t._1))
+          (t._2,
+            generateRiegenName(wertung),
+            generateRiegen2Name(wertung),
+          )
+        })
 
       Await.result(database.run{
         DBIO.sequence(for(w <- wertungen) yield {
-          sqlu"""    UPDATE wertung
-                   SET riege=${w._2}
-                   WHERE id=${w._1}
-          """
+          val (wertungId, riegeText1, riegeText2) = w
+          riegeText2 match {
+            case Some(riegeText2) =>
+              sqlu"""    UPDATE wertung
+                   SET riege=${riegeText1}
+                     , riege2=${riegeText2}
+                   WHERE id=${wertungId}
+              """
+            case _ =>
+              sqlu"""    UPDATE wertung
+                   SET riege=${riegeText1}
+                   WHERE id=${wertungId}
+              """
+          }
         }).transactionally
       }, Duration.Inf)
     }
@@ -648,8 +664,8 @@ trait WettkampfService extends DBService
     val athlet = event.athlet
     val wettkampf = readWettkampf(event.wettkampfUUID)
     val existingriegen = selectRiegenRaw(wettkampf.id)
-    val wertungen = Await.result(database.run{sql"""
-                   select wd.disziplin_id, w.id, w.riege from wertung w inner join wettkampfdisziplin wd on (w.wettkampfdisziplin_Id = wd.id)
+    val wertungen: Seq[(Long, Long, String, String, Option[String], String)] = Await.result(database.run{sql"""
+                   select wd.disziplin_id, w.id, w.riege, w.riege2 from wertung w inner join wettkampfdisziplin wd on (w.wettkampfdisziplin_Id = wd.id)
                    where
                      athlet_id = (select id
                        from athlet
@@ -660,35 +676,55 @@ trait WettkampfService extends DBService
                      and wettkampf_Id = (select id
                        from wettkampf
                        where uuid=${event.wettkampfUUID})
-              """.as[(Long,Long, String)].transactionally
+              """.as[(Long,Long, String, String)].transactionally
     }, Duration.Inf)
       .map{t =>
-        val (wkdId, wertungId, oldRiegenName) = t
+        val (wkdId, wertungId, oldRiegenName, oldRiegen2Name) = t
         val newWettkampfDisziplinId = wkdIDs(wkdId)
         val wkDiszView = readWettkampfDisziplinView(newWettkampfDisziplinId)
         val wertung = getWertung(wertungId)
         val newWertung = wertung.copy(wettkampfdisziplin = wkDiszView)
-        (newWertung.id, newWertung.wettkampfdisziplin.id, generateRiegenName(newWertung), oldRiegenName)
+        (newWertung.id, newWertung.wettkampfdisziplin.id,
+          generateRiegenName(newWertung), oldRiegenName,
+          generateRiegen2Name(newWertung), oldRiegen2Name
+        )
       }
 
-    val riegenset = wertungen.map(w => (w._4, w._3)).toSet.map{ w: (String,String) =>
+    val riegenset: Map[String,String] = wertungen
+      .map(w => (w._4, w._3)).toSet.map { w: (String, String) =>
       val (oldRiege, newRiege) = w
-      existingriegen.find { r => oldRiege.equalsIgnoreCase(r.r) }.headOption match {
-        case Some(matchingRiege) =>
-          (oldRiege, findAndStoreMatchingRiege(matchingRiege.copy(r = newRiege)).r)
-        case _ => (oldRiege, newRiege)
-      }
+      findMatchingOldNewRiegen(existingriegen, oldRiege, newRiege)
     }.toMap
 
-    Await.result(database.run{
-      DBIO.sequence(for(w <- wertungen) yield {
-        val riegeText = riegenset.get(w._4).getOrElse(w._3)
-        sqlu"""    UPDATE wertung
+    val riegenset2: Map[String,String] = wertungen
+      .filter(w => w._5.nonEmpty)
+      .map(w => (w._6, w._5.get)).toSet.map { w: (String, String) =>
+      val (oldRiege2, newRiege2) = w
+      findMatchingOldNewRiegen(existingriegen, oldRiege2, newRiege2)
+    }.toMap
+
+    val process = for (w <- wertungen) yield {
+      val riegeText: String = riegenset.getOrElse(w._4, w._3)
+      w._5 match {
+        case Some(oldRiegeText2) if (riegenset2.contains(w._6)) =>
+          val riegeText2: String = riegenset2.getOrElse(w._6, oldRiegeText2)
+          sqlu"""    UPDATE wertung
+                   SET riege=${riegeText}
+                     , riege2=${riegeText2}
+                     , wettkampfdisziplin_Id=${w._2}
+                   WHERE id=${w._1}
+          """
+        case _ =>
+          sqlu"""    UPDATE wertung
                    SET riege=${riegeText}
                      , wettkampfdisziplin_Id=${w._2}
                    WHERE id=${w._1}
           """
-      }).transactionally
+      }
+    }
+
+    Await.result(database.run{
+      DBIO.sequence(process).transactionally
     }, Duration.Inf)
 
     cleanUnusedRiegen(wettkampf.id)
@@ -705,6 +741,19 @@ trait WettkampfService extends DBService
     }, Duration.Inf).flatten
   }
 
+  private def findMatchingOldNewRiegen(existingriegen: List[RiegeRaw], oldRiege: String, newRiege: String): (String, String) = {
+    existingriegen.find { r => oldRiege.equalsIgnoreCase(r.r) } match {
+      case Some(matchingRiege) =>
+        existingriegen.find { r => newRiege.equalsIgnoreCase(r.r) } match {
+          case Some(matchingRiege) =>
+            (oldRiege, matchingRiege.r)
+          case _ => (oldRiege, findAndStoreMatchingRiege(matchingRiege.copy(r = newRiege)).r)
+        }
+
+      case _ => (oldRiege, newRiege)
+    }
+  }
+
   def moveToProgram(wId: Long, pgmId: Long, athelteView: AthletView): Unit = {
     val wettkampf = readWettkampf(wId)
     val movedInWettkampf = AthletMovedInWettkampf(athelteView, wettkampf.uuid.getOrElse(""), pgmId)
@@ -713,7 +762,7 @@ trait WettkampfService extends DBService
     WebSocketClient.publish(movedInWettkampf)
 
     for(durchgang <- durchgaenge) {
-      WebSocketClient.publish(DurchgangChanged(durchgang, wettkampf.uuid.get.toString, athelteView))
+      WebSocketClient.publish(DurchgangChanged(durchgang, wettkampf.uuid.get, athelteView))
     }
   }
 
