@@ -240,7 +240,7 @@
 		<dependency>
 			<groupId>org.json4s</groupId>
 			<artifactId>json4s-jackson_${scala.majorversion}</artifactId>
-			<version>4.0.4</version>
+			<version>4.0.5</version>
 		</dependency>
 
 		<!-- Slick -->
