@@ -574,7 +574,7 @@ package object domain {
   case class WettkampfdisziplinView(id: Long, programm: ProgrammView, disziplin: Disziplin, kurzbeschreibung: String, detailbeschreibung: Option[Array[Byte]], notenSpez: NotenModus, masculin: Int, feminim: Int, ord: Int) extends DataObject {
     override def easyprint = disziplin.name
 
-    def toWettkampdisziplin = Wettkampfdisziplin(id, programm.id, disziplin.id, kurzbeschreibung, None, notenSpez.calcEndnote(0, 1), masculin, feminim, ord)
+    def toWettkampdisziplin = Wettkampfdisziplin(id, programm.id, disziplin.id, kurzbeschreibung, None, notenSpez.calcEndnote(0, 1, 0), masculin, feminim, ord)
   }
 
   case class WettkampfPlanTimeRaw(id: Long, wettkampfId: Long, wettkampfDisziplinId: Long, wechsel: Long, einturnen: Long, uebung: Long, wertung: Long) extends DataObject {
@@ -629,6 +629,13 @@ package object domain {
 
     def updatedWertung(valuesFrom: Wertung) = copy(noteD = valuesFrom.noteD, noteE = valuesFrom.noteE, endnote = valuesFrom.endnote)
 
+    def validatedResult(dv: Double, ev: Double) = {
+      val w = toWertung
+      val scale = wettkampfdisziplin.notenSpez.defaultScale(w)
+      val (d, e) = wettkampfdisziplin.notenSpez.validated(dv, ev, scale)
+      Resultat(d, e, wettkampfdisziplin.notenSpez.calcEndnote(d, e, scale))
+    }
+
     def showInScoreList = {
       (endnote.sum > 0) || (athlet.geschlecht match {
         case "M" => wettkampfdisziplin.masculin > 0
@@ -654,18 +661,21 @@ package object domain {
   sealed trait NotenModus /*with AutoFillTextBoxFactory.ItemComparator[String]*/ {
     val isDNoteUsed: Boolean
 
+    def defaultScale(wertung: Wertung): Int = 2
+
     def selectableItems: Option[List[String]] = None
 
-    def validated(dnote: Double, enote: Double): (Double, Double)
+    def validated(dnote: Double, enote: Double, scale: Int): (Double, Double)
 
-    def calcEndnote(dnote: Double, enote: Double): Double
+    def calcEndnote(dnote: Double, enote: Double, scale: Int): Double
 
     def verifiedAndCalculatedWertung(wertung: Wertung): Wertung = {
       if (wertung.noteE.isEmpty) {
         wertung.copy(noteD = None, noteE = None, endnote = None)
       } else {
-        val (d, e) = validated(wertung.noteD.getOrElse(BigDecimal(0)).doubleValue, wertung.noteE.getOrElse(BigDecimal(0)).doubleValue)
-        wertung.copy(noteD = Some(d), noteE = Some(e), endnote = Some(calcEndnote(d, e)))
+        val scale = defaultScale(wertung)
+        val (d, e) = validated(wertung.noteD.getOrElse(BigDecimal(0)).doubleValue, wertung.noteE.getOrElse(BigDecimal(0)).doubleValue, scale)
+        wertung.copy(noteD = Some(d), noteE = Some(e), endnote = Some(calcEndnote(d, e, scale)))
       }
     }
 
@@ -722,35 +732,43 @@ package object domain {
     //    }
     //    override def toString(value: Double): String = punktemapping.find(p => p._2 == value).map(_._1).getOrElse(value)
     //override def fromString(input: String) = punktemapping.getOrElse(findLike(input), mapToDouble(input))
-    override def validated(dnote: Double, enote: Double): (Double, Double) = (0, enote)
+    override def validated(dnote: Double, enote: Double, scale: Int): (Double, Double) = (0, enote)
 
-    override def calcEndnote(dnote: Double, enote: Double) = enote * punktgewicht
+    override def calcEndnote(dnote: Double, enote: Double, scale: Int) = enote * punktgewicht
 
     override def selectableItems: Option[List[String]] = Some(punktemapping.keys.toList.sortBy(punktemapping))
   }
 
   case object KuTuWettkampf extends NotenModus {
     override val isDNoteUsed = true
-
+    override def defaultScale(wertung: Wertung): Int = 3
     //override def fromString(input: String) = super.fromString(input)
-    override def validated(dnote: Double, enote: Double): (Double, Double) =
-      (BigDecimal(dnote).setScale(3, BigDecimal.RoundingMode.FLOOR).max(0).min(30).toDouble,
-        BigDecimal(enote).setScale(3, BigDecimal.RoundingMode.FLOOR).max(0).min(30).toDouble)
+    override def validated(dnote: Double, enote: Double, scale: Int): (Double, Double) =
+      (BigDecimal(dnote).setScale(scale, BigDecimal.RoundingMode.FLOOR).max(0).min(30).toDouble,
+        BigDecimal(enote).setScale(scale, BigDecimal.RoundingMode.FLOOR).max(0).min(30).toDouble)
 
-    override def calcEndnote(dnote: Double, enote: Double) =
-      BigDecimal(dnote + enote).setScale(3, BigDecimal.RoundingMode.FLOOR).max(0).min(30).toDouble
+    override def calcEndnote(dnote: Double, enote: Double, scale: Int) =
+      BigDecimal(dnote + enote).setScale(scale, BigDecimal.RoundingMode.FLOOR).max(0).min(30).toDouble
   }
 
   case object GeTuWettkampf extends NotenModus {
     override val isDNoteUsed = false
+    val scaleExceptions = Set(100L, 141L) // Sprung K6/K7
+    override def defaultScale(wertung: Wertung): Int = {
+      if (scaleExceptions.contains(wertung.wettkampfdisziplinId)) {
+        3 // 3 Stellen nach dem Komma K6/K7 Sprung
+      } else {
+        super.defaultScale(wertung)
+      }
+    }
 
     //override def fromString(input: String) = super.fromString(input)
-    override def validated(dnote: Double, enote: Double): (Double, Double) =
-      (BigDecimal(dnote).setScale(2, BigDecimal.RoundingMode.FLOOR).max(0).min(10).toDouble,
-        BigDecimal(enote).setScale(2, BigDecimal.RoundingMode.FLOOR).max(0).min(10).toDouble)
+    def validated(dnote: Double, enote: Double, scale: Int): (Double, Double) =
+      (BigDecimal(dnote).setScale(scale, BigDecimal.RoundingMode.FLOOR).max(0).min(10).toDouble,
+        BigDecimal(enote).setScale(scale, BigDecimal.RoundingMode.FLOOR).max(0).min(10).toDouble)
 
-    override def calcEndnote(dnote: Double, enote: Double) =
-      BigDecimal(enote).setScale(2, BigDecimal.RoundingMode.FLOOR).max(0).min(10).toDouble
+    def calcEndnote(dnote: Double, enote: Double, scale: Int) =
+      BigDecimal(enote).setScale(scale, BigDecimal.RoundingMode.FLOOR).max(0).min(10).toDouble
   }
 
   object MatchCode {
