@@ -1,4 +1,4 @@
-FROM amd64/eclipse-temurin:17.0.2_8-jre-alpine
+FROM eclipse-temurin:17-jre
 
 # Create kutu user and group
 RUN echo "kutu:x:1497:1495:user for kutu:/home:/bin/false" >> /etc/passwd
@@ -26,14 +26,15 @@ ENV X_POSTGRES_PASSWORD ""
 
 ENV X_SMTP_HOST "undefined"
 ENV X_SMTP_PORT 0
-ENV X_SMTP_USERNAME = "undefined"
-ENV X_SMTP_DOMAIN = "undefined"
-ENV X_SMTP_PASSWORD = "undefined"
+ENV X_SMTP_USERNAME "undefined"
+ENV X_SMTP_DOMAIN "undefined"
+ENV X_SMTP_PASSWORD "undefined"
 
 ENTRYPOINT [ "java", "-cp", ".:app.jar:libs/*" \
     , "-Duser.home=/home" \
     , "-server" \
     , "-XX:+UseG1GC" \
+    , "-XX:+UseContainerSupport" \
     , "-XX:MaxGCPauseMillis=30" \
     , "-XX:InitiatingHeapOccupancyPercent=70" \
     , "-XX:MaxRAMPercentage=80" \
