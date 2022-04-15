@@ -210,8 +210,8 @@ jobs:
         id: build_tags
         run: |
           export COMMIT=${GITHUB_SHA::7}
-          export COMMIT_TAG=$(if [[ $GITHUB_REF == refs/tags/* ]]; then echo ${GITHUB_REF#refs/tags/} | tr "/" "."; else echo ""; fi)
-          export COMMIT_BRANCH=$(if [[ $GITHUB_REF == refs/heads/* ]]; then echo ${GITHUB_REF#refs/heads/:0:2} | tr "/" "."; else echo "br"; fi)
+          export COMMIT_TAG=$(if [[ $GITHUB_REF == refs/tags/* ]]; then echo ${GITHUB_REF#refs/tags/:11:20} | tr "/" "."; else echo ""; fi)
+          export COMMIT_BRANCH=$(if [[ $GITHUB_REF == refs/heads/* ]]; then echo ${GITHUB_REF#refs/heads/:11:20} | tr "/" "."; else echo "br"; fi)
           export TAG=`if [ ! -z "$COMMIT_TAG" ]; then echo "$COMMIT_TAG"; else echo "$COMMIT_BRANCH-$COMMIT"; fi`
           echo GITHUB_REF=$GITHUB_REF
           echo GITHUB_REF#refs/tags/=GITHUB_REF#refs/tags/
@@ -223,7 +223,7 @@ jobs:
           echo TAG=$TAG
           echo ::set-output name=SHA_TAG::$GITHUB_SHA
           echo ::set-output name=DOCKER_TAG::$TAG
-          echo ::set-output name=SOURCE_TAG::COMMIT_TAG
+          echo ::set-output name=SOURCE_TAG::$COMMIT_TAG
           echo ::set-output name=SOURCE_BRANCH::$COMMIT_BRANCH
       - name: Checkout repository
         uses: actions/checkout@v2
