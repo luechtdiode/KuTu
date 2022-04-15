@@ -7,6 +7,7 @@ import javafx.beans.value.ChangeListener;
 import javafx.scene.control.TableCell;
 import javafx.scene.control.TableColumn;
 
+@SuppressWarnings("unchecked")
 public class TableCellSkin<S, T> extends TableCellSkinBase<S, T, TableCell<S, T>> {
     private final TableCellBehavior behavior;
 

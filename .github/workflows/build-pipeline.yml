@@ -90,7 +90,7 @@ jobs:
         run: |
           java -version
           mvn -version
-          mvn clean package
+          mvn clean install
           bash <(curl -s https://codecov.io/bash)
         env:
           OS: Linux
@@ -133,7 +133,7 @@ jobs:
         run: |
           java -version
           mvn -version
-          mvn package
+          mvn -DskipTests=true package
         env:
           OS: Linux
       - name: Archive production artifacts
@@ -170,7 +170,7 @@ jobs:
       - name: Java Setup & Package-Build
         run: |
           . ./prepare_jdk.sh
-          mvn package
+          mvn -DskipTests=true package
         env:
           OS: Win64
         shell: bash  
@@ -215,7 +215,7 @@ jobs:
         run: |
           java -version
           mvn -version
-          mvn package
+          mvn -DskipTests=true package
         env:
           OS: Darwin
       - name: Archive production artifacts
