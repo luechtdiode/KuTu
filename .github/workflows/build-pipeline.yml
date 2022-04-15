@@ -62,19 +62,6 @@ jobs:
         uses: stefanzweifel/git-auto-commit-action@v4
         with:
           commit_message: update with generated Client from Github Actions CI for build ${{env.GITHUB_RUN_NUMBER}} with [skip ci]
-
-  build-app:
-    needs: build-client
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v2
-        with:
-          # We must fetch at least the immediate parents so that if this is
-          # a pull request then we can checkout the head.
-          fetch-depth: 2
-
-      - run: git checkout $(git log --branches -1 --pretty=format:'%D' | sed 's/.*, //g')
       - name: Cache Maven packages
         uses: actions/cache@v2
         with:
@@ -269,7 +256,6 @@ jobs:
           cp target/dependency/*.jar docker/libs/
           cp target/*.jar docker/
           rm docker/libs/javafx*.jar
-          rm docker/*-app.jar
       - name: Login to DockerHub
         uses: docker/login-action@v1
         with:
