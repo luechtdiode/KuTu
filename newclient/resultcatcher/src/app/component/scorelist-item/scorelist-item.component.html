@@ -6,7 +6,8 @@
     &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<small><em>{{teilnehmerSubResults}}</em></small>
   </ion-label>
   <ion-note slot="end" >
-    Total Punkte {{teilnehmer['Total Punkte']}}<br>
-    <b>ø Gerät {{teilnehmer['ø Gerät']}}</b>
+    <b>Total Punkte {{teilnehmer['Total Punkte']}}</b><br>
+    <em *ngIf="teilnehmer['ø Gerät']">ø Gerät {{teilnehmer['ø Gerät']}}</em>
+    <em *ngIf="teilnehmer['Total D']">Total D/E {{teilnehmer['Total D']}}/{{teilnehmer['Total E']}}</em>
   </ion-note>
 </ion-item>
