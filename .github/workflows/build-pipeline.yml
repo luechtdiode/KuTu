@@ -269,7 +269,6 @@ jobs:
           cp target/dependency/*.jar docker/libs/
           cp target/*.jar docker/
           rm docker/libs/javafx*.jar
-          rm docker/*-app.jar
       - name: Login to DockerHub
         uses: docker/login-action@v1
         with:
