@@ -20,6 +20,7 @@
 				<javafx.os>win</javafx.os>
 				<bundler.os>Win64</bundler.os>
 				<app.logo>app-logo.ico</app.logo>
+				<bundler.type>msi</bundler.type>
 			</properties>
 		</profile>
 		<profile>
@@ -32,6 +33,7 @@
 			<properties>
 				<javafx.os>mac</javafx.os>
 				<bundler.os>Darwin</bundler.os>
+				<bundler.type>pkg</bundler.type>
 				<app.logo>AppIcon.icns</app.logo>
 			</properties>
 		</profile>
@@ -45,6 +47,7 @@
 			<properties>
 				<javafx.os>linux</javafx.os>
 				<bundler.os>Linux</bundler.os>
+				<bundler.type>deb</bundler.type>
 				<app.logo>app-logo.png</app.logo>
 			</properties>
 		</profile>
@@ -553,6 +556,8 @@
 							<arguments>
 								<argument>--main-class</argument>
 								<argument>ch.seidel.kutu.KuTuApp</argument>
+								<argument>--type</argument>
+								<argument>${bundler.type}</argument>
 								<argument>--input</argument>
 								<argument>${project.build.directory}/package</argument>
 								<argument>--dest</argument>
