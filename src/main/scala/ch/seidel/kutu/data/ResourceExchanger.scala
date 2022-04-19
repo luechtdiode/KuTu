@@ -25,7 +25,7 @@ import scala.reflect.runtime.universe._
 object ResourceExchanger extends KutuService with RiegenBuilder {
   private val logger = LoggerFactory.getLogger(this.getClass)
 
-  def processWSMessage[T](wettkampf: Wettkampf, refresher: (Option[T], KutuAppEvent) => Unit) = {
+  def processWSMessage[T](wettkampf: Wettkampf, refresher: (Option[T], KutuAppEvent) => Unit): (Option[T], KutuAppEvent) => Unit = {
     val cache = new java.util.ArrayList[MatchCode]()
 
     def mapToLocal(athlet: AthletView) = {
@@ -68,7 +68,7 @@ object ResourceExchanger extends KutuService with RiegenBuilder {
             logger.error(s"failed to complete save LastResults ", e)
         }
       case (sender, bulkEvent@BulkEvent(wettkampfUUID, events)) =>
-        if (!Config.isLocalHostServer() && wettkampf.uuid.contains(wettkampfUUID)) {
+        if (!Config.isLocalHostServer && wettkampf.uuid.contains(wettkampfUUID)) {
           events.foreach {
             case ds: DurchgangStarted => storeDurchgangStarted(ds)
             case df: DurchgangFinished => storeDurchgangFinished(df)
@@ -77,20 +77,20 @@ object ResourceExchanger extends KutuService with RiegenBuilder {
           refresher(sender, bulkEvent)
         }
       case (sender, ds@DurchgangStarted(wettkampfUUID, _, _)) =>
-        if (!Config.isLocalHostServer() && wettkampf.uuid.contains(wettkampfUUID)) {
+        if (!Config.isLocalHostServer && wettkampf.uuid.contains(wettkampfUUID)) {
           storeDurchgangStarted(ds)
         }
         refresher(sender, ds)
 
       case (sender, df@DurchgangFinished(wettkampfUUID, _, _)) =>
-        if (!Config.isLocalHostServer() && wettkampf.uuid.contains(wettkampfUUID)) {
+        if (!Config.isLocalHostServer&& wettkampf.uuid.contains(wettkampfUUID)) {
           storeDurchgangFinished(df)
         }
         refresher(sender, df)
 
       case (sender, uws: AthletWertungUpdatedSequenced) => opFn(sender, uws.toAthletWertungUpdated())
       case (sender, uw@AthletWertungUpdated(athlet, wertung, wettkampfUUID, _, _, programm)) =>
-        if (Config.isLocalHostServer()) {
+        if (Config.isLocalHostServer) {
           refresher(sender, uw)
         } else if (wettkampf.uuid.contains(wettkampfUUID)) /*Future*/ {
           logger.info(s"received for ${uw.athlet.vorname} ${uw.athlet.name} (${uw.athlet.verein.getOrElse(() => "")}) " +
@@ -113,7 +113,7 @@ object ResourceExchanger extends KutuService with RiegenBuilder {
       case (sender, scorePublished@ScoresPublished(scoreId: String, title: String, query: String, published: Boolean, wettkampfUUID: String)) =>
         if (wettkampf.uuid.contains(wettkampfUUID)) /*Future*/ {
           logger.info(s"received ${scorePublished}")
-          updatePublishedScore(wettkampf.id, scoreId, title, query, published, false)
+          updatePublishedScore(wettkampf.id, scoreId, title, query, published, propagate = false)
           refresher(sender, scorePublished)
         }
       case (sender, awm@AthletsAddedToWettkampf(athlets, wettkampfUUID, programm)) =>
@@ -171,15 +171,15 @@ object ResourceExchanger extends KutuService with RiegenBuilder {
     opFn
   }
 
-  def importWettkampf(file: InputStream) = {
+  def importWettkampf(file: InputStream): Wettkampf = {
     val buffer = new BufferedInputStream(file)
     buffer.mark(40 * 4096)
     type ZipStream = (ZipEntry, InputStream)
     class ZipEntryTraversableClass extends Iterator[ZipStream] {
-      buffer.reset
+      buffer.reset()
       val zis = new ZipInputStream(buffer)
       var currentEntry: Option[ZipEntry] = None
-      val zisIterator = Iterator.continually(zis.getNextEntry)
+      val zisIterator: Iterator[ZipEntry] = Iterator.continually(zis.getNextEntry)
         .map(entry => {
           currentEntry match {
             case Some(entry) => zis.closeEntry()
@@ -206,7 +206,7 @@ object ResourceExchanger extends KutuService with RiegenBuilder {
     }
 
     def getValue(header: Map[String, Int], fields: IndexedSeq[String], key: String, default: String): String = {
-      if (header.contains(key) && fields(header(key)).length > 0) fields(header(key)) else default
+      if (header.contains(key) && fields(header(key)).nonEmpty) fields(header(key)) else default
     }
 
     val (vereinCsv, vereinHeader) = collection("vereine.csv")
@@ -230,7 +230,7 @@ object ResourceExchanger extends KutuService with RiegenBuilder {
         geschlecht = fields(athletHeader("geschlecht")),
         name = fields(athletHeader("name")),
         vorname = fields(athletHeader("vorname")),
-        gebdat = if (geb.length > 0) Some(geb) else None,
+        gebdat = if (geb.nonEmpty) Some(geb) else None,
         strasse = fields(athletHeader("strasse")),
         plz = fields(athletHeader("plz")),
         ort = fields(athletHeader("ort")),
@@ -277,7 +277,7 @@ object ResourceExchanger extends KutuService with RiegenBuilder {
     val (wettkampfCsv, wettkampfHeader) = collection("wettkampf.csv")
     logger.info("importing wettkampf ...", wettkampfHeader)
     val wettkampfInstances = wettkampfCsv.map(DBService.parseLine).filter(_.size == wettkampfHeader.size).map { fields =>
-      val uuid = wettkampfHeader.get("uuid").map(uuidIdx => Some(fields(uuidIdx))).getOrElse(None)
+      val uuid = wettkampfHeader.get("uuid").flatMap(uuidIdx => Some(fields(uuidIdx)))
       logger.info("wettkampf uuid: " + uuid)
       val wettkampf = createWettkampf(
         auszeichnung = fields(wettkampfHeader("auszeichnung")),
@@ -387,8 +387,8 @@ object ResourceExchanger extends KutuService with RiegenBuilder {
           case "" => None
           case value => Some(value)
         },
-        riege = if (fields(wertungenHeader("riege")).length > 0) Some(fields(wertungenHeader("riege"))) else None,
-        riege2 = if (fields(wertungenHeader("riege2")).length > 0) Some(fields(wertungenHeader("riege2"))) else None
+        riege = if (fields(wertungenHeader("riege")).nonEmpty) Some(fields(wertungenHeader("riege"))) else None,
+        riege2 = if (fields(wertungenHeader("riege2")).nonEmpty) Some(fields(wertungenHeader("riege2"))) else None
       )
       //      println(w.athletId, getAthletName(w.athletId), w.endnote, w.wettkampfdisziplinId, w.wettkampfdisziplinId, getWettkampfDisziplinName(w))
       w
@@ -442,8 +442,8 @@ object ResourceExchanger extends KutuService with RiegenBuilder {
             case None => wettkampfid
           },
           r = fields(riegenHeader("r")),
-          durchgang = if (fields(riegenHeader("durchgang")).length > 0) Some(fields(riegenHeader("durchgang"))) else None,
-          start = if (fields(riegenHeader("start")).length > 0) Some(fields(riegenHeader("start"))) else None,
+          durchgang = if (fields(riegenHeader("durchgang")).nonEmpty) Some(fields(riegenHeader("durchgang"))) else None,
+          start = if (fields(riegenHeader("start")).nonEmpty) Some(fields(riegenHeader("start"))) else None,
           kind = getValue(riegenHeader, fields, "kind", "0")
         )
         riege
@@ -551,19 +551,19 @@ object ResourceExchanger extends KutuService with RiegenBuilder {
   }
 
   def exportWettkampf(wettkampf: Wettkampf, filename: String): Unit = {
-    exportWettkampfToStream(wettkampf, new FileOutputStream(filename), true)
+    exportWettkampfToStream(wettkampf, new FileOutputStream(filename), withSecret = true)
   }
 
   def exportWettkampfToStream(wettkampf: Wettkampf, os: OutputStream, withSecret: Boolean = false): Unit = {
-    val zip = new ZipOutputStream(os);
-    zip.putNextEntry(new ZipEntry("wettkampf.csv"));
+    val zip = new ZipOutputStream(os)
+    zip.putNextEntry(new ZipEntry("wettkampf.csv"))
     zip.write((getHeader[Wettkampf] + "\n" + getValues(wettkampf)).getBytes("utf-8"))
     zip.closeEntry()
 
     val wertungen = selectWertungen(wettkampfId = Some(wettkampf.id))
 
     val vereine = wertungen.flatMap(_.athlet.verein).toSet
-    zip.putNextEntry(new ZipEntry("vereine.csv"));
+    zip.putNextEntry(new ZipEntry("vereine.csv"))
     zip.write((getHeader[Verein] + "\n").getBytes("utf-8"))
     for (verein <- vereine) {
       zip.write((getValues(verein) + "\n").getBytes("utf-8"))
@@ -571,7 +571,7 @@ object ResourceExchanger extends KutuService with RiegenBuilder {
     zip.closeEntry()
 
     val athleten = wertungen.map(_.athlet).toSet
-    zip.putNextEntry(new ZipEntry("athleten.csv"));
+    zip.putNextEntry(new ZipEntry("athleten.csv"))
     zip.write((getHeader[Athlet] + "\n").getBytes("utf-8"))
     for (athlet <- athleten) {
       zip.write((getValues(athlet) + "\n").getBytes("utf-8"))
@@ -579,7 +579,7 @@ object ResourceExchanger extends KutuService with RiegenBuilder {
     zip.closeEntry()
 
     val wertungenRaw = wertungen.map(_.toWertung)
-    zip.putNextEntry(new ZipEntry("wertungen.csv"));
+    zip.putNextEntry(new ZipEntry("wertungen.csv"))
     zip.write((getHeader[Wertung] + "\n").getBytes("utf-8"))
     for (wertung <- wertungenRaw) {
       zip.write((getValues(wertung) + "\n").getBytes("utf-8"))
@@ -587,7 +587,7 @@ object ResourceExchanger extends KutuService with RiegenBuilder {
     zip.closeEntry()
 
     val riegenRaw = selectRiegenRaw(wettkampf.id)
-    zip.putNextEntry(new ZipEntry("riegen.csv"));
+    zip.putNextEntry(new ZipEntry("riegen.csv"))
     zip.write((getHeader[RiegeRaw] + "\n").getBytes("utf-8"))
     for (riege <- riegenRaw) {
       zip.write((getValues(riege) + "\n").getBytes("utf-8"))
@@ -595,7 +595,7 @@ object ResourceExchanger extends KutuService with RiegenBuilder {
     zip.closeEntry()
 
     val planTimes = loadWettkampfDisziplinTimes(UUID.fromString(wettkampf.uuid.get))
-    zip.putNextEntry(new ZipEntry("plan_times.csv"));
+    zip.putNextEntry(new ZipEntry("plan_times.csv"))
     zip.write((getHeader[WettkampfPlanTimeRaw] + "\n").getBytes("utf-8"))
     for (planTime <- planTimes) {
       zip.write((getValues(planTime.toWettkampfPlanTimeRaw) + "\n").getBytes("utf-8"))
@@ -603,7 +603,7 @@ object ResourceExchanger extends KutuService with RiegenBuilder {
     zip.closeEntry()
 
     val durchgaenge = selectDurchgaenge(UUID.fromString(wettkampf.uuid.get))
-    zip.putNextEntry(new ZipEntry("durchgaenge.csv"));
+    zip.putNextEntry(new ZipEntry("durchgaenge.csv"))
     zip.write((getHeader[Durchgang] + "\n").getBytes("utf-8"))
     for (durchgang <- durchgaenge) {
       zip.write((getValues(durchgang) + "\n").getBytes("utf-8"))
@@ -611,7 +611,7 @@ object ResourceExchanger extends KutuService with RiegenBuilder {
     zip.closeEntry()
 
     val scores = Await.result(listPublishedScores(UUID.fromString(wettkampf.uuid.get)), Duration.Inf).map(sv => sv.toRaw)
-    zip.putNextEntry(new ZipEntry("scoredefs.csv"));
+    zip.putNextEntry(new ZipEntry("scoredefs.csv"))
     zip.write((getHeader[PublishedScoreRaw] + "\n").getBytes("utf-8"))
     for (score <- scores) {
       zip.write((getValues(score) + "\n").getBytes("utf-8"))
@@ -620,9 +620,9 @@ object ResourceExchanger extends KutuService with RiegenBuilder {
 
     val competitionDir = new java.io.File(Config.homedir + "/" + wettkampf.easyprint.replace(" ", "_"))
 
-    val logofile = PrintUtil.locateLogoFile(competitionDir);
+    val logofile = PrintUtil.locateLogoFile(competitionDir)
     if (logofile.exists()) {
-      zip.putNextEntry(new ZipEntry(logofile.getName));
+      zip.putNextEntry(new ZipEntry(logofile.getName))
       val fis = new FileInputStream(logofile)
       val bytes = new Array[Byte](1024) //1024 bytes - Buffer size
       Iterator
@@ -639,7 +639,7 @@ object ResourceExchanger extends KutuService with RiegenBuilder {
         .filter(f => f.getName.endsWith(".scoredef"))
         .toList
         .foreach { scoredefFile =>
-          zip.putNextEntry(new ZipEntry(scoredefFile.getName));
+          zip.putNextEntry(new ZipEntry(scoredefFile.getName))
           val fis = new FileInputStream(scoredefFile)
           val bytes = new Array[Byte](1024) //1024 bytes - Buffer size
           Iterator
@@ -651,8 +651,8 @@ object ResourceExchanger extends KutuService with RiegenBuilder {
         }
     }
     if (withSecret && wettkampf.hasSecred(Config.homedir, Config.remoteHostOrigin)) {
-      val secretfile = wettkampf.filePath(Config.homedir, Config.remoteHostOrigin).toFile();
-      zip.putNextEntry(new ZipEntry(secretfile.getName));
+      val secretfile = wettkampf.filePath(Config.homedir, Config.remoteHostOrigin).toFile
+      zip.putNextEntry(new ZipEntry(secretfile.getName))
       val fis = new FileInputStream(secretfile)
       val bytes = new Array[Byte](1024) //1024 bytes - Buffer size
       Iterator
@@ -663,8 +663,8 @@ object ResourceExchanger extends KutuService with RiegenBuilder {
       println("secret was taken " + secretfile.getName)
     }
     if (withSecret && wettkampf.hasRemote(Config.homedir, Config.remoteHostOrigin)) {
-      val secretfile = wettkampf.fromOriginFilePath(Config.homedir, Config.remoteHostOrigin).toFile();
-      zip.putNextEntry(new ZipEntry(secretfile.getName));
+      val secretfile = wettkampf.fromOriginFilePath(Config.homedir, Config.remoteHostOrigin).toFile
+      zip.putNextEntry(new ZipEntry(secretfile.getName))
       val fis = new FileInputStream(secretfile)
       val bytes = new Array[Byte](1024) //1024 bytes - Buffer size
       Iterator
@@ -678,12 +678,12 @@ object ResourceExchanger extends KutuService with RiegenBuilder {
     zip.close()
   }
 
-  def getHeader[T: TypeTag] = {
+  def getHeader[T: TypeTag]: String = {
     val fields = getCaseMethods[T]
     fields.map(f => "\"" + f.name.encodedName + "\"").mkString(",")
   }
 
-  def getValues[T: TypeTag : reflect.ClassTag](instance: T) = {
+  def getValues[T: TypeTag : reflect.ClassTag](instance: T): String = {
     val im = rm.reflect(instance)
     val values = typeOf[T].members.collect {
       case m: MethodSymbol if m.isCaseAccessor =>
@@ -710,7 +710,7 @@ object ResourceExchanger extends KutuService with RiegenBuilder {
 
 
   def exportEinheiten(wettkampf: Wettkampf, filename: String): Unit = {
-    val fileOutputStream = new FileOutputStream(filename);
+    val fileOutputStream = new FileOutputStream(filename)
     val riegenRaw = suggestRiegen(Seq(0), selectWertungen(wettkampfId = Some(wettkampf.id)))
     val mapVereinVerband = selectVereine.map(v => v.name -> v.verband.getOrElse("")).toMap
     val sep = ";"
@@ -760,7 +760,7 @@ object ResourceExchanger extends KutuService with RiegenBuilder {
   }
 
   def exportDurchgaenge(wettkampf: Wettkampf, filename: String): Unit = {
-    val fileOutputStream = new FileOutputStream(filename);
+    val fileOutputStream = new FileOutputStream(filename)
     val diszipline = listDisziplinesZuWettkampf(wettkampf.id)
     val durchgaenge = selectDurchgaenge(UUID.fromString(wettkampf.uuid.get)).map(d => d.name -> d).toMap
 
@@ -780,7 +780,7 @@ object ResourceExchanger extends KutuService with RiegenBuilder {
           x._1,
           x._2,
           0,
-          true,
+          enabled = true,
           x._3,
           x._4,
           None))
@@ -803,7 +803,7 @@ object ResourceExchanger extends KutuService with RiegenBuilder {
   }
 
   def exportSimpleDurchgaenge(wettkampf: Wettkampf, filename: String): Unit = {
-    val fileOutputStream = new FileOutputStream(filename);
+    val fileOutputStream = new FileOutputStream(filename)
     val diszipline = listDisziplinesZuWettkampf(wettkampf.id)
     val durchgaenge = selectDurchgaenge(UUID.fromString(wettkampf.uuid.get)).map(d => d.name -> d).toMap
 
@@ -825,7 +825,7 @@ object ResourceExchanger extends KutuService with RiegenBuilder {
           x._1,
           x._2,
           0,
-          true,
+          enabled = true,
           x._3,
           x._4,
           None))

@@ -17,7 +17,7 @@ import ch.seidel.jwt
 import ch.seidel.kutu.Config
 import ch.seidel.kutu.Config._
 import ch.seidel.kutu.domain.Wettkampf
-import spray.json.JsObject
+import spray.json.{JsObject, RootJsonFormat}
 
 import java.net.{InetSocketAddress, PasswordAuthentication}
 import scala.concurrent.ExecutionContext.Implicits.global
@@ -35,14 +35,14 @@ object AuthSupport {
   
   case class UserCredentials(username: String, password: String)
   
-  def getClientSecret = clientheader.map(_.value)
+  def getClientSecret: Option[String] = clientheader.map(_.value)
 }
 
 trait AuthSupport extends Directives with SprayJsonSupport with Hashing with JwtSupport {
   import AuthSupport._
   import spray.json.DefaultJsonProtocol._
   
-  implicit val credsFormat = jsonFormat2(UserCredentials)
+  implicit val credsFormat: RootJsonFormat[UserCredentials] = jsonFormat2(UserCredentials)
   
   autoconfigProxy match {
     case (Some(host), Some(port)) =>
@@ -114,9 +114,9 @@ trait AuthSupport extends Directives with SprayJsonSupport with Hashing with Jwt
 //    }               
 //  })
 //    
-  def askForUsernamePassword = PageDisplayer.askFor("Proxy Login", ("Username", System.getProperty("user.name")), ("Passwort*", proxyPassword.getOrElse("")))
+  def askForUsernamePassword: Option[Seq[String]] = PageDisplayer.askFor("Proxy Login", ("Username", System.getProperty("user.name")), ("Passwort*", proxyPassword.getOrElse("")))
   
-  def getProxyAuth = askForUsernamePassword match {
+  def getProxyAuth: PasswordAuthentication = askForUsernamePassword match {
     case Some(Seq(username, password)) => 
       proxyUser = Some(username)
       proxyPassword = Some(password)
@@ -124,7 +124,7 @@ trait AuthSupport extends Directives with SprayJsonSupport with Hashing with Jwt
     case _ => new PasswordAuthentication(proxyUser.get, proxyPassword.get.toCharArray)
   }
   
-  def httpsProxyTransport = proxyHost.flatMap(h => 
+  def httpsProxyTransport: Option[ClientTransport] = proxyHost.flatMap(h =>
     proxyPort.map(p =>
       (proxyUser, proxyPassword) match {
         case (Some(user), Some(password)) => ClientTransport.httpsProxy(InetSocketAddress.createUnresolved(h, Integer.valueOf(p)), headers.BasicHttpCredentials(user, password))
@@ -138,12 +138,12 @@ trait AuthSupport extends Directives with SprayJsonSupport with Hashing with Jwt
       }
     ))
     
-  def clientsettings = httpsProxyTransport match { 
+  def clientsettings: ClientConnectionSettings = httpsProxyTransport match {
     case Some(pt) => ClientConnectionSettings(Core.system).withTransport(pt)
     case _        => ClientConnectionSettings(Core.system)
   }
 
-  def poolsettings = ConnectionPoolSettings(Core.system).withConnectionSettings(clientsettings)
+  def poolsettings: ConnectionPoolSettings = ConnectionPoolSettings(Core.system).withConnectionSettings(clientsettings)
 
   def verify(credentials: Provided, userSecretHashLookup: (String) => String): Boolean = {
     val hash = userSecretHashLookup(credentials.identifier)
@@ -194,7 +194,7 @@ trait AuthSupport extends Directives with SprayJsonSupport with Hashing with Jwt
     }
   }
 
-  def loginWithWettkampf(p: Wettkampf) = if (Config.isLocalHostServer()) {
+  def loginWithWettkampf(p: Wettkampf): Future[HttpResponse] = if (Config.isLocalHostServer) {
     if (!p.hasSecred(homedir, "localhost")) {
       p.saveSecret(homedir, "localhost", jwt.JsonWebToken(jwtHeader, setClaims(p.uuid.get, Int.MaxValue), jwtSecretKey))
     }
@@ -208,7 +208,7 @@ trait AuthSupport extends Directives with SprayJsonSupport with Hashing with Jwt
     }
   }
 
-  def httpRenewLoginRequest(uri: String, wettkampfuuid: String, jwtToken: String) = {
+  def httpRenewLoginRequest(uri: String, wettkampfuuid: String, jwtToken: String): Future[HttpResponse] = {
     import Core._
     import HttpMethods._
     Marshal(UserCredentials(wettkampfuuid, jwtToken)).to[RequestEntity] flatMap { entity =>
@@ -247,7 +247,7 @@ trait AuthSupport extends Directives with SprayJsonSupport with Hashing with Jwt
       }
   }
   
-  def withAuthHeader(request: HttpRequest) = {
+  def withAuthHeader(request: HttpRequest): HttpRequest = {
     clientheader match {
       case Some(ch) => request.withHeaders(request.headers :+ ch)
       case _ => request
@@ -282,7 +282,7 @@ trait AuthSupport extends Directives with SprayJsonSupport with Hashing with Jwt
     import HttpMethods._
     httpClientRequest(HttpRequest(DELETE, uri=uri))
   }
-  def makeHttpGetRequest(url: String) = {
+  def makeHttpGetRequest(url: String): HttpRequest = {
     import HttpMethods._
     withAuthHeader(HttpRequest(GET, uri=url))
   }

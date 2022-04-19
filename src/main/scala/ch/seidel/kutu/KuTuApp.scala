@@ -55,7 +55,7 @@ object KuTuApp extends JFXApp3 with KutuService with JsonSupport with JwtSupport
 
   private val logger = LoggerFactory.getLogger(this.getClass)
   private lazy val server = KuTuServer
-  val enc = Base64.getUrlEncoder
+  val enc: Base64.Encoder = Base64.getUrlEncoder
 
   import scala.concurrent.ExecutionContext.Implicits.global
 
@@ -67,7 +67,7 @@ object KuTuApp extends JFXApp3 with KutuService with JsonSupport with JwtSupport
     ConnectionStates.disconnected()
   }
 
-  var tree = AppNavigationModel.create(KuTuApp.this)
+  var tree: KuTuAppTree = AppNavigationModel.create(KuTuApp.this)
   val modelWettkampfModus = new BooleanProperty()
   val selectedWettkampf = new SimpleObjectProperty[WettkampfView]()
   val selectedWettkampfSecret = new SimpleObjectProperty[Option[String]]()
@@ -475,7 +475,7 @@ object KuTuApp extends JFXApp3 with KutuService with JsonSupport with JwtSupport
       )
     }
     item.disable <== when(Bindings.createBooleanBinding(() =>
-      Config.isLocalHostServer() ||
+      Config.isLocalHostServer ||
         !p.toWettkampf.hasSecred(homedir, remoteHostOrigin)
         || modelWettkampfModus.value
         || !ConnectionStates.connectedWithProperty.value.equals(p.uuid.map(_.toString).getOrElse("")),
@@ -530,7 +530,7 @@ object KuTuApp extends JFXApp3 with KutuService with JsonSupport with JwtSupport
         })
     }
     item.disable <== when(Bindings.createBooleanBinding(() =>
-      Config.isLocalHostServer() ||
+      Config.isLocalHostServer ||
         (!p.toWettkampf.hasSecred(homedir, remoteHostOrigin) && !p.toWettkampf.hasRemote(homedir, remoteHostOrigin)) ||
         !ConnectionStates.connectedWithProperty.value.equals(p.uuid.map(_.toString).getOrElse("")),
       controlsView.selectionModel().selectedItem,
@@ -748,7 +748,7 @@ object KuTuApp extends JFXApp3 with KutuService with JsonSupport with JwtSupport
         LocalServerStates.startLocalServer(() => server.listNetworkAdresses)
       }
     }
-    item.disable <== when(Bindings.createBooleanBinding(() => isLocalHostServer(),
+    item.disable <== when(Bindings.createBooleanBinding(() => isLocalHostServer,
       controlsView.selectionModel().selectedItem,
       selectedWettkampfSecret,
       LocalServerStates.localServerProperty,
@@ -764,7 +764,7 @@ object KuTuApp extends JFXApp3 with KutuService with JsonSupport with JwtSupport
       }
     }
     item.disable <== when(Bindings.createBooleanBinding(() => {
-      isLocalHostServer()
+      isLocalHostServer
     },
       controlsView.selectionModel().selectedItem,
       selectedWettkampfSecret,
@@ -827,7 +827,7 @@ object KuTuApp extends JFXApp3 with KutuService with JsonSupport with JwtSupport
       })
     }
     item.disable <== when(Bindings.createBooleanBinding(() => {
-      isLocalHostServer()
+      isLocalHostServer
     },
       LocalServerStates.localServerProperty)) choose true otherwise false
     item
@@ -852,7 +852,7 @@ object KuTuApp extends JFXApp3 with KutuService with JsonSupport with JwtSupport
       //      if (remoteBaseUrl.indexOf("localhost") > -1) {
       //        server.startServer { uuid => server.sha256(uuid) }
       //      }
-      if (Config.isLocalHostServer()) {
+      if (Config.isLocalHostServer) {
         if (!p.toWettkampf.hasSecred(homedir, "localhost")) {
           p.toWettkampf.saveSecret(homedir, "localhost", jwt.JsonWebToken(jwtHeader, setClaims(p.uuid.get, Int.MaxValue), jwtSecretKey))
         }
@@ -1125,7 +1125,7 @@ object KuTuApp extends JFXApp3 with KutuService with JsonSupport with JwtSupport
       }
     }
     item.disable <== when(Bindings.createBooleanBinding(() => {
-      isLocalHostServer()
+      isLocalHostServer
     },
       LocalServerStates.localServerProperty)) choose true otherwise false
     item
@@ -1197,7 +1197,7 @@ object KuTuApp extends JFXApp3 with KutuService with JsonSupport with JwtSupport
   }
 
   def showQRCode(caption: String, p: WettkampfView) = {
-    val secretOrigin = if (Config.isLocalHostServer()) {
+    val secretOrigin = if (Config.isLocalHostServer) {
       if (!p.toWettkampf.hasSecred(homedir, "localhost")) {
         p.toWettkampf.saveSecret(homedir, "localhost", jwt.JsonWebToken(jwtHeader, setClaims(p.uuid.get, Int.MaxValue), jwtSecretKey))
       }
@@ -1208,7 +1208,7 @@ object KuTuApp extends JFXApp3 with KutuService with JsonSupport with JwtSupport
         val shorttimeout = getExpiration(shortsecret).getOrElse(new Date())
         val longtimeout = getExpiration(secret).getOrElse(new Date())
 
-        val connectionList = if (Config.isLocalHostServer()) {
+        val connectionList = if (Config.isLocalHostServer) {
           List(Config.remoteBaseUrl) //server.listNetworkAdresses.toList
         } else List(remoteBaseUrl)
         val tablist = connectionList.map { address =>

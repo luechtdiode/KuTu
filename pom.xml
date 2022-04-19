@@ -20,7 +20,69 @@
 				<javafx.os>win</javafx.os>
 				<bundler.os>Win64</bundler.os>
 				<app.logo>app-logo.ico</app.logo>
+				<bundler.type>msi</bundler.type>
 			</properties>
+			<build>
+				<plugins>
+					<plugin>
+						<groupId>org.codehaus.mojo</groupId>
+						<artifactId>exec-maven-plugin</artifactId>
+						<version>3.0.0</version>
+						<executions>
+							<execution>
+								<id>package-binary-distro</id>
+								<phase>package</phase>
+								<goals>
+									<goal>exec</goal>
+								</goals>
+								<configuration>
+									<executable>${jdk-home}/bin/jpackage</executable>
+									<arguments>
+										<argument>--main-class</argument>
+										<argument>ch.seidel.kutu.KuTuApp</argument>
+										<argument>--type</argument>
+										<argument>${bundler.type}</argument>
+										<argument>--input</argument>
+										<argument>${project.build.directory}/package</argument>
+										<argument>--dest</argument>
+										<argument>${project.build.directory}/${bundler.os}</argument>
+										<argument>--name</argument>
+										<argument>TurnerWettkampf-App-v${parsedVersion.majorVersion}r${parsedVersion.minorVersion}</argument>
+										<argument>--app-version</argument>
+										<argument>${app.version}</argument>
+										<argument>--main-jar</argument>
+										<argument>${project.artifactId}-${app.version}.jar</argument>
+										<argument>--icon</argument>
+										<argument>${project.build.sourceDirectory}/../resources/images/${app.logo}</argument>
+										<argument>--copyright</argument>
+										<argument>Interpolar</argument>
+										<argument>--vendor</argument>
+										<argument>Interpolar</argument>
+										<argument>--win-dir-chooser</argument>
+										<argument>--win-shortcut</argument>
+										<argument>--win-per-user-install</argument>
+										<argument>--win-menu</argument>
+										<argument>--java-options</argument>
+										<argument>"-DkutuAPPDIR=$APPDIR"</argument>
+										<argument>--java-options</argument>
+										<argument>
+											--add-opens=java.base/java.lang=ALL-UNNAMED
+											--add-opens=java.base/java.lang.invoke=ALL-UNNAMED
+											--add-opens=java.base/java.net=ALL-UNNAMED
+											--add-opens=java.base/java.nio=ALL-UNNAMED
+											--add-opens=java.base/java.time=ALL-UNNAMED
+											--add-opens=java.base/java.util=ALL-UNNAMED
+											--add-opens=java.base/java.util.concurrent.atomic=ALL-UNNAMED
+											--add-opens=java.base/sun.nio.ch=ALL-UNNAMED
+											--add-opens=java.base/sun.util.calendar=ALL-UNNAMED
+										</argument>
+									</arguments>
+								</configuration>
+							</execution>
+						</executions>
+					</plugin>
+				</plugins>
+			</build>
 		</profile>
 		<profile>
 			<id>osx</id>
@@ -32,8 +94,68 @@
 			<properties>
 				<javafx.os>mac</javafx.os>
 				<bundler.os>Darwin</bundler.os>
+				<bundler.type>pkg</bundler.type>
 				<app.logo>AppIcon.icns</app.logo>
 			</properties>
+			<build>
+				<plugins>
+					<plugin>
+						<groupId>org.codehaus.mojo</groupId>
+						<artifactId>exec-maven-plugin</artifactId>
+						<version>3.0.0</version>
+						<executions>
+							<execution>
+								<id>package-binary-distro</id>
+								<phase>package</phase>
+								<goals>
+									<goal>exec</goal>
+								</goals>
+								<configuration>
+									<executable>${jdk-home}/bin/jpackage</executable>
+									<arguments>
+										<argument>--main-class</argument>
+										<argument>ch.seidel.kutu.KuTuApp</argument>
+										<argument>--type</argument>
+										<argument>${bundler.type}</argument>
+										<argument>--input</argument>
+										<argument>${project.build.directory}/package</argument>
+										<argument>--dest</argument>
+										<argument>${project.build.directory}/${bundler.os}</argument>
+										<argument>--name</argument>
+										<argument>TurnerWettkampf-App-v${parsedVersion.majorVersion}r${parsedVersion.minorVersion}</argument>
+										<argument>--app-version</argument>
+										<argument>${app.version}</argument>
+										<argument>--main-jar</argument>
+										<argument>${project.artifactId}-${app.version}.jar</argument>
+										<argument>--icon</argument>
+										<argument>${project.build.sourceDirectory}/../resources/images/${app.logo}</argument>
+										<argument>--copyright</argument>
+										<argument>Interpolar</argument>
+										<argument>--vendor</argument>
+										<argument>Interpolar</argument>
+										<argument>--mac-package-identifier</argument>
+										<argument>ch.seidel.kutu.KuTuApp</argument>
+										<argument>--java-options</argument>
+										<argument>"-DkutuAPPDIR=$APPDIR"</argument>
+										<argument>--java-options</argument>
+										<argument>
+											--add-opens=java.base/java.lang=ALL-UNNAMED
+											--add-opens=java.base/java.lang.invoke=ALL-UNNAMED
+											--add-opens=java.base/java.net=ALL-UNNAMED
+											--add-opens=java.base/java.nio=ALL-UNNAMED
+											--add-opens=java.base/java.time=ALL-UNNAMED
+											--add-opens=java.base/java.util=ALL-UNNAMED
+											--add-opens=java.base/java.util.concurrent.atomic=ALL-UNNAMED
+											--add-opens=java.base/sun.nio.ch=ALL-UNNAMED
+											--add-opens=java.base/sun.util.calendar=ALL-UNNAMED
+										</argument>
+									</arguments>
+								</configuration>
+							</execution>
+						</executions>
+					</plugin>
+				</plugins>
+			</build>
 		</profile>
 		<profile>
 			<id>linux</id>
@@ -45,8 +167,67 @@
 			<properties>
 				<javafx.os>linux</javafx.os>
 				<bundler.os>Linux</bundler.os>
+				<bundler.type>deb</bundler.type>
 				<app.logo>app-logo.png</app.logo>
 			</properties>
+			<build>
+				<plugins>
+					<plugin>
+						<groupId>org.codehaus.mojo</groupId>
+						<artifactId>exec-maven-plugin</artifactId>
+						<version>3.0.0</version>
+						<executions>
+							<execution>
+								<id>package-binary-distro</id>
+								<phase>package</phase>
+								<goals>
+									<goal>exec</goal>
+								</goals>
+								<configuration>
+									<executable>${jdk-home}/bin/jpackage</executable>
+									<arguments>
+										<argument>--main-class</argument>
+										<argument>ch.seidel.kutu.KuTuApp</argument>
+										<argument>--type</argument>
+										<argument>${bundler.type}</argument>
+										<argument>--input</argument>
+										<argument>${project.build.directory}/package</argument>
+										<argument>--dest</argument>
+										<argument>${project.build.directory}/${bundler.os}</argument>
+										<argument>--name</argument>
+										<argument>TurnerWettkampf-App-v${parsedVersion.majorVersion}r${parsedVersion.minorVersion}</argument>
+										<argument>--app-version</argument>
+										<argument>${app.version}</argument>
+										<argument>--main-jar</argument>
+										<argument>${project.artifactId}-${app.version}.jar</argument>
+										<argument>--icon</argument>
+										<argument>${project.build.sourceDirectory}/../resources/images/${app.logo}</argument>
+										<argument>--copyright</argument>
+										<argument>Interpolar</argument>
+										<argument>--vendor</argument>
+										<argument>Interpolar</argument>
+										<argument>--linux-shortcut</argument>
+										<argument>--java-options</argument>
+										<argument>"-DkutuAPPDIR=$APPDIR"</argument>
+										<argument>--java-options</argument>
+										<argument>
+											--add-opens=java.base/java.lang=ALL-UNNAMED
+											--add-opens=java.base/java.lang.invoke=ALL-UNNAMED
+											--add-opens=java.base/java.net=ALL-UNNAMED
+											--add-opens=java.base/java.nio=ALL-UNNAMED
+											--add-opens=java.base/java.time=ALL-UNNAMED
+											--add-opens=java.base/java.util=ALL-UNNAMED
+											--add-opens=java.base/java.util.concurrent.atomic=ALL-UNNAMED
+											--add-opens=java.base/sun.nio.ch=ALL-UNNAMED
+											--add-opens=java.base/sun.util.calendar=ALL-UNNAMED
+										</argument>
+									</arguments>
+								</configuration>
+							</execution>
+						</executions>
+					</plugin>
+				</plugins>
+			</build>
 		</profile>
 	</profiles>
 
@@ -433,41 +614,6 @@
 				</executions>
 			</plugin>
 			<plugin>
-				<groupId>org.apache.maven.plugins</groupId>
-				<artifactId>maven-shade-plugin</artifactId>
-				<version>3.3.0</version>
-				<executions>
-					<execution>
-						<phase>package</phase>
-						<goals>
-							<goal>shade</goal>
-						</goals>
-						<configuration>
-							<shadedArtifactAttached>false</shadedArtifactAttached>
-							<!--<shadedClassifierName>allinone</shadedClassifierName>-->
-							<!--<minimizeJar>true</minimizeJar>-->
-							<finalName>${project.artifactId}-${app.version}-app</finalName>
-							<artifactSet>
-								<includes>
-									<include>*:*</include>
-								</includes>
-							</artifactSet>
-							<transformers>
-								<transformer
-										implementation="org.apache.maven.plugins.shade.resource.AppendingTransformer">
-									<resource>reference.conf</resource>
-								</transformer>
-								<transformer implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
-									<manifestEntries>
-										<Main-Class>ch.seidel.kutu.KuTuApp</Main-Class>
-									</manifestEntries>
-								</transformer>
-							</transformers>
-						</configuration>
-					</execution>
-				</executions>
-			</plugin>
-			<plugin>
 				<groupId>net.alchim31.maven</groupId>
 				<artifactId>scala-maven-plugin</artifactId>
 				<version>${scala-maven-plugin.version}</version>
@@ -533,45 +679,58 @@
 				</executions>
 			</plugin>
 			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-resources-plugin</artifactId>
+				<version>3.2.0</version>
+				<executions>
+					<execution>
+						<id>package-main-jar</id>
+						<phase>package</phase>
+						<goals>
+							<goal>copy-resources</goal>
+						</goals>
+						<configuration>
+							<outputDirectory>${basedir}/target/package</outputDirectory>
+							<resources>
+								<resource>
+									<directory>${project.build.directory}</directory>
+									<includes>
+										<include>*.jar</include>
+									</includes>
+								</resource>
+							</resources>
+						</configuration>
+					</execution>
+					<execution>
+						<id>package-dep-libs</id>
+						<phase>package</phase>
+						<goals>
+							<goal>copy-resources</goal>
+						</goals>
+						<configuration>
+							<outputDirectory>${basedir}/target/package/libs</outputDirectory>
+							<resources>
+								<resource>
+									<directory>${project.build.directory}/dependency</directory>
+								</resource>
+							</resources>
+						</configuration>
+					</execution>
+				</executions>
+			</plugin>
+			<plugin>
 				<groupId>org.codehaus.mojo</groupId>
 				<artifactId>exec-maven-plugin</artifactId>
 				<version>3.0.0</version>
 				<executions>
 					<execution>
-						<id>package-jar</id>
+						<id>package-binary-distro</id>
 						<phase>package</phase>
 						<goals>
 							<goal>exec</goal>
 						</goals>
 						<configuration>
-							<executable>${jdk-home}/bin/jpackager</executable>
-							<arguments>
-								<argument>create-installer</argument>
-								<argument>--module-path</argument>
-								<argument>${jdk-home}/jmods</argument>
-								<argument>--class</argument>
-								<argument>ch.seidel.kutu.KuTuApp</argument>
-								<argument>--input</argument>
-								<argument>${project.build.directory}</argument>
-								<argument>--files</argument>
-								<argument>${project.artifactId}-${app.version}-app.jar</argument>
-								<argument>--output</argument>
-								<argument>${project.build.directory}/${OS}</argument>
-								<argument>--name</argument>
-								<argument>TurnerWettkampf-App-v${parsedVersion.majorVersion}r${parsedVersion.minorVersion}</argument>
-								<argument>--version</argument>
-								<argument>${app.version}</argument>
-								<argument>--main-jar</argument>
-								<argument>${project.artifactId}-${app.version}-app.jar</argument>
-								<argument>--icon</argument>
-								<argument>${project.build.sourceDirectory}/../resources/images/${app.logo}</argument>
-								<argument>--category</argument>
-								<argument>Sport</argument>
-								<argument>--copyright</argument>
-								<argument>Interpolar</argument>
-								<argument>--vendor</argument>
-								<argument>Interpolar</argument>
-							</arguments>
+							<executable>${jdk-home}/bin/jpackage</executable>
 						</configuration>
 					</execution>
 				</executions>

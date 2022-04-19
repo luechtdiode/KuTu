@@ -1,7 +1,6 @@
 package ch.seidel.kutu.view
 
 import java.util.UUID
-
 import ch.seidel.commons.{DisplayablePage, LazyTabPane, PageDisplayer, TabWithService}
 import ch.seidel.kutu.Config._
 import ch.seidel.kutu.KuTuApp.enc
@@ -11,6 +10,7 @@ import ch.seidel.kutu.http.WebSocketClient
 import ch.seidel.kutu.renderer.PrintUtil.FilenameDefault
 import ch.seidel.kutu.renderer.{BestenListeToHtmlRenderer, PrintUtil, RiegenBuilder}
 import ch.seidel.kutu.{Config, ConnectionStates, KuTuApp, KuTuServer}
+import javafx.event.EventHandler
 import javafx.scene.{control => jfxsc}
 import scalafx.Includes._
 import scalafx.application.Platform
@@ -37,17 +37,17 @@ case class DurchgangState(wettkampfUUID: String, name: String, complete: Boolean
   val started: Long = durchgang.effectiveStartTime.map(_.getTime).getOrElse(0)
   val finished: Long = durchgang.effectiveEndTime.map(_.getTime).getOrElse(0)
 
-  def update(newGeraeteRiegen: List[GeraeteRiege], dg: Durchgang) = {
+  def update(newGeraeteRiegen: List[GeraeteRiege], dg: Durchgang): DurchgangState = {
     if (this.durchgang == dg && newGeraeteRiegen.forall(gr => geraeteRiegen.contains(gr))) this
     else DurchgangState(wettkampfUUID, name, complete, newGeraeteRiegen, dg)
   }
 
-  def ~(other: DurchgangState) = name == other.name && geraeteRiegen != other.geraeteRiegen
+  def ~(other: DurchgangState): Boolean = name == other.name && geraeteRiegen != other.geraeteRiegen
 
-  val updated = System.currentTimeMillis()
-  val isRunning = started > 0L && finished < started
-  lazy val statsBase = geraeteRiegen.groupBy(_.disziplin).map(_._2.map(_.kandidaten.size).sum)
-  lazy val statsCompletedBase = geraeteRiegen.groupBy(gr => gr.disziplin).map { gr =>
+  val updated: Long = System.currentTimeMillis()
+  val isRunning: Boolean = started > 0L && finished < started
+  lazy val statsBase: immutable.Iterable[Int] = geraeteRiegen.groupBy(_.disziplin).map(_._2.map(_.kandidaten.size).sum)
+  lazy val statsCompletedBase: immutable.Iterable[(Option[Disziplin], Int, Int, Int, List[(Int, Int, Int, Int)])] = geraeteRiegen.groupBy(gr => gr.disziplin).map { gr =>
     val (disziplin, grd) = gr
 
     def hasWertungInDisciplin(wertungen: Seq[WertungView]) = wertungen.filter(w => disziplin.contains(w.wettkampfdisziplin.disziplin)).exists(_.endnote.nonEmpty)
@@ -64,17 +64,17 @@ case class DurchgangState(wettkampfUUID: String, name: String, complete: Boolean
     (disziplin, 100 * completedCnt / gr._2.map(_.kandidaten.size).sum, completedCnt, totalCnt, grdStats)
   }
 
-  lazy val anzValue = statsBase.sum
+  lazy val anzValue: Int = statsBase.sum
 
   lazy val anz = s"${anzValue}"
   lazy val min = s"${statsCompletedBase.map(_._2).min}%"
   lazy val max = s"${statsCompletedBase.map(_._2).max}%"
   lazy val avg = s"${100 * statsCompletedBase.map(_._3).sum / anzValue}%"
 
-  lazy val percentPerRiegeComplete = statsCompletedBase
+  lazy val percentPerRiegeComplete: Map[Option[Disziplin], (String, String)] = statsCompletedBase
     .map(gr => (gr._1 -> (s"${gr._2}%", gr._5.map(grh => s"Station ${grh._1 + 1}: ${grh._2}%").mkString("\n")))).toMap
 
-  lazy val totalTime = if (started > 0) {
+  lazy val totalTime: Long = if (started > 0) {
     if (finished > started) finished - started else updated - started
   } else 0
   //  lazy val minTime = s"${statsBase.min}"
@@ -83,7 +83,7 @@ case class DurchgangState(wettkampfUUID: String, name: String, complete: Boolean
 }
 
 trait DurchgangStationTCAccess extends TCAccess[DurchgangState, Object, Disziplin] {
-  def getDisziplin = getIndex
+  def getDisziplin: Disziplin = getIndex
 }
 
 class DurchgangStationJFSCTreeTableColumn[T](val index: Disziplin) extends jfxsc.TreeTableColumn[DurchgangState, T] with DurchgangStationTCAccess {
@@ -247,10 +247,10 @@ class NetworkTab(wettkampfmode: BooleanProperty, override val wettkampfInfo: Wet
   closable = false
   text = "Netzwerk-Dashboard"
 
-  val disziplinlist = wettkampfInfo.disziplinList
+  val disziplinlist: List[Disziplin] = wettkampfInfo.disziplinList
 
-  def loadDurchgaenge = {
-    val durchgaenge = service.selectDurchgaenge(wettkampf.uuid.map(UUID.fromString(_)).get).map(d => d.name -> d).toMap
+  def loadDurchgaenge: List[DurchgangState] = {
+    val durchgaenge = service.selectDurchgaenge(wettkampf.uuid.map(UUID.fromString).get).map(d => d.name -> d).toMap
 
     RiegenBuilder.mapToGeraeteRiegen(service.getAllKandidatenWertungen(UUID.fromString(wettkampf.uuid.get)).toList)
       .filter(gr => gr.durchgang.nonEmpty)
@@ -261,9 +261,9 @@ class NetworkTab(wettkampfmode: BooleanProperty, override val wettkampfInfo: Wet
       .toList.sortBy(_.name)
   }
 
-  val model = ObservableBuffer[TreeItem[DurchgangState]]()
+  val model: ObservableBuffer[TreeItem[DurchgangState]] = ObservableBuffer[TreeItem[DurchgangState]]()
 
-  val isRunning = BooleanProperty(false)
+  val isRunning: BooleanProperty = BooleanProperty(false)
 
   def refreshData(event: Option[KutuAppEvent] = None): Unit = {
     val expandedStates = model
@@ -298,7 +298,7 @@ class NetworkTab(wettkampfmode: BooleanProperty, override val wettkampfInfo: Wet
         })
       }
     }
-    isRunning.set(!model.forall(!_.getValue.isRunning))
+    isRunning.set(model.exists(_.getValue.isRunning))
     updateButtons
   }
 
@@ -356,7 +356,7 @@ class NetworkTab(wettkampfmode: BooleanProperty, override val wettkampfInfo: Wet
 
   type MenuActionHandler = (String, ActionEvent) => Unit
 
-  def handleAction[J <: javafx.event.ActionEvent, R](handler: scalafx.event.ActionEvent => R) = new javafx.event.EventHandler[J] {
+  def handleAction[J <: javafx.event.ActionEvent, R](handler: scalafx.event.ActionEvent => R): EventHandler[J] = new javafx.event.EventHandler[J] {
     def handle(event: J): Unit = {
       handler(event)
     }
@@ -390,8 +390,8 @@ class NetworkTab(wettkampfmode: BooleanProperty, override val wettkampfInfo: Wet
     }
     item.disable <== when(Bindings.createBooleanBinding(() =>
       !p.toWettkampf.hasSecred(homedir, remoteHostOrigin)
-        || !ConnectionStates.connectedWithProperty.value.equals(p.uuid.map(_.toString).getOrElse(""))
-        || getSelectedDruchgangStates.forall{ case d => d.started > 0 && d.finished == 0},
+        || !ConnectionStates.connectedWithProperty.value.equals(p.uuid.getOrElse(""))
+        || getSelectedDruchgangStates.forall((d: DurchgangState) => d.started > 0 && d.finished == 0),
       view.selectionModel().selectedItem,
       isRunning,
       ConnectionStates.connectedWithProperty
@@ -409,8 +409,8 @@ class NetworkTab(wettkampfmode: BooleanProperty, override val wettkampfInfo: Wet
     }
     item.disable <== when(Bindings.createBooleanBinding(() =>
       !p.toWettkampf.hasSecred(homedir, remoteHostOrigin)
-        || !ConnectionStates.connectedWithProperty.value.equals(p.uuid.map(_.toString).getOrElse(""))
-        || getSelectedDruchgangStates.forall{ case d => !(d.started > 0 && d.finished == 0)},
+        || !ConnectionStates.connectedWithProperty.value.equals(p.uuid.getOrElse(""))
+        || getSelectedDruchgangStates.forall((d: DurchgangState) => !(d.started > 0 && d.finished == 0)),
       view.selectionModel().selectedItem,
       isRunning,
       ConnectionStates.connectedWithProperty
@@ -420,13 +420,13 @@ class NetworkTab(wettkampfmode: BooleanProperty, override val wettkampfInfo: Wet
 
   var okIcon: Image = null
   try {
-    okIcon = new Image(getClass().getResourceAsStream("/images/GreenOk.png"))
+    okIcon = new Image(getClass.getResourceAsStream("/images/GreenOk.png"))
   } catch {
     case e: Exception => e.printStackTrace()
   }
   var nokIcon: Image = null
   try {
-    nokIcon = new Image(getClass().getResourceAsStream("/images/RedException.png"))
+    nokIcon = new Image(getClass.getResourceAsStream("/images/RedException.png"))
   } catch {
     case e: Exception => e.printStackTrace()
   }
@@ -441,7 +441,7 @@ class NetworkTab(wettkampfmode: BooleanProperty, override val wettkampfInfo: Wet
         updateItems
       }
 
-      private def updateItems = {
+      private def updateItems: Unit = {
         items.clear()
         val affectedDurchgaenge: Set[String] = reprintItems.get.map(_.durchgang)
         if (selectedDurchgaenge.nonEmpty) {
@@ -519,7 +519,7 @@ class NetworkTab(wettkampfmode: BooleanProperty, override val wettkampfInfo: Wet
             case column: DurchgangStationTCAccess =>
               addRiegenMenuItems(cell.treeItem.getValue, column)
             case _ => if (cell.getTableColumn.parentColumn.value != null && cell.getTableColumn.parentColumn.value.columns.size == 2) {
-              val col = cell.getTableColumn.getParentColumn().getColumns().head
+              val col = cell.getTableColumn.getParentColumn.getColumns.head
               col match {
                 case column: DurchgangStationJFSCTreeTableColumn[_] =>
                   addRiegenMenuItems(cell.treeItem.getValue, column)
@@ -536,11 +536,11 @@ class NetworkTab(wettkampfmode: BooleanProperty, override val wettkampfInfo: Wet
   }
 
   val qrcodeMenu: MenuItem = KuTuApp.makeShowQRCodeMenu(wettkampf)
-  val connectAndShareMenu = KuTuApp.makeConnectAndShareMenu(wettkampf)
+  val connectAndShareMenu: MenuItem = KuTuApp.makeConnectAndShareMenu(wettkampf)
 
   val uploadMenu: MenuItem = {
     val item = makeMenuAction("Upload") { (caption, action) =>
-      implicit val e = action
+      implicit val e: ActionEvent = action
       PageDisplayer.showInDialog(caption, new DisplayablePage() {
         def getPage: Node = {
           new BorderPane {
@@ -563,7 +563,7 @@ class NetworkTab(wettkampfmode: BooleanProperty, override val wettkampfInfo: Wet
         })
     }
     item.disable <== when(Bindings.createBooleanBinding(() =>
-      Config.isLocalHostServer()
+      Config.isLocalHostServer
         || (wettkampf.toWettkampf.hasSecred(homedir, remoteHostOrigin) && !ConnectionStates.connectedProperty.value)
         || isRunning.value,
 
@@ -576,10 +576,10 @@ class NetworkTab(wettkampfmode: BooleanProperty, override val wettkampfInfo: Wet
 
   val downloadMenu: MenuItem = KuTuApp.makeWettkampfDownloadMenu(wettkampf)
 
-  val disconnectMenu = KuTuApp.makeDisconnectMenu(wettkampf)
-  val removeRemoteMenu = KuTuApp.makeWettkampfRemoteRemoveMenu(wettkampf)
+  val disconnectMenu: MenuItem = KuTuApp.makeDisconnectMenu(wettkampf)
+  val removeRemoteMenu: MenuItem = KuTuApp.makeWettkampfRemoteRemoveMenu(wettkampf)
 
-  val generateBestenliste = new Button with BestenListeToHtmlRenderer {
+  val generateBestenliste: Button with BestenListeToHtmlRenderer = new Button with BestenListeToHtmlRenderer {
     text = "Bestenliste erstellen"
     minWidth = 75
     disable.value = wettkampf.toWettkampf.isReadonly(homedir, remoteHostOrigin)
@@ -594,7 +594,7 @@ class NetworkTab(wettkampfmode: BooleanProperty, override val wettkampfInfo: Wet
 
         def generate(lpp: Int) = toHTMListe(WertungServiceBestenResult.getBestenResults, logofile)
 
-        PrintUtil.printDialog(text.value, FilenameDefault(filename, dir), false, generate, orientation = PageOrientation.Portrait)(event)
+        PrintUtil.printDialog(text.value, FilenameDefault(filename, dir), adjustLinesPerPage = false, generate, orientation = PageOrientation.Portrait)(event)
       } else {
         Await.result(KuTuServer.finishDurchgangStep(wettkampf), Duration.Inf)
         val topResults = s"${Config.remoteBaseUrl}/?" + new String(enc.encodeToString((s"top&c=${wettkampf.uuid.get}").getBytes))
@@ -613,18 +613,18 @@ class NetworkTab(wettkampfmode: BooleanProperty, override val wettkampfInfo: Wet
     items += new SeparatorMenuItem()
     items += makeDurchgangAbschliessenMenu(wettkampf)
   }
-  val toolbar = new ToolBar {
+  val toolbar: ToolBar = new ToolBar {
   }
-  val rootpane = new BorderPane {
+  val rootpane: BorderPane = new BorderPane {
     hgrow = Priority.Always
     vgrow = Priority.Always
     top = toolbar
     center = view
   }
-  val btnEditRiege = new MenuButton("Gehe zu ...") {
+  val btnEditRiege: MenuButton = new MenuButton("Gehe zu ...") {
     disable <== when(createBooleanBinding(() => items.isEmpty, items)) choose true otherwise false
   }
-  val btnDurchgang = new MenuButton("Durchgang ...") {
+  val btnDurchgang: MenuButton = new MenuButton("Durchgang ...") {
     disable <== when(createBooleanBinding(() => items.isEmpty, items)) choose true otherwise false
   }
 
@@ -707,13 +707,13 @@ class NetworkTab(wettkampfmode: BooleanProperty, override val wettkampfInfo: Wet
 
   //    val showQRCode = make
   view.selectionModel().setSelectionMode(SelectionMode.Single)
-  view.selectionModel().setCellSelectionEnabled(true);
-  view.selectionModel().getSelectedCells().onChange { (_, newItem) =>
+  view.selectionModel().setCellSelectionEnabled(true)
+  view.selectionModel().getSelectedCells.onChange { (_, _) =>
     updateButtons
   }
   content = rootpane
 
-  override def isPopulated = {
+  override def isPopulated: Boolean = {
     if (subscriptions.isEmpty) {
       println("subscribing for network modus changes")
       subscriptions = subscriptions :+ KuTuApp.modelWettkampfModus.onChange { (_, _, newItem) =>

@@ -5,7 +5,7 @@ export CODECOV_TOKEN='d03b4d79-1273-44ff-9206-69b56dbc4058'
 
 . ./prepare_jdk.sh
 
-mvn clean install
+mvn clean install package
 
 bash <(curl -s https://codecov.io/bash)
 
@@ -14,7 +14,6 @@ mkdir docker/libs
 cp target/dependency/*.jar docker/libs/
 cp target/*.jar docker/
 rm docker/libs/javafx*.jar
-rm docker/*-app.jar
 
 docker build ./docker -t luechtdiode/kutuapp:test
 
