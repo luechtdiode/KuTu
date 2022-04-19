@@ -1,27 +1,26 @@
 package ch.seidel.kutu
 
-import java.io.File
-import java.net.{Proxy, ProxySelector, URI}
-import java.nio.file.{Files, LinkOption, StandardOpenOption}
-import java.security.{NoSuchAlgorithmException, SecureRandom}
-import java.util.UUID
 import ch.seidel.commons.IOUtils.withResources
 import ch.seidel.jwt.JwtHeader
 import ch.seidel.kutu.http.KuTuSSLContext
 import com.github.markusbernhardt.proxy.ProxySearch
 import com.typesafe.config.ConfigFactory
-
-import javax.crypto.KeyGenerator
 import org.slf4j.LoggerFactory
 
-import scala.collection.JavaConverters
+import java.io.File
+import java.net.{Proxy, ProxySelector, URI}
+import java.nio.file.{Files, LinkOption, StandardOpenOption}
+import java.security.{NoSuchAlgorithmException, SecureRandom}
+import java.util.UUID
+import javax.crypto.KeyGenerator
+import scala.collection.mutable
 import scala.jdk.javaapi.CollectionConverters
 
 object Config extends KuTuSSLContext {
   private val logger = LoggerFactory.getLogger(this.getClass)
   logger.info("OS-Name: " + System.getProperty("os.name"))
 
-  val configPath: String = System.getProperty("user.dir")
+  val configPath: String = System.getProperty("kutuAPPDIR", System.getProperty("user.dir"))
   logger.info(s"user.dir Path where custom configurations (kutuapp.conf) are taken from: ${new File(configPath).getAbsolutePath}")
   val userHomePath: String = System.getProperty("user.home") + "/kutuapp"
   logger.info(s"user.home Path: ${new File(userHomePath).getAbsolutePath}")
@@ -37,7 +36,7 @@ object Config extends KuTuSSLContext {
       else
         ConfigFactory.load()).resolve()
 
-  val metricsNamespaceName = if (config.hasPath("NAMESPACE")) {
+  val metricsNamespaceName: String = if (config.hasPath("NAMESPACE")) {
     config.getString("NAMESPACE")
   } else {
     "kutuapp"
@@ -64,7 +63,7 @@ object Config extends KuTuSSLContext {
     None
   }
 
-  val bestenlisteSchwellwert = if (config.hasPath("app.bestenlisteSchwellwert")) config.getDouble("app.bestenlisteSchwellwert") else 9.0
+  val bestenlisteSchwellwert: Double = if (config.hasPath("app.bestenlisteSchwellwert")) config.getDouble("app.bestenlisteSchwellwert") else 9.0
   private val jwtConfig = config.getConfig("jwt")
   private val appRemoteConfig = config.getConfig("app.remote")
 
@@ -81,7 +80,7 @@ object Config extends KuTuSSLContext {
   }
 
   def readSecret: Option[String] = {
-    if (config.hasPath("X_KUTU_SECRET") && !config.getString("X_KUTU_SECRET").isEmpty) {
+    if (config.hasPath("X_KUTU_SECRET") && config.getString("X_KUTU_SECRET").nonEmpty) {
       Some(config.getString("X_KUTU_SECRET"))
     } else {
       val path = new File(userHomePath + "/.jwt").toPath
@@ -107,7 +106,7 @@ object Config extends KuTuSSLContext {
             throw new RuntimeException("AES key generator should always be available in a Java runtime", e)
         }
         val rng = try {
-          SecureRandom.getInstanceStrong()
+          SecureRandom.getInstanceStrong
         } catch {
           case e: NoSuchAlgorithmException =>
             throw new RuntimeException("No strong secure random available to generate strong AES key", e)
@@ -117,8 +116,8 @@ object Config extends KuTuSSLContext {
 
         val key = kgen.generateKey().getEncoded
 
-        val toHex: Array[Byte] => String = (data) => {
-          val sb = new StringBuilder(data.length * 2)
+        val toHex: Array[Byte] => String = data => {
+          val sb = new mutable.StringBuilder(data.length * 2)
           for (b <- data) {
             sb.append(f"$b%02X")
           }
@@ -140,7 +139,7 @@ object Config extends KuTuSSLContext {
   }
   else {
     val f = new File(userHomePath + "/data")
-    f.mkdirs();
+    f.mkdirs()
     userHomePath + "/data"
   }
 
@@ -151,7 +150,7 @@ object Config extends KuTuSSLContext {
     try {
       fos.write(deviceId.getBytes("utf-8"))
     } finally {
-      fos.close
+      fos.close()
     }
     if (System.getProperty("os.name").toLowerCase.indexOf("win") > -1) {
       Files.setAttribute(path, "dos:hidden", true, LinkOption.NOFOLLOW_LINKS)
@@ -170,7 +169,7 @@ object Config extends KuTuSSLContext {
       None
     }
   }
-  lazy val deviceId = {
+  lazy val deviceId: String = {
     readDeviceId match {
       case Some(id) => id
       case None =>
@@ -208,24 +207,24 @@ object Config extends KuTuSSLContext {
     case _ => (None, Some("3128"))
   }
 
-  lazy val httpInterface = if (config.hasPath("http.interface")) config.getString("http.interface") else "0.0.0.0"
-  lazy val httpPort = if (config.hasPath("http.port")) config.getInt("http.port") else 5757
-  lazy val httpHostname = if (config.hasPath("http.hostname")) config.getString("http.hostname") else "localhost"
-  lazy val certPw = if (config.hasPath("http.certPw")) config.getString("http.certPw") else null
+  lazy val httpInterface: String = if (config.hasPath("http.interface")) config.getString("http.interface") else "0.0.0.0"
+  lazy val httpPort: Int = if (config.hasPath("http.port")) config.getInt("http.port") else 5757
+  lazy val httpHostname: String = if (config.hasPath("http.hostname")) config.getString("http.hostname") else "localhost"
+  lazy val certPw: String = if (config.hasPath("http.certPw")) config.getString("http.certPw") else null
 
-  lazy val jwtTokenExpiryPeriodInDays = jwtConfig.getInt("tokenExpiryPeriodInDays")
-  lazy val jwtHeader = JwtHeader(jwtConfig.getString("algorithm"), jwtConfig.getString("contenttype"))
+  lazy val jwtTokenExpiryPeriodInDays: Int = jwtConfig.getInt("tokenExpiryPeriodInDays")
+  lazy val jwtHeader: JwtHeader = JwtHeader(jwtConfig.getString("algorithm"), jwtConfig.getString("contenttype"))
 
-  lazy val remoteHost = if (appRemoteConfig.hasPath("hostname")) appRemoteConfig.getString("hostname") else "kutuapp"
-  def remoteSchema = if(_isLocalHostServer) {
+  lazy val remoteHost: String = if (appRemoteConfig.hasPath("hostname")) appRemoteConfig.getString("hostname") else "kutuapp"
+  def remoteSchema: String = if(_isLocalHostServer) {
     if(hasHttpsConfig) "https" else "http"
   } else if (appRemoteConfig.hasPath("schema")) {
     appRemoteConfig.getString("schema")
   } else "https"
 
-  lazy val proxyHost = if (appRemoteConfig.hasPath("proxyHost")) Some(appRemoteConfig.getString("proxyHost")) else autoconfigProxy._1
-  lazy val proxyPort = if (appRemoteConfig.hasPath("proxyPort")) Some(appRemoteConfig.getString("proxyPort")) else autoconfigProxy._2
-  def remoteHostOrigin = if(_isLocalHostServer) "localhost" else remoteHost.split(":")(0)
+  lazy val proxyHost: Option[String] = if (appRemoteConfig.hasPath("proxyHost")) Some(appRemoteConfig.getString("proxyHost")) else autoconfigProxy._1
+  lazy val proxyPort: Option[String] = if (appRemoteConfig.hasPath("proxyPort")) Some(appRemoteConfig.getString("proxyPort")) else autoconfigProxy._2
+  def remoteHostOrigin: String = if(_isLocalHostServer) "localhost" else remoteHost.split(":")(0)
 
   private var _isLocalHostServer = false
   private var _localHostRemoteIP: Option[String] = None
@@ -233,11 +232,11 @@ object Config extends KuTuSSLContext {
     _isLocalHostServer = value
     _localHostRemoteIP = localHostRemoteIP
   }
-  def isLocalHostServer() = _isLocalHostServer
-  lazy val remoteHostPort = if (appRemoteConfig.hasPath("port")) appRemoteConfig.getString("port") else "443"
-  def remoteBaseUrl = if(_isLocalHostServer) if(hasHttpsConfig)s"https://${_localHostRemoteIP.getOrElse(httpHostname)}:$httpPort" else s"http://${_localHostRemoteIP.getOrElse(httpHostname)}:$httpPort" else s"$remoteSchema://$remoteHost:$remoteHostPort"
+  def isLocalHostServer: Boolean = _isLocalHostServer
+  lazy val remoteHostPort: String = if (appRemoteConfig.hasPath("port")) appRemoteConfig.getString("port") else "443"
+  def remoteBaseUrl: String = if(_isLocalHostServer) if(hasHttpsConfig)s"https://${_localHostRemoteIP.getOrElse(httpHostname)}:$httpPort" else s"http://${_localHostRemoteIP.getOrElse(httpHostname)}:$httpPort" else s"$remoteSchema://$remoteHost:$remoteHostPort"
 
-  def remoteOperatingBaseUrl = remoteBaseUrl //s"http://$remoteHost:$remotePort/operating"
-  def remoteAdminBaseUrl = remoteBaseUrl//s"$remoteBaseUrl/wkadmin"
-  def remoteWebSocketUrl = remoteBaseUrl.replace("http", "ws")
+  def remoteOperatingBaseUrl: String = remoteBaseUrl //s"http://$remoteHost:$remotePort/operating"
+  def remoteAdminBaseUrl: String = remoteBaseUrl//s"$remoteBaseUrl/wkadmin"
+  def remoteWebSocketUrl: String = remoteBaseUrl.replace("http", "ws")
 }

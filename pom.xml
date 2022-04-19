@@ -63,6 +63,8 @@
 										<argument>--win-per-user-install</argument>
 										<argument>--win-menu</argument>
 										<argument>--java-options</argument>
+										<argument>"-DkutuAPPDIR=$APPDIR"</argument>
+										<argument>--java-options</argument>
 										<argument>
 											--add-opens=java.base/java.lang=ALL-UNNAMED
 											--add-opens=java.base/java.lang.invoke=ALL-UNNAMED
@@ -134,6 +136,8 @@
 										<argument>--mac-package-identifier</argument>
 										<argument>ch.seidel.kutu.KuTuApp</argument>
 										<argument>--java-options</argument>
+										<argument>"-DkutuAPPDIR=$APPDIR"</argument>
+										<argument>--java-options</argument>
 										<argument>
 											--add-opens=java.base/java.lang=ALL-UNNAMED
 											--add-opens=java.base/java.lang.invoke=ALL-UNNAMED
@@ -203,6 +207,8 @@
 										<argument>--vendor</argument>
 										<argument>Interpolar</argument>
 										<argument>--linux-shortcut</argument>
+										<argument>--java-options</argument>
+										<argument>"-DkutuAPPDIR=$APPDIR"</argument>
 										<argument>--java-options</argument>
 										<argument>
 											--add-opens=java.base/java.lang=ALL-UNNAMED

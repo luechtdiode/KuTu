@@ -22,7 +22,7 @@ echo 'app {
     schema = "https"
     hostname = "test-kutuapp.sharevic.net"
   }
-}' > ~/Applications/Test-KutuApp.app/Contents/Java/kutuapp.conf
+}' > ~/Applications/Test-KutuApp.app/Contents/app/kutuapp.conf
 
 ```
 Dann starten mit:
@@ -45,14 +45,14 @@ function set-shortcut {
     }
 
 
-$rmjob = Start-Job -ScriptBlock { rm $Env:USERPROFILE\TurnerWettkampf-App-v2r2 -Recurse }
+$rmjob = Start-Job -ScriptBlock { rm $Env:LOCALAPPDATA\Test-TurnerWettkampf-App-v2r2 -Recurse }
 Wait-Job $rmjob
 Receive-Job $rmjob
-$cpjob = Start-Job -ScriptBlock { cp $Env:ProgramFiles\TurnerWettkampf-App-v2r2 $Env:USERPROFILE -Recurse }
+$cpjob = Start-Job -ScriptBlock { cp $Env:LOCALAPPDATA\TurnerWettkampf-App-v2r2 $Env:LOCALAPPDATA\Test-TurnerWettkampf-App-v2r2 -Recurse }
 Wait-Job $cpjob
 Receive-Job $cpjob
 
-Set-Content $Env:USERPROFILE\TurnerWettkampf-App-v2r2\app\kutuapp.conf -Value 'app {
+Set-Content $Env:LOCALAPPDATA\Test-TurnerWettkampf-App-v2r2\app\kutuapp.conf -Value 'app {
   majorversion = "latest-testversion"
   remote {
     schema = "https"
@@ -61,11 +61,11 @@ Set-Content $Env:USERPROFILE\TurnerWettkampf-App-v2r2\app\kutuapp.conf -Value 'a
 }'
 
 $DesktopPath = [Environment]::GetFolderPath("Desktop")
-set-shortcut "$DesktopPath\Test-TurnerWettkampf-App-v2r2.lnk" "$Env:USERPROFILE\TurnerWettkampf-App-v2r2\TurnerWettkampf-App-v2r2.exe"
+set-shortcut "$DesktopPath\Test-TurnerWettkampf-App-v2r2.lnk" "$Env:LOCALAPPDATA\Test-TurnerWettkampf-App-v2r2\TurnerWettkampf-App-v2r2.exe"
 ```
 Dann starten via Desktop-Verknüpfung oder via PowerShell mit
 ```
-$Env:USERPROFILE\TurnerWettkampf-App-v2r2\TurnerWettkampf-App-v2r2.exe
+$Env:LOCALAPPDATA\Test-TurnerWettkampf-App-v2r2\TurnerWettkampf-App-v2r2.exe
 ```
 
 Linux (Terminal):

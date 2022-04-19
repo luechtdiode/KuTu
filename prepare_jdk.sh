@@ -31,6 +31,12 @@ then
     unzip -u "jdk-${OS}.zip" -d .  >/dev/null 2>&1
 fi
 
+if [ ${OS} == "Windows_NT" ]
+then
+    curl -L $(makeLink $msspec "zip") -o "jdk-${OS}.zip"
+    unzip -u "jdk-${OS}.zip" -d .  >/dev/null 2>&1
+fi
+
 if [ ${OS} == "Linux" ]
 then
     curl -L $(makeLink $linspec "tar.gz") -o "jdk-${OS}.tar.gz"
