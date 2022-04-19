@@ -2,6 +2,7 @@ package ch.seidel.kutu.akka
 
 import akka.actor.SupervisorStrategy.Restart
 import akka.actor.{Actor, ActorRef, OneForOneStrategy, Props}
+import akka.event.LoggingAdapter
 import akka.pattern.ask
 import akka.persistence.{PersistentActor, SnapshotOffer, SnapshotSelectionCriteria}
 import akka.util.Timeout
@@ -13,9 +14,11 @@ import ch.seidel.kutu.http.JsonSupport
 import ch.seidel.kutu.renderer.MailTemplates
 import ch.seidel.kutu.view.WettkampfInfo
 
+import java.time.{Instant, LocalDate}
+import java.time.temporal.ChronoUnit
 import java.util.UUID
 import scala.concurrent.ExecutionContext.Implicits.global
-import scala.concurrent.duration.{DurationInt, FiniteDuration}
+import scala.concurrent.duration.{DAYS, DurationInt, FiniteDuration}
 import scala.concurrent.{Future, Promise}
 import scala.util.control.NonFatal
 import scala.util.{Failure, Success}
@@ -39,9 +42,9 @@ case class RegistrationSyncActions(syncActions: List[SyncAction]) extends Regist
 case class RegistrationActionWithContext(action: RegistrationAction, context: String) extends RegistrationProtokoll
 
 class CompetitionRegistrationClientActor(wettkampfUUID: String) extends PersistentActor with JsonSupport with KutuService {
-  def shortName = self.toString().split("/").last.split("#").head + "/" + clientId()
+  def shortName: String = self.toString().split("/").last.split("#").head + "/" + clientId()
 
-  lazy val l = akka.event.Logging(system, this)
+  lazy val l: LoggingAdapter = akka.event.Logging(system, this)
 
   object log {
     def error(s: String): Unit = l.error(s"[$shortName] $s")
@@ -68,7 +71,7 @@ class CompetitionRegistrationClientActor(wettkampfUUID: String) extends Persiste
 
   override def persistenceId = s"$wettkampfUUID/regs/${Config.appFullVersion}"
 
-  override val supervisorStrategy = OneForOneStrategy() {
+  override val supervisorStrategy: OneForOneStrategy = OneForOneStrategy() {
     case NonFatal(e) =>
       log.error("Error in CompetitionRegistrationClientActor " + wettkampf, e)
       Restart
@@ -130,7 +133,7 @@ class CompetitionRegistrationClientActor(wettkampfUUID: String) extends Persiste
       val judgeChanges = this.syncState.judgeSyncActions
       this.syncState = this.syncState.notified()
       val wk = readWettkampf(wettkampfUUID)
-      if (wk.notificationEMail.nonEmpty) {
+      if (wk.notificationEMail.nonEmpty && wk.datum.toLocalDate.isAfter(LocalDate.now().plusDays(1))) {
         KuTuMailerActor.send(
           MailTemplates.createSyncNotificationMail(wk, regChanges, judgeChanges.changed, judgeChanges.removed, judgeChanges.added)
         )
@@ -141,7 +144,7 @@ class CompetitionRegistrationClientActor(wettkampfUUID: String) extends Persiste
     }
   }
 
-  private def retrieveSyncActions(syncActionReceiver: ActorRef) = {
+  private def retrieveSyncActions(syncActionReceiver: ActorRef): Unit= {
     syncActions = None
 
     if (syncActionReceivers.nonEmpty) {
@@ -160,9 +163,12 @@ class CompetitionRegistrationClientActor(wettkampfUUID: String) extends Persiste
     }
   }
 
-  private def rescheduleSyncActionNotifier() = {
+  private def rescheduleSyncActionNotifier(): Unit = {
     this.rescheduleSyncNotificationCheck.cancel()
-    this.rescheduleSyncNotificationCheck = context.system.scheduler.scheduleOnce(notifierInterval, self, CheckSyncChangedForNotifier)
+    val wk = readWettkampf(wettkampfUUID)
+    if (wk.datum.toLocalDate.plusDays(1).isAfter(LocalDate.now())) {
+      this.rescheduleSyncNotificationCheck = context.system.scheduler.scheduleOnce(notifierInterval, self, CheckSyncChangedForNotifier)
+    }
   }
 }
 
@@ -174,7 +180,7 @@ object CompetitionRegistrationClientActor {
 
   def publish(action: RegistrationAction, context: String): Future[RegistrationEvent] = {
     val prom = Promise[RegistrationEvent]()
-    implicit val timeout = Timeout(60000 milli)
+    implicit val timeout: Timeout = Timeout(60000 milli)
     system.actorSelection(s"user/Registration-${action.wettkampfUUID}").resolveOne().onComplete {
       case Success(actorRef) =>
         prom.completeWith((actorRef ? RegistrationActionWithContext(action, context)).mapTo[RegistrationEvent])
