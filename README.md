@@ -49,10 +49,11 @@ _[siehe detailierte Dokumentation](https://luechtdiode.gitbook.io/turner-wettkam
   Einfacher ist die Nutzung des [zentral bereitgestellten Servers](https://kutuapp.sharevic.net), mit dem sich die Desktop-Version standardmässig verbinden kann. Davon gibt es auch eine [Test-/Spiel-Plattform](https://test-kutuapp.sharevic.net) und eine [Beschreibung, wie die Test-/Spiel-Plattform benutzt werden kann](https://github.com/luechtdiode/KuTu/blob/master/docs/HowToSetupTestInstallation.md).
 
   Es steht ein [Docker-Image](https://hub.docker.com/r/luechtdiode/kutuapp) zur Verfügung, um den Server unter einer eigenen Domäne zu betreiben.
-  * [Wettkampfanmeldungen für Vereine](https://luechtdiode.gitbook.io/turner-wettkampf-app/wettkampf-vorbereitung/wettkampf_uebersicht/turneranmeldungen_verarbeiten_online)
-  * [Mobile-App für die Resultaterfassung](https://luechtdiode.gitbook.io/turner-wettkampf-app/wettkampf-durchfuhrung/wettkampf-netzwerk-wertungsrichter)
-  * Mobile-App für die Resultat-Anzeige
-  * API für die Abfrage diverser Listen und Reports zu einem Wettkampf, für die Integration in eigene Plattformen (Homepage, etc)
+  * Docu [Detailierte Beschreibung zur Installation des Dockerimages](docs/KuTuAppDockerImageDocu.md)
+  * Feature [Wettkampfanmeldungen für Vereine](https://luechtdiode.gitbook.io/turner-wettkampf-app/wettkampf-vorbereitung/wettkampf_uebersicht/turneranmeldungen_verarbeiten_online)
+  * Feature [Mobile-App für die Resultaterfassung](https://luechtdiode.gitbook.io/turner-wettkampf-app/wettkampf-durchfuhrung/wettkampf-netzwerk-wertungsrichter)
+  * Feature Mobile-App für die Resultat-Anzeige
+  * Feature API für die Abfrage diverser Listen und Reports zu einem Wettkampf, für die Integration in eigene Plattformen (Homepage, etc)
 
 [Benutzeranleitung (online)](https://luechtdiode.gitbook.io/turner-wettkampf-app/)
 
@@ -73,6 +74,7 @@ Es existieren bereits weinige automatisierte Tests. Diese können nicht das ganz
 Beiträge für die Verbesserung und Erweiterung der Dokumentation sind sehr erwünscht.
 
 ## Pflege und Weiterentwicklung des Programm-Codes
+* Docu [How to setup local Dev Environment](docs/LocalDevSetup.md)
 * Refactorings
 * Automatisierung / Erweiterung der Testabdeckung
 * Optimieren der Build-Pipeline

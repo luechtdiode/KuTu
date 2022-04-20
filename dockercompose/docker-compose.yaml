@@ -1,0 +1,78 @@
+version: '3.7'
+
+services:
+  kutuapp_cont:
+    image: luechtdiode/kutuapp:latest
+    healthcheck:
+      test: ["CMD", "curl" , "-f", "http://localhost:5757/metrics"]
+      interval: 5s
+      timeout: 10s
+      retries: 5
+    restart: always
+    environment:
+      - X_DB_CONFIG_NAME=kutudb_pg
+      - X_POSTGRES_HOST=db
+      - X_POSTGRES_USER=kutuapp
+      - X_POSTGRES_PASSWORD=kutuapp
+      #- X_SMTP_HOST=<smtp.provider.com>
+      #- X_SMTP_PORT=465
+      #- X_SMTP_USERNAME=<kutuapp-smtp-user>
+      #- X_SMTP_DOMAIN=<mail-provider.com>
+      #- X_SMTP_PASSWORD=<smtp-password>
+    depends_on:
+      - kutuapp-db_cont
+    links:
+      - "kutuapp-db_cont:db"
+    ports:
+      - "5757:5757"
+    # mem_limit: 1G
+    deploy:
+      resources:
+        limits:
+          cpus: '1.60'
+          memory: 2G
+        reservations:
+          memory: 512M
+    volumes:
+      - kutuapp:/home/kutuapp
+    networks:
+      - intern
+      - intern-prod
+
+  kutuapp-db_cont:
+    image: postgres:12.1-alpine
+    restart: always
+    ports:
+      - '5436:5432'
+    deploy:
+      resources:
+        limits:
+          cpus: '1.50'
+          memory: 512M
+        reservations:
+          memory: 128M
+    environment:
+      - POSTGRES_PASSWORD=kutuapp
+      - POSTGRES_USER=kutuapp
+      - PGDATA=/var/lib/pgsql/data
+    volumes:
+      - type: bind
+        source: ./pg-init.sql
+        target: /docker-entrypoint-initdb.d/init.sql
+      - kutu-db-data:/var/lib/pgsql/
+    networks:
+      - intern-prod
+
+volumes:
+  kutuapp:
+  # external: true
+  kutu-db-init:
+  kutu-db-data:
+    # external: true
+    name: kutu-db-data
+
+networks:
+  intern:
+    driver: bridge
+  intern-prod:
+    driver: bridge

@@ -60,9 +60,9 @@ export JAVA_HOME="${PWD}/${jreversion}"
 export JRE_HOME="${PWD}/${jreversion}"
 export PATH=${JAVA_HOME}/bin:$PATH
 echo "JAVA_HOME=${JAVA_HOME}" >> ~/.mavenrc
-echo "JAVA_HOME=${JAVA_HOME}" >> ~/.zshrc
-echo "JAVA_HOME=${JAVA_HOME}" >> ~/.bash_profile
-echo "JAVA_HOME=${JAVA_HOME}" >> ~/.bashrc
+# echo "JAVA_HOME=${JAVA_HOME}" >> ~/.zshrc
+# echo "JAVA_HOME=${JAVA_HOME}" >> ~/.bash_profile
+# echo "JAVA_HOME=${JAVA_HOME}" >> ~/.bashrc
 
 echo "JAVA_HOME after install jdk${jremajor} ${JAVA_HOME}"
 echo "JRE_HOME after install jdk${jremajor} ${JRE_HOME}"
