@@ -17,7 +17,7 @@ class SimulationBottmingenD1 extends Simulation {
 
   val httpProtocol = http
     .baseUrl(originBaseUrl)
-    .wsBaseUrl(originBaseUrl.replace("http", "ws")).wsReconnect.wsMaxReconnects(100)
+    .wsBaseUrl(originBaseUrl.replace("http", "ws")).wsReconnect.wsMaxReconnects(100000)
     .inferHtmlResources()
     .doNotTrackHeader("1")
     .userAgentHeader("Mozilla/5.0 (iPad; CPU OS 11_0 like Mac OS X) AppleWebKit/604.1.34 (KHTML, like Gecko) Version/11.0 Mobile/15A5341f Safari/604.1")
@@ -151,7 +151,7 @@ class SimulationBottmingenD1 extends Simulation {
     .exec(BrowseResults.loadAndSaveDurchgaenge)
     .exec(BrowseResults.loadAndSaveGeraete)
     .exec(BrowseResults.diveToWertungen)
-    .exec(scnCloseWebsocketUser)
+    //.exec(scnCloseWebsocketUser)
   //    .pause(20 seconds, 30 seconds)
 
   setUp(
