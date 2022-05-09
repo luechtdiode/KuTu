@@ -1,4 +1,4 @@
-FROM eclipse-temurin:17-jre
+FROM eclipse-temurin:18-jre
 
 # Create kutu user and group
 RUN echo "kutu:x:1497:1495:user for kutu:/home:/bin/false" >> /etc/passwd
