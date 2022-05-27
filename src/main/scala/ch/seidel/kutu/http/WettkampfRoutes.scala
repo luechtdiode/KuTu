@@ -292,10 +292,14 @@ trait WettkampfRoutes extends SprayJsonSupport
                         import Core.materializer
                         val is = file.runWith(StreamConverters.asInputStream(FiniteDuration(180, TimeUnit.SECONDS)))
                         try {
-                          ResourceExchanger.importWettkampf(is)
+                          val wettkampf = ResourceExchanger.importWettkampf(is)
                           val claims = setClaims(wkuuid.toString, Int.MaxValue)
                           respondWithHeader(RawHeader(jwtAuthorizationKey, JsonWebToken(jwtHeader, claims, jwtSecretKey))) {
-                            complete(StatusCodes.OK)
+                            if (wettkampf.notificationEMail == null || wettkampf.notificationEMail.trim.isEmpty) {
+                              complete(StatusCodes.Conflict, s"Die EMail-Adresse für die Notifikation von Online-Registrierungen ist noch nicht erfasst.")
+                            } else {
+                              complete(StatusCodes.OK)
+                            }
                           }
                         } catch {
                           case e: Exception =>
@@ -337,7 +341,11 @@ trait WettkampfRoutes extends SprayJsonSupport
                           onComplete(processor) {
                             case Success(wettkampf) =>
                               log.info(s"wettkampf ${wettkampf.easyprint} updated")
-                              complete(StatusCodes.OK)
+                              if (wettkampf.notificationEMail == null || wettkampf.notificationEMail.trim.isEmpty) {
+                                complete(StatusCodes.Conflict, s"Die EMail-Adresse für die Notifikation von Online-Registrierungen ist noch nicht erfasst.")
+                              } else {
+                                complete(StatusCodes.OK)
+                              }
                             case Failure(e) =>
                               log.error(e, s"wettkampf $wkuuid cannot be uploaded: " + e.toString)
                               complete(StatusCodes.BadRequest,
