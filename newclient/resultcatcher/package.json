@@ -26,7 +26,7 @@
     "@ionic/angular": "^6.0.10",
     "classlist.js": "^1.1.20150312",
     "color": "^4.2.1",
-    "ini": ">=1.3.6",
+    "ini": ">=3.0.0",
     "ionic4-auto-complete": "^2.9.9",
     "rxjs": "~7.5.4",
     "tslib": "^2.3.1",
