@@ -2,7 +2,6 @@ package ch.seidel.kutu
 
 import ch.seidel.commons.{DisplayablePage, PageDisplayer}
 import ch.seidel.jwt
-import ch.seidel.jwt.JsonWebToken
 import ch.seidel.kutu.Config._
 import ch.seidel.kutu.akka.KutuAppEvent
 import ch.seidel.kutu.data.{CaseObjectMetaUtil, ResourceExchanger, Surname}
@@ -10,7 +9,6 @@ import ch.seidel.kutu.domain._
 import ch.seidel.kutu.http.{AuthSupport, JsonSupport, JwtSupport, WebSocketClient}
 import javafx.beans.property.SimpleObjectProperty
 import javafx.scene.control.DatePicker
-import javafx.util.Callback
 import net.glxn.qrgen.QRCode
 import net.glxn.qrgen.image.ImageType
 import org.slf4j.LoggerFactory
@@ -27,7 +25,6 @@ import scalafx.scene.Node.sfxNode2jfx
 import scalafx.scene.control.Alert.AlertType
 import scalafx.scene.control.Label.sfxLabel2jfx
 import scalafx.scene.control.MenuItem.sfxMenuItem2jfx
-import scalafx.scene.control.ScrollPane.sfxScrollPane2jfx
 import scalafx.scene.control.Tab.sfxTab2jfx
 import scalafx.scene.control.TableColumn._
 import scalafx.scene.control.TextField.sfxTextField2jfx
@@ -396,25 +393,26 @@ object KuTuApp extends JFXApp3 with KutuService with JsonSupport with JwtSupport
               server.httpUploadWettkampfRequest(p.toWettkampf)
             }
             process.onComplete { resultTry =>
+
               Platform.runLater {
-                val feedback = resultTry match {
+                resultTry match {
                   case Success(response) =>
                     selectedWettkampfSecret.value = p.toWettkampf.readSecret(homedir, remoteHostOrigin)
-                    s"Der Wettkampf ${p.easyprint} wurde erfolgreich im Netzwerk bereitgestellt"
-                  case Failure(error) => error.getMessage.replace("(", "(\n")
-                }
-                implicit val e = action
-                PageDisplayer.showInDialog(caption, new DisplayablePage() {
-                  def getPage: Node = {
-                    new BorderPane {
-                      hgrow = Priority.Always
-                      vgrow = Priority.Always
-                      center = new VBox {
-                        children.addAll(new Label(feedback))
+                    implicit val e = action
+                    PageDisplayer.showInDialog(caption, new DisplayablePage() {
+                      def getPage: Node = {
+                        new BorderPane {
+                          hgrow = Priority.Always
+                          vgrow = Priority.Always
+                          center = new VBox {
+                            children.addAll(new Label(s"Der Wettkampf ${p.easyprint} wurde erfolgreich im Netzwerk bereitgestellt"))
+                          }
+                        }
                       }
-                    }
-                  }
-                })
+                    })
+                  case Failure(error) =>
+                    PageDisplayer.showErrorDialog(caption)(error)
+                }
               }
             }
           }

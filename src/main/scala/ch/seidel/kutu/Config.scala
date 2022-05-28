@@ -57,6 +57,8 @@ object Config extends KuTuSSLContext {
 
   logger.info(s"App-Version: $appVersion")
 
+  val logoFileMaxSize = 1024 * 1024
+
   val importDataFrom: Option[String] = if(config.hasPath("app.import.data.fromversion")) {
     Some(config.getString("app.import.data.fromversion"))
   } else {

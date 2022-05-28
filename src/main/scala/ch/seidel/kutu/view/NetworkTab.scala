@@ -1,9 +1,8 @@
 package ch.seidel.kutu.view
 
-import java.util.UUID
 import ch.seidel.commons.{DisplayablePage, LazyTabPane, PageDisplayer, TabWithService}
 import ch.seidel.kutu.Config._
-import ch.seidel.kutu.KuTuApp.enc
+import ch.seidel.kutu.KuTuApp.{enc, selectedWettkampfSecret}
 import ch.seidel.kutu.akka._
 import ch.seidel.kutu.domain._
 import ch.seidel.kutu.http.WebSocketClient
@@ -26,6 +25,7 @@ import scalafx.scene.control._
 import scalafx.scene.image.{Image, ImageView}
 import scalafx.scene.layout.{BorderPane, Priority, VBox}
 
+import java.util.UUID
 import scala.collection.immutable
 import scala.concurrent.Await
 import scala.concurrent.duration.Duration
@@ -168,7 +168,7 @@ class DurchgangStationView(wettkampf: WettkampfView, service: KutuService, diszi
     , new TreeTableColumn[DurchgangState, String] {
       prefWidth = 80
       text = "Fertig"
-      cellFactory.value = { (_:Any) =>
+      cellFactory.value = { (_: Any) =>
         new TreeTableCell[DurchgangState, String] {
           val image = new ImageView()
           graphic = image
@@ -201,7 +201,7 @@ class DurchgangStationView(wettkampf: WettkampfView, service: KutuService, diszi
         , new TreeTableColumn[DurchgangState, String] {
           text = "Fertig"
           prefWidth = 80
-          cellFactory.value = { _:Any =>
+          cellFactory.value = { _: Any =>
             new TreeTableCell[DurchgangState, String] {
               val image = new ImageView()
               graphic = image
@@ -256,7 +256,7 @@ class NetworkTab(wettkampfmode: BooleanProperty, override val wettkampfInfo: Wet
       .filter(gr => gr.durchgang.nonEmpty)
       .groupBy(gr => gr.durchgang.get)
       .map { t =>
-        DurchgangState(wettkampf.uuid.getOrElse(""), t._1, t._2.forall { riege => riege.erfasst }, t._2, durchgaenge.getOrElse(t._1, Durchgang(wettkampf.id,t._1)))
+        DurchgangState(wettkampf.uuid.getOrElse(""), t._1, t._2.forall { riege => riege.erfasst }, t._2, durchgaenge.getOrElse(t._1, Durchgang(wettkampf.id, t._1)))
       }
       .toList.sortBy(_.name)
   }
@@ -326,23 +326,23 @@ class NetworkTab(wettkampfmode: BooleanProperty, override val wettkampfInfo: Wet
     }
     process.onComplete { resultTry =>
       Platform.runLater {
-        val feedback = resultTry match {
+        resultTry match {
           case Success(response) =>
-            KuTuApp.selectedWettkampfSecret.value = wettkampf.toWettkampf.readSecret(homedir, remoteHostOrigin)
-            s"Der Wettkampf ${wettkampf.easyprint} wurde erfolgreich im Netzwerk bereitgestellt"
-          case Failure(error) => error.getMessage.replace("(", "(\n")
-        }
-        PageDisplayer.showInDialogFromRoot(caption, new DisplayablePage() {
-          def getPage: Node = {
-            new BorderPane {
-              hgrow = Priority.Always
-              vgrow = Priority.Always
-              center = new VBox {
-                children.addAll(new Label(feedback))
+            selectedWettkampfSecret.value = wettkampf.toWettkampf.readSecret(homedir, remoteHostOrigin)
+            PageDisplayer.showInDialogFromRoot(caption, new DisplayablePage() {
+              def getPage: Node = {
+                new BorderPane {
+                  hgrow = Priority.Always
+                  vgrow = Priority.Always
+                  center = new VBox {
+                    children.addAll(new Label(s"Der Wettkampf ${wettkampf.easyprint} wurde erfolgreich im Netzwerk bereitgestellt"))
+                  }
+                }
               }
-            }
-          }
-        })
+            })
+          case Failure(error) =>
+            PageDisplayer.showErrorDialog(caption)(error)
+        }
       }
     }
   }
@@ -371,7 +371,7 @@ class NetworkTab(wettkampfmode: BooleanProperty, override val wettkampfInfo: Wet
   }
 
   def getSelectedDruchgangStates: List[DurchgangState] = {
-    view.selectionModel().selectedItems.flatMap{
+    view.selectionModel().selectedItems.flatMap {
       case treeItem if (treeItem.getChildren.nonEmpty) =>
         treeItem.getChildren.toList.map(_.getValue)
       case treeItem if (treeItem.getChildren.isEmpty) =>

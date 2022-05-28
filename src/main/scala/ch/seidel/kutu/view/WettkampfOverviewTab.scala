@@ -7,7 +7,7 @@ import ch.seidel.kutu.KuTuApp.{controlsView, getStage, selectedWettkampfSecret, 
 import ch.seidel.kutu.domain._
 import ch.seidel.kutu.renderer.PrintUtil.FilenameDefault
 import ch.seidel.kutu.renderer.{CompetitionsJudgeToHtmlRenderer, PrintUtil, WettkampfOverviewToHtmlRenderer}
-import ch.seidel.kutu.{ConnectionStates, KuTuApp, KuTuServer}
+import ch.seidel.kutu.{Config, ConnectionStates, KuTuApp, KuTuServer}
 import javafx.scene.text.FontSmoothingType
 import scalafx.Includes._
 import scalafx.application.Platform
@@ -143,7 +143,11 @@ class WettkampfOverviewTab(wettkampf: WettkampfView, override val service: KutuS
               }
               val selectedFile = fileChooser.showOpenDialog(getStage())
               if (selectedFile != null) {
-                KuTuApp.invokeWithBusyIndicator {
+                if (selectedFile.length() > Config.logoFileMaxSize) {
+                  val maxSize = java.text.NumberFormat.getInstance().format(Config.logoFileMaxSize / 1024)
+                  val currentSize = java.text.NumberFormat.getInstance().format(selectedFile.length() / 1024)
+                  PageDisplayer.showWarnDialog("Wettkampf-Logo laden", s"Die Datei ${selectedFile.getName} ist mit $currentSize Kilobytes zu gross. Sie darf nicht grösser als $maxSize Kilobytes sein.")
+                } else  KuTuApp.invokeWithBusyIndicator {
                   import java.nio.file.{Files, StandardCopyOption}
                   val reg_ex = """.*\.(\w+)""".r
                   val extension = selectedFile.getName match {

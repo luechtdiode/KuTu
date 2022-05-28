@@ -173,20 +173,13 @@ object ResourceExchanger extends KutuService with RiegenBuilder {
 
   def importWettkampf(file: InputStream): Wettkampf = {
     val buffer = new BufferedInputStream(file)
-    buffer.mark(40 * 4096)
+    buffer.mark(5 * 1024 * 1024) // max 5 mb
+    //buffer.mark(40 * 4096)
     type ZipStream = (ZipEntry, InputStream)
     class ZipEntryTraversableClass extends Iterator[ZipStream] {
       buffer.reset()
       val zis = new ZipInputStream(buffer)
-      var currentEntry: Option[ZipEntry] = None
       val zisIterator: Iterator[ZipEntry] = Iterator.continually(zis.getNextEntry)
-        .map(entry => {
-          currentEntry match {
-            case Some(entry) => zis.closeEntry()
-            case _ =>
-          }
-          entry
-        })
         .filter(ze => ze == null || !ze.isDirectory)
         .takeWhile(ze => ze != null).iterator
 
@@ -293,62 +286,6 @@ object ResourceExchanger extends KutuService with RiegenBuilder {
         uuidOption = uuid
       )
 
-      new ZipEntryTraversableClass().foreach { entry =>
-        if (entry._1.getName.startsWith("logo")) {
-          val filename = entry._1.getName
-          val logodir = new java.io.File(Config.homedir + "/" + wettkampf.easyprint.replace(" ", "_"))
-          if (!logodir.exists()) {
-            logodir.mkdir()
-          }
-          val logofile = new java.io.File(Config.homedir + "/" + wettkampf.easyprint.replace(" ", "_") + "/" + filename)
-          val fos = new FileOutputStream(logofile)
-          val bytes = new Array[Byte](1024) //1024 bytes - Buffer size
-          Iterator
-            .continually(entry._2.read(bytes))
-            .takeWhile(-1 !=)
-            .foreach(read => fos.write(bytes, 0, read))
-          fos.flush()
-          fos.close()
-          logger.info("logo was written " + logofile.getName)
-        }
-      }
-      new ZipEntryTraversableClass().foreach { entry =>
-        if (entry._1.getName.endsWith(".scoredef")) {
-          val filename = entry._1.getName
-          val wettkampfDir = new java.io.File(Config.homedir + "/" + wettkampf.easyprint.replace(" ", "_"))
-          if (!wettkampfDir.exists()) {
-            wettkampfDir.mkdir()
-          }
-          val scoredefFile = new java.io.File(Config.homedir + "/" + wettkampf.easyprint.replace(" ", "_") + "/" + filename)
-          val fos = new FileOutputStream(scoredefFile)
-          val bytes = new Array[Byte](1024) //1024 bytes - Buffer size
-          Iterator
-            .continually(entry._2.read(bytes))
-            .takeWhile(-1 !=)
-            .foreach(read => fos.write(bytes, 0, read))
-          fos.flush()
-          fos.close()
-          logger.info("scoredef-file was written " + scoredefFile.getName)
-        }
-      }
-      new ZipEntryTraversableClass().foreach { entry =>
-        if (entry._1.getName.startsWith(".at") && entry._1.getName.contains(Config.remoteHostOrigin) && !wettkampf.hasSecred(Config.homedir, Config.remoteHostOrigin)) {
-          val filename = entry._1.getName
-          if (!wettkampf.hasSecred(Config.homedir, Config.remoteHostOrigin)) {
-            wettkampf.saveSecret(Config.homedir, Config.remoteHostOrigin, Source.fromInputStream(entry._2, "utf-8").mkString)
-            logger.info("secret was written " + filename)
-          }
-        }
-      }
-      new ZipEntryTraversableClass().foreach { entry =>
-        if (entry._1.getName.startsWith(".from") && entry._1.getName.contains(Config.remoteHostOrigin) && !wettkampf.hasRemote(Config.homedir, Config.remoteHostOrigin)) {
-          val filename = entry._1.getName
-          if (!wettkampf.hasRemote(Config.homedir, Config.remoteHostOrigin)) {
-            wettkampf.saveRemoteOrigin(Config.homedir, Config.remoteHostOrigin)
-            logger.info("remote-info was written " + filename)
-          }
-        }
-      }
       (fields(wettkampfHeader("id")), wettkampf)
     }.toMap
 
@@ -528,6 +465,72 @@ object ResourceExchanger extends KutuService with RiegenBuilder {
       })
     }
 
+    if (wettkampfInstances.values.size == 1) {
+      val wettkampf = wettkampfInstances.values.head
+
+      new ZipEntryTraversableClass().foreach { entry =>
+        if (entry._1.getName.startsWith(".at") && entry._1.getName.contains(Config.remoteHostOrigin) && !wettkampf.hasSecred(Config.homedir, Config.remoteHostOrigin)) {
+          val filename = entry._1.getName
+          if (!wettkampf.hasSecred(Config.homedir, Config.remoteHostOrigin)) {
+            wettkampf.saveSecret(Config.homedir, Config.remoteHostOrigin, Source.fromInputStream(entry._2, "utf-8").mkString)
+            logger.info("secret was written " + filename)
+          }
+        }
+      }
+      new ZipEntryTraversableClass().foreach { entry =>
+        if (entry._1.getName.startsWith(".from") && entry._1.getName.contains(Config.remoteHostOrigin) && !wettkampf.hasRemote(Config.homedir, Config.remoteHostOrigin)) {
+          val filename = entry._1.getName
+          if (!wettkampf.hasRemote(Config.homedir, Config.remoteHostOrigin)) {
+            wettkampf.saveRemoteOrigin(Config.homedir, Config.remoteHostOrigin)
+            logger.info("remote-info was written " + filename)
+          }
+        }
+      }
+      new ZipEntryTraversableClass().foreach { entry =>
+        if (entry._1.getName.endsWith(".scoredef")) {
+          val filename = entry._1.getName
+          val wettkampfDir = new java.io.File(Config.homedir + "/" + wettkampf.easyprint.replace(" ", "_"))
+          if (!wettkampfDir.exists()) {
+            wettkampfDir.mkdir()
+          }
+          val scoredefFile = new java.io.File(Config.homedir + "/" + wettkampf.easyprint.replace(" ", "_") + "/" + filename)
+          val fos = new FileOutputStream(scoredefFile)
+          val bytes = new Array[Byte](1024) //1024 bytes - Buffer size
+          Iterator
+            .continually(entry._2.read(bytes))
+            .takeWhile(-1 !=)
+            .foreach(read => fos.write(bytes, 0, read))
+          fos.flush()
+          fos.close()
+          logger.info("scoredef-file was written " + scoredefFile.getName)
+        }
+      }
+      new ZipEntryTraversableClass().foreach { entry =>
+        if (entry._1.getName.startsWith("logo")) {
+          val filename = entry._1.getName
+          if (entry._1.getSize > Config.logoFileMaxSize) {
+            val maxSize = java.text.NumberFormat.getInstance().format(Config.logoFileMaxSize / 1024)
+            val currentSize = java.text.NumberFormat.getInstance().format(entry._1.getSize.length() / 1024)
+            throw new RuntimeException(s"Die Datei $filename ist mit $currentSize zu gross. Sie darf nicht grösser als $maxSize Kilobytes sein.")
+          }
+          val logodir = new java.io.File(Config.homedir + "/" + wettkampf.easyprint.replace(" ", "_"))
+          if (!logodir.exists()) {
+            logodir.mkdir()
+          }
+          val logofile = new java.io.File(Config.homedir + "/" + wettkampf.easyprint.replace(" ", "_") + "/" + filename)
+          val fos = new FileOutputStream(logofile)
+          val bytes = new Array[Byte](1024) //1024 bytes - Buffer size
+          Iterator
+            .continually(entry._2.read(bytes))
+            .takeWhile(-1 !=)
+            .foreach(read => fos.write(bytes, 0, read))
+          fos.flush()
+          fos.close()
+          logger.info("logo was written " + logofile.getName)
+        }
+      }
+    }
+
     logger.info("import finished")
     wettkampfInstances.head._2
   }
@@ -622,6 +625,13 @@ object ResourceExchanger extends KutuService with RiegenBuilder {
 
     val logofile = PrintUtil.locateLogoFile(competitionDir)
     if (logofile.exists()) {
+
+      if (logofile.length() > Config.logoFileMaxSize) {
+        val maxSize = java.text.NumberFormat.getInstance().format(Config.logoFileMaxSize / 1024)
+        val currentSize = java.text.NumberFormat.getInstance().format(logofile.length() / 1024)
+        throw new RuntimeException(s"Die Datei ${logofile.getName} ist mit $currentSize Kilobytes zu gross. Sie darf nicht grösser als $maxSize Kilobytes sein.")
+      }
+
       zip.putNextEntry(new ZipEntry(logofile.getName))
       val fis = new FileInputStream(logofile)
       val bytes = new Array[Byte](1024) //1024 bytes - Buffer size
