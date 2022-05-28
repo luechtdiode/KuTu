@@ -7,7 +7,17 @@
 * Git-Client
 * IDE (IntelliJ, vscode, eclipse, ...)
 * Node (v12.22+)
+    ```bash
+    curl -fsSL https://fnm.vercel.app/install | bash
+    source /home/roland/.bashrc
+    fnm install v12.22
+    node -v
+    ```
+
 * NPM (6.14+)
+    ```bash
+    sudo apt install npm
+    ```
 * Docker for Desktop (optional)
 
 ## Step by step instructions
@@ -32,6 +42,7 @@ OS=<your OS>
 ### Build the client
 ```bash
 cd newclient/resultcatcher
+npm install -g @angular/cli
 npm install -g cordova @ionic/cli
 npm i
 ionic build --prod --engine=browser
