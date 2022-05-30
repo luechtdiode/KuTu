@@ -182,8 +182,9 @@ export class StationPage implements OnInit  {
       message: 'In dieser Riege gibt es noch ' + undefinedItems.length + ' leere Wertungen! - '
                 + 'Bitte prüfen, ob ' + firstUndefinedAthlet + ' geturnt hat.',
       buttons:  [
+        {text: 'Abbrechen', role: 'cancel', handler: () => {}},
         {
-          text: 'Nicht geturnt',
+          text: firstUndefinedAthlet + ' hat nicht geturnt',
           role: 'edit',
           handler: () => {
             undefinedItems.splice(0, 1);
@@ -196,7 +197,7 @@ export class StationPage implements OnInit  {
         },
         {
           text: 'Korrigieren',
-          role: 'cancel',
+          role: 'edit',
           handler: () => {
             this.navCtrl.navigateForward('wertung-editor/' + undefinedItems[0].id);
           }
