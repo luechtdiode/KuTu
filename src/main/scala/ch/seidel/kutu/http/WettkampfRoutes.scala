@@ -246,6 +246,7 @@ trait WettkampfRoutes extends SprayJsonSupport
             authenticated() { userId =>
               entity(as[StartDurchgang]) { sd =>
                 if (userId.equals(wkuuid.toString)) {
+                  AbuseHandler.clearAbusedClients()
                   complete(CompetitionCoordinatorClientActor.publish(sd, clientId))
                 } else {
                   complete(StatusCodes.Conflict)
@@ -331,7 +332,7 @@ trait WettkampfRoutes extends SprayJsonSupport
                               AthletIndexActor.publish(ResyncIndex)
                               CompetitionCoordinatorClientActor.publish(RefreshWettkampfMap(wkuuid.toString), clientId)
                               CompetitionRegistrationClientActor.publish(RegistrationChanged(wkuuid.toString), clientId)
-
+                              AbuseHandler.clearAbusedClients()
                               wettkampf
                             } finally {
                               is.close()

@@ -25,6 +25,18 @@ trait ReportRoutes extends SprayJsonSupport with JsonSupport with AuthSupport wi
   lazy val reportRoutes: Route = {
     (handleCID & extractUri) { (clientId: String, uri: Uri) =>
       pathPrefixLabeled("report", "report") {
+        pathLabeled("abused", "abused") {
+          val abusedClients = AbuseHandler.getAbusedClients()
+          complete(HttpEntity(ContentTypes.`text/html(UTF-8)`,
+            abusedClients
+              .map(abused => abused.split("//"))
+              .map(abusedArr => s"${abusedArr(0).split("@")(0)}</td><td>${abusedArr(0).split("@")(1).split(":")(0)}</td><td>${abusedArr(1)}")
+              .mkString(
+                s"<html><body><h1>${abusedClients.size} Abused clients</h1><table><tr><td>",
+                "</td></tr><tr><td>",
+                "</td></tr></table></body></html>")))
+
+        }~
         pathPrefix(JavaUUID) { competitionId =>
           import AbuseHandler._
           if (!wettkampfExists(competitionId.toString)) {
