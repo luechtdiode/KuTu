@@ -1,14 +1,28 @@
 package ch.seidel.kutu.http
 
 import akka.http.scaladsl.model.Uri
-
 import akka.http.scaladsl.model.Uri.Path
+import ch.seidel.kutu.Config
+import io.prometheus.client
+import io.prometheus.client.Collector
+
+import java.util.concurrent.atomic.AtomicReference
+import scala.annotation.tailrec
 
 object AbuseHandler {
+
+  val abusedGauge: client.Gauge = io.prometheus.client.Gauge
+    .build()
+    .namespace(Collector.sanitizeMetricName(Config.metricsNamespaceName))
+    .name("abused_clients")
+    .help("Abused client counter")
+    .create().register()
+
   case class AbuseCounter(count: Int, lastSeen: Long)
 
-  private var abuseMap = Map[String, AbuseCounter]()
+  private val abuseMap = new AtomicReference(Map[String, AbuseCounter]())
 
+  @tailrec
   def skipElements(path: Path, count: Int): Path =
     if (count < 1 || path.isEmpty || path.tail.isEmpty) path else skipElements(path.tail, count -1)
 
@@ -17,7 +31,7 @@ object AbuseHandler {
   def keyOfClientId(clientId: String, uri: Uri): String = s"${clientId}${stripPath(uri.path)}"
 
   def handleExceptionAbuse(e: Exception, clientId: String, uri: Uri): String = {
-    abuseMap.get(keyOfClientId(clientId, uri)) match {
+    abuseMap.get().get(keyOfClientId(clientId, uri)) match {
       case Some(AbuseCounter(counter, _)) =>
         toAbuseMap(clientId, uri, counter)
         s"Request from $clientId with $counter fails to $uri could not be handled normally: ${e.toString}"
@@ -28,7 +42,7 @@ object AbuseHandler {
   }
 
   def handleAbuse(clientId: String, uri: Uri): String = {
-    abuseMap.get(keyOfClientId(clientId, uri)) match {
+    abuseMap.get.get(keyOfClientId(clientId, uri)) match {
       case Some(AbuseCounter(counter, _)) =>
         toAbuseMap(clientId, uri, counter)
         s"Request from $clientId with $counter fails to $uri could not be found"
@@ -40,7 +54,7 @@ object AbuseHandler {
 
   def findAbusedClient(clientId: String, uri: Uri): Option[AbuseCounter] = {
     val key = keyOfClientId(clientId, uri)
-    val maybeCounter = abuseMap.get(key)
+    val maybeCounter = abuseMap.get.get(key)
     maybeCounter match {
       case None => None
       case acoption@Some(AbuseCounter(counter, lasttime)) =>
@@ -56,21 +70,32 @@ object AbuseHandler {
     }
   }
 
-  def toAbuseMap(clientId: String, uri: Uri, counter: Int = 0) = {
+  def toAbuseMap(clientId: String, uri: Uri, counter: Int = 0): Unit = {
     val key = keyOfClientId(clientId, uri)
     if (counter == 0) {
       findAbusedClient(clientId, uri) match {
         case Some(ac) =>
-          abuseMap = abuseMap + (key -> AbuseCounter(ac.count + 1, System.currentTimeMillis()))
+          abuseMap.getAndUpdate{_ + (key -> AbuseCounter(ac.count + 1, System.currentTimeMillis()))}
         case None =>
-          abuseMap = abuseMap + (key -> AbuseCounter(1, System.currentTimeMillis()))
+          abuseMap.getAndUpdate{_ + (key -> AbuseCounter(1, System.currentTimeMillis()))}
       }
     } else {
-      abuseMap = abuseMap + (key -> AbuseCounter(counter + 1, System.currentTimeMillis()))
+      abuseMap.getAndUpdate{_ + (key -> AbuseCounter(counter + 1, System.currentTimeMillis()))}
     }
+    abusedGauge.set(abuseMap.get().size)
   }
 
   def removeInAbuseMap(clientId: String, uri: Uri): Unit = {
-    abuseMap = abuseMap - keyOfClientId(clientId, uri)
+    abuseMap.getAndUpdate{_ - keyOfClientId(clientId, uri)}
+    abusedGauge.set(abuseMap.get().size)
+  }
+
+  def clearAbusedClients(): Unit = {
+    abuseMap.set(Map.empty)
+    abusedGauge.set(abuseMap.get().size)
+  }
+
+  def getAbusedClients(): Iterable[String] = {
+    abuseMap.get().keys
   }
 }

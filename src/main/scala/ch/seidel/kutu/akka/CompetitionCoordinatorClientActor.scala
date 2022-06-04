@@ -90,13 +90,13 @@ class CompetitionCoordinatorClientActor(wettkampfUUID: String) extends Persisten
   }
 
   override def preStart(): Unit = {
-    log.info(s"Starting CompetitionCoordinatorClientActor for $persistenceId, $wettkampf")
+    log.info(s"Starting for $persistenceId, $wettkampf")
     rebuildWettkampfMap()
   }
 
   override def postStop(): Unit = {
     liveticker.cancel()
-    log.info(s"CompetitionCoordinatorClientActor stopped: $persistenceId, $wettkampf")
+    log.info(s"stopped: $persistenceId, $wettkampf")
     wsSend.values.flatten.foreach(context.stop)
   }
 
