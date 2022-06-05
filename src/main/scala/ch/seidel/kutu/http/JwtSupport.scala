@@ -16,7 +16,16 @@ trait JwtSupport extends Directives {
   def authenticated(rejectRequest: Boolean = false): Directive1[String] = {
     optionalHeaderValueByName(jwtAuthorizationKey).flatMap(authenticateWith(_, rejectRequest))
   }
-  
+
+  def authenticatedId: Directive1[Option[String]] = {
+    optionalHeaderValueByName(jwtAuthorizationKey)
+      .flatMap(jwtOption => provide(jwtOption
+        .filter(token => JsonWebToken.validate(token, jwtSecretKey))
+        .filter(token => !isTokenExpired(token))
+        .flatMap(token => getUserID(getClaims(token))))
+      )
+  }
+
   def authenticateWith(jwtOption: Option[String], rejectRequest: Boolean): Directive1[String] = jwtOption match {
     case Some(jwt) if JsonWebToken.validate(jwt, jwtSecretKey) =>
       if (isTokenExpired(jwt)) {

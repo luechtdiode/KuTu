@@ -235,6 +235,22 @@ export class BackendService extends WebsocketService {
           msg: 'Die Berechtigung zum erfassen von Wertungen ist abgelaufen.',
           type: 'Berechtigung'
         } as MessageAck);
+      } else if (err.status === 404) {
+        this.loggedIn = false;
+        this.stationFreezed = false;
+        this.captionmode = false;
+        this._competition = undefined;
+        this._durchgang = undefined;
+        this._geraet = undefined;
+        this._step = undefined;
+        localStorage.removeItem('auth_token');
+        localStorage.removeItem('current_competition');
+        localStorage.removeItem('current_station');
+        localStorage.removeItem('auth_clubid');
+        this.showMessage.next({
+          msg: 'Die aktuele Einstellung ist nicht mehr gültig und wird zurückgesetzt.',
+          type: 'Einstellung'
+        } as MessageAck);
       } else {
         const msgAck = {
           msg : '<em>' + err.statusText + '</em><br>' + err.message,
