@@ -43,7 +43,13 @@ trait AbuseListHTMLRenderer {
       .zipWithIndex
       .map { item =>
         val client = item._1
-        val cid = client.cid.split("@")(0) + " : " + (client.cid + ":").split(":")(1)
+        val cid = if (client.cid.contains("@") && client.cid.contains(":"))
+          client.cid.split("@")(0) + " : " + client.cid.split(":")(1)
+        else if (client.cid.contains("@"))
+          client.cid.split("@")(0)
+        else
+          client.cid
+
         s"${item._2 + 1}</td><td>${client.ip}</td><td>${escaped(cid)}</td><td>${escaped(client.path)}</td><td>${client.abused}"
       }
       .mkString(
