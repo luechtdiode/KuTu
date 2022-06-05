@@ -7,13 +7,16 @@ import akka.util.Timeout
 import ch.seidel.kutu.Config
 import ch.seidel.kutu.KuTuServer.handleCID
 import ch.seidel.kutu.domain.{Kandidat, KutuService}
-import ch.seidel.kutu.renderer.{KategorieTeilnehmerToHtmlRenderer, KategorieTeilnehmerToJSONRenderer, PrintUtil, RiegenBuilder}
+import ch.seidel.kutu.renderer._
+import fr.davit.akka.http.metrics.core.scaladsl.server.HttpMetricsDirectives._
 
 import java.util.UUID
 import scala.concurrent.duration.DurationInt
-import fr.davit.akka.http.metrics.core.scaladsl.server.HttpMetricsDirectives._
 
-trait ReportRoutes extends SprayJsonSupport with JsonSupport with AuthSupport with RouterLogging with KutuService with IpToDeviceID {
+trait ReportRoutes extends SprayJsonSupport
+  with JsonSupport with AuthSupport with RouterLogging
+  with KutuService with IpToDeviceID
+  with AbuseListHTMLRenderer {
 
   // Required by the `ask` (?) method below
   // usually we'd obtain the timeout from the system's configuration
@@ -26,16 +29,8 @@ trait ReportRoutes extends SprayJsonSupport with JsonSupport with AuthSupport wi
     (handleCID & extractUri) { (clientId: String, uri: Uri) =>
       pathPrefixLabeled("report", "report") {
         pathLabeled("abused", "abused") {
-          val abusedClients = AbuseHandler.getAbusedClients()
           complete(HttpEntity(ContentTypes.`text/html(UTF-8)`,
-            abusedClients
-              .map(abused => abused.split("//"))
-              .map(abusedArr => s"${abusedArr(0).split("@")(0)}</td><td>${abusedArr(0).split("@")(1).split(":")(0)}</td><td>${abusedArr(1)}")
-              .mkString(
-                s"<html><body><h1>${abusedClients.size} Abused clients</h1><table><tr><td>",
-                "</td></tr><tr><td>",
-                "</td></tr></table></body></html>")))
-
+            abusedClientsToHTMListe()))
         }~
         pathPrefix(JavaUUID) { competitionId =>
           import AbuseHandler._

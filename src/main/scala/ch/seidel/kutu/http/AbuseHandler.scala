@@ -18,84 +18,134 @@ object AbuseHandler {
     .help("Abused client counter")
     .create().register()
 
-  case class AbuseCounter(count: Int, lastSeen: Long)
+  val abusedWatchListGauge: client.Gauge = io.prometheus.client.Gauge
+    .build()
+    .namespace(Collector.sanitizeMetricName(Config.metricsNamespaceName))
+    .name("abused_watchlist_clients")
+    .help("Abused watchlist client counter")
+    .create().register()
+
+  case class AbusedClient(ip: String, cid: String, path: String, abused: Boolean) {
+    val mapKey: String = s"${ip}@${cid}//${path}"
+  }
+
+  case object AbusedClient {
+
+    @tailrec
+    private def skipElements(path: Path, count: Int): Path =
+      if (count < 1 || path.isEmpty || path.tail.isEmpty) path else skipElements(path.tail, count -1)
+
+    private def stripPath(path: Path) = s"${skipElements(path, 2).head}/${skipElements(path, 3).head}/../${path.reverse.head}"
+
+    def apply(clientId: String, uri: Uri): AbusedClient = {
+        val client = clientId
+        val path = stripPath(uri.path)
+        val parts = client.split("@").toList
+        val ip = parts.head
+        val cid = parts.tail.mkString("@")
+        AbusedClient(ip, cid, path, abused = false)
+      }
+  }
+  case class AbuseCounter(client: AbusedClient, count: Int, lastSeen: Long) {
+    def isTimedOut: Boolean = System.currentTimeMillis() - lastSeen > 24 * 3_600_000 // 24h
+    def isAbused: Boolean = count > 3 && !isTimedOut
+    def getClient: AbusedClient = client.copy(abused = isAbused)
+  }
 
   private val abuseMap = new AtomicReference(Map[String, AbuseCounter]())
 
-  @tailrec
-  def skipElements(path: Path, count: Int): Path =
-    if (count < 1 || path.isEmpty || path.tail.isEmpty) path else skipElements(path.tail, count -1)
-
-  def stripPath(path: Path) = s"${skipElements(path, 2).head}/${skipElements(path, 3).head}/../${path.reverse.head}"
-
-  def keyOfClientId(clientId: String, uri: Uri): String = s"${clientId}${stripPath(uri.path)}"
+  syncMetricsCounters()
 
   def handleExceptionAbuse(e: Exception, clientId: String, uri: Uri): String = {
-    abuseMap.get().get(keyOfClientId(clientId, uri)) match {
-      case Some(AbuseCounter(counter, _)) =>
-        toAbuseMap(clientId, uri, counter)
+    val abusedClient = AbusedClient(clientId, uri)
+    abuseMap.get().get(abusedClient.mapKey) match {
+      case Some(AbuseCounter(_, counter, _)) =>
+        addToAbuseMap(abusedClient, counter)
         s"Request from $clientId with $counter fails to $uri could not be handled normally: ${e.toString}"
       case None =>
-        toAbuseMap(clientId, uri)
+        addToAbuseMap(abusedClient)
         s"Request from $clientId to $uri could not be handled normally: ${e.toString}"
     }
   }
 
   def handleAbuse(clientId: String, uri: Uri): String = {
-    abuseMap.get.get(keyOfClientId(clientId, uri)) match {
-      case Some(AbuseCounter(counter, _)) =>
-        toAbuseMap(clientId, uri, counter)
+    val abusedClient = AbusedClient(clientId, uri)
+    abuseMap.get.get(abusedClient.mapKey) match {
+      case Some(AbuseCounter(_, counter, _)) =>
+        addToAbuseMap(abusedClient, counter)
         s"Request from $clientId with $counter fails to $uri could not be found"
       case None =>
-        toAbuseMap(clientId, uri)
+        addToAbuseMap(abusedClient)
         s"Request from $clientId with first fail to $uri could not be found"
     }
   }
 
   def findAbusedClient(clientId: String, uri: Uri): Option[AbuseCounter] = {
-    val key = keyOfClientId(clientId, uri)
-    val maybeCounter = abuseMap.get.get(key)
+    findAbusedClient(AbusedClient(clientId, uri))
+  }
+
+  private def findAbusedClient(abusedClient: AbusedClient): Option[AbuseCounter] = {
+    val maybeCounter = abuseMap.get.get(abusedClient.mapKey)
     maybeCounter match {
-      case None => None
-      case acoption@Some(AbuseCounter(counter, lasttime)) =>
-        val timeout = System.currentTimeMillis() - lasttime > 24 * 3_600_000 // 24h
-        if (counter > 3 && !timeout) {
-          acoption
-        } else if (timeout) {
-          removeInAbuseMap(clientId, uri)
-          None
-        } else {
-          None
-        }
+      case None =>
+        None
+      case acOption@Some(abuseCounter) if (abuseCounter.isAbused) =>
+        acOption
+      case Some(abuseCounter) if (abuseCounter.isTimedOut) =>
+        removeInAbuseMap(abuseCounter.client)
+      case _ =>
+        None
     }
   }
 
-  def toAbuseMap(clientId: String, uri: Uri, counter: Int = 0): Unit = {
-    val key = keyOfClientId(clientId, uri)
+  private def addToAbuseMap(abusedClient: AbusedClient, counter: Int = 0): Unit = {
     if (counter == 0) {
-      findAbusedClient(clientId, uri) match {
+      findAbusedClient(abusedClient) match {
         case Some(ac) =>
-          abuseMap.getAndUpdate{_ + (key -> AbuseCounter(ac.count + 1, System.currentTimeMillis()))}
+          abuseMap.getAndUpdate{_ + (abusedClient.mapKey -> AbuseCounter(ac.getClient, ac.count + 1, System.currentTimeMillis()))}
         case None =>
-          abuseMap.getAndUpdate{_ + (key -> AbuseCounter(1, System.currentTimeMillis()))}
+          abuseMap.getAndUpdate{_ + (abusedClient.mapKey -> AbuseCounter(abusedClient, 1, System.currentTimeMillis()))}
       }
     } else {
-      abuseMap.getAndUpdate{_ + (key -> AbuseCounter(counter + 1, System.currentTimeMillis()))}
+      abuseMap.getAndUpdate{_ + (abusedClient.mapKey -> AbuseCounter(abusedClient, counter + 1, System.currentTimeMillis()))}
     }
-    abusedGauge.set(abuseMap.get().size)
+    syncMetricsCounters()
   }
 
-  def removeInAbuseMap(clientId: String, uri: Uri): Unit = {
-    abuseMap.getAndUpdate{_ - keyOfClientId(clientId, uri)}
-    abusedGauge.set(abuseMap.get().size)
+  private def removeInAbuseMap(abusedClient: AbusedClient): Option[AbuseCounter] = {
+    abuseMap.getAndUpdate{_ - abusedClient.mapKey}
+    syncMetricsCounters()
+    None
   }
 
   def clearAbusedClients(): Unit = {
     abuseMap.set(Map.empty)
-    abusedGauge.set(abuseMap.get().size)
+    syncMetricsCounters()
   }
 
-  def getAbusedClients(): Iterable[String] = {
-    abuseMap.get().keys
+  private def clearTimedOutClients(): Unit = abuseMap.getAndUpdate(_.filter(!_._2.isTimedOut))
+
+  private def syncMetricsCounters(): Unit = {
+    clearTimedOutClients()
+    abusedGauge.set(getAbusedClientsCount)
+    abusedWatchListGauge.set(getAbusedWatchlistClientsCount)
+  }
+
+  def getAbusedClients: Iterable[AbusedClient] = {
+    abuseMap.get().values
+      .filter(!_.isTimedOut)
+      .map(_.getClient)
+  }
+
+  def getAbusedClientsCount: Int = {
+    getAbusedClients.count{counter =>
+      counter.abused
+    }
+  }
+
+  def getAbusedWatchlistClientsCount: Int = {
+    getAbusedClients.count{counter =>
+      !counter.abused
+    }
   }
 }

@@ -25,8 +25,14 @@ trait ApiService extends RouteConcatenation with CIDSupport with RouterLogging w
   def allroutes(userLookup: (String) => String, userIdLookup: (String) => Option[Long]) = {
     def myExceptionHandler: ExceptionHandler = ExceptionHandler {
       case e: Exception =>
-        (handleCID & extractUri) { (clientId: String, uri: Uri) =>
-          log.error(handleExceptionAbuse(e, clientId, uri))
+        (handleCID & extractUri & authenticatedId) { (clientId: String, uri: Uri, authId: Option[String]) =>
+          authId match {
+            case None =>
+              // just unauthenticated requests should lead to abused clients
+              log.error(handleExceptionAbuse(e, clientId, uri))
+            case Some(user) =>
+              log.error(s"Error handling request from authenticated $user, $clientId, $uri: {}", e.toString)
+          }
           complete(HttpResponse(InternalServerError, entity = "Bad Request"))
         }
     }
@@ -43,17 +49,16 @@ trait ApiService extends RouteConcatenation with CIDSupport with RouterLogging w
       } ~ metricsroute ~ fallbackRoute
 
     handleExceptions(myExceptionHandler) {
-      extractClientIP { ip =>
-        extractUri { uri =>
-          handleCID { clientId: String =>
+      (extractClientIP & extractUri & handleCID & authenticatedId) { (ip, uri, clientId: String, user: Option[String]) =>
+        user match {
+          case Some(_) => standardRoutes
+          case None =>
             findAbusedClient(clientId, uri) match {
-              case Some(AbuseCounter(counter, lastSeen)) =>
+              case Some(AbuseCounter(_, counter, lastSeen)) =>
                 log.warning(s"abused request from $clientId to $uri. $counter times failed, last exception since ${toDurationFormat(lastSeen, System.currentTimeMillis())}")
-                //toAbuseMap(clientId, uri, counter)
                 complete(StatusCodes.NotFound)
               case None => standardRoutes
             }
-          }
         }
       }
     }
