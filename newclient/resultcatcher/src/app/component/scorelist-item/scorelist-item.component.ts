@@ -1,5 +1,5 @@
 import { Component, OnInit, Input, Output, EventEmitter } from '@angular/core';
-import { filter, map } from 'rxjs';
+//import { filter, map } from 'rxjs/operators';
 import { ScoreRow } from 'src/app/backend-types';
 
 @Component({
