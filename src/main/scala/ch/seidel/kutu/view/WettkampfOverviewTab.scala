@@ -112,7 +112,7 @@ class WettkampfOverviewTab(wettkampf: WettkampfView, override val service: KutuS
         }
 
         def generate = (lpp: Int) => KuTuApp.invokeAsyncWithBusyIndicator {Future{
-          KuTuServer.getAllJudgesRemote(wettkampf.toWettkampf)
+          KuTuServer.getAllJudgesHTMLRemote(wettkampf.toWettkampf)
         }}
         Platform.runLater {
           PrintUtil.printDialogFuture(caption, FilenameDefault(filename, dir), false, generate, orientation = PageOrientation.Landscape)(action)

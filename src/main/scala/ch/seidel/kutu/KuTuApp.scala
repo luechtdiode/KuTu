@@ -972,7 +972,9 @@ object KuTuApp extends JFXApp3 with KutuService with JsonSupport with JwtSupport
       }, new Button("OK") {
         disable <== when(Bindings.createBooleanBinding(() => {
           cmbProgramm.selectionModel.value.getSelectedIndex == -1 ||
-            txtDatum.value.isNull.value || txtTitel.text.isEmpty.value
+            txtDatum.value.isNull.value ||
+            txtTitel.text.isEmpty.value ||
+            txtNotificationEMail.text.isEmpty.value
         },
           cmbProgramm.selectionModel.value.selectedIndexProperty, txtDatum.value, txtTitel.text
         )) choose true otherwise false
@@ -1201,7 +1203,9 @@ object KuTuApp extends JFXApp3 with KutuService with JsonSupport with JwtSupport
       }
       "localhost"
     } else remoteHostOrigin
-    p.uuid.zip(AuthSupport.getClientSecret).zip(p.toWettkampf.readSecret(homedir, secretOrigin)).headOption match {
+    p.uuid
+      .zip(Some(jwt.JsonWebToken(jwtHeader, setClaims(p.uuid.get, p.datum), jwtSecretKey)))
+      .zip(p.toWettkampf.readSecret(homedir, secretOrigin)) match {
       case Some(((uuid, shortsecret), secret)) =>
         val shorttimeout = getExpiration(shortsecret).getOrElse(new Date())
         val longtimeout = getExpiration(secret).getOrElse(new Date())
@@ -1224,18 +1228,25 @@ object KuTuApp extends JFXApp3 with KutuService with JsonSupport with JwtSupport
 
           val image = new Image(in)
           val view = new ImageView(image)
-          val urlLabel = new Hyperlink("Link (24h gültig) im Browser öffnen")
+          val urlLabel = new Hyperlink(s"Link (gültig bis ${formatDateTime(shorttimeout)} Uhr) im Browser öffnen")
           urlLabel.onMouseClicked = _ => {
             Clipboard.systemClipboard.content = ClipboardContent(
               DataFormat.PlainText -> shortConnectionString,
-              DataFormat.Html -> s"<a href='$shortConnectionString' target='_blank'>Link (24h gültig) im Browser öffnen</a> text"
+              DataFormat.Html -> s"<a href='$shortConnectionString' target='_blank'>Link (gültig bis ${formatDateTime(shorttimeout)} Uhr) im Browser öffnen</a> text"
             )
             hostServices.showDocument(shortConnectionString)
           }
-          val mailLabel = new Hyperlink("Link (24h gültig) als EMail versenden")
+          val mailLabel = new Hyperlink(s"Link (gültig bis ${formatDateTime(shorttimeout)} Uhr) als EMail versenden")
           mailLabel.onMouseClicked = _ => {
-            val mailURIStr = String.format("mailto:%s?subject=%s&cc=%s&body=%s",
-              "", encodeURIParam(s"Link für Datenerfassung im Wettkampf (${p.easyprint})"), "", encodeURIParam(
+            val judges = KuTuServer.getAllJudgesRemote(p.toWettkampf)
+              .flatMap(_._2)
+              .map(_.mail)
+              .mkString(";")
+            val mailURIStr = String.format("mailto:%s?subject=%s&bcc=%s&body=%s",
+              p.notificationEMail,
+              encodeURIParam(s"Link für Datenerfassung im Wettkampf (${p.easyprint})"),
+              judges,
+              encodeURIParam(
                 s"""  Geschätze(r) Wertungsrichter(in)
                    |
                    |  mit dem folgenden Link kommst Du in die App, in der Du die Wettkampf-Resultate
@@ -1244,6 +1255,8 @@ object KuTuApp extends JFXApp3 with KutuService with JsonSupport with JwtSupport
                    |
                    |  Wichtig:
                    |  * Dieser Link ist bis am ${formatDateTime(shorttimeout)} Uhr gültig.
+                   |  * Der Link kann bis dahin beliebig of verwendet werden, um die Berrechtigung
+                   |    zum Erfassen von Wertungsresultaten freizuschalten.
                    |  * Bitte den Link vertraulich behandeln - nur Du darfst mit diesem Link einsteigen.
                    |
                    |  Sportliche Grüsse,
