@@ -1228,15 +1228,15 @@ object KuTuApp extends JFXApp3 with KutuService with JsonSupport with JwtSupport
 
           val image = new Image(in)
           val view = new ImageView(image)
-          val urlLabel = new Hyperlink("Link (24h gültig) im Browser öffnen")
+          val urlLabel = new Hyperlink(s"Link (gültig bis ${formatDateTime(shorttimeout)} Uhr) im Browser öffnen")
           urlLabel.onMouseClicked = _ => {
             Clipboard.systemClipboard.content = ClipboardContent(
               DataFormat.PlainText -> shortConnectionString,
-              DataFormat.Html -> s"<a href='$shortConnectionString' target='_blank'>Link (24h gültig) im Browser öffnen</a> text"
+              DataFormat.Html -> s"<a href='$shortConnectionString' target='_blank'>Link (gültig bis ${formatDateTime(shorttimeout)} Uhr) im Browser öffnen</a> text"
             )
             hostServices.showDocument(shortConnectionString)
           }
-          val mailLabel = new Hyperlink("Link (24h gültig) als EMail versenden")
+          val mailLabel = new Hyperlink(s"Link (gültig bis ${formatDateTime(shorttimeout)} Uhr) als EMail versenden")
           mailLabel.onMouseClicked = _ => {
             val judges = KuTuServer.getAllJudgesRemote(p.toWettkampf)
               .flatMap(_._2)
@@ -1255,6 +1255,8 @@ object KuTuApp extends JFXApp3 with KutuService with JsonSupport with JwtSupport
                    |
                    |  Wichtig:
                    |  * Dieser Link ist bis am ${formatDateTime(shorttimeout)} Uhr gültig.
+                   |  * Der Link kann bis dahin beliebig of verwendet werden, um die Berrechtigung
+                   |    zum Erfassen von Wertungsresultaten freizuschalten.
                    |  * Bitte den Link vertraulich behandeln - nur Du darfst mit diesem Link einsteigen.
                    |
                    |  Sportliche Grüsse,
