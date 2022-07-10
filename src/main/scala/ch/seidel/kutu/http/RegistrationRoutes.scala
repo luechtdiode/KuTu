@@ -91,8 +91,17 @@ trait RegistrationRoutes extends SprayJsonSupport with JwtSupport with JsonSuppo
     }
     , Duration.Inf)
 
-  def getAllJudgesRemote(p: Wettkampf): String = Await.result(
+  def getAllJudgesRemote(p: Wettkampf): List[(Registration,List[JudgeRegistration])] = Await.result(
     httpGetClientRequest(s"$remoteAdminBaseUrl/api/registrations/${p.uuid.get}/judges").flatMap {
+      case HttpResponse(StatusCodes.OK, headers, entity, _) =>
+        Unmarshal(entity).to[List[(Registration,List[JudgeRegistration])]]
+      case _ => Future(List.empty)
+    }
+    , Duration.Inf)
+
+
+  def getAllJudgesHTMLRemote(p: Wettkampf): String = Await.result(
+    httpGetClientRequest(s"$remoteAdminBaseUrl/api/registrations/${p.uuid.get}/judges?html").flatMap {
       case HttpResponse(StatusCodes.OK, headers, entity, _) =>
         Unmarshal(entity).to[String]
       case _ => Future("")
@@ -188,10 +197,16 @@ trait RegistrationRoutes extends SprayJsonSupport with JwtSupport with JsonSuppo
             authenticated() { userId =>
               pathEndOrSingleSlash {
                 get { // list Judges per club
-                  complete(Future {
-                    toHTMLasJudgeRegistrationsList(wettkampf, loadAllJudgesOfCompetition(wettkampf.uuid.map(UUID.fromString).get), logofile)
+                  parameters(Symbol("html").?) {
+                    case None =>
+                      complete(Future {
+                        loadAllJudgesOfCompetition(wettkampf.uuid.map(UUID.fromString).get).toList
+                      })
+                    case _ =>
+                      complete(Future {
+                        toHTMLasJudgeRegistrationsList(wettkampf, loadAllJudgesOfCompetition(wettkampf.uuid.map(UUID.fromString).get), logofile)
+                      })
                   }
-                  )
                 }
               }
             }

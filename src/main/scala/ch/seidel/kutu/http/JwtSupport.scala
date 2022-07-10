@@ -6,8 +6,10 @@ import akka.http.scaladsl.model.StatusCodes
 import akka.http.scaladsl.model.headers.RawHeader
 import akka.http.scaladsl.server.{Directive1, Directives}
 import ch.seidel.jwt
-import ch.seidel.jwt.{JsonWebToken, JwtClaimsSet}
+import ch.seidel.jwt.{JsonWebToken, JwtClaimsSet, JwtClaimsSetMap}
 import ch.seidel.kutu.Config._
+
+import java.time.{Duration, Instant}
 
 trait JwtSupport extends Directives {
   private lazy val userKey = "user"
@@ -51,7 +53,23 @@ trait JwtSupport extends Directives {
     new String(Base64.getUrlEncoder.encodeToString((s"registration&c=$competitionUUID&rid=$registrationId&rs=$token").getBytes))
   }
 
-  def setClaims(userid: String, expiryPeriodInDays: Long) = JwtClaimsSet(
+  def setClaims(userid: String, wettkampfDate: Date): JwtClaimsSetMap = {
+    val wkStart = Instant.ofEpochMilli(wettkampfDate.getTime).truncatedTo(TimeUnit.DAYS.toChronoUnit)
+    val wkEnd = wkStart.plus(Duration.ofDays(1))
+    val originalTimeout = Duration.between(Instant.now(), wkEnd)
+    val permissionTimeout = if(originalTimeout.toDays > 3 || originalTimeout.toDays < jwtTokenExpiryPeriodInDays) {
+      Instant.now().plus(Duration.ofDays(jwtTokenExpiryPeriodInDays))
+    } else {
+      wkEnd
+    }
+
+    JwtClaimsSet(Map(
+      userKey -> userid,
+      expiredAtKey -> permissionTimeout.toEpochMilli
+    ))
+  }
+
+  def setClaims(userid: String, expiryPeriodInDays: Long): JwtClaimsSetMap = JwtClaimsSet(
     Map(
       userKey -> userid,
       expiredAtKey -> (System.currentTimeMillis() + TimeUnit.DAYS

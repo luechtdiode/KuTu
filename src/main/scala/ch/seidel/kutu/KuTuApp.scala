@@ -972,7 +972,9 @@ object KuTuApp extends JFXApp3 with KutuService with JsonSupport with JwtSupport
       }, new Button("OK") {
         disable <== when(Bindings.createBooleanBinding(() => {
           cmbProgramm.selectionModel.value.getSelectedIndex == -1 ||
-            txtDatum.value.isNull.value || txtTitel.text.isEmpty.value
+            txtDatum.value.isNull.value ||
+            txtTitel.text.isEmpty.value ||
+            txtNotificationEMail.text.isEmpty.value
         },
           cmbProgramm.selectionModel.value.selectedIndexProperty, txtDatum.value, txtTitel.text
         )) choose true otherwise false
@@ -1201,7 +1203,9 @@ object KuTuApp extends JFXApp3 with KutuService with JsonSupport with JwtSupport
       }
       "localhost"
     } else remoteHostOrigin
-    p.uuid.zip(AuthSupport.getClientSecret).zip(p.toWettkampf.readSecret(homedir, secretOrigin)).headOption match {
+    p.uuid
+      .zip(Some(jwt.JsonWebToken(jwtHeader, setClaims(p.uuid.get, p.datum), jwtSecretKey)))
+      .zip(p.toWettkampf.readSecret(homedir, secretOrigin)) match {
       case Some(((uuid, shortsecret), secret)) =>
         val shorttimeout = getExpiration(shortsecret).getOrElse(new Date())
         val longtimeout = getExpiration(secret).getOrElse(new Date())
@@ -1234,8 +1238,15 @@ object KuTuApp extends JFXApp3 with KutuService with JsonSupport with JwtSupport
           }
           val mailLabel = new Hyperlink("Link (24h gültig) als EMail versenden")
           mailLabel.onMouseClicked = _ => {
-            val mailURIStr = String.format("mailto:%s?subject=%s&cc=%s&body=%s",
-              "", encodeURIParam(s"Link für Datenerfassung im Wettkampf (${p.easyprint})"), "", encodeURIParam(
+            val judges = KuTuServer.getAllJudgesRemote(p.toWettkampf)
+              .flatMap(_._2)
+              .map(_.mail)
+              .mkString(";")
+            val mailURIStr = String.format("mailto:%s?subject=%s&bcc=%s&body=%s",
+              p.notificationEMail,
+              encodeURIParam(s"Link für Datenerfassung im Wettkampf (${p.easyprint})"),
+              judges,
+              encodeURIParam(
                 s"""  Geschätze(r) Wertungsrichter(in)
                    |
                    |  mit dem folgenden Link kommst Du in die App, in der Du die Wettkampf-Resultate
