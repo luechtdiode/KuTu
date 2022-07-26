@@ -1,9 +1,9 @@
-import { Component, OnInit, ViewChild, HostListener } from '@angular/core';
+import { Component, OnInit } from '@angular/core';
 import { WertungContainer, Geraet, Wettkampf, ScoreBlock, ScoreRow, ScoreLink } from '../backend-types';
 import { IonItemSliding, NavController, ActionSheetController } from '@ionic/angular';
 
 import { BackendService } from '../services/backend.service';
-import { debounceTime, distinctUntilChanged, filter, map, share, switchMap, windowCount } from 'rxjs/operators';
+import { debounceTime, distinctUntilChanged, filter, map, share, switchMap } from 'rxjs/operators';
 import { backendUrl } from '../utils';
 import { Observable } from 'rxjs/internal/Observable';
 import { Subject, BehaviorSubject, of } from 'rxjs';

@@ -4,6 +4,7 @@ import { WertungContainer } from 'src/app/backend-types';
 export enum GroupBy {
   NONE, ATHLET, PROGRAMM
 }
+
 @Component({
   selector: 'result-display',
   templateUrl: './result-display.component.html',
