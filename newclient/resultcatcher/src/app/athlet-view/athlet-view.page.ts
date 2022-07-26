@@ -5,6 +5,7 @@ import { BackendService } from '../services/backend.service';
 import { filter, map } from 'rxjs/operators';
 import { ActivatedRoute } from '@angular/router';
 import { backendUrl } from '../utils';
+import { GroupBy } from '../component/result-display/result-display.component';
 
 
 @Component({
@@ -13,6 +14,7 @@ import { backendUrl } from '../utils';
   styleUrls: ['./athlet-view.page.scss'],
 })
 export class AthletViewPage  implements OnInit {
+  groupBy = GroupBy; 
 
   // @ViewChild(IonContent) content: IonContent;
 
@@ -25,6 +27,9 @@ export class AthletViewPage  implements OnInit {
   constructor(public navCtrl: NavController,
               private route: ActivatedRoute,
               public backendService: BackendService) {
+    if (! this.backendService.competitions) {
+      this.backendService.getCompetitions();
+    }
   }
 
   makeItemHash(item: WertungContainer) {
@@ -115,6 +120,18 @@ export class AthletViewPage  implements OnInit {
       return '';
     }
     return c.titel + ', am ' + (c.datum + 'T').split('T')[0].split('-').reverse().join('-');
+  }
+
+  get athlet(): WertungContainer {
+    if (this.items && this.items.length > 0) {
+      return this.items[0];
+    } else {
+      return <WertungContainer>{};
+    }
+  }
+
+  getColumnSpec(): number {
+    return this.geraete.length;
   }
 
   geraetOrder(geraetId: number): number {

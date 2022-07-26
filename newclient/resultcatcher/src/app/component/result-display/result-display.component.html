@@ -2,27 +2,34 @@
   <ion-grid>
     <ion-row>
       <ion-col align-self-top>
-        <div style="font-size: 20pt;">{{title}}</div>&nbsp;&nbsp;
+        <div class="fixedheight" style="font-size: 19pt;">{{title}}</div>
       </ion-col>
     </ion-row>
     <ion-row>
-      <ion-col align-self-top>
-        <div style="font-size: 16pt;">{{item.vorname + ' ' + item.name}}</div>&nbsp;&nbsp;
-        <br> {{item.verein}}&nbsp;&nbsp;
+      <ion-col align-self-top *ngIf="groupedBy !== groupBy.ATHLET">
+        <div class="nonwrapping">
+          <div style="font-size: 16pt;">{{item.vorname + ' ' + item.name}}</div>
+        </div>
+        <div class="nonwrapping">
+          {{item.verein}}
+        </div>      
+      </ion-col>
+      <ion-col align-self-top *ngIf="groupedBy === groupBy.ATHLET">
+        &nbsp;
       </ion-col>
       <ion-col col-auto align-self-end>
-        <ion-note *ngIf="item.wertung.noteD !== undefined" item-end item-text-wrap>
+        <ion-note *ngIf="item.isDNoteUsed && item.wertung.noteD !== undefined" item-end item-text-wrap>
           D: {{item.wertung.noteD | number:'2.3-3'}}&nbsp;&nbsp;
           <br>E: {{item.wertung.noteE | number:'2.3-3'}}&nbsp;&nbsp;
           <br>
           <span style="font-size: 18pt;font-weight: bold">{{item.wertung.endnote | number:'2.3-3'}}&nbsp;&nbsp;</span>
         </ion-note>
-        <ion-note *ngIf="item.wertung.noteD === undefined && item.wertung.noteE !== item.wertung.endnote" item-end item-text-wrap>
+        <ion-note *ngIf="!item.isDNoteUsed && item.wertung.noteE !== item.wertung.endnote" item-end item-text-wrap>
           <br>E: {{item.wertung.noteE | number:'2.3-3'}}&nbsp;&nbsp;
           <br>
           <span style="font-size: 18pt;font-weight: bold">{{item.wertung.endnote | number:'2.3-3'}}&nbsp;&nbsp;</span>
         </ion-note>
-        <ion-note *ngIf="item.wertung.noteD === undefined && item.wertung.noteE === item.wertung.endnote" item-end item-text-wrap>
+        <ion-note class="bottom-right" *ngIf="!item.isDNoteUsed && item.wertung.noteE === item.wertung.endnote" item-end item-text-wrap>
           <span style="font-size: 18pt;font-weight: bold">{{item.wertung.endnote | number:'2.3-3'}}&nbsp;&nbsp;</span>
         </ion-note>
       </ion-col>

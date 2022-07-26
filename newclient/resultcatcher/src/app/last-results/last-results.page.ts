@@ -1,4 +1,4 @@
-import { Component, OnInit, ViewChild, HostListener } from '@angular/core';
+import { Component, OnInit } from '@angular/core';
 import { WertungContainer, Geraet, Wettkampf, ScoreBlock, ScoreRow, ScoreLink } from '../backend-types';
 import { IonItemSliding, NavController, ActionSheetController } from '@ionic/angular';
 
@@ -7,6 +7,7 @@ import { debounceTime, distinctUntilChanged, filter, map, share, switchMap } fro
 import { backendUrl } from '../utils';
 import { Observable } from 'rxjs/internal/Observable';
 import { Subject, BehaviorSubject, of } from 'rxjs';
+import { GroupBy } from '../component/result-display/result-display.component';
 
 @Component({
   selector: 'app-last-results',
@@ -14,6 +15,7 @@ import { Subject, BehaviorSubject, of } from 'rxjs';
   styleUrls: ['./last-results.page.scss'],
 })
 export class LastResultsPage implements OnInit {
+  groupBy = GroupBy; 
 
   // @ViewChild(IonContent) content: IonContent;
 
@@ -220,9 +222,25 @@ export class LastResultsPage implements OnInit {
       return '';
     }
   }
+  
+  getColumnSpec(): number {
+    return this.geraete?.length || 0;
+  }
 
   getTitle(wertungContainer: WertungContainer): string {
     return wertungContainer.programm + ' - ' + this.geraetText(wertungContainer.geraet);
+  }
+
+  onlyUnique(value, index, self) {
+    return self.indexOf(value) === index;
+  }
+
+  getProgramme() {
+    return this.items.map(wc => wc.programm).filter(this.onlyUnique);
+  }
+  
+  getWertungen(programm) {
+    return this.items.filter(wc => wc.programm === programm);
   }
 
   scorelistAvailable(): boolean {

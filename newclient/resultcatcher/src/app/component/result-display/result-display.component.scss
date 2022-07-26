@@ -3,7 +3,7 @@ ion-card {
   position: relative;
   color: var(--ion-card-color);
   background-color: var(--ion-card-background-color);
-
+  
   border-radius: 4px;
   -webkit-box-shadow: 0 3px 1px -2px var(--ion-card-shadow-color1), 
                       0 2px 2px 0 var(--ion-card-shadow-color2), 
@@ -11,4 +11,16 @@ ion-card {
   box-shadow:         0 3px 1px -2px var(--ion-card-shadow-color1), 
                       0 2px 2px 0 var(--ion-card-shadow-color2), 
                       0 1px 5px 0 var(--ion-card-shadow-color3);  
+}
+
+.fixedheight {
+  height: 5em;
+  max-height: 2em;
+  min-height: 2em;
+}
+
+.nonwrapping {
+  width : 100%;
+  display:inline-block;
+  white-space: nowrap;
 }
