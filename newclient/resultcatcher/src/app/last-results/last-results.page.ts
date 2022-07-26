@@ -7,6 +7,7 @@ import { debounceTime, distinctUntilChanged, filter, map, share, switchMap } fro
 import { backendUrl } from '../utils';
 import { Observable } from 'rxjs/internal/Observable';
 import { Subject, BehaviorSubject, of } from 'rxjs';
+import { GroupBy } from '../component/result-display/result-display.component';
 
 @Component({
   selector: 'app-last-results',
@@ -14,6 +15,7 @@ import { Subject, BehaviorSubject, of } from 'rxjs';
   styleUrls: ['./last-results.page.scss'],
 })
 export class LastResultsPage implements OnInit {
+  groupBy = GroupBy; 
 
   // @ViewChild(IonContent) content: IonContent;
 

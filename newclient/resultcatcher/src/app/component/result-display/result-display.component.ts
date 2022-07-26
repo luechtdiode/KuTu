@@ -11,6 +11,8 @@ export enum GroupBy {
   styleUrls: ['./result-display.component.scss'],
 })
 export class ResultDisplayComponent implements OnInit {
+  languageTypeDeclaredInComponent = GroupBy; 
+  
   @Input()
   item: WertungContainer;
 

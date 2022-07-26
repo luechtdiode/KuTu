@@ -5,6 +5,7 @@ import { BackendService } from '../services/backend.service';
 import { filter, map } from 'rxjs/operators';
 import { ActivatedRoute } from '@angular/router';
 import { backendUrl } from '../utils';
+import { GroupBy } from '../component/result-display/result-display.component';
 
 
 @Component({
@@ -13,6 +14,7 @@ import { backendUrl } from '../utils';
   styleUrls: ['./athlet-view.page.scss'],
 })
 export class AthletViewPage  implements OnInit {
+  groupBy = GroupBy; 
 
   // @ViewChild(IonContent) content: IonContent;
 
