@@ -6,7 +6,7 @@
       </ion-col>
     </ion-row>
     <ion-row>
-      <ion-col align-self-top *ngIf="groupedBy !== 'ATHLET'">
+      <ion-col align-self-top *ngIf="groupedBy !== groupBy.ATHLET">
         <div class="nonwrapping">
           <div style="font-size: 16pt;">{{item.vorname + ' ' + item.name}}</div>
         </div>
@@ -14,7 +14,7 @@
           {{item.verein}}
         </div>      
       </ion-col>
-      <ion-col align-self-top *ngIf="groupedBy === 'ATHLET'">
+      <ion-col align-self-top *ngIf="groupedBy === groupBy.ATHLET">
         &nbsp;
       </ion-col>
       <ion-col col-auto align-self-end>
