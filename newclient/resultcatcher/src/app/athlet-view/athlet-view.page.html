@@ -2,7 +2,6 @@
     <ion-toolbar>
       <ion-buttons slot="start">
           <ion-back-button defaultHref="/"></ion-back-button>
-
       </ion-buttons>
       <ion-title>
         <ion-grid no-padding>
@@ -10,29 +9,41 @@
             <ion-col>
               <ion-label>Aktuelle Resultate</ion-label>
             </ion-col>
+            <ion-col *ngIf="competition">
+              <ion-note>
+                {{competitionName()}}
+              </ion-note>
+              <div style="font-size: 16pt;">{{athlet.vorname + ' ' + athlet.name}}</div>
+              <div style="font-size: 10pt;">{{athlet.verein}}</div>
+            </ion-col>
           </ion-row>
         </ion-grid>
       </ion-title>
       <ion-buttons slot="end">
-        <ion-note slot="start" *ngIf="competition">
-          {{competitionName()}}
-        </ion-note>
         <ion-button slot="end" (click)="share()" *ngIf="isShareAvailable()">
           <ion-icon name="share"></ion-icon>
         </ion-button>
       </ion-buttons>
-
     </ion-toolbar>
   </ion-header>
 
   <ion-content>
     <ion-grid no-padding>
-      <ion-row>
+      <ion-row *ngIf="getColumnSpec() === 6">
         <ion-col class="align-self-start"
           size-xs="12" size-md="6" size-lg="4" size-xl="2"
-         col-12 col-sm-6 col-lg-4 col-xl-2 *ngFor='let w of items'>
+          *ngFor='let w of items'>
           <div [ngClass]="{'gradient-border':isNew(w)}">
-            <result-display [item]="w" [title]="getTitle(w)"></result-display>
+            <result-display [item]="w" [title]="getTitle(w)" [groupedBy]="'ATHLET'"></result-display>
+          </div>
+        </ion-col>
+      </ion-row>
+      <ion-row *ngIf="getColumnSpec() === 5">
+        <ion-col class="align-self-start"
+          size-xs="12" size-md="6" size-lg="3" size-xl="2"
+          *ngFor='let w of items'>
+          <div [ngClass]="{'gradient-border':isNew(w)}">
+            <result-display [item]="w" [title]="getTitle(w)" [groupedBy]="'ATHLET'"></result-display>
           </div>
         </ion-col>
       </ion-row>

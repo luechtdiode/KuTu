@@ -3,7 +3,7 @@ import { WertungContainer, Geraet, Wettkampf, ScoreBlock, ScoreRow, ScoreLink } 
 import { IonItemSliding, NavController, ActionSheetController } from '@ionic/angular';
 
 import { BackendService } from '../services/backend.service';
-import { debounceTime, distinctUntilChanged, filter, map, share, switchMap } from 'rxjs/operators';
+import { debounceTime, distinctUntilChanged, filter, map, share, switchMap, windowCount } from 'rxjs/operators';
 import { backendUrl } from '../utils';
 import { Observable } from 'rxjs/internal/Observable';
 import { Subject, BehaviorSubject, of } from 'rxjs';
@@ -220,9 +220,25 @@ export class LastResultsPage implements OnInit {
       return '';
     }
   }
+  
+  getColumnSpec(): number {
+    return this.geraete?.length || 0;
+  }
 
   getTitle(wertungContainer: WertungContainer): string {
     return wertungContainer.programm + ' - ' + this.geraetText(wertungContainer.geraet);
+  }
+
+  onlyUnique(value, index, self) {
+    return self.indexOf(value) === index;
+  }
+
+  getProgramme() {
+    return this.items.map(wc => wc.programm).filter(this.onlyUnique);
+  }
+  
+  getWertungen(programm) {
+    return this.items.filter(wc => wc.programm === programm);
   }
 
   scorelistAvailable(): boolean {

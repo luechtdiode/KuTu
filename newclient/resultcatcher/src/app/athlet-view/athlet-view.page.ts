@@ -25,6 +25,9 @@ export class AthletViewPage  implements OnInit {
   constructor(public navCtrl: NavController,
               private route: ActivatedRoute,
               public backendService: BackendService) {
+    if (! this.backendService.competitions) {
+      this.backendService.getCompetitions();
+    }
   }
 
   makeItemHash(item: WertungContainer) {
@@ -115,6 +118,18 @@ export class AthletViewPage  implements OnInit {
       return '';
     }
     return c.titel + ', am ' + (c.datum + 'T').split('T')[0].split('-').reverse().join('-');
+  }
+
+  get athlet(): WertungContainer {
+    if (this.items && this.items.length > 0) {
+      return this.items[0];
+    } else {
+      return <WertungContainer>{};
+    }
+  }
+
+  getColumnSpec(): number {
+    return this.geraete.length;
   }
 
   geraetOrder(geraetId: number): number {

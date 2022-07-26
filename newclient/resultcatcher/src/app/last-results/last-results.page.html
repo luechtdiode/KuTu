@@ -37,13 +37,24 @@
 </ion-header>
 
 <ion-content>
-  <ion-grid no-padding *ngIf="items.length > 0">
-    <ion-row>
+  <ion-grid no-padding *ngIf="items.length > 0 && getColumnSpec() === 6">
+    <ion-row *ngFor='let p of getProgramme()'>
+      <ion-col class="align-self-start"
+        size-xs="12" size-md="6" size-lg="3" size-xl="2"
+        *ngFor='let w of getWertungen(p)'>
+        <div [ngClass]="{'gradient-border':isNew(w)}">
+          <result-display [item]="w" [title]="getTitle(w)" [groupedBy]="PROGRAMM"></result-display>
+        </div>
+      </ion-col>
+    </ion-row>
+  </ion-grid>
+  <ion-grid no-padding *ngIf="items.length > 0 && getColumnSpec() === 5">
+    <ion-row *ngFor='let p of getProgramme()'>
       <ion-col class="align-self-start"
         size-xs="12" size-md="6" size-lg="4" size-xl="2"
-       col-12 col-sm-6 col-lg-4 col-xl-2 *ngFor='let w of items'>
+        *ngFor='let w of getWertungen(p)'>
         <div [ngClass]="{'gradient-border':isNew(w)}">
-          <result-display [item]="w" [title]="getTitle(w)"></result-display>
+          <result-display [item]="w" [title]="getTitle(w)" [groupedBy]="PROGRAMM"></result-display>
         </div>
       </ion-col>
     </ion-row>
