@@ -9,13 +9,6 @@
             <ion-col>
               <ion-label>Aktuelle Resultate</ion-label>
             </ion-col>
-            <ion-col *ngIf="competition">
-              <ion-note>
-                {{competitionName()}}
-              </ion-note>
-              <div style="font-size: 16pt;">{{athlet.vorname + ' ' + athlet.name}}</div>
-              <div style="font-size: 10pt;">{{athlet.verein}}</div>
-            </ion-col>
           </ion-row>
         </ion-grid>
       </ion-title>
@@ -25,6 +18,19 @@
         </ion-button>
       </ion-buttons>
     </ion-toolbar>
+    <ion-grid no-padding>
+      <ion-row>
+        <ion-col *ngIf="competition">
+          <ion-note>
+            {{competitionName()}}
+          </ion-note>
+          <ion-label>
+            <div style="font-size: 16pt;">{{athlet.vorname + ' ' + athlet.name}}</div>
+            <div style="font-size: 10pt;">{{athlet.verein}}</div>  
+          </ion-label>
+        </ion-col>
+      </ion-row>
+    </ion-grid>
   </ion-header>
 
   <ion-content>
