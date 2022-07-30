@@ -80,8 +80,8 @@ abstract trait DisziplinService extends DBService with WettkampfResultMapper {
   def listDisziplinZuWettkampf(wettkampf: Wettkampf): Future[Vector[Disziplin]] = {
     database.run{
       val programme = readWettkampfLeafs(wettkampf.programmId).map(p => p.id).mkString("(", ",", ")")
-      sql""" select distinct d.id, d.name from disziplin d inner join wettkampfdisziplin wd on d.id = wd.disziplin_id
-             where wd.programm_Id in #$programme""".as[Disziplin].withPinnedSession
+      sql""" select distinct d.id, d.name, wd.ord from disziplin d inner join wettkampfdisziplin wd on d.id = wd.disziplin_id
+             where wd.programm_Id in #$programme order by wd.ord""".as[Disziplin].withPinnedSession
     }
   }
   
