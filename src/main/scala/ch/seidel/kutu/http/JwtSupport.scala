@@ -8,13 +8,15 @@ import akka.http.scaladsl.server.{Directive1, Directives}
 import ch.seidel.jwt
 import ch.seidel.jwt.{JsonWebToken, JwtClaimsSet, JwtClaimsSetMap}
 import ch.seidel.kutu.Config._
+import org.slf4j.LoggerFactory
 
 import java.time.{Duration, Instant}
 
 trait JwtSupport extends Directives {
   private lazy val userKey = "user"
   private lazy val expiredAtKey = "expiredAtKey"
-  
+  private val logger = LoggerFactory.getLogger(this.getClass)
+
   def authenticated(rejectRequest: Boolean = false): Directive1[String] = {
     optionalHeaderValueByName(jwtAuthorizationKey).flatMap(authenticateWith(_, rejectRequest))
   }
@@ -91,13 +93,24 @@ trait JwtSupport extends Directives {
     }
     case _ => None
   }
-  
+
+  private def formatDateTime(d: Date) = f"$d%td.$d%tm.$d%tY - $d%tH:$d%tM"
+
   private def isTokenExpired(jwt: String) = getClaims(jwt) match {
     case Some(claims) =>
       claims.get(expiredAtKey) match {
-        case Some(value) => value.toLong < System.currentTimeMillis()
-        case None => false
+        case Some(value) =>
+          val ret = value.toLong < System.currentTimeMillis()
+          if (!ret) {
+            logger.warn(s"expired! expiredAtKey: $value / ${formatDateTime(new Date(value.toLong))} vs current millis: ${System.currentTimeMillis()} / ${formatDateTime(new Date(System.currentTimeMillis()))} ")
+          }
+          ret
+        case None =>
+          logger.warn("No claims expiredAtKey found")
+          false
       }
-    case None => false
+    case None =>
+      logger.warn("No claims")
+      false
   }
 }
