@@ -136,18 +136,18 @@ export class LastResultsPage implements OnInit {
       });
   }
 
-  private compareItems(a, b) {
-    let p = a.programm.localeCompare(b.programm);
-    if (p === 0) {
-      p = this.geraetOrder(a.geraet) - this.geraetOrder(b.geraet);
-    }
-    return p;
-  };
-
   sortItems() {
+    const compareItems = (a, b) => {
+      let p = a.programm.localeCompare(b.programm);
+      if (p === 0) {
+        p = this.geraetOrder(a.geraet) - this.geraetOrder(b.geraet);
+      }
+      return p;
+    };
+
     this.items = this.items
       .filter(w => w.wertung.endnote !== undefined)
-      .sort(this.compareItems);
+      .sort(compareItems);
   }
 
   isNew(item: WertungContainer): boolean {
