@@ -1,12 +1,31 @@
 <ion-card>
   <ion-grid>
     <ion-row>
-      <ion-col align-self-top>
-        <div class="fixedheight" style="font-size: 19pt;">{{title}}</div>
+      <ion-col align-self-top class="nonwrapping"
+        size-xs="8" size-md="8" size-lg="8" size-xl="8">
+        <div class="img-wrapper"><img *ngIf="gearImage" src="assets/imgs/{{gearImage}}"></div>
+        <div class="fixedheight" style="font-size: 20pt;">{{titlestart}}</div>
+        <div class="fixedheight" style="font-size: 12pt;">{{titlerest}}</div>
+      </ion-col>
+      <ion-col col-auto align-self-end *ngIf="groupedBy === groupBy.ATHLET">
+        <ion-note *ngIf="item.isDNoteUsed && item.wertung.noteD !== undefined" item-text-wrap>
+          <span class="rightbound">&nbsp;&nbsp;&nbsp;D: {{item.wertung.noteD | number:'2.3-3'}}
+          <br>&nbsp;&nbsp;&nbsp;E: {{item.wertung.noteE | number:'2.3-3'}}
+          <br><span style="font-size: 18pt;font-weight: bold">{{item.wertung.endnote | number:'2.3-3'}}</span>
+          </span>          
+        </ion-note>
+        <ion-note *ngIf="!item.isDNoteUsed && item.wertung.noteE !== item.wertung.endnote" item-end item-text-wrap>
+          <span class="rightbound"><br>&nbsp;&nbsp;&nbsp;E: {{item.wertung.noteE | number:'2.3-3'}}
+          <br><span class="rightbound" style="font-size: 18pt;font-weight: bold">{{item.wertung.endnote | number:'2.3-3'}}</span>
+          </span>
+        </ion-note>
+        <ion-note *ngIf="!item.isDNoteUsed && item.wertung.noteE === item.wertung.endnote" item-end item-text-wrap>
+          <span class="rightbound" style="font-size: 18pt;font-weight: bold">{{item.wertung.endnote | number:'2.3-3'}}</span>
+        </ion-note>
       </ion-col>
     </ion-row>
-    <ion-row>
-      <ion-col align-self-top *ngIf="groupedBy !== groupBy.ATHLET">
+    <ion-row *ngIf="groupedBy !== groupBy.ATHLET">
+      <ion-col size-xs="8" size-md="8" size-lg="8" size-xl="8">
         <div class="nonwrapping">
           <div style="font-size: 16pt;">{{item.vorname + ' ' + item.name}}</div>
         </div>
@@ -14,23 +33,20 @@
           {{item.verein}}
         </div>      
       </ion-col>
-      <ion-col align-self-top *ngIf="groupedBy === groupBy.ATHLET">
-        &nbsp;
-      </ion-col>
-      <ion-col col-auto align-self-end>
+      <ion-col col-auto >
         <ion-note *ngIf="item.isDNoteUsed && item.wertung.noteD !== undefined" item-end item-text-wrap>
-          D: {{item.wertung.noteD | number:'2.3-3'}}&nbsp;&nbsp;
+          <span class="rightbound">D: {{item.wertung.noteD | number:'2.3-3'}}&nbsp;&nbsp;
           <br>E: {{item.wertung.noteE | number:'2.3-3'}}&nbsp;&nbsp;
-          <br>
-          <span style="font-size: 18pt;font-weight: bold">{{item.wertung.endnote | number:'2.3-3'}}&nbsp;&nbsp;</span>
+          <br></span>
+          <span class="rightbound" style="font-size: 18pt;font-weight: bold">{{item.wertung.endnote | number:'2.3-3'}}&nbsp;&nbsp;</span>
         </ion-note>
         <ion-note *ngIf="!item.isDNoteUsed && item.wertung.noteE !== item.wertung.endnote" item-end item-text-wrap>
           <br>E: {{item.wertung.noteE | number:'2.3-3'}}&nbsp;&nbsp;
           <br>
-          <span style="font-size: 18pt;font-weight: bold">{{item.wertung.endnote | number:'2.3-3'}}&nbsp;&nbsp;</span>
+          <span class="rightbound" style="font-size: 18pt;font-weight: bold">{{item.wertung.endnote | number:'2.3-3'}}&nbsp;&nbsp;</span>
         </ion-note>
-        <ion-note class="bottom-right" *ngIf="!item.isDNoteUsed && item.wertung.noteE === item.wertung.endnote" item-end item-text-wrap>
-          <span style="font-size: 18pt;font-weight: bold">{{item.wertung.endnote | number:'2.3-3'}}&nbsp;&nbsp;</span>
+        <ion-note *ngIf="!item.isDNoteUsed && item.wertung.noteE === item.wertung.endnote" item-end item-text-wrap>
+          <span class="rightbound" style="font-size: 18pt;font-weight: bold">{{item.wertung.endnote | number:'2.3-3'}}&nbsp;&nbsp;</span>
         </ion-note>
       </ion-col>
     </ion-row>
