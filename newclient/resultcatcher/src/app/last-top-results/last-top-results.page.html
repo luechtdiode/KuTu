@@ -35,9 +35,9 @@
 <ion-content>
   <ion-grid no-padding>
     <ion-row>
-      <ion-col class="align-self-start" size-xs="12" size-md="6" size-lg="4" size-xl="2" col-12 col-sm-6 col-lg-4
-        col-xl-2 *ngFor='let w of items' (click)="itemTapped($event, w)">
-        <result-display [item]="w" [title]="getTitle(w)"></result-display>
+      <ion-col class="align-self-start" size-xs="12" size-md="6" size-lg="4" size-xl="2" 
+        *ngFor='let w of items' (click)="itemTapped($event, w)">
+        <result-display [item]="w" [title]="getTitle(w)" [groupedBy]="groupBy.PROGRAMM"></result-display>
       </ion-col>
     </ion-row>
   </ion-grid>

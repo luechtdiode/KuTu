@@ -14,9 +14,25 @@ ion-card {
 }
 
 .fixedheight {
-  height: 5em;
-  max-height: 2em;
-  min-height: 2em;
+  word-wrap: normal;
+  position: relative;
+  left: +50px;
+}
+
+.img-wrapper {
+  position: absolute;
+  left: -0px;
+  top: -0px;
+  img {
+    border-radius: 5px;
+    width: 50px;
+    height: 55px;
+    background-color: var(--ion-color-step-500);
+  }
+}
+
+.rightbound {
+  float: right;
 }
 
 .nonwrapping {
