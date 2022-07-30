@@ -2,6 +2,7 @@ import { Component, OnInit } from '@angular/core';
 import { WertungContainer, Geraet, Wettkampf } from '../backend-types';
 import { BackendService } from '../services/backend.service';
 import { filter } from 'rxjs/operators';
+import { GroupBy } from '../component/result-display/result-display.component';
 
 @Component({
   selector: 'app-last-top-results',
@@ -9,7 +10,7 @@ import { filter } from 'rxjs/operators';
   styleUrls: ['./last-top-results.page.scss'],
 })
 export class LastTopResultsPage implements OnInit {
-
+  groupBy = GroupBy; 
   items: WertungContainer[] = [];
   toptop = {};
   geraete: Geraet[] = [];

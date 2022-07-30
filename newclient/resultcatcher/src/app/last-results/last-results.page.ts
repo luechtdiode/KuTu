@@ -15,7 +15,7 @@ import { GroupBy } from '../component/result-display/result-display.component';
   styleUrls: ['./last-results.page.scss'],
 })
 export class LastResultsPage implements OnInit {
-  groupBy = GroupBy; 
+  groupBy = GroupBy;
 
   // @ViewChild(IonContent) content: IonContent;
 
@@ -83,7 +83,7 @@ export class LastResultsPage implements OnInit {
           }
         });
       } else {
-        this.title = 'Aktuelle Resultate'
+        this.title = 'Aktuelle Resultate';
       }
     });
   }
@@ -124,7 +124,7 @@ export class LastResultsPage implements OnInit {
           distinctUntilChanged(),
           share()
         );
-        pipeBeforeAction.subscribe(scoreSearchWith => {
+        pipeBeforeAction.subscribe(() => {
           this.busy.next(true);
         });
         pipeBeforeAction.pipe(
@@ -136,14 +136,18 @@ export class LastResultsPage implements OnInit {
       });
   }
 
+  private compareItems(a, b) {
+    let p = a.programm.localeCompare(b.programm);
+    if (p === 0) {
+      p = this.geraetOrder(a.geraet) - this.geraetOrder(b.geraet);
+    }
+    return p;
+  };
+
   sortItems() {
-    this.items = this.items.sort((a, b) => {
-      let p = a.programm.localeCompare(b.programm);
-      if (p === 0) {
-        p = this.geraetOrder(a.geraet) - this.geraetOrder(b.geraet);
-      }
-      return p;
-    }).filter(w => w.wertung.endnote !== undefined);
+    this.items = this.items
+      .filter(w => w.wertung.endnote !== undefined)
+      .sort(this.compareItems);
   }
 
   isNew(item: WertungContainer): boolean {
@@ -205,9 +209,8 @@ export class LastResultsPage implements OnInit {
     if (!this.geraete) {
       return 0;
     }
-    const ret = this.geraete
+    return this.geraete
       .findIndex(c => c.id === geraetId);
-    return ret;
   }
 
   geraetText(geraetId: number): string {
@@ -222,7 +225,7 @@ export class LastResultsPage implements OnInit {
       return '';
     }
   }
-  
+
   getColumnSpec(): number {
     return this.geraete?.length || 0;
   }
@@ -238,7 +241,7 @@ export class LastResultsPage implements OnInit {
   getProgramme() {
     return this.items.map(wc => wc.programm).filter(this.onlyUnique);
   }
-  
+
   getWertungen(programm) {
     return this.items.filter(wc => wc.programm === programm);
   }
