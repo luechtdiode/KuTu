@@ -2,6 +2,7 @@ package ch.seidel.kutu.http
 
 import akka.http.scaladsl.marshallers.sprayjson.SprayJsonSupport
 import akka.http.scaladsl.model.StatusCodes
+import ch.seidel.kutu.Config.{jwtHeader, jwtSecretKey}
 import ch.seidel.kutu.domain._
 import ch.seidel.kutu.http.AuthSupport.OPTION_LOGINRESET
 import fr.davit.akka.http.metrics.core.scaladsl.server.HttpMetricsDirectives._
@@ -32,7 +33,8 @@ trait LoginRoutes extends SprayJsonSupport with EnrichedJson with JwtSupport wit
   pathPrefixLabeled("loginrenew", "loginrenew") {
     pathEndOrSingleSlash {
       authenticated() { userId =>
-        respondWithJwtHeader(userId) {
+        val wettkampf = readWettkampf(userId)
+        respondWithJwtHeader(wettkampf) {
           complete(StatusCodes.OK)
         }
       }

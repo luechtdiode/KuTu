@@ -8,6 +8,7 @@ import akka.http.scaladsl.server.{Directive1, Directives}
 import ch.seidel.jwt
 import ch.seidel.jwt.{JsonWebToken, JwtClaimsSet, JwtClaimsSetMap}
 import ch.seidel.kutu.Config._
+import ch.seidel.kutu.domain.Wettkampf
 import org.slf4j.LoggerFactory
 
 import java.time.{Duration, Instant}
@@ -48,6 +49,12 @@ trait JwtSupport extends Directives {
   def respondWithJwtHeader(userId: String): akka.http.scaladsl.server.Directive0 = {
     val claims = setClaims(userId, jwtTokenExpiryPeriodInDays)
     respondWithHeader(RawHeader(jwtAuthorizationKey, jwt.JsonWebToken(jwtHeader, claims, jwtSecretKey)))
+  }
+
+  def respondWithJwtHeader(wettkampf: Wettkampf): akka.http.scaladsl.server.Directive0 = {
+    val claims = setClaims(wettkampf.uuid.get, wettkampf.datum)
+    val jwt = ch.seidel.jwt.JsonWebToken(jwtHeader, claims, jwtSecretKey)
+    respondWithHeader(RawHeader(jwtAuthorizationKey, jwt))
   }
 
   def createOneTimeResetRegistrationLoginToken(competitionUUID: String, registrationId: Long) = {
@@ -101,7 +108,7 @@ trait JwtSupport extends Directives {
       claims.get(expiredAtKey) match {
         case Some(value) =>
           val ret = value.toLong < System.currentTimeMillis()
-          if (!ret) {
+          if (ret) {
             logger.warn(s"expired! expiredAtKey: $value / ${formatDateTime(new Date(value.toLong))} vs current millis: ${System.currentTimeMillis()} / ${formatDateTime(new Date(System.currentTimeMillis()))} ")
           }
           ret
