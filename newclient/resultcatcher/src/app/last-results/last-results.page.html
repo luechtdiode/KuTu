@@ -40,7 +40,7 @@
   <ion-grid no-padding *ngIf="items.length > 0 && getColumnSpec() === 6">
     <ion-row *ngFor='let p of getProgramme()'>
       <ion-col class="align-self-start"
-        size-xs="12" size-md="6" size-lg="3" size-xl="2"
+        size-xs="12" size-md="6" size-lg="3" [attr.size-xl]="getMaxColumnSpec()"
         *ngFor='let w of getWertungen(p)'>
         <div [ngClass]="{'gradient-border':isNew(w)}">
           <result-display [item]="w" [title]="getTitle(w)" [groupedBy]="groupBy.PROGRAMM"></result-display>
@@ -48,10 +48,10 @@
       </ion-col>
     </ion-row>
   </ion-grid>
-  <ion-grid no-padding *ngIf="items.length > 0 && 6 > getColumnSpec()">
+  <ion-grid no-padding *ngIf="items.length > 0 && 6 !== getColumnSpec()">
     <ion-row *ngFor='let p of getProgramme()'>
       <ion-col class="align-self-start"
-        size-xs="12" size-sm="6" size-md="4" size-lg="3" size-xl="2"
+        size-xs="12" size-sm="6" size-md="4" size-lg="3" [attr.size-xl]="getMaxColumnSpec()"
         *ngFor='let w of getWertungen(p)'>
         <div [ngClass]="{'gradient-border':isNew(w)}">
           <result-display [item]="w" [title]="getTitle(w)" [groupedBy]="groupBy.PROGRAMM"></result-display>

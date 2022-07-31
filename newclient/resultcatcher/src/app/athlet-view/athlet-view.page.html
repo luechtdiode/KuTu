@@ -37,16 +37,16 @@
     <ion-grid no-padding>
       <ion-row *ngIf="getColumnSpec() === 6">
         <ion-col class="align-self-start"
-          size-xs="12" size-md="6" size-lg="4" size-xl="2"
+          size-xs="12" size-md="6" size-lg="4" [attr.size-xl]="getMaxColumnSpec()"
           *ngFor='let w of items'>
           <div [ngClass]="{'gradient-border':isNew(w)}">
             <result-display [item]="w" [title]="getTitle(w)" [groupedBy]="groupBy.ATHLET"></result-display>
           </div>
         </ion-col>
       </ion-row>
-      <ion-row *ngIf="getColumnSpec() === 5">
+      <ion-row *ngIf="getColumnSpec() !== 6">
         <ion-col class="align-self-start"
-          size-xs="12" size-md="6" size-lg="3" size-xl="2"
+          size-xs="12" size-md="6" size-lg="3" [attr.size-xl]="getMaxColumnSpec()"
           *ngFor='let w of items'>
           <div [ngClass]="{'gradient-border':isNew(w)}">
             <result-display [item]="w" [title]="getTitle(w)" [groupedBy]="groupBy.ATHLET"></result-display>

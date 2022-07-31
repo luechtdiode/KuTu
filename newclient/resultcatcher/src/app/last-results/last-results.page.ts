@@ -230,6 +230,10 @@ export class LastResultsPage implements OnInit {
     return this.geraete?.length || 0;
   }
 
+  getMaxColumnSpec(): number {
+    return Math.min(12, Math.max(1, Math.floor(12 / this.items.length + 0.5)));
+  }
+  
   getTitle(wertungContainer: WertungContainer): string {
     return wertungContainer.programm + ' - ' + this.geraetText(wertungContainer.geraet);
   }

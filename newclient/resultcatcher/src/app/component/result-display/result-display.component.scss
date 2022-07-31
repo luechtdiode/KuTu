@@ -22,17 +22,19 @@ ion-icon {
   border-radius: 4px;
  }
 
- .fixedheight {
+.fixedheight {
   word-wrap: normal;
   position: relative;
-  left: 52px;
 }
 
 .img-wrapper {
   position: absolute;
   left: -0px;
   top: 4px;
+}
 
+.after-icon {
+  left: 52px;
 }
 
 .rightbound {

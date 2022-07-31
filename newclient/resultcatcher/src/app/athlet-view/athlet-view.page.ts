@@ -134,6 +134,10 @@ export class AthletViewPage  implements OnInit {
     return this.geraete.length;
   }
 
+  getMaxColumnSpec(): number {
+    return Math.min(12, Math.max(1, Math.floor(12 / this.items.length + 0.5)));
+  }
+
   geraetOrder(geraetId: number): number {
     if (!this.geraete) {
       return 0;
