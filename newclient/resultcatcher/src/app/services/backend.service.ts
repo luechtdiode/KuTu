@@ -1048,6 +1048,22 @@ export class BackendService extends WebsocketService {
       }
     }
 
+    getPrevGeraet(): number {
+      let prevGeraeteIdx = this.geraete.indexOf(this.geraete.find(s => s.id === this._geraet)) - 1;
+      if (prevGeraeteIdx < 0) {
+        prevGeraeteIdx = this.geraete.length - 1;
+      }
+      return this.geraete[prevGeraeteIdx].id;
+    }
+
+    getNextGeraet(): number {
+      let nextGeraetIdx = this.geraete.indexOf(this.geraete.find(s => s.id === this._geraet)) + 1;
+      if (nextGeraetIdx >= this.geraete.length) {
+        nextGeraetIdx = 0;
+      }
+      return this.geraete[nextGeraetIdx].id;
+    }
+
     nextGeraet(): Observable<number> {
       if (this.loggedIn) {
         const nextSteps = this.steps.filter(s => s > this._step);
@@ -1057,12 +1073,8 @@ export class BackendService extends WebsocketService {
           return of(this.steps[0]);
         }
       } else {
-        let nextGeraetIdx = this.geraete.indexOf(this.geraete.find(s => s.id === this._geraet)) + 1;
-        if (nextGeraetIdx >= this.geraete.length) {
-          nextGeraetIdx = 0;
-        }
         const actualStep = this._step;
-        this._geraet = this.geraete[nextGeraetIdx].id;
+        this._geraet = this.getNextGeraet();
         return this.loadSteps().pipe(map(steps => {
           const nextSteps = steps.filter(s => s > actualStep);
           if (nextSteps.length > 0) {
@@ -1083,13 +1095,8 @@ export class BackendService extends WebsocketService {
           return of(this.steps[this.steps.length - 1]);
         }
       } else {
-        let prevGeraeteIdx = this.geraete.indexOf(this.geraete.find(s => s.id === this._geraet)) - 1;
-        if (prevGeraeteIdx < 0) {
-          prevGeraeteIdx = this.geraete.length - 1;
-        }
-
         const actualStep = this._step;
-        this._geraet = this.geraete[prevGeraeteIdx].id;
+        this._geraet = this.getPrevGeraet();
         return this.loadSteps().pipe(map(steps => {
           const prevSteps = this.steps.filter(s => s < actualStep);
           if (prevSteps.length > 0) {

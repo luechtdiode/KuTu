@@ -5,6 +5,7 @@ import { encodeURIComponent2 } from '../services/websocket.service';
 import { Wettkampf, Geraet, WertungContainer } from '../backend-types';
 import { map, tap } from 'rxjs/operators';
 import { Observable } from 'rxjs';
+import { gearMapping } from '../utils';
 
 @Component({
   selector: 'app-station',
@@ -137,10 +138,22 @@ export class StationPage implements OnInit  {
 
   get station() {
     if (this.isLoggedIn()) {
-      return this.step + '. Riege ' + this.geraetName() + ', ' + this.durchgang;
+      return this.geraetName() + ' - ' + this.step + '. Riege von ' + this.getSteps().length + ', ' + this.durchgang;
     } else {
-      return this.step + '. Gerät ' + this.geraetName() + ', ' + this.durchgang;
+      return this.geraetName() + ' - ' + this.step + '. Gerät von ' + this.getGeraete().length + ', ' + this.durchgang;
     }
+  }
+  
+  get previousGearImage() {
+    return this.isLoggedIn() ? undefined : gearMapping[this.backendService.getPrevGeraet()] || undefined;
+  }
+
+  get nextGearImage() {
+    return this.isLoggedIn() ? undefined : gearMapping[this.backendService.getNextGeraet()] || undefined;
+  }
+
+  get gearImage() {
+    return gearMapping[this.backendService.geraet] || undefined;
   }
 
   async showCompleteAlert() {
@@ -250,7 +263,7 @@ export class StationPage implements OnInit  {
   }
 
   getGeraete(): Geraet[] {
-    return this.geraete;
+    return this.geraete || [];
   }
 
   getSteps(): number[] {

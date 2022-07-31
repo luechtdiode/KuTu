@@ -76,3 +76,16 @@ export function clientID() {
   }
   return localStorage.getItem('current_username') + ':' + clientid;
 }
+
+export const gearMapping = {
+  1: "boden.svg",
+  2: "pferdpauschen.svg",
+  3: "ringe.svg",
+  4: "sprung.svg",
+  5: "barren.svg",
+  6: "reck.svg",
+  26: "ringe.svg",
+  27: "stufenbarren.svg",
+  28: "schwebebalken.svg",
+  29: "minitramp.svg"
+};
