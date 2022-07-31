@@ -3,8 +3,9 @@
     <ion-row>
       <ion-col align-self-top class="nonwrapping"
         size-xs="8" size-md="8" size-lg="8" size-xl="8">
-        <div class="img-wrapper"><img *ngIf="gearImage" src="assets/imgs/{{gearImage}}"></div>
-        <div class="fixedheight" style="font-size: 20pt;">{{titlestart}}</div>
+        <ion-icon class="img-wrapper" src="assets/imgs/{{gearImage}}"></ion-icon>
+
+        <div class="fixedheight" style="font-size: 18pt;">{{titlestart}}</div>
         <div class="fixedheight" style="font-size: 12pt;">{{titlerest}}</div>
       </ion-col>
       <ion-col col-auto align-self-end *ngIf="groupedBy === groupBy.ATHLET">

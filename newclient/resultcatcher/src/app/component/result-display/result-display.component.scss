@@ -13,22 +13,26 @@ ion-card {
                       0 1px 5px 0 var(--ion-card-shadow-color3);  
 }
 
-.fixedheight {
+ion-icon {
+  color: var(--ion-card-color);
+  font-size: 50px;
+  border-color: var(--ion-item-border-color);
+  border-width: 2px;
+  border-style: solid;
+  border-radius: 4px;
+ }
+
+ .fixedheight {
   word-wrap: normal;
   position: relative;
-  left: +50px;
+  left: 52px;
 }
 
 .img-wrapper {
   position: absolute;
   left: -0px;
-  top: -0px;
-  img {
-    border-radius: 5px;
-    width: 50px;
-    height: 55px;
-    background-color: var(--ion-color-step-500);
-  }
+  top: 4px;
+
 }
 
 .rightbound {
