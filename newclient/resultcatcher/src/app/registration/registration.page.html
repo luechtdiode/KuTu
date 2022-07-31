@@ -34,15 +34,15 @@
       <clublist-item [clubregistration]="reg" [status]=getStatus(reg) (click)='itemTapped(reg, slidingClubRegistrationItem)'></clublist-item>
       <ion-item-options side="end">
         <ion-item-option color="primary" (click)="login(reg, slidingClubRegistrationItem)">
-            <ion-icon name="arrow-dropright-circle" ios="md-arrow-dropright-circle"></ion-icon>
+            <ion-icon name="arrow-forward-circle-outline" ios="md-arrow-forward-circle-outline"></ion-icon>
           {{isLoggedIn(reg) ? 'Bearbeiten' : 'Login'}}
         </ion-item-option>
         <ion-item-option *ngIf='isLoggedIn(reg)' color="secondary" (click)="logout(slidingClubRegistrationItem)">
-            <ion-icon name="arrow-dropright-circle" ios="md-arrow-dropright-circle"></ion-icon>
+            <ion-icon name="arrow-forward-circle-outline" ios="md-arrow-forward-circle-outline"></ion-icon>
           Abmelden
         </ion-item-option>
         <ion-item-option *ngIf='isLoggedIn(reg)' color="danger" (click)="delete(reg, slidingClubRegistrationItem)">
-          <ion-icon name="arrow-dropright-circle" ios="md-arrow-dropright-circle"></ion-icon>
+          <ion-icon name="arrow-forward-circle-outline" ios="md-arrow-forward-circle-outline"></ion-icon>
           Löschen
       </ion-item-option>
     </ion-item-options>

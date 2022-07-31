@@ -34,7 +34,7 @@
         Ungültige Eingabe. Die Werte müssen im Format ##.## (2-3 Nachkommastellen mit Dezimalpunkt) eingegeben werden.
       </ion-item>
       <ion-button size="large" expand="block" type="submit" #btnSaveNext *ngIf='editable()' [disabled]="waiting || !wertungsform.valid" color="success">
-        <ion-icon slot="start" name="arrow-dropright-circle"></ion-icon>Speichern & Weiter</ion-button>
+        <ion-icon slot="start" name="arrow-forward-circle-outline"></ion-icon>Speichern & Weiter</ion-button>
       <ion-button size="large" expand="block" *ngIf='editable()' [disabled]="waiting || !wertungsform.valid"  color="secondary" (click)='saveClose(wertungsform)'>
         <ion-icon slot="start" name="checkmark-circle"></ion-icon>Speichern</ion-button>
     </ion-list>
