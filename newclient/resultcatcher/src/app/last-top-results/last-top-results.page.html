@@ -38,9 +38,7 @@
       <ion-col class="align-self-start"
         size-xs="12" size-md="6" size-lg="3" [attr.size-xl]="getMaxColumnSpec()"
         *ngFor='let w of getWertungen(p)'>
-        <div [ngClass]="{'gradient-border':isNew(w)}">
-          <result-display [item]="w" [title]="getTitle(w)" [groupedBy]="groupBy.PROGRAMM"></result-display>
-        </div>
+        <result-display [item]="w" [title]="getTitle(w)" [groupedBy]="groupBy.PROGRAMM"></result-display>
       </ion-col>
     </ion-row>
   </ion-grid>
