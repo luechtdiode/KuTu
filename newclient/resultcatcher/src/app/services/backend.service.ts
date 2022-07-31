@@ -699,22 +699,30 @@ export class BackendService extends WebsocketService {
       return loader;
     }
 
-    getDurchgaenge(competitionId: string) {
-      this.checkJWT();
-      if ((this.durchgaenge !== undefined && this._competition === competitionId) || this.isInitializing) {
-        return of(this.durchgaenge || []);
-      }
+
+    resetCompetition(competitionId) {
+      console.log('reset data');
       this.durchgaenge = [];
       this._clubregistrations = [];
       this.clubRegistrations.next([]);
       this.geraete = undefined;
+      this.geraeteSubject.next([]);
       this.steps = undefined;
       this.wertungen = undefined;
+      this.wertungenSubject.next([]);
 
       this._competition = competitionId;
       this._durchgang = undefined;
       this._geraet = undefined;
       this._step = undefined;
+    }
+
+    getDurchgaenge(competitionId: string) {
+      this.checkJWT();
+      if ((this.durchgaenge !== undefined && this._competition === competitionId) || this.isInitializing) {
+        return of(this.durchgaenge || []);
+      }
+      this.resetCompetition(competitionId);
 
       return this.loadDurchgaenge();
     }
@@ -751,6 +759,7 @@ export class BackendService extends WebsocketService {
       return loader;
     }
 
+
     getGeraete(competitionId: string, durchgang: string) {
       if ((this.geraete !== undefined && this._competition === competitionId && this._durchgang === durchgang) || this.isInitializing) {
         return of(this.geraete || []);
@@ -771,8 +780,10 @@ export class BackendService extends WebsocketService {
     loadGeraete() {
       this.geraete = [];
       if (!!!this._competition || this._competition === 'undefined') {
+        console.log('reusing geraetelist');
         return of([]);
       }
+      console.log('renewing geraetelist');
       let path = '';
       if (this.captionmode && !!this._durchgang && this._durchgang !== 'undefined') {
         path = backendUrl + 'api/durchgang/' + this._competition + '/' + encodeURIComponent2(this._durchgang);
@@ -917,6 +928,7 @@ export class BackendService extends WebsocketService {
     activateNonCaptionMode(competitionId: string): Observable<Geraet[]> {
       if (this._competition !== competitionId
         || this.captionmode
+        || (!!!this.geraete || this.geraete.length === 0)
         || (competitionId && !this.isWebsocketConnected())
         ) {
         this.captionmode = false;
