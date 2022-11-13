@@ -9,7 +9,7 @@ import akka.http.scaladsl.model._
 import akka.http.scaladsl.model.headers.RawHeader
 import akka.http.scaladsl.server.Route
 import akka.http.scaladsl.unmarshalling.Unmarshal
-import akka.stream.scaladsl.{Sink, Source, StreamConverters}
+import akka.stream.scaladsl.{Sink, Source, StreamConverters, Flow}
 import akka.util.ByteString
 import ch.seidel.jwt.JsonWebToken
 import ch.seidel.kutu.Config._
@@ -76,7 +76,6 @@ trait WettkampfRoutes extends SprayJsonSupport
   }
 
   def httpUploadWettkampfRequest(wettkampf: Wettkampf): Future[HttpResponse] = {
-    import Core.materializer
     val uuid = wettkampf.uuid match {
       case None => createUUIDForWettkampf(wettkampf.id).uuid.get
       case Some(uuid) => uuid
@@ -94,34 +93,33 @@ trait WettkampfRoutes extends SprayJsonSupport
       httpClientRequest(
         HttpRequest(method = HttpMethods.POST, uri = s"$remoteAdminBaseUrl/api/competition/$uuid", entity = wettkampfEntity)).map {
         case HttpResponse(StatusCodes.OK, headers, entity, _) =>
-          val secret = headers.find(h => h.is(jwtAuthorizationKey)).flatMap {
-            case HttpHeader(_, token) =>
-              entity.discardBytes()
-              Some(RawHeader(jwtAuthorizationKey, token))
-          } match {
-            case token@Some(_) => token
-            case _ => Await.result(Unmarshal(entity).to[JsObject].map { json =>
-              json.getFields("token").map(field => RawHeader(jwtAuthorizationKey, field.toString)).headOption
-            }, Duration.Inf)
+          val secretOption = catchSecurityHeader(wettkampf, headers, entity).map(_.value)
+          if (secretOption.isEmpty) {
+            uploadProm.failure(new RuntimeException("No Secret for Competition available"))
+          } else {
+            uploadProm.success(secretOption.get)
           }
-          println(s"New Secret: " + secret)
-          wettkampf.saveSecret(homedir, remoteHostOrigin, secret.get.value)
-          uploadProm.success(secret.get.value)
 
-        case HttpResponse(_, _, entity, _) => entity match {
+        case HttpResponse(_, headers, entity, _) => entity match {
           case HttpEntity.Strict(_, text) =>
             log.error(text.utf8String)
+            catchSecurityHeader(wettkampf, headers, entity)
             uploadProm.failure(new RuntimeException(text.utf8String))
           case x =>
             log.error(x.toString)
             uploadProm.failure(new RuntimeException(x.toString))
         }
+      }.onComplete {
+        case Success(_) =>
+        case Failure(s) =>
+          log.error(s.toString)
+          uploadProm.failure(new RuntimeException(s))
       }
 
     } else {
       wettkampf.readSecret(homedir, remoteHostOrigin) match {
         case Some(secret) => uploadProm.success(secret)
-        case _ => uploadProm.failure(new RuntimeException("No Secret for Competition avaliable"))
+        case _ => uploadProm.failure(new RuntimeException("No Secret for Competition available"))
       }
     }
 
@@ -152,6 +150,29 @@ trait WettkampfRoutes extends SprayJsonSupport
     }
 
     process
+  }
+
+  private def catchSecurityHeader(wettkampf: Wettkampf, headers: Seq[HttpHeader], entity: ResponseEntity) = {
+    import Core.materializer
+    val secret = headers.find(h => h.is(jwtAuthorizationKey)).flatMap {
+      case HttpHeader(_, token) =>
+        entity.discardBytes()
+        Some(RawHeader(jwtAuthorizationKey, token))
+    } match {
+      case token@Some(_) => token
+      case _ => try {
+        Await.result(Unmarshal(entity).to[JsObject].map { json =>
+          json.getFields("token").map(field => RawHeader(jwtAuthorizationKey, field.toString)).headOption
+        }, Duration.Inf)
+      } catch {
+        case e: Exception => Option.empty
+      }
+    }
+    println(s"New Secret: " + secret)
+    if (secret.nonEmpty) {
+      wettkampf.saveSecret(homedir, remoteHostOrigin, secret.get.value)
+    }
+    secret
   }
 
   def httpDownloadRequest(request: HttpRequest): Future[Wettkampf] = {
@@ -305,14 +326,14 @@ trait WettkampfRoutes extends SprayJsonSupport
                         } catch {
                           case e: Exception =>
                             log.warning(s"wettkampf $wkuuid cannot be uploaded: " + e.toString)
-                            complete(StatusCodes.Conflict, s"wettkampf $wkuuid konnte wg. einem technischen Fehler nicht hochgeladen werden. (${e.toString})")
+                            complete(StatusCodes.Conflict, s"Wettkampf $wkuuid konnte wg. einem technischen Fehler nicht hochgeladen werden. (${e.toString})")
                         } finally {
                           is.close()
                         }
                     }
                   case _ =>
                     log.warning(s"wettkampf $wkuuid cannot be uploaded twice")
-                    complete(StatusCodes.Conflict, s"wettkampf $wkuuid kann nicht mehrfach hochgeladen werden.")
+                    complete(StatusCodes.Conflict, s"Wettkampf $wkuuid kann nicht mehrfach hochgeladen werden.")
                 }
               }
             } ~

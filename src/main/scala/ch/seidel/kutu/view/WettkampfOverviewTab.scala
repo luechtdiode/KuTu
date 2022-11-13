@@ -3,7 +3,7 @@ package ch.seidel.kutu.view
 import java.util.UUID
 import ch.seidel.commons._
 import ch.seidel.kutu.Config.{homedir, remoteBaseUrl, remoteHostOrigin}
-import ch.seidel.kutu.KuTuApp.{controlsView, getStage, handleAction, selectedWettkampfSecret, stage}
+import ch.seidel.kutu.KuTuApp.{controlsView, getStage, handleAction, selectedWettkampf, selectedWettkampfSecret, stage}
 import ch.seidel.kutu.domain._
 import ch.seidel.kutu.renderer.PrintUtil.FilenameDefault
 import ch.seidel.kutu.renderer.{CompetitionsJudgeToHtmlRenderer, PrintUtil, WettkampfOverviewToHtmlRenderer}
@@ -47,7 +47,7 @@ class WettkampfOverviewTab(wettkampf: WettkampfView, override val service: KutuS
       case _ =>
     }
   }
-  val webView = new WebView {
+  private val webView = new WebView {
     fontSmoothingType = FontSmoothingType.GRAY
     import ch.seidel.javafx.webview.HyperLinkRedirectListener
     engine.getLoadWorker.stateProperty.addListener(new HyperLinkRedirectListener(this.delegate))
@@ -57,7 +57,7 @@ class WettkampfOverviewTab(wettkampf: WettkampfView, override val service: KutuS
     webView.engine.loadContent(createDocument)
   }
 
-  def createDocument = {
+  private def createDocument = {
     val logofile = PrintUtil.locateLogoFile(new java.io.File(homedir + "/" + wettkampf.easyprint.replace(" ", "_")))
     val document = toHTML(wettkampf, service.listOverviewStats(UUID.fromString(wettkampf.uuid.get)), logofile)
     document
@@ -77,7 +77,7 @@ class WettkampfOverviewTab(wettkampf: WettkampfView, override val service: KutuS
 
   def uploadResults(caption: String): Unit = {
     import scala.concurrent.ExecutionContext.Implicits.global
-    val process = KuTuApp.invokeAsyncWithBusyIndicator {
+    val process = KuTuApp.invokeAsyncWithBusyIndicator(caption) {
       if (remoteBaseUrl.indexOf("localhost") > -1) {
         KuTuServer.startServer()
       }
@@ -132,7 +132,7 @@ class WettkampfOverviewTab(wettkampf: WettkampfView, override val service: KutuS
           dir.mkdirs()
         }
 
-        def generate = (lpp: Int) => KuTuApp.invokeAsyncWithBusyIndicator {
+        def generate = (lpp: Int) => KuTuApp.invokeAsyncWithBusyIndicator(caption) {
           Future {
             //toHTMLasClubRegistrationsList(wettkampf, KuTuServer.getAllRegistrationsRemote(wettkampf.toWettkampf), logofile)
             KuTuServer.getAllRegistrationsHtmlRemote(wettkampf.toWettkampf)
@@ -140,7 +140,7 @@ class WettkampfOverviewTab(wettkampf: WettkampfView, override val service: KutuS
         }
 
         Platform.runLater {
-          PrintUtil.printDialogFuture(caption, FilenameDefault(filename, dir), false, generate, orientation = PageOrientation.Landscape)(action)
+          PrintUtil.printDialogFuture(caption, FilenameDefault(filename, dir), adjustLinesPerPage = false, generate, orientation = PageOrientation.Landscape)(action)
         }
       }
       items += KuTuApp.makeMenuAction(s"Liste der Online Wertungsrichter-Anmeldungen ...") { (caption: String, action: ActionEvent) =>
@@ -150,14 +150,14 @@ class WettkampfOverviewTab(wettkampf: WettkampfView, override val service: KutuS
           dir.mkdirs()
         }
 
-        def generate = (lpp: Int) => KuTuApp.invokeAsyncWithBusyIndicator {
+        def generate = (lpp: Int) => KuTuApp.invokeAsyncWithBusyIndicator(caption) {
           Future {
             KuTuServer.getAllJudgesHTMLRemote(wettkampf.toWettkampf)
           }
         }
 
         Platform.runLater {
-          PrintUtil.printDialogFuture(caption, FilenameDefault(filename, dir), false, generate, orientation = PageOrientation.Landscape)(action)
+          PrintUtil.printDialogFuture(caption, FilenameDefault(filename, dir), adjustLinesPerPage = false, generate, orientation = PageOrientation.Landscape)(action)
         }
       }
     }
@@ -171,7 +171,7 @@ class WettkampfOverviewTab(wettkampf: WettkampfView, override val service: KutuS
             minWidth = 75
             disable = !wettkampfEditable
             onAction = (event: ActionEvent) => {
-              implicit val e = event
+              implicit val e: ActionEvent = event
               val fileChooser = new FileChooser {
                 title = "Wettkampf Logo laden"
                 initialDirectory = new java.io.File(homedir)
@@ -210,9 +210,13 @@ class WettkampfOverviewTab(wettkampf: WettkampfView, override val service: KutuS
             }
           },
           new Button {
-            text = "Upload"
+            val actionText = "Upload"
+            text = actionText
             disable <== when(Bindings.createBooleanBinding(() => {
-              Config.isLocalHostServer || wettkampf.toWettkampf.hasSecred(homedir, remoteHostOrigin) || ConnectionStates.connectedProperty.value
+              !wettkampfEditable ||
+                Config.isLocalHostServer ||
+                wettkampf.toWettkampf.hasSecred(homedir, remoteHostOrigin) ||
+                ConnectionStates.connectedProperty.value
             },
               KuTuApp.selectedWettkampfSecret,
               LocalServerStates.localServerProperty,
@@ -220,28 +224,11 @@ class WettkampfOverviewTab(wettkampf: WettkampfView, override val service: KutuS
               ConnectionStates.remoteServerProperty
             )) choose true otherwise false
 
-            onAction = { (action) =>
+            onAction = { action =>
               implicit val e: ActionEvent = action
-              PageDisplayer.showInDialog(text.value, new DisplayablePage() {
-                def getPage: Node = {
-                  new BorderPane {
-                    hgrow = Priority.Always
-                    vgrow = Priority.Always
-                    center = new VBox {
-                      if (wettkampf.toWettkampf.hasSecred(homedir, remoteHostOrigin)) {
-                        children.addAll(new Label("Die Resultate zu diesem Wettkampf werden im Netzwerk hochgeladen und\nersetzen dort die Resultate, die zu diesem Wettkampf erfasst wurden."))
-                      } else {
-                        children.addAll(new Label("Die Resultate zu diesem Wettkampf werden neu im Netzwerk bereitgestellt."))
-                      }
-                    }
-                  }
-                }
-              },
-                new Button("OK") {
-                  onAction = handleAction { implicit e: ActionEvent =>
-                    uploadResults(text.value)
-                  }
-                })
+              KuTuApp.validateUpload(wettkampf, "Wettkampf hochladen ...", action) { caption =>
+                uploadResults(caption)
+              }
             }
           },
           new Button {
@@ -271,7 +258,7 @@ class WettkampfOverviewTab(wettkampf: WettkampfView, override val service: KutuS
                 createDocument
               }
               Platform.runLater {
-                PrintUtil.printDialogFuture("Wettkampfübersicht drucken ...", FilenameDefault(filename, dir), false, generate, orientation = PageOrientation.Portrait)(event)
+                PrintUtil.printDialogFuture("Wettkampfübersicht drucken ...", FilenameDefault(filename, dir), adjustLinesPerPage = false, generate, orientation = PageOrientation.Portrait)(event)
               }
             }
           }

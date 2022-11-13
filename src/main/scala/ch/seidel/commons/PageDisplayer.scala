@@ -222,7 +222,7 @@ object PageDisplayer {
       val alert = new Alert(AlertType.ERROR)
       alert.setTitle("Unerwarteter Fehler")
       alert.setHeaderText(s"Fehler beim Ausführen von '$caption'")
-      alert.setContentText(s"$error")
+      alert.setContentText(s"${error.getMessage}")
 
       val label = new Label(s"Details:")
       import java.io.PrintWriter

@@ -50,7 +50,7 @@ object RegistrationAdminDialog {
     val athletModel = ObservableBuffer[SyncAction]()
     val vereineList = service.selectVereine
     logger.info("start import Registration Analyse ...")
-    val cliprawf: Future[(Set[Verein],List[SyncAction])] = KuTuApp.invokeAsyncWithBusyIndicator {
+    val cliprawf: Future[(Set[Verein],List[SyncAction])] = KuTuApp.invokeAsyncWithBusyIndicator("Online-Registrierungen abgleichen ...") {
       service.loginWithWettkampf(wkInfo.wettkampf.toWettkampf).map {
         case r: HttpResponse if r.status.isSuccess() =>
           (for {
