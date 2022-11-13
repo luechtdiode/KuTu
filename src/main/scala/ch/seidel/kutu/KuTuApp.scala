@@ -289,9 +289,11 @@ object KuTuApp extends JFXApp3 with KutuService with JsonSupport with JwtSupport
         new Button("OK") {
           disable <== when(Bindings.createBooleanBinding(() => {
             cmbProgramm.selectionModel.value.getSelectedIndex == -1 ||
-              txtDatum.value.isNull.value || txtTitel.text.isEmpty.value
+              txtDatum.value.isNull.value || txtTitel.text.value.isEmpty
           },
-            cmbProgramm.selectionModel.value.selectedIndexProperty, txtDatum.value, txtTitel.text
+            cmbProgramm.selectionModel.value.selectedIndexProperty,
+            txtDatum.value,
+            txtTitel.text
           )) choose true otherwise false
           onAction = handleAction { implicit e: ActionEvent =>
             try {
@@ -844,6 +846,69 @@ object KuTuApp extends JFXApp3 with KutuService with JsonSupport with JwtSupport
     item
   }
 
+  def makeSelectBackendMenu = {
+    val item = makeMenuAction("Server auswählen") { (caption, action) =>
+      implicit val e = action
+      val filteredModel = ObservableBuffer.from(Config.getRemoteHosts)
+      val header = new VBox {
+        children.addAll(
+          new Label{
+            text = s"Server Origin"
+            style = "-fx-font-size: 1.2em;-fx-font-weight: bold;-fx-padding: 8px 0 2px 0;-fx-text-fill: #0072aa;"
+            styleClass += "toolbar-header"},
+          new Label(s"   Aktuell: ${Config.remoteHost}"),
+          new Label(s"   Default: ${Config.defaultRemoteHost}")
+        )
+      }
+      val serverList = new ListView[String](filteredModel)
+      serverList.selectionModel.value.setSelectionMode(SelectionMode.Single)
+      serverList.selectionModel.value.select(Config.remoteHost)
+      PageDisplayer.showInDialog(caption, new DisplayablePage() {
+        def getPage: Node = {
+          new BorderPane {
+            hgrow = Priority.Always
+            vgrow = Priority.Always
+            minWidth = 600
+            center = new BorderPane {
+              hgrow = Priority.Always
+              vgrow = Priority.Always
+              top = header
+              center = serverList
+              minWidth = 550
+            }
+
+          }
+        }
+      }, new Button("Default") {
+        onAction = (_: ActionEvent) => {
+          ConnectionStates.switchRemoteHost(Config.defaultRemoteHost)
+        }
+      }, new Button("OK") {
+        disable <== when(serverList.selectionModel.value.selectedItemProperty.isNull()) choose true otherwise false
+        onAction = (_: ActionEvent) => {
+          if (!serverList.selectionModel().isEmpty) {
+            serverList.items.value.zipWithIndex.filter {
+              x => serverList.selectionModel.value.isSelected(x._2)
+            }.collectFirst{ selected =>
+              val (server, _) = selected
+              ConnectionStates.switchRemoteHost(server)
+            }
+          }
+        }
+      })
+    }
+    item.disable <== when(Bindings.createBooleanBinding(() =>
+      ConnectionStates.connectedWithProperty.value.nonEmpty
+        || modelWettkampfModus.value
+        || LocalServerStates.localServerProperty.value,
+      ConnectionStates.connectedWithProperty,
+      ConnectionStates.remoteServerProperty,
+      modelWettkampfModus,
+      LocalServerStates.localServerProperty
+    )) choose true otherwise false
+    item
+  }
+
   def connectAndShare(p: WettkampfView, caption: String, action: ActionEvent) = {
     implicit val e = action
     val process = KuTuApp.invokeAsyncWithBusyIndicator {
@@ -976,7 +1041,10 @@ object KuTuApp extends JFXApp3 with KutuService with JsonSupport with JwtSupport
             txtTitel.text.isEmpty.value ||
             txtNotificationEMail.text.isEmpty.value
         },
-          cmbProgramm.selectionModel.value.selectedIndexProperty, txtDatum.value, txtTitel.text
+          cmbProgramm.selectionModel.value.selectedIndexProperty,
+          txtDatum.value,
+          txtNotificationEMail.text,
+          txtTitel.text
         )) choose true otherwise false
         onAction = handleAction { implicit e: ActionEvent =>
           val w = createWettkampf(
@@ -1521,6 +1589,19 @@ object KuTuApp extends JFXApp3 with KutuService with JsonSupport with JwtSupport
 
   override def start(): Unit = {
     markAthletesInactiveOlderThan(3)
+
+    rootTreeItem = new TreeItem[String]("Dashboard") {
+      expanded = true
+      children = tree.getTree
+    }
+    controlsView = new TreeView[String]() {
+      minWidth = 5
+      maxWidth = 400
+      prefWidth = 200
+      editable = true
+      root = rootTreeItem
+      id = "page-tree"
+    }
     val btnWettkampfModus = new ToggleButton("Wettkampf-Modus") {
       id = "wettkampfmodusButton"
       selected <==> modelWettkampfModus
@@ -1562,31 +1643,16 @@ object KuTuApp extends JFXApp3 with KutuService with JsonSupport with JwtSupport
             s"Server: ${Config.remoteBaseUrl} online\nVersion: ${Config.appFullVersion}, Built: ${Config.builddate}"
         }
         //visible <== ConnectionStates.connectedProperty
-      }, ConnectionStates.connectedWithProperty, LocalServerStates.localServerProperty)
-    }
-    val screen = Screen.primary
-    rootTreeItem = new TreeItem[String]("Dashboard") {
-      expanded = true
-      children = tree.getTree
-    }
-    controlsView = new TreeView[String]() {
-      minWidth = 5
-      maxWidth = 400
-      prefWidth = 200
-      editable = true
-      root = rootTreeItem
-      id = "page-tree"
+      }, ConnectionStates.connectedWithProperty, LocalServerStates.localServerProperty, ConnectionStates.remoteServerProperty)
+      contextMenu = new ContextMenu {
+        items += makeSelectBackendMenu
+        items += makeStartServerMenu
+        items += makeStopServerMenu
+        items += makeProxyLoginMenu
+        items += makeWettkampfHerunterladenMenu
+      }
     }
     val centerPane = PageDisplayer.choosePage(modelWettkampfModus, None, "dashBoard", tree)
-    val sscrollPane = new ScrollPane {
-      minWidth = 5
-      maxWidth = 400
-      prefWidth = 200
-      fitToWidth = true
-      fitToHeight = true
-      id = "page-tree"
-      content = controlsView
-    }
     val splitPane = new SplitPane {
       dividerPositions = 0.2
       id = "page-splitpane"
@@ -1655,6 +1721,7 @@ object KuTuApp extends JFXApp3 with KutuService with JsonSupport with JwtSupport
                 items += makeNeuerWettkampfImportierenMenu
                 items += new Menu("Netzwerk") {
                   //items += makeLoginMenu
+                  items += makeSelectBackendMenu
                   items += makeStartServerMenu
                   items += makeStopServerMenu
                   items += makeProxyLoginMenu

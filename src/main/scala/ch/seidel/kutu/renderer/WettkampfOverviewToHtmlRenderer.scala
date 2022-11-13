@@ -1,7 +1,9 @@
 package ch.seidel.kutu.renderer
 
+import ch.seidel.kutu.Config
+
 import java.io.File
-import ch.seidel.kutu.Config.remoteBaseUrl
+import ch.seidel.kutu.Config.{homedir, remoteBaseUrl, remoteHostOrigin}
 import ch.seidel.kutu.KuTuApp.enc
 import ch.seidel.kutu.domain._
 import ch.seidel.kutu.renderer.PrintUtil._
@@ -105,16 +107,8 @@ trait WettkampfOverviewToHtmlRenderer {
             tr .blockstart:not(:first-child) {
               border-left: 1px solid lightgray;
             }
-            ul {
-              margin: 0px;
-              padding: 0px;
-              border: 0px;
-              list-style: none;
-              overflow: auto;
-            }
             li {
-              float: left;
-              width: 100%;
+              font-size: 12px;
             }
             .headline {
               display: block;
@@ -175,6 +169,8 @@ trait WettkampfOverviewToHtmlRenderer {
     val totSum = tiSum + tuSum
 
     val logoHtml = (if (logo.exists) s"""<img class=logo src="${logo.imageSrcForWebEngine}" title="Logo"/>""" else s"")
+    val hasRemote = wettkampf.toWettkampf.hasSecred(homedir, remoteHostOrigin)
+    val isLocalServer = Config.isLocalHostServer
     val registrationURL = s"$remoteBaseUrl/registration/${wettkampf.uuid.get}"
     val regQRUrl = toQRCodeImage(registrationURL)
 
@@ -240,14 +236,37 @@ trait WettkampfOverviewToHtmlRenderer {
       </div>
       <h2>Anmeldungen</h2>
       <div class=headline>
-        <img class=qrcode src="$regQRUrl"/>
-        <h3>Wettkampf-Registrierung / Online-Anmeldungen</h3>
-        <p class=wordwrapper>Zum Versenden an die Vereinsverantwortlichen oder für in die Wettkampf-Ausschreibung.<br>
-        <a href="$registrationURL" target="_blank">$registrationURL</a>
-        </p>
-        <h3>EMail des Wettkampf-Administrators</h3>
-        <p>An diese EMail Adresse werden Notifikations-Meldungen versendet, sobald sich an den Anmeldungen Mutationen ergeben.<br>
-        ${if (wettkampf.notificationEMail.nonEmpty) s"""<a href="mailto://${wettkampf.notificationEMail}" target="_blank">${wettkampf.notificationEMail}</a>""" else "<strong>Keine EMail hinterlegt!</strong>"}
+        ${
+        if (!isLocalServer) {
+          if (hasRemote)
+            s"""<img class=qrcode src="$regQRUrl"/>
+                <h3>Wettkampf-Registrierung / Online-Anmeldungen</h3>
+                  <p class=wordwrapper>Zum Versenden an die Vereinsverantwortlichen oder für in die Wettkampf-Ausschreibung.<br>
+                    <a href="$registrationURL" target="_blank">$registrationURL</a>
+                  </p>"""
+          else
+            s"""<h3>Wettkampf-Registrierung / Online-Anmeldungen</h3>
+                <p class=wordwrapper>
+                  Der Wettkampf ist nur lokal gespeichert, resp. noch nicht auf den Server ${Config.remoteHost} hochgeladen.</p>
+                <p class=wordwrapper>
+                  Folgende Online-Funktionen sind nur verfügbar, wenn der Wettkampf hochgeladen wird. <em>(siehe Funktion "Upload")</em>
+                  <ul>
+                    <li>Anmeldungen über die Vereinsverantwortlichen</li>
+                    <li>Online Resultat-Erfassung über die Wertungsrichter</li>
+                    <li>Online Rangliste bereitstellen</li>
+                  </ul>
+                  </p>
+                """
+          } else ""
+        }
+        ${
+        if (!isLocalServer) {
+          s"""<h3>EMail des Wettkampf-Administrators</h3>
+            <p>An diese EMail Adresse werden Notifikations-Meldungen versendet, sobald sich an den Anmeldungen Mutationen ergeben.<br>
+              ${if (wettkampf.notificationEMail.nonEmpty) s"""<a href="mailto://${wettkampf.notificationEMail}" target="_blank">${wettkampf.notificationEMail}</a>""" else "<strong>Keine EMail hinterlegt!</strong>"}
+          """
+        } else ""
+        }
         </p>
         <h3>Zusammenstellung der Anmeldungen</h3>
       </div>
@@ -280,20 +299,23 @@ trait WettkampfOverviewToHtmlRenderer {
         </table><br>
       </div>
       <em>(Ohne Reserven)</em>
-      <h2 id="usefullinks">Weitere nützliche Links</h2>
-      <div class=headline>
-        <img class=qrcode src="$startlistQRUrl"/>
-        <h3>Online Liste der Teilnehmer/-Innen</h3><p class=wordwrapper>
-        Liste aller angemeldeten Teilnehmer/-Innen mit ihrer Starteinteilung.<br>
-        <a href="$startlistURL" target="_blank">$startlistURL</a>
-        </p>
+      ${ if (hasRemote)
+        s"""
+        <h2 id="usefullinks">Weitere nützliche Links</h2>
+        <div class=headline>
+          <img class=qrcode src="$startlistQRUrl"/>
+          <h3>Online Liste der Teilnehmer/-Innen</h3><p class=wordwrapper>
+          Liste aller angemeldeten Teilnehmer/-Innen mit ihrer Starteinteilung.<br>
+          <a href="$startlistURL" target="_blank">$startlistURL</a>
+          </p>
+        </div>
+        <div class=headline>
+          <img class=qrcode src="$lastQRUrl"/>
+          <h3>Online Wettkampfresultate</h3><p class=wordwrapper>Direkter Link in die Online App, wo die letzten Resultate publiziert werden.<br>
+          <a href="$lastResultsURL" target="_blank">$lastResultsURL</a>
+        </div>"""
+      }
       </div>
-      <div class=headline>
-        <img class=qrcode src="$lastQRUrl"/>
-        <h3>Online Wettkampfresultate</h3><p class=wordwrapper>Direkter Link in die Online App, wo die letzten Resultate publiziert werden.<br>
-        <a href="$lastResultsURL" target="_blank">$lastResultsURL</a>
-      </div>
-    </div>
     """
   }
 

@@ -3,7 +3,18 @@ Einrichten einer Test-Installation
 
 Zunächst muss die App ordentlich heruntergeladen und installiert werden.
 
-Danach kann mit Hilfe folgender Beschreibung eine Test-Instanz konfiguriert werden.
+Danach kann im Programm der Server ausgewählt werden. Die Einstellung wird nicht gespeichert.
+Nach jedem Programmstart muss sie deshalb wenn nötig wieder eingestellt werden.
+
+Die Einstellung erfolgt über ein PopUp-Menu auf dem blauen Status-Button oben rechts in der
+Hauptansicht:
+
+1. ![../Screenshots/backend-switch-popup.png](../Screenshots/backend-switch-popup.png)
+2. ![../Screenshots/backend-switch-dialog.png](../Screenshots/backend-switch-dialog.png)
+
+Sollte eine dedizierte Test-Installation eingerichtet werden, bei der die Einstellung nicht immer
+wieder eingestellt werden muss, oder bei der andere Server-Adressen hinterlegt sein sollen, weil z.B. mit einem lokalen 
+Entwicklungs-Server verbunden werden soll, kann mit folgender Anleitung eine Test-Instanz konfiguriert werden.
 
 Die Versionsbezeichnungen können im Laufe geändert haben und müssen ggf. in den Scripts angepasst werden.
 Aktuell wird -v2r2 verwendet.

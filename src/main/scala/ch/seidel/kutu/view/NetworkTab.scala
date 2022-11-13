@@ -8,7 +8,7 @@ import ch.seidel.kutu.domain._
 import ch.seidel.kutu.http.WebSocketClient
 import ch.seidel.kutu.renderer.PrintUtil.FilenameDefault
 import ch.seidel.kutu.renderer.{BestenListeToHtmlRenderer, PrintUtil, RiegenBuilder}
-import ch.seidel.kutu.{Config, ConnectionStates, KuTuApp, KuTuServer}
+import ch.seidel.kutu.{Config, ConnectionStates, KuTuApp, KuTuServer, LocalServerStates}
 import javafx.event.EventHandler
 import javafx.scene.{control => jfxsc}
 import scalafx.Includes._
@@ -568,8 +568,10 @@ class NetworkTab(wettkampfmode: BooleanProperty, override val wettkampfInfo: Wet
         || isRunning.value,
 
       KuTuApp.selectedWettkampfSecret,
-      isRunning,
+      LocalServerStates.localServerProperty,
       ConnectionStates.connectedProperty,
+      ConnectionStates.remoteServerProperty,
+      isRunning,
     )) choose true otherwise false
     item
   }

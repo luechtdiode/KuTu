@@ -487,7 +487,7 @@ package object domain {
 
     def hasRemote(homedir: String, origin: String): Boolean = {
       val path = fromOriginFilePath(homedir, origin)
-      return path.toFile.exists
+      path.toFile.exists
     }
 
     def removeRemote(homedir: String, origin: String): Unit = {

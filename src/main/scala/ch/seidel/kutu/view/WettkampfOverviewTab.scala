@@ -2,12 +2,12 @@ package ch.seidel.kutu.view
 
 import java.util.UUID
 import ch.seidel.commons._
-import ch.seidel.kutu.Config.{homedir, remoteHostOrigin}
-import ch.seidel.kutu.KuTuApp.{controlsView, getStage, selectedWettkampfSecret, stage}
+import ch.seidel.kutu.Config.{homedir, remoteBaseUrl, remoteHostOrigin}
+import ch.seidel.kutu.KuTuApp.{controlsView, getStage, handleAction, selectedWettkampfSecret, stage}
 import ch.seidel.kutu.domain._
 import ch.seidel.kutu.renderer.PrintUtil.FilenameDefault
 import ch.seidel.kutu.renderer.{CompetitionsJudgeToHtmlRenderer, PrintUtil, WettkampfOverviewToHtmlRenderer}
-import ch.seidel.kutu.{Config, ConnectionStates, KuTuApp, KuTuServer}
+import ch.seidel.kutu.{Config, ConnectionStates, KuTuApp, KuTuServer, LocalServerStates}
 import javafx.scene.text.FontSmoothingType
 import scalafx.Includes._
 import scalafx.application.Platform
@@ -23,6 +23,7 @@ import scalafx.stage.FileChooser
 import scalafx.stage.FileChooser.ExtensionFilter
 
 import scala.concurrent.Future
+import scala.util.{Failure, Success}
 
 class WettkampfOverviewTab(wettkampf: WettkampfView, override val service: KutuService) extends Tab with TabWithService
   with WettkampfOverviewToHtmlRenderer with CompetitionsJudgeToHtmlRenderer {
@@ -74,12 +75,47 @@ class WettkampfOverviewTab(wettkampf: WettkampfView, override val service: KutuS
     )
   }
 
+  def uploadResults(caption: String): Unit = {
+    import scala.concurrent.ExecutionContext.Implicits.global
+    val process = KuTuApp.invokeAsyncWithBusyIndicator {
+      if (remoteBaseUrl.indexOf("localhost") > -1) {
+        KuTuServer.startServer()
+      }
+      KuTuServer.httpUploadWettkampfRequest(wettkampf.toWettkampf)
+    }
+    process.onComplete { resultTry =>
+      Platform.runLater {
+        resultTry match {
+          case Success(response) =>
+            selectedWettkampfSecret.value = wettkampf.toWettkampf.readSecret(homedir, remoteHostOrigin)
+            PageDisplayer.showInDialogFromRoot(caption, new DisplayablePage() {
+              def getPage: Node = {
+                new BorderPane {
+                  hgrow = Priority.Always
+                  vgrow = Priority.Always
+                  center = new VBox {
+                    children.addAll(new Label(s"Der Wettkampf ${wettkampf.easyprint} wurde erfolgreich im Netzwerk bereitgestellt"))
+                  }
+                }
+              }
+            })
+          case Failure(error) =>
+            PageDisplayer.showErrorDialog(caption)(error)
+        }
+      }
+    }
+  }
+
   override def isPopulated: Boolean = {
     import scala.concurrent.ExecutionContext.Implicits.global
     val wettkampfEditable = !wettkampf.toWettkampf.isReadonly(homedir, remoteHostOrigin)
     reloadData()
     text = "Übersicht"
     closable = false
+    subscription = subscription :+ KuTuApp.selectedWettkampfSecret.onChange { (_, _, _) => reloadData() }
+    subscription = subscription :+ LocalServerStates.localServerProperty.onChange { (_, _, _) => reloadData() }
+    subscription = subscription :+ ConnectionStates.connectedProperty.onChange { (_, _, _) => reloadData() }
+    subscription = subscription :+ ConnectionStates.remoteServerProperty.onChange { (_, _, _) => reloadData() }
     val reportMenu = new MenuButton {
       text = "Liste erstellen"
       disable <== when(Bindings.createBooleanBinding(() =>
@@ -92,14 +128,17 @@ class WettkampfOverviewTab(wettkampf: WettkampfView, override val service: KutuS
       items += KuTuApp.makeMenuAction(s"Liste der Online Vereins-Registrierungen ...") { (caption: String, action: ActionEvent) =>
         val filename = "VereinsRegistrierungen_" + wettkampf.easyprint.replace(" ", "_") + ".html"
         val dir = new java.io.File(homedir + "/" + wettkampf.easyprint.replace(" ", "_"))
-        if(!dir.exists()) {
-          dir.mkdirs();
+        if (!dir.exists()) {
+          dir.mkdirs()
         }
 
-        def generate = (lpp: Int) => KuTuApp.invokeAsyncWithBusyIndicator {Future{
-          //toHTMLasClubRegistrationsList(wettkampf, KuTuServer.getAllRegistrationsRemote(wettkampf.toWettkampf), logofile)
-          KuTuServer.getAllRegistrationsHtmlRemote(wettkampf.toWettkampf)
-        }}
+        def generate = (lpp: Int) => KuTuApp.invokeAsyncWithBusyIndicator {
+          Future {
+            //toHTMLasClubRegistrationsList(wettkampf, KuTuServer.getAllRegistrationsRemote(wettkampf.toWettkampf), logofile)
+            KuTuServer.getAllRegistrationsHtmlRemote(wettkampf.toWettkampf)
+          }
+        }
+
         Platform.runLater {
           PrintUtil.printDialogFuture(caption, FilenameDefault(filename, dir), false, generate, orientation = PageOrientation.Landscape)(action)
         }
@@ -107,13 +146,16 @@ class WettkampfOverviewTab(wettkampf: WettkampfView, override val service: KutuS
       items += KuTuApp.makeMenuAction(s"Liste der Online Wertungsrichter-Anmeldungen ...") { (caption: String, action: ActionEvent) =>
         val filename = "WRAnmeldungen_" + wettkampf.easyprint.replace(" ", "_") + ".html"
         val dir = new java.io.File(homedir + "/" + wettkampf.easyprint.replace(" ", "_"))
-        if(!dir.exists()) {
-          dir.mkdirs();
+        if (!dir.exists()) {
+          dir.mkdirs()
         }
 
-        def generate = (lpp: Int) => KuTuApp.invokeAsyncWithBusyIndicator {Future{
-          KuTuServer.getAllJudgesHTMLRemote(wettkampf.toWettkampf)
-        }}
+        def generate = (lpp: Int) => KuTuApp.invokeAsyncWithBusyIndicator {
+          Future {
+            KuTuServer.getAllJudgesHTMLRemote(wettkampf.toWettkampf)
+          }
+        }
+
         Platform.runLater {
           PrintUtil.printDialogFuture(caption, FilenameDefault(filename, dir), false, generate, orientation = PageOrientation.Landscape)(action)
         }
@@ -134,10 +176,10 @@ class WettkampfOverviewTab(wettkampf: WettkampfView, override val service: KutuS
                 title = "Wettkampf Logo laden"
                 initialDirectory = new java.io.File(homedir)
                 extensionFilters ++= Seq(
-                  new ExtensionFilter("All supported Graphic-Files", List("*.svg", "*.png", "*.jpeg","*.jpg")),
+                  new ExtensionFilter("All supported Graphic-Files", List("*.svg", "*.png", "*.jpeg", "*.jpg")),
                   new ExtensionFilter("Vectorgraphic-Files", "*.svg"),
                   new ExtensionFilter("Portable Networkgraphic-Files", "*.png"),
-                  new ExtensionFilter("Joint Photographic Experts Group Graphic-Files", List("*.jpeg","*.jpg"))
+                  new ExtensionFilter("Joint Photographic Experts Group Graphic-Files", List("*.jpeg", "*.jpg"))
                 )
                 initialFileName.value = "logo.jpg"
               }
@@ -147,7 +189,7 @@ class WettkampfOverviewTab(wettkampf: WettkampfView, override val service: KutuS
                   val maxSize = java.text.NumberFormat.getInstance().format(Config.logoFileMaxSize / 1024)
                   val currentSize = java.text.NumberFormat.getInstance().format(selectedFile.length() / 1024)
                   PageDisplayer.showWarnDialog("Wettkampf-Logo laden", s"Die Datei ${selectedFile.getName} ist mit $currentSize Kilobytes zu gross. Sie darf nicht grösser als $maxSize Kilobytes sein.")
-                } else  KuTuApp.invokeWithBusyIndicator {
+                } else KuTuApp.invokeWithBusyIndicator {
                   import java.nio.file.{Files, StandardCopyOption}
                   val reg_ex = """.*\.(\w+)""".r
                   val extension = selectedFile.getName match {
@@ -168,18 +210,49 @@ class WettkampfOverviewTab(wettkampf: WettkampfView, override val service: KutuS
             }
           },
           new Button {
+            text = "Upload"
+            disable <== when(Bindings.createBooleanBinding(() => {
+              Config.isLocalHostServer || wettkampf.toWettkampf.hasSecred(homedir, remoteHostOrigin) || ConnectionStates.connectedProperty.value
+            },
+              KuTuApp.selectedWettkampfSecret,
+              LocalServerStates.localServerProperty,
+              ConnectionStates.connectedProperty,
+              ConnectionStates.remoteServerProperty
+            )) choose true otherwise false
+
+            onAction = { (action) =>
+              implicit val e: ActionEvent = action
+              PageDisplayer.showInDialog(text.value, new DisplayablePage() {
+                def getPage: Node = {
+                  new BorderPane {
+                    hgrow = Priority.Always
+                    vgrow = Priority.Always
+                    center = new VBox {
+                      if (wettkampf.toWettkampf.hasSecred(homedir, remoteHostOrigin)) {
+                        children.addAll(new Label("Die Resultate zu diesem Wettkampf werden im Netzwerk hochgeladen und\nersetzen dort die Resultate, die zu diesem Wettkampf erfasst wurden."))
+                      } else {
+                        children.addAll(new Label("Die Resultate zu diesem Wettkampf werden neu im Netzwerk bereitgestellt."))
+                      }
+                    }
+                  }
+                }
+              },
+                new Button("OK") {
+                  onAction = handleAction { implicit e: ActionEvent =>
+                    uploadResults(text.value)
+                  }
+                })
+            }
+          },
+          new Button {
             text = "Online Anmeldungen importieren ..."
             disable <== when(Bindings.createBooleanBinding(() =>
-                   !wettkampf.toWettkampf.hasSecred(homedir, remoteHostOrigin)
+              !wettkampf.toWettkampf.hasSecred(homedir, remoteHostOrigin)
                 || !ConnectionStates.connectedWithProperty.value.equals(wettkampf.uuid.getOrElse("")),
               ConnectionStates.connectedWithProperty,
               selectedWettkampfSecret,
               controlsView.selectionModel().selectedItem)
             ) choose true otherwise false
-//            disable <== when(Bindings.createBooleanBinding(() =>
-//              !wettkampf.toWettkampf.hasSecred(homedir, remoteHostOrigin),
-//              ConnectionStates.connectedWithProperty
-//            )) choose true otherwise false
             onAction = (e: ActionEvent) => importAnmeldungen(e)
           },
           reportMenu,
@@ -190,11 +263,11 @@ class WettkampfOverviewTab(wettkampf: WettkampfView, override val service: KutuS
               import scala.concurrent.ExecutionContext.Implicits.global
               val filename = "Uebersicht_" + wettkampf.easyprint.replace(" ", "_") + ".html"
               val dir = new java.io.File(homedir + "/" + wettkampf.easyprint.replace(" ", "_"))
-              if(!dir.exists()) {
-                dir.mkdirs();
+              if (!dir.exists()) {
+                dir.mkdirs()
               }
 
-              def generate = (lpp: Int) => Future{
+              def generate = (lpp: Int) => Future {
                 createDocument
               }
               Platform.runLater {

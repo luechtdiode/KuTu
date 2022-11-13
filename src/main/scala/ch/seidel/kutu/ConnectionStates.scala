@@ -41,4 +41,13 @@ object ConnectionStates {
     _connectedWithProperty.setValue("")
     _connectedProperty.setValue(false)
   }
+
+  private val _remoteServerProperty = new StringProperty()
+  _remoteServerProperty.setValue(Config.remoteBaseUrl)
+  val remoteServerProperty = new ReadOnlyStringProperty(_remoteServerProperty)
+
+  def switchRemoteHost(host: String): Unit = {
+    Config.setRemoteHost(host)
+    _remoteServerProperty.setValue(Config.remoteHost)
+  }
 }
