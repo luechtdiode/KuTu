@@ -34,7 +34,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
         with:
           # We must fetch at least the immediate parents so that if this is
           # a pull request then we can checkout the head.
@@ -45,9 +45,9 @@ jobs:
       - run: git checkout HEAD^2
         if: ${{ github.event_name == 'pull_request' }}
       - name: Setup NPM
-        uses: actions/setup-node@v1
+        uses: actions/setup-node@v3
         with:
-          node-version: 16.x
+          node-version: 16
       - name: Build Mobile-App
         run: |
           cd newclient/resultcatcher
@@ -74,7 +74,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
         with:
           # We must fetch at least the immediate parents so that if this is
           # a pull request then we can checkout the head.
@@ -93,7 +93,7 @@ jobs:
         env:
           OS: Linux
       - name: Download client modifications
-        uses: actions/download-artifact@v2
+        uses: actions/download-artifact@v3
         with:
           name: src
           path: src/main/resources/app
@@ -112,7 +112,7 @@ jobs:
             target/*.jar
             target/dependency
       - name: Archive production artifacts
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v3
         with:
           name: linux-app
           path: |
@@ -124,7 +124,7 @@ jobs:
     runs-on: windows-latest
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
         with:
           # We must fetch at least the immediate parents so that if this is
           # a pull request then we can checkout the head.
@@ -138,7 +138,7 @@ jobs:
           key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
           restore-keys: ${{ runner.os }}-m2
       - name: Download client modifications
-        uses: actions/download-artifact@v2
+        uses: actions/download-artifact@v3
         with:
           name: src
           path: src/main/resources/app
@@ -150,7 +150,7 @@ jobs:
           OS: Win64
         shell: bash
       - name: Archive production artifacts
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v3
         with:
           name: win64-app
           path: |
@@ -162,7 +162,7 @@ jobs:
     runs-on: macos-latest
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
         with:
           # We must fetch at least the immediate parents so that if this is
           # a pull request then we can checkout the head.
@@ -183,7 +183,7 @@ jobs:
         env:
           OS: Darwin
       - name: Download client modifications
-        uses: actions/download-artifact@v2
+        uses: actions/download-artifact@v3
         with:
           name: src
           path: src/main/resources/app
@@ -195,7 +195,7 @@ jobs:
         env:
           OS: Darwin
       - name: Archive production artifacts
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v3
         with:
           name: osx-app
           path: |
@@ -220,12 +220,12 @@ jobs:
           echo COMMIT_TAG=$COMMIT_TAG
           echo COMMIT_BRANCH=$COMMIT_BRANCH
           echo TAG=$TAG
-          echo ::set-output name=SHA_TAG::$GITHUB_SHA
-          echo ::set-output name=DOCKER_TAG::$TAG
-          echo ::set-output name=SOURCE_TAG::$COMMIT_TAG
-          echo ::set-output name=SOURCE_BRANCH::$COMMIT_BRANCH
+          echo SHA_TAG=$GITHUB_SHA >> $GITHUB_OUTPUT
+          echo DOCKER_TAG=$TAG >> $GITHUB_OUTPUT
+          echo SOURCE_TAG=$COMMIT_TAG >> $GITHUB_OUTPUT
+          echo SOURCE_BRANCH=$COMMIT_BRANCH >> $GITHUB_OUTPUT
       - name: Checkout repository
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
         with:
           # We must fetch at least the immediate parents so that if this is
           # a pull request then we can checkout the head.
@@ -233,7 +233,7 @@ jobs:
 
       - run: git checkout $(git log --branches -1 --pretty=format:'%D' | sed 's/.*, //g')
       - name: Download prepared linux application jar
-        uses: actions/download-artifact@v2
+        uses: actions/download-artifact@v3
         with:
           name: app
           path: target          
@@ -269,7 +269,7 @@ jobs:
             app
             src
       - name: Download a single artifact
-        uses: actions/download-artifact@v2
+        uses: actions/download-artifact@v3
         with:
           path: dist
       - name: Release
