@@ -9,13 +9,13 @@ import akka.http.scaladsl.model._
 import akka.http.scaladsl.model.headers.RawHeader
 import akka.http.scaladsl.server.Route
 import akka.http.scaladsl.unmarshalling.Unmarshal
-import akka.stream.scaladsl.{Sink, Source, StreamConverters, Flow}
+import akka.stream.scaladsl.{Sink, Source, StreamConverters}
 import akka.util.ByteString
 import ch.seidel.jwt.JsonWebToken
 import ch.seidel.kutu.Config._
 import ch.seidel.kutu.akka.{StartDurchgang, _}
 import ch.seidel.kutu.data.ResourceExchanger
-import ch.seidel.kutu.domain.{RegistrationService, Wettkampf, WettkampfService, WettkampfView}
+import ch.seidel.kutu.domain.{RegistrationService, Wettkampf, WettkampfService, WettkampfView, encodeURIParam}
 import spray.json._
 
 import scala.concurrent.ExecutionContext.Implicits.global
@@ -304,82 +304,100 @@ trait WettkampfRoutes extends SprayJsonSupport
           } ~
           pathEnd {
             post {
-              withoutRequestTimeout {
-                onSuccess(wettkampfExistsAsync(wkuuid.toString)) {
-                  case exists if !exists =>
-                    fileUpload("zip") {
-                      case (metadata, file: Source[ByteString, Any]) =>
-                        // do something with the file and file metadata ...
-                        log.info(s"receiving new wettkampf: $metadata, $wkuuid")
-                        import Core.materializer
-                        val is = file.runWith(StreamConverters.asInputStream(FiniteDuration(180, TimeUnit.SECONDS)))
-                        try {
-                          val wettkampf = ResourceExchanger.importWettkampf(is)
-                          val claims = setClaims(wkuuid.toString, Int.MaxValue)
-                          respondWithHeader(RawHeader(jwtAuthorizationKey, JsonWebToken(jwtHeader, claims, jwtSecretKey))) {
-                            if (wettkampf.notificationEMail == null || wettkampf.notificationEMail.trim.isEmpty) {
-                              complete(StatusCodes.Conflict, s"Die EMail-Adresse für die Notifikation von Online-Registrierungen ist noch nicht erfasst.")
-                            } else {
-                              complete(StatusCodes.OK)
-                            }
-                          }
-                        } catch {
-                          case e: Exception =>
-                            log.warning(s"wettkampf $wkuuid cannot be uploaded: " + e.toString)
-                            complete(StatusCodes.Conflict, s"Wettkampf $wkuuid konnte wg. einem technischen Fehler nicht hochgeladen werden. (${e.toString})")
-                        } finally {
-                          is.close()
-                        }
-                    }
-                  case _ =>
-                    log.warning(s"wettkampf $wkuuid cannot be uploaded twice")
-                    complete(StatusCodes.Conflict, s"Wettkampf $wkuuid kann nicht mehrfach hochgeladen werden.")
-                }
-              }
-            } ~
-              put {
-                authenticated() { userId =>
-                  if (userId.equals(wkuuid.toString)) {
-                    withoutRequestTimeout {
+              extractUri { uri =>
+                withoutRequestTimeout {
+                  onSuccess(wettkampfExistsAsync(wkuuid.toString)) {
+                    case exists if !exists =>
                       fileUpload("zip") {
                         case (metadata, file: Source[ByteString, Any]) =>
                           // do something with the file and file metadata ...
-                          log.info(s"receiving and updating wettkampf: $metadata, $wkuuid")
+                          log.info(s"receiving new wettkampf: $metadata, $wkuuid")
                           import Core.materializer
                           val is = file.runWith(StreamConverters.asInputStream(FiniteDuration(180, TimeUnit.SECONDS)))
-                          val processor = Future {
-                            try {
-                              val wettkampf = ResourceExchanger.importWettkampf(is)
-                              AthletIndexActor.publish(ResyncIndex)
-                              CompetitionCoordinatorClientActor.publish(RefreshWettkampfMap(wkuuid.toString), clientId)
-                              CompetitionRegistrationClientActor.publish(RegistrationChanged(wkuuid.toString), clientId)
-                              AbuseHandler.clearAbusedClients()
-                              wettkampf
-                            } finally {
-                              is.close()
-                            }
-                          }
-
-                          onComplete(processor) {
-                            case Success(wettkampf) =>
-                              log.info(s"wettkampf ${wettkampf.easyprint} updated")
+                          try {
+                            val wettkampf = ResourceExchanger.importWettkampf(is)
+                            val decodedorigin = s"${if (uri.authority.host.toString().contains("localhost")) "http" else "https"}://${uri.authority}"
+                            val link = s"$decodedorigin/api/registrations/${wettkampf.uuid.get}/approvemail?mail=${encodeURIParam(wettkampf.notificationEMail)}"
+                            AthletIndexActor.publish(ResyncIndex)
+                            CompetitionRegistrationClientActor.publish(CompetitionCreated(wkuuid.toString, link), clientId)
+                            val claims = setClaims(wkuuid.toString, Int.MaxValue)
+                            respondWithHeader(RawHeader(jwtAuthorizationKey, JsonWebToken(jwtHeader, claims, jwtSecretKey))) {
                               if (wettkampf.notificationEMail == null || wettkampf.notificationEMail.trim.isEmpty) {
                                 complete(StatusCodes.Conflict, s"Die EMail-Adresse für die Notifikation von Online-Registrierungen ist noch nicht erfasst.")
                               } else {
                                 complete(StatusCodes.OK)
                               }
-                            case Failure(e) =>
-                              log.error(e, s"wettkampf $wkuuid cannot be uploaded: " + e.toString)
-                              complete(StatusCodes.BadRequest,
-                                s"""Der Wettkampf ${metadata.fileName}
-                                   |konnte wg. einem technischen Fehler nicht vollständig hochgeladen werden.
-                                   |=>${e.getMessage}""".stripMargin)
+                            }
+                          } catch {
+                            case e: Exception =>
+                              log.warning(s"wettkampf $wkuuid cannot be uploaded: " + e.toString)
+                              complete(StatusCodes.Conflict, s"Wettkampf $wkuuid konnte wg. einem technischen Fehler nicht hochgeladen werden. (${e.toString})")
+                          } finally {
+                            is.close()
+                          }
+                      }
+                    case _ =>
+                      log.warning(s"wettkampf $wkuuid cannot be uploaded twice")
+                      complete(StatusCodes.Conflict, s"Wettkampf $wkuuid kann nicht mehrfach hochgeladen werden.")
+                  }
+                }
+              }
+            } ~
+              put {
+                extractUri { uri =>
+                  authenticated() { userId =>
+                    if (userId.equals(wkuuid.toString)) {
+                      withoutRequestTimeout {
+                        fileUpload("zip") {
+                          case (metadata, file: Source[ByteString, Any]) =>
+                            // do something with the file and file metadata ...
+                            log.info(s"receiving and updating wettkampf: $metadata, $wkuuid")
+                            import Core.materializer
+                            val is = file.runWith(StreamConverters.asInputStream(FiniteDuration(180, TimeUnit.SECONDS)))
+                            val processor = Future {
+                              try {
+                                val before = readWettkampf(wkuuid.toString)
+                                val wettkampf = ResourceExchanger.importWettkampf(is)
+                                AthletIndexActor.publish(ResyncIndex)
+                                CompetitionCoordinatorClientActor.publish(RefreshWettkampfMap(wkuuid.toString), clientId)
+                                CompetitionRegistrationClientActor.publish(RegistrationChanged(wkuuid.toString), clientId)
+                                AbuseHandler.clearAbusedClients()
+                                if (!before.notificationEMail.equalsIgnoreCase(wettkampf.notificationEMail)) {
+                                  val decodedorigin = s"${if (uri.authority.host.toString().contains("localhost")) "http" else "https"}://${uri.authority}"
+                                  val link = s"$decodedorigin/api/registrations/${wettkampf.uuid.get}/approvemail?mail=${encodeURIParam(wettkampf.notificationEMail)}"
+                                  CompetitionRegistrationClientActor.publish(CompetitionCreated(wkuuid.toString, link), clientId)
+                                }
+                                wettkampf
+                              } finally {
+                                is.close()
+                              }
+                            }
+
+                            onComplete(processor) {
+                              case Success(wettkampf) =>
+                                log.info(s"wettkampf ${wettkampf.easyprint} updated")
+                                if (wettkampf.notificationEMail == null || wettkampf.notificationEMail.trim.isEmpty) {
+                                  complete(StatusCodes.Conflict, s"Die EMail-Adresse für die Notifikation von Online-Registrierungen ist noch nicht erfasst.")
+                                } else {
+                                  complete(StatusCodes.OK)
+                                }
+                              case Failure(e) =>
+                                log.error(e, s"wettkampf $wkuuid cannot be uploaded: " + e.toString)
+                                complete(StatusCodes.BadRequest,
+                                  s"""Der Wettkampf ${metadata.fileName}
+
+                                     |konnte wg. einem technischen Fehler n
+
+                                     |=>${e.getMessage}""".
+                                    stripMargin)
                           }
                       }
                     }
                   }
-                  else {
-                    complete(StatusCodes.Unauthorized)
+                    else {
+                      complete(
+                        StatusCodes.Unauthorized)
+                    }
                   }
                 }
               } ~
@@ -391,7 +409,8 @@ trait WettkampfRoutes extends SprayJsonSupport
                         CompetitionCoordinatorClientActor.publish(Delete(wkuuid.toString), clientId)
                         .andThen {
                           case _ =>
-                            deleteRegistrations(UUID.fromString(wettkampf.uuid.get))
+                            CompetitionRegistrationClientActor.stop(wkuuid.toString)
+                            deleteRegistrations(UUID.fromString(wkuuid.toString))
                             deleteWettkampf(wettkampf.id)
                             StatusCodes.OK
                         }

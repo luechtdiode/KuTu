@@ -1,7 +1,7 @@
 package ch.seidel.kutu.akka
 
 import akka.actor.SupervisorStrategy.Restart
-import akka.actor.{Actor, ActorRef, OneForOneStrategy, Props}
+import akka.actor.{ActorRef, OneForOneStrategy, Props}
 import akka.event.LoggingAdapter
 import akka.pattern.ask
 import akka.persistence.{PersistentActor, SnapshotOffer, SnapshotSelectionCriteria}
@@ -14,8 +14,7 @@ import ch.seidel.kutu.http.JsonSupport
 import ch.seidel.kutu.renderer.MailTemplates
 import ch.seidel.kutu.view.WettkampfInfo
 
-import java.time.{Instant, LocalDate}
-import java.time.temporal.ChronoUnit
+import java.time.{LocalDate}
 import java.util.UUID
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration.{DAYS, DurationInt, FiniteDuration}
@@ -24,13 +23,15 @@ import scala.util.control.NonFatal
 import scala.util.{Failure, Success}
 
 sealed trait RegistrationProtokoll
-
 sealed trait RegistrationAction extends RegistrationProtokoll {
   val wettkampfUUID: String
 }
 
 sealed trait RegistrationEvent extends RegistrationProtokoll
 
+case class CompetitionCreated(wettkampfUUID: String, link: String) extends RegistrationAction
+case class ApproveEMail(wettkampfUUID: String, mail: String) extends RegistrationAction
+case class EMailApproved(message: String) extends RegistrationEvent
 case class RegistrationChanged(wettkampfUUID: String) extends RegistrationAction
 
 case class RegistrationResync(wettkampfUUID: String) extends RegistrationAction
@@ -59,15 +60,19 @@ class CompetitionRegistrationClientActor(wettkampfUUID: String) extends Persiste
   }
 
   object CheckSyncChangedForNotifier
+  object CheckEMailApprovedNotifier
 
   private val wettkampf = readWettkampf(wettkampfUUID)
   private val wettkampfInfo = WettkampfInfo(wettkampf.toView(readProgramm(wettkampf.programmId)), this)
-  private var syncState: RegistrationState = RegistrationState()
+  private var syncState: RegistrationState = RegistrationState(emailApproved = false)
   private var syncActions: Option[RegistrationState] = None
   private var syncActionReceivers: List[ActorRef] = List()
   private var clientId: () => String = () => ""
   private val notifierInterval: FiniteDuration = 1.hour
+  private val waitForEMailApprovementInterval: FiniteDuration = 1.hour
   private var rescheduleSyncNotificationCheck = context.system.scheduler.scheduleOnce(notifierInterval, self, CheckSyncChangedForNotifier)
+  private var waitForEMailVerificationCheck = context.system.scheduler.scheduleOnce(waitForEMailApprovementInterval, self, CheckEMailApprovedNotifier)
+  private var approvementEMailSent = false;
 
   override def persistenceId = s"$wettkampfUUID/regs/${Config.appFullVersion}"
 
@@ -84,6 +89,7 @@ class CompetitionRegistrationClientActor(wettkampfUUID: String) extends Persiste
   override def postStop(): Unit = {
     log.info(s"Stop CompetitionRegistrationClientActor for $wettkampf")
     rescheduleSyncNotificationCheck.cancel()
+    waitForEMailVerificationCheck.cancel()
     notifyChangesToEMail()
   }
 
@@ -104,6 +110,33 @@ class CompetitionRegistrationClientActor(wettkampfUUID: String) extends Persiste
       clientId = () => context
       receive(action)
       clientId = () => ""
+
+    case CompetitionCreated(_, link) =>
+      syncState = syncState.unapproved
+      val wk = readWettkampf(wettkampfUUID)
+      if (wk.notificationEMail.nonEmpty) {
+        KuTuMailerActor.send(
+          MailTemplates.createMailApprovement(wk, link)
+        )
+        approvementEMailSent = true
+      }
+
+    case ApproveEMail(_, mail) =>
+      if (readWettkampf(wettkampfUUID).notificationEMail.equals(mail)) {
+        syncState = syncState.approved
+        sender() ! EMailApproved(s"EMail ${mail} erfolgreich verifiziert")
+      }
+      else {
+        sender() ! EMailApproved(s"EMail ${mail} nicht erfolgreich verifiziert.")
+      }
+
+    case CheckEMailApprovedNotifier =>
+      if (!syncState.emailApproved && (approvementEMailSent || readWettkampf(wettkampfUUID).notificationEMail.isEmpty)) {
+        CompetitionCoordinatorClientActor.publish(Delete(wettkampfUUID), "EMail-Approver")
+        deleteRegistrations(UUID.fromString(wettkampfUUID))
+        deleteWettkampf(wettkampf.id)
+        context.stop(self)
+      }
 
     case RegistrationResync(_) =>
       retrieveSyncActions(sender())
@@ -128,11 +161,11 @@ class CompetitionRegistrationClientActor(wettkampfUUID: String) extends Persiste
   }
 
   private def notifyChangesToEMail(): Unit = {
+    val wk = readWettkampf(wettkampfUUID)
     if (this.syncState.hasChanges) {
       val regChanges = this.syncState.syncActions
       val judgeChanges = this.syncState.judgeSyncActions
       this.syncState = this.syncState.notified()
-      val wk = readWettkampf(wettkampfUUID)
       if (wk.notificationEMail.nonEmpty && wk.datum.toLocalDate.isAfter(LocalDate.now().plusDays(1))) {
         KuTuMailerActor.send(
           MailTemplates.createSyncNotificationMail(wk, regChanges, judgeChanges.changed, judgeChanges.removed, judgeChanges.added)
@@ -141,6 +174,9 @@ class CompetitionRegistrationClientActor(wettkampfUUID: String) extends Persiste
         saveSnapshot(syncState)
         deleteSnapshots(criteria)
       }
+    }
+    if (wk.datum.toLocalDate.isAfter(LocalDate.now().plusDays(1))) {
+      context.stop(self)
     }
   }
 
@@ -176,6 +212,14 @@ object CompetitionRegistrationClientActor {
 
   private def props(wettkampfUUID: String) = {
     Props(classOf[CompetitionRegistrationClientActor], wettkampfUUID)
+  }
+
+  def stop(wettkampfUUID: String): Unit = {
+    implicit val timeout: Timeout = Timeout(60000 milli)
+    system.actorSelection(s"user/Registration-${wettkampfUUID}").resolveOne().onComplete {
+      case Success(actorRef) => system.stop(actorRef)
+      case _ =>
+    }
   }
 
   def publish(action: RegistrationAction, context: String): Future[RegistrationEvent] = {

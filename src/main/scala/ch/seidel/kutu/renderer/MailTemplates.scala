@@ -54,6 +54,60 @@ object MailTemplates {
        |      </style>
        |    </head>""".stripMargin
 
+  def createMailApprovement(wettkampf: Wettkampf, link: String): Mail = {
+    val logodir = new java.io.File(Config.homedir + "/" + wettkampf.easyprint.replace(" ", "_"))
+    val logofile = PrintUtil.locateLogoFile(logodir)
+    val logoHtml = if (logofile.exists()) s"""<img class=logo src="${logofile.imageSrcForWebEngine}" title="Logo"/>""" else ""
+    val imageData = toQRCodeImage(link)
+    MultipartMail(s"Kutuapp EMail Verifikation nach Wettkampf-Upload (${wettkampf.easyprint})",
+      s"""Hallo ${wettkampf.notificationEMail}
+         |
+         |Du hast einen neuen Wettkampf '${wettkampf.easyprint}' auf die Plattform hochgeladen.
+         |Um sicherzustellen, dass die angegebene EMail Adresse funktioniert, bitten wir Dich,
+         |folgenden Link für die Bestätigung anzuwählen:
+         |
+         |${link}
+         |
+         |Wenn die Bestätigung nicht innert 1h erfolgt, wird der Wettkampf auf der Plattform wieder gelöscht.
+         |
+         |LG, die Kutuapp
+         |
+         |PS: Dies ist eine automatisch versendete EMail. Bitte nicht auf diese Mail antworten.""".stripMargin,
+      s"""<html>$htmlhead<body>
+         |    <div class=textbody>
+         |      <div class=headline>
+         |        $logoHtml
+         |        <div class=title><h4>${escaped(wettkampf.easyprint)}</h4></div>
+         |        <div class=subtitle>EMail Verifikation nach Wettkampf-Upload</br></div>
+         |      </div>
+         |      <div class="textblock">
+         |        <h4>Hallo ${escaped(wettkampf.notificationEMail)}</h4>
+         |        <p>
+         |          Du hast einen neuen Wettkampf '${escaped(wettkampf.easyprint)}' auf die Plattform hochgeladen.
+         |          Um sicherzustellen, dass die angegebene EMail Adresse funktioniert, bitten wir Dich,
+         |          folgenden Link für die Bestätigung anzuwählen:
+         |        </p>
+         |        <div class="catchme">
+         |          <a href='${link}'>
+         |            <h2>Link für die EMail-Bestätigung</h2>
+         |            <img title='${link}' width='300px' height='300px' src='${imageData}'>
+         |          </a><br>
+         |          <a href='${link}'> ${link}</a>
+         |        </div><p>
+         |          Wenn die Bestätigung nicht innert 1h erfolgt, wird der Wettkampf auf der Plattform wieder gelöscht.
+         |        </p><p>
+         |          LG, die KuTu-App
+         |        </p>
+         |        <hr>
+         |        <p>
+         |           <b>PS:</b> <em>Dies ist eine automatisch versendete EMail. Bitte nicht auf diese Mail antworten.</em>
+         |        </p>
+         |      </div>
+         |    </div>
+         |</body></html>""".stripMargin,
+      wettkampf.notificationEMail)
+  }
+
   def createSyncNotificationMail(wettkampf: Wettkampf, syncActions: List[SyncAction], changedJudges: List[JudgeRegistration], removedJudges: List[JudgeRegistration], addedJudges: List[JudgeRegistration]): Mail = {
     val logodir = new java.io.File(Config.homedir + "/" + wettkampf.easyprint.replace(" ", "_"))
     val logofile = PrintUtil.locateLogoFile(logodir)
