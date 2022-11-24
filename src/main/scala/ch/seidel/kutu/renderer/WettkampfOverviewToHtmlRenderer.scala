@@ -169,7 +169,7 @@ trait WettkampfOverviewToHtmlRenderer {
     val totSum = tiSum + tuSum
 
     val logoHtml = (if (logo.exists) s"""<img class=logo src="${logo.imageSrcForWebEngine}" title="Logo"/>""" else s"")
-    val hasRemote = wettkampf.toWettkampf.hasSecred(homedir, remoteHostOrigin)
+    val hasRemote = wettkampf.toWettkampf.hasSecred(homedir, remoteHostOrigin) || wettkampf.toWettkampf.hasRemote(homedir, remoteHostOrigin)
     val isLocalServer = Config.isLocalHostServer
     val registrationURL = s"$remoteBaseUrl/registration/${wettkampf.uuid.get}"
     val regQRUrl = toQRCodeImage(registrationURL)
