@@ -2,6 +2,8 @@ package ch.seidel.kutu.akka
 
 import ch.seidel.kutu.domain.{JudgeRegistration, SyncAction}
 
+import java.time.Instant
+
 case class JudgeSyncAtions(
                             changed: List[JudgeRegistration],
                             removed: List[JudgeRegistration],
@@ -15,7 +17,14 @@ case class RegistrationState(
                               syncJudgeListNotified: List[JudgeRegistration] = List(),
                               syncActions: List[SyncAction] = List(),
                               syncActionsNotified: List[SyncAction] = List(),
+                              created: Instant = Instant.now(),
+                              emailApproved: Boolean = true
                             ) {
+  def approved: RegistrationState =
+    RegistrationState(this.syncJudgeList, this.syncJudgeListNotified, syncActions, this.syncActionsNotified, this.created)
+
+  def unapproved: RegistrationState =
+    RegistrationState(this.syncJudgeList, this.syncJudgeListNotified, syncActions, this.syncActionsNotified, this.created, emailApproved = false)
 
   def hasChanges: Boolean =
     ((syncActions.nonEmpty && syncActions != syncActionsNotified)
@@ -29,8 +38,8 @@ case class RegistrationState(
   }
 
   def resynced(syncActions: List[SyncAction], syncJudgeList: List[JudgeRegistration]): RegistrationState =
-    RegistrationState(syncJudgeList, this.syncJudgeListNotified, syncActions, this.syncActionsNotified)
+    RegistrationState(syncJudgeList, this.syncJudgeListNotified, syncActions, this.syncActionsNotified, created, emailApproved)
 
   def notified(): RegistrationState =
-    RegistrationState(this.syncJudgeList, this.syncJudgeList, this.syncActions, this.syncActions)
+    RegistrationState(this.syncJudgeList, this.syncJudgeList, this.syncActions, this.syncActions, created, emailApproved)
 }

@@ -15,7 +15,7 @@ import ch.seidel.jwt.JsonWebToken
 import ch.seidel.kutu.Config._
 import ch.seidel.kutu.akka.{StartDurchgang, _}
 import ch.seidel.kutu.data.ResourceExchanger
-import ch.seidel.kutu.domain.{RegistrationService, Wettkampf, WettkampfService, WettkampfView}
+import ch.seidel.kutu.domain.{RegistrationService, Wettkampf, WettkampfService, WettkampfView, encodeURIParam}
 import spray.json._
 
 import scala.concurrent.ExecutionContext.Implicits.global
@@ -76,7 +76,6 @@ trait WettkampfRoutes extends SprayJsonSupport
   }
 
   def httpUploadWettkampfRequest(wettkampf: Wettkampf): Future[HttpResponse] = {
-    import Core.materializer
     val uuid = wettkampf.uuid match {
       case None => createUUIDForWettkampf(wettkampf.id).uuid.get
       case Some(uuid) => uuid
@@ -88,70 +87,128 @@ trait WettkampfRoutes extends SprayJsonSupport
       wettkampf.saveSecret(homedir, remoteHostOrigin, JsonWebToken(jwtHeader, setClaims(uuid, Int.MaxValue), jwtSecretKey))
     }
     val hadSecret = wettkampf.hasSecred(homedir, remoteHostOrigin)
-    if (!hadSecret) {
+
+    def postWettkampf(prom: Promise[String]): Future[HttpResponse] = {
       // try to initial upload new wettkampf
       log.info("post to " + s"$remoteAdminBaseUrl/api/competition/$uuid")
-      httpClientRequest(
+      val reqresp = httpClientRequest(
         HttpRequest(method = HttpMethods.POST, uri = s"$remoteAdminBaseUrl/api/competition/$uuid", entity = wettkampfEntity)).map {
-        case HttpResponse(StatusCodes.OK, headers, entity, _) =>
-          val secret = headers.find(h => h.is(jwtAuthorizationKey)).flatMap {
-            case HttpHeader(_, token) =>
-              entity.discardBytes()
-              Some(RawHeader(jwtAuthorizationKey, token))
-          } match {
-            case token@Some(_) => token
-            case _ => Await.result(Unmarshal(entity).to[JsObject].map { json =>
-              json.getFields("token").map(field => RawHeader(jwtAuthorizationKey, field.toString)).headOption
-            }, Duration.Inf)
+        case response@HttpResponse(StatusCodes.OK, headers, entity, _) =>
+          val secretOption = catchSecurityHeader(wettkampf, headers, entity).map(_.value)
+          if (secretOption.isEmpty) {
+            log.info("failed post to " + s"$remoteAdminBaseUrl/api/competition/$uuid, no secret available")
+            prom.failure(new RuntimeException("No Secret for Competition available"))
+          } else {
+            log.info("success post to " + s"$remoteAdminBaseUrl/api/competition/$uuid, got new secret.")
+            prom.success(secretOption.get)
           }
-          println(s"New Secret: " + secret)
-          wettkampf.saveSecret(homedir, remoteHostOrigin, secret.get.value)
-          uploadProm.success(secret.get.value)
+          response
 
-        case HttpResponse(_, _, entity, _) => entity match {
-          case HttpEntity.Strict(_, text) =>
-            log.error(text.utf8String)
-            uploadProm.failure(new RuntimeException(text.utf8String))
-          case x =>
-            log.error(x.toString)
-            uploadProm.failure(new RuntimeException(x.toString))
-        }
+        case response@HttpResponse(_, headers, entity, _) => entity match {
+            case HttpEntity.Strict(_, text) =>
+              log.error(s"post failed with ${text.utf8String}")
+              catchSecurityHeader(wettkampf, headers, entity)
+              prom.failure(new RuntimeException(text.utf8String))
+            case x =>
+              log.error(s"post failed with $x")
+              prom.failure(new RuntimeException(x.toString))
+          }
+          log.info("failed post to " + s"$remoteAdminBaseUrl/api/competition/$uuid, returned ${response.status}")
+          response
       }
+      reqresp.onComplete {
+        case Success(_) =>
+        case Failure(s) =>
+          prom.failure(new RuntimeException(s))
+      }
+      reqresp
+    }
 
+    if (!hadSecret) {
+      log.info("no secret seen, post instead of put competition ...")
+      postWettkampf(uploadProm)
     } else {
       wettkampf.readSecret(homedir, remoteHostOrigin) match {
-        case Some(secret) => uploadProm.success(secret)
-        case _ => uploadProm.failure(new RuntimeException("No Secret for Competition avaliable"))
+        case Some(secret) =>
+          log.info("secret seen, map for put operation uploadProm success ...")
+          uploadProm.success(secret)
+        case _ =>
+          log.info("no secret seen, uploadProm failed")
+          uploadProm.failure(new RuntimeException("No Secret for Competition available"))
       }
     }
 
     val process = uploadFut.flatMap { secret =>
-      httpRenewLoginRequest(s"$remoteBaseUrl/api/loginrenew", uuid, secret)
-    }.flatMap { response =>
-      if (hadSecret) {
-        log.info("put to " + s"$remoteAdminBaseUrl/api/competition/$uuid")
-        httpPutClientRequest(s"$remoteAdminBaseUrl/api/competition/$uuid", wettkampfEntity).flatMap {
-          case resp @ HttpResponse(StatusCodes.OK, headers, entity, _) =>
-            Future {
-              resp
-            }
-          case HttpResponse(_, _, entity, _) => entity match {
-            case HttpEntity.Strict(_, text) =>
-              log.error(text.utf8String)
-              Future.failed(new RuntimeException(text.utf8String))
-            case x =>
-              log.error(x.toString)
-              Future.failed(new RuntimeException(x.toString))
+      httpRenewLoginRequest(s"$remoteBaseUrl/api/loginrenew", uuid, secret).flatMap {
+        case resp@HttpResponse(StatusCodes.OK, headers, entity, _) =>
+          Future {
+            resp
           }
-        }
-      } else {
-        Future {
-          response
+        case HttpResponse(_, _, entity, _) => entity match {
+          case HttpEntity.Strict(_, text) =>
+            log.error(text.utf8String)
+            Future.failed(new RuntimeException(text.utf8String))
+          case x =>
+            log.error(x.toString)
+            Future.failed(new RuntimeException(x.toString))
         }
       }
-    }
+    }.transformWith {
+      case Failure(_) =>
+        log.warning("login with existing secret impossible, remote competition not existing! try post ...")
+        postWettkampf(Promise[String]())
 
+      case Success(response) =>
+        log.info("got login resonse ...")
+        if (hadSecret && response.status.isSuccess()) {
+          log.info("login successful - put to " + s"$remoteAdminBaseUrl/api/competition/$uuid")
+          httpPutClientRequest(s"$remoteAdminBaseUrl/api/competition/$uuid", wettkampfEntity).flatMap {
+            case resp @ HttpResponse(StatusCodes.OK, headers, entity, _) =>
+              log.info("put successful")
+              Future {
+                resp
+              }
+            case HttpResponse(_, _, entity, _) => entity match {
+              case HttpEntity.Strict(_, text) =>
+                log.error(s"put failed: ${text.utf8String}")
+                Future.failed(new RuntimeException(text.utf8String))
+              case x =>
+                log.error(s"put failed: $x")
+                Future.failed(new RuntimeException(x.toString))
+            }
+          }
+        }
+        else {
+          Future {
+            response
+          }
+        }
+    }
+    log.info("returning share competition process-future ...")
     process
+  }
+
+  private def catchSecurityHeader(wettkampf: Wettkampf, headers: Seq[HttpHeader], entity: ResponseEntity) = {
+    import Core.materializer
+    val secret = headers.find(h => h.is(jwtAuthorizationKey)).flatMap {
+      case HttpHeader(_, token) =>
+        entity.discardBytes()
+        Some(RawHeader(jwtAuthorizationKey, token))
+    } match {
+      case token@Some(_) => token
+      case _ => try {
+        Await.result(Unmarshal(entity).to[JsObject].map { json =>
+          json.getFields("token").map(field => RawHeader(jwtAuthorizationKey, field.toString)).headOption
+        }, Duration.Inf)
+      } catch {
+        case e: Exception => Option.empty
+      }
+    }
+    println(s"New Secret: " + secret)
+    if (secret.nonEmpty) {
+      wettkampf.saveSecret(homedir, remoteHostOrigin, secret.get.value)
+    }
+    secret
   }
 
   def httpDownloadRequest(request: HttpRequest): Future[Wettkampf] = {
@@ -283,82 +340,100 @@ trait WettkampfRoutes extends SprayJsonSupport
           } ~
           pathEnd {
             post {
-              withoutRequestTimeout {
-                onSuccess(wettkampfExistsAsync(wkuuid.toString)) {
-                  case exists if !exists =>
-                    fileUpload("zip") {
-                      case (metadata, file: Source[ByteString, Any]) =>
-                        // do something with the file and file metadata ...
-                        log.info(s"receiving new wettkampf: $metadata, $wkuuid")
-                        import Core.materializer
-                        val is = file.runWith(StreamConverters.asInputStream(FiniteDuration(180, TimeUnit.SECONDS)))
-                        try {
-                          val wettkampf = ResourceExchanger.importWettkampf(is)
-                          val claims = setClaims(wkuuid.toString, Int.MaxValue)
-                          respondWithHeader(RawHeader(jwtAuthorizationKey, JsonWebToken(jwtHeader, claims, jwtSecretKey))) {
-                            if (wettkampf.notificationEMail == null || wettkampf.notificationEMail.trim.isEmpty) {
-                              complete(StatusCodes.Conflict, s"Die EMail-Adresse für die Notifikation von Online-Registrierungen ist noch nicht erfasst.")
-                            } else {
-                              complete(StatusCodes.OK)
-                            }
-                          }
-                        } catch {
-                          case e: Exception =>
-                            log.warning(s"wettkampf $wkuuid cannot be uploaded: " + e.toString)
-                            complete(StatusCodes.Conflict, s"wettkampf $wkuuid konnte wg. einem technischen Fehler nicht hochgeladen werden. (${e.toString})")
-                        } finally {
-                          is.close()
-                        }
-                    }
-                  case _ =>
-                    log.warning(s"wettkampf $wkuuid cannot be uploaded twice")
-                    complete(StatusCodes.Conflict, s"wettkampf $wkuuid kann nicht mehrfach hochgeladen werden.")
-                }
-              }
-            } ~
-              put {
-                authenticated() { userId =>
-                  if (userId.equals(wkuuid.toString)) {
-                    withoutRequestTimeout {
+              extractUri { uri =>
+                withoutRequestTimeout {
+                  onSuccess(wettkampfExistsAsync(wkuuid.toString)) {
+                    case exists if !exists =>
                       fileUpload("zip") {
                         case (metadata, file: Source[ByteString, Any]) =>
                           // do something with the file and file metadata ...
-                          log.info(s"receiving and updating wettkampf: $metadata, $wkuuid")
+                          log.info(s"receiving new wettkampf: $metadata, $wkuuid")
                           import Core.materializer
                           val is = file.runWith(StreamConverters.asInputStream(FiniteDuration(180, TimeUnit.SECONDS)))
-                          val processor = Future {
-                            try {
-                              val wettkampf = ResourceExchanger.importWettkampf(is)
-                              AthletIndexActor.publish(ResyncIndex)
-                              CompetitionCoordinatorClientActor.publish(RefreshWettkampfMap(wkuuid.toString), clientId)
-                              CompetitionRegistrationClientActor.publish(RegistrationChanged(wkuuid.toString), clientId)
-                              AbuseHandler.clearAbusedClients()
-                              wettkampf
-                            } finally {
-                              is.close()
-                            }
-                          }
-
-                          onComplete(processor) {
-                            case Success(wettkampf) =>
-                              log.info(s"wettkampf ${wettkampf.easyprint} updated")
+                          try {
+                            val wettkampf = ResourceExchanger.importWettkampf(is)
+                            val decodedorigin = s"${if (uri.authority.host.toString().contains("localhost")) "http" else "https"}://${uri.authority}"
+                            val link = s"$decodedorigin/api/registrations/${wettkampf.uuid.get}/approvemail?mail=${encodeURIParam(wettkampf.notificationEMail)}"
+                            AthletIndexActor.publish(ResyncIndex)
+                            CompetitionRegistrationClientActor.publish(CompetitionCreated(wkuuid.toString, link), clientId)
+                            val claims = setClaims(wkuuid.toString, Int.MaxValue)
+                            respondWithHeader(RawHeader(jwtAuthorizationKey, JsonWebToken(jwtHeader, claims, jwtSecretKey))) {
                               if (wettkampf.notificationEMail == null || wettkampf.notificationEMail.trim.isEmpty) {
                                 complete(StatusCodes.Conflict, s"Die EMail-Adresse für die Notifikation von Online-Registrierungen ist noch nicht erfasst.")
                               } else {
                                 complete(StatusCodes.OK)
                               }
-                            case Failure(e) =>
-                              log.error(e, s"wettkampf $wkuuid cannot be uploaded: " + e.toString)
-                              complete(StatusCodes.BadRequest,
-                                s"""Der Wettkampf ${metadata.fileName}
-                                   |konnte wg. einem technischen Fehler nicht vollständig hochgeladen werden.
-                                   |=>${e.getMessage}""".stripMargin)
+                            }
+                          } catch {
+                            case e: Exception =>
+                              log.warning(s"wettkampf $wkuuid cannot be uploaded: " + e.toString)
+                              complete(StatusCodes.Conflict, s"Wettkampf $wkuuid konnte wg. einem technischen Fehler nicht hochgeladen werden. (${e.toString})")
+                          } finally {
+                            is.close()
+                          }
+                      }
+                    case _ =>
+                      log.warning(s"wettkampf $wkuuid cannot be uploaded twice")
+                      complete(StatusCodes.Conflict, s"Wettkampf $wkuuid kann nicht mehrfach hochgeladen werden.")
+                  }
+                }
+              }
+            } ~
+              put {
+                extractUri { uri =>
+                  authenticated() { userId =>
+                    if (userId.equals(wkuuid.toString)) {
+                      withoutRequestTimeout {
+                        fileUpload("zip") {
+                          case (metadata, file: Source[ByteString, Any]) =>
+                            // do something with the file and file metadata ...
+                            log.info(s"receiving and updating wettkampf: $metadata, $wkuuid")
+                            import Core.materializer
+                            val is = file.runWith(StreamConverters.asInputStream(FiniteDuration(180, TimeUnit.SECONDS)))
+                            val processor = Future {
+                              try {
+                                val before = readWettkampf(wkuuid.toString)
+                                val wettkampf = ResourceExchanger.importWettkampf(is)
+                                AthletIndexActor.publish(ResyncIndex)
+                                CompetitionCoordinatorClientActor.publish(RefreshWettkampfMap(wkuuid.toString), clientId)
+                                CompetitionRegistrationClientActor.publish(RegistrationChanged(wkuuid.toString), clientId)
+                                AbuseHandler.clearAbusedClients()
+                                if (!before.notificationEMail.equalsIgnoreCase(wettkampf.notificationEMail)) {
+                                  val decodedorigin = s"${if (uri.authority.host.toString().contains("localhost")) "http" else "https"}://${uri.authority}"
+                                  val link = s"$decodedorigin/api/registrations/${wettkampf.uuid.get}/approvemail?mail=${encodeURIParam(wettkampf.notificationEMail)}"
+                                  CompetitionRegistrationClientActor.publish(CompetitionCreated(wkuuid.toString, link), clientId)
+                                }
+                                wettkampf
+                              } finally {
+                                is.close()
+                              }
+                            }
+
+                            onComplete(processor) {
+                              case Success(wettkampf) =>
+                                log.info(s"wettkampf ${wettkampf.easyprint} updated")
+                                if (wettkampf.notificationEMail == null || wettkampf.notificationEMail.trim.isEmpty) {
+                                  complete(StatusCodes.Conflict, s"Die EMail-Adresse für die Notifikation von Online-Registrierungen ist noch nicht erfasst.")
+                                } else {
+                                  complete(StatusCodes.OK)
+                                }
+                              case Failure(e) =>
+                                log.error(e, s"wettkampf $wkuuid cannot be uploaded: " + e.toString)
+                                complete(StatusCodes.BadRequest,
+                                  s"""Der Wettkampf ${metadata.fileName}
+
+                                     |konnte wg. einem technischen Fehler n
+
+                                     |=>${e.getMessage}""".
+                                    stripMargin)
                           }
                       }
                     }
                   }
-                  else {
-                    complete(StatusCodes.Unauthorized)
+                    else {
+                      complete(
+                        StatusCodes.Unauthorized)
+                    }
                   }
                 }
               } ~
@@ -370,7 +445,8 @@ trait WettkampfRoutes extends SprayJsonSupport
                         CompetitionCoordinatorClientActor.publish(Delete(wkuuid.toString), clientId)
                         .andThen {
                           case _ =>
-                            deleteRegistrations(UUID.fromString(wettkampf.uuid.get))
+                            CompetitionRegistrationClientActor.stop(wkuuid.toString)
+                            deleteRegistrations(UUID.fromString(wkuuid.toString))
                             deleteWettkampf(wettkampf.id)
                             StatusCodes.OK
                         }

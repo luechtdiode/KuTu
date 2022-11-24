@@ -124,7 +124,7 @@ trait KuTuAppHTTPServer extends ApiService with JsonSupport {
     }
 
     try {
-      dgs.connect(InetAddress.getByAddress(Array[Byte](1, 1, 1, 1)), 0)
+      dgs.connect(InetAddress.getByAddress(Array[Byte](1, 1, 1, 1)), 53)
       val networkInterface = NetworkInterface
         .getByInetAddress(dgs.getLocalAddress)
       val internetAccessAdresses = if (networkInterface == null) List.empty else networkInterface

@@ -33,9 +33,14 @@ trait LoginRoutes extends SprayJsonSupport with EnrichedJson with JwtSupport wit
   pathPrefixLabeled("loginrenew", "loginrenew") {
     pathEndOrSingleSlash {
       authenticated() { userId =>
-        val wettkampf = readWettkampf(userId)
-        respondWithJwtHeader(wettkampf) {
-          complete(StatusCodes.OK)
+        if (wettkampfExists(userId)) {
+          val wettkampf = readWettkampf(userId)
+          respondWithJwtHeader(wettkampf) {
+            complete(StatusCodes.OK)
+          }
+        }
+        else {
+          complete(StatusCodes.NotFound)
         }
       }
     }

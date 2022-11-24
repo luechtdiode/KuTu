@@ -43,7 +43,7 @@ trait ExportFunctions {
       dir.mkdirs();
     }
     val logofile = PrintUtil.locateLogoFile(dir)
-    def generate = (lpp: Int) => KuTuApp.invokeAsyncWithBusyIndicator { Future {
+    def generate = (lpp: Int) => KuTuApp.invokeAsyncWithBusyIndicator("Riegenblätter aufbereiten ...") { Future {
       Platform.runLater {
         reprintItems.set(reprintItems.get().filter(p => !durchgang.contains(p.durchgang)))
       }

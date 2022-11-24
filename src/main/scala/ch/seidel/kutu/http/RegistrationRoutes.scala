@@ -18,8 +18,7 @@ import ch.seidel.kutu.renderer.{CompetitionsClubsToHtmlRenderer, CompetitionsJud
 import ch.seidel.kutu.view.WettkampfInfo
 import spray.json._
 
-import java.time.Instant
-import java.util.{Base64, UUID}
+import java.util.{UUID}
 import scala.concurrent.duration.{DAYS, Duration, DurationInt}
 import scala.concurrent.{Await, Future}
 import fr.davit.akka.http.metrics.core.scaladsl.server.HttpMetricsDirectives._
@@ -161,6 +160,21 @@ trait RegistrationRoutes extends SprayJsonSupport with JwtSupport with JsonSuppo
                 respondWithJwtHeader(s"${registration.id}") {
                   complete(registration)
                 }
+              }
+            }
+          } ~ pathLabeled("approvemail", "approvemail") {
+            get {
+              parameters(Symbol("mail").?) {
+                case Some(mail) =>
+                  complete{
+                    CompetitionRegistrationClientActor.publish(ApproveEMail(wettkampf.uuid.get, mail), clientId).map{ _ =>
+                      s"${wettkampf.easyprint} EMail ${mail} verifiziert"
+                    }
+                  }
+                case _ =>
+                  complete {Future {
+                    ""
+                  }}
               }
             }
           } ~ pathLabeled("programmlist", "programmlist") {

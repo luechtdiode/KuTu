@@ -1313,7 +1313,7 @@ class RiegenTab(override val wettkampfInfo: WettkampfInfo, override val service:
 		  }
     }
 
-    def doRiegenBelatterExport(event: ActionEvent): Unit = {
+    def doRiegenBelatterExport(caption: String, event: ActionEvent): Unit = {
       import scala.concurrent.ExecutionContext.Implicits.global
 
       val seriendaten = service.getAllKandidatenWertungen(wettkampf.uuid.map(UUID.fromString(_)).get)
@@ -1323,7 +1323,7 @@ class RiegenTab(override val wettkampfInfo: WettkampfInfo, override val service:
         dir.mkdirs();
       }
       val logofile = PrintUtil.locateLogoFile(dir)
-      def generate = (lpp: Int) => KuTuApp.invokeAsyncWithBusyIndicator { Future {
+      def generate = (lpp: Int) => KuTuApp.invokeAsyncWithBusyIndicator(caption) { Future {
         (new Object with ch.seidel.kutu.renderer.RiegenblattToHtmlRenderer).toHTML(seriendaten, logofile, remoteBaseUrl)
       }}
       Platform.runLater {
@@ -1334,7 +1334,7 @@ class RiegenTab(override val wettkampfInfo: WettkampfInfo, override val service:
 
     def makeRiegenBlaetterExport(): MenuItem = {
       val m = KuTuApp.makeMenuAction("Riegenblätter erstellen") {(caption: String, action: ActionEvent) =>
-        doRiegenBelatterExport(action)
+        doRiegenBelatterExport(caption, action)
       }
       m
     }

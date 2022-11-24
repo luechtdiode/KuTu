@@ -487,7 +487,7 @@ package object domain {
 
     def hasRemote(homedir: String, origin: String): Boolean = {
       val path = fromOriginFilePath(homedir, origin)
-      return path.toFile.exists
+      path.toFile.exists
     }
 
     def removeRemote(homedir: String, origin: String): Unit = {
@@ -499,12 +499,12 @@ package object domain {
 
     def saveSecret(homedir: String, origin: String, secret: String): Unit = {
       val path = filePath(homedir, origin)
-      val fos = Files.newOutputStream(path, StandardOpenOption.CREATE_NEW)
+      val fos = Files.newOutputStream(path, StandardOpenOption.CREATE)
       try {
         fos.write(secret.getBytes("utf-8"))
-        fos.flush
+        fos.flush()
       } finally {
-        fos.close
+        fos.close()
       }
       val os = System.getProperty("os.name").toLowerCase
       if (os.indexOf("win") > -1) {

@@ -8,7 +8,7 @@ import ch.seidel.kutu.domain._
 import ch.seidel.kutu.http.WebSocketClient
 import ch.seidel.kutu.renderer.PrintUtil.FilenameDefault
 import ch.seidel.kutu.renderer.{BestenListeToHtmlRenderer, PrintUtil, RiegenBuilder}
-import ch.seidel.kutu.{Config, ConnectionStates, KuTuApp, KuTuServer}
+import ch.seidel.kutu.{Config, ConnectionStates, KuTuApp, KuTuServer, LocalServerStates}
 import javafx.event.EventHandler
 import javafx.scene.{control => jfxsc}
 import scalafx.Includes._
@@ -318,7 +318,7 @@ class NetworkTab(wettkampfmode: BooleanProperty, override val wettkampfInfo: Wet
 
   def uploadResults(caption: String): Unit = {
     import scala.concurrent.ExecutionContext.Implicits.global
-    val process = KuTuApp.invokeAsyncWithBusyIndicator {
+    val process = KuTuApp.invokeAsyncWithBusyIndicator(caption) {
       if (remoteBaseUrl.indexOf("localhost") > -1) {
         KuTuServer.startServer()
       }
@@ -541,26 +541,9 @@ class NetworkTab(wettkampfmode: BooleanProperty, override val wettkampfInfo: Wet
   val uploadMenu: MenuItem = {
     val item = makeMenuAction("Upload") { (caption, action) =>
       implicit val e: ActionEvent = action
-      PageDisplayer.showInDialog(caption, new DisplayablePage() {
-        def getPage: Node = {
-          new BorderPane {
-            hgrow = Priority.Always
-            vgrow = Priority.Always
-            center = new VBox {
-              if (wettkampf.toWettkampf.hasSecred(homedir, remoteHostOrigin)) {
-                children.addAll(new Label("Die Resultate zu diesem Wettkampf werden im Netzwerk hochgeladen und\nersetzen dort die Resultate, die zu diesem Wettkampf erfasst wurden."))
-              } else {
-                children.addAll(new Label("Die Resultate zu diesem Wettkampf werden neu im Netzwerk bereitgestellt."))
-              }
-            }
-          }
-        }
-      },
-        new Button("OK") {
-          onAction = handleAction { implicit e: ActionEvent =>
-            uploadResults(caption)
-          }
-        })
+      KuTuApp.validateUpload(wettkampf, "Wettkampf hochladen ...", action) { caption =>
+        uploadResults(caption)
+      }
     }
     item.disable <== when(Bindings.createBooleanBinding(() =>
       Config.isLocalHostServer
@@ -568,8 +551,10 @@ class NetworkTab(wettkampfmode: BooleanProperty, override val wettkampfInfo: Wet
         || isRunning.value,
 
       KuTuApp.selectedWettkampfSecret,
-      isRunning,
+      LocalServerStates.localServerProperty,
       ConnectionStates.connectedProperty,
+      ConnectionStates.remoteServerProperty,
+      isRunning,
     )) choose true otherwise false
     item
   }

@@ -11,9 +11,11 @@ import java.io.File
 import java.net.{Proxy, ProxySelector, URI}
 import java.nio.file.{Files, LinkOption, StandardOpenOption}
 import java.security.{NoSuchAlgorithmException, SecureRandom}
+import java.util.Collections.emptyList
 import java.util.UUID
 import javax.crypto.KeyGenerator
 import scala.collection.mutable
+import scala.jdk.CollectionConverters.CollectionHasAsScala
 import scala.jdk.javaapi.CollectionConverters
 
 object Config extends KuTuSSLContext {
@@ -217,7 +219,22 @@ object Config extends KuTuSSLContext {
   lazy val jwtTokenExpiryPeriodInDays: Int = jwtConfig.getInt("tokenExpiryPeriodInDays")
   lazy val jwtHeader: JwtHeader = JwtHeader(jwtConfig.getString("algorithm"), jwtConfig.getString("contenttype"))
 
-  lazy val remoteHost: String = if (appRemoteConfig.hasPath("hostname")) appRemoteConfig.getString("hostname") else "kutuapp"
+  val defaultRemoteHost: String = if (appRemoteConfig.hasPath("hostname"))
+    appRemoteConfig.getString("hostname")
+  else "kutuapp"
+  private var _remoteHost: String = defaultRemoteHost
+  def getRemoteHosts: List[String] = ((
+    if (appRemoteConfig.hasPath("hostnames"))
+      appRemoteConfig.getStringList("hostnames")
+    else
+      emptyList[String]()
+    )
+    .asScala.toList :+  defaultRemoteHost).toSet.toList.sorted
+  def setRemoteHost(host: String): Unit = {
+    _remoteHost = host
+  }
+  def remoteHost = _remoteHost
+
   def remoteSchema: String = if(_isLocalHostServer) {
     if(hasHttpsConfig) "https" else "http"
   } else if (appRemoteConfig.hasPath("schema")) {
@@ -236,7 +253,10 @@ object Config extends KuTuSSLContext {
   }
   def isLocalHostServer: Boolean = _isLocalHostServer
   lazy val remoteHostPort: String = if (appRemoteConfig.hasPath("port")) appRemoteConfig.getString("port") else "443"
-  def remoteBaseUrl: String = if(_isLocalHostServer) if(hasHttpsConfig)s"https://${_localHostRemoteIP.getOrElse(httpHostname)}:$httpPort" else s"http://${_localHostRemoteIP.getOrElse(httpHostname)}:$httpPort" else s"$remoteSchema://$remoteHost:$remoteHostPort"
+  def remoteBaseUrl: String = if(_isLocalHostServer)
+    if(hasHttpsConfig)s"https://${_localHostRemoteIP.getOrElse(httpHostname)}:$httpPort"
+    else s"http://${_localHostRemoteIP.getOrElse(httpHostname)}:$httpPort"
+  else s"$remoteSchema://$remoteHost:$remoteHostPort"
 
   def remoteOperatingBaseUrl: String = remoteBaseUrl //s"http://$remoteHost:$remotePort/operating"
   def remoteAdminBaseUrl: String = remoteBaseUrl//s"$remoteBaseUrl/wkadmin"

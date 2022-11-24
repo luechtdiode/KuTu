@@ -917,7 +917,7 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
     val programms = progrm.map(p => service.readWettkampfLeafs(p.head.id)).toSeq.flatten
     val clipboardlines = Source.fromString(Clipboard.systemClipboard.getString + "").getLines()
     val cache = new java.util.ArrayList[MatchCode]()
-    val cliprawf = KuTuApp.invokeAsyncWithBusyIndicator {
+    val cliprawf = KuTuApp.invokeAsyncWithBusyIndicator("Daten von Excel Clipboard einlesen ...") {
       Future {
         clipboardlines.
           map { line => line.split("\\t").map(_.trim()) }.
