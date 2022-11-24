@@ -87,68 +87,104 @@ trait WettkampfRoutes extends SprayJsonSupport
       wettkampf.saveSecret(homedir, remoteHostOrigin, JsonWebToken(jwtHeader, setClaims(uuid, Int.MaxValue), jwtSecretKey))
     }
     val hadSecret = wettkampf.hasSecred(homedir, remoteHostOrigin)
-    if (!hadSecret) {
+
+    def postWettkampf(prom: Promise[String]): Future[HttpResponse] = {
       // try to initial upload new wettkampf
       log.info("post to " + s"$remoteAdminBaseUrl/api/competition/$uuid")
-      httpClientRequest(
+      val reqresp = httpClientRequest(
         HttpRequest(method = HttpMethods.POST, uri = s"$remoteAdminBaseUrl/api/competition/$uuid", entity = wettkampfEntity)).map {
-        case HttpResponse(StatusCodes.OK, headers, entity, _) =>
+        case response@HttpResponse(StatusCodes.OK, headers, entity, _) =>
           val secretOption = catchSecurityHeader(wettkampf, headers, entity).map(_.value)
           if (secretOption.isEmpty) {
-            uploadProm.failure(new RuntimeException("No Secret for Competition available"))
+            log.info("failed post to " + s"$remoteAdminBaseUrl/api/competition/$uuid, no secret available")
+            prom.failure(new RuntimeException("No Secret for Competition available"))
           } else {
-            uploadProm.success(secretOption.get)
+            log.info("success post to " + s"$remoteAdminBaseUrl/api/competition/$uuid, got new secret.")
+            prom.success(secretOption.get)
           }
+          response
 
-        case HttpResponse(_, headers, entity, _) => entity match {
-          case HttpEntity.Strict(_, text) =>
-            log.error(text.utf8String)
-            catchSecurityHeader(wettkampf, headers, entity)
-            uploadProm.failure(new RuntimeException(text.utf8String))
-          case x =>
-            log.error(x.toString)
-            uploadProm.failure(new RuntimeException(x.toString))
-        }
-      }.onComplete {
+        case response@HttpResponse(_, headers, entity, _) => entity match {
+            case HttpEntity.Strict(_, text) =>
+              log.error(s"post failed with ${text.utf8String}")
+              catchSecurityHeader(wettkampf, headers, entity)
+              prom.failure(new RuntimeException(text.utf8String))
+            case x =>
+              log.error(s"post failed with $x")
+              prom.failure(new RuntimeException(x.toString))
+          }
+          log.info("failed post to " + s"$remoteAdminBaseUrl/api/competition/$uuid, returned ${response.status}")
+          response
+      }
+      reqresp.onComplete {
         case Success(_) =>
         case Failure(s) =>
-          log.error(s.toString)
-          uploadProm.failure(new RuntimeException(s))
+          prom.failure(new RuntimeException(s))
       }
+      reqresp
+    }
 
+    if (!hadSecret) {
+      log.info("no secret seen, post instead of put competition ...")
+      postWettkampf(uploadProm)
     } else {
       wettkampf.readSecret(homedir, remoteHostOrigin) match {
-        case Some(secret) => uploadProm.success(secret)
-        case _ => uploadProm.failure(new RuntimeException("No Secret for Competition available"))
+        case Some(secret) =>
+          log.info("secret seen, map for put operation uploadProm success ...")
+          uploadProm.success(secret)
+        case _ =>
+          log.info("no secret seen, uploadProm failed")
+          uploadProm.failure(new RuntimeException("No Secret for Competition available"))
       }
     }
 
     val process = uploadFut.flatMap { secret =>
-      httpRenewLoginRequest(s"$remoteBaseUrl/api/loginrenew", uuid, secret)
-    }.flatMap { response =>
-      if (hadSecret) {
-        log.info("put to " + s"$remoteAdminBaseUrl/api/competition/$uuid")
-        httpPutClientRequest(s"$remoteAdminBaseUrl/api/competition/$uuid", wettkampfEntity).flatMap {
-          case resp @ HttpResponse(StatusCodes.OK, headers, entity, _) =>
-            Future {
-              resp
-            }
-          case HttpResponse(_, _, entity, _) => entity match {
-            case HttpEntity.Strict(_, text) =>
-              log.error(text.utf8String)
-              Future.failed(new RuntimeException(text.utf8String))
-            case x =>
-              log.error(x.toString)
-              Future.failed(new RuntimeException(x.toString))
+      httpRenewLoginRequest(s"$remoteBaseUrl/api/loginrenew", uuid, secret).flatMap {
+        case resp@HttpResponse(StatusCodes.OK, headers, entity, _) =>
+          Future {
+            resp
           }
-        }
-      } else {
-        Future {
-          response
+        case HttpResponse(_, _, entity, _) => entity match {
+          case HttpEntity.Strict(_, text) =>
+            log.error(text.utf8String)
+            Future.failed(new RuntimeException(text.utf8String))
+          case x =>
+            log.error(x.toString)
+            Future.failed(new RuntimeException(x.toString))
         }
       }
-    }
+    }.transformWith {
+      case Failure(_) =>
+        log.warning("login with existing secret impossible, remote competition not existing! try post ...")
+        postWettkampf(Promise[String]())
 
+      case Success(response) =>
+        log.info("got login resonse ...")
+        if (hadSecret && response.status.isSuccess()) {
+          log.info("login successful - put to " + s"$remoteAdminBaseUrl/api/competition/$uuid")
+          httpPutClientRequest(s"$remoteAdminBaseUrl/api/competition/$uuid", wettkampfEntity).flatMap {
+            case resp @ HttpResponse(StatusCodes.OK, headers, entity, _) =>
+              log.info("put successful")
+              Future {
+                resp
+              }
+            case HttpResponse(_, _, entity, _) => entity match {
+              case HttpEntity.Strict(_, text) =>
+                log.error(s"put failed: ${text.utf8String}")
+                Future.failed(new RuntimeException(text.utf8String))
+              case x =>
+                log.error(s"put failed: $x")
+                Future.failed(new RuntimeException(x.toString))
+            }
+          }
+        }
+        else {
+          Future {
+            response
+          }
+        }
+    }
+    log.info("returning share competition process-future ...")
     process
   }
 

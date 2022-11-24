@@ -981,16 +981,7 @@ object KuTuApp extends JFXApp3 with KutuService with JsonSupport with JwtSupport
         }
         server.httpRenewLoginRequest(s"$remoteBaseUrl/api/loginrenew", p.uuid.get, p.toWettkampf.readSecret(homedir, "localhost").get)
       } else {
-        p.uuid.zip(p.toWettkampf.readSecret(homedir, remoteHostOrigin)).headOption match {
-          case Some((uuid, secret)) =>
-            server.httpRenewLoginRequest(s"$remoteBaseUrl/api/loginrenew", uuid, secret)
-          case None =>
-            if (p.toWettkampf.hasRemote(homedir, remoteHostOrigin)) {
-              Future {}
-            } else {
-              server.httpUploadWettkampfRequest(p.toWettkampf)
-            }
-        }
+        server.httpUploadWettkampfRequest(p.toWettkampf)
       }
     }.map(response => {
       (response, WebSocketClient.connect(p.toWettkampf, ResourceExchanger.processWSMessage(p.toWettkampf, (sender: Object, event: KutuAppEvent) => {
@@ -1002,6 +993,7 @@ object KuTuApp extends JFXApp3 with KutuService with JsonSupport with JwtSupport
     process.onComplete {
       case Success((response, wspromise)) =>
         if (!wspromise.isCompleted) {
+          logger.info(s"share: completed upload-operation. Show success-message ...")
           ConnectionStates.connectedWith(p.uuid.get, wspromise)
           Platform.runLater {
             PageDisplayer.showInDialog(caption,
@@ -1020,10 +1012,13 @@ object KuTuApp extends JFXApp3 with KutuService with JsonSupport with JwtSupport
           }
         }
         else {
+          logger.info(s"share: upload-operation didn't complete. Disconnect ...")
           ConnectionStates.disconnected()
         }
 
-      case Failure(error) => PageDisplayer.showErrorDialog(caption)(error)
+      case Failure(error) =>
+        logger.info(s"share: upload-operation failed with $error.!")
+        PageDisplayer.showErrorDialog(caption)(error)
     }
   }
 
