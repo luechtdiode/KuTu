@@ -174,9 +174,17 @@
 }
 
 #connected-info {
+	-fx-background-color: null;
+	-fx-background-radius: null;
+	-fx-background-insets: null;
+	-fx-border-color: null;
+	-fx-border-insets: null;
+    -fx-base: black;
+
 	-fx-padding: 5 0 5 5;
 	-fx-text-fill: white;
-
+	-fx-text-color: white;
+    -fx-mark-color: white;
 	-fx-border-image-source: url("../images/info-bg.png");
 	-fx-border-image-slice: 10 20 10 10 fill;
 	-fx-border-image-width: 10 20 10 10;

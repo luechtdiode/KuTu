@@ -1705,7 +1705,7 @@ object KuTuApp extends JFXApp3 with KutuService with JsonSupport with JwtSupport
         }
       }, ConnectionStates.connectedWithProperty)
     }
-    val lblRemoteAddress = new Label() {
+    val lblRemoteAddress = new MenuButton() {
       id = "connected-info"
       text <== createStringBinding(() => {
         ConnectionStates.connectedWithProperty.value match {
@@ -1714,15 +1714,12 @@ object KuTuApp extends JFXApp3 with KutuService with JsonSupport with JwtSupport
           case uuid =>
             s"Server: ${Config.remoteBaseUrl} online\nVersion: ${Config.appFullVersion}, Built: ${Config.builddate}"
         }
-        //visible <== ConnectionStates.connectedProperty
       }, ConnectionStates.connectedWithProperty, LocalServerStates.localServerProperty, ConnectionStates.remoteServerProperty)
-      contextMenu = new ContextMenu {
-        items += makeSelectBackendMenu
-        items += makeStartServerMenu
-        items += makeStopServerMenu
-        items += makeProxyLoginMenu
-        items += makeWettkampfHerunterladenMenu
-      }
+      items += makeSelectBackendMenu
+      items += makeStartServerMenu
+      items += makeStopServerMenu
+      items += makeProxyLoginMenu
+      items += makeWettkampfHerunterladenMenu
     }
     val centerPane = PageDisplayer.choosePage(modelWettkampfModus, None, "dashBoard", tree)
     val splitPane = new SplitPane {

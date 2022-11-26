@@ -151,14 +151,14 @@ class SimulationBottmingenD1 extends Simulation {
     .exec(BrowseResults.loadAndSaveDurchgaenge)
     .exec(BrowseResults.loadAndSaveGeraete)
     .exec(BrowseResults.diveToWertungen)
-    //.exec(scnCloseWebsocketUser)
+    .exec(scnCloseWebsocketUser)
   //    .pause(20 seconds, 30 seconds)
 
   setUp(
     scnLanding
       .inject(
-        rampConcurrentUsers(20) to (600) during (10 minutes),
-                constantConcurrentUsers(600) during(50 minutes)
+        rampConcurrentUsers(20) to (300) during (10 minutes),
+                constantConcurrentUsers(100) during(50 minutes)
 //        constantConcurrentUsers(150) during (10 hours)
         )
       .throttle(
@@ -172,14 +172,14 @@ class SimulationBottmingenD1 extends Simulation {
         //      rampUsers(100) during (15 seconds),
         //      rampUsersPerSec(2) to 8 during (5 minutes) randomized,
 //                constantConcurrentUsers(12) during (60 minutes),
-        rampConcurrentUsers(4) to 400 during (20 minutes)
+        rampConcurrentUsers(4) to 600 during (20 minutes)
 //        rampConcurrentUsers(8) to 32 during (10 hours)
         , constantConcurrentUsers(400) during (40 minutes)
         //        constantConcurrentUsers(8) during (50 minutes),
         //        constantConcurrentUsers(12) during (10 minutes),
         //        heavisideUsers(20) during (60 seconds)
       ).throttle(
-      reachRps(40) in (30 minutes),
+      reachRps(30) in (30 minutes),
       holdFor(30 minutes)
     )
   ).protocols(httpProtocol)
