@@ -316,37 +316,6 @@ class NetworkTab(wettkampfmode: BooleanProperty, override val wettkampfInfo: Wet
     }
   }
 
-  def uploadResults(caption: String): Unit = {
-    import scala.concurrent.ExecutionContext.Implicits.global
-    val process = KuTuApp.invokeAsyncWithBusyIndicator(caption) {
-      if (remoteBaseUrl.indexOf("localhost") > -1) {
-        KuTuServer.startServer()
-      }
-      KuTuServer.httpUploadWettkampfRequest(wettkampf.toWettkampf)
-    }
-    process.onComplete { resultTry =>
-      Platform.runLater {
-        resultTry match {
-          case Success(response) =>
-            selectedWettkampfSecret.value = wettkampf.toWettkampf.readSecret(homedir, remoteHostOrigin)
-            PageDisplayer.showInDialogFromRoot(caption, new DisplayablePage() {
-              def getPage: Node = {
-                new BorderPane {
-                  hgrow = Priority.Always
-                  vgrow = Priority.Always
-                  center = new VBox {
-                    children.addAll(new Label(s"Der Wettkampf ${wettkampf.easyprint} wurde erfolgreich im Netzwerk bereitgestellt"))
-                  }
-                }
-              }
-            })
-          case Failure(error) =>
-            PageDisplayer.showErrorDialog(caption)(error)
-        }
-      }
-    }
-  }
-
   val view = new DurchgangStationView(
     wettkampf, service,
     () => {
@@ -538,14 +507,8 @@ class NetworkTab(wettkampfmode: BooleanProperty, override val wettkampfInfo: Wet
   val qrcodeMenu: MenuItem = KuTuApp.makeShowQRCodeMenu(wettkampf)
   val connectAndShareMenu: MenuItem = KuTuApp.makeConnectAndShareMenu(wettkampf)
 
-  val uploadMenu: MenuItem = {
-    val item = makeMenuAction("Upload") { (caption, action) =>
-      implicit val e: ActionEvent = action
-      KuTuApp.validateUpload(wettkampf, "Wettkampf hochladen ...", action) { caption =>
-        uploadResults(caption)
-      }
-    }
-    item.disable <== when(Bindings.createBooleanBinding(() =>
+  val uploadMenu: MenuItem = KuTuApp.makeWettkampfUploadMenu(wettkampf,
+    when(Bindings.createBooleanBinding(() =>
       Config.isLocalHostServer
         || (wettkampf.toWettkampf.hasSecred(homedir, remoteHostOrigin) && !ConnectionStates.connectedProperty.value)
         || isRunning.value,
@@ -555,9 +518,7 @@ class NetworkTab(wettkampfmode: BooleanProperty, override val wettkampfInfo: Wet
       ConnectionStates.connectedProperty,
       ConnectionStates.remoteServerProperty,
       isRunning,
-    )) choose true otherwise false
-    item
-  }
+    )) choose true otherwise false)
 
   val downloadMenu: MenuItem = KuTuApp.makeWettkampfDownloadMenu(wettkampf)
 

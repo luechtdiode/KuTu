@@ -184,11 +184,11 @@ trait AuthSupport extends Directives with SprayJsonSupport with Hashing with Jwt
               }, Duration.Inf)            
           }
           println(s"New JWT: $clientheader")
-        case HttpResponse(_, headers, entity, _) => entity match {
+        case HttpResponse(status, headers, entity, _) => entity match {
           case HttpEntity.Strict(_, text) =>
-            throw new RuntimeException(text.utf8String)
-          case x => 
-            throw new RuntimeException(x.toString)
+            throw HTTPFailure(status, text.utf8String)
+          case x =>
+            throw HTTPFailure(status, x.toString)
         }
       }
     }
@@ -229,11 +229,11 @@ trait AuthSupport extends Directives with SprayJsonSupport with Hashing with Jwt
           println(s"renewed JWT: $clientheader")
           response
       
-        case HttpResponse(_, headers, entity, _) => entity match {
+        case HttpResponse(status, headers, entity, _) => entity match {
           case HttpEntity.Strict(_, text) =>
-            throw new RuntimeException(text.utf8String)
-          case x => 
-            throw new RuntimeException(x.toString)
+            throw HTTPFailure(status, text.utf8String)
+          case x =>
+            throw HTTPFailure(status, x.toString)
         }
       }
     }

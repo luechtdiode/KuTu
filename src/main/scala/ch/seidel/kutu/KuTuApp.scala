@@ -388,62 +388,45 @@ object KuTuApp extends JFXApp3 with KutuService with JsonSupport with JwtSupport
     }
   }
 
-  def makeWettkampfUploadMenu(p: WettkampfView): MenuItem = {
-    val item = makeMenuAction("Upload") { (caption, action) =>
-      implicit val e = action
-      PageDisplayer.showInDialog(caption, new DisplayablePage() {
-        def getPage: Node = {
-          new BorderPane {
-            hgrow = Priority.Always
-            vgrow = Priority.Always
-            center = new VBox {
-              if (p.toWettkampf.hasSecred(homedir, remoteHostOrigin)) {
-                children.addAll(new Label("Die Resultate zu diesem Wettkampf werden im Netzwerk hochgeladen und ersetzen dort die Resultate, die zu diesem Wettkampf erfasst wurden."))
-              } else {
-                children.addAll(new Label("Die Resultate zu diesem Wettkampf werden neu im Netzwerk bereitgestellt."))
-              }
-            }
-          }
-        }
-      },
-        new Button("OK") {
-          onAction = handleAction { implicit e: ActionEvent =>
-            val process = KuTuApp.invokeAsyncWithBusyIndicator(caption) {
-              if (remoteBaseUrl.indexOf("localhost") > -1) {
-                server.startServer()
-              }
-              server.httpUploadWettkampfRequest(p.toWettkampf)
-            }
-            process.onComplete { resultTry =>
-
-              Platform.runLater {
-                resultTry match {
-                  case Success(response) =>
-                    selectedWettkampfSecret.value = p.toWettkampf.readSecret(homedir, remoteHostOrigin)
-                    implicit val e = action
-                    PageDisplayer.showInDialog(caption, new DisplayablePage() {
-                      def getPage: Node = {
-                        new BorderPane {
-                          hgrow = Priority.Always
-                          vgrow = Priority.Always
-                          center = new VBox {
-                            children.addAll(new Label(s"Der Wettkampf ${p.easyprint} wurde erfolgreich im Netzwerk bereitgestellt"))
-                          }
-                        }
-                      }
-                    })
-                  case Failure(error) =>
-                    PageDisplayer.showErrorDialog(caption)(error)
+  def uploadResults(wettkampf: WettkampfView, caption: String): Unit = {
+    import scala.concurrent.ExecutionContext.Implicits.global
+    val process = KuTuApp.invokeAsyncWithBusyIndicator(caption) {
+      if (remoteBaseUrl.indexOf("localhost") > -1) {
+        KuTuServer.startServer()
+      }
+      KuTuServer.httpUploadWettkampfRequest(wettkampf.toWettkampf)
+    }
+    process.onComplete { resultTry =>
+      Platform.runLater {
+        resultTry match {
+          case Success(response) =>
+            selectedWettkampfSecret.value = wettkampf.toWettkampf.readSecret(homedir, remoteHostOrigin)
+            PageDisplayer.showInDialogFromRoot(caption, new DisplayablePage() {
+              def getPage: Node = {
+                new BorderPane {
+                  hgrow = Priority.Always
+                  vgrow = Priority.Always
+                  center = new VBox {
+                    children.addAll(new Label(s"Der Wettkampf ${wettkampf.easyprint} wurde erfolgreich im Netzwerk bereitgestellt"))
+                  }
                 }
               }
-            }
-          }
-        })
-
+            })
+          case Failure(error) =>
+            PageDisplayer.showErrorDialog(caption)(error)
+        }
+      }
     }
-    item.disable <== when(Bindings.createBooleanBinding(() => p.toWettkampf.hasSecred(homedir, remoteHostOrigin) && !ConnectionStates.connectedProperty.value,
-      selectedWettkampfSecret, ConnectionStates.connectedProperty,
-      controlsView.selectionModel().selectedItem)) choose true otherwise false
+  }
+
+  def makeWettkampfUploadMenu(p: WettkampfView, disableBindings: scalafx.beans.binding.BooleanBinding): MenuItem = {
+    val item = makeMenuAction("Upload") { (_, action) =>
+      implicit val e: ActionEvent = action
+      validateUpload(p, s"Wettkampf auf $remoteHostOrigin hochladen ...", action) { caption =>
+        uploadResults(p, caption)
+      }
+    }
+    item.disable <== disableBindings
     item
   }
 
@@ -937,39 +920,64 @@ object KuTuApp extends JFXApp3 with KutuService with JsonSupport with JwtSupport
   }
 
   def validateUpload(p: WettkampfView, caption: String, action: ActionEvent)(handler: String=>Unit): Unit = {
-    if(Config.isLocalHostServer ||
-      ConnectionStates.connectedProperty.value ||
-      p.toWettkampf.hasSecred(homedir, remoteHostOrigin) ||
-      p.toWettkampf.hasRemote(homedir, remoteHostOrigin)) {
+    implicit val e: ActionEvent = action
+    if(Config.isLocalHostServer) {
       handler(caption)
-    } else {
-      implicit val e: ActionEvent = action
-      PageDisplayer.showInDialog("Wettkampf hochladen ...", new DisplayablePage() {
+    } else if (
+      ConnectionStates.connectedProperty.value ||
+        p.toWettkampf.hasSecred(homedir, remoteHostOrigin)) {
+      PageDisplayer.showInDialog(caption, new DisplayablePage() {
         def getPage: Node = {
           new BorderPane {
             hgrow = Priority.Always
             vgrow = Priority.Always
             center = new VBox {
-              if (p.toWettkampf.hasSecred(homedir, remoteHostOrigin)) {
-                children.addAll(new Label("Die Resultate zu diesem Wettkampf werden im Netzwerk hochgeladen und\nersetzen dort die Resultate, die zu diesem Wettkampf erfasst wurden."))
-              } else {
-                if (p.titel.toLowerCase.contains("test") && !remoteHostOrigin.contains("test")) {
-                  children.addAll(new Label("Sofern es sich um ein Testwettkampf handelt bitte zuerst mit dem Test-Server verbinden."))
-                }
-                children.addAll(
-                  new Label("Die Resultate zu diesem Wettkampf werden neu im Netzwerk bereitgestellt."),
-                  new Label(s"Die angegebene EMail-Adresse (${p.notificationEMail}) wird verwendet, um ein Bestätigungsmail zu versenden.\n Wenn die Bestätigung nicht innerhalb 1h bestätigt wird, wird der hochgeladene Wettkampf wieder gelöscht.")
-                )
-              }
+              children.addAll(new Label("Die Resultate zu diesem Wettkampf werden im Netzwerk hochgeladen und ersetzen dort die Resultate, die zu diesem Wettkampf erfasst wurden."))
             }
           }
         }
       },
         new Button("OK") {
           onAction = handleAction { e: ActionEvent =>
-            handler("Wettkampf hochladen ...")
+            handler(caption)
           }
         })
+    } else {
+      PageDisplayer.showInDialog(s"Wettkampf auf $remoteHostOrigin hochladen ...", new DisplayablePage() {
+        def getPage: Node = {
+          new BorderPane {
+            hgrow = Priority.Always
+            vgrow = Priority.Always
+            center = new VBox {
+              if (p.titel.toLowerCase.contains("test") && !remoteHostOrigin.contains("test")) {
+                children.addAll(new Label("Sofern es sich um ein Testwettkampf handelt bitte zuerst mit dem Test-Server verbinden."))
+              }
+              children.addAll(
+                new Label("Die Resultate zu diesem Wettkampf werden neu im Netzwerk bereitgestellt."),
+                new Label(s"Die angegebene EMail-Adresse (${p.notificationEMail}) wird verwendet, um ein Bestätigungsmail zu versenden.\n "),
+                new Label("Wenn die Bestätigung nicht innerhalb 1h bestätigt wird, wird der hochgeladene Wettkampf wieder gelöscht.")
+              )
+            }
+          }
+        }
+      },
+        new Button("OK") {
+          onAction = handleAction { e: ActionEvent =>
+            handler(s"Wettkampf auf $remoteHostOrigin hochladen ...")
+          }
+        })
+    }
+  }
+
+  def validateConnect(p: WettkampfView, caption: String, action: ActionEvent)(handler: String=>Unit): Unit = {
+    implicit val e: ActionEvent = action
+    if(Config.isLocalHostServer ||
+      ConnectionStates.connectedProperty.value ||
+      p.toWettkampf.hasSecred(homedir, remoteHostOrigin) ||
+      p.toWettkampf.hasRemote(homedir, remoteHostOrigin)) {
+      handler(caption)
+    } else {
+      validateUpload(p, caption, action)(handler)
     }
   }
   def connectAndShare(p: WettkampfView, caption: String, action: ActionEvent) = {
@@ -981,7 +989,7 @@ object KuTuApp extends JFXApp3 with KutuService with JsonSupport with JwtSupport
         }
         server.httpRenewLoginRequest(s"$remoteBaseUrl/api/loginrenew", p.uuid.get, p.toWettkampf.readSecret(homedir, "localhost").get)
       } else {
-        server.httpUploadWettkampfRequest(p.toWettkampf)
+        server.httpUploadWettkampfRequest(p.toWettkampf, server.Connect)
       }
     }.map(response => {
       (response, WebSocketClient.connect(p.toWettkampf, ResourceExchanger.processWSMessage(p.toWettkampf, (sender: Object, event: KutuAppEvent) => {
@@ -1024,7 +1032,7 @@ object KuTuApp extends JFXApp3 with KutuService with JsonSupport with JwtSupport
 
   def makeConnectAndShareMenu(p: WettkampfView) = {
     val item = makeMenuAction("Verbinden ...") { (caption, action) =>
-      validateUpload(p, caption, action) { title =>
+      validateConnect(p, caption, action) { title =>
         connectAndShare(selectedWettkampf.value, title, action)
       }
     }
@@ -1677,7 +1685,7 @@ object KuTuApp extends JFXApp3 with KutuService with JsonSupport with JwtSupport
         if (ConnectionStates.connectedProperty.value) {
           ConnectionStates.disconnected()
         } else {
-          validateUpload(selectedWettkampf.value, "Share", action) { caption =>
+          validateConnect(selectedWettkampf.value, "Share", action) { caption =>
             connectAndShare(selectedWettkampf.value, caption, action)
           }
         }

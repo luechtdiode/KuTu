@@ -3,7 +3,7 @@ package ch.seidel.kutu.view
 import java.util.UUID
 import ch.seidel.commons._
 import ch.seidel.kutu.Config.{homedir, remoteBaseUrl, remoteHostOrigin}
-import ch.seidel.kutu.KuTuApp.{controlsView, getStage, handleAction, selectedWettkampf, selectedWettkampfSecret, stage}
+import ch.seidel.kutu.KuTuApp.{controlsView, getStage, handleAction, modelWettkampfModus, selectedWettkampf, selectedWettkampfSecret, stage}
 import ch.seidel.kutu.domain._
 import ch.seidel.kutu.renderer.PrintUtil.FilenameDefault
 import ch.seidel.kutu.renderer.{CompetitionsJudgeToHtmlRenderer, PrintUtil, WettkampfOverviewToHtmlRenderer}
@@ -73,37 +73,6 @@ class WettkampfOverviewTab(wettkampf: WettkampfView, override val service: KutuS
     RegistrationAdminDialog.importRegistrations(WettkampfInfo(wettkampf, service), KuTuServer, vereinsupdated =>
       if (vereinsupdated) KuTuApp.updateTree else reloadData()
     )
-  }
-
-  def uploadResults(caption: String): Unit = {
-    import scala.concurrent.ExecutionContext.Implicits.global
-    val process = KuTuApp.invokeAsyncWithBusyIndicator(caption) {
-      if (remoteBaseUrl.indexOf("localhost") > -1) {
-        KuTuServer.startServer()
-      }
-      KuTuServer.httpUploadWettkampfRequest(wettkampf.toWettkampf)
-    }
-    process.onComplete { resultTry =>
-      Platform.runLater {
-        resultTry match {
-          case Success(response) =>
-            selectedWettkampfSecret.value = wettkampf.toWettkampf.readSecret(homedir, remoteHostOrigin)
-            PageDisplayer.showInDialogFromRoot(caption, new DisplayablePage() {
-              def getPage: Node = {
-                new BorderPane {
-                  hgrow = Priority.Always
-                  vgrow = Priority.Always
-                  center = new VBox {
-                    children.addAll(new Label(s"Der Wettkampf ${wettkampf.easyprint} wurde erfolgreich im Netzwerk bereitgestellt"))
-                  }
-                }
-              }
-            })
-          case Failure(error) =>
-            PageDisplayer.showErrorDialog(caption)(error)
-        }
-      }
-    }
   }
 
   override def isPopulated: Boolean = {
@@ -210,26 +179,20 @@ class WettkampfOverviewTab(wettkampf: WettkampfView, override val service: KutuS
             }
           },
           new Button {
-            val actionText = "Upload"
-            text = actionText
-            disable <== when(Bindings.createBooleanBinding(() => {
+            val uploadMenu = KuTuApp.makeWettkampfUploadMenu(wettkampf, when(Bindings.createBooleanBinding(() => {
               !wettkampfEditable ||
-                Config.isLocalHostServer ||
-                wettkampf.toWettkampf.hasSecred(homedir, remoteHostOrigin) ||
-                ConnectionStates.connectedProperty.value
+                (wettkampf.toWettkampf.hasSecred(homedir, remoteHostOrigin) && !ConnectionStates.connectedProperty.value) ||
+                Config.isLocalHostServer || modelWettkampfModus.value
             },
               KuTuApp.selectedWettkampfSecret,
               LocalServerStates.localServerProperty,
               ConnectionStates.connectedProperty,
-              ConnectionStates.remoteServerProperty
-            )) choose true otherwise false
-
-            onAction = { action =>
-              implicit val e: ActionEvent = action
-              KuTuApp.validateUpload(wettkampf, "Wettkampf hochladen ...", action) { caption =>
-                uploadResults(caption)
-              }
-            }
+              ConnectionStates.remoteServerProperty,
+              modelWettkampfModus
+            )) choose true otherwise false)
+            onAction = uploadMenu.onAction.get
+            text <== uploadMenu.text
+            disable <== uploadMenu.disable
           },
           new Button {
             text = "Online Anmeldungen importieren ..."

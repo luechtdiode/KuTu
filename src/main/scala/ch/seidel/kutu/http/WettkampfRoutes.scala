@@ -75,7 +75,10 @@ trait WettkampfRoutes extends SprayJsonSupport
     )
   }
 
-  def httpUploadWettkampfRequest(wettkampf: Wettkampf): Future[HttpResponse] = {
+  sealed trait ServerInteraction
+  case object Connect extends ServerInteraction
+  case object Upload extends ServerInteraction
+  def httpUploadWettkampfRequest(wettkampf: Wettkampf, interaction: ServerInteraction = Upload): Future[HttpResponse] = {
     val uuid = wettkampf.uuid match {
       case None => createUUIDForWettkampf(wettkampf.id).uuid.get
       case Some(uuid) => uuid
@@ -97,29 +100,29 @@ trait WettkampfRoutes extends SprayJsonSupport
           val secretOption = catchSecurityHeader(wettkampf, headers, entity).map(_.value)
           if (secretOption.isEmpty) {
             log.info("failed post to " + s"$remoteAdminBaseUrl/api/competition/$uuid, no secret available")
-            prom.failure(new RuntimeException("No Secret for Competition available"))
+            throw new RuntimeException("No Secret for Competition available")
           } else {
             log.info("success post to " + s"$remoteAdminBaseUrl/api/competition/$uuid, got new secret.")
             prom.success(secretOption.get)
+            response
           }
-          response
 
-        case response@HttpResponse(_, headers, entity, _) => entity match {
+        case response@HttpResponse(status, headers, entity, _) =>
+          log.info("failed post to " + s"$remoteAdminBaseUrl/api/competition/$uuid, returned ${response.status}")
+          throw HTTPFailure(status, entity match {
             case HttpEntity.Strict(_, text) =>
               log.error(s"post failed with ${text.utf8String}")
               catchSecurityHeader(wettkampf, headers, entity)
-              prom.failure(new RuntimeException(text.utf8String))
+              text.utf8String
             case x =>
               log.error(s"post failed with $x")
-              prom.failure(new RuntimeException(x.toString))
-          }
-          log.info("failed post to " + s"$remoteAdminBaseUrl/api/competition/$uuid, returned ${response.status}")
-          response
+              x.toString
+          })
       }
       reqresp.onComplete {
         case Success(_) =>
         case Failure(s) =>
-          prom.failure(new RuntimeException(s))
+          prom.failure(s)
       }
       reqresp
     }
@@ -139,49 +142,38 @@ trait WettkampfRoutes extends SprayJsonSupport
     }
 
     val process = uploadFut.flatMap { secret =>
-      httpRenewLoginRequest(s"$remoteBaseUrl/api/loginrenew", uuid, secret).flatMap {
-        case resp@HttpResponse(StatusCodes.OK, headers, entity, _) =>
-          Future {
-            resp
-          }
-        case HttpResponse(_, _, entity, _) => entity match {
-          case HttpEntity.Strict(_, text) =>
-            log.error(text.utf8String)
-            Future.failed(new RuntimeException(text.utf8String))
-          case x =>
-            log.error(x.toString)
-            Future.failed(new RuntimeException(x.toString))
-        }
-      }
+      httpRenewLoginRequest(s"$remoteBaseUrl/api/loginrenew", uuid, secret)
     }.transformWith {
-      case Failure(_) =>
-        log.warning("login with existing secret impossible, remote competition not existing! try post ...")
-        postWettkampf(Promise[String]())
+      case Failure(f) => f match {
+        case HTTPFailure(StatusCodes.NotFound, _, _ ) =>
+          log.warning(s"login with existing secret impossible ($f), remote competition not existing! try post ...")
+          postWettkampf(Promise[String]())
+
+        case e: Throwable =>
+          log.warning(s"login with existing secret impossible ($f), remote competition not existing! abort!")
+          throw e
+      }
 
       case Success(response) =>
         log.info("got login resonse ...")
-        if (hadSecret && response.status.isSuccess()) {
+        if (interaction == Upload && hadSecret && response.status.isSuccess()) {
           log.info("login successful - put to " + s"$remoteAdminBaseUrl/api/competition/$uuid")
-          httpPutClientRequest(s"$remoteAdminBaseUrl/api/competition/$uuid", wettkampfEntity).flatMap {
+          httpPutClientRequest(s"$remoteAdminBaseUrl/api/competition/$uuid", wettkampfEntity).map {
             case resp @ HttpResponse(StatusCodes.OK, headers, entity, _) =>
               log.info("put successful")
-              Future {
-                resp
-              }
-            case HttpResponse(_, _, entity, _) => entity match {
+              resp
+            case HttpResponse(status, _, entity, _) => entity match {
               case HttpEntity.Strict(_, text) =>
                 log.error(s"put failed: ${text.utf8String}")
-                Future.failed(new RuntimeException(text.utf8String))
+                throw HTTPFailure(status, text.utf8String)
               case x =>
                 log.error(s"put failed: $x")
-                Future.failed(new RuntimeException(x.toString))
+                throw HTTPFailure(status, x.toString)
             }
           }
         }
         else {
-          Future {
-            response
-          }
+          Future{response}
         }
     }
     log.info("returning share competition process-future ...")
@@ -228,10 +220,10 @@ trait WettkampfRoutes extends SprayJsonSupport
         httpResponse.entity match {
           case HttpEntity.Strict(_, text) =>
             log.error(text.utf8String)
-            throw new RuntimeException(text.utf8String)
+            throw HTTPFailure(httpResponse.status, text.utf8String)
           case x =>
             log.error(x.toString)
-            throw  new RuntimeException(x.toString)
+            throw HTTPFailure(httpResponse.status, x.toString)
         }
 
       }

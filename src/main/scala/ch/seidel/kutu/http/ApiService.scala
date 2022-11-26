@@ -1,12 +1,20 @@
 package ch.seidel.kutu.http
 
 import akka.http.scaladsl.model.StatusCodes._
-import akka.http.scaladsl.model.{HttpResponse, StatusCodes, Uri}
+import akka.http.scaladsl.model.{HttpResponse, StatusCode, StatusCodes, Uri}
 import akka.http.scaladsl.server.{ExceptionHandler, RouteConcatenation}
 import ch.seidel.kutu.domain.toDurationFormat
 import fr.davit.akka.http.metrics.core.scaladsl.server.HttpMetricsDirectives.pathPrefixLabeled
 
 
+case class HTTPFailure(status: StatusCode,
+                       private val message: String = "",
+                       private val cause: Throwable = None.orNull) extends RuntimeException(cause) {
+  val text =
+    if (message.isEmpty || status.reason().equals(message)) s"Status: $status"
+    else s"Status: $status, $message"
+  override def getMessage: String = text
+}
 
 trait ApiService extends RouteConcatenation with CIDSupport with RouterLogging with IpToDeviceID
   with LoginRoutes
