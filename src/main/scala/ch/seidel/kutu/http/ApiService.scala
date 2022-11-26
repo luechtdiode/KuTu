@@ -16,6 +16,10 @@ case class HTTPFailure(status: StatusCode,
   override def getMessage: String = text
 }
 
+case object EmptyResponse {
+  def apply() = HttpResponse(StatusCodes.NoContent, Seq.empty)
+}
+
 trait ApiService extends RouteConcatenation with CIDSupport with RouterLogging with IpToDeviceID
   with LoginRoutes
   with WertungenRoutes

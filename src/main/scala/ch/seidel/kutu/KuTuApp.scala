@@ -6,7 +6,7 @@ import ch.seidel.kutu.Config._
 import ch.seidel.kutu.akka.KutuAppEvent
 import ch.seidel.kutu.data.{CaseObjectMetaUtil, ResourceExchanger, Surname}
 import ch.seidel.kutu.domain._
-import ch.seidel.kutu.http.{AuthSupport, JsonSupport, JwtSupport, WebSocketClient}
+import ch.seidel.kutu.http.{AuthSupport, EmptyResponse, JsonSupport, JwtSupport, WebSocketClient}
 import javafx.beans.property.SimpleObjectProperty
 import javafx.concurrent.Task
 import javafx.scene.control.DatePicker
@@ -163,7 +163,7 @@ object KuTuApp extends JFXApp3 with KutuService with JsonSupport with JwtSupport
               }
               finally {
                 //setCursor(Cursor.Default)
-                pForm.getDialogStage.close
+                pForm.getDialogStage.close()
               }
             }
           case Failure(error) =>
@@ -173,7 +173,7 @@ object KuTuApp extends JFXApp3 with KutuService with JsonSupport with JwtSupport
               }
               finally {
                 //setCursor(Cursor.Default)
-                pForm.getDialogStage.close
+                pForm.getDialogStage.close()
               }
             }
 
@@ -189,7 +189,7 @@ object KuTuApp extends JFXApp3 with KutuService with JsonSupport with JwtSupport
             }
             finally {
               //setCursor(Cursor.Default)
-              pForm.getDialogStage.close
+              pForm.getDialogStage.close()
             }
           }
       }
@@ -988,18 +988,20 @@ object KuTuApp extends JFXApp3 with KutuService with JsonSupport with JwtSupport
           p.toWettkampf.saveSecret(homedir, "localhost", jwt.JsonWebToken(jwtHeader, setClaims(p.uuid.get, Int.MaxValue), jwtSecretKey))
         }
         server.httpRenewLoginRequest(s"$remoteBaseUrl/api/loginrenew", p.uuid.get, p.toWettkampf.readSecret(homedir, "localhost").get)
-      } else {
+      } else if (!p.toWettkampf.hasRemote(homedir, remoteHostOrigin)) {
         server.httpUploadWettkampfRequest(p.toWettkampf, server.Connect)
+      } else {
+        Future{EmptyResponse()}
       }
-    }.map(response => {
-      (response, WebSocketClient.connect(p.toWettkampf, ResourceExchanger.processWSMessage(p.toWettkampf, (sender: Object, event: KutuAppEvent) => {
+    }.map(_ => {
+      WebSocketClient.connect(p.toWettkampf, ResourceExchanger.processWSMessage(p.toWettkampf, (sender: Object, event: KutuAppEvent) => {
         Platform.runLater {
           WebSocketClient.modelWettkampfWertungChanged.setValue(event)
         }
-      }), PageDisplayer.showErrorDialog(caption)))
+      }), PageDisplayer.showErrorDialog(caption))
     })
     process.onComplete {
-      case Success((response, wspromise)) =>
+      case Success(wspromise) =>
         if (!wspromise.isCompleted) {
           logger.info(s"share: completed upload-operation. Show success-message ...")
           ConnectionStates.connectedWith(p.uuid.get, wspromise)
@@ -1710,9 +1712,9 @@ object KuTuApp extends JFXApp3 with KutuService with JsonSupport with JwtSupport
       text <== createStringBinding(() => {
         ConnectionStates.connectedWithProperty.value match {
           case "" =>
-            s"Server: ${Config.remoteBaseUrl} offline\nVersion: ${Config.appFullVersion}, Built: ${Config.builddate}"
+            s"Server: ${Config.remoteBaseUrl}offline\nVersion: ${Config.appFullVersion}, Built: ${Config.builddate}"
           case uuid =>
-            s"Server: ${Config.remoteBaseUrl} online\nVersion: ${Config.appFullVersion}, Built: ${Config.builddate}"
+            s"Server: ${Config.remoteBaseUrl}online\nVersion: ${Config.appFullVersion}, Built: ${Config.builddate}"
         }
       }, ConnectionStates.connectedWithProperty, LocalServerStates.localServerProperty, ConnectionStates.remoteServerProperty)
       items += makeSelectBackendMenu

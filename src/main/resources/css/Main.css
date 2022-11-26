@@ -181,7 +181,7 @@
 	-fx-border-insets: null;
     -fx-base: black;
 
-	-fx-padding: 5 0 5 5;
+	//-fx-padding: 5 0 5 5;
 	-fx-text-fill: white;
 	-fx-text-color: white;
     -fx-mark-color: white;
