@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-// https://github.com/adoptium/temurin19-binaries/releases/tag/jdk-19.0.1%2B10
+# https://github.com/adoptium/temurin19-binaries/releases/tag/jdk-19.0.1%2B10
 export jremajor=19
 export jreversion="jdk-19.0.1+10"
 export jrefversion="19.0.1_10"
