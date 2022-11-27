@@ -36,3 +36,4 @@ aws-policy.txt
 /javapackager
 docker/libs
 /WiX/
+/newclient/test/

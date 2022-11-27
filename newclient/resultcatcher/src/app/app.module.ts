@@ -3,8 +3,6 @@ import { BrowserModule } from '@angular/platform-browser';
 import { RouteReuseStrategy } from '@angular/router';
 import { HttpClientModule } from '@angular/common/http';
 import { IonicModule, IonicRouteStrategy } from '@ionic/angular';
-import { SplashScreen } from '@ionic-native/splash-screen/ngx';
-import { StatusBar } from '@ionic-native/status-bar/ngx';
 
 import { AppComponent } from './app.component';
 import { AppRoutingModule } from './app-routing.module';
@@ -13,6 +11,8 @@ import { HTTP_INTERCEPTORS } from '@angular/common/http';
 import { TokenInterceptor } from './services/token-interceptor';
 import { StationGuardService } from './services/station-guard.service';
 import { ThemeSwitcherService } from './services/theme-switcher.service';
+import { StatusBar } from '@capacitor/status-bar';
+import { SplashScreen } from '@capacitor/splash-screen';
 
 @NgModule({
   declarations: [AppComponent],
@@ -24,8 +24,6 @@ import { ThemeSwitcherService } from './services/theme-switcher.service';
     AppRoutingModule
   ],
   providers: [
-    StatusBar,
-    SplashScreen,
     StationGuardService,
     { provide: RouteReuseStrategy, useClass: IonicRouteStrategy },
     BackendService,

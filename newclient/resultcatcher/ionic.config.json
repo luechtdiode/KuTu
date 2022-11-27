@@ -1,7 +1,7 @@
 {
   "name": "resultcatcher",
   "integrations": {
-    "cordova": {}
+    "capacitor": {}
   },
   "type": "angular"
 }

@@ -6,7 +6,6 @@ import { Routes, RouterModule } from '@angular/router';
 import { IonicModule } from '@ionic/angular';
 
 import { WertungEditorPage } from './wertung-editor.page';
-import { Keyboard } from '@ionic-native/keyboard/ngx';
 
 const routes: Routes = [
   {
@@ -22,7 +21,7 @@ const routes: Routes = [
     IonicModule,
     RouterModule.forChild(routes)
   ],
-  providers: [Keyboard],
+  providers: [],
   declarations: [WertungEditorPage]
 })
 export class WertungEditorPageModule {}
