@@ -57,7 +57,7 @@ export class LastResultsPage implements OnInit {
       this.sortItems();
     });
     this.backendService.newLastResults.pipe(
-      filter(r => !!r && !!r.results)
+      filter(r => !!r && !!(r as any).results)
     ).subscribe(newLastRes => {
       this.lastItems = this.items.map(item => item.id * this.geraete.length + item.geraet);
       this.items = [];
@@ -71,7 +71,7 @@ export class LastResultsPage implements OnInit {
           const genericLink = `/api/scores/${c.uuid}/query?groupby=Kategorie:Geschlecht`;
           if (!!scorelists) {
             const values = Object.values(scorelists)
-            this.scorelinks = [...values.filter(l => l.name != 'Zwischenresultate'), <ScoreLink>{
+            this.scorelinks = [...values.filter(l => (l as any).name != 'Zwischenresultate'), <ScoreLink>{
                 name: 'Generische Rangliste',
                 published: true,
                 "published-date": '',
