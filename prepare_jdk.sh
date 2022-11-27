@@ -1,8 +1,9 @@
 #!/usr/bin/env bash
 
-export jremajor=17
-export jreversion="jdk-17.0.2+8"
-export jrefversion="17.0.2_8"
+// https://github.com/adoptium/temurin19-binaries/releases/tag/jdk-19.0.1%2B10
+export jremajor=19
+export jreversion="jdk-19.0.1+10"
+export jrefversion="19.0.1_10"
 export macspec="jdk_x64_mac_hotspot"
 export linspec="jdk_x64_linux_hotspot"
 export msspec="jdk_x64_windows_hotspot"
