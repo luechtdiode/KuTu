@@ -229,13 +229,17 @@ package object domain {
 
   case class Athlet(id: Long, js_id: Int, geschlecht: String, name: String, vorname: String, gebdat: Option[java.sql.Date], strasse: String, plz: String, ort: String, verein: Option[Long], activ: Boolean) extends DataObject {
     override def easyprint: String = name + " " + vorname + " " + (gebdat match {
-      case Some(d) => f"$d%tY ";
+      case Some(d) => f"$d%tY "
       case _ => ""
     })
-    def extendedprint: String = geschlecht match {
-      case "W" => s"Ti ${easyprint}"
-      case _ => s"Tu ${easyprint}"
-    }
+    def extendedprint: String = "" + (geschlecht match {
+      case "W" => s"Ti ${name + " " + vorname}"
+      case _ => s"Tu ${name + " " + vorname}"
+    }) + (gebdat match {
+      case Some(d) => f", $d%tF"
+      case _ => ""
+    })
+
     def toPublicView: Athlet = {
       Athlet(id, 0, geschlecht, name, vorname, gebdat
         .map(d => sqlDate2ld(d))
@@ -258,10 +262,16 @@ package object domain {
       case Some(v) => v.easyprint;
       case _ => ""
     })
-    def extendedprint: String = geschlecht match {
-      case "W" => s"Ti ${easyprint}"
-      case _ => s"Tu ${easyprint}"
-    }
+    def extendedprint: String =  "" + (geschlecht match {
+      case "W" => s"Ti ${name + " " + vorname}"
+      case _ => s"Tu ${name + " " + vorname}"
+    }) + (gebdat match {
+      case Some(d) => f", $d%tF "
+      case _ => ""
+    }) + (verein match {
+      case Some(v) => v.easyprint;
+      case _ => ""
+    })
     def toPublicView: AthletView = {
       AthletView(id, 0, geschlecht, name, vorname, gebdat
         .map(d => sqlDate2ld(d))
