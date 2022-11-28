@@ -120,7 +120,7 @@ export class LastTopResultsPage implements OnInit {
   }
 
   getMaxColumnSpec(): number {
-    return Math.min(12, Math.max(1, Math.floor(12 / this.items.length + 0.5)));
+    return Math.min(12, Math.max(1, Math.floor(12 / this.geraete.length + 0.5)));
   }
   
   getTitle(wertungContainer: WertungContainer): string {

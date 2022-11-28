@@ -11,6 +11,8 @@ import javax.crypto.SecretKeyFactory
 import javax.crypto.spec.PBEKeySpec
 import spray.json.{JsString, JsValue, JsonReader, _}
 
+import java.time.format.DateTimeFormatter
+import java.time.{LocalDate, ZoneId}
 import scala.util.Try
 
 trait EnrichedJson {
@@ -45,8 +47,11 @@ trait EnrichedJson {
     private val localIsoDateFormatter = new ThreadLocal[SimpleDateFormat] {
       override def initialValue() = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSSZ")
     }
+    private val localIsoDateTimeFormatter = new ThreadLocal[DateTimeFormatter] {
+      override def initialValue() = DateTimeFormatter.ofPattern("yyyy-MM-dd'T00:00:00.000+0000'")
+    }
 
-    private def dateToIsoString(date: Date) = localIsoDateFormatter.get().format(date)
+    private def dateToIsoString(date: Date) = localIsoDateTimeFormatter.get().format(LocalDate.ofInstant(date.toInstant, ZoneId.of("Z")))
 
     private def parseIsoDateString(date: String): Option[Date] = Try {
       localIsoDateFormatter.get().parse(date)
@@ -68,7 +73,11 @@ trait EnrichedJson {
       override def initialValue() = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSSZ")
     }
 
-    private def dateToIsoString(date: java.sql.Date) = localIsoDateFormatter.get().format(date)
+    private val localIsoDateTimeFormatter = new ThreadLocal[DateTimeFormatter] {
+      override def initialValue() = DateTimeFormatter.ofPattern("yyyy-MM-dd'T00:00:00.000+0000'")
+    }
+
+    private def dateToIsoString(date: java.sql.Date) = localIsoDateTimeFormatter.get().format(date.toLocalDate)
 
     private def parseIsoDateString(date: String): Option[java.sql.Date] = Try {
       new java.sql.Date(localIsoDateFormatter.get().parse(date).getTime)

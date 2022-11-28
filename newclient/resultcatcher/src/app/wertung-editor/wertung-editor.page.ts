@@ -5,22 +5,19 @@ import { NavController, Platform, ToastController, AlertController } from '@ioni
 import { BackendService } from '../services/backend.service';
 import { NgForm } from '@angular/forms';
 import { ActivatedRoute } from '@angular/router';
-import { Keyboard } from '@ionic-native/keyboard/ngx';
-import { DomSanitizer } from '@angular/platform-browser';
+import { Keyboard } from '@capacitor/keyboard';
 
 @Component({
   selector: 'app-wertung-editor',
   templateUrl: './wertung-editor.page.html',
   styleUrls: ['./wertung-editor.page.scss'],
 })
-export class WertungEditorPage /*implements OnInit*/ {
+export class WertungEditorPage {
 
   constructor(public navCtrl: NavController,
               private route: ActivatedRoute,
-              private sanitizer: DomSanitizer,
               private alertCtrl: AlertController,
               public toastController: ToastController,
-              public keyboard: Keyboard,
               public backendService: BackendService,
               public platform: Platform,
               private zone: NgZone) {
@@ -86,8 +83,8 @@ export class WertungEditorPage /*implements OnInit*/ {
 
       // We need to use a timeout in order to set the focus on load
       setTimeout(() => {
-        if ((this.keyboard as any).show) {
-          (this.keyboard as any).show(); // Needed for android. Call in a platform ready function
+        if (Keyboard.show) {
+          Keyboard.show(); // Needed for android. Call in a platform ready function
           console.log('keyboard called');
         }
         if (this.isDNoteUsed && this.dnote) {
@@ -144,7 +141,7 @@ export class WertungEditorPage /*implements OnInit*/ {
     this.backendService.updateWertung(this.durchgang, this.step, this.geraetId, this.ensureInitialValues(form.value)).subscribe({
       next: (wc) => {
         this.updateUI(wc);
-      }, 
+      },
       error: (err) => {
         this.updateUI(this.itemOriginal);
         console.log(err);
@@ -176,7 +173,7 @@ export class WertungEditorPage /*implements OnInit*/ {
         }
         form.resetForm();
         this.updateUI(this.backendService.wertungen[nextItemIndex]);
-      }, 
+      },
       error: (err) => {
         this.updateUI(this.itemOriginal);
         console.log(err);

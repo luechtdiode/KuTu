@@ -1,4 +1,6 @@
-FROM eclipse-temurin:17-jre
+FROM eclipse-temurin:19-jre-alpine
+
+RUN apk add leveldb
 
 # Create kutu user and group
 RUN echo "kutu:x:1497:1495:user for kutu:/home:/bin/false" >> /etc/passwd

@@ -1,11 +1,11 @@
 import { Component } from '@angular/core';
 
 import { Platform, AlertController, NavController } from '@ionic/angular';
-import { SplashScreen } from '@ionic-native/splash-screen/ngx';
-import { StatusBar } from '@ionic-native/status-bar/ngx';
 import { BackendService } from './services/backend.service';
 import { ThemeSwitcherService } from './services/theme-switcher.service';
 import { ActivatedRoute, Router } from '@angular/router';
+import { StatusBar } from '@capacitor/status-bar';
+import { SplashScreen } from '@capacitor/splash-screen';
 
 @Component({
   selector: 'app-root',
@@ -13,7 +13,7 @@ import { ActivatedRoute, Router } from '@angular/router';
 })
 export class AppComponent {
 
-  constructor(public platform: Platform, public statusBar: StatusBar, public splashScreen: SplashScreen,
+  constructor(public platform: Platform,
               private navController: NavController, private route: ActivatedRoute, private router: Router,
               public themeSwitcher: ThemeSwitcherService,
               public backendService: BackendService, private alertCtrl: AlertController) {
@@ -144,7 +144,7 @@ export class AppComponent {
     this.platform.ready().then(() => {
       // Okay, so the platform is ready and our plugins are available.
       // Here you can do any higher level native things you might need.
-      this.statusBar.styleDefault();
+      SplashScreen.show();
 
       if (window.location.href.indexOf('?') > 0) {
         try {
@@ -221,7 +221,7 @@ export class AppComponent {
         const cs = localStorage.getItem('current_competition');
         this.backendService.getDurchgaenge(cs);
       }
-      this.splashScreen.hide();
+      SplashScreen.hide();
     });
   }
 

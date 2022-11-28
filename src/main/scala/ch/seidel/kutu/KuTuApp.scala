@@ -990,6 +990,8 @@ object KuTuApp extends JFXApp3 with KutuService with JsonSupport with JwtSupport
         server.httpRenewLoginRequest(s"$remoteBaseUrl/api/loginrenew", p.uuid.get, p.toWettkampf.readSecret(homedir, "localhost").get)
       } else if (!p.toWettkampf.hasRemote(homedir, remoteHostOrigin)) {
         server.httpUploadWettkampfRequest(p.toWettkampf, server.Connect)
+      } else if (p.toWettkampf.hasSecred(homedir, remoteHostOrigin)) {
+        server.httpRenewLoginRequest(s"$remoteBaseUrl/api/loginrenew", p.uuid.get, p.toWettkampf.readSecret(homedir, remoteHostOrigin).get)
       } else {
         Future{EmptyResponse()}
       }
