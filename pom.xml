@@ -241,11 +241,11 @@
 		<scala.majorversion>2.13</scala.majorversion>
 		<scala.version>2.13.8</scala.version>
 		<akkaHttp.version>10.2.9</akkaHttp.version>
-		<javafx.version>18.0.1</javafx.version>
-		<akka.version>2.6.19</akka.version>
+		<javafx.version>19</javafx.version>
+		<akka.version>2.7.0</akka.version>
 		<scalafx.version>19.0.0-R30</scalafx.version>
 		<scalatest.version>3.3.0-SNAP3</scalatest.version>
-		<scala-maven-plugin.version>4.6.3</scala-maven-plugin.version>
+		<scala-maven-plugin.version>4.7.2</scala-maven-plugin.version>
 		<gatling.version>3.8.4</gatling.version>
 		<gatling-plugin.version>4.2.7</gatling-plugin.version>
 		<maven.compiler.source>11</maven.compiler.source>
@@ -311,7 +311,7 @@
 		<dependency>
 			<groupId>org.xerial</groupId>
 			<artifactId>sqlite-jdbc</artifactId>
-			<version>3.36.0.3</version>
+			<version>3.39.3.0</version> <!-- next version bring regression reading null BigInteger fields -->
 		</dependency>
 		<dependency>
 			<groupId>org.postgresql</groupId>
@@ -421,7 +421,7 @@
 		<dependency>
 			<groupId>org.json4s</groupId>
 			<artifactId>json4s-jackson_${scala.majorversion}</artifactId>
-			<version>4.0.5</version>
+			<version>4.0.6</version>
 		</dependency>
 
 		<!-- Slick -->
