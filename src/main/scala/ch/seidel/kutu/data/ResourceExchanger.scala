@@ -509,8 +509,8 @@ object ResourceExchanger extends KutuService with RiegenBuilder {
         if (entry._1.getName.startsWith("logo")) {
           val filename = entry._1.getName
           if (entry._1.getSize > Config.logoFileMaxSize) {
-            val maxSize = java.text.NumberFormat.getInstance().format(Config.logoFileMaxSize / 1024)
-            val currentSize = java.text.NumberFormat.getInstance().format(entry._1.getSize.length().toDouble / 1024.toDouble)
+            val maxSize = java.text.NumberFormat.getInstance().format(Config.logoFileMaxSize / 1024d)
+            val currentSize = java.text.NumberFormat.getInstance().format(entry._1.getSize / 1024d)
             throw new RuntimeException(s"Die Datei $filename ist mit $currentSize zu gross. Sie darf nicht grösser als $maxSize Kilobytes sein.")
           }
           val logodir = new java.io.File(Config.homedir + "/" + wettkampf.easyprint.replace(" ", "_"))
