@@ -56,3 +56,5 @@ Start reading our code and you'll get the hang of it. We optimize for readabilit
 * try to keep contezeptually consistent with your changes to the rest of the implementations.
 * check for updated dependencies.
 * this is open source software. Consider the people who will read your code, and make it look nice for them. It's sort of like driving a car: Perhaps you love doing donuts when you're alone, but with passengers the goal is to make the ride as smooth as possible.
+
+[See more specific guidelines in the docs subfolder ...](docs)
