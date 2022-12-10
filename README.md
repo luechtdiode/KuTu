@@ -61,21 +61,4 @@ _[siehe detailierte Dokumentation](https://luechtdiode.gitbook.io/turner-wettkam
 
 Die Software ist Opensource und lebt von Ideen und Beiträgen, die von Interessierten beigesteuert werden können.
 
-Folgende Beiträge sind explizit erwünscht:
-
-## Melden eines Issues
-Unter [Issues](https://github.com/luechtdiode/mobile-queue/issues) können beliebige Themen aufgegriffen und dokumentiert werden. Ein Issue kann ein nicht unterstützter Anwendungsfall, eine Fehlfunktion im Programm, eine Idee für eine ergonomische Verbesserung, ein Verbesserungsvorschlag für eine textuelle Formulierung usw. sein.
-
-## Testen von Fehlerbehebungen, neuen Features
-Wenn ein Issue umgesetzt wird, muss getestet werden, dass die Anpassungen den Erwartungen entsprechen und dass sich die Software dadurch weiterhin stabil betreiben lässt.
-Es existieren bereits weinige automatisierte Tests. Diese können nicht das ganze Spektrum abdecken. Es ist also sehr Wertvoll, wenn diese Qualitätssicherung durch Test-Personen durchgeführt werden kann.
-
-## Erstellen von Dokumentationen
-Beiträge für die Verbesserung und Erweiterung der Dokumentation sind sehr erwünscht.
-
-## Pflege und Weiterentwicklung des Programm-Codes
-* Docu [How to setup local Dev Environment](docs/LocalDevSetup.md)
-* Refactorings
-* Automatisierung / Erweiterung der Testabdeckung
-* Optimieren der Build-Pipeline
-* Bearbeitung der Issues, welche zu Programm-Anpassungen führen.
+Folgende Beiträge sind explizit erwünscht. Siehe [CONTRIBUTING.md](CONTRIBUTING.md).
