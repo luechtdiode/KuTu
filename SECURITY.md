@@ -11,7 +11,7 @@
 
 ## Reporting a Vulnerability
 
-Please report detected Security-Issues as described here.
+Please report detected Security-Issues as described here:
 https://docs.github.com/de/code-security/security-advisories/guidance-on-reporting-and-writing/privately-reporting-a-security-vulnerability#privately-reporting-a-security-vulnerability
 
 If possible, provide suggestions on how you/one could/should fix the issue.
