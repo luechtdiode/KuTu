@@ -41,7 +41,7 @@
     "@angular-eslint/eslint-plugin-template": "~15.1.0",
     "@angular-eslint/template-parser": "~15.1.0",
     "@angular/cli": "^15.0.2",
-    "@angular/compiler": "^15.0.1",
+    "@angular/compiler": "^15.0.3",
     "@angular/compiler-cli": "^15.0.1",
     "@angular/language-service": "^15.0.1",
     "@babel/plugin-transform-async-to-generator": "^7.18.6",
