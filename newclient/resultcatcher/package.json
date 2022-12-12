@@ -30,7 +30,7 @@
     "ini": ">=3.0.0",
     "ionic4-auto-complete": "^2.9.9",
     "ionicons": "^6.0.3",
-    "rxjs": "~7.5.0",
+    "rxjs": "~7.6.0",
     "tslib": "^2.3.0",
     "zone.js": "~0.12.0"
   },
