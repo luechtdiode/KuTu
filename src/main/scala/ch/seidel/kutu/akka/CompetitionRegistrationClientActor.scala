@@ -64,7 +64,7 @@ class CompetitionRegistrationClientActor(wettkampfUUID: String) extends Persiste
 
   private val wettkampf = readWettkampf(wettkampfUUID)
   private val wettkampfInfo = WettkampfInfo(wettkampf.toView(readProgramm(wettkampf.programmId)), this)
-  private var syncState: RegistrationState = RegistrationState(emailApproved = false)
+  private var syncState: RegistrationState = RegistrationState(emailApproved = !KuTuMailerActor.isSMTPConfigured)
   private var syncActions: Option[RegistrationState] = None
   private var syncActionReceivers: List[ActorRef] = List()
   private var clientId: () => String = () => ""
@@ -72,7 +72,7 @@ class CompetitionRegistrationClientActor(wettkampfUUID: String) extends Persiste
   private val waitForEMailApprovementInterval: FiniteDuration = 1.hour
   private var rescheduleSyncNotificationCheck = context.system.scheduler.scheduleOnce(notifierInterval, self, CheckSyncChangedForNotifier)
   private var waitForEMailVerificationCheck = context.system.scheduler.scheduleOnce(waitForEMailApprovementInterval, self, CheckEMailApprovedNotifier)
-  private var approvementEMailSent = false;
+  private var approvementEMailSent = false
 
   override def persistenceId = s"$wettkampfUUID/regs/${Config.appFullVersion}"
 

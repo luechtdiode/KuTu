@@ -158,12 +158,7 @@ object KuTuMailerActor {
   private var customMailer: Option[CustomMailer] = None;
 
   def props(): Props = {
-    if (Config.config.hasPath("X_SMTP_USERNAME")
-      && Config.config.hasPath("X_SMTP_DOMAIN")
-      && Config.config.hasPath("X_SMTP_HOST")
-      && Config.config.hasPath("X_SMTP_PORT")
-      && Config.config.hasPath("X_SMTP_PASSWORD")
-    ) {
+    if (isSMTPConfigured) {
       Props(classOf[KuTuMailerActor],
         Config.config.getString("X_SMTP_HOST"), Config.config.getInt("X_SMTP_PORT"),
         Config.config.getString("X_SMTP_USERNAME"), Config.config.getString("X_SMTP_DOMAIN"),
@@ -178,6 +173,12 @@ object KuTuMailerActor {
       )
     }
   }
+
+  def isSMTPConfigured = Config.config.hasPath("X_SMTP_USERNAME") &&
+    Config.config.hasPath("X_SMTP_DOMAIN") &&
+    Config.config.hasPath("X_SMTP_HOST") &&
+    Config.config.hasPath("X_SMTP_PORT") &&
+    Config.config.hasPath("X_SMTP_PASSWORD")
 
   def setProvider(customMailer: CustomMailer): Unit = {
     this.customMailer = Some(customMailer)
