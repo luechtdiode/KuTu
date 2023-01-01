@@ -231,6 +231,7 @@ trait RegistrationRoutes extends SprayJsonSupport with JwtSupport with JsonSuppo
                   put {
                     entity(as[Verein]) { verein =>
                       updateVerein(verein)
+                      log.info(s"SyncAdmin $clientId - verein updated: $verein")
                       CompetitionRegistrationClientActor.publish(RegistrationChanged(wettkampf.uuid.get), clientId)
                       complete(StatusCodes.OK)
                     }
@@ -253,6 +254,7 @@ trait RegistrationRoutes extends SprayJsonSupport with JwtSupport with JsonSuppo
                       AthletIndexActor.publish(ResyncIndex)
                       CompetitionCoordinatorClientActor.publish(RefreshWettkampfMap(wettkampf.uuid.get), clientId)
                       CompetitionRegistrationClientActor.publish(RegistrationChanged(wettkampf.uuid.get), clientId)
+                      log.info(s"SyncAdmin $clientId - athletes updated and riegenwertungen sex adjusted: $athletlist")
                       complete(StatusCodes.OK)
                     }
                   }
@@ -298,6 +300,7 @@ trait RegistrationRoutes extends SprayJsonSupport with JwtSupport with JsonSuppo
                   entity(as[Verein]) { verein =>
                     val registration = selectRegistration(registrationId)
                     if (registration.vereinId.isEmpty) {
+                      log.info(s"SyncAdmin $clientId - neuer Verein zu Vereinsregistration wird angelegt: $verein")
                       selectVereine.find(v => v.name.equals(verein.name) && (v.verband.isEmpty || v.verband.equals(verein.verband))) match {
                         case Some(v) => complete(updateRegistration(registration.copy(vereinId = Some(v.id))))
                         case None => complete(Future {
@@ -323,6 +326,7 @@ trait RegistrationRoutes extends SprayJsonSupport with JwtSupport with JsonSuppo
                           complete(Future {
                             val reg = updateRegistration(registration)
                             CompetitionRegistrationClientActor.publish(RegistrationChanged(wettkampf.uuid.get), clientId)
+                            log.info(s"$clientId: Vereinsregistration aktualisiert: ${registration}")
                             reg
                           })
                         } else {
@@ -333,6 +337,7 @@ trait RegistrationRoutes extends SprayJsonSupport with JwtSupport with JsonSuppo
                       complete(Future {
                         deleteRegistration(registrationId)
                         CompetitionRegistrationClientActor.publish(RegistrationChanged(wettkampf.uuid.get), clientId)
+                        log.info(s"$clientId: Vereinsregistration gelöscht: ${registrationId}")
                         StatusCodes.OK
                       })
                     }
@@ -342,6 +347,7 @@ trait RegistrationRoutes extends SprayJsonSupport with JwtSupport with JsonSuppo
                         entity(as[RegistrationResetPW]) { regPwReset =>
                           if (selectRegistration(registrationId).id.equals(regPwReset.id)) {
                             val registration = resetRegistrationPW(regPwReset)
+                            log.info(s"$clientId: Passwort geändert")
                             respondWithJwtHeader(s"${registration.id}") {
                               complete(registration)
                             }
@@ -358,6 +364,7 @@ trait RegistrationRoutes extends SprayJsonSupport with JwtSupport with JsonSuppo
                           complete {
                             copyClubRegsFromCompetition(wettkampfCopyFrom.uuid.get, registrationId)
                             CompetitionRegistrationClientActor.publish(RegistrationChanged(wettkampf.uuid.get), clientId)
+                            log.info(s"$clientId: Anmeldungen kopiert: von ${wettkampfCopyFrom.easyprint} nach ${registrationId}")
                             StatusCodes.OK
                           }
                         }
@@ -404,6 +411,7 @@ trait RegistrationRoutes extends SprayJsonSupport with JwtSupport with JsonSuppo
                                 try {
                                   val reg = createAthletRegistration(athletRegistration)
                                   CompetitionRegistrationClientActor.publish(RegistrationChanged(wettkampf.uuid.get), clientId)
+                                  log.info(s"$clientId: Athletanmeldung angelegt: ${athletRegistration.toPublicView.easyprint}")
                                   reg
                                 } catch {
                                   case e: IllegalArgumentException =>
@@ -428,6 +436,7 @@ trait RegistrationRoutes extends SprayJsonSupport with JwtSupport with JsonSuppo
                             complete(Future {
                               val reg = updateAthletRegistration(athletRegistration)
                               CompetitionRegistrationClientActor.publish(RegistrationChanged(wettkampf.uuid.get), clientId)
+                              log.info(s"$clientId: Athletanmeldung aktualisiert: ${athletRegistration.toPublicView.easyprint}")
                               reg
                             })
                           }
@@ -435,6 +444,7 @@ trait RegistrationRoutes extends SprayJsonSupport with JwtSupport with JsonSuppo
                           complete(Future {
                             deleteAthletRegistration(id)
                             CompetitionRegistrationClientActor.publish(RegistrationChanged(wettkampf.uuid.get), clientId)
+                            log.info(s"$clientId: Athletanmeldung gelöscht: ${id}")
                             StatusCodes.OK
                           })
                         }
@@ -453,6 +463,7 @@ trait RegistrationRoutes extends SprayJsonSupport with JwtSupport with JsonSuppo
                             try {
                               val reg = createJudgeRegistration(judgeRegistration)
                               CompetitionRegistrationClientActor.publish(RegistrationChanged(wettkampf.uuid.get), clientId)
+                              log.info(s"$clientId: WR-Anmeldung angelegt: ${judgeRegistration.easyprint}")
                               reg
                             } catch {
                               case e: IllegalArgumentException =>
@@ -473,6 +484,7 @@ trait RegistrationRoutes extends SprayJsonSupport with JwtSupport with JsonSuppo
                             complete(Future {
                               val reg = updateJudgeRegistration(judgesRegistration)
                               CompetitionRegistrationClientActor.publish(RegistrationChanged(wettkampf.uuid.get), clientId)
+                              log.info(s"$clientId: WR-Anmeldung aktualisiert: ${judgesRegistration.easyprint}")
                               reg
                             })
                           }
@@ -480,6 +492,7 @@ trait RegistrationRoutes extends SprayJsonSupport with JwtSupport with JsonSuppo
                           complete(Future {
                             deleteJudgeRegistration(id)
                             CompetitionRegistrationClientActor.publish(RegistrationChanged(wettkampf.uuid.get), clientId)
+                            log.info(s"$clientId: WR-Anmeldung gelöscht: ${id}")
                             StatusCodes.OK
                           })
                         }
