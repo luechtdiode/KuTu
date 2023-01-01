@@ -109,11 +109,11 @@ trait JwtSupport extends Directives {
         case Some(value) =>
           val ret = value.toLong < System.currentTimeMillis()
           if (ret) {
-            logger.warn(s"expired! expiredAtKey: $value / ${formatDateTime(new Date(value.toLong))} vs current millis: ${System.currentTimeMillis()} / ${formatDateTime(new Date(System.currentTimeMillis()))} ")
+            logger.warn(s"token (${getUserID(Some(claims))}) expired! expiredAt: ${formatDateTime(new Date(value.toLong))}")
           }
           ret
         case None =>
-          logger.warn("No claims expiredAtKey found")
+          logger.warn(s"invalid token (${getUserID(Some(claims))}): No claims expiredAtKey found")
           false
       }
     case None =>
