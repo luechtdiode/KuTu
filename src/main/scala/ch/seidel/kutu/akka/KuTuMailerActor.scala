@@ -32,7 +32,7 @@ case class MultipartMail(override val subject: String, messageText: String, mess
 
 case class SendRetry(mail: Mail, retries: Int, sender: ActorRef) extends SendMailAction
 
-class KuTuMailerActor(smtpHost: String, smtpPort: Int, smtpUsername: String, smtpDomain: String, smtpPassword: String, customMailer: Option[CustomMailer])
+class KuTuMailerActor(smtpHost: String, smtpPort: Int, smtpUsername: String, smtpDomain: String, smtpPassword: String, appname: String, customMailer: Option[CustomMailer])
   extends Actor {
   lazy val l: LoggingAdapter = akka.event.Logging(system, this)
 
@@ -137,14 +137,14 @@ class KuTuMailerActor(smtpHost: String, smtpPort: Int, smtpUsername: String, smt
     mail match {
       case SimpleMail(subject, messageText, to) =>
         mailer.sendMail(EmailBuilder.startingBlank()
-          .from("KuTu-App", smtpMailerUser)
+          .from(appname, smtpMailerUser)
           .to(to)
           .withSubject(subject)
           .withPlainText(messageText)
           .buildEmail(), true)
       case MultipartMail(subject, messageText, messageHTML, to) =>
         mailer.sendMail(EmailBuilder.startingBlank()
-          .from("KuTu-App", smtpMailerUser)
+          .from(appname, smtpMailerUser)
           .to(to)
           .withSubject(subject)
           .withPlainText(messageText)
@@ -162,13 +162,13 @@ object KuTuMailerActor {
       Props(classOf[KuTuMailerActor],
         Config.config.getString("X_SMTP_HOST"), Config.config.getInt("X_SMTP_PORT"),
         Config.config.getString("X_SMTP_USERNAME"), Config.config.getString("X_SMTP_DOMAIN"),
-        Config.config.getString("X_SMTP_PASSWORD"), customMailer
+        Config.config.getString("X_SMTP_PASSWORD"), Config.config.getString("app.smtpsender.appname"), customMailer
       )
     } else {
       Props(classOf[KuTuMailerActor],
         "undefined", 0,
         "undefined", "undefined",
-        "",
+        "", "Kutu-App Test",
         customMailer
       )
     }
