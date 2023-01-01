@@ -1061,16 +1061,16 @@ package object domain {
     }
     def matchesAthlet(v: Athlet): Boolean = {
       val bool = toAthlet.extendedprint.equals(v.extendedprint)
-      if(!bool) {
+      /*if(!bool) {
         println(s"nonmatch athlet: ${v.extendedprint}, ${toAthlet.extendedprint}")
-      }
+      }*/
       bool
     }
     def matchesAthlet(): Boolean = {
       val bool = athlet.nonEmpty && athlet.map(_.toAthlet).exists(matchesAthlet)
-      if(!bool) {
+      /*if(!bool) {
         println(s"nonmatch athlet: ${athlet.nonEmpty}, ${athlet.map(_.toAthlet)}, '${athlet.map(_.toAthlet.extendedprint)}' <> '${toAthlet.extendedprint}'")
-      }
+      }*/
       bool
     }
   }

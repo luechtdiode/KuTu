@@ -247,7 +247,7 @@
 		<scalatest.version>3.3.0-SNAP3</scalatest.version>
 		<scala-maven-plugin.version>4.8.0</scala-maven-plugin.version>
 		<gatling.version>3.8.4</gatling.version>
-		<gatling-plugin.version>4.2.7</gatling-plugin.version>
+		<gatling-plugin.version>4.2.8</gatling-plugin.version>
 		<maven.compiler.source>11</maven.compiler.source>
 		<maven.compiler.target>11</maven.compiler.target>
 		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
@@ -321,7 +321,7 @@
 		<dependency>
 			<groupId>com.typesafe.slick</groupId>
 			<artifactId>slick-hikaricp_${scala.majorversion}</artifactId>
-			<version>3.3.3</version>
+			<version>3.4.1</version>
 		</dependency>
 		<dependency>
 			<groupId>org.simplejavamail</groupId>
@@ -415,7 +415,7 @@
 		<dependency>
 			<groupId>org.json4s</groupId>
 			<artifactId>json4s-native_${scala.majorversion}</artifactId>
-			<version>4.0.5</version>
+			<version>4.0.6</version>
 		</dependency>
 		<!-- https://mvnrepository.com/artifact/org.json4s/json4s-jackson -->
 		<dependency>
@@ -599,7 +599,7 @@
 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-dependency-plugin</artifactId>
-				<version>3.3.0</version>
+				<version>3.4.0</version>
 				<executions>
 					<execution>
 						<id>copy-dependencies</id>

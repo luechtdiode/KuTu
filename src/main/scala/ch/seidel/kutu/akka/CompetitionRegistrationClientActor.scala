@@ -64,15 +64,15 @@ class CompetitionRegistrationClientActor(wettkampfUUID: String) extends Persiste
 
   private val wettkampf = readWettkampf(wettkampfUUID)
   private val wettkampfInfo = WettkampfInfo(wettkampf.toView(readProgramm(wettkampf.programmId)), this)
-  private var syncState: RegistrationState = RegistrationState(emailApproved = false)
+  private var syncState: RegistrationState = RegistrationState(emailApproved = !KuTuMailerActor.isSMTPConfigured)
   private var syncActions: Option[RegistrationState] = None
   private var syncActionReceivers: List[ActorRef] = List()
   private var clientId: () => String = () => ""
   private val notifierInterval: FiniteDuration = 1.hour
-  private val waitForEMailApprovementInterval: FiniteDuration = 1.hour
+  private val waitForEMailApprovementInterval: FiniteDuration = 24.hour
   private var rescheduleSyncNotificationCheck = context.system.scheduler.scheduleOnce(notifierInterval, self, CheckSyncChangedForNotifier)
-  private var waitForEMailVerificationCheck = context.system.scheduler.scheduleOnce(waitForEMailApprovementInterval, self, CheckEMailApprovedNotifier)
-  private var approvementEMailSent = false;
+  private val waitForEMailVerificationCheck = context.system.scheduler.scheduleOnce(waitForEMailApprovementInterval, self, CheckEMailApprovedNotifier)
+  private var approvementEMailSent = false
 
   override def persistenceId = s"$wettkampfUUID/regs/${Config.appFullVersion}"
 
@@ -119,23 +119,38 @@ class CompetitionRegistrationClientActor(wettkampfUUID: String) extends Persiste
           MailTemplates.createMailApprovement(wk, link)
         )
         approvementEMailSent = true
+        log.info("Competition created / updated: Approver EMail sent")
+      }
+      else {
+        log.info("Competition without NotificationEMail created/updated: NO Approver EMail sent")
       }
 
     case ApproveEMail(_, mail) =>
-      if (readWettkampf(wettkampfUUID).notificationEMail.equals(mail)) {
+      val notificationEMail = readWettkampf(wettkampfUUID).notificationEMail
+      if (notificationEMail.equals(mail)) {
         syncState = syncState.approved
         sender() ! EMailApproved(s"EMail ${mail} erfolgreich verifiziert")
+        log.info(s"EMail approved ${mail}")
       }
       else {
         sender() ! EMailApproved(s"EMail ${mail} nicht erfolgreich verifiziert.")
+        log.info(s"EMail not approved ${mail} - not matching with competitions notificationEMail: $notificationEMail")
       }
 
     case CheckEMailApprovedNotifier =>
       if (!syncState.emailApproved && (approvementEMailSent || readWettkampf(wettkampfUUID).notificationEMail.isEmpty)) {
-        CompetitionCoordinatorClientActor.publish(Delete(wettkampfUUID), "EMail-Approver")
-        deleteRegistrations(UUID.fromString(wettkampfUUID))
-        deleteWettkampf(wettkampf.id)
-        context.stop(self)
+        if (selectWertungen(wkuuid = Some(wettkampfUUID)).groupBy { x => x.athlet }.map(_._2).isEmpty) {
+          if (selectRegistrationsOfWettkampf(UUID.fromString(wettkampf.uuid.get)).isEmpty) {
+            CompetitionCoordinatorClientActor.publish(Delete(wettkampfUUID), "EMail-Approver")
+            deleteRegistrations(UUID.fromString(wettkampfUUID))
+            deleteWettkampf(wettkampf.id)
+            context.stop(self)
+          } else {
+            log.warning("EMail wurde nicht approved. Wettkampf wird dennoch nicht gelöscht, weil bereits Onlineanmeldungen erfasst sind.")
+          }
+        } else {
+          log.warning("EMail wurde nicht approved. Wettkampf wird dennoch nicht gelöscht, weil bereits Wertungen erfasst sind.")
+        }
       }
 
     case RegistrationResync(_) =>
