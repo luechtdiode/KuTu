@@ -1,14 +1,14 @@
 package ch.seidel.kutu.view
 
-import ch.seidel.commons.{DisplayablePage, LazyTabPane, PageDisplayer, TabWithService}
+import ch.seidel.commons.{LazyTabPane, TabWithService}
 import ch.seidel.kutu.Config._
-import ch.seidel.kutu.KuTuApp.{enc, selectedWettkampfSecret}
+import ch.seidel.kutu.KuTuApp.enc
 import ch.seidel.kutu.akka._
 import ch.seidel.kutu.domain._
 import ch.seidel.kutu.http.WebSocketClient
 import ch.seidel.kutu.renderer.PrintUtil.FilenameDefault
 import ch.seidel.kutu.renderer.{BestenListeToHtmlRenderer, PrintUtil, RiegenBuilder}
-import ch.seidel.kutu.{Config, ConnectionStates, KuTuApp, KuTuServer, LocalServerStates}
+import ch.seidel.kutu._
 import javafx.event.EventHandler
 import javafx.scene.{control => jfxsc}
 import scalafx.Includes._
@@ -16,20 +16,21 @@ import scalafx.application.Platform
 import scalafx.beans.binding.Bindings
 import scalafx.beans.property.{BooleanProperty, StringProperty}
 import scalafx.collections.ObservableBuffer
+import scalafx.collections.ObservableBuffer.observableBuffer2ObservableList
 import scalafx.event.ActionEvent
 import scalafx.event.subscriptions.Subscription
 import scalafx.print.PageOrientation
-import scalafx.scene.Node
 import scalafx.scene.control.TreeTableColumn._
 import scalafx.scene.control._
 import scalafx.scene.image.{Image, ImageView}
-import scalafx.scene.layout.{BorderPane, Priority, VBox}
+import scalafx.scene.layout.{BorderPane, Priority}
 
 import java.util.UUID
+import java.util.concurrent.{ScheduledFuture, ScheduledThreadPoolExecutor, TimeUnit}
 import scala.collection.immutable
 import scala.concurrent.Await
 import scala.concurrent.duration.Duration
-import scala.util.{Failure, Success}
+import scala.jdk.CollectionConverters
 
 trait DurchgangItem
 
@@ -236,6 +237,23 @@ class DurchgangStationView(wettkampf: WettkampfView, service: KutuService, diszi
   }
 }
 
+object DeferredPanelRefresher {
+  private val refresherPool = new ScheduledThreadPoolExecutor(1)
+  var pendingUpdateTask: List[ScheduledFuture[_]] = List.empty
+  sys.addShutdownHook(refresherPool.shutdownNow)
+
+
+  def submitUpdateTask(task: () => Unit): Unit = {
+    pendingUpdateTask = (pendingUpdateTask.filter(t => !t.isDone) match {
+      case Nil => List()
+      case h :: t => t.foreach(_.cancel(true))
+        List(h)
+    }) :+ DeferredPanelRefresher.refresherPool.schedule(new Runnable() { def run(): Unit = {
+        Platform.runLater { task() }
+      }},10L, TimeUnit.SECONDS)
+  }
+}
+
 class NetworkTab(wettkampfmode: BooleanProperty, override val wettkampfInfo: WettkampfInfo, override val service: KutuService) extends Tab with TabWithService with ExportFunctions {
 
   private var lazypane: Option[LazyTabPane] = None
@@ -246,6 +264,7 @@ class NetworkTab(wettkampfmode: BooleanProperty, override val wettkampfInfo: Wet
 
   closable = false
   text = "Netzwerk-Dashboard"
+
 
   val disziplinlist: List[Disziplin] = wettkampfInfo.disziplinList
 
@@ -270,11 +289,13 @@ class NetworkTab(wettkampfmode: BooleanProperty, override val wettkampfInfo: Wet
       .filter(_.isExpanded)
       .map(_.value.value.durchgang.title)
       .toSet
+    val selected = view.selectionModel.value.selectedCells.toList.headOption
     val newList: immutable.Seq[DurchgangState] = loadDurchgaenge
-    model.clear()
+
+    import CollectionConverters._
 
     val groupMap = newList.groupBy(d => d.durchgang.title)
-    for (group <- groupMap.keySet.toList.sorted) {
+    val items: List[TreeItem[DurchgangState]] = for (group <- groupMap.keySet.toList.sorted) yield {
       val dgList = groupMap(group).sortBy(_.name)
       if (dgList.size > 1 || dgList.head.name != dgList.head.durchgang.title) {
         val dgh = dgList.foldLeft(Durchgang())((acc, dg) => {
@@ -286,19 +307,24 @@ class NetworkTab(wettkampfmode: BooleanProperty, override val wettkampfInfo: Wet
           complete = dgList.forall(_.complete),
           geraeteRiegen = dgList.flatMap(_.geraeteRiegen).toList,
           durchgang = dgh)
-        model.add(new TreeItem[DurchgangState](groupDurchgangState) {
+        new TreeItem[DurchgangState](groupDurchgangState) {
           for (d <- dgList) {
             children.add(new TreeItem[DurchgangState](d))
           }
           expanded = expandedStates.contains(group)
-        })
+        }
       } else {
-        model.add(new TreeItem[DurchgangState](dgList.head) {
+        new TreeItem[DurchgangState](dgList.head) {
           expanded = false
-        })
+        }
       }
     }
+    model.setAll(items.asJavaCollection)
     isRunning.set(model.exists(_.getValue.isRunning))
+    selected.foreach(selection => {
+      val column = view.getColumns.get(selection.column)
+      view.selectionModel.value.select(selection.row, column)
+    })
     updateButtons
   }
 
@@ -660,6 +686,7 @@ class NetworkTab(wettkampfmode: BooleanProperty, override val wettkampfInfo: Wet
   content = rootpane
 
   override def isPopulated: Boolean = {
+
     if (subscriptions.isEmpty) {
       println("subscribing for network modus changes")
       subscriptions = subscriptions :+ KuTuApp.modelWettkampfModus.onChange { (_, _, newItem) =>
@@ -687,12 +714,12 @@ class NetworkTab(wettkampfmode: BooleanProperty, override val wettkampfInfo: Wet
           case AthletWertungUpdated(ahtlet: AthletView, wertung: Wertung, wettkampfUUID: String, durchgang: String, geraet: Long, programm: String) =>
             if (selected.value) {
               println("refreshing network-dashboard from websocket", newItem)
-              refreshData()
+              DeferredPanelRefresher.submitUpdateTask(() => refreshData()) //refreshData()
             }
           case AthletWertungUpdatedSequenced(ahtlet: AthletView, wertung: Wertung, wettkampfUUID: String, durchgang: String, geraet: Long, programm: String, sequenceId) =>
             if (selected.value) {
               println("refreshing network-dashboard from websocket", newItem)
-              refreshData()
+              DeferredPanelRefresher.submitUpdateTask(() => refreshData()) //refreshData()
             }
           case _ =>
         }

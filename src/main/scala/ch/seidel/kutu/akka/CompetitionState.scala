@@ -17,23 +17,31 @@ case class CompetitionState (
 
   def updated(event: KutuAppEvent, isDNoteUsed: Boolean): CompetitionState = event match {
     case eventDurchgangStarted: DurchgangStarted =>
-      CompetitionState(
-        startedDurchgaenge + eventDurchgangStarted.durchgang,
-        finishedDurchgangSteps
-          .filter(fds => encodeURIComponent(fds.durchgang) != encodeURIComponent(eventDurchgangStarted.durchgang)),
-        finishedDurchgaenge - eventDurchgangStarted.durchgang,
-        startStopEvents :+ eventDurchgangStarted,
-        lastWertungen, bestenResults, lastBestenResults, lastSequenceId
-      )
+      if (startedDurchgaenge.contains(eventDurchgangStarted.durchgang)) {
+        this
+      } else {
+        CompetitionState(
+          startedDurchgaenge + eventDurchgangStarted.durchgang,
+          finishedDurchgangSteps
+            .filter(fds => encodeURIComponent(fds.durchgang) != encodeURIComponent(eventDurchgangStarted.durchgang)),
+          finishedDurchgaenge - eventDurchgangStarted.durchgang,
+          startStopEvents :+ eventDurchgangStarted,
+          lastWertungen, bestenResults, lastBestenResults, lastSequenceId
+        )
+    }
 
     case eventDurchgangFinished: DurchgangFinished =>
-      CompetitionState(
-        startedDurchgaenge - eventDurchgangFinished.durchgang,
-        finishedDurchgangSteps,
-        finishedDurchgaenge + eventDurchgangFinished.durchgang,
-        startStopEvents :+ eventDurchgangFinished,
-        Map.empty, bestenResults, lastBestenResults, lastSequenceId
-      )
+      if (finishedDurchgaenge.contains(eventDurchgangFinished.durchgang)) {
+        this
+      } else {
+        CompetitionState(
+          startedDurchgaenge - eventDurchgangFinished.durchgang,
+          finishedDurchgangSteps,
+          finishedDurchgaenge + eventDurchgangFinished.durchgang,
+          startStopEvents :+ eventDurchgangFinished,
+          Map.empty, bestenResults, lastBestenResults, lastSequenceId
+        )
+      }
 
     case au: AthletWertungUpdatedSequenced =>
       newCompetitionStateWith(mapToWertungContainer(au.toAthletWertungUpdated(), isDNoteUsed))
