@@ -111,7 +111,8 @@ class CompetitionCoordinatorClientActor(wettkampfUUID: String) extends Persisten
     case _ =>
   }
 
-  def handleEvent(evt: KutuAppEvent, recoveryMode: Boolean = false): Unit = {
+  def handleEvent(evt: KutuAppEvent, recoveryMode: Boolean = false): Boolean = {
+    val stateBefore = state
     state = state.updated(evt, isDNoteUsed)
     if (!recoveryMode && lastSequenceNr % snapShotInterval == 0 && lastSequenceNr != 0) {
       val criteria = SnapshotSelectionCriteria.Latest
@@ -119,6 +120,7 @@ class CompetitionCoordinatorClientActor(wettkampfUUID: String) extends Persisten
       deleteSnapshots(criteria)
       deleteMessages(criteria.maxSequenceNr)
     }
+    !state.equals(stateBefore)
   }
 
   val receiveCommand: Receive = {
@@ -131,33 +133,34 @@ class CompetitionCoordinatorClientActor(wettkampfUUID: String) extends Persisten
 
     case PublishAction(id: String, action: KutuAppAction) =>
       this.clientId = () => id
-      receiveCommand(action)
-      this.clientId = () => ""
+      try {
+        receiveCommand(action)
+      } finally {
+        this.clientId = () => ""
+      }
 
     case StartedDurchgaenge(_) => sender() ! ResponseMessage(state.startedDurchgaenge)
 
     case StartDurchgang(wettkampfUUID, durchgang) =>
       val senderWebSocket = actorWithSameDeviceIdOfSender()
       val started = DurchgangStarted(wettkampfUUID, durchgang)
-      persist(started) { evt =>
-        handleEvent(evt)
-        sender() ! started
+      if (handleEvent(started)) persist(started) { evt =>
         storeDurchgangStarted(started)
         notifyWebSocketClients(senderWebSocket, started, durchgang)
         val msg = NewLastResults(state.lastWertungen, state.lastBestenResults)
         notifyWebSocketClients(senderWebSocket, msg, durchgang)
       }
+      sender() ! started
 
     case FinishDurchgang(wettkampfUUID, durchgang) =>
       val senderWebSocket = actorWithSameDeviceIdOfSender()
       val eventDurchgangFinished = DurchgangFinished(wettkampfUUID, durchgang)
-      persist(eventDurchgangFinished) { evt =>
-        handleEvent(evt)
-        sender() ! eventDurchgangFinished
+      if (handleEvent(eventDurchgangFinished)) persist(eventDurchgangFinished) { evt =>
         storeDurchgangFinished(eventDurchgangFinished)
         notifyWebSocketClients(senderWebSocket, eventDurchgangFinished, durchgang)
         openDurchgangJournal = openDurchgangJournal - Some(encodeURIComponent(durchgang))
       }
+      sender() ! eventDurchgangFinished
 
     case UpdateAthletWertung(athlet, wertung, wettkampfUUID, durchgang, geraet, step, programm) =>
       val senderWebSocket = actorWithSameDeviceIdOfSender()
