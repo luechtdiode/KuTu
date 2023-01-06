@@ -2,7 +2,10 @@ version: '3.7'
 
 services:
   kutuapp_cont:
-    image: luechtdiode/kutuapp:latest
+    #image: luechtdiode/kutuapp:latest
+    build:
+      context: ../docker/
+      dockerfile: ../docker/Dockerfile
     healthcheck:
       test: ["CMD", "curl" , "-f", "http://localhost:5757/metrics"]
       interval: 5s
@@ -29,8 +32,8 @@ services:
     deploy:
       resources:
         limits:
-          cpus: '1.60'
-          memory: 2G
+          #cpus: '4.0'
+          memory: 4G
         reservations:
           memory: 512M
     volumes:

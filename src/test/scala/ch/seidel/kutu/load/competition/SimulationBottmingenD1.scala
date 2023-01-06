@@ -151,7 +151,7 @@ class SimulationBottmingenD1 extends Simulation {
     .exec(BrowseResults.loadAndSaveDurchgaenge)
     .exec(BrowseResults.loadAndSaveGeraete)
     .exec(BrowseResults.diveToWertungen)
-    .exec(scnCloseWebsocketUser)
+    //.exec(scnCloseWebsocketUser)
   //    .pause(20 seconds, 30 seconds)
 
   setUp(
