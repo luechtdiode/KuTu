@@ -639,7 +639,7 @@ object KuTuApp extends JFXApp3 with KutuService with JsonSupport with JwtSupport
               val bsp = mapSexPrediction(b)
               if (asp == a.geschlecht && bsp != b.geschlecht) true
               else if (bsp == b.geschlecht && asp != a.geschlecht) false
-              else if (a.id - b.id > 0) true
+              else if (a.id - b.id < 0) true
               else false
             }
           }
@@ -661,8 +661,8 @@ object KuTuApp extends JFXApp3 with KutuService with JsonSupport with JwtSupport
         val athletModel = ObservableBuffer.from(cleanMirrorTuples())
 
         def printAthlet(athlet: AthletView) = athlet.geschlecht match {
-          case "W" => s"Ti ${athlet.easyprint}"
-          case _ => s"Tu ${athlet.easyprint}"
+          case "W" => s"Ti ${athlet.extendedprint}"
+          case _ => s"Tu ${athlet.extendedprint}"
         }
 
         val athletTable = new TableView[(AthletView, AthletView, AthletView)](athletModel) {

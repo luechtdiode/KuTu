@@ -7,7 +7,6 @@ import ch.seidel.kutu.data.{CaseObjectMetaUtil, Surname}
 import org.slf4j.LoggerFactory
 import slick.jdbc.SQLiteProfile.api._
 
-import scala.collection.JavaConverters
 import scala.concurrent.Await
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration.Duration
@@ -83,6 +82,10 @@ trait AthletService extends DBService with AthletResultMapper {
     Await.result(database.run {
       (
         sqlu"""       update wertung
+                    set athlet_id=${idToKeep}
+                    where athlet_id=${idToDelete}
+          """ >>
+        sqlu"""       update athletregistration
                     set athlet_id=${idToKeep}
                     where athlet_id=${idToDelete}
           """ >>
