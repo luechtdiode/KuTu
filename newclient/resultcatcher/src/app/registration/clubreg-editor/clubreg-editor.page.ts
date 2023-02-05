@@ -7,6 +7,7 @@ import { take } from 'rxjs/operators';
 import { toDateString } from 'src/app/utils';
 import { RegistrationResetPW } from '../../backend-types';
 import { AutoCompleteOptions, AutoCompleteService } from 'ionic4-auto-complete';
+import { NgForm } from '@angular/forms';
 
 @Component({
   selector: 'app-clubreg-editor',
@@ -236,7 +237,9 @@ export class ClubregEditorPage implements OnInit {
     }
   }
 
-  save(registration: ClubRegistration | NewClubRegistration) {
+  save(form: NgForm) {
+    if(!form.valid) return;
+    const registration: ClubRegistration | NewClubRegistration = form.value;
     if (this.regId === 0) {
       const nereg = registration as NewClubRegistration;
       if (nereg.secret !== nereg.verification) {

@@ -9,7 +9,7 @@
 </ion-header>
 
 <ion-content *ngIf="registration">
-  <form #judgeRegistrationForm="ngForm" (ngSubmit)="save(judgeRegistrationForm.value)" (keyup.enter)="save(judgeRegistrationForm.value)">
+  <form #judgeRegistrationForm="ngForm" (ngSubmit)="save(judgeRegistrationForm)" (keyup.enter)="save(judgeRegistrationForm)">
     <ion-list>
       <ion-item-divider color="primary">Wertungsrichter/-in</ion-item-divider>
       <ion-item>

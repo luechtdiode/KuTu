@@ -4,6 +4,7 @@ import { NavController, AlertController } from '@ionic/angular';
 import { JudgeRegistration, ProgrammRaw } from 'src/app/backend-types';
 import { BackendService } from 'src/app/services/backend.service';
 import { toDateString } from 'src/app/utils';
+import { NgForm } from '@angular/forms';
 
 @Component({
   selector: 'app-reg-judge-editor',
@@ -78,8 +79,9 @@ export class RegJudgeEditorPage  implements OnInit {
     });
   }
 
-  save(newreg: JudgeRegistration) {
-    const reg = Object.assign({}, this.registration, newreg);
+  save(form: NgForm) {
+    if(!form.valid) return;
+    const reg = Object.assign({}, this.registration, form.value);
     console.log(reg);
     if (this.judgeId === 0 || reg.id === 0) {
       this.backendService.createJudgeRegistration(this.wkId, this.regId, reg).subscribe(() => {
