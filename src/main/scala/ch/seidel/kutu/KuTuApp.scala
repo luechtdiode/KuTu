@@ -660,10 +660,7 @@ object KuTuApp extends JFXApp3 with KutuService with JsonSupport with JwtSupport
 
         val athletModel = ObservableBuffer.from(cleanMirrorTuples())
 
-        def printAthlet(athlet: AthletView) = athlet.geschlecht match {
-          case "W" => s"Ti ${athlet.extendedprint}"
-          case _ => s"Tu ${athlet.extendedprint}"
-        }
+        def printAthlet(athlet: AthletView) = athlet.extendedprint
 
         val athletTable = new TableView[(AthletView, AthletView, AthletView)](athletModel) {
           columns ++= List(
@@ -696,6 +693,7 @@ object KuTuApp extends JFXApp3 with KutuService with JsonSupport with JwtSupport
             }
           )
         }
+        athletTable.selectionModel.value.setSelectionMode(SelectionMode.Multiple)
         PageDisplayer.showInDialog(caption, new DisplayablePage() {
           def getPage: Node = {
             new BorderPane {
@@ -727,9 +725,14 @@ object KuTuApp extends JFXApp3 with KutuService with JsonSupport with JwtSupport
           new Button("OK, zusammenlegen") {
             disable <== when(athletTable.selectionModel.value.selectedItemProperty.isNull()) choose true otherwise false
             onAction = (event: ActionEvent) => {
-              val (athlet1, athlet2, athlet3) = athletTable.selectionModel.value.selectedItem.value
-              mergeAthletes(athlet2.id, athlet1.id)
-              insertAthlete(athlet3.toAthlet)
+              val selectedAthleten = athletTable.items.value.zipWithIndex.filter {
+                x => athletTable.selectionModel.value.isSelected(x._2)
+              }.map(_._1).toList
+              selectedAthleten.foreach { case (athlet1, athlet2, athlet3) => {
+                mergeAthletes(athlet2.id, athlet1.id)
+              }
+                insertAthlete(athlet3.toAthlet)
+              }
             }
           },
 
