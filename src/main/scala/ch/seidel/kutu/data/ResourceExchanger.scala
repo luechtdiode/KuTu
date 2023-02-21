@@ -28,12 +28,12 @@ object ResourceExchanger extends KutuService with RiegenBuilder {
   def processWSMessage[T](wettkampf: Wettkampf, refresher: (Option[T], KutuAppEvent) => Unit): (Option[T], KutuAppEvent) => Unit = {
     val cache = new java.util.ArrayList[MatchCode]()
 
-    def mapToLocal(athlet: AthletView) = {
+    def mapToLocal(athlet: AthletView, wettkampf: Option[Long]) = {
       val mappedverein = athlet.verein match {
         case Some(v) => findVereinLike(Verein(id = 0, name = v.name, verband = None))
         case _ => None
       }
-      val mappedAthlet = findAthleteLike(cache, Some(wettkampf.id))(athlet.toAthlet.copy(id = 0, verein = mappedverein))
+      val mappedAthlet = findAthleteLike(cache, wettkampf)(athlet.toAthlet.copy(id = 0, verein = mappedverein))
       val mappedAthletView = athlet.updatedWith(mappedAthlet)
       mappedAthletView
     }
@@ -42,7 +42,7 @@ object ResourceExchanger extends KutuService with RiegenBuilder {
       case (sender, LastResults(results)) =>
         val mappedWertungen: Seq[AthletWertungUpdatedSequenced] = results.groupBy(_.athlet).flatMap { tuple =>
           val (athlet, wertungen) = tuple
-          val mappedAthletView: AthletView = mapToLocal(athlet)
+          val mappedAthletView: AthletView = mapToLocal(athlet, Some(wettkampf.id))
           wertungen.groupBy(_.wertung.wettkampfdisziplinId).map {
             _._2.maxBy(_.sequenceId)
           }.map { updatedSequenced =>
@@ -95,7 +95,7 @@ object ResourceExchanger extends KutuService with RiegenBuilder {
         } else if (wettkampf.uuid.contains(wettkampfUUID)) /*Future*/ {
           logger.info(s"received for ${uw.athlet.vorname} ${uw.athlet.name} (${uw.athlet.verein.getOrElse(() => "")}) " +
             s"im Pgm $programm new Wertung: D:${wertung.noteD}, E:${wertung.noteE}")
-          val mappedAthletView: AthletView = mapToLocal(athlet)
+          val mappedAthletView: AthletView = mapToLocal(athlet, Some(wettkampf.id))
           val mappedWertung = wertung.copy(athletId = mappedAthletView.id, wettkampfId = wettkampf.id, wettkampfUUID = wettkampfUUID)
           try {
             val vw = updateWertungWithIDMapping(mappedWertung)
@@ -122,7 +122,7 @@ object ResourceExchanger extends KutuService with RiegenBuilder {
             .map { athlet =>
               logger.info(s"received for ${athlet.vorname} ${athlet.name} (${athlet.verein.getOrElse(() => "")}) " +
                 s"to be added to competition ${awm.wettkampfUUID} to Program-Id:${programm}")
-              val mappedAthletView: AthletView = mapToLocal(athlet)
+              val mappedAthletView: AthletView = mapToLocal(athlet, None)
               if (mappedAthletView.id == 0) {
                 insertAthlete(mappedAthletView.toAthlet).id
               } else {
@@ -138,7 +138,7 @@ object ResourceExchanger extends KutuService with RiegenBuilder {
         if (wettkampf.uuid.contains(wettkampfUUID)) /*Future*/ {
           logger.info(s"received for ${awm.athlet.vorname} ${awm.athlet.name} (${awm.athlet.verein.getOrElse(() => "")}) " +
             s"to be moved in competition ${awm.wettkampfUUID} to Program-Id:${programm}")
-          val mappedAthletView: AthletView = mapToLocal(athlet)
+          val mappedAthletView: AthletView = mapToLocal(athlet, Some(wettkampf.id))
           val mappedEvent = awm.copy(athlet = mappedAthletView)
           for (durchgang <- moveToProgram(mappedEvent)) {
             logger.info(s"durchgang $durchgang changed competition ${wettkampfUUID}")
@@ -152,7 +152,7 @@ object ResourceExchanger extends KutuService with RiegenBuilder {
         if (wettkampf.uuid.contains(wettkampfUUID)) /*Future*/ {
           logger.info(s"received for ${arw.athlet.vorname} ${arw.athlet.name} (${arw.athlet.verein.getOrElse(() => "")}) " +
             s"to be removed from competition ${arw.wettkampfUUID}")
-          val mappedAthletView: AthletView = mapToLocal(athlet)
+          val mappedAthletView: AthletView = mapToLocal(athlet, Some(wettkampf.id))
           val mappedEvent = arw.copy(athlet = mappedAthletView)
           for (durchgang <- unassignAthletFromWettkampf(mappedEvent)) {
             logger.info(s"durchgang $durchgang changed competition ${wettkampfUUID}")
