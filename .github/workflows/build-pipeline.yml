@@ -63,7 +63,7 @@ jobs:
         with:
           commit_message: update with generated Client from Github Actions CI for build ${{env.GITHUB_RUN_NUMBER}} with [skip ci]
       - name: Archive client-modifications
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v3
         with:
           name: src
           path: |
@@ -105,7 +105,7 @@ jobs:
         env:
           OS: Linux
       - name: Archive linux application jar
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v3
         with:
           name: app
           path: |
