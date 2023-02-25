@@ -124,6 +124,7 @@ export class WertungEditorPage {
   }
 
   saveClose(form: NgForm) {
+    if(!form.valid) return;
     this.waiting = true;
     this.backendService.updateWertung(this.durchgang, this.step, this.geraetId, this.ensureInitialValues(form.value)).subscribe({
       next: (wc) => {
@@ -137,6 +138,7 @@ export class WertungEditorPage {
   }
 
   save(form: NgForm) {
+    if(!form.valid) return;
     this.waiting = true;
     this.backendService.updateWertung(this.durchgang, this.step, this.geraetId, this.ensureInitialValues(form.value)).subscribe({
       next: (wc) => {
@@ -149,6 +151,7 @@ export class WertungEditorPage {
   }
 
   saveNext(form: NgForm) {
+    if(!form.valid) return;
     this.waiting = true;
     this.backendService.updateWertung(this.durchgang, this.step, this.geraetId, this.ensureInitialValues(form.value)).subscribe({
       next: (wc) => {

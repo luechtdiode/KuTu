@@ -17,7 +17,7 @@
       (itemSelected)="vereinSelected($event)">
     </ion-auto-complete>
   </ion-item>
-  <form #clubRegistrationform="ngForm" (ngSubmit)="save(clubRegistrationform.value)" (keyup.enter)="save(clubRegistrationform.value)">
+  <form #clubRegistrationform="ngForm" (ngSubmit)="save(clubRegistrationform)" (keyup.enter)="save(clubRegistrationform)">
     <ion-list>
       <ion-item-divider color="primary">Verein</ion-item-divider>
       <ion-item>

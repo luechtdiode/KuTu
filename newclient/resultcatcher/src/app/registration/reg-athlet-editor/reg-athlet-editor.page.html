@@ -3,13 +3,13 @@
     <ion-buttons slot="start">
       <ion-back-button defaultHref="/"></ion-back-button>
     </ion-buttons>
-    <ion-title>Anmeldung Athlet/Athletin</ion-title>  
-    <ion-note slot="end"><div class="athlet">für {{wettkampf}}</div></ion-note>  
+    <ion-title>Anmeldung Athlet/Athletin</ion-title>
+    <ion-note slot="end"><div class="athlet">für {{wettkampf}}</div></ion-note>
   </ion-toolbar>
 </ion-header>
 
 <ion-content *ngIf="registration">
-  <form #athletRegistrationForm="ngForm" (ngSubmit)="save(athletRegistrationForm.value)" (keyup.enter)="save(athletRegistrationForm.value)">
+  <form #athletRegistrationForm="ngForm" (ngSubmit)="save(athletRegistrationForm)" (keyup.enter)="save(athletRegistrationForm)">
     <ion-list>
       <ion-item-divider>
         <ion-avatar slot="start">
@@ -30,7 +30,7 @@
           &nbsp;
         </ion-avatar>
         <ion-input required placeholder="Name" type="text"  [disabled]="false" [(ngModel)]='registration.name' name="name" required></ion-input>
-        <ion-input required placeholder="Vorname" type="text"  [disabled]="false" [(ngModel)]='registration.vorname' name="vorname" required></ion-input>          
+        <ion-input required placeholder="Vorname" type="text"  [disabled]="false" [(ngModel)]='registration.vorname' name="vorname" required></ion-input>
       </ion-item>
       <ion-item>
         <ion-avatar slot="start">

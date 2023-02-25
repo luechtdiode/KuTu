@@ -4,7 +4,5 @@
   </ion-avatar>
   <ion-label>{{athletregistration.name}}, {{athletregistration.vorname}} ({{athletregistration.geschlecht}})<br><small>({{athletregistration.gebdat | date}})</small>
   </ion-label>
-  <ion-note slot="end" >
-    Programm/Kategorie<br>{{getProgrammText(athletregistration.programId)}}, {{status}}
-  </ion-note>
+  <ion-badge slot="end" [color]="statusBadgeColor()">{{statusBadgeText()}}<br><small>{{statusComment()}}</small></ion-badge>
 </ion-item>

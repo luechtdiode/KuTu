@@ -4,6 +4,7 @@ import { ActivatedRoute } from '@angular/router';
 import { BackendService } from 'src/app/services/backend.service';
 import { AthletRegistration, ProgrammRaw } from 'src/app/backend-types';
 import { toDateString } from '../../utils';
+import { NgForm } from '@angular/forms';
 
 @Component({
   selector: 'app-reg-athlet-editor',
@@ -120,8 +121,9 @@ export class RegAthletEditorPage implements OnInit {
     return false;
   }
 
-  save(newreg: AthletRegistration) {
-    const reg = Object.assign({}, this.registration, {gebdat: new Date(newreg.gebdat).toJSON()});
+  save(form: NgForm) {
+    if(!form.valid) return;
+    const reg = Object.assign({}, this.registration, {gebdat: new Date(form.value.gebdat).toJSON()});
 
     if (this.athletId === 0 || reg.id === 0) {
       this.backendService.createAthletRegistration(this.wkId, this.regId, reg).subscribe(() => {

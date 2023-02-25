@@ -2,7 +2,7 @@ import { Component, OnInit } from '@angular/core';
 import { NavController, AlertController, IonItemSliding } from '@ionic/angular';
 import { ActivatedRoute } from '@angular/router';
 import { BackendService } from 'src/app/services/backend.service';
-import { BehaviorSubject, Subject, of, TimeoutError } from 'rxjs';
+import { BehaviorSubject, Subject, of } from 'rxjs';
 import { filter, map, debounceTime, distinctUntilChanged, share, switchMap, take, tap } from 'rxjs/operators';
 import { ClubRegistration, ProgrammRaw, AthletRegistration, Wettkampf, SyncAction } from '../../backend-types';
 
@@ -19,7 +19,7 @@ export class RegAthletlistPage implements OnInit {
   tMyQueryStream = new Subject<any>();
 
   sFilterTask: () => void = undefined;
-  sFilteredRegistrationList: AthletRegistration[];
+  sFilteredRegistrationList: Map<number, AthletRegistration[]>;
   sAthletRegistrationList: AthletRegistration[];
   sMyQuery: string;
   sSyncActions: SyncAction[] = [];
@@ -61,7 +61,7 @@ export class RegAthletlistPage implements OnInit {
     if (this.sSyncActions) {
       const action = this.sSyncActions.find(a => a.verein.id === reg.vereinregistrationId && a.caption.indexOf(reg.name) > -1 && a.caption.indexOf(reg.vorname) > -1)
       if (action) {
-        return "pending"; // (" + action.caption + ")";
+        return "pending (" + action.caption.substring(0, (action.caption + ":").indexOf(":")) + ")";
       } else {
         return "in sync";
       }
@@ -123,13 +123,14 @@ export class RegAthletlistPage implements OnInit {
   runQuery(list: AthletRegistration[]) {
     return (query: string) => {
       const q = query.trim();
-      const result: AthletRegistration[] = [];
+      const result: Map<number, AthletRegistration[]> = new Map();
 
-      if (q && list) {
+      if (list) {
         list.forEach(registration => {
           const filterFn = this.filter(q);
           if (filterFn(registration)) {
-            result.push(registration);
+            const existingItems = result.get(registration.programId) || [];
+            result.set(registration.programId, [ ...existingItems, registration].sort((a, b)=>a.name.localeCompare(b.name)));
           }
         });
       }
@@ -139,13 +140,23 @@ export class RegAthletlistPage implements OnInit {
   }
   set athletregistrations(list: AthletRegistration[]) {
     this.sAthletRegistrationList = list;
-    this.reloadList(this.sMyQuery);
+    this.runQuery(list)('*').subscribe(l => this.sFilteredRegistrationList = l);
+    this.reloadList(this.sMyQuery || '*');
   }
   get athletregistrations() {
     return this.sAthletRegistrationList;
   }
-  get filteredStartList() {
-    return this.sFilteredRegistrationList || this.sAthletRegistrationList || [];
+  get filteredPrograms(): ProgrammRaw[] {
+    return [...this.wkPgms.filter(pgm => this.sFilteredRegistrationList?.has(pgm.id))];
+    //return [ ...this.sFilteredRegistrationList?.keys() ].map(id => this.wkPgms.filter(pgm => pgm.id==id)[0]);
+  }
+  
+  mapProgram(programId: number) {
+    return this.wkPgms.filter(pgm => pgm.id==programId)[0];
+  }
+
+  filteredStartList(programId: number) {
+    return this.sFilteredRegistrationList?.get(programId) || this.sAthletRegistrationList || [];
   }
   reloadList(event: any) {
     this.tMyQueryStream.next(event);
@@ -187,6 +198,9 @@ export class RegAthletlistPage implements OnInit {
           return true;
         }
         if (tn.gebdat.indexOf(token) > -1) {
+          return true;
+        }
+        if (token.length == 3 && tn.geschlecht.indexOf(token.substring(1,2)) > -1) {
           return true;
         }
       }).length === queryTokens.length;
