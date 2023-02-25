@@ -215,18 +215,20 @@ export class ClubregEditorPage implements OnInit {
       this.waiting = false;
       this.wettkampf = this.backendService.competitionName;
       this.registration = registration;
-      if (this.regId === 0) {
-         this.newRegistration = registration as NewClubRegistration;
-      } else {
-        this.changePassword = {
-          id: this.regId,
-          wettkampfId: registration.wettkampfId || this.wettkampfId,
-          secret: '',
-          verification: ''
-        } as RegistrationResetPW;
-      }
-      if (!!this.registration.mail && this.registration.mail.length > 1) {
-        this.backendService.currentUserName = this.registration.mail;
+      if (!!registration) {
+        if (this.regId === 0) {
+          this.newRegistration = registration as NewClubRegistration;
+        } else {
+          this.changePassword = {
+            id: this.regId,
+            wettkampfId: registration.wettkampfId || this.wettkampfId,
+            secret: '',
+            verification: ''
+          } as RegistrationResetPW;
+        }
+        if (!!this.registration.mail && this.registration.mail.length > 1) {
+          this.backendService.currentUserName = this.registration.mail;
+        }
       }
     });
   }
