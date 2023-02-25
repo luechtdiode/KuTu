@@ -3,14 +3,7 @@
     <ion-buttons slot="start">
       <ion-back-button defaultHref="/"></ion-back-button>
     </ion-buttons>
-<!--     <ion-buttons slot="start">
-      <ion-menu-toggle>
-        <ion-button>
-          <ion-icon slot="icon-only" name="menu"></ion-icon>
-        </ion-button>
-      </ion-menu-toggle>
-    </ion-buttons>
- -->    <ion-title>
+    <ion-title>
       <ion-grid no-padding>
         <ion-row>
           <ion-col>
@@ -41,23 +34,26 @@
 
 <ion-content *ngIf="wkPgms && wkPgms.length > 0">
   <ion-list >
-    <ion-item *ngIf="(busy | async) || !(competition && currentRegistration && this.sAthletRegistrationList)">
+    <ion-item *ngIf="(busy | async) || !(competition && currentRegistration && this.filteredPrograms)">
       <ion-label>loading ...</ion-label>
       <ion-spinner></ion-spinner>
     </ion-item>
-    <ion-item-sliding #slidingAthletRegistrationItem *ngFor="let reg of filteredStartList">
-      <app-reg-athlet-item [athletregistration]="reg" [status]=getStatus(reg) [programmlist]="wkPgms" (click)='itemTapped(reg, slidingAthletRegistrationItem)'></app-reg-athlet-item>
-      <ion-item-options side="end">
-        <ion-item-option color="primary" (click)="edit(reg, slidingAthletRegistrationItem)">
+    <div *ngFor="let pgm of this.filteredPrograms">
+      <ion-item-divider>{{pgm.name}}</ion-item-divider>
+      <ion-item-sliding #slidingAthletRegistrationItem *ngFor="let reg of this.filteredStartList(pgm.id)">
+        <app-reg-athlet-item [athletregistration]="reg" [status]=getStatus(reg) [programmlist]="wkPgms" (click)='itemTapped(reg, slidingAthletRegistrationItem)'></app-reg-athlet-item>
+        <ion-item-options side="end">
+          <ion-item-option color="primary" (click)="edit(reg, slidingAthletRegistrationItem)">
+              <ion-icon name="arrow-forward-circle-outline" ios="md-arrow-forward-circle-outline"></ion-icon>
+            {{isLoggedInAsClub() ? 'Bearbeiten' : isLoggedIn() ? "Bestätigen" : "Anzeigen"}}
+          </ion-item-option>
+          <ion-item-option *ngIf='isLoggedInAsClub()' color="danger" (click)="delete(reg, slidingAthletRegistrationItem)">
             <ion-icon name="arrow-forward-circle-outline" ios="md-arrow-forward-circle-outline"></ion-icon>
-          {{isLoggedInAsClub() ? 'Bearbeiten' : isLoggedIn() ? "Bestätigen" : "Anzeigen"}}
-        </ion-item-option>
-        <ion-item-option *ngIf='isLoggedInAsClub()' color="danger" (click)="delete(reg, slidingAthletRegistrationItem)">
-          <ion-icon name="arrow-forward-circle-outline" ios="md-arrow-forward-circle-outline"></ion-icon>
-          Löschen
-        </ion-item-option>
-      </ion-item-options>
-    </ion-item-sliding>
+            Löschen
+          </ion-item-option>
+        </ion-item-options>
+      </ion-item-sliding>
+    </div>
   </ion-list>
 </ion-content>
 <ion-footer>
