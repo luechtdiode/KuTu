@@ -512,7 +512,7 @@ abstract class DefaultRanglisteTab(wettkampfmode: BooleanProperty, override val 
     (if (filter.published) "Publiziert: " else "Bereitgestellt: ") + filter.title
   }
 
-  def normalizeFilterText(text: String) = text.replace("/", "_")
+  def normalizeFilterText(text: String) = encodeFileName(text).replace("/", "_")
     .replace(".", "_")
     .replace("?", "_")
     .replace("&", "+")

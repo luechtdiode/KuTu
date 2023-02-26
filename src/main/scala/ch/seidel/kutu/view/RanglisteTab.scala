@@ -1,13 +1,12 @@
 package ch.seidel.kutu.view
 
 import java.util.UUID
-
 import ch.seidel.commons.{DisplayablePage, PageDisplayer}
 import ch.seidel.kutu.Config._
 import ch.seidel.kutu.ConnectionStates
 import ch.seidel.kutu.KuTuApp.handleAction
 import ch.seidel.kutu.data._
-import ch.seidel.kutu.domain.{Durchgang, KutuService, WertungView, WettkampfView}
+import ch.seidel.kutu.domain.{Durchgang, KutuService, WertungView, WettkampfView, encodeFileName}
 import ch.seidel.kutu.renderer.PrintUtil.FilenameDefault
 import scalafx.Includes.when
 import scalafx.beans.binding.Bindings
@@ -38,8 +37,10 @@ class RanglisteTab(wettkampfmode: BooleanProperty, wettkampf: WettkampfView, ove
 
   override def getData: Seq[WertungView] = service.selectWertungen(wettkampfId = Some(wettkampf.id))
 
-  override def getSaveAsFilenameDefault: FilenameDefault =
-    FilenameDefault("Rangliste_" + wettkampf.easyprint.replace(" ", "_") + ".html", new java.io.File(homedir + "/" + wettkampf.easyprint.replace(" ", "_")))
+  override def getSaveAsFilenameDefault: FilenameDefault = {
+    val foldername = encodeFileName(wettkampf.easyprint)
+    FilenameDefault("Rangliste_" + foldername + ".html", new java.io.File(homedir + "/" + foldername))
+  }
 
   val btnBereitstellen = new Button {
     text = "Bereitstellen ..."

@@ -559,8 +559,8 @@ class NetworkTab(wettkampfmode: BooleanProperty, override val wettkampfInfo: Wet
     disable.value = wettkampf.toWettkampf.isReadonly(homedir, remoteHostOrigin)
     onAction = (event: ActionEvent) => {
       if (!WebSocketClient.isConnected) {
-        val filename = "Bestenliste_" + wettkampf.easyprint.replace(" ", "_") + ".html"
-        val dir = new java.io.File(homedir + "/" + wettkampf.easyprint.replace(" ", "_"))
+        val filename = "Bestenliste_" + encodeFileName(wettkampf.easyprint) + ".html"
+        val dir = new java.io.File(homedir + "/" + encodeFileName(wettkampf.easyprint))
         if (!dir.exists()) {
           dir.mkdirs()
         }

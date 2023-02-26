@@ -6,7 +6,7 @@ import akka.http.scaladsl.server.Route
 import akka.util.Timeout
 import ch.seidel.kutu.Config
 import ch.seidel.kutu.KuTuServer.handleCID
-import ch.seidel.kutu.domain.{Kandidat, KutuService}
+import ch.seidel.kutu.domain.{Kandidat, KutuService, encodeFileName}
 import ch.seidel.kutu.renderer._
 import fr.davit.akka.http.metrics.core.scaladsl.server.HttpMetricsDirectives._
 
@@ -40,7 +40,7 @@ trait ReportRoutes extends SprayJsonSupport
           } else {
 
             val wettkampf = readWettkampf(competitionId.toString)
-            val logodir = new java.io.File(Config.homedir + "/" + wettkampf.easyprint.replace(" ", "_"))
+            val logodir = new java.io.File(Config.homedir + "/" + encodeFileName(wettkampf.easyprint))
             val logofile = PrintUtil.locateLogoFile(logodir)
 
             pathLabeled("startlist", "startlist") {

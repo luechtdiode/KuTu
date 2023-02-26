@@ -12,7 +12,7 @@ import ch.seidel.kutu.Config
 import ch.seidel.kutu.KuTuServer.handleCID
 import ch.seidel.kutu.akka.{CompetitionCoordinatorClientActor, MessageAck, ResponseMessage, StartedDurchgaenge}
 import ch.seidel.kutu.data._
-import ch.seidel.kutu.domain.{Durchgang, Kandidat, KutuService, NullObject, PublishedScoreView, WertungView, encodeURIParam}
+import ch.seidel.kutu.domain.{Durchgang, Kandidat, KutuService, NullObject, PublishedScoreView, WertungView, encodeFileName, encodeURIParam}
 import ch.seidel.kutu.renderer.{PrintUtil, ScoreToHtmlRenderer, ScoreToJsonRenderer}
 import ch.seidel.kutu.renderer.PrintUtil._
 
@@ -145,7 +145,7 @@ ScoreRoutes extends SprayJsonSupport with JsonSupport with AuthSupport with Rout
             val wettkampf = readWettkampf(competitionId.toString)
             val wkdate: LocalDate = ch.seidel.kutu.domain.sqlDate2ld(wettkampf.datum)
             val data = selectWertungen(wkuuid = Some(competitionId.toString))
-            val logodir = new java.io.File(Config.homedir + "/" + wettkampf.easyprint.replace(" ", "_"))
+            val logodir = new java.io.File(Config.homedir + "/" + encodeFileName(wettkampf.easyprint))
             val logofile = PrintUtil.locateLogoFile(logodir)
             val programmText = wettkampf.programmId match {case 20 => "Kategorie" case _ => "Programm"}
             def riegenZuDurchgang: Map[String, Durchgang] = {

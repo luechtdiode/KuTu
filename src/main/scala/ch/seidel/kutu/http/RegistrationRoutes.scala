@@ -8,17 +8,16 @@ import akka.http.scaladsl.unmarshalling.Unmarshal
 import akka.util.{ByteString, Timeout}
 import ch.seidel.kutu.{Config, domain}
 import ch.seidel.kutu.Config.remoteAdminBaseUrl
-import ch.seidel.kutu.KuTuServer.handleCID
 import ch.seidel.kutu.akka._
-import ch.seidel.kutu.data.RegistrationAdmin.{adjustWertungRiegen, mapAddRegistration}
-import ch.seidel.kutu.domain.{AddRegistration, AthletRegistration, AthletView, JudgeRegistration, KutuService, NewRegistration, ProgrammRaw, Registration, RegistrationResetPW, Verein, Wettkampf, dateToExportedStr}
+import ch.seidel.kutu.data.RegistrationAdmin.{adjustWertungRiegen}
+import ch.seidel.kutu.domain.{AddRegistration, AthletRegistration, AthletView, JudgeRegistration, KutuService, NewRegistration, ProgrammRaw, Registration, RegistrationResetPW, Verein, Wettkampf, dateToExportedStr, encodeFileName}
 import ch.seidel.kutu.http.AuthSupport.OPTION_LOGINRESET
 import ch.seidel.kutu.renderer.MailTemplates.createPasswordResetMail
 import ch.seidel.kutu.renderer.{CompetitionsClubsToHtmlRenderer, CompetitionsJudgeToHtmlRenderer, PrintUtil}
 import ch.seidel.kutu.view.WettkampfInfo
 import spray.json._
 
-import java.util.{UUID}
+import java.util.UUID
 import scala.concurrent.duration.{DAYS, Duration, DurationInt}
 import scala.concurrent.{Await, Future}
 import fr.davit.akka.http.metrics.core.scaladsl.server.HttpMetricsDirectives._
@@ -135,7 +134,7 @@ trait RegistrationRoutes extends SprayJsonSupport with JwtSupport with JsonSuppo
           complete(StatusCodes.NotFound)
         } else {
           val wettkampf = readWettkampf(competitionId.toString)
-          val logodir = new java.io.File(Config.homedir + "/" + wettkampf.easyprint.replace(" ", "_"))
+          val logodir = new java.io.File(Config.homedir + "/" + encodeFileName(wettkampf.easyprint))
           val logofile = PrintUtil.locateLogoFile(logodir)
           pathEndOrSingleSlash {
             authenticated(true) { id =>
