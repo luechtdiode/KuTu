@@ -100,6 +100,22 @@ trait RegistrationService extends DBService with RegistrationResultMapper with H
     }
   }
 
+  def adjustOnlineRegistrations(changedAthlet: AthletView): Unit = {
+    Await.result(database.run {
+      sqlu"""
+              update athletregistration ar
+              set geschlecht = a.geschlecht,
+                  name = a.name,
+                  vorname = a.vorname,
+                  gebdat = a.gebdat
+              from athlet a
+              where ar.athlet_id = a.id
+                and a.id = ${changedAthlet.id}
+          """
+    }, Duration.Inf)
+
+  }
+
   def updateRegistration(registration: Registration): Registration = {
     if (registration.id == 0L) {
       throw new IllegalArgumentException("Registration with id=0 can not be updated")
