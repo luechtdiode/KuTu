@@ -251,6 +251,7 @@ trait RegistrationRoutes extends SprayJsonSupport with JwtSupport with JsonSuppo
                         .filter(aa => aa._1.geschlecht != aa._2.geschlecht)
                       val reg = insertAthletes(athletlist.map(aw => (aw.id.toString, aw.toAthlet)))
                       sexchanges.foreach(aa => adjustWertungRiegen(wettkampf, this, aa._1.toAthlet))
+                      athletlist.foreach(aa => adjustOnlineRegistrations(aa))
                       AthletIndexActor.publish(ResyncIndex)
                       CompetitionCoordinatorClientActor.publish(RefreshWettkampfMap(wettkampf.uuid.get), clientId)
                       CompetitionRegistrationClientActor.publish(RegistrationChanged(wettkampf.uuid.get), clientId)
