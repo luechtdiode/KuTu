@@ -5,6 +5,7 @@ import org.apache.commons.codec.language.ColognePhonetic
 import org.apache.commons.codec.language.bm._
 import org.apache.commons.text.similarity.LevenshteinDistance
 
+import java.io.File
 import java.net.URLEncoder
 import java.nio.file.{Files, LinkOption, StandardOpenOption}
 import java.sql.{Date, Timestamp}
@@ -164,6 +165,21 @@ package object domain {
     .replaceAll("\\%28", "(")
     .replaceAll("\\%29", ")")
     .replaceAll("\\%7E", "~")
+
+  def encodeFileName(name: String): String = {
+    val forbiddenChars = List(
+    '/', '<', '>', ':', '"', '|', '?', '*', ' '
+    ) :+ (0 to 32)
+    val forbiddenNames = List(
+    "CON", "PRN", "AUX", "NUL",
+    "COM1", "COM2", "COM3", "COM4", "COM5", "COM6", "COM7", "COM8", "COM9",
+    "LPT1", "LPT2", "LPT3", "LPT4", "LPT5", "LPT6", "LPT7", "LPT8", "LPT9"
+    )
+    if (forbiddenNames.contains(name.toUpperCase()))
+      "_" + name + "_"
+    else
+      name.map(c => if (forbiddenChars.contains(c)) '_' else c)
+  }
 
   trait DataObject {
     def easyprint: String = toString
@@ -469,7 +485,9 @@ package object domain {
     def toPublic: Wettkampf = Wettkampf(id, uuid, datum, titel, programmId, auszeichnung, auszeichnung, "")
 
     private def prepareFilePath(homedir: String) = {
-      val dir = new java.io.File(homedir + "/" + easyprint.replace(" ", "_"))
+      val filename: String = encodeFileName(easyprint)
+
+      val dir = new File(homedir + "/" + filename)
       if (!dir.exists) {
         dir.mkdirs
       }

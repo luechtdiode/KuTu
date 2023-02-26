@@ -1,11 +1,10 @@
 package ch.seidel.kutu.view
 
 import java.util.UUID
-
 import ch.seidel.kutu.Config.{homedir, remoteBaseUrl}
 import ch.seidel.kutu.KuTuApp
 import ch.seidel.kutu.akka.DurchgangChanged
-import ch.seidel.kutu.domain.{KutuService, WettkampfView}
+import ch.seidel.kutu.domain.{KutuService, encodeFileName}
 import ch.seidel.kutu.http.WebSocketClient
 import ch.seidel.kutu.renderer.PrintUtil
 import ch.seidel.kutu.renderer.PrintUtil.FilenameDefault
@@ -34,11 +33,11 @@ trait ExportFunctions {
   def doSelectedRiegenBelatterExport(dialogText: String, durchgang: Set[String], halts: Set[Int] = Set.empty)(implicit event: ActionEvent): Unit = {
     import scala.concurrent.ExecutionContext.Implicits.global
 
-    val seriendaten = service.getAllKandidatenWertungen(wettkampf.uuid.map(UUID.fromString(_)).get)
+    val seriendaten = service.getAllKandidatenWertungen(wettkampf.uuid.map(UUID.fromString).get)
     val durchgangFileQualifier = durchgang.mkString("_dg(","-",")").replace(" ", "_")
     val haltsFileQualifier = halts.mkString("_h(", "-", ")")
-    val filename = "Riegenblatt_" + wettkampf.easyprint.replace(" ", "_") + durchgangFileQualifier + haltsFileQualifier + ".html"
-    val dir = new java.io.File(homedir + "/" + wettkampf.easyprint.replace(" ", "_"))
+    val filename = "Riegenblatt_" + encodeFileName(wettkampf.easyprint) + durchgangFileQualifier + haltsFileQualifier + ".html"
+    val dir = new java.io.File(homedir + "/" + encodeFileName(wettkampf.easyprint))
     if(!dir.exists()) {
       dir.mkdirs();
     }

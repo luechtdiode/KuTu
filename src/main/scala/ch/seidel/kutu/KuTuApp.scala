@@ -1579,7 +1579,7 @@ object KuTuApp extends JFXApp3 with KutuService with JsonSupport with JwtSupport
   }
 
   def makeWettkampfDataDirectoryMenu(w: WettkampfView) = makeMenuAction("Wettkampf Verzeichnis öffnen") { (caption, action) =>
-    val dir = new java.io.File(homedir + "/" + w.easyprint.replace(" ", "_"))
+    val dir = new java.io.File(homedir + "/" + encodeFileName(w.easyprint))
     if (!dir.exists()) {
       dir.mkdirs()
     }

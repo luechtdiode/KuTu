@@ -1256,10 +1256,10 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
           )
         }
         val filename = "Teilnehmerliste_" +
-          wettkampf.easyprint.replace(" ", "_") +
+          encodeFileName(wettkampf.easyprint) +
           programm.map("_Programm_" + _.easyprint.replace(" ", "_")).getOrElse("") +
           riege.map("_Riege_" + _.caption.replace(" ", "_")).getOrElse("") + ".html"
-        val dir = new java.io.File(homedir + "/" + wettkampf.easyprint.replace(" ", "_"))
+        val dir = new java.io.File(homedir + "/" + encodeFileName(wettkampf.easyprint))
         if (!dir.exists()) {
           dir.mkdirs()
         }
@@ -1321,10 +1321,10 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
           )
         }
         val filename = "Vereins-Teilnehmerliste_" +
-          wettkampf.easyprint.replace(" ", "_") +
+          encodeFileName(wettkampf.easyprint) +
           programm.map("_Programm_" + _.easyprint.replace(" ", "_")).getOrElse("") +
           riege.map("_Riege_" + _.caption.replace(" ", "_")).getOrElse("") + ".html"
-        val dir = new java.io.File(homedir + "/" + wettkampf.easyprint.replace(" ", "_"))
+        val dir = new java.io.File(homedir + "/" + encodeFileName(wettkampf.easyprint))
         if (!dir.exists()) {
           dir.mkdirs()
         }
@@ -1389,10 +1389,10 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
           )
         }
         val filename = "Notenblatt_" +
-          wettkampf.easyprint.replace(" ", "_") +
+          encodeFileName(wettkampf.easyprint) +
           programm.map("_Programm_" + _.easyprint.replace(" ", "_")).getOrElse("") +
           riege.map("_Riege_" + _.caption.replace(" ", "_")).getOrElse("") + ".html"
-        val dir = new java.io.File(homedir + "/" + wettkampf.easyprint.replace(" ", "_"))
+        val dir = new java.io.File(homedir + "/" + encodeFileName(wettkampf.easyprint))
         if (!dir.exists()) {
           dir.mkdirs()
         }
@@ -1414,8 +1414,8 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
     disable.value = wettkampf.toWettkampf.isReadonly(homedir, remoteHostOrigin)
     onAction = (event: ActionEvent) => {
       if (!WebSocketClient.isConnected) {
-        val filename = "Bestenliste_" + wettkampf.easyprint.replace(" ", "_") + ".html"
-        val dir = new java.io.File(homedir + "/" + wettkampf.easyprint.replace(" ", "_"))
+        val filename = "Bestenliste_" + encodeFileName(wettkampf.easyprint) + ".html"
+        val dir = new java.io.File(homedir + "/" + encodeFileName(wettkampf.easyprint))
         if (!dir.exists()) {
           dir.mkdirs()
         }

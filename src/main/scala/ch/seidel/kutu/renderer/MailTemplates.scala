@@ -1,8 +1,8 @@
 package ch.seidel.kutu.renderer
 
-import ch.seidel.kutu.Config
+import ch.seidel.kutu.{Config}
 import ch.seidel.kutu.akka.{Mail, MultipartMail}
-import ch.seidel.kutu.domain.{JudgeRegistration, Registration, SyncAction, Wettkampf}
+import ch.seidel.kutu.domain.{JudgeRegistration, Registration, SyncAction, Wettkampf, encodeFileName}
 import ch.seidel.kutu.renderer.PrintUtil._
 
 object MailTemplates {
@@ -55,7 +55,7 @@ object MailTemplates {
        |    </head>""".stripMargin
 
   def createMailApprovement(wettkampf: Wettkampf, link: String): Mail = {
-    val logodir = new java.io.File(Config.homedir + "/" + wettkampf.easyprint.replace(" ", "_"))
+    val logodir = new java.io.File(Config.homedir + "/" + encodeFileName(wettkampf.easyprint))
     val logofile = PrintUtil.locateLogoFile(logodir)
     val logoHtml = if (logofile.exists()) s"""<img class=logo src="${logofile.imageSrcForWebEngine}" title="Logo"/>""" else ""
     val imageData = toQRCodeImage(link)
@@ -109,7 +109,7 @@ object MailTemplates {
   }
 
   def createSyncNotificationMail(wettkampf: Wettkampf, syncActions: List[SyncAction], changedJudges: List[JudgeRegistration], removedJudges: List[JudgeRegistration], addedJudges: List[JudgeRegistration]): Mail = {
-    val logodir = new java.io.File(Config.homedir + "/" + wettkampf.easyprint.replace(" ", "_"))
+    val logodir = new java.io.File(Config.homedir + "/" + encodeFileName(wettkampf.easyprint))
     val logofile = PrintUtil.locateLogoFile(logodir)
     val logoHtml = if (logofile.exists()) s"""<img class=logo src="${logofile.imageSrcForWebEngine}" title="Logo"/>""" else ""
     MultipartMail("Mutationen bei Wettkampfanmeldungen",
@@ -190,7 +190,7 @@ object MailTemplates {
   }
 
   def createPasswordResetMail(wettkampf: Wettkampf, registration: Registration, link: String): Mail = {
-    val logodir = new java.io.File(Config.homedir + "/" + wettkampf.easyprint.replace(" ", "_"))
+    val logodir = new java.io.File(Config.homedir + "/" + encodeFileName(wettkampf.easyprint))
     val logofile = PrintUtil.locateLogoFile(logodir)
     val logoHtml = if (logofile.exists()) s"""<img class=logo src="${logofile.imageSrcForWebEngine}" title="Logo"/>""" else ""
     val imageData = toQRCodeImage(link)

@@ -1,14 +1,12 @@
 package ch.seidel.kutu.view
 
-import java.util
 import java.util.UUID
-
 import ch.seidel.commons.{AutoCommitTextFieldTableCell, DisplayablePage, PageDisplayer, TabWithService}
 import ch.seidel.kutu.Config._
 import ch.seidel.kutu.KuTuApp
 import ch.seidel.kutu.KuTuApp.hostServices
 import ch.seidel.kutu.data.ResourceExchanger
-import ch.seidel.kutu.domain.{Disziplin, Durchgang, GemischteRiegen, GemischterDurchgang, GetrennteDurchgaenge, KutuService, Riege, RiegeRaw, SexDivideRule, WettkampfView, str2Int, toDurationFormat}
+import ch.seidel.kutu.domain.{Disziplin, Durchgang, GemischteRiegen, GemischterDurchgang, GetrennteDurchgaenge, KutuService, Riege, RiegeRaw, SexDivideRule, WettkampfView, encodeFileName, str2Int, toDurationFormat}
 import ch.seidel.kutu.renderer.PrintUtil.FilenameDefault
 import ch.seidel.kutu.renderer.{PrintUtil, RiegenBuilder, WertungsrichterQRCode, WertungsrichterQRCodesToHtmlRenderer}
 import ch.seidel.kutu.squad.DurchgangBuilder
@@ -1157,7 +1155,7 @@ class RiegenTab(override val wettkampfInfo: WettkampfInfo, override val service:
 		  implicit val impevent = event
 		  KuTuApp.invokeWithBusyIndicator {
 			  val filename = "Einheiten.csv"
-					  val dir = new java.io.File(homedir + "/" + wettkampf.easyprint.replace(" ", "_"))
+					  val dir = new java.io.File(homedir + "/" + encodeFileName(wettkampf.easyprint))
 			  if(!dir.exists()) {
 				  dir.mkdirs();
 			  }
@@ -1179,7 +1177,7 @@ class RiegenTab(override val wettkampfInfo: WettkampfInfo, override val service:
 		  implicit val impevent = event
 		  KuTuApp.invokeWithBusyIndicator {
 			  val filename = "Durchgaenge.csv"
-					  val dir = new java.io.File(homedir + "/" + wettkampf.easyprint.replace(" ", "_"))
+					  val dir = new java.io.File(homedir + "/" + encodeFileName(wettkampf.easyprint))
 			  if(!dir.exists()) {
 				  dir.mkdirs();
 			  }
@@ -1200,7 +1198,7 @@ class RiegenTab(override val wettkampfInfo: WettkampfInfo, override val service:
       implicit val impevent = event
       KuTuApp.invokeWithBusyIndicator {
         val filename = "Durchgaenge-Einfach.csv"
-        val dir = new java.io.File(homedir + "/" + wettkampf.easyprint.replace(" ", "_"))
+        val dir = new java.io.File(homedir + "/" + encodeFileName(wettkampf.easyprint))
         if(!dir.exists()) {
           dir.mkdirs();
         }
@@ -1317,8 +1315,8 @@ class RiegenTab(override val wettkampfInfo: WettkampfInfo, override val service:
       import scala.concurrent.ExecutionContext.Implicits.global
 
       val seriendaten = service.getAllKandidatenWertungen(wettkampf.uuid.map(UUID.fromString(_)).get)
-      val filename = "Riegenblatt_" + wettkampf.easyprint.replace(" ", "_") + ".html"
-      val dir = new java.io.File(homedir + "/" + wettkampf.easyprint.replace(" ", "_"))
+      val filename = "Riegenblatt_" + encodeFileName(wettkampf.easyprint) + ".html"
+      val dir = new java.io.File(homedir + "/" + encodeFileName(wettkampf.easyprint))
       if(!dir.exists()) {
         dir.mkdirs();
       }
@@ -1346,8 +1344,8 @@ class RiegenTab(override val wettkampfInfo: WettkampfInfo, override val service:
               .filter(gr => gr.durchgang.nonEmpty && gr.disziplin.nonEmpty)
               .map(WertungsrichterQRCode.toMobileConnectData(wettkampf, remoteBaseUrl))
               .toSet.toList
-        val filename = "WertungsrichterConnectQRCodes_" + wettkampf.easyprint.replace(" ", "_") + ".html"
-        val dir = new java.io.File(homedir + "/" + wettkampf.easyprint.replace(" ", "_"))
+        val filename = "WertungsrichterConnectQRCodes_" + encodeFileName(wettkampf.easyprint) + ".html"
+        val dir = new java.io.File(homedir + "/" + encodeFileName(wettkampf.easyprint))
         if(!dir.exists()) {
           dir.mkdirs();
         }

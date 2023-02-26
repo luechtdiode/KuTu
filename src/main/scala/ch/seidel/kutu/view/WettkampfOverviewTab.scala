@@ -58,7 +58,7 @@ class WettkampfOverviewTab(wettkampf: WettkampfView, override val service: KutuS
   }
 
   private def createDocument = {
-    val logofile = PrintUtil.locateLogoFile(new java.io.File(homedir + "/" + wettkampf.easyprint.replace(" ", "_")))
+    val logofile = PrintUtil.locateLogoFile(new java.io.File(homedir + "/" + encodeFileName(wettkampf.easyprint)))
     val document = toHTML(wettkampf, service.listOverviewStats(UUID.fromString(wettkampf.uuid.get)), logofile)
     document
   }
@@ -95,8 +95,8 @@ class WettkampfOverviewTab(wettkampf: WettkampfView, override val service: KutuS
         controlsView.selectionModel().selectedItem)
       ) choose true otherwise false
       items += KuTuApp.makeMenuAction(s"Liste der Online Vereins-Registrierungen ...") { (caption: String, action: ActionEvent) =>
-        val filename = "VereinsRegistrierungen_" + wettkampf.easyprint.replace(" ", "_") + ".html"
-        val dir = new java.io.File(homedir + "/" + wettkampf.easyprint.replace(" ", "_"))
+        val filename = "VereinsRegistrierungen_" + encodeFileName(wettkampf.easyprint) + ".html"
+        val dir = new java.io.File(homedir + "/" + encodeFileName(wettkampf.easyprint))
         if (!dir.exists()) {
           dir.mkdirs()
         }
@@ -113,8 +113,8 @@ class WettkampfOverviewTab(wettkampf: WettkampfView, override val service: KutuS
         }
       }
       items += KuTuApp.makeMenuAction(s"Liste der Online Wertungsrichter-Anmeldungen ...") { (caption: String, action: ActionEvent) =>
-        val filename = "WRAnmeldungen_" + wettkampf.easyprint.replace(" ", "_") + ".html"
-        val dir = new java.io.File(homedir + "/" + wettkampf.easyprint.replace(" ", "_"))
+        val filename = "WRAnmeldungen_" + encodeFileName(wettkampf.easyprint) + ".html"
+        val dir = new java.io.File(homedir + "/" + encodeFileName(wettkampf.easyprint))
         if (!dir.exists()) {
           dir.mkdirs()
         }
@@ -165,8 +165,8 @@ class WettkampfOverviewTab(wettkampf: WettkampfView, override val service: KutuS
                     case reg_ex(ext) => ext
                     case _ => ""
                   }
-                  val destLogoFile = new java.io.File(homedir + "/" + wettkampf.easyprint.replace(" ", "_") + "/logo." + extension)
-                  Files.find(new java.io.File(homedir + "/" + wettkampf.easyprint.replace(" ", "_")).toPath,
+                  val destLogoFile = new java.io.File(homedir + "/" + encodeFileName(wettkampf.easyprint) + "/logo." + extension)
+                  Files.find(new java.io.File(homedir + "/" + encodeFileName(wettkampf.easyprint)).toPath,
                     1, (path, fileattr) => {
                       path.getFileName.toFile.getName.startsWith("logo.")
                     }).forEach(path => {
@@ -211,8 +211,8 @@ class WettkampfOverviewTab(wettkampf: WettkampfView, override val service: KutuS
             minWidth = 75
             onAction = (event: ActionEvent) => {
               import scala.concurrent.ExecutionContext.Implicits.global
-              val filename = "Uebersicht_" + wettkampf.easyprint.replace(" ", "_") + ".html"
-              val dir = new java.io.File(homedir + "/" + wettkampf.easyprint.replace(" ", "_"))
+              val filename = "Uebersicht_" + encodeFileName(wettkampf.easyprint) + ".html"
+              val dir = new java.io.File(homedir + "/" + encodeFileName(wettkampf.easyprint))
               if (!dir.exists()) {
                 dir.mkdirs()
               }

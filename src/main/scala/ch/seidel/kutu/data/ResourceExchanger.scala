@@ -489,11 +489,11 @@ object ResourceExchanger extends KutuService with RiegenBuilder {
       new ZipEntryTraversableClass().foreach { entry =>
         if (entry._1.getName.endsWith(".scoredef")) {
           val filename = entry._1.getName
-          val wettkampfDir = new java.io.File(Config.homedir + "/" + wettkampf.easyprint.replace(" ", "_"))
+          val wettkampfDir = new java.io.File(Config.homedir + "/" + encodeFileName(wettkampf.easyprint))
           if (!wettkampfDir.exists()) {
             wettkampfDir.mkdir()
           }
-          val scoredefFile = new java.io.File(Config.homedir + "/" + wettkampf.easyprint.replace(" ", "_") + "/" + filename)
+          val scoredefFile = new java.io.File(Config.homedir + "/" + encodeFileName(wettkampf.easyprint) + "/" + filename)
           val fos = new FileOutputStream(scoredefFile)
           val bytes = new Array[Byte](1024) //1024 bytes - Buffer size
           Iterator
@@ -513,11 +513,11 @@ object ResourceExchanger extends KutuService with RiegenBuilder {
             val currentSize = java.text.NumberFormat.getInstance().format(entry._1.getSize / 1024d)
             throw new RuntimeException(s"Die Datei $filename ist mit $currentSize zu gross. Sie darf nicht grösser als $maxSize Kilobytes sein.")
           }
-          val logodir = new java.io.File(Config.homedir + "/" + wettkampf.easyprint.replace(" ", "_"))
+          val logodir = new java.io.File(Config.homedir + "/" + encodeFileName(wettkampf.easyprint))
           if (!logodir.exists()) {
             logodir.mkdir()
           }
-          val logofile = new java.io.File(Config.homedir + "/" + wettkampf.easyprint.replace(" ", "_") + "/" + filename)
+          val logofile = new java.io.File(Config.homedir + "/" + encodeFileName(wettkampf.easyprint) + "/" + filename)
           val fos = new FileOutputStream(logofile)
           val bytes = new Array[Byte](1024) //1024 bytes - Buffer size
           Iterator
@@ -621,7 +621,7 @@ object ResourceExchanger extends KutuService with RiegenBuilder {
     }
     zip.closeEntry()
 
-    val competitionDir = new java.io.File(Config.homedir + "/" + wettkampf.easyprint.replace(" ", "_"))
+    val competitionDir = new java.io.File(Config.homedir + "/" + encodeFileName(wettkampf.easyprint))
 
     val logofile = PrintUtil.locateLogoFile(competitionDir)
     if (logofile.exists()) {
