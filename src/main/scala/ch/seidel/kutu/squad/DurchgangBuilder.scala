@@ -37,10 +37,11 @@ case class DurchgangBuilder(service: KutuService) extends Mapper with RiegenSpli
       }
       val riegen = progAthlWertungen.flatMap{x =>
         val (programm, wertungen) = x
-        val dzlf = dzl.filter{d =>
-          val pgm = wertungen.head._2.head.wettkampfdisziplin.programm
-          wkdisziplinlist.exists { wd => d.id == wd.disziplinId && wd.programmId == pgm.id }
+        val pgmHead = wertungen.head._2.head.wettkampfdisziplin.programm
+        val dzlf = dzl.filter{ d =>
+          wkdisziplinlist.exists { wd => d.id == wd.disziplinId && wd.programmId == pgmHead.id }
         }
+        val wdzlf = wkdisziplinlist.filter{d => d.programmId == pgmHead.id }
 
         wertungen.head._2.head.wettkampfdisziplin.notenSpez match {
           case at: Athletiktest =>
@@ -57,22 +58,10 @@ case class DurchgangBuilder(service: KutuService) extends Mapper with RiegenSpli
                 groupWertungen(programm + "-Tu", m, atgr, atGrouper, dzlf, maxRiegenSize, splitSex, true) ++
                 groupWertungen(programm + "-Ti", w, atgr, atGrouper, dzlf, maxRiegenSize, splitSex, true)
             }
-          case KuTuWettkampf =>
-            splitSex match {
-              case GemischteRiegen =>
-                groupWertungen(programm, wertungen, wkFilteredGrouper, wkGrouper, dzlf, maxRiegenSize, splitSex, false)
-              case GemischterDurchgang =>
-                groupWertungen(programm, wertungen, wkFilteredGrouper, wkGrouper, dzlf, maxRiegenSize, splitSex, false)
-              case GetrennteDurchgaenge =>
-                val m = wertungen.filter(w => w._1.geschlecht.equalsIgnoreCase("M"))
-                val w = wertungen.filter(w => w._1.geschlecht.equalsIgnoreCase("W"))
-                groupWertungen(programm + "-Tu", m, wkFilteredGrouper, wkGrouper, dzlf, maxRiegenSize, splitSex, false) ++
-                groupWertungen(programm + "-Ti", w, wkFilteredGrouper, wkGrouper, dzlf, maxRiegenSize, splitSex, false)
-            }
-          case GeTuWettkampf =>
+          case sw: StandardWettkampf =>
             // Barren wegschneiden (ist kein Startgerät)
-            val dzlff = dzlf.filter(d => (onDisziplinList.isEmpty && d.id != 5) || (onDisziplinList.nonEmpty && onDisziplinList.get.contains(d)))
-            val wkGrouper = KuTuGeTuGrouper.wkGrouper
+            val startgeraete = wdzlf.filter(d => (onDisziplinList.isEmpty && d.startgeraet == 1) || (onDisziplinList.nonEmpty && onDisziplinList.get.map(_.id).contains(d.disziplinId)))
+            val dzlff = dzlf.filter(d => startgeraete.exists(wd => wd.disziplinId == d.id))
             splitSex match {
               case GemischteRiegen =>
                 groupWertungen(programm, wertungen, wkFilteredGrouper, wkGrouper, dzlff, maxRiegenSize, splitSex, false)

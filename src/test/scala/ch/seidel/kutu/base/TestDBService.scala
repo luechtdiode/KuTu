@@ -61,6 +61,7 @@ object TestDBService {
       , "AddAnmeldungTables-sqllite.sql"
       , "AddAnmeldungTables-u2-sqllite.sql"
       , "AddNotificationMailToWettkampf-sqllite.sql"
+      , "AddWKDisziplinMetafields-sqllite.sql"
     )
     DBService.installDB(tempDatabase, sqlScripts)
     logger.info("Database initialized")

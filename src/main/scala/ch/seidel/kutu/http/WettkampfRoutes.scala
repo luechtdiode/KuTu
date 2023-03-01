@@ -433,6 +433,7 @@ trait WettkampfRoutes extends SprayJsonSupport
                 authenticated() { userId =>
                   if (userId.equals(wkuuid.toString)) {
                     onSuccess(readWettkampfAsync(wkuuid.toString)) { wettkampf =>
+                      log.info("deleting wettkampf: " + wettkampf)
                       complete(
                         CompetitionCoordinatorClientActor.publish(Delete(wkuuid.toString), clientId)
                         .andThen {

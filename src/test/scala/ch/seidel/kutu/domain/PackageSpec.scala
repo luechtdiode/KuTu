@@ -6,25 +6,27 @@ import java.time.LocalDate
 
 class PackageSpec extends KuTuBaseSpec {
   "GeTuWettkampf" should {
+    val wdg = WettkampfdisziplinView(1, null, null, null, None, null, 1, 1, 1, 2, 0, 0, 10, 1)
     "min" in {
-      assert(GeTuWettkampf.calcEndnote(0d, -1d, 2) == 0.00d)
+      assert(StandardWettkampf(1d).calcEndnote(0d, -1d, wdg) == 0.00d)
     }
     "max" in {
-      assert(GeTuWettkampf.calcEndnote(0d, 10.01d, 2) == 10.00d)
+      assert(StandardWettkampf(1d).calcEndnote(0d, 10.01d, wdg) == 10.00d)
     }
     "scale" in {
-      assert(GeTuWettkampf.calcEndnote(0d, 8.123d, 2) == 8.12d)
+      assert(StandardWettkampf(1d).calcEndnote(0d, 8.123d, wdg) == 8.12d)
     }
   }
   "KuTuWettkampf" should {
+    val wdk = WettkampfdisziplinView(1, null, null, null, None, null, 1, 1, 1, 3, 1, 0, 30, 1)
     "min" in {
-      assert(KuTuWettkampf.calcEndnote(0.1d, -1d, 2) == 0.000d)
+      assert(StandardWettkampf(1d).calcEndnote(0.1d, -1d, wdk) == 0.000d)
     }
     "max" in {
-      assert(KuTuWettkampf.calcEndnote(0.5d, 30.01d, 2) == 30.000d)
+      assert(StandardWettkampf(1d).calcEndnote(0.5d, 30.01d, wdk) == 30.000d)
     }
     "scale" in {
-      assert(KuTuWettkampf.calcEndnote(1.1d, 8.1234d, 3) == 9.223d)
+      assert(StandardWettkampf(1d).calcEndnote(1.1d, 8.1234d, wdk) == 9.223d)
     }
   }
   "toDurationFormat" should {

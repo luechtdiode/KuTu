@@ -251,9 +251,9 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
         cellFactory.value = { _: Any => new AutoCommitTextFieldTableCell[IndexedSeq[WertungEditor], Double](DoubleConverter(wertung.init.wettkampfdisziplin.notenSpez)) }
 
         styleClass += "table-cell-with-value"
-        prefWidth = if (wertung.init.wettkampfdisziplin.notenSpez.isDNoteUsed) 60 else 0
-        editable = !wettkampf.toWettkampf.isReadonly(homedir, remoteHostOrigin) && wertung.init.wettkampfdisziplin.notenSpez.isDNoteUsed
-        visible = wertung.init.wettkampfdisziplin.notenSpez.isDNoteUsed
+        prefWidth = if (wertung.init.wettkampfdisziplin.isDNoteUsed) 60 else 0
+        editable = !wettkampf.toWettkampf.isReadonly(homedir, remoteHostOrigin) && wertung.init.wettkampfdisziplin.isDNoteUsed
+        visible = wertung.init.wettkampfdisziplin.isDNoteUsed
         onEditCommit = (evt: CellEditEvent[IndexedSeq[WertungEditor], Double]) => {
           if (evt.rowValue != null) {
             val disciplin = evt.rowValue(index)

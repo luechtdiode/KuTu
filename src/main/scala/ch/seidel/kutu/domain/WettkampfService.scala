@@ -34,11 +34,8 @@ trait WettkampfService extends DBService
       val skalamap = Await.result(database.run(skala.withPinnedSession), Duration.Inf).toMap
       Athletiktest(skalamap, notenfaktor)
     }
-    else if(pgm.head.id == 20) {
-      GeTuWettkampf
-    }
     else {
-      KuTuWettkampf
+      StandardWettkampf(notenfaktor)
     }
   }
 
@@ -93,7 +90,7 @@ trait WettkampfService extends DBService
                         wpt.id,
                         wk.id, wk.uuid, wk.datum, wk.titel, wk.programm_id, wk.auszeichnung, wk.auszeichnungendnote, wk.notificationEMail, wd.id, wd.programm_id,
                         d.*,
-                        wd.kurzbeschreibung, wd.detailbeschreibung, wd.notenfaktor, wd.masculin, wd.feminim, wd.ord,
+                        wd.kurzbeschreibung, wd.detailbeschreibung, wd.notenfaktor, wd.masculin, wd.feminim, wd.ord, wd.scale, wd.dnote, wd.min, wd.max, wd.startgeraet,
                         wpt.wechsel, wpt.einturnen, wpt.uebung, wpt.wertung
                     from wettkampf_plan_zeiten wpt
                         inner join wettkampf wk on (wk.id = wpt.wettkampf_id)
@@ -405,6 +402,20 @@ trait WettkampfService extends DBService
              """.as[Long]
       case _ => sql"""
                   select max(id) as maxid
+                  from wettkampf
+                  where LOWER(titel)=${titel.toLowerCase()} and programm_id = ${heads.head.id} and datum=$datum
+             """.as[Long]
+    }
+    val dublicateCheck = uuidOption match {
+      case Some(suuid) => sql"""
+                  select count(id) as wkcount
+                  from wettkampf
+                  where LOWER(titel)=${titel.toLowerCase()} and programm_id = ${heads.head.id} and datum=$datum
+                    and uuid is not null
+                    and uuid<>$suuid
+             """.as[Long]
+      case _ => sql"""
+                  select 0 as wkcount
                   from wettkampf
                   where LOWER(titel)=${titel.toLowerCase()} and programm_id = ${heads.head.id} and datum=$datum
              """.as[Long]

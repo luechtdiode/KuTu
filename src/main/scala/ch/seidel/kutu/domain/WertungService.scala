@@ -71,7 +71,7 @@ abstract trait WertungService extends DBService with WertungResultMapper with Di
     Await.result(database.run{(
       sql"""
                     SELECT w.id, a.id, a.js_id, a.geschlecht, a.name, a.vorname, a.gebdat, a.strasse, a.plz, a.ort, a.activ, a.verein, v.*,
-                      wd.id, wd.programm_id, d.*, wd.kurzbeschreibung, wd.detailbeschreibung, wd.notenfaktor, wd.masculin, wd.feminim, wd.ord,
+                      wd.id, wd.programm_id, d.*, wd.kurzbeschreibung, wd.detailbeschreibung, wd.notenfaktor, wd.masculin, wd.feminim, wd.ord, wd.scale, wd.dnote, wd.min, wd.max, wd.startgeraet,
                       wk.id, wk.uuid, wk.datum, wk.titel, wk.programm_id, wk.auszeichnung, wk.auszeichnungendnote, wk.notificationEMail,
                       w.note_d as difficulty, w.note_e as execution, w.endnote, w.riege, w.riege2
                     FROM wertung w
@@ -92,7 +92,7 @@ abstract trait WertungService extends DBService with WertungResultMapper with Di
     Await.result(database.run{(
       sql"""
                     SELECT w.id, a.id, a.js_id, a.geschlecht, a.name, a.vorname, a.gebdat, a.strasse, a.plz, a.ort, a.activ, a.verein, v.*,
-                      wd.id, wd.programm_id, d.*, wd.kurzbeschreibung, wd.detailbeschreibung, wd.notenfaktor, wd.masculin, wd.feminim, wd.ord,
+                      wd.id, wd.programm_id, d.*, wd.kurzbeschreibung, wd.detailbeschreibung, wd.notenfaktor, wd.masculin, wd.feminim, wd.ord, wd.scale, wd.dnote, wd.min, wd.max, wd.startgeraet,
                       wk.id, wk.uuid, wk.datum, wk.titel, wk.programm_id, wk.auszeichnung, wk.auszeichnungendnote, wk.notificationEMail,
                       w.note_d as difficulty, w.note_e as execution, w.endnote, w.riege, w.riege2
                     FROM wertung w
@@ -114,7 +114,7 @@ abstract trait WertungService extends DBService with WertungResultMapper with Di
     Await.result(database.run{(
       sql"""
                     SELECT w.id, a.id, a.js_id, a.geschlecht, a.name, a.vorname, a.gebdat, a.strasse, a.plz, a.ort, a.activ, a.verein, v.*,
-                      wd.id, wd.programm_id, d.*, wd.kurzbeschreibung, wd.detailbeschreibung, wd.notenfaktor, wd.masculin, wd.feminim, wd.ord,
+                      wd.id, wd.programm_id, d.*, wd.kurzbeschreibung, wd.detailbeschreibung, wd.notenfaktor, wd.masculin, wd.feminim, wd.ord, wd.scale, wd.dnote, wd.min, wd.max, wd.startgeraet,
                       wk.id, wk.uuid, wk.datum, wk.titel, wk.programm_id, wk.auszeichnung, wk.auszeichnungendnote, wk.notificationEMail,
                       w.note_d as difficulty, w.note_e as execution, w.endnote, w.riege, w.riege2
                     FROM wertung w
@@ -232,7 +232,7 @@ abstract trait WertungService extends DBService with WertungResultMapper with Di
           """>>
       sql"""
                     SELECT w.id, a.id, a.js_id, a.geschlecht, a.name, a.vorname, a.gebdat, a.strasse, a.plz, a.ort, a.activ, a.verein, v.*,
-                      wd.id, wd.programm_id, d.*, wd.kurzbeschreibung, wd.detailbeschreibung, wd.notenfaktor, wd.masculin, wd.feminim, wd.ord, 
+                      wd.id, wd.programm_id, d.*, wd.kurzbeschreibung, wd.detailbeschreibung, wd.notenfaktor, wd.masculin, wd.feminim, wd.ord, wd.scale, wd.dnote, wd.min, wd.max, wd.startgeraet,
                       wk.id, wk.uuid, wk.datum, wk.titel, wk.programm_id, wk.auszeichnung, wk.auszeichnungendnote, wk.notificationEMail,
                       w.note_d as difficulty, w.note_e as execution, w.endnote, w.riege, w.riege2
                     FROM wertung w
@@ -268,7 +268,7 @@ abstract trait WertungService extends DBService with WertungResultMapper with Di
           """>>
       sql"""
                     SELECT w.id, a.id, a.js_id, a.geschlecht, a.name, a.vorname, a.gebdat, a.strasse, a.plz, a.ort, a.activ, a.verein, v.*,
-                      wd.id, wd.programm_id, d.*, wd.kurzbeschreibung, wd.detailbeschreibung, wd.notenfaktor, wd.masculin, wd.feminim, wd.ord, 
+                      wd.id, wd.programm_id, d.*, wd.kurzbeschreibung, wd.detailbeschreibung, wd.notenfaktor, wd.masculin, wd.feminim, wd.ord, wd.scale, wd.dnote, wd.min, wd.max, wd.startgeraet,
                       wk.id, wk.uuid, wk.datum, wk.titel, wk.programm_id, wk.auszeichnung, wk.auszeichnungendnote, wk.notificationEMail,
                       w.note_d as difficulty, w.note_e as execution, w.endnote, w.riege, w.riege2
                     FROM wertung w
@@ -295,7 +295,7 @@ abstract trait WertungService extends DBService with WertungResultMapper with Di
   
   @throws(classOf[Exception]) // called from mobile-client via coordinator-actor
   def updateWertungSimple(w: Wertung): Wertung = {
-    val notenspez = readWettkampfDisziplinView(w.wettkampfdisziplinId).notenSpez
+    val notenspez = readWettkampfDisziplinView(w.wettkampfdisziplinId)
     val wv = notenspez.verifiedAndCalculatedWertung(w)
     if (notenspez.isDNoteUsed && wv.noteD != w.noteD) {
       throw new IllegalArgumentException(s"Erfasster D-Wert: ${w.noteDasText}, erlaubter D-Wert: ${wv.noteDasText}")
@@ -316,7 +316,7 @@ abstract trait WertungService extends DBService with WertungResultMapper with Di
   
   @throws(classOf[Exception]) // called from rich-client-app via ResourceExchanger
   def updateWertungWithIDMapping(w: Wertung): Wertung = {
-    val wv = readWettkampfDisziplinView(w.wettkampfdisziplinId).notenSpez.verifiedAndCalculatedWertung(w)
+    val wv = readWettkampfDisziplinView(w.wettkampfdisziplinId).verifiedAndCalculatedWertung(w)
     val wvId = Await.result(database.run((for {
         updated <- sqlu"""
                   UPDATE wertung
@@ -339,7 +339,7 @@ abstract trait WertungService extends DBService with WertungResultMapper with Di
 
   @throws(classOf[Exception]) // called from rich-client-app via ResourceExchanger
   def updateWertungWithIDMapping(ws: Seq[Wertung]): Seq[Wertung] = {
-    val wvs = ws.map(w => readWettkampfDisziplinView(w.wettkampfdisziplinId).notenSpez.verifiedAndCalculatedWertung(w))
+    val wvs = ws.map(w => readWettkampfDisziplinView(w.wettkampfdisziplinId).verifiedAndCalculatedWertung(w))
     val wvId: Seq[Long] = Await.result(database.run(DBIO.sequence(for {
       wv <- wvs
     } yield {
@@ -365,7 +365,7 @@ abstract trait WertungService extends DBService with WertungResultMapper with Di
       implicit val cache = scala.collection.mutable.Map[Long, ProgrammView]()
       (sql"""
                    SELECT w.id, a.id, a.js_id, a.geschlecht, a.name, a.vorname, a.gebdat, a.strasse, a.plz, a.ort, a.activ, a.verein, v.*,
-                     wd.id, wd.programm_id, d.*, wd.kurzbeschreibung, wd.detailbeschreibung, wd.notenfaktor, wd.masculin, wd.feminim, wd.ord,
+                     wd.id, wd.programm_id, d.*, wd.kurzbeschreibung, wd.detailbeschreibung, wd.notenfaktor, wd.masculin, wd.feminim, wd.ord, wd.scale, wd.dnote, wd.min, wd.max, wd.startgeraet,
                      wk.id, wk.uuid, wk.datum, wk.titel, wk.programm_id, wk.auszeichnung, wk.auszeichnungendnote, wk.notificationEMail,
                      w.note_d as difficulty, w.note_e as execution, w.endnote, w.riege, w.riege2
                    FROM wertung w
@@ -387,7 +387,7 @@ abstract trait WertungService extends DBService with WertungResultMapper with Di
       implicit val cache = scala.collection.mutable.Map[Long, ProgrammView]()
       (sql"""
                    SELECT w.id, a.id, a.js_id, a.geschlecht, a.name, a.vorname, a.gebdat, a.strasse, a.plz, a.ort, a.activ, a.verein, v.*,
-                     wd.id, wd.programm_id, d.*, wd.kurzbeschreibung, wd.detailbeschreibung, wd.notenfaktor, wd.masculin, wd.feminim, wd.ord,
+                     wd.id, wd.programm_id, d.*, wd.kurzbeschreibung, wd.detailbeschreibung, wd.notenfaktor, wd.masculin, wd.feminim, wd.ord, wd.scale, wd.dnote, wd.min, wd.max, wd.startgeraet,
                      wk.id, wk.uuid, wk.datum, wk.titel, wk.programm_id, wk.auszeichnung, wk.auszeichnungendnote, wk.notificationEMail,
                      w.note_d as difficulty, w.note_e as execution, w.endnote, w.riege, w.riege2
                    FROM wertung w
