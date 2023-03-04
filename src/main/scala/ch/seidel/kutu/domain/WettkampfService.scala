@@ -777,4 +777,102 @@ trait WettkampfService extends DBService
     }
   }
 
+  def insertWettkampfProgram(rootprogram: String, disziplinlist: List[String], programlist: List[String]): List[WettkampfdisziplinView] = {
+    val programme = Await.result(database.run{(sql"""
+                   select * from programm
+           """.as[ProgrammRaw]).withPinnedSession}, Duration.Inf)
+
+    if (programme.exists(p => p.name.equalsIgnoreCase(rootprogram))) {
+      // alternative: return existing associated WettkampfdisziplinViews
+      throw new RuntimeException(s"Name des Rootprogrammes ist nicht eindeutig: $rootprogram")
+    }
+    val wkdisciplines = Await.result(database.run{(sql"""
+                   select * from wettkampfdisziplin
+           """.as[Wettkampfdisziplin]).withPinnedSession}, Duration.Inf)
+    val disciplines = Await.result(database.run{(sql"""
+                   select * from disziplin
+           """.as[Disziplin]).withPinnedSession}, Duration.Inf)
+    val nextWKDiszId: Long = wkdisciplines.map(_.id).max + 1L
+    val nextDiszId: Long = wkdisciplines.map(_.disziplinId).max + 1L
+    val pgmIdRoot: Long = wkdisciplines.map(_.programmId).max + 1L
+    val nextPgmId = pgmIdRoot + 1L
+
+    val diszInserts = for {
+      w <- disziplinlist
+      if !disciplines.exists(_.name.equalsIgnoreCase(w))
+    } yield {
+      sqlu"""    INSERT INTO disziplin
+                    (name)
+                    VALUES
+                      ($w)
+          """ >>
+      sql"""
+               SELECT * from disziplin where name=$w
+          """.as[Disziplin]
+    }
+    val insertedDiszList = Await.result(database.run{
+      DBIO.sequence(diszInserts).transactionally
+    }, Duration.Inf).flatten ++ disziplinlist.flatMap(w => disciplines.filter(d => d.name.equalsIgnoreCase(w)))
+
+    val rootPgmInsert = sqlu"""
+            INSERT INTO programm
+                  (id, parent_id, name, aggregate, ord)
+                  VALUES
+                    ($pgmIdRoot, 0, $rootprogram, 0, $pgmIdRoot)
+          """  >>
+      sql"""
+                 SELECT * from programm where id=$pgmIdRoot
+               """.as[ProgrammRaw]
+    val pgmInserts = rootPgmInsert +: (for {
+      w <- programlist
+    } yield {
+      val pgmId = nextPgmId + programlist.indexOf(w)
+      sqlu"""    INSERT INTO programm
+                    (id, parent_id, name, aggregate, ord)
+                    VALUES
+                      ($pgmId, $pgmIdRoot, $w, 0, $pgmId)
+          """ >>
+        sql"""
+               SELECT * from programm where id=$pgmId
+          """.as[ProgrammRaw]
+    })
+
+    val insertedPgmList = Await.result(database.run{
+      DBIO.sequence(pgmInserts).transactionally
+    }, Duration.Inf).flatten
+
+    val cache = scala.collection.mutable.Map[Long, ProgrammView]()
+    val wkDiszsInserts = (for {
+      pgm <- insertedPgmList
+      if pgm.parentId > 0
+      disz <- insertedDiszList
+    } yield {
+      (pgm, disz)
+    }).zipWithIndex.map {
+      case ((p, d), i) =>
+        val id = i + nextWKDiszId
+        sqlu"""    INSERT INTO wettkampfdisziplin
+                 (id, programm_id, disziplin_id, notenfaktor, ord)
+                 VALUES
+                 ($id, ${p.id}, ${d.id}, 1.000, 1)
+          """ >>
+          sql"""
+               SELECT * from wettkampfdisziplin where id=$id
+          """.as[Wettkampfdisziplin]
+    }
+    Await.result(database.run{
+      DBIO.sequence(wkDiszsInserts).transactionally
+    }, Duration.Inf).flatten.map{
+      case w: Wettkampfdisziplin =>
+        WettkampfdisziplinView(
+          w.id,
+          readProgramm(w.programmId, cache),
+          insertedDiszList.find(d => d.id == w.disziplinId).get,
+          w.kurzbeschreibung,
+          w.detailbeschreibung,
+          StandardWettkampf(1d),
+          w.masculin, w.feminim, w.ord, w.scale, w.dnote, w.min, w.max, w.startgeraet
+        )
+    }
+  }
 }

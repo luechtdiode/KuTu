@@ -48,5 +48,9 @@ class WettkampfSpec extends KuTuBaseSpec {
       val reloaded = loadWettkampfDisziplinTimes(UUID.fromString(wettkampf.uuid.get))
       assert(reloaded.isEmpty)
     }
+
+    "create WK Modus with programs and disciplines" in {
+      println(insertWettkampfProgram("Testprogramm", List("Boden", "Sprung"), List("LK1", "LK2", "LK3")).mkString("\n"))
+    }
   }
 }
