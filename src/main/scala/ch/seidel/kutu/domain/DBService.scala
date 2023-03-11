@@ -4,12 +4,12 @@ import java.io.File
 import java.nio.file.{Files, StandardOpenOption}
 import java.text.{ParseException, SimpleDateFormat}
 import java.util.Properties
-
 import ch.seidel.kutu.Config
 import ch.seidel.kutu.Config.{appVersion, userHomePath}
 import ch.seidel.kutu.data.ResourceExchanger
 import com.zaxxer.hikari.{HikariConfig, HikariDataSource}
 import org.slf4j.LoggerFactory
+import org.sqlite.SQLiteConnection
 import slick.jdbc
 import slick.jdbc.JdbcBackend
 import slick.jdbc.JdbcBackend.{Database, DatabaseDef}
@@ -96,6 +96,12 @@ object DBService {
 
     var db = createDS(dbfile.getAbsolutePath)
     try {
+      val session = db.createSession()
+      try {
+        NewUUID.install(session.conn.unwrap(classOf[SQLiteConnection]))
+      } finally {
+        session .close()
+      }
       installDB(db, sqlScripts)
     } catch {
       case _: DatabaseNotInitializedException =>

@@ -180,7 +180,7 @@ trait RegistrationRoutes extends SprayJsonSupport with JwtSupport with JsonSuppo
             get {
               complete {
                 val wi = WettkampfInfo(wettkampf.toView(readProgramm(wettkampf.programmId)), this)
-                wi.leafprograms.map(p => ProgrammRaw(p.id, p.name, 0, 0, p.ord, p.alterVon, p.alterBis))
+                wi.leafprograms.map(p => ProgrammRaw(p.id, p.name, 0, 0, p.ord, p.alterVon, p.alterBis, p.uuid, p.riegenmode))
               }
             }
           } ~ pathLabeled("refreshsyncs", "refreshsyncs") {

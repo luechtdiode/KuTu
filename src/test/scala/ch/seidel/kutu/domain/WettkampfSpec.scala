@@ -50,6 +50,7 @@ class WettkampfSpec extends KuTuBaseSpec {
     }
 
     "create WK Modus with programs and disciplines" in {
+
       println(insertWettkampfProgram("Testprogramm", List("Boden", "Sprung"), List("LK1", "LK2", "LK3")).mkString("\n"))
     }
   }

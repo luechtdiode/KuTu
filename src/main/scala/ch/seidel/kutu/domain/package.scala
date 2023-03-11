@@ -414,19 +414,21 @@ package object domain {
     val ord: Int
     val alterVon: Int
     val alterBis: Int
+    val riegenmode: Int
+    val uuid: String
 
     def withParent(parent: ProgrammView) = {
-      ProgrammView(id, name, aggregate, Some(parent), ord, alterVon, alterBis)
+      ProgrammView(id, name, aggregate, Some(parent), ord, alterVon, alterBis, uuid, riegenmode)
     }
 
     def toView = {
-      ProgrammView(id, name, aggregate, None, ord, alterVon, alterBis)
+      ProgrammView(id, name, aggregate, None, ord, alterVon, alterBis, uuid, riegenmode)
     }
   }
 
-  case class ProgrammRaw(id: Long, name: String, aggregate: Int, parentId: Long, ord: Int, alterVon: Int, alterBis: Int) extends Programm
+  case class ProgrammRaw(id: Long, name: String, aggregate: Int, parentId: Long, ord: Int, alterVon: Int, alterBis: Int, uuid: String, riegenmode: Int) extends Programm
 
-  case class ProgrammView(id: Long, name: String, aggregate: Int, parent: Option[ProgrammView], ord: Int, alterVon: Int, alterBis: Int) extends Programm {
+  case class ProgrammView(id: Long, name: String, aggregate: Int, parent: Option[ProgrammView], ord: Int, alterVon: Int, alterBis: Int, uuid: String, riegenmode: Int) extends Programm {
     //override def easyprint = toPath
 
     def head: ProgrammView = parent match {

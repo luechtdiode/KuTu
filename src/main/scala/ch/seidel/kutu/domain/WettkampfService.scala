@@ -263,7 +263,7 @@ trait WettkampfService extends DBService
           }
         }.find(view => view.id == id)
         }
-    Await.result(database.run(allPgmsQuery.withPinnedSession), Duration.Inf).getOrElse(ProgrammView(id, "<unknown>", 0, None, 0, 0, 0))
+    Await.result(database.run(allPgmsQuery.withPinnedSession), Duration.Inf).getOrElse(ProgrammView(id, "<unknown>", 0, None, 0, 0, 0, UUID.randomUUID().toString, 1))
   }
   
   def readProgramm(id: Long, cache: scala.collection.mutable.Map[Long, ProgrammView]): ProgrammView = {
@@ -854,7 +854,7 @@ trait WettkampfService extends DBService
         sqlu"""    INSERT INTO wettkampfdisziplin
                  (id, programm_id, disziplin_id, notenfaktor, ord)
                  VALUES
-                 ($id, ${p.id}, ${d.id}, 1.000, 1)
+                 ($id, ${p.id}, ${d.id}, 1.000, $i)
           """ >>
           sql"""
                SELECT * from wettkampfdisziplin where id=$id
