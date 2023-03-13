@@ -42,9 +42,8 @@ case class DurchgangBuilder(service: KutuService) extends Mapper with RiegenSpli
           wkdisziplinlist.exists { wd => d.id == wd.disziplinId && wd.programmId == pgmHead.id }
         }
         val wdzlf = wkdisziplinlist.filter{d => d.programmId == pgmHead.id }
-
-        wertungen.head._2.head.wettkampfdisziplin.notenSpez match {
-          case at: Athletiktest =>
+        wertungen.head._2.head.wettkampfdisziplin.programm.riegenmode match {
+          case RiegeRaw.RIEGENMODE_BY_JG =>
             val atGrouper = ATTGrouper.atGrouper
             val atgr = atGrouper.take(atGrouper.size-1)
             splitSex match {
@@ -56,9 +55,9 @@ case class DurchgangBuilder(service: KutuService) extends Mapper with RiegenSpli
                 val m = wertungen.filter(w => w._1.geschlecht.equalsIgnoreCase("M"))
                 val w = wertungen.filter(w => w._1.geschlecht.equalsIgnoreCase("W"))
                 groupWertungen(programm + "-Tu", m, atgr, atGrouper, dzlf, maxRiegenSize, splitSex, true) ++
-                groupWertungen(programm + "-Ti", w, atgr, atGrouper, dzlf, maxRiegenSize, splitSex, true)
+                  groupWertungen(programm + "-Ti", w, atgr, atGrouper, dzlf, maxRiegenSize, splitSex, true)
             }
-          case sw: StandardWettkampf =>
+          case _ =>
             // Barren wegschneiden (ist kein Startgerät)
             val startgeraete = wdzlf.filter(d => (onDisziplinList.isEmpty && d.startgeraet == 1) || (onDisziplinList.nonEmpty && onDisziplinList.get.map(_.id).contains(d.disziplinId)))
             val dzlff = dzlf.filter(d => startgeraete.exists(wd => wd.disziplinId == d.id))
@@ -71,7 +70,7 @@ case class DurchgangBuilder(service: KutuService) extends Mapper with RiegenSpli
                 val m = wertungen.filter(w => w._1.geschlecht.equalsIgnoreCase("M"))
                 val w = wertungen.filter(w => w._1.geschlecht.equalsIgnoreCase("W"))
                 groupWertungen(programm + "-Tu", m, wkFilteredGrouper, wkGrouper, dzlff, maxRiegenSize, splitSex, false) ++
-                groupWertungen(programm + "-Ti", w, wkFilteredGrouper, wkGrouper, dzlff, maxRiegenSize, splitSex, false)
+                  groupWertungen(programm + "-Ti", w, wkFilteredGrouper, wkGrouper, dzlff, maxRiegenSize, splitSex, false)
             }
         }
       }

@@ -180,7 +180,7 @@ trait RegistrationRoutes extends SprayJsonSupport with JwtSupport with JsonSuppo
             get {
               complete {
                 val wi = WettkampfInfo(wettkampf.toView(readProgramm(wettkampf.programmId)), this)
-                wi.leafprograms.map(p => ProgrammRaw(p.id, p.name, 0, 0, p.ord, p.alterVon, p.alterBis, p.uuid, p.riegenmode))
+                wi.leafprograms.map(p => ProgrammRaw(p.id, p.name, p.aggregate, p.parent.map(_.id).getOrElse(0), p.ord, p.alterVon, p.alterBis, p.uuid, p.riegenmode))
               }
             }
           } ~ pathLabeled("refreshsyncs", "refreshsyncs") {
@@ -379,9 +379,10 @@ trait RegistrationRoutes extends SprayJsonSupport with JwtSupport with JsonSuppo
                             List[AthletRegistration]()
                           } else {
                             val existingAthletRegs = selectAthletRegistrations(registrationId)
+                            val pgm = readWettkampfLeafs(wettkampf.programmId).head
                             selectAthletesView(Verein(reg.vereinId.getOrElse(0), reg.vereinname, Some(reg.verband)))
                               .filter(_.activ)
-                              .filter(r => !existingAthletRegs.exists { er =>
+                              .filter(r => (pgm.aggregate == 1 && pgm.riegenmode == 1) || !existingAthletRegs.exists { er =>
                                 er.athletId.contains(r.id) || (er.name == r.name && er.vorname == r.vorname)
                               })
                               .map {

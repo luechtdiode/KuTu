@@ -33,6 +33,7 @@ abstract trait WettkampfResultMapper extends DisziplinResultMapper {
     WettkampfView(r.<<, r.nextStringOption(), r.<<[java.sql.Date], r.<<, readProgramm(r.<<), r.<<, r.<<[BigDecimal], r.<<))
     
   implicit val getProgrammRawResult = GetResult(r =>
+    // id: Long, name: String, aggregate: Int, parentId: Long, ord: Int, alterVon: Int, alterBis: Int, uuid: String, riegenmode
     ProgrammRaw(r.<<, r.<<, r.<<, r.<<, r.<<, r.<<, r.<<, r.<<, r.<<))
 
   implicit val getPublishedScoreViewResult = GetResult(r =>

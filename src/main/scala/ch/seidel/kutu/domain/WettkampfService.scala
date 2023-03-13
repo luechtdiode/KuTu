@@ -1,19 +1,20 @@
 package ch.seidel.kutu.domain
 
-import java.sql.Date
-import java.time.LocalDate
-import java.util.UUID
-import ch.seidel.kutu.akka.{AthletMovedInWettkampf, AthletRemovedFromWettkampf, DurchgangChanged, PublishScores, ScoresPublished}
+import ch.seidel.kutu.akka.{AthletMovedInWettkampf, AthletRemovedFromWettkampf, DurchgangChanged, ScoresPublished}
 import ch.seidel.kutu.http.WebSocketClient
 import ch.seidel.kutu.squad.RiegenBuilder
 import ch.seidel.kutu.squad.RiegenBuilder.{generateRiegen2Name, generateRiegenName}
 import org.slf4j.LoggerFactory
-//import slick.jdbc.SQLiteProfile.api._
-import slick.jdbc.PostgresProfile.api._//{DBIO, actionBasedSQLInterpolation, jdbcActionExtensionMethods}
 
-import scala.concurrent.{Await, Future}
+import java.sql.Date
+import java.util.UUID
+import scala.util.matching.Regex
+//import slick.jdbc.SQLiteProfile.api._
+import slick.jdbc.PostgresProfile.api._
+
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration.Duration
+import scala.concurrent.{Await, Future}
 
 trait WettkampfService extends DBService 
   with WettkampfResultMapper
@@ -252,18 +253,22 @@ trait WettkampfService extends DBService
   }
 
   def readProgramm(id: Long): ProgrammView = {
-    val allPgmsQuery = sql"""select * from programm""".as[ProgrammRaw]
-        .map{l => l.map(p => p.id -> p).toMap}
-        .map{map => map.foldLeft(List[ProgrammView]()) { (acc, pgmEntry) =>
-          val (id, pgm) = pgmEntry
-          if (pgm.parentId > 0) {
-            acc :+ pgm.withParent(map(pgm.parentId).toView)
+    val allPgmsQuery = sql"""select id, name, aggregate, parent_id, ord, alter_von, alter_bis, uuid, riegenmode from programm""".as[ProgrammRaw]
+      .map { l => l.map(p => p.id -> p).toMap }
+      .map { map =>
+        def resolve(id: Long): ProgrammView = {
+          val item = map(id)
+          val parent = item.parentId
+          if (parent > 0) {
+            item.withParent(resolve(parent))
           } else {
-            acc :+ pgm.toView
+            item.toView
           }
-        }.find(view => view.id == id)
         }
-    Await.result(database.run(allPgmsQuery.withPinnedSession), Duration.Inf).getOrElse(ProgrammView(id, "<unknown>", 0, None, 0, 0, 0, UUID.randomUUID().toString, 1))
+
+        resolve(id)
+      }
+    Await.result(database.run(allPgmsQuery.withPinnedSession), Duration.Inf)
   }
   
   def readProgramm(id: Long, cache: scala.collection.mutable.Map[Long, ProgrammView]): ProgrammView = {
@@ -777,7 +782,7 @@ trait WettkampfService extends DBService
     }
   }
 
-  def insertWettkampfProgram(rootprogram: String, disziplinlist: List[String], programlist: List[String]): List[WettkampfdisziplinView] = {
+  def insertWettkampfProgram(rootprogram: String, riegenmode: Int, disziplinlist: List[String], programlist: List[String]): List[WettkampfdisziplinView] = {
     val programme = Await.result(database.run{(sql"""
                    select * from programm
            """.as[ProgrammRaw]).withPinnedSession}, Duration.Inf)
@@ -793,9 +798,8 @@ trait WettkampfService extends DBService
                    select * from disziplin
            """.as[Disziplin]).withPinnedSession}, Duration.Inf)
     val nextWKDiszId: Long = wkdisciplines.map(_.id).max + 1L
-    val nextDiszId: Long = wkdisciplines.map(_.disziplinId).max + 1L
     val pgmIdRoot: Long = wkdisciplines.map(_.programmId).max + 1L
-    val nextPgmId = pgmIdRoot + 1L
+    val nextPgmId: Long = pgmIdRoot + 1L
 
     val diszInserts = for {
       w <- disziplinlist
@@ -814,23 +818,45 @@ trait WettkampfService extends DBService
       DBIO.sequence(diszInserts).transactionally
     }, Duration.Inf).flatten ++ disziplinlist.flatMap(w => disciplines.filter(d => d.name.equalsIgnoreCase(w)))
 
+    val nameMatcher: Regex = "(?iumU)^([\\w\\h\\s\\d]+[^\\h\\s\\(])".r
+    val alterVonMatcher: Regex = "(?iumU)\\(.*von=([\\d]{1,2}).*\\)$".r
+    val alterBisMatcher: Regex = "(?iumU)\\(.*bis=([\\d]{1,2}).*\\)$".r
+
     val rootPgmInsert = sqlu"""
             INSERT INTO programm
-                  (id, parent_id, name, aggregate, ord)
+                  (id, parent_id, name, aggregate, ord, riegenmode)
                   VALUES
-                    ($pgmIdRoot, 0, $rootprogram, 0, $pgmIdRoot)
+                    ($pgmIdRoot, 0, $rootprogram, 0, $pgmIdRoot, $riegenmode)
           """  >>
       sql"""
                  SELECT * from programm where id=$pgmIdRoot
                """.as[ProgrammRaw]
+    val aggregate = if (programlist.exists(_.contains("/"))) 1 else 0
+    val items = programlist.flatMap(path => path.split("/")).distinct.zipWithIndex
+    val parentItemsMap = items.flatMap{item =>
+      val pgm=item._1
+      programlist
+        .find(path => path.contains(s"/$pgm"))
+        .flatMap(path => path.split("/")
+          .reverse
+          .dropWhile(item => !item.equals(pgm))
+          .tail.headOption)
+        .flatMap(parentItem => items.find(it => it._1.equals(parentItem)))
+        .map(parent => pgm -> (pgmIdRoot + 1L + parent._2).longValue())
+    }.toMap
     val pgmInserts = rootPgmInsert +: (for {
-      w <- programlist
+      w <- items
     } yield {
-      val pgmId = nextPgmId + programlist.indexOf(w)
+      val (pgm, idx) = w
+      val pgmId: Long = nextPgmId + idx
+      val parentId: Long = parentItemsMap.getOrElse(pgm, pgmIdRoot)
+      val name=nameMatcher.findFirstMatchIn(pgm).map(md => md.group(1)).mkString
+      val von=alterVonMatcher.findFirstMatchIn(pgm).map(md => md.group(1).intValue).getOrElse(0)
+      val bis=alterBisMatcher.findFirstMatchIn(pgm).map(md => md.group(1).intValue).getOrElse(100)
       sqlu"""    INSERT INTO programm
-                    (id, parent_id, name, aggregate, ord)
+                    (id, parent_id, name, aggregate, ord, riegenmode, alter_von, alter_bis)
                     VALUES
-                      ($pgmId, $pgmIdRoot, $w, 0, $pgmId)
+                      ($pgmId, $parentId, $name, $aggregate, $pgmId, $riegenmode, $von, $bis)
           """ >>
         sql"""
                SELECT * from programm where id=$pgmId
@@ -844,7 +870,7 @@ trait WettkampfService extends DBService
     val cache = scala.collection.mutable.Map[Long, ProgrammView]()
     val wkDiszsInserts = (for {
       pgm <- insertedPgmList
-      if pgm.parentId > 0
+      if pgm.parentId > 0 && !insertedPgmList.exists(p => p.parentId == pgm.id)
       disz <- insertedDiszList
     } yield {
       (pgm, disz)

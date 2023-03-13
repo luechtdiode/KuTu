@@ -27,10 +27,10 @@ import ch.seidel.kutu.domain._
  *       Somit müsste jede Rotation in sich zunächst stimmen
  */
 trait RiegenBuilder {
-  
+
   def suggestRiegen(rotationstation: Seq[Int], wertungen: Seq[WertungView]): Seq[(String, Seq[Wertung])] = {
     val riegencount = rotationstation.sum
-    if(wertungen.head.wettkampfdisziplin.notenSpez.isInstanceOf[Athletiktest]) {
+    if (wertungen.head.wettkampfdisziplin.programm.riegenmode == 2) {
       ATTGrouper.suggestRiegen(riegencount, wertungen)
     } else {
       KuTuGeTuGrouper.suggestRiegen(riegencount, wertungen)
@@ -41,8 +41,8 @@ trait RiegenBuilder {
 object RiegenBuilder {
 
   def generateRiegenName(w: WertungView) = {
-    w.wettkampfdisziplin.notenSpez match {
-      case a: Athletiktest => ATTGrouper.generateRiegenName(w)
+    w.wettkampfdisziplin.programm.riegenmode match {
+      case RiegeRaw.RIEGENMODE_BY_JG => ATTGrouper.generateRiegenName(w)
       case _ => KuTuGeTuGrouper.generateRiegenName(w)
     }
   }

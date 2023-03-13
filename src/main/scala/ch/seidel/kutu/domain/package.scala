@@ -197,6 +197,8 @@ package object domain {
   object RiegeRaw {
     val KIND_STANDARD = 0;
     val KIND_EMPTY_RIEGE = 1;
+    val RIEGENMODE_BY_Program = 1;
+    val RIEGENMODE_BY_JG = 2;
   }
 
   case class RiegeRaw(wettkampfId: Long, r: String, durchgang: Option[String], start: Option[Long], kind: Int) extends DataObject {
@@ -426,6 +428,24 @@ package object domain {
     }
   }
 
+  /**
+   *
+   * Krits        +-------------------------------------------+---------------------------------------------------------
+   *  aggregate ->|0                                          |1
+   *              +-------------------------------------------+---------------------------------------------------------
+   *  riegenmode->|1                   |2                     |1                     |2
+   * Acts         +===========================================+=========================================================
+   *  Einteilung->| Pgm,Sex,Verein     | Pgm,Sex,Jg,Verein    | Pgm,Sex,Verein       | Pgm,Sex,Jg,Verein
+   *              +--------------------+----------------------+----------------------+----------------------------------
+   *  Teilnahme   | 1/WK               | <=PgmCnt(Jg)/WK      | <=PgmCnt(Jg)/WK      | 1/Pgm
+   *              +-------------------------------------------+---------------------------------------------------------
+   *  Registration| 1/WK               | 1/WK, Pgm/(Jg)       | 1/WK aut. Tn 1/Pgm   | 1/WK aut. Tn 1/Pgm
+   *              +-------------------------------------------+---------------------------------------------------------
+   *  Beispiele   | GeTu/KuTu/KuTuRi   | Turn10 (BS/OS)       | TG Allgäu (Pfl./Kür) | ATT (Kraft/Bewg)
+   *              +-------------------------------------------+---------------------------------------------------------
+   *  Rangliste   | Sex/Programm       | Sex/Programm/Jg      | Sex/Programm         | Sex/Programm/Jg
+   *              +-------------------------------------------+---------------------------------------------------------
+   */
   case class ProgrammRaw(id: Long, name: String, aggregate: Int, parentId: Long, ord: Int, alterVon: Int, alterBis: Int, uuid: String, riegenmode: Int) extends Programm
 
   case class ProgrammView(id: Long, name: String, aggregate: Int, parent: Option[ProgrammView], ord: Int, alterVon: Int, alterBis: Int, uuid: String, riegenmode: Int) extends Programm {
@@ -466,7 +486,7 @@ package object domain {
       case Some(p) => p.toPath + " / " + name
     }
 
-    override def toString = toPath
+    override def toString = s"$toPath (von=$alterVon, bis=$alterBis)"
   }
 
   //  object Wettkampf {

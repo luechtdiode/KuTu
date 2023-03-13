@@ -44,8 +44,10 @@ export interface ProgrammRaw {
   aggregate: number;
   parent: number;
   ord: number;
-  vonAlter: number;
-  bisAlter: number;
+  alterVon: number;
+  alterBis: number;
+  uuid: string;
+  riegenmode: number;
 }
 
 export interface Verein {

@@ -49,19 +49,19 @@
           <ion-select-option [value]='"M"'>männlich</ion-select-option>
         </ion-select>
       </ion-item>
-      <ion-item-divider>
+      <ion-item-divider *ngIf="needsPGMChoice()">
         <ion-avatar slot="start">
           <img src="assets/imgs/wettkampf.png">
         </ion-avatar>
         <ion-label>Einteilung</ion-label>
       </ion-item-divider>
-      <ion-item>
+      <ion-item *ngIf="needsPGMChoice()">
         <ion-avatar slot="start">
           &nbsp;
         </ion-avatar>
         <ion-label color="primary">Programm/Kategorie</ion-label>
         <ion-select required placeholder='Programm/Kategorie' [(ngModel)]='registration.programId' name="programId" okText='Okay' cancelText='Abbrechen'>
-          <ion-select-option *ngFor='let pgm of wkPgms' [value]='pgm.id'>{{pgm.name}}</ion-select-option>
+          <ion-select-option *ngFor='let pgm of filterPGMsForAthlet(registration)' [value]='pgm.id'>{{pgm.name}}</ion-select-option>
         </ion-select>
       </ion-item>
     </ion-list>
