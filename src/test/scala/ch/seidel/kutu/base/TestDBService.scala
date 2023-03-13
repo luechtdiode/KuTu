@@ -8,6 +8,7 @@ import slick.jdbc.SQLiteProfile.api.AsyncExecutor
 import ch.seidel.kutu.domain.{DBService, NewUUID}
 import com.zaxxer.hikari.{HikariConfig, HikariDataSource}
 import org.sqlite.SQLiteConnection
+import slick.jdbc.JdbcBackend
 
 object TestDBService {
   private val logger = LoggerFactory.getLogger(this.getClass)
@@ -54,15 +55,19 @@ object TestDBService {
       , "AddNotificationMailToWettkampf-sqllite.sql"
       , "AddWKDisziplinMetafields-sqllite.sql"
     )
-    val session = tempDatabase.createSession()
-    try {
-      NewUUID.install(session.conn.unwrap(classOf[SQLiteConnection]))
-    } finally {
-      session .close()
-    }
+    installDBFunctions(tempDatabase)
 
     DBService.installDB(tempDatabase, sqlScripts)
     logger.info("Database initialized")
     tempDatabase
-  }  
+  }
+
+  def installDBFunctions(dbdef: JdbcBackend.DatabaseDef): Unit = {
+    val session = dbdef.createSession()
+    try {
+      NewUUID.install(session.conn.unwrap(classOf[SQLiteConnection]))
+    } finally {
+      session.close()
+    }
+  }
 }

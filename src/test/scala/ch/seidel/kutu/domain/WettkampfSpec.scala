@@ -2,7 +2,7 @@ package ch.seidel.kutu.domain
 
 import java.time.LocalDate
 import java.util.UUID
-import ch.seidel.kutu.base.KuTuBaseSpec
+import ch.seidel.kutu.base.{KuTuBaseSpec, TestDBService}
 
 import scala.annotation.tailrec
 import scala.util.matching.Regex
@@ -106,9 +106,9 @@ class WettkampfSpec extends KuTuBaseSpec {
         )
       )
       printNewWettkampfModeInsertStatements(tga)
-//    }
-//    "create Turn10" in {
-      val turn10 = insertWettkampfProgram(s"Turn10-Test", 2,
+    }
+    "create Turn10" in {
+      val turn10 = insertWettkampfProgram(s"Turn10-Test", 1,
         List("Boden", "Barren", "Balken", "Minitramp", "Reck", "Pferd", "Sprung"),
         List(
           "AK6 BS(von=0 bis=6)"

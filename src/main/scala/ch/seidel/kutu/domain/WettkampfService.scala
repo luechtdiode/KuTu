@@ -824,9 +824,9 @@ trait WettkampfService extends DBService
 
     val rootPgmInsert = sqlu"""
             INSERT INTO programm
-                  (id, parent_id, name, aggregate, ord, riegenmode)
+                  (id, parent_id, name, aggregate, ord, riegenmode, uuid)
                   VALUES
-                    ($pgmIdRoot, 0, $rootprogram, 0, $pgmIdRoot, $riegenmode)
+                    ($pgmIdRoot, 0, $rootprogram, 0, $pgmIdRoot, $riegenmode, ${UUID.randomUUID().toString})
           """  >>
       sql"""
                  SELECT * from programm where id=$pgmIdRoot
@@ -854,9 +854,9 @@ trait WettkampfService extends DBService
       val von=alterVonMatcher.findFirstMatchIn(pgm).map(md => md.group(1).intValue).getOrElse(0)
       val bis=alterBisMatcher.findFirstMatchIn(pgm).map(md => md.group(1).intValue).getOrElse(100)
       sqlu"""    INSERT INTO programm
-                    (id, parent_id, name, aggregate, ord, riegenmode, alter_von, alter_bis)
+                    (id, parent_id, name, aggregate, ord, riegenmode, alter_von, alter_bis, uuid)
                     VALUES
-                      ($pgmId, $parentId, $name, $aggregate, $pgmId, $riegenmode, $von, $bis)
+                      ($pgmId, $parentId, $name, $aggregate, $pgmId, $riegenmode, $von, $bis, ${UUID.randomUUID().toString})
           """ >>
         sql"""
                SELECT * from programm where id=$pgmId
