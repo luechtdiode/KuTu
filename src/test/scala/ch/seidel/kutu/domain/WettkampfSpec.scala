@@ -101,7 +101,7 @@ class WettkampfSpec extends KuTuBaseSpec {
           , "Pflicht/WK V Jug(von=14 bis=18)"
           , "Pflicht/WK VI Schüler A(von=12 bis=13)"
           , "Pflicht/WK VII Schüler B(von=10 bis=11)"
-          , "Pflicht/WK VIII Schüler C(von=8 bis=10)"
+          , "Pflicht/WK VIII Schüler C(von=8 bis=9)"
           , "Pflicht/WK IX Schüler D(von=0 bis=7)"
         )
       )
@@ -150,6 +150,23 @@ class WettkampfSpec extends KuTuBaseSpec {
       )
       printNewWettkampfModeInsertStatements(turn10)
     }
+    "create GeTu BLTV" in {
+      val tga = insertWettkampfProgram(s"GeTu BLTV-Test", 1,
+        List("Reck", "Boden", "Ring", "Sprung", "Barren(sex=m start=0)"),
+        List(
+          "K1(bis=10)"
+          , "K2(bis=12)"
+          , "K3(bis=14)"
+          , "K4(bis=16)"
+          , "K5"
+          , "K6"
+          , "K7"
+          , "KD(von=22)"
+          , "KH(von=28)"
+        )
+      )
+      printNewWettkampfModeInsertStatements(tga)
+    }
 
   }
 
@@ -170,7 +187,7 @@ class WettkampfSpec extends KuTuBaseSpec {
           flatten(wdp.programm)
         }
         .distinct.sortBy(_.id)
-        .map(p => s"(${p.id}, '${p.name}', ${p.aggregate}, ${p.parent.map(_.id).getOrElse(0)}, ${p.ord}, ${p.alterVon}, ${p.alterBis}, '${p.uuid}', ${p.riegenmode})").mkString("", "\n,", ";").split("\n").toList) :::
+        .map(p => s"(${p.id}, '${p.name}', ${p.aggregate}, ${p.parent.map(_.id.toString).getOrElse("null")}, ${p.ord}, ${p.alterVon}, ${p.alterBis}, '${p.uuid}', ${p.riegenmode})").mkString("", "\n,", ";").split("\n").toList) :::
       ("insert into wettkampfdisziplin (id, programm_id, disziplin_id, kurzbeschreibung, detailbeschreibung, notenfaktor, masculin, feminim, ord, scale, dnote, min, max, startgeraet) values " +: tga
         .map(wdp => s"(${wdp.id}, ${wdp.programm.id}, ${wdp.disziplin.id}, '${wdp.kurzbeschreibung}', ${wdp.detailbeschreibung.map(b => s"'$b'").getOrElse("''")}, ${wdp.notenSpez.calcEndnote(0.000d, 1.000d, wdp)}, ${wdp.masculin}, ${wdp.feminim}, ${wdp.ord}, ${wdp.scale}, ${wdp.dnote}, ${wdp.min}, ${wdp.max}, ${wdp.startgeraet})").mkString("", "\n,", ";").split("\n").toList)
 

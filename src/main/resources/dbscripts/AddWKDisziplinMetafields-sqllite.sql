@@ -109,7 +109,15 @@ update programm
  where id=1
     or parent_id=1
 ;
-
+-- fix age-limitations K1-K4 inofficial, for GeTu BLTV
+-- KD official STV
+UPDATE programm
+  set alter_von=22
+  where id=42;
+-- KH official STV
+UPDATE programm
+  set alter_von=28
+  where id=43;
 
 -- Test Programm-Extensions
 insert into disziplin (id, name) values (1, 'Boden') on conflict (id) do nothing;
@@ -127,7 +135,7 @@ insert into programm (id, name, aggregate, parent_id, ord, alter_von, alter_bis,
 ,(99, 'WK V Jug', 1, 98, 99, 14, 18, '8793e2a5-ddc0-43f8-ac8a-fbdad40e2594', 1)
 ,(100, 'WK VI Schüler A', 1, 98, 100, 12, 13, '640e4a29-0c6a-4083-9fcc-cca79105644d', 1)
 ,(101, 'WK VII Schüler B', 1, 98, 101, 10, 11, '6859201a-bd3d-4917-9b1e-b0898f6df7d2', 1)
-,(102, 'WK VIII Schüler C', 1, 98, 102, 8, 10, '3bcdf06e-827c-40e3-9209-74b3ba5314e1', 1)
+,(102, 'WK VIII Schüler C', 1, 98, 102, 8, 9, '3bcdf06e-827c-40e3-9209-74b3ba5314e1', 1)
 ,(103, 'WK IX Schüler D', 1, 98, 103, 0, 7, '3b7aab26-4a6d-4dd5-a53c-58fca79ec62a', 1);
 insert into wettkampfdisziplin (id, programm_id, disziplin_id, kurzbeschreibung, detailbeschreibung, notenfaktor, masculin, feminim, ord, scale, dnote, min, max, startgeraet) values
 (435, 94, 1, '', '', 1.0, 1, 1, 0, 3, 1, 0, 30, 1)

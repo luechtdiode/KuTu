@@ -801,32 +801,51 @@ trait WettkampfService extends DBService
     val pgmIdRoot: Long = wkdisciplines.map(_.programmId).max + 1L
     val nextPgmId: Long = pgmIdRoot + 1L
 
+    val nameMatcher: Regex = "(?iumU)^([\\w\\h\\s\\d]+[^\\h\\s\\(])".r
+    val alterVonMatcher: Regex = "(?iumU)\\(.*von=([\\d]{1,2}).*\\)$".r
+    val alterBisMatcher: Regex = "(?iumU)\\(.*bis=([\\d]{1,2}).*\\)$".r
+    val sexMatcher: Regex = "(?iumU)\\(.*sex=([mMwW]{1,2}).*\\)$".r
+    val startMatcher: Regex = "(?iumU)\\(.*start=([01jJnNyYwWtTfF]{1}).*\\)$".r
+    val sexMapping = (for {
+      w <- disziplinlist
+      name = nameMatcher.findFirstMatchIn(w).map(md => md.group(1)).mkString
+    } yield {
+      (name->sexMatcher.findFirstMatchIn(w).map(md => md.group(1)).mkString.toUpperCase)
+    }).toMap
+    val startMapping = (for {
+      w <- disziplinlist
+      name = nameMatcher.findFirstMatchIn(w).map(md => md.group(1)).mkString
+    } yield {
+      (name->startMatcher.findFirstMatchIn(w).map(md => md.group(1)).mkString.toUpperCase)
+    }).toMap
+
     val diszInserts = for {
       w <- disziplinlist
-      if !disciplines.exists(_.name.equalsIgnoreCase(w))
+      name = nameMatcher.findFirstMatchIn(w).map(md => md.group(1)).mkString
+      if !disciplines.exists(_.name.equalsIgnoreCase(name))
     } yield {
+
       sqlu"""    INSERT INTO disziplin
                     (name)
                     VALUES
                       ($w)
           """ >>
       sql"""
-               SELECT * from disziplin where name=$w
+               SELECT * from disziplin where name=$name
           """.as[Disziplin]
     }
     val insertedDiszList = Await.result(database.run{
       DBIO.sequence(diszInserts).transactionally
-    }, Duration.Inf).flatten ++ disziplinlist.flatMap(w => disciplines.filter(d => d.name.equalsIgnoreCase(w)))
-
-    val nameMatcher: Regex = "(?iumU)^([\\w\\h\\s\\d]+[^\\h\\s\\(])".r
-    val alterVonMatcher: Regex = "(?iumU)\\(.*von=([\\d]{1,2}).*\\)$".r
-    val alterBisMatcher: Regex = "(?iumU)\\(.*bis=([\\d]{1,2}).*\\)$".r
+    }, Duration.Inf).flatten ++ disziplinlist.flatMap{w =>
+      val name = nameMatcher.findFirstMatchIn(w).map(md => md.group(1)).mkString
+      disciplines.filter(d => d.name.equalsIgnoreCase(name))
+    }
 
     val rootPgmInsert = sqlu"""
             INSERT INTO programm
-                  (id, parent_id, name, aggregate, ord, riegenmode, uuid)
+                  (id, name, aggregate, ord, riegenmode, uuid)
                   VALUES
-                    ($pgmIdRoot, 0, $rootprogram, 0, $pgmIdRoot, $riegenmode, ${UUID.randomUUID().toString})
+                    ($pgmIdRoot, $rootprogram, 0, $pgmIdRoot, $riegenmode, ${UUID.randomUUID().toString})
           """  >>
       sql"""
                  SELECT * from programm where id=$pgmIdRoot
@@ -877,10 +896,24 @@ trait WettkampfService extends DBService
     }).zipWithIndex.map {
       case ((p, d), i) =>
         val id = i + nextWKDiszId
+        val m = sexMapping.get(d.name) match {
+          case Some(s) if s.contains("M") => 1
+          case Some(s) if s.isEmpty => 1
+          case _ => 0
+        }
+        val f = sexMapping.get(d.name) match {
+          case Some(s) if s.contains("W") => 1
+          case Some(s) if s.isEmpty => 1
+          case _ => 0
+        }
+        val start = startMapping.get(d.name) match {
+          case Some(s) if s.matches("[0nNfF]{1}") => 0
+          case _ => 1
+        }
         sqlu"""    INSERT INTO wettkampfdisziplin
-                 (id, programm_id, disziplin_id, notenfaktor, ord)
+                 (id, programm_id, disziplin_id, notenfaktor, ord, masculin, feminim, startgeraet)
                  VALUES
-                 ($id, ${p.id}, ${d.id}, 1.000, $i)
+                 ($id, ${p.id}, ${d.id}, 1.000, $i, $m, $f, $start)
           """ >>
           sql"""
                SELECT * from wettkampfdisziplin where id=$id

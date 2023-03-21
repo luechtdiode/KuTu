@@ -6,7 +6,7 @@ import java.sql.{SQLDataException, SQLException}
 import java.util.UUID
 
 object NewUUID {
-  def install(c: SQLiteConnection) {
+  def install(c: SQLiteConnection): Unit = {
     Function.create(c, "NewUUID", new NewUUID)
   }
 }
