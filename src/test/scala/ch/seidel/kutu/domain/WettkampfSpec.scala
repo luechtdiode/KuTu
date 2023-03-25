@@ -66,7 +66,7 @@ class WettkampfSpec extends KuTuBaseSpec {
       WettkampfdisziplinView(164,Testprogramm2 / LK3 (von=0, bis=100),Disziplin(30,Ringe),,None,StandardWettkampf(1.0),1,1,4,3,1,0,30,1)
       WettkampfdisziplinView(165,Testprogramm2 / LK3 (von=0, bis=100),Disziplin(5,Barren),,None,StandardWettkampf(1.0),1,1,5,3,1,0,30,1)
       */
-      val tp1 = insertWettkampfProgram("Testprogramm1", 2,
+      val tp1 = insertWettkampfProgram("Testprogramm1", 2, 1,
         List("Boden", "Sprung"),
         List("AK1(von=5 bis=10)", "AK2(von=11 bis=20)", "AK3(von=21 bis=50)")
       )
@@ -78,7 +78,7 @@ class WettkampfSpec extends KuTuBaseSpec {
       assert(tp1(2).programm.alterVon == 11)
       assert(tp1(2).programm.alterBis == 20)
 
-      val tp2 = insertWettkampfProgram("Testprogramm2", 1,
+      val tp2 = insertWettkampfProgram("Testprogramm2", 1, 0,
         List("Barren", "Ringe"),
         List("LK1", "LK2", "LK3")
       )
@@ -90,9 +90,26 @@ class WettkampfSpec extends KuTuBaseSpec {
       assert(tp2(1).programm.alterVon == 0)
       assert(tp2(1).programm.alterBis == 100)
     }
-    "create TG Allgäu" in {
-      val tga = insertWettkampfProgram(s"TG Allgäu-Test", 1,
-        List("Boden", "Barren", "Sprung", "Reck"),
+    "create KuTu DTL Kür & Pflicht" in {
+      val tga = insertWettkampfProgram(s"KuTu DTL Kür & Pflicht-Test", 1, 1,
+        List("Boden(sex=m)", "Pferd(sex=m)", "Ring(sex=m)", "Sprung(sex=m)", "Barren(sex=m)", "Reck(sex=m)"),
+        List(
+          "Kür/WK I Kür"
+          , "Kür/WK II LK1"
+          , "Kür/WK III LK1(von=16 bis=17)"
+          , "Kür/WK IV LK2(von=14 bis=15)"
+          , "Pflicht/WK V Jug(von=14 bis=18)"
+          , "Pflicht/WK VI Schüler A(von=12 bis=13)"
+          , "Pflicht/WK VII Schüler B(von=10 bis=11)"
+          , "Pflicht/WK VIII Schüler C(von=8 bis=9)"
+          , "Pflicht/WK IX Schüler D(von=0 bis=7)"
+        )
+      )
+      printNewWettkampfModeInsertStatements(tga)
+    }
+    "create KuTuRi DTL Kür & Pflicht-" in {
+      val tga = insertWettkampfProgram(s"KuTuRi DTL Kür & Pflicht-Test", 1, 1,
+        List("Sprung(sex=w)", "Barren(sex=w)", "Balken(sex=w)", "Boden(sex=w)"),
         List(
           "Kür/WK I Kür"
           , "Kür/WK II LK1"
@@ -108,50 +125,29 @@ class WettkampfSpec extends KuTuBaseSpec {
       printNewWettkampfModeInsertStatements(tga)
     }
     "create Turn10" in {
-      val turn10 = insertWettkampfProgram(s"Turn10-Test", 1,
-        List("Boden", "Barren", "Balken", "Minitramp", "Reck", "Pferd", "Sprung"),
+      val turn10v = insertWettkampfProgram(s"Turn10-Verein-Test", 2, 1,
+        // Ti: Boden, Balken, Minitramp, Reck/Stufenbarren, Sprung.
+        // Tu: Boden, Barren, Minitramp, Reck, Sprung, Pferd, Ringe
+        List("Boden", "Barren(sex=m)", "Balken(sex=w)", "Minitramp", "Reck(sex=m)", "Stufenbarren(sex=w)", "Sprung", "Pferdpauschen(sex=m)", "Ringe(sex=m)"),
         List(
-          "AK6 BS(von=0 bis=6)"
-          , "AK7 BS(von=7 bis=7)"
-          , "AK8 BS(von=8 bis=8)"
-          , "AK9 BS(von=9 bis=9)"
-          , "AK10 BS(von=10 bis=10)"
-          , "AK11 BS(von=11 bis=11)"
-          , "AK12 BS(von=12 bis=12)"
-          , "AK13 BS(von=13 bis=13)"
-          , "AK13 OS(von=13 bis=13)"
-          , "AK14 BS(von=14 bis=14)"
-          , "AK14 OS(von=14 bis=14)"
-          , "AK15 BS(von=15 bis=15)"
-          , "AK15 OS(von=15 bis=15)"
-          , "AK16 BS(von=16 bis=16)"
-          , "AK16 OS(von=16 bis=16)"
-          , "AK17 BS(von=17 bis=17)"
-          , "AK17 OS(von=17 bis=17)"
-          , "AK18 BS(von=18 bis=23)"
-          , "AK18 OS(von=18 bis=23)"
-          , "AK24 BS(von=24 bis=29)"
-          , "AK24 OS(von=24 bis=29)"
-          , "AK30 BS(von=30 bis=34)"
-          , "AK30 OS(von=30 bis=34)"
-          , "AK35 BS(von=35 bis=39)"
-          , "AK35 OS(von=35 bis=39)"
-          , "AK40 BS(von=40 bis=44)"
-          , "AK40 OS(von=40 bis=44)"
-          , "AK45 BS(von=45 bis=49)"
-          , "AK45 OS(von=45 bis=49)"
-          , "AK50 BS(von=50 bis=54)"
-          , "AK50 OS(von=50 bis=54)"
-          , "AK55 BS(von=55 bis=59)"
-          , "AK55 OS(von=55 bis=59)"
-          , "AK60 BS(von=60 bis=64)"
-          , "AK60 OS(von=60 bis=64)"
+            "BS"
+          , "OS"
         )
       )
-      printNewWettkampfModeInsertStatements(turn10)
+      printNewWettkampfModeInsertStatements(turn10v)
+      val turn10s = insertWettkampfProgram(s"Turn10-Schule-Test", 2, 1,
+        // Ti: Boden, Balken, Reck, Sprung.
+        // Tu: Boden, Barren, Reck, Sprung.
+        List("Boden", "Barren(sex=m)", "Balken(sex=w)", "Reck", "Sprung"),
+        List(
+            "BS"
+          , "OS"
+        )
+      )
+      printNewWettkampfModeInsertStatements(turn10s)
     }
     "create GeTu BLTV" in {
-      val tga = insertWettkampfProgram(s"GeTu BLTV-Test", 1,
+      val tga = insertWettkampfProgram(s"GeTu BLTV-Test", 1, 0,
         List("Reck", "Boden", "Ring", "Sprung", "Barren(sex=m start=0)"),
         List(
           "K1(bis=10)"

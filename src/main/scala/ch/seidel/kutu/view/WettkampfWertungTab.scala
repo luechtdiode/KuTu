@@ -369,7 +369,7 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
     }
   )
 
-  val riegeCol: List[jfxsc.TableColumn[IndexedSeq[WertungEditor], _]] = if (wettkampfInfo.leafprograms.size > 2) {
+  val riegeCol: List[jfxsc.TableColumn[IndexedSeq[WertungEditor], _]] = if (!wettkampfInfo.isAggregated) {
     List(new WKTableColumn[String](-1) {
       text = "Riege"
       cellFactory.value = { _: Any =>

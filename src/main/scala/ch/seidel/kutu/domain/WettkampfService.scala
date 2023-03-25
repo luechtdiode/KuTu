@@ -782,7 +782,7 @@ trait WettkampfService extends DBService
     }
   }
 
-  def insertWettkampfProgram(rootprogram: String, riegenmode: Int, disziplinlist: List[String], programlist: List[String]): List[WettkampfdisziplinView] = {
+  def insertWettkampfProgram(rootprogram: String, riegenmode: Int, dnoteUsed: Int, disziplinlist: List[String], programlist: List[String]): List[WettkampfdisziplinView] = {
     val programme = Await.result(database.run{(sql"""
                    select * from programm
            """.as[ProgrammRaw]).withPinnedSession}, Duration.Inf)
@@ -911,9 +911,9 @@ trait WettkampfService extends DBService
           case _ => 1
         }
         sqlu"""    INSERT INTO wettkampfdisziplin
-                 (id, programm_id, disziplin_id, notenfaktor, ord, masculin, feminim, startgeraet)
+                 (id, programm_id, disziplin_id, notenfaktor, ord, masculin, feminim, dnote, startgeraet)
                  VALUES
-                 ($id, ${p.id}, ${d.id}, 1.000, $i, $m, $f, $start)
+                 ($id, ${p.id}, ${d.id}, 1.000, $i, $m, $f, $dnoteUsed, $start)
           """ >>
           sql"""
                SELECT * from wettkampfdisziplin where id=$id

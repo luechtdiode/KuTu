@@ -30,7 +30,7 @@ trait RiegenBuilder {
 
   def suggestRiegen(rotationstation: Seq[Int], wertungen: Seq[WertungView]): Seq[(String, Seq[Wertung])] = {
     val riegencount = rotationstation.sum
-    if (wertungen.head.wettkampfdisziplin.programm.riegenmode == 2) {
+    if (wertungen.head.wettkampfdisziplin.programm.riegenmode == RiegeRaw.RIEGENMODE_BY_JG) {
       ATTGrouper.suggestRiegen(riegencount, wertungen)
     } else {
       KuTuGeTuGrouper.suggestRiegen(riegencount, wertungen)

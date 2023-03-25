@@ -38,7 +38,6 @@ abstract trait DisziplinService extends DBService with WettkampfResultMapper {
                and r.durchgang in (#${durchgang.mkString("'", "','", "'")})
              )
              inner join wettkampf wk on (wk.id = r.wettkampf_id)
-             inner join programm pg on (pg.parent_id = wk.programm_id and pg.id = wd.programm_id)
              left outer join wertung w on (
                w.wettkampf_id = r.wettkampf_id
                and (w.riege = r.name or w.riege2 = r.name)

@@ -519,12 +519,12 @@ class RiegenTab(override val wettkampfInfo: WettkampfInfo, override val service:
   			  }
 			  }, new Button("OK") {
 			  onAction = (event: ActionEvent) => {
-				  if (!txtGruppengroesse.text.value.isEmpty) {
+				  if (txtGruppengroesse.text.value.nonEmpty) {
 					  KuTuApp.invokeWithBusyIndicator {
 						  val riegenzuteilungen = DurchgangBuilder(service).suggestDurchgaenge(
 							  wettkampf.id,
 							  str2Int(txtGruppengroesse.text.value), durchgang,
-							  splitSex = cbSplitSex.getSelectionModel.getSelectedItem,
+							  splitSexOption = Some(cbSplitSex.getSelectionModel.getSelectedItem),
 							  splitPgm = chkSplitPgm.selected.value,
 							  onDisziplinList = getSelectedDisziplines)
 
