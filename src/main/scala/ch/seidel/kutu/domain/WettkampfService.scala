@@ -78,7 +78,7 @@ trait WettkampfService extends DBService
                         end as wertung
                     FROM
                         wettkampf wk
-                        inner join programm p on (wk.programm_id = p.id)
+                        inner join programm p on (wk.programm_id in (p.id, p.parent_id))
                         inner join programm pd on (p.id = pd.parent_id)
                         inner join wettkampfdisziplin wkd on (pd.id = wkd.programm_id)
                         inner join disziplin d on (d.id = wkd.disziplin_id)
