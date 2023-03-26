@@ -322,7 +322,7 @@ class NetworkTab(wettkampfmode: BooleanProperty, override val wettkampfInfo: Wet
     model.setAll(items.asJavaCollection)
     isRunning.set(model.exists(_.getValue.isRunning))
     selected.foreach(selection => {
-      if (view.getColumns.size() > selection.column) {
+      if (selection.column > -1 && view.getColumns.size() > selection.column) {
         val column = view.getColumns.get(selection.column)
         view.selectionModel.value.select(selection.row, column)
       }

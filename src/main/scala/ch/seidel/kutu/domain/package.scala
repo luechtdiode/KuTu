@@ -455,14 +455,25 @@ package object domain {
       case None => this
       case Some(p) => p.head
     }
-
+    def subHead: Option[ProgrammView] = parent match {
+      case None => None
+      case Some(p) => if (p.parent.nonEmpty) p.subHead else parent
+    }
+    def programPath: Seq[ProgrammView] = parent match {
+      case None => Seq(this)
+      case Some(p) => p.programPath :+ this
+    }
     def wettkampfprogramm: ProgrammView = if (aggregator == this) this else head
 
     def aggregatorHead: ProgrammView = parent match {
-      case Some(p) if (aggregate != 0) => p.aggregatorHead
+      case Some(p) if (p.aggregate != 0) => p.aggregatorHead
       case _ => this
     }
 
+    def groupedHead: ProgrammView = parent match {
+      case Some(p) if (p.parent.nonEmpty && aggregate != 0) => p
+      case _ => aggregatorHead
+    }
     def aggregatorParent: ProgrammView = parent match {
       case Some(p) if (aggregate != 0) => p.parent.getOrElse(this)
       case _ => this

@@ -87,7 +87,7 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
   def defaultFilter: (WertungView) => Boolean = { wertung =>
     programm match {
       case Some(progrm) =>
-        wertung.wettkampfdisziplin.programm.id == progrm.id
+        wertung.wettkampfdisziplin.programm.programPath.contains(progrm)
       case None =>
         true
     }
@@ -137,7 +137,7 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
   }
 
   def riegen(onSelectedChange: (String, Boolean) => Boolean): IndexedSeq[RiegeEditor] = {
-    service.listRiegenZuWettkampf(wettkampf.id).sortBy(r => r._1).filter { r => relevantRiegen.contains(r._1) }.map(x =>
+    service.listRiegenZuWettkampf(wettkampf.id).filter { r => relevantRiegen.contains(r._1) }.sortBy(r => r._1).map(x =>
       RiegeEditor(
         wettkampf.id,
         x._1,
@@ -244,11 +244,26 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
     val indexerE = Iterator.from(0)
     val indexerD = Iterator.from(0)
     val indexerF = Iterator.from(0)
-    wertungen.head.map { wertung =>
+    wertungen.head
+      .map { wertung =>
       lazy val clDnote = new WKTableColumn[Double](indexerD.next()) {
         text = "D"
         cellValueFactory = { x => if (x.value.size > index) x.value(index).noteD else wertung.noteD }
-        cellFactory.value = { _: Any => new AutoCommitTextFieldTableCell[IndexedSeq[WertungEditor], Double](DoubleConverter(wertung.init.wettkampfdisziplin.notenSpez)) }
+        cellFactory.value = { _: Any =>
+          new AutoCommitTextFieldTableCell[IndexedSeq[WertungEditor], Double](
+            DoubleConverter(wertung.init.wettkampfdisziplin.notenSpez),
+            (cell) => {
+              if (cell.tableRow.value != null && cell.tableRow.value.item.value != null && index < cell.tableRow.value.item.value.size) {
+                val w = cell.tableRow.value.item.value(index)
+                val editable = !wettkampf.toWettkampf.isReadonly(homedir, remoteHostOrigin) &&
+                  w.init.wettkampfdisziplin.isDNoteUsed &&
+                  w.matchesSexAssignment
+                cell.editable = editable
+                cell.pseudoClassStateChanged(editableCssClass, cell.isEditable)
+              }
+            }
+          )
+        }
 
         styleClass += "table-cell-with-value"
         prefWidth = if (wertung.init.wettkampfdisziplin.isDNoteUsed) 60 else 0
@@ -280,7 +295,20 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
         text = "E"
         cellValueFactory = { x => if (x.value.size > index) x.value(index).noteE else wertung.noteE }
 
-        cellFactory.value = { _: Any => new AutoCommitTextFieldTableCell[IndexedSeq[WertungEditor], Double](DoubleConverter(wertung.init.wettkampfdisziplin.notenSpez)) }
+        cellFactory.value = { _: Any =>
+          new AutoCommitTextFieldTableCell[IndexedSeq[WertungEditor], Double](
+            DoubleConverter(wertung.init.wettkampfdisziplin.notenSpez),
+            (cell) => {
+              if (cell.tableRow.value != null && cell.tableRow.value.item.value != null && index < cell.tableRow.value.item.value.size) {
+                val w = cell.tableRow.value.item.value(index)
+                val editable = !wettkampf.toWettkampf.isReadonly(homedir, remoteHostOrigin) &&
+                  w.matchesSexAssignment
+                cell.editable = editable
+                cell.pseudoClassStateChanged(editableCssClass, cell.isEditable)
+              }
+            }
+          )
+        }
 
         styleClass += "table-cell-with-value"
         prefWidth = 60
@@ -323,6 +351,8 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
         }
       }
       else {
+        // TODO Option, falls Mehrere Programme die gleichen Geräte benötigen,
+        //  abhängig von subpath oder aggr. gerät mit Pfad qualifizieren
         clEnote.text = wertung.init.wettkampfdisziplin.disziplin.name
         clEnote
       }
@@ -461,7 +491,15 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
         }
       })
   } else {
-    val cols: List[jfxsc.TableColumn[IndexedSeq[WertungEditor], _]] = wettkampfInfo.leafprograms.map { p =>
+    val cols: List[jfxsc.TableColumn[IndexedSeq[WertungEditor], _]] = wettkampfInfo.groupHeadPrograms
+      .filter{ p =>
+        programm match {
+          case Some(pgm) if (pgm.programPath.contains(p)) => true
+          case None => true
+          case _ => false
+        }
+      }
+      .map { p =>
       val col: jfxsc.TableColumn[IndexedSeq[WertungEditor], _] = new TableColumn[IndexedSeq[WertungEditor], String] {
         text = s"${p.name}"
         //            delegate.impl_setReorderable(false)
@@ -473,7 +511,7 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
             }
             cellValueFactory = { x =>
               new ReadOnlyStringWrapper(x.value, "riege", {
-                s"${x.value.find(we => we.init.wettkampfdisziplin.programm == p).flatMap(we => we.init.riege).getOrElse("keine Einteilung")}"
+                s"${x.value.find(we => we.init.wettkampfdisziplin.programm.programPath.contains(p)).flatMap(we => we.init.riege).getOrElse("keine Einteilung")}"
               })
             }
             editable <== when(Bindings.createBooleanBinding(() => {
@@ -808,7 +846,7 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
     val lastDurchgangSelection = cmbDurchgangFilter.selectionModel.value.getSelectedItem
     if (riege.isEmpty) {
       cmbDurchgangFilter.items = ObservableBuffer.from(rebuildDurchgangFilterList)
-      cmbDurchgangFilter.items.value.filter(x => lastDurchgangSelection == null || x.softEquals(lastDurchgangSelection)).headOption match {
+      cmbDurchgangFilter.items.value.find(x => lastDurchgangSelection == null || x.softEquals(lastDurchgangSelection)) match {
         case Some(item) =>
           cmbDurchgangFilter.selectionModel.value.select(item)
           durchgangFilter = item;

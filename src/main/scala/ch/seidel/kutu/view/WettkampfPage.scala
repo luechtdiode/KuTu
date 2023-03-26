@@ -15,25 +15,31 @@ object WettkampfPage {
     logger.debug("Start buildTab")
     val wettkampf = wettkampfInfo.wettkampf
 	  val progs = wettkampfInfo.leafprograms
+    val pathProgs = wettkampfInfo.parentPrograms
     logger.debug("Start Overview")
     val overview = new WettkampfOverviewTab(wettkampf, service)
     logger.debug("Start Alle Wertungen")
-    val alleWertungenTab = new WettkampfWertungTab(wettkampfmode, None, None, wettkampfInfo, service, {
-      service.listAthletenWertungenZuProgramm(progs map (p => p.id), wettkampf.id)
-    }) {
-      text <== when(wettkampfmode) choose "Alle Wertungen" otherwise "Alle"
+    val alleWertungenTabs: Seq[Tab] = (pathProgs map { v =>
+      val leafHeadProgs = progs.filter(p => p.programPath.contains(v))
+      val pgm = if (v.parent.nonEmpty) Some(v) else None
+      new WettkampfWertungTab(wettkampfmode, pgm, None, wettkampfInfo, service, {
+          service.listAthletenWertungenZuProgramm(leafHeadProgs map (p => p.id), wettkampf.id)
+        }) {
+      val progHeader = if (v.parent.nonEmpty) v.name else ""
+      text <== when(wettkampfmode) choose s"Alle $progHeader Wertungen" otherwise s"Alle $progHeader"
       closable = false
-    }
+    }})
 
     logger.debug("Start Program Tabs")
     val progSites: Seq[Tab] = (progs map { v =>
       new WettkampfWertungTab(wettkampfmode, Some(v), None, wettkampfInfo, service, {
         service.listAthletenWertungenZuProgramm(progs map (p => p.id), wettkampf.id)
+          .filter(w => w.wettkampfdisziplin.programm.programPath.contains(v))
         }) {
         text = v.name
         closable = false
       }
-    }) :+ alleWertungenTab
+    }) ++ alleWertungenTabs
 
     logger.debug("Start RiegenTab Tab")
     val riegenSite: Seq[Tab] = Seq(new RiegenTab(wettkampfInfo, service))
@@ -82,7 +88,7 @@ object WettkampfPage {
       }
       if(wettkampfmode.value) {
         Seq[Tab](overview) ++
-                networkSite ++ Seq[Tab](alleWertungenTab) ++ ranglisteSite
+                networkSite ++ alleWertungenTabs ++ ranglisteSite
       }
       else {
         Seq[Tab](overview) ++
