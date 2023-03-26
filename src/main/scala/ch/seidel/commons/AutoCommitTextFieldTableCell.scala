@@ -55,13 +55,23 @@ object AutoCommitTextFieldTableCell {
   def forTableColumn[S, T](converter: StringConverter[T]): (TableColumn[S, T] => TableCell[S, T]) =
     (view: TableColumn[S, T]) => jfxscc.TextFieldTableCell.forTableColumn[S, T](converter).call(view)
 
-  def isEditableColumn(p: TableColumn[_, _]) = p.isVisible() && p.isEditable() && p.columns.size == 0
+  def isEditableColumn[S, T](p: TableColumn[S, T], rowIndex: Int): Boolean = {
+    p.isVisible && p.isEditable && p.columns.isEmpty && {
+      import javafx.scene.AccessibleAttribute
+      val colIndex = p.tableView.value.getVisibleLeafIndex(p)
+      val cell = p.tableView.delegate.value.queryAccessibleAttribute(AccessibleAttribute.CELL_AT_ROW_COLUMN, rowIndex, colIndex).asInstanceOf[jfxsc.IndexedCell[T]]
+      if (cell != null)
+        cell.isEditable
+      else
+        false
+    }
+  }
 
-  def getEditableColums[T](tableView: TableView[T]) =
-    tableView.columns.toList.flatMap(p => p +: p.columns.toList).filter(isEditableColumn(_))
+  def getEditableColums[T](tableView: TableView[T], row: Int) =
+    tableView.columns.toList.flatMap(p => p +: p.columns.toList).filter(tc => isEditableColumn(tc, row))
 
   def selectFirstEditable[T](tableView: TableView[T]): () => Unit = {
-    val editableColumns = getEditableColums(tableView)
+    val editableColumns = getEditableColums(tableView, 0)
     val ret = () => {
       if (editableColumns.nonEmpty) {
         val nextEditable = editableColumns.head
@@ -74,9 +84,9 @@ object AutoCommitTextFieldTableCell {
   }
 
   def selectNextEditable[T](tableView: TableView[T]): () => Unit = {
-    val editableColumns = getEditableColums(tableView)
     tableView.selectionModel.value.selectedCells.headOption match {
       case Some(selected) =>
+        val editableColumns = getEditableColums(tableView, selected.row)
         val remaining = editableColumns.dropWhile(_ != selected.tableColumn)
         val newSelectedRowIdx = if (selected.getRow == tableView.items.value.size() - 1) 0 else selected.getRow + 1
         val ret = () => {
@@ -110,9 +120,9 @@ object AutoCommitTextFieldTableCell {
   }
 
   def selectPrevEditable[T](tableView: TableView[T]): () => Unit = {
-    val editableColumns = getEditableColums(tableView)
     tableView.selectionModel.value.selectedCells.headOption match {
       case Some(selected) =>
+        val editableColumns = getEditableColums(tableView, selected.row)
         val remaining = editableColumns.reverse.dropWhile(_ != selected.tableColumn)
         val newSelectedRowIdx = if (selected.getRow == 0) tableView.items.value.size() - 1 else selected.getRow - 1
         val ret = () => {
@@ -146,11 +156,11 @@ object AutoCommitTextFieldTableCell {
   }
 
   def selectBelowEditable[T](tableView: TableView[T]): () => Unit = {
-    val editableColumns = getEditableColums(tableView)
     tableView.selectionModel.value.selectedCells.headOption match {
       case Some(selected) =>
-        val remaining = if (selected.tableColumn.isEditable) editableColumns.dropWhile(_ != selected.tableColumn) else editableColumns
         val newSelectedRowIdx = if (selected.getRow == tableView.items.value.size() - 1) 0 else selected.getRow + 1
+        val editableColumns = getEditableColums(tableView, newSelectedRowIdx)
+        val remaining = if (selected.tableColumn.isEditable) editableColumns.dropWhile(_ != selected.tableColumn) else editableColumns
         val movedDown = selected.getRow < newSelectedRowIdx
         val ret = () => {
           if (remaining.size == 1) {
@@ -176,12 +186,11 @@ object AutoCommitTextFieldTableCell {
   }
 
   def selectAboveEditable[T](tableView: TableView[T]): () => Unit = {
-    val editableColumns = getEditableColums(tableView)
     tableView.selectionModel.value.selectedCells.headOption match {
       case Some(selected) =>
-
-        val remaining = if (selected.tableColumn.isEditable) editableColumns.reverse.dropWhile(_ != selected.tableColumn) else editableColumns
         val newSelectedRowIdx = if (selected.getRow == 0) tableView.items.value.size() - 1 else selected.getRow - 1
+        val editableColumns = getEditableColums(tableView, newSelectedRowIdx)
+        val remaining = if (selected.tableColumn.isEditable) editableColumns.reverse.dropWhile(_ != selected.tableColumn) else editableColumns
         val movedUp = selected.getRow > newSelectedRowIdx
         val ret = () => {
           if (remaining.size == 1) {
