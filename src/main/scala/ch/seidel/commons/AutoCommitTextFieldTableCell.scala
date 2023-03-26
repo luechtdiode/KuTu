@@ -308,7 +308,9 @@ object AutoCommitTextFieldTableCell {
 
 }
 
-class AutoCommitTextFieldTableCell[S, T](override val delegate: jfxscc.TextFieldTableCell[S, T] = new jfxscc.TextFieldTableCell[S, T])
+class AutoCommitTextFieldTableCell[S, T](
+                                          val cellStateUpdater: scala.Function1[scalafx.scene.control.TableCell[S, T], scala.Unit],
+                                          override val delegate: jfxscc.TextFieldTableCell[S, T] = new jfxscc.TextFieldTableCell[S, T])
   extends TableCell[S, T](delegate)
     with ConvertableCell[jfxscc.TextFieldTableCell[S, T], T, T]
     with UpdatableCell[jfxscc.TextFieldTableCell[S, T], T]
@@ -316,12 +318,23 @@ class AutoCommitTextFieldTableCell[S, T](override val delegate: jfxscc.TextField
 
   import AutoCommitTextFieldTableCell.PSEUDO_CLASS_FOCUSED
 
+  def this(converter: StringConverter[T], cellStateUpdater: scala.Function1[scalafx.scene.control.TableCell[S, T], scala.Unit]) = {
+    this(cellStateUpdater, new jfxscc.TextFieldTableCell[S, T](converter))
+  }
   def this(converter: StringConverter[T]) = {
-    this(new jfxscc.TextFieldTableCell[S, T](converter))
+    this((tc: TableCell[S, T])=>{}, new jfxscc.TextFieldTableCell[S, T](converter))
   }
 
   var textField: Option[TextField] = None
 
+  index.onChange({
+    cellStateUpdater(this)
+    if (editable.value) {
+      style = ""
+    } else {
+      style = "-fx-background-color: transparent, #FAFAAA ;"
+    }
+  })
   graphic.onChange({
     textField = graphic.value match {
       case field: TextField => Some(field)

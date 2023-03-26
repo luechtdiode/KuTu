@@ -30,6 +30,8 @@ import scalafx.scene.control.TableView.sfxTableView2jfx
 import scalafx.scene.control._
 import scalafx.scene.input.{Clipboard, KeyEvent}
 import scalafx.scene.layout._
+import scalafx.scene.paint.Color.Grey
+import scalafx.scene.shape.Circle
 import scalafx.util.converter.{DefaultStringConverter, DoubleStringConverter}
 
 import java.util.UUID
@@ -244,10 +246,13 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
     val indexerE = Iterator.from(0)
     val indexerD = Iterator.from(0)
     val indexerF = Iterator.from(0)
+    import javafx.css.PseudoClass
+    val editableCssClass = PseudoClass.getPseudoClass("editable")
     wertungen.head
       .map { wertung =>
       lazy val clDnote = new WKTableColumn[Double](indexerD.next()) {
         text = "D"
+
         cellValueFactory = { x => if (x.value.size > index) x.value(index).noteD else wertung.noteD }
         cellFactory.value = { _: Any =>
           new AutoCommitTextFieldTableCell[IndexedSeq[WertungEditor], Double](
@@ -267,9 +272,6 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
 
         styleClass += "table-cell-with-value"
         prefWidth = if (wertung.init.wettkampfdisziplin.isDNoteUsed) 60 else 0
-        editable = !wettkampf.toWettkampf.isReadonly(homedir, remoteHostOrigin) &&
-                   wertung.init.wettkampfdisziplin.isDNoteUsed &&
-                   wertung.matchesSexAssignment
         visible = wertung.init.wettkampfdisziplin.isDNoteUsed
         onEditCommit = (evt: CellEditEvent[IndexedSeq[WertungEditor], Double]) => {
           if (evt.rowValue != null) {
@@ -314,9 +316,7 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
 
         styleClass += "table-cell-with-value"
         prefWidth = 60
-        editable = !wettkampf.toWettkampf.isReadonly(homedir, remoteHostOrigin) &&
-          wertung.matchesSexAssignment
-
+        //editable = !wettkampf.toWettkampf.isReadonly(homedir, remoteHostOrigin)
         onEditCommit = (evt: CellEditEvent[IndexedSeq[WertungEditor], Double]) => {
           if (evt.rowValue != null) {
             val disciplin = evt.rowValue(index)
@@ -919,7 +919,7 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
       selectionstore
         .foreach(c =>
           columnIndex.foreach{ i =>
-            wkview.selectionModel.value.select(
+            if (i > -1 && wkview.columns.size > i) wkview.selectionModel.value.select(
               c.row,
               wkview.columns.get(i)
             )
