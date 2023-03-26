@@ -8,6 +8,10 @@ case class WertungEditor(init: WertungView) {
   val noteD = DoubleProperty(Double.NaN)
   val noteE = DoubleProperty(Double.NaN)
   val endnote = DoubleProperty(Double.NaN)
+  val matchesSexAssignment = init.athlet.geschlecht match {
+    case "M" => init.wettkampfdisziplin.masculin > 0
+    case "W" => init.wettkampfdisziplin.feminim > 0
+  }
   reset
   noteD.onChange {
     listeners.foreach(f => f(this))

@@ -267,7 +267,9 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
 
         styleClass += "table-cell-with-value"
         prefWidth = if (wertung.init.wettkampfdisziplin.isDNoteUsed) 60 else 0
-        editable = !wettkampf.toWettkampf.isReadonly(homedir, remoteHostOrigin) && wertung.init.wettkampfdisziplin.isDNoteUsed
+        editable = !wettkampf.toWettkampf.isReadonly(homedir, remoteHostOrigin) &&
+                   wertung.init.wettkampfdisziplin.isDNoteUsed &&
+                   wertung.matchesSexAssignment
         visible = wertung.init.wettkampfdisziplin.isDNoteUsed
         onEditCommit = (evt: CellEditEvent[IndexedSeq[WertungEditor], Double]) => {
           if (evt.rowValue != null) {
@@ -312,7 +314,8 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
 
         styleClass += "table-cell-with-value"
         prefWidth = 60
-        editable = !wettkampf.toWettkampf.isReadonly(homedir, remoteHostOrigin)
+        editable = !wettkampf.toWettkampf.isReadonly(homedir, remoteHostOrigin) &&
+          wertung.matchesSexAssignment
 
         onEditCommit = (evt: CellEditEvent[IndexedSeq[WertungEditor], Double]) => {
           if (evt.rowValue != null) {
