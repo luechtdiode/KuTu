@@ -1,4 +1,4 @@
-FROM eclipse-temurin:19-jre-alpine
+FROM eclipse-temurin:20-jre-alpine
 
 RUN apk add leveldb
 
