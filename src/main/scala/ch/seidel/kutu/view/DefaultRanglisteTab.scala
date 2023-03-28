@@ -236,7 +236,7 @@ abstract class DefaultRanglisteTab(wettkampfmode: BooleanProperty, override val 
     	  combf.getCheckModel.clearChecks()
     	  model.retainAll(expected)
     	  model.insertAll(model.size, expected.filter(!model.contains(_)))
-    	  model.sort{ (a, b) => a.easyprint.compareTo(b.easyprint) < 0}
+    	  model.sort{ (a, b) => a.compareTo(b) < 0}
       
     	  checked.filter(model.contains(_)).foreach(combf.getCheckModel.check(_))
     	}

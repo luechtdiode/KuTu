@@ -25,14 +25,16 @@ class RanglisteTab(wettkampfmode: BooleanProperty, wettkampf: WettkampfView, ove
     case 20 => "Kategorie"
     case _ => "Programm"
   }
-
+  val altersklassen = Seq(
+    6,7,8,9,10,11,12,13,14,15,16,17,18,24,30,35,40,45,50,55,60,65,70,75,80,85,90,95,100
+  )
   def riegenZuDurchgang: Map[String, Durchgang] = {
     val riegen = service.listRiegenZuWettkampf(wettkampf.id)
     riegen.map(riege => riege._1 -> riege._3.map(durchgangName => Durchgang(0, durchgangName)).getOrElse(Durchgang())).toMap
   }
 
   override def groupers: List[FilterBy] = {
-    List(ByNothing(), ByWettkampfProgramm(programmText), ByProgramm(programmText), ByJahrgang(), ByGeschlecht(), ByVerband(), ByVerein(), ByDurchgang(riegenZuDurchgang), ByRiege(), ByDisziplin())
+    List(ByNothing(), ByWettkampfProgramm(programmText), ByProgramm(programmText), ByJahrgang(), ByAltersklasse(altersklassen), ByGeschlecht(), ByVerband(), ByVerein(), ByDurchgang(riegenZuDurchgang), ByRiege(), ByDisziplin())
   }
 
   override def getData: Seq[WertungView] = service.selectWertungen(wettkampfId = Some(wettkampf.id))

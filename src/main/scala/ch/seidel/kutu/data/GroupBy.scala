@@ -1,10 +1,10 @@
 package ch.seidel.kutu.data
 
-import java.net.{URLDecoder, URLEncoder}
-import java.text.SimpleDateFormat
-
 import ch.seidel.kutu.domain._
 
+import java.net.URLDecoder
+import java.text.SimpleDateFormat
+import java.time.{LocalDate, Period}
 import scala.collection.mutable
 import scala.math.BigDecimal.int2bigDecimal
 
@@ -318,6 +318,22 @@ case class ByJahrgang() extends GroupBy with FilterBy {
   }
   protected override val sorter: Option[(GroupSection, GroupSection) => Boolean] = Some((gs1: GroupSection, gs2: GroupSection) => {
     gs1.groupKey.asInstanceOf[AthletJahrgang].jahrgang.compareTo(gs2.groupKey.asInstanceOf[AthletJahrgang].jahrgang) < 0
+  })
+}
+
+case class ByAltersklasse(grenzen: Seq[Int]) extends GroupBy with FilterBy {
+  override val groupname = "Altersklasse"
+  val klassen = Altersklasse(grenzen)
+
+  protected override val grouper = (v: WertungView) => {
+    val wkd: LocalDate = v.wettkampf.datum
+    val gebd: LocalDate = v.athlet.gebdat.get
+    val alter = Period.between(gebd, wkd.plusDays(1)).getYears
+    Altersklasse(klassen, alter)
+  }
+
+  protected override val sorter: Option[(GroupSection, GroupSection) => Boolean] = Some((gs1: GroupSection, gs2: GroupSection) => {
+    gs1.groupKey.asInstanceOf[Altersklasse].compareTo(gs2.groupKey.asInstanceOf[Altersklasse]) < 0
   })
 }
 
