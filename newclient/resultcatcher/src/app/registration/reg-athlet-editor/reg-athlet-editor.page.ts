@@ -51,23 +51,23 @@ export class RegAthletEditorPage implements OnInit {
         this.wkPgms = pgms;
         this.backendService.loadAthletListForClub(this.wkId, this.regId).subscribe(regs => {
           this.clubAthletList = regs;
-          if (this.athletId) {
             this.backendService.loadAthletRegistrations(this.wkId, this.regId).subscribe(regs => {
               this.clubAthletListCurrent = regs;
-              this.updateUI(regs.find(athlet => athlet.id === this.athletId));
+              if (this.athletId) {
+                this.updateUI(regs.find(athlet => athlet.id === this.athletId));
+              } else {
+                this.updateUI({
+                  id: 0,
+                  vereinregistrationId: this.regId,
+                  name: '',
+                  vorname: '',
+                  geschlecht: 'W',
+                  gebdat: undefined,
+                  programId: undefined,
+                  registrationTime: 0
+                } as AthletRegistration);
+              }
             });
-          } else {
-            this.updateUI({
-              id: 0,
-              vereinregistrationId: this.regId,
-              name: '',
-              vorname: '',
-              geschlecht: 'W',
-              gebdat: undefined,
-              programId: undefined,
-              registrationTime: 0
-            } as AthletRegistration);
-          }
         });
       });
     });
@@ -98,13 +98,23 @@ export class RegAthletEditorPage implements OnInit {
       a.name === b.name && a.vorname === b.vorname && a.gebdat === b.gebdat && a.geschlecht === b.geschlecht;
   }
   alternatives(athlet:AthletRegistration): AthletRegistration[] {
-    return this.clubAthletListCurrent?.filter(cc => this.similarRegistration(cc, athlet) && cc.id != athlet.id) || [];
+    return this.clubAthletListCurrent?.filter(cc => this.similarRegistration(cc, athlet) && (cc.id != athlet.id || cc.programId != athlet.programId)) || [];
+  }
+  getAthletPgm(athlet: AthletRegistration) {
+    return this.wkPgms.find(p => p.id === athlet.programId) || Object.assign({
+      parent: 0
+    }) as ProgrammRaw
   }
   filterPGMsForAthlet(athlet: AthletRegistration): ProgrammRaw[] {
     const alter = this.alter(athlet);
     const alternatives = this.alternatives(athlet);
     return this.wkPgms.filter(pgm => {
-      return (pgm.alterVon || 0) <= alter && (pgm.alterBis || 100) >= alter && alternatives.filter(a => a.programId === pgm.id).length === 0;
+      return (pgm.alterVon || 0) <= alter && 
+        (pgm.alterBis || 100) >= alter && 
+        alternatives.filter(a => 
+          a.programId === pgm.id || 
+          this.getAthletPgm(a).parentId === pgm.parentId
+        ).length === 0;
     });
   }
 
@@ -176,6 +186,13 @@ export class RegAthletEditorPage implements OnInit {
             {text: 'ABBRECHEN', role: 'cancel', handler: () => {}},
             {text: 'Korektur durchführen', handler: () => {
               this.backendService.saveAthletRegistration(this.wkId, this.regId, reg).subscribe(() => {
+                this.clubAthletListCurrent
+                .filter(regg => this.similarRegistration(this.registration, regg))
+                .filter(regg => regg.id !== this.registration.id)
+                .forEach(regg => {
+                  const patchedreg = Object.assign({}, reg, {id: regg.id, registrationTime: regg.registrationTime, programId: regg.programId});
+                  this.backendService.saveAthletRegistration(this.wkId, this.regId, patchedreg);
+                });
                 this.navCtrl.pop();
               });
               }

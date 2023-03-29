@@ -42,7 +42,7 @@ export interface ProgrammRaw {
   id: number;
   name: string;
   aggregate: number;
-  parent: number;
+  parentId: number;
   ord: number;
   alterVon: number;
   alterBis: number;
