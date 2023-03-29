@@ -88,7 +88,7 @@ object DBService {
 
     (!dbfile.exists() || dbfile.length() == 0, Config.importDataFrom) match {
       case (true, Some(version)) =>
-        migrateFrom(createDS, sqlScripts, version)
+        migrateFrom(createDS, version)
       case (true, _) =>
         dbfile.createNewFile()
       case _ => // nothing to do
@@ -114,12 +114,18 @@ object DBService {
         dbfile.renameTo(backupFile)
         dbfile.createNewFile()
         db = createDS(dbfile.getAbsolutePath)
+        val session = db.createSession()
+        try {
+          NewUUID.install(session.conn.unwrap(classOf[SQLiteConnection]))
+        } finally {
+          session.close()
+        }
         installDB(db, sqlScripts)
     }
     db
   }
 
-  private def migrateFrom(dsCreate: String => JdbcBackend.DatabaseDef, initialPreloadedSqlScripts: List[String], version: String): Unit = {
+  private def migrateFrom(dsCreate: String => JdbcBackend.DatabaseDef, version: String): Unit = {
     val preversion = new File(dbhomedir + "/" + buildFilename(version))
     if (preversion.exists()) {
       logger.info(s"Migrating Database from ${preversion.getAbsolutePath}")
@@ -128,24 +134,6 @@ object DBService {
         val db = dsCreate(dbfile.getAbsolutePath)
         try {
           logger.info(s"applying migration scripts to ${dbfile.getAbsolutePath}")
-          migrateFromPreviousVersion(db)
-          List("kutu-sqllite-ddl.sql"
-            , "SetJournalWAL.sql"
-            , "kutu-initialdata.sql").foreach(script => {
-            logger.info(s"registering script ${script} to ${dbfile.getAbsolutePath}")
-            migrationDone(db, script, "from migration")
-          })
-          val sqlScripts = List(
-            "AddTimeTable-sqllite.sql"
-            , "InitTimeTable.sql"
-            , "AddDurchgangTable-sqllite.sql"
-            , "InitDurchgangTable.sql"
-            , "FixEmptyRiegeTimeTableIssue-sqllite.sql"
-            , "AddAnmeldungTables-sqllite.sql"
-            , "AddAnmeldungTables-u2-sqllite.sql"
-            , "AddWKDisziplinMetafields-sqllite.sql"
-          )
-          installDB(db, sqlScripts)
         } finally {
           db.close()
         }
