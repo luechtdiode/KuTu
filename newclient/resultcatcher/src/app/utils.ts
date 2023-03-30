@@ -87,5 +87,7 @@ export const gearMapping = {
   26: "ringe.svg",
   27: "stufenbarren.svg",
   28: "schwebebalken.svg",
-  29: "minitramp.svg"
+  29: "minitramp.svg",
+  30: "minitramp.svg",
+  31: "ringe.svg"
 };
