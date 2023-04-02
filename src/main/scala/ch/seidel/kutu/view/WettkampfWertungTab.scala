@@ -260,9 +260,7 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
             (cell) => {
               if (cell.tableRow.value != null && cell.tableRow.value.item.value != null && index < cell.tableRow.value.item.value.size) {
                 val w = cell.tableRow.value.item.value(index)
-                val editable = !wettkampf.toWettkampf.isReadonly(homedir, remoteHostOrigin) &&
-                  w.init.wettkampfdisziplin.isDNoteUsed &&
-                  w.matchesSexAssignment
+                val editable = w.matchesSexAssignment
                 cell.editable = editable
                 cell.pseudoClassStateChanged(editableCssClass, cell.isEditable)
               }
@@ -272,7 +270,10 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
 
         styleClass += "table-cell-with-value"
         prefWidth = if (wertung.init.wettkampfdisziplin.isDNoteUsed) 60 else 0
+        editable = !wettkampf.toWettkampf.isReadonly(homedir, remoteHostOrigin) && wertung.init.wettkampfdisziplin.isDNoteUsed
         visible = wertung.init.wettkampfdisziplin.isDNoteUsed
+
+
         onEditCommit = (evt: CellEditEvent[IndexedSeq[WertungEditor], Double]) => {
           if (evt.rowValue != null) {
             val disciplin = evt.rowValue(index)
@@ -305,8 +306,7 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
             (cell) => {
               if (cell.tableRow.value != null && cell.tableRow.value.item.value != null && index < cell.tableRow.value.item.value.size) {
                 val w = cell.tableRow.value.item.value(index)
-                val editable = !wettkampf.toWettkampf.isReadonly(homedir, remoteHostOrigin) &&
-                  w.matchesSexAssignment
+                val editable = w.matchesSexAssignment
                 cell.editable = editable
                 cell.pseudoClassStateChanged(editableCssClass, cell.isEditable)
               }
@@ -316,7 +316,7 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
 
         styleClass += "table-cell-with-value"
         prefWidth = 60
-        //editable = !wettkampf.toWettkampf.isReadonly(homedir, remoteHostOrigin)
+        editable = !wettkampf.toWettkampf.isReadonly(homedir, remoteHostOrigin)
         onEditCommit = (evt: CellEditEvent[IndexedSeq[WertungEditor], Double]) => {
           if (evt.rowValue != null) {
             val disciplin = evt.rowValue(index)

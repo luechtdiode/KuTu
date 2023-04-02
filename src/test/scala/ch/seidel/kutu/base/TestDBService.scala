@@ -54,6 +54,7 @@ object TestDBService {
       , "AddAnmeldungTables-u2-sqllite.sql"
       , "AddNotificationMailToWettkampf-sqllite.sql"
       , "AddWKDisziplinMetafields-sqllite.sql"
+      //, "AddWKTestPgms-sqllite.sql"
     )
     installDBFunctions(tempDatabase)
 

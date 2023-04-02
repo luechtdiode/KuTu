@@ -84,6 +84,7 @@ object DBService {
       , "AddAnmeldungTables-u2-sqllite.sql"
       , "AddNotificationMailToWettkampf-sqllite.sql"
       , "AddWKDisziplinMetafields-sqllite.sql"
+      , "AddWKTestPgms-sqllite.sql"
     )
 
     (!dbfile.exists() || dbfile.length() == 0, Config.importDataFrom) match {
@@ -172,6 +173,7 @@ object DBService {
         , "AddAnmeldungTables-u2-pg.sql"
         , "AddNotificationMailToWettkampf-pg.sql"
         , "AddWKDisziplinMetafields-pg.sql"
+        , "AddWKTestPgms-pg.sql"
       )
       installDB(db, sqlScripts)
       /*Config.importDataFrom match {
@@ -330,26 +332,30 @@ object DBService {
     }.map { filename =>
       logger.info(s"running sql-script: $filename ...")
       val file = getClass.getResourceAsStream("/dbscripts/" + filename)
-      val sqlscript = Source.fromInputStream(file, "utf-8").getLines().toList
-      try {
-        migrationDone(db, filename,
-          executeDBScript(sqlscript, db))
-      }
-      catch {
-        case e: Exception =>
-          logger.error("Error on executing database setup script", e);
-          val errorfile = new File(dbhomedir + s"/$appVersion-$filename.err")
-          errorfile.getParentFile.mkdirs()
-          val fos = Files.newOutputStream(errorfile.toPath, StandardOpenOption.CREATE, StandardOpenOption.APPEND)
-          try {
-            fos.write(e.getMessage.getBytes("utf-8"))
-            fos.write("\n\nStatement:\n".getBytes("utf-8"));
-            fos.write(sqlscript.mkString("\n").getBytes("utf-8"))
-            fos.write("\n".getBytes("utf-8"))
-          } finally {
-            fos.close
-          }
-          throw new DatabaseNotInitializedException()
+      if (file == null) {
+        println(filename + " not found")
+      } else {
+        val sqlscript = Source.fromInputStream(file, "utf-8").getLines().toList
+        try {
+          migrationDone(db, filename,
+            executeDBScript(sqlscript, db))
+        }
+        catch {
+          case e: Exception =>
+            logger.error("Error on executing database setup script", e);
+            val errorfile = new File(dbhomedir + s"/$appVersion-$filename.err")
+            errorfile.getParentFile.mkdirs()
+            val fos = Files.newOutputStream(errorfile.toPath, StandardOpenOption.CREATE, StandardOpenOption.APPEND)
+            try {
+              fos.write(e.getMessage.getBytes("utf-8"))
+              fos.write("\n\nStatement:\n".getBytes("utf-8"));
+              fos.write(sqlscript.mkString("\n").getBytes("utf-8"))
+              fos.write("\n".getBytes("utf-8"))
+            } finally {
+              fos.close
+            }
+            throw new DatabaseNotInitializedException()
+        }
       }
     }
   }

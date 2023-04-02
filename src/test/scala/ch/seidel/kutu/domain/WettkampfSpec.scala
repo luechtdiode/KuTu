@@ -66,7 +66,7 @@ class WettkampfSpec extends KuTuBaseSpec {
       WettkampfdisziplinView(164,Testprogramm2 / LK3 (von=0, bis=100),Disziplin(30,Ringe),,None,StandardWettkampf(1.0),1,1,4,3,1,0,30,1)
       WettkampfdisziplinView(165,Testprogramm2 / LK3 (von=0, bis=100),Disziplin(5,Barren),,None,StandardWettkampf(1.0),1,1,5,3,1,0,30,1)
       */
-      val tp1 = insertWettkampfProgram("Testprogramm1", 2, 1,
+      val tp1 = insertWettkampfProgram("Testprogramm1", 2, 10, 1,
         List("Boden", "Sprung"),
         List("AK1(von=5 bis=10)", "AK2(von=11 bis=20)", "AK3(von=21 bis=50)")
       )
@@ -78,7 +78,7 @@ class WettkampfSpec extends KuTuBaseSpec {
       assert(tp1(2).programm.alterVon == 11)
       assert(tp1(2).programm.alterBis == 20)
 
-      val tp2 = insertWettkampfProgram("Testprogramm2", 1, 0,
+      val tp2 = insertWettkampfProgram("Testprogramm2", 1, 10, 0,
         List("Barren", "Ringe"),
         List("LK1", "LK2", "LK3")
       )
@@ -90,9 +90,10 @@ class WettkampfSpec extends KuTuBaseSpec {
       assert(tp2(1).programm.alterVon == 0)
       assert(tp2(1).programm.alterBis == 100)
     }
-    "create KuTu DTL Kür & Pflicht" in {
-      val tga = insertWettkampfProgram(s"KuTu DTL Kür & Pflicht-Test", 1, 1,
-        List("Boden(sex=m)", "Pferd(sex=m)", "Ring(sex=m)", "Sprung(sex=m)", "Barren(sex=m)", "Reck(sex=m)"),
+
+    "create KuTu TG Allgäu Kür & Pflicht" in {
+      val tgam = insertWettkampfProgram(s"KuTu TG Allgäu Kür & Pflicht-Test", 1, 30, 1,
+        List("Boden(sex=m)", "Pferd Pauschen(sex=m)", "Ring(sex=m)", "Sprung(sex=m)", "Barren(sex=m)", "Reck(sex=m)"),
         List(
           "Kür/WK I Kür"
           , "Kür/WK II LK1"
@@ -105,11 +106,11 @@ class WettkampfSpec extends KuTuBaseSpec {
           , "Pflicht/WK IX Schüler D(von=0 bis=7)"
         )
       )
-      printNewWettkampfModeInsertStatements(tga)
+      printNewWettkampfModeInsertStatements(tgam)
     }
-    "create KuTuRi DTL Kür & Pflicht-" in {
-      val tga = insertWettkampfProgram(s"KuTuRi DTL Kür & Pflicht-Test", 1, 1,
-        List("Sprung(sex=w)", "Barren(sex=w)", "Balken(sex=w)", "Boden(sex=w)"),
+    "create KuTuRi TG Allgäu Kür & Pflicht-" in {
+      val tgaw = insertWettkampfProgram(s"KuTuRi TG Allgäu Kür & Pflicht-Test", 1, 30, 1,
+        List("Sprung(sex=w)", "Stufenbarren(sex=w)", "Balken(sex=w)", "Boden(sex=w)"),
         List(
           "Kür/WK I Kür"
           , "Kür/WK II LK1"
@@ -122,20 +123,20 @@ class WettkampfSpec extends KuTuBaseSpec {
           , "Pflicht/WK IX Schüler D(von=0 bis=7)"
         )
       )
-      printNewWettkampfModeInsertStatements(tga)
+      printNewWettkampfModeInsertStatements(tgaw)
     }
     "create Turn10" in {
-      val turn10v = insertWettkampfProgram(s"Turn10-Verein-Test", 2, 1,
+      val turn10v = insertWettkampfProgram(s"Turn10-Verein-Test", 3, 20, 1,
         // Ti: Boden, Balken, Minitramp, Reck/Stufenbarren, Sprung.
         // Tu: Boden, Barren, Minitramp, Reck, Sprung, Pferd, Ringe
-        List("Boden", "Barren(sex=m)", "Balken(sex=w)", "Minitramp", "Reck(sex=m)", "Stufenbarren(sex=w)", "Sprung", "Pferdpauschen(sex=m)", "Ringe(sex=m)"),
+        List("Boden", "Barren(sex=m)", "Balken(sex=w)", "Minitramp", "Reck", "Stufenbarren(sex=w)", "Sprung", "Pferd Pauschen(sex=m)", "Ringe(sex=m)"),
         List(
             "BS"
           , "OS"
         )
       )
       printNewWettkampfModeInsertStatements(turn10v)
-      val turn10s = insertWettkampfProgram(s"Turn10-Schule-Test", 2, 1,
+      val turn10s = insertWettkampfProgram(s"Turn10-Schule-Test", 2, 20, 1,
         // Ti: Boden, Balken, Reck, Sprung.
         // Tu: Boden, Barren, Reck, Sprung.
         List("Boden", "Barren(sex=m)", "Balken(sex=w)", "Reck", "Sprung"),
@@ -147,8 +148,8 @@ class WettkampfSpec extends KuTuBaseSpec {
       printNewWettkampfModeInsertStatements(turn10s)
     }
     "create GeTu BLTV" in {
-      val tga = insertWettkampfProgram(s"GeTu BLTV-Test", 1, 0,
-        List("Reck", "Boden", "Ring", "Sprung", "Barren(sex=m start=0)"),
+      val btv = insertWettkampfProgram(s"GeTu BLTV-Test", 1, 10,0,
+        List("Reck", "Boden", "Schaukelringe", "Sprung", "Barren(sex=m start=0)"),
         List(
           "K1(bis=10)"
           , "K2(bis=12)"
@@ -161,12 +162,13 @@ class WettkampfSpec extends KuTuBaseSpec {
           , "KH(von=28)"
         )
       )
-      printNewWettkampfModeInsertStatements(tga)
+      printNewWettkampfModeInsertStatements(btv)
     }
 
   }
 
   private def printNewWettkampfModeInsertStatements(tga: List[WettkampfdisziplinView]) = {
+    println(s"-- ${tga.head.programm.head.name}")
     val inserts = tga
       .map(wdp => wdp.disziplin)
       .distinct
@@ -183,9 +185,11 @@ class WettkampfSpec extends KuTuBaseSpec {
           flatten(wdp.programm)
         }
         .distinct.sortBy(_.id)
-        .map(p => s"(${p.id}, '${p.name}', ${p.aggregate}, ${p.parent.map(_.id.toString).getOrElse("null")}, ${p.ord}, ${p.alterVon}, ${p.alterBis}, '${p.uuid}', ${p.riegenmode})").mkString("", "\n,", ";").split("\n").toList) :::
+        .map(p => s"(${p.id}, '${p.name}', ${p.aggregate}, ${p.parent.map(_.id.toString).getOrElse("null")}, ${p.ord}, ${p.alterVon}, ${p.alterBis}, '${p.uuid}', ${p.riegenmode})")
+        .mkString("", "\n,", " on conflict(id) do update set name=excluded.name, aggregate=excluded.aggregate, parent_id=excluded.parent_id, ord=excluded.ord, alter_von=excluded.alter_von, alter_bis=excluded.alter_bis, riegenmode=excluded.riegenmode;").split("\n").toList) :::
       ("insert into wettkampfdisziplin (id, programm_id, disziplin_id, kurzbeschreibung, detailbeschreibung, notenfaktor, masculin, feminim, ord, scale, dnote, min, max, startgeraet) values " +: tga
-        .map(wdp => s"(${wdp.id}, ${wdp.programm.id}, ${wdp.disziplin.id}, '${wdp.kurzbeschreibung}', ${wdp.detailbeschreibung.map(b => s"'$b'").getOrElse("''")}, ${wdp.notenSpez.calcEndnote(0.000d, 1.000d, wdp)}, ${wdp.masculin}, ${wdp.feminim}, ${wdp.ord}, ${wdp.scale}, ${wdp.dnote}, ${wdp.min}, ${wdp.max}, ${wdp.startgeraet})").mkString("", "\n,", ";").split("\n").toList)
+        .map(wdp => s"(${wdp.id}, ${wdp.programm.id}, ${wdp.disziplin.id}, '${wdp.kurzbeschreibung}', ${wdp.detailbeschreibung.map(b => s"'$b'").getOrElse("''")}, ${wdp.notenSpez.calcEndnote(0.000d, 1.000d, wdp)}, ${wdp.masculin}, ${wdp.feminim}, ${wdp.ord}, ${wdp.scale}, ${wdp.dnote}, ${wdp.min}, ${wdp.max}, ${wdp.startgeraet})")
+        .mkString("", "\n,", " on conflict(id) do update set masculin=excluded.masculin, feminim=excluded.feminim, ord=excluded.ord, dnote=excluded.dnote, min=excluded.min, max=excluded.max, startgeraet=excluded.startgeraet;").split("\n").toList)
 
     println(inserts.mkString("\n"))
   }

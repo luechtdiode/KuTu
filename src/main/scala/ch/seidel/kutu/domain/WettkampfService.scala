@@ -782,7 +782,7 @@ trait WettkampfService extends DBService
     }
   }
 
-  def insertWettkampfProgram(rootprogram: String, riegenmode: Int, dnoteUsed: Int, disziplinlist: List[String], programlist: List[String]): List[WettkampfdisziplinView] = {
+  def insertWettkampfProgram(rootprogram: String, riegenmode: Int, maxScore: Int, dnoteUsed: Int, disziplinlist: List[String], programlist: List[String]): List[WettkampfdisziplinView] = {
     val programme = Await.result(database.run{(sql"""
                    select * from programm
            """.as[ProgrammRaw]).withPinnedSession}, Duration.Inf)
@@ -828,18 +828,18 @@ trait WettkampfService extends DBService
       sqlu"""    INSERT INTO disziplin
                     (name)
                     VALUES
-                      ($w)
+                      ($name)
           """ >>
       sql"""
                SELECT * from disziplin where name=$name
           """.as[Disziplin]
     }
-    val insertedDiszList = Await.result(database.run{
+    val insertedDiszList = (Await.result(database.run{
       DBIO.sequence(diszInserts).transactionally
     }, Duration.Inf).flatten ++ disziplinlist.flatMap{w =>
       val name = nameMatcher.findFirstMatchIn(w).map(md => md.group(1)).mkString
       disciplines.filter(d => d.name.equalsIgnoreCase(name))
-    }
+    }).sortBy(d => disziplinlist.indexWhere(dl => dl.startsWith(d.name)))
 
     val rootPgmInsert = sqlu"""
             INSERT INTO programm
@@ -911,9 +911,9 @@ trait WettkampfService extends DBService
           case _ => 1
         }
         sqlu"""    INSERT INTO wettkampfdisziplin
-                 (id, programm_id, disziplin_id, notenfaktor, ord, masculin, feminim, dnote, startgeraet)
+                 (id, programm_id, disziplin_id, notenfaktor, ord, masculin, feminim, dnote, max, startgeraet)
                  VALUES
-                 ($id, ${p.id}, ${d.id}, 1.000, $i, $m, $f, $dnoteUsed, $start)
+                 ($id, ${p.id}, ${d.id}, 1.000, $i, $m, $f, $dnoteUsed, $maxScore, $start)
           """ >>
           sql"""
                SELECT * from wettkampfdisziplin where id=$id
