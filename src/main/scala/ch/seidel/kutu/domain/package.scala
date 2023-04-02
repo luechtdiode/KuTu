@@ -411,6 +411,13 @@ package object domain {
 
   object Altersklasse {
 
+    val altersklassenTurn10 = Seq(
+      6,7,8,9,10,11,12,13,14,15,16,17,18,24,30,35,40,45,50,55,60,65,70,75,80,85,90,95,100
+    )
+    val altersklassenDTB = Seq(
+      6,18,22,25
+    )
+
     def apply(altersgrenzen: Seq[Int]): Seq[Altersklasse] =
       altersgrenzen.foldLeft(Seq[Altersklasse]()) { (acc, ag) =>
         acc :+ Altersklasse(acc.lastOption.map(_.alterBis + 1).getOrElse(0), ag - 1)

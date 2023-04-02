@@ -12,7 +12,7 @@ import ch.seidel.kutu.Config
 import ch.seidel.kutu.KuTuServer.handleCID
 import ch.seidel.kutu.akka.{CompetitionCoordinatorClientActor, MessageAck, ResponseMessage, StartedDurchgaenge}
 import ch.seidel.kutu.data._
-import ch.seidel.kutu.domain.{Durchgang, Kandidat, KutuService, NullObject, PublishedScoreView, WertungView, encodeFileName, encodeURIParam}
+import ch.seidel.kutu.domain.{Altersklasse, Durchgang, Kandidat, KutuService, NullObject, PublishedScoreView, WertungView, encodeFileName, encodeURIParam}
 import ch.seidel.kutu.renderer.{PrintUtil, ScoreToHtmlRenderer, ScoreToJsonRenderer}
 import ch.seidel.kutu.renderer.PrintUtil._
 
@@ -32,7 +32,8 @@ ScoreRoutes extends SprayJsonSupport with JsonSupport with AuthSupport with Rout
 
   val allGroupers = List(
       ByWettkampfProgramm(), ByProgramm(), ByWettkampf(),
-      ByJahrgang(), ByGeschlecht(), ByVerband(), ByVerein(), ByAthlet(),
+      ByJahrgang(), ByJahrgangsAltersklasse("Turn10 Altersklassen", Altersklasse.altersklassenTurn10), ByAltersklasse("DTB Altersklassen", Altersklasse.altersklassenDTB),
+      ByGeschlecht(), ByVerband(), ByVerein(), ByAthlet(),
       ByRiege(), ByDisziplin(), ByJahr()
   )
                   
@@ -155,7 +156,8 @@ ScoreRoutes extends SprayJsonSupport with JsonSupport with AuthSupport with Rout
             val byDurchgangMat = ByDurchgang(riegenZuDurchgang)
             val groupers: List[FilterBy] = {
               List(ByWettkampfProgramm(programmText), ByProgramm(programmText),
-                  ByJahrgang(), ByGeschlecht(), ByVerband(), ByVerein(), byDurchgangMat,
+                  ByJahrgang(), ByJahrgangsAltersklasse("Turn10 Altersklassen", Altersklasse.altersklassenTurn10), ByAltersklasse("DTB Altersklassen", Altersklasse.altersklassenDTB),
+                  ByGeschlecht(), ByVerband(), ByVerein(), byDurchgangMat,
                   ByRiege(), ByDisziplin(), ByJahr())
             }
             val logoHtml = if (logofile.exists()) s"""<img class=logo src="${logofile.imageSrcForWebEngine}" title="Logo"/>""" else ""

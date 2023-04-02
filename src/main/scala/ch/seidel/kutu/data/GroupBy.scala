@@ -321,14 +321,30 @@ case class ByJahrgang() extends GroupBy with FilterBy {
   })
 }
 
-case class ByAltersklasse(grenzen: Seq[Int]) extends GroupBy with FilterBy {
-  override val groupname = "Altersklasse"
+case class ByAltersklasse(bezeichnung: String = "GebDat Altersklasse", grenzen: Seq[Int]) extends GroupBy with FilterBy {
+  override val groupname = bezeichnung
   val klassen = Altersklasse(grenzen)
 
   protected override val grouper = (v: WertungView) => {
     val wkd: LocalDate = v.wettkampf.datum
     val gebd: LocalDate = v.athlet.gebdat.get
     val alter = Period.between(gebd, wkd.plusDays(1)).getYears
+    Altersklasse(klassen, alter)
+  }
+
+  protected override val sorter: Option[(GroupSection, GroupSection) => Boolean] = Some((gs1: GroupSection, gs2: GroupSection) => {
+    gs1.groupKey.asInstanceOf[Altersklasse].compareTo(gs2.groupKey.asInstanceOf[Altersklasse]) < 0
+  })
+}
+
+case class ByJahrgangsAltersklasse(bezeichnung: String = "JG Altersklasse", grenzen: Seq[Int]) extends GroupBy with FilterBy {
+  override val groupname = bezeichnung
+  val klassen = Altersklasse(grenzen)
+
+  protected override val grouper = (v: WertungView) => {
+    val wkd: LocalDate = v.wettkampf.datum
+    val gebd: LocalDate = v.athlet.gebdat.get
+    val alter = wkd.getYear - gebd.getYear
     Altersklasse(klassen, alter)
   }
 
