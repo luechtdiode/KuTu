@@ -6,6 +6,7 @@ import javafx.{css => jfxcss}
 import scalafx.Includes._
 import scalafx.application.Platform
 import scalafx.beans.property.BooleanProperty
+import scalafx.beans.property.BooleanProperty.sfxBooleanProperty2jfx
 import scalafx.beans.value.ObservableValue
 import scalafx.collections.ObservableSet.{Change, Remove}
 import scalafx.collections.{ObservableBuffer, ObservableSet}
@@ -335,25 +336,35 @@ class AutoCommitTextFieldTableCell[S, T](
   }
 
   var textField: Option[TextField] = None
+  val readonlyCellClass = "readonly-cell"
 
-  index.onChange({
-    cellStateUpdater(this)
+  editable.onChange( adjustEditablStateInStyles() )
+  index.onChange( cellStateUpdater(this) )
+  selected.onChange(cellStateUpdater(this))
+  private def adjustEditablStateInStyles(): Unit = {
     if (editable.value) {
-      style = ""
+      styleClass.delegate.remove(readonlyCellClass)
     } else {
-      style = "-fx-background-color: transparent, #FAFAAA ;"
+      styleClass.delegate.add(readonlyCellClass)
     }
-  })
+  }
+
   graphic.onChange({
     textField = graphic.value match {
-      case field: TextField => Some(field)
+      case field: TextField =>
+        Some(field)
       case _ => None
     }
     (textField, AutoCommitTextFieldTableCell.lastKey) match {
       case (Some(tf), Some(text)) => tf.setText(text)
         Platform.runLater(() => {
-          tf.deselect()
-          tf.end()
+          if (editable.value) {
+            tf.editable = true
+            tf.deselect()
+            tf.end()
+          } else {
+            tf.editable = false
+          }
         })
       case _ =>
     }
@@ -361,7 +372,7 @@ class AutoCommitTextFieldTableCell[S, T](
   editing.onChange(handleEditingState)
 
   def handleEditingState: Unit = {
-    if (editing.value) {
+    if (editing.value && editable.value) {
       connect
     }
   }

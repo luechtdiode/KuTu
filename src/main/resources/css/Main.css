@@ -542,6 +542,14 @@
 	-fx-text-fill: #0072aa;
 }
 
+.readonly-cell:selected {
+    //-fx-background-color: #F5AD11;
+	-fx-background-image: url("../images/OrangeWarning.png");
+	-fx-background-repeat: no-repeat;
+	-fx-background-position: left top;
+    -fx-text-fill: white;
+}
+
 /* Category Page Styles */
 .category-page {
     -fx-background: #333333;
