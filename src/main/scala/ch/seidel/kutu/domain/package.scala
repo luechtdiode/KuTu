@@ -200,6 +200,7 @@ package object domain {
     val KIND_EMPTY_RIEGE = 1;
     val RIEGENMODE_BY_Program = 1;
     val RIEGENMODE_BY_JG = 2;
+    val RIEGENMODE_BY_JG_VEREIN = 3;
   }
 
   case class RiegeRaw(wettkampfId: Long, r: String, durchgang: Option[String], start: Option[Long], kind: Int) extends DataObject {

@@ -218,7 +218,7 @@ export class RegAthletlistPage implements OnInit {
 
   needsPGMChoice(): boolean {
     const pgm = [...this.wkPgms][0];
-    return !(pgm.aggregate == 1 && pgm.riegenmode == 2);
+    return !(pgm.aggregate == 1 && pgm.riegenmode > 1);
   }
   similarRegistration(a: AthletRegistration, b: AthletRegistration): boolean {
     return a.athletId === b.athletId ||

@@ -31,8 +31,6 @@ case class DurchgangBuilder(service: KutuService) extends Mapper with RiegenSpli
       val wkdisziplinlist = service.listWettkampfDisziplines(wettkampfId)
 
       val dzl = disziplinlist.filter(d => onDisziplinList.isEmpty || onDisziplinList.get.contains(d))
-      val wkGrouper = KuTuGeTuGrouper.wkGrouper
-      val wkFilteredGrouper = wkGrouper.take(if(riegencnt == 0) wkGrouper.size-1 else wkGrouper.size)
       if(progAthlWertungen.keys.size > 1) {
         val toDebug = (progAthlWertungen.keys.size, progAthlWertungen.keys.map(k => (progAthlWertungen(k).size, progAthlWertungen(k).map(w => w._2.size).sum))).toString
         logger.debug(toDebug)
@@ -52,34 +50,29 @@ case class DurchgangBuilder(service: KutuService) extends Mapper with RiegenSpli
           case None => if (dzlffm == dzlfff) GemischteRiegen else GetrennteDurchgaenge
           case Some(option) => option
         }
-        wertungen.head._2.head.wettkampfdisziplin.programm.riegenmode match {
+        val (shortGrouper, fullGrouper, jgGroup) = wertungen.head._2.head.wettkampfdisziplin.programm.riegenmode match {
           case RiegeRaw.RIEGENMODE_BY_JG =>
-            val atGrouper = ATTGrouper.atGrouper
-            val atgr = atGrouper.take(atGrouper.size-1)
-            splitSex match {
-              case GemischteRiegen =>
-                groupWertungen(programm, wertungen, atgr, atGrouper, dzlff, maxRiegenSize, GemischteRiegen, true)
-              case GemischterDurchgang =>
-                groupWertungen(programm, wertungen, atgr, atGrouper, dzlff, maxRiegenSize, GemischterDurchgang, true)
-              case GetrennteDurchgaenge =>
-                val m = wertungen.filter(w => w._1.geschlecht.equalsIgnoreCase("M"))
-                val w = wertungen.filter(w => w._1.geschlecht.equalsIgnoreCase("W"))
-                groupWertungen(programm + "-Tu", m, atgr, atGrouper, dzlffm, maxRiegenSize, GetrennteDurchgaenge, true) ++
-                  groupWertungen(programm + "-Ti", w, atgr, atGrouper, dzlfff, maxRiegenSize, GetrennteDurchgaenge, true)
-            }
+            val fullGrouper = ATTGrouper.atGrouper
+            val shortGrouper = fullGrouper.take(fullGrouper.size - 1)
+            (shortGrouper, fullGrouper, true)
+          case RiegeRaw.RIEGENMODE_BY_JG_VEREIN =>
+            val fullGrouper = JGClubGrouper.jgclubGrouper
+            (fullGrouper, fullGrouper, true)
           case _ =>
-            // Startgeräte selektieren
-            splitSex match {
-              case GemischteRiegen =>
-                groupWertungen(programm, wertungen, wkFilteredGrouper, wkGrouper, dzlff, maxRiegenSize, GemischteRiegen, false)
-              case GemischterDurchgang =>
-                groupWertungen(programm, wertungen, wkFilteredGrouper, wkGrouper, dzlff, maxRiegenSize, GemischterDurchgang, false)
-              case GetrennteDurchgaenge =>
-                val m = wertungen.filter(w => w._1.geschlecht.equalsIgnoreCase("M"))
-                val w = wertungen.filter(w => w._1.geschlecht.equalsIgnoreCase("W"))
-                groupWertungen(programm + "-Tu", m, wkFilteredGrouper, wkGrouper, dzlffm, maxRiegenSize, GetrennteDurchgaenge, false) ++
-                  groupWertungen(programm + "-Ti", w, wkFilteredGrouper, wkGrouper, dzlfff, maxRiegenSize, GetrennteDurchgaenge, false)
-            }
+            val fullGrouper = KuTuGeTuGrouper.wkGrouper
+            val shortGrouper = fullGrouper.take(if (riegencnt == 0) fullGrouper.size - 1 else fullGrouper.size)
+            (shortGrouper, fullGrouper, false)
+        }
+        splitSex match {
+          case GemischteRiegen =>
+            groupWertungen(programm, wertungen, shortGrouper, fullGrouper, dzlff, maxRiegenSize, GemischteRiegen, jgGroup)
+          case GemischterDurchgang =>
+            groupWertungen(programm, wertungen, shortGrouper, fullGrouper, dzlff, maxRiegenSize, GemischterDurchgang, jgGroup)
+          case GetrennteDurchgaenge =>
+            val m = wertungen.filter(w => w._1.geschlecht.equalsIgnoreCase("M"))
+            val w = wertungen.filter(w => w._1.geschlecht.equalsIgnoreCase("W"))
+            groupWertungen(programm + "-Tu", m, shortGrouper, fullGrouper, dzlffm, maxRiegenSize, GetrennteDurchgaenge, jgGroup) ++
+              groupWertungen(programm + "-Ti", w, shortGrouper, fullGrouper, dzlfff, maxRiegenSize, GetrennteDurchgaenge, jgGroup)
         }
       }
 

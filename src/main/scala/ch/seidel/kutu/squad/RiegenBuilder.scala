@@ -32,6 +32,8 @@ trait RiegenBuilder {
     val riegencount = rotationstation.sum
     if (wertungen.head.wettkampfdisziplin.programm.riegenmode == RiegeRaw.RIEGENMODE_BY_JG) {
       ATTGrouper.suggestRiegen(riegencount, wertungen)
+    } else if (wertungen.head.wettkampfdisziplin.programm.riegenmode == RiegeRaw.RIEGENMODE_BY_JG_VEREIN) {
+      JGClubGrouper.suggestRiegen(riegencount, wertungen)
     } else {
       KuTuGeTuGrouper.suggestRiegen(riegencount, wertungen)
     }
@@ -43,6 +45,7 @@ object RiegenBuilder {
   def generateRiegenName(w: WertungView) = {
     w.wettkampfdisziplin.programm.riegenmode match {
       case RiegeRaw.RIEGENMODE_BY_JG => ATTGrouper.generateRiegenName(w)
+      case RiegeRaw.RIEGENMODE_BY_JG_VEREIN => JGClubGrouper.generateRiegenName(w)
       case _ => KuTuGeTuGrouper.generateRiegenName(w)
     }
   }

@@ -84,7 +84,7 @@ export class RegAthletEditorPage implements OnInit {
 
   needsPGMChoice(): boolean {
     const pgm = [...this.wkPgms][0];
-    return !(pgm.aggregate == 1 && pgm.riegenmode == 2);
+    return !(pgm.aggregate == 1 && pgm.riegenmode > 1);
   }
 
   alter(athlet: AthletRegistration): number {
