@@ -71,8 +71,16 @@ case class DurchgangBuilder(service: KutuService) extends Mapper with RiegenSpli
           case GetrennteDurchgaenge =>
             val m = wertungen.filter(w => w._1.geschlecht.equalsIgnoreCase("M"))
             val w = wertungen.filter(w => w._1.geschlecht.equalsIgnoreCase("W"))
-            groupWertungen(programm + "-Tu", m, shortGrouper, fullGrouper, dzlffm, maxRiegenSize, GetrennteDurchgaenge, jgGroup) ++
-              groupWertungen(programm + "-Ti", w, shortGrouper, fullGrouper, dzlfff, maxRiegenSize, GetrennteDurchgaenge, jgGroup)
+            (m.nonEmpty,w.nonEmpty) match {
+              case (true, true) =>
+                groupWertungen(programm + "-Tu", m, shortGrouper, fullGrouper, dzlffm, maxRiegenSize, GetrennteDurchgaenge, jgGroup) ++
+                  groupWertungen(programm + "-Ti", w, shortGrouper, fullGrouper, dzlfff, maxRiegenSize, GetrennteDurchgaenge, jgGroup)
+              case (false, true) =>
+                groupWertungen(programm, w, shortGrouper, fullGrouper, dzlfff, maxRiegenSize, GetrennteDurchgaenge, jgGroup)
+              case (true,false) =>
+                groupWertungen(programm, m, shortGrouper, fullGrouper, dzlffm, maxRiegenSize, GetrennteDurchgaenge, jgGroup)
+              case _ => Seq.empty
+            }
         }
       }
 
