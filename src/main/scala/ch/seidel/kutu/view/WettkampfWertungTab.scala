@@ -279,7 +279,7 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
 
 
         onEditCommit = (evt: CellEditEvent[IndexedSeq[WertungEditor], Double]) => {
-          if (evt.rowValue != null) {
+          if (evt.rowValue != null && evt.rowValue.size > index) {
             val disciplin = evt.rowValue(index)
             if (evt.newValue.toString == "NaN") {
               disciplin.noteD.value = evt.newValue
@@ -322,7 +322,7 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
         prefWidth = 60
         editable = !wettkampf.toWettkampf.isReadonly(homedir, remoteHostOrigin)
         onEditCommit = (evt: CellEditEvent[IndexedSeq[WertungEditor], Double]) => {
-          if (evt.rowValue != null) {
+          if (evt.rowValue != null && evt.rowValue.size > index) {
             val disciplin = evt.rowValue(index)
             if (evt.newValue.toString == "NaN") {
               disciplin.noteD.value = evt.newValue
