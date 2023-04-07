@@ -600,7 +600,10 @@ package object domain {
       case Some(p) => p.toPath + " / " + name
     }
 
-    override def compare(o: DataObject): Int = toPath.compareTo(o.asInstanceOf[ProgrammView].toPath)
+    override def compare(o: DataObject): Int = o match {
+      case p: ProgrammView => toPath.compareTo(p.toPath)
+      case _ => easyprint.compareTo(o.easyprint)
+    }
 
     override def toString = s"$toPath"
   }
