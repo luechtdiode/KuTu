@@ -413,14 +413,14 @@ object GroupBy {
     ByRiege(), ByDisziplin(), ByJahr()
   )
 
-  def apply(query: String, data: Seq[WertungView]): GroupBy = {
+  def apply(query: String, data: Seq[WertungView], groupers: List[FilterBy] = allGroupers): GroupBy = {
     val arguments = query.split("&")
     val groupby = arguments.filter(x => x.length > 8 && x.startsWith("groupby=")).map(x => URLDecoder.decode(x.split("=")(1), "UTF-8")).headOption
     val filter = arguments.filter(x => x.length > 7 && x.startsWith("filter=")).map(x => URLDecoder.decode(x.split("=")(1), "UTF-8"))
-    apply(groupby, filter, data, query.contains("&alphanumeric"))
+    apply(groupby, filter, data, query.contains("&alphanumeric"), groupers)
   }
 
-  def apply(groupby: Option[String], filter: Iterable[String], data: Seq[WertungView], alphanumeric: Boolean, groupers: List[FilterBy] = allGroupers): GroupBy = {
+  def apply(groupby: Option[String], filter: Iterable[String], data: Seq[WertungView], alphanumeric: Boolean, groupers: List[FilterBy]): GroupBy = {
     val filterList = filter.map { flt =>
       val keyvalues = flt.split(":")
       val key = keyvalues(0)

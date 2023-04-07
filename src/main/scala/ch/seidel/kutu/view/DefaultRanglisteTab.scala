@@ -336,7 +336,7 @@ abstract class DefaultRanglisteTab(wettkampfmode: BooleanProperty, override val 
 
     def loadFilter(selectedFile: File): Unit = {
       val ios = new ObjectInputStream(new FileInputStream(selectedFile))
-      val grouper = GroupBy(ios.readObject().toString, getData)
+      val grouper = GroupBy(ios.readObject().toString, getData, groupers)
       restoreGrouper(grouper)
     }
 
