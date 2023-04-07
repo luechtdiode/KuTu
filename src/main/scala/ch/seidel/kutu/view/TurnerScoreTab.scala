@@ -10,7 +10,13 @@ class TurnerScoreTab(wettkampfmode: BooleanProperty, val verein: Option[Verein],
   override val title = verein match {case Some(v) => v.easyprint case None => "Vereinsübergreifend"}
 
   override def groupers: List[FilterBy] =
-    List(ByNothing(), ByJahr(), ByWettkampf(), ByWettkampfArt(), ByWettkampfProgramm(), ByProgramm(), ByJahrgang(), ByGeschlecht(), ByVerein(), ByVerband(), ByDisziplin(), ByAthlet())
+    List(ByNothing(), ByJahr(), ByWettkampf(), ByWettkampfArt(), ByWettkampfProgramm(), ByProgramm(),
+      ByJahrgang(),
+      ByAltersklasse("DTB Altersklasse", Altersklasse.altersklassenDTB),
+      ByAltersklasse("DTB Kür Altersklasse", Altersklasse.altersklassenDTBKuer),
+      ByAltersklasse("DTB Pflicht Altersklasse", Altersklasse.altersklassenDTBPflicht),
+      ByJahrgangsAltersklasse("Turn10® Altersklasse", Altersklasse.altersklassenTurn10),
+      ByGeschlecht(), ByVerein(), ByVerband(), ByDisziplin(), ByAthlet())
 
   override def getData: Seq[WertungView] = verein match {
     case Some(v) => service.selectWertungen(vereinId = Some(v.id))
