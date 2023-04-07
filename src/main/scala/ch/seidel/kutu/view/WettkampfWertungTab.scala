@@ -30,8 +30,6 @@ import scalafx.scene.control.TableView.sfxTableView2jfx
 import scalafx.scene.control._
 import scalafx.scene.input.{Clipboard, KeyEvent}
 import scalafx.scene.layout._
-import scalafx.scene.paint.Color.Grey
-import scalafx.scene.shape.Circle
 import scalafx.util.converter.{DefaultStringConverter, DoubleStringConverter}
 
 import java.util.UUID
@@ -70,6 +68,7 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
       case _ =>
     }
   }
+  var scheduledGears: List[Disziplin] = List.empty
 
   var subscription: Option[Subscription] = None
   var websocketsubscription: Option[Subscription] = None
@@ -98,6 +97,7 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
   def reloadWertungen(extrafilter: (WertungView) => Boolean = defaultFilter) = {
     athleten.
       filter(wv => wv.wettkampf.id == wettkampf.id).
+      filter(w => scheduledGears.isEmpty || scheduledGears.contains(w.wettkampfdisziplin.disziplin )).
       filter(extrafilter).
       groupBy(wv => wv.athlet).
       map(wvg => wvg._2.map(WertungEditor)).toIndexedSeq
@@ -117,6 +117,10 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
   def rebuildDurchgangFilterList = {
     val kandidaten = service.getAllKandidatenWertungen(UUID.fromString(wettkampf.uuid.get))
     val alleRiegen = RiegenBuilder.mapToGeraeteRiegen(kandidaten)
+    var newGearList = alleRiegen.flatMap(r => r.disziplin).distinct
+    newGearList = if(newGearList.isEmpty) disziplinlist else newGearList
+    scheduledGears = newGearList
+
     val ret = alleRiegen
       .filter(r => riege.isEmpty || riege.get.sequenceId == r.sequenceId)
       .filter(r => wertungen.exists { p => r.kandidaten.exists { k => p.head.init.athlet.id == k.id } })
@@ -647,7 +651,6 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
   def updateFilteredList(newVal: String, newDurchgang: GeraeteRiege): Unit = {
     val wkListHadFocus = wkview.focused.value
     val selected = wkview.selectionModel.value.selectedCells
-    val sortOrder = wkview.sortOrder.toList
     val searchQuery = newVal.toUpperCase().split(" ")
     lastFilter = newVal
     durchgangFilter = newDurchgang
@@ -658,8 +661,9 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
       col.sortable.value = true
       if (col.delegate.isInstanceOf[WKTCAccess]) {
         val tca = col.delegate.asInstanceOf[WKTCAccess]
-        if (tca.getIndex > -1 && !col.isVisible()) {
-          col.setVisible(true)
+        if (tca.getIndex > -1) {
+          val v = scheduledGears.contains(disziplinlist(tca.getIndex))
+          col.setVisible(v)
         }
       }
       col.columns.foreach(restoreVisibility(_))
@@ -670,7 +674,8 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
       if (col.delegate.isInstanceOf[WKTCAccess]) {
         val tca = col.delegate.asInstanceOf[WKTCAccess]
         if (tca.getIndex > -1) {
-          col.setVisible(durchgangFilter.disziplin.isDefined && tca.getIndex == disziplinlist.indexOf(durchgangFilter.disziplin.get))
+          val v = scheduledGears.contains(disziplinlist(tca.getIndex)) && durchgangFilter.disziplin.isDefined && tca.getIndex == disziplinlist.indexOf(durchgangFilter.disziplin.get)
+          col.setVisible(v)
         }
       }
       col.columns.foreach(hideIfNotUsed(_))

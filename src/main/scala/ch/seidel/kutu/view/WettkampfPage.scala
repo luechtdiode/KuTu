@@ -4,10 +4,10 @@ import ch.seidel.commons.{DisplayablePage, LazyTabPane}
 import ch.seidel.kutu.KuTuApp
 import ch.seidel.kutu.domain._
 import org.slf4j.LoggerFactory
-import scalafx.beans.property.BooleanProperty
-import scalafx.scene.control.Tab
 import scalafx.beans.binding.Bindings._
+import scalafx.beans.property.BooleanProperty
 import scalafx.event.subscriptions.Subscription
+import scalafx.scene.control.Tab
 
 object WettkampfPage {
   val logger = LoggerFactory.getLogger(this.getClass)
