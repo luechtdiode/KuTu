@@ -36,7 +36,7 @@ class RanglisteTab(wettkampfmode: BooleanProperty, wettkampf: WettkampfView, ove
 
   override def groupers: List[FilterBy] = {
     val standardGroupers = List(ByNothing(), ByWettkampfProgramm(programmText), ByProgramm(programmText),
-      ByJahrgang(), ByJahrgangsAltersklasse("Turn10 Altersklassen", Altersklasse.altersklassenTurn10), ByAltersklasse("DTB Altersklassen", Altersklasse.altersklassenDTB),
+      ByJahrgang(), ByJahrgangsAltersklasse("Turn10® Altersklassen", Altersklasse.altersklassenTurn10), ByAltersklasse("DTB Altersklassen", Altersklasse.altersklassenDTB),
       ByGeschlecht(),
       ByVerband(), ByVerein(),
       ByDurchgang(riegenZuDurchgang), ByRiege(), ByDisziplin())

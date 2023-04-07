@@ -130,7 +130,7 @@ insert into wettkampfdisziplin (id, programm_id, disziplin_id, kurzbeschreibung,
 ,(241, 67, 27, '', '', 1.0, 0, 1, 33, 3, 1, 0, 30, 1)
 ,(242, 67, 28, '', '', 1.0, 0, 1, 34, 3, 1, 0, 30, 1)
 ,(243, 67, 1, '', '', 1.0, 0, 1, 35, 3, 1, 0, 30, 1) on conflict(id) do update set masculin=excluded.masculin, feminim=excluded.feminim, ord=excluded.ord, dnote=excluded.dnote, min=excluded.min, max=excluded.max, startgeraet=excluded.startgeraet;
--- Turn10-Verein
+-- Turn10®-Verein
 insert into disziplin (id, name) values (1, 'Boden') on conflict (id) do nothing;
 insert into disziplin (id, name) values (5, 'Barren') on conflict (id) do nothing;
 insert into disziplin (id, name) values (28, 'Balken') on conflict (id) do nothing;
@@ -141,7 +141,7 @@ insert into disziplin (id, name) values (4, 'Sprung') on conflict (id) do nothin
 insert into disziplin (id, name) values (2, 'Pferd Pauschen') on conflict (id) do nothing;
 insert into disziplin (id, name) values (31, 'Ringe') on conflict (id) do nothing;
 insert into programm (id, name, aggregate, parent_id, ord, alter_von, alter_bis, uuid, riegenmode) values 
-(68, 'Turn10-Verein', 0, null, 68, 0, 100, 'eac48376-aeac-4241-8db5-d910bbae82f0', 3)
+(68, 'Turn10®-Verein', 0, null, 68, 0, 100, 'eac48376-aeac-4241-8db5-d910bbae82f0', 3)
 ,(69, 'BS', 0, 68, 69, 0, 100, '197e83c9-7ca7-4bac-96e8-ac8be828f1ab', 3)
 ,(70, 'OS', 0, 68, 70, 0, 100, 'fbf335c2-89b4-44de-91bf-79f616180fe6', 3) on conflict(id) do update set name=excluded.name, aggregate=excluded.aggregate, parent_id=excluded.parent_id, ord=excluded.ord, alter_von=excluded.alter_von, alter_bis=excluded.alter_bis, riegenmode=excluded.riegenmode;
 insert into wettkampfdisziplin (id, programm_id, disziplin_id, kurzbeschreibung, detailbeschreibung, notenfaktor, masculin, feminim, ord, scale, dnote, min, max, startgeraet) values 
@@ -163,14 +163,14 @@ insert into wettkampfdisziplin (id, programm_id, disziplin_id, kurzbeschreibung,
 ,(259, 70, 4, '', '', 1.0, 1, 1, 15, 3, 1, 0, 20, 1)
 ,(260, 70, 2, '', '', 1.0, 1, 0, 16, 3, 1, 0, 20, 1)
 ,(261, 70, 31, '', '', 1.0, 1, 0, 17, 3, 1, 0, 20, 1) on conflict(id) do update set masculin=excluded.masculin, feminim=excluded.feminim, ord=excluded.ord, dnote=excluded.dnote, min=excluded.min, max=excluded.max, startgeraet=excluded.startgeraet;
--- Turn10-Schule
+-- Turn10®-Schule
 insert into disziplin (id, name) values (1, 'Boden') on conflict (id) do nothing;
 insert into disziplin (id, name) values (5, 'Barren') on conflict (id) do nothing;
 insert into disziplin (id, name) values (28, 'Balken') on conflict (id) do nothing;
 insert into disziplin (id, name) values (6, 'Reck') on conflict (id) do nothing;
 insert into disziplin (id, name) values (4, 'Sprung') on conflict (id) do nothing;
 insert into programm (id, name, aggregate, parent_id, ord, alter_von, alter_bis, uuid, riegenmode) values 
-(71, 'Turn10-Schule', 0, null, 71, 0, 100, 'f027daf4-c4a3-42e5-8338-16c5beafa479', 2)
+(71, 'Turn10®-Schule', 0, null, 71, 0, 100, 'f027daf4-c4a3-42e5-8338-16c5beafa479', 2)
 ,(72, 'BS', 0, 71, 72, 0, 100, '43c48811-d02c-43fc-ac2c-fada22603543', 2)
 ,(73, 'OS', 0, 71, 73, 0, 100, '1c444a9a-ea7e-4e4d-9f5f-90d4b00966ff', 2) on conflict(id) do update set name=excluded.name, aggregate=excluded.aggregate, parent_id=excluded.parent_id, ord=excluded.ord, alter_von=excluded.alter_von, alter_bis=excluded.alter_bis, riegenmode=excluded.riegenmode;
 insert into wettkampfdisziplin (id, programm_id, disziplin_id, kurzbeschreibung, detailbeschreibung, notenfaktor, masculin, feminim, ord, scale, dnote, min, max, startgeraet) values 

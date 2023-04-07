@@ -32,7 +32,7 @@ ScoreRoutes extends SprayJsonSupport with JsonSupport with AuthSupport with Rout
 
   val allGroupers = List(
       ByWettkampfProgramm(), ByProgramm(), ByWettkampf(),
-      ByJahrgang(), ByJahrgangsAltersklasse("Turn10 Altersklassen", Altersklasse.altersklassenTurn10), ByAltersklasse("DTB Altersklassen", Altersklasse.altersklassenDTB),
+      ByJahrgang(), ByJahrgangsAltersklasse("Turn10® Altersklassen", Altersklasse.altersklassenTurn10), ByAltersklasse("DTB Altersklassen", Altersklasse.altersklassenDTB),
       ByGeschlecht(), ByVerband(), ByVerein(), ByAthlet(),
       ByRiege(), ByDisziplin(), ByJahr()
   )
@@ -158,7 +158,7 @@ ScoreRoutes extends SprayJsonSupport with JsonSupport with AuthSupport with Rout
             val byDurchgangMat = ByDurchgang(riegenZuDurchgang)
             val groupers: List[FilterBy] = {
               val standardGroupers = List(ByWettkampfProgramm(programmText), ByProgramm(programmText),
-                ByJahrgang(), ByJahrgangsAltersklasse("Turn10 Altersklassen", Altersklasse.altersklassenTurn10), ByAltersklasse("DTB Altersklassen", Altersklasse.altersklassenDTB),
+                ByJahrgang(), ByJahrgangsAltersklasse("Turn10® Altersklassen", Altersklasse.altersklassenTurn10), ByAltersklasse("DTB Altersklassen", Altersklasse.altersklassenDTB),
                 ByGeschlecht(), ByVerband(), ByVerein(), byDurchgangMat,
                 ByRiege(), ByDisziplin(), ByJahr())
               (altersklassen.nonEmpty, jgAltersklassen.nonEmpty) match {

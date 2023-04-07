@@ -127,8 +127,8 @@ class WettkampfSpec extends KuTuBaseSpec {
       )
       printNewWettkampfModeInsertStatements(tgaw)
     }
-    "create Turn10" in {
-      val turn10v = insertWettkampfProgram(s"Turn10-Verein-Test", 3, 20, 1,
+    "create Turn10®" in {
+      val Turn10v = insertWettkampfProgram(s"Turn10®-Verein-Test", 3, 20, 1,
         // Ti: Boden, Balken, Minitramp, Reck/Stufenbarren, Sprung.
         // Tu: Boden, Barren, Minitramp, Reck, Sprung, Pferd, Ringe
         List("Boden", "Barren(sex=m)", "Balken(sex=w)", "Minitramp", "Reck", "Stufenbarren(sex=w)", "Sprung", "Pferd Pauschen(sex=m)", "Ringe(sex=m)"),
@@ -137,8 +137,8 @@ class WettkampfSpec extends KuTuBaseSpec {
           , "OS"
         )
       )
-      printNewWettkampfModeInsertStatements(turn10v)
-      val turn10s = insertWettkampfProgram(s"Turn10-Schule-Test", 2, 20, 1,
+      printNewWettkampfModeInsertStatements(Turn10v)
+      val Turn10s = insertWettkampfProgram(s"Turn10®-Schule-Test", 2, 20, 1,
         // Ti: Boden, Balken, Reck, Sprung.
         // Tu: Boden, Barren, Reck, Sprung.
         List("Boden", "Barren(sex=m)", "Balken(sex=w)", "Reck", "Sprung"),
@@ -147,7 +147,7 @@ class WettkampfSpec extends KuTuBaseSpec {
           , "OS"
         )
       )
-      printNewWettkampfModeInsertStatements(turn10s)
+      printNewWettkampfModeInsertStatements(Turn10s)
     }
     "create GeTu BLTV" in {
       val btv = insertWettkampfProgram(s"GeTu BLTV-Test", 1, 10,0,
