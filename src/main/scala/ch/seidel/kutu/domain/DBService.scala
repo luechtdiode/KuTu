@@ -85,6 +85,7 @@ object DBService {
       , "AddNotificationMailToWettkampf-sqllite.sql"
       , "AddWKDisziplinMetafields-sqllite.sql"
       , "AddWKTestPgms-sqllite.sql"
+      , "AddAltersklassenToWettkampf-sqllite.sql"
     )
 
     (!dbfile.exists() || dbfile.length() == 0, Config.importDataFrom) match {
@@ -174,6 +175,7 @@ object DBService {
         , "AddNotificationMailToWettkampf-pg.sql"
         , "AddWKDisziplinMetafields-pg.sql"
         , "AddWKTestPgms-pg.sql"
+        , "AddAltersklassenToWettkampf-pg.sql"
       )
       installDB(db, sqlScripts)
       /*Config.importDataFrom match {

@@ -221,6 +221,8 @@ trait WettkampfOverviewToHtmlRenderer {
     val silverSum = medallienbedarf.map(p => p._3 + p._7).sum
     val bronzeSum = medallienbedarf.map(p => p._4 + p._8).sum
     val auszSum = medallienbedarf.map(p => p._5 + p._9).sum
+    val altersklassen = Altersklasse(wettkampf.altersklassen).map(ak => s"<li>$ak</li>").mkString("\n")
+    val jgAltersklassen = Altersklasse(wettkampf.jahrgangsklassen).map(ak => s"<li>$ak</li>").mkString("\n")
 
     val medalrows = s"""
     <tr><td class='data'>Goldmedallie</td>${goldDetails}<td class='blockstart valuedata'>${goldSum}</td></tr>
@@ -234,6 +236,13 @@ trait WettkampfOverviewToHtmlRenderer {
         $logoHtml
         <h1>Wettkampf-Übersicht</h1><h2>${escaped(wettkampf.easyprint)}</h2></div>
       </div>
+      ${if (altersklassen.nonEmpty || jgAltersklassen.nonEmpty)
+      s"""<h2>Altersklassen</h2>
+        Alter am Wettkampf-Tag: ${wettkampf.altersklassen}<br>
+        <ul>${altersklassen}</ul>
+        Alter im Wettkampf-Jahr: ${wettkampf.jahrgangsklassen}<br>
+        <ul>${jgAltersklassen}</ul>"""
+      else ""}
       <h2>Anmeldungen</h2>
       <div class=headline>
         ${

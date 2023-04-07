@@ -12,7 +12,7 @@ import ch.seidel.kutu.Config
 import ch.seidel.kutu.KuTuServer.handleCID
 import ch.seidel.kutu.akka.{CompetitionCoordinatorClientActor, MessageAck, ResponseMessage, StartedDurchgaenge}
 import ch.seidel.kutu.data._
-import ch.seidel.kutu.domain.{Altersklasse, Durchgang, Kandidat, KutuService, NullObject, PublishedScoreView, WertungView, encodeFileName, encodeURIParam}
+import ch.seidel.kutu.domain.{Altersklasse, Durchgang, Kandidat, KutuService, NullObject, PublishedScoreView, WertungView, encodeFileName, encodeURIParam, isNumeric}
 import ch.seidel.kutu.renderer.{PrintUtil, ScoreToHtmlRenderer, ScoreToJsonRenderer}
 import ch.seidel.kutu.renderer.PrintUtil._
 
@@ -149,16 +149,24 @@ ScoreRoutes extends SprayJsonSupport with JsonSupport with AuthSupport with Rout
             val logodir = new java.io.File(Config.homedir + "/" + encodeFileName(wettkampf.easyprint))
             val logofile = PrintUtil.locateLogoFile(logodir)
             val programmText = wettkampf.programmId match {case 20 => "Kategorie" case _ => "Programm"}
+            val altersklassen = Altersklasse.parseGrenzen(wettkampf.altersklassen)
+            val jgAltersklassen = Altersklasse.parseGrenzen(wettkampf.jahrgangsklassen)
             def riegenZuDurchgang: Map[String, Durchgang] = {
               val riegen = listRiegenZuWettkampf(wettkampf.id)
               riegen.map(riege => riege._1 -> riege._3.map(durchgangName => Durchgang(0, durchgangName)).getOrElse(Durchgang())).toMap
             }
             val byDurchgangMat = ByDurchgang(riegenZuDurchgang)
             val groupers: List[FilterBy] = {
-              List(ByWettkampfProgramm(programmText), ByProgramm(programmText),
-                  ByJahrgang(), ByJahrgangsAltersklasse("Turn10 Altersklassen", Altersklasse.altersklassenTurn10), ByAltersklasse("DTB Altersklassen", Altersklasse.altersklassenDTB),
-                  ByGeschlecht(), ByVerband(), ByVerein(), byDurchgangMat,
-                  ByRiege(), ByDisziplin(), ByJahr())
+              val standardGroupers = List(ByWettkampfProgramm(programmText), ByProgramm(programmText),
+                ByJahrgang(), ByJahrgangsAltersklasse("Turn10 Altersklassen", Altersklasse.altersklassenTurn10), ByAltersklasse("DTB Altersklassen", Altersklasse.altersklassenDTB),
+                ByGeschlecht(), ByVerband(), ByVerein(), byDurchgangMat,
+                ByRiege(), ByDisziplin(), ByJahr())
+              (altersklassen.nonEmpty, jgAltersklassen.nonEmpty) match {
+                case (true,true) => standardGroupers ++ List(ByAltersklasse("Wettkampf Altersklassen", altersklassen), ByJahrgangsAltersklasse("Wettkampf JG-Altersklassen", jgAltersklassen))
+                case (false,true) => standardGroupers :+ ByJahrgangsAltersklasse("Wettkampf JG-Altersklassen", jgAltersklassen)
+                case (true,false) => standardGroupers :+ ByAltersklasse("Wettkampf Altersklassen", altersklassen)
+                case _ => standardGroupers
+              }
             }
             val logoHtml = if (logofile.exists()) s"""<img class=logo src="${logofile.imageSrcForWebEngine}" title="Logo"/>""" else ""
             pathEnd {

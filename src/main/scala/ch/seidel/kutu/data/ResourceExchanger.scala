@@ -283,6 +283,8 @@ object ResourceExchanger extends KutuService with RiegenBuilder {
         programmId = Set(fields(wettkampfHeader("programmId"))),
         titel = fields(wettkampfHeader("titel")),
         notificationEMail = wettkampfHeader.get("notificationEMail").map(fields).getOrElse(""),
+        altersklassen = wettkampfHeader.get("altersklassen").map(fields).getOrElse(""),
+        jahrgangsklassen = wettkampfHeader.get("jahrgangsklassen").map(fields).getOrElse(""),
         uuidOption = uuid
       )
 

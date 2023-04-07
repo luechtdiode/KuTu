@@ -6,7 +6,7 @@ import ch.seidel.kutu.Config._
 import ch.seidel.kutu.ConnectionStates
 import ch.seidel.kutu.KuTuApp.handleAction
 import ch.seidel.kutu.data._
-import ch.seidel.kutu.domain.{Altersklasse, Durchgang, KutuService, WertungView, WettkampfView, encodeFileName}
+import ch.seidel.kutu.domain.{Altersklasse, Durchgang, KutuService, WertungView, WettkampfView, encodeFileName, isNumeric}
 import ch.seidel.kutu.renderer.PrintUtil.FilenameDefault
 import scalafx.Includes.when
 import scalafx.beans.binding.Bindings
@@ -25,17 +25,27 @@ class RanglisteTab(wettkampfmode: BooleanProperty, wettkampf: WettkampfView, ove
     case 20 => "Kategorie"
     case _ => "Programm"
   }
+
+  val altersklassen = Altersklasse.parseGrenzen(wettkampf.altersklassen)
+  val jgAltersklassen = Altersklasse.parseGrenzen(wettkampf.jahrgangsklassen)
+
   def riegenZuDurchgang: Map[String, Durchgang] = {
     val riegen = service.listRiegenZuWettkampf(wettkampf.id)
     riegen.map(riege => riege._1 -> riege._3.map(durchgangName => Durchgang(0, durchgangName)).getOrElse(Durchgang())).toMap
   }
 
   override def groupers: List[FilterBy] = {
-    List(ByNothing(), ByWettkampfProgramm(programmText), ByProgramm(programmText),
+    val standardGroupers = List(ByNothing(), ByWettkampfProgramm(programmText), ByProgramm(programmText),
       ByJahrgang(), ByJahrgangsAltersklasse("Turn10 Altersklassen", Altersklasse.altersklassenTurn10), ByAltersklasse("DTB Altersklassen", Altersklasse.altersklassenDTB),
       ByGeschlecht(),
       ByVerband(), ByVerein(),
       ByDurchgang(riegenZuDurchgang), ByRiege(), ByDisziplin())
+    (altersklassen.nonEmpty, jgAltersklassen.nonEmpty) match {
+      case (true,true) => standardGroupers ++ List(ByAltersklasse("Wettkampf Altersklassen", altersklassen), ByJahrgangsAltersklasse("Wettkampf JG-Altersklassen", jgAltersklassen))
+      case (false,true) => standardGroupers :+ ByJahrgangsAltersklasse("Wettkampf JG-Altersklassen", jgAltersklassen)
+      case (true,false) => standardGroupers :+ ByAltersklasse("Wettkampf Altersklassen", altersklassen)
+      case _ => standardGroupers
+    }
   }
 
   override def getData: Seq[WertungView] = service.selectWertungen(wettkampfId = Some(wettkampf.id))

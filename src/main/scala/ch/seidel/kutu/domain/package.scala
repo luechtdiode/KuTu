@@ -88,6 +88,15 @@ package object domain {
     }
   }
 
+  def isNumeric(c: String): Boolean = {
+    try {
+      Integer.parseInt(c)
+      true
+    } catch {
+      case _ => false
+    }
+  }
+
   val sdf = new SimpleDateFormat("dd.MM.yyyy")
   val sdfShort = new SimpleDateFormat("dd.MM.yy")
   val sdfExported = new SimpleDateFormat("yyyy-MM-dd")
@@ -410,22 +419,58 @@ package object domain {
     override def easyprint = "Jahrgang " + jahrgang
   }
 
+  object Leistungsklasse {
+    // https://www.dtb.de/fileadmin/user_upload/dtb.de/Sportarten/Ger%C3%A4tturnen/PDFs/2022/01_DTB-Arbeitshilfe_Gtw_KuerMod_2022_V1.pdf
+    val dtb = Seq(
+      "Kür", "LK1", "LK2", "LK3", "LK4"
+    )
+  }
   object Altersklasse {
 
+    // file:///C:/Users/Roland/Downloads/Turn10-2018_Allgemeine%20Bestimmungen.pdf
     val altersklassenTurn10 = Seq(
       6,7,8,9,10,11,12,13,14,15,16,17,18,24,30,35,40,45,50,55,60,65,70,75,80,85,90,95,100
     )
+    // see https://www.dtb.de/fileadmin/user_upload/dtb.de/Passwesen/Wettkampfordnung_DTB_2021.pdf
     val altersklassenDTB = Seq(
       6,18,22,25
     )
+    // see https://www.dtb.de/fileadmin/user_upload/dtb.de/TURNEN/Standards/PDFs/Rahmentrainingskonzeption-GTm_inklAnlagen_19.11.2020.pdf
+    val altersklassenDTBPflicht = Seq(
+      7,8,9,11,13,15,17,19
+    )
+    val altersklassenDTBKuer = Seq(
+      12,13,15,17,19
+    )
 
-    def apply(altersgrenzen: Seq[Int]): Seq[Altersklasse] =
-      altersgrenzen.foldLeft(Seq[Altersklasse]()) { (acc, ag) =>
-        acc :+ Altersklasse(acc.lastOption.map(_.alterBis + 1).getOrElse(0), ag - 1)
-      } :+ Altersklasse(altersgrenzen.last, 0)
+    def apply(altersgrenzen: Seq[Int]): Seq[Altersklasse] = {
+      if (altersgrenzen.isEmpty) {
+        Seq.empty
+      } else {
+        altersgrenzen.foldLeft(Seq[Altersklasse]()) { (acc, ag) =>
+          acc :+ Altersklasse(acc.lastOption.map(_.alterBis + 1).getOrElse(0), ag - 1)
+        } :+ Altersklasse(altersgrenzen.last, 0)
+      }
+    }
 
     def apply(klassen: Seq[Altersklasse], alter: Int): Altersklasse = {
       klassen.find(_.matchesAlter(alter)).getOrElse(Altersklasse(alter, alter))
+    }
+
+    def parseGrenzen(klassenDef: String): Seq[Int] = {
+      val rangeStepPattern = "([0-9]+)-([0-9]+)\\*([0-9]+)".r
+      val rangepattern = "([0-9]+)-([0-9]+)".r
+      val intpattern = "([0-9]+)".r
+      klassenDef.split(",")
+        .flatMap{
+          case rangeStepPattern(von, bis, stepsize) => Range.inclusive(von, bis, stepsize)
+          case rangepattern(von, bis) => (str2Int(von) to str2Int(bis))
+          case intpattern(von) => Seq(str2Int(von))
+          case _ => Seq.empty
+        }.toList.sorted
+    }
+    def apply(klassenDef: String): Seq[Altersklasse] = {
+      apply(parseGrenzen(klassenDef))
     }
   }
 
@@ -485,17 +530,18 @@ package object domain {
    * Krits        +-------------------------------------------+---------------------------------------------------------
    * aggregate ->|0                                          |1
    * +-------------------------------------------+---------------------------------------------------------
-   * riegenmode->|1                   |2                     |1                     |2
+   * riegenmode->|1                   |2  / 3(+verein)       |1                     |2  / 3(+verein)
    * Acts         +===========================================+=========================================================
-   * Einteilung->| Pgm,Sex,Verein     | Pgm,Sex,Jg,Verein    | Pgm,Sex,Verein       | Pgm,Sex,Jg,Verein
+   * Einteilung->| Sex,Pgm,Verein     | Sex,Pgm,Jg(,Verein)  | Sex,Pgm,Verein       | Pgm,Sex,Jg(,Verein)
    * +--------------------+----------------------+----------------------+----------------------------------
    * Teilnahme   | 1/WK               | 1/WK                 | <=PgmCnt(Jg)/WK      | 1/Pgm
    * +-------------------------------------------+---------------------------------------------------------
-   * Registration| 1/WK               | 1/WK, Pgm/(Jg)       | 1/WK aut. Tn 1/Pgm   | 1/WK aut. Tn 1/Pgm
+   * Registration| 1/WK               | 1/WK, Pgm/(Jg)       | mind. 1, max 1/Pgm   | 1/WK aut. Tn 1/Pgm
    * +-------------------------------------------+---------------------------------------------------------
    * Beispiele   | GeTu/KuTu/KuTuRi   | Turn10 (BS/OS)       | TG Allgäu (Pfl./Kür) | ATT (Kraft/Bewg)
    * +-------------------------------------------+---------------------------------------------------------
    * Rangliste   | Sex/Programm       | Sex/Programm/Jg      | Sex/Programm         | Sex/Programm/Jg
+   *             |                    | Sex/Programm/AK      | Sex/Programm/AK      |
    * +-------------------------------------------+---------------------------------------------------------
    */
   case class ProgrammRaw(id: Long, name: String, aggregate: Int, parentId: Long, ord: Int, alterVon: Int, alterBis: Int, uuid: String, riegenmode: Int) extends Programm
@@ -555,7 +601,7 @@ package object domain {
 
     override def compare(o: DataObject): Int = toPath.compareTo(o.asInstanceOf[ProgrammView].toPath)
 
-    override def toString = s"$toPath (von=$alterVon, bis=$alterBis)"
+    override def toString = s"$toPath"
   }
 
   //  object Wettkampf {
@@ -565,15 +611,15 @@ package object domain {
   //      if(uuid != null) Wettkampf(id, datum, titel, programmId, auszeichnung, auszeichnungendnote, Some(uuid))
   //      else apply(id, datum, titel, programmId, auszeichnung, auszeichnungendnote)
   //  }
-  case class Wettkampf(id: Long, uuid: Option[String], datum: java.sql.Date, titel: String, programmId: Long, auszeichnung: Int, auszeichnungendnote: scala.math.BigDecimal, notificationEMail: String) extends DataObject {
+  case class Wettkampf(id: Long, uuid: Option[String], datum: java.sql.Date, titel: String, programmId: Long, auszeichnung: Int, auszeichnungendnote: scala.math.BigDecimal, notificationEMail: String, altersklassen: String, jahrgangsklassen: String) extends DataObject {
 
     override def easyprint = f"$titel am $datum%td.$datum%tm.$datum%tY"
 
     def toView(programm: ProgrammView): WettkampfView = {
-      WettkampfView(id, uuid, datum, titel, programm, auszeichnung, auszeichnungendnote, notificationEMail)
+      WettkampfView(id, uuid, datum, titel, programm, auszeichnung, auszeichnungendnote, notificationEMail, altersklassen, jahrgangsklassen)
     }
 
-    def toPublic: Wettkampf = Wettkampf(id, uuid, datum, titel, programmId, auszeichnung, auszeichnung, "")
+    def toPublic: Wettkampf = Wettkampf(id, uuid, datum, titel, programmId, auszeichnung, auszeichnung, "", altersklassen, jahrgangsklassen)
 
     private def prepareFilePath(homedir: String) = {
       val filename: String = encodeFileName(easyprint)
@@ -663,10 +709,10 @@ package object domain {
   //      if(uuid != null) WettkampfView(id, datum, titel, programm, auszeichnung, auszeichnungendnote, Some(uuid))
   //      else apply(id, datum, titel, programm, auszeichnung, auszeichnungendnote)
   //  }
-  case class WettkampfView(id: Long, uuid: Option[String], datum: java.sql.Date, titel: String, programm: ProgrammView, auszeichnung: Int, auszeichnungendnote: scala.math.BigDecimal, notificationEMail: String) extends DataObject {
+  case class WettkampfView(id: Long, uuid: Option[String], datum: java.sql.Date, titel: String, programm: ProgrammView, auszeichnung: Int, auszeichnungendnote: scala.math.BigDecimal, notificationEMail: String, altersklassen: String, jahrgangsklassen: String) extends DataObject {
     override def easyprint = f"$titel am $datum%td.$datum%tm.$datum%tY"
 
-    def toWettkampf = Wettkampf(id, uuid, datum, titel, programm.id, auszeichnung, auszeichnungendnote, notificationEMail)
+    def toWettkampf = Wettkampf(id, uuid, datum, titel, programm.id, auszeichnung, auszeichnungendnote, notificationEMail, altersklassen, jahrgangsklassen)
   }
 
   case class PublishedScoreRaw(id: String, title: String, query: String, published: Boolean, publishedDate: java.sql.Date, wettkampfId: Long) extends DataObject {

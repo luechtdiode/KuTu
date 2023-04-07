@@ -285,6 +285,16 @@ object KuTuApp extends JFXApp3 with KutuService with JsonSupport with JwtSupport
         promptText = "Auszeichnung bei Erreichung des Mindest-Endwerts"
         text = p.auszeichnungendnote.toString
       }
+      val txtAltersklassen = new TextField {
+        prefWidth = 500
+        promptText = "Altersklassen (z.B. 6,18,22,25)"
+        text = p.altersklassen
+      }
+      val txtJGAltersklassen = new TextField {
+        prefWidth = 500
+        promptText = "Jahrgang Altersklassen (z.B. 6,18,22,25)"
+        text = p.jahrgangsklassen
+      }
       PageDisplayer.showInDialog(caption, new DisplayablePage() {
         def getPage: Node = {
           new BorderPane {
@@ -297,17 +307,22 @@ object KuTuApp extends JFXApp3 with KutuService with JsonSupport with JwtSupport
                 new Label(cmbProgramm.promptText.value), cmbProgramm,
                 new Label(txtNotificationEMail.promptText.value), txtNotificationEMail,
                 new Label(txtAuszeichnung.promptText.value), txtAuszeichnung,
-                new Label(txtAuszeichnungEndnote.promptText.value), txtAuszeichnungEndnote)
+                new Label(txtAuszeichnungEndnote.promptText.value), txtAuszeichnungEndnote,
+                new Label(txtAltersklassen.promptText.value), txtAltersklassen,
+                new Label(txtJGAltersklassen.promptText.value), txtJGAltersklassen
+              )
             }
           }
         }
       },
         new Button("OK") {
+          cmbProgramm.selectionModel.value.select(p.programm)
           disable <== when(Bindings.createBooleanBinding(() => {
-            cmbProgramm.selectionModel.value.getSelectedIndex == -1 ||
+            cmbProgramm.selectionModel.value.isEmpty ||
               txtDatum.value.isNull.value || txtTitel.text.value.isEmpty
           },
             cmbProgramm.selectionModel.value.selectedIndexProperty,
+            cmbProgramm.selectionModel,
             txtDatum.value,
             txtTitel.text
           )) choose true otherwise false
@@ -332,7 +347,10 @@ object KuTuApp extends JFXApp3 with KutuService with JsonSupport with JwtSupport
                     case e: Exception => 0
                   }
                 },
-                p.uuid)
+                p.uuid,
+                txtAltersklassen.text.value,
+                txtJGAltersklassen.text.value
+              )
               val dir = new java.io.File(homedir + "/" + w.easyprint.replace(" ", "_"))
               if (!dir.exists()) {
                 dir.mkdirs();
@@ -1081,6 +1099,16 @@ object KuTuApp extends JFXApp3 with KutuService with JsonSupport with JwtSupport
         promptText = "Auszeichnung bei Erreichung des Mindest-Gerätedurchschnittwerts"
         text = ""
       }
+      val txtAltersklassen = new TextField {
+        prefWidth = 500
+        promptText = "Alersklassen (z.B. 6,18,22,25)"
+        text = ""
+      }
+      val txtJGAltersklassen = new TextField {
+        prefWidth = 500
+        promptText = "Jahrgangs Alersklassen (z.B. 6,18,22,25)"
+        text = ""
+      }
       PageDisplayer.showInDialog(caption, new DisplayablePage() {
         def getPage: Node = {
           new BorderPane {
@@ -1093,7 +1121,10 @@ object KuTuApp extends JFXApp3 with KutuService with JsonSupport with JwtSupport
                 new Label(cmbProgramm.promptText.value), cmbProgramm,
                 new Label(txtNotificationEMail.promptText.value), txtNotificationEMail,
                 new Label(txtAuszeichnung.promptText.value), txtAuszeichnung,
-                new Label(txtAuszeichnungEndnote.promptText.value), txtAuszeichnungEndnote)
+                new Label(txtAuszeichnungEndnote.promptText.value), txtAuszeichnungEndnote,
+                new Label(txtAltersklassen.promptText.value), txtAltersklassen,
+                new Label(txtJGAltersklassen.promptText.value), txtJGAltersklassen
+              )
             }
           }
         }
@@ -1128,7 +1159,10 @@ object KuTuApp extends JFXApp3 with KutuService with JsonSupport with JwtSupport
                 case e: Exception => 0
               }
             },
-            Some(UUID.randomUUID().toString()))
+            Some(UUID.randomUUID().toString()),
+            txtAltersklassen.text.value,
+            txtJGAltersklassen.text.value
+          )
           val dir = new java.io.File(homedir + "/" + w.easyprint.replace(" ", "_"))
           if (!dir.exists()) {
             dir.mkdirs();
