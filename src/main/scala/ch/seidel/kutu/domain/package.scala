@@ -430,51 +430,52 @@ package object domain {
     // file:///C:/Users/Roland/Downloads/Turn10-2018_Allgemeine%20Bestimmungen.pdf
     val altersklassenTurn10 = Seq(
       6,7,8,9,10,11,12,13,14,15,16,17,18,24,30,35,40,45,50,55,60,65,70,75,80,85,90,95,100
-    )
+    ).map(i => ("AK", i))
     // see https://www.dtb.de/fileadmin/user_upload/dtb.de/Passwesen/Wettkampfordnung_DTB_2021.pdf
     val altersklassenDTB = Seq(
       6,18,22,25
-    )
+    ).map(i => ("AK", i))
     // see https://www.dtb.de/fileadmin/user_upload/dtb.de/TURNEN/Standards/PDFs/Rahmentrainingskonzeption-GTm_inklAnlagen_19.11.2020.pdf
     val altersklassenDTBPflicht = Seq(
       7,8,9,11,13,15,17,19
-    )
+    ).map(i => ("AK", i))
     val altersklassenDTBKuer = Seq(
       12,13,15,17,19
-    )
+    ).map(i => ("AK", i))
 
-    def apply(altersgrenzen: Seq[Int]): Seq[Altersklasse] = {
+    def apply(altersgrenzen: Seq[(String,Int)]): Seq[Altersklasse] = {
       if (altersgrenzen.isEmpty) {
         Seq.empty
       } else {
-        altersgrenzen.foldLeft(Seq[Altersklasse]()) { (acc, ag) =>
-          acc :+ Altersklasse(acc.lastOption.map(_.alterBis + 1).getOrElse(0), ag - 1)
-        } :+ Altersklasse(altersgrenzen.last, 0)
+        altersgrenzen.sortBy(_._2).distinctBy(_._2).foldLeft(Seq[Altersklasse]()) { (acc, ag) =>
+          acc :+ Altersklasse(ag._1, acc.lastOption.map(_.alterBis + 1).getOrElse(0), ag._2 - 1)
+        } :+ Altersklasse(altersgrenzen.last._1, altersgrenzen.last._2, 0)
       }
     }
 
     def apply(klassen: Seq[Altersklasse], alter: Int): Altersklasse = {
-      klassen.find(_.matchesAlter(alter)).getOrElse(Altersklasse(alter, alter))
+      klassen.find(_.matchesAlter(alter)).getOrElse(Altersklasse(klassen.head.bezeichnung, alter, alter))
     }
 
-    def parseGrenzen(klassenDef: String): Seq[Int] = {
-      val rangeStepPattern = "([0-9]+)-([0-9]+)\\*([0-9]+)".r
-      val rangepattern = "([0-9]+)-([0-9]+)".r
-      val intpattern = "([0-9]+)".r
+    def parseGrenzen(klassenDef: String, fallbackBezeichnung: String = "Altersklasse"): Seq[(String, Int)] = {
+      val rangeStepPattern = "([\\D\\s]*)([0-9]+)-([0-9]+)/([0-9]+)".r
+      val rangepattern = "([\\D\\s]*)([0-9]+)-([0-9]+)".r
+      val intpattern = "([\\D\\s]*)([0-9]+)".r
+      def bez(b: String): String = if(b.nonEmpty) b else fallbackBezeichnung
       klassenDef.split(",")
         .flatMap{
-          case rangeStepPattern(von, bis, stepsize) => Range.inclusive(von, bis, stepsize)
-          case rangepattern(von, bis) => (str2Int(von) to str2Int(bis))
-          case intpattern(von) => Seq(str2Int(von))
+          case rangeStepPattern(bezeichnung, von, bis, stepsize) => Range.inclusive(von, bis, stepsize).map(i => (bez(bezeichnung), i))
+          case rangepattern(bezeichnung, von, bis) => (str2Int(von) to str2Int(bis)).map(i => (bez(bezeichnung), i))
+          case intpattern(bezeichnung, von) => Seq((bez(bezeichnung), str2Int(von)))
           case _ => Seq.empty
-        }.toList.sorted
+        }.toList.sortBy(_._2)
     }
-    def apply(klassenDef: String): Seq[Altersklasse] = {
-      apply(parseGrenzen(klassenDef))
+    def apply(klassenDef: String, fallbackBezeichnung: String = "Altersklasse"): Seq[Altersklasse] = {
+      apply(parseGrenzen(klassenDef, fallbackBezeichnung))
     }
   }
 
-  case class Altersklasse(alterVon: Int, alterBis: Int) extends DataObject {
+  case class Altersklasse(bezeichnung: String, alterVon: Int, alterBis: Int) extends DataObject {
     def matchesAlter(alter: Int): Boolean =
       ((alterVon == 0 || alter >= alterVon) &&
         (alterBis == 0 || alter <= alterBis))
@@ -482,12 +483,12 @@ package object domain {
     override def easyprint: String = {
       if (alterVon > 0 && alterBis > 0)
         if (alterVon == alterBis)
-          s"Altersklasse $alterVon"
-        else s"Altersklasse $alterVon bis $alterBis"
+          s"$bezeichnung $alterVon"
+        else s"$bezeichnung $alterVon bis $alterBis"
       else if (alterVon > 0 && alterBis == 0)
-        s"Altersklasse ab $alterVon"
+        s"$bezeichnung ab $alterVon"
       else
-        s"Altersklasse bis $alterBis"
+        s"$bezeichnung bis $alterBis"
     }
 
     override def compare(x: DataObject): Int = x match {

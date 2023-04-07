@@ -257,12 +257,12 @@ object KuTuApp extends JFXApp3 with KutuService with JsonSupport with JwtSupport
         promptText = "Wettkampf-Titel"
         text = p.titel
       }
-      val pgms = ObservableBuffer.from(listRootProgramme().sorted)
-      val cmbProgramm = new ComboBox(pgms) {
+      val cmbProgramm = new ComboBox[ProgrammView] {
         prefWidth = 500
         buttonCell = new ProgrammListCell
         cellFactory.value = {_:Any => new ProgrammListCell}
         promptText = "Programm"
+        items = ObservableBuffer.from(listRootProgramme().sorted)
         selectionModel.value.select(p.programm)
       }
       val txtNotificationEMail = new TextField {
@@ -287,12 +287,12 @@ object KuTuApp extends JFXApp3 with KutuService with JsonSupport with JwtSupport
       }
       val txtAltersklassen = new TextField {
         prefWidth = 500
-        promptText = "Altersklassen (z.B. 6,18,22,25)"
+        promptText = "Altersklassen (z.B. AK6,AK7,AK9-10,AK11-20*2,AK25-100/10)"
         text = p.altersklassen
       }
       val txtJGAltersklassen = new TextField {
         prefWidth = 500
-        promptText = "Jahrgang Altersklassen (z.B. 6,18,22,25)"
+        promptText = "Jahrgang Altersklassen (z.B. AK6,AK7,AK9-10,AK11-20*2,AK25-100/10)"
         text = p.jahrgangsklassen
       }
       PageDisplayer.showInDialog(caption, new DisplayablePage() {
@@ -316,13 +316,9 @@ object KuTuApp extends JFXApp3 with KutuService with JsonSupport with JwtSupport
         }
       },
         new Button("OK") {
-          cmbProgramm.selectionModel.value.select(p.programm)
           disable <== when(Bindings.createBooleanBinding(() => {
-            cmbProgramm.selectionModel.value.isEmpty ||
               txtDatum.value.isNull.value || txtTitel.text.value.isEmpty
           },
-            cmbProgramm.selectionModel.value.selectedIndexProperty,
-            cmbProgramm.selectionModel,
             txtDatum.value,
             txtTitel.text
           )) choose true otherwise false
@@ -1101,12 +1097,12 @@ object KuTuApp extends JFXApp3 with KutuService with JsonSupport with JwtSupport
       }
       val txtAltersklassen = new TextField {
         prefWidth = 500
-        promptText = "Alersklassen (z.B. 6,18,22,25)"
+        promptText = "Alersklassen (z.B. 6,7,9-10,AK11-20*2,25-100/10)"
         text = ""
       }
       val txtJGAltersklassen = new TextField {
         prefWidth = 500
-        promptText = "Jahrgangs Alersklassen (z.B. 6,18,22,25)"
+        promptText = "Jahrgangs Alersklassen (z.B. AK6,AK7,AK9-10,AK11-20*2,AK25-100/10)"
         text = ""
       }
       PageDisplayer.showInDialog(caption, new DisplayablePage() {
@@ -1146,7 +1142,7 @@ object KuTuApp extends JFXApp3 with KutuService with JsonSupport with JwtSupport
             txtTitel.text.value,
             Set(cmbProgramm.selectionModel.value.getSelectedItem.id),
             txtNotificationEMail.text.value,
-            txtAuszeichnung.text.value.filter(c => c.isDigit || c == '.' || c == ',').toString match {
+            txtAuszeichnung.text.value.filter(c => c.isDigit || c == '.' || c == ',') match {
               case "" => 0
               case s: String if (s.indexOf(".") > -1 || s.indexOf(",") > -1) => math.round(str2dbl(s) * 100).toInt
               case s: String => str2Int(s)

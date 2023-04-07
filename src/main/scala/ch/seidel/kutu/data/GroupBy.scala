@@ -321,7 +321,7 @@ case class ByJahrgang() extends GroupBy with FilterBy {
   })
 }
 
-case class ByAltersklasse(bezeichnung: String = "GebDat Altersklasse", grenzen: Seq[Int]) extends GroupBy with FilterBy {
+case class ByAltersklasse(bezeichnung: String = "GebDat Altersklasse", grenzen: Seq[(String,Int)]) extends GroupBy with FilterBy {
   override val groupname = bezeichnung
   val klassen = Altersklasse(grenzen)
 
@@ -337,7 +337,7 @@ case class ByAltersklasse(bezeichnung: String = "GebDat Altersklasse", grenzen: 
   })
 }
 
-case class ByJahrgangsAltersklasse(bezeichnung: String = "JG Altersklasse", grenzen: Seq[Int]) extends GroupBy with FilterBy {
+case class ByJahrgangsAltersklasse(bezeichnung: String = "JG Altersklasse", grenzen: Seq[(String,Int)]) extends GroupBy with FilterBy {
   override val groupname = bezeichnung
   val klassen = Altersklasse(grenzen)
 
