@@ -3,6 +3,7 @@ package ch.seidel.kutu.data
 import ch.seidel.kutu.domain._
 
 import java.net.URLDecoder
+import java.sql.Date
 import java.text.SimpleDateFormat
 import java.time.{LocalDate, Period}
 import scala.collection.mutable
@@ -327,7 +328,7 @@ case class ByAltersklasse(bezeichnung: String = "GebDat Altersklasse", grenzen: 
 
   protected override val grouper = (v: WertungView) => {
     val wkd: LocalDate = v.wettkampf.datum
-    val gebd: LocalDate = v.athlet.gebdat.get
+    val gebd: LocalDate = sqlDate2ld(v.athlet.gebdat.getOrElse(Date.valueOf(LocalDate.now())))
     val alter = Period.between(gebd, wkd.plusDays(1)).getYears
     Altersklasse(klassen, alter)
   }
@@ -343,7 +344,7 @@ case class ByJahrgangsAltersklasse(bezeichnung: String = "JG Altersklasse", gren
 
   protected override val grouper = (v: WertungView) => {
     val wkd: LocalDate = v.wettkampf.datum
-    val gebd: LocalDate = v.athlet.gebdat.get
+    val gebd: LocalDate = sqlDate2ld(v.athlet.gebdat.getOrElse(Date.valueOf(LocalDate.now())))
     val alter = wkd.getYear - gebd.getYear
     Altersklasse(klassen, alter)
   }
