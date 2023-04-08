@@ -242,8 +242,15 @@ trait RiegenblattToHtmlRenderer {
       s
     } else {
       val words = s.split(" ")
-      val ll = words.length + l -1;
-      s.take(ll) + "."
+      if (words.length > 2) {
+        if(words(words.length - 1).length < l) {
+          s"${words(0)}..${words(words.length - 2)} ${words(words.length - 1)}"
+        } else {
+          s"${words(0)}..${words(words.length - 1)}"
+        }
+      } else {
+        words.map(_.take(l)).mkString("", " ", ".")
+      }
     }
   }
 
