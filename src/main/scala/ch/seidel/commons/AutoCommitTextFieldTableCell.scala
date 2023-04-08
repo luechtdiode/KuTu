@@ -90,6 +90,7 @@ object AutoCommitTextFieldTableCell {
         val editableColumns = getEditableColums(tableView, selected.row)
         val remaining = editableColumns.dropWhile(_ != selected.tableColumn)
         val newSelectedRowIdx = if (selected.getRow == tableView.items.value.size() - 1) 0 else selected.getRow + 1
+        val editableColumnsNewSeletedRow = getEditableColums(tableView, newSelectedRowIdx)
         val ret = () => {
           if (remaining.size > 1) {
             val nextEditable = remaining.drop(1).head
@@ -109,9 +110,9 @@ object AutoCommitTextFieldTableCell {
             tableView.scrollToColumn(editableColumns.head)
           }
           else {
-            tableView.selectionModel.value.select(newSelectedRowIdx, editableColumns.head)
+            tableView.selectionModel.value.select(newSelectedRowIdx, editableColumnsNewSeletedRow.head)
             tableView.scrollTo(newSelectedRowIdx)
-            tableView.scrollToColumn(editableColumns.head)
+            tableView.scrollToColumn(editableColumnsNewSeletedRow.head)
           }
         }
         ret
@@ -126,6 +127,7 @@ object AutoCommitTextFieldTableCell {
         val editableColumns = getEditableColums(tableView, selected.row)
         val remaining = editableColumns.reverse.dropWhile(_ != selected.tableColumn)
         val newSelectedRowIdx = if (selected.getRow == 0) tableView.items.value.size() - 1 else selected.getRow - 1
+        val editableColumnsNewSeletedRow = getEditableColums(tableView, newSelectedRowIdx)
         val ret = () => {
           if (remaining.size > 1) {
             val nextEditable = remaining.drop(1).head
@@ -145,9 +147,9 @@ object AutoCommitTextFieldTableCell {
             tableView.scrollToColumn(editableColumns.head)
           }
           else {
-            tableView.selectionModel.value.select(newSelectedRowIdx, editableColumns.last)
+            tableView.selectionModel.value.select(newSelectedRowIdx, editableColumnsNewSeletedRow.last)
             tableView.scrollTo(newSelectedRowIdx)
-            tableView.scrollToColumn(editableColumns.last)
+            tableView.scrollToColumn(editableColumnsNewSeletedRow.last)
           }
         }
         ret
