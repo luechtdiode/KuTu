@@ -68,9 +68,9 @@ abstract trait WertungService extends DBService with WertungResultMapper with Di
       case None     => "1=1"
       case Some(uuid) => s"wk.uuid = '$uuid'"
     })
-    val starting = if(athletId.isEmpty) "" else  "inner join riege rg on (rg.wettkampf_id = w.wettkampf_id and rg.name in (w.riege, w.riege2) and rg.start > 0)"
-    Await.result(database.run{(
-      sql"""
+    Await.result(database.run {
+      (
+        sql"""
                     SELECT w.id, a.id, a.js_id, a.geschlecht, a.name, a.vorname, a.gebdat, a.strasse, a.plz, a.ort, a.activ, a.verein, v.*,
                       wd.id, wd.programm_id, d.*, wd.kurzbeschreibung, wd.detailbeschreibung, wd.notenfaktor, wd.masculin, wd.feminim, wd.ord, wd.scale, wd.dnote, wd.min, wd.max, wd.startgeraet,
                       wk.id, wk.uuid, wk.datum, wk.titel, wk.programm_id, wk.auszeichnung, wk.auszeichnungendnote, wk.notificationEMail, wk.altersklassen, wk.jahrgangsklassen,
@@ -131,6 +131,29 @@ abstract trait WertungService extends DBService with WertungResultMapper with Di
                       and wd.id = ${wertung.wettkampfdisziplinId}
          """.as[WertungView]).withPinnedSession
     }, Duration.Inf).headOption
+  }
+
+  def listScheduledDisziplinIdsZuWettkampf(wettkampfId: Long): List[Long] = {
+    Await.result(database.run {
+      val wettkampf: Wettkampf = readWettkampf(wettkampfId)
+      val programme = readWettkampfLeafs(wettkampf.programmId).map(p => p.id).mkString("(", ",", ")")
+      val riegen = selectRiegenRaw(wettkampfId)
+        .map(r => r.start)
+        .filter(_.nonEmpty)
+        .map(_.get)
+        .filter(_ > 0).toSet
+      if (riegen.nonEmpty) {
+        sql""" select distinct disziplin_id from wettkampfdisziplin
+             where programm_Id in #$programme
+               and disziplin_id in #${riegen.mkString("(", ",", ")")}
+             """.as[Long].withPinnedSession
+
+      } else {
+        sql""" select distinct disziplin_id from wettkampfdisziplin
+             where programm_Id in #$programme
+             """.as[Long].withPinnedSession
+      }
+    }, Duration.Inf).toList
   }
 
   def updateOrinsertWertungenZuWettkampf(wettkampf: Wettkampf, wertungen: Iterable[Wertung]) = {

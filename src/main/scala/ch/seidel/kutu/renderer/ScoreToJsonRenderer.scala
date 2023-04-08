@@ -10,8 +10,8 @@ import org.slf4j.LoggerFactory
 object ScoreToJsonRenderer {
   val logger = LoggerFactory.getLogger(this.getClass)
   
-  def toJson(title: String, gs: List[GroupSection], sortAlphabetically: Boolean = false, diszMap: Map[Long,Map[String,List[Disziplin]]], logoFile: File): String = {
-    val jsonString = toJsonString(title, gs, "", 0, sortAlphabetically, diszMap, logoFile)
+  def toJson(title: String, gs: List[GroupSection], sortAlphabetically: Boolean = false, logoFile: File): String = {
+    val jsonString = toJsonString(title, gs, "", 0, sortAlphabetically, logoFile)
     jsonString
   }
 
@@ -30,7 +30,7 @@ object ScoreToJsonRenderer {
   val nextSite = "},\n{"
   val outro = "]}"
 
-  private def toJsonString(title: String, gs: List[GroupSection], openedTitle: String, level: Int, sortAlphabetically: Boolean, diszMap: Map[Long,Map[String,List[Disziplin]]], logoFile: File): String = {
+  private def toJsonString(title: String, gs: List[GroupSection], openedTitle: String, level: Int, sortAlphabetically: Boolean, logoFile: File): String = {
     val gsBlock = new StringBuilder()
     if (level == 0) {
       gsBlock.append(firstSite(title, logoFile))
@@ -79,7 +79,7 @@ object ScoreToJsonRenderer {
             gsBlock.append("},")
           }
 
-          val alldata = gl.getTableData(sortAlphabetically, diszMap)
+          val alldata = gl.getTableData(sortAlphabetically)
           val pagedata = alldata.sliding(alldata.size, alldata.size) 
           pagedata.foreach {section =>
             renderListHead
@@ -87,12 +87,10 @@ object ScoreToJsonRenderer {
             renderListEnd
           }
         case g: GroupNode => gsBlock.append(
-            toJsonString(title, g.next.toList,
-                if(openedTitle.length() > 0)
-                  openedTitle + s"${escaped(g.groupKey.capsulatedprint)}, "
-                else
-                  s""""title":{"level":"${level + 2}", "text":"${escaped(g.groupKey.capsulatedprint)}, """,
-                level + 1, sortAlphabetically, diszMap, logoFile))
+            toJsonString(title, g.next.toList, if(openedTitle.length() > 0)
+                              openedTitle + s"${escaped(g.groupKey.capsulatedprint)}, "
+                            else
+                              s""""title":{"level":"${level + 2}", "text":"${escaped(g.groupKey.capsulatedprint)}, """, level + 1, sortAlphabetically, logoFile))
 
         case s: GroupSum  =>
           gsBlock.append(s.easyprint)

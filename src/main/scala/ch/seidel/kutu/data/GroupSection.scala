@@ -71,7 +71,6 @@ case class GroupLeaf(override val groupKey: DataObject, list: Iterable[WertungVi
   override val avg: Resultat = sum / list.size
   override def easyprint = groupKey.easyprint + s" $sum, $avg"
   val groups = GroupSection.groupWertungList(list).filter(_._2.nonEmpty)
-//  lazy val wkPerProgramm = list.filter(_.endnote > 0).groupBy { w => w.wettkampf.programmId }
   lazy val anzahWettkaempfe = list.filter(_.endnote.nonEmpty).groupBy { w => w.wettkampf }.size // Anzahl Wettkämpfe
   val withDNotes = list.filter(w => w.noteD.sum > 0).nonEmpty
   val withENotes = list.filter(w => w.wettkampf.programmId != 1).nonEmpty
@@ -169,7 +168,6 @@ case class GroupLeaf(override val groupKey: DataObject, list: Iterable[WertungVi
           lazy val clDnote = WKLeafCol[GroupRow](text = "D", prefWidth = 60, styleClass = Seq("hintdata"), valueMapper = gr => {
             if (gr.resultate.size > index) {
                   val best = if (gr.resultate(index).sum.noteD > 0
-                              && gr.resultate.size > index
                               && gr.resultate(index).rang.noteD.toInt == 1)
                                   "*"
                              else
@@ -180,7 +178,6 @@ case class GroupLeaf(override val groupKey: DataObject, list: Iterable[WertungVi
           lazy val clEnote = WKLeafCol[GroupRow](text = "E", prefWidth = 60, styleClass = Seq("hintdata"), valueMapper = gr => {
             if (gr.resultate.size > index) {
                   val best = if (gr.resultate(index).sum.noteE > 0
-                              && gr.resultate.size > index
                               && gr.resultate(index).rang.noteE.toInt == 1)
                                   "*"
                              else
@@ -191,7 +188,6 @@ case class GroupLeaf(override val groupKey: DataObject, list: Iterable[WertungVi
           lazy val clEndnote = WKLeafCol[GroupRow](text = "Endnote", prefWidth = 60, styleClass = Seq("valuedata"), valueMapper = gr => {
             if (gr.resultate.size > index) {
                   val best = if (gr.resultate(index).sum.endnote > 0
-                              && gr.resultate.size > index
                               && gr.resultate(index).rang.endnote.toInt == 1)
                                   "*"
                              else
@@ -277,17 +273,8 @@ case class GroupLeaf(override val groupKey: DataObject, list: Iterable[WertungVi
     athletCols ++ disziplinCol ++ sumCol
   }
 
-  def getTableData(sortAlphabetically: Boolean = false, diszMap: Map[Long,Map[String,List[Disziplin]]]) = {
+  def getTableData(sortAlphabetically: Boolean = false) = {
 
-    val programDiszMap = groups.map(pg => (pg._1, diszMap.map(dmp => (dmp._1, dmp._2.map(dmpg => (dmpg._1, dmpg._2.filter(d => pg._2.contains{d})))))))
-
-//    def mapToRang(athlWertungen: Iterable[WertungView]) = {
-//      val grouped = athlWertungen.groupBy { _.athlet }.map { x =>
-//        val r = x._2.map(y => y.resultat).reduce(_+_)
-//        (x._1, r, r / x._2.size)
-//      }
-//      GroupSection.mapRang(grouped).map(r => (r.groupKey.asInstanceOf[AthletView] -> r)).toMap
-//    }
     def mapToAvgRang[A <: DataObject](grp: Iterable[(A, (Resultat, Resultat))]) = {
       GroupSection.mapAvgRang(grp.map { d => (d._1, d._2._1, d._2._2) }).map(r => (r.groupKey.asInstanceOf[A] -> r)).toMap
     }
@@ -423,24 +410,15 @@ case class GroupLeaf(override val groupKey: DataObject, list: Iterable[WertungVi
               rang,
               rang.endnote == 1)
           }
-        }.filter(_.sum.endnote >= 1).toIndexedSeq
-        athlet.geschlecht match {
-          case "M" =>
-            programDiszMap(groups.head._1)(disziplinResults.head._2)("M").toIndexedSeq.map{d =>
-              dr.find(lr => lr.title == d.name) match {
-                case Some(lr) => lr
-                case None => LeafRow(d.name, Resultat(0,0,0), Resultat(0,0,0), auszeichnung = false)
-              }
-            }
-          case "W" =>
-            programDiszMap(groups.head._1)(disziplinResults.head._2)("W").toIndexedSeq.map{d =>
-              dr.find(lr => lr.title == d.name) match {
-                case Some(lr) => lr
-                case None => LeafRow(d.name, Resultat(0,0,0), Resultat(0,0,0), auszeichnung = false)
-              }
-            }
-          case _ => dr;
         }
+          .filter(_.sum.endnote > 0)
+          .toIndexedSeq
+        groups.head._2.toIndexedSeq.map{d =>
+          dr.find(lr => lr.title == d.name) match {
+            case Some(lr) => lr
+            case None => LeafRow(d.name, Resultat(0,0,0), Resultat(0,0,0), auszeichnung = false)
+          }
+        }.distinct
       }
       else {
         programmResults.map{w =>

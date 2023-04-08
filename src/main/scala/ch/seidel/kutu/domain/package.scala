@@ -836,7 +836,7 @@ package object domain {
     lazy val divider = if (withDNotes || resultate.isEmpty) 1 else resultate.count { r => r.sum.endnote > 0 }
   }
 
-  sealed trait NotenModus /*with AutoFillTextBoxFactory.ItemComparator[String]*/ {
+  sealed trait NotenModus {
     def selectableItems: Option[List[String]] = None
 
     def validated(dnote: Double, enote: Double, wettkampfDisziplin: WettkampfdisziplinView): (Double, Double)

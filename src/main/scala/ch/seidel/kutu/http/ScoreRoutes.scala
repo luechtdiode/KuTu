@@ -40,19 +40,14 @@ ScoreRoutes extends SprayJsonSupport with JsonSupport with AuthSupport with Rout
   def queryScoreResults(wettkampf: String, groupby: Option[String], filter: Iterable[String], html: Boolean,
                         groupers: List[FilterBy], data: Seq[WertungView], alphanumeric: Boolean,
                         logofile: File): HttpEntity.Strict = {
-    val diszMap = data.groupBy { x => x.wettkampf.programmId }.map{ x =>
-      x._1 -> Map(
-            "W" -> listDisziplinesZuWettkampf(x._2.head.wettkampf.id, Some("W"))
-          , "M" -> listDisziplinesZuWettkampf(x._2.head.wettkampf.id, Some("M")))
-    }
     val query = GroupBy(groupby, filter, data, alphanumeric, groupers);
 
     if (html) {
       HttpEntity(ContentTypes.`text/html(UTF-8)`, new ScoreToHtmlRenderer(){override val title: String = wettkampf}
-      .toHTML(query.select(data).toList, athletsPerPage = 0, sortAlphabetically = alphanumeric, diszMap, logofile))
+      .toHTML(query.select(data).toList, athletsPerPage = 0, sortAlphabetically = alphanumeric, logofile))
     } else {
       HttpEntity(ContentTypes.`application/json`,  ScoreToJsonRenderer
-      .toJson(wettkampf, query.select(data).toList, sortAlphabetically = alphanumeric, diszMap, logofile))
+      .toJson(wettkampf, query.select(data).toList, sortAlphabetically = alphanumeric, logofile))
     }
   }
   
@@ -256,20 +251,15 @@ ScoreRoutes extends SprayJsonSupport with JsonSupport with AuthSupport with Rout
                           case Nil => (None,Seq[WertungView]())
                           case c::_ => (Some(c), data)
                         }
-                        val diszMap = publishedData.groupBy { x => x.wettkampf.programmId }.map { x =>
-                          x._1 -> Map(
-                            "W" -> listDisziplinesZuWettkampf(x._2.head.wettkampf.id, Some("W"))
-                            , "M" -> listDisziplinesZuWettkampf(x._2.head.wettkampf.id, Some("M")))
-                        }
                         val query = GroupBy(score.map(_.query).getOrElse(""), publishedData)
                         if (html.nonEmpty) {
                           HttpEntity(ContentTypes.`text/html(UTF-8)`, new ScoreToHtmlRenderer() {
                             override val title: String = wettkampf.easyprint // + " - " + score.map(_.title).getOrElse(wettkampf.easyprint)
                           }
-                            .toHTML(query.select(publishedData).toList, athletsPerPage = 0, sortAlphabetically = score.map(_.isAlphanumericOrdered).getOrElse(false), diszMap, logofile))
+                            .toHTML(query.select(publishedData).toList, athletsPerPage = 0, sortAlphabetically = score.map(_.isAlphanumericOrdered).getOrElse(false), logofile))
                         } else {
                           HttpEntity(ContentTypes.`application/json`, ScoreToJsonRenderer
-                            .toJson(wettkampf.easyprint, query.select(publishedData).toList, sortAlphabetically = score.map(_.isAlphanumericOrdered).getOrElse(false), diszMap, logofile))
+                            .toJson(wettkampf.easyprint, query.select(publishedData).toList, sortAlphabetically = score.map(_.isAlphanumericOrdered).getOrElse(false), logofile))
                         }
                       }
                       }

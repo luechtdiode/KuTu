@@ -48,7 +48,11 @@ class RanglisteTab(wettkampfmode: BooleanProperty, wettkampf: WettkampfView, ove
     }
   }
 
-  override def getData: Seq[WertungView] = service.selectWertungen(wettkampfId = Some(wettkampf.id))
+  override def getData: Seq[WertungView] = {
+    val scheduledDisziplines = service.listScheduledDisziplinIdsZuWettkampf(wettkampf.id)
+    service.selectWertungen(wettkampfId = Some(wettkampf.id))
+      .filter(w => scheduledDisziplines.contains(w.wettkampfdisziplin.disziplin.id))
+  }
 
   override def getSaveAsFilenameDefault: FilenameDefault = {
     val foldername = encodeFileName(wettkampf.easyprint)

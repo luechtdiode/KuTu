@@ -244,14 +244,8 @@ abstract class DefaultRanglisteTab(wettkampfmode: BooleanProperty, override val 
       val combination = query.select(data).toList
       lastScoreDef.setValue(Some(query.asInstanceOf[FilterBy]))
 
-      //Map[Long,Map[String,List[Disziplin]]]
-      val diszMap = data.groupBy { x => x.wettkampf.programmId }.map{ x =>
-        x._1 -> Map(
-              "W" -> service.listDisziplinesZuWettkampf(x._2.head.wettkampf.id, Some("W"))
-            , "M" -> service.listDisziplinesZuWettkampf(x._2.head.wettkampf.id, Some("M")))
-        }
       val logofile = PrintUtil.locateLogoFile(getSaveAsFilenameDefault.dir)
-      val ret = toHTML(combination, linesPerPage, query.isAlphanumericOrdered, diszMap, logofile)
+      val ret = toHTML(combination, linesPerPage, query.isAlphanumericOrdered, logofile)
       if(linesPerPage == 0){
         webView.engine.loadContent(ret)
       }
