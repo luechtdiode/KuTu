@@ -428,21 +428,33 @@ package object domain {
   object Altersklasse {
 
     // file:///C:/Users/Roland/Downloads/Turn10-2018_Allgemeine%20Bestimmungen.pdf
+    val akExpressionTurn10 = "AK7-18,AK24,AK30-100/5"
     val altersklassenTurn10 = Seq(
       6,7,8,9,10,11,12,13,14,15,16,17,18,24,30,35,40,45,50,55,60,65,70,75,80,85,90,95,100
     ).map(i => ("AK", i))
     // see https://www.dtb.de/fileadmin/user_upload/dtb.de/Passwesen/Wettkampfordnung_DTB_2021.pdf
+    val akDTBExpression = "AK6,AK18,AK22,AK25"
     val altersklassenDTB = Seq(
       6,18,22,25
     ).map(i => ("AK", i))
     // see https://www.dtb.de/fileadmin/user_upload/dtb.de/TURNEN/Standards/PDFs/Rahmentrainingskonzeption-GTm_inklAnlagen_19.11.2020.pdf
+    val akDTBPflichtExpression = "AK8-9,AK11-AK19/2"
     val altersklassenDTBPflicht = Seq(
       7,8,9,11,13,15,17,19
     ).map(i => ("AK", i))
+    val akDTBKuerExpression = "AK13,AK15-AK19/2"
     val altersklassenDTBKuer = Seq(
       12,13,15,17,19
     ).map(i => ("AK", i))
 
+    val predefinedAKs = Map(
+      ("Ohne" -> "")
+      , ("Turn10®" -> akExpressionTurn10)
+      , ("DTB" -> akDTBExpression)
+      , ("DTB Pflicht" -> akDTBPflichtExpression)
+      , ("DTB Kür" -> akDTBKuerExpression)
+      , ("Individuell" -> "")
+    )
     def apply(altersgrenzen: Seq[(String,Int)]): Seq[Altersklasse] = {
       if (altersgrenzen.isEmpty) {
         Seq.empty

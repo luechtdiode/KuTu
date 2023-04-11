@@ -236,13 +236,6 @@ trait WettkampfOverviewToHtmlRenderer {
         $logoHtml
         <h1>Wettkampf-Übersicht</h1><h2>${escaped(wettkampf.easyprint)}</h2></div>
       </div>
-      ${if (altersklassen.nonEmpty || jgAltersklassen.nonEmpty)
-      s"""<h2>Altersklassen</h2>
-        Alter am Wettkampf-Tag: ${wettkampf.altersklassen}<br>
-        <ul>${altersklassen}</ul>
-        Alter im Wettkampf-Jahr: ${wettkampf.jahrgangsklassen}<br>
-        <ul>${jgAltersklassen}</ul>"""
-      else ""}
       <h2>Anmeldungen</h2>
       <div class=headline>
         ${
@@ -277,6 +270,18 @@ trait WettkampfOverviewToHtmlRenderer {
         } else ""
         }
         </p>
+        ${if (altersklassen.nonEmpty)
+          s"""<h2>Altersklassen</h2>
+          Alter am Wettkampf - Tag: ${wettkampf.altersklassen} <br>
+          <ul>${altersklassen}
+          </ul>"""
+          else if (altersklassen.nonEmpty)
+          s"""<h2>Altersklassen</h2>
+          Alter im Wettkampf - Jahr: ${wettkampf.jahrgangsklassen} <br>
+          <ul>${jgAltersklassen}
+          </ul>"""
+          else ""
+        }
         <h3>Zusammenstellung der Anmeldungen</h3>
       </div>
       <div class="showborder">

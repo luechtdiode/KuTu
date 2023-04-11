@@ -285,15 +285,57 @@ object KuTuApp extends JFXApp3 with KutuService with JsonSupport with JwtSupport
         promptText = "Auszeichnung bei Erreichung des Mindest-Endwerts"
         text = p.auszeichnungendnote.toString
       }
+      val cmbAltersklassen = new ComboBox[String]() {
+        prefWidth = 500
+        Altersklasse.predefinedAKs.foreach(definition => {
+          items.value.add(definition._1)
+        })
+        promptText = "Altersklassen"
+
+      }
       val txtAltersklassen = new TextField {
         prefWidth = 500
-        promptText = "Altersklassen (z.B. AK6,AK7,AK9-10,AK11-20*2,AK25-100/10)"
+        promptText = "Alersklassen (z.B. 6,7,9-10,AK11-20*2,25-100/10)"
         text = p.altersklassen
+        editable <== Bindings.createBooleanBinding(() => {
+          "Individuell".equals(cmbAltersklassen.value.value)
+        },
+          cmbAltersklassen.selectionModel,
+          cmbAltersklassen.value
+        )
+
+        cmbAltersklassen.value.onChange{
+          text.value = Altersklasse.predefinedAKs(cmbAltersklassen.value.value)
+          if (text.value.isEmpty && !"Ohne".equals(cmbAltersklassen.value.value)) {
+            text.value = p.altersklassen
+          }
+        }
+      }
+      val cmbJGAltersklassen = new ComboBox[String]() {
+        prefWidth = 500
+        Altersklasse.predefinedAKs.foreach(definition => {
+          items.value.add(definition._1)
+        })
+        promptText = "Jahrgang Altersklassen"
+
       }
       val txtJGAltersklassen = new TextField {
         prefWidth = 500
-        promptText = "Jahrgang Altersklassen (z.B. AK6,AK7,AK9-10,AK11-20*2,AK25-100/10)"
+        promptText = "Jahrgangs Altersklassen (z.B. AK6,AK7,AK9-10,AK11-20*2,AK25-100/10)"
         text = p.jahrgangsklassen
+        editable <== Bindings.createBooleanBinding(() => {
+          "Individuell".equals(cmbJGAltersklassen.value.value)
+        },
+          cmbJGAltersklassen.selectionModel,
+          cmbJGAltersklassen.value
+        )
+
+        cmbJGAltersklassen.value.onChange{
+          text.value = Altersklasse.predefinedAKs(cmbJGAltersklassen.value.value)
+          if (text.value.isEmpty && !"Ohne".equals(cmbJGAltersklassen.value.value)) {
+            text.value = p.jahrgangsklassen
+          }
+        }
       }
       PageDisplayer.showInDialog(caption, new DisplayablePage() {
         def getPage: Node = {
@@ -308,8 +350,8 @@ object KuTuApp extends JFXApp3 with KutuService with JsonSupport with JwtSupport
                 new Label(txtNotificationEMail.promptText.value), txtNotificationEMail,
                 new Label(txtAuszeichnung.promptText.value), txtAuszeichnung,
                 new Label(txtAuszeichnungEndnote.promptText.value), txtAuszeichnungEndnote,
-                new Label(txtAltersklassen.promptText.value), txtAltersklassen,
-                new Label(txtJGAltersklassen.promptText.value), txtJGAltersklassen
+                cmbAltersklassen, txtAltersklassen,
+                cmbJGAltersklassen, txtJGAltersklassen
               )
             }
           }
@@ -1095,15 +1137,55 @@ object KuTuApp extends JFXApp3 with KutuService with JsonSupport with JwtSupport
         promptText = "Auszeichnung bei Erreichung des Mindest-Gerätedurchschnittwerts"
         text = ""
       }
+      val cmbAltersklassen = new ComboBox[String]() {
+        prefWidth = 500
+        Altersklasse.predefinedAKs.foreach(definition => {
+          items.value.add(definition._1)
+        })
+        promptText = "Altersklassen"
+      }
       val txtAltersklassen = new TextField {
         prefWidth = 500
         promptText = "Alersklassen (z.B. 6,7,9-10,AK11-20*2,25-100/10)"
         text = ""
+        editable <== Bindings.createBooleanBinding(() => {
+          "Individuell".equals(cmbAltersklassen.value.value)
+        },
+          cmbAltersklassen.selectionModel,
+          cmbAltersklassen.value
+        )
+
+        cmbAltersklassen.value.onChange{
+          text.value = Altersklasse.predefinedAKs(cmbAltersklassen.value.value)
+          if (editable.value) {
+            text.value += " Editable"
+          }
+        }
+      }
+      val cmbJGAltersklassen = new ComboBox[String]() {
+        prefWidth = 500
+        Altersklasse.predefinedAKs.foreach(definition => {
+          items.value.add(definition._1)
+        })
+        promptText = "Jahrgang Altersklassen"
       }
       val txtJGAltersklassen = new TextField {
         prefWidth = 500
-        promptText = "Jahrgangs Alersklassen (z.B. AK6,AK7,AK9-10,AK11-20*2,AK25-100/10)"
+        promptText = "Jahrgangs Altersklassen (z.B. AK6,AK7,AK9-10,AK11-20*2,AK25-100/10)"
         text = ""
+        editable <== Bindings.createBooleanBinding(() => {
+          "Individuell".equals(cmbJGAltersklassen.value.value)
+        },
+          cmbJGAltersklassen.selectionModel,
+          cmbJGAltersklassen.value
+        )
+
+        cmbJGAltersklassen.value.onChange{
+          text.value = Altersklasse.predefinedAKs(cmbJGAltersklassen.value.value)
+          if (editable.value) {
+            text.value += " Editable"
+          }
+        }
       }
       PageDisplayer.showInDialog(caption, new DisplayablePage() {
         def getPage: Node = {
@@ -1118,8 +1200,8 @@ object KuTuApp extends JFXApp3 with KutuService with JsonSupport with JwtSupport
                 new Label(txtNotificationEMail.promptText.value), txtNotificationEMail,
                 new Label(txtAuszeichnung.promptText.value), txtAuszeichnung,
                 new Label(txtAuszeichnungEndnote.promptText.value), txtAuszeichnungEndnote,
-                new Label(txtAltersklassen.promptText.value), txtAltersklassen,
-                new Label(txtJGAltersklassen.promptText.value), txtJGAltersklassen
+                cmbAltersklassen, txtAltersklassen,
+                cmbJGAltersklassen, txtJGAltersklassen
               )
             }
           }
