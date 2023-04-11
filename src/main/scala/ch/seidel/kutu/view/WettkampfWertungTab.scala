@@ -674,7 +674,7 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
       if (col.delegate.isInstanceOf[WKTCAccess]) {
         val tca = col.delegate.asInstanceOf[WKTCAccess]
         if (tca.getIndex > -1) {
-          val v = scheduledGears.contains(disziplinlist(tca.getIndex)) && durchgangFilter.disziplin.isDefined && tca.getIndex == disziplinlist.indexOf(durchgangFilter.disziplin.get)
+          val v = (tca.getIndex >= disziplinlist.size || scheduledGears.contains(disziplinlist(tca.getIndex))) && durchgangFilter.disziplin.isDefined && tca.getIndex == disziplinlist.indexOf(durchgangFilter.disziplin.get)
           col.setVisible(v)
         }
       }
