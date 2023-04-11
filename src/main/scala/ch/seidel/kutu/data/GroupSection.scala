@@ -321,6 +321,8 @@ case class GroupLeaf(override val groupKey: DataObject, list: Iterable[WertungVi
             factorizeKuTu(w)
           case id if(id > 19 && id < 27) => // GeTu Kategorie
             factorizeGeTu(w)
+          case id if(id > 46 && id < 84) => // GeTu Kategorie
+            factorizeGeTu(w)
           case id if(id > 30 && id < 41) => // KuTuRi Programm
             factorizeKuTu(w)
           case _ => 1L
