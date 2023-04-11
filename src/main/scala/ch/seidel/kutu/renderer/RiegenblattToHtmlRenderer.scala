@@ -53,9 +53,7 @@ object RiegenBuilder {
       val ((durchgang, kandidatriegen), durchgangIndex) = d
       val dzl1 = kandidatriegen.flatMap(_._1.diszipline)
       val riegen = kandidatriegen.map(_._2).sortBy(r => r.start.map( dzl1.indexOf(_)))
-      val dzl2 = dzl1.toSet.toList
-      val dzl = dzl2.sortBy{dzl1.indexOf(_)}
-
+      val dzl = dzl1.distinct.sortBy{dzl1.indexOf(_)}
       //kandidat.diszipline für die Rotationsberechnung verwenden
       val rg = riegen.groupBy(e => e.start).toList.sortBy{d => d._1.map( dzl.indexOf(_))}
       val geraete = dzl.foldLeft(rg){(acc, item) =>
@@ -63,7 +61,7 @@ object RiegenBuilder {
           case Some(_) => acc
           case _ => acc :+ (Some(item) -> List[Riege]())
         }
-      }
+      }.sortBy(geraet => dzl.indexOf(geraet._1.get))
       val startformationen = pickStartformationen(geraete, durchgang, k => (k.einteilung, k.diszipline))
         .zipWithIndex
         .map(x => {
@@ -118,14 +116,8 @@ object RiegenBuilder {
       val (durchgang: Option[String], starts: Seq[(Int, Option[Disziplin], Seq[Kandidat], Boolean, Int)]) = item
       val isND = nebendurchgaenge.exists(nd => nd._1 == durchgang && nd._2.exists(disz => disz._2 == starts.head._2))
       durchgang match {
-        case Some(dg) if (durchgangFilter.isEmpty || durchgangFilter.contains(dg)) =>
-          starts
-            .filter(start => haltsFilter.isEmpty || (!isND && haltsFilter.contains(start._1)) || haltsFilter.exists(halt => halt < 0 && (math.abs(halt) <= start._1 || isND)))
-            .map { start =>
-            GeraeteRiege(start._3.head.wettkampfTitel, start._3.head.wertungen.head.wettkampf.uuid.get,
-              durchgang, start._1, start._2, start._3, start._4, f"R${start._5}%04d")
-          }
-        case None =>
+        case Some(dg) if durchgangFilter.nonEmpty && !durchgangFilter.contains(dg) => Seq.empty
+        case _ =>
           starts
             .filter(start => haltsFilter.isEmpty || (!isND && haltsFilter.contains(start._1)) || haltsFilter.exists(halt => halt < 0 && (math.abs(halt) <= start._1 || isND)))
             .map { start =>
@@ -133,7 +125,6 @@ object RiegenBuilder {
               durchgang, start._1, start._2, start._3, start._4, f"R${start._5}%04d")
 
           }
-        case _ => Seq.empty
       }
     }
 
