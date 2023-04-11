@@ -125,7 +125,7 @@ abstract trait DisziplinService extends DBService with WettkampfResultMapper {
              order by
               wd.ord
              """.as[Disziplin].withPinnedSession
-    }, Duration.Inf).toList
+    }, Duration.Inf).toList.distinct
   }
   
   def listWettkampfDisziplines(wettkampfId: Long): List[Wettkampfdisziplin] = {
