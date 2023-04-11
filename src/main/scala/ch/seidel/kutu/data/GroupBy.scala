@@ -28,7 +28,7 @@ sealed trait GroupBy {
   def isAlphanumericOrdered = isANO
 
   def setAlphanumericOrdered(value: Boolean): Unit = {
-    traverse(value){ (gb, acc) =>
+    traverse(value) { (gb, acc) =>
       gb.isANO = acc
       acc
     }
@@ -175,6 +175,7 @@ sealed trait FilterBy extends GroupBy {
     case NullObject(_) => true
     case _ => false
   }
+
   def filterItems: List[DataObject] =
     if (skipGrouper) {
       filtItems ++ getFilter.filter(nullObjectFilter)
@@ -322,7 +323,7 @@ case class ByJahrgang() extends GroupBy with FilterBy {
   })
 }
 
-case class ByAltersklasse(bezeichnung: String = "GebDat Altersklasse", grenzen: Seq[(String,Int)]) extends GroupBy with FilterBy {
+case class ByAltersklasse(bezeichnung: String = "GebDat Altersklasse", grenzen: Seq[(String, Int)]) extends GroupBy with FilterBy {
   override val groupname = bezeichnung
   val klassen = Altersklasse(grenzen)
 
@@ -343,7 +344,7 @@ case class ByAltersklasse(bezeichnung: String = "GebDat Altersklasse", grenzen: 
   })
 }
 
-case class ByJahrgangsAltersklasse(bezeichnung: String = "JG Altersklasse", grenzen: Seq[(String,Int)]) extends GroupBy with FilterBy {
+case class ByJahrgangsAltersklasse(bezeichnung: String = "JG Altersklasse", grenzen: Seq[(String, Int)]) extends GroupBy with FilterBy {
   override val groupname = bezeichnung
   val klassen = Altersklasse(grenzen)
 
@@ -474,8 +475,15 @@ object GroupBy {
     }
     val query = if (cbflist.nonEmpty) {
       cbflist.foldLeft(cbflist.head.asInstanceOf[GroupBy])((acc, cb) => if (acc != cb) acc.groupBy(cb) else acc)
-    } else {
-      ByWettkampfProgramm().groupBy(ByGeschlecht())
+    } else if (data.nonEmpty && data.head.wettkampf.altersklassen.nonEmpty) {
+      val byAK = groupers.find(p => p.isInstanceOf[ByAltersklasse] && p.groupname.startsWith("Wettkampf")).getOrElse(ByAltersklasse("AK", Altersklasse.parseGrenzen(data.head.wettkampf.altersklassen)))
+      ByProgramm().groupBy(byAK).groupBy(ByGeschlecht())
+    } else if (data.nonEmpty && data.head.wettkampf.jahrgangsklassen.nonEmpty) {
+      val byAK = groupers.find(p => p.isInstanceOf[ByJahrgangsAltersklasse] && p.groupname.startsWith("Wettkampf")).getOrElse(ByJahrgangsAltersklasse("AK", Altersklasse.parseGrenzen(data.head.wettkampf.jahrgangsklassen)))
+      ByProgramm().groupBy(byAK).groupBy(ByGeschlecht())
+    }
+    else {
+      ByProgramm().groupBy(ByGeschlecht())
     }
     query.setAlphanumericOrdered(alphanumeric)
     query

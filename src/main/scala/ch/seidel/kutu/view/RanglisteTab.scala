@@ -213,9 +213,21 @@ class RanglisteTab(wettkampfmode: BooleanProperty, wettkampf: WettkampfView, ove
 
   override def isPopulated = {
     val combos = populate(groupers)
+    val akg = groupers.find(p => p.isInstanceOf[ByAltersklasse] && p.groupname.startsWith("Wettkampf"))
+    val jakg = groupers.find(p => p.isInstanceOf[ByJahrgangsAltersklasse] && p.groupname.startsWith("Wettkampf"))
+    if (akg.nonEmpty) {
+      combos(1).selectionModel.value.select(ByProgramm(programmText))
+      combos(2).selectionModel.value.select(akg.get)
+      combos(3).selectionModel.value.select(ByGeschlecht())
+    } else if (jakg.nonEmpty) {
+      combos(1).selectionModel.value.select(ByProgramm(programmText))
+      combos(2).selectionModel.value.select(jakg.get)
+      combos(3).selectionModel.value.select(ByGeschlecht())
+    } else {
+      combos(1).selectionModel.value.select(ByProgramm(programmText))
+      combos(2).selectionModel.value.select(ByGeschlecht())
 
-    combos(1).selectionModel.value.select(ByWettkampfProgramm(programmText))
-    combos(2).selectionModel.value.select(ByGeschlecht())
+    }
 
     true
   }

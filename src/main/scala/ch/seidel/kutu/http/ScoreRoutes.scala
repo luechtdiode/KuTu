@@ -256,10 +256,10 @@ ScoreRoutes extends SprayJsonSupport with JsonSupport with AuthSupport with Rout
                           HttpEntity(ContentTypes.`text/html(UTF-8)`, new ScoreToHtmlRenderer() {
                             override val title: String = wettkampf.easyprint // + " - " + score.map(_.title).getOrElse(wettkampf.easyprint)
                           }
-                            .toHTML(query.select(publishedData).toList, athletsPerPage = 0, sortAlphabetically = score.map(_.isAlphanumericOrdered).getOrElse(false), logofile))
+                            .toHTML(query.select(publishedData).toList, athletsPerPage = 0, sortAlphabetically = score.exists(_.isAlphanumericOrdered), logofile))
                         } else {
                           HttpEntity(ContentTypes.`application/json`, ScoreToJsonRenderer
-                            .toJson(wettkampf.easyprint, query.select(publishedData).toList, sortAlphabetically = score.map(_.isAlphanumericOrdered).getOrElse(false), logofile))
+                            .toJson(wettkampf.easyprint, query.select(publishedData).toList, sortAlphabetically = score.exists(_.isAlphanumericOrdered), logofile))
                         }
                       }
                       }

@@ -195,11 +195,17 @@ abstract class DefaultRanglisteTab(wettkampfmode: BooleanProperty, override val 
         }
         grp
       }
-      val groupBy = if (cblist.isEmpty) {
-        ByWettkampfProgramm().groupBy(ByGeschlecht())
+      val akg = groupers.find(p => p.isInstanceOf[ByAltersklasse] && p.groupname.startsWith("Wettkampf"))
+      val jakg = groupers.find(p => p.isInstanceOf[ByJahrgangsAltersklasse] && p.groupname.startsWith("Wettkampf"))
+      val groupBy = if (cblist.nonEmpty) {
+        cblist.foldLeft(cblist.head.asInstanceOf[GroupBy])((acc, cb) => if (acc != cb) acc.groupBy(cb) else acc)
+      } else if (akg.nonEmpty) {
+        ByProgramm().groupBy(akg.get).groupBy(ByGeschlecht())
+      } else if (jakg.nonEmpty) {
+        ByProgramm().groupBy(jakg.get).groupBy(ByGeschlecht())
       }
       else {
-        cblist.foldLeft(cblist.head.asInstanceOf[GroupBy])((acc, cb) => if (acc != cb) acc.groupBy(cb) else acc)
+        ByProgramm().groupBy(ByGeschlecht())
       }
       groupBy.setAlphanumericOrdered(cbModus.selected.value)
       restoring = false
