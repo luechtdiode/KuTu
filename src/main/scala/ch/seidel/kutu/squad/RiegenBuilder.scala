@@ -42,12 +42,29 @@ trait RiegenBuilder {
 
 object RiegenBuilder {
 
-  def generateRiegenName(w: WertungView) = {
-    w.wettkampfdisziplin.programm.riegenmode match {
-      case RiegeRaw.RIEGENMODE_BY_JG => ATTGrouper.generateRiegenName(w)
-      case RiegeRaw.RIEGENMODE_BY_JG_VEREIN => JGClubGrouper.generateRiegenName(w)
-      case _ => KuTuGeTuGrouper.generateRiegenName(w)
+  def selectRiegenGrouper(riegenmode: Int, altersklassen: Option[String], jahrgangsklassen: Option[String]): RiegenGrouper = {
+    riegenmode match {
+      case RiegeRaw.RIEGENMODE_BY_JG => ATTGrouper
+      case RiegeRaw.RIEGENMODE_BY_JG_VEREIN => JGClubGrouper
+      case _ =>
+        if (jahrgangsklassen.nonEmpty || altersklassen.nonEmpty) {
+          JGClubGrouper
+        } else {
+          KuTuGeTuGrouper
+        }
     }
+  }
+  def generateRiegenName(w: WertungView) = {
+    val riegenmode = w.wettkampfdisziplin.programm.riegenmode
+    val aks = w.wettkampf.altersklassen match {
+      case s: String if s.nonEmpty => Some(s)
+      case _ => None
+    }
+    val jaks = w.wettkampf.jahrgangsklassen match {
+      case s: String if s.nonEmpty => Some(s)
+      case _ => None
+    }
+    selectRiegenGrouper(riegenmode, aks, jaks).generateRiegenName(w)
   }
 
   def generateRiegen2Name(w: WertungView): Option[String] = {
@@ -57,4 +74,5 @@ object RiegenBuilder {
       case _ => None
     }
   }
+
 }

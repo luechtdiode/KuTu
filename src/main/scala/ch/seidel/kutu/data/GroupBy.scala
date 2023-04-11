@@ -326,11 +326,16 @@ case class ByAltersklasse(bezeichnung: String = "GebDat Altersklasse", grenzen: 
   override val groupname = bezeichnung
   val klassen = Altersklasse(grenzen)
 
+  def makeGroupBy(w: Wettkampf)(gebdat: LocalDate): Altersklasse = {
+    val wkd: LocalDate = w.datum
+    val alter = Period.between(gebdat, wkd.plusDays(1)).getYears
+    Altersklasse(klassen, alter)
+  }
+
   protected override val grouper = (v: WertungView) => {
     val wkd: LocalDate = v.wettkampf.datum
     val gebd: LocalDate = sqlDate2ld(v.athlet.gebdat.getOrElse(Date.valueOf(LocalDate.now())))
-    val alter = Period.between(gebd, wkd.plusDays(1)).getYears
-    Altersklasse(klassen, alter)
+    makeGroupBy(v.wettkampf)(gebd)
   }
 
   protected override val sorter: Option[(GroupSection, GroupSection) => Boolean] = Some((gs1: GroupSection, gs2: GroupSection) => {
@@ -342,11 +347,16 @@ case class ByJahrgangsAltersklasse(bezeichnung: String = "JG Altersklasse", gren
   override val groupname = bezeichnung
   val klassen = Altersklasse(grenzen)
 
+  def makeGroupBy(w: Wettkampf)(gebdat: LocalDate): Altersklasse = {
+    val wkd: LocalDate = w.datum
+    val alter = wkd.getYear - gebdat.getYear
+    Altersklasse(klassen, alter)
+  }
+
   protected override val grouper = (v: WertungView) => {
     val wkd: LocalDate = v.wettkampf.datum
     val gebd: LocalDate = sqlDate2ld(v.athlet.gebdat.getOrElse(Date.valueOf(LocalDate.now())))
-    val alter = wkd.getYear - gebd.getYear
-    Altersklasse(klassen, alter)
+    makeGroupBy(v.wettkampf)(gebd)
   }
 
   protected override val sorter: Option[(GroupSection, GroupSection) => Boolean] = Some((gs1: GroupSection, gs2: GroupSection) => {

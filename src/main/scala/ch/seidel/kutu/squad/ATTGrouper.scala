@@ -6,9 +6,9 @@ case object ATTGrouper extends RiegenGrouper {
 
   override def generateRiegenName(w: WertungView) = groupKey(atGrouper)(w)
   
-  override protected def buildGrouper(riegencnt: Int): (List[WertungView => String], List[WertungView => String]) = {
+  override def buildGrouper(riegencnt: Int): (List[WertungView => String], List[WertungView => String], Boolean) = {
 	  val atGrp = atGrouper.drop(1)++atGrouper.take(1)
-    (atGrp, atGrp)
+    (atGrp, atGrp, true)
   }
 
   val atGrouper: List[WertungView => String] = List(

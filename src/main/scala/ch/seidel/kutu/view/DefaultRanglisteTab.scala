@@ -106,17 +106,6 @@ abstract class DefaultRanglisteTab(wettkampfmode: BooleanProperty, override val 
       def toString(d: DataObject) = if (d != null) d.easyprint else ""
     }
     val converter = new DataObjectConverter()
-   
-    class DataObjectListCell extends ListCell[DataObject] {
-      override val delegate: jfxsc.ListCell[DataObject] = new jfxsc.ListCell[DataObject] {
-        override protected def updateItem(item: DataObject, empty: Boolean): Unit = {
-          super.updateItem(item, empty)
-          if (item != null) {
-              setText(item.easyprint);
-          }
-        }
-      }
-    }
 
     val cb1 = new ComboBox[FilterBy] {
       maxWidth = 250

@@ -8,7 +8,7 @@ import scala.collection.mutable
 case class DurchgangBuilder(service: KutuService) extends Mapper with RiegenSplitter with StartGeraetGrouper {
   private val logger = LoggerFactory.getLogger(classOf[DurchgangBuilder])
   
-  def suggestDurchgaenge(wettkampfId: Long, maxRiegenSize: Int = 14,  
+  def suggestDurchgaenge(wettkampfId: Long, maxRiegenSize: Int = 0,
       durchgangfilter: Set[String] = Set.empty, programmfilter: Set[Long] = Set.empty,
       splitSexOption: Option[SexDivideRule] = None, splitPgm: Boolean = true,
       onDisziplinList: Option[Set[Disziplin]] = None): Map[String, Map[Disziplin, Iterable[(String,Seq[Wertung])]]] = {
@@ -50,19 +50,17 @@ case class DurchgangBuilder(service: KutuService) extends Mapper with RiegenSpli
           case None => if (dzlffm == dzlfff) GemischteRiegen else GetrennteDurchgaenge
           case Some(option) => option
         }
-        val (shortGrouper, fullGrouper, jgGroup) = wertungen.head._2.head.wettkampfdisziplin.programm.riegenmode match {
-          case RiegeRaw.RIEGENMODE_BY_JG =>
-            val fullGrouper = ATTGrouper.atGrouper
-            val shortGrouper = fullGrouper.take(fullGrouper.size - 1)
-            (shortGrouper, fullGrouper, true)
-          case RiegeRaw.RIEGENMODE_BY_JG_VEREIN =>
-            val fullGrouper = JGClubGrouper.jgclubGrouper
-            (fullGrouper, fullGrouper, true)
-          case _ =>
-            val fullGrouper = KuTuGeTuGrouper.wkGrouper
-            val shortGrouper = fullGrouper.take(if (riegencnt == 0) fullGrouper.size - 1 else fullGrouper.size)
-            (shortGrouper, fullGrouper, false)
+        val wv = wertungen.head._2.head
+        val riegenmode = wv.wettkampfdisziplin.programm.riegenmode
+        val aks = wv.wettkampf.altersklassen match {
+          case s: String if s.nonEmpty => Some(s)
+          case _ => None
         }
+        val jaks = wv.wettkampf.jahrgangsklassen match {
+          case s: String if s.nonEmpty => Some(s)
+          case _ => None
+        }
+        val (shortGrouper, fullGrouper, jgGroup) = RiegenBuilder.selectRiegenGrouper(riegenmode, aks, jaks).buildGrouper(riegencnt)
         splitSex match {
           case GemischteRiegen =>
             groupWertungen(programm, wertungen, shortGrouper, fullGrouper, dzlff, maxRiegenSize, GemischteRiegen, jgGroup)

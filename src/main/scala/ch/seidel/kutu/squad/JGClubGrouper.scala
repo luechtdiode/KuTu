@@ -7,8 +7,8 @@ case object JGClubGrouper extends RiegenGrouper {
 
   override def generateRiegenName(w: WertungView) = groupKey(jgclubGrouper)(w)
 
-  override protected def buildGrouper(riegencnt: Int): (List[WertungView => String], List[WertungView => String]) = {
-    (jgclubGrouper, jgclubGrouper)
+  override def buildGrouper(riegencnt: Int): (List[WertungView => String], List[WertungView => String], Boolean) = {
+    (jgclubGrouper, jgclubGrouper, true)
   }
 
   def extractJGGrouper(w: WertungView): String = if (w.wettkampf.altersklassen.nonEmpty) {

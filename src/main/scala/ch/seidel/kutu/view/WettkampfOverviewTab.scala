@@ -4,6 +4,7 @@ import java.util.UUID
 import ch.seidel.commons._
 import ch.seidel.kutu.Config.{homedir, remoteBaseUrl, remoteHostOrigin}
 import ch.seidel.kutu.KuTuApp.{controlsView, getStage, handleAction, modelWettkampfModus, selectedWettkampf, selectedWettkampfSecret, stage}
+import ch.seidel.kutu.data.{ByAltersklasse, ByJahrgangsAltersklasse}
 import ch.seidel.kutu.domain._
 import ch.seidel.kutu.renderer.PrintUtil.FilenameDefault
 import ch.seidel.kutu.renderer.{CompetitionsJudgeToHtmlRenderer, PrintUtil, WettkampfOverviewToHtmlRenderer}
@@ -59,7 +60,24 @@ class WettkampfOverviewTab(wettkampf: WettkampfView, override val service: KutuS
 
   private def createDocument = {
     val logofile = PrintUtil.locateLogoFile(new java.io.File(homedir + "/" + encodeFileName(wettkampf.easyprint)))
-    val document = toHTML(wettkampf, service.listOverviewStats(UUID.fromString(wettkampf.uuid.get)), logofile)
+    val data = if (wettkampf.altersklassen.nonEmpty) {
+      val aks = ByAltersklasse("AK", Altersklasse.parseGrenzen(wettkampf.altersklassen))
+      val facts = service.listAKOverviewFacts(UUID.fromString(wettkampf.uuid.get))
+      val grouper = aks.makeGroupBy(wettkampf.toWettkampf)_
+      facts.groupBy(_._1).flatMap(gr => gr._2.groupBy(x => (x._2, grouper(x._5))).map(gr2 =>
+        (gr._1, s"${gr2._1._1} ${gr2._1._2.easyprint}", gr2._1._2.alterVon, gr2._2.count(_._4.equals("M")), gr2._2.count(_._4.equals("W")))
+      )).toList
+    } else if (wettkampf.jahrgangsklassen.nonEmpty) {
+      val aks = ByJahrgangsAltersklasse("AK", Altersklasse.parseGrenzen(wettkampf.jahrgangsklassen))
+      val facts = service.listAKOverviewFacts(UUID.fromString(wettkampf.uuid.get))
+      val grouper = aks.makeGroupBy(wettkampf.toWettkampf) _
+      facts.groupBy(_._1).flatMap(gr => gr._2.groupBy(x => (x._2, grouper(x._5))).map(gr2 =>
+        (gr._1, s"${gr2._1._1} ${gr2._1._2.easyprint}", gr2._1._2.alterVon, gr2._2.count(_._4.equals("M")), gr2._2.count(_._4.equals("W")))
+      )).toList
+    } else {
+      service.listOverviewStats(UUID.fromString(wettkampf.uuid.get))
+    }
+    val document = toHTML(wettkampf, data, logofile)
     document
   }
 
