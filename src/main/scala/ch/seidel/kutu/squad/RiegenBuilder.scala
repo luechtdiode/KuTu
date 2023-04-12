@@ -1,6 +1,7 @@
 package ch.seidel.kutu.squad
 
 import ch.seidel.kutu.domain._
+import ch.seidel.kutu.squad.RiegenBuilder.selectRiegenGrouper
 
 /** Riegenbuilder:
  *     1. Anzahl Rotationen (min = 1, max = Anzahl Teilnehmer),
@@ -30,13 +31,16 @@ trait RiegenBuilder {
 
   def suggestRiegen(rotationstation: Seq[Int], wertungen: Seq[WertungView]): Seq[(String, Seq[Wertung])] = {
     val riegencount = rotationstation.sum
-    if (wertungen.head.wettkampfdisziplin.programm.riegenmode == RiegeRaw.RIEGENMODE_BY_JG) {
-      ATTGrouper.suggestRiegen(riegencount, wertungen)
-    } else if (wertungen.head.wettkampfdisziplin.programm.riegenmode == RiegeRaw.RIEGENMODE_BY_JG_VEREIN) {
-      JGClubGrouper.suggestRiegen(riegencount, wertungen)
-    } else {
-      KuTuGeTuGrouper.suggestRiegen(riegencount, wertungen)
+    val riegenmode = wertungen.head.wettkampfdisziplin.programm.riegenmode
+    val aks = wertungen.head.wettkampf.altersklassen match {
+      case s: String if s.nonEmpty => Some(s)
+      case _ => None
     }
+    val jaks = wertungen.head.wettkampf.jahrgangsklassen match {
+      case s: String if s.nonEmpty => Some(s)
+      case _ => None
+    }
+    selectRiegenGrouper(riegenmode, aks, jaks).suggestRiegen(riegencount, wertungen)
   }
 }
 

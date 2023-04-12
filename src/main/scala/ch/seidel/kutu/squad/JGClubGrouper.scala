@@ -21,8 +21,9 @@ case object JGClubGrouper extends RiegenGrouper {
     (w.athlet.gebdat match {case Some(d) => f"$d%tY"; case _ => ""})
 
   val jgclubGrouper: List[WertungView => String] = List(
-      x => x.athlet.geschlecht,
-      x => extractJGGrouper(x),
-      x => x.athlet.verein match {case Some(v) => v.easyprint case None => ""}
-    )
+    x => x.athlet.geschlecht,
+    x => x.wettkampfdisziplin.programm.name,
+    x => extractJGGrouper(x),
+    x => x.athlet.verein match {case Some(v) => v.easyprint case None => ""}
+  )
 }

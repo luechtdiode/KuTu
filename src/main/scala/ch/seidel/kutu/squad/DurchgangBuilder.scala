@@ -31,10 +31,7 @@ case class DurchgangBuilder(service: KutuService) extends Mapper with RiegenSpli
       val wkdisziplinlist = service.listWettkampfDisziplines(wettkampfId)
 
       val dzl = disziplinlist.filter(d => onDisziplinList.isEmpty || onDisziplinList.get.contains(d))
-      if(progAthlWertungen.keys.size > 1) {
-        val toDebug = (progAthlWertungen.keys.size, progAthlWertungen.keys.map(k => (progAthlWertungen(k).size, progAthlWertungen(k).map(w => w._2.size).sum))).toString
-        logger.debug(toDebug)
-      }
+
       val riegen = progAthlWertungen.flatMap{x =>
         val (programm, wertungen) = x
         val pgmHead = wertungen.head._2.head.wettkampfdisziplin.programm
