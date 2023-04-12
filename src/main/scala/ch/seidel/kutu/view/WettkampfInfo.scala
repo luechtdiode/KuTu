@@ -7,6 +7,9 @@ case class WettkampfInfo(wettkampf: WettkampfView, service: KutuService) {
   val disziplinList: List[Disziplin] = wettkampfdisziplinViews.foldLeft(List[Disziplin]()) { (acc, dv) =>
     if (!acc.contains(dv.disziplin)) acc :+ dv.disziplin else acc
   }
+  val startDisziplinList: List[Disziplin] = wettkampfdisziplinViews.foldLeft(List[Disziplin]()) { (acc, dv) =>
+    if (!acc.contains(dv.disziplin) && dv.startgeraet > 0) acc :+ dv.disziplin else acc
+  }
   //val pathPrograms = wettkampfdisziplinViews.flatMap(wd => wd.programm.programPath.reverse.tail).distinct.sortBy(_.ord).reverse
   val parentPrograms = wettkampfdisziplinViews.map(wd => wd.programm.parent).filter(_.nonEmpty).map(_.get).distinct.sortBy(_.ord)
   //val parentPrograms = wettkampfdisziplinViews.map(wd => wd.programm.aggregator).distinct.sortBy(_.ord)

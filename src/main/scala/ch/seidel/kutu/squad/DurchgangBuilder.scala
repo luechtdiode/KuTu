@@ -25,7 +25,7 @@ case class DurchgangBuilder(service: KutuService) extends Mapper with RiegenSpli
     }
     else {
       val programme = listProgramme(filteredWert)
-      val progAthlWertungen = buildProgrammAthletWertungen(filteredWert, programme, splitPgm || durchgangfilter.isEmpty)
+      val progAthlWertungen = buildProgrammAthletWertungen(filteredWert, programme, splitPgm)
       val riegencnt = 0 // riegencnt 0 is unlimited
       val disziplinlist = service.listDisziplinesZuWettkampf(wettkampfId)
       val wkdisziplinlist = service.listWettkampfDisziplines(wettkampfId)
