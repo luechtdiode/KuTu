@@ -1,6 +1,6 @@
 package ch.seidel.kutu
 
-import ch.seidel.commons.{DisplayablePage, PageDisplayer, ProgressForm}
+import ch.seidel.commons.{DisplayablePage, PageDisplayer, ProgressForm, TaskSteps}
 import ch.seidel.jwt
 import ch.seidel.kutu.Config._
 import ch.seidel.kutu.akka.KutuAppEvent
@@ -30,19 +30,20 @@ import scalafx.scene.control.Tab.sfxTab2jfx
 import scalafx.scene.control.TableColumn._
 import scalafx.scene.control.TextField.sfxTextField2jfx
 import scalafx.scene.control.TreeItem.sfxTreeItemToJfx
-import scalafx.scene.control._
+import scalafx.scene.control.{TreeView, _}
 import scalafx.scene.image.{Image, ImageView}
 import scalafx.scene.input.{Clipboard, ClipboardContent, DataFormat}
 import scalafx.scene.layout._
 import scalafx.scene.web.WebView
 import scalafx.scene.{Cursor, Node, Scene}
-import scalafx.stage.FileChooser
+import scalafx.stage.{FileChooser, Screen}
 import scalafx.stage.FileChooser.ExtensionFilter
 import spray.json._
 
 import java.io.{ByteArrayInputStream, FileInputStream}
 import java.util.concurrent.{Executors, ScheduledExecutorService}
 import java.util.{Base64, Date, UUID}
+import scala.collection.mutable
 import scala.concurrent.duration.Duration
 import scala.concurrent.{Await, Future, Promise}
 import scala.util.{Failure, Success}
@@ -1768,8 +1769,26 @@ object KuTuApp extends JFXApp3 with KutuService with JsonSupport with JwtSupport
   def getStage() = stage
 
   override def start(): Unit = {
-    markAthletesInactiveOlderThan(3)
+    val pForm = new ProgressForm(Some(new PrimaryStage))
+    val startSteps = TaskSteps("")
+    pForm.activateProgressBar("Wettkampf App startet ...", startSteps, startUI)
+    startSteps.nextStep("Starte die Datenbank ...", startDB)
+    startSteps.nextStep("Bereinige veraltete Daten ...", cleanupDB)
+    new Thread(startSteps).start()
+  }
 
+  def startDB(): Unit = {
+    Await.ready(Future {
+      println(database.source.toString)
+    }, Duration.Inf)
+  }
+  def cleanupDB(): Unit = {
+    Await.ready(Future {
+      markAthletesInactiveOlderThan(3)
+    }, Duration.Inf)
+  }
+
+  def startUI(): Unit = {
     rootTreeItem = new TreeItem[String]("Dashboard") {
       expanded = true
       children = tree.getTree
@@ -1923,49 +1942,49 @@ object KuTuApp extends JFXApp3 with KutuService with JsonSupport with JwtSupport
                     //                    items += makeWettkampfRemoteRemoveMenu(p)
                     //                  }
 
-                    controlsView.contextMenu = new ContextMenu() {
-                      items += makeWettkampfDurchfuehrenMenu(p)
-                      items += makeWettkampfBearbeitenMenu(p)
-                      items += makeWettkampfExportierenMenu(p)
-                      items += makeWettkampfDataDirectoryMenu(p)
-                      items += makeWettkampfLoeschenMenu(p)
-                      //                    items += networkMenu
+                        controlsView.contextMenu = new ContextMenu() {
+                          items += makeWettkampfDurchfuehrenMenu(p)
+                          items += makeWettkampfBearbeitenMenu(p)
+                          items += makeWettkampfExportierenMenu(p)
+                          items += makeWettkampfDataDirectoryMenu(p)
+                          items += makeWettkampfLoeschenMenu(p)
+                          //                    items += networkMenu
+                        }
+                      case Some(KuTuAppThumbNail(v: Verein, _, newItem)) =>
+                        controlsView.contextMenu = new ContextMenu() {
+                          items += makeVereinUmbenennenMenu(v)
+                          items += makeVereinLoeschenMenu(v)
+                        }
+                      case _ => controlsView.contextMenu = new ContextMenu()
                     }
-                  case Some(KuTuAppThumbNail(v: Verein, _, newItem)) =>
-                    controlsView.contextMenu = new ContextMenu() {
-                      items += makeVereinUmbenennenMenu(v)
-                      items += makeVereinLoeschenMenu(v)
-                    }
+                  }
                   case _ => controlsView.contextMenu = new ContextMenu()
                 }
-              }
-              case _ => controlsView.contextMenu = new ContextMenu()
-            }
 
-          }
-          val centerPane = (newItem.isLeaf, Option(newItem.getParent)) match {
-            case (true, Some(parent)) => {
-              tree.getThumbs(parent.getValue).find(p => p.button.text.getValue.equals(newItem.getValue)) match {
-                case Some(KuTuAppThumbNail(p: WettkampfView, _, newItem)) =>
-                  PageDisplayer.choosePage(modelWettkampfModus, Some(p), "dashBoard - " + newItem.getValue, tree)
-                case Some(KuTuAppThumbNail(v: Verein, _, newItem)) =>
-                  PageDisplayer.choosePage(modelWettkampfModus, Some(v), "dashBoard - " + newItem.getValue, tree)
-                case _ =>
-                  PageDisplayer.choosePage(modelWettkampfModus, None, "dashBoard - " + newItem.getValue, tree)
               }
+              val centerPane = (newItem.isLeaf, Option(newItem.getParent)) match {
+                case (true, Some(parent)) => {
+                  tree.getThumbs(parent.getValue).find(p => p.button.text.getValue.equals(newItem.getValue)) match {
+                    case Some(KuTuAppThumbNail(p: WettkampfView, _, newItem)) =>
+                      PageDisplayer.choosePage(modelWettkampfModus, Some(p), "dashBoard - " + newItem.getValue, tree)
+                    case Some(KuTuAppThumbNail(v: Verein, _, newItem)) =>
+                      PageDisplayer.choosePage(modelWettkampfModus, Some(v), "dashBoard - " + newItem.getValue, tree)
+                    case _ =>
+                      PageDisplayer.choosePage(modelWettkampfModus, None, "dashBoard - " + newItem.getValue, tree)
+                  }
+                }
+                case (false, Some(_)) =>
+                  PageDisplayer.choosePage(modelWettkampfModus, None, "dashBoard - " + newItem.getValue, tree)
+                case (_, _) =>
+                  PageDisplayer.choosePage(modelWettkampfModus, None, "dashBoard", tree)
+              }
+              if (splitPane.items.size > 1) {
+                splitPane.items.remove(1)
+              }
+              splitPane.items.add(1, centerPane)
             }
-            case (false, Some(_)) =>
-              PageDisplayer.choosePage(modelWettkampfModus, None, "dashBoard - " + newItem.getValue, tree)
-            case (_, _) =>
-              PageDisplayer.choosePage(modelWettkampfModus, None, "dashBoard", tree)
           }
-          if (splitPane.items.size > 1) {
-            splitPane.items.remove(1)
-          }
-          splitPane.items.add(1, centerPane)
         }
-      }
-    }
 
     var divider: Option[Double] = None
     modelWettkampfModus.onChange {
@@ -1991,7 +2010,9 @@ object KuTuApp extends JFXApp3 with KutuService with JsonSupport with JwtSupport
       //initStyle(StageStyle.TRANSPARENT);
       title = "KuTu Wettkampf-App"
       icons += new Image(this.getClass.getResourceAsStream("/images/app-logo.png"))
-      scene = new Scene(1200, 750) {
+      val sceneWidth = 1200
+      val sceneHeigth = 750
+      scene = new Scene(sceneWidth, sceneHeigth) {
         root = new BorderPane {
           top = headerContainer
           center = new BorderPane {
@@ -2001,6 +2022,9 @@ object KuTuApp extends JFXApp3 with KutuService with JsonSupport with JwtSupport
         }
 
       }
+      val bounds = Screen.primary.bounds
+      x = bounds.minX + bounds.width / 2 - sceneWidth / 2
+      y = bounds.minY + bounds.height / 2 - sceneHeigth / 2
       val st = this.getClass.getResource("/css/Main.css")
       if (st == null) {
         logger.debug("Ressource /css/main.css not found. Class-Anchor: " + this.getClass)
