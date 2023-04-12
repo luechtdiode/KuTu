@@ -39,7 +39,16 @@ update wettkampfdisziplin
   -- Barren
   and disziplin_id = 5
 ;
-
+-- KD official STV
+UPDATE programm
+  set alter_von=22
+  where id=42
+;
+-- KH official STV
+UPDATE programm
+  set alter_von=28
+  where id=43
+;
 
 alter table programm rename to old_programm;
 
@@ -109,12 +118,3 @@ update programm
  where id=1
     or parent_id=1
 ;
--- fix age-limitations K1-K4 inofficial, for GeTu BLTV
--- KD official STV
-UPDATE programm
-  set alter_von=22
-  where id=42;
--- KH official STV
-UPDATE programm
-  set alter_von=28
-  where id=43;
