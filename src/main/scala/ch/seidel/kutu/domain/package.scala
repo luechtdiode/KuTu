@@ -577,7 +577,7 @@ package object domain {
       case Some(p) => p.programPath :+ this
     }
 
-    def wettkampfprogramm: ProgrammView = if (aggregator == this) this else head
+    def wettkampfprogramm: ProgrammView = if (aggregator == this) this else aggregatorSubHead
 
     def aggregatorHead: ProgrammView = parent match {
       case Some(p) if (p.aggregate != 0) => p.aggregatorHead
