@@ -484,7 +484,7 @@ abstract trait WertungService extends DBService with WertungResultMapper with Di
             x.durchgang.nonEmpty &&
             x.durchgang.forall{d =>
               d.nonEmpty &&
-              disziplinsZuDurchgangR1.get(d).map(dm => dm.contains(wertung.wettkampfdisziplin.disziplin)).getOrElse(false)
+              disziplinsZuDurchgangR1.get(d).exists(dm => dm.contains(wertung.wettkampfdisziplin.disziplin))
             }
           }
         }
@@ -501,7 +501,7 @@ abstract trait WertungService extends DBService with WertungResultMapper with Di
             x.durchgang.nonEmpty &&
             x.durchgang.forall{d =>
               d.nonEmpty &&
-              disziplinsZuDurchgangR2.get(d).map(dm => dm.contains(wertung.wettkampfdisziplin.disziplin)).getOrElse(false)
+              disziplinsZuDurchgangR2.get(d).exists(dm => dm.contains(wertung.wettkampfdisziplin.disziplin))
             }
           }
         }
