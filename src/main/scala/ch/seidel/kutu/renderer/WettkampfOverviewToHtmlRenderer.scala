@@ -275,7 +275,7 @@ trait WettkampfOverviewToHtmlRenderer {
           Alter am Wettkampf - Tag: ${wettkampf.altersklassen} <br>
           <ul>${altersklassen}
           </ul>"""
-          else if (altersklassen.nonEmpty)
+          else if (jgAltersklassen.nonEmpty)
           s"""<h2>Altersklassen</h2>
           Alter im Wettkampf - Jahr: ${wettkampf.jahrgangsklassen} <br>
           <ul>${jgAltersklassen}
