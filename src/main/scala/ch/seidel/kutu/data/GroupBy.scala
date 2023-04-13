@@ -292,7 +292,16 @@ case class ByWettkampf() extends GroupBy with FilterBy {
 case class ByRiege() extends GroupBy with FilterBy {
   override val groupname = "Riege"
   protected override val grouper = (v: WertungView) => {
-    Riege(v.riege match { case Some(r) => r case None => "keine Einteilung" }, None, None, 0)
+    Riege(v.riege match { case Some(r) => r case None => "Ohne Einteilung" }, None, None, 0)
+  }
+  protected override val sorter: Option[(GroupSection, GroupSection) => Boolean] = Some((gs1: GroupSection, gs2: GroupSection) => {
+    gs1.groupKey.easyprint.compareTo(gs2.groupKey.easyprint) < 0
+  })
+}
+case class ByRiege2() extends GroupBy with FilterBy {
+  override val groupname = "Riege2"
+  protected override val grouper = (v: WertungView) => {
+    Riege(v.riege2 match { case Some(r) => r case None => "Ohne Spezial-Einteilung" }, None, None, 0)
   }
   protected override val sorter: Option[(GroupSection, GroupSection) => Boolean] = Some((gs1: GroupSection, gs2: GroupSection) => {
     gs1.groupKey.easyprint.compareTo(gs2.groupKey.easyprint) < 0
@@ -422,7 +431,7 @@ object GroupBy {
     ByWettkampfProgramm("Kategorie"), ByProgramm("Kategorie"),
     ByWettkampfProgramm("Programm"), ByProgramm("Programm"), ByWettkampf(),
     ByJahrgang(), ByGeschlecht(), ByVerband(), ByVerein(), ByAthlet(),
-    ByRiege(), ByDisziplin(), ByJahr()
+    ByRiege(), ByRiege2(), ByDisziplin(), ByJahr()
   )
 
   def apply(query: String, data: Seq[WertungView], groupers: List[FilterBy] = allGroupers): GroupBy = {

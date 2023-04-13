@@ -44,7 +44,7 @@ class RanglisteTab(wettkampfmode: BooleanProperty, wettkampf: WettkampfView, ove
       ByJahrgangsAltersklasse("Turn10® Altersklasse", Altersklasse.altersklassenTurn10),
       ByGeschlecht(),
       ByVerband(), ByVerein(),
-      ByDurchgang(riegenZuDurchgang), ByRiege(), ByDisziplin())
+      ByDurchgang(riegenZuDurchgang), ByRiege(), ByRiege2(), ByDisziplin())
     (altersklassen.nonEmpty, jgAltersklassen.nonEmpty) match {
       case (true,true) => standardGroupers ++ List(ByAltersklasse("Wettkampf Altersklassen", altersklassen), ByJahrgangsAltersklasse("Wettkampf JG-Altersklassen", jgAltersklassen))
       case (false,true) => standardGroupers :+ ByJahrgangsAltersklasse("Wettkampf JG-Altersklassen", jgAltersklassen)
