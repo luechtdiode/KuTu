@@ -88,22 +88,22 @@ object KuTuApp extends JFXApp3 with KutuService with JsonSupport with JwtSupport
 
     val oldselected = selectionPathToRoot(controlsView.selectionModel().getSelectedItem)
 
-    lastSelected.value = "Updating"
-    var lastNode = rootTreeItem
-    try {
-      tree = AppNavigationModel.create(KuTuApp.this)
-      rootTreeItem.children = tree.getTree
-      for {node <- oldselected} {
-        lastNode.setExpanded(true)
-        lastNode.children.find(n => n.value.value.equals(node.value.value)) match {
-          case Some(n) => lastNode = n
-          case _ =>
+      lastSelected.value = "Updating"
+      var lastNode = rootTreeItem
+      try {
+        tree = AppNavigationModel.create(KuTuApp.this)
+        rootTreeItem.children = tree.getTree
+        for {node <- oldselected} {
+          lastNode.setExpanded(true)
+          lastNode.children.find(n => n.value.value.equals(node.value.value)) match {
+            case Some(n) => lastNode = n
+            case _ =>
+          }
         }
+      } finally {
+        lastSelected.value = oldselected.lastOption.map(_.value.value).getOrElse("")
       }
-    } finally {
-      lastSelected.value = oldselected.lastOption.map(_.value.value).getOrElse("")
-    }
-    controlsView.selectionModel().select(lastNode)
+      controlsView.selectionModel().select(lastNode)
   }
 
   def handleAction[J <: javafx.event.ActionEvent, R](handler: scalafx.event.ActionEvent => R) = new javafx.event.EventHandler[J] {
@@ -1156,11 +1156,8 @@ object KuTuApp extends JFXApp3 with KutuService with JsonSupport with JwtSupport
           cmbAltersklassen.value
         )
 
-        cmbAltersklassen.value.onChange{
+        cmbAltersklassen.value.onChange {
           text.value = Altersklasse.predefinedAKs(cmbAltersklassen.value.value)
-          if (editable.value) {
-            text.value += " Editable"
-          }
         }
       }
       val cmbJGAltersklassen = new ComboBox[String]() {
@@ -1183,9 +1180,6 @@ object KuTuApp extends JFXApp3 with KutuService with JsonSupport with JwtSupport
 
         cmbJGAltersklassen.value.onChange{
           text.value = Altersklasse.predefinedAKs(cmbJGAltersklassen.value.value)
-          if (editable.value) {
-            text.value += " Editable"
-          }
         }
       }
       PageDisplayer.showInDialog(caption, new DisplayablePage() {
@@ -1778,17 +1772,17 @@ object KuTuApp extends JFXApp3 with KutuService with JsonSupport with JwtSupport
   }
 
   def startDB(): Unit = {
-    Await.ready(Future {
-      println(database.source.toString)
-    }, Duration.Inf)
+    logger.info(database.source.toString)
   }
+  
   def cleanupDB(): Unit = {
-    Await.ready(Future {
+    Future {
       markAthletesInactiveOlderThan(3)
-    }, Duration.Inf)
+    }
   }
 
   def startUI(): Unit = {
+    logger.info("starte das UI ...")
     rootTreeItem = new TreeItem[String]("Dashboard") {
       expanded = true
       children = tree.getTree
@@ -2039,5 +2033,6 @@ object KuTuApp extends JFXApp3 with KutuService with JsonSupport with JwtSupport
         scene().stylesheets.add(st.toExternalForm)
       }
     }
+    logger.info("UI ready")
   }
 }

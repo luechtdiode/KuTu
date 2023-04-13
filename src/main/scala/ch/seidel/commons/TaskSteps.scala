@@ -1,8 +1,10 @@
 package ch.seidel.commons
 
 import javafx.concurrent.Task
+import org.slf4j.LoggerFactory
 
 case class TaskSteps(title: String) extends Task[Void] {
+  private val logger = LoggerFactory.getLogger(this.getClass)
   updateMessage(title)
   var steps: List[(String, () => Unit)] = List.empty
 
@@ -10,7 +12,7 @@ case class TaskSteps(title: String) extends Task[Void] {
   override def call: Void = {
     val allSteps = steps.size
     for (((msg, stepFn), idx) <- steps.zipWithIndex) {
-      println(msg)
+      logger.info(msg)
       updateMessage(msg)
       if (allSteps > 1) {
         updateProgress((idx * 2) + 1, allSteps * 2)
@@ -19,7 +21,7 @@ case class TaskSteps(title: String) extends Task[Void] {
       if (allSteps > 1) {
         updateProgress(idx * 2 + 2, allSteps * 2)
       }
-      println(msg + "ready")
+      logger.info(msg + "ready")
     }
     null
   }
