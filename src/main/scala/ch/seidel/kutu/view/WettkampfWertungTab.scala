@@ -563,7 +563,7 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
             }
             cellValueFactory = { x =>
               new ReadOnlyStringWrapper(x.value, "riege2", {
-                s"${x.value.find(we => we.init.wettkampfdisziplin.programm == p).flatMap(we => we.init.riege2).getOrElse("keine Einteilung")}"
+                s"${x.value.find(we => we.init.wettkampfdisziplin.programm.programPath.contains(p)).flatMap(we => we.init.riege2).getOrElse("keine Einteilung")}"
               })
             }
             //        delegate.impl_setReorderable(false)
