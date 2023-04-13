@@ -272,6 +272,14 @@ package object domain {
       case _ => ""
     })
 
+    def shortPrint: String = "" + (geschlecht match {
+      case "W" => s"Ti ${name + " " + vorname}"
+      case _ => s"Tu ${name + " " + vorname}"
+    }) + " " + (gebdat match {
+      case Some(d) => f"$d%tY "
+      case _ => ""
+    })
+
     def toPublicView: Athlet = {
       Athlet(id, 0, geschlecht, name, vorname, gebdat
         .map(d => sqlDate2ld(d))

@@ -32,6 +32,7 @@ import scalafx.scene.input.{Clipboard, KeyEvent}
 import scalafx.scene.layout._
 import scalafx.util.converter.{DefaultStringConverter, DoubleStringConverter}
 
+import java.time.Period
 import java.util.UUID
 import java.util.concurrent.{ScheduledFuture, TimeUnit}
 import scala.concurrent.ExecutionContext.Implicits.global
@@ -958,7 +959,6 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
     val vereine = ObservableBuffer.from(vereineList)
     val cbVereine = new ComboBox[Verein] {
       items = vereine
-      //selectionModel.value.selectFirst()
     }
     val programms = progrm.map(p => service.readWettkampfLeafs(p.head.id)).toSeq.flatten
     val clipboardlines = Source.fromString(Clipboard.systemClipboard.getString + "").getLines()
@@ -995,7 +995,7 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
             }
             catch {
               case d: Exception =>
-                programms.filter(pgm => pgm.name.equalsIgnoreCase(fields(3))).headOption match {
+                programms.find(pgm => pgm.name.equalsIgnoreCase(fields(3))) match {
                   case Some(p) => p.id
                   case _ => progrm match {
                     case Some(p) => p.id
@@ -1030,25 +1030,16 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
           val athletTable = new TableView[(Long, Athlet, AthletView)](filteredModel) {
             columns ++= List(
               new TableColumn[(Long, Athlet, AthletView), String] {
-                text = "Athlet"
+                text = "Athlet (Name, Vorname, JG)"
                 cellValueFactory = { x =>
                   new ReadOnlyStringWrapper(x.value, "athlet", {
-                    s"${x.value._2.name} ${x.value._2.vorname}, ${
-                      x.value._2.gebdat.map(d => f"$d%tY") match {
-                        case None => ""
-                        case Some(t) => t
-                      }
-                    }"
+                    s"${x.value._2.shortPrint}"
                   })
                 }
                 minWidth = 250
               },
               new TableColumn[(Long, Athlet, AthletView), String] {
-                text = programm.map(p => p.head.id match {
-                  case 20 => "Kategorie"
-                  case 1 => "."
-                  case _ => "Programm"
-                }).getOrElse(".")
+                text = programm.map(p => if (p.head.name.toUpperCase.contains("GETU")) "Kategorie" else "Programm").getOrElse(".")
                 cellValueFactory = { x =>
                   new ReadOnlyStringWrapper(x.value, "programm", {
                     programms.find { p => p.id == x.value._1 || p.aggregatorHead.id == x.value._1 } match {
@@ -1131,124 +1122,75 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
               if (!athletTable.selectionModel().isEmpty) {
                 val selectedAthleten = athletTable.items.value.zipWithIndex.filter {
                   x => athletTable.selectionModel.value.isSelected(x._2)
-                }.map { x =>
-                  val ((progrId, importathlet, candidateView), idx) = x
-                  val id = if (candidateView.id > 0 &&
-                    (importathlet.gebdat match {
-                      case Some(d) =>
-                        candidateView.gebdat match {
-                          case Some(cd) => f"${cd}%tF".endsWith("-01-01")
-                          case _ => true
-                        }
-                      case _ => false
-                    })) {
-                    val athlet = service.insertAthlete(Athlet(
-                      id = candidateView.id,
-                      js_id = candidateView.js_id,
-                      geschlecht = candidateView.geschlecht,
-                      name = candidateView.name,
-                      vorname = candidateView.vorname,
-                      gebdat = importathlet.gebdat,
-                      strasse = candidateView.strasse,
-                      plz = candidateView.plz,
-                      ort = candidateView.ort,
-                      verein = Some(cbVereine.selectionModel.value.selectedItem.value.id),
-                      activ = true
-                    ))
-                    athlet.id
-                  }
-                  else if (candidateView.id > 0) {
-                    candidateView.id
-                  }
-                  else {
-                    val athlet = service.insertAthlete(Athlet(
-                      id = 0,
-                      js_id = candidateView.js_id,
-                      geschlecht = candidateView.geschlecht,
-                      name = candidateView.name,
-                      vorname = candidateView.vorname,
-                      gebdat = candidateView.gebdat,
-                      strasse = candidateView.strasse,
-                      plz = candidateView.plz,
-                      ort = candidateView.ort,
-                      verein = Some(cbVereine.selectionModel.value.selectedItem.value.id),
-                      activ = true
-                    ))
-                    athlet.id
-                  }
-                  (progrId, id)
-                }
-
-                for ((progId, athletes) <- selectedAthleten.groupBy(_._1).map(x => (x._1, x._2.map(_._2)))) {
-                  service.assignAthletsToWettkampf(wettkampf.id, Set(progId), athletes.toSet)
-                }
-
-                reloadData()
+                }.map(_._1)
+                insertClipboardAssignments(cbVereine.selectionModel.value.selectedItem.value.id, selectedAthleten)
               }
             }
           }, new Button("OK Alle") {
             disable <== when(cbVereine.selectionModel.value.selectedItemProperty.isNull()) choose true otherwise false
             onAction = (event: ActionEvent) => {
-              val clip = filteredModel.map { raw =>
-                val (progId, importAthlet, candidateView) = raw
-                val athlet = if (candidateView.id > 0 &&
-                  (importAthlet.gebdat match {
-                    case Some(d) =>
-                      candidateView.gebdat match {
-                        case Some(cd) => f"${cd}%tF".endsWith("-01-01")
-                        case _ => true
-                      }
-                    case _ => false
-                  })) {
-                  val athlet = service.insertAthlete(Athlet(
-                    id = candidateView.id,
-                    js_id = candidateView.js_id,
-                    geschlecht = candidateView.geschlecht,
-                    name = candidateView.name,
-                    vorname = candidateView.vorname,
-                    gebdat = importAthlet.gebdat,
-                    strasse = candidateView.strasse,
-                    plz = candidateView.plz,
-                    ort = candidateView.ort,
-                    verein = Some(cbVereine.selectionModel.value.selectedItem.value.id),
-                    activ = true
-                  ))
-                  AthletView(athlet.id, athlet.js_id, athlet.geschlecht, athlet.name, athlet.vorname, athlet.gebdat, athlet.strasse, athlet.plz, athlet.ort, Some(cbVereine.selectionModel.value.selectedItem.value), true)
-                }
-                else if (candidateView.id > 0) {
-                  candidateView
-                }
-                else {
-                  val candidate = Athlet(
-                    id = candidateView.id,
-                    js_id = candidateView.js_id,
-                    geschlecht = candidateView.geschlecht,
-                    name = candidateView.name,
-                    vorname = candidateView.vorname,
-                    gebdat = candidateView.gebdat,
-                    strasse = candidateView.strasse,
-                    plz = candidateView.plz,
-                    ort = candidateView.ort,
-                    verein = Some(cbVereine.selectionModel.value.selectedItem.value.id),
-                    activ = true
-                  )
-                  val athlet = service.insertAthlete(candidate)
-                  AthletView(athlet.id, athlet.js_id, athlet.geschlecht, athlet.name, athlet.vorname, athlet.gebdat, athlet.strasse, athlet.plz, athlet.ort, Some(cbVereine.selectionModel.value.selectedItem.value), true)
-                }
-                (progId, athlet)
-              }.toList
-              if (!athletModel.isEmpty) {
-                val pgathl = clip.groupBy(_._1).map(x => (x._1, x._2.map(_._2.id)))
-                logger.debug(pgathl.toString)
-                for ((progId, athletes) <- pgathl) {
-                  service.assignAthletsToWettkampf(wettkampf.id, Set(progId), athletes.toSet)
-                }
-                reloadData()
-              }
+              insertClipboardAssignments(cbVereine.selectionModel.value.selectedItem.value.id, filteredModel)
             }
           })
         }
       }
+    }
+  }
+
+  private def insertClipboardAssignments(vereinId: Long, selectedAthleten: ObservableBuffer[(Long, Athlet, AthletView)]): Unit = {
+    val clip = selectedAthleten.map { x =>
+      val (progrId, importathlet, candidateView) = x
+      val id = if (candidateView.id > 0 &&
+        (importathlet.gebdat match {
+          case Some(d) =>
+            candidateView.gebdat match {
+              case Some(cd) => f"${cd}%tF".endsWith("-01-01")
+              case _ => true
+            }
+          case _ => false
+        })) {
+        val athlet = service.insertAthlete(Athlet(
+          id = candidateView.id,
+          js_id = candidateView.js_id,
+          geschlecht = candidateView.geschlecht,
+          name = candidateView.name,
+          vorname = candidateView.vorname,
+          gebdat = importathlet.gebdat,
+          strasse = candidateView.strasse,
+          plz = candidateView.plz,
+          ort = candidateView.ort,
+          verein = Some(vereinId),
+          activ = true
+        ))
+        athlet.id
+      }
+      else if (candidateView.id > 0) {
+        candidateView.id
+      }
+      else {
+        val athlet = service.insertAthlete(Athlet(
+          id = 0,
+          js_id = candidateView.js_id,
+          geschlecht = candidateView.geschlecht,
+          name = candidateView.name,
+          vorname = candidateView.vorname,
+          gebdat = candidateView.gebdat,
+          strasse = candidateView.strasse,
+          plz = candidateView.plz,
+          ort = candidateView.ort,
+          verein = Some(vereinId),
+          activ = true
+        ))
+        athlet.id
+      }
+      (progrId, id)
+    }
+    if (!clip.isEmpty) {
+      for ((progId, athletes) <- clip.groupBy(_._1).map(x => (x._1, x._2.map(_._2)))) {
+        service.assignAthletsToWettkampf(wettkampf.id, Set(progId), athletes.toSet)
+      }
+
+      reloadData()
     }
   }
 
@@ -1569,15 +1511,19 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
     }
   }
   val moveToOtherProgramButton = new Button {
-    text = programm.map(p => p.head.id match {
-      case 20 => "Turner Kategorie wechseln ..."
-      case 1 => "."
-      case _ => "Turner Programm wechseln ..."
+    val pgmpattern = ".*GETU.*/i".r
+    text = programm.map(p => p.head.name match {
+      case pgmpattern() => "Tu/Ti Kategorie wechseln ..."
+      case _ => "Tu/Ti Programm wechseln ..."
     }).getOrElse(".")
     minWidth = 75
     onAction = (event: ActionEvent) => {
       implicit val impevent = event
-      val programms = programm.map(p => service.readWettkampfLeafs(p.head.id)).get
+      val athlet = wkview.selectionModel().getSelectedItem.head.init.athlet
+      val alter = athlet.gebdat.map(d => Period.between(d.toLocalDate, wettkampf.datum).getYears).getOrElse(100)
+      val programms = programm.toList.flatMap(p => service.readWettkampfLeafs(p.head.id)).filter(p => {
+        Range.inclusive(p.alterVon, p.alterBis).contains(alter)
+      })
       val prmodel = ObservableBuffer.from(programms)
       val cbProgramms = new ComboBox[ProgrammView] {
         items = prmodel
@@ -1648,7 +1594,7 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
           minWidth = 75
           onAction = (event: ActionEvent) => {
             new AthletSelectionDialog(
-              text.value, wettkampf.programm, wertungen.map(w => w.head.init.athlet), service,
+              text.value, wettkampf.datum.toLocalDate, wettkampf.programm.alterVon, wettkampf.programm.alterBis, Set("W", "M"), wertungen.map(w => w.head.init.athlet), service,
               (selection: Set[Long]) => {
                 service.assignAthletsToWettkampf(wettkampf.id, Set(2, 3), selection)
                 reloadData()
@@ -1672,8 +1618,14 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
         text = "Athlet hinzufügen"
         minWidth = 75
         onAction = (event: ActionEvent) => {
+          val wkdisziplinlist = service.listWettkampfDisziplines(wettkampf.id)
+          val sex = wkdisziplinlist.flatMap{wkd => (wkd.feminim, wkd.masculin) match {
+            case (1, 0) => Set("W")
+            case (0, 1) => Set("M")
+            case _ => Set("M", "W")
+          }}.toSet
           new AthletSelectionDialog(
-            text.value, progrm, wertungen.map(w => w.head.init.athlet), service,
+            text.value, wettkampf.datum.toLocalDate, progrm.alterVon, progrm.alterBis, sex, wertungen.map(w => w.head.init.athlet), service,
             (selection: Set[Long]) => {
               service.assignAthletsToWettkampf(wettkampf.id, Set(progrm.id), selection)
               reloadData()
