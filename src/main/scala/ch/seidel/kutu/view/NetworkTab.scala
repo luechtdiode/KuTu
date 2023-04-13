@@ -479,15 +479,17 @@ class NetworkTab(wettkampfmode: BooleanProperty, override val wettkampfInfo: Wet
         val selection = durchgang.geraeteRiegen.filter {
           _.disziplin.contains(disziplin)
         }
-        items = selection.map { r =>
-          val menu = KuTuApp.makeMenuAction(r.caption) { (caption, action) =>
+        items = selection.map { geraeteRiege =>
+          val menu = KuTuApp.makeMenuAction(geraeteRiege.caption) { (caption, action) =>
             lazypane match {
               case Some(pane) =>
-                val wertungTab: WettkampfWertungTab = new WettkampfWertungTab(wettkampfmode, None, Some(r), wettkampfInfo, service, {
-                  val progs = service.readWettkampfLeafs(wettkampf.programm.id)
-                  service.listAthletenWertungenZuProgramm(progs map (p => p.id), wettkampf.id)
+                val pgmFilter = geraeteRiege.kandidaten.flatMap(_.wertungen.map(w => w.wettkampfdisziplin.programm)).distinct
+                val progs = service.readWettkampfLeafs(wettkampf.programm.id) map (p => p.id)
+                val wertungTab: WettkampfWertungTab = new WettkampfWertungTab(wettkampfmode, None, Some(geraeteRiege), wettkampfInfo, service, {
+                  service.listAthletenWertungenZuProgramm(progs, wettkampf.id)
+                    .filter(wertung => pgmFilter.contains(wertung.wettkampfdisziplin.programm))
                 }) {
-                  text = r.caption
+                  text = geraeteRiege.caption
                   closable = true
                 }
                 pane.tabs.add(pane.tabs.size() + (if (wettkampfmode.value) -2 else -1), wertungTab.asInstanceOf[Tab])
@@ -502,7 +504,7 @@ class NetworkTab(wettkampfmode: BooleanProperty, override val wettkampfInfo: Wet
             }
           }
           menu.graphic = new ImageView {
-            image = if (r.erfasst) okIcon else nokIcon
+            image = if (geraeteRiege.erfasst) okIcon else nokIcon
           }
           menu
         }
