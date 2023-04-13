@@ -176,7 +176,7 @@ object AutoCommitTextFieldTableCell {
             tableView.selectionModel.value.select(newSelectedRowIdx, nextEditable)
             tableView.scrollToColumn(nextEditable)
           }
-          else {
+          else if (editableColumns.nonEmpty) {
             tableView.selectionModel.value.select(newSelectedRowIdx, editableColumns.head)
             tableView.scrollToColumn(editableColumns.head)
           }
@@ -206,7 +206,7 @@ object AutoCommitTextFieldTableCell {
             tableView.selectionModel.value.select(newSelectedRowIdx, nextEditable)
             tableView.scrollToColumn(nextEditable)
           }
-          else {
+          else if (editableColumns.nonEmpty) {
             tableView.selectionModel.value.select(newSelectedRowIdx, editableColumns.last)
             tableView.scrollToColumn(editableColumns.head)
           }
