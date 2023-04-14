@@ -31,6 +31,7 @@ import scala.collection.immutable
 import scala.concurrent.Await
 import scala.concurrent.duration.Duration
 import scala.jdk.CollectionConverters
+import scala.jdk.FunctionConverters.enrichAsJavaFunction
 
 trait DurchgangItem
 
@@ -107,10 +108,63 @@ class DurchgangStationView(wettkampf: WettkampfView, service: KutuService, diszi
   //items = durchgangModel
   showRoot = false
   tableMenuButtonVisible = true
+  var lastDizs: Seq[Disziplin] = Seq()
+  def rebuildDiszColumns(disziplinlist: Seq[Disziplin]): Unit = {
+    if (lastDizs.nonEmpty) {
+      val diszCols = lastDizs.map(_.name)
+      columns.removeIf(c => diszCols.contains(c.getText))
+    }
+    lastDizs = disziplinlist
+    columns.insertAll(6, lastDizs.map { disziplin =>
+      val dc = new TreeTableColumn[DurchgangState, String] {
+        text = disziplin.name
+        prefWidth = 230
+        columns ++= Seq(
+          new DurchgangStationTreeTableColumn[String](disziplin) {
+            text = "Stationen"
+            prefWidth = 120
+            cellValueFactory = { x =>
+              if (x.value.getValue == null) StringProperty("") else
+                x.value.getValue.percentPerRiegeComplete.get(Some(disziplin)) match {
+                  case Some(re) => StringProperty(re._2)
+                  case _ => StringProperty("")
+                }
+            }
+          }
+          , new TreeTableColumn[DurchgangState, String] {
+            text = "Fertig"
+            prefWidth = 80
+            cellFactory.value = { _: Any =>
+              new TreeTableCell[DurchgangState, String] {
+                val image = new ImageView()
+                graphic = image
+                item.onChange { (_, _, newValue) =>
+                  text = newValue
+                  image.image = toIcon(newValue)
+                }
+              }
+            }
+            cellValueFactory = { x =>
+              if (x.value.getValue == null) StringProperty("") else
+                x.value.getValue.percentPerRiegeComplete.get(Some(disziplin)) match {
+                  case Some(re) => StringProperty(re._1)
+                  case _ => StringProperty("0")
+                }
+            }
+          }
+        )
+      }
+      TreeTableColumn.sfxTreeTableColumn2jfx(dc)
+    })
+  }
 
   root = new TreeItem[DurchgangState]() {
     durchgangModel.onChange {
-      children = durchgangModel.toList
+      val dml = durchgangModel.toList
+      rebuildDiszColumns(disziplinlist().filter{d =>
+        dml.exists(ti => ti.value.value.geraeteRiegen.exists(gr => gr.disziplin.contains(d)))
+      })
+      children = dml
     }
     styleClass.add("parentrow")
     expanded = true
@@ -183,48 +237,7 @@ class DurchgangStationView(wettkampf: WettkampfView, service: KutuService, diszi
     }
   )
 
-  columns ++= disziplinlist().map { disziplin =>
-    val dc = new TreeTableColumn[DurchgangState, String] {
-      text = disziplin.name
-      prefWidth = 230
-      columns ++= Seq(
-        new DurchgangStationTreeTableColumn[String](disziplin) {
-          text = "Stationen"
-          prefWidth = 120
-          cellValueFactory = { x =>
-            if (x.value.getValue == null) StringProperty("") else
-              x.value.getValue.percentPerRiegeComplete.get(Some(disziplin)) match {
-                case Some(re) => StringProperty(re._2)
-                case _ => StringProperty("")
-              }
-          }
-        }
-        , new TreeTableColumn[DurchgangState, String] {
-          text = "Fertig"
-          prefWidth = 80
-          cellFactory.value = { _: Any =>
-            new TreeTableCell[DurchgangState, String] {
-              val image = new ImageView()
-              graphic = image
-              item.onChange { (_, _, newValue) =>
-                text = newValue
-                image.image = toIcon(newValue)
-              }
-            }
-          }
-          cellValueFactory = { x =>
-            if (x.value.getValue == null) StringProperty("") else
-              x.value.getValue.percentPerRiegeComplete.get(Some(disziplin)) match {
-                case Some(re) => StringProperty(re._1)
-                case _ => StringProperty("0")
-              }
-          }
-        }
-      )
-    }
-    TreeTableColumn.sfxTreeTableColumn2jfx(dc)
-  }
-
+  rebuildDiszColumns(disziplinlist())
   private def toIcon(newValue: String) = {
     newValue match {
       case "100%" => okIcon
