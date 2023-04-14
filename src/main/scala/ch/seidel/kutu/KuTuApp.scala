@@ -1763,7 +1763,9 @@ object KuTuApp extends JFXApp3 with KutuService with JsonSupport with JwtSupport
   def getStage() = stage
 
   override def start(): Unit = {
-    val pForm = new ProgressForm(Some(new PrimaryStage))
+    val pForm = new ProgressForm(Some(new PrimaryStage {
+      icons += new Image(this.getClass.getResourceAsStream("/images/app-logo.png"))
+    }))
     val startSteps = TaskSteps("")
     pForm.activateProgressBar("Wettkampf App startet ...", startSteps, startUI)
     startSteps.nextStep("Starte die Datenbank ...", startDB)
