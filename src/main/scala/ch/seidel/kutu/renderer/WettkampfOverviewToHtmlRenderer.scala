@@ -265,20 +265,20 @@ trait WettkampfOverviewToHtmlRenderer {
         if (!isLocalServer) {
           s"""<h3>EMail des Wettkampf-Administrators</h3>
             <p>An diese EMail Adresse werden Notifikations-Meldungen versendet, sobald sich an den Anmeldungen Mutationen ergeben.<br>
-              ${if (wettkampf.notificationEMail.nonEmpty) s"""<a href="mailto://${wettkampf.notificationEMail}" target="_blank">${wettkampf.notificationEMail}</a>""" else "<strong>Keine EMail hinterlegt!</strong>"}
+              ${if (wettkampf.notificationEMail.nonEmpty) s"""<a href="mailto://${escaped(wettkampf.notificationEMail)}" target="_blank">${escaped(wettkampf.notificationEMail)}</a>""" else "<strong>Keine EMail hinterlegt!</strong>"}
           """
         } else ""
         }
         </p>
         ${if (altersklassen.nonEmpty)
           s"""<h2>Altersklassen</h2>
-          Alter am Wettkampf - Tag: ${wettkampf.altersklassen} <br>
-          <ul>${altersklassen}
+          Alter am Wettkampf - Tag: ${escaped(wettkampf.altersklassen)} <br>
+          <ul>${escaped(altersklassen)}
           </ul>"""
           else if (jgAltersklassen.nonEmpty)
           s"""<h2>Altersklassen</h2>
-          Alter im Wettkampf - Jahr: ${wettkampf.jahrgangsklassen} <br>
-          <ul>${jgAltersklassen}
+          Alter im Wettkampf - Jahr: ${escaped(wettkampf.jahrgangsklassen)} <br>
+          <ul>${escaped(jgAltersklassen)}
           </ul>"""
           else ""
         }
