@@ -28,7 +28,7 @@ update wettkampfdisziplin
   set dnote = 0,
       max = 30
   where programm_id in (
-    select id from programm where parent_id = 20
+    select id from programm where parent_id in(1, 20) or id in (1, 20)
   )
 ;
 update wettkampfdisziplin
