@@ -98,7 +98,7 @@ export class RegAthletEditorPage implements OnInit {
       a.name === b.name && a.vorname === b.vorname && a.gebdat === b.gebdat && a.geschlecht === b.geschlecht;
   }
   alternatives(athlet:AthletRegistration): AthletRegistration[] {
-    return this.clubAthletListCurrent?.filter(cc => this.similarRegistration(cc, athlet) && (cc.id != athlet.id || cc.programId != athlet.programId)) || [];
+    return this.clubAthletListCurrent?.filter(cc => this.similarRegistration(cc, athlet) && (cc.id != athlet.id)) || [];
   }
   getAthletPgm(athlet: AthletRegistration) {
     return this.wkPgms.find(p => p.id === athlet.programId) || Object.assign({
@@ -126,7 +126,7 @@ export class RegAthletEditorPage implements OnInit {
     this.zone.run(() => {
       this.waiting = false;
       this.wettkampf = this.backendService.competitionName;
-      this.registration = Object.assign({}, registration) as AthletRegistration;
+      this.registration = Object.assign({}, registration);
       this.registration.gebdat = toDateString(this.registration.gebdat);
     });
   }
