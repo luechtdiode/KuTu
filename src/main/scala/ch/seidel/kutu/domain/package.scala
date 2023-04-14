@@ -439,21 +439,21 @@ package object domain {
     val akExpressionTurn10 = "AK7-18,AK24,AK30-100/5"
     val altersklassenTurn10 = Seq(
       6,7,8,9,10,11,12,13,14,15,16,17,18,24,30,35,40,45,50,55,60,65,70,75,80,85,90,95,100
-    ).map(i => ("AK", i))
+    ).map(i => ("AK", Seq(), i))
     // see https://www.dtb.de/fileadmin/user_upload/dtb.de/Passwesen/Wettkampfordnung_DTB_2021.pdf
     val akDTBExpression = "AK6,AK18,AK22,AK25"
     val altersklassenDTB = Seq(
       6,18,22,25
-    ).map(i => ("AK", i))
+    ).map(i => ("AK", Seq(), i))
     // see https://www.dtb.de/fileadmin/user_upload/dtb.de/TURNEN/Standards/PDFs/Rahmentrainingskonzeption-GTm_inklAnlagen_19.11.2020.pdf
     val akDTBPflichtExpression = "AK8-9,AK11-19/2"
     val altersklassenDTBPflicht = Seq(
       7,8,9,11,13,15,17,19
-    ).map(i => ("AK", i))
+    ).map(i => ("AK", Seq(), i))
     val akDTBKuerExpression = "AK13-19/2"
     val altersklassenDTBKuer = Seq(
       12,13,15,17,19
-    ).map(i => ("AK", i))
+    ).map(i => ("AK", Seq(), i))
 
     val predefinedAKs = Map(
       ("Ohne" -> "")
@@ -463,52 +463,92 @@ package object domain {
       , ("DTB Kür" -> akDTBKuerExpression)
       , ("Individuell" -> "")
     )
-    def apply(altersgrenzen: Seq[(String,Int)]): Seq[Altersklasse] = {
+    def apply(altersgrenzen: Seq[(String, Seq[String], Int)]): Seq[Altersklasse] = {
       if (altersgrenzen.isEmpty) {
         Seq.empty
       } else {
-        altersgrenzen.sortBy(_._2).distinctBy(_._2).foldLeft(Seq[Altersklasse]()) { (acc, ag) =>
-          acc :+ Altersklasse(ag._1, acc.lastOption.map(_.alterBis + 1).getOrElse(0), ag._2 - 1)
-        } :+ Altersklasse(altersgrenzen.last._1, altersgrenzen.last._2, 0)
+        altersgrenzen
+          .groupBy(ag => (ag._1, ag._2)) // ag-name + qualifiers
+          .map { aggr =>
+            aggr._1 -> aggr._2
+              .sortBy(ag => ag._3)
+              .distinctBy(_._3)
+              .foldLeft(Seq[Altersklasse]()) { (acc, ag) =>
+                acc :+ Altersklasse(ag._1, acc.lastOption.map(_.alterBis + 1).getOrElse(0), ag._3 - 1, ag._2)
+              }.appended(Altersklasse(aggr._2.last._1, aggr._2.last._3, 0, aggr._2.last._2))
+          }
+          .flatMap(_._2)
+          .toSeq
       }
     }
 
-    def apply(klassen: Seq[Altersklasse], alter: Int): Altersklasse = {
-      klassen.find(_.matchesAlter(alter)).getOrElse(Altersklasse(klassen.head.bezeichnung, alter, alter))
+    def apply(klassen: Seq[Altersklasse], alter: Int, geschlecht: String, programm: ProgrammView): Altersklasse = {
+      klassen
+        .find(klasse => klasse.matchesAlter(alter) && klasse.matchesGeschlecht(geschlecht) && klasse.matchesProgramm(programm))
+        .getOrElse(Altersklasse(klassen.head.bezeichnung, alter, alter, Seq(geschlecht, programm.name)))
     }
 
-    def parseGrenzen(klassenDef: String, fallbackBezeichnung: String = "Altersklasse"): Seq[(String, Int)] = {
+    def parseGrenzen(klassenDef: String, fallbackBezeichnung: String = "Altersklasse"): Seq[(String, Seq[String], Int)] = {
+      /*
+      AKWBS(W+BS)7,8,9,10,12,16,AKMBS(M+BS)8,10,15
+
+       */
       val rangeStepPattern = "([\\D\\s]*)([0-9]+)-([0-9]+)/([0-9]+)".r
       val rangepattern = "([\\D\\s]*)([0-9]+)-([0-9]+)".r
       val intpattern = "([\\D\\s]*)([0-9]+)".r
-      def bez(b: String): String = if(b.nonEmpty) b else fallbackBezeichnung
+      val qualifierPattern = "(.*)\\(([\\D\\s]+)\\)".r
+
+      def bez(b: String): (String,Seq[String]) = if(b.nonEmpty) {
+        b match {
+          case qualifierPattern(bezeichnung, qualifiers) => (bezeichnung, qualifiers.split("\\+").toSeq)
+          case bezeichnung: String => (bezeichnung, Seq())
+        }
+      } else ("", Seq())
+
       klassenDef.split(",")
         .flatMap{
           case rangeStepPattern(bezeichnung, von, bis, stepsize) => Range.inclusive(von, bis, stepsize).map(i => (bez(bezeichnung), i))
           case rangepattern(bezeichnung, von, bis) => (str2Int(von) to str2Int(bis)).map(i => (bez(bezeichnung), i))
           case intpattern(bezeichnung, von) => Seq((bez(bezeichnung), str2Int(von)))
           case _ => Seq.empty
-        }.toList.sortBy(_._2)
+        }.toList
+        .foldLeft(Seq[(String, Seq[String], Int)]()){(acc, item) =>
+          if (item._1._1.nonEmpty) {
+            acc :+ (item._1._1, item._1._2, item._2)
+          } else if (acc.nonEmpty) {
+            acc :+ (acc.last._1, acc.last._2, item._2)
+          } else {
+            acc :+ (fallbackBezeichnung, Seq(), item._2)
+          }
+        }
+        .sortBy(item => (item._1, item._3))
     }
     def apply(klassenDef: String, fallbackBezeichnung: String = "Altersklasse"): Seq[Altersklasse] = {
       apply(parseGrenzen(klassenDef, fallbackBezeichnung))
     }
   }
 
-  case class Altersklasse(bezeichnung: String, alterVon: Int, alterBis: Int) extends DataObject {
+  case class Altersklasse(bezeichnung: String, alterVon: Int, alterBis: Int, qualifiers: Seq[String]) extends DataObject {
+    val geschlechtQualifier = qualifiers.filter(q => Seq("M", "W").contains(q))
+    val programmQualifier = qualifiers.filter(q => !Seq("M", "W").contains(q))
     def matchesAlter(alter: Int): Boolean =
       ((alterVon == 0 || alter >= alterVon) &&
         (alterBis == 0 || alter <= alterBis))
-
+    def matchesGeschlecht(geschlecht: String): Boolean = {
+      geschlechtQualifier.isEmpty || geschlechtQualifier.contains(geschlecht)
+    }
+    def matchesProgramm(programm: ProgrammView): Boolean = {
+      programmQualifier.isEmpty || programm.programPath.exists(p => programmQualifier.contains(p.name))
+    }
     override def easyprint: String = {
       if (alterVon > 0 && alterBis > 0)
         if (alterVon == alterBis)
-          s"$bezeichnung $alterVon"
-        else s"$bezeichnung $alterVon bis $alterBis"
+          s"""$bezeichnung ${qualifiers.mkString(",")} $alterVon"""
+        else s"""$bezeichnung ${qualifiers.mkString(",")} $alterVon bis $alterBis"""
       else if (alterVon > 0 && alterBis == 0)
-        s"$bezeichnung ab $alterVon"
+        s"""$bezeichnung ${qualifiers.mkString(",")} ab $alterVon"""
       else
-        s"$bezeichnung bis $alterBis"
+        s"""$bezeichnung ${qualifiers.mkString(",")} bis $alterBis"""
     }
 
     override def compare(x: DataObject): Int = x match {

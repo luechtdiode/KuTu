@@ -5,6 +5,7 @@ import ch.seidel.kutu.http.WebSocketClient
 import ch.seidel.kutu.squad.RiegenBuilder
 import ch.seidel.kutu.squad.RiegenBuilder.{generateRiegen2Name, generateRiegenName}
 import org.slf4j.LoggerFactory
+import slick.jdbc.PositionedResult
 
 import java.sql.Date
 import java.util.UUID
@@ -176,11 +177,18 @@ trait WettkampfService extends DBService
          """.as[OverviewStatTuple].withPinnedSession
         .map(_.toList)
     }, Duration.Inf)
-  def listAKOverviewFacts(wettkampfUUID: UUID): List[(String,String,Int,String,Date)] = {
+  def listAKOverviewFacts(wettkampfUUID: UUID): List[(String,ProgrammView,Int,String,Date)] = {
+    implicit val cache = scala.collection.mutable.Map[Long, ProgrammView]()
+
+    def getResultMapper(r: PositionedResult)(implicit cache: scala.collection.mutable.Map[Long, ProgrammView]) = {
+      val verein = r.<<[String]
+      val pgm = readProgramm(r.<<[Long], cache)
+      (verein,pgm,r.<<[Int],r.<<[String],r.<<[Date])
+    }
     Await.result(
       database.run {
         sql"""
-          select distinct v.name as verein, p.name as programm, p.ord as ord, a.geschlecht, a.gebdat
+          select distinct v.name as verein, p.id, p.ord as ord, a.geschlecht, a.gebdat
           from verein v
           inner join athlet a on a.verein = v.id
           inner join wertung w on w.athlet_id = a.id
@@ -188,7 +196,7 @@ trait WettkampfService extends DBService
           inner join wettkampfdisziplin wd on wd.id = w.wettkampfdisziplin_id
           inner join programm p on wd.programm_id = p.id
           where wk.uuid = ${wettkampfUUID.toString} and a.gebdat is not null
-         """.as[(String,String,Int,String,Date)].withPinnedSession
+         """.as[(String,ProgrammView,Int,String,Date)](getResultMapper).withPinnedSession
           .map(_.toList)
       }, Duration.Inf)
   }

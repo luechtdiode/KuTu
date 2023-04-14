@@ -332,20 +332,20 @@ case class ByJahrgang() extends GroupBy with FilterBy {
   })
 }
 
-case class ByAltersklasse(bezeichnung: String = "GebDat Altersklasse", grenzen: Seq[(String, Int)]) extends GroupBy with FilterBy {
+case class ByAltersklasse(bezeichnung: String = "GebDat Altersklasse", grenzen: Seq[(String, Seq[String], Int)]) extends GroupBy with FilterBy {
   override val groupname = bezeichnung
   val klassen = Altersklasse(grenzen)
 
-  def makeGroupBy(w: Wettkampf)(gebdat: LocalDate): Altersklasse = {
+  def makeGroupBy(w: Wettkampf)(gebdat: LocalDate, geschlecht: String, programm: ProgrammView): Altersklasse = {
     val wkd: LocalDate = w.datum
     val alter = Period.between(gebdat, wkd.plusDays(1)).getYears
-    Altersklasse(klassen, alter)
+    Altersklasse(klassen, alter, geschlecht, programm)
   }
 
   protected override val grouper = (v: WertungView) => {
     val wkd: LocalDate = v.wettkampf.datum
     val gebd: LocalDate = sqlDate2ld(v.athlet.gebdat.getOrElse(Date.valueOf(LocalDate.now())))
-    makeGroupBy(v.wettkampf)(gebd)
+    makeGroupBy(v.wettkampf)(gebd, v.athlet.geschlecht, v.wettkampfdisziplin.programm)
   }
 
   protected override val sorter: Option[(GroupSection, GroupSection) => Boolean] = Some((gs1: GroupSection, gs2: GroupSection) => {
@@ -353,20 +353,20 @@ case class ByAltersklasse(bezeichnung: String = "GebDat Altersklasse", grenzen: 
   })
 }
 
-case class ByJahrgangsAltersklasse(bezeichnung: String = "JG Altersklasse", grenzen: Seq[(String, Int)]) extends GroupBy with FilterBy {
+case class ByJahrgangsAltersklasse(bezeichnung: String = "JG Altersklasse", grenzen: Seq[(String, Seq[String], Int)]) extends GroupBy with FilterBy {
   override val groupname = bezeichnung
   val klassen = Altersklasse(grenzen)
 
-  def makeGroupBy(w: Wettkampf)(gebdat: LocalDate): Altersklasse = {
+  def makeGroupBy(w: Wettkampf)(gebdat: LocalDate, geschlecht: String, programm: ProgrammView): Altersklasse = {
     val wkd: LocalDate = w.datum
     val alter = wkd.getYear - gebdat.getYear
-    Altersklasse(klassen, alter)
+    Altersklasse(klassen, alter, geschlecht, programm)
   }
 
   protected override val grouper = (v: WertungView) => {
     val wkd: LocalDate = v.wettkampf.datum
     val gebd: LocalDate = sqlDate2ld(v.athlet.gebdat.getOrElse(Date.valueOf(LocalDate.now())))
-    makeGroupBy(v.wettkampf)(gebd)
+    makeGroupBy(v.wettkampf)(gebd, v.athlet.geschlecht, v.wettkampfdisziplin.programm)
   }
 
   protected override val sorter: Option[(GroupSection, GroupSection) => Boolean] = Some((gs1: GroupSection, gs2: GroupSection) => {
