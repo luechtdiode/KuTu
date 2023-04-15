@@ -1100,28 +1100,6 @@ class RiegenTab(override val wettkampfInfo: WettkampfInfo, override val service:
       })
     }
 
-    def doRiegenEinheitenExport(event: ActionEvent): Unit = {
-		  implicit val impevent = event
-		  KuTuApp.invokeWithBusyIndicator {
-			  val filename = "Einheiten.csv"
-					  val dir = new java.io.File(homedir + "/" + encodeFileName(wettkampf.easyprint))
-			  if(!dir.exists()) {
-				  dir.mkdirs();
-			  }
-			  val file = new java.io.File(dir.getPath + "/" + filename)
-
-			  ResourceExchanger.exportEinheiten(wettkampf.toWettkampf, file.getPath)
-        hostServices.showDocument(file.toURI.toASCIIString)
-		  }
-    }
-
-    def makeRiegenEinheitenExport(): MenuItem = {
-      val m = KuTuApp.makeMenuAction("Riegen Einheiten export") {(caption: String, action: ActionEvent) =>
-        doRiegenEinheitenExport(action)
-      }
-      m
-    }
-
     def doDurchgangExport(event: ActionEvent): Unit = {
 		  implicit val impevent = event
 		  KuTuApp.invokeWithBusyIndicator {
@@ -1134,7 +1112,10 @@ class RiegenTab(override val wettkampfInfo: WettkampfInfo, override val service:
 
 			  ResourceExchanger.exportDurchgaenge(wettkampf.toWettkampf, file.getPath)
         hostServices.showDocument(file.toURI.toASCIIString)
-		  }
+        if (!file.toURI.toASCIIString.equals(file.toURI.toString)) {
+          hostServices.showDocument(file.toURI.toString)
+        }
+      }
     }
 
     def makeDurchgangExport(): MenuItem = {
@@ -1155,6 +1136,9 @@ class RiegenTab(override val wettkampfInfo: WettkampfInfo, override val service:
 
         ResourceExchanger.exportSimpleDurchgaenge(wettkampf.toWettkampf, file.getPath)
         hostServices.showDocument(file.toURI.toASCIIString)
+        if (!file.toURI.toASCIIString.equals(file.toURI.toString)) {
+          hostServices.showDocument(file.toURI.toString)
+        }
       }
     }
 
@@ -1311,7 +1295,6 @@ class RiegenTab(override val wettkampfInfo: WettkampfInfo, override val service:
     }
 
     val btnExport = new MenuButton("Export") {
-      items += makeRiegenEinheitenExport()
       items += makeDurchgangExport()
       items += makeDurchgangExport2()
       items += makeRiegenBlaetterExport()

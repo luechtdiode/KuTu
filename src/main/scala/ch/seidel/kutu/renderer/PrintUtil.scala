@@ -1,7 +1,7 @@
 package ch.seidel.kutu.renderer
 
 import java.io._
-import java.util.Base64
+import java.util.{Base64, Locale}
 import java.util.concurrent.atomic.AtomicBoolean
 import ch.seidel.commons._
 import ch.seidel.kutu.KuTuApp
@@ -120,11 +120,24 @@ object PrintUtil {
             if(chkViaBrowser.selected.value) {
               onGenerateOutput(lpp).onComplete {
                 case Success(toSave) => Platform.runLater {
-                  val os = new BufferedOutputStream(new FileOutputStream(file))
-                  os.write(toSave.getBytes("UTF-8"))
-                  os.flush()
-                  os.close()
+                  val bos = new BufferedOutputStream(new FileOutputStream(file))
+                  bos.write(toSave.getBytes("UTF-8"))
+                  bos.flush()
+                  bos.close()
                   hostServices.showDocument(file.toURI.toASCIIString)
+                  if (!file.toURI.toASCIIString.equals(file.toURI.toString)) {
+                    hostServices.showDocument(file.toURI.toString)
+                  }
+                  /*val os = System.getProperty("os.name").toLowerCase(Locale.ROOT)
+                  try {
+                    val documentRef = if (os.contains("mac")) file.toURI.toASCIIString
+                    else if (os.contains("win")) file.toURI.toString
+                    else file.toURI.toASCIIString
+                    hostServices.showDocument(documentRef)
+                  } catch {
+                    case e:Exception =>
+                      e.printStackTrace()
+                  }*/
                 }
                 case _ =>
               }
