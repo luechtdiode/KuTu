@@ -34,5 +34,4 @@ class JGClubGrouperSpec extends AnyWordSpec with Matchers {
       ("AK",List("M", "BS"),18), ("AK",List("OS"),18))
     )
   }
-
 }

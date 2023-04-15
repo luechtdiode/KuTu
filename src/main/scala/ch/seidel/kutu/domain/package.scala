@@ -541,14 +541,25 @@ package object domain {
       programmQualifier.isEmpty || programm.programPath.exists(p => programmQualifier.contains(p.name))
     }
     override def easyprint: String = {
+      val q = if (qualifiers.nonEmpty) qualifiers.mkString("(", ",", ")") else ""
       if (alterVon > 0 && alterBis > 0)
         if (alterVon == alterBis)
-          s"""$bezeichnung ${qualifiers.mkString(",")} $alterVon"""
-        else s"""$bezeichnung ${qualifiers.mkString(",")} $alterVon bis $alterBis"""
+          s"""$bezeichnung$q $alterVon"""
+        else s"""$bezeichnung$q $alterVon bis $alterBis"""
       else if (alterVon > 0 && alterBis == 0)
-        s"""$bezeichnung ${qualifiers.mkString(",")} ab $alterVon"""
+        s"""$bezeichnung$q ab $alterVon"""
       else
-        s"""$bezeichnung ${qualifiers.mkString(",")} bis $alterBis"""
+        s"""$bezeichnung$q bis $alterBis"""
+    }
+    def easyprintShort: String = {
+      if (alterVon > 0 && alterBis > 0)
+        if (alterVon == alterBis)
+          s"""$bezeichnung$alterVon"""
+        else s"""$bezeichnung$alterVon-$alterBis"""
+      else if (alterVon > 0 && alterBis == 0)
+        s"""$bezeichnung$alterVon-"""
+      else
+        s"""$bezeichnung-$alterBis"""
     }
 
     override def compare(x: DataObject): Int = x match {
