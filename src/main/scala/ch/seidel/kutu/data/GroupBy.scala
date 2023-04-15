@@ -364,7 +364,6 @@ case class ByJahrgangsAltersklasse(bezeichnung: String = "JG Altersklasse", gren
   }
 
   protected override val grouper = (v: WertungView) => {
-    val wkd: LocalDate = v.wettkampf.datum
     val gebd: LocalDate = sqlDate2ld(v.athlet.gebdat.getOrElse(Date.valueOf(LocalDate.now())))
     makeGroupBy(v.wettkampf)(gebd, v.athlet.geschlecht, v.wettkampfdisziplin.programm)
   }

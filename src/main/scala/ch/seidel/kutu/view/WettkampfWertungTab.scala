@@ -98,7 +98,6 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
   def reloadWertungen(extrafilter: (WertungView) => Boolean = defaultFilter) = {
     athleten.
       filter(wv => wv.wettkampf.id == wettkampf.id).
-      filter(w => scheduledGears.isEmpty || scheduledGears.contains(w.wettkampfdisziplin.disziplin )).
       filter(extrafilter).
       groupBy(wv => wv.athlet).
       map(wvg => wvg._2.map(WertungEditor)).toIndexedSeq
