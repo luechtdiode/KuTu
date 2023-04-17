@@ -124,20 +124,7 @@ object PrintUtil {
                   bos.write(toSave.getBytes("UTF-8"))
                   bos.flush()
                   bos.close()
-                  hostServices.showDocument(file.toURI.toASCIIString)
-                  if (!file.toURI.toASCIIString.equals(file.toURI.toString)) {
-                    hostServices.showDocument(file.toURI.toString)
-                  }
-                  /*val os = System.getProperty("os.name").toLowerCase(Locale.ROOT)
-                  try {
-                    val documentRef = if (os.contains("mac")) file.toURI.toASCIIString
-                    else if (os.contains("win")) file.toURI.toString
-                    else file.toURI.toASCIIString
-                    hostServices.showDocument(documentRef)
-                  } catch {
-                    case e:Exception =>
-                      e.printStackTrace()
-                  }*/
+                  hostServices.showDocument(file.toURI.toString)
                 }
                 case _ =>
               }

@@ -725,9 +725,7 @@ object ResourceExchanger extends KutuService with RiegenBuilder {
   private val charset2 = "UTF-8"
 
   def exportDurchgaenge(wettkampf: Wettkampf, filename: String): Unit = {
-    val fileOutputStream = new FileOutputStream(filename)
-    //fileOutputStream.write('\ufeff')
-    //fileOutputStream.flush()
+    val fileOutputStream = new BufferedOutputStream(new FileOutputStream(filename))
     fileOutputStream.write(0xef); // emits 0xef
     fileOutputStream.write(0xbb); // emits 0xbb
     fileOutputStream.write(0xbf); // emits 0xbf
@@ -774,7 +772,7 @@ object ResourceExchanger extends KutuService with RiegenBuilder {
   }
 
   def exportSimpleDurchgaenge(wettkampf: Wettkampf, filename: String): Unit = {
-    val fileOutputStream = new FileOutputStream(filename)
+    val fileOutputStream = new BufferedOutputStream(new FileOutputStream(filename))
     val diszipline = listDisziplinesZuWettkampf(wettkampf.id)
     val durchgaenge = selectDurchgaenge(UUID.fromString(wettkampf.uuid.get)).map(d => d.name -> d).toMap
 

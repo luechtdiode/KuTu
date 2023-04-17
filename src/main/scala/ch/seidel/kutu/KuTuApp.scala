@@ -1682,10 +1682,7 @@ object KuTuApp extends JFXApp3 with KutuService with JsonSupport with JwtSupport
       dir.mkdirs()
     }
 
-    hostServices.showDocument(dir.toURI.toASCIIString)
-    if (dir.toURI.toASCIIString != dir.toURI.toString) {
-      hostServices.showDocument(dir.toURI.toString)
-    }
+    hostServices.showDocument(dir.toURI.toString)
   }
 
   def makeVereinLoeschenMenu(v: Verein) = makeMenuAction("Verein löschen") { (caption, action) =>

@@ -1111,10 +1111,10 @@ class RiegenTab(override val wettkampfInfo: WettkampfInfo, override val service:
 			  val file = new java.io.File(dir.getPath + "/" + filename)
 
 			  ResourceExchanger.exportDurchgaenge(wettkampf.toWettkampf, file.getPath)
-        hostServices.showDocument(file.toURI.toASCIIString)
-        if (!file.toURI.toASCIIString.equals(file.toURI.toString)) {
+        //hostServices.showDocument(file.toURI.toASCIIString)
+        //if (!file.toURI.toASCIIString.equals(file.toURI.toString)) {
           hostServices.showDocument(file.toURI.toString)
-        }
+        //}
       }
     }
 
@@ -1135,10 +1135,7 @@ class RiegenTab(override val wettkampfInfo: WettkampfInfo, override val service:
         val file = new java.io.File(dir.getPath + "/" + filename)
 
         ResourceExchanger.exportSimpleDurchgaenge(wettkampf.toWettkampf, file.getPath)
-        hostServices.showDocument(file.toURI.toASCIIString)
-        if (!file.toURI.toASCIIString.equals(file.toURI.toString)) {
-          hostServices.showDocument(file.toURI.toString)
-        }
+        hostServices.showDocument(file.toURI.toString)
       }
     }
 
