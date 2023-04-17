@@ -734,8 +734,9 @@ object ResourceExchanger extends KutuService with RiegenBuilder {
     fileOutputStream.write("\r\n".getBytes("ISO-8859-1"))
 
     listRiegenZuWettkampf(wettkampf.id)
+      .filter(_._3.nonEmpty)
       .sortBy(r => r._1)
-      .map(x =>
+      .map{x =>
         RiegeEditor(
           wettkampf.id,
           x._1,
@@ -744,12 +745,13 @@ object ResourceExchanger extends KutuService with RiegenBuilder {
           enabled = true,
           x._3,
           x._4,
-          None))
+          None)
+      }
       .groupBy(re => re.initdurchgang).toSeq
       .sortBy(re => re._1)
       .map { res =>
         val (name, rel) = res
-        DurchgangEditor(wettkampf.id, durchgaenge(name.getOrElse("")), rel)
+        DurchgangEditor(wettkampf.id, durchgaenge(name.getOrElse(rel.head.initdurchgang.getOrElse(""))), rel)
       }
       .foreach { x =>
         fileOutputStream.write(f"""${x.durchgang.name}${sep}${x.anz.value}${sep}${x.min.value}${sep}${x.max.value}${sep}${x.avg.value}${sep}${toShortDurationFormat(x.durchgang.planTotal)}${sep}${toShortDurationFormat(x.durchgang.planEinturnen)}${sep}${toShortDurationFormat(x.durchgang.planGeraet)}""".getBytes("ISO-8859-1"))
@@ -779,6 +781,7 @@ object ResourceExchanger extends KutuService with RiegenBuilder {
     val riege2Map = listRiegen2ToRiegenMapZuWettkampf(wettkampf.id)
 
     val allRiegen = listRiegenZuWettkampf(wettkampf.id)
+      .filter(_._3.nonEmpty)
       .sortBy(r => r._1)
       .map(x =>
         RiegeEditor(

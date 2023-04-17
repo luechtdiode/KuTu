@@ -68,7 +68,7 @@ class ProgressForm(stage: Option[Stage] = None) {
       label.text.value = title
     }
     dialogStage.show()
-    dialogStage.toFront
+    dialogStage.toFront()
   }
 
   def getDialogStage: Stage = dialogStage

@@ -93,7 +93,7 @@ package object domain {
       Integer.parseInt(c)
       true
     } catch {
-      case _ => false
+      case _:NumberFormatException => false
     }
   }
 
