@@ -11,6 +11,7 @@ import org.slf4j.LoggerFactory
 import slick.jdbc
 
 import java.io._
+import java.nio.charset.Charset
 import java.sql.Timestamp
 import java.time.Instant
 import java.util.UUID
@@ -720,18 +721,25 @@ object ResourceExchanger extends KutuService with RiegenBuilder {
     values.map("\"" + _ + "\"").mkString(",")
   }
 
+  private val charset = "ISO-8859-1"
+  private val charset2 = "UTF-8"
+
   def exportDurchgaenge(wettkampf: Wettkampf, filename: String): Unit = {
     val fileOutputStream = new FileOutputStream(filename)
+    //fileOutputStream.write('\ufeff')
+    //fileOutputStream.flush()
+    fileOutputStream.write(0xef); // emits 0xef
+    fileOutputStream.write(0xbb); // emits 0xbb
+    fileOutputStream.write(0xbf); // emits 0xbf
     val diszipline = listDisziplinesZuWettkampf(wettkampf.id)
     val durchgaenge = selectDurchgaenge(UUID.fromString(wettkampf.uuid.get)).map(d => d.name -> d).toMap
-
     val sep = ";"
-    fileOutputStream.write(f"""sep=${sep}\nDurchgang${sep}Summe${sep}Min${sep}Max${sep}Durchschn.${sep}Total-Zeit${sep}Einturn-Zeit${sep}Gerät-Zeit""".getBytes("ISO-8859-1"))
+    fileOutputStream.write(f"""sep=${sep}\nDurchgang${sep}Summe${sep}Min${sep}Max${sep}Durchschn.${sep}Total-Zeit${sep}Einturn-Zeit${sep}Gerät-Zeit""".getBytes(charset))
 
     diszipline.foreach { x =>
-      fileOutputStream.write(f"${sep}${x.name}${sep}Anz".getBytes("ISO-8859-1"))
+      fileOutputStream.write(f"${sep}${x.name}${sep}Anz".getBytes(charset))
     }
-    fileOutputStream.write("\r\n".getBytes("ISO-8859-1"))
+    fileOutputStream.write("\r\n".getBytes(charset))
 
     listRiegenZuWettkampf(wettkampf.id)
       .filter(_._3.nonEmpty)
@@ -754,11 +762,11 @@ object ResourceExchanger extends KutuService with RiegenBuilder {
         DurchgangEditor(wettkampf.id, durchgaenge(name.getOrElse(rel.head.initdurchgang.getOrElse(""))), rel)
       }
       .foreach { x =>
-        fileOutputStream.write(f"""${x.durchgang.name}${sep}${x.anz.value}${sep}${x.min.value}${sep}${x.max.value}${sep}${x.avg.value}${sep}${toShortDurationFormat(x.durchgang.planTotal)}${sep}${toShortDurationFormat(x.durchgang.planEinturnen)}${sep}${toShortDurationFormat(x.durchgang.planGeraet)}""".getBytes("ISO-8859-1"))
+        fileOutputStream.write(f"""${x.durchgang.name}${sep}${x.anz.value}${sep}${x.min.value}${sep}${x.max.value}${sep}${x.avg.value}${sep}${toShortDurationFormat(x.durchgang.planTotal)}${sep}${toShortDurationFormat(x.durchgang.planEinturnen)}${sep}${toShortDurationFormat(x.durchgang.planGeraet)}""".getBytes(charset))
         diszipline.foreach { d =>
-          fileOutputStream.write(f"${sep}${x.initstartriegen.getOrElse(d, Seq[RiegeEditor]()).map(r => f"${r.name.value.replace("M,", "Tu,").replace("W,", "Ti,")} (${r.anz.value})").mkString("\"", "\n", "\"")}${sep}${x.initstartriegen.getOrElse(d, Seq[RiegeEditor]()).map(r => r.anz.value).sum}".getBytes("ISO-8859-1"))
+          fileOutputStream.write(f"${sep}${x.initstartriegen.getOrElse(d, Seq[RiegeEditor]()).map(r => f"${r.name.value.replace("M,", "Tu,").replace("W,", "Ti,")} (${r.anz.value})").mkString("\"", "\n", "\"")}${sep}${x.initstartriegen.getOrElse(d, Seq[RiegeEditor]()).map(r => r.anz.value).sum}".getBytes(charset))
         }
-        fileOutputStream.write("\r\n".getBytes("ISO-8859-1"))
+        fileOutputStream.write("\r\n".getBytes(charset))
       }
 
     fileOutputStream.flush()
@@ -771,12 +779,12 @@ object ResourceExchanger extends KutuService with RiegenBuilder {
     val durchgaenge = selectDurchgaenge(UUID.fromString(wettkampf.uuid.get)).map(d => d.name -> d).toMap
 
     val sep = ";"
-    fileOutputStream.write(f"""sep=${sep}\nDurchgang${sep}Summe${sep}Min${sep}Max${sep}Total-Zeit${sep}Einturn-Zeit${sep}Gerät-Zeit""".getBytes("ISO-8859-1"))
+    fileOutputStream.write(f"""sep=${sep}\nDurchgang${sep}Summe${sep}Min${sep}Max${sep}Total-Zeit${sep}Einturn-Zeit${sep}Gerät-Zeit""".getBytes(charset))
 
     diszipline.foreach { x =>
-      fileOutputStream.write(f"${sep}${x.name}${sep}Ti${sep}Tu".getBytes("ISO-8859-1"))
+      fileOutputStream.write(f"${sep}${x.name}${sep}Ti${sep}Tu".getBytes(charset))
     }
-    fileOutputStream.write("\r\n".getBytes("ISO-8859-1"))
+    fileOutputStream.write("\r\n".getBytes(charset))
 
     val riege2Map = listRiegen2ToRiegenMapZuWettkampf(wettkampf.id)
 
@@ -810,7 +818,7 @@ object ResourceExchanger extends KutuService with RiegenBuilder {
         DurchgangEditor(wettkampf.id, durchgaenge(name.getOrElse("")), rel)
       }
       .foreach { x =>
-        fileOutputStream.write(f"""${x.durchgang.name}${sep}${x.anz.value}${sep}${x.min.value}${sep}${x.max.value}${sep}${toShortDurationFormat(x.durchgang.planTotal)}${sep}${toShortDurationFormat(x.durchgang.planEinturnen)}${sep}${toShortDurationFormat(x.durchgang.planGeraet)}""".getBytes("ISO-8859-1"))
+        fileOutputStream.write(f"""${x.durchgang.name}${sep}${x.anz.value}${sep}${x.min.value}${sep}${x.max.value}${sep}${toShortDurationFormat(x.durchgang.planTotal)}${sep}${toShortDurationFormat(x.durchgang.planEinturnen)}${sep}${toShortDurationFormat(x.durchgang.planGeraet)}""".getBytes(charset))
         val riegen = x.riegenWithMergedClubs()
         val rows = riegen.values.map(_.size).max
         val riegenFields = for {
@@ -834,9 +842,9 @@ object ResourceExchanger extends KutuService with RiegenBuilder {
           }) :+ "\r\n"
 
         rs.foreach(row => {
-          fileOutputStream.write(row.getBytes("ISO-8859-1"))
+          fileOutputStream.write(row.getBytes(charset))
         })
-        fileOutputStream.write("\r\n".getBytes("ISO-8859-1"))
+        fileOutputStream.write("\r\n".getBytes(charset))
       }
 
     fileOutputStream.flush()

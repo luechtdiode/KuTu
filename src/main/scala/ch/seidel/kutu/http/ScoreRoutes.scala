@@ -144,8 +144,8 @@ ScoreRoutes extends SprayJsonSupport with JsonSupport with AuthSupport with Rout
             val logodir = new java.io.File(Config.homedir + "/" + encodeFileName(wettkampf.easyprint))
             val logofile = PrintUtil.locateLogoFile(logodir)
             val programmText = wettkampf.programmId match {case 20 => "Kategorie" case _ => "Programm"}
-            val altersklassen = Altersklasse.parseGrenzen(wettkampf.altersklassen, "Altersklasse")
-            val jgAltersklassen = Altersklasse.parseGrenzen(wettkampf.jahrgangsklassen, "Altersklasse")
+            val altersklassen = Altersklasse.parseGrenzen(wettkampf.altersklassen.get, "Altersklasse")
+            val jgAltersklassen = Altersklasse.parseGrenzen(wettkampf.jahrgangsklassen.get, "Altersklasse")
             def riegenZuDurchgang: Map[String, Durchgang] = {
               val riegen = listRiegenZuWettkampf(wettkampf.id)
               riegen.map(riege => riege._1 -> riege._3.map(durchgangName => Durchgang(0, durchgangName)).getOrElse(Durchgang())).toMap

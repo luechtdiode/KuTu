@@ -21,8 +21,8 @@ class WettkampfSpec extends KuTuBaseSpec {
       val wettkampfsaved = saveWettkampf(wettkampf.id, wettkampf.datum, "neuer titel", Set(wettkampf.programmId), "testmail@test.com", 10000, 7.5, wettkampf.uuid, "7,8,9,11,13,15,17,19", "7,8,9,11,13,15,17,19")
       assert(wettkampfsaved.titel == "neuer titel")
       assert(wettkampfsaved.auszeichnung == 10000)
-      assert(wettkampfsaved.altersklassen == "7,8,9,11,13,15,17,19")
-      assert(wettkampfsaved.jahrgangsklassen == "7,8,9,11,13,15,17,19")
+      assert(wettkampfsaved.altersklassen.get == "7,8,9,11,13,15,17,19")
+      assert(wettkampfsaved.jahrgangsklassen.get == "7,8,9,11,13,15,17,19")
     }
 
     "recreate with disziplin-plan-times" in {

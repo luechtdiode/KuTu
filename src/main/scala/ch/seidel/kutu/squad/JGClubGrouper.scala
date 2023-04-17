@@ -15,10 +15,10 @@ case object JGClubGrouper extends RiegenGrouper {
 
   def extractProgrammGrouper(w: WertungView): String = if (extractJGGrouper(w).contains(w.wettkampfdisziplin.programm.name)) "" else w.wettkampfdisziplin.programm.name
 
-  def extractJGGrouper(w: WertungView): String = if (w.wettkampf.altersklassen.nonEmpty) {
-    ByAltersklasse("AK", Altersklasse.parseGrenzen(w.wettkampf.altersklassen, "AK")).analyze(Seq(w)).head.asInstanceOf[Altersklasse].easyprintShort
+  def extractJGGrouper(w: WertungView): String = if (w.wettkampf.altersklassen.get.nonEmpty) {
+    ByAltersklasse("AK", Altersklasse.parseGrenzen(w.wettkampf.altersklassen.get, "AK")).analyze(Seq(w)).head.asInstanceOf[Altersklasse].easyprintShort
   } else if (w.wettkampf.jahrgangsklassen.nonEmpty) {
-    ByJahrgangsAltersklasse("AK", Altersklasse.parseGrenzen(w.wettkampf.jahrgangsklassen, "AK")).analyze(Seq(w)).head.asInstanceOf[Altersklasse].easyprintShort
+    ByJahrgangsAltersklasse("AK", Altersklasse.parseGrenzen(w.wettkampf.jahrgangsklassen.get, "AK")).analyze(Seq(w)).head.asInstanceOf[Altersklasse].easyprintShort
   } else
     (w.athlet.gebdat match {
       case Some(d) => f"$d%tY";

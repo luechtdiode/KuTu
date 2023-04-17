@@ -33,11 +33,11 @@ trait RiegenBuilder {
     val riegencount = rotationstation.sum
     val riegenmode = wertungen.head.wettkampfdisziplin.programm.riegenmode
     val aks = wertungen.head.wettkampf.altersklassen match {
-      case s: String if s.nonEmpty => Some(s)
+      case Some(s: String) if s.nonEmpty => Some(s)
       case _ => None
     }
     val jaks = wertungen.head.wettkampf.jahrgangsklassen match {
-      case s: String if s.nonEmpty => Some(s)
+      case Some(s: String) if s.nonEmpty => Some(s)
       case _ => None
     }
     selectRiegenGrouper(riegenmode, aks, jaks).suggestRiegen(riegencount, wertungen)
@@ -61,19 +61,20 @@ object RiegenBuilder {
   def generateRiegenName(w: WertungView) = {
     val riegenmode = w.wettkampfdisziplin.programm.riegenmode
     val aks = w.wettkampf.altersklassen match {
-      case s: String if s.nonEmpty => Some(s)
+      case Some(s: String) if s.nonEmpty => Some(s)
       case _ => None
     }
     val jaks = w.wettkampf.jahrgangsklassen match {
-      case s: String if s.nonEmpty => Some(s)
+      case Some(s: String) if s.nonEmpty => Some(s)
       case _ => None
     }
     selectRiegenGrouper(riegenmode, aks, jaks).generateRiegenName(w)
   }
 
   def generateRiegen2Name(w: WertungView): Option[String] = {
-    w.wettkampf.programmId match {
-      case 20 if (w.athlet.geschlecht.equalsIgnoreCase("M")) =>
+    val getuMatcher = ".*GETU.*/i".r
+    w.wettkampfdisziplin.programm.head.name match {
+      case getuMatcher() if (w.athlet.geschlecht.equalsIgnoreCase("M")) =>
         Some(s"Barren ${w.wettkampfdisziplin.programm.name}")
       case _ => None
     }

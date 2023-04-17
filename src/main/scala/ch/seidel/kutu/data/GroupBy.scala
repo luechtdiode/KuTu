@@ -483,11 +483,11 @@ object GroupBy {
     }
     val query = if (cbflist.nonEmpty) {
       cbflist.foldLeft(cbflist.head.asInstanceOf[GroupBy])((acc, cb) => if (acc != cb) acc.groupBy(cb) else acc)
-    } else if (data.nonEmpty && data.head.wettkampf.altersklassen.nonEmpty) {
-      val byAK = groupers.find(p => p.isInstanceOf[ByAltersklasse] && p.groupname.startsWith("Wettkampf")).getOrElse(ByAltersklasse("AK", Altersklasse.parseGrenzen(data.head.wettkampf.altersklassen)))
+    } else if (data.nonEmpty && data.head.wettkampf.altersklassen.get.nonEmpty) {
+      val byAK = groupers.find(p => p.isInstanceOf[ByAltersklasse] && p.groupname.startsWith("Wettkampf")).getOrElse(ByAltersklasse("AK", Altersklasse.parseGrenzen(data.head.wettkampf.altersklassen.get)))
       ByProgramm().groupBy(byAK).groupBy(ByGeschlecht())
-    } else if (data.nonEmpty && data.head.wettkampf.jahrgangsklassen.nonEmpty) {
-      val byAK = groupers.find(p => p.isInstanceOf[ByJahrgangsAltersklasse] && p.groupname.startsWith("Wettkampf")).getOrElse(ByJahrgangsAltersklasse("AK", Altersklasse.parseGrenzen(data.head.wettkampf.jahrgangsklassen)))
+    } else if (data.nonEmpty && data.head.wettkampf.jahrgangsklassen.get.nonEmpty) {
+      val byAK = groupers.find(p => p.isInstanceOf[ByJahrgangsAltersklasse] && p.groupname.startsWith("Wettkampf")).getOrElse(ByJahrgangsAltersklasse("AK", Altersklasse.parseGrenzen(data.head.wettkampf.jahrgangsklassen.get)))
       ByProgramm().groupBy(byAK).groupBy(ByGeschlecht())
     }
     else {

@@ -50,11 +50,11 @@ case class DurchgangBuilder(service: KutuService) extends Mapper with RiegenSpli
         val wv = wertungen.head._2.head
         val riegenmode = wv.wettkampfdisziplin.programm.riegenmode
         val aks = wv.wettkampf.altersklassen match {
-          case s: String if s.nonEmpty => Some(s)
+          case Some(s: String) if s.nonEmpty => Some(s)
           case _ => None
         }
         val jaks = wv.wettkampf.jahrgangsklassen match {
-          case s: String if s.nonEmpty => Some(s)
+          case Some(s: String) if s.nonEmpty => Some(s)
           case _ => None
         }
         val (shortGrouper, fullGrouper, jgGroup) = RiegenBuilder.selectRiegenGrouper(riegenmode, aks, jaks).buildGrouper(riegencnt)
