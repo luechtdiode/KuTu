@@ -183,12 +183,12 @@ trait WettkampfService extends DBService
     def getResultMapper(r: PositionedResult)(implicit cache: scala.collection.mutable.Map[Long, ProgrammView]) = {
       val verein = r.<<[String]
       val pgm = readProgramm(r.<<[Long], cache)
-      (verein,pgm,r.<<[Int],r.<<[String],r.<<[Date])
+      (verein,pgm,r.<<[Int],r.<<[String],r.<<[Date],r.<<[Long])
     }
     Await.result(
       database.run {
         sql"""
-          select distinct v.name as verein, p.id, p.ord as ord, a.geschlecht, a.gebdat
+          select distinct v.name as verein, p.id, p.ord as ord, a.geschlecht, a.gebdat, a.id
           from verein v
           inner join athlet a on a.verein = v.id
           inner join wertung w on w.athlet_id = a.id
@@ -196,8 +196,8 @@ trait WettkampfService extends DBService
           inner join wettkampfdisziplin wd on wd.id = w.wettkampfdisziplin_id
           inner join programm p on wd.programm_id = p.id
           where wk.uuid = ${wettkampfUUID.toString} and a.gebdat is not null
-         """.as[(String,ProgrammView,Int,String,Date)](getResultMapper).withPinnedSession
-          .map(_.toList)
+         """.as[(String,ProgrammView,Int,String,Date,Long)](getResultMapper).withPinnedSession
+          .map(_.toList.map(x => (x._1,x._2,x._3,x._4,x._5)))
       }, Duration.Inf)
   }
 
