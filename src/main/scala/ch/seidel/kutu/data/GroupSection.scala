@@ -25,9 +25,9 @@ object GroupSection {
     val rangE = list.toList.map(_._2.noteE).filter(_ > 0).sorted.reverse :+ 0
     val rangEnd = list.toList.map(_._2.endnote).filter(_ > 0).sorted.reverse :+ 0
     def rang(r: Resultat) = {
-      val rd = if (rangD.size > 1) rangD.indexOf(r.noteD) + 1 else 0
-      val re = if (rangE.size > 1) rangE.indexOf(r.noteE) + 1 else 0
-      val rf = if (rangEnd.size > 1) rangEnd.indexOf(r.endnote) + 1 else 0
+      val rd = if (rangD.nonEmpty) rangD.indexOf(r.noteD) + 1 else 0
+      val re = if (rangE.nonEmpty) rangE.indexOf(r.noteE) + 1 else 0
+      val rf = if (rangEnd.nonEmpty) rangEnd.indexOf(r.endnote) + 1 else 0
       Resultat(rd, re, rf)
     }
     list.map(y => GroupSum(y._1, y._2, y._3, rang(y._2)))
@@ -281,25 +281,21 @@ case class GroupLeaf(override val groupKey: DataObject, list: Iterable[WertungVi
     def mapToAvgRowSummary(athlWertungen: Iterable[WertungView]): (Resultat, Resultat, Iterable[(Disziplin, Long, Resultat, Resultat, Option[Int], Option[BigDecimal])], Iterable[(ProgrammView, Resultat, Resultat, Option[Int], Option[BigDecimal])], Resultat) = {
       val wks = athlWertungen.filter(_.endnote.nonEmpty).groupBy { w => w.wettkampf }
       val wksums = wks.map {wk => wk._2.map(w => w.resultat).reduce(_+_)}
+      val wkesums = wks.map {wk => wk._2.map(w => w.resultat.noteE).sum} sum
+      val wkdsums = wks.map {wk => wk._2.map(w => w.resultat.noteD).sum} sum
       val rsum = if(wksums.nonEmpty) wksums.reduce(_+_) else Resultat(0,0,0)
-      lazy val wksENOrdered = wks.map(wk => wk._1 -> wk._2.toList.sortBy(w => w.resultat.endnote))
       lazy val getuDisziplinGOrder = Map(26L -> 1, 4L -> 2, 6L -> 3)
       lazy val jet = LocalDate.now()
       lazy val hundredyears = jet.minus(100, ChronoUnit.YEARS)
 
       def factorizeKuTu(w: WertungView): Long = {
-        val idx = wksENOrdered(w.wettkampf).indexOf(w)
-        if(idx < 4) {
-          1
-        }
-        else {
-          val gebdat = w.athlet.gebdat match {case Some(d) => d.toLocalDate case None => hundredyears}
-          val alterInTagen = jet.toEpochDay - gebdat.toEpochDay
-          val alterInJahren = alterInTagen / 365
-          val altersfaktor = 100L - alterInJahren
-          val powered = Math.floor(Math.pow(1000, idx)).toLong
-          powered + altersfaktor
-        }
+        // höchste E-Summe, höschste D-Summe, Jugend vor Alter
+        val gebdat = w.athlet.gebdat match {case Some(d) => d.toLocalDate case None => hundredyears}
+        val alterInTagen = jet.toEpochDay - gebdat.toEpochDay
+        val alterInJahren = alterInTagen / 365
+        val altersfaktor = 100L - alterInJahren
+        val powered = wkesums * 10000L + wkdsums * 100L
+        (powered + altersfaktor).toLong
       }
 
       def factorizeGeTu(w: WertungView): Long = {
@@ -327,7 +323,7 @@ case class GroupLeaf(override val groupKey: DataObject, list: Iterable[WertungVi
             factorizeKuTu(w)
           case _ => 1L
         }
-        w.resultat * 1000000000000L + w.resultat * factor
+        (w.resultat * 1000000000000L) + (w.resultat * factor)
         }.reduce(_+_)}
       val gsum = if(gwksums.nonEmpty) gwksums.reduce(_+_) else Resultat(0,0,0)
       val avg = if(wksums.nonEmpty) rsum / wksums.size else Resultat(0,0,0)
