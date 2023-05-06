@@ -56,6 +56,7 @@ object TestDBService {
       , "AddWKDisziplinMetafields-sqllite.sql"
       //, "AddWKTestPgms-sqllite.sql"
       , "AddAltersklassenToWettkampf-sqllite.sql"
+      , "AddPunktegleichstandsregelToWettkampf-sqllite.sql"
     )
     installDBFunctions(tempDatabase)
 

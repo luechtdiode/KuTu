@@ -1,8 +1,8 @@
 package ch.seidel.kutu.domain
 
+import ch.seidel.kutu.data.GroupSection.STANDARD_SCORE_FACTOR
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
-import org.scalatest.Assertions._
 
 import java.time.LocalDate
 import java.util.UUID
@@ -27,10 +27,19 @@ class GleichstandsregelTest extends AnyWordSpec with Matchers {
   }
   val testResultate = testWertungen.map(_.resultat)
 
+  "check long-range" in {
+    val maxfactor = STANDARD_SCORE_FACTOR / 100
+    assert(Gleichstandsregel("Disziplin(Reck,Sprung,Pauschen,Boden,Ring)").factorize(testWertungen.head, testResultate) < maxfactor)
+    assert(Gleichstandsregel("Disziplin(Reck,Sprung,Pauschen,Boden)/E-Note-Summe/E-Note-Best/D-Note-Summe/D-Note-Best/JugendVorAlter").factorize(testWertungen.head, testResultate) < maxfactor)
+    assert(Gleichstandsregel("E-Note-Summe/E-Note-Best/JugendVorAlter").factorize(testWertungen.head, testResultate) < maxfactor)
+    assert(Gleichstandsregel("Disziplin(Reck,Sprung,Pauschen,Boden,Ring,Barren)/E-Note-Summe/E-Note-Best/D-Note-Summe/D-Note-Best/JugendVorAlter").factorize(testWertungen.head, testResultate) < maxfactor)
+    //assertThrows[RuntimeException](Gleichstandsregel("Disziplin(Reck,Sprung,Pauschen,Boden,Ring,Barren)"))
+    //assertThrows[RuntimeException](Gleichstandsregel("Disziplin(Reck,Sprung,Pauschen,Boden,Ring,Barren)/E-Note-Summe/E-Note-Best/D-Note-Summe/D-Note-Best/JugendVorAlter"))
+  }
+
   "Ohne - Default" in {
-    // 100 - (2023 - 2004) = 81
-    assert(Gleichstandsregel("Ohne").factorize(testWertungen.head, testResultate) == 10000000000L)
-    assert(Gleichstandsregel("").factorize(testWertungen.head, testResultate) == 10000000000L)
+    assert(Gleichstandsregel("Ohne").factorize(testWertungen.head, testResultate) == 100000000000L)
+    assertThrows[RuntimeException](Gleichstandsregel("").factorize(testWertungen.head, testResultate))
   }
 
   "wettkampf-constructor" in {
@@ -40,62 +49,66 @@ class GleichstandsregelTest extends AnyWordSpec with Matchers {
 
   "Jugend vor Alter" in {
     // 100 - (2023 - 2004) = 81
-    assert(Gleichstandsregel("JugendVorAlter").factorize(testWertungen.head, testResultate) == 810000000000L)
+    assert(Gleichstandsregel("JugendVorAlter").factorize(testWertungen.head, testResultate) == 81000000000L)
   }
 
   "factorize E-Note-Best" in {
-    assert(Gleichstandsregel("E-Note-Best").factorize(testWertungen.head, testResultate) == 75000000000000L)
-    assert(Gleichstandsregel("E-Note-Best").factorize(testWertungen.drop(1).head, testResultate) == 75000000000000L)
-    assert(Gleichstandsregel("E-Note-Best").factorize(testWertungen.drop(2).head, testResultate) == 75000000000000L)
-    assert(Gleichstandsregel("E-Note-Best").factorize(testWertungen.drop(3).head, testResultate) == 75000000000000L)
-    assert(Gleichstandsregel("E-Note-Best").factorize(testWertungen.drop(4).head, testResultate) == 75000000000000L)
-    assert(Gleichstandsregel("E-Note-Best").factorize(testWertungen.drop(5).head, testResultate) == 75000000000000L)
+    println(testResultate.map(_.noteE).max)
+    assert(Gleichstandsregel("E-Note-Best").factorize(testWertungen.head, testResultate) == 75000000000L)
+    assert(Gleichstandsregel("E-Note-Best").factorize(testWertungen.drop(1).head, testResultate) == 75000000000L)
+    assert(Gleichstandsregel("E-Note-Best").factorize(testWertungen.drop(2).head, testResultate) == 75000000000L)
+    assert(Gleichstandsregel("E-Note-Best").factorize(testWertungen.drop(3).head, testResultate) == 75000000000L)
+    assert(Gleichstandsregel("E-Note-Best").factorize(testWertungen.drop(4).head, testResultate) == 75000000000L)
+    assert(Gleichstandsregel("E-Note-Best").factorize(testWertungen.drop(5).head, testResultate) == 75000000000L)
   }
 
   "factorize E-Note-Summe" in {
-    assert(Gleichstandsregel("E-Note-Summe").factorize(testWertungen.head, testResultate) == 300000000000000L)
-    assert(Gleichstandsregel("E-Note-Summe").factorize(testWertungen.drop(1).head, testResultate) == 300000000000000L)
-    assert(Gleichstandsregel("E-Note-Summe").factorize(testWertungen.drop(2).head, testResultate) == 300000000000000L)
-    assert(Gleichstandsregel("E-Note-Summe").factorize(testWertungen.drop(3).head, testResultate) == 300000000000000L)
-    assert(Gleichstandsregel("E-Note-Summe").factorize(testWertungen.drop(4).head, testResultate) == 300000000000000L)
-    assert(Gleichstandsregel("E-Note-Summe").factorize(testWertungen.drop(5).head, testResultate) == 300000000000000L)
+    println(testResultate.reduce(_+_).noteE)
+    assert(Gleichstandsregel("E-Note-Summe").factorize(testWertungen.head, testResultate) == 30000000000L)
+    assert(Gleichstandsregel("E-Note-Summe").factorize(testWertungen.drop(1).head, testResultate) == 30000000000L)
+    assert(Gleichstandsregel("E-Note-Summe").factorize(testWertungen.drop(2).head, testResultate) == 30000000000L)
+    assert(Gleichstandsregel("E-Note-Summe").factorize(testWertungen.drop(3).head, testResultate) == 30000000000L)
+    assert(Gleichstandsregel("E-Note-Summe").factorize(testWertungen.drop(4).head, testResultate) == 30000000000L)
+    assert(Gleichstandsregel("E-Note-Summe").factorize(testWertungen.drop(5).head, testResultate) == 30000000000L)
   }
 
   "factorize D-Note-Best" in {
-    assert(Gleichstandsregel("D-Note-Best").factorize(testWertungen.head, testResultate) == 82000000000000L)
-    assert(Gleichstandsregel("D-Note-Best").factorize(testWertungen.drop(1).head, testResultate) == 82000000000000L)
-    assert(Gleichstandsregel("D-Note-Best").factorize(testWertungen.drop(2).head, testResultate) == 82000000000000L)
-    assert(Gleichstandsregel("D-Note-Best").factorize(testWertungen.drop(3).head, testResultate) == 82000000000000L)
-    assert(Gleichstandsregel("D-Note-Best").factorize(testWertungen.drop(4).head, testResultate) == 82000000000000L)
-    assert(Gleichstandsregel("D-Note-Best").factorize(testWertungen.drop(5).head, testResultate) == 82000000000000L)
+    println(testResultate.map(_.noteE).max)
+    assert(Gleichstandsregel("D-Note-Best").factorize(testWertungen.head, testResultate) == 82000000000L)
+    assert(Gleichstandsregel("D-Note-Best").factorize(testWertungen.drop(1).head, testResultate) == 82000000000L)
+    assert(Gleichstandsregel("D-Note-Best").factorize(testWertungen.drop(2).head, testResultate) == 82000000000L)
+    assert(Gleichstandsregel("D-Note-Best").factorize(testWertungen.drop(3).head, testResultate) == 82000000000L)
+    assert(Gleichstandsregel("D-Note-Best").factorize(testWertungen.drop(4).head, testResultate) == 82000000000L)
+    assert(Gleichstandsregel("D-Note-Best").factorize(testWertungen.drop(5).head, testResultate) == 82000000000L)
   }
 
   "factorize D-Note-Summe" in {
-    assert(Gleichstandsregel("D-Note-Summe").factorize(testWertungen.head, testResultate) == 342000000000000L)
-    assert(Gleichstandsregel("D-Note-Summe").factorize(testWertungen.drop(1).head, testResultate) == 342000000000000L)
-    assert(Gleichstandsregel("D-Note-Summe").factorize(testWertungen.drop(2).head, testResultate) == 342000000000000L)
-    assert(Gleichstandsregel("D-Note-Summe").factorize(testWertungen.drop(3).head, testResultate) == 342000000000000L)
-    assert(Gleichstandsregel("D-Note-Summe").factorize(testWertungen.drop(4).head, testResultate) == 342000000000000L)
-    assert(Gleichstandsregel("D-Note-Summe").factorize(testWertungen.drop(5).head, testResultate) == 342000000000000L)
+    println(testResultate.reduce(_+_).noteD)
+    assert(Gleichstandsregel("D-Note-Summe").factorize(testWertungen.head, testResultate) == 34200000000L)
+    assert(Gleichstandsregel("D-Note-Summe").factorize(testWertungen.drop(1).head, testResultate) == 34200000000L)
+    assert(Gleichstandsregel("D-Note-Summe").factorize(testWertungen.drop(2).head, testResultate) == 34200000000L)
+    assert(Gleichstandsregel("D-Note-Summe").factorize(testWertungen.drop(3).head, testResultate) == 34200000000L)
+    assert(Gleichstandsregel("D-Note-Summe").factorize(testWertungen.drop(4).head, testResultate) == 34200000000L)
+    assert(Gleichstandsregel("D-Note-Summe").factorize(testWertungen.drop(5).head, testResultate) == 34200000000L)
   }
 
   "factorize Disziplin" in {
-    assert(Gleichstandsregel("Disziplin(Reck,Sprung,Pauschen)").factorize(testWertungen.head, testResultate) ==         10000000000L)
-    assert(Gleichstandsregel("Disziplin(Reck,Sprung,Pauschen)").factorize(testWertungen.drop(1).head, testResultate) == 1000000000000L)
-    assert(Gleichstandsregel("Disziplin(Reck,Sprung,Pauschen)").factorize(testWertungen.drop(2).head, testResultate) == 10000000000L)
-    assert(Gleichstandsregel("Disziplin(Reck,Sprung,Pauschen)").factorize(testWertungen.drop(3).head, testResultate) == 100000000000000L)
-    assert(Gleichstandsregel("Disziplin(Reck,Sprung,Pauschen)").factorize(testWertungen.drop(4).head, testResultate) == 10000000000L)
-    assert(Gleichstandsregel("Disziplin(Reck,Sprung,Pauschen)").factorize(testWertungen.drop(5).head, testResultate) == 10000000000000000L)
+    assert(Gleichstandsregel("Disziplin(Reck,Sprung,Pauschen)").factorize(testWertungen.head, testResultate) ==               0L)
+    assert(Gleichstandsregel("Disziplin(Reck,Sprung,Pauschen)").factorize(testWertungen.drop(1).head, testResultate) ==     300L)
+    assert(Gleichstandsregel("Disziplin(Reck,Sprung,Pauschen)").factorize(testWertungen.drop(2).head, testResultate) ==       0L)
+    assert(Gleichstandsregel("Disziplin(Reck,Sprung,Pauschen)").factorize(testWertungen.drop(3).head, testResultate) ==  900000L)
+    assert(Gleichstandsregel("Disziplin(Reck,Sprung,Pauschen)").factorize(testWertungen.drop(4).head, testResultate) ==       0L)
+    assert(Gleichstandsregel("Disziplin(Reck,Sprung,Pauschen)").factorize(testWertungen.drop(5).head, testResultate) == 6775365L)
   }
 
   "construct combined rules" in {
-    assert(Gleichstandsregel("JugendVorAlter").factorize(testWertungen.head, testResultate)                          ==    810000000000L)
-    assert(Gleichstandsregel("E-Note-Best").factorize(testWertungen.head, testResultate)                             ==  75000000000000L)
-    assert(Gleichstandsregel("E-Note-Summe").factorize(testWertungen.head, testResultate)                            == 300000000000000L)
-    assert(Gleichstandsregel("E-Note-Summe/E-Note-Best").factorize(testWertungen.head, testResultate)                == 307500000000000L)
-    assert(Gleichstandsregel("E-Note-Summe/E-Note-Best/JugendVorAlter").factorize(testWertungen.head, testResultate) == 307508100000000L)
-    assert(Gleichstandsregel("E-Note-Best/E-Note-Summe/JugendVorAlter").factorize(testWertungen.head, testResultate) == 105008100000000L)
-    assert(Gleichstandsregel("JugendVorAlter/E-Note-Best/E-Note-Summe").factorize(testWertungen.head, testResultate) ==  11310000000000L)
+    assert(Gleichstandsregel("JugendVorAlter").factorize(testWertungen.head, testResultate)                          == 81000000000L)
+    assert(Gleichstandsregel("E-Note-Best").factorize(testWertungen.head, testResultate)                             == 75000000000L)
+    assert(Gleichstandsregel("E-Note-Summe").factorize(testWertungen.head, testResultate)                            == 30000000000L)
+    assert(Gleichstandsregel("E-Note-Summe/E-Note-Best").factorize(testWertungen.head, testResultate)                == 30000750000L)
+    assert(Gleichstandsregel("E-Note-Summe/E-Note-Best/JugendVorAlter").factorize(testWertungen.head, testResultate) == 30000750081L)
+    assert(Gleichstandsregel("E-Note-Best/E-Note-Summe/JugendVorAlter").factorize(testWertungen.head, testResultate) == 75003000081L)
+    assert(Gleichstandsregel("JugendVorAlter/E-Note-Best/E-Note-Summe").factorize(testWertungen.head, testResultate) == 81750030000L)
   }
 
   "toFormel" in {

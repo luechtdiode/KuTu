@@ -1,5 +1,6 @@
 package ch.seidel.kutu
 
+import ch.seidel.commons.PageDisplayer.showErrorDialog
 import ch.seidel.commons.{DisplayablePage, PageDisplayer, ProgressForm, TaskSteps}
 import ch.seidel.jwt
 import ch.seidel.kutu.Config._
@@ -12,6 +13,7 @@ import javafx.concurrent.Task
 import javafx.scene.control.DatePicker
 import net.glxn.qrgen.QRCode
 import net.glxn.qrgen.image.ImageType
+import org.controlsfx.validation.{Severity, ValidationResult, ValidationSupport, Validator}
 import org.slf4j.LoggerFactory
 import scalafx.Includes._
 import scalafx.application.JFXApp3.PrimaryStage
@@ -286,6 +288,37 @@ object KuTuApp extends JFXApp3 with KutuService with JsonSupport with JwtSupport
         promptText = "Auszeichnung bei Erreichung des Mindest-Endwerts"
         text = p.auszeichnungendnote.toString
       }
+      val cmbPunktgleichstandsregel = new ComboBox[String]() {
+        prefWidth = 500
+        Gleichstandsregel.predefined.foreach(definition => {
+          items.value.add(definition._1)
+        })
+        promptText = "Rangierungsregel bei Punktegleichstand"
+      }
+      val txtPunktgleichstandsregel = new TextField {
+        prefWidth = 500
+        promptText = "z.B. E-Note-Summe/E-NoteBest/Disziplin(Boden,Sprung)/JugendVorAlter"
+        text = p.punktegleichstandsregel
+        editable <== Bindings.createBooleanBinding(() => {
+          "Individuell".equals(cmbPunktgleichstandsregel.value.value)
+        },
+          cmbPunktgleichstandsregel.selectionModel,
+          cmbPunktgleichstandsregel.value
+        )
+
+        cmbPunktgleichstandsregel.value.onChange {
+          text.value = Gleichstandsregel.predefined(cmbPunktgleichstandsregel.value.value)
+          if (text.value.isEmpty && !"Ohne".equals(cmbPunktgleichstandsregel.value.value)) {
+            text.value = p.punktegleichstandsregel
+          }
+        }
+        cmbProgramm.value.onChange {
+          text.value = Gleichstandsregel(p.toWettkampf.copy(programmId = cmbProgramm.selectionModel.value.getSelectedItem.id)).toFormel
+        }
+
+      }
+      val validationSupport = new ValidationSupport
+      validationSupport.registerValidator(txtPunktgleichstandsregel, false, Gleichstandsregel.createValidator)
       val cmbAltersklassen = new ComboBox[String]() {
         prefWidth = 500
         Altersklasse.predefinedAKs.foreach(definition => {
@@ -351,6 +384,7 @@ object KuTuApp extends JFXApp3 with KutuService with JsonSupport with JwtSupport
                 new Label(txtNotificationEMail.promptText.value), txtNotificationEMail,
                 new Label(txtAuszeichnung.promptText.value), txtAuszeichnung,
                 new Label(txtAuszeichnungEndnote.promptText.value), txtAuszeichnungEndnote,
+                cmbPunktgleichstandsregel, txtPunktgleichstandsregel,
                 cmbAltersklassen, txtAltersklassen,
                 cmbJGAltersklassen, txtJGAltersklassen
               )
@@ -388,7 +422,8 @@ object KuTuApp extends JFXApp3 with KutuService with JsonSupport with JwtSupport
                 },
                 p.uuid,
                 txtAltersklassen.text.value,
-                txtJGAltersklassen.text.value
+                txtJGAltersklassen.text.value,
+                txtPunktgleichstandsregel.text.value
               )
               val dir = new java.io.File(homedir + "/" + w.easyprint.replace(" ", "_"))
               if (!dir.exists()) {
@@ -1138,6 +1173,32 @@ object KuTuApp extends JFXApp3 with KutuService with JsonSupport with JwtSupport
         promptText = "Auszeichnung bei Erreichung des Mindest-Gerätedurchschnittwerts"
         text = ""
       }
+      val cmbPunktgleichstandsregel = new ComboBox[String]() {
+        prefWidth = 500
+        Gleichstandsregel.predefined.foreach(definition => {
+          items.value.add(definition._1)
+        })
+        promptText = "Rangierungsregel bei Punktegleichstand"
+      }
+      val txtPunktgleichstandsregel = new TextField {
+        prefWidth = 500
+        promptText = "z.B. E-Note-Summe/E-NoteBest/Disziplin(Boden,Sprung)/JugendVorAlter"
+        editable <== Bindings.createBooleanBinding(() => {
+          "Individuell".equals(cmbPunktgleichstandsregel.value.value)
+        },
+          cmbPunktgleichstandsregel.selectionModel,
+          cmbPunktgleichstandsregel.value
+        )
+
+        cmbPunktgleichstandsregel.value.onChange {
+          text.value = Gleichstandsregel.predefined(cmbPunktgleichstandsregel.value.value)
+        }
+        cmbProgramm.value.onChange {
+          text.value = Gleichstandsregel(cmbProgramm.selectionModel.value.getSelectedItem.id).toFormel
+        }
+      }
+      val validationSupport = new ValidationSupport
+      validationSupport.registerValidator(txtPunktgleichstandsregel, false, Gleichstandsregel.createValidator)
       val cmbAltersklassen = new ComboBox[String]() {
         prefWidth = 500
         Altersklasse.predefinedAKs.foreach(definition => {
@@ -1195,6 +1256,7 @@ object KuTuApp extends JFXApp3 with KutuService with JsonSupport with JwtSupport
                 new Label(txtNotificationEMail.promptText.value), txtNotificationEMail,
                 new Label(txtAuszeichnung.promptText.value), txtAuszeichnung,
                 new Label(txtAuszeichnungEndnote.promptText.value), txtAuszeichnungEndnote,
+                cmbPunktgleichstandsregel, txtPunktgleichstandsregel,
                 cmbAltersklassen, txtAltersklassen,
                 cmbJGAltersklassen, txtJGAltersklassen
               )
@@ -1234,7 +1296,8 @@ object KuTuApp extends JFXApp3 with KutuService with JsonSupport with JwtSupport
             },
             Some(UUID.randomUUID().toString()),
             txtAltersklassen.text.value,
-            txtJGAltersklassen.text.value
+            txtJGAltersklassen.text.value,
+            txtPunktgleichstandsregel.text.value
           )
           val dir = new java.io.File(homedir + "/" + w.easyprint.replace(" ", "_"))
           if (!dir.exists()) {

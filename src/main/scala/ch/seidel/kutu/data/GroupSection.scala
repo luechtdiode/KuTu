@@ -1,8 +1,9 @@
 package ch.seidel.kutu.data
 
+import ch.seidel.kutu.data.GroupSection.STANDARD_SCORE_FACTOR
+
 import java.time._
 import java.time.temporal._
-
 import ch.seidel.kutu.domain._
 
 import scala.collection.mutable
@@ -10,6 +11,8 @@ import scala.collection.mutable.StringBuilder
 import scala.math.BigDecimal.{double2bigDecimal, int2bigDecimal}
 
 object GroupSection {
+  val STANDARD_SCORE_FACTOR = 1000000000000000L
+
   def programGrouper( w: WertungView): ProgrammView = w.wettkampfdisziplin.programm.aggregatorSubHead
   def disziplinGrouper( w: WertungView): (Int, Disziplin) = (w.wettkampfdisziplin.ord, w.wettkampfdisziplin.disziplin)
   def groupWertungList(list: Iterable[WertungView]) = {
@@ -77,6 +80,7 @@ case class GroupLeaf(override val groupKey: DataObject, list: Iterable[WertungVi
   val isDivided = !(withDNotes || groups.isEmpty)
   val divider = if(!isDivided) 1 else groups.head._2.size
 
+  val gleichstandsregel = Gleichstandsregel(list.head.wettkampf)
   def buildColumns: List[WKCol] = {
     val athletCols: List[WKCol] = List(
       WKLeafCol[GroupRow](text = "Rang", prefWidth = 20, styleClass = Seq("data"), valueMapper = gr => {
@@ -280,50 +284,11 @@ case class GroupLeaf(override val groupKey: DataObject, list: Iterable[WertungVi
     }
     def mapToAvgRowSummary(athlWertungen: Iterable[WertungView]): (Resultat, Resultat, Iterable[(Disziplin, Long, Resultat, Resultat, Option[Int], Option[BigDecimal])], Iterable[(ProgrammView, Resultat, Resultat, Option[Int], Option[BigDecimal])], Resultat) = {
       val wks = athlWertungen.filter(_.endnote.nonEmpty).groupBy { w => w.wettkampf }
-      val wksums = wks.map {wk => wk._2.map(w => w.resultat).reduce(_+_)}
-      val wkesums = wks.map {wk => wk._2.map(w => w.resultat.noteE).sum} sum
-      val wkdsums = wks.map {wk => wk._2.map(w => w.resultat.noteD).sum} sum
+      val wksums = wks.map {wk => wk._2.map(w => w.resultat).reduce(_+_)}.toList
       val rsum = if(wksums.nonEmpty) wksums.reduce(_+_) else Resultat(0,0,0)
-      lazy val getuDisziplinGOrder = Map(26L -> 1, 4L -> 2, 6L -> 3)
-      lazy val jet = LocalDate.now()
-      lazy val hundredyears = jet.minus(100, ChronoUnit.YEARS)
-
-      def factorizeKuTu(w: WertungView): Long = {
-        // höchste E-Summe, höschste D-Summe, Jugend vor Alter
-        val gebdat = w.athlet.gebdat match {case Some(d) => d.toLocalDate case None => hundredyears}
-        val alterInTagen = jet.toEpochDay - gebdat.toEpochDay
-        val alterInJahren = alterInTagen / 365
-        val altersfaktor = 100L - alterInJahren
-        val powered = wkesums * 10000L + wkdsums * 100L
-        (powered + altersfaktor).toLong
-      }
-
-      def factorizeGeTu(w: WertungView): Long = {
-        val idx = 4 - getuDisziplinGOrder.getOrElse(w.wettkampfdisziplin.disziplin.id, 4)
-        val ret = if(idx == 0) {
-          1L
-        }
-        else {
-          Math.floor(Math.pow(1000, idx)).toLong
-        }
-        ret
-      }
 
       val gwksums = wks.map {wk => wk._2.map{w =>
-        val factor = w.wettkampf.programmId match {
-          case id if(id > 0 && id < 4) => // Athletiktest
-             1L
-          case id if((id > 10 && id < 20) || id == 28) => // KuTu Programm
-            factorizeKuTu(w)
-          case id if(id > 19 && id < 27) => // GeTu Kategorie
-            factorizeGeTu(w)
-          case id if(id > 46 && id < 84) => // GeTu Kategorie
-            factorizeGeTu(w)
-          case id if(id > 30 && id < 41) => // KuTuRi Programm
-            factorizeKuTu(w)
-          case _ => 1L
-        }
-        (w.resultat * 1000000000000L) + (w.resultat * factor)
+        if (anzahWettkaempfe > 1) w.resultat else (w.resultat * STANDARD_SCORE_FACTOR) + (w.resultat * gleichstandsregel.factorize(w, wksums))
         }.reduce(_+_)}
       val gsum = if(gwksums.nonEmpty) gwksums.reduce(_+_) else Resultat(0,0,0)
       val avg = if(wksums.nonEmpty) rsum / wksums.size else Resultat(0,0,0)

@@ -61,7 +61,7 @@ object RiegenBuilder {
           case Some(_) => acc
           case _ => acc :+ (Some(item) -> List[Riege]())
         }
-      }.sortBy(geraet => dzl.indexOf(geraet._1.get))
+      }.sortBy(geraet => geraet._1.map(g => dzl.indexOf(g)))
       val startformationen = pickStartformationen(geraete, durchgang, k => (k.einteilung, k.diszipline))
         .zipWithIndex
         .map(x => {

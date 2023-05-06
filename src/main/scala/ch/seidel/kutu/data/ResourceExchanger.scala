@@ -286,6 +286,7 @@ object ResourceExchanger extends KutuService with RiegenBuilder {
         notificationEMail = wettkampfHeader.get("notificationEMail").map(fields).getOrElse(""),
         altersklassen = wettkampfHeader.get("altersklassen").map(fields).getOrElse(""),
         jahrgangsklassen = wettkampfHeader.get("jahrgangsklassen").map(fields).getOrElse(""),
+        punktegleichstandsregel = wettkampfHeader.get("punktegleichstandsregel").map(fields).getOrElse(""),
         uuidOption = uuid
       )
 
