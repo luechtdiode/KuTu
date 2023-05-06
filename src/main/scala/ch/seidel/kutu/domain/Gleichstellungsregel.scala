@@ -1,6 +1,5 @@
 package ch.seidel.kutu.domain
 
-import java.time.LocalDate
 import java.time.temporal.ChronoUnit
 
 
@@ -8,12 +7,12 @@ object Gleichstandsregel {
   private val getu = "Disziplin(Schaukelringe,Sprung,Reck)"
   private val kutu = "E-Note-Summe/D-Note-Summe/JugendVorAlter"
   val predefined = Map(
-    ("Ohne - Punktgleichstand => gleicher Rang" -> "")
-    , ("GeTu" -> getu)
-    , ("KuTu" -> kutu)
+      ("Ohne - Punktgleichstand => gleicher Rang" -> "Ohne")
+    , ("GeTu Punktgleichstandsregel" -> getu)
+    , ("KuTu Punktgleichstandsregel" -> kutu)
     , ("Individuell" -> "")
   )
-  val disziplinPattern = "^Disciplin\\((.+)\\)$".r
+  val disziplinPattern = "^Disziplin\\((.+)\\)$".r
 
   def apply(formel: String): Gleichstandsregel = {
     val regeln = formel.split("/").toList
@@ -33,29 +32,49 @@ object Gleichstandsregel {
       GleichstandsregelList(mappedFactorizers)
     }
   }
+
+  def apply(programmId: Long): Gleichstandsregel = {
+    programmId match {
+      case id if (id > 0 && id < 4) => // Athletiktest
+        GleichstandsregelDefault
+      case id if ((id > 10 && id < 20) || id == 28) => // KuTu Programm
+        Gleichstandsregel(kutu)
+      case id if (id > 19 && id < 27) || (id > 73 && id < 84) => // GeTu Kategorie
+        Gleichstandsregel(getu)
+      case id if (id > 30 && id < 41) => // KuTuRi Programm
+        Gleichstandsregel(kutu)
+      case _ => GleichstandsregelDefault
+    }
+  }
+  def apply(wettkampf: Wettkampf): Gleichstandsregel = this(wettkampf.programmId)
 }
 
 sealed trait Gleichstandsregel {
-  def factorize(currentWertung: WertungView, athlWertungen: List[WertungView]): Long
+  def factorize(currentWertung: WertungView, athlWertungen: List[Resultat]): Long
+  def toFormel: String
 }
 
 case object GleichstandsregelDefault extends Gleichstandsregel {
-  override def factorize(currentWertung: WertungView, athlWertungen: List[WertungView]): Long = 1
+  override def factorize(currentWertung: WertungView, athlWertungen: List[Resultat]): Long = 1
+  override def toFormel: String = "Ohne"
 }
 
 case class GleichstandsregelList(regeln: List[Gleichstandsregel]) extends Gleichstandsregel {
-  override def factorize(currentWertung: WertungView, athlWertungen: List[WertungView]): Long = {
+  override def factorize(currentWertung: WertungView, athlWertungen: List[Resultat]): Long = {
     regeln
       .zipWithIndex
       .map(regel => (regel._1.factorize(currentWertung, athlWertungen), regel._2))
       .map(t => Math.floor(Math.pow(10, 10 - t._2)).toLong * t._1)
       .sum
   }
+  override def toFormel: String = regeln.map(_.toFormel).mkString("/")
 }
 
 case class GleichstandsregelDisziplin(disziplinOrder: List[String]) extends Gleichstandsregel {
+  override def toFormel: String = s"Disziplin${disziplinOrder.mkString("(", ",", ")")}"
+
   val reversedOrder = disziplinOrder.reverse
-  override def factorize(currentWertung: WertungView, athlWertungen: List[WertungView]): Long = {
+  override def factorize(currentWertung: WertungView, athlWertungen: List[Resultat]): Long = {
     val idx = 1 + reversedOrder.indexOf(currentWertung.wettkampfdisziplin.disziplin.name)
     val ret = if (idx <= 0) {
       1L
@@ -68,7 +87,9 @@ case class GleichstandsregelDisziplin(disziplinOrder: List[String]) extends Glei
 }
 
 case object GleichstandsregelJugendVorAlter extends Gleichstandsregel {
-  override def factorize(currentWertung: WertungView, athlWertungen: List[WertungView]): Long = {
+  override def toFormel: String = "JugendVorAlter"
+
+  override def factorize(currentWertung: WertungView, athlWertungen: List[Resultat]): Long = {
     val jet = currentWertung.wettkampf.datum.toLocalDate
     val gebdat = currentWertung.athlet.gebdat match {
       case Some(d) => d.toLocalDate
@@ -81,25 +102,33 @@ case object GleichstandsregelJugendVorAlter extends Gleichstandsregel {
 }
 
 case object GleichstandsregelENoteBest extends Gleichstandsregel {
-  override def factorize(currentWertung: WertungView, athlWertungen: List[WertungView]): Long = {
-    athlWertungen.map(_.resultat.noteE).max * 1000L toLong
+  override def toFormel: String = "E-Note-Best"
+
+  override def factorize(currentWertung: WertungView, athlWertungen: List[Resultat]): Long = {
+    athlWertungen.map(_.noteE).max * 1000L toLong
   }
 }
 
 case object GleichstandsregelENoteSumme extends Gleichstandsregel {
-  override def factorize(currentWertung: WertungView, athlWertungen: List[WertungView]): Long = {
-    athlWertungen.map(_.resultat.noteE).sum * 1000L toLong
+  override def toFormel: String = "E-Note-Summe"
+
+  override def factorize(currentWertung: WertungView, athlWertungen: List[Resultat]): Long = {
+    athlWertungen.map(_.noteE).sum * 1000L toLong
   }
 }
 
 case object GleichstandsregelDNoteBest extends Gleichstandsregel {
-  override def factorize(currentWertung: WertungView, athlWertungen: List[WertungView]): Long = {
-    athlWertungen.map(_.resultat.noteD).max * 1000L toLong
+  override def toFormel: String = "D-Note-Best"
+
+  override def factorize(currentWertung: WertungView, athlWertungen: List[Resultat]): Long = {
+    athlWertungen.map(_.noteD).max * 1000L toLong
   }
 }
 
 case object GleichstandsregelDNoteSumme extends Gleichstandsregel {
-  override def factorize(currentWertung: WertungView, athlWertungen: List[WertungView]): Long = {
-    athlWertungen.map(_.resultat.noteD).sum * 1000L toLong
+  override def toFormel: String = "D-Note-Summe"
+
+  override def factorize(currentWertung: WertungView, athlWertungen: List[Resultat]): Long = {
+    athlWertungen.map(_.noteD).sum * 1000L toLong
   }
 }
