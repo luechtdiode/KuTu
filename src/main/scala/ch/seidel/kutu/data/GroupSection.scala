@@ -1,6 +1,6 @@
 package ch.seidel.kutu.data
 
-import ch.seidel.kutu.data.GroupSection.STANDARD_SCORE_FACTOR
+import ch.seidel.kutu.data.GroupSection.{STANDARD_SCORE_FACTOR}
 
 import java.time._
 import java.time.temporal._
@@ -11,7 +11,7 @@ import scala.collection.mutable.StringBuilder
 import scala.math.BigDecimal.{double2bigDecimal, int2bigDecimal}
 
 object GroupSection {
-  val STANDARD_SCORE_FACTOR = 1000000000000000L
+  val STANDARD_SCORE_FACTOR = BigDecimal("1000000000000000000000")
 
   def programGrouper( w: WertungView): ProgrammView = w.wettkampfdisziplin.programm.aggregatorSubHead
   def disziplinGrouper( w: WertungView): (Int, Disziplin) = (w.wettkampfdisziplin.ord, w.wettkampfdisziplin.disziplin)
@@ -288,7 +288,10 @@ case class GroupLeaf(override val groupKey: DataObject, list: Iterable[WertungVi
       val rsum = if(wksums.nonEmpty) wksums.reduce(_+_) else Resultat(0,0,0)
 
       val gwksums = wks.map {wk => wk._2.map{w =>
-        if (anzahWettkaempfe > 1) w.resultat else (w.resultat * STANDARD_SCORE_FACTOR) + (w.resultat * gleichstandsregel.factorize(w, wksums))
+        if (anzahWettkaempfe > 1)
+          w.resultat
+        else
+          (w.resultat * STANDARD_SCORE_FACTOR) + (w.resultat * gleichstandsregel.factorize(w, wksums))
         }.reduce(_+_)}
       val gsum = if(gwksums.nonEmpty) gwksums.reduce(_+_) else Resultat(0,0,0)
       val avg = if(wksums.nonEmpty) rsum / wksums.size else Resultat(0,0,0)

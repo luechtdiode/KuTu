@@ -4,6 +4,7 @@ import ch.seidel.kutu.data.GroupSection.STANDARD_SCORE_FACTOR
 import org.controlsfx.validation.{Severity, ValidationResult, Validator}
 
 import java.time.temporal.ChronoUnit
+import scala.math.BigDecimal.{RoundingMode, long2bigDecimal}
 
 
 object Gleichstandsregel {
@@ -23,9 +24,14 @@ object Gleichstandsregel {
   }
 
   def validated(regel: Gleichstandsregel): Gleichstandsregel = {
-    if (STANDARD_SCORE_FACTOR / 100 < regel.powerRange) {
-      println(s"Max scorefactor ${STANDARD_SCORE_FACTOR / 100}, powerRange ${regel.powerRange}, zu gross: ${regel.powerRange - STANDARD_SCORE_FACTOR / 100}")
-      throw new RuntimeException("Bitte reduzieren, es sind zu viele Regeln definiert")
+    try {
+      if (STANDARD_SCORE_FACTOR / 1000L < regel.powerRange) {
+        println(s"Max scorefactor ${STANDARD_SCORE_FACTOR / 1000L}, powerRange ${regel.powerRange}, zu gross: ${regel.powerRange - STANDARD_SCORE_FACTOR / 1000L}")
+        throw new RuntimeException("Bitte reduzieren, es sind zu viele Regeln definiert")
+      }
+    } catch {
+      case _: ArithmeticException => throw new RuntimeException("Bitte reduzieren, es sind zu viele Regeln definiert")
+      case y: Exception => throw y
     }
     regel
   }
@@ -79,30 +85,30 @@ def apply(programmId: Long): Gleichstandsregel = {
 }
 
 sealed trait Gleichstandsregel {
-  def factorize(currentWertung: WertungView, athlWertungen: List[Resultat]): Long
+  def factorize(currentWertung: WertungView, athlWertungen: List[Resultat]): BigDecimal
   def toFormel: String
   def powerRange: Long = 1L
 }
 
 case object GleichstandsregelDefault extends Gleichstandsregel {
-  override def factorize(currentWertung: WertungView, athlWertungen: List[Resultat]): Long = 1
+  override def factorize(currentWertung: WertungView, athlWertungen: List[Resultat]): BigDecimal = 1
   override def toFormel: String = "Ohne"
 }
 
 case class GleichstandsregelList(regeln: List[Gleichstandsregel]) extends Gleichstandsregel {
-  override def factorize(currentWertung: WertungView, athlWertungen: List[Resultat]): Long = {
+  override def factorize(currentWertung: WertungView, athlWertungen: List[Resultat]): BigDecimal = {
     regeln
-      .foldLeft((0L, STANDARD_SCORE_FACTOR / 10000L)){(acc, regel) =>
+      .foldLeft((BigDecimal(0), STANDARD_SCORE_FACTOR / 1000L)){(acc, regel) =>
         val factor = regel.factorize(currentWertung, athlWertungen)
         (acc._1 + factor * acc._2 / regel.powerRange, acc._2 / regel.powerRange)
       }
-      ._1
+      ._1.setScale(0, RoundingMode.HALF_UP)
   }
   override def toFormel: String = regeln.map(_.toFormel).mkString("/")
   override def powerRange: Long = regeln
-    .foldLeft(0L) { (acc, regel) =>
+    .foldRight(BigDecimal(1L)) { (regel, acc) =>
       acc + acc * regel.powerRange
-    }
+    }.toLongExact
 }
 
 case class GleichstandsregelDisziplin(disziplinOrder: List[String]) extends Gleichstandsregel {
@@ -110,15 +116,15 @@ case class GleichstandsregelDisziplin(disziplinOrder: List[String]) extends Glei
   override def powerRange: Long = Math.pow(10000, disziplinOrder.size).toLong
 
   val reversedOrder = disziplinOrder.reverse
-  override def factorize(currentWertung: WertungView, athlWertungen: List[Resultat]): Long = {
+  override def factorize(currentWertung: WertungView, athlWertungen: List[Resultat]): BigDecimal = {
     val idx = 1 + reversedOrder.indexOf(currentWertung.wettkampfdisziplin.disziplin.name)
     val ret = if (idx <= 0) {
-      1L
+      BigDecimal(1L)
     }
     else {
-      Math.pow(currentWertung.wettkampfdisziplin.max*100, idx).toLong
+      BigDecimal(Math.pow(currentWertung.wettkampfdisziplin.max*100, idx))
     }
-    ret
+    ret.setScale(0, RoundingMode.HALF_UP)
   }
 }
 
@@ -127,7 +133,7 @@ case object GleichstandsregelJugendVorAlter extends Gleichstandsregel {
 
   override def powerRange: Long = 100L
 
-  override def factorize(currentWertung: WertungView, athlWertungen: List[Resultat]): Long = {
+  override def factorize(currentWertung: WertungView, athlWertungen: List[Resultat]): BigDecimal = {
     val jet = currentWertung.wettkampf.datum.toLocalDate
     val gebdat = currentWertung.athlet.gebdat match {
       case Some(d) => d.toLocalDate
@@ -143,8 +149,8 @@ case object GleichstandsregelENoteBest extends Gleichstandsregel {
   override def toFormel: String = "E-Note-Best"
   override def powerRange = 10000L
 
-  override def factorize(currentWertung: WertungView, athlWertungen: List[Resultat]): Long = {
-    athlWertungen.map(_.noteE).max * 1000L toLong
+  override def factorize(currentWertung: WertungView, athlWertungen: List[Resultat]): BigDecimal = {
+    athlWertungen.map(_.noteE).max * 1000L setScale(0, RoundingMode.HALF_UP)
   }
 
 }
@@ -152,8 +158,8 @@ case object GleichstandsregelENoteBest extends Gleichstandsregel {
 case object GleichstandsregelENoteSumme extends Gleichstandsregel {
   override def toFormel: String = "E-Note-Summe"
   override def powerRange = 100000L
-  override def factorize(currentWertung: WertungView, athlWertungen: List[Resultat]): Long = {
-    athlWertungen.map(_.noteE).sum * 1000L toLong
+  override def factorize(currentWertung: WertungView, athlWertungen: List[Resultat]): BigDecimal = {
+    athlWertungen.map(_.noteE).sum * 1000L setScale(0, RoundingMode.HALF_UP)
   }
 }
 
@@ -161,8 +167,8 @@ case object GleichstandsregelDNoteBest extends Gleichstandsregel {
   override def toFormel: String = "D-Note-Best"
   override def powerRange = 10000L
 
-  override def factorize(currentWertung: WertungView, athlWertungen: List[Resultat]): Long = {
-    athlWertungen.map(_.noteD).max * 1000L toLong
+  override def factorize(currentWertung: WertungView, athlWertungen: List[Resultat]): BigDecimal = {
+    athlWertungen.map(_.noteD).max * 1000L setScale(0, RoundingMode.HALF_UP)
   }
 }
 
@@ -170,7 +176,7 @@ case object GleichstandsregelDNoteSumme extends Gleichstandsregel {
   override def toFormel: String = "D-Note-Summe"
   override def powerRange = 100000L
 
-  override def factorize(currentWertung: WertungView, athlWertungen: List[Resultat]): Long = {
-    athlWertungen.map(_.noteD).sum * 1000L toLong
+  override def factorize(currentWertung: WertungView, athlWertungen: List[Resultat]): BigDecimal = {
+    athlWertungen.map(_.noteD).sum * 1000L setScale(0, RoundingMode.HALF_UP)
   }
 }

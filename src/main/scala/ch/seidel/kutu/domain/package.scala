@@ -840,10 +840,12 @@ package object domain {
 
   case class Resultat(noteD: scala.math.BigDecimal, noteE: scala.math.BigDecimal, endnote: scala.math.BigDecimal) extends DataObject {
     def +(r: Resultat) = Resultat(noteD + r.noteD, noteE + r.noteE, endnote + r.endnote)
+    def +(r: BigDecimal) = Resultat(noteD + r, noteE + r, endnote + r)
 
     def /(cnt: Int) = Resultat(noteD / cnt, noteE / cnt, endnote / cnt)
 
     def *(cnt: Long) = Resultat(noteD * cnt, noteE * cnt, endnote * cnt)
+    def *(cnt: BigDecimal) = Resultat(noteD * cnt, noteE * cnt, endnote * cnt)
 
     lazy val formattedD = if (noteD > 0) f"${noteD}%4.2f" else ""
     lazy val formattedE = if (noteE > 0) f"${noteE}%4.2f" else ""
