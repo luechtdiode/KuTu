@@ -26,7 +26,7 @@ object RiegenBuilder {
                 diszipline.map(_.id).contains(disziplin.map(_.id).getOrElse(0))
               case None => false
             }
-          }.sortBy { x => (if (groupByProgramm) x.programm else "") + x.verein + x.jahrgang + x.geschlecht + x.name + x.vorname}
+          }.sortBy { riegenSorter(groupByProgramm)}
           
           val completed = tuti.
             flatMap(k => k.wertungen).
@@ -130,6 +130,58 @@ object RiegenBuilder {
 
     riegen
   }
+
+  def rotate(text: String, offset: Int): String = {
+    text.trim.toUpperCase().map(rotate(_, offset))
+  }
+  def rotate(text: Char, offset: Int): Char = {
+    val r1 = text + offset
+    val r2 = if (r1 > 'Z') {
+      r1 - 26
+    } else if (r1 < 'A') {
+      r1 + 26
+    } else {
+      r1
+    }
+    r2.toChar
+  }
+  private def riegenSorter(groupByProgramm: Boolean): Kandidat=>String = kandidat => {
+    val programm = if (groupByProgramm) kandidat.programm else ""
+    if (kandidat.wertungen.nonEmpty) {
+      val date = kandidat.wertungen.head.wettkampf.datum.toLocalDate
+      val alter = try {
+        val bdate: Int =str2Int(kandidat.jahrgang)
+        date.getYear - bdate
+      } catch {
+        case _:NumberFormatException => 100
+      }
+      val jahrgang = if (alter > 15) "0000" else kandidat.jahrgang
+      val day = date.getDayOfYear
+      val reversed = day % 2 == 0
+      val alphaOffset = day % 26
+      val vereinL0 = kandidat.verein
+        .replaceAll("BTV", "")
+        .replaceAll("DTV", "")
+        .replaceAll("STV", "")
+        .replaceAll("GETU", "")
+        .replaceAll("TSV", "")
+        .replaceAll("TV", "")
+        .replaceAll("TZ", "")
+        .replaceAll(" ", "")
+      val vereinL1 = if (reversed) vereinL0.reverse else vereinL0
+      val vereinL2 = rotate(vereinL1, alphaOffset)
+      val geschlecht = if (reversed) kandidat.geschlecht.reverse else kandidat.geschlecht
+      val nameL1 = if (reversed) kandidat.name.reverse else kandidat.name
+      val nameL2 = rotate(nameL1, alphaOffset)
+      val vornameL1 = if (reversed) kandidat.vorname.reverse else kandidat.vorname
+      val vornameL2 = rotate(vornameL1, alphaOffset)
+      val value = f"<$programm%20s $vereinL2%-30s $jahrgang%4s $geschlecht%-10s $nameL2%-20s $vornameL2%-20s>"
+      value
+    } else {
+      s"$programm ${kandidat.verein} ${kandidat.jahrgang} ${kandidat.geschlecht} ${kandidat.name} ${kandidat.vorname}"
+    }
+  }
+
 }
 
 trait RiegenblattToHtmlRenderer {
