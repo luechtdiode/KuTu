@@ -298,7 +298,7 @@ object KuTuApp extends JFXApp3 with KutuService with JsonSupport with JwtSupport
       val txtPunktgleichstandsregel = new TextField {
         prefWidth = 500
         promptText = "z.B. E-Note-Summe/E-NoteBest/Disziplin(Boden,Sprung)/JugendVorAlter"
-        text = p.punktegleichstandsregel
+        text = Gleichstandsregel(p.toWettkampf).toFormel
         editable <== Bindings.createBooleanBinding(() => {
           "Individuell".equals(cmbPunktgleichstandsregel.value.value)
         },
@@ -377,6 +377,7 @@ object KuTuApp extends JFXApp3 with KutuService with JsonSupport with JwtSupport
             hgrow = Priority.Always
             vgrow = Priority.Always
             center = new VBox {
+              spacing = 5.0
               children.addAll(
                 new Label(txtDatum.promptText.value), txtDatum,
                 new Label(txtTitel.promptText.value), txtTitel,
@@ -1249,6 +1250,7 @@ object KuTuApp extends JFXApp3 with KutuService with JsonSupport with JwtSupport
             hgrow = Priority.Always
             vgrow = Priority.Always
             center = new VBox {
+              spacing = 5.0
               children.addAll(
                 new Label(txtDatum.promptText.value), txtDatum,
                 new Label(txtTitel.promptText.value), txtTitel,
