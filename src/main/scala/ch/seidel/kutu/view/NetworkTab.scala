@@ -7,7 +7,7 @@ import ch.seidel.kutu.akka._
 import ch.seidel.kutu.domain._
 import ch.seidel.kutu.http.WebSocketClient
 import ch.seidel.kutu.renderer.PrintUtil.FilenameDefault
-import ch.seidel.kutu.renderer.{BestenListeToHtmlRenderer, PrintUtil, RiegenBuilder}
+import ch.seidel.kutu.renderer.{BestenListeToHtmlRenderer, KategorieTeilnehmerToHtmlRenderer, PrintUtil, RiegenBuilder}
 import ch.seidel.kutu._
 import javafx.event.EventHandler
 import javafx.scene.{control => jfxsc}
@@ -441,6 +441,44 @@ class NetworkTab(wettkampfmode: BooleanProperty, override val wettkampfInfo: Wet
     case e: Exception => e.printStackTrace()
   }
 
+  def makeSelectedDurchgangTeilnehmerExport(): Menu = {
+    val option = getSelectedDruchgangStates
+    val selectedDurchgaenge = option.toSet.map((_: DurchgangState).name)
+    new Menu {
+      text = "Durchgang-Teilnehmerliste erstellen"
+      updateItems
+      reprintItems.onChange {
+        updateItems
+      }
+
+      private def updateItems: Unit = {
+        items.clear()
+        val affectedDurchgaenge: Set[String] = reprintItems.get.map(_.durchgang)
+        if (selectedDurchgaenge.nonEmpty) {
+          items += KuTuApp.makeMenuAction(s"Aus Durchgang ${selectedDurchgaenge.mkString(", ")}") { (caption: String, action: ActionEvent) =>
+            doSelectedTeilnehmerExport(text.value, selectedDurchgaenge)(action)
+          }
+        }
+        if (affectedDurchgaenge.nonEmpty && selectedDurchgaenge.nonEmpty) {
+          items += new SeparatorMenuItem()
+        }
+        if (affectedDurchgaenge.nonEmpty) {
+          val allItem = KuTuApp.makeMenuAction(s"Alle betroffenen (${affectedDurchgaenge.size})") { (caption: String, action: ActionEvent) =>
+            doSelectedTeilnehmerExport(text.value, affectedDurchgaenge)(action)
+          }
+          items += allItem
+          items += new SeparatorMenuItem()
+          affectedDurchgaenge.toList.sorted.foreach { durchgang =>
+            items += KuTuApp.makeMenuAction(s"${durchgang}") { (caption: String, action: ActionEvent) =>
+              doSelectedTeilnehmerExport(text.value, Set(durchgang))(action)
+            }
+          }
+        }
+        disable.value = items.isEmpty
+      }
+    }
+  }
+
   def makeSelectedRiegenBlaetterExport(): Menu = {
     val option = getSelectedDruchgangStates
     val selectedDurchgaenge = option.toSet.map((_: DurchgangState).name)
@@ -625,6 +663,7 @@ class NetworkTab(wettkampfmode: BooleanProperty, override val wettkampfInfo: Wet
     if (!wettkampf.toWettkampf.isReadonly(homedir, remoteHostOrigin)) {
       btnDurchgang.items.clear()
       btnDurchgang.items += makeDurchgangStartenMenu(wettkampf)
+      btnDurchgang.items += makeSelectedDurchgangTeilnehmerExport()
       btnDurchgang.items += new SeparatorMenuItem()
       btnDurchgang.items += makeSelectedRiegenBlaetterExport()
       btnDurchgang.items += makeMenuAction("Bestenliste erstellen") { (_, action) =>
@@ -635,6 +674,8 @@ class NetworkTab(wettkampfmode: BooleanProperty, override val wettkampfInfo: Wet
 
       view.contextMenu = new ContextMenu() {
         items += makeDurchgangStartenMenu(wettkampf)
+        items += new SeparatorMenuItem()
+        items += makeSelectedDurchgangTeilnehmerExport()
         items += new SeparatorMenuItem()
         items += makeSelectedRiegenBlaetterExport()
         items += navigate

@@ -630,6 +630,45 @@ class RiegenTab(override val wettkampfInfo: WettkampfInfo, override val service:
       ret
     }
 
+    def makeAllDurchgangTeilnehmerExport() = {
+      val allAction = KuTuApp.makeMenuAction("Durchgang-Teilnehmerliste aus allen Durchgängen drucken") { (caption, action) =>
+        val allDurchgaenge = durchgangModel.flatMap(group => {
+          if (group.children.isEmpty) {
+            ObservableBuffer[jfxsc.TreeItem[DurchgangEditor]](group)
+          } else {
+            group.children
+          }
+        })
+        val selectedDurchgaenge = allDurchgaenge.map(_.getValue.durchgang)
+          .map(_.name).toSet
+        doSelectedTeilnehmerExport(text.value, selectedDurchgaenge)(action)
+      }
+      allAction
+    }
+    def makeSelectedDurchgangTeilnehmerExport(durchgang: Set[String]): Menu = {
+      val ret = new Menu() {
+        text = "Durchgang-Teilnehmerliste drucken"
+        val selectedAction = KuTuApp.makeMenuAction("Durchgang-Teilnehmerliste aus selektion drucken") { (caption, action) =>
+          val allDurchgaenge = durchgangModel.flatMap(group => {
+            if (group.children.isEmpty) {
+              ObservableBuffer[jfxsc.TreeItem[DurchgangEditor]](group)
+            } else {
+              group.children
+            }
+          })
+          val selectedDurchgaenge = allDurchgaenge.map(_.getValue.durchgang)
+            .filter { d: Durchgang => durchgang.contains(d.name) }
+            .map(_.name).toSet
+          doSelectedTeilnehmerExport(text.value, selectedDurchgaenge)(action)
+        }
+        selectedAction.setDisable(durchgang.size < 1)
+        items += selectedAction
+        val allAction: MenuItem = makeAllDurchgangTeilnehmerExport()
+        items += allAction
+      }
+      ret
+    }
+
     def makeAggregateDurchganMenu(durchgang: Set[String]): MenuItem = {
       val ret = KuTuApp.makeMenuAction("Durchgänge in Gruppe zusammenfassen ...") {(caption, action) =>
         implicit val e = action
@@ -990,7 +1029,7 @@ class RiegenTab(override val wettkampfInfo: WettkampfInfo, override val service:
         event.consume()
       })
 
-      durchgangView.getSelectionModel().getSelectedCells().onChange { (_, newItem) =>
+      durchgangView.getSelectionModel().getSelectedCells().onChange { (_, _) =>
         Platform.runLater {
           val focusedCells: List[jfxsc.TreeTablePosition[DurchgangEditor, _]] = durchgangView.selectionModel.value.getSelectedCells.toList
           val selectedDurchgaenge = focusedCells.flatMap(c => c.getTreeItem.getValue.isHeader match {
@@ -1007,11 +1046,11 @@ class RiegenTab(override val wettkampfInfo: WettkampfInfo, override val service:
           val actDurchgangSelection = selectedDurchgaenge.filter(_ != null).map(d => d.durchgang.name)
           val selectedEditor = if (focusedCells.nonEmpty) focusedCells.head.getTreeItem.getValue else null
           durchgangView.contextMenu = new ContextMenu() {
-            items += makeRegenereateDurchgangMenu(actDurchgangSelection.toSet)
-            items += makeMergeDurchganMenu(actDurchgangSelection.toSet)
+            items += makeRegenereateDurchgangMenu(actDurchgangSelection)
+            items += makeMergeDurchganMenu(actDurchgangSelection)
             items += makeRenameDurchgangMenu
             if (selectedDurchgangHeader.isEmpty) {
-              items += makeAggregateDurchganMenu(actDurchgangSelection.toSet)
+              items += makeAggregateDurchganMenu(actDurchgangSelection)
             }
             if (focusedCells.size == 1 && selectedEditor != null && selectedDurchgangHeader.isEmpty) {
               items += new SeparatorMenuItem()
@@ -1024,16 +1063,17 @@ class RiegenTab(override val wettkampfInfo: WettkampfInfo, override val service:
               items += makeMoveStartgeraetMenu(selectedEditor, focusedCells)
             }
             items += new SeparatorMenuItem()
-            items += makeSelectedRiegenBlaetterExport(actDurchgangSelection.toSet)
+            items += makeSelectedDurchgangTeilnehmerExport(actDurchgangSelection)
+            items += makeSelectedRiegenBlaetterExport(actDurchgangSelection)
           }
 
           btnEditDurchgang.text.value = "Durchgang " + actDurchgangSelection.mkString("[", ", ", "]") + " bearbeiten"
           btnEditDurchgang.items.clear
-          btnEditDurchgang.items += makeRegenereateDurchgangMenu(actDurchgangSelection.toSet)
-          btnEditDurchgang.items += makeMergeDurchganMenu(actDurchgangSelection.toSet)
+          btnEditDurchgang.items += makeRegenereateDurchgangMenu(actDurchgangSelection)
+          btnEditDurchgang.items += makeMergeDurchganMenu(actDurchgangSelection)
           btnEditDurchgang.items += makeRenameDurchgangMenu
           if (selectedDurchgangHeader.isEmpty) {
-            btnEditDurchgang.items += makeAggregateDurchganMenu(actDurchgangSelection.toSet)
+            btnEditDurchgang.items += makeAggregateDurchganMenu(actDurchgangSelection)
           }
           if (focusedCells.size == 1 && selectedEditor != null && selectedDurchgangHeader.isEmpty) {
             btnEditDurchgang.items += new SeparatorMenuItem()
@@ -1046,7 +1086,8 @@ class RiegenTab(override val wettkampfInfo: WettkampfInfo, override val service:
             btnEditDurchgang.items += makeMoveStartgeraetMenu(selectedEditor, focusedCells)
           }
           btnEditDurchgang.items += new SeparatorMenuItem()
-          btnEditDurchgang.items += makeSelectedRiegenBlaetterExport(actDurchgangSelection.toSet)
+          btnEditDurchgang.items += makeSelectedDurchgangTeilnehmerExport(actDurchgangSelection)
+          btnEditDurchgang.items += makeSelectedRiegenBlaetterExport(actDurchgangSelection)
         }
       }
     }
@@ -1294,6 +1335,7 @@ class RiegenTab(override val wettkampfInfo: WettkampfInfo, override val service:
     val btnExport = new MenuButton("Export") {
       items += makeDurchgangExport()
       items += makeDurchgangExport2()
+      items += makeAllDurchgangTeilnehmerExport()
       items += makeRiegenBlaetterExport()
       items += makeSelectedRiegenBlaetterExport(Set.empty)
       items += makeRiegenQRCodesExport()

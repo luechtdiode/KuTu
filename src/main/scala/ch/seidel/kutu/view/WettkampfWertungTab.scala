@@ -1218,7 +1218,7 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
         yield {
           val einsatz = athletwertungen.head.init
           val athlet = einsatz.athlet
-          Kandidat(
+          ch.seidel.kutu.renderer.Kandidat(
             einsatz.wettkampf.easyprint
             , athlet.geschlecht match { case "M" => "Turner" case _ => "Turnerin" }
             , einsatz.wettkampfdisziplin.programm.easyprint
@@ -1283,7 +1283,7 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
         yield {
           val einsatz = athletwertungen.head.init
           val athlet = einsatz.athlet
-          Kandidat(
+          ch.seidel.kutu.renderer.Kandidat(
             einsatz.wettkampf.easyprint
             , athlet.geschlecht match { case "M" => "Turner" case _ => "Turnerin" }
             , einsatz.wettkampfdisziplin.programm.easyprint
@@ -1348,7 +1348,7 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
         yield {
           val einsatz = athletwertungen.head.init
           val athlet = einsatz.athlet
-          Kandidat(
+          ch.seidel.kutu.domain.Kandidat(
             einsatz.wettkampf.easyprint
             , athlet.geschlecht match { case "M" => "Turner" case _ => "Turnerin" }
             , einsatz.wettkampfdisziplin.programm.easyprint
