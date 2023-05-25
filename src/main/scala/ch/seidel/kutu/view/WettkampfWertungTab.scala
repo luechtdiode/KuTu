@@ -1222,6 +1222,7 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
             einsatz.wettkampf.easyprint
             , athlet.geschlecht match { case "M" => "Turner" case _ => "Turnerin" }
             , einsatz.wettkampfdisziplin.programm.easyprint
+            , athlet.id
             , athlet.name
             , athlet.vorname
             , AthletJahrgang(athlet.gebdat).jahrgang
@@ -1287,6 +1288,7 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
             einsatz.wettkampf.easyprint
             , athlet.geschlecht match { case "M" => "Turner" case _ => "Turnerin" }
             , einsatz.wettkampfdisziplin.programm.easyprint
+            , athlet.id
             , athlet.name
             , athlet.vorname
             , AthletJahrgang(athlet.gebdat).jahrgang

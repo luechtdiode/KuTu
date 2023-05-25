@@ -62,6 +62,7 @@ trait ExportFunctions {
         wettkampfTitel=gr.wettkampfTitel,
         geschlecht=k.geschlecht,
         programm=k.programm,
+        id=k.id,
         name=k.name,
         vorname=k.vorname,
         jahrgang=k.jahrgang,
