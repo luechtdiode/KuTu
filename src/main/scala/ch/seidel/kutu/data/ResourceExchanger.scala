@@ -287,6 +287,7 @@ object ResourceExchanger extends KutuService with RiegenBuilder {
         altersklassen = wettkampfHeader.get("altersklassen").map(fields).getOrElse(""),
         jahrgangsklassen = wettkampfHeader.get("jahrgangsklassen").map(fields).getOrElse(""),
         punktegleichstandsregel = wettkampfHeader.get("punktegleichstandsregel").map(fields).getOrElse(""),
+        rotation = wettkampfHeader.get("rotation").map(fields).getOrElse(""),
         uuidOption = uuid
       )
 

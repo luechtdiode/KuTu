@@ -288,6 +288,31 @@ object KuTuApp extends JFXApp3 with KutuService with JsonSupport with JwtSupport
         promptText = "Auszeichnung bei Erreichung des Mindest-Endwerts"
         text = p.auszeichnungendnote.toString
       }
+      val cmbRiegenRotationsregel = new ComboBox[String]() {
+        prefWidth = 500
+        RiegenRotationsregel.predefined.foreach(definition => {
+          items.value.add(definition._1)
+        })
+        promptText = "Riegenrotationsregel"
+      }
+      val txtRiegenRotationsregel = new TextField {
+        prefWidth = 500
+        promptText = "z.B. Kategorie/Verein/Geschlecht/Alter/Name/Vorname/Rotierend/AltInv"
+        text = RiegenRotationsregel(p.toWettkampf).toFormel
+        editable <== Bindings.createBooleanBinding(() => {
+          "Individuell".equals(cmbRiegenRotationsregel.value.value)
+        },
+          cmbRiegenRotationsregel.selectionModel,
+          cmbRiegenRotationsregel.value
+        )
+
+        cmbRiegenRotationsregel.value.onChange {
+          text.value = RiegenRotationsregel.predefined(cmbRiegenRotationsregel.value.value)
+          if (text.value.isEmpty && !"Einfach".equals(cmbRiegenRotationsregel.value.value)) {
+            text.value = p.rotation
+          }
+        }
+      }
       val cmbPunktgleichstandsregel = new ComboBox[String]() {
         prefWidth = 500
         Gleichstandsregel.predefined.foreach(definition => {
@@ -385,6 +410,7 @@ object KuTuApp extends JFXApp3 with KutuService with JsonSupport with JwtSupport
                 new Label(txtNotificationEMail.promptText.value), txtNotificationEMail,
                 new Label(txtAuszeichnung.promptText.value), txtAuszeichnung,
                 new Label(txtAuszeichnungEndnote.promptText.value), txtAuszeichnungEndnote,
+                cmbRiegenRotationsregel, txtRiegenRotationsregel,
                 cmbPunktgleichstandsregel, txtPunktgleichstandsregel,
                 cmbAltersklassen, txtAltersklassen,
                 cmbJGAltersklassen, txtJGAltersklassen
@@ -424,7 +450,8 @@ object KuTuApp extends JFXApp3 with KutuService with JsonSupport with JwtSupport
                 p.uuid,
                 txtAltersklassen.text.value,
                 txtJGAltersklassen.text.value,
-                txtPunktgleichstandsregel.text.value
+                txtPunktgleichstandsregel.text.value,
+                txtRiegenRotationsregel.text.value
               )
               val dir = new java.io.File(homedir + "/" + w.easyprint.replace(" ", "_"))
               if (!dir.exists()) {
@@ -1174,6 +1201,28 @@ object KuTuApp extends JFXApp3 with KutuService with JsonSupport with JwtSupport
         promptText = "Auszeichnung bei Erreichung des Mindest-Gerätedurchschnittwerts"
         text = ""
       }
+      val cmbRiegenRotationsregel = new ComboBox[String]() {
+        prefWidth = 500
+        RiegenRotationsregel.predefined.foreach(definition => {
+          items.value.add(definition._1)
+        })
+        promptText = "Riegenrotationsregel"
+      }
+      val txtRiegenRotationsregel = new TextField {
+        prefWidth = 500
+        promptText = "z.B. Kategorie/Verein/Alter/Name/Vorname/Rotierend/AltInv"
+
+        editable <== Bindings.createBooleanBinding(() => {
+          "Individuell".equals(cmbRiegenRotationsregel.value.value)
+        },
+          cmbRiegenRotationsregel.selectionModel,
+          cmbRiegenRotationsregel.value
+        )
+
+        cmbRiegenRotationsregel.value.onChange {
+          text.value = RiegenRotationsregel.predefined(cmbRiegenRotationsregel.value.value)
+        }
+      }
       val cmbPunktgleichstandsregel = new ComboBox[String]() {
         prefWidth = 500
         Gleichstandsregel.predefined.foreach(definition => {
@@ -1258,6 +1307,7 @@ object KuTuApp extends JFXApp3 with KutuService with JsonSupport with JwtSupport
                 new Label(txtNotificationEMail.promptText.value), txtNotificationEMail,
                 new Label(txtAuszeichnung.promptText.value), txtAuszeichnung,
                 new Label(txtAuszeichnungEndnote.promptText.value), txtAuszeichnungEndnote,
+                cmbRiegenRotationsregel, txtRiegenRotationsregel,
                 cmbPunktgleichstandsregel, txtPunktgleichstandsregel,
                 cmbAltersklassen, txtAltersklassen,
                 cmbJGAltersklassen, txtJGAltersklassen
@@ -1299,7 +1349,8 @@ object KuTuApp extends JFXApp3 with KutuService with JsonSupport with JwtSupport
             Some(UUID.randomUUID().toString()),
             txtAltersklassen.text.value,
             txtJGAltersklassen.text.value,
-            txtPunktgleichstandsregel.text.value
+            txtPunktgleichstandsregel.text.value,
+            txtRiegenRotationsregel.text.value
           )
           val dir = new java.io.File(homedir + "/" + w.easyprint.replace(" ", "_"))
           if (!dir.exists()) {

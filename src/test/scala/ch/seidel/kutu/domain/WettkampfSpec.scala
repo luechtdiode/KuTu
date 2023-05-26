@@ -10,15 +10,15 @@ import scala.util.matching.Regex
 class WettkampfSpec extends KuTuBaseSpec {
   "wettkampf" should {
     "create with disziplin-plan-times" in {
-      val wettkampf = createWettkampf(LocalDate.now(), "titel", Set(20), "testmail@test.com", 33, 0, None, "7,8,9,11,13,15,17,19", "7,8,9,11,13,15,17,19", "")
+      val wettkampf = createWettkampf(LocalDate.now(), "titel", Set(20), "testmail@test.com", 33, 0, None, "7,8,9,11,13,15,17,19", "7,8,9,11,13,15,17,19", "", "")
       assert(wettkampf.id > 0L)
       val views = initWettkampfDisziplinTimes(UUID.fromString(wettkampf.uuid.get))
       assert(views.nonEmpty)
     }
 
     "update" in {
-      val wettkampf = createWettkampf(LocalDate.now(), "titel2", Set(20), "testmail@test.com", 33, 0, None, "", "", "")
-      val wettkampfsaved = saveWettkampf(wettkampf.id, wettkampf.datum, "neuer titel", Set(wettkampf.programmId), "testmail@test.com", 10000, 7.5, wettkampf.uuid, "7,8,9,11,13,15,17,19", "7,8,9,11,13,15,17,19", "")
+      val wettkampf = createWettkampf(LocalDate.now(), "titel2", Set(20), "testmail@test.com", 33, 0, None, "", "", "", "")
+      val wettkampfsaved = saveWettkampf(wettkampf.id, wettkampf.datum, "neuer titel", Set(wettkampf.programmId), "testmail@test.com", 10000, 7.5, wettkampf.uuid, "7,8,9,11,13,15,17,19", "7,8,9,11,13,15,17,19", "", "")
       assert(wettkampfsaved.titel == "neuer titel")
       assert(wettkampfsaved.auszeichnung == 10000)
       assert(wettkampfsaved.altersklassen.get == "7,8,9,11,13,15,17,19")
@@ -26,18 +26,18 @@ class WettkampfSpec extends KuTuBaseSpec {
     }
 
     "recreate with disziplin-plan-times" in {
-      val wettkampf = createWettkampf(LocalDate.now(), "titel2", Set(20), "testmail@test.com", 33, 0, None, "", "", "")
+      val wettkampf = createWettkampf(LocalDate.now(), "titel2", Set(20), "testmail@test.com", 33, 0, None, "", "", "", "")
       assert(wettkampf.id > 0L)
       val views = initWettkampfDisziplinTimes(UUID.fromString(wettkampf.uuid.get))
       assert(views.nonEmpty)
-      val wettkampf2 = createWettkampf(LocalDate.now(), "titel2", Set(20), "testmail@test.com", 33, 0, wettkampf.uuid, "", "", "")
+      val wettkampf2 = createWettkampf(LocalDate.now(), "titel2", Set(20), "testmail@test.com", 33, 0, wettkampf.uuid, "", "", "", "")
       assert(wettkampf2.id == wettkampf.id)
       val views2 = initWettkampfDisziplinTimes(UUID.fromString(wettkampf.uuid.get))
       assert(views2.size == views.size)
     }
 
     "update disziplin-plan-time" in {
-      val wettkampf = createWettkampf(LocalDate.now(), "titel2", Set(20), "testmail@test.com", 33, 0, None, "", "", "")
+      val wettkampf = createWettkampf(LocalDate.now(), "titel2", Set(20), "testmail@test.com", 33, 0, None, "", "", "", "")
       assert(wettkampf.id > 0L)
       val views = initWettkampfDisziplinTimes(UUID.fromString(wettkampf.uuid.get))
 
@@ -47,7 +47,7 @@ class WettkampfSpec extends KuTuBaseSpec {
     }
 
     "delete all disziplin-plan-time entries when wk is deleted" in {
-      val wettkampf = createWettkampf(LocalDate.now(), "titel3", Set(20), "testmail@test.com", 33, 0, None, "", "", "")
+      val wettkampf = createWettkampf(LocalDate.now(), "titel3", Set(20), "testmail@test.com", 33, 0, None, "", "", "", "")
       deleteWettkampf(wettkampf.id)
       val reloaded = loadWettkampfDisziplinTimes(UUID.fromString(wettkampf.uuid.get))
       assert(reloaded.isEmpty)
