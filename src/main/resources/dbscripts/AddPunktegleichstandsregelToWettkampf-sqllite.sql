@@ -7,4 +7,4 @@
 --ALTER TABLE wettkampf ADD ort varchar(255) DEFAULT '';
 --ALTER TABLE wettkampf ADD adresse varchar(255) DEFAULT '';
 ALTER TABLE wettkampf ADD punktegleichstandsregel varchar(254) DEFAULT '';
-ALTER TABLE wettkampf ADD rotation varchar(254) DEFAULT "";
+ALTER TABLE wettkampf ADD rotation varchar(254) DEFAULT '';
