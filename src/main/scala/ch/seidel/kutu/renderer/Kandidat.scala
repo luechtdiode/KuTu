@@ -1,9 +1,9 @@
 package ch.seidel.kutu.renderer
 
-import ch.seidel.kutu.domain.{AthletJahrgang, AthletView, GeraeteRiege, WertungView}
+import ch.seidel.kutu.domain.GeraeteRiege
 
 object Kandidaten {
-  def apply(riegen: Seq[GeraeteRiege]) = {
+  def apply(riegen: Seq[GeraeteRiege]): Seq[Kandidat] = {
     riegen
       // filter startgeraet
       .filter(riege => riege.halt == 0)

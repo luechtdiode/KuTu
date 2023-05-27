@@ -1,11 +1,5 @@
 package ch.seidel.kutu.domain
 
-import ch.seidel.kutu.data.GroupSection.STANDARD_SCORE_FACTOR
-import org.controlsfx.validation.{Severity, ValidationResult, Validator}
-
-import java.time.temporal.ChronoUnit
-import scala.math.BigDecimal.{RoundingMode, long2bigDecimal}
-
 
 object RiegenRotationsregel {
   val defaultRegel = RiegenRotationsregelList(List(
@@ -92,20 +86,22 @@ case object RiegenRotationsregelRotierend extends RiegenRotationsregel {
   }
 
   def rotate(text: Char, offset: Int): Char = {
-    val r1 = text + offset
-    val r2 = if (r1 > 'Z') {
-      r1 - 26
-    } else if (r1 < 'A') {
-      r1 + 26
-    } else {
-      r1
+    if (text <='9' && text >= '0') text else {
+      val r1 = text + offset
+      val r2 = if (r1 > 'Z') {
+        r1 - 26
+      } else if (r1 < 'A') {
+        r1 + 26
+      } else {
+        r1
+      }
+      r2.toChar
     }
-    r2.toChar
   }
   override def sorter(acc: List[String], kandidat: Kandidat): List[String] = {
     val date = kandidat.wertungen.head.wettkampf.datum.toLocalDate
     val day = date.getDayOfYear
-    val alphaOffset = day % 26
+    val alphaOffset = (date.getYear + day) % 26
     acc.map(rotateIfAlphaNumeric(_, alphaOffset))
   }
   override def toFormel: String = "Rotierend"
@@ -161,7 +157,7 @@ case class RiegenRotationsregelAlter(aufsteigend: Boolean) extends RiegenRotatio
       case _: NumberFormatException => 100
     }
     val jg = (if (alter > 15) "0000" else kandidat.jahrgang)
-    acc :+ (if (aufsteigend) kandidat.jahrgang.reverse else kandidat.jahrgang)
+    acc :+ (if (aufsteigend) jg.reverse else jg)
   }
   override def toFormel: String = if (aufsteigend) "AlterAufsteigend" else "AlterAbsteigend"
 }
