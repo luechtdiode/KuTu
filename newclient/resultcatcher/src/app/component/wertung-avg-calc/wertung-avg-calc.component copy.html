@@ -1,0 +1,28 @@
+<ion-item>
+  <ion-label>{{valueTitle}} - {{avg()}}</ion-label>
+  <ion-grid class="table" no-padding>
+    <ion-row class="table-header">
+      <ion-col>Wertung #</ion-col>
+      <ion-col>{{valueTitle}}</ion-col>
+      <ion-col>Action</ion-col>
+    </ion-row>
+    <ion-row *ngFor="let item of singleValues; let i = index">
+      <ion-col class="number">{{ i }}.</ion-col>
+      <ion-col id="input-group" no-padding>
+        <div id="validity"></div>
+        <ion-input placeholder="Notenwert im Format ##.## (2-3 Nachkommastellen mit Dezimalpunkt)"
+            type="number" name={{valueTitle}}{{i}}
+            inputmode="numeric"
+            step="0.01" min="0" max="100"
+            [(ngModel)]="item.value"
+            (ionInput)="calc()"></ion-input>
+      </ion-col>
+      <ion-col class="table-subject"><ion-button expand="block" color="danger" (click)='remove(i)'>
+        <ion-icon slot="start" name="remove-circle"></ion-icon>-</ion-button></ion-col>
+    </ion-row>
+    <ion-row class="table-header">
+      <ion-col><ion-button expand="block" color="secondary" (click)='add()'>
+        <ion-icon slot="start" name="add-circle"></ion-icon>+</ion-button></ion-col>
+    </ion-row>
+  </ion-grid>
+</ion-item>

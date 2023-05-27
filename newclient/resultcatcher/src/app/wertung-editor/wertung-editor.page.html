@@ -12,18 +12,10 @@
 <ion-content>
   <form #wertungsform="ngForm" (ngSubmit)="saveNext(wertungsform)" (keyup.enter)="saveNext(wertungsform)">
     <ion-list>
-      <ion-item [hidden]="!isDNoteUsed">
-        <ion-label>D-Note</ion-label>
-        <ion-input autofocus #dnote placeholder="Notenwert im Format ##.## (2-3 Nachkommastellen mit Dezimalpunkt)"
-          [readonly]='!editable()' type="number" [disabled]="waiting" [ngModel]='wertung.noteD' name="noteD"
-          step="0.01" min="0" max="100"></ion-input>
-      </ion-item>
-      <ion-item>
-        <ion-label>E-Note</ion-label>
-        <ion-input autofocus #enote placeholder="Notenwert im Format ##.## (2-3 Nachkommastellen mit Dezimalpunkt)"
-          [readonly]='!editable()' type="number"  [disabled]="waiting" [ngModel]='wertung.noteE' name="noteE"
-          step="0.01" min="0" max="100" required></ion-input>
-      </ion-item>
+      <app-wertung-avg-calc [hidden]="!isDNoteUsed" [waiting]="waiting" [valueTitle]="'D-Note'" [singleValue]="wertung.noteD" (avgValue)="wertung.noteD">
+      </app-wertung-avg-calc>
+      <app-wertung-avg-calc [hidden]="false" [waiting]="waiting" [valueTitle]="'E-Note'" [singleValue]="wertung.noteE" (avgValue)="wertung.noteE">
+      </app-wertung-avg-calc>
       <ion-item>
         <ion-label>Endnote</ion-label>
         <ion-input #endnote [ngModel]='wertung.endnote' type="number" readonly name="endnote"></ion-input>

@@ -144,6 +144,10 @@ export interface Wettkampf {
   auszeichnungendnote: number;
   uuid: string;
   notificationEMail?: string;
+  altersklassen?: string; 
+  jahrgangsklassen?: string; 
+  punktegleichstandsregel?: string;
+  rotation?: string;
 }
 
 export interface ScoreRow {
