@@ -59,8 +59,8 @@ export class WertungAvgCalcComponent implements ControlValueAccessor {
     return this.singleValues[0]?.value || this.avgValue;
   }
 
-  set singleValueContainer(value: number) {
-    this.writeValue(value);
+  set singleValueContainer(avgValue: number) {
+    this.singleValues = [{value: avgValue}];
     this.calcAvg();
     this.markAsTouched();
   }
