@@ -246,7 +246,9 @@ object KuTuApp extends JFXApp3 with KutuService with JsonSupport with JwtSupport
       }
     }
   }
-
+  def makeWettkampfKopierenMenu(copyFrom: WettkampfView): MenuItem = {
+    makeNeuerWettkampfAnlegenMenu(Some(copyFrom))
+  }
   def makeWettkampfBearbeitenMenu(p: WettkampfView): MenuItem = {
     makeMenuAction("Wettkampf bearbeiten") { (caption, action) =>
       implicit val e = action
@@ -1168,8 +1170,9 @@ object KuTuApp extends JFXApp3 with KutuService with JsonSupport with JwtSupport
     item
   }
 
-  def makeNeuerWettkampfAnlegenMenu: MenuItem = {
-    makeMenuAction("Neuen Wettkampf anlegen ...") { (caption, action) =>
+  def makeNeuerWettkampfAnlegenMenu(copyFrom: Option[WettkampfView] = None): MenuItem = {
+    val menutext = if (copyFrom.isEmpty) "Neuen Wettkampf anlegen ..." else s"Neuen Wettkampf wie ${copyFrom.get.easyprint} anlegen ..."
+    makeMenuAction(menutext) { (caption, action) =>
       implicit val e = action
       val txtDatum = new DatePicker {
         setPromptText("Wettkampf-Datum")
@@ -1178,6 +1181,7 @@ object KuTuApp extends JFXApp3 with KutuService with JsonSupport with JwtSupport
       val txtTitel = new TextField {
         prefWidth = 500
         promptText = "Wettkampf-Titel"
+        text.value = copyFrom.map(_.titel).getOrElse("")
       }
       val pgms = ObservableBuffer.from(listRootProgramme().sorted)
       val cmbProgramm = new ComboBox(pgms) {
@@ -1185,21 +1189,38 @@ object KuTuApp extends JFXApp3 with KutuService with JsonSupport with JwtSupport
         buttonCell = new ProgrammListCell
         cellFactory.value = {_:Any => new ProgrammListCell}
         promptText = "Programm"
+        copyFrom.map(_.programm).foreach(pgm => {
+          val pgmIndex = pgms.indexOf(pgm)
+          println(pgmIndex)
+          selectionModel.value.select(pgmIndex)
+          selectionModel.value.select(pgm)
+        })
       }
       val txtNotificationEMail = new TextField {
         prefWidth = 500
         promptText = "EMail für die Notifikation von Online-Mutationen"
-        text = ""
+        text.value = copyFrom.map(_.notificationEMail).getOrElse("")
       }
       val txtAuszeichnung = new TextField {
         prefWidth = 500
         promptText = "%-Angabe, wer eine Auszeichnung bekommt"
-        text = "40.00%"
+        text.value = "40.00%"
+        copyFrom.map(_.auszeichnung).foreach(auszeichnung => {
+          if (auszeichnung > 100) {
+            text = dbl2Str(auszeichnung / 100d) + "%"
+          }
+          else {
+            text = s"${auszeichnung}%"
+          }
+        })
       }
       val txtAuszeichnungEndnote = new TextField {
         prefWidth = 500
         promptText = "Auszeichnung bei Erreichung des Mindest-Gerätedurchschnittwerts"
         text = ""
+        copyFrom.map(_.auszeichnungendnote).foreach(auszeichnungendnote => {
+          text = auszeichnungendnote.toString()
+        })
       }
       val cmbRiegenRotationsregel = new ComboBox[String]() {
         prefWidth = 500
@@ -1220,8 +1241,12 @@ object KuTuApp extends JFXApp3 with KutuService with JsonSupport with JwtSupport
         )
 
         cmbRiegenRotationsregel.value.onChange {
-          text.value = RiegenRotationsregel.predefined(cmbRiegenRotationsregel.value.value)
+          text = RiegenRotationsregel.predefined(cmbRiegenRotationsregel.value.value)
         }
+        text.value = RiegenRotationsregel("Einfach/Rotierend/AltInvers").toFormel
+        copyFrom.map(_.rotation).foreach(rotation => {
+          text = rotation
+        })
       }
       val cmbPunktgleichstandsregel = new ComboBox[String]() {
         prefWidth = 500
@@ -1241,11 +1266,14 @@ object KuTuApp extends JFXApp3 with KutuService with JsonSupport with JwtSupport
         )
 
         cmbPunktgleichstandsregel.value.onChange {
-          text.value = Gleichstandsregel.predefined(cmbPunktgleichstandsregel.value.value)
+          text = Gleichstandsregel.predefined(cmbPunktgleichstandsregel.value.value)
         }
         cmbProgramm.value.onChange {
-          text.value = Gleichstandsregel(cmbProgramm.selectionModel.value.getSelectedItem.id).toFormel
+          text = Gleichstandsregel(cmbProgramm.selectionModel.value.getSelectedItem.id).toFormel
         }
+        copyFrom.map(_.punktegleichstandsregel).foreach(punktegleichstandsregel => {
+          text = punktegleichstandsregel
+        })
       }
       val validationSupport = new ValidationSupport
       validationSupport.registerValidator(txtPunktgleichstandsregel, false, Gleichstandsregel.createValidator)
@@ -1268,8 +1296,11 @@ object KuTuApp extends JFXApp3 with KutuService with JsonSupport with JwtSupport
         )
 
         cmbAltersklassen.value.onChange {
-          text.value = Altersklasse.predefinedAKs(cmbAltersklassen.value.value)
+          text = Altersklasse.predefinedAKs(cmbAltersklassen.value.value)
         }
+        copyFrom.map(_.altersklassen).foreach(altersklassen => {
+          text = altersklassen
+        })
       }
       val cmbJGAltersklassen = new ComboBox[String]() {
         prefWidth = 500
@@ -1290,8 +1321,11 @@ object KuTuApp extends JFXApp3 with KutuService with JsonSupport with JwtSupport
         )
 
         cmbJGAltersklassen.value.onChange{
-          text.value = Altersklasse.predefinedAKs(cmbJGAltersklassen.value.value)
+          text = Altersklasse.predefinedAKs(cmbJGAltersklassen.value.value)
         }
+        copyFrom.map(_.jahrgangsklassen).foreach(jahrgangsklassen => {
+          text = jahrgangsklassen
+        })
       }
       PageDisplayer.showInDialog(caption, new DisplayablePage() {
         def getPage: Node = {
@@ -1346,7 +1380,7 @@ object KuTuApp extends JFXApp3 with KutuService with JsonSupport with JwtSupport
                 case e: Exception => 0
               }
             },
-            Some(UUID.randomUUID().toString()),
+            Some(UUID.randomUUID().toString),
             txtAltersklassen.text.value,
             txtJGAltersklassen.text.value,
             txtPunktgleichstandsregel.text.value,
@@ -2024,7 +2058,7 @@ object KuTuApp extends JFXApp3 with KutuService with JsonSupport with JwtSupport
               }
             case "Wettkämpfe" =>
               controlsView.contextMenu = new ContextMenu() {
-                items += makeNeuerWettkampfAnlegenMenu
+                items += makeNeuerWettkampfAnlegenMenu()
                 items += makeNeuerWettkampfImportierenMenu
                 items += new Menu("Netzwerk") {
                   //items += makeLoginMenu
@@ -2054,6 +2088,7 @@ object KuTuApp extends JFXApp3 with KutuService with JsonSupport with JwtSupport
                         controlsView.contextMenu = new ContextMenu() {
                           items += makeWettkampfDurchfuehrenMenu(p)
                           items += makeWettkampfBearbeitenMenu(p)
+                          items += makeWettkampfKopierenMenu(p)
                           items += makeWettkampfExportierenMenu(p)
                           items += makeWettkampfDataDirectoryMenu(p)
                           items += makeWettkampfLoeschenMenu(p)
