@@ -19,6 +19,13 @@
             //flex-basis: 20%;
             &.decimals {
                 flex: 0 0 6em;
+                position:relative; top: -0.6em;
+                ion-input {
+                    height: 100%;
+                    outline: none;
+                    text-align: right;
+                    border: 1px solid #a9a9a9;
+                }
             }
             &.table-action {
                 flex: 0 0 1.5em;
@@ -44,7 +51,6 @@
     overflow: hidden;
     ion-input {
         height: 100%;
-        width: 100%;
         outline: none;
         text-align: right;
         border: 1px solid #a9a9a9;

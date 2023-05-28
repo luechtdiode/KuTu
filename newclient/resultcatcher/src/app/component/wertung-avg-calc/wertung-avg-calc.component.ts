@@ -1,6 +1,5 @@
 import { Component, EventEmitter, HostBinding, Input, OnInit, Output, ViewChild } from '@angular/core';
 import { ControlValueAccessor, NG_VALUE_ACCESSOR } from '@angular/forms';
-import { Subject } from 'rxjs';
 
 @Component({
   selector: 'app-wertung-avg-calc',
@@ -19,7 +18,7 @@ export class WertungAvgCalcComponent implements ControlValueAccessor {
 
   @HostBinding() id = `avg-calc-input-${WertungAvgCalcComponent.nextId++}`;
   
-  _fixed: number = 3;
+  _fixed: number = Number(localStorage.getItem('avg-calc-decimals') || 2);
   
   get fixed(): number {
     return this._fixed;
@@ -28,6 +27,7 @@ export class WertungAvgCalcComponent implements ControlValueAccessor {
   @Input()
   set fixed(value: number) {
     this._fixed = value;
+    localStorage.setItem('avg-calc-decimals', '' + this._fixed);
     this.calcAvg();
     this.markAsTouched();
   }
@@ -59,10 +59,22 @@ export class WertungAvgCalcComponent implements ControlValueAccessor {
     return this.singleValues[0]?.value || this.avgValue;
   }
 
-  set singleValueContainer(value: number) {
-    this.writeValue(value);
+  set singleValueContainer(avgValue: number) {
+    this.singleValues = [{value: avgValue}];
     this.calcAvg();
     this.markAsTouched();
+  }
+
+  addKomma() {
+    if (this._fixed < 3) {
+      this.fixed += 1;
+    }
+  }
+
+  removeKomma() {
+    if (this._fixed > 0) {
+      this.fixed -= 1;
+    }
   }
 
   add() {
@@ -84,9 +96,13 @@ export class WertungAvgCalcComponent implements ControlValueAccessor {
     const avg1 = this.singleValues
       .filter(item => !!item.value)
       .map(item => Number(item.value))
+      .filter(item => !isNaN(item))
       .filter(item => item > 0)
+    if (avg1.length === 0) {
+      return this.avgValue;
+    }
     const avg2 = Number((avg1.reduce((sum, current) => sum + current, 0) / avg1.length).toFixed(this.fixed));
-    if (!this.disabled && this.avgValue !== avg2) {
+    if (!this.disabled && this.avgValue !== avg2 && !isNaN(avg2)) {
       this.avgValue = avg2;
       this.onChange(avg2);
       console.log('value updated: ' + avg2);
