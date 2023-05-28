@@ -17,7 +17,10 @@
         flex-wrap: nowrap;
         ion-col {
             //flex-basis: 20%;
-            &.table-subject {
+            &.decimals {
+                flex: 0 0 6em;
+            }
+            &.table-action {
                 flex: 0 0 1.5em;
             }
             &.number {
@@ -36,6 +39,17 @@
     }
 }
 
+#decimals-group {
+    height: 70%;
+    overflow: hidden;
+    ion-input {
+        height: 100%;
+        width: 100%;
+        outline: none;
+        text-align: right;
+        border: 1px solid #a9a9a9;
+    }
+}
 
 #input-group {
     height: 70%;

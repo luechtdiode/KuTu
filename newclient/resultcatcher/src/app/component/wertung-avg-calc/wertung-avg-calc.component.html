@@ -1,32 +1,48 @@
 <ion-item [hidden]="hidden">
   <ion-label *ngIf="singleValues.length < 2">{{title}}</ion-label>
-  <ion-input *ngIf="singleValues.length < 2" autofocus #enote placeholder="Notenwert im Format ##.## (2-3 Nachkommastellen mit Dezimalpunkt)"
-          type="number"  [disabled]="waiting" [(ngModel)]='singleValueContainer.value' name={{valueTitle}}0
-          step="0.050" min="0.000" max="100.000" required></ion-input>
+  <ion-input #noteInput *ngIf="singleValues.length < 2" autofocus placeholder="Notenwert im Format ##.## (2-3 Nachkommastellen mit Dezimalpunkt)"
+          type="number"  [disabled]="waiting || disabled" [(ngModel)]='singleValueContainer' name="noteInput"
+          step="0.05" min="0.00" max="100.00" required></ion-input>
   <ion-button *ngIf="singleValues.length < 2" slot="end" expand="block" color="secondary" (click)='add()'>
             <ion-icon name="add-circle-outline"></ion-icon></ion-button>        
   <ion-grid *ngIf="singleValues.length > 1" class="table" no-padding>
-    <ion-row class="table-header">
-      <ion-col>{{title}} - ø {{calcAvg()}}</ion-col>
+    <ion-row >
+      <ion-col class="table-header">{{title}} - ø {{avgValue}}</ion-col>
+      <ion-col class="decimals" no-padding><div>Kommastellen</div><ion-input
+        [(ngModel)]="fixed"
+        type="number" name=decimals
+        step="1" min="0" max="3"
+        required
+        [disabled]="waiting || disabled"
+        ></ion-input></ion-col>
     </ion-row>
     <ion-row *ngFor="let item of singleValues; let i = index">
       <ion-col class="number">{{i+1}}. Wertung</ion-col>
       <ion-col id="input-group" no-padding>
         <div id="validity"></div>
-        <ion-input placeholder="Notenwert im Format ##.## (2-3 Nachkommastellen mit Dezimalpunkt)"
+        <ion-input #noteInput *ngIf="i === 0" placeholder="Notenwert im Format ##.## (2-3 Nachkommastellen mit Dezimalpunkt)"
             type="number" name={{valueTitle}}{{i}}
-            step="0.050" min="0.000" max="100.000"
+            step="0.05" min="0.00" max="100.00"
             required
-            [disabled]="waiting" 
+            [disabled]="waiting || disabled" 
             [ngModel]="item.value"
-            (ionChange)="onChange($event, item)"
+            (ionChange)="onItemChange($event, item)"
+            (ionBlur)="onBlur($event, item)">
+        </ion-input>
+        <ion-input *ngIf="i>0" placeholder="Notenwert im Format ##.## (2-3 Nachkommastellen mit Dezimalpunkt)"
+            type="number" name={{valueTitle}}{{i}}
+            step="0.05" min="0.00" max="100.00"
+            required
+            [disabled]="waiting || disabled" 
+            [ngModel]="item.value"
+            (ionChange)="onItemChange($event, item)"
             (ionBlur)="onBlur($event, item)">
         </ion-input>
       </ion-col>
-      <ion-col class="table-subject"><ion-button color="danger" (click)='remove(i)'>
+      <ion-col class="table-action"><ion-button color="danger" (click)='remove(i)'>
         <ion-icon name="trash-outline"></ion-icon></ion-button></ion-col>
     </ion-row>
-    <ion-row class="table-header">
+    <ion-row *ngIf="!disabled" class="table-header">
       <ion-col><ion-button expand="block" color="secondary" (click)='add()'>
         <ion-icon  name="add-circle-outline"></ion-icon></ion-button></ion-col>
     </ion-row>
