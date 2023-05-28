@@ -42,7 +42,10 @@ trait WettkampfService extends DBService
   }
 
   def listRootProgramme(): List[ProgrammView] = {
-    val allPgmsQuery = sql"""select * from programm where parent_id is null or parent_id = 0""".as[ProgrammRaw]
+    val allPgmsQuery =
+      sql"""select
+            id, name, aggregate, parent_id, ord, alter_von, alter_bis, uuid, riegenmode
+            from programm where parent_id is null or parent_id = 0""".as[ProgrammRaw]
         .map{l => l.map(p => p.id -> p).toMap}
         .map{map => map.foldLeft(List[ProgrammView]()){(acc, pgmEntry) =>
           val (id, pgm) = pgmEntry
