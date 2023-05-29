@@ -8,6 +8,7 @@ import ch.seidel.kutu.akka.KutuAppEvent
 import ch.seidel.kutu.data.{CaseObjectMetaUtil, ResourceExchanger, Surname}
 import ch.seidel.kutu.domain._
 import ch.seidel.kutu.http.{AuthSupport, EmptyResponse, JsonSupport, JwtSupport, WebSocketClient}
+import ch.seidel.kutu.renderer.PrintUtil
 import javafx.beans.property.SimpleObjectProperty
 import javafx.concurrent.Task
 import javafx.scene.control.DatePicker
@@ -42,7 +43,8 @@ import scalafx.stage.{FileChooser, Screen}
 import scalafx.stage.FileChooser.ExtensionFilter
 import spray.json._
 
-import java.io.{ByteArrayInputStream, FileInputStream}
+import java.io.{ByteArrayInputStream, File, FileInputStream}
+import java.nio.file.Files
 import java.util.concurrent.{Executors, ScheduledExecutorService}
 import java.util.{Base64, Date, UUID}
 import scala.collection.mutable
@@ -1390,6 +1392,42 @@ object KuTuApp extends JFXApp3 with KutuService with JsonSupport with JwtSupport
           if (!dir.exists()) {
             dir.mkdirs();
           }
+          copyFrom.foreach(wkToCopy => {
+            // Ranglisten (scoredef), Planzeiten und Logo kopieren ...
+            println(w)
+            val sourceFolder = new File(homedir + "/" + encodeFileName(copyFrom.get.easyprint))
+            val targetFolder = new File(homedir + "/" + encodeFileName(w.easyprint))
+            val sourceLogo = PrintUtil.locateLogoFile(sourceFolder)
+            if (!targetFolder.equals(sourceFolder) && sourceLogo.exists()) {
+              val logofileCopyTo = targetFolder.toPath.resolve(sourceLogo.getName)
+              if (!logofileCopyTo.toFile.exists()) {
+                Files.copy(sourceLogo.toPath, logofileCopyTo)
+              }
+            }
+            if (wkToCopy.programm.id == w.programmId) {
+              updateOrInsertPlanTimes(loadWettkampfDisziplinTimes(UUID.fromString(wkToCopy.uuid.get)).map(_.toWettkampfPlanTimeRaw.copy(wettkampfId = w.id)))
+            }
+
+            if (!targetFolder.equals(sourceFolder)) {
+              sourceFolder
+                .listFiles()
+                .filter(f => f.getName.endsWith(".scoredef"))
+                .toList
+                .sortBy {
+                  _.getName
+                }
+                .foreach(scoreFileSource => {
+                  val targetFilePath = targetFolder.toPath.resolve(scoreFileSource.getName)
+                  if (!targetFilePath.toFile.exists()) {
+                    Files.copy(scoreFileSource.toPath, targetFilePath)
+                  }
+                })
+            }
+            val scores = Await.result(listPublishedScores(UUID.fromString(wkToCopy.uuid.get)), Duration.Inf)
+            scores.foreach(score => {
+              savePublishedScore(wettkampfId = w.id, title = score.title, query = score.query, published = false, propagate = false)
+            })
+          })
           updateTree
           val text = s"${w.titel} ${w.datum}"
           tree.getLeaves("Wettkämpfe").find { item => text.equals(item.value.value) } match {
