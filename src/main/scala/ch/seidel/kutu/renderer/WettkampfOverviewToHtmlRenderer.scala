@@ -221,6 +221,8 @@ trait WettkampfOverviewToHtmlRenderer {
     val silverSum = medallienbedarf.map(p => p._3 + p._7).sum
     val bronzeSum = medallienbedarf.map(p => p._4 + p._8).sum
     val auszSum = medallienbedarf.map(p => p._5 + p._9).sum
+    val altersklassen = Altersklasse(wettkampf.altersklassen).map(ak => s"<li>${escaped(ak.easyprint)}</li>").mkString("\n")
+    val jgAltersklassen = Altersklasse(wettkampf.jahrgangsklassen).map(ak => s"<li>${escaped(ak.easyprint)}</li>").mkString("\n")
 
     val medalrows = s"""
     <tr><td class='data'>Goldmedallie</td>${goldDetails}<td class='blockstart valuedata'>${goldSum}</td></tr>
@@ -263,11 +265,23 @@ trait WettkampfOverviewToHtmlRenderer {
         if (!isLocalServer) {
           s"""<h3>EMail des Wettkampf-Administrators</h3>
             <p>An diese EMail Adresse werden Notifikations-Meldungen versendet, sobald sich an den Anmeldungen Mutationen ergeben.<br>
-              ${if (wettkampf.notificationEMail.nonEmpty) s"""<a href="mailto://${wettkampf.notificationEMail}" target="_blank">${wettkampf.notificationEMail}</a>""" else "<strong>Keine EMail hinterlegt!</strong>"}
+              ${if (wettkampf.notificationEMail.nonEmpty) s"""<a href="mailto://${escaped(wettkampf.notificationEMail)}" target="_blank">${escaped(wettkampf.notificationEMail)}</a>""" else "<strong>Keine EMail hinterlegt!</strong>"}
           """
         } else ""
         }
         </p>
+        ${if (altersklassen.nonEmpty)
+          s"""<h2>Altersklassen</h2>
+          Alter am Wettkampf - Tag: ${escaped(wettkampf.altersklassen)} <br>
+          <ul>${altersklassen}
+          </ul>"""
+          else if (jgAltersklassen.nonEmpty)
+          s"""<h2>Altersklassen</h2>
+          Alter im Wettkampf - Jahr: ${escaped(wettkampf.jahrgangsklassen)} <br>
+          <ul>${jgAltersklassen}
+          </ul>"""
+          else ""
+        }
         <h3>Zusammenstellung der Anmeldungen</h3>
       </div>
       <div class="showborder">

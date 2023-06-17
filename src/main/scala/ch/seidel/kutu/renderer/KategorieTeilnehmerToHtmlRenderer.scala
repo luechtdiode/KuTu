@@ -8,9 +8,6 @@ import org.slf4j.LoggerFactory
 
 trait KategorieTeilnehmerToHtmlRenderer {
   val logger = LoggerFactory.getLogger(classOf[KategorieTeilnehmerToHtmlRenderer])
-  case class Kandidat(wettkampfTitel: String, geschlecht: String, programm: String,
-                      name: String, vorname: String, jahrgang: String, verein: String,
-                      riege: String, durchgang: String, start: String, diszipline: Seq[String])
   val intro = """<html>
     <head>
       <meta charset="UTF-8" />
@@ -108,7 +105,7 @@ trait KategorieTeilnehmerToHtmlRenderer {
 
   private def anmeldeListeProKategorie(kategorie: String, kandidaten: Seq[Kandidat], logo: File) = {
     val logoHtml = if (logo.exists()) s"""<img class=logo src="${logo.imageSrcForWebEngine}" title="Logo"/>""" else ""
-      
+
     val d = kandidaten.map{kandidat =>
       s"""<tr class="athletRow"><td>${escaped(kandidat.verein)}</td><td class="large">${escaped(kandidat.name)} ${escaped(kandidat.vorname)} (${escaped(kandidat.jahrgang)})</td><td>${escaped(kandidat.durchgang)}</td><td>${escaped(kandidat.start)}</td><td class="totalCol">&nbsp;</td></tr>"""
     }
@@ -154,36 +151,39 @@ trait KategorieTeilnehmerToHtmlRenderer {
   """
   }
 
-  def riegenToKategorienListeAsHTML(riegen: Seq[GeraeteRiege], logo: File): String = {
-    val kandidaten = riegen
-        // filter startgeraet
-        .filter(riege => riege.halt == 0)
-        // filter hauptdurchgang-startgeraet
-        .filter(riege => !riege.kandidaten.exists(k => k.einteilung2.exists(d => d.start == riege.disziplin)))
-        .flatMap(riege => {
-          riege.kandidaten
-            .map(kandidat => {
-            Kandidat(riege.wettkampfTitel, kandidat.geschlecht, kandidat.programm, kandidat.name, kandidat.vorname, kandidat.jahrgang, kandidat.verein, "", riege.durchgang.get, riege.disziplin.get.easyprint, Seq.empty)
-          })
-        })
+  private def anmeldeListeProDurchgangVerein(durchgang: String, kandidaten: Seq[Kandidat], logo: File) = {
+    val logoHtml = if (logo.exists()) s"""<img class=logo src="${logo.imageSrcForWebEngine}" title="Logo"/>""" else ""
 
-    toHTMLasKategorienListe(kandidaten, logo, 0)
+    val d = kandidaten.map{kandidat =>
+      s"""<tr class="athletRow"><td>${escaped(kandidat.verein)}</td><td class="large">${escaped(kandidat.name)} ${escaped(kandidat.vorname)} (${escaped(kandidat.jahrgang)})</td><td>${escaped(kandidat.programm)}</td><td>${escaped(kandidat.start)}</td><td class="totalCol">&nbsp;</td></tr>"""
+    }
+    val dt = d.mkString("", "\n", "\n")
+    s"""<div class=notenblatt>
+      <div class=headline>
+        $logoHtml
+        <div class=title><h4>${escaped(kandidaten.head.wettkampfTitel)}</h4></div>
+        <div class=programm>${escaped(durchgang)}</br></div>
+
+      </div>
+      <div class="showborder">
+        <table width="100%">
+          <tr class="totalRow heavyRow"><td></td><td>Name</td><td>Einteilung</td><td>Start</td><td class="totalCol">Bemerkung</td></tr>
+          ${dt}
+        </table>
+      </div>
+    </div>
+  """
+  }
+
+  def riegenToKategorienListeAsHTML(riegen: Seq[GeraeteRiege], logo: File): String = {
+    toHTMLasKategorienListe(Kandidaten(riegen), logo, 0)
+  }
+  def riegenToDurchgangListeAsHTML(riegen: Seq[GeraeteRiege], logo: File): String = {
+    toHTMLasDurchgangListe(Kandidaten(riegen), logo, 0)
   }
 
   def riegenToVereinListeAsHTML(riegen: Seq[GeraeteRiege], logo: File): String = {
-    val kandidaten = riegen
-      // filter startgeraet
-      .filter(riege => riege.halt == 0)
-      // filter hauptdurchgang-startgeraet
-      .filter(riege => !riege.kandidaten.exists(k => k.einteilung2.exists(d => d.start == riege.disziplin)))
-      .flatMap(riege => {
-        riege.kandidaten
-          .map(kandidat => {
-            Kandidat(riege.wettkampfTitel, kandidat.geschlecht, kandidat.programm, kandidat.name, kandidat.vorname, kandidat.jahrgang, kandidat.verein, "", riege.durchgang.get, riege.disziplin.get.easyprint, Seq.empty)
-          })
-      })
-
-    toHTMLasVereinsListe(kandidaten, logo, 0)
+    toHTMLasVereinsListe(Kandidaten(riegen), logo, 0)
   }
 
   def toHTMLasKategorienListe(kandidaten: Seq[Kandidat], logo: File, rowsPerPage: Int = 28): String = {
@@ -198,6 +198,24 @@ trait KategorieTeilnehmerToHtmlRenderer {
     }
     yield {
       anmeldeListeProKategorie(kategorie, a4seitenmenge, logo)
+    }
+
+    val pages = rawpages.mkString("</li></ul><ul><li>")
+    intro + pages + outro
+  }
+
+  def toHTMLasDurchgangListe(kandidaten: Seq[Kandidat], logo: File, rowsPerPage: Int = 28): String = {
+    val kandidatenPerDurchgang = kandidaten.sortBy { k =>
+      val krit = f"${k.verein}%-40s ${k.name}%-40s ${k.vorname}%-40s"
+      //logger.debug(krit)
+      krit
+    }.groupBy(k => k.durchgang)
+    val rawpages = for {
+      durchgang <- kandidatenPerDurchgang.keys.toList.sorted
+      a4seitenmenge <- if(rowsPerPage == 0) kandidatenPerDurchgang(durchgang).sliding(kandidatenPerDurchgang(durchgang).size, kandidatenPerDurchgang(durchgang).size) else kandidatenPerDurchgang(durchgang).sliding(rowsPerPage, rowsPerPage)
+    }
+    yield {
+      anmeldeListeProDurchgangVerein(durchgang, a4seitenmenge, logo)
     }
 
     val pages = rawpages.mkString("</li></ul><ul><li>")

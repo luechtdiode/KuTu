@@ -11,7 +11,7 @@ trait RiegenSplitter {
   def groupKey(grplst: List[WertungView => String])(wertung: WertungView): String = {
     grplst.foldLeft(""){(acc, f) =>
       acc + "," + f(wertung)
-    }.drop(1)// remove leading ","
+    }.dropWhile(_ == ',')// remove leading ","
   }
   
   @tailrec

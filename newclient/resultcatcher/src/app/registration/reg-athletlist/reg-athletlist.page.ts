@@ -216,6 +216,14 @@ export class RegAthletlistPage implements OnInit {
     slidingItem.close();
   }
 
+  needsPGMChoice(): boolean {
+    const pgm = [...this.wkPgms][0];
+    return !(pgm.aggregate == 1 && pgm.riegenmode > 1);
+  }
+  similarRegistration(a: AthletRegistration, b: AthletRegistration): boolean {
+    return a.athletId === b.athletId ||
+      a.name === b.name && a.vorname === b.vorname && a.gebdat === b.gebdat && a.geschlecht === b.geschlecht;
+  }
   delete(reg: AthletRegistration, slidingItem: IonItemSliding) {
     slidingItem.close();
     const alert = this.alertCtrl.create({
@@ -226,6 +234,14 @@ export class RegAthletlistPage implements OnInit {
       buttons: [
         {text: 'ABBRECHEN', role: 'cancel', handler: () => {}},
         {text: 'OKAY', handler: () => {
+          if(!this.needsPGMChoice()) {
+            this.athletregistrations
+            .filter(r => this.similarRegistration(r, reg))
+            .filter(r => r.id !== reg.id)
+            .forEach(r => {
+              this.backendService.deleteAthletRegistration(this.backendService.competition, this.currentRegId, r);
+            });
+          }
           this.backendService.deleteAthletRegistration(this.backendService.competition, this.currentRegId, reg).subscribe(() => {
             this.refreshList();
           });

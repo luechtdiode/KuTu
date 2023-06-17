@@ -2,12 +2,13 @@ package ch.seidel.kutu.base
 
 import java.io.File
 import java.util.Properties
-
 import org.slf4j.LoggerFactory
 import slick.jdbc.JdbcBackend.Database
 import slick.jdbc.SQLiteProfile.api.AsyncExecutor
-import ch.seidel.kutu.domain.DBService
+import ch.seidel.kutu.domain.{DBService, NewUUID}
 import com.zaxxer.hikari.{HikariConfig, HikariDataSource}
+import org.sqlite.SQLiteConnection
+import slick.jdbc.JdbcBackend
 
 object TestDBService {
   private val logger = LoggerFactory.getLogger(this.getClass)
@@ -40,15 +41,6 @@ object TestDBService {
     val tempDatabase = Database.forDataSource(dataSource, maxConnections = Some(10), executor = AsyncExecutor(name = "DB-Actions", minThreads = 10, maxThreads = 10, queueSize = 10000, maxConnections = 10), keepAliveConnection = true)
 
 
-//    val tempDatabase = Database.forURL(
-//        //url = "jdbc:sqlite:file:kutu?mode=memory&cache=shared",
-//        url = "jdbc:sqlite:" + dbfile,
-//        driver = "org.sqlite.JDBC",
-//        prop = proplite,
-//        user = "kutu",
-//        password = "kutu",
-//        executor = AsyncExecutor("DB-Actions", 500, 10000)
-//        )
     val sqlScripts = List(
         "kutu-sqllite-ddl.sql"
       , "SetJournalWAL.sql"
@@ -61,9 +53,24 @@ object TestDBService {
       , "AddAnmeldungTables-sqllite.sql"
       , "AddAnmeldungTables-u2-sqllite.sql"
       , "AddNotificationMailToWettkampf-sqllite.sql"
+      , "AddWKDisziplinMetafields-sqllite.sql"
+      //, "AddWKTestPgms-sqllite.sql"
+      , "AddAltersklassenToWettkampf-sqllite.sql"
+      , "AddPunktegleichstandsregelToWettkampf-sqllite.sql"
     )
+    installDBFunctions(tempDatabase)
+
     DBService.installDB(tempDatabase, sqlScripts)
     logger.info("Database initialized")
     tempDatabase
-  }  
+  }
+
+  def installDBFunctions(dbdef: JdbcBackend.DatabaseDef): Unit = {
+    val session = dbdef.createSession()
+    try {
+      NewUUID.install(session.conn.unwrap(classOf[SQLiteConnection]))
+    } finally {
+      session.close()
+    }
+  }
 }

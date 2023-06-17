@@ -3,15 +3,17 @@ package ch.seidel.kutu.squad
 import ch.seidel.kutu.domain._
 import org.slf4j.LoggerFactory
 
+import scala.collection.mutable
+
 case class DurchgangBuilder(service: KutuService) extends Mapper with RiegenSplitter with StartGeraetGrouper {
   private val logger = LoggerFactory.getLogger(classOf[DurchgangBuilder])
   
-  def suggestDurchgaenge(wettkampfId: Long, maxRiegenSize: Int = 14,  
+  def suggestDurchgaenge(wettkampfId: Long, maxRiegenSize: Int = 0,
       durchgangfilter: Set[String] = Set.empty, programmfilter: Set[Long] = Set.empty,
-      splitSex: SexDivideRule = GemischteRiegen, splitPgm: Boolean = true,
+      splitSexOption: Option[SexDivideRule] = None, splitPgm: Boolean = true,
       onDisziplinList: Option[Set[Disziplin]] = None): Map[String, Map[Disziplin, Iterable[(String,Seq[Wertung])]]] = {
 
-    implicit val cache = scala.collection.mutable.Map[String, Int]()
+    implicit val cache: mutable.Map[String, Int] = scala.collection.mutable.Map[String, Int]()
     
     val filteredWert = prepareWertungen(wettkampfId) map wertungZuDurchgang(durchgangfilter, makeDurchgangMap(wettkampfId)) filter {x =>
         x._2.nonEmpty &&
@@ -23,66 +25,56 @@ case class DurchgangBuilder(service: KutuService) extends Mapper with RiegenSpli
     }
     else {
       val programme = listProgramme(filteredWert)
-      val progAthlWertungen = buildProgrammAthletWertungen(filteredWert, programme, splitPgm || durchgangfilter.isEmpty)
+      val progAthlWertungen = buildProgrammAthletWertungen(filteredWert, programme, splitPgm)
       val riegencnt = 0 // riegencnt 0 is unlimited
       val disziplinlist = service.listDisziplinesZuWettkampf(wettkampfId)
       val wkdisziplinlist = service.listWettkampfDisziplines(wettkampfId)
 
       val dzl = disziplinlist.filter(d => onDisziplinList.isEmpty || onDisziplinList.get.contains(d))
-      val wkGrouper = KuTuGeTuGrouper.wkGrouper
-      val wkFilteredGrouper = wkGrouper.take(if(riegencnt == 0) wkGrouper.size-1 else wkGrouper.size)
-      if(progAthlWertungen.keys.size > 1) {
-        val toDebug = (progAthlWertungen.keys.size, progAthlWertungen.keys.map(k => (progAthlWertungen(k).size, progAthlWertungen(k).map(w => w._2.size).sum))).toString
-        logger.debug(toDebug)
-      }
+
       val riegen = progAthlWertungen.flatMap{x =>
         val (programm, wertungen) = x
-        val dzlf = dzl.filter{d =>
-          val pgm = wertungen.head._2.head.wettkampfdisziplin.programm
-          wkdisziplinlist.exists { wd => d.id == wd.disziplinId && wd.programmId == pgm.id }
+        val pgmHead = wertungen.head._2.head.wettkampfdisziplin.programm
+        val dzlf = dzl.filter{ d =>
+          wkdisziplinlist.exists { wd => d.id == wd.disziplinId && wd.programmId == pgmHead.id }
         }
-
-        wertungen.head._2.head.wettkampfdisziplin.notenSpez match {
-          case at: Athletiktest =>
-            val atGrouper = ATTGrouper.atGrouper
-            val atgr = atGrouper.take(atGrouper.size-1)
-            splitSex match {
-              case GemischteRiegen =>
-                groupWertungen(programm, wertungen, atgr, atGrouper, dzlf, maxRiegenSize, splitSex, true)
-              case GemischterDurchgang =>
-                groupWertungen(programm, wertungen, atgr, atGrouper, dzlf, maxRiegenSize, splitSex, true)
-              case GetrennteDurchgaenge =>
-                val m = wertungen.filter(w => w._1.geschlecht.equalsIgnoreCase("M"))
-                val w = wertungen.filter(w => w._1.geschlecht.equalsIgnoreCase("W"))
-                groupWertungen(programm + "-Tu", m, atgr, atGrouper, dzlf, maxRiegenSize, splitSex, true) ++
-                groupWertungen(programm + "-Ti", w, atgr, atGrouper, dzlf, maxRiegenSize, splitSex, true)
-            }
-          case KuTuWettkampf =>
-            splitSex match {
-              case GemischteRiegen =>
-                groupWertungen(programm, wertungen, wkFilteredGrouper, wkGrouper, dzlf, maxRiegenSize, splitSex, false)
-              case GemischterDurchgang =>
-                groupWertungen(programm, wertungen, wkFilteredGrouper, wkGrouper, dzlf, maxRiegenSize, splitSex, false)
-              case GetrennteDurchgaenge =>
-                val m = wertungen.filter(w => w._1.geschlecht.equalsIgnoreCase("M"))
-                val w = wertungen.filter(w => w._1.geschlecht.equalsIgnoreCase("W"))
-                groupWertungen(programm + "-Tu", m, wkFilteredGrouper, wkGrouper, dzlf, maxRiegenSize, splitSex, false) ++
-                groupWertungen(programm + "-Ti", w, wkFilteredGrouper, wkGrouper, dzlf, maxRiegenSize, splitSex, false)
-            }
-          case GeTuWettkampf =>
-            // Barren wegschneiden (ist kein Startgerät)
-            val dzlff = dzlf.filter(d => (onDisziplinList.isEmpty && d.id != 5) || (onDisziplinList.nonEmpty && onDisziplinList.get.contains(d)))
-            val wkGrouper = KuTuGeTuGrouper.wkGrouper
-            splitSex match {
-              case GemischteRiegen =>
-                groupWertungen(programm, wertungen, wkFilteredGrouper, wkGrouper, dzlff, maxRiegenSize, splitSex, false)
-              case GemischterDurchgang =>
-                groupWertungen(programm, wertungen, wkFilteredGrouper, wkGrouper, dzlff, maxRiegenSize, splitSex, false)
-              case GetrennteDurchgaenge =>
-                val m = wertungen.filter(w => w._1.geschlecht.equalsIgnoreCase("M"))
-                val w = wertungen.filter(w => w._1.geschlecht.equalsIgnoreCase("W"))
-                groupWertungen(programm + "-Tu", m, wkFilteredGrouper, wkGrouper, dzlff, maxRiegenSize, splitSex, false) ++
-                groupWertungen(programm + "-Ti", w, wkFilteredGrouper, wkGrouper, dzlff, maxRiegenSize, splitSex, false)
+        val wdzlf = wkdisziplinlist.filter{d => d.programmId == pgmHead.id }
+        val startgeraete = wdzlf.filter(d => (onDisziplinList.isEmpty && d.startgeraet == 1) || (onDisziplinList.nonEmpty && onDisziplinList.get.map(_.id).contains(d.disziplinId)))
+        val dzlff = dzlf.filter(d => startgeraete.exists(wd => wd.disziplinId == d.id)).distinct
+        val dzlffm = dzlff.filter(d => startgeraete.find(wd => wd.disziplinId == d.id).exists(p => p.masculin == 1))
+        val dzlfff = dzlff.filter(d => startgeraete.find(wd => wd.disziplinId == d.id).exists(p => p.feminim == 1))
+        val splitSex = splitSexOption match {
+          case None => if (dzlffm == dzlfff) GemischteRiegen else GetrennteDurchgaenge
+          case Some(option) => option
+        }
+        val wv = wertungen.head._2.head
+        val riegenmode = wv.wettkampfdisziplin.programm.riegenmode
+        val aks = wv.wettkampf.altersklassen match {
+          case Some(s: String) if s.nonEmpty => Some(s)
+          case _ => None
+        }
+        val jaks = wv.wettkampf.jahrgangsklassen match {
+          case Some(s: String) if s.nonEmpty => Some(s)
+          case _ => None
+        }
+        val (shortGrouper, fullGrouper, jgGroup) = RiegenBuilder.selectRiegenGrouper(riegenmode, aks, jaks).buildGrouper(riegencnt)
+        splitSex match {
+          case GemischteRiegen =>
+            groupWertungen(programm, wertungen, shortGrouper, fullGrouper, dzlff, maxRiegenSize, GemischteRiegen, jgGroup)
+          case GemischterDurchgang =>
+            groupWertungen(programm, wertungen, shortGrouper, fullGrouper, dzlff, maxRiegenSize, GemischterDurchgang, jgGroup)
+          case GetrennteDurchgaenge =>
+            val m = wertungen.filter(w => w._1.geschlecht.equalsIgnoreCase("M"))
+            val w = wertungen.filter(w => w._1.geschlecht.equalsIgnoreCase("W"))
+            (m.nonEmpty,w.nonEmpty) match {
+              case (true, true) =>
+                groupWertungen(programm + "-Tu", m, shortGrouper, fullGrouper, dzlffm, maxRiegenSize, GetrennteDurchgaenge, jgGroup) ++
+                  groupWertungen(programm + "-Ti", w, shortGrouper, fullGrouper, dzlfff, maxRiegenSize, GetrennteDurchgaenge, jgGroup)
+              case (false, true) =>
+                groupWertungen(programm, w, shortGrouper, fullGrouper, dzlfff, maxRiegenSize, GetrennteDurchgaenge, jgGroup)
+              case (true,false) =>
+                groupWertungen(programm, m, shortGrouper, fullGrouper, dzlffm, maxRiegenSize, GetrennteDurchgaenge, jgGroup)
+              case _ => Seq.empty
             }
         }
       }

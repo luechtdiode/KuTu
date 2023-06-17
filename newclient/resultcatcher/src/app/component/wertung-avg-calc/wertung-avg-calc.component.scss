@@ -1,0 +1,97 @@
+.table {
+    background-color: var(--ion-background-color);
+    //font-size: 0.8rem;
+    height: 100%;
+    overflow: hidden;
+    overflow-y: auto;
+    .table-header,
+    .table-subject {
+        color: var(--ion-color-primary);
+        font-weight: bold;
+    }
+    ion-row {
+        //margin: 5px;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        flex-wrap: nowrap;
+        ion-col {
+            //flex-basis: 20%;
+            &.decimals {
+                flex: 0 0 6em;
+                position:relative; top: -0.6em;
+                ion-input {
+                    height: 100%;
+                    outline: none;
+                    text-align: right;
+                    border: 1px solid #a9a9a9;
+                }
+            }
+            &.table-action {
+                flex: 0 0 1.5em;
+            }
+            &.number {
+                flex: 0 0 6em;
+                letter-spacing: 0.5px;
+            }
+        }
+    }
+}
+
+@media all and (min-height: 720px) {
+    .table {
+        ion-row {
+            margin: 10px;
+        }
+    }
+}
+
+#decimals-group {
+    height: 70%;
+    overflow: hidden;
+    ion-input {
+        height: 100%;
+        outline: none;
+        text-align: right;
+        border: 1px solid #a9a9a9;
+    }
+}
+
+#input-group {
+    height: 70%;
+    overflow: hidden;
+    #validity {
+        width: 0;
+        height: 0;
+        position: absolute;
+        top: 0%;
+        right: 0%;
+        border-left: 15px solid transparent;
+        border-top: 15px solid transparent;
+    }
+    ion-input {
+        height: 100%;
+        width: 100%;
+        outline: none;
+        text-align: right;
+        border: 1px solid #a9a9a9;
+    }
+    &.valid {
+        #validity {
+            border-left: 15px solid transparent;
+            border-top: 15px solid var(--ion-color-success);
+        }
+        ion-input {
+            border: 1px solid var(--ion-color-success);
+        }
+    }
+    &.invalid {
+        #validity {
+            border-left: 15px solid transparent;
+            border-top: 15px solid var(--ion-color-danger)
+        }
+        ion-input {
+            border: 1px solid var(--ion-color-danger);
+        }
+    }
+}

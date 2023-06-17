@@ -31,7 +31,7 @@ trait WertungenRoutes extends SprayJsonSupport with JsonSupport with JwtSupport 
           get {
             complete {
               Future {
-                listRootProgramme().map(x => ProgrammRaw(x.id, x.name, x.aggregate, x.parent.map(_.id).getOrElse(0), x.ord, x.alterVon, x.alterBis))
+                listRootProgramme().map(x => ProgrammRaw(x.id, x.name, x.aggregate, x.parent.map(_.id).getOrElse(0), x.ord, x.alterVon, x.alterBis, x.uuid, x.riegenmode))
               }
             }
           }
@@ -59,7 +59,7 @@ trait WertungenRoutes extends SprayJsonSupport with JsonSupport with JwtSupport 
                       w.athlet.id, w.athlet.vorname, w.athlet.name, w.athlet.geschlecht,
                       w.athlet.verein.map(_.easyprint).getOrElse(""),
                       w.toWertung,
-                      w.wettkampfdisziplin.disziplin.id, w.wettkampfdisziplin.programm.name, w.wettkampfdisziplin.notenSpez.isDNoteUsed)
+                      w.wettkampfdisziplin.disziplin.id, w.wettkampfdisziplin.programm.name, w.wettkampfdisziplin.isDNoteUsed)
                   }
                 }
               }
@@ -185,7 +185,7 @@ trait WertungenRoutes extends SprayJsonSupport with JsonSupport with JwtSupport 
                             val wertungView = k.wertungen.filter(w => w.wettkampfdisziplin.disziplin.id == gid).head
                             WertungContainer(k.id, k.vorname, k.name, k.geschlecht, k.verein,
                               wertungView.toWertung,
-                              gid, k.programm, wertungView.wettkampfdisziplin.notenSpez.isDNoteUsed)
+                              gid, k.programm, wertungView.wettkampfdisziplin.isDNoteUsed)
                           }))
                       case _ =>
                         StatusCodes.Conflict
@@ -208,7 +208,7 @@ trait WertungenRoutes extends SprayJsonSupport with JsonSupport with JwtSupport 
                               case None => None
                               case Some(currentWertung) =>
                                 val wkPgmId = currentWertung.wettkampfdisziplin.programm.head.id
-                                val isDNoteUsed = currentWertung.wettkampfdisziplin.notenSpez.isDNoteUsed
+                                val isDNoteUsed = currentWertung.wettkampfdisziplin.isDNoteUsed
                                 val durchgangEff = selectRiegenRaw(currentWertung.wettkampf.id).filter(ds => encodeURIComponent(ds.durchgang.getOrElse("")) == durchgang)
                                   .map(_.durchgang.get)
                                   .headOption.getOrElse(durchgang)

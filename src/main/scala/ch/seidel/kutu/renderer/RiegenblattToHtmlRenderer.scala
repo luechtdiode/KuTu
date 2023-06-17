@@ -8,7 +8,10 @@ import org.slf4j.LoggerFactory
 
 object RiegenBuilder {
   val logger = LoggerFactory.getLogger(this.getClass)
-  def mapToGeraeteRiegen(kandidaten: Seq[Kandidat], printorder: Boolean = false, groupByProgramm: Boolean = true, durchgangFilter: Set[String] = Set.empty, haltsFilter: Set[Int] = Set.empty): List[GeraeteRiege] = {
+  def mapToGeraeteRiegen(kandidaten: Seq[Kandidat], printorder: Boolean = false, durchgangFilter: Set[String] = Set.empty, haltsFilter: Set[Int] = Set.empty): List[GeraeteRiege] = {
+    val sorter: RiegenRotationsregel = if (kandidaten.nonEmpty && kandidaten.head.wertungen.nonEmpty)
+      RiegenRotationsregel(kandidaten.head.wertungen.head.wettkampf)
+    else RiegenRotationsregel("")
 
     def pickStartformationen(geraete: Seq[(Option[Disziplin], Seq[Riege])], durchgang: Option[String], extractKandidatEinteilung: Kandidat => (Option[Riege], Seq[Disziplin])) = {
       geraete.flatMap{s =>
@@ -26,7 +29,7 @@ object RiegenBuilder {
                 diszipline.map(_.id).contains(disziplin.map(_.id).getOrElse(0))
               case None => false
             }
-          }.sortBy { x => (if (groupByProgramm) x.programm else "") + x.verein + x.jahrgang + x.geschlecht + x.name + x.vorname}
+          }.sortBy(sorter.sort)
           
           val completed = tuti.
             flatMap(k => k.wertungen).
@@ -61,7 +64,7 @@ object RiegenBuilder {
           case Some(_) => acc
           case _ => acc :+ (Some(item) -> List[Riege]())
         }
-      }.sortBy(geraet => dzl.indexOf(geraet._1.get))
+      }.sortBy(geraet => geraet._1.map(g => dzl.indexOf(g)))
       val startformationen = pickStartformationen(geraete, durchgang, k => (k.einteilung, k.diszipline))
         .zipWithIndex
         .map(x => {
@@ -237,13 +240,21 @@ trait RiegenblattToHtmlRenderer {
     </html>
   """
 
-  def shorten(s: String, l: Int = 3) = {
+  def shorten(s: String, l: Int = 10) = {
     if (s.length() <= l) {
-      s
+      s.trim
     } else {
-      val words = s.split(" ")
-      val ll = words.length + l -1;
-      s.take(ll) + "."
+      val words = s.split("[ ,]")
+      words.map(_.take(l)).mkString(" ").trim
+      /*if (words.length > 2) {
+        if(words(words.length - 1).length < l) {
+          s"${words(0)}..${words(words.length - 2)} ${words(words.length - 1)}"
+        } else {
+          s"${words(0)}..${words(words.length - 1)}"
+        }
+      } else {
+        words.map(_.take(l)).mkString("", " ", ".")
+      }*/
     }
   }
 
@@ -251,7 +262,10 @@ trait RiegenblattToHtmlRenderer {
     val logoHtml = if (logo.exists()) s"""<img class=logo src="${logo.imageSrcForWebEngine}" title="Logo"/>""" else ""
     val (riege, tutioffset) = riegepart
     val d = riege.kandidaten.zip(Range(1, riege.kandidaten.size+1)).map{kandidat =>
-      val programm = if(kandidat._1.programm.isEmpty())"" else "(" + shorten(kandidat._1.programm) + ")"
+      val einteilung: String = kandidat._1.einteilung
+        .map(r => r.r.replaceAll( s",${kandidat._1.verein}", ""))
+        .getOrElse(kandidat._1.programm)
+      val programm = if(einteilung.isEmpty()) "" else "(" + shorten(einteilung) + ")"
       val verein = if(kandidat._1.verein.isEmpty())"" else shorten(kandidat._1.verein, 15)
       s"""<tr class="turnerRow"><td class="large">${kandidat._2 + tutioffset}. ${escaped(kandidat._1.vorname)} ${escaped(kandidat._1.name)} <span class='sf'>${escaped(programm)}</span></td><td><span class='sf'>${escaped(verein)}</span></td><td>&nbsp;</td><td>&nbsp;</td><td class="totalCol">&nbsp;</td></tr>"""
     }.mkString("", "\n", "\n")

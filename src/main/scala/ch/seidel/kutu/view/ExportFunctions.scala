@@ -3,11 +3,13 @@ package ch.seidel.kutu.view
 import java.util.UUID
 import ch.seidel.kutu.Config.{homedir, remoteBaseUrl}
 import ch.seidel.kutu.KuTuApp
+import ch.seidel.kutu.KuTuServer.renderer
 import ch.seidel.kutu.akka.DurchgangChanged
 import ch.seidel.kutu.domain.{KutuService, encodeFileName}
 import ch.seidel.kutu.http.WebSocketClient
-import ch.seidel.kutu.renderer.PrintUtil
+import ch.seidel.kutu.renderer.{KategorieTeilnehmerToHtmlRenderer, PrintUtil}
 import ch.seidel.kutu.renderer.PrintUtil.FilenameDefault
+import ch.seidel.kutu.renderer.RiegenBuilder.mapToGeraeteRiegen
 import javafx.beans.property.SimpleObjectProperty
 import scalafx.Includes.jfxObjectProperty2sfx
 import scalafx.application.Platform
@@ -47,6 +49,43 @@ trait ExportFunctions {
         reprintItems.set(reprintItems.get().filter(p => !durchgang.contains(p.durchgang)))
       }
       (new Object with ch.seidel.kutu.renderer.RiegenblattToHtmlRenderer).toHTML(seriendaten, logofile, remoteBaseUrl, durchgang, halts)
+    }}
+    Platform.runLater {
+      PrintUtil.printDialogFuture(dialogText, FilenameDefault(filename, dir), false, generate, orientation = PageOrientation.Portrait)(event)
+    }
+  }
+  def doSelectedTeilnehmerExport(dialogText: String, durchgang: Set[String])(implicit event: ActionEvent): Unit = {
+    import scala.concurrent.ExecutionContext.Implicits.global
+    val seriendaten = mapToGeraeteRiegen(kandidaten=service.getAllKandidatenWertungen(wettkampf.uuid.map(UUID.fromString).get), durchgangFilter=durchgang)
+      .filter(gr => gr.halt == 0)
+      .flatMap {gr => gr.kandidaten.map {k => ch.seidel.kutu.renderer.Kandidat(
+        wettkampfTitel=gr.wettkampfTitel,
+        geschlecht=k.geschlecht,
+        programm=k.programm,
+        id=k.id,
+        name=k.name,
+        vorname=k.vorname,
+        jahrgang=k.jahrgang,
+        verein=k.verein,
+        riege=k.einteilung.map(_.r).getOrElse(""),
+        durchgang=gr.durchgang.getOrElse(""),
+        start=gr.disziplin.map(_.name).getOrElse(""),
+        k.diszipline.map(_.name)
+      )}
+    }
+    val durchgangFileQualifier = durchgang.zipWithIndex.map(d => s"${d._2}").mkString("_dg(","-",")")
+
+    val filename = "DurchgangTeilnehmer_" + encodeFileName(wettkampf.easyprint) + durchgangFileQualifier + ".html"
+    val dir = new java.io.File(homedir + "/" + encodeFileName(wettkampf.easyprint))
+    if(!dir.exists()) {
+      dir.mkdirs();
+    }
+    val logofile = PrintUtil.locateLogoFile(dir)
+    def generate = (lpp: Int) => KuTuApp.invokeAsyncWithBusyIndicator("Durchgang Teilnehmerliste aufbereiten ...") { Future {
+      Platform.runLater {
+        reprintItems.set(reprintItems.get().filter(p => !durchgang.contains(p.durchgang)))
+      }
+      (new Object with KategorieTeilnehmerToHtmlRenderer).toHTMLasDurchgangListe(seriendaten, logofile)
     }}
     Platform.runLater {
       PrintUtil.printDialogFuture(dialogText, FilenameDefault(filename, dir), false, generate, orientation = PageOrientation.Portrait)(event)

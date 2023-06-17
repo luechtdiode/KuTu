@@ -1,8 +1,9 @@
 package ch.seidel.kutu.data
 
+import ch.seidel.kutu.data.GroupSection.{STANDARD_SCORE_FACTOR}
+
 import java.time._
 import java.time.temporal._
-
 import ch.seidel.kutu.domain._
 
 import scala.collection.mutable
@@ -10,6 +11,8 @@ import scala.collection.mutable.StringBuilder
 import scala.math.BigDecimal.{double2bigDecimal, int2bigDecimal}
 
 object GroupSection {
+  val STANDARD_SCORE_FACTOR = BigDecimal("1000000000000000000000")
+
   def programGrouper( w: WertungView): ProgrammView = w.wettkampfdisziplin.programm.aggregatorSubHead
   def disziplinGrouper( w: WertungView): (Int, Disziplin) = (w.wettkampfdisziplin.ord, w.wettkampfdisziplin.disziplin)
   def groupWertungList(list: Iterable[WertungView]) = {
@@ -25,9 +28,9 @@ object GroupSection {
     val rangE = list.toList.map(_._2.noteE).filter(_ > 0).sorted.reverse :+ 0
     val rangEnd = list.toList.map(_._2.endnote).filter(_ > 0).sorted.reverse :+ 0
     def rang(r: Resultat) = {
-      val rd = if (rangD.size > 1) rangD.indexOf(r.noteD) + 1 else 0
-      val re = if (rangE.size > 1) rangE.indexOf(r.noteE) + 1 else 0
-      val rf = if (rangEnd.size > 1) rangEnd.indexOf(r.endnote) + 1 else 0
+      val rd = if (rangD.nonEmpty) rangD.indexOf(r.noteD) + 1 else 0
+      val re = if (rangE.nonEmpty) rangE.indexOf(r.noteE) + 1 else 0
+      val rf = if (rangEnd.nonEmpty) rangEnd.indexOf(r.endnote) + 1 else 0
       Resultat(rd, re, rf)
     }
     list.map(y => GroupSum(y._1, y._2, y._3, rang(y._2)))
@@ -71,13 +74,13 @@ case class GroupLeaf(override val groupKey: DataObject, list: Iterable[WertungVi
   override val avg: Resultat = sum / list.size
   override def easyprint = groupKey.easyprint + s" $sum, $avg"
   val groups = GroupSection.groupWertungList(list).filter(_._2.nonEmpty)
-//  lazy val wkPerProgramm = list.filter(_.endnote > 0).groupBy { w => w.wettkampf.programmId }
   lazy val anzahWettkaempfe = list.filter(_.endnote.nonEmpty).groupBy { w => w.wettkampf }.size // Anzahl Wettkämpfe
   val withDNotes = list.filter(w => w.noteD.sum > 0).nonEmpty
   val withENotes = list.filter(w => w.wettkampf.programmId != 1).nonEmpty
   val isDivided = !(withDNotes || groups.isEmpty)
   val divider = if(!isDivided) 1 else groups.head._2.size
 
+  val gleichstandsregel = Gleichstandsregel(list.head.wettkampf)
   def buildColumns: List[WKCol] = {
     val athletCols: List[WKCol] = List(
       WKLeafCol[GroupRow](text = "Rang", prefWidth = 20, styleClass = Seq("data"), valueMapper = gr => {
@@ -169,7 +172,6 @@ case class GroupLeaf(override val groupKey: DataObject, list: Iterable[WertungVi
           lazy val clDnote = WKLeafCol[GroupRow](text = "D", prefWidth = 60, styleClass = Seq("hintdata"), valueMapper = gr => {
             if (gr.resultate.size > index) {
                   val best = if (gr.resultate(index).sum.noteD > 0
-                              && gr.resultate.size > index
                               && gr.resultate(index).rang.noteD.toInt == 1)
                                   "*"
                              else
@@ -180,7 +182,6 @@ case class GroupLeaf(override val groupKey: DataObject, list: Iterable[WertungVi
           lazy val clEnote = WKLeafCol[GroupRow](text = "E", prefWidth = 60, styleClass = Seq("hintdata"), valueMapper = gr => {
             if (gr.resultate.size > index) {
                   val best = if (gr.resultate(index).sum.noteE > 0
-                              && gr.resultate.size > index
                               && gr.resultate(index).rang.noteE.toInt == 1)
                                   "*"
                              else
@@ -191,7 +192,6 @@ case class GroupLeaf(override val groupKey: DataObject, list: Iterable[WertungVi
           lazy val clEndnote = WKLeafCol[GroupRow](text = "Endnote", prefWidth = 60, styleClass = Seq("valuedata"), valueMapper = gr => {
             if (gr.resultate.size > index) {
                   val best = if (gr.resultate(index).sum.endnote > 0
-                              && gr.resultate.size > index
                               && gr.resultate(index).rang.endnote.toInt == 1)
                                   "*"
                              else
@@ -277,68 +277,21 @@ case class GroupLeaf(override val groupKey: DataObject, list: Iterable[WertungVi
     athletCols ++ disziplinCol ++ sumCol
   }
 
-  def getTableData(sortAlphabetically: Boolean = false, diszMap: Map[Long,Map[String,List[Disziplin]]]) = {
+  def getTableData(sortAlphabetically: Boolean = false) = {
 
-    val programDiszMap = groups.map(pg => (pg._1, diszMap.map(dmp => (dmp._1, dmp._2.map(dmpg => (dmpg._1, dmpg._2.filter(d => pg._2.contains{d})))))))
-
-//    def mapToRang(athlWertungen: Iterable[WertungView]) = {
-//      val grouped = athlWertungen.groupBy { _.athlet }.map { x =>
-//        val r = x._2.map(y => y.resultat).reduce(_+_)
-//        (x._1, r, r / x._2.size)
-//      }
-//      GroupSection.mapRang(grouped).map(r => (r.groupKey.asInstanceOf[AthletView] -> r)).toMap
-//    }
     def mapToAvgRang[A <: DataObject](grp: Iterable[(A, (Resultat, Resultat))]) = {
       GroupSection.mapAvgRang(grp.map { d => (d._1, d._2._1, d._2._2) }).map(r => (r.groupKey.asInstanceOf[A] -> r)).toMap
     }
     def mapToAvgRowSummary(athlWertungen: Iterable[WertungView]): (Resultat, Resultat, Iterable[(Disziplin, Long, Resultat, Resultat, Option[Int], Option[BigDecimal])], Iterable[(ProgrammView, Resultat, Resultat, Option[Int], Option[BigDecimal])], Resultat) = {
       val wks = athlWertungen.filter(_.endnote.nonEmpty).groupBy { w => w.wettkampf }
-      val wksums = wks.map {wk => wk._2.map(w => w.resultat).reduce(_+_)}
+      val wksums = wks.map {wk => wk._2.map(w => w.resultat).reduce(_+_)}.toList
       val rsum = if(wksums.nonEmpty) wksums.reduce(_+_) else Resultat(0,0,0)
-      lazy val wksENOrdered = wks.map(wk => wk._1 -> wk._2.toList.sortBy(w => w.resultat.endnote))
-      lazy val getuDisziplinGOrder = Map(26L -> 1, 4L -> 2, 6L -> 3)
-      lazy val jet = LocalDate.now()
-      lazy val hundredyears = jet.minus(100, ChronoUnit.YEARS)
-
-      def factorizeKuTu(w: WertungView): Long = {
-        val idx = wksENOrdered(w.wettkampf).indexOf(w)
-        if(idx < 4) {
-          1
-        }
-        else {
-          val gebdat = w.athlet.gebdat match {case Some(d) => d.toLocalDate case None => hundredyears}
-          val alterInTagen = jet.toEpochDay - gebdat.toEpochDay
-          val alterInJahren = alterInTagen / 365
-          val altersfaktor = 100L - alterInJahren
-          val powered = Math.floor(Math.pow(1000, idx)).toLong
-          powered + altersfaktor
-        }
-      }
-
-      def factorizeGeTu(w: WertungView): Long = {
-        val idx = 4 - getuDisziplinGOrder.getOrElse(w.wettkampfdisziplin.disziplin.id, 4)
-        val ret = if(idx == 0) {
-          1L
-        }
-        else {
-          Math.floor(Math.pow(1000, idx)).toLong
-        }
-        ret
-      }
 
       val gwksums = wks.map {wk => wk._2.map{w =>
-        val factor = w.wettkampf.programmId match {
-          case id if(id > 0 && id < 4) => // Athletiktest
-             1L
-          case id if((id > 10 && id < 20) || id == 28) => // KuTu Programm
-            factorizeKuTu(w)
-          case id if(id > 19 && id < 27) => // GeTu Kategorie
-            factorizeGeTu(w)
-          case id if(id > 30 && id < 41) => // KuTuRi Programm
-            factorizeKuTu(w)
-          case _ => 1L
-        }
-        w.resultat * 1000000000000L + w.resultat * factor
+        if (anzahWettkaempfe > 1)
+          w.resultat
+        else
+          (w.resultat * STANDARD_SCORE_FACTOR) + (w.resultat * gleichstandsregel.factorize(w, wksums))
         }.reduce(_+_)}
       val gsum = if(gwksums.nonEmpty) gwksums.reduce(_+_) else Resultat(0,0,0)
       val avg = if(wksums.nonEmpty) rsum / wksums.size else Resultat(0,0,0)
@@ -423,24 +376,15 @@ case class GroupLeaf(override val groupKey: DataObject, list: Iterable[WertungVi
               rang,
               rang.endnote == 1)
           }
-        }.filter(_.sum.endnote >= 1).toIndexedSeq
-        athlet.geschlecht match {
-          case "M" =>
-            programDiszMap(groups.head._1)(disziplinResults.head._2)("M").toIndexedSeq.map{d =>
-              dr.find(lr => lr.title == d.name) match {
-                case Some(lr) => lr
-                case None => LeafRow(d.name, Resultat(0,0,0), Resultat(0,0,0), auszeichnung = false)
-              }
-            }
-          case "W" =>
-            programDiszMap(groups.head._1)(disziplinResults.head._2)("W").toIndexedSeq.map{d =>
-              dr.find(lr => lr.title == d.name) match {
-                case Some(lr) => lr
-                case None => LeafRow(d.name, Resultat(0,0,0), Resultat(0,0,0), auszeichnung = false)
-              }
-            }
-          case _ => dr;
         }
+          .filter(_.sum.endnote > 0)
+          .toIndexedSeq
+        groups.head._2.toIndexedSeq.map{d =>
+          dr.find(lr => lr.title == d.name) match {
+            case Some(lr) => lr
+            case None => LeafRow(d.name, Resultat(0,0,0), Resultat(0,0,0), auszeichnung = false)
+          }
+        }.distinct
       }
       else {
         programmResults.map{w =>

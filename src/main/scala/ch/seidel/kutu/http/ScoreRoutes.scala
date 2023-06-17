@@ -12,7 +12,7 @@ import ch.seidel.kutu.Config
 import ch.seidel.kutu.KuTuServer.handleCID
 import ch.seidel.kutu.akka.{CompetitionCoordinatorClientActor, MessageAck, ResponseMessage, StartedDurchgaenge}
 import ch.seidel.kutu.data._
-import ch.seidel.kutu.domain.{Durchgang, Kandidat, KutuService, NullObject, PublishedScoreView, WertungView, encodeFileName, encodeURIParam}
+import ch.seidel.kutu.domain.{Altersklasse, Durchgang, Kandidat, KutuService, NullObject, PublishedScoreView, WertungView, encodeFileName, encodeURIParam, isNumeric}
 import ch.seidel.kutu.renderer.{PrintUtil, ScoreToHtmlRenderer, ScoreToJsonRenderer}
 import ch.seidel.kutu.renderer.PrintUtil._
 
@@ -32,26 +32,22 @@ ScoreRoutes extends SprayJsonSupport with JsonSupport with AuthSupport with Rout
 
   val allGroupers = List(
       ByWettkampfProgramm(), ByProgramm(), ByWettkampf(),
-      ByJahrgang(), ByGeschlecht(), ByVerband(), ByVerein(), ByAthlet(),
-      ByRiege(), ByDisziplin(), ByJahr()
+      ByJahrgang(), ByJahrgangsAltersklasse("Turn10® Altersklassen", Altersklasse.altersklassenTurn10), ByAltersklasse("DTB Altersklassen", Altersklasse.altersklassenDTB),
+      ByGeschlecht(), ByVerband(), ByVerein(), ByAthlet(),
+      ByRiege(), ByRiege2(), ByDisziplin(), ByJahr()
   )
                   
   def queryScoreResults(wettkampf: String, groupby: Option[String], filter: Iterable[String], html: Boolean,
                         groupers: List[FilterBy], data: Seq[WertungView], alphanumeric: Boolean,
                         logofile: File): HttpEntity.Strict = {
-    val diszMap = data.groupBy { x => x.wettkampf.programmId }.map{ x =>
-      x._1 -> Map(
-            "W" -> listDisziplinesZuWettkampf(x._2.head.wettkampf.id, Some("W"))
-          , "M" -> listDisziplinesZuWettkampf(x._2.head.wettkampf.id, Some("M")))
-    }
     val query = GroupBy(groupby, filter, data, alphanumeric, groupers);
 
     if (html) {
       HttpEntity(ContentTypes.`text/html(UTF-8)`, new ScoreToHtmlRenderer(){override val title: String = wettkampf}
-      .toHTML(query.select(data).toList, athletsPerPage = 0, sortAlphabetically = alphanumeric, diszMap, logofile))
+      .toHTML(query.select(data).toList, athletsPerPage = 0, sortAlphabetically = alphanumeric, logofile))
     } else {
       HttpEntity(ContentTypes.`application/json`,  ScoreToJsonRenderer
-      .toJson(wettkampf, query.select(data).toList, sortAlphabetically = alphanumeric, diszMap, logofile))
+      .toJson(wettkampf, query.select(data).toList, sortAlphabetically = alphanumeric, logofile))
     }
   }
   
@@ -148,15 +144,24 @@ ScoreRoutes extends SprayJsonSupport with JsonSupport with AuthSupport with Rout
             val logodir = new java.io.File(Config.homedir + "/" + encodeFileName(wettkampf.easyprint))
             val logofile = PrintUtil.locateLogoFile(logodir)
             val programmText = wettkampf.programmId match {case 20 => "Kategorie" case _ => "Programm"}
+            val altersklassen = Altersklasse.parseGrenzen(wettkampf.altersklassen.get, "Altersklasse")
+            val jgAltersklassen = Altersklasse.parseGrenzen(wettkampf.jahrgangsklassen.get, "Altersklasse")
             def riegenZuDurchgang: Map[String, Durchgang] = {
               val riegen = listRiegenZuWettkampf(wettkampf.id)
               riegen.map(riege => riege._1 -> riege._3.map(durchgangName => Durchgang(0, durchgangName)).getOrElse(Durchgang())).toMap
             }
             val byDurchgangMat = ByDurchgang(riegenZuDurchgang)
             val groupers: List[FilterBy] = {
-              List(ByWettkampfProgramm(programmText), ByProgramm(programmText),
-                  ByJahrgang(), ByGeschlecht(), ByVerband(), ByVerein(), byDurchgangMat,
-                  ByRiege(), ByDisziplin(), ByJahr())
+              val standardGroupers = List(ByWettkampfProgramm(programmText), ByProgramm(programmText),
+                ByJahrgang(), ByJahrgangsAltersklasse("Turn10® Altersklassen", Altersklasse.altersklassenTurn10), ByAltersklasse("DTB Altersklassen", Altersklasse.altersklassenDTB),
+                ByGeschlecht(), ByVerband(), ByVerein(), byDurchgangMat,
+                ByRiege(), ByRiege2(), ByDisziplin(), ByJahr())
+              (altersklassen.nonEmpty, jgAltersklassen.nonEmpty) match {
+                case (true,true) => standardGroupers ++ List(ByAltersklasse("Wettkampf Altersklassen", altersklassen), ByJahrgangsAltersklasse("Wettkampf JG-Altersklassen", jgAltersklassen))
+                case (false,true) => standardGroupers :+ ByJahrgangsAltersklasse("Wettkampf JG-Altersklassen", jgAltersklassen)
+                case (true,false) => standardGroupers :+ ByAltersklasse("Wettkampf Altersklassen", altersklassen)
+                case _ => standardGroupers
+              }
             }
             val logoHtml = if (logofile.exists()) s"""<img class=logo src="${logofile.imageSrcForWebEngine}" title="Logo"/>""" else ""
             pathEnd {
@@ -246,20 +251,15 @@ ScoreRoutes extends SprayJsonSupport with JsonSupport with AuthSupport with Rout
                           case Nil => (None,Seq[WertungView]())
                           case c::_ => (Some(c), data)
                         }
-                        val diszMap = publishedData.groupBy { x => x.wettkampf.programmId }.map { x =>
-                          x._1 -> Map(
-                            "W" -> listDisziplinesZuWettkampf(x._2.head.wettkampf.id, Some("W"))
-                            , "M" -> listDisziplinesZuWettkampf(x._2.head.wettkampf.id, Some("M")))
-                        }
                         val query = GroupBy(score.map(_.query).getOrElse(""), publishedData)
                         if (html.nonEmpty) {
                           HttpEntity(ContentTypes.`text/html(UTF-8)`, new ScoreToHtmlRenderer() {
                             override val title: String = wettkampf.easyprint // + " - " + score.map(_.title).getOrElse(wettkampf.easyprint)
                           }
-                            .toHTML(query.select(publishedData).toList, athletsPerPage = 0, sortAlphabetically = score.map(_.isAlphanumericOrdered).getOrElse(false), diszMap, logofile))
+                            .toHTML(query.select(publishedData).toList, athletsPerPage = 0, sortAlphabetically = score.exists(_.isAlphanumericOrdered), logofile))
                         } else {
                           HttpEntity(ContentTypes.`application/json`, ScoreToJsonRenderer
-                            .toJson(wettkampf.easyprint, query.select(publishedData).toList, sortAlphabetically = score.map(_.isAlphanumericOrdered).getOrElse(false), diszMap, logofile))
+                            .toJson(wettkampf.easyprint, query.select(publishedData).toList, sortAlphabetically = score.exists(_.isAlphanumericOrdered), logofile))
                         }
                       }
                       }

@@ -106,17 +106,6 @@ abstract class DefaultRanglisteTab(wettkampfmode: BooleanProperty, override val 
       def toString(d: DataObject) = if (d != null) d.easyprint else ""
     }
     val converter = new DataObjectConverter()
-   
-    class DataObjectListCell extends ListCell[DataObject] {
-      override val delegate: jfxsc.ListCell[DataObject] = new jfxsc.ListCell[DataObject] {
-        override protected def updateItem(item: DataObject, empty: Boolean): Unit = {
-          super.updateItem(item, empty)
-          if (item != null) {
-              setText(item.easyprint);
-          }
-        }
-      }
-    }
 
     val cb1 = new ComboBox[FilterBy] {
       maxWidth = 250
@@ -206,11 +195,17 @@ abstract class DefaultRanglisteTab(wettkampfmode: BooleanProperty, override val 
         }
         grp
       }
-      val groupBy = if (cblist.isEmpty) {
-        ByWettkampfProgramm().groupBy(ByGeschlecht())
+      val akg = groupers.find(p => p.isInstanceOf[ByAltersklasse] && p.groupname.startsWith("Wettkampf"))
+      val jakg = groupers.find(p => p.isInstanceOf[ByJahrgangsAltersklasse] && p.groupname.startsWith("Wettkampf"))
+      val groupBy = if (cblist.nonEmpty) {
+        cblist.foldLeft(cblist.head.asInstanceOf[GroupBy])((acc, cb) => if (acc != cb) acc.groupBy(cb) else acc)
+      } else if (akg.nonEmpty) {
+        ByProgramm().groupBy(akg.get).groupBy(ByGeschlecht())
+      } else if (jakg.nonEmpty) {
+        ByProgramm().groupBy(jakg.get).groupBy(ByGeschlecht())
       }
       else {
-        cblist.foldLeft(cblist.head.asInstanceOf[GroupBy])((acc, cb) => if (acc != cb) acc.groupBy(cb) else acc)
+        ByProgramm().groupBy(ByGeschlecht())
       }
       groupBy.setAlphanumericOrdered(cbModus.selected.value)
       restoring = false
@@ -236,7 +231,7 @@ abstract class DefaultRanglisteTab(wettkampfmode: BooleanProperty, override val 
     	  combf.getCheckModel.clearChecks()
     	  model.retainAll(expected)
     	  model.insertAll(model.size, expected.filter(!model.contains(_)))
-    	  model.sort{ (a, b) => a.easyprint.compareTo(b.easyprint) < 0}
+    	  model.sort{ (a, b) => a.compareTo(b) < 0}
       
     	  checked.filter(model.contains(_)).foreach(combf.getCheckModel.check(_))
     	}
@@ -244,14 +239,8 @@ abstract class DefaultRanglisteTab(wettkampfmode: BooleanProperty, override val 
       val combination = query.select(data).toList
       lastScoreDef.setValue(Some(query.asInstanceOf[FilterBy]))
 
-      //Map[Long,Map[String,List[Disziplin]]]
-      val diszMap = data.groupBy { x => x.wettkampf.programmId }.map{ x =>
-        x._1 -> Map(
-              "W" -> service.listDisziplinesZuWettkampf(x._2.head.wettkampf.id, Some("W"))
-            , "M" -> service.listDisziplinesZuWettkampf(x._2.head.wettkampf.id, Some("M")))
-        }
       val logofile = PrintUtil.locateLogoFile(getSaveAsFilenameDefault.dir)
-      val ret = toHTML(combination, linesPerPage, query.isAlphanumericOrdered, diszMap, logofile)
+      val ret = toHTML(combination, linesPerPage, query.isAlphanumericOrdered, logofile)
       if(linesPerPage == 0){
         webView.engine.loadContent(ret)
       }
@@ -336,7 +325,7 @@ abstract class DefaultRanglisteTab(wettkampfmode: BooleanProperty, override val 
 
     def loadFilter(selectedFile: File): Unit = {
       val ios = new ObjectInputStream(new FileInputStream(selectedFile))
-      val grouper = GroupBy(ios.readObject().toString, getData)
+      val grouper = GroupBy(ios.readObject().toString, getData, groupers)
       restoreGrouper(grouper)
     }
 

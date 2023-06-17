@@ -16,11 +16,19 @@ import scalafx.scene.control._
 import scalafx.scene.input.{KeyCode, KeyEvent, MouseEvent}
 import scalafx.scene.layout._
 
-class AthletSelectionDialog(actionTitle: String, progrm: ProgrammView, assignedAthleten: Seq[AthletView], service: KutuService, refreshPaneData: Set[Long]=>Unit) {
+import java.time.{LocalDate, Period}
 
+class AthletSelectionDialog(actionTitle: String, wettkampfDatum: LocalDate, alterVon: Int, alterBis: Int, sex: Set[String], assignedAthleten: Seq[AthletView], service: KutuService, refreshPaneData: Set[Long]=>Unit) {
+
+  def alter(a: AthletView): Int = {
+    a.gebdat.map(d => Period.between(d.toLocalDate, wettkampfDatum).getYears).getOrElse(100)
+  }
   val athletModel = ObservableBuffer.from(
-    service.selectAthletesView.filter(service.altersfilter(progrm, _)).
-    filter { p => /*p.activ &&*/ assignedAthleten.forall { wp => wp.id != p.id } }.
+    service.selectAthletesView.filter(a => {
+      sex.contains(a.geschlecht) &&
+      Range.inclusive(alterVon, alterBis).contains(alter(a))
+    }).
+    filter { p => assignedAthleten.forall { wp => wp.id != p.id } }.
     sortBy { a => (a.activ match {case true => "A" case _ => "X"}) + ":" + a.name + ":" + a.vorname }
   )
 
@@ -29,10 +37,10 @@ class AthletSelectionDialog(actionTitle: String, progrm: ProgrammView, assignedA
   val athletTable = new TableView[AthletView](filteredModel) {
     columns ++= List(
       new TableColumn[AthletView, String] {
-        text = "Name Vorname"
+        text = "Name Vorname Jg"
         cellValueFactory = { x =>
           new ReadOnlyStringWrapper(x.value, "athlet", {
-            s"${x.value.name} ${x.value.vorname}"
+            s"${x.value.toAthlet.shortPrint}"
           })
         }
         //prefWidth = 150

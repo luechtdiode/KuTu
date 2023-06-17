@@ -1,6 +1,7 @@
 package ch.seidel.kutu.squad
 
 import ch.seidel.kutu.domain._
+import ch.seidel.kutu.squad.RiegenBuilder.selectRiegenGrouper
 
 /** Riegenbuilder:
  *     1. Anzahl Rotationen (min = 1, max = Anzahl Teilnehmer),
@@ -27,31 +28,56 @@ import ch.seidel.kutu.domain._
  *       Somit müsste jede Rotation in sich zunächst stimmen
  */
 trait RiegenBuilder {
-  
+
   def suggestRiegen(rotationstation: Seq[Int], wertungen: Seq[WertungView]): Seq[(String, Seq[Wertung])] = {
     val riegencount = rotationstation.sum
-    if(wertungen.head.wettkampfdisziplin.notenSpez.isInstanceOf[Athletiktest]) {
-      ATTGrouper.suggestRiegen(riegencount, wertungen)
-    } else {
-      KuTuGeTuGrouper.suggestRiegen(riegencount, wertungen)
+    val riegenmode = wertungen.head.wettkampfdisziplin.programm.riegenmode
+    val aks = wertungen.head.wettkampf.altersklassen match {
+      case Some(s: String) if s.nonEmpty => Some(s)
+      case _ => None
     }
+    val jaks = wertungen.head.wettkampf.jahrgangsklassen match {
+      case Some(s: String) if s.nonEmpty => Some(s)
+      case _ => None
+    }
+    selectRiegenGrouper(riegenmode, aks, jaks).suggestRiegen(riegencount, wertungen)
   }
 }
 
 object RiegenBuilder {
 
-  def generateRiegenName(w: WertungView) = {
-    w.wettkampfdisziplin.notenSpez match {
-      case a: Athletiktest => ATTGrouper.generateRiegenName(w)
-      case _ => KuTuGeTuGrouper.generateRiegenName(w)
+  def selectRiegenGrouper(riegenmode: Int, altersklassen: Option[String], jahrgangsklassen: Option[String]): RiegenGrouper = {
+    riegenmode match {
+      case RiegeRaw.RIEGENMODE_BY_JG => ATTGrouper
+      case RiegeRaw.RIEGENMODE_BY_JG_VEREIN => JGClubGrouper
+      case _ =>
+        if (jahrgangsklassen.nonEmpty || altersklassen.nonEmpty) {
+          JGClubGrouper
+        } else {
+          KuTuGeTuGrouper
+        }
     }
+  }
+  def generateRiegenName(w: WertungView) = {
+    val riegenmode = w.wettkampfdisziplin.programm.riegenmode
+    val aks = w.wettkampf.altersklassen match {
+      case Some(s: String) if s.nonEmpty => Some(s)
+      case _ => None
+    }
+    val jaks = w.wettkampf.jahrgangsklassen match {
+      case Some(s: String) if s.nonEmpty => Some(s)
+      case _ => None
+    }
+    selectRiegenGrouper(riegenmode, aks, jaks).generateRiegenName(w)
   }
 
   def generateRiegen2Name(w: WertungView): Option[String] = {
-    w.wettkampfdisziplin.notenSpez match {
-      case GeTuWettkampf if (w.athlet.geschlecht.equalsIgnoreCase("M")) =>
+    val getuMatcher = ".*GETU.*/i".r
+    w.wettkampfdisziplin.programm.head.name match {
+      case getuMatcher() if (w.athlet.geschlecht.equalsIgnoreCase("M")) =>
         Some(s"Barren ${w.wettkampfdisziplin.programm.name}")
       case _ => None
     }
   }
+
 }

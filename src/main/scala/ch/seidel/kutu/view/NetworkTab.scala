@@ -7,7 +7,7 @@ import ch.seidel.kutu.akka._
 import ch.seidel.kutu.domain._
 import ch.seidel.kutu.http.WebSocketClient
 import ch.seidel.kutu.renderer.PrintUtil.FilenameDefault
-import ch.seidel.kutu.renderer.{BestenListeToHtmlRenderer, PrintUtil, RiegenBuilder}
+import ch.seidel.kutu.renderer.{BestenListeToHtmlRenderer, KategorieTeilnehmerToHtmlRenderer, PrintUtil, RiegenBuilder}
 import ch.seidel.kutu._
 import javafx.event.EventHandler
 import javafx.scene.{control => jfxsc}
@@ -31,6 +31,7 @@ import scala.collection.immutable
 import scala.concurrent.Await
 import scala.concurrent.duration.Duration
 import scala.jdk.CollectionConverters
+import scala.jdk.FunctionConverters.enrichAsJavaFunction
 
 trait DurchgangItem
 
@@ -107,10 +108,63 @@ class DurchgangStationView(wettkampf: WettkampfView, service: KutuService, diszi
   //items = durchgangModel
   showRoot = false
   tableMenuButtonVisible = true
+  var lastDizs: Seq[Disziplin] = Seq()
+  def rebuildDiszColumns(disziplinlist: Seq[Disziplin]): Unit = {
+    if (lastDizs.nonEmpty) {
+      val diszCols = lastDizs.map(_.name)
+      columns.removeIf(c => diszCols.contains(c.getText))
+    }
+    lastDizs = disziplinlist
+    columns.insertAll(6, lastDizs.map { disziplin =>
+      val dc = new TreeTableColumn[DurchgangState, String] {
+        text = disziplin.name
+        prefWidth = 230
+        columns ++= Seq(
+          new DurchgangStationTreeTableColumn[String](disziplin) {
+            text = "Stationen"
+            prefWidth = 120
+            cellValueFactory = { x =>
+              if (x.value.getValue == null) StringProperty("") else
+                x.value.getValue.percentPerRiegeComplete.get(Some(disziplin)) match {
+                  case Some(re) => StringProperty(re._2)
+                  case _ => StringProperty("")
+                }
+            }
+          }
+          , new TreeTableColumn[DurchgangState, String] {
+            text = "Fertig"
+            prefWidth = 80
+            cellFactory.value = { _: Any =>
+              new TreeTableCell[DurchgangState, String] {
+                val image = new ImageView()
+                graphic = image
+                item.onChange { (_, _, newValue) =>
+                  text = newValue
+                  image.image = toIcon(newValue)
+                }
+              }
+            }
+            cellValueFactory = { x =>
+              if (x.value.getValue == null) StringProperty("") else
+                x.value.getValue.percentPerRiegeComplete.get(Some(disziplin)) match {
+                  case Some(re) => StringProperty(re._1)
+                  case _ => StringProperty("0")
+                }
+            }
+          }
+        )
+      }
+      TreeTableColumn.sfxTreeTableColumn2jfx(dc)
+    })
+  }
 
   root = new TreeItem[DurchgangState]() {
     durchgangModel.onChange {
-      children = durchgangModel.toList
+      val dml = durchgangModel.toList
+      rebuildDiszColumns(disziplinlist().filter{d =>
+        dml.exists(ti => ti.value.value.geraeteRiegen.exists(gr => gr.disziplin.contains(d)))
+      })
+      children = dml
     }
     styleClass.add("parentrow")
     expanded = true
@@ -183,48 +237,7 @@ class DurchgangStationView(wettkampf: WettkampfView, service: KutuService, diszi
     }
   )
 
-  columns ++= disziplinlist().map { disziplin =>
-    val dc = new TreeTableColumn[DurchgangState, String] {
-      text = disziplin.name
-      prefWidth = 230
-      columns ++= Seq(
-        new DurchgangStationTreeTableColumn[String](disziplin) {
-          text = "Stationen"
-          prefWidth = 120
-          cellValueFactory = { x =>
-            if (x.value.getValue == null) StringProperty("") else
-              x.value.getValue.percentPerRiegeComplete.get(Some(disziplin)) match {
-                case Some(re) => StringProperty(re._2)
-                case _ => StringProperty("")
-              }
-          }
-        }
-        , new TreeTableColumn[DurchgangState, String] {
-          text = "Fertig"
-          prefWidth = 80
-          cellFactory.value = { _: Any =>
-            new TreeTableCell[DurchgangState, String] {
-              val image = new ImageView()
-              graphic = image
-              item.onChange { (_, _, newValue) =>
-                text = newValue
-                image.image = toIcon(newValue)
-              }
-            }
-          }
-          cellValueFactory = { x =>
-            if (x.value.getValue == null) StringProperty("") else
-              x.value.getValue.percentPerRiegeComplete.get(Some(disziplin)) match {
-                case Some(re) => StringProperty(re._1)
-                case _ => StringProperty("0")
-              }
-          }
-        }
-      )
-    }
-    TreeTableColumn.sfxTreeTableColumn2jfx(dc)
-  }
-
+  rebuildDiszColumns(disziplinlist())
   private def toIcon(newValue: String) = {
     newValue match {
       case "100%" => okIcon
@@ -322,7 +335,7 @@ class NetworkTab(wettkampfmode: BooleanProperty, override val wettkampfInfo: Wet
     model.setAll(items.asJavaCollection)
     isRunning.set(model.exists(_.getValue.isRunning))
     selected.foreach(selection => {
-      if (view.getColumns.size() > selection.column) {
+      if (selection.column > -1 && view.getColumns.size() > selection.column) {
         val column = view.getColumns.get(selection.column)
         view.selectionModel.value.select(selection.row, column)
       }
@@ -428,6 +441,44 @@ class NetworkTab(wettkampfmode: BooleanProperty, override val wettkampfInfo: Wet
     case e: Exception => e.printStackTrace()
   }
 
+  def makeSelectedDurchgangTeilnehmerExport(): Menu = {
+    val option = getSelectedDruchgangStates
+    val selectedDurchgaenge = option.toSet.map((_: DurchgangState).name)
+    new Menu {
+      text = "Durchgang-Teilnehmerliste erstellen"
+      updateItems
+      reprintItems.onChange {
+        updateItems
+      }
+
+      private def updateItems: Unit = {
+        items.clear()
+        val affectedDurchgaenge: Set[String] = reprintItems.get.map(_.durchgang)
+        if (selectedDurchgaenge.nonEmpty) {
+          items += KuTuApp.makeMenuAction(s"Aus Durchgang ${selectedDurchgaenge.mkString(", ")}") { (caption: String, action: ActionEvent) =>
+            doSelectedTeilnehmerExport(text.value, selectedDurchgaenge)(action)
+          }
+        }
+        if (affectedDurchgaenge.nonEmpty && selectedDurchgaenge.nonEmpty) {
+          items += new SeparatorMenuItem()
+        }
+        if (affectedDurchgaenge.nonEmpty) {
+          val allItem = KuTuApp.makeMenuAction(s"Alle betroffenen (${affectedDurchgaenge.size})") { (caption: String, action: ActionEvent) =>
+            doSelectedTeilnehmerExport(text.value, affectedDurchgaenge)(action)
+          }
+          items += allItem
+          items += new SeparatorMenuItem()
+          affectedDurchgaenge.toList.sorted.foreach { durchgang =>
+            items += KuTuApp.makeMenuAction(s"${durchgang}") { (caption: String, action: ActionEvent) =>
+              doSelectedTeilnehmerExport(text.value, Set(durchgang))(action)
+            }
+          }
+        }
+        disable.value = items.isEmpty
+      }
+    }
+  }
+
   def makeSelectedRiegenBlaetterExport(): Menu = {
     val option = getSelectedDruchgangStates
     val selectedDurchgaenge = option.toSet.map((_: DurchgangState).name)
@@ -479,15 +530,17 @@ class NetworkTab(wettkampfmode: BooleanProperty, override val wettkampfInfo: Wet
         val selection = durchgang.geraeteRiegen.filter {
           _.disziplin.contains(disziplin)
         }
-        items = selection.map { r =>
-          val menu = KuTuApp.makeMenuAction(r.caption) { (caption, action) =>
+        items = selection.map { geraeteRiege =>
+          val menu = KuTuApp.makeMenuAction(geraeteRiege.caption) { (caption, action) =>
             lazypane match {
               case Some(pane) =>
-                val wertungTab: WettkampfWertungTab = new WettkampfWertungTab(wettkampfmode, None, Some(r), wettkampfInfo, service, {
-                  val progs = service.readWettkampfLeafs(wettkampf.programm.id)
-                  service.listAthletenWertungenZuProgramm(progs map (p => p.id), wettkampf.id)
+                val pgmFilter = geraeteRiege.kandidaten.flatMap(_.wertungen.map(w => w.wettkampfdisziplin.programm)).distinct
+                val progs = service.readWettkampfLeafs(wettkampf.programm.id) map (p => p.id)
+                val wertungTab: WettkampfWertungTab = new WettkampfWertungTab(wettkampfmode, None, Some(geraeteRiege), wettkampfInfo, service, {
+                  service.listAthletenWertungenZuProgramm(progs, wettkampf.id)
+                    .filter(wertung => pgmFilter.contains(wertung.wettkampfdisziplin.programm))
                 }) {
-                  text = r.caption
+                  text = geraeteRiege.caption
                   closable = true
                 }
                 pane.tabs.add(pane.tabs.size() + (if (wettkampfmode.value) -2 else -1), wertungTab.asInstanceOf[Tab])
@@ -502,7 +555,7 @@ class NetworkTab(wettkampfmode: BooleanProperty, override val wettkampfInfo: Wet
             }
           }
           menu.graphic = new ImageView {
-            image = if (r.erfasst) okIcon else nokIcon
+            image = if (geraeteRiege.erfasst) okIcon else nokIcon
           }
           menu
         }
@@ -610,6 +663,7 @@ class NetworkTab(wettkampfmode: BooleanProperty, override val wettkampfInfo: Wet
     if (!wettkampf.toWettkampf.isReadonly(homedir, remoteHostOrigin)) {
       btnDurchgang.items.clear()
       btnDurchgang.items += makeDurchgangStartenMenu(wettkampf)
+      btnDurchgang.items += makeSelectedDurchgangTeilnehmerExport()
       btnDurchgang.items += new SeparatorMenuItem()
       btnDurchgang.items += makeSelectedRiegenBlaetterExport()
       btnDurchgang.items += makeMenuAction("Bestenliste erstellen") { (_, action) =>
@@ -620,6 +674,8 @@ class NetworkTab(wettkampfmode: BooleanProperty, override val wettkampfInfo: Wet
 
       view.contextMenu = new ContextMenu() {
         items += makeDurchgangStartenMenu(wettkampf)
+        items += new SeparatorMenuItem()
+        items += makeSelectedDurchgangTeilnehmerExport()
         items += new SeparatorMenuItem()
         items += makeSelectedRiegenBlaetterExport()
         items += navigate

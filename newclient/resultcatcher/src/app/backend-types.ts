@@ -42,10 +42,12 @@ export interface ProgrammRaw {
   id: number;
   name: string;
   aggregate: number;
-  parent: number;
+  parentId: number;
   ord: number;
-  vonAlter: number;
-  bisAlter: number;
+  alterVon: number;
+  alterBis: number;
+  uuid: string;
+  riegenmode: number;
 }
 
 export interface Verein {
@@ -142,6 +144,10 @@ export interface Wettkampf {
   auszeichnungendnote: number;
   uuid: string;
   notificationEMail?: string;
+  altersklassen?: string; 
+  jahrgangsklassen?: string; 
+  punktegleichstandsregel?: string;
+  rotation?: string;
 }
 
 export interface ScoreRow {

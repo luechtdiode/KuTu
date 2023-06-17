@@ -1,7 +1,7 @@
 package ch.seidel.kutu.renderer
 
 import java.io._
-import java.util.Base64
+import java.util.{Base64, Locale}
 import java.util.concurrent.atomic.AtomicBoolean
 import ch.seidel.commons._
 import ch.seidel.kutu.KuTuApp
@@ -120,11 +120,11 @@ object PrintUtil {
             if(chkViaBrowser.selected.value) {
               onGenerateOutput(lpp).onComplete {
                 case Success(toSave) => Platform.runLater {
-                  val os = new BufferedOutputStream(new FileOutputStream(file))
-                  os.write(toSave.getBytes("UTF-8"))
-                  os.flush()
-                  os.close()
-                  hostServices.showDocument(file.toURI.toASCIIString)
+                  val bos = new BufferedOutputStream(new FileOutputStream(file))
+                  bos.write(toSave.getBytes("UTF-8"))
+                  bos.flush()
+                  bos.close()
+                  hostServices.showDocument(file.toURI.toString)
                 }
                 case _ =>
               }

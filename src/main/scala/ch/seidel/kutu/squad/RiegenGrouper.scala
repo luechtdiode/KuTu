@@ -16,7 +16,7 @@ trait RiegenGrouper extends RiegenSplitter {
   	  Seq[(String, Seq[Wertung])]()
   	}
   	else {
-  	  val (grouper, allGrouper) = buildGrouper(riegencnt)
+  	  val (grouper, allGrouper, _) = buildGrouper(riegencnt)
   	  val grouped = groupWertungen(riegencnt, athletGroupedWertungen, grouper, allGrouper)
     	splitToRiegenCount(grouped, riegencnt, cache) map toRiege
     }
@@ -33,7 +33,7 @@ trait RiegenGrouper extends RiegenSplitter {
     (riegenname, wertungen)
   }
   
-  protected def buildGrouper(riegencnt: Int): (List[WertungView => String], List[WertungView => String]) = ???
+  def buildGrouper(riegencnt: Int): (List[WertungView => String], List[WertungView => String], Boolean) = ???
 
   def generateRiegenName(w: WertungView): String = ???
 

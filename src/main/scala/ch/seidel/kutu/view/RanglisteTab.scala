@@ -6,7 +6,7 @@ import ch.seidel.kutu.Config._
 import ch.seidel.kutu.ConnectionStates
 import ch.seidel.kutu.KuTuApp.handleAction
 import ch.seidel.kutu.data._
-import ch.seidel.kutu.domain.{Durchgang, KutuService, WertungView, WettkampfView, encodeFileName}
+import ch.seidel.kutu.domain.{Altersklasse, Durchgang, KutuService, WertungView, WettkampfView, encodeFileName, isNumeric}
 import ch.seidel.kutu.renderer.PrintUtil.FilenameDefault
 import scalafx.Includes.when
 import scalafx.beans.binding.Bindings
@@ -26,16 +26,38 @@ class RanglisteTab(wettkampfmode: BooleanProperty, wettkampf: WettkampfView, ove
     case _ => "Programm"
   }
 
+  val altersklassen = Altersklasse.parseGrenzen(wettkampf.altersklassen, "Altersklasse")
+  val jgAltersklassen = Altersklasse.parseGrenzen(wettkampf.jahrgangsklassen, "Altersklasse")
+
   def riegenZuDurchgang: Map[String, Durchgang] = {
     val riegen = service.listRiegenZuWettkampf(wettkampf.id)
     riegen.map(riege => riege._1 -> riege._3.map(durchgangName => Durchgang(0, durchgangName)).getOrElse(Durchgang())).toMap
   }
 
   override def groupers: List[FilterBy] = {
-    List(ByNothing(), ByWettkampfProgramm(programmText), ByProgramm(programmText), ByJahrgang(), ByGeschlecht(), ByVerband(), ByVerein(), ByDurchgang(riegenZuDurchgang), ByRiege(), ByDisziplin())
+    val standardGroupers = List(ByNothing(),
+      ByWettkampfProgramm(programmText), ByProgramm(programmText),
+      ByJahrgang(),
+      ByAltersklasse("DTB Altersklasse", Altersklasse.altersklassenDTB),
+      ByAltersklasse("DTB Kür Altersklasse", Altersklasse.altersklassenDTBKuer),
+      ByAltersklasse("DTB Pflicht Altersklasse", Altersklasse.altersklassenDTBPflicht),
+      ByJahrgangsAltersklasse("Turn10® Altersklasse", Altersklasse.altersklassenTurn10),
+      ByGeschlecht(),
+      ByVerband(), ByVerein(),
+      ByDurchgang(riegenZuDurchgang), ByRiege(), ByRiege2(), ByDisziplin())
+    (altersklassen.nonEmpty, jgAltersklassen.nonEmpty) match {
+      case (true,true) => standardGroupers ++ List(ByAltersklasse("Wettkampf Altersklassen", altersklassen), ByJahrgangsAltersklasse("Wettkampf JG-Altersklassen", jgAltersklassen))
+      case (false,true) => standardGroupers :+ ByJahrgangsAltersklasse("Wettkampf JG-Altersklassen", jgAltersklassen)
+      case (true,false) => standardGroupers :+ ByAltersklasse("Wettkampf Altersklassen", altersklassen)
+      case _ => standardGroupers
+    }
   }
 
-  override def getData: Seq[WertungView] = service.selectWertungen(wettkampfId = Some(wettkampf.id))
+  override def getData: Seq[WertungView] = {
+    val scheduledDisziplines = service.listScheduledDisziplinIdsZuWettkampf(wettkampf.id)
+    service.selectWertungen(wettkampfId = Some(wettkampf.id))
+      .filter(w => scheduledDisziplines.contains(w.wettkampfdisziplin.disziplin.id))
+  }
 
   override def getSaveAsFilenameDefault: FilenameDefault = {
     val foldername = encodeFileName(wettkampf.easyprint)
@@ -196,9 +218,21 @@ class RanglisteTab(wettkampfmode: BooleanProperty, wettkampf: WettkampfView, ove
 
   override def isPopulated = {
     val combos = populate(groupers)
+    val akg = groupers.find(p => p.isInstanceOf[ByAltersklasse] && p.groupname.startsWith("Wettkampf"))
+    val jakg = groupers.find(p => p.isInstanceOf[ByJahrgangsAltersklasse] && p.groupname.startsWith("Wettkampf"))
+    if (akg.nonEmpty) {
+      combos(1).selectionModel.value.select(ByProgramm(programmText))
+      combos(2).selectionModel.value.select(akg.get)
+      combos(3).selectionModel.value.select(ByGeschlecht())
+    } else if (jakg.nonEmpty) {
+      combos(1).selectionModel.value.select(ByProgramm(programmText))
+      combos(2).selectionModel.value.select(jakg.get)
+      combos(3).selectionModel.value.select(ByGeschlecht())
+    } else {
+      combos(1).selectionModel.value.select(ByProgramm(programmText))
+      combos(2).selectionModel.value.select(ByGeschlecht())
 
-    combos(1).selectionModel.value.select(ByWettkampfProgramm(programmText))
-    combos(2).selectionModel.value.select(ByGeschlecht())
+    }
 
     true
   }

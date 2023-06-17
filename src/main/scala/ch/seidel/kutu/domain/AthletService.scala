@@ -304,16 +304,6 @@ trait AthletService extends DBService with AthletResultMapper {
     }
   }
 
-  def altersfilter(pgm: ProgrammView, a: Athlet): Boolean = {
-    val alter = a.gebdat match {
-      case Some(d) => Period.between(d.toLocalDate, LocalDate.now).getYears
-      case None => 7
-    }
-    pgm.alterVon <= alter && pgm.alterBis >= alter
-  }
-
-  def altersfilter(pgm: ProgrammView, a: AthletView): Boolean = altersfilter(pgm, a.toAthlet)
-
   def markAthletesInactiveOlderThan(nYears: Int): Unit = {
     Await.result(database.run {
       sqlu"""

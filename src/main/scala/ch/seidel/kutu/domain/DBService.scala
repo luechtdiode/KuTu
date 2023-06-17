@@ -4,12 +4,12 @@ import java.io.File
 import java.nio.file.{Files, StandardOpenOption}
 import java.text.{ParseException, SimpleDateFormat}
 import java.util.Properties
-
 import ch.seidel.kutu.Config
 import ch.seidel.kutu.Config.{appVersion, userHomePath}
 import ch.seidel.kutu.data.ResourceExchanger
 import com.zaxxer.hikari.{HikariConfig, HikariDataSource}
 import org.slf4j.LoggerFactory
+import org.sqlite.SQLiteConnection
 import slick.jdbc
 import slick.jdbc.JdbcBackend
 import slick.jdbc.JdbcBackend.{Database, DatabaseDef}
@@ -83,11 +83,15 @@ object DBService {
       , "AddAnmeldungTables-sqllite.sql"
       , "AddAnmeldungTables-u2-sqllite.sql"
       , "AddNotificationMailToWettkampf-sqllite.sql"
+      , "AddWKDisziplinMetafields-sqllite.sql"
+      , "AddWKTestPgms-sqllite.sql"
+      , "AddAltersklassenToWettkampf-sqllite.sql"
+      , "AddPunktegleichstandsregelToWettkampf-sqllite.sql"
     )
 
     (!dbfile.exists() || dbfile.length() == 0, Config.importDataFrom) match {
       case (true, Some(version)) =>
-        migrateFrom(createDS, sqlScripts, version)
+        migrateFrom(createDS, version)
       case (true, _) =>
         dbfile.createNewFile()
       case _ => // nothing to do
@@ -95,6 +99,12 @@ object DBService {
 
     var db = createDS(dbfile.getAbsolutePath)
     try {
+      val session = db.createSession()
+      try {
+        NewUUID.install(session.conn.unwrap(classOf[SQLiteConnection]))
+      } finally {
+        session .close()
+      }
       installDB(db, sqlScripts)
     } catch {
       case _: DatabaseNotInitializedException =>
@@ -107,12 +117,18 @@ object DBService {
         dbfile.renameTo(backupFile)
         dbfile.createNewFile()
         db = createDS(dbfile.getAbsolutePath)
+        val session = db.createSession()
+        try {
+          NewUUID.install(session.conn.unwrap(classOf[SQLiteConnection]))
+        } finally {
+          session.close()
+        }
         installDB(db, sqlScripts)
     }
     db
   }
 
-  private def migrateFrom(dsCreate: String => JdbcBackend.DatabaseDef, initialPreloadedSqlScripts: List[String], version: String): Unit = {
+  private def migrateFrom(dsCreate: String => JdbcBackend.DatabaseDef, version: String): Unit = {
     val preversion = new File(dbhomedir + "/" + buildFilename(version))
     if (preversion.exists()) {
       logger.info(s"Migrating Database from ${preversion.getAbsolutePath}")
@@ -121,23 +137,6 @@ object DBService {
         val db = dsCreate(dbfile.getAbsolutePath)
         try {
           logger.info(s"applying migration scripts to ${dbfile.getAbsolutePath}")
-          migrateFromPreviousVersion(db)
-          List("kutu-sqllite-ddl.sql"
-            , "SetJournalWAL.sql"
-            , "kutu-initialdata.sql").foreach(script => {
-            logger.info(s"registering script ${script} to ${dbfile.getAbsolutePath}")
-            migrationDone(db, script, "from migration")
-          })
-          val sqlScripts = List(
-            "AddTimeTable-sqllite.sql"
-            , "InitTimeTable.sql"
-            , "AddDurchgangTable-sqllite.sql"
-            , "InitDurchgangTable.sql"
-            , "FixEmptyRiegeTimeTableIssue-sqllite.sql"
-            , "AddAnmeldungTables-sqllite.sql"
-            , "AddAnmeldungTables-u2-sqllite.sql"
-          )
-          installDB(db, sqlScripts)
         } finally {
           db.close()
         }
@@ -175,6 +174,10 @@ object DBService {
         , "AddAnmeldungTables-u1-pg.sql"
         , "AddAnmeldungTables-u2-pg.sql"
         , "AddNotificationMailToWettkampf-pg.sql"
+        , "AddWKDisziplinMetafields-pg.sql"
+        , "AddWKTestPgms-pg.sql"
+        , "AddAltersklassenToWettkampf-pg.sql"
+        , "AddPunktegleichstandsregelToWettkampf-pg.sql"
       )
       installDB(db, sqlScripts)
       /*Config.importDataFrom match {
@@ -333,26 +336,30 @@ object DBService {
     }.map { filename =>
       logger.info(s"running sql-script: $filename ...")
       val file = getClass.getResourceAsStream("/dbscripts/" + filename)
-      val sqlscript = Source.fromInputStream(file, "utf-8").getLines().toList
-      try {
-        migrationDone(db, filename,
-          executeDBScript(sqlscript, db))
-      }
-      catch {
-        case e: Exception =>
-          logger.error("Error on executing database setup script", e);
-          val errorfile = new File(dbhomedir + s"/$appVersion-$filename.err")
-          errorfile.getParentFile.mkdirs()
-          val fos = Files.newOutputStream(errorfile.toPath, StandardOpenOption.CREATE, StandardOpenOption.APPEND)
-          try {
-            fos.write(e.getMessage.getBytes("utf-8"))
-            fos.write("\n\nStatement:\n".getBytes("utf-8"));
-            fos.write(sqlscript.mkString("\n").getBytes("utf-8"))
-            fos.write("\n".getBytes("utf-8"))
-          } finally {
-            fos.close
-          }
-          throw new DatabaseNotInitializedException()
+      if (file == null) {
+        println(filename + " not found")
+      } else {
+        val sqlscript = Source.fromInputStream(file, "utf-8").getLines().toList
+        try {
+          migrationDone(db, filename,
+            executeDBScript(sqlscript, db))
+        }
+        catch {
+          case e: Exception =>
+            logger.error("Error on executing database setup script", e);
+            val errorfile = new File(dbhomedir + s"/$appVersion-$filename.err")
+            errorfile.getParentFile.mkdirs()
+            val fos = Files.newOutputStream(errorfile.toPath, StandardOpenOption.CREATE, StandardOpenOption.APPEND)
+            try {
+              fos.write(e.getMessage.getBytes("utf-8"))
+              fos.write("\n\nStatement:\n".getBytes("utf-8"));
+              fos.write(sqlscript.mkString("\n").getBytes("utf-8"))
+              fos.write("\n".getBytes("utf-8"))
+            } finally {
+              fos.close
+            }
+            throw new DatabaseNotInitializedException()
+        }
       }
     }
   }

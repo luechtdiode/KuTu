@@ -1,17 +1,20 @@
 package ch.seidel.kutu
 
-import ch.seidel.commons.{DisplayablePage, PageDisplayer, ProgressForm}
+import ch.seidel.commons.PageDisplayer.showErrorDialog
+import ch.seidel.commons.{DisplayablePage, PageDisplayer, ProgressForm, TaskSteps}
 import ch.seidel.jwt
 import ch.seidel.kutu.Config._
 import ch.seidel.kutu.akka.KutuAppEvent
 import ch.seidel.kutu.data.{CaseObjectMetaUtil, ResourceExchanger, Surname}
 import ch.seidel.kutu.domain._
 import ch.seidel.kutu.http.{AuthSupport, EmptyResponse, JsonSupport, JwtSupport, WebSocketClient}
+import ch.seidel.kutu.renderer.PrintUtil
 import javafx.beans.property.SimpleObjectProperty
 import javafx.concurrent.Task
 import javafx.scene.control.DatePicker
 import net.glxn.qrgen.QRCode
 import net.glxn.qrgen.image.ImageType
+import org.controlsfx.validation.{Severity, ValidationResult, ValidationSupport, Validator}
 import org.slf4j.LoggerFactory
 import scalafx.Includes._
 import scalafx.application.JFXApp3.PrimaryStage
@@ -30,19 +33,21 @@ import scalafx.scene.control.Tab.sfxTab2jfx
 import scalafx.scene.control.TableColumn._
 import scalafx.scene.control.TextField.sfxTextField2jfx
 import scalafx.scene.control.TreeItem.sfxTreeItemToJfx
-import scalafx.scene.control._
+import scalafx.scene.control.{TreeView, _}
 import scalafx.scene.image.{Image, ImageView}
 import scalafx.scene.input.{Clipboard, ClipboardContent, DataFormat}
 import scalafx.scene.layout._
 import scalafx.scene.web.WebView
 import scalafx.scene.{Cursor, Node, Scene}
-import scalafx.stage.FileChooser
+import scalafx.stage.{FileChooser, Screen}
 import scalafx.stage.FileChooser.ExtensionFilter
 import spray.json._
 
-import java.io.{ByteArrayInputStream, FileInputStream}
+import java.io.{ByteArrayInputStream, File, FileInputStream}
+import java.nio.file.Files
 import java.util.concurrent.{Executors, ScheduledExecutorService}
 import java.util.{Base64, Date, UUID}
+import scala.collection.mutable
 import scala.concurrent.duration.Duration
 import scala.concurrent.{Await, Future, Promise}
 import scala.util.{Failure, Success}
@@ -87,22 +92,22 @@ object KuTuApp extends JFXApp3 with KutuService with JsonSupport with JwtSupport
 
     val oldselected = selectionPathToRoot(controlsView.selectionModel().getSelectedItem)
 
-    lastSelected.value = "Updating"
-    var lastNode = rootTreeItem
-    try {
-      tree = AppNavigationModel.create(KuTuApp.this)
-      rootTreeItem.children = tree.getTree
-      for {node <- oldselected} {
-        lastNode.setExpanded(true)
-        lastNode.children.find(n => n.value.value.equals(node.value.value)) match {
-          case Some(n) => lastNode = n
-          case _ =>
+      lastSelected.value = "Updating"
+      var lastNode = rootTreeItem
+      try {
+        tree = AppNavigationModel.create(KuTuApp.this)
+        rootTreeItem.children = tree.getTree
+        for {node <- oldselected} {
+          lastNode.setExpanded(true)
+          lastNode.children.find(n => n.value.value.equals(node.value.value)) match {
+            case Some(n) => lastNode = n
+            case _ =>
+          }
         }
+      } finally {
+        lastSelected.value = oldselected.lastOption.map(_.value.value).getOrElse("")
       }
-    } finally {
-      lastSelected.value = oldselected.lastOption.map(_.value.value).getOrElse("")
-    }
-    controlsView.selectionModel().select(lastNode)
+      controlsView.selectionModel().select(lastNode)
   }
 
   def handleAction[J <: javafx.event.ActionEvent, R](handler: scalafx.event.ActionEvent => R) = new javafx.event.EventHandler[J] {
@@ -243,7 +248,9 @@ object KuTuApp extends JFXApp3 with KutuService with JsonSupport with JwtSupport
       }
     }
   }
-
+  def makeWettkampfKopierenMenu(copyFrom: WettkampfView): MenuItem = {
+    makeNeuerWettkampfAnlegenMenu(Some(copyFrom))
+  }
   def makeWettkampfBearbeitenMenu(p: WettkampfView): MenuItem = {
     makeMenuAction("Wettkampf bearbeiten") { (caption, action) =>
       implicit val e = action
@@ -257,16 +264,12 @@ object KuTuApp extends JFXApp3 with KutuService with JsonSupport with JwtSupport
         promptText = "Wettkampf-Titel"
         text = p.titel
       }
-      val cmbProgramm = new ComboBox(ObservableBuffer.from(listRootProgramme())) {
+      val cmbProgramm = new ComboBox[ProgrammView] {
         prefWidth = 500
         buttonCell = new ProgrammListCell
         cellFactory.value = {_:Any => new ProgrammListCell}
-        /*cellFactory = new Callback[ListView[ProgrammView], ListCell[ProgrammView]]() {
-          def call(p: ListView[ProgrammView]): ListCell[ProgrammView] = {
-            new ProgrammListCell
-          }
-        }*/
         promptText = "Programm"
+        items = ObservableBuffer.from(listRootProgramme().sorted)
         selectionModel.value.select(p.programm)
       }
       val txtNotificationEMail = new TextField {
@@ -289,29 +292,141 @@ object KuTuApp extends JFXApp3 with KutuService with JsonSupport with JwtSupport
         promptText = "Auszeichnung bei Erreichung des Mindest-Endwerts"
         text = p.auszeichnungendnote.toString
       }
+      val cmbRiegenRotationsregel = new ComboBox[String]() {
+        prefWidth = 500
+        RiegenRotationsregel.predefined.foreach(definition => {
+          items.value.add(definition._1)
+        })
+        promptText = "Riegenrotationsregel"
+      }
+      val txtRiegenRotationsregel = new TextField {
+        prefWidth = 500
+        promptText = "z.B. Kategorie/Verein/Geschlecht/Alter/Name/Vorname/Rotierend/AltInv"
+        text = RiegenRotationsregel(p.toWettkampf).toFormel
+        editable <== Bindings.createBooleanBinding(() => {
+          "Individuell".equals(cmbRiegenRotationsregel.value.value)
+        },
+          cmbRiegenRotationsregel.selectionModel,
+          cmbRiegenRotationsregel.value
+        )
+
+        cmbRiegenRotationsregel.value.onChange {
+          text.value = RiegenRotationsregel.predefined(cmbRiegenRotationsregel.value.value)
+          if (text.value.isEmpty && !"Einfach".equals(cmbRiegenRotationsregel.value.value)) {
+            text.value = p.rotation
+          }
+        }
+      }
+      val cmbPunktgleichstandsregel = new ComboBox[String]() {
+        prefWidth = 500
+        Gleichstandsregel.predefined.foreach(definition => {
+          items.value.add(definition._1)
+        })
+        promptText = "Rangierungsregel bei Punktegleichstand"
+      }
+      val txtPunktgleichstandsregel = new TextField {
+        prefWidth = 500
+        promptText = "z.B. E-Note-Summe/E-NoteBest/Disziplin(Boden,Sprung)/JugendVorAlter"
+        text = Gleichstandsregel(p.toWettkampf).toFormel
+        editable <== Bindings.createBooleanBinding(() => {
+          "Individuell".equals(cmbPunktgleichstandsregel.value.value)
+        },
+          cmbPunktgleichstandsregel.selectionModel,
+          cmbPunktgleichstandsregel.value
+        )
+
+        cmbPunktgleichstandsregel.value.onChange {
+          text.value = Gleichstandsregel.predefined(cmbPunktgleichstandsregel.value.value)
+          if (text.value.isEmpty && !"Ohne".equals(cmbPunktgleichstandsregel.value.value)) {
+            text.value = p.punktegleichstandsregel
+          }
+        }
+        cmbProgramm.value.onChange {
+          text.value = Gleichstandsregel(p.toWettkampf.copy(programmId = cmbProgramm.selectionModel.value.getSelectedItem.id)).toFormel
+        }
+
+      }
+      val validationSupport = new ValidationSupport
+      validationSupport.registerValidator(txtPunktgleichstandsregel, false, Gleichstandsregel.createValidator)
+      val cmbAltersklassen = new ComboBox[String]() {
+        prefWidth = 500
+        Altersklasse.predefinedAKs.foreach(definition => {
+          items.value.add(definition._1)
+        })
+        promptText = "Altersklassen"
+
+      }
+      val txtAltersklassen = new TextField {
+        prefWidth = 500
+        promptText = "Alersklassen (z.B. 6,7,9-10,AK11-20*2,25-100/10)"
+        text = p.altersklassen
+        editable <== Bindings.createBooleanBinding(() => {
+          "Individuell".equals(cmbAltersklassen.value.value)
+        },
+          cmbAltersklassen.selectionModel,
+          cmbAltersklassen.value
+        )
+
+        cmbAltersklassen.value.onChange{
+          text.value = Altersklasse.predefinedAKs(cmbAltersklassen.value.value)
+          if (text.value.isEmpty && !"Ohne".equals(cmbAltersklassen.value.value)) {
+            text.value = p.altersklassen
+          }
+        }
+      }
+      val cmbJGAltersklassen = new ComboBox[String]() {
+        prefWidth = 500
+        Altersklasse.predefinedAKs.foreach(definition => {
+          items.value.add(definition._1)
+        })
+        promptText = "Jahrgang Altersklassen"
+
+      }
+      val txtJGAltersklassen = new TextField {
+        prefWidth = 500
+        promptText = "Jahrgangs Altersklassen (z.B. AK6,AK7,AK9-10,AK11-20*2,AK25-100/10)"
+        text = p.jahrgangsklassen
+        editable <== Bindings.createBooleanBinding(() => {
+          "Individuell".equals(cmbJGAltersklassen.value.value)
+        },
+          cmbJGAltersklassen.selectionModel,
+          cmbJGAltersklassen.value
+        )
+
+        cmbJGAltersklassen.value.onChange{
+          text.value = Altersklasse.predefinedAKs(cmbJGAltersklassen.value.value)
+          if (text.value.isEmpty && !"Ohne".equals(cmbJGAltersklassen.value.value)) {
+            text.value = p.jahrgangsklassen
+          }
+        }
+      }
       PageDisplayer.showInDialog(caption, new DisplayablePage() {
         def getPage: Node = {
           new BorderPane {
             hgrow = Priority.Always
             vgrow = Priority.Always
             center = new VBox {
+              spacing = 5.0
               children.addAll(
                 new Label(txtDatum.promptText.value), txtDatum,
                 new Label(txtTitel.promptText.value), txtTitel,
                 new Label(cmbProgramm.promptText.value), cmbProgramm,
                 new Label(txtNotificationEMail.promptText.value), txtNotificationEMail,
                 new Label(txtAuszeichnung.promptText.value), txtAuszeichnung,
-                new Label(txtAuszeichnungEndnote.promptText.value), txtAuszeichnungEndnote)
+                new Label(txtAuszeichnungEndnote.promptText.value), txtAuszeichnungEndnote,
+                cmbRiegenRotationsregel, txtRiegenRotationsregel,
+                cmbPunktgleichstandsregel, txtPunktgleichstandsregel,
+                cmbAltersklassen, txtAltersklassen,
+                cmbJGAltersklassen, txtJGAltersklassen
+              )
             }
           }
         }
       },
         new Button("OK") {
           disable <== when(Bindings.createBooleanBinding(() => {
-            cmbProgramm.selectionModel.value.getSelectedIndex == -1 ||
               txtDatum.value.isNull.value || txtTitel.text.value.isEmpty
           },
-            cmbProgramm.selectionModel.value.selectedIndexProperty,
             txtDatum.value,
             txtTitel.text
           )) choose true otherwise false
@@ -336,7 +451,12 @@ object KuTuApp extends JFXApp3 with KutuService with JsonSupport with JwtSupport
                     case e: Exception => 0
                   }
                 },
-                p.uuid)
+                p.uuid,
+                txtAltersklassen.text.value,
+                txtJGAltersklassen.text.value,
+                txtPunktgleichstandsregel.text.value,
+                txtRiegenRotationsregel.text.value
+              )
               val dir = new java.io.File(homedir + "/" + w.easyprint.replace(" ", "_"))
               if (!dir.exists()) {
                 dir.mkdirs();
@@ -1052,8 +1172,9 @@ object KuTuApp extends JFXApp3 with KutuService with JsonSupport with JwtSupport
     item
   }
 
-  def makeNeuerWettkampfAnlegenMenu: MenuItem = {
-    makeMenuAction("Neuen Wettkampf anlegen ...") { (caption, action) =>
+  def makeNeuerWettkampfAnlegenMenu(copyFrom: Option[WettkampfView] = None): MenuItem = {
+    val menutext = if (copyFrom.isEmpty) "Neuen Wettkampf anlegen ..." else s"Neuen Wettkampf wie ${copyFrom.get.easyprint} anlegen ..."
+    makeMenuAction(menutext) { (caption, action) =>
       implicit val e = action
       val txtDatum = new DatePicker {
         setPromptText("Wettkampf-Datum")
@@ -1062,33 +1183,151 @@ object KuTuApp extends JFXApp3 with KutuService with JsonSupport with JwtSupport
       val txtTitel = new TextField {
         prefWidth = 500
         promptText = "Wettkampf-Titel"
+        text.value = copyFrom.map(_.titel).getOrElse("")
       }
-      val cmbProgramm = new ComboBox(ObservableBuffer.from(listRootProgramme())) {
+      val pgms = ObservableBuffer.from(listRootProgramme().sorted)
+      val cmbProgramm = new ComboBox(pgms) {
         prefWidth = 500
         buttonCell = new ProgrammListCell
         cellFactory.value = {_:Any => new ProgrammListCell}
-        /*cellFactory = new Callback[ListView[ProgrammView], ListCell[ProgrammView]]() {
-          def call(p: ListView[ProgrammView]): ListCell[ProgrammView] = {
-            new ProgrammListCell
-          }
-        }*/
-
         promptText = "Programm"
+        copyFrom.map(_.programm).foreach(pgm => {
+          val pgmIndex = pgms.indexOf(pgm)
+          println(pgmIndex)
+          selectionModel.value.select(pgmIndex)
+          selectionModel.value.select(pgm)
+        })
       }
       val txtNotificationEMail = new TextField {
         prefWidth = 500
         promptText = "EMail für die Notifikation von Online-Mutationen"
-        text = ""
+        text.value = copyFrom.map(_.notificationEMail).getOrElse("")
       }
       val txtAuszeichnung = new TextField {
         prefWidth = 500
         promptText = "%-Angabe, wer eine Auszeichnung bekommt"
-        text = "40.00%"
+        text.value = "40.00%"
+        copyFrom.map(_.auszeichnung).foreach(auszeichnung => {
+          if (auszeichnung > 100) {
+            text = dbl2Str(auszeichnung / 100d) + "%"
+          }
+          else {
+            text = s"${auszeichnung}%"
+          }
+        })
       }
       val txtAuszeichnungEndnote = new TextField {
         prefWidth = 500
         promptText = "Auszeichnung bei Erreichung des Mindest-Gerätedurchschnittwerts"
         text = ""
+        copyFrom.map(_.auszeichnungendnote).foreach(auszeichnungendnote => {
+          text = auszeichnungendnote.toString()
+        })
+      }
+      val cmbRiegenRotationsregel = new ComboBox[String]() {
+        prefWidth = 500
+        RiegenRotationsregel.predefined.foreach(definition => {
+          items.value.add(definition._1)
+        })
+        promptText = "Riegenrotationsregel"
+      }
+      val txtRiegenRotationsregel = new TextField {
+        prefWidth = 500
+        promptText = "z.B. Kategorie/Verein/Alter/Name/Vorname/Rotierend/AltInv"
+
+        editable <== Bindings.createBooleanBinding(() => {
+          "Individuell".equals(cmbRiegenRotationsregel.value.value)
+        },
+          cmbRiegenRotationsregel.selectionModel,
+          cmbRiegenRotationsregel.value
+        )
+
+        cmbRiegenRotationsregel.value.onChange {
+          text = RiegenRotationsregel.predefined(cmbRiegenRotationsregel.value.value)
+        }
+        text.value = RiegenRotationsregel("Einfach/Rotierend/AltInvers").toFormel
+        copyFrom.map(_.rotation).foreach(rotation => {
+          text = rotation
+        })
+      }
+      val cmbPunktgleichstandsregel = new ComboBox[String]() {
+        prefWidth = 500
+        Gleichstandsregel.predefined.foreach(definition => {
+          items.value.add(definition._1)
+        })
+        promptText = "Rangierungsregel bei Punktegleichstand"
+      }
+      val txtPunktgleichstandsregel = new TextField {
+        prefWidth = 500
+        promptText = "z.B. E-Note-Summe/E-NoteBest/Disziplin(Boden,Sprung)/JugendVorAlter"
+        editable <== Bindings.createBooleanBinding(() => {
+          "Individuell".equals(cmbPunktgleichstandsregel.value.value)
+        },
+          cmbPunktgleichstandsregel.selectionModel,
+          cmbPunktgleichstandsregel.value
+        )
+
+        cmbPunktgleichstandsregel.value.onChange {
+          text = Gleichstandsregel.predefined(cmbPunktgleichstandsregel.value.value)
+        }
+        cmbProgramm.value.onChange {
+          text = Gleichstandsregel(cmbProgramm.selectionModel.value.getSelectedItem.id).toFormel
+        }
+        copyFrom.map(_.punktegleichstandsregel).foreach(punktegleichstandsregel => {
+          text = punktegleichstandsregel
+        })
+      }
+      val validationSupport = new ValidationSupport
+      validationSupport.registerValidator(txtPunktgleichstandsregel, false, Gleichstandsregel.createValidator)
+      val cmbAltersklassen = new ComboBox[String]() {
+        prefWidth = 500
+        Altersklasse.predefinedAKs.foreach(definition => {
+          items.value.add(definition._1)
+        })
+        promptText = "Altersklassen"
+      }
+      val txtAltersklassen = new TextField {
+        prefWidth = 500
+        promptText = "Alersklassen (z.B. 6,7,9-10,AK11-20*2,25-100/10)"
+        text = ""
+        editable <== Bindings.createBooleanBinding(() => {
+          "Individuell".equals(cmbAltersklassen.value.value)
+        },
+          cmbAltersklassen.selectionModel,
+          cmbAltersklassen.value
+        )
+
+        cmbAltersklassen.value.onChange {
+          text = Altersklasse.predefinedAKs(cmbAltersklassen.value.value)
+        }
+        copyFrom.map(_.altersklassen).foreach(altersklassen => {
+          text = altersklassen
+        })
+      }
+      val cmbJGAltersklassen = new ComboBox[String]() {
+        prefWidth = 500
+        Altersklasse.predefinedAKs.foreach(definition => {
+          items.value.add(definition._1)
+        })
+        promptText = "Jahrgang Altersklassen"
+      }
+      val txtJGAltersklassen = new TextField {
+        prefWidth = 500
+        promptText = "Jahrgangs Altersklassen (z.B. AK6,AK7,AK9-10,AK11-20*2,AK25-100/10)"
+        text = ""
+        editable <== Bindings.createBooleanBinding(() => {
+          "Individuell".equals(cmbJGAltersklassen.value.value)
+        },
+          cmbJGAltersklassen.selectionModel,
+          cmbJGAltersklassen.value
+        )
+
+        cmbJGAltersklassen.value.onChange{
+          text = Altersklasse.predefinedAKs(cmbJGAltersklassen.value.value)
+        }
+        copyFrom.map(_.jahrgangsklassen).foreach(jahrgangsklassen => {
+          text = jahrgangsklassen
+        })
       }
       PageDisplayer.showInDialog(caption, new DisplayablePage() {
         def getPage: Node = {
@@ -1096,13 +1335,19 @@ object KuTuApp extends JFXApp3 with KutuService with JsonSupport with JwtSupport
             hgrow = Priority.Always
             vgrow = Priority.Always
             center = new VBox {
+              spacing = 5.0
               children.addAll(
                 new Label(txtDatum.promptText.value), txtDatum,
                 new Label(txtTitel.promptText.value), txtTitel,
                 new Label(cmbProgramm.promptText.value), cmbProgramm,
                 new Label(txtNotificationEMail.promptText.value), txtNotificationEMail,
                 new Label(txtAuszeichnung.promptText.value), txtAuszeichnung,
-                new Label(txtAuszeichnungEndnote.promptText.value), txtAuszeichnungEndnote)
+                new Label(txtAuszeichnungEndnote.promptText.value), txtAuszeichnungEndnote,
+                cmbRiegenRotationsregel, txtRiegenRotationsregel,
+                cmbPunktgleichstandsregel, txtPunktgleichstandsregel,
+                cmbAltersklassen, txtAltersklassen,
+                cmbJGAltersklassen, txtJGAltersklassen
+              )
             }
           }
         }
@@ -1124,7 +1369,7 @@ object KuTuApp extends JFXApp3 with KutuService with JsonSupport with JwtSupport
             txtTitel.text.value,
             Set(cmbProgramm.selectionModel.value.getSelectedItem.id),
             txtNotificationEMail.text.value,
-            txtAuszeichnung.text.value.filter(c => c.isDigit || c == '.' || c == ',').toString match {
+            txtAuszeichnung.text.value.filter(c => c.isDigit || c == '.' || c == ',') match {
               case "" => 0
               case s: String if (s.indexOf(".") > -1 || s.indexOf(",") > -1) => math.round(str2dbl(s) * 100).toInt
               case s: String => str2Int(s)
@@ -1137,11 +1382,52 @@ object KuTuApp extends JFXApp3 with KutuService with JsonSupport with JwtSupport
                 case e: Exception => 0
               }
             },
-            Some(UUID.randomUUID().toString()))
+            Some(UUID.randomUUID().toString),
+            txtAltersklassen.text.value,
+            txtJGAltersklassen.text.value,
+            txtPunktgleichstandsregel.text.value,
+            txtRiegenRotationsregel.text.value
+          )
           val dir = new java.io.File(homedir + "/" + w.easyprint.replace(" ", "_"))
           if (!dir.exists()) {
             dir.mkdirs();
           }
+          copyFrom.foreach(wkToCopy => {
+            // Ranglisten (scoredef), Planzeiten und Logo kopieren ...
+            println(w)
+            val sourceFolder = new File(homedir + "/" + encodeFileName(copyFrom.get.easyprint))
+            val targetFolder = new File(homedir + "/" + encodeFileName(w.easyprint))
+            val sourceLogo = PrintUtil.locateLogoFile(sourceFolder)
+            if (!targetFolder.equals(sourceFolder) && sourceLogo.exists()) {
+              val logofileCopyTo = targetFolder.toPath.resolve(sourceLogo.getName)
+              if (!logofileCopyTo.toFile.exists()) {
+                Files.copy(sourceLogo.toPath, logofileCopyTo)
+              }
+            }
+            if (wkToCopy.programm.id == w.programmId) {
+              updateOrInsertPlanTimes(loadWettkampfDisziplinTimes(UUID.fromString(wkToCopy.uuid.get)).map(_.toWettkampfPlanTimeRaw.copy(wettkampfId = w.id)))
+            }
+
+            if (!targetFolder.equals(sourceFolder)) {
+              sourceFolder
+                .listFiles()
+                .filter(f => f.getName.endsWith(".scoredef"))
+                .toList
+                .sortBy {
+                  _.getName
+                }
+                .foreach(scoreFileSource => {
+                  val targetFilePath = targetFolder.toPath.resolve(scoreFileSource.getName)
+                  if (!targetFilePath.toFile.exists()) {
+                    Files.copy(scoreFileSource.toPath, targetFilePath)
+                  }
+                })
+            }
+            val scores = Await.result(listPublishedScores(UUID.fromString(wkToCopy.uuid.get)), Duration.Inf)
+            scores.foreach(score => {
+              savePublishedScore(wettkampfId = w.id, title = score.title, query = score.query, published = false, propagate = false)
+            })
+          })
           updateTree
           val text = s"${w.titel} ${w.datum}"
           tree.getLeaves("Wettkämpfe").find { item => text.equals(item.value.value) } match {
@@ -1584,10 +1870,7 @@ object KuTuApp extends JFXApp3 with KutuService with JsonSupport with JwtSupport
       dir.mkdirs()
     }
 
-    hostServices.showDocument(dir.toURI.toASCIIString)
-    if (dir.toURI.toASCIIString != dir.toURI.toString) {
-      hostServices.showDocument(dir.toURI.toString)
-    }
+    hostServices.showDocument(dir.toURI.toString)
   }
 
   def makeVereinLoeschenMenu(v: Verein) = makeMenuAction("Verein löschen") { (caption, action) =>
@@ -1665,8 +1948,28 @@ object KuTuApp extends JFXApp3 with KutuService with JsonSupport with JwtSupport
   def getStage() = stage
 
   override def start(): Unit = {
-    markAthletesInactiveOlderThan(3)
+    val pForm = new ProgressForm(Some(new PrimaryStage {
+      icons += new Image(this.getClass.getResourceAsStream("/images/app-logo.png"))
+    }))
+    val startSteps = TaskSteps("")
+    pForm.activateProgressBar("Wettkampf App startet ...", startSteps, startUI)
+    startSteps.nextStep("Starte die Datenbank ...", startDB)
+    startSteps.nextStep("Bereinige veraltete Daten ...", cleanupDB)
+    new Thread(startSteps).start()
+  }
 
+  def startDB(): Unit = {
+    logger.info(database.source.toString)
+  }
+  
+  def cleanupDB(): Unit = {
+    Future {
+      markAthletesInactiveOlderThan(3)
+    }
+  }
+
+  def startUI(): Unit = {
+    logger.info("starte das UI ...")
     rootTreeItem = new TreeItem[String]("Dashboard") {
       expanded = true
       children = tree.getTree
@@ -1793,7 +2096,7 @@ object KuTuApp extends JFXApp3 with KutuService with JsonSupport with JwtSupport
               }
             case "Wettkämpfe" =>
               controlsView.contextMenu = new ContextMenu() {
-                items += makeNeuerWettkampfAnlegenMenu
+                items += makeNeuerWettkampfAnlegenMenu()
                 items += makeNeuerWettkampfImportierenMenu
                 items += new Menu("Netzwerk") {
                   //items += makeLoginMenu
@@ -1820,49 +2123,50 @@ object KuTuApp extends JFXApp3 with KutuService with JsonSupport with JwtSupport
                     //                    items += makeWettkampfRemoteRemoveMenu(p)
                     //                  }
 
-                    controlsView.contextMenu = new ContextMenu() {
-                      items += makeWettkampfDurchfuehrenMenu(p)
-                      items += makeWettkampfBearbeitenMenu(p)
-                      items += makeWettkampfExportierenMenu(p)
-                      items += makeWettkampfDataDirectoryMenu(p)
-                      items += makeWettkampfLoeschenMenu(p)
-                      //                    items += networkMenu
+                        controlsView.contextMenu = new ContextMenu() {
+                          items += makeWettkampfDurchfuehrenMenu(p)
+                          items += makeWettkampfBearbeitenMenu(p)
+                          items += makeWettkampfKopierenMenu(p)
+                          items += makeWettkampfExportierenMenu(p)
+                          items += makeWettkampfDataDirectoryMenu(p)
+                          items += makeWettkampfLoeschenMenu(p)
+                          //                    items += networkMenu
+                        }
+                      case Some(KuTuAppThumbNail(v: Verein, _, newItem)) =>
+                        controlsView.contextMenu = new ContextMenu() {
+                          items += makeVereinUmbenennenMenu(v)
+                          items += makeVereinLoeschenMenu(v)
+                        }
+                      case _ => controlsView.contextMenu = new ContextMenu()
                     }
-                  case Some(KuTuAppThumbNail(v: Verein, _, newItem)) =>
-                    controlsView.contextMenu = new ContextMenu() {
-                      items += makeVereinUmbenennenMenu(v)
-                      items += makeVereinLoeschenMenu(v)
-                    }
+                  }
                   case _ => controlsView.contextMenu = new ContextMenu()
                 }
-              }
-              case _ => controlsView.contextMenu = new ContextMenu()
-            }
 
-          }
-          val centerPane = (newItem.isLeaf, Option(newItem.getParent)) match {
-            case (true, Some(parent)) => {
-              tree.getThumbs(parent.getValue).find(p => p.button.text.getValue.equals(newItem.getValue)) match {
-                case Some(KuTuAppThumbNail(p: WettkampfView, _, newItem)) =>
-                  PageDisplayer.choosePage(modelWettkampfModus, Some(p), "dashBoard - " + newItem.getValue, tree)
-                case Some(KuTuAppThumbNail(v: Verein, _, newItem)) =>
-                  PageDisplayer.choosePage(modelWettkampfModus, Some(v), "dashBoard - " + newItem.getValue, tree)
-                case _ =>
-                  PageDisplayer.choosePage(modelWettkampfModus, None, "dashBoard - " + newItem.getValue, tree)
               }
+              val centerPane = (newItem.isLeaf, Option(newItem.getParent)) match {
+                case (true, Some(parent)) => {
+                  tree.getThumbs(parent.getValue).find(p => p.button.text.getValue.equals(newItem.getValue)) match {
+                    case Some(KuTuAppThumbNail(p: WettkampfView, _, newItem)) =>
+                      PageDisplayer.choosePage(modelWettkampfModus, Some(p), "dashBoard - " + newItem.getValue, tree)
+                    case Some(KuTuAppThumbNail(v: Verein, _, newItem)) =>
+                      PageDisplayer.choosePage(modelWettkampfModus, Some(v), "dashBoard - " + newItem.getValue, tree)
+                    case _ =>
+                      PageDisplayer.choosePage(modelWettkampfModus, None, "dashBoard - " + newItem.getValue, tree)
+                  }
+                }
+                case (false, Some(_)) =>
+                  PageDisplayer.choosePage(modelWettkampfModus, None, "dashBoard - " + newItem.getValue, tree)
+                case (_, _) =>
+                  PageDisplayer.choosePage(modelWettkampfModus, None, "dashBoard", tree)
+              }
+              if (splitPane.items.size > 1) {
+                splitPane.items.remove(1)
+              }
+              splitPane.items.add(1, centerPane)
             }
-            case (false, Some(_)) =>
-              PageDisplayer.choosePage(modelWettkampfModus, None, "dashBoard - " + newItem.getValue, tree)
-            case (_, _) =>
-              PageDisplayer.choosePage(modelWettkampfModus, None, "dashBoard", tree)
           }
-          if (splitPane.items.size > 1) {
-            splitPane.items.remove(1)
-          }
-          splitPane.items.add(1, centerPane)
         }
-      }
-    }
 
     var divider: Option[Double] = None
     modelWettkampfModus.onChange {
@@ -1888,7 +2192,9 @@ object KuTuApp extends JFXApp3 with KutuService with JsonSupport with JwtSupport
       //initStyle(StageStyle.TRANSPARENT);
       title = "KuTu Wettkampf-App"
       icons += new Image(this.getClass.getResourceAsStream("/images/app-logo.png"))
-      scene = new Scene(1200, 750) {
+      val sceneWidth = 1200
+      val sceneHeigth = 750
+      scene = new Scene(sceneWidth, sceneHeigth) {
         root = new BorderPane {
           top = headerContainer
           center = new BorderPane {
@@ -1898,6 +2204,9 @@ object KuTuApp extends JFXApp3 with KutuService with JsonSupport with JwtSupport
         }
 
       }
+      val bounds = Screen.primary.bounds
+      x = bounds.minX + bounds.width / 2 - sceneWidth / 2
+      y = bounds.minY + bounds.height / 2 - sceneHeigth / 2
       val st = this.getClass.getResource("/css/Main.css")
       if (st == null) {
         logger.debug("Ressource /css/main.css not found. Class-Anchor: " + this.getClass)
@@ -1912,5 +2221,6 @@ object KuTuApp extends JFXApp3 with KutuService with JsonSupport with JwtSupport
         scene().stylesheets.add(st.toExternalForm)
       }
     }
+    logger.info("UI ready")
   }
 }

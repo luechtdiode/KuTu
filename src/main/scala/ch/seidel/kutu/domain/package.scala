@@ -88,6 +88,15 @@ package object domain {
     }
   }
 
+  def isNumeric(c: String): Boolean = {
+    try {
+      Integer.parseInt(c)
+      true
+    } catch {
+      case _:NumberFormatException => false
+    }
+  }
+
   val sdf = new SimpleDateFormat("dd.MM.yyyy")
   val sdfShort = new SimpleDateFormat("dd.MM.yy")
   val sdfExported = new SimpleDateFormat("yyyy-MM-dd")
@@ -168,12 +177,12 @@ package object domain {
 
   def encodeFileName(name: String): String = {
     val forbiddenChars = List(
-    '/', '<', '>', ':', '"', '|', '?', '*', ' '
+      '/', '<', '>', ':', '"', '|', '?', '*', ' '
     ) :+ (0 to 32)
     val forbiddenNames = List(
-    "CON", "PRN", "AUX", "NUL",
-    "COM1", "COM2", "COM3", "COM4", "COM5", "COM6", "COM7", "COM8", "COM9",
-    "LPT1", "LPT2", "LPT3", "LPT4", "LPT5", "LPT6", "LPT7", "LPT8", "LPT9"
+      "CON", "PRN", "AUX", "NUL",
+      "COM1", "COM2", "COM3", "COM4", "COM5", "COM6", "COM7", "COM8", "COM9",
+      "LPT1", "LPT2", "LPT3", "LPT4", "LPT5", "LPT6", "LPT7", "LPT8", "LPT9"
     )
     if (forbiddenNames.contains(name.toUpperCase()))
       "_" + name + "_"
@@ -181,13 +190,14 @@ package object domain {
       name.map(c => if (forbiddenChars.contains(c)) '_' else c)
   }
 
-  trait DataObject {
+  trait DataObject extends Ordered[DataObject] {
     def easyprint: String = toString
 
     def capsulatedprint: String = {
       val ep = easyprint
       if (ep.matches(".*\\s,\\.;.*")) s""""$ep"""" else ep
     }
+    def compare(o: DataObject): Int = easyprint.compare(o.easyprint)
   }
 
   case class NullObject(caption: String) extends DataObject {
@@ -197,6 +207,9 @@ package object domain {
   object RiegeRaw {
     val KIND_STANDARD = 0;
     val KIND_EMPTY_RIEGE = 1;
+    val RIEGENMODE_BY_Program = 1;
+    val RIEGENMODE_BY_JG = 2;
+    val RIEGENMODE_BY_JG_VEREIN = 3;
   }
 
   case class RiegeRaw(wettkampfId: Long, r: String, durchgang: Option[String], start: Option[Long], kind: Int) extends DataObject {
@@ -220,7 +233,9 @@ package object domain {
 
   case class Verein(id: Long, name: String, verband: Option[String]) extends DataObject {
     override def easyprint = name
+
     def extendedprint = s"$name ${verband.getOrElse("")}"
+
     override def toString = name
   }
 
@@ -248,6 +263,7 @@ package object domain {
       case Some(d) => f"$d%tY "
       case _ => ""
     })
+
     def extendedprint: String = "" + (geschlecht match {
       case "W" => s"Ti ${name + " " + vorname}"
       case _ => s"Tu ${name + " " + vorname}"
@@ -256,13 +272,22 @@ package object domain {
       case _ => ""
     })
 
+    def shortPrint: String = "" + (geschlecht match {
+      case "W" => s"Ti ${name + " " + vorname}"
+      case _ => s"Tu ${name + " " + vorname}"
+    }) + " " + (gebdat match {
+      case Some(d) => f"$d%tY "
+      case _ => ""
+    })
+
     def toPublicView: Athlet = {
       Athlet(id, 0, geschlecht, name, vorname, gebdat
         .map(d => sqlDate2ld(d))
-        .map(ld => LocalDate.of(ld.getYear, 1,1))
+        .map(ld => LocalDate.of(ld.getYear, 1, 1))
         .map(ld => ld2SQLDate(ld))
         , "", "", "", verein, activ)
     }
+
     def toAthletView(verein: Option[Verein]): AthletView = AthletView(
       id, js_id,
       geschlecht, name, vorname, gebdat,
@@ -278,7 +303,8 @@ package object domain {
       case Some(v) => v.easyprint;
       case _ => ""
     })
-    def extendedprint: String =  "" + (geschlecht match {
+
+    def extendedprint: String = "" + (geschlecht match {
       case "W" => s"Ti ${name + " " + vorname}"
       case _ => s"Tu ${name + " " + vorname}"
     }) + (gebdat match {
@@ -288,14 +314,17 @@ package object domain {
       case Some(v) => v.easyprint;
       case _ => ""
     })
+
     def toPublicView: AthletView = {
       AthletView(id, 0, geschlecht, name, vorname, gebdat
         .map(d => sqlDate2ld(d))
-        .map(ld => LocalDate.of(ld.getYear, 1,1))
+        .map(ld => LocalDate.of(ld.getYear, 1, 1))
         .map(ld => ld2SQLDate(ld))
         , "", "", "", verein, activ)
     }
+
     def toAthlet = Athlet(id, js_id, geschlecht, name, vorname, gebdat, strasse, plz, ort, verein.map(_.id), activ)
+
     def withBestMatchingGebDat(importedGebDat: Option[Date]) = {
       copy(gebdat = importedGebDat match {
         case Some(d) =>
@@ -306,7 +335,8 @@ package object domain {
         case _ => gebdat
       })
     }
-    def updatedWith(athlet: Athlet) = AthletView(athlet.id, athlet.js_id, athlet.geschlecht, athlet.name, athlet.vorname, athlet.gebdat, athlet.strasse, athlet.plz, athlet.ort, verein.map(v => v.copy(id=athlet.verein.getOrElse(0L))), athlet.activ)
+
+    def updatedWith(athlet: Athlet) = AthletView(athlet.id, athlet.js_id, athlet.geschlecht, athlet.name, athlet.vorname, athlet.gebdat, athlet.strasse, athlet.plz, athlet.ort, verein.map(v => v.copy(id = athlet.verein.getOrElse(0L))), athlet.activ)
   }
 
   object Wertungsrichter {
@@ -397,6 +427,147 @@ package object domain {
     override def easyprint = "Jahrgang " + jahrgang
   }
 
+  object Leistungsklasse {
+    // https://www.dtb.de/fileadmin/user_upload/dtb.de/Sportarten/Ger%C3%A4tturnen/PDFs/2022/01_DTB-Arbeitshilfe_Gtw_KuerMod_2022_V1.pdf
+    val dtb = Seq(
+      "Kür", "LK1", "LK2", "LK3", "LK4"
+    )
+  }
+  object Altersklasse {
+
+    // file:///C:/Users/Roland/Downloads/Turn10-2018_Allgemeine%20Bestimmungen.pdf
+    val akExpressionTurn10 = "AK7-18,AK24,AK30-100/5"
+    val altersklassenTurn10 = Seq(
+      6,7,8,9,10,11,12,13,14,15,16,17,18,24,30,35,40,45,50,55,60,65,70,75,80,85,90,95,100
+    ).map(i => ("AK", Seq(), i))
+    // see https://www.dtb.de/fileadmin/user_upload/dtb.de/Passwesen/Wettkampfordnung_DTB_2021.pdf
+    val akDTBExpression = "AK6,AK18,AK22,AK25"
+    val altersklassenDTB = Seq(
+      6,18,22,25
+    ).map(i => ("AK", Seq(), i))
+    // see https://www.dtb.de/fileadmin/user_upload/dtb.de/TURNEN/Standards/PDFs/Rahmentrainingskonzeption-GTm_inklAnlagen_19.11.2020.pdf
+    val akDTBPflichtExpression = "AK8-9,AK11-19/2"
+    val altersklassenDTBPflicht = Seq(
+      7,8,9,11,13,15,17,19
+    ).map(i => ("AK", Seq(), i))
+    val akDTBKuerExpression = "AK13-19/2"
+    val altersklassenDTBKuer = Seq(
+      12,13,15,17,19
+    ).map(i => ("AK", Seq(), i))
+
+    val predefinedAKs = Map(
+      ("Ohne" -> "")
+      , ("Turn10®" -> akExpressionTurn10)
+      , ("DTB" -> akDTBExpression)
+      , ("DTB Pflicht" -> akDTBPflichtExpression)
+      , ("DTB Kür" -> akDTBKuerExpression)
+      , ("Individuell" -> "")
+    )
+    def apply(altersgrenzen: Seq[(String, Seq[String], Int)]): Seq[Altersklasse] = {
+      if (altersgrenzen.isEmpty) {
+        Seq.empty
+      } else {
+        altersgrenzen
+          .groupBy(ag => (ag._1, ag._2)) // ag-name + qualifiers
+          .map { aggr =>
+            aggr._1 -> aggr._2
+              .sortBy(ag => ag._3)
+              .distinctBy(_._3)
+              .foldLeft(Seq[Altersklasse]()) { (acc, ag) =>
+                acc :+ Altersklasse(ag._1, acc.lastOption.map(_.alterBis + 1).getOrElse(0), ag._3 - 1, ag._2)
+              }.appended(Altersklasse(aggr._2.last._1, aggr._2.last._3, 0, aggr._2.last._2))
+          }
+          .flatMap(_._2)
+          .toSeq
+      }
+    }
+
+    def apply(klassen: Seq[Altersklasse], alter: Int, geschlecht: String, programm: ProgrammView): Altersklasse = {
+      klassen
+        .find(klasse => klasse.matchesAlter(alter) && klasse.matchesGeschlecht(geschlecht) && klasse.matchesProgramm(programm))
+        .getOrElse(Altersklasse(klassen.head.bezeichnung, alter, alter, Seq(geschlecht, programm.name)))
+    }
+
+    def parseGrenzen(klassenDef: String, fallbackBezeichnung: String = "Altersklasse"): Seq[(String, Seq[String], Int)] = {
+      /*
+      AKWBS(W+BS)7,8,9,10,12,16,AKMBS(M+BS)8,10,15
+
+       */
+      val rangeStepPattern = "([\\D\\s]*)([0-9]+)-([0-9]+)/([0-9]+)".r
+      val rangepattern = "([\\D\\s]*)([0-9]+)-([0-9]+)".r
+      val intpattern = "([\\D\\s]*)([0-9]+)".r
+      val qualifierPattern = "(.*)\\(([\\D\\s]+)\\)".r
+
+      def bez(b: String): (String,Seq[String]) = if(b.nonEmpty) {
+        b match {
+          case qualifierPattern(bezeichnung, qualifiers) => (bezeichnung, qualifiers.split("\\+").toSeq)
+          case bezeichnung: String => (bezeichnung, Seq())
+        }
+      } else ("", Seq())
+
+      klassenDef.split(",")
+        .flatMap{
+          case rangeStepPattern(bezeichnung, von, bis, stepsize) => Range.inclusive(von, bis, stepsize).map(i => (bez(bezeichnung), i))
+          case rangepattern(bezeichnung, von, bis) => (str2Int(von) to str2Int(bis)).map(i => (bez(bezeichnung), i))
+          case intpattern(bezeichnung, von) => Seq((bez(bezeichnung), str2Int(von)))
+          case _ => Seq.empty
+        }.toList
+        .foldLeft(Seq[(String, Seq[String], Int)]()){(acc, item) =>
+          if (item._1._1.nonEmpty) {
+            acc :+ (item._1._1, item._1._2, item._2)
+          } else if (acc.nonEmpty) {
+            acc :+ (acc.last._1, acc.last._2, item._2)
+          } else {
+            acc :+ (fallbackBezeichnung, Seq(), item._2)
+          }
+        }
+        .sortBy(item => (item._1, item._3))
+    }
+    def apply(klassenDef: String, fallbackBezeichnung: String = "Altersklasse"): Seq[Altersklasse] = {
+      apply(parseGrenzen(klassenDef, fallbackBezeichnung))
+    }
+  }
+
+  case class Altersklasse(bezeichnung: String, alterVon: Int, alterBis: Int, qualifiers: Seq[String]) extends DataObject {
+    val geschlechtQualifier = qualifiers.filter(q => Seq("M", "W").contains(q))
+    val programmQualifier = qualifiers.filter(q => !Seq("M", "W").contains(q))
+    def matchesAlter(alter: Int): Boolean =
+      ((alterVon == 0 || alter >= alterVon) &&
+        (alterBis == 0 || alter <= alterBis))
+    def matchesGeschlecht(geschlecht: String): Boolean = {
+      geschlechtQualifier.isEmpty || geschlechtQualifier.contains(geschlecht)
+    }
+    def matchesProgramm(programm: ProgrammView): Boolean = {
+      programmQualifier.isEmpty || programm.programPath.exists(p => programmQualifier.contains(p.name))
+    }
+    override def easyprint: String = {
+      val q = if (qualifiers.nonEmpty) qualifiers.mkString("(", ",", ")") else ""
+      if (alterVon > 0 && alterBis > 0)
+        if (alterVon == alterBis)
+          s"""$bezeichnung$q $alterVon"""
+        else s"""$bezeichnung$q $alterVon bis $alterBis"""
+      else if (alterVon > 0 && alterBis == 0)
+        s"""$bezeichnung$q ab $alterVon"""
+      else
+        s"""$bezeichnung$q bis $alterBis"""
+    }
+    def easyprintShort: String = {
+      if (alterVon > 0 && alterBis > 0)
+        if (alterVon == alterBis)
+          s"""$bezeichnung$alterVon"""
+        else s"""$bezeichnung$alterVon-$alterBis"""
+      else if (alterVon > 0 && alterBis == 0)
+        s"""$bezeichnung$alterVon-"""
+      else
+        s"""$bezeichnung-$alterBis"""
+    }
+
+    override def compare(x: DataObject): Int = x match {
+      case ak: Altersklasse => alterVon.compareTo(ak.alterVon)
+      case _ => x.easyprint.compareTo(easyprint)
+    }
+  }
+
   case class WettkampfJahr(wettkampfjahr: String) extends DataObject {
     override def easyprint = "Wettkampf-Jahr " + wettkampfjahr
   }
@@ -414,19 +585,40 @@ package object domain {
     val ord: Int
     val alterVon: Int
     val alterBis: Int
+    val riegenmode: Int
+    val uuid: String
 
     def withParent(parent: ProgrammView) = {
-      ProgrammView(id, name, aggregate, Some(parent), ord, alterVon, alterBis)
+      ProgrammView(id, name, aggregate, Some(parent), ord, alterVon, alterBis, uuid, riegenmode)
     }
 
     def toView = {
-      ProgrammView(id, name, aggregate, None, ord, alterVon, alterBis)
+      ProgrammView(id, name, aggregate, None, ord, alterVon, alterBis, uuid, riegenmode)
     }
   }
 
-  case class ProgrammRaw(id: Long, name: String, aggregate: Int, parentId: Long, ord: Int, alterVon: Int, alterBis: Int) extends Programm
+  /**
+   *
+   * Krits        +-------------------------------------------+---------------------------------------------------------
+   * aggregate ->|0                                          |1
+   * +-------------------------------------------+---------------------------------------------------------
+   * riegenmode->|1                   |2  / 3(+verein)       |1                     |2  / 3(+verein)
+   * Acts         +===========================================+=========================================================
+   * Einteilung->| Sex,Pgm,Verein     | Sex,Pgm,Jg(,Verein)  | Sex,Pgm,Verein       | Pgm,Sex,Jg(,Verein)
+   * +--------------------+----------------------+----------------------+----------------------------------
+   * Teilnahme   | 1/WK               | 1/WK                 | <=PgmCnt(Jg)/WK      | 1/Pgm
+   * +-------------------------------------------+---------------------------------------------------------
+   * Registration| 1/WK               | 1/WK, Pgm/(Jg)       | mind. 1, max 1/Pgm   | 1/WK aut. Tn 1/Pgm
+   * +-------------------------------------------+---------------------------------------------------------
+   * Beispiele   | GeTu/KuTu/KuTuRi   | Turn10® (BS/OS)      | TG Allgäu (Pfl./Kür) | ATT (Kraft/Bewg)
+   * +-------------------------------------------+---------------------------------------------------------
+   * Rangliste   | Sex/Programm       | Sex/Programm/Jg      | Sex/Programm         | Sex/Programm/Jg
+   *             |                    | Sex/Programm/AK      | Sex/Programm/AK      |
+   * +-------------------------------------------+---------------------------------------------------------
+   */
+  case class ProgrammRaw(id: Long, name: String, aggregate: Int, parentId: Long, ord: Int, alterVon: Int, alterBis: Int, uuid: String, riegenmode: Int) extends Programm
 
-  case class ProgrammView(id: Long, name: String, aggregate: Int, parent: Option[ProgrammView], ord: Int, alterVon: Int, alterBis: Int) extends Programm {
+  case class ProgrammView(id: Long, name: String, aggregate: Int, parent: Option[ProgrammView], ord: Int, alterVon: Int, alterBis: Int, uuid: String, riegenmode: Int) extends Programm {
     //override def easyprint = toPath
 
     def head: ProgrammView = parent match {
@@ -434,11 +626,26 @@ package object domain {
       case Some(p) => p.head
     }
 
-    def wettkampfprogramm: ProgrammView = if (aggregator == this) this else head
+    def subHead: Option[ProgrammView] = parent match {
+      case None => None
+      case Some(p) => if (p.parent.nonEmpty) p.subHead else parent
+    }
+
+    def programPath: Seq[ProgrammView] = parent match {
+      case None => Seq(this)
+      case Some(p) => p.programPath :+ this
+    }
+
+    def wettkampfprogramm: ProgrammView = if (aggregator == this) this else aggregatorSubHead
 
     def aggregatorHead: ProgrammView = parent match {
-      case Some(p) if (aggregate != 0) => p.aggregatorHead
+      case Some(p) if (p.aggregate != 0) => p.aggregatorHead
       case _ => this
+    }
+
+    def groupedHead: ProgrammView = parent match {
+      case Some(p) if (p.parent.nonEmpty && aggregate != 0) => p
+      case _ => aggregatorHead
     }
 
     def aggregatorParent: ProgrammView = parent match {
@@ -464,7 +671,12 @@ package object domain {
       case Some(p) => p.toPath + " / " + name
     }
 
-    override def toString = toPath
+    override def compare(o: DataObject): Int = o match {
+      case p: ProgrammView => toPath.compareTo(p.toPath)
+      case _ => easyprint.compareTo(o.easyprint)
+    }
+
+    override def toString = s"$toPath"
   }
 
   //  object Wettkampf {
@@ -474,15 +686,15 @@ package object domain {
   //      if(uuid != null) Wettkampf(id, datum, titel, programmId, auszeichnung, auszeichnungendnote, Some(uuid))
   //      else apply(id, datum, titel, programmId, auszeichnung, auszeichnungendnote)
   //  }
-  case class Wettkampf(id: Long, uuid: Option[String], datum: java.sql.Date, titel: String, programmId: Long, auszeichnung: Int, auszeichnungendnote: scala.math.BigDecimal, notificationEMail: String) extends DataObject {
+  case class Wettkampf(id: Long, uuid: Option[String], datum: java.sql.Date, titel: String, programmId: Long, auszeichnung: Int, auszeichnungendnote: scala.math.BigDecimal, notificationEMail: String, altersklassen: Option[String], jahrgangsklassen: Option[String], punktegleichstandsregel: Option[String], rotation: Option[String]) extends DataObject {
 
     override def easyprint = f"$titel am $datum%td.$datum%tm.$datum%tY"
 
     def toView(programm: ProgrammView): WettkampfView = {
-      WettkampfView(id, uuid, datum, titel, programm, auszeichnung, auszeichnungendnote, notificationEMail)
+      WettkampfView(id, uuid, datum, titel, programm, auszeichnung, auszeichnungendnote, notificationEMail, altersklassen.getOrElse(""), jahrgangsklassen.getOrElse(""), punktegleichstandsregel.getOrElse(""), rotation.getOrElse(""))
     }
 
-    def toPublic: Wettkampf = Wettkampf(id, uuid, datum, titel, programmId, auszeichnung, auszeichnung, "")
+    def toPublic: Wettkampf = Wettkampf(id, uuid, datum, titel, programmId, auszeichnung, auszeichnung, "", altersklassen, jahrgangsklassen, punktegleichstandsregel, rotation)
 
     private def prepareFilePath(homedir: String) = {
       val filename: String = encodeFileName(easyprint)
@@ -572,10 +784,10 @@ package object domain {
   //      if(uuid != null) WettkampfView(id, datum, titel, programm, auszeichnung, auszeichnungendnote, Some(uuid))
   //      else apply(id, datum, titel, programm, auszeichnung, auszeichnungendnote)
   //  }
-  case class WettkampfView(id: Long, uuid: Option[String], datum: java.sql.Date, titel: String, programm: ProgrammView, auszeichnung: Int, auszeichnungendnote: scala.math.BigDecimal, notificationEMail: String) extends DataObject {
+  case class WettkampfView(id: Long, uuid: Option[String], datum: java.sql.Date, titel: String, programm: ProgrammView, auszeichnung: Int, auszeichnungendnote: scala.math.BigDecimal, notificationEMail: String, altersklassen: String, jahrgangsklassen: String, punktegleichstandsregel: String, rotation: String) extends DataObject {
     override def easyprint = f"$titel am $datum%td.$datum%tm.$datum%tY"
 
-    def toWettkampf = Wettkampf(id, uuid, datum, titel, programm.id, auszeichnung, auszeichnungendnote, notificationEMail)
+    def toWettkampf = Wettkampf(id, uuid, datum, titel, programm.id, auszeichnung, auszeichnungendnote, notificationEMail, Option(altersklassen), Option(jahrgangsklassen), Option(punktegleichstandsregel), Option(rotation))
   }
 
   case class PublishedScoreRaw(id: String, title: String, query: String, published: Boolean, publishedDate: java.sql.Date, wettkampfId: Long) extends DataObject {
@@ -595,14 +807,25 @@ package object domain {
     def toRaw = PublishedScoreRaw(id, title, query, published, publishedDate, wettkampf.id)
   }
 
-  case class Wettkampfdisziplin(id: Long, programmId: Long, disziplinId: Long, kurzbeschreibung: String, detailbeschreibung: Option[java.sql.Blob], notenfaktor: scala.math.BigDecimal, masculin: Int, feminim: Int, ord: Int) extends DataObject {
+  case class Wettkampfdisziplin(id: Long, programmId: Long, disziplinId: Long, kurzbeschreibung: String, detailbeschreibung: Option[Array[Byte]], notenfaktor: scala.math.BigDecimal, masculin: Int, feminim: Int, ord: Int, scale: Int, dnote: Int, min: Int, max: Int, startgeraet: Int) extends DataObject {
     override def easyprint = f"$disziplinId%02d: $kurzbeschreibung"
   }
 
-  case class WettkampfdisziplinView(id: Long, programm: ProgrammView, disziplin: Disziplin, kurzbeschreibung: String, detailbeschreibung: Option[Array[Byte]], notenSpez: NotenModus, masculin: Int, feminim: Int, ord: Int) extends DataObject {
+  case class WettkampfdisziplinView(id: Long, programm: ProgrammView, disziplin: Disziplin, kurzbeschreibung: String, detailbeschreibung: Option[Array[Byte]], notenSpez: NotenModus, masculin: Int, feminim: Int, ord: Int, scale: Int, dnote: Int, min: Int, max: Int, startgeraet: Int) extends DataObject {
     override def easyprint = disziplin.name
 
-    def toWettkampdisziplin = Wettkampfdisziplin(id, programm.id, disziplin.id, kurzbeschreibung, None, notenSpez.calcEndnote(0, 1, 0), masculin, feminim, ord)
+    val isDNoteUsed = dnote != 0
+
+    def verifiedAndCalculatedWertung(wertung: Wertung): Wertung = {
+      if (wertung.noteE.isEmpty) {
+        wertung.copy(noteD = None, noteE = None, endnote = None)
+      } else {
+        val (d, e) = notenSpez.validated(wertung.noteD.getOrElse(BigDecimal(0)).doubleValue, wertung.noteE.getOrElse(BigDecimal(0)).doubleValue, this)
+        wertung.copy(noteD = Some(d), noteE = Some(e), endnote = Some(notenSpez.calcEndnote(d, e, this)))
+      }
+    }
+
+    def toWettkampdisziplin = Wettkampfdisziplin(id, programm.id, disziplin.id, kurzbeschreibung, None, notenSpez.calcEndnote(0, 1, this), masculin, feminim, ord, scale, dnote, min, max, startgeraet)
   }
 
   case class WettkampfPlanTimeRaw(id: Long, wettkampfId: Long, wettkampfDisziplinId: Long, wechsel: Long, einturnen: Long, uebung: Long, wertung: Long) extends DataObject {
@@ -617,10 +840,12 @@ package object domain {
 
   case class Resultat(noteD: scala.math.BigDecimal, noteE: scala.math.BigDecimal, endnote: scala.math.BigDecimal) extends DataObject {
     def +(r: Resultat) = Resultat(noteD + r.noteD, noteE + r.noteE, endnote + r.endnote)
+    def +(r: BigDecimal) = Resultat(noteD + r, noteE + r, endnote + r)
 
     def /(cnt: Int) = Resultat(noteD / cnt, noteE / cnt, endnote / cnt)
 
     def *(cnt: Long) = Resultat(noteD * cnt, noteE * cnt, endnote * cnt)
+    def *(cnt: BigDecimal) = Resultat(noteD * cnt, noteE * cnt, endnote * cnt)
 
     lazy val formattedD = if (noteD > 0) f"${noteD}%4.2f" else ""
     lazy val formattedE = if (noteE > 0) f"${noteE}%4.2f" else ""
@@ -658,10 +883,8 @@ package object domain {
     def updatedWertung(valuesFrom: Wertung) = copy(noteD = valuesFrom.noteD, noteE = valuesFrom.noteE, endnote = valuesFrom.endnote)
 
     def validatedResult(dv: Double, ev: Double) = {
-      val w = toWertung
-      val scale = wettkampfdisziplin.notenSpez.defaultScale(w)
-      val (d, e) = wettkampfdisziplin.notenSpez.validated(dv, ev, scale)
-      Resultat(d, e, wettkampfdisziplin.notenSpez.calcEndnote(d, e, scale))
+      val (d, e) = wettkampfdisziplin.notenSpez.validated(dv, ev, wettkampfdisziplin)
+      Resultat(d, e, wettkampfdisziplin.notenSpez.calcEndnote(d, e, wettkampfdisziplin))
     }
 
     def showInScoreList = {
@@ -686,26 +909,12 @@ package object domain {
     lazy val divider = if (withDNotes || resultate.isEmpty) 1 else resultate.count { r => r.sum.endnote > 0 }
   }
 
-  sealed trait NotenModus /*with AutoFillTextBoxFactory.ItemComparator[String]*/ {
-    val isDNoteUsed: Boolean
-
-    def defaultScale(wertung: Wertung): Int = 2
-
+  sealed trait NotenModus {
     def selectableItems: Option[List[String]] = None
 
-    def validated(dnote: Double, enote: Double, scale: Int): (Double, Double)
+    def validated(dnote: Double, enote: Double, wettkampfDisziplin: WettkampfdisziplinView): (Double, Double)
 
-    def calcEndnote(dnote: Double, enote: Double, scale: Int): Double
-
-    def verifiedAndCalculatedWertung(wertung: Wertung): Wertung = {
-      if (wertung.noteE.isEmpty) {
-        wertung.copy(noteD = None, noteE = None, endnote = None)
-      } else {
-        val scale = defaultScale(wertung)
-        val (d, e) = validated(wertung.noteD.getOrElse(BigDecimal(0)).doubleValue, wertung.noteE.getOrElse(BigDecimal(0)).doubleValue, scale)
-        wertung.copy(noteD = Some(d), noteE = Some(e), endnote = Some(calcEndnote(d, e, scale)))
-      }
-    }
+    def calcEndnote(dnote: Double, enote: Double, wettkampfDisziplin: WettkampfdisziplinView): Double
 
     def toString(value: Double): String = if (value.toString == Double.NaN.toString) ""
     else value
@@ -713,90 +922,26 @@ package object domain {
     /*override*/ def shouldSuggest(item: String, query: String): Boolean = false
   }
 
-  case class Athletiktest(punktemapping: Map[String, Double], punktgewicht: Double) extends NotenModus {
-    override val isDNoteUsed = false
-
-    //    override def shouldSuggest(item: String, query: String): Boolean = {
-    //      findLikes(query).find(x => x.equalsIgnoreCase(item)).size > 0
-    //    }
-    //    def findnearest(value: Double): Double = {
-    //      val sorted = punktemapping.values.toList.sorted
-    //      if(value.equals(0.0d)) value else
-    //        sorted.find { x => x >= value } match {
-    //        case Some(v) => v
-    //        case None => sorted.last
-    //      }
-    //    }
-    //    def findLikes(value: String) = {
-    //      val lv = value.toLowerCase()
-    //      def extractDigits(lv: String) = lv.filter(c => c.isDigit || c == '.')
-    //      lazy val lvv = extractDigits(lv)
-    //      val orderedKeys = punktemapping.keys.toList.sortBy(punktemapping).map(x => x.toLowerCase())
-    //      orderedKeys.filter(v => v.contains(lv) || extractDigits(v).equals(lvv))
-    //    }
-    //    def mapToDouble(input: String) = try {findnearest(super.fromString(input))} catch {case _: Throwable => 0d}
-    //    def findLike(value: String): String = {
-    //      val lv = value.toLowerCase()
-    //      def extractDigits(lv: String) = lv.filter(c => c.isDigit || c == '.')
-    //      lazy val lvv = extractDigits(lv)
-    //      val valuedKeys = punktemapping.keys.toList.sortBy(punktemapping)
-    //      if(valuedKeys.contains(value)) {
-    //        return value
-    //      }
-    //      val lvd = mapToDouble(value)
-    //      if(lvd > 0d && punktemapping.values.exists { v => v == lvd }) {
-    //        return value
-    //      }
-    //      val orderedKeys = punktemapping.keys.toList.sortBy(punktemapping).map(_.toLowerCase())
-    //      orderedKeys.find(v => v.equals(lv)).getOrElse {
-    //    	  orderedKeys.find(v => extractDigits(v).equals(lvv)).getOrElse {
-    //          orderedKeys.find(v => v.startsWith(lv)).getOrElse {
-    //            orderedKeys.find(v => v.contains(lv)).getOrElse {
-    //              value
-    //            }
-    //          }
-    //        }
-    //      }
-    //    }
-    //    override def toString(value: Double): String = punktemapping.find(p => p._2 == value).map(_._1).getOrElse(value)
-    //override def fromString(input: String) = punktemapping.getOrElse(findLike(input), mapToDouble(input))
-    override def validated(dnote: Double, enote: Double, scale: Int): (Double, Double) = (0, enote)
-
-    override def calcEndnote(dnote: Double, enote: Double, scale: Int) = enote * punktgewicht
-
-    override def selectableItems: Option[List[String]] = Some(punktemapping.keys.toList.sortBy(punktemapping))
-  }
-
-  case object KuTuWettkampf extends NotenModus {
-    override val isDNoteUsed = true
-    override def defaultScale(wertung: Wertung): Int = 3
-    //override def fromString(input: String) = super.fromString(input)
-    override def validated(dnote: Double, enote: Double, scale: Int): (Double, Double) =
-      (BigDecimal(dnote).setScale(scale, BigDecimal.RoundingMode.FLOOR).max(0).min(30).toDouble,
-        BigDecimal(enote).setScale(scale, BigDecimal.RoundingMode.FLOOR).max(0).min(30).toDouble)
-
-    override def calcEndnote(dnote: Double, enote: Double, scale: Int) =
-      BigDecimal(dnote + enote).setScale(scale, BigDecimal.RoundingMode.FLOOR).max(0).min(30).toDouble
-  }
-
-  case object GeTuWettkampf extends NotenModus {
-    override val isDNoteUsed = false
-    val scaleExceptions = Set(100L, 141L) // Sprung K6/K7
-    override def defaultScale(wertung: Wertung): Int = {
-      if (scaleExceptions.contains(wertung.wettkampfdisziplinId)) {
-        3 // 3 Stellen nach dem Komma K6/K7 Sprung
-      } else {
-        super.defaultScale(wertung)
-      }
+  case class StandardWettkampf(punktgewicht: Double) extends NotenModus {
+    override def validated(dnote: Double, enote: Double, wettkampfDisziplin: WettkampfdisziplinView): (Double, Double) = {
+      val dnoteValidated = if (wettkampfDisziplin.isDNoteUsed) BigDecimal(dnote).setScale(wettkampfDisziplin.scale, BigDecimal.RoundingMode.FLOOR).max(wettkampfDisziplin.min).min(wettkampfDisziplin.max).toDouble else 0d
+      val enoteValidated = BigDecimal(enote).setScale(wettkampfDisziplin.scale, BigDecimal.RoundingMode.FLOOR).max(wettkampfDisziplin.min).min(wettkampfDisziplin.max).toDouble
+      (dnoteValidated, enoteValidated)
     }
 
-    //override def fromString(input: String) = super.fromString(input)
-    def validated(dnote: Double, enote: Double, scale: Int): (Double, Double) =
-      (BigDecimal(dnote).setScale(scale, BigDecimal.RoundingMode.FLOOR).max(0).min(10).toDouble,
-        BigDecimal(enote).setScale(scale, BigDecimal.RoundingMode.FLOOR).max(0).min(10).toDouble)
+    override def calcEndnote(dnote: Double, enote: Double, wettkampfDisziplin: WettkampfdisziplinView) = {
+      val dnoteValidated = if (wettkampfDisziplin.isDNoteUsed) dnote else 0d
+      BigDecimal(dnoteValidated + enote).setScale(wettkampfDisziplin.scale, BigDecimal.RoundingMode.FLOOR).*(punktgewicht).max(wettkampfDisziplin.min).min(wettkampfDisziplin.max).toDouble
+    }
+  }
 
-    def calcEndnote(dnote: Double, enote: Double, scale: Int) =
-      BigDecimal(enote).setScale(scale, BigDecimal.RoundingMode.FLOOR).max(0).min(10).toDouble
+  case class Athletiktest(punktemapping: Map[String, Double], punktgewicht: Double) extends NotenModus {
+
+    override def validated(dnote: Double, enote: Double, wettkampfDisziplin: WettkampfdisziplinView): (Double, Double) = (0, enote)
+
+    override def calcEndnote(dnote: Double, enote: Double, wettkampfDisziplin: WettkampfdisziplinView) = enote * punktgewicht
+
+    override def selectableItems: Option[List[String]] = Some(punktemapping.keys.toList.sortBy(punktemapping))
   }
 
   object MatchCode {
@@ -848,9 +993,11 @@ package object domain {
   case class Kandidat(wettkampfTitel: String, geschlecht: String, programm: String, id: Long,
                       name: String, vorname: String, jahrgang: String, verein: String, einteilung: Option[Riege], einteilung2: Option[Riege], diszipline: Seq[Disziplin], diszipline2: Seq[Disziplin], wertungen: Seq[WertungView]) {
     def matches(w1: Wertung, w2: WertungView): Boolean = {
-       w2.wettkampfdisziplin.id == w1.wettkampfdisziplinId && w2.athlet.id == w1.athletId
+      w2.wettkampfdisziplin.id == w1.wettkampfdisziplinId && w2.athlet.id == w1.athletId
     }
+
     def indexOf(wertung: Wertung): Int = wertungen.indexWhere(w => matches(wertung, w))
+
     def updated(idx: Int, wertung: Wertung): Kandidat = {
       if (idx > -1 && matches(wertung, wertungen(idx)))
         copy(wertungen = wertungen.updated(idx, wertungen(idx).updatedWertung(wertung)))
@@ -864,11 +1011,12 @@ package object domain {
         durchgang,
         halt, disziplin).hashCode()
     }
+
     def updated(wertung: Wertung): GeraeteRiege = {
-      kandidaten.foldLeft((false, Seq[Kandidat]()))((acc,kandidat) => {
+      kandidaten.foldLeft((false, Seq[Kandidat]()))((acc, kandidat) => {
         if (acc._1) (acc._1, acc._2 :+ kandidat) else {
           val idx = kandidat.indexOf(wertung)
-          if(idx > -1)
+          if (idx > -1)
             (true, acc._2 :+ kandidat.updated(idx, wertung))
           else (acc._1, acc._2 :+ kandidat)
         }
@@ -911,10 +1059,12 @@ package object domain {
     val caption: String
     val verein: Registration
   }
+
   object PublicSyncAction {
     /**
      * Hides some attributes to protect privacy.
      * The product is only and only used by the web-client showing sync-states with some summary-infos
+     *
      * @param syncation
      * @return transformed SyncAction toPublicView applied
      */
@@ -928,23 +1078,31 @@ package object domain {
       case RemoveRegistration(verein, programId, athlet, suggestion) => RemoveRegistration(verein.toPublicView, programId, athlet.toPublicView, suggestion.toPublicView)
     }
   }
+
   case class AddVereinAction(override val verein: Registration) extends SyncAction {
     override val caption = s"Verein hinzufügen: ${verein.vereinname}"
   }
+
   case class RenameVereinAction(override val verein: Registration, oldVerein: Verein) extends SyncAction {
     override val caption = s"Verein korrigieren: ${oldVerein.easyprint} zu ${verein.toVerein.easyprint}"
+
     def prepareLocalUpdate: Verein = verein.toVerein.copy(id = oldVerein.id)
+
     def prepareRemoteUpdate: Option[Verein] = verein.selectedInitialClub.map(club => verein.toVerein.copy(id = club.id))
   }
+
   case class ApproveVereinAction(override val verein: Registration) extends SyncAction {
     override val caption = s"Verein bestätigen: ${verein.vereinname}"
   }
+
   case class AddRegistration(override val verein: Registration, programId: Long, athlet: Athlet, suggestion: AthletView) extends SyncAction {
     override val caption = s"Neue Anmeldung verarbeiten: ${suggestion.easyprint}"
   }
+
   case class MoveRegistration(override val verein: Registration, fromProgramId: Long, toProgramid: Long, athlet: Athlet, suggestion: AthletView) extends SyncAction {
     override val caption = s"Umteilung verarbeiten: ${suggestion.easyprint}"
   }
+
   case class RemoveRegistration(override val verein: Registration, programId: Long, athlet: Athlet, suggestion: AthletView) extends SyncAction {
     override val caption = s"Abmeldung verarbeiten: ${suggestion.easyprint}"
   }
@@ -955,10 +1113,13 @@ package object domain {
 
   case class Registration(id: Long, wettkampfId: Long, vereinId: Option[Long], vereinname: String, verband: String, respName: String, respVorname: String, mobilephone: String, mail: String, registrationTime: Long, selectedInitialClub: Option[Verein] = None) extends DataObject {
     def toVerein: Verein = Verein(0L, vereinname, Some(verband))
+
     def toPublicView: Registration = Registration(id, wettkampfId, vereinId, vereinname, verband, respName, respVorname, "***", "***", registrationTime)
+
     def matchesVerein(v: Verein): Boolean = {
       (v.name.equals(vereinname) && (v.verband.isEmpty || v.verband.get.equals(verband))) || selectedInitialClub.map(_.extendedprint).contains(v.extendedprint)
     }
+
     def matchesClubRelation(): Boolean = {
       selectedInitialClub.nonEmpty && selectedInitialClub.exists(v => (v.name.equals(vereinname) && (v.verband.isEmpty || v.verband.get.equals(verband))))
     }
@@ -995,17 +1156,18 @@ package object domain {
   case class AthletRegistration(id: Long, vereinregistrationId: Long,
                                 athletId: Option[Long], geschlecht: String, name: String, vorname: String, gebdat: String,
                                 programId: Long, registrationTime: Long, athlet: Option[AthletView]) extends DataObject {
-    def toPublicView = AthletRegistration(id, vereinregistrationId, athletId, geschlecht, name, vorname, gebdat.substring(0,4) + "-01-01", programId, registrationTime, athlet.map(_.toPublicView))
+    def toPublicView = AthletRegistration(id, vereinregistrationId, athletId, geschlecht, name, vorname, gebdat.substring(0, 4) + "-01-01", programId, registrationTime, athlet.map(_.toPublicView))
+
     def capitalizeIfBlockCase(s: String): String = {
       if (s.length > 2 && (s.toUpperCase.equals(s) || s.toLowerCase.equals(s))) {
-        s.substring(0,1).toUpperCase + s.substring(1).toLowerCase
+        s.substring(0, 1).toUpperCase + s.substring(1).toLowerCase
       } else {
         s
       }
     }
 
     def toAthlet: Athlet = {
-      if(id == 0 && athletId == None) {
+      if (id == 0 && athletId == None) {
         val nameNorm = capitalizeIfBlockCase(name.trim)
         val vornameNorm = capitalizeIfBlockCase(vorname.trim)
         val nameMasculinTest = Surname.isMasculin(nameNorm)
@@ -1019,9 +1181,9 @@ package object domain {
         val masculin = nameMasculinTest || vornameMasculinTest
         val defGeschlecht = geschlecht match {
           case "M" =>
-            if(feminim && !masculin) "W" else "M"
+            if (feminim && !masculin) "W" else "M"
           case "W" =>
-            if(masculin && !feminim) "M" else "W"
+            if (masculin && !feminim) "M" else "W"
           case s: String => "M"
         }
         val currentDate = LocalDate.now()
@@ -1030,7 +1192,10 @@ package object domain {
         val age = Period.between(gebDatLocal, currentDate).getYears
         if (age > 0 && age < 120) {
           Athlet(
-            id = athletId match{case Some(id) => id case None => 0},
+            id = athletId match {
+              case Some(id) => id
+              case None => 0
+            },
             js_id = "",
             geschlecht = defGeschlecht,
             name = defName,
@@ -1053,7 +1218,10 @@ package object domain {
         val age = Period.between(gebDatLocal, currentDate).getYears
         if (age > 0 && age < 120) {
           Athlet(
-            id = athletId match{case Some(id) => id case None => 0},
+            id = athletId match {
+              case Some(id) => id
+              case None => 0
+            },
             js_id = "",
             geschlecht = geschlecht,
             name = name.trim,
@@ -1070,13 +1238,16 @@ package object domain {
         }
       }
     }
+
     def isEmptyRegistration: Boolean = geschlecht.isEmpty
+
     def isLocalIdentified: Boolean = {
       athletId match {
         case Some(id) if id > 0L => true
         case _ => false
       }
     }
+
     def matchesAthlet(v: Athlet): Boolean = {
       val bool = toAthlet.extendedprint.equals(v.extendedprint)
       /*if(!bool) {
@@ -1084,6 +1255,7 @@ package object domain {
       }*/
       bool
     }
+
     def matchesAthlet(): Boolean = {
       val bool = athlet.nonEmpty && athlet.map(_.toAthlet).exists(matchesAthlet)
       /*if(!bool) {
@@ -1098,9 +1270,9 @@ package object domain {
   }
 
   case class JudgeRegistration(id: Long, vereinregistrationId: Long,
-                                geschlecht: String, name: String, vorname: String,
-                                mobilephone: String, mail: String, comment: String,
-                                registrationTime: Long) extends DataObject {
+                               geschlecht: String, name: String, vorname: String,
+                               mobilephone: String, mail: String, comment: String,
+                               registrationTime: Long) extends DataObject {
     def validate(): Unit = {
       if (name == null || name.trim.isEmpty) throw new IllegalArgumentException("JudgeRegistration with empty name")
       if (vorname == null || vorname.trim.isEmpty) throw new IllegalArgumentException("JudgeRegistration with empty vorname")
@@ -1123,13 +1295,14 @@ package object domain {
       val masculin = nameMasculinTest || vornameMasculinTest
       val defGeschlecht = geschlecht match {
         case "M" =>
-          if(feminim && !masculin) "W" else "M"
+          if (feminim && !masculin) "W" else "M"
         case "W" =>
-          if(masculin && !feminim) "M" else "W"
+          if (masculin && !feminim) "M" else "W"
         case s: String => "M"
       }
       JudgeRegistration(id, vereinregistrationId, defGeschlecht, defName, defVorName, mobilephone, mail, comment, registrationTime)
     }
+
     def toWertungsrichter: Wertungsrichter = {
       val nj = normalized
       Wertungsrichter(
@@ -1146,6 +1319,7 @@ package object domain {
         activ = true
       )
     }
+
     def isEmptyRegistration = geschlecht.isEmpty
   }
 
@@ -1154,5 +1328,6 @@ package object domain {
   }
 
   case class JudgeRegistrationProgram(id: Long, judgeregistrationId: Long, vereinregistrationId: Long, program: Long, comment: String)
+
   case class JudgeRegistrationProgramItem(program: String, disziplin: String, disziplinId: Long)
 }

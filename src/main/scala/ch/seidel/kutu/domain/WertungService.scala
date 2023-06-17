@@ -68,16 +68,18 @@ abstract trait WertungService extends DBService with WertungResultMapper with Di
       case None     => "1=1"
       case Some(uuid) => s"wk.uuid = '$uuid'"
     })
-    Await.result(database.run{(
-      sql"""
+    Await.result(database.run {
+      (
+        sql"""
                     SELECT w.id, a.id, a.js_id, a.geschlecht, a.name, a.vorname, a.gebdat, a.strasse, a.plz, a.ort, a.activ, a.verein, v.*,
-                      wd.id, wd.programm_id, d.*, wd.kurzbeschreibung, wd.detailbeschreibung, wd.notenfaktor, wd.masculin, wd.feminim, wd.ord,
-                      wk.id, wk.uuid, wk.datum, wk.titel, wk.programm_id, wk.auszeichnung, wk.auszeichnungendnote, wk.notificationEMail,
+                      wd.id, wd.programm_id, d.*, wd.kurzbeschreibung, wd.detailbeschreibung, wd.notenfaktor, wd.masculin, wd.feminim, wd.ord, wd.scale, wd.dnote, wd.min, wd.max, wd.startgeraet,
+                      wk.id, wk.uuid, wk.datum, wk.titel, wk.programm_id, wk.auszeichnung, wk.auszeichnungendnote, wk.notificationEMail, wk.altersklassen, wk.jahrgangsklassen, wk.punktegleichstandsregel, wk.rotation,
                       w.note_d as difficulty, w.note_e as execution, w.endnote, w.riege, w.riege2
                     FROM wertung w
                     inner join athlet a on (a.id = w.athlet_id)
                     left outer join verein v on (a.verein = v.id)
                     inner join wettkampfdisziplin wd on (wd.id = w.wettkampfdisziplin_id)
+
                     inner join disziplin d on (d.id = wd.disziplin_id)
                     inner join programm p on (p.id = wd.programm_id)
                     inner join wettkampf wk on (wk.id = w.wettkampf_id)
@@ -92,8 +94,8 @@ abstract trait WertungService extends DBService with WertungResultMapper with Di
     Await.result(database.run{(
       sql"""
                     SELECT w.id, a.id, a.js_id, a.geschlecht, a.name, a.vorname, a.gebdat, a.strasse, a.plz, a.ort, a.activ, a.verein, v.*,
-                      wd.id, wd.programm_id, d.*, wd.kurzbeschreibung, wd.detailbeschreibung, wd.notenfaktor, wd.masculin, wd.feminim, wd.ord,
-                      wk.id, wk.uuid, wk.datum, wk.titel, wk.programm_id, wk.auszeichnung, wk.auszeichnungendnote, wk.notificationEMail,
+                      wd.id, wd.programm_id, d.*, wd.kurzbeschreibung, wd.detailbeschreibung, wd.notenfaktor, wd.masculin, wd.feminim, wd.ord, wd.scale, wd.dnote, wd.min, wd.max, wd.startgeraet,
+                      wk.id, wk.uuid, wk.datum, wk.titel, wk.programm_id, wk.auszeichnung, wk.auszeichnungendnote, wk.notificationEMail, wk.altersklassen, wk.jahrgangsklassen, wk.punktegleichstandsregel, wk.rotation,
                       w.note_d as difficulty, w.note_e as execution, w.endnote, w.riege, w.riege2
                     FROM wertung w
                     inner join athlet a on (a.id = w.athlet_id)
@@ -114,8 +116,8 @@ abstract trait WertungService extends DBService with WertungResultMapper with Di
     Await.result(database.run{(
       sql"""
                     SELECT w.id, a.id, a.js_id, a.geschlecht, a.name, a.vorname, a.gebdat, a.strasse, a.plz, a.ort, a.activ, a.verein, v.*,
-                      wd.id, wd.programm_id, d.*, wd.kurzbeschreibung, wd.detailbeschreibung, wd.notenfaktor, wd.masculin, wd.feminim, wd.ord,
-                      wk.id, wk.uuid, wk.datum, wk.titel, wk.programm_id, wk.auszeichnung, wk.auszeichnungendnote, wk.notificationEMail,
+                      wd.id, wd.programm_id, d.*, wd.kurzbeschreibung, wd.detailbeschreibung, wd.notenfaktor, wd.masculin, wd.feminim, wd.ord, wd.scale, wd.dnote, wd.min, wd.max, wd.startgeraet,
+                      wk.id, wk.uuid, wk.datum, wk.titel, wk.programm_id, wk.auszeichnung, wk.auszeichnungendnote, wk.notificationEMail, wk.altersklassen, wk.jahrgangsklassen, wk.punktegleichstandsregel, wk.rotation,
                       w.note_d as difficulty, w.note_e as execution, w.endnote, w.riege, w.riege2
                     FROM wertung w
                     inner join athlet a on (a.id = w.athlet_id)
@@ -129,6 +131,29 @@ abstract trait WertungService extends DBService with WertungResultMapper with Di
                       and wd.id = ${wertung.wettkampfdisziplinId}
          """.as[WertungView]).withPinnedSession
     }, Duration.Inf).headOption
+  }
+
+  def listScheduledDisziplinIdsZuWettkampf(wettkampfId: Long): List[Long] = {
+    Await.result(database.run {
+      val wettkampf: Wettkampf = readWettkampf(wettkampfId)
+      val programme = readWettkampfLeafs(wettkampf.programmId).map(p => p.id).mkString("(", ",", ")")
+      val riegen = selectRiegenRaw(wettkampfId)
+        .map(r => r.start)
+        .filter(_.nonEmpty)
+        .map(_.get)
+        .filter(_ > 0).toSet
+      if (riegen.nonEmpty) {
+        sql""" select distinct disziplin_id from wettkampfdisziplin
+             where programm_Id in #$programme
+               and disziplin_id in #${riegen.mkString("(", ",", ")")}
+             """.as[Long].withPinnedSession
+
+      } else {
+        sql""" select distinct disziplin_id from wettkampfdisziplin
+             where programm_Id in #$programme
+             """.as[Long].withPinnedSession
+      }
+    }, Duration.Inf).toList
   }
 
   def updateOrinsertWertungenZuWettkampf(wettkampf: Wettkampf, wertungen: Iterable[Wertung]) = {
@@ -232,8 +257,8 @@ abstract trait WertungService extends DBService with WertungResultMapper with Di
           """>>
       sql"""
                     SELECT w.id, a.id, a.js_id, a.geschlecht, a.name, a.vorname, a.gebdat, a.strasse, a.plz, a.ort, a.activ, a.verein, v.*,
-                      wd.id, wd.programm_id, d.*, wd.kurzbeschreibung, wd.detailbeschreibung, wd.notenfaktor, wd.masculin, wd.feminim, wd.ord, 
-                      wk.id, wk.uuid, wk.datum, wk.titel, wk.programm_id, wk.auszeichnung, wk.auszeichnungendnote, wk.notificationEMail,
+                      wd.id, wd.programm_id, d.*, wd.kurzbeschreibung, wd.detailbeschreibung, wd.notenfaktor, wd.masculin, wd.feminim, wd.ord, wd.scale, wd.dnote, wd.min, wd.max, wd.startgeraet,
+                      wk.id, wk.uuid, wk.datum, wk.titel, wk.programm_id, wk.auszeichnung, wk.auszeichnungendnote, wk.notificationEMail, wk.altersklassen, wk.jahrgangsklassen, wk.punktegleichstandsregel, wk.rotation,
                       w.note_d as difficulty, w.note_e as execution, w.endnote, w.riege, w.riege2
                     FROM wertung w
                     inner join athlet a on (a.id = w.athlet_id)
@@ -268,8 +293,8 @@ abstract trait WertungService extends DBService with WertungResultMapper with Di
           """>>
       sql"""
                     SELECT w.id, a.id, a.js_id, a.geschlecht, a.name, a.vorname, a.gebdat, a.strasse, a.plz, a.ort, a.activ, a.verein, v.*,
-                      wd.id, wd.programm_id, d.*, wd.kurzbeschreibung, wd.detailbeschreibung, wd.notenfaktor, wd.masculin, wd.feminim, wd.ord, 
-                      wk.id, wk.uuid, wk.datum, wk.titel, wk.programm_id, wk.auszeichnung, wk.auszeichnungendnote, wk.notificationEMail,
+                      wd.id, wd.programm_id, d.*, wd.kurzbeschreibung, wd.detailbeschreibung, wd.notenfaktor, wd.masculin, wd.feminim, wd.ord, wd.scale, wd.dnote, wd.min, wd.max, wd.startgeraet,
+                      wk.id, wk.uuid, wk.datum, wk.titel, wk.programm_id, wk.auszeichnung, wk.auszeichnungendnote, wk.notificationEMail, wk.altersklassen, wk.jahrgangsklassen, wk.punktegleichstandsregel, wk.rotation,
                       w.note_d as difficulty, w.note_e as execution, w.endnote, w.riege, w.riege2
                     FROM wertung w
                     inner join athlet a on (a.id = w.athlet_id)
@@ -295,7 +320,7 @@ abstract trait WertungService extends DBService with WertungResultMapper with Di
   
   @throws(classOf[Exception]) // called from mobile-client via coordinator-actor
   def updateWertungSimple(w: Wertung): Wertung = {
-    val notenspez = readWettkampfDisziplinView(w.wettkampfdisziplinId).notenSpez
+    val notenspez = readWettkampfDisziplinView(w.wettkampfdisziplinId)
     val wv = notenspez.verifiedAndCalculatedWertung(w)
     if (notenspez.isDNoteUsed && wv.noteD != w.noteD) {
       throw new IllegalArgumentException(s"Erfasster D-Wert: ${w.noteDasText}, erlaubter D-Wert: ${wv.noteDasText}")
@@ -316,7 +341,7 @@ abstract trait WertungService extends DBService with WertungResultMapper with Di
   
   @throws(classOf[Exception]) // called from rich-client-app via ResourceExchanger
   def updateWertungWithIDMapping(w: Wertung): Wertung = {
-    val wv = readWettkampfDisziplinView(w.wettkampfdisziplinId).notenSpez.verifiedAndCalculatedWertung(w)
+    val wv = readWettkampfDisziplinView(w.wettkampfdisziplinId).verifiedAndCalculatedWertung(w)
     val wvId = Await.result(database.run((for {
         updated <- sqlu"""
                   UPDATE wertung
@@ -339,7 +364,7 @@ abstract trait WertungService extends DBService with WertungResultMapper with Di
 
   @throws(classOf[Exception]) // called from rich-client-app via ResourceExchanger
   def updateWertungWithIDMapping(ws: Seq[Wertung]): Seq[Wertung] = {
-    val wvs = ws.map(w => readWettkampfDisziplinView(w.wettkampfdisziplinId).notenSpez.verifiedAndCalculatedWertung(w))
+    val wvs = ws.map(w => readWettkampfDisziplinView(w.wettkampfdisziplinId).verifiedAndCalculatedWertung(w))
     val wvId: Seq[Long] = Await.result(database.run(DBIO.sequence(for {
       wv <- wvs
     } yield {
@@ -365,8 +390,8 @@ abstract trait WertungService extends DBService with WertungResultMapper with Di
       implicit val cache = scala.collection.mutable.Map[Long, ProgrammView]()
       (sql"""
                    SELECT w.id, a.id, a.js_id, a.geschlecht, a.name, a.vorname, a.gebdat, a.strasse, a.plz, a.ort, a.activ, a.verein, v.*,
-                     wd.id, wd.programm_id, d.*, wd.kurzbeschreibung, wd.detailbeschreibung, wd.notenfaktor, wd.masculin, wd.feminim, wd.ord,
-                     wk.id, wk.uuid, wk.datum, wk.titel, wk.programm_id, wk.auszeichnung, wk.auszeichnungendnote, wk.notificationEMail,
+                     wd.id, wd.programm_id, d.*, wd.kurzbeschreibung, wd.detailbeschreibung, wd.notenfaktor, wd.masculin, wd.feminim, wd.ord, wd.scale, wd.dnote, wd.min, wd.max, wd.startgeraet,
+                     wk.id, wk.uuid, wk.datum, wk.titel, wk.programm_id, wk.auszeichnung, wk.auszeichnungendnote, wk.notificationEMail, wk.altersklassen, wk.jahrgangsklassen, wk.punktegleichstandsregel, wk.rotation,
                      w.note_d as difficulty, w.note_e as execution, w.endnote, w.riege, w.riege2
                    FROM wertung w
                    inner join athlet a on (a.id = w.athlet_id)
@@ -387,8 +412,8 @@ abstract trait WertungService extends DBService with WertungResultMapper with Di
       implicit val cache = scala.collection.mutable.Map[Long, ProgrammView]()
       (sql"""
                    SELECT w.id, a.id, a.js_id, a.geschlecht, a.name, a.vorname, a.gebdat, a.strasse, a.plz, a.ort, a.activ, a.verein, v.*,
-                     wd.id, wd.programm_id, d.*, wd.kurzbeschreibung, wd.detailbeschreibung, wd.notenfaktor, wd.masculin, wd.feminim, wd.ord,
-                     wk.id, wk.uuid, wk.datum, wk.titel, wk.programm_id, wk.auszeichnung, wk.auszeichnungendnote, wk.notificationEMail,
+                     wd.id, wd.programm_id, d.*, wd.kurzbeschreibung, wd.detailbeschreibung, wd.notenfaktor, wd.masculin, wd.feminim, wd.ord, wd.scale, wd.dnote, wd.min, wd.max, wd.startgeraet,
+                     wk.id, wk.uuid, wk.datum, wk.titel, wk.programm_id, wk.auszeichnung, wk.auszeichnungendnote, wk.notificationEMail, wk.altersklassen, wk.jahrgangsklassen, wk.punktegleichstandsregel, wk.rotation,
                      w.note_d as difficulty, w.note_e as execution, w.endnote, w.riege, w.riege2
                    FROM wertung w
                    inner join athlet a on (a.id = w.athlet_id)
@@ -459,7 +484,7 @@ abstract trait WertungService extends DBService with WertungResultMapper with Di
             x.durchgang.nonEmpty &&
             x.durchgang.forall{d =>
               d.nonEmpty &&
-              disziplinsZuDurchgangR1.get(d).map(dm => dm.contains(wertung.wettkampfdisziplin.disziplin)).getOrElse(false)
+              disziplinsZuDurchgangR1.get(d).exists(dm => dm.contains(wertung.wettkampfdisziplin.disziplin))
             }
           }
         }
@@ -476,7 +501,7 @@ abstract trait WertungService extends DBService with WertungResultMapper with Di
             x.durchgang.nonEmpty &&
             x.durchgang.forall{d =>
               d.nonEmpty &&
-              disziplinsZuDurchgangR2.get(d).map(dm => dm.contains(wertung.wettkampfdisziplin.disziplin)).getOrElse(false)
+              disziplinsZuDurchgangR2.get(d).exists(dm => dm.contains(wertung.wettkampfdisziplin.disziplin))
             }
           }
         }

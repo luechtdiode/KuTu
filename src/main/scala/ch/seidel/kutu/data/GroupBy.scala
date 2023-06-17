@@ -1,10 +1,11 @@
 package ch.seidel.kutu.data
 
-import java.net.{URLDecoder, URLEncoder}
-import java.text.SimpleDateFormat
-
 import ch.seidel.kutu.domain._
 
+import java.net.URLDecoder
+import java.sql.Date
+import java.text.SimpleDateFormat
+import java.time.{LocalDate, Period}
 import scala.collection.mutable
 import scala.math.BigDecimal.int2bigDecimal
 
@@ -27,7 +28,7 @@ sealed trait GroupBy {
   def isAlphanumericOrdered = isANO
 
   def setAlphanumericOrdered(value: Boolean): Unit = {
-    traverse(value){ (gb, acc) =>
+    traverse(value) { (gb, acc) =>
       gb.isANO = acc
       acc
     }
@@ -174,6 +175,7 @@ sealed trait FilterBy extends GroupBy {
     case NullObject(_) => true
     case _ => false
   }
+
   def filterItems: List[DataObject] =
     if (skipGrouper) {
       filtItems ++ getFilter.filter(nullObjectFilter)
@@ -290,7 +292,16 @@ case class ByWettkampf() extends GroupBy with FilterBy {
 case class ByRiege() extends GroupBy with FilterBy {
   override val groupname = "Riege"
   protected override val grouper = (v: WertungView) => {
-    Riege(v.riege match { case Some(r) => r case None => "keine Einteilung" }, None, None, 0)
+    Riege(v.riege match { case Some(r) => r case None => "Ohne Einteilung" }, None, None, 0)
+  }
+  protected override val sorter: Option[(GroupSection, GroupSection) => Boolean] = Some((gs1: GroupSection, gs2: GroupSection) => {
+    gs1.groupKey.easyprint.compareTo(gs2.groupKey.easyprint) < 0
+  })
+}
+case class ByRiege2() extends GroupBy with FilterBy {
+  override val groupname = "Riege2"
+  protected override val grouper = (v: WertungView) => {
+    Riege(v.riege2 match { case Some(r) => r case None => "Ohne Spezial-Einteilung" }, None, None, 0)
   }
   protected override val sorter: Option[(GroupSection, GroupSection) => Boolean] = Some((gs1: GroupSection, gs2: GroupSection) => {
     gs1.groupKey.easyprint.compareTo(gs2.groupKey.easyprint) < 0
@@ -318,6 +329,47 @@ case class ByJahrgang() extends GroupBy with FilterBy {
   }
   protected override val sorter: Option[(GroupSection, GroupSection) => Boolean] = Some((gs1: GroupSection, gs2: GroupSection) => {
     gs1.groupKey.asInstanceOf[AthletJahrgang].jahrgang.compareTo(gs2.groupKey.asInstanceOf[AthletJahrgang].jahrgang) < 0
+  })
+}
+
+case class ByAltersklasse(bezeichnung: String = "GebDat Altersklasse", grenzen: Seq[(String, Seq[String], Int)]) extends GroupBy with FilterBy {
+  override val groupname = bezeichnung
+  val klassen = Altersklasse(grenzen)
+
+  def makeGroupBy(w: Wettkampf)(gebdat: LocalDate, geschlecht: String, programm: ProgrammView): Altersklasse = {
+    val wkd: LocalDate = w.datum
+    val alter = Period.between(gebdat, wkd.plusDays(1)).getYears
+    Altersklasse(klassen, alter, geschlecht, programm)
+  }
+
+  protected override val grouper = (v: WertungView) => {
+    val wkd: LocalDate = v.wettkampf.datum
+    val gebd: LocalDate = sqlDate2ld(v.athlet.gebdat.getOrElse(Date.valueOf(LocalDate.now())))
+    makeGroupBy(v.wettkampf)(gebd, v.athlet.geschlecht, v.wettkampfdisziplin.programm)
+  }
+
+  protected override val sorter: Option[(GroupSection, GroupSection) => Boolean] = Some((gs1: GroupSection, gs2: GroupSection) => {
+    gs1.groupKey.asInstanceOf[Altersklasse].compareTo(gs2.groupKey.asInstanceOf[Altersklasse]) < 0
+  })
+}
+
+case class ByJahrgangsAltersklasse(bezeichnung: String = "JG Altersklasse", grenzen: Seq[(String, Seq[String], Int)]) extends GroupBy with FilterBy {
+  override val groupname = bezeichnung
+  val klassen = Altersklasse(grenzen)
+
+  def makeGroupBy(w: Wettkampf)(gebdat: LocalDate, geschlecht: String, programm: ProgrammView): Altersklasse = {
+    val wkd: LocalDate = w.datum
+    val alter = wkd.getYear - gebdat.getYear
+    Altersklasse(klassen, alter, geschlecht, programm)
+  }
+
+  protected override val grouper = (v: WertungView) => {
+    val gebd: LocalDate = sqlDate2ld(v.athlet.gebdat.getOrElse(Date.valueOf(LocalDate.now())))
+    makeGroupBy(v.wettkampf)(gebd, v.athlet.geschlecht, v.wettkampfdisziplin.programm)
+  }
+
+  protected override val sorter: Option[(GroupSection, GroupSection) => Boolean] = Some((gs1: GroupSection, gs2: GroupSection) => {
+    gs1.groupKey.asInstanceOf[Altersklasse].compareTo(gs2.groupKey.asInstanceOf[Altersklasse]) < 0
   })
 }
 
@@ -378,17 +430,17 @@ object GroupBy {
     ByWettkampfProgramm("Kategorie"), ByProgramm("Kategorie"),
     ByWettkampfProgramm("Programm"), ByProgramm("Programm"), ByWettkampf(),
     ByJahrgang(), ByGeschlecht(), ByVerband(), ByVerein(), ByAthlet(),
-    ByRiege(), ByDisziplin(), ByJahr()
+    ByRiege(), ByRiege2(), ByDisziplin(), ByJahr()
   )
 
-  def apply(query: String, data: Seq[WertungView]): GroupBy = {
+  def apply(query: String, data: Seq[WertungView], groupers: List[FilterBy] = allGroupers): GroupBy = {
     val arguments = query.split("&")
     val groupby = arguments.filter(x => x.length > 8 && x.startsWith("groupby=")).map(x => URLDecoder.decode(x.split("=")(1), "UTF-8")).headOption
     val filter = arguments.filter(x => x.length > 7 && x.startsWith("filter=")).map(x => URLDecoder.decode(x.split("=")(1), "UTF-8"))
-    apply(groupby, filter, data, query.contains("&alphanumeric"))
+    apply(groupby, filter, data, query.contains("&alphanumeric"), groupers)
   }
 
-  def apply(groupby: Option[String], filter: Iterable[String], data: Seq[WertungView], alphanumeric: Boolean, groupers: List[FilterBy] = allGroupers): GroupBy = {
+  def apply(groupby: Option[String], filter: Iterable[String], data: Seq[WertungView], alphanumeric: Boolean, groupers: List[FilterBy]): GroupBy = {
     val filterList = filter.map { flt =>
       val keyvalues = flt.split(":")
       val key = keyvalues(0)
@@ -431,8 +483,15 @@ object GroupBy {
     }
     val query = if (cbflist.nonEmpty) {
       cbflist.foldLeft(cbflist.head.asInstanceOf[GroupBy])((acc, cb) => if (acc != cb) acc.groupBy(cb) else acc)
-    } else {
-      ByWettkampfProgramm().groupBy(ByGeschlecht())
+    } else if (data.nonEmpty && data.head.wettkampf.altersklassen.get.nonEmpty) {
+      val byAK = groupers.find(p => p.isInstanceOf[ByAltersklasse] && p.groupname.startsWith("Wettkampf")).getOrElse(ByAltersklasse("AK", Altersklasse.parseGrenzen(data.head.wettkampf.altersklassen.get)))
+      ByProgramm().groupBy(byAK).groupBy(ByGeschlecht())
+    } else if (data.nonEmpty && data.head.wettkampf.jahrgangsklassen.get.nonEmpty) {
+      val byAK = groupers.find(p => p.isInstanceOf[ByJahrgangsAltersklasse] && p.groupname.startsWith("Wettkampf")).getOrElse(ByJahrgangsAltersklasse("AK", Altersklasse.parseGrenzen(data.head.wettkampf.jahrgangsklassen.get)))
+      ByProgramm().groupBy(byAK).groupBy(ByGeschlecht())
+    }
+    else {
+      ByProgramm().groupBy(ByGeschlecht())
     }
     query.setAlphanumericOrdered(alphanumeric)
     query

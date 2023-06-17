@@ -6,6 +6,7 @@ import { BackendService } from '../services/backend.service';
 import { NgForm } from '@angular/forms';
 import { ActivatedRoute } from '@angular/router';
 import { Keyboard } from '@capacitor/keyboard';
+import { Capacitor, Plugins } from '@capacitor/core';
 
 @Component({
   selector: 'app-wertung-editor',
@@ -83,9 +84,12 @@ export class WertungEditorPage {
 
       // We need to use a timeout in order to set the focus on load
       setTimeout(() => {
-        if (Keyboard.show) {
-          Keyboard.show(); // Needed for android. Call in a platform ready function
-          console.log('keyboard called');
+        let Keyboard;
+        if (Capacitor.getPlatform() !== "web") {
+          if (Keyboard.show) {
+            Keyboard.show(); // Needed for android. Call in a platform ready function
+            console.log('keyboard called');
+          }
         }
         if (this.isDNoteUsed && this.dnote) {
           this.dnote.setFocus();
@@ -132,7 +136,7 @@ export class WertungEditorPage {
         this.navCtrl.pop();
       },
       error: (err) => {
-        this.updateUI(this.itemOriginal);
+        this.waiting = false;
         console.log(err);
     }});
   }
@@ -145,7 +149,7 @@ export class WertungEditorPage {
         this.updateUI(wc);
       },
       error: (err) => {
-        this.updateUI(this.itemOriginal);
+        this.waiting = false;
         console.log(err);
     }});
   }
@@ -178,7 +182,7 @@ export class WertungEditorPage {
         this.updateUI(this.backendService.wertungen[nextItemIndex]);
       },
       error: (err) => {
-        this.updateUI(this.itemOriginal);
+        this.waiting = false;
         console.log(err);
     }});
   }

@@ -28,7 +28,8 @@
 
 ion-icon {
   //background-color:  var(--ion-item-background-color);
-  color: var(--ion-color-step-500);
+  //color: var(--ion-color-step-500);
+  color: var(--ion-item-color, var(--ion-text-color, #000));
 }
 ion-toolbar {
   --background: var(--ion-toolbar-background-color);
