@@ -7,11 +7,11 @@ import scala.concurrent.duration._
 
 class SimulationBottmingenD1 extends Simulation {
   // mws-01
-  val jwtToken = "eyJhbGciOiJIUzUxMiIsImN0eSI6ImFwcGxpY2F0aW9uL2pzb24iLCJ0eXAiOiJKV1QifQ.eyJ1c2VyIjoiNzJmODI0MjMtNjVkYS00NWM5LTk5YTctYjNmMTk3MTJmNjI4IiwiZXhwaXJlZEF0S2V5IjoxNjQxNzY2ODY2ODUyfQ.VSYh5texoNr2CrIdRsusn-r3LY6DEBcCUjXA3FuMtFJlhh_tSl3OH8ef_qZ6RbzVZqC3M4amVI-c_2gBkMK0Dg"
+  val jwtToken = "eyJhbGciOiJIUzUxMiIsImN0eSI6ImFwcGxpY2F0aW9uL2pzb24iLCJ0eXAiOiJKV1QifQ.eyJ1c2VyIjoiNzJmODI0MjMtNjVkYS00NWM5LTk5YTctYjNmMTk3MTJmNjI4IiwiZXhwaXJlZEF0S2V5IjoxNjg3MTI0NzU5NjkwfQ.IjzouXrDuDRsvhafPSCgcGAXlINZhAzgoieQ0Obamb0b8oG_R-6T6wMCtOUV8o84xmh5D7Cpv3_Alyiv-bj1fQ"
   val competition = "72f82423-65da-45c9-99a7-b3f19712f628"
 
-  //val originBaseUrl = "https://kutuapp-test.interpolar.ch:8443"//,
-  val originBaseUrl = "https://test-kutuapp.sharevic.net" //,"http://pluto:5757"//, "https://kutuapp.sharevic.net" //,"https://kutuapp.sharevic.net"//,"http://mws-01:5757"//,
+  val originBaseUrl = "https://kutuapp-test.interpolar.ch"//,
+  //val originBaseUrl = "http://mars.stargate:30134" //https://test-kutuapp.sharevic.net" //,"http://pluto:5757"//, "https://kutuapp.sharevic.net" //,"https://kutuapp.sharevic.net"//,"http://mws-01:5757"//,
   // val originBaseUrl = "http://mws-01:5757"//, "https://kutuapp.sharevic.net"//,"http://mws-01:5757"//,
   //val originBaseUrl = "https://kutuapp.sharevic.net"
 
@@ -141,6 +141,12 @@ class SimulationBottmingenD1 extends Simulation {
               //            .post(s"/api/durchgang/$competition/${"${durchgang}"}/finish")
               //            .body(StringBody(s"""{"type":"FinishDurchgangStation","wettkampfUUID":"$competition","durchgang:"${"${durchgangOriginal}"}","geraet":${"${geraet}"},"step":${"${step}"}}""")))
             }
+            .exec(http("finish step")
+              .post(s"/api/competition/$competition/finishedStep")
+              .body(StringBody(s"""{"type":"FinishDurchgangStep","wettkampfUUID":"$competition"}"""))
+              .silent
+            )
+          //.exec(scnCloseWebsocketUser)
         }
   }
 
