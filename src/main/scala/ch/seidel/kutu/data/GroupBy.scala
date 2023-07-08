@@ -18,10 +18,7 @@ sealed trait GroupBy {
 
   protected val allgrouper = (w: WertungView) => NullObject(allName).asInstanceOf[DataObject]
   protected val grouper: (WertungView) => DataObject
-  protected val sorter: Option[(GroupSection, GroupSection) => Boolean] //= leafsorter
-  protected val leafsorter: Option[(GroupSection, GroupSection) => Boolean] = Some((gs1: GroupSection, gs2: GroupSection) => {
-    gs1.sum.endnote > gs2.sum.endnote
-  })
+  protected val sorter: Option[(GroupSection, GroupSection) => Boolean]
 
   override def toString = groupname
 
@@ -118,12 +115,7 @@ sealed trait GroupBy {
     sort(grouped.map { x =>
       val (grp, seq) = x
       val list = ng.select(seq)
-      if (list.isEmpty) {
-        GroupNode(grp, Seq(GroupSum(grp, Resultat(0, 0, 0), Resultat(0, 0, 0), Resultat(0, 0, 0))))
-      }
-      else {
-        GroupNode(grp, list)
-      }
+      GroupNode(grp, list)
     }.filter(g => g.sum.endnote > 0), sorter)
   }
 

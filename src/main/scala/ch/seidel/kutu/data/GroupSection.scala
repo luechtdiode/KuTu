@@ -23,18 +23,6 @@ object GroupSection {
     groups
   }
 
-  def mapRang(list: Iterable[(DataObject, Resultat, Resultat)]) = {
-    val rangD = list.toList.map(_._2.noteD).filter(_ > 0).sorted.reverse :+ 0
-    val rangE = list.toList.map(_._2.noteE).filter(_ > 0).sorted.reverse :+ 0
-    val rangEnd = list.toList.map(_._2.endnote).filter(_ > 0).sorted.reverse :+ 0
-    def rang(r: Resultat) = {
-      val rd = if (rangD.nonEmpty) rangD.indexOf(r.noteD) + 1 else 0
-      val re = if (rangE.nonEmpty) rangE.indexOf(r.noteE) + 1 else 0
-      val rf = if (rangEnd.nonEmpty) rangEnd.indexOf(r.endnote) + 1 else 0
-      Resultat(rd, re, rf)
-    }
-    list.map(y => GroupSum(y._1, y._2, y._3, rang(y._2)))
-  }
   def mapAvgRang(list: Iterable[(DataObject, Resultat, Resultat)]) = {
     val rangD = list.toList.map(_._3.noteD).filter(_ > 0).sorted.reverse :+ 0
     val rangE = list.toList.map(_._3.noteE).filter(_ > 0).sorted.reverse :+ 0
@@ -60,7 +48,10 @@ case class GroupSum(override val groupKey: DataObject, wertung: Resultat, overri
   override val sum: Resultat = wertung
   override def easyprint = f"Rang ${rang.easyprint} ${groupKey.easyprint}%40s Punkte ${sum.easyprint}%18s øPunkte ${avg.easyprint}%18s"
 }
-
+case class TeamSum(override val groupKey: DataObject, teamRows: GroupLeaf, wertung: Resultat, override val avg: Resultat, rang: Resultat) extends GroupSection {
+  override val sum: Resultat = wertung
+  override def easyprint = f"Rang ${rang.easyprint} ${groupKey.easyprint}%40s Punkte ${sum.easyprint}%18s øPunkte ${avg.easyprint}%18s"
+}
 sealed trait WKCol {
   val text: String
   val prefWidth: Int
@@ -443,6 +434,12 @@ case class GroupLeaf(override val groupKey: DataObject, list: Iterable[WertungVi
   }
 }
 
+case object GroupNode {
+  def apply(groupKey: DataObject): GroupNode = {
+    val dummyList = Seq(GroupSum(groupKey, Resultat(0, 0, 0), Resultat(0, 0, 0), Resultat(0, 0, 0)))
+    GroupNode(groupKey, dummyList)
+  }
+}
 case class GroupNode(override val groupKey: DataObject, next: Iterable[GroupSection]) extends GroupSection {
   override val sum: Resultat = next.map(_.sum).reduce(_ + _)
   override val avg: Resultat = next.map(_.avg).reduce(_ + _) / next.size

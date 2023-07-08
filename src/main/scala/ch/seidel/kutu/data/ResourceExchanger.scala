@@ -330,7 +330,8 @@ object ResourceExchanger extends KutuService with RiegenBuilder {
           case value => Some(value)
         },
         riege = if (fields(wertungenHeader("riege")).nonEmpty) Some(fields(wertungenHeader("riege"))) else None,
-        riege2 = if (fields(wertungenHeader("riege2")).nonEmpty) Some(fields(wertungenHeader("riege2"))) else None
+        riege2 = if (fields(wertungenHeader("riege2")).nonEmpty) Some(fields(wertungenHeader("riege2"))) else None,
+        team = if (fields(wertungenHeader("team")).nonEmpty) wertungenHeader("team") else 0
       )
       //      println(w.athletId, getAthletName(w.athletId), w.endnote, w.wettkampfdisziplinId, w.wettkampfdisziplinId, getWettkampfDisziplinName(w))
       w
@@ -364,7 +365,8 @@ object ResourceExchanger extends KutuService with RiegenBuilder {
             noteE = None,
             endnote = None,
             riege = None,
-            riege2 = None
+            riege2 = None,
+            team = 0
           )
         }
         completeWertungenSet

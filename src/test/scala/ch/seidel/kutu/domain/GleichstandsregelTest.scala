@@ -22,7 +22,7 @@ class GleichstandsregelTest extends AnyWordSpec with Matchers {
       val enote = 7.5 - wd.disziplin.id
       val dnote = 3.2 + wd.disziplin.id
       val endnote = enote + dnote
-      WertungView(wd.id, a, wd, wk, Some(BigDecimal(dnote)), Some(BigDecimal(enote)), Some(BigDecimal(endnote)), None, None)
+      WertungView(wd.id, a, wd, wk, Some(BigDecimal(dnote)), Some(BigDecimal(enote)), Some(BigDecimal(endnote)), None, None, 0)
     }
   }
   val testResultate = testWertungen.map(_.resultat)

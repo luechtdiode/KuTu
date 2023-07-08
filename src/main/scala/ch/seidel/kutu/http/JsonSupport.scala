@@ -15,7 +15,7 @@ trait JsonSupport extends SprayJsonSupport with EnrichedJson {
   implicit val pgmFormat = jsonFormat9(ProgrammRaw)
   implicit val pgmListFormat = listFormat(pgmFormat)
   implicit val disziplinFormat = jsonFormat2(Disziplin)
-  implicit val wertungFormat = jsonFormat(Wertung, "id", "athletId", "wettkampfdisziplinId", "wettkampfId", "wettkampfUUID", "noteD", "noteE", "endnote", "riege", "riege2")
+  implicit val wertungFormat = jsonFormat(Wertung, "id", "athletId", "wettkampfdisziplinId", "wettkampfId", "wettkampfUUID", "noteD", "noteE", "endnote", "riege", "riege2", "team")
   implicit val vereinFormat = jsonFormat(Verein, "id", "name", "verband")
   implicit val vereinListFormat = listFormat(vereinFormat)
   implicit val atheltViewFormat = jsonFormat(AthletView, "id", "js_id", "geschlecht", "name", "vorname", "gebdat", "strasse", "plz", "ort", "verein", "activ")

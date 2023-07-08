@@ -364,16 +364,6 @@ trait WettkampfService extends DBService
     }, Duration.Inf)
   }
 
-  def listAthletenZuWettkampf(wettkampf: UUID) = {
-    database.run{(
-      sql"""      select a.* from athlet a
-                  inner join wertung w on (a.id = w.athlet_id)
-                  inner join wettkampf wk on (w.wettkampf_id = wk.id)
-                  where wk.uuid = ${wettkampf.toString})
-         """.as[AthletView]).withPinnedSession
-    }.map(_.toList)
-  }
-
   def wettkampfExists(uuid: String): Boolean = {
     Await.result(wettkampfExistsAsync(uuid), Duration.Inf)
   }

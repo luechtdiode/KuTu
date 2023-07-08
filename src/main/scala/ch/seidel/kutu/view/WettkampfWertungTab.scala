@@ -496,6 +496,52 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
             evt.tableView.requestFocus()
           }
         }
+      },
+      new WKTableColumn[String](-1) {
+        text = "Team"
+        cellFactory.value = { _: Any =>
+          new AutoCommitTextFieldTableCell[IndexedSeq[WertungEditor], String](new DefaultStringConverter())
+        }
+
+        cellValueFactory = { x =>
+          new ReadOnlyStringWrapper(x.value, "team", {
+            val team = x.value.head.init.team
+            s"${if (team > 0) team else ""}"
+          })
+        }
+        editable <== when(Bindings.createBooleanBinding(() => {
+          !wettkampf.toWettkampf.isReadonly(homedir, remoteHostOrigin) && !wettkampfmode.value
+        },
+          wettkampfmode
+        )) choose true otherwise false
+        visible <== when(wettkampfmode) choose false otherwise true
+        prefWidth = 100
+
+        onEditCommit = (evt: CellEditEvent[IndexedSeq[WertungEditor], String]) => {
+          if (!wettkampfmode.value) {
+            val rowIndex = wkModel.indexOf(evt.rowValue)
+            val newTeam: Int = if (evt.newValue.trim.isEmpty || evt.newValue.equals("keine Einteilung")) 0
+            else evt.newValue
+            logger.debug("start team-reassignment")
+            service.updateAllWertungenAsync(
+              evt.rowValue.map(wertung =>
+                wertung.commit.copy(team = newTeam))).andThen {
+              case Success(ws) => logger.debug("saved team-reassignment")
+                KuTuApp.invokeWithBusyIndicator {
+                  val selected = wkview.selectionModel.value.selectedCells
+                  refreshOtherLazyPanes()
+                  wkModel.update(rowIndex, ws.map(w => WertungEditor(w)).toIndexedSeq)
+                  selected.foreach(c => wkview.selectionModel.value.select(c.row, c.tableColumn.asInstanceOf[jfxsc.TableColumn[IndexedSeq[WertungEditor], _]]))
+                  updateEditorPane(Some(evt.tableView))
+                  logger.debug("finished team-reassignment")
+                }
+              case Failure(e) => logger.error("not saved", e)
+            }
+
+            evt.tableView.selectionModel.value.select(rowIndex, this)
+            evt.tableView.requestFocus()
+          }
+        }
       })
   } else {
     val cols: List[jfxsc.TableColumn[IndexedSeq[WertungEditor], _]] = wettkampfInfo.groupHeadPrograms

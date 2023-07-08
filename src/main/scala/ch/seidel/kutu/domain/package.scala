@@ -854,7 +854,7 @@ package object domain {
     override def easyprint = f"${formattedD}%6s${formattedE}%6s${formattedEnd}%6s"
   }
 
-  case class Wertung(id: Long, athletId: Long, wettkampfdisziplinId: Long, wettkampfId: Long, wettkampfUUID: String, noteD: Option[scala.math.BigDecimal], noteE: Option[scala.math.BigDecimal], endnote: Option[scala.math.BigDecimal], riege: Option[String], riege2: Option[String]) extends DataObject {
+  case class Wertung(id: Long, athletId: Long, wettkampfdisziplinId: Long, wettkampfId: Long, wettkampfUUID: String, noteD: Option[scala.math.BigDecimal], noteE: Option[scala.math.BigDecimal], endnote: Option[scala.math.BigDecimal], riege: Option[String], riege2: Option[String], team: Int) extends DataObject {
     lazy val resultat = Resultat(noteD.getOrElse(0), noteE.getOrElse(0), endnote.getOrElse(0))
 
     def updatedWertung(valuesFrom: Wertung) = copy(noteD = valuesFrom.noteD, noteE = valuesFrom.noteE, endnote = valuesFrom.endnote)
@@ -871,14 +871,14 @@ package object domain {
     def endnoteeAsText = valueAsText(endnote)
   }
 
-  case class WertungView(id: Long, athlet: AthletView, wettkampfdisziplin: WettkampfdisziplinView, wettkampf: Wettkampf, noteD: Option[scala.math.BigDecimal], noteE: Option[scala.math.BigDecimal], endnote: Option[scala.math.BigDecimal], riege: Option[String], riege2: Option[String]) extends DataObject {
+  case class WertungView(id: Long, athlet: AthletView, wettkampfdisziplin: WettkampfdisziplinView, wettkampf: Wettkampf, noteD: Option[scala.math.BigDecimal], noteE: Option[scala.math.BigDecimal], endnote: Option[scala.math.BigDecimal], riege: Option[String], riege2: Option[String], team: Int) extends DataObject {
     lazy val resultat = Resultat(noteD.getOrElse(0), noteE.getOrElse(0), endnote.getOrElse(0))
 
     def +(r: Resultat) = resultat + r
 
-    def toWertung = Wertung(id, athlet.id, wettkampfdisziplin.id, wettkampf.id, wettkampf.uuid.getOrElse(""), noteD, noteE, endnote, riege, riege2)
+    def toWertung = Wertung(id, athlet.id, wettkampfdisziplin.id, wettkampf.id, wettkampf.uuid.getOrElse(""), noteD, noteE, endnote, riege, riege2, team)
 
-    def toWertung(riege: String, riege2: Option[String]) = Wertung(id, athlet.id, wettkampfdisziplin.id, wettkampf.id, wettkampf.uuid.getOrElse(""), noteD, noteE, endnote, Some(riege), riege2)
+    def toWertung(riege: String, riege2: Option[String]) = Wertung(id, athlet.id, wettkampfdisziplin.id, wettkampf.id, wettkampf.uuid.getOrElse(""), noteD, noteE, endnote, Some(riege), riege2, team)
 
     def updatedWertung(valuesFrom: Wertung) = copy(noteD = valuesFrom.noteD, noteE = valuesFrom.noteE, endnote = valuesFrom.endnote)
 
@@ -902,8 +902,23 @@ package object domain {
 
   sealed trait DataRow {}
 
+  /**
+   * Single Result of a row
+   * @param title Discipline name
+   * @param sum
+   * @param rang
+   * @param auszeichnung true, of best score in that discipline
+   */
   case class LeafRow(title: String, sum: Resultat, rang: Resultat, auszeichnung: Boolean) extends DataRow
 
+  /**
+   * Row of results per each discipline of one athlet/team
+   * @param athlet
+   * @param resultate
+   * @param sum
+   * @param rang
+   * @param auszeichnung
+   */
   case class GroupRow(athlet: AthletView, resultate: IndexedSeq[LeafRow], sum: Resultat, rang: Resultat, auszeichnung: Boolean) extends DataRow {
     lazy val withDNotes = resultate.exists(w => w.sum.noteD > 0)
     lazy val divider = if (withDNotes || resultate.isEmpty) 1 else resultate.count { r => r.sum.endnote > 0 }
