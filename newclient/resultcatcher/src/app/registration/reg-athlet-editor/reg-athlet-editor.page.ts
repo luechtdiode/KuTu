@@ -2,7 +2,7 @@ import { Component, OnInit, NgZone } from '@angular/core';
 import { NavController, AlertController } from '@ionic/angular';
 import { ActivatedRoute } from '@angular/router';
 import { BackendService } from 'src/app/services/backend.service';
-import { AthletRegistration, ProgrammRaw } from 'src/app/backend-types';
+import { AthletRegistration, ProgrammRaw, Wettkampf } from 'src/app/backend-types';
 import { toDateString } from '../../utils';
 import { NgForm } from '@angular/forms';
 
@@ -25,6 +25,7 @@ export class RegAthletEditorPage implements OnInit {
   waiting = false;
   registration: AthletRegistration;
   wettkampf: string;
+  wettkampfFull: Wettkampf;
   regId: number;
   athletId: number;
   wkId: string;
@@ -64,6 +65,7 @@ export class RegAthletEditorPage implements OnInit {
                   geschlecht: 'W',
                   gebdat: undefined,
                   programId: undefined,
+                  team: 0,
                   registrationTime: 0
                 } as AthletRegistration);
               }
@@ -80,6 +82,10 @@ export class RegAthletEditorPage implements OnInit {
   set selectedClubAthletId(id: number) {
     this._selectedClubAthletId = id;
     this.registration = this.clubAthletList.find(r => r.athletId === id);
+  }
+
+  get teamrules() {
+    return (this.wettkampfFull.teamrule || '').split(',');
   }
 
   needsPGMChoice(): boolean {
@@ -109,10 +115,10 @@ export class RegAthletEditorPage implements OnInit {
     const alter = this.alter(athlet);
     const alternatives = this.alternatives(athlet);
     return this.wkPgms.filter(pgm => {
-      return (pgm.alterVon || 0) <= alter && 
-        (pgm.alterBis || 100) >= alter && 
-        alternatives.filter(a => 
-          a.programId === pgm.id || 
+      return (pgm.alterVon || 0) <= alter &&
+        (pgm.alterBis || 100) >= alter &&
+        alternatives.filter(a =>
+          a.programId === pgm.id ||
           this.getAthletPgm(a).parentId === pgm.parentId
         ).length === 0;
     });
@@ -126,6 +132,7 @@ export class RegAthletEditorPage implements OnInit {
     this.zone.run(() => {
       this.waiting = false;
       this.wettkampf = this.backendService.competitionName;
+      this.wettkampfFull = this.backendService.currentCompetition();
       this.registration = Object.assign({}, registration);
       this.registration.gebdat = toDateString(this.registration.gebdat);
     });
@@ -162,7 +169,10 @@ export class RegAthletEditorPage implements OnInit {
 
   save(form: NgForm) {
     if(!form.valid) return;
-    const reg = Object.assign({}, this.registration, {gebdat: new Date(form.value.gebdat).toJSON()});
+    const reg = Object.assign({}, this.registration, {
+      gebdat: new Date(form.value.gebdat).toJSON(),
+      team: this.registration.team > 0 ? this.registration.team : 0
+    });
 
     if (this.athletId === 0 || reg.id === 0) {
 

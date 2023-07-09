@@ -11,9 +11,9 @@ import { DurchgangStarted, Wettkampf, Geraet, WertungContainer, NewLastResults, 
          NewClubRegistration,
          AthletRegistration,
          ProgrammRaw,
+         RegistrationResetPW,
          SyncAction, JudgeRegistration, JudgeRegistrationProgramItem, BulkEvent, Verein, Score, ScoreLink} from '../backend-types';
 import { backendUrl } from '../utils';
-import { RegistrationResetPW } from '../backend-types';
 
 // tslint:disable:radix
 // tslint:disable:variable-name
@@ -60,16 +60,23 @@ export class BackendService extends WebsocketService {
       return localStorage.getItem('auth_clubid');
     }
 
+    extractCompetitionLabel(wk: Wettkampf): string {
+      return wk !!!== undefined ? wk.titel + ', am ' + (wk.datum + 'T').split('T')[0].split('-').reverse().join('-') : '';
+    }
+
     get competitionName(): string {
-      if (!this.competitions) { return ''; }
+      return this.extractCompetitionLabel(this.currentCompetition());
+    }
+
+    currentCompetition(): Wettkampf {
+      if (!this.competitions) { return undefined; }
       const candidate = this.competitions
-        .filter(c => c.uuid === this.competition)
-        .map(c => c.titel + ', am ' + (c.datum + 'T').split('T')[0].split('-').reverse().join('-'));
+        .filter(c => c.uuid === this.competition);
 
       if (candidate.length === 1) {
         return candidate[0];
       } else {
-        return '';
+        return undefined;
       }
     }
 

@@ -2,7 +2,14 @@
   <ion-avatar slot="start">
     <img src="assets/imgs/athlete.png">
   </ion-avatar>
-  <ion-label>{{athletregistration.name}}, {{athletregistration.vorname}} ({{athletregistration.geschlecht}})<br><small>({{athletregistration.gebdat | date}})</small>
-  </ion-label>
+  <ion-grid no-padding>
+    <ion-row>
+      <ion-col><ion-label>{{athletregistration.name}}, {{athletregistration.vorname}} ({{athletregistration.geschlecht}})<br>
+        <small>({{athletregistration.gebdat | date}})</small></ion-label></ion-col>
+    </ion-row>
+    <ion-row >
+      <ion-col *ngIf="athletregistration.team > 0"><small>{{getTeamText()}}</small></ion-col>
+    </ion-row>
+  </ion-grid>
   <ion-badge slot="end" [color]="statusBadgeColor()">{{statusBadgeText()}}<br><small>{{statusComment()}}</small></ion-badge>
 </ion-item>

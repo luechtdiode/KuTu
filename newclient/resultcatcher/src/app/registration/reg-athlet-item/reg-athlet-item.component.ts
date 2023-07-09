@@ -14,6 +14,9 @@ export class RegAthletItemComponent implements OnInit {
   athletregistration: AthletRegistration;
 
   @Input()
+  vereinregistration: ClubRegistration;
+
+  @Input()
   status: string;
 
   @Input()
@@ -48,8 +51,19 @@ export class RegAthletItemComponent implements OnInit {
 
   ngOnInit() {}
 
-  getProgrammText(id: number) {
-    const programraw = this.programmlist.find(pgm => pgm.id === id);
+  getProgrammText() {
+    const programraw = this.programmlist.find(pgm => pgm.id === this.athletregistration.programId);
     return  !!programraw ? programraw.name : '...';
+  }
+
+  getTeamText() {
+    const team = this.athletregistration.team;
+    const verein = this.vereinregistration;
+    if (team > 0) {
+      const pgmtext = this.getProgrammText();
+      return 'Team ' + verein.vereinname + ' ' + this.athletregistration.team + " (bei " + this.athletregistration.geschlecht + "/" + pgmtext + ")";
+    } else {
+      return '';
+    }
   }
 }

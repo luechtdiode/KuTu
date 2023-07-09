@@ -64,6 +64,25 @@
           <ion-select-option *ngFor='let pgm of filterPGMsForAthlet(registration)' [value]='pgm.id'>{{pgm.name}}</ion-select-option>
         </ion-select>
       </ion-item>
+      <ion-item-divider *ngIf="!!wettkampfFull.teamrule && wettkampfFull.teamrule.length > 0">
+        <ion-avatar slot="start">
+          <img src="assets/imgs/verein.png">
+        </ion-avatar>
+        <ion-label>Team-/Mannschaftszuweisung</ion-label>
+      </ion-item-divider>
+      <ion-item *ngIf="!!wettkampfFull.teamrule && wettkampfFull.teamrule.length > 0">
+        <ion-avatar slot="start">
+          &nbsp;
+        </ion-avatar>
+        <ion-grid no-padding>
+          <ion-row *ngFor="let rule of teamrules">
+            <ion-col>für {{rule}}</ion-col></ion-row>
+          <ion-row>
+            <ion-col><ion-label color="primary">Team Nummer</ion-label></ion-col>
+            <ion-col><ion-input placeholder="Team" type="number"  [disabled]="false" [(ngModel)]='registration.team' name="team"></ion-input></ion-col>
+          </ion-row>
+        </ion-grid>
+      </ion-item>
     </ion-list>
     <ion-list>
       <ion-button size="large" expand="block" type="submit" #btnSaveNext [disabled]="waiting || !isFormValid()|| !athletRegistrationForm.valid || athletRegistrationForm.untouched" color="success">
