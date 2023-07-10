@@ -105,17 +105,25 @@ sealed trait GroupBy {
 
   private def mapAndSortLeaf(grouped: Map[DataObject, Seq[WertungView]]) = {
     def reduce(switch: DataObject, list: Seq[WertungView]): Seq[GroupSection] = {
-      Seq(GroupLeaf(switch, list))
+      if (list.nonEmpty) {
+        Seq(GroupLeaf(switch, list))
+      } else {
+        Seq()
+      }
     }
 
     sort(grouped.flatMap(x => reduce(x._1, x._2)).filter(g => g.sum.endnote > 0), sorter)
   }
 
   private def mapAndSortNode(ng: GroupBy, grouped: Map[DataObject, Seq[WertungView]]) = {
-    sort(grouped.map { x =>
+    sort(grouped.flatMap { x =>
       val (grp, seq) = x
       val list = ng.select(seq)
-      GroupNode(grp, list)
+      if (list.nonEmpty) {
+        Seq(GroupNode(grp, list))
+      } else {
+        Seq()
+      }
     }.filter(g => g.sum.endnote > 0), sorter)
   }
 

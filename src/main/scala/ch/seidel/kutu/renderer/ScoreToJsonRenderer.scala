@@ -37,7 +37,7 @@ object ScoreToJsonRenderer {
     }
     for (c <- gs) {
       c match {
-        case gl: GroupLeaf =>
+        case gl: GroupLeaf[_] =>
           val cols = gl.buildColumns
           def renderListHead = {
             gsBlock.append("{")

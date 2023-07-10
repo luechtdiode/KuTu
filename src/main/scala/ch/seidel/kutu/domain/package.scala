@@ -339,6 +339,22 @@ package object domain {
     def updatedWith(athlet: Athlet) = AthletView(athlet.id, athlet.js_id, athlet.geschlecht, athlet.name, athlet.vorname, athlet.gebdat, athlet.strasse, athlet.plz, athlet.ort, verein.map(v => v.copy(id = athlet.verein.getOrElse(0L))), athlet.activ)
   }
 
+  case class Team(name: String, wertungen: List[WertungView], wertungenCount: Int) extends DataObject {
+    val perDisciplinWertungen: Map[Disziplin, List[WertungView]] = wertungen
+      .groupBy(w => w.wettkampfdisziplin.disziplin)
+      .map{ case (disciplin, wertungen) => (disciplin, wertungen
+        .sortBy(_.resultat.endnote).reverse.take(wertungenCount))
+      }
+    val perDisciplinResults: Map[Disziplin, List[Resultat]] = perDisciplinWertungen
+      .map{ case (disciplin, wertungen) => (disciplin, wertungen
+        .map(w => w.resultat))
+      }
+
+    val perDisciplinSums = perDisciplinResults.map{ case (disciplin, results) => (disciplin, results.reduce(_+_)) }
+    val sum = perDisciplinSums.map(_._2).reduce(_+_)
+    override def easyprint: String = "Team " + name
+  }
+
   object Wertungsrichter {
     def apply(): Wertungsrichter = Wertungsrichter(0, 0, "", "", "", None, "", "", "", None, activ = true)
   }
@@ -902,6 +918,13 @@ package object domain {
 
   sealed trait DataRow {}
 
+  trait ResultRow {
+    val sum: Resultat
+    val rang: Resultat
+    val auszeichnung: Boolean
+    val resultate: IndexedSeq[LeafRow] = IndexedSeq()
+    val divider: Int = 1
+  }
   /**
    * Single Result of a row
    * @param title Discipline name
@@ -909,7 +932,7 @@ package object domain {
    * @param rang
    * @param auszeichnung true, of best score in that discipline
    */
-  case class LeafRow(title: String, sum: Resultat, rang: Resultat, auszeichnung: Boolean) extends DataRow
+  case class LeafRow(title: String, sum: Resultat, rang: Resultat, auszeichnung: Boolean) extends DataRow with ResultRow
 
   /**
    * Row of results per each discipline of one athlet/team
@@ -919,9 +942,14 @@ package object domain {
    * @param rang
    * @param auszeichnung
    */
-  case class GroupRow(athlet: AthletView, resultate: IndexedSeq[LeafRow], sum: Resultat, rang: Resultat, auszeichnung: Boolean) extends DataRow {
+  case class GroupRow(athlet: AthletView, pgm: ProgrammView, override val resultate: IndexedSeq[LeafRow], sum: Resultat, rang: Resultat, auszeichnung: Boolean) extends DataRow with ResultRow {
     lazy val withDNotes = resultate.exists(w => w.sum.noteD > 0)
-    lazy val divider = if (withDNotes || resultate.isEmpty) 1 else resultate.count { r => r.sum.endnote > 0 }
+    override val divider = if (withDNotes || resultate.isEmpty) 1 else resultate.count { r => r.sum.endnote > 0 }
+  }
+
+  case class TeamRow(team: Team, override val resultate: IndexedSeq[LeafRow], sum: Resultat, rang: Resultat, auszeichnung: Boolean) extends DataRow with ResultRow {
+    lazy val withDNotes = resultate.exists(w => w.sum.noteD > 0)
+    override val divider = if (withDNotes || resultate.isEmpty) 1 else resultate.count { r => r.sum.endnote > 0 }
   }
 
   sealed trait NotenModus {
