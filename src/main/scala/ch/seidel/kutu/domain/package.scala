@@ -339,19 +339,19 @@ package object domain {
     def updatedWith(athlet: Athlet) = AthletView(athlet.id, athlet.js_id, athlet.geschlecht, athlet.name, athlet.vorname, athlet.gebdat, athlet.strasse, athlet.plz, athlet.ort, verein.map(v => v.copy(id = athlet.verein.getOrElse(0L))), athlet.activ)
   }
 
-  case class Team(name: String, wertungen: List[WertungView], wertungenCount: Int) extends DataObject {
-    val perDisciplinWertungen: Map[Disziplin, List[WertungView]] = wertungen
-      .groupBy(w => w.wettkampfdisziplin.disziplin)
-      .map{ case (disciplin, wertungen) => (disciplin, wertungen
-        .sortBy(_.resultat.endnote).reverse.take(wertungenCount))
-      }
-    val perDisciplinResults: Map[Disziplin, List[Resultat]] = perDisciplinWertungen
-      .map{ case (disciplin, wertungen) => (disciplin, wertungen
+  case class Team(name: String, wertungen: List[WertungView], relevantWertungen: Map[Disziplin, List[WertungView]]) extends DataObject {
+    val perDisciplinResults: Map[Disziplin, List[Resultat]] = relevantWertungen
+      .map{ case (disciplin, wtg) => (disciplin, wtg
         .map(w => w.resultat))
       }
 
     val perDisciplinSums = perDisciplinResults.map{ case (disciplin, results) => (disciplin, results.reduce(_+_)) }
     val sum = perDisciplinSums.map(_._2).reduce(_+_)
+    val avg = sum / perDisciplinResults.keySet.size
+
+    def isRelevantResult(disziplin: Disziplin, member: AthletView): Boolean = {
+      relevantWertungen(disziplin).exists(_.athlet.equals(member))
+    }
     override def easyprint: String = "Team " + name
   }
 
@@ -702,15 +702,15 @@ package object domain {
   //      if(uuid != null) Wettkampf(id, datum, titel, programmId, auszeichnung, auszeichnungendnote, Some(uuid))
   //      else apply(id, datum, titel, programmId, auszeichnung, auszeichnungendnote)
   //  }
-  case class Wettkampf(id: Long, uuid: Option[String], datum: java.sql.Date, titel: String, programmId: Long, auszeichnung: Int, auszeichnungendnote: scala.math.BigDecimal, notificationEMail: String, altersklassen: Option[String], jahrgangsklassen: Option[String], punktegleichstandsregel: Option[String], rotation: Option[String]) extends DataObject {
+  case class Wettkampf(id: Long, uuid: Option[String], datum: java.sql.Date, titel: String, programmId: Long, auszeichnung: Int, auszeichnungendnote: scala.math.BigDecimal, notificationEMail: String, altersklassen: Option[String], jahrgangsklassen: Option[String], punktegleichstandsregel: Option[String], rotation: Option[String], teamrule: Option[String]) extends DataObject {
 
     override def easyprint = f"$titel am $datum%td.$datum%tm.$datum%tY"
 
     def toView(programm: ProgrammView): WettkampfView = {
-      WettkampfView(id, uuid, datum, titel, programm, auszeichnung, auszeichnungendnote, notificationEMail, altersklassen.getOrElse(""), jahrgangsklassen.getOrElse(""), punktegleichstandsregel.getOrElse(""), rotation.getOrElse(""))
+      WettkampfView(id, uuid, datum, titel, programm, auszeichnung, auszeichnungendnote, notificationEMail, altersklassen.getOrElse(""), jahrgangsklassen.getOrElse(""), punktegleichstandsregel.getOrElse(""), rotation.getOrElse(""), teamrule.getOrElse(""))
     }
 
-    def toPublic: Wettkampf = Wettkampf(id, uuid, datum, titel, programmId, auszeichnung, auszeichnung, "", altersklassen, jahrgangsklassen, punktegleichstandsregel, rotation)
+    def toPublic: Wettkampf = Wettkampf(id, uuid, datum, titel, programmId, auszeichnung, auszeichnung, "", altersklassen, jahrgangsklassen, punktegleichstandsregel, rotation, teamrule)
 
     private def prepareFilePath(homedir: String) = {
       val filename: String = encodeFileName(easyprint)
@@ -800,10 +800,10 @@ package object domain {
   //      if(uuid != null) WettkampfView(id, datum, titel, programm, auszeichnung, auszeichnungendnote, Some(uuid))
   //      else apply(id, datum, titel, programm, auszeichnung, auszeichnungendnote)
   //  }
-  case class WettkampfView(id: Long, uuid: Option[String], datum: java.sql.Date, titel: String, programm: ProgrammView, auszeichnung: Int, auszeichnungendnote: scala.math.BigDecimal, notificationEMail: String, altersklassen: String, jahrgangsklassen: String, punktegleichstandsregel: String, rotation: String) extends DataObject {
+  case class WettkampfView(id: Long, uuid: Option[String], datum: java.sql.Date, titel: String, programm: ProgrammView, auszeichnung: Int, auszeichnungendnote: scala.math.BigDecimal, notificationEMail: String, altersklassen: String, jahrgangsklassen: String, punktegleichstandsregel: String, rotation: String, teamrule: String) extends DataObject {
     override def easyprint = f"$titel am $datum%td.$datum%tm.$datum%tY"
 
-    def toWettkampf = Wettkampf(id, uuid, datum, titel, programm.id, auszeichnung, auszeichnungendnote, notificationEMail, Option(altersklassen), Option(jahrgangsklassen), Option(punktegleichstandsregel), Option(rotation))
+    def toWettkampf = Wettkampf(id, uuid, datum, titel, programm.id, auszeichnung, auszeichnungendnote, notificationEMail, Option(altersklassen), Option(jahrgangsklassen), Option(punktegleichstandsregel), Option(rotation), Option(teamrule))
   }
 
   case class PublishedScoreRaw(id: String, title: String, query: String, published: Boolean, publishedDate: java.sql.Date, wettkampfId: Long) extends DataObject {

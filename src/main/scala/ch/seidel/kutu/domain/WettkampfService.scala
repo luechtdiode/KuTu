@@ -93,7 +93,7 @@ trait WettkampfService extends DBService
     sql"""
                     select
                         wpt.id,
-                        wk.id, wk.uuid, wk.datum, wk.titel, wk.programm_id, wk.auszeichnung, wk.auszeichnungendnote, wk.notificationEMail, wk.altersklassen, wk.jahrgangsklassen, wk.punktegleichstandsregel, wk.rotation, wd.id, wd.programm_id,
+                        wk.id, wk.uuid, wk.datum, wk.titel, wk.programm_id, wk.auszeichnung, wk.auszeichnungendnote, wk.notificationEMail, wk.altersklassen, wk.jahrgangsklassen, wk.punktegleichstandsregel, wk.rotation, wk.teamrule, wd.id, wd.programm_id,
                         d.*,
                         wd.kurzbeschreibung, wd.detailbeschreibung, wd.notenfaktor, wd.masculin, wd.feminim, wd.ord, wd.scale, wd.dnote, wd.min, wd.max, wd.startgeraet,
                         wpt.wechsel, wpt.einturnen, wpt.uebung, wpt.wertung
@@ -411,7 +411,7 @@ trait WettkampfService extends DBService
     seek(programmid, Seq.empty)
   }
 
-  def createWettkampf(datum: java.sql.Date, titel: String, programmId: Set[Long], notificationEMail: String, auszeichnung: Int, auszeichnungendnote: scala.math.BigDecimal, uuidOption: Option[String], altersklassen: String, jahrgangsklassen: String, punktegleichstandsregel: String, rotation: String): Wettkampf = {
+  def createWettkampf(datum: java.sql.Date, titel: String, programmId: Set[Long], notificationEMail: String, auszeichnung: Int, auszeichnungendnote: scala.math.BigDecimal, uuidOption: Option[String], altersklassen: String, jahrgangsklassen: String, punktegleichstandsregel: String, rotation: String, teamrule: String): Wettkampf = {
     val cache = scala.collection.mutable.Map[Long, ProgrammView]()
     val programs = programmId map (p => readProgramm(p, cache))
     val heads = programs map (_.head)
@@ -457,7 +457,8 @@ trait WettkampfService extends DBService
                     auszeichnung=$auszeichnung, auszeichnungendnote=$auszeichnungendnote,
                     altersklassen=$altersklassen, jahrgangsklassen=$jahrgangsklassen,
                     punktegleichstandsregel=$punktegleichstandsregel,
-                    rotation=$rotation
+                    rotation=$rotation,
+                    teamrule=$teamrule
                 where id=$cid and uuid=$uuid
             """ >>
           initPlanZeitenActions(UUID.fromString(uuid)) >>
@@ -468,8 +469,8 @@ trait WettkampfService extends DBService
         case _ => 
           sqlu"""
                   insert into wettkampf
-                  (datum, titel, programm_Id, notificationEMail, auszeichnung, auszeichnungendnote, punktegleichstandsregel, altersklassen, jahrgangsklassen, rotation, uuid)
-                  values (${datum}, ${titel}, ${heads.head.id}, $notificationEMail, $auszeichnung, $auszeichnungendnote, $punktegleichstandsregel, $altersklassen, $jahrgangsklassen, $rotation, $uuid)
+                  (datum, titel, programm_Id, notificationEMail, auszeichnung, auszeichnungendnote, punktegleichstandsregel, altersklassen, jahrgangsklassen, rotation, teamrule, uuid)
+                  values (${datum}, ${titel}, ${heads.head.id}, $notificationEMail, $auszeichnung, $auszeichnungendnote, $punktegleichstandsregel, $altersklassen, $jahrgangsklassen, $rotation, $teamrule, $uuid)
               """ >>
           initPlanZeitenActions(UUID.fromString(uuid)) >>
           sql"""
@@ -494,7 +495,7 @@ trait WettkampfService extends DBService
     }, Duration.Inf)
   }
 
-  def saveWettkampf(id: Long, datum: java.sql.Date, titel: String, programmId: Set[Long], notificationEMail: String, auszeichnung: Int, auszeichnungendnote: scala.math.BigDecimal, uuidOption: Option[String], altersklassen: String, jahrgangsklassen: String, punktegleichstandsregel: String, rotation: String): Wettkampf = {
+  def saveWettkampf(id: Long, datum: java.sql.Date, titel: String, programmId: Set[Long], notificationEMail: String, auszeichnung: Int, auszeichnungendnote: scala.math.BigDecimal, uuidOption: Option[String], altersklassen: String, jahrgangsklassen: String, punktegleichstandsregel: String, rotation: String, teamrule: String): Wettkampf = {
     val uuid = uuidOption.getOrElse(UUID.randomUUID().toString())
     val cache = scala.collection.mutable.Map[Long, ProgrammView]()
     val process = for {
@@ -520,6 +521,7 @@ trait WettkampfService extends DBService
                       altersklassen=$altersklassen, jahrgangsklassen=$jahrgangsklassen,
                       punktegleichstandsregel=$punktegleichstandsregel,
                       rotation=$rotation,
+                      teamrule=$teamrule,
                       uuid=$uuid
                   where id=$id
           """ >>

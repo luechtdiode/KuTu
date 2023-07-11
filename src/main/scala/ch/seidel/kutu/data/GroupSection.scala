@@ -61,14 +61,13 @@ case class GroupLeaf[GK <: DataObject](override val groupKey: GK, list: Iterable
   val isTeamGroup = groupKey.isInstanceOf[Team]
   override val sum: Resultat = {
     groupKey match {
-      case gk: Team =>
-        gk.sum
+      case gk: Team => gk.sum
       case _ => list.map(_.resultat).reduce(_+_)
     }
   }
   override val avg: Resultat = {
     groupKey match {
-      case gk: Team => gk.sum / gk.wertungenCount
+      case gk: Team => gk.avg
       case _ => sum / list.size
     }
   }
@@ -394,7 +393,8 @@ case class GroupLeaf[GK <: DataObject](override val groupKey: GK, list: Iterable
             LeafRow(w._1.easyprint,
               ww.avg,
               ww.rang,
-              team.perDisciplinResults(w._1).indexOf(ww.avg) > -1)
+              //team.perDisciplinResults(w._1).indexOf(ww.avg) > -1)
+              team.isRelevantResult(w._1, ww.groupKey.asInstanceOf[AthletView]))
           }
           else if(anzahWettkaempfe > 1) {
             LeafRow(w._1.name,
@@ -481,21 +481,16 @@ object TeamSums {
     if (wkCnt > 1) {
       None
     } else {
-      val teams = teamRows.list
-        .filter(w => w.team > 0)
-        .groupBy(w => (w.athlet.verein, w.team))
-        .flatMap { team =>
-          val (teamkey, wertungen) = team
-          val (verein, teamNummer) = teamkey
-          val athletCount = wertungen.map(w => w.athlet.id).toSet.size
-          if (athletCount >= wertungenCount) {
-            val team = Team(s"${verein.map(_.easyprint).getOrElse("")} ${teamNummer}", wertungen.toList, wertungenCount)
-            List(GroupLeaf(team, wertungen))
-          } else {
-            List.empty
-          }
-        }.toList
-      if (teams.isEmpty) None else Some(TeamSums(teamRows.groupKey.asInstanceOf[DataObject], teams))
+      val wk = teamRows.list.map(w => w.wettkampf).head
+      val teamregel = TeamRegel(wk)
+      if (teamregel.teamsAllowed) {
+        val tms = teamregel.extractTeams(teamRows.list)
+
+        val teams = tms.map{team =>
+          GroupLeaf(team, team.wertungen)
+        }
+        if (teams.isEmpty) None else Some(TeamSums(teamRows.groupKey.asInstanceOf[DataObject], teams))
+      } else None
     }
   }
 }
@@ -537,7 +532,7 @@ case class TeamSums(override val groupKey: DataObject, teamRows: List[GroupLeaf[
       (getTeam(x), x)
     }.map { x =>
       val (team, teamRow) = x
-      (team, teamRow.mapToAvgRowSummary(team.perDisciplinWertungen.flatMap(_._2)))
+      (team, teamRow.mapToAvgRowSummary(team.relevantWertungen.flatMap(_._2)))
     }
 
     val rangMap: Map[Team, GroupSum] = glGroup.mapToAvgRang(avgPerTeam.map(rm => rm._1 -> (rm._2._1, rm._2._5)))

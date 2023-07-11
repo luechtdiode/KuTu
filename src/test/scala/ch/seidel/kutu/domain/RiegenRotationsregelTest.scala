@@ -60,7 +60,7 @@ class RiegenRotationsregelTest extends AnyWordSpec with Matchers {
   }
 
   private def mockKandidat(rotation: String, jahrgang: Int, wettkampfjahr: Int, wettkampfTag: Int, verein: String, name: String, vorname: String, kategorie: String, geschlecht: String) = {
-    val wk = Wettkampf(1L, None, LocalDate.of(wettkampfjahr, 1, 1).plusDays(wettkampfTag) , "Testwettkampf", 44L, 0, BigDecimal(0d), "", None, None, None, Some(rotation))
+    val wk = Wettkampf(1L, None, LocalDate.of(wettkampfjahr, 1, 1).plusDays(wettkampfTag) , "Testwettkampf", 44L, 0, BigDecimal(0d), "", None, None, None, Some(rotation), None)
     val a = Athlet(1L).copy(name = name, vorname = vorname, gebdat = Some(LocalDate.of(jahrgang, 3, 2))).toAthletView(Some(Verein(1L, verein, Some("Testverband"))))
     val wd = WettkampfdisziplinView(1, ProgrammView(44L, kategorie, 0, None, 1, 0, 100, UUID.randomUUID().toString, 1), Disziplin(1, "Boden"), "", None, StandardWettkampf(1.0), 1, 1, 0, 3, 1, 0, 30, 1)
     val wv = WertungView(wd.id, a, wd, wk, None, None, None, None, None, 0)

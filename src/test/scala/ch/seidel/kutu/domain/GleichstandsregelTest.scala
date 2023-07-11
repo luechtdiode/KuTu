@@ -10,7 +10,7 @@ import java.util.UUID
 class GleichstandsregelTest extends AnyWordSpec with Matchers {
 
   val testWertungen = {
-    val wk = Wettkampf(1L, None, LocalDate.of(2023, 3, 3), "Testwettkampf", 44L, 0, BigDecimal(0d), "", None, None, None, None)
+    val wk = Wettkampf(1L, None, LocalDate.of(2023, 3, 3), "Testwettkampf", 44L, 0, BigDecimal(0d), "", None, None, None, None, None)
     val a = Athlet(1L).copy(name = s"Testathlet", gebdat = Some(LocalDate.of(2004, 3, 2))).toAthletView(Some(Verein(1L, "Testverein", Some("Testverband"))))
     val d = for (
       geraet <- List("Boden", "Pauschen", "Ring", "Sprung", "Barren", "Reck").zipWithIndex

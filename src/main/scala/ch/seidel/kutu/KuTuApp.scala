@@ -317,6 +317,31 @@ object KuTuApp extends JFXApp3 with KutuService with JsonSupport with JwtSupport
           }
         }
       }
+      val cmbTeamRegel = new ComboBox[String]() {
+        prefWidth = 500
+        TeamRegel.predefined.foreach(definition => {
+          items.value.add(definition._1)
+        })
+        promptText = "Definition für Teams"
+      }
+      val txtTeamRegel = new TextField {
+        prefWidth = 500
+        promptText = """z.B. VereinGerät(3/4) oder VerbandGesamt(4/*)"""
+        text = TeamRegel(p.toWettkampf).toFormel
+        editable <== Bindings.createBooleanBinding(() => {
+          "Individuell".equals(cmbTeamRegel.value.value)
+        },
+          cmbTeamRegel.selectionModel,
+          cmbTeamRegel.value
+        )
+
+        cmbTeamRegel.value.onChange {
+          text.value = TeamRegel.predefined(cmbTeamRegel.value.value)
+          if (text.value.isEmpty && !"Keine Teams".equals(cmbTeamRegel.value.value)) {
+            text.value = p.teamrule
+          }
+        }
+      }
       val cmbPunktgleichstandsregel = new ComboBox[String]() {
         prefWidth = 500
         Gleichstandsregel.predefined.foreach(definition => {
@@ -417,7 +442,8 @@ object KuTuApp extends JFXApp3 with KutuService with JsonSupport with JwtSupport
                 cmbRiegenRotationsregel, txtRiegenRotationsregel,
                 cmbPunktgleichstandsregel, txtPunktgleichstandsregel,
                 cmbAltersklassen, txtAltersklassen,
-                cmbJGAltersklassen, txtJGAltersklassen
+                cmbJGAltersklassen, txtJGAltersklassen,
+                cmbTeamRegel, txtTeamRegel
               )
             }
           }
@@ -455,7 +481,8 @@ object KuTuApp extends JFXApp3 with KutuService with JsonSupport with JwtSupport
                 txtAltersklassen.text.value,
                 txtJGAltersklassen.text.value,
                 txtPunktgleichstandsregel.text.value,
-                txtRiegenRotationsregel.text.value
+                txtRiegenRotationsregel.text.value,
+                txtTeamRegel.text.value
               )
               val dir = new java.io.File(homedir + "/" + w.easyprint.replace(" ", "_"))
               if (!dir.exists()) {
@@ -1250,6 +1277,34 @@ object KuTuApp extends JFXApp3 with KutuService with JsonSupport with JwtSupport
           text = rotation
         })
       }
+      val cmbTeamRegel = new ComboBox[String]() {
+        prefWidth = 500
+        TeamRegel.predefined.foreach(definition => {
+          items.value.add(definition._1)
+        })
+        promptText = "Definition für Teams"
+      }
+      val txtTeamRegel = new TextField {
+        prefWidth = 500
+        promptText = """z.B. VereinGerät(3/4) oder VerbandGesamt(4/*)"""
+        copyFrom.map(_.teamrule).foreach(teamrule => {
+          text = teamrule
+        })
+
+        editable <== Bindings.createBooleanBinding(() => {
+          "Individuell".equals(cmbTeamRegel.value.value)
+        },
+          cmbTeamRegel.selectionModel,
+          cmbTeamRegel.value
+        )
+
+        cmbTeamRegel.value.onChange {
+          text.value = TeamRegel.predefined(cmbTeamRegel.value.value)
+          if (text.value.isEmpty && !"Keine Teams".equals(cmbTeamRegel.value.value)) {
+            text.value = ""
+          }
+        }
+      }
       val cmbPunktgleichstandsregel = new ComboBox[String]() {
         prefWidth = 500
         Gleichstandsregel.predefined.foreach(definition => {
@@ -1346,7 +1401,8 @@ object KuTuApp extends JFXApp3 with KutuService with JsonSupport with JwtSupport
                 cmbRiegenRotationsregel, txtRiegenRotationsregel,
                 cmbPunktgleichstandsregel, txtPunktgleichstandsregel,
                 cmbAltersklassen, txtAltersklassen,
-                cmbJGAltersklassen, txtJGAltersklassen
+                cmbJGAltersklassen, txtJGAltersklassen,
+                cmbTeamRegel, txtTeamRegel
               )
             }
           }
@@ -1386,7 +1442,8 @@ object KuTuApp extends JFXApp3 with KutuService with JsonSupport with JwtSupport
             txtAltersklassen.text.value,
             txtJGAltersklassen.text.value,
             txtPunktgleichstandsregel.text.value,
-            txtRiegenRotationsregel.text.value
+            txtRiegenRotationsregel.text.value,
+            txtTeamRegel.text.value
           )
           val dir = new java.io.File(homedir + "/" + w.easyprint.replace(" ", "_"))
           if (!dir.exists()) {
