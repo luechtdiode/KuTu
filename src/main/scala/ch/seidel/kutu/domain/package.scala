@@ -346,8 +346,8 @@ package object domain {
       }
 
     val perDisciplinSums = perDisciplinResults.map{ case (disciplin, results) => (disciplin, results.reduce(_+_)) }
-    val sum = perDisciplinSums.map(_._2).reduce(_+_)
-    val avg = sum / perDisciplinResults.keySet.size
+    val sum = if (perDisciplinSums.values.nonEmpty) perDisciplinSums.values.reduce(_+_) else Resultat(0,0,0)
+    val avg = if (perDisciplinSums.values.nonEmpty) sum / perDisciplinResults.keySet.size else Resultat(0,0,0)
 
     val blockrows = wertungen.map(_.athlet).distinct.size
     def isRelevantResult(disziplin: Disziplin, member: AthletView): Boolean = {

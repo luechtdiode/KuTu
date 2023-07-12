@@ -5,12 +5,15 @@ import ch.seidel.kutu.Config
 import java.io.File
 import ch.seidel.kutu.Config.{homedir, remoteBaseUrl, remoteHostOrigin}
 import ch.seidel.kutu.KuTuApp.enc
+import ch.seidel.kutu.data.{ByGeschlecht, ByProgramm, GroupSection}
 import ch.seidel.kutu.domain._
 import ch.seidel.kutu.renderer.PrintUtil._
 import net.glxn.qrgen.QRCode
 import net.glxn.qrgen.image.ImageType
 import org.slf4j.LoggerFactory
 
+import java.sql.Date
+import java.time.{LocalDate, Period}
 import scala.collection.immutable._
 
 trait WettkampfOverviewToHtmlRenderer {
@@ -141,7 +144,7 @@ trait WettkampfOverviewToHtmlRenderer {
     </html>
   """
 
-  private def blatt(wettkampf: WettkampfView, programme: Seq[(String, Int, Int, Int)], vereinRows: List[(String, Map[String, (Int, Int)], Int, Int)], logo: File) = {
+  private def blatt(wettkampf: WettkampfView, programme: Seq[(String, Int, Int, Int)], vereinRows: List[(String, Map[String, (Int, Int)], Int, Int)], wertungen: List[WertungView], logo: File) = {
     val programHeader1 = programme.map(p => escaped(p._1))
       .mkString("<th class='blockstart' colspan='2'>", "</th><th class='blockstart' colspan='2'>", "</th>")
     val programHeader2 = programme.map(_ => "Ti</th><th>Tu")
@@ -221,9 +224,73 @@ trait WettkampfOverviewToHtmlRenderer {
     val silverSum = medallienbedarf.map(p => p._3 + p._7).sum
     val bronzeSum = medallienbedarf.map(p => p._4 + p._8).sum
     val auszSum = medallienbedarf.map(p => p._5 + p._9).sum
-    val altersklassen = Altersklasse(wettkampf.altersklassen).map(ak => s"<li>${escaped(ak.easyprint)}</li>").mkString("\n")
-    val jgAltersklassen = Altersklasse(wettkampf.jahrgangsklassen).map(ak => s"<li>${escaped(ak.easyprint)}</li>").mkString("\n")
+    val wkAlterklassen = Altersklasse(wettkampf.altersklassen)
+    val altersklassen = wkAlterklassen.map(ak => s"<li>${escaped(ak.easyprint)}</li>").mkString("\n")
+    val wkJGAltersklassen: Seq[Altersklasse] = Altersklasse(wettkampf.jahrgangsklassen)
+    val jgAltersklassen = wkJGAltersklassen.map(ak => s"<li>${escaped(ak.easyprint)}</li>").mkString("\n")
 
+    val teams = TeamRegel(wettkampf.teamrule)
+    val teamsBlock = if (teams.teamsAllowed) {
+      val groupedWertungen = if (jgAltersklassen.nonEmpty) {
+        wertungen.groupBy { w =>
+          val programm = w.wettkampfdisziplin.programm
+          val gebdat: LocalDate = w.athlet.gebdat.getOrElse(new Date(System.currentTimeMillis())).toLocalDate
+          val geschlecht = w.athlet.geschlecht
+          val wkd: LocalDate = wettkampf.datum
+          val alter = wkd.getYear - gebdat.getYear
+          val jgak = Altersklasse(wkJGAltersklassen, alter, geschlecht, programm)
+          (programm.easyprint, jgak.easyprint, "")
+        }
+      }
+      else if (altersklassen.nonEmpty) {
+        wertungen.groupBy { w =>
+          val programm = w.wettkampfdisziplin.programm
+          val gebdat: LocalDate = w.athlet.gebdat.getOrElse(new Date(System.currentTimeMillis())).toLocalDate
+          val geschlecht = w.athlet.geschlecht
+          val wkd: LocalDate = wettkampf.datum
+          val alter = Period.between(gebdat, wkd.plusDays(1)).getYears
+          val ak = Altersklasse(wkAlterklassen, alter, geschlecht, programm)
+          (programm.easyprint, ak.easyprint, "")
+        }
+      } else {
+        wertungen.groupBy(w => (w.wettkampfdisziplin.programm.easyprint, "", w.athlet.geschlecht))
+      }
+      val groupedTeams = groupedWertungen.toList.flatMap {
+        case (group, wertungen) => teams.extractTeams(wertungen).groupBy(_.rulename).map {
+          case (rulename, teams) =>
+            val (pgm, ak, sex) = group
+            (rulename, pgm, ak, sex, teams.size, teams.map(_.name).mkString(", "))
+        }
+      }.groupBy(_._1).map{
+        case (rulename, list) =>
+          (rulename, list.sortBy(t => s"${t._1}${t._2}${t._3}"))
+      }
+      val teamsSections = groupedTeams.keySet.toList.sorted.map {
+        case name =>
+          s"""<h3>$name</h3><br>
+             |<div class="showborder"><table width=100%>
+             |<thead>
+             |  <tr class='head'><th>Prog./Kat.</th><th class='blockstart'>AK</th><th class='blockstart'>Geschlecht</th><th class='blockstart'>Anzahl Teams</th><th class='blockstart'>Teams</th></tr>
+             |</thead><tbody>
+             |${
+            groupedTeams(name).map {
+              case (_, pgm: String, ak: String, sex: String, teamssize: Int, teams: String) =>
+                s"<tr><td class='data'>$pgm</td><td class='blockstart data'>$ak</td><td class='blockstart data'>$sex</td><td class='blockstart valuedata'>$teamssize</td><td class='blockstart data'>${teams.replace(",", "<br>")}</td></tr>"
+            }.mkString
+          }
+             |</tbody></table></div>
+             |""".stripMargin
+      }.mkString("\n")
+
+      s"""<h2>Teams / Mannschaften</h2>
+          <p>Die Team-Zuteilungen pro Teilnehmer/-In werden hier im Kontext der eingestellten Team-Regel sichtbar.<br>
+          Falls es Gruppen gibt, in denen weniger als 2 Teams aufgeführt sind, kann bei der Ranglisteneinstellung
+          über die <em>Filter Alle</em> Funktion Gruppen zusammengefasst werden.</p>
+      $teamsSections
+      """
+    } else {
+      ""
+    }
     val medalrows = s"""
     <tr><td class='data'>Goldmedallie</td>${goldDetails}<td class='blockstart valuedata'>${goldSum}</td></tr>
     <tr><td class='data'>Silbermedallie</td>${silverDetails}<td class='blockstart valuedata'>${silverSum}</td></tr>
@@ -299,6 +366,7 @@ trait WettkampfOverviewToHtmlRenderer {
           </tfoot>
         </table>
       </div>
+      $teamsBlock
       <h2>Medallien-Bedarf</h2>
         ${auszHint}
         <div class="showborder">
@@ -337,7 +405,7 @@ trait WettkampfOverviewToHtmlRenderer {
   
   val pageIntro = "<table width='100%'><tr><td>"
   val pageOutro = "</td></tr></table>"
-  def toHTML(wettkampf: WettkampfView, stats: List[OverviewStatTuple], logo: File): String = {
+  def toHTML(wettkampf: WettkampfView, stats: List[OverviewStatTuple], wertungen: List[WertungView], logo: File): String = {
     val programme: Seq[(String, Int, Int, Int)] = stats
       .groupBy(t => (t._2, t._3))
       .map(t => (t._1._1, t._1._2, t._2.map(_._4).sum, t._2.map(_._5).sum))
@@ -349,7 +417,7 @@ trait WettkampfOverviewToHtmlRenderer {
       .toList
       .sortBy(_._1)
 
-    intro + blatt(wettkampf, programme, vereinRows, logo) + outro
+    intro + blatt(wettkampf, programme, vereinRows, wertungen, logo) + outro
   }
 
 }

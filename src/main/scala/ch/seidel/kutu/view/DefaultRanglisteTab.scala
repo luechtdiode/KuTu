@@ -1,24 +1,18 @@
 package ch.seidel.kutu.view
 
-import java.io._
-import java.net.URI
-import java.util.concurrent.{ScheduledFuture, TimeUnit}
 import ch.seidel.commons._
 import ch.seidel.kutu.KuTuApp
-import ch.seidel.kutu.KuTuApp.hostServices
-import ch.seidel.kutu.akka.ScoresPublished
-import ch.seidel.kutu.data.{FilterBy, _}
+import ch.seidel.kutu.data._
 import ch.seidel.kutu.domain._
 import ch.seidel.kutu.http.WebSocketClient
 import ch.seidel.kutu.renderer.PrintUtil.FilenameDefault
 import ch.seidel.kutu.renderer.{PrintUtil, ScoreToHtmlRenderer}
 import javafx.collections.ObservableList
 import javafx.scene.text.FontSmoothingType
-import javafx.scene.{control => jfxsc}
 import org.controlsfx.control.CheckComboBox
 import scalafx.Includes._
 import scalafx.application.Platform
-import scalafx.beans.property.{BooleanProperty, ObjectProperty, StringProperty}
+import scalafx.beans.property.{BooleanProperty, ObjectProperty}
 import scalafx.collections.ObservableBuffer
 import scalafx.event.subscriptions.Subscription
 import scalafx.geometry.Insets
@@ -30,7 +24,9 @@ import scalafx.stage.FileChooser
 import scalafx.stage.FileChooser.ExtensionFilter
 import scalafx.util.StringConverter
 
-import scala.concurrent.{Await, Future, Promise}
+import java.io._
+import java.util.concurrent.{ScheduledFuture, TimeUnit}
+import scala.concurrent.Promise
 import scala.language.implicitConversions
 
 abstract class DefaultRanglisteTab(wettkampfmode: BooleanProperty, override val service: KutuService) extends Tab with TabWithService with ScoreToHtmlRenderer {
