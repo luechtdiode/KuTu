@@ -528,44 +528,47 @@ case class TeamSums(override val groupKey: DataObject, teamRows: List[GroupLeaf[
   }
 
   def getTableData(): List[TeamRow] = {
-    val avgPerTeam = teamRows.map { x =>
+    val avgPerTeams = teamRows.map { x =>
       (getTeam(x), x)
     }.map { x =>
       val (team, teamRow) = x
       (team, teamRow.mapToAvgRowSummary(team.relevantWertungen.flatMap(_._2)))
     }
 
-    val rangMap: Map[Team, GroupSum] = glGroup.mapToAvgRang(avgPerTeam.map(rm => rm._1 -> (rm._2._1, rm._2._5)))
-    lazy val avgDisziplinRangMap = avgPerTeam.foldLeft(Map[Disziplin, Map[Team, (Resultat, Resultat)]]()) { (acc, x) =>
-      val (team, (sum, avg, disziplinwertungen, programmwertungen, gsum)) = x
-      disziplinwertungen.foldLeft(acc) { (accc, disziplin) =>
-        accc.updated(disziplin._1, accc.getOrElse(
-          disziplin._1, Map[Team, (Resultat, Resultat)]()).updated(team, (disziplin._3, disziplin._4)))
+    (for (teamRuleGroup <- avgPerTeams.groupBy(_._1.rulename)) yield {
+      val (rulename, avgPerTeam) = teamRuleGroup
+      val rangMap: Map[Team, GroupSum] = glGroup.mapToAvgRang(avgPerTeam.map(rm => rm._1 -> (rm._2._1, rm._2._5)))
+      lazy val avgDisziplinRangMap = avgPerTeam.foldLeft(Map[Disziplin, Map[Team, (Resultat, Resultat)]]()) { (acc, x) =>
+        val (team, (sum, avg, disziplinwertungen, programmwertungen, gsum)) = x
+        disziplinwertungen.foldLeft(acc) { (accc, disziplin) =>
+          accc.updated(disziplin._1, accc.getOrElse(
+            disziplin._1, Map[Team, (Resultat, Resultat)]()).updated(team, (disziplin._3, disziplin._4)))
+        }
+      }.map { d => (d._1 -> glGroup.mapToAvgRang(d._2)) }
+
+      def mapToTeamSum(team: Team, disziplinResults: Iterable[(Disziplin, Long, Resultat, Resultat, Option[Int], Option[BigDecimal])]): IndexedSeq[LeafRow] = {
+        disziplinResults.map { w =>
+          val ww = avgDisziplinRangMap(w._1)(team)
+          LeafRow(w._1.easyprint,
+            ww.avg,
+            ww.rang,
+            ww.rang.endnote == 1)
+        }
+          .toIndexedSeq
+          .distinct
       }
-    }.map { d => (d._1 -> glGroup.mapToAvgRang(d._2)) }
 
-    def mapToTeamSum(team: Team, disziplinResults: Iterable[(Disziplin, Long, Resultat, Resultat, Option[Int], Option[BigDecimal])]): IndexedSeq[LeafRow] = {
-      disziplinResults.map { w =>
-        val ww = avgDisziplinRangMap(w._1)(team)
-        LeafRow(w._1.easyprint,
-          ww.avg,
-          ww.rang,
-          ww.rang.endnote == 1)
-      }
-      .toIndexedSeq
-      .distinct
-    }
+      avgPerTeam.map { x =>
+        val (team, (sum, avg, wd, wp, gsum)) = x
+        val gsrang = rangMap(team)
+        val gs = mapToTeamSum(team, wd)
 
-    avgPerTeam.map { x =>
-      val (team, (sum, avg, wd, wp, gsum)) = x
-      val gsrang = rangMap(team)
-      val gs = mapToTeamSum(team, wd)
+        TeamRow(team, gs, avg, gsrang.rang,
+          gsrang.rang.endnote > 0 && gsrang.rang.endnote < 4
+        )
 
-      TeamRow(team, gs, avg, gsrang.rang,
-        gsrang.rang.endnote > 0 && gsrang.rang.endnote < 4
-      )
-
-    }.sortBy(_.rang.endnote)
+      }.sortBy(_.rang.endnote)
+    }).flatten[TeamRow].toList
   }
   override def easyprint = s"Teams ${groupKey.easyprint} $sum, $avg"
 }

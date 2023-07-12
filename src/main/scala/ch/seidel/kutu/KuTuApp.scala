@@ -319,8 +319,8 @@ object KuTuApp extends JFXApp3 with KutuService with JsonSupport with JwtSupport
       }
       val cmbTeamRegel = new ComboBox[String]() {
         prefWidth = 500
-        TeamRegel.predefined.foreach(definition => {
-          items.value.add(definition._1)
+        TeamRegel.predefined.keySet.toList.sorted.foreach(definition => {
+          items.value.add(definition)
         })
         promptText = "Definition für Teams"
       }
@@ -336,9 +336,13 @@ object KuTuApp extends JFXApp3 with KutuService with JsonSupport with JwtSupport
         )
 
         cmbTeamRegel.value.onChange {
-          text.value = TeamRegel.predefined(cmbTeamRegel.value.value)
-          if (text.value.isEmpty && !"Keine Teams".equals(cmbTeamRegel.value.value)) {
+          if (cmbTeamRegel.value.value.equals("Individuell")) {
             text.value = p.teamrule
+          } else {
+            text.value = TeamRegel.predefined(cmbTeamRegel.value.value)
+            if (text.value.isEmpty && !"Keine Teams".equals(cmbTeamRegel.value.value)) {
+              text.value = p.teamrule
+            }
           }
         }
       }
@@ -1279,8 +1283,8 @@ object KuTuApp extends JFXApp3 with KutuService with JsonSupport with JwtSupport
       }
       val cmbTeamRegel = new ComboBox[String]() {
         prefWidth = 500
-        TeamRegel.predefined.foreach(definition => {
-          items.value.add(definition._1)
+        TeamRegel.predefined.keySet.toList.sorted.foreach(definition => {
+          items.value.add(definition)
         })
         promptText = "Definition für Teams"
       }

@@ -211,7 +211,6 @@ trait ScoreToHtmlRenderer {
           if (!gl.isTeamGroup) TeamSums(gl) match {
             case Some(ts) =>
               val levelText = if ((gsSize == 1 && !falsePositives.contains(escaped(ts.groupKey.capsulatedprint))) || ts.groupKey.isInstanceOf[NullObject]) "" else escaped(ts.groupKey.capsulatedprint)
-              println(levelText)
               renderTeamLeaf(openedTitle, level, athletsPerPage, gsBlock, levelText, ts)
             case _ =>
           }
@@ -342,16 +341,15 @@ trait ScoreToHtmlRenderer {
 
   private def renderListEnd(gsBlock: StringBuilder) = gsBlock.append(s"</tbody></table></div>\n")
   private def renderGroupLeaf(openedTitle: String, level: Int, athletsPerPage: Int, sortAlphabetically: Boolean, gsBlock: StringBuilder, levelText: String, gl: GroupLeaf[_]): Unit = {
+    val pretitleprint = (openedTitle + levelText).trim.reverse.dropWhile(p => p.equals(',')).reverse
     if (openedTitle.startsWith("<h")) {
       val closetag = openedTitle.substring(0, openedTitle.indexOf(">") + 1).replace("<", "</")
-      gsBlock.append(s"${openedTitle + levelText}${closetag}")
+      gsBlock.append(s"$pretitleprint$closetag")
     }
     else {
-      gsBlock.append(s"<h${level + 2}>${openedTitle + levelText}</h${level + 2}>")
+      gsBlock.append(s"<h${level + 2}>$pretitleprint</h${level + 2}>")
     }
     val cols = gl.buildColumns
-
-
 
     val alldata = gl.getTableData(sortAlphabetically)
     val pagedata = if (athletsPerPage == 0) alldata.sliding(alldata.size, alldata.size)
@@ -371,7 +369,7 @@ trait ScoreToHtmlRenderer {
     }
   }
 
-  private def countTableColumgs(cols: List[WKCol]): Int = {
+  private def countTableColumns(cols: List[WKCol]): Int = {
     cols.map{
       case gc: WKGroupCol =>
         gc.cols.size
@@ -380,160 +378,163 @@ trait ScoreToHtmlRenderer {
     }.sum
   }
   private def renderTeamLeaf(openedTitle: String, level: Int, athletsPerPage: Int, gsBlock: StringBuilder, levelText: String, gl: TeamSums): Unit = {
-    if (openedTitle.startsWith("<h")) {
-      val closetag = openedTitle.substring(0, openedTitle.indexOf(">") + 1).replace("<", "</")
-      gsBlock.append(s"${openedTitle + levelText} Team-Rangliste ${closetag}")
-    }
-    else {
-      gsBlock.append(s"<h${level + 2}>${openedTitle + levelText}</h${level + 2}>")
-    }
-    val cols = gl.buildColumns
+    for (teamRuleGroup <- gl.getTableData().groupBy(_.team.rulename)) {
+      val (rulename, alldata) = teamRuleGroup
+      val blockSize = alldata.map(_.team.blockrows).max
+      val pretitle = (openedTitle + levelText).replace("<h2>", "").trim
+      val pretitleprint = (openedTitle + levelText).trim.reverse.dropWhile(p => p.equals(',')).reverse
+      if (openedTitle.startsWith("<h")) {
+        val closetag = openedTitle.substring(0, openedTitle.indexOf(">") + 1).replace("<", "</")
+        gsBlock.append(s"$pretitleprint${if (pretitle.isEmpty) rulename else s": $rulename"} ${closetag}")
+      }
+      else {
+        gsBlock.append(s"<h${level + 2}>$pretitleprint${if (pretitle.isEmpty) rulename else s": $rulename"}</h${level + 2}>")
+      }
+      val cols = gl.buildColumns
 
-    def renderTeamHead = {
-      gsBlock.append("\n<div class='showborder'><table width='100%'>\n")
-      cols.foreach { th =>
-        th match {
-          case gc: WKGroupCol =>
-            gc.cols.foreach { thc =>
+      def renderTeamHead = {
+        gsBlock.append("\n<div class='showborder'><table width='100%'>\n")
+        cols.foreach { th =>
+          th match {
+            case gc: WKGroupCol =>
+              gc.cols.foreach { thc =>
+                gsBlock.append(s"<col/>")
+              }
+            case _ =>
               gsBlock.append(s"<col/>")
-            }
-          case _ =>
-            gsBlock.append(s"<col/>")
+          }
         }
-      }
 
-      gsBlock.append(s"\n<thead><tr class='head'>\n")
-      var first = true
-      cols.foreach { th =>
-        val style = if (first) {
-          first = false
-          ""
+        gsBlock.append(s"\n<thead><tr class='head'>\n")
+        var first = true
+        cols.foreach { th =>
+          val style = if (first) {
+            first = false
+            ""
+          }
+          else {
+            "class='blockstart'"
+          }
+          th match {
+            case gc: WKGroupCol =>
+              gsBlock.append(s"<th $style colspan=${gc.cols.size}>${escaped(gc.text)}</th>")
+            case _ =>
+              gsBlock.append(s"<th $style rowspan=2>${escaped(th.text)}</th>")
+          }
         }
-        else {
-          "class='blockstart'"
-        }
-        th match {
-          case gc: WKGroupCol =>
-            gsBlock.append(s"<th $style colspan=${gc.cols.size}>${escaped(gc.text)}</th>")
-          case _ =>
-            gsBlock.append(s"<th $style rowspan=2>${escaped(th.text)}</th>")
-        }
-      }
-      gsBlock.append(s"</tr><tr>\n")
-      cols.foreach { th =>
-        th match {
-          case gc: WKGroupCol =>
-            var first = true
-            gc.cols.foreach { thc =>
-              if (first) {
-                gsBlock.append(s"<th class='blockstart'>${escaped(thc.text)}</th>")
-                first = false
-              }
-              else {
-                gsBlock.append(s"<th>${escaped(thc.text)}</th>")
-              }
-            }
-          case _ =>
-        }
-      }
-      gsBlock.append(s"</tr></thead><tbody>\n")
-    }
-
-    def renderTeamEnd = gsBlock.append(s"</tbody></table></div>\n")
-
-    def renderTeamRows(list: List[TeamRow]) = {
-      list.foreach { row =>
-        val teamGroupLeaf = gl.getTeamGroupLeaf(row.team)
-        val teamGroupCols = teamGroupLeaf.buildColumns.tail.dropRight(2)
-        val allMemberdata = teamGroupLeaf.getTableData()
-        var rowspans = if (allMemberdata.size % 2 == 0) {
-          allMemberdata.size + 1
-        } else {
-          allMemberdata.size + 2
-        }
-        def getRowSpans: Int = {
-          val spans = rowspans
-          rowspans = 1
-          spans
-        }
-        gsBlock.append(s"<tr>")
-        cols.foreach { col =>
-          col match {
-            case ccol: WKLeafCol[_] if (ccol.colspan > 0)=>
-              val c = ccol.asInstanceOf[WKLeafCol[TeamRow]]
-              val t = c.valueMapper(row)
-              val smallfont = if (t.length() > 17) " sf2" else if (t.length() > 13) " sf1" else ""
-              if (c.styleClass.contains("hintdata")) {
-                gsBlock.append(s"<td rowspan=$getRowSpans colspan=${c.colspan} class='data blockstart$smallfont'><div class='hintdata'>${escaped(t)}</div></td>")
-              }
-              else if (c.styleClass.contains("data")) {
-                gsBlock.append(s"<td rowspan=$getRowSpans colspan=${c.colspan} class='data blockstart$smallfont'>${escaped(t)}</td>")
-              }
-              else if (c.styleClass.contains("heading")) {
-                gsBlock.append(s"<td rowspan=$getRowSpans colspan=${c.colspan} class='heading blockstart'>${escaped(t)}</td>")
-                //gsBlock.append(s"<td rowspan=$getRowSpans colspan=${c.colspan} class='data blockstart'><div class='heading'>${escaped(t)}</div></td>")
-              }
-              else {
-                gsBlock.append(s"<td rowspan=$getRowSpans colspan=${c.colspan} class='data blockstart$smallfont'><div class='valuedata'>${escaped(t)}</div></td>")
-              }
-            case gc: WKGroupCol if (gc.colspan > 0) =>
+        gsBlock.append(s"</tr><tr>\n")
+        cols.foreach { th =>
+          th match {
+            case gc: WKGroupCol =>
               var first = true
-              gc.cols.foreach { ccol =>
-                val c = ccol.asInstanceOf[WKLeafCol[TeamRow]]
-                val style = if (first) {
+              gc.cols.foreach { thc =>
+                if (first) {
+                  gsBlock.append(s"<th class='blockstart'>${escaped(thc.text)}</th>")
                   first = false
-                  "data blockstart"
-                }
-                else "data"
-                val t = escaped(c.valueMapper(row))
-                if (c.styleClass.contains("hintdata")) {
-                  gsBlock.append(s"<td rowspan=$getRowSpans colspan=${c.colspan} class='$style'><div class='hintdata'>$t</div></td>")
-                }
-                else if (c.styleClass.contains("data")) {
-                  gsBlock.append(s"<td rowspan=$getRowSpans colspan=${c.colspan} class='$style'>$t</td>")
-                }
-                else if (c.styleClass.contains("heading")) {
-                  gsBlock.append(s"<td rowspan=$getRowSpans colspan=${c.colspan} class='$style heading'>$t</td>")
-                  //gsBlock.append(s"<td rowspan=$getRowSpans colspan=${c.colspan} class='$style'><div class='heading'>$t</div></td>")
                 }
                 else {
-                  gsBlock.append(s"<td rowspan=$getRowSpans colspan=${c.colspan} class='$style'><div class='valuedata'>$t</div></td>")
+                  gsBlock.append(s"<th>${escaped(thc.text)}</th>")
                 }
               }
-
             case _ =>
           }
         }
-        gsBlock.append(s"</tr>\n")
-        //gsBlock.append(s"<tr><td></td><td colspan=${countTableColumgs(cols)-3}>")
-        //renderListHead(gsBlock, teamGroupCols, false)
-        //gsBlock.append(s"<tr><td rowspan=${allMemberdata.size + 1}></td><td colspan=${countTableColumgs(cols)-3}>")
-        renderListRows(allMemberdata, gsBlock, teamGroupCols)
-        if (allMemberdata.size % 2 != 0) {
-          gsBlock.append(s"<tr><td colspan=${countTableColumgs(teamGroupCols)}>&nbsp;</td></tr>\n")
-        }
-        //renderListEnd(gsBlock)
-        //gsBlock.append("</td></tr>\n")
-        gsBlock.append(s"<tr><td colspan=${countTableColumgs(cols)}></td></tr>\n")
+        gsBlock.append(s"</tr></thead><tbody>\n")
       }
-    }
 
-    val alldata = gl.getTableData()
-    val teamsPerPage = athletsPerPage / 6 // 6 lines per team, 1 for the team, 4 for the members, 1 for the spacer
-    val pagedata = if (athletsPerPage == 0) alldata.sliding(alldata.size, alldata.size)
-    else if (firstSiteRendered.get) {
-      alldata.sliding(teamsPerPage, teamsPerPage)
-    }
-    else {
-      firstSiteRendered.set(true)
-      List(alldata.take(teamsPerPage - fixFirstPageHeaderLines)) ++
-        alldata.drop(teamsPerPage - fixFirstPageHeaderLines).sliding(teamsPerPage, teamsPerPage)
-    }
-    pagedata.foreach { section =>
-      renderTeamHead
-      renderTeamRows(section)
-      renderTeamEnd
-      gsBlock.append(nextSite)
+      def renderTeamEnd = gsBlock.append(s"</tbody></table></div>\n")
+
+      def renderTeamRows(list: List[TeamRow]) = {
+        list.foreach { row =>
+          val teamGroupLeaf = gl.getTeamGroupLeaf(row.team)
+          val teamGroupCols = teamGroupLeaf.buildColumns.tail//.dropRight(2)
+          val allMemberdata = teamGroupLeaf.getTableData()
+          var rowspans = if (allMemberdata.size % 2 == 0) {
+            allMemberdata.size + 1
+          } else {
+            allMemberdata.size + 2
+          }
+          def getRowSpans: Int = {
+            val spans = rowspans
+            rowspans = 1
+            spans
+          }
+          gsBlock.append(s"<tr>")
+          cols.foreach { col =>
+            col match {
+              case ccol: WKLeafCol[_] if (ccol.colspan > 0)=>
+                val c = ccol.asInstanceOf[WKLeafCol[TeamRow]]
+                val t = c.valueMapper(row)
+                val smallfont = if (t.length() > 17) " sf2" else if (t.length() > 13) " sf1" else ""
+                if (c.styleClass.contains("hintdata")) {
+                  gsBlock.append(s"<td rowspan=$getRowSpans colspan=${c.colspan} class='data blockstart$smallfont'><div class='hintdata'>${escaped(t)}</div></td>")
+                }
+                else if (c.styleClass.contains("data")) {
+                  gsBlock.append(s"<td rowspan=$getRowSpans colspan=${c.colspan} class='data blockstart$smallfont'>${escaped(t)}</td>")
+                }
+                else if (c.styleClass.contains("heading")) {
+                  gsBlock.append(s"<td rowspan=$getRowSpans colspan=${c.colspan} class='heading blockstart'>${escaped(t)}</td>")
+                }
+                else {
+                  gsBlock.append(s"<td rowspan=$getRowSpans colspan=${c.colspan} class='data blockstart$smallfont'><div class='valuedata'>${escaped(t)}</div></td>")
+                }
+              case gc: WKGroupCol if (gc.colspan > 0) =>
+                var first = true
+                gc.cols.foreach { ccol =>
+                  val c = ccol.asInstanceOf[WKLeafCol[TeamRow]]
+                  val style = if (first) {
+                    first = false
+                    "data blockstart"
+                  }
+                  else "data"
+                  val t = escaped(c.valueMapper(row))
+                  if (c.styleClass.contains("hintdata")) {
+                    gsBlock.append(s"<td rowspan=$getRowSpans colspan=${c.colspan} class='$style'><div class='hintdata'>$t</div></td>")
+                  }
+                  else if (c.styleClass.contains("data")) {
+                    gsBlock.append(s"<td rowspan=$getRowSpans colspan=${c.colspan} class='$style'>$t</td>")
+                  }
+                  else if (c.styleClass.contains("heading")) {
+                    gsBlock.append(s"<td rowspan=$getRowSpans colspan=${c.colspan} class='$style heading'>$t</td>")
+                  }
+                  else {
+                    gsBlock.append(s"<td rowspan=$getRowSpans colspan=${c.colspan} class='$style'><div class='valuedata'>$t</div></td>")
+                  }
+                }
+
+              case _ =>
+            }
+          }
+          gsBlock.append(s"</tr>\n")
+          //gsBlock.append(s"<tr><td></td><td colspan=${countTableColumns(cols)-3}>")
+          //renderListHead(gsBlock, teamGroupCols, false)
+          //gsBlock.append(s"<tr><td rowspan=${allMemberdata.size + 1}></td><td colspan=${countTableColumns(cols)-3}>")
+          renderListRows(allMemberdata, gsBlock, teamGroupCols)
+          if (allMemberdata.size % 2 != 0) {
+            gsBlock.append(s"<tr><td colspan=${countTableColumns(teamGroupCols)}>&nbsp;</td></tr>\n")
+          }
+          //renderListEnd(gsBlock)
+          //gsBlock.append("</td></tr>\n")
+          gsBlock.append(s"<tr><td colspan=${countTableColumns(cols)}></td></tr>\n")
+        }
+      }
+
+      val teamsPerPage = athletsPerPage / (blockSize + 2) // 6 lines per team, 1 for the team, 4 for the members, 1 for the spacer
+      val pagedata = if (athletsPerPage == 0) alldata.sliding(alldata.size, alldata.size)
+      else if (firstSiteRendered.get) {
+        alldata.sliding(teamsPerPage, teamsPerPage)
+      }
+      else {
+        firstSiteRendered.set(true)
+        List(alldata.take(teamsPerPage - fixFirstPageHeaderLines)) ++
+          alldata.drop(teamsPerPage - fixFirstPageHeaderLines).sliding(teamsPerPage, teamsPerPage)
+      }
+      pagedata.foreach { section =>
+        renderTeamHead
+        renderTeamRows(section)
+        renderTeamEnd
+        gsBlock.append(nextSite)
+      }
     }
   }
 }

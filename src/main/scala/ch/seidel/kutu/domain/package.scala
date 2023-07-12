@@ -339,7 +339,7 @@ package object domain {
     def updatedWith(athlet: Athlet) = AthletView(athlet.id, athlet.js_id, athlet.geschlecht, athlet.name, athlet.vorname, athlet.gebdat, athlet.strasse, athlet.plz, athlet.ort, verein.map(v => v.copy(id = athlet.verein.getOrElse(0L))), athlet.activ)
   }
 
-  case class Team(name: String, wertungen: List[WertungView], relevantWertungen: Map[Disziplin, List[WertungView]]) extends DataObject {
+  case class Team(name: String, rulename: String, wertungen: List[WertungView], relevantWertungen: Map[Disziplin, List[WertungView]]) extends DataObject {
     val perDisciplinResults: Map[Disziplin, List[Resultat]] = relevantWertungen
       .map{ case (disciplin, wtg) => (disciplin, wtg
         .map(w => w.resultat))
@@ -349,6 +349,7 @@ package object domain {
     val sum = perDisciplinSums.map(_._2).reduce(_+_)
     val avg = sum / perDisciplinResults.keySet.size
 
+    val blockrows = wertungen.map(_.athlet).distinct.size
     def isRelevantResult(disziplin: Disziplin, member: AthletView): Boolean = {
       relevantWertungen(disziplin).exists(_.athlet.equals(member))
     }
