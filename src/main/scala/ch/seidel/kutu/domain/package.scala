@@ -711,7 +711,12 @@ package object domain {
       WettkampfView(id, uuid, datum, titel, programm, auszeichnung, auszeichnungendnote, notificationEMail, altersklassen.getOrElse(""), jahrgangsklassen.getOrElse(""), punktegleichstandsregel.getOrElse(""), rotation.getOrElse(""), teamrule.getOrElse(""))
     }
 
-    def toPublic: Wettkampf = Wettkampf(id, uuid, datum, titel, programmId, auszeichnung, auszeichnung, "", altersklassen, jahrgangsklassen, punktegleichstandsregel, rotation, teamrule)
+    def toPublic: Wettkampf = Wettkampf(id, uuid, datum, titel, programmId, auszeichnung, auszeichnung, "",
+      altersklassen.map(Altersklasse(_).map(_.easyprint).mkString(", ")),
+      jahrgangsklassen.map(Altersklasse(_).map(_.easyprint).mkString(", ")),
+      punktegleichstandsregel.map(Gleichstandsregel(_).toFormel),
+      rotation.map(RiegenRotationsregel(_).toFormel),
+      teamrule.map(TeamRegel(_).toRuleName))
 
     private def prepareFilePath(homedir: String) = {
       val filename: String = encodeFileName(easyprint)
@@ -1118,7 +1123,7 @@ package object domain {
       case RenameVereinAction(verein, oldVerein) => RenameVereinAction(verein.toPublicView, oldVerein)
       case RenameAthletAction(verein, athlet, existing, expected) => RenameAthletAction(verein.toPublicView, athlet.toPublicView, existing.toPublicView, expected.toPublicView)
       case AddRegistration(verein, programId, athlet, suggestion) => AddRegistration(verein.toPublicView, programId, athlet.toPublicView, suggestion.toPublicView)
-      case MoveRegistration(verein, fromProgramId, toProgramid, athlet, suggestion) => MoveRegistration(verein.toPublicView, fromProgramId, toProgramid, athlet.toPublicView, suggestion.toPublicView)
+      case MoveRegistration(verein, fromProgramId, fromTeam, toProgramid, toTeam, athlet, suggestion) => MoveRegistration(verein.toPublicView, fromProgramId, fromTeam, toProgramid, toTeam, athlet.toPublicView, suggestion.toPublicView)
       case RemoveRegistration(verein, programId, athlet, suggestion) => RemoveRegistration(verein.toPublicView, programId, athlet.toPublicView, suggestion.toPublicView)
     }
   }
@@ -1143,8 +1148,9 @@ package object domain {
     override val caption = s"Neue Anmeldung verarbeiten: ${suggestion.easyprint}"
   }
 
-  case class MoveRegistration(override val verein: Registration, fromProgramId: Long, toProgramid: Long, athlet: Athlet, suggestion: AthletView) extends SyncAction {
-    override val caption = s"Umteilung verarbeiten: ${suggestion.easyprint}"
+  case class MoveRegistration(override val verein: Registration, fromProgramId: Long, fromTeam: Int, toProgramid: Long, toTeam: Int, athlet: Athlet, suggestion: AthletView) extends SyncAction {
+    override val caption = if (fromTeam != toTeam && fromProgramId == toProgramid) s"Team Einteilung verarbeiten: ${suggestion.easyprint}"
+    else s"Program-Umteilung verarbeiten: ${suggestion.easyprint}"
   }
 
   case class RemoveRegistration(override val verein: Registration, programId: Long, athlet: Athlet, suggestion: AthletView) extends SyncAction {
@@ -1199,8 +1205,8 @@ package object domain {
 
   case class AthletRegistration(id: Long, vereinregistrationId: Long,
                                 athletId: Option[Long], geschlecht: String, name: String, vorname: String, gebdat: String,
-                                programId: Long, registrationTime: Long, athlet: Option[AthletView]) extends DataObject {
-    def toPublicView = AthletRegistration(id, vereinregistrationId, athletId, geschlecht, name, vorname, gebdat.substring(0, 4) + "-01-01", programId, registrationTime, athlet.map(_.toPublicView))
+                                programId: Long, registrationTime: Long, athlet: Option[AthletView], team: Option[Int]) extends DataObject {
+    def toPublicView = AthletRegistration(id, vereinregistrationId, athletId, geschlecht, name, vorname, gebdat.substring(0, 4) + "-01-01", programId, registrationTime, athlet.map(_.toPublicView), team)
 
     def capitalizeIfBlockCase(s: String): String = {
       if (s.length > 2 && (s.toUpperCase.equals(s) || s.toLowerCase.equals(s))) {
@@ -1310,7 +1316,7 @@ package object domain {
   }
 
   object EmptyAthletRegistration {
-    def apply(vereinregistrationId: Long): AthletRegistration = AthletRegistration(0L, vereinregistrationId, None, "", "", "", "", 0L, 0L, None)
+    def apply(vereinregistrationId: Long): AthletRegistration = AthletRegistration(0L, vereinregistrationId, None, "", "", "", "", 0L, 0L, None, None)
   }
 
   case class JudgeRegistration(id: Long, vereinregistrationId: Long,

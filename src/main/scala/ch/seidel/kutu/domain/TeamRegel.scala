@@ -55,7 +55,7 @@ case class TeamRegelList(regeln: List[TeamRegel], name: Option[String] = None) e
 
   override def teamsAllowed: Boolean = regeln.nonEmpty && regeln.exists(_.teamsAllowed)
   override def toFormel: String = name.getOrElse(regeln.map(_.toFormel).mkString(","))
-  override def toRuleName: String = name.getOrElse(regeln.map(_.toRuleName).mkString(", "))
+  override def toRuleName: String = name.getOrElse(regeln.map(_.toRuleName).sorted.mkString(", "))
 }
 
 case class TeamRegelVereinGeraet(min: Int, max: Int) extends TeamRegel {
