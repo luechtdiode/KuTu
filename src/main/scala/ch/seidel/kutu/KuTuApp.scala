@@ -304,7 +304,7 @@ object KuTuApp extends JFXApp3 with KutuService with JsonSupport with JwtSupport
         promptText = "z.B. Kategorie/Verein/Geschlecht/Alter/Name/Vorname/Rotierend/AltInv"
         text = RiegenRotationsregel(p.toWettkampf).toFormel
         editable <== Bindings.createBooleanBinding(() => {
-          "Individuell".equals(cmbRiegenRotationsregel.value.value)
+          "Individuell".equals(cmbRiegenRotationsregel.value.value) || cmbRiegenRotationsregel.selectionModel.value.isEmpty
         },
           cmbRiegenRotationsregel.selectionModel,
           cmbRiegenRotationsregel.value
@@ -329,7 +329,7 @@ object KuTuApp extends JFXApp3 with KutuService with JsonSupport with JwtSupport
         promptText = """z.B. VereinGerät(3/4) oder VerbandGesamt(4/*)"""
         text = TeamRegel(p.toWettkampf).toFormel
         editable <== Bindings.createBooleanBinding(() => {
-          "Individuell".equals(cmbTeamRegel.value.value)
+          "Individuell".equals(cmbTeamRegel.value.value) || cmbTeamRegel.selectionModel.value.isEmpty
         },
           cmbTeamRegel.selectionModel,
           cmbTeamRegel.value
@@ -358,7 +358,7 @@ object KuTuApp extends JFXApp3 with KutuService with JsonSupport with JwtSupport
         promptText = "z.B. E-Note-Summe/E-NoteBest/Disziplin(Boden,Sprung)/JugendVorAlter"
         text = Gleichstandsregel(p.toWettkampf).toFormel
         editable <== Bindings.createBooleanBinding(() => {
-          "Individuell".equals(cmbPunktgleichstandsregel.value.value)
+          "Individuell".equals(cmbPunktgleichstandsregel.value.value) || cmbPunktgleichstandsregel.selectionModel.value.isEmpty
         },
           cmbPunktgleichstandsregel.selectionModel,
           cmbPunktgleichstandsregel.value
@@ -390,7 +390,7 @@ object KuTuApp extends JFXApp3 with KutuService with JsonSupport with JwtSupport
         promptText = "Alersklassen (z.B. 6,7,9-10,AK11-20*2,25-100/10)"
         text = p.altersklassen
         editable <== Bindings.createBooleanBinding(() => {
-          "Individuell".equals(cmbAltersklassen.value.value)
+          "Individuell".equals(cmbAltersklassen.value.value) || cmbAltersklassen.selectionModel.value.isEmpty
         },
           cmbAltersklassen.selectionModel,
           cmbAltersklassen.value
@@ -416,7 +416,7 @@ object KuTuApp extends JFXApp3 with KutuService with JsonSupport with JwtSupport
         promptText = "Jahrgangs Altersklassen (z.B. AK6,AK7,AK9-10,AK11-20*2,AK25-100/10)"
         text = p.jahrgangsklassen
         editable <== Bindings.createBooleanBinding(() => {
-          "Individuell".equals(cmbJGAltersklassen.value.value)
+          "Individuell".equals(cmbJGAltersklassen.value.value) || cmbJGAltersklassen.selectionModel.value.isEmpty
         },
           cmbJGAltersklassen.selectionModel,
           cmbJGAltersklassen.value
@@ -1267,7 +1267,7 @@ object KuTuApp extends JFXApp3 with KutuService with JsonSupport with JwtSupport
         promptText = "z.B. Kategorie/Verein/Alter/Name/Vorname/Rotierend/AltInv"
 
         editable <== Bindings.createBooleanBinding(() => {
-          "Individuell".equals(cmbRiegenRotationsregel.value.value)
+          "Individuell".equals(cmbRiegenRotationsregel.value.value) || cmbRiegenRotationsregel.selectionModel.value.isEmpty
         },
           cmbRiegenRotationsregel.selectionModel,
           cmbRiegenRotationsregel.value
@@ -1296,7 +1296,7 @@ object KuTuApp extends JFXApp3 with KutuService with JsonSupport with JwtSupport
         })
 
         editable <== Bindings.createBooleanBinding(() => {
-          "Individuell".equals(cmbTeamRegel.value.value)
+          "Individuell".equals(cmbTeamRegel.value.value) || cmbTeamRegel.selectionModel.value.isEmpty
         },
           cmbTeamRegel.selectionModel,
           cmbTeamRegel.value
@@ -1320,7 +1320,7 @@ object KuTuApp extends JFXApp3 with KutuService with JsonSupport with JwtSupport
         prefWidth = 500
         promptText = "z.B. E-Note-Summe/E-NoteBest/Disziplin(Boden,Sprung)/JugendVorAlter"
         editable <== Bindings.createBooleanBinding(() => {
-          "Individuell".equals(cmbPunktgleichstandsregel.value.value)
+          "Individuell".equals(cmbPunktgleichstandsregel.value.value) || cmbPunktgleichstandsregel.selectionModel.value.isEmpty
         },
           cmbPunktgleichstandsregel.selectionModel,
           cmbPunktgleichstandsregel.value
@@ -1350,7 +1350,7 @@ object KuTuApp extends JFXApp3 with KutuService with JsonSupport with JwtSupport
         promptText = "Alersklassen (z.B. 6,7,9-10,AK11-20*2,25-100/10)"
         text = ""
         editable <== Bindings.createBooleanBinding(() => {
-          "Individuell".equals(cmbAltersklassen.value.value)
+          "Individuell".equals(cmbAltersklassen.value.value) || cmbAltersklassen.selectionModel.value.isEmpty
         },
           cmbAltersklassen.selectionModel,
           cmbAltersklassen.value
@@ -1375,7 +1375,7 @@ object KuTuApp extends JFXApp3 with KutuService with JsonSupport with JwtSupport
         promptText = "Jahrgangs Altersklassen (z.B. AK6,AK7,AK9-10,AK11-20*2,AK25-100/10)"
         text = ""
         editable <== Bindings.createBooleanBinding(() => {
-          "Individuell".equals(cmbJGAltersklassen.value.value)
+          "Individuell".equals(cmbJGAltersklassen.value.value) || cmbJGAltersklassen.selectionModel.value.isEmpty
         },
           cmbJGAltersklassen.selectionModel,
           cmbJGAltersklassen.value

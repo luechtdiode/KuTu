@@ -39,7 +39,7 @@ class GleichstandsregelTest extends AnyWordSpec with Matchers {
 
   "Ohne - Default" in {
     assert(Gleichstandsregel("Ohne").factorize(testWertungen.head, testResultate) == 1000000000000000000L)
-    assertThrows[RuntimeException](Gleichstandsregel("").factorize(testWertungen.head, testResultate))
+    assert(Gleichstandsregel("").factorize(testWertungen.head, testResultate) == 1000000000000000000L)
   }
 
   "wettkampf-constructor" in {

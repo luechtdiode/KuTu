@@ -117,12 +117,12 @@ object ResourceExchanger extends KutuService with RiegenBuilder {
           updatePublishedScore(wettkampf.id, scoreId, title, query, published, propagate = false)
           refresher(sender, scorePublished)
         }
-      case (sender, awm@AthletsAddedToWettkampf(athlets, wettkampfUUID, programm)) =>
+      case (sender, awm@AthletsAddedToWettkampf(athlets, wettkampfUUID, programm, team)) =>
         if (wettkampf.uuid.contains(wettkampfUUID)) /*Future*/ {
           val insertedAthlets = athlets
             .map { athlet =>
               logger.info(s"received for ${athlet.vorname} ${athlet.name} (${athlet.verein.getOrElse(() => "")}) " +
-                s"to be added to competition ${awm.wettkampfUUID} to Program-Id:${programm}")
+                s"to be added to competition ${awm.wettkampfUUID} to Program-Id:${programm}, to team: $team")
               val mappedAthletView: AthletView = mapToLocal(athlet, None)
               if (mappedAthletView.id == 0) {
                 insertAthlete(mappedAthletView.toAthlet).id
@@ -131,14 +131,14 @@ object ResourceExchanger extends KutuService with RiegenBuilder {
               }
             }
             .toSet
-          assignAthletsToWettkampf(wettkampf.id, Set(programm), insertedAthlets)
+          assignAthletsToWettkampf(wettkampf.id, Set(programm), insertedAthlets, Some(team))
           refresher(sender, awm)
           logger.info(s"${athlets.size} assigned to competition ${awm.wettkampfUUID} to Program-Id:${awm.pgmId}")
         }
-      case (sender, awm@AthletMovedInWettkampf(athlet, wettkampfUUID, programm)) =>
+      case (sender, awm@AthletMovedInWettkampf(athlet, wettkampfUUID, programm, team)) =>
         if (wettkampf.uuid.contains(wettkampfUUID)) /*Future*/ {
           logger.info(s"received for ${awm.athlet.vorname} ${awm.athlet.name} (${awm.athlet.verein.getOrElse(() => "")}) " +
-            s"to be moved in competition ${awm.wettkampfUUID} to Program-Id:${programm}")
+            s"to be moved in competition ${awm.wettkampfUUID} to Program-Id:${programm}, to Team: $team")
           val mappedAthletView: AthletView = mapToLocal(athlet, Some(wettkampf.id))
           val mappedEvent = awm.copy(athlet = mappedAthletView)
           for (durchgang <- moveToProgram(mappedEvent)) {

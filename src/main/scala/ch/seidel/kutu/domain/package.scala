@@ -1122,7 +1122,7 @@ package object domain {
       case ApproveVereinAction(verein) => ApproveVereinAction(verein.toPublicView)
       case RenameVereinAction(verein, oldVerein) => RenameVereinAction(verein.toPublicView, oldVerein)
       case RenameAthletAction(verein, athlet, existing, expected) => RenameAthletAction(verein.toPublicView, athlet.toPublicView, existing.toPublicView, expected.toPublicView)
-      case AddRegistration(verein, programId, athlet, suggestion) => AddRegistration(verein.toPublicView, programId, athlet.toPublicView, suggestion.toPublicView)
+      case AddRegistration(verein, programId, athlet, suggestion, team) => AddRegistration(verein.toPublicView, programId, athlet.toPublicView, suggestion.toPublicView, team)
       case MoveRegistration(verein, fromProgramId, fromTeam, toProgramid, toTeam, athlet, suggestion) => MoveRegistration(verein.toPublicView, fromProgramId, fromTeam, toProgramid, toTeam, athlet.toPublicView, suggestion.toPublicView)
       case RemoveRegistration(verein, programId, athlet, suggestion) => RemoveRegistration(verein.toPublicView, programId, athlet.toPublicView, suggestion.toPublicView)
     }
@@ -1144,7 +1144,7 @@ package object domain {
     override val caption = s"Verein bestätigen: ${verein.vereinname}"
   }
 
-  case class AddRegistration(override val verein: Registration, programId: Long, athlet: Athlet, suggestion: AthletView) extends SyncAction {
+  case class AddRegistration(override val verein: Registration, programId: Long, athlet: Athlet, suggestion: AthletView, team: Int) extends SyncAction {
     override val caption = s"Neue Anmeldung verarbeiten: ${suggestion.easyprint}"
   }
 

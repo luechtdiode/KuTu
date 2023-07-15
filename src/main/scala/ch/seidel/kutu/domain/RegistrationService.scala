@@ -221,7 +221,7 @@ trait RegistrationService extends DBService with RegistrationResultMapper with H
   def copyClubRegsFromCompetition(wettkampfCopyFrom: String, registrationId: Long): Unit = {
     Await.result(database.run {
       sqlu"""
-              insert into athletregistration (vereinregistration_id, athlet_id, geschlecht, name, vorname, gebdat, program_id, registrationtime)
+              insert into athletregistration (vereinregistration_id, athlet_id, geschlecht, name, vorname, gebdat, program_id, team, registrationtime)
               select distinct
                 #$registrationId as vereinregistration_id,
                 a.id,
@@ -230,6 +230,7 @@ trait RegistrationService extends DBService with RegistrationResultMapper with H
                 a.vorname,
                 a.gebdat,
                 wkd.programm_id,
+                0,
                 current_timestamp as registrationtime
               from athlet a
               inner join wertung w on (w.athlet_id = a.id)
@@ -310,18 +311,19 @@ trait RegistrationService extends DBService with RegistrationResultMapper with H
     Await.result(database.run {
       sqlu"""
                   insert into athletregistration
-                  (vereinregistration_id, athlet_id, geschlecht, name, vorname, gebdat, program_id, registrationtime)
+                  (vereinregistration_id, athlet_id, geschlecht, name, vorname, gebdat, program_id, team, registrationtime)
                   values (${newReg.vereinregistrationId}, ${athletId},
                           ${nomralizedAthlet.geschlecht}, ${nomralizedAthlet.name},
                           ${nomralizedAthlet.vorname}, ${nomralizedAthlet.gebdat},
                           ${newReg.programId},
+                          ${newReg.team.getOrElse(0)},
                           ${Timestamp.valueOf(LocalDateTime.now())})
               """ >>
         sql"""
                   select
                       r.id, r.vereinregistration_id,
                       r.athlet_id, r.geschlecht, r.name, r.vorname, r.gebdat,
-                      r.program_id, r.registrationtime, a.id, a.js_id, a.geschlecht, a.name, a.vorname, a.gebdat, a.strasse, a.plz, a.ort, a.activ, a.verein, v.*
+                      r.program_id, r.registrationtime, a.id, a.js_id, a.geschlecht, a.name, a.vorname, a.gebdat, a.strasse, a.plz, a.ort, a.activ, a.verein, v.*, r.team
                   from athletregistration r
                   left join athlet a on (r.athlet_id = a.id)
                   left join verein v on (a.verein = v.id)
@@ -344,7 +346,7 @@ trait RegistrationService extends DBService with RegistrationResultMapper with H
                   select
                       ar.id, ar.vereinregistration_id,
                       ar.athlet_id, ar.geschlecht, ar.name, ar.vorname, ar.gebdat,
-                      ar.program_id, ar.registrationtime, a.id, a.js_id, a.geschlecht, a.name, a.vorname, a.gebdat, a.strasse, a.plz, a.ort, a.activ, a.verein, v.*
+                      ar.program_id, ar.registrationtime, a.id, a.js_id, a.geschlecht, a.name, a.vorname, a.gebdat, a.strasse, a.plz, a.ort, a.activ, a.verein, v.*, ar.team
                   from athletregistration ar
                   inner join vereinregistration vr on (ar.vereinregistration_id = vr.id)
                   inner join athlet a on (a.id = ar.athlet_id and a.verein = vr.verein_id)
@@ -368,14 +370,15 @@ trait RegistrationService extends DBService with RegistrationResultMapper with H
               set athlet_id=${registration.athletId},
                   name=${registration.name}, vorname=${registration.vorname},
                   gebdat=${gebdat}, geschlecht=${registration.geschlecht},
-                  program_id=${registration.programId}
+                  program_id=${registration.programId},
+                  team=${registration.team.getOrElse(0)}
               where id=${registration.id}
      """ >>
       sql"""
               select
                   r.id, r.vereinregistration_id,
                   r.athlet_id, r.geschlecht, r.name, r.vorname, r.gebdat,
-                  r.program_id, r.registrationtime, a.id, a.js_id, a.geschlecht, a.name, a.vorname, a.gebdat, a.strasse, a.plz, a.ort, a.activ, a.verein, v.*
+                  r.program_id, r.registrationtime, a.id, a.js_id, a.geschlecht, a.name, a.vorname, a.gebdat, a.strasse, a.plz, a.ort, a.activ, a.verein, v.*, r.team
               from athletregistration r
               left join athlet a on (r.athlet_id = a.id)
               left join verein v on (a.verein = v.id)
@@ -390,7 +393,7 @@ trait RegistrationService extends DBService with RegistrationResultMapper with H
                   select
                       r.id, r.vereinregistration_id,
                       r.athlet_id, r.geschlecht, r.name, r.vorname, r.gebdat,
-                      r.program_id, r.registrationtime, a.id, a.js_id, a.geschlecht, a.name, a.vorname, a.gebdat, a.strasse, a.plz, a.ort, a.activ, a.verein, v.*
+                      r.program_id, r.registrationtime, a.id, a.js_id, a.geschlecht, a.name, a.vorname, a.gebdat, a.strasse, a.plz, a.ort, a.activ, a.verein, v.*, r.team
                   from athletregistration r
                   left join athlet a on (r.athlet_id = a.id)
                   left join verein v on (a.verein = v.id)
@@ -405,7 +408,7 @@ trait RegistrationService extends DBService with RegistrationResultMapper with H
                   select
                       r.id, r.vereinregistration_id,
                       r.athlet_id, r.geschlecht, r.name, r.vorname, r.gebdat,
-                      r.program_id, r.registrationtime, a.id, a.js_id, a.geschlecht, a.name, a.vorname, a.gebdat, a.strasse, a.plz, a.ort, a.activ, a.verein, v.*
+                      r.program_id, r.registrationtime, a.id, a.js_id, a.geschlecht, a.name, a.vorname, a.gebdat, a.strasse, a.plz, a.ort, a.activ, a.verein, v.*, r.team
                   from athletregistration r
                   left join athlet a on (r.athlet_id = a.id)
                   left join verein v on (a.verein = v.id)

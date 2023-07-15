@@ -9,8 +9,8 @@ import akka.util.{ByteString, Timeout}
 import ch.seidel.kutu.{Config, domain}
 import ch.seidel.kutu.Config.remoteAdminBaseUrl
 import ch.seidel.kutu.akka._
-import ch.seidel.kutu.data.RegistrationAdmin.{adjustWertungRiegen}
-import ch.seidel.kutu.domain.{AddRegistration, AthletRegistration, AthletView, JudgeRegistration, KutuService, NewRegistration, ProgrammRaw, Registration, RegistrationResetPW, Verein, Wettkampf, dateToExportedStr, encodeFileName}
+import ch.seidel.kutu.data.RegistrationAdmin.adjustWertungRiegen
+import ch.seidel.kutu.domain.{AthletRegistration, AthletView, JudgeRegistration, KutuService, NewRegistration, ProgrammRaw, Registration, RegistrationResetPW, Verein, Wettkampf, dateToExportedStr, encodeFileName}
 import ch.seidel.kutu.http.AuthSupport.OPTION_LOGINRESET
 import ch.seidel.kutu.renderer.MailTemplates.createPasswordResetMail
 import ch.seidel.kutu.renderer.{CompetitionsClubsToHtmlRenderer, CompetitionsJudgeToHtmlRenderer, PrintUtil}
@@ -387,7 +387,7 @@ trait RegistrationRoutes extends SprayJsonSupport with JwtSupport with JsonSuppo
                               })
                               .map {
                                 case a@AthletView(id, _, geschlecht, name, vorname, gebdat, _, _, _, _, _) =>
-                                  AthletRegistration(0L, reg.id, Some(id), geschlecht, name, vorname, gebdat.map(dateToExportedStr).getOrElse(""), 0L, 0, Some(a))
+                                  AthletRegistration(0L, reg.id, Some(id), geschlecht, name, vorname, gebdat.map(dateToExportedStr).getOrElse(""), 0L, 0, Some(a), None)
                               }
                           }
                         }

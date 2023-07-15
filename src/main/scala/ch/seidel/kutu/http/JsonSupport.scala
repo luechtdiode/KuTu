@@ -25,7 +25,7 @@ trait JsonSupport extends SprayJsonSupport with EnrichedJson {
   implicit val registrationListFormat = listFormat(registrationFormat)
   implicit val newregistrationFormat = jsonFormat8(NewRegistration)
   implicit val resetRegistrationPWFormat = jsonFormat3(RegistrationResetPW)
-  implicit val athletregistrationFormat = jsonFormat10(AthletRegistration)
+  implicit val athletregistrationFormat = jsonFormat11(AthletRegistration)
   implicit val athletregistrationListFormat = listFormat(athletregistrationFormat)
   implicit val judgeregistrationFormat = jsonFormat9(JudgeRegistration)
   implicit val judgeregistrationListFormat = listFormat(judgeregistrationFormat)
@@ -63,8 +63,8 @@ trait JsonSupport extends SprayJsonSupport with EnrichedJson {
   implicit val lastResults = jsonFormat1(LastResults)
   implicit val bulkEvents = jsonFormat2(BulkEvent)
   implicit val athletRemovedFromWettkampf = jsonFormat2(AthletRemovedFromWettkampf)
-  implicit val athletMovedInWettkampf = jsonFormat3(AthletMovedInWettkampf)
-  implicit val athletAddedToettkampf = jsonFormat3(AthletsAddedToWettkampf)
+  implicit val athletMovedInWettkampf = jsonFormat4(AthletMovedInWettkampf)
+  implicit val athletAddedToettkampf = jsonFormat4(AthletsAddedToWettkampf)
   implicit val messageAckFormat = jsonFormat1(MessageAck)
 
   // support for websocket incoming json-messages
