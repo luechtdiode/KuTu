@@ -64,13 +64,13 @@
           <ion-select-option *ngFor='let pgm of filterPGMsForAthlet(registration)' [value]='pgm.id'>{{pgm.name}}</ion-select-option>
         </ion-select>
       </ion-item>
-      <ion-item-divider *ngIf="!!wettkampfFull.teamrule && wettkampfFull.teamrule.length > 0">
+      <ion-item-divider *ngIf="teamsAllowed()">
         <ion-avatar slot="start">
           <img src="assets/imgs/verein.png">
         </ion-avatar>
         <ion-label>Team-/Mannschaftszuweisung</ion-label>
       </ion-item-divider>
-      <ion-item *ngIf="!!wettkampfFull.teamrule && wettkampfFull.teamrule.length > 0">
+      <ion-item *ngIf="teamsAllowed()">
         <ion-avatar slot="start">
           &nbsp;
         </ion-avatar>
@@ -78,7 +78,7 @@
           <ion-row *ngFor="let rule of teamrules">
             <ion-col>für {{rule}}</ion-col></ion-row>
           <ion-row>
-            <ion-col><ion-label color="primary">Team Nummer</ion-label></ion-col>
+            <ion-col><ion-label class="teamlabel" color="primary">Team Nummer<br><small>(0 bedeutet keine Teamzuordnung)</small></ion-label></ion-col>
             <ion-col><ion-input placeholder="Team" type="number"  [disabled]="false" [(ngModel)]='registration.team' name="team"></ion-input></ion-col>
           </ion-row>
         </ion-grid>

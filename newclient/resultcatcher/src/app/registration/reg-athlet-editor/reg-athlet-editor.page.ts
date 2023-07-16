@@ -94,9 +94,15 @@ export class RegAthletEditorPage implements OnInit {
   }
 
   alter(athlet: AthletRegistration): number {
-    const yearOfBirth = new Date(athlet.gebdat).getFullYear();
-    const currentYear = new Date(Date.now()).getFullYear();
-    return currentYear - yearOfBirth;
+    if (this.wettkampfFull.altersklassen?.trim().length == 0) {
+      const yearOfBirth = new Date(athlet.gebdat).getFullYear();
+      const wkYear = new Date(this.wettkampfFull.datum).getFullYear();
+      return wkYear - yearOfBirth;
+    } else {
+      let timeDiff = Math.abs(new Date(this.wettkampfFull.datum).getTime() - new Date(athlet.gebdat).getTime());
+      return Math.floor((timeDiff / (1000 * 3600 * 24))/365.25);  
+    }
+
   }
 
   similarRegistration(a: AthletRegistration, b: AthletRegistration): boolean {
@@ -123,7 +129,9 @@ export class RegAthletEditorPage implements OnInit {
         ).length === 0;
     });
   }
-
+  teamsAllowed(): boolean {
+    return true || this.wettkampfFull.teamrule?.length > 0 && this.wettkampfFull.teamrule !== 'Keine Teams';
+  }
   editable() {
     return this.backendService.loggedIn;
   }
@@ -135,6 +143,9 @@ export class RegAthletEditorPage implements OnInit {
       this.wettkampfFull = this.backendService.currentCompetition();
       this.registration = Object.assign({}, registration);
       this.registration.gebdat = toDateString(this.registration.gebdat);
+      if (!this.registration.team) {
+        this.registration.team = 0;
+      }
     });
   }
 
@@ -150,7 +161,8 @@ export class RegAthletEditorPage implements OnInit {
            !!this.registration.vorname &&
            this.registration.vorname.length > 0 &&
            !!this.registration.programId &&
-           this.registration.programId > 0;
+           this.registration.programId > 0 &&
+           (!this.teamsAllowed() || ((!!this.registration.team || this.registration.team === 0) && !isNaN(this.registration.team)));
 
   }
 
@@ -171,7 +183,7 @@ export class RegAthletEditorPage implements OnInit {
     if(!form.valid) return;
     const reg = Object.assign({}, this.registration, {
       gebdat: new Date(form.value.gebdat).toJSON(),
-      team: this.registration.team > 0 ? this.registration.team : 0
+      team: form.value.team > 0 ? form.value.team : 0
     });
 
     if (this.athletId === 0 || reg.id === 0) {
