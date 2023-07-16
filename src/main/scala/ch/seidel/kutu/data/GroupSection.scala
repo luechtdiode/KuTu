@@ -127,7 +127,7 @@ case class GroupLeaf[GK <: DataObject](override val groupKey: GK, list: Iterable
   def buildCommonColumns: (List[WKCol], List[WKCol]) = {
     val indexer = Iterator.from(0)
     val disziplinCol: List[WKCol] =
-      if (groups.keySet.size > 1) {
+      if (!isTeamGroup && groups.keySet.size > 1) {
         // Mehrere "Programme" => pro Gruppenkey eine Summenspalte bilden
         groups.toList.sortBy(gru => gru._1.ord).map { gr =>
           val (grKey, disziplin) = gr
@@ -532,7 +532,7 @@ case class TeamSums(override val groupKey: DataObject, teamRows: List[GroupLeaf[
       (getTeam(x), x)
     }.map { x =>
       val (team, teamRow) = x
-      (team, teamRow.mapToAvgRowSummary(team.relevantWertungen.flatMap(_._2)))
+      (team, teamRow.mapToAvgRowSummary(team.countingWertungen.flatMap(_._2)))
     }
 
     (for (teamRuleGroup <- avgPerTeams.groupBy(_._1.rulename)) yield {

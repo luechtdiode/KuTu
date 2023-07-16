@@ -82,13 +82,20 @@ case class TeamRegelVereinGeraet(min: Int, max: Int) extends TeamRegel {
                 .flatMap(_._2)
               if (relevantDisciplineValues.isEmpty) None else Some((disciplin, relevantDisciplineValues))
             }
+          val perDisciplinCountingWertungen: Map[Disziplin, List[WertungView]] = perDisciplinWertungen
+            .flatMap { case (disciplin, wtgs) =>
+              val relevantDisciplineValues = wtgs
+                .filter(_.resultat.endnote > 0)
+                .sortBy(_.resultat.endnote).reverse.take(min)
+              if (relevantDisciplineValues.isEmpty) None else Some((disciplin, relevantDisciplineValues))
+            }
           val limitedTeamwertungen = if (max > 0) teamwertungen else {
             val allRelevantWertungen = perDisciplinWertungen.values.flatten.map(_.athlet).toSet
             teamwertungen.filter { w =>
               allRelevantWertungen.contains(w.athlet)
             }
           }
-          List(Team(s"${verein.map(_.easyprint).getOrElse("")} ${teamNummer}", toRuleName, limitedTeamwertungen, perDisciplinWertungen))
+          List(Team(s"${verein.map(_.easyprint).getOrElse("")} ${teamNummer}", toRuleName, limitedTeamwertungen, perDisciplinWertungen, perDisciplinCountingWertungen))
         } else {
           List.empty
         }
@@ -128,7 +135,7 @@ case class TeamRegelVereinGesamt(min: Int, max: Int) extends TeamRegel {
               allRelevantWertungen.contains
             }
           }
-          List(Team(s"${verein.map(_.easyprint).getOrElse("")} ${teamNummer}", toRuleName, limitedTeamwertungen, perDisciplinWertungen))
+          List(Team(s"${verein.map(_.easyprint).getOrElse("")} ${teamNummer}", toRuleName, limitedTeamwertungen, perDisciplinWertungen, perDisciplinWertungen))
         } else {
           List.empty
         }
@@ -163,6 +170,13 @@ case class TeamRegelVerbandGeraet(min: Int, max: Int) extends TeamRegel {
                 .flatMap(_._2)
               if (relevantDisciplineValues.isEmpty) None else Some((disciplin, relevantDisciplineValues))
             }
+          val perDisciplinCountingWertungen: Map[Disziplin, List[WertungView]] = perDisciplinWertungen
+            .flatMap { case (disciplin, wtgs) =>
+              val relevantDisciplineValues = wtgs
+                .filter(_.resultat.endnote > 0)
+                .sortBy(_.resultat.endnote).reverse.take(min)
+              if (relevantDisciplineValues.isEmpty) None else Some((disciplin, relevantDisciplineValues))
+            }
           val limitedTeamwertungen = if (max > 0) teamwertungen else {
             val allRelevantWertungen = perDisciplinWertungen.values.flatten
               .map(_.athlet).toSet
@@ -170,7 +184,7 @@ case class TeamRegelVerbandGeraet(min: Int, max: Int) extends TeamRegel {
               allRelevantWertungen.contains(w.athlet)
             }
           }
-          List(Team(s"${verband.getOrElse("")} ${teamNummer}", toRuleName, limitedTeamwertungen, perDisciplinWertungen))
+          List(Team(s"${verband.getOrElse("")} ${teamNummer}", toRuleName, limitedTeamwertungen, perDisciplinCountingWertungen, perDisciplinWertungen))
         } else {
           List.empty
         }
@@ -209,7 +223,7 @@ case class TeamRegelVerbandGesamt(min: Int, max: Int) extends TeamRegel {
               allRelevantWertungen.contains
             }
           }
-          List(Team(s"${verband.getOrElse("")} ${teamNummer}", toRuleName, limitedTeamwertungen, perDisciplinWertungen))
+          List(Team(s"${verband.getOrElse("")} ${teamNummer}", toRuleName, limitedTeamwertungen, perDisciplinWertungen, perDisciplinWertungen))
         } else {
           List.empty
         }

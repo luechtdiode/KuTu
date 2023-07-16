@@ -339,8 +339,8 @@ package object domain {
     def updatedWith(athlet: Athlet) = AthletView(athlet.id, athlet.js_id, athlet.geschlecht, athlet.name, athlet.vorname, athlet.gebdat, athlet.strasse, athlet.plz, athlet.ort, verein.map(v => v.copy(id = athlet.verein.getOrElse(0L))), athlet.activ)
   }
 
-  case class Team(name: String, rulename: String, wertungen: List[WertungView], relevantWertungen: Map[Disziplin, List[WertungView]]) extends DataObject {
-    val perDisciplinResults: Map[Disziplin, List[Resultat]] = relevantWertungen
+  case class Team(name: String, rulename: String, wertungen: List[WertungView], countingWertungen: Map[Disziplin, List[WertungView]], relevantWertungen: Map[Disziplin, List[WertungView]]) extends DataObject {
+    val perDisciplinResults: Map[Disziplin, List[Resultat]] = countingWertungen
       .map{ case (disciplin, wtg) => (disciplin, wtg
         .map(w => w.resultat))
       }
@@ -351,7 +351,7 @@ package object domain {
 
     val blockrows = wertungen.map(_.athlet).distinct.size
     def isRelevantResult(disziplin: Disziplin, member: AthletView): Boolean = {
-      relevantWertungen(disziplin).exists(_.athlet.equals(member))
+      relevantWertungen(disziplin).find(_.athlet.equals(member)).exists(w => perDisciplinResults(disziplin).exists(r => r.endnote.equals(w.resultat.endnote)))
     }
     override def easyprint: String = "Team " + name
   }
