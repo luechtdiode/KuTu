@@ -9,6 +9,15 @@ import java.time.{LocalDate, Period}
 import scala.collection.mutable
 import scala.math.BigDecimal.int2bigDecimal
 
+object ScoreListKind {
+  def apply(kind: Option[String]): ScoreListKind = kind
+    .map {
+      case "Einzelrangliste" => Einzelrangliste
+      case "Teamrangliste" => Teamrangliste
+      case "Kombirangliste" => Kombirangliste
+      case _ => Einzelrangliste
+    }.headOption.getOrElse(Einzelrangliste)
+}
 sealed trait ScoreListKind
 case object Einzelrangliste extends ScoreListKind
 case object Teamrangliste extends ScoreListKind
@@ -53,7 +62,7 @@ sealed trait GroupBy {
           acc + "," + gb.groupname
       }
     }
-    s"groupby=${groupby}" + (if (isANO) "&alphanumeric" else "") + s"&${kind}"
+    s"groupby=${groupby}" + (if (isANO) "&alphanumeric" else "") + s"&kind=${kind}"
   }
 
   def chainToString: String = s"$groupname (skipGrouper: $skipGrouper, $allName)" + (next match {
@@ -185,7 +194,7 @@ sealed trait FilterBy extends GroupBy {
         }
       )
     }
-    s"groupby=$groupby${filter.mkString}" + (if (isANO) "&alphanumeric" else "") + s"&${kind}"
+    s"groupby=$groupby${filter.mkString}" + (if (isANO) "&alphanumeric" else "") + s"&kind=${kind}"
   }
 
   private[FilterBy] var filter: Set[DataObject] = Set.empty
@@ -497,10 +506,16 @@ object GroupBy {
     val arguments = query.split("&")
     val groupby = arguments.filter(x => x.length > 8 && x.startsWith("groupby=")).map(x => URLDecoder.decode(x.split("=")(1), "UTF-8")).headOption
     val filter = arguments.filter(x => x.length > 7 && x.startsWith("filter=")).map(x => URLDecoder.decode(x.split("=")(1), "UTF-8"))
-    apply(groupby, filter, data, query.contains("&alphanumeric"), groupers)
+    val kind: ScoreListKind = ScoreListKind(
+      arguments
+        .filter(x => x.startsWith("kind"))
+        .map(x => x.split("=")(1))
+        .headOption
+    )
+    apply(groupby, filter, data, query.contains("&alphanumeric"), kind, groupers)
   }
 
-  def apply(groupby: Option[String], filter: Iterable[String], data: Seq[WertungView], alphanumeric: Boolean, groupers: List[FilterBy]): GroupBy = {
+  def apply(groupby: Option[String], filter: Iterable[String], data: Seq[WertungView], alphanumeric: Boolean, kind: ScoreListKind, groupers: List[FilterBy]): GroupBy = {
     val filterList = filter.map { flt =>
       val keyvalues = flt.split(":")
       val key = keyvalues(0)
@@ -554,6 +569,7 @@ object GroupBy {
       ByProgramm().groupBy(ByGeschlecht())
     }
     query.setAlphanumericOrdered(alphanumeric)
+    query.setKind(kind)
     query
   }
 }

@@ -931,6 +931,7 @@ package object domain {
   sealed trait DataRow {}
 
   trait ResultRow {
+    val athletId: Option[Long] = None
     val sum: Resultat
     val rang: Resultat
     val auszeichnung: Boolean
@@ -956,6 +957,7 @@ package object domain {
    */
   case class GroupRow(athlet: AthletView, pgm: ProgrammView, override val resultate: IndexedSeq[LeafRow], sum: Resultat, rang: Resultat, auszeichnung: Boolean) extends DataRow with ResultRow {
     lazy val withDNotes = resultate.exists(w => w.sum.noteD > 0)
+    override val athletId = Some(athlet.id)
     override val divider = if (withDNotes || resultate.isEmpty) 1 else resultate.count { r => r.sum.endnote > 0 }
   }
 

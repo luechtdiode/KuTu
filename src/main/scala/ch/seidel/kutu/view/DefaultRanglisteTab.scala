@@ -353,7 +353,9 @@ abstract class DefaultRanglisteTab(wettkampfmode: BooleanProperty, override val 
           lastPublishedScoreView.setValue(None)
           loadFilter(filter)
         }
-      items.add(menu)
+      if (!items.exists(m => m.text.value != null && m.text.value.equalsIgnoreCase(menu.text.value))) {
+        items.add(menu)
+      }
     }
 
     def addPublishedFilter(items: ObservableList[javafx.scene.control.MenuItem])(filter: PublishedScoreView): Unit = {
@@ -407,7 +409,8 @@ abstract class DefaultRanglisteTab(wettkampfmode: BooleanProperty, override val 
             selectedFile
           }
           val os = new ObjectOutputStream(new FileOutputStream(file))
-          os.writeObject(buildGrouper.toRestQuery)
+          val query = buildGrouper.toRestQuery
+          os.writeObject(query)
           os.flush()
           os.close()
           addPredefinedFilter(cbfSaved.items)(file)
@@ -525,5 +528,6 @@ abstract class DefaultRanglisteTab(wettkampfmode: BooleanProperty, override val 
     .replace("groupby", "Gruppiert")
     .replace("filter", "Gefiltert")
     .replace("alphanumeric", "Sortierung_nach_Namen")
+    .replace("kind", "Art")
 
 }
