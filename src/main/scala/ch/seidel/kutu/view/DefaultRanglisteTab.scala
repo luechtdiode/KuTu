@@ -89,7 +89,8 @@ abstract class DefaultRanglisteTab(wettkampfmode: BooleanProperty, override val 
   
   def populate(groupers: List[FilterBy]): Seq[ComboBox[FilterBy]] = {
     val gr1Model = ObservableBuffer.from(groupers)
-    
+    val kindModel = ObservableBuffer.from(Seq[ScoreListKind](Einzelrangliste, Teamrangliste, Kombirangliste))
+
     val grf1Model = ObservableBuffer.empty[DataObject]
     val grf2Model = ObservableBuffer.empty[DataObject]
     val grf3Model = ObservableBuffer.empty[DataObject]
@@ -103,6 +104,11 @@ abstract class DefaultRanglisteTab(wettkampfmode: BooleanProperty, override val 
     }
     val converter = new DataObjectConverter()
 
+    val cbKind = new ComboBox[ScoreListKind] {
+      promptText = "Rangliste-Typ"
+      items = kindModel
+      value.value = groupers.head.getKind
+    }
     val cb1 = new ComboBox[FilterBy] {
       maxWidth = 250
       minWidth = 100
@@ -204,6 +210,7 @@ abstract class DefaultRanglisteTab(wettkampfmode: BooleanProperty, override val 
         ByProgramm().groupBy(ByGeschlecht())
       }
       groupBy.setAlphanumericOrdered(cbModus.selected.value)
+      groupBy.setKind(cbKind.value.value)
       restoring = false
 
       groupBy
@@ -232,6 +239,8 @@ abstract class DefaultRanglisteTab(wettkampfmode: BooleanProperty, override val 
     	  checked.filter(model.contains(_)).foreach(combf.getCheckModel.check(_))
     	}
       query.setAlphanumericOrdered(cbModus.selected.value)
+      query.setKind(cbKind.value.value)
+
       val combination = query.select(data).toList
       lastScoreDef.setValue(Some(query.asInstanceOf[FilterBy]))
 
@@ -275,6 +284,7 @@ abstract class DefaultRanglisteTab(wettkampfmode: BooleanProperty, override val 
         }
       }
       cbModus.selected.value = query.isAlphanumericOrdered
+      cbKind.value.value = query.getKind
       restoring = false
       refreshRangliste(query)
     }
@@ -296,6 +306,10 @@ abstract class DefaultRanglisteTab(wettkampfmode: BooleanProperty, override val 
     }
     
     cbModus.onAction = _ => {
+      if(!restoring)
+        refreshRangliste(buildGrouper)
+    }
+    cbKind.onAction = _ => {
       if(!restoring)
         refreshRangliste(buildGrouper)
     }
@@ -451,15 +465,13 @@ abstract class DefaultRanglisteTab(wettkampfmode: BooleanProperty, override val 
           vgrow = Priority.Always
           hgrow = Priority.Always
           val filterControl: Control = ccs._2
-          children = List(ccs._1, filterControl)
+          children = List(new Label {
+            text = " "
+            padding = Insets(7,0,0,0)
+          }, ccs._1, filterControl)
         }
       }
 
-      val topActions = new VBox {
-        vgrow = Priority.Always
-        hgrow = Priority.Always
-        children = List(btnPrint, cbModus)
-      }
       top = new VBox{
         vgrow = Priority.Always
         hgrow = Priority.Always
@@ -472,7 +484,10 @@ abstract class DefaultRanglisteTab(wettkampfmode: BooleanProperty, override val 
           if (wettkampfmode.value) {
             children = List(
               new ToolBar {
-                content = List(cbfSaved) ++ getActionButtons ++ List(btnPrint, cbModus)
+                content = List(cbfSaved) ++ getActionButtons ++ List(btnPrint)
+              },
+              new ToolBar {
+                content = List(cbKind, cbModus)
               },
               new ToolBar {
                 content = (topBox +: topCombos)
@@ -480,7 +495,10 @@ abstract class DefaultRanglisteTab(wettkampfmode: BooleanProperty, override val 
           } else {
             children = List(
               new ToolBar {
-                content = List(cbfSaved, btnSaveFilter) ++ getActionButtons ++ List(btnPrint, cbModus)
+                content = List(cbfSaved, btnSaveFilter) ++ getActionButtons ++ List(btnPrint)
+              },
+              new ToolBar {
+                content = List(cbKind, cbModus)
               },
               new ToolBar {
                 content = (topBox +: topCombos)

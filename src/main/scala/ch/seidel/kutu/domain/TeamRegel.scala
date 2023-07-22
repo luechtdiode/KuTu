@@ -95,7 +95,7 @@ case class TeamRegelVereinGeraet(min: Int, max: Int) extends TeamRegel {
               allRelevantWertungen.contains(w.athlet)
             }
           }
-          List(Team(s"${verein.map(_.easyprint).getOrElse("")} ${teamNummer}", toRuleName, limitedTeamwertungen, perDisciplinWertungen, perDisciplinCountingWertungen))
+          List(Team(s"${verein.map(_.easyprint).getOrElse("")} ${teamNummer}", toRuleName, limitedTeamwertungen, perDisciplinCountingWertungen, perDisciplinWertungen))
         } else {
           List.empty
         }
@@ -119,10 +119,10 @@ case class TeamRegelVereinGesamt(min: Int, max: Int) extends TeamRegel {
         val (verein, teamNummer) = teamkey
         val athletCount = teamwertungen.map(w => w.athlet.id).toSet.size
         if (athletCount >= min && (max == 0 || athletCount <= max)) {
-          val perDisciplinWertungen = teamwertungen
+          val perAthletWertungen = teamwertungen
             .groupBy(w => w.athlet)
             .map{ case (athlet, wtgs) =>
-              val wtgsum = wtgs.map(_.resultat).reduce(_+_)
+              val wtgsum = wtgs.filter(_.showInScoreList).map(_.resultat).reduce(_+_)
               (athlet, wtgs, wtgsum)
             }
             .toList
@@ -130,12 +130,12 @@ case class TeamRegelVereinGesamt(min: Int, max: Int) extends TeamRegel {
             .flatMap(_._2) // mit wertungen die Disziplin-Map aufbauen
             .groupBy(w => w.wettkampfdisziplin.disziplin)
           val limitedTeamwertungen = if (max > 0) teamwertungen else {
-            val allRelevantWertungen = perDisciplinWertungen.values.flatten.toSet
+            val allRelevantWertungen = perAthletWertungen.values.flatten.toSet
             teamwertungen.filter {
               allRelevantWertungen.contains
             }
           }
-          List(Team(s"${verein.map(_.easyprint).getOrElse("")} ${teamNummer}", toRuleName, limitedTeamwertungen, perDisciplinWertungen, perDisciplinWertungen))
+          List(Team(s"${verein.map(_.easyprint).getOrElse("")} ${teamNummer}", toRuleName, limitedTeamwertungen, perAthletWertungen, perAthletWertungen))
         } else {
           List.empty
         }
@@ -207,10 +207,10 @@ case class TeamRegelVerbandGesamt(min: Int, max: Int) extends TeamRegel {
         val (verband, teamNummer) = teamkey
         val athletCount = teamwertungen.map(w => w.athlet.id).toSet.size
         if (athletCount >= min && (max == 0 || athletCount <= max)) {
-          val perDisciplinWertungen = teamwertungen
+          val perAthletWertungen = teamwertungen
             .groupBy(w => w.athlet)
             .map{ case (athlet, wtgs) =>
-              val wtgsum = wtgs.map(_.resultat).reduce(_+_)
+              val wtgsum = wtgs.filter(_.showInScoreList).map(_.resultat).reduce(_+_)
               (athlet, wtgs, wtgsum)
             }
             .toList
@@ -218,12 +218,12 @@ case class TeamRegelVerbandGesamt(min: Int, max: Int) extends TeamRegel {
             .flatMap(_._2) // mit wertungen die Disziplin-Map aufbauen
             .groupBy(w => w.wettkampfdisziplin.disziplin)
           val limitedTeamwertungen = if (max > 0) teamwertungen else {
-            val allRelevantWertungen = perDisciplinWertungen.values.flatten.toSet
+            val allRelevantWertungen = perAthletWertungen.values.flatten.toSet
             teamwertungen.filter {
               allRelevantWertungen.contains
             }
           }
-          List(Team(s"${verband.getOrElse("")} ${teamNummer}", toRuleName, limitedTeamwertungen, perDisciplinWertungen, perDisciplinWertungen))
+          List(Team(s"${verband.getOrElse("")} ${teamNummer}", toRuleName, limitedTeamwertungen, perAthletWertungen, perAthletWertungen))
         } else {
           List.empty
         }

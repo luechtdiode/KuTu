@@ -208,12 +208,9 @@ trait ScoreToHtmlRenderer {
       c match {
         case gl: GroupLeaf[_] =>
           renderGroupLeaf(openedTitle, level, athletsPerPage, sortAlphabetically, gsBlock, levelText, gl)
-          if (!gl.isTeamGroup) TeamSums(gl) match {
-            case Some(ts) =>
-              val levelText = if ((gsSize == 1 && !falsePositives.contains(escaped(ts.groupKey.capsulatedprint))) || ts.groupKey.isInstanceOf[NullObject]) "" else escaped(ts.groupKey.capsulatedprint)
-              renderTeamLeaf(openedTitle, level, athletsPerPage, gsBlock, levelText, ts)
-            case _ =>
-          }
+
+        case ts: TeamSums =>
+          renderTeamLeaf(openedTitle, level, athletsPerPage, gsBlock, levelText, ts)
 
         case g: GroupNode => gsBlock.append(
             toHTML(g.next.toList,

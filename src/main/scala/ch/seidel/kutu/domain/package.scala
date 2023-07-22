@@ -340,9 +340,15 @@ package object domain {
   }
 
   case class Team(name: String, rulename: String, wertungen: List[WertungView], countingWertungen: Map[Disziplin, List[WertungView]], relevantWertungen: Map[Disziplin, List[WertungView]]) extends DataObject {
+    val diszList: Map[Disziplin, Int] = countingWertungen.map { t =>
+      val disz = t._1
+      val ord = t._2.find(_.wettkampfdisziplin.disziplin == t._1).map(_.wettkampfdisziplin.ord).getOrElse(999)
+      (disz, ord)
+    }
+
     val perDisciplinResults: Map[Disziplin, List[Resultat]] = countingWertungen
       .map{ case (disciplin, wtg) => (disciplin, wtg
-        .map(w => w.resultat))
+        .map(w => if (w.showInScoreList) w.resultat else Resultat(0,0,0)))
       }
 
     val perDisciplinSums = perDisciplinResults.map{ case (disciplin, results) => (disciplin, results.reduce(_+_)) }

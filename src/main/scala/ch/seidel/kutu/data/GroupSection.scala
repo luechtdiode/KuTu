@@ -57,7 +57,7 @@ sealed trait WKCol {
 case class WKLeafCol[T](override val text: String, override val prefWidth: Int, colspan: Int = 1, override val styleClass: Seq[String], valueMapper: T => String) extends WKCol
 case class WKGroupCol(override val text: String, override val prefWidth: Int, colspan: Int = 1, override val styleClass: Seq[String], cols: Seq[WKCol]) extends WKCol
 
-case class GroupLeaf[GK <: DataObject](override val groupKey: GK, list: Iterable[WertungView]) extends GroupSection {
+case class GroupLeaf[GK <: DataObject](override val groupKey: GK, list: Iterable[WertungView], diszs: List[Disziplin] = List()) extends GroupSection {
   val isTeamGroup = groupKey.isInstanceOf[Team]
   override val sum: Resultat = {
     groupKey match {
@@ -72,12 +72,16 @@ case class GroupLeaf[GK <: DataObject](override val groupKey: GK, list: Iterable
     }
   }
   override def easyprint = groupKey.easyprint + s" $sum, $avg"
-  val groups = GroupSection.groupWertungList(list).filter(_._2.nonEmpty)
+  val groups = if (diszs.nonEmpty) {
+    GroupSection.groupWertungList(list).map(t => (t._1, diszs))
+  } else GroupSection.groupWertungList(list)
   lazy val anzahWettkaempfe = list.filter(_.endnote.nonEmpty).groupBy { w => w.wettkampf }.size // Anzahl Wettkämpfe
   val withDNotes = list.filter(w => w.noteD.sum > 0).nonEmpty
   val withENotes = list.filter(w => w.wettkampf.programmId != 1).nonEmpty
+  val mostCountingGroup = groups.reduce((a, b) => if (a._2.size > b._2.size) a else b)
   val isDivided = !(withDNotes || groups.isEmpty)
-  val divider = if(!isDivided) 1 else groups.head._2.size
+  val divider = if(!isDivided) 1 else mostCountingGroup._2.size
+  //val divider = if(!isDivided) 1 else groups.head._2.size
 
   val gleichstandsregel = Gleichstandsregel(list.head.wettkampf)
   def buildColumns: List[WKCol] = {
@@ -187,7 +191,7 @@ case class GroupLeaf[GK <: DataObject](override val groupKey: GK, list: Iterable
         }
       }
       else {
-        groups.head._2.map { disziplin =>
+        mostCountingGroup._2.map { disziplin =>
           val index = indexer.next()
           lazy val clDnote = WKLeafCol[ResultRow](text = "D", prefWidth = 60, styleClass = Seq("hintdata"), valueMapper = gr => {
             if (gr.resultate.size > index) {
@@ -476,23 +480,30 @@ case class GroupLeaf[GK <: DataObject](override val groupKey: GK, list: Iterable
 }
 
 object TeamSums {
-  def apply(teamRows: GroupLeaf[_], wertungenCount: Int = 3): Option[TeamSums] = {
+  def apply(teamRows: GroupLeaf[_]): List[TeamSums] = {
     val wkCnt = teamRows.list.map(w => w.wettkampf).toSet.size
     if (wkCnt > 1) {
-      None
+      List[TeamSums]()
     } else {
       val wk = teamRows.list.map(w => w.wettkampf).head
       val teamregel = TeamRegel(wk)
       if (teamregel.teamsAllowed) {
-        val tms = teamregel.extractTeams(teamRows.list)
-
-        val teams = tms.map{team =>
-          GroupLeaf(team, team.wertungen)
-        }
-        if (teams.isEmpty) None else Some(TeamSums(teamRows.groupKey.asInstanceOf[DataObject], teams))
-      } else None
+        teamregel.extractTeams(teamRows.list)
+          .groupBy(_.rulename).filter(_._2.size > 1)
+          .flatMap {
+            case (_, teams) =>
+              val diszs = teams.flatMap(_.diszList).distinct
+                .groupBy(_._1).toList.sortBy(_._2.head._2).map(_._2.head._1)
+              val tms = teams.map { team =>
+                GroupLeaf(team, team.wertungen, diszs)
+              }
+              if (teams.isEmpty) None else Some(TeamSums(teamRows.groupKey.asInstanceOf[DataObject], tms))
+          }
+          .toList
+      } else List[TeamSums]()
     }
   }
+
 }
 case class TeamSums(override val groupKey: DataObject, teamRows: List[GroupLeaf[Team]]) extends GroupSection {
   override val sum: Resultat = teamRows.map(_.sum).reduce(_ + _)
@@ -500,8 +511,7 @@ case class TeamSums(override val groupKey: DataObject, teamRows: List[GroupLeaf[
   def getTeam(gl: GroupLeaf[Team]) = gl.groupKey
   def getTeamGroupLeaf(team: Team): GroupLeaf[Team] = teamRows.find(t => t.groupKey.equals(team)).get
 
-  private val glGroup: GroupLeaf[Team] = teamRows.head
-  val gleichstandsregel = glGroup.gleichstandsregel
+  private val glGroup: GroupLeaf[Team] = teamRows.reduce((a, b) => if (a.divider > b.divider) a else b)
   def buildColumns: List[WKCol] = {
     val teamCols: List[WKCol] = List(
       WKLeafCol[TeamRow](text = "Rang", prefWidth = 20, styleClass = Seq("data"), valueMapper = gr => {
