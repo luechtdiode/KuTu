@@ -13,7 +13,7 @@ object TeamRegel {
     , ("Aus Verband, drei Bestnoten pro Gerät, mit max vier Mitglieder" -> "VerbandGerät(3/4)")
     , ("Aus Verband, drei Gesamt-Bestnoten, mit unbeschränkter Anzahl Mitglieder" -> "VerbandGesamt(3/*)")
     , ("Aus Verband, drei Gesamt-Bestnoten, mit max vier Mitglieder" -> "VerbandGesamt(3/4)")
-    , ("Individuell" -> "VereinGesamt(<min>/<max>), VerbandGesamt(<min>/<max>, VereinGerät(<min>/<max>), VerbandGerät(<min>/<max>)")
+    , ("Individuell" -> "VereinGesamt(<min>/<max>), VerbandGesamt(<min>/<max>), VereinGerät(<min>/<max>), VerbandGerät(<min>/<max>)")
   )
   private val rangePattern = "([\\S]+)\\(([0-9]+)/([0-9,\\*]*)\\)".r
 
@@ -28,7 +28,7 @@ object TeamRegel {
         case "VerbandGerät" => Some(TeamRegelVerbandGeraet(min, defaultMax(max)))
         case _ => None
       }
-      case "Keine Teams" => Some(defaultRegel.asInstanceOf[TeamRegel])
+      case "Keine Teams" =>None
       case s: String => None
     }
     if (mappedRules.isEmpty) defaultRegel else {
