@@ -69,11 +69,11 @@ export class BackendService extends WebsocketService {
     }
 
     currentCompetition(): Wettkampf {
-      if (!this.competitions) { return undefined; }
-      const candidate = this.competitions
-        .filter(c => c.uuid === this.competition);
+      if (!this.competition) { return undefined; }
+      
+      const candidate = this.competitions?.filter(c => c.uuid === this.competition);
 
-      if (candidate.length === 1) {
+      if (candidate?.length === 1) {
         return candidate[0];
       } else {
         return undefined;
@@ -88,6 +88,7 @@ export class BackendService extends WebsocketService {
     private loadingInstance: Promise<HTMLIonLoadingElement>;
 
     competitions: Wettkampf[];
+    competitionSubject = new BehaviorSubject<Wettkampf[]>([]);
     durchgaenge: string[];
 
     geraete: Geraet[];
@@ -650,6 +651,7 @@ export class BackendService extends WebsocketService {
       loader.subscribe({
           next: (data) => {
             this.competitions = data;
+            this.competitionSubject.next(data);
           }, 
           error: this.standardErrorHandler
         });
