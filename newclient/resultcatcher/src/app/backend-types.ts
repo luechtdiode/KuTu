@@ -154,11 +154,14 @@ export interface Wettkampf {
 }
 
 export interface ScoreRow {
-  "athletID": number,
+  "athletID"?: number,
+  "rows"?: ScoreRow[];
+  "Athlet"?: string,
+  "Team/Athlet"?: string,
+  "K"?: string,
+  "Jahrgang"?: string,
+  "Verein"?: string,
   "Rang": string,
-  "Athlet": string,
-  "Jahrgang": string,
-  "Verein": string,
   "ø Gerät": string,
   "Total Punkte": string
 }

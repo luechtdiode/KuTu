@@ -25,7 +25,9 @@
     --spinner-color: var(--ion-color-primary,#666);
     color: var(--ion-color-step-850);
 }
-
+ion-avatar {
+  align-self: flex-start;
+}
 ion-icon {
   //background-color:  var(--ion-item-background-color);
   //color: var(--ion-color-step-500);

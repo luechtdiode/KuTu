@@ -8,8 +8,8 @@ import { ScoreRow } from 'src/app/backend-types';
   styleUrls: ['./scorelist-item.component.scss'],
 })
 export class ScorelistItemComponent implements OnInit {
-  knownKeys: string[] = ["athletID", "Rang", "Athlet", "Jahrgang", "Verein", "ø Gerät", "Total D", "Total E", "Total Punkte"];
   teilnehmerSubResults = '';
+  teamTeilnehmerSubResults = [];
 
   @Input()
   teilnehmer: ScoreRow;
@@ -20,11 +20,23 @@ export class ScorelistItemComponent implements OnInit {
   constructor() { }
 
   ngOnInit() {
-    this.teilnehmerSubResults = Object.keys(this.teilnehmer)
-      .map(key => `${key}`)
-      .filter((key: string) => this.knownKeys.indexOf(key) < 0)
-      .map(key => `${key}: ${this.teilnehmer[key]['Endnote']} (${this.teilnehmer[key]['Rang']}.)`)
-      .join(", ")
+    this.teilnehmerSubResults = renderTeilnehmerWertungen(this.teilnehmer);
+    this.teamTeilnehmerSubResults = this.teilnehmer.rows?.length == 0
+      ? [] 
+      : this.teilnehmer.rows.map(renderTeilnehmer)
   }
+}
 
+const knownKeys: string[] = ["athletID", "rows", "Rang", "Athlet", "Team", "Team/Athlet", "Jahrgang", "Verein", "K", "ø Gerät", "Total D", "Total E", "Total Punkte"];
+
+function renderTeilnehmer(tnRow: ScoreRow) {
+  return `${tnRow['Team']} (${tnRow['K']}): ${renderTeilnehmerWertungen(tnRow)}`
+}
+
+function renderTeilnehmerWertungen(tnRow: ScoreRow) {
+  return Object.keys(tnRow)
+  .map(key => `${key}`)
+  .filter((key: string) => knownKeys.indexOf(key) < 0)
+  .map(key => `${key}: ${tnRow[key]['Endnote']} (${tnRow[key]['Rang']})`)
+  .join(", ")
 }

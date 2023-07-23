@@ -1,14 +1,15 @@
 package ch.seidel.kutu.renderer
 
-import java.io.File
 import ch.seidel.kutu.data._
 import ch.seidel.kutu.domain
-import ch.seidel.kutu.domain.{Disziplin, GroupRow, NullObject, ResultRow, TeamRow}
+import ch.seidel.kutu.domain.{NullObject, ResultRow, TeamRow}
 import ch.seidel.kutu.renderer.PrintUtil.{ImageFile, escaped}
-import org.slf4j.LoggerFactory
+import org.slf4j.{Logger, LoggerFactory}
+
+import java.io.File
 
 object ScoreToJsonRenderer {
-  val logger = LoggerFactory.getLogger(this.getClass)
+  val logger: Logger = LoggerFactory.getLogger(this.getClass)
   
   def toJson(title: String, gs: List[GroupSection], sortAlphabetically: Boolean = false, logoFile: File): String = {
     val jsonString = toJsonString(title, gs, "", 0, sortAlphabetically, logoFile)
@@ -17,7 +18,7 @@ object ScoreToJsonRenderer {
 
   val intro = s"""{
   """
-  def firstSite(title: String, logoFile: File) = intro + (if (logoFile.exists) s"""
+  def firstSite(title: String, logoFile: File): String = intro + (if (logoFile.exists) s"""
       "logo":"${logoFile.imageSrcForWebEngine}",
       "title":"${escaped(title)}",
       "scoreblocks":[
@@ -30,7 +31,7 @@ object ScoreToJsonRenderer {
   val nextSite = "},\n{"
   val outro = "]}"
 
-  def renderListHead(gsBlock: StringBuilder, level: Int, openedTitle: String) = {
+  def renderListHead(gsBlock: StringBuilder, level: Int, openedTitle: String): gsBlock.type = {
     gsBlock.append("{")
     if (openedTitle.startsWith("\"title\":{")) {
       gsBlock.append(s"""${openedTitle}"},""")
@@ -40,12 +41,19 @@ object ScoreToJsonRenderer {
     }
   }
 
-  def renderListRows[T <: ResultRow](list: List[T], gsBlock: StringBuilder, cols: List[WKCol]) = {
+  def renderListRows[T <: ResultRow](list: List[T], gsBlock: StringBuilder, cols: List[WKCol], ts: Option[TeamSums]): StringBuilder = {
     gsBlock.append("\"rows\":[")
     list.foreach { row =>
       gsBlock.append("{")
-      if (row.athletId.nonEmpty) {
-        gsBlock.append(s""""athletID": "${row.athletId.getOrElse(0)}",""")
+      row match {
+        case tr: TeamRow =>
+          val teamGroupLeaf = ts.get.getTeamGroupLeaf(tr.team)
+          val teamGroupCols = teamGroupLeaf.buildColumns.tail
+          val allMemberdata = teamGroupLeaf.getTableData()
+          renderListRows(allMemberdata, gsBlock, teamGroupCols, None)
+        case _ =>
+          gsBlock.append(s""""athletID":"${row.athletId.getOrElse(0)}",""")
+          gsBlock.append(s""""rows":[],""")
       }
       cols.foreach {
         case ccol: WKLeafCol[_] =>
@@ -67,7 +75,7 @@ object ScoreToJsonRenderer {
     gsBlock.append("],")
   }
 
-  def renderListEnd(gsBlock: StringBuilder) = {
+  def renderListEnd(gsBlock: StringBuilder): gsBlock.type = {
     gsBlock.deleteCharAt(gsBlock.size - 1)
     gsBlock.append("},")
   }
@@ -77,16 +85,13 @@ object ScoreToJsonRenderer {
     if (level == 0) {
       gsBlock.append(firstSite(title, logoFile))
     }
-    val gsSize = gs.size
     for (c <- gs) {
-      val levelText = if (gsSize == 1 && c.groupKey.isInstanceOf[NullObject]) "" else escaped(c.groupKey.capsulatedprint)
-
       c match {
         case gl: GroupLeaf[_] =>
           renderGroupLeaf(openedTitle, level, sortAlphabetically, gsBlock, gl)
 
         case ts: TeamSums =>
-          renderTeamLeaf(openedTitle, level,gsBlock, levelText, ts)
+          renderTeamLeaf(openedTitle, level,gsBlock, ts)
 
         case g: GroupNode => gsBlock.append(
             toJsonString(title, g.next.toList, if(openedTitle.nonEmpty)
@@ -100,7 +105,6 @@ object ScoreToJsonRenderer {
     }
     if (level == 0) {
       gsBlock.setCharAt(gsBlock.size-1, '\n')
-      //gsBlock.deleteCharAt(gsBlock.size-1)
       gsBlock.append(outro)
     }
     gsBlock.toString
@@ -113,28 +117,22 @@ object ScoreToJsonRenderer {
     val pagedata = alldata.sliding(alldata.size, alldata.size)
     pagedata.foreach { section =>
       renderListHead(gsBlock, level, openedTitle + escaped(gl.groupKey.capsulatedprint))
-      renderListRows(section, gsBlock, cols)
+      renderListRows(section, gsBlock, cols, None)
       renderListEnd(gsBlock)
     }
   }
 
-  private def renderTeamLeaf(openedTitle: String, level: Int, gsBlock: StringBuilder, levelText: String, gl: TeamSums): Unit = {
+  private def renderTeamLeaf(openedTitle: String, level: Int, gsBlock: StringBuilder, gl: TeamSums): Unit = {
+    val levelText = if (gl.groupKey.isInstanceOf[NullObject]) "" else escaped(gl.groupKey.capsulatedprint)
+
     for (teamRuleGroup <- gl.getTableData().groupBy(_.team.rulename)) {
       val (rulename, alldata) = teamRuleGroup
+      val sanitizedRulename = escaped(rulename)
       val pretitle = (openedTitle + levelText).replace("<h2>", "").trim
       val pretitleprint = (openedTitle + levelText).trim.reverse.dropWhile(p => p.equals(',')).reverse
-      renderListHead(gsBlock, level, escaped(s"$pretitleprint${if (pretitle.isEmpty) rulename else s": $rulename"}"))
+      renderListHead(gsBlock, level, s"$pretitleprint${if (pretitle.isEmpty) sanitizedRulename else s": $sanitizedRulename"}")
       val cols = gl.buildColumns
-      renderListRows(alldata, gsBlock, cols)
-
-      /*alldata.foreach { row =>
-        val teamGroupLeaf = gl.getTeamGroupLeaf(row.team)
-        val teamGroupCols = teamGroupLeaf.buildColumns.tail
-        val allMemberdata = teamGroupLeaf.getTableData()
-        renderListHead(gsBlock, level+1, row.team.name)
-        renderListRows(allMemberdata, gsBlock, teamGroupCols)
-        renderListEnd(gsBlock)
-      }*/
+      renderListRows(alldata, gsBlock, cols, Some(gl))
       renderListEnd(gsBlock)
     }
   }
