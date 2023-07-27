@@ -494,10 +494,10 @@ object TeamSums {
             case (_, teams) =>
               val diszs = teams.flatMap(_.diszList).distinct
                 .groupBy(_._1).toList.sortBy(_._2.head._2).map(_._2.head._1)
-              val tms = teams.map { team =>
+              val tms = teams.filter(team => team.wertungen.nonEmpty).map { team =>
                 GroupLeaf(team, team.wertungen, diszs)
               }
-              if (teams.isEmpty) None else Some(TeamSums(teamRows.groupKey.asInstanceOf[DataObject], tms))
+              if (tms.isEmpty) None else Some(TeamSums(teamRows.groupKey.asInstanceOf[DataObject], tms))
           }
           .toList
       } else List[TeamSums]()
