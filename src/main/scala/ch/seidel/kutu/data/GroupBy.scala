@@ -127,14 +127,15 @@ sealed trait GroupBy {
 
   private def mapAndSortLeaf(grouped: Map[DataObject, Seq[WertungView]]) = {
     def reduce(switch: DataObject, list: Seq[WertungView]): Seq[GroupSection] = {
-      if (list.nonEmpty) {
-        val gl = GroupLeaf(switch, list)
+      val rl = list.filter(_.showInScoreList)
+      if (rl.nonEmpty) {
+        val gl = GroupLeaf(switch, rl)
         kind match {
           case Teamrangliste => {
-            TeamSums(gl).toSeq
+            TeamSums(gl)
           }
           case Einzelrangliste => Seq(gl)
-          case Kombirangliste => gl +: TeamSums(gl).toSeq
+          case Kombirangliste => gl +: TeamSums(gl)
         }
       } else {
         Seq()
