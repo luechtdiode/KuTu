@@ -468,10 +468,7 @@ abstract class DefaultRanglisteTab(wettkampfmode: BooleanProperty, override val 
           vgrow = Priority.Always
           hgrow = Priority.Always
           val filterControl: Control = ccs._2
-          children = List(new Label {
-            text = " "
-            padding = Insets(7,0,0,0)
-          }, ccs._1, filterControl)
+          children = List(ccs._1, filterControl)
         }
       }
 
