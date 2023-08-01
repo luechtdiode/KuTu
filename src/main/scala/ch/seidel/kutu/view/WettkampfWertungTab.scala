@@ -527,8 +527,8 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
         onEditCommit = (evt: CellEditEvent[IndexedSeq[WertungEditor], String]) => {
           if (!wettkampfmode.value) {
             val rowIndex = wkModel.indexOf(evt.rowValue)
-            val newTeam: Int = if (evt.newValue.trim.isEmpty || evt.newValue.equals("keine Einteilung")) 0
-            else evt.newValue
+            val newTeam: Option[Int] = if (evt.newValue.trim.isEmpty || evt.newValue.equals("keine Einteilung")) None
+            else Some(evt.newValue)
             logger.debug("start team-reassignment")
             service.updateAllWertungenAsync(
               evt.rowValue.map(wertung =>
@@ -677,8 +677,8 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
             onEditCommit = (evt: CellEditEvent[IndexedSeq[WertungEditor], String]) => {
               if (!wettkampfmode.value) {
                 val rowIndex = wkModel.indexOf(evt.rowValue)
-                val newTeam: Int = if (evt.newValue.trim.isEmpty || evt.newValue.equals("keine Einteilung")) 0
-                else evt.newValue
+                val newTeam: Option[Int] = if (evt.newValue.trim.isEmpty || evt.newValue.equals("keine Einteilung")) None
+                else Some(evt.newValue)
                 logger.debug("start team-reassignment")
                 service.updateAllWertungenAsync(
                   evt.rowValue.map(wertung =>

@@ -163,7 +163,7 @@ abstract trait WertungService extends DBService with WertungResultMapper with Di
       sqlu"""
                 insert into wertung
                 (athlet_Id, wettkampfdisziplin_Id, wettkampf_Id, note_d, note_e, endnote, riege, riege2, team)
-                values (${w.athletId}, ${w.wettkampfdisziplinId}, ${w.wettkampfId}, ${w.noteD}, ${w.noteE}, ${w.endnote}, ${w.riege}, ${w.riege2}, ${w.team})
+                values (${w.athletId}, ${w.wettkampfdisziplinId}, ${w.wettkampfId}, ${w.noteD}, ${w.noteE}, ${w.endnote}, ${w.riege}, ${w.riege2}, ${w.team.getOrElse(0)})
         """
     })
     
@@ -195,7 +195,7 @@ abstract trait WertungService extends DBService with WertungResultMapper with Di
       sqlu"""
                 insert into wertung
                 (athlet_Id, wettkampfdisziplin_Id, wettkampf_Id, note_d, note_e, endnote, riege, riege2, team)
-                values (${w.athletId}, ${w.wettkampfdisziplinId}, ${w.wettkampfId}, ${w.noteD}, ${w.noteE}, ${w.endnote}, ${w.riege}, ${w.riege2}, ${w.team})
+                values (${w.athletId}, ${w.wettkampfdisziplinId}, ${w.wettkampfId}, ${w.noteD}, ${w.noteE}, ${w.endnote}, ${w.riege}, ${w.riege2}, ${w.team.getOrElse(0)})
         """,
 
       sqlu"""   delete from riege
@@ -219,7 +219,7 @@ abstract trait WertungService extends DBService with WertungResultMapper with Di
       w <- ws
     } yield {
       sqlu"""       UPDATE wertung
-                    SET note_d=${w.noteD}, note_e=${w.noteE}, endnote=${w.endnote}, riege=${w.riege}, riege2=${w.riege2}, team=${w.team}
+                    SET note_d=${w.noteD}, note_e=${w.noteE}, endnote=${w.endnote}, riege=${w.riege}, riege2=${w.riege2}, team=${w.team.getOrElse(0)}
                     WHERE id=${w.id}
           """>>
       sqlu"""       DELETE from riege
@@ -254,7 +254,7 @@ abstract trait WertungService extends DBService with WertungResultMapper with Di
     implicit val mapper = getAthletViewResult
     val ret = database.run((
       sqlu"""       UPDATE wertung
-                    SET note_d=${w.noteD}, note_e=${w.noteE}, endnote=${w.endnote}, riege=${w.riege}, riege2=${w.riege2}, team=${w.team}
+                    SET note_d=${w.noteD}, note_e=${w.noteE}, endnote=${w.endnote}, riege=${w.riege}, riege2=${w.riege2}, team=${w.team.getOrElse(0)}
                     WHERE id=${w.id}
           """>>
 
@@ -304,7 +304,7 @@ abstract trait WertungService extends DBService with WertungResultMapper with Di
     }
     Await.result(database.run(DBIO.sequence(Seq(sqlu"""
                   UPDATE wertung
-                  SET note_d=${wv.noteD}, note_e=${wv.noteE}, endnote=${wv.endnote}, riege=${wv.riege}, riege2=${wv.riege2}, team=${wv.team}
+                  SET note_d=${wv.noteD}, note_e=${wv.noteE}, endnote=${wv.endnote}, riege=${wv.riege}, riege2=${wv.riege2}, team=${wv.team.getOrElse(0)}
                   WHERE 
                     athlet_Id=${wv.athletId} and wettkampfdisziplin_Id=${wv.wettkampfdisziplinId} and wettkampf_Id=${wv.wettkampfId}
           """//.transactionally
@@ -319,7 +319,7 @@ abstract trait WertungService extends DBService with WertungResultMapper with Di
     val wvId = Await.result(database.run((for {
         updated <- sqlu"""
                   UPDATE wertung
-                  SET note_d=${wv.noteD}, note_e=${wv.noteE}, endnote=${wv.endnote}, riege=${wv.riege}, riege2=${wv.riege2}, team=${wv.team}
+                  SET note_d=${wv.noteD}, note_e=${wv.noteE}, endnote=${wv.endnote}, riege=${wv.riege}, riege2=${wv.riege2}, team=${wv.team.getOrElse(0)}
                   WHERE 
                     athlet_Id=${wv.athletId} and wettkampfdisziplin_Id=${wv.wettkampfdisziplinId} and wettkampf_Id=${wv.wettkampfId}
           """
@@ -344,7 +344,7 @@ abstract trait WertungService extends DBService with WertungResultMapper with Di
     } yield {
       sqlu"""
                   UPDATE wertung
-                  SET note_d=${wv.noteD}, note_e=${wv.noteE}, endnote=${wv.endnote}, riege=${wv.riege}, riege2=${wv.riege2}, team=${wv.team}
+                  SET note_d=${wv.noteD}, note_e=${wv.noteE}, endnote=${wv.endnote}, riege=${wv.riege}, riege2=${wv.riege2}, team=${wv.team.getOrElse(0)}
                   WHERE
                     athlet_Id=${wv.athletId} and wettkampfdisziplin_Id=${wv.wettkampfdisziplinId} and wettkampf_Id=${wv.wettkampfId}
           """>>

@@ -332,7 +332,7 @@ object ResourceExchanger extends KutuService with RiegenBuilder {
         },
         riege = if (fields(wertungenHeader("riege")).nonEmpty) Some(fields(wertungenHeader("riege"))) else None,
         riege2 = if (fields(wertungenHeader("riege2")).nonEmpty) Some(fields(wertungenHeader("riege2"))) else None,
-        team = if (fields(wertungenHeader("team")).nonEmpty) fields(wertungenHeader("team")) else 0
+        team = if (wertungenHeader.contains("team") && fields(wertungenHeader("team")).nonEmpty) Some(fields(wertungenHeader("team"))) else None
       )
       w
     }
@@ -366,7 +366,7 @@ object ResourceExchanger extends KutuService with RiegenBuilder {
             endnote = None,
             riege = None,
             riege2 = None,
-            team = 0
+            team = None
           )
         }
         completeWertungenSet

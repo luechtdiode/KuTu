@@ -594,8 +594,8 @@ object CompetitionCoordinatorClientActor extends JsonSupport with EnrichedJson {
       text.asType[KutuAppEvent]
     }
   } catch {
-    case _: Exception =>
-      logger.debug("unparsable json mapped to MessageAck: " + text)
+    case e: Exception =>
+      logger.debug("unparsable json mapped to MessageAck: " + text, e)
       MessageAck(text)
   }
 
