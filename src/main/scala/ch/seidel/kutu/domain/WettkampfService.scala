@@ -751,7 +751,6 @@ trait WettkampfService extends DBService
                    WHERE id=${w._1}
           """
         case _ =>
-          println("updating wertung " + w)
           sqlu"""    UPDATE wertung
                    SET riege=${riegeText}
                      , wettkampfdisziplin_Id=${w._2}

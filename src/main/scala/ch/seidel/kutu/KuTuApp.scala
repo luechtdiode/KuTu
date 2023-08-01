@@ -1224,7 +1224,6 @@ object KuTuApp extends JFXApp3 with KutuService with JsonSupport with JwtSupport
         promptText = "Programm"
         copyFrom.map(_.programm).foreach(pgm => {
           val pgmIndex = pgms.indexOf(pgm)
-          println(pgmIndex)
           selectionModel.value.select(pgmIndex)
           selectionModel.value.select(pgm)
         })
@@ -1455,7 +1454,6 @@ object KuTuApp extends JFXApp3 with KutuService with JsonSupport with JwtSupport
           }
           copyFrom.foreach(wkToCopy => {
             // Ranglisten (scoredef), Planzeiten und Logo kopieren ...
-            println(w)
             val sourceFolder = new File(homedir + "/" + encodeFileName(copyFrom.get.easyprint))
             val targetFolder = new File(homedir + "/" + encodeFileName(w.easyprint))
             val sourceLogo = PrintUtil.locateLogoFile(sourceFolder)
