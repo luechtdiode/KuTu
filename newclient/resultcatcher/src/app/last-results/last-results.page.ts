@@ -33,6 +33,7 @@ export class LastResultsPage implements OnInit {
   sFilterTask: () => void = undefined;
 
   private busy = new BehaviorSubject(false);
+  durchgangopen: boolean;
 
 
   // @HostListener('window:resize', ['$event'])
@@ -49,6 +50,11 @@ export class LastResultsPage implements OnInit {
     if (! this.backendService.competitions) {
       this.backendService.getCompetitions();
     }
+    this.backendService.durchgangStarted.pipe(
+      map(dgl => dgl.filter(dg => dg.wettkampfUUID === this.backendService.competition).length > 0 ? true : false
+    )).subscribe(dg => {
+      this.durchgangopen = dg;
+    });
   }
 
   ngOnInit(): void {
@@ -254,7 +260,7 @@ export class LastResultsPage implements OnInit {
   }
 
   scorelistAvailable(): boolean {
-    return (this.items?.length === 0) && new Date(this.competitionContainer().datum).getTime() <  new Date(Date.now() - 3600 * 1000 * 24).getTime();
+    return !this.durchgangopen && (this.items?.length === 0) && new Date(this.competitionContainer().datum).getTime() <  new Date(Date.now() - 3600 * 1000 * 24).getTime();
   }
 
   get filteredScoreList() {
