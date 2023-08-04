@@ -33,6 +33,7 @@ export class LastResultsPage implements OnInit {
   sFilterTask: () => void = undefined;
 
   private busy = new BehaviorSubject(false);
+  durchgangopen: boolean;
 
 
   // @HostListener('window:resize', ['$event'])
@@ -49,42 +50,50 @@ export class LastResultsPage implements OnInit {
     if (! this.backendService.competitions) {
       this.backendService.getCompetitions();
     }
+    this.backendService.durchgangStarted.pipe(
+      map(dgl => dgl.filter(dg => dg.wettkampfUUID === this.backendService.competition).length > 0 ? true : false
+    )).subscribe(dg => {
+      this.durchgangopen = dg;
+    });
   }
 
   ngOnInit(): void {
-    this.backendService.activateNonCaptionMode(this.backendService.competition).subscribe(geraete => {
-      this.geraete = geraete || [];
-      this.sortItems();
-    });
-    this.backendService.newLastResults.pipe(
-      filter(r => !!r && !!(r as any).results)
-    ).subscribe(newLastRes => {
-      this.lastItems = this.items.map(item => item.id * this.geraete.length + item.geraet);
-      this.items = [];
-      Object.keys(newLastRes.results).forEach(key => {
-        this.items.push(newLastRes.results[key]);
+    this.backendService.competitionSubject.subscribe(comps => {
+      this.backendService.activateNonCaptionMode(this.backendService.competition).subscribe(geraete => {
+        this.geraete = geraete || [];
+        this.sortItems();
       });
-      this.sortItems();
-      if (this.scorelistAvailable()) {
-        this.backendService.getScoreLists().subscribe(scorelists => {
-          const c = this.competitionContainer();
-          const genericLink = `/api/scores/${c.uuid}/query?groupby=Kategorie:Geschlecht`;
-          if (!!scorelists) {
-            const values = Object.values(scorelists)
-            this.scorelinks = [...values.filter(l => (l as any).name != 'Zwischenresultate'), <ScoreLink>{
-                name: 'Generische Rangliste',
-                published: true,
-                "published-date": '',
-                "scores-href": genericLink,
-                "scores-query": genericLink
-              }];
-            const publishedLists = this.scorelinks.filter(s => ''+s.published === 'true')
-            this.refreshScoreList(publishedLists[0]);
-          }
-        });
-      } else {
-        this.title = 'Aktuelle Resultate';
-      }
+      this.backendService.newLastResults.subscribe(newLastRes => {
+        this.lastItems = this.items.map(item => item.id * this.geraete.length + item.geraet);
+        this.items = [];
+        if (!!newLastRes && !!newLastRes.results) {
+          Object.keys(newLastRes.results).forEach(key => {
+            this.items.push(newLastRes.results[key]);
+          });
+        }
+        this.sortItems();
+        if (this.scorelistAvailable()) {
+          this.backendService.getScoreLists().subscribe(scorelists => {
+            const c = this.competitionContainer();
+            const genericLink = `/api/scores/${c.uuid}/query?groupby=Kategorie:Geschlecht`;
+            if (!!scorelists) {
+              const values = Object.values(scorelists)
+              const lists = values.filter(l => (l as any).name != 'Zwischenresultate').sort((a,b)=> a.name.localeCompare(b.name));
+              this.scorelinks = [...lists, <ScoreLink>{
+                  name: 'Generische Rangliste',
+                  published: true,
+                  "published-date": '',
+                  "scores-href": genericLink,
+                  "scores-query": genericLink
+                }];
+              const publishedLists = this.scorelinks.filter(s => ''+s.published === 'true')
+              this.refreshScoreList(publishedLists[0]);
+            }
+          });
+        } else {
+          this.title = 'Aktuelle Resultate';
+        }
+      });
     });
   }
 
@@ -251,10 +260,9 @@ export class LastResultsPage implements OnInit {
   }
 
   scorelistAvailable(): boolean {
-    return !!this.items
-    && this.items.length === 0
-    && new Date(this.competitionContainer().datum).getTime() <  new Date(Date.now() - 3600 * 1000 * 24).getTime();
+    return !this.durchgangopen && (this.items?.length === 0) && new Date(this.competitionContainer().datum).getTime() <  new Date(Date.now() - 3600 * 1000 * 24).getTime();
   }
+
   get filteredScoreList() {
     if (!!this.sFilteredScoreList && this.sFilteredScoreList.length > 0) {
       return this.sFilteredScoreList;
@@ -292,20 +300,28 @@ export class LastResultsPage implements OnInit {
 
   filter(query: string) {
     const queryTokens = query.toUpperCase().split(' ');
-    return (tn: ScoreRow, block: ScoreBlock): boolean => {
+    return (tnRoot: ScoreRow, block: ScoreBlock): boolean => {
       return queryTokens.filter(token => {
-        if (tn.Athlet.toUpperCase().indexOf(token) > -1) {
-          return true;
-        }
-        if (tn.Verein.toUpperCase().indexOf(token) > -1) {
-          return true;
-        }
-        if (tn.Jahrgang.toUpperCase().indexOf(token) > -1) {
-          return true;
-        }
-        if (block.title.text.toUpperCase().replace('.', ' ').replace(',', ' ').split(' ').indexOf(token) > -1) {
-          return true;
-        }
+        return [tnRoot, ...tnRoot.rows].find(tn => {
+          if (tn.Athlet?.toUpperCase().indexOf(token) > -1) {
+            return true;
+          }
+          if (tn['Team/Athlet']?.toUpperCase().indexOf(token) > -1) {
+            return true;
+          }
+          if (tn['Team']?.toUpperCase().indexOf(token) > -1) {
+            return true;
+          }
+          if (tn.Verein?.toUpperCase().indexOf(token) > -1) {
+            return true;
+          }
+          if (tn.Jahrgang?.toUpperCase().indexOf(token) > -1) {
+            return true;
+          }
+          if (block.title.text.toUpperCase().replace('.', ' ').replace(',', ' ').split(' ').indexOf(token) > -1) {
+            return true;
+          }
+        });
       }).length === queryTokens.length;
     };
   }
@@ -333,7 +349,9 @@ export class LastResultsPage implements OnInit {
 
   followAthlet(item: ScoreRow, slidingItem: IonItemSliding) {
     slidingItem.close();
-    this.navCtrl.navigateForward(`athlet-view/${this.backendService.competition}/${item["athletID"]}`);
+    if (item["athletID"]) {
+      this.navCtrl.navigateForward(`athlet-view/${this.backendService.competition}/${item["athletID"]}`);
+    } // else TODO provide team-view
   }
 
   open() {

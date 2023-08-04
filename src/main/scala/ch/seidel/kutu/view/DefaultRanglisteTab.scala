@@ -1,24 +1,18 @@
 package ch.seidel.kutu.view
 
-import java.io._
-import java.net.URI
-import java.util.concurrent.{ScheduledFuture, TimeUnit}
 import ch.seidel.commons._
 import ch.seidel.kutu.KuTuApp
-import ch.seidel.kutu.KuTuApp.hostServices
-import ch.seidel.kutu.akka.ScoresPublished
-import ch.seidel.kutu.data.{FilterBy, _}
+import ch.seidel.kutu.data._
 import ch.seidel.kutu.domain._
 import ch.seidel.kutu.http.WebSocketClient
 import ch.seidel.kutu.renderer.PrintUtil.FilenameDefault
 import ch.seidel.kutu.renderer.{PrintUtil, ScoreToHtmlRenderer}
 import javafx.collections.ObservableList
 import javafx.scene.text.FontSmoothingType
-import javafx.scene.{control => jfxsc}
 import org.controlsfx.control.CheckComboBox
 import scalafx.Includes._
 import scalafx.application.Platform
-import scalafx.beans.property.{BooleanProperty, ObjectProperty, StringProperty}
+import scalafx.beans.property.{BooleanProperty, ObjectProperty}
 import scalafx.collections.ObservableBuffer
 import scalafx.event.subscriptions.Subscription
 import scalafx.geometry.Insets
@@ -30,7 +24,9 @@ import scalafx.stage.FileChooser
 import scalafx.stage.FileChooser.ExtensionFilter
 import scalafx.util.StringConverter
 
-import scala.concurrent.{Await, Future, Promise}
+import java.io._
+import java.util.concurrent.{ScheduledFuture, TimeUnit}
+import scala.concurrent.Promise
 import scala.language.implicitConversions
 
 abstract class DefaultRanglisteTab(wettkampfmode: BooleanProperty, override val service: KutuService) extends Tab with TabWithService with ScoreToHtmlRenderer {
@@ -93,7 +89,8 @@ abstract class DefaultRanglisteTab(wettkampfmode: BooleanProperty, override val 
   
   def populate(groupers: List[FilterBy]): Seq[ComboBox[FilterBy]] = {
     val gr1Model = ObservableBuffer.from(groupers)
-    
+    val kindModel = ObservableBuffer.from(Seq[ScoreListKind](Einzelrangliste, Teamrangliste, Kombirangliste))
+
     val grf1Model = ObservableBuffer.empty[DataObject]
     val grf2Model = ObservableBuffer.empty[DataObject]
     val grf3Model = ObservableBuffer.empty[DataObject]
@@ -107,6 +104,11 @@ abstract class DefaultRanglisteTab(wettkampfmode: BooleanProperty, override val 
     }
     val converter = new DataObjectConverter()
 
+    val cbKind = new ComboBox[ScoreListKind] {
+      promptText = "Rangliste-Typ"
+      items = kindModel
+      value.value = groupers.head.getKind
+    }
     val cb1 = new ComboBox[FilterBy] {
       maxWidth = 250
       minWidth = 100
@@ -208,6 +210,7 @@ abstract class DefaultRanglisteTab(wettkampfmode: BooleanProperty, override val 
         ByProgramm().groupBy(ByGeschlecht())
       }
       groupBy.setAlphanumericOrdered(cbModus.selected.value)
+      groupBy.setKind(cbKind.value.value)
       restoring = false
 
       groupBy
@@ -236,6 +239,8 @@ abstract class DefaultRanglisteTab(wettkampfmode: BooleanProperty, override val 
     	  checked.filter(model.contains(_)).foreach(combf.getCheckModel.check(_))
     	}
       query.setAlphanumericOrdered(cbModus.selected.value)
+      query.setKind(cbKind.value.value)
+
       val combination = query.select(data).toList
       lastScoreDef.setValue(Some(query.asInstanceOf[FilterBy]))
 
@@ -279,6 +284,7 @@ abstract class DefaultRanglisteTab(wettkampfmode: BooleanProperty, override val 
         }
       }
       cbModus.selected.value = query.isAlphanumericOrdered
+      cbKind.value.value = query.getKind
       restoring = false
       refreshRangliste(query)
     }
@@ -300,6 +306,10 @@ abstract class DefaultRanglisteTab(wettkampfmode: BooleanProperty, override val 
     }
     
     cbModus.onAction = _ => {
+      if(!restoring)
+        refreshRangliste(buildGrouper)
+    }
+    cbKind.onAction = _ => {
       if(!restoring)
         refreshRangliste(buildGrouper)
     }
@@ -343,7 +353,9 @@ abstract class DefaultRanglisteTab(wettkampfmode: BooleanProperty, override val 
           lastPublishedScoreView.setValue(None)
           loadFilter(filter)
         }
-      items.add(menu)
+      if (!items.exists(m => m.text.value != null && m.text.value.equalsIgnoreCase(menu.text.value))) {
+        items.add(menu)
+      }
     }
 
     def addPublishedFilter(items: ObservableList[javafx.scene.control.MenuItem])(filter: PublishedScoreView): Unit = {
@@ -397,7 +409,8 @@ abstract class DefaultRanglisteTab(wettkampfmode: BooleanProperty, override val 
             selectedFile
           }
           val os = new ObjectOutputStream(new FileOutputStream(file))
-          os.writeObject(buildGrouper.toRestQuery)
+          val query = buildGrouper.toRestQuery
+          os.writeObject(query)
           os.flush()
           os.close()
           addPredefinedFilter(cbfSaved.items)(file)
@@ -459,11 +472,6 @@ abstract class DefaultRanglisteTab(wettkampfmode: BooleanProperty, override val 
         }
       }
 
-      val topActions = new VBox {
-        vgrow = Priority.Always
-        hgrow = Priority.Always
-        children = List(btnPrint, cbModus)
-      }
       top = new VBox{
         vgrow = Priority.Always
         hgrow = Priority.Always
@@ -476,7 +484,10 @@ abstract class DefaultRanglisteTab(wettkampfmode: BooleanProperty, override val 
           if (wettkampfmode.value) {
             children = List(
               new ToolBar {
-                content = List(cbfSaved) ++ getActionButtons ++ List(btnPrint, cbModus)
+                content = List(cbfSaved) ++ getActionButtons ++ List(btnPrint)
+              },
+              new ToolBar {
+                content = List(cbKind, cbModus)
               },
               new ToolBar {
                 content = (topBox +: topCombos)
@@ -484,7 +495,10 @@ abstract class DefaultRanglisteTab(wettkampfmode: BooleanProperty, override val 
           } else {
             children = List(
               new ToolBar {
-                content = List(cbfSaved, btnSaveFilter) ++ getActionButtons ++ List(btnPrint, cbModus)
+                content = List(cbfSaved, btnSaveFilter) ++ getActionButtons ++ List(btnPrint)
+              },
+              new ToolBar {
+                content = List(cbKind, cbModus)
               },
               new ToolBar {
                 content = (topBox +: topCombos)
@@ -511,5 +525,6 @@ abstract class DefaultRanglisteTab(wettkampfmode: BooleanProperty, override val 
     .replace("groupby", "Gruppiert")
     .replace("filter", "Gefiltert")
     .replace("alphanumeric", "Sortierung_nach_Namen")
+    .replace("kind", "Art")
 
 }

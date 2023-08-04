@@ -93,7 +93,7 @@ trait WettkampfService extends DBService
     sql"""
                     select
                         wpt.id,
-                        wk.id, wk.uuid, wk.datum, wk.titel, wk.programm_id, wk.auszeichnung, wk.auszeichnungendnote, wk.notificationEMail, wk.altersklassen, wk.jahrgangsklassen, wk.punktegleichstandsregel, wk.rotation, wd.id, wd.programm_id,
+                        wk.id, wk.uuid, wk.datum, wk.titel, wk.programm_id, wk.auszeichnung, wk.auszeichnungendnote, wk.notificationEMail, wk.altersklassen, wk.jahrgangsklassen, wk.punktegleichstandsregel, wk.rotation, wk.teamrule, wd.id, wd.programm_id,
                         d.*,
                         wd.kurzbeschreibung, wd.detailbeschreibung, wd.notenfaktor, wd.masculin, wd.feminim, wd.ord, wd.scale, wd.dnote, wd.min, wd.max, wd.startgeraet,
                         wpt.wechsel, wpt.einturnen, wpt.uebung, wpt.wertung
@@ -364,16 +364,6 @@ trait WettkampfService extends DBService
     }, Duration.Inf)
   }
 
-  def listAthletenZuWettkampf(wettkampf: UUID) = {
-    database.run{(
-      sql"""      select a.* from athlet a
-                  inner join wertung w on (a.id = w.athlet_id)
-                  inner join wettkampf wk on (w.wettkampf_id = wk.id)
-                  where wk.uuid = ${wettkampf.toString})
-         """.as[AthletView]).withPinnedSession
-    }.map(_.toList)
-  }
-
   def wettkampfExists(uuid: String): Boolean = {
     Await.result(wettkampfExistsAsync(uuid), Duration.Inf)
   }
@@ -421,7 +411,7 @@ trait WettkampfService extends DBService
     seek(programmid, Seq.empty)
   }
 
-  def createWettkampf(datum: java.sql.Date, titel: String, programmId: Set[Long], notificationEMail: String, auszeichnung: Int, auszeichnungendnote: scala.math.BigDecimal, uuidOption: Option[String], altersklassen: String, jahrgangsklassen: String, punktegleichstandsregel: String, rotation: String): Wettkampf = {
+  def createWettkampf(datum: java.sql.Date, titel: String, programmId: Set[Long], notificationEMail: String, auszeichnung: Int, auszeichnungendnote: scala.math.BigDecimal, uuidOption: Option[String], altersklassen: String, jahrgangsklassen: String, punktegleichstandsregel: String, rotation: String, teamrule: String): Wettkampf = {
     val cache = scala.collection.mutable.Map[Long, ProgrammView]()
     val programs = programmId map (p => readProgramm(p, cache))
     val heads = programs map (_.head)
@@ -467,7 +457,8 @@ trait WettkampfService extends DBService
                     auszeichnung=$auszeichnung, auszeichnungendnote=$auszeichnungendnote,
                     altersklassen=$altersklassen, jahrgangsklassen=$jahrgangsklassen,
                     punktegleichstandsregel=$punktegleichstandsregel,
-                    rotation=$rotation
+                    rotation=$rotation,
+                    teamrule=$teamrule
                 where id=$cid and uuid=$uuid
             """ >>
           initPlanZeitenActions(UUID.fromString(uuid)) >>
@@ -478,8 +469,8 @@ trait WettkampfService extends DBService
         case _ => 
           sqlu"""
                   insert into wettkampf
-                  (datum, titel, programm_Id, notificationEMail, auszeichnung, auszeichnungendnote, punktegleichstandsregel, altersklassen, jahrgangsklassen, rotation, uuid)
-                  values (${datum}, ${titel}, ${heads.head.id}, $notificationEMail, $auszeichnung, $auszeichnungendnote, $punktegleichstandsregel, $altersklassen, $jahrgangsklassen, $rotation, $uuid)
+                  (datum, titel, programm_Id, notificationEMail, auszeichnung, auszeichnungendnote, punktegleichstandsregel, altersklassen, jahrgangsklassen, rotation, teamrule, uuid)
+                  values (${datum}, ${titel}, ${heads.head.id}, $notificationEMail, $auszeichnung, $auszeichnungendnote, $punktegleichstandsregel, $altersklassen, $jahrgangsklassen, $rotation, $teamrule, $uuid)
               """ >>
           initPlanZeitenActions(UUID.fromString(uuid)) >>
           sql"""
@@ -504,7 +495,7 @@ trait WettkampfService extends DBService
     }, Duration.Inf)
   }
 
-  def saveWettkampf(id: Long, datum: java.sql.Date, titel: String, programmId: Set[Long], notificationEMail: String, auszeichnung: Int, auszeichnungendnote: scala.math.BigDecimal, uuidOption: Option[String], altersklassen: String, jahrgangsklassen: String, punktegleichstandsregel: String, rotation: String): Wettkampf = {
+  def saveWettkampf(id: Long, datum: java.sql.Date, titel: String, programmId: Set[Long], notificationEMail: String, auszeichnung: Int, auszeichnungendnote: scala.math.BigDecimal, uuidOption: Option[String], altersklassen: String, jahrgangsklassen: String, punktegleichstandsregel: String, rotation: String, teamrule: String): Wettkampf = {
     val uuid = uuidOption.getOrElse(UUID.randomUUID().toString())
     val cache = scala.collection.mutable.Map[Long, ProgrammView]()
     val process = for {
@@ -530,6 +521,7 @@ trait WettkampfService extends DBService
                       altersklassen=$altersklassen, jahrgangsklassen=$jahrgangsklassen,
                       punktegleichstandsregel=$punktegleichstandsregel,
                       rotation=$rotation,
+                      teamrule=$teamrule,
                       uuid=$uuid
                   where id=$id
           """ >>
@@ -641,13 +633,13 @@ trait WettkampfService extends DBService
     }
   }
 
-  def assignAthletsToWettkampf(wettkampfId: Long, programmIds: Set[Long], withAthlets: Set[Long] = Set.empty): Unit = {
+  def assignAthletsToWettkampf(wettkampfId: Long, programmIds: Set[Long], withAthlets: Set[Long] = Set.empty, team: Option[Int]): Unit = {
     val cache = scala.collection.mutable.Map[Long, ProgrammView]()
     val programs = programmIds map (p => readProgramm(p, cache))
-    assignAthletsToWettkampfS(wettkampfId, programs, withAthlets)
+    assignAthletsToWettkampfS(wettkampfId, programs, withAthlets, team)
   }
 
-  def assignAthletsToWettkampfS(wettkampfId: Long, programs: Set[ProgrammView], withAthlets: Set[Long] = Set.empty): Unit = {
+  def assignAthletsToWettkampfS(wettkampfId: Long, programs: Set[ProgrammView], withAthlets: Set[Long] = Set.empty, team: Option[Int]): Unit = {
     if (withAthlets.nonEmpty) {
       val disciplines = Await.result(database.run{(sql"""
                    select id from wettkampfdisziplin
@@ -663,8 +655,8 @@ trait WettkampfService extends DBService
                  """ >>
              sqlu"""
                      insert into wertung
-                     (athlet_Id, wettkampfdisziplin_Id, wettkampf_Id)
-                     values (${aid}, ${disciplin}, ${wettkampfId})
+                     (athlet_Id, wettkampfdisziplin_Id, wettkampf_Id, team)
+                     values (${aid}, ${disciplin}, ${wettkampfId}, ${team.getOrElse(0)})
                 """).transactionally
           }, Duration.Inf)
         }
@@ -706,36 +698,30 @@ trait WettkampfService extends DBService
   }
 
   def moveToProgram(event: AthletMovedInWettkampf) = {
+    val wettkampf = readWettkampf(event.wettkampfUUID)
     val wkdIDs = Await.result(database.run{sql"""
                    select disziplin_id, id from wettkampfdisziplin
                    where programm_Id = ${event.pgmId}
                 """.as[(Long,Long)].withPinnedSession}, Duration.Inf).toMap
     val athlet = event.athlet
-    val wettkampf = readWettkampf(event.wettkampfUUID)
     val existingriegen = selectRiegenRaw(wettkampf.id)
-    val wertungen: Seq[(Long, Long, String, String, Option[String], String)] = Await.result(database.run{sql"""
-                   select wd.disziplin_id, w.id, w.riege, w.riege2 from wertung w inner join wettkampfdisziplin wd on (w.wettkampfdisziplin_Id = wd.id)
+    val wertungen: Seq[(Long, Long, String, String, Option[String], String, Int, Int)] = Await.result(database.run{sql"""
+                   select wd.disziplin_id, w.id, w.riege, w.riege2, w.team from wertung w inner join wettkampfdisziplin wd on (w.wettkampfdisziplin_Id = wd.id)
                    where
-                     athlet_id = (select id
-                       from athlet
-                       where name=${athlet.name}
-                         and vorname=${athlet.vorname}
-                         and geschlecht=${athlet.geschlecht}
-                         and verein=${athlet.verein.map(_.id)})
-                     and wettkampf_Id = (select id
-                       from wettkampf
-                       where uuid=${event.wettkampfUUID})
-              """.as[(Long,Long, String, String)].transactionally
+                     athlet_id = ${athlet.id}
+                     and wettkampf_Id = ${wettkampf.id}
+              """.as[(Long,Long, String, String, Int)].transactionally
     }, Duration.Inf)
       .map{t =>
-        val (wkdId, wertungId, oldRiegenName, oldRiegen2Name) = t
+        val (wkdId, wertungId, oldRiegenName, oldRiegen2Name, oldTeam) = t
         val newWettkampfDisziplinId = wkdIDs(wkdId)
         val wkDiszView = readWettkampfDisziplinView(newWettkampfDisziplinId)
         val wertung = getWertung(wertungId)
-        val newWertung = wertung.copy(wettkampfdisziplin = wkDiszView)
+        val newWertung = wertung.copy(wettkampfdisziplin = wkDiszView, team = event.team)
         (newWertung.id, newWertung.wettkampfdisziplin.id,
           generateRiegenName(newWertung), oldRiegenName,
-          generateRiegen2Name(newWertung), oldRiegen2Name
+          generateRiegen2Name(newWertung), oldRiegen2Name,
+          newWertung.team, oldTeam
         )
       }
 
@@ -761,12 +747,14 @@ trait WettkampfService extends DBService
                    SET riege=${riegeText}
                      , riege2=${riegeText2}
                      , wettkampfdisziplin_Id=${w._2}
+                     , team=${w._7}
                    WHERE id=${w._1}
           """
         case _ =>
           sqlu"""    UPDATE wertung
                    SET riege=${riegeText}
                      , wettkampfdisziplin_Id=${w._2}
+                     , team=${w._7}
                    WHERE id=${w._1}
           """
       }
@@ -803,9 +791,9 @@ trait WettkampfService extends DBService
     }
   }
 
-  def moveToProgram(wId: Long, pgmId: Long, athelteView: AthletView): Unit = {
+  def moveToProgram(wId: Long, pgmId: Long, team: Int, athelteView: AthletView): Unit = {
     val wettkampf = readWettkampf(wId)
-    val movedInWettkampf = AthletMovedInWettkampf(athelteView, wettkampf.uuid.getOrElse(""), pgmId)
+    val movedInWettkampf = AthletMovedInWettkampf(athelteView, wettkampf.uuid.getOrElse(""), pgmId, team)
     val durchgaenge = moveToProgram(movedInWettkampf)
 
     WebSocketClient.publish(movedInWettkampf)

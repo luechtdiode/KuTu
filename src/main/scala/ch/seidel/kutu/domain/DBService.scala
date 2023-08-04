@@ -87,6 +87,8 @@ object DBService {
       , "AddWKTestPgms-sqllite.sql"
       , "AddAltersklassenToWettkampf-sqllite.sql"
       , "AddPunktegleichstandsregelToWettkampf-sqllite.sql"
+      , "teamwertung-ddl.sql"
+      , "AddTeamToWettkampf-ddl.sql"
     )
 
     (!dbfile.exists() || dbfile.length() == 0, Config.importDataFrom) match {
@@ -178,6 +180,8 @@ object DBService {
         , "AddWKTestPgms-pg.sql"
         , "AddAltersklassenToWettkampf-pg.sql"
         , "AddPunktegleichstandsregelToWettkampf-pg.sql"
+        , "teamwertung-ddl.sql"
+        , "AddTeamToWettkampf-ddl.sql"
       )
       installDB(db, sqlScripts)
       /*Config.importDataFrom match {

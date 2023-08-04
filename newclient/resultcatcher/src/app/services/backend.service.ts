@@ -11,9 +11,9 @@ import { DurchgangStarted, Wettkampf, Geraet, WertungContainer, NewLastResults, 
          NewClubRegistration,
          AthletRegistration,
          ProgrammRaw,
+         RegistrationResetPW,
          SyncAction, JudgeRegistration, JudgeRegistrationProgramItem, BulkEvent, Verein, Score, ScoreLink} from '../backend-types';
 import { backendUrl } from '../utils';
-import { RegistrationResetPW } from '../backend-types';
 
 // tslint:disable:radix
 // tslint:disable:variable-name
@@ -60,16 +60,23 @@ export class BackendService extends WebsocketService {
       return localStorage.getItem('auth_clubid');
     }
 
-    get competitionName(): string {
-      if (!this.competitions) { return ''; }
-      const candidate = this.competitions
-        .filter(c => c.uuid === this.competition)
-        .map(c => c.titel + ', am ' + (c.datum + 'T').split('T')[0].split('-').reverse().join('-'));
+    extractCompetitionLabel(wk: Wettkampf): string {
+      return wk !!!== undefined ? wk.titel + ', am ' + (wk.datum + 'T').split('T')[0].split('-').reverse().join('-') : '';
+    }
 
-      if (candidate.length === 1) {
+    get competitionName(): string {
+      return this.extractCompetitionLabel(this.currentCompetition());
+    }
+
+    currentCompetition(): Wettkampf {
+      if (!this.competition) { return undefined; }
+      
+      const candidate = this.competitions?.filter(c => c.uuid === this.competition);
+
+      if (candidate?.length === 1) {
         return candidate[0];
       } else {
-        return '';
+        return undefined;
       }
     }
 
@@ -81,6 +88,7 @@ export class BackendService extends WebsocketService {
     private loadingInstance: Promise<HTMLIonLoadingElement>;
 
     competitions: Wettkampf[];
+    competitionSubject = new BehaviorSubject<Wettkampf[]>([]);
     durchgaenge: string[];
 
     geraete: Geraet[];
@@ -643,6 +651,7 @@ export class BackendService extends WebsocketService {
       loader.subscribe({
           next: (data) => {
             this.competitions = data;
+            this.competitionSubject.next(data);
           }, 
           error: this.standardErrorHandler
         });

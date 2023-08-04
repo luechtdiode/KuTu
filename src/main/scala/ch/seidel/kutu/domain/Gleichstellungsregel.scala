@@ -46,7 +46,7 @@ object Gleichstandsregel {
       case "D-Note-Best" => Some(GleichstandsregelDNoteBest.asInstanceOf[Gleichstandsregel])
       case "JugendVorAlter" => Some(GleichstandsregelJugendVorAlter.asInstanceOf[Gleichstandsregel])
       case "Ohne" => Some(GleichstandsregelDefault.asInstanceOf[Gleichstandsregel])
-      case s: String => throw new RuntimeException(s"Unbekannte Regel '$s'")
+      case s: String => Some(GleichstandsregelDefault.asInstanceOf[Gleichstandsregel])
     }
     if (mappedFactorizers.isEmpty) {
       GleichstandsregelList(List(GleichstandsregelDefault))

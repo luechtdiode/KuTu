@@ -339,6 +339,29 @@ package object domain {
     def updatedWith(athlet: Athlet) = AthletView(athlet.id, athlet.js_id, athlet.geschlecht, athlet.name, athlet.vorname, athlet.gebdat, athlet.strasse, athlet.plz, athlet.ort, verein.map(v => v.copy(id = athlet.verein.getOrElse(0L))), athlet.activ)
   }
 
+  case class Team(name: String, rulename: String, wertungen: List[WertungView], countingWertungen: Map[Disziplin, List[WertungView]], relevantWertungen: Map[Disziplin, List[WertungView]]) extends DataObject {
+    val diszList: Map[Disziplin, Int] = countingWertungen.map { t =>
+      val disz = t._1
+      val ord = t._2.find(_.wettkampfdisziplin.disziplin == t._1).map(_.wettkampfdisziplin.ord).getOrElse(999)
+      (disz, ord)
+    }
+
+    val perDisciplinResults: Map[Disziplin, List[Resultat]] = countingWertungen
+      .map{ case (disciplin, wtg) => (disciplin, wtg
+        .map(w => if (w.showInScoreList) w.resultat else Resultat(0,0,0)))
+      }
+
+    val perDisciplinSums = perDisciplinResults.map{ case (disciplin, results) => (disciplin, results.reduce(_+_)) }
+    val sum = if (perDisciplinSums.values.nonEmpty) perDisciplinSums.values.reduce(_+_) else Resultat(0,0,0)
+    val avg = if (perDisciplinSums.values.nonEmpty) sum / perDisciplinResults.keySet.size else Resultat(0,0,0)
+
+    val blockrows = wertungen.map(_.athlet).distinct.size
+    def isRelevantResult(disziplin: Disziplin, member: AthletView): Boolean = {
+      relevantWertungen(disziplin).find(_.athlet.equals(member)).exists(w => perDisciplinResults(disziplin).exists(r => r.endnote.equals(w.resultat.endnote)))
+    }
+    override def easyprint: String = "Team " + name
+  }
+
   object Wertungsrichter {
     def apply(): Wertungsrichter = Wertungsrichter(0, 0, "", "", "", None, "", "", "", None, activ = true)
   }
@@ -686,15 +709,20 @@ package object domain {
   //      if(uuid != null) Wettkampf(id, datum, titel, programmId, auszeichnung, auszeichnungendnote, Some(uuid))
   //      else apply(id, datum, titel, programmId, auszeichnung, auszeichnungendnote)
   //  }
-  case class Wettkampf(id: Long, uuid: Option[String], datum: java.sql.Date, titel: String, programmId: Long, auszeichnung: Int, auszeichnungendnote: scala.math.BigDecimal, notificationEMail: String, altersklassen: Option[String], jahrgangsklassen: Option[String], punktegleichstandsregel: Option[String], rotation: Option[String]) extends DataObject {
+  case class Wettkampf(id: Long, uuid: Option[String], datum: java.sql.Date, titel: String, programmId: Long, auszeichnung: Int, auszeichnungendnote: scala.math.BigDecimal, notificationEMail: String, altersklassen: Option[String], jahrgangsklassen: Option[String], punktegleichstandsregel: Option[String], rotation: Option[String], teamrule: Option[String]) extends DataObject {
 
     override def easyprint = f"$titel am $datum%td.$datum%tm.$datum%tY"
 
     def toView(programm: ProgrammView): WettkampfView = {
-      WettkampfView(id, uuid, datum, titel, programm, auszeichnung, auszeichnungendnote, notificationEMail, altersklassen.getOrElse(""), jahrgangsklassen.getOrElse(""), punktegleichstandsregel.getOrElse(""), rotation.getOrElse(""))
+      WettkampfView(id, uuid, datum, titel, programm, auszeichnung, auszeichnungendnote, notificationEMail, altersklassen.getOrElse(""), jahrgangsklassen.getOrElse(""), punktegleichstandsregel.getOrElse(""), rotation.getOrElse(""), teamrule.getOrElse(""))
     }
 
-    def toPublic: Wettkampf = Wettkampf(id, uuid, datum, titel, programmId, auszeichnung, auszeichnung, "", altersklassen, jahrgangsklassen, punktegleichstandsregel, rotation)
+    def toPublic: Wettkampf = Wettkampf(id, uuid, datum, titel, programmId, auszeichnung, auszeichnung, "",
+      altersklassen.map(Altersklasse(_).map(_.easyprint).mkString(", ")),
+      jahrgangsklassen.map(Altersklasse(_).map(_.easyprint).mkString(", ")),
+      punktegleichstandsregel.map(Gleichstandsregel(_).toFormel),
+      rotation.map(RiegenRotationsregel(_).toFormel),
+      teamrule.map(TeamRegel(_).toRuleName))
 
     private def prepareFilePath(homedir: String) = {
       val filename: String = encodeFileName(easyprint)
@@ -784,10 +812,10 @@ package object domain {
   //      if(uuid != null) WettkampfView(id, datum, titel, programm, auszeichnung, auszeichnungendnote, Some(uuid))
   //      else apply(id, datum, titel, programm, auszeichnung, auszeichnungendnote)
   //  }
-  case class WettkampfView(id: Long, uuid: Option[String], datum: java.sql.Date, titel: String, programm: ProgrammView, auszeichnung: Int, auszeichnungendnote: scala.math.BigDecimal, notificationEMail: String, altersklassen: String, jahrgangsklassen: String, punktegleichstandsregel: String, rotation: String) extends DataObject {
+  case class WettkampfView(id: Long, uuid: Option[String], datum: java.sql.Date, titel: String, programm: ProgrammView, auszeichnung: Int, auszeichnungendnote: scala.math.BigDecimal, notificationEMail: String, altersklassen: String, jahrgangsklassen: String, punktegleichstandsregel: String, rotation: String, teamrule: String) extends DataObject {
     override def easyprint = f"$titel am $datum%td.$datum%tm.$datum%tY"
 
-    def toWettkampf = Wettkampf(id, uuid, datum, titel, programm.id, auszeichnung, auszeichnungendnote, notificationEMail, Option(altersklassen), Option(jahrgangsklassen), Option(punktegleichstandsregel), Option(rotation))
+    def toWettkampf = Wettkampf(id, uuid, datum, titel, programm.id, auszeichnung, auszeichnungendnote, notificationEMail, Option(altersklassen), Option(jahrgangsklassen), Option(punktegleichstandsregel), Option(rotation), Option(teamrule))
   }
 
   case class PublishedScoreRaw(id: String, title: String, query: String, published: Boolean, publishedDate: java.sql.Date, wettkampfId: Long) extends DataObject {
@@ -854,7 +882,7 @@ package object domain {
     override def easyprint = f"${formattedD}%6s${formattedE}%6s${formattedEnd}%6s"
   }
 
-  case class Wertung(id: Long, athletId: Long, wettkampfdisziplinId: Long, wettkampfId: Long, wettkampfUUID: String, noteD: Option[scala.math.BigDecimal], noteE: Option[scala.math.BigDecimal], endnote: Option[scala.math.BigDecimal], riege: Option[String], riege2: Option[String]) extends DataObject {
+  case class Wertung(id: Long, athletId: Long, wettkampfdisziplinId: Long, wettkampfId: Long, wettkampfUUID: String, noteD: Option[scala.math.BigDecimal], noteE: Option[scala.math.BigDecimal], endnote: Option[scala.math.BigDecimal], riege: Option[String], riege2: Option[String], team: Option[Int]) extends DataObject {
     lazy val resultat = Resultat(noteD.getOrElse(0), noteE.getOrElse(0), endnote.getOrElse(0))
 
     def updatedWertung(valuesFrom: Wertung) = copy(noteD = valuesFrom.noteD, noteE = valuesFrom.noteE, endnote = valuesFrom.endnote)
@@ -868,17 +896,17 @@ package object domain {
 
     def noteEasText = valueAsText(noteE)
 
-    def endnoteeAsText = valueAsText(endnote)
+    def endnoteAsText = valueAsText(endnote)
   }
 
-  case class WertungView(id: Long, athlet: AthletView, wettkampfdisziplin: WettkampfdisziplinView, wettkampf: Wettkampf, noteD: Option[scala.math.BigDecimal], noteE: Option[scala.math.BigDecimal], endnote: Option[scala.math.BigDecimal], riege: Option[String], riege2: Option[String]) extends DataObject {
+  case class WertungView(id: Long, athlet: AthletView, wettkampfdisziplin: WettkampfdisziplinView, wettkampf: Wettkampf, noteD: Option[scala.math.BigDecimal], noteE: Option[scala.math.BigDecimal], endnote: Option[scala.math.BigDecimal], riege: Option[String], riege2: Option[String], team: Int) extends DataObject {
     lazy val resultat = Resultat(noteD.getOrElse(0), noteE.getOrElse(0), endnote.getOrElse(0))
 
     def +(r: Resultat) = resultat + r
 
-    def toWertung = Wertung(id, athlet.id, wettkampfdisziplin.id, wettkampf.id, wettkampf.uuid.getOrElse(""), noteD, noteE, endnote, riege, riege2)
+    def toWertung = Wertung(id, athlet.id, wettkampfdisziplin.id, wettkampf.id, wettkampf.uuid.getOrElse(""), noteD, noteE, endnote, riege, riege2, Some(team))
 
-    def toWertung(riege: String, riege2: Option[String]) = Wertung(id, athlet.id, wettkampfdisziplin.id, wettkampf.id, wettkampf.uuid.getOrElse(""), noteD, noteE, endnote, Some(riege), riege2)
+    def toWertung(riege: String, riege2: Option[String]) = Wertung(id, athlet.id, wettkampfdisziplin.id, wettkampf.id, wettkampf.uuid.getOrElse(""), noteD, noteE, endnote, Some(riege), riege2, Some(team))
 
     def updatedWertung(valuesFrom: Wertung) = copy(noteD = valuesFrom.noteD, noteE = valuesFrom.noteE, endnote = valuesFrom.endnote)
 
@@ -902,11 +930,40 @@ package object domain {
 
   sealed trait DataRow {}
 
-  case class LeafRow(title: String, sum: Resultat, rang: Resultat, auszeichnung: Boolean) extends DataRow
+  trait ResultRow {
+    val athletId: Option[Long] = None
+    val sum: Resultat
+    val rang: Resultat
+    val auszeichnung: Boolean
+    val resultate: IndexedSeq[LeafRow] = IndexedSeq()
+    val divider: Int = 1
+  }
+  /**
+   * Single Result of a row
+   * @param title Discipline name
+   * @param sum
+   * @param rang
+   * @param auszeichnung true, of best score in that discipline
+   */
+  case class LeafRow(title: String, sum: Resultat, rang: Resultat, auszeichnung: Boolean) extends DataRow with ResultRow
 
-  case class GroupRow(athlet: AthletView, resultate: IndexedSeq[LeafRow], sum: Resultat, rang: Resultat, auszeichnung: Boolean) extends DataRow {
+  /**
+   * Row of results per each discipline of one athlet/team
+   * @param athlet
+   * @param resultate
+   * @param sum
+   * @param rang
+   * @param auszeichnung
+   */
+  case class GroupRow(athlet: AthletView, pgm: ProgrammView, override val resultate: IndexedSeq[LeafRow], sum: Resultat, rang: Resultat, auszeichnung: Boolean) extends DataRow with ResultRow {
     lazy val withDNotes = resultate.exists(w => w.sum.noteD > 0)
-    lazy val divider = if (withDNotes || resultate.isEmpty) 1 else resultate.count { r => r.sum.endnote > 0 }
+    override val athletId = Some(athlet.id)
+    override val divider = if (withDNotes || resultate.isEmpty) 1 else resultate.count { r => r.sum.endnote > 0 }
+  }
+
+  case class TeamRow(team: Team, override val resultate: IndexedSeq[LeafRow], sum: Resultat, rang: Resultat, auszeichnung: Boolean) extends DataRow with ResultRow {
+    lazy val withDNotes = resultate.exists(w => w.sum.noteD > 0)
+    override val divider = if (withDNotes || resultate.isEmpty) 1 else resultate.count { r => r.sum.endnote > 0 }
   }
 
   sealed trait NotenModus {
@@ -1073,8 +1130,8 @@ package object domain {
       case ApproveVereinAction(verein) => ApproveVereinAction(verein.toPublicView)
       case RenameVereinAction(verein, oldVerein) => RenameVereinAction(verein.toPublicView, oldVerein)
       case RenameAthletAction(verein, athlet, existing, expected) => RenameAthletAction(verein.toPublicView, athlet.toPublicView, existing.toPublicView, expected.toPublicView)
-      case AddRegistration(verein, programId, athlet, suggestion) => AddRegistration(verein.toPublicView, programId, athlet.toPublicView, suggestion.toPublicView)
-      case MoveRegistration(verein, fromProgramId, toProgramid, athlet, suggestion) => MoveRegistration(verein.toPublicView, fromProgramId, toProgramid, athlet.toPublicView, suggestion.toPublicView)
+      case AddRegistration(verein, programId, athlet, suggestion, team) => AddRegistration(verein.toPublicView, programId, athlet.toPublicView, suggestion.toPublicView, team)
+      case MoveRegistration(verein, fromProgramId, fromTeam, toProgramid, toTeam, athlet, suggestion) => MoveRegistration(verein.toPublicView, fromProgramId, fromTeam, toProgramid, toTeam, athlet.toPublicView, suggestion.toPublicView)
       case RemoveRegistration(verein, programId, athlet, suggestion) => RemoveRegistration(verein.toPublicView, programId, athlet.toPublicView, suggestion.toPublicView)
     }
   }
@@ -1095,12 +1152,13 @@ package object domain {
     override val caption = s"Verein bestätigen: ${verein.vereinname}"
   }
 
-  case class AddRegistration(override val verein: Registration, programId: Long, athlet: Athlet, suggestion: AthletView) extends SyncAction {
+  case class AddRegistration(override val verein: Registration, programId: Long, athlet: Athlet, suggestion: AthletView, team: Int) extends SyncAction {
     override val caption = s"Neue Anmeldung verarbeiten: ${suggestion.easyprint}"
   }
 
-  case class MoveRegistration(override val verein: Registration, fromProgramId: Long, toProgramid: Long, athlet: Athlet, suggestion: AthletView) extends SyncAction {
-    override val caption = s"Umteilung verarbeiten: ${suggestion.easyprint}"
+  case class MoveRegistration(override val verein: Registration, fromProgramId: Long, fromTeam: Int, toProgramid: Long, toTeam: Int, athlet: Athlet, suggestion: AthletView) extends SyncAction {
+    override val caption = if (fromTeam != toTeam && fromProgramId == toProgramid) s"Team Einteilung verarbeiten: ${suggestion.easyprint}"
+    else s"Program-Umteilung verarbeiten: ${suggestion.easyprint}"
   }
 
   case class RemoveRegistration(override val verein: Registration, programId: Long, athlet: Athlet, suggestion: AthletView) extends SyncAction {
@@ -1155,8 +1213,8 @@ package object domain {
 
   case class AthletRegistration(id: Long, vereinregistrationId: Long,
                                 athletId: Option[Long], geschlecht: String, name: String, vorname: String, gebdat: String,
-                                programId: Long, registrationTime: Long, athlet: Option[AthletView]) extends DataObject {
-    def toPublicView = AthletRegistration(id, vereinregistrationId, athletId, geschlecht, name, vorname, gebdat.substring(0, 4) + "-01-01", programId, registrationTime, athlet.map(_.toPublicView))
+                                programId: Long, registrationTime: Long, athlet: Option[AthletView], team: Option[Int]) extends DataObject {
+    def toPublicView = AthletRegistration(id, vereinregistrationId, athletId, geschlecht, name, vorname, gebdat.substring(0, 4) + "-01-01", programId, registrationTime, athlet.map(_.toPublicView), team)
 
     def capitalizeIfBlockCase(s: String): String = {
       if (s.length > 2 && (s.toUpperCase.equals(s) || s.toLowerCase.equals(s))) {
@@ -1266,7 +1324,7 @@ package object domain {
   }
 
   object EmptyAthletRegistration {
-    def apply(vereinregistrationId: Long): AthletRegistration = AthletRegistration(0L, vereinregistrationId, None, "", "", "", "", 0L, 0L, None)
+    def apply(vereinregistrationId: Long): AthletRegistration = AthletRegistration(0L, vereinregistrationId, None, "", "", "", "", 0L, 0L, None, None)
   }
 
   case class JudgeRegistration(id: Long, vereinregistrationId: Long,

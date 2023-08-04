@@ -9,22 +9,41 @@ import java.time.{LocalDate, Period}
 import scala.collection.mutable
 import scala.math.BigDecimal.int2bigDecimal
 
+object ScoreListKind {
+  def apply(kind: Option[String]): ScoreListKind = kind
+    .map {
+      case "Einzelrangliste" => Einzelrangliste
+      case "Teamrangliste" => Teamrangliste
+      case "Kombirangliste" => Kombirangliste
+      case _ => Einzelrangliste
+    }.headOption.getOrElse(Einzelrangliste)
+}
+sealed trait ScoreListKind
+case object Einzelrangliste extends ScoreListKind
+case object Teamrangliste extends ScoreListKind
+case object Kombirangliste extends ScoreListKind
+
 sealed trait GroupBy {
   val groupname: String
   protected var next: Option[GroupBy] = None
   protected var isANO: Boolean = false
+  protected var kind: ScoreListKind = Einzelrangliste
 
   protected def allName = groupname
 
   protected val allgrouper = (w: WertungView) => NullObject(allName).asInstanceOf[DataObject]
   protected val grouper: (WertungView) => DataObject
-  protected val sorter: Option[(GroupSection, GroupSection) => Boolean] //= leafsorter
-  protected val leafsorter: Option[(GroupSection, GroupSection) => Boolean] = Some((gs1: GroupSection, gs2: GroupSection) => {
-    gs1.sum.endnote > gs2.sum.endnote
-  })
+  protected val sorter: Option[(GroupSection, GroupSection) => Boolean]
 
   override def toString = groupname
 
+  def getKind = kind
+  def setKind(value: ScoreListKind): Unit = {
+    traverse(value) { (gb, acc) =>
+      gb.kind = acc
+      acc
+    }
+  }
   def isAlphanumericOrdered = isANO
 
   def setAlphanumericOrdered(value: Boolean): Unit = {
@@ -43,7 +62,7 @@ sealed trait GroupBy {
           acc + "," + gb.groupname
       }
     }
-    s"groupby=${groupby}" + (if (isANO) "&alphanumeric" else "")
+    s"groupby=${groupby}" + (if (isANO) "&alphanumeric" else "") + s"&kind=${kind}"
   }
 
   def chainToString: String = s"$groupname (skipGrouper: $skipGrouper, $allName)" + (next match {
@@ -108,21 +127,32 @@ sealed trait GroupBy {
 
   private def mapAndSortLeaf(grouped: Map[DataObject, Seq[WertungView]]) = {
     def reduce(switch: DataObject, list: Seq[WertungView]): Seq[GroupSection] = {
-      Seq(GroupLeaf(switch, list))
+      val rl = list.filter(_.showInScoreList)
+      if (rl.nonEmpty) {
+        val gl = GroupLeaf(switch, rl)
+        kind match {
+          case Teamrangliste => {
+            TeamSums(gl)
+          }
+          case Einzelrangliste => Seq(gl)
+          case Kombirangliste => gl +: TeamSums(gl)
+        }
+      } else {
+        Seq()
+      }
     }
 
     sort(grouped.flatMap(x => reduce(x._1, x._2)).filter(g => g.sum.endnote > 0), sorter)
   }
 
   private def mapAndSortNode(ng: GroupBy, grouped: Map[DataObject, Seq[WertungView]]) = {
-    sort(grouped.map { x =>
+    sort(grouped.flatMap { x =>
       val (grp, seq) = x
       val list = ng.select(seq)
-      if (list.isEmpty) {
-        GroupNode(grp, Seq(GroupSum(grp, Resultat(0, 0, 0), Resultat(0, 0, 0), Resultat(0, 0, 0))))
-      }
-      else {
-        GroupNode(grp, list)
+      if (list.nonEmpty) {
+        Seq(GroupNode(grp, list))
+      } else {
+        Seq()
       }
     }.filter(g => g.sum.endnote > 0), sorter)
   }
@@ -165,7 +195,7 @@ sealed trait FilterBy extends GroupBy {
         }
       )
     }
-    s"groupby=$groupby${filter.mkString}" + (if (isANO) "&alphanumeric" else "")
+    s"groupby=$groupby${filter.mkString}" + (if (isANO) "&alphanumeric" else "") + s"&kind=${kind}"
   }
 
   private[FilterBy] var filter: Set[DataObject] = Set.empty
@@ -245,7 +275,11 @@ case class ByDurchgang(riegenZuDurchgang: Map[String, Durchgang]) extends GroupB
     riegenZuDurchgang.getOrElse(v.riege.getOrElse(""), riegenZuDurchgang.getOrElse(v.riege2.getOrElse(""), Durchgang()))
   }
   protected override val sorter: Option[(GroupSection, GroupSection) => Boolean] = Some((gs1: GroupSection, gs2: GroupSection) => {
-    gs1.groupKey.asInstanceOf[Durchgang].name.compareTo(gs2.groupKey.asInstanceOf[Durchgang].name) < 0
+    (gs1.groupKey, gs2.groupKey) match {
+      case (p1: Durchgang, p2: Durchgang) =>
+        p1.name.compareTo(p2.name) < 0
+      case _ => gs1.groupKey.compareTo(gs2.groupKey) < 0
+    }
   })
 }
 
@@ -255,7 +289,11 @@ case class ByProgramm(text: String = "Programm/Kategorie") extends GroupBy with 
     v.wettkampfdisziplin.programm
   }
   protected override val sorter: Option[(GroupSection, GroupSection) => Boolean] = Some((gs1: GroupSection, gs2: GroupSection) => {
-    gs1.groupKey.asInstanceOf[ProgrammView].ord.compareTo(gs2.groupKey.asInstanceOf[ProgrammView].ord) < 0
+    (gs1.groupKey, gs2.groupKey) match {
+      case (p1: ProgrammView, p2: ProgrammView) =>
+        p1.ord.compareTo(p2.ord) < 0
+      case _ => gs1.groupKey.compareTo(gs2.groupKey) < 0
+    }
   })
 }
 
@@ -265,7 +303,11 @@ case class ByWettkampfProgramm(text: String = "Programm/Kategorie") extends Grou
     v.wettkampfdisziplin.programm.wettkampfprogramm
   }
   protected override val sorter: Option[(GroupSection, GroupSection) => Boolean] = Some((gs1: GroupSection, gs2: GroupSection) => {
-    gs1.groupKey.asInstanceOf[ProgrammView].ord.compareTo(gs2.groupKey.asInstanceOf[ProgrammView].ord) < 0
+    (gs1.groupKey, gs2.groupKey) match {
+      case (p1: ProgrammView, p2: ProgrammView) =>
+        p1.ord.compareTo(p2.ord) < 0
+      case _ => gs1.groupKey.compareTo(gs2.groupKey) < 0
+    }
   })
 }
 
@@ -275,7 +317,11 @@ case class ByWettkampfArt() extends GroupBy with FilterBy {
     v.wettkampfdisziplin.programm.head
   }
   protected override val sorter: Option[(GroupSection, GroupSection) => Boolean] = Some((gs1: GroupSection, gs2: GroupSection) => {
-    gs1.groupKey.asInstanceOf[ProgrammView].ord.compareTo(gs2.groupKey.asInstanceOf[ProgrammView].ord) < 0
+    (gs1.groupKey, gs2.groupKey) match {
+      case (p1: ProgrammView, p2: ProgrammView) =>
+        p1.ord.compareTo(p2.ord) < 0
+      case _ => gs1.groupKey.compareTo(gs2.groupKey) < 0
+    }
   })
 }
 
@@ -285,7 +331,11 @@ case class ByWettkampf() extends GroupBy with FilterBy {
     v.wettkampf
   }
   protected override val sorter: Option[(GroupSection, GroupSection) => Boolean] = Some((gs1: GroupSection, gs2: GroupSection) => {
-    gs1.groupKey.asInstanceOf[Wettkampf].datum.compareTo(gs2.groupKey.asInstanceOf[Wettkampf].datum) < 0
+    (gs1.groupKey, gs2.groupKey) match {
+      case (p1: Wettkampf, p2: Wettkampf) =>
+        p1.datum.compareTo(p2.datum) < 0
+      case _ => gs1.groupKey.compareTo(gs2.groupKey) < 0
+    }
   })
 }
 
@@ -315,7 +365,11 @@ case class ByJahr() extends GroupBy with FilterBy {
     WettkampfJahr(extractYear.format(v.wettkampf.datum))
   }
   protected override val sorter: Option[(GroupSection, GroupSection) => Boolean] = Some((gs1: GroupSection, gs2: GroupSection) => {
-    gs1.groupKey.asInstanceOf[WettkampfJahr].wettkampfjahr.compareTo(gs2.groupKey.asInstanceOf[WettkampfJahr].wettkampfjahr) < 0
+    (gs1.groupKey, gs2.groupKey) match {
+      case (p1: WettkampfJahr, p2: WettkampfJahr) =>
+        p1.wettkampfjahr.compareTo(p2.wettkampfjahr) < 0
+      case _ => gs1.groupKey.compareTo(gs2.groupKey) < 0
+    }
   })
 }
 
@@ -328,7 +382,11 @@ case class ByJahrgang() extends GroupBy with FilterBy {
     }
   }
   protected override val sorter: Option[(GroupSection, GroupSection) => Boolean] = Some((gs1: GroupSection, gs2: GroupSection) => {
-    gs1.groupKey.asInstanceOf[AthletJahrgang].jahrgang.compareTo(gs2.groupKey.asInstanceOf[AthletJahrgang].jahrgang) < 0
+    (gs1.groupKey, gs2.groupKey) match {
+      case (p1: AthletJahrgang, p2: AthletJahrgang) =>
+        p1.jahrgang.compareTo(p2.jahrgang) < 0
+      case _ => gs1.groupKey.compareTo(gs2.groupKey) < 0
+    }
   })
 }
 
@@ -349,7 +407,7 @@ case class ByAltersklasse(bezeichnung: String = "GebDat Altersklasse", grenzen: 
   }
 
   protected override val sorter: Option[(GroupSection, GroupSection) => Boolean] = Some((gs1: GroupSection, gs2: GroupSection) => {
-    gs1.groupKey.asInstanceOf[Altersklasse].compareTo(gs2.groupKey.asInstanceOf[Altersklasse]) < 0
+    gs1.groupKey.compareTo(gs2.groupKey) < 0
   })
 }
 
@@ -369,7 +427,7 @@ case class ByJahrgangsAltersklasse(bezeichnung: String = "JG Altersklasse", gren
   }
 
   protected override val sorter: Option[(GroupSection, GroupSection) => Boolean] = Some((gs1: GroupSection, gs2: GroupSection) => {
-    gs1.groupKey.asInstanceOf[Altersklasse].compareTo(gs2.groupKey.asInstanceOf[Altersklasse]) < 0
+    gs1.groupKey.compareTo(gs2.groupKey) < 0
   })
 }
 
@@ -382,9 +440,13 @@ case class ByDisziplin() extends GroupBy with FilterBy {
     v.wettkampfdisziplin.disziplin
   }
   protected override val sorter: Option[(GroupSection, GroupSection) => Boolean] = Some((gs1: GroupSection, gs2: GroupSection) => {
-    val go1 = ordering.getOrElse(gs1.groupKey.asInstanceOf[Disziplin].id, gs1.groupKey.asInstanceOf[Disziplin].id)
-    val go2 = ordering.getOrElse(gs2.groupKey.asInstanceOf[Disziplin].id, gs2.groupKey.asInstanceOf[Disziplin].id)
-    go1.compareTo(go2) < 0
+    (gs1.groupKey, gs2.groupKey) match {
+      case (p1: Disziplin, p2: Disziplin) =>
+        val go1 = ordering.getOrElse(p1.id, p1.id)
+        val go2 = ordering.getOrElse(p2.id, p2.id)
+        go1.compareTo(go2) < 0
+      case _ => gs1.groupKey.compareTo(gs2.groupKey) < 0
+    }
   })
 }
 
@@ -394,7 +456,7 @@ case class ByGeschlecht() extends GroupBy with FilterBy {
     TurnerGeschlecht(v.athlet.geschlecht)
   }
   protected override val sorter: Option[(GroupSection, GroupSection) => Boolean] = Some((gs1: GroupSection, gs2: GroupSection) => {
-    gs1.groupKey.asInstanceOf[TurnerGeschlecht].easyprint.compareTo(gs2.groupKey.asInstanceOf[TurnerGeschlecht].easyprint) > 0
+    gs1.groupKey.easyprint.compareTo(gs2.groupKey.easyprint) > 0
   })
 }
 
@@ -407,7 +469,11 @@ case class ByVerein() extends GroupBy with FilterBy {
     }
   }
   protected override val sorter: Option[(GroupSection, GroupSection) => Boolean] = Some((gs1: GroupSection, gs2: GroupSection) => {
-    gs1.groupKey.asInstanceOf[Verein].name.compareTo(gs2.groupKey.asInstanceOf[Verein].name) < 0
+    (gs1.groupKey, gs2.groupKey) match {
+      case (p1: Verein, p2: Verein) =>
+        p1.name.compareTo(p2.name) < 0
+      case _ => gs1.groupKey.compareTo(gs2.groupKey) < 0
+    }
   })
 }
 
@@ -420,7 +486,11 @@ case class ByVerband() extends GroupBy with FilterBy {
     }
   }
   protected override val sorter: Option[(GroupSection, GroupSection) => Boolean] = Some((gs1: GroupSection, gs2: GroupSection) => {
-    gs1.groupKey.asInstanceOf[Verband].name.compareTo(gs2.groupKey.asInstanceOf[Verband].name) < 0
+    (gs1.groupKey, gs2.groupKey) match {
+      case (p1: Verband, p2: Verband) =>
+        p1.name.compareTo(p2.name) < 0
+      case _ => gs1.groupKey.compareTo(gs2.groupKey) < 0
+    }
   })
 }
 
@@ -437,10 +507,16 @@ object GroupBy {
     val arguments = query.split("&")
     val groupby = arguments.filter(x => x.length > 8 && x.startsWith("groupby=")).map(x => URLDecoder.decode(x.split("=")(1), "UTF-8")).headOption
     val filter = arguments.filter(x => x.length > 7 && x.startsWith("filter=")).map(x => URLDecoder.decode(x.split("=")(1), "UTF-8"))
-    apply(groupby, filter, data, query.contains("&alphanumeric"), groupers)
+    val kind: ScoreListKind = ScoreListKind(
+      arguments
+        .filter(x => x.startsWith("kind"))
+        .map(x => x.split("=")(1))
+        .headOption
+    )
+    apply(groupby, filter, data, query.contains("&alphanumeric"), kind, groupers)
   }
 
-  def apply(groupby: Option[String], filter: Iterable[String], data: Seq[WertungView], alphanumeric: Boolean, groupers: List[FilterBy]): GroupBy = {
+  def apply(groupby: Option[String], filter: Iterable[String], data: Seq[WertungView], alphanumeric: Boolean, kind: ScoreListKind, groupers: List[FilterBy]): GroupBy = {
     val filterList = filter.map { flt =>
       val keyvalues = flt.split(":")
       val key = keyvalues(0)
@@ -494,6 +570,7 @@ object GroupBy {
       ByProgramm().groupBy(ByGeschlecht())
     }
     query.setAlphanumericOrdered(alphanumeric)
+    query.setKind(kind)
     query
   }
 }

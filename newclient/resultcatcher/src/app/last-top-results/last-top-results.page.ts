@@ -16,29 +16,31 @@ export class LastTopResultsPage implements OnInit {
   geraete: Geraet[] = [];
 
   ngOnInit() {
-    this.backendService.activateNonCaptionMode(this.backendService.competition).subscribe(geraete => {
-      this.geraete = geraete || [];
-      this.sortItems();
-    });
-    this.backendService.newLastResults.pipe(
-      filter(r => !!r && !!r.lastTopResults)
-    ).subscribe(newLastRes => {
-      this.items = [];
-      this.toptop = {};
-      Object.keys(newLastRes.lastTopResults).forEach(key => {
-        const top = newLastRes.lastTopResults[key];
-        const topt = this.toptop[top.wertung.wettkampfdisziplinId];
-        if (!topt) {
-          this.toptop[top.wertung.wettkampfdisziplinId] = top;
-        } else if (topt.wertung.endnote < top.wertung.endnote) {
-          this.toptop[top.wertung.wettkampfdisziplinId] = top;
-        }
+    this.backendService.competitionSubject.subscribe(comps => {
+      this.backendService.activateNonCaptionMode(this.backendService.competition).subscribe(geraete => {
+        this.geraete = geraete || [];
+        this.sortItems();
       });
-      Object.keys(this.toptop).forEach(key => {
-        const top = this.toptop[key];
-        this.items.push(top);
+      this.backendService.newLastResults.pipe(
+        filter(r => !!r && !!r.lastTopResults)
+      ).subscribe(newLastRes => {
+        this.items = [];
+        this.toptop = {};
+        Object.keys(newLastRes.lastTopResults).forEach(key => {
+          const top = newLastRes.lastTopResults[key];
+          const topt = this.toptop[top.wertung.wettkampfdisziplinId];
+          if (!topt) {
+            this.toptop[top.wertung.wettkampfdisziplinId] = top;
+          } else if (topt.wertung.endnote < top.wertung.endnote) {
+            this.toptop[top.wertung.wettkampfdisziplinId] = top;
+          }
+        });
+        Object.keys(this.toptop).forEach(key => {
+          const top = this.toptop[key];
+          this.items.push(top);
+        });
+        this.sortItems();
       });
-      this.sortItems();
     });
   }
 

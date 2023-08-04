@@ -39,9 +39,6 @@ export function toDateString(datestr: string): string {
     date = new Date(Date.parse(datestr));
   }
   const d = (`${date.getFullYear().toString()}-${('0' + (date.getMonth() + 1)).slice(-2)}-${('0' + (date.getDate())).slice(-2)}`);
-    //  const d = (`${date.getFullYear().toString()}-${('0' + (date.getMonth() + 1)).slice(-2)}-${('0' + (date.getDate())).slice(-2)}`)
-    //  + 'T' + date.toTimeString().slice(0, 8) + 'Z';
-  console.log(d);
   return d;
 }
 

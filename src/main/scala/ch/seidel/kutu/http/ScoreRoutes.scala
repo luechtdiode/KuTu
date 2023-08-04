@@ -38,9 +38,9 @@ ScoreRoutes extends SprayJsonSupport with JsonSupport with AuthSupport with Rout
   )
                   
   def queryScoreResults(wettkampf: String, groupby: Option[String], filter: Iterable[String], html: Boolean,
-                        groupers: List[FilterBy], data: Seq[WertungView], alphanumeric: Boolean,
+                        groupers: List[FilterBy], data: Seq[WertungView], alphanumeric: Boolean, kind: ScoreListKind,
                         logofile: File): HttpEntity.Strict = {
-    val query = GroupBy(groupby, filter, data, alphanumeric, groupers);
+    val query = GroupBy(groupby, filter, data, alphanumeric, kind, groupers);
 
     if (html) {
       HttpEntity(ContentTypes.`text/html(UTF-8)`, new ScoreToHtmlRenderer(){override val title: String = wettkampf}
@@ -108,9 +108,12 @@ ScoreRoutes extends SprayJsonSupport with JsonSupport with AuthSupport with Rout
 //          val programmText = data.head.wettkampf.programmId match {case 20 => "Kategorie" case _ => "Programm"}
           pathEnd {
             get {
-              parameters(Symbol("groupby").?, Symbol("filter").*, Symbol("html").?, Symbol("alphanumeric").?) { (groupby, filter, html, alphanumeric) =>
+              parameters(Symbol("groupby").?, Symbol("filter").*, Symbol("html").?
+                , Symbol("alphanumeric").?
+                , Symbol("kind").?
+              ) { (groupby, filter, html, alphanumeric, kind) =>
                 complete(Future{
-                  queryScoreResults("Alle Wettkämpfe", groupby, filter, html.nonEmpty, allGroupers, data, alphanumeric.nonEmpty, logofile)
+                  queryScoreResults("Alle Wettkämpfe", groupby, filter, html.nonEmpty, allGroupers, data, alphanumeric.nonEmpty, ScoreListKind(kind), logofile)
                 })
               }
             }
@@ -269,7 +272,10 @@ ScoreRoutes extends SprayJsonSupport with JsonSupport with AuthSupport with Rout
             } ~
             pathLabeled("query", "query") {
               get {
-                parameters(Symbol("groupby").?, Symbol("filter").*, Symbol("html").?, Symbol("alphanumeric").?) { (groupby, filter, html, alphanumeric) =>
+                parameters(Symbol("groupby").?, Symbol("filter").*, Symbol("html").?
+                  , Symbol("alphanumeric").?
+                  , Symbol("kind").?
+                ) { (groupby, filter, html, alphanumeric, kind) =>
                   complete(
                     if (!wkdate.atStartOfDay().isBefore(LocalDate.now.atStartOfDay) || (groupby == None && filter.isEmpty)) {
                       ToResponseMarshallable(HttpEntity(ContentTypes.`text/html(UTF-8)`,
@@ -347,7 +353,7 @@ ScoreRoutes extends SprayJsonSupport with JsonSupport with AuthSupport with Rout
                          """.stripMargin))
                     } else {
                       Future{
-                        queryScoreResults(wettkampf.easyprint, groupby, filter, html.nonEmpty, groupers, data, alphanumeric.nonEmpty, logofile)
+                        queryScoreResults(wettkampf.easyprint, groupby, filter, html.nonEmpty, groupers, data, alphanumeric.nonEmpty, ScoreListKind(kind), logofile)
                       }
                     }
                   )
@@ -383,18 +389,18 @@ ScoreRoutes extends SprayJsonSupport with JsonSupport with AuthSupport with Rout
                       if (sd.nonEmpty) {
                             Future {queryScoreResults(s"${wettkampf.easyprint} - Zwischenresultate", None,
                                 filter ++ Iterable(byDurchgangMat.groupname + ":" + sd.mkString("!")),
-                                html.nonEmpty, groupers, data.filter(filterMatchingWertungenToQuery), false, logofile)
+                                html.nonEmpty, groupers, data.filter(filterMatchingWertungenToQuery), false, Einzelrangliste, logofile)
                             }
                       } else {
                             Future {queryScoreResults(s"${wettkampf.easyprint} - Zwischenresultate", None,
                                 filter,
-                                html.nonEmpty, groupers, Seq(), false, logofile)
+                                html.nonEmpty, groupers, Seq(), false, Einzelrangliste, logofile)
                             }
                       }
                     case MessageAck(msg) =>
                       Future {queryScoreResults(s"${wettkampf.easyprint} - Zwischenresultate", None,
                         filter,
-                        html.nonEmpty, groupers, Seq(), false, logofile)
+                        html.nonEmpty, groupers, Seq(), false, Einzelrangliste, logofile)
                       }
   //                    Future {
   //                    if (html.nonEmpty) {

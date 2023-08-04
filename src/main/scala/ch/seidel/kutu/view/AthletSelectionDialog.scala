@@ -19,9 +19,13 @@ import scalafx.scene.layout._
 import java.time.{LocalDate, Period}
 
 class AthletSelectionDialog(actionTitle: String, wettkampfDatum: LocalDate, alterVon: Int, alterBis: Int, sex: Set[String], assignedAthleten: Seq[AthletView], service: KutuService, refreshPaneData: Set[Long]=>Unit) {
-
+  val wkcompareJGMode = wettkampfDatum.getDayOfYear == 1
   def alter(a: AthletView): Int = {
-    a.gebdat.map(d => Period.between(d.toLocalDate, wettkampfDatum).getYears).getOrElse(100)
+    if (wkcompareJGMode) {
+      a.gebdat.map(d => Period.between(LocalDate.of(d.toLocalDate.getYear, 1, 1), wettkampfDatum).getYears).getOrElse(100)
+    } else {
+      a.gebdat.map(d => Period.between(d.toLocalDate, wettkampfDatum).getYears).getOrElse(100)
+    }
   }
   val athletModel = ObservableBuffer.from(
     service.selectAthletesView.filter(a => {

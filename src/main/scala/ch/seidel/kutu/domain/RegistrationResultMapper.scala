@@ -11,7 +11,7 @@ trait RegistrationResultMapper extends AthletResultMapper {
   implicit val getRegistrationResult = GetResult(r =>
     Registration(r.<<, r.<<, r.<<, r.<<, r.<<, r.<<, r.<<, r.<<, r.<<, getTime(r), r))
   implicit val getAthletRegistrationResult = GetResult(r =>
-    AthletRegistration(r.<<, r.<<, r.<<, r.<<, r.<<, r.<<, r.<<, r.<<, getTime(r), r))
+    AthletRegistration(r.<<, r.<<, r.<<, r.<<, r.<<, r.<<, r.<<, r.<<, getTime(r), r, r.<<))
   implicit val getJudgeRegistrationResult = GetResult(r =>
     JudgeRegistration(r.<<, r.<<, r.<<, r.<<, r.<<, r.<<, r.<<, r.<<, getTime(r)))
   implicit val getJudgeRegistrationProgramResult = GetResult(r =>

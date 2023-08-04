@@ -79,7 +79,8 @@ case class WertungEditor(init: WertungView) {
     toOption(noteE.value),
     toOption(endnote.value),
     init.riege,
-    init.riege2)
+    init.riege2,
+    Some(init.team))
   
   def view =
     init.copy(noteD = toOption(noteD.value), noteE = toOption(noteE.value), endnote = toOption(endnote.value))

@@ -95,6 +95,7 @@ export interface AthletRegistration {
   geschlecht: string;
   gebdat: string;
   programId: number;
+  team: number;
   registrationTime: number;
 }
 
@@ -128,6 +129,7 @@ export interface Wertung {
   endnote: number;
   noteE: number;
   noteD: number;
+  team: number;
 }
 
 export interface Geraet {
@@ -144,18 +146,22 @@ export interface Wettkampf {
   auszeichnungendnote: number;
   uuid: string;
   notificationEMail?: string;
-  altersklassen?: string; 
-  jahrgangsklassen?: string; 
+  altersklassen?: string;
+  jahrgangsklassen?: string;
   punktegleichstandsregel?: string;
   rotation?: string;
+  teamrule?: string;
 }
 
 export interface ScoreRow {
-  "athletID": number,
+  "athletID"?: number,
+  "rows"?: ScoreRow[];
+  "Athlet"?: string,
+  "Team/Athlet"?: string,
+  "K"?: string,
+  "Jahrgang"?: string,
+  "Verein"?: string,
   "Rang": string,
-  "Athlet": string,
-  "Jahrgang": string,
-  "Verein": string,
   "ø Gerät": string,
   "Total Punkte": string
 }

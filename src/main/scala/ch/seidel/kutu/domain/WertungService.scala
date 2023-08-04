@@ -73,8 +73,8 @@ abstract trait WertungService extends DBService with WertungResultMapper with Di
         sql"""
                     SELECT w.id, a.id, a.js_id, a.geschlecht, a.name, a.vorname, a.gebdat, a.strasse, a.plz, a.ort, a.activ, a.verein, v.*,
                       wd.id, wd.programm_id, d.*, wd.kurzbeschreibung, wd.detailbeschreibung, wd.notenfaktor, wd.masculin, wd.feminim, wd.ord, wd.scale, wd.dnote, wd.min, wd.max, wd.startgeraet,
-                      wk.id, wk.uuid, wk.datum, wk.titel, wk.programm_id, wk.auszeichnung, wk.auszeichnungendnote, wk.notificationEMail, wk.altersklassen, wk.jahrgangsklassen, wk.punktegleichstandsregel, wk.rotation,
-                      w.note_d as difficulty, w.note_e as execution, w.endnote, w.riege, w.riege2
+                      wk.id, wk.uuid, wk.datum, wk.titel, wk.programm_id, wk.auszeichnung, wk.auszeichnungendnote, wk.notificationEMail, wk.altersklassen, wk.jahrgangsklassen, wk.punktegleichstandsregel, wk.rotation, wk.teamrule,
+                      w.note_d as difficulty, w.note_e as execution, w.endnote, w.riege, w.riege2, w.team
                     FROM wertung w
                     inner join athlet a on (a.id = w.athlet_id)
                     left outer join verein v on (a.verein = v.id)
@@ -95,8 +95,8 @@ abstract trait WertungService extends DBService with WertungResultMapper with Di
       sql"""
                     SELECT w.id, a.id, a.js_id, a.geschlecht, a.name, a.vorname, a.gebdat, a.strasse, a.plz, a.ort, a.activ, a.verein, v.*,
                       wd.id, wd.programm_id, d.*, wd.kurzbeschreibung, wd.detailbeschreibung, wd.notenfaktor, wd.masculin, wd.feminim, wd.ord, wd.scale, wd.dnote, wd.min, wd.max, wd.startgeraet,
-                      wk.id, wk.uuid, wk.datum, wk.titel, wk.programm_id, wk.auszeichnung, wk.auszeichnungendnote, wk.notificationEMail, wk.altersklassen, wk.jahrgangsklassen, wk.punktegleichstandsregel, wk.rotation,
-                      w.note_d as difficulty, w.note_e as execution, w.endnote, w.riege, w.riege2
+                      wk.id, wk.uuid, wk.datum, wk.titel, wk.programm_id, wk.auszeichnung, wk.auszeichnungendnote, wk.notificationEMail, wk.altersklassen, wk.jahrgangsklassen, wk.punktegleichstandsregel, wk.rotation, wk.teamrule,
+                      w.note_d as difficulty, w.note_e as execution, w.endnote, w.riege, w.riege2, w.team
                     FROM wertung w
                     inner join athlet a on (a.id = w.athlet_id)
                     left outer join verein v on (a.verein = v.id)
@@ -117,8 +117,8 @@ abstract trait WertungService extends DBService with WertungResultMapper with Di
       sql"""
                     SELECT w.id, a.id, a.js_id, a.geschlecht, a.name, a.vorname, a.gebdat, a.strasse, a.plz, a.ort, a.activ, a.verein, v.*,
                       wd.id, wd.programm_id, d.*, wd.kurzbeschreibung, wd.detailbeschreibung, wd.notenfaktor, wd.masculin, wd.feminim, wd.ord, wd.scale, wd.dnote, wd.min, wd.max, wd.startgeraet,
-                      wk.id, wk.uuid, wk.datum, wk.titel, wk.programm_id, wk.auszeichnung, wk.auszeichnungendnote, wk.notificationEMail, wk.altersklassen, wk.jahrgangsklassen, wk.punktegleichstandsregel, wk.rotation,
-                      w.note_d as difficulty, w.note_e as execution, w.endnote, w.riege, w.riege2
+                      wk.id, wk.uuid, wk.datum, wk.titel, wk.programm_id, wk.auszeichnung, wk.auszeichnungendnote, wk.notificationEMail, wk.altersklassen, wk.jahrgangsklassen, wk.punktegleichstandsregel, wk.rotation, wk.teamrule,
+                      w.note_d as difficulty, w.note_e as execution, w.endnote, w.riege, w.riege2, w.team
                     FROM wertung w
                     inner join athlet a on (a.id = w.athlet_id)
                     left outer join verein v on (a.verein = v.id)
@@ -162,8 +162,8 @@ abstract trait WertungService extends DBService with WertungResultMapper with Di
     } yield {
       sqlu"""
                 insert into wertung
-                (athlet_Id, wettkampfdisziplin_Id, wettkampf_Id, note_d, note_e, endnote, riege, riege2)
-                values (${w.athletId}, ${w.wettkampfdisziplinId}, ${w.wettkampfId}, ${w.noteD}, ${w.noteE}, ${w.endnote}, ${w.riege}, ${w.riege2})
+                (athlet_Id, wettkampfdisziplin_Id, wettkampf_Id, note_d, note_e, endnote, riege, riege2, team)
+                values (${w.athletId}, ${w.wettkampfdisziplinId}, ${w.wettkampfId}, ${w.noteD}, ${w.noteE}, ${w.endnote}, ${w.riege}, ${w.riege2}, ${w.team.getOrElse(0)})
         """
     })
     
@@ -184,33 +184,7 @@ abstract trait WertungService extends DBService with WertungResultMapper with Di
     Await.result(database.run{process.transactionally}, Duration.Inf)
     wertungen.size
   }
-  
-  def updateOrinsertWertungen(wertungen: Iterable[Wertung]) = {
-    val process = DBIO.sequence(for {
-      w <- wertungen
-    } yield {
-      sqlu"""
-                delete from wertung where
-                athlet_Id=${w.athletId} and wettkampfdisziplin_Id=${w.wettkampfdisziplinId} and wettkampf_Id=${w.wettkampfId}
-        """>>  
-      sqlu"""
-                insert into wertung
-                (athlet_Id, wettkampfdisziplin_Id, wettkampf_Id, note_d, note_e, endnote, riege, riege2)
-                values (${w.athletId}, ${w.wettkampfdisziplinId}, ${w.wettkampfId}, ${w.noteD}, ${w.noteE}, ${w.endnote}, ${w.riege}, ${w.riege2})
-        """>>
-      sqlu"""   delete from riege
-                WHERE wettkampf_id=${w.id} and not exists (
-                  SELECT 1 FROM wertung w
-                  WHERE w.wettkampf_id=${w.id}
-                    and (w.riege=riege.name or w.riege2=riege.name)
-                )
-        """
-      
-    })
-    Await.result(database.run{process.transactionally}, Duration.Inf)
-    wertungen.size
-  }
-  
+
   def updateOrinsertWertung(w: Wertung) = {
     Await.result(database.run(DBIO.sequence(Seq(
       sqlu"""
@@ -220,8 +194,8 @@ abstract trait WertungService extends DBService with WertungResultMapper with Di
         
       sqlu"""
                 insert into wertung
-                (athlet_Id, wettkampfdisziplin_Id, wettkampf_Id, note_d, note_e, endnote, riege, riege2)
-                values (${w.athletId}, ${w.wettkampfdisziplinId}, ${w.wettkampfId}, ${w.noteD}, ${w.noteE}, ${w.endnote}, ${w.riege}, ${w.riege2})
+                (athlet_Id, wettkampfdisziplin_Id, wettkampf_Id, note_d, note_e, endnote, riege, riege2, team)
+                values (${w.athletId}, ${w.wettkampfdisziplinId}, ${w.wettkampfId}, ${w.noteD}, ${w.noteE}, ${w.endnote}, ${w.riege}, ${w.riege2}, ${w.team.getOrElse(0)})
         """,
 
       sqlu"""   delete from riege
@@ -245,7 +219,7 @@ abstract trait WertungService extends DBService with WertungResultMapper with Di
       w <- ws
     } yield {
       sqlu"""       UPDATE wertung
-                    SET note_d=${w.noteD}, note_e=${w.noteE}, endnote=${w.endnote}, riege=${w.riege}, riege2=${w.riege2}
+                    SET note_d=${w.noteD}, note_e=${w.noteE}, endnote=${w.endnote}, riege=${w.riege}, riege2=${w.riege2}, team=${w.team.getOrElse(0)}
                     WHERE id=${w.id}
           """>>
       sqlu"""       DELETE from riege
@@ -258,8 +232,8 @@ abstract trait WertungService extends DBService with WertungResultMapper with Di
       sql"""
                     SELECT w.id, a.id, a.js_id, a.geschlecht, a.name, a.vorname, a.gebdat, a.strasse, a.plz, a.ort, a.activ, a.verein, v.*,
                       wd.id, wd.programm_id, d.*, wd.kurzbeschreibung, wd.detailbeschreibung, wd.notenfaktor, wd.masculin, wd.feminim, wd.ord, wd.scale, wd.dnote, wd.min, wd.max, wd.startgeraet,
-                      wk.id, wk.uuid, wk.datum, wk.titel, wk.programm_id, wk.auszeichnung, wk.auszeichnungendnote, wk.notificationEMail, wk.altersklassen, wk.jahrgangsklassen, wk.punktegleichstandsregel, wk.rotation,
-                      w.note_d as difficulty, w.note_e as execution, w.endnote, w.riege, w.riege2
+                      wk.id, wk.uuid, wk.datum, wk.titel, wk.programm_id, wk.auszeichnung, wk.auszeichnungendnote, wk.notificationEMail, wk.altersklassen, wk.jahrgangsklassen, wk.punktegleichstandsregel, wk.rotation, wk.teamrule,
+                      w.note_d as difficulty, w.note_e as execution, w.endnote, w.riege, w.riege2, w.team
                     FROM wertung w
                     inner join athlet a on (a.id = w.athlet_id)
                     left outer join verein v on (a.verein = v.id)
@@ -280,7 +254,7 @@ abstract trait WertungService extends DBService with WertungResultMapper with Di
     implicit val mapper = getAthletViewResult
     val ret = database.run((
       sqlu"""       UPDATE wertung
-                    SET note_d=${w.noteD}, note_e=${w.noteE}, endnote=${w.endnote}, riege=${w.riege}, riege2=${w.riege2}
+                    SET note_d=${w.noteD}, note_e=${w.noteE}, endnote=${w.endnote}, riege=${w.riege}, riege2=${w.riege2}, team=${w.team.getOrElse(0)}
                     WHERE id=${w.id}
           """>>
 
@@ -294,8 +268,8 @@ abstract trait WertungService extends DBService with WertungResultMapper with Di
       sql"""
                     SELECT w.id, a.id, a.js_id, a.geschlecht, a.name, a.vorname, a.gebdat, a.strasse, a.plz, a.ort, a.activ, a.verein, v.*,
                       wd.id, wd.programm_id, d.*, wd.kurzbeschreibung, wd.detailbeschreibung, wd.notenfaktor, wd.masculin, wd.feminim, wd.ord, wd.scale, wd.dnote, wd.min, wd.max, wd.startgeraet,
-                      wk.id, wk.uuid, wk.datum, wk.titel, wk.programm_id, wk.auszeichnung, wk.auszeichnungendnote, wk.notificationEMail, wk.altersklassen, wk.jahrgangsklassen, wk.punktegleichstandsregel, wk.rotation,
-                      w.note_d as difficulty, w.note_e as execution, w.endnote, w.riege, w.riege2
+                      wk.id, wk.uuid, wk.datum, wk.titel, wk.programm_id, wk.auszeichnung, wk.auszeichnungendnote, wk.notificationEMail, wk.altersklassen, wk.jahrgangsklassen, wk.punktegleichstandsregel, wk.rotation, wk.teamrule,
+                      w.note_d as difficulty, w.note_e as execution, w.endnote, w.riege, w.riege2, w.team
                     FROM wertung w
                     inner join athlet a on (a.id = w.athlet_id)
                     left outer join verein v on (a.verein = v.id)
@@ -330,7 +304,7 @@ abstract trait WertungService extends DBService with WertungResultMapper with Di
     }
     Await.result(database.run(DBIO.sequence(Seq(sqlu"""
                   UPDATE wertung
-                  SET note_d=${wv.noteD}, note_e=${wv.noteE}, endnote=${wv.endnote}, riege=${wv.riege}, riege2=${wv.riege2}
+                  SET note_d=${wv.noteD}, note_e=${wv.noteE}, endnote=${wv.endnote}, riege=${wv.riege}, riege2=${wv.riege2}, team=${wv.team.getOrElse(0)}
                   WHERE 
                     athlet_Id=${wv.athletId} and wettkampfdisziplin_Id=${wv.wettkampfdisziplinId} and wettkampf_Id=${wv.wettkampfId}
           """//.transactionally
@@ -345,7 +319,7 @@ abstract trait WertungService extends DBService with WertungResultMapper with Di
     val wvId = Await.result(database.run((for {
         updated <- sqlu"""
                   UPDATE wertung
-                  SET note_d=${wv.noteD}, note_e=${wv.noteE}, endnote=${wv.endnote}, riege=${wv.riege}, riege2=${wv.riege2}
+                  SET note_d=${wv.noteD}, note_e=${wv.noteE}, endnote=${wv.endnote}, riege=${wv.riege}, riege2=${wv.riege2}, team=${wv.team.getOrElse(0)}
                   WHERE 
                     athlet_Id=${wv.athletId} and wettkampfdisziplin_Id=${wv.wettkampfdisziplinId} and wettkampf_Id=${wv.wettkampfId}
           """
@@ -370,7 +344,7 @@ abstract trait WertungService extends DBService with WertungResultMapper with Di
     } yield {
       sqlu"""
                   UPDATE wertung
-                  SET note_d=${wv.noteD}, note_e=${wv.noteE}, endnote=${wv.endnote}, riege=${wv.riege}, riege2=${wv.riege2}
+                  SET note_d=${wv.noteD}, note_e=${wv.noteE}, endnote=${wv.endnote}, riege=${wv.riege}, riege2=${wv.riege2}, team=${wv.team.getOrElse(0)}
                   WHERE
                     athlet_Id=${wv.athletId} and wettkampfdisziplin_Id=${wv.wettkampfdisziplinId} and wettkampf_Id=${wv.wettkampfId}
           """>>
@@ -391,8 +365,8 @@ abstract trait WertungService extends DBService with WertungResultMapper with Di
       (sql"""
                    SELECT w.id, a.id, a.js_id, a.geschlecht, a.name, a.vorname, a.gebdat, a.strasse, a.plz, a.ort, a.activ, a.verein, v.*,
                      wd.id, wd.programm_id, d.*, wd.kurzbeschreibung, wd.detailbeschreibung, wd.notenfaktor, wd.masculin, wd.feminim, wd.ord, wd.scale, wd.dnote, wd.min, wd.max, wd.startgeraet,
-                     wk.id, wk.uuid, wk.datum, wk.titel, wk.programm_id, wk.auszeichnung, wk.auszeichnungendnote, wk.notificationEMail, wk.altersklassen, wk.jahrgangsklassen, wk.punktegleichstandsregel, wk.rotation,
-                     w.note_d as difficulty, w.note_e as execution, w.endnote, w.riege, w.riege2
+                     wk.id, wk.uuid, wk.datum, wk.titel, wk.programm_id, wk.auszeichnung, wk.auszeichnungendnote, wk.notificationEMail, wk.altersklassen, wk.jahrgangsklassen, wk.punktegleichstandsregel, wk.rotation, wk.teamrule,
+                     w.note_d as difficulty, w.note_e as execution, w.endnote, w.riege, w.riege2, w.team
                    FROM wertung w
                    inner join athlet a on (a.id = w.athlet_id)
                    left outer join verein v on (a.verein = v.id)
@@ -413,8 +387,8 @@ abstract trait WertungService extends DBService with WertungResultMapper with Di
       (sql"""
                    SELECT w.id, a.id, a.js_id, a.geschlecht, a.name, a.vorname, a.gebdat, a.strasse, a.plz, a.ort, a.activ, a.verein, v.*,
                      wd.id, wd.programm_id, d.*, wd.kurzbeschreibung, wd.detailbeschreibung, wd.notenfaktor, wd.masculin, wd.feminim, wd.ord, wd.scale, wd.dnote, wd.min, wd.max, wd.startgeraet,
-                     wk.id, wk.uuid, wk.datum, wk.titel, wk.programm_id, wk.auszeichnung, wk.auszeichnungendnote, wk.notificationEMail, wk.altersklassen, wk.jahrgangsklassen, wk.punktegleichstandsregel, wk.rotation,
-                     w.note_d as difficulty, w.note_e as execution, w.endnote, w.riege, w.riege2
+                     wk.id, wk.uuid, wk.datum, wk.titel, wk.programm_id, wk.auszeichnung, wk.auszeichnungendnote, wk.notificationEMail, wk.altersklassen, wk.jahrgangsklassen, wk.punktegleichstandsregel, wk.rotation, wk.teamrule,
+                     w.note_d as difficulty, w.note_e as execution, w.endnote, w.riege, w.riege2, w.team
                    FROM wertung w
                    inner join athlet a on (a.id = w.athlet_id)
                    left outer join verein v on (a.verein = v.id)

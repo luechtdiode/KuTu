@@ -64,8 +64,8 @@
       <ion-item-divider>{{block.title.text}}</ion-item-divider>
       <ion-item-sliding #slidingAthletScoreItem *ngFor="let tn of block.rows">
         <scorelist-item [teilnehmer]="tn" (click)='scoreItemTapped(tn, slidingAthletScoreItem)'></scorelist-item>
-        <ion-item-options side="end">
-          <ion-item-option color="primary" (click)="followAthlet(tn, slidingAthletScoreItem)">
+        <ion-item-options  side="end">
+          <ion-item-option *ngIf="tn['athletID']" color="primary" (click)="followAthlet(tn, slidingAthletScoreItem)">
               <ion-icon name="arrow-forward-circle-outline" ios="md-arrow-forward-circle-outline"></ion-icon>
             Detail-Wertungen {{tn.Athlet}}
           </ion-item-option>

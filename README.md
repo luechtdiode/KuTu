@@ -25,9 +25,10 @@ _[siehe detailierte Dokumentation](https://luechtdiode.gitbook.io/turner-wettkam
 
 ## Wettkampf-Durchführung
 * Resultat-Erfassung
-* Funktionen for eine Vollständigkeits-Kontrolle
+* Funktionen für eine Vollständigkeits-Kontrolle
 * Erstellung von Bestenlisten
-* Ranglisten Erstellung mit div. Gruppierungskriterien
+* Einzelranglisten Erstellung mit div. Gruppierungskriterien
+* Teamranglisten
   
 _[siehe detailierte Dokumentation](https://luechtdiode.gitbook.io/turner-wettkampf-app/wettkampf-durchfuhrung)_
 
