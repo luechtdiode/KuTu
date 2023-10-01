@@ -8,7 +8,8 @@ import ch.seidel.kutu.domain._
 import ch.seidel.kutu.http.WebSocketClient
 import ch.seidel.kutu.renderer.PrintUtil.FilenameDefault
 import ch.seidel.kutu.renderer._
-import ch.seidel.kutu.{Config, KuTuApp, KuTuServer}
+import ch.seidel.kutu.squad.RiegenBuilder.{generateRiegen2Name, generateRiegenName}
+import ch.seidel.kutu.{Config, KuTuApp, KuTuServer, squad}
 import javafx.scene.{control => jfxsc}
 import org.slf4j.LoggerFactory
 import scalafx.Includes._
@@ -194,6 +195,7 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
           logger.debug("updating EditorPane ")
         }
         athletHeaderPane.adjust
+        updateRiegen()
         val model = cmbDurchgangFilter.items.getValue
         val raw = rebuildDurchgangFilterList
         val selected = cmbDurchgangFilter.selectionModel.value.selectedItem.value
@@ -447,7 +449,8 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
                 refreshOtherLazyPanes()
                 wkModel.update(rowIndex, ws.map(w => WertungEditor(w)).toIndexedSeq)
                 selected.foreach(c => wkview.selectionModel.value.select(c.row, c.tableColumn.asInstanceOf[jfxsc.TableColumn[IndexedSeq[WertungEditor], _]]))
-                updateEditorPane(Some(evt.tableView))
+                updateRiegen()
+                //updateEditorPane(Some(evt.tableView))
                 logger.debug("finished riege-rename")
               }
             case Failure(e) => logger.error("not saved", e)
@@ -492,7 +495,8 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
                   refreshOtherLazyPanes()
                   wkModel.update(rowIndex, ws.map(w => WertungEditor(w)).toIndexedSeq)
                   selected.foreach(c => wkview.selectionModel.value.select(c.row, c.tableColumn.asInstanceOf[jfxsc.TableColumn[IndexedSeq[WertungEditor], _]]))
-                  updateEditorPane(Some(evt.tableView))
+                  updateRiegen()
+                  //updateEditorPane(Some(evt.tableView))
                   logger.debug("finished riege-rename")
                 }
               case Failure(e) => logger.error("not saved", e)
@@ -512,7 +516,7 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
         cellValueFactory = { x =>
           new ReadOnlyStringWrapper(x.value, "team", {
             val team = x.value.head.init.team
-            s"${if (team > 0) team else ""}"
+            s"${if (team != 0) team else ""}"
           })
         }
         editable <== when(Bindings.createBooleanBinding(() => {
@@ -531,15 +535,20 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
             else Some(evt.newValue)
             logger.debug("start team-reassignment")
             service.updateAllWertungenAsync(
-              evt.rowValue.map(wertung =>
-                wertung.commit.copy(team = newTeam))).andThen {
+              evt.rowValue.map(wertung => {
+                val wertungView = wertung.init.copy(team = newTeam.getOrElse(0))
+                wertungView.copy(
+                  riege = Some(generateRiegenName(wertungView)),
+                  riege2 = generateRiegen2Name(wertungView)).toWertung
+              })).andThen {
               case Success(ws) => logger.debug("saved team-reassignment")
                 KuTuApp.invokeWithBusyIndicator {
                   val selected = wkview.selectionModel.value.selectedCells
                   refreshOtherLazyPanes()
                   wkModel.update(rowIndex, ws.map(w => WertungEditor(w)).toIndexedSeq)
                   selected.foreach(c => wkview.selectionModel.value.select(c.row, c.tableColumn.asInstanceOf[jfxsc.TableColumn[IndexedSeq[WertungEditor], _]]))
-                  updateEditorPane(Some(evt.tableView))
+                  updateRiegen()
+                  //updateEditorPane(Some(evt.tableView))
                   logger.debug("finished team-reassignment")
                 }
               case Failure(e) => logger.error("not saved", e)
@@ -597,7 +606,8 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
                       refreshOtherLazyPanes()
                       wkModel.update(rowIndex, ws.map(w => WertungEditor(w)).toIndexedSeq)
                       selected.foreach(c => wkview.selectionModel.value.select(c.row, c.tableColumn.asInstanceOf[jfxsc.TableColumn[IndexedSeq[WertungEditor], _]]))
-                      updateEditorPane(Some(evt.tableView))
+                      updateRiegen()
+                      //updateEditorPane(Some(evt.tableView))
                       logger.debug("finished riege-rename")
                     }
                   case Failure(e) => logger.error("not saved", e)
@@ -642,7 +652,8 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
                       refreshOtherLazyPanes()
                       wkModel.update(rowIndex, ws.map(w => WertungEditor(w)).toIndexedSeq)
                       selected.foreach(c => wkview.selectionModel.value.select(c.row, c.tableColumn.asInstanceOf[jfxsc.TableColumn[IndexedSeq[WertungEditor], _]]))
-                      updateEditorPane(Some(evt.tableView))
+                      updateRiegen()
+                      //updateEditorPane(Some(evt.tableView))
                       logger.debug("finished riege-rename")
                     }
                   case Failure(e) => logger.error("not saved", e)
@@ -662,7 +673,7 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
             cellValueFactory = { x =>
               new ReadOnlyStringWrapper(x.value, "team", {
                 val team = x.value.head.init.team
-                s"${if (team > 0) team else ""}"
+                s"${if (team != 0) team else ""}"
               })
             }
             editable <== when(Bindings.createBooleanBinding(() => {
@@ -681,15 +692,20 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
                 else Some(evt.newValue)
                 logger.debug("start team-reassignment")
                 service.updateAllWertungenAsync(
-                  evt.rowValue.map(wertung =>
-                    wertung.commit.copy(team = newTeam))).andThen {
+                  evt.rowValue.map(wertung => {
+                    val wertungView = wertung.init.copy(team = newTeam.getOrElse(0))
+                    wertungView.copy(
+                      riege = Some(generateRiegenName(wertungView)),
+                      riege2 = generateRiegen2Name(wertungView)).toWertung
+                  })).andThen {
                   case Success(ws) => logger.debug("saved team-reassignment")
                     KuTuApp.invokeWithBusyIndicator {
                       val selected = wkview.selectionModel.value.selectedCells
                       refreshOtherLazyPanes()
                       wkModel.update(rowIndex, ws.map(w => WertungEditor(w)).toIndexedSeq)
                       selected.foreach(c => wkview.selectionModel.value.select(c.row, c.tableColumn.asInstanceOf[jfxsc.TableColumn[IndexedSeq[WertungEditor], _]]))
-                      updateEditorPane(Some(evt.tableView))
+                      updateRiegen()
+                      //updateEditorPane(Some(evt.tableView))
                       logger.debug("finished team-reassignment")
                     }
                   case Failure(e) => logger.error("not saved", e)
@@ -914,6 +930,7 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
   }
 
   def updateRiegen(): Unit = {
+    relevantRiegen = computeRelevantRiegen
     def onSelectedChange(name: String, selected: Boolean) = {
       if (relevantRiegen.contains(name)) {
         relevantRiegen = relevantRiegen.updated(name, (selected, relevantRiegen(name)._2))
@@ -970,7 +987,6 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
       }
     }
 
-    relevantRiegen = computeRelevantRiegen
     updateRiegen()
     lastFilter = ""
     updateFilteredList(lastFilter, durchgangFilter)
