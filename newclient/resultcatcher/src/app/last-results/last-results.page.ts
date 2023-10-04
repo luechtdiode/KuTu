@@ -1,4 +1,4 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnDestroy, OnInit } from '@angular/core';
 import { WertungContainer, Geraet, Wettkampf, ScoreBlock, ScoreRow, ScoreLink } from '../backend-types';
 import { IonItemSliding, NavController, ActionSheetController } from '@ionic/angular';
 
@@ -6,7 +6,7 @@ import { BackendService } from '../services/backend.service';
 import { debounceTime, distinctUntilChanged, filter, map, share, switchMap } from 'rxjs/operators';
 import { backendUrl } from '../utils';
 import { Observable } from 'rxjs/internal/Observable';
-import { Subject, BehaviorSubject, of } from 'rxjs';
+import { Subject, BehaviorSubject, of, Subscription } from 'rxjs';
 import { GroupBy } from '../component/result-display/result-display.component';
 
 @Component({
@@ -14,7 +14,7 @@ import { GroupBy } from '../component/result-display/result-display.component';
   templateUrl: './last-results.page.html',
   styleUrls: ['./last-results.page.scss'],
 })
-export class LastResultsPage implements OnInit {
+export class LastResultsPage implements OnInit, OnDestroy {
   groupBy = GroupBy;
 
   // @ViewChild(IonContent) content: IonContent;
@@ -34,6 +34,8 @@ export class LastResultsPage implements OnInit {
 
   private busy = new BehaviorSubject(false);
   durchgangopen: boolean;
+
+  subscriptions: Subscription[] = [];
 
 
   // @HostListener('window:resize', ['$event'])
@@ -57,13 +59,17 @@ export class LastResultsPage implements OnInit {
     });
   }
 
+  ngOnDestroy(): void {
+      this.subscriptions.forEach(s => s.unsubscribe());
+  }
+
   ngOnInit(): void {
-    this.backendService.competitionSubject.subscribe(comps => {
+    this.subscriptions.push(this.backendService.competitionSubject.subscribe(comps => {
       this.backendService.activateNonCaptionMode(this.backendService.competition).subscribe(geraete => {
         this.geraete = geraete || [];
         this.sortItems();
       });
-      this.backendService.newLastResults.subscribe(newLastRes => {
+      this.subscriptions.push(this.backendService.newLastResults.subscribe(newLastRes => {
         this.lastItems = this.items.map(item => item.id * this.geraete.length + item.geraet);
         this.items = [];
         if (!!newLastRes && !!newLastRes.results) {
@@ -93,7 +99,7 @@ export class LastResultsPage implements OnInit {
                 "scores-href": genericLink + '&kind=Teamrangliste',
                 "scores-query": genericLink + '&kind=Teamrangliste'
               };
-              this.scorelinks = c.teamrule?.trim.length > 0 ? [...lists, einzelGeneric] : [...lists, teamGeneric, einzelGeneric];
+              this.scorelinks = c.teamrule?.trim.length > 0 ? [...lists, teamGeneric, einzelGeneric] : [...lists, einzelGeneric];
               const publishedLists = this.scorelinks.filter(s => ''+s.published === 'true')
               this.refreshScoreList(publishedLists[0]);
             }
@@ -101,8 +107,8 @@ export class LastResultsPage implements OnInit {
         } else {
           this.title = 'Aktuelle Resultate';
         }
-      });
-    });
+      }));
+    }));
   }
 
   _title: string = 'Aktuelle Resultate';
