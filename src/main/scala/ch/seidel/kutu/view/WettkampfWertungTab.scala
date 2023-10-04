@@ -442,12 +442,17 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
 
     def tableCellSuggestProvider: (IndexedSeq[WertungEditor], String) => List[TeamItem] = (row: IndexedSeq[WertungEditor], userInput: String) => {
       val teams = TeamItems(row.head)
-      if (isNumeric(userInput)) {
+      val suggests: List[TeamItem] = if (isNumeric(userInput)) {
         val userIdx: Int = userInput
         teams.filter(t => t.index == userIdx)
       } else {
         val userText = userInput.toLowerCase
         teams.filter(team => team.name.toLowerCase.startsWith(userText))
+      }
+      if (suggests.nonEmpty) {
+        suggests
+      } else {
+        teams
       }
     }
 
