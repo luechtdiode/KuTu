@@ -36,6 +36,10 @@ trait WettkampfService extends DBService
       val skalamap = Await.result(database.run(skala.withPinnedSession), Duration.Inf).toMap
       Athletiktest(skalamap, notenfaktor)
     }
+    else if (pgm.toPath.contains("Turn10")) {
+      // Turn10 special score-labels
+      StandardWettkampf(notenfaktor, "A", "B")
+    }
     else {
       StandardWettkampf(notenfaktor)
     }

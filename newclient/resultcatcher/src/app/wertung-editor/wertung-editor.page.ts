@@ -7,6 +7,7 @@ import { NgForm } from '@angular/forms';
 import { ActivatedRoute } from '@angular/router';
 import { Keyboard } from '@capacitor/keyboard';
 import { Capacitor, Plugins } from '@capacitor/core';
+import { turn10ProgrammNames } from '../utils';
 
 @Component({
   selector: 'app-wertung-editor',
@@ -52,6 +53,14 @@ export class WertungEditorPage {
   waiting = false;
 
   isDNoteUsed = true;
+
+  get dNoteLabel() {
+    return this.item.isDNoteUsed && turn10ProgrammNames.indexOf(this.item.programm) > -1 ? "A-Note" : "D-Note";
+  }
+
+  get eNoteLabel() {
+    return this.item.isDNoteUsed && turn10ProgrammNames.indexOf(this.item.programm) > -1 ? "B-Note" : "E-Note";
+  }
 
   ionViewWillLeave() {
     if (this.subscription) {

@@ -1,6 +1,6 @@
 import { Component, OnInit, Input } from '@angular/core';
 import { WertungContainer } from 'src/app/backend-types';
-import { gearMapping } from 'src/app/utils';
+import { gearMapping, turn10ProgrammNames } from 'src/app/utils';
 
 export enum GroupBy {
   NONE, ATHLET, PROGRAMM
@@ -12,7 +12,8 @@ export enum GroupBy {
   styleUrls: ['./result-display.component.scss'],
 })
 export class ResultDisplayComponent implements OnInit {
-  groupBy = GroupBy; 
+
+  groupBy = GroupBy;
 
   @Input()
   item: WertungContainer;
@@ -24,6 +25,13 @@ export class ResultDisplayComponent implements OnInit {
   groupedBy: GroupBy = GroupBy.NONE;
 
 
+  get dNoteLabel() {
+    return this.item.isDNoteUsed && turn10ProgrammNames.indexOf(this.item.programm) > -1 ? "A" : "D";
+  }
+
+  get eNoteLabel() {
+    return this.item.isDNoteUsed && turn10ProgrammNames.indexOf(this.item.programm) > -1 ? "B" : "E";
+  }
 
   get titlestart() {
     return this.title.split(' - ')[0];

@@ -263,8 +263,11 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
     val editableCssClass = PseudoClass.getPseudoClass("editable")
     wertungen.head
       .map { wertung =>
-      lazy val clDnote = new WKTableColumn[Double](indexerD.next()) {
-        text = "D"
+        val dNoteLabel = wertung.init.wettkampfdisziplin.notenSpez.getDifficultLabel
+        val eNoteLabel = wertung.init.wettkampfdisziplin.notenSpez.getExecutionLabel
+
+        lazy val clDnote = new WKTableColumn[Double](indexerD.next()) {
+        text = dNoteLabel
 
         cellValueFactory = { x => if (x.value.size > index) x.value(index).noteD else wertung.noteD }
         cellFactory.value = { _: Any =>
@@ -310,7 +313,7 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
         }
       }
       lazy val clEnote = new WKTableColumn[Double](indexerE.next()) {
-        text = "E"
+        text = eNoteLabel
         cellValueFactory = { x => if (x.value.size > index) x.value(index).noteE else wertung.noteE }
 
         cellFactory.value = { _: Any =>

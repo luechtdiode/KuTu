@@ -15,13 +15,13 @@
       </ion-col>
       <ion-col col-auto align-self-end *ngIf="groupedBy === groupBy.ATHLET">
         <ion-note *ngIf="item.isDNoteUsed && item.wertung.noteD !== undefined" item-text-wrap>
-          <span class="rightbound">&nbsp;&nbsp;&nbsp;D: {{item.wertung.noteD | number:'2.3-3'}}
-          <br>&nbsp;&nbsp;&nbsp;E: {{item.wertung.noteE | number:'2.3-3'}}
+          <span class="rightbound">&nbsp;&nbsp;&nbsp;{{dNoteLabel}}: {{item.wertung.noteD | number:'2.3-3'}}
+          <br>&nbsp;&nbsp;&nbsp;{{eNoteLabel}}: {{item.wertung.noteE | number:'2.3-3'}}
           <br><span style="font-size: 18pt;font-weight: bold">{{item.wertung.endnote | number:'2.3-3'}}</span>
-          </span>          
+          </span>
         </ion-note>
         <ion-note *ngIf="!item.isDNoteUsed && item.wertung.noteE !== item.wertung.endnote" item-end item-text-wrap>
-          <span class="rightbound"><br>&nbsp;&nbsp;&nbsp;E: {{item.wertung.noteE | number:'2.3-3'}}
+          <span class="rightbound"><br>&nbsp;&nbsp;&nbsp;{{eNoteLabel}}: {{item.wertung.noteE | number:'2.3-3'}}
           <br><span class="rightbound" style="font-size: 18pt;font-weight: bold">{{item.wertung.endnote | number:'2.3-3'}}</span>
           </span>
         </ion-note>
@@ -37,17 +37,17 @@
         </div>
         <div class="nonwrapping">
           {{item.verein}}
-        </div>      
+        </div>
       </ion-col>
       <ion-col col-auto >
         <ion-note *ngIf="item.isDNoteUsed && item.wertung.noteD !== undefined" item-end item-text-wrap>
-          <span class="rightbound">D: {{item.wertung.noteD | number:'2.3-3'}}&nbsp;&nbsp;
-          <br>E: {{item.wertung.noteE | number:'2.3-3'}}&nbsp;&nbsp;
+          <span class="rightbound">{{dNoteLabel}}: {{item.wertung.noteD | number:'2.3-3'}}&nbsp;&nbsp;
+          <br>{{eNoteLabel}}: {{item.wertung.noteE | number:'2.3-3'}}&nbsp;&nbsp;
           <br></span>
           <span class="rightbound" style="font-size: 18pt;font-weight: bold">{{item.wertung.endnote | number:'2.3-3'}}&nbsp;&nbsp;</span>
         </ion-note>
         <ion-note *ngIf="!item.isDNoteUsed && item.wertung.noteE !== item.wertung.endnote" item-end item-text-wrap>
-          <br>E: {{item.wertung.noteE | number:'2.3-3'}}&nbsp;&nbsp;
+          <br>{{eNoteLabel}}: {{item.wertung.noteE | number:'2.3-3'}}&nbsp;&nbsp;
           <br>
           <span class="rightbound" style="font-size: 18pt;font-weight: bold">{{item.wertung.endnote | number:'2.3-3'}}&nbsp;&nbsp;</span>
         </ion-note>

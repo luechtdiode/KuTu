@@ -76,8 +76,10 @@ case class GroupLeaf[GK <: DataObject](override val groupKey: GK, list: Iterable
     GroupSection.groupWertungList(list).map(t => (t._1, diszs))
   } else GroupSection.groupWertungList(list)
   lazy val anzahWettkaempfe = list.filter(_.endnote.nonEmpty).groupBy { w => w.wettkampf }.size // Anzahl Wettkämpfe
-  val withDNotes = list.filter(w => w.noteD.sum > 0).nonEmpty
-  val withENotes = list.filter(w => w.wettkampf.programmId != 1).nonEmpty
+  val withDNotes = list.exists(w => w.noteD.sum > 0)
+  val withENotes = list.exists(w => w.wettkampf.programmId != 1)
+  val dNoteLabel = list.map(_.wettkampfdisziplin.notenSpez.getDifficultLabel).toList.distinct.sorted.mkString("/")
+  val eNoteLabel = list.map(_.wettkampfdisziplin.notenSpez.getExecutionLabel).toList.distinct.sorted.mkString("/")
   val mostCountingGroup = groups.reduce((a, b) => if (a._2.size > b._2.size) a else b)
   val isDivided = !(withDNotes || groups.isEmpty)
   val divider = if(!isDivided) 1 else mostCountingGroup._2.size
@@ -142,12 +144,12 @@ case class GroupLeaf[GK <: DataObject](override val groupKey: GK, list: Iterable
             }.getOrElse(
               LeafRow(grKey.easyprint, Resultat(0, 0, 0), Resultat(0, 0, 0), auszeichnung = false))
 
-          val clDnote = WKLeafCol[ResultRow](text = "D", prefWidth = 60, styleClass = Seq("hintdata"), valueMapper = gr => {
+          val clDnote = WKLeafCol[ResultRow](text = dNoteLabel, prefWidth = 60, styleClass = Seq("hintdata"), valueMapper = gr => {
             val cs = colsum(gr)
             val best = if (cs.sum.noteD > 0 && cs.rang.noteD.toInt == 1) "*" else ""
             best + cs.sum.formattedD
           })
-          val clEnote = WKLeafCol[ResultRow](text = if (withDNotes) "E" else "ø Gerät", prefWidth = 60, styleClass = Seq("hintdata"), valueMapper = gr => {
+          val clEnote = WKLeafCol[ResultRow](text = if (withDNotes) eNoteLabel else "ø Gerät", prefWidth = 60, styleClass = Seq("hintdata"), valueMapper = gr => {
             val cs = colsum(gr)
             val best = if (cs.sum.noteE > 0 && cs.rang.noteE.toInt == 1) "*" else ""
             val div = Math.max(gr.divider, divider)
@@ -193,7 +195,7 @@ case class GroupLeaf[GK <: DataObject](override val groupKey: GK, list: Iterable
       else {
         mostCountingGroup._2.map { disziplin =>
           val index = indexer.next()
-          lazy val clDnote = WKLeafCol[ResultRow](text = "D", prefWidth = 60, styleClass = Seq("hintdata"), valueMapper = gr => {
+          lazy val clDnote = WKLeafCol[ResultRow](text = dNoteLabel, prefWidth = 60, styleClass = Seq("hintdata"), valueMapper = gr => {
             if (gr.resultate.size > index) {
               val best = if (gr.resultate(index).sum.noteD > 0
                 && gr.resultate(index).rang.noteD.toInt == 1)
@@ -203,7 +205,7 @@ case class GroupLeaf[GK <: DataObject](override val groupKey: GK, list: Iterable
               best + gr.resultate(index).sum.formattedD
             } else ""
           })
-          lazy val clEnote = WKLeafCol[ResultRow](text = "E", prefWidth = 60, styleClass = Seq("hintdata"), valueMapper = gr => {
+          lazy val clEnote = WKLeafCol[ResultRow](text = eNoteLabel, prefWidth = 60, styleClass = Seq("hintdata"), valueMapper = gr => {
             if (gr.resultate.size > index) {
               val best = if (gr.resultate(index).sum.noteE > 0
                 && gr.resultate(index).rang.noteE.toInt == 1)
@@ -245,10 +247,10 @@ case class GroupLeaf[GK <: DataObject](override val groupKey: GK, list: Iterable
     val sumColAll: List[WKCol] = List(
       WKLeafCol[ResultRow](
         text = if (anzahWettkaempfe > 1) {
-          s"Total ø aus D"
+          s"Total ø aus $dNoteLabel"
         }
         else {
-          "Total D"
+          s"Total $dNoteLabel"
         }
         , prefWidth = 80, styleClass = Seq("hintdata"), valueMapper = gr => {
           gr.sum.formattedD
@@ -257,14 +259,14 @@ case class GroupLeaf[GK <: DataObject](override val groupKey: GK, list: Iterable
       WKLeafCol[ResultRow](
         text = if (anzahWettkaempfe > 1) {
           if (!isDivided && withDNotes) {
-            s"Total ø aus E"
+            s"Total ø aus $eNoteLabel"
           }
           else {
             s"ø Gerät"
           }
         }
         else if (!isDivided && withDNotes) {
-          "Total E"
+          s"Total $eNoteLabel"
         }
         else {
           "ø Gerät"

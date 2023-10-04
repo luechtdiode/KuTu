@@ -982,6 +982,8 @@ package object domain {
   }
 
   sealed trait NotenModus {
+    def getDifficultLabel: String = "D"
+    def getExecutionLabel: String = "E"
     def selectableItems: Option[List[String]] = None
 
     def validated(dnote: Double, enote: Double, wettkampfDisziplin: WettkampfdisziplinView): (Double, Double)
@@ -994,7 +996,7 @@ package object domain {
     /*override*/ def shouldSuggest(item: String, query: String): Boolean = false
   }
 
-  case class StandardWettkampf(punktgewicht: Double) extends NotenModus {
+  case class StandardWettkampf(punktgewicht: Double, dNoteLabel: String = "D", eNoteLabel: String = "E") extends NotenModus {
     override def validated(dnote: Double, enote: Double, wettkampfDisziplin: WettkampfdisziplinView): (Double, Double) = {
       val dnoteValidated = if (wettkampfDisziplin.isDNoteUsed) BigDecimal(dnote).setScale(wettkampfDisziplin.scale, BigDecimal.RoundingMode.FLOOR).max(wettkampfDisziplin.min).min(wettkampfDisziplin.max).toDouble else 0d
       val enoteValidated = BigDecimal(enote).setScale(wettkampfDisziplin.scale, BigDecimal.RoundingMode.FLOOR).max(wettkampfDisziplin.min).min(wettkampfDisziplin.max).toDouble
@@ -1005,6 +1007,10 @@ package object domain {
       val dnoteValidated = if (wettkampfDisziplin.isDNoteUsed) dnote else 0d
       BigDecimal(dnoteValidated + enote).setScale(wettkampfDisziplin.scale, BigDecimal.RoundingMode.FLOOR).*(punktgewicht).max(wettkampfDisziplin.min).min(wettkampfDisziplin.max).toDouble
     }
+
+    override def getDifficultLabel: String = dNoteLabel
+
+    override def getExecutionLabel: String = eNoteLabel
   }
 
   case class Athletiktest(punktemapping: Map[String, Double], punktgewicht: Double) extends NotenModus {

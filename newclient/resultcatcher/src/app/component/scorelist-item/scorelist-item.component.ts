@@ -22,12 +22,12 @@ export class ScorelistItemComponent implements OnInit {
   ngOnInit() {
     this.teilnehmerSubResults = renderTeilnehmerWertungen(this.teilnehmer);
     this.teamTeilnehmerSubResults = this.teilnehmer.rows?.length == 0
-      ? [] 
+      ? []
       : this.teilnehmer.rows.map(renderTeilnehmer)
   }
 }
 
-const knownKeys: string[] = ["athletID", "rows", "Rang", "Athlet", "Team", "Team/Athlet", "Jahrgang", "Verein", "K", "ø Gerät", "Total D", "Total E", "Total Punkte"];
+const knownKeys: string[] = ["athletID", "rows", "Rang", "Athlet", "Team", "Team/Athlet", "Jahrgang", "Verein", "K", "ø Gerät", "Total D", "Total E", "Total A", "Total B", "Total Punkte"];
 
 function renderTeilnehmer(tnRow: ScoreRow) {
   return `${tnRow['Team']} (${tnRow['K']}): ${renderTeilnehmerWertungen(tnRow)}`
