@@ -55,6 +55,10 @@ export interface Verein {
   name: string;
   verband: string;
 }
+export interface TeamItem {
+  index: number;
+  name: string;
+}
 export interface ClubRegistration {
   id: number;
   mail: string;

@@ -415,17 +415,6 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
     }
   )
 
-  case class TeamItem(index: Int, name: String) {
-    def itemText: String = if(index > 0) s"$name ${index}" else if(index < 0) name else ""
-    def machtesItemText(text: String): Boolean = text match {
-      case t:String if isNumeric(t) && !"0".equals(t) =>
-        val intText: Int = t
-        intText == index
-      case t:String if t.equalsIgnoreCase(name) => true
-      case t:String if t.equalsIgnoreCase(itemText) => true
-      case _ => false
-    }
-  }
   case object TeamItems {
     def apply(editor: WertungEditor): List[TeamItem] = this.apply(editor.init)
     def apply(editor: WertungView): List[TeamItem] = {

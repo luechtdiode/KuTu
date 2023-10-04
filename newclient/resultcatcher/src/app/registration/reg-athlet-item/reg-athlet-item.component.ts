@@ -1,5 +1,5 @@
 import { Component, OnInit, Input, Output, EventEmitter } from '@angular/core';
-import { ClubRegistration, AthletRegistration, ProgrammRaw } from '../../backend-types';
+import { ClubRegistration, AthletRegistration, ProgrammRaw, TeamItem } from '../../backend-types';
 
 @Component({
   selector: 'app-reg-athlet-item',
@@ -21,6 +21,9 @@ export class RegAthletItemComponent implements OnInit {
 
   @Input()
   programmlist: ProgrammRaw[];
+
+  @Input()
+  teams: TeamItem[];
 
   @Output()
   selected = new EventEmitter<AthletRegistration>();
@@ -56,12 +59,19 @@ export class RegAthletItemComponent implements OnInit {
     return  !!programraw ? programraw.name : '...';
   }
 
+  mapTeam(teamId: number): string {
+    return [...this.teams.filter(tm => tm.index == teamId).map(tm => {
+      if (tm.index > 0) {
+        return tm.name + ' ' + tm.index;
+      } else return tm.name;
+    }), ''][0];
+  }
+
   getTeamText() {
     const team = this.athletregistration.team;
-    const verein = this.vereinregistration;
-    if (team > 0) {
+    if (team) {
       const pgmtext = this.getProgrammText();
-      return 'Team ' + verein.vereinname + ' ' + this.athletregistration.team + " (bei " + this.athletregistration.geschlecht + "/" + pgmtext + ")";
+      return 'Team ' + this.mapTeam(this.athletregistration.team) + " (bei " + this.athletregistration.geschlecht + "/" + pgmtext + ")";
     } else {
       return '';
     }

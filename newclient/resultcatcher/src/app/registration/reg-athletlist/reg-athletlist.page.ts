@@ -4,7 +4,7 @@ import { ActivatedRoute } from '@angular/router';
 import { BackendService } from 'src/app/services/backend.service';
 import { BehaviorSubject, Subject, of } from 'rxjs';
 import { filter, map, debounceTime, distinctUntilChanged, share, switchMap, take, tap } from 'rxjs/operators';
-import { ClubRegistration, ProgrammRaw, AthletRegistration, Wettkampf, SyncAction } from '../../backend-types';
+import { ClubRegistration, ProgrammRaw, AthletRegistration, Wettkampf, SyncAction, TeamItem } from '../../backend-types';
 
 @Component({
   selector: 'app-reg-athletlist',
@@ -14,6 +14,7 @@ import { ClubRegistration, ProgrammRaw, AthletRegistration, Wettkampf, SyncActio
 export class RegAthletlistPage implements OnInit {
   busy = new BehaviorSubject(false);
   currentRegistration: ClubRegistration;
+  teams: TeamItem[];
   currentRegId: number;
   wkPgms: ProgrammRaw[];
   tMyQueryStream = new Subject<any>();
@@ -78,6 +79,9 @@ export class RegAthletlistPage implements OnInit {
       filter(regs => !!regs.find(reg => reg.id === this.currentRegId))
       , take(1)).subscribe(regs => {
       this.currentRegistration = regs.find(reg => reg.id === this.currentRegId);
+      this.backendService.loadTeamsListForClub(this.competition, this.currentRegId).subscribe(teams => {
+        this.teams = teams;
+      });
       console.log('ask athletes-list for registration');
       this.backendService.loadAthletRegistrations(this.competition, this.currentRegId).subscribe(athletRegs => {
         this.busy.next(false);
@@ -152,7 +156,7 @@ export class RegAthletlistPage implements OnInit {
   }
   
   mapProgram(programId: number) {
-    return this.wkPgms.filter(pgm => pgm.id==programId)[0];
+    return this.wkPgms.filter(pgm => pgm.id == programId)[0];
   }
 
   filteredStartList(programId: number) {

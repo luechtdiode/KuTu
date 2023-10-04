@@ -362,6 +362,19 @@ package object domain {
     override def easyprint: String = "Team " + name
   }
 
+  case class TeamItem(index: Int, name: String) {
+    def itemText: String = if (index > 0) s"$name ${index}" else if (index < 0) name else ""
+
+    def machtesItemText(text: String): Boolean = text match {
+      case t: String if isNumeric(t) && !"0".equals(t) =>
+        val intText: Int = t
+        intText == index
+      case t: String if t.equalsIgnoreCase(name) => true
+      case t: String if t.equalsIgnoreCase(itemText) => true
+      case _ => false
+    }
+  }
+  
   object Wertungsrichter {
     def apply(): Wertungsrichter = Wertungsrichter(0, 0, "", "", "", None, "", "", "", None, activ = true)
   }

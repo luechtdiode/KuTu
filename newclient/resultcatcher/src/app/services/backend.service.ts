@@ -12,7 +12,7 @@ import { DurchgangStarted, Wettkampf, Geraet, WertungContainer, NewLastResults, 
          AthletRegistration,
          ProgrammRaw,
          RegistrationResetPW,
-         SyncAction, JudgeRegistration, JudgeRegistrationProgramItem, BulkEvent, Verein, Score, ScoreLink} from '../backend-types';
+         SyncAction, JudgeRegistration, JudgeRegistrationProgramItem, BulkEvent, Verein, Score, ScoreLink, TeamItem} from '../backend-types';
 import { backendUrl } from '../utils';
 
 // tslint:disable:radix
@@ -99,6 +99,7 @@ export class BackendService extends WebsocketService {
     newLastResults = new BehaviorSubject<NewLastResults>(undefined);
     _clubregistrations = [];
     clubRegistrations = new BehaviorSubject<ClubRegistration[]>([]);
+    
     askForUsername = new Subject<BackendService>();
     lastMessageAck: MessageAck;
 
@@ -401,6 +402,21 @@ export class BackendService extends WebsocketService {
           ).pipe(share()));
 
       loader.subscribe({
+        error: this.standardErrorHandler
+      });
+
+      return loader;
+    }
+
+    loadTeamsListForClub(competitionId: string, clubid: number): Observable<TeamItem[]> {
+      const loader = this.startLoading('Teamliste zum Club wird geladen. Bitte warten ...',
+        this.http.get<TeamItem[]>(
+          backendUrl + 'api/registrations/' + competitionId + '/' + clubid + '/teams'
+          ).pipe(share()));
+
+      loader.subscribe({
+        next: (data) => {
+        }, 
         error: this.standardErrorHandler
       });
 
