@@ -348,6 +348,13 @@ ScoreRoutes extends SprayJsonSupport with JsonSupport with AuthSupport with Rout
                            |  <h2>HTML-Ausgabe (optional)</h2>
                            |  <p>Mit dem Parameter '<b>html</b>' wird die Rangliste in lesbarer Form als HTML generiert.
                            |  Ohne Angabe werden die Rohdaten der Rangliste als JSON generiert.</p></div>
+                           |  <h2>Rangliste-Typ (optional)</h2>
+                           |  <p>Mit dem Parameter:
+                           |  <ul>
+                           |  <li><pre>kind=Einzelrangliste</pre> (default) kann explizit die Einzelrangliste abgefragt werden (immer vorhanden).</li>
+                           |  <li><pre>kind=Teamrangliste</pre> kann explizit die Teamrangliste abgefragt werden (falls vorhanden).</li>
+                           |  <li><pre>kind=Kombirangliste</pre> Wird die Einzelrangliste und falls vorhanden auch die Teamrangliste abgefragt.</li>
+                           |  </p></div>
                            |</body>
                            |</html>
                          """.stripMargin))
