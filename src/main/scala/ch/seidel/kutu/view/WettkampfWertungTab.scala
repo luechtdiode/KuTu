@@ -31,6 +31,7 @@ import scalafx.scene.control.TableView.sfxTableView2jfx
 import scalafx.scene.control._
 import scalafx.scene.input.{Clipboard, KeyEvent}
 import scalafx.scene.layout._
+import scalafx.util.StringConverter
 import scalafx.util.converter.{DefaultStringConverter, DoubleStringConverter}
 
 import java.time.{LocalDate, Period}
@@ -414,6 +415,68 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
     }
   )
 
+  case class TeamItem(index: Int, name: String) {
+    def itemText: String = if(index > 0) s"$name ${index}" else if(index < 0) name else ""
+    def machtesItemText(text: String): Boolean = text match {
+      case t:String if isNumeric(t) && !"0".equals(t) =>
+        val intText: Int = t
+        intText == index
+      case t:String if t.equalsIgnoreCase(name) => true
+      case t:String if t.equalsIgnoreCase(itemText) => true
+      case _ => false
+    }
+  }
+  case object TeamItems {
+    def apply(editor: WertungEditor): List[TeamItem] = this.apply(editor.init)
+    def apply(editor: WertungView): List[TeamItem] = {
+      val vereinTeams = wkModel
+        .filter(editorRow => editorRow(0).init.athlet == editor.athlet)
+        .map(_.init(0).init.team)
+        .filter(_ > 0).toSet.toList.sorted
+
+      val nextVereinTeam = if (vereinTeams.isEmpty) 1 else vereinTeams.max + 1
+
+      (1 to nextVereinTeam).toList.map(idx => TeamItem(idx, editor.athlet.verein.get.easyprint)) :::
+        editor.wettkampf.extraTeams.zipWithIndex.map(item => TeamItem(item._2 * -1 - 1, item._1))
+    }
+
+    def findSelectedTeamId(wertung: WertungView, selection: TeamItem): Option[Int] = {
+      selection match {
+        case TeamItem(0, name) if name.nonEmpty => apply(wertung)
+          .find(team => team.machtesItemText(name))
+          .map(_.index)
+        case TeamItem(idx,_) if idx != 0 => Some(idx)
+        case _ => None
+      }
+    }
+
+
+    def tableCellSuggestProvider: (IndexedSeq[WertungEditor], String) => List[TeamItem] = (row: IndexedSeq[WertungEditor], userInput: String) => {
+      val teams = TeamItems(row.head)
+      if (isNumeric(userInput)) {
+        val userIdx: Int = userInput
+        teams.filter(t => t.index == userIdx)
+      } else {
+        val userText = userInput.toLowerCase
+        teams.filter(team => team.name.toLowerCase.startsWith(userText))
+      }
+    }
+
+    def stringConverter: StringConverter[TeamItem] = new StringConverter[TeamItem]() {
+      override def fromString(string: String): TeamItem = {
+        if (isNumeric(string)) {
+          val userIdx: Int = string
+          TeamItem(userIdx, string)
+        } else {
+          TeamItem(0, string)
+        }
+      }
+
+      override def toString(t: TeamItem): String = t.itemText
+    }
+  }
+
+
   val riegeCol: List[jfxsc.TableColumn[IndexedSeq[WertungEditor], _]] = if (!wettkampfInfo.isAggregated) {
     List(new WKTableColumn[String](-1) {
       text = "Riege"
@@ -507,16 +570,17 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
           }
         }
       },
-      new WKTableColumn[String](-1) {
+      new WKTableColumn[TeamItem](-1) {
+
         text = "Team"
         cellFactory.value = { _: Any =>
-          new AutoCommitTextFieldTableCell[IndexedSeq[WertungEditor], String](new DefaultStringConverter())
+          new AutoCommitTextFieldTableCell[IndexedSeq[WertungEditor], TeamItem](TeamItems.stringConverter, TeamItems.tableCellSuggestProvider)
         }
 
         cellValueFactory = { x =>
-          new ReadOnlyStringWrapper(x.value, "team", {
-            val team = x.value.head.init.team
-            s"${if (team != 0) team else ""}"
+          new ReadOnlyObjectProperty[TeamItem](x.value, "team", {
+            val teams = TeamItems(x.value.head)
+            teams.find(t => t.index == x.value.head.init.team).getOrElse(TeamItem(0, ""))
           })
         }
         editable <== when(Bindings.createBooleanBinding(() => {
@@ -528,11 +592,10 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
         visible <== when(wettkampfmode) choose wettkampfInfo.teamRegel.teamsAllowed otherwise true
         prefWidth = 100
 
-        onEditCommit = (evt: CellEditEvent[IndexedSeq[WertungEditor], String]) => {
+        onEditCommit = (evt: CellEditEvent[IndexedSeq[WertungEditor], TeamItem]) => {
           if (!wettkampfmode.value) {
             val rowIndex = wkModel.indexOf(evt.rowValue)
-            val newTeam: Option[Int] = if (evt.newValue.trim.isEmpty || evt.newValue.equals("keine Einteilung")) None
-            else Some(evt.newValue)
+            val newTeam: Option[Int] = TeamItems.findSelectedTeamId(evt.rowValue.head.init, evt.newValue)
             logger.debug("start team-reassignment")
             service.updateAllWertungenAsync(
               evt.rowValue.map(wertung => {
@@ -664,16 +727,16 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
               }
             }
           },
-          new WKTableColumn[String](-1) {
+          new WKTableColumn[TeamItem](-1) {
             text = "Team"
             cellFactory.value = { _: Any =>
-              new AutoCommitTextFieldTableCell[IndexedSeq[WertungEditor], String](new DefaultStringConverter())
+              new AutoCommitTextFieldTableCell[IndexedSeq[WertungEditor], TeamItem](TeamItems.stringConverter, TeamItems.tableCellSuggestProvider)
             }
 
             cellValueFactory = { x =>
-              new ReadOnlyStringWrapper(x.value, "team", {
-                val team = x.value.head.init.team
-                s"${if (team != 0) team else ""}"
+              new ReadOnlyObjectProperty[TeamItem](x.value, "team", {
+                val teams = TeamItems(x.value.head)
+                teams.find(t => t.index == x.value.head.init.team).getOrElse(TeamItem(0, ""))
               })
             }
             editable <== when(Bindings.createBooleanBinding(() => {
@@ -685,11 +748,10 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
             visible <== when(wettkampfmode) choose wettkampfInfo.teamRegel.teamsAllowed otherwise true
             prefWidth = 100
 
-            onEditCommit = (evt: CellEditEvent[IndexedSeq[WertungEditor], String]) => {
+            onEditCommit = (evt: CellEditEvent[IndexedSeq[WertungEditor], TeamItem]) => {
               if (!wettkampfmode.value) {
                 val rowIndex = wkModel.indexOf(evt.rowValue)
-                val newTeam: Option[Int] = if (evt.newValue.trim.isEmpty || evt.newValue.equals("keine Einteilung")) None
-                else Some(evt.newValue)
+            val newTeam: Option[Int] = TeamItems.findSelectedTeamId(evt.rowValue.head.init, evt.newValue)
                 logger.debug("start team-reassignment")
                 service.updateAllWertungenAsync(
                   evt.rowValue.map(wertung => {

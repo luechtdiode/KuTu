@@ -2,7 +2,10 @@ package ch.seidel.commons
 
 import javafx.scene.control.{TextField, cell => jfxscc}
 import javafx.scene.{control => jfxsc}
+import javafx.util.Callback
 import javafx.{css => jfxcss}
+import org.controlsfx.control.textfield.AutoCompletionBinding.ISuggestionRequest
+import org.controlsfx.control.textfield.{AutoCompletionBinding, TextFields}
 import scalafx.Includes._
 import scalafx.application.Platform
 import scalafx.beans.property.BooleanProperty
@@ -18,6 +21,9 @@ import scalafx.scene.control._
 import scalafx.scene.input.{Clipboard, KeyCode, KeyEvent}
 import scalafx.util.StringConverter
 
+import java.util
+import java.util.Collection
+import scala.jdk.CollectionConverters.IterableHasAsJava
 import scala.language.implicitConversions
 
 object AutoCommitTextFieldTableCell {
@@ -310,7 +316,7 @@ object AutoCommitTextFieldTableCell {
         lastKey = Some(Clipboard.systemClipboard.string)
         tableView.edit(fc.row, tc)
 
-      case c if (c.isLetterKey || c.isDigitKey) && tableView.editingCell.value == null =>
+      case c if (c.isLetterKey || c.isDigitKey || c.getChar == "-") && tableView.delegate.getEditingCell == null =>
         lastKey = Some(ke.getText)
         tableView.edit(fc.row, tc)
 
@@ -322,7 +328,8 @@ object AutoCommitTextFieldTableCell {
 
 class AutoCommitTextFieldTableCell[S, T](
                                           val cellStateUpdater: scala.Function1[scalafx.scene.control.TableCell[S, T], scala.Unit],
-                                          override val delegate: jfxscc.TextFieldTableCell[S, T] = new jfxscc.TextFieldTableCell[S, T])
+                                          override val delegate: jfxscc.TextFieldTableCell[S, T] = new jfxscc.TextFieldTableCell[S, T],
+                                          val suggestListProvider: Option[scala.Function2[S, String, List[T]]])
   extends TableCell[S, T](delegate)
     with ConvertableCell[jfxscc.TextFieldTableCell[S, T], T, T]
     with UpdatableCell[jfxscc.TextFieldTableCell[S, T], T]
@@ -330,11 +337,15 @@ class AutoCommitTextFieldTableCell[S, T](
 
   import AutoCommitTextFieldTableCell.PSEUDO_CLASS_FOCUSED
 
+
   def this(converter: StringConverter[T], cellStateUpdater: scala.Function1[scalafx.scene.control.TableCell[S, T], scala.Unit]) = {
-    this(cellStateUpdater, new jfxscc.TextFieldTableCell[S, T](converter))
+    this(cellStateUpdater, new jfxscc.TextFieldTableCell[S, T](converter), None)
   }
   def this(converter: StringConverter[T]) = {
-    this((tc: TableCell[S, T])=>{}, new jfxscc.TextFieldTableCell[S, T](converter))
+    this((tc: TableCell[S, T])=>{}, new jfxscc.TextFieldTableCell[S, T](converter), None)
+  }
+  def this(converter: StringConverter[T], suggestListProvider: scala.Function2[S, String, List[T]]) = {
+    this((tc: TableCell[S, T])=>{}, new jfxscc.TextFieldTableCell[S, T](converter), Some(suggestListProvider))
   }
 
   var textField: Option[TextField] = None
@@ -352,8 +363,15 @@ class AutoCommitTextFieldTableCell[S, T](
   }
 
   graphic.onChange({
+    var lastBinding: Option[AutoCompletionBinding[T]] = None
     textField = graphic.value match {
       case field: TextField =>
+        lastBinding.foreach(_.dispose())
+        suggestListProvider.foreach(provider => {
+          val cb: Callback[AutoCompletionBinding.ISuggestionRequest, util.Collection[T]] = (request: ISuggestionRequest) =>
+            provider.apply(delegate.getTableRow.getItem, request.getUserText).asJavaCollection
+          lastBinding = Some(TextFields.bindAutoCompletion(field, cb, converter.value))
+        })
         Some(field)
       case _ => None
     }
@@ -381,6 +399,7 @@ class AutoCommitTextFieldTableCell[S, T](
 
   def connect: Subscription = new Subscription() {
     AutoCommitTextFieldTableCell.setEditMode(true)
+
     pseudoClassStates.onChange { (set: ObservableSet[jfxcss.PseudoClass], change: Change[jfxcss.PseudoClass]) =>
       change match {
         case Remove(PSEUDO_CLASS_FOCUSED) if delegate.isEditing || AutoCommitTextFieldTableCell.editmode.value =>

@@ -74,7 +74,7 @@ case class TeamRegelVereinGeraet(min: Int, max: Int, extraTeamsDef: String) exte
     wertungen
       .filter(w => w.team != 0)
       .toList
-      .groupBy(w => if (w.team > 0) (w.athlet.verein.map(_.easyprint).getOrElse(""), w.team) else (extrateams(w.team * -1 -1), 1))
+      .groupBy(w => if (w.team > 0) (w.athlet.verein.map(_.extendedprint).getOrElse(""), w.team) else (extrateams(w.team * -1 -1), w.team))
       .flatMap { team =>
         val (teamkey, teamwertungen) = team
         val (verein, teamNummer) = teamkey
@@ -103,7 +103,8 @@ case class TeamRegelVereinGeraet(min: Int, max: Int, extraTeamsDef: String) exte
               allRelevantWertungen.contains(w.athlet)
             }
           }
-          List(Team(s"${verein} ${teamNummer}", toRuleName, limitedTeamwertungen, perDisciplinCountingWertungen, perDisciplinWertungen))
+          val teamname = if (teamNummer > 0) s"${verein} ${teamNummer}" else verein
+          List(Team(s"${teamname}", toRuleName, limitedTeamwertungen, perDisciplinCountingWertungen, perDisciplinWertungen))
         } else {
           List.empty
         }
@@ -124,7 +125,7 @@ case class TeamRegelVereinGesamt(min: Int, max: Int, extraTeamsDef: String) exte
     wertungen
       .filter(w => w.team != 0)
       .toList
-      .groupBy(w => if (w.team > 0) (w.athlet.verein.map(_.easyprint).getOrElse(""), w.team) else (extrateams(w.team * -1 -1), 1))
+      .groupBy(w => if (w.team > 0) (w.athlet.verein.map(_.extendedprint).getOrElse(""), w.team) else (extrateams(w.team * -1 -1), w.team))
       .flatMap { team =>
         val (teamkey, teamwertungen) = team
         val (verein, teamNummer) = teamkey
@@ -146,7 +147,8 @@ case class TeamRegelVereinGesamt(min: Int, max: Int, extraTeamsDef: String) exte
               allRelevantWertungen.contains
             }
           }
-          List(Team(s"${verein} ${teamNummer}", toRuleName, limitedTeamwertungen, perAthletWertungen, perAthletWertungen))
+          val teamname = if (teamNummer > 0) s"${verein} ${teamNummer}" else verein
+          List(Team(s"${teamname}", toRuleName, limitedTeamwertungen, perAthletWertungen, perAthletWertungen))
         } else {
           List.empty
         }
@@ -168,7 +170,7 @@ case class TeamRegelVerbandGeraet(min: Int, max: Int, extraTeamsDef: String) ext
     wertungen
       .filter(w => w.team != 0)
       .toList
-      .groupBy(w => if (w.team > 0) (w.athlet.verein.flatMap(_.verband).getOrElse(""), w.team) else (extrateams(w.team * -1 -1), 1))
+      .groupBy(w => if (w.team > 0) (w.athlet.verein.flatMap(_.verband).getOrElse(""), w.team) else (extrateams(w.team * -1 -1), w.team))
       .flatMap { team =>
         val (teamkey, teamwertungen) = team
         val (verband, teamNummer) = teamkey
@@ -198,7 +200,8 @@ case class TeamRegelVerbandGeraet(min: Int, max: Int, extraTeamsDef: String) ext
               allRelevantWertungen.contains(w.athlet)
             }
           }
-          List(Team(s"${verband} ${teamNummer}", toRuleName, limitedTeamwertungen, perDisciplinCountingWertungen, perDisciplinWertungen))
+          val teamname = if (teamNummer > 0) s"${verband} ${teamNummer}" else verband
+          List(Team(s"${teamname}", toRuleName, limitedTeamwertungen, perDisciplinCountingWertungen, perDisciplinWertungen))
         } else {
           List.empty
         }
@@ -218,7 +221,7 @@ case class TeamRegelVerbandGesamt(min: Int, max: Int, extraTeamsDef: String) ext
     wertungen
       .filter(w => w.team != 0)
       .toList
-      .groupBy(w => if (w.team > 0) (w.athlet.verein.flatMap(_.verband).getOrElse(""), w.team) else (extrateams(w.team * -1 -1), 1))
+      .groupBy(w => if (w.team > 0) (w.athlet.verein.flatMap(_.verband).getOrElse(""), w.team) else (extrateams(w.team * -1 -1), w.team))
       .flatMap { team =>
         val (teamkey, teamwertungen) = team
         val (verband, teamNummer) = teamkey
@@ -240,7 +243,8 @@ case class TeamRegelVerbandGesamt(min: Int, max: Int, extraTeamsDef: String) ext
               allRelevantWertungen.contains
             }
           }
-          List(Team(s"${verband} ${teamNummer}", toRuleName, limitedTeamwertungen, perAthletWertungen, perAthletWertungen))
+          val teamname = if (teamNummer > 0) s"${verband} ${teamNummer}" else verband
+          List(Team(s"${teamname}", toRuleName, limitedTeamwertungen, perAthletWertungen, perAthletWertungen))
         } else {
           List.empty
         }
