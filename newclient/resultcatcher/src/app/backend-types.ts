@@ -25,6 +25,7 @@ export interface Teilnehmer {
   durchgang: string;
   start: string;
   verein: string;
+  team: string;
 }
 
 export interface ProgrammItem {

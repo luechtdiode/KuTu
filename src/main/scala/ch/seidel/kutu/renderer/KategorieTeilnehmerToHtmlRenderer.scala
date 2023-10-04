@@ -107,7 +107,11 @@ trait KategorieTeilnehmerToHtmlRenderer {
     val logoHtml = if (logo.exists()) s"""<img class=logo src="${logo.imageSrcForWebEngine}" title="Logo"/>""" else ""
 
     val d = kandidaten.map{kandidat =>
-      s"""<tr class="athletRow"><td>${escaped(kandidat.verein)}</td><td class="large">${escaped(kandidat.name)} ${escaped(kandidat.vorname)} (${escaped(kandidat.jahrgang)})</td><td>${escaped(kandidat.durchgang)}</td><td>${escaped(kandidat.start)}</td><td class="totalCol">&nbsp;</td></tr>"""
+      if (kandidat.team.nonEmpty) {
+        s"""<tr class="athletRow"><td>${escaped(kandidat.team)}</td><td class="large">${escaped(kandidat.name)} ${escaped(kandidat.vorname)} (${escaped(kandidat.jahrgang)})</td><td>${escaped(kandidat.durchgang)}</td><td>${escaped(kandidat.start)}</td><td class="totalCol">&nbsp;</td></tr>"""
+      } else {
+        s"""<tr class="athletRow"><td>${escaped(kandidat.verein)}</td><td class="large">${escaped(kandidat.name)} ${escaped(kandidat.vorname)} (${escaped(kandidat.jahrgang)})</td><td>${escaped(kandidat.durchgang)}</td><td>${escaped(kandidat.start)}</td><td class="totalCol">&nbsp;</td></tr>"""
+      }
     }
     val dt = d.mkString("", "\n", "\n")
     s"""<div class=notenblatt>
@@ -119,7 +123,7 @@ trait KategorieTeilnehmerToHtmlRenderer {
       </div>
       <div class="showborder">
         <table width="100%">
-          <tr class="totalRow heavyRow"><td>Verein</td><td>Name</td><td>Einteilung</td><td>Start</td><td class="totalCol">Bemerkung</td></tr>
+          <tr class="totalRow heavyRow"><td>${if (kandidaten.head.team.nonEmpty) "Team" else "Verein"}</td><td>Name</td><td>Einteilung</td><td>Start</td><td class="totalCol">Bemerkung</td></tr>
           ${dt}
         </table>
       </div>
@@ -131,7 +135,7 @@ trait KategorieTeilnehmerToHtmlRenderer {
     val logoHtml = if (logo.exists()) s"""<img class=logo src="${logo.imageSrcForWebEngine}" title="Logo"/>""" else ""
 
     val d = kandidaten.map{kandidat =>
-      s"""<tr class="athletRow"><td>${escaped(kandidat.programm)}</td><td class="large">${escaped(kandidat.name)} ${escaped(kandidat.vorname)} (${escaped(kandidat.jahrgang)})</td><td>${escaped(kandidat.durchgang)}</td><td>${escaped(kandidat.start)}</td><td class="totalCol">&nbsp;</td></tr>"""
+        s"""<tr class="athletRow"><td>${escaped(kandidat.programm)}</td><td class="large">${escaped(kandidat.name)} ${escaped(kandidat.vorname)} (${escaped(kandidat.jahrgang)})</td><td>${escaped(kandidat.durchgang)}</td><td>${escaped(kandidat.start)}</td><td class="totalCol">&nbsp;</td></tr>"""
     }
     val dt = d.mkString("", "\n", "\n")
     s"""<div class=notenblatt>
@@ -155,7 +159,11 @@ trait KategorieTeilnehmerToHtmlRenderer {
     val logoHtml = if (logo.exists()) s"""<img class=logo src="${logo.imageSrcForWebEngine}" title="Logo"/>""" else ""
 
     val d = kandidaten.map{kandidat =>
-      s"""<tr class="athletRow"><td>${escaped(kandidat.verein)}</td><td class="large">${escaped(kandidat.name)} ${escaped(kandidat.vorname)} (${escaped(kandidat.jahrgang)})</td><td>${escaped(kandidat.programm)}</td><td>${escaped(kandidat.start)}</td><td class="totalCol">&nbsp;</td></tr>"""
+      if (kandidat.team.nonEmpty) {
+        s"""<tr class="athletRow"><td>${escaped(kandidat.team)}</td><td class="large">${escaped(kandidat.name)} ${escaped(kandidat.vorname)} (${escaped(kandidat.jahrgang)})</td><td>${escaped(kandidat.programm)}</td><td>${escaped(kandidat.start)}</td><td class="totalCol">&nbsp;</td></tr>"""
+      } else {
+        s"""<tr class="athletRow"><td>${escaped(kandidat.verein)}</td><td class="large">${escaped(kandidat.name)} ${escaped(kandidat.vorname)} (${escaped(kandidat.jahrgang)})</td><td>${escaped(kandidat.programm)}</td><td>${escaped(kandidat.start)}</td><td class="totalCol">&nbsp;</td></tr>"""
+      }
     }
     val dt = d.mkString("", "\n", "\n")
     s"""<div class=notenblatt>
@@ -167,7 +175,7 @@ trait KategorieTeilnehmerToHtmlRenderer {
       </div>
       <div class="showborder">
         <table width="100%">
-          <tr class="totalRow heavyRow"><td></td><td>Name</td><td>Einteilung</td><td>Start</td><td class="totalCol">Bemerkung</td></tr>
+          <tr class="totalRow heavyRow"><td>${if (kandidaten.head.team.nonEmpty) "Team" else "Verein"}</td><td>Name</td><td>Einteilung</td><td>Start</td><td class="totalCol">Bemerkung</td></tr>
           ${dt}
         </table>
       </div>
@@ -188,8 +196,7 @@ trait KategorieTeilnehmerToHtmlRenderer {
 
   def toHTMLasKategorienListe(kandidaten: Seq[Kandidat], logo: File, rowsPerPage: Int = 28): String = {
     val kandidatenPerKategorie = kandidaten.sortBy { k =>
-      val krit = f"${k.verein}%-40s ${k.name}%-40s ${k.vorname}%-40s"
-      //logger.debug(krit)
+      val krit = if (k.team.nonEmpty) f"${k.team}%-40s ${k.name}%-40s ${k.vorname}%-40s" else f"${k.verein}%-40s ${k.name}%-40s ${k.vorname}%-40s"
       krit
     }.groupBy(k => k.programm)
     val rawpages = for {
@@ -206,8 +213,7 @@ trait KategorieTeilnehmerToHtmlRenderer {
 
   def toHTMLasDurchgangListe(kandidaten: Seq[Kandidat], logo: File, rowsPerPage: Int = 28): String = {
     val kandidatenPerDurchgang = kandidaten.sortBy { k =>
-      val krit = f"${k.verein}%-40s ${k.name}%-40s ${k.vorname}%-40s"
-      //logger.debug(krit)
+      val krit = if (k.team.nonEmpty) f"${k.team}%-40s ${k.name}%-40s ${k.vorname}%-40s" else f"${k.verein}%-40s ${k.name}%-40s ${k.vorname}%-40s"
       krit
     }.groupBy(k => k.durchgang)
     val rawpages = for {
@@ -227,7 +233,7 @@ trait KategorieTeilnehmerToHtmlRenderer {
       val krit = f"${escaped(k.programm)}%-40s ${escaped(k.name)}%-40s ${escaped(k.vorname)}%-40s"
       //logger.debug(krit)
       krit
-    }.groupBy(k => k.verein)
+    }.groupBy(k => if (k.team.nonEmpty) k.team else k.verein)
     val rawpages = for {
       verein <- kandidatenPerKategorie.keys.toList.sorted
       a4seitenmenge <- if(rowsPerPage == 0) kandidatenPerKategorie(verein).sliding(kandidatenPerKategorie(verein).size, kandidatenPerKategorie(verein).size) else kandidatenPerKategorie(verein).sliding(rowsPerPage, rowsPerPage)

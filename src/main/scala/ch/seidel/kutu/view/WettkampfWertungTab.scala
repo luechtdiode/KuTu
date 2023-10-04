@@ -428,6 +428,7 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
       (1 to nextVereinTeam).toList.map(idx => TeamItem(idx, editor.athlet.verein.get.easyprint)) :::
         editor.wettkampf.extraTeams.zipWithIndex.map(item => TeamItem(item._2 * -1 - 1, item._1))
     }
+    def map(editor: WertungView): Option[TeamItem] = apply(editor).find(team => team.index == editor.team)
 
     def findSelectedTeamId(wertung: WertungView, selection: TeamItem): Option[Int] = {
       selection match {
@@ -1380,6 +1381,7 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
           }
         }
         logger.debug(programme.toString)
+
         val riegen = service.selectRiegen(wettkampf.id).map(r => r.r -> (r.start.map(_.name).getOrElse(""), r.durchgang.getOrElse(""))).toMap
         val seriendaten = for {
           programm <- programme
@@ -1389,6 +1391,7 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
         }
         yield {
           val einsatz = athletwertungen.head.init
+          val team = TeamItems.map(einsatz).map(_.itemText).getOrElse("")
           val athlet = einsatz.athlet
           ch.seidel.kutu.renderer.Kandidat(
             einsatz.wettkampf.easyprint
@@ -1399,6 +1402,7 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
             , athlet.vorname
             , AthletJahrgang(athlet.gebdat).jahrgang
             , athlet.verein match { case Some(v) => v.easyprint case _ => "" }
+            , team
             , einsatz.riege.getOrElse("")
             , riegen.getOrElse(einsatz.riege.getOrElse(""), ("", ""))._2
             , riegen.getOrElse(einsatz.riege.getOrElse(""), ("", ""))._1
@@ -1455,6 +1459,7 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
         }
         yield {
           val einsatz = athletwertungen.head.init
+          val team = TeamItems.map(einsatz).map(_.itemText).getOrElse("")
           val athlet = einsatz.athlet
           ch.seidel.kutu.renderer.Kandidat(
             einsatz.wettkampf.easyprint
@@ -1465,6 +1470,7 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
             , athlet.vorname
             , AthletJahrgang(athlet.gebdat).jahrgang
             , athlet.verein match { case Some(v) => v.easyprint case _ => "" }
+            , team
             , einsatz.riege.getOrElse("")
             , riegen.getOrElse(einsatz.riege.getOrElse(""), ("", ""))._2
             , riegen.getOrElse(einsatz.riege.getOrElse(""), ("", ""))._1

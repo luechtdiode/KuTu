@@ -19,7 +19,8 @@ trait KategorieTeilnehmerToJSONRenderer {
          |        "athlet" : "${kandidat.name} ${kandidat.vorname} (${kandidat.jahrgang})",
          |        "athletid" : ${kandidat.id},
          |        "durchgang" : "${kandidat.durchgang}",
-         |        "start" : "${kandidat.start}"
+         |        "start" : "${kandidat.start}",
+         |        "team" : "${kandidat.team}"
          |      }""".stripMargin
     }
     val dt = d.mkString("[\n", ",\n", "]\n")

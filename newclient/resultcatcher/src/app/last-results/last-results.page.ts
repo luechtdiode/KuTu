@@ -79,13 +79,21 @@ export class LastResultsPage implements OnInit {
             if (!!scorelists) {
               const values = Object.values(scorelists)
               const lists = values.filter(l => (l as any).name != 'Zwischenresultate').sort((a,b)=> a.name.localeCompare(b.name));
-              this.scorelinks = [...lists, <ScoreLink>{
-                  name: 'Generische Rangliste',
-                  published: true,
-                  "published-date": '',
-                  "scores-href": genericLink,
-                  "scores-query": genericLink
-                }];
+              const einzelGeneric = <ScoreLink>{
+                name: 'Generische Rangliste',
+                published: true,
+                "published-date": '',
+                "scores-href": genericLink,
+                "scores-query": genericLink
+              };
+              const teamGeneric = <ScoreLink>{
+                name: 'Generische Team-Rangliste',
+                published: true,
+                "published-date": '',
+                "scores-href": genericLink + '&kind=Teamrangliste',
+                "scores-query": genericLink + '&kind=Teamrangliste'
+              };
+              this.scorelinks = c.teamrule?.trim.length > 0 ? [...lists, einzelGeneric] : [...lists, teamGeneric, einzelGeneric];
               const publishedLists = this.scorelinks.filter(s => ''+s.published === 'true')
               this.refreshScoreList(publishedLists[0]);
             }
@@ -191,7 +199,8 @@ export class LastResultsPage implements OnInit {
       auszeichnungendnote: undefined,
       id: undefined,
       uuid: undefined,
-      programmId: 0
+      programmId: 0,
+      teamrule: ""
     };
 
     if (!this.backendService.competitions) { return emptyCandidate; }

@@ -393,21 +393,23 @@ ScoreRoutes extends SprayJsonSupport with JsonSupport with AuthSupport with Rout
                   complete(CompetitionCoordinatorClientActor.publish(StartedDurchgaenge(competitionId.toString()), clientid.getOrElse("")).flatMap {
                     case ResponseMessage(startedDurchgaenge) =>
                       val sd = startedDurchgaenge.asInstanceOf[Set[String]]
+                      val kind = if (wettkampf.teamrule.nonEmpty) Kombirangliste else Einzelrangliste
                       if (sd.nonEmpty) {
                             Future {queryScoreResults(s"${wettkampf.easyprint} - Zwischenresultate", None,
                                 filter ++ Iterable(byDurchgangMat.groupname + ":" + sd.mkString("!")),
-                                html.nonEmpty, groupers, data.filter(filterMatchingWertungenToQuery), false, Einzelrangliste, logofile)
+                                html.nonEmpty, groupers, data.filter(filterMatchingWertungenToQuery), false, kind, logofile)
                             }
                       } else {
                             Future {queryScoreResults(s"${wettkampf.easyprint} - Zwischenresultate", None,
                                 filter,
-                                html.nonEmpty, groupers, Seq(), false, Einzelrangliste, logofile)
+                                html.nonEmpty, groupers, Seq(), false, kind, logofile)
                             }
                       }
                     case MessageAck(msg) =>
+                      val kind = if (wettkampf.teamrule.nonEmpty) Kombirangliste else Einzelrangliste
                       Future {queryScoreResults(s"${wettkampf.easyprint} - Zwischenresultate", None,
                         filter,
-                        html.nonEmpty, groupers, Seq(), false, Einzelrangliste, logofile)
+                        html.nonEmpty, groupers, Seq(), false, kind, logofile)
                       }
   //                    Future {
   //                    if (html.nonEmpty) {
