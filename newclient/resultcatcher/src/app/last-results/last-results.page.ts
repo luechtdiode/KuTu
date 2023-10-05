@@ -81,7 +81,14 @@ export class LastResultsPage implements OnInit, OnDestroy {
         if (this.scorelistAvailable()) {
           this.backendService.getScoreLists().subscribe(scorelists => {
             const c = this.competitionContainer();
-            const genericLink = `/api/scores/${c.uuid}/query?groupby=Kategorie:Geschlecht`;
+            let genericLinkAddon = '';
+            if (c.altersklassen && c.altersklassen.trim().length > 0) {
+              genericLinkAddon = ':Wettkampf%20Altersklassen';
+            }
+            else if (c.jahrgangsklassen && c.jahrgangsklassen.trim().length > 0) {
+              genericLinkAddon = ':Wettkampf%20JG-Altersklassen';
+            }
+            const genericLink = `/api/scores/${c.uuid}/query?groupby=Kategorie${genericLinkAddon}:Geschlecht`;
             if (!!scorelists) {
               const values = Object.values(scorelists)
               const lists = values.filter(l => (l as any).name != 'Zwischenresultate').sort((a,b)=> a.name.localeCompare(b.name));
@@ -314,8 +321,12 @@ export class LastResultsPage implements OnInit, OnDestroy {
   }
 
   filter(query: string) {
-    const queryTokens = query.toUpperCase().split(' ');
+    const upperQuery = query.toUpperCase();
+    const queryTokens = upperQuery.split(' ');
     return (tnRoot: ScoreRow, block: ScoreBlock): boolean => {
+      if (block.title.text.toUpperCase().indexOf(upperQuery) > -1) {
+        return true;
+      }
       return queryTokens.filter(token => {
         return [tnRoot, ...tnRoot.rows].find(tn => {
           if (tn.Athlet?.toUpperCase().indexOf(token) > -1) {
@@ -330,7 +341,7 @@ export class LastResultsPage implements OnInit, OnDestroy {
           if (tn.Verein?.toUpperCase().indexOf(token) > -1) {
             return true;
           }
-          if (tn.Jahrgang?.toUpperCase().indexOf(token) > -1) {
+          if (tn.Jahrgang?.toUpperCase() === token) {
             return true;
           }
           if (block.title.text.toUpperCase().replace('.', ' ').replace(',', ' ').split(' ').indexOf(token) > -1) {

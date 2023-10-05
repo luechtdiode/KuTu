@@ -36,7 +36,7 @@ function renderTeilnehmer(tnRow: ScoreRow) {
 function renderTeilnehmerWertungen(tnRow: ScoreRow) {
   return Object.keys(tnRow)
   .map(key => `${key}`)
-  .filter((key: string) => knownKeys.indexOf(key) < 0)
+  .filter((key: string) => knownKeys.indexOf(key) < 0 && tnRow[key]['Endnote'])
   .map(key => `${key}: ${tnRow[key]['Endnote']} (${tnRow[key]['Rang']})`)
   .join(", ")
 }
