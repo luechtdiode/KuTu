@@ -442,18 +442,22 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
 
 
     def tableCellSuggestProvider: (IndexedSeq[WertungEditor], String) => List[TeamItem] = (row: IndexedSeq[WertungEditor], userInput: String) => {
-      val teams = TeamItems(row.head)
-      val suggests: List[TeamItem] = if (isNumeric(userInput)) {
-        val userIdx: Int = userInput
-        teams.filter(t => t.index == userIdx)
+      if (userInput.isEmpty) {
+        List.empty
       } else {
-        val userText = userInput.toLowerCase
-        teams.filter(team => team.name.toLowerCase.startsWith(userText))
-      }
-      if (suggests.nonEmpty) {
-        suggests
-      } else {
-        teams
+        val teams = TeamItems(row.head)
+        val suggests: List[TeamItem] = if (isNumeric(userInput)) {
+          val userIdx: Int = userInput
+          teams.filter(t => t.index == userIdx)
+        } else {
+          val userText = userInput.toLowerCase
+          teams.filter(team => team.name.toLowerCase.contains(userText))
+        }
+        if (suggests.nonEmpty) {
+          suggests
+        } else {
+          teams
+        }
       }
     }
 
@@ -588,9 +592,9 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
         prefWidth = 100
 
         onEditCommit = (evt: CellEditEvent[IndexedSeq[WertungEditor], TeamItem]) => {
-          if (!wettkampfmode.value) {
+          if (!wettkampfmode.value && evt.rowValue != null) {
             val rowIndex = wkModel.indexOf(evt.rowValue)
-            val newTeam: Option[Int] = TeamItems.findSelectedTeamId(evt.rowValue.head.init, evt.newValue)
+            val newTeam: Option[Int] = if (evt.rowValue.nonEmpty) TeamItems.findSelectedTeamId(evt.rowValue.head.init, evt.newValue) else None
             logger.debug("start team-reassignment")
             service.updateAllWertungenAsync(
               evt.rowValue.map(wertung => {
@@ -744,9 +748,9 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
             prefWidth = 100
 
             onEditCommit = (evt: CellEditEvent[IndexedSeq[WertungEditor], TeamItem]) => {
-              if (!wettkampfmode.value) {
+              if (!wettkampfmode.value && evt.rowValue != null) {
                 val rowIndex = wkModel.indexOf(evt.rowValue)
-            val newTeam: Option[Int] = TeamItems.findSelectedTeamId(evt.rowValue.head.init, evt.newValue)
+                val newTeam: Option[Int] = if (evt.rowValue.nonEmpty) TeamItems.findSelectedTeamId(evt.rowValue.head.init, evt.newValue) else None
                 logger.debug("start team-reassignment")
                 service.updateAllWertungenAsync(
                   evt.rowValue.map(wertung => {

@@ -1,5 +1,6 @@
 package ch.seidel.commons
 
+import impl.org.controlsfx.autocompletion.AutoCompletionTextFieldBinding
 import javafx.scene.control.{TextField, cell => jfxscc}
 import javafx.scene.{control => jfxsc}
 import javafx.util.Callback
@@ -362,15 +363,25 @@ class AutoCommitTextFieldTableCell[S, T](
     }
   }
 
+  var lastBinding: Option[AutoCompletionBinding[T]] = None
   graphic.onChange({
-    var lastBinding: Option[AutoCompletionBinding[T]] = None
     textField = graphic.value match {
       case field: TextField =>
         lastBinding.foreach(_.dispose())
         suggestListProvider.foreach(provider => {
           val cb: Callback[AutoCompletionBinding.ISuggestionRequest, util.Collection[T]] = (request: ISuggestionRequest) =>
             provider.apply(delegate.getTableRow.getItem, request.getUserText).asJavaCollection
-          lastBinding = Some(TextFields.bindAutoCompletion(field, cb, converter.value))
+          val binding = TextFields.bindAutoCompletion(field, cb, converter.value)
+          binding.setVisibleRowCount(20)
+          binding.setOnAutoCompleted{ evt =>
+            commitEdit(evt.getCompletion)
+            AutoCommitTextFieldTableCell.setEditMode(false)
+          }
+          field.widthProperty().onChange {
+            binding.setMinWidth(Math.max(binding.getPrefWidth, field.getWidth + 10d))
+          }
+          binding.setMinWidth(Math.max(binding.getPrefWidth, field.getWidth + 10d))
+          lastBinding = Some(binding)
         })
         Some(field)
       case _ => None
