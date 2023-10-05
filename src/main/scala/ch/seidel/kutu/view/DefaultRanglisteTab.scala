@@ -360,7 +360,7 @@ abstract class DefaultRanglisteTab(wettkampfmode: BooleanProperty, override val 
 
     def addPublishedFilter(items: ObservableList[javafx.scene.control.MenuItem])(filter: PublishedScoreView): Unit = {
       val menu = KuTuApp.makeMenuAction(toMenuText(filter)) { (caption, action) =>
-        val grouper = GroupBy(filter.query, getData)
+        val grouper = GroupBy(filter.query, getData, groupers)
         restoreGrouper(grouper)
         lastPublishedScoreView.setValue(Some(filter))
       }
