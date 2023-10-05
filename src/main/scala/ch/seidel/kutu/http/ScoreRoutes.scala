@@ -1,8 +1,5 @@
 package ch.seidel.kutu.http
 
-import java.io.File
-import java.time.LocalDate
-import java.util.Base64
 import akka.http.scaladsl.marshallers.sprayjson.SprayJsonSupport
 import akka.http.scaladsl.marshalling.ToResponseMarshallable
 import akka.http.scaladsl.model.{ContentTypes, HttpEntity, StatusCodes, Uri}
@@ -12,13 +9,16 @@ import ch.seidel.kutu.Config
 import ch.seidel.kutu.KuTuServer.handleCID
 import ch.seidel.kutu.akka.{CompetitionCoordinatorClientActor, MessageAck, ResponseMessage, StartedDurchgaenge}
 import ch.seidel.kutu.data._
-import ch.seidel.kutu.domain.{Altersklasse, Durchgang, Kandidat, KutuService, NullObject, PublishedScoreView, WertungView, encodeFileName, encodeURIParam, isNumeric}
-import ch.seidel.kutu.renderer.{PrintUtil, ScoreToHtmlRenderer, ScoreToJsonRenderer}
+import ch.seidel.kutu.domain.{Altersklasse, Durchgang, KutuService, PublishedScoreView, WertungView, encodeFileName, encodeURIParam}
 import ch.seidel.kutu.renderer.PrintUtil._
+import ch.seidel.kutu.renderer.{PrintUtil, ScoreToHtmlRenderer, ScoreToJsonRenderer}
+import fr.davit.akka.http.metrics.core.scaladsl.server.HttpMetricsDirectives._
 
+import java.io.File
+import java.time.LocalDate
+import java.util.Base64
 import scala.concurrent.Future
 import scala.concurrent.duration.DurationInt
-import fr.davit.akka.http.metrics.core.scaladsl.server.HttpMetricsDirectives._
 
 trait
 ScoreRoutes extends SprayJsonSupport with JsonSupport with AuthSupport with RouterLogging with KutuService with IpToDeviceID {
@@ -143,7 +143,10 @@ ScoreRoutes extends SprayJsonSupport with JsonSupport with AuthSupport with Rout
           } else {
             val wettkampf = readWettkampf(competitionId.toString)
             val wkdate: LocalDate = ch.seidel.kutu.domain.sqlDate2ld(wettkampf.datum)
-            val data = selectWertungen(wkuuid = Some(competitionId.toString))
+            val scheduledDisziplines = listScheduledDisziplinIdsZuWettkampf(wettkampf.id)
+            val data = selectWertungen(wettkampfId = Some(wettkampf.id))
+              .filter(w => scheduledDisziplines.contains(w.wettkampfdisziplin.disziplin.id))
+
             val logodir = new java.io.File(Config.homedir + "/" + encodeFileName(wettkampf.easyprint))
             val logofile = PrintUtil.locateLogoFile(logodir)
             val programmText = wettkampf.programmId match {case 20 => "Kategorie" case _ => "Programm"}
@@ -254,7 +257,7 @@ ScoreRoutes extends SprayJsonSupport with JsonSupport with AuthSupport with Rout
                           case Nil => (None,Seq[WertungView]())
                           case c::_ => (Some(c), data)
                         }
-                        val query = GroupBy(score.map(_.query).getOrElse(""), publishedData)
+                        val query = GroupBy(score.map(_.query).getOrElse(""), publishedData, groupers)
                         if (html.nonEmpty) {
                           HttpEntity(ContentTypes.`text/html(UTF-8)`, new ScoreToHtmlRenderer() {
                             override val title: String = wettkampf.easyprint // + " - " + score.map(_.title).getOrElse(wettkampf.easyprint)
