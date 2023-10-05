@@ -26,8 +26,8 @@ class RanglisteTab(wettkampfmode: BooleanProperty, wettkampf: WettkampfView, ove
     case _ => "Programm"
   }
 
-  val altersklassen = Altersklasse.parseGrenzen(wettkampf.altersklassen, "Altersklasse")
-  val jgAltersklassen = Altersklasse.parseGrenzen(wettkampf.jahrgangsklassen, "Altersklasse")
+  val altersklassen = Altersklasse.parseGrenzen(wettkampf.altersklassen)
+  val jgAltersklassen = Altersklasse.parseGrenzen(wettkampf.jahrgangsklassen)
 
   def riegenZuDurchgang: Map[String, Durchgang] = {
     val riegen = service.listRiegenZuWettkampf(wettkampf.id)
