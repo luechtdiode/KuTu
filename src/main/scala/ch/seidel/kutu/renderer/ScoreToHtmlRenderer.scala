@@ -523,8 +523,10 @@ trait ScoreToHtmlRenderer {
       }
       else {
         firstSiteRendered.set(true)
-        List(alldata.take(teamsPerPage - fixFirstPageHeaderLines)) ++
-          alldata.drop(teamsPerPage - fixFirstPageHeaderLines).sliding(teamsPerPage, teamsPerPage)
+        val headerOffset = fixFirstPageHeaderLines / (blockSize + 1)
+        val teamsFirstSite = teamsPerPage - headerOffset
+        List(alldata.take(teamsFirstSite)) ++
+          alldata.drop(teamsFirstSite).sliding(teamsPerPage, teamsPerPage)
       }
       pagedata.foreach { section =>
         renderTeamHead
