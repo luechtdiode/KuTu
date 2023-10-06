@@ -379,13 +379,16 @@ trait RegistrationRoutes extends SprayJsonSupport with JwtSupport with JsonSuppo
                           val regs = selectAthletRegistrations(registrationId)
                           val vereinTeams = regs
                             .flatMap(_.team)
+                            .filter(_ > 0)
                             .distinct
                             .sorted
 
                           val nextVereinTeam = if (vereinTeams.isEmpty) 1 else vereinTeams.max + 1
 
                           (1 to nextVereinTeam).toList.map(idx => TeamItem(idx, registration.toVerein.extendedprint)) :::
-                            wi.wettkampf.toWettkampf.extraTeams.zipWithIndex.map(item => TeamItem(item._2 * -1 - 1, item._1))
+                            wi.wettkampf.toWettkampf.extraTeams
+                              .filter(_.nonEmpty)
+                              .zipWithIndex.map(item => TeamItem(item._2 * -1 - 1, item._1))
                         }
                       }
                     }
