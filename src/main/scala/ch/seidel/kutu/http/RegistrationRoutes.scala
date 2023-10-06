@@ -374,19 +374,22 @@ trait RegistrationRoutes extends SprayJsonSupport with JwtSupport with JsonSuppo
                     pathEndOrSingleSlash {
                       get {
                         complete {
-                          val wi = WettkampfInfo(wettkampf.toView(readProgramm(wettkampf.programmId)), this)
                           val registration = selectRegistration(registrationId)
-                          val regs = selectAthletRegistrations(registrationId)
-                          val vereinTeams = regs
-                            .flatMap(_.team)
-                            .filter(_ > 0)
-                            .distinct
-                            .sorted
+                          val (teamname, teamNumbers) = if (wettkampf.teamrule.exists(r => r.contains("VereinGe")))
+                                (s"${registration.toVerein.extendedprint}", selectAthletRegistrations(registrationId)
+                                  .flatMap(_.team)
+                                  .filter(_ > 0).distinct.sorted)
+                              else
+                                (s"${registration.verband}", selectRegistrations()
+                                  .filter(_.verband.equalsIgnoreCase(registration.verband))
+                                  .flatMap(vereinsReg => selectAthletRegistrations(vereinsReg.id))
+                                  .flatMap(_.team)
+                                  .filter(_ > 0).distinct.sorted)
 
-                          val nextVereinTeam = if (vereinTeams.isEmpty) 1 else vereinTeams.max + 1
+                          val nextTeamNumber = if (teamNumbers.isEmpty) 1 else teamNumbers.max + 1
 
-                          (1 to nextVereinTeam).toList.map(idx => TeamItem(idx, registration.toVerein.extendedprint)) :::
-                            wi.wettkampf.toWettkampf.extraTeams
+                          (1 to nextTeamNumber).toList.map(idx => TeamItem(idx, teamname)) :::
+                            wettkampf.extraTeams
                               .filter(_.nonEmpty)
                               .zipWithIndex.map(item => TeamItem(item._2 * -1 - 1, item._1))
                         }
