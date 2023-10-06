@@ -60,7 +60,7 @@ export class RegAthletItemComponent implements OnInit {
   }
 
   mapTeam(teamId: number): string {
-    return [...this.teams.filter(tm => tm.index == teamId).map(tm => {
+    return [...this.teams.filter(tm => tm.name?.trim().length > 0 && tm.index == teamId).map(tm => {
       if (tm.index > 0) {
         return tm.name + ' ' + tm.index;
       } else return tm.name;

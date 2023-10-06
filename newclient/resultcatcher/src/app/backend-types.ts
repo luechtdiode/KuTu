@@ -60,6 +60,11 @@ export interface TeamItem {
   index: number;
   name: string;
 }
+export interface TeamList {
+  path?: string;
+  teams?: TeamItem[];
+}
+
 export interface ClubRegistration {
   id: number;
   mail: string;
