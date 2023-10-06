@@ -12,7 +12,7 @@ import { DurchgangStarted, Wettkampf, Geraet, WertungContainer, NewLastResults, 
          AthletRegistration,
          ProgrammRaw,
          RegistrationResetPW,
-         SyncAction, JudgeRegistration, JudgeRegistrationProgramItem, BulkEvent, Verein, Score, ScoreLink, TeamItem} from '../backend-types';
+         SyncAction, JudgeRegistration, JudgeRegistrationProgramItem, BulkEvent, Verein, Score, ScoreLink, TeamItem, TeamList} from '../backend-types';
 import { backendUrl } from '../utils';
 
 // tslint:disable:radix
@@ -99,7 +99,8 @@ export class BackendService extends WebsocketService {
     newLastResults = new BehaviorSubject<NewLastResults>(undefined);
     _clubregistrations = [];
     clubRegistrations = new BehaviorSubject<ClubRegistration[]>([]);
-    
+    clubTeams: TeamList = {};
+
     askForUsername = new Subject<BackendService>();
     lastMessageAck: MessageAck;
 
@@ -407,15 +408,23 @@ export class BackendService extends WebsocketService {
 
       return loader;
     }
-
+    
     loadTeamsListForClub(competitionId: string, clubid: number): Observable<TeamItem[]> {
+      const path = 'api/registrations/' + competitionId + '/' + clubid + '/teams';
+      if (this.clubTeams.path === path) {
+        return of(this.clubTeams.teams);
+      }
       const loader = this.startLoading('Teamliste zum Club wird geladen. Bitte warten ...',
         this.http.get<TeamItem[]>(
-          backendUrl + 'api/registrations/' + competitionId + '/' + clubid + '/teams'
+          backendUrl + path
           ).pipe(share()));
 
       loader.subscribe({
         next: (data) => {
+          this.clubTeams = {
+            "path" : path,
+            "teams": data
+          };
         }, 
         error: this.standardErrorHandler
       });
@@ -680,6 +689,7 @@ export class BackendService extends WebsocketService {
         return this.loadClubRegistrations();
       }
       this.durchgaenge = [];
+      this.clubTeams = {};
       this._clubregistrations = [];
       this.geraete = undefined;
       this.steps = undefined;
@@ -728,6 +738,7 @@ export class BackendService extends WebsocketService {
     resetCompetition(competitionId) {
       console.log('reset data');
       this.durchgaenge = [];
+      this.clubTeams = {};
       this._clubregistrations = [];
       this.clubRegistrations.next([]);
       this.geraete = undefined;
