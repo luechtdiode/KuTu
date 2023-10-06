@@ -15,15 +15,7 @@ case object KuTuGeTuGrouper extends RiegenGrouper {
   val wkGrouper: List[WertungView => String] = List(
     x => x.athlet.geschlecht,
     x => x.wettkampfdisziplin.programm.name,
-    x => x.athlet.verein match {
-      case Some(v) =>
-        if (x.team == 0) v.easyprint
-        else if (x.team < 0 && x.wettkampf.extraTeams.size > x.team * -1 -1) {
-          s"${x.wettkampf.extraTeams(x.team * -1 -1)}"
-        }
-        else s"${v.easyprint} ${x.team}"
-      case None => ""
-    },
+    x => x.teamName,
     // fallback ... should not happen
     x => (x.athlet.gebdat match {case Some(d) => f"$d%tY"; case _ => ""})
   )
