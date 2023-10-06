@@ -29,9 +29,6 @@ case object JGClubGrouper extends RiegenGrouper {
     x => extractSexGrouper(x),
     x => extractProgrammGrouper(x),
     x => extractJGGrouper(x),
-    x => x.athlet.verein match {
-      case Some(v) => v.easyprint
-      case None => ""
-    }
+    x => x.teamName,
   )
 }

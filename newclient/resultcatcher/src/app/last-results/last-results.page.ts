@@ -1,4 +1,4 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnDestroy, OnInit } from '@angular/core';
 import { WertungContainer, Geraet, Wettkampf, ScoreBlock, ScoreRow, ScoreLink } from '../backend-types';
 import { IonItemSliding, NavController, ActionSheetController } from '@ionic/angular';
 
@@ -6,7 +6,7 @@ import { BackendService } from '../services/backend.service';
 import { debounceTime, distinctUntilChanged, filter, map, share, switchMap } from 'rxjs/operators';
 import { backendUrl } from '../utils';
 import { Observable } from 'rxjs/internal/Observable';
-import { Subject, BehaviorSubject, of } from 'rxjs';
+import { Subject, BehaviorSubject, of, Subscription } from 'rxjs';
 import { GroupBy } from '../component/result-display/result-display.component';
 
 @Component({
@@ -14,7 +14,7 @@ import { GroupBy } from '../component/result-display/result-display.component';
   templateUrl: './last-results.page.html',
   styleUrls: ['./last-results.page.scss'],
 })
-export class LastResultsPage implements OnInit {
+export class LastResultsPage implements OnInit, OnDestroy {
   groupBy = GroupBy;
 
   // @ViewChild(IonContent) content: IonContent;
@@ -34,6 +34,8 @@ export class LastResultsPage implements OnInit {
 
   private busy = new BehaviorSubject(false);
   durchgangopen: boolean;
+
+  subscriptions: Subscription[] = [];
 
 
   // @HostListener('window:resize', ['$event'])
@@ -57,13 +59,17 @@ export class LastResultsPage implements OnInit {
     });
   }
 
+  ngOnDestroy(): void {
+      this.subscriptions.forEach(s => s.unsubscribe());
+  }
+
   ngOnInit(): void {
-    this.backendService.competitionSubject.subscribe(comps => {
+    this.subscriptions.push(this.backendService.competitionSubject.subscribe(comps => {
       this.backendService.activateNonCaptionMode(this.backendService.competition).subscribe(geraete => {
         this.geraete = geraete || [];
         this.sortItems();
       });
-      this.backendService.newLastResults.subscribe(newLastRes => {
+      this.subscriptions.push(this.backendService.newLastResults.subscribe(newLastRes => {
         this.lastItems = this.items.map(item => item.id * this.geraete.length + item.geraet);
         this.items = [];
         if (!!newLastRes && !!newLastRes.results) {
@@ -75,17 +81,32 @@ export class LastResultsPage implements OnInit {
         if (this.scorelistAvailable()) {
           this.backendService.getScoreLists().subscribe(scorelists => {
             const c = this.competitionContainer();
-            const genericLink = `/api/scores/${c.uuid}/query?groupby=Kategorie:Geschlecht`;
+            let genericLinkAddon = '';
+            if (c.altersklassen && c.altersklassen.trim().length > 0) {
+              genericLinkAddon = ':Wettkampf%20Altersklassen';
+            }
+            else if (c.jahrgangsklassen && c.jahrgangsklassen.trim().length > 0) {
+              genericLinkAddon = ':Wettkampf%20JG-Altersklassen';
+            }
+            const genericLink = `/api/scores/${c.uuid}/query?groupby=Kategorie${genericLinkAddon}:Geschlecht`;
             if (!!scorelists) {
               const values = Object.values(scorelists)
               const lists = values.filter(l => (l as any).name != 'Zwischenresultate').sort((a,b)=> a.name.localeCompare(b.name));
-              this.scorelinks = [...lists, <ScoreLink>{
-                  name: 'Generische Rangliste',
-                  published: true,
-                  "published-date": '',
-                  "scores-href": genericLink,
-                  "scores-query": genericLink
-                }];
+              const einzelGeneric = <ScoreLink>{
+                name: 'Generische Rangliste',
+                published: true,
+                "published-date": '',
+                "scores-href": genericLink,
+                "scores-query": genericLink
+              };
+              const teamGeneric = <ScoreLink>{
+                name: 'Generische Team-Rangliste',
+                published: true,
+                "published-date": '',
+                "scores-href": genericLink + '&kind=Teamrangliste',
+                "scores-query": genericLink + '&kind=Teamrangliste'
+              };
+              this.scorelinks = this.teamsAllowed(c) ? [...lists, teamGeneric, einzelGeneric] : [...lists, einzelGeneric];
               const publishedLists = this.scorelinks.filter(s => ''+s.published === 'true')
               this.refreshScoreList(publishedLists[0]);
             }
@@ -93,8 +114,12 @@ export class LastResultsPage implements OnInit {
         } else {
           this.title = 'Aktuelle Resultate';
         }
-      });
-    });
+      }));
+    }));
+  }
+
+  teamsAllowed(wk: Wettkampf): boolean {
+    return wk.teamrule?.trim().length > 0 && wk.teamrule !== 'Keine Teams';
   }
 
   _title: string = 'Aktuelle Resultate';
@@ -191,7 +216,8 @@ export class LastResultsPage implements OnInit {
       auszeichnungendnote: undefined,
       id: undefined,
       uuid: undefined,
-      programmId: 0
+      programmId: 0,
+      teamrule: ""
     };
 
     if (!this.backendService.competitions) { return emptyCandidate; }
@@ -299,8 +325,12 @@ export class LastResultsPage implements OnInit {
   }
 
   filter(query: string) {
-    const queryTokens = query.toUpperCase().split(' ');
+    const upperQuery = query.toUpperCase();
+    const queryTokens = upperQuery.split(' ');
     return (tnRoot: ScoreRow, block: ScoreBlock): boolean => {
+      if (block.title.text.toUpperCase().indexOf(upperQuery) > -1) {
+        return true;
+      }
       return queryTokens.filter(token => {
         return [tnRoot, ...tnRoot.rows].find(tn => {
           if (tn.Athlet?.toUpperCase().indexOf(token) > -1) {
@@ -315,7 +345,7 @@ export class LastResultsPage implements OnInit {
           if (tn.Verein?.toUpperCase().indexOf(token) > -1) {
             return true;
           }
-          if (tn.Jahrgang?.toUpperCase().indexOf(token) > -1) {
+          if (tn.Jahrgang?.toUpperCase() === token) {
             return true;
           }
           if (block.title.text.toUpperCase().replace('.', ' ').replace(',', ' ').split(' ').indexOf(token) > -1) {

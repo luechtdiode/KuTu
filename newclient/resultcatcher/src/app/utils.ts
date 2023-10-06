@@ -88,3 +88,8 @@ export const gearMapping = {
   30: "minitramp.svg",
   31: "ringe.svg"
 };
+
+
+export const turn10ProgrammNames = [
+  "BS", "OS"
+];

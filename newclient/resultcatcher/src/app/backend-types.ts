@@ -25,6 +25,7 @@ export interface Teilnehmer {
   durchgang: string;
   start: string;
   verein: string;
+  team: string;
 }
 
 export interface ProgrammItem {
@@ -55,6 +56,15 @@ export interface Verein {
   name: string;
   verband: string;
 }
+export interface TeamItem {
+  index: number;
+  name: string;
+}
+export interface TeamList {
+  path?: string;
+  teams?: TeamItem[];
+}
+
 export interface ClubRegistration {
   id: number;
   mail: string;

@@ -13,19 +13,21 @@ object TeamRegel {
     , ("Aus Verband, drei Bestnoten pro Gerät, mit max vier Mitglieder" -> "VerbandGerät(3/4)")
     , ("Aus Verband, drei Gesamt-Bestnoten, mit unbeschränkter Anzahl Mitglieder" -> "VerbandGesamt(3/*)")
     , ("Aus Verband, drei Gesamt-Bestnoten, mit max vier Mitglieder" -> "VerbandGesamt(3/4)")
-    , ("Individuell" -> "VereinGesamt(<min>/<max>), VerbandGesamt(<min>/<max>), VereinGerät(<min>/<max>), VerbandGerät(<min>/<max>)")
+    , ("Individuell" -> "VereinGesamt(<min>/<max>/<extrateam1>+<extrateam2>), VerbandGesamt(<min>/<max>), VereinGerät(<min>/<max>), VerbandGerät(<min>/<max>)")
   )
-  private val rangePattern = "([\\S]+)\\(([0-9]+)/([0-9,\\*]*)\\)".r
+  private val rangePattern = "([\\S]+)\\(([0-9]+)\\/([0-9,\\*]*)(\\/[\\S\\s\\/0-9+]*)?\\)".r
 
   def apply(formel: String): TeamRegel = {
     def defaultMax(max: String): Int = if (max.equals("*")) 0 else max
     val regeln = formel.split(",").map(_.trim).filter(_.nonEmpty).toList
     val mappedRules: List[TeamRegel] = regeln.flatMap {
-      case rangePattern(rulename, min, max) => rulename match {
-        case "VereinGesamt" => Some(TeamRegelVereinGesamt(min, defaultMax(max)))
-        case "VerbandGesamt" => Some(TeamRegelVerbandGesamt(min, defaultMax(max)))
-        case "VereinGerät" => Some(TeamRegelVereinGeraet(min, defaultMax(max)))
-        case "VerbandGerät" => Some(TeamRegelVerbandGeraet(min, defaultMax(max)))
+      case rangePattern(rulename, min, max, extrateams) =>
+        val extraTeamsDef = if (extrateams == null) "" else extrateams
+        rulename match {
+        case "VereinGesamt" => Some(TeamRegelVereinGesamt(min, defaultMax(max), extraTeamsDef))
+        case "VerbandGesamt" => Some(TeamRegelVerbandGesamt(min, defaultMax(max), extraTeamsDef))
+        case "VereinGerät" => Some(TeamRegelVereinGeraet(min, defaultMax(max), extraTeamsDef))
+        case "VerbandGerät" => Some(TeamRegelVerbandGeraet(min, defaultMax(max), extraTeamsDef))
         case _ => None
       }
       case "Keine Teams" =>None
@@ -43,12 +45,18 @@ object TeamRegel {
 }
 
 sealed trait TeamRegel {
+  def getExtrateams: List[String]
+  def parseExtrateams(extraTeamsDef: String) = extraTeamsDef.replace("/", "").split("\\+").map(_.trim).toList
+
   def extractTeams(wertungen: Iterable[WertungView]): List[Team]
+  def extractExtraTeams(wertungen: Iterable[WertungView]): List[String] = wertungen.map(_.wettkampf).toList.distinct.flatMap(_.extraTeams)
+
   def teamsAllowed: Boolean
   def toFormel: String
   def toRuleName: String
 }
 case class TeamRegelList(regeln: List[TeamRegel], name: Option[String] = None) extends TeamRegel {
+  override def getExtrateams: List[String] = regeln.flatMap(_.getExtrateams)
   override def extractTeams(wertungen: Iterable[WertungView]): List[Team] = {
     regeln.flatMap(_.extractTeams(wertungen))
   }
@@ -58,18 +66,20 @@ case class TeamRegelList(regeln: List[TeamRegel], name: Option[String] = None) e
   override def toRuleName: String = name.getOrElse(regeln.map(_.toRuleName).sorted.mkString(", "))
 }
 
-case class TeamRegelVereinGeraet(min: Int, max: Int) extends TeamRegel {
-  override def toFormel: String = s"VereinGerät($min/${if (max > 0) max else "*"})"
+case class TeamRegelVereinGeraet(min: Int, max: Int, extraTeamsDef: String) extends TeamRegel {
+  private val extrateams = parseExtrateams(extraTeamsDef)
+  override def getExtrateams: List[String] = extrateams
+  override def toFormel: String = s"VereinGerät($min/${if (max > 0) max else "*"}$extraTeamsDef)"
   override def toRuleName: String = s"""Vereins-Team Rangliste (beste $min Gerätewertungen${if (max > 0) s" aus $max" else ""})"""
 
   override def extractTeams(wertungen: Iterable[WertungView]): List[Team] = {
+    val extraTeams = extractExtraTeams(wertungen)
     wertungen
-      .filter(w => w.team > 0)
+      .filter(w => w.team != 0)
       .toList
-      .groupBy(w => (w.athlet.verein, w.team))
+      .groupBy(w => w.getTeamName(extraTeams))
       .flatMap { team =>
-        val (teamkey, teamwertungen) = team
-        val (verein, teamNummer) = teamkey
+        val (teamname, teamwertungen) = team
         val athletCount = teamwertungen.map(w => w.athlet.id).toSet.size
         if (athletCount >= min && (max == 0 || athletCount <= max)) {
           val perDisciplinWertungen: Map[Disziplin, List[WertungView]] = teamwertungen
@@ -95,7 +105,7 @@ case class TeamRegelVereinGeraet(min: Int, max: Int) extends TeamRegel {
               allRelevantWertungen.contains(w.athlet)
             }
           }
-          List(Team(s"${verein.map(_.easyprint).getOrElse("")} ${teamNummer}", toRuleName, limitedTeamwertungen, perDisciplinCountingWertungen, perDisciplinWertungen))
+          List(Team(s"${teamname}", toRuleName, limitedTeamwertungen, perDisciplinCountingWertungen, perDisciplinWertungen))
         } else {
           List.empty
         }
@@ -104,19 +114,22 @@ case class TeamRegelVereinGeraet(min: Int, max: Int) extends TeamRegel {
 
   override def teamsAllowed: Boolean = true
 }
-case class TeamRegelVereinGesamt(min: Int, max: Int) extends TeamRegel {
-  override def toFormel: String = s"VereinGesamt($min/${if (max > 0) max else "*"})"
+case class TeamRegelVereinGesamt(min: Int, max: Int, extraTeamsDef: String) extends TeamRegel {
+  private val extrateams = parseExtrateams(extraTeamsDef)
+  override def getExtrateams: List[String] = extrateams
+
+  override def toFormel: String = s"VereinGesamt($min/${if (max > 0) max else "*"}$extraTeamsDef)"
 
   override def toRuleName: String = s"""Vereins-Team Rangliste (beste $min Gesamtwertungen${if (max > 0) s" aus $max" else ""})"""
 
   override def extractTeams(wertungen: Iterable[WertungView]): List[Team] = {
+    val extraTeams = extractExtraTeams(wertungen)
     wertungen
-      .filter(w => w.team > 0)
+      .filter(w => w.team != 0)
       .toList
-      .groupBy(w => (w.athlet.verein, w.team))
+      .groupBy(w => w.getTeamName(extraTeams))
       .flatMap { team =>
-        val (teamkey, teamwertungen) = team
-        val (verein, teamNummer) = teamkey
+        val (teamname, teamwertungen) = team
         val athletCount = teamwertungen.map(w => w.athlet.id).toSet.size
         if (athletCount >= min && (max == 0 || athletCount <= max)) {
           val perAthletWertungen = teamwertungen
@@ -135,7 +148,7 @@ case class TeamRegelVereinGesamt(min: Int, max: Int) extends TeamRegel {
               allRelevantWertungen.contains
             }
           }
-          List(Team(s"${verein.map(_.easyprint).getOrElse("")} ${teamNummer}", toRuleName, limitedTeamwertungen, perAthletWertungen, perAthletWertungen))
+          List(Team(s"${teamname}", toRuleName, limitedTeamwertungen, perAthletWertungen, perAthletWertungen))
         } else {
           List.empty
         }
@@ -145,19 +158,22 @@ case class TeamRegelVereinGesamt(min: Int, max: Int) extends TeamRegel {
   override def teamsAllowed: Boolean = true
 }
 
-case class TeamRegelVerbandGeraet(min: Int, max: Int) extends TeamRegel {
-  override def toFormel: String = s"VerbandGerät($min/${if (max > 0) max else "*"})"
+case class TeamRegelVerbandGeraet(min: Int, max: Int, extraTeamsDef: String) extends TeamRegel {
+  private val extrateams = parseExtrateams(extraTeamsDef)
+  override def getExtrateams: List[String] = extrateams
+
+  override def toFormel: String = s"VerbandGerät($min/${if (max > 0) max else "*"}$extraTeamsDef)"
 
   override def toRuleName: String = s"""Verbands-Team Rangliste (beste $min Gerätewertungen${if (max > 0) s" aus $max" else ""})"""
 
   override def extractTeams(wertungen: Iterable[WertungView]): List[Team] = {
+    val extraTeams = extractExtraTeams(wertungen)
     wertungen
-      .filter(w => w.team > 0)
+      .filter(w => w.team != 0)
       .toList
-      .groupBy(w => (w.athlet.verein.flatMap(_.verband), w.team))
+      .groupBy(w => w.getTeamName(extraTeams))
       .flatMap { team =>
-        val (teamkey, teamwertungen) = team
-        val (verband, teamNummer) = teamkey
+        val (teamname, teamwertungen) = team
         val athletCount = teamwertungen.map(w => w.athlet.id).toSet.size
         if (athletCount >= min && (max == 0 || athletCount <= max)) {
           val perDisciplinWertungen: Map[Disziplin, List[WertungView]] = teamwertungen
@@ -184,7 +200,7 @@ case class TeamRegelVerbandGeraet(min: Int, max: Int) extends TeamRegel {
               allRelevantWertungen.contains(w.athlet)
             }
           }
-          List(Team(s"${verband.getOrElse("")} ${teamNummer}", toRuleName, limitedTeamwertungen, perDisciplinCountingWertungen, perDisciplinWertungen))
+          List(Team(s"${teamname}", toRuleName, limitedTeamwertungen, perDisciplinCountingWertungen, perDisciplinWertungen))
         } else {
           List.empty
         }
@@ -193,18 +209,21 @@ case class TeamRegelVerbandGeraet(min: Int, max: Int) extends TeamRegel {
 
   override def teamsAllowed: Boolean = true
 }
-case class TeamRegelVerbandGesamt(min: Int, max: Int) extends TeamRegel {
-  override def toFormel: String = s"VerbandGesamt($min/${if (max > 0) max else "*"})"
+case class TeamRegelVerbandGesamt(min: Int, max: Int, extraTeamsDef: String) extends TeamRegel {
+  private val extrateams = parseExtrateams(extraTeamsDef)
+  override def getExtrateams: List[String] = extrateams
+
+  override def toFormel: String = s"VerbandGesamt($min/${if (max > 0) max else "*"}$extraTeamsDef)"
   override def toRuleName: String = s"""Verbands-Team Rangliste (beste $min Gesamtwertungen${if (max > 0) s" aus $max" else ""})"""
 
   override def extractTeams(wertungen: Iterable[WertungView]): List[Team] = {
+    val extraTeams = extractExtraTeams(wertungen)
     wertungen
-      .filter(w => w.team > 0)
+      .filter(w => w.team != 0)
       .toList
-      .groupBy(w => (w.athlet.verein.flatMap(_.verband), w.team))
+      .groupBy(w => w.getTeamName(extraTeams))
       .flatMap { team =>
-        val (teamkey, teamwertungen) = team
-        val (verband, teamNummer) = teamkey
+        val (teamname, teamwertungen) = team
         val athletCount = teamwertungen.map(w => w.athlet.id).toSet.size
         if (athletCount >= min && (max == 0 || athletCount <= max)) {
           val perAthletWertungen = teamwertungen
@@ -223,7 +242,7 @@ case class TeamRegelVerbandGesamt(min: Int, max: Int) extends TeamRegel {
               allRelevantWertungen.contains
             }
           }
-          List(Team(s"${verband.getOrElse("")} ${teamNummer}", toRuleName, limitedTeamwertungen, perAthletWertungen, perAthletWertungen))
+          List(Team(s"${teamname}", toRuleName, limitedTeamwertungen, perAthletWertungen, perAthletWertungen))
         } else {
           List.empty
         }

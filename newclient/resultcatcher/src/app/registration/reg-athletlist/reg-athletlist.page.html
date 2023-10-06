@@ -41,7 +41,7 @@
     <div *ngFor="let pgm of this.filteredPrograms">
       <ion-item-divider>{{pgm.name}}</ion-item-divider>
       <ion-item-sliding #slidingAthletRegistrationItem *ngFor="let reg of this.filteredStartList(pgm.id)">
-        <app-reg-athlet-item [athletregistration]="reg" [vereinregistration]="currentRegistration" [status]=getStatus(reg) [programmlist]="wkPgms" (click)='itemTapped(reg, slidingAthletRegistrationItem)'></app-reg-athlet-item>
+        <app-reg-athlet-item [athletregistration]="reg" [vereinregistration]="currentRegistration" [status]=getStatus(reg) [programmlist]="wkPgms" [teams]="teams" (click)='itemTapped(reg, slidingAthletRegistrationItem)'></app-reg-athlet-item>
         <ion-item-options side="end">
           <ion-item-option color="primary" (click)="edit(reg, slidingAthletRegistrationItem)">
               <ion-icon name="arrow-forward-circle-outline" ios="md-arrow-forward-circle-outline"></ion-icon>

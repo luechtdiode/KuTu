@@ -10,7 +10,7 @@ import ch.seidel.kutu.{Config, domain}
 import ch.seidel.kutu.Config.remoteAdminBaseUrl
 import ch.seidel.kutu.akka._
 import ch.seidel.kutu.data.RegistrationAdmin.adjustWertungRiegen
-import ch.seidel.kutu.domain.{AthletRegistration, AthletView, JudgeRegistration, KutuService, NewRegistration, ProgrammRaw, Registration, RegistrationResetPW, Verein, Wettkampf, dateToExportedStr, encodeFileName}
+import ch.seidel.kutu.domain.{AthletRegistration, AthletView, JudgeRegistration, KutuService, NewRegistration, ProgrammRaw, Registration, RegistrationResetPW, TeamItem, Verein, Wettkampf, dateToExportedStr, encodeFileName}
 import ch.seidel.kutu.http.AuthSupport.OPTION_LOGINRESET
 import ch.seidel.kutu.renderer.MailTemplates.createPasswordResetMail
 import ch.seidel.kutu.renderer.{CompetitionsClubsToHtmlRenderer, CompetitionsJudgeToHtmlRenderer, PrintUtil}
@@ -367,6 +367,31 @@ trait RegistrationRoutes extends SprayJsonSupport with JwtSupport with JsonSuppo
                             log.info(s"$clientId: Anmeldungen kopiert: von ${wettkampfCopyFrom.easyprint} nach ${registrationId}")
                             StatusCodes.OK
                           }
+                        }
+                      }
+                    }
+                  } ~ pathPrefixLabeled("teams", "teams") {
+                    pathEndOrSingleSlash {
+                      get {
+                        complete {
+                          val registration = selectRegistration(registrationId)
+                          val (teamname, teamNumbers) = if (wettkampf.teamrule.exists(r => r.contains("VereinGe")))
+                                (s"${registration.toVerein.extendedprint}", selectAthletRegistrations(registrationId)
+                                  .flatMap(_.team)
+                                  .filter(_ > 0).distinct.sorted)
+                              else
+                                (s"${registration.verband}", selectRegistrations()
+                                  .filter(_.verband.equalsIgnoreCase(registration.verband))
+                                  .flatMap(vereinsReg => selectAthletRegistrations(vereinsReg.id))
+                                  .flatMap(_.team)
+                                  .filter(_ > 0).distinct.sorted)
+
+                          val nextTeamNumber = if (teamNumbers.isEmpty) 1 else teamNumbers.max + 1
+
+                          (1 to nextTeamNumber).toList.map(idx => TeamItem(idx, teamname)) :::
+                            wettkampf.extraTeams
+                              .filter(_.nonEmpty)
+                              .zipWithIndex.map(item => TeamItem(item._2 * -1 - 1, item._1))
                         }
                       }
                     }

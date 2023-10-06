@@ -1,6 +1,7 @@
 package ch.seidel.kutu.squad
 
 import ch.seidel.kutu.domain._
+import ch.seidel.kutu.view.WettkampfInfo
 
 case object KuTuGeTuGrouper extends RiegenGrouper {
 
@@ -14,7 +15,7 @@ case object KuTuGeTuGrouper extends RiegenGrouper {
   val wkGrouper: List[WertungView => String] = List(
     x => x.athlet.geschlecht,
     x => x.wettkampfdisziplin.programm.name,
-    x => x.athlet.verein match {case Some(v) => v.easyprint case None => ""},
+    x => x.teamName,
     // fallback ... should not happen
     x => (x.athlet.gebdat match {case Some(d) => f"$d%tY"; case _ => ""})
   )

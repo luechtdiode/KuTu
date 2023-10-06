@@ -190,6 +190,9 @@ export class SearchAthletPage implements OnInit {
         if (tn.verein.toUpperCase().indexOf(token) > -1) {
           return true;
         }
+        if (tn.team.toUpperCase().indexOf(token) > -1) {
+          return true;
+        }
         if (pgm.indexOf(token) > -1) {
           return true;
         }

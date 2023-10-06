@@ -2,7 +2,7 @@ import { Component, OnInit, NgZone } from '@angular/core';
 import { NavController, AlertController } from '@ionic/angular';
 import { ActivatedRoute } from '@angular/router';
 import { BackendService } from 'src/app/services/backend.service';
-import { AthletRegistration, ProgrammRaw, Wettkampf } from 'src/app/backend-types';
+import { AthletRegistration, ProgrammRaw, TeamItem, Wettkampf } from 'src/app/backend-types';
 import { toDateString } from '../../utils';
 import { NgForm } from '@angular/forms';
 
@@ -30,6 +30,7 @@ export class RegAthletEditorPage implements OnInit {
   athletId: number;
   wkId: string;
   wkPgms: ProgrammRaw[];
+  teams: TeamItem[];
   wettkampfId: number;
   clubAthletList: AthletRegistration[];
   clubAthletListCurrent: AthletRegistration[];
@@ -50,26 +51,29 @@ export class RegAthletEditorPage implements OnInit {
       this.wettkampfId = parseInt(wk.id);
       this.backendService.loadProgramsForCompetition(wk.uuid).subscribe(pgms => {
         this.wkPgms = pgms;
-        this.backendService.loadAthletListForClub(this.wkId, this.regId).subscribe(regs => {
-          this.clubAthletList = regs;
-            this.backendService.loadAthletRegistrations(this.wkId, this.regId).subscribe(regs => {
-              this.clubAthletListCurrent = regs;
-              if (this.athletId) {
-                this.updateUI(regs.find(athlet => athlet.id === this.athletId));
-              } else {
-                this.updateUI({
-                  id: 0,
-                  vereinregistrationId: this.regId,
-                  name: '',
-                  vorname: '',
-                  geschlecht: 'W',
-                  gebdat: undefined,
-                  programId: undefined,
-                  team: 0,
-                  registrationTime: 0
-                } as AthletRegistration);
-              }
-            });
+        this.backendService.loadTeamsListForClub(this.wkId, this.regId).subscribe(teams => {
+          this.teams = teams.filter(tm => tm.name?.trim().length > 0);
+          this.backendService.loadAthletListForClub(this.wkId, this.regId).subscribe(regs => {
+            this.clubAthletList = regs;
+              this.backendService.loadAthletRegistrations(this.wkId, this.regId).subscribe(regs => {
+                this.clubAthletListCurrent = regs;
+                if (this.athletId) {
+                  this.updateUI(regs.find(athlet => athlet.id === this.athletId));
+                } else {
+                  this.updateUI({
+                    id: 0,
+                    vereinregistrationId: this.regId,
+                    name: '',
+                    vorname: '',
+                    geschlecht: 'W',
+                    gebdat: undefined,
+                    programId: undefined,
+                    team: 0,
+                    registrationTime: 0
+                  } as AthletRegistration);
+                }
+              });
+          });
         });
       });
     });
@@ -130,8 +134,17 @@ export class RegAthletEditorPage implements OnInit {
     });
   }
   teamsAllowed(): boolean {
-    return true || this.wettkampfFull.teamrule?.length > 0 && this.wettkampfFull.teamrule !== 'Keine Teams';
+    return this.wettkampfFull.teamrule?.length > 0 && this.wettkampfFull.teamrule !== 'Keine Teams';
   }
+
+  mapTeam(teamId: number): string {
+    return [...this.teams.filter(tm => tm.index == teamId).map(tm => {
+      if (tm.index > 0) {
+        return tm.name + ' ' + tm.index;
+      } else return tm.name;
+    }), ''][0];
+  }
+
   editable() {
     return this.backendService.loggedIn;
   }
@@ -183,7 +196,7 @@ export class RegAthletEditorPage implements OnInit {
     if(!form.valid) return;
     const reg = Object.assign({}, this.registration, {
       gebdat: new Date(form.value.gebdat).toJSON(),
-      team: form.value.team > 0 ? form.value.team : 0
+      team: form.value.team ? form.value.team : 0
     });
 
     if (this.athletId === 0 || reg.id === 0) {

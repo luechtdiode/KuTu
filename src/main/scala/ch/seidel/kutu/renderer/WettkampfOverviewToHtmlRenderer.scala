@@ -259,7 +259,7 @@ trait WettkampfOverviewToHtmlRenderer {
         case (group, wertungen) => teams.extractTeams(wertungen).groupBy(_.rulename).map {
           case (rulename, teams) =>
             val (pgm, ak, sex) = group
-            (rulename, pgm, ak, sex, teams.size, teams.map(_.name).mkString(", "))
+            (rulename, pgm, ak, sex, teams.size, teams.map(_.name).sorted.mkString(", "))
         }
       }.groupBy(_._1).map{
         case (rulename, list) =>

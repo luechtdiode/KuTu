@@ -8,7 +8,7 @@
         <small>({{athletregistration.gebdat | date}})</small></ion-label></ion-col>
     </ion-row>
     <ion-row >
-      <ion-col *ngIf="athletregistration.team > 0"><small>{{getTeamText()}}</small></ion-col>
+      <ion-col *ngIf="athletregistration.team != 0"><small>{{getTeamText()}}</small></ion-col>
     </ion-row>
   </ion-grid>
   <ion-badge slot="end" [color]="statusBadgeColor()">{{statusBadgeText()}}<br><small>{{statusComment()}}</small></ion-badge>

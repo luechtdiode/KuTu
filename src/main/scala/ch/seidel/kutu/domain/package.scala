@@ -362,6 +362,19 @@ package object domain {
     override def easyprint: String = "Team " + name
   }
 
+  case class TeamItem(index: Int, name: String) {
+    def itemText: String = if (index > 0) s"$name ${index}" else if (index < 0) name else ""
+
+    def machtesItemText(text: String): Boolean = text match {
+      case t: String if isNumeric(t) && !"0".equals(t) =>
+        val intText: Int = t
+        intText == index
+      case t: String if t.equalsIgnoreCase(name) => true
+      case t: String if t.equalsIgnoreCase(itemText) => true
+      case _ => false
+    }
+  }
+  
   object Wertungsrichter {
     def apply(): Wertungsrichter = Wertungsrichter(0, 0, "", "", "", None, "", "", "", None, activ = true)
   }
@@ -713,6 +726,8 @@ package object domain {
 
     override def easyprint = f"$titel am $datum%td.$datum%tm.$datum%tY"
 
+    lazy val extraTeams: List[String] = teamrule.map(TeamRegel(_).getExtrateams).toList.flatten
+
     def toView(programm: ProgrammView): WettkampfView = {
       WettkampfView(id, uuid, datum, titel, programm, auszeichnung, auszeichnungendnote, notificationEMail, altersklassen.getOrElse(""), jahrgangsklassen.getOrElse(""), punktegleichstandsregel.getOrElse(""), rotation.getOrElse(""), teamrule.getOrElse(""))
     }
@@ -904,6 +919,21 @@ package object domain {
 
     def +(r: Resultat) = resultat + r
 
+    def getTeamName(extraTeams: List[String]): String = athlet.verein match {
+      case Some(v) =>
+        if (team == 0) v.easyprint
+        else if (team < 0 && extraTeams.size > team * -1 - 1) {
+          s"${extraTeams(team * -1 - 1)}"
+        }
+        else if (wettkampf.teamrule.exists(r => r.contains("VereinGe")))
+          s"${v.easyprint} $team"
+        else
+          s"${v.verband.getOrElse(v.extendedprint)} $team"
+      case _ => if (team != 0) "$team" else ""
+    }
+
+    lazy val teamName = getTeamName(wettkampf.extraTeams)
+
     def toWertung = Wertung(id, athlet.id, wettkampfdisziplin.id, wettkampf.id, wettkampf.uuid.getOrElse(""), noteD, noteE, endnote, riege, riege2, Some(team))
 
     def toWertung(riege: String, riege2: Option[String]) = Wertung(id, athlet.id, wettkampfdisziplin.id, wettkampf.id, wettkampf.uuid.getOrElse(""), noteD, noteE, endnote, Some(riege), riege2, Some(team))
@@ -967,6 +997,8 @@ package object domain {
   }
 
   sealed trait NotenModus {
+    def getDifficultLabel: String = "D"
+    def getExecutionLabel: String = "E"
     def selectableItems: Option[List[String]] = None
 
     def validated(dnote: Double, enote: Double, wettkampfDisziplin: WettkampfdisziplinView): (Double, Double)
@@ -979,7 +1011,7 @@ package object domain {
     /*override*/ def shouldSuggest(item: String, query: String): Boolean = false
   }
 
-  case class StandardWettkampf(punktgewicht: Double) extends NotenModus {
+  case class StandardWettkampf(punktgewicht: Double, dNoteLabel: String = "D", eNoteLabel: String = "E") extends NotenModus {
     override def validated(dnote: Double, enote: Double, wettkampfDisziplin: WettkampfdisziplinView): (Double, Double) = {
       val dnoteValidated = if (wettkampfDisziplin.isDNoteUsed) BigDecimal(dnote).setScale(wettkampfDisziplin.scale, BigDecimal.RoundingMode.FLOOR).max(wettkampfDisziplin.min).min(wettkampfDisziplin.max).toDouble else 0d
       val enoteValidated = BigDecimal(enote).setScale(wettkampfDisziplin.scale, BigDecimal.RoundingMode.FLOOR).max(wettkampfDisziplin.min).min(wettkampfDisziplin.max).toDouble
@@ -990,6 +1022,10 @@ package object domain {
       val dnoteValidated = if (wettkampfDisziplin.isDNoteUsed) dnote else 0d
       BigDecimal(dnoteValidated + enote).setScale(wettkampfDisziplin.scale, BigDecimal.RoundingMode.FLOOR).*(punktgewicht).max(wettkampfDisziplin.min).min(wettkampfDisziplin.max).toDouble
     }
+
+    override def getDifficultLabel: String = dNoteLabel
+
+    override def getExecutionLabel: String = eNoteLabel
   }
 
   case class Athletiktest(punktemapping: Map[String, Double], punktgewicht: Double) extends NotenModus {
