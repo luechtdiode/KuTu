@@ -919,6 +919,21 @@ package object domain {
 
     def +(r: Resultat) = resultat + r
 
+    def getTeamName(extraTeams: List[String]): String = athlet.verein match {
+      case Some(v) =>
+        if (team == 0) v.easyprint
+        else if (team < 0 && extraTeams.size > team * -1 - 1) {
+          s"${extraTeams(team * -1 - 1)}"
+        }
+        else if (wettkampf.teamrule.exists(r => r.contains("VereinGe")))
+          s"${v.easyprint} $team"
+        else
+          s"${v.verband.getOrElse(v.extendedprint)} $team"
+      case _ => if (team != 0) "$team" else ""
+    }
+
+    lazy val teamName = getTeamName(wettkampf.extraTeams)
+
     def toWertung = Wertung(id, athlet.id, wettkampfdisziplin.id, wettkampf.id, wettkampf.uuid.getOrElse(""), noteD, noteE, endnote, riege, riege2, Some(team))
 
     def toWertung(riege: String, riege2: Option[String]) = Wertung(id, athlet.id, wettkampfdisziplin.id, wettkampf.id, wettkampf.uuid.getOrElse(""), noteD, noteE, endnote, Some(riege), riege2, Some(team))

@@ -421,14 +421,29 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
   case object TeamItems {
     def apply(editor: WertungEditor): List[TeamItem] = this.apply(editor.init)
     def apply(editor: WertungView): List[TeamItem] = {
-      val vereinTeams = wkModel
-        .filter(editorRow => editorRow(0).init.athlet == editor.athlet)
-        .map(_.init(0).init.team)
-        .filter(_ > 0).toSet.toList.sorted
+      val (teamname, vereinTeams) = editor.athlet.verein match {
+        case Some(v) if (editor.wettkampf.teamrule.nonEmpty) =>
+          if (editor.wettkampf.teamrule.exists(r => r.contains("VereinGe")))
+            (s"${v.easyprint}", wkModel
+              .filter(editorRow => editorRow(0).init.athlet.verein == editor.athlet.verein)
+              .map(_.init(0).init.team)
+              .filter(_ > 0).toSet.toList.sorted)
+          else {
+            val verband = editor.athlet.verein.flatMap(_.verband).getOrElse(v.easyprint)
+            (s"${v.verband.getOrElse(v.extendedprint)}", wkModel
+              .filter(editorRow => editorRow(0).init.athlet.verein.exists(_.verband.exists(_.equals(verband))))
+              .map(_.init(0).init.team)
+              .filter(_ > 0).toSet.toList.sorted)
+          }
+        case _ => (s"${editor.athlet.verein.getOrElse("")}", wkModel
+          .filter(editorRow => editorRow(0).init.athlet.verein == editor.athlet.verein)
+          .map(_.init(0).init.team)
+          .filter(_ > 0).toSet.toList.sorted)
+      }
 
       val nextVereinTeam = if (vereinTeams.isEmpty) 1 else vereinTeams.max + 1
 
-      (1 to nextVereinTeam).toList.map(idx => TeamItem(idx, editor.athlet.verein.get.easyprint)) :::
+      (1 to nextVereinTeam).toList.map(idx => TeamItem(idx, teamname)) :::
         editor.wettkampf.extraTeams.zipWithIndex.map(item => TeamItem(item._2 * -1 - 1, item._1))
     }
     def map(editor: WertungView): Option[TeamItem] = apply(editor).find(team => team.index == editor.team)
@@ -591,7 +606,7 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
           wettkampfmode
         )) choose true otherwise false
 
-        visible <== when(wettkampfmode) choose wettkampfInfo.teamRegel.teamsAllowed otherwise true
+        visible = wettkampfInfo.teamRegel.teamsAllowed
         prefWidth = 100
 
         onEditCommit = (evt: CellEditEvent[IndexedSeq[WertungEditor], TeamItem]) => {
@@ -747,7 +762,7 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
               wettkampfmode
             )) choose true otherwise false
 
-            visible <== when(wettkampfmode) choose wettkampfInfo.teamRegel.teamsAllowed otherwise true
+            visible = wettkampfInfo.teamRegel.teamsAllowed
             prefWidth = 100
 
             onEditCommit = (evt: CellEditEvent[IndexedSeq[WertungEditor], TeamItem]) => {
