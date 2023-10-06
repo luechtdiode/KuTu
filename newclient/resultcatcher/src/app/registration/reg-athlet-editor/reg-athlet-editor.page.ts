@@ -52,29 +52,28 @@ export class RegAthletEditorPage implements OnInit {
       this.backendService.loadProgramsForCompetition(wk.uuid).subscribe(pgms => {
         this.wkPgms = pgms;
         this.backendService.loadTeamsListForClub(this.wkId, this.regId).subscribe(teams => {
-          this.teams = teams;
-        });
-  
-        this.backendService.loadAthletListForClub(this.wkId, this.regId).subscribe(regs => {
-          this.clubAthletList = regs;
-            this.backendService.loadAthletRegistrations(this.wkId, this.regId).subscribe(regs => {
-              this.clubAthletListCurrent = regs;
-              if (this.athletId) {
-                this.updateUI(regs.find(athlet => athlet.id === this.athletId));
-              } else {
-                this.updateUI({
-                  id: 0,
-                  vereinregistrationId: this.regId,
-                  name: '',
-                  vorname: '',
-                  geschlecht: 'W',
-                  gebdat: undefined,
-                  programId: undefined,
-                  team: 0,
-                  registrationTime: 0
-                } as AthletRegistration);
-              }
-            });
+          this.teams = teams.filter(tm => tm.name?.trim().length > 0);
+          this.backendService.loadAthletListForClub(this.wkId, this.regId).subscribe(regs => {
+            this.clubAthletList = regs;
+              this.backendService.loadAthletRegistrations(this.wkId, this.regId).subscribe(regs => {
+                this.clubAthletListCurrent = regs;
+                if (this.athletId) {
+                  this.updateUI(regs.find(athlet => athlet.id === this.athletId));
+                } else {
+                  this.updateUI({
+                    id: 0,
+                    vereinregistrationId: this.regId,
+                    name: '',
+                    vorname: '',
+                    geschlecht: 'W',
+                    gebdat: undefined,
+                    programId: undefined,
+                    team: 0,
+                    registrationTime: 0
+                  } as AthletRegistration);
+                }
+              });
+          });
         });
       });
     });
