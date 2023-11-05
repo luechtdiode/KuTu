@@ -1,4 +1,4 @@
-/target/
+target/
 /.cache
 /classes/
 /.*
@@ -37,3 +37,6 @@ aws-policy.txt
 docker/libs
 /WiX/
 /newclient/test/
+*.hprof
+/docs/new-competitions/
+/loadtestresults/
