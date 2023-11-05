@@ -82,7 +82,7 @@ jobs:
 
       - run: git checkout $(git log --branches -1 --pretty=format:'%D' | sed 's/.*, //g')
       - name: Cache Maven packages
-        uses: actions/cache@v2
+        uses: actions/cache@v3
         with:
           path: ~/.m2
           key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
@@ -132,7 +132,7 @@ jobs:
 
       - run: git checkout $(git log --branches -1 --pretty=format:'%D' | sed 's/.*, //g')
       - name: Cache Maven packages
-        uses: actions/cache@v2
+        uses: actions/cache@v3
         with:
           path: ~/.m2
           key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
@@ -170,7 +170,7 @@ jobs:
 
       - run: git checkout $(git log --branches -1 --pretty=format:'%D' | sed 's/.*, //g')
       - name: Cache Maven packages
-        uses: actions/cache@v2
+        uses: actions/cache@v3
         with:
           path: ~/.m2
           key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
