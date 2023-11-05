@@ -9,14 +9,23 @@
 </ion-header>
 
 <ion-content *ngIf="registration">
-  <ion-item-divider *ngIf="regId === 0" color="primary">Vorbelegung des Vereinsnamens</ion-item-divider>
-  <ion-item *ngIf="regId === 0" style="overflow: inherit;">
-    <ion-auto-complete class="suggester"
-      [options]="options"
-      [dataProvider]="provider"
-      (itemSelected)="vereinSelected($event)">
-    </ion-auto-complete>
-  </ion-item>
+  <ion-button *ngIf="regId === 0" id="searchClubPresets" size="large" expand="block">
+    <ion-icon name="search-outline" ios="md-search-outline">      
+    </ion-icon>&nbsp;&nbsp;
+    Verein aus liste auswählen ...</ion-button>
+  <ion-modal *ngIf="regId === 0" trigger="searchClubPresets" #modal>
+    <ng-template>
+      <app-typeahead
+        class="ion-page"
+        title="Vorbelegen mit"
+        [items]="clublist"
+        [selectedItem]="getVereinSelected"
+        (selectionChange)="setVereinSelected($event); modal.dismiss()"
+        (selectionCancel)="modal.dismiss()"
+      ></app-typeahead>
+    </ng-template>
+  </ion-modal>
+
   <form #clubRegistrationform="ngForm" (ngSubmit)="save(clubRegistrationform)" (keyup.enter)="save(clubRegistrationform)">
     <ion-list>
       <ion-item-divider color="primary">Verein</ion-item-divider>

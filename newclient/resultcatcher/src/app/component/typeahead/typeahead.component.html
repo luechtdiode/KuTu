@@ -1,0 +1,26 @@
+<ion-header>
+  <ion-toolbar>
+    <ion-title>{{ title }}</ion-title>
+  </ion-toolbar>
+  <ion-toolbar>
+    <ion-searchbar (ionInput)="searchbarInput($event)"></ion-searchbar>
+  </ion-toolbar>
+</ion-header>
+
+<ion-content color="light" class="ion-padding">
+  <ion-radio-group [(ngModel)]="selected">
+    <ion-radio *ngFor="let item of filteredItems" class="alert-radio-label sc-ion-alert-md" labelPlacement="end" [value]="item">{{ item.text}}</ion-radio>
+  </ion-radio-group>
+</ion-content>
+
+<ion-footer>
+  <ion-toolbar>
+    <ion-buttons slot="start">
+      <ion-button (click)="cancelChanges()">Abbrechen</ion-button>
+    </ion-buttons>
+
+    <ion-buttons slot="end">
+      <ion-button (click)="confirmChanges()">Okay</ion-button>
+    </ion-buttons>
+  </ion-toolbar>
+</ion-footer>
