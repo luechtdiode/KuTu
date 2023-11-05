@@ -16,7 +16,6 @@ import { SplashScreen } from '@capacitor/splash-screen';
 
 @NgModule({
   declarations: [AppComponent],
-  entryComponents: [],
   imports: [
     HttpClientModule,
     BrowserModule,
