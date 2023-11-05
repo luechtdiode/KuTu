@@ -30,7 +30,7 @@ object JwtHeader {
 
   import org.json4s.DefaultFormats
 
-  implicit val formats = DefaultFormats
+  implicit val formats: DefaultFormats.type = DefaultFormats
 
   def apply(algorithm: String, contentType: String = null, typ: String = "JWT"): JwtHeader = {
     JwtHeader(Option(algorithm), Option(contentType), Option(typ))

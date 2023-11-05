@@ -20,7 +20,7 @@ trait WertungenRoutes extends SprayJsonSupport with JsonSupport with JwtSupport 
   import scala.concurrent.ExecutionContext.Implicits.global
 
   // Required by the `ask` (?) method below
-  private implicit lazy val timeout = Timeout(5.seconds) // usually we'd obtain the timeout from the system's configuration
+  private implicit lazy val timeout: Timeout = Timeout(5.seconds) // usually we'd obtain the timeout from the system's configuration
   import AbuseHandler._
 
   lazy val wertungenRoutes: Route = {

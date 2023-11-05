@@ -14,29 +14,29 @@ abstract trait WettkampfResultMapper extends DisziplinResultMapper {
   def readProgramm(id: Long, cache: scala.collection.mutable.Map[Long, ProgrammView]): ProgrammView
   def readProgramm(id: Long): ProgrammView
   
-  implicit val getWettkampfResult = GetResult(r =>
+  implicit val getWettkampfResult: GetResult[Wettkampf] = GetResult(r =>
     Wettkampf(r.<<, r.nextStringOption(), r.<<[java.sql.Date], r.<<, r.<<, r.<<, r.<<[BigDecimal], r.<<, r.<<, r.<<, r.<<, r.<<, r.<<))
     
-  implicit val getWettkampfDisziplinResult = GetResult(r =>
+  implicit val getWettkampfDisziplinResult: GetResult[Wettkampfdisziplin] = GetResult(r =>
     Wettkampfdisziplin(r.<<, r.<<, r.<<, r.<<, r.nextBytesOption(), r.<<, r.<<, r.<<, r.<<, r.<<, r.<<, r.<<, r.<<, r.<<))
 
-  implicit def getWettkampfDisziplinViewResultCached(r: PositionedResult)(implicit cache: scala.collection.mutable.Map[Long, ProgrammView]) = {
+  implicit def getWettkampfDisziplinViewResultCached(r: PositionedResult)(implicit cache: scala.collection.mutable.Map[Long, ProgrammView]): WettkampfdisziplinView = {
     val id = r.<<[Long]
     val pgm = readProgramm(r.<<[Long], cache)
     WettkampfdisziplinView(id, pgm, r, r.<<, r.nextBytesOption(), readNotenModus(id, pgm, r.<<), r.<<, r.<<, r.<<, r.<<, r.<<, r.<<, r.<<, r.<<)
   }
   
-  implicit def getWettkampfViewResultCached(implicit cache: scala.collection.mutable.Map[Long, ProgrammView]) = GetResult(r =>
+  implicit def getWettkampfViewResultCached(implicit cache: scala.collection.mutable.Map[Long, ProgrammView]): GetResult[WettkampfView] = GetResult(r =>
     WettkampfView(r.<<, r.nextStringOption(), r.<<[java.sql.Date], r.<<[String], readProgramm(r.<<, cache), r.<<, r.<<[BigDecimal], r.<<, r.<<, r.<<, r.<<, r.<<, r.<<))
     
-  implicit def getWettkampfViewResult = GetResult(r =>
+  implicit def getWettkampfViewResult: GetResult[WettkampfView] = GetResult(r =>
     WettkampfView(r.<<, r.nextStringOption(), r.<<[java.sql.Date], r.<<, readProgramm(r.<<), r.<<, r.<<[BigDecimal], r.<<, r.<<, r.<<, r.<<, r.<<, r.<<))
     
-  implicit val getProgrammRawResult = GetResult(r =>
+  implicit val getProgrammRawResult: GetResult[ProgrammRaw] = GetResult(r =>
     // id: Long, name: String, aggregate: Int, parentId: Long, ord: Int, alterVon: Int, alterBis: Int, uuid: String, riegenmode
     ProgrammRaw(r.<<, r.<<, r.<<, r.<<, r.<<, r.<<, r.<<, r.<<, r.<<))
 
-  implicit val getPublishedScoreViewResult = GetResult(r =>
+  implicit val getPublishedScoreViewResult: GetResult[PublishedScoreView] = GetResult(r =>
     PublishedScoreView(r.<<, r.<<, r.<<, r.<<, r.<<[java.sql.Date], r.<<))
 
   implicit def getWettkampfPlanTimeView(implicit cache: scala.collection.mutable.Map[Long, ProgrammView]): GetResult[WettkampfPlanTimeView] = GetResult(r =>

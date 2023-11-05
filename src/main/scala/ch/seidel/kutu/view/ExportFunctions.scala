@@ -7,10 +7,11 @@ import ch.seidel.kutu.KuTuServer.renderer
 import ch.seidel.kutu.akka.DurchgangChanged
 import ch.seidel.kutu.domain.{KutuService, TeamItem, Wettkampf, encodeFileName}
 import ch.seidel.kutu.http.WebSocketClient
-import ch.seidel.kutu.renderer.{KategorieTeilnehmerToHtmlRenderer, PrintUtil}
+import ch.seidel.kutu.renderer.{KategorieTeilnehmerToHtmlRenderer, KategorieTeilnehmerToJSONRenderer, PrintUtil}
 import ch.seidel.kutu.renderer.PrintUtil.FilenameDefault
 import ch.seidel.kutu.renderer.RiegenBuilder.mapToGeraeteRiegen
 import javafx.beans.property.SimpleObjectProperty
+import org.slf4j.{Logger, LoggerFactory}
 import scalafx.Includes.jfxObjectProperty2sfx
 import scalafx.application.Platform
 import scalafx.event.ActionEvent
@@ -95,7 +96,9 @@ trait ExportFunctions {
       Platform.runLater {
         reprintItems.set(reprintItems.get().filter(p => !durchgang.contains(p.durchgang)))
       }
-      (new Object with KategorieTeilnehmerToHtmlRenderer).toHTMLasDurchgangListe(seriendaten, logofile)
+      new KategorieTeilnehmerToHtmlRenderer {
+        override val logger: Logger = LoggerFactory.getLogger(classOf[ExportFunctions])
+      }.toHTMLasDurchgangListe(seriendaten, logofile)
     }}
     Platform.runLater {
       PrintUtil.printDialogFuture(dialogText, FilenameDefault(filename, dir), false, generate, orientation = PageOrientation.Portrait)(event)

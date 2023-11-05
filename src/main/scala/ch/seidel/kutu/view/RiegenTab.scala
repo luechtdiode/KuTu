@@ -456,7 +456,7 @@ class RiegenTab(override val wettkampfInfo: WettkampfInfo, override val service:
     }
     val zeitenTab = new WettkampfZeitenTab(wettkampfEditable, wettkampf, service) {
       closable = false
-      isPopulated
+      this.isPopulated
     }
     def makeRiegenFilterActiveBinding = {
       Bindings.createBooleanBinding(() => {
@@ -477,7 +477,7 @@ class RiegenTab(override val wettkampfInfo: WettkampfInfo, override val service:
 
     var warnIcon: Image = null
     try {
-      warnIcon = new Image(getClass().getResourceAsStream("/images/OrangeWarning.png"))
+      warnIcon = new Image(getClass.getResourceAsStream("/images/OrangeWarning.png"))
     } catch {
       case e: Exception => e.printStackTrace()
     }

@@ -17,14 +17,14 @@ import scalafx.scene.layout._
 import scalafx.util.converter.DefaultStringConverter
 
 object TurnerPage {
-  var turnerAnalyzers = Map[Long, TurnerAnalyzer]()
+  var turnerAnalyzers: Map[Long, TurnerAnalyzer] = Map[Long, TurnerAnalyzer]()
 
   def drillDownInAthlet(vverein: Option[Verein], a: Athlet, service: KutuService, tabpane: LazyTabPane): Unit = {
     val newtab = new TurnerAnalyzer(vverein, Some(a), None, service) {
       text = a.easyprint + "-Analyse"
       closable = true
       override def onDrillDown(w: WettkampfdisziplinView): Unit = {
-        drillDownInDisziplin(vverein, w, service, tabpane)
+        drillDownInDisziplin(vverein, w, this.service, tabpane)
       }
 
       onClosed = _ => {
@@ -42,7 +42,7 @@ object TurnerPage {
       text = w.easyprint + "-Analyse"
       closable = true
       override def onDrillDown(a: Athlet): Unit = {
-        drillDownInAthlet(vverein, a, service, tabpane)
+        drillDownInAthlet(vverein, a, this.service, tabpane)
       }
       onClosed = _ => {
         turnerAnalyzers = turnerAnalyzers.filter(x => !x._1.equals(w.id * -1))
@@ -236,20 +236,20 @@ object TurnerPage {
         text = club.easyprint + " Turner-Analyse"
         closable = false
         override def onDrillDown(a: Athlet): Unit = {
-          drillDownInAthlet(Some(club), a, service, pane)
+          drillDownInAthlet(Some(club), a, this.service, pane)
         }
         override def onDrillDown(w: WettkampfdisziplinView): Unit = {
-          drillDownInDisziplin(Some(club), w, service, pane)
+          drillDownInDisziplin(Some(club), w, this.service, pane)
         }
       },
       new TurnerAnalyzer(None, None, None, service) {
         text = "Turner-Analyse"
         closable = false
         override def onDrillDown(a: Athlet): Unit = {
-          drillDownInAthlet(None, a, service, pane)
+          drillDownInAthlet(None, a, this.service, pane)
         }
         override def onDrillDown(w: WettkampfdisziplinView): Unit = {
-          drillDownInDisziplin(None, w, service, pane)
+          drillDownInDisziplin(None, w, this.service, pane)
         }
       },
       new TurnerScoreTab(wettkampfmode, Some(club), service){

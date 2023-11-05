@@ -15,7 +15,7 @@ object JwtClaimsSet {
 }
 
 case class JwtClaimsSetMap(claims: Map[String, Any]) extends JwtClaimsSet {
-  implicit val formats = org.json4s.DefaultFormats
+  implicit val formats: DefaultFormats.type = org.json4s.DefaultFormats
 
   def asJsonString: String = {
     org.json4s.jackson.Serialization.write(claims)
@@ -24,7 +24,7 @@ case class JwtClaimsSetMap(claims: Map[String, Any]) extends JwtClaimsSet {
 
 case class JwtClaimsSetJValue(jvalue: JValue) extends JwtClaimsSet {
   import org.json4s.jackson.JsonMethods._
-  implicit val formats = org.json4s.DefaultFormats
+  implicit val formats: DefaultFormats.type = org.json4s.DefaultFormats
 
   def asJsonString: String = {
     compact(jvalue)
@@ -36,7 +36,7 @@ case class JwtClaimsSetJValue(jvalue: JValue) extends JwtClaimsSet {
 }
 
 case class JwtClaimsSetJsonString(json: String) extends JwtClaimsSet {
-  implicit val formats = org.json4s.DefaultFormats
+  implicit val formats: DefaultFormats.type = org.json4s.DefaultFormats
 
   def asJsonString: String = {
     json

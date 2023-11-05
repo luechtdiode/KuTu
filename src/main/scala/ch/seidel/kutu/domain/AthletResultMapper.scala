@@ -3,9 +3,9 @@ package ch.seidel.kutu.domain
 import slick.jdbc.GetResult
 
 trait AthletResultMapper extends VereinResultMapper {
-  implicit val getAthletResult = GetResult(r =>
+  implicit val getAthletResult: GetResult[Athlet] = GetResult(r =>
     Athlet(r.<<, r.<<, r.<<, r.<<, r.<<, r.<<, r.<<, r.<<, r.<<, r.<<, r.<<))
-  implicit val getAthletViewResult = GetResult(r =>
+  implicit val getAthletViewResult: GetResult[AthletView] = GetResult(r =>
     //id |js_id |geschlecht |name |vorname   |gebdat |strasse |plz |ort |activ |verein |id |name        |
     AthletView(
         id = r.<<,
@@ -21,7 +21,7 @@ trait AthletResultMapper extends VereinResultMapper {
         verein = r
     ))
 
-  implicit val getAthletOptionResult = GetResult(r => r.nextLongOption() match {
+  implicit val getAthletOptionResult: GetResult[Option[AthletView]] = GetResult(r => r.nextLongOption() match {
     case Some(id) => Some(AthletView(
       id = id,
       js_id = r.<<,
