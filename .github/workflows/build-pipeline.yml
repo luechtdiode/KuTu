@@ -263,8 +263,9 @@ jobs:
     needs: [build-lnx-distribution, build-win64-distribution, build-osx-distribution, build-docker-distribution]
     runs-on: ubuntu-latest
     steps:
-      - uses: geekyeggo/delete-artifact@v1
+      - uses: geekyeggo/delete-artifact@v2
         with:
+          useGlob: false
           name: |
             app
             src
