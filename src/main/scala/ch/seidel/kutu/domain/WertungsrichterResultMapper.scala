@@ -4,10 +4,10 @@ import slick.jdbc.GetResult
 
 trait WertungsrichterResultMapper extends VereinResultMapper {
       
-  implicit val getWertungsrichterResult = GetResult(r =>
+  implicit val getWertungsrichterResult: GetResult[Wertungsrichter] = GetResult(r =>
     Wertungsrichter(r.<<, r.<<, r.<<, r.<<, r.<<, r.<<, r.<<, r.<<, r.<<, r.<<, r.<<))
     
-  implicit val getWertungsrichterViewResult = GetResult(r =>
+  implicit val getWertungsrichterViewResult: GetResult[WertungsrichterView] = GetResult(r =>
     //id |js_id |geschlecht |name |vorname   |gebdat |strasse |plz |ort |activ |verein |id |name        |
     WertungsrichterView(
         id = r.<<,
@@ -22,7 +22,7 @@ trait WertungsrichterResultMapper extends VereinResultMapper {
         activ = r.<<,
         verein = r))
         
-  implicit val getWertungsrichterOptionResult = GetResult(r => r.nextLongOption() match {
+  implicit val getWertungsrichterOptionResult: GetResult[Option[WertungsrichterView]] = GetResult(r => r.nextLongOption() match {
     case Some(id) => Some(WertungsrichterView(id, js_id = r.<<,
                                           geschlecht = r.<<,
                                           name = r.<<,

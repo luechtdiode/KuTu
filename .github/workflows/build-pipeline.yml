@@ -82,7 +82,7 @@ jobs:
 
       - run: git checkout $(git log --branches -1 --pretty=format:'%D' | sed 's/.*, //g')
       - name: Cache Maven packages
-        uses: actions/cache@v2
+        uses: actions/cache@v3
         with:
           path: ~/.m2
           key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
@@ -132,7 +132,7 @@ jobs:
 
       - run: git checkout $(git log --branches -1 --pretty=format:'%D' | sed 's/.*, //g')
       - name: Cache Maven packages
-        uses: actions/cache@v2
+        uses: actions/cache@v3
         with:
           path: ~/.m2
           key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
@@ -170,7 +170,7 @@ jobs:
 
       - run: git checkout $(git log --branches -1 --pretty=format:'%D' | sed 's/.*, //g')
       - name: Cache Maven packages
-        uses: actions/cache@v2
+        uses: actions/cache@v3
         with:
           path: ~/.m2
           key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
@@ -210,20 +210,24 @@ jobs:
       - name: Build Tags
         id: build_tags
         run: |
-          export COMMIT=${GITHUB_SHA::7}
-          export COMMIT_TAG=$(if [[ $GITHUB_REF == refs/tags/* ]]; then echo ${GITHUB_REF#refs/tags} | awk -F'/' '{ if($NF != "") print $NF }'; else echo ""; fi)
-          export COMMIT_BRANCH=$(if [[ $GITHUB_REF == refs/heads/* ]]; then echo ${GITHUB_REF#refs/heads} | awk -F'/' '{ if($NF != "") print $NF }'; else echo "br"; fi)
-          export TAG=`if [ ! -z "$COMMIT_TAG" ]; then echo "$COMMIT_TAG"; else echo "$COMMIT_BRANCH-$COMMIT"; fi`
+          COMMIT=${GITHUB_SHA::7}
+          COMMIT_TAG=$(if [[ $GITHUB_REF == refs/tags/* ]]; then echo ${GITHUB_REF#refs/tags} | awk -F'/' '{ if($NF != "") print $NF }'; else echo ""; fi)
+          COMMIT_BRANCH=$(if [[ $GITHUB_REF == refs/heads/* ]]; then echo ${GITHUB_REF#refs/heads} | awk -F'/' '{ if($NF != "") print $NF }'; else echo "br"; fi)
+          TAG=`if [ ! -z "$COMMIT_TAG" ]; then echo "$COMMIT_TAG"; else echo "$COMMIT_BRANCH-$COMMIT"; fi`
           echo GITHUB_REF=$GITHUB_REF
           echo GITHUB_SHA=$GITHUB_SHA
           echo COMMIT=$COMMIT
           echo COMMIT_TAG=$COMMIT_TAG
           echo COMMIT_BRANCH=$COMMIT_BRANCH
           echo TAG=$TAG
-          echo SHA_TAG=$GITHUB_SHA >> $GITHUB_OUTPUT
-          echo DOCKER_TAG=$TAG >> $GITHUB_OUTPUT
-          echo SOURCE_TAG=$COMMIT_TAG >> $GITHUB_OUTPUT
-          echo SOURCE_BRANCH=$COMMIT_BRANCH >> $GITHUB_OUTPUT
+          echo "COMMIT=$COMMIT" >> $GITHUB_OUTPUT
+          echo "COMMIT_TAG=$COMMIT_TAG" >> $GITHUB_OUTPUT
+          echo "COMMIT_BRANCH=$COMMIT_BRANCH" >> $GITHUB_OUTPUT
+          echo "TAG=$TAG" >> $GITHUB_OUTPUT
+          echo "SHA_TAG=$GITHUB_SHA" >> $GITHUB_OUTPUT
+          echo "DOCKER_TAG=$TAG" >> $GITHUB_OUTPUT
+          echo "SOURCE_TAG=$COMMIT_TAG" >> $GITHUB_OUTPUT
+          echo "SOURCE_BRANCH=$COMMIT_BRANCH" >> $GITHUB_OUTPUT
       - name: Checkout repository
         uses: actions/checkout@v3
         with:
@@ -244,7 +248,7 @@ jobs:
           cp target/*.jar docker/
           rm docker/libs/javafx*.jar
       - name: Login to DockerHub
-        uses: docker/login-action@v1
+        uses: docker/login-action@v3
         with:
           username: ${{ secrets.DOCKER_USER }}
           password: ${{ secrets.DOCKER_ACCESSTOKEN }}
@@ -263,8 +267,9 @@ jobs:
     needs: [build-lnx-distribution, build-win64-distribution, build-osx-distribution, build-docker-distribution]
     runs-on: ubuntu-latest
     steps:
-      - uses: geekyeggo/delete-artifact@v1
+      - uses: geekyeggo/delete-artifact@v2
         with:
+          useGlob: false
           name: |
             app
             src

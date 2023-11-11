@@ -117,7 +117,7 @@ ion-note {
 	}
 }
 
-ion-select {
+ion-select, ion-radio-group {
 //   width: 80%;
   max-width: 80% !important;
 }
@@ -166,26 +166,3 @@ ion-select {
   }
 }
 
-.suggester /*ion-auto-complete*/ {
-  width: 100%;
-  .loading input.searchbar-input {
-    background: var(--ion-overlay-background-color);
-  }
-  ul {
-    color: var(--ion-item-text-color);
-    background: var(--ion-overlay-background-color);
-    li {
-      color: var(--ion-item-text-color);
-      background: var(--ion-background-color);
-    }
-    li:hover {
-      background: var(--button-background);
-      color: var(--button-color-hover);
-    }
-    li:focus,
-    li.focus {
-      background: var(----ion-item-background-activated);
-      color: var(--ion-color-primary);
-    }
-  }
-}

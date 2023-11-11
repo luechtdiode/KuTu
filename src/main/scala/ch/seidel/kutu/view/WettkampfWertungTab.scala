@@ -11,7 +11,7 @@ import ch.seidel.kutu.renderer._
 import ch.seidel.kutu.squad.RiegenBuilder.{generateRiegen2Name, generateRiegenName}
 import ch.seidel.kutu.{Config, KuTuApp, KuTuServer, squad}
 import javafx.scene.{control => jfxsc}
-import org.slf4j.LoggerFactory
+import org.slf4j.{Logger, LoggerFactory}
 import scalafx.Includes._
 import scalafx.application.Platform
 import scalafx.beans.binding.Bindings
@@ -1389,6 +1389,7 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
   }
 
   val generateTeilnehmerListe = new Button with KategorieTeilnehmerToHtmlRenderer {
+    override val logger: Logger = WettkampfWertungTab.this.logger
     text = "Teilnehmerliste erstellen"
     minWidth = 75
     onAction = (event: ActionEvent) => {
@@ -1458,6 +1459,7 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
     }
   }
   val generateVereinsTeilnehmerListe = new Button with KategorieTeilnehmerToHtmlRenderer {
+    override val logger: Logger = WettkampfWertungTab.this.logger
     text = "Vereins-Teilnehmerliste erstellen"
     minWidth = 75
     onAction = (event: ActionEvent) => {
@@ -1525,6 +1527,7 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
     }
   }
   val generateNotenblaetter = new Button with NotenblattToHtmlRenderer {
+    override val logger: Logger = WettkampfWertungTab.this.logger
     text = "Notenblätter erstellen"
     minWidth = 75
 

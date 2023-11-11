@@ -9,6 +9,7 @@ import ch.seidel.kutu.KuTuServer.handleCID
 import ch.seidel.kutu.domain.{Kandidat, KutuService, encodeFileName}
 import ch.seidel.kutu.renderer._
 import fr.davit.akka.http.metrics.core.scaladsl.server.HttpMetricsDirectives._
+import org.slf4j.{Logger, LoggerFactory}
 
 import java.util.UUID
 import scala.concurrent.duration.DurationInt
@@ -17,13 +18,16 @@ trait ReportRoutes extends SprayJsonSupport
   with JsonSupport with AuthSupport with RouterLogging
   with KutuService with IpToDeviceID
   with AbuseListHTMLRenderer {
-
   // Required by the `ask` (?) method below
   // usually we'd obtain the timeout from the system's configuration
   private implicit lazy val timeout: Timeout = Timeout(5.seconds)
 
-  val renderer = new KategorieTeilnehmerToHtmlRenderer() {}
-  val jsonrenderer = new KategorieTeilnehmerToJSONRenderer() {}
+  val renderer: KategorieTeilnehmerToHtmlRenderer = new KategorieTeilnehmerToHtmlRenderer() {
+    override val logger: Logger = LoggerFactory.getLogger(classOf[ReportRoutes])
+  }
+  val jsonrenderer: KategorieTeilnehmerToJSONRenderer = new KategorieTeilnehmerToJSONRenderer() {
+    override val logger: Logger = LoggerFactory.getLogger(classOf[ReportRoutes])
+  }
 
   lazy val reportRoutes: Route = {
     (handleCID & extractUri) { (clientId: String, uri: Uri) =>

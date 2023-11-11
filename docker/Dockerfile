@@ -1,5 +1,6 @@
-FROM eclipse-temurin:19-jre-alpine
+FROM eclipse-temurin:21-jre-alpine
 
+RUN apk update upgrade
 RUN apk add leveldb
 
 # Create kutu user and group

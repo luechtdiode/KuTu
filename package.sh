@@ -11,7 +11,7 @@ $JAVA_HOME/bin/jpackage --input target/package/ \
   --main-class ch.seidel.kutu.KuTuApp \
   --copyright "Interpolar" \
   --vendor "Interpolar" \
-  --app-version 2.2.13 \
+  --app-version 2.3.3 \
   --type dmg \
   --dest target \
   --java-options "--add-opens=java.base/java.lang=ALL-UNNAMED

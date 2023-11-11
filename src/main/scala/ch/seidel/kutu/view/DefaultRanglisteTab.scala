@@ -395,7 +395,7 @@ abstract class DefaultRanglisteTab(wettkampfmode: BooleanProperty, override val 
           }
           val fileChooser = new FileChooser() {
           initialDirectory = dir
-          title = "Filtereinstellung speichern ..."
+          this.title = "Filtereinstellung speichern ..."
           extensionFilters.addAll(
                  new ExtensionFilter("Filtereinstellung", "*.scoredef"))
           initialFileName = filename

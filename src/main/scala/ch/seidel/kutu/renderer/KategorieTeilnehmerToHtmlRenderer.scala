@@ -1,13 +1,12 @@
 package ch.seidel.kutu.renderer
 
 import java.io.File
-
 import ch.seidel.kutu.domain.GeraeteRiege
 import ch.seidel.kutu.renderer.PrintUtil._
-import org.slf4j.LoggerFactory
+import org.slf4j.{Logger}
 
 trait KategorieTeilnehmerToHtmlRenderer {
-  val logger = LoggerFactory.getLogger(classOf[KategorieTeilnehmerToHtmlRenderer])
+  val logger: Logger// = LoggerFactory.getLogger(classOf[KategorieTeilnehmerToHtmlRenderer])
   val intro = """<html>
     <head>
       <meta charset="UTF-8" />

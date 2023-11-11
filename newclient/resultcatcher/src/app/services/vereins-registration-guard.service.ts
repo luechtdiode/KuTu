@@ -1,11 +1,11 @@
 import { Injectable } from '@angular/core';
-import { Router, ActivatedRouteSnapshot, CanActivate } from '@angular/router';
+import { Router, ActivatedRouteSnapshot } from '@angular/router';
 import { BackendService } from './backend.service';
 
 @Injectable({
   providedIn: 'root'
 })
-export class VereinsRegistrationGuardService implements CanActivate {
+export class VereinsRegistrationGuardService  {
 
   constructor(
     private router: Router, 

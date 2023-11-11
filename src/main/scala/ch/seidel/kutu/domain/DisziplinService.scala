@@ -145,7 +145,7 @@ abstract trait DisziplinService extends DBService with WettkampfResultMapper {
     .map{t => Wettkampfdisziplin(t._1, t._2, t._3, s"${t._4} (${t._5})", None, 0, t._6, t._7, t._8, t._9, t._10, t._11, t._12, t._13) }.toList
   }
 
-  implicit def getWettkampfDisziplinViewResult = GetResult{r =>
+  implicit def getWettkampfDisziplinViewResult: GetResult[WettkampfdisziplinView] = GetResult{ r =>
     val id = r.<<[Long]
     val pgm = readProgramm(r.<<)
     WettkampfdisziplinView(id, pgm, r, r.<<[String], r.nextBytesOption(), readNotenModus(id, pgm, r.<<), r.<<, r.<<, r.<<, r.<<, r.<<, r.<<, r.<<, r.<<)

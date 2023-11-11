@@ -16,7 +16,7 @@ import java.util.concurrent.TimeUnit
 import scala.concurrent.duration.Duration
 
 package object domain {
-  implicit def dbl2Str(d: Double) = f"${d}%2.3f"
+  implicit def dbl2Str(d: Double): String = f"${d}%2.3f"
 
   implicit def str2bd(value: String): BigDecimal = {
     if (value != null) {

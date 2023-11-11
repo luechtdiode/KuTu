@@ -7,14 +7,15 @@ import { ScorelistItemComponent } from './scorelist-item/scorelist-item.componen
 import { WertungAvgCalcComponent } from './wertung-avg-calc/wertung-avg-calc.component';
 import { FormsModule } from '@angular/forms';
 import { IonicModule } from '@ionic/angular';
+import { TypeaheadComponent } from './typeahead/typeahead.component';
 
 @NgModule({
-  declarations: [ResultDisplayComponent, RiegeListComponent, StartlistItemComponent, ScorelistItemComponent, WertungAvgCalcComponent],
-  exports: [ResultDisplayComponent, RiegeListComponent, StartlistItemComponent, ScorelistItemComponent, WertungAvgCalcComponent],
+  declarations: [ResultDisplayComponent, RiegeListComponent, StartlistItemComponent, ScorelistItemComponent, WertungAvgCalcComponent, TypeaheadComponent],
+  exports: [ResultDisplayComponent, RiegeListComponent, StartlistItemComponent, ScorelistItemComponent, WertungAvgCalcComponent, TypeaheadComponent],
   imports: [
     CommonModule,
     FormsModule,
-    IonicModule,
+    IonicModule,    
   ]
 })
 export class ComponentsModule { }

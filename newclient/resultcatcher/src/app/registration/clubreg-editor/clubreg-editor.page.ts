@@ -6,8 +6,8 @@ import { NavController, AlertController, ActionSheetController } from '@ionic/an
 import { take } from 'rxjs/operators';
 import { toDateString } from 'src/app/utils';
 import { RegistrationResetPW } from '../../backend-types';
-import { AutoCompleteOptions, AutoCompleteService } from 'ionic4-auto-complete';
 import { NgForm } from '@angular/forms';
+import { TypeAheadItem } from 'src/app/component/typeahead/typeahead.component';
 
 @Component({
   selector: 'app-clubreg-editor',
@@ -28,42 +28,19 @@ export class ClubregEditorPage implements OnInit {
         this.backendService.getCompetitions();
       }
       this.backendService.getClubList().subscribe(list => {
-        this.clublist = list;
+        this.clublist = list.map(item => <TypeAheadItem<Verein>>{
+          item: item,
+          text: item.name + ' (' + item.verband + ')'
+        });
       });
-      this.options = new AutoCompleteOptions();
-
-      this.options.autocomplete = 'on';
-      this.options.autocorrect = 'off';
-      this.options.noItems = 'Kein passender Vereinsname bekannt';
-      //this.options.debounce = 100;
-      this.options.placeholder = 'Vereinsname übernehmen ...';
   }
 
-  public options: AutoCompleteOptions;
-  public provider: AutoCompleteService = {
-    // autocomplete service interface
-    getResults: (query: any) => {
-      const q = (query || '').trim();
-      const result: Verein[] = [];
-
-      if (q && this.clublist && this.clublist.length > 0) {
-        this.clublist.forEach(verein => {
-          const filterFn = this.filter(q);
-          if (filterFn(verein)) {
-            result.push(verein);
-          }
-        });
-      }
-
-      return result;
-    },
-
-    getItemLabel: (item: Verein) => {
-      return item.name + ' (' + item.verband + ')';
-    }
-  };
-
-  vereinSelected(selection: Verein) {
+  _selectedVerein: Verein;
+  get getVereinSelected(): Verein {
+    return this._selectedVerein;
+  }
+  setVereinSelected(selection: Verein) {
+    this._selectedVerein = selection;
     this.newRegistration.vereinname = selection.name;
     this.newRegistration.verband = selection.verband;
   }
@@ -73,7 +50,7 @@ export class ClubregEditorPage implements OnInit {
   newRegistration: NewClubRegistration;
   changePassword: RegistrationResetPW;
   sSyncActions: string[] = [];
-  clublist: Verein[] = [];
+  clublist: TypeAheadItem<Verein>[] = [];
   wettkampf: string;
   regId: number;
   wkId: string;
@@ -98,7 +75,7 @@ export class ClubregEditorPage implements OnInit {
       }
     });
   }
-  
+
   filter(query: string) {
     const queryTokens = query.toUpperCase().split(' ');
     return (tn: Verein): boolean => {

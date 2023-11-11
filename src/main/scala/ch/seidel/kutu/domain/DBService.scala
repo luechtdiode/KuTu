@@ -15,6 +15,7 @@ import slick.jdbc.JdbcBackend
 import slick.jdbc.JdbcBackend.{Database, DatabaseDef}
 import slick.jdbc.PostgresProfile.api.{DBIO, actionBasedSQLInterpolation, jdbcActionExtensionMethods}
 
+import java.sql.Date
 import scala.annotation.tailrec
 import scala.concurrent.Await
 import scala.concurrent.duration.Duration
@@ -426,5 +427,5 @@ trait DBService {
 
   def database: DatabaseDef = DBService.startDB()
 
-  implicit def getSQLDate(date: String) = str2SQLDate(date)
+  implicit def getSQLDate(date: String): Date = str2SQLDate(date)
 }
