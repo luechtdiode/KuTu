@@ -880,6 +880,9 @@ export class BackendService extends WebsocketService {
       request.subscribe({
         next: (data) => {
           this.steps = data;
+          if (this._step < data[0]) {
+            this._step = data[0]
+          }
         }, 
         error: this.standardErrorHandler
       });
@@ -1067,6 +1070,9 @@ export class BackendService extends WebsocketService {
     }
 
     nextStep(): number {
+      if (this.steps == undefined) {
+        return this._step
+      }
       const nextSteps = this.steps.filter(s => s > this._step);
       if (nextSteps.length > 0) {
         return nextSteps[0];
@@ -1076,6 +1082,9 @@ export class BackendService extends WebsocketService {
     }
 
     prevStep(): number {
+      if (this.steps == undefined) {
+        return this._step
+      }
       const prevSteps = this.steps.filter(s => s < this._step);
       if (prevSteps.length > 0) {
         return prevSteps[prevSteps.length - 1];
@@ -1085,6 +1094,10 @@ export class BackendService extends WebsocketService {
     }
 
     getPrevGeraet(): number {
+      if (this.geraete == undefined) {
+        return this._geraet;
+      }
+
       let prevGeraeteIdx = this.geraete.indexOf(this.geraete.find(s => s.id === this._geraet)) - 1;
       if (prevGeraeteIdx < 0) {
         prevGeraeteIdx = this.geraete.length - 1;
@@ -1093,6 +1106,9 @@ export class BackendService extends WebsocketService {
     }
 
     getNextGeraet(): number {
+      if (this.geraete == undefined) {
+        return this._geraet;
+      }
       let nextGeraetIdx = this.geraete.indexOf(this.geraete.find(s => s.id === this._geraet)) + 1;
       if (nextGeraetIdx >= this.geraete.length) {
         nextGeraetIdx = 0;

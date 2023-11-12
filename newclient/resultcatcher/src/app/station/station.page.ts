@@ -138,9 +138,9 @@ export class StationPage implements OnInit  {
 
   get station() {
     if (this.isLoggedIn()) {
-      return this.geraetName() + ' - ' + this.step + '. Riege von ' + this.getSteps().length + ', ' + this.durchgang;
+      return this.geraetName() + ' - ' + this.step + '. Riege von ' + this.getSteps()?.length + ', ' + this.durchgang;
     } else {
-      return this.geraetName() + ' - ' + this.step + '. Gerät von ' + this.getGeraete().length + ', ' + this.durchgang;
+      return this.geraetName() + ' - ' + this.step + '. Gerät von ' + this.getGeraete()?.length + ', ' + this.durchgang;
     }
   }
   
