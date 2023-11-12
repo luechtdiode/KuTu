@@ -30,8 +30,6 @@ export class WertungEditorPage {
       // tslint:disable-next-line:radix
       const itemId = parseInt(this.route.snapshot.paramMap.get('itemId'));
       this.updateUI(backendService.wertungen.find(w => w.id === itemId));
-      this.isDNoteUsed = this.item.isDNoteUsed;
-
   }
   private itemOriginal: WertungContainer;
 
@@ -121,6 +119,7 @@ export class WertungEditorPage {
     this.zone.run(() => {
       this.waiting = false;
       this.item = Object.assign({}, wc);
+      this.isDNoteUsed = this.item.isDNoteUsed;
       this.itemOriginal = Object.assign({}, wc);
       this.wertung = Object.assign({
         noteD: 0.00,
