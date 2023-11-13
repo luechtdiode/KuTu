@@ -20,7 +20,7 @@
     "@angular/platform-browser-dynamic": "^16.2.12",
     "@angular/router": "^16.2.12",
     "@capacitor/app": "4.1.1",
-    "@capacitor/core": "4.5.0",
+    "@capacitor/core": "4.8.1",
     "@capacitor/haptics": "4.1.0",
     "@capacitor/keyboard": "4.1.0",
     "@capacitor/splash-screen": "4.1.2",
