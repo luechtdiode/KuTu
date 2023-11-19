@@ -243,7 +243,7 @@
 		<akkaHttp.version>10.5.3</akkaHttp.version>
 		<javafx.version>21.0.1</javafx.version>
 		<akka.version>2.8.5</akka.version>
-		<scalafx.version>19.0.0-R30</scalafx.version>
+		<scalafx.version>21.0.0-R32</scalafx.version>
 		<!--scalafx.version>20.0.0-R31</scalafx.version-->
 		<scalatest.version>3.3.0-SNAP4</scalatest.version>
 		<scala-maven-plugin.version>4.8.1</scala-maven-plugin.version>

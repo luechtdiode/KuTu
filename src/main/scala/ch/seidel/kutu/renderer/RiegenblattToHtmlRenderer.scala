@@ -14,7 +14,6 @@ object RiegenBuilder {
     else RiegenRotationsregel("")
 
     def pickStartformationen(geraete: Seq[(Option[Disziplin], Seq[Riege], Int)], durchgang: Option[String], extractKandidatEinteilung: Kandidat => (Option[Riege], Seq[Disziplin])): Seq[(Int, Option[Disziplin], Seq[Kandidat], Boolean)] = {
-      println(geraete.mkString("Geräte\n", "\n", "\n"))
       /*
         sationmap[Disziplin,Int](
           // Disziplin -> Halt
