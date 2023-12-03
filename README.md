@@ -4,6 +4,8 @@ Wettkampf-App für Kunst- und Geräteturnen
 [![Build Status Github](https://github.com/luechtdiode/KuTu/actions/workflows/build-pipeline.yml/badge.svg)](https://github.com/luechtdiode/KuTu/actions/workflows/build-pipeline.yml)
 [![codecov](https://codecov.io/gh/luechtdiode/KuTu/branch/master/graph/badge.svg?token=MHS3C84GA5)](https://codecov.io/gh/luechtdiode/KuTu)
 
+[![Uptime sharevic.net](https://app.statuscake.com/button/index.php?Track=3358506&Days=7&Design=2)]([https://app.statuscake.com/button/index.php?Track=3358506&Days=7&Design=2](https://www.statuscake.com))
+
 [Homepage](https://luechtdiode.github.io/KuTu)
 
 # Features:
