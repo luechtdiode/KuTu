@@ -10,7 +10,7 @@ class SimulationBottmingenD1 extends Simulation {
   val jwtToken = "eyJhbGciOiJIUzUxMiIsImN0eSI6ImFwcGxpY2F0aW9uL2pzb24iLCJ0eXAiOiJKV1QifQ.eyJ1c2VyIjoiNzJmODI0MjMtNjVkYS00NWM5LTk5YTctYjNmMTk3MTJmNjI4IiwiZXhwaXJlZEF0S2V5IjoxNjg3MTI0NzU5NjkwfQ.IjzouXrDuDRsvhafPSCgcGAXlINZhAzgoieQ0Obamb0b8oG_R-6T6wMCtOUV8o84xmh5D7Cpv3_Alyiv-bj1fQ"
   val competition = "72f82423-65da-45c9-99a7-b3f19712f628"
 
-  val originBaseUrl = "https://kutuapp-test.interpolar.ch"//,
+  val originBaseUrl = "https://kutuapp-test.sharevic.net"//,
   //val originBaseUrl = "http://mars.stargate:30134" //https://test-kutuapp.sharevic.net" //,"http://pluto:5757"//, "https://kutuapp.sharevic.net" //,"https://kutuapp.sharevic.net"//,"http://mws-01:5757"//,
   // val originBaseUrl = "http://mws-01:5757"//, "https://kutuapp.sharevic.net"//,"http://mws-01:5757"//,
   //val originBaseUrl = "https://kutuapp.sharevic.net"
@@ -30,35 +30,6 @@ class SimulationBottmingenD1 extends Simulation {
       "Content-Type" -> "application/json",
       "Origin" -> originBaseUrl,
       "x-access-token" -> jwtToken))
-
-  val scnLanding = scenario("Landingpage")
-    .exec(http("initial-access")
-      .get("/")
-      .resources(
-        http("get font ionicons").get("/assets/fonts/ionicons.woff2?v=4.2.5"),
-        http("get font roboto-regular").get("/assets/fonts/roboto-regular.woff2"),
-        http("get font roboto-medium").get("/assets/fonts/roboto-medium.woff2"),
-        http("get font roboto-bold").get("/assets/fonts/roboto-bold.woff2"),
-        http("get competitions").get("/api/competition"),
-        http("check jwt-token expired")
-          .options("/api/isTokenExpired")))
-    .pause(5 minutes)
-
-  val scnWebsocketUser = scenario("WebSocket with Competition")
-    .exec(ws("openSocket")
-      .wsName("${sessionDgUser}")
-      .connect("/api/durchgang/" + competition + "/${durchgang}/ws?clientid=${sessionUserId}")
-      .onConnected(
-        exec(ws("sendMessage").wsName("${sessionDgUser}")
-          .sendText("keepAlive")
-          .await(5 seconds)(ws.checkTextMessage("check1")
-            .check(regex("Connection established(.*)").saveAs("wsgreetingmessage"))
-            .silent)
-        )
-      )
-    )
-  val scnCloseWebsocketUser = scenario("WebSocket with Competition")
-    .exec(ws("closeConnection").wsName("${sessionDgUser}").close)
 
   object BrowseResults {
     val encodeInvalidURIRegEx = "[,&.*+?/^${}()|\\[\\]\\\\]".r
@@ -98,6 +69,32 @@ class SimulationBottmingenD1 extends Simulation {
       session.set("geraet", randomEntry.toString)
     }
 
+    val connectWSUserToDurchgang = ws("openSocketDG")
+        .wsName("${sessionDgUser}")
+        .connect("/api/durchgang/" + competition + "/${durchgang}/ws?clientid=${sessionUserId}")
+        .onConnected(
+          exec(ws("sendMessage").wsName("${sessionDgUser}")
+            .sendText("keepAlive")
+            .await(5 seconds)(ws.checkTextMessage("check1")
+              .check(regex("Connection established(.*)").saveAs("wsgreetingmessage"))
+              .silent)
+          )
+        )
+    val connectWSUserToAll = ws("openSocketAll")
+        .wsName("${sessionDgUser}-all")
+        .connect("/api/durchgang/" + competition + "/all/ws?clientid=${sessionUserId}")
+        .onConnected(
+          exec(ws("sendMessage").wsName("${sessionDgUser}-all")
+            .sendText("keepAlive")
+            .await(5 seconds)(ws.checkTextMessage("check1")
+              .check(regex("Connection established(.*)").saveAs("wsgreetingmessage"))
+              .silent)
+          )
+        )
+
+    val closeWSUserFromDurchgang = ws("closeConnectionDG").wsName("${sessionDgUser}").close
+    val closeWSUserFromAll = ws("closeConnectionAll").wsName("${sessionDgUser}-all").close
+
     val getSteps = {
       exec(http("get steps")
         .get("/api/durchgang/" + competition + "/${durchgang}/${geraet}")
@@ -106,7 +103,7 @@ class SimulationBottmingenD1 extends Simulation {
           jsonPath("$").ofType[Seq[Any]].find.saveAs("steps")))
     }
 
-    def chooseWSConnection(session: Session) = {
+    def chooseDurchgangWSConnection(session: Session) = {
       val dg = session("durchgang").as[String]
       val sessionDgUser = s"${dg}-${session.userId}"
       println(s"ws connection-key: $sessionDgUser")
@@ -115,14 +112,29 @@ class SimulationBottmingenD1 extends Simulation {
         .set("sessionUserId", session.userId)
     }
 
-    val diveToWertungen =
-      exec(session => chooseDurchgang(session))
-        .exec(session => chooseGeraet(chooseWSConnection(session)))
-        .exec(scnWebsocketUser)
-        .exec(getSteps)
+    val diveToWertungen = exec(session => chooseDurchgang(session))
+      .exec(session => chooseGeraet(chooseDurchgangWSConnection(session)))
+      //.exec(connectWSUserToDurchgang)
+      .exec(connectWSUserToAll)
+      .exec(getSteps)
+      .foreach("${steps}", "step") {
+        exec(http("get Wertungen")
+          .get(s"/api/durchgang/$competition/${"${durchgang}"}/${"${geraet}"}/${"${step}"}")
+          .check(
+            jsonPath("$").exists,
+            jsonPath("$").ofType[Seq[Any]].find))
+          //.pause(5 minutes, 10 minutes)
+          .rendezVous(10)
+      }
+      // implicit closed by session ending .exec(closeWSUserFromAll)
+      // implicit closed by session ending .exec(closeWSUserFromDurchgang)
+
+    val collectWertungen = diveToWertungen
         .exec(http(s"start durchgang")
           .post(s"/api/competition/$competition/start")
           .body(StringBody(s"""{"type":"StartDurchgangStation","wettkampfUUID":"$competition","durchgang":"${"${durchgangOriginal}"}"}""")))
+        .exec(connectWSUserToDurchgang)
+        .exec(getSteps)
         .foreach("${steps}", "step") {
           exec(http("get Wertungen")
             .get(s"/api/durchgang/$competition/${"${durchgang}"}/${"${geraet}"}/${"${step}"}")
@@ -141,52 +153,69 @@ class SimulationBottmingenD1 extends Simulation {
               //            .post(s"/api/durchgang/$competition/${"${durchgang}"}/finish")
               //            .body(StringBody(s"""{"type":"FinishDurchgangStation","wettkampfUUID":"$competition","durchgang:"${"${durchgangOriginal}"}","geraet":${"${geraet}"},"step":${"${step}"}}""")))
             }
+            .rendezVous(12)
             .exec(http("finish step")
               .post(s"/api/competition/$competition/finishedStep")
               .body(StringBody(s"""{"type":"FinishDurchgangStep","wettkampfUUID":"$competition"}"""))
               .silent
             )
-          //.exec(scnCloseWebsocketUser)
         }
+        .pause(20 seconds, 30 seconds)
+        // implicit closed by session ending .exec(closeWSUserFromDurchgang)
   }
 
-  // https://mwclearning.com/?p=1678
-  // https://github.com/llatinov/sample-performance-with-gatling/
-  // https://automationrhapsody.com/performance-testing-with-gatling-integration-with-maven/
-  val scnBrowseResultsPerDurchgangAndGeraet = scenario("BrowseResultsPerDurchgangAndGeraet")
+  val scnVisitor = scenario("Visitor")
+    .exec(http("initial-access")
+      .get("/")
+      .resources(
+        http("get font ionicons").get("/assets/fonts/ionicons.woff2?v=4.2.5"),
+        http("get font roboto-regular").get("/assets/fonts/roboto-regular.woff2"),
+        http("get font roboto-medium").get("/assets/fonts/roboto-medium.woff2"),
+        http("get font roboto-bold").get("/assets/fonts/roboto-bold.woff2"),
+        http("get competitions").get("/api/competition"),
+        http("check jwt-token expired")
+          .options("/api/isTokenExpired")))
     .exec(BrowseResults.loadAndSaveDurchgaenge)
     .exec(BrowseResults.loadAndSaveGeraete)
     .exec(BrowseResults.diveToWertungen)
-    //.exec(scnCloseWebsocketUser)
-  //    .pause(20 seconds, 30 seconds)
+  // https://mwclearning.com/?p=1678
+  // https://github.com/llatinov/sample-performance-with-gatling/
+  // https://automationrhapsody.com/performance-testing-with-gatling-integration-with-maven/
+  val scnJudge = scenario("Judge")
+    .exec(BrowseResults.loadAndSaveDurchgaenge)
+    .exec(BrowseResults.loadAndSaveGeraete)
+    .exec(BrowseResults.collectWertungen)
 
   setUp(
-    scnLanding
+    scnVisitor
       .inject(
-        rampConcurrentUsers(20) to (300) during (10 minutes),
-                constantConcurrentUsers(100) during(50 minutes)
+        rampConcurrentUsers(100) to (500) during (10 minutes),
+        constantConcurrentUsers(500) during(40 minutes),
+        rampConcurrentUsers(500) to (300) during (10 minutes),
 //        constantConcurrentUsers(150) during (10 hours)
         )
       .throttle(
-        reachRps(5) in (10 seconds),
+        reachRps(30) in (10 seconds),
         holdFor(4 hours)
-      ),
-    scnBrowseResultsPerDurchgangAndGeraet
+      )
+      ,
+    scnJudge
       .inject(
         //        heavisideUsers(70) during (60 seconds)
         //      constantUsersPerSec(1) during (15 seconds) randomized,
         //      rampUsers(100) during (15 seconds),
         //      rampUsersPerSec(2) to 8 during (5 minutes) randomized,
 //                constantConcurrentUsers(12) during (60 minutes),
-        rampConcurrentUsers(4) to 600 during (20 minutes)
-//        rampConcurrentUsers(8) to 32 during (10 hours)
-        , constantConcurrentUsers(400) during (40 minutes)
+        rampConcurrentUsers(4) to 64 during (20 minutes)
+        , rampConcurrentUsers(64) to 12 during (20 minutes)
+        , constantConcurrentUsers(12) during (20 minutes)
         //        constantConcurrentUsers(8) during (50 minutes),
         //        constantConcurrentUsers(12) during (10 minutes),
         //        heavisideUsers(20) during (60 seconds)
-      ).throttle(
-      reachRps(30) in (30 minutes),
-      holdFor(30 minutes)
-    )
+      )
+      .throttle(
+        reachRps(10) in (30 minutes),
+        holdFor(30 minutes)
+      )
   ).protocols(httpProtocol)
 }
