@@ -3,7 +3,7 @@
 	<modelVersion>4.0.0</modelVersion>
 	<groupId>ch.seidel</groupId>
 	<artifactId>KuTu</artifactId>
-	<version>2.3.3</version>
+	<version>2.3.4</version>
 
 	<inceptionYear>2014</inceptionYear>
 
@@ -96,6 +96,8 @@
 				<bundler.os>Darwin</bundler.os>
 				<bundler.type>pkg</bundler.type>
 				<app.logo>AppIcon.icns</app.logo>
+				<javafx.version>19</javafx.version>
+				<scalafx.version>19.0.0-R30</scalafx.version>
 			</properties>
 			<build>
 				<plugins>
@@ -248,7 +250,7 @@
 		<scalatest.version>3.3.0-SNAP4</scalatest.version>
 		<scala-maven-plugin.version>4.8.1</scala-maven-plugin.version>
 		<gatling.version>3.9.5</gatling.version>
-		<gatling-plugin.version>4.3.7</gatling-plugin.version>
+		<gatling-plugin.version>4.7.0</gatling-plugin.version>
 		<maven.compiler.source>21</maven.compiler.source>
 		<maven.compiler.target>21</maven.compiler.target>
 		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
