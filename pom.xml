@@ -96,6 +96,8 @@
 				<bundler.os>Darwin</bundler.os>
 				<bundler.type>pkg</bundler.type>
 				<app.logo>AppIcon.icns</app.logo>
+				<javafx.version>19</javafx.version>
+				<scalafx.version>19.0.0-R30</scalafx.version>
 			</properties>
 			<build>
 				<plugins>
