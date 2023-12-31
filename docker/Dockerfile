@@ -47,14 +47,7 @@ ENTRYPOINT [ "java", "-cp", ".:app.jar:libs/*" \
     , "--add-opens=java.base/java.util.concurrent.atomic=ALL-UNNAMED" \
     , "--add-opens=java.base/sun.nio.ch=ALL-UNNAMED" \
     , "--add-opens=java.base/sun.util.calendar=ALL-UNNAMED" \
-    , "-XX:+UseG1GC" \
-    , "-XX:+UseContainerSupport" \
-    , "-XX:MaxGCPauseMillis=30" \
-    , "-XX:InitiatingHeapOccupancyPercent=70" \
-    , "-XX:MaxRAMPercentage=80" \
-    , "-XX:+ParallelRefProcEnabled" \
-    , "-XX:+PerfDisableSharedMem" \
-    , "-XX:+OptimizeStringConcat" \
-    , "-XX:+HeapDumpOnOutOfMemoryError" \
-    , "-XX:MetaspaceSize=96M" \
+    , "-XX:+UseZGC" \
+    , "-XX:+ZGenerational" \
+    , "-XX:+ExitOnOutOfMemoryError" \
     , "ch.seidel.kutu.KuTuServer"]
