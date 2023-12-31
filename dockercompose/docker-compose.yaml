@@ -76,6 +76,5 @@ volumes:
 
 networks:
   intern:
-    driver: bridge
   intern-prod:
     driver: bridge
