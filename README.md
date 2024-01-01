@@ -6,8 +6,6 @@ Wettkampf-App für Kunst- und Geräteturnen
 
 [![Uptime sharevic.net](https://app.statuscake.com/button/index.php?Track=3358506&Days=1000&Design=2)](http://status.sharevic.net)
 
-[Homepage](https://luechtdiode.github.io/KuTu)
-
 # Features:
 
 ## Desktop-Installation
