@@ -17,7 +17,7 @@ class SimulationBottmingenD1 extends Simulation {
 
   val httpProtocol = http
     .baseUrl(originBaseUrl)
-    .wsBaseUrl(originBaseUrl.replace("http", "ws")).wsReconnect.wsMaxReconnects(100000)
+    .wsBaseUrl(originBaseUrl.replace("http", "ws")).wsReconnect.wsMaxReconnects(10)
     .inferHtmlResources()
     .doNotTrackHeader("1")
     .userAgentHeader("Mozilla/5.0 (iPad; CPU OS 11_0 like Mac OS X) AppleWebKit/604.1.34 (KHTML, like Gecko) Version/11.0 Mobile/15A5341f Safari/604.1")
@@ -112,9 +112,14 @@ class SimulationBottmingenD1 extends Simulation {
         .set("sessionUserId", session.userId)
     }
 
-    val diveToWertungen = exec(session => chooseDurchgang(session))
-      .exec(session => chooseGeraet(chooseDurchgangWSConnection(session)))
-      //.exec(connectWSUserToDurchgang)
+    val commonDGInitializer = exec(session => {
+      val dgSession = chooseDurchgang(session)
+      val dgwsSession = chooseDurchgangWSConnection(dgSession)
+      val gearSession = chooseGeraet(dgwsSession)
+      gearSession
+    })
+
+    val diveToWertungen = commonDGInitializer
       .exec(connectWSUserToAll)
       .exec(getSteps)
       .foreach("${steps}", "step") {
@@ -129,7 +134,7 @@ class SimulationBottmingenD1 extends Simulation {
       // implicit closed by session ending .exec(closeWSUserFromAll)
       // implicit closed by session ending .exec(closeWSUserFromDurchgang)
 
-    val collectWertungen = diveToWertungen
+    val collectWertungen = commonDGInitializer
         .exec(http(s"start durchgang")
           .post(s"/api/competition/$competition/start")
           .body(StringBody(s"""{"type":"StartDurchgangStation","wettkampfUUID":"$competition","durchgang":"${"${durchgangOriginal}"}"}""")))
@@ -178,6 +183,9 @@ class SimulationBottmingenD1 extends Simulation {
     .exec(BrowseResults.loadAndSaveDurchgaenge)
     .exec(BrowseResults.loadAndSaveGeraete)
     .exec(BrowseResults.diveToWertungen)
+    .exec(BrowseResults.closeWSUserFromAll)
+
+
   // https://mwclearning.com/?p=1678
   // https://github.com/llatinov/sample-performance-with-gatling/
   // https://automationrhapsody.com/performance-testing-with-gatling-integration-with-maven/
@@ -185,6 +193,7 @@ class SimulationBottmingenD1 extends Simulation {
     .exec(BrowseResults.loadAndSaveDurchgaenge)
     .exec(BrowseResults.loadAndSaveGeraete)
     .exec(BrowseResults.collectWertungen)
+    .exec(BrowseResults.closeWSUserFromDurchgang)
 
   setUp(
     scnVisitor
@@ -196,7 +205,7 @@ class SimulationBottmingenD1 extends Simulation {
         )
       .throttle(
         reachRps(30) in (10 seconds),
-        holdFor(4 hours)
+        holdFor(1 hours)
       )
       ,
     scnJudge
@@ -214,8 +223,8 @@ class SimulationBottmingenD1 extends Simulation {
         //        heavisideUsers(20) during (60 seconds)
       )
       .throttle(
-        reachRps(10) in (30 minutes),
-        holdFor(30 minutes)
+        reachRps(5) in (3 minutes),
+        holdFor(1 hour)
       )
   ).protocols(httpProtocol)
 }
