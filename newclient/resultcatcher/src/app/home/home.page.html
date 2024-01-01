@@ -44,22 +44,20 @@
   </ion-list>
   <ion-list *ngIf="!isLocked">
     <ion-item>
-      <ion-label>Wettkampf</ion-label>
-      <ion-select placeholder='Bitte auswählen' *ngIf="getCompetitions()" [(ngModel)]='competition' okText='Okay' cancelText='Abbrechen'>
+      <ion-select label="Wettkampf" aria-placeholder='Bitte auswählen' *ngIf="getCompetitions()" [(ngModel)]='competition' okText='Okay' cancelText='Abbrechen'>
         <ion-select-option *ngFor='let comp of getCompetitions()' [value]='comp.uuid'>
           {{comp.titel + ' ' + (comp.datum | date:'dd-MM-yy')}}</ion-select-option>
       </ion-select>
     </ion-item>
     <ion-item>
-      <ion-label>Durchgang</ion-label>
-      <ion-select placeholder='Bitte auswählen' *ngIf="competition && getDurchgaenge() && getDurchgaenge().length > 0" [(ngModel)]='durchgang'
+      <ion-select label='Durchgang' placeholder='Bitte auswählen' *ngIf="competition && getDurchgaenge() && getDurchgaenge().length > 0" [(ngModel)]='durchgang'
         okText='Okay' cancelText='Abbrechen'>
         <ion-select-option *ngFor='let d of getDurchgaenge()' [value]='d'>{{d}}</ion-select-option>
       </ion-select>
     </ion-item>
     <ion-item>
       <ion-label>Gerät</ion-label>
-      <ion-select placeholder='Bitte auswählen' *ngIf="durchgang && getGeraete() && getGeraete().length > 0" [(ngModel)]='geraet' okText='Okay'
+      <ion-select label='Gerät' placeholder='Bitte auswählen' *ngIf="durchgang && getGeraete() && getGeraete().length > 0" [(ngModel)]='geraet' okText='Okay'
         cancelText='Abbrechen'>
         <ion-select-option *ngFor='let g of getGeraete()' [value]='g.id'>{{g.name}}</ion-select-option>
       </ion-select>
