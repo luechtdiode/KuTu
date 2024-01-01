@@ -14,37 +14,43 @@
       <ion-item-divider>
         <ion-avatar slot="start">
           <img src="assets/imgs/athlete.png">
-        </ion-avatar><ion-label>Athlet / Athletin</ion-label>
-        <ion-select *ngIf="registration.id === 0 && clubAthletList.length > 0" placeholder='Auswahl aus Liste' name="clubAthletid" [(ngModel)]='selectedClubAthletId' okText='Okay' cancelText='Abbrechen'>
+        </ion-avatar>
+        <ion-label *ngIf="registration.id > 0">
+          Athlet / Athletin
+        </ion-label>
+        <ion-select label="Athlet / Athletin" *ngIf="registration.id === 0 && clubAthletList.length > 0" placeholder='Auswahl aus Liste' name="clubAthletid" [(ngModel)]='selectedClubAthletId' okText='Okay' cancelText='Abbrechen'>
           <ion-select-option *ngFor='let athlet of clubAthletList' [value]='athlet.athletId'>
             <ion-avatar slot="end">
               <img src="assets/imgs/athlete.png">
             </ion-avatar>
-            <ion-label>{{athlet.name}}, {{athlet.vorname}} ({{athlet.geschlecht}})<br><small>({{athlet.gebdat | date}})</small>
+            <ion-label>{{athlet.name}}, {{athlet.vorname}} ({{athlet.geschlecht}})<br><small> ({{athlet.gebdat | date}})</small>
             </ion-label>
           </ion-select-option>
-        </ion-select>
+        </ion-select>        
       </ion-item-divider>
       <ion-item>
         <ion-avatar slot="start">
           &nbsp;
         </ion-avatar>
-        <ion-input required placeholder="Name" type="text"  [disabled]="false" [(ngModel)]='registration.name' name="name" required></ion-input>
-        <ion-input required placeholder="Vorname" type="text"  [disabled]="false" [(ngModel)]='registration.vorname' name="vorname" required></ion-input>
+        <ion-input label="Name" required placeholder="Name" type="text"  [disabled]="false" [(ngModel)]='registration.name' name="name" required></ion-input>
       </ion-item>
       <ion-item>
         <ion-avatar slot="start">
           &nbsp;
         </ion-avatar>
-        <ion-label color="primary">Geburtsdatum</ion-label>
-        <ion-input required placeholder="Geburtsdatum" type="date" display-timezone="utc" [disabled]="false" [(ngModel)]='registration.gebdat' name="gebdat" required></ion-input>
+        <ion-input label="Vorname" required placeholder="Vorname" type="text"  [disabled]="false" [(ngModel)]='registration.vorname' name="vorname" required></ion-input>
       </ion-item>
       <ion-item>
         <ion-avatar slot="start">
           &nbsp;
         </ion-avatar>
-        <ion-label color="primary">Geschlecht</ion-label>
-        <ion-select required placeholder='Geschlecht' [(ngModel)]='registration.geschlecht' name="geschlecht" okText='Okay' cancelText='Abbrechen' required>
+        <ion-input label="Geburtsdatum" required placeholder="Geburtsdatum" type="date" display-timezone="utc" [disabled]="false" [(ngModel)]='registration.gebdat' name="gebdat" required></ion-input>
+      </ion-item>
+      <ion-item>
+        <ion-avatar slot="start">
+          &nbsp;
+        </ion-avatar>
+        <ion-select label="Geschlecht" required placeholder='bitte auswählen' [(ngModel)]='registration.geschlecht' name="geschlecht" okText='Okay' cancelText='Abbrechen' required>
           <ion-select-option [value]='"W"'>weiblich</ion-select-option>
           <ion-select-option [value]='"M"'>männlich</ion-select-option>
         </ion-select>
@@ -59,8 +65,7 @@
         <ion-avatar slot="start">
           &nbsp;
         </ion-avatar>
-        <ion-label color="primary">Programm/Kategorie</ion-label>
-        <ion-select required placeholder='Programm/Kategorie' [(ngModel)]='registration.programId' name="programId" okText='Okay' cancelText='Abbrechen'>
+        <ion-select label="Programm/Kategorie" required placeholder='bitte auswählen' [(ngModel)]='registration.programId' name="programId" okText='Okay' cancelText='Abbrechen'>
           <ion-select-option *ngFor='let pgm of filterPGMsForAthlet(registration)' [value]='pgm.id'>{{pgm.name}}</ion-select-option>
         </ion-select>
       </ion-item>
@@ -72,14 +77,11 @@
       </ion-item-divider>
       <ion-item *ngIf="teamsAllowed()">
         <ion-avatar slot="start">
-          &nbsp;
         </ion-avatar>
         <ion-grid no-padding>
-          <ion-row *ngFor="let rule of teamrules">
-            <ion-col>für {{rule}}</ion-col></ion-row>
+          <ion-row *ngFor="let rule of teamrules">für {{rule}}</ion-row>
           <ion-row>
-            <ion-col><ion-label class="teamlabel" color="primary">Team<br></ion-label></ion-col>
-            <ion-select placeholder='Team' [(ngModel)]='registration.team' name="team" okText='Okay' cancelText='Abbrechen'>
+            <ion-select label="Team" placeholder='Team' [(ngModel)]='registration.team' name="team" okText='Okay' cancelText='Abbrechen'>
               <ion-select-option [value]='0'>Keine Teamzuordnung</ion-select-option>
               <ion-select-option *ngFor='let team of teams' [value]='team.index'>{{mapTeam(team.index)}}</ion-select-option>
             </ion-select>

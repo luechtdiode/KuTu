@@ -16,15 +16,25 @@
         <ion-avatar slot="start">
           <img src="assets/imgs/chief.png">
         </ion-avatar>
-        <ion-input required placeholder="Name" type="text"  [disabled]="false" [(ngModel)]='registration.name' name="name" required></ion-input>
-        <ion-input required placeholder="Vorname" type="text"  [disabled]="false" [(ngModel)]='registration.vorname' name="vorname" required></ion-input>
+        <ion-label>Wertungsrichter / Wertungsrichterin</ion-label>
       </ion-item>
       <ion-item>
         <ion-avatar slot="start">
           &nbsp;
         </ion-avatar>
-        <ion-label color="primary">Geschlecht</ion-label>
-        <ion-select required placeholder='Geschlecht' [(ngModel)]='registration.geschlecht' name="geschlecht" okText='Okay' cancelText='Abbrechen' required>
+        <ion-input label="Name" required placeholder="Name" type="text"  [disabled]="false" [(ngModel)]='registration.name' name="name" required></ion-input>
+      </ion-item>
+      <ion-item>
+        <ion-avatar slot="start">
+          &nbsp;
+        </ion-avatar>
+        <ion-input label="Vorname" required placeholder="Vorname" type="text"  [disabled]="false" [(ngModel)]='registration.vorname' name="vorname" required></ion-input>
+      </ion-item>
+      <ion-item>
+        <ion-avatar slot="start">
+          &nbsp;
+        </ion-avatar>
+        <ion-select label="Geschlecht" required placeholder='Geschlecht' [(ngModel)]='registration.geschlecht' name="geschlecht" okText='Okay' cancelText='Abbrechen' required>
           <ion-select-option [value]='"W"'>weiblich</ion-select-option>
           <ion-select-option [value]='"M"'>männlich</ion-select-option>
         </ion-select>

@@ -119,7 +119,10 @@ ion-note {
 
 ion-select, ion-radio-group {
 //   width: 80%;
-  max-width: 80% !important;
+//  max-width: 80% !important;
+}
+input[type=date] {
+  text-align: right !important;
 }
 
 .select-alert {

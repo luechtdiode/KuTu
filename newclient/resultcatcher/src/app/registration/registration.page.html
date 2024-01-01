@@ -11,7 +11,7 @@
             <ion-label>Wettkampf-Anmeldungen</ion-label>
     </ion-title>
     <ion-buttons slot="end">
-      <ion-select placeholder='Bitte auswählen' *ngIf="getCompetitions().length > 0" [(ngModel)]='competition' okText='Okay' cancelText='Abbrechen'>
+      <ion-select label="Wettkampf" placeholder='Bitte auswählen' *ngIf="getCompetitions().length > 0" [(ngModel)]='competition' okText='Okay' cancelText='Abbrechen'>
         <ion-select-option *ngFor='let comp of getCompetitions()' [value]='comp.uuid'>
           {{comp.titel + ' ' + (comp.datum | date:'dd-MM-yy')}}</ion-select-option>
       </ion-select>
