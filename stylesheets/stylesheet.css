@@ -342,7 +342,8 @@ Full-Width Styles
   height:70px;
   text-indent: -5000px;
   overflow: hidden;
-  background: url(../images/sprite_download.png) no-repeat bottom right;
+  background: url(../images/sprite_download.png) no-repeat bottom;
+  background-position-x: 93px;
   margin-left: 10px;
 }
 
@@ -352,6 +353,24 @@ Full-Width Styles
 
 .tar_download_link:hover {
   background: url(../images/sprite_download.png) no-repeat top right;
+  background-position-x: 93px;
+}
+
+.app_download_link {
+  display: block;
+  float: right;
+  width: 90px;
+  height:70px;
+  text-indent: -5000px;
+  overflow: hidden;
+  background: url(../images/sprite_download.png) no-repeat bottom;
+  background-position-x: 181px;
+  margin-left: 10px;
+}
+
+.app_download_link:hover {
+  background: url(../images/sprite_download.png) no-repeat top;
+  background-position-x: 181px;
 }
 
 #main_content_wrap {
