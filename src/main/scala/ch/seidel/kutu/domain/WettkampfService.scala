@@ -46,21 +46,26 @@ trait WettkampfService extends DBService
   }
 
   def listRootProgramme(): List[ProgrammView] = {
+    Await.result(listRootProgrammeAsync, Duration.Inf)
+  }
+
+  def listRootProgrammeAsync: Future[List[ProgrammView]] = {
     val allPgmsQuery =
       sql"""select
             id, name, aggregate, parent_id, ord, alter_von, alter_bis, uuid, riegenmode
             from programm where parent_id is null or parent_id = 0""".as[ProgrammRaw]
-        .map{l => l.map(p => p.id -> p).toMap}
-        .map{map => map.foldLeft(List[ProgrammView]()){(acc, pgmEntry) =>
-          val (id, pgm) = pgmEntry
-          if (pgm.parentId > 0) {
-            acc :+ pgm.withParent(map(pgm.parentId).toView)
-          } else {
-            acc :+ pgm.toView            
+        .map { l => l.map(p => p.id -> p).toMap }
+        .map { map =>
+          map.foldLeft(List[ProgrammView]()) { (acc, pgmEntry) =>
+            val (id, pgm) = pgmEntry
+            if (pgm.parentId > 0) {
+              acc :+ pgm.withParent(map(pgm.parentId).toView)
+            } else {
+              acc :+ pgm.toView
+            }
           }
         }
-      }
-    Await.result(database.run(allPgmsQuery.withPinnedSession), Duration.Inf)
+    database.run(allPgmsQuery.withPinnedSession)
   }
 
   def initPlanZeitenActions(wettkampfUUID: UUID) =

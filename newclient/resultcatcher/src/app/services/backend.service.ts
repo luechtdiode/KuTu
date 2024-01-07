@@ -396,6 +396,20 @@ export class BackendService extends WebsocketService {
       return deleter;
     }
 
+    loadWKPrograms(): Observable<ProgrammRaw[]> {
+      const loader = this.startLoading('Programmliste wird geladen. Bitte warten ...',
+        this.http.get<ProgrammRaw[]>(
+          backendUrl + 'api/competition/programmlist'
+          ).pipe(share()));
+
+      loader.subscribe({
+        error: this.standardErrorHandler
+      });
+
+      return loader;
+
+    }
+
     loadProgramsForCompetition(competitionId: string) {
       const loader = this.startLoading('Programmliste zum Wettkampf wird geladen. Bitte warten ...',
         this.http.get<ProgrammRaw[]>(
