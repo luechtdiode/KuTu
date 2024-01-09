@@ -1,8 +1,8 @@
 import { Component, OnInit } from '@angular/core';
 import { BackendService } from '../services/backend.service';
-import { ProgrammItem, Wettkampf } from '../backend-types';
 import { NavController } from '@ionic/angular';
-import { Subject, debounceTime, distinctUntilChanged, filter, map, of, share, switchMap, tap } from 'rxjs';
+import { Subject, distinctUntilChanged, map, of, share, switchMap } from 'rxjs';
+import { Wettkampf } from '../backend-types';
 
 @Component({
   selector: 'app-competitions',
@@ -31,7 +31,6 @@ export class CompetitionsPage implements OnInit {
     this.backendService.competitionSubject.subscribe(wks => {
       this.sFilteredWettkampfList = wks;
       this.sMyQuery = '';
-      console.log("Initializing with new wks: ", wks);
       const pipeBeforeAction = this.tMyQueryStream.pipe(
         map(event => event?.target?.value || ''),
         distinctUntilChanged(),
@@ -59,7 +58,6 @@ export class CompetitionsPage implements OnInit {
       let result: Wettkampf[];
 
       result = [];
-      console.log(q, query, wkl);
 
       if (wkl.length > 0) {
         const filterFn = this.filter(q);

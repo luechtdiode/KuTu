@@ -22,7 +22,7 @@
       <ion-avatar slot="start">
         <img src="assets/imgs/wettkampf.png">
       </ion-avatar>
-      <ion-label>{{competitionName(w)}}<br><small>{{getDetails(w)}}</small></ion-label>
+      <ion-label>{{w.datum | date:'dd-MM-yyyy'}}&nbsp;{{w.titel}}<br><small>{{getDetails(w)}}</small></ion-label>
     </ion-item>
   </ion-list>
   
