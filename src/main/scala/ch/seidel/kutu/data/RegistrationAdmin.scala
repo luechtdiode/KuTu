@@ -74,7 +74,12 @@ object RegistrationAdmin {
         if (existingAthletes.contains(wertung.athlet.id)) {
           existingPgmAthletes.get(wertung.wettkampfdisziplin.programm.id) match {
             case Some(athletList: Map[Long, AthletRegistration]) => athletList.get(wertung.athlet.id) match {
-              case Some(athletReistration) => if (athletReistration.team.contains(wertung.team)) "Unverändert" else "Umteilen"
+              case Some(athletReistration) =>
+                if (athletReistration.team.getOrElse(0) == wertung.team) {
+                  "Unverändert"
+                } else {
+                  "Umteilen"
+                }
               case None => "Umteilen"
             }
             case _ => "Umteilen"
