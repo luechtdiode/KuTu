@@ -10,7 +10,7 @@ import ch.seidel.kutu.{Config, domain}
 import ch.seidel.kutu.Config.remoteAdminBaseUrl
 import ch.seidel.kutu.akka._
 import ch.seidel.kutu.data.RegistrationAdmin.adjustWertungRiegen
-import ch.seidel.kutu.domain.{AthletRegistration, AthletView, JudgeRegistration, KutuService, NewRegistration, ProgrammRaw, Registration, RegistrationResetPW, TeamItem, Verein, Wettkampf, dateToExportedStr, encodeFileName}
+import ch.seidel.kutu.domain.{AthletRegistration, AthletView, JudgeRegistration, KutuService, NewRegistration, ProgrammRaw, Registration, RegistrationResetPW, TeamItem, Verein, Wettkampf, dateToExportedStr, encodeFileName, str2SQLDate}
 import ch.seidel.kutu.http.AuthSupport.OPTION_LOGINRESET
 import ch.seidel.kutu.renderer.MailTemplates.createPasswordResetMail
 import ch.seidel.kutu.renderer.{CompetitionsClubsToHtmlRenderer, CompetitionsJudgeToHtmlRenderer, PrintUtil}
@@ -405,7 +405,8 @@ trait RegistrationRoutes extends SprayJsonSupport with JwtSupport with JsonSuppo
                           } else {
                             val existingAthletRegs = selectAthletRegistrations(registrationId)
                             val pgm = readWettkampfLeafs(wettkampf.programmId).head
-                            selectAthletesView(Verein(reg.vereinId.getOrElse(0), reg.vereinname, Some(reg.verband)))
+
+                            val officialCandidates = selectAthletesView(Verein(reg.vereinId.getOrElse(0), reg.vereinname, Some(reg.verband)))
                               .filter(_.activ)
                               .filter(r => (pgm.aggregate == 1 && pgm.riegenmode == 1) || !existingAthletRegs.exists { er =>
                                 er.athletId.contains(r.id) || (er.name == r.name && er.vorname == r.vorname)
@@ -414,6 +415,13 @@ trait RegistrationRoutes extends SprayJsonSupport with JwtSupport with JsonSuppo
                                 case a@AthletView(id, _, geschlecht, name, vorname, gebdat, _, _, _, _, _) =>
                                   AthletRegistration(0L, reg.id, Some(id), geschlecht, name, vorname, gebdat.map(dateToExportedStr).getOrElse(""), 0L, 0, Some(a), None)
                               }
+                            val incompletedCandidates = selectUnaprovedAthletRegistrations(registrationId)
+                              .filter(ar => !existingAthletRegs.exists{aro => aro.geschlecht.equals(ar.geschlecht) && aro.name.equals(ar.name) && aro.vorname.equals(ar.vorname)})
+                              .map(ar => ar.copy(gebdat = dateToExportedStr(str2SQLDate(ar.gebdat))))
+                            val preret = officialCandidates ++ incompletedCandidates.filter{ar =>
+                              !officialCandidates.exists{aro => aro.geschlecht.equals(ar.geschlecht) && aro.name.equals(ar.name) && aro.vorname.equals(ar.vorname)}
+                            }
+                            preret.sortBy(_.toAthlet.easyprint)
                           }
                         }
                       }
@@ -428,8 +436,8 @@ trait RegistrationRoutes extends SprayJsonSupport with JwtSupport with JsonSuppo
                         log.info("post athletregistration")
                         entity(as[AthletRegistration]) { athletRegistration =>
                           complete {
-                            val x: Option[AthletView] = athletRegistration.athletId.map(loadAthleteView)
-                            if (athletRegistration.athletId.isDefined && x.isEmpty) {
+                            val x: Option[AthletView] = athletRegistration.athletId.filter(_ > 0L).map(loadAthleteView)
+                            if (athletRegistration.athletId.isDefined && athletRegistration.athletId.get > 0L && x.isEmpty) {
                               StatusCodes.BadRequest
                             } else {
                               val reg = selectRegistration(registrationId)

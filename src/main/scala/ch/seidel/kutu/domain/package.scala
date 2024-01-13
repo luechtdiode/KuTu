@@ -1261,7 +1261,7 @@ package object domain {
     }
 
     def toAthlet: Athlet = {
-      if (id == 0 && athletId == None) {
+      if (id == 0 && !isLocalIdentified) {
         val nameNorm = capitalizeIfBlockCase(name.trim)
         val vornameNorm = capitalizeIfBlockCase(vorname.trim)
         val nameMasculinTest = Surname.isMasculin(nameNorm)
@@ -1287,8 +1287,8 @@ package object domain {
         if (age > 0 && age < 120) {
           Athlet(
             id = athletId match {
-              case Some(id) => id
-              case None => 0
+              case Some(id) if id > 0 => id
+              case _ => 0
             },
             js_id = "",
             geschlecht = defGeschlecht,
@@ -1313,8 +1313,8 @@ package object domain {
         if (age > 0 && age < 120) {
           Athlet(
             id = athletId match {
-              case Some(id) => id
-              case None => 0
+              case Some(id) if id > 0 => id
+              case _ => 0
             },
             js_id = "",
             geschlecht = geschlecht,

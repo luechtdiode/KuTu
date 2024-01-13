@@ -321,6 +321,8 @@ trait WettkampfService extends DBService
   def listWettkaempfeByVereinId(vereinId: Long) = {
      sql"""       select wk.* from wettkampf wk where exists (
                     select 1 from wertung wr, athlet a where wr.wettkampf_id = wk.id and wr.athlet_id = a.id and a.verein = $vereinId
+                  ) or exists (
+                    select 1 from vereinregistration wr where wr.wettkampf_id = wk.id and wr.verein_id = $vereinId
                   )
                   order by wk.datum desc""".as[Wettkampf]
   }
