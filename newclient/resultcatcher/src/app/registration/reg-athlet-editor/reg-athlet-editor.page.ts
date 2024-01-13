@@ -99,7 +99,7 @@ export class RegAthletEditorPage implements OnInit {
 
   alter(athlet: AthletRegistration): number {
     if (this.wettkampfFull.altersklassen?.trim().length == 0) {
-      const yearOfBirth = new Date(athlet.gebdat).getFullYear();
+      const yearOfBirth = new Date(toDateString(athlet.gebdat)).getFullYear();
       const wkYear = new Date(this.wettkampfFull.datum).getFullYear();
       return wkYear - yearOfBirth;
     } else {
@@ -110,7 +110,7 @@ export class RegAthletEditorPage implements OnInit {
   }
 
   similarRegistration(a: AthletRegistration, b: AthletRegistration): boolean {
-    return a.athletId === b.athletId ||
+    return (a.athletId > 0 && b.athletId > 0 && a.athletId === b.athletId) ||
       a.name === b.name && a.vorname === b.vorname && a.gebdat === b.gebdat && a.geschlecht === b.geschlecht;
   }
   alternatives(athlet:AthletRegistration): AthletRegistration[] {
@@ -183,7 +183,7 @@ export class RegAthletEditorPage implements OnInit {
     if (reg.athletId) {
       const originalReg = [...this.clubAthletListCurrent, ...this.clubAthletList].find(r => r.athletId === reg.athletId);
       if (originalReg.geschlecht !== reg.geschlecht ||
-          new Date(toDateString(originalReg.gebdat)).toJSON() !== new Date(reg.gebdat).toJSON()||
+          new Date(toDateString(originalReg.gebdat)).toJSON() !== new Date(toDateString(reg.gebdat)).toJSON()||
           originalReg.name !== reg.name ||
           originalReg.vorname !== reg.vorname) {
             return true;
@@ -196,7 +196,8 @@ export class RegAthletEditorPage implements OnInit {
     if(!form.valid) return;
     const reg = Object.assign({}, this.registration, {
       gebdat: new Date(form.value.gebdat).toJSON(),
-      team: form.value.team ? form.value.team : 0
+      team: form.value.team ? form.value.team : 0,
+      athletId: this.registration.athletId > 0 ? this.registration.athletId : 0
     });
 
     if (this.athletId === 0 || reg.id === 0) {

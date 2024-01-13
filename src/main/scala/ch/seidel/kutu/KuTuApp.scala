@@ -1507,26 +1507,43 @@ object KuTuApp extends JFXApp3 with KutuService with JsonSupport with JwtSupport
         case entityString: String => entityString.asType[List[Wettkampf]]
         case _ => List[Wettkampf]()
       }
+      type WKRecord = (WettkampfView, String)
       wklist.onComplete {
         case Success(wkl: List[Wettkampf]) =>
+          val wklviews = wkl
+            .map(wk => wk.toView(readProgramm(wk.programmId)))
+            .map(wk => (wk,
+              s"${wk.programm.name}" +
+              s"${if (wk.teamrule.nonEmpty && !wk.teamrule.equals("Keine Teams")) ", " + wk.teamrule else ""}" +
+              s"${if (wk.altersklassen.nonEmpty) ", Altersklassen" else ""}" +
+              s"${if (wk.jahrgangsklassen.nonEmpty) ", Jahrgangs Altersklassen" else ""}" +
+              ""))
           Platform.runLater {
-            val filteredModel = ObservableBuffer.from(wkl)
-            val wkTable = new TableView[Wettkampf](filteredModel) {
+            val filteredModel = ObservableBuffer.from(wklviews)
+            val wkTable = new TableView[WKRecord](filteredModel) {
               columns ++= List(
-                new TableColumn[Wettkampf, String] {
+                new TableColumn[WKRecord, String] {
                   text = "Datum"
                   cellValueFactory = { x =>
                     new ReadOnlyStringWrapper(x.value, "datum", {
-                      s"${x.value.datum}"
+                      s"${x.value._1.datum}"
                     })
                   }
-                  minWidth = 250
+                  //minWidth = 150
                 },
-                new TableColumn[Wettkampf, String] {
+                new TableColumn[WKRecord, String] {
                   text = "Titel"
                   cellValueFactory = { x =>
                     new ReadOnlyStringWrapper(x.value, "titel", {
-                      s"${x.value.titel}"
+                      s"${x.value._1.titel}"
+                    })
+                  }
+                },
+                new TableColumn[WKRecord, String] {
+                  text = "Details"
+                  cellValueFactory = { x =>
+                    new ReadOnlyStringWrapper(x.value, "details", {
+                      x.value._2
                     })
                   }
                 }
@@ -1539,8 +1556,9 @@ object KuTuApp extends JFXApp3 with KutuService with JsonSupport with JwtSupport
                 val sortOrder = wkTable.sortOrder.toList;
                 filteredModel.clear()
                 val searchQuery = newVal.toUpperCase().split(" ")
-                for {wettkampf <- wkl
+                for {wkr <- wklviews
                      } {
+                  val (wettkampf, details) = wkr
                   val matches = searchQuery.forall { search =>
                     if (search.isEmpty() || wettkampf.easyprint.toUpperCase().contains(search)) {
                       true
@@ -1551,7 +1569,7 @@ object KuTuApp extends JFXApp3 with KutuService with JsonSupport with JwtSupport
                   }
 
                   if (matches) {
-                    filteredModel.add(wettkampf)
+                    filteredModel.add(wkr)
                   }
                 }
                 wkTable.sortOrder.clear()
@@ -1581,7 +1599,7 @@ object KuTuApp extends JFXApp3 with KutuService with JsonSupport with JwtSupport
                   val selectedAthleten = wkTable.items.value.zipWithIndex.filter {
                     x => wkTable.selectionModel.value.isSelected(x._2)
                   }.map { x =>
-                    val (wettkampf, idx) = x
+                    val ((wettkampf, details), idx) = x
                     val url = s"$remoteAdminBaseUrl/api/competition/${wettkampf.uuid.get}"
                     invokeAsyncWithBusyIndicator[Wettkampf](s"Wettkampf ${wettkampf.easyprint} herunterladen") {
                       val pr = Promise[Wettkampf]()

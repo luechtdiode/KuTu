@@ -237,8 +237,10 @@ trait RegistrationService extends DBService with RegistrationResultMapper with H
               inner join wettkampfdisziplin wkd on (w.wettkampfdisziplin_id = wkd.id)
               inner join vereinregistration vrnow on (vrnow.verein_id = a.verein)
               inner join wettkampf wkthen on (w.wettkampf_id = wkthen.id)
+              inner join wettkampf wknow on (vrnow.wettkampf_id = wknow.id)
               where vrnow.id = $registrationId
                   and wkthen.uuid = $wettkampfCopyFrom
+                  and wkthen.programm_id = wknow.programm_id
                   and not exists (
                     select 1
                     from athletregistration arex
@@ -249,6 +251,39 @@ trait RegistrationService extends DBService with RegistrationResultMapper with H
                       and arex.geschlecht = a.geschlecht
                   )
           """ >>
+        sqlu"""
+              insert into athletregistration (vereinregistration_id, athlet_id, geschlecht, name, vorname, gebdat, program_id, team, registrationtime)
+              select distinct
+                #$registrationId as vereinregistration_id,
+                ar.athlet_id,
+                ar.geschlecht,
+                ar.name,
+                ar.vorname,
+                ar.gebdat,
+                ar.program_id,
+                0,
+                current_timestamp as registrationtime
+              from athletregistration ar
+                where ar.vereinregistration_id = (
+                  select distinct vrthen.id
+                  from vereinregistration vrthen
+                  inner join vereinregistration vrnow on (vrthen.verein_id = vrnow.verein_id)
+                  inner join wettkampf wkthen on (vrthen.wettkampf_id = wkthen.id)
+                  inner join wettkampf wknow on (vrnow.wettkampf_id = wknow.id)
+                  where wkthen.uuid = $wettkampfCopyFrom
+                    and vrthen.id <> $registrationId
+                    and vrnow.id = $registrationId
+                    and wkthen.programm_id = wknow.programm_id
+                )
+                and not exists (
+                  select 1
+                  from athletregistration arex
+                  where arex.vereinregistration_id = $registrationId
+                    and arex.name = ar.name
+                    and arex.vorname = ar.vorname
+                    and arex.geschlecht = ar.geschlecht
+                )
+        """ >>
         sqlu"""
               insert into judgeregistration (vereinregistration_id, geschlecht, name, vorname, mobilephone, mail,comment, registrationtime)
               select
@@ -301,7 +336,7 @@ trait RegistrationService extends DBService with RegistrationResultMapper with H
   // AthletRegistration
 
   def createAthletRegistration(newReg: AthletRegistration): AthletRegistration = {
-    val athletId: Option[Long] = if (newReg.athletId.isDefined) {
+    val athletId: Option[Long] = if (newReg.athletId.isDefined && newReg.athletId.get > 0L) {
       newReg.athletId
     } else {
       selectAthletRegistrationsLike(newReg).headOption.flatMap(_.athletId)
@@ -364,10 +399,15 @@ trait RegistrationService extends DBService with RegistrationResultMapper with H
       throw new IllegalArgumentException("AthletRegistration with id=0 can not be updated")
     }
     val gebdat: java.sql.Date = str2SQLDate(registration.gebdat)
+    val athletId = registration.athletId match {
+      case None => None
+      case Some(id) if id < 1 => None
+      case Some(id) => Some(id)
+    }
     Await.result(database.run {
       sqlu"""
               update athletregistration
-              set athlet_id=${registration.athletId},
+              set athlet_id=${athletId},
                   name=${registration.name}, vorname=${registration.vorname},
                   gebdat=${gebdat}, geschlecht=${registration.geschlecht},
                   program_id=${registration.programId},
@@ -418,6 +458,26 @@ trait RegistrationService extends DBService with RegistrationResultMapper with H
     }, Duration.Inf).toList
   }
 
+  def selectUnaprovedAthletRegistrations(vereinRegId: Long): List[AthletRegistration] = {
+    Await.result(database.run {
+      sql"""
+              select distinct 0, avr.id,
+                              0, ar.geschlecht, ar.name, ar.vorname, ar.gebdat,
+                              0, ar.registrationtime,
+                              null, null, null, null, null, null, null, null, null, null, null, null, null, -- athletview, vereinview
+                              0 -- team
+                    from vereinregistration avr
+                    inner join vereinregistration vr on (vr.verein_id = avr.verein_id)
+                    inner join athletregistration ar on (ar.vereinregistration_id = vr.id)
+
+                    where avr.id = $vereinRegId
+                      and vr.id <> avr.id
+                      and ar.athlet_id is null
+
+                    order by ar.name, ar.vorname asc
+   """.as[AthletRegistration]
+    }, Duration.Inf).toList.zipWithIndex.map(aridx => aridx._1.copy(athletId = Some(aridx._2 * -1 -1L)))
+  }
   def deleteAthletRegistration(id: Long): Unit = {
     Await.result(database.run {
       sqlu""" delete from athletregistration where id = $id"""

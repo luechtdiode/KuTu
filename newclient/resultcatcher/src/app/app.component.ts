@@ -20,6 +20,7 @@ export class AppComponent {
 
     this.appPages = [
       { title: 'Home', url: '/home', icon: 'home' },
+      { title: 'Wettkämpfe', url: '/competitions', icon: 'folder-open-outline' },
       { title: 'Resultate', url: '/station', icon: 'list' },
       { title: 'Letzte Resultate', url: 'last-results', icon: 'radio' },
       { title: 'Top Resultate', url: 'top-results', icon: 'medal' },
@@ -188,7 +189,7 @@ export class AppComponent {
               console.log('clubreg initialzed. navigate to clubreg-editor');
               this.navController.navigateRoot('/registration/' + this.backendService.competition + '/' +localStorage.getItem('auth_clubid'));
             });
-          }else {
+          } else {
             window.history.replaceState({}, document.title, window.location.href.split('?')[0]);
             this.clearPosParam();
             console.log('initializing with ' + initializeWith);
@@ -220,6 +221,8 @@ export class AppComponent {
       } else if (localStorage.getItem('current_competition')) {
         const cs = localStorage.getItem('current_competition');
         this.backendService.getDurchgaenge(cs);
+      } else if (!this.backendService.competition) {
+        this.openPage('/competitions');
       }
       SplashScreen.hide();
     });

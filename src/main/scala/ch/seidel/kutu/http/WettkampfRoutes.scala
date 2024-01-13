@@ -15,7 +15,7 @@ import ch.seidel.jwt.{JsonWebToken, JwtClaimsSetMap}
 import ch.seidel.kutu.Config._
 import ch.seidel.kutu.akka.{StartDurchgang, _}
 import ch.seidel.kutu.data.ResourceExchanger
-import ch.seidel.kutu.domain.{RegistrationService, Wettkampf, WettkampfService, WettkampfView, encodeURIParam}
+import ch.seidel.kutu.domain.{RegistrationService, ProgrammRaw, Wettkampf, WettkampfService, WettkampfView, encodeURIParam}
 import spray.json._
 
 import scala.concurrent.ExecutionContext.Implicits.global
@@ -280,6 +280,12 @@ trait WettkampfRoutes extends SprayJsonSupport
                 listWettkaempfeByVereinIdAsync(vereinId).map(list => list.map(_.toPublic))
               }
             }
+          }
+        } ~ pathLabeled("programmlist", "programmlist") {
+          get {
+            complete(listRootProgrammeAsync.map(list => list.map(pv => {
+              ProgrammRaw(pv.id, pv.name, pv.aggregate, pv.parent.map(_.id).getOrElse(0L), pv.ord, pv.alterVon, pv.alterBis, pv.uuid, pv.riegenmode)
+            })))
           }
         } ~ pathEnd {
           get {
