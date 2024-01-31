@@ -316,7 +316,7 @@ case class GroupLeaf[GK <: DataObject](override val groupKey: GK, list: Iterable
         if (anzahWettkaempfe > 1)
           w.resultat
         else
-          (w.resultat * STANDARD_SCORE_FACTOR) + (w.resultat * gleichstandsregel.factorize(w, wksums))
+          (w.resultat * STANDARD_SCORE_FACTOR) + (w.resultat * gleichstandsregel.factorize(w, wk._2.map(w => w.resultat).toList))
       }.reduce(_ + _)
     }
     val gsum = if (gwksums.nonEmpty) gwksums.reduce(_ + _) else Resultat(0, 0, 0)
