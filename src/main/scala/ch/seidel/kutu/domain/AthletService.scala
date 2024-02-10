@@ -12,7 +12,7 @@ import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration.Duration
 import scala.jdk.CollectionConverters.CollectionHasAsScala
 
-trait AthletService extends DBService with AthletResultMapper {
+trait AthletService extends DBService with AthletResultMapper with VereinService {
   private val logger = LoggerFactory.getLogger(this.getClass)
 
   def selectAthletesAction = {
@@ -222,16 +222,16 @@ trait AthletService extends DBService with AthletResultMapper {
       //      if (code.name.equals(athlet.name)) {
       //      print(athlet.easyprint, this)
       //      }
-      if (vereinSimilarity && preret && jahrgangSimilarity) {
-        //        logger.debug(" factor " + (namenSimilarity + vorNamenSimilarity) * 2)
+      if (vereinSimilarity && preret && gebdatSimilarity) {
+        (namenSimilarity + vorNamenSimilarity) * 3
+      }
+      else if (vereinSimilarity && preret && jahrgangSimilarity) {
         (namenSimilarity + vorNamenSimilarity) * 2
       }
       else if (vereinSimilarity && (preret || (preret2 && gebdatSimilarity))) {
-        //        logger.debug(" factor " + (namenSimilarity + vorNamenSimilarity))
         namenSimilarity + vorNamenSimilarity
       }
       else {
-        //        logger.debug(" factor 0")
         0
       }
     }
@@ -304,12 +304,13 @@ trait AthletService extends DBService with AthletResultMapper {
     }
   }
 
-  def markAthletesInactiveOlderThan(nYears: Int): Unit = {
+  def markAthletesInactiveOlderThan(nYears: Int): Int = {
     Await.result(database.run {
       sqlu"""
         update athlet
         set activ = false
-        where exists (
+        where activ = true
+          and exists (
           select distinct 1 from athlet a
               inner join verein v on v.id = a.verein
               left outer join wertung w on a.id = w.athlet_id
@@ -320,5 +321,27 @@ trait AthletService extends DBService with AthletResultMapper {
         );
        """
     }, Duration.Inf)
+  }
+
+  def cleanUnusedClubs(): Set[Verein] = {
+    val affectedClubs = Await.result(database.run {
+      sql"""
+          select * from verein
+          where not exists (
+            select distinct 1 from athlet a
+                inner join wertung w on (a.id = w.athlet_id)
+                where verein.id = a.verein
+          )
+          and not exists (
+            select distinct 1 from vereinregistration vr
+			      inner join wettkampf wk on (vr.wettkampf_id = wk.id)
+            where verein.id = verein_id
+			        and wk.datum >= current_date
+          )          """.as[Verein]
+    }, Duration.Inf).toSet
+    for(verein <- affectedClubs) {
+      deleteVerein(verein.id)
+    }
+    affectedClubs
   }
 }

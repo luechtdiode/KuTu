@@ -156,13 +156,14 @@ class KuTuMailerActor(smtpHost: String, smtpPort: Int, smtpUsername: String, smt
 
 object KuTuMailerActor {
   private var customMailer: Option[CustomMailer] = None;
+  val mailSenderAppName = Config.config.getString("app.smtpsender.appname")
 
   def props(): Props = {
     if (isSMTPConfigured) {
       Props(classOf[KuTuMailerActor],
         Config.config.getString("X_SMTP_HOST"), Config.config.getInt("X_SMTP_PORT"),
         Config.config.getString("X_SMTP_USERNAME"), Config.config.getString("X_SMTP_DOMAIN"),
-        Config.config.getString("X_SMTP_PASSWORD"), Config.config.getString("app.smtpsender.appname"), customMailer
+        Config.config.getString("X_SMTP_PASSWORD"), mailSenderAppName, customMailer
       )
     } else {
       Props(classOf[KuTuMailerActor],
