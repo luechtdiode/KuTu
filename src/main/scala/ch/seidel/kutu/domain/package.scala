@@ -1165,7 +1165,11 @@ package object domain {
       case AddVereinAction(verein) => AddVereinAction(verein.toPublicView)
       case ApproveVereinAction(verein) => ApproveVereinAction(verein.toPublicView)
       case RenameVereinAction(verein, oldVerein) => RenameVereinAction(verein.toPublicView, oldVerein)
-      case RenameAthletAction(verein, athlet, existing, expected) => RenameAthletAction(verein.toPublicView, athlet.toPublicView, existing.toPublicView, expected.toPublicView)
+      case rn@RenameAthletAction(verein, athlet, existing, expected) =>
+        if (rn.isGebDatChange)
+          RenameAthletAction(verein.toPublicView, athlet.toPublicView, existing.toPublicView.copy(gebdat = existing.gebdat), expected.toPublicView.copy(gebdat = expected.gebdat))
+        else
+          RenameAthletAction(verein.toPublicView, athlet.toPublicView, existing.toPublicView, expected.toPublicView)
       case AddRegistration(verein, programId, athlet, suggestion, team) => AddRegistration(verein.toPublicView, programId, athlet.toPublicView, suggestion.toPublicView, team)
       case MoveRegistration(verein, fromProgramId, fromTeam, toProgramid, toTeam, athlet, suggestion) => MoveRegistration(verein.toPublicView, fromProgramId, fromTeam, toProgramid, toTeam, athlet.toPublicView, suggestion.toPublicView)
       case RemoveRegistration(verein, programId, athlet, suggestion) => RemoveRegistration(verein.toPublicView, programId, athlet.toPublicView, suggestion.toPublicView)
@@ -1173,11 +1177,11 @@ package object domain {
   }
 
   case class AddVereinAction(override val verein: Registration) extends SyncAction {
-    override val caption = s"Verein hinzufügen: ${verein.vereinname}"
+    override val caption = s"Verein hinzufügen: ${verein.vereinname} (${verein.verband})"
   }
 
   case class RenameVereinAction(override val verein: Registration, oldVerein: Verein) extends SyncAction {
-    override val caption = s"Verein korrigieren: ${oldVerein.easyprint} zu ${verein.toVerein.easyprint}"
+    override val caption = s"Verein korrigieren: ${oldVerein.easyprint}${oldVerein.verband.map(verband => s" ($verband)").getOrElse("")} zu ${verein.toVerein.easyprint}${if (verein.verband.nonEmpty) s"${verein.verband})" else ""}"
 
     def prepareLocalUpdate: Verein = verein.toVerein.copy(id = oldVerein.id)
 
@@ -1223,6 +1227,7 @@ package object domain {
     override val caption = s"Athlet/-In korrigieren: Von ${existing.extendedprint} zu ${expected.extendedprint}"
 
     def isSexChange: Boolean = existing.geschlecht != expected.geschlecht
+    def isGebDatChange: Boolean = !existing.gebdat.equals(expected.gebdat)
 
     def applyLocalChange: Athlet = existing.copy(
       geschlecht = expected.geschlecht,
