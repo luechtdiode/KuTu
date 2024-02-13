@@ -119,8 +119,8 @@ class CompetitionCoordinatorClientActor(wettkampfUUID: String) extends Persisten
     state = state.updated(evt, isDNoteUsed)
     if (!recoveryMode && lastSequenceNr % snapShotInterval == 0 && lastSequenceNr != 0) {
       val criteria = SnapshotSelectionCriteria.Latest
-      saveSnapshot(state)
       deleteSnapshots(criteria)
+      saveSnapshot(state)
       deleteMessages(criteria.maxSequenceNr)
     }
     !state.equals(stateBefore)
@@ -321,8 +321,12 @@ class CompetitionCoordinatorClientActor(wettkampfUUID: String) extends Persisten
         KuTuMailerActor.send(
           MailTemplates.createDonateMail(wettkampf, donationLink, teilnehmer.size, price)
         )
+        handleEvent(DonationMailSent(teilnehmer.size, price, donationLink, wettkampfUUID))
+        saveSnapshot(state)
+      } else {
+        handleEvent(DonationMailSent(0, BigDecimal(0), "", wettkampfUUID))
+        saveSnapshot(state)
       }
-      handleEvent(DonationMailSent(0, BigDecimal(0), "", wettkampfUUID))
     }
   }
 
