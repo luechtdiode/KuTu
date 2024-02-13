@@ -166,8 +166,9 @@ trait RegistrationRoutes extends SprayJsonSupport with JwtSupport with JsonSuppo
               parameters(Symbol("mail").?) {
                 case Some(mail) =>
                   complete{
-                    CompetitionRegistrationClientActor.publish(ApproveEMail(wettkampf.uuid.get, mail), clientId).map{ _ =>
-                      s"${wettkampf.easyprint} EMail ${mail} verifiziert"
+                    CompetitionRegistrationClientActor.publish(ApproveEMail(wettkampf.uuid.get, mail), clientId).map{
+                      case EMailApproved(message, success) =>
+                        s"${wettkampf.easyprint}: $message"
                     }
                   }
                 case _ =>

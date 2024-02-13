@@ -15,12 +15,13 @@ import ch.seidel.kutu.data.ResourceExchanger
 import ch.seidel.kutu.domain._
 import ch.seidel.kutu.http.Core.system
 import ch.seidel.kutu.http.{EnrichedJson, JsonSupport}
-import ch.seidel.kutu.renderer.RiegenBuilder
+import ch.seidel.kutu.renderer.{MailTemplates, RiegenBuilder}
 import io.prometheus.client
 import io.prometheus.client.{Collector, CollectorRegistry}
 import org.slf4j.LoggerFactory
 import spray.json._
 
+import java.time.{LocalDate, LocalDateTime, LocalTime}
 import java.util.UUID
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration.DurationInt
@@ -53,6 +54,8 @@ class CompetitionCoordinatorClientActor(wettkampfUUID: String) extends Persisten
   private val wkPgmId = wettkampf.programmId
   private val isDNoteUsed = wkPgmId != 20 && wkPgmId != 1
   private val snapShotInterval = 100
+  private val donationDonationBegin = if (Config.donationDonationBegin.nonEmpty) LocalDate.parse(Config.donationDonationBegin) else LocalDate.of(2000,1,1)
+  private val donationActiv = donationDonationBegin.before(wettkampf.datum) && Config.donationLink.nonEmpty && Config.donationPrice.nonEmpty
 
   private var wsSend: Map[Option[String], List[ActorRef]] = Map.empty
   private var deviceWebsocketRefs: Map[String, ActorRef] = Map.empty
@@ -254,7 +257,9 @@ class CompetitionCoordinatorClientActor(wettkampfUUID: String) extends Persisten
       ref ! NewLastResults(state.lastWertungen, state.lastBestenResults)
 
     // system actions
-    case KeepAlive => wsSend.flatMap(_._2).foreach(ws => ws ! TextMessage("keepAlive"))
+    case KeepAlive =>
+      wsSend.flatMap(_._2).foreach(ws => ws ! TextMessage("keepAlive"))
+      checkDonation()
 
     case MessageAck(txt) => if (txt.equals("keepAlive")) handleKeepAliveAck() else println(txt)
 
@@ -268,7 +273,10 @@ class CompetitionCoordinatorClientActor(wettkampfUUID: String) extends Persisten
       context.system.scheduler.scheduleOnce(30.second, self, TryStop)
 
     case TryStop =>
-      if (state.startedDurchgaenge.isEmpty && wsSend.isEmpty) handleStop()
+      if (state.startedDurchgaenge.isEmpty &&
+        wsSend.isEmpty &&
+        (LocalDate.now().before(wettkampf.datum) || LocalDate.now().minusDays(2).after(wettkampf.datum))
+      ) handleStop()
 
     case Terminated(stoppedWebsocket) =>
       context.unwatch(stoppedWebsocket)
@@ -298,6 +306,24 @@ class CompetitionCoordinatorClientActor(wettkampfUUID: String) extends Persisten
       handleStop()
 
     case _ =>
+  }
+
+  private def checkDonation(): Unit = {
+    if (donationActiv && LocalDateTime.of(wettkampf.datum, LocalTime.of(7, 0, 0)).plusDays(2).isBefore(LocalDateTime.now()) && !state.completedflags.exists {
+      case DonationMailSent(_, _, _, wkid) if wkid == this.wettkampfUUID => true
+      case _ => false
+    }) {
+      val teilnehmer = getAllKandidatenWertungen(UUID.fromString(wettkampfUUID))
+      val results = teilnehmer.flatMap(k => k.wertungen.map(w => w.resultat.endnote)).sum
+      if (results > 0 && teilnehmer.size > 10) {
+        val price = BigDecimal(Config.donationPrice)
+        val donationLink = Config.donationLink
+        KuTuMailerActor.send(
+          MailTemplates.createDonateMail(wettkampf, donationLink, teilnehmer.size, price)
+        )
+      }
+      handleEvent(DonationMailSent(0, BigDecimal(0), "", wettkampfUUID))
+    }
   }
 
   private def cleanupWebsocketRefs(stoppedWebsocket: ActorRef): Unit = {

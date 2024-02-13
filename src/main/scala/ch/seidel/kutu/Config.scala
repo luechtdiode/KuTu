@@ -68,6 +68,11 @@ object Config extends KuTuSSLContext {
   }
 
   val bestenlisteSchwellwert: Double = if (config.hasPath("app.bestenlisteSchwellwert")) config.getDouble("app.bestenlisteSchwellwert") else 9.0
+
+  val donationLink: String = if (config.hasPath("X_DONATION_LINK")) config.getString("X_DONATION_LINK") else ""
+  val donationPrice: String = if (config.hasPath("X_DONATION_PRICE")) config.getString("X_DONATION_PRICE") else ""
+  val donationDonationBegin: String = if (config.hasPath("X_DONATION_BEGIN")) config.getString("X_DONATION_BEGIN") else ""
+
   private val jwtConfig = config.getConfig("jwt")
   private val appRemoteConfig = config.getConfig("app.remote")
 
