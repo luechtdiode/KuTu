@@ -91,12 +91,14 @@ object RiegenBuilder {
       val riegen = kandidatriegen.map(_._2).sortBy(r => r.start.map( dzl.indexOf(_)))
       //kandidat.diszipline für die Rotationsberechnung verwenden
       val rg = riegen.groupBy(e => e.start).toList.sortBy{d => d._1.map( dzl.indexOf(_))}
-      val geraete = dzl.foldLeft(rg){(acc, item) =>
-        acc.find(p => p._1.exists { f => f.equals(item) }) match {
-          case Some(_) => acc
-          case _ => acc :+ (Some(item) -> List[Riege]())
+      val geraete = dzl.foldLeft(rg) { (acc, item) =>
+          acc.find(p => p._1.exists { f => f.equals(item) }) match {
+            case Some(_) => acc
+            case _ => acc :+ (Some(item) -> List[Riege]())
+          }
         }
-      }.sortBy(geraet => geraet._1.map(g => dzl.indexOf(g)))
+        .filter(pair => dzlmap.exists(p => pair._1.contains(p._1)))
+        .sortBy(geraet => geraet._1.map(g => dzl.indexOf(g)))
         .map(geraet => (geraet._1, geraet._2, dzlmap(geraet._1.get)))
 
       val startformationen = pickStartformationen(geraete, durchgang, k => (k.einteilung, k.diszipline))
@@ -136,7 +138,9 @@ object RiegenBuilder {
           case Some(_) => acc
           case _ => acc :+ (Some(item) -> List[Riege]())
         }
-      }.sortBy(geraet => geraet._1.map(g => dzl.indexOf(g)))
+      }
+        .filter(pair => dzlmap.exists(p => pair._1.contains(p._1)))
+        .sortBy(geraet => geraet._1.map(g => dzl.indexOf(g)))
         .map(geraet => (geraet._1, geraet._2, dzlmap(geraet._1.get)))
 
       val startformationen = pickStartformationen(geraete, durchgang, k => (k.einteilung2, k.diszipline2))

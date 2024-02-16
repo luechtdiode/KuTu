@@ -115,6 +115,10 @@ object KuTuApp extends JFXApp3 with KutuService with JsonSupport with JwtSupport
       setCursor(Cursor.Wait)
       try {
         handler(event)
+      } catch {
+        case e: Throwable =>
+          logger.error("Unerwarteter Fehler", e)
+          throw e
       }
       finally {
         setCursor(Cursor.Default)
@@ -129,6 +133,11 @@ object KuTuApp extends JFXApp3 with KutuService with JsonSupport with JwtSupport
       Platform.runLater {
         try {
           task
+        } catch {
+          case e: Throwable =>
+            logger.error("Unerwarteter Fehler", e)
+            Platform.runLater(() => PageDisplayer.showErrorDialog("Unerwarteter Fehler")(e))
+            throw e
         }
         finally {
           setCursor(Cursor.Default)
@@ -164,7 +173,9 @@ object KuTuApp extends JFXApp3 with KutuService with JsonSupport with JwtSupport
                 p.success(ret)
               }
               catch {
-                case e: Exception => p.failure(e)
+                case e: Throwable =>
+                  logger.error("Fehler beim Abschliessen von " + title, e)
+                  p.failure(e)
               }
               finally {
                 //setCursor(Cursor.Default)
@@ -172,6 +183,7 @@ object KuTuApp extends JFXApp3 with KutuService with JsonSupport with JwtSupport
               }
             }
           case Failure(error) =>
+            logger.error("Fehler bei " + title, error)
             Platform.runLater {
               try {
                 p.failure(error)
@@ -186,8 +198,8 @@ object KuTuApp extends JFXApp3 with KutuService with JsonSupport with JwtSupport
         timerTask.run()
       }
       catch {
-        case e: Exception =>
-          e.printStackTrace()
+        case e: Throwable =>
+          logger.error("Fehler bei " + title, e)
           Platform.runLater {
             try {
               p.failure(e)

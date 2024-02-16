@@ -3,7 +3,7 @@
 	<modelVersion>4.0.0</modelVersion>
 	<groupId>ch.seidel</groupId>
 	<artifactId>KuTu</artifactId>
-	<version>2.3.7</version>
+	<version>2.3.8</version>
 
 	<inceptionYear>2014</inceptionYear>
 
@@ -333,7 +333,7 @@
 		<dependency>
 			<groupId>org.simplejavamail</groupId>
 			<artifactId>simple-java-mail</artifactId>
-			<version>8.3.1</version>
+			<version>8.6.2</version>
 		</dependency>
 
 		<dependency>
