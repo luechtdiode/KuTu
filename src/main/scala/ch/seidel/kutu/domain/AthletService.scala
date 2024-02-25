@@ -193,7 +193,7 @@ trait AthletService extends DBService with AthletResultMapper with VereinService
     (acc._1 && same, acc._2 + (if (acc._1 && same) 1 else 0))
   }._2 / math.max(text1.length, text2.length)
 
-  def findAthleteLike(cache: java.util.Collection[MatchCode] = new java.util.ArrayList[MatchCode], wettkampf: Option[Long] = None)(athlet: Athlet): Athlet = {
+  def findAthleteLike(cache: java.util.Collection[MatchCode] = new java.util.ArrayList[MatchCode], wettkampf: Option[Long] = None, exclusive: Boolean)(athlet: Athlet): Athlet = {
     val bmname = MatchCode.encode(athlet.name)
     val bmvorname = MatchCode.encode(athlet.vorname)
 
@@ -267,13 +267,13 @@ trait AthletService extends DBService with AthletResultMapper with VereinService
     else {
       cache
     }
-    val presel2 = preselect.asScala.filter(mc => mc.id != athlet.id).map { matchcode =>
+    val presel2 = preselect.asScala.filter(mc => !exclusive || mc.id != athlet.id).map { matchcode =>
       (matchcode.id, similarAthletFactor(matchcode))
     }.filter(p => p._2 > 0).toList.sortBy(_._2).reverse
     presel2.headOption.flatMap(k => loadAthlet(k._1)).getOrElse(athlet)
   }
 
-  protected def loadAthlet(key: Long) = {
+  protected def loadAthlet(key: Long): Option[Athlet] = {
     Await.result(database.run {
       sql"""select * from athlet where id=${key}""".as[Athlet]
         .headOption
@@ -282,7 +282,7 @@ trait AthletService extends DBService with AthletResultMapper with VereinService
   }
 
   def findDuplicates(): List[(AthletView, AthletView, AthletView)] = {
-    val likeFinder = findAthleteLike(new java.util.ArrayList[MatchCode]) _
+    val likeFinder = findAthleteLike(cache = new java.util.ArrayList[MatchCode], exclusive = true) _
     for {
       athleteView <- selectAthletesView
       athlete = athleteView.toAthlet

@@ -778,7 +778,7 @@ object KuTuApp extends JFXApp3 with KutuService with JsonSupport with JwtSupport
     })
   }
 
-  def makeFindDuplicteAthletes = makeMenuAction("Doppelt erfasste Athleten finden ...") { (caption, action) =>
+  private def makeFindDuplicteAthletes = makeMenuAction("Doppelt erfasste Athleten finden ...") { (caption, action) =>
     implicit val e = action
     KuTuApp.invokeAsyncWithBusyIndicator(caption) {
       Future {
@@ -788,7 +788,7 @@ object KuTuApp extends JFXApp3 with KutuService with JsonSupport with JwtSupport
           .map { sn => if (sn.isMasculin == sn.isFeminin) athlet.geschlecht else if (sn.isMasculin) "M" else "W" }
           .getOrElse("X")
 
-        val likeFinder = findAthleteLike(new java.util.ArrayList[MatchCode]) _
+        val likeFinder = findAthleteLike(cache = new java.util.ArrayList[MatchCode], exclusive = true) _
         for {
           athleteView <- selectAthletesView
           athlete = athleteView.toAthlet
