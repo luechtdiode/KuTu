@@ -895,7 +895,8 @@ export class BackendService extends WebsocketService {
         next: (data) => {
           this.steps = data;
           if (this._step < data[0]) {
-            this._step = data[0]
+            this._step = data[0];
+            this.loadWertungen();
           }
         }, 
         error: this.standardErrorHandler
