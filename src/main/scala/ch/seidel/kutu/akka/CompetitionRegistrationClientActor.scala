@@ -31,7 +31,7 @@ sealed trait RegistrationEvent extends RegistrationProtokoll
 
 case class CompetitionCreated(wettkampfUUID: String, link: String) extends RegistrationAction
 case class ApproveEMail(wettkampfUUID: String, mail: String) extends RegistrationAction
-case class EMailApproved(message: String) extends RegistrationEvent
+case class EMailApproved(message: String, success: Boolean) extends RegistrationEvent
 case class RegistrationChanged(wettkampfUUID: String) extends RegistrationAction
 
 case class RegistrationResync(wettkampfUUID: String) extends RegistrationAction
@@ -128,12 +128,17 @@ class CompetitionRegistrationClientActor(wettkampfUUID: String) extends Persiste
     case ApproveEMail(_, mail) =>
       val notificationEMail = readWettkampf(wettkampfUUID).notificationEMail
       if (notificationEMail.equals(mail)) {
-        syncState = syncState.approved
-        sender() ! EMailApproved(s"EMail ${mail} erfolgreich verifiziert")
-        log.info(s"EMail approved ${mail}")
+        if (!syncState.emailApproved) {
+          syncState = syncState.approved
+          sender() ! EMailApproved(s"EMail ${mail} erfolgreich verifiziert", success = true)
+          log.info(s"EMail approved ${mail}")
+        } else {
+          sender() ! EMailApproved(s"EMail ${mail} wurde bereits verifiziert", success = true)
+          log.info(s"EMail ${mail} was already approved")
+        }
       }
       else {
-        sender() ! EMailApproved(s"EMail ${mail} nicht erfolgreich verifiziert.")
+        sender() ! EMailApproved(s"EMail ${mail} nicht erfolgreich verifiziert.", success = false)
         log.info(s"EMail not approved ${mail} - not matching with competitions notificationEMail: $notificationEMail")
       }
 

@@ -73,11 +73,11 @@ class AthletIndexActor extends Actor with JsonSupport with KutuService {
     case ResyncIndex =>
       log.info("Resync Athlet Index ...")
       invalidateIndex()
-      sender() ! AthletLikeFound(Athlet(), findAthleteLike(index)(Athlet()))
+      sender() ! AthletLikeFound(Athlet(), findAthleteLike(index, exclusive = false)(Athlet()))
       log.info("ResyncIndex Athlet Index finished")
 
     case FindAthletLike(athlet) =>
-      sender() ! AthletLikeFound(athlet, findAthleteLike(index)(athlet))
+      sender() ! AthletLikeFound(athlet, findAthleteLike(index, exclusive = false)(athlet))
     case SaveAthlet(athlet) => mcOfId(athlet.id) match {
       case None =>
         invalidateIndex()

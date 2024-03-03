@@ -50,21 +50,53 @@ class AthletServiceTest extends AnyFunSuite with AthletService {
       .foreach(a =>
         cache.add(MatchCode(a.id, a.name, a.vorname, a.gebdat, a.verein.getOrElse(0))))
 
-    assert(findAthleteLike(cache)(athletes(2L)) === athletes(1L))
-    assert(findAthleteLike(cache)(athletes(4L)) !== athletes(3L))
-    assert(findAthleteLike(cache)(athletes(6L)) !== athletes(5L))
-    assert(findAthleteLike(cache)(athletes(8L)) === athletes(7L))
-    assert(findAthleteLike(cache)(athletes(10L)) === athletes(9L))
-    assert(findAthleteLike(cache)(athletes(12L)) !== athletes(11L))
-    assert(findAthleteLike(cache)(athletes(14L)) !== athletes(13L))
+    assert(findAthleteLike(cache, exclusive = false)(athletes(2L)) === athletes(2L))
+    assert(findAthleteLike(cache, exclusive = false)(athletes(4L)) === athletes(4L))
+    assert(findAthleteLike(cache, exclusive = false)(athletes(6L)) === athletes(6L))
+    assert(findAthleteLike(cache, exclusive = false)(athletes(8L)) === athletes(8L))
+    assert(findAthleteLike(cache, exclusive = false)(athletes(10L)) === athletes(10L))
+    assert(findAthleteLike(cache, exclusive = false)(athletes(12L)) === athletes(12L))
+    assert(findAthleteLike(cache, exclusive = false)(athletes(14L)) === athletes(14L))
+
+    assert(findAthleteLike(cache, exclusive = false)(athletes(1L)) === athletes(1L))
+    assert(findAthleteLike(cache, exclusive = false)(athletes(3L)) === athletes(3L))
+    assert(findAthleteLike(cache, exclusive = false)(athletes(5L)) === athletes(5L))
+    assert(findAthleteLike(cache, exclusive = false)(athletes(7L)) === athletes(7L))
+    assert(findAthleteLike(cache, exclusive = false)(athletes(9L)) === athletes(9L))
+    assert(findAthleteLike(cache, exclusive = false)(athletes(11L)) === athletes(11L))
+    assert(findAthleteLike(cache, exclusive = false)(athletes(13L)) === athletes(13L))
 
     // trillings
-    assert(findAthleteLike(cache)(athletes(15L)) !== athletes(16L))
-    assert(findAthleteLike(cache)(athletes(16L)) !== athletes(17L))
-    assert(findAthleteLike(cache)(athletes(17L)) !== athletes(15L))
+    assert(findAthleteLike(cache, exclusive = false)(athletes(15L)) === athletes(15L))
+    assert(findAthleteLike(cache, exclusive = false)(athletes(16L)) === athletes(16L))
+    assert(findAthleteLike(cache, exclusive = false)(athletes(17L)) === athletes(17L))
 
-    assert(findAthleteLike(cache)(athletes(18)) !== athletes(19L))
-    assert(findAthleteLike(cache)(athletes(19L)) !== athletes(18L))
+    assert(findAthleteLike(cache, exclusive = false)(athletes(18)) === athletes(18))
+    assert(findAthleteLike(cache, exclusive = false)(athletes(19L)) === athletes(19))
+
+  }
+
+  test("testFindAthleteLike-exclusive") {
+    val cache = new util.ArrayList[MatchCode]
+    athletes.values
+      .foreach(a =>
+        cache.add(MatchCode(a.id, a.name, a.vorname, a.gebdat, a.verein.getOrElse(0))))
+
+    assert(findAthleteLike(cache, exclusive = true)(athletes(2L)) === athletes(1L))
+    assert(findAthleteLike(cache, exclusive = true)(athletes(4L)) !== athletes(3L))
+    assert(findAthleteLike(cache, exclusive = true)(athletes(6L)) !== athletes(5L))
+    assert(findAthleteLike(cache, exclusive = true)(athletes(8L)) === athletes(7L))
+    assert(findAthleteLike(cache, exclusive = true)(athletes(10L)) === athletes(9L))
+    assert(findAthleteLike(cache, exclusive = true)(athletes(12L)) !== athletes(11L))
+    assert(findAthleteLike(cache, exclusive = true)(athletes(14L)) !== athletes(13L))
+
+    // trillings
+    assert(findAthleteLike(cache, exclusive = true)(athletes(15L)) !== athletes(16L))
+    assert(findAthleteLike(cache, exclusive = true)(athletes(16L)) !== athletes(17L))
+    assert(findAthleteLike(cache, exclusive = true)(athletes(17L)) !== athletes(15L))
+
+    assert(findAthleteLike(cache, exclusive = true)(athletes(18)) !== athletes(19L))
+    assert(findAthleteLike(cache, exclusive = true)(athletes(19L)) !== athletes(18L))
 
   }
 
@@ -76,7 +108,7 @@ class AthletServiceTest extends AnyFunSuite with AthletService {
       .foreach(a =>
         cache.add(MatchCode(a.id, a.name, a.vorname, a.gebdat, a.verein.getOrElse(0))))
 
-    assert(findAthleteLike(cache)(athletes(18)) !== athletes(19))
+    assert(findAthleteLike(cache, exclusive = true)(athletes(18)) !== athletes(19))
   }
 
   test("Sophia and Simone") {
@@ -91,7 +123,7 @@ class AthletServiceTest extends AnyFunSuite with AthletService {
       .foreach(a =>
         cache.add(MatchCode(a.id, a.name, a.vorname, a.gebdat, a.verein.getOrElse(0))))
 
-    assert(findAthleteLike(cache)(a1) !== a2)
+    assert(findAthleteLike(cache, exclusive = true)(a1) !== a2)
   }
 
 

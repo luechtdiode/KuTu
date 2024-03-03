@@ -12,7 +12,8 @@ case class CompetitionState (
                              lastWertungen: Map[String, WertungContainer] = Map.empty,
                              bestenResults: Map[String, WertungContainer] = Map.empty,
                              lastBestenResults: Map[String, WertungContainer] = Map.empty,
-                             lastSequenceId: Long = Long.MinValue
+                             lastSequenceId: Long = Long.MinValue,
+                             completedflags: List[KutuAppEvent] = List.empty
                            ) {
 
   def updated(event: KutuAppEvent, isDNoteUsed: Boolean): CompetitionState = event match {
@@ -26,7 +27,8 @@ case class CompetitionState (
             .filter(fds => encodeURIComponent(fds.durchgang) != encodeURIComponent(eventDurchgangStarted.durchgang)),
           finishedDurchgaenge - eventDurchgangStarted.durchgang,
           startStopEvents :+ eventDurchgangStarted,
-          lastWertungen, bestenResults, lastBestenResults, lastSequenceId
+          lastWertungen, bestenResults, lastBestenResults, lastSequenceId,
+          completedflags
         )
     }
 
@@ -39,7 +41,8 @@ case class CompetitionState (
           finishedDurchgangSteps,
           finishedDurchgaenge + eventDurchgangFinished.durchgang,
           startStopEvents :+ eventDurchgangFinished,
-          Map.empty, bestenResults, lastBestenResults, lastSequenceId
+          Map.empty, bestenResults, lastBestenResults, lastSequenceId,
+          completedflags
         )
       }
 
@@ -55,8 +58,12 @@ case class CompetitionState (
         finishedDurchgangSteps + fds,
         finishedDurchgaenge,
         startStopEvents,
-        lastWertungen, bestenResults, lastBestenResults, lastSequenceId
+        lastWertungen, bestenResults, lastBestenResults, lastSequenceId,
+        completedflags
       )
+
+    case dms: DonationMailSent =>
+      copy(completedflags = completedflags :+ dms)
 
     case _: DurchgangStepFinished =>
       if (lastWertungen.nonEmpty) {
@@ -65,7 +72,8 @@ case class CompetitionState (
           finishedDurchgangSteps,
           finishedDurchgaenge,
           startStopEvents,
-          Map.empty, Map.empty, bestenResults, lastSequenceId
+          Map.empty, Map.empty, bestenResults, lastSequenceId,
+          completedflags
         )
       } else {
         this
@@ -97,7 +105,8 @@ case class CompetitionState (
       finishedDurchgaenge,
       startStopEvents,
       lastWertungen.updated(wertungContainer.wertung.wettkampfdisziplinId.toString(), wertungContainer),
-      putBestenResult(wertungContainer), lastBestenResults, lastSequenceId + 1
+      putBestenResult(wertungContainer), lastBestenResults, lastSequenceId + 1,
+      completedflags
     )
 
 }

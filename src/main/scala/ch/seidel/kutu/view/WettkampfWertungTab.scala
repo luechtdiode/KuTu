@@ -1183,7 +1183,7 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
               verein = None,
               activ = true
             )
-            val candidate = service.findAthleteLike(cache)(parsed)
+            val candidate = service.findAthleteLike(cache = cache, exclusive = false)(parsed)
             val progId: Long = try {
               programms(Integer.valueOf(fields(3)) - 1).id
             }

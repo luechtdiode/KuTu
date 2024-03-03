@@ -27,7 +27,18 @@ object KuTuServer extends App with KuTuAppHTTPServer with AuthSupport with Hashi
     super.shutDown("KuTuServer")
   }
 
-  KuTuMailerActor.send(SimpleMail("Server-Startup Mailsend-Test", "Mailsender has been started up", s"${KuTuMailerActor.props().args(2)}@${KuTuMailerActor.props().args(3)}")).onComplete {
+  logger.info("initial cleanup athletes ...")
+  val cleanedAthletes = markAthletesInactiveOlderThan(3)
+  logger.info("initial cleanup clubs ...")
+  val cleanedClubs = cleanUnusedClubs()
+
+  KuTuMailerActor.send(SimpleMail("Server-Startup Mailsend-Test", s"""
+    Mailsender of ${KuTuMailerActor.mailSenderAppName} has been started up.
+
+    $cleanedAthletes have been archived.
+    ${cleanedClubs.size} Cleaned Clubs:
+    ${cleanedClubs.mkString("\n    ")}
+    """, s"${KuTuMailerActor.props().args(2)}@${KuTuMailerActor.props().args(3)}")).onComplete {
     println("test sendmail completed")
     println(_)
   }
@@ -46,6 +57,7 @@ object KuTuServer extends App with KuTuAppHTTPServer with AuthSupport with Hashi
 
         case s: String if (s.endsWith("cleanathletes")) =>
           markAthletesInactiveOlderThan(3)
+          cleanUnusedClubs()
           println("done")
           true
 

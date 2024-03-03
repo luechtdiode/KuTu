@@ -108,6 +108,77 @@ object MailTemplates {
       wettkampf.notificationEMail)
   }
 
+  def createDonateMail(wettkampf: Wettkampf, link: String, teilnehmer: Int, preisPerTn: BigDecimal): Mail = {
+    val logodir = new java.io.File(Config.homedir + "/" + encodeFileName(wettkampf.easyprint))
+    val logofile = PrintUtil.locateLogoFile(logodir)
+    val logoHtml = if (logofile.exists()) s"""<img class=logo src="${logofile.imageSrcForWebEngine}" title="Logo"/>""" else ""
+    val betrag = (preisPerTn * teilnehmer).setScale(2)
+    val linkMaterialized = link.replace(":betrag", s"$betrag")
+    val imageData = toQRCodeImage(linkMaterialized)
+    MultipartMail(s"Abschluss Online-Durchführung ${wettkampf.easyprint}",
+      s"""Hallo ${wettkampf.notificationEMail}
+         |
+         |Der Wettkampf '${wettkampf.easyprint}' ist mit $teilnehmer Teilnehmer/-Innen zu Ende gegangen.
+         |
+         |Hoffentlich konnte die KuTu Wettkampf-App Deinen Wettkampf erfolgreich unterstützen! Es wäre cool,
+         |wenn Dein Club/Verband für die Bereitstellung der Infrastruktur und den Serverbetrieb einen kleinen
+         |Beitrag spenden würde.
+         |
+         |In der aktuellen Situation würden z.B. CHF ${preisPerTn.setScale(2)} pro Teilnehmer/-In den vom Server verwendeten
+         |Strombedarf decken.
+         |
+         |Das wäre in diesem Fall ein ** Gesamtbetrag von CHF $betrag **.
+         |
+         |Die Spende kann über folgenden Link getätigt werden:
+         |$linkMaterialized
+         |
+         |Besten Dank für das Vertrauen und sportliche Grüsse,
+         |Die KuTu Wettkampf-App
+         |""".stripMargin,
+      s"""<html>$htmlhead<body>
+         |    <div class=textbody>
+         |      <div class=headline>
+         |        $logoHtml
+         |        <div class=title><h4>${escaped(wettkampf.easyprint)}</h4></div>
+         |        <div class=subtitle>Abschluss Online-Durchführung des Wettkampfs</br></div>
+         |      </div>
+         |      <div class="textblock">
+         |        <h4>Hallo ${escaped(wettkampf.notificationEMail)}</h4>
+         |        <p>
+         |          Der Wettkampf '${wettkampf.easyprint}' ist mit $teilnehmer Teilnehmer/-Innen zu Ende gegangen.
+         |        </p>
+         |        <p>
+         |          Hoffentlich konnte die KuTu Wettkampf-App Deinen Wettkampf erfolgreich unterstützen! Es wäre cool,
+         |          wenn Dein Club/Verband für die Bereitstellung der Infrastruktur und den Serverbetrieb einen kleinen
+         |          Beitrag spenden würde. In der aktuellen Situation würden z.B. CHF ${preisPerTn.setScale(2)} pro Teilnehmer/-In den vom Server verwendeten
+         |          Strombedarf decken. Das wäre in diesem Fall ein <b>Gesamtbetrag von CHF $betrag</b>.
+         |        </p>
+         |        <p>
+         |          Die Spende kann über folgenden Link getätigt werden:
+         |        </p>
+         |        <div class="catchme">
+         |          <a href='$linkMaterialized'>
+         |            <h2>Spenden-Link für die Online-Benutzung der KuTu Wettkampf-App</h2>
+         |            <img title='$linkMaterialized' width='300px' height='300px' src='${imageData}'>
+         |          </a><br>
+         |          <a href='$linkMaterialized'>$linkMaterialized</a>
+         |        </div>
+         |        <p>
+         |          Besten Dank für das Vertrauen und sportliche Grüsse,<br>
+         |          die KuTu-App
+         |        </p>
+         |        <hr>
+         |        <p>
+         |           <b>PS:</b> <em>Dies ist eine automatisch versendete EMail. Bitte nicht auf diese Mail antworten.</em>
+         |        </p>
+         |      </div>
+         |    </div>
+         |</body></html>""".stripMargin,
+      wettkampf.notificationEMail)
+  }
+
+
+
   def createSyncNotificationMail(wettkampf: Wettkampf, syncActions: List[SyncAction], changedJudges: List[JudgeRegistration], removedJudges: List[JudgeRegistration], addedJudges: List[JudgeRegistration]): Mail = {
     val logodir = new java.io.File(Config.homedir + "/" + encodeFileName(wettkampf.easyprint))
     val logofile = PrintUtil.locateLogoFile(logodir)

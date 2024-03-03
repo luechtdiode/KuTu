@@ -34,7 +34,7 @@ object ResourceExchanger extends KutuService with RiegenBuilder {
         case Some(v) => findVereinLike(Verein(id = 0, name = v.name, verband = None))
         case _ => None
       }
-      val mappedAthlet = findAthleteLike(cache, wettkampf)(athlet.toAthlet.copy(id = 0, verein = mappedverein))
+      val mappedAthlet = findAthleteLike(cache, wettkampf, exclusive = false)(athlet.toAthlet.copy(id = 0, verein = mappedverein))
       val mappedAthletView = athlet.updatedWith(mappedAthlet)
       mappedAthletView
     }
@@ -238,7 +238,7 @@ object ResourceExchanger extends KutuService with RiegenBuilder {
     val cache = new java.util.ArrayList[MatchCode]()
     val athletInstanceCandidates = mappedAthletes.map { imported =>
       val (csvId, importathlet) = imported
-      val candidate = findAthleteLike(cache)(importathlet)
+      val candidate = findAthleteLike(cache, exclusive = false)(importathlet)
 
       if (candidate.id > 0) {
         importathlet.gebdat match {

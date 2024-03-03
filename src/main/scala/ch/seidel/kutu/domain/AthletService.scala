@@ -12,7 +12,7 @@ import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration.Duration
 import scala.jdk.CollectionConverters.CollectionHasAsScala
 
-trait AthletService extends DBService with AthletResultMapper {
+trait AthletService extends DBService with AthletResultMapper with VereinService {
   private val logger = LoggerFactory.getLogger(this.getClass)
 
   def selectAthletesAction = {
@@ -193,7 +193,7 @@ trait AthletService extends DBService with AthletResultMapper {
     (acc._1 && same, acc._2 + (if (acc._1 && same) 1 else 0))
   }._2 / math.max(text1.length, text2.length)
 
-  def findAthleteLike(cache: java.util.Collection[MatchCode] = new java.util.ArrayList[MatchCode], wettkampf: Option[Long] = None)(athlet: Athlet): Athlet = {
+  def findAthleteLike(cache: java.util.Collection[MatchCode] = new java.util.ArrayList[MatchCode], wettkampf: Option[Long] = None, exclusive: Boolean)(athlet: Athlet): Athlet = {
     val bmname = MatchCode.encode(athlet.name)
     val bmvorname = MatchCode.encode(athlet.vorname)
 
@@ -222,16 +222,16 @@ trait AthletService extends DBService with AthletResultMapper {
       //      if (code.name.equals(athlet.name)) {
       //      print(athlet.easyprint, this)
       //      }
-      if (vereinSimilarity && preret && jahrgangSimilarity) {
-        //        logger.debug(" factor " + (namenSimilarity + vorNamenSimilarity) * 2)
+      if (vereinSimilarity && preret && gebdatSimilarity) {
+        (namenSimilarity + vorNamenSimilarity) * 3
+      }
+      else if (vereinSimilarity && preret && jahrgangSimilarity) {
         (namenSimilarity + vorNamenSimilarity) * 2
       }
       else if (vereinSimilarity && (preret || (preret2 && gebdatSimilarity))) {
-        //        logger.debug(" factor " + (namenSimilarity + vorNamenSimilarity))
         namenSimilarity + vorNamenSimilarity
       }
       else {
-        //        logger.debug(" factor 0")
         0
       }
     }
@@ -267,13 +267,13 @@ trait AthletService extends DBService with AthletResultMapper {
     else {
       cache
     }
-    val presel2 = preselect.asScala.filter(mc => mc.id != athlet.id).map { matchcode =>
+    val presel2 = preselect.asScala.filter(mc => !exclusive || mc.id != athlet.id).map { matchcode =>
       (matchcode.id, similarAthletFactor(matchcode))
     }.filter(p => p._2 > 0).toList.sortBy(_._2).reverse
     presel2.headOption.flatMap(k => loadAthlet(k._1)).getOrElse(athlet)
   }
 
-  protected def loadAthlet(key: Long) = {
+  protected def loadAthlet(key: Long): Option[Athlet] = {
     Await.result(database.run {
       sql"""select * from athlet where id=${key}""".as[Athlet]
         .headOption
@@ -282,7 +282,7 @@ trait AthletService extends DBService with AthletResultMapper {
   }
 
   def findDuplicates(): List[(AthletView, AthletView, AthletView)] = {
-    val likeFinder = findAthleteLike(new java.util.ArrayList[MatchCode]) _
+    val likeFinder = findAthleteLike(cache = new java.util.ArrayList[MatchCode], exclusive = true) _
     for {
       athleteView <- selectAthletesView
       athlete = athleteView.toAthlet
@@ -304,12 +304,13 @@ trait AthletService extends DBService with AthletResultMapper {
     }
   }
 
-  def markAthletesInactiveOlderThan(nYears: Int): Unit = {
+  def markAthletesInactiveOlderThan(nYears: Int): Int = {
     Await.result(database.run {
       sqlu"""
         update athlet
         set activ = false
-        where exists (
+        where activ = true
+          and exists (
           select distinct 1 from athlet a
               inner join verein v on v.id = a.verein
               left outer join wertung w on a.id = w.athlet_id
@@ -320,5 +321,27 @@ trait AthletService extends DBService with AthletResultMapper {
         );
        """
     }, Duration.Inf)
+  }
+
+  def cleanUnusedClubs(): Set[Verein] = {
+    val affectedClubs = Await.result(database.run {
+      sql"""
+          select * from verein
+          where not exists (
+            select distinct 1 from athlet a
+                inner join wertung w on (a.id = w.athlet_id)
+                where verein.id = a.verein
+          )
+          and not exists (
+            select distinct 1 from vereinregistration vr
+			      inner join wettkampf wk on (vr.wettkampf_id = wk.id)
+            where verein.id = verein_id
+			        and wk.datum >= current_date
+          )          """.as[Verein]
+    }, Duration.Inf).toSet
+    for(verein <- affectedClubs) {
+      deleteVerein(verein.id)
+    }
+    affectedClubs
   }
 }

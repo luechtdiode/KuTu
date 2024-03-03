@@ -131,6 +131,14 @@ trait ScoreToHtmlRenderer {
               float: left;
               width: 100%;
             }
+            footer {
+              em {
+                color: grey;
+              }
+              a {
+                color: cornflowerblue;
+              }
+            }
             .headline {
               display: block;
               border: 0px;
@@ -161,7 +169,7 @@ trait ScoreToHtmlRenderer {
         
   val nextSite = "</li></ul><ul><li>\n"
   val outro = """
-    </li></ul></body>
+    </li></ul><footer><p><em>Erstellt mit der Opensource Software <a href="https://github.com/luechtdiode/KuTu">KuTu Wettkampf-App</a></em></p></footer></body>
     </html>
   """
 

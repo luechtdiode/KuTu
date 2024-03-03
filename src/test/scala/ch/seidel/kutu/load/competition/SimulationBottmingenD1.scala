@@ -180,9 +180,13 @@ class SimulationBottmingenD1 extends Simulation {
         http("get competitions").get("/api/competition"),
         http("check jwt-token expired")
           .options("/api/isTokenExpired")))
+    .exec(http("startlist").get(s"/api/report/$competition/startlist"))
     .exec(BrowseResults.loadAndSaveDurchgaenge)
+    .exec(http("startlist").get(s"/api/report/$competition/startlist"))
     .exec(BrowseResults.loadAndSaveGeraete)
+    .exec(http("startlist").get(s"/api/report/$competition/startlist"))
     .exec(BrowseResults.diveToWertungen)
+    .exec(http("startlist").get(s"/api/report/$competition/startlist"))
     .exec(BrowseResults.closeWSUserFromAll)
 
 
