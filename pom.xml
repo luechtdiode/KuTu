@@ -258,7 +258,7 @@
 		<maven.compiler.target>21</maven.compiler.target>
 		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
 
-		<scoverage.plugin.version>1.4.11</scoverage.plugin.version>
+		<scoverage.plugin.version>2.0.3</scoverage.plugin.version>
 		<project-info-reports.plugin.version>3.0.0</project-info-reports.plugin.version>
 		<site.plugin.version>3.12.1</site.plugin.version>
 		<maven-compiler-plugin.version>3.11.0</maven-compiler-plugin.version>
