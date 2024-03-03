@@ -1,18 +1,22 @@
 package ch.seidel.kutu.http
 
 import akka.http.scaladsl.marshallers.sprayjson.SprayJsonSupport
+import akka.http.scaladsl.marshalling.ToResponseMarshallable
 import akka.http.scaladsl.model.{ContentTypes, HttpEntity, StatusCodes, Uri}
 import akka.http.scaladsl.server.Route
 import akka.util.Timeout
 import ch.seidel.kutu.Config
 import ch.seidel.kutu.KuTuServer.handleCID
-import ch.seidel.kutu.domain.{Kandidat, KutuService, encodeFileName}
+import ch.seidel.kutu.akka.{CompetitionCoordinatorClientActor, GeraeteRiegeList, GetGeraeteRiegeList, KutuAppEvent, WertungContainer}
+import ch.seidel.kutu.domain.{Kandidat, KutuService, encodeFileName, encodeURIComponent}
 import ch.seidel.kutu.renderer._
 import fr.davit.akka.http.metrics.core.scaladsl.server.HttpMetricsDirectives._
 import org.slf4j.{Logger, LoggerFactory}
 
 import java.util.UUID
+import scala.concurrent.Future
 import scala.concurrent.duration.DurationInt
+import scala.concurrent.ExecutionContext.Implicits.global
 
 trait ReportRoutes extends SprayJsonSupport
   with JsonSupport with AuthSupport with RouterLogging
@@ -50,26 +54,32 @@ trait ReportRoutes extends SprayJsonSupport
             pathLabeled("startlist", "startlist") {
               get {
                 parameters(Symbol("html").?, Symbol("q").?, Symbol("gr").?) { (html, q, gr) =>
+                  val eventualKutuAppEvent: Future[KutuAppEvent] = CompetitionCoordinatorClientActor.publish(GetGeraeteRiegeList(competitionId.toString), clientId)
                   html match {
-                    case Some(_) =>
-                      complete({
-                        val kandidaten = getAllKandidatenWertungen(UUID.fromString(wettkampf.uuid.get))
-                          .filter(filterMatchingCandidatesToQuery(q))
-                        val riegen = RiegenBuilder.mapToGeraeteRiegen(kandidaten)
-                        gr match {
-                          case Some(grv) if (grv.equalsIgnoreCase("verein")) =>
-                            HttpEntity(ContentTypes.`text/html(UTF-8)`, renderer.riegenToVereinListeAsHTML(riegen, logofile))
-                          case _ =>
-                            HttpEntity(ContentTypes.`text/html(UTF-8)`, renderer.riegenToKategorienListeAsHTML(riegen, logofile))
-                        }
-                      })
-                    case None =>
-                      complete({
-                        val kandidaten = getAllKandidatenWertungen(UUID.fromString(wettkampf.uuid.get))
-                          .filter(filterMatchingCandidatesToQuery(q))
-                        val riegen = RiegenBuilder.mapToGeraeteRiegen(kandidaten)
-                        HttpEntity(ContentTypes.`application/json`, jsonrenderer.riegenToKategorienListeAsJSON(riegen, logofile))
-                      })
+                    case Some(_) => complete {
+                      val toResponseMarshallable: Future[ToResponseMarshallable] = eventualKutuAppEvent.map {
+                        case GeraeteRiegeList(riegen, _) =>
+                          val filteredRiegen = riegen.filter { k => k.kandidaten.exists(filterMatchingCandidatesToQuery(q))}
+                          gr match {
+                            case Some(grv) if (grv.equalsIgnoreCase("verein")) =>
+                              HttpEntity(ContentTypes.`text/html(UTF-8)`, renderer.riegenToVereinListeAsHTML(filteredRiegen, logofile))
+                            case _ =>
+                              HttpEntity(ContentTypes.`text/html(UTF-8)`, renderer.riegenToKategorienListeAsHTML(filteredRiegen, logofile))
+                          }
+                        case _ =>
+                          StatusCodes.Conflict
+                      }
+                      toResponseMarshallable
+                    }
+                    case None => complete {
+                      val toResponseMarshallable: Future[ToResponseMarshallable] = eventualKutuAppEvent.map {
+                        case GeraeteRiegeList(riegen, _) =>
+                          HttpEntity(ContentTypes.`application/json`, jsonrenderer.riegenToKategorienListeAsJSON(riegen.filter { k => k.kandidaten.exists(filterMatchingCandidatesToQuery(q))}, logofile))
+                        case _ =>
+                          StatusCodes.Conflict
+                      }
+                      toResponseMarshallable
+                    }
                   }
                 }
               }
