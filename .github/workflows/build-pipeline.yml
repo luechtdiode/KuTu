@@ -34,7 +34,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           # We must fetch at least the immediate parents so that if this is
           # a pull request then we can checkout the head.
@@ -45,7 +45,7 @@ jobs:
       - run: git checkout HEAD^2
         if: ${{ github.event_name == 'pull_request' }}
       - name: Setup NPM
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v4
         with:
           node-version: 20
       - name: Build Mobile-App
@@ -59,11 +59,11 @@ jobs:
           mkdir ./src/main/resources/app
           cp -R -f ./newclient/resultcatcher/www/* ./src/main/resources/app
       - name: Autocommit Client
-        uses: stefanzweifel/git-auto-commit-action@v4
+        uses: stefanzweifel/git-auto-commit-action@v5
         with:
           commit_message: update with generated Client from Github Actions CI for build ${{env.GITHUB_RUN_NUMBER}} with [skip ci]
       - name: Archive client-modifications
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: src
           path: |
@@ -74,7 +74,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           # We must fetch at least the immediate parents so that if this is
           # a pull request then we can checkout the head.
@@ -82,7 +82,7 @@ jobs:
 
       - run: git checkout $(git log --branches -1 --pretty=format:'%D' | sed 's/.*, //g')
       - name: Cache Maven packages
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         with:
           path: ~/.m2
           key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
@@ -93,7 +93,7 @@ jobs:
         env:
           OS: Linux
       - name: Download client modifications
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           name: src
           path: src/main/resources/app
@@ -105,14 +105,14 @@ jobs:
         env:
           OS: Linux
       - name: Archive linux application jar
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: app
           path: |
             target/*.jar
             target/dependency
       - name: Archive production artifacts
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: linux-app
           path: |
@@ -124,7 +124,7 @@ jobs:
     runs-on: windows-latest
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           # We must fetch at least the immediate parents so that if this is
           # a pull request then we can checkout the head.
@@ -132,13 +132,13 @@ jobs:
 
       - run: git checkout $(git log --branches -1 --pretty=format:'%D' | sed 's/.*, //g')
       - name: Cache Maven packages
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         with:
           path: ~/.m2
           key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
           restore-keys: ${{ runner.os }}-m2
       - name: Download client modifications
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           name: src
           path: src/main/resources/app
@@ -150,7 +150,7 @@ jobs:
           OS: Win64
         shell: bash
       - name: Archive production artifacts
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: win64-app
           path: |
@@ -162,7 +162,7 @@ jobs:
     runs-on: macos-latest
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           # We must fetch at least the immediate parents so that if this is
           # a pull request then we can checkout the head.
@@ -170,7 +170,7 @@ jobs:
 
       - run: git checkout $(git log --branches -1 --pretty=format:'%D' | sed 's/.*, //g')
       - name: Cache Maven packages
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         with:
           path: ~/.m2
           key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
@@ -183,7 +183,7 @@ jobs:
         env:
           OS: Darwin
       - name: Download client modifications
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           name: src
           path: src/main/resources/app
@@ -195,7 +195,7 @@ jobs:
         env:
           OS: Darwin
       - name: Archive production artifacts
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: osx-app
           path: |
@@ -229,7 +229,7 @@ jobs:
           echo "SOURCE_TAG=$COMMIT_TAG" >> $GITHUB_OUTPUT
           echo "SOURCE_BRANCH=$COMMIT_BRANCH" >> $GITHUB_OUTPUT
       - name: Checkout repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           # We must fetch at least the immediate parents so that if this is
           # a pull request then we can checkout the head.
@@ -237,7 +237,7 @@ jobs:
 
       - run: git checkout $(git log --branches -1 --pretty=format:'%D' | sed 's/.*, //g')
       - name: Download prepared linux application jar
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           name: app
           path: target          
@@ -267,14 +267,14 @@ jobs:
     needs: [build-lnx-distribution, build-win64-distribution, build-osx-distribution, build-docker-distribution]
     runs-on: ubuntu-latest
     steps:
-      - uses: geekyeggo/delete-artifact@v2
+      - uses: geekyeggo/delete-artifact@v5
         with:
           useGlob: false
           name: |
             app
             src
       - name: Download a single artifact
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           path: dist
       - name: Release
