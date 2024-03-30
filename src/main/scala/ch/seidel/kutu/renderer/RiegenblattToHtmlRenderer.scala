@@ -62,9 +62,10 @@ object RiegenBuilder {
       )
 
       stationmap.values.toList.distinct.sorted.flatMap { station =>
-        athletdevicemap.map{ kandidat =>
-          (kandidat._2(station), kandidat)
-        }.groupBy(_._1)
+        athletdevicemap
+          .filter{ _._2.size >station }
+          .map{ kandidat => (kandidat._2(station), kandidat) }
+          .groupBy(_._1)
           .map{gr =>
             val (disziplin: Disziplin, candidates: Seq[(Disziplin, (Kandidat, List[Disziplin]))]) = gr
             val completed = candidates.flatMap(k => k._2._1.wertungen)
