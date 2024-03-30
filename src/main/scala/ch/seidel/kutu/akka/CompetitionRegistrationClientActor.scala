@@ -1,7 +1,7 @@
 package ch.seidel.kutu.akka
 
 import akka.actor.SupervisorStrategy.Restart
-import akka.actor.{ActorRef, OneForOneStrategy, Props}
+import akka.actor.{ActorRef, InvalidActorNameException, OneForOneStrategy, Props}
 import akka.event.LoggingAdapter
 import akka.pattern.ask
 import akka.persistence.{PersistentActor, SnapshotOffer, SnapshotSelectionCriteria}
@@ -14,7 +14,7 @@ import ch.seidel.kutu.http.JsonSupport
 import ch.seidel.kutu.renderer.MailTemplates
 import ch.seidel.kutu.view.WettkampfInfo
 
-import java.time.{LocalDate}
+import java.time.LocalDate
 import java.util.UUID
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration.{DAYS, DurationInt, FiniteDuration}
@@ -229,7 +229,6 @@ class CompetitionRegistrationClientActor(wettkampfUUID: String) extends Persiste
 }
 
 object CompetitionRegistrationClientActor {
-
   private def props(wettkampfUUID: String) = {
     Props(classOf[CompetitionRegistrationClientActor], wettkampfUUID)
   }
@@ -245,11 +244,23 @@ object CompetitionRegistrationClientActor {
   def publish(action: RegistrationAction, context: String): Future[RegistrationEvent] = {
     val prom = Promise[RegistrationEvent]()
     implicit val timeout: Timeout = Timeout(60000 milli)
-    system.actorSelection(s"user/Registration-${action.wettkampfUUID}").resolveOne().onComplete {
+    val actorName = s"user/Registration-${action.wettkampfUUID}"
+    system.actorSelection(actorName).resolveOne().onComplete {
       case Success(actorRef) =>
         prom.completeWith((actorRef ? RegistrationActionWithContext(action, context)).mapTo[RegistrationEvent])
-      case Failure(ex) =>
-        prom.completeWith((system.actorOf(props(action.wettkampfUUID), name = s"Registration-${action.wettkampfUUID}") ? RegistrationActionWithContext(action, context)).mapTo[RegistrationEvent])
+      case Failure(_) =>
+        try {
+          val ref = system.actorOf(props(action.wettkampfUUID), name = s"Registration-${action.wettkampfUUID}")
+          prom.completeWith((ref ? RegistrationActionWithContext(action, context)).mapTo[RegistrationEvent])
+        } catch {
+          case _: InvalidActorNameException =>
+            system.actorSelection(actorName).resolveOne().onComplete {
+              case Success(actorRef) =>
+                prom.completeWith((actorRef ? RegistrationActionWithContext(action, context)).mapTo[RegistrationEvent])
+              case Failure(e) =>
+                prom.failure(e)
+            }
+        }
     }
     prom.future
   }
