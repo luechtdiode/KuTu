@@ -90,6 +90,7 @@ object DBService {
       , "AddPunktegleichstandsregelToWettkampf-sqllite.sql"
       , "teamwertung-ddl.sql"
       , "AddTeamToWettkampf-ddl.sql"
+      , "tg-allgaeu-wk4ak0-15.sql"
     )
 
     (!dbfile.exists() || dbfile.length() == 0, Config.importDataFrom) match {
@@ -183,6 +184,7 @@ object DBService {
         , "AddPunktegleichstandsregelToWettkampf-pg.sql"
         , "teamwertung-ddl.sql"
         , "AddTeamToWettkampf-ddl.sql"
+        , "tg-allgaeu-wk4ak0-15.sql"
       )
       installDB(db, sqlScripts)
       /*Config.importDataFrom match {
