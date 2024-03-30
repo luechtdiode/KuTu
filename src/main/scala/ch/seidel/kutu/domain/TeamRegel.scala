@@ -3,17 +3,24 @@ package ch.seidel.kutu.domain
 object TeamRegel {
   val defaultRegel = TeamRegelList(List(), Some("Keine Teams"))
 
+  val vereinGesamt = "VereinGesamt"
+  val vereinGeraet = "VereinGerät"
+  val verbandGesamt = "VerbandGesamt"
+  val verbandGeraet = "VerbandGerät"
+  val vereinRegeln = Set(vereinGesamt, vereinGeraet)
+  val verbandRegeln = Set(verbandGesamt, verbandGeraet)
+
   val predefined = Map(
       ("Keine Teams" -> "")
-    , ("Aus Verein, drei Bestnoten pro Gerät, mit unbeschränkter Anzahl Mitglieder" -> "VereinGerät(3/*)")
-    , ("Aus Verein, drei Bestnoten pro Gerät, mit max vier Mitglieder" -> "VereinGerät(3/4)")
-    , ("Aus Verein, drei Gesamt-Bestnoten, mit unbeschränkter Anzahl Mitglieder" -> "VereinGesamt(3/*)")
-    , ("Aus Verein, drei Gesamt-Bestnoten, mit max vier Mitglieder" -> "VereinGesamt(3/4)")
-    , ("Aus Verband, drei Bestnoten pro Gerät, mit unbeschränkter Anzahl Mitglieder" -> "VerbandGerät(3/*)")
-    , ("Aus Verband, drei Bestnoten pro Gerät, mit max vier Mitglieder" -> "VerbandGerät(3/4)")
-    , ("Aus Verband, drei Gesamt-Bestnoten, mit unbeschränkter Anzahl Mitglieder" -> "VerbandGesamt(3/*)")
-    , ("Aus Verband, drei Gesamt-Bestnoten, mit max vier Mitglieder" -> "VerbandGesamt(3/4)")
-    , ("Individuell" -> "VereinGesamt(<min>/<max>/<extrateam1>+<extrateam2>), VerbandGesamt(<min>/<max>), VereinGerät(<min>/<max>), VerbandGerät(<min>/<max>)")
+    , ("Aus Verein, drei Bestnoten pro Gerät, mit unbeschränkter Anzahl Mitglieder" -> s"$vereinGeraet(3/*)")
+    , ("Aus Verein, drei Bestnoten pro Gerät, mit max vier Mitglieder" -> s"$vereinGeraet(3/4)")
+    , ("Aus Verein, drei Gesamt-Bestnoten, mit unbeschränkter Anzahl Mitglieder" -> s"$vereinGesamt(3/*)")
+    , ("Aus Verein, drei Gesamt-Bestnoten, mit max vier Mitglieder" -> s"$vereinGesamt(3/4)")
+    , ("Aus Verband, drei Bestnoten pro Gerät, mit unbeschränkter Anzahl Mitglieder" -> s"$verbandGeraet(3/*)")
+    , ("Aus Verband, drei Bestnoten pro Gerät, mit max vier Mitglieder" -> s"$verbandGeraet(3/4)")
+    , ("Aus Verband, drei Gesamt-Bestnoten, mit unbeschränkter Anzahl Mitglieder" -> s"$verbandGesamt(3/*)")
+    , ("Aus Verband, drei Gesamt-Bestnoten, mit max vier Mitglieder" -> s"$verbandGesamt(3/4)")
+    , ("Individuell" -> s"$vereinGesamt(<min>/<max>/<extrateam1>+<extrateam2>), $verbandGesamt(<min>/<max>), VereinGerät(<min>/<max>), $vereinGeraet(<min>/<max>)")
   )
   private val rangePattern = "([\\S]+)\\(([0-9]+)\\/([0-9,\\*]*)(\\/[\\S\\s\\/0-9+]*)?\\)".r
 
@@ -24,10 +31,10 @@ object TeamRegel {
       case rangePattern(rulename, min, max, extrateams) =>
         val extraTeamsDef = if (extrateams == null) "" else extrateams
         rulename match {
-        case "VereinGesamt" => Some(TeamRegelVereinGesamt(min, defaultMax(max), extraTeamsDef))
-        case "VerbandGesamt" => Some(TeamRegelVerbandGesamt(min, defaultMax(max), extraTeamsDef))
-        case "VereinGerät" => Some(TeamRegelVereinGeraet(min, defaultMax(max), extraTeamsDef))
-        case "VerbandGerät" => Some(TeamRegelVerbandGeraet(min, defaultMax(max), extraTeamsDef))
+        case `vereinGesamt` => Some(TeamRegelVereinGesamt(min, defaultMax(max), extraTeamsDef))
+        case `verbandGesamt` => Some(TeamRegelVerbandGesamt(min, defaultMax(max), extraTeamsDef))
+        case `vereinGeraet` => Some(TeamRegelVereinGeraet(min, defaultMax(max), extraTeamsDef))
+        case `verbandGeraet` => Some(TeamRegelVerbandGeraet(min, defaultMax(max), extraTeamsDef))
         case _ => None
       }
       case "Keine Teams" =>None

@@ -727,7 +727,9 @@ package object domain {
 
     override def easyprint = f"$titel am $datum%td.$datum%tm.$datum%tY"
 
-    lazy val extraTeams: List[String] = teamrule.map(TeamRegel(_).getExtrateams).toList.flatten
+    lazy val teamRegeln: Option[TeamRegel] = teamrule.map(TeamRegel(_))
+    lazy val extraTeams: List[String] = teamRegeln.map(_.getExtrateams).toList.flatten
+    lazy val hasTeams: Boolean = teamRegeln.exists(_.teamsAllowed)
 
     def toView(programm: ProgrammView): WettkampfView = {
       WettkampfView(id, uuid, datum, titel, programm, auszeichnung, auszeichnungendnote, notificationEMail, altersklassen.getOrElse(""), jahrgangsklassen.getOrElse(""), punktegleichstandsregel.getOrElse(""), rotation.getOrElse(""), teamrule.getOrElse(""))
