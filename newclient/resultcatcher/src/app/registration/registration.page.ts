@@ -58,7 +58,9 @@ export class RegistrationPage implements OnInit {
       this.busy.next(true);
       this.clubregistrations = [];
 
-      this.backendService.getClubRegistrations(competitionId).subscribe(list => {
+      this.backendService.getClubRegistrations(competitionId).pipe(
+        take(1)
+      ).subscribe(list => {
         this.getSyncActions();
         this.clubregistrations = list;
         this.busy.next(false);
