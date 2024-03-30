@@ -10,7 +10,7 @@ import ch.seidel.kutu.{Config, domain}
 import ch.seidel.kutu.Config.remoteAdminBaseUrl
 import ch.seidel.kutu.akka._
 import ch.seidel.kutu.data.RegistrationAdmin.adjustWertungRiegen
-import ch.seidel.kutu.domain.{AthletRegistration, AthletView, JudgeRegistration, KutuService, NewRegistration, ProgrammRaw, Registration, RegistrationResetPW, TeamItem, Verein, Wettkampf, dateToExportedStr, encodeFileName, str2SQLDate}
+import ch.seidel.kutu.domain.{AthletRegistration, AthletView, JudgeRegistration, KutuService, NewRegistration, ProgrammRaw, Registration, RegistrationResetPW, TeamItem, TeamRegel, Verein, Wettkampf, dateToExportedStr, encodeFileName, str2SQLDate}
 import ch.seidel.kutu.http.AuthSupport.OPTION_LOGINRESET
 import ch.seidel.kutu.renderer.MailTemplates.createPasswordResetMail
 import ch.seidel.kutu.renderer.{CompetitionsClubsToHtmlRenderer, CompetitionsJudgeToHtmlRenderer, PrintUtil}
@@ -169,11 +169,13 @@ trait RegistrationRoutes extends SprayJsonSupport with JwtSupport with JsonSuppo
                     CompetitionRegistrationClientActor.publish(ApproveEMail(wettkampf.uuid.get, mail), clientId).map{
                       case EMailApproved(message, success) =>
                         s"${wettkampf.easyprint}: $message"
+                      case _ =>
+                        "unable to approve - unexpected behavior"
                     }
                   }
                 case _ =>
                   complete {Future {
-                    ""
+                    "unable to approve without mail"
                   }}
               }
             }
@@ -375,24 +377,29 @@ trait RegistrationRoutes extends SprayJsonSupport with JwtSupport with JsonSuppo
                     pathEndOrSingleSlash {
                       get {
                         complete {
-                          val registration = selectRegistration(registrationId)
-                          val (teamname, teamNumbers) = if (wettkampf.teamrule.exists(r => r.contains("VereinGe")))
-                                (s"${registration.toVerein.extendedprint}", selectAthletRegistrations(registrationId)
-                                  .flatMap(_.team)
-                                  .filter(_ > 0).distinct.sorted)
-                              else
-                                (s"${registration.verband}", selectRegistrations()
-                                  .filter(_.verband.equalsIgnoreCase(registration.verband))
-                                  .flatMap(vereinsReg => selectAthletRegistrations(vereinsReg.id))
-                                  .flatMap(_.team)
-                                  .filter(_ > 0).distinct.sorted)
+                          if (wettkampf.hasTeams) {
+                            val registration = selectRegistration(registrationId)
+                            val (teamname, teamNumbers) = if (wettkampf.teamrule.exists(r => TeamRegel.vereinRegeln.exists(p => r.contains(p))))
+                              (s"${registration.toVerein.extendedprint}", selectAthletRegistrations(registrationId)
+                                .flatMap(_.team)
+                                .filter(_ > 0).distinct.sorted)
+                            else if (wettkampf.teamrule.exists(r => TeamRegel.verbandRegeln.exists(p => r.contains(p))))
+                              (s"${registration.verband}", selectRegistrations()
+                                .filter(_.verband.equalsIgnoreCase(registration.verband))
+                                .flatMap(vereinsReg => selectAthletRegistrations(vereinsReg.id))
+                                .flatMap(_.team)
+                                .filter(_ > 0).distinct.sorted)
+                            else (s"${registration.toVerein.extendedprint}", List.empty)
 
-                          val nextTeamNumber = if (teamNumbers.isEmpty) 1 else teamNumbers.max + 1
+                            val nextTeamNumber = if (teamNumbers.isEmpty) 1 else teamNumbers.max + 1
 
-                          (1 to nextTeamNumber).toList.map(idx => TeamItem(idx, teamname)) :::
-                            wettkampf.extraTeams
-                              .filter(_.nonEmpty)
-                              .zipWithIndex.map(item => TeamItem(item._2 * -1 - 1, item._1))
+                            (1 to nextTeamNumber).toList.map(idx => TeamItem(idx, teamname)) :::
+                              wettkampf.extraTeams
+                                .filter(_.nonEmpty)
+                                .zipWithIndex.map(item => TeamItem(item._2 * -1 - 1, item._1))
+                          } else {
+                            List[TeamItem]()
+                          }
                         }
                       }
                     }

@@ -733,7 +733,7 @@ export class BackendService extends WebsocketService {
         error: this.standardErrorHandler
       });
 
-      return this.clubRegistrations;
+      return loader;
     }
 
     loadRegistrationSyncActions(): Observable<SyncAction[]> {
