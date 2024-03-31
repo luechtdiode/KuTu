@@ -610,6 +610,11 @@ package object domain {
 
   case class Disziplin(id: Long, name: String) extends DataObject {
     override def easyprint = name
+    def equalsOrPause(other: Disziplin) = math.abs(id) == math.abs(other.id)
+    def isPause: Boolean = id < 0
+
+    def asPause: Disziplin = Disziplin(id * -1, s"${name} Pause")
+    def harmless: Disziplin = Disziplin(math.abs(id), name)
   }
 
   trait Programm extends DataObject {

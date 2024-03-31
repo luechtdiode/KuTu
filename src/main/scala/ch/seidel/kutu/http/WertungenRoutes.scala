@@ -6,7 +6,7 @@ import akka.http.scaladsl.model.{StatusCodes, Uri}
 import akka.http.scaladsl.server.Route
 import akka.util.Timeout
 import ch.seidel.kutu.akka._
-import ch.seidel.kutu.domain.{KutuService, ProgrammRaw, Wertung, encodeURIComponent, str2Int, str2Long}
+import ch.seidel.kutu.domain.{KutuService, ProgrammRaw, Wertung, WertungView, encodeURIComponent, str2Int, str2Long}
 
 import scala.concurrent.Future
 import scala.concurrent.duration.DurationInt
@@ -148,6 +148,8 @@ trait WertungenRoutes extends SprayJsonSupport with JsonSupport with JwtSupport 
                         list
                           .filter(_.durchgang.exists(encodeURIComponent(_) == dg))
                           .flatMap(gr => gr.disziplin)
+                          //.filter(d => !d.isPause)
+                          //.map(_.harmless)
                           .distinct
                       case _ =>
                         StatusCodes.Conflict
@@ -179,13 +181,20 @@ trait WertungenRoutes extends SprayJsonSupport with JsonSupport with JwtSupport 
                       case GeraeteRiegeList(list, _) =>
                         list.filter(gr =>
                           gr.durchgang.exists(encodeURIComponent(_) == dg) &&
-                            gr.disziplin.exists(_.id == gid) &&
+                            gr.disziplin.exists(_.id == gid ) &&
                             gr.halt == halt - 1)
                           .flatMap(gr => gr.kandidaten.map(k => {
-                            val wertungView = k.wertungen.filter(w => w.wettkampfdisziplin.disziplin.id == gid).head
-                            WertungContainer(k.id, k.vorname, k.name, k.geschlecht, k.verein,
-                              wertungView.toWertung,
-                              gid, k.programm, wertungView.wettkampfdisziplin.isDNoteUsed)
+                            k.wertungen.find(w => w.wettkampfdisziplin.disziplin.id == gid) match {
+                              case Some(wertungView: WertungView) =>
+                                WertungContainer(k.id, k.vorname, k.name, k.geschlecht, k.verein,
+                                  wertungView.toWertung,
+                                  gid, k.programm, wertungView.wettkampfdisziplin.isDNoteUsed)
+                              case None =>
+                                val wertungView: WertungView = k.wertungen.head
+                                WertungContainer(k.id, k.vorname, k.name, k.geschlecht, k.verein,
+                                  wertungView.toWertung.copy(wettkampfdisziplinId = 0L),
+                                  gid, k.programm, wertungView.wettkampfdisziplin.isDNoteUsed)
+                            }
                           }))
                       case _ =>
                         StatusCodes.Conflict
