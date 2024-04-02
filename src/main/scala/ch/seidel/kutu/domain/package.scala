@@ -177,17 +177,18 @@ package object domain {
 
   def encodeFileName(name: String): String = {
     val forbiddenChars = List(
-      '/', '<', '>', ':', '"', '|', '?', '*', ' '
+      '/', '\\', '<', '>', ':', '"', '|', '?', '*', ' '
     ) :+ (0 to 32)
     val forbiddenNames = List(
       "CON", "PRN", "AUX", "NUL",
       "COM1", "COM2", "COM3", "COM4", "COM5", "COM6", "COM7", "COM8", "COM9",
       "LPT1", "LPT2", "LPT3", "LPT4", "LPT5", "LPT6", "LPT7", "LPT8", "LPT9"
     )
-    if (forbiddenNames.contains(name.toUpperCase()))
+    val harmlessName = if (forbiddenNames.contains(name.toUpperCase()))
       "_" + name + "_"
     else
-      name.map(c => if (forbiddenChars.contains(c)) '_' else c)
+      name
+    harmlessName.map(c => if (forbiddenChars.contains(c)) '_' else c)
   }
 
   trait DataObject extends Ordered[DataObject] {
@@ -615,6 +616,8 @@ package object domain {
 
     def asPause: Disziplin = Disziplin(id * -1, s"${name} Pause")
     def harmless: Disziplin = Disziplin(math.abs(id), name)
+    def asNonPause: Disziplin = Disziplin(math.abs(id), name.replace(" Pause", ""))
+    def normalizedOrdinal(dzl: List[Disziplin]) = dzl.indexOf(asNonPause)+1
   }
 
   trait Programm extends DataObject {
