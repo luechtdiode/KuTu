@@ -262,7 +262,7 @@
 		<project-info-reports.plugin.version>3.0.0</project-info-reports.plugin.version>
 		<site.plugin.version>3.12.1</site.plugin.version>
 		<maven-compiler-plugin.version>3.11.0</maven-compiler-plugin.version>
-		<slick.version>3.4.1</slick.version>
+		<slick.version>3.5.0</slick.version>
 	</properties>
 
 	<dependencies>
