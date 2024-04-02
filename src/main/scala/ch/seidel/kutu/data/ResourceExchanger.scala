@@ -542,7 +542,7 @@ object ResourceExchanger extends KutuService with RiegenBuilder {
     wettkampfInstances.head._2
   }
 
-  def moveAll(source: jdbc.JdbcBackend.DatabaseDef, target: jdbc.JdbcBackend.DatabaseDef): Unit = {
+  def moveAll(source: jdbc.JdbcBackend.Database, target: jdbc.JdbcBackend.Database): Unit = {
     try {
       DBService.startDB(Some(source))
       val wettkampfliste = listWettkaempfeView

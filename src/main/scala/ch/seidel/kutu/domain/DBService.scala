@@ -11,8 +11,8 @@ import com.zaxxer.hikari.{HikariConfig, HikariDataSource}
 import org.slf4j.LoggerFactory
 import org.sqlite.SQLiteConnection
 import slick.jdbc
-import slick.jdbc.JdbcBackend
-import slick.jdbc.JdbcBackend.{Database, DatabaseDef}
+import slick.jdbc.{JdbcBackend, JdbcDataSourceFactory}
+import slick.jdbc.JdbcBackend.Database
 import slick.jdbc.PostgresProfile.api.{DBIO, actionBasedSQLInterpolation, jdbcActionExtensionMethods}
 
 import java.sql.Date
@@ -132,7 +132,7 @@ object DBService {
     db
   }
 
-  private def migrateFrom(dsCreate: String => JdbcBackend.DatabaseDef, version: String): Unit = {
+  private def migrateFrom(dsCreate: String => JdbcBackend.Database, version: String): Unit = {
     val preversion = new File(dbhomedir + "/" + buildFilename(version))
     if (preversion.exists()) {
       logger.info(s"Migrating Database from ${preversion.getAbsolutePath}")
@@ -154,7 +154,7 @@ object DBService {
     }
   }
 
-  def transferData(source: jdbc.JdbcBackend.DatabaseDef, target: jdbc.JdbcBackend.DatabaseDef): Unit = {
+  def transferData(source: jdbc.JdbcBackend.Database, target: jdbc.JdbcBackend.Database): Unit = {
     ResourceExchanger.moveAll(source, target)
   }
 
@@ -223,9 +223,9 @@ object DBService {
     }
   }
 
-  private var database: Option[DatabaseDef] = None
+  private var database: Option[Database] = None
 
-  def checkMigrationDone(db: DatabaseDef, script: String): Boolean = {
+  def checkMigrationDone(db: Database, script: String): Boolean = {
     logger.info(s"checking installation-status for ${script} ...")
     val ret = try {
       0 < Await.result(db.run {
@@ -244,7 +244,7 @@ object DBService {
     ret
   }
 
-  def migrationDone(db: DatabaseDef, script: String, log: String): Unit = {
+  def migrationDone(db: Database, script: String, log: String): Unit = {
     Await.result(db.run {
       sqlu"""
           insert into migrations (name, result) values ($script, $log)
@@ -297,7 +297,7 @@ object DBService {
     cutFields(s, IndexedSeq[String]())
   }
 
-  def executeDBScript(script: Seq[String], db: DatabaseDef) = {
+  def executeDBScript(script: Seq[String], db: Database) = {
     def filterCommentLines(line: String) = {
       !line.trim().startsWith("--")
     }
@@ -337,7 +337,7 @@ object DBService {
   }
 
 
-  def installDB(db: DatabaseDef, sqlScripts: List[String]) = {
+  def installDB(db: Database, sqlScripts: List[String]) = {
     sqlScripts.filter { filename =>
       !checkMigrationDone(db, filename)
     }.map { filename =>
@@ -371,7 +371,7 @@ object DBService {
     }
   }
 
-  def migrateFromPreviousVersion(db: DatabaseDef) = {
+  def migrateFromPreviousVersion(db: Database) = {
     val sqlScripts = Seq(
       "SetJournalWAL.sql"
       , "AddMigrationTable.sql"
@@ -411,7 +411,7 @@ object DBService {
     sqlScripts
   }
 
-  def startDB(alternativDB: Option[DatabaseDef] = None) = {
+  def startDB(alternativDB: Option[Database] = None) = {
     alternativDB match {
       case Some(db) =>
         database = Some(db)
@@ -427,7 +427,7 @@ object DBService {
 trait DBService {
   private val logger = LoggerFactory.getLogger(this.getClass)
 
-  def database: DatabaseDef = DBService.startDB()
+  def database: Database = DBService.startDB()
 
   implicit def getSQLDate(date: String): Date = str2SQLDate(date)
 }

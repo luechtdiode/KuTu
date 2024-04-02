@@ -59,6 +59,7 @@ object TestDBService {
       , "AddPunktegleichstandsregelToWettkampf-sqllite.sql"
       , "teamwertung-ddl.sql"
       , "AddTeamToWettkampf-ddl.sql"
+      , "tg-allgaeu-wk4ak0-15.sql"
     )
     installDBFunctions(tempDatabase)
 
@@ -67,7 +68,7 @@ object TestDBService {
     tempDatabase
   }
 
-  def installDBFunctions(dbdef: JdbcBackend.DatabaseDef): Unit = {
+  def installDBFunctions(dbdef: JdbcBackend.Database): Unit = {
     val session = dbdef.createSession()
     try {
       NewUUID.install(session.conn.unwrap(classOf[SQLiteConnection]))
