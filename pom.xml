@@ -317,8 +317,7 @@
 		<dependency>
 			<groupId>org.xerial</groupId>
 			<artifactId>sqlite-jdbc</artifactId>
-			<version>3.39.3.0</version> <!-- next version brings regression reading null BigInteger fields - according to slick docu, the sqllite driver doesn't support bigedecimal anymore -->
-			<!--version>3.44.0.0</version-->
+			<version>3.45.2.0</version>
 		</dependency>
 		<dependency>
 			<groupId>org.postgresql</groupId>
