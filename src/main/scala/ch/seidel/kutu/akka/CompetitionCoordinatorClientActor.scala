@@ -146,6 +146,15 @@ class CompetitionCoordinatorClientActor(wettkampfUUID: String) extends Persisten
 
     case StartedDurchgaenge(_) => sender() ! ResponseMessage(state.startedDurchgaenge)
 
+    case ResetStartDurchgang(wettkampfUUID, durchgang) =>
+      val senderWebSocket = actorWithSameDeviceIdOfSender()
+      val resetted = DurchgangResetted(wettkampfUUID, durchgang)
+      if (handleEvent(resetted)) persist(resetted) { _ =>
+        storeDurchgangResetted(resetted)
+        notifyWebSocketClients(senderWebSocket, resetted, durchgang)
+      }
+      sender() ! resetted
+
     case StartDurchgang(wettkampfUUID, durchgang) =>
       val senderWebSocket = actorWithSameDeviceIdOfSender()
       val started = DurchgangStarted(wettkampfUUID, durchgang)
@@ -333,9 +342,9 @@ class CompetitionCoordinatorClientActor(wettkampfUUID: String) extends Persisten
             KuTuMailerActor.send(mail)
             mail match {
               case mpm:MultipartMail =>
-                log.info(s"Mail submitted für ${mpm.to}:\n${mpm.messageText}")
+                log.info(s"Mail submitted to ${mpm.to}:\n${mpm.messageText}")
               case sm:SimpleMail =>
-                log.info(s"Mail submitted für ${sm.to}:\n${sm.messageText}")
+                log.info(s"Mail submitted to ${sm.to}:\n${sm.messageText}")
             }
             saveWettkampfDonationAsk(wkUUID, wettkampf.notificationEMail, price)
             handleEvent(DonationMailSent(teilnehmer.size, price, donationLink, wettkampfUUID))
@@ -376,12 +385,14 @@ class CompetitionCoordinatorClientActor(wettkampfUUID: String) extends Persisten
         state.startStopEvents.reverse.filter {
           case DurchgangStarted(_, d, _) => encodeURIComponent(d).equals(dgn)
           case DurchgangFinished(_, d, _) => encodeURIComponent(d).equals(dgn)
+          case DurchgangResetted(_, d) => encodeURIComponent(d).equals(dgn)
           case _ => false
         }.take(1)
       case _ => //take first and last per durchgang
         state.startStopEvents.groupBy {
             case DurchgangStarted(w, d, t) => d
             case DurchgangFinished(w, d, t) => d
+            case DurchgangResetted(w, d) => d
             case _ => "_"
           }
           .filter(_._1 != "_")
@@ -395,6 +406,7 @@ class CompetitionCoordinatorClientActor(wettkampfUUID: String) extends Persisten
     }).toList.sortBy {
       case DurchgangStarted(_, _, t) => t
       case DurchgangFinished(_, _, t) => t
+      case DurchgangResetted(_, _) => System.currentTimeMillis()
       case _ => 0L
     }
   }
