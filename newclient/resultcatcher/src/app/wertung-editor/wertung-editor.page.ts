@@ -112,7 +112,7 @@ export class WertungEditorPage {
   }
 
   editable() {
-    return this.backendService.loggedIn;
+    return this.backendService.loggedIn && this.wertung.wettkampfdisziplinId > 0;
   }
 
   updateUI(wc: WertungContainer) {

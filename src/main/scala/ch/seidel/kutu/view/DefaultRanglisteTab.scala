@@ -74,12 +74,14 @@ abstract class DefaultRanglisteTab(wettkampfmode: BooleanProperty, override val 
   def getPublishedScores: List[PublishedScoreView] = List.empty
   def getActionButtons: List[Button] = List.empty
 
-  val webView = new WebView {
+  private val webView = new WebView {
     fontSmoothingType = FontSmoothingType.GRAY
-
+    import ch.seidel.javafx.webview.HyperLinkRedirectListener
+    engine.getLoadWorker.stateProperty.addListener(new HyperLinkRedirectListener(this.delegate))
     //zoom = 1.2
     //fontScale = 1.2
   }
+
   var restoring = false
   val nullFilter = NullObject("alle")
   

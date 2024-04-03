@@ -39,7 +39,7 @@ trait ExportFunctions {
     val seriendaten = service.getAllKandidatenWertungen(wettkampf.uuid.map(UUID.fromString).get)
     val durchgangFileQualifier = durchgang.mkString("_dg(","-",")").replace(" ", "_")
     val haltsFileQualifier = halts.mkString("_h(", "-", ")")
-    val filename = "Riegenblatt_" + encodeFileName(wettkampf.easyprint) + durchgangFileQualifier + haltsFileQualifier + ".html"
+    val filename = "Riegenblatt_" + encodeFileName(wettkampf.easyprint + durchgangFileQualifier + haltsFileQualifier) + ".html"
     val dir = new java.io.File(homedir + "/" + encodeFileName(wettkampf.easyprint))
     if(!dir.exists()) {
       dir.mkdirs();

@@ -12,18 +12,21 @@
 <ion-content>
   <form #wertungsform="ngForm" (ngSubmit)="saveNext(wertungsform)" (keyup.enter)="saveNext(wertungsform)">
     <ion-list>
-      <app-wertung-avg-calc  #dnote name="noteD" *ngIf="isDNoteUsed" [waiting]="waiting" [valueTitle]="dNoteLabel" [(ngModel)]="wertung.noteD">
+      <app-wertung-avg-calc  #dnote name="noteD" *ngIf="isDNoteUsed" [waiting]="waiting" [valueTitle]="dNoteLabel" [(ngModel)]="wertung.noteD" [disabled]="!editable()">
       </app-wertung-avg-calc>
-      <app-wertung-avg-calc  #enote name="noteE" [waiting]="waiting" [valueTitle]="eNoteLabel" [(ngModel)]="wertung.noteE">
+      <app-wertung-avg-calc  #enote name="noteE" [waiting]="waiting" [valueTitle]="eNoteLabel" [(ngModel)]="wertung.noteE" [disabled]="!editable()">
       </app-wertung-avg-calc>
       <ion-item>
         <ion-label>Endnote</ion-label>
-        <ion-input #endnote [ngModel]='wertung.endnote' type="number" readonly name="endnote"></ion-input>
+        <ion-input #endnote [ngModel]='wertung.endnote' type="number" readonly name="endnote" [disabled]="!editable()"></ion-input>
       </ion-item>
     </ion-list>
     <ion-list>
-      <ion-item *ngIf="!wertungsform.valid">
+      <ion-item *ngIf="!wertungsform.valid && editable()">
         Ungültige Eingabe. Die Werte müssen im Format ##.## (2-3 Nachkommastellen mit Dezimalpunkt) eingegeben werden.
+      </ion-item>
+      <ion-item *ngIf="!editable()">
+        An diesem Gerät macht {{item.vorname + ' ' + item.name}} Pause. Es können keine Resultate erfasst werden.
       </ion-item>
       <ion-button size="large" expand="block" type="submit" #btnSaveNext *ngIf='editable()' [disabled]="waiting || !wertungsform.valid" color="success">
         <ion-icon slot="start" name="arrow-forward-circle-outline"></ion-icon>Speichern & Weiter</ion-button>

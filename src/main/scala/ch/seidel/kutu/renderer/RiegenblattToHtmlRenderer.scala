@@ -15,7 +15,7 @@ object RiegenBuilder {
 
     def pickStartformationen(geraete: Seq[(Option[Disziplin], Seq[Riege], Int)], durchgang: Option[String], extractKandidatEinteilung: Kandidat => (Option[Riege], Seq[Disziplin])): Seq[(Int, Option[Disziplin], Seq[Kandidat], Boolean)] = {
       /*
-        sationmap[Disziplin,Int](
+        stationmap[Disziplin,Int](
           // Disziplin -> Halt
           Boden -> 1,
           Barren -> 2,
@@ -27,6 +27,8 @@ object RiegenBuilder {
       val stationmap: Map[Disziplin, Int] = geraete.foldLeft(Map[Disziplin, Int]()) { (acc, item) =>
         acc.updated(item._1.get, item._3)
       }
+      val splitmerged = stationmap.values.toList.distinct.size < stationmap.size
+      //println(splitmerged, stationmap.toList.map(x => (x._2, x._1)).sortBy(_._1).mkString("\n"))
       /*
       1. Halt: Riege Startgerät (1W,Boden), (2M,Barren), (3W,Balken), (4W,Minitramp) (5M,Minitramp), (6M,Sprung)
 
@@ -50,20 +52,28 @@ object RiegenBuilder {
             case Some(einteilung) =>
               einteilung.durchgang.equals(durchgang) &&
                 einteilung.start.contains(disziplin) &&
-                diszipline.map(_.id).contains(disziplin.id)
-            case None => false
+                (!splitmerged || diszipline.map(_.id).contains(disziplin.id))
+            case None =>
+              false
           }
         }
         .map { riegeneinteilung =>
           val (kandidat, (_, diszipline)) = riegeneinteilung
           val disziplin = d._1.get
-          (kandidat, (diszipline.dropWhile(d => d.id != disziplin.id) ++ diszipline.takeWhile(d => d.id != disziplin.id)).toList)
+          if (splitmerged)
+            (kandidat, (diszipline.dropWhile(d => d.id != disziplin.id) ++ diszipline.takeWhile(d => d.id != disziplin.id)).toList)
+          else {
+            val diszs = geraete.map(_._1.get).map{d =>
+              if (diszipline.contains(d)) d else d.asPause
+            }
+            (kandidat, (diszs.dropWhile(d => !d.equalsOrPause(disziplin)) ++ diszs.takeWhile(d => !d.equalsOrPause(disziplin))).toList)
+          }
         }
       )
 
       stationmap.values.toList.distinct.sorted.flatMap { station =>
         athletdevicemap
-          .filter{ _._2.size >station }
+          .filter{ _._2.size > station }
           .map{ kandidat => (kandidat._2(station), kandidat) }
           .groupBy(_._1)
           .map{gr =>
@@ -92,7 +102,7 @@ object RiegenBuilder {
       val riegen = kandidatriegen.map(_._2).sortBy(r => r.start.map( dzl.indexOf(_)))
       //kandidat.diszipline für die Rotationsberechnung verwenden
       val rg = riegen.groupBy(e => e.start).toList.sortBy{d => d._1.map( dzl.indexOf(_))}
-      val geraete = dzl.foldLeft(rg) { (acc, item) =>
+      val geraete: Seq[(Option[Disziplin], Seq[Riege], Int)] = dzl.foldLeft(rg) { (acc, item) =>
           acc.find(p => p._1.exists { f => f.equals(item) }) match {
             case Some(_) => acc
             case _ => acc :+ (Some(item) -> List[Riege]())
@@ -101,7 +111,7 @@ object RiegenBuilder {
         .filter(pair => dzlmap.exists(p => pair._1.contains(p._1)))
         .sortBy(geraet => geraet._1.map(g => dzl.indexOf(g)))
         .map(geraet => (geraet._1, geraet._2, dzlmap(geraet._1.get)))
-
+      //println(geraete.map(x => (x._3, s"M:${x._2.count(_.easyprint.contains("M"))},W:${x._2.count(_.easyprint.contains("W"))}", x._1.get)).mkString("\n"))
       val startformationen = pickStartformationen(geraete, durchgang, k => (k.einteilung, k.diszipline))
         .zipWithIndex
         .map(x => {
@@ -109,10 +119,10 @@ object RiegenBuilder {
           (sf._1, sf._2, sf._3, sf._4, durchgangIndex * 100 + index + 1)
         })
       if (printorder) {
-        (durchgang, startformationen.sortBy(d => d._2.map( dzl.indexOf(_)).getOrElse(0) * 100 + d._1))
+        (durchgang, startformationen.sortBy(d => d._2.map(x => x.normalizedOrdinal(dzl)).getOrElse(0) * 100 + d._1))
       }
       else {
-        (durchgang, startformationen.sortBy(d => d._1 * 100 + d._2.map( dzl.indexOf(_)).getOrElse(0)))
+        (durchgang, startformationen.sortBy(d => d._1 * 100 + d._2.map(x => x.normalizedOrdinal(dzl)).getOrElse(0)))
       }
     }
 
@@ -155,7 +165,7 @@ object RiegenBuilder {
         (durchgang, startformationen)        
       }
       else {
-        (durchgang, startformationen.sortBy(d => d._1 * 100 + d._2.map( dzl.indexOf(_))))
+        (durchgang, startformationen.sortBy(d => d._1 * 100 + d._2.map(x => x.normalizedOrdinal(dzl))))
       }
     }
     val riegen = (hauptdurchgaenge ++ nebendurchgaenge).flatMap { item =>
@@ -166,6 +176,7 @@ object RiegenBuilder {
         case _ =>
           starts
             .filter(start => haltsFilter.isEmpty || (!isND && haltsFilter.contains(start._1)) || haltsFilter.exists(halt => halt < 0 && (math.abs(halt) <= start._1 || isND)))
+            .filter(start => !(printorder && start._2.exists(_.isPause)))
             .map { start =>
             GeraeteRiege(start._3.head.wettkampfTitel, start._3.head.wertungen.head.wettkampf.uuid.get,
               durchgang, start._1, start._2, start._3, start._4, f"R${start._5}%04d")

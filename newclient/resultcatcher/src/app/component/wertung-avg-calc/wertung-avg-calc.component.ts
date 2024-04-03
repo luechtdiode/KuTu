@@ -99,7 +99,10 @@ export class WertungAvgCalcComponent implements ControlValueAccessor {
       .filter(item => !isNaN(item))
       .filter(item => item > 0)
     if (avg1.length === 0) {
-      return this.avgValue;
+      this.avgValue = undefined;
+      this.onChange(undefined);
+      console.log('value updated: ' + undefined);
+      return undefined;
     }
     const avg2 = Number((avg1.reduce((sum, current) => sum + current, 0) / avg1.length).toFixed(this.fixed));
     if (!this.disabled && this.avgValue !== avg2 && !isNaN(avg2)) {
