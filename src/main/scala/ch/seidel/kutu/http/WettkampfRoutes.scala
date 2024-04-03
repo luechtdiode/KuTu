@@ -57,6 +57,15 @@ trait WettkampfRoutes extends SprayJsonSupport
     )
   }
 
+  def resetDurchgang(p: WettkampfView, durchgang: String): Future[HttpResponse] = {
+    httpPostClientRequest(s"$remoteAdminBaseUrl/api/competition/${p.uuid.get}/reset",
+      HttpEntity(
+        ContentTypes.`application/json`,
+        ByteString(ResetStartDurchgang(p.uuid.get, durchgang).toJson.compactPrint)
+      )
+    )
+  }
+
   def finishDurchgangStep(p: WettkampfView): Future[HttpResponse] = {
     httpPostClientRequest(s"$remoteAdminBaseUrl/api/competition/${p.uuid.get}/finishedStep",
       HttpEntity(
@@ -303,6 +312,20 @@ trait WettkampfRoutes extends SprayJsonSupport
                 if (userId.equals(wkuuid.toString)) {
                   AbuseHandler.clearAbusedClients()
                   complete(CompetitionCoordinatorClientActor.publish(sd, clientId))
+                } else {
+                  complete(StatusCodes.Conflict)
+                }
+              }
+            }
+          }
+        } ~
+          pathLabeled("reset", "reset") {
+          post {
+            authenticated() { userId =>
+              entity(as[ResetStartDurchgang]) { rsd =>
+                if (userId.equals(wkuuid.toString)) {
+                  AbuseHandler.clearAbusedClients()
+                  complete(CompetitionCoordinatorClientActor.publish(rsd, clientId))
                 } else {
                   complete(StatusCodes.Conflict)
                 }
