@@ -54,7 +54,7 @@ class CompetitionCoordinatorClientActor(wettkampfUUID: String) extends Persisten
   private val wkPgmId = wettkampf.programmId
   private val isDNoteUsed = wkPgmId != 20 && wkPgmId != 1
   private val snapShotInterval = 100
-  private val donationDonationBegin = if (Config.donationDonationBegin.nonEmpty) LocalDate.parse(Config.donationDonationBegin) else LocalDate.of(2000,1,1)
+  private val donationDonationBegin = if (Config.donationDonationBegin.nonEmpty) LocalDate.parse(Config.donationDonationBegin) else LocalDate.of(2000, 1, 1)
   private val donationActiv = donationDonationBegin.before(wettkampf.datum) && Config.donationLink.nonEmpty && Config.donationPrice.nonEmpty
 
   private var wsSend: Map[Option[String], List[ActorRef]] = Map.empty
@@ -65,10 +65,12 @@ class CompetitionCoordinatorClientActor(wettkampfUUID: String) extends Persisten
   private var geraeteRigeListe: List[GeraeteRiege] = List.empty
   private var clientId: () => String = () => ""
 
+  private val wkUUID: UUID = UUID.fromString(wettkampfUUID)
+
   def rebuildWettkampfMap(): Unit = {
     openDurchgangJournal = Map.empty
     geraeteRigeListe = RiegenBuilder.mapToGeraeteRiegen(
-      getAllKandidatenWertungen(UUID.fromString(wettkampfUUID))
+      getAllKandidatenWertungen(wkUUID)
         .toList)
   }
 
@@ -313,19 +315,38 @@ class CompetitionCoordinatorClientActor(wettkampfUUID: String) extends Persisten
       case DonationMailSent(_, _, _, wkid) if wkid == this.wettkampfUUID => true
       case _ => false
     }) {
-      val teilnehmer = getAllKandidatenWertungen(UUID.fromString(wettkampfUUID))
-      val results = teilnehmer.flatMap(k => k.wertungen.map(w => w.resultat.endnote)).sum
-      if (results > 0 && teilnehmer.size > 10) {
-        val price = BigDecimal(Config.donationPrice)
-        val donationLink = Config.donationLink
-        KuTuMailerActor.send(
-          MailTemplates.createDonateMail(wettkampf, donationLink, teilnehmer.size, price)
-        )
-        handleEvent(DonationMailSent(teilnehmer.size, price, donationLink, wettkampfUUID))
-        saveSnapshot(state)
-      } else {
-        handleEvent(DonationMailSent(0, BigDecimal(0), "", wettkampfUUID))
-        saveSnapshot(state)
+      val meta = getWettkampfMetaData(wkUUID)
+      meta.finishDonationAsked match {
+        case None =>
+          val abschluss = saveWettkampfAbschluss(wkUUID)
+          log.info(
+            s"""
+               |Abschlussverarbeitung mit Wettkampf ${wettkampf.easyprint}:
+               |Statistik: $abschluss
+               |""".stripMargin)
+          val teilnehmer = getAllKandidatenWertungen(wkUUID)
+          val results = teilnehmer.flatMap(k => k.wertungen.map(w => w.resultat.endnote)).sum
+          if (results > 0 && teilnehmer.size > 10) {
+            val price = BigDecimal(Config.donationPrice)
+            val donationLink = Config.donationLink
+            val mail = MailTemplates.createDonateMail(wettkampf, donationLink, abschluss, price)
+            KuTuMailerActor.send(mail)
+            mail match {
+              case mpm:MultipartMail =>
+                log.info(s"Mail submitted für ${mpm.to}:\n${mpm.messageText}")
+              case sm:SimpleMail =>
+                log.info(s"Mail submitted für ${sm.to}:\n${sm.messageText}")
+            }
+            saveWettkampfDonationAsk(wkUUID, wettkampf.notificationEMail, price)
+            handleEvent(DonationMailSent(teilnehmer.size, price, donationLink, wettkampfUUID))
+            saveSnapshot(state)
+          } else {
+            log.info("Kein Mail versendet - zu wenig Teilnehmer mit Wertung - WK wurde ev. nicht durchgeführt.")
+            saveWettkampfDonationAsk(wkUUID, "", BigDecimal(0))
+            handleEvent(DonationMailSent(0, BigDecimal(0), "", wettkampfUUID))
+            saveSnapshot(state)
+          }
+        case _ =>
       }
     }
   }
@@ -359,10 +380,10 @@ class CompetitionCoordinatorClientActor(wettkampfUUID: String) extends Persisten
         }.take(1)
       case _ => //take first and last per durchgang
         state.startStopEvents.groupBy {
-          case DurchgangStarted(w, d, t) => d
-          case DurchgangFinished(w, d, t) => d
-          case _ => "_"
-        }
+            case DurchgangStarted(w, d, t) => d
+            case DurchgangFinished(w, d, t) => d
+            case _ => "_"
+          }
           .filter(_._1 != "_")
           .flatMap { d =>
             if (d._2.size > 1) {
@@ -424,7 +445,9 @@ class CompetitionCoordinatorClientActor(wettkampfUUID: String) extends Persisten
     }
     val s = sender()
     s ! MessageAck("OK")
-    originSender.foreach(os => if (!os.equals(s)) {os ! MessageAck("OK")})
+    originSender.foreach(os => if (!os.equals(s)) {
+      os ! MessageAck("OK")
+    })
   }
 
   private def notifyWebSocketClients(

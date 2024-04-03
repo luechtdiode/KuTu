@@ -61,6 +61,11 @@ object KuTuServer extends App with KuTuAppHTTPServer with AuthSupport with Hashi
           println("done")
           true
 
+        case s: String if (s.endsWith("wkmeta")) =>
+          addMissingWettkampfMetaData()
+          println("done")
+          true
+
         case s: String if (s.endsWith("refresh")) =>
           AthletIndexActor.publish(ResyncIndex)
           println("done")
@@ -77,6 +82,7 @@ object KuTuServer extends App with KuTuAppHTTPServer with AuthSupport with Hashi
                |     'refresh' to refresh Athlet Matching Index
                |     'showsecret' to print secret to the console
                |     'cleanathletes' to cleanup (move) inactive athletes to inatctiv state
+               |     'wkmeta' add missing meta-tuples for each competition
                |""".stripMargin)
           true
         //      case s =>

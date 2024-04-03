@@ -91,6 +91,7 @@ object DBService {
       , "teamwertung-ddl.sql"
       , "AddTeamToWettkampf-ddl.sql"
       , "tg-allgaeu-wk4ak0-15.sql"
+      , "wettkampf-metadata-ddl.sql"
     )
 
     (!dbfile.exists() || dbfile.length() == 0, Config.importDataFrom) match {
@@ -185,6 +186,8 @@ object DBService {
         , "teamwertung-ddl.sql"
         , "AddTeamToWettkampf-ddl.sql"
         , "tg-allgaeu-wk4ak0-15.sql"
+        , "tg-allgaeu-wk4ak0-15.sql"
+        , "wettkampf-metadata-ddl.sql"
       )
       installDB(db, sqlScripts)
       /*Config.importDataFrom match {
