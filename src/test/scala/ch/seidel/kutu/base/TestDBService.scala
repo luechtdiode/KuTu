@@ -60,6 +60,7 @@ object TestDBService {
       , "teamwertung-ddl.sql"
       , "AddTeamToWettkampf-ddl.sql"
       , "tg-allgaeu-wk4ak0-15.sql"
+      , "wettkampf-metadata-ddl.sql"
     )
     installDBFunctions(tempDatabase)
 

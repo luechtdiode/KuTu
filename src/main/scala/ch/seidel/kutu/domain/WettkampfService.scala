@@ -439,20 +439,6 @@ trait WettkampfService extends DBService
                   where LOWER(titel)=${titel.toLowerCase()} and programm_id = ${heads.head.id} and datum=$datum
              """.as[Long]
     }
-    val dublicateCheck = uuidOption match {
-      case Some(suuid) => sql"""
-                  select count(id) as wkcount
-                  from wettkampf
-                  where LOWER(titel)=${titel.toLowerCase()} and programm_id = ${heads.head.id} and datum=$datum
-                    and uuid is not null
-                    and uuid<>$suuid
-             """.as[Long]
-      case _ => sql"""
-                  select 0 as wkcount
-                  from wettkampf
-                  where LOWER(titel)=${titel.toLowerCase()} and programm_id = ${heads.head.id} and datum=$datum
-             """.as[Long]
-    }
     if (!heads.forall { h => h.id == heads.head.id }) {
       throw new IllegalArgumentException("Programme nicht aus der selben Gruppe können nicht in einen Wettkampf aufgenommen werden")
     }
@@ -472,6 +458,12 @@ trait WettkampfService extends DBService
                     teamrule=$teamrule
                 where id=$cid and uuid=$uuid
             """ >>
+        sqlu"""
+                  insert into wettkampfmetadata
+                  (uuid, wettkampf_id)
+                  select uuid, id from wettkampf wk where wk.uuid=$uuid
+                  on conflict(wettkampf_id) do nothing
+            """>>
           initPlanZeitenActions(UUID.fromString(uuid)) >>
           sql"""
                   select * from wettkampf
@@ -482,6 +474,11 @@ trait WettkampfService extends DBService
                   insert into wettkampf
                   (datum, titel, programm_Id, notificationEMail, auszeichnung, auszeichnungendnote, punktegleichstandsregel, altersklassen, jahrgangsklassen, rotation, teamrule, uuid)
                   values (${datum}, ${titel}, ${heads.head.id}, $notificationEMail, $auszeichnung, $auszeichnungendnote, $punktegleichstandsregel, $altersklassen, $jahrgangsklassen, $rotation, $teamrule, $uuid)
+              """ >>
+            sqlu"""
+                  insert into wettkampfmetadata
+                  (uuid, wettkampf_id)
+                  select uuid, id from wettkampf wk where wk.uuid=$uuid
               """ >>
           initPlanZeitenActions(UUID.fromString(uuid)) >>
           sql"""
@@ -536,11 +533,70 @@ trait WettkampfService extends DBService
                       uuid=$uuid
                   where id=$id
           """ >>
+      sqlu"""
+                  insert into wettkampfmetadata
+                  (uuid, wettkampf_id)
+                  select uuid, id from wettkampf wk where wk.uuid=$uuid
+                  on conflict(wettkampf_id) do nothing
+          """ >>
        sql"""     select * from wettkampf
                   where id = $id
           """.as[Wettkampf].head
     }
     Await.result(database.run{(process.flatten).transactionally}, Duration.Inf)
+  }
+
+  def getWettkampfMetaData(uuid: UUID): WettkampfMetaData = {
+    Await.result(database.run{
+      sql"""      select * from wettkampfmetadata
+                  where uuid=${uuid.toString}
+         """.as[WettkampfMetaData].head
+    }, Duration.Inf)
+  }
+
+  def saveWettkampfAbschluss(uuid: UUID): WettkampfStats = {
+    Await.result(database.run{
+      sqlu"""     update wettkampfmetadata
+                  set finish_athletes_cnt=v.finish_athletes_cnt,
+                      finish_clubs_cnt=v.finish_clubs_cnt,
+                      finish_online_athletes_cnt=v.finish_online_athletes_cnt,
+                      finish_online_clubs_cnt=v.finish_online_clubs_cnt
+                  from wkstats v
+                  where v.wk_uuid=${uuid.toString}
+         """ >>
+      sql"""      select md.uuid
+                    , wk.id
+                    , wk.titel
+                    , md.finish_athletes_cnt
+                    , md.finish_clubs_cnt
+                    , md.finish_online_athletes_cnt
+                    , md.finish_online_clubs_cnt
+                  from wettkampfmetadata md inner join wettkampf wk on wk.id = md.wettkampf_id
+                  where md.uuid=${uuid.toString}
+         """.as[WettkampfStats].head
+    }, Duration.Inf)
+  }
+
+  def saveWettkampfDonationAsk(uuid: UUID, mail: String, amount: BigDecimal): WettkampfMetaData = {
+    Await.result(database.run{
+      sqlu"""     update wettkampfmetadata
+                  set finish_donation_mail=$mail,
+                      finish_donation_asked=$amount
+                  where uuid=${uuid.toString}
+         """ >>
+      sql"""      select uuid
+                    , wettkampf_id
+                    , finish_athletes_cnt
+                    , finish_clubs_cnt
+                    , finish_online_athletes_cnt
+                    , finish_online_clubs_cnt
+                    , finish_donation_mail
+                    , finish_donation_asked
+                    , finish_donation_approved
+                  from wettkampfmetadata
+                  where uuid=${uuid.toString}
+         """.as[WettkampfMetaData].head
+    }, Duration.Inf)
   }
 
   def deleteWettkampfRelationActions(wettkampfid: Long) = {
@@ -558,6 +614,7 @@ trait WettkampfService extends DBService
       sqlu"""      delete from judgeregistration_pgm where vereinregistration_id in (select id from vereinregistration where wettkampf_id=${wettkampfid})""" >>
       sqlu"""      delete from judgeregistration where vereinregistration_id in (select id from vereinregistration where wettkampf_id=${wettkampfid})""" >>
       sqlu"""      delete from vereinregistration where wettkampf_id=${wettkampfid}""" >>
+      sqlu"""      delete from wettkampfmetadata where wettkampf_id=${wettkampfid}""" >>
       sqlu"""      delete from wettkampf where id=${wettkampfid}"""
   }
 

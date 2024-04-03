@@ -844,6 +844,12 @@ package object domain {
     def toWettkampf = Wettkampf(id, uuid, datum, titel, programm.id, auszeichnung, auszeichnungendnote, notificationEMail, Option(altersklassen), Option(jahrgangsklassen), Option(punktegleichstandsregel), Option(rotation), Option(teamrule))
   }
 
+  case class WettkampfStats(uuid: String, wkid: Int, titel: String, finishAthletesCnt: Int, finishClubsCnt: Int, finishOnlineAthletesCnt: Int, finishOnlineClubsCnt: Int) extends DataObject {
+  }
+  case class WettkampfMetaData(uuid: String, wkid: Int, finishAthletesCnt: Int, finishClubsCnt: Int, finishOnlineAthletesCnt: Int, finishOnlineClubsCnt: Int,
+                               finishDonationMail: Option[String], finishDonationAsked: Option[BigDecimal], finishDonationApproved: Option[BigDecimal]) extends DataObject {
+  }
+
   case class PublishedScoreRaw(id: String, title: String, query: String, published: Boolean, publishedDate: java.sql.Date, wettkampfId: Long) extends DataObject {
     override def easyprint = f"PublishedScore($title)"
   }
