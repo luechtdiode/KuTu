@@ -73,6 +73,7 @@ object ResourceExchanger extends KutuService with RiegenBuilder {
           events.foreach {
             case ds: DurchgangStarted => storeDurchgangStarted(ds)
             case df: DurchgangFinished => storeDurchgangFinished(df)
+            case df: DurchgangResetted => storeDurchgangResetted(df)
             case _ =>
           }
           refresher(sender, bulkEvent)
@@ -88,6 +89,12 @@ object ResourceExchanger extends KutuService with RiegenBuilder {
           storeDurchgangFinished(df)
         }
         refresher(sender, df)
+
+      case (sender, dr@DurchgangResetted(wettkampfUUID, _)) =>
+        if (!Config.isLocalHostServer&& wettkampf.uuid.contains(wettkampfUUID)) {
+          storeDurchgangResetted(dr)
+        }
+        refresher(sender, dr)
 
       case (sender, uws: AthletWertungUpdatedSequenced) => opFn(sender, uws.toAthletWertungUpdated())
       case (sender, uw@AthletWertungUpdated(athlet, wertung, wettkampfUUID, _, _, programm)) =>

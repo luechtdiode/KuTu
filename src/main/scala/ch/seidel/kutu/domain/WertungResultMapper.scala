@@ -8,10 +8,6 @@ import slick.jdbc.GetResult
  * Disziplin
  */
 trait WertungResultMapper extends WettkampfResultMapper with DisziplinResultMapper with AthletResultMapper {
-    def mapBigDecimalOption(rs: _root_.slick.jdbc.PositionedResult): Option[BigDecimal] = {
-        val value: Option[String] = rs.<<?
-        value.map(BigDecimal(_))
-    }
     implicit def getResultWertungView(implicit cache: scala.collection.mutable.Map[Long, ProgrammView]): GetResult[WertungView] = GetResult(r =>
     WertungView(r.<<[Long], r, r, r, mapBigDecimalOption(r), mapBigDecimalOption(r), mapBigDecimalOption(r), r.<<?, r.<<?, r.<<))
     //WertungView(id: Long, athlet: AthletView, wettkampfdisziplin: WettkampfdisziplinView, wettkampf: Wettkampf, noteD: scala.math.BigDecimal, noteE: scala.math.BigDecimal, endnote: scala.math.BigDecimal, riege: Option[String], riege2: Option[String], team: Int)

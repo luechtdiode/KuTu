@@ -25,6 +25,30 @@ class WettkampfSpec extends KuTuBaseSpec {
       assert(wettkampfsaved.jahrgangsklassen.get == "7,8,9,11,13,15,17,19")
     }
 
+    "abschluss" in {
+      val wettkampf = createWettkampf(LocalDate.now(), "titel2", Set(20), "testmail@test.com", 33, 0, None, "", "", "", "", "")
+      val wkuuid = wettkampf.uuid.map(UUID.fromString).get
+      val meta = getWettkampfMetaData(wkuuid)
+
+      assert(meta.wkid == wettkampf.id)
+      assert(meta.uuid == wettkampf.uuid.get)
+      assert(meta.finishOnlineClubsCnt == 0)
+      assert(meta.finishAthletesCnt == 0)
+
+      val wettkampfsaved = saveWettkampf(wettkampf.id, wettkampf.datum, "neuer titel", Set(wettkampf.programmId), "testmail@test.com", 10000, 7.5, wettkampf.uuid, "7,8,9,11,13,15,17,19", "7,8,9,11,13,15,17,19", "", "", "")
+      val stats = saveWettkampfAbschluss(wkuuid)
+
+      assert(stats.titel == wettkampfsaved.titel)
+      assert(stats.finishOnlineClubsCnt == 0)
+      assert(stats.finishAthletesCnt == 0)
+
+      val metaDonated = saveWettkampfDonationAsk(wkuuid, wettkampfsaved.notificationEMail, BigDecimal("250.00"))
+
+      assert(metaDonated.uuid == wettkampf.uuid.get)
+      assert(metaDonated.finishDonationMail.contains("testmail@test.com"))
+      assert(metaDonated.finishDonationAsked.contains(BigDecimal("250.00")))
+    }
+
     "recreate with disziplin-plan-times" in {
       val wettkampf = createWettkampf(LocalDate.now(), "titel2", Set(20), "testmail@test.com", 33, 0, None, "", "", "", "", "")
       assert(wettkampf.id > 0L)

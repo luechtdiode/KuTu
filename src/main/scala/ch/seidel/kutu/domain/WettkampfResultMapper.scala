@@ -1,7 +1,5 @@
 package ch.seidel.kutu.domain
 
-import java.util.UUID
-
 import slick.jdbc.{GetResult, PositionedResult}
 
 /**
@@ -13,7 +11,7 @@ abstract trait WettkampfResultMapper extends DisziplinResultMapper {
   def readNotenModus(id: Long, pgm: ProgrammView, notenfaktor: Double): NotenModus
   def readProgramm(id: Long, cache: scala.collection.mutable.Map[Long, ProgrammView]): ProgrammView
   def readProgramm(id: Long): ProgrammView
-  
+
   implicit val getWettkampfResult: GetResult[Wettkampf] = GetResult(r =>
     Wettkampf(r.<<, r.nextStringOption(), r.<<[java.sql.Date], r.<<, r.<<, r.<<, r.<<[BigDecimal], r.<<, r.<<, r.<<, r.<<, r.<<, r.<<))
     
@@ -41,4 +39,7 @@ abstract trait WettkampfResultMapper extends DisziplinResultMapper {
 
   implicit def getWettkampfPlanTimeView(implicit cache: scala.collection.mutable.Map[Long, ProgrammView]): GetResult[WettkampfPlanTimeView] = GetResult(r =>
     WettkampfPlanTimeView(r.<<, r, r, r.<<, r.<<, r.<<, r.<<))
+
+  implicit def getWettkampfStats: GetResult[WettkampfStats] = GetResult(r => WettkampfStats(r.<<, r.<<, r.<<, r.<<, r.<<, r.<<, r.<<))
+  implicit def getWettkampfMetaData: GetResult[WettkampfMetaData] = GetResult(r => WettkampfMetaData(r.<<, r.<<, r.<<, r.<<, r.<<, r.<<, r.<<?, mapBigDecimalOption(r), mapBigDecimalOption(r)))
 }

@@ -1,8 +1,8 @@
 package ch.seidel.kutu.renderer
 
-import ch.seidel.kutu.{Config}
+import ch.seidel.kutu.Config
 import ch.seidel.kutu.akka.{Mail, MultipartMail}
-import ch.seidel.kutu.domain.{JudgeRegistration, Registration, SyncAction, Wettkampf, encodeFileName}
+import ch.seidel.kutu.domain.{JudgeRegistration, Registration, SyncAction, Wettkampf, WettkampfStats, encodeFileName}
 import ch.seidel.kutu.renderer.PrintUtil._
 
 object MailTemplates {
@@ -108,17 +108,23 @@ object MailTemplates {
       wettkampf.notificationEMail)
   }
 
-  def createDonateMail(wettkampf: Wettkampf, link: String, teilnehmer: Int, preisPerTn: BigDecimal): Mail = {
+  def createDonateMail(wettkampf: Wettkampf, link: String, wkStats: WettkampfStats, preisPerTn: BigDecimal): Mail = {
+    val teilnehmer = wkStats.finishAthletesCnt
     val logodir = new java.io.File(Config.homedir + "/" + encodeFileName(wettkampf.easyprint))
     val logofile = PrintUtil.locateLogoFile(logodir)
     val logoHtml = if (logofile.exists()) s"""<img class=logo src="${logofile.imageSrcForWebEngine}" title="Logo"/>""" else ""
     val betrag = (preisPerTn * teilnehmer).setScale(2)
     val linkMaterialized = link.replace(":betrag", s"$betrag")
     val imageData = toQRCodeImage(linkMaterialized)
+    val onlineRegStats = if (wkStats.finishOnlineClubsCnt > 0)
+      s"Über die Online-Registrierung haben sich ${wkStats.finishOnlineAthletesCnt} Teilnehmer-/Innen aus ${wkStats.finishOnlineClubsCnt} Vereinen angemeldet.".stripMargin else ""
+
     MultipartMail(s"Abschluss Online-Durchführung ${wettkampf.easyprint}",
       s"""Hallo ${wettkampf.notificationEMail}
          |
-         |Der Wettkampf '${wettkampf.easyprint}' ist mit $teilnehmer Teilnehmer/-Innen zu Ende gegangen.
+         |Der Wettkampf '${wettkampf.easyprint}' ist mit $teilnehmer Teilnehmer/-Innen aus ${wkStats.finishClubsCnt} Vereinen zu Ende gegangen.
+         |
+         |$onlineRegStats
          |
          |Hoffentlich konnte die KuTu Wettkampf-App Deinen Wettkampf erfolgreich unterstützen! Es wäre cool,
          |wenn Dein Club/Verband für die Bereitstellung der Infrastruktur und den Serverbetrieb einen kleinen
@@ -145,7 +151,9 @@ object MailTemplates {
          |      <div class="textblock">
          |        <h4>Hallo ${escaped(wettkampf.notificationEMail)}</h4>
          |        <p>
-         |          Der Wettkampf '${wettkampf.easyprint}' ist mit $teilnehmer Teilnehmer/-Innen zu Ende gegangen.
+         |          Der Wettkampf '${escaped(wettkampf.easyprint)}' ist mit $teilnehmer Teilnehmer/-Innen aus ${wkStats.finishClubsCnt} Vereinen zu Ende gegangen.
+         |          <br>
+         |          $onlineRegStats
          |        </p>
          |        <p>
          |          Hoffentlich konnte die KuTu Wettkampf-App Deinen Wettkampf erfolgreich unterstützen! Es wäre cool,

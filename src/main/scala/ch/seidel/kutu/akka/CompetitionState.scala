@@ -46,6 +46,21 @@ case class CompetitionState (
         )
       }
 
+    case eventDurchgangResetted: DurchgangResetted =>
+      CompetitionState(
+        startedDurchgaenge - eventDurchgangResetted.durchgang,
+        finishedDurchgangSteps,
+        finishedDurchgaenge - eventDurchgangResetted.durchgang,
+        startStopEvents.filter {
+          case ds: DurchgangStarted => !ds.durchgang.equals(eventDurchgangResetted.durchgang)
+          case ds: DurchgangFinished => !ds.durchgang.equals(eventDurchgangResetted.durchgang)
+          case ds: DurchgangResetted => !ds.durchgang.equals(eventDurchgangResetted.durchgang)
+          case _ => true
+        } :+ eventDurchgangResetted,
+        Map.empty, bestenResults, lastBestenResults, lastSequenceId,
+        completedflags
+      )
+
     case au: AthletWertungUpdatedSequenced =>
       newCompetitionStateWith(mapToWertungContainer(au.toAthletWertungUpdated(), isDNoteUsed))
 

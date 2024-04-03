@@ -428,6 +428,25 @@ class NetworkTab(wettkampfmode: BooleanProperty, override val wettkampfInfo: Wet
     item
   }
 
+  def makeDurchgangResetMenu(p: WettkampfView): MenuItem = {
+    val item = makeMenuAction("Durchgang zurücksetzen") { (_, _) =>
+      getSelectedDruchgangStates.foreach { d =>
+        KuTuApp.invokeWithBusyIndicator {
+          Await.result(KuTuServer.resetDurchgang(p, d.name), Duration.Inf)
+        }
+      }
+    }
+    item.disable <== when(Bindings.createBooleanBinding(() =>
+      !p.toWettkampf.hasSecred(homedir, remoteHostOrigin)
+        || !ConnectionStates.connectedWithProperty.value.equals(p.uuid.getOrElse(""))
+        || getSelectedDruchgangStates.forall((d: DurchgangState) => (d.started == 0 || (d.started > 0 && d.finished == 0))),
+      view.selectionModel().selectedItem,
+      isRunning,
+      ConnectionStates.connectedWithProperty
+    )) choose true otherwise false
+    item
+  }
+
   var okIcon: Image = null
   try {
     okIcon = new Image(getClass.getResourceAsStream("/images/GreenOk.png"))
@@ -639,6 +658,7 @@ class NetworkTab(wettkampfmode: BooleanProperty, override val wettkampfInfo: Wet
     }
     items += new SeparatorMenuItem()
     items += makeDurchgangAbschliessenMenu(wettkampf)
+    items += makeDurchgangResetMenu(wettkampf)
   }
   val toolbar: ToolBar = new ToolBar {
   }
@@ -671,6 +691,7 @@ class NetworkTab(wettkampfmode: BooleanProperty, override val wettkampfInfo: Wet
       }
       btnDurchgang.items += new SeparatorMenuItem()
       btnDurchgang.items += makeDurchgangAbschliessenMenu(wettkampf)
+      btnDurchgang.items += makeDurchgangResetMenu(wettkampf)
 
       view.contextMenu = new ContextMenu() {
         items += makeDurchgangStartenMenu(wettkampf)
@@ -684,6 +705,7 @@ class NetworkTab(wettkampfmode: BooleanProperty, override val wettkampfInfo: Wet
         }
         items += new SeparatorMenuItem()
         items += makeDurchgangAbschliessenMenu(wettkampf)
+        items += makeDurchgangResetMenu(wettkampf)
       }
       toolbar.content = List(
         new Button {
@@ -757,6 +779,7 @@ class NetworkTab(wettkampfmode: BooleanProperty, override val wettkampfInfo: Wet
           case be: BulkEvent if be.events.forall {
             case DurchgangStarted(_, _, _) => true
             case DurchgangFinished(_, _, _) => true
+            case DurchgangResetted(_, _) => true
             case _ => false
           } =>
             println("refreshing network-dashboard from websocket", newItem)
@@ -769,6 +792,9 @@ class NetworkTab(wettkampfmode: BooleanProperty, override val wettkampfInfo: Wet
           case df: DurchgangFinished =>
             println("refreshing network-dashboard from websocket", newItem)
             refreshData(Some(df))
+          case dr: DurchgangResetted =>
+            println("refreshing network-dashboard from websocket", newItem)
+            refreshData(Some(dr))
           case AthletWertungUpdated(ahtlet: AthletView, wertung: Wertung, wettkampfUUID: String, durchgang: String, geraet: Long, programm: String) =>
             if (selected.value) {
               println("refreshing network-dashboard from websocket", newItem)

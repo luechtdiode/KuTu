@@ -344,4 +344,14 @@ trait AthletService extends DBService with AthletResultMapper with VereinService
     }
     affectedClubs
   }
+  def addMissingWettkampfMetaData() {
+    Await.result(database.run {
+      sqlu"""
+          insert into wettkampfmetadata
+          (uuid, wettkampf_id)
+          select uuid, id from wettkampf wk where wk.uuid <> ''
+          on conflict(wettkampf_id) do nothing;
+          """
+    }, Duration.Inf)
+  }
 }

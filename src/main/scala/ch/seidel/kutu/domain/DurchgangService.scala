@@ -2,8 +2,7 @@ package ch.seidel.kutu.domain
 
 import java.sql.{Date, Timestamp}
 import java.util.UUID
-
-import ch.seidel.kutu.akka.{DurchgangFinished, DurchgangStarted}
+import ch.seidel.kutu.akka.{DurchgangFinished, DurchgangResetted, DurchgangStarted}
 import org.slf4j.LoggerFactory
 import slick.jdbc.SQLiteProfile.api._
 
@@ -125,6 +124,19 @@ trait DurchgangService extends DBService with DurchgangResultMapper {
         """.transactionally
       }, Duration.Inf)
     }
+  }
+
+  def storeDurchgangResetted(started: DurchgangResetted): Unit = {
+    Await.result(database.run {
+      sqlu"""
+              update durchgang
+              set effectiveStartTime=null
+                , effectiveEndTime=null
+              where
+              wettkampf_id = (select id from wettkampf wk where wk.uuid = ${started.wettkampfUUID})
+              and name = ${started.durchgang}
+      """.transactionally
+    }, Duration.Inf)
   }
 
   def storeDurchgangFinished(finished: DurchgangFinished): Unit = {

@@ -47,6 +47,7 @@ trait JsonSupport extends SprayJsonSupport with EnrichedJson {
   implicit val refresWettkampfMap: RootJsonFormat[RefreshWettkampfMap] = jsonFormat1(RefreshWettkampfMap)
   implicit val getResultsToReplicate: RootJsonFormat[GetResultsToReplicate] = jsonFormat2(GetResultsToReplicate)
   implicit val startDurchgangFormat: RootJsonFormat[StartDurchgang] = jsonFormat2(StartDurchgang)
+  implicit val resetStartDurchgangFormat: RootJsonFormat[ResetStartDurchgang] = jsonFormat2(ResetStartDurchgang)
   implicit val updateAthletWertungFormat: RootJsonFormat[UpdateAthletWertung] = jsonFormat7(UpdateAthletWertung)
   implicit val finishDurchgangStationFormat: RootJsonFormat[FinishDurchgangStation] = jsonFormat4(FinishDurchgangStation)
   implicit val finishDurchgangFormat: RootJsonFormat[FinishDurchgang] = jsonFormat2(FinishDurchgang)
@@ -55,6 +56,7 @@ trait JsonSupport extends SprayJsonSupport with EnrichedJson {
 
   // events (via ws and rest-response)
   implicit val durchgangStartedFormat: RootJsonFormat[DurchgangStarted] = jsonFormat3(DurchgangStarted)
+  implicit val durchgangResettedFormat: RootJsonFormat[DurchgangResetted] = jsonFormat2(DurchgangResetted)
   implicit val wertungUpdatedFormat: RootJsonFormat[AthletWertungUpdated] = jsonFormat6(AthletWertungUpdated)
   implicit val wertungUpdatedFormatSeq: RootJsonFormat[AthletWertungUpdatedSequenced] = jsonFormat7(AthletWertungUpdatedSequenced)
   implicit val stationsWertungenCompletedFormat: RootJsonFormat[StationWertungenCompleted] = jsonFormat1(StationWertungenCompleted)
@@ -76,6 +78,7 @@ trait JsonSupport extends SprayJsonSupport with EnrichedJson {
     classOf[StationWertungenCompleted].getSimpleName -> stationsWertungenCompletedFormat,
     classOf[NewLastResults].getSimpleName -> newLastResultsFormat,
     classOf[DurchgangFinished].getSimpleName -> durchgangFinishedFormat,
+    classOf[DurchgangResetted].getSimpleName -> durchgangResettedFormat,
     classOf[ScoresPublished].getSimpleName -> scoresPublished,
     classOf[LastResults].getSimpleName -> lastResults,
     classOf[BulkEvent].getSimpleName -> bulkEvents,
