@@ -11,8 +11,8 @@ CREATE TABLE IF NOT EXISTS wettkampfmetadata (
   finish_online_athletes_cnt int DEFAULT 0,
   finish_online_clubs_cnt int DEFAULT 0,
   finish_donation_mail varchar(70) DEFAULT NULL,
-  finish_donation_asked decimal(4,2) DEFAULT NULL,
-  finish_donation_approved decimal(4,2) DEFAULT NULL
+  finish_donation_asked decimal(10,2) DEFAULT NULL,
+  finish_donation_approved decimal(10,2) DEFAULT NULL
 
   -- emailapproved boolean DEFAULT false,
   -- organisator varchar(100) DEFAULT NULL,
