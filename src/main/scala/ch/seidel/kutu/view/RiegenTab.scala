@@ -1,10 +1,9 @@
 package ch.seidel.kutu.view
 
-import java.util.UUID
 import ch.seidel.commons.{AutoCommitTextFieldTableCell, DisplayablePage, PageDisplayer, TabWithService}
 import ch.seidel.kutu.Config._
 import ch.seidel.kutu.KuTuApp
-import ch.seidel.kutu.KuTuApp.hostServices
+import ch.seidel.kutu.KuTuApp.{hostServices}
 import ch.seidel.kutu.data.ResourceExchanger
 import ch.seidel.kutu.domain.{Disziplin, Durchgang, GemischteRiegen, GemischterDurchgang, GetrennteDurchgaenge, KutuService, Riege, RiegeRaw, SexDivideRule, WettkampfView, encodeFileName, str2Int, toDurationFormat}
 import ch.seidel.kutu.renderer.PrintUtil.FilenameDefault
@@ -12,9 +11,9 @@ import ch.seidel.kutu.renderer.{PrintUtil, RiegenBuilder, WertungsrichterQRCode,
 import ch.seidel.kutu.squad.DurchgangBuilder
 import javafx.scene.text.Text
 import javafx.scene.{control => jfxsc}
-import scalafx.Includes.{eventClosureWrapperWithParam, handle, jfxActionEvent2sfx, jfxBooleanBinding2sfx, jfxBounds2sfx, jfxCellEditEvent2sfx, jfxKeyEvent2sfx, jfxMouseEvent2sfx, jfxObjectProperty2sfx, jfxParent2sfx, jfxPixelReader2sfx, jfxReadOnlyBooleanProperty2sfx, jfxTableViewSelectionModel2sfx, jfxText2sfxText, observableList2ObservableBuffer, when}
+import scalafx.Includes.{eventClosureWrapperWithParam, jfxActionEvent2sfx, jfxBooleanBinding2sfx, jfxBounds2sfx, jfxCellEditEvent2sfx, jfxKeyEvent2sfx, jfxMouseEvent2sfx, jfxObjectProperty2sfx, jfxParent2sfx, jfxPixelReader2sfx, jfxReadOnlyBooleanProperty2sfx, jfxTableViewSelectionModel2sfx, jfxText2sfxText, observableList2ObservableBuffer, when}
 import scalafx.application.Platform
-import scalafx.beans.binding.Bindings
+import scalafx.beans.binding.{Bindings}
 import scalafx.beans.property.{BooleanProperty, StringProperty}
 import scalafx.beans.value.ObservableValue
 import scalafx.collections.ObservableBuffer
@@ -22,21 +21,22 @@ import scalafx.collections.ObservableBuffer.observableBuffer2ObservableList
 import scalafx.event.ActionEvent
 import scalafx.geometry._
 import scalafx.print.PageOrientation
-import scalafx.scene.Node
 import scalafx.scene.control.SelectionMode.sfxEnum2jfx
 import scalafx.scene.control.TableColumn.{sfxTableColumn2jfx, CellEditEvent => TableCellEditEvent}
-import scalafx.scene.control.TreeTableColumn.{CellEditEvent, sfxTreeTableColumn2jfx}
 import scalafx.scene.control.TableView.sfxTableView2jfx
+import scalafx.scene.control.TreeTableColumn.sfxTreeTableColumn2jfx
 import scalafx.scene.control.TreeTableView.sfxTreeTableView2jfx
-import scalafx.scene.control.TreeTablePosition.sfxTreeTablePosition2jfx
-import scalafx.scene.control._
+import scalafx.scene.control.{ContextMenu, _}
 import scalafx.scene.control.cell.{CheckBoxListCell, CheckBoxTableCell, ComboBoxTableCell}
 import scalafx.scene.image.{Image, ImageView, WritableImage}
 import scalafx.scene.input.{ClipboardContent, DataFormat, KeyEvent, TransferMode}
 import scalafx.scene.layout._
+import scalafx.scene.{Cursor, Node}
 import scalafx.util.StringConverter
 import scalafx.util.converter.DefaultStringConverter
 
+import java.util.UUID
+import scala.annotation.tailrec
 import scala.concurrent.Future
 
 object DurchgangView {
@@ -322,7 +322,8 @@ class RiegenFilterView(isEditable: BooleanProperty, wettkampf: WettkampfView, se
 
 class RiegenTab(override val wettkampfInfo: WettkampfInfo, override val service: KutuService) extends Tab with TabWithService with ExportFunctions {
   val programmText = wettkampf.programm.id match {case 20 => "Kategorie" case _ => "Programm"}
-  val riegenFilterModel = ObservableBuffer[RiegeEditor]()
+  val riegenFilterModel: ObservableBuffer[RiegeEditor] = ObservableBuffer[RiegeEditor]()
+  val incompleteAssignments: ObservableBuffer[RiegeEditor] = ObservableBuffer[RiegeEditor]()
   val durchgangModel = ObservableBuffer[TreeItem[DurchgangEditor]]()
   val disziplinlist = wettkampfInfo.disziplinList
 
@@ -341,6 +342,7 @@ class RiegenTab(override val wettkampfInfo: WettkampfInfo, override val service:
         .map(_.value.value.title.value)
         .toSet
     durchgangModel.clear()
+    incompleteAssignments.setAll(riegenFilterModel.filter(re => re.initanz > 0 && (re.initdurchgang.isEmpty || re.initstart.isEmpty)))
     val durchgaenge = service.selectDurchgaenge(wettkampf.uuid.map(UUID.fromString).get).map(d => d.name->d).toMap
     val durchgangEditors = riegenFilterModel.groupBy(re => re.initdurchgang)
       .filter(_._1.isDefined)
@@ -368,7 +370,6 @@ class RiegenTab(override val wettkampfInfo: WettkampfInfo, override val service:
   def reloadData(): Unit = {
     reloadRiegen()
     reloadDurchgaenge()
-//    riegenFilterView.sort()
   }
 
   def onNameChange(name1: String, name2: String) = {
@@ -420,7 +421,7 @@ class RiegenTab(override val wettkampfInfo: WettkampfInfo, override val service:
 
   val editableProperty: BooleanProperty = new BooleanProperty()
 
-  override def isPopulated = {
+  override def isPopulated: Boolean = {
     editableProperty.set(true)
     val wettkampfEditable = !wettkampf.toWettkampf.isReadonly(homedir, remoteHostOrigin)
     val riegenFilterView = new RiegenFilterView(editableProperty,
@@ -428,6 +429,88 @@ class RiegenTab(override val wettkampfInfo: WettkampfInfo, override val service:
         () => {disziplinlist},
         false,
         riegenFilterModel)
+
+    val unassignedRiegenView = new ListView[RiegeEditor] {
+      items = incompleteAssignments
+      orientation = Orientation.Horizontal
+      prefHeight <== when(Bindings.createBooleanBinding(() => {
+        incompleteAssignments.isEmpty
+      },
+        incompleteAssignments
+      )) choose 0 otherwise 40
+
+      cellFactory = { (l, c) =>
+        l.text = s"${c.initname} (${c.initanz})"
+        l.onMouseEntered = _ => {
+          l.cursor = Cursor.OpenHand
+        }
+        l.onMouseExited = _ => {
+          l.cursor = Cursor.Default
+        }
+        l.setOnDragDetected(event => {
+            val hoveredText = l.text.value
+            val snp = l.snapshot(null, null)
+            val width = snp.getWidth.toInt
+            val height: Int = snp.getHeight.toInt-10
+            val croppedImage = new WritableImage(snp.getPixelReader(), 0, 5, width, height)
+            val db = startDragAndDrop(TransferMode.Move)
+            db.setDragView(croppedImage)
+            val content = new ClipboardContent()
+            content.put(DurchgangView.DRAG_RIEGE, ("", c.initname, 0L))
+            content.putString(hoveredText)
+            db.setContent(content)
+
+            event.consume()
+        })
+        l.contextMenu = new ContextMenu() {
+          durchgangModel
+            .flatMap(d => d.getValue match {
+              case gd: GroupDurchgangEditor =>
+                gd.aggregates
+              case ce: CompetitionDurchgangEditor =>
+                List(ce)
+            })
+            .foreach{durchgang =>
+              items += new Menu(s"in ${durchgang.name.value} einteilen ...") {
+                disziplinlist
+                  .foreach { start =>
+                    items += KuTuApp.makeMenuAction(s"auf Startgerät ${start.name} (${durchgang.initstartriegen.get(start).map(r => r.map(re => re.initanz).sum).getOrElse(0)})") { (caption, action) =>
+                      val toSave = c.copy(initdurchgang = Some(durchgang.durchgang.name), initstart = Some(start))
+                      KuTuApp.invokeWithBusyIndicator {
+                        service.updateOrinsertRiege(toSave.commit)
+                        reloadData()
+                      }
+                    }
+                  }
+              }
+            }
+        }
+      }
+    }
+    var warnIcon: Image = null
+    try {
+      warnIcon = new Image(getClass.getResourceAsStream("/images/OrangeWarning.png"))
+    } catch {
+      case e: Exception => e.printStackTrace()
+    }
+    def warnings = durchgangModel.nonEmpty && incompleteAssignments.nonEmpty
+    val warnPanelVisible: BooleanProperty = new BooleanProperty()
+    warnPanelVisible <== when(Bindings.createBooleanBinding(() => {
+      warnings
+    },
+      durchgangModel,
+      incompleteAssignments
+    )) choose true otherwise false
+
+    val warnPanel = new BorderPane {
+      hgrow = Priority.Always
+      id = "warnpanel"
+      top = new Label {
+        text = "Nicht eingeteilte Riegen"
+        graphic = new ImageView(warnIcon)
+      }
+      bottom = unassignedRiegenView
+    }
 
     val durchgangView = new DurchgangView(
         wettkampf, service,
@@ -444,9 +527,26 @@ class RiegenTab(override val wettkampfInfo: WettkampfInfo, override val service:
         }
       }
     }
+
+
     val durchgangTab = new Tab {
       text = "Durchgänge"
-      content = durchgangView
+      content = new BorderPane {
+        hgrow = Priority.Always
+        vgrow = Priority.Always
+        private def adjustWarnPanel(): Unit = {
+          if (warnings) {
+            top = warnPanel
+          } else {
+            top = null
+          }
+        }
+        warnPanelVisible.onChange {
+          adjustWarnPanel()
+        }
+        adjustWarnPanel()
+        center = durchgangView
+      }
       closable = false
       onSelectionChanged = _ => {
         if(selected.value && wettkampfEditable) {
@@ -468,18 +568,11 @@ class RiegenTab(override val wettkampfInfo: WettkampfInfo, override val service:
     }
     def makeDurchgangActiveBinding = {
       Bindings.createBooleanBinding(() => {
-        ! (!durchgangView.selectionModel.value.getSelectedCells.isEmpty && durchgangTab.selectedProperty.value)
+        ! (durchgangView.selectionModel.value.getSelectedCells.nonEmpty && durchgangTab.selectedProperty.value)
       },
         durchgangView.selectionModel.value.getSelectedItems(),
         durchgangTab.selectedProperty
       )
-    }
-
-    var warnIcon: Image = null
-    try {
-      warnIcon = new Image(getClass.getResourceAsStream("/images/OrangeWarning.png"))
-    } catch {
-      case e: Exception => e.printStackTrace()
     }
 
     def doRegenerateDurchgang(durchgang: Set[String])(implicit action: ActionEvent): Unit = {
@@ -937,8 +1030,9 @@ class RiegenTab(override val wettkampfInfo: WettkampfInfo, override val service:
           val durchgangEditor = actDurchgangSelection.head
           val riegenEditorCandidates = durchgangEditor.initstartriegen
             .filter(d => selectedGerate.isEmpty || selectedGerate.contains(d._1.id))
-            .flatMap(_._2).toList.sortBy(r => r.initname)
+            .flatMap(_._2).toList
             .filter(r => r.kind != RiegeRaw.KIND_EMPTY_RIEGE)
+            .sortBy(r => r.initname)
             .map(r => r.initname)
           if (riegenEditorCandidates.nonEmpty && event.pickResult.getIntersectedNode.isInstanceOf[Text]) {
             val text = event.pickResult.getIntersectedNode.asInstanceOf[Text]
@@ -968,47 +1062,50 @@ class RiegenTab(override val wettkampfInfo: WettkampfInfo, override val service:
         }
       })
       durchgangView.setOnDragDropped((event) => {
-        val db = event.getDragboard()
+        val db = event.getDragboard
         // If this is a meaningful drop...
         if (db.hasContent(DurchgangView.DRAG_RIEGE)) {
           val (selecteddurchgang, selectedriege, selectedGeraet) = db.getContent(DurchgangView.DRAG_RIEGE).asInstanceOf[(String, String, Long)]
-          val fromDisziplin = disziplinlist.filter(_.id == selectedGeraet).head
-          val dg = durchgangView.root.value.getChildren.toList.flatMap(d => d +: d.getChildren).map(_.getValue).filter(dge =>  dge.durchgang.name == selecteddurchgang).head
-          dg.initstartriegen.filter(d => d._1.id == selectedGeraet).flatMap(_._2).filter(r => r.name.value == selectedriege).headOption match {
+          val fromDisziplin = disziplinlist.find(_.id == selectedGeraet)
+          riegenFilterModel.find{p => p.initname.equals(selectedriege)} match {
             case Some(riege) =>
-              val riegenAmStart: Seq[RiegeEditor] = riege.initstart.map(dg.initstartriegen(_)).getOrElse(List.empty)
+              val dgOpt = durchgangView.root.value.getChildren.toList.flatMap(d => d +: d.getChildren).map(_.getValue).find(dge => dge.durchgang.name == selecteddurchgang)
+              val riegenAmStart: Seq[RiegeEditor] = dgOpt.flatMap(dg => riege.initstart.flatMap(d => dg.initstartriegen.get(d))).getOrElse(List.empty)
+              @tailrec
               def findTableCell(node: Object): Option[jfxsc.TreeTableCell[DurchgangEditor, _]] =
-                if (node.isInstanceOf[jfxsc.TreeTableCell[_, _]]) {
-                  Some(node.asInstanceOf[jfxsc.TreeTableCell[DurchgangEditor, _]])
-                } else if (node.isInstanceOf[Text]) {
-                  findTableCell(node.asInstanceOf[Text].getParent)
-                } else {
-                  None
+                node match {
+                  case _: jfxsc.TreeTableCell[_, _] =>
+                    Some(node.asInstanceOf[jfxsc.TreeTableCell[DurchgangEditor, _]])
+                  case t : Text =>
+                    findTableCell(t.getParent)
+                  case _ =>
+                    None
                 }
 
               findTableCell(event.getPickResult.getIntersectedNode) match {
                 case Some(selectedCell) if (!selectedCell.getTableRow.getItem.isHeader) =>
                   val durchgang = selectedCell.getTableRow
                   val startGeraetColumn = selectedCell.getTableColumn
-                  if (startGeraetColumn.isInstanceOf[DurchgangTCAccess]) {
-                    val targetStartgeraet = startGeraetColumn.asInstanceOf[DurchgangTCAccess].getDisziplin
-                    if (targetStartgeraet != fromDisziplin || !durchgang.getItem.equals(dg)) {
-                      val targetDurchgang = durchgang.getItem.durchgang.name
-                      val toSave = riege.copy(initstart = Some(targetStartgeraet), initdurchgang = Some(targetDurchgang))
-                      println(targetDurchgang, targetStartgeraet)
-                      KuTuApp.invokeWithBusyIndicator {
-                        if (riegenAmStart.size == 1) {
-                          service.updateOrinsertRiege(RiegeRaw(wettkampf.id,
-                            s"Leere Riege ${dg.durchgang.name}/${toGeraetName(riege.start.value.id)}",
-                            Some(dg.durchgang.name), Some(riege.start.value.id), RiegeRaw.KIND_EMPTY_RIEGE
-                          ))
+                  startGeraetColumn match {
+                    case access: DurchgangTCAccess =>
+                      val targetStartgeraet = access.getDisziplin
+                      if (!fromDisziplin.contains(targetStartgeraet) || !dgOpt.contains(durchgang.getItem)) {
+                        val targetDurchgang = durchgang.getItem.durchgang.name
+                        val toSave = riege.copy(initstart = Some(targetStartgeraet), initdurchgang = Some(targetDurchgang))
+                        KuTuApp.invokeWithBusyIndicator {
+                          if (riegenAmStart.size == 1) {
+                            service.updateOrinsertRiege(RiegeRaw(wettkampf.id,
+                              s"Leere Riege ${dgOpt.map(_.durchgang.name).getOrElse("")}/${toGeraetName(riege.start.value.id)}",
+                              dgOpt.map(_.durchgang.name), Some(riege.start.value.id), RiegeRaw.KIND_EMPTY_RIEGE
+                            ))
+                          }
+                          service.updateOrinsertRiege(toSave.commit)
+                          reloadData()
+                          riegenFilterView.sort()
+                          durchgangView.sort()
                         }
-                        service.updateOrinsertRiege(toSave.commit)
-                        reloadData()
-                        riegenFilterView.sort()
-                        durchgangView.sort()
                       }
-                    }
+                    case _ =>
                   }
 
                 case _ =>
@@ -1023,13 +1120,13 @@ class RiegenTab(override val wettkampfInfo: WettkampfInfo, override val service:
         event.consume()
       })
       durchgangView.setOnDragOver((event) => {
-        if (event.getDragboard().hasContent(DurchgangView.DRAG_RIEGE)) {
+        if (event.getDragboard.hasContent(DurchgangView.DRAG_RIEGE)) {
           event.acceptTransferModes(TransferMode.Move)
         }
         event.consume()
       })
 
-      durchgangView.getSelectionModel().getSelectedCells().onChange { (_, _) =>
+      durchgangView.getSelectionModel.getSelectedCells.onChange { (_, _) =>
         Platform.runLater {
           val focusedCells: List[jfxsc.TreeTablePosition[DurchgangEditor, _]] = durchgangView.selectionModel.value.getSelectedCells.toList
           val selectedDurchgaenge = focusedCells.flatMap(c => c.getTreeItem.getValue.isHeader match {
@@ -1382,7 +1479,6 @@ class RiegenTab(override val wettkampfInfo: WettkampfInfo, override val service:
     riegenFilterView.filterEvent(KeyEvent.KeyPressed) { (ke: KeyEvent) =>
       AutoCommitTextFieldTableCell.handleDefaultEditingKeyEvents(riegenFilterView, false, null)(ke)
     }
-
     content = rootpane
 
     true

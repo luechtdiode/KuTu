@@ -944,3 +944,7 @@
 .tree-table-row-cell:expanded {
     -fx-background-color: -fx-table-cell-border-color, derive(-fx-control-inner-background,-15%);
 }
+#warnpanel {
+    -fx-background-color: F5AD11; //-fx-focus-color, -fx-cell-focus-inner-border, -fx-focus-color;
+	-fx-border-color: -fx-focus-color, -fx-cell-focus-inner-border, -fx-focus-color;
+}
