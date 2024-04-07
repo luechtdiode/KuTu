@@ -541,7 +541,7 @@ class RiegenTab(override val wettkampfInfo: WettkampfInfo, override val service:
         hgrow = Priority.Always
         vgrow = Priority.Always
         private def adjustWarnPanel(): Unit = {
-          if (warnings) {
+          if (wettkampfEditable && warnings) {
             top = warnPanel
           } else {
             top = null
