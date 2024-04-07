@@ -327,6 +327,9 @@ class RiegenTab(override val wettkampfInfo: WettkampfInfo, override val service:
   val durchgangModel = ObservableBuffer[TreeItem[DurchgangEditor]]()
   val disziplinlist = wettkampfInfo.disziplinList
 
+  def warnings = durchgangModel.nonEmpty && incompleteAssignments.nonEmpty
+  val warnPanelVisible: BooleanProperty = new BooleanProperty()
+
   closable = false
   text = "Riegeneinteilung"
 
@@ -365,11 +368,13 @@ class RiegenTab(override val wettkampfInfo: WettkampfInfo, override val service:
           durchgangModel.add(new TreeItem[DurchgangEditor](g))
       }
     }
+    warnPanelVisible.value = warnings
   }
 
   def reloadData(): Unit = {
     reloadRiegen()
     reloadDurchgaenge()
+
   }
 
   def onNameChange(name1: String, name2: String) = {
@@ -394,7 +399,6 @@ class RiegenTab(override val wettkampfInfo: WettkampfInfo, override val service:
   }
 
   def riegen(): IndexedSeq[RiegeEditor] = {
-    println("loading riegen ...")
     service.listRiegenZuWettkampf(wettkampf.id).sortBy(r => r._1).map(x =>
       RiegeEditor(
           wettkampf.id,
@@ -433,11 +437,12 @@ class RiegenTab(override val wettkampfInfo: WettkampfInfo, override val service:
     val unassignedRiegenView = new ListView[RiegeEditor] {
       items = incompleteAssignments
       orientation = Orientation.Horizontal
-      prefHeight <== when(Bindings.createBooleanBinding(() => {
+      prefHeight = 40 /*<== when(Bindings.createBooleanBinding(() => {
         incompleteAssignments.isEmpty
       },
         incompleteAssignments
       )) choose 0 otherwise 40
+      */
 
       cellFactory = { (l, c) =>
         l.text = s"${c.initname} (${c.initanz})"
@@ -493,15 +498,16 @@ class RiegenTab(override val wettkampfInfo: WettkampfInfo, override val service:
     } catch {
       case e: Exception => e.printStackTrace()
     }
-    def warnings = durchgangModel.nonEmpty && incompleteAssignments.nonEmpty
-    val warnPanelVisible: BooleanProperty = new BooleanProperty()
+
+
+    /*
     warnPanelVisible <== when(Bindings.createBooleanBinding(() => {
       warnings
     },
       durchgangModel,
       incompleteAssignments
     )) choose true otherwise false
-
+*/
     val warnPanel = new BorderPane {
       hgrow = Priority.Always
       id = "warnpanel"
