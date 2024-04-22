@@ -38,13 +38,10 @@ abstract trait DisziplinService extends DBService with WettkampfResultMapper {
                and r.durchgang in (#${durchgang.mkString("'", "','", "'")})
              )
              inner join wettkampf wk on (wk.id = r.wettkampf_id)
-             left outer join wertung w on (
-               w.wettkampf_id = r.wettkampf_id
-               and (w.riege = r.name or w.riege2 = r.name)
-             )
              where
                r.wettkampf_id = $wettkampf
-               and w.id is null
+               and (not exists(select 1 from wertung w where w.wettkampf_id = r.wettkampf_id and (w.riege2 <> ''))
+                or not exists(select 1 from wertung w where w.wettkampf_id = r.wettkampf_id and (w.riege = r.name or w.riege2 = r.name)))
              order by
                4 --wd.ord
        """.as[(Long, String, String, Int)]
