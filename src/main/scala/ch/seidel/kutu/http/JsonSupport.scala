@@ -53,6 +53,7 @@ trait JsonSupport extends SprayJsonSupport with EnrichedJson {
   implicit val finishDurchgangFormat: RootJsonFormat[FinishDurchgang] = jsonFormat2(FinishDurchgang)
   implicit val finishDurchgangStepFormat: RootJsonFormat[FinishDurchgangStep] = jsonFormat1(FinishDurchgangStep)
   implicit val publishScores: RootJsonFormat[PublishScores] = jsonFormat4(PublishScores)
+  implicit val approveDonation: RootJsonFormat[DonationApproved] = jsonFormat2(DonationApproved)
 
   // events (via ws and rest-response)
   implicit val durchgangStartedFormat: RootJsonFormat[DurchgangStarted] = jsonFormat3(DurchgangStarted)

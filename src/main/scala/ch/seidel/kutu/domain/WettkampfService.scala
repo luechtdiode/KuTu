@@ -599,6 +599,27 @@ trait WettkampfService extends DBService
     }, Duration.Inf)
   }
 
+  def saveWettkampfDonationApprove(uuid: UUID, mail: String, amount: BigDecimal): WettkampfMetaData = {
+    Await.result(database.run{
+      sqlu"""     update wettkampfmetadata
+                  set finish_donation_approved=$amount
+                  where uuid=${uuid.toString}
+         """ >>
+      sql"""      select uuid
+                    , wettkampf_id
+                    , finish_athletes_cnt
+                    , finish_clubs_cnt
+                    , finish_online_athletes_cnt
+                    , finish_online_clubs_cnt
+                    , finish_donation_mail
+                    , finish_donation_asked
+                    , finish_donation_approved
+                  from wettkampfmetadata
+                  where uuid=${uuid.toString}
+         """.as[WettkampfMetaData].head
+    }, Duration.Inf)
+  }
+
   def deleteWettkampfRelationActions(wettkampfid: Long) = {
       sqlu"""      delete from published_scores where wettkampf_id=${wettkampfid}""" >>
       sqlu"""      delete from durchgangstation where wettkampf_id=${wettkampfid}""" >>

@@ -49,6 +49,7 @@ case class AthletsAddedToWettkampf(athlet: List[AthletView], wettkampfUUID: Stri
 case class DurchgangChanged(durchgang: String, wettkampfUUID: String, athlet: AthletView) extends KutuAppEvent
 case class ScoresPublished(scoreId: String, title: String, query: String, published: Boolean, wettkampfUUID: String) extends KutuAppEvent
 case class DonationMailSent(teilnehmer: Int, price: BigDecimal, donationLink: String, wettkampfUUID: String) extends KutuAppEvent
+case class DonationApproved(amount: BigDecimal, wettkampfUUID: String) extends KutuAppEvent
 case class GeraeteRiegeList(list: List[GeraeteRiege], wettkampfUUID: String) extends KutuAppEvent
 
 case class NewLastResults(results: Map[String, WertungContainer], lastTopResults: Map[String, WertungContainer]) extends KutuAppEvent
