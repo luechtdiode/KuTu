@@ -69,6 +69,7 @@ export class AppComponent {
       }
       const alert = this.alertCtrl.create({
         header: 'Achtung',
+        subHeader: message.title,
         message: msg,
         buttons: ['OK']
       });

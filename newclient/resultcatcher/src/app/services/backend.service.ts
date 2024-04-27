@@ -263,12 +263,11 @@ export class BackendService extends WebsocketService {
         } as MessageAck);
       } else {
         const msgAck = {
-          msg : '<em>' + err.statusText + '</em><br>' + err.message,
+          title: err.statusText,
+          msg : err.error,
           type : err.name
         } as MessageAck;
-        if (!this.lastMessageAck || this.lastMessageAck.msg !== msgAck.msg) {
-          this.showMessage.next(msgAck);
-        }
+        this.showMessage.next(msgAck);
       }
     }
 

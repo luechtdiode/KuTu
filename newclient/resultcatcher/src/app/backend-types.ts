@@ -208,6 +208,7 @@ export interface FinishDurchgangStation {
 
 // websocket events
 export interface MessageAck {
+  title: string;
   msg: string;
   type: string;
 }
