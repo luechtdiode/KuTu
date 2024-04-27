@@ -336,10 +336,14 @@ trait RegistrationService extends DBService with RegistrationResultMapper with H
   // AthletRegistration
 
   def createAthletRegistration(newReg: AthletRegistration): AthletRegistration = {
+    val athletIdLike: Option[Long] = selectAthletRegistrationsLike(newReg).headOption.flatMap(_.athletId)
     val athletId: Option[Long] = if (newReg.athletId.isDefined && newReg.athletId.get > 0L) {
       newReg.athletId
     } else {
-      selectAthletRegistrationsLike(newReg).headOption.flatMap(_.athletId)
+      athletIdLike
+    }
+    if (athletId.nonEmpty && athletIdLike.nonEmpty && !athletIdLike.equals(athletId)) {
+      throw new IllegalArgumentException("Person-Überschreibung in einer Anmeldung zu einer anderen Person ist nicht erlaubt!")
     }
     val nomralizedAthlet = newReg.toAthlet
 
@@ -402,7 +406,12 @@ trait RegistrationService extends DBService with RegistrationResultMapper with H
     val athletId = registration.athletId match {
       case None => None
       case Some(id) if id < 1 => None
-      case Some(id) => Some(id)
+      case Some(id) =>
+        val athletIdLike: Option[Long] = selectAthletRegistrationsLike(registration).headOption.flatMap(_.athletId)
+        if (athletIdLike.nonEmpty && !athletIdLike.contains(id)) {
+          throw new IllegalArgumentException("Person-Überschreibung in einer Anmeldung zu einer anderen Person ist nicht erlaubt!")
+        }
+        Some(id)
     }
     Await.result(database.run {
       sqlu"""

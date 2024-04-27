@@ -10,7 +10,7 @@ import ch.seidel.kutu.{Config, domain}
 import ch.seidel.kutu.Config.remoteAdminBaseUrl
 import ch.seidel.kutu.akka._
 import ch.seidel.kutu.data.RegistrationAdmin.adjustWertungRiegen
-import ch.seidel.kutu.domain.{AthletRegistration, AthletView, JudgeRegistration, KutuService, NewRegistration, ProgrammRaw, Registration, RegistrationResetPW, TeamItem, TeamRegel, Verein, Wettkampf, dateToExportedStr, encodeFileName, str2SQLDate}
+import ch.seidel.kutu.domain.{Athlet, AthletRegistration, AthletView, JudgeRegistration, KutuService, NewRegistration, ProgrammRaw, Registration, RegistrationResetPW, TeamItem, TeamRegel, Verein, Wettkampf, dateToExportedStr, encodeFileName, str2SQLDate}
 import ch.seidel.kutu.http.AuthSupport.OPTION_LOGINRESET
 import ch.seidel.kutu.renderer.MailTemplates.createPasswordResetMail
 import ch.seidel.kutu.renderer.{CompetitionsClubsToHtmlRenderer, CompetitionsJudgeToHtmlRenderer, PrintUtil}
@@ -443,26 +443,35 @@ trait RegistrationRoutes extends SprayJsonSupport with JwtSupport with JsonSuppo
                       } ~ post { // create Athletes
                         log.info("post athletregistration")
                         entity(as[AthletRegistration]) { athletRegistration =>
-                          complete {
-                            val x: Option[AthletView] = athletRegistration.athletId.filter(_ > 0L).map(loadAthleteView)
-                            if (athletRegistration.athletId.isDefined && athletRegistration.athletId.get > 0L && x.isEmpty) {
-                              StatusCodes.BadRequest
-                            } else {
-                              val reg = selectRegistration(registrationId)
-                              if (x.isEmpty || x.map(_.verein).flatMap(_.map(_.id)).equals(reg.vereinId)) {
-                                try {
-                                  val reg = createAthletRegistration(athletRegistration)
-                                  CompetitionRegistrationClientActor.publish(RegistrationChanged(wettkampf.uuid.get), clientId)
-                                  log.info(s"$clientId: Athletanmeldung angelegt: ${athletRegistration.toPublicView.easyprint}")
-                                  reg
-                                } catch {
-                                  case e: IllegalArgumentException =>
-                                    log.error(e.getMessage)
-                                    StatusCodes.Conflict
+                          val x: Option[AthletView] = athletRegistration.athletId.filter(_ > 0L).map(loadAthleteView)
+                          if (athletRegistration.athletId.isDefined && athletRegistration.athletId.get > 0L && x.isEmpty) {
+                            complete(StatusCodes.BadRequest)
+                          } else {
+                            val reg = selectRegistration(registrationId)
+                            if (x.isEmpty || x.map(_.verein).flatMap(_.map(_.id)).equals(reg.vereinId)) {
+                              try {
+                                val isOverride = athletRegistration.athletId match {
+                                  case Some(id) =>
+                                    Await.result(AthletIndexActor.publish(FindAthletLike(athletRegistration.toAthlet)), Duration.Inf) match {
+                                      case AthletLikeFound(_, found) => found.id != id
+                                      case _ => false
+                                    }
+                                  case _ => false
                                 }
-                              } else {
-                                StatusCodes.BadRequest
+                                if (isOverride) {
+                                  throw new IllegalArgumentException("Person-Überschreibung in einer Anmeldung zu einer anderen Person ist nicht erlaubt!")
+                                }
+                                val reg = createAthletRegistration(athletRegistration)
+                                CompetitionRegistrationClientActor.publish(RegistrationChanged(wettkampf.uuid.get), clientId)
+                                log.info(s"$clientId: Athletanmeldung angelegt: ${athletRegistration.toPublicView.easyprint}")
+                                complete(reg)
+                              } catch {
+                                case e: IllegalArgumentException =>
+                                  log.error(e.getMessage)
+                                  complete(StatusCodes.Conflict, e.getMessage)
                               }
+                            } else {
+                              complete(StatusCodes.BadRequest)
                             }
                           }
                         }
@@ -475,12 +484,27 @@ trait RegistrationRoutes extends SprayJsonSupport with JwtSupport with JsonSuppo
                           )
                         } ~ put { // update Athletes
                           entity(as[AthletRegistration]) { athletRegistration =>
-                            complete(Future {
+                            try {
+                              val isOverride = athletRegistration.athletId match {
+                                case Some(id) =>
+                                  Await.result(AthletIndexActor.publish(FindAthletLike(athletRegistration.toAthlet)), Duration.Inf) match {
+                                    case AthletLikeFound(_, found) => found.id != id
+                                    case _ => false
+                                  }
+                                case _ => false
+                              }
+                              if (isOverride) {
+                                throw new IllegalArgumentException("Person-Überschreibung in einer Anmeldung zu einer anderen Person ist nicht erlaubt!")
+                              }
                               val reg = updateAthletRegistration(athletRegistration)
                               CompetitionRegistrationClientActor.publish(RegistrationChanged(wettkampf.uuid.get), clientId)
                               log.info(s"$clientId: Athletanmeldung aktualisiert: ${athletRegistration.toPublicView.easyprint}")
-                              reg
-                            })
+                              complete(reg)
+                            } catch {
+                              case e: IllegalArgumentException =>
+                                log.error(e.getMessage)
+                                complete(StatusCodes.Conflict, e.getMessage)
+                            }
                           }
                         } ~ delete { // delete  Athletes
                           complete(Future {
