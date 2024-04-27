@@ -57,16 +57,21 @@ class KuTuMailerActor(smtpHost: String, smtpPort: Int, smtpUsername: String, smt
   private val smtpMailerUser = s"$smtpUsername@$smtpDomain"
 
   def mailer: Mailer = {
-    val builder = MailerBuilder
-      .withSMTPServerHost(smtpHost)
-      .withSMTPServerPort(smtpPort)
-      .withSMTPServerUsername(smtpMailerUser)
-      .withSMTPServerPassword(smtpPassword)
-      .withTransportStrategy(TransportStrategy.SMTPS)
-
     customMailer match {
-      case None => builder.buildMailer()
-      case Some(mailer) => MailerBuilder.withCustomMailer(mailer).buildMailer()
+      case None =>
+        println(s"create new mailer ...")
+        MailerBuilder
+        .withSMTPServerHost(smtpHost)
+        .withSMTPServerPort(smtpPort)
+        .withSMTPServerUsername(smtpMailerUser)
+        .withSMTPServerPassword(smtpPassword)
+        .withTransportStrategy(TransportStrategy.SMTPS)
+        .buildMailer()
+      case Some(mailer) =>
+        println(s"create new custom mailer ...")
+        MailerBuilder
+        .withCustomMailer(mailer)
+        .buildMailer()
     }
   }
 
