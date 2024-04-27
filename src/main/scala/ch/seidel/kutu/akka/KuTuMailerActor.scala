@@ -37,15 +37,15 @@ class KuTuMailerActor(smtpHost: String, smtpPort: Int, smtpUsername: String, smt
   lazy val l: LoggingAdapter = akka.event.Logging(system, this)
 
   object log {
-    def error(s: String): Unit = l.error(s)
+    def error(s: String): Unit = println(s) //l.error(s)
 
-    def error(s: String, ex: Throwable): Unit = l.error(s, ex)
+    def error(s: String, ex: Throwable): Unit = println(s) //l.error(s, ex)
 
-    def warning(s: String): Unit = l.warning(s)
+    def warning(s: String): Unit = println(s) //l.warning(s)
 
-    def info(s: String): Unit = l.info(s)
+    def info(s: String): Unit = println(s) //l.info(s)
 
-    def debug(s: String): Unit = l.debug(s)
+    def debug(s: String): Unit = println(s) //l.debug(s)
   }
 
   override val supervisorStrategy: OneForOneStrategy = OneForOneStrategy() {
@@ -59,7 +59,6 @@ class KuTuMailerActor(smtpHost: String, smtpPort: Int, smtpUsername: String, smt
   def mailer: Mailer = {
     customMailer match {
       case None =>
-        println(s"create new mailer ...")
         MailerBuilder
         .withSMTPServerHost(smtpHost)
         .withSMTPServerPort(smtpPort)
@@ -68,7 +67,6 @@ class KuTuMailerActor(smtpHost: String, smtpPort: Int, smtpUsername: String, smt
         .withTransportStrategy(TransportStrategy.SMTPS)
         .buildMailer()
       case Some(mailer) =>
-        println(s"create new custom mailer ...")
         MailerBuilder
         .withCustomMailer(mailer)
         .buildMailer()
