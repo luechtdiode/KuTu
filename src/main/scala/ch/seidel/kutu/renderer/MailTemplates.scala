@@ -108,12 +108,10 @@ object MailTemplates {
       wettkampf.notificationEMail)
   }
 
-  def createDonateMail(wettkampf: Wettkampf, link: String, wkStats: WettkampfStats, preisPerTn: BigDecimal): Mail = {
-    val teilnehmer = wkStats.finishAthletesCnt
+  def createDonateMail(wettkampf: Wettkampf, link: String, wkStats: WettkampfStats, preisPerTn: BigDecimal, betrag: BigDecimal, clubs: Int, teilnehmer: Int): Mail = {
     val logodir = new java.io.File(Config.homedir + "/" + encodeFileName(wettkampf.easyprint))
     val logofile = PrintUtil.locateLogoFile(logodir)
     val logoHtml = if (logofile.exists()) s"""<img class=logo src="${logofile.imageSrcForWebEngine}" title="Logo"/>""" else ""
-    val betrag = (preisPerTn * teilnehmer).setScale(2)
     val linkMaterialized = link.replace(":betrag", s"$betrag")
     val imageData = toQRCodeImage(linkMaterialized)
     val onlineRegStats = if (wkStats.finishOnlineClubsCnt > 0)
@@ -122,7 +120,7 @@ object MailTemplates {
     MultipartMail(s"Abschluss Online-Durchführung ${wettkampf.easyprint}",
       s"""Hallo ${wettkampf.notificationEMail}
          |
-         |Der Wettkampf '${wettkampf.easyprint}' ist mit $teilnehmer Teilnehmer/-Innen aus ${wkStats.finishClubsCnt} Vereinen zu Ende gegangen.
+         |Der Wettkampf '${wettkampf.easyprint}' ist mit $teilnehmer Teilnehmer/-Innen aus ${clubs} Vereinen zu Ende gegangen.
          |
          |$onlineRegStats
          |
@@ -151,7 +149,7 @@ object MailTemplates {
          |      <div class="textblock">
          |        <h4>Hallo ${escaped(wettkampf.notificationEMail)}</h4>
          |        <p>
-         |          Der Wettkampf '${escaped(wettkampf.easyprint)}' ist mit $teilnehmer Teilnehmer/-Innen aus ${wkStats.finishClubsCnt} Vereinen zu Ende gegangen.
+         |          Der Wettkampf '${escaped(wettkampf.easyprint)}' ist mit $teilnehmer Teilnehmer/-Innen aus ${clubs} Vereinen zu Ende gegangen.
          |          <br>
          |          $onlineRegStats
          |        </p>

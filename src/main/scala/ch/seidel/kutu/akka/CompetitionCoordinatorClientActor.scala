@@ -335,10 +335,13 @@ class CompetitionCoordinatorClientActor(wettkampfUUID: String) extends Persisten
                |""".stripMargin)
           val teilnehmer = getAllKandidatenWertungen(wkUUID)
           val results = teilnehmer.flatMap(k => k.wertungen.map(w => w.resultat.endnote)).sum
-          if (results > 0 && teilnehmer.size > 10) {
-            val price = BigDecimal(Config.donationPrice)
+          if (abschluss.finishOnlineAthletesCnt > 10 || (results > 0 && abschluss.finishAthletesCnt > 10)) {
+            val teilnehmerCnt = if (abschluss.finishAthletesCnt > 0) abschluss.finishAthletesCnt else abschluss.finishOnlineAthletesCnt
+            val clubsCnt = if (abschluss.finishClubsCnt > 0) abschluss.finishClubsCnt else abschluss.finishOnlineClubsCnt
+            val pricePerTn = BigDecimal(Config.donationPrice)
+            val betrag = (pricePerTn * teilnehmerCnt).setScale(2)
             val donationLink = Config.donationLink
-            val mail = MailTemplates.createDonateMail(wettkampf, donationLink, abschluss, price)
+            val mail = MailTemplates.createDonateMail(wettkampf, donationLink, abschluss, pricePerTn, betrag, clubsCnt, teilnehmerCnt)
             KuTuMailerActor.send(mail)
             mail match {
               case mpm:MultipartMail =>
@@ -346,8 +349,8 @@ class CompetitionCoordinatorClientActor(wettkampfUUID: String) extends Persisten
               case sm:SimpleMail =>
                 log.info(s"Mail submitted to ${sm.to}:\n${sm.messageText}")
             }
-            saveWettkampfDonationAsk(wkUUID, wettkampf.notificationEMail, price)
-            handleEvent(DonationMailSent(teilnehmer.size, price, donationLink, wettkampfUUID))
+            saveWettkampfDonationAsk(wkUUID, wettkampf.notificationEMail, betrag)
+            handleEvent(DonationMailSent(teilnehmerCnt, pricePerTn, donationLink, wettkampfUUID))
             saveSnapshot(state)
           } else {
             log.info("Kein Mail versendet - zu wenig Teilnehmer mit Wertung - WK wurde ev. nicht durchgeführt.")
