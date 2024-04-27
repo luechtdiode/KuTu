@@ -7,7 +7,7 @@ import java.util
 import java.util.{ArrayList, HashMap, HashSet, Map, Set}
 
 object Mailbox {
-  private val mailboxes: Map[Address, Mailbox] = new HashMap
+  private val mailboxes: util.Map[Address, Mailbox] = new util.HashMap
 
   def get(a: Address): Mailbox = {
     mailboxes.computeIfAbsent(a, (a) => new Mailbox(a))
@@ -17,12 +17,14 @@ object Mailbox {
   def get(address: String): Mailbox = get(new InternetAddress(address))
 
   def clearAll(): Unit = {
-    mailboxes.clear()
+    synchronized {
+      mailboxes.clear()
+    }
   }
 }
 
-class Mailbox(val address: Address) extends ArrayList[MimeMessage] {
-  final private val unread: Set[MimeMessage] = new HashSet
+class Mailbox(val address: Address) extends util.ArrayList[MimeMessage] {
+  final private val unread: util.Set[MimeMessage] = new util.HashSet
   private var error: Boolean = false
 
   def getAddress: Address = this.address

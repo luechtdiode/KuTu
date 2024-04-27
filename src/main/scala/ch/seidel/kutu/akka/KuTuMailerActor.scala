@@ -66,7 +66,7 @@ class KuTuMailerActor(smtpHost: String, smtpPort: Int, smtpUsername: String, smt
 
     customMailer match {
       case None => builder.buildMailer()
-      case Some(mailer) => builder.withCustomMailer(mailer).buildMailer()
+      case Some(mailer) => MailerBuilder.withCustomMailer(mailer).buildMailer()
     }
   }
 
