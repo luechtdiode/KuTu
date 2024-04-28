@@ -96,6 +96,7 @@ class KuTuMailerActor(smtpHost: String, smtpPort: Int, smtpUsername: String, smt
 
   def receiveHot: Receive = {
     case mail: Mail =>
+      log.info("receiveHot ... Mail")
       val completionObserver: Try[String] => Unit = observeMailComletion(mail, 0, sender())
       send(mail).handleAsync {(v,e) =>
         if (e != null) {
@@ -107,18 +108,20 @@ class KuTuMailerActor(smtpHost: String, smtpPort: Int, smtpUsername: String, smt
 
     case SendRetry(action, retries, sender) => action match {
       case mail: Mail =>
+        log.info("receiveHot ... SendRetry")
         val completionObserver: Try[String] => Unit = observeMailComletion(mail, retries, sender)
         send(mail).handleAsync {(v,e) =>
           if (e != null) {
             completionObserver(Failure(e))
           } else {
             completionObserver(
-              Success("OK"))
+                Success("OK"))
           }
         }
     }
 
     case _ =>
+      log.info("receiveHot ... undefined")
   }
 
   private def observeMailComletion(mail: Mail, retries: Int, sender: ActorRef): Try[String] => Unit = {
@@ -137,6 +140,7 @@ class KuTuMailerActor(smtpHost: String, smtpPort: Int, smtpUsername: String, smt
   }
 
   private def send(mail: Mail) = {
+    log.info("send mail from actor with " + mailer.getClass)
     mail match {
       case SimpleMail(subject, messageText, to) =>
         mailer.sendMail(EmailBuilder.startingBlank()

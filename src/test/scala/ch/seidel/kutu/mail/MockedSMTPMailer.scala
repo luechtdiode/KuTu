@@ -45,7 +45,9 @@ class MockedSMTPMailer extends CustomMailer {
     result
   }
 
-  override def testConnection(operationalConfig: OperationalConfig, session: mail.Session): Unit = {}
+  override def testConnection(operationalConfig: OperationalConfig, session: mail.Session): Unit = {
+    println("MockedSMTPMailer - testConnection OK")
+  }
 
   override def sendMessage(operationalConfig: OperationalConfig, session: mail.Session, email: Email, mimeMessage: internet.MimeMessage): Unit = {
     println(s"sendMessage to ${email.getRecipients}")
