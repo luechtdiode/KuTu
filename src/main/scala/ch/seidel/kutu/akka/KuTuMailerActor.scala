@@ -57,16 +57,19 @@ class KuTuMailerActor(smtpHost: String, smtpPort: Int, smtpUsername: String, smt
   private val smtpMailerUser = s"$smtpUsername@$smtpDomain"
 
   def mailer: Mailer = {
-    val builder = MailerBuilder
-      .withSMTPServerHost(smtpHost)
-      .withSMTPServerPort(smtpPort)
-      .withSMTPServerUsername(smtpMailerUser)
-      .withSMTPServerPassword(smtpPassword)
-      .withTransportStrategy(TransportStrategy.SMTPS)
-
     customMailer match {
-      case None => builder.buildMailer()
-      case Some(mailer) => builder.withCustomMailer(mailer).buildMailer()
+      case None =>
+        MailerBuilder
+        .withSMTPServerHost(smtpHost)
+        .withSMTPServerPort(smtpPort)
+        .withSMTPServerUsername(smtpMailerUser)
+        .withSMTPServerPassword(smtpPassword)
+        .withTransportStrategy(TransportStrategy.SMTPS)
+        .buildMailer()
+      case Some(mailer) =>
+        MailerBuilder
+        .withCustomMailer(mailer)
+        .buildMailer()
     }
   }
 
@@ -110,7 +113,7 @@ class KuTuMailerActor(smtpHost: String, smtpPort: Int, smtpUsername: String, smt
             completionObserver(Failure(e))
           } else {
             completionObserver(
-              Success("OK"))
+                Success("OK"))
           }
         }
     }
@@ -141,7 +144,7 @@ class KuTuMailerActor(smtpHost: String, smtpPort: Int, smtpUsername: String, smt
           .to(to)
           .withSubject(subject)
           .withPlainText(messageText)
-          .buildEmail(), true)
+          .buildEmail(), customMailer.isEmpty)
       case MultipartMail(subject, messageText, messageHTML, to) =>
         mailer.sendMail(EmailBuilder.startingBlank()
           .from(appname, smtpMailerUser)
@@ -149,7 +152,7 @@ class KuTuMailerActor(smtpHost: String, smtpPort: Int, smtpUsername: String, smt
           .withSubject(subject)
           .withPlainText(messageText)
           .withHTMLText(messageHTML)
-          .buildEmail(), true)
+          .buildEmail(), customMailer.isEmpty)
     }
   }
 }

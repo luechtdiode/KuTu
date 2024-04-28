@@ -7,7 +7,7 @@ import java.util
 import java.util.{ArrayList, HashMap, HashSet, Map, Set}
 
 object Mailbox {
-  private val mailboxes: Map[Address, Mailbox] = new HashMap
+  private val mailboxes: util.Map[Address, Mailbox] = new util.HashMap
 
   def get(a: Address): Mailbox = {
     mailboxes.computeIfAbsent(a, (a) => new Mailbox(a))
@@ -21,8 +21,8 @@ object Mailbox {
   }
 }
 
-class Mailbox(val address: Address) extends ArrayList[MimeMessage] {
-  final private val unread: Set[MimeMessage] = new HashSet
+class Mailbox(val address: Address) extends util.ArrayList[MimeMessage] {
+  final private val unread: util.Set[MimeMessage] = new util.HashSet
   private var error: Boolean = false
 
   def getAddress: Address = this.address
@@ -30,6 +30,7 @@ class Mailbox(val address: Address) extends ArrayList[MimeMessage] {
   def isError: Boolean = this.error
 
   def setError(error: Boolean): Unit = {
+    println(s"mailbox error")
     this.error = error
   }
 
@@ -39,17 +40,20 @@ class Mailbox(val address: Address) extends ArrayList[MimeMessage] {
   }
 
   override def get(msgnum: Int): MimeMessage = {
+    println(s"get $msgnum message from mailbox")
     val m: MimeMessage = super.get(msgnum)
     this.unread.remove(m)
     m
   }
 
   override def addAll(messages: util.Collection[_ <: MimeMessage]): Boolean = {
+    println(s"add messages to mailbox")
     this.unread.addAll(messages)
     super.addAll(messages)
   }
 
   override def add(message: MimeMessage): Boolean = {
+    println(s"add message to mailbox")
     this.unread.add(message)
     super.add(message)
   }
