@@ -37,15 +37,15 @@ class KuTuMailerActor(smtpHost: String, smtpPort: Int, smtpUsername: String, smt
   lazy val l: LoggingAdapter = akka.event.Logging(system, this)
 
   object log {
-    def error(s: String): Unit = println(s) //l.error(s)
+    def error(s: String): Unit = l.error(s)
 
-    def error(s: String, ex: Throwable): Unit = println(s) //l.error(s, ex)
+    def error(s: String, ex: Throwable): Unit = l.error(s, ex)
 
-    def warning(s: String): Unit = println(s) //l.warning(s)
+    def warning(s: String): Unit = l.warning(s)
 
-    def info(s: String): Unit = println(s) //l.info(s)
+    def info(s: String): Unit = l.info(s)
 
-    def debug(s: String): Unit = println(s) //l.debug(s)
+    def debug(s: String): Unit = l.debug(s)
   }
 
   override val supervisorStrategy: OneForOneStrategy = OneForOneStrategy() {
@@ -96,7 +96,6 @@ class KuTuMailerActor(smtpHost: String, smtpPort: Int, smtpUsername: String, smt
 
   def receiveHot: Receive = {
     case mail: Mail =>
-      log.info("receiveHot ... Mail")
       val completionObserver: Try[String] => Unit = observeMailComletion(mail, 0, sender())
       send(mail).handleAsync {(v,e) =>
         if (e != null) {
@@ -108,7 +107,6 @@ class KuTuMailerActor(smtpHost: String, smtpPort: Int, smtpUsername: String, smt
 
     case SendRetry(action, retries, sender) => action match {
       case mail: Mail =>
-        log.info("receiveHot ... SendRetry")
         val completionObserver: Try[String] => Unit = observeMailComletion(mail, retries, sender)
         send(mail).handleAsync {(v,e) =>
           if (e != null) {
@@ -121,7 +119,6 @@ class KuTuMailerActor(smtpHost: String, smtpPort: Int, smtpUsername: String, smt
     }
 
     case _ =>
-      log.info("receiveHot ... undefined")
   }
 
   private def observeMailComletion(mail: Mail, retries: Int, sender: ActorRef): Try[String] => Unit = {
@@ -140,7 +137,6 @@ class KuTuMailerActor(smtpHost: String, smtpPort: Int, smtpUsername: String, smt
   }
 
   private def send(mail: Mail) = {
-    log.info("send mail from actor with " + mailer.getClass)
     mail match {
       case SimpleMail(subject, messageText, to) =>
         mailer.sendMail(EmailBuilder.startingBlank()

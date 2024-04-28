@@ -17,9 +17,7 @@ object Mailbox {
   def get(address: String): Mailbox = get(new InternetAddress(address))
 
   def clearAll(): Unit = {
-    synchronized {
-      mailboxes.clear()
-    }
+    mailboxes.clear()
   }
 }
 
