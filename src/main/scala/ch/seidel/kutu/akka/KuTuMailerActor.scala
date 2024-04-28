@@ -148,7 +148,7 @@ class KuTuMailerActor(smtpHost: String, smtpPort: Int, smtpUsername: String, smt
           .to(to)
           .withSubject(subject)
           .withPlainText(messageText)
-          .buildEmail(), true)
+          .buildEmail(), customMailer.isEmpty)
       case MultipartMail(subject, messageText, messageHTML, to) =>
         mailer.sendMail(EmailBuilder.startingBlank()
           .from(appname, smtpMailerUser)
@@ -156,7 +156,7 @@ class KuTuMailerActor(smtpHost: String, smtpPort: Int, smtpUsername: String, smt
           .withSubject(subject)
           .withPlainText(messageText)
           .withHTMLText(messageHTML)
-          .buildEmail(), true)
+          .buildEmail(), customMailer.isEmpty)
     }
   }
 }
