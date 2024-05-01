@@ -451,7 +451,7 @@ trait RegistrationRoutes extends SprayJsonSupport with JwtSupport with JsonSuppo
                             if (x.isEmpty || x.map(_.verein).flatMap(_.map(_.id)).equals(reg.vereinId)) {
                               try {
                                 val isOverride = athletRegistration.athletId match {
-                                  case Some(id) =>
+                                  case Some(id) if id > 0 =>
                                     Await.result(AthletIndexActor.publish(FindAthletLike(athletRegistration.toAthlet)), Duration.Inf) match {
                                       case AthletLikeFound(_, found) => found.id != id
                                       case _ => false
@@ -486,7 +486,7 @@ trait RegistrationRoutes extends SprayJsonSupport with JwtSupport with JsonSuppo
                           entity(as[AthletRegistration]) { athletRegistration =>
                             try {
                               val isOverride = athletRegistration.athletId match {
-                                case Some(id) =>
+                                case Some(id) if id > 0 =>
                                   Await.result(AthletIndexActor.publish(FindAthletLike(athletRegistration.toAthlet)), Duration.Inf) match {
                                     case AthletLikeFound(_, found) => found.id != id
                                     case _ => false

@@ -342,7 +342,7 @@ trait RegistrationService extends DBService with RegistrationResultMapper with H
     } else {
       athletIdLike
     }
-    if (athletId.nonEmpty && athletIdLike.nonEmpty && !athletIdLike.equals(athletId)) {
+    if (athletId.nonEmpty && athletIdLike.nonEmpty && athletId.get > 0 && !athletIdLike.equals(athletId)) {
       throw new IllegalArgumentException("Person-Überschreibung in einer Anmeldung zu einer anderen Person ist nicht erlaubt!")
     }
     val nomralizedAthlet = newReg.toAthlet
