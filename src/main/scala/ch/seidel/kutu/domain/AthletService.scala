@@ -270,10 +270,13 @@ trait AthletService extends DBService with AthletResultMapper with VereinService
     val presel2 = preselect.asScala.filter(mc => !exclusive || mc.id != athlet.id).map { matchcode =>
       (matchcode.id, similarAthletFactor(matchcode))
     }.filter(p => p._2 > 0).toList.sortBy(_._2).reverse
-    presel2.headOption.flatMap(k => loadAthlet(k._1)).getOrElse(athlet)
+    presel2.headOption.flatMap(k => loadAthlet(k._1)).getOrElse {
+      println("Athlet local not found! " + athlet.extendedprint)
+      athlet
+    }
   }
 
-  protected def loadAthlet(key: Long): Option[Athlet] = {
+  def loadAthlet(key: Long): Option[Athlet] = {
     Await.result(database.run {
       sql"""select * from athlet where id=${key}""".as[Athlet]
         .headOption

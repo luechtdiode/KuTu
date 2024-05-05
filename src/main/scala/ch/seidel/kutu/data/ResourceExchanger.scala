@@ -28,7 +28,8 @@ object ResourceExchanger extends KutuService with RiegenBuilder {
 
   def processWSMessage[T](wettkampf: Wettkampf, refresher: (Option[T], KutuAppEvent) => Unit): (Option[T], KutuAppEvent) => Unit = {
     val cache = new java.util.ArrayList[MatchCode]()
-
+    val wkDiszs = listWettkampfDisziplineViews(wettkampf)
+      .map(d => d.id -> d).toMap
     def mapToLocal(athlet: AthletView, wettkampf: Option[Long]) = {
       val mappedverein = athlet.verein match {
         case Some(v) => findVereinLike(Verein(id = 0, name = v.name, verband = None))
@@ -48,13 +49,15 @@ object ResourceExchanger extends KutuService with RiegenBuilder {
             _._2.maxBy(_.sequenceId)
           }.map { updatedSequenced =>
             val programm = updatedSequenced.programm
+            val disz = wkDiszs.get(updatedSequenced.wertung.wettkampfdisziplinId).map(_.disziplin.easyprint).getOrElse(s"Disz${updatedSequenced.wertung.wettkampfdisziplinId}")
+
             val mappedWertung = updatedSequenced.wertung.copy(
               athletId = mappedAthletView.id,
               wettkampfId = wettkampf.id,
               wettkampfUUID = updatedSequenced.wettkampfUUID)
             logger.info(s"received for ${athlet.vorname} ${athlet.name} (${athlet.verein.getOrElse(() => "")}) " +
-              s"im Pgm $programm new Wertung: D:${mappedWertung.noteD}, E:${mappedWertung.noteE}")
-            updatedSequenced.copy(athlet = athlet, wertung = mappedWertung)
+              s"im Pgm $programm Disz $disz new Wertung: D:${mappedWertung.noteD}, E:${mappedWertung.noteE}")
+            updatedSequenced.copy(athlet = mappedAthletView, wertung = mappedWertung)
           }
         }.toSeq
         try {
@@ -101,20 +104,21 @@ object ResourceExchanger extends KutuService with RiegenBuilder {
         if (Config.isLocalHostServer) {
           refresher(sender, uw)
         } else if (wettkampf.uuid.contains(wettkampfUUID)) /*Future*/ {
+          val disz = wkDiszs.get(uw.wertung.wettkampfdisziplinId).map(_.disziplin.easyprint).getOrElse(s"Disz${uw.wertung.wettkampfdisziplinId}")
           logger.info(s"received for ${uw.athlet.vorname} ${uw.athlet.name} (${uw.athlet.verein.getOrElse(() => "")}) " +
-            s"im Pgm $programm new Wertung: D:${wertung.noteD}, E:${wertung.noteE}")
+            s"im Pgm $programm Disz $disz new Wertung: D:${wertung.noteD}, E:${wertung.noteE}")
           val mappedAthletView: AthletView = mapToLocal(athlet, Some(wettkampf.id))
           val mappedWertung = wertung.copy(athletId = mappedAthletView.id, wettkampfId = wettkampf.id, wettkampfUUID = wettkampfUUID)
           try {
             val vw = updateWertungWithIDMapping(mappedWertung)
             logger.info(s"saved for ${mappedAthletView.vorname} ${mappedAthletView.name} (${uw.athlet.verein.getOrElse(() => "")}) " +
-              s"im Pgm $programm new Wertung: D:${vw.noteD}, E:${vw.noteE}")
+              s"im Pgm $programm Disz $disz new Wertung: D:${vw.noteD}, E:${vw.noteE}")
             refresher(sender, uw.copy(athlet.copy(id = mappedAthletView.id), wertung = vw))
           } catch {
             case e: Exception =>
               logger.error(s"failed to complete save new score for " +
                 s"${mappedAthletView.vorname} ${mappedAthletView.name} (${mappedAthletView.verein.getOrElse("")}) " +
-                s"im Pgm $programm new Wertung: D:${mappedWertung.noteD}, E:${mappedWertung.noteE}", e)
+                s"im Pgm $programm Disz $disz new Wertung: D:${mappedWertung.noteD}, E:${mappedWertung.noteE}", e)
               refresher(sender, uw)
           }
         }
