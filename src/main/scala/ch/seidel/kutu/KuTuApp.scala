@@ -502,7 +502,12 @@ object KuTuApp extends JFXApp3 with KutuService with JsonSupport with JwtSupport
               )
               val dir = new java.io.File(homedir + "/" + w.easyprint.replace(" ", "_"))
               if (!dir.exists()) {
-                dir.mkdirs();
+                val olddir = new java.io.File(homedir + "/" + p.toWettkampf.easyprint.replace(" ", "_"))
+                if (olddir.exists() && !olddir.equals(dir)) {
+                  olddir.renameTo(dir);
+                } else {
+                  dir.mkdirs();
+                }
               }
               updateTree
               val text = s"${w.titel} ${w.datum}"
