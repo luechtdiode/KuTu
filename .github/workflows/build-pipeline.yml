@@ -220,6 +220,13 @@ jobs:
           path: ~/.m2
           key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
           restore-keys: ${{ runner.os }}-m2
+      - name: Java Setup
+        id: jdk
+        run: |
+          . ./prepare_jdk.sh
+          rm -rf src/main/resources/app
+        env:
+          OS: macOS
       - name: Download client modifications
         uses: actions/download-artifact@v4
         with:
