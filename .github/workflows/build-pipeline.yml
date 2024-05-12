@@ -197,7 +197,7 @@ jobs:
       - name: Archive production artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: osx-app
+          name: osx-intel-app
           path: |
             target/Darwin/*.pkg
             target/Darwin/*.dmg
@@ -231,14 +231,14 @@ jobs:
           mvn -version
           mvn clean install package
         env:
-          OS: Darwin
+          OS: macOS
       - name: Archive production artifacts
         uses: actions/upload-artifact@v4
         with:
           name: osx-arm-app
           path: |
-            target/Darwin/*.pkg
-            target/Darwin/*.dmg
+            target/macOS/*.pkg
+            target/macOS/*.dmg
 
   build-docker-distribution:
     needs: build-lnx-distribution
@@ -321,7 +321,8 @@ jobs:
         with:
           files: |
             dist/win64-app/*
-            dist/osx-app/*
+            dist/osx-intel-app/*
+            dist/osx-arm-app/*
             dist/linux-app/*
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

@@ -88,7 +88,8 @@
 			<id>osx</id>
 			<activation>
 				<os>
-					<family>macosx-x86_64</family>
+					<family>mac</family>
+					<arch>x86_64</arch>
 				</os>
 			</activation>
 			<properties>
@@ -161,7 +162,8 @@
 			<id>osx-arm</id>
 			<activation>
 				<os>
-					<family>macosx-aarch64</family>
+					<family>mac</family>
+					<arch>aarch64</arch>
 				</os>
 			</activation>
 			<properties>
