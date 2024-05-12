@@ -181,7 +181,7 @@ jobs:
           . ./prepare_jdk.sh
           rm -rf src/main/resources/app
         env:
-          OS: Darwin
+          OS: macOS
       - name: Download client modifications
         uses: actions/download-artifact@v4
         with:
