@@ -88,7 +88,7 @@
 			<id>osx</id>
 			<activation>
 				<os>
-					<family>mac</family>
+					<family>macosx-x86_64</family>
 				</os>
 			</activation>
 			<properties>
@@ -96,8 +96,6 @@
 				<bundler.os>Darwin</bundler.os>
 				<bundler.type>pkg</bundler.type>
 				<app.logo>AppIcon.icns</app.logo>
-				<javafx.version>19</javafx.version>
-				<scalafx.version>19.0.0-R30</scalafx.version>
 			</properties>
 			<build>
 				<plugins>
@@ -137,6 +135,81 @@
 										<argument>Interpolar</argument>
 										<argument>--mac-package-identifier</argument>
 										<argument>ch.seidel.kutu.KuTuApp</argument>
+										<argument>--java-options</argument>
+										<argument>"-DkutuAPPDIR=$APPDIR"</argument>
+										<argument>--java-options</argument>
+										<argument>
+											--add-opens=java.base/java.lang=ALL-UNNAMED
+											--add-opens=java.base/java.lang.invoke=ALL-UNNAMED
+											--add-opens=java.base/java.net=ALL-UNNAMED
+											--add-opens=java.base/java.nio=ALL-UNNAMED
+											--add-opens=java.base/java.time=ALL-UNNAMED
+											--add-opens=java.base/java.util=ALL-UNNAMED
+											--add-opens=java.base/java.util.concurrent.atomic=ALL-UNNAMED
+											--add-opens=java.base/sun.nio.ch=ALL-UNNAMED
+											--add-opens=java.base/sun.util.calendar=ALL-UNNAMED
+										</argument>
+									</arguments>
+								</configuration>
+							</execution>
+						</executions>
+					</plugin>
+				</plugins>
+			</build>
+		</profile>
+		<profile>
+			<id>osx-arm</id>
+			<activation>
+				<os>
+					<family>macosx-aarch64</family>
+				</os>
+			</activation>
+			<properties>
+				<javafx.os>mac-aarch64</javafx.os>
+				<bundler.os>Darwin</bundler.os>
+				<bundler.type>pkg</bundler.type>
+				<app.logo>AppIcon.icns</app.logo>
+			</properties>
+			<build>
+				<plugins>
+					<plugin>
+						<groupId>org.codehaus.mojo</groupId>
+						<artifactId>exec-maven-plugin</artifactId>
+						<version>3.2.0</version>
+						<executions>
+							<execution>
+								<id>package-binary-distro</id>
+								<phase>package</phase>
+								<goals>
+									<goal>exec</goal>
+								</goals>
+								<configuration>
+									<executable>${jdk-home}/bin/jpackage</executable>
+									<arguments>
+										<argument>--main-class</argument>
+										<argument>ch.seidel.kutu.KuTuApp</argument>
+										<argument>--type</argument>
+										<argument>${bundler.type}</argument>
+										<argument>--input</argument>
+										<argument>${project.build.directory}/package</argument>
+										<argument>--dest</argument>
+										<argument>${project.build.directory}/${bundler.os}</argument>
+										<argument>--name</argument>
+										<argument>TurnerWettkampf-App-v${parsedVersion.majorVersion}r${parsedVersion.minorVersion}</argument>
+										<argument>--app-version</argument>
+										<argument>${app.version}</argument>
+										<argument>--main-jar</argument>
+										<argument>${project.artifactId}-${app.version}.jar</argument>
+										<argument>--icon</argument>
+										<argument>${project.build.sourceDirectory}/../resources/images/${app.logo}</argument>
+										<argument>--copyright</argument>
+										<argument>Interpolar</argument>
+										<argument>--vendor</argument>
+										<argument>Interpolar</argument>
+										<argument>--mac-package-identifier</argument>
+										<argument>ch.seidel.kutu.KuTuApp</argument>
+										<argument>--mac-package-name</argument>
+										<argument>KuTuApp-v${parsedVersion.majorVersion}r${parsedVersion.minorVersion}</argument>
 										<argument>--java-options</argument>
 										<argument>"-DkutuAPPDIR=$APPDIR"</argument>
 										<argument>--java-options</argument>
