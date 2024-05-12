@@ -199,8 +199,8 @@ jobs:
         with:
           name: osx-intel-app
           path: |
-            target/Darwin/*.pkg
-            target/Darwin/*.dmg
+            target/macOS/*.pkg
+            target/macOS/*.dmg
 
   build-osx-arm-distribution:
     needs: build-app
