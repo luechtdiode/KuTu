@@ -157,7 +157,7 @@ jobs:
             target/Win64/*.msi
             target/Win64/*.exe
 
-  build-osx-distribution:
+  build-osx-intel-distribution:
     needs: build-app
     runs-on: macos-13
     steps:
@@ -302,7 +302,7 @@ jobs:
 
   upload-release-assets:
     name: Upload Release-Assets and Cleanup Workflow-Files
-    needs: [build-lnx-distribution, build-win64-distribution, build-osx-distribution, build-docker-distribution]
+    needs: [build-lnx-distribution, build-win64-distribution, build-osx-intel-distribution,build-osx-arm-distribution, build-docker-distribution]
     runs-on: ubuntu-latest
     steps:
       - uses: geekyeggo/delete-artifact@v5
