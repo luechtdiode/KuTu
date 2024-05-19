@@ -47,7 +47,7 @@
 										<argument>--dest</argument>
 										<argument>${project.build.directory}/${bundler.os}</argument>
 										<argument>--name</argument>
-										<argument>TurnerWettkampf-App-v${parsedVersion.majorVersion}r${parsedVersion.minorVersion}</argument>
+										<argument>TurnerWettkampf-App-v${parsedVersion.majorVersion}r${parsedVersion.minorVersion}_win64</argument>
 										<argument>--app-version</argument>
 										<argument>${app.version}</argument>
 										<argument>--main-jar</argument>
@@ -125,7 +125,7 @@
 										<argument>--dest</argument>
 										<argument>${project.build.directory}/${bundler.os}</argument>
 										<argument>--name</argument>
-										<argument>TurnerWettkampf-App-v${parsedVersion.majorVersion}r${parsedVersion.minorVersion}-intel</argument>
+										<argument>TurnerWettkampf-App-v${parsedVersion.majorVersion}r${parsedVersion.minorVersion}_osx-intel</argument>
 										<argument>--app-version</argument>
 										<argument>${app.version}</argument>
 										<argument>--main-jar</argument>
@@ -199,7 +199,7 @@
 										<argument>--dest</argument>
 										<argument>${project.build.directory}/${bundler.os}</argument>
 										<argument>--name</argument>
-										<argument>TurnerWettkampf-App-v${parsedVersion.majorVersion}r${parsedVersion.minorVersion}-arm</argument>
+										<argument>TurnerWettkampf-App-v${parsedVersion.majorVersion}r${parsedVersion.minorVersion}_osx-arm</argument>
 										<argument>--app-version</argument>
 										<argument>${app.version}</argument>
 										<argument>--main-jar</argument>
@@ -274,7 +274,7 @@
 										<argument>--dest</argument>
 										<argument>${project.build.directory}/${bundler.os}</argument>
 										<argument>--name</argument>
-										<argument>TurnerWettkampf-App-v${parsedVersion.majorVersion}r${parsedVersion.minorVersion}</argument>
+										<argument>TurnerWettkampf-App-v${parsedVersion.majorVersion}r${parsedVersion.minorVersion}_linux</argument>
 										<argument>--app-version</argument>
 										<argument>${app.version}</argument>
 										<argument>--main-jar</argument>
