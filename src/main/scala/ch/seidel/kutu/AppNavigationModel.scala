@@ -128,15 +128,34 @@ class KuTuAppTree(service: KutuService) {
   def getThumbs(keyName: String): List[KuTuAppThumbNail] =
     thumbnails.getOrElse(keyName, (List[KuTuAppThumbNail](), false, 0))._1
 
-  def getDashThumbsCtrl: List[Node] =
+  // val searchQuery = newVal.toUpperCase().split(" ")
+  def dashboardFilter(query: String)(thumb: KuTuAppThumbNail) = {
+    val filter = query.toUpperCase().split(" ")
+    filter.isEmpty || filter.forall { txt =>
+      thumb.item.value.value.toUpperCase.contains(txt) ||
+        (thumb.context match {
+        case v: Verein => v.easyprint.toUpperCase.contains(txt)
+        case wv: WettkampfView => wv.easyprint.toUpperCase.contains(txt)
+        case _ => false
+      })
+    }
+  }
+
+  def getDashThumbsCtrl(filter: String = ""): List[Node] =
     thumbnails.map {
-      case (heading, ts) => (Seq[Node](createCategoryLabel(heading), createTiles(ts._1)), ts._3)
+      case (heading, ts) => (
+        Seq[Node](
+          createCategoryLabel(heading),
+          createTiles(ts._1
+            .filter(dashboardFilter(filter))
+          )), ts._3)
     }.toList.sortBy(_._2).flatMap(_._1)
 
-  def getDashThumb(ctrlGrpName: String) =
+  def getDashThumb(ctrlGrpName: String, filter: String = "") =
     Seq(
       createCategoryLabel(ctrlGrpName),
-      createTiles(getThumbs(ctrlGrpName))
+      createTiles(getThumbs(ctrlGrpName)
+        .filter(dashboardFilter(filter)))
     )
 
   private def createCategoryLabel(value: String) =
