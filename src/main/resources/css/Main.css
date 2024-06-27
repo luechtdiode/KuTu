@@ -103,17 +103,15 @@
     -fx-effect: dropshadow( three-pass-box , -fx-focus-color , 10, 0.5 , 0 , 0 );
 }
 */
-#SearchBox .text-field {
-	-fx-background-color: white;
-	-fx-background-insets: 1;
-	-fx-background-radius: 15;
-	-fx-padding: -9 5 -11 0;
-	-fx-border-image-source: url("../images/search-box.png");
-	-fx-border-image-slice: 12 12 12 22 fill;
-	-fx-border-image-width: 12 12 12 22;
-	-fx-border-image-repeat: stretch;
-	-fx-font-size: 13px;
-	-fx-prompt-text-fill: grey;
+.search-text {
+    -fx-background-color: null;
+	-fx-font-size: 15px;
+	-fx-text-fill: white;
+	-fx-font-style: bold;
+	-fx-prompt-text-fill: lightgray;
+}
+
+.search-icon {
 }
 
 #SearchBox .text-field:focused {
