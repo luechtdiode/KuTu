@@ -1993,9 +1993,7 @@ object KuTuApp extends JFXApp3 with KutuService with JsonSupport with JwtSupport
   }
   
   def cleanupDB(): Unit = {
-    Future {
-      markAthletesInactiveOlderThan(3)
-    }
+    markAthletesInactiveOlderThan(3)
   }
 
   def startUI(): Unit = {

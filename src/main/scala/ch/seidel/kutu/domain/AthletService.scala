@@ -1,12 +1,13 @@
 package ch.seidel.kutu.domain
 
-import java.sql.Date
-import java.time.{LocalDate, Period}
 import ch.seidel.kutu.akka.{AthletIndexActor, RemoveAthlet, SaveAthlet}
 import ch.seidel.kutu.data.{CaseObjectMetaUtil, Surname}
 import org.slf4j.LoggerFactory
 import slick.jdbc.SQLiteProfile.api._
 
+import java.sql.Date
+import java.time.LocalDate
+import java.time.temporal.ChronoUnit
 import scala.concurrent.Await
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration.Duration
@@ -271,7 +272,7 @@ trait AthletService extends DBService with AthletResultMapper with VereinService
       (matchcode.id, similarAthletFactor(matchcode))
     }.filter(p => p._2 > 0).toList.sortBy(_._2).reverse
     presel2.headOption.flatMap(k => loadAthlet(k._1)).getOrElse {
-      println("Athlet local not found! " + athlet.extendedprint)
+      logger.warn("Athlet local not found! " + athlet.extendedprint)
       athlet
     }
   }
@@ -308,22 +309,42 @@ trait AthletService extends DBService with AthletResultMapper with VereinService
   }
 
   def markAthletesInactiveOlderThan(nYears: Int): Int = {
-    Await.result(database.run {
-      sqlu"""
-        update athlet
-        set activ = false
-        where activ = true
-          and exists (
-          select distinct 1 from athlet a
+    val d = LocalDate.now().minus(nYears, ChronoUnit.YEARS)
+    logger.info(s"searching for athletes not active since last $nYears years (last event before $d) ...")
+    try {
+      val inactivList = Await.result(database.run {
+        sql"""
+        select a.id, a.name, a.vorname, max(wk.datum) from athlet a
               inner join verein v on v.id = a.verein
-              left outer join wertung w on a.id = w.athlet_id
-              left outer join wettkampf wk on w.wettkampf_id = wk.id
-          group by a.id
-          having (current_date - max(coalesce(wk.datum, current_date))) > ${nYears * 365}
-              and a.id = athlet.id
-        );
-       """
-    }, Duration.Inf)
+              inner join wertung w on a.id = w.athlet_id
+              inner join wettkampf wk on w.wettkampf_id = wk.id
+        where a.activ = true
+        group by a.id
+        having max(wk.datum) < ${Date.valueOf(d)}
+       """.as[(Int, String, String, Date)]
+      }, Duration.Inf).toList
+      if (inactivList.length > 0) {
+        logger.info("setting the following list of athlets inactiv:")
+        logger.info(inactivList.mkString("(", "\n", ")"))
+        val length = Await.result(database.run {
+          sqlu"""
+          update athlet
+          set activ = false
+          where activ = true
+            and (id in (#${inactivList.filter(_._4.compareTo(d) < 0).map(_._1).mkString(",")})
+                 or not exists (select 1 from wertung w where w.athlet_id = athlet.id)
+                );
+         """
+        }, Duration.Inf)
+        logger.info(s"inactivated athletes: $length")
+        length
+      } else {
+        0
+      }
+    } catch {
+      case e: Exception => e.printStackTrace()
+        0
+    }
   }
 
   def cleanUnusedClubs(): Set[Verein] = {
