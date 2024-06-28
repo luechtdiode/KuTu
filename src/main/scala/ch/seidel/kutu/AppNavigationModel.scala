@@ -1,7 +1,5 @@
 package ch.seidel.kutu
 
-import java.io.IOException
-
 import ch.seidel.kutu.domain._
 import scalafx.Includes._
 import scalafx.event.ActionEvent
@@ -12,6 +10,7 @@ import scalafx.scene.control._
 import scalafx.scene.image.{Image, ImageView}
 import scalafx.scene.layout.{Region, TilePane}
 
+import java.io.IOException
 import scala.collection.immutable.TreeMap
 
 object AppNavigationModel  {
@@ -83,12 +82,23 @@ class KuTuAppTree(service: KutuService) {
             case _:WettkampfView => image = wkimage
           }
         }
+        val t = context match {
+          case wv: WettkampfView => f"${wv.titel}\n${wv.datum}%td.${wv.datum}%tm.${wv.datum}%tY\n${wv.programm.easyprint}"//wv.easyprint
+          case v: Verein => s"${v.name}${v.verband.map("\n(" + _ + ")").getOrElse("")}"
+          case _ => node
+        }
         val button = new Button(node, img) {
-          prefWidth = 140
-          prefHeight = 145
-          contentDisplay = ContentDisplay.Top
+          prefWidth = 250
+          maxWidth = 250
+          minWidth = 250
+          prefHeight = 140
+          //contentDisplay = ContentDisplay.Top
           styleClass.clear()
           styleClass += "sample-tile"
+          wrapText = true
+          tooltip = new Tooltip {
+            text = t
+          }
           onAction = (ae: ActionEvent) => {
             KuTuApp.controlsView.selectionModel().select(thmbitem)
           }

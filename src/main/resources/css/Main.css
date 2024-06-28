@@ -107,7 +107,6 @@
     -fx-background-color: null;
 	-fx-font-size: 15px;
 	-fx-text-fill: white;
-	-fx-font-style: bold;
 	-fx-prompt-text-fill: lightgray;
 }
 
@@ -600,11 +599,12 @@
 .sample-tile {
 	-fx-skin: "javafx.scene.control.skin.ButtonSkin";
 	-fx-text-fill: white;
-	-fx-graphic-hpos: center;
+	-fx-graphic-hpos: left;
 	-fx-graphic-vpos: top;
 	-fx-alignment: center;
+	-fx-text-alignment: left;
 	-fx-padding: 4px 4px 3px 4px;
-    -fx-font-size: 1.3em;
+    -fx-font-size: 1.2em;
 }
 
 .sample-tile .text {
