@@ -563,6 +563,7 @@ trait WettkampfService extends DBService
                       finish_online_clubs_cnt=v.finish_online_clubs_cnt
                   from wkstats v
                   where v.wk_uuid=${uuid.toString}
+                    and v.wk_uuid=uuid
          """ >>
       sql"""      select md.uuid
                     , wk.id

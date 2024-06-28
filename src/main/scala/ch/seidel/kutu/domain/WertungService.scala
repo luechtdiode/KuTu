@@ -316,16 +316,17 @@ abstract trait WertungService extends DBService with WertungResultMapper with Di
   @throws(classOf[Exception]) // called from rich-client-app via ResourceExchanger
   def updateWertungWithIDMapping(w: Wertung): Wertung = {
     val wv = readWettkampfDisziplinView(w.wettkampfdisziplinId).verifiedAndCalculatedWertung(w)
+    println("single import wertung ...")
     val wvId = Await.result(database.run((for {
         updated <- sqlu"""
                   UPDATE wertung
                   SET note_d=${wv.noteD}, note_e=${wv.noteE}, endnote=${wv.endnote}, riege=${wv.riege}, riege2=${wv.riege2}, team=${wv.team.getOrElse(0)}
-                  WHERE 
+                  WHERE
                     athlet_Id=${wv.athletId} and wettkampfdisziplin_Id=${wv.wettkampfdisziplinId} and wettkampf_Id=${wv.wettkampfId}
           """
         wvId <- sql"""
                   SELECT id FROM wertung
-                  WHERE 
+                  WHERE
                     athlet_Id=${wv.athletId} and wettkampfdisziplin_Id=${wv.wettkampfdisziplinId} and wettkampf_Id=${wv.wettkampfId}
         """.as[Long]
       } yield {
@@ -338,8 +339,9 @@ abstract trait WertungService extends DBService with WertungResultMapper with Di
 
   @throws(classOf[Exception]) // called from rich-client-app via ResourceExchanger
   def updateWertungWithIDMapping(ws: Seq[Wertung]): Seq[Wertung] = {
+    println("multi import wertung ...")
     val wvs = ws.map(w => readWettkampfDisziplinView(w.wettkampfdisziplinId).verifiedAndCalculatedWertung(w))
-    val wvId: Seq[Long] = Await.result(database.run(DBIO.sequence(for {
+    val wvId: Seq[Option[Long]] = Await.result(database.run(DBIO.sequence(for {
       wv <- wvs
     } yield {
       sqlu"""
@@ -352,10 +354,25 @@ abstract trait WertungService extends DBService with WertungResultMapper with Di
                   SELECT id FROM wertung
                   WHERE
                     athlet_Id=${wv.athletId} and wettkampfdisziplin_Id=${wv.wettkampfdisziplinId} and wettkampf_Id=${wv.wettkampfId}
-        """.as[Long].head
+        """.as[Long].headOption
     }).transactionally
     ), Duration.Inf)
-    val result = wvs.zip(wvId).map{z => z._1.copy(id = z._2)}
+    val result = wvs.zip(wvId)
+      .filter {
+        case (_, Some(_)) => true
+        case (w, None) =>
+          println(
+            s"""
+               |Unmatching Wertung!
+               |  atheltId:           ${w.athletId}
+               |  riege:              ${w.riege}
+               |  Wettkampfdisziplin: ${w.wettkampfdisziplinId}
+               |  Resultat:           ${w.resultat}
+               |""".stripMargin)
+          false
+        case _ => false
+      }
+      .map{z => z._1.copy(id = z._2.get)}
     result
   }
 

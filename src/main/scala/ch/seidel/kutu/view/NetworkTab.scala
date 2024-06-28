@@ -48,8 +48,10 @@ case class DurchgangState(wettkampfUUID: String, name: String, complete: Boolean
 
   val updated: Long = System.currentTimeMillis()
   val isRunning: Boolean = started > 0L && finished < started
-  lazy val statsBase: immutable.Iterable[Int] = geraeteRiegen.groupBy(_.disziplin).map(_._2.map(_.kandidaten.size).sum)
-  lazy val statsCompletedBase: immutable.Iterable[(Option[Disziplin], Int, Int, Int, List[(Int, Int, Int, Int)])] = geraeteRiegen.groupBy(gr => gr.disziplin).map { gr =>
+  lazy val statsBase: immutable.Iterable[Int] = geraeteRiegen.groupBy(_.disziplin).filter(!_._1.get.isPause).map(_._2.map(_.kandidaten.size).sum)
+  lazy val statsCompletedBase: immutable.Iterable[(Option[Disziplin], Int, Int, Int, List[(Int, Int, Int, Int)])] = geraeteRiegen.groupBy(gr => gr.disziplin)
+    .filter { d => !d._1.get.isPause}
+    .map { gr =>
     val (disziplin, grd) = gr
 
     def hasWertungInDisciplin(wertungen: Seq[WertungView]) = wertungen.filter(w => disziplin.contains(w.wettkampfdisziplin.disziplin)).exists(_.endnote.nonEmpty)
@@ -63,7 +65,7 @@ case class DurchgangState(wettkampfUUID: String, name: String, complete: Boolean
     val totalCnt = gr._2.map(_.kandidaten.size).sum
     val completedCnt = gr._2.map(_.kandidaten.count(k => hasWertungInDisciplin(k.wertungen))).sum
     // (geraet, complete%, completeCnt, totalCnt, haltStats(halt, complete%, completeCnt, totalCnt))
-    (disziplin, 100 * completedCnt / gr._2.map(_.kandidaten.size).sum, completedCnt, totalCnt, grdStats)
+    (disziplin, 100 * completedCnt / totalCnt, completedCnt, totalCnt, grdStats)
   }
 
   lazy val anzValue: Int = statsBase.sum

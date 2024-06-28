@@ -55,6 +55,15 @@ object WebSocketClient extends SprayJsonSupport with JsonSupport with AuthSuppor
         websocketIncomingFlow(handleError).to(Sink.foreach[KutuAppEvent](processorWithoutSender)),
         websocketOutgoingSource.concatMat(Source.maybe[Message])(Keep.right))(Keep.right)
 
+    lastWettkampf match {
+      case Some(wk) if (wk != wettkampf) =>
+        lastSequenceId = Long.MinValue
+      case None =>
+        lastSequenceId = Long.MinValue
+      case _ =>
+    }
+    lastWettkampf = Some(wettkampf)
+
     val promise = websocketClientRequest(
       if (wettkampf.hasSecred(homedir, remoteHostOrigin)) {
         WebSocketRequest(
@@ -68,13 +77,6 @@ object WebSocketClient extends SprayJsonSupport with JsonSupport with AuthSuppor
       },
       flow)
     connectedIncomingPromise = Some(promise)
-
-    lastWettkampf match {
-      case Some(wk) if (wk != wettkampf) =>
-        lastSequenceId = Long.MinValue
-      case _ =>
-    }
-    lastWettkampf = Some(wettkampf)
 
     promise.future.onComplete{
       case Success(_) => disconnect

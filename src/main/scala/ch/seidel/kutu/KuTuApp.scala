@@ -2057,9 +2057,7 @@ object KuTuApp extends JFXApp3 with KutuService with JsonSupport with JwtSupport
   }
   
   def cleanupDB(): Unit = {
-    Future {
-      markAthletesInactiveOlderThan(3)
-    }
+    markAthletesInactiveOlderThan(3)
   }
 
   def startUI(): Unit = {
@@ -2208,15 +2206,6 @@ object KuTuApp extends JFXApp3 with KutuService with JsonSupport with JwtSupport
                     btnWettkampfModus.disable.value = false
                     selectedWettkampf.value = p
                     selectedWettkampfSecret.value = p.toWettkampf.readSecret(homedir, remoteHostOrigin)
-                    //                  val networkMenu = new Menu("Netzwerk") {
-                    //                    items += makeShowQRCodeMenu(p)
-                    //                    items += makeWettkampfUploadMenu(p)
-                    //                    items += makeConnectAndShareMenu(p)
-                    //                    items += makeWettkampfDownloadMenu(p)
-                    //                    items += makeDisconnectMenu(p)
-                    //                    items += makeWettkampfRemoteRemoveMenu(p)
-                    //                  }
-
                         controlsView.contextMenu = new ContextMenu() {
                           items += makeWettkampfDurchfuehrenMenu(p)
                           items += makeWettkampfBearbeitenMenu(p)
@@ -2224,7 +2213,6 @@ object KuTuApp extends JFXApp3 with KutuService with JsonSupport with JwtSupport
                           items += makeWettkampfExportierenMenu(p)
                           items += makeWettkampfDataDirectoryMenu(p)
                           items += makeWettkampfLoeschenMenu(p)
-                          //                    items += networkMenu
                         }
                       case Some(KuTuAppThumbNail(v: Verein, _, newItem)) =>
                         controlsView.contextMenu = new ContextMenu() {
