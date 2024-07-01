@@ -43,7 +43,7 @@
     "@angular/cli": "16.2.9",
     "@angular/compiler": "^16.2.12",
     "@angular/compiler-cli": "^16.2.12",
-    "@angular/language-service": "^16.2.12",
+    "@angular/language-service": "^18.0.5",
     "@babel/plugin-transform-async-to-generator": "^7.23.3",
     "@capacitor/cli": "4.8.0",
     "@ionic/angular-toolkit": "^9.0.0",
