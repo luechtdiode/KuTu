@@ -840,7 +840,11 @@ package object domain {
   //  }
   case class WettkampfView(id: Long, uuid: Option[String], datum: java.sql.Date, titel: String, programm: ProgrammView, auszeichnung: Int, auszeichnungendnote: scala.math.BigDecimal, notificationEMail: String, altersklassen: String, jahrgangsklassen: String, punktegleichstandsregel: String, rotation: String, teamrule: String) extends DataObject {
     override def easyprint = f"$titel am $datum%td.$datum%tm.$datum%tY"
-
+    lazy val details: String = s"${programm.name}" +
+      s"${if (teamrule.nonEmpty && !teamrule.equals("Keine Teams")) ", " + teamrule else ""}" +
+      s"${if (altersklassen.nonEmpty) ", Altersklassen" else ""}" +
+      s"${if (jahrgangsklassen.nonEmpty) ", Jahrgangs Altersklassen" else ""}" +
+      ""
     def toWettkampf = Wettkampf(id, uuid, datum, titel, programm.id, auszeichnung, auszeichnungendnote, notificationEMail, Option(altersklassen), Option(jahrgangsklassen), Option(punktegleichstandsregel), Option(rotation), Option(teamrule))
   }
 

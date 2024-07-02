@@ -1,20 +1,20 @@
 package ch.seidel.kutu
 
-import ch.seidel.commons.PageDisplayer.showErrorDialog
 import ch.seidel.commons.{DisplayablePage, PageDisplayer, ProgressForm, TaskSteps}
 import ch.seidel.jwt
 import ch.seidel.kutu.Config._
 import ch.seidel.kutu.akka.KutuAppEvent
 import ch.seidel.kutu.data.{CaseObjectMetaUtil, ResourceExchanger, Surname}
 import ch.seidel.kutu.domain._
-import ch.seidel.kutu.http.{AuthSupport, EmptyResponse, JsonSupport, JwtSupport, WebSocketClient}
+import ch.seidel.kutu.http._
 import ch.seidel.kutu.renderer.PrintUtil
+import ch.seidel.kutu.view.WettkampfTableView
 import javafx.beans.property.SimpleObjectProperty
 import javafx.concurrent.Task
 import javafx.scene.control.DatePicker
 import net.glxn.qrgen.QRCode
 import net.glxn.qrgen.image.ImageType
-import org.controlsfx.validation.{Severity, ValidationResult, ValidationSupport, Validator}
+import org.controlsfx.validation.ValidationSupport
 import org.slf4j.LoggerFactory
 import scalafx.Includes._
 import scalafx.application.JFXApp3.PrimaryStage
@@ -33,21 +33,20 @@ import scalafx.scene.control.Tab.sfxTab2jfx
 import scalafx.scene.control.TableColumn._
 import scalafx.scene.control.TextField.sfxTextField2jfx
 import scalafx.scene.control.TreeItem.sfxTreeItemToJfx
-import scalafx.scene.control.{TreeView, _}
+import scalafx.scene.control._
 import scalafx.scene.image.{Image, ImageView}
 import scalafx.scene.input.{Clipboard, ClipboardContent, DataFormat}
 import scalafx.scene.layout._
 import scalafx.scene.web.WebView
 import scalafx.scene.{Cursor, Node, Scene}
-import scalafx.stage.{FileChooser, Screen}
 import scalafx.stage.FileChooser.ExtensionFilter
+import scalafx.stage.{FileChooser, Screen}
 import spray.json._
 
 import java.io.{ByteArrayInputStream, File, FileInputStream}
 import java.nio.file.Files
 import java.util.concurrent.{Executors, ScheduledExecutorService}
 import java.util.{Base64, Date, UUID}
-import scala.collection.mutable
 import scala.concurrent.duration.Duration
 import scala.concurrent.{Await, Future, Promise}
 import scala.util.{Failure, Success}
@@ -1524,75 +1523,12 @@ object KuTuApp extends JFXApp3 with KutuService with JsonSupport with JwtSupport
         case entityString: String => entityString.asType[List[Wettkampf]]
         case _ => List[Wettkampf]()
       }
-      type WKRecord = (WettkampfView, String)
       wklist.onComplete {
         case Success(wkl: List[Wettkampf]) =>
           val wklviews = wkl
             .map(wk => wk.toView(readProgramm(wk.programmId)))
-            .map(wk => (wk,
-              s"${wk.programm.name}" +
-              s"${if (wk.teamrule.nonEmpty && !wk.teamrule.equals("Keine Teams")) ", " + wk.teamrule else ""}" +
-              s"${if (wk.altersklassen.nonEmpty) ", Altersklassen" else ""}" +
-              s"${if (wk.jahrgangsklassen.nonEmpty) ", Jahrgangs Altersklassen" else ""}" +
-              ""))
           Platform.runLater {
-            val filteredModel = ObservableBuffer.from(wklviews)
-            val wkTable = new TableView[WKRecord](filteredModel) {
-              columns ++= List(
-                new TableColumn[WKRecord, String] {
-                  text = "Datum"
-                  cellValueFactory = { x =>
-                    new ReadOnlyStringWrapper(x.value, "datum", {
-                      s"${x.value._1.datum}"
-                    })
-                  }
-                  //minWidth = 150
-                },
-                new TableColumn[WKRecord, String] {
-                  text = "Titel"
-                  cellValueFactory = { x =>
-                    new ReadOnlyStringWrapper(x.value, "titel", {
-                      s"${x.value._1.titel}"
-                    })
-                  }
-                },
-                new TableColumn[WKRecord, String] {
-                  text = "Details"
-                  cellValueFactory = { x =>
-                    new ReadOnlyStringWrapper(x.value, "details", {
-                      x.value._2
-                    })
-                  }
-                }
-              )
-            }
-            wkTable.selectionModel.value.setSelectionMode(SelectionMode.Single)
-            val filter = new TextField() {
-              promptText = "Such-Text"
-              text.addListener { (o: javafx.beans.value.ObservableValue[_ <: String], oldVal: String, newVal: String) =>
-                val sortOrder = wkTable.sortOrder.toList;
-                filteredModel.clear()
-                val searchQuery = newVal.toUpperCase().split(" ")
-                for {wkr <- wklviews
-                     } {
-                  val (wettkampf, details) = wkr
-                  val matches = searchQuery.forall { search =>
-                    if (search.isEmpty() || wettkampf.easyprint.toUpperCase().contains(search)) {
-                      true
-                    }
-                    else {
-                      false
-                    }
-                  }
-
-                  if (matches) {
-                    filteredModel.add(wkr)
-                  }
-                }
-                wkTable.sortOrder.clear()
-                val restored = wkTable.sortOrder ++= sortOrder
-              }
-            }
+            val wkTable = WettkampfTableView(wklviews)
             PageDisplayer.showInDialog(caption, new DisplayablePage() {
               def getPage: Node = {
                 new BorderPane {
@@ -1602,7 +1538,7 @@ object KuTuApp extends JFXApp3 with KutuService with JsonSupport with JwtSupport
                   center = new BorderPane {
                     hgrow = Priority.Always
                     vgrow = Priority.Always
-                    top = filter
+                    top = wkTable.filter
                     center = wkTable
                     minWidth = 550
                   }
@@ -1610,13 +1546,13 @@ object KuTuApp extends JFXApp3 with KutuService with JsonSupport with JwtSupport
                 }
               }
             }, new Button("OK") {
-              disable <== when(wkTable.selectionModel.value.selectedItemProperty.isNull()) choose true otherwise false
+              disable <== when(wkTable.selectionModel.value.selectedItemProperty.isNull) choose true otherwise false
               onAction = (event: ActionEvent) => {
-                if (!wkTable.selectionModel().isEmpty) {
-                  val selectedAthleten = wkTable.items.value.zipWithIndex.filter {
+                if (!wkTable.selectionModel.value.isEmpty) {
+                  wkTable.items.value.zipWithIndex.filter {
                     x => wkTable.selectionModel.value.isSelected(x._2)
                   }.map { x =>
-                    val ((wettkampf, details), idx) = x
+                    val (wettkampf, _) = x
                     val url = s"$remoteAdminBaseUrl/api/competition/${wettkampf.uuid.get}"
                     invokeAsyncWithBusyIndicator[Wettkampf](s"Wettkampf ${wettkampf.easyprint} herunterladen") {
                       val pr = Promise[Wettkampf]()
@@ -2076,12 +2012,15 @@ object KuTuApp extends JFXApp3 with KutuService with JsonSupport with JwtSupport
     }
     val btnWettkampfModus = new ToggleButton("Wettkampf-Modus") {
       id = "wettkampfmodusButton"
+      styleClass += "toggle-button2"
       selected <==> modelWettkampfModus
       disable = true
     }
 
     val btnConnectStatus = new ToggleButton() {
       //id = "connected-info"
+      styleClass += "toggle-button2"
+
       disable <== btnWettkampfModus.disable
       onAction = handleAction { action =>
         if (ConnectionStates.connectedProperty.value) {
