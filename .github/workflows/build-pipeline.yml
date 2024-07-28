@@ -104,6 +104,9 @@ jobs:
           mvn clean install package
         env:
           OS: Linux
+      - name: Prepare Releasenames
+        run: |
+          . ./normalize-releasenames.sh
       - name: Archive linux application jar
         uses: actions/upload-artifact@v4
         with:
@@ -148,6 +151,10 @@ jobs:
           mvn clean install package
         env:
           OS: Win64
+        shell: bash
+      - name: Prepare Releasenames
+        run: |
+          . ./normalize-releasenames.sh
         shell: bash
       - name: Archive production artifacts
         uses: actions/upload-artifact@v4
@@ -194,13 +201,16 @@ jobs:
           mvn clean install package
         env:
           OS: macOS
+      - name: Prepare Releasenames
+        run: |
+          . ./normalize-releasenames.sh
       - name: Archive production artifacts
         uses: actions/upload-artifact@v4
         with:
           name: osx-intel-app
           path: |
-            target/macOS/*.pkg
-            target/macOS/*.dmg
+            target/macOS-x86_64/*.pkg
+            target/macOS-x86_64/*.dmg
 
   build-osx-arm-distribution:
     needs: build-app
@@ -239,13 +249,16 @@ jobs:
           mvn clean install package
         env:
           OS: macOS
+      - name: Prepare Releasenames
+        run: |
+          . ./normalize-releasenames.sh
       - name: Archive production artifacts
         uses: actions/upload-artifact@v4
         with:
           name: osx-arm-app
           path: |
-            target/macOS/*.pkg
-            target/macOS/*.dmg
+            target/macOS-aarch64/*.pkg
+            target/macOS-aarch64/*.dmg
 
   build-docker-distribution:
     needs: build-lnx-distribution
