@@ -47,7 +47,7 @@
 										<argument>--dest</argument>
 										<argument>${project.build.directory}/${bundler.os}</argument>
 										<argument>--name</argument>
-										<argument>TurnerWettkampf-App-v${parsedVersion.majorVersion}r${parsedVersion.minorVersion}_win64</argument>
+										<argument>TurnerWettkampf-App-v${parsedVersion.majorVersion}r${parsedVersion.minorVersion}</argument>
 										<argument>--app-version</argument>
 										<argument>${app.version}</argument>
 										<argument>--main-jar</argument>
@@ -94,11 +94,11 @@
 			</activation>
 			<properties>
 				<javafx.os>mac</javafx.os>
-				<bundler.os>macOS</bundler.os>
+				<bundler.os>macOS-x86_64</bundler.os>
 				<bundler.type>pkg</bundler.type>
 				<app.logo>AppIcon.icns</app.logo>
-				<javafx.version>19</javafx.version>
-				<scalafx.version>19.0.0-R30</scalafx.version>
+				<!--javafx.version>19</javafx.version>
+				<scalafx.version>19.0.0-R30</scalafx.version-->
 			</properties>
 			<build>
 				<plugins>
@@ -125,7 +125,7 @@
 										<argument>--dest</argument>
 										<argument>${project.build.directory}/${bundler.os}</argument>
 										<argument>--name</argument>
-										<argument>TurnerWettkampf-App-v${parsedVersion.majorVersion}r${parsedVersion.minorVersion}_osx-intel</argument>
+										<argument>TurnerWettkampf-App-v${parsedVersion.majorVersion}r${parsedVersion.minorVersion}</argument>
 										<argument>--app-version</argument>
 										<argument>${app.version}</argument>
 										<argument>--main-jar</argument>
@@ -170,7 +170,7 @@
 			</activation>
 			<properties>
 				<javafx.os>mac-aarch64</javafx.os>
-				<bundler.os>macOS</bundler.os>
+				<bundler.os>macOS-aarch64</bundler.os>
 				<bundler.type>pkg</bundler.type>
 				<app.logo>AppIcon.icns</app.logo>
 			</properties>
@@ -199,7 +199,7 @@
 										<argument>--dest</argument>
 										<argument>${project.build.directory}/${bundler.os}</argument>
 										<argument>--name</argument>
-										<argument>TurnerWettkampf-App-v${parsedVersion.majorVersion}r${parsedVersion.minorVersion}_osx-arm</argument>
+										<argument>TurnerWettkampf-App-v${parsedVersion.majorVersion}r${parsedVersion.minorVersion}</argument>
 										<argument>--app-version</argument>
 										<argument>${app.version}</argument>
 										<argument>--main-jar</argument>
@@ -274,7 +274,7 @@
 										<argument>--dest</argument>
 										<argument>${project.build.directory}/${bundler.os}</argument>
 										<argument>--name</argument>
-										<argument>TurnerWettkampf-App-v${parsedVersion.majorVersion}r${parsedVersion.minorVersion}_linux</argument>
+										<argument>TurnerWettkampf-App-v${parsedVersion.majorVersion}r${parsedVersion.minorVersion}</argument>
 										<argument>--app-version</argument>
 										<argument>${app.version}</argument>
 										<argument>--main-jar</argument>
@@ -323,7 +323,7 @@
 		<scala.majorversion>2.13</scala.majorversion>
 		<scala.version>2.13.13</scala.version>
 		<akkaHttp.version>10.5.3</akkaHttp.version>
-		<javafx.version>21.0.3</javafx.version>
+		<javafx.version>21.0.4</javafx.version>
 		<akka.version>2.8.5</akka.version>
 		<scalafx.version>21.0.0-R32</scalafx.version>
 		<!--scalafx.version>20.0.0-R31</scalafx.version-->

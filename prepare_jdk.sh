@@ -3,8 +3,8 @@
 # https://github.com/adoptium/temurin21-binaries/releases/tag/jdk-21.0.1%2B12
 # https://github.com/adoptium/temurin21-binaries/releases/download/jdk-21.0.1%2B12/OpenJDK21U-jdk_x64_windows_hotspot_21.0.1_12.zip
 export jremajor=21
-export jreminor=0.3
-export jreupdate=9
+export jreminor=0.4
+export jreupdate=7
 export jreversion="jdk-${jremajor}.${jreminor}+${jreupdate}"
 export jrefversion="${jremajor}.${jreminor}_${jreupdate}"
 export macispec="jdk_x64_mac_hotspot"
