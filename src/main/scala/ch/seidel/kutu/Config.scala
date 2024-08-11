@@ -13,6 +13,7 @@ import java.nio.file.{Files, LinkOption, StandardOpenOption}
 import java.security.{NoSuchAlgorithmException, SecureRandom}
 import java.util.Collections.emptyList
 import java.util.UUID
+import java.util.prefs.Preferences
 import javax.crypto.KeyGenerator
 import scala.collection.mutable
 import scala.jdk.CollectionConverters.CollectionHasAsScala

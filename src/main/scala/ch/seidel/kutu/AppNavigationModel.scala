@@ -15,6 +15,7 @@ import scalafx.scene.input.{KeyEvent, MouseEvent}
 import scalafx.scene.layout.{Priority, Region, TilePane}
 
 import java.io.IOException
+import java.util.prefs.Preferences
 import scala.collection.immutable.TreeMap
 
 object AppNavigationModel  {
@@ -37,7 +38,10 @@ case class KuTuAppThumbNail(context: Any, button: Button, item: TreeItem[String]
 
 object KuTuAppTree {
   val showThumbnails = new BooleanProperty()
-  showThumbnails.value = true
+  showThumbnails.value = Preferences.userRoot().getBoolean("showThumbnails", true)
+  showThumbnails.onChange {
+    Preferences.userRoot().putBoolean("showThumbnails", showThumbnails.value)
+  }
 }
 
 /**
