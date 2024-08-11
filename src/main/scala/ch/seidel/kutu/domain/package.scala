@@ -7,7 +7,7 @@ import org.apache.commons.text.similarity.LevenshteinDistance
 
 import java.io.File
 import java.net.URLEncoder
-import java.nio.file.{Files, LinkOption, StandardOpenOption}
+import java.nio.file.{Files, LinkOption, Path, StandardOpenOption}
 import java.sql.{Date, Timestamp}
 import java.text.{ParseException, SimpleDateFormat}
 import java.time.{LocalDate, LocalDateTime, Period, ZoneId}
@@ -750,28 +750,46 @@ package object domain {
       rotation.map(RiegenRotationsregel(_).toFormel),
       teamrule.map(TeamRegel(_).toRuleName))
 
-    private def prepareFilePath(homedir: String) = {
-      val filename: String = encodeFileName(easyprint)
-
-      val dir = new File(homedir + "/" + filename)
-      if (!dir.exists) {
-        dir.mkdirs
+    def prepareFilePath(homedir: String, readOnly: Boolean = true, moveFrom: Option[Wettkampf] = None): File = {
+      val targetDir = new File(homedir + "/" + encodeFileName(easyprint))
+      if (!readOnly) {
+        moveFrom match {
+          case None => if (!targetDir.exists()) targetDir.mkdirs
+          case Some(p) =>
+            val oldDir = new java.io.File(homedir + "/" + encodeFileName(p.easyprint))
+            if (!targetDir.exists()) {
+              if (oldDir.exists() && !oldDir.equals(targetDir)) {
+                oldDir.renameTo(targetDir)
+                Files.deleteIfExists(oldDir.toPath)
+              } else {
+                targetDir.mkdirs()
+              }
+            } else if (oldDir.exists() && !oldDir.equals(targetDir)) {
+              val oldPath = oldDir.toPath
+              val newPath = targetDir.toPath
+              Files.walk(oldPath)
+                .map(source => (source, newPath.resolve(oldPath.relativize(source))))
+                .filter { case (source, target) => !Files.exists(target) || Files.getLastModifiedTime(target).compareTo(Files.getLastModifiedTime(source)) < 0 }
+                .forEach { case (source, target) => Files.copy(source, target) }
+            }
+        }
       }
-      dir
+      targetDir
     }
 
-    def filePath(homedir: String, origin: String) = new java.io.File(prepareFilePath(homedir), ".at." + origin).toPath
 
-    def fromOriginFilePath(homedir: String, origin: String) = new java.io.File(prepareFilePath(homedir), ".from." + origin).toPath
+    def filePath(homedir: String, origin: String, readOnly: Boolean = false): Path = new java.io.File(prepareFilePath(homedir, readOnly), ".at." + origin).toPath
+
+    def fromOriginFilePath(homedir: String, origin: String, readOnly: Boolean = false): Path = new java.io.File(prepareFilePath(homedir, readOnly), ".from." + origin).toPath
 
     def saveRemoteOrigin(homedir: String, origin: String): Unit = {
       val path = fromOriginFilePath(homedir, origin)
       val fos = Files.newOutputStream(path, StandardOpenOption.CREATE_NEW)
       try {
         fos.write(uuid.toString.getBytes("utf-8"))
-        fos.flush
+        fos.flush()
       } finally {
-        fos.close
+        fos.close()
       }
       val os = System.getProperty("os.name").toLowerCase
       if (os.indexOf("win") > -1) {
@@ -780,12 +798,12 @@ package object domain {
     }
 
     def hasRemote(homedir: String, origin: String): Boolean = {
-      val path = fromOriginFilePath(homedir, origin)
+      val path = fromOriginFilePath(homedir, origin, readOnly = true)
       path.toFile.exists
     }
 
     def removeRemote(homedir: String, origin: String): Unit = {
-      val atFile = fromOriginFilePath(homedir, origin).toFile
+      val atFile = fromOriginFilePath(homedir, origin, readOnly = true).toFile
       if (atFile.exists) {
         atFile.delete()
       }
@@ -807,7 +825,7 @@ package object domain {
     }
 
     def readSecret(homedir: String, origin: String): Option[String] = {
-      val path = filePath(homedir, origin)
+      val path = filePath(homedir, origin, readOnly = true)
       if (path.toFile.exists) {
         Some(new String(Files.readAllBytes(path), "utf-8"))
       }

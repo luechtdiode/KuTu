@@ -499,15 +499,8 @@ object KuTuApp extends JFXApp3 with KutuService with JsonSupport with JwtSupport
                 txtRiegenRotationsregel.text.value,
                 txtTeamRegel.text.value
               )
-              val dir = new java.io.File(homedir + "/" + w.easyprint.replace(" ", "_"))
-              if (!dir.exists()) {
-                val olddir = new java.io.File(homedir + "/" + p.toWettkampf.easyprint.replace(" ", "_"))
-                if (olddir.exists() && !olddir.equals(dir)) {
-                  olddir.renameTo(dir);
-                } else {
-                  dir.mkdirs();
-                }
-              }
+
+              w.prepareFilePath(homedir, readOnly = false, Some(p.toWettkampf))
               updateTree
               val text = s"${w.titel} ${w.datum}"
               tree.getLeaves("Wettkämpfe").find { item => text.equals(item.value.value) } match {
