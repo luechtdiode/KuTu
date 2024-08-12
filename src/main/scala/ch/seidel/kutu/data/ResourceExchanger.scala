@@ -775,7 +775,7 @@ object ResourceExchanger extends KutuService with RiegenBuilder {
         DurchgangEditor(wettkampf.id, durchgaenge(name.getOrElse(rel.head.initdurchgang.getOrElse(""))), rel)
       }
       .foreach { x =>
-        fileOutputStream.write(f"""${x.durchgang.name}${sep}${x.anz.value}${sep}${x.min.value}${sep}${x.max.value}${sep}${x.avg.value}${sep}${toShortDurationFormat(x.durchgang.planTotal)}${sep}${toShortDurationFormat(x.durchgang.planEinturnen)}${sep}${toShortDurationFormat(x.durchgang.planGeraet)}""".getBytes(charset))
+        fileOutputStream.write(f"""${x.durchgang.easyprint}${sep}${x.anz.value}${sep}${x.min.value}${sep}${x.max.value}${sep}${x.avg.value}${sep}${toShortDurationFormat(x.durchgang.planTotal)}${sep}${toShortDurationFormat(x.durchgang.planEinturnen)}${sep}${toShortDurationFormat(x.durchgang.planGeraet)}""".getBytes(charset))
         diszipline.foreach { d =>
           fileOutputStream.write(f"${sep}${x.initstartriegen.getOrElse(d, Seq[RiegeEditor]()).map(r => f"${r.name.value.replace("M,", "Tu,").replace("W,", "Ti,")} (${r.anz.value})").mkString("\"", "\n", "\"")}${sep}${x.initstartriegen.getOrElse(d, Seq[RiegeEditor]()).map(r => r.anz.value).sum}".getBytes(charset))
         }
@@ -831,7 +831,7 @@ object ResourceExchanger extends KutuService with RiegenBuilder {
         DurchgangEditor(wettkampf.id, durchgaenge(name.getOrElse("")), rel)
       }
       .foreach { x =>
-        fileOutputStream.write(f"""${x.durchgang.name}${sep}${x.anz.value}${sep}${x.min.value}${sep}${x.max.value}${sep}${toShortDurationFormat(x.durchgang.planTotal)}${sep}${toShortDurationFormat(x.durchgang.planEinturnen)}${sep}${toShortDurationFormat(x.durchgang.planGeraet)}""".getBytes(charset))
+        fileOutputStream.write(f"""${x.durchgang.easyprint}${sep}${x.anz.value}${sep}${x.min.value}${sep}${x.max.value}${sep}${toShortDurationFormat(x.durchgang.planTotal)}${sep}${toShortDurationFormat(x.durchgang.planEinturnen)}${sep}${toShortDurationFormat(x.durchgang.planGeraet)}""".getBytes(charset))
         val riegen = x.riegenWithMergedClubs()
         val rows = riegen.values.map(_.size).max
         val riegenFields = for {

@@ -56,7 +56,7 @@ class KuTuWettkampfCollectResultsSpec extends KuTuBaseSpec with WettkampfOvervie
 
     "render overview" in {
       val logofile = PrintUtil.locateLogoFile(new java.io.File(homedir + "/" + encodeFileName(testwettkampf.easyprint)))
-      val document = toHTML(testwettkampf.toView(readProgramm(testwettkampf.programmId)), listOverviewStats(UUID.fromString(testwettkampf.uuid.get)), selectWertungen(wettkampfId = Some(testwettkampf.id)).toList, logofile)
+      val document = toHTML(testwettkampf.toView(readProgramm(testwettkampf.programmId)), "", listOverviewStats(UUID.fromString(testwettkampf.uuid.get)), selectWertungen(wettkampfId = Some(testwettkampf.id)).toList, logofile)
     }
 
     "collect results" in {

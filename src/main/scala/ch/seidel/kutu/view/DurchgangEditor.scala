@@ -41,7 +41,7 @@ trait DurchgangEditor {
 
   val name = StringProperty(durchgang.name)
   val title = StringProperty(durchgang.title)
-  val cellvalue = StringProperty(if (durchgang.name == durchgang.title) durchgang.name else durchgang.name)
+  val cellvalue = StringProperty(durchgang.name)
   val anz: IntegerProperty
   val min: IntegerProperty
   val max: IntegerProperty

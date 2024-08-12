@@ -35,7 +35,17 @@ trait DurchgangService extends DBService with DurchgangResultMapper {
           """.as[DurchgangstationView]).withPinnedSession
     }, Duration.Inf).toList
   }
-  
+  def updateStartOffset(wettkampfid: Long, title: String, offsetInMillis: Long): Unit = {
+    Await.result(database.run{
+      sqlu"""
+                update durchgang
+                set planStartOffset=${offsetInMillis}
+                where
+                wettkampf_id=${wettkampfid} and title=${title}
+      """
+    }, Duration.Inf)
+  }
+
   def renameDurchgang(wettkampfid: Long, oldname: String, newname: String) = {
     Await.result(database.run{
         (sqlu"""
