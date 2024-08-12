@@ -144,7 +144,7 @@ trait WettkampfOverviewToHtmlRenderer {
     </html>
   """
 
-  private def blatt(wettkampf: WettkampfView, programme: Seq[(String, Int, Int, Int)], vereinRows: List[(String, Map[String, (Int, Int)], Int, Int)], wertungen: List[WertungView], logo: File) = {
+  private def blatt(wettkampf: WettkampfView, eventString: String, programme: Seq[(String, Int, Int, Int)], vereinRows: List[(String, Map[String, (Int, Int)], Int, Int)], wertungen: List[WertungView], logo: File) = {
     val programHeader1 = programme.map(p => escaped(p._1))
       .mkString("<th class='blockstart' colspan='2'>", "</th><th class='blockstart' colspan='2'>", "</th>")
     val programHeader2 = programme.map(_ => "Ti</th><th>Tu")
@@ -301,7 +301,7 @@ trait WettkampfOverviewToHtmlRenderer {
     s"""<div class=blatt>
       <div class=headline>
         $logoHtml
-        <h1>Wettkampf-Übersicht</h1><h2>${escaped(wettkampf.easyprint)}</h2></div>
+        <h1>Wettkampf-Übersicht</h1><h2>${escaped(wettkampf.titel)} am ${escaped(eventString)}</h2></div>
       </div>
       <h2>Anmeldungen</h2>
       <div class=headline>
@@ -405,7 +405,7 @@ trait WettkampfOverviewToHtmlRenderer {
   
   val pageIntro = "<table width='100%'><tr><td>"
   val pageOutro = "</td></tr></table>"
-  def toHTML(wettkampf: WettkampfView, stats: List[OverviewStatTuple], wertungen: List[WertungView], logo: File): String = {
+  def toHTML(wettkampf: WettkampfView, eventString: String, stats: List[OverviewStatTuple], wertungen: List[WertungView], logo: File): String = {
     val programme: Seq[(String, Int, Int, Int)] = stats
       .groupBy(t => (t._2, t._3))
       .map(t => (t._1._1, t._1._2, t._2.map(_._4).sum, t._2.map(_._5).sum))
@@ -417,7 +417,7 @@ trait WettkampfOverviewToHtmlRenderer {
       .toList
       .sortBy(_._1)
 
-    intro + blatt(wettkampf, programme, vereinRows, wertungen, logo) + outro
+    intro + blatt(wettkampf, eventString, programme, vereinRows, wertungen, logo) + outro
   }
 
 }

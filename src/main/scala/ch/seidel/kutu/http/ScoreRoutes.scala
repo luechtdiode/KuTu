@@ -9,9 +9,10 @@ import ch.seidel.kutu.Config
 import ch.seidel.kutu.KuTuServer.handleCID
 import ch.seidel.kutu.akka.{CompetitionCoordinatorClientActor, MessageAck, ResponseMessage, StartedDurchgaenge}
 import ch.seidel.kutu.data._
-import ch.seidel.kutu.domain.{Altersklasse, Durchgang, KutuService, PublishedScoreView, WertungView, encodeFileName, encodeURIParam}
+import ch.seidel.kutu.domain.{Altersklasse, Durchgang, KutuService, PublishedScoreView, WertungView, encodeFileName, encodeURIParam, ld2SQLDate, sqlDate2ld}
 import ch.seidel.kutu.renderer.PrintUtil._
 import ch.seidel.kutu.renderer.{PrintUtil, ScoreToHtmlRenderer, ScoreToJsonRenderer}
+import ch.seidel.kutu.view.WettkampfInfo
 import fr.davit.akka.http.metrics.core.scaladsl.server.HttpMetricsDirectives._
 
 import java.io.File
@@ -142,7 +143,9 @@ ScoreRoutes extends SprayJsonSupport with JsonSupport with AuthSupport with Rout
             complete(StatusCodes.NotFound)
           } else {
             val wettkampf = readWettkampf(competitionId.toString)
+            val wi = WettkampfInfo(wettkampf.toView(readProgramm(wettkampf.programmId)), this)
             val wkdate: LocalDate = ch.seidel.kutu.domain.sqlDate2ld(wettkampf.datum)
+            val wkEndDate = ld2SQLDate(wi.endDate)
             val scheduledDisziplines = listScheduledDisziplinIdsZuWettkampf(wettkampf.id)
             val data = selectWertungen(wettkampfId = Some(wettkampf.id))
               .filter(w => scheduledDisziplines.contains(w.wettkampfdisziplin.disziplin.id))
@@ -280,7 +283,7 @@ ScoreRoutes extends SprayJsonSupport with JsonSupport with AuthSupport with Rout
                   , Symbol("kind").?
                 ) { (groupby, filter, html, alphanumeric, kind) =>
                   complete(
-                    if (!wkdate.atStartOfDay().isBefore(LocalDate.now.atStartOfDay) || (groupby == None && filter.isEmpty)) {
+                    if (!wkEndDate.atStartOfDay().isBefore(LocalDate.now.atStartOfDay) || (groupby == None && filter.isEmpty)) {
                       ToResponseMarshallable(HttpEntity(ContentTypes.`text/html(UTF-8)`,
                         f"""
                            |<html>
