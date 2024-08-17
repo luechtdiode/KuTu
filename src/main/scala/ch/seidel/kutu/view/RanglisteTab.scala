@@ -52,7 +52,7 @@ class RanglisteTab(wettkampfmode: BooleanProperty, wettkampf: WettkampfView, ove
       case _ => standardGroupers
     }
     if (wettkampf.toWettkampf.hasTeams) {
-      ByTeamRule("Wettkampf Teamregel", TeamRegel(wettkampf.toWettkampf)) +: akenhanced
+      TeamRegel(wettkampf.toWettkampf).getTeamRegeln.map(r => ByTeamRule("Wettkampf Teamregel " + r.toRuleName, r)).toList ++ akenhanced
     } else {
       akenhanced
     }
