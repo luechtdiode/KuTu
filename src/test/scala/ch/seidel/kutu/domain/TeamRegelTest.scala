@@ -45,4 +45,10 @@ class TeamRegelTest extends AnyWordSpec with Matchers {
     assert( regel.teamsAllowed == true )
     assert( regel.toFormel == "VerbandGesamt(3/*)" )
   }
+  "VereinGerät[K5+K6+K7/KH+KD](3/*)" in {
+    val regel = TeamRegel("VereinGerät[K5+K6+K7/KH+KD](3/*)")
+    assert( regel.teamsAllowed == true )
+    assert( regel.toFormel == "VereinGerät[K5+K6+K7/KH+KD](3/*)" )
+
+  }
 }
