@@ -230,6 +230,7 @@ trait WettkampfOverviewToHtmlRenderer {
     val jgAltersklassen = wkJGAltersklassen.map(ak => s"<li>${escaped(ak.easyprint)}</li>").mkString("\n")
 
     val teams = TeamRegel(wettkampf.teamrule)
+    val teamsIndex = teams.getTeamRegeln.map(r => r.toRuleName -> r).toMap
     val teamsBlock = if (teams.teamsAllowed) {
       val groupedWertungen = if (jgAltersklassen.nonEmpty) {
         wertungen.groupBy { w =>
@@ -239,7 +240,7 @@ trait WettkampfOverviewToHtmlRenderer {
           val wkd: LocalDate = wettkampf.datum
           val alter = wkd.getYear - gebdat.getYear
           val jgak = Altersklasse(wkJGAltersklassen, alter, geschlecht, programm)
-          (programm.easyprint, jgak.easyprint, "")
+          ("", jgak.easyprint, "")
         }
       }
       else if (altersklassen.nonEmpty) {
@@ -250,10 +251,10 @@ trait WettkampfOverviewToHtmlRenderer {
           val wkd: LocalDate = wettkampf.datum
           val alter = Period.between(gebdat, wkd.plusDays(1)).getYears
           val ak = Altersklasse(wkAlterklassen, alter, geschlecht, programm)
-          (programm.easyprint, ak.easyprint, "")
+          ("", ak.easyprint, "")
         }
       } else {
-        wertungen.groupBy(w => (w.wettkampfdisziplin.programm.easyprint, "", w.athlet.geschlecht))
+        wertungen.groupBy(w => (teams.pgmGrouperText(w), "", teams.sexGrouperText(w)))
       }
       val groupedTeams = groupedWertungen.toList.flatMap {
         case (group, wertungen) => teams.extractTeams(wertungen).groupBy(_.rulename).map {
@@ -267,7 +268,10 @@ trait WettkampfOverviewToHtmlRenderer {
       }
       val teamsSections = groupedTeams.keySet.toList.sorted.map {
         case name =>
-          s"""<h3>$name</h3><br>
+          s"""<h3>$name</h3>
+             |<h4>Explizite Gruppenzusammenfassungen:</h4>
+             |${teamsIndex(name).getGrouperDefs.map(d => d.mkString("<li>", "+", "</li>")).mkString("<ul>", "\n", "</ul><br>")}
+             |
              |<div class="showborder"><table width=100%>
              |<thead>
              |  <tr class='head'><th>Prog./Kat.</th><th class='blockstart'>AK</th><th class='blockstart'>Geschlecht</th><th class='blockstart'>Anzahl Teams</th><th class='blockstart'>Teams</th></tr>

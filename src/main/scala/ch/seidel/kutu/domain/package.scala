@@ -223,6 +223,10 @@ package object domain {
     def toRaw(wettkampfId: Long) = RiegeRaw(wettkampfId, r, durchgang, start.map(_.id), kind)
   }
 
+  case class GenericGrouper(name: String) extends DataObject {
+    override def easyprint: String = name
+  }
+
   case class TurnerGeschlecht(geschlecht: String) extends DataObject {
     override def easyprint = geschlecht.toLowerCase() match {
       case "m" => "Turner"

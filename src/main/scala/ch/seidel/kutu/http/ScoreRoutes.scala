@@ -9,7 +9,7 @@ import ch.seidel.kutu.Config
 import ch.seidel.kutu.KuTuServer.handleCID
 import ch.seidel.kutu.akka.{CompetitionCoordinatorClientActor, MessageAck, ResponseMessage, StartedDurchgaenge}
 import ch.seidel.kutu.data._
-import ch.seidel.kutu.domain.{Altersklasse, Durchgang, KutuService, PublishedScoreView, WertungView, encodeFileName, encodeURIParam, ld2SQLDate, sqlDate2ld}
+import ch.seidel.kutu.domain.{Altersklasse, Durchgang, KutuService, PublishedScoreView, TeamRegel, WertungView, encodeFileName, encodeURIParam, ld2SQLDate, sqlDate2ld}
 import ch.seidel.kutu.renderer.PrintUtil._
 import ch.seidel.kutu.renderer.{PrintUtil, ScoreToHtmlRenderer, ScoreToJsonRenderer}
 import ch.seidel.kutu.view.WettkampfInfo
@@ -153,8 +153,8 @@ ScoreRoutes extends SprayJsonSupport with JsonSupport with AuthSupport with Rout
             val logodir = new java.io.File(Config.homedir + "/" + encodeFileName(wettkampf.easyprint))
             val logofile = PrintUtil.locateLogoFile(logodir)
             val programmText = wettkampf.programmId match {case 20 => "Kategorie" case _ => "Programm"}
-            val altersklassen = Altersklasse.parseGrenzen(wettkampf.altersklassen.get, "Altersklasse")
-            val jgAltersklassen = Altersklasse.parseGrenzen(wettkampf.jahrgangsklassen.get, "Altersklasse")
+            val altersklassen = Altersklasse.parseGrenzen(wettkampf.altersklassen.get)
+            val jgAltersklassen = Altersklasse.parseGrenzen(wettkampf.jahrgangsklassen.get)
             def riegenZuDurchgang: Map[String, Durchgang] = {
               val riegen = listRiegenZuWettkampf(wettkampf.id)
               riegen.map(riege => riege._1 -> riege._3.map(durchgangName => Durchgang(0, durchgangName)).getOrElse(Durchgang())).toMap
@@ -165,11 +165,16 @@ ScoreRoutes extends SprayJsonSupport with JsonSupport with AuthSupport with Rout
                 ByJahrgang(), ByJahrgangsAltersklasse("Turn10® Altersklassen", Altersklasse.altersklassenTurn10), ByAltersklasse("DTB Altersklassen", Altersklasse.altersklassenDTB),
                 ByGeschlecht(), ByVerband(), ByVerein(), byDurchgangMat,
                 ByRiege(), ByRiege2(), ByDisziplin(), ByJahr())
-              (altersklassen.nonEmpty, jgAltersklassen.nonEmpty) match {
+              val akenhanced = (altersklassen.nonEmpty, jgAltersklassen.nonEmpty) match {
                 case (true,true) => standardGroupers ++ List(ByAltersklasse("Wettkampf Altersklassen", altersklassen), ByJahrgangsAltersklasse("Wettkampf JG-Altersklassen", jgAltersklassen))
                 case (false,true) => standardGroupers :+ ByJahrgangsAltersklasse("Wettkampf JG-Altersklassen", jgAltersklassen)
                 case (true,false) => standardGroupers :+ ByAltersklasse("Wettkampf Altersklassen", altersklassen)
                 case _ => standardGroupers
+              }
+              if (wettkampf.hasTeams) {
+                akenhanced :+ ByTeamRule("Wettkampf Teamregel", TeamRegel(wettkampf))
+              } else {
+                akenhanced
               }
             }
             val logoHtml = if (logofile.exists()) s"""<img class=logo src="${logofile.imageSrcForWebEngine}" title="Logo"/>""" else ""

@@ -6,7 +6,7 @@ import ch.seidel.kutu.Config._
 import ch.seidel.kutu.ConnectionStates
 import ch.seidel.kutu.KuTuApp.handleAction
 import ch.seidel.kutu.data._
-import ch.seidel.kutu.domain.{Altersklasse, Durchgang, KutuService, WertungView, WettkampfView, encodeFileName, isNumeric}
+import ch.seidel.kutu.domain.{Altersklasse, Durchgang, KutuService, TeamRegel, WertungView, WettkampfView, encodeFileName, isNumeric}
 import ch.seidel.kutu.renderer.PrintUtil.FilenameDefault
 import scalafx.Includes.when
 import scalafx.beans.binding.Bindings
@@ -45,12 +45,18 @@ class RanglisteTab(wettkampfmode: BooleanProperty, wettkampf: WettkampfView, ove
       ByGeschlecht(),
       ByVerband(), ByVerein(),
       ByDurchgang(riegenZuDurchgang), ByRiege(), ByRiege2(), ByDisziplin())
-    (altersklassen.nonEmpty, jgAltersklassen.nonEmpty) match {
+    val akenhanced = (altersklassen.nonEmpty, jgAltersklassen.nonEmpty) match {
       case (true,true) => standardGroupers ++ List(ByAltersklasse("Wettkampf Altersklassen", altersklassen), ByJahrgangsAltersklasse("Wettkampf JG-Altersklassen", jgAltersklassen))
       case (false,true) => standardGroupers :+ ByJahrgangsAltersklasse("Wettkampf JG-Altersklassen", jgAltersklassen)
       case (true,false) => standardGroupers :+ ByAltersklasse("Wettkampf Altersklassen", altersklassen)
       case _ => standardGroupers
     }
+    if (wettkampf.toWettkampf.hasTeams) {
+      ByTeamRule("Wettkampf Teamregel", TeamRegel(wettkampf.toWettkampf)) +: akenhanced
+    } else {
+      akenhanced
+    }
+
   }
 
   override def getData: Seq[WertungView] = {
@@ -220,6 +226,7 @@ class RanglisteTab(wettkampfmode: BooleanProperty, wettkampf: WettkampfView, ove
     val combos = populate(groupers)
     val akg = groupers.find(p => p.isInstanceOf[ByAltersklasse] && p.groupname.startsWith("Wettkampf"))
     val jakg = groupers.find(p => p.isInstanceOf[ByJahrgangsAltersklasse] && p.groupname.startsWith("Wettkampf"))
+    val team = groupers.find(p => p.isInstanceOf[ByTeamRule] && p.groupname.startsWith("Wettkampf"))
     if (akg.nonEmpty) {
       combos(1).selectionModel.value.select(ByProgramm(programmText))
       combos(2).selectionModel.value.select(akg.get)
@@ -228,10 +235,11 @@ class RanglisteTab(wettkampfmode: BooleanProperty, wettkampf: WettkampfView, ove
       combos(1).selectionModel.value.select(ByProgramm(programmText))
       combos(2).selectionModel.value.select(jakg.get)
       combos(3).selectionModel.value.select(ByGeschlecht())
+    } else if (team.nonEmpty) {
+      combos(1).selectionModel.value.select(team.get)
     } else {
       combos(1).selectionModel.value.select(ByProgramm(programmText))
       combos(2).selectionModel.value.select(ByGeschlecht())
-
     }
 
     true
