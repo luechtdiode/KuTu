@@ -254,23 +254,31 @@ trait WettkampfOverviewToHtmlRenderer {
           ("", ak.easyprint, "")
         }
       } else {
-        wertungen.groupBy(w => (teams.pgmGrouperText(w), "", teams.sexGrouperText(w)))
+        List((("", "", ""), wertungen))
       }
       val groupedTeams = groupedWertungen.toList.flatMap {
-        case (group, wertungen) => teams.extractTeams(wertungen).groupBy(_.rulename).map {
-          case (rulename, teams) =>
-            val (pgm, ak, sex) = group
-            (rulename, pgm, ak, sex, teams.size, teams.map(_.name).sorted.mkString(", "))
+        case (group, wertungen) => teams.extractTeamsWithDefaultGouping(wertungen).groupBy(x => (x._1, x._2)).flatMap {
+          case (grouper, teamgroup) => teamgroup.flatMap(_._3).groupBy(_.rulename).map {
+            case (rulename, teams) =>
+              val (pgm, ak, sex) = group
+              val pgmValue = if(grouper._1.contains(pgm)) grouper._1 else  pgm + grouper._1
+              val sexValue = if(grouper._2.contains(sex)) grouper._2 else sex + grouper._2
+              (rulename, pgmValue, ak, sexValue, teams.size, teams.map(_.name).sorted.mkString(", "))
+          }
         }
       }.groupBy(_._1).map{
         case (rulename, list) =>
           (rulename, list.sortBy(t => s"${t._1}${t._2}${t._3}"))
       }
+
       val teamsSections = groupedTeams.keySet.toList.sorted.map {
         case name =>
+          val groupMerges = teamsIndex(name).getGrouperDefs.filter(d => d.exists(_.trim.nonEmpty))
           s"""<h3>$name</h3>
+             |${if (groupMerges.nonEmpty) s"""
              |<h4>Explizite Gruppenzusammenfassungen:</h4>
-             |${teamsIndex(name).getGrouperDefs.map(d => d.mkString("<li>", "+", "</li>")).mkString("<ul>", "\n", "</ul><br>")}
+             |${teamsIndex(name).getGrouperDefs.filter(d => d.exists(_.trim.nonEmpty)).map(d => d.mkString("<li>", "+", "</li>")).mkString("<ul>", "\n", "</ul><br>")}
+             |""" else  ""}
              |
              |<div class="showborder"><table width=100%>
              |<thead>

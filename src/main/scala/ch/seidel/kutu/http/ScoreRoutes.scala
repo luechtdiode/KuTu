@@ -172,7 +172,7 @@ ScoreRoutes extends SprayJsonSupport with JsonSupport with AuthSupport with Rout
                 case _ => standardGroupers
               }
               if (wettkampf.hasTeams) {
-                akenhanced :+ ByTeamRule("Wettkampf Teamregel", TeamRegel(wettkampf))
+                TeamRegel(wettkampf).getTeamRegeln.map(r => ByTeamRule("Wettkampf Teamregel " + r.toRuleName, r)).toList ++ akenhanced
               } else {
                 akenhanced
               }

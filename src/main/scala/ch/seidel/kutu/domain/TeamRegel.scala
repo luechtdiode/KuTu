@@ -73,6 +73,15 @@ sealed trait TeamRegel {
   def extractTeams(wertungen: Iterable[WertungView]): List[Team]
   def extractExtraTeams(wertungen: Iterable[WertungView]): List[String] = wertungen.map(_.wettkampf).toList.distinct.flatMap(_.extraTeams)
 
+  def extractTeamsWithDefaultGouping(wertungen: Iterable[WertungView]): List[(String,String,List[Team])] = {
+    wertungen
+      .filter(w => w.team != 0)
+      .toList
+      .groupBy(w => (pgmGrouperText(w), sexGrouperText(w)))
+      .map( gr => (gr._1._1, gr._1._2, extractTeams(gr._2)))
+      .toList
+  }
+
   def teamsAllowed: Boolean
   def toFormel: String
   def toRuleName: String
@@ -91,7 +100,9 @@ case class TeamRegelList(regeln: List[TeamRegel], name: Option[String] = None) e
   override def extractTeams(wertungen: Iterable[WertungView]): List[Team] = {
     regeln.flatMap(_.extractTeams(wertungen))
   }
-
+  override def extractTeamsWithDefaultGouping(wertungen: Iterable[WertungView]): List[(String,String,List[Team])] = {
+    regeln.flatMap(_.extractTeamsWithDefaultGouping(wertungen))
+  }
   override def getGrouperDefs: List[Set[String]] = regeln.flatMap(_.getGrouperDefs)
   override def teamsAllowed: Boolean = regeln.nonEmpty && regeln.exists(_.teamsAllowed)
   override def toFormel: String = name.getOrElse(regeln.map(_.toFormel).mkString(","))
@@ -106,7 +117,7 @@ case class TeamRegelVereinGeraet(min: Int, max: Int, extraTeamsDef: String, grou
   override def getGrouperDefs: List[Set[String]] = grouperDefs
 
   override def toFormel: String = s"VereinGerät$grouperDef($min/${if (max > 0) max else "*"}$extraTeamsDef)"
-  override def toRuleName: String = s"""Vereins-Team Rangliste (beste $min Gerätewertungen${if (max > 0) s" aus $max" else ""})"""
+  override def toRuleName: String = s"""Vereins-Team Rangliste $grouperDef (beste $min Gerätewertungen${if (max > 0) s" aus $max" else ""})"""
 
   override def extractTeams(wertungen: Iterable[WertungView]): List[Team] = {
     val extraTeams = extractExtraTeams(wertungen)
@@ -159,7 +170,7 @@ case class TeamRegelVereinGesamt(min: Int, max: Int, extraTeamsDef: String, grou
 
   override def toFormel: String = s"VereinGesamt$grouperDef($min/${if (max > 0) max else "*"}$extraTeamsDef)"
 
-  override def toRuleName: String = s"""Vereins-Team Rangliste (beste $min Gesamtwertungen${if (max > 0) s" aus $max" else ""})"""
+  override def toRuleName: String = s"""Vereins-Team Rangliste $grouperDef (beste $min Gesamtwertungen${if (max > 0) s" aus $max" else ""})"""
 
   override def extractTeams(wertungen: Iterable[WertungView]): List[Team] = {
     val extraTeams = extractExtraTeams(wertungen)
@@ -206,7 +217,7 @@ case class TeamRegelVerbandGeraet(min: Int, max: Int, extraTeamsDef: String, gro
 
   override def toFormel: String = s"VerbandGerät$grouperDef($min/${if (max > 0) max else "*"}$extraTeamsDef)"
 
-  override def toRuleName: String = s"""Verbands-Team Rangliste (beste $min Gerätewertungen${if (max > 0) s" aus $max" else ""})"""
+  override def toRuleName: String = s"""Verbands-Team Rangliste $grouperDef (beste $min Gerätewertungen${if (max > 0) s" aus $max" else ""})"""
 
   override def extractTeams(wertungen: Iterable[WertungView]): List[Team] = {
     val extraTeams = extractExtraTeams(wertungen)
@@ -259,7 +270,7 @@ case class TeamRegelVerbandGesamt(min: Int, max: Int, extraTeamsDef: String, gro
   override def getGrouperDefs: List[Set[String]] = grouperDefs
 
   override def toFormel: String = s"VerbandGesamt$grouperDef($min/${if (max > 0) max else "*"}$extraTeamsDef)"
-  override def toRuleName: String = s"""Verbands-Team Rangliste (beste $min Gesamtwertungen${if (max > 0) s" aus $max" else ""})"""
+  override def toRuleName: String = s"""Verbands-Team Rangliste $grouperDef (beste $min Gesamtwertungen${if (max > 0) s" aus $max" else ""})"""
 
   override def extractTeams(wertungen: Iterable[WertungView]): List[Team] = {
     val extraTeams = extractExtraTeams(wertungen)
