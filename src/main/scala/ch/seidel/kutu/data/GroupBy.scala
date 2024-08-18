@@ -435,7 +435,7 @@ case class ByTeamRule(bezeichnung: String = "Teamregel", regel: TeamRegel) exten
   override val groupname = bezeichnung
   setKind(Teamrangliste)
 
-  protected override val grouper = (w:WertungView) => GenericGrouper(s"${regel.pgmGrouperText(w)},${regel.sexGrouperText(w)}")
+  protected override val grouper = (w:WertungView) => CompoundGrouper(Seq(GenericGrouper(regel.pgmGrouperText(w)), TurnerGeschlecht(regel.sexGrouperText(w))))
 
   protected override val sorter: Option[(GroupSection, GroupSection) => Boolean] = Some((gs1: GroupSection, gs2: GroupSection) => {
     gs1.groupKey.compareTo(gs2.groupKey) < 0

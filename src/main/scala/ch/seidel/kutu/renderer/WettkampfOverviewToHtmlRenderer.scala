@@ -1,17 +1,13 @@
 package ch.seidel.kutu.renderer
 
 import ch.seidel.kutu.Config
-
-import java.io.File
 import ch.seidel.kutu.Config.{homedir, remoteBaseUrl, remoteHostOrigin}
 import ch.seidel.kutu.KuTuApp.enc
-import ch.seidel.kutu.data.{ByGeschlecht, ByProgramm, GroupSection}
 import ch.seidel.kutu.domain._
 import ch.seidel.kutu.renderer.PrintUtil._
-import net.glxn.qrgen.QRCode
-import net.glxn.qrgen.image.ImageType
 import org.slf4j.LoggerFactory
 
+import java.io.File
 import java.sql.Date
 import java.time.{LocalDate, Period}
 import scala.collection.immutable._
@@ -20,129 +16,190 @@ trait WettkampfOverviewToHtmlRenderer {
   private val logger = LoggerFactory.getLogger(classOf[WettkampfOverviewToHtmlRenderer])
   private val intro2 = """<html><body><ul><li>"""
   private val intro = s"""<html lang="de-CH"><head>
-          <meta charset="UTF-8" />
-          <style type="text/css">
-            @media print {
-              body {
-                -webkit-print-color-adjust: economy;
-              }
-              ul {
-                page-break-inside: avoid;
-              }
-            }
-            @media only screen {
-              body {
-                 margin: 15px 15px 15px 20px;
-              }
-            }
-            body {
-              font-family: "Arial", "Verdana", sans-serif;
-              /*-webkit-print-color-adjust: economy;*/
-            }
-            h1 {
-              font-size: 32px;
-            }
-            h2 {
-              font-size: 15px;
-            }
-            h3 {
-              font-size: 14px;
-            }
-            h4 {
-              font-size: 13px;
-            }
-            p {
-              font-size: 12px;
-            }
-            table{
-              border-collapse:collapse;
-              border-spacing:0;
-              border: 0px; /*1px solid rgb(50,100,150);*/
-              /*border-width: thin;*/
-            }
-            thead {
-              border-bottom: 1px solid gray;
-            }
-            th {
-              background-color: rgb(250,250,200);
-              font-size: 10px;
-              overflow: hidden;
-            }
-            td {
-              font-size: 10px;
-              padding:0.2em;
-              overflow: hidden;
-              white-space: nowrap;
-            }
-            td.data {
-              //text-align: right
-            }
-            td.valuedata, td.valuedata.blockstart {
-              font-size: 11px;
-              text-align: right
-            }
-            td.link td>a {
-              font-size: 12px;
-
-            }
-            td.hintdata {
-              color: rgb(50,100,150);
-              font-size: 9px;
-              text-align: right
-            }
-            tbody tr:not(:last-child) > td {
-              border-bottom: solid lightgray;
-              border-bottom-width: thin;
-            }
-            tfoot {
-              border-top: 1px solid gray;
-            }
-            tfoot td, tfoot td.tuti.blockstart {
-              background-color: rgb(250,250,200);
-              font-size: 10px;
-              font-weight: bold;
-              border-top: 0px
-              border-bottom: 0px
-              overflow: hidden;
-              text-align: center;
-            }
-            tr:nth-child(even) {background: rgba(230, 230, 230, 0.6);}
-            tr .blockstart:not(:first-child) {
-              border-left: 1px solid lightgray;
-            }
-            li {
-              font-size: 12px;
-            }
-            .headline {
-              display: block;
-              border: 0px;
-              overflow: auto;
-            }
-            .wordwrapper {
-              word-wrap:break-word;
-            }
-            .logo {
-              float: right;
-              max-height: 100px;
-              border-radius: 5px;
-            }
-            .qrcode {
-              float: right;
-              max-height: 200px;
-            }
-            .showborder {
-              padding: 1px;
-              border: 1px solid rgb(50,100,150);
-              border-radius: 5px;
-            }
-          </style>
-          </head><body><ul><li>
-  """
+          |<meta charset="UTF-8" />
+          |<style type="text/css">
+          |  @media print {
+          |    body {
+          |      -webkit-print-color-adjust: economy;
+          |    }
+          |    ul {
+          |      page-break-inside: avoid;
+          |    }
+          |  }
+          |  @media only screen {
+          |    body {
+          |       margin: 15px 15px 15px 20px;
+          |    }
+          |  }
+          |  body {
+          |    font-family: "Arial", "Verdana", sans-serif;
+          |    /*-webkit-print-color-adjust: economy;*/
+          |  }
+          |  h1 {
+          |    font-size: 32px;
+          |  }
+          |  h2 {
+          |    font-size: 15px;
+          |  }
+          |  h3 {
+          |    font-size: 14px;
+          |  }
+          |  h4 {
+          |    font-size: 13px;
+          |  }
+          |  p {
+          |    font-size: 12px;
+          |  }
+          |  table{
+          |    border-collapse:collapse;
+          |    border-spacing:0;
+          |    border: 0px; /*1px solid rgb(50,100,150);*/
+          |    /*border-width: thin;*/
+          |  }
+          |  thead {
+          |    border-bottom: 1px solid gray;
+          |  }
+          |  th {
+          |    background-color: rgb(250,250,200);
+          |    font-size: 10px;
+          |    overflow: hidden;
+          |  }
+          |  td {
+          |    font-size: 10px;
+          |    padding:0.2em;
+          |    overflow: hidden;
+          |    white-space: nowrap;
+          |  }
+          |  td.data {
+          |    //text-align: right
+          |  }
+          |  td.valuedata, td.valuedata.blockstart {
+          |    font-size: 11px;
+          |    text-align: right
+          |  }
+          |  td.link td>a {
+          |    font-size: 12px;
+          |
+          |  }
+          |  td.hintdata {
+          |    color: rgb(50,100,150);
+          |    font-size: 9px;
+          |    text-align: right
+          |  }
+          |  tbody tr:not(:last-child) > td {
+          |    border-bottom: solid lightgray;
+          |    border-bottom-width: thin;
+          |  }
+          |  tfoot {
+          |    border-top: 1px solid gray;
+          |  }
+          |  tfoot td, tfoot td.tuti.blockstart {
+          |    background-color: rgb(250,250,200);
+          |    font-size: 10px;
+          |    font-weight: bold;
+          |    border-top: 0px
+          |    border-bottom: 0px
+          |    overflow: hidden;
+          |    text-align: center;
+          |  }
+          |  tr:nth-child(even) {background: rgba(230, 230, 230, 0.6);}
+          |  tr .blockstart:not(:first-child) {
+          |    border-left: 1px solid lightgray;
+          |  }
+          |  li {
+          |    font-size: 12px;
+          |  }
+          |  .headline {
+          |    display: block;
+          |    border: 0px;
+          |    overflow: auto;
+          |  }
+          |  .wordwrapper {
+          |    word-wrap:break-word;
+          |  }
+          |  .logo {
+          |    float: right;
+          |    max-height: 100px;
+          |    border-radius: 5px;
+          |  }
+          |  .qrcode {
+          |    float: right;
+          |    max-height: 200px;
+          |  }
+          |  .showborder {
+          |    padding: 1px;
+          |    border: 1px solid rgb(50,100,150);
+          |    border-radius: 5px;
+          |  }
+          |
+          |  /* Popup container */
+          |  .popup {
+          |    position: relative;
+          |    display: inline-block;
+          |    cursor: pointer;
+          |  }
+          |
+          |  /* Remove default bullets */
+          |  ul, .treeUL {
+          |    list-style-type: none;
+          |  }
+          |
+          |  /* Remove margins and padding from the parent ul */
+          |  .treeUL {
+          |    margin: 0;
+          |    padding: 0;
+          |  }
+          |
+          |  /* Style the caret/arrow */
+          |  .caret {
+          |    cursor: pointer;
+          |    user-select: none; /* Prevent text selection */
+          |  }
+          |
+          |  /* Create the caret/arrow with a unicode, and style it */
+          |  .caret::before {
+          |    content: "\\25B6";
+          |    color: black;
+          |    display: inline-block;
+          |    margin-right: 6px;
+          |  }
+          |
+          |  /* Rotate the caret/arrow icon when clicked on (using JavaScript) */
+          |  .caret-down::before {
+          |    transform: rotate(90deg);
+          |  }
+          |
+          |  /* Hide the nested list */
+          |  .nested {
+          |    display: none;
+          |  }
+          |
+          |  /* Show the nested list when the user clicks on the caret/arrow (with JavaScript) */
+          |  .active {
+          |    display: block;
+          |  }
+          |</style>
+          |</head><body>
+          |<ul><li>
+  """.stripMargin
 
   val outro = """
-    </li></ul></body>
-    </html>
-  """
+    |</li></ul>
+    |<script>
+    |var toggler = document.getElementsByClassName("caret");
+    |var i;
+    |
+    |for (i = 0; i < toggler.length; i++) {
+    |  toggler[i].addEventListener("click", function() {
+    |    this.parentElement.querySelector(".nested").classList.toggle("active");
+    |    this.classList.toggle("caret-down");
+    |  });
+    |}
+    |</script>
+    |
+    |</body>
+    |</html>
+  """.stripMargin
 
   private def blatt(wettkampf: WettkampfView, eventString: String, programme: Seq[(String, Int, Int, Int)], vereinRows: List[(String, Map[String, (Int, Int)], Int, Int)], wertungen: List[WertungView], logo: File) = {
     val programHeader1 = programme.map(p => escaped(p._1))
@@ -263,7 +320,14 @@ trait WettkampfOverviewToHtmlRenderer {
               val (pgm, ak, sex) = group
               val pgmValue = if(grouper._1.contains(pgm)) grouper._1 else  pgm + grouper._1
               val sexValue = if(grouper._2.contains(sex)) grouper._2 else sex + grouper._2
-              (rulename, pgmValue, ak, sexValue, teams.size, teams.map(_.name).sorted.mkString(", "))
+              //(rulename, pgmValue, ak, sexValue, teams.size, teams.map(team => s"${team.name} (${team.blockrows})").sorted.mkString(", "))
+              (rulename, pgmValue, ak, sexValue, teams.size, teams.map(team =>
+                s"""<li><span class="caret"></span>${team.name} (${team.blockrows})
+                   |  <ul class="nested">
+                   |  ${team.wertungen.map(w => (w.athlet, w.wettkampfdisziplin.programm.name)).distinct.map(a => s"<li>${a._1.easyprint} (${a._2})</li>").mkString("")}
+                   |  </ul>
+                   |</li>
+                   |""".stripMargin).sorted.mkString("<ul class='treeUL'>","","</ul>"))
           }
         }
       }.groupBy(_._1).map{
@@ -282,7 +346,7 @@ trait WettkampfOverviewToHtmlRenderer {
              |
              |<div class="showborder"><table width=100%>
              |<thead>
-             |  <tr class='head'><th>Prog./Kat.</th><th class='blockstart'>AK</th><th class='blockstart'>Geschlecht</th><th class='blockstart'>Anzahl Teams</th><th class='blockstart'>Teams</th></tr>
+             |  <tr class='head'><th width='100px'>Prog./Kat.</th><th class='blockstart' width='50px'>AK</th><th class='blockstart' width='50px'>Geschlecht</th><th class='blockstart' width='20px'>Anzahl Teams</th><th class='blockstart'>Teams</th></tr>
              |</thead><tbody>
              |${
             groupedTeams(name).map {
@@ -295,11 +359,11 @@ trait WettkampfOverviewToHtmlRenderer {
       }.mkString("\n")
 
       s"""<h2>Teams / Mannschaften</h2>
-          <p>Die Team-Zuteilungen pro Teilnehmer/-In werden hier im Kontext der eingestellten Team-Regel sichtbar.<br>
-          Falls es Gruppen gibt, in denen weniger als 2 Teams aufgeführt sind, kann bei der Ranglisteneinstellung
-          über die <em>Filter Alle</em> Funktion Gruppen zusammengefasst werden.</p>
+          |<p>Die Team-Zuteilungen pro Teilnehmer/-In werden hier im Kontext der eingestellten Team-Regel sichtbar.<br>
+          |Falls es Gruppen gibt, in denen weniger als 2 Teams aufgeführt sind, kann bei der Ranglisteneinstellung über die <em>Filter Alle</em> Funktion Gruppen zusammengefasst werden.
+          |</p>
       $teamsSections
-      """
+      """.stripMargin
     } else {
       ""
     }

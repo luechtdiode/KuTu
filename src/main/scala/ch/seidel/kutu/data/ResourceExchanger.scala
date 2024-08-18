@@ -770,10 +770,11 @@ object ResourceExchanger extends KutuService with RiegenBuilder {
       }
       .groupBy(re => re.initdurchgang).toSeq
       .sortBy(re => re._1)
-      .map { res =>
+      .flatMap { res =>
         val (name, rel) = res
-        DurchgangEditor(wettkampf.id, durchgaenge(name.getOrElse(rel.head.initdurchgang.getOrElse(""))), rel)
+        durchgaenge.get(name.getOrElse(rel.head.initdurchgang.getOrElse(""))).map(dg => DurchgangEditor(wettkampf.id, dg, rel))
       }
+      .sortBy(re => re.durchgang.easyprint)
       .foreach { x =>
         fileOutputStream.write(f"""${x.durchgang.easyprint}${sep}${x.anz.value}${sep}${x.min.value}${sep}${x.max.value}${sep}${x.avg.value}${sep}${toShortDurationFormat(x.durchgang.planTotal)}${sep}${toShortDurationFormat(x.durchgang.planEinturnen)}${sep}${toShortDurationFormat(x.durchgang.planGeraet)}""".getBytes(charset))
         diszipline.foreach { d =>
@@ -826,10 +827,11 @@ object ResourceExchanger extends KutuService with RiegenBuilder {
       })
       .groupBy(re => re.initdurchgang).toSeq
       .sortBy(re => re._1)
-      .map { res =>
+      .flatMap { res =>
         val (name, rel) = res
-        DurchgangEditor(wettkampf.id, durchgaenge(name.getOrElse("")), rel)
+        durchgaenge.get(name.getOrElse(rel.head.initdurchgang.getOrElse(""))).map(dg => DurchgangEditor(wettkampf.id, dg, rel))
       }
+      .sortBy(re => re.durchgang.easyprint)
       .foreach { x =>
         fileOutputStream.write(f"""${x.durchgang.easyprint}${sep}${x.anz.value}${sep}${x.min.value}${sep}${x.max.value}${sep}${toShortDurationFormat(x.durchgang.planTotal)}${sep}${toShortDurationFormat(x.durchgang.planEinturnen)}${sep}${toShortDurationFormat(x.durchgang.planGeraet)}""".getBytes(charset))
         val riegen = x.riegenWithMergedClubs()
