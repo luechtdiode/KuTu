@@ -223,6 +223,9 @@ package object domain {
     def toRaw(wettkampfId: Long) = RiegeRaw(wettkampfId, r, durchgang, start.map(_.id), kind)
   }
 
+  case class CompoundGrouper(groupers: Seq[DataObject]) extends DataObject { //GenericGrouper(groupers.map(_.easyprint).mkString(","))
+    override def easyprint: String = groupers.map(_.easyprint).mkString(",")
+  }
   case class GenericGrouper(name: String) extends DataObject {
     override def easyprint: String = name
   }

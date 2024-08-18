@@ -54,10 +54,11 @@ object TeamRegel {
 }
 
 sealed trait TeamRegel {
-  def getTeamRegeln = Seq(this)
+  def getTeamRegeln: Seq[TeamRegel] = Seq(this)
   def getExtrateams: List[String]
-  def parseExtrateams(extraTeamsDef: String) = extraTeamsDef.replace("/", "").split("\\+").map(_.trim).toList
-  def parseGrouperDefs(grouperDef: String) = grouperDef
+  def parseExtrateams(extraTeamsDef: String): List[String] = extraTeamsDef.replace("/", "").split("\\+").map(_.trim).toList
+  def getGrouperDefs: List[Set[String]] = List.empty
+  def parseGrouperDefs(grouperDef: String): List[Set[String]] = grouperDef
     .replace("[", "")
     .replace("]", "")
     .split("/")
@@ -73,6 +74,14 @@ sealed trait TeamRegel {
   def extractTeams(wertungen: Iterable[WertungView]): List[Team]
   def extractExtraTeams(wertungen: Iterable[WertungView]): List[String] = wertungen.map(_.wettkampf).toList.distinct.flatMap(_.extraTeams)
 
+  /**
+   * Extracts all teams with default grouped wertungen.
+   * Default grouped means per Rule extracted program and sex.
+   * Per rule means, that each rule can have its own definition about whether a split or a group of a criterion is required.
+   * @param wertungen list of wertungen, containing athlets and its assignment to a program, team, etc., where each
+   *                  rule can extract its criterion to apply a splitting- or grouping- rule.
+   * @return
+   */
   def extractTeamsWithDefaultGouping(wertungen: Iterable[WertungView]): List[(String,String,List[Team])] = {
     wertungen
       .filter(w => w.team != 0)
@@ -85,13 +94,9 @@ sealed trait TeamRegel {
   def teamsAllowed: Boolean
   def toFormel: String
   def toRuleName: String
-  def getGrouperDefs: List[Set[String]] = List.empty
-  def pgmGrouper: WertungView => String = w => getMatchingGrouper(w.wettkampfdisziplin.programm.name).mkString(",")
-  def sexGrouper: WertungView => String = w => getMatchingGrouper(w.athlet.geschlecht).mkString(",")
 
-
-  def pgmGrouperText(w: WertungView): String = pgmGrouper(w)
-  def sexGrouperText(w: WertungView): String = sexGrouper(w)
+  def pgmGrouperText(w: WertungView): String = getMatchingGrouper(w.wettkampfdisziplin.programm.name).mkString(",")
+  def sexGrouperText(w: WertungView): String = getMatchingGrouper(w.athlet.geschlecht).mkString(",")
 }
 
 case class TeamRegelList(regeln: List[TeamRegel], name: Option[String] = None) extends TeamRegel {
