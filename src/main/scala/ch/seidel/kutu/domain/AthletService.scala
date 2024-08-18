@@ -272,7 +272,9 @@ trait AthletService extends DBService with AthletResultMapper with VereinService
       (matchcode.id, similarAthletFactor(matchcode))
     }.filter(p => p._2 > 0).toList.sortBy(_._2).reverse
     presel2.headOption.flatMap(k => loadAthlet(k._1)).getOrElse {
-      logger.warn("Athlet local not found! " + athlet.extendedprint)
+      if (!athlet.equals(Athlet())) {
+        logger.warn("Athlet local not found! " + athlet.extendedprint)
+      }
       athlet
     }
   }
