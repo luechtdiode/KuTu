@@ -37,8 +37,8 @@ trait ExportFunctions {
     import scala.concurrent.ExecutionContext.Implicits.global
 
     val seriendaten = service.getAllKandidatenWertungen(wettkampf.uuid.map(UUID.fromString).get)
-    val dgMapping = service.selectDurchgaenge(UUID.fromString(wettkampf.uuid.get))
-      .map(d => (d, d.effectivePlanStart(wettkampf.datum.toLocalDate), d.effectivePlanFinish(wettkampf.datum.toLocalDate)))
+    val dgMapping = service.selectSimpleDurchgaenge(wettkampf.id)
+      .map(d => (d, d.effectivePlanStart(wettkampf.datum.toLocalDate)))
     val durchgangFileQualifier = durchgang.mkString("_dg(","-",")").replace(" ", "_")
     val haltsFileQualifier = halts.mkString("_h(", "-", ")")
     val filename = "Riegenblatt_" + encodeFileName(wettkampf.easyprint + durchgangFileQualifier + haltsFileQualifier) + ".html"
@@ -100,8 +100,8 @@ trait ExportFunctions {
       }
       new KategorieTeilnehmerToHtmlRenderer {
         override val logger: Logger = LoggerFactory.getLogger(classOf[ExportFunctions])
-      }.toHTMLasDurchgangListe(seriendaten, logofile, service.selectDurchgaenge(UUID.fromString(wettkampf.uuid.get))
-        .map(d => (d, d.effectivePlanStart(wettkampf.datum.toLocalDate), d.effectivePlanFinish(wettkampf.datum.toLocalDate))))
+      }.toHTMLasDurchgangListe(seriendaten, logofile, service.selectSimpleDurchgaenge(wettkampf.id)
+        .map(d => (d, d.effectivePlanStart(wettkampf.datum.toLocalDate))))
     }}
     Platform.runLater {
       PrintUtil.printDialogFuture(dialogText, FilenameDefault(filename, dir), false, generate, orientation = PageOrientation.Portrait)(event)

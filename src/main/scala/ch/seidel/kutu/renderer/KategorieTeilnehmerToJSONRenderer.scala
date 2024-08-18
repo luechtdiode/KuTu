@@ -1,7 +1,7 @@
 package ch.seidel.kutu.renderer
 
 import java.io.File
-import ch.seidel.kutu.domain.{Durchgang, GeraeteRiege, RiegenRotationsregelKategorie}
+import ch.seidel.kutu.domain.{Durchgang, GeraeteRiege, RiegenRotationsregelKategorie, SimpleDurchgang}
 import ch.seidel.kutu.renderer.PrintUtil._
 import org.slf4j.LoggerFactory
 
@@ -15,7 +15,7 @@ trait KategorieTeilnehmerToJSONRenderer {
   val outro = "}"
   import KategorieTeilnehmerToHtmlRenderer.getDurchgangFullName
 
-  private def anmeldeListe(kategorie: String, kandidaten: Seq[Kandidat], dgMapping: Map[String, (Durchgang, LocalDateTime, LocalDateTime)]) = {
+  private def anmeldeListe(kategorie: String, kandidaten: Seq[Kandidat], dgMapping: Map[String, (SimpleDurchgang, LocalDateTime)]) = {
 
     val d = kandidaten.map{kandidat =>
       s"""      {
@@ -36,11 +36,11 @@ trait KategorieTeilnehmerToJSONRenderer {
   }
 
 
-  def riegenToKategorienListeAsJSON(riegen: Seq[GeraeteRiege], logo: File, dgMapping: Seq[(Durchgang, LocalDateTime, LocalDateTime)]): String = {
+  def riegenToKategorienListeAsJSON(riegen: Seq[GeraeteRiege], logo: File, dgMapping: Seq[(SimpleDurchgang, LocalDateTime)]): String = {
     toJSONasKategorienListe(Kandidaten(riegen), logo, dgMapping)
   }
 
-  def toJSONasKategorienListe(kandidaten: Seq[Kandidat], logo: File, dgMapping: Seq[(Durchgang, LocalDateTime, LocalDateTime)]): String = {
+  def toJSONasKategorienListe(kandidaten: Seq[Kandidat], logo: File, dgMapping: Seq[(SimpleDurchgang, LocalDateTime)]): String = {
     val logoHtml = if (logo.exists()) logo.imageSrcForWebEngine else ""
     val dgmap = dgMapping.map(dg => dg._1.name -> dg).toMap
     val kandidatenPerKategorie = kandidaten.sortBy { k =>

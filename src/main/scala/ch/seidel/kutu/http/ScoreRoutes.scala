@@ -16,8 +16,8 @@ import ch.seidel.kutu.view.WettkampfInfo
 import fr.davit.akka.http.metrics.core.scaladsl.server.HttpMetricsDirectives._
 
 import java.io.File
-import java.time.LocalDate
-import java.util.Base64
+import java.time.{LocalDate, LocalDateTime, LocalTime}
+import java.util.{Base64, UUID}
 import scala.concurrent.Future
 import scala.concurrent.duration.DurationInt
 
@@ -143,9 +143,13 @@ ScoreRoutes extends SprayJsonSupport with JsonSupport with AuthSupport with Rout
             complete(StatusCodes.NotFound)
           } else {
             val wettkampf = readWettkampf(competitionId.toString)
-            val wi = WettkampfInfo(wettkampf.toView(readProgramm(wettkampf.programmId)), this)
-            val wkdate: LocalDate = ch.seidel.kutu.domain.sqlDate2ld(wettkampf.datum)
-            val wkEndDate = ld2SQLDate(wi.endDate)
+            val dgEvents = selectSimpleDurchgaenge(wettkampf.id)
+              .map(d => (d, d.effectivePlanStart(wettkampf.datum.toLocalDate)))
+            //val startDate = (LocalDateTime.of(wettkampf.datum.toLocalDate, LocalTime.MIN) +: dgEvents.map(_._2)).distinct.min.toLocalDate
+            val endDate = (LocalDateTime.of(wettkampf.datum.toLocalDate, LocalTime.MAX) +: dgEvents.map(_._2)).distinct.max.toLocalDate
+            //val wkEventString = if (startDate.equals(endDate))  f"$startDate%td.$startDate%tm.$startDate%ty" else  f"$startDate%td.$startDate%tm.$startDate%ty - $endDate%td.$endDate%tm.$endDate%ty"
+            //val wkdate: LocalDate = ch.seidel.kutu.domain.sqlDate2ld(wettkampf.datum)
+            //val wkEndDate = ld2SQLDate(endDate)
             val scheduledDisziplines = listScheduledDisziplinIdsZuWettkampf(wettkampf.id)
             val data = selectWertungen(wettkampfId = Some(wettkampf.id))
               .filter(w => scheduledDisziplines.contains(w.wettkampfdisziplin.disziplin.id))
@@ -288,7 +292,7 @@ ScoreRoutes extends SprayJsonSupport with JsonSupport with AuthSupport with Rout
                   , Symbol("kind").?
                 ) { (groupby, filter, html, alphanumeric, kind) =>
                   complete(
-                    if (!wkEndDate.atStartOfDay().isBefore(LocalDate.now.atStartOfDay) || (groupby == None && filter.isEmpty)) {
+                    if (!endDate.atStartOfDay().isBefore(LocalDate.now.atStartOfDay) || (groupby == None && filter.isEmpty)) {
                       ToResponseMarshallable(HttpEntity(ContentTypes.`text/html(UTF-8)`,
                         f"""
                            |<html>
@@ -320,7 +324,7 @@ ScoreRoutes extends SprayJsonSupport with JsonSupport with AuthSupport with Rout
                            |                          </style></head><body><div class=headline>
                            |                          $logoHtml
                            |                          <div class=title><h1>Ranglisten dynamisch abfragen</h1><h2>${wettkampf.easyprint}</h2></div></div><div class="content">\n
-                           |  <p>Nach dem Wettkampf-Tag (ab dem '${wkdate.plusDays(1)}') können die Resultate dynamisch abgefragt werden.</p>
+                           |  <p>Nach dem Wettkampf-Tag (ab dem '${endDate.plusDays(1)}') können die Resultate dynamisch abgefragt werden.</p>
                            |  <h2>Syntax</h2>
                            |  <p>
                            |  <pre>

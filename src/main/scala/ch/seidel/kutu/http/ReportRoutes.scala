@@ -7,17 +7,16 @@ import akka.http.scaladsl.server.Route
 import akka.util.Timeout
 import ch.seidel.kutu.Config
 import ch.seidel.kutu.KuTuServer.handleCID
-import ch.seidel.kutu.akka.{CompetitionCoordinatorClientActor, GeraeteRiegeList, GetGeraeteRiegeList, KutuAppEvent, WertungContainer}
-import ch.seidel.kutu.domain.{Kandidat, KutuService, encodeFileName, encodeURIComponent}
+import ch.seidel.kutu.akka.{CompetitionCoordinatorClientActor, GeraeteRiegeList, GetGeraeteRiegeList, KutuAppEvent}
+import ch.seidel.kutu.domain.{Kandidat, KutuService, encodeFileName}
 import ch.seidel.kutu.renderer._
-import ch.seidel.kutu.view.WettkampfInfo
 import fr.davit.akka.http.metrics.core.scaladsl.server.HttpMetricsDirectives._
 import org.slf4j.{Logger, LoggerFactory}
 
 import java.util.UUID
+import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 import scala.concurrent.duration.DurationInt
-import scala.concurrent.ExecutionContext.Implicits.global
 
 trait ReportRoutes extends SprayJsonSupport
   with JsonSupport with AuthSupport with RouterLogging
@@ -49,8 +48,8 @@ trait ReportRoutes extends SprayJsonSupport
           } else {
 
             val wettkampf = readWettkampf(competitionId.toString)
-            val dgEvents = selectDurchgaenge(UUID.fromString(wettkampf.uuid.get))
-              .map(d => (d, d.effectivePlanStart(wettkampf.datum.toLocalDate), d.effectivePlanFinish(wettkampf.datum.toLocalDate)))
+            val dgEvents = selectSimpleDurchgaenge(wettkampf.id)
+              .map(d => (d, d.effectivePlanStart(wettkampf.datum.toLocalDate)))
             val logodir = new java.io.File(Config.homedir + "/" + encodeFileName(wettkampf.easyprint))
             val logofile = PrintUtil.locateLogoFile(logodir)
 

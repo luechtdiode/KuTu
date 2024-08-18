@@ -1,7 +1,7 @@
 package ch.seidel.kutu.renderer
 
 import java.io.File
-import ch.seidel.kutu.domain.{Durchgang, GeraeteRiege}
+import ch.seidel.kutu.domain.{Durchgang, GeraeteRiege, SimpleDurchgang}
 import ch.seidel.kutu.renderer.PrintUtil._
 import org.slf4j.Logger
 
@@ -9,7 +9,7 @@ import java.time.LocalDateTime
 
 object KategorieTeilnehmerToHtmlRenderer {
 
-  def getDurchgangFullName(mapping:  Map[String, (Durchgang, LocalDateTime, LocalDateTime)], dg: String): String = {
+  def getDurchgangFullName(mapping:  Map[String, (SimpleDurchgang, LocalDateTime)], dg: String): String = {
     if (!mapping.contains(dg)) {
       dg
     } else {
@@ -22,7 +22,7 @@ object KategorieTeilnehmerToHtmlRenderer {
     }
   }
   /*
-    def getDurchgangStart(mapping:  Map[String, (Durchgang, LocalDateTime, LocalDateTime)], dg: String): LocalDateTime = {
+    def getDurchgangStart(mapping:  Map[String, (SimpleDurchgang, LocalDateTime)], dg: String): LocalDateTime = {
       val dgchild = mapping(dg)
       val title = dgchild._1.title
       if (dg.equals(title)) {
@@ -32,7 +32,7 @@ object KategorieTeilnehmerToHtmlRenderer {
       }
     }
 
-    def getDurchgangEnd(mapping:  Map[String, (Durchgang, LocalDateTime, LocalDateTime)], dg: String): LocalDateTime = {
+    def getDurchgangEnd(mapping:  Map[String, (SimpleDurchgang, LocalDateTime)], dg: String): LocalDateTime = {
       val dgchild = mapping(dg)
       val title = dgchild._1.title
       if (dg.equals(title)) {
@@ -142,7 +142,7 @@ trait KategorieTeilnehmerToHtmlRenderer {
     </li></ul></body>
     </html>
   """
-  private def anmeldeListeProKategorie(kategorie: String, kandidaten: Seq[Kandidat], logo: File, dgMapping: Map[String, (Durchgang, LocalDateTime, LocalDateTime)]) = {
+  private def anmeldeListeProKategorie(kategorie: String, kandidaten: Seq[Kandidat], logo: File, dgMapping: Map[String, (SimpleDurchgang, LocalDateTime)]) = {
     val logoHtml = if (logo.exists()) s"""<img class=logo src="${logo.imageSrcForWebEngine}" title="Logo"/>""" else ""
 
     val d = kandidaten.map{kandidat =>
@@ -170,7 +170,7 @@ trait KategorieTeilnehmerToHtmlRenderer {
   """
   }
 
-  private def anmeldeListeProVerein(verein: String, kandidaten: Seq[Kandidat], logo: File, dgMapping: Map[String, (Durchgang, LocalDateTime, LocalDateTime)]) = {
+  private def anmeldeListeProVerein(verein: String, kandidaten: Seq[Kandidat], logo: File, dgMapping: Map[String, (SimpleDurchgang, LocalDateTime)]) = {
     val logoHtml = if (logo.exists()) s"""<img class=logo src="${logo.imageSrcForWebEngine}" title="Logo"/>""" else ""
 
     val d = kandidaten.map{kandidat =>
@@ -194,7 +194,7 @@ trait KategorieTeilnehmerToHtmlRenderer {
   """
   }
 
-  private def anmeldeListeProDurchgangVerein(durchgang: String, kandidaten: Seq[Kandidat], logo: File, dgMapping: Map[String, (Durchgang, LocalDateTime, LocalDateTime)]) = {
+  private def anmeldeListeProDurchgangVerein(durchgang: String, kandidaten: Seq[Kandidat], logo: File, dgMapping: Map[String, (SimpleDurchgang, LocalDateTime)]) = {
     val logoHtml = if (logo.exists()) s"""<img class=logo src="${logo.imageSrcForWebEngine}" title="Logo"/>""" else ""
 
     val d = kandidaten.map{kandidat =>
@@ -222,18 +222,18 @@ trait KategorieTeilnehmerToHtmlRenderer {
   """
   }
 
-  def riegenToKategorienListeAsHTML(riegen: Seq[GeraeteRiege], logo: File, dgMapping: Seq[(Durchgang, LocalDateTime, LocalDateTime)]): String = {
+  def riegenToKategorienListeAsHTML(riegen: Seq[GeraeteRiege], logo: File, dgMapping: Seq[(SimpleDurchgang, LocalDateTime)]): String = {
     toHTMLasKategorienListe(Kandidaten(riegen), logo, dgMapping, 0)
   }
-  def riegenToDurchgangListeAsHTML(riegen: Seq[GeraeteRiege], logo: File, dgMapping: Seq[(Durchgang, LocalDateTime, LocalDateTime)]): String = {
+  def riegenToDurchgangListeAsHTML(riegen: Seq[GeraeteRiege], logo: File, dgMapping: Seq[(SimpleDurchgang, LocalDateTime)]): String = {
     toHTMLasDurchgangListe(Kandidaten(riegen), logo, dgMapping, 0)
   }
 
-  def riegenToVereinListeAsHTML(riegen: Seq[GeraeteRiege], logo: File, dgMapping: Seq[(Durchgang, LocalDateTime, LocalDateTime)]): String = {
+  def riegenToVereinListeAsHTML(riegen: Seq[GeraeteRiege], logo: File, dgMapping: Seq[(SimpleDurchgang, LocalDateTime)]): String = {
     toHTMLasVereinsListe(Kandidaten(riegen), logo, dgMapping, 0)
   }
 
-  def toHTMLasKategorienListe(kandidaten: Seq[Kandidat], logo: File, dgMapping: Seq[(Durchgang, LocalDateTime, LocalDateTime)], rowsPerPage: Int = 28): String = {
+  def toHTMLasKategorienListe(kandidaten: Seq[Kandidat], logo: File, dgMapping: Seq[(SimpleDurchgang, LocalDateTime)], rowsPerPage: Int = 28): String = {
     val mapping = dgMapping.map(dg => dg._1.name -> dg).toMap
     val kandidatenPerKategorie = kandidaten.sortBy { k =>
       val krit = if (k.team.nonEmpty) f"${k.team}%-40s ${k.name}%-40s ${k.vorname}%-40s" else f"${k.verein}%-40s ${k.name}%-40s ${k.vorname}%-40s"
@@ -251,7 +251,7 @@ trait KategorieTeilnehmerToHtmlRenderer {
     intro + pages + outro
   }
 
-  def toHTMLasDurchgangListe(kandidaten: Seq[Kandidat], logo: File, dgMapping: Seq[(Durchgang, LocalDateTime, LocalDateTime)], rowsPerPage: Int = 28): String = {
+  def toHTMLasDurchgangListe(kandidaten: Seq[Kandidat], logo: File, dgMapping: Seq[(SimpleDurchgang, LocalDateTime)], rowsPerPage: Int = 28): String = {
     val mapping = dgMapping.map(dg => dg._1.name -> dg).toMap
     val kandidatenPerDurchgang = kandidaten.sortBy { k =>
       val krit = if (k.team.nonEmpty) f"${k.team}%-40s ${k.name}%-40s ${k.vorname}%-40s" else f"${k.verein}%-40s ${k.name}%-40s ${k.vorname}%-40s"
@@ -269,7 +269,7 @@ trait KategorieTeilnehmerToHtmlRenderer {
     intro + pages + outro
   }
 
-  def toHTMLasVereinsListe(kandidaten: Seq[Kandidat], logo: File, dgMapping: Seq[(Durchgang, LocalDateTime, LocalDateTime)], rowsPerPage: Int = 28): String = {
+  def toHTMLasVereinsListe(kandidaten: Seq[Kandidat], logo: File, dgMapping: Seq[(SimpleDurchgang, LocalDateTime)], rowsPerPage: Int = 28): String = {
     val mapping = dgMapping.map(dg => dg._1.name -> dg).toMap
     val kandidatenPerKategorie = kandidaten.sortBy { k =>
       val krit = f"${escaped(k.programm)}%-40s ${escaped(k.name)}%-40s ${escaped(k.vorname)}%-40s"
