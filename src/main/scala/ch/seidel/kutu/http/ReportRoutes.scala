@@ -10,6 +10,7 @@ import ch.seidel.kutu.KuTuServer.handleCID
 import ch.seidel.kutu.akka.{CompetitionCoordinatorClientActor, GeraeteRiegeList, GetGeraeteRiegeList, KutuAppEvent, WertungContainer}
 import ch.seidel.kutu.domain.{Kandidat, KutuService, encodeFileName, encodeURIComponent}
 import ch.seidel.kutu.renderer._
+import ch.seidel.kutu.view.WettkampfInfo
 import fr.davit.akka.http.metrics.core.scaladsl.server.HttpMetricsDirectives._
 import org.slf4j.{Logger, LoggerFactory}
 
@@ -48,6 +49,8 @@ trait ReportRoutes extends SprayJsonSupport
           } else {
 
             val wettkampf = readWettkampf(competitionId.toString)
+            val dgEvents = selectDurchgaenge(UUID.fromString(wettkampf.uuid.get))
+              .map(d => (d, d.effectivePlanStart(wettkampf.datum.toLocalDate), d.effectivePlanFinish(wettkampf.datum.toLocalDate)))
             val logodir = new java.io.File(Config.homedir + "/" + encodeFileName(wettkampf.easyprint))
             val logofile = PrintUtil.locateLogoFile(logodir)
 
@@ -62,9 +65,9 @@ trait ReportRoutes extends SprayJsonSupport
                           val filteredRiegen = riegen.filter { k => k.kandidaten.exists(filterMatchingCandidatesToQuery(q))}
                           gr match {
                             case Some(grv) if (grv.equalsIgnoreCase("verein")) =>
-                              HttpEntity(ContentTypes.`text/html(UTF-8)`, renderer.riegenToVereinListeAsHTML(filteredRiegen, logofile))
+                              HttpEntity(ContentTypes.`text/html(UTF-8)`, renderer.riegenToVereinListeAsHTML(filteredRiegen, logofile, dgEvents))
                             case _ =>
-                              HttpEntity(ContentTypes.`text/html(UTF-8)`, renderer.riegenToKategorienListeAsHTML(filteredRiegen, logofile))
+                              HttpEntity(ContentTypes.`text/html(UTF-8)`, renderer.riegenToKategorienListeAsHTML(filteredRiegen, logofile, dgEvents))
                           }
                         case _ =>
                           StatusCodes.Conflict
@@ -74,7 +77,7 @@ trait ReportRoutes extends SprayJsonSupport
                     case None => complete {
                       val toResponseMarshallable: Future[ToResponseMarshallable] = eventualKutuAppEvent.map {
                         case GeraeteRiegeList(riegen, _) =>
-                          HttpEntity(ContentTypes.`application/json`, jsonrenderer.riegenToKategorienListeAsJSON(riegen.filter { k => k.kandidaten.exists(filterMatchingCandidatesToQuery(q))}, logofile))
+                          HttpEntity(ContentTypes.`application/json`, jsonrenderer.riegenToKategorienListeAsJSON(riegen.filter { k => k.kandidaten.exists(filterMatchingCandidatesToQuery(q))}, logofile, dgEvents))
                         case _ =>
                           StatusCodes.Conflict
                       }

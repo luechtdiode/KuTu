@@ -1,11 +1,52 @@
 package ch.seidel.kutu.renderer
 
 import java.io.File
-import ch.seidel.kutu.domain.GeraeteRiege
+import ch.seidel.kutu.domain.{Durchgang, GeraeteRiege}
 import ch.seidel.kutu.renderer.PrintUtil._
-import org.slf4j.{Logger}
+import org.slf4j.Logger
+
+import java.time.LocalDateTime
+
+object KategorieTeilnehmerToHtmlRenderer {
+
+  def getDurchgangFullName(mapping:  Map[String, (Durchgang, LocalDateTime, LocalDateTime)], dg: String): String = {
+    if (!mapping.contains(dg)) {
+      dg
+    } else {
+      val title = mapping(dg)._1.title
+      if (dg.equals(title)) {
+        dg
+      } else {
+        s"$title - $dg"
+      }
+    }
+  }
+  /*
+    def getDurchgangStart(mapping:  Map[String, (Durchgang, LocalDateTime, LocalDateTime)], dg: String): LocalDateTime = {
+      val dgchild = mapping(dg)
+      val title = dgchild._1.title
+      if (dg.equals(title)) {
+        dgchild._2
+      } else {
+        mapping(title)._2
+      }
+    }
+
+    def getDurchgangEnd(mapping:  Map[String, (Durchgang, LocalDateTime, LocalDateTime)], dg: String): LocalDateTime = {
+      val dgchild = mapping(dg)
+      val title = dgchild._1.title
+      if (dg.equals(title)) {
+        dgchild._3
+      } else {
+        mapping(title)._3
+      }
+    }
+  */
+
+}
 
 trait KategorieTeilnehmerToHtmlRenderer {
+  import KategorieTeilnehmerToHtmlRenderer.getDurchgangFullName
   val logger: Logger// = LoggerFactory.getLogger(classOf[KategorieTeilnehmerToHtmlRenderer])
   val intro = """<html>
     <head>
@@ -101,15 +142,14 @@ trait KategorieTeilnehmerToHtmlRenderer {
     </li></ul></body>
     </html>
   """
-
-  private def anmeldeListeProKategorie(kategorie: String, kandidaten: Seq[Kandidat], logo: File) = {
+  private def anmeldeListeProKategorie(kategorie: String, kandidaten: Seq[Kandidat], logo: File, dgMapping: Map[String, (Durchgang, LocalDateTime, LocalDateTime)]) = {
     val logoHtml = if (logo.exists()) s"""<img class=logo src="${logo.imageSrcForWebEngine}" title="Logo"/>""" else ""
 
     val d = kandidaten.map{kandidat =>
       if (kandidat.team.nonEmpty) {
-        s"""<tr class="athletRow"><td>${escaped(kandidat.team)}</td><td class="large">${escaped(kandidat.name)} ${escaped(kandidat.vorname)} (${escaped(kandidat.jahrgang)})</td><td>${escaped(kandidat.durchgang)}</td><td>${escaped(kandidat.start)}</td><td class="totalCol">&nbsp;</td></tr>"""
+        s"""<tr class="athletRow"><td>${escaped(kandidat.team)}</td><td class="large">${escaped(kandidat.name)} ${escaped(kandidat.vorname)} (${escaped(kandidat.jahrgang)})</td><td>${escaped(getDurchgangFullName(dgMapping, kandidat.durchgang))}</td><td>${escaped(kandidat.start)}</td><td class="totalCol">&nbsp;</td></tr>"""
       } else {
-        s"""<tr class="athletRow"><td>${escaped(kandidat.verein)}</td><td class="large">${escaped(kandidat.name)} ${escaped(kandidat.vorname)} (${escaped(kandidat.jahrgang)})</td><td>${escaped(kandidat.durchgang)}</td><td>${escaped(kandidat.start)}</td><td class="totalCol">&nbsp;</td></tr>"""
+        s"""<tr class="athletRow"><td>${escaped(kandidat.verein)}</td><td class="large">${escaped(kandidat.name)} ${escaped(kandidat.vorname)} (${escaped(kandidat.jahrgang)})</td><td>${escaped(getDurchgangFullName(dgMapping, kandidat.durchgang))}</td><td>${escaped(kandidat.start)}</td><td class="totalCol">&nbsp;</td></tr>"""
       }
     }
     val dt = d.mkString("", "\n", "\n")
@@ -130,11 +170,11 @@ trait KategorieTeilnehmerToHtmlRenderer {
   """
   }
 
-  private def anmeldeListeProVerein(verein: String, kandidaten: Seq[Kandidat], logo: File) = {
+  private def anmeldeListeProVerein(verein: String, kandidaten: Seq[Kandidat], logo: File, dgMapping: Map[String, (Durchgang, LocalDateTime, LocalDateTime)]) = {
     val logoHtml = if (logo.exists()) s"""<img class=logo src="${logo.imageSrcForWebEngine}" title="Logo"/>""" else ""
 
     val d = kandidaten.map{kandidat =>
-        s"""<tr class="athletRow"><td>${escaped(kandidat.programm)}</td><td class="large">${escaped(kandidat.name)} ${escaped(kandidat.vorname)} (${escaped(kandidat.jahrgang)})</td><td>${escaped(kandidat.durchgang)}</td><td>${escaped(kandidat.start)}</td><td class="totalCol">&nbsp;</td></tr>"""
+        s"""<tr class="athletRow"><td>${escaped(kandidat.programm)}</td><td class="large">${escaped(kandidat.name)} ${escaped(kandidat.vorname)} (${escaped(kandidat.jahrgang)})</td><td>${escaped(getDurchgangFullName(dgMapping, kandidat.durchgang))}</td><td>${escaped(kandidat.start)}</td><td class="totalCol">&nbsp;</td></tr>"""
     }
     val dt = d.mkString("", "\n", "\n")
     s"""<div class=notenblatt>
@@ -154,7 +194,7 @@ trait KategorieTeilnehmerToHtmlRenderer {
   """
   }
 
-  private def anmeldeListeProDurchgangVerein(durchgang: String, kandidaten: Seq[Kandidat], logo: File) = {
+  private def anmeldeListeProDurchgangVerein(durchgang: String, kandidaten: Seq[Kandidat], logo: File, dgMapping: Map[String, (Durchgang, LocalDateTime, LocalDateTime)]) = {
     val logoHtml = if (logo.exists()) s"""<img class=logo src="${logo.imageSrcForWebEngine}" title="Logo"/>""" else ""
 
     val d = kandidaten.map{kandidat =>
@@ -169,7 +209,7 @@ trait KategorieTeilnehmerToHtmlRenderer {
       <div class=headline>
         $logoHtml
         <div class=title><h4>${escaped(kandidaten.head.wettkampfTitel)}</h4></div>
-        <div class=programm>${escaped(durchgang)}</br></div>
+        <div class=programm>${escaped(getDurchgangFullName(dgMapping, durchgang))}</br></div>
 
       </div>
       <div class="showborder">
@@ -182,18 +222,19 @@ trait KategorieTeilnehmerToHtmlRenderer {
   """
   }
 
-  def riegenToKategorienListeAsHTML(riegen: Seq[GeraeteRiege], logo: File): String = {
-    toHTMLasKategorienListe(Kandidaten(riegen), logo, 0)
+  def riegenToKategorienListeAsHTML(riegen: Seq[GeraeteRiege], logo: File, dgMapping: Seq[(Durchgang, LocalDateTime, LocalDateTime)]): String = {
+    toHTMLasKategorienListe(Kandidaten(riegen), logo, dgMapping, 0)
   }
-  def riegenToDurchgangListeAsHTML(riegen: Seq[GeraeteRiege], logo: File): String = {
-    toHTMLasDurchgangListe(Kandidaten(riegen), logo, 0)
-  }
-
-  def riegenToVereinListeAsHTML(riegen: Seq[GeraeteRiege], logo: File): String = {
-    toHTMLasVereinsListe(Kandidaten(riegen), logo, 0)
+  def riegenToDurchgangListeAsHTML(riegen: Seq[GeraeteRiege], logo: File, dgMapping: Seq[(Durchgang, LocalDateTime, LocalDateTime)]): String = {
+    toHTMLasDurchgangListe(Kandidaten(riegen), logo, dgMapping, 0)
   }
 
-  def toHTMLasKategorienListe(kandidaten: Seq[Kandidat], logo: File, rowsPerPage: Int = 28): String = {
+  def riegenToVereinListeAsHTML(riegen: Seq[GeraeteRiege], logo: File, dgMapping: Seq[(Durchgang, LocalDateTime, LocalDateTime)]): String = {
+    toHTMLasVereinsListe(Kandidaten(riegen), logo, dgMapping, 0)
+  }
+
+  def toHTMLasKategorienListe(kandidaten: Seq[Kandidat], logo: File, dgMapping: Seq[(Durchgang, LocalDateTime, LocalDateTime)], rowsPerPage: Int = 28): String = {
+    val mapping = dgMapping.map(dg => dg._1.name -> dg).toMap
     val kandidatenPerKategorie = kandidaten.sortBy { k =>
       val krit = if (k.team.nonEmpty) f"${k.team}%-40s ${k.name}%-40s ${k.vorname}%-40s" else f"${k.verein}%-40s ${k.name}%-40s ${k.vorname}%-40s"
       krit
@@ -203,14 +244,15 @@ trait KategorieTeilnehmerToHtmlRenderer {
       a4seitenmenge <- if(rowsPerPage == 0) kandidatenPerKategorie(kategorie).sliding(kandidatenPerKategorie(kategorie).size, kandidatenPerKategorie(kategorie).size) else kandidatenPerKategorie(kategorie).sliding(rowsPerPage, rowsPerPage)
     }
     yield {
-      anmeldeListeProKategorie(kategorie, a4seitenmenge, logo)
+      anmeldeListeProKategorie(kategorie, a4seitenmenge, logo, mapping)
     }
 
     val pages = rawpages.mkString("</li></ul><ul><li>")
     intro + pages + outro
   }
 
-  def toHTMLasDurchgangListe(kandidaten: Seq[Kandidat], logo: File, rowsPerPage: Int = 28): String = {
+  def toHTMLasDurchgangListe(kandidaten: Seq[Kandidat], logo: File, dgMapping: Seq[(Durchgang, LocalDateTime, LocalDateTime)], rowsPerPage: Int = 28): String = {
+    val mapping = dgMapping.map(dg => dg._1.name -> dg).toMap
     val kandidatenPerDurchgang = kandidaten.sortBy { k =>
       val krit = if (k.team.nonEmpty) f"${k.team}%-40s ${k.name}%-40s ${k.vorname}%-40s" else f"${k.verein}%-40s ${k.name}%-40s ${k.vorname}%-40s"
       krit
@@ -220,14 +262,15 @@ trait KategorieTeilnehmerToHtmlRenderer {
       a4seitenmenge <- if(rowsPerPage == 0) kandidatenPerDurchgang(durchgang).sliding(kandidatenPerDurchgang(durchgang).size, kandidatenPerDurchgang(durchgang).size) else kandidatenPerDurchgang(durchgang).sliding(rowsPerPage, rowsPerPage)
     }
     yield {
-      anmeldeListeProDurchgangVerein(durchgang, a4seitenmenge, logo)
+      anmeldeListeProDurchgangVerein(durchgang, a4seitenmenge, logo, mapping)
     }
 
     val pages = rawpages.mkString("</li></ul><ul><li>")
     intro + pages + outro
   }
 
-  def toHTMLasVereinsListe(kandidaten: Seq[Kandidat], logo: File, rowsPerPage: Int = 28): String = {
+  def toHTMLasVereinsListe(kandidaten: Seq[Kandidat], logo: File, dgMapping: Seq[(Durchgang, LocalDateTime, LocalDateTime)], rowsPerPage: Int = 28): String = {
+    val mapping = dgMapping.map(dg => dg._1.name -> dg).toMap
     val kandidatenPerKategorie = kandidaten.sortBy { k =>
       val krit = f"${escaped(k.programm)}%-40s ${escaped(k.name)}%-40s ${escaped(k.vorname)}%-40s"
       //logger.debug(krit)
@@ -238,7 +281,7 @@ trait KategorieTeilnehmerToHtmlRenderer {
       a4seitenmenge <- if(rowsPerPage == 0) kandidatenPerKategorie(verein).sliding(kandidatenPerKategorie(verein).size, kandidatenPerKategorie(verein).size) else kandidatenPerKategorie(verein).sliding(rowsPerPage, rowsPerPage)
     }
       yield {
-        anmeldeListeProVerein(verein, a4seitenmenge, logo)
+        anmeldeListeProVerein(verein, a4seitenmenge, logo, mapping)
       }
 
     val pages = rawpages.mkString("</li></ul><ul><li>")

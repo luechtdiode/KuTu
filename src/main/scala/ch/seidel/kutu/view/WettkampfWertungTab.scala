@@ -1452,7 +1452,8 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
         }
         val file = new java.io.File(dir.getPath + "/" + filename)
 
-        def generate(lpp: Int) = toHTMLasKategorienListe(seriendaten, PrintUtil.locateLogoFile(dir))
+        def generate(lpp: Int) = toHTMLasKategorienListe(seriendaten, PrintUtil.locateLogoFile(dir), service.selectDurchgaenge(UUID.fromString(wettkampf.uuid.get))
+          .map(d => (d, d.effectivePlanStart(wettkampf.datum.toLocalDate), d.effectivePlanFinish(wettkampf.datum.toLocalDate))))
 
         PrintUtil.printDialog(text.value, FilenameDefault(filename, dir), false, generate, orientation = PageOrientation.Portrait)(event)
       }
@@ -1520,7 +1521,8 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
           dir.mkdirs()
         }
 
-        def generate(lpp: Int) = toHTMLasVereinsListe(seriendaten, PrintUtil.locateLogoFile(dir))
+        def generate(lpp: Int) = toHTMLasVereinsListe(seriendaten, PrintUtil.locateLogoFile(dir), service.selectDurchgaenge(UUID.fromString(wettkampf.uuid.get))
+          .map(d => (d, d.effectivePlanStart(wettkampf.datum.toLocalDate), d.effectivePlanFinish(wettkampf.datum.toLocalDate))))
 
         PrintUtil.printDialog(text.value, FilenameDefault(filename, dir), false, generate, orientation = PageOrientation.Portrait)(event)
       }

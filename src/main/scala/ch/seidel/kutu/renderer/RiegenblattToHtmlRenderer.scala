@@ -1,10 +1,12 @@
 package ch.seidel.kutu.renderer
 
 import java.io.File
-
 import ch.seidel.kutu.domain._
+import ch.seidel.kutu.renderer.KategorieTeilnehmerToHtmlRenderer.getDurchgangFullName
 import ch.seidel.kutu.renderer.PrintUtil._
 import org.slf4j.LoggerFactory
+
+import java.time.LocalDateTime
 
 object RiegenBuilder {
   val logger = LoggerFactory.getLogger(this.getClass)
@@ -312,7 +314,7 @@ trait RiegenblattToHtmlRenderer {
     }
   }
 
-  private def notenblatt(riegepart: (GeraeteRiege, Int), logo: File, baseUrl: String) = {
+  private def notenblatt(riegepart: (GeraeteRiege, Int), logo: File, baseUrl: String, dgMapping: Map[String, (Durchgang, LocalDateTime, LocalDateTime)]) = {
     val logoHtml = if (logo.exists()) s"""<img class=logo src="${logo.imageSrcForWebEngine}" title="Logo"/>""" else ""
     val (riege, tutioffset) = riegepart
     val d = riege.kandidaten.zip(Range(1, riege.kandidaten.size+1)).map{kandidat =>
@@ -329,7 +331,7 @@ trait RiegenblattToHtmlRenderer {
     s"""<div class=riegenblatt>
       <div class=headline>
         $logoHtml $imagedata
-        <div class=durchgang>${escaped(riege.durchgang.getOrElse(""))}</br><div class=geraet>${escaped(riege.disziplin.map(d => d.easyprint).getOrElse(""))} (${riege.halt + 1}. Gerät)<br>Riegencode: ${riege.sequenceId}</div></div>
+        <div class=durchgang>${escaped(riege.durchgang.map(d => getDurchgangFullName(dgMapping, d)).getOrElse(""))}</br><div class=geraet>${escaped(riege.disziplin.map(d => d.easyprint).getOrElse(""))} (${riege.halt + 1}. Gerät)<br>Riegencode: ${riege.sequenceId}</div></div>
       </div>
       <h1>${escaped(riege.wettkampfTitel)}</h1>
       <div class="showborder">
@@ -344,7 +346,8 @@ trait RiegenblattToHtmlRenderer {
 
   val fcs = 20
 
-  def toHTML(kandidaten: Seq[Kandidat], logo: File, baseUrl: String, durchgangFilter: Set[String] = Set.empty, haltsFilter: Set[Int] = Set.empty): String = {
+  def toHTML(kandidaten: Seq[Kandidat], logo: File, baseUrl: String, durchgangFilter: Set[String] = Set.empty, haltsFilter: Set[Int] = Set.empty, dgMapping: Seq[(Durchgang, LocalDateTime, LocalDateTime)]): String = {
+    val dgmap = dgMapping.map(dg => dg._1.name -> dg).toMap
     def splitToFitPage(riegen: List[GeraeteRiege]) = {
       riegen.foldLeft(List[(GeraeteRiege, Int)]()){(acc, item) =>
         if(item.kandidaten.size > fcs) {
@@ -372,7 +375,7 @@ trait RiegenblattToHtmlRenderer {
       }
     }
     val riegendaten = splitToFitPage(RiegenBuilder.mapToGeraeteRiegen(kandidaten.toList, printorder = true, durchgangFilter = durchgangFilter, haltsFilter = haltsFilter))
-    val blaetter = riegendaten.map(notenblatt(_, logo, baseUrl))
+    val blaetter = riegendaten.map(notenblatt(_, logo, baseUrl, dgmap))
     val pages = blaetter.sliding(1, 1).map { _.mkString("</li><li>") }.mkString("</li></ul><ul><li>")
     intro + pages + outro
   }
