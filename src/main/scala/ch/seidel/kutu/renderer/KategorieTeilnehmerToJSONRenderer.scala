@@ -1,17 +1,21 @@
 package ch.seidel.kutu.renderer
 
 import java.io.File
-import ch.seidel.kutu.domain.GeraeteRiege
+import ch.seidel.kutu.domain.{Durchgang, GeraeteRiege, RiegenRotationsregelKategorie}
 import ch.seidel.kutu.renderer.PrintUtil._
 import org.slf4j.LoggerFactory
+
+import java.time.LocalDateTime
 
 trait KategorieTeilnehmerToJSONRenderer {
   val logger = LoggerFactory.getLogger(classOf[KategorieTeilnehmerToJSONRenderer])
 
+
   val intro = "{\n"
   val outro = "}"
+  import KategorieTeilnehmerToHtmlRenderer.getDurchgangFullName
 
-  private def anmeldeListe(kategorie: String, kandidaten: Seq[Kandidat]) = {
+  private def anmeldeListe(kategorie: String, kandidaten: Seq[Kandidat], dgMapping: Map[String, (Durchgang, LocalDateTime, LocalDateTime)]) = {
 
     val d = kandidaten.map{kandidat =>
       s"""      {
@@ -19,6 +23,7 @@ trait KategorieTeilnehmerToJSONRenderer {
          |        "athlet" : "${kandidat.name} ${kandidat.vorname} (${kandidat.jahrgang})",
          |        "athletid" : ${kandidat.id},
          |        "durchgang" : "${kandidat.durchgang}",
+         |        "durchgangtitle" : "${getDurchgangFullName(dgMapping, kandidat.durchgang)}",
          |        "start" : "${kandidat.start}",
          |        "team" : "${kandidat.team}"
          |      }""".stripMargin
@@ -31,12 +36,13 @@ trait KategorieTeilnehmerToJSONRenderer {
   }
 
 
-  def riegenToKategorienListeAsJSON(riegen: Seq[GeraeteRiege], logo: File): String = {
-    toJSONasKategorienListe(Kandidaten(riegen), logo)
+  def riegenToKategorienListeAsJSON(riegen: Seq[GeraeteRiege], logo: File, dgMapping: Seq[(Durchgang, LocalDateTime, LocalDateTime)]): String = {
+    toJSONasKategorienListe(Kandidaten(riegen), logo, dgMapping)
   }
 
-  def toJSONasKategorienListe(kandidaten: Seq[Kandidat], logo: File): String = {
+  def toJSONasKategorienListe(kandidaten: Seq[Kandidat], logo: File, dgMapping: Seq[(Durchgang, LocalDateTime, LocalDateTime)]): String = {
     val logoHtml = if (logo.exists()) logo.imageSrcForWebEngine else ""
+    val dgmap = dgMapping.map(dg => dg._1.name -> dg).toMap
     val kandidatenPerKategorie = kandidaten.sortBy { k =>
       val krit = f"${escaped(k.verein)}%-40s ${escaped(k.name)}%-40s ${escaped(k.vorname)}%-40s"
       //logger.debug(krit)
@@ -46,7 +52,7 @@ trait KategorieTeilnehmerToJSONRenderer {
       kategorie <- kandidatenPerKategorie.keys.toList.sorted
     }
     yield {
-      anmeldeListe(kategorie, kandidatenPerKategorie(kategorie))
+      anmeldeListe(kategorie, kandidatenPerKategorie(kategorie), dgmap)
     }
 
     val pages = rawpages.mkString(s""""logo" : "$logoHtml",

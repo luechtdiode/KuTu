@@ -1445,7 +1445,8 @@ class RiegenTab(override val wettkampfInfo: WettkampfInfo, override val service:
       }
       val logofile = PrintUtil.locateLogoFile(dir)
       def generate = (lpp: Int) => KuTuApp.invokeAsyncWithBusyIndicator(caption) { Future {
-        (new Object with ch.seidel.kutu.renderer.RiegenblattToHtmlRenderer).toHTML(seriendaten, logofile, remoteBaseUrl)
+        (new Object with ch.seidel.kutu.renderer.RiegenblattToHtmlRenderer).toHTML(seriendaten, logofile, remoteBaseUrl, dgMapping = service.selectDurchgaenge(UUID.fromString(wettkampf.uuid.get))
+          .map(d => (d, d.effectivePlanStart(wettkampf.datum.toLocalDate), d.effectivePlanFinish(wettkampf.datum.toLocalDate))))
       }}
       Platform.runLater {
         PrintUtil.printDialogFuture(text.value, FilenameDefault(filename, dir), false, generate, orientation = PageOrientation.Portrait)(event)

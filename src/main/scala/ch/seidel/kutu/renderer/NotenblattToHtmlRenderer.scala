@@ -117,7 +117,7 @@ trait NotenblattToHtmlRenderer {
 // for loading logo see https://stackoverflow.com/questions/26447451/javafx-in-webview-img-tag-is-not-loading-local-images
   private def notenblattForGeTu(kandidat: Kandidat, logo: File) = {
     val d = kandidat.diszipline.zip(Range(1, kandidat.diszipline.size+1)).map{dis =>
-      s"""<tr class="geraeteRow"><td class="large">${escaped(dis._2)}. ${escaped(dis._1.easyprint)}</td><td>&nbsp;</td><td>&nbsp;</td><td class="totalCol">&nbsp;</td></tr>"""
+      s"""<tr class="geraeteRow"><td class="large">${dis._2}. ${escaped(dis._1.easyprint)}</td><td>&nbsp;</td><td>&nbsp;</td><td class="totalCol">&nbsp;</td></tr>"""
     }
     val dt = d.updated(d.size-1, d.last.replace("geraeteRow", "totalRow")).mkString("", "\n", "\n")
     val logoHtml = (if (logo.exists) s"""<img class=logo src="${logo.imageSrcForWebEngine}" title="Logo"/>""" else s"")
@@ -147,7 +147,7 @@ trait NotenblattToHtmlRenderer {
 
   private def notenblattForATT(kandidat: Kandidat, logo: File) = {
     val d = kandidat.diszipline.zip(Range(1, kandidat.diszipline.size+1)).map{dis =>
-      s"""<tr class="geraeteRow"><td class="large dataTd">${escaped(dis._2)}. ${escaped(dis._1.easyprint)}</td><td class="totalCol dataTd">&nbsp;</td></tr>"""
+      s"""<tr class="geraeteRow"><td class="large dataTd">${dis._2}. ${escaped(dis._1.easyprint)}</td><td class="totalCol dataTd">&nbsp;</td></tr>"""
     }
     val dt = d.mkString("", "\n", "\n")
     s"""<div class=notenblatt>
@@ -171,7 +171,7 @@ trait NotenblattToHtmlRenderer {
 
   private def notenblattForKuTu(kandidat: Kandidat, logo: File) = {
     val d = kandidat.diszipline.zip(Range(1, kandidat.diszipline.size+1)).map{dis =>
-      s"""<tr class="geraeteRow"><td class="large">${escaped(dis._2)}. ${escaped(dis._1.easyprint)}</td><td>&nbsp;</td><td>&nbsp;</td><td class="totalCol">&nbsp;</td></tr>"""
+      s"""<tr class="geraeteRow"><td class="large">${dis._2}. ${escaped(dis._1.easyprint)}</td><td>&nbsp;</td><td>&nbsp;</td><td class="totalCol">&nbsp;</td></tr>"""
     }
     val dt = d.updated(d.size-1, d.last.replace("geraeteRow", "totalRow")).mkString("", "\n", "\n")
     val logoHtml = (if (logo.exists) s"""<img class=logo src="${logo.imageSrcForWebEngine}" title="Logo"/>""" else s"")
