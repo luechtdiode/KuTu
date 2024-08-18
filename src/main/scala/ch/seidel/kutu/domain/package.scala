@@ -444,6 +444,11 @@ package object domain {
       Durchgang(id, wettkampfId, title, name, durchgangtype, ordinal, planStartOffset, effectiveStartTime, effectiveEndTime, 0, 0, 0)
   }
 
+  case class SimpleDurchgang(id: Long, wettkampfId: Long, title: String, name: String, durchgangtype: DurchgangType, ordinal: Int, planStartOffset: Long, effectiveStartTime: Option[java.sql.Timestamp], effectiveEndTime: Option[java.sql.Timestamp]) extends DataObject {
+    override def easyprint = if (name.equals(title)) name else s"$title: $name"
+    def effectivePlanStart(wkDate: LocalDate): LocalDateTime = LocalDateTime.of(wkDate, LocalTime.MIDNIGHT).plusNanos(planStartOffset * 1000_000L)
+  }
+
   case class Durchgang(id: Long, wettkampfId: Long, title: String, name: String, durchgangtype: DurchgangType, ordinal: Int, planStartOffset: Long, effectiveStartTime: Option[java.sql.Timestamp], effectiveEndTime: Option[java.sql.Timestamp], planEinturnen: Long, planGeraet: Long, planTotal: Long) extends DataObject {
     override def easyprint = if (name.equals(title)) name else s"$title: $name"
     def effectivePlanStart(wkDate: LocalDate): LocalDateTime = LocalDateTime.of(wkDate, LocalTime.MIDNIGHT).plusNanos(planStartOffset * 1000_000L)

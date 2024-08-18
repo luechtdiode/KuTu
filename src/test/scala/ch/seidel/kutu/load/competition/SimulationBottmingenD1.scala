@@ -7,10 +7,11 @@ import scala.concurrent.duration._
 
 class SimulationBottmingenD1 extends Simulation {
   // mws-01
-  val jwtToken = "eyJhbGciOiJIUzUxMiIsImN0eSI6ImFwcGxpY2F0aW9uL2pzb24iLCJ0eXAiOiJKV1QifQ.eyJ1c2VyIjoiNzJmODI0MjMtNjVkYS00NWM5LTk5YTctYjNmMTk3MTJmNjI4IiwiZXhwaXJlZEF0S2V5IjoxNjg3MTI0NzU5NjkwfQ.IjzouXrDuDRsvhafPSCgcGAXlINZhAzgoieQ0Obamb0b8oG_R-6T6wMCtOUV8o84xmh5D7Cpv3_Alyiv-bj1fQ"
+  val jwtToken = "eyJhbGciOiJIUzUxMiIsImN0eSI6ImFwcGxpY2F0aW9uL2pzb24iLCJ0eXAiOiJKV1QifQ.eyJ1c2VyIjoiNzJmODI0MjMtNjVkYS00NWM5LTk5YTctYjNmMTk3MTJmNjI4IiwiZXhwaXJlZEF0S2V5IjoxNzI0MDgxMTg3NzAzfQ.2ECf3_xfbnkbSIR6gtBlt01enBNw16vfOw84AvgGDA1bAdX0BAn-0KwGc0vXBOf89yb9JsYXyDaFCbLv2jS_EA"
   val competition = "72f82423-65da-45c9-99a7-b3f19712f628"
 
-  val originBaseUrl = "https://kutuapp-test.sharevic.net"//,
+  //val originBaseUrl = "https://kutuapp-test.sharevic.net"//,
+  val originBaseUrl = "http://localhost:5757"//,
   //val originBaseUrl = "http://mars.stargate:30134" //https://test-kutuapp.sharevic.net" //,"http://pluto:5757"//, "https://kutuapp.sharevic.net" //,"https://kutuapp.sharevic.net"//,"http://mws-01:5757"//,
   // val originBaseUrl = "http://mws-01:5757"//, "https://kutuapp.sharevic.net"//,"http://mws-01:5757"//,
   //val originBaseUrl = "https://kutuapp.sharevic.net"

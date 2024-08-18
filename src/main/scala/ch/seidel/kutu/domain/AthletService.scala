@@ -335,7 +335,7 @@ trait AthletService extends DBService with AthletResultMapper with VereinService
           where activ = true
             and (id in (#${inactivList.filter(_._4.compareTo(d) < 0).map(_._1).mkString(",")})
                  or not exists (select 1 from wertung w where w.athlet_id = athlet.id)
-                );
+                )
          """
         }, Duration.Inf)
         logger.info(s"inactivated athletes: $length")
@@ -370,7 +370,7 @@ trait AthletService extends DBService with AthletResultMapper with VereinService
     }
     affectedClubs
   }
-  def addMissingWettkampfMetaData() {
+  def addMissingWettkampfMetaData(): Unit = {
     Await.result(database.run {
       sqlu"""
           insert into wettkampfmetadata

@@ -314,7 +314,7 @@ trait RiegenblattToHtmlRenderer {
     }
   }
 
-  private def notenblatt(riegepart: (GeraeteRiege, Int), logo: File, baseUrl: String, dgMapping: Map[String, (Durchgang, LocalDateTime, LocalDateTime)]) = {
+  private def notenblatt(riegepart: (GeraeteRiege, Int), logo: File, baseUrl: String, dgMapping: Map[String, (SimpleDurchgang, LocalDateTime)]) = {
     val logoHtml = if (logo.exists()) s"""<img class=logo src="${logo.imageSrcForWebEngine}" title="Logo"/>""" else ""
     val (riege, tutioffset) = riegepart
     val d = riege.kandidaten.zip(Range(1, riege.kandidaten.size+1)).map{kandidat =>
@@ -346,7 +346,7 @@ trait RiegenblattToHtmlRenderer {
 
   val fcs = 20
 
-  def toHTML(kandidaten: Seq[Kandidat], logo: File, baseUrl: String, durchgangFilter: Set[String] = Set.empty, haltsFilter: Set[Int] = Set.empty, dgMapping: Seq[(Durchgang, LocalDateTime, LocalDateTime)]): String = {
+  def toHTML(kandidaten: Seq[Kandidat], logo: File, baseUrl: String, durchgangFilter: Set[String] = Set.empty, haltsFilter: Set[Int] = Set.empty, dgMapping: Seq[(SimpleDurchgang, LocalDateTime)]): String = {
     val dgmap = dgMapping.map(dg => dg._1.name -> dg).toMap
     def splitToFitPage(riegen: List[GeraeteRiege]) = {
       riegen.foldLeft(List[(GeraeteRiege, Int)]()){(acc, item) =>

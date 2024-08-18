@@ -208,4 +208,18 @@ trait DurchgangService extends DBService with DurchgangResultMapper {
           """.as[Durchgang]).withPinnedSession
     }
   }
+  def selectSimpleDurchgaenge(wettkampfId: Long) = {
+    Await.result(selectSimpleDurchgaengeAsync(wettkampfId), Duration.Inf)
+  }
+
+  def selectSimpleDurchgaengeAsync(wettkampfId: Long) = {
+    database.run{(
+      sql"""select
+               d.id, d.wettkampf_id, d.title, d.name, d.durchgangtype, d.ordinal,
+               d.planStartOffset, d.effectiveStartTime, d.effectiveEndTime
+             from durchgang d
+             where d.wettkampf_id=$wettkampfId
+          """.as[SimpleDurchgang]).withPinnedSession
+    }
+  }
 }
