@@ -39,7 +39,7 @@ object PrintUtil {
       ""
     }
     else {
-      text.split("\n").toList.map(xml.Utility.escape(_)).mkString("", "<br>", "")
+      text.split("\n").toList.map(xml.Utility.escape).mkString("", "<br>", "")
     }
 
   case class FilenameDefault(filename: String, dir: java.io.File)

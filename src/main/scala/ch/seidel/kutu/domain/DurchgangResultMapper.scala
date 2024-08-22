@@ -5,6 +5,7 @@ import slick.jdbc.GetResult
 trait DurchgangResultMapper extends DisziplinResultMapper with WertungsrichterResultMapper {
 
   //implicit val getDurchgangResultMini = GetResult(r => Durchgang(r.<<, r.<<))
+  implicit val getSimpleDurchgangResult: GetResult[SimpleDurchgang] = GetResult(r => SimpleDurchgang(r.<<, r.<<, r.<<, r.<<, DurchgangType(r.<<), r.<<, r.<<, r.<<, r.<<))
   implicit val getDurchgangResult: GetResult[Durchgang] = GetResult(r => Durchgang(r.<<, r.<<, r.<<, r.<<, DurchgangType(r.<<), r.<<, r.<<,
     r.<<, r.<<,
     r.<<, r.<<, r.<<))

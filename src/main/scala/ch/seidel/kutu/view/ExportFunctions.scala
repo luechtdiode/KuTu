@@ -37,6 +37,8 @@ trait ExportFunctions {
     import scala.concurrent.ExecutionContext.Implicits.global
 
     val seriendaten = service.getAllKandidatenWertungen(wettkampf.uuid.map(UUID.fromString).get)
+    val dgMapping = service.selectSimpleDurchgaenge(wettkampf.id)
+      .map(d => (d, d.effectivePlanStart(wettkampf.datum.toLocalDate)))
     val durchgangFileQualifier = durchgang.mkString("_dg(","-",")").replace(" ", "_")
     val haltsFileQualifier = halts.mkString("_h(", "-", ")")
     val filename = "Riegenblatt_" + encodeFileName(wettkampf.easyprint + durchgangFileQualifier + haltsFileQualifier) + ".html"
@@ -49,7 +51,7 @@ trait ExportFunctions {
       Platform.runLater {
         reprintItems.set(reprintItems.get().filter(p => !durchgang.contains(p.durchgang)))
       }
-      (new Object with ch.seidel.kutu.renderer.RiegenblattToHtmlRenderer).toHTML(seriendaten, logofile, remoteBaseUrl, durchgang, halts)
+      (new Object with ch.seidel.kutu.renderer.RiegenblattToHtmlRenderer).toHTML(seriendaten, logofile, remoteBaseUrl, durchgang, halts, dgMapping)
     }}
     Platform.runLater {
       PrintUtil.printDialogFuture(dialogText, FilenameDefault(filename, dir), false, generate, orientation = PageOrientation.Portrait)(event)
@@ -98,7 +100,8 @@ trait ExportFunctions {
       }
       new KategorieTeilnehmerToHtmlRenderer {
         override val logger: Logger = LoggerFactory.getLogger(classOf[ExportFunctions])
-      }.toHTMLasDurchgangListe(seriendaten, logofile)
+      }.toHTMLasDurchgangListe(seriendaten, logofile, service.selectSimpleDurchgaenge(wettkampf.id)
+        .map(d => (d, d.effectivePlanStart(wettkampf.datum.toLocalDate))))
     }}
     Platform.runLater {
       PrintUtil.printDialogFuture(dialogText, FilenameDefault(filename, dir), false, generate, orientation = PageOrientation.Portrait)(event)

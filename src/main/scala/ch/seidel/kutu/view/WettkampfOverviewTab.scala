@@ -83,7 +83,9 @@ class WettkampfOverviewTab(wettkampf: WettkampfView, override val service: KutuS
     val wertungen = if (teams.teamsAllowed) {
       service.selectWertungen(wettkampfId = Some(wettkampf.id))
     } else Seq()
-    val document = toHTML(wettkampf, data, wertungen.toList, logofile)
+    val eventString = WettkampfInfo(wettkampf, service).wkEventString
+
+    val document = toHTML(wettkampf, eventString, data, wertungen.toList, logofile)
     document
   }
 

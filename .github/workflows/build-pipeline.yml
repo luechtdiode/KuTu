@@ -104,6 +104,9 @@ jobs:
           mvn clean install package
         env:
           OS: Linux
+      - name: Prepare Releasenames
+        run: |
+          . ./normalize-releasenames.sh
       - name: Archive linux application jar
         uses: actions/upload-artifact@v4
         with:
@@ -149,6 +152,10 @@ jobs:
         env:
           OS: Win64
         shell: bash
+      - name: Prepare Releasenames
+        run: |
+          . ./normalize-releasenames.sh
+        shell: bash
       - name: Archive production artifacts
         uses: actions/upload-artifact@v4
         with:
@@ -157,7 +164,7 @@ jobs:
             target/Win64/*.msi
             target/Win64/*.exe
 
-  build-osx-distribution:
+  build-osx-intel-distribution:
     needs: build-app
     runs-on: macos-13
     steps:
@@ -181,7 +188,7 @@ jobs:
           . ./prepare_jdk.sh
           rm -rf src/main/resources/app
         env:
-          OS: Darwin
+          OS: macOS
       - name: Download client modifications
         uses: actions/download-artifact@v4
         with:
@@ -193,14 +200,65 @@ jobs:
           mvn -version
           mvn clean install package
         env:
-          OS: Darwin
+          OS: macOS
+      - name: Prepare Releasenames
+        run: |
+          . ./normalize-releasenames.sh
       - name: Archive production artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: osx-app
+          name: osx-intel-app
           path: |
-            target/Darwin/*.pkg
-            target/Darwin/*.dmg
+            target/macOS-x86_64/*.pkg
+            target/macOS-x86_64/*.dmg
+
+  build-osx-arm-distribution:
+    needs: build-app
+    runs-on: macos-14
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          # We must fetch at least the immediate parents so that if this is
+          # a pull request then we can checkout the head.
+          fetch-depth: 2
+
+      - run: git checkout $(git log --branches -1 --pretty=format:'%D' | sed 's/.*, //g')
+      - name: Cache Maven packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.m2
+          key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
+          restore-keys: ${{ runner.os }}-m2
+      - name: Java Setup
+        id: jdk
+        run: |
+          . ./prepare_jdk.sh
+          rm -rf src/main/resources/app
+        env:
+          OS: macOS
+      - name: Download client modifications
+        uses: actions/download-artifact@v4
+        with:
+          name: src
+          path: src/main/resources/app
+      - name: Maven Build
+        run: |
+          java -version
+          mvn -version
+          mvn clean install package
+        env:
+          OS: macOS
+      - name: Prepare Releasenames
+        run: |
+          . ./normalize-releasenames.sh
+      - name: Archive production artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: osx-arm-app
+          path: |
+            target/macOS-aarch64/*.pkg
+            target/macOS-aarch64/*.dmg
 
   build-docker-distribution:
     needs: build-lnx-distribution
@@ -264,7 +322,7 @@ jobs:
 
   upload-release-assets:
     name: Upload Release-Assets and Cleanup Workflow-Files
-    needs: [build-lnx-distribution, build-win64-distribution, build-osx-distribution, build-docker-distribution]
+    needs: [build-lnx-distribution, build-win64-distribution, build-osx-intel-distribution,build-osx-arm-distribution, build-docker-distribution]
     runs-on: ubuntu-latest
     steps:
       - uses: geekyeggo/delete-artifact@v5
@@ -283,7 +341,8 @@ jobs:
         with:
           files: |
             dist/win64-app/*
-            dist/osx-app/*
+            dist/osx-intel-app/*
+            dist/osx-arm-app/*
             dist/linux-app/*
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

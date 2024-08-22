@@ -9,14 +9,15 @@ import ch.seidel.kutu.Config
 import ch.seidel.kutu.KuTuServer.handleCID
 import ch.seidel.kutu.akka.{CompetitionCoordinatorClientActor, MessageAck, ResponseMessage, StartedDurchgaenge}
 import ch.seidel.kutu.data._
-import ch.seidel.kutu.domain.{Altersklasse, Durchgang, KutuService, PublishedScoreView, WertungView, encodeFileName, encodeURIParam}
+import ch.seidel.kutu.domain.{Altersklasse, Durchgang, KutuService, PublishedScoreView, TeamRegel, WertungView, encodeFileName, encodeURIParam, ld2SQLDate, sqlDate2ld}
 import ch.seidel.kutu.renderer.PrintUtil._
 import ch.seidel.kutu.renderer.{PrintUtil, ScoreToHtmlRenderer, ScoreToJsonRenderer}
+import ch.seidel.kutu.view.WettkampfInfo
 import fr.davit.akka.http.metrics.core.scaladsl.server.HttpMetricsDirectives._
 
 import java.io.File
-import java.time.LocalDate
-import java.util.Base64
+import java.time.{LocalDate, LocalDateTime, LocalTime}
+import java.util.{Base64, UUID}
 import scala.concurrent.Future
 import scala.concurrent.duration.DurationInt
 
@@ -142,7 +143,13 @@ ScoreRoutes extends SprayJsonSupport with JsonSupport with AuthSupport with Rout
             complete(StatusCodes.NotFound)
           } else {
             val wettkampf = readWettkampf(competitionId.toString)
-            val wkdate: LocalDate = ch.seidel.kutu.domain.sqlDate2ld(wettkampf.datum)
+            val dgEvents = selectSimpleDurchgaenge(wettkampf.id)
+              .map(d => (d, d.effectivePlanStart(wettkampf.datum.toLocalDate)))
+            //val startDate = (LocalDateTime.of(wettkampf.datum.toLocalDate, LocalTime.MIN) +: dgEvents.map(_._2)).distinct.min.toLocalDate
+            val endDate = (LocalDateTime.of(wettkampf.datum.toLocalDate, LocalTime.MAX) +: dgEvents.map(_._2)).distinct.max.toLocalDate
+            //val wkEventString = if (startDate.equals(endDate))  f"$startDate%td.$startDate%tm.$startDate%ty" else  f"$startDate%td.$startDate%tm.$startDate%ty - $endDate%td.$endDate%tm.$endDate%ty"
+            //val wkdate: LocalDate = ch.seidel.kutu.domain.sqlDate2ld(wettkampf.datum)
+            //val wkEndDate = ld2SQLDate(endDate)
             val scheduledDisziplines = listScheduledDisziplinIdsZuWettkampf(wettkampf.id)
             val data = selectWertungen(wettkampfId = Some(wettkampf.id))
               .filter(w => scheduledDisziplines.contains(w.wettkampfdisziplin.disziplin.id))
@@ -150,8 +157,8 @@ ScoreRoutes extends SprayJsonSupport with JsonSupport with AuthSupport with Rout
             val logodir = new java.io.File(Config.homedir + "/" + encodeFileName(wettkampf.easyprint))
             val logofile = PrintUtil.locateLogoFile(logodir)
             val programmText = wettkampf.programmId match {case 20 => "Kategorie" case _ => "Programm"}
-            val altersklassen = Altersklasse.parseGrenzen(wettkampf.altersklassen.get, "Altersklasse")
-            val jgAltersklassen = Altersklasse.parseGrenzen(wettkampf.jahrgangsklassen.get, "Altersklasse")
+            val altersklassen = Altersklasse.parseGrenzen(wettkampf.altersklassen.get)
+            val jgAltersklassen = Altersklasse.parseGrenzen(wettkampf.jahrgangsklassen.get)
             def riegenZuDurchgang: Map[String, Durchgang] = {
               val riegen = listRiegenZuWettkampf(wettkampf.id)
               riegen.map(riege => riege._1 -> riege._3.map(durchgangName => Durchgang(0, durchgangName)).getOrElse(Durchgang())).toMap
@@ -162,11 +169,16 @@ ScoreRoutes extends SprayJsonSupport with JsonSupport with AuthSupport with Rout
                 ByJahrgang(), ByJahrgangsAltersklasse("Turn10® Altersklassen", Altersklasse.altersklassenTurn10), ByAltersklasse("DTB Altersklassen", Altersklasse.altersklassenDTB),
                 ByGeschlecht(), ByVerband(), ByVerein(), byDurchgangMat,
                 ByRiege(), ByRiege2(), ByDisziplin(), ByJahr())
-              (altersklassen.nonEmpty, jgAltersklassen.nonEmpty) match {
+              val akenhanced = (altersklassen.nonEmpty, jgAltersklassen.nonEmpty) match {
                 case (true,true) => standardGroupers ++ List(ByAltersklasse("Wettkampf Altersklassen", altersklassen), ByJahrgangsAltersklasse("Wettkampf JG-Altersklassen", jgAltersklassen))
                 case (false,true) => standardGroupers :+ ByJahrgangsAltersklasse("Wettkampf JG-Altersklassen", jgAltersklassen)
                 case (true,false) => standardGroupers :+ ByAltersklasse("Wettkampf Altersklassen", altersklassen)
                 case _ => standardGroupers
+              }
+              if (wettkampf.hasTeams) {
+                TeamRegel(wettkampf).getTeamRegeln.map(r => ByTeamRule("Wettkampf Teamregel " + r.toRuleName, r)).toList ++ akenhanced
+              } else {
+                akenhanced
               }
             }
             val logoHtml = if (logofile.exists()) s"""<img class=logo src="${logofile.imageSrcForWebEngine}" title="Logo"/>""" else ""
@@ -280,7 +292,7 @@ ScoreRoutes extends SprayJsonSupport with JsonSupport with AuthSupport with Rout
                   , Symbol("kind").?
                 ) { (groupby, filter, html, alphanumeric, kind) =>
                   complete(
-                    if (!wkdate.atStartOfDay().isBefore(LocalDate.now.atStartOfDay) || (groupby == None && filter.isEmpty)) {
+                    if (!endDate.atStartOfDay().isBefore(LocalDate.now.atStartOfDay) || (groupby == None && filter.isEmpty)) {
                       ToResponseMarshallable(HttpEntity(ContentTypes.`text/html(UTF-8)`,
                         f"""
                            |<html>
@@ -312,7 +324,7 @@ ScoreRoutes extends SprayJsonSupport with JsonSupport with AuthSupport with Rout
                            |                          </style></head><body><div class=headline>
                            |                          $logoHtml
                            |                          <div class=title><h1>Ranglisten dynamisch abfragen</h1><h2>${wettkampf.easyprint}</h2></div></div><div class="content">\n
-                           |  <p>Nach dem Wettkampf-Tag (ab dem '${wkdate.plusDays(1)}') können die Resultate dynamisch abgefragt werden.</p>
+                           |  <p>Nach dem Wettkampf-Tag (ab dem '${endDate.plusDays(1)}') können die Resultate dynamisch abgefragt werden.</p>
                            |  <h2>Syntax</h2>
                            |  <p>
                            |  <pre>

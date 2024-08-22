@@ -35,7 +35,17 @@ trait DurchgangService extends DBService with DurchgangResultMapper {
           """.as[DurchgangstationView]).withPinnedSession
     }, Duration.Inf).toList
   }
-  
+  def updateStartOffset(wettkampfid: Long, title: String, offsetInMillis: Long): Unit = {
+    Await.result(database.run{
+      sqlu"""
+                update durchgang
+                set planStartOffset=${offsetInMillis}
+                where
+                wettkampf_id=${wettkampfid} and title=${title}
+      """
+    }, Duration.Inf)
+  }
+
   def renameDurchgang(wettkampfid: Long, oldname: String, newname: String) = {
     Await.result(database.run{
         (sqlu"""
@@ -196,6 +206,20 @@ trait DurchgangService extends DBService with DurchgangResultMapper {
                inner join zeitplan zp on d.wettkampf_id = zp.wettkampf_id and d.name = zp.durchgang
              where wk.uuid=${wettkampfUUID.toString}
           """.as[Durchgang]).withPinnedSession
+    }
+  }
+  def selectSimpleDurchgaenge(wettkampfId: Long) = {
+    Await.result(selectSimpleDurchgaengeAsync(wettkampfId), Duration.Inf)
+  }
+
+  def selectSimpleDurchgaengeAsync(wettkampfId: Long) = {
+    database.run{(
+      sql"""select
+               d.id, d.wettkampf_id, d.title, d.name, d.durchgangtype, d.ordinal,
+               d.planStartOffset, d.effectiveStartTime, d.effectiveEndTime
+             from durchgang d
+             where d.wettkampf_id=$wettkampfId
+          """.as[SimpleDurchgang]).withPinnedSession
     }
   }
 }

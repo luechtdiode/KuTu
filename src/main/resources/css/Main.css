@@ -57,7 +57,7 @@
         radial-gradient(center 50% -40%, radius 200%, #b8ee36 45%, #80c800 50%);
   -fx-font-weight: bold;
 }
-.toggle-button {
+.toggle-button2 {
   -fx-background-color: null;
   -fx-label-padding: 5 40 5 10;
   -fx-padding: -0 -38 -0 -8;
@@ -67,7 +67,7 @@
   -fx-border-image-width: 5 40 5 20;
   -fx-border-image-repeat: stretch;
 }
-.toggle-button:selected {
+.toggle-button2:selected {
   -fx-border-image-source: url("../images/btn-toggle-on.png");
 }
 
@@ -103,17 +103,37 @@
     -fx-effect: dropshadow( three-pass-box , -fx-focus-color , 10, 0.5 , 0 , 0 );
 }
 */
-#SearchBox .text-field {
-	-fx-background-color: white;
-	-fx-background-insets: 1;
-	-fx-background-radius: 15;
-	-fx-padding: -9 5 -11 0;
-	-fx-border-image-source: url("../images/search-box.png");
-	-fx-border-image-slice: 12 12 12 22 fill;
-	-fx-border-image-width: 12 12 12 22;
-	-fx-border-image-repeat: stretch;
-	-fx-font-size: 13px;
-	-fx-prompt-text-fill: grey;
+.toggle-button3 {
+    -fx-font-size: 15px;
+    -fx-text-fill: white;
+    -fx-background-color:
+            linear-gradient(#9d9e9d 0%, #6b6a6b 20%, #343534 80%, #242424 100%),
+            linear-gradient(#8a8a8a 0%, #6b6a6b 20%, #343534 80%, #262626 100%);
+}
+.toggle-button3:selected {
+    -fx-background-color:
+            linear-gradient(#686868 0%, #232723 10%, #373837 90%, #757575 100%),
+            linear-gradient(#020b02, #3a3a3a),
+            linear-gradient(#9d9e9d 0%, #6b6a6b 20%, #343534 80%, #242424 100%),
+            linear-gradient(#8a8a8a 0%, #6b6a6b 20%, #343534 80%, #262626 100%),
+            linear-gradient(#777777 0%, #606060 30%, #505250 70%, #2a2b2a 100%);
+}
+.toggle-button3:focused {
+    -fx-text-fill: white;
+    -fx-background-color:
+            linear-gradient(#686868 0%, #232723 10%, #373837 90%, #757575 100%),
+            linear-gradient(#777777 0%, #606060 30%, #505250 70%, #2a2b2a 100%);
+	-fx-border-color: transparent transparent transparent
+		derive(-fx-focus-color, 30%);
+}
+.search-text {
+    -fx-background-color: null;
+	-fx-font-size: 15px;
+	-fx-text-fill: white;
+	-fx-prompt-text-fill: lightgray;
+}
+
+.search-icon {
 }
 
 #SearchBox .text-field:focused {
@@ -552,7 +572,7 @@
 
 /* Category Page Styles */
 .category-page {
-    -fx-background: #333333;
+    /*-fx-background: #333333;*/
 	-fx-background-image: url("../images/texture.png");
 	-fx-background-repeat: repeat repeat;
 	-fx-background-position: left top;
@@ -560,7 +580,7 @@
 }
 
 .category-page .page-header {
-    -fx-padding: 8px 0 10px 0;
+    /*-fx-padding: 8px 0 10px 0;*/
     -fx-border-color: null;
     -fx-font-size: 1.3em;
     -fx-font-weight: bold;
@@ -602,11 +622,12 @@
 .sample-tile {
 	-fx-skin: "javafx.scene.control.skin.ButtonSkin";
 	-fx-text-fill: white;
-	-fx-graphic-hpos: center;
+	-fx-graphic-hpos: left;
 	-fx-graphic-vpos: top;
 	-fx-alignment: center;
+	-fx-text-alignment: left;
 	-fx-padding: 4px 4px 3px 4px;
-    -fx-font-size: 1.3em;
+    -fx-font-size: 1.2em;
 }
 
 .sample-tile .text {

@@ -431,6 +431,17 @@ case class ByJahrgangsAltersklasse(bezeichnung: String = "JG Altersklasse", gren
   })
 }
 
+case class ByTeamRule(bezeichnung: String = "Teamregel", regel: TeamRegel) extends GroupBy with FilterBy {
+  override val groupname = bezeichnung
+  setKind(Teamrangliste)
+
+  protected override val grouper = (w:WertungView) => CompoundGrouper(Seq(GenericGrouper(regel.pgmGrouperText(w)), TurnerGeschlecht(regel.sexGrouperText(w))))
+
+  protected override val sorter: Option[(GroupSection, GroupSection) => Boolean] = Some((gs1: GroupSection, gs2: GroupSection) => {
+    gs1.groupKey.compareTo(gs2.groupKey) < 0
+  })
+}
+
 case class ByDisziplin() extends GroupBy with FilterBy {
   override val groupname = "Disziplin"
   private val ordering = mutable.HashMap[Long, Long]()
@@ -565,6 +576,10 @@ object GroupBy {
     } else if (data.nonEmpty && data.head.wettkampf.jahrgangsklassen.get.nonEmpty) {
       val byAK = groupers.find(p => p.isInstanceOf[ByJahrgangsAltersklasse] && p.groupname.startsWith("Wettkampf")).getOrElse(ByJahrgangsAltersklasse("AK", Altersklasse.parseGrenzen(data.head.wettkampf.jahrgangsklassen.get)))
       ByProgramm().groupBy(byAK).groupBy(ByGeschlecht())
+    } else if (data.nonEmpty && data.head.wettkampf.hasTeams) {
+      val regel = TeamRegel(data.head.wettkampf)
+      val byTeamRegel = groupers.find(p => p.isInstanceOf[ByTeamRule] && p.groupname.startsWith("Wettkampf")).getOrElse(ByTeamRule(regel.toRuleName, regel))
+      ByProgramm().groupBy(byTeamRegel)
     }
     else {
       ByProgramm().groupBy(ByGeschlecht())

@@ -1,17 +1,21 @@
 package ch.seidel.kutu
 
-import java.io.IOException
-
+import ch.seidel.kutu.KuTuAppTree.showThumbnails
 import ch.seidel.kutu.domain._
+import ch.seidel.kutu.view.{VereinTableView, WettkampfTableView}
 import scalafx.Includes._
+import scalafx.beans.property.BooleanProperty
 import scalafx.event.ActionEvent
 import scalafx.geometry.{Insets, Orientation}
 import scalafx.scene.Node
 import scalafx.scene.control.TreeItem.sfxTreeItemToJfx
 import scalafx.scene.control._
 import scalafx.scene.image.{Image, ImageView}
-import scalafx.scene.layout.{Region, TilePane}
+import scalafx.scene.input.{KeyEvent, MouseEvent}
+import scalafx.scene.layout.{Priority, Region, TilePane}
 
+import java.io.IOException
+import java.util.prefs.Preferences
 import scala.collection.immutable.TreeMap
 
 object AppNavigationModel  {
@@ -31,6 +35,14 @@ object AppNavigationModel  {
  *    - Programmdisziplin (Barren-P1, Reck-P1, ...)
  */
 case class KuTuAppThumbNail(context: Any, button: Button, item: TreeItem[String])
+
+object KuTuAppTree {
+  val showThumbnails = new BooleanProperty()
+  showThumbnails.value = Preferences.userRoot().getBoolean("showThumbnails", true)
+  showThumbnails.onChange {
+    Preferences.userRoot().putBoolean("showThumbnails", showThumbnails.value)
+  }
+}
 
 /**
  * The class provide accessibility methods to access the
@@ -83,12 +95,23 @@ class KuTuAppTree(service: KutuService) {
             case _:WettkampfView => image = wkimage
           }
         }
+        val t = context match {
+          case wv: WettkampfView => f"${wv.titel}\n${wv.datum}%td.${wv.datum}%tm.${wv.datum}%tY\n${wv.programm.easyprint}"//wv.easyprint
+          case v: Verein => s"${v.name}${v.verband.map("\n(" + _ + ")").getOrElse("")}"
+          case _ => node
+        }
         val button = new Button(node, img) {
-          prefWidth = 140
-          prefHeight = 145
-          contentDisplay = ContentDisplay.Top
+          prefWidth = 250
+          maxWidth = 250
+          minWidth = 250
+          prefHeight = 140
+          //contentDisplay = ContentDisplay.Top
           styleClass.clear()
           styleClass += "sample-tile"
+          wrapText = true
+          tooltip = new Tooltip {
+            text = t
+          }
           onAction = (ae: ActionEvent) => {
             KuTuApp.controlsView.selectionModel().select(thmbitem)
           }
@@ -128,16 +151,38 @@ class KuTuAppTree(service: KutuService) {
   def getThumbs(keyName: String): List[KuTuAppThumbNail] =
     thumbnails.getOrElse(keyName, (List[KuTuAppThumbNail](), false, 0))._1
 
-  def getDashThumbsCtrl: List[Node] =
+  // val searchQuery = newVal.toUpperCase().split(" ")
+  def dashboardFilter(query: String)(thumb: KuTuAppThumbNail) = {
+    val filter = query.toUpperCase().split(" ")
+    filter.isEmpty || filter.forall { txt =>
+      thumb.item.value.value.toUpperCase.contains(txt) ||
+        (thumb.context match {
+        case v: Verein => v.easyprint.toUpperCase.contains(txt)
+        case wv: WettkampfView => wv.easyprint.toUpperCase.contains(txt)
+        case _ => false
+      })
+    }
+  }
+
+  def getDashThumbsCtrl(filter: String = ""): List[Node] =
     thumbnails.map {
-      case (heading, ts) => (Seq[Node](createCategoryLabel(heading), createTiles(ts._1)), ts._3)
+      case (heading, ts) =>
+        val nails = getThumbs(heading)
+          .filter(dashboardFilter(filter))
+        (Seq[Node](
+          createCategoryLabel(heading),
+          if (showThumbnails.value) createTiles(nails) else createListViews(nails)
+        ), ts._3)
     }.toList.sortBy(_._2).flatMap(_._1)
 
-  def getDashThumb(ctrlGrpName: String) =
+  def getDashThumb(ctrlGrpName: String, filter: String = "") = {
+    val nails = getThumbs(ctrlGrpName)
+      .filter(dashboardFilter(filter))
     Seq(
       createCategoryLabel(ctrlGrpName),
-      createTiles(getThumbs(ctrlGrpName))
+      if (showThumbnails.value) createTiles(nails) else createListViews(nails)
     )
+  }
 
   private def createCategoryLabel(value: String) =
     new Label {
@@ -155,5 +200,48 @@ class KuTuAppTree(service: KutuService) {
     orientation = Orientation.Horizontal
     styleClass += "category-page-flow"
     children = value.map(_.button)
+  }
+
+  private def createListViews(value: List[KuTuAppThumbNail])= {
+    val wkTable = new WettkampfTableView(value
+      .filter(_.context.isInstanceOf[WettkampfView])
+      .map(_.context.asInstanceOf[WettkampfView])) {
+      hgrow = Priority.Always
+      vgrow = Priority.Always
+    }
+    if (wkTable.items.value.nonEmpty) {
+      def openWK(): Unit = {
+        val wk = wkTable.selectionModel.value.getSelectedItem
+        value.find(n => n.context.equals(wk)).foreach { thmbitem =>
+          KuTuApp.controlsView.selectionModel().select(thmbitem.item)
+        }
+      }
+
+      wkTable.onKeyPressed = (ae: KeyEvent) => {
+        if (ae.code.isWhitespaceKey) openWK()
+      }
+      wkTable.onMouseClicked = (ae: MouseEvent) => {
+        if (ae.clickCount > 1) openWK()
+      }
+      wkTable
+    } else {
+      val vereinTable = VereinTableView(value
+      .filter(_.context.isInstanceOf[Verein])
+      .map(_.context.asInstanceOf[Verein]))
+      def openVerein(): Unit = {
+        val verein = vereinTable.selectionModel.value.getSelectedItem
+        value.find(n => n.context.equals(verein)).foreach { thmbitem =>
+          KuTuApp.controlsView.selectionModel().select(thmbitem.item)
+        }
+      }
+
+      vereinTable.onKeyPressed = (ae: KeyEvent) => {
+        if (ae.code.isWhitespaceKey) openVerein()
+      }
+      vereinTable.onMouseClicked = (ae: MouseEvent) => {
+        if (ae.clickCount > 1) openVerein()
+      }
+      vereinTable
+    }
   }
 }

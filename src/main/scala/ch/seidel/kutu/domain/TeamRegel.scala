@@ -14,6 +14,7 @@ object TeamRegel {
       ("Keine Teams" -> "")
     , ("Aus Verein, drei Bestnoten pro Gerät, mit unbeschränkter Anzahl Mitglieder" -> s"$vereinGeraet(3/*)")
     , ("Aus Verein, drei Bestnoten pro Gerät, mit max vier Mitglieder" -> s"$vereinGeraet(3/4)")
+    , ("Aus Verein, drei Bestnoten pro Gerät, mit max vier Mitglieder, zusammengefasste Kategorien K6, K7, KH, KD" -> s"$vereinGeraet[K6+K7+KD+KH](3/4)")
     , ("Aus Verein, drei Gesamt-Bestnoten, mit unbeschränkter Anzahl Mitglieder" -> s"$vereinGesamt(3/*)")
     , ("Aus Verein, drei Gesamt-Bestnoten, mit max vier Mitglieder" -> s"$vereinGesamt(3/4)")
     , ("Aus Verband, drei Bestnoten pro Gerät, mit unbeschränkter Anzahl Mitglieder" -> s"$verbandGeraet(3/*)")
@@ -22,19 +23,20 @@ object TeamRegel {
     , ("Aus Verband, drei Gesamt-Bestnoten, mit max vier Mitglieder" -> s"$verbandGesamt(3/4)")
     , ("Individuell" -> s"$vereinGesamt(<min>/<max>/<extrateam1>+<extrateam2>), $verbandGesamt(<min>/<max>), VereinGerät(<min>/<max>), $vereinGeraet(<min>/<max>)")
   )
-  private val rangePattern = "([\\S]+)\\(([0-9]+)\\/([0-9,\\*]*)(\\/[\\S\\s\\/0-9+]*)?\\)".r
+  private val rangePattern = "([a-zA-ZäöüÄÖÜ]+)([\\[\\S\\s0-9+\\]]+)?\\(([0-9]+)\\/([0-9,\\*]*)(\\/[\\S\\s\\/0-9+]*)?\\)".r
 
   def apply(formel: String): TeamRegel = {
     def defaultMax(max: String): Int = if (max.equals("*")) 0 else max
     val regeln = formel.split(",").map(_.trim).filter(_.nonEmpty).toList
     val mappedRules: List[TeamRegel] = regeln.flatMap {
-      case rangePattern(rulename, min, max, extrateams) =>
+      case rangePattern(rulename, grouper, min, max, extrateams) =>
         val extraTeamsDef = if (extrateams == null) "" else extrateams
+        val grouperDef = if (grouper == null) "" else grouper
         rulename match {
-        case `vereinGesamt` => Some(TeamRegelVereinGesamt(min, defaultMax(max), extraTeamsDef))
-        case `verbandGesamt` => Some(TeamRegelVerbandGesamt(min, defaultMax(max), extraTeamsDef))
-        case `vereinGeraet` => Some(TeamRegelVereinGeraet(min, defaultMax(max), extraTeamsDef))
-        case `verbandGeraet` => Some(TeamRegelVerbandGeraet(min, defaultMax(max), extraTeamsDef))
+        case `vereinGesamt` => Some(TeamRegelVereinGesamt(min, defaultMax(max), extraTeamsDef, grouperDef))
+        case `verbandGesamt` => Some(TeamRegelVerbandGesamt(min, defaultMax(max), extraTeamsDef, grouperDef))
+        case `vereinGeraet` => Some(TeamRegelVereinGeraet(min, defaultMax(max), extraTeamsDef, grouperDef))
+        case `verbandGeraet` => Some(TeamRegelVerbandGeraet(min, defaultMax(max), extraTeamsDef, grouperDef))
         case _ => None
       }
       case "Keine Teams" =>None
@@ -52,32 +54,75 @@ object TeamRegel {
 }
 
 sealed trait TeamRegel {
+  def getTeamRegeln: Seq[TeamRegel] = Seq(this)
   def getExtrateams: List[String]
-  def parseExtrateams(extraTeamsDef: String) = extraTeamsDef.replace("/", "").split("\\+").map(_.trim).toList
+  def parseExtrateams(extraTeamsDef: String): List[String] = extraTeamsDef.replace("/", "").split("\\+").map(_.trim).toList
+  def getGrouperDefs: List[Set[String]] = List.empty
+  def parseGrouperDefs(grouperDef: String): List[Set[String]] = grouperDef
+    .replace("[", "")
+    .replace("]", "")
+    .split("/")
+    .map { term =>
+       term.split("\\+").toSet
+    }
+    .toList
+  private def getMatchingGrouper(name: String): Set[String] = {
+    val group = getGrouperDefs.find(_.contains(name)).getOrElse(Set(name))
+    group
+  }
 
   def extractTeams(wertungen: Iterable[WertungView]): List[Team]
   def extractExtraTeams(wertungen: Iterable[WertungView]): List[String] = wertungen.map(_.wettkampf).toList.distinct.flatMap(_.extraTeams)
 
+  /**
+   * Extracts all teams with default grouped wertungen.
+   * Default grouped means per Rule extracted program and sex.
+   * Per rule means, that each rule can have its own definition about whether a split or a group of a criterion is required.
+   * @param wertungen list of wertungen, containing athlets and its assignment to a program, team, etc., where each
+   *                  rule can extract its criterion to apply a splitting- or grouping- rule.
+   * @return
+   */
+  def extractTeamsWithDefaultGouping(wertungen: Iterable[WertungView]): List[(String,String,List[Team])] = {
+    wertungen
+      .filter(w => w.team != 0)
+      .toList
+      .groupBy(w => (pgmGrouperText(w), sexGrouperText(w)))
+      .map( gr => (gr._1._1, gr._1._2, extractTeams(gr._2)))
+      .toList
+  }
+
   def teamsAllowed: Boolean
   def toFormel: String
   def toRuleName: String
+
+  def pgmGrouperText(w: WertungView): String = getMatchingGrouper(w.wettkampfdisziplin.programm.name).mkString(",")
+  def sexGrouperText(w: WertungView): String = getMatchingGrouper(w.athlet.geschlecht).mkString(",")
 }
+
 case class TeamRegelList(regeln: List[TeamRegel], name: Option[String] = None) extends TeamRegel {
+  override def getTeamRegeln: Seq[TeamRegel] = regeln.flatMap(_.getTeamRegeln)
   override def getExtrateams: List[String] = regeln.flatMap(_.getExtrateams)
   override def extractTeams(wertungen: Iterable[WertungView]): List[Team] = {
     regeln.flatMap(_.extractTeams(wertungen))
   }
-
+  override def extractTeamsWithDefaultGouping(wertungen: Iterable[WertungView]): List[(String,String,List[Team])] = {
+    regeln.flatMap(_.extractTeamsWithDefaultGouping(wertungen))
+  }
+  override def getGrouperDefs: List[Set[String]] = regeln.flatMap(_.getGrouperDefs)
   override def teamsAllowed: Boolean = regeln.nonEmpty && regeln.exists(_.teamsAllowed)
   override def toFormel: String = name.getOrElse(regeln.map(_.toFormel).mkString(","))
   override def toRuleName: String = name.getOrElse(regeln.map(_.toRuleName).sorted.mkString(", "))
 }
 
-case class TeamRegelVereinGeraet(min: Int, max: Int, extraTeamsDef: String) extends TeamRegel {
+case class TeamRegelVereinGeraet(min: Int, max: Int, extraTeamsDef: String, grouperDef: String) extends TeamRegel {
   private val extrateams = parseExtrateams(extraTeamsDef)
   override def getExtrateams: List[String] = extrateams
-  override def toFormel: String = s"VereinGerät($min/${if (max > 0) max else "*"}$extraTeamsDef)"
-  override def toRuleName: String = s"""Vereins-Team Rangliste (beste $min Gerätewertungen${if (max > 0) s" aus $max" else ""})"""
+
+  private val grouperDefs = parseGrouperDefs(grouperDef)
+  override def getGrouperDefs: List[Set[String]] = grouperDefs
+
+  override def toFormel: String = s"VereinGerät$grouperDef($min/${if (max > 0) max else "*"}$extraTeamsDef)"
+  override def toRuleName: String = s"""Vereins-Team Rangliste $grouperDef (beste $min Gerätewertungen${if (max > 0) s" aus $max" else ""})"""
 
   override def extractTeams(wertungen: Iterable[WertungView]): List[Team] = {
     val extraTeams = extractExtraTeams(wertungen)
@@ -121,13 +166,16 @@ case class TeamRegelVereinGeraet(min: Int, max: Int, extraTeamsDef: String) exte
 
   override def teamsAllowed: Boolean = true
 }
-case class TeamRegelVereinGesamt(min: Int, max: Int, extraTeamsDef: String) extends TeamRegel {
+case class TeamRegelVereinGesamt(min: Int, max: Int, extraTeamsDef: String, grouperDef: String) extends TeamRegel {
   private val extrateams = parseExtrateams(extraTeamsDef)
   override def getExtrateams: List[String] = extrateams
 
-  override def toFormel: String = s"VereinGesamt($min/${if (max > 0) max else "*"}$extraTeamsDef)"
+  private val grouperDefs = parseGrouperDefs(grouperDef)
+  override def getGrouperDefs: List[Set[String]] = grouperDefs
 
-  override def toRuleName: String = s"""Vereins-Team Rangliste (beste $min Gesamtwertungen${if (max > 0) s" aus $max" else ""})"""
+  override def toFormel: String = s"VereinGesamt$grouperDef($min/${if (max > 0) max else "*"}$extraTeamsDef)"
+
+  override def toRuleName: String = s"""Vereins-Team Rangliste $grouperDef (beste $min Gesamtwertungen${if (max > 0) s" aus $max" else ""})"""
 
   override def extractTeams(wertungen: Iterable[WertungView]): List[Team] = {
     val extraTeams = extractExtraTeams(wertungen)
@@ -165,13 +213,16 @@ case class TeamRegelVereinGesamt(min: Int, max: Int, extraTeamsDef: String) exte
   override def teamsAllowed: Boolean = true
 }
 
-case class TeamRegelVerbandGeraet(min: Int, max: Int, extraTeamsDef: String) extends TeamRegel {
+case class TeamRegelVerbandGeraet(min: Int, max: Int, extraTeamsDef: String, grouperDef: String) extends TeamRegel {
   private val extrateams = parseExtrateams(extraTeamsDef)
   override def getExtrateams: List[String] = extrateams
 
-  override def toFormel: String = s"VerbandGerät($min/${if (max > 0) max else "*"}$extraTeamsDef)"
+  private val grouperDefs = parseGrouperDefs(grouperDef)
+  override def getGrouperDefs: List[Set[String]] = grouperDefs
 
-  override def toRuleName: String = s"""Verbands-Team Rangliste (beste $min Gerätewertungen${if (max > 0) s" aus $max" else ""})"""
+  override def toFormel: String = s"VerbandGerät$grouperDef($min/${if (max > 0) max else "*"}$extraTeamsDef)"
+
+  override def toRuleName: String = s"""Verbands-Team Rangliste $grouperDef (beste $min Gerätewertungen${if (max > 0) s" aus $max" else ""})"""
 
   override def extractTeams(wertungen: Iterable[WertungView]): List[Team] = {
     val extraTeams = extractExtraTeams(wertungen)
@@ -216,12 +267,15 @@ case class TeamRegelVerbandGeraet(min: Int, max: Int, extraTeamsDef: String) ext
 
   override def teamsAllowed: Boolean = true
 }
-case class TeamRegelVerbandGesamt(min: Int, max: Int, extraTeamsDef: String) extends TeamRegel {
+case class TeamRegelVerbandGesamt(min: Int, max: Int, extraTeamsDef: String, grouperDef: String) extends TeamRegel {
   private val extrateams = parseExtrateams(extraTeamsDef)
   override def getExtrateams: List[String] = extrateams
 
-  override def toFormel: String = s"VerbandGesamt($min/${if (max > 0) max else "*"}$extraTeamsDef)"
-  override def toRuleName: String = s"""Verbands-Team Rangliste (beste $min Gesamtwertungen${if (max > 0) s" aus $max" else ""})"""
+  private val grouperDefs = parseGrouperDefs(grouperDef)
+  override def getGrouperDefs: List[Set[String]] = grouperDefs
+
+  override def toFormel: String = s"VerbandGesamt$grouperDef($min/${if (max > 0) max else "*"}$extraTeamsDef)"
+  override def toRuleName: String = s"""Verbands-Team Rangliste $grouperDef (beste $min Gesamtwertungen${if (max > 0) s" aus $max" else ""})"""
 
   override def extractTeams(wertungen: Iterable[WertungView]): List[Team] = {
     val extraTeams = extractExtraTeams(wertungen)

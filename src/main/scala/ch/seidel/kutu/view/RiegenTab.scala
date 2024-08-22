@@ -3,9 +3,9 @@ package ch.seidel.kutu.view
 import ch.seidel.commons.{AutoCommitTextFieldTableCell, DisplayablePage, PageDisplayer, TabWithService}
 import ch.seidel.kutu.Config._
 import ch.seidel.kutu.KuTuApp
-import ch.seidel.kutu.KuTuApp.{hostServices}
+import ch.seidel.kutu.KuTuApp.hostServices
 import ch.seidel.kutu.data.ResourceExchanger
-import ch.seidel.kutu.domain.{Disziplin, Durchgang, GemischteRiegen, GemischterDurchgang, GetrennteDurchgaenge, KutuService, Riege, RiegeRaw, SexDivideRule, WettkampfView, encodeFileName, str2Int, toDurationFormat}
+import ch.seidel.kutu.domain.{Disziplin, Durchgang, GemischteRiegen, GemischterDurchgang, GetrennteDurchgaenge, KutuService, Riege, RiegeRaw, SexDivideRule, WettkampfView, encodeFileName, str2Int, toDurationFormat, toTimeFormat}
 import ch.seidel.kutu.renderer.PrintUtil.FilenameDefault
 import ch.seidel.kutu.renderer.{PrintUtil, RiegenBuilder, WertungsrichterQRCode, WertungsrichterQRCodesToHtmlRenderer}
 import ch.seidel.kutu.squad.DurchgangBuilder
@@ -13,7 +13,7 @@ import javafx.scene.text.Text
 import javafx.scene.{control => jfxsc}
 import scalafx.Includes.{eventClosureWrapperWithParam, jfxActionEvent2sfx, jfxBooleanBinding2sfx, jfxBounds2sfx, jfxCellEditEvent2sfx, jfxKeyEvent2sfx, jfxMouseEvent2sfx, jfxObjectProperty2sfx, jfxParent2sfx, jfxPixelReader2sfx, jfxReadOnlyBooleanProperty2sfx, jfxTableViewSelectionModel2sfx, jfxText2sfxText, observableList2ObservableBuffer, when}
 import scalafx.application.Platform
-import scalafx.beans.binding.{Bindings}
+import scalafx.beans.binding.Bindings
 import scalafx.beans.property.{BooleanProperty, StringProperty}
 import scalafx.beans.value.ObservableValue
 import scalafx.collections.ObservableBuffer
@@ -35,9 +35,13 @@ import scalafx.scene.{Cursor, Node}
 import scalafx.util.StringConverter
 import scalafx.util.converter.DefaultStringConverter
 
+import java.time.temporal.ChronoUnit
+import java.time.temporal.ChronoUnit.NANOS
+import java.time.{Duration, LocalDateTime, LocalTime, ZoneOffset}
 import java.util.UUID
 import scala.annotation.tailrec
 import scala.concurrent.Future
+import scala.concurrent.duration.MILLISECONDS
 
 object DurchgangView {
   val DRAG_RIEGE = new DataFormat("application/x-drag-riege");
@@ -113,7 +117,15 @@ class DurchgangView(wettkampf: WettkampfView, service: KutuService, disziplinlis
     new TreeTableColumn[DurchgangEditor, String] {
       prefWidth = 130
       text = "Durchgang"
-      cellValueFactory = { x => x.value.getValue.cellvalue }
+      cellValueFactory = { x => StringProperty(
+        if (x.value.getValue.durchgang.name.equals(x.value.getValue.durchgang.title)) {
+          s"""${x.value.getValue.durchgang.name}
+             |Start: ${x.value.getValue.durchgang.effectivePlanStart(wettkampf.datum.toLocalDate)}
+             |Ende: ${x.value.getValue.durchgang.effectivePlanFinish(wettkampf.datum.toLocalDate)}""".stripMargin
+        } else {
+          x.value.getValue.durchgang.name
+        })
+      }
     }
     , new TreeTableColumn[DurchgangEditor, String] {
       prefWidth = 40
@@ -1019,6 +1031,41 @@ class RiegenTab(override val wettkampfInfo: WettkampfInfo, override val service:
       m.disable = durchgangView.selectionModel.value.getSelectedItems.size() != 1
       m
     }
+    def makeStartOffsetDurchgangMenu: MenuItem = {
+      val m = KuTuApp.makeMenuAction("Durchgang Start Zeitpunkt ...") {(caption, action) =>
+      			  implicit val impevent = action
+			  val selectedDurchgang: String = durchgangView.selectionModel.value.getSelectedCells.head.getTreeItem.getValue.durchgang.title
+			  val selectedStartTime: String = s"${durchgangView.selectionModel.value.getSelectedCells.head.getTreeItem.getValue.durchgang.effectivePlanStart(wettkampf.datum.toLocalDate)}"
+			  val txtDurchgangStartTime = new TextField {
+    		  text.value = selectedStartTime
+    	  }
+    	  PageDisplayer.showInDialog(text.value, new DisplayablePage() {
+    		  def getPage: Node = {
+      		  new HBox {
+      			  prefHeight = 50
+      			  alignment = Pos.BottomRight
+      			  hgrow = Priority.Always
+      			  children = Seq(new Label("Durchgang Start Zeitpunkt (jjjj-mm-ttThh:mm:ss) "), txtDurchgangStartTime)
+      		  }
+      	  }
+      	  }, new Button("OK") {
+      		  onAction = (event: ActionEvent) => {
+      			  KuTuApp.invokeWithBusyIndicator {
+                val startTime = LocalDateTime.parse(txtDurchgangStartTime.text.value)
+                val wkstart = LocalDateTime.of(wettkampf.datum.toLocalDate, LocalTime.MIDNIGHT)
+                val dur: Duration = Duration.between(wkstart, startTime)
+                service.updateStartOffset(wettkampf.id, selectedDurchgang, dur.toMillis)
+      				  reloadData()
+                riegenFilterView.sort()
+                durchgangView.sort()
+      			  }
+      		  }
+      	  }
+      	)
+      }
+      m.disable = durchgangView.selectionModel.value.getSelectedItems.size() != 1
+      m
+    }
 
     val btnEditDurchgang = new MenuButton("Durchgang ...") {
       disable <== when(makeDurchgangActiveBinding) choose true otherwise false
@@ -1135,7 +1182,7 @@ class RiegenTab(override val wettkampfInfo: WettkampfInfo, override val service:
       durchgangView.getSelectionModel.getSelectedCells.onChange { (_, _) =>
         Platform.runLater {
           val focusedCells: List[jfxsc.TreeTablePosition[DurchgangEditor, _]] = durchgangView.selectionModel.value.getSelectedCells.toList
-          val selectedDurchgaenge = focusedCells.flatMap(c => c.getTreeItem.getValue.isHeader match {
+          val selectedDurchgaenge = focusedCells.filter(c => c.getTreeItem != null).flatMap(c => c.getTreeItem.getValue.isHeader match {
             case true =>
               c.getTreeItem.getChildren
             case false => List(c.getTreeItem)
@@ -1152,6 +1199,7 @@ class RiegenTab(override val wettkampfInfo: WettkampfInfo, override val service:
             items += makeRegenereateDurchgangMenu(actDurchgangSelection)
             items += makeMergeDurchganMenu(actDurchgangSelection)
             items += makeRenameDurchgangMenu
+            items += makeStartOffsetDurchgangMenu
             if (selectedDurchgangHeader.isEmpty) {
               items += makeAggregateDurchganMenu(actDurchgangSelection)
             }
@@ -1175,6 +1223,7 @@ class RiegenTab(override val wettkampfInfo: WettkampfInfo, override val service:
           btnEditDurchgang.items += makeRegenereateDurchgangMenu(actDurchgangSelection)
           btnEditDurchgang.items += makeMergeDurchganMenu(actDurchgangSelection)
           btnEditDurchgang.items += makeRenameDurchgangMenu
+          btnEditDurchgang.items += makeStartOffsetDurchgangMenu
           if (selectedDurchgangHeader.isEmpty) {
             btnEditDurchgang.items += makeAggregateDurchganMenu(actDurchgangSelection)
           }
@@ -1388,7 +1437,7 @@ class RiegenTab(override val wettkampfInfo: WettkampfInfo, override val service:
     def doRiegenBelatterExport(caption: String, event: ActionEvent): Unit = {
       import scala.concurrent.ExecutionContext.Implicits.global
 
-      val seriendaten = service.getAllKandidatenWertungen(wettkampf.uuid.map(UUID.fromString(_)).get)
+      val seriendaten = service.getAllKandidatenWertungen(wettkampf.uuid.map(UUID.fromString).get)
       val filename = "Riegenblatt_" + encodeFileName(wettkampf.easyprint) + ".html"
       val dir = new java.io.File(homedir + "/" + encodeFileName(wettkampf.easyprint))
       if(!dir.exists()) {
@@ -1396,7 +1445,8 @@ class RiegenTab(override val wettkampfInfo: WettkampfInfo, override val service:
       }
       val logofile = PrintUtil.locateLogoFile(dir)
       def generate = (lpp: Int) => KuTuApp.invokeAsyncWithBusyIndicator(caption) { Future {
-        (new Object with ch.seidel.kutu.renderer.RiegenblattToHtmlRenderer).toHTML(seriendaten, logofile, remoteBaseUrl)
+        (new Object with ch.seidel.kutu.renderer.RiegenblattToHtmlRenderer).toHTML(seriendaten, logofile, remoteBaseUrl, dgMapping = service.selectSimpleDurchgaenge(wettkampf.id)
+          .map(d => (d, d.effectivePlanStart(wettkampf.datum.toLocalDate))))
       }}
       Platform.runLater {
         PrintUtil.printDialogFuture(text.value, FilenameDefault(filename, dir), false, generate, orientation = PageOrientation.Portrait)(event)
