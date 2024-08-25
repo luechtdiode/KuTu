@@ -1,6 +1,6 @@
 <ion-item [hidden]="hidden">
-  <ion-label *ngIf="singleValues.length < 2">{{title}}</ion-label>
-  <ion-input #noteInput *ngIf="singleValues.length < 2" autofocus placeholder="Notenwert im Format ##.## (2-3 Nachkommastellen mit Dezimalpunkt)"
+  <!--ion-label *ngIf="singleValues.length < 2">{{title}}&nbsp;</ion-label-->
+  <ion-input [label]="title" #noteInput *ngIf="singleValues.length < 2" autofocus placeholder="Notenwert im Format ##.## (2-3 Nachkommastellen mit Dezimalpunkt)"
           name="noteInput" type="number"  [disabled]="waiting || disabled" 
           [(ngModel)]='singleValueContainer' 
           step="0.05" min="0.00" max="100.00" required></ion-input>
