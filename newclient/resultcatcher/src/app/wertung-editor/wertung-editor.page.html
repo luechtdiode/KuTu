@@ -17,8 +17,7 @@
       <app-wertung-avg-calc  #enote name="noteE" [waiting]="waiting" [valueTitle]="eNoteLabel" [(ngModel)]="wertung.noteE" [disabled]="!editable()">
       </app-wertung-avg-calc>
       <ion-item>
-        <ion-label>Endnote</ion-label>
-        <ion-input #endnote [ngModel]='wertung.endnote' type="number" readonly name="endnote" [disabled]="!editable()"></ion-input>
+        <ion-input label="Endnote" #endnote [ngModel]='wertung.endnote' type="number" readonly name="endnote" [disabled]="!editable()"></ion-input>
       </ion-item>
     </ion-list>
     <ion-list>
