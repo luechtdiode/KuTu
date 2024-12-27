@@ -7,9 +7,10 @@ import { filter, map, debounceTime, distinctUntilChanged, share, switchMap, take
 import { ClubRegistration, ProgrammRaw, AthletRegistration, Wettkampf, SyncAction, TeamItem } from '../../backend-types';
 
 @Component({
-  selector: 'app-reg-athletlist',
-  templateUrl: './reg-athletlist.page.html',
-  styleUrls: ['./reg-athletlist.page.scss'],
+    selector: 'app-reg-athletlist',
+    templateUrl: './reg-athletlist.page.html',
+    styleUrls: ['./reg-athletlist.page.scss'],
+    standalone: false
 })
 export class RegAthletlistPage implements OnInit {
   busy = new BehaviorSubject(false);

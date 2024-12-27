@@ -7,9 +7,10 @@ export enum GroupBy {
 }
 
 @Component({
-  selector: 'result-display',
-  templateUrl: './result-display.component.html',
-  styleUrls: ['./result-display.component.scss'],
+    selector: 'result-display',
+    templateUrl: './result-display.component.html',
+    styleUrls: ['./result-display.component.scss'],
+    standalone: false
 })
 export class ResultDisplayComponent implements OnInit {
 

@@ -5,9 +5,10 @@ import { filter } from 'rxjs/operators';
 import { GroupBy } from '../component/result-display/result-display.component';
 
 @Component({
-  selector: 'app-last-top-results',
-  templateUrl: './last-top-results.page.html',
-  styleUrls: ['./last-top-results.page.scss'],
+    selector: 'app-last-top-results',
+    templateUrl: './last-top-results.page.html',
+    styleUrls: ['./last-top-results.page.scss'],
+    standalone: false
 })
 export class LastTopResultsPage implements OnInit {
   groupBy = GroupBy; 

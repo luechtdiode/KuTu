@@ -10,9 +10,10 @@ import { NgForm } from '@angular/forms';
 import { TypeAheadItem } from 'src/app/component/typeahead/typeahead.component';
 
 @Component({
-  selector: 'app-clubreg-editor',
-  templateUrl: './clubreg-editor.page.html',
-  styleUrls: ['./clubreg-editor.page.scss'],
+    selector: 'app-clubreg-editor',
+    templateUrl: './clubreg-editor.page.html',
+    styleUrls: ['./clubreg-editor.page.scss'],
+    standalone: false
 })
 export class ClubregEditorPage implements OnInit {
 

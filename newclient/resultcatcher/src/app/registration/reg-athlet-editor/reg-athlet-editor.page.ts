@@ -7,9 +7,10 @@ import { toDateString } from '../../utils';
 import { NgForm } from '@angular/forms';
 
 @Component({
-  selector: 'app-reg-athlet-editor',
-  templateUrl: './reg-athlet-editor.page.html',
-  styleUrls: ['./reg-athlet-editor.page.scss'],
+    selector: 'app-reg-athlet-editor',
+    templateUrl: './reg-athlet-editor.page.html',
+    styleUrls: ['./reg-athlet-editor.page.scss'],
+    standalone: false
 })
 export class RegAthletEditorPage implements OnInit {
 

@@ -9,9 +9,10 @@ import { GroupBy } from '../component/result-display/result-display.component';
 
 
 @Component({
-  selector: 'app-athlet-view',
-  templateUrl: './athlet-view.page.html',
-  styleUrls: ['./athlet-view.page.scss'],
+    selector: 'app-athlet-view',
+    templateUrl: './athlet-view.page.html',
+    styleUrls: ['./athlet-view.page.scss'],
+    standalone: false
 })
 export class AthletViewPage  implements OnInit {
   groupBy = GroupBy; 
