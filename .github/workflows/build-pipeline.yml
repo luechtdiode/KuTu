@@ -57,7 +57,7 @@ jobs:
           cd ../..
           rm -rf ./src/main/resources/app
           mkdir ./src/main/resources/app
-          cp -R -f ./newclient/resultcatcher/www/* ./src/main/resources/app
+          cp -R -f ./newclient/resultcatcher/www/browser* ./src/main/resources/app
       - name: Autocommit Client
         uses: stefanzweifel/git-auto-commit-action@v5
         with:
