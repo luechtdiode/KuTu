@@ -1,10 +1,10 @@
 
 --------------------------------------------------------------------------------
-Package: @capacitor/splash-screen
+Package: @ionic/core
 License: "MIT"
 
-Copyright 2020-present Ionic
-https://ionic.io
+Copyright 2015-present Drifty Co.
+http://drifty.com/
 
 MIT License
 
@@ -28,11 +28,11 @@ OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
 WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 --------------------------------------------------------------------------------
-Package: @ionic/core
+Package: @capacitor/splash-screen
 License: "MIT"
 
-Copyright 2015-present Drifty Co.
-http://drifty.com/
+Copyright 2020-present Ionic
+https://ionic.io
 
 MIT License
 
