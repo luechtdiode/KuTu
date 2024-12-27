@@ -2,9 +2,10 @@ import { Component, OnInit, Input, Output, EventEmitter } from '@angular/core';
 import { ClubRegistration, AthletRegistration, ProgrammRaw, TeamItem } from '../../backend-types';
 
 @Component({
-  selector: 'app-reg-athlet-item',
-  templateUrl: './reg-athlet-item.component.html',
-  styleUrls: ['./reg-athlet-item.component.scss'],
+    selector: 'app-reg-athlet-item',
+    templateUrl: './reg-athlet-item.component.html',
+    styleUrls: ['./reg-athlet-item.component.scss'],
+    standalone: false
 })
 export class RegAthletItemComponent implements OnInit {
 

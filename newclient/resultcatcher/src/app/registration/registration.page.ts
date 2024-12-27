@@ -7,9 +7,10 @@ import { ActivatedRoute } from '@angular/router';
 import { debounceTime, distinctUntilChanged, map, filter, switchMap, share, take, tap } from 'rxjs/operators';
 
 @Component({
-  selector: 'app-registration',
-  templateUrl: './registration.page.html',
-  styleUrls: ['./registration.page.scss'],
+    selector: 'app-registration',
+    templateUrl: './registration.page.html',
+    styleUrls: ['./registration.page.scss'],
+    standalone: false
 })
 export class RegistrationPage implements OnInit {
 

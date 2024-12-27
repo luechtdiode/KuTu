@@ -7,8 +7,9 @@ import { map } from 'rxjs/operators';
 
 
 @Component({
-  selector: 'app-page-home',
-  templateUrl: 'home.page.html'
+    selector: 'app-page-home',
+    templateUrl: 'home.page.html',
+    standalone: false
 })
 export class HomePage implements OnInit {
 

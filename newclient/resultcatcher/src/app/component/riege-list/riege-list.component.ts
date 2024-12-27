@@ -3,9 +3,10 @@ import { NavController } from '@ionic/angular';
 import { WertungContainer } from '../../backend-types';
 import { BackendService } from '../../services/backend.service';
 @Component({
-  selector: 'riege-list',
-  templateUrl: 'riege-list.component.html',
-  styleUrls: ['./riege-list.component.scss'],
+    selector: 'riege-list',
+    templateUrl: 'riege-list.component.html',
+    styleUrls: ['./riege-list.component.scss'],
+    standalone: false
 })
 export class RiegeListComponent {
   constructor(private navCtrl: NavController, private backendService: BackendService) { }

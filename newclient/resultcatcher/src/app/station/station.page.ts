@@ -8,9 +8,10 @@ import { Observable } from 'rxjs';
 import { gearMapping } from '../utils';
 
 @Component({
-  selector: 'app-station',
-  templateUrl: './station.page.html',
-  styleUrls: ['./station.page.scss']
+    selector: 'app-station',
+    templateUrl: './station.page.html',
+    styleUrls: ['./station.page.scss'],
+    standalone: false
 })
 export class StationPage implements OnInit  {
 

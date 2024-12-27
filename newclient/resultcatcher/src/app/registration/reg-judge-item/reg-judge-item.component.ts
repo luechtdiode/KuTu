@@ -3,9 +3,10 @@ import { Component, EventEmitter, Input, OnInit, Output } from '@angular/core';
 import { JudgeRegistration, JudgeRegistrationProgramItem } from 'src/app/backend-types';
 
 @Component({
-  selector: 'app-reg-judge-item',
-  templateUrl: './reg-judge-item.component.html',
-  styleUrls: ['./reg-judge-item.component.scss'],
+    selector: 'app-reg-judge-item',
+    templateUrl: './reg-judge-item.component.html',
+    styleUrls: ['./reg-judge-item.component.scss'],
+    standalone: false
 })
 export class RegJudgeItemComponent implements OnInit {
 

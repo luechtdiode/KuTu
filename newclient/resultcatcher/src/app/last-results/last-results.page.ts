@@ -10,9 +10,10 @@ import { Subject, BehaviorSubject, of, Subscription } from 'rxjs';
 import { GroupBy } from '../component/result-display/result-display.component';
 
 @Component({
-  selector: 'app-last-results',
-  templateUrl: './last-results.page.html',
-  styleUrls: ['./last-results.page.scss'],
+    selector: 'app-last-results',
+    templateUrl: './last-results.page.html',
+    styleUrls: ['./last-results.page.scss'],
+    standalone: false
 })
 export class LastResultsPage implements OnInit, OnDestroy {
   groupBy = GroupBy;
