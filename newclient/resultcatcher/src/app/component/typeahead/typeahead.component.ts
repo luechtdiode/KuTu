@@ -6,8 +6,9 @@ export interface TypeAheadItem<T> {
   text: string;
 };
 @Component({
-  selector: 'app-typeahead',
-  templateUrl: 'typeahead.component.html',
+    selector: 'app-typeahead',
+    templateUrl: 'typeahead.component.html',
+    standalone: false
 })
 export class TypeaheadComponent<T> implements OnInit {
   @Input() items: TypeAheadItem<T>[] = [];

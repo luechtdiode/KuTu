@@ -7,9 +7,10 @@ import { toDateString } from 'src/app/utils';
 import { NgForm } from '@angular/forms';
 
 @Component({
-  selector: 'app-reg-judge-editor',
-  templateUrl: './reg-judge-editor.page.html',
-  styleUrls: ['./reg-judge-editor.page.scss'],
+    selector: 'app-reg-judge-editor',
+    templateUrl: './reg-judge-editor.page.html',
+    styleUrls: ['./reg-judge-editor.page.scss'],
+    standalone: false
 })
 export class RegJudgeEditorPage  implements OnInit {
 

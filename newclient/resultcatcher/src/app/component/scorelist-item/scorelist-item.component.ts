@@ -3,9 +3,10 @@ import { Component, OnInit, Input, Output, EventEmitter } from '@angular/core';
 import { ScoreRow } from 'src/app/backend-types';
 
 @Component({
-  selector: 'scorelist-item',
-  templateUrl: './scorelist-item.component.html',
-  styleUrls: ['./scorelist-item.component.scss'],
+    selector: 'scorelist-item',
+    templateUrl: './scorelist-item.component.html',
+    styleUrls: ['./scorelist-item.component.scss'],
+    standalone: false
 })
 export class ScorelistItemComponent implements OnInit {
   teilnehmerSubResults = '';

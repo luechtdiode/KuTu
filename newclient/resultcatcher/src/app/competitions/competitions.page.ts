@@ -5,9 +5,10 @@ import { Subject, distinctUntilChanged, map, of, share, switchMap } from 'rxjs';
 import { Wettkampf } from '../backend-types';
 
 @Component({
-  selector: 'app-competitions',
-  templateUrl: './competitions.page.html',
-  styleUrls: ['./competitions.page.scss'],
+    selector: 'app-competitions',
+    templateUrl: './competitions.page.html',
+    styleUrls: ['./competitions.page.scss'],
+    standalone: false
 })
 export class CompetitionsPage implements OnInit {
   pgmList;

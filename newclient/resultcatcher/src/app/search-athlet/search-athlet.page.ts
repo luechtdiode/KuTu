@@ -8,9 +8,10 @@ import { ActivatedRoute } from '@angular/router';
 import { debounceTime, distinctUntilChanged, map, filter, switchMap, tap, share } from 'rxjs/operators';
 
 @Component({
-  selector: 'app-search-athlet',
-  templateUrl: './search-athlet.page.html',
-  styleUrls: ['./search-athlet.page.scss'],
+    selector: 'app-search-athlet',
+    templateUrl: './search-athlet.page.html',
+    styleUrls: ['./search-athlet.page.scss'],
+    standalone: false
 })
 export class SearchAthletPage implements OnInit {
 
