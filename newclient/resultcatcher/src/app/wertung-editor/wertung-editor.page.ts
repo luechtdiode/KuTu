@@ -10,9 +10,10 @@ import { Capacitor, Plugins } from '@capacitor/core';
 import { turn10ProgrammNames } from '../utils';
 
 @Component({
-  selector: 'app-wertung-editor',
-  templateUrl: './wertung-editor.page.html',
-  styleUrls: ['./wertung-editor.page.scss'],
+    selector: 'app-wertung-editor',
+    templateUrl: './wertung-editor.page.html',
+    styleUrls: ['./wertung-editor.page.scss'],
+    standalone: false
 })
 export class WertungEditorPage {
 

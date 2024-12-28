@@ -2,16 +2,17 @@ import { Component, EventEmitter, HostBinding, Input, OnInit, Output, ViewChild 
 import { ControlValueAccessor, NG_VALUE_ACCESSOR } from '@angular/forms';
 
 @Component({
-  selector: 'app-wertung-avg-calc',
-  templateUrl: './wertung-avg-calc.component.html',
-  styleUrls: ['./wertung-avg-calc.component.scss'],
-  providers: [
-    {
-      provide: NG_VALUE_ACCESSOR,
-      multi:true,
-      useExisting: WertungAvgCalcComponent
-    }
-  ]
+    selector: 'app-wertung-avg-calc',
+    templateUrl: './wertung-avg-calc.component.html',
+    styleUrls: ['./wertung-avg-calc.component.scss'],
+    providers: [
+        {
+            provide: NG_VALUE_ACCESSOR,
+            multi: true,
+            useExisting: WertungAvgCalcComponent
+        }
+    ],
+    standalone: false
 })
 export class WertungAvgCalcComponent implements ControlValueAccessor { 
   static nextId = 0;

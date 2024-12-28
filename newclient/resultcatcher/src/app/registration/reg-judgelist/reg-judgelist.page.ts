@@ -7,9 +7,10 @@ import { ClubRegistration, ProgrammRaw, JudgeRegistration, SyncAction, Wettkampf
 import { BackendService } from 'src/app/services/backend.service';
 
 @Component({
-  selector: 'app-reg-judgelist',
-  templateUrl: './reg-judgelist.page.html',
-  styleUrls: ['./reg-judgelist.page.scss'],
+    selector: 'app-reg-judgelist',
+    templateUrl: './reg-judgelist.page.html',
+    styleUrls: ['./reg-judgelist.page.scss'],
+    standalone: false
 })
 export class RegJudgelistPage  implements OnInit {
   busy = new BehaviorSubject(false);
