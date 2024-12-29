@@ -323,9 +323,9 @@
 		<scala.majorversion>2.13</scala.majorversion>
 		<scala.version>2.13.14</scala.version>
 		<akkaHttp.version>10.5.3</akkaHttp.version>
-		<javafx.version>21.0.4</javafx.version>
+		<javafx.version>23</javafx.version>
 		<akka.version>2.8.6</akka.version>
-		<scalafx.version>21.0.0-R32</scalafx.version>
+		<scalafx.version>23.0.1-R34</scalafx.version>
 		<!--scalafx.version>20.0.0-R31</scalafx.version-->
 		<scalatest.version>3.3.0-SNAP4</scalatest.version>
 		<scala-maven-plugin.version>4.9.2</scala-maven-plugin.version>
@@ -415,7 +415,7 @@
 		<dependency>
 			<groupId>com.zaxxer</groupId>
 			<artifactId>HikariCP</artifactId>
-			<version>5.1.0</version>
+			<version>6.2.1</version>
 		</dependency>
 
 		<!-- akka / akkahttp -->
@@ -544,7 +544,7 @@
         <dependency>
             <groupId>org.javadelight</groupId>
             <artifactId>delight-nashorn-sandbox</artifactId>
-            <version>0.4.2</version>
+            <version>0.5.0</version>
         </dependency>
 
 		<dependency>
@@ -629,7 +629,7 @@
 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-surefire-plugin</artifactId>
-				<version>3.5.0</version>
+				<version>3.5.2</version>
 				<configuration>
 					<includes>
 						<include>**/*Suite.class</include>

@@ -21,17 +21,17 @@ USER kutu
 
 EXPOSE 5757
 
-ENV X_KUTU_SECRET ""
-ENV X_DB_CONFIG_NAME "sqlite"
-ENV X_POSTGRES_HOST ""
-ENV X_POSTGRES_USER ""
-ENV X_POSTGRES_PASSWORD ""
+ENV X_KUTU_SECRET=""
+ENV X_DB_CONFIG_NAME="sqlite"
+ENV X_POSTGRES_HOST=""
+ENV X_POSTGRES_USER=""
+ENV X_POSTGRES_PASSWORD=""
 
-ENV X_SMTP_HOST "undefined"
-ENV X_SMTP_PORT 0
-ENV X_SMTP_USERNAME "undefined"
-ENV X_SMTP_DOMAIN "undefined"
-ENV X_SMTP_PASSWORD "undefined"
+ENV X_SMTP_HOST="undefined"
+ENV X_SMTP_PORT=0
+ENV X_SMTP_USERNAME="undefined"
+ENV X_SMTP_DOMAIN="undefined"
+ENV X_SMTP_PASSWORD="undefined"
 
 ENTRYPOINT [ "java", "-cp", ".:app.jar:libs/*" \
     , "-Duser.home=/home" \
