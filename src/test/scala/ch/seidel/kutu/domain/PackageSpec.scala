@@ -3,6 +3,7 @@ package ch.seidel.kutu.domain
 import ch.seidel.kutu.base.KuTuBaseSpec
 
 import java.time.LocalDate
+import scala.math.BigDecimal.RoundingMode
 
 class PackageSpec extends KuTuBaseSpec {
   "GeTuWettkampf" should {
@@ -117,5 +118,116 @@ class PackageSpec extends KuTuBaseSpec {
           Verein(1, "Verein", Some("Verband"))), true)), None)
       assert(ar.matchesAthlet().==(true))
     }
+  }
+  "TeamAggreateFun avg" in {
+    val results1 = List(
+      Resultat(0, 7.00, 0.08),
+      Resultat(1, 8.00, 0.12),
+      Resultat(2, 8.50, 0.06),
+      Resultat(3, 9.50, 0.23)
+    )
+    val results2 = List(
+      Resultat(1, 8.00, 0.10),
+      Resultat(1, 8.20, 0.12),
+      Resultat(2, 8.50, 0.15),
+      Resultat(2, 9.10, 0.20)
+    )
+    assert(TeamAggreateFun("avg/")(results1).endnote.<(TeamAggreateFun("avg/")(results2).endnote))
+    assert(TeamAggreateFun("avg/")(results1).==(Resultat(1.5, 8.25, 0.1225)))
+    assert(TeamAggreateFun("avg/")(results2).==(Resultat(1.5, 8.45, 0.1425)))
+  }
+  "TeamAggreateFun median even" in {
+    val results1 = List(
+      Resultat(0, 7.30, 0.06),
+      Resultat(1, 8.00, 0.08),
+      Resultat(2, 8.50, 0.12),
+      Resultat(3, 9.50, 0.23)
+    )
+    assert(TeamAggreateFun("median/")(results1).==(Resultat(1.5, 8.25, 0.10)))
+  }
+  "TeamAggreateFun median odd" in {
+    val results1 = List(
+      Resultat(0, 7.00, 0.02),
+      Resultat(0, 7.30, 0.06),
+      Resultat(1, 8.00, 0.08),
+      Resultat(2, 8.50, 0.12),
+      Resultat(3, 9.50, 0.23)
+    )
+    assert(TeamAggreateFun("median/")(results1).==(Resultat(1, 8.00, 0.08)))
+  }
+  "TeamAggreateFun min" in {
+    val results1 = List(
+      Resultat(0, 7.00, 0.08),
+      Resultat(1, 8.00, 0.12),
+      Resultat(2, 8.50, 0.06),
+      Resultat(3, 9.50, 0.23)
+    )
+    val results2 = List(
+      Resultat(1, 8.00, 0.10),
+      Resultat(1, 8.20, 0.12),
+      Resultat(2, 8.50, 0.15),
+      Resultat(2, 9.10, 0.20)
+    )
+    assert(TeamAggreateFun("min/")(results1).endnote.<(TeamAggreateFun("min/")(results2).endnote))
+    assert(TeamAggreateFun("min/")(results1).==(Resultat(0, 7.00, 0.06)))
+    assert(TeamAggreateFun("min/")(results2).==(Resultat(1, 8.00, 0.10)))
+  }
+  "TeamAggreateFun max" in {
+    val results1 = List(
+      Resultat(0, 7.00, 0.08),
+      Resultat(1, 8.00, 0.12),
+      Resultat(2, 8.50, 0.06),
+      Resultat(3, 9.50, 0.23)
+    )
+    val results2 = List(
+      Resultat(1, 8.00, 0.10),
+      Resultat(1, 8.20, 0.12),
+      Resultat(2, 8.50, 0.15),
+      Resultat(2, 9.10, 0.20)
+    )
+    assert(TeamAggreateFun("max/")(results1).endnote.>(TeamAggreateFun("max/")(results2).endnote))
+    assert(TeamAggreateFun("max/")(results1).==(Resultat(3, 9.50, 0.23)))
+    assert(TeamAggreateFun("max/")(results2).==(Resultat(2, 9.10, 0.20)))
+  }
+  "TeamAggreateFun devmin" in {
+    val results1 = List(
+      Resultat(0, 7.00, 0.08),
+      Resultat(1, 8.00, 0.12),
+      Resultat(2, 8.50, 0.06),
+      Resultat(3, 9.50, 0.23)
+    )
+    val results2 = List(
+      Resultat(1, 8.00, 0.10),
+      Resultat(1, 8.20, 0.12),
+      Resultat(2, 8.50, 0.15),
+      Resultat(2, 9.10, 0.20)
+    )
+    assert(TeamAggreateFun("devmin/")(results1).endnote.>(TeamAggreateFun("devmin/")(results2).endnote))
+    assert(TeamAggreateFun("devmin/")(results1).==(Resultat(1.12, 0.9014, 0.06571720)))
+    assert(TeamAggreateFun("devmin/")(results2).==(Resultat(0.50, 0.4153, 0.03766630)))
+  }
+  "TeamAggreateFun devmin2" in {
+    val results1 = List(
+      Resultat(0, 7.00, 0.10),
+      Resultat(1, 8.00, 0.22),
+      Resultat(2, 8.50, 0.21),
+      Resultat(3, 9.50, 0.07)
+    )
+    val results2 = List(
+      Resultat(1, 8.00, 0.47),
+      Resultat(1, 8.25, 0.42),
+      Resultat(2, 8.10, 0.31),
+      Resultat(2, 7.90, 0.26),
+      Resultat(2, 7.80, 0.76),
+      Resultat(2, 8.30, 0.90),
+      Resultat(1, 8.10, 0.47),
+      Resultat(1, 8.60, 0.42),
+      Resultat(2, 8.45, 0.31),
+      Resultat(2, 8.10, 0.26),
+      Resultat(2, 8.10, 0.76),
+      Resultat(2, 8.25, 0.90)
+    )
+    assert(TeamAggreateFun("devmin/")(results1).==(Resultat(1.12, 0.9014, 0.06595)))
+    assert(TeamAggreateFun("devmin/")(results2).noteE.setScale(2, RoundingMode.HALF_DOWN).==(Resultat(0, 0.21, 0).noteE))
   }
 }
