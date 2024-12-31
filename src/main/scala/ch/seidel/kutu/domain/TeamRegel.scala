@@ -17,26 +17,31 @@ object TeamRegel {
     , ("Aus Verein, drei Bestnoten pro Gerät, mit max vier Mitglieder, zusammengefasste Kategorien K6, K7, KH, KD" -> s"$vereinGeraet[K6+K7+KD+KH](3/4)")
     , ("Aus Verein, drei Gesamt-Bestnoten, mit unbeschränkter Anzahl Mitglieder" -> s"$vereinGesamt(3/*)")
     , ("Aus Verein, drei Gesamt-Bestnoten, mit max vier Mitglieder" -> s"$vereinGesamt(3/4)")
+    , ("Aus Verein, durchschnitt pro Gerät, mit unbeschränkter Anzahl Mitglieder (M/W)" -> s"$vereinGeraet[M+W](avg/*/*)")
+    , ("Aus Verein, median pro Gerät, mit unbeschränkter Anzahl Mitglieder (M/W)" -> s"$vereinGeraet[M+W](median/*/*)")
+    , ("Aus Verein, kleinste Abweichung pro Gerät, mit unbeschränkter Anzahl Mitglieder (M/W)" -> s"$vereinGeraet[M+W](devmin/*/*)")
+    , ("Aus Verein, grösste Abweichung pro Gerät, mit unbeschränkter Anzahl Mitglieder (M/W)" -> s"$vereinGeraet[M+W](devmax/*/*)")
     , ("Aus Verband, drei Bestnoten pro Gerät, mit unbeschränkter Anzahl Mitglieder" -> s"$verbandGeraet(3/*)")
     , ("Aus Verband, drei Bestnoten pro Gerät, mit max vier Mitglieder" -> s"$verbandGeraet(3/4)")
     , ("Aus Verband, drei Gesamt-Bestnoten, mit unbeschränkter Anzahl Mitglieder" -> s"$verbandGesamt(3/*)")
     , ("Aus Verband, drei Gesamt-Bestnoten, mit max vier Mitglieder" -> s"$verbandGesamt(3/4)")
     , ("Individuell" -> s"$vereinGesamt(<min>/<max>/<extrateam1>+<extrateam2>), $verbandGesamt(<min>/<max>), VereinGerät(<min>/<max>), $vereinGeraet(<min>/<max>)")
   )
-  private val rangePattern = "([a-zA-ZäöüÄÖÜ]+)([\\[\\S\\s0-9+\\]]+)?\\(([0-9]+)\\/([0-9,\\*]*)(\\/[\\S\\s\\/0-9+]*)?\\)".r
+  private val rangePattern = "([a-zA-ZäöüÄÖÜ]+)([\\[\\S\\s0-9+\\]]+)?\\(([devmax\\/|devmin\\/|median\\/|min\\/|max\\/|avg\\/|sum\\/]+)?([0-9,\\*]+)\\/([0-9,\\*]*)(\\/[\\S\\s\\/0-9+]*)?\\)".r
 
   def apply(formel: String): TeamRegel = {
-    def defaultMax(max: String): Int = if (max.equals("*")) 0 else max
+    def default(cnt: String): Int = if (cnt.equals("*")) 0 else try cnt.intValue catch {case _ => 0}
     val regeln = formel.split(",").map(_.trim).filter(_.nonEmpty).toList
     val mappedRules: List[TeamRegel] = regeln.flatMap {
-      case rangePattern(rulename, grouper, min, max, extrateams) =>
+      case rangePattern(rulename, grouper, aggFn, min, max, extrateams) =>
+        val aggFun = TeamAggreateFun(aggFn)
         val extraTeamsDef = if (extrateams == null) "" else extrateams
         val grouperDef = if (grouper == null) "" else grouper
         rulename match {
-        case `vereinGesamt` => Some(TeamRegelVereinGesamt(min, defaultMax(max), extraTeamsDef, grouperDef))
-        case `verbandGesamt` => Some(TeamRegelVerbandGesamt(min, defaultMax(max), extraTeamsDef, grouperDef))
-        case `vereinGeraet` => Some(TeamRegelVereinGeraet(min, defaultMax(max), extraTeamsDef, grouperDef))
-        case `verbandGeraet` => Some(TeamRegelVerbandGeraet(min, defaultMax(max), extraTeamsDef, grouperDef))
+        case `vereinGesamt` => Some(TeamRegelVereinGesamt(default(min), default(max), extraTeamsDef, grouperDef, aggFun))
+        case `verbandGesamt` => Some(TeamRegelVerbandGesamt(default(min), default(max), extraTeamsDef, grouperDef, aggFun))
+        case `vereinGeraet` => Some(TeamRegelVereinGeraet(default(min), default(max), extraTeamsDef, grouperDef, aggFun))
+        case `verbandGeraet` => Some(TeamRegelVerbandGeraet(default(min), default(max), extraTeamsDef, grouperDef, aggFun))
         case _ => None
       }
       case "Keine Teams" =>None
@@ -80,11 +85,12 @@ sealed trait TeamRegel {
    * Per rule means, that each rule can have its own definition about whether a split or a group of a criterion is required.
    * @param wertungen list of wertungen, containing athlets and its assignment to a program, team, etc., where each
    *                  rule can extract its criterion to apply a splitting- or grouping- rule.
-   * @return
+   * @return List[pgm,sex,List[teams]]
    */
   def extractTeamsWithDefaultGouping(wertungen: Iterable[WertungView]): List[(String,String,List[Team])] = {
+    val hasNoExplicitTeams = !wertungen.exists(w => w.team != 0)
     wertungen
-      .filter(w => w.team != 0)
+      .filter(w => hasNoExplicitTeams || w.team != 0)
       .toList
       .groupBy(w => (pgmGrouperText(w), sexGrouperText(w)))
       .map( gr => (gr._1._1, gr._1._2, extractTeams(gr._2)))
@@ -114,41 +120,43 @@ case class TeamRegelList(regeln: List[TeamRegel], name: Option[String] = None) e
   override def toRuleName: String = name.getOrElse(regeln.map(_.toRuleName).sorted.mkString(", "))
 }
 
-case class TeamRegelVereinGeraet(min: Int, max: Int, extraTeamsDef: String, grouperDef: String) extends TeamRegel {
+case class TeamRegelVereinGeraet(min: Int, max: Int, extraTeamsDef: String, grouperDef: String, aggregateFun: TeamAggreateFun) extends TeamRegel {
   private val extrateams = parseExtrateams(extraTeamsDef)
   override def getExtrateams: List[String] = extrateams
 
   private val grouperDefs = parseGrouperDefs(grouperDef)
   override def getGrouperDefs: List[Set[String]] = grouperDefs
 
-  override def toFormel: String = s"VereinGerät$grouperDef($min/${if (max > 0) max else "*"}$extraTeamsDef)"
-  override def toRuleName: String = s"""Vereins-Team Rangliste $grouperDef (beste $min Gerätewertungen${if (max > 0) s" aus $max" else ""})"""
+  override def toFormel: String = s"VereinGerät$grouperDef(${aggregateFun.toFormelPart}${if (min > 0) min else "*"}/${if (max > 0) max else "*"}$extraTeamsDef)"
+  override def toRuleName: String = s"""Vereins-Team Rangliste $grouperDef (${aggregateFun.toDescriptionPart} ${if (min == 0) "allen" else s"besten $min"}${if (max > 0) s" von max $max" else ""} Gerätewertungen)"""
 
   override def extractTeams(wertungen: Iterable[WertungView]): List[Team] = {
     val extraTeams = extractExtraTeams(wertungen)
+    val hasNoExplicitTeams = !wertungen.exists(w => w.team != 0)
     wertungen
-      .filter(w => w.team != 0)
+      .filter(w => hasNoExplicitTeams || w.team != 0)
       .toList
       .groupBy(w => w.getTeamName(extraTeams))
       .flatMap { team =>
         val (teamname, teamwertungen) = team
         val athletCount = teamwertungen.map(w => w.athlet.id).toSet.size
-        if (athletCount >= min && (max == 0 || athletCount <= max)) {
+        if (((min == 0 && athletCount > 0) || athletCount >= min) && (max == 0 || athletCount <= max)) {
+          val takeCnt = if (min == 0) athletCount else min
           val perDisciplinWertungen: Map[Disziplin, List[WertungView]] = teamwertungen
             .groupBy(w => w.wettkampfdisziplin.disziplin)
             .flatMap { case (disciplin, wtgs) =>
               val relevantDisciplineValues = wtgs
-                .filter(_.resultat.endnote > 0)
+                //.filter(_.resultat.endnote > 0)
                 .groupBy(_.resultat.endnote).toList
-                .sortBy(_._1).reverse.take(min)
+                .sortBy(_._1).reverse.take(takeCnt)
                 .flatMap(_._2)
               if (relevantDisciplineValues.isEmpty) None else Some((disciplin, relevantDisciplineValues))
             }
           val perDisciplinCountingWertungen: Map[Disziplin, List[WertungView]] = perDisciplinWertungen
             .flatMap { case (disciplin, wtgs) =>
               val relevantDisciplineValues = wtgs
-                .filter(_.resultat.endnote > 0)
-                .sortBy(_.resultat.endnote).reverse.take(min)
+                //.filter(_.resultat.endnote > 0)
+                .sortBy(_.resultat.endnote).reverse.take(takeCnt)
               if (relevantDisciplineValues.isEmpty) None else Some((disciplin, relevantDisciplineValues))
             }
           val limitedTeamwertungen = if (max > 0) teamwertungen else {
@@ -157,7 +165,7 @@ case class TeamRegelVereinGeraet(min: Int, max: Int, extraTeamsDef: String, grou
               allRelevantWertungen.contains(w.athlet)
             }
           }
-          List(Team(s"${teamname}", toRuleName, limitedTeamwertungen, perDisciplinCountingWertungen, perDisciplinWertungen))
+          List(Team(s"${teamname}", toRuleName, limitedTeamwertungen, perDisciplinCountingWertungen, perDisciplinWertungen, aggregateFun))
         } else {
           List.empty
         }
@@ -166,27 +174,29 @@ case class TeamRegelVereinGeraet(min: Int, max: Int, extraTeamsDef: String, grou
 
   override def teamsAllowed: Boolean = true
 }
-case class TeamRegelVereinGesamt(min: Int, max: Int, extraTeamsDef: String, grouperDef: String) extends TeamRegel {
+case class TeamRegelVereinGesamt(min: Int, max: Int, extraTeamsDef: String, grouperDef: String, aggregateFun: TeamAggreateFun) extends TeamRegel {
   private val extrateams = parseExtrateams(extraTeamsDef)
   override def getExtrateams: List[String] = extrateams
 
   private val grouperDefs = parseGrouperDefs(grouperDef)
   override def getGrouperDefs: List[Set[String]] = grouperDefs
 
-  override def toFormel: String = s"VereinGesamt$grouperDef($min/${if (max > 0) max else "*"}$extraTeamsDef)"
+  override def toFormel: String = s"VereinGesamt$grouperDef(${aggregateFun.toFormelPart}${if (min > 0) min else "*"}/${if (max > 0) max else "*"}$extraTeamsDef)"
 
-  override def toRuleName: String = s"""Vereins-Team Rangliste $grouperDef (beste $min Gesamtwertungen${if (max > 0) s" aus $max" else ""})"""
+  override def toRuleName: String = s"""Vereins-Team Rangliste $grouperDef (${aggregateFun.toDescriptionPart} ${if (min == 0) "allen" else s"besten $min"}${if (max > 0) s" von max $max" else ""} Gesamtwertungen)"""
 
   override def extractTeams(wertungen: Iterable[WertungView]): List[Team] = {
     val extraTeams = extractExtraTeams(wertungen)
+    val hasNoExplicitTeams = !wertungen.exists(w => w.team != 0)
     wertungen
-      .filter(w => w.team != 0)
+      .filter(w => hasNoExplicitTeams || w.team != 0)
       .toList
       .groupBy(w => w.getTeamName(extraTeams))
       .flatMap { team =>
         val (teamname, teamwertungen) = team
         val athletCount = teamwertungen.map(w => w.athlet.id).toSet.size
-        if (athletCount >= min && (max == 0 || athletCount <= max)) {
+        if (((min == 0 && athletCount > 0) || athletCount >= min) && (max == 0 || athletCount <= max)) {
+          val takeCnt = if (min == 0) athletCount else min
           val perAthletWertungen = teamwertungen
             .groupBy(w => w.athlet)
             .map{ case (athlet, wtgs) =>
@@ -194,7 +204,7 @@ case class TeamRegelVereinGesamt(min: Int, max: Int, extraTeamsDef: String, grou
               (athlet, wtgs, wtgsum)
             }
             .toList
-            .sortBy(_._3).reverse.take(min) // sortiert auf Gesamtresultat
+            .sortBy(_._3).reverse.take(takeCnt) // sortiert auf Gesamtresultat
             .flatMap(_._2) // mit wertungen die Disziplin-Map aufbauen
             .groupBy(w => w.wettkampfdisziplin.disziplin)
           val limitedTeamwertungen = if (max > 0) teamwertungen else {
@@ -203,7 +213,7 @@ case class TeamRegelVereinGesamt(min: Int, max: Int, extraTeamsDef: String, grou
               allRelevantWertungen.contains
             }
           }
-          List(Team(s"${teamname}", toRuleName, limitedTeamwertungen, perAthletWertungen, perAthletWertungen))
+          List(Team(s"${teamname}", toRuleName, limitedTeamwertungen, perAthletWertungen, perAthletWertungen, aggregateFun))
         } else {
           List.empty
         }
@@ -213,42 +223,44 @@ case class TeamRegelVereinGesamt(min: Int, max: Int, extraTeamsDef: String, grou
   override def teamsAllowed: Boolean = true
 }
 
-case class TeamRegelVerbandGeraet(min: Int, max: Int, extraTeamsDef: String, grouperDef: String) extends TeamRegel {
+case class TeamRegelVerbandGeraet(min: Int, max: Int, extraTeamsDef: String, grouperDef: String, aggregateFun: TeamAggreateFun) extends TeamRegel {
   private val extrateams = parseExtrateams(extraTeamsDef)
   override def getExtrateams: List[String] = extrateams
 
   private val grouperDefs = parseGrouperDefs(grouperDef)
   override def getGrouperDefs: List[Set[String]] = grouperDefs
 
-  override def toFormel: String = s"VerbandGerät$grouperDef($min/${if (max > 0) max else "*"}$extraTeamsDef)"
+  override def toFormel: String = s"VerbandGerät$grouperDef(${aggregateFun.toFormelPart}${if (min > 0) min else "*"}/${if (max > 0) max else "*"}$extraTeamsDef)"
 
-  override def toRuleName: String = s"""Verbands-Team Rangliste $grouperDef (beste $min Gerätewertungen${if (max > 0) s" aus $max" else ""})"""
+  override def toRuleName: String = s"""Verbands-Team Rangliste $grouperDef (${aggregateFun.toDescriptionPart} ${if (min == 0) "allen" else s"besten $min"}${if (max > 0) s" von max $max" else ""}  Gerätewertungen)"""
 
   override def extractTeams(wertungen: Iterable[WertungView]): List[Team] = {
     val extraTeams = extractExtraTeams(wertungen)
+    val hasNoExplicitTeams = !wertungen.exists(w => w.team != 0)
     wertungen
-      .filter(w => w.team != 0)
+      .filter(w => hasNoExplicitTeams || w.team != 0)
       .toList
       .groupBy(w => w.getTeamName(extraTeams))
       .flatMap { team =>
         val (teamname, teamwertungen) = team
         val athletCount = teamwertungen.map(w => w.athlet.id).toSet.size
-        if (athletCount >= min && (max == 0 || athletCount <= max)) {
+        if (((min == 0 && athletCount > 0) || athletCount >= min) && (max == 0 || athletCount <= max)) {
+          val takeCnt = if (min == 0) athletCount else min
           val perDisciplinWertungen: Map[Disziplin, List[WertungView]] = teamwertungen
             .groupBy(w => w.wettkampfdisziplin.disziplin)
             .flatMap { case (disciplin, wtgs) =>
               val relevantDisciplineValues = wtgs
-                .filter(_.resultat.endnote > 0)
+                //.filter(_.resultat.endnote > 0)
                 .groupBy(_.resultat.endnote).toList
-                .sortBy(_._1).reverse.take(min)
+                .sortBy(_._1).reverse.take(takeCnt)
                 .flatMap(_._2)
               if (relevantDisciplineValues.isEmpty) None else Some((disciplin, relevantDisciplineValues))
             }
           val perDisciplinCountingWertungen: Map[Disziplin, List[WertungView]] = perDisciplinWertungen
             .flatMap { case (disciplin, wtgs) =>
               val relevantDisciplineValues = wtgs
-                .filter(_.resultat.endnote > 0)
-                .sortBy(_.resultat.endnote).reverse.take(min)
+                //.filter(_.resultat.endnote > 0)
+                .sortBy(_.resultat.endnote).reverse.take(takeCnt)
               if (relevantDisciplineValues.isEmpty) None else Some((disciplin, relevantDisciplineValues))
             }
           val limitedTeamwertungen = if (max > 0) teamwertungen else {
@@ -258,7 +270,7 @@ case class TeamRegelVerbandGeraet(min: Int, max: Int, extraTeamsDef: String, gro
               allRelevantWertungen.contains(w.athlet)
             }
           }
-          List(Team(s"${teamname}", toRuleName, limitedTeamwertungen, perDisciplinCountingWertungen, perDisciplinWertungen))
+          List(Team(s"${teamname}", toRuleName, limitedTeamwertungen, perDisciplinCountingWertungen, perDisciplinWertungen, aggregateFun))
         } else {
           List.empty
         }
@@ -267,26 +279,28 @@ case class TeamRegelVerbandGeraet(min: Int, max: Int, extraTeamsDef: String, gro
 
   override def teamsAllowed: Boolean = true
 }
-case class TeamRegelVerbandGesamt(min: Int, max: Int, extraTeamsDef: String, grouperDef: String) extends TeamRegel {
+case class TeamRegelVerbandGesamt(min: Int, max: Int, extraTeamsDef: String, grouperDef: String, aggregateFun: TeamAggreateFun) extends TeamRegel {
   private val extrateams = parseExtrateams(extraTeamsDef)
   override def getExtrateams: List[String] = extrateams
 
   private val grouperDefs = parseGrouperDefs(grouperDef)
   override def getGrouperDefs: List[Set[String]] = grouperDefs
 
-  override def toFormel: String = s"VerbandGesamt$grouperDef($min/${if (max > 0) max else "*"}$extraTeamsDef)"
-  override def toRuleName: String = s"""Verbands-Team Rangliste $grouperDef (beste $min Gesamtwertungen${if (max > 0) s" aus $max" else ""})"""
+  override def toFormel: String = s"VerbandGesamt$grouperDef(${aggregateFun.toFormelPart}${if (min > 0) min else "*"}/${if (max > 0) max else "*"}$extraTeamsDef)"
+  override def toRuleName: String = s"""Verbands-Team Rangliste $grouperDef (${aggregateFun.toDescriptionPart} ${if (min == 0) "allen" else s"besten $min"}${if (max > 0) s" von max $max" else ""}  Gesamtwertungen)"""
 
   override def extractTeams(wertungen: Iterable[WertungView]): List[Team] = {
     val extraTeams = extractExtraTeams(wertungen)
+    val hasNoExplicitTeams = !wertungen.exists(w => w.team != 0)
     wertungen
-      .filter(w => w.team != 0)
+      .filter(w => hasNoExplicitTeams || w.team != 0)
       .toList
       .groupBy(w => w.getTeamName(extraTeams))
       .flatMap { team =>
         val (teamname, teamwertungen) = team
         val athletCount = teamwertungen.map(w => w.athlet.id).toSet.size
-        if (athletCount >= min && (max == 0 || athletCount <= max)) {
+        if (((min == 0 && athletCount > 0) || athletCount >= min) && (max == 0 || athletCount <= max)) {
+          val takeCnt = if (min == 0) athletCount else min
           val perAthletWertungen = teamwertungen
             .groupBy(w => w.athlet)
             .map{ case (athlet, wtgs) =>
@@ -294,7 +308,7 @@ case class TeamRegelVerbandGesamt(min: Int, max: Int, extraTeamsDef: String, gro
               (athlet, wtgs, wtgsum)
             }
             .toList
-            .sortBy(_._3).reverse.take(min) // sortiert auf Gesamtresultat
+            .sortBy(_._3).reverse.take(takeCnt) // sortiert auf Gesamtresultat
             .flatMap(_._2) // mit wertungen die Disziplin-Map aufbauen
             .groupBy(w => w.wettkampfdisziplin.disziplin)
           val limitedTeamwertungen = if (max > 0) teamwertungen else {
@@ -303,7 +317,7 @@ case class TeamRegelVerbandGesamt(min: Int, max: Int, extraTeamsDef: String, gro
               allRelevantWertungen.contains
             }
           }
-          List(Team(s"${teamname}", toRuleName, limitedTeamwertungen, perAthletWertungen, perAthletWertungen))
+          List(Team(s"${teamname}", toRuleName, limitedTeamwertungen, perAthletWertungen, perAthletWertungen, aggregateFun))
         } else {
           List.empty
         }

@@ -10,10 +10,11 @@ import java.net.URLEncoder
 import java.nio.file.{Files, LinkOption, Path, StandardOpenOption}
 import java.sql.{Date, Timestamp}
 import java.text.{ParseException, SimpleDateFormat}
-import java.time.{LocalDate, LocalDateTime, LocalTime, Period, ZoneId}
+import java.time._
 import java.util.UUID
 import java.util.concurrent.TimeUnit
 import scala.concurrent.duration.Duration
+import scala.math.BigDecimal.RoundingMode
 
 package object domain {
   implicit def dbl2Str(d: Double): String = f"${d}%2.3f"
@@ -93,7 +94,7 @@ package object domain {
       Integer.parseInt(c)
       true
     } catch {
-      case _:NumberFormatException => false
+      case _: NumberFormatException => false
     }
   }
 
@@ -198,6 +199,7 @@ package object domain {
       val ep = easyprint
       if (ep.matches(".*\\s,\\.;.*")) s""""$ep"""" else ep
     }
+
     def compare(o: DataObject): Int = easyprint.compare(o.easyprint)
   }
 
@@ -226,6 +228,7 @@ package object domain {
   case class CompoundGrouper(groupers: Seq[DataObject]) extends DataObject { //GenericGrouper(groupers.map(_.easyprint).mkString(","))
     override def easyprint: String = groupers.map(_.easyprint).mkString(",")
   }
+
   case class GenericGrouper(name: String) extends DataObject {
     override def easyprint: String = name
   }
@@ -347,7 +350,116 @@ package object domain {
     def updatedWith(athlet: Athlet) = AthletView(athlet.id, athlet.js_id, athlet.geschlecht, athlet.name, athlet.vorname, athlet.gebdat, athlet.strasse, athlet.plz, athlet.ort, verein.map(v => v.copy(id = athlet.verein.getOrElse(0L))), athlet.activ)
   }
 
-  case class Team(name: String, rulename: String, wertungen: List[WertungView], countingWertungen: Map[Disziplin, List[WertungView]], relevantWertungen: Map[Disziplin, List[WertungView]]) extends DataObject {
+  object TeamAggreateFun {
+    def apply(text: String): TeamAggreateFun = {
+      if (text == null) Sum else text.toLowerCase() match {
+        case "avg/" => Avg
+        case "median/" => Med
+        case "min/" => Min
+        case "max/" => Max
+        case "devmin/" => DevMin
+        case "devmax/" => DevMax
+        case _ => Sum
+      }
+    }
+  }
+
+  sealed trait TeamAggreateFun {
+    def sum(xs: Iterable[Resultat]): Resultat = if (xs.nonEmpty) xs.reduce(_ + _) else Resultat(0, 0, 0)
+    def max(xs: Iterable[Resultat]): Resultat = if (xs.nonEmpty) xs.reduce(_.max(_)) else Resultat(0, 0, 0)
+    def min(xs: Iterable[Resultat]): Resultat = if (xs.nonEmpty) xs.reduce(_.min(_)) else Resultat(0, 0, 0)
+    def mean(xs: Iterable[Resultat]): Resultat = if (xs.nonEmpty) sum(xs) / xs.size else Resultat(0, 0, 0)
+    def median(xs: Iterable[Resultat]): Resultat = xs match {
+      case Nil => Resultat(0,0,0)
+      case x::Nil => x
+      case _ =>
+        val l = xs.toList.sortBy(_.endnote)
+        val i = Math.max(1, l.size / 2)
+        if (l.size % 2 == 0) {
+          (l(i-1) + l(i)) / 2
+        } else {
+          l(i)
+        }
+    }
+
+    def variance(xs: Iterable[Resultat]): Resultat = {
+      if (xs.nonEmpty) {
+        val avg = mean(xs)
+
+        mean(xs
+          .map(_ - avg)
+          .map(_.pow(2))
+        )
+      } else Resultat(0, 0, 0)
+    }
+
+    def stdDev(xs: Iterable[Resultat]): Resultat = xs match {
+      case Nil => Resultat(0,0,0)
+      case x::Nil => x
+      case _ => variance(xs).sqrt
+    }
+
+    def apply(results: Iterable[Resultat]): Resultat
+    def sortFactor = 1
+    def toFormelPart: String = ""
+
+    def toDescriptionPart: String
+  }
+
+  case object Sum extends TeamAggreateFun {
+    override def apply(results: Iterable[Resultat]): Resultat = sum(results)
+
+    def toDescriptionPart: String = "Summe aus"
+  }
+
+  case object Avg extends TeamAggreateFun {
+    override def apply(results: Iterable[Resultat]): Resultat = mean(results)
+
+    override def toFormelPart: String = "avg/"
+
+    def toDescriptionPart: String = "⌀ aus"
+  }
+
+  case object Med extends TeamAggreateFun {
+    override def apply(results: Iterable[Resultat]): Resultat = median(results)
+
+    override def toFormelPart: String = "median/"
+
+    def toDescriptionPart: String = "Median aus"
+  }
+
+  case object Max extends TeamAggreateFun {
+    override def apply(results: Iterable[Resultat]): Resultat = max(results)
+
+    override def toFormelPart: String = "max/"
+
+    def toDescriptionPart: String = "höchste aus"
+  }
+
+  case object Min extends TeamAggreateFun {
+    override def apply(results: Iterable[Resultat]): Resultat = min(results)
+
+    override def toFormelPart: String = "min/"
+
+    def toDescriptionPart: String = "niedrigste aus"
+  }
+
+  case object DevMin extends TeamAggreateFun {
+    override def apply(results: Iterable[Resultat]): Resultat = stdDev(results)
+    override def sortFactor = -1
+    override def toFormelPart: String = "devmin/"
+
+    def toDescriptionPart: String = "kleinste Abweichung aus"
+  }
+
+  case object DevMax extends TeamAggreateFun {
+    override def apply(results: Iterable[Resultat]): Resultat = stdDev(results)
+    override def toFormelPart: String = "devmax/"
+
+    def toDescriptionPart: String = "grösste Abweichung aus"
+  }
+
+  case class Team(name: String, rulename: String, wertungen: List[WertungView], countingWertungen: Map[Disziplin, List[WertungView]], relevantWertungen: Map[Disziplin, List[WertungView]], aggregateFun: TeamAggreateFun) extends DataObject {
     val diszList: Map[Disziplin, Int] = countingWertungen.map { t =>
       val disz = t._1
       val ord = t._2.find(_.wettkampfdisziplin.disziplin == t._1).map(_.wettkampfdisziplin.ord).getOrElse(999)
@@ -355,13 +467,13 @@ package object domain {
     }
 
     val perDisciplinResults: Map[Disziplin, List[Resultat]] = countingWertungen
-      .map{ case (disciplin, wtg) => (disciplin, wtg
-        .map(w => if (w.showInScoreList) w.resultat else Resultat(0,0,0)))
+      .map { case (disciplin, wtg) => (disciplin, wtg
+        .map(w => if (w.showInScoreList) w.resultat else Resultat(0, 0, 0)))
       }
 
-    val perDisciplinSums = perDisciplinResults.map{ case (disciplin, results) => (disciplin, results.reduce(_+_)) }
-    val sum = if (perDisciplinSums.values.nonEmpty) perDisciplinSums.values.reduce(_+_) else Resultat(0,0,0)
-    val avg = if (perDisciplinSums.values.nonEmpty) sum / perDisciplinResults.keySet.size else Resultat(0,0,0)
+    //val perDisciplinSums = perDisciplinResults.map{ case (disciplin, results) => (disciplin, aggregateFun(results)) }
+    //val sum = aggregateFun(perDisciplinSums.values)
+    //val avg = Avg(perDisciplinSums.values)
 
     val blockrows = wertungen.map(_.athlet).distinct.size
     def isRelevantResult(disziplin: Disziplin, member: AthletView): Boolean = {
@@ -382,7 +494,7 @@ package object domain {
       case _ => false
     }
   }
-  
+
   object Wertungsrichter {
     def apply(): Wertungsrichter = Wertungsrichter(0, 0, "", "", "", None, "", "", "", None, activ = true)
   }
@@ -488,21 +600,21 @@ package object domain {
     // file:///C:/Users/Roland/Downloads/Turn10-2018_Allgemeine%20Bestimmungen.pdf
     val akExpressionTurn10 = "AK7-18,AK24,AK30-100/5"
     val altersklassenTurn10 = Seq(
-      6,7,8,9,10,11,12,13,14,15,16,17,18,24,30,35,40,45,50,55,60,65,70,75,80,85,90,95,100
+      6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 24, 30, 35, 40, 45, 50, 55, 60, 65, 70, 75, 80, 85, 90, 95, 100
     ).map(i => ("AK", Seq(), i))
     // see https://www.dtb.de/fileadmin/user_upload/dtb.de/Passwesen/Wettkampfordnung_DTB_2021.pdf
     val akDTBExpression = "AK6,AK18,AK22,AK25"
     val altersklassenDTB = Seq(
-      6,18,22,25
+      6, 18, 22, 25
     ).map(i => ("AK", Seq(), i))
     // see https://www.dtb.de/fileadmin/user_upload/dtb.de/TURNEN/Standards/PDFs/Rahmentrainingskonzeption-GTm_inklAnlagen_19.11.2020.pdf
     val akDTBPflichtExpression = "AK8-9,AK11-19/2"
     val altersklassenDTBPflicht = Seq(
-      7,8,9,11,13,15,17,19
+      7, 8, 9, 11, 13, 15, 17, 19
     ).map(i => ("AK", Seq(), i))
     val akDTBKuerExpression = "AK13-19/2"
     val altersklassenDTBKuer = Seq(
-      12,13,15,17,19
+      12, 13, 15, 17, 19
     ).map(i => ("AK", Seq(), i))
 
     val predefinedAKs = Map(
@@ -548,7 +660,7 @@ package object domain {
       val intpattern = "([\\D\\s]*)([0-9]+)".r
       val qualifierPattern = "(.*)\\(([\\D\\s]+)\\)".r
 
-      def bez(b: String): (String,Seq[String]) = if(b.nonEmpty) {
+      def bez(b: String): (String, Seq[String]) = if (b.nonEmpty) {
         b match {
           case qualifierPattern(bezeichnung, qualifiers) => (bezeichnung, qualifiers.split("\\+").toSeq)
           case bezeichnung: String => (bezeichnung, Seq())
@@ -556,13 +668,13 @@ package object domain {
       } else ("", Seq())
 
       klassenDef.split(",")
-        .flatMap{
+        .flatMap {
           case rangeStepPattern(bezeichnung, von, bis, stepsize) => Range.inclusive(von, bis, stepsize).map(i => (bez(bezeichnung), i))
           case rangepattern(bezeichnung, von, bis) => (str2Int(von) to str2Int(bis)).map(i => (bez(bezeichnung), i))
           case intpattern(bezeichnung, von) => Seq((bez(bezeichnung), str2Int(von)))
           case _ => Seq.empty
         }.toList
-        .foldLeft(Seq[(String, Seq[String], Int)]()){(acc, item) =>
+        .foldLeft(Seq[(String, Seq[String], Int)]()) { (acc, item) =>
           if (item._1._1.nonEmpty) {
             acc :+ (item._1._1, item._1._2, item._2)
           } else if (acc.nonEmpty) {
@@ -658,20 +770,20 @@ package object domain {
    * <pre>
    * Krits        +===========================================+=========================================================
    * aggregate ->|0                                          |1
-   *              +-------------------------------------------+---------------------------------------------------------
+   * +-------------------------------------------+---------------------------------------------------------
    * riegenmode->|1                   |2  / 3(+verein)       |1                     |2  / 3(+verein)
    * Acts         +===========================================+=========================================================
    * Einteilung->| Sex,Pgm,Verein     | Sex,Pgm,Jg(,Verein)  | Sex,Pgm,Verein       | Pgm,Sex,Jg(,Verein)
-   *             +--------------------+----------------------+----------------------+-----------------------------------
+   * +--------------------+----------------------+----------------------+-----------------------------------
    * Teilnahme   | 1/WK               | 1/WK                 | &lt;<=PgmCnt(Jg)/WK      | 1/Pgm
-   *             +-------------------------------------------+----------------------------------------------------------
+   * +-------------------------------------------+----------------------------------------------------------
    * Registration| 1/WK               | 1/WK, Pgm/(Jg)       | mind. 1, max 1/Pgm   | 1/WK aut. Tn 1/Pgm
-   *             +-------------------------------------------+----------------------------------------------------------
+   * +-------------------------------------------+----------------------------------------------------------
    * Beispiele   | GeTu/KuTu/KuTuRi   | Turn10® (BS/OS)      | TG Allgäu (Pfl./Kür) | ATT (Kraft/Bewg)
-   *             +-------------------------------------------+----------------------------------------------------------
+   * +-------------------------------------------+----------------------------------------------------------
    * Rangliste   | Sex/Programm       | Sex/Programm/Jg      | Sex/Programm         | Sex/Programm/Jg
-   *             |                    | Sex/Programm/AK      | Sex/Programm/AK      |
-   *             +===========================================+=========================================================
+   * |                    | Sex/Programm/AK      | Sex/Programm/AK      |
+   * +===========================================+=========================================================
    * </pre>
    */
   case class ProgrammRaw(id: Long, name: String, aggregate: Int, parentId: Long, ord: Int, alterVon: Int, alterBis: Int, uuid: String, riegenmode: Int) extends Programm
@@ -934,19 +1046,33 @@ package object domain {
   }
 
   case class Resultat(noteD: scala.math.BigDecimal, noteE: scala.math.BigDecimal, endnote: scala.math.BigDecimal) extends DataObject {
-    def +(r: Resultat) = Resultat(noteD + r.noteD, noteE + r.noteE, endnote + r.endnote)
-    def +(r: BigDecimal) = Resultat(noteD + r, noteE + r, endnote + r)
+    def -(r: Resultat): Resultat = Resultat(noteD - r.noteD, noteE - r.noteE, endnote - r.endnote)
 
-    def /(cnt: Int) = Resultat(noteD / cnt, noteE / cnt, endnote / cnt)
+    def +(r: Resultat): Resultat = Resultat(noteD + r.noteD, noteE + r.noteE, endnote + r.endnote)
 
-    def *(cnt: Long) = Resultat(noteD * cnt, noteE * cnt, endnote * cnt)
-    def *(cnt: BigDecimal) = Resultat(noteD * cnt, noteE * cnt, endnote * cnt)
+    def -(r: BigDecimal): Resultat = Resultat(noteD - r, noteE - r, endnote - r)
 
-    lazy val formattedD = if (noteD > 0) f"${noteD}%4.2f" else ""
-    lazy val formattedE = if (noteE > 0) f"${noteE}%4.2f" else ""
-    lazy val formattedEnd = if (endnote > 0) f"${endnote}%6.2f" else ""
+    def +(r: BigDecimal): Resultat = Resultat(noteD + r, noteE + r, endnote + r)
 
-    override def easyprint = f"${formattedD}%6s${formattedE}%6s${formattedEnd}%6s"
+    def /(cnt: Int): Resultat = Resultat(noteD / cnt, noteE / cnt, endnote / cnt)
+
+    def *(cnt: Long): Resultat = Resultat(noteD * cnt, noteE * cnt, endnote * cnt)
+
+    def *(cnt: BigDecimal): Resultat = Resultat(noteD * cnt, noteE * cnt, endnote * cnt)
+
+    def max(other: Resultat): Resultat = Resultat(noteD.max(other.noteD), noteE.max(other.noteE), endnote.max(other.endnote))
+    def min(other: Resultat): Resultat = Resultat(noteD.min(other.noteD), noteE.min(other.noteE), endnote.min(other.endnote))
+    def pow(exponent: Int): Resultat = Resultat(noteD.pow(exponent), noteE.pow(exponent), endnote.pow(exponent))
+    def sqrt: Resultat = Resultat(
+      BigDecimal.decimal(Math.sqrt(noteD.toDouble)).setScale(noteD.scale, RoundingMode.HALF_UP),
+      BigDecimal.decimal(Math.sqrt(noteE.toDouble)).setScale(noteE.scale, RoundingMode.HALF_UP),
+      BigDecimal.decimal(Math.sqrt(endnote.toDouble)).setScale(endnote.scale, RoundingMode.HALF_UP))
+
+    lazy val formattedD: String = if (noteD > 0) f"${noteD}%4.2f" else ""
+    lazy val formattedE: String = if (noteE > 0) f"${noteE}%4.2f" else ""
+    lazy val formattedEnd: String = if (endnote > 0) f"${endnote}%6.2f" else ""
+
+    override def easyprint: String = f"${formattedD}%6s${formattedE}%6s${formattedEnd}%6s"
   }
 
   case class Wertung(id: Long, athletId: Long, wettkampfdisziplinId: Long, wettkampfId: Long, wettkampfUUID: String, noteD: Option[scala.math.BigDecimal], noteE: Option[scala.math.BigDecimal], endnote: Option[scala.math.BigDecimal], riege: Option[String], riege2: Option[String], team: Option[Int]) extends DataObject {
@@ -1015,6 +1141,7 @@ package object domain {
   trait ResultRow {
     val athletId: Option[Long] = None
     val sum: Resultat
+    lazy val avg = Avg(resultate.map(_.sum).filter(r => r.endnote > 0))
     val rang: Resultat
     val auszeichnung: Boolean
     val resultate: IndexedSeq[LeafRow] = IndexedSeq()
@@ -1022,10 +1149,11 @@ package object domain {
   }
   /**
    * Single Result of a row
-   * @param title Discipline name
+   *
+   * @param title        Discipline name
    * @param sum
    * @param rang
-   * @param auszeichnung true, of best score in that discipline
+   * @param auszeichnung true, if best score in that discipline
    */
   case class LeafRow(title: String, sum: Resultat, rang: Resultat, auszeichnung: Boolean) extends DataRow with ResultRow
 
