@@ -476,9 +476,11 @@ package object domain {
     //val avg = Avg(perDisciplinSums.values)
 
     val blockrows = wertungen.map(_.athlet).distinct.size
+
     def isRelevantResult(disziplin: Disziplin, member: AthletView): Boolean = {
       relevantWertungen(disziplin).find(_.athlet.equals(member)).exists(w => perDisciplinResults(disziplin).exists(r => r.endnote.equals(w.resultat.endnote)))
     }
+
     override def easyprint: String = "Team " + name
   }
 
@@ -558,13 +560,17 @@ package object domain {
 
   case class SimpleDurchgang(id: Long, wettkampfId: Long, title: String, name: String, durchgangtype: DurchgangType, ordinal: Int, planStartOffset: Long, effectiveStartTime: Option[java.sql.Timestamp], effectiveEndTime: Option[java.sql.Timestamp]) extends DataObject {
     override def easyprint = if (name.equals(title)) name else s"$title: $name"
+
     def effectivePlanStart(wkDate: LocalDate): LocalDateTime = LocalDateTime.of(wkDate, LocalTime.MIDNIGHT).plusNanos(planStartOffset * 1000_000L)
   }
 
   case class Durchgang(id: Long, wettkampfId: Long, title: String, name: String, durchgangtype: DurchgangType, ordinal: Int, planStartOffset: Long, effectiveStartTime: Option[java.sql.Timestamp], effectiveEndTime: Option[java.sql.Timestamp], planEinturnen: Long, planGeraet: Long, planTotal: Long) extends DataObject {
     override def easyprint = if (name.equals(title)) name else s"$title: $name"
+
     def effectivePlanStart(wkDate: LocalDate): LocalDateTime = LocalDateTime.of(wkDate, LocalTime.MIDNIGHT).plusNanos(planStartOffset * 1000_000L)
-    def effectivePlanFinish(wkDate: LocalDate): LocalDateTime = LocalDateTime.of(wkDate, LocalTime.MIDNIGHT).plusNanos((planStartOffset + (if (planStartOffset > 0) planTotal else 24000*3600)) * 1000_000L)
+
+    def effectivePlanFinish(wkDate: LocalDate): LocalDateTime = LocalDateTime.of(wkDate, LocalTime.MIDNIGHT).plusNanos((planStartOffset + (if (planStartOffset > 0) planTotal else 24000 * 3600)) * 1000_000L)
+
     def toAggregator(other: Durchgang) = Durchgang(0, wettkampfId, title, title, durchgangtype, Math.min(ordinal, other.ordinal), Math.min(planStartOffset, planStartOffset), effectiveStartTime, effectiveEndTime, Math.max(planEinturnen, other.planEinturnen), Math.max(planGeraet, other.planGeraet), Math.max(planTotal, other.planTotal))
   }
 
@@ -595,6 +601,7 @@ package object domain {
       "Kür", "LK1", "LK2", "LK3", "LK4"
     )
   }
+
   object Altersklasse {
 
     // file:///C:/Users/Roland/Downloads/Turn10-2018_Allgemeine%20Bestimmungen.pdf
@@ -625,6 +632,7 @@ package object domain {
       , ("DTB Kür" -> akDTBKuerExpression)
       , ("Individuell" -> "")
     )
+
     def apply(altersgrenzen: Seq[(String, Seq[String], Int)]): Seq[Altersklasse] = {
       if (altersgrenzen.isEmpty) {
         Seq.empty
@@ -685,6 +693,7 @@ package object domain {
         }
         .sortBy(item => (item._1, item._3))
     }
+
     def apply(klassenDef: String, fallbackBezeichnung: String = "Altersklasse"): Seq[Altersklasse] = {
       apply(parseGrenzen(klassenDef, fallbackBezeichnung))
     }
@@ -693,15 +702,19 @@ package object domain {
   case class Altersklasse(bezeichnung: String, alterVon: Int, alterBis: Int, qualifiers: Seq[String]) extends DataObject {
     val geschlechtQualifier = qualifiers.filter(q => Seq("M", "W").contains(q))
     val programmQualifier = qualifiers.filter(q => !Seq("M", "W").contains(q))
+
     def matchesAlter(alter: Int): Boolean =
       ((alterVon == 0 || alter >= alterVon) &&
         (alterBis == 0 || alter <= alterBis))
+
     def matchesGeschlecht(geschlecht: String): Boolean = {
       geschlechtQualifier.isEmpty || geschlechtQualifier.contains(geschlecht)
     }
+
     def matchesProgramm(programm: ProgrammView): Boolean = {
       programmQualifier.isEmpty || programm.programPath.exists(p => programmQualifier.contains(p.name))
     }
+
     override def easyprint: String = {
       val q = if (qualifiers.nonEmpty) qualifiers.mkString("(", ",", ")") else ""
       if (alterVon > 0 && alterBis > 0)
@@ -713,6 +726,7 @@ package object domain {
       else
         s"""$bezeichnung$q bis $alterBis"""
     }
+
     def easyprintShort: String = {
       if (alterVon > 0 && alterBis > 0)
         if (alterVon == alterBis)
@@ -736,13 +750,18 @@ package object domain {
 
   case class Disziplin(id: Long, name: String) extends DataObject {
     override def easyprint = name
+
     def equalsOrPause(other: Disziplin) = math.abs(id) == math.abs(other.id)
+
     def isPause: Boolean = id < 0
 
     def asPause: Disziplin = Disziplin(id * -1, s"${name} Pause")
+
     def harmless: Disziplin = Disziplin(math.abs(id), name)
+
     def asNonPause: Disziplin = Disziplin(math.abs(id), name.replace(" Pause", ""))
-    def normalizedOrdinal(dzl: List[Disziplin]) = dzl.indexOf(asNonPause)+1
+
+    def normalizedOrdinal(dzl: List[Disziplin]) = dzl.indexOf(asNonPause) + 1
   }
 
   trait Programm extends DataObject {
@@ -983,16 +1002,19 @@ package object domain {
   //  }
   case class WettkampfView(id: Long, uuid: Option[String], datum: java.sql.Date, titel: String, programm: ProgrammView, auszeichnung: Int, auszeichnungendnote: scala.math.BigDecimal, notificationEMail: String, altersklassen: String, jahrgangsklassen: String, punktegleichstandsregel: String, rotation: String, teamrule: String) extends DataObject {
     override def easyprint = f"$titel am $datum%td.$datum%tm.$datum%tY"
+
     lazy val details: String = s"${programm.name}" +
       s"${if (teamrule.nonEmpty && !teamrule.equals("Keine Teams")) ", " + teamrule else ""}" +
       s"${if (altersklassen.nonEmpty) ", Altersklassen" else ""}" +
       s"${if (jahrgangsklassen.nonEmpty) ", Jahrgangs Altersklassen" else ""}" +
       ""
+
     def toWettkampf = Wettkampf(id, uuid, datum, titel, programm.id, auszeichnung, auszeichnungendnote, notificationEMail, Option(altersklassen), Option(jahrgangsklassen), Option(punktegleichstandsregel), Option(rotation), Option(teamrule))
   }
 
   case class WettkampfStats(uuid: String, wkid: Int, titel: String, finishAthletesCnt: Int, finishClubsCnt: Int, finishOnlineAthletesCnt: Int, finishOnlineClubsCnt: Int) extends DataObject {
   }
+
   case class WettkampfMetaData(uuid: String, wkid: Int, finishAthletesCnt: Int, finishClubsCnt: Int, finishOnlineAthletesCnt: Int, finishOnlineClubsCnt: Int,
                                finishDonationMail: Option[String], finishDonationAsked: Option[BigDecimal], finishDonationApproved: Option[BigDecimal]) extends DataObject {
   }
@@ -1147,6 +1169,7 @@ package object domain {
     val resultate: IndexedSeq[LeafRow] = IndexedSeq()
     val divider: Int = 1
   }
+
   /**
    * Single Result of a row
    *
@@ -1159,6 +1182,7 @@ package object domain {
 
   /**
    * Row of results per each discipline of one athlet/team
+   *
    * @param athlet
    * @param resultate
    * @param sum
@@ -1178,7 +1202,9 @@ package object domain {
 
   sealed trait NotenModus {
     def getDifficultLabel: String = "D"
+
     def getExecutionLabel: String = "E"
+
     def selectableItems: Option[List[String]] = None
 
     def validated(dnote: Double, enote: Double, wettkampfDisziplin: WettkampfdisziplinView): (Double, Double)
@@ -1407,6 +1433,7 @@ package object domain {
     override val caption = s"Athlet/-In korrigieren: Von ${existing.extendedprint} zu ${expected.extendedprint}"
 
     def isSexChange: Boolean = existing.geschlecht != expected.geschlecht
+
     def isGebDatChange: Boolean = !existing.gebdat.equals(expected.gebdat)
 
     def applyLocalChange: Athlet = existing.copy(
