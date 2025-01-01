@@ -235,6 +235,8 @@ package object domain {
 
   case class TurnerGeschlecht(geschlecht: String) extends DataObject {
     override def easyprint = geschlecht.toLowerCase() match {
+      case "m,w" => "TuTi"
+      case "w,m" => "TuTi"
       case "m" => "Turner"
       case "w" => "Turnerinnen"
       case "f" => "Turnerinnen"

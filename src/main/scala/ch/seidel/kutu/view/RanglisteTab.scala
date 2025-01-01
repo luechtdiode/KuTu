@@ -6,14 +6,14 @@ import ch.seidel.kutu.Config._
 import ch.seidel.kutu.ConnectionStates
 import ch.seidel.kutu.KuTuApp.handleAction
 import ch.seidel.kutu.data._
-import ch.seidel.kutu.domain.{Altersklasse, Durchgang, KutuService, TeamRegel, WertungView, WettkampfView, encodeFileName, isNumeric}
+import ch.seidel.kutu.domain.{Altersklasse, Durchgang, KutuService, TeamRegel, WertungView, WettkampfView, encodeFileName}
 import ch.seidel.kutu.renderer.PrintUtil.FilenameDefault
 import scalafx.Includes.when
 import scalafx.beans.binding.Bindings
 import scalafx.beans.property.BooleanProperty
 import scalafx.event.ActionEvent
 import scalafx.scene.Node
-import scalafx.scene.control.{Button, Label, TextField}
+import scalafx.scene.control.{Button, ComboBox, Label, TextField}
 import scalafx.scene.layout.{BorderPane, Priority, VBox}
 
 import scala.concurrent.Await
@@ -221,27 +221,38 @@ class RanglisteTab(wettkampfmode: BooleanProperty, wettkampf: WettkampfView, ove
         btnPublikationFreigeben)
     }
 
+  override def resetFilterPresets(combos: Seq[ComboBox[FilterBy]], scoreListKind: ScoreListKind): Unit = {
+    val team = groupers.find(p => p.isInstanceOf[ByTeamRule] && p.groupname.startsWith("Wettkampf"))
+    scoreListKind match {
+      case Teamrangliste if team.nonEmpty =>
+        combos(1).selectionModel.value.select(team.get)
+        combos(2).selectionModel.value.clearSelection()
+        combos(3).selectionModel.value.clearSelection()
+
+      case _ =>
+        val akg = groupers.find(p => p.isInstanceOf[ByAltersklasse] && p.groupname.startsWith("Wettkampf"))
+        val jakg = groupers.find(p => p.isInstanceOf[ByJahrgangsAltersklasse] && p.groupname.startsWith("Wettkampf"))
+        if (akg.nonEmpty) {
+          combos(1).selectionModel.value.select(ByProgramm(programmText))
+          combos(2).selectionModel.value.select(akg.get)
+          combos(3).selectionModel.value.select(ByGeschlecht())
+        } else if (jakg.nonEmpty) {
+          combos(1).selectionModel.value.select(ByProgramm(programmText))
+          combos(2).selectionModel.value.select(jakg.get)
+          combos(3).selectionModel.value.select(ByGeschlecht())
+        } else {
+          combos(1).selectionModel.value.select(ByProgramm(programmText))
+          combos(2).selectionModel.value.select(ByGeschlecht())
+        }
+    }
+  }
 
   override def isPopulated = {
     val combos = populate(groupers)
-    val akg = groupers.find(p => p.isInstanceOf[ByAltersklasse] && p.groupname.startsWith("Wettkampf"))
-    val jakg = groupers.find(p => p.isInstanceOf[ByJahrgangsAltersklasse] && p.groupname.startsWith("Wettkampf"))
-    val team = groupers.find(p => p.isInstanceOf[ByTeamRule] && p.groupname.startsWith("Wettkampf"))
-    if (akg.nonEmpty) {
-      combos(1).selectionModel.value.select(ByProgramm(programmText))
-      combos(2).selectionModel.value.select(akg.get)
-      combos(3).selectionModel.value.select(ByGeschlecht())
-    } else if (jakg.nonEmpty) {
-      combos(1).selectionModel.value.select(ByProgramm(programmText))
-      combos(2).selectionModel.value.select(jakg.get)
-      combos(3).selectionModel.value.select(ByGeschlecht())
-    } else if (team.nonEmpty) {
-      combos(1).selectionModel.value.select(team.get)
-    } else {
-      combos(1).selectionModel.value.select(ByProgramm(programmText))
-      combos(2).selectionModel.value.select(ByGeschlecht())
-    }
 
+    val team = groupers.find(p => p.isInstanceOf[ByTeamRule] && p.groupname.startsWith("Wettkampf"))
+    val kind: ScoreListKind = if (getData.exists(_.team > 0) || team.nonEmpty) Teamrangliste else Einzelrangliste
+    resetFilterPresets(combos, kind)
     true
   }
 
