@@ -1,7 +1,7 @@
 package ch.seidel.kutu.renderer
 
 import ch.seidel.kutu.Config
-import ch.seidel.kutu.Config.{homedir, remoteBaseUrl, remoteHostOrigin}
+import ch.seidel.kutu.Config.{getRemoteHosts, homedir, remoteBaseUrl, remoteHostOrigin}
 import ch.seidel.kutu.KuTuApp.enc
 import ch.seidel.kutu.domain._
 import ch.seidel.kutu.renderer.PrintUtil._
@@ -313,6 +313,11 @@ trait WettkampfOverviewToHtmlRenderer {
       } else {
         List((("", "", ""), wertungen))
       }
+      //      group
+      // List[(pgm, sex), teams]
+      val teamGroups = teams.extractTeamsWithDefaultGouping(wertungen)
+      val allAthletesInTeams = teamGroups.flatMap(_._3.flatMap(_.wertungen.map(_.athlet))).distinct
+
       val groupedTeams = groupedWertungen.toList.flatMap {
         case (group, wertungen) => teams.extractTeamsWithDefaultGouping(wertungen).groupBy(x => (x._1, x._2)).flatMap {
           case (grouper, teamgroup) => teamgroup.flatMap(_._3).groupBy(_.rulename).map {
@@ -320,7 +325,6 @@ trait WettkampfOverviewToHtmlRenderer {
               val (pgm, ak, sex) = group
               val pgmValue = if(grouper._1.contains(pgm)) grouper._1 else  pgm + grouper._1
               val sexValue = if(grouper._2.contains(sex)) grouper._2 else sex + grouper._2
-              //(rulename, pgmValue, ak, sexValue, teams.size, teams.map(team => s"${team.name} (${team.blockrows})").sorted.mkString(", "))
               (rulename, pgmValue, ak, sexValue, teams.size, teams.map(team =>
                 s"""<li><span class="caret"></span>${team.name} (${team.blockrows})
                    |  <ul class="nested">
@@ -334,26 +338,38 @@ trait WettkampfOverviewToHtmlRenderer {
         case (rulename, list) =>
           (rulename, list.sortBy(t => s"${t._1}${t._2}${t._3}"))
       }
-
+      val hasNoExplicitTeamAssignements = !wertungen.exists(_.team > 0)
+      val unassignedAtletesTeam = Team("Ohne gültige Zuweisung", "", wertungen.filter(w => hasNoExplicitTeamAssignements || w.team > 0).filter(a => !allAthletesInTeams.contains(a.athlet)), Map.empty, Map.empty, Sum)
       val teamsSections = groupedTeams.keySet.toList.sorted.map {
         case name =>
           val groupMerges = teamsIndex(name).getGrouperDefs.filter(d => d.exists(_.trim.nonEmpty))
+          val mergeRules = if (groupMerges.nonEmpty) {
+            s"""
+               |<h4>Explizite Gruppenzusammenfassungen:</h4>
+               |${teamsIndex(name).getGrouperDefs.filter(d => d.exists(_.trim.nonEmpty)).map(d => d.mkString("<li>", "+", "</li>")).mkString("<ul>", "\n", "</ul><br>")}
+               |"""
+          } else  ""
           s"""<h3>$name</h3>
-             |${if (groupMerges.nonEmpty) s"""
-             |<h4>Explizite Gruppenzusammenfassungen:</h4>
-             |${teamsIndex(name).getGrouperDefs.filter(d => d.exists(_.trim.nonEmpty)).map(d => d.mkString("<li>", "+", "</li>")).mkString("<ul>", "\n", "</ul><br>")}
-             |""" else  ""}
-             |
+             |$mergeRules
              |<div class="showborder"><table width=100%>
              |<thead>
              |  <tr class='head'><th width='100px'>Prog./Kat.</th><th class='blockstart' width='50px'>AK</th><th class='blockstart' width='50px'>Geschlecht</th><th class='blockstart' width='20px'>Anzahl Teams</th><th class='blockstart'>Teams</th></tr>
-             |</thead><tbody>
-             |${
-            groupedTeams(name).map {
-              case (_, pgm: String, ak: String, sex: String, teamssize: Int, teams: String) =>
-                s"<tr><td class='data'>$pgm</td><td class='blockstart data'>$ak</td><td class='blockstart data'>$sex</td><td class='blockstart valuedata'>$teamssize</td><td class='blockstart data'>${teams.replace(",", "<br>")}</td></tr>"
-            }.mkString
-          }
+             |</thead>
+             |<tbody>
+             ${ groupedTeams(name).map {
+                  case (_, pgm: String, ak: String, sex: String, teamssize: Int, teams: String) =>
+                    s"<tr><td class='data'>$pgm</td><td class='blockstart data'>$ak</td><td class='blockstart data'>$sex</td><td class='blockstart valuedata'>$teamssize</td><td class='blockstart data'>${teams.replace(",", "<br>")}</td></tr>"
+                }.mkString
+              }
+             ${if (unassignedAtletesTeam.wertungen.nonEmpty) {
+                val uat = s"""<ul class='treeUL'><li><span class="caret"></span>${unassignedAtletesTeam.name} (${unassignedAtletesTeam.blockrows})
+                             |  <ul class="nested">
+                             |  ${unassignedAtletesTeam.wertungen.map(w => (w.athlet, w.wettkampfdisziplin.programm.name)).distinct.map(a => s"<li>${a._1.easyprint} (${a._2})</li>").mkString("")}
+                             |  </ul>
+                             |</li></ul>
+                             |""".stripMargin
+                s"<tr><td class='data'>Leere (nicht einer Regel entsprechenden) Zuordnungen</td><td class='blockstart data'></td><td class='blockstart data'></td><td class='blockstart valuedata'>1</td><td class='blockstart data'>$uat</td></tr>"
+              } else ""}
              |</tbody></table></div>
              |""".stripMargin
       }.mkString("\n")

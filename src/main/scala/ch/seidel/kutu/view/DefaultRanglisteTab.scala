@@ -88,7 +88,11 @@ abstract class DefaultRanglisteTab(wettkampfmode: BooleanProperty, override val 
   def print(printer: Printer): Unit = {
     PrintUtil.printWebContent(webView.engine, printer, PageOrientation.Portrait)
   }
-  
+
+  def resetFilterPresets(combos: Seq[ComboBox[FilterBy]], scorelistKind: ScoreListKind): Unit = {
+
+  }
+
   def populate(groupers: List[FilterBy]): Seq[ComboBox[FilterBy]] = {
     val gr1Model = ObservableBuffer.from(groupers)
     val kindModel = ObservableBuffer.from(Seq[ScoreListKind](Einzelrangliste, Teamrangliste, Kombirangliste))
@@ -312,8 +316,11 @@ abstract class DefaultRanglisteTab(wettkampfmode: BooleanProperty, override val 
         refreshRangliste(buildGrouper)
     }
     cbKind.onAction = _ => {
-      if(!restoring)
+      if(!restoring) {
+        restoring = true
+        resetFilterPresets(combs, cbKind.value.value)
         refreshRangliste(buildGrouper)
+      }
     }
 
     val btnPrint = PrintUtil.btnPrintFuture(text.value, getSaveAsFilenameDefault, true,
