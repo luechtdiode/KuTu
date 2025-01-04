@@ -709,7 +709,7 @@ object CompetitionCoordinatorClientActor extends JsonSupport with EnrichedJson {
           wsSource
         }.named(deviceId))
 
-    Flow.fromSinkAndSource(sink, source).log(name = deviceId)
+    Flow.fromSinkAndSourceCoupled(sink, source).log(name = deviceId)
   }
 
   // unauthenticted oneway/readonly streaming
@@ -730,7 +730,7 @@ object CompetitionCoordinatorClientActor extends JsonSupport with EnrichedJson {
         wsSource
       }.named(deviceId))
 
-    Flow.fromSinkAndSource(sink, source).log(name = deviceId)
+    Flow.fromSinkAndSourceCoupled(sink, source).log(name = deviceId)
 
   }
 }
