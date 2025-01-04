@@ -39,17 +39,51 @@ class SimulationBottmingenD1 extends Simulation {
 
     var durchgangListIdx = Map[String, Int]()
     var geraetListIdx = Map[String, Int]()
+
     val loadAndSaveDurchgaenge = http("get durchgaenge")
       .get(s"/api/durchgang/$competition")
       .check(
         jsonPath("$").exists,
-        jsonPath("$").ofType[Seq[Any]].find.saveAs("durchgaenge"))
+        jsonPath("$[*]").findAll.saveAs("durchgaenge"))
 
     val loadAndSaveGeraete = http("get geraete")
       .get(s"/api/durchgang/$competition/geraete")
       .check(
         jsonPath("$").exists,
-        jsonPath("$").ofType[Seq[Any]].find.saveAs("geraete"))
+        jsonPath("$[*]").ofType[Map[String,Any]].findAll.saveAs("geraete"))
+
+    val loadAndSaveSteps = http("get steps")
+        .get("/api/durchgang/" + competition + "/#{durchgang}/#{geraet}")
+        .check(
+          status.is(200),
+          jsonPath("$").exists,
+          jsonPath("$[*]").findAll.saveAs("steps"))
+
+    val connectWSUserToDurchgang = ws("openSocketDG")
+      .wsName("#{sessionDgUser}")
+      .connect(s"/api/durchgang/$competition/#{durchgang}/ws?clientid=#{sessionUserId}")
+      .onConnected(
+        exec(ws("sendMessage").wsName("#{sessionDgUser}")
+          .sendText("keepAlive")
+          .await(5 seconds)(ws.checkTextMessage("check1")
+            .check(regex("Connection established(.*)").saveAs("wsgreetingmessage"))
+            .silent)
+        )
+      )
+    val closeWSUserFromDurchgang = ws("closeConnectionDG").wsName("#{sessionDgUser}").close
+
+    val connectWSUserToAll = ws("openSocketAll")
+      .wsName("#{sessionDgUser}-all")
+      .connect(s"/api/durchgang/$competition/all/ws?clientid=#{sessionUserId}")
+      .onConnected(
+        exec(ws("sendMessage").wsName("#{sessionDgUser}-all")
+          .sendText("keepAlive")
+          .await(5 seconds)(ws.checkTextMessage("check1")
+            .check(regex("Connection established(.*)").saveAs("wsgreetingmessage"))
+            .silent)
+        )
+      )
+    val closeWSUserFromAll = ws("closeConnectionAll").wsName("#{sessionDgUser}-all").close
 
     def chooseDurchgang(session: Session) = {
       val list = session("durchgaenge").as[Vector[Any]]
@@ -62,46 +96,12 @@ class SimulationBottmingenD1 extends Simulation {
     }
 
     def chooseGeraet(session: Session) = {
-      val list = session("geraete").as[Vector[Map[String, Int]]].toList
+      val list = session("geraete").as[Vector[Map[String, Any]]].toList
       val listIdx = geraetListIdx.getOrElse(session("durchgang").as[String], 0)
-      val randomEntry = list(listIdx)("id")
+      val randomEntry: Int = list(listIdx)("id").asInstanceOf[Int]
       geraetListIdx = geraetListIdx.updated(session("durchgang").as[String], if (listIdx < list.size - 1) listIdx + 1 else 0)
       println(s"random choosed geraet: $randomEntry")
       session.set("geraet", randomEntry.toString)
-    }
-
-    val connectWSUserToDurchgang = ws("openSocketDG")
-        .wsName("${sessionDgUser}")
-        .connect("/api/durchgang/" + competition + "/${durchgang}/ws?clientid=${sessionUserId}")
-        .onConnected(
-          exec(ws("sendMessage").wsName("${sessionDgUser}")
-            .sendText("keepAlive")
-            .await(5 seconds)(ws.checkTextMessage("check1")
-              .check(regex("Connection established(.*)").saveAs("wsgreetingmessage"))
-              .silent)
-          )
-        )
-    val connectWSUserToAll = ws("openSocketAll")
-        .wsName("${sessionDgUser}-all")
-        .connect("/api/durchgang/" + competition + "/all/ws?clientid=${sessionUserId}")
-        .onConnected(
-          exec(ws("sendMessage").wsName("${sessionDgUser}-all")
-            .sendText("keepAlive")
-            .await(5 seconds)(ws.checkTextMessage("check1")
-              .check(regex("Connection established(.*)").saveAs("wsgreetingmessage"))
-              .silent)
-          )
-        )
-
-    val closeWSUserFromDurchgang = ws("closeConnectionDG").wsName("${sessionDgUser}").close
-    val closeWSUserFromAll = ws("closeConnectionAll").wsName("${sessionDgUser}-all").close
-
-    val getSteps = {
-      exec(http("get steps")
-        .get("/api/durchgang/" + competition + "/${durchgang}/${geraet}")
-        .check(
-          jsonPath("$").exists,
-          jsonPath("$").ofType[Seq[Any]].find.saveAs("steps")))
     }
 
     def chooseDurchgangWSConnection(session: Session) = {
@@ -122,13 +122,14 @@ class SimulationBottmingenD1 extends Simulation {
 
     val diveToWertungen = commonDGInitializer
       .exec(connectWSUserToAll)
-      .exec(getSteps)
-      .foreach("${steps}", "step") {
+      .exec(loadAndSaveSteps)
+      .foreach("#{steps}", "step") {
         exec(http("get Wertungen")
-          .get(s"/api/durchgang/$competition/${"${durchgang}"}/${"${geraet}"}/${"${step}"}")
+          .get(s"/api/durchgang/$competition/#{durchgang}/#{geraet}/#{step}")
           .check(
+            status.is(200),
             jsonPath("$").exists,
-            jsonPath("$").ofType[Seq[Any]].find))
+            jsonPath("$[*]").count.gte(1)))
           //.pause(5 minutes, 10 minutes)
           .rendezVous(10)
       }
@@ -138,32 +139,38 @@ class SimulationBottmingenD1 extends Simulation {
     val collectWertungen = commonDGInitializer
         .exec(http(s"start durchgang")
           .post(s"/api/competition/$competition/start")
-          .body(StringBody(s"""{"type":"StartDurchgangStation","wettkampfUUID":"$competition","durchgang":"${"${durchgangOriginal}"}"}""")))
+          .body(StringBody(s"""{"type":"StartDurchgangStation","wettkampfUUID":"$competition","durchgang":"#{durchgangOriginal}"}"""))
+          .check(
+            status.is(200)
+          ))
         .exec(connectWSUserToDurchgang)
-        .exec(getSteps)
-        .foreach("${steps}", "step") {
+        .exec(loadAndSaveSteps)
+        .foreach("#{steps}", "step") {
           exec(http("get Wertungen")
-            .get(s"/api/durchgang/$competition/${"${durchgang}"}/${"${geraet}"}/${"${step}"}")
+            .get(s"/api/durchgang/$competition/#{durchgang}/#{geraet}/#{step}")
             .check(
+              status.is(200),
               jsonPath("$").exists,
               jsonPath("$").ofType[Seq[Any]].find.saveAs("wertungen")))
             .pause(1 minutes, 3 minutes)
-            .foreach("${wertungen}", "wertung") {
+            .foreach("#{wertungen}", "w") {
               exec(http("save wertung")
-                .put(s"/api/durchgang/$competition/${"${durchgang}"}/${"${geraet}"}/${"${step}"}")
-                .body(StringBody("${wertung.wertung.jsonStringify()}"))
+                .put(s"/api/durchgang/$competition/#{durchgang}/#{geraet}/#{step}")
+                .body(StringBody("#{w.wertung.jsonStringify()}"))
                 .check(status.is(200))
               )
                 .pause(5 seconds, 20 seconds)
               //          .exec(http("finish durchgangstation")
-              //            .post(s"/api/durchgang/$competition/${"${durchgang}"}/finish")
-              //            .body(StringBody(s"""{"type":"FinishDurchgangStation","wettkampfUUID":"$competition","durchgang:"${"${durchgangOriginal}"}","geraet":${"${geraet}"},"step":${"${step}"}}""")))
+              //            .post(s"/api/durchgang/$competition/#{durchgang}/finish")
+              //            .body(StringBody(s"""{"type":"FinishDurchgangStation","wettkampfUUID":"$competition","durchgang:"${"${durchgangOriginal}"}","geraet":#{geraet},"step":#{stept}}""")))
             }
             .rendezVous(12)
             .exec(http("finish step")
               .post(s"/api/competition/$competition/finishedStep")
               .body(StringBody(s"""{"type":"FinishDurchgangStep","wettkampfUUID":"$competition"}"""))
-              .silent
+              .silent.check(
+                status.is(200)
+              )
             )
         }
         .pause(20 seconds, 30 seconds)
@@ -178,16 +185,26 @@ class SimulationBottmingenD1 extends Simulation {
         http("get font roboto-regular").get("/assets/fonts/roboto-regular.woff2"),
         http("get font roboto-medium").get("/assets/fonts/roboto-medium.woff2"),
         http("get font roboto-bold").get("/assets/fonts/roboto-bold.woff2"),
-        http("get competitions").get("/api/competition"),
+        http("get competitions").get("/api/competition").check(
+          status.is(200)
+        ),
         http("check jwt-token expired")
           .options("/api/isTokenExpired")))
-    .exec(http("startlist").get(s"/api/report/$competition/startlist"))
+    .exec(http("startlist").get(s"/api/report/$competition/startlist").check(
+      status.is(200)
+    ))
     .exec(BrowseResults.loadAndSaveDurchgaenge)
-    .exec(http("startlist").get(s"/api/report/$competition/startlist"))
+    .exec(http("startlist").get(s"/api/report/$competition/startlist").check(
+      status.is(200)
+    ))
     .exec(BrowseResults.loadAndSaveGeraete)
-    .exec(http("startlist").get(s"/api/report/$competition/startlist"))
+    .exec(http("startlist").get(s"/api/report/$competition/startlist").check(
+      status.is(200)
+    ))
     .exec(BrowseResults.diveToWertungen)
-    .exec(http("startlist").get(s"/api/report/$competition/startlist"))
+    .exec(http("startlist").get(s"/api/report/$competition/startlist").check(
+      status.is(200)
+    ))
     .exec(BrowseResults.closeWSUserFromAll)
 
 

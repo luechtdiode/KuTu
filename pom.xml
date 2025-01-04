@@ -3,7 +3,7 @@
 	<modelVersion>4.0.0</modelVersion>
 	<groupId>ch.seidel</groupId>
 	<artifactId>KuTu</artifactId>
-	<version>2.3.15</version>
+	<version>2.3.16</version>
 
 	<inceptionYear>2014</inceptionYear>
 
@@ -330,7 +330,7 @@
 		<scalatest.version>3.3.0-SNAP4</scalatest.version>
 		<scala-maven-plugin.version>4.9.2</scala-maven-plugin.version>
 		<gatling.version>3.12.0</gatling.version>
-		<gatling-plugin.version>4.9.6</gatling-plugin.version>
+		<gatling-plugin.version>4.12.2</gatling-plugin.version>
 		<maven.compiler.source>21</maven.compiler.source>
 		<maven.compiler.target>21</maven.compiler.target>
 		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
@@ -516,7 +516,7 @@
 		<dependency>
 			<groupId>com.fasterxml.jackson.core</groupId>
 			<artifactId>jackson-databind</artifactId>
-			<version>2.17.0</version>
+			<version>2.18.2</version>
 		</dependency>
 
 
@@ -576,7 +576,7 @@
 		<dependency>
 			<groupId>org.apache.commons</groupId>
 			<artifactId>commons-text</artifactId>
-			<version>1.12.0</version>
+			<version>1.13.0</version>
 		</dependency>
 
 		<dependency>
