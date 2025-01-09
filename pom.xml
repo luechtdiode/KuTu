@@ -337,7 +337,7 @@
 
 		<scoverage.plugin.version>2.0.6</scoverage.plugin.version>
 		<project-info-reports.plugin.version>3.0.0</project-info-reports.plugin.version>
-		<site.plugin.version>3.20.0</site.plugin.version>
+		<site.plugin.version>3.21.0</site.plugin.version>
 		<maven-compiler-plugin.version>3.11.0</maven-compiler-plugin.version>
 		<slick.version>3.5.1</slick.version>
 	</properties>
