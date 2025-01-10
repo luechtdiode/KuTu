@@ -30,7 +30,7 @@ object TeamRegel {
   private val rangePattern = "([a-zA-ZäöüÄÖÜ]+)([\\[\\S\\s0-9+\\]]+)?\\(([devmax\\/|devmin\\/|median\\/|min\\/|max\\/|avg\\/|sum\\/]+)?([0-9,\\*]+)\\/([0-9,\\*]*)(\\/[\\S\\s\\/0-9+]*)?\\)".r
 
   def apply(formel: String): TeamRegel = {
-    def default(cnt: String): Int = if (cnt.equals("*")) 0 else try cnt.intValue catch {case _ => 0}
+    def default(cnt: String): Int = if (cnt.equals("*")) 0 else try cnt.intValue catch {case _: Throwable => 0}
     val regeln = formel.split(",").map(_.trim).filter(_.nonEmpty).toList
     val mappedRules: List[TeamRegel] = regeln.flatMap {
       case rangePattern(rulename, grouper, aggFn, min, max, extrateams) =>

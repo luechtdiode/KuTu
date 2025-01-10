@@ -182,8 +182,8 @@ trait RegistrationRoutes extends SprayJsonSupport with JwtSupport with JsonSuppo
           } ~ pathLabeled("programmlist", "programmlist") {
             get {
               complete {
-                val wi = WettkampfInfo(wettkampf.toView(readProgramm(wettkampf.programmId)), this)
-                wi.leafprograms.map(p => ProgrammRaw(p.id, p.name, p.aggregate, p.parent.map(_.id).getOrElse(0), p.ord, p.alterVon, p.alterBis, p.uuid, p.riegenmode))
+                val leafprograms = listWettkampfDisziplineViews(wettkampf).map(wd => wd.programm).distinct.sortBy(_.ord)
+                leafprograms.map(p => ProgrammRaw(p.id, p.name, p.aggregate, p.parent.map(_.id).getOrElse(0), p.ord, p.alterVon, p.alterBis, p.uuid, p.riegenmode))
               }
             }
           } ~ pathLabeled("refreshsyncs", "refreshsyncs") {
