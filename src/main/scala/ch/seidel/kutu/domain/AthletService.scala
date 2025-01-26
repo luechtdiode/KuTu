@@ -218,7 +218,7 @@ trait AthletService extends DBService with AthletResultMapper with VereinService
       val preret2 = namenSimilarity > 50 && vorNamenSimilarity > 25 && (namenSimilarity + vorNamenSimilarity) > 200 && (math.max(namenSimilarity, vorNamenSimilarity) > 140)
       val vereinSimilarity = athlet.verein match {
         case Some(vid) => vid == code.verein
-        case _ => true
+        case _ => false
       }
       //      if (code.name.equals(athlet.name)) {
       //      print(athlet.easyprint, this)

@@ -730,6 +730,7 @@ object ResourceExchanger extends KutuService with RiegenBuilder {
             formatter.format(ts.toInstant)
           case Some(value) => value.toString
           case None => ""
+          case null => ""
           case e => e.toString
         }
     }
