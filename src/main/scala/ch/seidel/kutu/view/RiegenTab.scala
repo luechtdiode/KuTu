@@ -866,7 +866,7 @@ class RiegenTab(override val wettkampfInfo: WettkampfInfo, override val service:
       def tgi(tcp: Int): Int = {
         (tcp - 5) / 2
       }
-      tcpl map tgi filter { _ > -1 } map { disziplinlist(_).id }
+      tcpl map tgi filter { _ > -1 } filter { _ < disziplinlist.size} map { disziplinlist(_).id }
     }
     def toGeraetName(id: Long) = disziplinlist.find(p => p.id == id).map(_.name).getOrElse("")
 
@@ -1077,7 +1077,7 @@ class RiegenTab(override val wettkampfInfo: WettkampfInfo, override val service:
       durchgangView.setOnDragDetected((event) => {
         val focusedCells = durchgangView.selectionModel.value.getSelectedCells.toList
         val selectedGerate = toGeraetId(focusedCells.map(c => c.getColumn))
-        val actDurchgangSelection = focusedCells.map(c => c.getTreeItem.getValue).toSet.filter(_ != null)
+        val actDurchgangSelection = focusedCells.filter(c => c.getTreeItem != null).map(c => c.getTreeItem.getValue).toSet.filter(_ != null)
         if (actDurchgangSelection.size == 1 && selectedGerate.size == 1) {
           val startgeraet = selectedGerate.head
           val durchgangEditor = actDurchgangSelection.head
