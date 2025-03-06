@@ -512,7 +512,7 @@ object KuTuApp extends JFXApp3 with KutuService with JsonSupport with JwtSupport
             }
             catch {
               case e: IllegalArgumentException =>
-                new Alert(AlertType.Error, e.getMessage).showAndWait()
+                PageDisplayer.showErrorDialog(caption)(e)
             }
           }
         }

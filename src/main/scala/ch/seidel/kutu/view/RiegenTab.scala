@@ -35,6 +35,7 @@ import scalafx.scene.{Cursor, Node}
 import scalafx.util.StringConverter
 import scalafx.util.converter.DefaultStringConverter
 
+import java.time.format.DateTimeFormatter
 import java.time.temporal.ChronoUnit
 import java.time.temporal.ChronoUnit.NANOS
 import java.time.{Duration, LocalDateTime, LocalTime, ZoneOffset}
@@ -117,11 +118,12 @@ class DurchgangView(wettkampf: WettkampfView, service: KutuService, disziplinlis
     new TreeTableColumn[DurchgangEditor, String] {
       prefWidth = 130
       text = "Durchgang"
+      val formatter: DateTimeFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd hh:mm:ss")
       cellValueFactory = { x => StringProperty(
-        if (x.value.getValue.durchgang.name.equals(x.value.getValue.durchgang.title)) {
+        if (x.value.getValue.durchgang.planStartOffset != 0 && x.value.getValue.durchgang.name.equals(x.value.getValue.durchgang.title)) {
           s"""${x.value.getValue.durchgang.name}
-             |Start: ${x.value.getValue.durchgang.effectivePlanStart(wettkampf.datum.toLocalDate)}
-             |Ende: ${x.value.getValue.durchgang.effectivePlanFinish(wettkampf.datum.toLocalDate)}""".stripMargin
+             |Start: ${x.value.getValue.durchgang.effectivePlanStart(wettkampf.datum.toLocalDate).format(formatter)}
+             |Ende: ${x.value.getValue.durchgang.effectivePlanFinish(wettkampf.datum.toLocalDate).format(formatter)}""".stripMargin
         } else {
           x.value.getValue.durchgang.name
         })
@@ -866,7 +868,7 @@ class RiegenTab(override val wettkampfInfo: WettkampfInfo, override val service:
       def tgi(tcp: Int): Int = {
         (tcp - 5) / 2
       }
-      tcpl map tgi filter { _ > -1 } map { disziplinlist(_).id }
+      tcpl map tgi filter { _ > -1 } filter { _ < disziplinlist.size} map { disziplinlist(_).id }
     }
     def toGeraetName(id: Long) = disziplinlist.find(p => p.id == id).map(_.name).getOrElse("")
 
@@ -1077,7 +1079,7 @@ class RiegenTab(override val wettkampfInfo: WettkampfInfo, override val service:
       durchgangView.setOnDragDetected((event) => {
         val focusedCells = durchgangView.selectionModel.value.getSelectedCells.toList
         val selectedGerate = toGeraetId(focusedCells.map(c => c.getColumn))
-        val actDurchgangSelection = focusedCells.map(c => c.getTreeItem.getValue).toSet.filter(_ != null)
+        val actDurchgangSelection = focusedCells.filter(c => c.getTreeItem != null).map(c => c.getTreeItem.getValue).toSet.filter(_ != null)
         if (actDurchgangSelection.size == 1 && selectedGerate.size == 1) {
           val startgeraet = selectedGerate.head
           val durchgangEditor = actDurchgangSelection.head

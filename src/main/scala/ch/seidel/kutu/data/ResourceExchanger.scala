@@ -11,9 +11,9 @@ import org.slf4j.LoggerFactory
 import slick.jdbc
 
 import java.io._
-import java.nio.charset.Charset
 import java.sql.Timestamp
 import java.time.Instant
+import java.time.format.DateTimeFormatter
 import java.util.UUID
 import java.util.zip.{ZipEntry, ZipInputStream, ZipOutputStream}
 import scala.concurrent.Await
@@ -739,6 +739,7 @@ object ResourceExchanger extends KutuService with RiegenBuilder {
 
   private val charset = "ISO-8859-1"
   private val charset2 = "UTF-8"
+  private val formatter: DateTimeFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd hh:mm:ss")
 
   def exportDurchgaenge(wettkampf: Wettkampf, filename: String): Unit = {
     val fileOutputStream = new BufferedOutputStream(new FileOutputStream(filename))
@@ -755,7 +756,7 @@ object ResourceExchanger extends KutuService with RiegenBuilder {
     }
     fileOutputStream.write("\r\n".getBytes(charset))
 
-    listRiegenZuWettkampf(wettkampf.id)
+    val durchgangEditors = listRiegenZuWettkampf(wettkampf.id)
       .filter(_._3.nonEmpty)
       .sortBy(r => r._1)
       .map{x =>
@@ -772,18 +773,38 @@ object ResourceExchanger extends KutuService with RiegenBuilder {
       .groupBy(re => re.initdurchgang).toSeq
       .sortBy(re => re._1)
       .flatMap { res =>
-        val (name, rel) = res
-        durchgaenge.get(name.getOrElse(rel.head.initdurchgang.getOrElse(""))).map(dg => DurchgangEditor(wettkampf.id, dg, rel))
+        val (durchgang, rel) = res
+        durchgaenge.get(durchgang.getOrElse(rel.head.initdurchgang.getOrElse(""))).map(dg => DurchgangEditor(wettkampf.id, dg, rel))
       }
-      .sortBy(re => re.durchgang.easyprint)
-      .foreach { x =>
-        fileOutputStream.write(f"""${x.durchgang.easyprint}${sep}${x.anz.value}${sep}${x.min.value}${sep}${x.max.value}${sep}${x.avg.value}${sep}${toShortDurationFormat(x.durchgang.planTotal)}${sep}${toShortDurationFormat(x.durchgang.planEinturnen)}${sep}${toShortDurationFormat(x.durchgang.planGeraet)}""".getBytes(charset))
-        diszipline.foreach { d =>
-          fileOutputStream.write(f"${sep}${x.initstartriegen.getOrElse(d, Seq[RiegeEditor]()).map(r => f"${r.name.value.replace("M,", "Tu,").replace("W,", "Ti,")} (${r.anz.value})").mkString("\"", "\n", "\"")}${sep}${x.initstartriegen.getOrElse(d, Seq[RiegeEditor]()).map(r => r.anz.value).sum}".getBytes(charset))
-        }
-        fileOutputStream.write("\r\n".getBytes(charset))
-      }
+      .toList
 
+    def writeDurchgangRow(x: DurchgangEditor): Unit = {
+      val dgtext = if (x.durchgang.planStartOffset != 0 && x.durchgang.name.equals(x.durchgang.title)) {
+        s"${x.durchgang.name}\nStart: ${x.durchgang.effectivePlanStart(wettkampf.datum.toLocalDate).format(formatter)}\nEnde: ${x.durchgang.effectivePlanFinish(wettkampf.datum.toLocalDate).format(formatter)}"
+      }
+      else {
+        x.durchgang.name
+      }
+      fileOutputStream.write(f"""${dgtext}${sep}${x.anz.value}${sep}${x.min.value}${sep}${x.max.value}${sep}${x.avg.value}${sep}${toShortDurationFormat(x.durchgang.planTotal)}${sep}${toShortDurationFormat(x.durchgang.planEinturnen)}${sep}${toShortDurationFormat(x.durchgang.planGeraet)}""".getBytes(charset))
+      diszipline.foreach { d =>
+        fileOutputStream.write(f"${sep}${x.initstartriegen.getOrElse(d, Seq[RiegeEditor]()).map(r => f"${r.name.value.replace("M,", "Tu,").replace("W,", "Ti,")} (${r.anz.value})").mkString("\"", "\n", "\"")}${sep}${x.initstartriegen.getOrElse(d, Seq[RiegeEditor]()).map(r => r.anz.value).sum}".getBytes(charset))
+      }
+      fileOutputStream.write("\r\n".getBytes(charset))
+    }
+
+    for (group <- DurchgangEditor(durchgangEditors)) {
+      group match {
+        case x: GroupDurchgangEditor =>
+          val dgtext = if (x.durchgang.planStartOffset != 0) {
+            s"${x.durchgang.title}\nStart: ${x.durchgang.effectivePlanStart(wettkampf.datum.toLocalDate).format(formatter)}\nEnde: ${x.durchgang.effectivePlanFinish(wettkampf.datum.toLocalDate).format(formatter)}"}
+          else {x.durchgang.title}
+          fileOutputStream.write(f"""${dgtext}${sep}${x.anz.value}${sep}${x.min.value}${sep}${x.max.value}${sep}${x.avg.value}${sep}${toShortDurationFormat(x.durchgang.planTotal)}${sep}${toShortDurationFormat(x.durchgang.planEinturnen)}${sep}${toShortDurationFormat(x.durchgang.planGeraet)}""".getBytes(charset))
+          fileOutputStream.write("\r\n".getBytes(charset))
+          x.aggregates.foreach(x => writeDurchgangRow(x))
+        case x: DurchgangEditor =>
+          writeDurchgangRow(x)
+      }
+    }
     fileOutputStream.flush()
     fileOutputStream.close()
   }
@@ -817,7 +838,7 @@ object ResourceExchanger extends KutuService with RiegenBuilder {
           x._4,
           None))
     val allRiegenIndex = allRiegen.map(r => r.initname -> r).toMap
-    allRiegen
+    val durchgangEditors = allRiegen
       .flatMap(riege => {
         riege2Map.get(riege.initname) match {
           case Some(barrenRiegen) => barrenRiegen
@@ -832,36 +853,57 @@ object ResourceExchanger extends KutuService with RiegenBuilder {
         val (name, rel) = res
         durchgaenge.get(name.getOrElse(rel.head.initdurchgang.getOrElse(""))).map(dg => DurchgangEditor(wettkampf.id, dg, rel))
       }
-      .sortBy(re => re.durchgang.easyprint)
-      .foreach { x =>
-        fileOutputStream.write(f"""${x.durchgang.easyprint}${sep}${x.anz.value}${sep}${x.min.value}${sep}${x.max.value}${sep}${toShortDurationFormat(x.durchgang.planTotal)}${sep}${toShortDurationFormat(x.durchgang.planEinturnen)}${sep}${toShortDurationFormat(x.durchgang.planGeraet)}""".getBytes(charset))
-        val riegen = x.riegenWithMergedClubs()
-        val rows = riegen.values.map(_.size).max
-        val riegenFields = for {
-          row <- (0 to rows)
-          d <- diszipline
-          r = riegen.getOrElse(d, Seq())
-        } yield {
-          (row, if (r.size > row) {
-            f"${sep}${r(row)._1}${sep}${r(row)._2}${sep}${r(row)._3}"
-          } else {
-            f"${sep}${sep}${sep}"
-          })
-        }
-        val rs = riegenFields.groupBy(_._1).toList
-          .sortBy(_._1)
-          .map(r => {
-            val tuples = r._2
-            val strings = tuples.map(_._2)
-            val fieldsString = strings.mkString("", "", f"\r\n${sep}${sep}${sep}${sep}${sep}${sep}")
-            fieldsString
-          }) :+ "\r\n"
+      .toList
 
-        rs.foreach(row => {
-          fileOutputStream.write(row.getBytes(charset))
-        })
-        fileOutputStream.write("\r\n".getBytes(charset))
+    def writeDurchgangRow(x: DurchgangEditor): Unit = {
+      val dgtext = if (x.durchgang.planStartOffset != 0 && x.durchgang.name.equals(x.durchgang.title)) {
+        s"${x.durchgang.name}\nStart: ${x.durchgang.effectivePlanStart(wettkampf.datum.toLocalDate).format(formatter)}\nEnde: ${x.durchgang.effectivePlanFinish(wettkampf.datum.toLocalDate).format(formatter)}"
       }
+      else {
+        x.durchgang.name
+      }
+      fileOutputStream.write(f"""${dgtext}${sep}${x.anz.value}${sep}${x.min.value}${sep}${x.max.value}${sep}${toShortDurationFormat(x.durchgang.planTotal)}${sep}${toShortDurationFormat(x.durchgang.planEinturnen)}${sep}${toShortDurationFormat(x.durchgang.planGeraet)}""".getBytes(charset))
+      val riegen = x.riegenWithMergedClubs()
+      val rows = riegen.values.map(_.size).max
+      val riegenFields = for {
+        row <- (0 to rows)
+        d <- diszipline
+        r = riegen.getOrElse(d, Seq())
+      } yield {
+        (row, if (r.size > row) {
+          f"${sep}${r(row)._1}${sep}${r(row)._2}${sep}${r(row)._3}"
+        } else {
+          f"${sep}${sep}${sep}"
+        })
+      }
+      val rs = riegenFields.groupBy(_._1).toList
+        .sortBy(_._1)
+        .map(r => {
+          val tuples = r._2
+          val strings = tuples.map(_._2)
+          val fieldsString = strings.mkString("", "", f"\r\n${sep}${sep}${sep}${sep}${sep}${sep}")
+          fieldsString
+        }) :+ "\r\n"
+
+      rs.foreach(row => {
+        fileOutputStream.write(row.getBytes(charset))
+      })
+      fileOutputStream.write("\r\n".getBytes(charset))
+    }
+
+    for (group <- DurchgangEditor(durchgangEditors)) {
+      group match {
+        case x: GroupDurchgangEditor =>
+          val dgtext = if (x.durchgang.planStartOffset != 0) {
+            s"${x.durchgang.title}\nStart: ${x.durchgang.effectivePlanStart(wettkampf.datum.toLocalDate).format(formatter)}\nEnde: ${x.durchgang.effectivePlanFinish(wettkampf.datum.toLocalDate).format(formatter)}"}
+          else {x.durchgang.title}
+          fileOutputStream.write(f"""${dgtext}${sep}${x.anz.value}${sep}${x.min.value}${sep}${x.max.value}${sep}${toShortDurationFormat(x.durchgang.planTotal)}${sep}${toShortDurationFormat(x.durchgang.planEinturnen)}${sep}${toShortDurationFormat(x.durchgang.planGeraet)}""".getBytes(charset))
+          fileOutputStream.write("\r\n".getBytes(charset))
+          x.aggregates.foreach(x => writeDurchgangRow(x))
+        case x: DurchgangEditor =>
+          writeDurchgangRow(x)
+      }
+    }
 
     fileOutputStream.flush()
     fileOutputStream.close()
