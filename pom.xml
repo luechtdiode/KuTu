@@ -323,7 +323,7 @@
 		<scala.majorversion>2.13</scala.majorversion>
 		<scala.version>2.13.14</scala.version>
 		<akkaHttp.version>10.5.3</akkaHttp.version>
-		<javafx.version>23</javafx.version>
+		<javafx.version>21.0.4</javafx.version>
 		<akka.version>2.8.6</akka.version>
 		<scalafx.version>21.0.0-R32</scalafx.version>
 		<!--scalafx.version>20.0.0-R31</scalafx.version-->
