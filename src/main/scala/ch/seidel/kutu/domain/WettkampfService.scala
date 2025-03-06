@@ -516,10 +516,7 @@ trait WettkampfService extends DBService
     } yield {
       val programs = (programmId + existing.head.programmId) map (p => readProgramm(p, cache))
       val heads = programs map (_.head)
-      if (hasWertungen.head > 0 && !heads.forall { h => h.id == heads.head.id }) {
-        throw new IllegalArgumentException("Es kann keine Programmanpassung gemacht werden, wenn bereits Turner zum Wettkampf verknüpft sind.")
-      }
-      sqlu"""     update wettkampf
+      val update = sqlu"""     update wettkampf
                   set datum=$datum,
                       titel=$titel,
                       programm_Id=${heads.head.id},
@@ -532,7 +529,18 @@ trait WettkampfService extends DBService
                       teamrule=$teamrule,
                       uuid=$uuid
                   where id=$id
-          """ >>
+          """
+
+      val updateWithPlanTimes = if (!heads.forall { h => h.id == heads.head.id }) {
+        if (hasWertungen.head > 0)
+          throw new IllegalArgumentException("Es kann keine Programmanpassung gemacht werden, wenn bereits Turner zum Wettkampf verknüpft sind.")
+        else {
+          update >> initPlanZeitenActions(UUID.fromString(existing.head.uuid.get))
+        }
+      } else {
+        update
+      }
+      updateWithPlanTimes >>
       sqlu"""
                   insert into wettkampfmetadata
                   (uuid, wettkampf_id)
