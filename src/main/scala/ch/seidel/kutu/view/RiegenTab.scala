@@ -35,6 +35,7 @@ import scalafx.scene.{Cursor, Node}
 import scalafx.util.StringConverter
 import scalafx.util.converter.DefaultStringConverter
 
+import java.time.format.DateTimeFormatter
 import java.time.temporal.ChronoUnit
 import java.time.temporal.ChronoUnit.NANOS
 import java.time.{Duration, LocalDateTime, LocalTime, ZoneOffset}
@@ -117,11 +118,12 @@ class DurchgangView(wettkampf: WettkampfView, service: KutuService, disziplinlis
     new TreeTableColumn[DurchgangEditor, String] {
       prefWidth = 130
       text = "Durchgang"
+      val formatter: DateTimeFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd hh:mm:ss")
       cellValueFactory = { x => StringProperty(
-        if (x.value.getValue.durchgang.name.equals(x.value.getValue.durchgang.title)) {
+        if (x.value.getValue.durchgang.planStartOffset != 0 && x.value.getValue.durchgang.name.equals(x.value.getValue.durchgang.title)) {
           s"""${x.value.getValue.durchgang.name}
-             |Start: ${x.value.getValue.durchgang.effectivePlanStart(wettkampf.datum.toLocalDate)}
-             |Ende: ${x.value.getValue.durchgang.effectivePlanFinish(wettkampf.datum.toLocalDate)}""".stripMargin
+             |Start: ${x.value.getValue.durchgang.effectivePlanStart(wettkampf.datum.toLocalDate).format(formatter)}
+             |Ende: ${x.value.getValue.durchgang.effectivePlanFinish(wettkampf.datum.toLocalDate).format(formatter)}""".stripMargin
         } else {
           x.value.getValue.durchgang.name
         })
