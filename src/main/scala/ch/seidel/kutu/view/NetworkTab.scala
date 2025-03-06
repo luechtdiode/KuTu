@@ -25,6 +25,7 @@ import scalafx.scene.control._
 import scalafx.scene.image.{Image, ImageView}
 import scalafx.scene.layout.{BorderPane, Priority}
 
+import java.time.format.DateTimeFormatter
 import java.util.UUID
 import java.util.concurrent.{ScheduledFuture, ScheduledThreadPoolExecutor, TimeUnit}
 import scala.collection.immutable
@@ -189,7 +190,18 @@ class DurchgangStationView(wettkampf: WettkampfView, service: KutuService, diszi
     new TreeTableColumn[DurchgangState, String] {
       prefWidth = 130
       text = "Durchgang"
-      cellValueFactory = { x => StringProperty(if (x.value.getValue != null) x.value.getValue.name else "Durchgänge") }
+      val formatter: DateTimeFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd hh:mm:ss")
+      cellValueFactory = { x =>
+        StringProperty(
+          if (x.value.getValue == null) "Durchgänge"
+          else if (x.value.getValue.durchgang.planStartOffset != 0 && x.value.getValue.name.equals(x.value.getValue.durchgang.title)) {
+            s"""${x.value.getValue.durchgang.name}
+               |Plan-Start: ${x.value.getValue.durchgang.effectivePlanStart(wettkampf.datum.toLocalDate).format(formatter)}
+               |Plan-Ende: ${x.value.getValue.durchgang.effectivePlanFinish(wettkampf.datum.toLocalDate).format(formatter)}""".stripMargin
+          } else {
+            x.value.getValue.name
+          })
+      }
     }
     , new TreeTableColumn[DurchgangState, String] {
       prefWidth = 85
