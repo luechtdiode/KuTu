@@ -1,11 +1,11 @@
-package ch.seidel.kutu.akka
+package ch.seidel.kutu.actors
 
-import akka.actor.SupervisorStrategy.Restart
-import akka.actor.{Actor, ActorRef, OneForOneStrategy, Props}
-import akka.event.LoggingAdapter
-import akka.http.scaladsl.model.{StatusCode, StatusCodes}
-import akka.pattern.ask
-import akka.util.Timeout
+import org.apache.pekko.actor.SupervisorStrategy.Restart
+import org.apache.pekko.actor.{Actor, ActorRef, OneForOneStrategy, Props}
+import org.apache.pekko.event.{Logging, LoggingAdapter}
+import org.apache.pekko.http.scaladsl.model.{StatusCode, StatusCodes}
+import org.apache.pekko.pattern.ask
+import org.apache.pekko.util.Timeout
 import ch.seidel.kutu.Config
 import ch.seidel.kutu.http.Core.system
 import org.simplejavamail.api.mailer.{CustomMailer, Mailer}
@@ -34,7 +34,7 @@ case class SendRetry(mail: Mail, retries: Int, sender: ActorRef) extends SendMai
 
 class KuTuMailerActor(smtpHost: String, smtpPort: Int, smtpUsername: String, smtpDomain: String, smtpPassword: String, appname: String, customMailer: Option[CustomMailer])
   extends Actor {
-  lazy val l: LoggingAdapter = akka.event.Logging(system, this)
+  lazy val l: LoggingAdapter = Logging(system, this)
 
   object log {
     def error(s: String): Unit = l.error(s)

@@ -1,6 +1,6 @@
-package ch.seidel.kutu.akka
+package ch.seidel.kutu.actors
 
-import akka.actor.ActorRef
+import org.apache.pekko.actor.ActorRef
 import ch.seidel.kutu.data.GroupBy
 import ch.seidel.kutu.domain._
 

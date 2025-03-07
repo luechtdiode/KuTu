@@ -3,7 +3,7 @@ package ch.seidel.kutu.http
 import java.io.{File, FileInputStream, InputStream}
 import java.security.{KeyStore, SecureRandom}
 
-import akka.http.scaladsl.{ConnectionContext, HttpsConnectionContext}
+import org.apache.pekko.http.scaladsl.{ConnectionContext, HttpsConnectionContext}
 import ch.seidel.kutu.Config._
 import javax.net.ssl.{KeyManagerFactory, SSLContext, TrustManagerFactory}
 

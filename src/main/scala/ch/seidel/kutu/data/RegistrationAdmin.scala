@@ -1,7 +1,7 @@
 package ch.seidel.kutu.data
 
 import ch.seidel.kutu.KuTuApp.cleanUnusedRiegen
-import ch.seidel.kutu.akka.{AthletIndexActor, AthletLikeFound, AthletsAddedToWettkampf, FindAthletLike}
+import ch.seidel.kutu.actors.{AthletIndexActor, AthletLikeFound, AthletsAddedToWettkampf, FindAthletLike}
 import ch.seidel.kutu.domain.{AddRegistration, AddVereinAction, ApproveVereinAction, Athlet, AthletRegistration, AthletView, EmptyAthletRegistration, KutuService, MoveRegistration, PublicSyncAction, Registration, RemoveRegistration, RenameAthletAction, RenameVereinAction, RiegeRaw, SyncAction, Verein, WertungView, Wettkampf}
 import ch.seidel.kutu.http.{RegistrationRoutes, WebSocketClient}
 import ch.seidel.kutu.squad.RiegenBuilder.{generateRiegen2Name, generateRiegenName}

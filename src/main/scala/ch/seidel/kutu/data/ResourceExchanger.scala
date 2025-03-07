@@ -1,6 +1,6 @@
 package ch.seidel.kutu.data
 
-import ch.seidel.kutu.akka._
+import ch.seidel.kutu.actors._
 import ch.seidel.kutu.data.CaseObjectMetaUtil._
 import ch.seidel.kutu.domain._
 import ch.seidel.kutu.renderer.PrintUtil

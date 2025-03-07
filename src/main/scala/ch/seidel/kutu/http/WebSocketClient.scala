@@ -1,13 +1,13 @@
 package ch.seidel.kutu.http
 
 
-import akka.http.scaladsl.marshallers.sprayjson.SprayJsonSupport
-import akka.http.scaladsl.model.headers.RawHeader
-import akka.http.scaladsl.model.ws.{BinaryMessage, Message, TextMessage, WebSocketRequest}
-import akka.stream.OverflowStrategy
-import akka.stream.scaladsl.{Flow, Keep, Sink, Source, SourceQueueWithComplete}
-import ch.seidel.kutu.Config.{homedir, jwtAuthorizationKey, _}
-import ch.seidel.kutu.akka._
+import org.apache.pekko.http.scaladsl.marshallers.sprayjson.SprayJsonSupport
+import org.apache.pekko.http.scaladsl.model.headers.RawHeader
+import org.apache.pekko.http.scaladsl.model.ws.{BinaryMessage, Message, TextMessage, WebSocketRequest}
+import org.apache.pekko.stream.{OverflowStrategy, SubscriptionWithCancelException}
+import org.apache.pekko.stream.scaladsl.{Flow, Keep, Sink, Source, SourceQueueWithComplete}
+import ch.seidel.kutu.Config._
+import ch.seidel.kutu.actors._
 import ch.seidel.kutu.domain.Wettkampf
 import javafx.beans.property.SimpleObjectProperty
 import org.slf4j.LoggerFactory
@@ -108,7 +108,7 @@ object WebSocketClient extends SprayJsonSupport with JsonSupport with AuthSuppor
     Flow[T]
       .watchTermination()((_, f) => f.onComplete {
         case Failure(cause) => cause match {
-          case akka.stream.SubscriptionWithCancelException.StageWasCompleted =>
+          case SubscriptionWithCancelException.StageWasCompleted =>
             logger.info(s"WS-Client stream closed")
           case _ =>
             logger.error(s"WS-Client stream failed with $cause")

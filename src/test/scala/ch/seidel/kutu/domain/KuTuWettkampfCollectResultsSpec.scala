@@ -2,10 +2,10 @@ package ch.seidel.kutu.domain
 
 import java.util.UUID
 
-import akka.http.scaladsl.model.{ContentTypes, HttpRequest, StatusCodes}
-import akka.stream.scaladsl.Sink
+import org.apache.pekko.http.scaladsl.model.{ContentTypes, HttpRequest, StatusCodes}
+import org.apache.pekko.stream.scaladsl.Sink
 import ch.seidel.kutu.Config.homedir
-import ch.seidel.kutu.akka._
+import ch.seidel.kutu.actors._
 import ch.seidel.kutu.base.KuTuBaseSpec
 import ch.seidel.kutu.renderer.{PrintUtil, RiegenBuilder, WettkampfOverviewToHtmlRenderer}
 import ch.seidel.kutu.squad.DurchgangBuilder

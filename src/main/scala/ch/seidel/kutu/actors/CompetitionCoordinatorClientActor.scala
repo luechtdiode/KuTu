@@ -1,16 +1,16 @@
-package ch.seidel.kutu.akka
+package ch.seidel.kutu.actors
 
-import akka.actor.SupervisorStrategy.{Restart, Stop}
-import akka.actor.{Actor, ActorLogging, ActorRef, OneForOneStrategy, PoisonPill, Props, Terminated}
-import akka.event.LoggingAdapter
-import akka.http.scaladsl.model.ws.{BinaryMessage, Message, TextMessage}
-import akka.pattern.ask
-import akka.persistence.{PersistentActor, SnapshotOffer, SnapshotSelectionCriteria}
-import akka.stream.scaladsl.{Flow, Sink, Source}
-import akka.stream.{CompletionStrategy, OverflowStrategy}
-import akka.util.Timeout
+import org.apache.pekko.actor.SupervisorStrategy.{Restart, Stop}
+import org.apache.pekko.actor.{Actor, ActorLogging, ActorRef, OneForOneStrategy, PoisonPill, Props, Terminated}
+import org.apache.pekko.event.{Logging, LoggingAdapter}
+import org.apache.pekko.http.scaladsl.model.ws.{BinaryMessage, Message, TextMessage}
+import org.apache.pekko.pattern.ask
+import org.apache.pekko.persistence.{PersistentActor, SnapshotOffer, SnapshotSelectionCriteria}
+import org.apache.pekko.stream.scaladsl.{Flow, Sink, Source}
+import org.apache.pekko.stream.{CompletionStrategy, OverflowStrategy}
+import org.apache.pekko.util.Timeout
 import ch.seidel.kutu.Config
-import ch.seidel.kutu.akka.CompetitionCoordinatorClientActor.{PublishAction, competitionWebsocketConnectionsActive, competitionsActive}
+import ch.seidel.kutu.actors.CompetitionCoordinatorClientActor.{PublishAction, competitionWebsocketConnectionsActive, competitionsActive}
 import ch.seidel.kutu.data.ResourceExchanger
 import ch.seidel.kutu.domain._
 import ch.seidel.kutu.http.Core.system
@@ -32,7 +32,7 @@ import scala.util.control.NonFatal
 class CompetitionCoordinatorClientActor(wettkampfUUID: String) extends PersistentActor with JsonSupport with KutuService /*with ActorLogging*/ {
   def shortName: String = self.toString().split("/").last.split("#").head + "/" + clientId()
 
-  lazy val l: LoggingAdapter = akka.event.Logging(system, this)
+  lazy val l: LoggingAdapter = Logging(system, this)
 
   //  lazy val log = new BusLogging(system.eventStream, "RouterLogging", classOf[RouterLogging], system.asInstanceOf[ExtendedActorSystem].logFilter) with DiagnosticLoggingAdapter
   object log {
@@ -689,7 +689,7 @@ object CompetitionCoordinatorClientActor extends JsonSupport with EnrichedJson {
       case msg: TextMessage => msg
     })
 
-  val completionMatcher: PartialFunction[scala.Any, akka.stream.CompletionStrategy] = {
+  val completionMatcher: PartialFunction[scala.Any, CompletionStrategy] = {
     case StopDevice(_) => CompletionStrategy.immediately
   }
   val failureMatcher: PartialFunction[scala.Any, scala.Throwable] = {

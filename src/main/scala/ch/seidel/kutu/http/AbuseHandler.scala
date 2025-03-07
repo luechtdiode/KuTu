@@ -1,7 +1,7 @@
 package ch.seidel.kutu.http
 
-import akka.http.scaladsl.model.Uri
-import akka.http.scaladsl.model.Uri.Path
+import org.apache.pekko.http.scaladsl.model.Uri
+import org.apache.pekko.http.scaladsl.model.Uri.Path
 import ch.seidel.kutu.Config
 import io.prometheus.client
 import io.prometheus.client.Collector

@@ -322,11 +322,10 @@
 		<jdk-home>${JAVA_HOME}</jdk-home>
 		<scala.majorversion>2.13</scala.majorversion>
 		<scala.version>2.13.16</scala.version>
-		<akkaHttp.version>10.5.3</akkaHttp.version>
 		<javafx.version>21.0.4</javafx.version>
-		<akka.version>2.8.6</akka.version>
+		<pekkoHttp.version>1.1.0</pekkoHttp.version>
+		<pekko.version>1.1.3</pekko.version>
 		<scalafx.version>21.0.0-R32</scalafx.version>
-		<!--scalafx.version>20.0.0-R31</scalafx.version-->
 		<scalatest.version>3.3.0-SNAP4</scalatest.version>
 		<scala-maven-plugin.version>4.9.2</scala-maven-plugin.version>
 		<gatling.version>3.12.0</gatling.version>
@@ -418,76 +417,80 @@
 			<version>6.2.1</version>
 		</dependency>
 
-		<!-- akka / akkahttp -->
+		<!-- pekko / pekkohttp -->
 		<dependency>
-			<groupId>com.typesafe.akka</groupId>
-			<artifactId>akka-http_${scala.majorversion}</artifactId>
-			<version>${akkaHttp.version}</version>
+			<groupId>org.apache.pekko</groupId>
+			<artifactId>pekko-http_${scala.majorversion}</artifactId>
+			<version>${pekkoHttp.version}</version>
 		</dependency>
 		<dependency>
-			<groupId>com.typesafe.akka</groupId>
-			<artifactId>akka-http-spray-json_${scala.majorversion}</artifactId>
-			<version>${akkaHttp.version}</version>
+			<groupId>org.apache.pekko</groupId>
+			<artifactId>pekko-http-spray-json_${scala.majorversion}</artifactId>
+			<version>${pekkoHttp.version}</version>
 		</dependency>
 		<dependency>
-			<groupId>com.typesafe.akka</groupId>
-			<artifactId>akka-http-xml_${scala.majorversion}</artifactId>
-			<version>${akkaHttp.version}</version>
+			<groupId>org.apache.pekko</groupId>
+			<artifactId>pekko-http-xml_${scala.majorversion}</artifactId>
+			<version>${pekkoHttp.version}</version>
 		</dependency>
 		<dependency>
-			<groupId>com.typesafe.akka</groupId>
-			<artifactId>akka-http-testkit_${scala.majorversion}</artifactId>
-			<version>${akkaHttp.version}</version>
+			<groupId>org.apache.pekko</groupId>
+			<artifactId>pekko-http-testkit_${scala.majorversion}</artifactId>
+			<version>${pekkoHttp.version}</version>
 			<scope>test</scope>
 		</dependency>
 		<dependency>
-			<groupId>com.typesafe.akka</groupId>
-			<artifactId>akka-actor_${scala.majorversion}</artifactId>
-			<version>${akka.version}</version>
+			<groupId>org.apache.pekko</groupId>
+			<artifactId>pekko-actor_${scala.majorversion}</artifactId>
+			<version>${pekko.version}</version>
 		</dependency>
 		<dependency>
-			<groupId>com.typesafe.akka</groupId>
-			<artifactId>akka-stream-testkit_${scala.majorversion}</artifactId>
-			<version>${akka.version}</version>
+			<groupId>org.apache.pekko</groupId>
+			<artifactId>pekko-stream-testkit_${scala.majorversion}</artifactId>
+			<version>${pekko.version}</version>
 			<scope>test</scope>
 		</dependency>
 		<dependency>
-			<groupId>com.typesafe.akka</groupId>
-			<artifactId>akka-stream_${scala.majorversion}</artifactId>
-			<version>${akka.version}</version>
+			<groupId>org.apache.pekko</groupId>
+			<artifactId>pekko-stream_${scala.majorversion}</artifactId>
+			<version>${pekko.version}</version>
 		</dependency>
 		<dependency>
-			<groupId>com.typesafe.akka</groupId>
-			<artifactId>akka-cluster_${scala.majorversion}</artifactId>
-			<version>${akka.version}</version>
+			<groupId>org.apache.pekko</groupId>
+			<artifactId>pekko-cluster_${scala.majorversion}</artifactId>
+			<version>${pekko.version}</version>
 		</dependency>
 		<dependency>
-			<groupId>com.typesafe.akka</groupId>
-			<artifactId>akka-cluster-tools_${scala.majorversion}</artifactId>
-			<version>${akka.version}</version>
+			<groupId>org.apache.pekko</groupId>
+			<artifactId>pekko-cluster-tools_${scala.majorversion}</artifactId>
+			<version>${pekko.version}</version>
 		</dependency>
 		<dependency>
 			<groupId>fr.davit</groupId>
-			<artifactId>akka-http-metrics-prometheus_${scala.majorversion}</artifactId>
-			<version>1.7.1</version>
+			<artifactId>pekko-http-metrics-prometheus_${scala.majorversion}</artifactId>
+			<version>1.1.0</version>
 		</dependency>
-		<!-- Event Sourcing, Akka Persitence -->
+		<!-- Event Sourcing, Pekko Persitence -->
 		<dependency>
-			<groupId>com.typesafe.akka</groupId>
-			<artifactId>akka-persistence_${scala.majorversion}</artifactId>
-			<version>${akka.version}</version>
+			<groupId>org.apache.pekko</groupId>
+			<artifactId>pekko-persistence_${scala.majorversion}</artifactId>
+			<version>${pekko.version}</version>
 		</dependency>
 		<dependency>
 			<groupId>org.fusesource.leveldbjni</groupId>
 			<artifactId>leveldbjni-all</artifactId>
 			<version>1.8</version>
 		</dependency>
-		<dependency>
+		<!--dependency>
 			<groupId>com.twitter</groupId>
 			<artifactId>chill-akka_${scala.majorversion}</artifactId>
 			<version>0.10.0</version>
+		</dependency-->
+		<dependency>
+			<groupId>io.altoo</groupId>
+			<artifactId>pekko-kryo-serialization_${scala.majorversion}</artifactId>
+			<version>1.2.0</version>
 		</dependency>
-
 		<!-- JWT actually substituted by a local pach-copy until 2.13 is suppored -->
 <!--		<dependency>-->
 <!--			<groupId>com.jason-goodwin</groupId>-->
@@ -558,9 +561,9 @@
 			<version>1.5.7</version>
 		</dependency>
 		<dependency>
-			<groupId>com.typesafe.akka</groupId>
-			<artifactId>akka-slf4j_${scala.majorversion}</artifactId>
-			<version>${akka.version}</version>
+			<groupId>org.apache.pekko</groupId>
+			<artifactId>pekko-slf4j_${scala.majorversion}</artifactId>
+			<version>${pekko.version}</version>
 		</dependency>
 
 		<dependency>

@@ -1,10 +1,10 @@
 package ch.seidel.kutu.http
 
-import akka.http.scaladsl.model.StatusCodes._
-import akka.http.scaladsl.model.{HttpResponse, StatusCode, StatusCodes, Uri}
-import akka.http.scaladsl.server.{ExceptionHandler, RouteConcatenation}
+import org.apache.pekko.http.scaladsl.model.StatusCodes._
+import org.apache.pekko.http.scaladsl.model.{HttpResponse, StatusCode, StatusCodes, Uri}
+import org.apache.pekko.http.scaladsl.server.{ExceptionHandler, RouteConcatenation}
 import ch.seidel.kutu.domain.toDurationFormat
-import fr.davit.akka.http.metrics.core.scaladsl.server.HttpMetricsDirectives.pathPrefixLabeled
+import fr.davit.pekko.http.metrics.core.scaladsl.server.HttpMetricsDirectives.pathPrefixLabeled
 
 
 case class HTTPFailure(status: StatusCode,

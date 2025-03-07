@@ -1,7 +1,7 @@
 package ch.seidel.kutu.http
 
-import akka.http.scaladsl.model._
-import akka.http.scaladsl.server.{Directive, Directive1, Directives}
+import org.apache.pekko.http.scaladsl.model._
+import org.apache.pekko.http.scaladsl.server.{Directive, Directive1, Directives}
 
 
 trait CIDSupport extends Directives with RouterLogging with IpToDeviceID {

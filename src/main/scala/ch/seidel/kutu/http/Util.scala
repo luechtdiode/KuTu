@@ -6,7 +6,7 @@ import java.security.{MessageDigest, NoSuchAlgorithmException, SecureRandom}
 import java.text.SimpleDateFormat
 import java.util.{Base64, Date}
 
-import akka.http.scaladsl.model.RemoteAddress
+import org.apache.pekko.http.scaladsl.model.RemoteAddress
 import javax.crypto.SecretKeyFactory
 import javax.crypto.spec.PBEKeySpec
 import spray.json.{JsString, JsValue, JsonReader, _}

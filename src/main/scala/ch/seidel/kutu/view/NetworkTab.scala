@@ -3,7 +3,7 @@ package ch.seidel.kutu.view
 import ch.seidel.commons.{LazyTabPane, TabWithService}
 import ch.seidel.kutu.Config._
 import ch.seidel.kutu.KuTuApp.enc
-import ch.seidel.kutu.akka._
+import ch.seidel.kutu.actors._
 import ch.seidel.kutu.domain._
 import ch.seidel.kutu.http.WebSocketClient
 import ch.seidel.kutu.renderer.PrintUtil.FilenameDefault

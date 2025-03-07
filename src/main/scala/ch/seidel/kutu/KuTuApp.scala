@@ -3,7 +3,7 @@ package ch.seidel.kutu
 import ch.seidel.commons.{DisplayablePage, PageDisplayer, ProgressForm, TaskSteps}
 import ch.seidel.jwt
 import ch.seidel.kutu.Config._
-import ch.seidel.kutu.akka.KutuAppEvent
+import ch.seidel.kutu.actors.KutuAppEvent
 import ch.seidel.kutu.data.{CaseObjectMetaUtil, ResourceExchanger, Surname}
 import ch.seidel.kutu.domain._
 import ch.seidel.kutu.http._

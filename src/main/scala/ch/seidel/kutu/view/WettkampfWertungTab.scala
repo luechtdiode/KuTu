@@ -3,7 +3,7 @@ package ch.seidel.kutu.view
 import ch.seidel.commons._
 import ch.seidel.kutu.Config._
 import ch.seidel.kutu.KuTuApp.enc
-import ch.seidel.kutu.akka._
+import ch.seidel.kutu.actors._
 import ch.seidel.kutu.domain._
 import ch.seidel.kutu.http.WebSocketClient
 import ch.seidel.kutu.renderer.PrintUtil.FilenameDefault
@@ -16,7 +16,7 @@ import scalafx.Includes._
 import scalafx.application.Platform
 import scalafx.beans.binding.Bindings
 import scalafx.beans.property.StringProperty.sfxStringProperty2jfx
-import scalafx.beans.property.{DoubleProperty, ReadOnlyStringWrapper, _}
+import scalafx.beans.property._
 import scalafx.beans.value.ObservableValue
 import scalafx.collections.ObservableBuffer
 import scalafx.collections.ObservableBuffer.observableBuffer2ObservableList

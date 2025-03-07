@@ -1,9 +1,9 @@
 package ch.seidel.kutu.domain
 
-import akka.http.scaladsl.model.HttpMethods._
-import akka.http.scaladsl.model.headers.{Authorization, BasicHttpCredentials, RawHeader}
-import akka.http.scaladsl.model.{ContentTypes, HttpEntity, HttpRequest, StatusCodes}
-import akka.util.ByteString
+import org.apache.pekko.http.scaladsl.model.HttpMethods._
+import org.apache.pekko.http.scaladsl.model.headers.{Authorization, BasicHttpCredentials, RawHeader}
+import org.apache.pekko.http.scaladsl.model.{ContentTypes, HttpEntity, HttpRequest, StatusCodes}
+import org.apache.pekko.util.ByteString
 import ch.seidel.jwt.JsonWebToken
 import ch.seidel.kutu.Config
 import ch.seidel.kutu.Config.{jwtAuthorizationKey, jwtHeader, jwtSecretKey, jwtTokenExpiryPeriodInDays}

@@ -1,6 +1,6 @@
 package ch.seidel.kutu.view
 
-import akka.http.javadsl.model.HttpResponse
+import org.apache.pekko.http.javadsl.model.HttpResponse
 import ch.seidel.commons.{DisplayablePage, PageDisplayer}
 import ch.seidel.kutu.KuTuApp
 import ch.seidel.kutu.domain.{AddRegistration, AddVereinAction, ApproveVereinAction, Athlet, AthletView, EmptyAthletRegistration, MoveRegistration, Registration, RemoveRegistration, RenameAthletAction, RenameVereinAction, SyncAction, Verein}

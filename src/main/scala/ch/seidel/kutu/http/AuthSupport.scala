@@ -1,17 +1,17 @@
 package ch.seidel.kutu.http
 
-import akka.http.scaladsl.marshallers.sprayjson.SprayJsonSupport
-import akka.http.scaladsl.marshalling.Marshal
-import akka.http.scaladsl.model._
-import akka.http.scaladsl.model.headers._
-import akka.http.scaladsl.model.ws.{Message, WebSocketRequest}
-import akka.http.scaladsl.server.Directives
-import akka.http.scaladsl.server.directives.Credentials
-import akka.http.scaladsl.server.directives.Credentials.Provided
-import akka.http.scaladsl.settings.{ClientConnectionSettings, ConnectionPoolSettings}
-import akka.http.scaladsl.unmarshalling.Unmarshal
-import akka.http.scaladsl.{ClientTransport, Http}
-import akka.stream.scaladsl._
+import org.apache.pekko.http.scaladsl.marshallers.sprayjson.SprayJsonSupport
+import org.apache.pekko.http.scaladsl.marshalling.Marshal
+import org.apache.pekko.http.scaladsl.model._
+import org.apache.pekko.http.scaladsl.model.headers._
+import org.apache.pekko.http.scaladsl.model.ws.{Message, WebSocketRequest}
+import org.apache.pekko.http.scaladsl.server.Directives
+import org.apache.pekko.http.scaladsl.server.directives.Credentials
+import org.apache.pekko.http.scaladsl.server.directives.Credentials.Provided
+import org.apache.pekko.http.scaladsl.settings.{ClientConnectionSettings, ConnectionPoolSettings}
+import org.apache.pekko.http.scaladsl.unmarshalling.Unmarshal
+import org.apache.pekko.http.scaladsl.{ClientTransport, Http}
+import org.apache.pekko.stream.scaladsl._
 import ch.seidel.commons.PageDisplayer
 import ch.seidel.jwt
 import ch.seidel.kutu.Config

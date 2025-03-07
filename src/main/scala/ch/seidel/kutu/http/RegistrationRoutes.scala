@@ -1,14 +1,14 @@
 package ch.seidel.kutu.http
 
-import akka.http.scaladsl.marshallers.sprayjson.SprayJsonSupport
-import akka.http.scaladsl.marshalling.ToResponseMarshallable
-import akka.http.scaladsl.model.{ContentTypes, HttpEntity, HttpResponse, StatusCodes, Uri}
-import akka.http.scaladsl.server.Route
-import akka.http.scaladsl.unmarshalling.Unmarshal
-import akka.util.{ByteString, Timeout}
+import org.apache.pekko.http.scaladsl.marshallers.sprayjson.SprayJsonSupport
+import org.apache.pekko.http.scaladsl.marshalling.ToResponseMarshallable
+import org.apache.pekko.http.scaladsl.model.{ContentTypes, HttpEntity, HttpResponse, StatusCodes, Uri}
+import org.apache.pekko.http.scaladsl.server.Route
+import org.apache.pekko.http.scaladsl.unmarshalling.Unmarshal
+import org.apache.pekko.util.{ByteString, Timeout}
 import ch.seidel.kutu.{Config, domain}
 import ch.seidel.kutu.Config.remoteAdminBaseUrl
-import ch.seidel.kutu.akka._
+import ch.seidel.kutu.actors._
 import ch.seidel.kutu.data.RegistrationAdmin.adjustWertungRiegen
 import ch.seidel.kutu.domain.{Athlet, AthletRegistration, AthletView, JudgeRegistration, KutuService, NewRegistration, ProgrammRaw, Registration, RegistrationResetPW, TeamItem, TeamRegel, Verein, Wettkampf, dateToExportedStr, encodeFileName, str2SQLDate}
 import ch.seidel.kutu.http.AuthSupport.OPTION_LOGINRESET
@@ -20,7 +20,7 @@ import spray.json._
 import java.util.UUID
 import scala.concurrent.duration.{DAYS, Duration, DurationInt}
 import scala.concurrent.{Await, Future}
-import fr.davit.akka.http.metrics.core.scaladsl.server.HttpMetricsDirectives._
+import fr.davit.pekko.http.metrics.core.scaladsl.server.HttpMetricsDirectives._
 
 trait RegistrationRoutes extends SprayJsonSupport with JwtSupport with JsonSupport with AuthSupport with RouterLogging
   with KutuService with CompetitionsClubsToHtmlRenderer with CompetitionsJudgeToHtmlRenderer with IpToDeviceID with CIDSupport {
