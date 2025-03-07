@@ -1,11 +1,11 @@
 package ch.seidel.kutu.http
 
-import akka.http.scaladsl.server.Directives.{path, _}
-import akka.http.scaladsl.server.Route
+import org.apache.pekko.http.scaladsl.server.Directives.{path, _}
+import org.apache.pekko.http.scaladsl.server.Route
 import ch.seidel.kutu.Config
-import fr.davit.akka.http.metrics.core.scaladsl.server.HttpMetricsDirectives.metrics
-import fr.davit.akka.http.metrics.prometheus.marshalling.PrometheusMarshallers._
-import fr.davit.akka.http.metrics.prometheus.{Buckets, PrometheusRegistry, PrometheusSettings, Quantiles}
+import fr.davit.pekko.http.metrics.core.scaladsl.server.HttpMetricsDirectives.metrics
+import fr.davit.pekko.http.metrics.prometheus.marshalling.PrometheusMarshallers._
+import fr.davit.pekko.http.metrics.prometheus.{Buckets, PrometheusRegistry, PrometheusSettings, Quantiles}
 import io.prometheus.client.{Collector, CollectorRegistry}
 
 

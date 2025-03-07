@@ -3,14 +3,14 @@ package ch.seidel.kutu.http
 import java.io.ByteArrayOutputStream
 import java.util.UUID
 import java.util.concurrent.TimeUnit
-import akka.http.scaladsl.Http
-import akka.http.scaladsl.marshallers.sprayjson.SprayJsonSupport
-import akka.http.scaladsl.model._
-import akka.http.scaladsl.model.headers.RawHeader
-import akka.http.scaladsl.server.Route
-import akka.http.scaladsl.unmarshalling.Unmarshal
-import akka.stream.scaladsl.{Sink, Source, StreamConverters}
-import akka.util.ByteString
+import org.apache.pekko.http.scaladsl.Http
+import org.apache.pekko.http.scaladsl.marshallers.sprayjson.SprayJsonSupport
+import org.apache.pekko.http.scaladsl.model._
+import org.apache.pekko.http.scaladsl.model.headers.RawHeader
+import org.apache.pekko.http.scaladsl.server.Route
+import org.apache.pekko.http.scaladsl.unmarshalling.Unmarshal
+import org.apache.pekko.stream.scaladsl.{Sink, Source, StreamConverters}
+import org.apache.pekko.util.ByteString
 import ch.seidel.jwt.{JsonWebToken, JwtClaimsSetMap}
 import ch.seidel.kutu.Config._
 import ch.seidel.kutu.akka.{StartDurchgang, _}
@@ -22,7 +22,7 @@ import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration.{Duration, FiniteDuration}
 import scala.concurrent.{Await, Future, Promise}
 import scala.util.{Failure, Success, Try}
-import fr.davit.akka.http.metrics.core.scaladsl.server.HttpMetricsDirectives._
+import fr.davit.pekko.http.metrics.core.scaladsl.server.HttpMetricsDirectives._
 
 trait WettkampfRoutes extends SprayJsonSupport
   with JsonSupport with JwtSupport with AuthSupport with RouterLogging with WettkampfService with RegistrationService

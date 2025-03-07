@@ -2,7 +2,7 @@ package ch.seidel.kutu.base
 
 import java.sql.Date
 import java.util.UUID
-import akka.http.scaladsl.testkit.ScalatestRouteTest
+import org.apache.pekko.http.scaladsl.testkit.ScalatestRouteTest
 import ch.seidel.kutu.domain._
 import ch.seidel.kutu.http.ApiService
 import org.scalatest.concurrent.ScalaFutures

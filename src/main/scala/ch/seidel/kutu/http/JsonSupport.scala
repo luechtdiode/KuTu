@@ -1,6 +1,6 @@
 package ch.seidel.kutu.http
 
-import akka.http.scaladsl.marshallers.sprayjson.SprayJsonSupport
+import org.apache.pekko.http.scaladsl.marshallers.sprayjson.SprayJsonSupport
 import ch.seidel.kutu.akka._
 import ch.seidel.kutu.domain._
 import spray.json.{JsValue, _}

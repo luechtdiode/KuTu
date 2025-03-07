@@ -1,12 +1,13 @@
 package ch.seidel.kutu.akka
 
-import akka.actor.SupervisorStrategy.{Restart, Stop}
-import akka.actor.{Actor, ActorLogging, ActorRef, OneForOneStrategy, PoisonPill, Props, Terminated}
-import akka.pattern.ask
-import akka.util.Timeout
+import org.apache.pekko.actor.SupervisorStrategy.{Restart, Stop}
+import org.apache.pekko.actor.{Actor, ActorLogging, ActorRef, OneForOneStrategy, PoisonPill, Props, Terminated}
+import org.apache.pekko.pattern.ask
+import org.apache.pekko.util.Timeout
 import ch.seidel.kutu.domain._
 import ch.seidel.kutu.http.Core.system
 import ch.seidel.kutu.http.JsonSupport
+import org.apache.pekko.event.Logging
 
 import java.util
 import scala.concurrent.ExecutionContext.Implicits.global
@@ -30,7 +31,7 @@ case class AthletIndexChanged(athlet: Athlet) extends AthletIndexEvent
 case class AthletLikeFound(like: Athlet, athlet: Athlet) extends AthletIndexEvent
 
 class AthletIndexActor extends Actor with JsonSupport with KutuService {
-  lazy val l = akka.event.Logging(system, this)
+  lazy val l = Logging(system, this)
 
   object log {
     def error(s: String): Unit = l.error(s)

@@ -28,8 +28,8 @@ object Config extends KuTuSSLContext {
   val userHomePath: String = System.getProperty("user.home") + "/kutuapp"
   logger.info(s"user.home Path: ${new File(userHomePath).getAbsolutePath}")
 
-  System.setProperty("akka.persistence.snapshot-store.local.dir", userHomePath + "/snapshot")
-  System.setProperty("akka.persistence.journal.leveldb.dir", userHomePath + "/journal")
+  System.setProperty("pekko.persistence.snapshot-store.local.dir", userHomePath + "/snapshot")
+  System.setProperty("pekko.persistence.journal.leveldb.dir", userHomePath + "/journal")
 
   val userConfig: File = new File(configPath + "/kutuapp.conf")
   val config: com.typesafe.config.Config =

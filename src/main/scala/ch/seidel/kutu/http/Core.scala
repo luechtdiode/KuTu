@@ -1,9 +1,9 @@
 package ch.seidel.kutu.http
 
-import akka.actor.ActorSystem
-import akka.http.scaladsl.Http
-import akka.http.scaladsl.server.Route
-import akka.stream.Materializer
+import org.apache.pekko.actor.ActorSystem
+import org.apache.pekko.http.scaladsl.Http
+import org.apache.pekko.http.scaladsl.server.Route
+import org.apache.pekko.stream.Materializer
 import ch.seidel.kutu.Config
 import ch.seidel.kutu.Config._
 import ch.seidel.kutu.akka.{AthletIndexActor, CompetitionCoordinatorClientActor, ResyncIndex}
@@ -39,7 +39,7 @@ trait KuTuAppHTTPServer extends ApiService with JsonSupport {
   private val logger = LoggerFactory.getLogger(this.getClass)
 
   import Core._
-  import fr.davit.akka.http.metrics.core.HttpMetrics._ // import extension methods
+  import fr.davit.pekko.http.metrics.core.HttpMetrics._ // import extension methods
 
   def startServer() = {
     serverBinding match {

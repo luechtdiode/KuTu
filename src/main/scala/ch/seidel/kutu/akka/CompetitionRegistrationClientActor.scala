@@ -1,11 +1,5 @@
 package ch.seidel.kutu.akka
 
-import akka.actor.SupervisorStrategy.Restart
-import akka.actor.{ActorRef, InvalidActorNameException, OneForOneStrategy, Props}
-import akka.event.LoggingAdapter
-import akka.pattern.ask
-import akka.persistence.{PersistentActor, SnapshotOffer, SnapshotSelectionCriteria}
-import akka.util.Timeout
 import ch.seidel.kutu.Config
 import ch.seidel.kutu.data.RegistrationAdmin
 import ch.seidel.kutu.domain._
@@ -13,16 +7,23 @@ import ch.seidel.kutu.http.Core.system
 import ch.seidel.kutu.http.JsonSupport
 import ch.seidel.kutu.renderer.MailTemplates
 import ch.seidel.kutu.view.WettkampfInfo
+import org.apache.pekko.actor.SupervisorStrategy.Restart
+import org.apache.pekko.actor.{ActorRef, InvalidActorNameException, OneForOneStrategy, Props}
+import org.apache.pekko.event.{Logging, LoggingAdapter}
+import org.apache.pekko.pattern.ask
+import org.apache.pekko.persistence.{PersistentActor, SnapshotOffer, SnapshotSelectionCriteria}
+import org.apache.pekko.util.Timeout
 
 import java.time.LocalDate
 import java.util.UUID
 import scala.concurrent.ExecutionContext.Implicits.global
-import scala.concurrent.duration.{DAYS, DurationInt, FiniteDuration}
+import scala.concurrent.duration.{DurationInt, FiniteDuration}
 import scala.concurrent.{Future, Promise}
 import scala.util.control.NonFatal
 import scala.util.{Failure, Success}
 
 sealed trait RegistrationProtokoll
+
 sealed trait RegistrationAction extends RegistrationProtokoll {
   val wettkampfUUID: String
 }
@@ -30,8 +31,11 @@ sealed trait RegistrationAction extends RegistrationProtokoll {
 sealed trait RegistrationEvent extends RegistrationProtokoll
 
 case class CompetitionCreated(wettkampfUUID: String, link: String) extends RegistrationAction
+
 case class ApproveEMail(wettkampfUUID: String, mail: String) extends RegistrationAction
+
 case class EMailApproved(message: String, success: Boolean) extends RegistrationEvent
+
 case class RegistrationChanged(wettkampfUUID: String) extends RegistrationAction
 
 case class RegistrationResync(wettkampfUUID: String) extends RegistrationAction
@@ -45,7 +49,7 @@ case class RegistrationActionWithContext(action: RegistrationAction, context: St
 class CompetitionRegistrationClientActor(wettkampfUUID: String) extends PersistentActor with JsonSupport with KutuService {
   def shortName: String = self.toString().split("/").last.split("#").head + "/" + clientId()
 
-  lazy val l: LoggingAdapter = akka.event.Logging(system, this)
+  lazy val l: LoggingAdapter = Logging(system, this)
 
   object log {
     def error(s: String): Unit = l.error(s"[$shortName] $s")
@@ -60,6 +64,7 @@ class CompetitionRegistrationClientActor(wettkampfUUID: String) extends Persiste
   }
 
   object CheckSyncChangedForNotifier
+
   object CheckEMailApprovedNotifier
 
   private val wettkampf = readWettkampf(wettkampfUUID)
@@ -200,7 +205,7 @@ class CompetitionRegistrationClientActor(wettkampfUUID: String) extends Persiste
     }
   }
 
-  private def retrieveSyncActions(syncActionReceiver: ActorRef): Unit= {
+  private def retrieveSyncActions(syncActionReceiver: ActorRef): Unit = {
     syncActions = None
 
     if (syncActionReceivers.nonEmpty) {
