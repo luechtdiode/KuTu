@@ -1,4 +1,4 @@
-package ch.seidel.kutu.akka
+package ch.seidel.kutu.actors
 
 import org.apache.pekko.actor.SupervisorStrategy.{Restart, Stop}
 import org.apache.pekko.actor.{Actor, ActorLogging, ActorRef, OneForOneStrategy, PoisonPill, Props, Terminated}
@@ -10,7 +10,7 @@ import org.apache.pekko.stream.scaladsl.{Flow, Sink, Source}
 import org.apache.pekko.stream.{CompletionStrategy, OverflowStrategy}
 import org.apache.pekko.util.Timeout
 import ch.seidel.kutu.Config
-import ch.seidel.kutu.akka.CompetitionCoordinatorClientActor.{PublishAction, competitionWebsocketConnectionsActive, competitionsActive}
+import ch.seidel.kutu.actors.CompetitionCoordinatorClientActor.{PublishAction, competitionWebsocketConnectionsActive, competitionsActive}
 import ch.seidel.kutu.data.ResourceExchanger
 import ch.seidel.kutu.domain._
 import ch.seidel.kutu.http.Core.system

@@ -1,4 +1,4 @@
-package ch.seidel.kutu.akka
+package ch.seidel.kutu.actors
 
 import org.apache.pekko.actor.ActorRef
 import ch.seidel.kutu.data.GroupBy

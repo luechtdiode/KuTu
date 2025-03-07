@@ -1,6 +1,6 @@
 package ch.seidel.kutu
 
-import ch.seidel.kutu.akka.{AthletIndexActor, KuTuMailerActor, ResyncIndex, SimpleMail}
+import ch.seidel.kutu.actors.{AthletIndexActor, KuTuMailerActor, ResyncIndex, SimpleMail}
 import ch.seidel.kutu.http.{AuthSupport, Core, Hashing, KuTuAppHTTPServer}
 import org.slf4j.LoggerFactory
 

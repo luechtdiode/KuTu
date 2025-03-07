@@ -1,6 +1,6 @@
 package ch.seidel.kutu.http
 
-import ch.seidel.kutu.akka.{AthletWertungUpdated, KutuAppEvent}
+import ch.seidel.kutu.actors.{AthletWertungUpdated, KutuAppEvent}
 import org.scalatest.funsuite.AnyFunSuite
 import spray.json.enrichAny
 

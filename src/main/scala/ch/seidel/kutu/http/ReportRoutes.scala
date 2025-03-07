@@ -7,7 +7,7 @@ import org.apache.pekko.http.scaladsl.server.Route
 import org.apache.pekko.util.Timeout
 import ch.seidel.kutu.Config
 import ch.seidel.kutu.KuTuServer.handleCID
-import ch.seidel.kutu.akka.{CompetitionCoordinatorClientActor, GeraeteRiegeList, GetGeraeteRiegeList, KutuAppEvent}
+import ch.seidel.kutu.actors.{CompetitionCoordinatorClientActor, GeraeteRiegeList, GetGeraeteRiegeList, KutuAppEvent}
 import ch.seidel.kutu.domain.{Kandidat, KutuService, encodeFileName}
 import ch.seidel.kutu.renderer._
 import fr.davit.pekko.http.metrics.core.scaladsl.server.HttpMetricsDirectives._

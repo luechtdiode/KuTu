@@ -6,7 +6,7 @@ import org.apache.pekko.http.scaladsl.server.Route
 import org.apache.pekko.stream.Materializer
 import ch.seidel.kutu.Config
 import ch.seidel.kutu.Config._
-import ch.seidel.kutu.akka.{AthletIndexActor, CompetitionCoordinatorClientActor, ResyncIndex}
+import ch.seidel.kutu.actors.{AthletIndexActor, CompetitionCoordinatorClientActor, ResyncIndex}
 import ch.seidel.kutu.domain.DBService
 import org.slf4j.LoggerFactory
 

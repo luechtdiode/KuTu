@@ -5,7 +5,7 @@ import org.apache.pekko.http.scaladsl.marshalling.ToResponseMarshallable
 import org.apache.pekko.http.scaladsl.model.{StatusCodes, Uri}
 import org.apache.pekko.http.scaladsl.server.Route
 import org.apache.pekko.util.Timeout
-import ch.seidel.kutu.akka._
+import ch.seidel.kutu.actors._
 import ch.seidel.kutu.domain.{KutuService, ProgrammRaw, Wertung, WertungView, encodeURIComponent, str2Int, str2Long}
 
 import scala.concurrent.Future

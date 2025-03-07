@@ -4,7 +4,7 @@ import java.util.UUID
 import java.util.concurrent.TimeUnit
 
 import ch.seidel.kutu.Config
-import ch.seidel.kutu.akka.AthletWertungUpdated
+import ch.seidel.kutu.actors.AthletWertungUpdated
 import ch.seidel.kutu.http.WebSocketClient
 import org.slf4j.LoggerFactory
 import slick.jdbc.SQLiteProfile.api._

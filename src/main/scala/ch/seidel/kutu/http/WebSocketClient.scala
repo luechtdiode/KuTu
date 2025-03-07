@@ -6,8 +6,8 @@ import org.apache.pekko.http.scaladsl.model.headers.RawHeader
 import org.apache.pekko.http.scaladsl.model.ws.{BinaryMessage, Message, TextMessage, WebSocketRequest}
 import org.apache.pekko.stream.{OverflowStrategy, SubscriptionWithCancelException}
 import org.apache.pekko.stream.scaladsl.{Flow, Keep, Sink, Source, SourceQueueWithComplete}
-import ch.seidel.kutu.Config.{homedir, jwtAuthorizationKey, _}
-import ch.seidel.kutu.akka._
+import ch.seidel.kutu.Config._
+import ch.seidel.kutu.actors._
 import ch.seidel.kutu.domain.Wettkampf
 import javafx.beans.property.SimpleObjectProperty
 import org.slf4j.LoggerFactory

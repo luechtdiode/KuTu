@@ -2,7 +2,7 @@ package ch.seidel.kutu.domain
 
 import java.sql.{Date, Timestamp}
 import java.util.UUID
-import ch.seidel.kutu.akka.{DurchgangFinished, DurchgangResetted, DurchgangStarted}
+import ch.seidel.kutu.actors.{DurchgangFinished, DurchgangResetted, DurchgangStarted}
 import org.slf4j.LoggerFactory
 import slick.jdbc.SQLiteProfile.api._
 

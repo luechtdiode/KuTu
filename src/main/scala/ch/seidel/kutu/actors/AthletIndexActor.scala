@@ -1,4 +1,4 @@
-package ch.seidel.kutu.akka
+package ch.seidel.kutu.actors
 
 import org.apache.pekko.actor.SupervisorStrategy.{Restart, Stop}
 import org.apache.pekko.actor.{Actor, ActorLogging, ActorRef, OneForOneStrategy, PoisonPill, Props, Terminated}

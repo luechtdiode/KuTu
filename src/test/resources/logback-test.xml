@@ -18,7 +18,7 @@
   <logger name="io.netty.handler" level="INFO" />
   <logger name="io.gatling.http.engine.response" level="INFO" />
   <logger name="io.gatling" level="WARN" />
-  <logger name="ch.seidel.kutu.akka" level="WARN" />
+  <logger name="ch.seidel.kutu.actors" level="WARN" />
 
   <root level="DEBUG">
     <appender-ref ref="STDOUT" />

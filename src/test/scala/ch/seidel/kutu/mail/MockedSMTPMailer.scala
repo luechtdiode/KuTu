@@ -1,6 +1,6 @@
 package ch.seidel.kutu.mail
 
-import ch.seidel.kutu.akka.KuTuMailerActor
+import ch.seidel.kutu.actors.KuTuMailerActor
 import jakarta.mail
 import jakarta.mail.{MessagingException, internet}
 import org.simplejavamail.api.email.Email

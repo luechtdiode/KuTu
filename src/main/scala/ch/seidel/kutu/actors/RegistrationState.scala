@@ -1,4 +1,4 @@
-package ch.seidel.kutu.akka
+package ch.seidel.kutu.actors
 
 import ch.seidel.kutu.domain.{JudgeRegistration, SyncAction}
 

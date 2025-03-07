@@ -7,7 +7,7 @@ import org.apache.pekko.http.scaladsl.server.Route
 import org.apache.pekko.util.Timeout
 import ch.seidel.kutu.Config
 import ch.seidel.kutu.KuTuServer.handleCID
-import ch.seidel.kutu.akka.{CompetitionCoordinatorClientActor, MessageAck, ResponseMessage, StartedDurchgaenge}
+import ch.seidel.kutu.actors.{CompetitionCoordinatorClientActor, MessageAck, ResponseMessage, StartedDurchgaenge}
 import ch.seidel.kutu.data._
 import ch.seidel.kutu.domain.{Altersklasse, Durchgang, KutuService, PublishedScoreView, TeamRegel, WertungView, encodeFileName, encodeURIParam, ld2SQLDate, sqlDate2ld}
 import ch.seidel.kutu.renderer.PrintUtil._

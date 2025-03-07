@@ -1,9 +1,9 @@
 package ch.seidel.kutu.http
 
 import org.apache.pekko.http.scaladsl.marshallers.sprayjson.SprayJsonSupport
-import ch.seidel.kutu.akka._
+import ch.seidel.kutu.actors._
 import ch.seidel.kutu.domain._
-import spray.json.{JsValue, _}
+import spray.json._
 
 
 trait JsonSupport extends SprayJsonSupport with EnrichedJson {

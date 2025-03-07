@@ -1,6 +1,6 @@
 package ch.seidel.kutu.domain
 
-import ch.seidel.kutu.akka.{AthletIndexActor, RemoveAthlet, SaveAthlet}
+import ch.seidel.kutu.actors.{AthletIndexActor, RemoveAthlet, SaveAthlet}
 import ch.seidel.kutu.data.{CaseObjectMetaUtil, Surname}
 import org.slf4j.LoggerFactory
 import slick.jdbc.SQLiteProfile.api._

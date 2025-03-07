@@ -4,7 +4,7 @@ import java.util.UUID
 import ch.seidel.kutu.Config.{homedir, remoteBaseUrl}
 import ch.seidel.kutu.KuTuApp
 import ch.seidel.kutu.KuTuServer.renderer
-import ch.seidel.kutu.akka.DurchgangChanged
+import ch.seidel.kutu.actors.DurchgangChanged
 import ch.seidel.kutu.domain.{KutuService, TeamItem, Wettkampf, encodeFileName}
 import ch.seidel.kutu.http.WebSocketClient
 import ch.seidel.kutu.renderer.{KategorieTeilnehmerToHtmlRenderer, KategorieTeilnehmerToJSONRenderer, PrintUtil}

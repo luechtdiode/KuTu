@@ -13,7 +13,7 @@ import org.apache.pekko.stream.scaladsl.{Sink, Source, StreamConverters}
 import org.apache.pekko.util.ByteString
 import ch.seidel.jwt.{JsonWebToken, JwtClaimsSetMap}
 import ch.seidel.kutu.Config._
-import ch.seidel.kutu.akka.{StartDurchgang, _}
+import ch.seidel.kutu.actors._
 import ch.seidel.kutu.data.ResourceExchanger
 import ch.seidel.kutu.domain.{RegistrationService, ProgrammRaw, Wettkampf, WettkampfService, WettkampfView, encodeURIParam}
 import spray.json._
