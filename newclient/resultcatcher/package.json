@@ -47,7 +47,7 @@
     "@angular-eslint/template-parser": "~19.0.2",
     "@angular/cli": "19.0.6",
     "@angular/compiler": "^19.0.5",
-    "@angular/compiler-cli": "^19.0.5",
+    "@angular/compiler-cli": "^19.2.1",
     "@angular/language-service": "^19.0.5",
     "@babel/plugin-transform-async-to-generator": "^7.23.3",
     "@capacitor/cli": "6.2.0",
