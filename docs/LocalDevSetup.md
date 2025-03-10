@@ -2,8 +2,8 @@
 
 ## Prerequisites
 
-* JDK 17
-* Working Maven (3.8+) installation,
+* JDK 21
+* Working Maven (3.9+) installation,
 * Git-Client
 * IDE (IntelliJ, vscode, eclipse, ...)
 * Node (v12.22+)
@@ -31,7 +31,7 @@ cd KuTu
 
 ### Prepare jdk (optional)
 
-This script installs the required JDK 17
+This script installs the required JDK 21
 
 ```bash
 # Set the os-variable. Should be one of [Darwin, Win64, Linux]
