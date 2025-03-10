@@ -489,7 +489,7 @@
 		<dependency>
 			<groupId>io.altoo</groupId>
 			<artifactId>pekko-kryo-serialization_${scala.majorversion}</artifactId>
-			<version>1.2.0</version>
+			<version>1.2.1</version>
 		</dependency>
 		<!-- JWT actually substituted by a local pach-copy until 2.13 is suppored -->
 <!--		<dependency>-->
