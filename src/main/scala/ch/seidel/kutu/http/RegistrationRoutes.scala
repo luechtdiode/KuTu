@@ -1,28 +1,27 @@
 package ch.seidel.kutu.http
 
-import org.apache.pekko.http.scaladsl.marshallers.sprayjson.SprayJsonSupport
-import org.apache.pekko.http.scaladsl.marshalling.ToResponseMarshallable
-import org.apache.pekko.http.scaladsl.model.{ContentTypes, HttpEntity, HttpResponse, StatusCodes, Uri}
-import org.apache.pekko.http.scaladsl.server.Route
-import org.apache.pekko.http.scaladsl.unmarshalling.Unmarshal
-import org.apache.pekko.util.{ByteString, Timeout}
-import ch.seidel.kutu.{Config, domain}
+import ch.seidel.kutu.Config
 import ch.seidel.kutu.Config.remoteAdminBaseUrl
 import ch.seidel.kutu.actors._
 import ch.seidel.kutu.data.RegistrationAdmin.adjustWertungRiegen
-import ch.seidel.kutu.domain.{Athlet, AthletRegistration, AthletView, JudgeRegistration, KutuService, NewRegistration, ProgrammRaw, Registration, RegistrationResetPW, TeamItem, TeamRegel, Verein, Wettkampf, dateToExportedStr, encodeFileName, str2SQLDate}
+import ch.seidel.kutu.domain.{AthletRegistration, AthletView, JudgeRegistration, KutuService, NewRegistration, ProgrammRaw, Registration, RegistrationResetPW, TeamItem, TeamRegel, Verein, Wettkampf, dateToExportedStr, encodeFileName, str2SQLDate}
 import ch.seidel.kutu.http.AuthSupport.OPTION_LOGINRESET
 import ch.seidel.kutu.renderer.MailTemplates.createPasswordResetMail
 import ch.seidel.kutu.renderer.{CompetitionsClubsToHtmlRenderer, CompetitionsJudgeToHtmlRenderer, PrintUtil}
-import ch.seidel.kutu.view.WettkampfInfo
+import fr.davit.pekko.http.metrics.core.scaladsl.server.HttpMetricsDirectives._
+import org.apache.pekko.http.scaladsl.marshallers.sprayjson.SprayJsonSupport
+import org.apache.pekko.http.scaladsl.marshalling.ToResponseMarshallable
+import org.apache.pekko.http.scaladsl.model._
+import org.apache.pekko.http.scaladsl.server.Route
+import org.apache.pekko.http.scaladsl.unmarshalling.Unmarshal
+import org.apache.pekko.util.{ByteString, Timeout}
 import spray.json._
 
 import java.util.UUID
 import scala.concurrent.duration.{DAYS, Duration, DurationInt}
 import scala.concurrent.{Await, Future}
-import fr.davit.pekko.http.metrics.core.scaladsl.server.HttpMetricsDirectives._
 
-trait RegistrationRoutes extends SprayJsonSupport with JwtSupport with JsonSupport with AuthSupport with RouterLogging
+trait RegistrationRoutes extends SprayJsonSupport with JsonSupport with JwtSupport with AuthSupport with RouterLogging
   with KutuService with CompetitionsClubsToHtmlRenderer with CompetitionsJudgeToHtmlRenderer with IpToDeviceID with CIDSupport {
 
   import Core._
@@ -89,10 +88,10 @@ trait RegistrationRoutes extends SprayJsonSupport with JwtSupport with JsonSuppo
     }
     , Duration.Inf)
 
-  def getAllJudgesRemote(p: Wettkampf): List[(Registration,List[JudgeRegistration])] = Await.result(
+  def getAllJudgesRemote(p: Wettkampf): List[(Registration, List[JudgeRegistration])] = Await.result(
     httpGetClientRequest(s"$remoteAdminBaseUrl/api/registrations/${p.uuid.get}/judges").flatMap {
       case HttpResponse(StatusCodes.OK, headers, entity, _) =>
-        Unmarshal(entity).to[List[(Registration,List[JudgeRegistration])]]
+        Unmarshal(entity).to[List[(Registration, List[JudgeRegistration])]]
       case _ => Future(List.empty)
     }
     , Duration.Inf)
@@ -165,8 +164,8 @@ trait RegistrationRoutes extends SprayJsonSupport with JwtSupport with JsonSuppo
             get {
               parameters(Symbol("mail").?) {
                 case Some(mail) =>
-                  complete{
-                    CompetitionRegistrationClientActor.publish(ApproveEMail(wettkampf.uuid.get, mail), clientId).map{
+                  complete {
+                    CompetitionRegistrationClientActor.publish(ApproveEMail(wettkampf.uuid.get, mail), clientId).map {
                       case EMailApproved(message, success) =>
                         s"${wettkampf.easyprint}: $message"
                       case _ =>
@@ -174,9 +173,11 @@ trait RegistrationRoutes extends SprayJsonSupport with JwtSupport with JsonSuppo
                     }
                   }
                 case _ =>
-                  complete {Future {
-                    "unable to approve without mail"
-                  }}
+                  complete {
+                    Future {
+                      "unable to approve without mail"
+                    }
+                  }
               }
             }
           } ~ pathLabeled("programmlist", "programmlist") {
@@ -424,10 +425,10 @@ trait RegistrationRoutes extends SprayJsonSupport with JwtSupport with JsonSuppo
                                   AthletRegistration(0L, reg.id, Some(id), geschlecht, name, vorname, gebdat.map(dateToExportedStr).getOrElse(""), 0L, 0, Some(a), None)
                               }
                             val incompletedCandidates = selectUnaprovedAthletRegistrations(registrationId)
-                              .filter(ar => !existingAthletRegs.exists{aro => aro.geschlecht.equals(ar.geschlecht) && aro.name.equals(ar.name) && aro.vorname.equals(ar.vorname)})
+                              .filter(ar => !existingAthletRegs.exists { aro => aro.geschlecht.equals(ar.geschlecht) && aro.name.equals(ar.name) && aro.vorname.equals(ar.vorname) })
                               .map(ar => ar.copy(gebdat = dateToExportedStr(str2SQLDate(ar.gebdat))))
-                            val preret = officialCandidates ++ incompletedCandidates.filter{ar =>
-                              !officialCandidates.exists{aro => aro.geschlecht.equals(ar.geschlecht) && aro.name.equals(ar.name) && aro.vorname.equals(ar.vorname)}
+                            val preret = officialCandidates ++ incompletedCandidates.filter { ar =>
+                              !officialCandidates.exists { aro => aro.geschlecht.equals(ar.geschlecht) && aro.name.equals(ar.name) && aro.vorname.equals(ar.vorname) }
                             }
                             preret.sortBy(_.toAthlet.easyprint)
                           }

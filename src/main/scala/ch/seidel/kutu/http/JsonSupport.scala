@@ -1,8 +1,8 @@
 package ch.seidel.kutu.http
 
-import org.apache.pekko.http.scaladsl.marshallers.sprayjson.SprayJsonSupport
 import ch.seidel.kutu.actors._
 import ch.seidel.kutu.domain._
+import org.apache.pekko.http.scaladsl.marshallers.sprayjson.SprayJsonSupport
 import spray.json._
 
 
@@ -13,34 +13,24 @@ trait JsonSupport extends SprayJsonSupport with EnrichedJson {
 
   implicit val wkFormat: RootJsonFormat[Wettkampf] = jsonFormat(Wettkampf, "id", "uuid", "datum", "titel", "programmId", "auszeichnung", "auszeichnungendnote", "notificationEMail", "altersklassen", "jahrgangsklassen", "punktegleichstandsregel", "rotation", "teamrule")
   implicit val pgmFormat: RootJsonFormat[ProgrammRaw] = jsonFormat9(ProgrammRaw)
-  implicit val pgmListFormat = listFormat(pgmFormat)
   implicit val disziplinFormat: RootJsonFormat[Disziplin] = jsonFormat2(Disziplin)
   implicit val wertungFormat: RootJsonFormat[Wertung] = jsonFormat(Wertung, "id", "athletId", "wettkampfdisziplinId", "wettkampfId", "wettkampfUUID", "noteD", "noteE", "endnote", "riege", "riege2", "team")
   implicit val vereinFormat: RootJsonFormat[Verein] = jsonFormat(Verein, "id", "name", "verband")
-  implicit val vereinListFormat = listFormat(vereinFormat)
   implicit val atheltViewFormat: RootJsonFormat[AthletView] = jsonFormat(AthletView, "id", "js_id", "geschlecht", "name", "vorname", "gebdat", "strasse", "plz", "ort", "verein", "activ")
-  implicit val athletListFormat = listFormat(atheltViewFormat)
   implicit val wertungContainerFormat: RootJsonFormat[WertungContainer] = jsonFormat9(WertungContainer)
   implicit val registrationFormat: RootJsonFormat[Registration] = jsonFormat11(Registration)
-  implicit val registrationListFormat = listFormat(registrationFormat)
   implicit val newregistrationFormat: RootJsonFormat[NewRegistration] = jsonFormat8(NewRegistration)
   implicit val resetRegistrationPWFormat: RootJsonFormat[RegistrationResetPW] = jsonFormat3(RegistrationResetPW)
   implicit val athletregistrationFormat: RootJsonFormat[AthletRegistration] = jsonFormat11(AthletRegistration)
   implicit val teamFormat: RootJsonFormat[TeamItem] = jsonFormat2(TeamItem)
-  implicit val athletregistrationListFormat = listFormat(athletregistrationFormat)
   implicit val judgeregistrationFormat: RootJsonFormat[JudgeRegistration] = jsonFormat9(JudgeRegistration)
-  implicit val judgeregistrationListFormat = listFormat(judgeregistrationFormat)
   implicit val judgeregistrationPgmFormat: RootJsonFormat[JudgeRegistrationProgram] = jsonFormat5(JudgeRegistrationProgram)
-  implicit val judgeregistrationPgmListFormat = listFormat(judgeregistrationPgmFormat)
   implicit val judgeRegistrationProgramItemFormat: RootJsonFormat[JudgeRegistrationProgramItem] = jsonFormat3(JudgeRegistrationProgramItem)
-  implicit val judgeRegistrationProgramItemListFormat = listFormat(judgeRegistrationProgramItemFormat)
 
   implicit val resultatFormat: RootJsonFormat[Resultat] = jsonFormat(Resultat, "noteD", "noteE", "endnote")
 
-  implicit val dataObjectFormat: RootJsonWriter[DataObject] = new RootJsonWriter[DataObject] {
-    def write(p: DataObject): JsValue = {
-      p.easyprint.toJson
-    }
+  implicit val dataObjectFormat: RootJsonWriter[DataObject] = (p: DataObject) => {
+    p.easyprint.toJson
   }
 
   // actions (via rest-request)
@@ -67,8 +57,8 @@ trait JsonSupport extends SprayJsonSupport with EnrichedJson {
   implicit val lastResults: RootJsonFormat[LastResults] = jsonFormat1(LastResults)
   implicit val bulkEvents: RootJsonFormat[BulkEvent] = jsonFormat2(BulkEvent)
   implicit val athletRemovedFromWettkampf: RootJsonFormat[AthletRemovedFromWettkampf] = jsonFormat2(AthletRemovedFromWettkampf)
-  implicit val athletMovedInWettkampf = jsonFormat4(AthletMovedInWettkampf)
-  implicit val athletAddedToettkampf = jsonFormat4(AthletsAddedToWettkampf)
+  implicit val athletMovedInWettkampf: RootJsonFormat[AthletMovedInWettkampf] = jsonFormat4(AthletMovedInWettkampf)
+  implicit val athletAddedToettkampf: RootJsonFormat[AthletsAddedToWettkampf] = jsonFormat4(AthletsAddedToWettkampf)
   implicit val messageAckFormat: RootJsonFormat[MessageAck] = jsonFormat1(MessageAck)
 
   // support for websocket incoming json-messages
@@ -132,6 +122,7 @@ trait JsonSupport extends SprayJsonSupport with EnrichedJson {
     override def read(json: JsValue): SyncAction = json.asJsObject.fields("type").asOpt[String] match {
       case _ => throw new Exception(s"Unable to parse $json to KutuAppProtokoll")
     }
+
     override def write(obj: SyncAction): JsValue = {
       obj match {
         case be: SyncAction =>
