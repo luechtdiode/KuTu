@@ -99,13 +99,13 @@ export class RegAthletEditorPage implements OnInit {
   }
 
   alter(athlet: AthletRegistration): number {
-    if (this.wettkampfFull.altersklassen?.trim().length == 0) {
+    if (this.wettkampfFull.jahrgangsklassen?.trim().length > 0) {
       const yearOfBirth = new Date(toDateString(athlet.gebdat)).getFullYear();
       const wkYear = new Date(this.wettkampfFull.datum).getFullYear();
       return wkYear - yearOfBirth;
     } else {
       let timeDiff = Math.abs(new Date(this.wettkampfFull.datum).getTime() - new Date(athlet.gebdat).getTime());
-      return Math.floor((timeDiff / (1000 * 3600 * 24))/365.25);  
+      return Math.floor((timeDiff / (1000 * 3600 * 24))/365 + 0.25);
     }
 
   }
