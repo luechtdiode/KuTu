@@ -1726,7 +1726,12 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
     onAction = (event: ActionEvent) => {
       implicit val impevent = event
       val athlet = wkview.selectionModel().getSelectedItem.head.init.athlet
-      val alter = athlet.gebdat.map(d => Period.between(d.toLocalDate, wettkampf.datum).getYears).getOrElse(100)
+      val alter = if (wettkampfInfo.isJGAlterklasse) {
+        athlet.gebdat.map(d => Period.between(d.toLocalDate, wettkampf.datum).getYears).getOrElse(100)
+      } else {
+        athlet.gebdat.map(d => wettkampf.datum.toLocalDate.getYear - d.toLocalDate.getYear).getOrElse(100)
+      }
+
       val programms = programm.toList.flatMap(p => service.readWettkampfLeafs(p.head.id)).filter(p => {
         Range.inclusive(p.alterVon, p.alterBis).contains(alter)
       })
