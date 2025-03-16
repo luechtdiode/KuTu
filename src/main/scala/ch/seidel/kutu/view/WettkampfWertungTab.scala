@@ -46,10 +46,10 @@ import scala.util.{Failure, Success}
 class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[ProgrammView], riege: Option[GeraeteRiege], wettkampfInfo: WettkampfInfo, override val service: KutuService, athleten: => IndexedSeq[WertungView]) extends Tab with TabWithService {
   val logger = LoggerFactory.getLogger(this.getClass)
   val wettkampf = wettkampfInfo.wettkampf
-  val wettkampfFilterDate = if (wettkampfInfo.isJGAlterklasse) {
-    LocalDate.of(wettkampf.datum.toLocalDate.getYear, 1, 1)
-  } else {
+  val wettkampfFilterDate = if (wettkampfInfo.isAlterklasse) {
     wettkampf.datum.toLocalDate
+  } else {
+    LocalDate.of(wettkampf.datum.toLocalDate.getYear, 1, 1)
   }
 
   logger.debug("create Wertungen Tab for " + programm)
