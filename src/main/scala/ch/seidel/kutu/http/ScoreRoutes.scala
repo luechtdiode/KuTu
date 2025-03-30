@@ -81,18 +81,21 @@ ScoreRoutes extends SprayJsonSupport with JsonSupport with AuthSupport with Rout
                         "name" -> "Übergreifend"
                     )
                     ToResponseMarshallable(
-                      competitions.map(comp => 
-                        comp.uuid.get.toString ->
+                      competitions
+                        .filter(comp => comp.uuid.nonEmpty)
+                        .map(comp =>
+                        comp.uuid.get ->
                           Map(
-                            "scores-href" -> s"/api/scores/${comp.uuid.get.toString}",
+                            "scores-href" -> s"/api/scores/${comp.uuid.get}",
                             "name" -> comp.easyprint
                           )
                       ).toMap + allMap)
                   case Some(_) =>
                     ToResponseMarshallable(HttpEntity(ContentTypes.`text/html(UTF-8)`,
                         competitions
+                        .filter(comp => comp.uuid.nonEmpty)
                         .map(comp => s"""
-                          <li> <a href='/api/scores/${comp.uuid.get.toString}?html'>${comp.easyprint}</a></li>""")
+                          <li> <a href='/api/scores/${comp.uuid.get}?html'>${comp.easyprint}</a></li>""")
                         .mkString("<html><body><h1>Ranglisten</h1>\n", "\n", "</body></html>")
                     ))
                   }
