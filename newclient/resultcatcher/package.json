@@ -35,12 +35,12 @@
     "rollup": ">=4.34.9",
     "rxjs": "~7.8.1",
     "tslib": "^2.3.0",
-    "vite": ">=6.0.11",
+    "vite": ">=6.2.4",
     "webpack": ">=5.94.0",
     "zone.js": "~0.15.0"
   },
   "devDependencies": {
-    "@angular-devkit/build-angular": "^19.0.6",
+    "@angular-devkit/build-angular": "^19.2.3",
     "@angular-eslint/builder": "~19.2.1",
     "@angular-eslint/eslint-plugin": "~19.2.1",
     "@angular-eslint/eslint-plugin-template": "~19.2.1",
@@ -72,7 +72,7 @@
     "rollup": ">=4.34.9",
     "ts-node": "~10.9.2",
     "typescript": "~5.6.3",
-    "vite": ">=6.0.11",
+    "vite": ">=6.2.4",
     "webpack": ">=5.94.0"
   },
   "description": "Resultcatcher"
