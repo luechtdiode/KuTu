@@ -28,7 +28,7 @@
     "@ionic/angular": "^8.4.1",
     "@ionic/angular-server": "^8.4.1",
     "body-parser": ">=1.20.3",
-    "color": "^4.2.3",
+    "color": "^5.0.0",
     "ini": ">=5.0.0",
     "ionicons": "^7.4.0",
     "resultcatcher": "file:",
