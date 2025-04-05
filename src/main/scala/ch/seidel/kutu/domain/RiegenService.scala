@@ -166,16 +166,19 @@ trait RiegenService extends DBService with RiegenResultMapper {
   def findAndStoreMatchingRiege(riege: RiegeRaw): RiegeRaw = {
     val existingRiegen = selectRiegenRaw(riege.wettkampfId)
     val riegenParts = riege.r.split(",")
-
+    val scoreSchwellwert = math.pow(riegenParts.length -1d, 10d).intValue
+    val scoreSchwellwert2 = math.pow(riegenParts.length -2d, 10d).intValue
     val (matchingRiege, matchscore) = existingRiegen.map { er =>
-      (er, er.r.split(",").zip(riegenParts).count { case (existing, newpart) =>
-        existing.equalsIgnoreCase(newpart)
-      })
+      (er, er.r.split(",").zip(riegenParts).zipWithIndex.map { case (pair, index) =>
+        val (existing, newpart) = pair
+        if (existing.equalsIgnoreCase(newpart)) (riegenParts.length - index) * 10 else 0
+      }.sum / 10)
     }.sortBy(t => t._2).reverse.headOption.getOrElse((riege, 0))
 
-    if (matchscore > 2) {
+    //println(matchscore, scoreSchwellwert, scoreSchwellwert2, matchingRiege)
+    if (matchscore >= scoreSchwellwert) {
       matchingRiege
-    } else if (matchscore > 0) {
+    } else if (matchscore > scoreSchwellwert2) {
       updateOrinsertRiege(riege.copy(durchgang = matchingRiege.durchgang, start = matchingRiege.start))
         .toRaw(riege.wettkampfId)
     } else {
