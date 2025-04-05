@@ -51,7 +51,7 @@
 										<argument>--app-version</argument>
 										<argument>${app.version}</argument>
 										<argument>--main-jar</argument>
-										<argument>${project.artifactId}-${app.version}.jar</argument>
+										<argument>${project.artifactId}-${project.version}.jar</argument>
 										<argument>--icon</argument>
 										<argument>${project.build.sourceDirectory}/../resources/images/${app.logo}</argument>
 										<argument>--copyright</argument>
@@ -129,7 +129,7 @@
 										<argument>--app-version</argument>
 										<argument>${app.version}</argument>
 										<argument>--main-jar</argument>
-										<argument>${project.artifactId}-${app.version}.jar</argument>
+										<argument>${project.artifactId}-${project.version}.jar</argument>
 										<argument>--icon</argument>
 										<argument>${project.build.sourceDirectory}/../resources/images/${app.logo}</argument>
 										<argument>--copyright</argument>
@@ -203,7 +203,7 @@
 										<argument>--app-version</argument>
 										<argument>${app.version}</argument>
 										<argument>--main-jar</argument>
-										<argument>${project.artifactId}-${app.version}.jar</argument>
+										<argument>${project.artifactId}-${project.version}.jar</argument>
 										<argument>--icon</argument>
 										<argument>${project.build.sourceDirectory}/../resources/images/${app.logo}</argument>
 										<argument>--copyright</argument>
@@ -278,7 +278,7 @@
 										<argument>--app-version</argument>
 										<argument>${app.version}</argument>
 										<argument>--main-jar</argument>
-										<argument>${project.artifactId}-${app.version}.jar</argument>
+										<argument>${project.artifactId}-${project.version}.jar</argument>
 										<argument>--icon</argument>
 										<argument>${project.build.sourceDirectory}/../resources/images/${app.logo}</argument>
 										<argument>--copyright</argument>
