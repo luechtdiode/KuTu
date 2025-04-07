@@ -468,7 +468,7 @@
 		<dependency>
 			<groupId>fr.davit</groupId>
 			<artifactId>pekko-http-metrics-prometheus_${scala.majorversion}</artifactId>
-			<version>1.1.0</version>
+			<version>2.0.0</version>
 		</dependency>
 		<!-- Event Sourcing, Pekko Persitence -->
 		<dependency>
