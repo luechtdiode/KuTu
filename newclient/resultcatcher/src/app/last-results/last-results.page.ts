@@ -104,8 +104,8 @@ export class LastResultsPage implements OnInit, OnDestroy {
                 name: 'Generische Team-Rangliste',
                 published: true,
                 "published-date": '',
-                "scores-href": genericLink + '&kind=Teamrangliste',
-                "scores-query": genericLink + '&kind=Teamrangliste'
+                "scores-href": `/api/scores/${c.uuid}/query?kind=Teamrangliste`,
+                "scores-query": `/api/scores/${c.uuid}/query?kind=Teamrangliste`
               };
               this.scorelinks = this.teamsAllowed(c) ? [...lists, teamGeneric, einzelGeneric] : [...lists, einzelGeneric];
               const publishedLists = this.scorelinks.filter(s => ''+s.published === 'true')

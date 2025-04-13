@@ -538,7 +538,7 @@ object GroupBy {
     val cblist = groupby.toSeq.flatMap(gb => gb.split(":")).map { groupername =>
       groupers.find(grouper => grouper.groupname.equals(groupername))
     }.filter { case Some(_) => true case None => false }.map(_.get)
-    val cbllist = if (cblist.nonEmpty) cblist else Seq(ByWettkampfProgramm(), ByGeschlecht())
+    val cbllist = if (cblist.nonEmpty) cblist else if (kind == Teamrangliste) groupers.take(1) else Seq(ByWettkampfProgramm(), ByGeschlecht())
 
     val cbflist = filterList.keys.map { groupername =>
       groupers.find(grouper => grouper.groupname.equals(groupername))
@@ -579,7 +579,7 @@ object GroupBy {
     } else if (data.nonEmpty && data.head.wettkampf.hasTeams) {
       val regel = TeamRegel(data.head.wettkampf)
       val byTeamRegel = groupers.find(p => p.isInstanceOf[ByTeamRule] && p.groupname.startsWith("Wettkampf")).getOrElse(ByTeamRule(regel.toRuleName, regel))
-      ByProgramm().groupBy(byTeamRegel)
+      byTeamRegel
     }
     else {
       ByProgramm().groupBy(ByGeschlecht())

@@ -45,7 +45,7 @@ ScoreRoutes extends SprayJsonSupport with JsonSupport with AuthSupport with Rout
 
     if (html) {
       HttpEntity(ContentTypes.`text/html(UTF-8)`, new ScoreToHtmlRenderer(){override val title: String = wettkampf}
-      .toHTML(query.select(data).toList, athletsPerPage = 0, sortAlphabetically = alphanumeric, isAvgOnMultipleCompetitions = true, logofile))
+      .toHTML(query.select(data).toList, athletsPerPage = 0, sortAlphabetically = alphanumeric, logofile))
     } else {
       HttpEntity(ContentTypes.`application/json`,  ScoreToJsonRenderer
       .toJson(wettkampf, query.select(data).toList, sortAlphabetically = alphanumeric, logofile))
@@ -277,7 +277,7 @@ ScoreRoutes extends SprayJsonSupport with JsonSupport with AuthSupport with Rout
                           HttpEntity(ContentTypes.`text/html(UTF-8)`, new ScoreToHtmlRenderer() {
                             override val title: String = wettkampf.easyprint // + " - " + score.map(_.title).getOrElse(wettkampf.easyprint)
                           }
-                            .toHTML(query.select(publishedData).toList, athletsPerPage = 0, sortAlphabetically = score.exists(_.isAlphanumericOrdered), isAvgOnMultipleCompetitions = true, logofile))
+                            .toHTML(query.select(publishedData).toList, athletsPerPage = 0, sortAlphabetically = score.exists(_.isAlphanumericOrdered), logofile))
                         } else {
                           HttpEntity(ContentTypes.`application/json`, ScoreToJsonRenderer
                             .toJson(wettkampf.easyprint, query.select(publishedData).toList, sortAlphabetically = score.exists(_.isAlphanumericOrdered), logofile))
@@ -295,7 +295,7 @@ ScoreRoutes extends SprayJsonSupport with JsonSupport with AuthSupport with Rout
                   , Symbol("kind").?
                 ) { (groupby, filter, html, alphanumeric, kind) =>
                   complete(
-                    if (!endDate.atStartOfDay().isBefore(LocalDate.now.atStartOfDay) || (groupby == None && filter.isEmpty)) {
+                    if (!endDate.atStartOfDay().isBefore(LocalDate.now.atStartOfDay) || (groupby == None && filter.isEmpty && ScoreListKind(kind) != Teamrangliste)) {
                       ToResponseMarshallable(HttpEntity(ContentTypes.`text/html(UTF-8)`,
                         f"""
                            |<html>
