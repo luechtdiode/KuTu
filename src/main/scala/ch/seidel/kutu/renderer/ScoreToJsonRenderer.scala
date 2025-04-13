@@ -71,7 +71,7 @@ object ScoreToJsonRenderer {
       gsBlock.deleteCharAt(gsBlock.size - 1)
       gsBlock.append("},")
     }
-    gsBlock.deleteCharAt(gsBlock.size - 1)
+    if (list.nonEmpty) gsBlock.deleteCharAt(gsBlock.size - 1)
     gsBlock.append("],")
   }
 
