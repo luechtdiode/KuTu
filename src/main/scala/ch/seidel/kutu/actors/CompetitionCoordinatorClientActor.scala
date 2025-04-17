@@ -14,10 +14,11 @@ import ch.seidel.kutu.actors.CompetitionCoordinatorClientActor.{PublishAction, c
 import ch.seidel.kutu.data.ResourceExchanger
 import ch.seidel.kutu.domain._
 import ch.seidel.kutu.http.Core.system
-import ch.seidel.kutu.http.{EnrichedJson, JsonSupport}
+import ch.seidel.kutu.http.{EnrichedJson, JsonSupport, MetricsController}
 import ch.seidel.kutu.renderer.{MailTemplates, RiegenBuilder}
-import io.prometheus.client
-import io.prometheus.client.{Collector, CollectorRegistry}
+import io.prometheus.metrics.config.PrometheusProperties
+import io.prometheus.metrics.core.metrics.Gauge
+import io.prometheus.metrics.model.snapshots.{Labels, PrometheusNaming}
 import org.slf4j.LoggerFactory
 import spray.json._
 
@@ -242,7 +243,7 @@ class CompetitionCoordinatorClientActor(wettkampfUUID: String) extends Persisten
       wsSend = wsSend + (durchgangNormalized -> durchgangClients)
       deviceWebsocketRefs = deviceWebsocketRefs + (deviceId -> ref)
       competitionWebsocketConnectionsActive
-        .labels(wettkampf.easyprint, durchgangNormalized.getOrElse("all"))
+        .labelValues(wettkampf.easyprint, durchgangNormalized.getOrElse("all"))
         .set(durchgangClients.size)
 
       ref ! TextMessage("Connection established." + s"$deviceId@".split("@")(1))
@@ -305,7 +306,7 @@ class CompetitionCoordinatorClientActor(wettkampfUUID: String) extends Persisten
       sender() ! MessageAck(s"OK, Wettkampf $wk deleted")
       wsSend.keys.foreach(dg => {
         competitionWebsocketConnectionsActive
-          .labels(wettkampf.easyprint, dg.getOrElse("all"))
+          .labelValues(wettkampf.easyprint, dg.getOrElse("all"))
           .set(wsSend.get(dg).size)
       })
       wsSend.values.foreach(_.foreach(_.actorRef ! PoisonPill))
@@ -377,7 +378,7 @@ class CompetitionCoordinatorClientActor(wettkampfUUID: String) extends Persisten
 
     durchgaenge.foreach(dg => {
       competitionWebsocketConnectionsActive
-        .labels(wettkampf.easyprint, dg.getOrElse("all"))
+        .labelValues(wettkampf.easyprint, dg.getOrElse("all"))
         .set(wsSend.get(dg).size)
     })
   }
@@ -612,20 +613,18 @@ class ClientActorSupervisor extends Actor with ActorLogging {
 
 object CompetitionCoordinatorClientActor extends JsonSupport with EnrichedJson {
   private val logger = LoggerFactory.getLogger(this.getClass)
-  lazy val competitionsActive: client.Gauge = io.prometheus.client.Gauge
-    .build()
-    .namespace(Collector.sanitizeMetricName(Config.metricsNamespaceName))
-    .name("competitions_active")
+
+  lazy val competitionsActive: Gauge = Gauge.builder()
+    .name(PrometheusNaming.sanitizeMetricName(Config.metricsNamespaceName + "_competitions_active"))
     .help("Active competitions")
-    .create().register()
-  lazy val competitionWebsocketConnectionsActive: client.Gauge = io.prometheus.client.Gauge
-    .build()
-    .namespace(Collector.sanitizeMetricName(Config.metricsNamespaceName))
-    .name(Collector.sanitizeMetricName("competition_websockets_active"))
+    .register(MetricsController.registry.underlying)
+
+  lazy val competitionWebsocketConnectionsActive: Gauge = Gauge
+    .builder()
+    .name(PrometheusNaming.sanitizeMetricName(Config.metricsNamespaceName + "_competition_websockets_active"))
     .labelNames("comp", "dg")
     .help("Active websocket connections for per competition and durchgang")
-    .create()
-  competitionWebsocketConnectionsActive.register(CollectorRegistry.defaultRegistry)
+    .register(MetricsController.registry.underlying)
 
   case class PublishAction(id: String, action: KutuAppAction)
 
