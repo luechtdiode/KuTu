@@ -4,7 +4,7 @@ import { NavController, IonItemSliding } from '@ionic/angular';
 import { BackendService } from '../services/backend.service';
 import { async } from 'rxjs/internal/scheduler/async';
 import { BehaviorSubject, Subject, of, Observable } from 'rxjs';
-import { ActivatedRoute } from '@angular/router';
+import { ActivatedRoute, Router } from '@angular/router';
 import { debounceTime, distinctUntilChanged, map, filter, switchMap, tap, share } from 'rxjs/operators';
 
 @Component({
@@ -27,6 +27,7 @@ export class SearchAthletPage implements OnInit {
 
   constructor(public navCtrl: NavController,
               private route: ActivatedRoute,
+              private router: Router,
               public backendService: BackendService) {
     if (! this.backendService.competitions) {
       this.backendService.getCompetitions();
@@ -36,6 +37,7 @@ export class SearchAthletPage implements OnInit {
   ngOnInit(): void {
     this.busy.next(true);
     const wkId = this.route.snapshot.paramMap.get('wkId');
+    this.sMyQuery = this.route.snapshot.queryParamMap.get('query') || '';
     if (wkId) {
       this.competition = wkId;
     }
@@ -46,16 +48,16 @@ export class SearchAthletPage implements OnInit {
   }
 
   set competition(competitionId: string) {
+    this.syncPath(this.sMyQuery);
     if (!this.startlist || competitionId !== this.backendService.competition) {
       this.busy.next(true);
       this.startlist = {} as StartList;
       this.backendService.getDurchgaenge(competitionId);
-      this.backendService.loadStartlist(/*this.sMyQuery*/undefined).subscribe(startlist => {
-        this.startlist = startlist;
+      this.backendService.loadStartlist(undefined).subscribe(startlist => {
         this.busy.next(false);
         const pipeBeforeAction = this.tMyQueryStream.pipe(
-          filter(event => !!event && !!event.target && !!event.target.value),
-          map(event => event.target.value),
+          //filter(event => !!event && !!event.target && !!event.target.value),
+          map(event => event?.target?.value || ''),
           debounceTime(1000),
           distinctUntilChanged(),
           share()
@@ -68,7 +70,9 @@ export class SearchAthletPage implements OnInit {
         ).subscribe(filteredList => {
           this.sFilteredStartList = filteredList;
           this.busy.next(false);
+          this.syncPath(this.sMyQuery)
         });
+        this.startlist = startlist;
       });
     }
   }
@@ -78,7 +82,8 @@ export class SearchAthletPage implements OnInit {
   }
   set startlist(startlist: StartList) {
     this.sStartList = startlist;
-    this.reloadList(this.sMyQuery);
+    let event = {target: {value: this.sMyQuery}};
+    this.reloadList(event);
   }
   get startlist() {
     return this.sStartList;
@@ -93,6 +98,20 @@ export class SearchAthletPage implements OnInit {
     return this.busy;
   }
 
+  syncPath(query: string = this.sMyQuery) {
+    if (query?.trim().length > 0) {
+      this.router.navigate(
+        ['search-athlet', this.competition],
+        {
+          queryParams: {query: query}, // add query params to current url
+          queryParamsHandling: 'merge', // remove to replace all query params by provided
+        }
+      );
+    } else {
+      this.router.navigate(['search-athlet', this.competition]);
+    }
+  }
+
   runQuery(startlist: StartList) {
     return (query: string) => {
       const q = query.trim();
@@ -102,7 +121,7 @@ export class SearchAthletPage implements OnInit {
         programme : []
       } as StartList;
 
-      if (q && startlist) {
+      if (startlist) {
 
         startlist.programme.forEach(programm => {
           const filterFn = this.filter(q);
