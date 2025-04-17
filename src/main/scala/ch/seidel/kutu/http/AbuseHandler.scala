@@ -1,29 +1,27 @@
 package ch.seidel.kutu.http
 
+import ch.seidel.kutu.Config
+import io.prometheus.metrics.core.metrics.Gauge
+import io.prometheus.metrics.model.snapshots.PrometheusNaming
 import org.apache.pekko.http.scaladsl.model.Uri
 import org.apache.pekko.http.scaladsl.model.Uri.Path
-import ch.seidel.kutu.Config
-import io.prometheus.client
-import io.prometheus.client.Collector
 
 import java.util.concurrent.atomic.AtomicReference
 import scala.annotation.tailrec
 
 object AbuseHandler {
 
-  val abusedGauge: client.Gauge = io.prometheus.client.Gauge
-    .build()
-    .namespace(Collector.sanitizeMetricName(Config.metricsNamespaceName))
-    .name("abused_clients")
+  val abusedGauge: Gauge = Gauge
+    .builder()
+    .name(PrometheusNaming.sanitizeMetricName(Config.metricsNamespaceName + "_abused_clients"))
     .help("Abused client counter")
-    .create().register()
+    .register(MetricsController.registry.underlying)
 
-  val abusedWatchListGauge: client.Gauge = io.prometheus.client.Gauge
-    .build()
-    .namespace(Collector.sanitizeMetricName(Config.metricsNamespaceName))
-    .name("abused_watchlist_clients")
+  val abusedWatchListGauge: Gauge = Gauge
+    .builder()
+    .name(PrometheusNaming.sanitizeMetricName(Config.metricsNamespaceName + "_abused_watchlist_clients"))
     .help("Abused watchlist client counter")
-    .create().register()
+    .register(MetricsController.registry.underlying)
 
   case class AbusedClient(ip: String, cid: String, path: String, abused: Boolean) {
     val mapKey: String = s"${ip}@${cid}//${path}"

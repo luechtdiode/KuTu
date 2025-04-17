@@ -1,13 +1,13 @@
 package ch.seidel.kutu.http
 
-import org.apache.pekko.http.scaladsl.server.Directives.{path, _}
-import org.apache.pekko.http.scaladsl.server.Route
 import ch.seidel.kutu.Config
 import fr.davit.pekko.http.metrics.core.scaladsl.server.HttpMetricsDirectives.metrics
 import fr.davit.pekko.http.metrics.prometheus.marshalling.PrometheusMarshallers._
-import fr.davit.pekko.http.metrics.prometheus.{Buckets, PrometheusRegistry, PrometheusSettings, Quantiles}
-import io.prometheus.client.{Collector, CollectorRegistry}
-
+import fr.davit.pekko.http.metrics.prometheus.{PrometheusRegistry, PrometheusSettings}
+import io.prometheus.metrics.model.snapshots.PrometheusNaming
+import org.apache.pekko.http.scaladsl.server.Directives.{path, _}
+import org.apache.pekko.http.scaladsl.server.Route
+import io.prometheus.metrics.model.{registry => prometheus}
 
 trait MetricsController {
 
@@ -19,7 +19,7 @@ trait MetricsController {
 object MetricsController {
   private val settings: PrometheusSettings = PrometheusSettings
     .default
-    .withNamespace(Collector.sanitizeMetricName(Config.metricsNamespaceName))
+    .withNamespace(PrometheusNaming.sanitizeMetricName(Config.metricsNamespaceName))
     .withIncludePathDimension(true)
     .withIncludeMethodDimension(true)
     .withIncludeStatusDimension(true)
@@ -30,7 +30,5 @@ object MetricsController {
     .withSentBytesConfig(PrometheusSettings.DefaultQuantiles)
     .withDefineError(_.status.isFailure)
 
-  private val collector: CollectorRegistry = CollectorRegistry.defaultRegistry
-
-  val registry: PrometheusRegistry = PrometheusRegistry(collector, settings)
+  val registry: PrometheusRegistry = PrometheusRegistry(prometheus.PrometheusRegistry.defaultRegistry, settings)
 }
