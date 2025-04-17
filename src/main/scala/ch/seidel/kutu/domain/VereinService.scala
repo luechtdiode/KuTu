@@ -21,6 +21,7 @@ trait VereinService extends DBService with VereinResultMapper {
                     select max(verein.id) as maxid
                     from verein
                     where LOWER(name)=${verein.name.toLowerCase()}
+                      and LOWER(verband)=${verein.verband.map(_.toLowerCase()).getOrElse("")}
          """.as[Long].withPinnedSession
          }, Duration.Inf).toList.headOption
   }
@@ -31,6 +32,7 @@ trait VereinService extends DBService with VereinResultMapper {
                     select max(verein.id) as maxid
                     from verein
                     where LOWER(name)=${verein.name.toLowerCase()}
+                      and LOWER(verband)=${verein.verband.map(_.toLowerCase()).getOrElse("")}
          """.as[Long].headOption
     } yield {
       candidateId match {

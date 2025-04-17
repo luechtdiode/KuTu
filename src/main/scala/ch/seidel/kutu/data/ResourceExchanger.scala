@@ -32,7 +32,7 @@ object ResourceExchanger extends KutuService with RiegenBuilder {
       .map(d => d.id -> d).toMap
     def mapToLocal(athlet: AthletView, wettkampf: Option[Long]) = {
       val mappedverein = athlet.verein match {
-        case Some(v) => findVereinLike(Verein(id = 0, name = v.name, verband = None))
+        case Some(v) => findVereinLike(Verein(id = 0, name = v.name, verband = v.verband))
         case _ => None
       }
       val mappedAthlet = findAthleteLike(cache, wettkampf, exclusive = false)(athlet.toAthlet.copy(id = 0, verein = mappedverein))

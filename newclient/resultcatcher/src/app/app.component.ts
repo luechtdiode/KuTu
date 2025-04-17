@@ -223,7 +223,7 @@ export class AppComponent {
       } else if (localStorage.getItem('current_competition')) {
         const cs = localStorage.getItem('current_competition');
         this.backendService.getDurchgaenge(cs);
-      } else if (!this.backendService.competition) {
+      } else if (window.location.pathname === '/' && !this.backendService.competition) {
         this.openPage('/competitions');
       }
       SplashScreen.hide();
