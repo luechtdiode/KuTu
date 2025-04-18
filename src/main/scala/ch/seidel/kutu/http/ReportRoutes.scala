@@ -65,6 +65,8 @@ trait ReportRoutes extends SprayJsonSupport
                           gr match {
                             case Some(grv) if (grv.equalsIgnoreCase("verein")) =>
                               HttpEntity(ContentTypes.`text/html(UTF-8)`, renderer.riegenToVereinListeAsHTML(filteredRiegen, logofile, dgEvents))
+                            case Some(grv) if (grv.equalsIgnoreCase("durchgang")) =>
+                              HttpEntity(ContentTypes.`text/html(UTF-8)`, renderer.riegenToDurchgangListeAsHTML(filteredRiegen, logofile, dgEvents))
                             case _ =>
                               HttpEntity(ContentTypes.`text/html(UTF-8)`, renderer.riegenToKategorienListeAsHTML(filteredRiegen, logofile, dgEvents))
                           }
@@ -97,12 +99,12 @@ trait ReportRoutes extends SprayJsonSupport
     k: Kandidat => {
       queryTokens.isEmpty ||
         queryTokens.forall {
-          case s: String if s == s"${k.id}" => true
-          case s: String if s == k.name.toLowerCase => true
-          case s: String if s == k.vorname.toLowerCase => true
-          case s: String if s == k.verein.toLowerCase => true
-          case s: String if s == k.programm.toLowerCase => true
-          case s: String if s == k.geschlecht.toLowerCase => true
+          case s: String if s.equals(s"${k.id}") => true
+          case s: String if s.equals(k.name.toLowerCase) => true
+          case s: String if s.equals(k.vorname.toLowerCase) => true
+          case s: String if s.equals(k.verein.toLowerCase) => true
+          case s: String if s.equals(k.programm.toLowerCase) => true
+          case s: String if s.equals(k.geschlecht.toLowerCase) => true
           case s: String if s.nonEmpty => {
             k.verein.toLowerCase.contains(s) ||
               k.einteilung.exists(_.easyprint.toLowerCase.contains(s))
