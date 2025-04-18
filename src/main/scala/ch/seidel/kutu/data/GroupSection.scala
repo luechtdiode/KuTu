@@ -86,7 +86,7 @@ case class GroupLeaf[GK <: DataObject](override val groupKey: GK, list: Iterable
   //val divider = if(!isDivided) 1 else groups.head._2.size
 
   val gleichstandsregel = Gleichstandsregel(list.head.wettkampf)
-  def buildColumns: List[WKCol] = {
+  def buildColumns(isAvgOnMultipleCompetitions: Boolean = true): List[WKCol] = {
     val athletCols: List[WKCol] = List(
       WKLeafCol[ResultRow](text = "Rang", prefWidth = 20, styleClass = Seq("data"), valueMapper = gr => {
         if (isTeamGroup) {
@@ -126,11 +126,11 @@ case class GroupLeaf[GK <: DataObject](override val groupKey: GK, list: Iterable
       }
     )
 
-    val (disziplinCol: List[WKCol], sumCol: List[WKCol]) = buildCommonColumns
+    val (disziplinCol: List[WKCol], sumCol: List[WKCol]) = buildCommonColumns(isAvgOnMultipleCompetitions)
     athletCols ++ disziplinCol ++ sumCol
   }
 
-  def buildCommonColumns: (List[WKCol], List[WKCol]) = {
+  def buildCommonColumns(isAvgOnMultipleCompetitions: Boolean): (List[WKCol], List[WKCol]) = {
     val indexer = Iterator.from(0)
     val disziplinCol: List[WKCol] =
       if (!isTeamGroup && groups.keySet.size > 1) {
@@ -170,7 +170,7 @@ case class GroupLeaf[GK <: DataObject](override val groupKey: GK, list: Iterable
             cs.rang.formattedEnd
           })
           val cl: WKCol = WKGroupCol(
-            text = if (anzahWettkaempfe > 1) {
+            text = if (isAvgOnMultipleCompetitions && anzahWettkaempfe > 1) {
               s"ø aus " + grKey.easyprint
             }
             else {
@@ -227,7 +227,7 @@ case class GroupLeaf[GK <: DataObject](override val groupKey: GK, list: Iterable
           lazy val clRang = WKLeafCol[ResultRow](text = "Rang", prefWidth = 60, styleClass = Seq("hintdata"), valueMapper = gr => {
             if (gr.resultate.size > index) f"${gr.resultate(index).rang.endnote}%3.0f" else ""
           })
-          val cl = WKGroupCol(text = if (anzahWettkaempfe > 1) {
+          val cl = WKGroupCol(text = if (isAvgOnMultipleCompetitions && anzahWettkaempfe > 1) {
             s"ø aus " + disziplin.name
           }
           else {
@@ -246,7 +246,7 @@ case class GroupLeaf[GK <: DataObject](override val groupKey: GK, list: Iterable
       }
     val sumColAll: List[WKCol] = List(
       WKLeafCol[ResultRow](
-        text = if (anzahWettkaempfe > 1) {
+        text = if (isAvgOnMultipleCompetitions && anzahWettkaempfe > 1) {
           s"Total ø aus $dNoteLabel"
         }
         else {
@@ -257,7 +257,7 @@ case class GroupLeaf[GK <: DataObject](override val groupKey: GK, list: Iterable
         }
       ),
       WKLeafCol[ResultRow](
-        text = if (anzahWettkaempfe > 1) {
+        text = if (isAvgOnMultipleCompetitions && anzahWettkaempfe > 1) {
           if (!isDivided && withDNotes) {
             s"Total ø aus $eNoteLabel"
           }
@@ -290,7 +290,7 @@ case class GroupLeaf[GK <: DataObject](override val groupKey: GK, list: Iterable
         }
       ),
       WKLeafCol[ResultRow](
-        text = if (anzahWettkaempfe > 1) {
+        text = if (isAvgOnMultipleCompetitions && anzahWettkaempfe > 1) {
           s"Total ø Punkte"
         }
         else {
@@ -310,7 +310,7 @@ case class GroupLeaf[GK <: DataObject](override val groupKey: GK, list: Iterable
     GroupSection.mapAvgRang(grp.map { d => (d._1, d._2._1, d._2._2) }).map(r => (r.groupKey.asInstanceOf[A] -> r)).toMap
   }
 
-  def mapToAvgRowSummary(athlWertungen: Iterable[WertungView] = list): (Resultat, Resultat, Iterable[(Disziplin, Long, Resultat, Resultat, Option[Int], Option[BigDecimal])], Iterable[(ProgrammView, Resultat, Resultat, Option[Int], Option[BigDecimal])], Resultat) = {
+  def mapToAvgRowSummary(athlWertungen: Iterable[WertungView] = list, avgSumsWithMultiCompetitions: Boolean): (Resultat, Resultat, Iterable[(Disziplin, Long, Resultat, Resultat, Option[Int], Option[BigDecimal])], Iterable[(ProgrammView, Resultat, Resultat, Option[Int], Option[BigDecimal])], Resultat) = {
     val wks = athlWertungen.filter(_.endnote.nonEmpty).groupBy { w => w.wettkampf }
     val wksums = wks.map { wk => aggreateFun(wk._2.map(w => w.resultat)) }.toList
     val rsum = aggreateFun(wksums)
@@ -324,8 +324,9 @@ case class GroupLeaf[GK <: DataObject](override val groupKey: GK, list: Iterable
       }) * aggreateFun.sortFactor
     }
     val gsum = aggreateFun(gwksums) //if (gwksums.nonEmpty) gwksums.reduce(_ + _) else Resultat(0, 0, 0)
-    val avg = if (wksums.nonEmpty) rsum / wksums.size else Resultat(0, 0, 0)
-    val gavg = if (wksums.nonEmpty) gsum / wksums.size else Resultat(0, 0, 0)
+    val wkDivider = if(avgSumsWithMultiCompetitions) wksums.size else 1
+    val avg = if (wksums.nonEmpty) rsum / wkDivider else Resultat(0, 0, 0)
+    val gavg = if (wksums.nonEmpty) gsum / wkDivider else Resultat(0, 0, 0)
     val withAuszeichnung = anzahWettkaempfe == 1 && groups.size == 1 && wks.size == 1
     val auszeichnung = if (withAuszeichnung) Some(wks.head._1.auszeichnung) else None
     val auszeichnungEndnote = if (withAuszeichnung && wks.head._1.auszeichnungendnote > 0) Some(wks.head._1.auszeichnungendnote) else None
@@ -341,7 +342,8 @@ case class GroupLeaf[GK <: DataObject](override val groupKey: GK, list: Iterable
     }).groupBy(_._1).map { x =>
       val xsum = x._2.map(_._2).reduce(_ + _)
       val xasum = aggreateFun(x._2.map(_._2))
-      (x._1, xasum, xsum / x._2.size, auszeichnung, auszeichnungEndnote)
+      val diszDivider = if(avgSumsWithMultiCompetitions) x._2.size else 1
+      (x._1, xasum, xsum / diszDivider, auszeichnung, auszeichnungEndnote)
     }
       .toList.sortBy(d => d._1._1)
       .map(d => (d._1._2, d._1._3, d._2, d._3, d._4, d._5))
@@ -359,17 +361,18 @@ case class GroupLeaf[GK <: DataObject](override val groupKey: GK, list: Iterable
     }).groupBy(_._1).map { x =>
       val xsum = x._2.map(_._2).reduce(_ + _)
       val xasum = aggreateFun(x._2.map(_._2))
-      (x._1, xasum, xsum / x._2.size, auszeichnung, auszeichnungEndnote)
+      val pgmDivider = if(avgSumsWithMultiCompetitions) x._2.size else 1
+      (x._1, xasum, xsum / pgmDivider, auszeichnung, auszeichnungEndnote)
     }
       .toList.sortBy(d => d._1.ord)
     (rsum, avg, perDisziplinAvgs, perProgrammAvgs, gavg)
   }
 
-  def getTableData(sortAlphabetically: Boolean = false) = {
+  def getTableData(sortAlphabetically: Boolean = false, avgSumsWithMultiCompetitions: Boolean = true) = {
     val avgPerAthlet = list.groupBy { x =>
       x.athlet
     }.map { x =>
-      (x._1, mapToAvgRowSummary(x._2), x._2.head.wettkampfdisziplin.programm)
+      (x._1, mapToAvgRowSummary(x._2, avgSumsWithMultiCompetitions), x._2.head.wettkampfdisziplin.programm)
     }.filter(_._2._1.endnote > 0)
 
     // Beeinflusst die Total-Rangierung pro Gruppierung
@@ -408,7 +411,7 @@ case class GroupLeaf[GK <: DataObject](override val groupKey: GK, list: Iterable
               //team.perDisciplinResults(w._1).indexOf(ww.avg) > -1)
               team.isRelevantResult(w._1, ww.groupKey.asInstanceOf[AthletView]))
           }
-          else if(anzahWettkaempfe > 1) {
+          else if(avgSumsWithMultiCompetitions && anzahWettkaempfe > 1) {
             LeafRow(w._1.name,
               ww.avg,
               rang,
@@ -434,7 +437,7 @@ case class GroupLeaf[GK <: DataObject](override val groupKey: GK, list: Iterable
         programmResults.map{w =>
           val ww = avgProgrammRangMap(w._1)(athlet)
 //          val posproz = 100d * ww.rang.endnote / avgProgrammRangMap.size
-          if(anzahWettkaempfe > 1) {
+          if(avgSumsWithMultiCompetitions && anzahWettkaempfe > 1) {
             LeafRow(w._1.easyprint,
               ww.avg,
               ww.rang,
@@ -481,8 +484,11 @@ case class GroupLeaf[GK <: DataObject](override val groupKey: GK, list: Iterable
     if(sortAlphabetically) {
       prepared.sortBy(_.athlet.easyprint)
     }
+//    else if(avgSumsWithMultiCompetitions) {
+//    }
     else{
       prepared.sortBy(_.rang.endnote)
+      //prepared.sortBy(_.sum.endnote).reverse
     }
   }
 }
@@ -545,7 +551,7 @@ case class TeamSums(override val groupKey: DataObject, teamRows: List[GroupLeaf[
         ""
       })
     )
-    val (disziplinCol: List[WKCol], sumCol: List[WKCol]) = glGroup.buildCommonColumns
+    val (disziplinCol: List[WKCol], sumCol: List[WKCol]) = glGroup.buildCommonColumns(true)
     teamCols ++ disziplinCol ++ sumCol
   }
 
@@ -555,7 +561,7 @@ case class TeamSums(override val groupKey: DataObject, teamRows: List[GroupLeaf[
     }.map { x =>
       val (team, teamRow) = x
       val teamwertungen = team.countingWertungen.flatMap(_._2)
-      (team, teamRow.mapToAvgRowSummary(teamwertungen))
+      (team, teamRow.mapToAvgRowSummary(teamwertungen, avgSumsWithMultiCompetitions = true))
     }
 
     (for (teamRuleGroup <- avgPerTeams.groupBy(_._1.rulename)) yield {

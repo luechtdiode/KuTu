@@ -1034,6 +1034,7 @@ package object domain {
     override def easyprint = f"PublishedScore($title - ${wettkampf.easyprint})"
 
     def isAlphanumericOrdered = query.contains("&alphanumeric")
+    def isAvgOnMultipleCompetitions = query.contains("&avg=true")
 
     def toRaw = PublishedScoreRaw(id, title, query, published, publishedDate, wettkampf.id)
   }
