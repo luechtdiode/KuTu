@@ -236,6 +236,8 @@ trait WettkampfOverviewToHtmlRenderer {
 
     val startlistURL = s"$remoteBaseUrl/api/report/${wettkampf.uuid.get}/startlist?gr=verein&html"
     val startlistQRUrl = toQRCodeImage(startlistURL)
+    val startlistMobileURL = s"$remoteBaseUrl/search-athlet/${wettkampf.uuid.get}"
+    val startlistMobileQRUrl = toQRCodeImage(startlistMobileURL)
     val lastResultsURL = s"$remoteBaseUrl/?" + new String(enc.encodeToString((s"last&c=${wettkampf.uuid.get}").getBytes))
     val lastQRUrl = toQRCodeImage(lastResultsURL)
 
@@ -478,9 +480,16 @@ trait WettkampfOverviewToHtmlRenderer {
         <h2 id="usefullinks">Weitere nützliche Links</h2>
         <div class=headline>
           <img class=qrcode src="$startlistQRUrl"/>
-          <h3>Online Liste der Teilnehmer/-Innen</h3><p class=wordwrapper>
-          Liste aller angemeldeten Teilnehmer/-Innen mit ihrer Starteinteilung.<br>
+          <h3>Online Liste der Teilnehmer/-Innen zum drucken</h3><p class=wordwrapper>
+          Druckversion der Liste aller angemeldeten Teilnehmer/-Innen mit ihrer Starteinteilung.<br>
           <a href="$startlistURL" target="_blank">$startlistURL</a>
+          </p>
+        </div>
+        <div class=headline>
+          <img class=qrcode src="$startlistMobileQRUrl"/>
+          <h3>Interaktive Riegenliste</h3><p class=wordwrapper>
+          Interaktive Liste aller angemeldeten Teilnehmer/-Innen mit ihrer Starteinteilung.<br>
+          <a href="$startlistMobileURL" target="_blank">$startlistMobileURL</a>
           </p>
         </div>
         <div class=headline>
