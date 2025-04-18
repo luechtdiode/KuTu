@@ -11,8 +11,8 @@ import java.io.File
 object ScoreToJsonRenderer {
   val logger: Logger = LoggerFactory.getLogger(this.getClass)
   
-  def toJson(title: String, gs: List[GroupSection], sortAlphabetically: Boolean = false, logoFile: File): String = {
-    val jsonString = toJsonString(title, gs, "", 0, sortAlphabetically, logoFile)
+  def toJson(title: String, gs: List[GroupSection], sortAlphabetically: Boolean = false, isAvgOnMultipleCompetitions: Boolean = true, logoFile: File): String = {
+    val jsonString = toJsonString(title, gs, "", 0, sortAlphabetically, isAvgOnMultipleCompetitions, logoFile)
     jsonString
   }
 
@@ -48,7 +48,7 @@ object ScoreToJsonRenderer {
       row match {
         case tr: TeamRow =>
           val teamGroupLeaf = ts.get.getTeamGroupLeaf(tr.team)
-          val teamGroupCols = teamGroupLeaf.buildColumns.tail
+          val teamGroupCols = teamGroupLeaf.buildColumns().tail
           val allMemberdata = teamGroupLeaf.getTableData()
           renderListRows(allMemberdata, gsBlock, teamGroupCols, None)
         case _ =>
@@ -80,7 +80,7 @@ object ScoreToJsonRenderer {
     gsBlock.append("},")
   }
 
-  private def toJsonString(title: String, gs: List[GroupSection], openedTitle: String, level: Int, sortAlphabetically: Boolean, logoFile: File): String = {
+  private def toJsonString(title: String, gs: List[GroupSection], openedTitle: String, level: Int, sortAlphabetically: Boolean, isAvgOnMultipleCompetitions: Boolean, logoFile: File): String = {
     val gsBlock = new StringBuilder()
     if (level == 0) {
       gsBlock.append(firstSite(title, logoFile))
@@ -88,7 +88,7 @@ object ScoreToJsonRenderer {
     for (c <- gs) {
       c match {
         case gl: GroupLeaf[_] =>
-          renderGroupLeaf(openedTitle, level, sortAlphabetically, gsBlock, gl)
+          renderGroupLeaf(openedTitle, level, sortAlphabetically, isAvgOnMultipleCompetitions, gsBlock, gl)
 
         case ts: TeamSums =>
           renderTeamLeaf(openedTitle, level,gsBlock, ts)
@@ -97,7 +97,7 @@ object ScoreToJsonRenderer {
             toJsonString(title, g.next.toList, if(openedTitle.nonEmpty)
                               openedTitle + s"${escaped(g.groupKey.capsulatedprint)}, "
                             else
-                              s""""title":{"level":"${level + 2}", "text":"${escaped(g.groupKey.capsulatedprint)}, """, level + 1, sortAlphabetically, logoFile))
+                              s""""title":{"level":"${level + 2}", "text":"${escaped(g.groupKey.capsulatedprint)}, """, level + 1, sortAlphabetically, isAvgOnMultipleCompetitions, logoFile))
 
         case s: GroupSum  =>
           gsBlock.append(s.easyprint)
@@ -110,10 +110,10 @@ object ScoreToJsonRenderer {
     gsBlock.toString
   }
 
-  private def renderGroupLeaf(openedTitle: String, level: Int, sortAlphabetically: Boolean, gsBlock: StringBuilder, gl: GroupLeaf[_ <: domain.DataObject]): Unit = {
-    val cols = gl.buildColumns
+  private def renderGroupLeaf(openedTitle: String, level: Int, sortAlphabetically: Boolean, isAvgOnMultipleCompetitions: Boolean, gsBlock: StringBuilder, gl: GroupLeaf[_ <: domain.DataObject]): Unit = {
+    val cols = gl.buildColumns(isAvgOnMultipleCompetitions)
 
-    val alldata = gl.getTableData(sortAlphabetically)
+    val alldata = gl.getTableData(sortAlphabetically, isAvgOnMultipleCompetitions)
     val pagedata = alldata.sliding(alldata.size, alldata.size)
     pagedata.foreach { section =>
       renderListHead(gsBlock, level, openedTitle + escaped(gl.groupKey.capsulatedprint))
