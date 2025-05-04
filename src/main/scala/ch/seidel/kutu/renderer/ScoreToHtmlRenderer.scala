@@ -13,8 +13,8 @@ trait ScoreToHtmlRenderer {
   
   protected val title: String
   
-  def toHTML(gs: List[GroupSection], athletsPerPage: Int = 0, sortAlphabetically: Boolean = false, logoFile: File): String = {
-    toHTML(gs, "", 0, athletsPerPage, sortAlphabetically, collectFilterTitles(gs, true), logoFile)
+  def toHTML(gs: List[GroupSection], athletsPerPage: Int = 0, sortAlphabetically: Boolean = false, isAvgOnMultipleCompetitions: Boolean = true, logoFile: File): String = {
+    toHTML(gs, "", 0, athletsPerPage, sortAlphabetically, isAvgOnMultipleCompetitions, collectFilterTitles(gs, true), logoFile)
   }
 
   val intro = s"""<html lang="de-CH"><head>
@@ -199,7 +199,7 @@ trait ScoreToHtmlRenderer {
     }
   }
 
-  private def toHTML(gs: List[GroupSection], openedTitle: String, level: Int, athletsPerPage: Int, sortAlphabetically: Boolean, falsePositives: Set[String], logoFile: File): String = {
+  private def toHTML(gs: List[GroupSection], openedTitle: String, level: Int, athletsPerPage: Int, sortAlphabetically: Boolean, isAvgOnMultipleCompetitions: Boolean, falsePositives: Set[String], logoFile: File): String = {
     val gsBlock = new StringBuilder()
 
     if (level == 0) {
@@ -215,7 +215,7 @@ trait ScoreToHtmlRenderer {
       val levelText = if ((gsSize == 1 && !falsePositives.contains(escaped(c.groupKey.capsulatedprint))) || c.groupKey.isInstanceOf[NullObject]) "" else escaped(c.groupKey.capsulatedprint)
       c match {
         case gl: GroupLeaf[_] =>
-          renderGroupLeaf(openedTitle, level, athletsPerPage, sortAlphabetically, gsBlock, levelText, gl)
+          renderGroupLeaf(openedTitle, level, athletsPerPage, sortAlphabetically, isAvgOnMultipleCompetitions, gsBlock, levelText, gl)
 
         case ts: TeamSums =>
           renderTeamLeaf(openedTitle, level, athletsPerPage, gsBlock, levelText, ts)
@@ -226,7 +226,7 @@ trait ScoreToHtmlRenderer {
                   openedTitle + s"${if (levelText.isEmpty) "" else (levelText + ", ")}"
                 else
                   s"<h${level + 2}>${if (levelText.isEmpty) "" else (levelText + ", ")}",
-                level + 1, athletsPerPage, sortAlphabetically, falsePositives, logoFile))
+                level + 1, athletsPerPage, sortAlphabetically, isAvgOnMultipleCompetitions, falsePositives, logoFile))
 
         case s: GroupSection  =>
           gsBlock.append(s.easyprint)
@@ -345,7 +345,7 @@ trait ScoreToHtmlRenderer {
   }
 
   private def renderListEnd(gsBlock: StringBuilder) = gsBlock.append(s"</tbody></table></div>\n")
-  private def renderGroupLeaf(openedTitle: String, level: Int, athletsPerPage: Int, sortAlphabetically: Boolean, gsBlock: StringBuilder, levelText: String, gl: GroupLeaf[_]): Unit = {
+  private def renderGroupLeaf(openedTitle: String, level: Int, athletsPerPage: Int, sortAlphabetically: Boolean, isAvgOnMultipleCompetitions: Boolean = true, gsBlock: StringBuilder, levelText: String, gl: GroupLeaf[_]): Unit = {
     val pretitleprint = (openedTitle + levelText).trim.reverse.dropWhile(p => p.equals(',')).reverse
     if (openedTitle.startsWith("<h")) {
       val closetag = openedTitle.substring(0, openedTitle.indexOf(">") + 1).replace("<", "</")
@@ -354,9 +354,9 @@ trait ScoreToHtmlRenderer {
     else {
       gsBlock.append(s"<h${level + 2}>$pretitleprint</h${level + 2}>")
     }
-    val cols = gl.buildColumns
+    val cols = gl.buildColumns(isAvgOnMultipleCompetitions)
 
-    val alldata = gl.getTableData(sortAlphabetically)
+    val alldata = gl.getTableData(sortAlphabetically, isAvgOnMultipleCompetitions)
     val pagedata = if (athletsPerPage == 0) alldata.sliding(alldata.size, alldata.size)
     else if (firstSiteRendered.get) {
       alldata.sliding(athletsPerPage, athletsPerPage)
@@ -452,7 +452,7 @@ trait ScoreToHtmlRenderer {
       def renderTeamRows(list: List[TeamRow]) = {
         list.foreach { row =>
           val teamGroupLeaf = gl.getTeamGroupLeaf(row.team)
-          val teamGroupCols = teamGroupLeaf.buildColumns.tail//.dropRight(2)
+          val teamGroupCols = teamGroupLeaf.buildColumns().tail//.dropRight(2)
           val allMemberdata = teamGroupLeaf.getTableData()
           var rowspans = if (allMemberdata.size % 2 == 0) {
             allMemberdata.size + 1

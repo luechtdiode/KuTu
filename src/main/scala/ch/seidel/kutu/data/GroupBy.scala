@@ -27,6 +27,7 @@ sealed trait GroupBy {
   val groupname: String
   protected var next: Option[GroupBy] = None
   protected var isANO: Boolean = false
+  protected var isAVG: Boolean = true
   protected var kind: ScoreListKind = Einzelrangliste
 
   protected def allName = groupname
@@ -53,6 +54,15 @@ sealed trait GroupBy {
     }
   }
 
+  def isAvgOnMultipleCompetitions = isAVG
+
+  def setAvgOnMultipleCompetitions(value: Boolean): Unit = {
+    traverse(value) { (gb, acc) =>
+      gb.isAVG = acc
+      acc
+    }
+  }
+
   def toRestQuery: String = {
     val groupby = traverse("") { (gb, acc) =>
       acc match {
@@ -62,7 +72,7 @@ sealed trait GroupBy {
           acc + "," + gb.groupname
       }
     }
-    s"groupby=${groupby}" + (if (isANO) "&alphanumeric" else "") + s"&kind=${kind}"
+    s"groupby=${groupby}" + (if (isANO) "&alphanumeric" else "") + (if (isAVG) "&avg=true" else "&avg=false") + s"&kind=${kind}"
   }
 
   def chainToString: String = s"$groupname (skipGrouper: $skipGrouper, $allName)" + (next match {
@@ -108,6 +118,7 @@ sealed trait GroupBy {
 
   def reset: Unit = {
     setAlphanumericOrdered(false)
+    setAvgOnMultipleCompetitions(true)
     next = None
   }
 
@@ -195,7 +206,7 @@ sealed trait FilterBy extends GroupBy {
         }
       )
     }
-    s"groupby=$groupby${filter.mkString}" + (if (isANO) "&alphanumeric" else "") + s"&kind=${kind}"
+    s"groupby=$groupby${filter.mkString}" + (if (isANO) "&alphanumeric" else "") + (if (isAVG) "&avg=true" else "&avg=false") + s"&kind=${kind}"
   }
 
   private[FilterBy] var filter: Set[DataObject] = Set.empty
@@ -524,10 +535,10 @@ object GroupBy {
         .map(x => x.split("=")(1))
         .headOption
     )
-    apply(groupby, filter, data, query.contains("&alphanumeric"), kind, groupers)
+    apply(groupby, filter, data, query.contains("&alphanumeric"), !query.contains("&avg=false"), kind, groupers)
   }
 
-  def apply(groupby: Option[String], filter: Iterable[String], data: Seq[WertungView], alphanumeric: Boolean, kind: ScoreListKind, groupers: List[FilterBy]): GroupBy = {
+  def apply(groupby: Option[String], filter: Iterable[String], data: Seq[WertungView], alphanumeric: Boolean, isAvgOnMultipleCompetitions: Boolean, kind: ScoreListKind, groupers: List[FilterBy]): GroupBy = {
     val filterList = filter.map { flt =>
       val keyvalues = flt.split(":")
       val key = keyvalues(0)
@@ -585,6 +596,7 @@ object GroupBy {
       ByProgramm().groupBy(ByGeschlecht())
     }
     query.setAlphanumericOrdered(alphanumeric)
+    query.setAvgOnMultipleCompetitions(isAvgOnMultipleCompetitions)
     query.setKind(kind)
     query
   }

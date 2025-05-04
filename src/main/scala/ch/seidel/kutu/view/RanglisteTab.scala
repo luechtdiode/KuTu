@@ -3,7 +3,7 @@ package ch.seidel.kutu.view
 import java.util.UUID
 import ch.seidel.commons.{DisplayablePage, PageDisplayer}
 import ch.seidel.kutu.Config._
-import ch.seidel.kutu.ConnectionStates
+import ch.seidel.kutu.{ConnectionStates, domain}
 import ch.seidel.kutu.KuTuApp.handleAction
 import ch.seidel.kutu.data._
 import ch.seidel.kutu.domain.{Altersklasse, Durchgang, KutuService, TeamRegel, WertungView, WettkampfView, encodeFileName}
@@ -247,16 +247,17 @@ class RanglisteTab(wettkampfmode: BooleanProperty, wettkampf: WettkampfView, ove
     }
   }
 
-  override def isPopulated = {
+  override def isPopulated: Boolean = {
     val combos = populate(groupers)
 
     val team = groupers.find(p => p.isInstanceOf[ByTeamRule] && p.groupname.startsWith("Wettkampf"))
     val kind: ScoreListKind = if (getData.exists(_.team > 0) || team.nonEmpty) Teamrangliste else Einzelrangliste
     resetFilterPresets(combos, kind)
+    cbAvg.visible = false
     true
   }
 
-  override def getPublishedScores = {
+  override def getPublishedScores: List[domain.PublishedScoreView] = {
     Await.result(service.listPublishedScores(UUID.fromString(wettkampf.uuid.get)), Duration.Inf)
   }
 
