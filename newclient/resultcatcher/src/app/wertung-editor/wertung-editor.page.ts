@@ -42,6 +42,7 @@ export class WertungEditorPage {
 
   item: WertungContainer;
   wertung: Wertung;
+  nextItem: WertungContainer
 
   geraetId: number;
 
@@ -127,6 +128,14 @@ export class WertungEditorPage {
         noteE: 0.00,
         endnote: 0.00
       }, this.itemOriginal.wertung);
+
+      const currentItemIndex = this.backendService.wertungen.findIndex(w => w.wertung.id === wc.wertung.id);
+      let nextItemIndex = currentItemIndex + 1;
+      if (currentItemIndex < 0 || currentItemIndex >= this.backendService.wertungen.length - 1) {
+        this.nextItem = undefined;
+      } else {
+        this.nextItem = this.backendService.wertungen[nextItemIndex];
+      }
 
       this.ionViewWillEnter();
     });
