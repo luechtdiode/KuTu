@@ -322,7 +322,7 @@
 		<jdk-home>${JAVA_HOME}</jdk-home>
 		<scala.majorversion>2.13</scala.majorversion>
 		<scala.version>2.13.16</scala.version>
-		<javafx.version>21.0.4</javafx.version>
+		<javafx.version>25-ea+14</javafx.version>
 		<pekkoHttp.version>1.1.0</pekkoHttp.version>
 		<pekko.version>1.1.3</pekko.version>
 		<scalafx.version>21.0.0-R32</scalafx.version>
