@@ -168,7 +168,10 @@ ScoreRoutes extends SprayJsonSupport with JsonSupport with AuthSupport with Rout
             }
             val byDurchgangMat = ByDurchgang(riegenZuDurchgang)
             val groupers: List[FilterBy] = {
-              val standardGroupers = List(ByWettkampfProgramm(programmText), ByProgramm(programmText),
+              val standardGroupers = List(
+                ByWettkampfProgramm(programmText), ByProgramm(programmText),
+                ByWettkampfProgramm("Programm"), ByProgramm("Programm"),
+                ByWettkampfProgramm("Kategorie"), ByProgramm("Kategorie"),
                 ByJahrgang(), ByJahrgangsAltersklasse("Turn10® Altersklassen", Altersklasse.altersklassenTurn10), ByAltersklasse("DTB Altersklassen", Altersklasse.altersklassenDTB),
                 ByGeschlecht(), ByVerband(), ByVerein(), byDurchgangMat,
                 ByRiege(), ByRiege2(), ByDisziplin(), ByJahr())
