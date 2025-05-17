@@ -1034,6 +1034,7 @@ package object domain {
     override def easyprint = f"PublishedScore($title - ${wettkampf.easyprint})"
 
     def isAlphanumericOrdered = query.contains("&alphanumeric")
+    def isAvgOnMultipleCompetitions = query.contains("&avg=true")
 
     def toRaw = PublishedScoreRaw(id, title, query, published, publishedDate, wettkampf.id)
   }
@@ -1228,7 +1229,7 @@ package object domain {
 
     override def calcEndnote(dnote: Double, enote: Double, wettkampfDisziplin: WettkampfdisziplinView) = {
       val dnoteValidated = if (wettkampfDisziplin.isDNoteUsed) dnote else 0d
-      BigDecimal(dnoteValidated + enote).setScale(wettkampfDisziplin.scale, BigDecimal.RoundingMode.FLOOR).*(punktgewicht).max(wettkampfDisziplin.min).min(wettkampfDisziplin.max).toDouble
+      (BigDecimal(dnoteValidated) + BigDecimal(enote)).*(punktgewicht).setScale(wettkampfDisziplin.scale, BigDecimal.RoundingMode.FLOOR).max(wettkampfDisziplin.min).min(wettkampfDisziplin.max).toDouble
     }
 
     override def getDifficultLabel: String = dNoteLabel

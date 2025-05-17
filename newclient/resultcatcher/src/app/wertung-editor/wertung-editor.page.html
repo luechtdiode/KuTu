@@ -33,5 +33,13 @@
         <ion-icon slot="start" name="checkmark-circle"></ion-icon>Speichern</ion-button>
     </ion-list>
   </form>
-
+  <ion-list *ngIf="nextItem">
+    <ion-item>
+      <ion-toolbar>
+        <ion-title *ngIf="nextItem.geschlecht==='Turner'">nächster Turner</ion-title>
+        <ion-title *ngIf="nextItem.geschlecht==='Turnerin'">nächste Turnerin</ion-title>
+        <ion-note slot="end"><div class="athlet">{{nextItem.vorname + ' ' + nextItem.name}}</div><div class="riege">{{nextItem.wertung.riege}}</div></ion-note>
+      </ion-toolbar>
+    </ion-item>
+  </ion-list>
 </ion-content>

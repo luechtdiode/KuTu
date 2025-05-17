@@ -26,7 +26,10 @@ case class CompetitionState (
           finishedDurchgangSteps
             .filter(fds => encodeURIComponent(fds.durchgang) != encodeURIComponent(eventDurchgangStarted.durchgang)),
           finishedDurchgaenge - eventDurchgangStarted.durchgang,
-          startStopEvents :+ eventDurchgangStarted,
+          startStopEvents.filter {
+            case ds: DurchgangResetted => !ds.durchgang.equals(eventDurchgangStarted.durchgang)
+            case _ => true
+          } :+ eventDurchgangStarted,
           lastWertungen, bestenResults, lastBestenResults, lastSequenceId,
           completedflags
         )
@@ -40,7 +43,10 @@ case class CompetitionState (
           startedDurchgaenge - eventDurchgangFinished.durchgang,
           finishedDurchgangSteps,
           finishedDurchgaenge + eventDurchgangFinished.durchgang,
-          startStopEvents :+ eventDurchgangFinished,
+          startStopEvents.filter {
+            case ds: DurchgangResetted => !ds.durchgang.equals(eventDurchgangFinished.durchgang)
+            case _ => true
+          } :+ eventDurchgangFinished,
           Map.empty, bestenResults, lastBestenResults, lastSequenceId,
           completedflags
         )

@@ -84,7 +84,14 @@ abstract class DefaultRanglisteTab(wettkampfmode: BooleanProperty, override val 
 
   var restoring = false
   val nullFilter = NullObject("alle")
-  
+  val cbAvg: CheckBox = new CheckBox {
+    text = "Durchschn. Punkte bei mehreren Wettkämpfen"
+    selected = true
+  }
+  val cbfSaved = new MenuButton("Gespeicherte Einstellungen") {
+    disable <== when(createBooleanBinding(() => items.isEmpty, items)) choose true otherwise false
+  }
+
   def print(printer: Printer): Unit = {
     PrintUtil.printWebContent(webView.engine, printer, PageOrientation.Portrait)
   }
@@ -216,6 +223,7 @@ abstract class DefaultRanglisteTab(wettkampfmode: BooleanProperty, override val 
         ByProgramm().groupBy(ByGeschlecht())
       }
       groupBy.setAlphanumericOrdered(cbModus.selected.value)
+      groupBy.setAvgOnMultipleCompetitions(cbAvg.selected.value)
       groupBy.setKind(cbKind.value.value)
       restoring = false
 
@@ -241,24 +249,25 @@ abstract class DefaultRanglisteTab(wettkampfmode: BooleanProperty, override val 
     	  model.retainAll(expected)
     	  model.insertAll(model.size, expected.filter(!model.contains(_)))
     	  model.sort{ (a, b) => a.compareTo(b) < 0}
-      
+
     	  checked.filter(model.contains(_)).foreach(combf.getCheckModel.check(_))
     	}
       query.setAlphanumericOrdered(cbModus.selected.value)
+      query.setAvgOnMultipleCompetitions(cbAvg.selected.value)
       query.setKind(cbKind.value.value)
 
       val combination = query.select(data).toList
       lastScoreDef.setValue(Some(query.asInstanceOf[FilterBy]))
 
       val logofile = PrintUtil.locateLogoFile(getSaveAsFilenameDefault.dir)
-      val ret = toHTML(combination, linesPerPage, query.isAlphanumericOrdered, logofile)
+      val ret = toHTML(combination, linesPerPage, query.isAlphanumericOrdered, query.isAvgOnMultipleCompetitions, logofile)
       if(linesPerPage == 0){
         webView.engine.loadContent(ret)
       }
       restoring = false
       ret
     }
-    
+
     def restoreGrouper(query: GroupBy): Unit = {
       restoring = true
 
@@ -290,11 +299,12 @@ abstract class DefaultRanglisteTab(wettkampfmode: BooleanProperty, override val 
         }
       }
       cbModus.selected.value = query.isAlphanumericOrdered
+      cbAvg.selected.value = query.isAvgOnMultipleCompetitions
       cbKind.value.value = query.getKind
       restoring = false
       refreshRangliste(query)
     }
-  
+
     combos.foreach{ case (comb, combfs) =>
       comb.onAction = _ => {
         if(!restoring) {
@@ -312,6 +322,10 @@ abstract class DefaultRanglisteTab(wettkampfmode: BooleanProperty, override val 
     }
     
     cbModus.onAction = _ => {
+      if(!restoring)
+        refreshRangliste(buildGrouper)
+    }
+    cbAvg.onAction = _ => {
       if(!restoring)
         refreshRangliste(buildGrouper)
     }
@@ -348,11 +362,20 @@ abstract class DefaultRanglisteTab(wettkampfmode: BooleanProperty, override val 
       restoreGrouper(grouper)
     }
 
-    def listFilter = getFilterSaveAsFilenameDefault.dir
-      .listFiles()
-      .filter(f => f.getName.endsWith(".scoredef"))
-      .toList
-      .sortBy { _.getName }
+    def listFilter = {
+      getFilterSaveAsFilenameDefault.dir match {
+        case null => List.empty
+        case dir if !dir.exists() => List.empty
+        case dir if !dir.isDirectory => List.empty
+        case dir if dir.listFiles().isEmpty => List.empty
+        case dir => dir.listFiles()
+          .filter(f => f != null && f.isFile && f.getName.endsWith(".scoredef"))
+          .toList
+          .sortBy {
+            _.getName
+          }
+      }
+    }
 
     def addPredefinedFilter(items: ObservableList[javafx.scene.control.MenuItem])(filter: File): Unit = {
       val menu = KuTuApp.makeMenuAction(filter.getName
@@ -385,11 +408,6 @@ abstract class DefaultRanglisteTab(wettkampfmode: BooleanProperty, override val 
         items.add(new SeparatorMenuItem())
       }
       listFilter.foreach(addSaved(_))
-    }
-
-    val cbfSaved = new MenuButton("Gespeicherte Einstellungen") {
-      refreshScorePresets(items)
-      disable <== when(createBooleanBinding(() => items.isEmpty, items)) choose true otherwise false
     }
 
     val btnSaveFilter = new Button {
@@ -438,6 +456,7 @@ abstract class DefaultRanglisteTab(wettkampfmode: BooleanProperty, override val 
     onSelectionChanged = _ => {
       if(selected.value) {
         refreshRangliste(buildGrouper)
+        refreshScorePresets(cbfSaved.items)
       }
     }
 
@@ -496,7 +515,7 @@ abstract class DefaultRanglisteTab(wettkampfmode: BooleanProperty, override val 
                 content = List(cbfSaved) ++ getActionButtons ++ List(btnPrint)
               },
               new ToolBar {
-                content = List(cbKind, cbModus)
+                content = List(cbKind, cbModus, cbAvg)
               },
               new ToolBar {
                 content = (topBox +: topCombos)
@@ -507,7 +526,7 @@ abstract class DefaultRanglisteTab(wettkampfmode: BooleanProperty, override val 
                 content = List(cbfSaved, btnSaveFilter) ++ getActionButtons ++ List(btnPrint)
               },
               new ToolBar {
-                content = List(cbKind, cbModus)
+                content = List(cbKind, cbModus, cbAvg)
               },
               new ToolBar {
                 content = (topBox +: topCombos)
@@ -524,16 +543,21 @@ abstract class DefaultRanglisteTab(wettkampfmode: BooleanProperty, override val 
     (if (filter.published) "Publiziert: " else "Bereitgestellt: ") + filter.title
   }
 
-  def normalizeFilterText(text: String) = encodeFileName(text).replace("/", "_")
-    .replace(".", "_")
-    .replace("?", "_")
-    .replace("&", "+")
-    .replace("=", "-")
-    .replace(":", "-")
-    .replace("!", "-")
-    .replace("groupby", "Gruppiert")
-    .replace("filter", "Gefiltert")
-    .replace("alphanumeric", "Sortierung_nach_Namen")
-    .replace("kind", "Art")
+  def normalizeFilterText(text: String) = encodeFileName(
+    text
+      .replace("groupby", "Gruppiert")
+      .replace("filter", "Gefiltert")
+      .replace("alphanumeric", "Sortierung_nach_Namen")
+      .replace("avg=true", "Durchschnittwertung")
+      .replace("avg=false", "Summenwertung")
+      .replace("kind=", "")
+      .replace("/", "_")
+      .replace(".", "_")
+      .replace("?", "_")
+      .replace("&", "+")
+      .replace("=", "-")
+      .replace(":", "-")
+      .replace("!", "-")
+    )
 
 }
