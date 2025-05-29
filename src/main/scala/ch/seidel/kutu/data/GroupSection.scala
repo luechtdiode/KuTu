@@ -253,7 +253,11 @@ case class GroupLeaf[GK <: DataObject](override val groupKey: GK, list: Iterable
           s"Total $dNoteLabel"
         }
         , prefWidth = 80, styleClass = Seq("hintdata"), valueMapper = gr => {
-          gr.sum.formattedD
+          if (gr.sum.noteD > 0
+            && gr.rang.noteD.toInt == 1)
+            "*" + gr.sum.formattedD
+          else
+            "" + gr.sum.formattedD
         }
       ),
       WKLeafCol[ResultRow](
@@ -315,13 +319,17 @@ case class GroupLeaf[GK <: DataObject](override val groupKey: GK, list: Iterable
     val wksums = wks.map { wk => aggreateFun(wk._2.map(w => w.resultat)) }.toList
     val rsum = aggreateFun(wksums)
 
-    val gwksums = wks.map { wk => aggreateFun(
-      wk._2.map { w =>
-        if (anzahWettkaempfe > 1)
-          w.resultat
-        else
-          (w.resultat * STANDARD_SCORE_FACTOR) + (w.resultat * gleichstandsregel.factorize(w, wk._2.map(w => w.resultat).toList))
-      }) * aggreateFun.sortFactor
+    val gwksums = wks.map { wk =>
+      val factorShift = gleichstandsregel.factorize(wk._2.toList)
+      aggreateFun(
+        wk._2.map { w =>
+          if (anzahWettkaempfe > 1)
+            w.resultat
+          else {
+            w.resultat * STANDARD_SCORE_FACTOR + factorShift
+          }
+        }
+      ) * aggreateFun.sortFactor
     }
     val gsum = aggreateFun(gwksums) //if (gwksums.nonEmpty) gwksums.reduce(_ + _) else Resultat(0, 0, 0)
     val wkDivider = if(avgSumsWithMultiCompetitions) wksums.size else 1
