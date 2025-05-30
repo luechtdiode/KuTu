@@ -31,7 +31,7 @@ trait WertungenRoutes extends SprayJsonSupport with JsonSupport with JwtSupport 
           get {
             complete {
               Future {
-                listRootProgramme().map(x => ProgrammRaw(x.id, x.name, x.aggregate, x.parent.map(_.id).getOrElse(0), x.ord, x.alterVon, x.alterBis, x.uuid, x.riegenmode))
+                listRootProgramme().map(x => ProgrammRaw(x.id, x.name, x.aggregate, x.parent.map(_.id).getOrElse(0), x.ord, x.alterVon, x.alterBis, x.uuid, x.riegenmode, x.bestOfCount))
               }
             }
           }
