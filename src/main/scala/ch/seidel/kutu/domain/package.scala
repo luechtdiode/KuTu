@@ -777,13 +777,14 @@ package object domain {
     val alterBis: Int
     val riegenmode: Int
     val uuid: String
+    val bestOfCount: Int
 
     def withParent(parent: ProgrammView) = {
-      ProgrammView(id, name, aggregate, Some(parent), ord, alterVon, alterBis, uuid, riegenmode)
+      ProgrammView(id, name, aggregate, Some(parent), ord, alterVon, alterBis, uuid, riegenmode, bestOfCount)
     }
 
     def toView = {
-      ProgrammView(id, name, aggregate, None, ord, alterVon, alterBis, uuid, riegenmode)
+      ProgrammView(id, name, aggregate, None, ord, alterVon, alterBis, uuid, riegenmode, bestOfCount)
     }
   }
 
@@ -807,9 +808,9 @@ package object domain {
    * +===========================================+=========================================================
    * </pre>
    */
-  case class ProgrammRaw(id: Long, name: String, aggregate: Int, parentId: Long, ord: Int, alterVon: Int, alterBis: Int, uuid: String, riegenmode: Int) extends Programm
+  case class ProgrammRaw(id: Long, name: String, aggregate: Int, parentId: Long, ord: Int, alterVon: Int, alterBis: Int, uuid: String, riegenmode: Int, bestOfCount: Int) extends Programm
 
-  case class ProgrammView(id: Long, name: String, aggregate: Int, parent: Option[ProgrammView], ord: Int, alterVon: Int, alterBis: Int, uuid: String, riegenmode: Int) extends Programm {
+  case class ProgrammView(id: Long, name: String, aggregate: Int, parent: Option[ProgrammView], ord: Int, alterVon: Int, alterBis: Int, uuid: String, riegenmode: Int, bestOfCount: Int) extends Programm {
     //override def easyprint = toPath
 
     def head: ProgrammView = parent match {
@@ -1070,7 +1071,7 @@ package object domain {
     def toWettkampfPlanTimeRaw = WettkampfPlanTimeRaw(id, wettkampf.id, wettkampfdisziplin.id, wechsel, einturnen, uebung, wertung)
   }
 
-  case class Resultat(noteD: scala.math.BigDecimal, noteE: scala.math.BigDecimal, endnote: scala.math.BigDecimal) extends DataObject {
+  case class Resultat(noteD: scala.math.BigDecimal, noteE: scala.math.BigDecimal, endnote: scala.math.BigDecimal, isStreichwertung: Boolean = false) extends DataObject {
     def -(r: Resultat): Resultat = Resultat(noteD - r.noteD, noteE - r.noteE, endnote - r.endnote)
 
     def +(r: Resultat): Resultat = Resultat(noteD + r.noteD, noteE + r.noteE, endnote + r.endnote)
@@ -1092,6 +1093,8 @@ package object domain {
       BigDecimal.decimal(Math.sqrt(noteD.toDouble)).setScale(noteD.scale, RoundingMode.HALF_UP),
       BigDecimal.decimal(Math.sqrt(noteE.toDouble)).setScale(noteE.scale, RoundingMode.HALF_UP),
       BigDecimal.decimal(Math.sqrt(endnote.toDouble)).setScale(endnote.scale, RoundingMode.HALF_UP))
+
+    def asStreichwertung: Resultat = copy(isStreichwertung = true)
 
     lazy val formattedD: String = if (noteD > 0) f"${noteD}%4.2f" else ""
     lazy val formattedE: String = if (noteE > 0) f"${noteE}%4.2f" else ""
@@ -1117,8 +1120,11 @@ package object domain {
     def endnoteAsText = valueAsText(endnote)
   }
 
-  case class WertungView(id: Long, athlet: AthletView, wettkampfdisziplin: WettkampfdisziplinView, wettkampf: Wettkampf, noteD: Option[scala.math.BigDecimal], noteE: Option[scala.math.BigDecimal], endnote: Option[scala.math.BigDecimal], riege: Option[String], riege2: Option[String], team: Int) extends DataObject {
-    lazy val resultat = Resultat(noteD.getOrElse(0), noteE.getOrElse(0), endnote.getOrElse(0))
+  case class WertungView(id: Long, athlet: AthletView, wettkampfdisziplin: WettkampfdisziplinView, wettkampf: Wettkampf, noteD: Option[scala.math.BigDecimal], noteE: Option[scala.math.BigDecimal], endnote: Option[scala.math.BigDecimal], riege: Option[String], riege2: Option[String], team: Int, isStreichwertung: Boolean = false) extends DataObject {
+    lazy val resultat = {
+      val r = Resultat(noteD.getOrElse(0), noteE.getOrElse(0), endnote.getOrElse(0))
+      if (isStreichwertung) r.asStreichwertung else r
+    }
 
     def +(r: Resultat) = resultat + r
 
@@ -1169,6 +1175,7 @@ package object domain {
     lazy val avg = Avg(resultate.map(_.sum).filter(r => r.endnote > 0))
     val rang: Resultat
     val auszeichnung: Boolean
+    val streichwert: Boolean = false
     val resultate: IndexedSeq[LeafRow] = IndexedSeq()
     val divider: Int = 1
   }
@@ -1181,7 +1188,7 @@ package object domain {
    * @param rang
    * @param auszeichnung true, if best score in that discipline
    */
-  case class LeafRow(title: String, sum: Resultat, rang: Resultat, auszeichnung: Boolean) extends DataRow with ResultRow
+  case class LeafRow(title: String, sum: Resultat, rang: Resultat, auszeichnung: Boolean, override val streichwert: Boolean) extends DataRow with ResultRow
 
   /**
    * Row of results per each discipline of one athlet/team

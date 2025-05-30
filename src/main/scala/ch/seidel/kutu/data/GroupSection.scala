@@ -1,14 +1,9 @@
 package ch.seidel.kutu.data
 
-import ch.seidel.kutu.data.GroupSection.{STANDARD_SCORE_FACTOR}
-
-import java.time._
-import java.time.temporal._
+import ch.seidel.kutu.data.GroupSection.STANDARD_SCORE_FACTOR
 import ch.seidel.kutu.domain._
 
 import scala.collection.mutable
-import scala.collection.mutable.StringBuilder
-import scala.math.BigDecimal.{double2bigDecimal, int2bigDecimal}
 
 object GroupSection {
   val STANDARD_SCORE_FACTOR = BigDecimal("1000000000000000000000")
@@ -142,7 +137,7 @@ case class GroupLeaf[GK <: DataObject](override val groupKey: GK, list: Iterable
             gr.resultate.find { x =>
               x.title.equals(grKey.easyprint)
             }.getOrElse(
-              LeafRow(grKey.easyprint, Resultat(0, 0, 0), Resultat(0, 0, 0), auszeichnung = false))
+              LeafRow(grKey.easyprint, Resultat(0, 0, 0), Resultat(0, 0, 0), auszeichnung = false, streichwert = false))
 
           val clDnote = WKLeafCol[ResultRow](text = dNoteLabel, prefWidth = 60, styleClass = Seq("hintdata"), valueMapper = gr => {
             val cs = colsum(gr)
@@ -163,7 +158,8 @@ case class GroupLeaf[GK <: DataObject](override val groupKey: GK, list: Iterable
           val clEndnote = WKLeafCol[ResultRow](text = "Endnote", prefWidth = 60, styleClass = Seq("valuedata"), valueMapper = gr => {
             val cs = colsum(gr)
             val best = if (cs.auszeichnung) "*" else ""
-            best + cs.sum.formattedEnd
+            val streich = if (cs.streichwert) ("(", ")") else ("", "")
+            best + streich._1 + cs.sum.formattedEnd.trim + streich._2
           })
           val clRang = WKLeafCol[ResultRow](text = "Rang", prefWidth = 60, styleClass = Seq("hintdata"), valueMapper = gr => {
             val cs = colsum(gr)
@@ -221,7 +217,11 @@ case class GroupLeaf[GK <: DataObject](override val groupKey: GK, list: Iterable
                 "*"
               else
                 ""
-              best + gr.resultate(index).sum.formattedEnd
+              val streich = if (gr.resultate(index).streichwert)
+                ("(", ")")
+              else
+                ("", "")
+              best + streich._1 + gr.resultate(index).sum.formattedEnd.trim + streich._2
             } else ""
           })
           lazy val clRang = WKLeafCol[ResultRow](text = "Rang", prefWidth = 60, styleClass = Seq("hintdata"), valueMapper = gr => {
@@ -314,15 +314,35 @@ case class GroupLeaf[GK <: DataObject](override val groupKey: GK, list: Iterable
     GroupSection.mapAvgRang(grp.map { d => (d._1, d._2._1, d._2._2) }).map(r => (r.groupKey.asInstanceOf[A] -> r)).toMap
   }
 
+  def mapToBestOfCounting(wertungen: Iterable[WertungView]): Iterable[WertungView] = {
+    if (wertungen.isEmpty || wertungen.head.wettkampfdisziplin.programm.bestOfCount < 1)
+      wertungen
+    else {
+      val bestOfCount = wertungen.head.wettkampfdisziplin.programm.bestOfCount
+      val bestOfwertungen = wertungen.toList.sortBy(w => w.resultat.endnote).reverse.take(bestOfCount)
+      wertungen.map{ w =>
+        if (bestOfwertungen.contains(w)) {
+          w
+        } else {
+          w.copy(isStreichwertung = true)
+        }
+      }
+    }
+  }
+
   def mapToAvgRowSummary(athlWertungen: Iterable[WertungView] = list, avgSumsWithMultiCompetitions: Boolean): (Resultat, Resultat, Iterable[(Disziplin, Long, Resultat, Resultat, Option[Int], Option[BigDecimal])], Iterable[(ProgrammView, Resultat, Resultat, Option[Int], Option[BigDecimal])], Resultat) = {
-    val wks = athlWertungen.filter(_.endnote.nonEmpty).groupBy { w => w.wettkampf }
-    val wksums = wks.map { wk => aggreateFun(wk._2.map(w => w.resultat)) }.toList
+    val wks = athlWertungen.filter(_.endnote.nonEmpty).groupBy { w => w.wettkampf }.map{
+      case (g,l) => (g, mapToBestOfCounting(l))
+    }
+
+    val wksums = wks.map { wk => aggreateFun(wk._2.filter(!_.isStreichwertung).map(w => w.resultat)) }.toList
     val rsum = aggreateFun(wksums)
 
     val gwksums = wks.map { wk =>
-      val factorShift = gleichstandsregel.factorize(wk._2.toList)
+      val countingWertungen = wk._2.filter(!_.isStreichwertung).toList
+      val factorShift = gleichstandsregel.factorize(countingWertungen)
       aggreateFun(
-        wk._2.map { w =>
+        countingWertungen.map { w =>
           if (anzahWettkaempfe > 1)
             w.resultat
           else {
@@ -416,20 +436,22 @@ case class GroupLeaf[GK <: DataObject](override val groupKey: GK, list: Iterable
             LeafRow(w._1.easyprint,
               ww.avg,
               ww.rang,
-              //team.perDisciplinResults(w._1).indexOf(ww.avg) > -1)
-              team.isRelevantResult(w._1, ww.groupKey.asInstanceOf[AthletView]))
+              ww.rang.endnote == 1,
+              !team.isRelevantResult(w._1, ww.groupKey.asInstanceOf[AthletView]))
           }
           else if(avgSumsWithMultiCompetitions && anzahWettkaempfe > 1) {
             LeafRow(w._1.name,
               ww.avg,
               rang,
-              rang.endnote == 1)
+              rang.endnote == 1,
+              ww.avg.isStreichwertung)
           }
           else {
             LeafRow(w._1.name,
               ww.sum,
               rang,
-              rang.endnote == 1)
+              rang.endnote == 1,
+              ww.sum.isStreichwertung)
           }
         }
         .filter(_.sum.endnote > 0)
@@ -437,7 +459,7 @@ case class GroupLeaf[GK <: DataObject](override val groupKey: GK, list: Iterable
         groups.head._2.toIndexedSeq.map{d =>
           dr.find(lr => lr.title == d.name) match {
             case Some(lr) => lr
-            case None => LeafRow(d.name, Resultat(0,0,0), Resultat(0,0,0), auszeichnung = false)
+            case None => LeafRow(d.name, Resultat(0,0,0), Resultat(0,0,0), auszeichnung = false, streichwert = false)
           }
         }.distinct
       }
@@ -449,13 +471,15 @@ case class GroupLeaf[GK <: DataObject](override val groupKey: GK, list: Iterable
             LeafRow(w._1.easyprint,
               ww.avg,
               ww.rang,
-              ww.rang.endnote < 4 && ww.rang.endnote >= 1)
+              ww.rang.endnote < 4 && ww.rang.endnote >= 1,
+              ww.avg.isStreichwertung)
           }
           else {
             LeafRow(w._1.easyprint,
               ww.sum,
               ww.rang,
-              ww.rang.endnote < 4 && ww.rang.endnote >= 1)
+              ww.rang.endnote < 4 && ww.rang.endnote >= 1,
+              ww.sum.isStreichwertung)
           }
         }.filter(_.sum.endnote >= 1).toIndexedSeq
       }
@@ -589,7 +613,8 @@ case class TeamSums(override val groupKey: DataObject, teamRows: List[GroupLeaf[
           LeafRow(w._1.easyprint,
             ww.avg,
             ww.rang,
-            ww.rang.endnote == 1)
+            ww.rang.endnote == 1,
+            ww.avg.isStreichwertung)
         }
           .toIndexedSeq
           .distinct
