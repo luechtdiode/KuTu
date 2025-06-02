@@ -51,7 +51,7 @@
     "@angular/language-service": "^20.0.0",
     "@babel/plugin-transform-async-to-generator": "^7.23.3",
     "@capacitor/cli": "6.2.0",
-    "@ionic/angular-toolkit": "^12.1.1",
+    "@ionic/angular-toolkit": "^12.2.0",
     "@types/jasmine": "~5.1.5",
     "@types/jasminewd2": "~2.0.13",
     "@types/node": "^22.13.10",
