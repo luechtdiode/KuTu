@@ -58,12 +58,18 @@ object ScoreToJsonRenderer {
       cols.foreach {
         case ccol: WKLeafCol[_] =>
           val c = ccol.asInstanceOf[WKLeafCol[T]]
-          gsBlock.append(s""""${escaped(c.text)}":"${escaped(c.valueMapper(row))}",""")
+          val value = c.valueMapper(row)
+          gsBlock.append(s""""${escaped(c.text)}":"${escaped(value.text)}",""")
+          gsBlock.append(s""""${escaped(c.text)}-raw":"${value.raw}",""")
+          gsBlock.append(s""""${escaped(c.text)}-styles": "${value.styleClass.mkString("[",",","]")}",""")
         case gc: WKGroupCol =>
           gsBlock.append(s""""${escaped(gc.text)}":{""")
           gc.cols.foreach { ccol =>
             val c = ccol.asInstanceOf[WKLeafCol[T]]
-            gsBlock.append(s""""${escaped(c.text)}":"${escaped(c.valueMapper(row))}",""")
+            val value = c.valueMapper(row)
+            gsBlock.append(s""""${escaped(c.text)}":"${escaped(value.text)}",""")
+            gsBlock.append(s""""${escaped(c.text)}-raw":"${value.raw}",""")
+            gsBlock.append(s""""${escaped(c.text)}-styles": "${value.styleClass.mkString("[",",","]")}",""")
           }
           gsBlock.deleteCharAt(gsBlock.size - 1)
           gsBlock.append("},")

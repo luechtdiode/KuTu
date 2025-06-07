@@ -1096,9 +1096,9 @@ package object domain {
 
     def asStreichwertung: Resultat = copy(isStreichwertung = true)
 
-    lazy val formattedD: String = if (noteD > 0) f"${noteD}%4.2f" else ""
-    lazy val formattedE: String = if (noteE > 0) f"${noteE}%4.2f" else ""
-    lazy val formattedEnd: String = if (endnote > 0) f"${endnote}%6.2f" else ""
+    lazy val formattedD: String = if (noteD > 0) f"${noteD}%4.2f" else " "
+    lazy val formattedE: String = if (noteE > 0) f"${noteE}%4.2f" else " "
+    lazy val formattedEnd: String = if (endnote > 0) if (noteD > 0) f"${endnote}%6.3f" else f"${endnote}%6.2f" else ""
 
     override def easyprint: String = f"${formattedD}%6s${formattedE}%6s${formattedEnd}%6s"
   }
@@ -1120,10 +1120,10 @@ package object domain {
     def endnoteAsText = valueAsText(endnote)
   }
 
-  case class WertungView(id: Long, athlet: AthletView, wettkampfdisziplin: WettkampfdisziplinView, wettkampf: Wettkampf, noteD: Option[scala.math.BigDecimal], noteE: Option[scala.math.BigDecimal], endnote: Option[scala.math.BigDecimal], riege: Option[String], riege2: Option[String], team: Int, isStreichwertung: Boolean = false) extends DataObject {
+  case class WertungView(id: Long, athlet: AthletView, wettkampfdisziplin: WettkampfdisziplinView, wettkampf: Wettkampf, noteD: Option[scala.math.BigDecimal], noteE: Option[scala.math.BigDecimal], endnote: Option[scala.math.BigDecimal], riege: Option[String], riege2: Option[String], team: Int, isStroked: Boolean = false) extends DataObject {
     lazy val resultat = {
       val r = Resultat(noteD.getOrElse(0), noteE.getOrElse(0), endnote.getOrElse(0))
-      if (isStreichwertung) r.asStreichwertung else r
+      if (isStroked) r.asStreichwertung else r
     }
 
     def +(r: Resultat) = resultat + r
@@ -1299,12 +1299,31 @@ package object domain {
     def swappednames = MatchCode(id, vorname, name, gebdat, verein)
   }
 
+  object Kandidat {
+    def mapToBestOfCounting(wertungen: Seq[WertungView]): Iterable[WertungView] = {
+      if (wertungen.isEmpty || wertungen.head.wettkampfdisziplin.programm.bestOfCount < 1)
+        wertungen
+      else {
+        val bestOfCount = wertungen.head.wettkampfdisziplin.programm.bestOfCount
+        val bestOfwertungen = wertungen.toList.sortBy(w => w.resultat.endnote).reverse.take(bestOfCount)
+        wertungen.map{ w =>
+          if (bestOfwertungen.contains(w)) {
+            w
+          } else {
+            w.copy(isStroked = true)
+          }
+        }
+      }
+    }
+
+  }
   case class Kandidat(wettkampfTitel: String, geschlecht: String, programm: String, id: Long,
                       name: String, vorname: String, jahrgang: String, verein: String, einteilung: Option[Riege], einteilung2: Option[Riege], diszipline: Seq[Disziplin], diszipline2: Seq[Disziplin], wertungen: Seq[WertungView]) {
+    lazy val markedWertungen = Kandidat.mapToBestOfCounting(wertungen)
+
     def matches(w1: Wertung, w2: WertungView): Boolean = {
       w2.wettkampfdisziplin.id == w1.wettkampfdisziplinId && w2.athlet.id == w1.athletId
     }
-
     def indexOf(wertung: Wertung): Int = wertungen.indexWhere(w => matches(wertung, w))
 
     def updated(idx: Int, wertung: Wertung): Kandidat = {
