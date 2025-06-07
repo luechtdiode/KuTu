@@ -1,5 +1,5 @@
 import { Component, OnInit } from '@angular/core';
-import { WertungContainer, Geraet, Wettkampf } from '../backend-types';
+import { WertungContainer, Geraet, Wettkampf, Wertung } from '../backend-types';
 import { NavController } from '@ionic/angular';
 import { BackendService } from '../services/backend.service';
 import { filter, map } from 'rxjs/operators';
@@ -15,7 +15,7 @@ import { GroupBy } from '../component/result-display/result-display.component';
     standalone: false
 })
 export class AthletViewPage  implements OnInit {
-  groupBy = GroupBy; 
+  groupBy = GroupBy;
 
   // @ViewChild(IonContent) content: IonContent;
 
@@ -26,7 +26,7 @@ export class AthletViewPage  implements OnInit {
   wkId: string;
 
   constructor(public navCtrl: NavController,
-              private route: ActivatedRoute,
+              private readonly route: ActivatedRoute,
               public backendService: BackendService) {
     if (! this.backendService.competitions) {
       this.backendService.getCompetitions();
@@ -70,7 +70,7 @@ export class AthletViewPage  implements OnInit {
   }
 
   sortItems(athletId: number) {
-    this.items = this.items.sort((a, b) => {
+    this.items.sort((a, b) => {
       let p = a.programm.localeCompare(b.programm);
       if (p === 0) {
         p = this.geraetOrder(a.geraet) - this.geraetOrder(b.geraet);
@@ -78,10 +78,26 @@ export class AthletViewPage  implements OnInit {
       return p;
     });
   }
+
   isNew(item: WertungContainer): boolean {
     const itemhash = this.makeItemHash(item);
     return this.lastItems.filter(id => id === itemhash).length === 0;
   }
+
+  get total(): WertungContainer {
+    const currentItem = this.items && this.items.length > 0 ? <WertungContainer>{ programm: '', geraet: 0, id: 0, vorname: this.items[0].vorname, name: this.items[0].name, geschlecht: this.items[0].geschlecht, verein: this.items[0].verein, wertung: <Wertung>{ noteE: 0, noteD: 0, endnote: 0, wettkampfdisziplinId: 0 }, isDNoteUsed: this.items[0].isDNoteUsed} : <WertungContainer>{ vorname: '', name: '', geschlecht: '', verein: '', programm: '', geraet: 0, id: 0, wertung: <Wertung>{ noteE: 0, noteD: 0, endnote: 0, wettkampfdisziplinId: 0 }, isDNoteUsed: false };
+    if (this.items && this.items.length > 0) {
+      return this.items.reduce((acc, item) => {
+        currentItem.wertung.noteE += item.wertung.noteE || 0;
+        currentItem.wertung.noteD += item.wertung.noteD || 0;
+        currentItem.wertung.endnote += item.wertung.endnote || 0;
+        return currentItem;
+      }, currentItem);
+    } else {
+      return currentItem;
+    }
+  }
+
   get stationFreezed(): boolean {
     return this.backendService.stationFreezed;
   }
@@ -162,7 +178,7 @@ export class AthletViewPage  implements OnInit {
   }
 
   getTitle(wertungContainer: WertungContainer): string {
-    return wertungContainer.programm + ' - ' + this.geraetText(wertungContainer.geraet);
+    return wertungContainer ? wertungContainer.programm + ' - ' + this.geraetText(wertungContainer.geraet) : 'Total Punkte';
   }
 
   isShareAvailable():boolean {

@@ -26,7 +26,7 @@
           </ion-note>
           <ion-label>
             <div style="font-size: 16pt;">{{athlet.vorname + ' ' + athlet.name}}</div>
-            <div style="font-size: 10pt;">{{athlet.verein}}</div>  
+            <div style="font-size: 10pt;">{{athlet.verein}}</div>
           </ion-label>
         </ion-col>
       </ion-row>
@@ -51,6 +51,12 @@
           <div [ngClass]="{'gradient-border':isNew(w)}">
             <result-display [item]="w" [title]="getTitle(w)" [groupedBy]="groupBy.ATHLET"></result-display>
           </div>
+        </ion-col>
+      </ion-row>
+      <ion-row>
+        <ion-col class="align-self-start"
+          size-xs="12" size-md="12" size-lg="12" size-xl="12">
+          <result-display [item]="total" [title]="getTitle(undefined)" [groupedBy]="groupBy.ATHLET"></result-display>
         </ion-col>
       </ion-row>
     </ion-grid>
