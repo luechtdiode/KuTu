@@ -8,6 +8,7 @@ export interface WertungContainer {
   geraet: number;
   programm: string;
   isDNoteUsed: boolean;
+  isStroked: boolean;
 }
 
 export interface BulkEvent {

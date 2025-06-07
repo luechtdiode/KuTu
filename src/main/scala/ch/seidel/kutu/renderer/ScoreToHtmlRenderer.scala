@@ -89,6 +89,13 @@ trait ScoreToHtmlRenderer {
          		  font-size: 11px;
               text-align: right
             }
+            td .stroke {
+              color: rgb(150,50,50);
+              text-decoration: line-through;
+            }
+            td .best::before {
+              content: '* ';
+            }
             td .hintdata {
               color: rgb(50,100,150);
               font-size: 9px;
@@ -299,20 +306,21 @@ trait ScoreToHtmlRenderer {
         col match {
           case ccol: WKLeafCol[_] =>
             val c = ccol.asInstanceOf[WKLeafCol[T]]
-            val t = c.valueMapper(row)
+            val value = c.valueMapper(row)
+            val t = escaped(value.raw)
+            val h = escaped(value.text)
             val smallfont = if (t.length() > 17) " sf2" else if (t.length() > 13) " sf1" else ""
             if (c.styleClass.contains("hintdata")) {
-              gsBlock.append(s"<td class='data blockstart$smallfont'><div class='hintdata'>${escaped(t)}</div></td>")
+              gsBlock.append(s"<td class='data blockstart$smallfont'><div class=${(c.styleClass ++ value.styleClass).mkString("'", " ", "'")}>$t</div></td>")
             }
             else if (c.styleClass.contains("heading")) {
-              gsBlock.append(s"<td class='heading blockstart'>${escaped(t)}</td>")
-              //gsBlock.append(s"<td class='data blockstart'><div class='heading'>${escaped(t)}</div></td>")
+              gsBlock.append(s"<td class='heading blockstart'>$h</td>")
             }
             else if (c.styleClass.contains("data")) {
-              gsBlock.append(s"<td class='data blockstart$smallfont'>${escaped(t)}</td>")
+              gsBlock.append(s"<td class='data blockstart$smallfont'>$h</td>")
             }
             else {
-              gsBlock.append(s"<td class='data blockstart$smallfont'><div class='valuedata'>${escaped(t)}</div></td>")
+              gsBlock.append(s"<td class='data blockstart$smallfont'><div class=${(c.styleClass ++ value.styleClass).mkString("'", " ", "'")}>$t</div></td>")
             }
           case gc: WKGroupCol =>
             var first = true
@@ -323,19 +331,22 @@ trait ScoreToHtmlRenderer {
                 "data blockstart"
               }
               else "data"
-              val t = escaped(c.valueMapper(row))
+              val value = c.valueMapper(row)
+              val t = escaped(value.raw)
+              val h = escaped(value.text)
               if (c.styleClass.contains("hintdata")) {
-                gsBlock.append(s"<td class='$style'><div class='hintdata'>$t</div></td>")
+                gsBlock.append(s"<td class='$style'><div class=${(c.styleClass ++ value.styleClass).mkString("'", " ", "'")}>$t</div></td>")
               }
               else if (c.styleClass.contains("data")) {
-                gsBlock.append(s"<td class='$style'>$t</td>")
+                gsBlock.append(s"<td class='$style'>$h</td>")
               }
               else if (c.styleClass.contains("heading")) {
-                gsBlock.append(s"<td class='$style heading'>$t</td>")
+                gsBlock.append(s"<td class='$style heading'>$h</td>")
                 //gsBlock.append(s"<td class='$style'><div class='heading'>$t</div></td>")
               }
               else {
-                gsBlock.append(s"<td class='$style'><div class='valuedata'>$t</div></td>")
+                gsBlock.append(s"<td class='$style'><div class=${(c.styleClass ++ value.styleClass).mkString("'", " ", "'")}>$t</div></td>")
+                //gsBlock.append(s"<td class='$style'><div class='valuedata'>$t</div></td>")
               }
             }
         }
@@ -469,19 +480,21 @@ trait ScoreToHtmlRenderer {
             col match {
               case ccol: WKLeafCol[_] if (ccol.colspan > 0)=>
                 val c = ccol.asInstanceOf[WKLeafCol[TeamRow]]
-                val t = c.valueMapper(row)
+                val value = c.valueMapper(row)
+                val t = escaped(value.raw)
+                val h = escaped(value.text)
                 val smallfont = if (t.length() > 17) " sf2" else if (t.length() > 13) " sf1" else ""
                 if (c.styleClass.contains("hintdata")) {
-                  gsBlock.append(s"<td rowspan=$getRowSpans colspan=${c.colspan} class='data blockstart$smallfont'><div class='hintdata'>${escaped(t)}</div></td>")
+                  gsBlock.append(s"<td rowspan=$getRowSpans colspan=${c.colspan} class='data blockstart$smallfont'><div class=${(c.styleClass ++ value.styleClass).mkString("'", " ", "'")}>$t</div></td>")
                 }
                 else if (c.styleClass.contains("data")) {
-                  gsBlock.append(s"<td rowspan=$getRowSpans colspan=${c.colspan} class='data blockstart$smallfont'>${escaped(t)}</td>")
+                  gsBlock.append(s"<td rowspan=$getRowSpans colspan=${c.colspan} class='data blockstart$smallfont'>$h</td>")
                 }
                 else if (c.styleClass.contains("heading")) {
-                  gsBlock.append(s"<td rowspan=$getRowSpans colspan=${c.colspan} class='heading blockstart'>${escaped(t)}</td>")
+                  gsBlock.append(s"<td rowspan=$getRowSpans colspan=${c.colspan} class='heading blockstart'>$h</td>")
                 }
                 else {
-                  gsBlock.append(s"<td rowspan=$getRowSpans colspan=${c.colspan} class='data blockstart$smallfont'><div class='valuedata'>${escaped(t)}</div></td>")
+                  gsBlock.append(s"<td rowspan=$getRowSpans colspan=${c.colspan} class='data blockstart$smallfont'><div class=${(c.styleClass ++ value.styleClass).mkString("'", " ", "'")}>$t</div></td>")
                 }
               case gc: WKGroupCol if (gc.colspan > 0) =>
                 var first = true
@@ -492,18 +505,20 @@ trait ScoreToHtmlRenderer {
                     "data blockstart"
                   }
                   else "data"
-                  val t = escaped(c.valueMapper(row))
+                  val value = c.valueMapper(row)
+                  val t = escaped(value.raw)
+                  val h = escaped(value.text)
                   if (c.styleClass.contains("hintdata")) {
-                    gsBlock.append(s"<td rowspan=$getRowSpans colspan=${c.colspan} class='$style'><div class='hintdata'>$t</div></td>")
+                    gsBlock.append(s"<td rowspan=$getRowSpans colspan=${c.colspan} class='$style'><div class=${(c.styleClass ++ value.styleClass).mkString("'", " ", "'")}>$t</div></td>")
                   }
                   else if (c.styleClass.contains("data")) {
-                    gsBlock.append(s"<td rowspan=$getRowSpans colspan=${c.colspan} class='$style'>$t</td>")
+                    gsBlock.append(s"<td rowspan=$getRowSpans colspan=${c.colspan} class='$style'>$h</td>")
                   }
                   else if (c.styleClass.contains("heading")) {
-                    gsBlock.append(s"<td rowspan=$getRowSpans colspan=${c.colspan} class='$style heading'>$t</td>")
+                    gsBlock.append(s"<td rowspan=$getRowSpans colspan=${c.colspan} class='$style heading'>$h</td>")
                   }
                   else {
-                    gsBlock.append(s"<td rowspan=$getRowSpans colspan=${c.colspan} class='$style'><div class='valuedata'>$t</div></td>")
+                    gsBlock.append(s"<td rowspan=$getRowSpans colspan=${c.colspan} class='$style'><div class=${(c.styleClass ++ value.styleClass).mkString("'", " ", "'")}>$t</div></td>")
                   }
                 }
 

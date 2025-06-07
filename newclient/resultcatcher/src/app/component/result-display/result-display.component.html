@@ -17,7 +17,9 @@
         <ion-note *ngIf="item.isDNoteUsed && item.wertung.noteD !== undefined" item-text-wrap>
           <span class="rightbound">&nbsp;&nbsp;&nbsp;{{dNoteLabel}}: {{item.wertung.noteD | number:'2.3-3'}}
           <br>&nbsp;&nbsp;&nbsp;{{eNoteLabel}}: {{item.wertung.noteE | number:'2.3-3'}}
-          <br><span style="font-size: 18pt;font-weight: bold">{{item.wertung.endnote | number:'2.3-3'}}</span>
+          <br>
+          <span *ngIf="item.isStroked" style="font-size: 18pt;background-color: darkred">{{item.wertung.endnote | number:'2.3-3'}}</span>
+          <span *ngIf="!item.isStroked" style="font-size: 18pt;font-weight: bold">{{item.wertung.endnote | number:'2.3-3'}}</span>
           </span>
         </ion-note>
         <ion-note *ngIf="!item.isDNoteUsed && item.wertung.noteE !== item.wertung.endnote" item-end item-text-wrap>
@@ -26,7 +28,8 @@
           </span>
         </ion-note>
         <ion-note *ngIf="!item.isDNoteUsed && item.wertung.noteE === item.wertung.endnote" item-end item-text-wrap>
-          <span class="rightbound" style="font-size: 18pt;font-weight: bold">{{item.wertung.endnote | number:'2.3-3'}}</span>
+          <span *ngIf="item.isStroked" class="rightbound" style="font-size: 18pt;background-color: darkred">{{item.wertung.endnote | number:'2.3-3'}}</span>
+          <span *ngIf="!item.isStroked" class="rightbound" style="font-size: 18pt;font-weight: bold">{{item.wertung.endnote | number:'2.3-3'}}</span>
         </ion-note>
       </ion-col>
     </ion-row>

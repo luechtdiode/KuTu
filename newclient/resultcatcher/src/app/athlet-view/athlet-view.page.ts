@@ -84,13 +84,19 @@ export class AthletViewPage  implements OnInit {
     return this.lastItems.filter(id => id === itemhash).length === 0;
   }
 
+  isStroked(item: WertungContainer): boolean {
+    return item.isStroked || false;
+  }
+
   get total(): WertungContainer {
     const currentItem = this.items && this.items.length > 0 ? <WertungContainer>{ programm: '', geraet: 0, id: 0, vorname: this.items[0].vorname, name: this.items[0].name, geschlecht: this.items[0].geschlecht, verein: this.items[0].verein, wertung: <Wertung>{ noteE: 0, noteD: 0, endnote: 0, wettkampfdisziplinId: 0 }, isDNoteUsed: this.items[0].isDNoteUsed} : <WertungContainer>{ vorname: '', name: '', geschlecht: '', verein: '', programm: '', geraet: 0, id: 0, wertung: <Wertung>{ noteE: 0, noteD: 0, endnote: 0, wettkampfdisziplinId: 0 }, isDNoteUsed: false };
     if (this.items && this.items.length > 0) {
       return this.items.reduce((acc, item) => {
-        currentItem.wertung.noteE += item.wertung.noteE || 0;
-        currentItem.wertung.noteD += item.wertung.noteD || 0;
-        currentItem.wertung.endnote += item.wertung.endnote || 0;
+        if (!item.isStroked) {
+          currentItem.wertung.noteE += item.wertung.noteE || 0;
+          currentItem.wertung.noteD += item.wertung.noteD || 0;
+          currentItem.wertung.endnote += item.wertung.endnote || 0;
+        }
         return currentItem;
       }, currentItem);
     } else {

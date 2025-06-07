@@ -293,7 +293,7 @@ trait WettkampfRoutes extends SprayJsonSupport
         } ~ pathLabeled("programmlist", "programmlist") {
           get {
             complete(listRootProgrammeAsync.map(list => list.map(pv => {
-              ProgrammRaw(pv.id, pv.name, pv.aggregate, pv.parent.map(_.id).getOrElse(0L), pv.ord, pv.alterVon, pv.alterBis, pv.uuid, pv.riegenmode)
+              ProgrammRaw(pv.id, pv.name, pv.aggregate, pv.parent.map(_.id).getOrElse(0L), pv.ord, pv.alterVon, pv.alterBis, pv.uuid, pv.riegenmode, pv.bestOfCount)
             })))
           }
         } ~ pathEnd {

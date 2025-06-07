@@ -19,7 +19,7 @@ class GleichstandsregelTest extends AnyWordSpec with Matchers {
       geraet <- diszipline.zip(wertungen).zipWithIndex
     )
     yield {
-      val wd = WettkampfdisziplinView(100 + geraet._2, ProgrammView(44L, "Testprogramm", 0, None, 1, 0, 100, UUID.randomUUID().toString, 1), Disziplin(geraet._2, geraet._1._1), "", None, StandardWettkampf(1.0), 1, 1, 0, 3, 1, 0, 30, 1)
+      val wd = WettkampfdisziplinView(100 + geraet._2, ProgrammView(44L, "Testprogramm", 0, None, 1, 0, 100, UUID.randomUUID().toString, 1, 0), Disziplin(geraet._2, geraet._1._1), "", None, StandardWettkampf(1.0), 1, 1, 0, 3, 1, 0, 30, 1)
       geraet._1._2.split(",").map(BigDecimal(_)).toList match {
         case List(enote, dnote) =>
           val endnote = enote + dnote

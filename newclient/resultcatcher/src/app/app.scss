@@ -73,9 +73,16 @@ ion-note {
   color: var(--ion-color-warning);
 }
 
+.isStroked {
+  ion-card {
+    color: var(--ion-color-warning);
+    background-color: var(--ion-color-warning-contrast);
+    font-style: italic;
+  }
+}
+
 .gradient-border {
   --borderWidth: 3px;
-  //background: #1D1F20;
   position: relative;
   border-radius: var(--borderWidth);
 
@@ -85,7 +92,6 @@ ion-note {
   ion-card {
     margin: auto;
     position: relative;
-    //background: #1D1F20;
     color: var(--ion-card-color);
     background-color: var(--ion-card-background-color);
   }
