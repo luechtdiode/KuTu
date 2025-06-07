@@ -136,6 +136,29 @@ trait WertungenRoutes extends SprayJsonSupport with JsonSupport with JwtSupport 
                   }
               }
             } ~
+            pathLabeled("validate", "validate") {
+              put {
+                authenticated() { userId =>
+                  if (userId.equals(competitionId.toString)) {
+                    entity(as[Wertung]) { wertung =>
+                      try {
+                        val w = getCurrentWertung(wertung) match {
+                          case None => validateWertung(wertung)
+                          case Some(currentWertung) => validateWertung(currentWertung.toWertung.updatedWertung(wertung))
+                        }
+                        complete(w)
+                      } catch {
+                        case e: IllegalArgumentException =>
+                          complete(MessageAck(e.getMessage))
+                      }
+                    }
+                  } else {
+                    log.error(s"[$clientId/$userId] Unauthorized: Reject unauthenticated update of wertung")
+                    complete(StatusCodes.Unauthorized)
+                  }
+                }
+              }
+            } ~
             pathLabeled(Segments, ":durchgang/:geraet/:step") { segments =>
               get {
                 // Durchgang/Geraet/Step

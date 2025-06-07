@@ -291,17 +291,29 @@ abstract trait WertungService extends DBService with WertungResultMapper with Di
       wv
     }
   }
-  
+
   @throws(classOf[Exception]) // called from mobile-client via coordinator-actor
-  def updateWertungSimple(w: Wertung): Wertung = {
+  def validateWertung(w: Wertung): Wertung = {
     val notenspez = readWettkampfDisziplinView(w.wettkampfdisziplinId)
     val wv = notenspez.verifiedAndCalculatedWertung(w)
-    if (notenspez.isDNoteUsed && wv.noteD != w.noteD) {
+    def eq(a: Option[BigDecimal], b: Option[BigDecimal]): Boolean = (a,b) match {
+      case (None, Some(v)) => v.compare(BigDecimal(0)) == 0
+      case (Some(v), None) => v.compare(BigDecimal(0)) == 0
+      case (None, None) => true
+      case (a, b) => a.get.compare(b.get) == 0
+    }
+    if (notenspez.isDNoteUsed && !eq(wv.noteD, w.noteD)) {
       throw new IllegalArgumentException(s"Erfasster D-Wert: ${w.noteDasText}, erlaubter D-Wert: ${wv.noteDasText}")
     }
-    if (wv.noteE != w.noteE) {
+    if (!eq(wv.noteE, w.noteE)) {
       throw new IllegalArgumentException(s"Erfasster E-Wert: ${w.noteEasText}, erlaubter E-Wert: ${wv.noteEasText}")
     }
+    wv
+  }
+
+  @throws(classOf[Exception]) // called from mobile-client via coordinator-actor
+  def updateWertungSimple(w: Wertung): Wertung = {
+    val wv = validateWertung(w);
     Await.result(database.run(DBIO.sequence(Seq(sqlu"""
                   UPDATE wertung
                   SET note_d=${wv.noteD}, note_e=${wv.noteE}, endnote=${wv.endnote}, riege=${wv.riege}, riege2=${wv.riege2}, team=${wv.team.getOrElse(0)}

@@ -1010,7 +1010,33 @@ export class BackendService extends WebsocketService {
       }
     }
 
-    isMessageAck(test: WertungContainer | MessageAck): test is MessageAck { return (test as MessageAck).type === 'MessageAck'; }
+    isMessageAck(test: Wertung | WertungContainer | MessageAck): test is MessageAck { return (test as MessageAck).type === 'MessageAck' ||  !!(test as MessageAck).msg; }
+
+    validateWertung(wertung: Wertung): Observable<Wertung> {
+      const competitionId = wertung.wettkampfUUID;
+      const result = new Subject<Wertung>();
+      if (this.shouldConnectAgain()) {
+        this.reconnect();
+      }
+      this.http.put<Wertung | MessageAck>(
+          backendUrl + 'api/durchgang/' + competitionId + '/validate',
+          wertung)
+      .subscribe({
+        next: (data) => {
+          if (!this.isMessageAck(data)) {
+            result.next(data);
+            result.complete();
+          } else {
+            result.next(wertung);
+            const msg = data as MessageAck;
+            result.complete();
+            this.showMessage.next(msg);
+          }
+        }, 
+        error: this.standardErrorHandler
+      });
+      return result;
+    }
 
     updateWertung(durchgang: string, step: number, geraetId: number, wertung: Wertung): Observable<WertungContainer> {
       const competitionId = wertung.wettkampfUUID;

@@ -1,45 +1,49 @@
 import { Component, ViewChild, NgZone } from '@angular/core';
 import { WertungContainer, Wertung } from '../backend-types';
-import { Subscription, defer, of } from 'rxjs';
-import { NavController, Platform, ToastController, AlertController } from '@ionic/angular';
+import { Subject, Subscription, defer, of } from 'rxjs';
+import { NavController, Platform, ToastController, AlertController, IonItemSliding } from '@ionic/angular';
 import { BackendService } from '../services/backend.service';
 import { NgForm } from '@angular/forms';
 import { ActivatedRoute } from '@angular/router';
 import { Keyboard } from '@capacitor/keyboard';
 import { Capacitor, Plugins } from '@capacitor/core';
 import { turn10ProgrammNames } from '../utils';
+import { debounceTime, distinctUntilChanged, map, filter, switchMap, tap, share } from 'rxjs/operators';
 
 @Component({
     selector: 'app-wertung-editor',
     templateUrl: './wertung-editor.page.html',
     styleUrls: ['./wertung-editor.page.scss'],
     standalone: false
-})
+  })
 export class WertungEditorPage {
-
+    
   constructor(public navCtrl: NavController,
-              private route: ActivatedRoute,
-              private alertCtrl: AlertController,
-              public toastController: ToastController,
-              public backendService: BackendService,
-              public platform: Platform,
-              private zone: NgZone) {
-      // If we navigated to this page, we will have an item available as a nav param
-      this.durchgang = backendService.durchgang;
-      this.step = backendService.step;
-      this.geraetId = backendService.geraet;
-      // tslint:disable-next-line:radix
-      const itemId = parseInt(this.route.snapshot.paramMap.get('itemId'));
-      this.updateUI(backendService.wertungen.find(w => w.id === itemId));
+      private route: ActivatedRoute,
+      private alertCtrl: AlertController,
+      public toastController: ToastController,
+      public backendService: BackendService,
+      public platform: Platform,
+      private zone: NgZone) {
+    // If we navigated to this page, we will have an item available as a nav param
+    this.durchgang = backendService.durchgang;
+    this.step = backendService.step;
+    this.geraetId = backendService.geraet;
+    // tslint:disable-next-line:radix
+    const itemId = parseInt(this.route.snapshot.paramMap.get('itemId'));
+    this.updateUI(backendService.wertungen.find(w => w.id === itemId));
+    this.installLazyAction();
   }
   private itemOriginal: WertungContainer;
-
+  
   @ViewChild('wertungsform') public form: any;
   @ViewChild('enote') public enote: { setFocus: () => void; };
   @ViewChild('dnote') public dnote: { setFocus: () => void; };
 
   private subscription: Subscription;
 
+  private readonly wertungChanged = new Subject<Wertung>();
+  
   item: WertungContainer;
   wertung: Wertung;
   nextItem: WertungContainer
@@ -62,6 +66,37 @@ export class WertungEditorPage {
     return this.item.isDNoteUsed && turn10ProgrammNames.indexOf(this.item.programm) > -1 ? "B-Note" : "E-Note";
   }
 
+  get dNote() {
+    return this.wertung.noteD;
+  }
+  set dNote(value: number) {
+    this.wertung.noteD = value;
+    this.wertungChanged.next(this.wertung);
+  }
+  
+  get eNote() {
+    return this.wertung.noteE;
+  }
+  set eNote(value: number) {
+    this.wertung.noteE = value;
+    this.wertungChanged.next(this.wertung);
+  }
+
+  installLazyAction() {
+    this.wertungChanged.pipe(
+      filter(wertung => {
+        const deOK = (wertung.noteD || 0) == 0 && (wertung.noteE || 0) == 0;
+        const eOK = (wertung.noteE || 0) > 0;
+        return deOK || eOK;
+      }),
+      debounceTime(1500),
+      distinctUntilChanged(),
+      share()
+    ).subscribe(wertung => {
+      this.validate(wertung);
+    });
+  }
+  
   ionViewWillLeave() {
     if (this.subscription) {
       this.subscription.unsubscribe();
@@ -79,7 +114,7 @@ export class WertungEditorPage {
       if (wc.wertung.athletId === this.wertung.athletId
          && wc.wertung.wettkampfdisziplinId === this.wertung.wettkampfdisziplinId
          && wc.wertung.endnote !== this.wertung.endnote) {
-        console.log('updateing wertung from service');
+        console.log('updating wertung from service');
         this.item.wertung = Object.assign({}, wc.wertung);
         this.itemOriginal.wertung = Object.assign({}, wc.wertung);
         this.wertung = Object.assign({
@@ -145,6 +180,24 @@ export class WertungEditorPage {
     return Object.assign(this.wertung, wertung);
   }
 
+  validate(wertung: Wertung) {
+    let toValidate: Wertung = Object.assign({}, wertung, {
+        noteD: wertung.noteD || null,
+        noteE: wertung.noteE || null
+      });
+    this.backendService.validateWertung(toValidate).subscribe({
+      next: (w) => {
+        this.wertung = Object.assign({}, this.wertung,{
+          noteD: wertung.noteD || null,
+          noteE: wertung.noteE || null,
+          endnote: w.endnote || null
+        })
+      },
+      error: (err) => {
+        console.log(err);
+    }});
+  }
+
   saveClose(form: NgForm) {
     if(!form.valid) return;
     this.waiting = true;
@@ -196,13 +249,46 @@ export class WertungEditorPage {
               + ' ' + this.backendService.wertungen[nextItemIndex].name);
           }
         }
-        form.resetForm();
+        //form.resetForm();
         this.updateUI(this.backendService.wertungen[nextItemIndex]);
       },
       error: (err) => {
         this.waiting = false;
         console.log(err);
     }});
+  }
+
+  itemTapped(slidingItem: IonItemSliding) {
+    slidingItem.getOpenAmount().then(amount => {
+        if (amount > 10 || amount < -10) {
+        slidingItem.close();
+      } else {
+        slidingItem.open('end');
+      }
+    });
+  }
+  
+  next(form: NgForm, slidingItem: IonItemSliding) {
+    slidingItem.close();
+    const currentItemIndex = this.backendService.wertungen.findIndex(w => w.wertung.id === this.wertung.id);
+    if (currentItemIndex < 0) {
+      console.log('unexpected wertung - id matches not with current wertung: ' + this.wertung.id);
+    }
+    let nextItemIndex = currentItemIndex + 1;
+    if (currentItemIndex < 0) {
+      nextItemIndex = 0;
+    } else if (currentItemIndex >= this.backendService.wertungen.length - 1) {
+      if (this.backendService.wertungen.filter(w => w.wertung.endnote === undefined).length === 0) {
+        this.navCtrl.pop();
+        this.toastSuggestCompletnessCheck();
+        return;
+      } else {
+        nextItemIndex = this.backendService.wertungen.findIndex(w => w.wertung.endnote === undefined);
+        this.toastMissingResult(form, this.backendService.wertungen[nextItemIndex].vorname
+          + ' ' + this.backendService.wertungen[nextItemIndex].name);
+      }
+    }
+    this.updateUI(this.backendService.wertungen[nextItemIndex]);
   }
 
   nextEmptyOrFinish(form: NgForm) {
@@ -219,7 +305,7 @@ export class WertungEditorPage {
       });
       this.toastMissingResult(form, this.backendService.wertungen[nextItemIndex].vorname
         + ' ' + this.backendService.wertungen[nextItemIndex].name);
-      form.resetForm();
+      //form.resetForm();
       this.updateUI(this.backendService.wertungen[nextItemIndex]);
     }
   }

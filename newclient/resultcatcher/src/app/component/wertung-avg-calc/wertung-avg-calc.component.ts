@@ -102,14 +102,14 @@ export class WertungAvgCalcComponent implements ControlValueAccessor {
     if (avg1.length === 0) {
       this.avgValue = undefined;
       this.onChange(undefined);
-      console.log('value updated: ' + undefined);
+      //console.log('value updated: ' + undefined);
       return undefined;
     }
     const avg2 = Number((avg1.reduce((sum, current) => sum + current, 0) / avg1.length).toFixed(this.fixed));
     if (!this.disabled && this.avgValue !== avg2 && !isNaN(avg2)) {
       this.avgValue = avg2;
       this.onChange(avg2);
-      console.log('value updated: ' + avg2);
+      //console.log('value updated: ' + avg2);
     }
     return avg2;
   }
@@ -135,7 +135,7 @@ export class WertungAvgCalcComponent implements ControlValueAccessor {
   disabled = false;
 
   writeValue(avgValue: number) {
-    console.log('writValue ' + avgValue);
+    //console.log('writValue ' + avgValue);
     this.avgValue = avgValue;
     this.singleValues = [{value: avgValue}];
   }
