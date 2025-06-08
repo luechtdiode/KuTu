@@ -34,10 +34,22 @@ function renderTeilnehmer(tnRow: ScoreRow) {
   return `${tnRow['Team']} (${tnRow['K']}): ${renderTeilnehmerWertungen(tnRow)}`
 }
 
+function renderWertung(gearValues: any) {
+  let best = "";
+  let stroke = "";
+  if (gearValues['Endnote-styles'].indexOf('best') >= 0) {
+    best = "*";
+  }
+  if (gearValues['Endnote-styles'].indexOf('stroke') >= 0) {
+    stroke = "!";
+  }
+  return `${best}${gearValues['Endnote-raw'].trim()}${stroke}`
+}
+
 function renderTeilnehmerWertungen(tnRow: ScoreRow) {
   return Object.keys(tnRow)
   .map(key => `${key}`)
   .filter((key: string) => knownKeys.indexOf(key) < 0 && tnRow[key]['Endnote'])
-  .map(key => `${key}: ${tnRow[key]['Endnote']} (${tnRow[key]['Rang']})`)
+  .map(key => `${key}: ${renderWertung(tnRow[key])} (${tnRow[key]['Rang'].trim()})`)
   .join(", ")
 }

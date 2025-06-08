@@ -12,12 +12,12 @@ trait JsonSupport extends SprayJsonSupport with EnrichedJson {
   import DefaultJsonProtocol._
 
   implicit val wkFormat: RootJsonFormat[Wettkampf] = jsonFormat(Wettkampf, "id", "uuid", "datum", "titel", "programmId", "auszeichnung", "auszeichnungendnote", "notificationEMail", "altersklassen", "jahrgangsklassen", "punktegleichstandsregel", "rotation", "teamrule")
-  implicit val pgmFormat: RootJsonFormat[ProgrammRaw] = jsonFormat9(ProgrammRaw)
+  implicit val pgmFormat: RootJsonFormat[ProgrammRaw] = jsonFormat10(ProgrammRaw)
   implicit val disziplinFormat: RootJsonFormat[Disziplin] = jsonFormat2(Disziplin)
   implicit val wertungFormat: RootJsonFormat[Wertung] = jsonFormat(Wertung, "id", "athletId", "wettkampfdisziplinId", "wettkampfId", "wettkampfUUID", "noteD", "noteE", "endnote", "riege", "riege2", "team")
   implicit val vereinFormat: RootJsonFormat[Verein] = jsonFormat(Verein, "id", "name", "verband")
   implicit val atheltViewFormat: RootJsonFormat[AthletView] = jsonFormat(AthletView, "id", "js_id", "geschlecht", "name", "vorname", "gebdat", "strasse", "plz", "ort", "verein", "activ")
-  implicit val wertungContainerFormat: RootJsonFormat[WertungContainer] = jsonFormat9(WertungContainer)
+  implicit val wertungContainerFormat: RootJsonFormat[WertungContainer] = jsonFormat10(WertungContainer)
   implicit val registrationFormat: RootJsonFormat[Registration] = jsonFormat11(Registration)
   implicit val newregistrationFormat: RootJsonFormat[NewRegistration] = jsonFormat8(NewRegistration)
   implicit val resetRegistrationPWFormat: RootJsonFormat[RegistrationResetPW] = jsonFormat3(RegistrationResetPW)
@@ -27,7 +27,7 @@ trait JsonSupport extends SprayJsonSupport with EnrichedJson {
   implicit val judgeregistrationPgmFormat: RootJsonFormat[JudgeRegistrationProgram] = jsonFormat5(JudgeRegistrationProgram)
   implicit val judgeRegistrationProgramItemFormat: RootJsonFormat[JudgeRegistrationProgramItem] = jsonFormat3(JudgeRegistrationProgramItem)
 
-  implicit val resultatFormat: RootJsonFormat[Resultat] = jsonFormat(Resultat, "noteD", "noteE", "endnote")
+  implicit val resultatFormat: RootJsonFormat[Resultat] = jsonFormat(Resultat, "noteD", "noteE", "endnote", "isStreichwertung")
 
   implicit val dataObjectFormat: RootJsonWriter[DataObject] = (p: DataObject) => {
     p.easyprint.toJson

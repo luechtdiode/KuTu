@@ -52,7 +52,7 @@ trait WettkampfService extends DBService
   def listRootProgrammeAsync: Future[List[ProgrammView]] = {
     val allPgmsQuery =
       sql"""select
-            id, name, aggregate, parent_id, ord, alter_von, alter_bis, uuid, riegenmode
+            id, name, aggregate, parent_id, ord, alter_von, alter_bis, uuid, riegenmode, bestOfCount
             from programm where parent_id is null or parent_id = 0""".as[ProgrammRaw]
         .map { l => l.map(p => p.id -> p).toMap }
         .map { map =>
@@ -289,7 +289,7 @@ trait WettkampfService extends DBService
   }
 
   def readProgramm(id: Long): ProgrammView = {
-    val allPgmsQuery = sql"""select id, name, aggregate, parent_id, ord, alter_von, alter_bis, uuid, riegenmode from programm""".as[ProgrammRaw]
+    val allPgmsQuery = sql"""select id, name, aggregate, parent_id, ord, alter_von, alter_bis, uuid, riegenmode, bestOfCount from programm""".as[ProgrammRaw]
       .map { l => l.map(p => p.id -> p).toMap }
       .map { map =>
         def resolve(id: Long): ProgrammView = {

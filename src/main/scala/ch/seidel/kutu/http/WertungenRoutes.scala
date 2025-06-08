@@ -6,7 +6,7 @@ import org.apache.pekko.http.scaladsl.model.{StatusCodes, Uri}
 import org.apache.pekko.http.scaladsl.server.Route
 import org.apache.pekko.util.Timeout
 import ch.seidel.kutu.actors._
-import ch.seidel.kutu.domain.{KutuService, ProgrammRaw, Wertung, WertungView, encodeURIComponent, str2Int, str2Long}
+import ch.seidel.kutu.domain.{Kandidat, KutuService, ProgrammRaw, Wertung, WertungView, encodeURIComponent, str2Int, str2Long}
 
 import scala.concurrent.Future
 import scala.concurrent.duration.DurationInt
@@ -31,7 +31,7 @@ trait WertungenRoutes extends SprayJsonSupport with JsonSupport with JwtSupport 
           get {
             complete {
               Future {
-                listRootProgramme().map(x => ProgrammRaw(x.id, x.name, x.aggregate, x.parent.map(_.id).getOrElse(0), x.ord, x.alterVon, x.alterBis, x.uuid, x.riegenmode))
+                listRootProgramme().map(x => ProgrammRaw(x.id, x.name, x.aggregate, x.parent.map(_.id).getOrElse(0), x.ord, x.alterVon, x.alterBis, x.uuid, x.riegenmode, x.bestOfCount))
               }
             }
           }
@@ -43,7 +43,7 @@ trait WertungenRoutes extends SprayJsonSupport with JsonSupport with JwtSupport 
               complete {
                 Future {
                   val wettkampf = readWettkampf(competitionId.toString())
-                  val wertungen = selectWertungen(wettkampfId = Some(wettkampf.id), athletId = Some(athletId))
+                  val wertungen = Kandidat.mapToBestOfCounting(selectWertungen(wettkampfId = Some(wettkampf.id), athletId = Some(athletId)))
                   wertungen.filter { wertung =>
                     if (wertung.wettkampfdisziplin.feminim == 0 && !wertung.athlet.geschlecht.equalsIgnoreCase("M")) {
                       false
@@ -59,7 +59,7 @@ trait WertungenRoutes extends SprayJsonSupport with JsonSupport with JwtSupport 
                       w.athlet.id, w.athlet.vorname, w.athlet.name, w.athlet.geschlecht,
                       w.athlet.verein.map(_.easyprint).getOrElse(""),
                       w.toWertung,
-                      w.wettkampfdisziplin.disziplin.id, w.wettkampfdisziplin.programm.name, w.wettkampfdisziplin.isDNoteUsed)
+                      w.wettkampfdisziplin.disziplin.id, w.wettkampfdisziplin.programm.name, w.wettkampfdisziplin.isDNoteUsed, w.isStroked)
                   }
                 }
               }
@@ -184,16 +184,16 @@ trait WertungenRoutes extends SprayJsonSupport with JsonSupport with JwtSupport 
                             gr.disziplin.exists(_.id == gid ) &&
                             gr.halt == halt - 1)
                           .flatMap(gr => gr.kandidaten.map(k => {
-                            k.wertungen.find(w => w.wettkampfdisziplin.disziplin.id == gid) match {
+                            k.markedWertungen.find(w => w.wettkampfdisziplin.disziplin.id == gid) match {
                               case Some(wertungView: WertungView) =>
                                 WertungContainer(k.id, k.vorname, k.name, k.geschlecht, k.verein,
                                   wertungView.toWertung,
-                                  gid, k.programm, wertungView.wettkampfdisziplin.isDNoteUsed)
+                                  gid, k.programm, wertungView.wettkampfdisziplin.isDNoteUsed, wertungView.isStroked)
                               case None =>
-                                val wertungView: WertungView = k.wertungen.head
+                                val wertungView: WertungView = k.markedWertungen.head
                                 WertungContainer(k.id, k.vorname, k.name, k.geschlecht, k.verein,
                                   wertungView.toWertung.copy(wettkampfdisziplinId = 0L),
-                                  gid, k.programm, wertungView.wettkampfdisziplin.isDNoteUsed)
+                                  gid, k.programm, wertungView.wettkampfdisziplin.isDNoteUsed, wertungView.isStroked)
                             }
                           }))
                       case _ =>
@@ -237,12 +237,12 @@ trait WertungenRoutes extends SprayJsonSupport with JsonSupport with JwtSupport 
                                 case AthletWertungUpdatedSequenced(athlet, verifiedWertung, _, _, ger, programm, _) =>
                                   val verein: String = athlet.verein.map(_.name).getOrElse("")
                                   WertungContainer(athlet.id, athlet.vorname, athlet.name, athlet.geschlecht, verein,
-                                    verifiedWertung, ger, programm, isDNoteUsed)
+                                    verifiedWertung, ger, programm, isDNoteUsed, isStroked = false)
 
                                 case AthletWertungUpdated(athlet, verifiedWertung, _, _, ger, programm) =>
                                   val verein: String = athlet.verein.map(_.name).getOrElse("")
                                   WertungContainer(athlet.id, athlet.vorname, athlet.name, athlet.geschlecht, verein,
-                                    verifiedWertung, ger, programm, isDNoteUsed)
+                                    verifiedWertung, ger, programm, isDNoteUsed, isStroked = false)
 
                                 case unexpectedEvent: KutuAppEvent => unexpectedEvent
                               }

@@ -116,7 +116,7 @@ case class CompetitionState (
     WertungContainer(
       athlet.id, athlet.vorname, athlet.name, athlet.geschlecht, athlet.verein.map(_.name).getOrElse(""),
       awuv.wertung,
-      awuv.geraet, awuv.programm, isDNoteUsed)
+      awuv.geraet, awuv.programm, isDNoteUsed, isStroked = false)
   }
 
   private def newCompetitionStateWith(wertungContainer: WertungContainer) =
