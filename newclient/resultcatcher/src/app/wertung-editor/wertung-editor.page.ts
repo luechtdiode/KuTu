@@ -1,6 +1,6 @@
 import { Component, ViewChild, NgZone } from '@angular/core';
 import { WertungContainer, Wertung } from '../backend-types';
-import { Subject, Subscription, defer, of } from 'rxjs';
+import { BehaviorSubject, Subject, Subscription, defer, of } from 'rxjs';
 import { NavController, Platform, ToastController, AlertController, IonItemSliding } from '@ionic/angular';
 import { BackendService } from '../services/backend.service';
 import { NgForm } from '@angular/forms';
@@ -46,6 +46,7 @@ export class WertungEditorPage {
   
   item: WertungContainer;
   wertung: Wertung;
+  lastValidatedWertung: Wertung;
   nextItem: WertungContainer
 
   geraetId: number;
@@ -89,11 +90,28 @@ export class WertungEditorPage {
         const eOK = (wertung.noteE || 0) > 0;
         return deOK || eOK;
       }),
+      tap(wertung => {
+        this.zone.run(() => {
+          this.wertung.endnote = null;
+        })}),
       debounceTime(1500),
-      distinctUntilChanged(),
       share()
     ).subscribe(wertung => {
-      this.validate(wertung);
+      let toValidate: Wertung = Object.assign({}, wertung, {
+        noteD: wertung.noteD || null,
+        noteE: wertung.noteE || null
+      });
+      if (toValidate.noteD !== this.lastValidatedWertung?.noteD || toValidate.noteE !== this.lastValidatedWertung?.noteE) {
+        this.lastValidatedWertung = toValidate;
+        this.backendService.validateWertung(toValidate).subscribe({
+          next: (w) => {
+            this.wertung.endnote = w.endnote || null;
+          },
+          error: (err) => {
+            console.log(err);
+          }
+        });      
+      }
     });
   }
   
@@ -178,24 +196,6 @@ export class WertungEditorPage {
 
   ensureInitialValues(wertung: Wertung): Wertung {
     return Object.assign(this.wertung, wertung);
-  }
-
-  validate(wertung: Wertung) {
-    let toValidate: Wertung = Object.assign({}, wertung, {
-        noteD: wertung.noteD || null,
-        noteE: wertung.noteE || null
-      });
-    this.backendService.validateWertung(toValidate).subscribe({
-      next: (w) => {
-        this.wertung = Object.assign({}, this.wertung,{
-          noteD: wertung.noteD || null,
-          noteE: wertung.noteE || null,
-          endnote: w.endnote || null
-        })
-      },
-      error: (err) => {
-        console.log(err);
-    }});
   }
 
   saveClose(form: NgForm) {

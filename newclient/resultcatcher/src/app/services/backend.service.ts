@@ -1020,7 +1020,8 @@ export class BackendService extends WebsocketService {
       }
       this.http.put<Wertung | MessageAck>(
           backendUrl + 'api/durchgang/' + competitionId + '/validate',
-          wertung)
+          wertung).pipe(
+        share())
       .subscribe({
         next: (data) => {
           if (!this.isMessageAck(data)) {
@@ -1142,7 +1143,7 @@ export class BackendService extends WebsocketService {
       if (prevGeraeteIdx < 0) {
         prevGeraeteIdx = this.geraete.length - 1;
       }
-      return this.geraete[prevGeraeteIdx].id;
+      return this.geraete[prevGeraeteIdx]?.id || this._geraet;
     }
 
     getNextGeraet(): number {
@@ -1153,7 +1154,7 @@ export class BackendService extends WebsocketService {
       if (nextGeraetIdx >= this.geraete.length) {
         nextGeraetIdx = 0;
       }
-      return this.geraete[nextGeraetIdx].id;
+      return this.geraete[nextGeraetIdx]?.id || this._geraet;
     }
 
     nextGeraet(): Observable<number> {

@@ -12,9 +12,9 @@
 <ion-content>
   <form #wertungsform="ngForm" (ngSubmit)="saveNext(wertungsform)" (keyup.enter)="saveNext(wertungsform)">
     <ion-list>
-      <app-wertung-avg-calc  #dnote name="noteD" *ngIf="isDNoteUsed" [waiting]="waiting" [valueTitle]="dNoteLabel" [(ngModel)]="dNote" [disabled]="!editable()">
+      <app-wertung-avg-calc  #dnote name="noteD" *ngIf="isDNoteUsed" [waiting]="waiting" [valueTitle]="dNoteLabel" [fixed]="1" [(ngModel)]="dNote" [disabled]="!editable()">
       </app-wertung-avg-calc>
-      <app-wertung-avg-calc  #enote name="noteE" [waiting]="waiting" [valueTitle]="eNoteLabel" [(ngModel)]="eNote" [disabled]="!editable()">
+      <app-wertung-avg-calc  #enote name="noteE" [waiting]="waiting" [valueTitle]="eNoteLabel" [fixed]="3" [(ngModel)]="eNote" [disabled]="!editable()">
       </app-wertung-avg-calc>
       <ion-item>
         <ion-input label="Endnote" #endnote [ngModel]='wertung.endnote' type="number" readonly name="endnote" [disabled]="!editable()"></ion-input>

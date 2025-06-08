@@ -144,6 +144,25 @@ export class AppComponent {
   }
 
   initializeApp() {
+    // ionic aria-hidden warning fix/workaround
+    const observer = new MutationObserver(mutations => {
+      mutations.forEach(mutation => {
+        if (mutation.type === 'attributes' && mutation.attributeName === 'aria-hidden') {
+          (mutation.target as any).removeAttribute('aria-hidden')
+        }
+      })
+      document.querySelectorAll('[aria-hidden]').forEach(el => {
+        el.removeAttribute('aria-hidden')
+      })
+    })
+
+    observer.observe(document.body, {
+      attributes: true,
+      childList: true,
+      subtree: true,
+      attributeFilter: ['aria-hidden']
+    });
+
     this.platform.ready().then(() => {
       // Okay, so the platform is ready and our plugins are available.
       // Here you can do any higher level native things you might need.

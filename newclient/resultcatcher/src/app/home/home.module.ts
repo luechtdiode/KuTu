@@ -5,9 +5,6 @@ import { IonicModule } from '@ionic/angular';
 import { RouterModule } from '@angular/router';
 
 import { HomePage } from './home.page';
-import { BackendService } from '../services/backend.service';
-import { TokenInterceptor } from '../services/token-interceptor';
-import { HTTP_INTERCEPTORS } from '@angular/common/http';
 
 @NgModule({
   schemas: [CUSTOM_ELEMENTS_SCHEMA],
