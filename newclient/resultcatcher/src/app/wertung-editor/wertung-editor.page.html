@@ -12,9 +12,9 @@
 <ion-content>
   <form #wertungsform="ngForm" (ngSubmit)="saveNext(wertungsform)" (keyup.enter)="saveNext(wertungsform)">
     <ion-list>
-      <app-wertung-avg-calc  #dnote name="noteD" *ngIf="isDNoteUsed" [waiting]="waiting" [valueTitle]="dNoteLabel" [(ngModel)]="wertung.noteD" [disabled]="!editable()">
+      <app-wertung-avg-calc  #dnote name="noteD" *ngIf="isDNoteUsed" [waiting]="waiting" [valueTitle]="dNoteLabel" [fixed]="1" [(ngModel)]="dNote" [disabled]="!editable()">
       </app-wertung-avg-calc>
-      <app-wertung-avg-calc  #enote name="noteE" [waiting]="waiting" [valueTitle]="eNoteLabel" [(ngModel)]="wertung.noteE" [disabled]="!editable()">
+      <app-wertung-avg-calc  #enote name="noteE" [waiting]="waiting" [valueTitle]="eNoteLabel" [fixed]="3" [(ngModel)]="eNote" [disabled]="!editable()">
       </app-wertung-avg-calc>
       <ion-item>
         <ion-input label="Endnote" #endnote [ngModel]='wertung.endnote' type="number" readonly name="endnote" [disabled]="!editable()"></ion-input>
@@ -32,14 +32,23 @@
       <ion-button size="large" expand="block" *ngIf='editable()' [disabled]="waiting || !wertungsform.valid"  color="secondary" (click)='saveClose(wertungsform)'>
         <ion-icon slot="start" name="checkmark-circle"></ion-icon>Speichern</ion-button>
     </ion-list>
+    <ion-list *ngIf="nextItem">
+      <ion-item-divider *ngIf="nextItem && nextItem.geschlecht==='Turner'">Nächster Turner</ion-item-divider>
+      <ion-item-divider *ngIf="nextItem && nextItem.geschlecht==='Turnerin'">Nächste Turnerin</ion-item-divider>
+      <ion-item-sliding #slidingAthletItem *ngIf="nextItem">
+        <ion-item (click)='itemTapped(slidingAthletItem)'>            
+          <ion-toolbar>
+            <ion-note slot="end"><div class="athlet">{{nextItem.vorname + ' ' + nextItem.name}}</div><div class="riege">{{nextItem.wertung.riege}}</div></ion-note>
+          </ion-toolbar>
+          <ion-icon slot="end" name="arrow-forward-circle-outline"></ion-icon>
+        </ion-item>        
+        <ion-item-options side="end">
+          <ion-item-option color="primary" (click)="next(wertungsform, slidingAthletItem)">
+              <ion-icon name="arrow-forward-circle-outline" ios="md-arrow-forward-circle-outline"></ion-icon>
+            {{nextItem.vorname + ' ' + nextItem.name}}
+          </ion-item-option>
+        </ion-item-options>
+      </ion-item-sliding>
+    </ion-list>
   </form>
-  <ion-list *ngIf="nextItem">
-    <ion-item>
-      <ion-toolbar>
-        <ion-title *ngIf="nextItem.geschlecht==='Turner'">nächster Turner</ion-title>
-        <ion-title *ngIf="nextItem.geschlecht==='Turnerin'">nächste Turnerin</ion-title>
-        <ion-note slot="end"><div class="athlet">{{nextItem.vorname + ' ' + nextItem.name}}</div><div class="riege">{{nextItem.wertung.riege}}</div></ion-note>
-      </ion-toolbar>
-    </ion-item>
-  </ion-list>
 </ion-content>

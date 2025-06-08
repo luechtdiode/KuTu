@@ -18,20 +18,6 @@ export class WertungAvgCalcComponent implements ControlValueAccessor {
   static nextId = 0;
 
   @HostBinding() id = `avg-calc-input-${WertungAvgCalcComponent.nextId++}`;
-  
-  _fixed: number = Number(localStorage.getItem('avg-calc-decimals') || 2);
-  
-  get fixed(): number {
-    return this._fixed;
-  }
-
-  @Input()
-  set fixed(value: number) {
-    this._fixed = value;
-    localStorage.setItem('avg-calc-decimals', '' + this._fixed);
-    this.calcAvg();
-    this.markAsTouched();
-  }
 
   @Input()
   hidden: boolean;
@@ -47,13 +33,34 @@ export class WertungAvgCalcComponent implements ControlValueAccessor {
 
   @Input()
   valueDescription: string;
+  
+  _fixed: number;
+  
+  get fixed(): number {
+    this._fixed = Number(localStorage.getItem(`avg-calc-decimals-${this.valueTitle}${localStorage.getItem('current_competition')}`)) || this._fixed;
+    return this._fixed;
+  }
 
+  @Input()
+  set fixed(value: number) {
+    this._fixed = value;
+  }
+
+  _compMethod: string = 'avg';
   avgValue: number;
 
   singleValues: {value:number}[] = [];
 
   get title(): string {
     return this.valueTitle;
+  }
+
+  get methodSymbol(): string {
+    if (this._compMethod === 'avg') {
+      return 'Ø';
+    } else {
+      return 'Σ';
+    }
   }
 
   get singleValueContainer() {
@@ -66,21 +73,41 @@ export class WertungAvgCalcComponent implements ControlValueAccessor {
     this.markAsTouched();
   }
 
+  get compMethod(): string {
+    this._compMethod = localStorage.getItem(`comp-method-${this.valueTitle}${localStorage.getItem('current_competition')}`) || this._compMethod;
+    return this._compMethod;
+  }
+  set compMethod(value: string) {
+    this._compMethod = value;
+    localStorage.setItem(`comp-method-${this.valueTitle}${localStorage.getItem('current_competition')}`, value);
+    this.calcAvg();
+    this.markAsTouched();    
+  }
+
   addKomma() {
     if (this._fixed < 3) {
-      this.fixed += 1;
+      this._fixed += 1;
+      localStorage.setItem(`avg-calc-decimals-${this.valueTitle}${localStorage.getItem('current_competition')}`, '' + this._fixed);
+      this.calcAvg();
+      this.markAsTouched();
     }
   }
 
   removeKomma() {
     if (this._fixed > 0) {
-      this.fixed -= 1;
+      this._fixed -= 1;
+      localStorage.setItem(`avg-calc-decimals-${this.valueTitle}${localStorage.getItem('current_competition')}`, '' + this._fixed);
+      this.calcAvg();
+      this.markAsTouched();
     }
   }
 
   add() {
     if (!this.disabled) {
       this.singleValues = [...this.singleValues, {value: 0.000}];
+      if (this.singleValues.length === 1) {
+        this.singleValues = [...this.singleValues, {value: 0.000}];
+      }
       this.markAsTouched();
     }
   }  
@@ -102,14 +129,17 @@ export class WertungAvgCalcComponent implements ControlValueAccessor {
     if (avg1.length === 0) {
       this.avgValue = undefined;
       this.onChange(undefined);
-      console.log('value updated: ' + undefined);
+      //console.log('value updated: ' + undefined);
       return undefined;
     }
-    const avg2 = Number((avg1.reduce((sum, current) => sum + current, 0) / avg1.length).toFixed(this.fixed));
+    console.log('compMethod: ' + this.compMethod);
+    const divider = this.compMethod === 'avg' ? avg1.length : 1;
+    console.log('divider: ' + divider);
+    const avg2 = Number((avg1.reduce((sum, current) => sum + current, 0) / divider).toFixed(this.fixed));
     if (!this.disabled && this.avgValue !== avg2 && !isNaN(avg2)) {
       this.avgValue = avg2;
       this.onChange(avg2);
-      console.log('value updated: ' + avg2);
+      //console.log('value updated: ' + avg2);
     }
     return avg2;
   }
@@ -135,7 +165,7 @@ export class WertungAvgCalcComponent implements ControlValueAccessor {
   disabled = false;
 
   writeValue(avgValue: number) {
-    console.log('writValue ' + avgValue);
+    //console.log('writValue ' + avgValue);
     this.avgValue = avgValue;
     this.singleValues = [{value: avgValue}];
   }
