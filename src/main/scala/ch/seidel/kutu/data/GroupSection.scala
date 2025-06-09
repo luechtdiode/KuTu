@@ -6,8 +6,7 @@ import ch.seidel.kutu.domain._
 import scala.collection.mutable
 
 object GroupSection {
-  val STANDARD_SCORE_FACTOR = BigDecimal("1000000000000000000000")
-
+  val STANDARD_SCORE_FACTOR = BigDecimal("100000000000000000000000000000000000000000000000000")
   def programGrouper( w: WertungView): ProgrammView = w.wettkampfdisziplin.programm.aggregatorSubHead
   def disziplinGrouper( w: WertungView): (Int, Disziplin) = (w.wettkampfdisziplin.ord, w.wettkampfdisziplin.disziplin)
   def groupWertungList(list: Iterable[WertungView]) = {

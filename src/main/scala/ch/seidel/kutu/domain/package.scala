@@ -1096,8 +1096,8 @@ package object domain {
 
     def asStreichwertung: Resultat = copy(isStreichwertung = true)
 
-    lazy val formattedD: String = if (noteD > 0) f"${noteD}%4.2f" else " "
-    lazy val formattedE: String = if (noteE > 0) f"${noteE}%4.2f" else " "
+    lazy val formattedD: String = if (noteD > 0) f"${noteD}%4.1f" else " "
+    lazy val formattedE: String =if (noteE > 0) if (noteD > 0) f"${noteE}%6.3f" else f"${noteE}%6.2f" else ""
     lazy val formattedEnd: String = if (endnote > 0) if (noteD > 0) f"${endnote}%6.3f" else f"${endnote}%6.2f" else ""
 
     override def easyprint: String = f"${formattedD}%6s${formattedE}%6s${formattedEnd}%6s"
