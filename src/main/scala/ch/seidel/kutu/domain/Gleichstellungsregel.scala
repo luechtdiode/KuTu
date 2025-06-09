@@ -10,7 +10,7 @@ import scala.math.BigDecimal.{RoundingMode, long2bigDecimal}
 object Gleichstandsregel {
   private val getu = "Disziplin(Schaukelringe,Sprung,Reck)"
   private val kutu = "E-Note-Summe/D-Note-Summe/JugendVorAlter"
-  private val kutustv = "E-Note-Summe/D-Note-Summe/StreichWertungen(Endnote,Min)/StreichWertungen(E-Note,Min)/StreichWertungen(D-Note,Min)"
+  private val kutustv = "StreichWertungen(Endnote,Min)/StreichWertungen(E-Note,Min)/StreichWertungen(D-Note,Min)"
 
   val predefined = Map(
       ("Ohne - Punktgleichstand => gleicher Rang" -> "Ohne")
