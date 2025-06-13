@@ -110,8 +110,8 @@ case class GleichstandsregelList(regeln: List[Gleichstandsregel]) extends Gleich
   override def factorize(athlWertungen: List[WertungView]): BigDecimal = {
     regeln
       .foldLeft((BigDecimal(0), STANDARD_SCORE_FACTOR/1000)){(acc, regel) =>
-        val factor = regel.factorize(athlWertungen)
         val range = regel.powerRange
+        val factor = regel.factorize(athlWertungen) % range
         val contribution = factor * acc._2 / range
         val ret = (acc._1 + contribution, (acc._2 / regel.powerRange).setScale(0, RoundingMode.FLOOR))
         if (factor > range) {

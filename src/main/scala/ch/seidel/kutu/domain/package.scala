@@ -1130,14 +1130,21 @@ package object domain {
 
     def getTeamName(extraTeams: List[String]): String = athlet.verein match {
       case Some(v) =>
-        if (team == 0) v.easyprint
-        else if (team < 0 && extraTeams.size > team * -1 - 1) {
-          s"${extraTeams(team * -1 - 1)}"
+        if (wettkampf.teamrule.exists(r => r.contains("VereinGe"))) {
+          if (team == 0) v.easyprint
+          else if (team < 0 && extraTeams.size > team * -1 - 1) {
+            s"${extraTeams(team * -1 - 1)}"
+          }
+          else
+            s"${v.easyprint} $team"
+        } else {
+          if (team == 0) s"${v.verband.getOrElse(v.extendedprint).split(",").last.trim}"
+          else if (team < 0 && extraTeams.size > team * -1 - 1) {
+            s"${extraTeams(team * -1 - 1)}"
+          }
+          else
+            s"${v.verband.getOrElse(v.extendedprint).split(",").last.trim} $team"
         }
-        else if (wettkampf.teamrule.exists(r => r.contains("VereinGe")))
-          s"${v.easyprint} $team"
-        else
-          s"${v.verband.getOrElse(v.extendedprint)} $team"
       case _ => if (team != 0) "$team" else ""
     }
 
