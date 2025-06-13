@@ -111,7 +111,8 @@ case class GleichstandsregelList(regeln: List[Gleichstandsregel]) extends Gleich
     regeln
       .foldLeft((BigDecimal(0), STANDARD_SCORE_FACTOR/1000)){(acc, regel) =>
         val range = regel.powerRange
-        val factor = regel.factorize(athlWertungen) % range
+        val factorFull = regel.factorize(athlWertungen)
+        val factor = if (factorFull > range) (factorFull % range).max(1) else factorFull
         val contribution = factor * acc._2 / range
         val ret = (acc._1 + contribution, (acc._2 / regel.powerRange).setScale(0, RoundingMode.FLOOR))
         if (factor > range) {
