@@ -119,13 +119,17 @@ case class CompetitionState (
       awuv.geraet, awuv.programm, isDNoteUsed, isStroked = false)
   }
 
+  def lastWertungenPerWKDisz = lastWertungen.filter(_._1.startsWith("D")).map(w => (w._1.substring(1), w._2))
+  def lastWertungenPerDisz = lastWertungen.filter(_._1.startsWith("G")).map(w => (w._1.substring(1), w._2))
   private def newCompetitionStateWith(wertungContainer: WertungContainer) =
     CompetitionState(
       startedDurchgaenge,
       finishedDurchgangSteps,
       finishedDurchgaenge,
       startStopEvents,
-      lastWertungen.updated(wertungContainer.wertung.wettkampfdisziplinId.toString(), wertungContainer),
+      lastWertungen
+        .updated(s"D${wertungContainer.wertung.wettkampfdisziplinId}", wertungContainer)
+        .updated(s"G${wertungContainer.geraet}", wertungContainer),
       putBestenResult(wertungContainer), lastBestenResults, lastSequenceId + 1,
       completedflags
     )

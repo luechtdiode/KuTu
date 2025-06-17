@@ -16,7 +16,8 @@ export interface BulkEvent {
   wettkampfUUID: string;
 }
 export interface NewLastResults {
-  results: {string: WertungContainer};
+  resultsPerWkDisz: {string: WertungContainer};
+  resultsPerDisz: {string: WertungContainer};
   lastTopResults: {string: WertungContainer};
 }
 

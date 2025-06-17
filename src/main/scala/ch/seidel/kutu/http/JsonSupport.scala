@@ -51,7 +51,7 @@ trait JsonSupport extends SprayJsonSupport with EnrichedJson {
   implicit val wertungUpdatedFormat: RootJsonFormat[AthletWertungUpdated] = jsonFormat6(AthletWertungUpdated)
   implicit val wertungUpdatedFormatSeq: RootJsonFormat[AthletWertungUpdatedSequenced] = jsonFormat7(AthletWertungUpdatedSequenced)
   implicit val stationsWertungenCompletedFormat: RootJsonFormat[StationWertungenCompleted] = jsonFormat1(StationWertungenCompleted)
-  implicit val newLastResultsFormat: RootJsonFormat[NewLastResults] = jsonFormat2(NewLastResults)
+  implicit val newLastResultsFormat: RootJsonFormat[NewLastResults] = jsonFormat3(NewLastResults)
   implicit val durchgangFinishedFormat: RootJsonFormat[DurchgangFinished] = jsonFormat3(DurchgangFinished)
   implicit val scoresPublished: RootJsonFormat[ScoresPublished] = jsonFormat5(ScoresPublished)
   implicit val lastResults: RootJsonFormat[LastResults] = jsonFormat1(LastResults)

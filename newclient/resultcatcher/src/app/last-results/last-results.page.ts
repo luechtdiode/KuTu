@@ -8,6 +8,7 @@ import { backendUrl } from '../utils';
 import { Observable } from 'rxjs/internal/Observable';
 import { Subject, BehaviorSubject, of, Subscription } from 'rxjs';
 import { GroupBy } from '../component/result-display/result-display.component';
+import { ActivatedRoute, Router } from '@angular/router';
 
 @Component({
     selector: 'app-last-results',
@@ -21,6 +22,7 @@ export class LastResultsPage implements OnInit, OnDestroy {
   // @ViewChild(IonContent) content: IonContent;
 
   items: WertungContainer[] = [];
+  mixeditems: WertungContainer[] = [];
   lastItems: number[];
   geraete: Geraet[] = [];
   scorelinks: ScoreLink[] = [];
@@ -48,6 +50,8 @@ export class LastResultsPage implements OnInit, OnDestroy {
 
   constructor(public navCtrl: NavController,
     public backendService: BackendService,
+    private readonly route: ActivatedRoute,
+    private router: Router,
     public actionSheetController: ActionSheetController
     ) {
     if (! this.backendService.competitions) {
@@ -65,17 +69,22 @@ export class LastResultsPage implements OnInit, OnDestroy {
   }
 
   ngOnInit(): void {
+    this.kategorieFilter = this.route.snapshot.queryParamMap.get('kategorieFilter') || 'getrennt';
     this.subscriptions.push(this.backendService.competitionSubject.subscribe(comps => {
       this.backendService.activateNonCaptionMode(this.backendService.competition).subscribe(geraete => {
         this.geraete = geraete || [];
         this.sortItems();
       });
-      this.subscriptions.push(this.backendService.newLastResults.subscribe(newLastRes => {
+      this.subscriptions.push(this.backendService.newLastResults.pipe(distinctUntilChanged()).subscribe(newLastRes => {
         this.lastItems = this.items.map(item => item.id * this.geraete.length + item.geraet);
         this.items = [];
-        if (!!newLastRes && !!newLastRes.results) {
-          Object.keys(newLastRes.results).forEach(key => {
-            this.items.push(newLastRes.results[key]);
+        this.mixeditems = [];
+        if (!!newLastRes && !!newLastRes.resultsPerWkDisz) {
+          Object.keys(newLastRes.resultsPerWkDisz).forEach(key => {
+            this.items.push(newLastRes.resultsPerWkDisz[key]);
+          });
+          Object.keys(newLastRes.resultsPerDisz).forEach(key => {
+            this.mixeditems.push(newLastRes.resultsPerDisz[key]);
           });
         }
         this.sortItems();
@@ -117,6 +126,11 @@ export class LastResultsPage implements OnInit, OnDestroy {
         }
       }));
     }));
+  }
+
+  optionsVisible: boolean = false;
+  toggleOptions() {
+    this.optionsVisible = !this.optionsVisible;
   }
 
   teamsAllowed(wk: Wettkampf): boolean {
@@ -173,7 +187,7 @@ export class LastResultsPage implements OnInit, OnDestroy {
 
   sortItems() {
     const compareItems = (a, b) => {
-      let p = a.programm.localeCompare(b.programm);
+      let p = 0; //a.programm.localeCompare(b.programm);
       if (p === 0) {
         p = this.geraetOrder(a.geraet) - this.geraetOrder(b.geraet);
       }
@@ -181,6 +195,9 @@ export class LastResultsPage implements OnInit, OnDestroy {
     };
 
     this.items = this.items
+      .filter(w => w.wertung.endnote !== undefined)
+      .sort(compareItems);
+    this.mixeditems = this.mixeditems
       .filter(w => w.wertung.endnote !== undefined)
       .sort(compareItems);
   }
@@ -266,10 +283,19 @@ export class LastResultsPage implements OnInit, OnDestroy {
     return this.geraete?.length || 0;
   }
 
+  getColumnSpecs(): number[] {
+    const columnSpec = this.getColumnSpec();
+    if (columnSpec === 6) {
+      return [ 12, 12, 6, 3, this.getMaxColumnSpec()];
+    } else if (columnSpec === 0) {
+      return [ 12, 6, 4, 3, this.getMaxColumnSpec()];
+    }
+  }
+
   getMaxColumnSpec(): number {
     return Math.min(12, Math.max(1, Math.floor(12 / this.geraete.length + 0.5)));
   }
-  
+
   getTitle(wertungContainer: WertungContainer): string {
     return wertungContainer.programm + ' - ' + this.geraetText(wertungContainer.geraet);
   }
@@ -279,11 +305,64 @@ export class LastResultsPage implements OnInit, OnDestroy {
   }
 
   getProgramme() {
-    return this.items.map(wc => wc.programm).filter(this.onlyUnique);
+    if (this.kategorieFilter === 'getrennt') {
+      return this.items.map(wc => wc.programm).filter(this.onlyUnique);
+    } else {
+      return [this.mixeditems.map(wc => wc.programm)[0]];
+    }
   }
 
   getWertungen(programm) {
-    return this.items.filter(wc => wc.programm === programm);
+    if (this.kategorieFilter === 'getrennt') {
+      return this.items.filter(wc => wc.programm === programm);
+    } else {
+      return this.getMixedWertungen();
+    }
+  }
+
+  getMixedWertungen() {
+    return this.mixeditems;
+  }
+
+  hideHeader: number = 0;
+
+  toggleHeader() {
+    this.hideHeader = this.hideHeader += 1;
+    if (this.hideHeader > 2) {
+      this.hideHeader = 0;
+    }
+  }
+
+  isToolbarTop(): boolean {
+    return this.hideHeader === 0;
+  }
+
+  isToolbarBottom(): boolean {
+    return this.hideHeader === 1;
+  }
+
+  isFullscreen(): boolean {
+    return this.hideHeader === 2;
+  }
+
+  _kategorieFilter: string = "getrennt";
+
+  set kategorieFilter(kategorieFilter: string) {
+    this._kategorieFilter = kategorieFilter;
+    if (this._kategorieFilter?.trim().length > 0) {
+      this.router.navigate(
+        ['last-results'],
+        {
+          queryParams: {kategorieFilter: kategorieFilter}, // add query params to current url
+          queryParamsHandling: 'merge', // remove to replace all query params by provided
+        }
+      );
+    } else {
+      this.router.navigate(['search-athlet']);
+    }
+  }
+  get kategorieFilter(): string {
+    return this._kategorieFilter;
   }
 
   scorelistAvailable(): boolean {

@@ -162,7 +162,7 @@ class CompetitionCoordinatorClientActor(wettkampfUUID: String) extends Persisten
       if (handleEvent(started)) persist(started) { evt =>
         storeDurchgangStarted(started)
         notifyWebSocketClients(senderWebSocket, started, durchgang)
-        val msg = NewLastResults(state.lastWertungen, state.lastBestenResults)
+        val msg = NewLastResults(state.lastWertungenPerWKDisz, state.lastWertungenPerDisz, state.lastBestenResults)
         notifyWebSocketClients(senderWebSocket, msg, durchgang)
       }
       sender() ! started
@@ -266,7 +266,7 @@ class CompetitionCoordinatorClientActor(wettkampfUUID: String) extends Persisten
       //      squashDurchgangEvents(durchgangNormalized).foreach { d =>
       //        ref ! d
       //      }
-      ref ! NewLastResults(state.lastWertungen, state.lastBestenResults)
+      ref ! NewLastResults(state.lastWertungenPerWKDisz, state.lastWertungenPerDisz, state.lastBestenResults)
 
     // system actions
     case KeepAlive =>
@@ -512,7 +512,7 @@ class CompetitionCoordinatorClientActor(wettkampfUUID: String) extends Persisten
   }
 
   def notifyBestenResult(): Unit = {
-    val msg = NewLastResults(state.lastWertungen, state.lastBestenResults)
+    val msg = NewLastResults(state.lastWertungenPerWKDisz, state.lastWertungenPerDisz, state.lastBestenResults)
     notifyWebSocketClients(Iterable.empty, msg, "")
   }
 
