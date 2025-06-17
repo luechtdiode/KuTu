@@ -979,6 +979,9 @@ export class BackendService extends WebsocketService {
     }
 
     activateNonCaptionMode(competitionId: string): Observable<Geraet[]> {
+      if (!competitionId || competitionId === 'undefined') {
+        return of([]);
+      }
       if (this._competition !== competitionId
         || this.captionmode
         || (!!!this.geraete || this.geraete.length === 0)

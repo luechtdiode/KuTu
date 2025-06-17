@@ -52,7 +52,7 @@ case class DonationMailSent(teilnehmer: Int, price: BigDecimal, donationLink: St
 case class DonationApproved(amount: BigDecimal, wettkampfUUID: String) extends KutuAppEvent
 case class GeraeteRiegeList(list: List[GeraeteRiege], wettkampfUUID: String) extends KutuAppEvent
 
-case class NewLastResults(results: Map[String, WertungContainer], lastTopResults: Map[String, WertungContainer]) extends KutuAppEvent
+case class NewLastResults(resultsPerWkDisz: Map[String, WertungContainer], resultsPerDisz: Map[String, WertungContainer], lastTopResults: Map[String, WertungContainer]) extends KutuAppEvent
 case class LastResults(results: List[AthletWertungUpdatedSequenced]) extends KutuAppEvent
 case class MessageAck(msg: String) extends KutuAppEvent
 case class ResponseMessage(data: Object) extends KutuAppEvent
