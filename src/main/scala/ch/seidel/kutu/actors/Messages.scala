@@ -8,7 +8,7 @@ case class Subscribe(clientSource: ActorRef, deviceId: String, durchgang: Option
 case class StopDevice(deviceId: String)
 case class CreateClient(deviceID: String, wettkampfUUID: String)
 
-case class WertungContainer(id: Long, vorname: String, name: String, geschlecht: String, verein: String, wertung: Wertung, geraet: Long, programm: String, isDNoteUsed: Boolean, isStroked: Boolean)
+case class WertungContainer(id: Long, vorname: String, name: String, geschlecht: String, verein: String, wertung: Wertung, geraet: Long, programm: String, durchgang: String, isDNoteUsed: Boolean, isStroked: Boolean)
 
 sealed trait KutuAppProtokoll
 

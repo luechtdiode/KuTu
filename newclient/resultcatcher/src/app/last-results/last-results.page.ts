@@ -1,5 +1,5 @@
 import { Component, OnDestroy, OnInit } from '@angular/core';
-import { WertungContainer, Geraet, Wettkampf, ScoreBlock, ScoreRow, ScoreLink } from '../backend-types';
+import { WertungContainer, Geraet, Wettkampf, ScoreBlock, ScoreRow, ScoreLink, DurchgangStarted } from '../backend-types';
 import { IonItemSliding, NavController, ActionSheetController } from '@ionic/angular';
 
 import { BackendService } from '../services/backend.service';
@@ -69,13 +69,11 @@ export class LastResultsPage implements OnInit, OnDestroy {
   }
 
   ngOnInit(): void {
-    this.kategorieFilter = this.route.snapshot.queryParamMap.get('kategorieFilter') || 'getrennt';
+    this.competition = this.route.snapshot.queryParamMap.get('c') || this.backendService.competition;
+    this.kategorieFilter = this.route.snapshot.queryParamMap.get('k') || 'getrennt';
+    this.durchgangFilter = this.route.snapshot.queryParamMap.get('d') || 'undefined';
     this.subscriptions.push(this.backendService.competitionSubject.subscribe(comps => {
-      this.backendService.activateNonCaptionMode(this.backendService.competition).subscribe(geraete => {
-        this.geraete = geraete || [];
-        this.sortItems();
-      });
-      this.subscriptions.push(this.backendService.newLastResults.pipe(distinctUntilChanged()).subscribe(newLastRes => {
+      this.subscriptions.push(this.backendService.newLastResults.subscribe(newLastRes => {
         this.lastItems = this.items.map(item => item.id * this.geraete.length + item.geraet);
         this.items = [];
         this.mixeditems = [];
@@ -212,10 +210,14 @@ export class LastResultsPage implements OnInit, OnDestroy {
   set competition(competitionId: string) {
     if (!this.stationFreezed) {
       this.backendService.getDurchgaenge(competitionId);
-      this.backendService.activateNonCaptionMode(this.backendService.competition).subscribe(geraete => {
-        this.geraete = geraete || [];
-        this.sortItems();
-      });
+      this.router.navigate(
+        ['last-results'],
+        {
+          queryParams: {c: this.competition, k: this._kategorieFilter, d: this.backendService.durchgang}, // add query params to current url
+          queryParamsHandling: 'merge', // remove to replace all query params by provided
+        }
+      );
+
     }
   }
   get competition(): string {
@@ -320,6 +322,54 @@ export class LastResultsPage implements OnInit, OnDestroy {
     }
   }
 
+  _durchgang: string = undefined;
+
+  getDurchgaenge() {
+    return this.backendService.durchgaenge
+    //return this.backendService.activeDurchgangList.map(d => d.durchgang);
+  }
+  isDurchgangActiv(durchgang: string): boolean {
+    return this.backendService.activeDurchgangList.find(d => d.durchgang === durchgang) !== undefined
+  }
+
+  set durchgangFilter(durchgang: string) {
+    if (!durchgang || durchgang === 'undefined') {
+      console.log("navigate to durchgang " + durchgang);
+      this.router.navigate(
+        ['last-results'],
+        {
+          queryParams: {c: this.competition, k: this._kategorieFilter, d: undefined}, // add query params to current url
+          queryParamsHandling: 'merge', // remove to replace all query params by provided
+        }
+      );
+
+      this.backendService.activateNonCaptionMode(this.backendService.competition).subscribe(geraete => {
+        this.geraete = geraete || [];
+        this.sortItems();
+      });
+      this._durchgang = undefined;
+    } else {
+      console.log("navigate to durchgang defined: " + durchgang);
+      this.router.navigate(
+        ['last-results'],
+        {
+          queryParams: {c: this.competition, k: this._kategorieFilter, d: durchgang}, // add query params to current url
+          queryParamsHandling: 'merge', // remove to replace all query params by provided
+        }
+      );
+      this.backendService.getGeraete(this.backendService.competition, durchgang).subscribe(geraete => {
+        this.geraete = geraete || [];
+        this.sortItems();
+      });;
+      this.backendService.disconnectWS(true);
+      this.backendService.initWebsocket();
+      this._durchgang = durchgang;
+    }
+  }
+  get durchgangFilter(): string {
+    return this._durchgang || 'undefined';
+  }
+
   getMixedWertungen() {
     return this.mixeditems;
   }
@@ -333,6 +383,15 @@ export class LastResultsPage implements OnInit, OnDestroy {
     }
   }
 
+  get nextToolbarPosition(): string {
+    if (this.hideHeader === 0) {
+      return 'von oben nach unten';
+    } else if (this.hideHeader === 1) {
+      return 'von unten nach ausgeblendet';
+    } else {
+      return 'oben';
+    }
+  }
   isToolbarTop(): boolean {
     return this.hideHeader === 0;
   }
@@ -353,12 +412,18 @@ export class LastResultsPage implements OnInit, OnDestroy {
       this.router.navigate(
         ['last-results'],
         {
-          queryParams: {kategorieFilter: kategorieFilter}, // add query params to current url
+          queryParams: {c: this.competition, k: kategorieFilter, d: this.backendService.durchgang}, // add query params to current url
           queryParamsHandling: 'merge', // remove to replace all query params by provided
         }
       );
     } else {
-      this.router.navigate(['search-athlet']);
+      this.router.navigate(
+        ['last-results'],
+        {
+          queryParams: {c: this.competition, d: this.backendService.durchgang}, // add query params to current url
+          queryParamsHandling: 'merge', // remove to replace all query params by provided
+        }
+      );
     }
   }
   get kategorieFilter(): string {

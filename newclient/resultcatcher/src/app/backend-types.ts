@@ -7,6 +7,7 @@ export interface WertungContainer {
   wertung: Wertung;
   geraet: number;
   programm: string;
+  durchgang: string;
   isDNoteUsed: boolean;
   isStroked: boolean;
 }

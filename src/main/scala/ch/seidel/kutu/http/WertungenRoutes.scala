@@ -59,7 +59,7 @@ trait WertungenRoutes extends SprayJsonSupport with JsonSupport with JwtSupport 
                       w.athlet.id, w.athlet.vorname, w.athlet.name, w.athlet.geschlecht,
                       w.athlet.verein.map(_.easyprint).getOrElse(""),
                       w.toWertung,
-                      w.wettkampfdisziplin.disziplin.id, w.wettkampfdisziplin.programm.name, w.wettkampfdisziplin.isDNoteUsed, w.isStroked)
+                      w.wettkampfdisziplin.disziplin.id, w.wettkampfdisziplin.programm.name, "", w.wettkampfdisziplin.isDNoteUsed, w.isStroked)
                   }
                 }
               }
@@ -211,12 +211,12 @@ trait WertungenRoutes extends SprayJsonSupport with JsonSupport with JwtSupport 
                               case Some(wertungView: WertungView) =>
                                 WertungContainer(k.id, k.vorname, k.name, k.geschlecht, k.verein,
                                   wertungView.toWertung,
-                                  gid, k.programm, wertungView.wettkampfdisziplin.isDNoteUsed, wertungView.isStroked)
+                                  gid, k.programm, gr.durchgang.getOrElse(""), wertungView.wettkampfdisziplin.isDNoteUsed, wertungView.isStroked)
                               case None =>
                                 val wertungView: WertungView = k.markedWertungen.head
                                 WertungContainer(k.id, k.vorname, k.name, k.geschlecht, k.verein,
                                   wertungView.toWertung.copy(wettkampfdisziplinId = 0L),
-                                  gid, k.programm, wertungView.wettkampfdisziplin.isDNoteUsed, wertungView.isStroked)
+                                  gid, k.programm, gr.durchgang.getOrElse(""), wertungView.wettkampfdisziplin.isDNoteUsed, wertungView.isStroked)
                             }
                           }))
                       case _ =>
@@ -257,15 +257,15 @@ trait WertungenRoutes extends SprayJsonSupport with JsonSupport with JwtSupport 
                             case Some((isDNoteUsed, normalizedwertung)) =>
                               val eventualKutuAppEvent: Future[KutuAppEvent] = CompetitionCoordinatorClientActor.publish(normalizedwertung, clientId)
                               val toResponseMarshallable: Future[ToResponseMarshallable] = eventualKutuAppEvent.map {
-                                case AthletWertungUpdatedSequenced(athlet, verifiedWertung, _, _, ger, programm, _) =>
+                                case AthletWertungUpdatedSequenced(athlet, verifiedWertung, _, durchgang, ger, programm, _) =>
                                   val verein: String = athlet.verein.map(_.name).getOrElse("")
                                   WertungContainer(athlet.id, athlet.vorname, athlet.name, athlet.geschlecht, verein,
-                                    verifiedWertung, ger, programm, isDNoteUsed, isStroked = false)
+                                    verifiedWertung, ger, programm, durchgang, isDNoteUsed, isStroked = false)
 
-                                case AthletWertungUpdated(athlet, verifiedWertung, _, _, ger, programm) =>
+                                case AthletWertungUpdated(athlet, verifiedWertung, _, durchgang, ger, programm) =>
                                   val verein: String = athlet.verein.map(_.name).getOrElse("")
                                   WertungContainer(athlet.id, athlet.vorname, athlet.name, athlet.geschlecht, verein,
-                                    verifiedWertung, ger, programm, isDNoteUsed, isStroked = false)
+                                    verifiedWertung, ger, programm, durchgang, isDNoteUsed, isStroked = false)
 
                                 case unexpectedEvent: KutuAppEvent => unexpectedEvent
                               }

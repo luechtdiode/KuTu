@@ -116,11 +116,31 @@ case class CompetitionState (
     WertungContainer(
       athlet.id, athlet.vorname, athlet.name, athlet.geschlecht, athlet.verein.map(_.name).getOrElse(""),
       awuv.wertung,
-      awuv.geraet, awuv.programm, isDNoteUsed, isStroked = false)
+      awuv.geraet, awuv.programm, awuv.durchgang, isDNoteUsed, isStroked = false)
   }
 
-  def lastWertungenPerWKDisz = lastWertungen.filter(_._1.startsWith("D")).map(w => (w._1.substring(1), w._2))
-  def lastWertungenPerDisz = lastWertungen.filter(_._1.startsWith("G")).map(w => (w._1.substring(1), w._2))
+  def lastWertungenPerWKDisz(durchgang: String): Map[String, WertungContainer] = {
+    val dgs = encodeURIComponent(durchgang)
+    //println(s"lastWertungenPerWKDisz($dgs)")
+    lastWertungen
+      .filter(!_._1.startsWith("G"))
+      .map(w => (w._1.substring(1), w._2))
+      .filter { w =>
+        val dg = encodeURIComponent(w._2.durchgang)
+        dg.isEmpty || dgs.isEmpty || dg.equals(dgs)
+      }
+  }
+  def lastWertungenPerDisz(durchgang: String): Map[String, WertungContainer] = {
+    val dgs = encodeURIComponent(durchgang)
+    //println(s"lastWertungenPerDisz($dgs)")
+    lastWertungen
+      .filter(!_._1.startsWith("D"))
+      .map(w => (w._1.substring(1), w._2))
+      .filter{w =>
+        val dg = encodeURIComponent(w._2.durchgang)
+        dg.isEmpty || dgs.isEmpty || dg.equals(dgs)
+      }
+  }
   private def newCompetitionStateWith(wertungContainer: WertungContainer) =
     CompetitionState(
       startedDurchgaenge,

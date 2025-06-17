@@ -162,7 +162,10 @@ class CompetitionCoordinatorClientActor(wettkampfUUID: String) extends Persisten
       if (handleEvent(started)) persist(started) { evt =>
         storeDurchgangStarted(started)
         notifyWebSocketClients(senderWebSocket, started, durchgang)
-        val msg = NewLastResults(state.lastWertungenPerWKDisz, state.lastWertungenPerDisz, state.lastBestenResults)
+        val msg = NewLastResults(
+          state.lastWertungenPerWKDisz(durchgang),
+          state.lastWertungenPerDisz(durchgang),
+          state.lastBestenResults)
         notifyWebSocketClients(senderWebSocket, msg, durchgang)
       }
       sender() ! started
@@ -201,7 +204,7 @@ class CompetitionCoordinatorClientActor(wettkampfUUID: String) extends Persisten
 
         addToDurchgangJournal(handledEvent, durchgang)
         notifyWebSocketClients(senderWebSocket, handledEvent, durchgang)
-        notifyBestenResult()
+        notifyBestenResult(durchgang)
         //        }
       } catch {
         case e: Exception =>
@@ -226,7 +229,7 @@ class CompetitionCoordinatorClientActor(wettkampfUUID: String) extends Persisten
       persist(DurchgangStepFinished(fds.wettkampfUUID)) { evt =>
         handleEvent(evt)
         sender() ! MessageAck("OK")
-        notifyBestenResult()
+        notifyBestenResult("")
       }
 
     case GetResultsToReplicate(_, fromSequenceId) =>
@@ -266,7 +269,11 @@ class CompetitionCoordinatorClientActor(wettkampfUUID: String) extends Persisten
       //      squashDurchgangEvents(durchgangNormalized).foreach { d =>
       //        ref ! d
       //      }
-      ref ! NewLastResults(state.lastWertungenPerWKDisz, state.lastWertungenPerDisz, state.lastBestenResults)
+      ref ! NewLastResults(
+      state.lastWertungenPerWKDisz(durchgang.getOrElse("")),
+      state.lastWertungenPerDisz(durchgang.getOrElse("")),
+      state.lastBestenResults)
+
 
     // system actions
     case KeepAlive =>
@@ -422,7 +429,7 @@ class CompetitionCoordinatorClientActor(wettkampfUUID: String) extends Persisten
       updategeraeteRigeListe(handledEvent)
       addToDurchgangJournal(handledEvent, handledEvent.durchgang)
       notifyWebSocketClients(senderWebSocket, handledEvent, handledEvent.durchgang)
-      notifyBestenResult()
+      notifyBestenResult(handledEvent.durchgang)
     }
 
     event match {
@@ -469,19 +476,29 @@ class CompetitionCoordinatorClientActor(wettkampfUUID: String) extends Persisten
   private def notifyWebSocketClients(
                                       senderWebSocket: Iterable[ActorRef],
                                       toPublish: KutuAppEvent,
-                                      durchgang: String) = Future {
+                                      durchgang: String, exclusive:Boolean = false) = Future {
+    //println(s"notifyWebsocketClients dg: $durchgang, excl: $exclusive, $toPublish")
     if (durchgang == "") {
-      wsSend.values.foreach(wsList => {
-        wsList.filter(ws => !senderWebSocket.exists(_ == ws)).foreach(ws => ws ! toPublish)
-      })
+      if (exclusive) {
+        wsSend.get(None) match {
+          case Some(wsList) => wsList.filter(ws => !senderWebSocket.exists(_ == ws)).foreach(ws => ws ! toPublish)
+          case _ =>
+        }
+      } else {
+        wsSend.values.foreach(wsList => {
+          wsList.filter(ws => !senderWebSocket.exists(_ == ws)).foreach(ws => ws ! toPublish)
+        })
+      }
     } else {
       wsSend.get(Some(encodeURIComponent(durchgang))) match {
         case Some(wsList) => wsList.filter(ws => !senderWebSocket.exists(_ == ws)).foreach(ws => ws ! toPublish)
         case _ =>
       }
-      wsSend.get(None) match {
-        case Some(wsList) => wsList.filter(ws => !senderWebSocket.exists(_ == ws)).foreach(ws => ws ! toPublish)
-        case _ =>
+      if (!exclusive) {
+        wsSend.get(None) match {
+          case Some(wsList) => wsList.filter(ws => !senderWebSocket.exists(_ == ws)).foreach(ws => ws ! toPublish)
+          case _ =>
+        }
       }
     }
   }
@@ -511,9 +528,19 @@ class CompetitionCoordinatorClientActor(wettkampfUUID: String) extends Persisten
     }
   }
 
-  def notifyBestenResult(): Unit = {
-    val msg = NewLastResults(state.lastWertungenPerWKDisz, state.lastWertungenPerDisz, state.lastBestenResults)
-    notifyWebSocketClients(Iterable.empty, msg, "")
+  def notifyBestenResult(durchgang: String): Unit = {
+    val msg = NewLastResults(
+      state.lastWertungenPerWKDisz(durchgang),
+      state.lastWertungenPerDisz(durchgang),
+      state.lastBestenResults)
+    notifyWebSocketClients(Iterable.empty, msg, durchgang, exclusive = true)
+    if (durchgang.nonEmpty) {
+      val msgAll = NewLastResults(
+        state.lastWertungenPerWKDisz(""),
+        state.lastWertungenPerDisz(""),
+        state.lastBestenResults)
+      notifyWebSocketClients(Iterable.empty, msgAll, "", exclusive = true)
+    }
   }
 
   private def handleStop(): Unit = {
