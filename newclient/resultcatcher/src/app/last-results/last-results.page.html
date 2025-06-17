@@ -22,7 +22,7 @@
       </ion-grid>
     </ion-title>
     <ion-note slot="end" *ngIf="competition">
-      {{competitionName()}} {{programmfilter}}
+      {{competitionName()}}
     </ion-note>
   </ion-toolbar>
   <ion-searchbar *ngIf="scorelistAvailable()" placeholder="Search" showCancelButton="never"
@@ -30,9 +30,6 @@
     (ionInput)="reloadList($event)"
     (ionCancel)="reloadList($event)">
   </ion-searchbar>
-</ion-header>
-
-<ion-content (dblclick)="toggleHeader()">
   <ion-list *ngIf="optionsVisible && isToolbarTop()">
     <ion-item>
       <ion-select label="Wettkampf" placeholder='Bitte auswählen' *ngIf="getCompetitions().length > 0" [(ngModel)]='competition' okText='Okay' cancelText='Abbrechen'>
@@ -41,21 +38,35 @@
         </ion-select>
     </ion-item>
     <ion-item>
-      <ion-select label="Kagetorien" placeholder='Bitte auswählen' [(ngModel)]='kategorieFilter' okText='Okay' cancelText='Abbrechen'>
-          <ion-select-option value='getrennt'>Kagetorien getrennt</ion-select-option>
-          <ion-select-option value='gemischt'>Kagetorien gemischt</ion-select-option>
-        </ion-select>
+      <ion-select label='Durchgang' placeholder='Bitte auswählen' *ngIf="getDurchgaenge() && getDurchgaenge().length > 0" [(ngModel)]='durchgangFilter'
+        okText='Okay' cancelText='Abbrechen'>
+        <ion-select-option value='undefined'>Kein Durchgangfilter</ion-select-option>
+        <ion-select-option *ngFor='let d of getDurchgaenge()' [value]='d'>
+          <em *ngIf="isDurchgangActiv(d)">(atkiv) {{d}}</em><div *ngIf="!isDurchgangActiv(d)">(inaktiv) {{d}}</div>
+        </ion-select-option>
+      </ion-select>
     </ion-item>
     <ion-item>
-      <ion-label>doppel-click wechselt die Position des Toolbars</ion-label>
+      <ion-select label="Kategorien" placeholder='Bitte auswählen' [(ngModel)]='kategorieFilter' okText='Okay' cancelText='Abbrechen'>
+          <ion-select-option value='getrennt'>Kategorien getrennt</ion-select-option>
+          <ion-select-option value='gemischt'>Kategorien gemischt</ion-select-option>
+      </ion-select>
+    </ion-item>
+
+    <ion-item>
+      <ion-label>doppel-click wechselt die Position des Toolbars ({{nextToolbarPosition}})</ion-label>
+      <ion-button (click)="toggleHeader()">Umschalten</ion-button>
     </ion-item>
   </ion-list>
 
+</ion-header>
+
+<ion-content (dblclick)="toggleHeader()">
   <ion-grid no-padding *ngIf="items.length > 0" (click)="optionsVisible = false" >
     <ion-row *ngFor='let p of getProgramme()'>
       <ion-col class="align-self-start"
         [attr.size-xs]="getColumnSpecs()[0]" 
-        [attr.size-sm]="getColumnSpecs()[1]" 
+        [attr.size-sm]="getColumnSpecs()[0]" 
         [attr.size-md]="getColumnSpecs()[2]" 
         [attr.size-lg]="getColumnSpecs()[3]"
         [attr.size-xl]="getMaxColumnSpec()"
@@ -90,10 +101,23 @@
         </ion-select>
     </ion-item>
     <ion-item>
+      <ion-select label='Durchgang' placeholder='Bitte auswählen' *ngIf="getDurchgaenge() && getDurchgaenge().length > 0" [(ngModel)]='durchgangFilter'
+        okText='Okay' cancelText='Abbrechen'>
+        <ion-select-option value='undefined'>Kein Durchgangfilter</ion-select-option>
+        <ion-select-option *ngFor='let d of getDurchgaenge()' [value]='d'>
+          <em *ngIf="isDurchgangActiv(d)">(atkiv) {{d}}</em><div *ngIf="!isDurchgangActiv(d)">(inaktiv) {{d}}</div>
+        </ion-select-option>
+      </ion-select>
+    </ion-item>
+    <ion-item>
       <ion-select label="Kategorien" placeholder='Bitte auswählen' [(ngModel)]='kategorieFilter' okText='Okay' cancelText='Abbrechen'>
           <ion-select-option value='getrennt'>Kategorien getrennt</ion-select-option>
           <ion-select-option value='gemischt'>Kategorien gemischt</ion-select-option>
       </ion-select>
+    </ion-item>
+    <ion-item>
+      <ion-label>doppel-click wechselt die Position des Toolbars ({{nextToolbarPosition}})</ion-label>
+      <ion-button (click)="toggleHeader()">Umschalten</ion-button>
     </ion-item>
   </ion-list>
   <ion-toolbar>
@@ -119,7 +143,7 @@
       </ion-grid>
     </ion-title>
     <ion-note slot="end" *ngIf="competition">
-      {{competitionName()}} {{programmfilter}}
+      {{competitionName()}}
     </ion-note>
   </ion-toolbar>
 </ion-footer>
