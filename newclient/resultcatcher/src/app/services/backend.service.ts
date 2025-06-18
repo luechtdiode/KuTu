@@ -822,7 +822,7 @@ export class BackendService extends WebsocketService {
       this._geraet = undefined;
       this._step = undefined;
 
-      this.captionmode = true;
+      this.captionmode = !!durchgang && this.durchgang !== 'undefined';
 
       return this.loadGeraete();
     }
