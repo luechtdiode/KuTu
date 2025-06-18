@@ -68,7 +68,8 @@ export class LastResultsPage implements OnInit, OnDestroy {
         this.items = [];
         this.mixeditems = [];
         if (!!newLastRes && !!newLastRes.resultsPerWkDisz) {
-          const programme = Object.values(newLastRes.resultsPerWkDisz).map(wc => wc.programm).filter(this.onlyUnique) || ['\u{00A0}'];
+          const pgms = Object.values(newLastRes.resultsPerWkDisz).map(wc => wc.programm).filter(this.onlyUnique);
+          const programme = pgms.length > 0 ? pgms : ['\u{00A0}'];
           programme.forEach(p => {
             this.geraete.map(g => {
               return Object.values(newLastRes.resultsPerWkDisz).find(d => d.geraet === g.id && (p === '\u{00A0}' || d.programm === p) ) || <WertungContainer>{
@@ -306,7 +307,7 @@ export class LastResultsPage implements OnInit, OnDestroy {
     const columnSpec = this.getColumnSpec();
     if (columnSpec === 6) {
       return [ 12, 12, 6, 3, this.getMaxColumnSpec()];
-    } else if (columnSpec === 0) {
+    } else {
       return [ 12, 6, 4, 3, this.getMaxColumnSpec()];
     }
   }
@@ -363,7 +364,7 @@ export class LastResultsPage implements OnInit, OnDestroy {
           queryParamsHandling: 'merge', // remove to replace all query params by provided
         }
       );
-
+      this.backendService.geraete = [];
       this.backendService.activateNonCaptionMode(this.backendService.competition).subscribe(geraete => {
         this.geraete = geraete || [];
         this.sortItems();
