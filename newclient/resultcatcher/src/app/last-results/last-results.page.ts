@@ -68,10 +68,12 @@ export class LastResultsPage implements OnInit, OnDestroy {
         this.items = [];
         this.mixeditems = [];
         if (!!newLastRes && !!newLastRes.resultsPerWkDisz) {
-          const programme = Object.values(newLastRes.resultsPerWkDisz).map(wc => wc.programm).filter(this.onlyUnique) || ['\u{00A0}'];
+          const pgms = Object.values(newLastRes.resultsPerWkDisz).map(wc => wc.programm).filter(this.onlyUnique);
+          const programme = pgms.length > 0 ? pgms : ['\u{00A0}'];
           programme.forEach(p => {
             this.geraete.map(g => {
-              return Object.values(newLastRes.resultsPerWkDisz).find(d => d.geraet === g.id && (p === '\u{00A0}' || d.programm === p) ) || <WertungContainer>{
+              return Object.values(newLastRes.resultsPerWkDisz).find(d => d.geraet === g.id && d.wertung.endnote && (p === '\u{00A0}' || d.programm === p) ) 
+              || <WertungContainer>{
                 programm: p,
                 geraet: g.id,
                 id: 0,
@@ -86,7 +88,7 @@ export class LastResultsPage implements OnInit, OnDestroy {
                this.items.push(wc);
             });
           });
-          this.mixeditems = this.geraete.map(g => newLastRes.resultsPerDisz[g.id] || <WertungContainer>{
+          this.mixeditems = this.geraete.map(g => newLastRes.resultsPerDisz[g.id] ?? <WertungContainer>{
               programm: '\u{00A0}',
               geraet: g.id,
               id: 0,
@@ -98,9 +100,6 @@ export class LastResultsPage implements OnInit, OnDestroy {
               isDNoteUsed: this.items.length > 0 ?  this.items[0].isDNoteUsed : true
             }
           );
-          /*Object.keys(newLastRes.resultsPerDisz).forEach(key => {
-            this.mixeditems.push(newLastRes.resultsPerDisz[key]);
-          });*/
         }
         this.sortItems();
         if (this.scorelistAvailable()) {
@@ -143,9 +142,16 @@ export class LastResultsPage implements OnInit, OnDestroy {
     }));
   }
 
-  optionsVisible: boolean = false;
+  _optionsVisible: boolean = false;
+
+  get optionsVisible(): boolean {
+    return this._optionsVisible || !this.competition
+  }
+  set optionsVisible(value: boolean) {
+    this._optionsVisible = value;
+  }
   toggleOptions() {
-    this.optionsVisible = !this.optionsVisible;
+    this._optionsVisible = !this._optionsVisible;
   }
 
   teamsAllowed(wk: Wettkampf): boolean {
@@ -180,7 +186,8 @@ export class LastResultsPage implements OnInit, OnDestroy {
           return [];
         }
       })).subscribe(scoreblocks => {
-        this.scoreblocks = scoreblocks
+        this.scoreblocks = scoreblocks;
+        this.sFilteredScoreList = scoreblocks;
         const pipeBeforeAction = this.tMyQueryStream.pipe(
           filter(event => !!event && !!event.target && !!event.target.value),
           map(event => event.target.value),
@@ -202,7 +209,7 @@ export class LastResultsPage implements OnInit, OnDestroy {
 
   sortItems() {
     const compareItems = (a, b) => {
-      let p = 0; //a.programm.localeCompare(b.programm);
+      let p = a.programm.localeCompare(b.programm);
       if (p === 0) {
         p = this.geraetOrder(a.geraet) - this.geraetOrder(b.geraet);
       }
@@ -210,10 +217,8 @@ export class LastResultsPage implements OnInit, OnDestroy {
     };
 
     this.items = this.items
-      //.filter(w => w.wertung.endnote !== undefined)
       .sort(compareItems);
     this.mixeditems = this.mixeditems
-      //.filter(w => w.wertung.endnote !== undefined)
       .sort(compareItems);
   }
 
@@ -258,8 +263,8 @@ export class LastResultsPage implements OnInit, OnDestroy {
     };
 
     if (!this.backendService.competitions) { return emptyCandidate; }
-    const candidate = this.backendService.competitions
-      .filter(c => c.uuid === this.backendService.competition);
+      const candidate = this.backendService.competitions
+        .filter(c => c.uuid === this.backendService.competition);
 
     if (candidate.length === 1) {
       return candidate[0];
@@ -306,7 +311,7 @@ export class LastResultsPage implements OnInit, OnDestroy {
     const columnSpec = this.getColumnSpec();
     if (columnSpec === 6) {
       return [ 12, 12, 6, 3, this.getMaxColumnSpec()];
-    } else if (columnSpec === 0) {
+    } else {
       return [ 12, 6, 4, 3, this.getMaxColumnSpec()];
     }
   }
@@ -346,8 +351,10 @@ export class LastResultsPage implements OnInit, OnDestroy {
   _durchgang: string = undefined;
 
   getDurchgaenge() {
-    return this.backendService.durchgaenge
-    //return this.backendService.activeDurchgangList.map(d => d.durchgang);
+    return [
+      ...this.backendService.activeDurchgangList.map(d => d.durchgang), 
+      ...this.backendService.durchgaenge.filter(d => !this.isDurchgangActiv(d))
+    ];
   }
   isDurchgangActiv(durchgang: string): boolean {
     return this.backendService.activeDurchgangList.find(d => d.durchgang === durchgang) !== undefined
@@ -363,7 +370,7 @@ export class LastResultsPage implements OnInit, OnDestroy {
           queryParamsHandling: 'merge', // remove to replace all query params by provided
         }
       );
-
+      this.backendService.geraete = [];
       this.backendService.activateNonCaptionMode(this.backendService.competition).subscribe(geraete => {
         this.geraete = geraete || [];
         this.sortItems();
@@ -379,7 +386,7 @@ export class LastResultsPage implements OnInit, OnDestroy {
         }
       );
       this.backendService.getGeraete(this.backendService.competition, durchgang).subscribe(geraete => {
-        this.geraete = geraete || [];
+        this.geraete = geraete ?? [];
         this.sortItems();
       });;
       this.backendService.disconnectWS(true);
@@ -450,7 +457,7 @@ export class LastResultsPage implements OnInit, OnDestroy {
   }
 
   scorelistAvailable(): boolean {
-    return !this.durchgangopen && (this.items?.length === 0) && new Date(this.competitionContainer().datum).getTime() <  new Date(Date.now() - 3600 * 1000 * 24).getTime();
+    return !this.durchgangopen && new Date(this.competitionContainer().datum).getTime() <  new Date(Date.now() - 3600 * 1000 * 24).getTime();
   }
 
   get filteredScoreList() {

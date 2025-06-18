@@ -984,11 +984,13 @@ export class BackendService extends WebsocketService {
       }
       if (this._competition !== competitionId
         || this.captionmode
+        || this._durchgang
         || (!!!this.geraete || this.geraete.length === 0)
         || (competitionId && !this.isWebsocketConnected())
         ) {
         this.captionmode = false;
         this._competition = competitionId;
+        this._durchgang = undefined;
         this.disconnectWS(true);
         this.initWebsocket();
         return this.loadGeraete();
