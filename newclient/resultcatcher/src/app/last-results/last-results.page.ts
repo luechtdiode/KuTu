@@ -1,14 +1,14 @@
 import { Component, OnDestroy, OnInit } from '@angular/core';
-import { WertungContainer, Geraet, Wettkampf, ScoreBlock, ScoreRow, ScoreLink, DurchgangStarted } from '../backend-types';
-import { IonItemSliding, NavController, ActionSheetController } from '@ionic/angular';
+import { ActionSheetController, IonItemSliding, NavController } from '@ionic/angular';
+import { Geraet, ScoreBlock, ScoreLink, ScoreRow, Wertung, WertungContainer, Wettkampf } from '../backend-types';
 
-import { BackendService } from '../services/backend.service';
-import { debounceTime, distinctUntilChanged, filter, map, share, switchMap } from 'rxjs/operators';
-import { backendUrl } from '../utils';
-import { Observable } from 'rxjs/internal/Observable';
-import { Subject, BehaviorSubject, of, Subscription } from 'rxjs';
-import { GroupBy } from '../component/result-display/result-display.component';
 import { ActivatedRoute, Router } from '@angular/router';
+import { BehaviorSubject, of, Subject, Subscription } from 'rxjs';
+import { Observable } from 'rxjs/internal/Observable';
+import { debounceTime, distinctUntilChanged, filter, map, share, switchMap } from 'rxjs/operators';
+import { GroupBy } from '../component/result-display/result-display.component';
+import { BackendService } from '../services/backend.service';
+import { backendUrl } from '../utils';
 
 @Component({
     selector: 'app-last-results',
@@ -18,8 +18,6 @@ import { ActivatedRoute, Router } from '@angular/router';
 })
 export class LastResultsPage implements OnInit, OnDestroy {
   groupBy = GroupBy;
-
-  // @ViewChild(IonContent) content: IonContent;
 
   items: WertungContainer[] = [];
   mixeditems: WertungContainer[] = [];
@@ -39,14 +37,6 @@ export class LastResultsPage implements OnInit, OnDestroy {
   durchgangopen: boolean;
 
   subscriptions: Subscription[] = [];
-
-
-  // @HostListener('window:resize', ['$event'])
-  // onResize(event: any) {
-  //   if (this.content) {
-  //     this.content.resize();
-  //   }
-  // }
 
   constructor(public navCtrl: NavController,
     public backendService: BackendService,
@@ -78,12 +68,39 @@ export class LastResultsPage implements OnInit, OnDestroy {
         this.items = [];
         this.mixeditems = [];
         if (!!newLastRes && !!newLastRes.resultsPerWkDisz) {
-          Object.keys(newLastRes.resultsPerWkDisz).forEach(key => {
-            this.items.push(newLastRes.resultsPerWkDisz[key]);
+          const programme = Object.values(newLastRes.resultsPerWkDisz).map(wc => wc.programm).filter(this.onlyUnique) || ['\u{00A0}'];
+          programme.forEach(p => {
+            this.geraete.map(g => {
+              return Object.values(newLastRes.resultsPerWkDisz).find(d => d.geraet === g.id && (p === '\u{00A0}' || d.programm === p) ) || <WertungContainer>{
+                programm: p,
+                geraet: g.id,
+                id: 0,
+                vorname: '\u{00A0}', name: '\u{00A0}', geschlecht: undefined, verein: '\u{00A0}',
+                wertung: <Wertung>{
+                  noteE: 0, noteD: 0, endnote: 0,
+                  wettkampfdisziplinId: 0
+                },
+                isDNoteUsed:  true
+              }
+            }).forEach(wc => {
+               this.items.push(wc);
+            });
           });
-          Object.keys(newLastRes.resultsPerDisz).forEach(key => {
+          this.mixeditems = this.geraete.map(g => newLastRes.resultsPerDisz[g.id] || <WertungContainer>{
+              programm: '\u{00A0}',
+              geraet: g.id,
+              id: 0,
+              vorname: '\u{00A0}', name: '\u{00A0}', geschlecht: undefined, verein: '\u{00A0}',
+              wertung: <Wertung>{
+                noteE: 0, noteD: 0, endnote: 0,
+                wettkampfdisziplinId: 0
+              },
+              isDNoteUsed: this.items.length > 0 ?  this.items[0].isDNoteUsed : true
+            }
+          );
+          /*Object.keys(newLastRes.resultsPerDisz).forEach(key => {
             this.mixeditems.push(newLastRes.resultsPerDisz[key]);
-          });
+          });*/
         }
         this.sortItems();
         if (this.scorelistAvailable()) {
@@ -193,10 +210,10 @@ export class LastResultsPage implements OnInit, OnDestroy {
     };
 
     this.items = this.items
-      .filter(w => w.wertung.endnote !== undefined)
+      //.filter(w => w.wertung.endnote !== undefined)
       .sort(compareItems);
     this.mixeditems = this.mixeditems
-      .filter(w => w.wertung.endnote !== undefined)
+      //.filter(w => w.wertung.endnote !== undefined)
       .sort(compareItems);
   }
 
@@ -322,6 +339,10 @@ export class LastResultsPage implements OnInit, OnDestroy {
     }
   }
 
+  getMixedWertungen() {
+    return this.mixeditems;
+  }
+
   _durchgang: string = undefined;
 
   getDurchgaenge() {
@@ -370,22 +391,20 @@ export class LastResultsPage implements OnInit, OnDestroy {
     return this._durchgang || 'undefined';
   }
 
-  getMixedWertungen() {
-    return this.mixeditems;
-  }
-
   hideHeader: number = 0;
 
   toggleHeader() {
-    this.hideHeader = this.hideHeader += 1;
-    if (this.hideHeader > 2) {
-      this.hideHeader = 0;
+    if(!this.scorelistAvailable()) {
+      this.hideHeader = this.hideHeader += 1;
+      if (this.hideHeader > 2) {
+        this.hideHeader = 0;
+      }
     }
   }
 
   get nextToolbarPosition(): string {
     if (this.hideHeader === 0) {
-      return 'von oben nach unten';
+      return 'von oben nach unten, und dann auf ausgeblendet';
     } else if (this.hideHeader === 1) {
       return 'von unten nach ausgeblendet';
     } else {
@@ -393,7 +412,7 @@ export class LastResultsPage implements OnInit, OnDestroy {
     }
   }
   isToolbarTop(): boolean {
-    return this.hideHeader === 0;
+    return this.hideHeader === 0 || this.scorelistAvailable();
   }
 
   isToolbarBottom(): boolean {

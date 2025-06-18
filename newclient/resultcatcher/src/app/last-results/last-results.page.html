@@ -62,7 +62,7 @@
 </ion-header>
 
 <ion-content (dblclick)="toggleHeader()">
-  <ion-grid no-padding *ngIf="items.length > 0" (click)="optionsVisible = false" >
+  <ion-grid no-padding *ngIf="geraete.length > 0" (click)="optionsVisible = false" >
     <ion-row *ngFor='let p of getProgramme()'>
       <ion-col class="align-self-start"
         [attr.size-xs]="getColumnSpecs()[0]" 
