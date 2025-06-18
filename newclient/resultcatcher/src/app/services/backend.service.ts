@@ -822,7 +822,7 @@ export class BackendService extends WebsocketService {
       this._geraet = undefined;
       this._step = undefined;
 
-      this.captionmode = true;
+      this.captionmode = !!durchgang && this.durchgang !== 'undefined';
 
       return this.loadGeraete();
     }
@@ -1257,7 +1257,8 @@ export class BackendService extends WebsocketService {
            }).reduce((a, b) => a && b);
 
         case 'DurchgangStarted':
-          this._activeDurchgangList = [...this.activeDurchgangList, (message as DurchgangStarted)];
+          this._activeDurchgangList = [...this.activeDurchgangList, (message as DurchgangStarted)]
+            .filter((value, index, self) => self.findIndex(ds => ds.durchgang === value.durchgang) === index);
           this.durchgangStarted.next(this.activeDurchgangList);
           return true;
 
