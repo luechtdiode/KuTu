@@ -75,6 +75,15 @@ class CompetitionCoordinatorClientActor(wettkampfUUID: String) extends Persisten
         .toList)
   }
 
+  /**
+   * finds the durchgang for a specific wertung.
+   * @param wertung must be from the local database with its local wertung.id
+   * @return durchgang, where the wertung is assigned
+   */
+  def findDurchgangForWertung(wertung: Wertung): String = {
+    geraeteRigeListe.flatMap(_.findDurchgangForWertung(wertung)).headOption.getOrElse("")
+  }
+
   private def deviceIdOf(actor: ActorRef) = deviceWebsocketRefs.filter(_._2 == actor).keys
 
   private def actorWithSameDeviceIdOfSender(originSender: ActorRef = sender()): Iterable[ActorRef] =
@@ -434,15 +443,17 @@ class CompetitionCoordinatorClientActor(wettkampfUUID: String) extends Persisten
 
     event match {
       case awuv: AthletWertungUpdated =>
-        persist(awuv) { _ => }
-        handleEvent(awuv)
-        val handledEvent = awuv.toAthletWertungUpdatedSequenced(state.lastSequenceId)
+        val awuvWithDG = awuv.copy(durchgang = if (awuv.durchgang.isEmpty) findDurchgangForWertung(awuv.wertung) else awuv.durchgang)
+        persist(awuvWithDG) { _ => }
+        handleEvent(awuvWithDG)
+        val handledEvent = awuvWithDG.toAthletWertungUpdatedSequenced(state.lastSequenceId)
         forwardToListeners(handledEvent)
 
       case awuv: AthletWertungUpdatedSequenced =>
-        persist(awuv) { _ => }
-        handleEvent(awuv)
-        val handledEvent = awuv.toAthletWertungUpdated().toAthletWertungUpdatedSequenced(state.lastSequenceId)
+        val awuvWithDG = awuv.copy(durchgang = if (awuv.durchgang.isEmpty) findDurchgangForWertung(awuv.wertung) else awuv.durchgang)
+        persist(awuvWithDG) { _ => }
+        handleEvent(awuvWithDG)
+        val handledEvent = awuvWithDG.toAthletWertungUpdated().toAthletWertungUpdatedSequenced(state.lastSequenceId)
         forwardToListeners(handledEvent)
 
       case scoresPublished: ScoresPublished =>
