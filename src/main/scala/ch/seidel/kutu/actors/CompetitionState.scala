@@ -47,7 +47,7 @@ case class CompetitionState (
             case ds: DurchgangResetted => !ds.durchgang.equals(eventDurchgangFinished.durchgang)
             case _ => true
           } :+ eventDurchgangFinished,
-          Map.empty, bestenResults, lastBestenResults, lastSequenceId,
+          Map.empty, Map.empty, bestenResults, lastSequenceId,
           completedflags
         )
       }
@@ -63,7 +63,7 @@ case class CompetitionState (
           case ds: DurchgangResetted => !ds.durchgang.equals(eventDurchgangResetted.durchgang)
           case _ => true
         } :+ eventDurchgangResetted,
-        Map.empty, bestenResults, lastBestenResults, lastSequenceId,
+        Map.empty, Map.empty, Map.empty, lastSequenceId,
         completedflags
       )
 
