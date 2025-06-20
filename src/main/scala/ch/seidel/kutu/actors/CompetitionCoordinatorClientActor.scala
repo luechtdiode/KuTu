@@ -185,6 +185,7 @@ class CompetitionCoordinatorClientActor(wettkampfUUID: String) extends Persisten
       if (handleEvent(eventDurchgangFinished)) persist(eventDurchgangFinished) { evt =>
         storeDurchgangFinished(eventDurchgangFinished)
         notifyWebSocketClients(senderWebSocket, eventDurchgangFinished, durchgang)
+        notifyBestenResult(durchgang)
         openDurchgangJournal = openDurchgangJournal - Some(encodeURIComponent(durchgang))
       }
       sender() ! eventDurchgangFinished
