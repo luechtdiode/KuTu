@@ -57,7 +57,7 @@ case class WKColValue(text: String, raw: String, styleClass: Seq[String]) extend
 case class WKLeafCol[T](override val text: String, override val prefWidth: Int, colspan: Int = 1, override val styleClass: Seq[String], valueMapper: T => WKColValue) extends WKCol
 case class WKGroupCol(override val text: String, override val prefWidth: Int, colspan: Int = 1, override val styleClass: Seq[String], cols: Seq[WKCol]) extends WKCol
 
-case class GroupLeaf[GK <: DataObject](override val groupKey: GK, list: Iterable[WertungView], diszs: List[Disziplin] = List(), aggreateFun: TeamAggreateFun = Sum) extends GroupSection {
+case class GroupLeaf[GK <: DataObject](override val groupKey: GK, list: Iterable[WertungView], diszs: List[Disziplin] = List(), aggreateFun: TeamAggreateFun = Sum, bestOfCountOverride: Option[Int] = None) extends GroupSection {
   val isTeamGroup = groupKey.isInstanceOf[Team]
   override val sum: Resultat = {
     groupKey match {
@@ -321,10 +321,10 @@ case class GroupLeaf[GK <: DataObject](override val groupKey: GK, list: Iterable
   }
 
   def mapToBestOfCounting(wertungen: Iterable[WertungView]): Iterable[WertungView] = {
-    if (wertungen.isEmpty || wertungen.head.wettkampfdisziplin.programm.bestOfCount < 1)
+    if (wertungen.isEmpty || (wertungen.head.wettkampfdisziplin.programm.bestOfCount < 1 && bestOfCountOverride.isEmpty))
       wertungen
     else {
-      val bestOfCount = wertungen.head.wettkampfdisziplin.programm.bestOfCount
+      val bestOfCount = bestOfCountOverride.getOrElse(wertungen.head.wettkampfdisziplin.programm.bestOfCount)
       val bestOfwertungen = wertungen.toList.sortBy(w => w.resultat.endnote).reverse.take(bestOfCount)
       wertungen.map{ w =>
         if (bestOfwertungen.contains(w)) {

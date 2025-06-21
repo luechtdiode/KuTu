@@ -82,12 +82,34 @@ abstract class DefaultRanglisteTab(wettkampfmode: BooleanProperty, override val 
     //fontScale = 1.2
   }
 
+  class DataObjectConverter extends StringConverter[DataObject] {
+    def fromString(text: String) = {
+      nullFilter
+    }
+    def toString(d: DataObject) = if (d != null) d.easyprint else ""
+  }
+  val converter = new DataObjectConverter()
+
   var restoring = false
   val nullFilter = NullObject("alle")
   val cbAvg: CheckBox = new CheckBox {
     text = "Durchschn. Punkte bei mehreren Wettkämpfen"
     selected = true
   }
+  private val bestNModel: ObservableBuffer[ScoreListBestN] = ObservableBuffer.from(Seq[ScoreListBestN](
+    AlleWertungen,
+    BestNWertungen(1),
+    BestNWertungen(2),
+    BestNWertungen(3),
+    BestNWertungen(4),
+    BestNWertungen(5),
+  ))
+
+  val cbBestN: ComboBox[ScoreListBestN] = new ComboBox[ScoreListBestN] {
+    items = bestNModel
+    selectionModel.value.select(AlleWertungen)
+  }
+
   val cbfSaved = new MenuButton("Gespeicherte Einstellungen") {
     disable <== when(createBooleanBinding(() => items.isEmpty, items)) choose true otherwise false
   }
@@ -96,7 +118,7 @@ abstract class DefaultRanglisteTab(wettkampfmode: BooleanProperty, override val 
     PrintUtil.printWebContent(webView.engine, printer, PageOrientation.Portrait)
   }
 
-  def resetFilterPresets(combos: Seq[ComboBox[FilterBy]], scorelistKind: ScoreListKind): Unit = {
+  def resetFilterPresets(combos: Seq[ComboBox[FilterBy]], scorelistKind: ScoreListKind, counting: ScoreListBestN): Unit = {
 
   }
 
@@ -108,14 +130,6 @@ abstract class DefaultRanglisteTab(wettkampfmode: BooleanProperty, override val 
     val grf2Model = ObservableBuffer.empty[DataObject]
     val grf3Model = ObservableBuffer.empty[DataObject]
     val grf4Model = ObservableBuffer.empty[DataObject]
-
-    class DataObjectConverter extends StringConverter[DataObject] {
-      def fromString(text: String) = {
-        nullFilter
-      }
-      def toString(d: DataObject) = if (d != null) d.easyprint else ""
-    }
-    val converter = new DataObjectConverter()
 
     val cbKind = new ComboBox[ScoreListKind] {
       promptText = "Rangliste-Typ"
@@ -224,6 +238,7 @@ abstract class DefaultRanglisteTab(wettkampfmode: BooleanProperty, override val 
       }
       groupBy.setAlphanumericOrdered(cbModus.selected.value)
       groupBy.setAvgOnMultipleCompetitions(cbAvg.selected.value)
+      groupBy.setBestNCounting(cbBestN.value.value)
       groupBy.setKind(cbKind.value.value)
       restoring = false
 
@@ -254,6 +269,7 @@ abstract class DefaultRanglisteTab(wettkampfmode: BooleanProperty, override val 
     	}
       query.setAlphanumericOrdered(cbModus.selected.value)
       query.setAvgOnMultipleCompetitions(cbAvg.selected.value)
+      query.setBestNCounting(cbBestN.value.value)
       query.setKind(cbKind.value.value)
 
       val combination = query.select(data).toList
@@ -301,6 +317,7 @@ abstract class DefaultRanglisteTab(wettkampfmode: BooleanProperty, override val 
       cbModus.selected.value = query.isAlphanumericOrdered
       cbAvg.selected.value = query.isAvgOnMultipleCompetitions
       cbKind.value.value = query.getKind
+      cbBestN.value = query.getBestNCounting
       restoring = false
       refreshRangliste(query)
     }
@@ -329,13 +346,22 @@ abstract class DefaultRanglisteTab(wettkampfmode: BooleanProperty, override val 
       if(!restoring)
         refreshRangliste(buildGrouper)
     }
+    cbBestN.onAction = _ => {
+      if(!restoring)
+        refreshRangliste(buildGrouper)
+    }
+    cbBestN.disable <== createBooleanBinding(() => cbKind.value.value == Teamrangliste, cbKind.value)
     cbKind.onAction = _ => {
       if(!restoring) {
         restoring = true
-        resetFilterPresets(combs, cbKind.value.value)
+        if (cbKind.value.value == Teamrangliste) {
+          cbBestN.value.value = AlleWertungen
+        }
+        resetFilterPresets(combs, cbKind.value.value, cbBestN.value.value)
         refreshRangliste(buildGrouper)
       }
     }
+
 
     val btnPrint = PrintUtil.btnPrintFuture(text.value, getSaveAsFilenameDefault, true,
       (lpp:Int) => {
@@ -515,7 +541,7 @@ abstract class DefaultRanglisteTab(wettkampfmode: BooleanProperty, override val 
                 content = List(cbfSaved) ++ getActionButtons ++ List(btnPrint)
               },
               new ToolBar {
-                content = List(cbKind, cbModus, cbAvg)
+                content = List(cbKind, cbBestN, cbModus, cbAvg)
               },
               new ToolBar {
                 content = (topBox +: topCombos)
@@ -526,7 +552,7 @@ abstract class DefaultRanglisteTab(wettkampfmode: BooleanProperty, override val 
                 content = List(cbfSaved, btnSaveFilter) ++ getActionButtons ++ List(btnPrint)
               },
               new ToolBar {
-                content = List(cbKind, cbModus, cbAvg)
+                content = List(cbKind, cbBestN, cbModus, cbAvg)
               },
               new ToolBar {
                 content = (topBox +: topCombos)
@@ -551,6 +577,7 @@ abstract class DefaultRanglisteTab(wettkampfmode: BooleanProperty, override val 
       .replace("avg=true", "Durchschnittwertung")
       .replace("avg=false", "Summenwertung")
       .replace("kind=", "")
+      .replace("counting", "Zaehlend")
       .replace("/", "_")
       .replace(".", "_")
       .replace("?", "_")

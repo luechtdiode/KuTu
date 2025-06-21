@@ -39,9 +39,10 @@ ScoreRoutes extends SprayJsonSupport with JsonSupport with AuthSupport with Rout
   )
                   
   def queryScoreResults(wettkampf: String, groupby: Option[String], filter: Iterable[String], html: Boolean,
-                        groupers: List[FilterBy], data: Seq[WertungView], alphanumeric: Boolean, isAvgOnMultipleCompetitions: Boolean, kind: ScoreListKind,
+                        groupers: List[FilterBy], data: Seq[WertungView], alphanumeric: Boolean, isAvgOnMultipleCompetitions: Boolean,
+                        kind: ScoreListKind, counting: ScoreListBestN,
                         logofile: File): HttpEntity.Strict = {
-    val query = GroupBy(groupby, filter, data, alphanumeric, isAvgOnMultipleCompetitions, kind, groupers);
+    val query = GroupBy(groupby, filter, data, alphanumeric, isAvgOnMultipleCompetitions, kind, counting, groupers);
 
     if (html) {
       HttpEntity(ContentTypes.`text/html(UTF-8)`, new ScoreToHtmlRenderer(){override val title: String = wettkampf}
@@ -116,9 +117,11 @@ ScoreRoutes extends SprayJsonSupport with JsonSupport with AuthSupport with Rout
                 , Symbol("alphanumeric").?
                 , Symbol("avg").?
                 , Symbol("kind").?
-              ) { (groupby, filter, html, alphanumeric, avg, kind) =>
+                , Symbol("counting").?
+              ) { (groupby, filter, html, alphanumeric, avg, kind, counting) =>
                 complete(Future{
-                  queryScoreResults("Alle Wettkämpfe", groupby, filter, html.nonEmpty, allGroupers, data, alphanumeric.nonEmpty, !avg.exists(s => s.equals("false")), ScoreListKind(kind), logofile)
+                  queryScoreResults("Alle Wettkämpfe", groupby, filter, html.nonEmpty, allGroupers, data, alphanumeric.nonEmpty, !avg.exists(s => s.equals("false")),
+                    ScoreListKind(kind), ScoreListBestN(counting), logofile)
                 })
               }
             }
@@ -298,9 +301,10 @@ ScoreRoutes extends SprayJsonSupport with JsonSupport with AuthSupport with Rout
                   , Symbol("alphanumeric").?
                   , Symbol("avg").?
                   , Symbol("kind").?
-                ) { (groupby, filter, html, alphanumeric, avg, kind) =>
+                  , Symbol("counting").?
+                ) { (groupby, filter, html, alphanumeric, avg, kind, counting) =>
                   complete(
-                    if (!endDate.atStartOfDay().isBefore(LocalDate.now.atStartOfDay) || (groupby == None && filter.isEmpty && ScoreListKind(kind) != Teamrangliste)) {
+                    if (!endDate.atStartOfDay().isBefore(LocalDate.now.atStartOfDay) || (groupby.isEmpty && filter.isEmpty && ScoreListKind(kind) != Teamrangliste)) {
                       ToResponseMarshallable(HttpEntity(ContentTypes.`text/html(UTF-8)`,
                         f"""
                            |<html>
@@ -385,7 +389,8 @@ ScoreRoutes extends SprayJsonSupport with JsonSupport with AuthSupport with Rout
                          """.stripMargin))
                     } else {
                       Future{
-                        queryScoreResults(wettkampf.easyprint, groupby, filter, html.nonEmpty, groupers, data, alphanumeric.nonEmpty, !avg.exists(s => s.equals("false")), ScoreListKind(kind), logofile)
+                        queryScoreResults(wettkampf.easyprint, groupby, filter, html.nonEmpty, groupers, data,
+                          alphanumeric.nonEmpty, !avg.exists(s => s.equals("false")), ScoreListKind(kind), ScoreListBestN(counting), logofile)
                       }
                     }
                   )
@@ -422,19 +427,19 @@ ScoreRoutes extends SprayJsonSupport with JsonSupport with AuthSupport with Rout
                       if (sd.nonEmpty) {
                             Future {queryScoreResults(s"${wettkampf.easyprint} - Zwischenresultate", None,
                                 filter ++ Iterable(byDurchgangMat.groupname + ":" + sd.mkString("!")),
-                                html.nonEmpty, groupers, data.filter(filterMatchingWertungenToQuery), alphanumeric = false, isAvgOnMultipleCompetitions = true, kind, logofile)
+                                html.nonEmpty, groupers, data.filter(filterMatchingWertungenToQuery), alphanumeric = false, isAvgOnMultipleCompetitions = true, kind, AlleWertungen, logofile)
                             }
                       } else {
                             Future {queryScoreResults(s"${wettkampf.easyprint} - Zwischenresultate", None,
                                 filter,
-                                html.nonEmpty, groupers, Seq(), alphanumeric = false, isAvgOnMultipleCompetitions = true, kind, logofile)
+                                html.nonEmpty, groupers, Seq(), alphanumeric = false, isAvgOnMultipleCompetitions = true, kind, AlleWertungen, logofile)
                             }
                       }
                     case MessageAck(msg) =>
                       val kind = if (wettkampf.teamrule.nonEmpty) Kombirangliste else Einzelrangliste
                       Future {queryScoreResults(s"${wettkampf.easyprint} - Zwischenresultate", None,
                         filter,
-                        html.nonEmpty, groupers, Seq(), alphanumeric = false, isAvgOnMultipleCompetitions = true, kind, logofile)
+                        html.nonEmpty, groupers, Seq(), alphanumeric = false, isAvgOnMultipleCompetitions = true, kind, AlleWertungen, logofile)
                       }
   //                    Future {
   //                    if (html.nonEmpty) {
