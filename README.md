@@ -6,6 +6,8 @@ Wettkampf-App für Kunst- und Geräteturnen
 
 [![Uptime sharevic.net](https://app.statuscake.com/button/index.php?Track=3358506&Days=1000&Design=2)](http://status.sharevic.net)
 
+[![GitBook](https://img.shields.io/static/v1?message=Documented%20on%20GitBook&logo=gitbook&logoColor=ffffff&label=%20&labelColor=5c5c5c&color=3F89A1)](https://luechtdiode.gitbook.io/turner-wettkampf-app/v/v2r3/)
+
 # Features:
 
 ## Desktop-Installation
