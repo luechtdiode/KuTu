@@ -7,6 +7,7 @@ export interface WertungContainer {
   wertung: Wertung;
   geraet: number;
   programm: string;
+  durchgang: string;
   isDNoteUsed: boolean;
   isStroked: boolean;
 }
@@ -16,7 +17,8 @@ export interface BulkEvent {
   wettkampfUUID: string;
 }
 export interface NewLastResults {
-  results: {string: WertungContainer};
+  resultsPerWkDisz: {string: WertungContainer};
+  resultsPerDisz: {string: WertungContainer};
   lastTopResults: {string: WertungContainer};
 }
 

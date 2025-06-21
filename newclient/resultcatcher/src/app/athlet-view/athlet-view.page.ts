@@ -65,7 +65,7 @@ export class AthletViewPage  implements OnInit {
     };
     this.backendService.newLastResults.pipe(
       filter(r => !!r),
-      map(r => r.results)
+      map(r => r.resultsPerWkDisz)
     ).subscribe(changeHandler);
   }
 

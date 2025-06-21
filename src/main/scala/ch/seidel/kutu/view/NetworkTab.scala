@@ -2,7 +2,7 @@ package ch.seidel.kutu.view
 
 import ch.seidel.commons.{LazyTabPane, TabWithService}
 import ch.seidel.kutu.Config._
-import ch.seidel.kutu.KuTuApp.enc
+import ch.seidel.kutu.KuTuApp.{enc, hostServices}
 import ch.seidel.kutu.actors._
 import ch.seidel.kutu.domain._
 import ch.seidel.kutu.http.WebSocketClient
@@ -75,6 +75,7 @@ case class DurchgangState(wettkampfUUID: String, name: String, complete: Boolean
   lazy val min = s"${statsCompletedBase.map(_._2).min}%"
   lazy val max = s"${statsCompletedBase.map(_._2).max}%"
   lazy val avg = s"${100 * statsCompletedBase.map(_._3).sum / anzValue}%"
+  val lastResultsURL = s"$remoteBaseUrl/last-results?c=$wettkampfUUID&d=${encodeURIParam(name)}&k=gemischt"
 
   lazy val percentPerRiegeComplete: Map[Option[Disziplin], (String, String)] = statsCompletedBase
     .map(gr => (gr._1 -> (s"${gr._2}%", gr._5.map(grh => s"Station ${grh._1 + 1}: ${grh._2}%").mkString("\n")))).toMap
@@ -474,6 +475,28 @@ class NetworkTab(wettkampfmode: BooleanProperty, override val wettkampfInfo: Wet
     case e: Exception => e.printStackTrace()
   }
 
+  def navigateToDurchgangResultView(): Menu = {
+    val selDGStates = getSelectedDruchgangStates
+    new Menu {
+      text = "Resultat-Anzeige im Browser öffnen"
+      updateItems
+      reprintItems.onChange {
+        updateItems
+      }
+
+      private def updateItems: Unit = {
+        items.clear()
+        selDGStates.foreach(state => {
+          items += KuTuApp.makeMenuAction(s"Für Durchgang ${state.name}") { (caption: String, action: ActionEvent) =>
+            println(s"navigating to ${state.lastResultsURL}")
+            hostServices.showDocument(state.lastResultsURL)
+          }
+        })
+        disable.value = items.isEmpty
+      }
+    }
+  }
+
   def makeSelectedDurchgangTeilnehmerExport(): Menu = {
     val option = getSelectedDruchgangStates
     val selectedDurchgaenge = option.toSet.map((_: DurchgangState).name)
@@ -697,6 +720,7 @@ class NetworkTab(wettkampfmode: BooleanProperty, override val wettkampfInfo: Wet
     if (!wettkampf.toWettkampf.isReadonly(homedir, remoteHostOrigin)) {
       btnDurchgang.items.clear()
       btnDurchgang.items += makeDurchgangStartenMenu(wettkampf)
+      btnDurchgang.items += navigateToDurchgangResultView()
       btnDurchgang.items += makeSelectedDurchgangTeilnehmerExport()
       btnDurchgang.items += new SeparatorMenuItem()
       btnDurchgang.items += makeSelectedRiegenBlaetterExport()
@@ -709,6 +733,7 @@ class NetworkTab(wettkampfmode: BooleanProperty, override val wettkampfInfo: Wet
 
       view.contextMenu = new ContextMenu() {
         items += makeDurchgangStartenMenu(wettkampf)
+        items += navigateToDurchgangResultView()
         items += new SeparatorMenuItem()
         items += makeSelectedDurchgangTeilnehmerExport()
         items += new SeparatorMenuItem()

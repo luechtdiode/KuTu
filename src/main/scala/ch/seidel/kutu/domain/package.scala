@@ -1347,6 +1347,18 @@ package object domain {
         halt, disziplin).hashCode()
     }
 
+    def findDurchgangForWertung(wertung: Wertung): Option[String] = {
+      if (kandidaten.exists(k =>
+        k.id == wertung.athletId && k.wertungen.exists(w =>
+          w.id == wertung.id
+        )
+      )) {
+        durchgang
+      } else {
+        None
+      }
+    }
+
     def updated(wertung: Wertung): GeraeteRiege = {
       kandidaten.foldLeft((false, Seq[Kandidat]()))((acc, kandidat) => {
         if (acc._1) (acc._1, acc._2 :+ kandidat) else {

@@ -18,13 +18,13 @@ object GroupSection {
   }
 
   def mapAvgRang(list: Iterable[(DataObject, Resultat, Resultat)]) = {
-    val rangD = list.toList.map(_._3.noteD).filter(_ != 0).sorted.reverse :+ 0
-    val rangE = list.toList.map(_._3.noteE).filter(_ != 0).sorted.reverse :+ 0
-    val rangEnd = list.toList.map(_._3.endnote).filter(_ != 0).sorted.reverse :+ 0
+    val rangD = (0 +: list.toList.map(_._3.noteD).filter(_ != 0).sorted.reverse).zipWithIndex.toMap
+    val rangE = (0 +: list.toList.map(_._3.noteE).filter(_ != 0).sorted.reverse).zipWithIndex.toMap
+    val rangEnd = (0 +: list.toList.map(_._3.endnote).filter(_ != 0).sorted.reverse).zipWithIndex.toMap
     def rang(r: Resultat) = {
-      val rd = if (rangD.nonEmpty) rangD.indexOf(r.noteD) + 1 else 0
-      val re = if (rangE.nonEmpty) rangE.indexOf(r.noteE) + 1 else 0
-      val rf = if (rangEnd.nonEmpty) rangEnd.indexOf(r.endnote) + 1 else 0
+      val rd = rangD.getOrElse(r.noteD, 0)
+      val re = rangE.getOrElse(r.noteE, 0)
+      val rf = rangEnd.getOrElse(r.endnote, 0)
       Resultat(rd, re, rf)
     }
     list.map(y => GroupSum(y._1, y._2, y._3, rang(y._3)))

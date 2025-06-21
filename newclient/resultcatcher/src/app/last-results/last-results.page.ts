@@ -1,13 +1,14 @@
 import { Component, OnDestroy, OnInit } from '@angular/core';
-import { WertungContainer, Geraet, Wettkampf, ScoreBlock, ScoreRow, ScoreLink } from '../backend-types';
-import { IonItemSliding, NavController, ActionSheetController } from '@ionic/angular';
+import { ActionSheetController, IonItemSliding, NavController } from '@ionic/angular';
+import { Geraet, NewLastResults, ScoreBlock, ScoreLink, ScoreRow, Wertung, WertungContainer, Wettkampf } from '../backend-types';
 
-import { BackendService } from '../services/backend.service';
-import { debounceTime, distinctUntilChanged, filter, map, share, switchMap } from 'rxjs/operators';
-import { backendUrl } from '../utils';
+import { ActivatedRoute, Router } from '@angular/router';
+import { BehaviorSubject, of, Subject, Subscription } from 'rxjs';
 import { Observable } from 'rxjs/internal/Observable';
-import { Subject, BehaviorSubject, of, Subscription } from 'rxjs';
+import { debounceTime, distinctUntilChanged, filter, map, share, switchMap } from 'rxjs/operators';
 import { GroupBy } from '../component/result-display/result-display.component';
+import { BackendService } from '../services/backend.service';
+import { backendUrl } from '../utils';
 
 @Component({
     selector: 'app-last-results',
@@ -18,9 +19,9 @@ import { GroupBy } from '../component/result-display/result-display.component';
 export class LastResultsPage implements OnInit, OnDestroy {
   groupBy = GroupBy;
 
-  // @ViewChild(IonContent) content: IonContent;
-
   items: WertungContainer[] = [];
+  mixeditems: WertungContainer[] = [];
+  hasCountingItems: boolean = undefined;
   lastItems: number[];
   geraete: Geraet[] = [];
   scorelinks: ScoreLink[] = [];
@@ -28,95 +29,62 @@ export class LastResultsPage implements OnInit, OnDestroy {
   scoreblocks: ScoreBlock[] = [];
   sFilteredScoreList: ScoreBlock[] = [];
   sMyQuery: string;
+  isDNoteUsed: boolean = true;
 
   tMyQueryStream = new Subject<any>();
 
   sFilterTask: () => void = undefined;
 
   private busy = new BehaviorSubject(false);
+  
   durchgangopen: boolean;
 
   subscriptions: Subscription[] = [];
 
-
-  // @HostListener('window:resize', ['$event'])
-  // onResize(event: any) {
-  //   if (this.content) {
-  //     this.content.resize();
-  //   }
-  // }
-
   constructor(public navCtrl: NavController,
     public backendService: BackendService,
+    private readonly route: ActivatedRoute,
+    private readonly router: Router,
     public actionSheetController: ActionSheetController
     ) {
     if (! this.backendService.competitions) {
       this.backendService.getCompetitions();
     }
+    this.durchgangopen = false;
     this.backendService.durchgangStarted.pipe(
-      map(dgl => dgl.filter(dg => dg.wettkampfUUID === this.backendService.competition).length > 0 ? true : false
+      filter(dgl => dgl !== undefined),
+      map(dgl => dgl.filter(dg => dg.wettkampfUUID === this.backendService.competition).length > 0
     )).subscribe(dg => {
       this.durchgangopen = dg;
+      //console.log('durchgang new assigned: ' + dg);
     });
   }
 
   ngOnDestroy(): void {
       this.subscriptions.forEach(s => s.unsubscribe());
+      this.cleanScoreListSubscriptions();
   }
 
   ngOnInit(): void {
+    this.competition = this.route.snapshot.queryParamMap.get('c') || this.backendService.competition;
+    this.kategorieFilter = this.route.snapshot.queryParamMap.get('k') || 'getrennt';
+    this.durchgangFilter = this.route.snapshot.queryParamMap.get('d') || 'undefined';
     this.subscriptions.push(this.backendService.competitionSubject.subscribe(comps => {
-      this.backendService.activateNonCaptionMode(this.backendService.competition).subscribe(geraete => {
-        this.geraete = geraete || [];
-        this.sortItems();
-      });
-      this.subscriptions.push(this.backendService.newLastResults.subscribe(newLastRes => {
-        this.lastItems = this.items.map(item => item.id * this.geraete.length + item.geraet);
-        this.items = [];
-        if (!!newLastRes && !!newLastRes.results) {
-          Object.keys(newLastRes.results).forEach(key => {
-            this.items.push(newLastRes.results[key]);
-          });
-        }
-        this.sortItems();
-        if (this.scorelistAvailable()) {
-          this.backendService.getScoreLists().subscribe(scorelists => {
-            const c = this.competitionContainer();
-            let genericLinkAddon = '';
-            if (c.altersklassen && c.altersklassen.trim().length > 0) {
-              genericLinkAddon = ':Wettkampf%20Altersklassen';
-            }
-            else if (c.jahrgangsklassen && c.jahrgangsklassen.trim().length > 0) {
-              genericLinkAddon = ':Wettkampf%20JG-Altersklassen';
-            }
-            const genericLink = `/api/scores/${c.uuid}/query?groupby=Kategorie${genericLinkAddon}:Geschlecht`;
-            if (!!scorelists) {
-              const values = Object.values(scorelists)
-              const lists = values.filter(l => (l as any).name != 'Zwischenresultate').sort((a,b)=> a.name.localeCompare(b.name));
-              const einzelGeneric = <ScoreLink>{
-                name: 'Generische Rangliste',
-                published: true,
-                "published-date": '',
-                "scores-href": genericLink,
-                "scores-query": genericLink
-              };
-              const teamGeneric = <ScoreLink>{
-                name: 'Generische Team-Rangliste',
-                published: true,
-                "published-date": '',
-                "scores-href": `/api/scores/${c.uuid}/query?kind=Teamrangliste`,
-                "scores-query": `/api/scores/${c.uuid}/query?kind=Teamrangliste`
-              };
-              this.scorelinks = this.teamsAllowed(c) ? [...lists, teamGeneric, einzelGeneric] : [...lists, einzelGeneric];
-              const publishedLists = this.scorelinks.filter(s => ''+s.published === 'true')
-              this.refreshScoreList(publishedLists[0]);
-            }
-          });
-        } else {
-          this.title = 'Aktuelle Resultate';
-        }
-      }));
+      //console.log('refreshed competition subject ...');
+      this.subscriptions.push(this.backendService.newLastResults.pipe(filter(nlr => nlr !== undefined)).subscribe(ni => this.refreshItems(ni)));
     }));
+  }
+
+  _optionsVisible: boolean = false;
+
+  get optionsVisible(): boolean {
+    return this._optionsVisible || !this.competition
+  }
+  set optionsVisible(value: boolean) {
+    this._optionsVisible = value;
+  }
+  toggleOptions() {
+    this._optionsVisible = !this._optionsVisible;
   }
 
   teamsAllowed(wk: Wettkampf): boolean {
@@ -131,60 +99,6 @@ export class LastResultsPage implements OnInit, OnDestroy {
     this._title = title;
   }
 
-  refreshScoreList(link: ScoreLink) {
-    let path = link['scores-href'];
-    if (!link.published) {
-      path = link['scores-query'];
-    }
-    if (path.startsWith('/')) {
-      path = path.substring(1);
-    }
-    path = path.replace('html', '');
-    this.title = link.name
-
-    this.defaultPath = path;
-    this.backendService.getScoreList(this.defaultPath).pipe(
-      map(scorelist => {
-        if (!!scorelist.title && !!scorelist.scoreblocks) {
-          return scorelist.scoreblocks;
-        } else {
-          return [];
-        }
-      })).subscribe(scoreblocks => {
-        this.scoreblocks = scoreblocks
-        const pipeBeforeAction = this.tMyQueryStream.pipe(
-          filter(event => !!event && !!event.target && !!event.target.value),
-          map(event => event.target.value),
-          debounceTime(1000),
-          distinctUntilChanged(),
-          share()
-        );
-        pipeBeforeAction.subscribe(() => {
-          this.busy.next(true);
-        });
-        pipeBeforeAction.pipe(
-          switchMap(this.runQuery(scoreblocks))
-        ).subscribe(filteredList => {
-          this.sFilteredScoreList = filteredList;
-          this.busy.next(false);
-        });
-      });
-  }
-
-  sortItems() {
-    const compareItems = (a, b) => {
-      let p = a.programm.localeCompare(b.programm);
-      if (p === 0) {
-        p = this.geraetOrder(a.geraet) - this.geraetOrder(b.geraet);
-      }
-      return p;
-    };
-
-    this.items = this.items
-      .filter(w => w.wertung.endnote !== undefined)
-      .sort(compareItems);
-  }
-
   isNew(item: WertungContainer): boolean {
     return this.lastItems.filter(id => id === item.id * this.geraete.length + item.geraet).length === 0;
   }
@@ -195,10 +109,14 @@ export class LastResultsPage implements OnInit, OnDestroy {
   set competition(competitionId: string) {
     if (!this.stationFreezed) {
       this.backendService.getDurchgaenge(competitionId);
-      this.backendService.activateNonCaptionMode(this.backendService.competition).subscribe(geraete => {
-        this.geraete = geraete || [];
-        this.sortItems();
-      });
+      this.router.navigate(
+        ['last-results'],
+        {
+          queryParams: {c: this.competition, k: this._kategorieFilter, d: this.backendService.durchgang}, // add query params to current url
+          queryParamsHandling: 'merge', // remove to replace all query params by provided
+        }
+      );
+
     }
   }
   get competition(): string {
@@ -222,8 +140,8 @@ export class LastResultsPage implements OnInit, OnDestroy {
     };
 
     if (!this.backendService.competitions) { return emptyCandidate; }
-    const candidate = this.backendService.competitions
-      .filter(c => c.uuid === this.backendService.competition);
+      const candidate = this.backendService.competitions
+        .filter(c => c.uuid === this.backendService.competition);
 
     if (candidate.length === 1) {
       return candidate[0];
@@ -266,10 +184,19 @@ export class LastResultsPage implements OnInit, OnDestroy {
     return this.geraete?.length || 0;
   }
 
+  getColumnSpecs(): number[] {
+    const columnSpec = this.getColumnSpec();
+    if (columnSpec === 6) {
+      return [ 12, 12, 6, 4, this.getMaxColumnSpec()];
+    } else {
+      return [ 12, 6, 6, 3, this.getMaxColumnSpec()];
+    }
+  }
+
   getMaxColumnSpec(): number {
     return Math.min(12, Math.max(1, Math.floor(12 / this.geraete.length + 0.5)));
   }
-  
+
   getTitle(wertungContainer: WertungContainer): string {
     return wertungContainer.programm + ' - ' + this.geraetText(wertungContainer.geraet);
   }
@@ -279,27 +206,288 @@ export class LastResultsPage implements OnInit, OnDestroy {
   }
 
   getProgramme() {
-    return this.items.map(wc => wc.programm).filter(this.onlyUnique);
+    if (this.kategorieFilter === 'getrennt') {
+      return this.items.map(wc => wc.programm).filter(this.onlyUnique);
+    } else {
+      return [this.mixeditems.map(wc => wc.programm)[0]];
+    }
   }
 
   getWertungen(programm) {
-    return this.items.filter(wc => wc.programm === programm);
+    if (this.kategorieFilter === 'getrennt') {
+      return this.items.filter(wc => wc.programm === programm);
+    } else {
+      return this.getMixedWertungen();
+    }
+  }
+
+  getMixedWertungen() {
+    return this.mixeditems;
+  }
+  
+  getDurchgaenge() {
+    return [
+      ...this.backendService.activeDurchgangList.map(d => d.durchgang), 
+      ...this.backendService.durchgaenge.filter(d => !this.isDurchgangActiv(d))
+    ];
+  }
+  
+  isDurchgangActiv(durchgang: string): boolean {
+    return this.backendService.activeDurchgangList.find(d => d.durchgang === durchgang) !== undefined
+  }
+  
+  _durchgang: string = undefined;
+  set durchgangFilter(durchgang: string) {
+    if (durchgang === 'undefined') {
+      //console.log("navigate to durchgang " + durchgang);
+      this.router.navigate(
+        ['last-results'],
+        {
+          queryParams: {c: this.competition, k: this._kategorieFilter, d: undefined}, // add query params to current url
+          queryParamsHandling: 'merge', // remove to replace all query params by provided
+        }
+      );
+      this.backendService.getGeraete(this.backendService.competition, undefined).subscribe(geraete => {
+        this.geraete = geraete ?? [];
+      });
+      this.backendService.disconnectWS(true);
+      this.backendService.initWebsocket();
+      this._durchgang = undefined;
+    } else {
+      //console.log("navigate to durchgang defined: " + durchgang);
+      this.router.navigate(
+        ['last-results'],
+        {
+          queryParams: {c: this.competition, k: this._kategorieFilter, d: durchgang}, // add query params to current url
+          queryParamsHandling: 'merge', // remove to replace all query params by provided
+        }
+      );
+      this.backendService.getGeraete(this.backendService.competition, durchgang).subscribe(geraete => {
+        this.geraete = geraete ?? [];
+      });;
+      this.backendService.disconnectWS(true);
+      this.backendService.initWebsocket();
+      this._durchgang = durchgang;
+    }
+  }
+  get durchgangFilter(): string {
+    return this._durchgang || 'undefined';
+  }
+
+
+  _kategorieFilter: string = "getrennt";
+
+  set kategorieFilter(kategorieFilter: string) {
+    this._kategorieFilter = kategorieFilter;
+    if (this._kategorieFilter?.trim().length > 0) {
+      this.router.navigate(
+        ['last-results'],
+        {
+          queryParams: {c: this.competition, k: kategorieFilter, d: this.backendService.durchgang}, // add query params to current url
+          queryParamsHandling: 'merge', // remove to replace all query params by provided
+        }
+      );
+    } else {
+      this.router.navigate(
+        ['last-results'],
+        {
+          queryParams: {c: this.competition, d: this.backendService.durchgang}, // add query params to current url
+          queryParamsHandling: 'merge', // remove to replace all query params by provided
+        }
+      );
+    }
+  }
+  get kategorieFilter(): string {
+    return this._kategorieFilter;
+  }
+
+  hideHeader: number = 0;
+
+  toggleHeader() {
+    if(!this.scorelistAvailable()) {
+      this.hideHeader = this.hideHeader += 1;
+      if (this.hideHeader > 2) {
+        this.hideHeader = 0;
+      }
+    }
+  }
+
+  get nextToolbarPosition(): string {
+    if (this.hideHeader === 0) {
+      return 'von oben nach unten, und dann auf ausgeblendet';
+    } else if (this.hideHeader === 1) {
+      return 'von unten nach ausgeblendet';
+    } else {
+      return 'oben';
+    }
+  }
+  isToolbarTop(): boolean {
+    return this.hideHeader === 0 || this.scorelistAvailable();
+  }
+
+  isToolbarBottom(): boolean {
+    return this.hideHeader === 1;
+  }
+
+  isFullscreen(): boolean {
+    return this.hideHeader === 2;
+  }
+
+  get isBusy(): Observable<boolean> {
+    return this.busy;
+  }
+
+  refreshItems(newLastRes: NewLastResults) {
+    this.lastItems = this.items.map(item => item.id * this.geraete.length + item.geraet);
+    this.items = [];
+    this.mixeditems = [];
+    this.hasCountingItems = false;
+    //console.log('refreshing newLastRes...', newLastRes);
+    if (!!newLastRes && !!newLastRes.resultsPerWkDisz) {
+      //console.log('refreshing items ...');
+      const newLastWKDiszValues = Object.values(newLastRes.resultsPerWkDisz);
+      const pgms = newLastWKDiszValues.map(wc => wc.programm).filter(this.onlyUnique);
+      const programme = pgms.length > 0 ? pgms : ['\u{00A0}'];
+      if (newLastWKDiszValues.length > 0) {
+        this.isDNoteUsed = newLastWKDiszValues.findIndex((v, i, obj) => v.isDNoteUsed) > -1;
+      }
+      const tmpItems = [];
+      programme.forEach(p => {
+        this.geraete.map(g => {
+          return newLastWKDiszValues.find(d => d.geraet === g.id && d.wertung.endnote && (p === '\u{00A0}' || d.programm === p) ) 
+          || <WertungContainer>{
+            programm: p,
+            geraet: g.id,
+            id: 0,
+            vorname: '\u{00A0}', name: '\u{00A0}', geschlecht: undefined, verein: '\u{00A0}',
+            wertung: <Wertung>{
+              noteE: 0, noteD: 0, endnote: 0,
+              wettkampfdisziplinId: 0
+            },
+            isDNoteUsed:  this.isDNoteUsed
+          }
+        }).forEach(wc => {
+            this.hasCountingItems = this.hasCountingItems || wc.wertung.endnote > 0;
+            tmpItems.push(wc);
+        });
+      });
+      this.items = tmpItems;
+      this.mixeditems = this.geraete.map(g => newLastRes.resultsPerDisz[g.id] ?? <WertungContainer>{
+          programm: '\u{00A0}',
+          geraet: g.id,
+          id: 0,
+          vorname: '\u{00A0}', name: '\u{00A0}', geschlecht: undefined, verein: '\u{00A0}',
+          wertung: <Wertung>{
+            noteE: 0, noteD: 0, endnote: 0,
+            wettkampfdisziplinId: 0
+          },
+          isDNoteUsed: this.items.length > 0 ?  this.items[0].isDNoteUsed : true
+        }
+      );
+    }
+    if (this.scorelistAvailable()) {
+      this.loadScoreList();
+    } else {
+      this.title = 'Aktuelle Resultate';
+    }
   }
 
   scorelistAvailable(): boolean {
-    return !this.durchgangopen && (this.items?.length === 0) && new Date(this.competitionContainer().datum).getTime() <  new Date(Date.now() - 3600 * 1000 * 24).getTime();
+    return this.hasCountingItems !== undefined && !this.durchgangopen && !this.hasCountingItems && new Date(this.competitionContainer().datum).getTime() <  new Date(Date.now() - 3600 * 1000 * 24).getTime();
   }
 
   get filteredScoreList() {
-    if (!!this.sFilteredScoreList && this.sFilteredScoreList.length > 0) {
+    if (this.sFilteredScoreList?.length > 0) {
       return this.sFilteredScoreList;
     } else {
       return this.getScoreListItems();
     }
   }
 
-  get isBusy(): Observable<boolean> {
-    return this.busy;
+  loadScoreList() {
+    //console.log('loadScoreLists');
+    this.backendService.getScoreLists().subscribe(scorelists => {
+      const c = this.competitionContainer();
+      let genericLinkAddon = '';
+      if (c.altersklassen && c.altersklassen.trim().length > 0) {
+        genericLinkAddon = ':Wettkampf%20Altersklassen';
+      }
+      else if (c.jahrgangsklassen && c.jahrgangsklassen.trim().length > 0) {
+        genericLinkAddon = ':Wettkampf%20JG-Altersklassen';
+      }
+      const genericLink = `/api/scores/${c.uuid}/query?groupby=Kategorie${genericLinkAddon}:Geschlecht`;
+      if (!!scorelists) {
+        const values = Object.values(scorelists)
+        const lists = values.filter(l => (l as any).name != 'Zwischenresultate').sort((a,b)=> a.name.localeCompare(b.name));
+        const einzelGeneric = <ScoreLink>{
+          name: 'Generische Rangliste',
+          published: true,
+          "published-date": '',
+          "scores-href": genericLink,
+          "scores-query": genericLink
+        };
+        const teamGeneric = <ScoreLink>{
+          name: 'Generische Team-Rangliste',
+          published: true,
+          "published-date": '',
+          "scores-href": `/api/scores/${c.uuid}/query?kind=Teamrangliste`,
+          "scores-query": `/api/scores/${c.uuid}/query?kind=Teamrangliste`
+        };
+        this.scorelinks = this.teamsAllowed(c) ? [...lists, teamGeneric, einzelGeneric] : [...lists, einzelGeneric];
+        const publishedLists = this.scorelinks.filter(s => ''+s.published === 'true')
+        this.refreshScoreList(publishedLists[0]);
+      }
+    });
+  }
+
+  _scorelistSubscription: Subscription[] = [];
+  cleanScoreListSubscriptions() {
+    this._scorelistSubscription.forEach(s => s.unsubscribe());
+    this._scorelistSubscription = [];
+  }
+
+  refreshScoreList(link: ScoreLink) {
+    //console.log('refreshScoreList', link);
+    let path = link['scores-href'];
+    if (!link.published) {
+      path = link['scores-query'];
+    }
+    if (path.startsWith('/')) {
+      path = path.substring(1);
+    }
+    path = path.replace('html', '');
+    this._optionsVisible = false;
+    this.title = link.name;
+    this.defaultPath = path;
+    this._scorelistSubscription.push(this.backendService.getScoreList(this.defaultPath).pipe(
+      map(scorelist => {
+        if (!!scorelist.title && !!scorelist.scoreblocks) {
+          return scorelist.scoreblocks;
+        } else {
+          return [];
+        }
+      })).subscribe(scoreblocks => {
+        this.scoreblocks = scoreblocks;
+        this.sFilteredScoreList = scoreblocks;
+        this.cleanScoreListSubscriptions();
+        const pipeBeforeAction = this.tMyQueryStream.pipe(
+          filter(event => !!event && !!event.target && !!event.target.value),
+          map(event => event.target.value),
+          debounceTime(1000),
+          distinctUntilChanged(),
+          share()
+        );
+        this._scorelistSubscription.push(pipeBeforeAction.subscribe(() => {
+          this.busy.next(true);
+        }));
+        this._scorelistSubscription.push(pipeBeforeAction.pipe(
+          switchMap(this.runQuery(this.scoreblocks))
+        ).subscribe(filteredList => {
+          //console.log('filteredList retrieved', filteredList);
+          this.sFilteredScoreList = filteredList;
+          this.busy.next(false);
+        }));
+      }));
   }
 
   runQuery(scorelist: ScoreBlock[]) {

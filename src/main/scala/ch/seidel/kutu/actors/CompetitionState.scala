@@ -47,7 +47,7 @@ case class CompetitionState (
             case ds: DurchgangResetted => !ds.durchgang.equals(eventDurchgangFinished.durchgang)
             case _ => true
           } :+ eventDurchgangFinished,
-          Map.empty, bestenResults, lastBestenResults, lastSequenceId,
+          Map.empty, Map.empty, Map.empty, lastSequenceId,
           completedflags
         )
       }
@@ -55,7 +55,7 @@ case class CompetitionState (
     case eventDurchgangResetted: DurchgangResetted =>
       CompetitionState(
         startedDurchgaenge - eventDurchgangResetted.durchgang,
-        finishedDurchgangSteps,
+        finishedDurchgangSteps.filter(_.durchgang.equals(eventDurchgangResetted.durchgang)),
         finishedDurchgaenge - eventDurchgangResetted.durchgang,
         startStopEvents.filter {
           case ds: DurchgangStarted => !ds.durchgang.equals(eventDurchgangResetted.durchgang)
@@ -63,7 +63,7 @@ case class CompetitionState (
           case ds: DurchgangResetted => !ds.durchgang.equals(eventDurchgangResetted.durchgang)
           case _ => true
         } :+ eventDurchgangResetted,
-        Map.empty, bestenResults, lastBestenResults, lastSequenceId,
+        Map.empty, Map.empty, Map.empty, lastSequenceId,
         completedflags
       )
 
@@ -116,16 +116,40 @@ case class CompetitionState (
     WertungContainer(
       athlet.id, athlet.vorname, athlet.name, athlet.geschlecht, athlet.verein.map(_.name).getOrElse(""),
       awuv.wertung,
-      awuv.geraet, awuv.programm, isDNoteUsed, isStroked = false)
+      awuv.geraet, awuv.programm, awuv.durchgang, isDNoteUsed, isStroked = false)
   }
 
+  def lastWertungenPerWKDisz(durchgang: String): Map[String, WertungContainer] = {
+    val dgs = encodeURIComponent(durchgang)
+    //println(s"lastWertungenPerWKDisz($dgs)")
+    lastWertungen
+      .filter(!_._1.startsWith("G"))
+      .map(w => (w._1.substring(1), w._2))
+      .filter { w =>
+        val dg = encodeURIComponent(w._2.durchgang)
+        dg.isEmpty || dgs.isEmpty || dg.equals(dgs)
+      }
+  }
+  def lastWertungenPerDisz(durchgang: String): Map[String, WertungContainer] = {
+    val dgs = encodeURIComponent(durchgang)
+    //println(s"lastWertungenPerDisz($dgs)")
+    lastWertungen
+      .filter(!_._1.startsWith("D"))
+      .map(w => (w._1.substring(1), w._2))
+      .filter{w =>
+        val dg = encodeURIComponent(w._2.durchgang)
+        dg.isEmpty || dgs.isEmpty || dg.equals(dgs)
+      }
+  }
   private def newCompetitionStateWith(wertungContainer: WertungContainer) =
     CompetitionState(
       startedDurchgaenge,
       finishedDurchgangSteps,
       finishedDurchgaenge,
       startStopEvents,
-      lastWertungen.updated(wertungContainer.wertung.wettkampfdisziplinId.toString(), wertungContainer),
+      lastWertungen
+        .updated(s"D${wertungContainer.wertung.wettkampfdisziplinId}", wertungContainer)
+        .updated(s"G${wertungContainer.geraet}", wertungContainer),
       putBestenResult(wertungContainer), lastBestenResults, lastSequenceId + 1,
       completedflags
     )

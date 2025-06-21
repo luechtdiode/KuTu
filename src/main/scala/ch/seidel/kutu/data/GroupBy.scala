@@ -612,7 +612,7 @@ object GroupBy {
             filterValues.exists(entry => {
               val itemText = f.easyprint
               val exists = if (entry.contains(" ")) {
-                entry.split(" ").forall(subentry => itemText.contains(subentry))
+                entry.split(" ").map(e => e.replace("_", "")).forall(subentry => itemText.contains(subentry))
               } else {
                 entry.equalsIgnoreCase(itemText)
               }

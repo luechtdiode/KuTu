@@ -1,4 +1,4 @@
-<ion-header>
+<ion-header *ngIf="isToolbarTop()">
   <ion-toolbar>
     <ion-buttons slot="start">
       <ion-menu-toggle>
@@ -6,20 +6,17 @@
           <ion-icon slot="icon-only" name="menu"></ion-icon>
         </ion-button>
       </ion-menu-toggle>
+      <ion-buttons *ngIf="!scorelistAvailable()">
+        <ion-button (click)="toggleOptions()" >
+          <ion-icon slot="icon-only" name="options"></ion-icon>
+        </ion-button>
+      </ion-buttons>
     </ion-buttons>
     <ion-title>
       <ion-grid no-padding>
         <ion-row>
           <ion-col>
             <ion-label>{{title}}</ion-label>
-          </ion-col>
-          <ion-col *ngIf="!competition">
-            <ion-item>
-              <ion-select label="Wettkampf" placeholder='Bitte auswählen' *ngIf="getCompetitions().length > 0" [(ngModel)]='competition' okText='Okay' cancelText='Abbrechen'>
-                  <ion-select-option *ngFor='let comp of getCompetitions()' [value]='comp.uuid'>
-                    {{comp.titel + ' ' + (comp.datum | date:'dd-MM-yy')}}</ion-select-option>
-                </ion-select>
-            </ion-item>
           </ion-col>
         </ion-row>
       </ion-grid>
@@ -33,24 +30,46 @@
     (ionInput)="reloadList($event)"
     (ionCancel)="reloadList($event)">
   </ion-searchbar>
+  <ion-list *ngIf="optionsVisible && isToolbarTop()">
+    <ion-item>
+      <ion-select label="Wettkampf" placeholder='Bitte auswählen' *ngIf="getCompetitions().length > 0" [(ngModel)]='competition' okText='Okay' cancelText='Abbrechen'>
+          <ion-select-option *ngFor='let comp of getCompetitions()' [value]='comp.uuid'>
+            {{comp.titel + ' ' + (comp.datum | date:'dd-MM-yy')}}</ion-select-option>
+        </ion-select>
+    </ion-item>
+    <ion-item>
+      <ion-select label='Durchgang' placeholder='Bitte auswählen' *ngIf="getDurchgaenge() && getDurchgaenge().length > 0" [(ngModel)]='durchgangFilter'
+        okText='Okay' cancelText='Abbrechen'>
+        <ion-select-option value='undefined'>Kein Durchgangfilter</ion-select-option>
+        <ion-select-option *ngFor='let d of getDurchgaenge()' [value]='d'>
+          <em *ngIf="isDurchgangActiv(d)">(atkiv) {{d}}</em><div *ngIf="!isDurchgangActiv(d)">(inaktiv) {{d}}</div>
+        </ion-select-option>
+      </ion-select>
+    </ion-item>
+    <ion-item>
+      <ion-select label="Kategorien" placeholder='Bitte auswählen' [(ngModel)]='kategorieFilter' okText='Okay' cancelText='Abbrechen'>
+          <ion-select-option value='getrennt'>Kategorien getrennt</ion-select-option>
+          <ion-select-option value='gemischt'>Kategorien gemischt</ion-select-option>
+      </ion-select>
+    </ion-item>
+
+    <ion-item>
+      <ion-label>doppel-click wechselt die Position des Toolbars ({{nextToolbarPosition}})</ion-label>
+      <ion-button (click)="toggleHeader()">Umschalten</ion-button>
+    </ion-item>
+  </ion-list>
+
 </ion-header>
 
-<ion-content>
-  <ion-grid no-padding *ngIf="items.length > 0 && getColumnSpec() === 6">
+<ion-content (dblclick)="toggleHeader()" (click)="optionsVisible = false">
+  <ion-grid no-padding *ngIf="!scorelistAvailable()">
     <ion-row *ngFor='let p of getProgramme()'>
       <ion-col class="align-self-start"
-        size-xs="12" size-md="6" size-lg="3" [attr.size-xl]="getMaxColumnSpec()"
-        *ngFor='let w of getWertungen(p)'>
-        <div [ngClass]="{'gradient-border':isNew(w)}">
-          <result-display [item]="w" [title]="getTitle(w)" [groupedBy]="groupBy.PROGRAMM"></result-display>
-        </div>
-      </ion-col>
-    </ion-row>
-  </ion-grid>
-  <ion-grid no-padding *ngIf="items.length > 0 && 6 !== getColumnSpec()">
-    <ion-row *ngFor='let p of getProgramme()'>
-      <ion-col class="align-self-start"
-        size-xs="12" size-sm="6" size-md="4" size-lg="3" [attr.size-xl]="getMaxColumnSpec()"
+        [attr.size-xs]="getColumnSpecs()[0]"
+        [attr.size-sm]="getColumnSpecs()[1]"
+        [attr.size-md]="getColumnSpecs()[2]"
+        [attr.size-lg]="getColumnSpecs()[3]"
+        [attr.size-xl]="getMaxColumnSpec()"
         *ngFor='let w of getWertungen(p)'>
         <div [ngClass]="{'gradient-border':isNew(w)}">
           <result-display [item]="w" [title]="getTitle(w)" [groupedBy]="groupBy.PROGRAMM"></result-display>
@@ -73,7 +92,61 @@
     </div>
   </ion-list>
 </ion-content>
-
+<ion-footer *ngIf="!scorelistAvailable() && isToolbarBottom()">
+  <ion-list *ngIf="optionsVisible">
+    <ion-item>
+      <ion-select label="Wettkampf" placeholder='Bitte auswählen' *ngIf="getCompetitions().length > 0" [(ngModel)]='competition' okText='Okay' cancelText='Abbrechen'>
+          <ion-select-option *ngFor='let comp of getCompetitions()' [value]='comp.uuid'>
+            {{comp.titel + ' ' + (comp.datum | date:'dd-MM-yy')}}</ion-select-option>
+        </ion-select>
+    </ion-item>
+    <ion-item>
+      <ion-select label='Durchgang' placeholder='Bitte auswählen' *ngIf="getDurchgaenge() && getDurchgaenge().length > 0" [(ngModel)]='durchgangFilter'
+        okText='Okay' cancelText='Abbrechen'>
+        <ion-select-option value='undefined'>Kein Durchgangfilter</ion-select-option>
+        <ion-select-option *ngFor='let d of getDurchgaenge()' [value]='d'>
+          <em *ngIf="isDurchgangActiv(d)">(atkiv) {{d}}</em><div *ngIf="!isDurchgangActiv(d)">(inaktiv) {{d}}</div>
+        </ion-select-option>
+      </ion-select>
+    </ion-item>
+    <ion-item>
+      <ion-select label="Kategorien" placeholder='Bitte auswählen' [(ngModel)]='kategorieFilter' okText='Okay' cancelText='Abbrechen'>
+          <ion-select-option value='getrennt'>Kategorien getrennt</ion-select-option>
+          <ion-select-option value='gemischt'>Kategorien gemischt</ion-select-option>
+      </ion-select>
+    </ion-item>
+    <ion-item>
+      <ion-label>doppel-click wechselt die Position des Toolbars ({{nextToolbarPosition}})</ion-label>
+      <ion-button (click)="toggleHeader()">Umschalten</ion-button>
+    </ion-item>
+  </ion-list>
+  <ion-toolbar>
+    <ion-buttons slot="start">
+      <ion-menu-toggle>
+        <ion-button>
+          <ion-icon slot="icon-only" name="menu"></ion-icon>
+        </ion-button>
+      </ion-menu-toggle>
+      <ion-buttons *ngIf="!scorelistAvailable()">
+        <ion-button (click)="toggleOptions()" >
+          <ion-icon slot="icon-only" name="options"></ion-icon>
+        </ion-button>
+      </ion-buttons>
+    </ion-buttons>
+    <ion-title>
+      <ion-grid no-padding>
+        <ion-row>
+          <ion-col>
+            <ion-label>{{title}}</ion-label>
+          </ion-col>
+        </ion-row>
+      </ion-grid>
+    </ion-title>
+    <ion-note slot="end" *ngIf="competition">
+      {{competitionName()}}
+    </ion-note>
+  </ion-toolbar>
+</ion-footer>
 <ion-footer *ngIf="scorelistAvailable()">
   <ion-toolbar>
     <ion-button size="large" expand="block" (click)='presentActionSheet()' color="primary">
