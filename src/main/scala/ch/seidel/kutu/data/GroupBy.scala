@@ -16,18 +16,43 @@ object ScoreListKind {
       case "Teamrangliste" => Teamrangliste
       case "Kombirangliste" => Kombirangliste
       case _ => Einzelrangliste
-    }.headOption.getOrElse(Einzelrangliste)
+    }.getOrElse(Einzelrangliste)
 }
 sealed trait ScoreListKind
 case object Einzelrangliste extends ScoreListKind
 case object Teamrangliste extends ScoreListKind
 case object Kombirangliste extends ScoreListKind
 
+object ScoreListBestN {
+  private val bestOfNCountPattern = "^beste\\(([0-5]{1})\\)$".r
+  def apply(value: Option[String]): ScoreListBestN = value
+    .map {
+      case "all" => AlleWertungen
+      case bestOfNCountPattern(count) => BestNWertungen(count)
+      case _ => AlleWertungen
+    }.getOrElse(AlleWertungen)
+}
+sealed trait ScoreListBestN extends DataObject {
+  val counting: Option[Int]
+  val text: String
+  def urlParam = if (counting.isEmpty || counting.get < 1) "alle" else s"beste(${counting.get})"
+  override def toString: String = text
+}
+case object AlleWertungen extends ScoreListBestN {
+  override val counting: Option[Nothing] = None
+  override val text: String = "Alle Wertungen"
+}
+case class BestNWertungen(c: Int) extends ScoreListBestN {
+  override val counting: Option[Int] = Some(c)
+  override val text: String = if (c > 1) s"Beste ${c} Wertungen" else "Beste Wertung"
+}
+
 sealed trait GroupBy {
   val groupname: String
   protected var next: Option[GroupBy] = None
   protected var isANO: Boolean = false
   protected var isAVG: Boolean = true
+  protected var bestNCounting: ScoreListBestN = AlleWertungen
   protected var kind: ScoreListKind = Einzelrangliste
 
   protected def allName = groupname
@@ -62,6 +87,14 @@ sealed trait GroupBy {
       acc
     }
   }
+  def getBestNCounting = bestNCounting
+
+  def setBestNCounting(value: ScoreListBestN): Unit = {
+    traverse(value) { (gb, acc) =>
+      gb.bestNCounting = acc
+      acc
+    }
+  }
 
   def toRestQuery: String = {
     val groupby = traverse("") { (gb, acc) =>
@@ -72,7 +105,10 @@ sealed trait GroupBy {
           acc + "," + gb.groupname
       }
     }
-    s"groupby=${groupby}" + (if (isANO) "&alphanumeric" else "") + (if (isAVG) "&avg=true" else "&avg=false") + s"&kind=${kind}"
+    s"groupby=${groupby}" +
+      (if (isANO) "&alphanumeric" else "") +
+      (if (isAVG) "&avg=true" else "&avg=false") +
+      s"&kind=${kind}&counting=${bestNCounting.urlParam}"
   }
 
   def chainToString: String = s"$groupname (skipGrouper: $skipGrouper, $allName)" + (next match {
@@ -119,6 +155,7 @@ sealed trait GroupBy {
   def reset: Unit = {
     setAlphanumericOrdered(false)
     setAvgOnMultipleCompetitions(true)
+    setBestNCounting(AlleWertungen)
     next = None
   }
 
@@ -140,7 +177,7 @@ sealed trait GroupBy {
     def reduce(switch: DataObject, list: Seq[WertungView]): Seq[GroupSection] = {
       val rl = list.filter(_.showInScoreList)
       if (rl.nonEmpty) {
-        val gl = GroupLeaf(switch, rl)
+        val gl = GroupLeaf(switch, rl, bestOfCountOverride = getBestNCounting.counting)
         kind match {
           case Teamrangliste => {
             TeamSums(gl)
@@ -206,7 +243,10 @@ sealed trait FilterBy extends GroupBy {
         }
       )
     }
-    s"groupby=$groupby${filter.mkString}" + (if (isANO) "&alphanumeric" else "") + (if (isAVG) "&avg=true" else "&avg=false") + s"&kind=${kind}"
+    s"groupby=$groupby${filter.mkString}" +
+      (if (isANO) "&alphanumeric" else "") +
+      (if (isAVG) "&avg=true" else "&avg=false") +
+      s"&kind=${kind}&counting=${bestNCounting.urlParam}"
   }
 
   private[FilterBy] var filter: Set[DataObject] = Set.empty
@@ -535,10 +575,16 @@ object GroupBy {
         .map(x => x.split("=")(1))
         .headOption
     )
-    apply(groupby, filter, data, query.contains("&alphanumeric"), !query.contains("&avg=false"), kind, groupers)
+    val bestOfN: ScoreListBestN = ScoreListBestN(
+      arguments
+        .filter(x => x.startsWith("counting"))
+        .map(x => x.split("=")(1))
+        .headOption
+    )
+    apply(groupby, filter, data, query.contains("&alphanumeric"), !query.contains("&avg=false"), kind, bestOfN, groupers)
   }
 
-  def apply(groupby: Option[String], filter: Iterable[String], data: Seq[WertungView], alphanumeric: Boolean, isAvgOnMultipleCompetitions: Boolean, kind: ScoreListKind, groupers: List[FilterBy]): GroupBy = {
+  def apply(groupby: Option[String], filter: Iterable[String], data: Seq[WertungView], alphanumeric: Boolean, isAvgOnMultipleCompetitions: Boolean, kind: ScoreListKind, counting: ScoreListBestN, groupers: List[FilterBy]): GroupBy = {
     val filterList = filter.map { flt =>
       val keyvalues = flt.split(":")
       val key = keyvalues(0)
@@ -598,6 +644,7 @@ object GroupBy {
     query.setAlphanumericOrdered(alphanumeric)
     query.setAvgOnMultipleCompetitions(isAvgOnMultipleCompetitions)
     query.setKind(kind)
+    query.setBestNCounting(counting)
     query
   }
 }

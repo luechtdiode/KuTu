@@ -221,7 +221,7 @@ class RanglisteTab(wettkampfmode: BooleanProperty, wettkampf: WettkampfView, ove
         btnPublikationFreigeben)
     }
 
-  override def resetFilterPresets(combos: Seq[ComboBox[FilterBy]], scoreListKind: ScoreListKind): Unit = {
+  override def resetFilterPresets(combos: Seq[ComboBox[FilterBy]], scoreListKind: ScoreListKind, scoreListBestN: ScoreListBestN): Unit = {
     val team = groupers.find(p => p.isInstanceOf[ByTeamRule] && p.groupname.startsWith("Wettkampf"))
     scoreListKind match {
       case Teamrangliste if team.nonEmpty =>
@@ -252,7 +252,7 @@ class RanglisteTab(wettkampfmode: BooleanProperty, wettkampf: WettkampfView, ove
 
     val team = groupers.find(p => p.isInstanceOf[ByTeamRule] && p.groupname.startsWith("Wettkampf"))
     val kind: ScoreListKind = if (getData.exists(_.team > 0) || team.nonEmpty) Teamrangliste else Einzelrangliste
-    resetFilterPresets(combos, kind)
+    resetFilterPresets(combos, kind, AlleWertungen)
     cbAvg.visible = false
     true
   }
