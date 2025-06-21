@@ -55,7 +55,7 @@ _[siehe detailierte Dokumentation](https://luechtdiode.gitbook.io/turner-wettkam
   * Docu [Detailierte Beschreibung zur Installation des Dockerimages](docs/KuTuAppDockerImageDocu.md)
   * Feature [Wettkampfanmeldungen für Vereine](https://luechtdiode.gitbook.io/turner-wettkampf-app/wettkampf-vorbereitung/wettkampf_uebersicht/turneranmeldungen_verarbeiten_online)
   * Feature [Mobile-App für die Resultaterfassung](https://luechtdiode.gitbook.io/turner-wettkampf-app/wettkampf-durchfuhrung/wettkampf-netzwerk-wertungsrichter)
-  * Feature Mobile-App für die Resultat-Anzeige
+  * Feature [Mobile-App für die Resultat-Anzeige(https://luechtdiode.gitbook.io/turner-wettkampf-app/wettkampf-durchfuhrung/letzte-resultate)
   * Feature API für die Abfrage diverser Listen und Reports zu einem Wettkampf, für die Integration in eigene Plattformen (Homepage, etc)
 
 [Benutzeranleitung (online)](https://luechtdiode.gitbook.io/turner-wettkampf-app/)
