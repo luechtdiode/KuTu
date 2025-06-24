@@ -1,6 +1,7 @@
 package ch.seidel.kutu.http
 
 import ch.seidel.kutu.actors._
+import ch.seidel.kutu.calc.{ScoreAggregateFn, ScoreCalcTemplate, ScoreCalcVariable}
 import ch.seidel.kutu.domain._
 import org.apache.pekko.http.scaladsl.marshallers.sprayjson.SprayJsonSupport
 import spray.json._
@@ -28,6 +29,9 @@ trait JsonSupport extends SprayJsonSupport with EnrichedJson {
   implicit val judgeRegistrationProgramItemFormat: RootJsonFormat[JudgeRegistrationProgramItem] = jsonFormat3(JudgeRegistrationProgramItem)
 
   implicit val resultatFormat: RootJsonFormat[Resultat] = jsonFormat(Resultat, "noteD", "noteE", "endnote", "isStreichwertung")
+  implicit val scoreCalcVariableFormat: RootJsonFormat[ScoreCalcVariable] = jsonFormat5(ScoreCalcVariable)
+  implicit val scoreAggrFnFormat: RootJsonFormat[ScoreAggregateFn] = new CaseObjectJsonSupport[ScoreAggregateFn]
+  implicit val scoreCalcTemplateFormat: RootJsonFormat[ScoreCalcTemplate] = jsonFormat(ScoreCalcTemplate, "dFormula", "eFormula", "pFormula", "aggregateFn")
 
   implicit val dataObjectFormat: RootJsonWriter[DataObject] = (p: DataObject) => {
     p.easyprint.toJson
