@@ -797,14 +797,14 @@ package object domain {
    * Acts         +===========================================+=========================================================
    * Einteilung->| Sex,Pgm,Verein     | Sex,Pgm,Jg(,Verein)  | Sex,Pgm,Verein       | Pgm,Sex,Jg(,Verein)
    * +--------------------+----------------------+----------------------+-----------------------------------
-   * Teilnahme   | 1/WK               | 1/WK                 | &lt;<=PgmCnt(Jg)/WK      | 1/Pgm
+   * Teilnahme   | 1/WK               | 1/WK                 | <=PgmCnt(Jg)/WK      | 1/Pgm
    * +-------------------------------------------+----------------------------------------------------------
    * Registration| 1/WK               | 1/WK, Pgm/(Jg)       | mind. 1, max 1/Pgm   | 1/WK aut. Tn 1/Pgm
    * +-------------------------------------------+----------------------------------------------------------
    * Beispiele   | GeTu/KuTu/KuTuRi   | Turn10® (BS/OS)      | TG Allgäu (Pfl./Kür) | ATT (Kraft/Bewg)
    * +-------------------------------------------+----------------------------------------------------------
    * Rangliste   | Sex/Programm       | Sex/Programm/Jg      | Sex/Programm         | Sex/Programm/Jg
-   * |                    | Sex/Programm/AK      | Sex/Programm/AK      |
+   *             |                    | Sex/Programm/AK      | Sex/Programm/AK      |
    * +===========================================+=========================================================
    * </pre>
    */
