@@ -1,7 +1,7 @@
 package ch.seidel.kutu.calc
 
 import ch.seidel.kutu.calc.parser._
-import ch.seidel.kutu.domain.{Wertung, WettkampfdisziplinView}
+import ch.seidel.kutu.domain.{Resultat, Wertung, WettkampfdisziplinView}
 
 case class Calculator(template: ScoreCalcTemplate) {
   def calculate(w: Wertung, wd: WettkampfdisziplinView, values: List[List[ScoreCalcVariable]]): Wertung = {
@@ -15,7 +15,6 @@ case class Calculator(template: ScoreCalcTemplate) {
       val p = BigDecimal(Expression(MathExpCompiler(pExpression)).eval(Map.empty))
       wd.verifiedAndCalculatedWertung(w.copy(noteD = Some(d), noteE = Some(e - p)))
     })
-    println(wertungen)
     template.aggregateFn match {
       case None => wertungen.head
       case Some(Min) =>
@@ -23,12 +22,20 @@ case class Calculator(template: ScoreCalcTemplate) {
       case Some(Max) =>
         wertungen.reduce((a,b) => if (a.resultat.endnote > b.resultat.endnote) a else b)
       case Some(Avg) =>
-        val r = wertungen.map(_.resultat).reduce((a,b) => a + b) / wertungen.size
+        val r = wertungen
+          .map(_.resultat)
+          .foldLeft(Resultat(0,0,0)){
+            (a,b) => a + b
+          } / wertungen.length
         wd.verifiedAndCalculatedWertung(w.copy(
           noteD = Some(r.noteD), noteE = Some(r.noteE)
         ))
       case Some(Sum) =>
-        val r = wertungen.map(_.resultat).reduce((a,b) => a + b)
+        val r = wertungen
+          .map(_.resultat)
+          .foldLeft(Resultat(0,0,0)){
+            (a,b) => a + b
+          }
         wd.verifiedAndCalculatedWertung(w.copy(
           noteD = Some(r.noteD), noteE = Some(r.noteE)
         ))
