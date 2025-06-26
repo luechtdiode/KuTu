@@ -1,6 +1,7 @@
 package ch.seidel.kutu.data
 
 import ch.seidel.kutu.actors._
+import ch.seidel.kutu.calc.{ScoreAggregateFn, ScoreCalcTemplate, TemplateViewJsonReader}
 import ch.seidel.kutu.data.CaseObjectMetaUtil._
 import ch.seidel.kutu.domain._
 import ch.seidel.kutu.renderer.PrintUtil
@@ -343,10 +344,43 @@ object ResourceExchanger extends KutuService with RiegenBuilder {
         },
         riege = if (fields(wertungenHeader("riege")).nonEmpty) Some(fields(wertungenHeader("riege"))) else None,
         riege2 = if (fields(wertungenHeader("riege2")).nonEmpty) Some(fields(wertungenHeader("riege2"))) else None,
-        team = if (wertungenHeader.contains("team") && fields(wertungenHeader("team")).nonEmpty) Some(fields(wertungenHeader("team"))) else None
+        team = if (wertungenHeader.contains("team") && fields(wertungenHeader("team")).nonEmpty) Some(fields(wertungenHeader("team"))) else None,
+        variables = if (wertungenHeader.contains("variables") && fields(wertungenHeader("variables")).nonEmpty) TemplateViewJsonReader(Some(fields(wertungenHeader("variables")))) else None
       )
       w
     }
+
+    if (collection.contains("scorecalc_templates.csv")) {
+      val (scoreCalcTemplate, scoreCalcTemplateHeader) = collection("scorecalc_templates.csv")
+      logger.info("importing scorecalc_templates ...", scoreCalcTemplateHeader)
+      updateScoreCalcTemplates(scoreCalcTemplate.map(DBService.parseLine).filter(_.size == scoreCalcTemplateHeader.size).map { fields =>
+        val wettkampfid = fields(scoreCalcTemplateHeader("wettkampfId"))
+        val planTimeRaw = ScoreCalcTemplate(
+          id = 0L,
+          wettkampfId = wettkampfInstances.get(wettkampfid + "") match {
+            case Some(w) => Some(w.id)
+            case None => Some(wettkampfid)
+          },
+          wettkampfdisziplinId = fields(scoreCalcTemplateHeader("wettkampfdisziplinId")) match {
+            case "" => None
+            case value => Some(BigDecimal(value).toLong)
+          },
+          disziplinId = fields(scoreCalcTemplateHeader("disziplinId")) match {
+            case "" => None
+            case value => Some(BigDecimal(value).toLong)
+          },
+          dFormula = fields(scoreCalcTemplateHeader("dFormula")),
+          eFormula = fields(scoreCalcTemplateHeader("eFormula")),
+          pFormula = fields(scoreCalcTemplateHeader("pFormula")),
+          aggregateFn = fields(scoreCalcTemplateHeader("aggregateFn")) match {
+            case "" => None
+            case value => ScoreAggregateFn(Some(value))
+          },
+        )
+        planTimeRaw
+      })
+    }
+
     val start = System.currentTimeMillis()
     val inserted = wertungInstances.groupBy(w => w.wettkampfId).map { wkWertungen =>
       val (wettkampfid, wertungen) = wkWertungen
@@ -377,7 +411,8 @@ object ResourceExchanger extends KutuService with RiegenBuilder {
             endnote = None,
             riege = None,
             riege2 = None,
-            team = None
+            team = None,
+            variables = None
           )
         }
         completeWertungenSet
@@ -615,11 +650,19 @@ object ResourceExchanger extends KutuService with RiegenBuilder {
     }
     zip.closeEntry()
 
-    val planTimes = loadWettkampfDisziplinTimes(UUID.fromString(wettkampf.uuid.get))
+    val planTimes = loadWettkampfDisziplinTimes(wettkampf.id)
     zip.putNextEntry(new ZipEntry("plan_times.csv"))
     zip.write((getHeader[WettkampfPlanTimeRaw] + "\n").getBytes("utf-8"))
     for (planTime <- planTimes) {
       zip.write((getValues(planTime.toWettkampfPlanTimeRaw) + "\n").getBytes("utf-8"))
+    }
+    zip.closeEntry()
+
+    val templates = loadScoreCalcTemplates(wettkampf.id)
+    zip.putNextEntry(new ZipEntry("scorecalc_templates.csv"))
+    zip.write((getHeader[ScoreCalcTemplate] + "\n").getBytes("utf-8"))
+    for (scorecalctemplate <- templates) {
+      zip.write((getValues(scorecalctemplate) + "\n").getBytes("utf-8"))
     }
     zip.closeEntry()
 

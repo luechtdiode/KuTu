@@ -199,10 +199,10 @@ class CompetitionCoordinatorClientActor(wettkampfUUID: String) extends Persisten
       } else if (!state.startedDurchgaenge.exists(d => encodeURIComponent(d) == encodeURIComponent(durchgang))) {
         sender() ! MessageAck("Dieser Durchgang ist noch nicht für die Resultaterfassung freigegeben.")
       } else try {
-        log.debug(s"received for ${athlet.vorname} ${athlet.name} (${athlet.verein.getOrElse("")}) im Pgm $programm new Wertung: D:${wertung.noteD}, E:${wertung.noteE}")
+        log.debug(s"received for ${athlet.vorname} ${athlet.name} (${athlet.verein.getOrElse("")}) im Pgm $programm new Wertung: ${wertung}")
         val verifiedWertung = updateWertungSimple(wertung)
         val updated = AthletWertungUpdated(athlet, verifiedWertung, wettkampfUUID, durchgang, geraet, programm)
-        log.info(s"saved for ${athlet.vorname} ${athlet.name} (${athlet.verein.getOrElse("")}) im Pgm $programm new Wertung: D:${verifiedWertung.noteD}, E:${verifiedWertung.noteE}")
+        log.info(s"saved for ${athlet.vorname} ${athlet.name} (${athlet.verein.getOrElse("")}) im Pgm $programm new Wertung: ${verifiedWertung.resultat}")
 
         persist(updated) { _ => }
         handleEvent(updated)
@@ -218,7 +218,7 @@ class CompetitionCoordinatorClientActor(wettkampfUUID: String) extends Persisten
         //        }
       } catch {
         case e: Exception =>
-          log.error(s"failed to complete save new score for  ${athlet.vorname} ${athlet.name} (${athlet.verein.getOrElse("")}) im Pgm $programm new Wertung: D:${wertung.noteD}, E:${wertung.noteE}", e)
+          log.error(s"failed to complete save new score for  ${athlet.vorname} ${athlet.name} (${athlet.verein.getOrElse("")}) im Pgm $programm new Wertung: $wertung", e)
           sender() ! MessageAck(e.getMessage)
       }
 

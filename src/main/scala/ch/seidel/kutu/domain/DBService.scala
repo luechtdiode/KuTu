@@ -93,6 +93,7 @@ object DBService {
       , "tg-allgaeu-wk4ak0-15.sql"
       , "wettkampf-metadata-ddl.sql"
       , "AddWKProgrammBestOfCount-sqllite.sql"
+      , "AddScoreTemplateTable-sqllite.sql"
     )
 
     (!dbfile.exists() || dbfile.length() == 0, Config.importDataFrom) match {
@@ -190,6 +191,7 @@ object DBService {
         , "tg-allgaeu-wk4ak0-15.sql"
         , "wettkampf-metadata-ddl.sql"
         , "AddWKProgrammBestOfCount-pg.sql"
+        , "AddScoreTemplateTable-pg.sql"
       )
       installDB(db, sqlScripts)
       /*Config.importDataFrom match {

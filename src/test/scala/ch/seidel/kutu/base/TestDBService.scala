@@ -62,6 +62,7 @@ object TestDBService {
       , "tg-allgaeu-wk4ak0-15.sql"
       , "wettkampf-metadata-ddl.sql"
       , "AddWKProgrammBestOfCount-sqllite.sql"
+      , "AddScoreTemplateTable-sqllite.sql"
     )
     installDBFunctions(tempDatabase)
 

@@ -1,5 +1,6 @@
 package ch.seidel.kutu
 
+import ch.seidel.kutu.calc.{Calculator, ScoreCalcTemplate, ScoreCalcTemplateView, ScoreCalcVariable}
 import ch.seidel.kutu.data.{NameCodec, Surname}
 import org.apache.commons.codec.language.ColognePhonetic
 import org.apache.commons.codec.language.bm._
@@ -1050,12 +1051,7 @@ package object domain {
     val isDNoteUsed = dnote != 0
 
     def verifiedAndCalculatedWertung(wertung: Wertung): Wertung = {
-      if (wertung.noteE.isEmpty) {
-        wertung.copy(noteD = None, noteE = None, endnote = None)
-      } else {
-        val (d, e) = notenSpez.validated(wertung.noteD.getOrElse(BigDecimal(0)).doubleValue, wertung.noteE.getOrElse(BigDecimal(0)).doubleValue, this)
-        wertung.copy(noteD = Some(d), noteE = Some(e), endnote = Some(notenSpez.calcEndnote(d, e, this)))
-      }
+      notenSpez.calcEndnote(wertung, this)
     }
 
     def toWettkampdisziplin = Wettkampfdisziplin(id, programm.id, disziplin.id, kurzbeschreibung, None, notenSpez.calcEndnote(0, 1, this), masculin, feminim, ord, scale, dnote, min, max, startgeraet)
@@ -1071,7 +1067,7 @@ package object domain {
     def toWettkampfPlanTimeRaw = WettkampfPlanTimeRaw(id, wettkampf.id, wettkampfdisziplin.id, wechsel, einturnen, uebung, wertung)
   }
 
-  case class Resultat(noteD: scala.math.BigDecimal, noteE: scala.math.BigDecimal, endnote: scala.math.BigDecimal, isStreichwertung: Boolean = false) extends DataObject {
+  case class Resultat(noteD: scala.math.BigDecimal, noteE: scala.math.BigDecimal, endnote: scala.math.BigDecimal, isStreichwertung: Boolean = false, teilresultateD: List[String] = List.empty, teilresultateE: List[String] = List.empty, teilresultateP: List[String] = List.empty) extends DataObject {
     def -(r: Resultat): Resultat = Resultat(noteD - r.noteD, noteE - r.noteE, endnote - r.endnote)
 
     def +(r: Resultat): Resultat = Resultat(noteD + r.noteD, noteE + r.noteE, endnote + r.endnote)
@@ -1080,11 +1076,11 @@ package object domain {
 
     def +(r: BigDecimal): Resultat = Resultat(noteD + r, noteE + r, endnote + r)
 
-    def /(cnt: Int): Resultat = Resultat(noteD / cnt, noteE / cnt, endnote / cnt)
+    def /(cnt: Int): Resultat = if (cnt == 1) this else Resultat(noteD / cnt, noteE / cnt, endnote / cnt)
 
-    def *(cnt: Long): Resultat = Resultat(noteD * cnt, noteE * cnt, endnote * cnt)
+    def *(cnt: Long): Resultat = if (cnt == 1) this else Resultat(noteD * cnt, noteE * cnt, endnote * cnt)
 
-    def *(cnt: BigDecimal): Resultat = Resultat(noteD * cnt, noteE * cnt, endnote * cnt)
+    def *(cnt: BigDecimal): Resultat = if (cnt == 1) this else Resultat(noteD * cnt, noteE * cnt, endnote * cnt)
 
     def max(other: Resultat): Resultat = Resultat(noteD.max(other.noteD), noteE.max(other.noteE), endnote.max(other.endnote))
     def min(other: Resultat): Resultat = Resultat(noteD.min(other.noteD), noteE.min(other.noteE), endnote.min(other.endnote))
@@ -1103,27 +1099,66 @@ package object domain {
     override def easyprint: String = f"${formattedD}%6s${formattedE}%6s${formattedEnd}%6s"
   }
 
-  case class Wertung(id: Long, athletId: Long, wettkampfdisziplinId: Long, wettkampfId: Long, wettkampfUUID: String, noteD: Option[scala.math.BigDecimal], noteE: Option[scala.math.BigDecimal], endnote: Option[scala.math.BigDecimal], riege: Option[String], riege2: Option[String], team: Option[Int]) extends DataObject {
-    lazy val resultat = Resultat(noteD.getOrElse(0), noteE.getOrElse(0), endnote.getOrElse(0))
+  case class Wertung(id: Long, athletId: Long, wettkampfdisziplinId: Long, wettkampfId: Long, wettkampfUUID: String,
+                     noteD: Option[scala.math.BigDecimal], noteE: Option[scala.math.BigDecimal], endnote: Option[scala.math.BigDecimal],
+                     riege: Option[String], riege2: Option[String], team: Option[Int],
+                     variables: Option[ScoreCalcTemplateView]) extends DataObject {
+    lazy val resultat = {
+      val dTeilresults = variables match {
+        case Some(v) if v.dDetails => v.dVariables.filter(_.value > 0).map(_.value.toString())
+        case _ => List.empty
+      }
+      val eTeilresults = variables match {
+        case Some(v) if v.eDetails => v.eVariables.filter(_.value > 0).map(_.value.toString())
+        case _ => List.empty
+      }
+      val pTeilresults = variables match {
+        case Some(v) if v.pDetails => v.pVariables.filter(_.value > 0).map(_.value.toString())
+        case _ => List.empty
+      }
+      Resultat(noteD.getOrElse(0), noteE.getOrElse(0), endnote.getOrElse(0), teilresultateD = dTeilresults, teilresultateE = eTeilresults, teilresultateP = pTeilresults)
+    }
 
-    def updatedWertung(valuesFrom: Wertung) = copy(noteD = valuesFrom.noteD, noteE = valuesFrom.noteE, endnote = valuesFrom.endnote)
+    def updatedWertung(valuesFrom: Wertung): Wertung = copy(noteD = valuesFrom.noteD, noteE = valuesFrom.noteE, endnote = valuesFrom.endnote, variables = valuesFrom.variables)
 
     def valueAsText(valueOption: Option[BigDecimal]) = valueOption match {
       case None => ""
       case Some(value) => value.toString()
     }
 
-    def noteDasText = valueAsText(noteD)
+    def noteDasText: String = valueAsText(noteD)
 
-    def noteEasText = valueAsText(noteE)
+    def noteEasText: String = valueAsText(noteE)
 
-    def endnoteAsText = valueAsText(endnote)
+    def endnoteAsText: String = valueAsText(endnote)
+
+    def variablesList: List[List[ScoreCalcVariable]] = variables match {
+      case None => List.empty
+      case Some(l) => l.variables
+    }
   }
 
-  case class WertungView(id: Long, athlet: AthletView, wettkampfdisziplin: WettkampfdisziplinView, wettkampf: Wettkampf, noteD: Option[scala.math.BigDecimal], noteE: Option[scala.math.BigDecimal], endnote: Option[scala.math.BigDecimal], riege: Option[String], riege2: Option[String], team: Int, isStroked: Boolean = false) extends DataObject {
+  case class WertungView(id: Long, athlet: AthletView, wettkampfdisziplin: WettkampfdisziplinView, wettkampf: Wettkampf, noteD: Option[scala.math.BigDecimal], noteE: Option[scala.math.BigDecimal], endnote: Option[scala.math.BigDecimal], riege: Option[String], riege2: Option[String], team: Int, variables: Option[ScoreCalcTemplateView], isStroked: Boolean = false) extends DataObject {
     lazy val resultat = {
-      val r = Resultat(noteD.getOrElse(0), noteE.getOrElse(0), endnote.getOrElse(0))
+      val dTeilresults = variables match {
+        case Some(v) if v.dDetails => v.dVariables.filter(_.value > 0).map(_.value.toString())
+        case _ => List.empty
+      }
+      val eTeilresults = variables match {
+        case Some(v) if v.eDetails => v.eVariables.filter(_.value > 0).map(_.value.toString())
+        case _ => List.empty
+      }
+      val pTeilresults = variables match {
+        case Some(v) if v.pDetails => v.pVariables.filter(_.value > 0).map(_.value.toString())
+        case _ => List.empty
+      }
+      val r = Resultat(noteD.getOrElse(0), noteE.getOrElse(0), endnote.getOrElse(0), teilresultateD = dTeilresults, teilresultateE = eTeilresults, teilresultateP = pTeilresults)
       if (isStroked) r.asStreichwertung else r
+    }
+
+    def defaultVariables = variables match {
+      case None => wettkampfdisziplin.notenSpez.template.map(t => t.toView(t.variables))
+      case Some(v) => Some(v)
     }
 
     def +(r: Resultat) = resultat + r
@@ -1150,15 +1185,14 @@ package object domain {
 
     lazy val teamName = getTeamName(wettkampf.extraTeams)
 
-    def toWertung = Wertung(id, athlet.id, wettkampfdisziplin.id, wettkampf.id, wettkampf.uuid.getOrElse(""), noteD, noteE, endnote, riege, riege2, Some(team))
+    def toWertung = Wertung(id, athlet.id, wettkampfdisziplin.id, wettkampf.id, wettkampf.uuid.getOrElse(""), noteD, noteE, endnote, riege, riege2, Some(team), defaultVariables)
 
-    def toWertung(riege: String, riege2: Option[String]) = Wertung(id, athlet.id, wettkampfdisziplin.id, wettkampf.id, wettkampf.uuid.getOrElse(""), noteD, noteE, endnote, Some(riege), riege2, Some(team))
+    def toWertung(riege: String, riege2: Option[String]) = Wertung(id, athlet.id, wettkampfdisziplin.id, wettkampf.id, wettkampf.uuid.getOrElse(""), noteD, noteE, endnote, Some(riege), riege2, Some(team), defaultVariables)
 
-    def updatedWertung(valuesFrom: Wertung) = copy(noteD = valuesFrom.noteD, noteE = valuesFrom.noteE, endnote = valuesFrom.endnote)
+    def updatedWertung(valuesFrom: Wertung) = copy(noteD = valuesFrom.noteD, noteE = valuesFrom.noteE, endnote = valuesFrom.endnote, variables = valuesFrom.variables)
 
-    def validatedResult(dv: Double, ev: Double) = {
-      val (d, e) = wettkampfdisziplin.notenSpez.validated(dv, ev, wettkampfdisziplin)
-      Resultat(d, e, wettkampfdisziplin.notenSpez.calcEndnote(d, e, wettkampfdisziplin))
+    def validatedResult(dv: Double, ev: Double): Resultat = {
+      wettkampfdisziplin.verifiedAndCalculatedWertung(this.toWertung.copy(noteD = Some(dv), noteE = Some(ev))).resultat
     }
 
     def showInScoreList = {
@@ -1168,6 +1202,8 @@ package object domain {
         case _ => endnote.sum > 0
       })
     }
+
+    def shortLogText = s"${athlet.easyprint}: ${wettkampfdisziplin.programm.name} - ${wettkampfdisziplin.disziplin.name} -> ${resultat}"
 
     override def easyprint = {
       resultat.easyprint
@@ -1224,9 +1260,29 @@ package object domain {
 
     def selectableItems: Option[List[String]] = None
 
-    def validated(dnote: Double, enote: Double, wettkampfDisziplin: WettkampfdisziplinView): (Double, Double)
+    def template: Option[ScoreCalcTemplate] = None
 
+    def validated(dnote: Double, enote: Double, wettkampfDisziplin: WettkampfdisziplinView): (Double, Double)
     def calcEndnote(dnote: Double, enote: Double, wettkampfDisziplin: WettkampfdisziplinView): Double
+    def calcEndnote(wertung: Wertung, wettkampfDisziplin: WettkampfdisziplinView): Wertung = {
+      template match {
+        case Some(t) =>
+          if (wertung.variables.isEmpty || wertung.variablesList.flatten.forall(_.value < BigDecimal(0.001))) {
+            wertung.copy(noteD = None, noteE = None, endnote = None)
+          } else {
+            Calculator(t).calculate(wertung, wettkampfDisziplin, wertung.variablesList)
+          }
+        case _ =>
+          if (wettkampfDisziplin.isDNoteUsed && wertung.noteD.isEmpty) {
+            wertung.copy(noteD = None, noteE = None, endnote = None, variables = None)
+          } else if (!wettkampfDisziplin.isDNoteUsed && wertung.noteE.isEmpty) {
+            wertung.copy(noteD = None, noteE = None, endnote = None, variables = None)
+          } else {
+            val (d, e) = validated(wertung.noteD.getOrElse(BigDecimal(0)).doubleValue, wertung.noteE.getOrElse(BigDecimal(0)).doubleValue, wettkampfDisziplin)
+            wertung.copy(noteD = Some(d), noteE = Some(e), endnote = Some(calcEndnote(d, e, wettkampfDisziplin)), variables = None)
+          }
+      }
+    }
 
     def toString(value: Double): String = if (value.toString == Double.NaN.toString) ""
     else value
@@ -1234,14 +1290,16 @@ package object domain {
     /*override*/ def shouldSuggest(item: String, query: String): Boolean = false
   }
 
-  case class StandardWettkampf(punktgewicht: Double, dNoteLabel: String = "D", eNoteLabel: String = "E") extends NotenModus {
+  case class StandardWettkampf(punktgewicht: Double, dNoteLabel: String = "D", eNoteLabel: String = "E", scoreTemplate: Option[ScoreCalcTemplate] = None) extends NotenModus {
     override def validated(dnote: Double, enote: Double, wettkampfDisziplin: WettkampfdisziplinView): (Double, Double) = {
       val dnoteValidated = if (wettkampfDisziplin.isDNoteUsed) BigDecimal(dnote).setScale(wettkampfDisziplin.scale, BigDecimal.RoundingMode.FLOOR).max(wettkampfDisziplin.min).min(wettkampfDisziplin.max).toDouble else 0d
       val enoteValidated = BigDecimal(enote).setScale(wettkampfDisziplin.scale, BigDecimal.RoundingMode.FLOOR).max(wettkampfDisziplin.min).min(wettkampfDisziplin.max).toDouble
       (dnoteValidated, enoteValidated)
     }
 
-    override def calcEndnote(dnote: Double, enote: Double, wettkampfDisziplin: WettkampfdisziplinView) = {
+    override def template: Option[ScoreCalcTemplate] = scoreTemplate
+
+    override def calcEndnote(dnote: Double, enote: Double, wettkampfDisziplin: WettkampfdisziplinView): Double = {
       val dnoteValidated = if (wettkampfDisziplin.isDNoteUsed) dnote else 0d
       (BigDecimal(dnoteValidated) + BigDecimal(enote)).*(punktgewicht).setScale(wettkampfDisziplin.scale, BigDecimal.RoundingMode.FLOOR).max(wettkampfDisziplin.min).min(wettkampfDisziplin.max).toDouble
     }

@@ -30,7 +30,7 @@ class GleichstandsregelGeTuTest extends AnyWordSpec with Matchers {
       val enote = geraet._1._2
       val endnote = enote
       println(s"athlet $a, disziplin ${wd.disziplin} note ${enote} ${endnote}")
-      WertungView(wd.id, a, wd, wk, None, Some(enote), Some(endnote), None, None, 0)
+      WertungView(wd.id, a, wd, wk, None, Some(enote), Some(endnote), None, None, 0, None)
     }
   }
 

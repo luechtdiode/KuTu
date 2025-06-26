@@ -1,7 +1,10 @@
 package ch.seidel.kutu.view
 
+import ch.seidel.kutu.calc.{ScoreCalcTemplateView, ScoreCalcVariable}
 import ch.seidel.kutu.domain._
-import scalafx.beans.property.DoubleProperty
+import scalafx.beans.property.{BufferProperty, DoubleProperty, ObjectProperty}
+
+import scala.jdk.CollectionConverters.IterableHasAsJava
 
 case class WertungEditor(init: WertungView) {
 	type WertungChangeListener = (WertungEditor) => Unit
@@ -12,6 +15,10 @@ case class WertungEditor(init: WertungView) {
   val noteD = DoubleProperty(Double.NaN)
   val noteE = DoubleProperty(Double.NaN)
   val endnote = DoubleProperty(Double.NaN)
+  val dVariables = BufferProperty[ScoreCalcVariable](this, "DVariablen", List.empty)
+  val eVariables = BufferProperty[ScoreCalcVariable](this, "EVariablen", List.empty)
+  val pVariables = BufferProperty[ScoreCalcVariable](this, "PVariablen", List.empty)
+
   reset
   noteD.onChange {
     listeners.foreach(f => f(this))
@@ -49,7 +56,24 @@ case class WertungEditor(init: WertungView) {
   def removeListener(l: WertungChangeListener): Unit = {
     listeners -= l
   }
+
+  def mapVariablen: Option[ScoreCalcTemplateView] = {
+    init.variables.map{sctv =>
+      sctv.copy(dVariables = dVariables.value.toList, eVariables = eVariables.value.toList, pVariables = pVariables.value.toList)
+    }.orElse(None)
+  }
+
   def reset: Unit = {
+    init.variables match {
+      case Some(v) =>
+        dVariables.value.setAll(v.dVariables.asJavaCollection)
+        eVariables.value.setAll(v.eVariables.asJavaCollection)
+        pVariables.value.setAll(v.pVariables.asJavaCollection)
+      case _ =>
+        dVariables.value.clear()
+        eVariables.value.clear()
+        pVariables.value.clear()
+    }
     init.noteD match {
       case Some(d) => noteD.value = d.toDouble case _ => noteD.value = Double.NaN
     }
@@ -80,8 +104,10 @@ case class WertungEditor(init: WertungView) {
     toOption(endnote.value),
     init.riege,
     init.riege2,
-    Some(init.team))
+    Some(init.team),
+    variables = mapVariablen
+  )
   
   def view =
-    init.copy(noteD = toOption(noteD.value), noteE = toOption(noteE.value), endnote = toOption(endnote.value))
+    init.copy(noteD = toOption(noteD.value), noteE = toOption(noteE.value), endnote = toOption(endnote.value), variables = mapVariablen)
 }
