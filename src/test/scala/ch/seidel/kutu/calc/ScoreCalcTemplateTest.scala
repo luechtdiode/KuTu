@@ -1,10 +1,12 @@
 package ch.seidel.kutu.calc
 
 import ch.seidel.kutu.domain.{StandardWettkampf, Wertung, WettkampfdisziplinView}
+import ch.seidel.kutu.http.JsonSupport
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
+import spray.json.enrichAny
 
-class ScoreCalcTemplateTest extends AnyWordSpec with Matchers {
+class ScoreCalcTemplateTest extends AnyWordSpec with Matchers with JsonSupport {
   val t = ScoreCalcTemplate(
     "max($Dname1.1, $Dname2.1)^",
     "10 - avg($Ename1.3, $Ename2.3)",
@@ -60,7 +62,6 @@ class ScoreCalcTemplateTest extends AnyWordSpec with Matchers {
       "pFormula": "($Pname.0 / 10)^",
       "aggregateFn": "Max"
     }""")
-    println(t)
     assert(t.aggregateFn === Some(Max))
     assert(t.dFormula === "max($Dname1.1, $Dname2.1)^")
     assert(t.dResolveDetails === true)
@@ -74,7 +75,6 @@ class ScoreCalcTemplateTest extends AnyWordSpec with Matchers {
       "pFormula": "($Pname.0 / 10)^",
       "aggregateFn": "Max"
     }""")
-    println(t)
     val wertung = Wertung(0, 0, 0, 0, "", None, None, None, None, None, None)
     val wd = WettkampfdisziplinView(0, null, null, "", None, StandardWettkampf(1d), 1, 1, 1, 3, 1, 0, 30, 1)
     val dvalues = t.dVariables.zipWithIndex.map(item => item._1.updated(BigDecimal("0.12345") + item._2 + 1))
@@ -94,7 +94,6 @@ class ScoreCalcTemplateTest extends AnyWordSpec with Matchers {
       "pFormula": "($Pname.0 / 10)^",
       "aggregateFn": "Max"
     }""")
-    println(t)
     val wertung = Wertung(0, 0, 0, 0, "", None, None, None, None, None, None)
     val wd = WettkampfdisziplinView(0, null, null, "", None, StandardWettkampf(1d), 1, 1, 1, 3, 1, 0, 30, 1)
     val dvalues = t.dVariables.zipWithIndex.map(item => item._1.updated(BigDecimal("0.12345") + item._2 + 1))
@@ -136,5 +135,16 @@ class ScoreCalcTemplateTest extends AnyWordSpec with Matchers {
     assert(t.dResolveDetails === true)
     assert(t.eResolveDetails === false)
     assert(t.pResolveDetails === true)
+  }
+
+  "toView" in {
+    val dvalues = t.dVariables.zipWithIndex.map(item => item._1.updated(BigDecimal("0.12345") + item._2 + 1))
+    val evalues = t.eVariables.zipWithIndex.map(item => item._1.updated(BigDecimal("0.12345") + item._2 + 1))
+    val pvalues = t.pVariables.zipWithIndex.map(item => item._1.updated(BigDecimal("0.12345") + item._2 + 1))
+    val values = dvalues ++ evalues ++ pvalues
+
+    val view = t.toView(values)
+
+    println(view.toJson.prettyPrint)
   }
 }
