@@ -1,5 +1,6 @@
 package ch.seidel.kutu.domain
 
+import ch.seidel.kutu.calc.ScoreCalcTemplate
 import slick.jdbc.{GetResult, PositionedResult}
 
 /**
@@ -8,7 +9,7 @@ import slick.jdbc.{GetResult, PositionedResult}
  * Disziplin
  */
 abstract trait WettkampfResultMapper extends DisziplinResultMapper {
-  def readNotenModus(id: Long, pgm: ProgrammView, notenfaktor: Double): NotenModus
+  def readNotenModus(wkId: Long, id: Long, disz: Disziplin, pgm: ProgrammView, notenfaktor: Double, cache: scala.collection.mutable.Map[Long, List[ScoreCalcTemplate]]): NotenModus
   def readProgramm(id: Long, cache: scala.collection.mutable.Map[Long, ProgrammView]): ProgrammView
   def readProgramm(id: Long): ProgrammView
 
@@ -18,10 +19,11 @@ abstract trait WettkampfResultMapper extends DisziplinResultMapper {
   implicit val getWettkampfDisziplinResult: GetResult[Wettkampfdisziplin] = GetResult(r =>
     Wettkampfdisziplin(r.<<, r.<<, r.<<, r.<<, r.nextBytesOption(), r.<<, r.<<, r.<<, r.<<, r.<<, r.<<, r.<<, r.<<, r.<<))
 
-  implicit def getWettkampfDisziplinViewResultCached(r: PositionedResult)(implicit cache: scala.collection.mutable.Map[Long, ProgrammView]): WettkampfdisziplinView = {
+  implicit def getWettkampfDisziplinViewResultCached(r: PositionedResult)(implicit wkid: Long, cache: scala.collection.mutable.Map[Long, ProgrammView], cache2: scala.collection.mutable.Map[Long, List[ScoreCalcTemplate]]): WettkampfdisziplinView = {
     val id = r.<<[Long]
     val pgm = readProgramm(r.<<[Long], cache)
-    WettkampfdisziplinView(id, pgm, r, r.<<, r.nextBytesOption(), readNotenModus(id, pgm, r.<<), r.<<, r.<<, r.<<, r.<<, r.<<, r.<<, r.<<, r.<<)
+    val disz: Disziplin = r
+    WettkampfdisziplinView(id, pgm, disz, r.<<, r.nextBytesOption(), readNotenModus(wkid, id, disz, pgm, r.<<, cache2), r.<<, r.<<, r.<<, r.<<, r.<<, r.<<, r.<<, r.<<)
   }
   
   implicit def getWettkampfViewResultCached(implicit cache: scala.collection.mutable.Map[Long, ProgrammView]): GetResult[WettkampfView] = GetResult(r =>
@@ -37,8 +39,12 @@ abstract trait WettkampfResultMapper extends DisziplinResultMapper {
   implicit val getPublishedScoreViewResult: GetResult[PublishedScoreView] = GetResult(r =>
     PublishedScoreView(r.<<, r.<<, r.<<, r.<<, r.<<[java.sql.Date], r.<<))
 
-  implicit def getWettkampfPlanTimeView(implicit cache: scala.collection.mutable.Map[Long, ProgrammView]): GetResult[WettkampfPlanTimeView] = GetResult(r =>
-    WettkampfPlanTimeView(r.<<, r, r, r.<<, r.<<, r.<<, r.<<))
+  implicit def getWettkampfPlanTimeView(implicit wkId: Long, cache: scala.collection.mutable.Map[Long, ProgrammView], cache2: scala.collection.mutable.Map[Long, List[ScoreCalcTemplate]]): GetResult[WettkampfPlanTimeView] = GetResult(r => {
+    val id: Long = r.<<
+    val wkd: WettkampfdisziplinView = r
+    val wk: Wettkampf = r
+    WettkampfPlanTimeView(id, wk, wkd, r.<<, r.<<, r.<<, r.<<)
+  })
 
   implicit def getWettkampfStats: GetResult[WettkampfStats] = GetResult(r => WettkampfStats(r.<<, r.<<, r.<<, r.<<, r.<<, r.<<, r.<<))
   implicit def getWettkampfMetaData: GetResult[WettkampfMetaData] = GetResult(r => WettkampfMetaData(r.<<, r.<<, r.<<, r.<<, r.<<, r.<<, r.<<?, mapBigDecimalOption(r), mapBigDecimalOption(r)))

@@ -1,6 +1,7 @@
 package ch.seidel.kutu.data
 
 import ch.seidel.kutu.actors._
+import ch.seidel.kutu.calc.{ScoreCalcTemplate, TemplateViewJsonReader}
 import ch.seidel.kutu.data.CaseObjectMetaUtil._
 import ch.seidel.kutu.domain._
 import ch.seidel.kutu.renderer.PrintUtil
@@ -343,7 +344,8 @@ object ResourceExchanger extends KutuService with RiegenBuilder {
         },
         riege = if (fields(wertungenHeader("riege")).nonEmpty) Some(fields(wertungenHeader("riege"))) else None,
         riege2 = if (fields(wertungenHeader("riege2")).nonEmpty) Some(fields(wertungenHeader("riege2"))) else None,
-        team = if (wertungenHeader.contains("team") && fields(wertungenHeader("team")).nonEmpty) Some(fields(wertungenHeader("team"))) else None
+        team = if (wertungenHeader.contains("team") && fields(wertungenHeader("team")).nonEmpty) Some(fields(wertungenHeader("team"))) else None,
+        variables = if (wertungenHeader.contains("variables") && fields(wertungenHeader("variables")).nonEmpty) TemplateViewJsonReader(Some(fields(wertungenHeader("variables")))) else None
       )
       w
     }
@@ -377,7 +379,8 @@ object ResourceExchanger extends KutuService with RiegenBuilder {
             endnote = None,
             riege = None,
             riege2 = None,
-            team = None
+            team = None,
+            variables = None
           )
         }
         completeWertungenSet
@@ -615,11 +618,19 @@ object ResourceExchanger extends KutuService with RiegenBuilder {
     }
     zip.closeEntry()
 
-    val planTimes = loadWettkampfDisziplinTimes(UUID.fromString(wettkampf.uuid.get))
+    val planTimes = loadWettkampfDisziplinTimes(wettkampf.id)
     zip.putNextEntry(new ZipEntry("plan_times.csv"))
     zip.write((getHeader[WettkampfPlanTimeRaw] + "\n").getBytes("utf-8"))
     for (planTime <- planTimes) {
       zip.write((getValues(planTime.toWettkampfPlanTimeRaw) + "\n").getBytes("utf-8"))
+    }
+    zip.closeEntry()
+
+    val templates = loadScoreCalcTemplates(wettkampf.id)
+    zip.putNextEntry(new ZipEntry("scorecalc_templates.csv"))
+    zip.write((getHeader[ScoreCalcTemplate] + "\n").getBytes("utf-8"))
+    for (scorecalctemplate <- templates) {
+      zip.write((getValues(scorecalctemplate) + "\n").getBytes("utf-8"))
     }
     zip.closeEntry()
 

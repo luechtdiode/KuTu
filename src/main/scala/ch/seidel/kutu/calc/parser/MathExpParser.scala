@@ -61,6 +61,8 @@ protected object MathExpParser extends Parsers {
     val reader = new MathExpressionReader(tokens)
 
     program(reader) match {
+      case Failure(msg, next) => throw new IllegalArgumentException(msg)
+      case Error(msg, next) => throw new IllegalArgumentException(msg)
       case NoSuccess(msg, next) => throw new IllegalArgumentException(msg)
       case Success(result, next) => result
     }

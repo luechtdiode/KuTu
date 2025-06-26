@@ -1,5 +1,6 @@
 package ch.seidel.kutu.domain
 
+import ch.seidel.kutu.calc.ScoreCalcTemplate
 import org.slf4j.LoggerFactory
 import slick.jdbc.GetResult
 import slick.jdbc.SQLiteProfile.api._
@@ -80,28 +81,7 @@ abstract trait DisziplinService extends DBService with WettkampfResultMapper {
              where wd.programm_Id in #$programme order by wd.ord""".as[Disziplin].withPinnedSession.map(_.distinct)
     }
   }
-  
-  def listDisziplinesZuProgramm(programmId: Long, geschlecht: Option[String] = None): List[Disziplin] = {
-    Await.result(database.run{
-      sql""" select distinct d.id, d.name, wd.ord
-             from wettkampfdisziplin wd, disziplin d, programm p
-             where
-              wd.disziplin_id = d.id
-              and wd.programm_id = p.id
-              #${
-                geschlecht match {
-                  case Some("M") => "and wd.masculin = 1"
-                  case Some("W") => "and wd.feminim = 1"
-                  case _ => ""
-                }
-              }
-              and programm_id = $programmId
-             order by
-              wd.ord
-             """.as[Disziplin].withPinnedSession
-    }, Duration.Inf).toList.distinct
-  }
-  
+
   def listDisziplinesZuWettkampf(wettkampfId: Long, geschlecht: Option[String] = None): List[Disziplin] = {
     Await.result(database.run{
       val wettkampf: Wettkampf = readWettkampf(wettkampfId)
@@ -142,15 +122,18 @@ abstract trait DisziplinService extends DBService with WettkampfResultMapper {
     .map{t => Wettkampfdisziplin(t._1, t._2, t._3, s"${t._4} (${t._5})", None, 0, t._6, t._7, t._8, t._9, t._10, t._11, t._12, t._13) }.toList
   }
 
-  implicit def getWettkampfDisziplinViewResult: GetResult[WettkampfdisziplinView] = GetResult{ r =>
+  implicit def getWettkampfDisziplinViewResult(implicit wkId: Long, cache2: scala.collection.mutable.Map[Long, List[ScoreCalcTemplate]]): GetResult[WettkampfdisziplinView] = GetResult{ r =>
     val id = r.<<[Long]
     val pgm = readProgramm(r.<<)
-    WettkampfdisziplinView(id, pgm, r, r.<<[String], r.nextBytesOption(), readNotenModus(id, pgm, r.<<), r.<<, r.<<, r.<<, r.<<, r.<<, r.<<, r.<<, r.<<)
+    val d: Disziplin = r
+    WettkampfdisziplinView(id, pgm, d, r.<<[String], r.nextBytesOption(), readNotenModus(wkId, id, d, pgm, r.<<, cache2), r.<<, r.<<, r.<<, r.<<, r.<<, r.<<, r.<<, r.<<)
   }
 
   def listWettkampfDisziplineViews(wettkampf: Wettkampf): List[WettkampfdisziplinView] = {
     Await.result(database.run{
       val programme = readWettkampfLeafs(wettkampf.programmId).map(p => p.id).mkString("(", ",", ")")
+      implicit val cache2 = scala.collection.mutable.Map[Long, List[ScoreCalcTemplate]]()
+      implicit val wkId = wettkampf.id
       sql""" select wd.id, wd.programm_id, d.*, wd.kurzbeschreibung, wd.detailbeschreibung, wd.notenfaktor, wd.masculin, wd.feminim, wd.ord, wd.scale, wd.dnote, wd.min, wd.max, wd.startgeraet
              from wettkampfdisziplin wd, disziplin d, programm p
              where
@@ -163,7 +146,7 @@ abstract trait DisziplinService extends DBService with WettkampfResultMapper {
     }, Duration.Inf).toList
   }
 
-  def readWettkampfDisziplinView(wettkampfDisziplinId: Long): WettkampfdisziplinView = {
+  def readWettkampfDisziplinView(wkId: Long, wettkampfDisziplinId: Long, cache2: scala.collection.mutable.Map[Long, List[ScoreCalcTemplate]]): WettkampfdisziplinView = {
     val wd = Await.result(database.run{
       sql""" select wd.id, wd.programm_id, d.*, wd.kurzbeschreibung, wd.detailbeschreibung, wd.notenfaktor, wd.masculin, wd.feminim, wd.ord, wd.scale, wd.dnote, wd.min, wd.max, wd.startgeraet
              from wettkampfdisziplin wd, disziplin d
@@ -172,7 +155,7 @@ abstract trait DisziplinService extends DBService with WettkampfResultMapper {
               and wd.id = $wettkampfDisziplinId
              order by
               wd.ord
-         """.as[WettkampfdisziplinView].withPinnedSession
+         """.as[WettkampfdisziplinView](getWettkampfDisziplinViewResult(wkId, cache2)).withPinnedSession
     }, Duration.Inf).toList
     wd.head    
   }

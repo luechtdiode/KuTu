@@ -30,7 +30,7 @@ class GleichstandsregelKuTuTest extends AnyWordSpec with Matchers {
       val (dnote, enote) = geraet._1._2
       val endnote = enote + dnote
       println(s"athlet $a, disziplin ${wd.disziplin} note  d${dnote} e${enote} = ${endnote}")
-      WertungView(wd.id, a, wd, wk, Some(dnote.setScale(1)), Some(enote.setScale(3)), Some(endnote), None, None, 0)
+      WertungView(wd.id, a, wd, wk, Some(dnote.setScale(1)), Some(enote.setScale(3)), Some(endnote), None, None, 0, None)
     }
   }
 

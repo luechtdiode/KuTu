@@ -1,9 +1,18 @@
 package ch.seidel.kutu.calc
 
+import ch.seidel.kutu.domain.DataObject
 import ch.seidel.kutu.http.JsonSupport
 
 import scala.math.BigDecimal.RoundingMode
 
+object ScoreAggregateFn {
+  def apply(fn: Option[String]): Option[ScoreAggregateFn] = fn.map{
+    case "Min" => Min
+    case "Max" => Max
+    case "Avg" => Avg
+    case "Sum" => Sum
+  }.orElse(None)
+}
 sealed trait ScoreAggregateFn
 
 case object Min extends ScoreAggregateFn
@@ -21,10 +30,30 @@ object ScoreCalcVariable_ {
   }
 }
 
-case class ScoreCalcVariable(source: String, prefix: String, name: String, scale: Option[Int], value: BigDecimal) {
+case class ScoreCalcVariable(source: String, prefix: String, name: String, scale: Option[Int], value: BigDecimal, index: Int = 0) extends DataObject  {
   def updated(newValue: BigDecimal): ScoreCalcVariable = copy(value = newValue.setScale(value.scale, RoundingMode.HALF_UP)): ScoreCalcVariable
 }
 
+case object TemplateViewJsonReader extends JsonSupport {
+
+  import spray.json.enrichString
+
+  def apply(text: String): ScoreCalcTemplateView = scoreCalcTemplateViewFormat.read(text.parseJson)
+  def apply(text: Option[String]): Option[ScoreCalcTemplateView] = text.map(t => scoreCalcTemplateViewFormat.read(t.parseJson))
+}
+
+case class ScoreCalcTemplateView(
+                                  dExpression: String, dVariables: List[ScoreCalcVariable], dDetails: Boolean,
+                                  eExpression: String, eVariables: List[ScoreCalcVariable], eDetails: Boolean,
+                                  pExpression: String, pVariables: List[ScoreCalcVariable], pDetails: Boolean,
+                                  aggregateFn: Option[ScoreAggregateFn]) extends DataObject  {
+  def variables = (dVariables ++ eVariables ++ pVariables).groupBy(_.index).values.toList
+}
+/*
+  wettkampf_id integer NOT NULL,
+  disziplin_id integer,
+  wettkampfdisziplin_id integer,
+ */
 case object TemplateJsonReader extends JsonSupport {
 
   import spray.json.enrichString
@@ -32,14 +61,8 @@ case object TemplateJsonReader extends JsonSupport {
   def apply(text: String): ScoreCalcTemplate = scoreCalcTemplateFormat.read(text.parseJson)
 }
 
-case class ScoreCalcTemplateView(
-                                  dExpression: String, dVariables: List[ScoreCalcVariable], dDetails: Boolean,
-                                  eExpression: String, eVariables: List[ScoreCalcVariable], eDetails: Boolean,
-                                  pExpression: String, pVariables: List[ScoreCalcVariable], pDetails: Boolean,
-                                  aggregateFn: Option[ScoreAggregateFn])
-
-case class ScoreCalcTemplate(dFormula: String, eFormula: String, pFormula: String, aggregateFn: Option[ScoreAggregateFn]) {
-  private val varPattern = "\\$([DEP]{1})([\\w]+[\\w\\d]*)(.([0123]+))?".r
+case class ScoreCalcTemplate(id: Long, wettkampfId: Option[Long], disziplinId: Option[Long], wettkampfdisziplinId: Option[Long], dFormula: String, eFormula: String, pFormula: String, aggregateFn: Option[ScoreAggregateFn]) {
+  private val varPattern = "\\$([DAEBP]{1})([\\w]+([\\w\\d\\s\\-]*[\\w\\d]{1})?)(\\.([0123]+))?".r
 
   val dVariables: List[ScoreCalcVariable] = parseVariables(dFormula)
   val dResolveDetails: Boolean = dFormula.endsWith("^")
@@ -51,11 +74,11 @@ case class ScoreCalcTemplate(dFormula: String, eFormula: String, pFormula: Strin
   lazy val variables: List[ScoreCalcVariable] = dVariables ++ eVariables ++ pVariables
 
   def toView(values: List[ScoreCalcVariable]): ScoreCalcTemplateView = {
-    val updateVarsOfFn = updateVarsOf(values) _
+    val updateVarsOf = updateVarsWith(values) _
     ScoreCalcTemplateView(
-      dExpression(values), updateVarsOfFn(dVariables), dResolveDetails,
-      eExpression(values), updateVarsOfFn(eVariables), eResolveDetails,
-      pExpression(values), updateVarsOfFn(pVariables), pResolveDetails,
+      dExpression(values), updateVarsOf(dVariables), dResolveDetails,
+      eExpression(values), updateVarsOf(eVariables), eResolveDetails,
+      pExpression(values), updateVarsOf(pVariables), pResolveDetails,
       aggregateFn
     )
   }
@@ -66,10 +89,10 @@ case class ScoreCalcTemplate(dFormula: String, eFormula: String, pFormula: Strin
 
   def pExpression(values: List[ScoreCalcVariable]): String = renderExpression(pFormula, values.filter(_.prefix.equals("P")))
 
-  private def updateVarsOf(values: List[ScoreCalcVariable])(vars: List[ScoreCalcVariable]) =
-    vars.map { v =>
-      values
-        .find(vv => vv.prefix.equals(v.prefix) && vv.name.equals(v.name))
+  private def updateVarsWith(values: List[ScoreCalcVariable])(vars: List[ScoreCalcVariable]) =
+    vars
+      .map { v => values
+        .find(vv => vv.prefix.equals(v.prefix) && vv.name.equals(v.name) && vv.index.equals(v.index))
         .map(vv => v.updated(vv.value))
         .getOrElse(v)
     }
@@ -77,9 +100,12 @@ case class ScoreCalcTemplate(dFormula: String, eFormula: String, pFormula: Strin
   private def parseVariables(formula: String): List[ScoreCalcVariable] = varPattern.findAllMatchIn(formula).map { m =>
     val prefix = m.group(1)
     val name = m.group(2)
-    val scale = if (m.groupCount == 4 && !m.group(4).equals("0")) Some(m.group(4)) else None
+    val scale = if (m.groupCount == 5 && !m.group(5).equals("0")) Some(m.group(5)) else None
     ScoreCalcVariable_(m.group(0), prefix, name, scale.map(_.toInt))
-  }.distinct.toList
+  }.distinct.flatMap{scv => aggregateFn match {
+    case None => List(scv.copy(index = 0))
+    case Some(_) => List(scv.copy(index = 0), scv.copy(index = 1))
+  }}.toList
 
   private def renderExpression(formula: String, values: List[ScoreCalcVariable]): String = {
     val f = values.foldLeft(formula) { (acc, variable) =>
