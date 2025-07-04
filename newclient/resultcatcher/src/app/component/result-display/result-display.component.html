@@ -44,18 +44,18 @@
       </ion-col>
       <ion-col col-auto >
         <ion-note *ngIf="item.isDNoteUsed && item.wertung.noteD !== undefined" item-end item-text-wrap>
-          <span class="rightbound">{{dNoteLabel}}: {{item.wertung.noteD | number:'2.3-3'}}&nbsp;&nbsp;
-          <br>{{eNoteLabel}}: {{item.wertung.noteE | number:'2.3-3'}}&nbsp;&nbsp;
+          <span class="rightbound">&nbsp;&nbsp;{{dNoteLabel}}: {{item.wertung.noteD | number:'2.3-3'}}
+          <br>&nbsp;&nbsp;{{eNoteLabel}}: {{item.wertung.noteE | number:'2.3-3'}}
           <br></span>
-          <span class="rightbound" style="font-size: 18pt;font-weight: bold">{{item.wertung.endnote | number:'2.3-3'}}&nbsp;&nbsp;</span>
+          <span class="rightbound" style="font-size: 18pt;font-weight: bold">{{item.wertung.endnote | number:'2.3-3'}}</span>
         </ion-note>
         <ion-note *ngIf="!item.isDNoteUsed && item.wertung.noteE !== item.wertung.endnote" item-end item-text-wrap>
-          <br>{{eNoteLabel}}: {{item.wertung.noteE | number:'2.3-3'}}&nbsp;&nbsp;
+          <br>&nbsp;&nbsp;{{eNoteLabel}}: {{item.wertung.noteE | number:'2.3-3-3'}}
           <br>
-          <span class="rightbound" style="font-size: 18pt;font-weight: bold">{{item.wertung.endnote | number:'2.3-3'}}&nbsp;&nbsp;</span>
+          <span class="rightbound" style="font-size: 18pt;font-weight: bold">{{item.wertung.endnote | number:'2.3-3'}}</span>
         </ion-note>
         <ion-note *ngIf="!item.isDNoteUsed && item.wertung.noteE === item.wertung.endnote" item-end item-text-wrap>
-          <span class="rightbound" style="font-size: 18pt;font-weight: bold">{{item.wertung.endnote | number:'2.3-3'}}&nbsp;&nbsp;</span>
+          <span class="rightbound" style="font-size: 18pt;font-weight: bold">{{item.wertung.endnote | number:'2.3-3'}}</span>
         </ion-note>
       </ion-col>
     </ion-row>

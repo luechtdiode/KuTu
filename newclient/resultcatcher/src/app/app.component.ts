@@ -167,7 +167,7 @@ export class AppComponent {
       // Okay, so the platform is ready and our plugins are available.
       // Here you can do any higher level native things you might need.
       SplashScreen.show();
-
+      let handled = false;
       if (window.location.href.indexOf('?') > 0) {
         try {
           const initializeWithEncoded = window.location.href.split('?')[1];
@@ -225,11 +225,12 @@ export class AppComponent {
               }
             });
           }
-
+          handled = true;
         } catch (e) {
           console.log(e);
         }
-      } else if (localStorage.getItem('current_station')) {
+      }
+      if (!handled && localStorage.getItem('current_station')) {
         const cs = localStorage.getItem('current_station');
         this.backendService.initWithQuery(cs).subscribe(fin => {
           if (cs.startsWith('c=') && cs.indexOf('&st=') && cs.indexOf('&g=')) {
@@ -239,10 +240,10 @@ export class AppComponent {
           ];
           this.navController.navigateRoot('/station');
         }});
-      } else if (localStorage.getItem('current_competition')) {
+      } else if (!handled && localStorage.getItem('current_competition')) {
         const cs = localStorage.getItem('current_competition');
         this.backendService.getDurchgaenge(cs);
-      } else if (window.location.pathname === '/' && !this.backendService.competition) {
+      } else if (!handled && window.location.pathname === '/' && !this.backendService.competition) {
         this.openPage('/competitions');
       }
       SplashScreen.hide();

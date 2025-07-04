@@ -144,7 +144,7 @@ export abstract class WebsocketService {
     this.backendUrl = this.getWebsocketBackendUrl() + `?clientid=${clientID()}`;
     this.logMessages.next('init with ' + this.backendUrl);
 
-    this.connect(undefined);
+    this.connect();
     this.startKeepAliveObservation();
   }
 

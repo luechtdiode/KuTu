@@ -8,7 +8,7 @@ case class Subscribe(clientSource: ActorRef, deviceId: String, durchgang: Option
 case class StopDevice(deviceId: String)
 case class CreateClient(deviceID: String, wettkampfUUID: String)
 
-case class WertungContainer(id: Long, vorname: String, name: String, geschlecht: String, verein: String, wertung: Wertung, geraet: Long, programm: String, isDNoteUsed: Boolean, isStroked: Boolean)
+case class WertungContainer(id: Long, vorname: String, name: String, geschlecht: String, verein: String, wertung: Wertung, geraet: Long, programm: String, durchgang: String, isDNoteUsed: Boolean, isStroked: Boolean)
 
 sealed trait KutuAppProtokoll
 
@@ -52,7 +52,7 @@ case class DonationMailSent(teilnehmer: Int, price: BigDecimal, donationLink: St
 case class DonationApproved(amount: BigDecimal, wettkampfUUID: String) extends KutuAppEvent
 case class GeraeteRiegeList(list: List[GeraeteRiege], wettkampfUUID: String) extends KutuAppEvent
 
-case class NewLastResults(results: Map[String, WertungContainer], lastTopResults: Map[String, WertungContainer]) extends KutuAppEvent
+case class NewLastResults(resultsPerWkDisz: Map[String, WertungContainer], resultsPerDisz: Map[String, WertungContainer], lastTopResults: Map[String, WertungContainer]) extends KutuAppEvent
 case class LastResults(results: List[AthletWertungUpdatedSequenced]) extends KutuAppEvent
 case class MessageAck(msg: String) extends KutuAppEvent
 case class ResponseMessage(data: Object) extends KutuAppEvent
