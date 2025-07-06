@@ -11,8 +11,8 @@ import scala.math.BigDecimal
 class ScoreCalcTemplateTest extends AnyWordSpec with Matchers with JsonSupport {
   val t = ScoreCalcTemplate(0,None,None,None,
     "max($Dname1.1, $Dname2.1)^",
-    "10 - avg($Ename1.3, $Ename2.3)",
-    "($Pname.0 / 10)^",
+    "10 - avg($EE-Name1.3, $EE Name2.3)",
+    "($Pname / 10)^",
     None)
 
   "parse formula source" in {
@@ -20,10 +20,10 @@ class ScoreCalcTemplateTest extends AnyWordSpec with Matchers with JsonSupport {
       ScoreCalcVariable("$Dname1.1", "D","name1",Some(1),BigDecimal(0.0)),
       ScoreCalcVariable("$Dname2.1", "D","name2",Some(1),BigDecimal(0.0))))
     assert(t.eVariables === List(
-      ScoreCalcVariable("$Ename1.3", "E","name1",Some(3),BigDecimal(0.000)),
-      ScoreCalcVariable("$Ename2.3", "E","name2",Some(3),BigDecimal(0.000))))
+      ScoreCalcVariable("$EE-Name1.3", "E","E-Name1",Some(3),BigDecimal(0.000)),
+      ScoreCalcVariable("$EE Name2.3", "E","E Name2",Some(3),BigDecimal(0.000))))
     assert(t.pVariables === List(
-      ScoreCalcVariable("$Pname.0", "P","name",None,BigDecimal(0))))
+      ScoreCalcVariable("$Pname", "P","name",None,BigDecimal(0))))
   }
 
   "render formula with d-values" in {

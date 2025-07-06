@@ -1,6 +1,7 @@
 package ch.seidel.commons
 
 import impl.org.controlsfx.autocompletion.AutoCompletionTextFieldBinding
+import javafx.event.EventTarget
 import javafx.scene.control.{TextField, cell => jfxscc}
 import javafx.scene.{control => jfxsc}
 import javafx.util.Callback
@@ -16,6 +17,7 @@ import scalafx.collections.ObservableSet.{Change, Remove}
 import scalafx.collections.{ObservableBuffer, ObservableSet}
 import scalafx.css.PseudoClass
 import scalafx.delegate.SFXDelegate
+import scalafx.event.ActionEvent
 import scalafx.event.subscriptions.Subscription
 import scalafx.scene.control.cell._
 import scalafx.scene.control._
@@ -28,7 +30,7 @@ import scala.jdk.CollectionConverters.IterableHasAsJava
 import scala.language.implicitConversions
 
 object AutoCommitTextFieldTableCell {
-  implicit def sfxAutoCommitTextFieldTableCell2jfx[S, T](cell: AutoCommitTextFieldTableCell[S, T]): jfxscc.TextFieldTableCell[S, T] = if (cell != null) cell.delegate else null
+  implicit def sfxAutoCommitTextFieldTableCell2jfx[S, T](cell: AutoCommitTextFieldTableCell[S, T]): TextFieldWithToolButtonTableCell[S, T] = if (cell != null) cell.delegate.asInstanceOf[TextFieldWithToolButtonTableCell[S, T]] else null
 
   protected val PSEUDO_CLASS_FOCUSED = PseudoClass("focused")
   var lastKey: Option[String] = None
@@ -329,27 +331,30 @@ object AutoCommitTextFieldTableCell {
 
 class AutoCommitTextFieldTableCell[S, T](
                                           val cellStateUpdater: scala.Function1[scalafx.scene.control.TableCell[S, T], scala.Unit],
-                                          override val delegate: jfxscc.TextFieldTableCell[S, T] = new jfxscc.TextFieldTableCell[S, T],
-                                          val suggestListProvider: Option[scala.Function2[S, String, List[T]]])
+                                          override val delegate: TextFieldWithToolButtonTableCell[S, T] = new TextFieldWithToolButtonTableCell[S, T],
+                                          val suggestListProvider: Option[scala.Function2[S, String, List[T]]],
+                                          val formularAction: Option[Function1[(TextFieldWithToolButtonTableCell[S, T],ActionEvent), scala.Unit]] = None
+                                        )
   extends TableCell[S, T](delegate)
-    with ConvertableCell[jfxscc.TextFieldTableCell[S, T], T, T]
-    with UpdatableCell[jfxscc.TextFieldTableCell[S, T], T]
-    with SFXDelegate[jfxscc.TextFieldTableCell[S, T]] {
+    with UpdatableCell[TextFieldWithToolButtonTableCell[S, T], T]
+    with SFXDelegate[TextFieldWithToolButtonTableCell[S, T]] {
 
   import AutoCommitTextFieldTableCell.PSEUDO_CLASS_FOCUSED
 
-
   def this(converter: StringConverter[T], cellStateUpdater: scala.Function1[scalafx.scene.control.TableCell[S, T], scala.Unit]) = {
-    this(cellStateUpdater, new jfxscc.TextFieldTableCell[S, T](converter), None)
+    this(cellStateUpdater, new TextFieldWithToolButtonTableCell[S, T](converter), None)
+  }
+  def this(converter: StringConverter[T], cellStateUpdater: scala.Function1[scalafx.scene.control.TableCell[S, T], scala.Unit], formularAction: Function1[(TextFieldWithToolButtonTableCell[S, T],ActionEvent), scala.Unit]) = {
+    this(cellStateUpdater, new TextFieldWithToolButtonTableCell[S, T](converter), None, Some(formularAction))
   }
   def this(converter: StringConverter[T]) = {
-    this((tc: TableCell[S, T])=>{}, new jfxscc.TextFieldTableCell[S, T](converter), None)
+    this((tc: TableCell[S, T])=>{}, new TextFieldWithToolButtonTableCell[S, T](converter), None)
   }
   def this(converter: StringConverter[T], suggestListProvider: scala.Function2[S, String, List[T]]) = {
-    this((tc: TableCell[S, T])=>{}, new jfxscc.TextFieldTableCell[S, T](converter), Some(suggestListProvider))
+    this((tc: TableCell[S, T])=>{}, new TextFieldWithToolButtonTableCell[S, T](converter), Some(suggestListProvider))
   }
 
-  var textField: Option[TextField] = None
+  var textField: Option[TextFieldWithToolButton] = None
   val readonlyCellClass = "readonly-cell"
 
   editable.onChange( adjustEditablStateInStyles() )
@@ -366,12 +371,23 @@ class AutoCommitTextFieldTableCell[S, T](
   var lastBinding: Option[AutoCompletionBinding[T]] = None
   graphic.onChange({
     textField = graphic.value match {
-      case field: TextField =>
+      case tf@TextFieldWithToolButton(field, button) =>
         lastBinding.foreach(_.dispose())
+        if (formularAction.isEmpty) {
+          tf.switchRawMode()
+        } else {
+          tf.switchFormularMode()
+        }
+        button.setVisible(formularAction.nonEmpty)
+        formularAction.foreach(provider => {
+          button.onAction = (ae: ActionEvent) => {
+            provider(this, ae)
+          }
+        })
         suggestListProvider.foreach(provider => {
           val cb: Callback[AutoCompletionBinding.ISuggestionRequest, util.Collection[T]] = (request: ISuggestionRequest) =>
             provider.apply(delegate.getTableRow.getItem, request.getUserText).asJavaCollection
-          val binding = TextFields.bindAutoCompletion(field, cb, converter.value)
+          val binding = TextFields.bindAutoCompletion(field, cb, delegate.sc)
           binding.setVisibleRowCount(20)
           binding.setOnAutoCompleted{ evt =>
             commitEdit(evt.getCompletion)
@@ -383,18 +399,34 @@ class AutoCommitTextFieldTableCell[S, T](
           binding.setMinWidth(Math.max(binding.getPrefWidth, field.getWidth + 10d))
           lastBinding = Some(binding)
         })
-        Some(field)
+        Some(tf)
       case _ => None
     }
     (textField, AutoCommitTextFieldTableCell.lastKey) match {
-      case (Some(tf), Some(text)) => tf.setText(text)
+      case (Some(TextFieldWithToolButton(tf,b)), Some(text)) =>
+        if (editable.value && !b.visible.value) {
+          tf.setText(text)
+        }
         Platform.runLater(() => {
-          if (editable.value) {
-            tf.editable = true
+          if (editable.value && !b.visible.value) {
             tf.deselect()
             tf.end()
           } else {
-            tf.editable = false
+            if (b.visible.value) {
+              val ae = new ActionEvent(this, b)
+              formularAction.foreach(provider => {
+                  provider(this, ae)
+              })
+            }
+          }
+        })
+      case (Some(TextFieldWithToolButton(tf,b)), None) =>
+        Platform.runLater(() => {
+          if (editable.value && b.visible.value) {
+            val ae = new ActionEvent(this, b)
+            formularAction.foreach(provider => {
+                provider(this, ae)
+            })
           }
         })
       case _ =>
@@ -414,12 +446,14 @@ class AutoCommitTextFieldTableCell[S, T](
     pseudoClassStates.onChange { (set: ObservableSet[jfxcss.PseudoClass], change: Change[jfxcss.PseudoClass]) =>
       change match {
         case Remove(PSEUDO_CLASS_FOCUSED) if delegate.isEditing || AutoCommitTextFieldTableCell.editmode.value =>
-          val value = textField match {
-            case Some(tf) => tf.text.value
-            case None => ""
+          textField match {
+            case Some(TextFieldWithToolButton(tf,b)) => if (!b.visible.value)
+              commitEdit(delegate.sc.fromString(tf.text.value))
+              AutoCommitTextFieldTableCell.setEditMode(false)
+
+            case None =>
+              AutoCommitTextFieldTableCell.setEditMode(false)
           }
-          commitEdit(converter.value.fromString(value))
-          AutoCommitTextFieldTableCell.setEditMode(false)
 
         case _ =>
       }

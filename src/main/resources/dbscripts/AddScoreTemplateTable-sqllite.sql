@@ -30,3 +30,16 @@ ALTER TABLE wertung
 INSERT INTO scoretemplate (wettkampfdisziplin_id, dFormula, eFormula, pFormula, aggregateFn)
 values               (141, "0.0", "$EENote.2^", "0.0", "Max")
 ;
+-- Tramp (247,256), 30 / Sprung (250,259), 4
+INSERT INTO scoretemplate (wettkampfdisziplin_id, dFormula, eFormula, pFormula, aggregateFn)
+values               (247, "min(5,$AA-Note.2+$AAltersbonus.2)", "min(5,$BB-Note.2)^", "$PNeutraler Abzug.2", "Sum")
+;
+INSERT INTO scoretemplate (wettkampfdisziplin_id, dFormula, eFormula, pFormula, aggregateFn)
+values               (256, "min(5,$AA-Note.2+$AAltersbonus.2)", "min(5,$BB-Note.2)^", "$PNeutraler Abzug.2", "Sum")
+;
+INSERT INTO scoretemplate (wettkampfdisziplin_id, dFormula, eFormula, pFormula, aggregateFn)
+values               (250, "min(5,$AA-Note.2+$AAltersbonus.2)", "min(5,$BB-Note.2)^", "$PNeutraler Abzug.2", "Sum")
+;
+INSERT INTO scoretemplate (wettkampfdisziplin_id, dFormula, eFormula, pFormula, aggregateFn)
+values               (259, "min(5,$AA-Note.2+$AAltersbonus.2)", "min(5,$BB-Note.2)^", "$PNeutraler Abzug.2", "Sum")
+;

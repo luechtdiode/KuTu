@@ -4,6 +4,7 @@ import java.io.StringWriter
 import ch.seidel.kutu.{KuTuApp, KuTuAppTree}
 import ch.seidel.kutu.domain._
 import ch.seidel.kutu.view._
+import javafx.scene.input.{KeyCode, KeyEvent}
 import javafx.{scene => jfxs}
 import org.slf4j.{Logger, LoggerFactory}
 import scalafx.Includes._
@@ -83,6 +84,10 @@ object PageDisplayer {
         }
       }
     }
+    dialogStage.delegate.addEventHandler(KeyEvent.KEY_RELEASED, (event: KeyEvent) => {
+      if (KeyCode.ESCAPE eq event.getCode) dialogStage.close
+    })
+
     // Show dialog and wait till it is closed
     dialogStage.showAndWait()
   }

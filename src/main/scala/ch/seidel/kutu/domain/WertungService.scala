@@ -23,7 +23,7 @@ object WertungServiceBestenResult {
   
   def putWertungToBestenResults(wertung: WertungView): Unit = {
     bestenResults = bestenResults.updated(s"${wertung.athlet.id}:${wertung.wettkampfdisziplin.id}", wertung)
-    logger.info(s"actually best-scored: \n${bestenResults.mkString("\n")}")
+    logger.info(s"actually best-scored: \n${bestenResults.values.map(_.shortLogText).mkString("\n")}")
   }
   
   def getBestenResults = {

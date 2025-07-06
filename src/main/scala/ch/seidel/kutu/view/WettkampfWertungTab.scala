@@ -1,8 +1,8 @@
 package ch.seidel.kutu.view
 
-import ch.seidel.commons._
+import ch.seidel.commons.{AutoCommitTextFieldTableCell, _}
 import ch.seidel.kutu.Config._
-import ch.seidel.kutu.KuTuApp.enc
+import ch.seidel.kutu.KuTuApp.{controlsView, enc, handleAction, saveWettkampf, tree, updateTree}
 import ch.seidel.kutu.actors._
 import ch.seidel.kutu.domain._
 import ch.seidel.kutu.http.WebSocketClient
@@ -263,27 +263,111 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
     val indexerF = Iterator.from(0)
     import javafx.css.PseudoClass
     val editableCssClass = PseudoClass.getPseudoClass("editable")
-    wertungen.head
-      .map { wertung =>
-        val dNoteLabel = wertung.init.wettkampfdisziplin.notenSpez.getDifficultLabel
-        val eNoteLabel = wertung.init.wettkampfdisziplin.notenSpez.getExecutionLabel
+    val formularCssClass = PseudoClass.getPseudoClass("formular")
+    wertungen.head.map { wertung =>
+      val dNoteLabel = wertung.init.wettkampfdisziplin.notenSpez.getDifficultLabel
+      val eNoteLabel = wertung.init.wettkampfdisziplin.notenSpez.getExecutionLabel
 
-        lazy val clDnote = new WKTableColumn[Double](indexerD.next()) {
-        text = dNoteLabel
-
-        cellValueFactory = { x => if (x.value.size > index) x.value(index).noteD else wertung.noteD }
-        cellFactory.value = { _: Any =>
-          new AutoCommitTextFieldTableCell[IndexedSeq[WertungEditor], Double](
-            DoubleConverter(wertung.init.wettkampfdisziplin.notenSpez),
-            (cell) => {
-              if (cell.tableRow.value != null && cell.tableRow.value.item.value != null && index < cell.tableRow.value.item.value.size) {
-                val w = cell.tableRow.value.item.value(index)
-                val editable = w.matchesSexAssignment
-                cell.editable = editable
-                cell.pseudoClassStateChanged(editableCssClass, cell.isEditable)
+      def formEditorAction(index: Int): Function1[(TextFieldWithToolButtonTableCell[IndexedSeq[WertungEditor], Double],ActionEvent), scala.Unit] = context => {
+          val (cell, ae) = context
+          val w = cell.tableRow.value.item.value(index)
+          val caption = s"Notenerfassung für ${wertung.init.wettkampfdisziplin.disziplin.name} - ${w.init.athlet.easyprint}"
+          val box = new VBox {
+            spacing = 7.0
+            minWidth = 600
+            w.variableEditorsList.zipWithIndex.foreach(vs => {
+              children.add(new Label(s"${vs._2 +1}. Übung"))
+              children.add(new HBox {
+                spacing = 5.0
+                vs._1.foreach(v => {
+                  children.addAll(new Label(v.score.value.name), new TextField() {
+                    text <==> v.stringvalue
+                    prefWidth = 80
+                  })
+                })
+              })
+            })
+            children.add(new Label("Berechnete Werte"))
+            if (wertung.init.defaultVariables.get.dVariables.nonEmpty){
+              children.addAll(new Label() {
+                text <== Bindings.createStringBinding(() => s"${w.init.wettkampfdisziplin.notenSpez.getDifficultLabel}-Note ${w.dFormula.value}", w.calculatedWertung)
+              }, new TextField() {
+                text <== Bindings.createStringBinding(() => w.calculatedWertung.value.noteDasText, w.calculatedWertung, w.dFormula)
+                editable = false
+                prefWidth = 100
+              })
+            }
+            if (wertung.init.defaultVariables.get.eVariables.nonEmpty){
+              children.addAll(new Label() {
+                text <== Bindings.createStringBinding(() => s"${w.init.wettkampfdisziplin.notenSpez.getExecutionLabel}-Note ${w.eFormula.value}", w.calculatedWertung)
+              }, new TextField() {
+                text <== Bindings.createStringBinding(() => w.calculatedWertung.value.noteEasText, w.calculatedWertung, w.eFormula)
+                prefWidth = 100
+                editable = false
+              })
+            }
+            children.addAll(new Label("Endnote"), new TextField() {
+              text <== Bindings.createStringBinding(() => w.calculatedWertung.value.endnoteAsText, w.calculatedWertung)
+              prefWidth = 100
+              editable = false
+            })
+          }
+          PageDisplayer.showInDialog(caption, new DisplayablePage() {
+            def getPage: Node = {
+              new BorderPane {
+                hgrow = Priority.Always
+                vgrow = Priority.Always
+                center = box
               }
             }
-          )
+          },
+            new Button("OK") {
+              onAction = handleAction { implicit e: ActionEvent =>
+                try {
+                  cell.commitEdit(cell.sc.fromString(w.commit.noteE.map(_.toString()).getOrElse("")))
+                }
+                catch {
+                  case e: IllegalArgumentException =>
+                    PageDisplayer.showErrorDialog(caption)(e)
+                }
+              }
+            }
+          )(ae)
+        }
+      lazy val clDnote = new WKTableColumn[Double](indexerD.next()) {
+        text = dNoteLabel
+
+        cellValueFactory = { x =>
+          if (x.value.size > index)
+            x.value(index).noteD
+          else
+            wertung.noteD
+        }
+        cellFactory.value = { _: Any =>
+          if (wertung.init.wettkampfdisziplin.notenSpez.template.isEmpty) {
+            new AutoCommitTextFieldTableCell[IndexedSeq[WertungEditor], Double](
+              DoubleConverter(wertung.init.wettkampfdisziplin.notenSpez),
+              (cell) => {
+                if (cell.tableRow.value != null && cell.tableRow.value.item.value != null && index < cell.tableRow.value.item.value.size) {
+                  val w = cell.tableRow.value.item.value(index)
+                  val editable = w.matchesSexAssignment
+                  cell.editable = editable
+                  cell.pseudoClassStateChanged(editableCssClass, cell.isEditable)
+                }
+              }
+            )
+          } else {
+            new AutoCommitTextFieldTableCell[IndexedSeq[WertungEditor], Double](
+              DoubleConverter(wertung.init.wettkampfdisziplin.notenSpez),
+              (cell) => {
+                if (cell.tableRow.value != null && cell.tableRow.value.item.value != null && index < cell.tableRow.value.item.value.size) {
+                  val w = cell.tableRow.value.item.value(index)
+                  val editable = w.matchesSexAssignment
+                  cell.editable = editable
+                  cell.pseudoClassStateChanged(formularCssClass, cell.isEditable)
+                }
+              }, formEditorAction(index))
+          }
         }
 
         styleClass += "table-cell-with-value"
@@ -317,23 +401,36 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
       lazy val clEnote = new WKTableColumn[Double](indexerE.next()) {
         text = eNoteLabel
         cellValueFactory = { x => if (x.value.size > index) x.value(index).noteE else wertung.noteE }
-
         cellFactory.value = { _: Any =>
-          new AutoCommitTextFieldTableCell[IndexedSeq[WertungEditor], Double](
-            DoubleConverter(wertung.init.wettkampfdisziplin.notenSpez),
-            (cell) => {
-              if (cell.tableRow.value != null && cell.tableRow.value.item.value != null && index < cell.tableRow.value.item.value.size) {
-                val w = cell.tableRow.value.item.value(index)
-                val editable = w.matchesSexAssignment
-                cell.editable = editable
-                cell.pseudoClassStateChanged(editableCssClass, cell.isEditable)
+          if (wertung.init.wettkampfdisziplin.notenSpez.template.isEmpty) {
+            new AutoCommitTextFieldTableCell[IndexedSeq[WertungEditor], Double](
+              DoubleConverter(wertung.init.wettkampfdisziplin.notenSpez),
+              (cell) => {
+                if (cell.tableRow.value != null && cell.tableRow.value.item.value != null && index < cell.tableRow.value.item.value.size) {
+                  val w = cell.tableRow.value.item.value(index)
+                  val editable = w.matchesSexAssignment
+                  cell.editable = editable
+                  cell.pseudoClassStateChanged(editableCssClass, cell.isEditable)
+                }
               }
-            }
-          )
+            )
+          } else {
+            new AutoCommitTextFieldTableCell[IndexedSeq[WertungEditor], Double](
+              DoubleConverter(wertung.init.wettkampfdisziplin.notenSpez),
+              (cell) => {
+                if (cell.tableRow.value != null && cell.tableRow.value.item.value != null && index < cell.tableRow.value.item.value.size) {
+                  val w = cell.tableRow.value.item.value(index)
+                  val editable = w.matchesSexAssignment
+                  cell.editable = editable
+                  cell.pseudoClassStateChanged(formularCssClass, cell.isEditable)
+                }
+              }, formEditorAction(index))
+          }
         }
 
         styleClass += "table-cell-with-value"
-        prefWidth = 60
+        val hasNoFormTemplate = wertungen.forall(we => we(index).init.wettkampfdisziplin.notenSpez.template.isEmpty)
+        prefWidth = if (hasNoFormTemplate) 60 else 100
         editable = !wettkampf.toWettkampf.isReadonly(homedir, remoteHostOrigin)
         onEditCommit = (evt: CellEditEvent[IndexedSeq[WertungEditor], Double]) => {
           if (evt.rowValue != null && evt.rowValue.size > index) {

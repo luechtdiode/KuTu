@@ -32,6 +32,8 @@ object ScoreCalcVariable_ {
 
 case class ScoreCalcVariable(source: String, prefix: String, name: String, scale: Option[Int], value: BigDecimal, index: Int = 0) extends DataObject  {
   def updated(newValue: BigDecimal): ScoreCalcVariable = copy(value = newValue.setScale(value.scale, RoundingMode.HALF_UP)): ScoreCalcVariable
+  def equalID(other: ScoreCalcVariable): Boolean = prefix.equals(other.prefix) && name.equals(other.name) && index.equals(other.index)
+  def isGeneric: Boolean = source.isEmpty
 }
 
 case object TemplateViewJsonReader extends JsonSupport {
@@ -48,6 +50,14 @@ case class ScoreCalcTemplateView(
                                   pExpression: String, pVariables: List[ScoreCalcVariable], pDetails: Boolean,
                                   aggregateFn: Option[ScoreAggregateFn]) extends DataObject  {
   def variables = (dVariables ++ eVariables ++ pVariables).groupBy(_.index).values.toList
+  def readablDFormula = if (dVariables.isEmpty) "" else aggregateFn match {
+    case None => dExpression
+    case Some(agf) => dVariables.map(v => v.value).mkString(s"$agf(", "," ,")")
+  }
+  def readablEFormula = if (eVariables.isEmpty) "" else aggregateFn match {
+    case None => eExpression
+    case Some(agf) => eVariables.map(v => v.value).mkString(s"$agf(", "," ,")")
+  }
 }
 /*
   wettkampf_id integer NOT NULL,
@@ -83,9 +93,29 @@ case class ScoreCalcTemplate(id: Long, wettkampfId: Option[Long], disziplinId: O
     )
   }
 
-  def dExpression(values: List[ScoreCalcVariable]): String = renderExpression(dFormula, values.filter(_.prefix.equals("D")))
+  def dExpression(values: List[ScoreCalcVariable]): String = renderExpression(dFormula, values
+    .filter{
+      case ScoreCalcVariable(source, "D", name, scale, value, index) => true
+      case ScoreCalcVariable(source, "A", name, scale, value, index) => true
+      case _ => false
+    })
 
-  def eExpression(values: List[ScoreCalcVariable]): String = renderExpression(eFormula, values.filter(_.prefix.equals("E")))
+  def dExpressions(values: List[List[ScoreCalcVariable]]): String = aggregateFn match {
+    case None => dExpression(values.flatten)
+    case Some(agf) => values.map(exvars => dExpression(exvars)).mkString(s"$agf(", ",", ")")
+  }
+
+  def eExpression(values: List[ScoreCalcVariable]): String = renderExpression(eFormula, values
+    .filter{
+      case ScoreCalcVariable(source, "E", name, scale, value, index) => true
+      case ScoreCalcVariable(source, "B", name, scale, value, index) => true
+      case _ => false
+    })
+
+  def eExpressions(values: List[List[ScoreCalcVariable]]): String = aggregateFn match {
+    case None => eExpression(values.flatten)
+    case Some(agf) => values.map(exvars => eExpression(exvars)).mkString(s"$agf(", ",", ")")
+  }
 
   def pExpression(values: List[ScoreCalcVariable]): String = renderExpression(pFormula, values.filter(_.prefix.equals("P")))
 
@@ -100,18 +130,20 @@ case class ScoreCalcTemplate(id: Long, wettkampfId: Option[Long], disziplinId: O
   private def parseVariables(formula: String): List[ScoreCalcVariable] = varPattern.findAllMatchIn(formula).map { m =>
     val prefix = m.group(1)
     val name = m.group(2)
-    val scale = if (m.groupCount == 5 && !m.group(5).equals("0")) Some(m.group(5)) else None
+    val scale = if (m.groupCount == 5 && m.group(5) != null && !m.group(5).equals("0")) Some(m.group(5)) else None
     ScoreCalcVariable_(m.group(0), prefix, name, scale.map(_.toInt))
   }.distinct.flatMap{scv => aggregateFn match {
     case None => List(scv.copy(index = 0))
     case Some(_) => List(scv.copy(index = 0), scv.copy(index = 1))
   }}.toList
 
-  private def renderExpression(formula: String, values: List[ScoreCalcVariable]): String = {
+  def renderExpression(formula: String, values: List[ScoreCalcVariable]): String = {
     val f = values.foldLeft(formula) { (acc, variable) =>
       acc.replace(variable.source, variable.value.toString())
     }
-    if (f.endsWith("^")) f.dropRight(1) else f
+    val ff = variables.foldLeft(f) { (acc, variable) =>
+      acc.replace(variable.source, variable.value.toString())
+    }
+    if (ff.endsWith("^")) ff.dropRight(1) else ff
   }
-
 }
