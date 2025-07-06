@@ -132,6 +132,27 @@ export interface JudgeRegistrationProgramItem {
    caption: string;
    verein: ClubRegistration;
  }
+
+ export interface ScoreCalcVariable {
+  index: number;
+  name: string;
+  prefix: string;
+  scale: number;
+  source: string;
+  value: number;
+ }
+ export interface ScoreCalcVariables {
+  aggregateFn?: string;
+  dDetails: boolean;
+  dExpression: string;
+  dVariables: ScoreCalcVariable[];
+  eDetails: boolean;
+  eExpression: string;
+  eVariables: ScoreCalcVariable[];
+  pDetails: boolean;
+  pExpression: string;
+  pVariables: ScoreCalcVariable[];
+ }
 export interface Wertung {
   id: number;
   wettkampfId: number;
@@ -143,6 +164,7 @@ export interface Wertung {
   noteE: number;
   noteD: number;
   team: number;
+  variables?: ScoreCalcVariables
 }
 
 export interface Geraet {

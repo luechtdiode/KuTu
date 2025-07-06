@@ -258,7 +258,7 @@ export class BackendService extends WebsocketService {
         localStorage.removeItem('current_station');
         localStorage.removeItem('auth_clubid');
         this.showMessage.next({
-          msg: 'Die aktuele Einstellung ist nicht mehr gültig und wird zurückgesetzt.',
+          msg: 'Die aktuelle Einstellung ist nicht mehr gültig und wird zurückgesetzt.',
           type: 'Einstellung'
         } as MessageAck);
       } else {
@@ -1021,10 +1021,7 @@ export class BackendService extends WebsocketService {
       if (this.shouldConnectAgain()) {
         this.reconnect();
       }
-      this.http.put<Wertung | MessageAck>(
-          backendUrl + 'api/durchgang/' + competitionId + '/validate',
-          wertung).pipe(
-        share())
+      this.http.put<Wertung | MessageAck>(backendUrl + 'api/durchgang/' + competitionId + '/validate', wertung).pipe(share())
       .subscribe({
         next: (data) => {
           if (!this.isMessageAck(data)) {
