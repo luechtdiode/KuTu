@@ -302,54 +302,54 @@ trait ScoreToHtmlRenderer {
   private def renderListRows[T <: ResultRow](list: List[T], gsBlock: StringBuilder, cols: List[WKCol]) = {
     list.foreach { row =>
       gsBlock.append(s"<tr>")
-      cols.foreach { col =>
-        col match {
-          case ccol: WKLeafCol[_] =>
+      cols.foreach {
+        case ccol: WKLeafCol[_] =>
+          val c = ccol.asInstanceOf[WKLeafCol[T]]
+          val value = c.valueMapper(row)
+          val t = escaped(value.raw).trim().replace(" ", "<br>")
+          val h = escaped(value.text)
+          val verysmallfont = " sf2"
+          val smallfont = if (t.length() > 17) verysmallfont else if (t.length() > 13) " sf1" else ""
+          if (c.styleClass.contains("hintdata")) {
+            gsBlock.append(s"<td class='data blockstart$smallfont'><div class=${(c.styleClass ++ value.styleClass).mkString("'", " ", "'")}>$t</div></td>")
+          }
+          else if (c.styleClass.contains("heading")) {
+            gsBlock.append(s"<td class='heading blockstart'>$h</td>")
+          }
+          else if (c.styleClass.contains("data")) {
+            gsBlock.append(s"<td class='data blockstart$smallfont'>$h</td>")
+          }
+          else {
+            gsBlock.append(s"<td class='data blockstart$smallfont'><div class=${(c.styleClass ++ value.styleClass).mkString("'", " ", "'")}>$t</div></td>")
+          }
+        case gc: WKGroupCol =>
+          var first = true
+          gc.cols.foreach { ccol =>
             val c = ccol.asInstanceOf[WKLeafCol[T]]
-            val value = c.valueMapper(row)
-            val t = escaped(value.raw)
-            val h = escaped(value.text)
-            val smallfont = if (t.length() > 17) " sf2" else if (t.length() > 13) " sf1" else ""
-            if (c.styleClass.contains("hintdata")) {
-              gsBlock.append(s"<td class='data blockstart$smallfont'><div class=${(c.styleClass ++ value.styleClass).mkString("'", " ", "'")}>$t</div></td>")
+            val style = if (first) {
+              first = false
+              "data blockstart"
             }
-            else if (c.styleClass.contains("heading")) {
-              gsBlock.append(s"<td class='heading blockstart'>$h</td>")
+            else "data"
+            val value = c.valueMapper(row)
+            val t = escaped(value.raw).trim().replace(" ", "<br>")
+            val h = escaped(value.text)
+            val smallfont = if (t.contains("<br>")) " sf2" else ""
+            if (c.styleClass.contains("hintdata")) {
+              gsBlock.append(s"<td class='$style$smallfont'><div class=${(c.styleClass ++ value.styleClass).mkString("'", " ", "'")}>$t</div></td>")
             }
             else if (c.styleClass.contains("data")) {
-              gsBlock.append(s"<td class='data blockstart$smallfont'>$h</td>")
+              gsBlock.append(s"<td class='$style$smallfont'>$h</td>")
+            }
+            else if (c.styleClass.contains("heading")) {
+              gsBlock.append(s"<td class='$style heading'>$h</td>")
+              //gsBlock.append(s"<td class='$style'><div class='heading'>$t</div></td>")
             }
             else {
-              gsBlock.append(s"<td class='data blockstart$smallfont'><div class=${(c.styleClass ++ value.styleClass).mkString("'", " ", "'")}>$t</div></td>")
+              gsBlock.append(s"<td class='$style$smallfont'><div class=${(c.styleClass ++ value.styleClass).mkString("'", " ", "'")}>$t</div></td>")
+              //gsBlock.append(s"<td class='$style'><div class='valuedata'>$t</div></td>")
             }
-          case gc: WKGroupCol =>
-            var first = true
-            gc.cols.foreach { ccol =>
-              val c = ccol.asInstanceOf[WKLeafCol[T]]
-              val style = if (first) {
-                first = false
-                "data blockstart"
-              }
-              else "data"
-              val value = c.valueMapper(row)
-              val t = escaped(value.raw)
-              val h = escaped(value.text)
-              if (c.styleClass.contains("hintdata")) {
-                gsBlock.append(s"<td class='$style'><div class=${(c.styleClass ++ value.styleClass).mkString("'", " ", "'")}>$t</div></td>")
-              }
-              else if (c.styleClass.contains("data")) {
-                gsBlock.append(s"<td class='$style'>$h</td>")
-              }
-              else if (c.styleClass.contains("heading")) {
-                gsBlock.append(s"<td class='$style heading'>$h</td>")
-                //gsBlock.append(s"<td class='$style'><div class='heading'>$t</div></td>")
-              }
-              else {
-                gsBlock.append(s"<td class='$style'><div class=${(c.styleClass ++ value.styleClass).mkString("'", " ", "'")}>$t</div></td>")
-                //gsBlock.append(s"<td class='$style'><div class='valuedata'>$t</div></td>")
-              }
-            }
-        }
+          }
       }
       gsBlock.append(s"</tr>\n")
     }

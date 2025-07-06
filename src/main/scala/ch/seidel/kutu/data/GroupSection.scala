@@ -148,7 +148,7 @@ case class GroupLeaf[GK <: DataObject](override val groupKey: GK, list: Iterable
             val cs = colsum(gr)
             val best = if (cs.sum.noteD > 0 && cs.rang.noteD.toInt == 1) "*" else ""
             val styles = if (cs.sum.noteD > 0 && cs.rang.noteD.toInt == 1) Seq("best") else Seq()
-            val value = cs.sum.formattedD
+            val value = if (cs.sum.teilresultateD.isEmpty) cs.sum.formattedD else cs.sum.teilresultateD.mkString(" ")
             WKColValue(best + value, value, styles)
           })
           val clEnote = WKLeafCol[ResultRow](text = if (withDNotes) eNoteLabel else "ø Gerät", prefWidth = 60, styleClass = Seq("hintdata"), valueMapper = gr => {
@@ -156,7 +156,7 @@ case class GroupLeaf[GK <: DataObject](override val groupKey: GK, list: Iterable
             val best = if (cs.sum.noteE > 0 && cs.rang.noteE.toInt == 1) "*" else ""
             val styles = if (cs.sum.noteE > 0 && cs.rang.noteE.toInt == 1) Seq("best") else Seq()
             val div = Math.max(gr.divider, divider)
-            val value = if (div == 1) cs.sum.formattedE else (cs.sum / div).formattedEnd
+            val value = if (cs.sum.teilresultateE.isEmpty) if (div == 1) cs.sum.formattedE else (cs.sum / div).formattedEnd else cs.sum.teilresultateE.mkString(" ")
             WKColValue(best + value, value, styles)
           })
           val clEndnote = WKLeafCol[ResultRow](text = "Endnote", prefWidth = 60, styleClass = Seq("valuedata"), valueMapper = gr => {
@@ -205,7 +205,8 @@ case class GroupLeaf[GK <: DataObject](override val groupKey: GK, list: Iterable
                 "*"
               else
                 ""
-              val value = gr.resultate(index).sum.formattedD
+              val value = if (gr.resultate(index).sum.teilresultateD.isEmpty) gr.resultate(index).sum.formattedD else gr.resultate(index).sum.teilresultateD.mkString(" ")
+
               WKColValue(best + value, value, styles)
 
             } else WKColValue("")
@@ -218,7 +219,7 @@ case class GroupLeaf[GK <: DataObject](override val groupKey: GK, list: Iterable
                 "*"
               else
                 ""
-              val value = gr.resultate(index).sum.formattedE
+              val value = if (gr.resultate(index).sum.teilresultateE.isEmpty) gr.resultate(index).sum.formattedE else gr.resultate(index).sum.teilresultateE.mkString(" ")
               WKColValue(best + value, value, styles)
             } else WKColValue("")
           })
@@ -441,7 +442,7 @@ case class GroupLeaf[GK <: DataObject](override val groupKey: GK, list: Iterable
             val team = groupKey.asInstanceOf[Team]
             LeafRow(w._1.easyprint,
               ww.avg,
-              ww.rang,
+              rang,
               ww.rang.endnote == 1,
               !team.isRelevantResult(w._1, ww.groupKey.asInstanceOf[AthletView]))
           }
