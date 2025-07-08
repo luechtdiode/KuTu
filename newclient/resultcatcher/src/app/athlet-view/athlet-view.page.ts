@@ -96,6 +96,7 @@ export class AthletViewPage  implements OnInit {
           currentItem.wertung.noteE += item.wertung.noteE || 0;
           currentItem.wertung.noteD += item.wertung.noteD || 0;
           currentItem.wertung.endnote += item.wertung.endnote || 0;
+          currentItem.programm = item.programm;
         }
         return currentItem;
       }, currentItem);

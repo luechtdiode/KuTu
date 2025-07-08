@@ -1,4 +1,5 @@
-import { Component, OnInit, Input } from '@angular/core';
+import { Component, Input, OnInit } from '@angular/core';
+import { AlertController, IonButton } from '@ionic/angular';
 import { WertungContainer } from 'src/app/backend-types';
 import { gearMapping, turn10ProgrammNames } from 'src/app/utils';
 
@@ -25,7 +26,26 @@ export class ResultDisplayComponent implements OnInit {
   @Input()
   groupedBy: GroupBy = GroupBy.NONE;
 
+  get hasDNoteDetails() {
+    return this.item.wertung.variables?.dDetails;
+  }
 
+  get hasENoteDetails() {
+    return this.item.wertung.variables?.eDetails;
+  }
+
+  get dNoteDetails() {
+    return this.item.wertung.variables?.dVariables.filter(v => v.value > 0).map(v => v.value.toFixed(v.scale)) || [this.item.wertung.noteD?.toFixed(3) || 0].join(', '); 
+  }
+  
+  get eNoteDetails() {
+    return this.item.wertung.variables?.eVariables.filter(v => v.value > 0).map(v => v.value.toFixed(v.scale)) || [this.item.wertung.noteE?.toFixed(3) || 0].join(', '); ; 
+  }
+  
+  get pNoteDetails() {
+    return this.item.wertung.variables?.pVariables.filter(v => v.value > 0).map(v => v.value.toFixed(v.scale)) || [0]; 
+  }
+  
   get dNoteLabel() {
     return this.item.isDNoteUsed && turn10ProgrammNames.indexOf(this.item.programm) > -1 ? "A" : "D";
   }
@@ -46,8 +66,25 @@ export class ResultDisplayComponent implements OnInit {
     return gearMapping[this.item.geraet] || undefined;
   }
 
-  constructor() { }
+  constructor(private readonly alertController: AlertController) { }
 
-  ngOnInit() {}
+  ngOnInit() {
+    //
+  }
 
+  async presentDetails(open: boolean) {
+    const text = `
+      ${this.dNoteLabel}: [${this.dNoteDetails}],
+      ${this.eNoteLabel}: [${this.eNoteDetails}], 
+      Penalty: [${this.pNoteDetails}], 
+      Streichresultat: [${this.item.isStroked ? 'ja' : 'nein'}]`
+    const alert = await this.alertController.create({
+      header: `${this.titlerest || this.title} Wertung Details`,
+      subHeader: `Total Punkte: [${this.item.wertung.endnote?.toFixed(3) || "Kein Resultat"}]`,
+      message: text,
+      buttons: ['OK'],
+    });
+
+    await alert.present();
+  }
 }
