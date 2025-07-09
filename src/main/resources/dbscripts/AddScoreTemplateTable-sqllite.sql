@@ -11,7 +11,7 @@ CREATE TABLE IF NOT EXISTS scoretemplate (
   dFormula varchar(5000) NOT NULL DEFAULT '',
   eFormula varchar(5000) NOT NULL DEFAULT '',
   pFormula varchar(5000) NOT NULL DEFAULT '',
-  aggregateFn varchar(100)  NOT NULL DEFAULT '',
+  aggregateFn varchar(100),
   FOREIGN KEY (wettkampf_id) REFERENCES wettkampf (id),
   FOREIGN KEY (disziplin_id) REFERENCES disziplin (id),
   FOREIGN KEY (wettkampfdisziplin_id) REFERENCES wettkampfdisziplin (id)

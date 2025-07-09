@@ -1046,7 +1046,7 @@ package object domain {
   }
 
   case class WettkampfdisziplinView(id: Long, programm: ProgrammView, disziplin: Disziplin, kurzbeschreibung: String, detailbeschreibung: Option[Array[Byte]], notenSpez: NotenModus, masculin: Int, feminim: Int, ord: Int, scale: Int, dnote: Int, min: Int, max: Int, startgeraet: Int) extends DataObject {
-    override def easyprint = disziplin.name
+    override def easyprint = s"${disziplin.name} (${programm.name})"
 
     val isDNoteUsed = dnote != 0
 

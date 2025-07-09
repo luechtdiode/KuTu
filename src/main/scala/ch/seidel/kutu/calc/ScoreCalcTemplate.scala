@@ -1,5 +1,6 @@
 package ch.seidel.kutu.calc
 
+import ch.seidel.kutu.KuTuApp.scoreCalcTemplateSorter
 import ch.seidel.kutu.domain.DataObject
 import ch.seidel.kutu.http.JsonSupport
 
@@ -12,6 +13,8 @@ object ScoreAggregateFn {
     case "Avg" => Avg
     case "Sum" => Sum
   }.orElse(None)
+
+  def values: List[String] = List(Min,Max,Avg,Sum).map(_.toString)
 }
 sealed trait ScoreAggregateFn
 
@@ -81,6 +84,7 @@ case class ScoreCalcTemplate(id: Long, wettkampfId: Option[Long], disziplinId: O
   val pVariables: List[ScoreCalcVariable] = parseVariables(pFormula)
   val pResolveDetails: Boolean = pFormula.endsWith("^")
 
+  val sortOrder: String = scoreCalcTemplateSorter(this)
   lazy val variables: List[ScoreCalcVariable] = dVariables ++ eVariables ++ pVariables
 
   def toView(values: List[ScoreCalcVariable]): ScoreCalcTemplateView = {
@@ -126,7 +130,6 @@ case class ScoreCalcTemplate(id: Long, wettkampfId: Option[Long], disziplinId: O
         .map(vv => v.updated(vv.value))
         .getOrElse(v)
     }
-
   private def parseVariables(formula: String): List[ScoreCalcVariable] = varPattern.findAllMatchIn(formula).map { m =>
     val prefix = m.group(1)
     val name = m.group(2)
@@ -145,5 +148,9 @@ case class ScoreCalcTemplate(id: Long, wettkampfId: Option[Long], disziplinId: O
       acc.replace(variable.source, variable.value.toString())
     }
     if (ff.endsWith("^")) ff.dropRight(1) else ff
+  }
+
+  def validateFormula(formula: String):String = {
+    renderExpression(formula, parseVariables(formula))
   }
 }

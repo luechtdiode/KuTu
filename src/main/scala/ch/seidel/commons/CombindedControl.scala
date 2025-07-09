@@ -18,15 +18,14 @@ import scala.language.implicitConversions
 
 case class TextFieldWithToolButton(textField: TextField, button: Button) extends HBox {
   initGraphics()
-
   private def initGraphics(): Unit = {
+    getStylesheets.add(this.getClass.getResource("/css/Main.css").toExternalForm)
     getStyleClass.add("combined-control")
-    //button.setFocusTraversable(false)
-    setFocusTraversable(true)
-    button.setFocusTraversable(true)
+    setPrefWidth(textField.prefWidth.value)
+
     setSpacing(0)
     setFillHeight(false)
-    textField.maxWidth = 10000
+
     textField.onKeyReleased = (ae) => {
       ae.getCode match {
         case c if c.isWhitespaceKey || c.isLetterKey || c.isDigitKey || c.getChar == "-" =>
@@ -37,21 +36,24 @@ case class TextFieldWithToolButton(textField: TextField, button: Button) extends
         case _ =>
       }
     }
-    //getAlignment <== textField.alignment
-    //getChildren.setAll(textField, button)
   }
 
   def switchFormularMode(): Unit = {
     textField.editable = false
     textField.setFocusTraversable(false)
-    button.setVisible(true)
+    button.visible = true
     getChildren.setAll(textField, button)
   }
 
+  def asFormularMode(): TextFieldWithToolButton = {
+    button.visible = true
+    getChildren.setAll(textField, button)
+    this
+  }
+
   def switchRawMode(): Unit = {
+    button.visible = false
     textField.editable = true
-    textField.setFocusTraversable(true)
-    button.setVisible(false)
     getChildren.setAll(textField)
   }
 }
@@ -184,7 +186,7 @@ object CellUtils {
       }
 
     })
-    TextFieldWithToolButton(tf, new Button("..." ,new ImageView { image = editIcon }) {
+    TextFieldWithToolButton(tf, new Button("" ,new ImageView { image = editIcon }) {
     })
   }
 
