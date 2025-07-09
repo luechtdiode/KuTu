@@ -28,9 +28,25 @@ trait WettkampfService extends DBService
 
   private val logger = LoggerFactory.getLogger(this.getClass)
 
+  val scoreCalcTemplateSorter: ScoreCalcTemplate => String = t => {
+    val wkm = t.wettkampfId match {
+      case Some(_) => 100
+      case None => 1000
+    }
+    val dm = t.disziplinId match {
+      case Some(_) => 10
+      case None => 2000
+    }
+    val wdm = t.wettkampfdisziplinId match {
+      case Some(_) => 1
+      case None => 3000
+    }
+    f"${(wkm + dm + wdm)}%04d"
+  }
+
   def evaluateScoreCalcTemplate(wkid: Long, did: Long, wkd: Long, cache: scala.collection.mutable.Map[Long, List[ScoreCalcTemplate]]): Option[ScoreCalcTemplate] = {
     val templates = cache.getOrElseUpdate(wkid, loadScoreCalcTemplatesAll(wkid))
-    val reverse = templates.filter { t =>
+    val sortedTemplates = templates.filter { t =>
       val wkm = t.wettkampfId match {
         case None => true
         case Some(id) => id == wkid
@@ -44,23 +60,8 @@ trait WettkampfService extends DBService
         case Some(id) => id == wkd
       }
       wkm && dm && wdm
-    }.sortBy { t =>
-      val wkm = t.wettkampfId match {
-        case Some(_) => 100
-        case None => 0
-      }
-      val dm = t.disziplinId match {
-        case Some(_) => 10
-        case None => 0
-      }
-      val wdm = t.wettkampfdisziplinId match {
-        case Some(_) => 10
-        case None => 0
-      }
-      wkm + dm + wdm
-    }.reverse
-    //println(reverse)
-    reverse.headOption
+    }.sortBy { scoreCalcTemplateSorter}
+    sortedTemplates.headOption
   }
 
   def readNotenModus(wkid: Long, id: Long, disz: Disziplin, pgm: ProgrammView, notenfaktor: Double, cache: scala.collection.mutable.Map[Long, List[ScoreCalcTemplate]]): NotenModus = {
@@ -450,25 +451,27 @@ trait WettkampfService extends DBService
   def createScoreCalcTempate(template: ScoreCalcTemplate): ScoreCalcTemplate = {
     Await.result(database.run(
       sqlu"""
-            insert scoretemplate
-                (wettkampf_id, disziplin_id, wettkampfdisziplin_id, dFormula, dFormula, eFormula, pFormula, aggregateFn)
+            insert into scoretemplate
+                (wettkampf_id, disziplin_id, wettkampfdisziplin_id, dFormula, eFormula, pFormula, aggregateFn)
             values
                 (${template.wettkampfId}, ${template.disziplinId}, ${template.wettkampfdisziplinId},
                  ${template.dFormula}, ${template.eFormula}, ${template.pFormula}, ${template.aggregateFn.map(_.toString)}
+                )
       """ >>
       sql"""select
                d.id, d.wettkampf_id, d.disziplin_id, d.wettkampfdisziplin_id,
                d.dFormula, d.eFormula, d.pFormula, d.aggregateFn
              from scoretemplate d
-             where d.wettkampf_id=${template.wettkampfId} and d.disziplin_id=${template.disziplinId} and d.wettkampfdisziplin_id=${template.wettkampfdisziplinId}
-        """.as[ScoreCalcTemplate]), Duration.Inf).head
+             where d.wettkampf_id=${template.wettkampfId}
+        """.as[ScoreCalcTemplate].transactionally), Duration.Inf)
+      .filter(sct => sct.disziplinId.equals(template.disziplinId) && sct.wettkampfdisziplinId.equals(template.wettkampfdisziplinId)).head
   }
 
   def deleteScoreCalcTemplate(template: ScoreCalcTemplate): Unit = {
     Await.result(database.run(
       sqlu"""
                     delete from scoretemplate
-                    where d.id=${template.id}
+                    where id=${template.id}
       """), Duration.Inf)
   }
 

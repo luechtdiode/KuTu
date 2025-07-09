@@ -8,9 +8,11 @@ import scalafx.beans.property.{BufferProperty, DoubleProperty, ObjectProperty}
 import scala.jdk.CollectionConverters.IterableHasAsJava
 
 
-case class WertungEditor(init: WertungView) {
+case class WertungEditor(i: WertungView) {
+  def init: WertungView = lastCommitted
   type WertungChangeListener = (WertungEditor) => Unit
 
+  private var lastCommitted = i
   var listeners: Set[WertungChangeListener] = Set[WertungChangeListener]()
   def addListener(l: WertungChangeListener): Unit = {
     listeners += l
@@ -20,9 +22,10 @@ case class WertungEditor(init: WertungView) {
   }
   private var notifying = false
 
-  val matchesSexAssignment = init.athlet.geschlecht match {
-    case "M" => init.wettkampfdisziplin.masculin > 0
-    case "W" => init.wettkampfdisziplin.feminim > 0
+  val matchesSexAssignment = lastCommitted.athlet.geschlecht match {
+    case "M" => lastCommitted.wettkampfdisziplin.masculin > 0
+    case "W" => lastCommitted.wettkampfdisziplin.feminim > 0
+    case _ => true
   }
   val noteD = DoubleProperty(Double.NaN)
   val noteE = DoubleProperty(Double.NaN)
@@ -37,7 +40,7 @@ case class WertungEditor(init: WertungView) {
 
   val dFormula = ObjectProperty[String](this, "DFormel", "")
   val eFormula = ObjectProperty[String](this, "EFormel", "")
-  val calculatedWertung = ObjectProperty[Wertung](this, "Endwertung", init.toWertung)
+  val calculatedWertung = ObjectProperty[Wertung](this, "Endwertung", lastCommitted.toWertung)
 
   case class ScoreCalcVariableEditor(init: ScoreCalcVariable) {
     val score = ObjectProperty[ScoreCalcVariable](init)
@@ -89,10 +92,10 @@ case class WertungEditor(init: WertungView) {
 
   private def notifyListeners(wertung: Wertung): Unit = {
     val allVars = wertung.variablesList
-    dFormula.value = init.wettkampfdisziplin.notenSpez.template.map {
+    dFormula.value = lastCommitted.wettkampfdisziplin.notenSpez.template.map {
       _.dExpressions(allVars)
     }.getOrElse("")
-    eFormula.value = init.wettkampfdisziplin.notenSpez.template.map {
+    eFormula.value = lastCommitted.wettkampfdisziplin.notenSpez.template.map {
       _.eExpressions(allVars)
     }.getOrElse("")
     calculatedWertung.value = wertung
@@ -142,11 +145,11 @@ case class WertungEditor(init: WertungView) {
   }
 
   def isDirty =
-    changed(noteD.value, init.noteD) || changed(noteE.value, init.noteE) || changed(endnote.value, init.endnote)
+    changed(noteD.value, lastCommitted.noteD) || changed(noteE.value, lastCommitted.noteE) || changed(endnote.value, lastCommitted.endnote)
 
   def mapVariablen: Option[ScoreCalcTemplateView] = {
     def mappedScoreCalcTemplateView = {
-      init.defaultVariables.map { sctv =>
+      lastCommitted.defaultVariables.map { sctv =>
         sctv.copy(
           dVariables = dVariables.value.toList.map(_.score.value),
           eVariables = eVariables.value.toList.map(_.score.value),
@@ -156,7 +159,7 @@ case class WertungEditor(init: WertungView) {
 
     def isGeneric = allVariables.exists(_.isGeneric)
 
-    init.wettkampfdisziplin.notenSpez.template match {
+    lastCommitted.wettkampfdisziplin.notenSpez.template match {
       case Some(_) => mappedScoreCalcTemplateView
       case None if isGeneric => mappedScoreCalcTemplateView
       case None => None
@@ -188,19 +191,19 @@ case class WertungEditor(init: WertungView) {
     notifying = true
     try {
       resetVariables()
-      init.noteD match {
+      lastCommitted.noteD match {
         case Some(d) =>
           noteD.value = d.toDouble
         case _ =>
           noteD.value = Double.NaN
       }
-      init.noteE match {
+      lastCommitted.noteE match {
         case Some(d) =>
           noteE.value = d.toDouble
         case _ =>
           noteD.value = Double.NaN
       }
-      init.endnote match {
+      lastCommitted.endnote match {
         case Some(d) =>
           endnote.value = d.toDouble
         case _ =>
@@ -213,7 +216,7 @@ case class WertungEditor(init: WertungView) {
   }
 
   private def resetVariables(): Unit = {
-    init.defaultVariables match {
+    lastCommitted.defaultVariables match {
       case Some(v) =>
         dVariables.value.setAll(v.dVariables.map(ScoreCalcVariableEditor(_)).asJavaCollection)
         eVariables.value.setAll(v.eVariables.map(ScoreCalcVariableEditor(_)).asJavaCollection)
@@ -223,15 +226,15 @@ case class WertungEditor(init: WertungView) {
         eVariables.value.clear()
         pVariables.value.clear()
     }
-    init.endnote match {
+    lastCommitted.endnote match {
       case Some(end) if (end > 0 && variableEditors.forall(_.init.value < 0.01)) =>
         dVariables.value.headOption match {
           case Some(d) =>
-            d.stringvalue.value = init.noteD.map(_.toString).getOrElse("")
+            d.stringvalue.value = lastCommitted.noteD.map(_.toString).getOrElse("")
           case None =>
         }
         eVariables.value.headOption match {
-          case Some(e) => e.stringvalue.value = init.noteE.map(_.toString).getOrElse("")
+          case Some(e) => e.stringvalue.value = lastCommitted.noteE.map(_.toString).getOrElse("")
           case None =>
         }
       case _ =>
@@ -251,13 +254,21 @@ case class WertungEditor(init: WertungView) {
     if (propertyValue.toString == Double.NaN.toString) ""
     else propertyValue
 
-  def commit: Wertung = init.wettkampfdisziplin.verifiedAndCalculatedWertung(
-    init.toWertung.copy(
-      noteD = toOption(noteD.value),
-      noteE = toOption(noteE.value),
-      endnote = toOption(endnote.value),
-      variables = mapVariablen)
-  )
+  def commit: Wertung = {
+    lastCommitted.wettkampfdisziplin.verifiedAndCalculatedWertung(
+      init.toWertung.copy(
+        noteD = toOption(noteD.value),
+        noteE = toOption(noteE.value),
+        endnote = toOption(endnote.value),
+        variables = mapVariablen)
+      )
+  }
+
+  def updateAndcommit: Wertung = {
+    lastCommitted = lastCommitted.updatedWertung(commit)
+    lastCommitted.toWertung
+  }
+
 
   def view: WertungView =
     init.updatedWertung(commit)

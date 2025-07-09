@@ -123,6 +123,9 @@ object PageDisplayer {
         }
       }
     }
+    dialogStage.delegate.addEventHandler(KeyEvent.KEY_RELEASED, (event: KeyEvent) => {
+      if (KeyCode.ESCAPE eq event.getCode) dialogStage.close
+    })
     // Show dialog and wait till it is closed
     dialogStage.showAndWait()
   }

@@ -163,7 +163,7 @@ class WettkampfSpec extends KuTuBaseSpec {
       val t: ScoreCalcTemplate = TemplateJsonReader(templ)
       updateScoreCalcTemplates(List(t))
 
-      val wkdWithTemplates = readWettkampfDisziplinView(wettkampf.id, 141, scala.collection.mutable.Map[Long, List[ScoreCalcTemplate]]())
+      val wkdWithTemplates = readWettkampfDisziplinView(wettkampf.id, 75, scala.collection.mutable.Map[Long, List[ScoreCalcTemplate]]())
       println(wkdWithTemplates)
       assert(wkdWithTemplates.notenSpez.template match {
         case Some(ScoreCalcTemplate(_,Some(wettkampf.id),Some(4),None,"max($Dname1.1, $Dname2.1)^","10 - avg($Ename1.3, $Ename2.3)","($Pname.0 / 10)^",Some(Max))) => true
