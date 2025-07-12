@@ -286,7 +286,7 @@ case class GroupLeaf[GK <: DataObject](override val groupKey: GK, list: Iterable
           val value: String = if (isTeamGroup && aggreateFun != Sum) {
             gr.avg.formattedEnd
           } else {
-            val div = Math.max(gr.divider, divider)
+            val div = if (bestOfCountOverride.isEmpty || !isDivided && withDNotes) Math.max(gr.divider, divider) else Math.max(gr.divider, bestOfCountOverride.getOrElse(1))
             if (div < 2) {
               gr.sum.formattedE
             }
@@ -497,7 +497,7 @@ case class GroupLeaf[GK <: DataObject](override val groupKey: GK, list: Iterable
       val posproz = 100d * gsrang.rang.endnote / teilnehmer
       val posprom = 10000d * gsrang.rang.endnote / teilnehmer
       val gs = mapToGroupSum(athlet, wd, wp)
-      val divider = if(withDNotes || gs.isEmpty) 1 else gs.count{r => r.sum.endnote > 0}
+      val divider = if(withDNotes || gs.isEmpty) 1 else gs.count{r => !r.streichwert && r.sum.endnote > 0}
 
       GroupRow(athlet, pgm, gs, avg, gsrang.rang,
           gsrang.rang.endnote > 0

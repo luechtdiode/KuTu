@@ -1209,12 +1209,12 @@ package object domain {
   case class GroupRow(athlet: AthletView, pgm: ProgrammView, override val resultate: IndexedSeq[LeafRow], sum: Resultat, rang: Resultat, auszeichnung: Boolean) extends DataRow with ResultRow {
     lazy val withDNotes = resultate.exists(w => w.sum.noteD > 0)
     override val athletId = Some(athlet.id)
-    override val divider = if (withDNotes || resultate.isEmpty) 1 else resultate.count { r => r.sum.endnote > 0 }
+    override val divider = if (withDNotes || resultate.isEmpty) 1 else resultate.count { r => !r.streichwert && r.sum.endnote > 0 }
   }
 
   case class TeamRow(team: Team, override val resultate: IndexedSeq[LeafRow], sum: Resultat, rang: Resultat, auszeichnung: Boolean) extends DataRow with ResultRow {
     lazy val withDNotes = resultate.exists(w => w.sum.noteD > 0)
-    override val divider = if (withDNotes || resultate.isEmpty) 1 else resultate.count { r => r.sum.endnote > 0 }
+    override val divider = if (withDNotes || resultate.isEmpty) 1 else resultate.count { r => !r.streichwert && r.sum.endnote > 0 }
   }
 
   sealed trait NotenModus {
