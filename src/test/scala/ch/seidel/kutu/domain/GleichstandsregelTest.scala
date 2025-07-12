@@ -140,34 +140,34 @@ class GleichstandsregelTest extends AnyWordSpec with Matchers {
   }
 
   "factorize StreichWertungen" in {
-    assert(Gleichstandsregel("StreichWertungen").factorize(testResultate) ==         BigDecimal("26509160042242459652153296414841910000000000000"))
+    assert(Gleichstandsregel("StreichWertungen").factorize(testResultate) ==         BigDecimal("26509160042245399771564482228507020000000000000"))
   }
   "factorize StreichWertungen(Endnote)" in {
-    assert(Gleichstandsregel("StreichWertungen(Endnote)").factorize(testResultate) == BigDecimal("26509160042242459652153296414841910000000000000"))
+    assert(Gleichstandsregel("StreichWertungen(Endnote)").factorize(testResultate) == BigDecimal("26509160042245399771564482228507020000000000000"))
   }
   "factorize StreichWertungen(E-Note)" in {
-    assert(Gleichstandsregel("StreichWertungen(E-Note)").factorize(testResultate) == BigDecimal("15352187551599095666311029822689630000000000000"))
+    assert(Gleichstandsregel("StreichWertungen(E-Note)").factorize(testResultate) == BigDecimal("15352187551602035785722215636354740000000000000"))
   }
   "factorize StreichWertungen(D-Note)" in {
-    assert(Gleichstandsregel("StreichWertungen(D-Note)").factorize(testResultate) == BigDecimal("12280515396746769632000541922809870000000000000"))
+    assert(Gleichstandsregel("StreichWertungen(D-Note)").factorize(testResultate) == BigDecimal("12280515396749709751411727736474980000000000000"))
   }
   "factorize StreichWertungen(Endnote,Max)" in {
-    assert(Gleichstandsregel("StreichWertungen(Endnote,Max)").factorize(testResultate) == BigDecimal("24830061580054276956426019068908870000000000000"))
+    assert(Gleichstandsregel("StreichWertungen(Endnote,Max)").factorize(testResultate) == BigDecimal("24830061580057217075837204882573980000000000000"))
   }
   "factorize StreichWertungen(E-Note,Max)" in {
-    assert(Gleichstandsregel("StreichWertungen(E-Note,Max)").factorize(testResultate) == BigDecimal("12549563330083913360090772070653190000000000000"))
+    assert(Gleichstandsregel("StreichWertungen(E-Note,Max)").factorize(testResultate) == BigDecimal("12549563330086853479501957884318300000000000000"))
   }
   "factorize StreichWertungen(D-Note,Max)" in {
-    assert(Gleichstandsregel("StreichWertungen(D-Note,Max)").factorize(testResultate) == BigDecimal("11156955343866957950176971667598100000000000000"))
+    assert(Gleichstandsregel("StreichWertungen(D-Note,Max)").factorize(testResultate) == BigDecimal("11156955343869898069588157481263210000000000000"))
   }
   "factorize StreichWertungen(Endnote,Min)" in {
-    assert(Gleichstandsregel("StreichWertungen(Endnote,Min)").factorize(testResultate) == BigDecimal("26509160042242459652153296414841910000000000000"))
+    assert(Gleichstandsregel("StreichWertungen(Endnote,Min)").factorize(testResultate) == BigDecimal("26509160042245399771564482228507020000000000000"))
   }
   "factorize StreichWertungen(E-Note,Min)" in {
-    assert(Gleichstandsregel("StreichWertungen(E-Note,Min)").factorize(testResultate) == BigDecimal("15352187551599095666311029822689630000000000000"))
+    assert(Gleichstandsregel("StreichWertungen(E-Note,Min)").factorize(testResultate) == BigDecimal("15352187551602035785722215636354740000000000000"))
   }
   "factorize StreichWertungen(D-Note,Min)" in {
-    assert(Gleichstandsregel("StreichWertungen(D-Note,Min)").factorize(testResultate) == BigDecimal("12280515396746769632000541922809870000000000000"))
+    assert(Gleichstandsregel("StreichWertungen(D-Note,Min)").factorize(testResultate) == BigDecimal("12280515396749709751411727736474980000000000000"))
   }
   "factorize StreichWertungen(Endnote)/StreichWertungen(E-Note)/StreichWertungen(D-Note)" in {
     println(Gleichstandsregel("StreichWertungen(Endnote)").factorize(testResultate))
@@ -175,9 +175,9 @@ class GleichstandsregelTest extends AnyWordSpec with Matchers {
     println(Gleichstandsregel("StreichWertungen(D-Note)").factorize(testResultate))
     println(Gleichstandsregel("StreichWertungen(Endnote)/StreichWertungen(E-Note)").factorize(testResultate))
     println(Gleichstandsregel("StreichWertungen(Endnote)/StreichWertungen(E-Note)/StreichWertungen(D-Note)").factorize(testResultate))
-    assert(Gleichstandsregel("StreichWertungen(Endnote)").factorize(testResultate) == BigDecimal("26509160042242459652153296414841910000000000000"))
-    assert(Gleichstandsregel("StreichWertungen(Endnote)/StreichWertungen(E-Note)").factorize(testResultate) == BigDecimal("26509160042242911024799542631956860000000000000"))
-    assert(Gleichstandsregel("StreichWertungen(Endnote)/StreichWertungen(E-Note)/StreichWertungen(D-Note)").factorize(testResultate) == BigDecimal("26509160042242911024799542642572510000000000000"))
+    assert(Gleichstandsregel("StreichWertungen(Endnote)").factorize(testResultate) == BigDecimal("26509160042245399771564482228507020000000000000"))
+    assert(Gleichstandsregel("StreichWertungen(Endnote)/StreichWertungen(E-Note)").factorize(testResultate) == BigDecimal("26509160042245851144210728532064990000000000000"))
+    assert(Gleichstandsregel("StreichWertungen(Endnote)/StreichWertungen(E-Note)/StreichWertungen(D-Note)").factorize(testResultate) == BigDecimal("26509160042245851144210728542680640000000000000"))
   }
 
   "construct combined rules" in {
@@ -188,7 +188,7 @@ class GleichstandsregelTest extends AnyWordSpec with Matchers {
     assert(Gleichstandsregel("E-Note-Summe/E-Note-Best/JugendVorAlter").factorize(testResultate) == BigDecimal("30831000000000000000000000000000000000000000000"))
     assert(Gleichstandsregel("E-Note-Summe/E-Note-Best/StreichDisziplin(Boden,Pauschen,Ring,Sprung,Barren,Reck)").factorize(testResultate) == BigDecimal("30750001374237411649254475064285380000000000000"))
     assert(Gleichstandsregel("E-Note-Summe/E-Note-Best/StreichDisziplin(Reck,Pauschen,Ring,Sprung,Barren,Boden)").factorize(testResultate) == BigDecimal("30750001466830004241847062756678960000000000000"))
-    assert(Gleichstandsregel("E-Note-Summe/E-Note-Best/StreichWertungen").factorize(testResultate) == BigDecimal("30776509160042242459652153296414840000000000000"))
+    assert(Gleichstandsregel("E-Note-Summe/E-Note-Best/StreichWertungen").factorize(testResultate) == BigDecimal("30776509160042245399771564482228510000000000000"))
     assert(Gleichstandsregel("E-Note-Best/E-Note-Summe/JugendVorAlter").factorize(testResultate) == BigDecimal("78081000000000000000000000000000000000000000000"))
     assert(Gleichstandsregel("JugendVorAlter/E-Note-Best/E-Note-Summe").factorize(testResultate) == BigDecimal("81780000000000000000000000000000000000000000000"))
   }

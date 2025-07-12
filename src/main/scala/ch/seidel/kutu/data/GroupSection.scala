@@ -18,9 +18,9 @@ object GroupSection {
   }
 
   def mapAvgRang(list: Iterable[(DataObject, Resultat, Resultat)]) = {
-    val rangD = (0 +: list.toList.map(_._3.noteD).filter(_ != 0).sorted.reverse).zipWithIndex.toMap
-    val rangE = (0 +: list.toList.map(_._3.noteE).filter(_ != 0).sorted.reverse).zipWithIndex.toMap
-    val rangEnd = (0 +: list.toList.map(_._3.endnote).filter(_ != 0).sorted.reverse).zipWithIndex.toMap
+    val rangD = (0 +: list.toList.map(_._3.noteD).filter(_ != 0).distinct.sorted.reverse).zipWithIndex.toMap
+    val rangE = (0 +: list.toList.map(_._3.noteE).filter(_ != 0).distinct.sorted.reverse).zipWithIndex.toMap
+    val rangEnd = (0 +: list.toList.map(_._3.endnote).filter(_ != 0).sorted.distinct.reverse).zipWithIndex.toMap
     def rang(r: Resultat) = {
       val rd = rangD.getOrElse(r.noteD, 0)
       val re = rangE.getOrElse(r.noteE, 0)
@@ -345,7 +345,7 @@ case class GroupLeaf[GK <: DataObject](override val groupKey: GK, list: Iterable
     val rsum = aggreateFun(wksums)
 
     val gwksums = wks.map { wk =>
-      val countingWertungen = wk._2.filter(!_.isStroked).toList
+      val countingWertungen = (if (bestOfCountOverride.isEmpty) wk._2.filter(!_.isStroked) else wk._2).toList
       val factorShift = gleichstandsregel.factorize(countingWertungen)
       aggreateFun(
         countingWertungen.map { w =>

@@ -80,11 +80,11 @@ def apply(programmId: Long): Gleichstandsregel = {
       case id if (id > 0 && id < 4) => // Athletiktest
         GleichstandsregelDefault
       case id if ((id > 10 && id < 20) || id == 28) => // KuTu Programm
-        Gleichstandsregel(kutu)
+        Gleichstandsregel(kutustv)
       case id if (id > 19 && id < 27) || (id > 73 && id < 84) => // GeTu Kategorie
         Gleichstandsregel(getu)
       case id if (id > 30 && id < 41) => // KuTuRi Programm
-        Gleichstandsregel(kutu)
+        Gleichstandsregel(kutustv)
       case _ => GleichstandsregelDefault
     }
   }
@@ -181,14 +181,16 @@ case class GleichstandsregelStreichDisziplin(disziplinOrder: List[String]) exten
 case class GleichstandsregelStreichWertungen(typ: String = "Endnote", minmax: String = "Min") extends Gleichstandsregel {
   private val _minmax = if (minmax == null || minmax.isEmpty) "Min" else minmax
   override def toFormel: String = s"StreichWertungen($typ,${_minmax})"
-
+  val maxGeraete = 6
   override val maxvalue: Int = 180
-  override def powerRange: BigDecimal = BigDecimal(maxvalue).pow(6)
+  override def powerRange: BigDecimal = BigDecimal(maxvalue).pow(maxGeraete)
 
   private def pickWertung(w: WertungView): BigDecimal = {
     typ match {
       case "Endnote" => w.resultat.endnote
+      case "A-Note" => w.resultat.noteD
       case "D-Note" => w.resultat.noteD
+      case "B-Note" => w.resultat.noteE
       case "E-Note" => w.resultat.noteE
       case _ => w.resultat.endnote
     }
@@ -215,7 +217,7 @@ case class GleichstandsregelStreichWertungen(typ: String = "Endnote", minmax: St
   }
 
   override def factorize(athlWertungen: List[WertungView]): BigDecimal = {
-    f(sort(athlWertungen).drop(1))
+    f(sort(athlWertungen).slice(1, maxGeraete)) + BigDecimal(maxvalue).pow(maxGeraete - athlWertungen.size)
   }
 }
 
