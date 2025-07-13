@@ -29,7 +29,7 @@ object WettkampfPage {
       text <== when(wettkampfmode) choose s"Alle $progHeader Wertungen" otherwise s"Alle $progHeader"
       closable = false
     }})
-    val preferencesTab = new PreferencesTab(wettkampfInfo, service)
+    val preferencesTab = new ScoreCalcTemplatesTab(wettkampf, service)// new PreferencesTab(wettkampfInfo, service)
 
     logger.debug("Start Program Tabs")
     val progSites: Seq[Tab] = (progs map { v =>

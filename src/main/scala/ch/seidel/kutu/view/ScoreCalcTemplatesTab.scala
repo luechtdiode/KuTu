@@ -17,11 +17,14 @@ import scalafx.scene.input.{KeyEvent, MouseEvent}
 import scalafx.scene.layout._
 import scalafx.util.converter.DefaultStringConverter
 
-class ScoreCalcTemplatesTab(editableProperty: Boolean, wettkampf: WettkampfView, override val service: KutuService) extends Tab with TabWithService {
+import java.util
+import scala.jdk.CollectionConverters.IterableHasAsJava
+
+class ScoreCalcTemplatesTab(wettkampf: WettkampfView, override val service: KutuService) extends Tab with TabWithService {
 
   var subscription: List[Subscription] = List.empty
+  closable = false
 
-  val context = ScoreCalcTempateEditorService(wettkampf, service)
 
   override def release: Unit = {
     subscription.foreach(_.cancel())
@@ -41,11 +44,24 @@ class ScoreCalcTemplatesTab(editableProperty: Boolean, wettkampf: WettkampfView,
     }
   }
 
+  val model: ObservableBuffer[ScoreCalcTemplateEditor] = ObservableBuffer.from(List.empty[ScoreCalcTemplateEditor])
+  val scoreCalcTemplateEditors: util.Collection[ScoreCalcTemplateEditor] = new util.ArrayList[ScoreCalcTemplateEditor]()
+  val context = ScoreCalcTempateEditorService(wettkampf, service)
+
+  def reloadData(): Unit = {
+    scoreCalcTemplateEditors.clear()
+    scoreCalcTemplateEditors.addAll(context.loadEditors().asJavaCollection)
+    model.setAll(scoreCalcTemplateEditors)
+  }
+
+  onSelectionChanged = _ => {
+    if(selected.value) {
+      reloadData()
+    }
+  }
   override def isPopulated: Boolean = {
 
-    val scoreCalcTemplateEditors = context.loadEditors()
     val sorter: ScoreCalcTemplateEditor => Int = editor => service.scoreCalcTemplateSorter(editor.init)
-    val model = ObservableBuffer.from(scoreCalcTemplateEditors)
 
     val cols: List[jfxsc.TableColumn[ScoreCalcTemplateEditor, _]] = classOf[ScoreCalcTemplateEditor].getDeclaredFields.filter { f =>
       f.getType.equals(classOf[ReadOnlyStringProperty]) && ScoreCalcTemplateEditor.coldef.contains(f.getName)
@@ -110,7 +126,7 @@ class ScoreCalcTemplatesTab(editableProperty: Boolean, wettkampf: WettkampfView,
     val scoreCalcTemplatesView: ScoreCalcTemplateView = new ScoreCalcTemplateView()
     val newButton = new Button("Neues Formular ...") {
       disable <== when(Bindings.createBooleanBinding(() => {
-        !editableProperty ||  wettkampf.toWettkampf.isReadonly(homedir, remoteHostOrigin)
+        wettkampf.toWettkampf.isReadonly(homedir, remoteHostOrigin)
       },
         scoreCalcTemplatesView.selectionModel.value.getSelectedItems
       )) choose true otherwise false
@@ -121,7 +137,7 @@ class ScoreCalcTemplatesTab(editableProperty: Boolean, wettkampf: WettkampfView,
 
     val editButton = new Button("Formular bearbeiten ...") {
       disable <== when(Bindings.createBooleanBinding(() => {
-        !editableProperty || wettkampf.toWettkampf.isReadonly(homedir, remoteHostOrigin) || scoreCalcTemplatesView.selectionModel.value.isEmpty
+        wettkampf.toWettkampf.isReadonly(homedir, remoteHostOrigin) || scoreCalcTemplatesView.selectionModel.value.isEmpty
       },
         scoreCalcTemplatesView.selectionModel.value.getSelectedItems
       )) choose true otherwise false
@@ -134,7 +150,7 @@ class ScoreCalcTemplatesTab(editableProperty: Boolean, wettkampf: WettkampfView,
     val deleteButton = new Button("Formular löschen") {
       private val selection: TableView.TableViewSelectionModel[ScoreCalcTemplateEditor] = scoreCalcTemplatesView.selectionModel.value
       disable <== when(Bindings.createBooleanBinding(() => {
-        !editableProperty || wettkampf.toWettkampf.isReadonly(homedir, remoteHostOrigin) || selection.isEmpty || (selection.getSelectedItem == null || !selection.getSelectedItem.isEditable)
+        wettkampf.toWettkampf.isReadonly(homedir, remoteHostOrigin) || selection.isEmpty || (selection.getSelectedItem == null || !selection.getSelectedItem.isEditable)
       },
         selection.getSelectedItems
       )) choose true otherwise false
@@ -154,7 +170,7 @@ class ScoreCalcTemplatesTab(editableProperty: Boolean, wettkampf: WettkampfView,
       val sortOrder = scoreCalcTemplatesView.sortOrder.toList
       model.clear()
       val searchQuery = newVal.toUpperCase().split(" ")
-      for {template <- scoreCalcTemplateEditors} {
+      scoreCalcTemplateEditors.stream().forEach(template => {
         val matches =
           searchQuery.forall { search =>
             search.isEmpty ||
@@ -168,7 +184,7 @@ class ScoreCalcTemplatesTab(editableProperty: Boolean, wettkampf: WettkampfView,
         if (matches) {
           model += template
         }
-      }
+      })
       scoreCalcTemplatesView.sortOrder.clear()
       scoreCalcTemplatesView.sortOrder ++= sortOrder
     }

@@ -75,8 +75,7 @@ class PreferencesTab(val wettkampfInfo: WettkampfInfo, override val service: Kut
 
   override def isPopulated: Boolean = {
     editableProperty.set(true)
-    val wettkampfEditable = !wettkampfInfo.wettkampf.toWettkampf.isReadonly(homedir, remoteHostOrigin)
-    val scoreCalcTemplatesTab = new ScoreCalcTemplatesTab(wettkampfEditable, wettkampfInfo.wettkampf, service) {
+    val scoreCalcTemplatesTab = new ScoreCalcTemplatesTab(wettkampfInfo.wettkampf, service) {
       closable = false
       this.isPopulated
     }
