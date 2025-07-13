@@ -3,6 +3,7 @@ package ch.seidel.kutu.view
 import ch.seidel.commons._
 import ch.seidel.kutu.Config.{homedir, remoteHostOrigin}
 import ch.seidel.kutu.domain._
+import scalafx.scene.control.TableView
 import javafx.scene.{control => jfxsc}
 import scalafx.Includes._
 import scalafx.beans.binding.Bindings
@@ -131,14 +132,15 @@ class ScoreCalcTemplatesTab(editableProperty: Boolean, wettkampf: WettkampfView,
     }
 
     val deleteButton = new Button("Formular löschen") {
+      private val selection: TableView.TableViewSelectionModel[ScoreCalcTemplateEditor] = scoreCalcTemplatesView.selectionModel.value
       disable <== when(Bindings.createBooleanBinding(() => {
-        !editableProperty || wettkampf.toWettkampf.isReadonly(homedir, remoteHostOrigin) || scoreCalcTemplatesView.selectionModel.value.isEmpty || !scoreCalcTemplatesView.selectionModel.value.getSelectedItem.isEditable
+        !editableProperty || wettkampf.toWettkampf.isReadonly(homedir, remoteHostOrigin) || selection.isEmpty || (selection.getSelectedItem == null || !selection.getSelectedItem.isEditable)
       },
-        scoreCalcTemplatesView.selectionModel.value.getSelectedItems
+        selection.getSelectedItems
       )) choose true otherwise false
 
       onAction = { _ =>
-        val item = scoreCalcTemplatesView.selectionModel.value.getSelectedItem
+        val item = selection.getSelectedItem
         if (item != null && item.isEditable) {
           context.delete(item)
           model.remove(item)
