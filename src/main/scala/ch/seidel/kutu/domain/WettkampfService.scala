@@ -457,13 +457,23 @@ trait WettkampfService extends DBService
                 (${template.wettkampfId}, ${template.disziplinId}, ${template.wettkampfdisziplinId},
                  ${template.dFormula}, ${template.eFormula}, ${template.pFormula}, ${template.aggregateFn.map(_.toString)}
                 )
-      """ >>
-      sql"""select
+      """ >> (template.wettkampfId match {
+        case Some(id) =>
+          sql"""select
                d.id, d.wettkampf_id, d.disziplin_id, d.wettkampfdisziplin_id,
                d.dFormula, d.eFormula, d.pFormula, d.aggregateFn
              from scoretemplate d
              where d.wettkampf_id=${template.wettkampfId}
-        """.as[ScoreCalcTemplate].transactionally), Duration.Inf)
+        """
+        case None =>
+          sql"""select
+               d.id, d.wettkampf_id, d.disziplin_id, d.wettkampfdisziplin_id,
+               d.dFormula, d.eFormula, d.pFormula, d.aggregateFn
+             from scoretemplate d
+             where d.wettkampf_id is null
+        """
+      })
+      .as[ScoreCalcTemplate].transactionally), Duration.Inf)
       .filter(sct => sct.disziplinId.equals(template.disziplinId) && sct.wettkampfdisziplinId.equals(template.wettkampfdisziplinId)).head
   }
 
