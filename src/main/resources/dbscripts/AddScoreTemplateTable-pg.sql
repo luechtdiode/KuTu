@@ -16,7 +16,7 @@ CREATE TABLE IF NOT EXISTS scoretemplate (
   FOREIGN KEY (disziplin_id) REFERENCES disziplin (id),
   FOREIGN KEY (wettkampfdisziplin_id) REFERENCES wettkampfdisziplin (id)
 );
-CREATE UNIQUE INDEX xwettkampf_scoretemplatespk ON scoretemplates (wettkampf_id, disziplin_id, wettkampfdisziplin_id);
+CREATE UNIQUE INDEX xwettkampf_scoretemplatespk ON scoretemplate (wettkampf_id, disziplin_id, wettkampfdisziplin_id);
 
 --
 ALTER TABLE wertung
