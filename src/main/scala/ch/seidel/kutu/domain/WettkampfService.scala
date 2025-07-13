@@ -584,6 +584,7 @@ trait WettkampfService extends DBService
     val programs = programmId map (p => readProgramm(p, cache))
     val heads = programs map (_.head)
     val newuuid = UUID.randomUUID().toString()
+    println(uuidOption)
 
     val initialCheck: DBIOAction[Vector[(Long, String)], Streaming[(Long, String)], Effect] = uuidOption match {
       case Some(suuid) => sql"""
@@ -652,7 +653,8 @@ trait WettkampfService extends DBService
         case Vector((cid, uuid)) if (cid > 0) =>
           updateInit(uuid)
         case Vector() =>
-          insertInit(newuuid)
+          println(uuidOption, uuidOption.getOrElse(newuuid))
+          insertInit(uuidOption.getOrElse(newuuid))
       }
     Await.result(database.run(process.transactionally), Duration.Inf)
   }
