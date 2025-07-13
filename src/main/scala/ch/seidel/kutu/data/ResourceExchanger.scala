@@ -1,7 +1,8 @@
 package ch.seidel.kutu.data
 
 import ch.seidel.kutu.actors._
-import ch.seidel.kutu.calc.{ScoreAggregateFn, ScoreCalcTemplate, TemplateViewJsonReader}
+import ch.seidel.kutu.calc.TemplateViewJsonReader.scoreCalcTemplateViewFormat
+import ch.seidel.kutu.calc.{ScoreAggregateFn, ScoreCalcTemplate, ScoreCalcTemplateView, TemplateViewJsonReader}
 import ch.seidel.kutu.data.CaseObjectMetaUtil._
 import ch.seidel.kutu.domain._
 import ch.seidel.kutu.renderer.PrintUtil
@@ -15,7 +16,7 @@ import java.io._
 import java.sql.Timestamp
 import java.time.Instant
 import java.time.format.DateTimeFormatter
-import java.util.UUID
+import java.util.{Base64, UUID}
 import java.util.zip.{ZipEntry, ZipInputStream, ZipOutputStream}
 import scala.concurrent.Await
 import scala.concurrent.duration.Duration
@@ -26,6 +27,8 @@ import scala.reflect.runtime.universe._
  */
 object ResourceExchanger extends KutuService with RiegenBuilder {
   private val logger = LoggerFactory.getLogger(this.getClass)
+  val enc: Base64.Encoder = Base64.getUrlEncoder
+  val dec: Base64.Decoder = Base64.getUrlDecoder
 
   def processWSMessage[T](wettkampf: Wettkampf, refresher: (Option[T], KutuAppEvent) => Unit): (Option[T], KutuAppEvent) => Unit = {
     val cache = new java.util.ArrayList[MatchCode]()
@@ -345,7 +348,7 @@ object ResourceExchanger extends KutuService with RiegenBuilder {
         riege = if (fields(wertungenHeader("riege")).nonEmpty) Some(fields(wertungenHeader("riege"))) else None,
         riege2 = if (fields(wertungenHeader("riege2")).nonEmpty) Some(fields(wertungenHeader("riege2"))) else None,
         team = if (wertungenHeader.contains("team") && fields(wertungenHeader("team")).nonEmpty) Some(fields(wertungenHeader("team"))) else None,
-        variables = if (wertungenHeader.contains("variables") && fields(wertungenHeader("variables")).nonEmpty) TemplateViewJsonReader(Some(fields(wertungenHeader("variables")))) else None
+        variables = if (wertungenHeader.contains("variables") && fields(wertungenHeader("variables")).nonEmpty) TemplateViewJsonReader(Some(new String(dec.decode(fields(wertungenHeader("variables")))))) else None
       )
       w
     }
@@ -765,6 +768,7 @@ object ResourceExchanger extends KutuService with RiegenBuilder {
           case Some(athlet: Athlet) => s"${athlet.id}"
           case Some(athlet: AthletView) => s"${athlet.id}"
           case Some(disziplin: Disziplin) => s"${disziplin.id}"
+          case Some(template: ScoreCalcTemplateView) => enc.encodeToString(scoreCalcTemplateViewFormat.write(template).compactPrint.getBytes)
           case Some(ts: Timestamp) =>
             import java.time.format.DateTimeFormatter
             import java.util.TimeZone
