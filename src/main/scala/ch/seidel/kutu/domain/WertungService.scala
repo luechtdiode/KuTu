@@ -301,31 +301,10 @@ abstract trait WertungService extends DBService with WertungResultMapper with Di
       wv
     }
   }
-/*
-  @throws(classOf[Exception]) // called from mobile-client via coordinator-actor
-  def wertungSchema(w: Wertung): ScoreCalcTemplateView = {
-    val notenspez = readWettkampfDisziplinView(w.wettkampfdisziplinId)
-    val wv = notenspez.verifiedAndCalculatedWertung(w)
-    def eq(a: Option[BigDecimal], b: Option[BigDecimal]): Boolean = (a,b) match {
-      case (None, Some(v)) => v.compare(BigDecimal(0)) == 0
-      case (Some(v), None) => v.compare(BigDecimal(0)) == 0
-      case (None, None) => true
-      case (a, b) => a.get.compare(b.get) == 0
-    }
-    if (notenspez.isDNoteUsed && !eq(wv.noteD, w.noteD)) {
-      throw new IllegalArgumentException(s"Erfasster D-Wert: ${w.noteDasText}, erlaubter D-Wert: ${wv.noteDasText}")
-    }
-    if (!eq(wv.noteE, w.noteE)) {
-      throw new IllegalArgumentException(s"Erfasster E-Wert: ${w.noteEasText}, erlaubter E-Wert: ${wv.noteEasText}")
-    }
-    wv
-  }
-*/
+
   @throws(classOf[Exception]) // called from mobile-client via coordinator-actor
   def validateWertung(w: Wertung, cache2:scala.collection.mutable.Map[Long, List[ScoreCalcTemplate]] = scala.collection.mutable.Map[Long, List[ScoreCalcTemplate]]()): Wertung = {
-    //val cache2 = scala.collection.mutable.Map[Long, List[ScoreCalcTemplate]]()
     val notenspez = readWettkampfDisziplinView(w.wettkampfId, w.wettkampfdisziplinId, cache2)
-
     try {
       notenspez.verifiedAndCalculatedWertung(w)
     } catch {
@@ -335,8 +314,8 @@ abstract trait WertungService extends DBService with WertungResultMapper with Di
   }
 
   @throws(classOf[Exception]) // called from mobile-client via coordinator-actor
-  def updateWertungSimple(w: Wertung): Wertung = {
-    val wv = validateWertung(w)
+  def updateWertungSimple(w: Wertung, cache2: scala.collection.mutable.Map[Long, List[ScoreCalcTemplate]] = scala.collection.mutable.Map[Long, List[ScoreCalcTemplate]]()): Wertung = {
+    val wv = validateWertung(w, cache2)
     Await.result(database.run(DBIO.sequence(Seq(sqlu"""
                   UPDATE wertung
                   SET note_d=${wv.noteD}, note_e=${wv.noteE}, endnote=${wv.endnote}, riege=${wv.riege}, riege2=${wv.riege2}, team=${wv.team.getOrElse(0)}, variables=${w.variables.map(_.toJson.compactPrint)}
@@ -350,8 +329,8 @@ abstract trait WertungService extends DBService with WertungResultMapper with Di
   
   @throws(classOf[Exception]) // called from rich-client-app via ResourceExchanger
   def updateWertungWithIDMapping(w: Wertung, cache2: scala.collection.mutable.Map[Long, List[ScoreCalcTemplate]] = scala.collection.mutable.Map[Long, List[ScoreCalcTemplate]]()): Wertung = {
-    val wv = validateWertung(w, cache2)
     println("single import wertung ...")
+    val wv = validateWertung(w, cache2)
     val wvId = Await.result(database.run((for {
         updated <- sqlu"""
                   UPDATE wertung

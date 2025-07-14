@@ -60,8 +60,7 @@ object ResourceExchanger extends KutuService with RiegenBuilder {
               athletId = mappedAthletView.id,
               wettkampfId = wettkampf.id,
               wettkampfUUID = updatedSequenced.wettkampfUUID)
-            logger.info(s"received for ${athlet.vorname} ${athlet.name} (${athlet.verein.getOrElse(() => "")}) " +
-              s"im Pgm $programm Disz $disz new Wertung: D:${mappedWertung.noteD}, E:${mappedWertung.noteE}")
+            logger.info(s"received for ${athlet.vorname} ${athlet.name} (${athlet.verein.getOrElse("")}) im Pgm $programm Disz $disz: ${mappedWertung.resultatWithVariables}")
             updatedSequenced.copy(athlet = mappedAthletView, wertung = mappedWertung)
           }
         }.toSeq
@@ -110,20 +109,18 @@ object ResourceExchanger extends KutuService with RiegenBuilder {
           refresher(sender, uw)
         } else if (wettkampf.uuid.contains(wettkampfUUID)) /*Future*/ {
           val disz = wkDiszs.get(uw.wertung.wettkampfdisziplinId).map(_.disziplin.easyprint).getOrElse(s"Disz${uw.wertung.wettkampfdisziplinId}")
-          logger.info(s"received for ${uw.athlet.vorname} ${uw.athlet.name} (${uw.athlet.verein.getOrElse(() => "")}) " +
-            s"im Pgm $programm Disz $disz new Wertung: D:${wertung.noteD}, E:${wertung.noteE}")
+          logger.info(s"received for ${uw.athlet.vorname} ${uw.athlet.name} (${uw.athlet.verein.getOrElse("")}) im Pgm $programm Disz $disz: ${wertung.resultatWithVariables}")
           val mappedAthletView: AthletView = mapToLocal(athlet, Some(wettkampf.id))
           val mappedWertung = wertung.copy(athletId = mappedAthletView.id, wettkampfId = wettkampf.id, wettkampfUUID = wettkampfUUID)
           try {
             val vw = updateWertungWithIDMapping(mappedWertung, cache2)
-            logger.info(s"saved for ${mappedAthletView.vorname} ${mappedAthletView.name} (${uw.athlet.verein.getOrElse(() => "")}) " +
-              s"im Pgm $programm Disz $disz new Wertung: D:${vw.noteD}, E:${vw.noteE}")
+            logger.info(s"saved for ${mappedAthletView.vorname} ${mappedAthletView.name} (${uw.athlet.verein.getOrElse("")}) im Pgm $programm Disz $disz: ${wertung.resultatWithVariables}")
             refresher(sender, uw.copy(athlet.copy(id = mappedAthletView.id), wertung = vw))
           } catch {
             case e: Exception =>
               logger.error(s"failed to complete save new score for " +
                 s"${mappedAthletView.vorname} ${mappedAthletView.name} (${mappedAthletView.verein.getOrElse("")}) " +
-                s"im Pgm $programm Disz $disz new Wertung: D:${mappedWertung.noteD}, E:${mappedWertung.noteE}", e)
+                s"im Pgm $programm Disz $disz new new Wertung: ${wertung}", e)
               refresher(sender, uw)
           }
         }
