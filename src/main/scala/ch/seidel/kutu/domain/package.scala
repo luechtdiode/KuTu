@@ -1118,6 +1118,21 @@ package object domain {
       }
       Resultat(noteD.getOrElse(0), noteE.getOrElse(0), endnote.getOrElse(0), teilresultateD = dTeilresults, teilresultateE = eTeilresults, teilresultateP = pTeilresults)
     }
+    lazy val resultatWithVariables = {
+      val dTeilresults = variables match {
+        case Some(v) => v.dVariables.filter(_.value > 0).map(_.value.toString())
+        case _ => List.empty
+      }
+      val eTeilresults = variables match {
+        case Some(v) => v.eVariables.filter(_.value > 0).map(_.value.toString())
+        case _ => List.empty
+      }
+      val pTeilresults = variables match {
+        case Some(v) => v.pVariables.filter(_.value > 0).map(_.value.toString())
+        case _ => List.empty
+      }
+      Resultat(noteD.getOrElse(0), noteE.getOrElse(0), endnote.getOrElse(0), teilresultateD = dTeilresults, teilresultateE = eTeilresults, teilresultateP = pTeilresults)
+    }
 
     def updatedWertung(valuesFrom: Wertung): Wertung = copy(noteD = valuesFrom.noteD, noteE = valuesFrom.noteE, endnote = valuesFrom.endnote, variables = valuesFrom.variables)
 
@@ -1266,19 +1281,21 @@ package object domain {
     def calcEndnote(dnote: Double, enote: Double, wettkampfDisziplin: WettkampfdisziplinView): Double
     def calcEndnote(wertung: Wertung, wettkampfDisziplin: WettkampfdisziplinView): Wertung = {
       def standardCalc = {
+        // ignoring variables ...
         if (wettkampfDisziplin.isDNoteUsed && wertung.noteD.isEmpty) {
-          wertung.copy(noteD = None, noteE = None, endnote = None, variables = None)
+          wertung.copy(noteD = None, noteE = None, endnote = None)
         } else if (!wettkampfDisziplin.isDNoteUsed && wertung.noteE.isEmpty) {
-          wertung.copy(noteD = None, noteE = None, endnote = None, variables = None)
+          wertung.copy(noteD = None, noteE = None, endnote = None)
         } else {
           val (d, e) = validated(wertung.noteD.getOrElse(BigDecimal(0)).doubleValue, wertung.noteE.getOrElse(BigDecimal(0)).doubleValue, wettkampfDisziplin)
-          wertung.copy(noteD = Some(d), noteE = Some(e), endnote = Some(calcEndnote(d, e, wettkampfDisziplin)), variables = None)
+          wertung.copy(noteD = Some(d), noteE = Some(e), endnote = Some(calcEndnote(d, e, wettkampfDisziplin)))
         }
       }
 
       template match {
         case Some(t) =>
           if (wertung.variables.isEmpty || wertung.variablesList.flatten.forall(_.value < BigDecimal(0.001))) {
+            // ignoring variables ...
             standardCalc
           } else {
             Calculator(t).calculate(wertung, wettkampfDisziplin, wertung.variablesList)
