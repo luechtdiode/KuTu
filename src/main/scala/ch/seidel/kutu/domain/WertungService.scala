@@ -322,8 +322,8 @@ abstract trait WertungService extends DBService with WertungResultMapper with Di
   }
 */
   @throws(classOf[Exception]) // called from mobile-client via coordinator-actor
-  def validateWertung(w: Wertung): Wertung = {
-    val cache2 = scala.collection.mutable.Map[Long, List[ScoreCalcTemplate]]()
+  def validateWertung(w: Wertung, cache2:scala.collection.mutable.Map[Long, List[ScoreCalcTemplate]] = scala.collection.mutable.Map[Long, List[ScoreCalcTemplate]]()): Wertung = {
+    //val cache2 = scala.collection.mutable.Map[Long, List[ScoreCalcTemplate]]()
     val notenspez = readWettkampfDisziplinView(w.wettkampfId, w.wettkampfdisziplinId, cache2)
 
     try {
@@ -349,8 +349,8 @@ abstract trait WertungService extends DBService with WertungResultMapper with Di
   }
   
   @throws(classOf[Exception]) // called from rich-client-app via ResourceExchanger
-  def updateWertungWithIDMapping(w: Wertung): Wertung = {
-    val wv = validateWertung(w)
+  def updateWertungWithIDMapping(w: Wertung, cache2: scala.collection.mutable.Map[Long, List[ScoreCalcTemplate]] = scala.collection.mutable.Map[Long, List[ScoreCalcTemplate]]()): Wertung = {
+    val wv = validateWertung(w, cache2)
     println("single import wertung ...")
     val wvId = Await.result(database.run((for {
         updated <- sqlu"""
@@ -373,9 +373,8 @@ abstract trait WertungService extends DBService with WertungResultMapper with Di
   }
 
   @throws(classOf[Exception]) // called from rich-client-app via ResourceExchanger
-  def updateWertungWithIDMapping(ws: Seq[Wertung]): Seq[Wertung] = {
+  def updateWertungenWithIDMapping(ws: Seq[Wertung], cache2: scala.collection.mutable.Map[Long, List[ScoreCalcTemplate]] = scala.collection.mutable.Map[Long, List[ScoreCalcTemplate]]()): Seq[Wertung] = {
     println("multi import wertung ...")
-    val cache2 = scala.collection.mutable.Map[Long, List[ScoreCalcTemplate]]()
     val wvs = ws.map{w =>
       val notenspez = readWettkampfDisziplinView(w.wettkampfId, w.wettkampfdisziplinId, cache2)
       notenspez.verifiedAndCalculatedWertung(w)

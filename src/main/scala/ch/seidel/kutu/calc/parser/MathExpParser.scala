@@ -28,7 +28,7 @@ protected object MathExpParser extends Parsers {
   def function: Parser[MathExpAST] =
     functionName ~ (
       LEFT_PARENTHESIS ~> expression ~ rep(COMMA ~> expression) <~ RIGHT_PARENTHESIS) ^^ {
-      case Constant(n: String) ~ (e ~ es) => OperatorN(n, e :: es)
+      case Constant(n) ~ (e ~ es) => OperatorN(n.toString, e :: es)
     }
 
   private def shortFactor: Parser[MathExpAST] =

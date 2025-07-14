@@ -32,6 +32,7 @@ object ResourceExchanger extends KutuService with RiegenBuilder {
 
   def processWSMessage[T](wettkampf: Wettkampf, refresher: (Option[T], KutuAppEvent) => Unit): (Option[T], KutuAppEvent) => Unit = {
     val cache = new java.util.ArrayList[MatchCode]()
+    val cache2: scala.collection.mutable.Map[Long, List[ScoreCalcTemplate]] = scala.collection.mutable.Map[Long, List[ScoreCalcTemplate]]()
     val wkDiszs = listWettkampfDisziplineViews(wettkampf)
       .map(d => d.id -> d).toMap
     def mapToLocal(athlet: AthletView, wettkampf: Option[Long]) = {
@@ -67,7 +68,7 @@ object ResourceExchanger extends KutuService with RiegenBuilder {
         try {
           KuTuApp.invokeWithBusyIndicator {
             refresher(sender, LastResults(
-              mappedWertungen.zip(updateWertungWithIDMapping(mappedWertungen.map(_.wertung))).map {
+              mappedWertungen.zip(updateWertungenWithIDMapping(mappedWertungen.map(_.wertung), cache2)).map {
                 x => x._1.copy(wertung = x._2)
               }.toList))
           }
@@ -114,7 +115,7 @@ object ResourceExchanger extends KutuService with RiegenBuilder {
           val mappedAthletView: AthletView = mapToLocal(athlet, Some(wettkampf.id))
           val mappedWertung = wertung.copy(athletId = mappedAthletView.id, wettkampfId = wettkampf.id, wettkampfUUID = wettkampfUUID)
           try {
-            val vw = updateWertungWithIDMapping(mappedWertung)
+            val vw = updateWertungWithIDMapping(mappedWertung, cache2)
             logger.info(s"saved for ${mappedAthletView.vorname} ${mappedAthletView.name} (${uw.athlet.verein.getOrElse(() => "")}) " +
               s"im Pgm $programm Disz $disz new Wertung: D:${vw.noteD}, E:${vw.noteE}")
             refresher(sender, uw.copy(athlet.copy(id = mappedAthletView.id), wertung = vw))
