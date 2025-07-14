@@ -1,6 +1,5 @@
 package ch.seidel.kutu.calc
 
-import ch.seidel.kutu.KuTuApp.scoreCalcTemplateSorter
 import ch.seidel.kutu.domain.DataObject
 import ch.seidel.kutu.http.JsonSupport
 
@@ -77,6 +76,21 @@ case object TemplateJsonReader extends JsonSupport {
 case class ScoreCalcTemplate(id: Long, wettkampfId: Option[Long], disziplinId: Option[Long], wettkampfdisziplinId: Option[Long], dFormula: String, eFormula: String, pFormula: String, aggregateFn: Option[ScoreAggregateFn]) {
   private val varPattern = "\\$([DAEBP]{1})([\\w]+([\\w\\d\\s\\-]*[\\w\\d]{1})?)(\\.([0123]+))?".r
 
+  val scoreCalcTemplateSorter: ScoreCalcTemplate => String = t => {
+    val wkm = t.wettkampfId match {
+      case Some(_) => 100
+      case None => 1000
+    }
+    val dm = t.disziplinId match {
+      case Some(_) => 10
+      case None => 2000
+    }
+    val wdm = t.wettkampfdisziplinId match {
+      case Some(_) => 1
+      case None => 3000
+    }
+    f"${(wkm + dm + wdm)}%04d"
+  }
   val dVariables: List[ScoreCalcVariable] = parseVariables(dFormula)
   val dResolveDetails: Boolean = dFormula.endsWith("^")
   val eVariables: List[ScoreCalcVariable] = parseVariables(eFormula)
