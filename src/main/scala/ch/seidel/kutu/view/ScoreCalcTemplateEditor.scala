@@ -25,7 +25,7 @@ case class ScoreCalcTempateEditorService(wettkampf: WettkampfView, service: Kutu
   def loadEditors(): List[ScoreCalcTemplateEditor] = service
     .loadScoreCalcTemplatesAll(wettkampf.id)
     .filter { sct => sct.wettkampfId.contains(wettkampf.id) || sct.disziplinId.exists(did => disziplinList.exists(d => d.id == did)) || sct.wettkampfdisziplinId.exists(wkdid => wettkampfdisziplinViews.exists(wkd => wkd.id == wkdid)) }
-    .sortBy(service.scoreCalcTemplateSorter)
+    .sortBy(_.sortOrder)
     .map { init => ScoreCalcTemplateEditor(init, this) }
 
   def editorOf(init: ScoreCalcTemplate) = loadEditors().find(e => e.init == init).getOrElse(ScoreCalcTemplateEditor(init, this))

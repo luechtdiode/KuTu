@@ -28,22 +28,6 @@ trait WettkampfService extends DBService
 
   private val logger = LoggerFactory.getLogger(this.getClass)
 
-  val scoreCalcTemplateSorter: ScoreCalcTemplate => String = t => {
-    val wkm = t.wettkampfId match {
-      case Some(_) => 100
-      case None => 1000
-    }
-    val dm = t.disziplinId match {
-      case Some(_) => 10
-      case None => 2000
-    }
-    val wdm = t.wettkampfdisziplinId match {
-      case Some(_) => 1
-      case None => 3000
-    }
-    f"${(wkm + dm + wdm)}%04d"
-  }
-
   def evaluateScoreCalcTemplate(wkid: Long, did: Long, wkd: Long, cache: scala.collection.mutable.Map[Long, List[ScoreCalcTemplate]]): Option[ScoreCalcTemplate] = {
     val templates = cache.getOrElseUpdate(wkid, loadScoreCalcTemplatesAll(wkid))
     val sortedTemplates = templates.filter { t =>
@@ -60,7 +44,7 @@ trait WettkampfService extends DBService
         case Some(id) => id == wkd
       }
       wkm && dm && wdm
-    }.sortBy { scoreCalcTemplateSorter}
+    }.sortBy { _.sortOrder }
     sortedTemplates.headOption
   }
 
@@ -652,8 +636,7 @@ trait WettkampfService extends DBService
       .flatMap {
         case Vector((cid, uuid)) if (cid > 0) =>
           updateInit(uuid)
-        case Vector() =>
-          println(uuidOption, uuidOption.getOrElse(newuuid))
+        case _ =>
           insertInit(uuidOption.getOrElse(newuuid))
       }
     Await.result(database.run(process.transactionally), Duration.Inf)

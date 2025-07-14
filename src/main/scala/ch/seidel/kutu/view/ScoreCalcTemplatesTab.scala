@@ -61,7 +61,7 @@ class ScoreCalcTemplatesTab(wettkampf: WettkampfView, override val service: Kutu
   }
   override def isPopulated: Boolean = {
 
-    val sorter: ScoreCalcTemplateEditor => Int = editor => service.scoreCalcTemplateSorter(editor.init)
+    val sorter: ScoreCalcTemplateEditor => Int = editor => editor.init.sortOrder
 
     val cols: List[jfxsc.TableColumn[ScoreCalcTemplateEditor, _]] = classOf[ScoreCalcTemplateEditor].getDeclaredFields.filter { f =>
       f.getType.equals(classOf[ReadOnlyStringProperty]) && ScoreCalcTemplateEditor.coldef.contains(f.getName)
