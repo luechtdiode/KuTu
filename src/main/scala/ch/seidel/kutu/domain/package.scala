@@ -1265,22 +1265,26 @@ package object domain {
     def validated(dnote: Double, enote: Double, wettkampfDisziplin: WettkampfdisziplinView): (Double, Double)
     def calcEndnote(dnote: Double, enote: Double, wettkampfDisziplin: WettkampfdisziplinView): Double
     def calcEndnote(wertung: Wertung, wettkampfDisziplin: WettkampfdisziplinView): Wertung = {
+      def standardCalc = {
+        if (wettkampfDisziplin.isDNoteUsed && wertung.noteD.isEmpty) {
+          wertung.copy(noteD = None, noteE = None, endnote = None, variables = None)
+        } else if (!wettkampfDisziplin.isDNoteUsed && wertung.noteE.isEmpty) {
+          wertung.copy(noteD = None, noteE = None, endnote = None, variables = None)
+        } else {
+          val (d, e) = validated(wertung.noteD.getOrElse(BigDecimal(0)).doubleValue, wertung.noteE.getOrElse(BigDecimal(0)).doubleValue, wettkampfDisziplin)
+          wertung.copy(noteD = Some(d), noteE = Some(e), endnote = Some(calcEndnote(d, e, wettkampfDisziplin)), variables = None)
+        }
+      }
+
       template match {
         case Some(t) =>
           if (wertung.variables.isEmpty || wertung.variablesList.flatten.forall(_.value < BigDecimal(0.001))) {
-            wertung.copy(noteD = None, noteE = None, endnote = None)
+            standardCalc
           } else {
             Calculator(t).calculate(wertung, wettkampfDisziplin, wertung.variablesList)
           }
         case _ =>
-          if (wettkampfDisziplin.isDNoteUsed && wertung.noteD.isEmpty) {
-            wertung.copy(noteD = None, noteE = None, endnote = None, variables = None)
-          } else if (!wettkampfDisziplin.isDNoteUsed && wertung.noteE.isEmpty) {
-            wertung.copy(noteD = None, noteE = None, endnote = None, variables = None)
-          } else {
-            val (d, e) = validated(wertung.noteD.getOrElse(BigDecimal(0)).doubleValue, wertung.noteE.getOrElse(BigDecimal(0)).doubleValue, wettkampfDisziplin)
-            wertung.copy(noteD = Some(d), noteE = Some(e), endnote = Some(calcEndnote(d, e, wettkampfDisziplin)), variables = None)
-          }
+          standardCalc
       }
     }
 
