@@ -169,7 +169,7 @@ case class GroupLeaf[GK <: DataObject](override val groupKey: GK, list: Iterable
           })
           val clRang = WKLeafCol[ResultRow](text = "Rang", prefWidth = 60, styleClass = Seq("hintdata"), valueMapper = gr => {
             val cs = colsum(gr)
-            WKColValue(cs.rang.formattedEnd)
+            WKColValue(f"${cs.rang.endnote}%3.0f")
           })
           val cl: WKCol = WKGroupCol(
             text = if (isAvgOnMultipleCompetitions && anzahWettkaempfe > 1) {
@@ -346,10 +346,12 @@ case class GroupLeaf[GK <: DataObject](override val groupKey: GK, list: Iterable
     val rsum = aggreateFun(wksums)
 
     val gwksums = wks.map { wk =>
-      val countingWertungen = (if (bestOfCountOverride.isEmpty) wk._2.filter(!_.isStroked) else wk._2).toList
-      val factorShift = gleichstandsregel.factorize(countingWertungen)
+      val countingWertungen = wk._2.toList
+      val countingNonStrokenWertungen = countingWertungen.filter(!_.isStroked)
+      val factorizeRelevantWertungen = if(bestOfCountOverride.isEmpty) countingNonStrokenWertungen else countingWertungen
+      val factorShift = gleichstandsregel.factorize(factorizeRelevantWertungen)
       aggreateFun(
-        countingWertungen.map { w =>
+        countingNonStrokenWertungen.map { w =>
           if (anzahWettkaempfe > 1)
             w.resultat
           else {
