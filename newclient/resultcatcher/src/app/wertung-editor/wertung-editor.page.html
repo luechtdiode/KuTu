@@ -19,7 +19,7 @@
     </ion-list>
     <ion-list *ngIf="exercices.length > 0">
       <ion-item-divider><h2>Endnote</h2></ion-item-divider>
-      <ion-item>
+      <ion-item *ngIf="isDNoteUsed">
         <ion-input [label]='dNoteLabel' [ngModel]='wertung.noteD' type="number" readonly name="dEndnote" [disabled]="!editable()"></ion-input>
       </ion-item>
       <ion-item>

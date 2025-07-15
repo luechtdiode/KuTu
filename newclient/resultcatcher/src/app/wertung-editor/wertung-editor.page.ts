@@ -119,7 +119,7 @@ export class WertungEditorPage {
   }
   set dNote(value: number) {
     this.wertung.noteD = value;
-    //this.wertungChanged.next(this.wertung);
+    this.wertungChanged.next(this.wertung);
   }
   
   get eNote() {
@@ -127,7 +127,7 @@ export class WertungEditorPage {
   }
   set eNote(value: number) {
     this.wertung.noteE = value;
-    //this.wertungChanged.next(this.wertung);
+    this.wertungChanged.next(this.wertung);
   }
 
   installLazyAction() {
@@ -153,28 +153,37 @@ export class WertungEditorPage {
       share()
     ).subscribe(wertung => {
       this.zone.run(() => {
-        let toValidate: Wertung = Object.assign({}, wertung, {
-          noteD: wertung.variables ? null : wertung.noteD,
-          noteE: wertung.variables ? null : wertung.noteE,
-          variables: wertung.variables
-        });
-        if (toValidate.variables || toValidate.noteD !== this.lastValidatedWertung?.noteD || toValidate.noteE !== this.lastValidatedWertung?.noteE) {
-          this.lastValidatedWertung = toValidate;
-          this.backendService.validateWertung(toValidate).subscribe({
-            next: (w) => {
-              this.zone.run(() => {
-                this.wertung.noteD = w.noteD;
-                this.wertung.noteE = w.noteE;
-                this.wertung.endnote = w.endnote;
-              });
-            },
-            error: (err) => {
-              console.log(err);
-            }
-          });      
-        }
+        this.calculateEndnote(wertung);
       });
     });
+  }
+
+  calculateEndnote(wertung: Wertung) {
+    if (this.wertung.variables) {
+      this.wertung.noteD = null;
+      this.wertung.noteE = null;
+    }
+    this.wertung.endnote = null;
+    let toValidate: Wertung = Object.assign({}, wertung, {
+      noteD: wertung.variables ? null : wertung.noteD,
+      noteE: wertung.variables ? null : wertung.noteE,
+      variables: wertung.variables
+    });
+    if (toValidate.variables || toValidate.noteD !== this.lastValidatedWertung?.noteD || toValidate.noteE !== this.lastValidatedWertung?.noteE) {
+      this.lastValidatedWertung = toValidate;
+      this.backendService.validateWertung(toValidate).subscribe({
+        next: (w) => {
+          this.zone.run(() => {
+            this.wertung.noteD = w.noteD;
+            this.wertung.noteE = w.noteE;
+            this.wertung.endnote = w.endnote;
+          });
+        },
+        error: (err) => {
+          console.log(err);
+        }
+      });      
+    }
   }
   
   ionViewWillLeave() {
@@ -266,7 +275,7 @@ export class WertungEditorPage {
   }
 
   validate(form: NgForm) {
-    this.wertungChanged.next(this.wertung);
+    this.calculateEndnote(this.ensureInitialValues(form.value));
   }
 
   saveClose(form: NgForm) {
