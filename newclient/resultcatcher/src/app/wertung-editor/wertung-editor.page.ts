@@ -1,5 +1,5 @@
 import { Component, ViewChild, NgZone } from '@angular/core';
-import { WertungContainer, Wertung } from '../backend-types';
+import { WertungContainer, Wertung, ScoreCalcVariable, ScoreCalcVariables } from '../backend-types';
 import { BehaviorSubject, Subject, Subscription, defer, of } from 'rxjs';
 import { NavController, Platform, ToastController, AlertController, IonItemSliding } from '@ionic/angular';
 import { BackendService } from '../services/backend.service';
@@ -45,9 +45,10 @@ export class WertungEditorPage {
   private readonly wertungChanged = new Subject<Wertung>();
   
   item: WertungContainer;
-  wertung: Wertung;
+  _wertung: Wertung;
   lastValidatedWertung: Wertung;
   nextItem: WertungContainer
+  exercices: ScoreCalcVariable[][];
 
   geraetId: number;
 
@@ -58,6 +59,52 @@ export class WertungEditorPage {
   waiting = false;
 
   isDNoteUsed = true;
+
+  get wertung(): Wertung {
+    return this._wertung;
+  } 
+  set wertung(value: Wertung) {
+    this._wertung = value;
+    this.updateExercices();
+  }
+
+  groupBy = <T, K extends keyof any>(arr: T[], key: (i: T) => K) => arr.reduce(
+    (groups, item) => {
+      (groups[key(item)] ||= []).push(item);
+      return groups;
+    }, 
+    {} as Record<K, T[]>
+  );
+  flatten<T>(arr: T[][]): T[] {
+    return ([] as T[]).concat(...arr);
+  }
+
+  updateVariable(event, variable: ScoreCalcVariable) {
+    const exercices = this.flatten(this.exercices);
+    if (this.wertung.variables) {
+        exercices
+          .filter(e => e.prefix === 'A' || e.prefix === 'D')
+          .forEach(v => {
+            if (v.prefix === variable.prefix && v.name == variable.name && v.index === variable.index) {
+              v.value = event || 0;
+            }
+          });
+        exercices
+          .filter(e => e.prefix === 'B' || e.prefix === 'E')
+          .forEach(v => {
+            if (v.prefix === variable.prefix && v.name == variable.name && v.index === variable.index) {
+              v.value = event || 0;
+            }
+          });
+        exercices
+          .filter(e => e.prefix === 'P')
+          .forEach(v => {
+            if (v.prefix === variable.prefix && v.name == variable.name && v.index === variable.index) {
+              v.value = event || 0;
+            }
+          });
+      }
+  }
 
   get dNoteLabel() {
     return this.item.isDNoteUsed && turn10ProgrammNames.indexOf(this.item.programm) > -1 ? "A-Note" : "D-Note";
@@ -86,33 +133,57 @@ export class WertungEditorPage {
   installLazyAction() {
     this.wertungChanged.pipe(
       filter(wertung => {
-        const deOK = (wertung.noteD || 0) == 0 && (wertung.noteE || 0) == 0;
-        const eOK = (wertung.noteE || 0) > 0;
-        return deOK || eOK;
+        if (this.wertung.variables) {
+          return true;
+        } else {
+          const deOK = (wertung.noteD || 0) == 0 && (wertung.noteE || 0) == 0;
+          const eOK = (wertung.noteE || 0) > 0;
+          return deOK || eOK;
+        }
       }),
       tap(wertung => {
         this.zone.run(() => {
+          if (this.wertung.variables) {
+            this.wertung.noteD = null;
+            this.wertung.noteE = null;
+          }
           this.wertung.endnote = null;
         })}),
       debounceTime(1500),
       share()
     ).subscribe(wertung => {
-      let toValidate: Wertung = Object.assign({}, wertung, {
-        noteD: wertung.noteD || null,
-        noteE: wertung.noteE || null
+      this.zone.run(() => {
+        this.calculateEndnote(wertung);
       });
-      if (toValidate.noteD !== this.lastValidatedWertung?.noteD || toValidate.noteE !== this.lastValidatedWertung?.noteE) {
-        this.lastValidatedWertung = toValidate;
-        this.backendService.validateWertung(toValidate).subscribe({
-          next: (w) => {
-            this.wertung.endnote = w.endnote || null;
-          },
-          error: (err) => {
-            console.log(err);
-          }
-        });      
-      }
     });
+  }
+
+  calculateEndnote(wertung: Wertung) {
+    if (this.wertung.variables) {
+      this.wertung.noteD = null;
+      this.wertung.noteE = null;
+    }
+    this.wertung.endnote = null;
+    let toValidate: Wertung = Object.assign({}, wertung, {
+      noteD: wertung.variables ? null : wertung.noteD,
+      noteE: wertung.variables ? null : wertung.noteE,
+      variables: wertung.variables
+    });
+    if (toValidate.variables || toValidate.noteD !== this.lastValidatedWertung?.noteD || toValidate.noteE !== this.lastValidatedWertung?.noteE) {
+      this.lastValidatedWertung = toValidate;
+      this.backendService.validateWertung(toValidate).subscribe({
+        next: (w) => {
+          this.zone.run(() => {
+            this.wertung.noteD = w.noteD;
+            this.wertung.noteE = w.noteE;
+            this.wertung.endnote = w.endnote;
+          });
+        },
+        error: (err) => {
+          console.log(err);
+        }
+      });      
+    }
   }
   
   ionViewWillLeave() {
@@ -128,19 +199,19 @@ export class WertungEditorPage {
       this.subscription = undefined;
     }
     this.subscription = this.backendService.wertungUpdated.subscribe(wc => {
-      console.log('incoming wertung from service', wc);
-      if (wc.wertung.athletId === this.wertung.athletId
-         && wc.wertung.wettkampfdisziplinId === this.wertung.wettkampfdisziplinId
-         && wc.wertung.endnote !== this.wertung.endnote) {
-        console.log('updating wertung from service');
-        this.item.wertung = Object.assign({}, wc.wertung);
-        this.itemOriginal.wertung = Object.assign({}, wc.wertung);
-        this.wertung = Object.assign({
-          noteD: 0.00,
-          noteE: 0.00,
-          endnote: 0.00
-        }, this.item.wertung);
-      }
+      this.zone.run(() => {
+        if (wc.wertung.athletId === this.wertung.athletId
+          && wc.wertung.wettkampfdisziplinId === this.wertung.wettkampfdisziplinId
+          && wc.wertung.endnote !== this.wertung.endnote) {
+          this.item.wertung = Object.assign({}, wc.wertung);
+          this.itemOriginal.wertung = Object.assign({}, wc.wertung);
+          this.wertung = Object.assign({
+            noteD: 0.00,
+            noteE: 0.00,
+            endnote: 0.00
+          }, this.item.wertung);
+        }
+      });
     });
     this.platform.ready().then(() => {
 
@@ -170,6 +241,11 @@ export class WertungEditorPage {
     return this.backendService.loggedIn && this.wertung.wettkampfdisziplinId > 0;
   }
 
+  updateExercices() {
+    const scvs = this.groupBy([...this.wertung.variables?.dVariables || [], ...this.wertung.variables?.eVariables || [], ...this.wertung.variables?.pVariables || []], v => v.index);
+    this.exercices = Object.keys(scvs).map(k => scvs[k]).sort((a, b) => a[0].index - b[0].index);
+  }
+
   updateUI(wc: WertungContainer) {
     this.zone.run(() => {
       this.waiting = false;
@@ -196,6 +272,10 @@ export class WertungEditorPage {
 
   ensureInitialValues(wertung: Wertung): Wertung {
     return Object.assign(this.wertung, wertung);
+  }
+
+  validate(form: NgForm) {
+    this.calculateEndnote(this.ensureInitialValues(form.value));
   }
 
   saveClose(form: NgForm) {

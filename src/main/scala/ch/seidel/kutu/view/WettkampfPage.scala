@@ -29,6 +29,7 @@ object WettkampfPage {
       text <== when(wettkampfmode) choose s"Alle $progHeader Wertungen" otherwise s"Alle $progHeader"
       closable = false
     }})
+    val preferencesTab = new ScoreCalcTemplatesTab(wettkampf, service)// new PreferencesTab(wettkampfInfo, service)
 
     logger.debug("Start Program Tabs")
     val progSites: Seq[Tab] = (progs map { v =>
@@ -64,6 +65,7 @@ object WettkampfPage {
       }
       subscription = None
       overview.release
+      preferencesTab.release
       (progSites).foreach { t => 
         t.asInstanceOf[WettkampfWertungTab].release
       }
@@ -80,6 +82,7 @@ object WettkampfPage {
     
     def refresher(pane: LazyTabPane): Seq[Tab] = {
       overview.setLazyPane(pane)
+      preferencesTab.setLazyPane(pane)
       (progSites).foreach { t => 
         t.asInstanceOf[WettkampfWertungTab].setLazyPane(pane)
       }
@@ -91,7 +94,7 @@ object WettkampfPage {
                 networkSite ++ alleWertungenTabs ++ ranglisteSite
       }
       else {
-        Seq[Tab](overview) ++
+        Seq[Tab](overview, preferencesTab) ++
                 progSites ++ riegenSite ++ networkSite ++ ranglisteSite
       }
     }

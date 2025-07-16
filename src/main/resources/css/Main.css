@@ -969,3 +969,33 @@
     -fx-background-color: F5AD11; //-fx-focus-color, -fx-cell-focus-inner-border, -fx-focus-color;
 	-fx-border-color: -fx-focus-color, -fx-cell-focus-inner-border, -fx-focus-color;
 }
+.combined-control > .text-input,
+.combined-control > .text-input:focused {
+    -fx-background-color: linear-gradient(to bottom, derive(-fx-text-box-border, -10%), -fx-text-box-border),
+                             linear-gradient(from 0px 0px to 0px 5px, derive(-fx-control-inner-background, -9%), -fx-control-inner-background);
+    -fx-background-insets: 0, 1 0 1 1;
+    -fx-background-radius: 3 0 0 3, 2 0 0 2;
+    -fx-pref-width: 1020px;
+}
+.combined-control > .button {
+    -fx-background-radius: 0 3 3 0, 0 3 3 0, 0 2 2 0, 0 1 1 0;
+    -fx-pref-width: 36px;
+    -fx-min-width: 36px;
+}
+.combined-control > .button:focused {
+    -fx-background-color: -fx-outer-border, -fx-inner-border, -fx-body-color, -fx-body-color;
+    -fx-background-insets: 0, 1, 2, 2;
+}
+.combined-control:focused {
+    -fx-highlight-fill: -fx-accent;
+    -fx-background-color: -fx-focus-color, -fx-control-inner-background, -fx-faint-focus-color;
+    -fx-background-insets: -1.2, 1, -2.4;
+    -fx-background-radius: 3, 2, 4, 0;
+    -fx-border-color: -fx-faint-focus-color;
+    -fx-border-insets: -1;
+}
+.combined-control:focused > .button {
+    -fx-background-color: -fx-focus-color, -fx-outer-border, -fx-inner-border, -fx-body-color, -fx-faint-focus-color, -fx-body-color;
+    -fx-background-insets: -0.2 -0.2 -0.2 1, 1 1 1 0, 1 1 1 1, 2, -1.4 -1.4 -1.4 1, 2.6;
+    -fx-background-radius: 0 3 3 0, 0 2 2 0, 0 1 1 0, 0 4 4 0, 0 1 1 0;
+}

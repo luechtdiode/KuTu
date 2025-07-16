@@ -14,22 +14,27 @@
         <div style="font-size: 12pt;">{{titlerest}}</div>
       </ion-col>
       <ion-col col-auto align-self-end *ngIf="groupedBy === groupBy.ATHLET">
-        <ion-note *ngIf="item.isDNoteUsed && item.wertung.noteD !== undefined" item-text-wrap>
+        <ion-note *ngIf="item.isDNoteUsed" item-end item-text-wrap (click)="presentDetails(true)">
           <span class="rightbound">&nbsp;&nbsp;&nbsp;{{dNoteLabel}}: {{item.wertung.noteD | number:'2.3-3'}}
-          <br>&nbsp;&nbsp;&nbsp;{{eNoteLabel}}: {{item.wertung.noteE | number:'2.3-3'}}
-          <br>
-          <span *ngIf="item.isStroked" style="font-size: 18pt;background-color: darkred">{{item.wertung.endnote | number:'2.3-3'}}</span>
-          <span *ngIf="!item.isStroked" style="font-size: 18pt;font-weight: bold">{{item.wertung.endnote | number:'2.3-3'}}</span>
+            <br>&nbsp;&nbsp;&nbsp;{{eNoteLabel}}: {{item.wertung.noteE | number:'2.3-3'}}
+            <br>
           </span>
+          <span *ngIf="item.isStroked && item.wertung.endnote" class="rightbound"  style="font-size: 18pt;background-color: darkred">{{item.wertung.endnote | number:'2.3-3'}}</span>
+          <span *ngIf="!item.isStroked && item.wertung.endnote" class="rightbound"  style="font-size: 18pt;font-weight: bold">{{item.wertung.endnote | number:'2.3-3'}}</span>
+          <span *ngIf="!item.wertung.endnote" class="rightbound" style="width: 100%;font-size: 18pt;font-weight: bold">&nbsp;</span>
         </ion-note>
-        <ion-note *ngIf="!item.isDNoteUsed && item.wertung.noteE !== item.wertung.endnote" item-end item-text-wrap>
+        <ion-note *ngIf="!item.isDNoteUsed && item.wertung.noteE !== item.wertung.endnote" item-end item-text-wrap (click)="presentDetails(true)">
           <span class="rightbound"><br>&nbsp;&nbsp;&nbsp;{{eNoteLabel}}: {{item.wertung.noteE | number:'2.3-3'}}
-          <br><span class="rightbound" style="font-size: 18pt;font-weight: bold">{{item.wertung.endnote | number:'2.3-3'}}</span>
+          <br>
+          <span *ngIf="item.isStroked && item.wertung.endnote" class="rightbound"  style="font-size: 18pt;background-color: darkred">{{item.wertung.endnote | number:'2.3-3'}}</span>
+          <span *ngIf="!item.isStroked && item.wertung.endnote" class="rightbound"  style="font-size: 18pt;font-weight: bold">{{item.wertung.endnote | number:'2.3-3'}}</span>
+          <span *ngIf="!item.wertung.endnote" class="rightbound" style="width: 100%;font-size: 18pt;font-weight: bold">&nbsp;</span>
           </span>
         </ion-note>
-        <ion-note *ngIf="!item.isDNoteUsed && item.wertung.noteE === item.wertung.endnote" item-end item-text-wrap>
-          <span *ngIf="item.isStroked" class="rightbound" style="font-size: 18pt;background-color: darkred">{{item.wertung.endnote | number:'2.3-3'}}</span>
-          <span *ngIf="!item.isStroked" class="rightbound" style="font-size: 18pt;font-weight: bold">{{item.wertung.endnote | number:'2.3-3'}}</span>
+        <ion-note *ngIf="!item.isDNoteUsed && item.wertung.noteE === item.wertung.endnote" item-end item-text-wrap (click)="presentDetails(true)">
+          <span *ngIf="item.isStroked && item.wertung.endnote" class="rightbound"  style="font-size: 18pt;background-color: darkred">{{item.wertung.endnote | number:'2.3-3'}}</span>
+          <span *ngIf="!item.isStroked && item.wertung.endnote" class="rightbound"  style="font-size: 18pt;font-weight: bold">{{item.wertung.endnote | number:'2.3-3'}}</span>
+          <span *ngIf="!item.wertung.endnote" class="rightbound" style="width: 100%;font-size: 18pt;font-weight: bold">&nbsp;</span>
         </ion-note>
       </ion-col>
     </ion-row>
@@ -43,19 +48,22 @@
         </div>
       </ion-col>
       <ion-col col-auto >
-        <ion-note *ngIf="item.isDNoteUsed && item.wertung.noteD !== undefined" item-end item-text-wrap>
+        <ion-note *ngIf="item.isDNoteUsed && item.wertung.noteD" item-end item-text-wrap>
           <span class="rightbound">&nbsp;&nbsp;{{dNoteLabel}}: {{item.wertung.noteD | number:'2.3-3'}}
           <br>&nbsp;&nbsp;{{eNoteLabel}}: {{item.wertung.noteE | number:'2.3-3'}}
           <br></span>
-          <span class="rightbound" style="font-size: 18pt;font-weight: bold">{{item.wertung.endnote | number:'2.3-3'}}</span>
+          <span *ngIf="!item.wertung.endnote" class="rightbound"style="width: 100%;font-size: 18pt;font-weight: bold">&nbsp;</span>
+          <span *ngIf="item.wertung.endnote" class="rightbound" style="font-size: 18pt;font-weight: bold">{{item.wertung.endnote | number:'2.3-3'}}</span>
         </ion-note>
         <ion-note *ngIf="!item.isDNoteUsed && item.wertung.noteE !== item.wertung.endnote" item-end item-text-wrap>
-          <br>&nbsp;&nbsp;{{eNoteLabel}}: {{item.wertung.noteE | number:'2.3-3-3'}}
-          <br>
-          <span class="rightbound" style="font-size: 18pt;font-weight: bold">{{item.wertung.endnote | number:'2.3-3'}}</span>
+          <span class="rightbound">&nbsp;&nbsp;{{eNoteLabel}}: {{item.wertung.noteE | number:'2.3-3-3'}}
+          <br></span>
+          <span *ngIf="item.wertung.endnote" class="rightbound" style="font-size: 18pt;font-weight: bold">{{item.wertung.endnote | number:'2.3-3'}}</span>
+          <span *ngIf="!item.wertung.endnote" class="rightbound" style="width: 100%;font-size: 18pt;font-weight: bold">&nbsp;</span>
         </ion-note>
         <ion-note *ngIf="!item.isDNoteUsed && item.wertung.noteE === item.wertung.endnote" item-end item-text-wrap>
-          <span class="rightbound" style="font-size: 18pt;font-weight: bold">{{item.wertung.endnote | number:'2.3-3'}}</span>
+          <span *ngIf="item.wertung.endnote" class="rightbound" style="font-size: 18pt;font-weight: bold">{{item.wertung.endnote | number:'2.3-3'}}</span>
+          <span *ngIf="!item.wertung.endnote" class="rightbound" style="width: 100%;font-size: 18pt;font-weight: bold">&nbsp;</span>
         </ion-note>
       </ion-col>
     </ion-row>

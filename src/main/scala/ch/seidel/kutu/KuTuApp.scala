@@ -1473,7 +1473,8 @@ object KuTuApp extends JFXApp3 with KutuService with JsonSupport with JwtSupport
               }
             }
             if (wkToCopy.programm.id == w.programmId) {
-              updateOrInsertPlanTimes(loadWettkampfDisziplinTimes(UUID.fromString(wkToCopy.uuid.get)).map(_.toWettkampfPlanTimeRaw.copy(wettkampfId = w.id)))
+              updateOrInsertPlanTimes(loadWettkampfDisziplinTimes(wkToCopy.id).map(_.toWettkampfPlanTimeRaw.copy(wettkampfId = w.id)))
+              updateScoreCalcTemplates(loadScoreCalcTemplates(wkToCopy.id).map(_.copy(wettkampfId = Some(w.id))))
             }
 
             if (!targetFolder.equals(sourceFolder)) {

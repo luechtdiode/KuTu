@@ -1,8 +1,8 @@
 package ch.seidel.kutu.view
 
-import ch.seidel.commons._
+import ch.seidel.commons.{AutoCommitTextFieldTableCell, _}
 import ch.seidel.kutu.Config._
-import ch.seidel.kutu.KuTuApp.enc
+import ch.seidel.kutu.KuTuApp.{controlsView, enc, handleAction, saveWettkampf, tree, updateTree}
 import ch.seidel.kutu.actors._
 import ch.seidel.kutu.domain._
 import ch.seidel.kutu.http.WebSocketClient
@@ -79,6 +79,7 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
       case _ =>
     }
   }
+
   var scheduledGears: List[Disziplin] = List.empty
 
   var subscription: Option[Subscription] = None
@@ -128,7 +129,7 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
     val kandidaten = service.getAllKandidatenWertungen(UUID.fromString(wettkampf.uuid.get))
     val alleRiegen = RiegenBuilder.mapToGeraeteRiegen(kandidaten)
     var newGearList = alleRiegen.flatMap(r => r.disziplin).distinct
-    newGearList = if(newGearList.isEmpty) disziplinlist else newGearList
+    newGearList = if (newGearList.isEmpty) disziplinlist else newGearList
     scheduledGears = newGearList
 
     val ret = alleRiegen
@@ -263,27 +264,78 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
     val indexerF = Iterator.from(0)
     import javafx.css.PseudoClass
     val editableCssClass = PseudoClass.getPseudoClass("editable")
-    wertungen.head
-      .map { wertung =>
-        val dNoteLabel = wertung.init.wettkampfdisziplin.notenSpez.getDifficultLabel
-        val eNoteLabel = wertung.init.wettkampfdisziplin.notenSpez.getExecutionLabel
+    val formularCssClass = PseudoClass.getPseudoClass("formular")
+    wertungen.head.map { wertung =>
+      val dNoteLabel = wertung.init.wettkampfdisziplin.notenSpez.getDifficultLabel
+      val eNoteLabel = wertung.init.wettkampfdisziplin.notenSpez.getExecutionLabel
 
-        lazy val clDnote = new WKTableColumn[Double](indexerD.next()) {
-        text = dNoteLabel
-
-        cellValueFactory = { x => if (x.value.size > index) x.value(index).noteD else wertung.noteD }
-        cellFactory.value = { _: Any =>
-          new AutoCommitTextFieldTableCell[IndexedSeq[WertungEditor], Double](
-            DoubleConverter(wertung.init.wettkampfdisziplin.notenSpez),
-            (cell) => {
-              if (cell.tableRow.value != null && cell.tableRow.value.item.value != null && index < cell.tableRow.value.item.value.size) {
-                val w = cell.tableRow.value.item.value(index)
-                val editable = w.matchesSexAssignment
-                cell.editable = editable
-                cell.pseudoClassStateChanged(editableCssClass, cell.isEditable)
+      def formEditorAction(index: Int, mapper: Wertung => String): FormularAction[IndexedSeq[WertungEditor], Double] = new FormularAction[IndexedSeq[WertungEditor], Double] {
+        override def hasFormular(cell: TextFieldWithToolButtonTableCell[IndexedSeq[WertungEditor], Double]): Boolean = {
+          val w = cell.tableRow.value.item.value(index)
+          w.init.defaultVariables.nonEmpty
+        }
+        override def fire(cell: TextFieldWithToolButtonTableCell[IndexedSeq[WertungEditor], Double], ae: ActionEvent): Unit = {
+          val w = cell.tableRow.value.item.value(index)
+          val box = TemplateFormular(w)
+          PageDisplayer.showInDialog(box.caption, new DisplayablePage() {
+            def getPage: Node = {
+              new BorderPane {
+                hgrow = Priority.Always
+                vgrow = Priority.Always
+                center = box
               }
             }
-          )
+          },
+            new Button("OK") {
+              onAction = handleAction { implicit e: ActionEvent =>
+                try {
+                  cell.commitEdit(cell.sc.fromString(mapper(w.commit)))
+                }
+                catch {
+                  case e: IllegalArgumentException =>
+                    PageDisplayer.showErrorDialog(box.caption)(e)
+                }
+              }
+            }
+          )(ae)
+        }
+      }
+
+      lazy val clDnote = new WKTableColumn[Double](indexerD.next()) {
+        val hasNoFormTemplate = wertungen.forall(we => if (index < we.size) we(index).init.wettkampfdisziplin.notenSpez.template.isEmpty else true)
+        text = dNoteLabel
+
+        cellValueFactory = { x =>
+          if (x.value.size > index)
+            x.value(index).noteD
+          else
+            wertung.noteD
+        }
+        cellFactory.value = { _: Any =>
+          if (hasNoFormTemplate) {
+            new AutoCommitTextFieldTableCell[IndexedSeq[WertungEditor], Double](
+              DoubleConverter(wertung.init.wettkampfdisziplin.notenSpez),
+              (cell) => {
+                if (cell.tableRow.value != null && cell.tableRow.value.item.value != null && index < cell.tableRow.value.item.value.size) {
+                  val w = cell.tableRow.value.item.value(index)
+                  val editable = w.matchesSexAssignment
+                  cell.editable = editable
+                  cell.pseudoClassStateChanged(editableCssClass, cell.isEditable)
+                }
+              }
+            )
+          } else {
+            new AutoCommitTextFieldTableCell[IndexedSeq[WertungEditor], Double](
+              DoubleConverter(wertung.init.wettkampfdisziplin.notenSpez),
+              (cell) => {
+                if (cell.tableRow.value != null && cell.tableRow.value.item.value != null && index < cell.tableRow.value.item.value.size) {
+                  val w = cell.tableRow.value.item.value(index)
+                  val editable = w.matchesSexAssignment
+                  cell.editable = editable
+                  cell.pseudoClassStateChanged(formularCssClass, cell.isEditable)
+                }
+              }, formEditorAction(index, we => we.noteD.map(_.toString()).getOrElse("")))
+          }
         }
 
         styleClass += "table-cell-with-value"
@@ -291,67 +343,105 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
         editable = !wettkampf.toWettkampf.isReadonly(homedir, remoteHostOrigin) && wertung.init.wettkampfdisziplin.isDNoteUsed
         visible = wertung.init.wettkampfdisziplin.isDNoteUsed
 
-
+        onEditCancel = (evt: CellEditEvent[IndexedSeq[WertungEditor], Double]) => {
+          if (evt.rowValue != null && evt.rowValue.size > index) {
+            val disciplin = evt.rowValue(index)
+            disciplin.reset
+          }
+        }
         onEditCommit = (evt: CellEditEvent[IndexedSeq[WertungEditor], Double]) => {
           if (evt.rowValue != null && evt.rowValue.size > index) {
             val disciplin = evt.rowValue(index)
-            if (evt.newValue.toString == "NaN") {
-              disciplin.noteD.value = evt.newValue
-              disciplin.noteE.value = evt.newValue
-              disciplin.endnote.value = evt.newValue
-            } else {
-              val updatedWertung = disciplin.init.validatedResult(
-                disciplin.toDouble(evt.newValue),
-                disciplin.toDouble(disciplin.noteE.value))
-              disciplin.noteD.set(updatedWertung.noteD.doubleValue)
-              disciplin.noteE.set(updatedWertung.noteE.doubleValue)
-              disciplin.endnote.set(updatedWertung.endnote.doubleValue)
+            if (disciplin.init.defaultVariables.isEmpty) {
+              if (evt.newValue.toString == "NaN") {
+                disciplin.noteD.value = evt.newValue
+                disciplin.noteE.value = evt.newValue
+                disciplin.endnote.value = evt.newValue
+              } else {
+                val updatedWertung = disciplin.init.validatedResult(
+                  disciplin.toDouble(evt.newValue),
+                  disciplin.toDouble(disciplin.noteE.value))
+                disciplin.noteD.set(updatedWertung.noteD.doubleValue)
+                disciplin.noteE.set(updatedWertung.noteE.doubleValue)
+                disciplin.endnote.set(updatedWertung.endnote.doubleValue)
+              }
             }
             if (disciplin.isDirty) {
-              service.updateWertung(disciplin.commit)
+              service.updateWertung(disciplin.updateAndcommit)
+              /*
+              val row = evt.tableView.items.value(evt.tablePosition.row)
+              evt.tableView.items.value.set(evt.tablePosition.row, row.updated(index, WertungEditor(service.updateWertung(disciplin.commit))))
+               */
             }
           }
           evt.tableView.requestFocus()
         }
       }
       lazy val clEnote = new WKTableColumn[Double](indexerE.next()) {
+        val hasNoFormTemplate = wertungen.forall(we => if (index < we.size) we(index).init.wettkampfdisziplin.notenSpez.template.isEmpty else true)
         text = eNoteLabel
         cellValueFactory = { x => if (x.value.size > index) x.value(index).noteE else wertung.noteE }
-
         cellFactory.value = { _: Any =>
-          new AutoCommitTextFieldTableCell[IndexedSeq[WertungEditor], Double](
-            DoubleConverter(wertung.init.wettkampfdisziplin.notenSpez),
-            (cell) => {
-              if (cell.tableRow.value != null && cell.tableRow.value.item.value != null && index < cell.tableRow.value.item.value.size) {
-                val w = cell.tableRow.value.item.value(index)
-                val editable = w.matchesSexAssignment
-                cell.editable = editable
-                cell.pseudoClassStateChanged(editableCssClass, cell.isEditable)
+          if (hasNoFormTemplate) {
+            new AutoCommitTextFieldTableCell[IndexedSeq[WertungEditor], Double](
+              DoubleConverter(wertung.init.wettkampfdisziplin.notenSpez),
+              (cell) => {
+                if (cell.tableRow.value != null && cell.tableRow.value.item.value != null && index < cell.tableRow.value.item.value.size) {
+                  val w = cell.tableRow.value.item.value(index)
+                  val editable = w.matchesSexAssignment
+                  cell.editable = editable
+                  cell.pseudoClassStateChanged(editableCssClass, cell.isEditable)
+                }
               }
-            }
-          )
+            )
+          } else {
+            new AutoCommitTextFieldTableCell[IndexedSeq[WertungEditor], Double](
+              DoubleConverter(wertung.init.wettkampfdisziplin.notenSpez),
+              (cell) => {
+                if (cell.tableRow.value != null && cell.tableRow.value.item.value != null && index < cell.tableRow.value.item.value.size) {
+                  val w = cell.tableRow.value.item.value(index)
+                  val editable = w.matchesSexAssignment
+                  cell.editable = editable
+                  cell.pseudoClassStateChanged(formularCssClass, cell.isEditable)
+                }
+              }, formEditorAction(index, we => we.noteE.map(_.toString()).getOrElse("")))
+          }
         }
 
         styleClass += "table-cell-with-value"
-        prefWidth = 60
+        prefWidth = if (hasNoFormTemplate) 60 else 100
         editable = !wettkampf.toWettkampf.isReadonly(homedir, remoteHostOrigin)
+
+        onEditCancel = (evt: CellEditEvent[IndexedSeq[WertungEditor], Double]) => {
+          if (evt.rowValue != null && evt.rowValue.size > index) {
+            val disciplin = evt.rowValue(index)
+            disciplin.reset
+          }
+        }
+
         onEditCommit = (evt: CellEditEvent[IndexedSeq[WertungEditor], Double]) => {
           if (evt.rowValue != null && evt.rowValue.size > index) {
             val disciplin = evt.rowValue(index)
-            if (evt.newValue.toString == "NaN") {
-              disciplin.noteD.value = evt.newValue
-              disciplin.noteE.value = evt.newValue
-              disciplin.endnote.value = evt.newValue
-            } else {
-              val result = disciplin.init.validatedResult(
-                disciplin.toDouble(disciplin.noteD.value),
-                disciplin.toDouble(evt.newValue)
-              )
-              disciplin.noteE.set(result.noteE.doubleValue)
-              disciplin.endnote.set(result.endnote.doubleValue)
+            if (disciplin.init.defaultVariables.isEmpty) {
+              if (evt.newValue.toString == "NaN") {
+                disciplin.noteD.value = evt.newValue
+                disciplin.noteE.value = evt.newValue
+                disciplin.endnote.value = evt.newValue
+              } else {
+                val result = disciplin.init.validatedResult(
+                  disciplin.toDouble(disciplin.noteD.value),
+                  disciplin.toDouble(evt.newValue)
+                )
+                disciplin.noteE.set(result.noteE.doubleValue)
+                disciplin.endnote.set(result.endnote.doubleValue)
+              }
             }
             if (disciplin.isDirty) {
-              service.updateWertung(disciplin.commit)
+              service.updateWertung(disciplin.updateAndcommit)
+              /*
+              val row = evt.tableView.items.value(evt.tablePosition.row)
+              evt.tableView.items.value.set(evt.tablePosition.row, row.updated(index, WertungEditor(service.updateWertung(disciplin.commit))))
+               */
             }
           }
           evt.tableView.requestFocus()
@@ -422,6 +512,7 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
 
   case object TeamItems {
     def apply(editor: WertungEditor): List[TeamItem] = this.apply(editor.init)
+
     def apply(editor: WertungView): List[TeamItem] = {
       val (teamname, vereinTeams) = editor.athlet.verein match {
         case Some(v) if (editor.wettkampf.teamrule.nonEmpty) =>
@@ -448,6 +539,7 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
       (1 to nextVereinTeam).toList.map(idx => TeamItem(idx, teamname)) :::
         editor.wettkampf.extraTeams.zipWithIndex.map(item => TeamItem(item._2 * -1 - 1, item._1))
     }
+
     def map(editor: WertungView): Option[TeamItem] = apply(editor).find(team => team.index == editor.team)
 
     def findSelectedTeamId(wertung: WertungView, selection: TeamItem): Option[Int] = {
@@ -455,7 +547,7 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
         case TeamItem(0, name) if name.nonEmpty => apply(wertung)
           .find(team => team.machtesItemText(name))
           .map(_.index)
-        case TeamItem(idx,_) if idx != 0 => Some(idx)
+        case TeamItem(idx, _) if idx != 0 => Some(idx)
         case _ => None
       }
     }
@@ -524,7 +616,7 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
           logger.debug("start riege-rename")
           service.updateAllWertungenAsync(
             evt.rowValue.map(wertung =>
-              wertung.commit.copy(riege = newRiege))).andThen {
+              wertung.updateAndcommit.copy(riege = newRiege))).andThen {
             case Success(ws) => logger.debug("saved riege-rename")
               KuTuApp.invokeWithBusyIndicator {
                 val selected = wkview.selectionModel.value.selectedCells
@@ -570,7 +662,7 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
             logger.debug("start riege-rename")
             service.updateAllWertungenAsync(
               evt.rowValue.map(wertung =>
-                wertung.commit.copy(riege2 = newRiege))).andThen {
+                wertung.updateAndcommit.copy(riege2 = newRiege))).andThen {
               case Success(ws) => logger.debug("saved riege-rename")
                 KuTuApp.invokeWithBusyIndicator {
                   val selected = wkview.selectionModel.value.selectedCells
@@ -643,7 +735,7 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
       })
   } else {
     val cols: List[jfxsc.TableColumn[IndexedSeq[WertungEditor], _]] = wettkampfInfo.groupHeadPrograms
-      .filter{ p =>
+      .filter { p =>
         programm match {
           case Some(pgm) if (pgm.programPath.contains(p)) => true
           case None => true
@@ -651,156 +743,156 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
         }
       }
       .map { p =>
-      val col: jfxsc.TableColumn[IndexedSeq[WertungEditor], _] = new TableColumn[IndexedSeq[WertungEditor], String] {
-        text = s"${p.name}"
-        //            delegate.impl_setReorderable(false)
-        columns ++= Seq(
-          new WKTableColumn[String](-1) {
-            text = "Riege"
-            cellFactory.value = { _: Any =>
-              new AutoCommitTextFieldTableCell[IndexedSeq[WertungEditor], String](new DefaultStringConverter())
-            }
-            cellValueFactory = { x =>
-              new ReadOnlyStringWrapper(x.value, "riege", {
-                s"${x.value.find(we => we.init.wettkampfdisziplin.programm.programPath.contains(p)).flatMap(we => we.init.riege).getOrElse("keine Einteilung")}"
-              })
-            }
-            editable <== when(Bindings.createBooleanBinding(() => {
-              !wettkampf.toWettkampf.isReadonly(homedir, remoteHostOrigin) && !wettkampfmode.value
-            },
-              wettkampfmode
-            )) choose true otherwise false
-            visible <== when(wettkampfmode) choose false otherwise true
-            prefWidth = 100
+        val col: jfxsc.TableColumn[IndexedSeq[WertungEditor], _] = new TableColumn[IndexedSeq[WertungEditor], String] {
+          text = s"${p.name}"
+          //            delegate.impl_setReorderable(false)
+          columns ++= Seq(
+            new WKTableColumn[String](-1) {
+              text = "Riege"
+              cellFactory.value = { _: Any =>
+                new AutoCommitTextFieldTableCell[IndexedSeq[WertungEditor], String](new DefaultStringConverter())
+              }
+              cellValueFactory = { x =>
+                new ReadOnlyStringWrapper(x.value, "riege", {
+                  s"${x.value.find(we => we.init.wettkampfdisziplin.programm.programPath.contains(p)).flatMap(we => we.init.riege).getOrElse("keine Einteilung")}"
+                })
+              }
+              editable <== when(Bindings.createBooleanBinding(() => {
+                !wettkampf.toWettkampf.isReadonly(homedir, remoteHostOrigin) && !wettkampfmode.value
+              },
+                wettkampfmode
+              )) choose true otherwise false
+              visible <== when(wettkampfmode) choose false otherwise true
+              prefWidth = 100
 
-            onEditCommit = (evt: CellEditEvent[IndexedSeq[WertungEditor], String]) => {
-              if (!wettkampfmode.value) {
-                val rowIndex = wkModel.indexOf(evt.rowValue)
-                val newRiege = if (evt.newValue.trim.isEmpty() || evt.newValue.equals("keine Einteilung")) None
-                else Some(evt.newValue)
-                logger.debug("start riege-rename")
-                service.updateAllWertungenAsync(
-                  evt.rowValue.map(wertung =>
-                    wertung.commit.copy(riege = newRiege))).andThen {
-                  case Success(ws) => logger.debug("saved riege-rename")
-                    KuTuApp.invokeWithBusyIndicator {
-                      val selected = wkview.selectionModel.value.selectedCells
-                      refreshOtherLazyPanes()
-                      wkModel.update(rowIndex, ws.map(w => WertungEditor(w)).toIndexedSeq)
-                      selected.foreach(c => wkview.selectionModel.value.select(c.row, c.tableColumn.asInstanceOf[jfxsc.TableColumn[IndexedSeq[WertungEditor], _]]))
-                      updateRiegen()
-                      //updateEditorPane(Some(evt.tableView))
-                      logger.debug("finished riege-rename")
-                    }
-                  case Failure(e) => logger.error("not saved", e)
+              onEditCommit = (evt: CellEditEvent[IndexedSeq[WertungEditor], String]) => {
+                if (!wettkampfmode.value) {
+                  val rowIndex = wkModel.indexOf(evt.rowValue)
+                  val newRiege = if (evt.newValue.trim.isEmpty() || evt.newValue.equals("keine Einteilung")) None
+                  else Some(evt.newValue)
+                  logger.debug("start riege-rename")
+                  service.updateAllWertungenAsync(
+                    evt.rowValue.map(wertung =>
+                      wertung.updateAndcommit.copy(riege = newRiege))).andThen {
+                    case Success(ws) => logger.debug("saved riege-rename")
+                      KuTuApp.invokeWithBusyIndicator {
+                        val selected = wkview.selectionModel.value.selectedCells
+                        refreshOtherLazyPanes()
+                        wkModel.update(rowIndex, ws.map(w => WertungEditor(w)).toIndexedSeq)
+                        selected.foreach(c => wkview.selectionModel.value.select(c.row, c.tableColumn.asInstanceOf[jfxsc.TableColumn[IndexedSeq[WertungEditor], _]]))
+                        updateRiegen()
+                        //updateEditorPane(Some(evt.tableView))
+                        logger.debug("finished riege-rename")
+                      }
+                    case Failure(e) => logger.error("not saved", e)
+                  }
+
+                  evt.tableView.selectionModel.value.select(rowIndex, this)
+                  evt.tableView.requestFocus()
                 }
+              }
+            },
+            new WKTableColumn[String](-1) {
+              text = "Riege 2"
+              cellFactory.value = { _: Any =>
+                new AutoCommitTextFieldTableCell[IndexedSeq[WertungEditor], String](new DefaultStringConverter())
+              }
+              cellValueFactory = { x =>
+                new ReadOnlyStringWrapper(x.value, "riege2", {
+                  s"${x.value.find(we => we.init.wettkampfdisziplin.programm.programPath.contains(p)).flatMap(we => we.init.riege2).getOrElse("keine Einteilung")}"
+                })
+              }
+              //        delegate.impl_setReorderable(false)
+              editable <== when(Bindings.createBooleanBinding(() => {
+                !wettkampf.toWettkampf.isReadonly(homedir, remoteHostOrigin) && !wettkampfmode.value
+              },
+                wettkampfmode
+              )) choose true otherwise false
+              visible <== when(wettkampfmode) choose false otherwise true
+              prefWidth = 100
 
-                evt.tableView.selectionModel.value.select(rowIndex, this)
-                evt.tableView.requestFocus()
+              onEditCommit = (evt: CellEditEvent[IndexedSeq[WertungEditor], String]) => {
+                if (!wettkampfmode.value) {
+                  val rowIndex = wkModel.indexOf(evt.rowValue)
+                  val newRiege = if (evt.newValue.trim.isEmpty() || evt.newValue.equals("keine Einteilung")) None
+                  else Some(evt.newValue)
+                  logger.debug("start riege-rename")
+                  service.updateAllWertungenAsync(
+                    evt.rowValue.map(wertung =>
+                      wertung.updateAndcommit.copy(riege2 = newRiege))).andThen {
+                    case Success(ws) => logger.debug("saved riege-rename")
+                      KuTuApp.invokeWithBusyIndicator {
+                        val selected = wkview.selectionModel.value.selectedCells
+                        refreshOtherLazyPanes()
+                        wkModel.update(rowIndex, ws.map(w => WertungEditor(w)).toIndexedSeq)
+                        selected.foreach(c => wkview.selectionModel.value.select(c.row, c.tableColumn.asInstanceOf[jfxsc.TableColumn[IndexedSeq[WertungEditor], _]]))
+                        updateRiegen()
+                        //updateEditorPane(Some(evt.tableView))
+                        logger.debug("finished riege-rename")
+                      }
+                    case Failure(e) => logger.error("not saved", e)
+                  }
+
+                  evt.tableView.selectionModel.value.select(rowIndex, this)
+                  evt.tableView.requestFocus()
+                }
+              }
+            },
+            new WKTableColumn[TeamItem](-1) {
+              text = "Team"
+              cellFactory.value = { _: Any =>
+                new AutoCommitTextFieldTableCell[IndexedSeq[WertungEditor], TeamItem](TeamItems.stringConverter, TeamItems.tableCellSuggestProvider)
+              }
+
+              cellValueFactory = { x =>
+                new ReadOnlyObjectProperty[TeamItem](x.value, "team", {
+                  val teams = TeamItems(x.value.head)
+                  teams.find(t => t.index == x.value.head.init.team).getOrElse(TeamItem(0, ""))
+                })
+              }
+              editable <== when(Bindings.createBooleanBinding(() => {
+                !wettkampf.toWettkampf.isReadonly(homedir, remoteHostOrigin) && !wettkampfmode.value
+              },
+                wettkampfmode
+              )) choose true otherwise false
+
+              visible = wettkampfInfo.teamRegel.teamsAllowed
+              prefWidth = 100
+
+              onEditCommit = (evt: CellEditEvent[IndexedSeq[WertungEditor], TeamItem]) => {
+                if (!wettkampfmode.value && evt.rowValue != null) {
+                  val rowIndex = wkModel.indexOf(evt.rowValue)
+                  val newTeam: Option[Int] = if (evt.rowValue.nonEmpty) TeamItems.findSelectedTeamId(evt.rowValue.head.init, evt.newValue) else None
+                  logger.debug("start team-reassignment")
+                  service.updateAllWertungenAsync(
+                    evt.rowValue.map(wertung => {
+                      val wertungView = wertung.init.copy(team = newTeam.getOrElse(0))
+                      wertungView.copy(
+                        riege = Some(generateRiegenName(wertungView)),
+                        riege2 = generateRiegen2Name(wertungView)).toWertung
+                    })).andThen {
+                    case Success(ws) => logger.debug("saved team-reassignment")
+                      KuTuApp.invokeWithBusyIndicator {
+                        val selected = wkview.selectionModel.value.selectedCells
+                        refreshOtherLazyPanes()
+                        wkModel.update(rowIndex, ws.map(w => WertungEditor(w)).toIndexedSeq)
+                        selected.foreach(c => wkview.selectionModel.value.select(c.row, c.tableColumn.asInstanceOf[jfxsc.TableColumn[IndexedSeq[WertungEditor], _]]))
+                        updateRiegen()
+                        //updateEditorPane(Some(evt.tableView))
+                        logger.debug("finished team-reassignment")
+                      }
+                    case Failure(e) => logger.error("not saved", e)
+                  }
+
+                  evt.tableView.selectionModel.value.select(rowIndex, this)
+                  evt.tableView.requestFocus()
+                }
               }
             }
-          },
-          new WKTableColumn[String](-1) {
-            text = "Riege 2"
-            cellFactory.value = { _: Any =>
-              new AutoCommitTextFieldTableCell[IndexedSeq[WertungEditor], String](new DefaultStringConverter())
-            }
-            cellValueFactory = { x =>
-              new ReadOnlyStringWrapper(x.value, "riege2", {
-                s"${x.value.find(we => we.init.wettkampfdisziplin.programm.programPath.contains(p)).flatMap(we => we.init.riege2).getOrElse("keine Einteilung")}"
-              })
-            }
-            //        delegate.impl_setReorderable(false)
-            editable <== when(Bindings.createBooleanBinding(() => {
-              !wettkampf.toWettkampf.isReadonly(homedir, remoteHostOrigin) && !wettkampfmode.value
-            },
-              wettkampfmode
-            )) choose true otherwise false
-            visible <== when(wettkampfmode) choose false otherwise true
-            prefWidth = 100
-
-            onEditCommit = (evt: CellEditEvent[IndexedSeq[WertungEditor], String]) => {
-              if (!wettkampfmode.value) {
-                val rowIndex = wkModel.indexOf(evt.rowValue)
-                val newRiege = if (evt.newValue.trim.isEmpty() || evt.newValue.equals("keine Einteilung")) None
-                else Some(evt.newValue)
-                logger.debug("start riege-rename")
-                service.updateAllWertungenAsync(
-                  evt.rowValue.map(wertung =>
-                    wertung.commit.copy(riege2 = newRiege))).andThen {
-                  case Success(ws) => logger.debug("saved riege-rename")
-                    KuTuApp.invokeWithBusyIndicator {
-                      val selected = wkview.selectionModel.value.selectedCells
-                      refreshOtherLazyPanes()
-                      wkModel.update(rowIndex, ws.map(w => WertungEditor(w)).toIndexedSeq)
-                      selected.foreach(c => wkview.selectionModel.value.select(c.row, c.tableColumn.asInstanceOf[jfxsc.TableColumn[IndexedSeq[WertungEditor], _]]))
-                      updateRiegen()
-                      //updateEditorPane(Some(evt.tableView))
-                      logger.debug("finished riege-rename")
-                    }
-                  case Failure(e) => logger.error("not saved", e)
-                }
-
-                evt.tableView.selectionModel.value.select(rowIndex, this)
-                evt.tableView.requestFocus()
-              }
-            }
-          },
-          new WKTableColumn[TeamItem](-1) {
-            text = "Team"
-            cellFactory.value = { _: Any =>
-              new AutoCommitTextFieldTableCell[IndexedSeq[WertungEditor], TeamItem](TeamItems.stringConverter, TeamItems.tableCellSuggestProvider)
-            }
-
-            cellValueFactory = { x =>
-              new ReadOnlyObjectProperty[TeamItem](x.value, "team", {
-                val teams = TeamItems(x.value.head)
-                teams.find(t => t.index == x.value.head.init.team).getOrElse(TeamItem(0, ""))
-              })
-            }
-            editable <== when(Bindings.createBooleanBinding(() => {
-              !wettkampf.toWettkampf.isReadonly(homedir, remoteHostOrigin) && !wettkampfmode.value
-            },
-              wettkampfmode
-            )) choose true otherwise false
-
-            visible = wettkampfInfo.teamRegel.teamsAllowed
-            prefWidth = 100
-
-            onEditCommit = (evt: CellEditEvent[IndexedSeq[WertungEditor], TeamItem]) => {
-              if (!wettkampfmode.value && evt.rowValue != null) {
-                val rowIndex = wkModel.indexOf(evt.rowValue)
-                val newTeam: Option[Int] = if (evt.rowValue.nonEmpty) TeamItems.findSelectedTeamId(evt.rowValue.head.init, evt.newValue) else None
-                logger.debug("start team-reassignment")
-                service.updateAllWertungenAsync(
-                  evt.rowValue.map(wertung => {
-                    val wertungView = wertung.init.copy(team = newTeam.getOrElse(0))
-                    wertungView.copy(
-                      riege = Some(generateRiegenName(wertungView)),
-                      riege2 = generateRiegen2Name(wertungView)).toWertung
-                  })).andThen {
-                  case Success(ws) => logger.debug("saved team-reassignment")
-                    KuTuApp.invokeWithBusyIndicator {
-                      val selected = wkview.selectionModel.value.selectedCells
-                      refreshOtherLazyPanes()
-                      wkModel.update(rowIndex, ws.map(w => WertungEditor(w)).toIndexedSeq)
-                      selected.foreach(c => wkview.selectionModel.value.select(c.row, c.tableColumn.asInstanceOf[jfxsc.TableColumn[IndexedSeq[WertungEditor], _]]))
-                      updateRiegen()
-                      //updateEditorPane(Some(evt.tableView))
-                      logger.debug("finished team-reassignment")
-                    }
-                  case Failure(e) => logger.error("not saved", e)
-                }
-
-                evt.tableView.selectionModel.value.select(rowIndex, this)
-                evt.tableView.requestFocus()
-              }
-            }
-          }
-        )
+          )
+        }
+        col
       }
-      col
-    }
     cols
   }
 
@@ -1012,6 +1104,7 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
 
   def updateRiegen(): Unit = {
     relevantRiegen = computeRelevantRiegen
+
     def onSelectedChange(name: String, selected: Boolean) = {
       if (relevantRiegen.contains(name)) {
         relevantRiegen = relevantRiegen.updated(name, (selected, relevantRiegen(name)._2))
@@ -1120,7 +1213,7 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
 
       selectionstore
         .foreach(c =>
-          columnIndex.foreach{ i =>
+          columnIndex.foreach { i =>
             if (i > -1 && wkview.columns.size > i) wkview.selectionModel.value.select(
               c.row,
               wkview.columns.get(i)
@@ -1158,7 +1251,7 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
     val fieldnames = header.split(";").zipWithIndex.map(e => (e._2.trim, e._1.trim)).toMap
     val rowfields = rows
       .map(r => r.split(";").zipWithIndex.map(r => fieldnames(r._2.trim) -> r._1.replace("\"", "").trim).toMap)
-    val normalizedPrograms = programms.map(p => p.name.replace("-", "").toUpperCase->p).toMap
+    val normalizedPrograms = programms.map(p => p.name.replace("-", "").toUpperCase -> p).toMap
 
     val athletModel = ObservableBuffer[(Long, Athlet, AthletView, Long)]()
     val cache = new java.util.ArrayList[MatchCode]()
@@ -1176,41 +1269,41 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
             val verband = List(verb, rlz, rlzverb).filter(_.nonEmpty).distinct.filter(v => !verein.contains(v)).mkString(", ")
             (fields, Verein(0, verein, Some(verband)))
           }
-          .map{row =>
+          .map { row =>
             val vereinId: Long = service.findVereinLike(row._2).getOrElse(0L)
-            (row._1, row._2.copy(id=vereinId))
+            (row._1, row._2.copy(id = vereinId))
           }
 
         val vereineList = service.selectVereine
         val vereineMap = vereineList.map(v => v.id -> v).toMap
 
         val csvRaw = importvereine.map { row =>
-            val (fields, verein) = row
-            val parsed = new Athlet(
-              id = 0,
-              js_id = 0,
-              geschlecht = "M",
-              name = fields("NAME_TURNER"),
-              vorname = fields("VORNAME_TURNER"),
-              gebdat = Some(service.getSQLDate("01.01." + fields("JG_TURNER"))),
-              strasse = "",
-              plz = "",
-              ort = "",
-              verein = Some(verein.id),
-              activ = true
-            )
-            val candidate = service.findAthleteLike(cache = cache, exclusive = false)(parsed)
-            val progId: Long = normalizedPrograms(fields("WETTKAMPF_TEIL").trim.toUpperCase()).id
-            val suggestion = AthletView(
-              candidate.id, candidate.js_id,
-              candidate.geschlecht, candidate.name, candidate.vorname, candidate.gebdat,
-              candidate.strasse, candidate.plz, candidate.ort,
-              Some(verein), true)
-            val oldProg: Long = wertungen.find(w => w.head.init.athlet.easyprint.equals(suggestion.easyprint)).map(w => w.head.init.wettkampfdisziplin.programm.id).getOrElse(0)
-            (progId, parsed, suggestion, oldProg)
-          }
+          val (fields, verein) = row
+          val parsed = new Athlet(
+            id = 0,
+            js_id = 0,
+            geschlecht = "M",
+            name = fields("NAME_TURNER"),
+            vorname = fields("VORNAME_TURNER"),
+            gebdat = Some(service.getSQLDate("01.01." + fields("JG_TURNER"))),
+            strasse = "",
+            plz = "",
+            ort = "",
+            verein = Some(verein.id),
+            activ = true
+          )
+          val candidate = service.findAthleteLike(cache = cache, exclusive = false)(parsed)
+          val progId: Long = normalizedPrograms(fields("WETTKAMPF_TEIL").trim.toUpperCase()).id
+          val suggestion = AthletView(
+            candidate.id, candidate.js_id,
+            candidate.geschlecht, candidate.name, candidate.vorname, candidate.gebdat,
+            candidate.strasse, candidate.plz, candidate.ort,
+            Some(verein), true)
+          val oldProg: Long = wertungen.find(w => w.head.init.athlet.easyprint.equals(suggestion.easyprint)).map(w => w.head.init.wettkampfdisziplin.programm.id).getOrElse(0)
+          (progId, parsed, suggestion, oldProg)
+        }
 
-        val toRemove = wertungen.map(_.head.init.athlet).distinct.filter(a => !csvRaw.exists(csv => csv._3.easyprint.equals(a.easyprint))).map{a =>
+        val toRemove = wertungen.map(_.head.init.athlet).distinct.filter(a => !csvRaw.exists(csv => csv._3.easyprint.equals(a.easyprint))).map { a =>
           (0L, a.toAthlet, a, 0L)
         }.toList
         csvRaw.filter(item => item._4 != item._1) ++ toRemove
@@ -1314,34 +1407,34 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
                   x => athletTable.selectionModel.value.isSelected(x._2)
                 }.map(_._1)
                 selected
-                .filter(_._1 > 0L)
-                .filter(_._4 == 0)
-                .groupBy(_._3.verein)
-                .filter(_._1.nonEmpty)
-                .map{grp =>
-                  val v = grp._1.map(service.insertVerein).get
-                  println(s"verein inserted: ${v}")
-                  (v.id, grp._2.map { c =>
-                    val a = c._2.copy(verein = Some(v.id))
-                    val av: AthletView = c._3.copy(verein = Some(v))
-                    (c._1, a, av)
-                  })
-                }
-                .foreach {grp =>
-                  println(s"insert ${grp._2.size} Athletes of Verein ${grp._1}")
-                  insertClipboardAssignments(grp._1, grp._2)
-                }
+                  .filter(_._1 > 0L)
+                  .filter(_._4 == 0)
+                  .groupBy(_._3.verein)
+                  .filter(_._1.nonEmpty)
+                  .map { grp =>
+                    val v = grp._1.map(service.insertVerein).get
+                    println(s"verein inserted: ${v}")
+                    (v.id, grp._2.map { c =>
+                      val a = c._2.copy(verein = Some(v.id))
+                      val av: AthletView = c._3.copy(verein = Some(v))
+                      (c._1, a, av)
+                    })
+                  }
+                  .foreach { grp =>
+                    println(s"insert ${grp._2.size} Athletes of Verein ${grp._1}")
+                    insertClipboardAssignments(grp._1, grp._2)
+                  }
                 // move to program
                 selected
                   .filter(_._1 > 0L)
                   .filter(_._4 > 0)
-                  .foreach {grp =>
+                  .foreach { grp =>
                     service.moveToProgram(wettkampf.id, grp._1, 0, grp._3)
                   }
                 // remove
                 selected
                   .filter(_._1 == 0L)
-                  .foreach {grp =>
+                  .foreach { grp =>
                     val wertungenIds = wertungen.flatMap(row => row.filter(w => w.init.athlet.easyprint.equals(grp._3.easyprint))).map(_.init.id).toSet
                     service.unassignAthletFromWettkampf(wertungenIds)
                   }
@@ -1356,7 +1449,7 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
                 .filter(_._4 == 0)
                 .groupBy(_._3.verein)
                 .filter(_._1.nonEmpty)
-                .map{grp =>
+                .map { grp =>
                   val v = grp._1.map(service.insertVerein).get
                   println(s"verein inserted: ${v}")
                   (v.id, grp._2.map { c =>
@@ -1365,7 +1458,7 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
                     (c._1, a, av)
                   })
                 }
-                .foreach {grp =>
+                .foreach { grp =>
                   println(s"insert ${grp._2.size} Athletes of Verein ${grp._1}")
                   insertClipboardAssignments(grp._1, grp._2)
                 }
@@ -1373,13 +1466,13 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
               filteredModel
                 .filter(_._1 > 0L)
                 .filter(_._4 > 0)
-                .foreach {grp =>
+                .foreach { grp =>
                   service.moveToProgram(wettkampf.id, grp._1, 0, grp._3)
                 }
               // remove
               filteredModel
                 .filter(_._1 == 0L)
-                .foreach {grp =>
+                .foreach { grp =>
                   val wertungenIds = wertungen.flatMap(row => row.filter(w => w.init.athlet.easyprint.equals(grp._3.easyprint))).map(_.init.id).toSet
                   service.unassignAthletFromWettkampf(wertungenIds)
                 }
@@ -1889,7 +1982,7 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
           }
           w <- wl
         } {
-          service.updateWertung(w.commit.copy(riege = None))
+          service.updateWertung(w.updateAndcommit.copy(riege = None))
         }
         for {
           wl <- reloadWertungen { wertung =>
@@ -1900,7 +1993,7 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
           }
           w <- wl
         } {
-          service.updateWertung(w.commit.copy(riege2 = None))
+          service.updateWertung(w.updateAndcommit.copy(riege2 = None))
         }
         reloadData()
       }
@@ -2089,11 +2182,13 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
         minWidth = 75
         onAction = (event: ActionEvent) => {
           val wkdisziplinlist = service.listWettkampfDisziplines(wettkampf.id)
-          val sex = wkdisziplinlist.flatMap{wkd => (wkd.feminim, wkd.masculin) match {
-            case (1, 0) => Set("W")
-            case (0, 1) => Set("M")
-            case _ => Set("M", "W")
-          }}.toSet
+          val sex = wkdisziplinlist.flatMap { wkd =>
+            (wkd.feminim, wkd.masculin) match {
+              case (1, 0) => Set("W")
+              case (0, 1) => Set("M")
+              case _ => Set("M", "W")
+            }
+          }.toSet
           new AthletSelectionDialog(
             text.value, wettkampfFilterDate, progrm.alterVon, progrm.alterBis, sex, wertungen.map(w => w.head.init.athlet), service,
             (selection: Set[Long]) => {
@@ -2146,9 +2241,7 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
             val rowIndex = wkModel.indexOf(selected)
             if (rowIndex > -1) {
               for (disciplin <- selected) {
-                disciplin.noteD.value = Double.NaN
-                disciplin.noteE.value = Double.NaN
-                disciplin.endnote.value = Double.NaN
+                disciplin.clearInput()
                 if (disciplin.isDirty) {
                   wkModel.update(rowIndex, selected.updated(index, WertungEditor(service.updateWertung(disciplin.commit))))
                   wkview.requestFocus()
@@ -2190,7 +2283,7 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
                   || index == disziplinlist.indexOf(durchgangFilter.disziplin.get)) {
                   disciplin.clearInput()
                   if (disciplin.isDirty) {
-                    wkModel.update(rowIndex, wertungen.updated(index, WertungEditor(service.updateWertung(disciplin.commit))))
+                    wkModel.update(rowIndex, wertungen.updated(index, WertungEditor(service.updateWertung(disciplin.updateAndcommit))))
                   }
                 }
               }

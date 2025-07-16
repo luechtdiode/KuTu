@@ -11,7 +11,9 @@ import org.apache.pekko.stream.{CompletionStrategy, OverflowStrategy}
 import org.apache.pekko.util.Timeout
 import ch.seidel.kutu.Config
 import ch.seidel.kutu.actors.CompetitionCoordinatorClientActor.{PublishAction, competitionWebsocketConnectionsActive, competitionsActive}
+import ch.seidel.kutu.calc.ScoreCalcTemplate
 import ch.seidel.kutu.data.ResourceExchanger
+import ch.seidel.kutu.data.ResourceExchanger.listWettkampfDisziplineViews
 import ch.seidel.kutu.domain._
 import ch.seidel.kutu.http.Core.system
 import ch.seidel.kutu.http.{EnrichedJson, JsonSupport, MetricsController}
@@ -52,6 +54,8 @@ class CompetitionCoordinatorClientActor(wettkampfUUID: String) extends Persisten
 
   private val wettkampf = readWettkampf(wettkampfUUID)
   private val websocketProcessor = ResourceExchanger.processWSMessage(wettkampf, handleWebsocketMessages)
+  private val cache2: scala.collection.mutable.Map[Long, List[ScoreCalcTemplate]] = scala.collection.mutable.Map[Long, List[ScoreCalcTemplate]]()
+  private val wkDiszs = listWettkampfDisziplineViews(wettkampf).map(d => d.id -> d).toMap
   private val wkPgmId = wettkampf.programmId
   private val isDNoteUsed = wkPgmId != 20 && wkPgmId != 1
   private val snapShotInterval = 100
@@ -70,6 +74,7 @@ class CompetitionCoordinatorClientActor(wettkampfUUID: String) extends Persisten
 
   def rebuildWettkampfMap(): Unit = {
     openDurchgangJournal = Map.empty
+    cache2.clear()
     geraeteRigeListe = RiegenBuilder.mapToGeraeteRiegen(
       getAllKandidatenWertungen(wkUUID)
         .toList)
@@ -199,10 +204,11 @@ class CompetitionCoordinatorClientActor(wettkampfUUID: String) extends Persisten
       } else if (!state.startedDurchgaenge.exists(d => encodeURIComponent(d) == encodeURIComponent(durchgang))) {
         sender() ! MessageAck("Dieser Durchgang ist noch nicht für die Resultaterfassung freigegeben.")
       } else try {
-        log.debug(s"received for ${athlet.vorname} ${athlet.name} (${athlet.verein.getOrElse("")}) im Pgm $programm new Wertung: D:${wertung.noteD}, E:${wertung.noteE}")
-        val verifiedWertung = updateWertungSimple(wertung)
+        val disz = wkDiszs.get(wertung.wettkampfdisziplinId).map(_.disziplin.easyprint).getOrElse(s"Disz${wertung.wettkampfdisziplinId}")
+        log.debug(s"received for ${athlet.vorname} ${athlet.name} (${athlet.verein.getOrElse("")}) im Pgm $programm Disz $disz: ${wertung}")
+        val verifiedWertung = updateWertungSimple(wertung, cache2)
         val updated = AthletWertungUpdated(athlet, verifiedWertung, wettkampfUUID, durchgang, geraet, programm)
-        log.info(s"saved for ${athlet.vorname} ${athlet.name} (${athlet.verein.getOrElse("")}) im Pgm $programm new Wertung: D:${verifiedWertung.noteD}, E:${verifiedWertung.noteE}")
+        log.info(s"saved for ${athlet.vorname} ${athlet.name} (${athlet.verein.getOrElse("")}) im Pgm $programm Disz $disz: ${verifiedWertung.resultatWithVariables}")
 
         persist(updated) { _ => }
         handleEvent(updated)
@@ -218,7 +224,7 @@ class CompetitionCoordinatorClientActor(wettkampfUUID: String) extends Persisten
         //        }
       } catch {
         case e: Exception =>
-          log.error(s"failed to complete save new score for  ${athlet.vorname} ${athlet.name} (${athlet.verein.getOrElse("")}) im Pgm $programm new Wertung: D:${wertung.noteD}, E:${wertung.noteE}", e)
+          log.error(s"failed to complete save new score for  ${athlet.vorname} ${athlet.name} (${athlet.verein.getOrElse("")}) im Pgm $programm new Wertung: $wertung", e)
           sender() ! MessageAck(e.getMessage)
       }
 

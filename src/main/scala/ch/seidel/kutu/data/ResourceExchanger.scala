@@ -1,6 +1,8 @@
 package ch.seidel.kutu.data
 
 import ch.seidel.kutu.actors._
+import ch.seidel.kutu.calc.TemplateViewJsonReader.scoreCalcTemplateViewFormat
+import ch.seidel.kutu.calc.{ScoreAggregateFn, ScoreCalcTemplate, ScoreCalcTemplateView, TemplateViewJsonReader}
 import ch.seidel.kutu.data.CaseObjectMetaUtil._
 import ch.seidel.kutu.domain._
 import ch.seidel.kutu.renderer.PrintUtil
@@ -14,7 +16,7 @@ import java.io._
 import java.sql.Timestamp
 import java.time.Instant
 import java.time.format.DateTimeFormatter
-import java.util.UUID
+import java.util.{Base64, UUID}
 import java.util.zip.{ZipEntry, ZipInputStream, ZipOutputStream}
 import scala.concurrent.Await
 import scala.concurrent.duration.Duration
@@ -25,9 +27,12 @@ import scala.reflect.runtime.universe._
  */
 object ResourceExchanger extends KutuService with RiegenBuilder {
   private val logger = LoggerFactory.getLogger(this.getClass)
+  val enc: Base64.Encoder = Base64.getUrlEncoder
+  val dec: Base64.Decoder = Base64.getUrlDecoder
 
   def processWSMessage[T](wettkampf: Wettkampf, refresher: (Option[T], KutuAppEvent) => Unit): (Option[T], KutuAppEvent) => Unit = {
     val cache = new java.util.ArrayList[MatchCode]()
+    val cache2: scala.collection.mutable.Map[Long, List[ScoreCalcTemplate]] = scala.collection.mutable.Map[Long, List[ScoreCalcTemplate]]()
     val wkDiszs = listWettkampfDisziplineViews(wettkampf)
       .map(d => d.id -> d).toMap
     def mapToLocal(athlet: AthletView, wettkampf: Option[Long]) = {
@@ -55,15 +60,14 @@ object ResourceExchanger extends KutuService with RiegenBuilder {
               athletId = mappedAthletView.id,
               wettkampfId = wettkampf.id,
               wettkampfUUID = updatedSequenced.wettkampfUUID)
-            logger.info(s"received for ${athlet.vorname} ${athlet.name} (${athlet.verein.getOrElse(() => "")}) " +
-              s"im Pgm $programm Disz $disz new Wertung: D:${mappedWertung.noteD}, E:${mappedWertung.noteE}")
+            logger.info(s"received for ${athlet.vorname} ${athlet.name} (${athlet.verein.getOrElse("")}) im Pgm $programm Disz $disz: ${mappedWertung.resultatWithVariables}")
             updatedSequenced.copy(athlet = mappedAthletView, wertung = mappedWertung)
           }
         }.toSeq
         try {
           KuTuApp.invokeWithBusyIndicator {
             refresher(sender, LastResults(
-              mappedWertungen.zip(updateWertungWithIDMapping(mappedWertungen.map(_.wertung))).map {
+              mappedWertungen.zip(updateWertungenWithIDMapping(mappedWertungen.map(_.wertung), cache2)).map {
                 x => x._1.copy(wertung = x._2)
               }.toList))
           }
@@ -105,20 +109,18 @@ object ResourceExchanger extends KutuService with RiegenBuilder {
           refresher(sender, uw)
         } else if (wettkampf.uuid.contains(wettkampfUUID)) /*Future*/ {
           val disz = wkDiszs.get(uw.wertung.wettkampfdisziplinId).map(_.disziplin.easyprint).getOrElse(s"Disz${uw.wertung.wettkampfdisziplinId}")
-          logger.info(s"received for ${uw.athlet.vorname} ${uw.athlet.name} (${uw.athlet.verein.getOrElse(() => "")}) " +
-            s"im Pgm $programm Disz $disz new Wertung: D:${wertung.noteD}, E:${wertung.noteE}")
+          logger.info(s"received for ${uw.athlet.vorname} ${uw.athlet.name} (${uw.athlet.verein.getOrElse("")}) im Pgm $programm Disz $disz: ${wertung.resultatWithVariables}")
           val mappedAthletView: AthletView = mapToLocal(athlet, Some(wettkampf.id))
           val mappedWertung = wertung.copy(athletId = mappedAthletView.id, wettkampfId = wettkampf.id, wettkampfUUID = wettkampfUUID)
           try {
-            val vw = updateWertungWithIDMapping(mappedWertung)
-            logger.info(s"saved for ${mappedAthletView.vorname} ${mappedAthletView.name} (${uw.athlet.verein.getOrElse(() => "")}) " +
-              s"im Pgm $programm Disz $disz new Wertung: D:${vw.noteD}, E:${vw.noteE}")
+            val vw = updateWertungWithIDMapping(mappedWertung, cache2)
+            logger.info(s"saved for ${mappedAthletView.vorname} ${mappedAthletView.name} (${uw.athlet.verein.getOrElse("")}) im Pgm $programm Disz $disz: ${wertung.resultatWithVariables}")
             refresher(sender, uw.copy(athlet.copy(id = mappedAthletView.id), wertung = vw))
           } catch {
             case e: Exception =>
               logger.error(s"failed to complete save new score for " +
                 s"${mappedAthletView.vorname} ${mappedAthletView.name} (${mappedAthletView.verein.getOrElse("")}) " +
-                s"im Pgm $programm Disz $disz new Wertung: D:${mappedWertung.noteD}, E:${mappedWertung.noteE}", e)
+                s"im Pgm $programm Disz $disz new new Wertung: ${wertung}", e)
               refresher(sender, uw)
           }
         }
@@ -343,10 +345,43 @@ object ResourceExchanger extends KutuService with RiegenBuilder {
         },
         riege = if (fields(wertungenHeader("riege")).nonEmpty) Some(fields(wertungenHeader("riege"))) else None,
         riege2 = if (fields(wertungenHeader("riege2")).nonEmpty) Some(fields(wertungenHeader("riege2"))) else None,
-        team = if (wertungenHeader.contains("team") && fields(wertungenHeader("team")).nonEmpty) Some(fields(wertungenHeader("team"))) else None
+        team = if (wertungenHeader.contains("team") && fields(wertungenHeader("team")).nonEmpty) Some(fields(wertungenHeader("team"))) else None,
+        variables = if (wertungenHeader.contains("variables") && fields(wertungenHeader("variables")).nonEmpty) TemplateViewJsonReader(Some(new String(dec.decode(fields(wertungenHeader("variables")))))) else None
       )
       w
     }
+
+    if (collection.contains("scorecalc_templates.csv")) {
+      val (scoreCalcTemplate, scoreCalcTemplateHeader) = collection("scorecalc_templates.csv")
+      logger.info("importing scorecalc_templates ...", scoreCalcTemplateHeader)
+      updateScoreCalcTemplates(scoreCalcTemplate.map(DBService.parseLine).filter(_.size == scoreCalcTemplateHeader.size).map { fields =>
+        val wettkampfid = fields(scoreCalcTemplateHeader("wettkampfId"))
+        val planTimeRaw = ScoreCalcTemplate(
+          id = 0L,
+          wettkampfId = wettkampfInstances.get(wettkampfid + "") match {
+            case Some(w) => Some(w.id)
+            case None => Some(wettkampfid)
+          },
+          wettkampfdisziplinId = fields(scoreCalcTemplateHeader("wettkampfdisziplinId")) match {
+            case "" => None
+            case value => Some(BigDecimal(value).toLong)
+          },
+          disziplinId = fields(scoreCalcTemplateHeader("disziplinId")) match {
+            case "" => None
+            case value => Some(BigDecimal(value).toLong)
+          },
+          dFormula = fields(scoreCalcTemplateHeader("dFormula")),
+          eFormula = fields(scoreCalcTemplateHeader("eFormula")),
+          pFormula = fields(scoreCalcTemplateHeader("pFormula")),
+          aggregateFn = fields(scoreCalcTemplateHeader("aggregateFn")) match {
+            case "" => None
+            case value => ScoreAggregateFn(Some(value))
+          },
+        )
+        planTimeRaw
+      })
+    }
+
     val start = System.currentTimeMillis()
     val inserted = wertungInstances.groupBy(w => w.wettkampfId).map { wkWertungen =>
       val (wettkampfid, wertungen) = wkWertungen
@@ -377,7 +412,8 @@ object ResourceExchanger extends KutuService with RiegenBuilder {
             endnote = None,
             riege = None,
             riege2 = None,
-            team = None
+            team = None,
+            variables = None
           )
         }
         completeWertungenSet
@@ -615,11 +651,19 @@ object ResourceExchanger extends KutuService with RiegenBuilder {
     }
     zip.closeEntry()
 
-    val planTimes = loadWettkampfDisziplinTimes(UUID.fromString(wettkampf.uuid.get))
+    val planTimes = loadWettkampfDisziplinTimes(wettkampf.id)
     zip.putNextEntry(new ZipEntry("plan_times.csv"))
     zip.write((getHeader[WettkampfPlanTimeRaw] + "\n").getBytes("utf-8"))
     for (planTime <- planTimes) {
       zip.write((getValues(planTime.toWettkampfPlanTimeRaw) + "\n").getBytes("utf-8"))
+    }
+    zip.closeEntry()
+
+    val templates = loadScoreCalcTemplates(wettkampf.id)
+    zip.putNextEntry(new ZipEntry("scorecalc_templates.csv"))
+    zip.write((getHeader[ScoreCalcTemplate] + "\n").getBytes("utf-8"))
+    for (scorecalctemplate <- templates) {
+      zip.write((getValues(scorecalctemplate) + "\n").getBytes("utf-8"))
     }
     zip.closeEntry()
 
@@ -722,6 +766,7 @@ object ResourceExchanger extends KutuService with RiegenBuilder {
           case Some(athlet: Athlet) => s"${athlet.id}"
           case Some(athlet: AthletView) => s"${athlet.id}"
           case Some(disziplin: Disziplin) => s"${disziplin.id}"
+          case Some(template: ScoreCalcTemplateView) => enc.encodeToString(scoreCalcTemplateViewFormat.write(template).compactPrint.getBytes)
           case Some(ts: Timestamp) =>
             import java.time.format.DateTimeFormatter
             import java.util.TimeZone

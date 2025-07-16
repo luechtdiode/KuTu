@@ -24,7 +24,9 @@ class GleichstandsregelTest extends AnyWordSpec with Matchers {
         case List(enote, dnote) =>
           val endnote = enote + dnote
           //println(s"athlet $a, disziplin ${wd.disziplin.id} note ${enote} ${dnote} ${endnote}")
-          WertungView(wd.id, a, wd, wk, Some(dnote), Some(enote), Some(endnote), None, None, 0)
+          WertungView(wd.id, a, wd, wk, Some(dnote), Some(enote), Some(endnote), None, None, 0, None)
+        case _ =>
+          WertungView(wd.id, a, wd, wk, None, None, None, None, None, 0, None)
       }
     }
   }

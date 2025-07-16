@@ -3,6 +3,7 @@ package ch.seidel.kutu.domain
 import java.time.LocalDate
 import java.util.UUID
 import ch.seidel.kutu.base.{KuTuBaseSpec, TestDBService}
+import ch.seidel.kutu.calc.{Max, ScoreCalcTemplate, TemplateJsonReader}
 
 import scala.annotation.tailrec
 import scala.util.matching.Regex
@@ -12,7 +13,7 @@ class WettkampfSpec extends KuTuBaseSpec {
     "create with disziplin-plan-times" in {
       val wettkampf = createWettkampf(LocalDate.now(), "titel", Set(20), "testmail@test.com", 33, 0, None, "7,8,9,11,13,15,17,19", "7,8,9,11,13,15,17,19", "", "", "")
       assert(wettkampf.id > 0L)
-      val views = initWettkampfDisziplinTimes(UUID.fromString(wettkampf.uuid.get))
+      val views = initWettkampfDisziplinTimes(wettkampf.id)
       assert(views.nonEmpty)
     }
 
@@ -52,29 +53,200 @@ class WettkampfSpec extends KuTuBaseSpec {
     "recreate with disziplin-plan-times" in {
       val wettkampf = createWettkampf(LocalDate.now(), "titel2", Set(20), "testmail@test.com", 33, 0, None, "", "", "", "", "")
       assert(wettkampf.id > 0L)
-      val views = initWettkampfDisziplinTimes(UUID.fromString(wettkampf.uuid.get))
+      val views = initWettkampfDisziplinTimes(wettkampf.id)
       assert(views.nonEmpty)
       val wettkampf2 = createWettkampf(LocalDate.now(), "titel2", Set(20), "testmail@test.com", 33, 0, wettkampf.uuid, "", "", "", "", "")
       assert(wettkampf2.id == wettkampf.id)
-      val views2 = initWettkampfDisziplinTimes(UUID.fromString(wettkampf.uuid.get))
+      val views2 = initWettkampfDisziplinTimes(wettkampf.id)
       assert(views2.size == views.size)
     }
 
     "update disziplin-plan-time" in {
       val wettkampf = createWettkampf(LocalDate.now(), "titel2", Set(20), "testmail@test.com", 33, 0, None, "", "", "", "", "")
       assert(wettkampf.id > 0L)
-      val views = initWettkampfDisziplinTimes(UUID.fromString(wettkampf.uuid.get))
+      val views = initWettkampfDisziplinTimes(wettkampf.id)
 
       updateWettkampfPlanTimeView(views(0).toWettkampfPlanTimeRaw.copy(einturnen = 20000))
-      val reloaded = loadWettkampfDisziplinTimes(UUID.fromString(wettkampf.uuid.get))
+      val reloaded = loadWettkampfDisziplinTimes(wettkampf.id)
       assert(reloaded(0).einturnen == 20000L)
     }
 
     "delete all disziplin-plan-time entries when wk is deleted" in {
       val wettkampf = createWettkampf(LocalDate.now(), "titel3", Set(20), "testmail@test.com", 33, 0, None, "", "", "", "", "")
       deleteWettkampf(wettkampf.id)
-      val reloaded = loadWettkampfDisziplinTimes(UUID.fromString(wettkampf.uuid.get))
+      val reloaded = loadWettkampfDisziplinTimes(wettkampf.id)
       assert(reloaded.isEmpty)
+    }
+
+    "crud scorecalctemplates" in {
+      val wettkampf = createWettkampf(LocalDate.now(), "titel2", Set(20), "testmail@test.com", 33, 0, None, "", "", "", "", "")
+      assert(wettkampf.id > 0L)
+
+      val templ =
+        """{
+          "id": 0, "wettkampfId": wettkampf-id,
+          "dFormula": "max($Dname1.1, $Dname2.1)^",
+          "eFormula": "10 - avg($Ename1.3, $Ename2.3)",
+          "pFormula": "($Pname.0 / 10)^",
+          "aggregateFn": "Max"
+        }""".replace("wettkampf-id", wettkampf.id.toString)
+      println(templ)
+      val t: ScoreCalcTemplate = TemplateJsonReader(
+        templ)
+      updateScoreCalcTemplates(List(t))
+      val templates = loadScoreCalcTemplatesAll(wettkampf.id)
+      assert(templates.size === 1)
+      assert(templates(0).copy(id = 0) === t)
+      updateScoreCalcTemplate(templates(0).copy(disziplinId = Some(1), wettkampfdisziplinId = Some(41)))
+      val updtmpl = loadScoreCalcTemplatesAll(wettkampf.id)
+      assert(updtmpl.size === 1)
+      assert(updtmpl(0).copy(id = 0) === t.copy(disziplinId = Some(1), wettkampfdisziplinId = Some(41)))
+
+    }
+    "read default wettkampfdisziplin_id template via notenspez" in {
+      val wettkampf = createWettkampf(LocalDate.now(), "titel2", Set(20), "testmail@test.com", 33, 0, None, "", "", "", "", "")
+      assert(wettkampf.id > 0L)
+      val templ = List(
+        """{
+          "id": 0,
+          "wettkampfdisziplinId": 141,
+          "dFormula": "0.0",
+          "eFormula": "$EENote.2^",
+          "pFormula": "0.0",
+          "aggregateFn": "Max"
+        }"""
+      )
+      val t: List[ScoreCalcTemplate] = templ.map(TemplateJsonReader(_))
+      val templates = t.map(createScoreCalcTempate)
+      println(loadScoreCalcTemplates(wettkampf.id))
+      val wkdWithTemplates = readWettkampfDisziplinView(wettkampf.id, 141, scala.collection.mutable.Map[Long, List[ScoreCalcTemplate]]())
+      println(wkdWithTemplates)
+      assert(wkdWithTemplates.notenSpez.template match {
+        case Some(ScoreCalcTemplate(_,None,None,Some(141),"0.0","$EENote.2^","0.0",Some(Max))) => true
+        case _ => false
+      })
+      templates.foreach(deleteScoreCalcTemplate)
+    }
+    "read non-existing wettkampfdisziplin_id template via notenspez" in {
+      val wettkampf = createWettkampf(LocalDate.now(), "titel2", Set(20), "testmail@test.com", 33, 0, None, "", "", "", "", "")
+      assert(wettkampf.id > 0L)
+
+      val wkdWithTemplates = readWettkampfDisziplinView(wettkampf.id, 140, scala.collection.mutable.Map[Long, List[ScoreCalcTemplate]]())
+      println(wkdWithTemplates)
+      assert(wkdWithTemplates.notenSpez.template === None)
+    }
+    "read overridden wettkampfdisziplin_id template via notenspez" in {
+      val wettkampf = createWettkampf(LocalDate.now(), "titel2", Set(20), "testmail@test.com", 33, 0, None, "", "", "", "", "")
+      assert(wettkampf.id > 0L)
+      val templ =
+        """{
+          "id": 0,
+          "wettkampfId": wettkampf-id,
+          "wettkampfdisziplinId": 141,
+          "dFormula": "max($Dname1.1, $Dname2.1)^",
+          "eFormula": "10 - avg($Ename1.3, $Ename2.3)",
+          "pFormula": "($Pname.0 / 10)^",
+          "aggregateFn": "Max"
+        }""".replace("wettkampf-id", wettkampf.id.toString)
+      println(templ)
+      val t: ScoreCalcTemplate = TemplateJsonReader(templ)
+      updateScoreCalcTemplates(List(t))
+
+      val wkdWithTemplates = readWettkampfDisziplinView(wettkampf.id, 141, scala.collection.mutable.Map[Long, List[ScoreCalcTemplate]]())
+      println(wkdWithTemplates)
+      assert(wkdWithTemplates.notenSpez.template match {
+        case Some(ScoreCalcTemplate(_,Some(wettkampf.id),None,Some(141),"max($Dname1.1, $Dname2.1)^","10 - avg($Ename1.3, $Ename2.3)","($Pname.0 / 10)^",Some(Max))) => true
+        case Some(other) =>
+          println(other)
+          false
+        case _ => false
+      })
+    }
+    "read overridden disziplin_id template via notenspez" in {
+      val wettkampf = createWettkampf(LocalDate.now(), "titel2", Set(20), "testmail@test.com", 33, 0, None, "", "", "", "", "")
+      assert(wettkampf.id > 0L)
+      val templ = List(
+        """{
+          "id": 0,
+          "wettkampfId": wettkampf-id,
+          "disziplinId": 4,
+          "dFormula": "max($Dname1.1, $Dname2.1)^",
+          "eFormula": "10 - avg($Ename1.3, $Ename2.3)",
+          "pFormula": "($Pname.0 / 10)^",
+          "aggregateFn": "Max"
+        }""".replace("wettkampf-id", wettkampf.id.toString),
+        """{
+          "id": 0,
+          "wettkampfdisziplinId": 141,
+          "dFormula": "0.0",
+          "eFormula": "$EENote.2^",
+          "pFormula": "0.0",
+          "aggregateFn": "Max"
+        }""",
+      )
+      val t: List[ScoreCalcTemplate] = templ.map(TemplateJsonReader(_))
+      val templates = t.map(createScoreCalcTempate)
+
+      val wkdWithTemplates = readWettkampfDisziplinView(wettkampf.id, 75, scala.collection.mutable.Map[Long, List[ScoreCalcTemplate]]())
+      println(wkdWithTemplates)
+      assert(wkdWithTemplates.notenSpez.template match {
+        case Some(ScoreCalcTemplate(_,Some(wettkampf.id),Some(4),None,"max($Dname1.1, $Dname2.1)^","10 - avg($Ename1.3, $Ename2.3)","($Pname.0 / 10)^",Some(Max))) => true
+        case Some(other) =>
+          println(other)
+          false
+        case _ => false
+      })
+      templates.foreach(deleteScoreCalcTemplate)
+    }
+
+    "read default disziplin_id template via notenspez" in {
+      val wettkampf = createWettkampf(LocalDate.now(), "titel2", Set(20), "testmail@test.com", 33, 0, None, "", "", "", "", "")
+      assert(wettkampf.id > 0L)
+
+      val templ =
+        """{
+          "id": 0, "wettkampfId": wettkampf-id, "disziplinId": 1,
+          "dFormula": "max($Dname1.1, $Dname2.1)^",
+          "eFormula": "10 - avg($Ename1.3, $Ename2.3)",
+          "pFormula": "($Pname.0 / 10)^",
+          "aggregateFn": "Max"
+        }""".replace("wettkampf-id", wettkampf.id.toString)
+      val t: ScoreCalcTemplate = TemplateJsonReader(templ)
+      updateScoreCalcTemplates(List(t))
+      val templates = loadScoreCalcTemplatesAll(wettkampf.id)
+      assert(templates.size === 1)
+      assert(templates(0).copy(id = 0) === t)
+      val wkdWithTemplates = readWettkampfDisziplinView(wettkampf.id, 140, scala.collection.mutable.Map[Long, List[ScoreCalcTemplate]]())
+      assert(wkdWithTemplates.notenSpez.template match {
+        case Some(ScoreCalcTemplate(_,Some(wettkampf.id),Some(1),None,"max($Dname1.1, $Dname2.1)^","10 - avg($Ename1.3, $Ename2.3)","($Pname.0 / 10)^",Some(Max))) => true
+        case Some(other) =>
+          println(other)
+          false
+        case _ => false
+      })
+    }
+
+    "delete scorecalctemplate entries when wk is deleted" in {
+      val wettkampf = createWettkampf(LocalDate.now(), "titel3", Set(20), "testmail@test.com", 33, 0, None, "", "", "", "", "")
+      val templ =
+        """{
+          "id": 0, "wettkampfId": wettkampf-id,
+          "dFormula": "max($Dname1.1, $Dname2.1)^",
+          "eFormula": "10 - avg($Ename1.3, $Ename2.3)",
+          "pFormula": "($Pname.0 / 10)^",
+          "aggregateFn": "Max"
+        }""".replace("wettkampf-id", wettkampf.id.toString)
+      println(templ)
+      val t: ScoreCalcTemplate = TemplateJsonReader(
+        templ)
+      updateScoreCalcTemplates(List(t))
+      deleteWettkampf(wettkampf.id)
+      val reloaded = loadScoreCalcTemplates(wettkampf.id)
+      assert(reloaded.count {
+        case ScoreCalcTemplate(_, Some(id), _, _, _, _, _, _) =>
+          wettkampf.id == id
+        case _ => false
+      } === 0)
     }
 
     "create WK Modus with programs and disciplines" in {

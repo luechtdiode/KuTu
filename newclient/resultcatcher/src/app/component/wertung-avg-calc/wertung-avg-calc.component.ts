@@ -165,7 +165,6 @@ export class WertungAvgCalcComponent implements ControlValueAccessor {
   disabled = false;
 
   writeValue(avgValue: number) {
-    //console.log('writValue ' + avgValue);
     this.avgValue = avgValue;
     this.singleValues = [{value: avgValue}];
   }
