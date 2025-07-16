@@ -119,7 +119,7 @@ trait AthletService extends DBService with AthletResultMapper with VereinService
   }
 
   private def insertAthlete2(importAthlet: (String, Athlet)) = {
-    val (id, athlete) = importAthlet
+    val (csvid, athlete) = importAthlet
 
     def getId = athlete.id match {
       case 0 => athlete.gebdat match {
@@ -174,7 +174,7 @@ trait AthletService extends DBService with AthletResultMapper with VereinService
     }
     .map { a: Athlet =>
       publishChanged(a)
-      (id, a)
+      (csvid, a)
     }
   }
 
