@@ -18,9 +18,9 @@ object GroupSection {
   }
 
   def mapAvgRang(list: Iterable[(DataObject, Resultat, Resultat)]) = {
-    val rangD = (0 +: list.toList.map(_._3.noteD).filter(_ != 0).distinct.sorted.reverse).zipWithIndex.toMap
-    val rangE = (0 +: list.toList.map(_._3.noteE).filter(_ != 0).distinct.sorted.reverse).zipWithIndex.toMap
-    val rangEnd = (0 +: list.toList.map(_._3.endnote).filter(_ != 0).sorted.distinct.reverse).zipWithIndex.toMap
+    val rangD = (BigDecimal(0) +: list.toList.map(_._3.noteD).filter(_ != 0).sorted.reverse).zipWithIndex.groupBy(_._1).map(x => x._1 -> x._2.map(_._2).min)
+    val rangE = (BigDecimal(0) +: list.toList.map(_._3.noteE).filter(_ != 0).sorted.reverse).zipWithIndex.groupBy(_._1).map(x => x._1 -> x._2.map(_._2).min)
+    val rangEnd = (BigDecimal(0) +: list.toList.map(_._3.endnote).filter(_ != 0).sorted.reverse).zipWithIndex.groupBy(_._1).map(x => x._1 -> x._2.map(_._2).min)
     def rang(r: Resultat) = {
       val rd = rangD.getOrElse(r.noteD, 0)
       val re = rangE.getOrElse(r.noteE, 0)
