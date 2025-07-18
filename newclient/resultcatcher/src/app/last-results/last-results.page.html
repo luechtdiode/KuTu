@@ -105,7 +105,7 @@
         okText='Okay' cancelText='Abbrechen'>
         <ion-select-option value='undefined'>Kein Durchgangfilter</ion-select-option>
         <ion-select-option *ngFor='let d of getDurchgaenge()' [value]='d'>
-          <em *ngIf="isDurchgangActiv(d)">(atkiv) {{d}}</em><div *ngIf="!isDurchgangActiv(d)">(inaktiv) {{d}}</div>
+          <em *ngIf="isDurchgangActiv(d)">(aktiv) {{d}}</em><div *ngIf="!isDurchgangActiv(d)">(inaktiv) {{d}}</div>
         </ion-select-option>
       </ion-select>
     </ion-item>
