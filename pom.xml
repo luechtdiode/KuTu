@@ -315,8 +315,8 @@
 
 	<properties>
 		<app.majorminor.version>${parsedVersion.majorVersion}.${parsedVersion.minorVersion}</app.majorminor.version>
-		<!--app.version>${parsedVersion.majorVersion}.${parsedVersion.minorVersion}.${parsedVersion.incrementalVersion}</app.version-->
-		<app.version>${project.version}</app.version>
+		<app.version>${parsedVersion.majorVersion}.${parsedVersion.minorVersion}.${parsedVersion.incrementalVersion}</app.version>
+		<!--app.version>${project.version}</app.version-->
 		<buildDate>${maven.build.timestamp}</buildDate>
 		<maven.build.timestamp.format>yyyy-MM-dd HH:mm</maven.build.timestamp.format>
 		<jdk-home>${JAVA_HOME}</jdk-home>
