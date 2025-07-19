@@ -33,7 +33,7 @@ object ScoreCalcVariable_ {
 }
 
 case class ScoreCalcVariable(source: String, prefix: String, name: String, scale: Option[Int], value: BigDecimal, index: Int = 0) extends DataObject  {
-  def updated(newValue: BigDecimal): ScoreCalcVariable = copy(value = newValue.setScale(value.scale, RoundingMode.HALF_UP)): ScoreCalcVariable
+  def updated(newValue: BigDecimal): ScoreCalcVariable = copy(value = newValue.setScale(scale.getOrElse(value.scale), RoundingMode.HALF_UP)): ScoreCalcVariable
   def equalID(other: ScoreCalcVariable): Boolean = prefix.equals(other.prefix) && name.equals(other.name) && index.equals(other.index)
   def isGeneric: Boolean = source.isEmpty
 }

@@ -19,7 +19,7 @@ import scalafx.event.ActionEvent
 import scalafx.event.subscriptions.Subscription
 import scalafx.scene.control._
 import scalafx.scene.control.cell._
-import scalafx.scene.input.{Clipboard, KeyCode, KeyEvent, MouseEvent}
+import scalafx.scene.input.{Clipboard, ClipboardContent, KeyCode, KeyEvent, MouseEvent}
 import scalafx.util.StringConverter
 
 import java.util
@@ -322,7 +322,7 @@ object AutoCommitTextFieldTableCell {
         }
 
       case KeyCode.Delete if tableView.delegate.getEditingCell == null =>
-        lastKey = Some("")
+        lastKey = Some("@DELETE@")
         tableView.edit(fc.row, tc)
 
       // Paste via CTRL+V or SHIFT+INSERT
@@ -330,7 +330,14 @@ object AutoCommitTextFieldTableCell {
         lastKey = Some(Clipboard.systemClipboard.string)
         tableView.edit(fc.row, tc)
 
-      case c if (c.isLetterKey || c.isDigitKey || c.getChar == "-") && tableView.delegate.getEditingCell == null =>
+      case c if ke.controlDown && ke.text.toLowerCase.equals("c") =>
+        ke.consume()
+        val clipboard = Clipboard.systemClipboard
+        val content = new ClipboardContent
+        content.putString(s"${tc.getCellObservableValue(fc.row).getValue}")
+        clipboard.setContent(content)
+
+      case c if !ke.controlDown && (c.isLetterKey || c.isDigitKey || ke.text.toLowerCase.equals("-")) && tableView.delegate.getEditingCell == null =>
         lastKey = Some(ke.getText)
         tableView.edit(fc.row, tc)
 
@@ -348,6 +355,7 @@ object AutoCommitTextFieldTableCell {
 trait FormularAction[S, T] {
   def fire(cell: TextFieldWithToolButtonTableCell[S, T],actionEvent: ActionEvent): Unit
   def hasFormular(cell: TextFieldWithToolButtonTableCell[S, T]): Boolean
+  def clear(cell: TextFieldWithToolButtonTableCell[S, T],actionEvent: ActionEvent): Unit
 }
 
 class AutoCommitTextFieldTableCell[S, T](
@@ -427,7 +435,10 @@ class AutoCommitTextFieldTableCell[S, T](
       case _ => None
     }
     (textField, AutoCommitTextFieldTableCell.lastKey) match {
-      case (Some(TextFieldWithToolButton(tf,b)), Some(text)) =>
+      case (Some(TextFieldWithToolButton(tf,b)), Some(t)) =>
+        val isDelete = "@DELETE@".equals(t)
+        AutoCommitTextFieldTableCell.lastKey = None
+        val text = if (isDelete) "" else t
         if (editable.value && !b.visible.value) {
           tf.setText(text)
         }
@@ -435,9 +446,15 @@ class AutoCommitTextFieldTableCell[S, T](
           formularAction match {
             case Some(a) if (a.hasFormular(this)) =>
               val ae = new ActionEvent(this, b)
-              a.fire(this, ae)
-              AutoCommitTextFieldTableCell.setEditMode(false)
-              cancelEdit()
+              if (isDelete) {
+                a.clear(this, ae)
+                AutoCommitTextFieldTableCell.setEditMode(false)
+                cancelEdit()
+              } else {
+                a.fire(this, ae)
+                AutoCommitTextFieldTableCell.setEditMode(false)
+                cancelEdit()
+              }
             case _ =>
               if (text.trim.isEmpty) tf.selectAll() else {
                 tf.deselect()

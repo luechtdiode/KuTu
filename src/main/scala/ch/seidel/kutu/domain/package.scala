@@ -1282,9 +1282,9 @@ package object domain {
     def calcEndnote(wertung: Wertung, wettkampfDisziplin: WettkampfdisziplinView): Wertung = {
       def standardCalc = {
         // ignoring variables ...
-        if (wettkampfDisziplin.isDNoteUsed && wertung.noteD.isEmpty) {
+        if (wettkampfDisziplin.isDNoteUsed && (wertung.variables.nonEmpty || wertung.noteD.isEmpty)) {
           wertung.copy(noteD = None, noteE = None, endnote = None)
-        } else if (!wettkampfDisziplin.isDNoteUsed && wertung.noteE.isEmpty) {
+        } else if (!wettkampfDisziplin.isDNoteUsed && (wertung.variables.nonEmpty || wertung.noteE.isEmpty)) {
           wertung.copy(noteD = None, noteE = None, endnote = None)
         } else {
           val (d, e) = validated(wertung.noteD.getOrElse(BigDecimal(0)).doubleValue, wertung.noteE.getOrElse(BigDecimal(0)).doubleValue, wettkampfDisziplin)

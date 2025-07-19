@@ -274,7 +274,35 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
           val w = cell.tableRow.value.item.value(index)
           w.init.defaultVariables.nonEmpty
         }
-
+        override def clear(cell: TextFieldWithToolButtonTableCell[IndexedSeq[WertungEditor], Double], ae: ActionEvent): Unit = {
+          val w = cell.tableRow.value.item.value(index)
+          w.clearInput()
+          val box = TemplateFormular(w)
+          PageDisplayer.showInDialog(box.caption, new DisplayablePage() {
+            def getPage: Node = {
+              new BorderPane {
+                hgrow = Priority.Always
+                vgrow = Priority.Always
+                center = box
+              }
+            }
+          },
+            new Button("OK") {
+              onAction = handleAction { implicit e: ActionEvent =>
+                try {
+                  cell.commitEdit(cell.sc.fromString(mapper(w.commit)))
+                }
+                catch {
+                  case e: IllegalArgumentException =>
+                    PageDisplayer.showErrorDialog(box.caption)(e)
+                }
+              }
+            }
+          )(ae)
+          //if (w.isDirty) {
+          //  service.updateWertung(w.updateAndcommit)
+          //}
+        }
         override def fire(cell: TextFieldWithToolButtonTableCell[IndexedSeq[WertungEditor], Double], ae: ActionEvent): Unit = {
           val w = cell.tableRow.value.item.value(index)
           val box = TemplateFormular(w)
@@ -2216,16 +2244,13 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
           }
         }, new Button("OK") {
           onAction = (event: ActionEvent) => {
-            var index = 0
             val rowIndex = wkModel.indexOf(selected)
             if (rowIndex > -1) {
               for (disciplin <- selected) {
                 disciplin.clearInput()
                 if (disciplin.isDirty) {
-                  wkModel.update(rowIndex, selected.updated(index, WertungEditor(service.updateWertung(disciplin.commit))))
-                  wkview.requestFocus()
+                  service.updateWertung(disciplin.updateAndcommit)
                 }
-                index = index + 1
               }
             }
           }
@@ -2262,7 +2287,7 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
                   || index == disziplinlist.indexOf(durchgangFilter.disziplin.get)) {
                   disciplin.clearInput()
                   if (disciplin.isDirty) {
-                    wkModel.update(rowIndex, wertungen.updated(index, WertungEditor(service.updateWertung(disciplin.updateAndcommit))))
+                    service.updateWertung(disciplin.updateAndcommit)
                   }
                 }
               }

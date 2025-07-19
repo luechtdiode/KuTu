@@ -53,10 +53,10 @@ case class WertungEditor(private var lastCommitted: WertungView) {
     val stringvalue = ObjectProperty[String](score.value.value.toString())
     stringvalue.onChange { (_, _, nv) =>
       try {
-        score.value = score.value.updated(BigDecimal(nv))
+        score.value = score.value.updated(BigDecimal(nv).setScale(score.value.scale.getOrElse(0)))
       } catch {
         case e:NumberFormatException =>
-          score.value = score.value.updated(BigDecimal(0))
+          score.value = score.value.updated(BigDecimal(0).setScale(score.value.scale.getOrElse(0)))
       }
     }
     var notifying = false
@@ -84,11 +84,11 @@ case class WertungEditor(private var lastCommitted: WertungView) {
       }
       wertung.noteE match {
         case Some(d) => noteE.value = d.toDouble
-        case _ => noteD.value = Double.NaN
+        case _ => noteE.value = Double.NaN
       }
       wertung.endnote match {
         case Some(d) => endnote.value = d.toDouble
-        case _ => noteD.value = Double.NaN
+        case _ => endnote.value = Double.NaN
       }
       notifyListeners(wertung)
     } finally {
@@ -128,7 +128,7 @@ case class WertungEditor(private var lastCommitted: WertungView) {
   }
 
   private def changed(propertyValue: Double, initValue: Option[BigDecimal]): Boolean = {
-    if (propertyValue == Double.NaN && initValue.isEmpty) {
+    if (propertyValue.equals(Double.NaN) && initValue.isEmpty) {
       false
     } else if (initValue.map(_.toDouble).contains(propertyValue)) {
       false
@@ -140,10 +140,22 @@ case class WertungEditor(private var lastCommitted: WertungView) {
   def clearInput(): Unit = {
     notifying = true
     try {
-      resetVariables()
       noteD.value = Double.NaN
       noteE.value = Double.NaN
       endnote.value = Double.NaN
+      lastCommitted.defaultVariables match {
+        case Some(v) =>
+          dVariables.value.setAll(v.dVariables.map(ScoreCalcVariableEditor(_)).asJavaCollection)
+          eVariables.value.setAll(v.eVariables.map(ScoreCalcVariableEditor(_)).asJavaCollection)
+          pVariables.value.setAll(v.pVariables.map(ScoreCalcVariableEditor(_)).asJavaCollection)
+        case _ =>
+          dVariables.value.clear()
+          eVariables.value.clear()
+          pVariables.value.clear()
+      }
+      dVariables.value.foreach(v => v.stringvalue.value = "0")
+      eVariables.value.foreach(v => v.stringvalue.value = "0")
+      pVariables.value.foreach(v => v.stringvalue.value = "0")
     } finally {
       notifying = false
       onChange()
@@ -196,7 +208,6 @@ case class WertungEditor(private var lastCommitted: WertungView) {
   def reset: Unit = {
     notifying = true
     try {
-      resetVariables()
       lastCommitted.noteD match {
         case Some(d) =>
           noteD.value = d.toDouble
@@ -215,6 +226,7 @@ case class WertungEditor(private var lastCommitted: WertungView) {
         case _ =>
           endnote.value = Double.NaN
       }
+      resetVariables()
     } finally {
       notifying = false
       notifyListeners(commit)
@@ -262,7 +274,7 @@ case class WertungEditor(private var lastCommitted: WertungView) {
 
   def commit: Wertung = {
     lastCommitted.wettkampfdisziplin.verifiedAndCalculatedWertung(
-      init.toWertung.copy(
+      lastCommitted.toWertung.copy(
         noteD = toOption(noteD.value),
         noteE = toOption(noteE.value),
         endnote = toOption(endnote.value),
