@@ -347,7 +347,22 @@ class NetworkTab(wettkampfmode: BooleanProperty, override val wettkampfInfo: Wet
         }
       }
     }
-    model.setAll(items.asJavaCollection)
+    if (model.isEmpty) {
+      model.setAll(items.asJavaCollection)
+    } else {
+      items.zip(model).foreach(pair => syncTreeItems(pair._1, pair._2))
+      if (items.size < model.size) {
+        model.removeRange(items.size, model.size-1)
+      }
+      if (model.isEmpty) {
+        val collection = items.asJavaCollection
+        model.setAll(collection)
+      }
+      if (items.size > model.size) {
+        model.addAll(items.drop(model.size).asJavaCollection)
+      }
+    }
+
     isRunning.set(model.exists(_.getValue.isRunning))
     selected.foreach(selection => {
       if (selection.column > -1 && view.getColumns.size() > selection.column) {
@@ -356,6 +371,20 @@ class NetworkTab(wettkampfmode: BooleanProperty, override val wettkampfInfo: Wet
       }
     })
     updateButtons
+  }
+
+  private def syncTreeItems(source: TreeItem[DurchgangState], target: TreeItem[DurchgangState]):Unit = {
+    if (!target.getValue.equals(source.getValue)) {
+      target.value = source.getValue
+    }
+    source.children.zip(target.children).foreach(pair => syncTreeItems(pair._1, pair._2))
+    if (source.children.size < target.children.size) {
+      target.children.removeRange(source.children.size, target.children.size-1)
+    }
+    if (source.children.size > target.children.size) {
+      target.children.addAll(source.children.drop(target.children.size))
+    }
+    target.expanded = source.isExpanded
   }
 
   var subscriptions: List[Subscription] = List.empty
@@ -837,12 +866,14 @@ class NetworkTab(wettkampfmode: BooleanProperty, override val wettkampfInfo: Wet
           case AthletWertungUpdated(ahtlet: AthletView, wertung: Wertung, wettkampfUUID: String, durchgang: String, geraet: Long, programm: String) =>
             if (selected.value) {
               println("refreshing network-dashboard from websocket", newItem)
-              DeferredPanelRefresher.submitUpdateTask(() => refreshData()) //refreshData()
+              //DeferredPanelRefresher.submitUpdateTask(() => refreshData()) //
+              refreshData()
             }
           case AthletWertungUpdatedSequenced(ahtlet: AthletView, wertung: Wertung, wettkampfUUID: String, durchgang: String, geraet: Long, programm: String, sequenceId) =>
             if (selected.value) {
               println("refreshing network-dashboard from websocket", newItem)
-              DeferredPanelRefresher.submitUpdateTask(() => refreshData()) //refreshData()
+              //DeferredPanelRefresher.submitUpdateTask(() => refreshData()) //
+              refreshData()
             }
           case _ =>
         }
