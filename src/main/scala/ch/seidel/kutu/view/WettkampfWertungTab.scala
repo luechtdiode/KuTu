@@ -1,15 +1,15 @@
 package ch.seidel.kutu.view
 
-import ch.seidel.commons.{AutoCommitTextFieldTableCell, _}
+import ch.seidel.commons._
 import ch.seidel.kutu.Config._
-import ch.seidel.kutu.KuTuApp.{controlsView, enc, handleAction, saveWettkampf, tree, updateTree}
+import ch.seidel.kutu.KuTuApp.{enc, handleAction}
 import ch.seidel.kutu.actors._
 import ch.seidel.kutu.domain._
 import ch.seidel.kutu.http.WebSocketClient
 import ch.seidel.kutu.renderer.PrintUtil.FilenameDefault
 import ch.seidel.kutu.renderer._
 import ch.seidel.kutu.squad.RiegenBuilder.{generateRiegen2Name, generateRiegenName}
-import ch.seidel.kutu.{Config, KuTuApp, KuTuServer, squad}
+import ch.seidel.kutu.{Config, KuTuApp, KuTuServer}
 import javafx.scene.{control => jfxsc}
 import org.slf4j.{Logger, LoggerFactory}
 import scalafx.Includes._
@@ -274,6 +274,7 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
           val w = cell.tableRow.value.item.value(index)
           w.init.defaultVariables.nonEmpty
         }
+
         override def fire(cell: TextFieldWithToolButtonTableCell[IndexedSeq[WertungEditor], Double], ae: ActionEvent): Unit = {
           val w = cell.tableRow.value.item.value(index)
           val box = TemplateFormular(w)
@@ -368,10 +369,6 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
             }
             if (disciplin.isDirty) {
               service.updateWertung(disciplin.updateAndcommit)
-              /*
-              val row = evt.tableView.items.value(evt.tablePosition.row)
-              evt.tableView.items.value.set(evt.tablePosition.row, row.updated(index, WertungEditor(service.updateWertung(disciplin.commit))))
-               */
             }
           }
           evt.tableView.requestFocus()
@@ -438,10 +435,6 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
             }
             if (disciplin.isDirty) {
               service.updateWertung(disciplin.updateAndcommit)
-              /*
-              val row = evt.tableView.items.value(evt.tablePosition.row)
-              evt.tableView.items.value.set(evt.tablePosition.row, row.updated(index, WertungEditor(service.updateWertung(disciplin.commit))))
-               */
             }
           }
           evt.tableView.requestFocus()
@@ -900,11 +893,12 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
     new WKTableColumn[String](-1) {
       text = "Punkte"
       cellValueFactory = { x =>
-        val sumProperty = new StringProperty()
-        sumProperty <== createStringBinding(() => f"${
-          x.value
-            .map(w => w.endnote.value).sum
-        }%3.3f", x.value.map(_.endnote):_*)
+        def sum = {
+          x.value.flatMap(w => w.calculatedWertung.value.endnote).sum
+        }
+
+        val sumProperty = new StringProperty(f"$sum%3.3f")
+        sumProperty <== createStringBinding(() => f"$sum%3.3f", x.value.map(_.calculatedWertung): _*)
         sumProperty
       }
       prefWidth = 100
@@ -1296,7 +1290,6 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
         csvRaw.filter(item => item._4 != item._1) ++ toRemove
       }
     }
-    import scala.concurrent.ExecutionContext.Implicits._
     cliprawf.onComplete {
       case Failure(t) => println(t.toString)
       case Success(clipraw) => Platform.runLater {
@@ -1532,7 +1525,6 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
           }.toList
       }
     }
-    import scala.concurrent.ExecutionContext.Implicits._
     cliprawf.onComplete {
       case Failure(t) => logger.debug(t.toString)
       case Success(clipraw) => Platform.runLater {

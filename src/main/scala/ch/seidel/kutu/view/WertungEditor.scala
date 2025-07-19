@@ -207,13 +207,13 @@ case class WertungEditor(private var lastCommitted: WertungView) {
         case Some(d) =>
           noteE.value = d.toDouble
         case _ =>
-          noteD.value = Double.NaN
+          noteE.value = Double.NaN
       }
       lastCommitted.endnote match {
         case Some(d) =>
           endnote.value = d.toDouble
         case _ =>
-          noteD.value = Double.NaN
+          endnote.value = Double.NaN
       }
     } finally {
       notifying = false
