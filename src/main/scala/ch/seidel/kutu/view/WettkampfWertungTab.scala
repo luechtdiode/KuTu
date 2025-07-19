@@ -900,13 +900,12 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
     new WKTableColumn[String](-1) {
       text = "Punkte"
       cellValueFactory = { x =>
-        new ReadOnlyStringWrapper(x.value, "punkte", {
-          f"${
-            x.value
-              .filter(_.init.endnote.nonEmpty)
-              .map(w => w.init.endnote.get).sum
-          }%3.3f"
-        })
+        val sumProperty = new StringProperty()
+        sumProperty <== createStringBinding(() => f"${
+          x.value
+            .map(w => w.endnote.value).sum
+        }%3.3f", x.value.map(_.endnote):_*)
+        sumProperty
       }
       prefWidth = 100
       delegate.setReorderable(false)
@@ -925,14 +924,12 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
         wertungen = wertungen.updated(idx, changed)
       }
 
-      seq2.foreach { change =>
-        change match {
-          case Remove(position, removed) =>
-          case Add(position, added) =>
-            updateWertungen(position)
-          case Reorder(start, end, permutation) =>
-          case Update(from, to) =>
-        }
+      seq2.foreach {
+        case Remove(position, removed) =>
+        case Add(position, added) =>
+          updateWertungen(position)
+        case Reorder(start, end, permutation) =>
+        case Update(from, to) =>
       }
     }
   }

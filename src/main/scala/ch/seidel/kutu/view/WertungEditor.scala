@@ -272,6 +272,7 @@ case class WertungEditor(private var lastCommitted: WertungView) {
 
   def updateAndcommit: Wertung = {
     lastCommitted = lastCommitted.updatedWertung(commit)
+    reset
     lastCommitted.toWertung
   }
 
