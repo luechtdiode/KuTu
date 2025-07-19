@@ -1,7 +1,5 @@
 package ch.seidel.commons
 
-import impl.org.controlsfx.autocompletion.AutoCompletionTextFieldBinding
-import javafx.event.EventTarget
 import javafx.scene.control.{TextField, cell => jfxscc}
 import javafx.scene.{control => jfxsc}
 import javafx.util.Callback
@@ -19,13 +17,12 @@ import scalafx.css.PseudoClass
 import scalafx.delegate.SFXDelegate
 import scalafx.event.ActionEvent
 import scalafx.event.subscriptions.Subscription
-import scalafx.scene.control.cell._
 import scalafx.scene.control._
+import scalafx.scene.control.cell._
 import scalafx.scene.input.{Clipboard, KeyCode, KeyEvent, MouseEvent}
 import scalafx.util.StringConverter
 
 import java.util
-import java.util.Collection
 import scala.jdk.CollectionConverters.IterableHasAsJava
 import scala.language.implicitConversions
 
@@ -325,7 +322,7 @@ object AutoCommitTextFieldTableCell {
         }
 
       case KeyCode.Delete if tableView.delegate.getEditingCell == null =>
-        lastKey = None
+        lastKey = Some("")
         tableView.edit(fc.row, tc)
 
       // Paste via CTRL+V or SHIFT+INSERT
@@ -339,7 +336,7 @@ object AutoCommitTextFieldTableCell {
 
       case c if (c.isWhitespaceKey) && tableView.delegate.getEditingCell == null =>
         ke.consume()
-        lastKey = None
+        lastKey = Some("")
         tableView.edit(fc.row, tc)
 
       case _ =>
@@ -442,8 +439,10 @@ class AutoCommitTextFieldTableCell[S, T](
               AutoCommitTextFieldTableCell.setEditMode(false)
               cancelEdit()
             case _ =>
-              tf.deselect()
-              tf.end()
+              if (text.trim.isEmpty) tf.selectAll() else {
+                tf.deselect()
+                tf.end()
+              }
           }
         })
       case (Some(TextFieldWithToolButton(tf,b)), None) =>
@@ -455,8 +454,9 @@ class AutoCommitTextFieldTableCell[S, T](
               AutoCommitTextFieldTableCell.setEditMode(false)
               cancelEdit()
             case _ =>
-              tf.deselect()
-              tf.end()
+              tf.selectAll()
+              //tf.deselect()
+              //tf.end()
           }
         })
       case _ =>
