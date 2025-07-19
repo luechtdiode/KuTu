@@ -2,17 +2,23 @@ package ch.seidel.kutu.view
 
 import ch.seidel.kutu.calc.{ScoreCalcTemplateView, ScoreCalcVariable}
 import ch.seidel.kutu.domain._
-import javafx.beans.property.SimpleObjectProperty
 import scalafx.beans.property.{BufferProperty, DoubleProperty, ObjectProperty}
 
 import scala.jdk.CollectionConverters.IterableHasAsJava
 
-
-case class WertungEditor(i: WertungView) {
+case class WertungEditor(private var lastCommitted: WertungView) {
   def init: WertungView = lastCommitted
+  def update(w: Wertung): Unit = {
+    lastCommitted = lastCommitted.updatedWertung(w)
+    reset
+  }
+  def update(w: WertungView): Unit = {
+    lastCommitted = w
+    reset
+  }
+
   type WertungChangeListener = (WertungEditor) => Unit
 
-  private var lastCommitted = i
   var listeners: Set[WertungChangeListener] = Set[WertungChangeListener]()
   def addListener(l: WertungChangeListener): Unit = {
     listeners += l
@@ -22,7 +28,7 @@ case class WertungEditor(i: WertungView) {
   }
   private var notifying = false
 
-  val matchesSexAssignment = lastCommitted.athlet.geschlecht match {
+  val matchesSexAssignment: Boolean = lastCommitted.athlet.geschlecht match {
     case "M" => lastCommitted.wettkampfdisziplin.masculin > 0
     case "W" => lastCommitted.wettkampfdisziplin.feminim > 0
     case _ => true

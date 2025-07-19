@@ -1193,22 +1193,12 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
     AutoCommitTextFieldTableCell.doWhenEditmodeEnds(() => {
       val selectionstore = wkview.selectionModel.value.getSelectedCells.toList
       val columnIndex = selectionstore.map(tp => wkview.getColumns.indexOf(tp.getTableColumn))
-      wertungen = wertungen.map { aw =>
-        val index = wkModel.indexOf(aw)
-        val newWertungen = aw.map { w =>
-          if (w.init.id == wertung.id && w.endnote != wertung.endnote) {
-            WertungEditor(w.init.updatedWertung(wertung))
-          } else {
-            w
+      wertungen.foreach { aw =>
+        aw.foreach { w =>
+          if (w.init.id == wertung.id && w.commit.endnote != wertung.endnote) {
+            w.update(w.init.updatedWertung(wertung))
           }
         }
-        if (index > -1 && wkModel(index).map(_.init.endnote.getOrElse(BigDecimal(0))).sum !=
-          newWertungen.map(_.init.endnote.getOrElse(BigDecimal(0))).sum) {
-          isFilterRefreshing = true
-          wkModel.update(index, newWertungen)
-          isFilterRefreshing = false
-        }
-        newWertungen
       }
 
       selectionstore
