@@ -197,11 +197,11 @@ trait AthletService extends DBService with AthletResultMapper with VereinService
     100 * count / math.max(text1.length, text2.length)
   }
 
-  def findAthleteLike(cache: java.util.Collection[MatchCode] = new java.util.ArrayList[MatchCode], wettkampf: Option[Long] = None, exclusive: Boolean)(athlet: Athlet): Athlet = {
+  def findAthleteLike(cache: java.util.Collection[MatchCode] = new java.util.ArrayList[MatchCode], wettkampf: Option[Long] = None, exclusive: Boolean, exactVerein: Boolean = true)(athlet: Athlet): Athlet = {
     val bmname = MatchCode.encode(athlet.name)
     val bmvorname = MatchCode.encode(athlet.vorname)
 
-    def similarAthletFactor(code: MatchCode) = {
+    def similarAthletFactor(code: MatchCode, exactVereinFlag: Boolean) = {
       val maxthresholdCharCount = 8
 
       def calcThreshold(text1: String, text2: String) =
@@ -220,8 +220,8 @@ trait AthletService extends DBService with AthletResultMapper with VereinService
       val preret = namenSimilarity > 140 && vorNamenSimilarity > 140
       val preret2 = namenSimilarity > 50 && vorNamenSimilarity > 25 && (namenSimilarity + vorNamenSimilarity) > 200 && (math.max(namenSimilarity, vorNamenSimilarity) > 140)
       val vereinSimilarity = athlet.verein match {
-        case Some(vid) => vid == code.verein
-        case _ => false
+        case Some(vid) => !exactVereinFlag || vid == code.verein
+        case _ => !exactVereinFlag
       }
       //      if (code.name.equals(athlet.name)) {
       //      print(athlet.easyprint, this)
@@ -242,18 +242,18 @@ trait AthletService extends DBService with AthletResultMapper with VereinService
 
     val preselect = if cache.isEmpty then {
       Await.result(database.run {
-        (wettkampf match {
-          case None => sql"""
+          (wettkampf match {
+            case None => sql"""
              select id, name, vorname, gebdat, verein
              from athlet
            """
-          case Some(wkid) => sql"""
+            case Some(wkid) => sql"""
              select id, name, vorname, gebdat, verein
              from athlet a
              where exists (select w.id from wertung w where w.wettkampf_id = $wkid and w.athlet_id = a.id)
            """
-        }).as[(Long, String, String, Option[Date], Long)].withPinnedSession
-      }, Duration.Inf).
+          }).as[(Long, String, String, Option[Date], Long)].withPinnedSession
+        }, Duration.Inf).
         flatMap { x =>
           val (id, name, vorname, gebdat, verein) = x
           val mc1 = MatchCode(id, name, vorname, gebdat, verein)
@@ -264,21 +264,34 @@ trait AthletService extends DBService with AthletResultMapper with VereinService
           }
 
         }.foreach {
-        cache.add
-      }
+          cache.add
+        }
       cache
     }
     else {
       cache
     }
     val presel2 = preselect.asScala.filter(mc => !exclusive || mc.id != athlet.id).map { matchcode =>
-      (matchcode.id, similarAthletFactor(matchcode))
+      (matchcode.id, similarAthletFactor(matchcode, exactVereinFlag = true))
     }.filter(p => p._2 > 0).toList.sortBy(_._2).reverse
     presel2.headOption.flatMap(k => loadAthlet(k._1)).getOrElse {
-      if !athlet.equals(Athlet()) then {
-        logger.warn("Athlet local not found! " + athlet.extendedprint)
+      if (!athlet.equals(Athlet()) && !exactVerein) {
+        val presel3 = preselect.asScala.filter(mc => !exclusive || mc.id != athlet.id).map { matchcode =>
+          (matchcode.id, similarAthletFactor(matchcode, exactVereinFlag = false))
+        }.filter(p => p._2 > 0).toList.sortBy(_._2).reverse
+        val maybeAthlet = presel3.headOption.flatMap(k => loadAthlet(k._1))
+        if (maybeAthlet.isDefined) {
+          logger.warn(s"unexact Athlet local found (searched: ${athlet.extendedprint}/${athlet.verein}, found: ${maybeAthlet.get.extendedprint}/${maybeAthlet.get.verein}")
+        } else {
+          logger.warn("unexact Athlet local not found! " + athlet.extendedprint)
+        }
+        maybeAthlet.getOrElse (athlet)
+      } else {
+        if (!athlet.equals(Athlet())) {
+          logger.warn("Athlet local not found! " + athlet.extendedprint)
+        }
+        athlet
       }
-      athlet
     }
   }
 

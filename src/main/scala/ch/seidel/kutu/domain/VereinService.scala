@@ -15,15 +15,64 @@ trait VereinService extends DBService with VereinResultMapper {
       sql"""        select id, name, verband from verein order by name""".as[Verein].withPinnedSession
     }, Duration.Inf).toList
   }
-  
-  def findVereinLike(verein: Verein): Option[Long] = {
-    Await.result(database.run{sql"""
+
+  def findVereinLike(verein: Verein, exact: Boolean = true): Option[Long] = {
+    if (exact) {
+      Await.result(database.run {
+        sql"""
                     select max(verein.id) as maxid
                     from verein
                     where LOWER(name)=${verein.name.toLowerCase()}
                       and LOWER(verband)=${verein.verband.map(_.toLowerCase()).getOrElse("")}
          """.as[Long].withPinnedSession
-         }, Duration.Inf).toList.headOption
+      }, Duration.Inf).toList.headOption
+    } else {
+      var result = Await.result(database.run {
+        sql"""
+                    select max(verein.id) as maxid
+                    from verein
+                    where LOWER(name)=${verein.name.toLowerCase()}
+                      and LOWER(verband) like ${verein.verband.map(v => s"%${v.toLowerCase()}%").getOrElse("%")}
+         """.as[Long].withPinnedSession
+      }, Duration.Inf).toList.headOption
+      if (result.isEmpty) {
+        println(s"findVereinLike: ${verein.name} ${verein.verband} => try like verein-name")
+        result = Await.result(database.run {
+          sql"""
+                    select max(verein.id) as maxid
+                    from verein
+                    where LOWER(name) like ${s"%${verein.name.toLowerCase()}%"}
+                      and LOWER(verband) like ${verein.verband.map(v => s"%${v.toLowerCase()}%").getOrElse("%")}
+         """.as[Long].withPinnedSession
+        }, Duration.Inf).toList.headOption
+        if (result.isEmpty && verein.name.split(",").length > 1) {
+          println(s"findVereinLike: ${verein.name} ${verein.verband} => try equals verein-name-parts")
+          result = Await.result(database.run {
+            sql"""
+                    select max(verein.id) as maxid
+                    from verein
+                    where LOWER(name)=${verein.name.split(",")(0).toLowerCase()}
+                      and LOWER(verband) like ${verein.verband.map(v => s"%${v.toLowerCase()}%").getOrElse("%")}
+         """.as[Long].withPinnedSession
+          }, Duration.Inf).toList.headOption
+          if (result.isEmpty && verein.name.split(",").length > 1) {
+            println(s"findVereinLike: ${verein.name} ${verein.verband} => try like verein-name-parts")
+            result = Await.result(database.run {
+              sql"""
+                    select max(verein.id) as maxid
+                    from verein
+                    where LOWER(name) like ${s"%${verein.name.split(",")(0).toLowerCase()}%"}
+                      and LOWER(verband) like ${verein.verband.map(v => s"%${v.toLowerCase()}%").getOrElse("%")}
+         """.as[Long].withPinnedSession
+            }, Duration.Inf).toList.headOption
+          }
+        }
+      }
+      if (result.isEmpty) {
+        println(s"findVereinLike: ${verein.name} ${verein.verband} => not found")
+      }
+      result
+    }
   }
   
   def insertVerein(verein: Verein): Verein = {
