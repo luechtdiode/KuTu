@@ -3,11 +3,11 @@
   <ion-input [label]="title" #noteInput *ngIf="singleValues.length < 2" autofocus placeholder="Notenwert im Format ##.## (2-3 Nachkommastellen mit Dezimalpunkt)"
           name="noteInput" type="number"  [disabled]="waiting() || disabled" 
           [(ngModel)]='singleValueContainer' 
-          step="0.05" min="0.00" max="100.00" required></ion-input>
+          step="0.05" min="0.00" max="100.00" required />
   <ion-button *ngIf="singleValues.length < 2" [disabled]="waiting() || disabled" slot="end" expand="block" color="secondary" (click)='add()'>
-            <ion-icon name="add-circle-outline"></ion-icon></ion-button>        
+            <ion-icon name="add-circle-outline" /></ion-button>        
   <ion-button *ngIf="singleValues.length < 2" [disabled]="waiting() || disabled" color="danger" (click)='remove(0)'>
-            <ion-icon name="trash-outline"></ion-icon></ion-button>
+            <ion-icon name="trash-outline" /></ion-button>
   <ion-grid *ngIf="singleValues.length > 1" class="table" no-padding>
     <ion-row >
       <ion-col class="table-header" size-xs="12" size-md="4">{{title}} {{methodSymbol}} {{avgValue}}</ion-col>
@@ -24,11 +24,11 @@
       <ion-col class="number" size-xs="12" size-md="4" no-padding>
         <ion-item lines="full">
         <ion-button slot="start" class="table-action" [disabled]="waiting() || disabled || fixed <= 0" color="secondary" (click)='removeKomma()'>
-          <ion-icon name="remove-outline"></ion-icon>
+          <ion-icon name="remove-outline" />
         </ion-button>
         <div class="decimals">Kommastellen: {{fixed}}</div>
         <ion-button slot="end" class="table-action" [disabled]="waiting() || disabled || fixed >= 3" color="secondary" (click)='addKomma()'>
-          <ion-icon name="add-outline"></ion-icon>
+          <ion-icon name="add-outline" />
         </ion-button>
         </ion-item>
       </ion-col>
@@ -45,8 +45,7 @@
             [ngModel]="item.value"
             (ionChange)="onItemChange($event, item)"
             (input)="onItemChange($event, item)"
-            (ionBlur)="onBlur($event, item)">
-        </ion-input>
+            (ionBlur)="onBlur($event, item)" />
         <ion-input *ngIf="i>0" placeholder="Notenwert im Format ##.## (2-3 Nachkommastellen mit Dezimalpunkt)"
             type="number" name={{valueTitle()}}{{i}}
             step="0.05" min="0.00" max="100.00"
@@ -55,15 +54,14 @@
             [ngModel]="item.value"
             (ionChange)="onItemChange($event, item)"
             (input)="onItemChange($event, item)"
-            (ionBlur)="onBlur($event, item)">
-        </ion-input>
+            (ionBlur)="onBlur($event, item)" />
       </ion-col>
       <ion-col class="table-action"><ion-button [disabled]="waiting() || disabled" color="danger" (click)='remove(i)'>
-        <ion-icon name="trash-outline"></ion-icon></ion-button></ion-col>
+        <ion-icon name="trash-outline" /></ion-button></ion-col>
     </ion-row>
     <ion-row *ngIf="!disabled" class="table-header">
       <ion-col><ion-button [disabled]="waiting() || disabled" expand="block" color="secondary" (click)='add()'>
-        <ion-icon  name="add-circle-outline"></ion-icon>Weitere Wertung hinzufügen</ion-button></ion-col>
+        <ion-icon name="add-circle-outline" />Weitere Wertung hinzufügen</ion-button></ion-col>
     </ion-row>
   </ion-grid>
 </ion-item>

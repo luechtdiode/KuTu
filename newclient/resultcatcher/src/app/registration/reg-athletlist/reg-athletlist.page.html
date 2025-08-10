@@ -1,7 +1,7 @@
 <ion-header>
   <ion-toolbar>
     <ion-buttons slot="start">
-      <ion-back-button defaultHref="/"></ion-back-button>
+      <ion-back-button defaultHref="/" />
     </ion-buttons>
     <ion-title>
       <ion-grid no-padding>
@@ -27,27 +27,26 @@
       <ion-searchbar placeholder="Search" showCancelButton="never"
         [(ngModel)]="sMyQuery"
         (ionInput)="reloadList($event)"
-        (ionCancel)="reloadList($event)">
-      </ion-searchbar>
+        (ionCancel)="reloadList($event)" />
 </ion-header>
 
 <ion-content *ngIf="wkPgms && wkPgms.length > 0">
   <ion-list >
     <ion-item *ngIf="(busy | async) || !(competition && currentRegistration && this.filteredPrograms)">
       <ion-label>loading ...</ion-label>
-      <ion-spinner></ion-spinner>
+      <ion-spinner />
     </ion-item>
     <div *ngFor="let pgm of this.filteredPrograms">
       <ion-item-divider>{{pgm.name}}</ion-item-divider>
       <ion-item-sliding #slidingAthletRegistrationItem *ngFor="let reg of this.filteredStartList(pgm.id)">
-        <app-reg-athlet-item [athletregistration]="reg" [vereinregistration]="currentRegistration" [status]=getStatus(reg) [programmlist]="wkPgms" [teams]="teams" (click)='itemTapped(reg, slidingAthletRegistrationItem)'></app-reg-athlet-item>
+        <app-reg-athlet-item [athletregistration]="reg" [vereinregistration]="currentRegistration" [status]=getStatus(reg) [programmlist]="wkPgms" [teams]="teams" (click)='itemTapped(reg, slidingAthletRegistrationItem)' />
         <ion-item-options side="end">
           <ion-item-option color="primary" (click)="edit(reg, slidingAthletRegistrationItem)">
-              <ion-icon name="arrow-forward-circle-outline" ios="md-arrow-forward-circle-outline"></ion-icon>
+              <ion-icon name="arrow-forward-circle-outline" ios="md-arrow-forward-circle-outline" />
             {{isLoggedInAsClub() ? 'Bearbeiten' : isLoggedIn() ? "Bestätigen" : "Anzeigen"}}
           </ion-item-option>
           <ion-item-option *ngIf='isLoggedInAsClub()' color="danger" (click)="delete(reg, slidingAthletRegistrationItem)">
-            <ion-icon name="arrow-forward-circle-outline" ios="md-arrow-forward-circle-outline"></ion-icon>
+            <ion-icon name="arrow-forward-circle-outline" ios="md-arrow-forward-circle-outline" />
             Löschen
           </ion-item-option>
         </ion-item-options>
@@ -59,7 +58,7 @@
   <ion-toolbar>
     <ion-list>
       <ion-button *ngIf="isLoggedInAsClub()" size="large" expand="block" color="success" (click)="createRegistration()">
-        <ion-icon slot="start" name="add"></ion-icon>
+        <ion-icon slot="start" name="add" />
         Neue Anmeldung...
       </ion-button>
     </ion-list>

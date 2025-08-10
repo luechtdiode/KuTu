@@ -3,12 +3,12 @@
     <ion-buttons slot="start">
       <ion-menu-toggle>
         <ion-button>
-          <ion-icon slot="icon-only" name="menu"></ion-icon>
+          <ion-icon slot="icon-only" name="menu" />
         </ion-button>
       </ion-menu-toggle>
       <ion-buttons *ngIf="!scorelistAvailable()">
         <ion-button (click)="toggleOptions()" >
-          <ion-icon slot="icon-only" name="options"></ion-icon>
+          <ion-icon slot="icon-only" name="options" />
         </ion-button>
       </ion-buttons>
     </ion-buttons>
@@ -28,8 +28,7 @@
   <ion-searchbar *ngIf="scorelistAvailable()" placeholder="Search" showCancelButton="never"
     [(ngModel)]="sMyQuery"
     (ionInput)="reloadList($event)"
-    (ionCancel)="reloadList($event)">
-  </ion-searchbar>
+    (ionCancel)="reloadList($event)" />
   <ion-list *ngIf="optionsVisible && isToolbarTop()">
     <ion-item>
       <ion-select label="Wettkampf" placeholder='Bitte auswählen' *ngIf="getCompetitions().length > 0" [(ngModel)]='competition' okText='Okay' cancelText='Abbrechen'>
@@ -72,7 +71,7 @@
         [attr.size-xl]="getMaxColumnSpec()"
         *ngFor='let w of getWertungen(p)'>
         <div [ngClass]="{'gradient-border':isNew(w)}">
-          <result-display [item]="w" [title]="getTitle(w)" [groupedBy]="groupBy.PROGRAMM"></result-display>
+          <result-display [item]="w" [title]="getTitle(w)" [groupedBy]="groupBy.PROGRAMM" />
         </div>
       </ion-col>
     </ion-row>
@@ -81,10 +80,10 @@
     <div *ngFor="let block of filteredScoreList">
       <ion-item-divider>{{block.title.text}}</ion-item-divider>
       <ion-item-sliding #slidingAthletScoreItem *ngFor="let tn of block.rows">
-        <scorelist-item [teilnehmer]="tn" (click)='scoreItemTapped(tn, slidingAthletScoreItem)'></scorelist-item>
+        <scorelist-item [teilnehmer]="tn" (click)='scoreItemTapped(tn, slidingAthletScoreItem)' />
         <ion-item-options  side="end">
           <ion-item-option *ngIf="tn['athletID']" color="primary" (click)="followAthlet(tn, slidingAthletScoreItem)">
-              <ion-icon name="arrow-forward-circle-outline" ios="md-arrow-forward-circle-outline"></ion-icon>
+              <ion-icon name="arrow-forward-circle-outline" ios="md-arrow-forward-circle-outline" />
             Detail-Wertungen {{tn.Athlet}}
           </ion-item-option>
         </ion-item-options>
@@ -124,12 +123,12 @@
     <ion-buttons slot="start">
       <ion-menu-toggle>
         <ion-button>
-          <ion-icon slot="icon-only" name="menu"></ion-icon>
+          <ion-icon slot="icon-only" name="menu" />
         </ion-button>
       </ion-menu-toggle>
       <ion-buttons *ngIf="!scorelistAvailable()">
         <ion-button (click)="toggleOptions()" >
-          <ion-icon slot="icon-only" name="options"></ion-icon>
+          <ion-icon slot="icon-only" name="options" />
         </ion-button>
       </ion-buttons>
     </ion-buttons>
@@ -150,7 +149,7 @@
 <ion-footer *ngIf="scorelistAvailable()">
   <ion-toolbar>
     <ion-button size="large" expand="block" (click)='presentActionSheet()' color="primary">
-      <ion-icon slot="start" name="list"></ion-icon>
+      <ion-icon slot="start" name="list" />
     </ion-button>
   </ion-toolbar>
 </ion-footer>

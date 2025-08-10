@@ -3,7 +3,7 @@
     <ion-buttons slot="start">
       <ion-menu-toggle>
         <ion-button>
-          <ion-icon slot="icon-only" name="menu"></ion-icon>
+          <ion-icon slot="icon-only" name="menu" />
         </ion-button>
       </ion-menu-toggle>
     </ion-buttons>
@@ -20,29 +20,28 @@
       <ion-searchbar placeholder="Search" showCancelButton="never"
         [(ngModel)]="sMyQuery"
         (ionInput)="reloadList($event)"
-        (ionCancel)="reloadList($event)">
-      </ion-searchbar>
+        (ionCancel)="reloadList($event)" />
 </ion-header>
 
 <ion-content *ngIf="competition && clubregistrations">
   <ion-list >
     <ion-item *ngIf="(isBusy | async)">
       <ion-label>loading ...</ion-label>
-      <ion-spinner></ion-spinner>
+      <ion-spinner />
     </ion-item>
     <ion-item-sliding #slidingClubRegistrationItem *ngFor="let reg of filteredStartList">
-      <clublist-item [clubregistration]="reg" [status]=getStatus(reg) (click)='itemTapped(reg, slidingClubRegistrationItem)'></clublist-item>
+      <clublist-item [clubregistration]="reg" [status]=getStatus(reg) (click)='itemTapped(reg, slidingClubRegistrationItem)' />
       <ion-item-options side="end">
         <ion-item-option color="primary" (click)="login(reg, slidingClubRegistrationItem)">
-            <ion-icon name="arrow-forward-circle-outline" ios="md-arrow-forward-circle-outline"></ion-icon>
+            <ion-icon name="arrow-forward-circle-outline" ios="md-arrow-forward-circle-outline" />
           {{isLoggedIn(reg) ? 'Bearbeiten' : 'Login'}}
         </ion-item-option>
         <ion-item-option *ngIf='isLoggedIn(reg)' color="secondary" (click)="logout(slidingClubRegistrationItem)">
-            <ion-icon name="arrow-forward-circle-outline" ios="md-arrow-forward-circle-outline"></ion-icon>
+            <ion-icon name="arrow-forward-circle-outline" ios="md-arrow-forward-circle-outline" />
           Abmelden
         </ion-item-option>
         <ion-item-option *ngIf='isLoggedIn(reg)' color="danger" (click)="delete(reg, slidingClubRegistrationItem)">
-          <ion-icon name="arrow-forward-circle-outline" ios="md-arrow-forward-circle-outline"></ion-icon>
+          <ion-icon name="arrow-forward-circle-outline" ios="md-arrow-forward-circle-outline" />
           Löschen
       </ion-item-option>
     </ion-item-options>
@@ -53,11 +52,11 @@
   <ion-toolbar>
     <ion-list>
       <ion-button *ngIf="!isLoggedInAsClub()" size="large" expand="block" color="success" (click)="createRegistration()">
-        <ion-icon slot="start" name="add"></ion-icon>
+        <ion-icon slot="start" name="add" />
         Neue Anmeldung...
       </ion-button>
       <ion-button *ngIf="isLoggedInAsClub()" size="large" expand="block" #btnDelete [disabled]="(isBusy | async)" color="danger" (click)='logout(null)'>
-        <ion-icon slot="start" name="log-out"></ion-icon>Vereins-Login Abmelden</ion-button>
+        <ion-icon slot="start" name="log-out" />Vereins-Login Abmelden</ion-button>
     </ion-list>
   </ion-toolbar>
 </ion-footer>

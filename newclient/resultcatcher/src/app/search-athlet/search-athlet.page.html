@@ -3,7 +3,7 @@
     <ion-buttons slot="start">
       <ion-menu-toggle>
         <ion-button>
-          <ion-icon slot="icon-only" name="menu"></ion-icon>
+          <ion-icon slot="icon-only" name="menu" />
         </ion-button>
       </ion-menu-toggle>
     </ion-buttons>
@@ -31,28 +31,27 @@
       <ion-searchbar placeholder="Search" showCancelButton="never"
         [(ngModel)]="sMyQuery"
         (ionInput)="reloadList($event)"
-        (ionCancel)="reloadList($event)">
-      </ion-searchbar>
+        (ionCancel)="reloadList($event)" />
 </ion-header>
 
 <ion-content *ngIf="competition && startlist && startlist.programme">
   <ion-list>
     <ion-item *ngIf="(isBusy | async)">
       <ion-label>loading ...</ion-label>
-      <ion-spinner></ion-spinner>
+      <ion-spinner />
     </ion-item>
     <div *ngFor="let pgm of filteredStartList.programme">
       <ion-item-divider>{{pgm.programm}}</ion-item-divider>
       <ion-item-sliding #slidingAthletItem *ngFor="let tn of pgm.teilnehmer">
         <startlist-item [teilnehmer]="tn" [programm]="pgm"
-        (click)='itemTapped(tn, slidingAthletItem)'></startlist-item>
+        (click)='itemTapped(tn, slidingAthletItem)' />
         <ion-item-options side="end">
           <ion-item-option color="primary" (click)="followAthlet(tn, slidingAthletItem)">
-              <ion-icon name="arrow-forward-circle-outline" ios="md-arrow-forward-circle-outline"></ion-icon>
+              <ion-icon name="arrow-forward-circle-outline" ios="md-arrow-forward-circle-outline" />
             {{tn.athlet}} verfolgen
           </ion-item-option>
           <ion-item-option color="secondary" (click)="followRiege(tn, slidingAthletItem)">
-              <ion-icon name="arrow-forward-circle-outline" ios="md-arrow-forward-circle-outline"></ion-icon>
+              <ion-icon name="arrow-forward-circle-outline" ios="md-arrow-forward-circle-outline" />
             Riege verfolgen
           </ion-item-option>
         </ion-item-options>

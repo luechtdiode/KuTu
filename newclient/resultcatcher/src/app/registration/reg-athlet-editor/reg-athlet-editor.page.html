@@ -1,7 +1,7 @@
 <ion-header>
   <ion-toolbar>
     <ion-buttons slot="start">
-      <ion-back-button defaultHref="/"></ion-back-button>
+      <ion-back-button defaultHref="/" />
     </ion-buttons>
     <ion-title>Anmeldung Athlet/Athletin</ion-title>
     <ion-note slot="end"><div class="athlet">für {{wettkampf}}</div></ion-note>
@@ -29,27 +29,19 @@
         </ion-select>        
       </ion-item-divider>
       <ion-item>
-        <ion-avatar slot="start">
-          &nbsp;
-        </ion-avatar>
-        <ion-input label="Name" required placeholder="Name" type="text"  [disabled]="false" [(ngModel)]='registration.name' name="name" required></ion-input>
+        <ion-avatar slot="start" />
+        <ion-input label="Name" required placeholder="Name" type="text"  [disabled]="false" [(ngModel)]='registration.name' name="name" required />
       </ion-item>
       <ion-item>
-        <ion-avatar slot="start">
-          &nbsp;
-        </ion-avatar>
-        <ion-input label="Vorname" required placeholder="Vorname" type="text"  [disabled]="false" [(ngModel)]='registration.vorname' name="vorname" required></ion-input>
+        <ion-avatar slot="start" />
+        <ion-input label="Vorname" required placeholder="Vorname" type="text"  [disabled]="false" [(ngModel)]='registration.vorname' name="vorname" required />
       </ion-item>
       <ion-item>
-        <ion-avatar slot="start">
-          &nbsp;
-        </ion-avatar>
-        <ion-input label="Geburtsdatum" required placeholder="Geburtsdatum" type="date" display-timezone="utc" [disabled]="false" [(ngModel)]='registration.gebdat' name="gebdat" required></ion-input>
+        <ion-avatar slot="start" />
+        <ion-input label="Geburtsdatum" required placeholder="Geburtsdatum" type="date" display-timezone="utc" [disabled]="false" [(ngModel)]='registration.gebdat' name="gebdat" required />
       </ion-item>
       <ion-item>
-        <ion-avatar slot="start">
-          &nbsp;
-        </ion-avatar>
+        <ion-avatar slot="start" />
         <ion-select label="Geschlecht" required placeholder='bitte auswählen' [(ngModel)]='registration.geschlecht' name="geschlecht" okText='Okay' cancelText='Abbrechen' required>
           <ion-select-option [value]='"W"'>weiblich</ion-select-option>
           <ion-select-option [value]='"M"'>männlich</ion-select-option>
@@ -62,9 +54,7 @@
         <ion-label>Einteilung</ion-label>
       </ion-item-divider>
       <ion-item *ngIf="needsPGMChoice()">
-        <ion-avatar slot="start">
-          &nbsp;
-        </ion-avatar>
+        <ion-avatar slot="start" />
         <ion-select label="Programm/Kategorie" required placeholder='bitte auswählen' [(ngModel)]='registration.programId' name="programId" okText='Okay' cancelText='Abbrechen'>
           <ion-select-option *ngFor='let pgm of filterPGMsForAthlet(registration)' [value]='pgm.id'>{{pgm.name}}</ion-select-option>
         </ion-select>
@@ -76,8 +66,7 @@
         <ion-label>Team-/Mannschaftszuweisung</ion-label>
       </ion-item-divider>
       <ion-item *ngIf="teamsAllowed()">
-        <ion-avatar slot="start">
-        </ion-avatar>
+        <ion-avatar slot="start" />
         <ion-grid no-padding>
           <ion-row *ngFor="let rule of teamrules">für {{rule}}</ion-row>
           <ion-row>
@@ -91,7 +80,7 @@
     </ion-list>
     <ion-list>
       <ion-button size="large" expand="block" type="submit" #btnSaveNext [disabled]="waiting || !isFormValid()|| !athletRegistrationForm.valid || athletRegistrationForm.untouched" color="success">
-        <ion-icon slot="start" name=""></ion-icon>Speichern</ion-button>
+        <ion-icon slot="start" name="" />Speichern</ion-button>
     </ion-list>
   </form>
 </ion-content>
@@ -99,7 +88,7 @@
   <ion-toolbar>
     <ion-list>
       <ion-button *ngIf="athletId > 0"size="large" expand="block" #btnDelete [disabled]="waiting" color="danger" (click)='delete()'>
-        <ion-icon slot="start" name="trash"></ion-icon>Anmeldung löschen</ion-button>
+        <ion-icon slot="start" name="trash" />Anmeldung löschen</ion-button>
     </ion-list>
   </ion-toolbar>
 </ion-footer>

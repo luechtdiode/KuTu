@@ -1,7 +1,7 @@
 <ion-header>
   <ion-toolbar>
     <ion-buttons slot="start">
-      <ion-back-button defaultHref="/"></ion-back-button>
+      <ion-back-button defaultHref="/" />
     </ion-buttons>
 
     <ion-title>{{geraetName()}}</ion-title>
@@ -14,33 +14,30 @@
     <ion-list *ngFor="let exercice of exercices; let block = index">
       <ion-item-divider><h2>{{block +1}}. Übung</h2></ion-item-divider>
       <app-wertung-avg-calc *ngFor="let wertung of exercice" [name]='wertung.name+wertung.index' [waiting]="waiting" 
-        [valueTitle]="wertung.name" [fixed]="wertung.scale" [ngModel]="wertung.value" (ngModelChange)="updateVariable($event, wertung)" [disabled]="!editable()">
-      </app-wertung-avg-calc>
+        [valueTitle]="wertung.name" [fixed]="wertung.scale" [ngModel]="wertung.value" (ngModelChange)="updateVariable($event, wertung)" [disabled]="!editable()" />
     </ion-list>
     <ion-list *ngIf="exercices.length > 0">
       <ion-item-divider><h2>Endnote</h2></ion-item-divider>
       <ion-item *ngIf="isDNoteUsed">
-        <ion-input [label]='dNoteLabel' [ngModel]='wertung.noteD' type="number" readonly name="dEndnote" [disabled]="!editable()"></ion-input>
+        <ion-input [label]='dNoteLabel' [ngModel]='wertung.noteD' type="number" readonly name="dEndnote" [disabled]="!editable()" />
       </ion-item>
       <ion-item>
-        <ion-input [label]='eNoteLabel' #endnote [ngModel]='wertung.noteE' type="number" readonly name="eEndnote" [disabled]="!editable()"></ion-input>
+        <ion-input [label]='eNoteLabel' #endnote [ngModel]='wertung.noteE' type="number" readonly name="eEndnote" [disabled]="!editable()" />
       </ion-item>
       <ion-item>
-        <ion-input label="Endnote" #endnote [ngModel]='wertung.endnote' type="number" readonly name="endnote" [disabled]="!editable()"></ion-input>
+        <ion-input label="Endnote" #endnote [ngModel]='wertung.endnote' type="number" readonly name="endnote" [disabled]="!editable()" />
       </ion-item>
       <ion-button size="large" expand="block" #btnValidate *ngIf='editable()' (click)='validate(wertungsform)' [disabled]="waiting || !wertungsform.valid" color="secondary">
-        <ion-icon slot="start" name="acalculator-outline"></ion-icon>Endnote berechnen</ion-button>
+        <ion-icon slot="start" name="acalculator-outline" />Endnote berechnen</ion-button>
     </ion-list>
     <ion-list *ngIf="exercices.length == 0">
-      <app-wertung-avg-calc  #dnote name="noteD" *ngIf="isDNoteUsed" [waiting]="waiting" [valueTitle]="dNoteLabel" [fixed]="1" [(ngModel)]="dNote" [disabled]="!editable()">
-      </app-wertung-avg-calc>
-      <app-wertung-avg-calc  #enote name="noteE" [waiting]="waiting" [valueTitle]="eNoteLabel" [fixed]="3" [(ngModel)]="eNote" [disabled]="!editable()">
-      </app-wertung-avg-calc>
+      <app-wertung-avg-calc #dnote name="noteD" *ngIf="isDNoteUsed" [waiting]="waiting" [valueTitle]="dNoteLabel" [fixed]="1" [(ngModel)]="dNote" [disabled]="!editable()" />
+      <app-wertung-avg-calc #enote name="noteE" [waiting]="waiting" [valueTitle]="eNoteLabel" [fixed]="3" [(ngModel)]="eNote" [disabled]="!editable()" />
       <ion-item>
-        <ion-input label="Endnote" #endnote [ngModel]='wertung.endnote' type="number" readonly name="endnote" [disabled]="!editable()"></ion-input>
+        <ion-input label="Endnote" #endnote [ngModel]='wertung.endnote' type="number" readonly name="endnote" [disabled]="!editable()" />
       </ion-item>
       <ion-button size="large" expand="block" #btnValidate *ngIf='editable()' (click)='validate(wertungsform)' [disabled]="waiting || !wertungsform.valid" color="secondary">
-        <ion-icon slot="start" name="calculator-outline"></ion-icon>Endnote berechnen</ion-button>
+        <ion-icon slot="start" name="calculator-outline" />Endnote berechnen</ion-button>
     </ion-list>
     <ion-list>
       <ion-item *ngIf="!wertungsform.valid && editable()">
@@ -50,9 +47,9 @@
         An diesem Gerät macht {{item.vorname + ' ' + item.name}} Pause. Es können keine Resultate erfasst werden.
       </ion-item>
       <ion-button size="large" expand="block" type="submit" #btnSaveNext *ngIf='editable()' [disabled]="waiting || !wertungsform.valid" color="success">
-        <ion-icon slot="start" name="arrow-forward-circle-outline"></ion-icon>Speichern & Weiter</ion-button>
+        <ion-icon slot="start" name="arrow-forward-circle-outline" />Speichern & Weiter</ion-button>
       <ion-button size="large" expand="block" *ngIf='editable()' [disabled]="waiting || !wertungsform.valid"  color="secondary" (click)='saveClose(wertungsform)'>
-        <ion-icon slot="start" name="checkmark-circle"></ion-icon>Speichern</ion-button>
+        <ion-icon slot="start" name="checkmark-circle" />Speichern</ion-button>
     </ion-list>
     <ion-list *ngIf="nextItem">
       <ion-item-divider *ngIf="nextItem && nextItem.geschlecht==='Turner'">Nächster Turner</ion-item-divider>
@@ -62,11 +59,11 @@
           <ion-toolbar>
             <ion-note slot="end"><div class="athlet">{{nextItem.vorname + ' ' + nextItem.name}}</div><div class="riege">{{nextItem.wertung.riege}}</div></ion-note>
           </ion-toolbar>
-          <ion-icon slot="end" name="arrow-forward-circle-outline"></ion-icon>
+          <ion-icon slot="end" name="arrow-forward-circle-outline" />
         </ion-item>        
         <ion-item-options side="end">
           <ion-item-option color="primary" (click)="next(wertungsform, slidingAthletItem)">
-              <ion-icon name="arrow-forward-circle-outline" ios="md-arrow-forward-circle-outline"></ion-icon>
+              <ion-icon name="arrow-forward-circle-outline" ios="md-arrow-forward-circle-outline" />
             {{nextItem.vorname + ' ' + nextItem.name}}
           </ion-item-option>
         </ion-item-options>

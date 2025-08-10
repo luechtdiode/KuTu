@@ -1,7 +1,7 @@
 <ion-header>
     <ion-toolbar>
       <ion-buttons slot="start">
-          <ion-back-button defaultHref="/"></ion-back-button>
+          <ion-back-button defaultHref="/" />
       </ion-buttons>
       <ion-title>
         <ion-grid no-padding>
@@ -14,7 +14,7 @@
       </ion-title>
       <ion-buttons slot="end">
         <ion-button slot="end" (click)="share()" *ngIf="isShareAvailable()">
-          <ion-icon name="share"></ion-icon>
+          <ion-icon name="share" />
         </ion-button>
       </ion-buttons>
     </ion-toolbar>
@@ -40,7 +40,7 @@
           size-xs="12" size-md="6" size-lg="4" [attr.size-xl]="getMaxColumnSpec()"
           *ngFor='let w of items'>
           <div [ngClass]="{'gradient-border':isNew(w)}">
-            <result-display [item]="w" [title]="getTitle(w)" [groupedBy]="groupBy.ATHLET"></result-display>
+            <result-display [item]="w" [title]="getTitle(w)" [groupedBy]="groupBy.ATHLET" />
           </div>
         </ion-col>
       </ion-row>
@@ -49,14 +49,14 @@
           size-xs="12" size-md="6" size-lg="3" [attr.size-xl]="getMaxColumnSpec()"
           *ngFor='let w of items'>
           <div [ngClass]="{'gradient-border':isNew(w)}">
-            <result-display [item]="w" [title]="getTitle(w)" [groupedBy]="groupBy.ATHLET"></result-display>
+            <result-display [item]="w" [title]="getTitle(w)" [groupedBy]="groupBy.ATHLET" />
           </div>
         </ion-col>
       </ion-row>
       <ion-row>
         <ion-col class="align-self-start"
           size-xs="12" size-md="12" size-lg="12" size-xl="12">
-          <result-display [item]="total" [title]="getTitle(undefined)" [groupedBy]="groupBy.ATHLET"></result-display>
+          <result-display [item]="total" [title]="getTitle(undefined)" [groupedBy]="groupBy.ATHLET" />
         </ion-col>
       </ion-row>
     </ion-grid>
