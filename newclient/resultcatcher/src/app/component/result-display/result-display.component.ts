@@ -1,4 +1,4 @@
-import { Component, Input, OnInit } from '@angular/core';
+import { Component, Input, OnInit, inject } from '@angular/core';
 import { AlertController, IonButton } from '@ionic/angular';
 import { WertungContainer } from 'src/app/backend-types';
 import { gearMapping, turn10ProgrammNames } from 'src/app/utils';
@@ -14,6 +14,8 @@ export enum GroupBy {
     standalone: false
 })
 export class ResultDisplayComponent implements OnInit {
+  private readonly alertController = inject(AlertController);
+
 
   groupBy = GroupBy;
 
@@ -66,7 +68,10 @@ export class ResultDisplayComponent implements OnInit {
     return gearMapping[this.item.geraet] || undefined;
   }
 
-  constructor(private readonly alertController: AlertController) { }
+  /** Inserted by Angular inject() migration for backwards compatibility */
+  constructor(...args: unknown[]);
+
+  constructor() { }
 
   ngOnInit() {
     //

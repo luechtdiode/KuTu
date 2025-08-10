@@ -1,4 +1,4 @@
-import { Injectable } from '@angular/core';
+import { Injectable, inject } from '@angular/core';
 import { Router, ActivatedRouteSnapshot } from '@angular/router';
 import { BackendService } from './backend.service';
 
@@ -6,10 +6,14 @@ import { BackendService } from './backend.service';
   providedIn: 'root'
 })
 export class VereinsRegistrationGuardService  {
+  private router = inject(Router);
+  backendService = inject(BackendService);
 
-  constructor(
-    private router: Router, 
-    public backendService: BackendService) 
+  /** Inserted by Angular inject() migration for backwards compatibility */
+  constructor(...args: unknown[]);
+
+
+  constructor() 
     {
 
   }

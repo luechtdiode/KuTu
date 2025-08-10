@@ -1,4 +1,4 @@
-import { Injectable, Inject, DOCUMENT } from '@angular/core';
+import { Injectable, DOCUMENT, inject } from '@angular/core';
 
 import * as Color from 'color';
 
@@ -6,10 +6,13 @@ import * as Color from 'color';
   providedIn: 'root'
 })
 export class ThemeSwitcherService {
+  private document = inject<Document>(DOCUMENT);
 
-  constructor(
-    @Inject(DOCUMENT) private document: Document,
-  ) {
+  /** Inserted by Angular inject() migration for backwards compatibility */
+  constructor(...args: unknown[]);
+
+
+  constructor() {
     const cssText = localStorage.getItem('theme');
     if (cssText) {
       this.setGlobalCSS(cssText);

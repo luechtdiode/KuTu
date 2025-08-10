@@ -1,4 +1,4 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, inject } from '@angular/core';
 import { Wettkampf, ClubRegistration, SyncAction } from '../backend-types';
 import { NavController, IonItemSliding, AlertController, ToastController } from '@ionic/angular';
 import { BackendService } from '../services/backend.service';
@@ -13,6 +13,12 @@ import { debounceTime, distinctUntilChanged, map, filter, switchMap, share, take
     standalone: false
 })
 export class RegistrationPage implements OnInit {
+  navCtrl = inject(NavController);
+  private route = inject(ActivatedRoute);
+  backendService = inject(BackendService);
+  toastController = inject(ToastController);
+  private alertCtrl = inject(AlertController);
+
 
 
   sClubRegistrationList: ClubRegistration[];
@@ -26,11 +32,10 @@ export class RegistrationPage implements OnInit {
 
   busy = new BehaviorSubject(false);
 
-  constructor(public navCtrl: NavController,
-              private route: ActivatedRoute,
-              public backendService: BackendService,
-              public toastController: ToastController,
-              private alertCtrl: AlertController) {
+  /** Inserted by Angular inject() migration for backwards compatibility */
+  constructor(...args: unknown[]);
+
+  constructor() {
     if (! this.backendService.competitions) {
       this.backendService.getCompetitions();
     }

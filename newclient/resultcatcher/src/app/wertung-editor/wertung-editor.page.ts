@@ -1,4 +1,4 @@
-import { Component, ViewChild, NgZone } from '@angular/core';
+import { Component, ViewChild, NgZone, inject } from '@angular/core';
 import { WertungContainer, Wertung, ScoreCalcVariable, ScoreCalcVariables } from '../backend-types';
 import { BehaviorSubject, Subject, Subscription, defer, of } from 'rxjs';
 import { NavController, Platform, ToastController, AlertController, IonItemSliding } from '@ionic/angular';
@@ -17,14 +17,21 @@ import { debounceTime, distinctUntilChanged, map, filter, switchMap, tap, share 
     standalone: false
   })
 export class WertungEditorPage {
+  navCtrl = inject(NavController);
+  private route = inject(ActivatedRoute);
+  private alertCtrl = inject(AlertController);
+  toastController = inject(ToastController);
+  backendService = inject(BackendService);
+  platform = inject(Platform);
+  private zone = inject(NgZone);
+
+  /** Inserted by Angular inject() migration for backwards compatibility */
+  constructor(...args: unknown[]);
+
     
-  constructor(public navCtrl: NavController,
-      private route: ActivatedRoute,
-      private alertCtrl: AlertController,
-      public toastController: ToastController,
-      public backendService: BackendService,
-      public platform: Platform,
-      private zone: NgZone) {
+  constructor() {
+    const backendService = this.backendService;
+
     // If we navigated to this page, we will have an item available as a nav param
     this.durchgang = backendService.durchgang;
     this.step = backendService.step;

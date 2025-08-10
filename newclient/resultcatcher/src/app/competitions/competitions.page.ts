@@ -1,4 +1,4 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, inject } from '@angular/core';
 import { BackendService } from '../services/backend.service';
 import { NavController } from '@ionic/angular';
 import { Subject, distinctUntilChanged, map, of, share, switchMap } from 'rxjs';
@@ -11,6 +11,9 @@ import { Wettkampf } from '../backend-types';
     standalone: false
 })
 export class CompetitionsPage implements OnInit {
+  private navCtrl = inject(NavController);
+  private backendService = inject(BackendService);
+
   pgmList;
 
   sFilteredWettkampfList: Wettkampf[];
@@ -20,7 +23,10 @@ export class CompetitionsPage implements OnInit {
 
   sFilterTask: () => void = undefined;
 
-  constructor(private navCtrl: NavController, private backendService: BackendService,) {
+  /** Inserted by Angular inject() migration for backwards compatibility */
+  constructor(...args: unknown[]);
+
+  constructor() {
     this.backendService.loadWKPrograms().subscribe(pgms => {
       this.pgmList = pgms.reduce(function (map, pgm) {
         map[pgm.id] = pgm.name;

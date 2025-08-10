@@ -1,4 +1,4 @@
-import { Component, Input } from '@angular/core';
+import { Component, Input, inject } from '@angular/core';
 import { NavController } from '@ionic/angular';
 import { WertungContainer } from '../../backend-types';
 import { BackendService } from '../../services/backend.service';
@@ -9,7 +9,13 @@ import { BackendService } from '../../services/backend.service';
     standalone: false
 })
 export class RiegeListComponent {
-  constructor(private navCtrl: NavController, private backendService: BackendService) { }
+  private navCtrl = inject(NavController);
+  private backendService = inject(BackendService);
+
+  /** Inserted by Angular inject() migration for backwards compatibility */
+  constructor(...args: unknown[]);
+
+  constructor() { }
   @Input()
   items: WertungContainer[];
 

@@ -1,4 +1,4 @@
-import { Component, OnInit, ChangeDetectionStrategy, NgZone } from '@angular/core';
+import { Component, OnInit, ChangeDetectionStrategy, NgZone, inject } from '@angular/core';
 import { NavController, AlertController, IonItemSliding } from '@ionic/angular';
 import { BackendService } from '../services/backend.service';
 import { encodeURIComponent2 } from '../services/websocket.service';
@@ -14,12 +14,19 @@ import { gearMapping } from '../utils';
     standalone: false
 })
 export class StationPage implements OnInit  {
+  navCtrl = inject(NavController);
+  backendService = inject(BackendService);
+  private alertCtrl = inject(AlertController);
+  private zone = inject(NgZone);
+
 
   durchgangopen = false;
   geraete: Geraet[] = [];
 
-  constructor(public navCtrl: NavController, public backendService: BackendService,
-              private alertCtrl: AlertController, private zone: NgZone) {
+  /** Inserted by Angular inject() migration for backwards compatibility */
+  constructor(...args: unknown[]);
+
+  constructor() {
     this.backendService.durchgangStarted.pipe(
       map(dgl =>
       dgl.filter(dg =>
