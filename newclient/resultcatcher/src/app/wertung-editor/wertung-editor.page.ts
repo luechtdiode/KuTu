@@ -6,7 +6,7 @@ import { BackendService } from '../services/backend.service';
 import { NgForm } from '@angular/forms';
 import { ActivatedRoute } from '@angular/router';
 import { Keyboard } from '@capacitor/keyboard';
-import { Capacitor, Plugins } from '@capacitor/core';
+import { Capacitor } from '@capacitor/core';
 import { turn10ProgrammNames } from '../utils';
 import { debounceTime, distinctUntilChanged, map, filter, switchMap, tap, share } from 'rxjs/operators';
 
