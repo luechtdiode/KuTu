@@ -25,10 +25,9 @@ export class WertungEditorPage {
   platform = inject(Platform);
   private zone = inject(NgZone);
 
-  /** Inserted by Angular inject() migration for backwards compatibility */
-  constructor(...args: unknown[]);
+  private hasMedia = true;
+  private mediaSource: string = 'https://api.soundcloud.com/tracks/10510425'//'https://on.soundcloud.com/O5HeFmZCb9jZlH3cXT';
 
-    
   constructor() {
     const backendService = this.backendService;
 
@@ -42,7 +41,7 @@ export class WertungEditorPage {
     this.installLazyAction();
   }
   private itemOriginal: WertungContainer;
-  
+
   public readonly form = viewChild<any>('wertungsform');
   public readonly enote = viewChild<{
     setFocus: () => void;
@@ -54,7 +53,7 @@ export class WertungEditorPage {
   private subscription: Subscription;
 
   private readonly wertungChanged = new Subject<Wertung>();
-  
+
   item: WertungContainer;
   _wertung: Wertung;
   lastValidatedWertung: Wertung;
@@ -73,7 +72,7 @@ export class WertungEditorPage {
 
   get wertung(): Wertung {
     return this._wertung;
-  } 
+  }
   set wertung(value: Wertung) {
     this._wertung = value;
     this.updateExercices();
@@ -83,7 +82,7 @@ export class WertungEditorPage {
     (groups, item) => {
       (groups[key(item)] ||= []).push(item);
       return groups;
-    }, 
+    },
     {} as Record<K, T[]>
   );
   flatten<T>(arr: T[][]): T[] {
@@ -132,7 +131,7 @@ export class WertungEditorPage {
     this.wertung.noteD = value;
     this.wertungChanged.next(this.wertung);
   }
-  
+
   get eNote() {
     return this.wertung.noteE;
   }
@@ -193,10 +192,10 @@ export class WertungEditorPage {
         error: (err) => {
           console.log(err);
         }
-      });      
+      });
     }
   }
-  
+
   ionViewWillLeave() {
     if (this.subscription) {
       this.subscription.unsubscribe();
@@ -360,7 +359,7 @@ export class WertungEditorPage {
       }
     });
   }
-  
+
   next(form: NgForm, slidingItem: IonItemSliding) {
     slidingItem.close();
     const currentItemIndex = this.backendService.wertungen.findIndex(w => w.wertung.id === this.wertung.id);

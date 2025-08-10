@@ -20,6 +20,9 @@ export class AthletViewPage  implements OnInit {
   backendService = inject(BackendService);
 
   groupBy = GroupBy;
+  private hasMedia = true;
+  private mediaSource: string = 'https://api.soundcloud.com/tracks/10510425'//'https://on.soundcloud.com/O5HeFmZCb9jZlH3cXT'; <source src="https://cdn.plyr.io/static/demo/Kishi_Bashi_-_It_All_Began_With_a_Burst.mp3" type="audio/mp3">
+  private scPlayerSource: string = 'https://w.soundcloud.com/player/?url=https://cdn.plyr.io/static/demo/Kishi_Bashi_-_It_All_Began_With_a_Burst.mp3'//'https://on.soundcloud.com/O5HeFmZCb9jZlH3cXT';
 
   // @ViewChild(IonContent) content: IonContent;
 
