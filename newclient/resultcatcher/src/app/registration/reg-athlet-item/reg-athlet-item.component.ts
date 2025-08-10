@@ -1,4 +1,4 @@
-import { Component, OnInit, Output, EventEmitter, input } from '@angular/core';
+import { Component, OnInit, input, output } from '@angular/core';
 import { ClubRegistration, AthletRegistration, ProgrammRaw, TeamItem } from '../../backend-types';
 
 @Component({
@@ -21,8 +21,7 @@ export class RegAthletItemComponent implements OnInit {
 
   readonly teams = input<TeamItem[]>(undefined);
 
-  @Output()
-  selected = new EventEmitter<AthletRegistration>();
+  readonly selected = output<AthletRegistration>();
 
   statusBadgeColor() {
     if (this.status() === "in sync") {

@@ -1,4 +1,4 @@
-import { Component, Output, EventEmitter, input } from '@angular/core';
+import { Component, input, output } from '@angular/core';
 import type { OnInit } from '@angular/core';
 
 export interface TypeAheadItem<T> {
@@ -15,8 +15,8 @@ export class TypeaheadComponent<T> implements OnInit {
   readonly selectedItem = input<T>(undefined);
   readonly title = input('Select Items');
 
-  @Output() selectionCancel = new EventEmitter<void>();
-  @Output() selectionChange = new EventEmitter<T>();
+  readonly selectionCancel = output<void>();
+  readonly selectionChange = output<T>();
 
   filteredItems: TypeAheadItem<T>[] = [];
   workingSelectedValue: TypeAheadItem<T> = undefined;
@@ -30,7 +30,7 @@ export class TypeaheadComponent<T> implements OnInit {
   }
 
   cancelChanges() {
-    this.selectionCancel.emit();
+    this.selectionCancel.emit(void 0);
   }
 
   confirmChanges() {

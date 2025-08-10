@@ -1,4 +1,4 @@
-import { Component, OnInit, Output, EventEmitter, input } from '@angular/core';
+import { Component, OnInit, input, output } from '@angular/core';
 import { ClubRegistration } from 'src/app/backend-types';
 
 @Component({
@@ -14,8 +14,7 @@ export class ClublistItemComponent implements OnInit {
 
   readonly status = input<string>(undefined);
 
-  @Output()
-  selected = new EventEmitter<ClubRegistration>();
+  readonly selected = output<ClubRegistration>();
 
   constructor() { }
 

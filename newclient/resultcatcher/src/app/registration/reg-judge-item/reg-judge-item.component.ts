@@ -1,5 +1,5 @@
 import { isNgTemplate } from '@angular/compiler';
-import { Component, EventEmitter, OnInit, Output, input } from '@angular/core';
+import { Component, OnInit, input, output } from '@angular/core';
 import { JudgeRegistration, JudgeRegistrationProgramItem } from 'src/app/backend-types';
 
 @Component({
@@ -15,8 +15,7 @@ export class RegJudgeItemComponent implements OnInit {
 
   readonly selectedDisciplinlist = input<JudgeRegistrationProgramItem[]>([]);
 
-  @Output()
-  selected = new EventEmitter<JudgeRegistration>();
+  readonly selected = output<JudgeRegistration>();
 
   ngOnInit() {}
 
