@@ -52,7 +52,7 @@ jobs:
         run: |
           cd newclient/resultcatcher
           npm install -g cordova @ionic/cli
-          npm i
+          npm i --force
           ionic build --prod --engine=browser
           cd ../..
           rm -rf ./src/main/resources/app
