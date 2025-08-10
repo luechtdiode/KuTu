@@ -1,155 +1,211 @@
-<ion-header *ngIf="isToolbarTop()">
-  <ion-toolbar>
-    <ion-buttons slot="start">
-      <ion-menu-toggle>
-        <ion-button>
-          <ion-icon slot="icon-only" name="menu" />
-        </ion-button>
-      </ion-menu-toggle>
-      <ion-buttons *ngIf="!scorelistAvailable()">
-        <ion-button (click)="toggleOptions()" >
-          <ion-icon slot="icon-only" name="options" />
-        </ion-button>
+@if (isToolbarTop()) {
+  <ion-header>
+    <ion-toolbar>
+      <ion-buttons slot="start">
+        <ion-menu-toggle>
+          <ion-button>
+            <ion-icon slot="icon-only" name="menu" />
+          </ion-button>
+        </ion-menu-toggle>
+        @if (!scorelistAvailable()) {
+          <ion-buttons>
+            <ion-button (click)="toggleOptions()" >
+              <ion-icon slot="icon-only" name="options" />
+            </ion-button>
+          </ion-buttons>
+        }
       </ion-buttons>
-    </ion-buttons>
-    <ion-title>
-      <ion-grid no-padding>
-        <ion-row>
-          <ion-col>
-            <ion-label>{{title}}</ion-label>
-          </ion-col>
-        </ion-row>
-      </ion-grid>
-    </ion-title>
-    <ion-note slot="end" *ngIf="competition">
-      {{competitionName()}}
-    </ion-note>
-  </ion-toolbar>
-  <ion-searchbar *ngIf="scorelistAvailable()" placeholder="Search" showCancelButton="never"
-    [(ngModel)]="sMyQuery"
-    (ionInput)="reloadList($event)"
-    (ionCancel)="reloadList($event)" />
-  <ion-list *ngIf="optionsVisible && isToolbarTop()">
-    <ion-item>
-      <ion-select label="Wettkampf" placeholder='Bitte auswählen' *ngIf="getCompetitions().length > 0" [(ngModel)]='competition' okText='Okay' cancelText='Abbrechen'>
-          <ion-select-option *ngFor='let comp of getCompetitions()' [value]='comp.uuid'>
-            {{comp.titel + ' ' + (comp.datum | date:'dd-MM-yy')}}</ion-select-option>
-        </ion-select>
-    </ion-item>
-    <ion-item>
-      <ion-select label='Durchgang' placeholder='Bitte auswählen' *ngIf="getDurchgaenge() && getDurchgaenge().length > 0" [(ngModel)]='durchgangFilter'
-        okText='Okay' cancelText='Abbrechen'>
-        <ion-select-option value='undefined'>Kein Durchgangfilter</ion-select-option>
-        <ion-select-option *ngFor='let d of getDurchgaenge()' [value]='d'>
-          <em *ngIf="isDurchgangActiv(d)">(atkiv) {{d}}</em><div *ngIf="!isDurchgangActiv(d)">(inaktiv) {{d}}</div>
-        </ion-select-option>
-      </ion-select>
-    </ion-item>
-    <ion-item>
-      <ion-select label="Kategorien" placeholder='Bitte auswählen' [(ngModel)]='kategorieFilter' okText='Okay' cancelText='Abbrechen'>
-          <ion-select-option value='getrennt'>Kategorien getrennt</ion-select-option>
-          <ion-select-option value='gemischt'>Kategorien gemischt</ion-select-option>
-      </ion-select>
-    </ion-item>
-
-    <ion-item>
-      <ion-label>doppel-click wechselt die Position des Toolbars ({{nextToolbarPosition}})</ion-label>
-      <ion-button (click)="toggleHeader()">Umschalten</ion-button>
-    </ion-item>
-  </ion-list>
-
-</ion-header>
+      <ion-title>
+        <ion-grid no-padding>
+          <ion-row>
+            <ion-col>
+              <ion-label>{{title}}</ion-label>
+            </ion-col>
+          </ion-row>
+        </ion-grid>
+      </ion-title>
+      @if (competition) {
+        <ion-note slot="end">
+          {{competitionName()}}
+        </ion-note>
+      }
+    </ion-toolbar>
+    @if (scorelistAvailable()) {
+      <ion-searchbar placeholder="Search" showCancelButton="never"
+        [(ngModel)]="sMyQuery"
+        (ionInput)="reloadList($event)"
+        (ionCancel)="reloadList($event)" />
+    }
+    @if (optionsVisible && isToolbarTop()) {
+      <ion-list>
+        <ion-item>
+          @if (getCompetitions().length > 0) {
+            <ion-select label="Wettkampf" placeholder='Bitte auswählen' [(ngModel)]='competition' okText='Okay' cancelText='Abbrechen'>
+              @for (comp of getCompetitions(); track comp) {
+                <ion-select-option [value]='comp.uuid'>
+                {{comp.titel + ' ' + (comp.datum | date:'dd-MM-yy')}}</ion-select-option>
+              }
+            </ion-select>
+          }
+        </ion-item>
+        <ion-item>
+          @if (getDurchgaenge() && getDurchgaenge().length > 0) {
+            <ion-select label='Durchgang' placeholder='Bitte auswählen' [(ngModel)]='durchgangFilter'
+              okText='Okay' cancelText='Abbrechen'>
+              <ion-select-option value='undefined'>Kein Durchgangfilter</ion-select-option>
+              @for (d of getDurchgaenge(); track d) {
+                <ion-select-option [value]='d'>
+                  @if (isDurchgangActiv(d)) {
+                    <em>(atkiv) {{d}}</em>
+                    }@if (!isDurchgangActiv(d)) {
+                    <div>(inaktiv) {{d}}</div>
+                  }
+                </ion-select-option>
+              }
+            </ion-select>
+          }
+        </ion-item>
+        <ion-item>
+          <ion-select label="Kategorien" placeholder='Bitte auswählen' [(ngModel)]='kategorieFilter' okText='Okay' cancelText='Abbrechen'>
+            <ion-select-option value='getrennt'>Kategorien getrennt</ion-select-option>
+            <ion-select-option value='gemischt'>Kategorien gemischt</ion-select-option>
+          </ion-select>
+        </ion-item>
+        <ion-item>
+          <ion-label>doppel-click wechselt die Position des Toolbars ({{nextToolbarPosition}})</ion-label>
+          <ion-button (click)="toggleHeader()">Umschalten</ion-button>
+        </ion-item>
+      </ion-list>
+    }
+  </ion-header>
+}
 
 <ion-content (dblclick)="toggleHeader()" (click)="optionsVisible = false">
-  <ion-grid no-padding *ngIf="!scorelistAvailable()">
-    <ion-row *ngFor='let p of getProgramme()'>
-      <ion-col class="align-self-start"
-        [attr.size-xs]="getColumnSpecs()[0]"
-        [attr.size-sm]="getColumnSpecs()[1]"
-        [attr.size-md]="getColumnSpecs()[2]"
-        [attr.size-lg]="getColumnSpecs()[3]"
-        [attr.size-xl]="getMaxColumnSpec()"
-        *ngFor='let w of getWertungen(p)'>
-        <div [ngClass]="{'gradient-border':isNew(w)}">
-          <result-display [item]="w" [title]="getTitle(w)" [groupedBy]="groupBy.PROGRAMM" />
-        </div>
-      </ion-col>
-    </ion-row>
-  </ion-grid>
-  <ion-list *ngIf="scorelistAvailable()">
-    <div *ngFor="let block of filteredScoreList">
-      <ion-item-divider>{{block.title.text}}</ion-item-divider>
-      <ion-item-sliding #slidingAthletScoreItem *ngFor="let tn of block.rows">
-        <scorelist-item [teilnehmer]="tn" (click)='scoreItemTapped(tn, slidingAthletScoreItem)' />
-        <ion-item-options  side="end">
-          <ion-item-option *ngIf="tn['athletID']" color="primary" (click)="followAthlet(tn, slidingAthletScoreItem)">
-              <ion-icon name="arrow-forward-circle-outline" ios="md-arrow-forward-circle-outline" />
-            Detail-Wertungen {{tn.Athlet}}
-          </ion-item-option>
-        </ion-item-options>
-      </ion-item-sliding>
-    </div>
-  </ion-list>
-</ion-content>
-<ion-footer *ngIf="!scorelistAvailable() && isToolbarBottom()">
-  <ion-list *ngIf="optionsVisible">
-    <ion-item>
-      <ion-select label="Wettkampf" placeholder='Bitte auswählen' *ngIf="getCompetitions().length > 0" [(ngModel)]='competition' okText='Okay' cancelText='Abbrechen'>
-          <ion-select-option *ngFor='let comp of getCompetitions()' [value]='comp.uuid'>
-            {{comp.titel + ' ' + (comp.datum | date:'dd-MM-yy')}}</ion-select-option>
-        </ion-select>
-    </ion-item>
-    <ion-item>
-      <ion-select label='Durchgang' placeholder='Bitte auswählen' *ngIf="getDurchgaenge() && getDurchgaenge().length > 0" [(ngModel)]='durchgangFilter'
-        okText='Okay' cancelText='Abbrechen'>
-        <ion-select-option value='undefined'>Kein Durchgangfilter</ion-select-option>
-        <ion-select-option *ngFor='let d of getDurchgaenge()' [value]='d'>
-          <em *ngIf="isDurchgangActiv(d)">(aktiv) {{d}}</em><div *ngIf="!isDurchgangActiv(d)">(inaktiv) {{d}}</div>
-        </ion-select-option>
-      </ion-select>
-    </ion-item>
-    <ion-item>
-      <ion-select label="Kategorien" placeholder='Bitte auswählen' [(ngModel)]='kategorieFilter' okText='Okay' cancelText='Abbrechen'>
-          <ion-select-option value='getrennt'>Kategorien getrennt</ion-select-option>
-          <ion-select-option value='gemischt'>Kategorien gemischt</ion-select-option>
-      </ion-select>
-    </ion-item>
-    <ion-item>
-      <ion-label>doppel-click wechselt die Position des Toolbars ({{nextToolbarPosition}})</ion-label>
-      <ion-button (click)="toggleHeader()">Umschalten</ion-button>
-    </ion-item>
-  </ion-list>
-  <ion-toolbar>
-    <ion-buttons slot="start">
-      <ion-menu-toggle>
-        <ion-button>
-          <ion-icon slot="icon-only" name="menu" />
-        </ion-button>
-      </ion-menu-toggle>
-      <ion-buttons *ngIf="!scorelistAvailable()">
-        <ion-button (click)="toggleOptions()" >
-          <ion-icon slot="icon-only" name="options" />
-        </ion-button>
-      </ion-buttons>
-    </ion-buttons>
-    <ion-title>
-      <ion-grid no-padding>
+  @if (!scorelistAvailable()) {
+    <ion-grid no-padding>
+      @for (p of getProgramme(); track p) {
         <ion-row>
-          <ion-col>
-            <ion-label>{{title}}</ion-label>
-          </ion-col>
+          @for (w of getWertungen(p); track w) {
+            <ion-col class="align-self-start"
+              [attr.size-xs]="getColumnSpecs()[0]"
+              [attr.size-sm]="getColumnSpecs()[1]"
+              [attr.size-md]="getColumnSpecs()[2]"
+              [attr.size-lg]="getColumnSpecs()[3]"
+              [attr.size-xl]="getMaxColumnSpec()"
+              >
+              <div [ngClass]="{'gradient-border':isNew(w)}">
+                <result-display [item]="w" [title]="getTitle(w)" [groupedBy]="groupBy.PROGRAMM" />
+              </div>
+            </ion-col>
+          }
         </ion-row>
-      </ion-grid>
-    </ion-title>
-    <ion-note slot="end" *ngIf="competition">
-      {{competitionName()}}
-    </ion-note>
-  </ion-toolbar>
-</ion-footer>
-<ion-footer *ngIf="scorelistAvailable()">
-  <ion-toolbar>
-    <ion-button size="large" expand="block" (click)='presentActionSheet()' color="primary">
-      <ion-icon slot="start" name="list" />
-    </ion-button>
-  </ion-toolbar>
-</ion-footer>
+      }
+    </ion-grid>
+  }
+  @if (scorelistAvailable()) {
+    <ion-list>
+      @for (block of filteredScoreList; track block) {
+        <div>
+          <ion-item-divider>{{block.title.text}}</ion-item-divider>
+          @for (tn of block.rows; track tn) {
+            <ion-item-sliding #slidingAthletScoreItem>
+              <scorelist-item [teilnehmer]="tn" (click)='scoreItemTapped(tn, slidingAthletScoreItem)' />
+              <ion-item-options  side="end">
+                @if (tn['athletID']) {
+                  <ion-item-option color="primary" (click)="followAthlet(tn, slidingAthletScoreItem)">
+                    <ion-icon name="arrow-forward-circle-outline" ios="md-arrow-forward-circle-outline" />
+                    Detail-Wertungen {{tn.Athlet}}
+                  </ion-item-option>
+                }
+              </ion-item-options>
+            </ion-item-sliding>
+          }
+        </div>
+      }
+    </ion-list>
+  }
+</ion-content>
+@if (!scorelistAvailable() && isToolbarBottom()) {
+  <ion-footer>
+    @if (optionsVisible) {
+      <ion-list>
+        <ion-item>
+          @if (getCompetitions().length > 0) {
+            <ion-select label="Wettkampf" placeholder='Bitte auswählen' [(ngModel)]='competition' okText='Okay' cancelText='Abbrechen'>
+              @for (comp of getCompetitions(); track comp) {
+                <ion-select-option [value]='comp.uuid'>
+                {{comp.titel + ' ' + (comp.datum | date:'dd-MM-yy')}}</ion-select-option>
+              }
+            </ion-select>
+          }
+        </ion-item>
+        <ion-item>
+          @if (getDurchgaenge() && getDurchgaenge().length > 0) {
+            <ion-select label='Durchgang' placeholder='Bitte auswählen' [(ngModel)]='durchgangFilter'
+              okText='Okay' cancelText='Abbrechen'>
+              <ion-select-option value='undefined'>Kein Durchgangfilter</ion-select-option>
+              @for (d of getDurchgaenge(); track d) {
+                <ion-select-option [value]='d'>
+                  @if (isDurchgangActiv(d)) {
+                    <em>(aktiv) {{d}}</em>
+                    }@if (!isDurchgangActiv(d)) {
+                    <div>(inaktiv) {{d}}</div>
+                  }
+                </ion-select-option>
+              }
+            </ion-select>
+          }
+        </ion-item>
+        <ion-item>
+          <ion-select label="Kategorien" placeholder='Bitte auswählen' [(ngModel)]='kategorieFilter' okText='Okay' cancelText='Abbrechen'>
+            <ion-select-option value='getrennt'>Kategorien getrennt</ion-select-option>
+            <ion-select-option value='gemischt'>Kategorien gemischt</ion-select-option>
+          </ion-select>
+        </ion-item>
+        <ion-item>
+          <ion-label>doppel-click wechselt die Position des Toolbars ({{nextToolbarPosition}})</ion-label>
+          <ion-button (click)="toggleHeader()">Umschalten</ion-button>
+        </ion-item>
+      </ion-list>
+    }
+    <ion-toolbar>
+      <ion-buttons slot="start">
+        <ion-menu-toggle>
+          <ion-button>
+            <ion-icon slot="icon-only" name="menu" />
+          </ion-button>
+        </ion-menu-toggle>
+        @if (!scorelistAvailable()) {
+          <ion-buttons>
+            <ion-button (click)="toggleOptions()" >
+              <ion-icon slot="icon-only" name="options" />
+            </ion-button>
+          </ion-buttons>
+        }
+      </ion-buttons>
+      <ion-title>
+        <ion-grid no-padding>
+          <ion-row>
+            <ion-col>
+              <ion-label>{{title}}</ion-label>
+            </ion-col>
+          </ion-row>
+        </ion-grid>
+      </ion-title>
+      @if (competition) {
+        <ion-note slot="end">
+          {{competitionName()}}
+        </ion-note>
+      }
+    </ion-toolbar>
+  </ion-footer>
+}
+@if (scorelistAvailable()) {
+  <ion-footer>
+    <ion-toolbar>
+      <ion-button size="large" expand="block" (click)='presentActionSheet()' color="primary">
+        <ion-icon slot="start" name="list" />
+      </ion-button>
+    </ion-toolbar>
+  </ion-footer>
+}

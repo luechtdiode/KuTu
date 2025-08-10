@@ -10,10 +10,12 @@
 <ion-content color="light" class="ion-padding">
   <ion-radio-group [(ngModel)]="selected">
     <ion-list>
-      <ion-item *ngFor="let item of filteredItems">
-        <ion-radio class="alert-radio-label sc-ion-alert-md" [value]="item">{{item.text}}</ion-radio>
-      </ion-item>
-    </ion-list>    
+      @for (item of filteredItems; track item) {
+        <ion-item>
+          <ion-radio class="alert-radio-label sc-ion-alert-md" [value]="item">{{item.text}}</ion-radio>
+        </ion-item>
+      }
+    </ion-list>
   </ion-radio-group>
 </ion-content>
 

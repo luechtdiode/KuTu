@@ -8,55 +8,73 @@
       </ion-menu-toggle>
     </ion-buttons>
     <ion-title>
-            <ion-label>Wettkampf-Anmeldungen</ion-label>
+      <ion-label>Wettkampf-Anmeldungen</ion-label>
     </ion-title>
     <ion-buttons slot="end">
-      <ion-select label="Wettkampf" placeholder='Bitte auswählen' *ngIf="getCompetitions().length > 0" [(ngModel)]='competition' okText='Okay' cancelText='Abbrechen'>
-        <ion-select-option *ngFor='let comp of getCompetitions()' [value]='comp.uuid'>
-          {{comp.titel + ' ' + (comp.datum | date:'dd-MM-yy')}}</ion-select-option>
-      </ion-select>
+      @if (getCompetitions().length > 0) {
+        <ion-select label="Wettkampf" placeholder='Bitte auswählen' [(ngModel)]='competition' okText='Okay' cancelText='Abbrechen'>
+          @for (comp of getCompetitions(); track comp) {
+            <ion-select-option [value]='comp.uuid'>
+            {{comp.titel + ' ' + (comp.datum | date:'dd-MM-yy')}}</ion-select-option>
+          }
+        </ion-select>
+      }
     </ion-buttons>
   </ion-toolbar>
-      <ion-searchbar placeholder="Search" showCancelButton="never"
-        [(ngModel)]="sMyQuery"
-        (ionInput)="reloadList($event)"
-        (ionCancel)="reloadList($event)" />
-</ion-header>
+  <ion-searchbar placeholder="Search" showCancelButton="never"
+    [(ngModel)]="sMyQuery"
+    (ionInput)="reloadList($event)"
+    (ionCancel)="reloadList($event)" />
+  </ion-header>
 
-<ion-content *ngIf="competition && clubregistrations">
-  <ion-list >
-    <ion-item *ngIf="(isBusy | async)">
-      <ion-label>loading ...</ion-label>
-      <ion-spinner />
-    </ion-item>
-    <ion-item-sliding #slidingClubRegistrationItem *ngFor="let reg of filteredStartList">
-      <clublist-item [clubregistration]="reg" [status]=getStatus(reg) (click)='itemTapped(reg, slidingClubRegistrationItem)' />
-      <ion-item-options side="end">
-        <ion-item-option color="primary" (click)="login(reg, slidingClubRegistrationItem)">
-            <ion-icon name="arrow-forward-circle-outline" ios="md-arrow-forward-circle-outline" />
-          {{isLoggedIn(reg) ? 'Bearbeiten' : 'Login'}}
-        </ion-item-option>
-        <ion-item-option *ngIf='isLoggedIn(reg)' color="secondary" (click)="logout(slidingClubRegistrationItem)">
-            <ion-icon name="arrow-forward-circle-outline" ios="md-arrow-forward-circle-outline" />
-          Abmelden
-        </ion-item-option>
-        <ion-item-option *ngIf='isLoggedIn(reg)' color="danger" (click)="delete(reg, slidingClubRegistrationItem)">
-          <ion-icon name="arrow-forward-circle-outline" ios="md-arrow-forward-circle-outline" />
-          Löschen
-      </ion-item-option>
-    </ion-item-options>
-    </ion-item-sliding>
-  </ion-list>
-</ion-content>
-<ion-footer>
-  <ion-toolbar>
-    <ion-list>
-      <ion-button *ngIf="!isLoggedInAsClub()" size="large" expand="block" color="success" (click)="createRegistration()">
-        <ion-icon slot="start" name="add" />
-        Neue Anmeldung...
-      </ion-button>
-      <ion-button *ngIf="isLoggedInAsClub()" size="large" expand="block" #btnDelete [disabled]="(isBusy | async)" color="danger" (click)='logout(null)'>
-        <ion-icon slot="start" name="log-out" />Vereins-Login Abmelden</ion-button>
-    </ion-list>
-  </ion-toolbar>
-</ion-footer>
+  @if (competition && clubregistrations) {
+    <ion-content>
+      <ion-list >
+        @if ((isBusy | async)) {
+          <ion-item>
+            <ion-label>loading ...</ion-label>
+            <ion-spinner />
+          </ion-item>
+        }
+        @for (reg of filteredStartList; track reg) {
+          <ion-item-sliding #slidingClubRegistrationItem>
+            <clublist-item [clubregistration]="reg" [status]=getStatus(reg) (click)='itemTapped(reg, slidingClubRegistrationItem)' />
+            <ion-item-options side="end">
+              <ion-item-option color="primary" (click)="login(reg, slidingClubRegistrationItem)">
+                <ion-icon name="arrow-forward-circle-outline" ios="md-arrow-forward-circle-outline" />
+                {{isLoggedIn(reg) ? 'Bearbeiten' : 'Login'}}
+              </ion-item-option>
+              @if (isLoggedIn(reg)) {
+                <ion-item-option color="secondary" (click)="logout(slidingClubRegistrationItem)">
+                  <ion-icon name="arrow-forward-circle-outline" ios="md-arrow-forward-circle-outline" />
+                  Abmelden
+                </ion-item-option>
+              }
+              @if (isLoggedIn(reg)) {
+                <ion-item-option color="danger" (click)="delete(reg, slidingClubRegistrationItem)">
+                  <ion-icon name="arrow-forward-circle-outline" ios="md-arrow-forward-circle-outline" />
+                  Löschen
+                </ion-item-option>
+              }
+            </ion-item-options>
+          </ion-item-sliding>
+        }
+      </ion-list>
+    </ion-content>
+  }
+  <ion-footer>
+    <ion-toolbar>
+      <ion-list>
+        @if (!isLoggedInAsClub()) {
+          <ion-button size="large" expand="block" color="success" (click)="createRegistration()">
+            <ion-icon slot="start" name="add" />
+            Neue Anmeldung...
+          </ion-button>
+        }
+        @if (isLoggedInAsClub()) {
+          <ion-button size="large" expand="block" #btnDelete [disabled]="(isBusy | async)" color="danger" (click)='logout(null)'>
+          <ion-icon slot="start" name="log-out" />Vereins-Login Abmelden</ion-button>
+        }
+      </ion-list>
+    </ion-toolbar>
+  </ion-footer>

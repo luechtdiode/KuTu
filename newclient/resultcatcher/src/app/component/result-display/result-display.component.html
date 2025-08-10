@@ -1,71 +1,120 @@
 <ion-card>
   <ion-grid>
     <ion-row>
-      <ion-col *ngIf="gearImage" align-self-top class="nonwrapping"
-        size-xs="8" size-md="8" size-lg="8" size-xl="8">
-        <ion-icon class="img-wrapper" src="assets/imgs/{{gearImage}}" />
-
-        <div class="after-icon fixedheight" style="font-size: 18pt;">{{titlestart}}</div>
-        <div class="after-icon fixedheight" style="font-size: 12pt;">{{titlerest}}</div>
-      </ion-col>
-      <ion-col *ngIf="!gearImage" align-self-top class="nonwrapping"
-        size-xs="8" size-md="8" size-lg="8" size-xl="8">
-        <div style="font-size: 18pt;">{{titlestart}}</div>
-        <div style="font-size: 12pt;">{{titlerest}}</div>
-      </ion-col>
-      <ion-col col-auto align-self-end *ngIf="groupedBy() === groupBy.ATHLET">
-        <ion-note *ngIf="item().isDNoteUsed" item-end item-text-wrap (click)="presentDetails(true)">
-          <span class="rightbound">&nbsp;&nbsp;&nbsp;{{dNoteLabel}}: {{item().wertung.noteD | number:'2.3-3'}}
-            <br>&nbsp;&nbsp;&nbsp;{{eNoteLabel}}: {{item().wertung.noteE | number:'2.3-3'}}
-            <br>
-          </span>
-          <span *ngIf="item().isStroked && item().wertung.endnote" class="rightbound"  style="font-size: 18pt;background-color: darkred">{{item().wertung.endnote | number:'2.3-3'}}</span>
-          <span *ngIf="!item().isStroked && item().wertung.endnote" class="rightbound"  style="font-size: 18pt;font-weight: bold">{{item().wertung.endnote | number:'2.3-3'}}</span>
-          <span *ngIf="!item().wertung.endnote" class="rightbound" style="width: 100%;font-size: 18pt;font-weight: bold">&nbsp;</span>
-        </ion-note>
-        <ion-note *ngIf="!item().isDNoteUsed && item().wertung.noteE !== item().wertung.endnote" item-end item-text-wrap (click)="presentDetails(true)">
-          <span class="rightbound"><br>&nbsp;&nbsp;&nbsp;{{eNoteLabel}}: {{item().wertung.noteE | number:'2.3-3'}}
-          <br>
-          <span *ngIf="item().isStroked && item().wertung.endnote" class="rightbound"  style="font-size: 18pt;background-color: darkred">{{item().wertung.endnote | number:'2.3-3'}}</span>
-          <span *ngIf="!item().isStroked && item().wertung.endnote" class="rightbound"  style="font-size: 18pt;font-weight: bold">{{item().wertung.endnote | number:'2.3-3'}}</span>
-          <span *ngIf="!item().wertung.endnote" class="rightbound" style="width: 100%;font-size: 18pt;font-weight: bold">&nbsp;</span>
-          </span>
-        </ion-note>
-        <ion-note *ngIf="!item().isDNoteUsed && item().wertung.noteE === item().wertung.endnote" item-end item-text-wrap (click)="presentDetails(true)">
-          <span *ngIf="item().isStroked && item().wertung.endnote" class="rightbound"  style="font-size: 18pt;background-color: darkred">{{item().wertung.endnote | number:'2.3-3'}}</span>
-          <span *ngIf="!item().isStroked && item().wertung.endnote" class="rightbound"  style="font-size: 18pt;font-weight: bold">{{item().wertung.endnote | number:'2.3-3'}}</span>
-          <span *ngIf="!item().wertung.endnote" class="rightbound" style="width: 100%;font-size: 18pt;font-weight: bold">&nbsp;</span>
-        </ion-note>
-      </ion-col>
-    </ion-row>
-    <ion-row *ngIf="groupedBy() !== groupBy.ATHLET">
-      <ion-col size-xs="8" size-md="8" size-lg="8" size-xl="8">
-        <div class="nonwrapping">
-          <div style="font-size: 16pt;">{{item().vorname + ' ' + item().name}}</div>
-        </div>
-        <div class="nonwrapping">
-          {{item().verein}}
-        </div>
-      </ion-col>
-      <ion-col col-auto >
-        <ion-note *ngIf="item().isDNoteUsed && item().wertung.noteD" item-end item-text-wrap>
-          <span class="rightbound">&nbsp;&nbsp;{{dNoteLabel}}: {{item().wertung.noteD | number:'2.3-3'}}
-          <br>&nbsp;&nbsp;{{eNoteLabel}}: {{item().wertung.noteE | number:'2.3-3'}}
-          <br></span>
-          <span *ngIf="!item().wertung.endnote" class="rightbound"style="width: 100%;font-size: 18pt;font-weight: bold">&nbsp;</span>
-          <span *ngIf="item().wertung.endnote" class="rightbound" style="font-size: 18pt;font-weight: bold">{{item().wertung.endnote | number:'2.3-3'}}</span>
-        </ion-note>
-        <ion-note *ngIf="!item().isDNoteUsed && item().wertung.noteE !== item().wertung.endnote" item-end item-text-wrap>
-          <span class="rightbound">&nbsp;&nbsp;{{eNoteLabel}}: {{item().wertung.noteE | number:'2.3-3-3'}}
-          <br></span>
-          <span *ngIf="item().wertung.endnote" class="rightbound" style="font-size: 18pt;font-weight: bold">{{item().wertung.endnote | number:'2.3-3'}}</span>
-          <span *ngIf="!item().wertung.endnote" class="rightbound" style="width: 100%;font-size: 18pt;font-weight: bold">&nbsp;</span>
-        </ion-note>
-        <ion-note *ngIf="!item().isDNoteUsed && item().wertung.noteE === item().wertung.endnote" item-end item-text-wrap>
-          <span *ngIf="item().wertung.endnote" class="rightbound" style="font-size: 18pt;font-weight: bold">{{item().wertung.endnote | number:'2.3-3'}}</span>
-          <span *ngIf="!item().wertung.endnote" class="rightbound" style="width: 100%;font-size: 18pt;font-weight: bold">&nbsp;</span>
-        </ion-note>
-      </ion-col>
-    </ion-row>
-  </ion-grid>
-</ion-card>
+      @if (gearImage) {
+        <ion-col align-self-top class="nonwrapping"
+          size-xs="8" size-md="8" size-lg="8" size-xl="8">
+          <ion-icon class="img-wrapper" src="assets/imgs/{{gearImage}}" />
+          <div class="after-icon fixedheight" style="font-size: 18pt;">{{titlestart}}</div>
+          <div class="after-icon fixedheight" style="font-size: 12pt;">{{titlerest}}</div>
+        </ion-col>
+      }
+      @if (!gearImage) {
+        <ion-col align-self-top class="nonwrapping"
+          size-xs="8" size-md="8" size-lg="8" size-xl="8">
+          <div style="font-size: 18pt;">{{titlestart}}</div>
+          <div style="font-size: 12pt;">{{titlerest}}</div>
+        </ion-col>
+      }
+      @if (groupedBy() === groupBy.ATHLET) {
+        <ion-col col-auto align-self-end>
+          @if (item().isDNoteUsed) {
+            <ion-note item-end item-text-wrap (click)="presentDetails(true)">
+              <span class="rightbound">&nbsp;&nbsp;&nbsp;{{dNoteLabel}}: {{item().wertung.noteD | number:'2.3-3'}}
+                <br>&nbsp;&nbsp;&nbsp;{{eNoteLabel}}: {{item().wertung.noteE | number:'2.3-3'}}
+                  <br>
+                  </span>
+                  @if (item().isStroked && item().wertung.endnote) {
+                    <span class="rightbound"  style="font-size: 18pt;background-color: darkred">{{item().wertung.endnote | number:'2.3-3'}}</span>
+                  }
+                  @if (!item().isStroked && item().wertung.endnote) {
+                    <span class="rightbound"  style="font-size: 18pt;font-weight: bold">{{item().wertung.endnote | number:'2.3-3'}}</span>
+                  }
+                  @if (!item().wertung.endnote) {
+                    <span class="rightbound" style="width: 100%;font-size: 18pt;font-weight: bold">&nbsp;</span>
+                  }
+                </ion-note>
+              }
+              @if (!item().isDNoteUsed && item().wertung.noteE !== item().wertung.endnote) {
+                <ion-note item-end item-text-wrap (click)="presentDetails(true)">
+                  <span class="rightbound"><br>&nbsp;&nbsp;&nbsp;{{eNoteLabel}}: {{item().wertung.noteE | number:'2.3-3'}}
+                    <br>
+                      @if (item().isStroked && item().wertung.endnote) {
+                        <span class="rightbound"  style="font-size: 18pt;background-color: darkred">{{item().wertung.endnote | number:'2.3-3'}}</span>
+                      }
+                      @if (!item().isStroked && item().wertung.endnote) {
+                        <span class="rightbound"  style="font-size: 18pt;font-weight: bold">{{item().wertung.endnote | number:'2.3-3'}}</span>
+                      }
+                      @if (!item().wertung.endnote) {
+                        <span class="rightbound" style="width: 100%;font-size: 18pt;font-weight: bold">&nbsp;</span>
+                      }
+                    </span>
+                  </ion-note>
+                }
+                @if (!item().isDNoteUsed && item().wertung.noteE === item().wertung.endnote) {
+                  <ion-note item-end item-text-wrap (click)="presentDetails(true)">
+                    @if (item().isStroked && item().wertung.endnote) {
+                      <span class="rightbound"  style="font-size: 18pt;background-color: darkred">{{item().wertung.endnote | number:'2.3-3'}}</span>
+                    }
+                    @if (!item().isStroked && item().wertung.endnote) {
+                      <span class="rightbound"  style="font-size: 18pt;font-weight: bold">{{item().wertung.endnote | number:'2.3-3'}}</span>
+                    }
+                    @if (!item().wertung.endnote) {
+                      <span class="rightbound" style="width: 100%;font-size: 18pt;font-weight: bold">&nbsp;</span>
+                    }
+                  </ion-note>
+                }
+              </ion-col>
+            }
+          </ion-row>
+          @if (groupedBy() !== groupBy.ATHLET) {
+            <ion-row>
+              <ion-col size-xs="8" size-md="8" size-lg="8" size-xl="8">
+                <div class="nonwrapping">
+                  <div style="font-size: 16pt;">{{item().vorname + ' ' + item().name}}</div>
+                </div>
+                <div class="nonwrapping">
+                  {{item().verein}}
+                </div>
+              </ion-col>
+              <ion-col col-auto >
+                @if (item().isDNoteUsed && item().wertung.noteD) {
+                  <ion-note item-end item-text-wrap>
+                    <span class="rightbound">&nbsp;&nbsp;{{dNoteLabel}}: {{item().wertung.noteD | number:'2.3-3'}}
+                      <br>&nbsp;&nbsp;{{eNoteLabel}}: {{item().wertung.noteE | number:'2.3-3'}}
+                        <br></span>
+                        @if (!item().wertung.endnote) {
+                          <span class="rightbound"style="width: 100%;font-size: 18pt;font-weight: bold">&nbsp;</span>
+                        }
+                        @if (item().wertung.endnote) {
+                          <span class="rightbound" style="font-size: 18pt;font-weight: bold">{{item().wertung.endnote | number:'2.3-3'}}</span>
+                        }
+                      </ion-note>
+                    }
+                    @if (!item().isDNoteUsed && item().wertung.noteE !== item().wertung.endnote) {
+                      <ion-note item-end item-text-wrap>
+                        <span class="rightbound">&nbsp;&nbsp;{{eNoteLabel}}: {{item().wertung.noteE | number:'2.3-3-3'}}
+                          <br></span>
+                          @if (item().wertung.endnote) {
+                            <span class="rightbound" style="font-size: 18pt;font-weight: bold">{{item().wertung.endnote | number:'2.3-3'}}</span>
+                          }
+                          @if (!item().wertung.endnote) {
+                            <span class="rightbound" style="width: 100%;font-size: 18pt;font-weight: bold">&nbsp;</span>
+                          }
+                        </ion-note>
+                      }
+                      @if (!item().isDNoteUsed && item().wertung.noteE === item().wertung.endnote) {
+                        <ion-note item-end item-text-wrap>
+                          @if (item().wertung.endnote) {
+                            <span class="rightbound" style="font-size: 18pt;font-weight: bold">{{item().wertung.endnote | number:'2.3-3'}}</span>
+                          }
+                          @if (!item().wertung.endnote) {
+                            <span class="rightbound" style="width: 100%;font-size: 18pt;font-weight: bold">&nbsp;</span>
+                          }
+                        </ion-note>
+                      }
+                    </ion-col>
+                  </ion-row>
+                }
+              </ion-grid>
+            </ion-card>

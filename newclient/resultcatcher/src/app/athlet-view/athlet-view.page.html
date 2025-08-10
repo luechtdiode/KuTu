@@ -1,26 +1,29 @@
 <ion-header>
-    <ion-toolbar>
-      <ion-buttons slot="start">
-          <ion-back-button defaultHref="/" />
-      </ion-buttons>
-      <ion-title>
-        <ion-grid no-padding>
-          <ion-row>
-            <ion-col>
-              <ion-label>Aktuelle Resultate</ion-label>
-            </ion-col>
-          </ion-row>
-        </ion-grid>
-      </ion-title>
-      <ion-buttons slot="end">
-        <ion-button slot="end" (click)="share()" *ngIf="isShareAvailable()">
+  <ion-toolbar>
+    <ion-buttons slot="start">
+      <ion-back-button defaultHref="/" />
+    </ion-buttons>
+    <ion-title>
+      <ion-grid no-padding>
+        <ion-row>
+          <ion-col>
+            <ion-label>Aktuelle Resultate</ion-label>
+          </ion-col>
+        </ion-row>
+      </ion-grid>
+    </ion-title>
+    <ion-buttons slot="end">
+      @if (isShareAvailable()) {
+        <ion-button slot="end" (click)="share()">
           <ion-icon name="share" />
         </ion-button>
-      </ion-buttons>
-    </ion-toolbar>
-    <ion-grid no-padding>
-      <ion-row>
-        <ion-col *ngIf="competition">
+      }
+    </ion-buttons>
+  </ion-toolbar>
+  <ion-grid no-padding>
+    <ion-row>
+      @if (competition) {
+        <ion-col>
           <ion-note>
             {{competitionName()}}
           </ion-note>
@@ -29,35 +32,44 @@
             <div style="font-size: 10pt;">{{athlet.verein}}</div>
           </ion-label>
         </ion-col>
-      </ion-row>
-    </ion-grid>
-  </ion-header>
+      }
+    </ion-row>
+  </ion-grid>
+</ion-header>
 
-  <ion-content>
-    <ion-grid no-padding>
-      <ion-row *ngIf="getColumnSpec() === 6">
-        <ion-col class="align-self-start"
-          size-xs="12" size-md="6" size-lg="4" [attr.size-xl]="getMaxColumnSpec()"
-          *ngFor='let w of items'>
-          <div [ngClass]="{'gradient-border':isNew(w)}">
-            <result-display [item]="w" [title]="getTitle(w)" [groupedBy]="groupBy.ATHLET" />
-          </div>
-        </ion-col>
-      </ion-row>
-      <ion-row *ngIf="getColumnSpec() !== 6">
-        <ion-col class="align-self-start"
-          size-xs="12" size-md="6" size-lg="3" [attr.size-xl]="getMaxColumnSpec()"
-          *ngFor='let w of items'>
-          <div [ngClass]="{'gradient-border':isNew(w)}">
-            <result-display [item]="w" [title]="getTitle(w)" [groupedBy]="groupBy.ATHLET" />
-          </div>
-        </ion-col>
-      </ion-row>
+<ion-content>
+  <ion-grid no-padding>
+    @if (getColumnSpec() === 6) {
       <ion-row>
-        <ion-col class="align-self-start"
-          size-xs="12" size-md="12" size-lg="12" size-xl="12">
-          <result-display [item]="total" [title]="getTitle(undefined)" [groupedBy]="groupBy.ATHLET" />
-        </ion-col>
+        @for (w of items; track w) {
+          <ion-col class="align-self-start"
+            size-xs="12" size-md="6" size-lg="4" [attr.size-xl]="getMaxColumnSpec()"
+            >
+            <div [ngClass]="{'gradient-border':isNew(w)}">
+              <result-display [item]="w" [title]="getTitle(w)" [groupedBy]="groupBy.ATHLET" />
+            </div>
+          </ion-col>
+        }
       </ion-row>
-    </ion-grid>
-  </ion-content>
+    }
+    @if (getColumnSpec() !== 6) {
+      <ion-row>
+        @for (w of items; track w) {
+          <ion-col class="align-self-start"
+            size-xs="12" size-md="6" size-lg="3" [attr.size-xl]="getMaxColumnSpec()"
+            >
+            <div [ngClass]="{'gradient-border':isNew(w)}">
+              <result-display [item]="w" [title]="getTitle(w)" [groupedBy]="groupBy.ATHLET" />
+            </div>
+          </ion-col>
+        }
+      </ion-row>
+    }
+    <ion-row>
+      <ion-col class="align-self-start"
+        size-xs="12" size-md="12" size-lg="12" size-xl="12">
+        <result-display [item]="total" [title]="getTitle(undefined)" [groupedBy]="groupBy.ATHLET" />
+      </ion-col>
+    </ion-row>
+  </ion-grid>
+</ion-content>

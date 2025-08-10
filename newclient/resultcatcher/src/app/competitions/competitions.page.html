@@ -13,16 +13,20 @@
     [(ngModel)]="sMyQuery"
     (ionInput)="reloadList($event)"
     (ionCancel)="reloadList($event)" />
-</ion-header>
+  </ion-header>
 
-<ion-content>
-  <ion-list *ngIf="sFilteredWettkampfList && sFilteredWettkampfList.length > 0">
-    <ion-item *ngFor='let w of sFilteredWettkampfList' (click)="itemTapped($event, w)">
-      <ion-avatar slot="start">
-        <img src="assets/imgs/wettkampf.png">
-      </ion-avatar>
-      <ion-label>{{w.datum | date:'dd-MM-yyyy'}}&nbsp;{{w.titel}}<br><small>{{getDetails(w)}}</small></ion-label>
-    </ion-item>
-  </ion-list>
-  
-</ion-content>
+  <ion-content>
+    @if (sFilteredWettkampfList && sFilteredWettkampfList.length > 0) {
+      <ion-list>
+        @for (w of sFilteredWettkampfList; track w) {
+          <ion-item (click)="itemTapped($event, w)">
+            <ion-avatar slot="start">
+              <img src="assets/imgs/wettkampf.png">
+            </ion-avatar>
+            <ion-label>{{w.datum | date:'dd-MM-yyyy'}}&nbsp;{{w.titel}}<br><small>{{getDetails(w)}}</small></ion-label>
+          </ion-item>
+        }
+      </ion-list>
+    }
+
+  </ion-content>
