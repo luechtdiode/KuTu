@@ -1,4 +1,4 @@
-import { Component, ViewChild, NgZone, inject } from '@angular/core';
+import { Component, NgZone, inject, viewChild } from '@angular/core';
 import { WertungContainer, Wertung, ScoreCalcVariable, ScoreCalcVariables } from '../backend-types';
 import { BehaviorSubject, Subject, Subscription, defer, of } from 'rxjs';
 import { NavController, Platform, ToastController, AlertController, IonItemSliding } from '@ionic/angular';
@@ -43,9 +43,13 @@ export class WertungEditorPage {
   }
   private itemOriginal: WertungContainer;
   
-  @ViewChild('wertungsform') public form: any;
-  @ViewChild('enote') public enote: { setFocus: () => void; };
-  @ViewChild('dnote') public dnote: { setFocus: () => void; };
+  public readonly form = viewChild<any>('wertungsform');
+  public readonly enote = viewChild<{
+    setFocus: () => void;
+}>('enote');
+  public readonly dnote = viewChild<{
+    setFocus: () => void;
+}>('dnote');
 
   private subscription: Subscription;
 
@@ -231,11 +235,13 @@ export class WertungEditorPage {
             console.log('keyboard called');
           }
         }
-        if (this.isDNoteUsed && this.dnote) {
-          this.dnote.setFocus();
+        const dnote = this.dnote();
+        const enote = this.enote();
+        if (this.isDNoteUsed && dnote) {
+          dnote.setFocus();
           console.log('dnote focused');
-        } else if (this.enote) {
-          this.enote.setFocus();
+        } else if (enote) {
+          enote.setFocus();
           console.log('enote focused');
         }
       }, 400);

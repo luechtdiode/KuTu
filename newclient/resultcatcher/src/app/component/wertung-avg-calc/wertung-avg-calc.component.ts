@@ -1,4 +1,4 @@
-import { Component, EventEmitter, HostBinding, Input, OnInit, Output, ViewChild, input } from '@angular/core';
+import { Component, EventEmitter, HostBinding, Input, OnInit, Output, input, viewChild } from '@angular/core';
 import { ControlValueAccessor, NG_VALUE_ACCESSOR } from '@angular/forms';
 
 @Component({
@@ -183,11 +183,13 @@ export class WertungAvgCalcComponent implements ControlValueAccessor {
     this.disabled = disabled;
   }
 
-  @ViewChild('noteInput') public noteInput: { setFocus: () => void; };
+  public readonly noteInput = viewChild<{
+    setFocus: () => void;
+}>('noteInput');
   
   focused = false;
 
   setFocus() {
-    this.noteInput.setFocus();
+    this.noteInput().setFocus();
   }
 }
