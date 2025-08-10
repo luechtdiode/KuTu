@@ -1,4 +1,4 @@
-import { Component, OnInit, NgZone } from '@angular/core';
+import { Component, OnInit, NgZone, inject } from '@angular/core';
 import { ClubRegistration, NewClubRegistration, Verein } from 'src/app/backend-types';
 import { ActivatedRoute } from '@angular/router';
 import { BackendService } from 'src/app/services/backend.service';
@@ -16,15 +16,18 @@ import { TypeAheadItem } from 'src/app/component/typeahead/typeahead.component';
     standalone: false
 })
 export class ClubregEditorPage implements OnInit {
+  navCtrl = inject(NavController);
+  private route = inject(ActivatedRoute);
+  backendService = inject(BackendService);
+  private alertCtrl = inject(AlertController);
+  actionSheetController = inject(ActionSheetController);
+  private zone = inject(NgZone);
 
-  constructor(
-    public navCtrl: NavController,
-    private route: ActivatedRoute,
-    public backendService: BackendService,
-    private alertCtrl: AlertController,
-    public actionSheetController: ActionSheetController,
-    private zone: NgZone
-    ) {
+  /** Inserted by Angular inject() migration for backwards compatibility */
+  constructor(...args: unknown[]);
+
+
+  constructor() {
       if (! this.backendService.competitions) {
         this.backendService.getCompetitions();
       }

@@ -1,4 +1,4 @@
-import { Component, OnDestroy, OnInit } from '@angular/core';
+import { Component, OnDestroy, OnInit, inject } from '@angular/core';
 import { ActionSheetController, IonItemSliding, NavController } from '@ionic/angular';
 import { Geraet, NewLastResults, ScoreBlock, ScoreLink, ScoreRow, Wertung, WertungContainer, Wettkampf } from '../backend-types';
 
@@ -17,6 +17,12 @@ import { backendUrl } from '../utils';
     standalone: false
 })
 export class LastResultsPage implements OnInit, OnDestroy {
+  navCtrl = inject(NavController);
+  backendService = inject(BackendService);
+  private readonly route = inject(ActivatedRoute);
+  private readonly router = inject(Router);
+  actionSheetController = inject(ActionSheetController);
+
   groupBy = GroupBy;
 
   items: WertungContainer[] = [];
@@ -41,12 +47,10 @@ export class LastResultsPage implements OnInit, OnDestroy {
 
   subscriptions: Subscription[] = [];
 
-  constructor(public navCtrl: NavController,
-    public backendService: BackendService,
-    private readonly route: ActivatedRoute,
-    private readonly router: Router,
-    public actionSheetController: ActionSheetController
-    ) {
+  /** Inserted by Angular inject() migration for backwards compatibility */
+  constructor(...args: unknown[]);
+
+  constructor() {
     if (! this.backendService.competitions) {
       this.backendService.getCompetitions();
     }

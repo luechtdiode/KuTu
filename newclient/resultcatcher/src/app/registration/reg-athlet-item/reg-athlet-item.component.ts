@@ -1,4 +1,4 @@
-import { Component, OnInit, Input, Output, EventEmitter } from '@angular/core';
+import { Component, OnInit, input, output } from '@angular/core';
 import { ClubRegistration, AthletRegistration, ProgrammRaw, TeamItem } from '../../backend-types';
 
 @Component({
@@ -11,26 +11,20 @@ export class RegAthletItemComponent implements OnInit {
 
   constructor() { }
 
-  @Input()
-  athletregistration: AthletRegistration;
+  readonly athletregistration = input<AthletRegistration>(undefined);
 
-  @Input()
-  vereinregistration: ClubRegistration;
+  readonly vereinregistration = input<ClubRegistration>(undefined);
 
-  @Input()
-  status: string;
+  readonly status = input<string>(undefined);
 
-  @Input()
-  programmlist: ProgrammRaw[];
+  readonly programmlist = input<ProgrammRaw[]>(undefined);
 
-  @Input()
-  teams: TeamItem[];
+  readonly teams = input<TeamItem[]>(undefined);
 
-  @Output()
-  selected = new EventEmitter<AthletRegistration>();
+  readonly selected = output<AthletRegistration>();
 
   statusBadgeColor() {
-    if (this.status === "in sync") {
+    if (this.status() === "in sync") {
       return "success";
     } else {
       return "warning"
@@ -38,30 +32,32 @@ export class RegAthletItemComponent implements OnInit {
   }
 
   statusComment() {
-    if (this.status === "in sync") {
+    const status = this.status();
+    if (status === "in sync") {
       return "";
     } else {
-      return this.status.substring(this.status.indexOf("(") + 1, this.status.length -1);
+      return status.substring(status.indexOf("(") + 1, status.length -1);
     }
   }
 
   statusBadgeText() {
-    if (this.status === "in sync") {
-      return "\u2714 " + this.status;
+    const status = this.status();
+    if (status === "in sync") {
+      return "\u2714 " + status;
     } else {
-      return "\u2757 " + this.status.substring(0, this.status.indexOf("(")-1);
+      return "\u2757 " + status.substring(0, status.indexOf("(")-1);
     }
   }
 
   ngOnInit() {}
 
   getProgrammText() {
-    const programraw = this.programmlist.find(pgm => pgm.id === this.athletregistration.programId);
+    const programraw = this.programmlist().find(pgm => pgm.id === this.athletregistration().programId);
     return  !!programraw ? programraw.name : '...';
   }
 
   mapTeam(teamId: number): string {
-    return [...this.teams.filter(tm => tm.name?.trim().length > 0 && tm.index == teamId).map(tm => {
+    return [...this.teams().filter(tm => tm.name?.trim().length > 0 && tm.index == teamId).map(tm => {
       if (tm.index > 0) {
         return tm.name + ' ' + tm.index;
       } else return tm.name;
@@ -69,10 +65,10 @@ export class RegAthletItemComponent implements OnInit {
   }
 
   getTeamText() {
-    const team = this.athletregistration.team;
+    const team = this.athletregistration().team;
     if (team) {
       const pgmtext = this.getProgrammText();
-      return 'Team ' + this.mapTeam(this.athletregistration.team) + " (bei " + this.athletregistration.geschlecht + "/" + pgmtext + ")";
+      return 'Team ' + this.mapTeam(this.athletregistration().team) + " (bei " + this.athletregistration().geschlecht + "/" + pgmtext + ")";
     } else {
       return '';
     }

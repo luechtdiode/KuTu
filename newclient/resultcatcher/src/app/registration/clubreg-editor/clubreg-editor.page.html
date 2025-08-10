@@ -1,104 +1,113 @@
 <ion-header>
   <ion-toolbar>
     <ion-buttons slot="start">
-      <ion-back-button defaultHref="/"></ion-back-button>
+      <ion-back-button defaultHref="/" />
     </ion-buttons>
     <ion-title>Vereins-Registrierung</ion-title>
     <ion-note slot="end"><div class="athlet">für {{wettkampf}}</div></ion-note>
   </ion-toolbar>
 </ion-header>
 
-<ion-content *ngIf="registration">
-  <ion-button *ngIf="regId === 0" id="searchClubPresets" size="large" expand="block">
-    <ion-icon name="search-outline" ios="md-search-outline">      
-    </ion-icon>&nbsp;&nbsp;
-    Verein aus liste auswählen ...</ion-button>
-  <ion-modal *ngIf="regId === 0" trigger="searchClubPresets" #modal>
-    <ng-template>
-      <app-typeahead
-        class="ion-page"
-        title="Vorbelegen mit"
-        [items]="clublist"
-        [selectedItem]="getVereinSelected"
-        (selectionChange)="setVereinSelected($event); modal.dismiss()"
-        (selectionCancel)="modal.dismiss()"
-      ></app-typeahead>
-    </ng-template>
-  </ion-modal>
-
-  <form #clubRegistrationform="ngForm" (ngSubmit)="save(clubRegistrationform)" (keyup.enter)="save(clubRegistrationform)">
-    <ion-list>
-      <ion-item-divider color="primary">Verein</ion-item-divider>
-      <ion-item>
-        <ion-avatar slot="start">
-          <img src="assets/imgs/verein.png">
-        </ion-avatar>
-        <!-- <ion-label color="primary">Name</ion-label> -->
-        <ion-input [readonly]='false' [autofocus]="true" placeholder="Vereinsname" autocomplete="true" type="text"  [disabled]="false" [ngModel]='registration.vereinname' name="vereinname" required></ion-input>
-        <!-- <ion-label color="primary">Verband</ion-label> -->
-        <ion-input [readonly]='false'  placeholder="Verband" autocomplete="true" type="text"  [disabled]="false" [ngModel]='registration.verband' name="verband" required></ion-input>
-      </ion-item>
-      <ion-item-divider color="primary">Verantwortliche Person</ion-item-divider>
-      <ion-item>
-        <ion-avatar slot="start">
-          <img src="assets/imgs/chief.png">
-        </ion-avatar>
-        <!-- <ion-label color="primary">Vorname</ion-label> -->
-        <ion-input [readonly]='false'  placeholder="Vorname" type="text" autocomplete="given-name"  [disabled]="false" [ngModel]='registration.respVorname' name="respVorname" required></ion-input>
-        <!-- <ion-label color="primary">Name</ion-label> -->
-        <ion-input [readonly]='false'  placeholder="Nachname" type="text" autocomplete="name"  [disabled]="false" [ngModel]='registration.respName' name="respName" required></ion-input>
-      </ion-item>
-      <ion-item *ngIf="regId === 0">
-        <ion-avatar slot="start">
-          <img src="assets/imgs/password.png">
-        </ion-avatar>
-        <!-- <ion-label color="primary">Passwort</ion-label> -->
-        <ion-input [readonly]='false'  placeholder="Passwort" type="password"  [disabled]="false" [ngModel]='newRegistration.secret' name="secret" required></ion-input>
-        <ion-input [readonly]='false'  placeholder="Passwort bestätigen" type="password"  [disabled]="false" [ngModel]='newRegistration.verification' name="verification" required></ion-input>
-      </ion-item>
-      <ion-item *ngIf="regId > 0">
-        <ion-avatar slot="start">
-          <img src="assets/imgs/password.png">
-        </ion-avatar>
-        <!-- <ion-label color="primary">Passwort</ion-label> -->
-        <ion-input [readonly]='false'  placeholder="Passwort" type="password"  [disabled]="false" [(ngModel)]='changePassword.secret' name="secret"></ion-input>
-        <ion-input [readonly]='false'  placeholder="Passwort bestätigen" type="password"  [disabled]="false" [(ngModel)]='changePassword.verification' name="verification"></ion-input>
-      </ion-item>
-      <ion-item *ngIf="regId > 0">
-        <ion-avatar slot="start">
-          &nbsp;
-        </ion-avatar>
-        <ion-button size="small" (click)="savePWChange()" #btnChangePassword [disabled]="waiting || !changePassword.secret || changePassword.secret !== changePassword.verification" color="danger">
-          <ion-icon slot="start" name="save"></ion-icon>Passwort ändern
+@if (registration) {
+  <ion-content>
+    @if (regId === 0) {
+      <ion-button id="searchClubPresets" size="large" expand="block">
+        <ion-icon name="search-outline" ios="md-search-outline" />&nbsp;&nbsp;
+      Verein aus liste auswählen ...</ion-button>
+    }
+    @if (regId === 0) {
+      <ion-modal trigger="searchClubPresets" #modal>
+        <ng-template>
+          <app-typeahead class="ion-page"
+            title="Vorbelegen mit"
+            [items]="clublist"
+            [selectedItem]="getVereinSelected"
+            (selectionChange)="setVereinSelected($event); modal.dismiss()"
+            (selectionCancel)="modal.dismiss()"
+            />
+          </ng-template>
+        </ion-modal>
+      }
+      <form #clubRegistrationform="ngForm" (ngSubmit)="save(clubRegistrationform)" (keyup.enter)="save(clubRegistrationform)">
+        <ion-list>
+          <ion-item-divider color="primary">Verein</ion-item-divider>
+          <ion-item>
+            <ion-avatar slot="start">
+              <img src="assets/imgs/verein.png">
+            </ion-avatar>
+            <!-- <ion-label color="primary">Name</ion-label> -->
+            <ion-input [readonly]='false' [autofocus]="true" placeholder="Vereinsname" autocomplete="true" type="text"  [disabled]="false" [ngModel]='registration.vereinname' name="vereinname" required />
+            <!-- <ion-label color="primary">Verband</ion-label> -->
+            <ion-input [readonly]='false'  placeholder="Verband" autocomplete="true" type="text"  [disabled]="false" [ngModel]='registration.verband' name="verband" required />
+          </ion-item>
+          <ion-item-divider color="primary">Verantwortliche Person</ion-item-divider>
+          <ion-item>
+            <ion-avatar slot="start">
+              <img src="assets/imgs/chief.png">
+            </ion-avatar>
+            <!-- <ion-label color="primary">Vorname</ion-label> -->
+            <ion-input [readonly]='false'  placeholder="Vorname" type="text" autocomplete="given-name"  [disabled]="false" [ngModel]='registration.respVorname' name="respVorname" required />
+            <!-- <ion-label color="primary">Name</ion-label> -->
+            <ion-input [readonly]='false'  placeholder="Nachname" type="text" autocomplete="name"  [disabled]="false" [ngModel]='registration.respName' name="respName" required />
+          </ion-item>
+          @if (regId === 0) {
+            <ion-item>
+              <ion-avatar slot="start">
+                <img src="assets/imgs/password.png">
+              </ion-avatar>
+              <!-- <ion-label color="primary">Passwort</ion-label> -->
+              <ion-input [readonly]='false'  placeholder="Passwort" type="password"  [disabled]="false" [ngModel]='newRegistration.secret' name="secret" required />
+              <ion-input [readonly]='false'  placeholder="Passwort bestätigen" type="password"  [disabled]="false" [ngModel]='newRegistration.verification' name="verification" required />
+            </ion-item>
+          }
+          @if (regId > 0) {
+            <ion-item>
+              <ion-avatar slot="start">
+                <img src="assets/imgs/password.png">
+              </ion-avatar>
+              <!-- <ion-label color="primary">Passwort</ion-label> -->
+              <ion-input [readonly]='false'  placeholder="Passwort" type="password"  [disabled]="false" [(ngModel)]='changePassword.secret' name="secret" />
+              <ion-input [readonly]='false'  placeholder="Passwort bestätigen" type="password"  [disabled]="false" [(ngModel)]='changePassword.verification' name="verification" />
+            </ion-item>
+          }
+          @if (regId > 0) {
+            <ion-item>
+              <ion-avatar slot="start" />
+              <ion-button size="small" (click)="savePWChange()" #btnChangePassword [disabled]="waiting || !changePassword.secret || changePassword.secret !== changePassword.verification" color="danger">
+                <ion-icon slot="start" name="save" />Passwort ändern
+              </ion-button>
+            </ion-item>
+          }
+          <ion-item-divider color="primary">Kontakt</ion-item-divider>
+          <ion-item>
+            <ion-avatar slot="start">
+              <img src="assets/imgs/atmail.png">
+            </ion-avatar>
+            <!-- <ion-label color="primary">Mail</ion-label> -->
+            <ion-input [readonly]='false'  placeholder="Mail" type="email" autocomplete="email"
+              pattern="^[_a-z0-9-]+(\.[_a-z0-9-]+)*@[a-z0-9-]+(\.[a-z0-9-]+)*(\.[a-z]{2,5})$" [disabled]="false" [ngModel]='registration.mail' name="mail" required />
+              <!-- <ion-label color="primary">Mobile/SMS</ion-label> -->
+              <ion-input [readonly]='false'  placeholder="Mobile/SMS (+4179...)" type="tel" autocomplete="on" pattern="[+]{1}[0-9]{11,14}" [disabled]="false" [ngModel]='registration.mobilephone' name="mobilephone" required />
+            </ion-item>
+          </ion-list>
+          <ion-button size="large" expand="block" type="submit" #btnSaveNext [disabled]="waiting || !clubRegistrationform.valid || clubRegistrationform.untouched" color="success">
+            <ion-icon slot="start" name="save" />Speichern
+          </ion-button>
+        </form>
+        <ion-list>
+          <ion-item-divider color="primary">Pendente Verarbeitungen ({{sSyncActions.length}})</ion-item-divider>
+          @for (action of sSyncActions; track action) {
+            <ion-item>
+              {{action}}
+            </ion-item>
+          }
+        </ion-list>
+      </ion-content>
+    }
+    <ion-footer>
+      <ion-toolbar>
+        <ion-button size="large" expand="block" (click)='presentActionSheet()' [disabled]="waiting || regId === 0" color="primary">
+          <ion-icon slot="start" name="list" />Anmeldungen...
         </ion-button>
-      </ion-item>
-      <ion-item-divider color="primary">Kontakt</ion-item-divider>
-      <ion-item>
-        <ion-avatar slot="start">
-          <img src="assets/imgs/atmail.png">
-        </ion-avatar>
-        <!-- <ion-label color="primary">Mail</ion-label> -->
-        <ion-input [readonly]='false'  placeholder="Mail" type="email" autocomplete="email"
-        pattern="^[_a-z0-9-]+(\.[_a-z0-9-]+)*@[a-z0-9-]+(\.[a-z0-9-]+)*(\.[a-z]{2,5})$" [disabled]="false" [ngModel]='registration.mail' name="mail" required></ion-input>
-        <!-- <ion-label color="primary">Mobile/SMS</ion-label> -->
-        <ion-input [readonly]='false'  placeholder="Mobile/SMS (+4179...)" type="tel" autocomplete="on" pattern="[+]{1}[0-9]{11,14}" [disabled]="false" [ngModel]='registration.mobilephone' name="mobilephone" required></ion-input>
-      </ion-item>
-    </ion-list>
-    <ion-button size="large" expand="block" type="submit" #btnSaveNext [disabled]="waiting || !clubRegistrationform.valid || clubRegistrationform.untouched" color="success">
-      <ion-icon slot="start" name="save"></ion-icon>Speichern
-    </ion-button>
-  </form>
-  <ion-list>
-    <ion-item-divider color="primary">Pendente Verarbeitungen ({{sSyncActions.length}})</ion-item-divider>
-    <ion-item *ngFor="let action of sSyncActions">
-      {{action}}
-    </ion-item>
-  </ion-list>
-</ion-content>
-<ion-footer>
-  <ion-toolbar>
-    <ion-button size="large" expand="block" (click)='presentActionSheet()' [disabled]="waiting || regId === 0" color="primary">
-      <ion-icon slot="start" name="list"></ion-icon>Anmeldungen...
-    </ion-button>
-  </ion-toolbar>
-</ion-footer>
+      </ion-toolbar>
+    </ion-footer>

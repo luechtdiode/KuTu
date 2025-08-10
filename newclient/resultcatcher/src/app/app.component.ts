@@ -1,4 +1,4 @@
-import { Component } from '@angular/core';
+import { Component, inject } from '@angular/core';
 
 import { Platform, AlertController, NavController } from '@ionic/angular';
 import { BackendService } from './services/backend.service';
@@ -13,11 +13,19 @@ import { SplashScreen } from '@capacitor/splash-screen';
     standalone: false
 })
 export class AppComponent {
+  platform = inject(Platform);
+  private navController = inject(NavController);
+  private route = inject(ActivatedRoute);
+  private router = inject(Router);
+  themeSwitcher = inject(ThemeSwitcherService);
+  backendService = inject(BackendService);
+  private alertCtrl = inject(AlertController);
 
-  constructor(public platform: Platform,
-              private navController: NavController, private route: ActivatedRoute, private router: Router,
-              public themeSwitcher: ThemeSwitcherService,
-              public backendService: BackendService, private alertCtrl: AlertController) {
+  /** Inserted by Angular inject() migration for backwards compatibility */
+  constructor(...args: unknown[]);
+
+
+  constructor() {
 
     this.appPages = [
       { title: 'Home', url: '/home', icon: 'home' },

@@ -3,7 +3,7 @@
     <ion-buttons slot="start">
       <ion-menu-toggle>
         <ion-button>
-          <ion-icon slot="icon-only" name="menu"></ion-icon>
+          <ion-icon slot="icon-only" name="menu" />
         </ion-button>
       </ion-menu-toggle>
     </ion-buttons>
@@ -12,18 +12,21 @@
   <ion-searchbar placeholder="Search" showCancelButton="never"
     [(ngModel)]="sMyQuery"
     (ionInput)="reloadList($event)"
-    (ionCancel)="reloadList($event)">
-  </ion-searchbar>
-</ion-header>
+    (ionCancel)="reloadList($event)" />
+  </ion-header>
 
-<ion-content>
-  <ion-list *ngIf="sFilteredWettkampfList && sFilteredWettkampfList.length > 0">
-    <ion-item *ngFor='let w of sFilteredWettkampfList' (click)="itemTapped($event, w)">
-      <ion-avatar slot="start">
-        <img src="assets/imgs/wettkampf.png">
-      </ion-avatar>
-      <ion-label>{{w.datum | date:'dd-MM-yyyy'}}&nbsp;{{w.titel}}<br><small>{{getDetails(w)}}</small></ion-label>
-    </ion-item>
-  </ion-list>
-  
-</ion-content>
+  <ion-content>
+    @if (sFilteredWettkampfList && sFilteredWettkampfList.length > 0) {
+      <ion-list>
+        @for (w of sFilteredWettkampfList; track w) {
+          <ion-item (click)="itemTapped($event, w)">
+            <ion-avatar slot="start">
+              <img src="assets/imgs/wettkampf.png">
+            </ion-avatar>
+            <ion-label>{{w.datum | date:'dd-MM-yyyy'}}&nbsp;{{w.titel}}<br><small>{{getDetails(w)}}</small></ion-label>
+          </ion-item>
+        }
+      </ion-list>
+    }
+
+  </ion-content>

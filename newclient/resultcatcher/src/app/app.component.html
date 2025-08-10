@@ -9,39 +9,43 @@
       <ion-content>
         <ion-list>
           <ion-menu-toggle auto-hide="false">
-            <ion-item *ngFor="let p of appPages" menuClose (click)="openPage(p.url)">
-              <ion-icon slot="start" [name]="p.icon"></ion-icon>
-              <ion-label>
-                {{p.title}}
-              </ion-label>
-            </ion-item>
+            @for (p of appPages; track p) {
+              <ion-item menuClose (click)="openPage(p.url)">
+                <ion-icon slot="start" [name]="p.icon" />
+                <ion-label>
+                  {{p.title}}
+                </ion-label>
+              </ion-item>
+            }
             <ion-item menuClose (click)="askUserName()">
-              <ion-icon slot="start" name="settings"></ion-icon>
+              <ion-icon slot="start" name="settings" />
               <ion-label>
                 Settings
               </ion-label>
             </ion-item>
             <ion-item-divider>&nbsp;<br>
-              Farbschema</ion-item-divider>
+            Farbschema</ion-item-divider>
             <ion-item menuClose (click)="changeTheme('')">
-              <ion-icon slot="start" name="color-palette"></ion-icon>
+              <ion-icon slot="start" name="color-palette" />
               <ion-label>
                 Standardfarben
               </ion-label>
             </ion-item>
-            <ion-item *ngFor="let t of themeKeys" menuClose (click)="changeTheme(t)"
-              [style.background-color]="themes[t].light"
-              [style.color]="themes[t].dark">
-              <ion-icon slot="start" name="color-palette"></ion-icon>
-              <ion-label [style.background-color]="themes[t].light" [style.color]="themes[t].dark">
-                {{t}}
-              </ion-label>
-            </ion-item>
+            @for (t of themeKeys; track t) {
+              <ion-item menuClose (click)="changeTheme(t)"
+                [style.background-color]="themes[t].light"
+                [style.color]="themes[t].dark">
+                <ion-icon slot="start" name="color-palette" />
+                <ion-label [style.background-color]="themes[t].light" [style.color]="themes[t].dark">
+                  {{t}}
+                </ion-label>
+              </ion-item>
+            }
           </ion-menu-toggle>
         </ion-list>
       </ion-content>
     </ion-menu>
-    <ion-router-outlet id="main"></ion-router-outlet>
+    <ion-router-outlet id="main" />
 
   </ion-split-pane>
 </ion-app>

@@ -1,4 +1,4 @@
-import { Component, Input, Output, EventEmitter } from '@angular/core';
+import { Component, input, output } from '@angular/core';
 import type { OnInit } from '@angular/core';
 
 export interface TypeAheadItem<T> {
@@ -11,26 +11,26 @@ export interface TypeAheadItem<T> {
     standalone: false
 })
 export class TypeaheadComponent<T> implements OnInit {
-  @Input() items: TypeAheadItem<T>[] = [];
-  @Input() selectedItem: T;
-  @Input() title = 'Select Items';
+  readonly items = input<TypeAheadItem<T>[]>([]);
+  readonly selectedItem = input<T>(undefined);
+  readonly title = input('Select Items');
 
-  @Output() selectionCancel = new EventEmitter<void>();
-  @Output() selectionChange = new EventEmitter<T>();
+  readonly selectionCancel = output<void>();
+  readonly selectionChange = output<T>();
 
   filteredItems: TypeAheadItem<T>[] = [];
   workingSelectedValue: TypeAheadItem<T> = undefined;
 
   ngOnInit() {
-    this.filteredItems = [...this.items];
+    this.filteredItems = [...this.items()];
     this.workingSelectedValue = <TypeAheadItem<T>>{
-      item: this.selectedItem,
-      text: this.items.find(i => i.item === this.selectedItem)?.text
+      item: this.selectedItem(),
+      text: this.items().find(i => i.item === this.selectedItem())?.text
     };
   }
 
   cancelChanges() {
-    this.selectionCancel.emit();
+    this.selectionCancel.emit(void 0);
   }
 
   confirmChanges() {
@@ -53,7 +53,7 @@ export class TypeaheadComponent<T> implements OnInit {
      * return all options.
      */
     if (searchQuery === undefined) {
-      this.filteredItems = [...this.items];
+      this.filteredItems = [...this.items()];
     } else {
       /**
        * Otherwise, normalize the search
@@ -61,7 +61,7 @@ export class TypeaheadComponent<T> implements OnInit {
        * contain the search query as a substring.
        */
       const normalizedQuery = searchQuery.toLowerCase();
-      this.filteredItems = this.items.filter((item) => {
+      this.filteredItems = this.items().filter((item) => {
         return item.text.toLowerCase().includes(normalizedQuery);
       });
     }

@@ -1,11 +1,11 @@
-<ion-item (click)="selected ? selected.emit(clubregistration) : {}">
+<ion-item (click)="selected ? selected.emit(clubregistration()) : {}">
   <ion-avatar slot="start">
     <img src="assets/imgs/verein.png">
   </ion-avatar>
-  <ion-label>{{clubregistration.vereinname}}, {{clubregistration.verband}}<br><small>({{clubregistration.respVorname}} {{clubregistration.respName}})</small>
+  <ion-label>{{clubregistration().vereinname}}, {{clubregistration().verband}}<br><small>({{clubregistration().respVorname}} {{clubregistration().respName}})</small>
   </ion-label>
   <ion-note slot="end" >
-    Status {{status}}
+    Status {{status()}}
   </ion-note>
 </ion-item>
 

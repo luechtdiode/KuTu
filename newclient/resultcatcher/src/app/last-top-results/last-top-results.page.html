@@ -3,7 +3,7 @@
     <ion-buttons slot="start">
       <ion-menu-toggle>
         <ion-button>
-          <ion-icon slot="icon-only" name="menu"></ion-icon>
+          <ion-icon slot="icon-only" name="menu" />
         </ion-button>
       </ion-menu-toggle>
     </ion-buttons>
@@ -13,41 +13,61 @@
           <ion-col>
             <ion-label>Top Resultate</ion-label>
           </ion-col>
-          <ion-col *ngIf="!competition">
-            <ion-item>
-              <ion-select label="Wettkampf" placeholder='Bitte auswählen' *ngIf="getCompetitions().length > 0" [(ngModel)]='competition'
-                okText='Okay' cancelText='Abbrechen'>
-                <ion-select-option *ngFor='let comp of getCompetitions()' [value]='comp.uuid'>
-                  {{comp.titel + ' ' + (comp.datum | date:'dd-MM-yy')}}</ion-select-option>
-              </ion-select>
-            </ion-item>
-          </ion-col>
+          @if (!competition) {
+            <ion-col>
+              <ion-item>
+                @if (getCompetitions().length > 0) {
+                  <ion-select label="Wettkampf" placeholder='Bitte auswählen' [(ngModel)]='competition'
+                    okText='Okay' cancelText='Abbrechen'>
+                    @for (comp of getCompetitions(); track comp) {
+                      <ion-select-option [value]='comp.uuid'>
+                      {{comp.titel + ' ' + (comp.datum | date:'dd-MM-yy')}}</ion-select-option>
+                    }
+                  </ion-select>
+                }
+              </ion-item>
+            </ion-col>
+          }
         </ion-row>
       </ion-grid>
     </ion-title>
-    <ion-note slot="end" *ngIf="competition">
-      {{competitionName()}}
-    </ion-note>
+    @if (competition) {
+      <ion-note slot="end">
+        {{competitionName()}}
+      </ion-note>
+    }
   </ion-toolbar>
 </ion-header>
 
 <ion-content>
-  <ion-grid no-padding *ngIf="items.length > 0 && getColumnSpec() === 6">
-    <ion-row *ngFor='let p of getProgramme()'>
-      <ion-col class="align-self-start"
-        size-xs="12" size-md="6" size-lg="3" [attr.size-xl]="getMaxColumnSpec()"
-        *ngFor='let w of getWertungen(p)'>
-        <result-display [item]="w" [title]="getTitle(w)" [groupedBy]="groupBy.PROGRAMM"></result-display>
-      </ion-col>
-    </ion-row>
-  </ion-grid>
-  <ion-grid no-padding *ngIf="items.length > 0 && 6 !== getColumnSpec()">
-    <ion-row *ngFor='let p of getProgramme()'>
-      <ion-col class="align-self-start"
-        size-xs="12" size-sm="6" size-md="4" size-lg="3" [attr.size-xl]="getMaxColumnSpec()"
-        *ngFor='let w of getWertungen(p)'>
-        <result-display [item]="w" [title]="getTitle(w)" [groupedBy]="groupBy.PROGRAMM"></result-display>
-      </ion-col>
-    </ion-row>
-  </ion-grid>
+  @if (items.length > 0 && getColumnSpec() === 6) {
+    <ion-grid no-padding>
+      @for (p of getProgramme(); track p) {
+        <ion-row>
+          @for (w of getWertungen(p); track w) {
+            <ion-col class="align-self-start"
+              size-xs="12" size-md="6" size-lg="3" [attr.size-xl]="getMaxColumnSpec()"
+              >
+              <result-display [item]="w" [title]="getTitle(w)" [groupedBy]="groupBy.PROGRAMM" />
+            </ion-col>
+          }
+        </ion-row>
+      }
+    </ion-grid>
+  }
+  @if (items.length > 0 && 6 !== getColumnSpec()) {
+    <ion-grid no-padding>
+      @for (p of getProgramme(); track p) {
+        <ion-row>
+          @for (w of getWertungen(p); track w) {
+            <ion-col class="align-self-start"
+              size-xs="12" size-sm="6" size-md="4" size-lg="3" [attr.size-xl]="getMaxColumnSpec()"
+              >
+              <result-display [item]="w" [title]="getTitle(w)" [groupedBy]="groupBy.PROGRAMM" />
+            </ion-col>
+          }
+        </ion-row>
+      }
+    </ion-grid>
+  }
 </ion-content>

@@ -1,4 +1,4 @@
-import { Component, ViewChild, NgZone } from '@angular/core';
+import { Component, NgZone, inject, viewChild } from '@angular/core';
 import { WertungContainer, Wertung, ScoreCalcVariable, ScoreCalcVariables } from '../backend-types';
 import { BehaviorSubject, Subject, Subscription, defer, of } from 'rxjs';
 import { NavController, Platform, ToastController, AlertController, IonItemSliding } from '@ionic/angular';
@@ -6,7 +6,7 @@ import { BackendService } from '../services/backend.service';
 import { NgForm } from '@angular/forms';
 import { ActivatedRoute } from '@angular/router';
 import { Keyboard } from '@capacitor/keyboard';
-import { Capacitor, Plugins } from '@capacitor/core';
+import { Capacitor } from '@capacitor/core';
 import { turn10ProgrammNames } from '../utils';
 import { debounceTime, distinctUntilChanged, map, filter, switchMap, tap, share } from 'rxjs/operators';
 
@@ -17,14 +17,21 @@ import { debounceTime, distinctUntilChanged, map, filter, switchMap, tap, share 
     standalone: false
   })
 export class WertungEditorPage {
+  navCtrl = inject(NavController);
+  private route = inject(ActivatedRoute);
+  private alertCtrl = inject(AlertController);
+  toastController = inject(ToastController);
+  backendService = inject(BackendService);
+  platform = inject(Platform);
+  private zone = inject(NgZone);
+
+  /** Inserted by Angular inject() migration for backwards compatibility */
+  constructor(...args: unknown[]);
+
     
-  constructor(public navCtrl: NavController,
-      private route: ActivatedRoute,
-      private alertCtrl: AlertController,
-      public toastController: ToastController,
-      public backendService: BackendService,
-      public platform: Platform,
-      private zone: NgZone) {
+  constructor() {
+    const backendService = this.backendService;
+
     // If we navigated to this page, we will have an item available as a nav param
     this.durchgang = backendService.durchgang;
     this.step = backendService.step;
@@ -36,9 +43,13 @@ export class WertungEditorPage {
   }
   private itemOriginal: WertungContainer;
   
-  @ViewChild('wertungsform') public form: any;
-  @ViewChild('enote') public enote: { setFocus: () => void; };
-  @ViewChild('dnote') public dnote: { setFocus: () => void; };
+  public readonly form = viewChild<any>('wertungsform');
+  public readonly enote = viewChild<{
+    setFocus: () => void;
+}>('enote');
+  public readonly dnote = viewChild<{
+    setFocus: () => void;
+}>('dnote');
 
   private subscription: Subscription;
 
@@ -224,11 +235,13 @@ export class WertungEditorPage {
             console.log('keyboard called');
           }
         }
-        if (this.isDNoteUsed && this.dnote) {
-          this.dnote.setFocus();
+        const dnote = this.dnote();
+        const enote = this.enote();
+        if (this.isDNoteUsed && dnote) {
+          dnote.setFocus();
           console.log('dnote focused');
-        } else if (this.enote) {
-          this.enote.setFocus();
+        } else if (enote) {
+          enote.setFocus();
           console.log('enote focused');
         }
       }, 400);

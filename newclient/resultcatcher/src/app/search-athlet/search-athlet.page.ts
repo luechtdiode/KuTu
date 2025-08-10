@@ -1,4 +1,4 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, inject } from '@angular/core';
 import { StartList, Wettkampf, Teilnehmer, ProgrammItem } from '../backend-types';
 import { NavController, IonItemSliding } from '@ionic/angular';
 import { BackendService } from '../services/backend.service';
@@ -14,6 +14,11 @@ import { debounceTime, distinctUntilChanged, map, filter, switchMap, tap, share 
     standalone: false
 })
 export class SearchAthletPage implements OnInit {
+  navCtrl = inject(NavController);
+  private route = inject(ActivatedRoute);
+  private router = inject(Router);
+  backendService = inject(BackendService);
+
 
   sStartList: StartList;
   sFilteredStartList: StartList;
@@ -25,10 +30,10 @@ export class SearchAthletPage implements OnInit {
 
   private busy = new BehaviorSubject(false);
 
-  constructor(public navCtrl: NavController,
-              private route: ActivatedRoute,
-              private router: Router,
-              public backendService: BackendService) {
+  /** Inserted by Angular inject() migration for backwards compatibility */
+  constructor(...args: unknown[]);
+
+  constructor() {
     if (! this.backendService.competitions) {
       this.backendService.getCompetitions();
     }

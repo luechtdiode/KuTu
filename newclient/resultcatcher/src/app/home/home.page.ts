@@ -1,4 +1,4 @@
-import { Component, CUSTOM_ELEMENTS_SCHEMA, OnInit } from '@angular/core';
+import { Component, CUSTOM_ELEMENTS_SCHEMA, OnInit, inject } from '@angular/core';
 import { Wettkampf, Geraet } from '../../app/backend-types';
 import { NavController, AlertController, IonItemSliding } from '@ionic/angular';
 import { BackendService } from '../services/backend.service';
@@ -12,11 +12,18 @@ import { map } from 'rxjs/operators';
     standalone: false
 })
 export class HomePage implements OnInit {
+  navCtrl = inject(NavController);
+  backendService = inject(BackendService);
+  private alertCtrl = inject(AlertController);
+
 
   durchgangstate: string;
   durchgangopen = false;
 
-  constructor(public navCtrl: NavController, public backendService: BackendService, private alertCtrl: AlertController) {
+  /** Inserted by Angular inject() migration for backwards compatibility */
+  constructor(...args: unknown[]);
+
+  constructor() {
     this.backendService.getCompetitions();
     this.backendService.durchgangStarted.pipe(map(dgl =>
       dgl.filter(dg => encodeURIComponent2(dg.durchgang) === encodeURIComponent2(this.backendService.durchgang)

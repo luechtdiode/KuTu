@@ -1,4 +1,4 @@
-import { Component, OnInit, Input, Output, EventEmitter } from '@angular/core';
+import { Component, OnInit, output, input } from '@angular/core';
 import { ProgrammItem, Teilnehmer } from 'src/app/backend-types';
 
 @Component({
@@ -8,14 +8,11 @@ import { ProgrammItem, Teilnehmer } from 'src/app/backend-types';
     standalone: false
 })
 export class StartlistItemComponent implements OnInit {
-  @Input()
-  programm: ProgrammItem;
+  readonly programm = input<ProgrammItem>(undefined);
 
-  @Input()
-  teilnehmer: Teilnehmer;
+  readonly teilnehmer = input<Teilnehmer>(undefined);
 
-  @Output()
-  selected: EventEmitter<Teilnehmer>;
+  readonly selected = output<Teilnehmer>();
 
   constructor() { }
 

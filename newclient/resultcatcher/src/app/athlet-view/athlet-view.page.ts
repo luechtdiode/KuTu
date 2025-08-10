@@ -1,4 +1,4 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, inject } from '@angular/core';
 import { WertungContainer, Geraet, Wettkampf, Wertung } from '../backend-types';
 import { NavController } from '@ionic/angular';
 import { BackendService } from '../services/backend.service';
@@ -15,6 +15,10 @@ import { GroupBy } from '../component/result-display/result-display.component';
     standalone: false
 })
 export class AthletViewPage  implements OnInit {
+  navCtrl = inject(NavController);
+  private readonly route = inject(ActivatedRoute);
+  backendService = inject(BackendService);
+
   groupBy = GroupBy;
 
   // @ViewChild(IonContent) content: IonContent;
@@ -25,9 +29,10 @@ export class AthletViewPage  implements OnInit {
   athletId: number;
   wkId: string;
 
-  constructor(public navCtrl: NavController,
-              private readonly route: ActivatedRoute,
-              public backendService: BackendService) {
+  /** Inserted by Angular inject() migration for backwards compatibility */
+  constructor(...args: unknown[]);
+
+  constructor() {
     if (! this.backendService.competitions) {
       this.backendService.getCompetitions();
     }

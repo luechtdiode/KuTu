@@ -1,4 +1,4 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, inject } from '@angular/core';
 import { WertungContainer, Geraet, Wettkampf } from '../backend-types';
 import { BackendService } from '../services/backend.service';
 import { filter } from 'rxjs/operators';
@@ -11,6 +11,8 @@ import { GroupBy } from '../component/result-display/result-display.component';
     standalone: false
 })
 export class LastTopResultsPage implements OnInit {
+  backendService = inject(BackendService);
+
   groupBy = GroupBy; 
   items: WertungContainer[] = [];
   toptop = {};
@@ -45,7 +47,10 @@ export class LastTopResultsPage implements OnInit {
     });
   }
 
-  constructor(public backendService: BackendService) {
+  /** Inserted by Angular inject() migration for backwards compatibility */
+  constructor(...args: unknown[]);
+
+  constructor() {
     if (! this.backendService.competitions) {
       this.backendService.getCompetitions();
     }

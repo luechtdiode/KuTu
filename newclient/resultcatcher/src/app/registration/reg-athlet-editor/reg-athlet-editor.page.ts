@@ -1,4 +1,4 @@
-import { Component, OnInit, NgZone } from '@angular/core';
+import { Component, OnInit, NgZone, inject } from '@angular/core';
 import { NavController, AlertController } from '@ionic/angular';
 import { ActivatedRoute } from '@angular/router';
 import { BackendService } from 'src/app/services/backend.service';
@@ -13,14 +13,17 @@ import { NgForm } from '@angular/forms';
     standalone: false
 })
 export class RegAthletEditorPage implements OnInit {
+  navCtrl = inject(NavController);
+  private route = inject(ActivatedRoute);
+  backendService = inject(BackendService);
+  private alertCtrl = inject(AlertController);
+  private zone = inject(NgZone);
 
-  constructor(
-    public navCtrl: NavController,
-    private route: ActivatedRoute,
-    public backendService: BackendService,
-    private alertCtrl: AlertController,
-    private zone: NgZone
-    ) {
+  /** Inserted by Angular inject() migration for backwards compatibility */
+  constructor(...args: unknown[]);
+
+
+  constructor() {
   }
 
   waiting = false;

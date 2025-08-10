@@ -1,53 +1,62 @@
 <ion-header>
   <ion-toolbar>
     <ion-buttons slot="start">
-      <ion-back-button defaultHref="/"></ion-back-button>
+      <ion-back-button defaultHref="/" />
     </ion-buttons>
-    <div *ngIf="!isLoggedIn()">
-      <ion-title>Resultate</ion-title>
-    </div>
-    <div *ngIf="isLoggedIn()">
-      <ion-title>Resultaterfassung<div class="stateinfo" [ngClass]='durchgangstateClass'>{{durchgangstate()}}</div></ion-title>
-    </div>
-    <ion-note slot="end" class="ion-padding-end" [innerHtml]="competitionName()">
-    </ion-note>
+    @if (!isLoggedIn()) {
+      <div>
+        <ion-title>Resultate</ion-title>
+      </div>
+    }
+    @if (isLoggedIn()) {
+      <div>
+        <ion-title>Resultaterfassung<div class="stateinfo" [ngClass]='durchgangstateClass'>{{durchgangstate()}}</div></ion-title>
+      </div>
+    }
+    <ion-note slot="end" class="ion-padding-end" [innerHtml]="competitionName()" />
   </ion-toolbar>
 </ion-header>
 
 <ion-content>
-   <riege-list *ngIf="geraet && durchgang && step && (getWertungen() | async)" [items] = 'getWertungen() | async'></riege-list>
+  @if (geraet && durchgang && step && (getWertungen() | async)) {
+    <riege-list [items] = 'getWertungen() | async' />
+  }
 </ion-content>
 
 
 <ion-footer >
-    <ion-toolbar>
-        <ion-list>
+  <ion-toolbar>
+    <ion-list>
 
-          <ion-item-sliding #slidingStepItem>
-              <ion-item (click)='itemTapped(slidingStepItem)'>  
-                <ion-icon slot="start" src="assets/imgs/{{gearImage}}"></ion-icon>              
-                <ion-label>{{station}}</ion-label>
-                <ion-icon slot="end" *ngIf="(geraet && getSteps())" name="arrow-forward-circle-outline"></ion-icon>
-              </ion-item>
-                  <ion-item-options side="start">
-                  <ion-item-option color="primary" (click)="prevStep(slidingStepItem)" [disabled]="!geraet || !getSteps()">
-                    <ion-icon src="assets/imgs/{{previousGearImage}}"></ion-icon>
-                    {{prevStepCaption}}
-                  </ion-item-option>
-                </ion-item-options>
-                <ion-item-options side="end">
-                  <ion-item-option color="primary" (click)="nextStep(slidingStepItem)" [disabled]="!geraet || !getSteps()">
-                    <ion-icon src="assets/imgs/{{nextGearImage}}"></ion-icon>
-                    {{nextStepCaption}}
-                  </ion-item-option>
-                </ion-item-options>          
-          </ion-item-sliding>
-          <ion-button size="large" expand="block" *ngIf="isLoggedIn() && durchgangopen" color="success"
-                      (click)="finish()" [disabled]="!(geraet && getSteps())">
-            <ion-icon slot="start" name="git-commit"></ion-icon>
-            Eingaben abschliessen
-          </ion-button>          
-    </ion-list>      
-    </ion-toolbar>
-  
+      <ion-item-sliding #slidingStepItem>
+        <ion-item (click)='itemTapped(slidingStepItem)'>
+          <ion-icon slot="start" src="assets/imgs/{{gearImage}}" />
+          <ion-label>{{station}}</ion-label>
+          @if ((geraet && getSteps())) {
+            <ion-icon slot="end" name="arrow-forward-circle-outline" />
+          }
+        </ion-item>
+        <ion-item-options side="start">
+          <ion-item-option color="primary" (click)="prevStep(slidingStepItem)" [disabled]="!geraet || !getSteps()">
+            <ion-icon src="assets/imgs/{{previousGearImage}}" />
+            {{prevStepCaption}}
+          </ion-item-option>
+        </ion-item-options>
+        <ion-item-options side="end">
+          <ion-item-option color="primary" (click)="nextStep(slidingStepItem)" [disabled]="!geraet || !getSteps()">
+            <ion-icon src="assets/imgs/{{nextGearImage}}" />
+            {{nextStepCaption}}
+          </ion-item-option>
+        </ion-item-options>
+      </ion-item-sliding>
+      @if (isLoggedIn() && durchgangopen) {
+        <ion-button size="large" expand="block" color="success"
+          (click)="finish()" [disabled]="!(geraet && getSteps())">
+          <ion-icon slot="start" name="git-commit" />
+          Eingaben abschliessen
+        </ion-button>
+      }
+    </ion-list>
+  </ion-toolbar>
+
 </ion-footer>

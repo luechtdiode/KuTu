@@ -1,4 +1,4 @@
-import { Injectable } from '@angular/core';
+import { Injectable, inject } from '@angular/core';
 import { WebsocketService, encodeURIComponent2, encodeURIComponent1 } from './websocket.service';
 import { HttpClient, HttpHeaders, HttpErrorResponse, HttpResponse } from '@angular/common/http';
 import { LoadingController } from '@ionic/angular';
@@ -22,6 +22,9 @@ import { backendUrl } from '../utils';
   providedIn: 'root'
 })
 export class BackendService extends WebsocketService {
+    http = inject(HttpClient);
+    loadingCtrl = inject(LoadingController);
+
 
     get competition(): string {
       return this._competition;
@@ -44,7 +47,10 @@ export class BackendService extends WebsocketService {
       return localStorage.getItem('current_username');
     }
 
-    constructor(public http: HttpClient, public loadingCtrl: LoadingController) {
+    /** Inserted by Angular inject() migration for backwards compatibility */
+    constructor(...args: unknown[]);
+
+    constructor() {
       super();
       this.showMessage.subscribe(msg => {
         this.resetLoading();
