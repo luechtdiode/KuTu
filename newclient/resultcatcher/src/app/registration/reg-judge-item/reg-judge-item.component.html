@@ -1,11 +1,11 @@
-<ion-item (click)="selected ? selected.emit(judgeregistration) : {}">
+<ion-item (click)="selected ? selected.emit(judgeregistration()) : {}">
   <ion-avatar slot="start">
     <img src="assets/imgs/chief.png">
   </ion-avatar>
-  <ion-label>{{judgeregistration.name}}, {{judgeregistration.vorname}} ({{judgeregistration.geschlecht}})<br>
-    <small>{{judgeregistration.mobilephone}}, {{judgeregistration.mail}}</small>
+  <ion-label>{{judgeregistration().name}}, {{judgeregistration().vorname}} ({{judgeregistration().geschlecht}})<br>
+    <small>{{judgeregistration().mobilephone}}, {{judgeregistration().mail}}</small>
   </ion-label>
-  <ion-note *ngIf="judgeregistration.comment" slot="end">
+  <ion-note *ngIf="judgeregistration().comment" slot="end">
     <span *ngFor="let cmt of getCommentLines()">{{cmt}}<br></span>
   </ion-note>
 </ion-item>

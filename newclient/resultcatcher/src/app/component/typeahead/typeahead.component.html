@@ -1,6 +1,6 @@
 <ion-header>
   <ion-toolbar>
-    <ion-title>{{ title }}</ion-title>
+    <ion-title>{{ title() }}</ion-title>
   </ion-toolbar>
   <ion-toolbar>
     <ion-searchbar (ionInput)="searchbarInput($event)" [ngModel]="selected?.text"></ion-searchbar>

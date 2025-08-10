@@ -1,5 +1,5 @@
 import { isNgTemplate } from '@angular/compiler';
-import { Component, EventEmitter, Input, OnInit, Output } from '@angular/core';
+import { Component, EventEmitter, OnInit, Output, input } from '@angular/core';
 import { JudgeRegistration, JudgeRegistrationProgramItem } from 'src/app/backend-types';
 
 @Component({
@@ -11,14 +11,9 @@ import { JudgeRegistration, JudgeRegistrationProgramItem } from 'src/app/backend
 export class RegJudgeItemComponent implements OnInit {
 
   
-  @Input()
-  judgeregistration: JudgeRegistration;
+  readonly judgeregistration = input.required<JudgeRegistration>();
 
-  @Input()
-  status: string;
-
-  @Input()
-  selectedDisciplinlist: JudgeRegistrationProgramItem[];
+  readonly selectedDisciplinlist = input<JudgeRegistrationProgramItem[]>([]);
 
   @Output()
   selected = new EventEmitter<JudgeRegistration>();
@@ -26,11 +21,9 @@ export class RegJudgeItemComponent implements OnInit {
   ngOnInit() {}
 
   getProgramList() {
-    var pgmList: JudgeRegistrationProgramItem[] = [];
-    if (this.selectedDisciplinlist === undefined) {
-      this.selectedDisciplinlist = [];
-    }
-    this.selectedDisciplinlist.forEach(element => {
+    let pgmList: JudgeRegistrationProgramItem[] = [];
+    const selectedDisciplinlist = this.selectedDisciplinlist();
+    selectedDisciplinlist.forEach(element => {
       if(pgmList.find(pgm => pgm.program == element.program) === undefined) {
         pgmList.push(element);
       }
@@ -47,6 +40,6 @@ export class RegJudgeItemComponent implements OnInit {
   }
 
   getCommentLines() {
-    return this.judgeregistration.comment.split('\n');
+    return this.judgeregistration().comment.split('\n');
   }
 }

@@ -1,4 +1,4 @@
-import { Component, Input, inject } from '@angular/core';
+import { Component, inject, input } from '@angular/core';
 import { NavController } from '@ionic/angular';
 import { WertungContainer } from '../../backend-types';
 import { BackendService } from '../../services/backend.service';
@@ -16,8 +16,7 @@ export class RiegeListComponent {
   constructor(...args: unknown[]);
 
   constructor() { }
-  @Input()
-  items: WertungContainer[];
+  readonly items = input<WertungContainer[]>(undefined);
 
 
   itemTapped(event: any, item: WertungContainer) {

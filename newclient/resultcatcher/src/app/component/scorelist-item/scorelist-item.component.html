@@ -1,23 +1,23 @@
-<ion-item (click)="selected ? selected.emit(teilnehmer) : {}">
-  <ion-avatar *ngIf="teilnehmer.Athlet" slot="start">
+<ion-item (click)="selected ? selected.emit(teilnehmer()) : {}">
+  <ion-avatar *ngIf="teilnehmer().Athlet" slot="start">
     <img src="assets/imgs/athlete.png">
   </ion-avatar>
   <ion-avatar *ngIf="teamTeilnehmerSubResults.length > 0" slot="start">
     <img src="assets/imgs/verein.png">
   </ion-avatar>
-  <ion-label *ngIf="teamTeilnehmerSubResults.length > 0">{{teilnehmer.Rang}}. {{teilnehmer['Team/Athlet']}}<br>
+  <ion-label *ngIf="teamTeilnehmerSubResults.length > 0">{{teilnehmer().Rang}}. {{teilnehmer()['Team/Athlet']}}<br>
     &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<small><em>{{teilnehmerSubResults}}</em></small><br>
     <ul>
       <li *ngFor="let tn of teamTeilnehmerSubResults"><small><em>{{tn}}</em></small></li>
     </ul>
   </ion-label>
-  <ion-label *ngIf="teilnehmer.Athlet">{{teilnehmer.Rang}}. {{teilnehmer.Athlet}} ({{teilnehmer.Jahrgang}})&nbsp;<small> - {{teilnehmer.Verein}}</small><br>
+  <ion-label *ngIf="teilnehmer().Athlet">{{teilnehmer().Rang}}. {{teilnehmer().Athlet}} ({{teilnehmer().Jahrgang}})&nbsp;<small> - {{teilnehmer().Verein}}</small><br>
     &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<small><em>{{teilnehmerSubResults}}</em></small>
   </ion-label>
   <ion-note slot="end" >
-    <b>Total Punkte {{teilnehmer['Total Punkte']}}</b><br>
-    <em *ngIf="teilnehmer['ø Gerät']">ø Gerät {{teilnehmer['ø Gerät']}}</em>
-    <em *ngIf="teilnehmer['Total D']">Total D/E {{teilnehmer['Total D']}}/{{teilnehmer['Total E']}}</em>
-    <em *ngIf="teilnehmer['Total A']">Total A/B {{teilnehmer['Total A']}}/{{teilnehmer['Total B']}}</em>
+    <b>Total Punkte {{teilnehmer()['Total Punkte']}}</b><br>
+    <em *ngIf="teilnehmer()['ø Gerät']">ø Gerät {{teilnehmer()['ø Gerät']}}</em>
+    <em *ngIf="teilnehmer()['Total D']">Total D/E {{teilnehmer()['Total D']}}/{{teilnehmer()['Total E']}}</em>
+    <em *ngIf="teilnehmer()['Total A']">Total A/B {{teilnehmer()['Total A']}}/{{teilnehmer()['Total B']}}</em>
   </ion-note>
 </ion-item>

@@ -1,4 +1,4 @@
-import { Component, OnInit, Input, Output, EventEmitter } from '@angular/core';
+import { Component, OnInit, Output, EventEmitter, input } from '@angular/core';
 //import { filter, map } from 'rxjs/operators';
 import { ScoreRow } from 'src/app/backend-types';
 
@@ -12,8 +12,7 @@ export class ScorelistItemComponent implements OnInit {
   teilnehmerSubResults = '';
   teamTeilnehmerSubResults = [];
 
-  @Input()
-  teilnehmer: ScoreRow;
+  readonly teilnehmer = input<ScoreRow>(undefined);
 
   @Output()
   selected: EventEmitter<ScoreRow>;
@@ -21,10 +20,11 @@ export class ScorelistItemComponent implements OnInit {
   constructor() { }
 
   ngOnInit() {
-    this.teilnehmerSubResults = renderTeilnehmerWertungen(this.teilnehmer);
-    this.teamTeilnehmerSubResults = this.teilnehmer.rows?.length == 0
+    this.teilnehmerSubResults = renderTeilnehmerWertungen(this.teilnehmer());
+    const teilnehmer = this.teilnehmer();
+    this.teamTeilnehmerSubResults = teilnehmer.rows?.length == 0
       ? []
-      : this.teilnehmer.rows.map(renderTeilnehmer)
+      : teilnehmer.rows.map(renderTeilnehmer)
   }
 }
 

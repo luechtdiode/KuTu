@@ -1,4 +1,4 @@
-import { Component, EventEmitter, HostBinding, Input, OnInit, Output, ViewChild } from '@angular/core';
+import { Component, EventEmitter, HostBinding, Input, OnInit, Output, ViewChild, input } from '@angular/core';
 import { ControlValueAccessor, NG_VALUE_ACCESSOR } from '@angular/forms';
 
 @Component({
@@ -19,25 +19,20 @@ export class WertungAvgCalcComponent implements ControlValueAccessor {
 
   @HostBinding() id = `avg-calc-input-${WertungAvgCalcComponent.nextId++}`;
 
-  @Input()
-  hidden: boolean;
+  readonly hidden = input<boolean>(undefined);
 
-  @Input()
-  readonly: boolean;
+  readonly readonly = input<boolean>(undefined);
   
-  @Input()
-  waiting: boolean;
+  readonly waiting = input<boolean>(undefined);
 
-  @Input()
-  valueTitle: string;
+  readonly valueTitle = input<string>(undefined);
 
-  @Input()
-  valueDescription: string;
+  readonly valueDescription = input<string>(undefined);
   
   _fixed: number;
   
   get fixed(): number {
-    this._fixed = Number(localStorage.getItem(`avg-calc-decimals-${this.valueTitle}${localStorage.getItem('current_competition')}`)) || this._fixed;
+    this._fixed = Number(localStorage.getItem(`avg-calc-decimals-${this.valueTitle()}${localStorage.getItem('current_competition')}`)) || this._fixed;
     return this._fixed;
   }
 
@@ -52,7 +47,7 @@ export class WertungAvgCalcComponent implements ControlValueAccessor {
   singleValues: {value:number}[] = [];
 
   get title(): string {
-    return this.valueTitle;
+    return this.valueTitle();
   }
 
   get methodSymbol(): string {
@@ -74,12 +69,12 @@ export class WertungAvgCalcComponent implements ControlValueAccessor {
   }
 
   get compMethod(): string {
-    this._compMethod = localStorage.getItem(`comp-method-${this.valueTitle}${localStorage.getItem('current_competition')}`) || this._compMethod;
+    this._compMethod = localStorage.getItem(`comp-method-${this.valueTitle()}${localStorage.getItem('current_competition')}`) || this._compMethod;
     return this._compMethod;
   }
   set compMethod(value: string) {
     this._compMethod = value;
-    localStorage.setItem(`comp-method-${this.valueTitle}${localStorage.getItem('current_competition')}`, value);
+    localStorage.setItem(`comp-method-${this.valueTitle()}${localStorage.getItem('current_competition')}`, value);
     this.calcAvg();
     this.markAsTouched();    
   }
@@ -87,7 +82,7 @@ export class WertungAvgCalcComponent implements ControlValueAccessor {
   addKomma() {
     if (this._fixed < 3) {
       this._fixed += 1;
-      localStorage.setItem(`avg-calc-decimals-${this.valueTitle}${localStorage.getItem('current_competition')}`, '' + this._fixed);
+      localStorage.setItem(`avg-calc-decimals-${this.valueTitle()}${localStorage.getItem('current_competition')}`, '' + this._fixed);
       this.calcAvg();
       this.markAsTouched();
     }
@@ -96,7 +91,7 @@ export class WertungAvgCalcComponent implements ControlValueAccessor {
   removeKomma() {
     if (this._fixed > 0) {
       this._fixed -= 1;
-      localStorage.setItem(`avg-calc-decimals-${this.valueTitle}${localStorage.getItem('current_competition')}`, '' + this._fixed);
+      localStorage.setItem(`avg-calc-decimals-${this.valueTitle()}${localStorage.getItem('current_competition')}`, '' + this._fixed);
       this.calcAvg();
       this.markAsTouched();
     }
