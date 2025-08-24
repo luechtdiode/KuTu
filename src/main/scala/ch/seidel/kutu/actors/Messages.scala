@@ -28,12 +28,12 @@ case class FinishDurchgang(override val wettkampfUUID: String, durchgang: String
 case class FinishDurchgangStep(override val wettkampfUUID: String) extends KutuAppAction
 case class Delete(override val wettkampfUUID: String) extends KutuAppAction
 case class PublishScores(override val wettkampfUUID: String, title: String, query: String, published: Boolean) extends KutuAppAction
-case class AthletMediaAquire(athlet: AthletView, override val wettkampfUUID: String, String, geraet: Long) extends KutuAppAction
-case class AthletMediaRelease(athlet: AthletView, override val wettkampfUUID: String, String, geraet: Long) extends KutuAppAction
-case class AthletMediaStart(athlet: AthletView, override val wettkampfUUID: String, String, geraet: Long) extends KutuAppAction
-case class AthletMediaStop(athlet: AthletView, override val wettkampfUUID: String, String, geraet: Long) extends KutuAppAction
-case class AthletMediaPause(athlet: AthletView, override val wettkampfUUID: String, String, geraet: Long) extends KutuAppAction
-case class AthletMediaToStart(athlet: AthletView, override val wettkampfUUID: String, String, geraet: Long) extends KutuAppAction
+case class AthletMediaAquire(athlet: AthletView, override val wettkampfUUID: String, geraet: Long) extends KutuAppAction
+case class AthletMediaRelease(athlet: AthletView, override val wettkampfUUID: String, geraet: Long) extends KutuAppAction
+case class AthletMediaStart(athlet: AthletView, override val wettkampfUUID: String, geraet: Long) extends KutuAppAction
+case class AthletMediaStop(athlet: AthletView, override val wettkampfUUID: String, geraet: Long) extends KutuAppAction
+case class AthletMediaPause(athlet: AthletView, override val wettkampfUUID: String, geraet: Long) extends KutuAppAction
+case class AthletMediaToStart(athlet: AthletView, override val wettkampfUUID: String, geraet: Long) extends KutuAppAction
 
 sealed trait KutuAppEvent extends KutuAppProtokoll
 case class BulkEvent(wettkampfUUID: String, events: List[KutuAppEvent]) extends KutuAppEvent
