@@ -8,7 +8,7 @@ import ch.seidel.kutu.data.{CaseObjectMetaUtil, ResourceExchanger, Surname}
 import ch.seidel.kutu.domain._
 import ch.seidel.kutu.http._
 import ch.seidel.kutu.renderer.PrintUtil
-import ch.seidel.kutu.view.{MediaController, WettkampfTableView}
+import ch.seidel.kutu.view.WettkampfTableView
 import javafx.beans.property.SimpleObjectProperty
 import javafx.concurrent.Task
 import javafx.scene.control.DatePicker
@@ -76,7 +76,6 @@ object KuTuApp extends JFXApp3 with KutuService with JsonSupport with JwtSupport
   var controlsView: TreeView[String] = null
   var rootTreeItem: TreeItem[String] = null
   var invisibleWebView: WebView = null
-  val mediaPlayer = new MediaController()
 
   def updateTree: Unit = {
     def selectionPathToRoot(node: TreeItem[String]): List[TreeItem[String]] = {

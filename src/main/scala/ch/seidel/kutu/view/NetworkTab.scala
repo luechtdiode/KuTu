@@ -3,16 +3,15 @@ package ch.seidel.kutu.view
 import ch.seidel.commons.{LazyTabPane, TabWithService}
 import ch.seidel.kutu.Config._
 import ch.seidel.kutu.KuTuApp.{enc, hostServices}
-import ch.seidel.kutu.actors._
+import ch.seidel.kutu._
 import ch.seidel.kutu.domain._
 import ch.seidel.kutu.http.WebSocketClient
 import ch.seidel.kutu.renderer.PrintUtil.FilenameDefault
-import ch.seidel.kutu.renderer.{BestenListeToHtmlRenderer, KategorieTeilnehmerToHtmlRenderer, PrintUtil, RiegenBuilder}
-import ch.seidel.kutu._
+import ch.seidel.kutu.renderer.{BestenListeToHtmlRenderer, PrintUtil, RiegenBuilder}
+import ch.seidel.kutu.view.player.Player
 import javafx.event.EventHandler
 import javafx.scene.{control => jfxsc}
 import scalafx.Includes._
-import scalafx.application.Platform
 import scalafx.beans.binding.Bindings
 import scalafx.beans.property.{BooleanProperty, StringProperty}
 import scalafx.collections.ObservableBuffer
@@ -27,12 +26,10 @@ import scalafx.scene.layout.{BorderPane, Priority}
 
 import java.time.format.DateTimeFormatter
 import java.util.UUID
-import java.util.concurrent.{ScheduledFuture, ScheduledThreadPoolExecutor, TimeUnit}
 import scala.collection.immutable
 import scala.concurrent.Await
 import scala.concurrent.duration.Duration
 import scala.jdk.CollectionConverters
-import scala.jdk.FunctionConverters.enrichAsJavaFunction
 
 trait DurchgangItem
 
@@ -51,23 +48,23 @@ case class DurchgangState(wettkampfUUID: String, name: String, complete: Boolean
   val isRunning: Boolean = started > 0L && finished < started
   lazy val statsBase: immutable.Iterable[Int] = geraeteRiegen.groupBy(_.disziplin).filter(!_._1.get.isPause).map(_._2.map(_.kandidaten.size).sum)
   lazy val statsCompletedBase: immutable.Iterable[(Option[Disziplin], Int, Int, Int, List[(Int, Int, Int, Int)])] = geraeteRiegen.groupBy(gr => gr.disziplin)
-    .filter { d => !d._1.get.isPause}
+    .filter { d => !d._1.get.isPause }
     .map { gr =>
-    val (disziplin, grd) = gr
+      val (disziplin, grd) = gr
 
-    def hasWertungInDisciplin(wertungen: Seq[WertungView]) = wertungen.filter(w => disziplin.contains(w.wettkampfdisziplin.disziplin)).exists(_.endnote.nonEmpty)
+      def hasWertungInDisciplin(wertungen: Seq[WertungView]) = wertungen.filter(w => disziplin.contains(w.wettkampfdisziplin.disziplin)).exists(_.endnote.nonEmpty)
 
-    val grdStats = grd.groupBy(grds => grds.halt).map { grdsh =>
-      val totalCnt = grdsh._2.map(_.kandidaten.size).sum
-      val completedCnt = grdsh._2.map(_.kandidaten.count(k => hasWertungInDisciplin(k.wertungen))).sum
-      (grdsh._1, 100 * completedCnt / totalCnt, completedCnt, totalCnt)
-    }.toList.sortBy(grdsh => grdsh._1)
+      val grdStats = grd.groupBy(grds => grds.halt).map { grdsh =>
+        val totalCnt = grdsh._2.map(_.kandidaten.size).sum
+        val completedCnt = grdsh._2.map(_.kandidaten.count(k => hasWertungInDisciplin(k.wertungen))).sum
+        (grdsh._1, 100 * completedCnt / totalCnt, completedCnt, totalCnt)
+      }.toList.sortBy(grdsh => grdsh._1)
 
-    val totalCnt = gr._2.map(_.kandidaten.size).sum
-    val completedCnt = gr._2.map(_.kandidaten.count(k => hasWertungInDisciplin(k.wertungen))).sum
-    // (geraet, complete%, completeCnt, totalCnt, haltStats(halt, complete%, completeCnt, totalCnt))
-    (disziplin, 100 * completedCnt / totalCnt, completedCnt, totalCnt, grdStats)
-  }
+      val totalCnt = gr._2.map(_.kandidaten.size).sum
+      val completedCnt = gr._2.map(_.kandidaten.count(k => hasWertungInDisciplin(k.wertungen))).sum
+      // (geraet, complete%, completeCnt, totalCnt, haltStats(halt, complete%, completeCnt, totalCnt))
+      (disziplin, 100 * completedCnt / totalCnt, completedCnt, totalCnt, grdStats)
+    }
 
   lazy val anzValue: Int = statsBase.sum
 
@@ -113,6 +110,7 @@ class DurchgangStationView(wettkampf: WettkampfView, service: KutuService, diszi
   showRoot = false
   tableMenuButtonVisible = true
   var lastDizs: Seq[Disziplin] = Seq()
+
   def rebuildDiszColumns(disziplinlist: Seq[Disziplin]): Unit = {
     if (lastDizs.nonEmpty) {
       val diszCols = lastDizs.map(_.name)
@@ -165,7 +163,7 @@ class DurchgangStationView(wettkampf: WettkampfView, service: KutuService, diszi
   root = new TreeItem[DurchgangState]() {
     durchgangModel.onChange {
       val dml = durchgangModel.toList
-      rebuildDiszColumns(disziplinlist().filter{d =>
+      rebuildDiszColumns(disziplinlist().filter { d =>
         dml.exists(ti => ti.value.value.geraeteRiegen.exists(gr => gr.disziplin.contains(d)))
       })
       children = dml
@@ -253,6 +251,7 @@ class DurchgangStationView(wettkampf: WettkampfView, service: KutuService, diszi
   )
 
   rebuildDiszColumns(disziplinlist())
+
   private def toIcon(newValue: String) = {
     newValue match {
       case "100%" => okIcon
@@ -262,23 +261,6 @@ class DurchgangStationView(wettkampf: WettkampfView, service: KutuService, diszi
       case null => null
       case _ => nokIcon
     }
-  }
-}
-
-object DeferredPanelRefresher {
-  private val refresherPool = new ScheduledThreadPoolExecutor(1)
-  var pendingUpdateTask: List[ScheduledFuture[_]] = List.empty
-  sys.addShutdownHook(refresherPool.shutdownNow)
-
-
-  def submitUpdateTask(task: () => Unit): Unit = {
-    pendingUpdateTask = (pendingUpdateTask.filter(t => !t.isDone) match {
-      case Nil => List()
-      case h :: t => t.foreach(_.cancel(true))
-        List(h)
-    }) :+ DeferredPanelRefresher.refresherPool.schedule(new Runnable() { def run(): Unit = {
-        Platform.runLater { task() }
-      }},10L, TimeUnit.SECONDS)
   }
 }
 
@@ -293,6 +275,7 @@ class NetworkTab(wettkampfmode: BooleanProperty, override val wettkampfInfo: Wet
   closable = false
   text = "Netzwerk-Dashboard"
 
+  Player.setWettkampf(wettkampfInfo.wettkampf.toWettkampf)
 
   val disziplinlist: List[Disziplin] = wettkampfInfo.disziplinList
 
@@ -312,7 +295,7 @@ class NetworkTab(wettkampfmode: BooleanProperty, override val wettkampfInfo: Wet
 
   val isRunning: BooleanProperty = BooleanProperty(false)
 
-  def refreshData(event: Option[KutuAppEvent] = None): Unit = {
+  private def refreshData(): Unit = {
     val expandedStates = model
       .filter(_.isExpanded)
       .map(_.value.value.durchgang.title)
@@ -352,7 +335,7 @@ class NetworkTab(wettkampfmode: BooleanProperty, override val wettkampfInfo: Wet
     } else {
       items.zip(model).foreach(pair => syncTreeItems(pair._1, pair._2))
       if (items.size < model.size) {
-        model.removeRange(items.size, model.size-1)
+        model.removeRange(items.size, model.size - 1)
       }
       if (model.isEmpty) {
         val collection = items.asJavaCollection
@@ -373,13 +356,13 @@ class NetworkTab(wettkampfmode: BooleanProperty, override val wettkampfInfo: Wet
     updateButtons
   }
 
-  private def syncTreeItems(source: TreeItem[DurchgangState], target: TreeItem[DurchgangState]):Unit = {
+  private def syncTreeItems(source: TreeItem[DurchgangState], target: TreeItem[DurchgangState]): Unit = {
     if (!target.getValue.equals(source.getValue)) {
       target.value = source.getValue
     }
     source.children.zip(target.children).foreach(pair => syncTreeItems(pair._1, pair._2))
     if (source.children.size < target.children.size) {
-      target.children.removeRange(source.children.size, target.children.size-1)
+      target.children.removeRange(source.children.size, target.children.size - 1)
     }
     if (source.children.size > target.children.size) {
       target.children.addAll(source.children.drop(target.children.size))
@@ -670,6 +653,52 @@ class NetworkTab(wettkampfmode: BooleanProperty, override val wettkampfInfo: Wet
     }
   }
 
+  def makePlayMediaMenu(p: WettkampfView): Menu = {
+    new Menu("Playlist ...") {
+      def addMediaPlaylistItems(durchgang: DurchgangState, column: DurchgangStationTCAccess): Unit = {
+        val disziplin = column.getDisziplin
+        val selection = durchgang.geraeteRiegen.filter {
+          _.disziplin.contains(disziplin)
+        }
+        items = selection.filter(gr => !gr.erfasst).take(1).flatMap {
+          geraeteRiege =>
+            Player.clearPlayList()
+            val mediaList = geraeteRiege.getMediaList
+            mediaList.map { case (_, title, _) =>
+              KuTuApp.makeMenuAction(title) { (caption, action) =>
+                mediaList.foreach { case (_, title, mediaURI) =>
+                  Player.addToPlayList(title, mediaURI.toString)
+                }
+                Player.show(title)
+              }
+            }
+        }.take(3)
+      }
+
+      items.clear()
+      view.selectionModel.value.selectedCells.toList.headOption match {
+        case None =>
+        case Some(cell) if cell.treeItem != null && cell.treeItem.getValue != null =>
+          cell.getTableColumn match {
+            case column: DurchgangStationTCAccess =>
+              addMediaPlaylistItems(cell.treeItem.getValue, column)
+            case _ => if (cell.getTableColumn.parentColumn.value != null && cell.getTableColumn.parentColumn.value.columns.size == 2) {
+              val col = cell.getTableColumn.getParentColumn.getColumns.head
+              col match {
+                case column: DurchgangStationJFSCTreeTableColumn[_] =>
+                  addMediaPlaylistItems(cell.treeItem.getValue, column)
+                case column: DurchgangStationTCAccess =>
+                  addMediaPlaylistItems(cell.treeItem.getValue, column)
+                case _ =>
+              }
+            }
+          }
+        case _ =>
+      }
+      disable = items.size() == 0
+    }
+  }
+
   val qrcodeMenu: MenuItem = KuTuApp.makeShowQRCodeMenu(wettkampf)
   val connectAndShareMenu: MenuItem = KuTuApp.makeConnectAndShareMenu(wettkampf)
 
@@ -737,14 +766,25 @@ class NetworkTab(wettkampfmode: BooleanProperty, override val wettkampfInfo: Wet
   val btnEditRiege: MenuButton = new MenuButton("Gehe zu ...") {
     disable <== when(createBooleanBinding(() => items.isEmpty, items)) choose true otherwise false
   }
+  val btnMediaPlayer: MenuButton = new MenuButton("Mediaplayer ...") {
+    disable <== when(createBooleanBinding(() => items.isEmpty, items)) choose true otherwise false
+  }
   val btnDurchgang: MenuButton = new MenuButton("Durchgang ...") {
     disable <== when(createBooleanBinding(() => items.isEmpty, items)) choose true otherwise false
   }
 
   def updateButtons: Unit = {
     val navigate = makeNavigateToMenu(wettkampf)
+    val mediaItems = makePlayMediaMenu(wettkampf)
     btnEditRiege.items.clear()
     btnEditRiege.items.addAll(navigate.items)
+
+    btnMediaPlayer.items.clear()
+    btnMediaPlayer.items += KuTuApp.makeMenuAction("Media Player anzeigen ...") { (caption, action) =>
+      Player.show()
+    }
+    btnMediaPlayer.items += new SeparatorMenuItem()
+    btnMediaPlayer.items.addAll(mediaItems.items)
 
     if (!wettkampf.toWettkampf.isReadonly(homedir, remoteHostOrigin)) {
       btnDurchgang.items.clear()
@@ -767,6 +807,7 @@ class NetworkTab(wettkampfmode: BooleanProperty, override val wettkampfInfo: Wet
         items += makeSelectedDurchgangTeilnehmerExport()
         items += new SeparatorMenuItem()
         items += makeSelectedRiegenBlaetterExport()
+        if (mediaItems.items.nonEmpty) items += mediaItems
         items += navigate
         items += makeMenuAction("Bestenliste erstellen") { (_, action) =>
           generateBestenliste.onAction.value.handle(action)
@@ -784,7 +825,7 @@ class NetworkTab(wettkampfmode: BooleanProperty, override val wettkampfInfo: Wet
           onAction = qrcodeMenu.onAction.get
           text <== qrcodeMenu.text
           disable <== qrcodeMenu.disable
-        }, btnDurchgang, btnEditRiege, new Button {
+        }, btnDurchgang, btnEditRiege, btnMediaPlayer, new Button {
           onAction = uploadMenu.onAction.get
           text <== uploadMenu.text
           disable <== uploadMenu.disable
@@ -813,7 +854,7 @@ class NetworkTab(wettkampfmode: BooleanProperty, override val wettkampfInfo: Wet
           onAction = connectAndShareMenu.onAction.get
           text <== connectAndShareMenu.text
           disable <== connectAndShareMenu.disable
-        }, btnEditRiege, new Button {
+        }, btnEditRiege, btnMediaPlayer, new Button {
           onAction = downloadMenu.onAction.get
           text <== downloadMenu.text
           disable <== downloadMenu.disable
@@ -842,42 +883,7 @@ class NetworkTab(wettkampfmode: BooleanProperty, override val wettkampfInfo: Wet
         updateButtons
       }
       println("subscribing for refreshing from websocket")
-      subscriptions = subscriptions :+ WebSocketClient.modelWettkampfWertungChanged.onChange { (_, _, newItem) =>
-        newItem match {
-          case be: BulkEvent if be.events.forall {
-            case DurchgangStarted(_, _, _) => true
-            case DurchgangFinished(_, _, _) => true
-            case DurchgangResetted(_, _) => true
-            case _ => false
-          } =>
-            println("refreshing network-dashboard from websocket", newItem)
-            refreshData()
-
-          case ds: DurchgangStarted =>
-            println("refreshing network-dashboard from websocket", newItem)
-            refreshData(Some(ds))
-          //      case StationWertungenCompleted(wertungen: List[UpdateAthletWertung]) =>
-          case df: DurchgangFinished =>
-            println("refreshing network-dashboard from websocket", newItem)
-            refreshData(Some(df))
-          case dr: DurchgangResetted =>
-            println("refreshing network-dashboard from websocket", newItem)
-            refreshData(Some(dr))
-          case AthletWertungUpdated(ahtlet: AthletView, wertung: Wertung, wettkampfUUID: String, durchgang: String, geraet: Long, programm: String) =>
-            if (selected.value) {
-              println("refreshing network-dashboard from websocket", newItem)
-              //DeferredPanelRefresher.submitUpdateTask(() => refreshData()) //
-              refreshData()
-            }
-          case AthletWertungUpdatedSequenced(ahtlet: AthletView, wertung: Wertung, wettkampfUUID: String, durchgang: String, geraet: Long, programm: String, sequenceId) =>
-            if (selected.value) {
-              println("refreshing network-dashboard from websocket", newItem)
-              //DeferredPanelRefresher.submitUpdateTask(() => refreshData()) //
-              refreshData()
-            }
-          case _ =>
-        }
-      }
+      subscriptions = subscriptions :+ WebSocketClient.modelWettkampfWertungChanged.onChange { (_, _, newItem) => refreshData() }
     }
     refreshData()
     true

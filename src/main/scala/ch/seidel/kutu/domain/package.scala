@@ -6,8 +6,8 @@ import org.apache.commons.codec.language.ColognePhonetic
 import org.apache.commons.codec.language.bm._
 import org.apache.commons.text.similarity.LevenshteinDistance
 
-import java.io.File
-import java.net.URLEncoder
+import java.io.{File, FilenameFilter}
+import java.net.{URI, URLEncoder}
 import java.nio.file.{Files, LinkOption, Path, StandardOpenOption}
 import java.sql.{Date, Timestamp}
 import java.text.{ParseException, SimpleDateFormat}
@@ -993,6 +993,7 @@ package object domain {
       case Some(_) => true
       case None => false
     }
+    def audiofilesDir = new java.io.File(Config.homedir + "/" + encodeFileName(easyprint) + "/audiofiles")
 
     def isReadonly(homedir: String, origin: String): Boolean = !hasSecred(homedir, origin) && hasRemote(homedir, origin)
   }
@@ -1012,7 +1013,6 @@ package object domain {
       s"${if (altersklassen.nonEmpty) ", Altersklassen" else ""}" +
       s"${if (jahrgangsklassen.nonEmpty) ", Jahrgangs Altersklassen" else ""}" +
       ""
-
     def toWettkampf = Wettkampf(id, uuid, datum, titel, programm.id, auszeichnung, auszeichnungendnote, notificationEMail, Option(altersklassen), Option(jahrgangsklassen), Option(punktegleichstandsregel), Option(rotation), Option(teamrule))
   }
 
@@ -1417,6 +1417,36 @@ package object domain {
         copy(wertungen = wertungen.updated(idx, wertungen(idx).updatedWertung(wertung)))
       else this
     }
+    def getMediaURI(wertung: Wertung): URI = {
+      val pattern =  s"${encodeFileName(s"${name}_${vorname}")}_${wertung.wettkampfdisziplinId}.".toLowerCase
+      val dir = new java.io.File(Config.homedir + "/" + encodeFileName(wettkampfTitel) + "/audiofiles")
+
+      dir.listFiles(new FilenameFilter {
+        override def accept(dir: File, name: String): Boolean = {
+          val ln = name.toLowerCase
+          ln.startsWith(pattern) && (
+          ln.toLowerCase.endsWith(".aif")
+            || ln.endsWith(".aiff")
+            || ln.endsWith(".fxm")
+            || ln.endsWith(".flv")
+            || ln.endsWith(".m3u8")
+            || ln.endsWith(".mp3")
+            || ln.endsWith(".mp4")
+            || ln.endsWith(".m4a")
+            || ln.endsWith(".m4v")
+            || ln.endsWith(".wav")
+          )
+        }
+      }).toList
+        .headOption
+        .getOrElse(new java.io.File(Config.homedir + "/" + encodeFileName(wettkampfTitel) + s"/$pattern.mp3"))
+        .toURI
+    }
+    def hasMedia(wertung: Wertung): Boolean = {
+      val uri = getMediaURI(wertung)
+      println("searching for mediafile at " + uri )
+      new File(uri).exists()
+    }
   }
 
   case class GeraeteRiege(wettkampfTitel: String, wettkampfUUID: String, durchgang: Option[String], halt: Int, disziplin: Option[Disziplin], kandidaten: Seq[Kandidat], erfasst: Boolean, sequenceId: String) {
@@ -1459,6 +1489,10 @@ package object domain {
     def softEquals(other: GeraeteRiege): Boolean = {
       hash == other.hash
     }
+    private def songtitle(kandidat: Kandidat) = {
+      s"${kandidat.vorname} ${kandidat.name} (${kandidat.verein}), ${disziplin.map(_.easyprint).getOrElse("")}"
+    }
+    def getMediaList = kandidaten.flatMap(k => k.wertungen.find(w => disziplin.contains(w.wettkampfdisziplin.disziplin)).map(_.toWertung).filter(w => w.endnote.isEmpty && k.hasMedia(w)).map(w => (k, songtitle(k), k.getMediaURI(w))))
   }
 
   sealed trait SexDivideRule {
