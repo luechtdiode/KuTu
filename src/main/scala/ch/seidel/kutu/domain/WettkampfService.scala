@@ -887,13 +887,13 @@ trait WettkampfService extends DBService
     }
   }
 
-  def assignAthletsToWettkampf(wettkampfId: Long, programmIds: Set[Long], withAthlets: Set[Long] = Set.empty, team: Option[Int]): Unit = {
+  def assignAthletsToWettkampf(wettkampfId: Long, programmIds: Set[Long], withAthlets: Set[(Long, Option[Media])] = Set.empty, team: Option[Int]): Unit = {
     val cache = scala.collection.mutable.Map[Long, ProgrammView]()
     val programs = programmIds map (p => readProgramm(p, cache))
     assignAthletsToWettkampfS(wettkampfId, programs, withAthlets, team)
   }
 
-  def assignAthletsToWettkampfS(wettkampfId: Long, programs: Set[ProgrammView], withAthlets: Set[Long] = Set.empty, team: Option[Int]): Unit = {
+  def assignAthletsToWettkampfS(wettkampfId: Long, programs: Set[ProgrammView], withAthlets: Set[(Long, Option[Media])] = Set.empty, team: Option[Int]): Unit = {
     if (withAthlets.nonEmpty) {
       val disciplines = Await.result(database.run {
         (sql"""
@@ -902,7 +902,8 @@ trait WettkampfService extends DBService
            """.as[Long]).withPinnedSession
       }, Duration.Inf)
 
-      withAthlets.foreach { aid =>
+      withAthlets.foreach { aidPair =>
+        val (aid, media) = aidPair
         disciplines.foreach { case disciplin =>
           Await.result(database.run {
             (
@@ -912,8 +913,8 @@ trait WettkampfService extends DBService
                  """ >>
               sqlu"""
                      insert into wertung
-                     (athlet_Id, wettkampfdisziplin_Id, wettkampf_Id, team)
-                     values (${aid}, ${disciplin}, ${wettkampfId}, ${team.getOrElse(0)})
+                     (athlet_Id, wettkampfdisziplin_Id, wettkampf_Id, team, media_id)
+                     values (${aid}, ${disciplin}, ${wettkampfId}, ${team.getOrElse(0)}, ${media.map(_.id)})
                 """).transactionally
           }, Duration.Inf)
         }

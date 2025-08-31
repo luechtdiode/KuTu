@@ -132,14 +132,15 @@ object ResourceExchanger extends KutuService with RiegenBuilder {
       case (sender, awm@AthletsAddedToWettkampf(athlets, wettkampfUUID, programm, team)) =>
         if (wettkampf.uuid.contains(wettkampfUUID)) /*Future*/ {
           val insertedAthlets = athlets
-            .map { athlet =>
+            .map { aa =>
+              val (athlet, media) = aa
               logger.info(s"received for ${athlet.vorname} ${athlet.name} (${athlet.verein.getOrElse(() => "")}) " +
                 s"to be added to competition ${awm.wettkampfUUID} to Program-Id:${programm}, to team: $team")
               val mappedAthletView: AthletView = mapToLocal(athlet, None)
               if (mappedAthletView.id == 0) {
-                insertAthlete(mappedAthletView.toAthlet).id
+                (insertAthlete(mappedAthletView.toAthlet).id, media)
               } else {
-                mappedAthletView.id
+                (mappedAthletView.id, media)
               }
             }
             .toSet
@@ -439,6 +440,7 @@ object ResourceExchanger extends KutuService with RiegenBuilder {
     }
 
     val start = System.currentTimeMillis()
+    wertungInstances.flatMap(rt =>rt.mediafile).map(m => putMedia(m)).toSet
     val inserted = wertungInstances.groupBy(w => w.wettkampfId).map { wkWertungen =>
       val (wettkampfid, wertungen) = wkWertungen
       val wettkampf = wettkampfInstances.values.find(w => w.id == wettkampfid).get
