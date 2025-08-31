@@ -42,7 +42,7 @@ class RegistrationRestSpec extends KuTuBaseSpec {
   def createTestAthletRegistration(reg: Registration): AthletRegistration = {
     athletregistration = athletregistration match {
       case None =>
-        Some(createAthletRegistration(AthletRegistration(0, reg.id, None, "M", "Tester", "Test", "2010-05-05", 20, 0, None, None, Some("life-is-life.mp3"))))
+        Some(createAthletRegistration(AthletRegistration(0, reg.id, None, "M", "Tester", "Test", "2010-05-05", 20, 0, None, None, Some(Media(1, "life-is-life.mp3", "mp3")))))
       case Some(r) => Some(r)
     }
     athletregistration.get
@@ -357,37 +357,37 @@ class RegistrationRestSpec extends KuTuBaseSpec {
 
     "add AthletRegistration with unreal input via rest zero age should be rejected" in {
       val vereinsreg = createTestRegistration
-      testConflict(vereinsreg, AthletRegistration(0, vereinsreg.id, None, "M", "Markus", "Meier", dateToExportedStr(ld2SQLDate(LocalDate.now())), 20, 0, None, None, Some("life-is-life.mp3")))
+      testConflict(vereinsreg, AthletRegistration(0, vereinsreg.id, None, "M", "Markus", "Meier", dateToExportedStr(ld2SQLDate(LocalDate.now())), 20, 0, None, None, Some(Media(1, "life-is-life.mp3", "mp3"))))
     }
     "add AthletRegistration with unreal input via rest age < 1 should be rejected" in {
       val vereinsreg = createTestRegistration
-      testConflict(vereinsreg, AthletRegistration(0, vereinsreg.id, None, "M", "Markus", "Meier", dateToExportedStr(ld2SQLDate(LocalDate.now().plusYears(1))), 20, 0, None, None, Some("life-is-life.mp3")))
+      testConflict(vereinsreg, AthletRegistration(0, vereinsreg.id, None, "M", "Markus", "Meier", dateToExportedStr(ld2SQLDate(LocalDate.now().plusYears(1))), 20, 0, None, None, Some(Media(1, "life-is-life.mp3", "mp3"))))
     }
     "add AthletRegistration with unreal input via rest age > 110 should be rejected" in {
       val vereinsreg = createTestRegistration
-      testConflict(vereinsreg, AthletRegistration(0, vereinsreg.id, None, "M", "Markus", "Meier", dateToExportedStr(ld2SQLDate(LocalDate.now().minusYears(121))), 20, 0, None, None, Some("life-is-life.mp3")))
+      testConflict(vereinsreg, AthletRegistration(0, vereinsreg.id, None, "M", "Markus", "Meier", dateToExportedStr(ld2SQLDate(LocalDate.now().minusYears(121))), 20, 0, None, None, Some(Media(1, "life-is-life.mp3", "mp3"))))
     }
 
     "add AthletRegistration via rest switch name and vorname if required" in {
       val reg = createTestRegistration
       val gebDat: String = dateToExportedStr(ld2SQLDate(LocalDate.now().minusYears(10)))
-      testSuccessfulRequest(reg, AthletRegistration(0, reg.id, None, "M", "Markus", "Schneider", gebDat, 20, 0, None, None, Some("life-is-life.mp3")), "Schneider", "Markus", "M")
+      testSuccessfulRequest(reg, AthletRegistration(0, reg.id, None, "M", "Markus", "Schneider", gebDat, 20, 0, None, None, Some(Media(1, "life-is-life.mp3", "mp3"))), "Schneider", "Markus", "M")
     }
     "add AthletRegistration via rest switch fix sex if required" in {
       val reg = createTestRegistration
       val gebDat: String = dateToExportedStr(ld2SQLDate(LocalDate.now().minusYears(10)))
-      testSuccessfulRequest(reg, AthletRegistration(0, reg.id, None, "M", "Schneider", "Gabriela", gebDat, 20, 0, None, None, Some("life-is-life.mp3")), "Schneider", "Gabriela", "W")
+      testSuccessfulRequest(reg, AthletRegistration(0, reg.id, None, "M", "Schneider", "Gabriela", gebDat, 20, 0, None, None, Some(Media(1, "life-is-life.mp3", "mp3"))), "Schneider", "Gabriela", "W")
     }
     "add AthletRegistration via restswitch keep sex with ambigous surname" in {
       val reg = createTestRegistration
       val gebDat: String = dateToExportedStr(ld2SQLDate(LocalDate.now().minusYears(10)))
-      testSuccessfulRequest(reg, AthletRegistration(0, reg.id, None, "W", "Schneider", "Robin", gebDat, 20, 0, None, None, Some("life-is-life.mp3")), "Schneider", "Robin", "W")
-      testSuccessfulRequest(reg, AthletRegistration(0, reg.id, None, "M", "Schneider", "Robin", gebDat, 20, 0, None, None, Some("life-is-life.mp3")), "Schneider", "Robin", "M")
+      testSuccessfulRequest(reg, AthletRegistration(0, reg.id, None, "W", "Schneider", "Robin", gebDat, 20, 0, None, None, Some(Media(1, "life-is-life.mp3", "mp3"))), "Schneider", "Robin", "W")
+      testSuccessfulRequest(reg, AthletRegistration(0, reg.id, None, "M", "Schneider", "Robin", gebDat, 20, 0, None, None, Some(Media(1, "life-is-life.mp3", "mp3"))), "Schneider", "Robin", "M")
     }
     "add AthletRegistration via restswitch take as is if all is right" in {
       val reg = createTestRegistration
       val gebDat: String = dateToExportedStr(ld2SQLDate(LocalDate.now().minusYears(10)))
-      testSuccessfulRequest(reg, AthletRegistration(0, reg.id, None, "M", "Schneider", "Markus", gebDat, 20, 0, None, None, Some("life-is-life.mp3")), "Schneider", "Markus", "M")
+      testSuccessfulRequest(reg, AthletRegistration(0, reg.id, None, "M", "Schneider", "Markus", gebDat, 20, 0, None, None, Some(Media(1, "life-is-life.mp3", "mp3"))), "Schneider", "Markus", "M")
     }
 
     "add AthletRegistration via rest2" in {

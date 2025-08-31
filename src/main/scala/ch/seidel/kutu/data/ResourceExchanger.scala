@@ -184,20 +184,31 @@ object ResourceExchanger extends KutuService with RiegenBuilder {
     opFn
   }
 
-  def importWettkampfMediaFile(wettkampf: Wettkampf, registration: AthletRegistration, file: InputStream, fileext: String): AthletRegistration = {
+  def importWettkampfMediaFile(wettkampf: Wettkampf, registration: AthletRegistration, file: InputStream): AthletRegistration = {
     val buffer = new BufferedInputStream(file, 5 * 1024 * 1024)
     val wettkampfAudiofilesDir = new java.io.File(Config.homedir + "/" + encodeFileName(wettkampf.easyprint) + "/audiofiles")
-    val mediaFileId = registration.id + "." + fileext
-    if (!wettkampfAudiofilesDir.exists()) {
-      wettkampfAudiofilesDir.mkdir()
+    val media: Option[Media] = registration.mediafile match {
+      case Some(Media(id, name, extension)) if (id > 0) => loadMedia(id).orElse(Some(putMedia(Media(0, name.trim, extension.trim))))
+      case Some(Media(_, name, extension)) =>
+        println(s"putting media to index")
+        Some(putMedia(Media(0, name.trim, extension.trim)))
+      case _ => None
     }
-    val mp3File = wettkampfAudiofilesDir.toPath.resolve(mediaFileId).toFile
-    val fos = new FileOutputStream(mp3File)
-    println(s"saving mediafile to ${mp3File.toString}")
-    buffer.transferTo(fos);
-    fos.flush()
-    fos.close()
-    updateAthletRegistration(registration.copy(mediafile = Some(mediaFileId))).get
+    media match {
+      case None => registration
+      case Some(m) =>
+        val mediaFile = s"${m.id}.${m.extension}"
+        if (!wettkampfAudiofilesDir.exists()) {
+          wettkampfAudiofilesDir.mkdir()
+        }
+        val mp3File = wettkampfAudiofilesDir.toPath.resolve(mediaFile).toFile
+        val fos = new FileOutputStream(mp3File)
+        println(s"saving mediafile to ${mp3File.toString}")
+        buffer.transferTo(fos);
+        fos.flush()
+        fos.close()
+        updateAthletRegistration(registration.copy(mediafile = Some(m))).get
+    }
   }
 
   def importWettkampfMediaFiles(wettkampf: Wettkampf, file: InputStream): Unit = {
@@ -390,7 +401,7 @@ object ResourceExchanger extends KutuService with RiegenBuilder {
         riege = if (fields(wertungenHeader("riege")).nonEmpty) Some(fields(wertungenHeader("riege"))) else None,
         riege2 = if (fields(wertungenHeader("riege2")).nonEmpty) Some(fields(wertungenHeader("riege2"))) else None,
         team = if (wertungenHeader.contains("team") && fields(wertungenHeader("team")).nonEmpty) Some(fields(wertungenHeader("team"))) else None,
-        mediafile = if (wertungenHeader.contains("mediafile") && fields(wertungenHeader("mediafile")).nonEmpty) Some(fields(wertungenHeader("mediafile"))) else None,
+        mediafile = if (wertungenHeader.contains("mediafile") && fields(wertungenHeader("mediafile")).nonEmpty) MediaJsonReader(Some(new String(dec.decode(fields(wertungenHeader("mediafile")))))) else None,
         variables = if (wertungenHeader.contains("variables") && fields(wertungenHeader("variables")).nonEmpty) TemplateViewJsonReader(Some(new String(dec.decode(fields(wertungenHeader("variables")))))) else None
       )
       w
@@ -686,7 +697,7 @@ object ResourceExchanger extends KutuService with RiegenBuilder {
     if (competitionMediaDir.exists() && competitionMediaDir.isDirectory) {
       competitionMediaDir
         .listFiles()
-        .filter(f => f.getName.endsWith(".mp3"))
+        .filter(f => f.getName.startsWith("/audiofiles/")) //
         .toList
         .foreach { mp3File =>
           if (mp3File.length() > Config.mediafileMaxSize) {
@@ -877,6 +888,7 @@ object ResourceExchanger extends KutuService with RiegenBuilder {
           case Some(athlet: Athlet) => s"${athlet.id}"
           case Some(athlet: AthletView) => s"${athlet.id}"
           case Some(disziplin: Disziplin) => s"${disziplin.id}"
+          case Some(media: Media) => enc.encodeToString(mediaFormat.write(media).compactPrint.getBytes)
           case Some(template: ScoreCalcTemplateView) => enc.encodeToString(scoreCalcTemplateViewFormat.write(template).compactPrint.getBytes)
           case Some(ts: Timestamp) =>
             import java.time.format.DateTimeFormatter
