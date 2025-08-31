@@ -77,6 +77,22 @@
           </ion-row>
         </ion-grid>
       </ion-item>
+      <ion-item-divider>
+        <ion-avatar slot="start">
+          <img src="assets/imgs/wettkampf.png">
+        </ion-avatar>
+        <ion-label>Bodenmusik (optional)</ion-label>
+      </ion-item-divider>
+      <ion-item>
+        <input type="file" (change)="onFileChange($event)" />
+      </ion-item>
+      <ion-item>
+        <audio controls id="myAudio">
+          <source [attr.src]="mediaSource" type="audio/mp3">
+          <source [attr.src]="mediaSource" type="audio/ogg">
+          <source [attr.src]="mediaSource" type="audio/wav">
+        </audio>
+      </ion-item>
     </ion-list>
     <ion-list>
       <ion-button size="large" expand="block" type="submit" #btnSaveNext [disabled]="waiting || !isFormValid()|| !athletRegistrationForm.valid || athletRegistrationForm.untouched" color="success">

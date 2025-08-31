@@ -23,14 +23,14 @@ trait WertungResultMapper extends WettkampfResultMapper with DisziplinResultMapp
         val wk: Wettkampf = r
         implicit val wkId: Long = wk.id
         val wd: WettkampfdisziplinView = r
-        WertungView(id, av, wd, wk, mapBigDecimalOption(r), mapBigDecimalOption(r), mapBigDecimalOption(r), r.<<?, r.<<?, r.<<, r.<<?)
+        WertungView(id, av, wd, wk, mapBigDecimalOption(r), mapBigDecimalOption(r), mapBigDecimalOption(r), r.<<?, r.<<?, r.<<, r.<<?, r.<<?)
     }
     //WertungView(id: Long, athlet: AthletView, wettkampf: Wettkampf, wettkampfdisziplin: WettkampfdisziplinView, noteD: scala.math.BigDecimal, noteE: scala.math.BigDecimal, endnote: scala.math.BigDecimal, riege: Option[String], riege2: Option[String], team: Int, variables: Option[ScoreCalcVariable)
     implicit def getResultWertung: GetResult[Wertung] = GetResult{
         r => {
             val wettkampfId: Long = r.<<
             val wettkampfdisziplinId: Long = r.<<
-            Wertung(r.<<, r.<<, wettkampfdisziplinId, wettkampfId, r.<<, r.<<, r.<<, r.<<, r.<<?, r.<<?, r.<<?, r.<<?)
+            Wertung(r.<<, r.<<, wettkampfdisziplinId, wettkampfId, r.<<, r.<<, r.<<, r.<<, r.<<?, r.<<?, r.<<?, r.<<?, r.<<?)
         }
     }
 
