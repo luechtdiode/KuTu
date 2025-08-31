@@ -10,27 +10,6 @@
 </ion-header>
 
 <ion-content>
-    @if (hasMedia) {
-      <ion-list>
-        <ion-item>
-          <iframe width="100%" height="166" scrolling="no" frameborder="no" allow="autoplay"
-            src="https://w.soundcloud.com/player/?url=https%3A//api.soundcloud.com/tracks/10510425&color=%23ff5500&auto_play=false&hide_related=true&show_comments=false&show_user=false&show_reposts=false&show_teaser=false"></iframe>
-          <div
-            style="font-size: 10px; color: #cccccc;line-break: anywhere;word-break: normal;overflow: hidden;white-space: nowrap;text-overflow: ellipsis; font-family: Interstate,Lucida Grande,Lucida Sans Unicode,Lucida Sans,Garuda,Verdana,Tahoma,sans-serif;font-weight: 100;">
-            <a href="https://soundcloud.com/luechtdiode" title="luechtdiode" target="_blank"
-              style="color: #cccccc; text-decoration: none;">luechtdiode</a> · <a
-              href="https://soundcloud.com/luechtdiode/gletscherschmelze" title="Gletscherschmelze" target="_blank"
-              style="color: #cccccc; text-decoration: none;">Gletscherschmelze
-            </a>
-          </div>
-          <audio controls>
-            <source [attr.src]="mediaSource" type="audio/mp3">
-            <source [attr.src]="mediaSource" type="audio/ogg">
-            <source [attr.src]="mediaSource" type="audio/wav">
-          </audio>
-        </ion-item>
-      </ion-list>
-    }
   <form #wertungsform="ngForm" (ngSubmit)="saveNext(wertungsform)" (keyup.enter)="saveNext(wertungsform)">
     @for (exercice of exercices; track exercice; let block = $index) {
       <ion-list>
@@ -86,7 +65,7 @@
         <ion-item>
           An diesem Gerät macht {{item.vorname + ' ' + item.name}} Pause. Es können keine Resultate erfasst werden.
         </ion-item>
-      } else {
+      } @else {
         <ion-button size="large" expand="block" type="submit" #btnSaveNext [disabled]="waiting || !wertungsform.valid" color="success">
         <ion-icon slot="start" name="arrow-forward-circle-outline" />Speichern & Weiter</ion-button>
         <ion-button size="large" expand="block" [disabled]="waiting || !wertungsform.valid"  color="secondary" (click)='saveClose(wertungsform)'>
