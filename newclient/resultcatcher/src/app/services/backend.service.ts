@@ -1116,6 +1116,21 @@ export class BackendService extends WebsocketService {
       return result.asObservable();
     }
 
+    uploadFile(competitionId: string, clubid: number, registrationid: number, formdata: FormData) {
+      return this.startLoading('Datei wird hochgeladen. Bitte warten ...',
+        this.http.post<MessageAck>(backendUrl + 'api/registrations/' + competitionId + '/' + clubid + '/athletes/' + registrationid + '/mediafile', formdata).pipe(share())
+      );
+    }
+    getDownloadUrl(competitionId: string, clubid: number, registrationid: number): string {
+      return backendUrl + 'api/registrations/' + competitionId + '/' + clubid + '/athletes/' + registrationid + '/mediafile';
+    }
+    downloadFile(competitionId: string, clubid: number, registrationid: number): Observable<Blob> {
+      return this.startLoading('Datei wird heruntergeladen. Bitte warten ...',
+        this.http.get(backendUrl + 'api/registrations/' + competitionId + '/' + clubid + '/athletes/' + registrationid + '/mediafile', {
+          responseType: 'blob'
+        }).pipe(share())
+      );
+    }
     nextStep(): number {
       if (this.steps == undefined) {
         return this._step

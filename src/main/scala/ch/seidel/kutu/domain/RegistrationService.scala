@@ -350,19 +350,20 @@ trait RegistrationService extends DBService with RegistrationResultMapper with H
     Await.result(database.run {
       sqlu"""
                   insert into athletregistration
-                  (vereinregistration_id, athlet_id, geschlecht, name, vorname, gebdat, program_id, team, registrationtime)
+                  (vereinregistration_id, athlet_id, geschlecht, name, vorname, gebdat, program_id, team, mediafile, registrationtime)
                   values (${newReg.vereinregistrationId}, ${athletId},
                           ${nomralizedAthlet.geschlecht}, ${nomralizedAthlet.name},
                           ${nomralizedAthlet.vorname}, ${nomralizedAthlet.gebdat},
                           ${newReg.programId},
                           ${newReg.team.getOrElse(0)},
+                          ${newReg.mediafile},
                           ${Timestamp.valueOf(LocalDateTime.now())})
               """ >>
         sql"""
                   select
                       r.id, r.vereinregistration_id,
                       r.athlet_id, r.geschlecht, r.name, r.vorname, r.gebdat,
-                      r.program_id, r.registrationtime, a.id, a.js_id, a.geschlecht, a.name, a.vorname, a.gebdat, a.strasse, a.plz, a.ort, a.activ, a.verein, v.*, r.team
+                      r.program_id, r.registrationtime, a.id, a.js_id, a.geschlecht, a.name, a.vorname, a.gebdat, a.strasse, a.plz, a.ort, a.activ, a.verein, v.*, r.team, r.mediafile
                   from athletregistration r
                   left join athlet a on (r.athlet_id = a.id)
                   left join verein v on (a.verein = v.id)
@@ -420,14 +421,15 @@ trait RegistrationService extends DBService with RegistrationResultMapper with H
                   name=${registration.name}, vorname=${registration.vorname},
                   gebdat=${gebdat}, geschlecht=${registration.geschlecht},
                   program_id=${registration.programId},
-                  team=${registration.team.getOrElse(0)}
+                  team=${registration.team.getOrElse(0)},
+                  mediafile=${registration.mediafile}
               where id=${registration.id}
      """ >>
       sql"""
               select
                   r.id, r.vereinregistration_id,
                   r.athlet_id, r.geschlecht, r.name, r.vorname, r.gebdat,
-                  r.program_id, r.registrationtime, a.id, a.js_id, a.geschlecht, a.name, a.vorname, a.gebdat, a.strasse, a.plz, a.ort, a.activ, a.verein, v.*, r.team
+                  r.program_id, r.registrationtime, a.id, a.js_id, a.geschlecht, a.name, a.vorname, a.gebdat, a.strasse, a.plz, a.ort, a.activ, a.verein, v.*, r.team, r.mediafile
               from athletregistration r
               left join athlet a on (r.athlet_id = a.id)
               left join verein v on (a.verein = v.id)
@@ -442,7 +444,7 @@ trait RegistrationService extends DBService with RegistrationResultMapper with H
                   select
                       r.id, r.vereinregistration_id,
                       r.athlet_id, r.geschlecht, r.name, r.vorname, r.gebdat,
-                      r.program_id, r.registrationtime, a.id, a.js_id, a.geschlecht, a.name, a.vorname, a.gebdat, a.strasse, a.plz, a.ort, a.activ, a.verein, v.*, r.team
+                      r.program_id, r.registrationtime, a.id, a.js_id, a.geschlecht, a.name, a.vorname, a.gebdat, a.strasse, a.plz, a.ort, a.activ, a.verein, v.*, r.team, r.mediafile
                   from athletregistration r
                   left join athlet a on (r.athlet_id = a.id)
                   left join verein v on (a.verein = v.id)
@@ -457,7 +459,7 @@ trait RegistrationService extends DBService with RegistrationResultMapper with H
                   select
                       r.id, r.vereinregistration_id,
                       r.athlet_id, r.geschlecht, r.name, r.vorname, r.gebdat,
-                      r.program_id, r.registrationtime, a.id, a.js_id, a.geschlecht, a.name, a.vorname, a.gebdat, a.strasse, a.plz, a.ort, a.activ, a.verein, v.*, r.team
+                      r.program_id, r.registrationtime, a.id, a.js_id, a.geschlecht, a.name, a.vorname, a.gebdat, a.strasse, a.plz, a.ort, a.activ, a.verein, v.*, r.team, r.mediafile
                   from athletregistration r
                   left join athlet a on (r.athlet_id = a.id)
                   left join verein v on (a.verein = v.id)

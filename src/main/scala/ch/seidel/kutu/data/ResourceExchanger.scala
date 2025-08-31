@@ -1,7 +1,6 @@
 package ch.seidel.kutu.data
 
 import ch.seidel.kutu.actors._
-import ch.seidel.kutu.calc.TemplateViewJsonReader.scoreCalcTemplateViewFormat
 import ch.seidel.kutu.calc.{ScoreAggregateFn, ScoreCalcTemplate, ScoreCalcTemplateView, TemplateViewJsonReader}
 import ch.seidel.kutu.data.CaseObjectMetaUtil._
 import ch.seidel.kutu.domain._
@@ -185,10 +184,55 @@ object ResourceExchanger extends KutuService with RiegenBuilder {
     opFn
   }
 
+  def importWettkampfMediaFile(wettkampf: Wettkampf, registration: AthletRegistration, file: InputStream, fileext: String): AthletRegistration = {
+    val buffer = new BufferedInputStream(file, 5 * 1024 * 1024)
+    val wettkampfAudiofilesDir = new java.io.File(Config.homedir + "/" + encodeFileName(wettkampf.easyprint) + "/audiofiles")
+    val mediaFileId = registration.id + "." + fileext
+    if (!wettkampfAudiofilesDir.exists()) {
+      wettkampfAudiofilesDir.mkdir()
+    }
+    val mp3File = wettkampfAudiofilesDir.toPath.resolve(mediaFileId).toFile
+    val fos = new FileOutputStream(mp3File)
+    println(s"saving mediafile to ${mp3File.toString}")
+    buffer.transferTo(fos);
+    fos.flush()
+    fos.close()
+    updateAthletRegistration(registration.copy(mediafile = Some(mediaFileId))).get
+  }
+
+  def importWettkampfMediaFiles(wettkampf: Wettkampf, file: InputStream): Unit = {
+    val buffer = new BufferedInputStream(file)
+    buffer.mark(1024 * 1024 * 1024) // max 1GB
+    type ZipStream = (ZipEntry, InputStream)
+    class ZipEntryTraversableClass extends Iterator[ZipStream] {
+      buffer.reset()
+      val zis = new ZipInputStream(buffer)
+      val zisIterator: Iterator[ZipEntry] = Iterator.continually(zis.getNextEntry)
+        .filter(ze => ze == null || !ze.isDirectory)
+        .takeWhile(ze => ze != null).iterator
+
+      override def hasNext: Boolean = zisIterator.hasNext
+
+      override def next(): (ZipEntry, InputStream) = (zisIterator.next(), zis)
+    }
+    new ZipEntryTraversableClass().foreach{ entry =>
+      val filename = entry._1.getName
+      val wettkampfAudiofilesDir = new java.io.File(Config.homedir + "/" + encodeFileName(wettkampf.easyprint) + "/audiofiles")
+      if (!wettkampfAudiofilesDir.exists()) {
+        wettkampfAudiofilesDir.mkdir()
+      }
+      val mp3File = new java.io.File(Config.homedir + "/" + encodeFileName(wettkampf.easyprint) + "/audiofiles/" + filename)
+      val fos = new FileOutputStream(mp3File)
+      entry._2.transferTo(fos);
+      fos.flush()
+      fos.close()
+      logger.info("mp3-file was written " + mp3File.getName)
+    }
+  }
+
   def importWettkampf(file: InputStream): Wettkampf = {
     val buffer = new BufferedInputStream(file)
-    buffer.mark(5 * 1024 * 1024) // max 5 mb
-    //buffer.mark(40 * 4096)
+    buffer.mark(1024 * 1024 * 1024) // max 1GB
     type ZipStream = (ZipEntry, InputStream)
     class ZipEntryTraversableClass extends Iterator[ZipStream] {
       buffer.reset()
@@ -346,6 +390,7 @@ object ResourceExchanger extends KutuService with RiegenBuilder {
         riege = if (fields(wertungenHeader("riege")).nonEmpty) Some(fields(wertungenHeader("riege"))) else None,
         riege2 = if (fields(wertungenHeader("riege2")).nonEmpty) Some(fields(wertungenHeader("riege2"))) else None,
         team = if (wertungenHeader.contains("team") && fields(wertungenHeader("team")).nonEmpty) Some(fields(wertungenHeader("team"))) else None,
+        mediafile = if (wertungenHeader.contains("mediafile") && fields(wertungenHeader("mediafile")).nonEmpty) Some(fields(wertungenHeader("mediafile"))) else None,
         variables = if (wertungenHeader.contains("variables") && fields(wertungenHeader("variables")).nonEmpty) TemplateViewJsonReader(Some(new String(dec.decode(fields(wertungenHeader("variables")))))) else None
       )
       w
@@ -413,6 +458,7 @@ object ResourceExchanger extends KutuService with RiegenBuilder {
             riege = None,
             riege2 = None,
             team = None,
+            mediafile = None,
             variables = None
           )
         }
@@ -583,6 +629,30 @@ object ResourceExchanger extends KutuService with RiegenBuilder {
           logger.info("logo was written " + logofile.getName)
         }
       }
+      new ZipEntryTraversableClass()
+        .filter(entry => entry._1.getName.endsWith(".mp3"))
+        .foreach{ entry =>
+        val filename = entry._1.getName
+        val wettkampfAudiofilesDir = new java.io.File(Config.homedir + "/" + encodeFileName(wettkampf.easyprint) + "/audiofiles")
+        if (!wettkampfAudiofilesDir.exists()) {
+          wettkampfAudiofilesDir.mkdir()
+        }
+        if (entry._1.getSize > Config.mediafileMaxSize) {
+          val maxSize = java.text.NumberFormat.getInstance().format(Config.mediafileMaxSize / 1024d)
+          val currentSize = java.text.NumberFormat.getInstance().format(entry._1.getSize / 1024d)
+          throw new RuntimeException(s"Die Datei $filename ist mit $currentSize zu gross. Sie darf nicht grösser als $maxSize Kilobytes sein.")
+        }
+        val mp3File = new java.io.File(Config.homedir + "/" + encodeFileName(wettkampf.easyprint) + "/audiofiles/" + filename)
+        val fos = new FileOutputStream(mp3File)
+        val bytes = new Array[Byte](1024) //1024 bytes - Buffer size
+        Iterator
+          .continually(entry._2.read(bytes))
+          .takeWhile(-1 !=)
+          .foreach(read => fos.write(bytes, 0, read))
+        fos.flush()
+        fos.close()
+        logger.info("mp3-file was written " + mp3File.getName)
+      }
     }
 
     logger.info("import finished")
@@ -607,11 +677,48 @@ object ResourceExchanger extends KutuService with RiegenBuilder {
     }
   }
 
-  def exportWettkampf(wettkampf: Wettkampf, filename: String): Unit = {
-    exportWettkampfToStream(wettkampf, new FileOutputStream(filename), withSecret = true)
+  def exportWettkampfMediaFiles(wettkampf: Wettkampf, filename: String): Unit = {
+    exportWettkampfMediaFilesToStream(wettkampf, new FileOutputStream(filename), withSecret = true)
   }
 
-  def exportWettkampfToStream(wettkampf: Wettkampf, os: OutputStream, withSecret: Boolean = false): Unit = {
+  def zipMediaFiles(wettkampf: Wettkampf, zip: ZipOutputStream): Unit = {
+    val competitionMediaDir = new java.io.File(Config.homedir + "/" + encodeFileName(wettkampf.easyprint) + "/audiofiles")
+    if (competitionMediaDir.exists() && competitionMediaDir.isDirectory) {
+      competitionMediaDir
+        .listFiles()
+        .filter(f => f.getName.endsWith(".mp3"))
+        .toList
+        .foreach { mp3File =>
+          if (mp3File.length() > Config.mediafileMaxSize) {
+            val maxSize = java.text.NumberFormat.getInstance().format(Config.mediafileMaxSize / 1024d)
+            val currentSize = java.text.NumberFormat.getInstance().format(mp3File.length() / 1024d)
+            throw new RuntimeException(s"Die Datei ${mp3File.getName} ist mit $currentSize zu gross. Sie darf nicht grösser als $maxSize Kilobytes sein.")
+          }
+          val fis = new FileInputStream(mp3File)
+          zip.putNextEntry(new ZipEntry(mp3File.getName))
+          val bytes = new Array[Byte](1024) //1024 bytes - Buffer size
+          Iterator
+            .continually(fis.read(bytes))
+            .takeWhile(-1 !=)
+            .foreach(read => zip.write(bytes, 0, read))
+          zip.closeEntry()
+          println("mp3-file was taken " + mp3File.getName)
+        }
+    }
+  }
+
+  def exportWettkampfMediaFilesToStream(wettkampf: Wettkampf, os: OutputStream, withSecret: Boolean = false): Unit = {
+    val zip = new ZipOutputStream(os)
+    zipMediaFiles(wettkampf, zip)
+    zip.finish()
+    zip.close()
+  }
+
+  def exportWettkampf(wettkampf: Wettkampf, filename: String): Unit = {
+    exportWettkampfToStream(wettkampf, new FileOutputStream(filename), withSecret = true, withMediaFiles = true)
+  }
+
+  def exportWettkampfToStream(wettkampf: Wettkampf, os: OutputStream, withSecret: Boolean = false, withMediaFiles: Boolean = false): Unit = {
     val zip = new ZipOutputStream(os)
     zip.putNextEntry(new ZipEntry("wettkampf.csv"))
     zip.write((getHeader[Wettkampf] + "\n" + getValues(wettkampf)).getBytes("utf-8"))
@@ -745,6 +852,10 @@ object ResourceExchanger extends KutuService with RiegenBuilder {
         .foreach(read => zip.write(bytes, 0, read))
       zip.closeEntry()
       println("remote-info was taken " + secretfile.getName)
+    }
+    if (withMediaFiles) {
+      zipMediaFiles(wettkampf, zip)
+
     }
     zip.finish()
     zip.close()

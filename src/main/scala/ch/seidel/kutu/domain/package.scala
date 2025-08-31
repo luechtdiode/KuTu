@@ -1101,7 +1101,7 @@ package object domain {
 
   case class Wertung(id: Long, athletId: Long, wettkampfdisziplinId: Long, wettkampfId: Long, wettkampfUUID: String,
                      noteD: Option[scala.math.BigDecimal], noteE: Option[scala.math.BigDecimal], endnote: Option[scala.math.BigDecimal],
-                     riege: Option[String], riege2: Option[String], team: Option[Int],
+                     riege: Option[String], riege2: Option[String], team: Option[Int], mediafile: Option[String],
                      variables: Option[ScoreCalcTemplateView]) extends DataObject {
     lazy val resultat = {
       val dTeilresults = variables match {
@@ -1153,7 +1153,7 @@ package object domain {
     }
   }
 
-  case class WertungView(id: Long, athlet: AthletView, wettkampfdisziplin: WettkampfdisziplinView, wettkampf: Wettkampf, noteD: Option[scala.math.BigDecimal], noteE: Option[scala.math.BigDecimal], endnote: Option[scala.math.BigDecimal], riege: Option[String], riege2: Option[String], team: Int, variables: Option[ScoreCalcTemplateView], isStroked: Boolean = false) extends DataObject {
+  case class WertungView(id: Long, athlet: AthletView, wettkampfdisziplin: WettkampfdisziplinView, wettkampf: Wettkampf, noteD: Option[scala.math.BigDecimal], noteE: Option[scala.math.BigDecimal], endnote: Option[scala.math.BigDecimal], riege: Option[String], riege2: Option[String], team: Int, mediafile: Option[String], variables: Option[ScoreCalcTemplateView], isStroked: Boolean = false) extends DataObject {
     lazy val resultat = {
       val dTeilresults = variables match {
         case Some(v) if v.dDetails => v.dVariables.filter(_.value > 0).map(_.value.toString())
@@ -1200,9 +1200,9 @@ package object domain {
 
     lazy val teamName = getTeamName(wettkampf.extraTeams)
 
-    def toWertung = Wertung(id, athlet.id, wettkampfdisziplin.id, wettkampf.id, wettkampf.uuid.getOrElse(""), noteD, noteE, endnote, riege, riege2, Some(team), defaultVariables)
+    def toWertung = Wertung(id, athlet.id, wettkampfdisziplin.id, wettkampf.id, wettkampf.uuid.getOrElse(""), noteD, noteE, endnote, riege, riege2, Some(team), mediafile, defaultVariables)
 
-    def toWertung(riege: String, riege2: Option[String]) = Wertung(id, athlet.id, wettkampfdisziplin.id, wettkampf.id, wettkampf.uuid.getOrElse(""), noteD, noteE, endnote, Some(riege), riege2, Some(team), defaultVariables)
+    def toWertung(riege: String, riege2: Option[String]) = Wertung(id, athlet.id, wettkampfdisziplin.id, wettkampf.id, wettkampf.uuid.getOrElse(""), noteD, noteE, endnote, Some(riege), riege2, Some(team), mediafile, defaultVariables)
 
     def updatedWertung(valuesFrom: Wertung) = copy(noteD = valuesFrom.noteD, noteE = valuesFrom.noteE, endnote = valuesFrom.endnote, variables = valuesFrom.variables)
 
@@ -1622,8 +1622,8 @@ package object domain {
 
   case class AthletRegistration(id: Long, vereinregistrationId: Long,
                                 athletId: Option[Long], geschlecht: String, name: String, vorname: String, gebdat: String,
-                                programId: Long, registrationTime: Long, athlet: Option[AthletView], team: Option[Int]) extends DataObject {
-    def toPublicView = AthletRegistration(id, vereinregistrationId, athletId, geschlecht, name, vorname, gebdat.substring(0, 4) + "-01-01", programId, registrationTime, athlet.map(_.toPublicView), team)
+                                programId: Long, registrationTime: Long, athlet: Option[AthletView], team: Option[Int], mediafile: Option[String]) extends DataObject {
+    def toPublicView = AthletRegistration(id, vereinregistrationId, athletId, geschlecht, name, vorname, gebdat.substring(0, 4) + "-01-01", programId, registrationTime, athlet.map(_.toPublicView), team, mediafile)
 
     def capitalizeIfBlockCase(s: String): String = {
       if (s.length > 2 && (s.toUpperCase.equals(s) || s.toLowerCase.equals(s))) {
@@ -1733,7 +1733,7 @@ package object domain {
   }
 
   object EmptyAthletRegistration {
-    def apply(vereinregistrationId: Long): AthletRegistration = AthletRegistration(0L, vereinregistrationId, None, "", "", "", "", 0L, 0L, None, None)
+    def apply(vereinregistrationId: Long): AthletRegistration = AthletRegistration(0L, vereinregistrationId, None, "", "", "", "", 0L, 0L, None, None, None)
   }
 
   case class JudgeRegistration(id: Long, vereinregistrationId: Long,
