@@ -79,10 +79,11 @@ abstract trait WertungService extends DBService with WertungResultMapper with Di
                     SELECT w.id, a.id, a.js_id, a.geschlecht, a.name, a.vorname, a.gebdat, a.strasse, a.plz, a.ort, a.activ, a.verein, v.*,
                       wk.id, wk.uuid, wk.datum, wk.titel, wk.programm_id, wk.auszeichnung, wk.auszeichnungendnote, wk.notificationEMail, wk.altersklassen, wk.jahrgangsklassen, wk.punktegleichstandsregel, wk.rotation, wk.teamrule,
                       wd.id, wd.programm_id, d.*, wd.kurzbeschreibung, wd.detailbeschreibung, wd.notenfaktor, wd.masculin, wd.feminim, wd.ord, wd.scale, wd.dnote, wd.min, wd.max, wd.startgeraet,
-                      w.note_d as difficulty, w.note_e as execution, w.endnote, w.riege, w.riege2, w.team, w.mediafile, w.variables
+                      w.note_d as difficulty, w.note_e as execution, w.endnote, w.riege, w.riege2, w.team, w.media_id, m.name, m.extension, w.variables
                     FROM wertung w
                     inner join athlet a on (a.id = w.athlet_id)
                     left outer join verein v on (a.verein = v.id)
+                    left outer join media m on (w.media_id = m.id)
                     inner join wettkampfdisziplin wd on (wd.id = w.wettkampfdisziplin_id)
 
                     inner join disziplin d on (d.id = wd.disziplin_id)
@@ -102,10 +103,11 @@ abstract trait WertungService extends DBService with WertungResultMapper with Di
                     SELECT w.id, a.id, a.js_id, a.geschlecht, a.name, a.vorname, a.gebdat, a.strasse, a.plz, a.ort, a.activ, a.verein, v.*,
                       wk.id, wk.uuid, wk.datum, wk.titel, wk.programm_id, wk.auszeichnung, wk.auszeichnungendnote, wk.notificationEMail, wk.altersklassen, wk.jahrgangsklassen, wk.punktegleichstandsregel, wk.rotation, wk.teamrule,
                       wd.id, wd.programm_id, d.*, wd.kurzbeschreibung, wd.detailbeschreibung, wd.notenfaktor, wd.masculin, wd.feminim, wd.ord, wd.scale, wd.dnote, wd.min, wd.max, wd.startgeraet,
-                      w.note_d as difficulty, w.note_e as execution, w.endnote, w.riege, w.riege2, w.team, w.mediafile, w.variables
+                      w.note_d as difficulty, w.note_e as execution, w.endnote, w.riege, w.riege2, w.team, w.media_id, m.name, m.extension, w.variables
                     FROM wertung w
                     inner join athlet a on (a.id = w.athlet_id)
                     left outer join verein v on (a.verein = v.id)
+                    left outer join media m on (w.media_id = m.id)
                     inner join wettkampfdisziplin wd on (wd.id = w.wettkampfdisziplin_id)
                     inner join disziplin d on (d.id = wd.disziplin_id)
                     inner join programm p on (p.id = wd.programm_id)
@@ -125,10 +127,11 @@ abstract trait WertungService extends DBService with WertungResultMapper with Di
                     SELECT w.id, a.id, a.js_id, a.geschlecht, a.name, a.vorname, a.gebdat, a.strasse, a.plz, a.ort, a.activ, a.verein, v.*,
                       wk.id, wk.uuid, wk.datum, wk.titel, wk.programm_id, wk.auszeichnung, wk.auszeichnungendnote, wk.notificationEMail, wk.altersklassen, wk.jahrgangsklassen, wk.punktegleichstandsregel, wk.rotation, wk.teamrule,
                       wd.id, wd.programm_id, d.*, wd.kurzbeschreibung, wd.detailbeschreibung, wd.notenfaktor, wd.masculin, wd.feminim, wd.ord, wd.scale, wd.dnote, wd.min, wd.max, wd.startgeraet,
-                      w.note_d as difficulty, w.note_e as execution, w.endnote, w.riege, w.riege2, w.team, w.mediafile, w.variables
+                      w.note_d as difficulty, w.note_e as execution, w.endnote, w.riege, w.riege2, w.team, w.media_id, m.name, m.extension, w.variables
                     FROM wertung w
                     inner join athlet a on (a.id = w.athlet_id)
                     left outer join verein v on (a.verein = v.id)
+                    left outer join media m on (w.media_id = m.id)
                     inner join wettkampfdisziplin wd on (wd.id = w.wettkampfdisziplin_id)
                     inner join disziplin d on (d.id = wd.disziplin_id)
                     inner join programm p on (p.id = wd.programm_id)
