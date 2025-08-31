@@ -1727,7 +1727,7 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
       (progrId, id)
     }
     if (clip.nonEmpty) {
-      for ((progId, athletes) <- clip.groupBy(_._1).map(x => (x._1, x._2.map(_._2)))) {
+      for ((progId, athletes) <- clip.groupBy(_._1).map(x => (x._1, x._2.map(x => (x._2, None))))) {
         service.assignAthletsToWettkampf(wettkampf.id, Set(progId), athletes.toSet, None)
       }
 
@@ -2157,7 +2157,8 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
             new AthletSelectionDialog(
               text.value, wettkampfFilterDate, wettkampf.programm.alterVon, wettkampf.programm.alterBis, Set("W", "M"), wertungen.map(w => w.head.init.athlet), service,
               (selection: Set[Long]) => {
-                service.assignAthletsToWettkampf(wettkampf.id, Set(2, 3), selection, None)
+                val athletMediaList: Set[(Long,Option[Media])] = selection.map(s => (s, None))
+                service.assignAthletsToWettkampf(wettkampf.id, Set(2, 3), athletMediaList, None)
                 reloadData()
               }
             ).execute(event)
@@ -2199,7 +2200,8 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
           new AthletSelectionDialog(
             text.value, wettkampfFilterDate, progrm.alterVon, progrm.alterBis, sex, wertungen.map(w => w.head.init.athlet), service,
             (selection: Set[Long]) => {
-              service.assignAthletsToWettkampf(wettkampf.id, Set(progrm.id), selection, None)
+              val athletMediaList: Set[(Long,Option[Media])] = selection.map(s => (s, None))
+              service.assignAthletsToWettkampf(wettkampf.id, Set(progrm.id), athletMediaList, None)
               reloadData()
             }
           ).execute(event)

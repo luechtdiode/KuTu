@@ -697,14 +697,16 @@ trait RegistrationService extends DBService with RegistrationResultMapper with M
   }
 
   def putMedia(media: Media): Media = {
-    Await.result(database.run {
-      sqlu"""
+    media.id match {
+      case 0 =>
+        Await.result(database.run {
+          sqlu"""
                   insert into media
                   (name, extension)
                   values (${media.name},
                           ${media.extension})
               """ >>
-        sql"""
+            sql"""
                   select
                       id, name, extension
                   from media
@@ -714,6 +716,31 @@ trait RegistrationService extends DBService with RegistrationResultMapper with M
                                 and m.extension=${media.extension}
                                 )
          """.as[Media].head.transactionally
-    }, Duration.Inf)
+        }, Duration.Inf)
+      case id =>
+        loadMedia(id) match {
+          case Some(m) => m
+          case None =>
+            Await.result(database.run {
+              sqlu"""
+                  insert into media
+                  (id, name, extension)
+                  values (${media.id},
+                          ${media.name},
+                          ${media.extension})
+              """ >>
+                sql"""
+                  select
+                      id, name, extension
+                  from media
+                  where id = (select max(m.id)
+                              from media m
+                              where m.name=${media.name}
+                                and m.extension=${media.extension}
+                                )
+         """.as[Media].head.transactionally
+            }, Duration.Inf)
+        }
+    }
   }
 }
