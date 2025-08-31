@@ -1,7 +1,9 @@
 package ch.seidel.kutu
 
+import ch.seidel.kutu.calc.TemplateViewJsonReader.scoreCalcTemplateViewFormat
 import ch.seidel.kutu.calc.{Calculator, ScoreCalcTemplate, ScoreCalcTemplateView, ScoreCalcVariable}
 import ch.seidel.kutu.data.{NameCodec, Surname}
+import ch.seidel.kutu.http.JsonSupport
 import org.apache.commons.codec.language.ColognePhonetic
 import org.apache.commons.codec.language.bm._
 import org.apache.commons.text.similarity.LevenshteinDistance
@@ -1101,7 +1103,7 @@ package object domain {
 
   case class Wertung(id: Long, athletId: Long, wettkampfdisziplinId: Long, wettkampfId: Long, wettkampfUUID: String,
                      noteD: Option[scala.math.BigDecimal], noteE: Option[scala.math.BigDecimal], endnote: Option[scala.math.BigDecimal],
-                     riege: Option[String], riege2: Option[String], team: Option[Int], mediafile: Option[String],
+                     riege: Option[String], riege2: Option[String], team: Option[Int], mediafile: Option[Media],
                      variables: Option[ScoreCalcTemplateView]) extends DataObject {
     lazy val resultat = {
       val dTeilresults = variables match {
@@ -1153,7 +1155,7 @@ package object domain {
     }
   }
 
-  case class WertungView(id: Long, athlet: AthletView, wettkampfdisziplin: WettkampfdisziplinView, wettkampf: Wettkampf, noteD: Option[scala.math.BigDecimal], noteE: Option[scala.math.BigDecimal], endnote: Option[scala.math.BigDecimal], riege: Option[String], riege2: Option[String], team: Int, mediafile: Option[String], variables: Option[ScoreCalcTemplateView], isStroked: Boolean = false) extends DataObject {
+  case class WertungView(id: Long, athlet: AthletView, wettkampfdisziplin: WettkampfdisziplinView, wettkampf: Wettkampf, noteD: Option[scala.math.BigDecimal], noteE: Option[scala.math.BigDecimal], endnote: Option[scala.math.BigDecimal], riege: Option[String], riege2: Option[String], team: Int, mediafile: Option[Media], variables: Option[ScoreCalcTemplateView], isStroked: Boolean = false) extends DataObject {
     lazy val resultat = {
       val dTeilresults = variables match {
         case Some(v) if v.dDetails => v.dVariables.filter(_.value > 0).map(_.value.toString())
@@ -1620,9 +1622,19 @@ package object domain {
 
   case class RegistrationResetPW(id: Long, wettkampfId: Long, secret: String) extends DataObject
 
+  case class Media(id: Long, name: String, extension: String)
+
+  case object MediaJsonReader extends JsonSupport {
+
+    import spray.json.enrichString
+
+    def apply(text: String): Media = mediaFormat.read(text.parseJson)
+    def apply(text: Option[String]): Option[Media] = text.map(t => mediaFormat.read(t.parseJson))
+  }
+
   case class AthletRegistration(id: Long, vereinregistrationId: Long,
                                 athletId: Option[Long], geschlecht: String, name: String, vorname: String, gebdat: String,
-                                programId: Long, registrationTime: Long, athlet: Option[AthletView], team: Option[Int], mediafile: Option[String]) extends DataObject {
+                                programId: Long, registrationTime: Long, athlet: Option[AthletView], team: Option[Int], mediafile: Option[Media]) extends DataObject {
     def toPublicView = AthletRegistration(id, vereinregistrationId, athletId, geschlecht, name, vorname, gebdat.substring(0, 4) + "-01-01", programId, registrationTime, athlet.map(_.toPublicView), team, mediafile)
 
     def capitalizeIfBlockCase(s: String): String = {

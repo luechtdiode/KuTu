@@ -2,7 +2,7 @@ package ch.seidel.kutu.domain
 
 import slick.jdbc.GetResult
 
-trait RegistrationResultMapper extends AthletResultMapper {
+trait RegistrationResultMapper extends AthletResultMapper with MediaResultMapper {
   val getTime = GetResult(r => {
     val t: java.sql.Timestamp = r.<<
     t.getTime
@@ -22,7 +22,7 @@ trait RegistrationResultMapper extends AthletResultMapper {
     val registrationTime: Long = getTime(r)
     val athlet: Option[AthletView] = getAthletOptionResult(r)
     var team: Option[Int] = None
-    var mediafile: Option[String] = None
+    var mediafile: Option[Media] = None
     while(r.hasMoreColumns) {
       r.currentPos match {
         case pos:Int if (pos == 23) =>
