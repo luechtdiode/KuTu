@@ -3,6 +3,7 @@ package ch.seidel.kutu
 import ch.seidel.kutu.calc.TemplateViewJsonReader.scoreCalcTemplateViewFormat
 import ch.seidel.kutu.calc.{Calculator, ScoreCalcTemplate, ScoreCalcTemplateView, ScoreCalcVariable}
 import ch.seidel.kutu.data.{NameCodec, Surname}
+import ch.seidel.kutu.domain.{AthletRegistration, SyncAction}
 import ch.seidel.kutu.http.JsonSupport
 import org.apache.commons.codec.language.ColognePhonetic
 import org.apache.commons.codec.language.bm._
@@ -1534,14 +1535,16 @@ package object domain {
       case AddVereinAction(verein) => AddVereinAction(verein.toPublicView)
       case ApproveVereinAction(verein) => ApproveVereinAction(verein.toPublicView)
       case RenameVereinAction(verein, oldVerein) => RenameVereinAction(verein.toPublicView, oldVerein)
+      case UpdateAthletMediaAction(verein, athletReg, wertung) => UpdateAthletMediaAction(verein.toPublicView, athletReg.toPublicView, wertung)
       case rn@RenameAthletAction(verein, athlet, existing, expected) =>
         if (rn.isGebDatChange)
           RenameAthletAction(verein.toPublicView, athlet.toPublicView, existing.toPublicView.copy(gebdat = existing.gebdat), expected.toPublicView.copy(gebdat = expected.gebdat))
         else
           RenameAthletAction(verein.toPublicView, athlet.toPublicView, existing.toPublicView, expected.toPublicView)
-      case AddRegistration(verein, programId, athlet, suggestion, team) => AddRegistration(verein.toPublicView, programId, athlet.toPublicView, suggestion.toPublicView, team)
+      case AddRegistration(verein, programId, athlet, suggestion, team, media) => AddRegistration(verein.toPublicView, programId, athlet.toPublicView, suggestion.toPublicView, team, media)
       case MoveRegistration(verein, fromProgramId, fromTeam, toProgramid, toTeam, athlet, suggestion) => MoveRegistration(verein.toPublicView, fromProgramId, fromTeam, toProgramid, toTeam, athlet.toPublicView, suggestion.toPublicView)
       case RemoveRegistration(verein, programId, athlet, suggestion) => RemoveRegistration(verein.toPublicView, programId, athlet.toPublicView, suggestion.toPublicView)
+      case am:AddMedia => am
     }
   }
 
@@ -1561,7 +1564,7 @@ package object domain {
     override val caption = s"Verein bestätigen: ${verein.vereinname}"
   }
 
-  case class AddRegistration(override val verein: Registration, programId: Long, athlet: Athlet, suggestion: AthletView, team: Int) extends SyncAction {
+  case class AddRegistration(override val verein: Registration, programId: Long, athlet: Athlet, suggestion: AthletView, team: Int, media: Option[Media]) extends SyncAction {
     override val caption = s"Neue Anmeldung verarbeiten: ${suggestion.easyprint}"
   }
 
@@ -1592,6 +1595,12 @@ package object domain {
     }
   }
 
+  case class AddMedia(override val verein: Registration, athletReg: AthletRegistration) extends SyncAction {
+    override val caption = s"Media aktualisieren: Für ${athletReg.toAthlet.extendedprint} (${athletReg.mediafile.map(_.name)})"
+  }
+  case class UpdateAthletMediaAction(override val verein: Registration, athletReg: AthletRegistration, wertungId: Long) extends SyncAction {
+    override val caption = s"Athlet/-In Musik aktualisieren: Von ${athletReg.toAthlet.extendedprint} (${athletReg.mediafile.map(_.name)})"
+  }
   case class RenameAthletAction(override val verein: Registration, athletReg: AthletRegistration, existing: Athlet, expected: Athlet) extends SyncAction {
     override val caption = s"Athlet/-In korrigieren: Von ${existing.extendedprint} zu ${expected.extendedprint}"
 
