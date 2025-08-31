@@ -194,6 +194,26 @@ export class RegAthletEditorPage implements OnInit {
     }
     return false;
   }
+  
+  mediaSource: string;
+  onFileChange(fileChangeEvent) {
+    // Get a reference to the file that has just been added to the input
+    const audiofile = fileChangeEvent.target.files[0];
+    // Create a form data object using the FormData API
+    let formData = new FormData();
+    // Add the file that was just added to the form data
+    formData.append("mediafile", audiofile, audiofile.name);    
+    // POST formData to server using HttpClient
+    this.backendService.uploadFile(this.wkId, this.regId, this.registration.id, formData).subscribe((response) => {
+      console.log("File upload finished: response:", response);
+      this.backendService.downloadFile(this.wkId, this.regId, this.registration.id).subscribe((blob) => {
+        this.mediaSource = URL.createObjectURL(blob);
+        const EL_audio: any = document.querySelector("#myAudio");
+        EL_audio.src = URL.createObjectURL(blob);
+        EL_audio.load();
+      })
+    });
+  }
 
   save(form: NgForm) {
     if(!form.valid) return;

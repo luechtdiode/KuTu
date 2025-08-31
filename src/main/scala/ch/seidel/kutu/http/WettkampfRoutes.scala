@@ -246,6 +246,34 @@ trait WettkampfRoutes extends SprayJsonSupport
     wettkampf
   }
 
+  def httpMediaDownloadRequest(wettkampf: Wettkampf, request: HttpRequest): Future[Unit] = {
+    import Core._
+    val source = Source.single(withAuthHeader(request), ())
+    val requestResponseFlow = Http().superPool[Unit](settings = poolsettings)
+
+    def importData(httpResponse: HttpResponse): Unit = {
+      if (httpResponse.status.isSuccess()) {
+        val is = httpResponse.entity.dataBytes.runWith(StreamConverters.asInputStream())
+        ResourceExchanger.importWettkampfMediaFiles(wettkampf, is)
+      } else {
+        httpResponse.entity match {
+          case HttpEntity.Strict(_, text) =>
+            log.error(text.utf8String)
+            throw HTTPFailure(httpResponse.status, text.utf8String)
+          case x =>
+            log.error(x.toString)
+            throw HTTPFailure(httpResponse.status, x.toString)
+        }
+      }
+    }
+
+    source.via(requestResponseFlow)
+      .map(responseOrFail)
+      .map(_._1)
+      .map(importData)
+      .runWith(Sink.head)
+  }
+
   def httpRemoveWettkampfRequest(wettkampf: Wettkampf): Future[HttpResponse] = {
     val eventualResponse: Future[HttpResponse] = httpDeleteClientRequest(s"$remoteAdminBaseUrl/api/competition/${wettkampf.uuid.get}")
     eventualResponse.onComplete {
