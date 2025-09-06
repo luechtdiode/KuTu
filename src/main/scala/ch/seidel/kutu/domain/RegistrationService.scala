@@ -346,7 +346,10 @@ trait RegistrationService extends DBService with RegistrationResultMapper with M
       throw new IllegalArgumentException("Person-Überschreibung in einer Anmeldung zu einer anderen Person ist nicht erlaubt!")
     }
     val nomralizedAthlet = newReg.toAthlet
-
+    newReg.mediafile match {
+      case Some(mf) => putMedia(mf)
+      case _ =>
+    }
     Await.result(database.run {
       sqlu"""
                   insert into athletregistration
@@ -367,7 +370,7 @@ trait RegistrationService extends DBService with RegistrationResultMapper with M
                   from athletregistration r
                   left join athlet a on (r.athlet_id = a.id)
                   left join verein v on (a.verein = v.id)
-                  left join media m on (a.media_id = m.id)
+                  left join media m on (r.media_id = m.id)
                   where r.id = (select max(ar.id)
                               from athletregistration ar
                               where ar.vereinregistration_id=${newReg.vereinregistrationId}
