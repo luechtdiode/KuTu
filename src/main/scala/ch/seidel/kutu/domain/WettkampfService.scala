@@ -924,7 +924,7 @@ trait WettkampfService extends DBService
           sql"""
                    select wd.id, w.id from wertung w inner join wettkampfdisziplin wd on (w.wettkampfdisziplin_Id = wd.id)
                    where
-                     athlet_Id in (#${withAthlets.mkString(",")})
+                     athlet_Id in (#${withAthlets.map(_._1).mkString(",")})
                      and wettkampf_Id = $wettkampfId
               """.as[(Long, Long)].transactionally
         }, Duration.Inf)

@@ -473,7 +473,7 @@ trait RegistrationRoutes extends SprayJsonSupport with JsonSupport with JwtSuppo
                                   }
                                   val reg = createAthletRegistration(athletRegistration)
                                   CompetitionRegistrationClientActor.publish(RegistrationChanged(wettkampf.uuid.get), clientId)
-                                  log.info(s"$clientId: Athletanmeldung angelegt: ${athletRegistration.toPublicView.easyprint}")
+                                  log.info(s"$clientId: Athletanmeldung angelegt: ${reg.toPublicView.easyprint}")
                                   complete(reg)
                                 } catch {
                                   case e: IllegalArgumentException =>
