@@ -489,40 +489,37 @@ trait RegistrationRoutes extends SprayJsonSupport with JsonSupport with JwtSuppo
                       } ~ pathPrefixLabeled(LongNumber, ":athlet-id") { id =>
                         pathPrefixLabeled("mediafile", "mediafile") {
                           pathEndOrSingleSlash {
-                            withoutRequestTimeout {
-                              get {
-                                //selectAthletRegistration(id).mediafile.
-                                //val wettkampfAudiofilesDir = new java.io.File(Config.homedir + "/" + encodeFileName(wettkampf.easyprint) + "/audiofiles")
-                                //val mediaFileId = id + ".mp3"
-                                //val mp3File = wettkampfAudiofilesDir.toPath.resolve(mediaFileId).toString
-                                val mp3File = Config.homedir + "/" + encodeFileName(wettkampf.easyprint) + "/audiofiles/" + id + ".mp3"
-                                getFromFile(mp3File)
-                              } ~ fileUpload("mediafile") {
-                                case (metadata: FileInfo, file: Source[ByteString, Any]) =>
-                                  import Core.materializer
-                                  val fileext = "mp3"
-                                  if (metadata.contentType.mediaType.fileExtensions.contains(fileext)) {
-                                    val is: InputStream = file.runWith(StreamConverters.asInputStream(FiniteDuration(180, TimeUnit.SECONDS)))
-                                    val processor = Future {
-                                      println(s"media file uploading (${metadata.fileName}) ...")
-                                      val registration = ResourceExchanger.importWettkampfMediaFile(wettkampf, selectAthletRegistration(id).copy(mediafile = Some(Media(0, metadata.fileName, fileext))), is)
-                                      println(registration)
-                                      registration
-                                    }
-                                    onComplete(processor) {
-                                      case Success(_) =>
-                                        val registration = selectAthletRegistration(id)
-                                        println(registration)
-                                        complete(registration)
-
-                                      case Failure(e) =>
-                                        log.warning(s"mediafile ${metadata.fileName} cannot be uploaded: " + e.toString)
-                                        complete(StatusCodes.Conflict, s"Die Datei ${metadata.fileName} konnte wg. einem technischen Fehler nicht hochgeladen werden. (${e.toString})")
-                                    }
-                                  } else {
-                                    log.error(s"invalid media type (${metadata.contentType.mediaType})")
-                                    complete(StatusCodes.Conflict, s"Ungültige Audiodatei (${metadata.contentType.mediaType})")
+                            withSizeLimit(10 * 1024 * 1024) {
+                              withoutRequestTimeout {
+                                get {
+                                  val registration = selectAthletRegistration(id)
+                                  registration.mediafile.flatMap(mf => loadMedia(mf.id)) match {
+                                    case Some(mf) => getFromFile(mf.computeFilePath(wettkampf))
+                                    case _ => complete(StatusCodes.Conflict, s"Es ist keine Media-Datei in der Anmeldung verknüpft")
                                   }
+                                } ~ fileUpload("mediafile") {
+                                  case (metadata: FileInfo, file: Source[ByteString, Any]) =>
+                                    import Core.materializer
+                                    val fileext = "mp3"
+                                    if (metadata.contentType.mediaType.fileExtensions.contains(fileext)) {
+                                      val is: InputStream = file.runWith(StreamConverters.asInputStream(FiniteDuration(180, TimeUnit.SECONDS)))
+                                      val processor = Future {
+                                        println(s"media file uploading (${metadata.fileName}) ...")
+                                        ResourceExchanger.importWettkampfMediaFile(wettkampf, selectAthletRegistration(id).copy(mediafile = Some(Media("", metadata.fileName, fileext))), is)
+                                      }
+                                      onComplete(processor) {
+                                        case Success(r) =>
+                                          complete(r)
+
+                                        case Failure(e) =>
+                                          log.warning(s"mediafile ${metadata.fileName} cannot be uploaded: " + e.toString)
+                                          complete(StatusCodes.Conflict, s"Die Datei ${metadata.fileName} konnte wg. einem technischen Fehler nicht hochgeladen werden. (${e.toString})")
+                                      }
+                                    } else {
+                                      log.error(s"invalid media type (${metadata.contentType.mediaType})")
+                                      complete(StatusCodes.Conflict, s"Ungültige Audiodatei (${metadata.contentType.mediaType})")
+                                    }
+                                }
                               }
                             }
                           }

@@ -12,11 +12,13 @@ import org.slf4j.LoggerFactory
 import slick.jdbc
 
 import java.io._
+import java.math.BigInteger
+import java.security.{DigestInputStream, MessageDigest}
 import java.sql.Timestamp
 import java.time.Instant
 import java.time.format.DateTimeFormatter
-import java.util.{Base64, UUID}
 import java.util.zip.{ZipEntry, ZipInputStream, ZipOutputStream}
+import java.util.{Base64, UUID}
 import scala.concurrent.Await
 import scala.concurrent.duration.Duration
 import scala.io.Source
@@ -185,30 +187,51 @@ object ResourceExchanger extends KutuService with RiegenBuilder {
     opFn
   }
 
-  def importWettkampfMediaFile(wettkampf: Wettkampf, registration: AthletRegistration, file: InputStream): AthletRegistration = {
-    val buffer = new BufferedInputStream(file, 5 * 1024 * 1024)
-    val wettkampfAudiofilesDir = new java.io.File(Config.homedir + "/" + encodeFileName(wettkampf.easyprint) + "/audiofiles")
-    val media: Option[Media] = registration.mediafile match {
-      case Some(Media(id, name, extension)) if (id > 0) => loadMedia(id).orElse(Some(putMedia(Media(0, name.trim, extension.trim))))
-      case Some(Media(_, name, extension)) =>
-        println(s"putting media to index")
-        Some(putMedia(Media(0, name.trim, extension.trim)))
-      case _ => None
+  def saveMediaFile(file: InputStream, wettkampf: Wettkampf, media: Media): MediaAdmin = {
+    val digestStream = new DigestInputStream(file, MessageDigest.getInstance("MD5"))
+    val buffer = new BufferedInputStream(digestStream, 5 * 1024 * 1024)
+    val mediaAdmin: MediaAdmin = putMedia(Media(media.id, media.name.trim, media.extension.trim))
+    val wettkampfAudiofilesDir = mediaAdmin.computeFilePath(wettkampf).getParentFile
+    if (!wettkampfAudiofilesDir.exists()) {
+      wettkampfAudiofilesDir.mkdir()
     }
-    media match {
-      case None => registration
-      case Some(m) =>
-        val mediaFile = s"${m.id}.${m.extension}"
-        if (!wettkampfAudiofilesDir.exists()) {
-          wettkampfAudiofilesDir.mkdir()
-        }
-        val mp3File = wettkampfAudiofilesDir.toPath.resolve(mediaFile).toFile
-        val fos = new FileOutputStream(mp3File)
-        println(s"saving mediafile to ${mp3File.toString}")
-        buffer.transferTo(fos);
-        fos.flush()
-        fos.close()
-        updateAthletRegistration(registration.copy(mediafile = Some(m))).get
+    val uploadedOriginalFile = mediaAdmin.computeFilePath(wettkampf)
+    val fos = new FileOutputStream(uploadedOriginalFile)
+    try {
+      buffer.transferTo(fos);
+    } finally {
+      fos.flush()
+      fos.close()
+    }
+    val hash = digestStream.getMessageDigest.digest()
+    val hashedMediaAdmin = mediaAdmin.copy(md5 = new BigInteger(1, hash).toString(16))
+    saveAndReindexMediaFile(wettkampf, uploadedOriginalFile, hashedMediaAdmin)
+    /*
+    TODO and then ffmpeg.exe -i input.ogg -vn -f md5 output.mp3 to get the hash usable as filename
+    https://superuser.com/questions/1044413/audio-md5-checksum-with-ffmpeg
+    https://ffmpeg.org/ffmpeg.html#Video-and-Audio-file-format-conversion
+    https://github.com/linuxserver/docker-ffmpeg
+     */
+  }
+
+  private def saveAndReindexMediaFile(wettkampf: Wettkampf, uploadedOriginalFile: File, mediaAdmin: MediaAdmin) = {
+    val md5HashFile = mediaAdmin.computeFilePath(wettkampf)
+    if (!md5HashFile.equals(uploadedOriginalFile)) {
+      if (md5HashFile.exists()) {
+        md5HashFile.delete()
+      }
+      uploadedOriginalFile.renameTo(md5HashFile)
+    }
+    val finalmedia = updateMedia(mediaAdmin)
+    println(s"saved and reindexed mediafile: $finalmedia (${uploadedOriginalFile} -> ${md5HashFile}")
+    finalmedia
+  }
+
+  def importWettkampfMediaFile(wettkampf: Wettkampf, registration: AthletRegistration, file: InputStream): AthletRegistration = {
+    registration.mediafile match {
+      case Some(media) =>
+        updateAthletRegistration(registration.copy(mediafile = Some(saveMediaFile(file, wettkampf, media).toMedia))).get
+      case _ => registration
     }
   }
 
