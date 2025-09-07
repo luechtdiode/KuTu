@@ -99,6 +99,11 @@ export interface RegistrationResetPW {
   secret: string;
   verification?: string;
 }
+export interface Media {
+  extension: string;
+  id: string;
+  name: string;
+}
 export interface AthletRegistration {
   id: number;
   vereinregistrationId: number;
@@ -110,8 +115,8 @@ export interface AthletRegistration {
   programId: number;
   team: number;
   registrationTime: number;
+  mediafile: Media;
 }
-
 export interface JudgeRegistration {
   id: number;
   vereinregistrationId: number;
