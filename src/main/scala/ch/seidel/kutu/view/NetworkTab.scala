@@ -663,7 +663,7 @@ class NetworkTab(wettkampfmode: BooleanProperty, override val wettkampfInfo: Wet
         items = selection.filter(gr => !gr.erfasst).take(1).flatMap {
           geraeteRiege =>
             Player.clearPlayList()
-            val mediaList = geraeteRiege.getMediaList
+            val mediaList = geraeteRiege.getMediaList(p.toWettkampf, service.loadMedia)
             mediaList.map { case (_, title, _) =>
               KuTuApp.makeMenuAction(title) { (caption, action) =>
                 mediaList.foreach { case (_, title, mediaURI) =>

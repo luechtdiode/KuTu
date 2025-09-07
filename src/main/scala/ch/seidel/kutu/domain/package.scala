@@ -1420,14 +1420,14 @@ package object domain {
         copy(wertungen = wertungen.updated(idx, wertungen(idx).updatedWertung(wertung)))
       else this
     }
-    def getMediaURI(wertung: Wertung): URI = {
+    def getMediaURI(wettkampf: Wettkampf, lookup: String=>Option[MediaAdmin], wertung: Wertung): URI = {
       val pattern =  s"${encodeFileName(s"${name}_${vorname}")}_${wertung.wettkampfdisziplinId}.".toLowerCase
       val dir = new java.io.File(Config.homedir + "/" + encodeFileName(wettkampfTitel) + "/audiofiles")
-
+      val pattern2 = wertung.mediafile.flatMap(mf => lookup(mf.id)).map(_.computeFilePath(wettkampf).toString.toLowerCase()).getOrElse(Config.homedir + "/" + encodeFileName(wettkampfTitel) + s"/$pattern.mp3")
       dir.listFiles(new FilenameFilter {
         override def accept(dir: File, name: String): Boolean = {
           val ln = name.toLowerCase
-          ln.startsWith(pattern) && (
+          ln.endsWith(pattern2) || (ln.startsWith(pattern) && (
           ln.toLowerCase.endsWith(".aif")
             || ln.endsWith(".aiff")
             || ln.endsWith(".fxm")
@@ -1438,15 +1438,15 @@ package object domain {
             || ln.endsWith(".m4a")
             || ln.endsWith(".m4v")
             || ln.endsWith(".wav")
-          )
+          ))
         }
       }).toList
         .headOption
-        .getOrElse(new java.io.File(Config.homedir + "/" + encodeFileName(wettkampfTitel) + s"/$pattern.mp3"))
+        .getOrElse(new java.io.File(pattern2))
         .toURI
     }
-    def hasMedia(wertung: Wertung): Boolean = {
-      val uri = getMediaURI(wertung)
+    def hasMedia(wettkampf: Wettkampf, lookup: String=>Option[MediaAdmin], wertung: Wertung): Boolean = {
+      val uri = getMediaURI(wettkampf, lookup, wertung)
       println("searching for mediafile at " + uri )
       new File(uri).exists()
     }
@@ -1495,7 +1495,11 @@ package object domain {
     private def songtitle(kandidat: Kandidat) = {
       s"${kandidat.vorname} ${kandidat.name} (${kandidat.verein}), ${disziplin.map(_.easyprint).getOrElse("")}"
     }
-    def getMediaList = kandidaten.flatMap(k => k.wertungen.find(w => disziplin.contains(w.wettkampfdisziplin.disziplin)).map(_.toWertung).filter(w => w.endnote.isEmpty && k.hasMedia(w)).map(w => (k, songtitle(k), k.getMediaURI(w))))
+    def getMediaList(wettkampf: Wettkampf, lookup: String=>Option[MediaAdmin]): Seq[(Kandidat, String, URI)] = kandidaten
+      .flatMap(k => k.wertungen.find(w => disziplin.contains(w.wettkampfdisziplin.disziplin))
+        .map(_.toWertung)
+        .filter(w => w.endnote.isEmpty && k.hasMedia(wettkampf, lookup, w))
+        .map(w => (k, songtitle(k), k.getMediaURI(wettkampf, lookup, w))))
   }
 
   sealed trait SexDivideRule {
@@ -1631,7 +1635,30 @@ package object domain {
 
   case class RegistrationResetPW(id: Long, wettkampfId: Long, secret: String) extends DataObject
 
-  case class Media(id: Long, name: String, extension: String)
+  case class Media(id: String, name: String, extension: String)
+  /**
+   *
+   * @param id UUID
+   * @param name
+   * @param extension
+   * @param stage 1=upload, 2=transcoding, 3=transcoded
+   * @param md5 md5 hash of transcoded normalized audio-file
+   */
+  case class MediaAdmin(id: String, name: String, extension: String, stage: Int, metadata: String, md5: String, stamp: Timestamp) {
+    val md5Defined = md5 != null && md5.nonEmpty
+    def isTranscoded: Boolean = stage > 2 && md5Defined
+    def filename: String = if (isTranscoded) md5 + ".mp3" else {
+      if (md5Defined) md5 + "." + extension else id + "." + extension
+    }
+    def computeFilePath(wettkampf: Wettkampf): File = {
+      if (stage < 2) {
+        new File(Config.homedir + "/" + encodeFileName(wettkampf.easyprint) + "/audiofiles/" + filename)
+      } else {
+        new File(Config.homedir + "/audiofiles/" + filename)
+      }
+    }
+    def toMedia = Media(id, name, extension)
+  }
 
   case object MediaJsonReader extends JsonSupport {
 

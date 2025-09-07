@@ -430,6 +430,11 @@ trait RegistrationService extends DBService with RegistrationResultMapper with M
                   media_id=${registration.mediafile.map(_.id)}
               where id=${registration.id}
      """ >>
+      sqlu"""
+          delete from media
+          where not exists (select true from wertung w where w.media_id = media.id)
+            and not exists (select true from athletregistration ar where ar.media_id = media.id)
+      """ >>
       sql"""
               select
                   r.id, r.vereinregistration_id,
@@ -677,73 +682,97 @@ trait RegistrationService extends DBService with RegistrationResultMapper with M
     }, Duration.Inf)
   }
 
-  def loadMedia(id: Long): Option[Media] = {
-    Await.result(database.run {
+  def loadMedia(id: String): Option[MediaAdmin] = {
+    if (id == null || id.isEmpty) {
+      None
+    } else {
+      Await.result(database.run {
         sql"""
                   select
-                      id, name, extension
+                      id, name, extension, stage, metadata, md5, stamp
                   from media
                   where id = ${id}
-         """.as[Media].headOption.transactionally
-    }, Duration.Inf)
+         """.as[MediaAdmin].headOption.transactionally
+      }, Duration.Inf)
+    }
   }
 
-  def analyzeUnusedMedia(): List[Media] = {
+  def analyzeUnusedMedia(): List[MediaAdmin] = {
     Await.result(database.run {
-      sql""" select *
+      sql""" select id, name, extension, stage, metadata, md5, stamp
               from media m
               where
                     not exists (select true from wertung w where w.media_id = m.id)
                 and not exists (select true from athletregistration ar where ar.media_id = m.id)
-              """.as[Media]
+              """.as[MediaAdmin]
     }, Duration.Inf).toList
   }
 
-  def putMedia(media: Media): Media = {
-    media.id match {
-      case 0 =>
-        Await.result(database.run {
-          sqlu"""
+  def putMedia(media: Media): MediaAdmin = {
+    if (media.id == null || media.id.isEmpty) {
+      println(s"putting new media to index")
+      val id = UUID.randomUUID().toString
+      Await.result(database.run {
+        sqlu"""
                   insert into media
-                  (name, extension)
-                  values (${media.name},
+                  (id, name, extension)
+                  values ($id,
+                          ${media.name},
                           ${media.extension})
               """ >>
-            sql"""
+          sql"""
                   select
-                      id, name, extension
+                      id, name, extension, stage, metadata, md5, stamp
                   from media
-                  where id = (select max(m.id)
-                              from media m
-                              where m.name=${media.name}
-                                and m.extension=${media.extension}
-                                )
-         """.as[Media].head.transactionally
-        }, Duration.Inf)
-      case id =>
-        loadMedia(id) match {
-          case Some(m) => m
-          case None =>
-            Await.result(database.run {
-              sqlu"""
+                  where id = $id
+          """.as[MediaAdmin].head.transactionally
+      }, Duration.Inf)
+    } else {
+      loadMedia(media.id) match {
+        case Some(m) => m
+        case None =>
+          println(s"putting local unknown media to index")
+          Await.result(database.run {
+            sqlu"""
                   insert into media
                   (id, name, extension)
                   values (${media.id},
                           ${media.name},
                           ${media.extension})
               """ >>
-                sql"""
+              sql"""
                   select
-                      id, name, extension
+                      id, name, extension, stage, metadata, md5, stamp
                   from media
-                  where id = (select max(m.id)
-                              from media m
-                              where m.name=${media.name}
-                                and m.extension=${media.extension}
-                                )
-         """.as[Media].head.transactionally
-            }, Duration.Inf)
-        }
+                  where id = ${media.id}
+            """.as[MediaAdmin].head.transactionally
+          }, Duration.Inf)
+      }
     }
+  }
+
+  def updateMedia(media: MediaAdmin): MediaAdmin = {
+    Await.result(database.run {
+      sqlu"""
+            update media
+            set stage = ${media.stage},
+                metadata = ${media.metadata},
+                md5 = ${media.md5},
+                stamp = current_timestamp
+        """ >>
+        sqlu"""
+            delete from media
+            where md5=${media.md5}
+            and id <> ${media.id}
+            and not exists (select true from wertung w where w.media_id = media.id)
+            and not exists (select true from athletregistration ar where ar.media_id = media.id)
+        """ >>
+        sql"""
+            select
+                id, name, extension, stage, metadata, md5, stamp
+            from media
+            where id = ${media.id}
+      """.as[MediaAdmin].head.transactionally
+    }, Duration.Inf)
   }
 }
