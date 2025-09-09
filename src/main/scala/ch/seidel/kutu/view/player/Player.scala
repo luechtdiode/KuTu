@@ -89,6 +89,8 @@ object Player extends JFXApp3 {
     s
   }
 
+  def getPlayList() = playList
+
   def show(song: String = ""): Unit = {
     val s = playSong(song)
     s.show()
@@ -360,16 +362,16 @@ object Player extends JFXApp3 {
       }
     }, rightVU, mediaPlayer.statusProperty(), mediaPlayer.balanceProperty())
 
-    for (i <- 0 until sliders.size()) {
+    mediaPlayer.setAudioSpectrumNumBands(10)
+    mediaPlayer.setAudioSpectrumInterval(1d / 30d)
+    for (i <- 0 until math.min(sliders.size(), mediaPlayer.getAudioEqualizer.getBands.size())) {
       sliders.get(i).valueProperty() <==> mediaPlayer.getAudioEqualizer.getBands.get(i).gainProperty()
     }
     for (i <- 0 until 10) {
       vuMeters.get(i).setValue(0)
     }
 
-    mediaPlayer.setAudioSpectrumNumBands(10)
     mediaPlayer.setAudioSpectrumListener(spectrumListener)
-    mediaPlayer.setAudioSpectrumInterval(1d / 30d)
   }
 
 }

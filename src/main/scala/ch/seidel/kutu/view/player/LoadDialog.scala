@@ -94,6 +94,6 @@ object LoadDialog {
     }) {
       setFill(new LinearGradient(0, 0, 0, 1, true, CycleMethod.REPEAT, new Stop(0, Color.web("#282828")), new Stop(1, Color.web("#202020"))))
     })
-    dialog.show()
+    dialog.showAndWait()
   }
 }
