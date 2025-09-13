@@ -801,6 +801,7 @@ trait WettkampfService extends DBService
       sqlu"""      delete from judgeregistration where vereinregistration_id in (select id from vereinregistration where wettkampf_id=${wettkampfid})""" >>
       sqlu"""      delete from vereinregistration where wettkampf_id=${wettkampfid}""" >>
       sqlu"""      delete from wettkampfmetadata where wettkampf_id=${wettkampfid}""" >>
+      sqlu"""      delete from media where not exists (select true from athletregistration ar where ar.media_id = media.id) and not exists (select true from wertung w where w.media_id = media.id)""" >>
       sqlu"""      delete from wettkampf where id=${wettkampfid}"""
   }
 

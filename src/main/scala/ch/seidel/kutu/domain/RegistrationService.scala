@@ -1,5 +1,7 @@
 package ch.seidel.kutu.domain
 
+import ch.seidel.kutu.Config
+import ch.seidel.kutu.data.ResourceExchanger.searchMedia
 import ch.seidel.kutu.http.AuthSupport.OPTION_LOGINRESET
 
 import java.sql.Timestamp
@@ -8,6 +10,8 @@ import java.util.UUID
 import ch.seidel.kutu.http.Hashing
 import slick.jdbc.PostgresProfile.api._
 
+import java.io.FileInputStream
+import java.util.zip.ZipEntry
 import scala.concurrent.{Await, Future}
 import scala.concurrent.duration.Duration
 
@@ -736,6 +740,36 @@ trait RegistrationService extends DBService with RegistrationResultMapper with M
     }, Duration.Inf).toList
   }
 
+  def saveOrUpdateMedias(mediaList: Seq[MediaAdmin]): Seq[MediaAdmin] = {
+    mediaList.map{media =>
+      loadMedia(media.id) match {
+        case Some(m) => updateMedia(m)
+        case None =>
+          println(s"putting local unknown media to index")
+          Await.result(database.run {
+            sqlu"""
+                  insert into media
+                  (id, name, extension, stage, metadata, md5, stamp)
+                  values (${media.id},
+                          ${media.name},
+                          ${media.extension},
+                          ${media.stage},
+                          ${media.metadata},
+                          ${media.md5},
+                          ${media.stamp},
+                          )
+              """ >>
+              sql"""
+                  select
+                      id, name, extension, stage, metadata, md5, stamp
+                  from media
+                  where id = ${media.id}
+            """.as[MediaAdmin].head.transactionally
+          }, Duration.Inf)
+      }
+    }
+  }
+
   def putMedia(media: Media): MediaAdmin = {
     if (media.id == null || media.id.isEmpty) {
       println(s"putting new media to index")
@@ -777,6 +811,19 @@ trait RegistrationService extends DBService with RegistrationResultMapper with M
           }, Duration.Inf)
       }
     }
+  }
+
+  def cleanUnusedMedia(): Seq[MediaAdmin] = {
+    Await.result(database.run{
+      sqlu"""
+              delete from media where not exists (select true from athletregistration ar where ar.media_id = media.id) and not exists (select true from wertung w where w.media_id = media.id)
+          """ >>
+      sql"""
+              select
+              id, name, extension, stage, metadata, md5, stamp
+              from media
+              """.as[MediaAdmin].transactionally
+    }, Duration.Inf)
   }
 
   def updateMedia(media: MediaAdmin): MediaAdmin = {

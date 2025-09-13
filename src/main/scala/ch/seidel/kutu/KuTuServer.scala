@@ -1,6 +1,7 @@
 package ch.seidel.kutu
 
 import ch.seidel.kutu.actors.{AthletIndexActor, KuTuMailerActor, ResyncIndex, SimpleMail}
+import ch.seidel.kutu.data.ResourceExchanger
 import ch.seidel.kutu.http.{AuthSupport, Core, Hashing, KuTuAppHTTPServer}
 import org.slf4j.LoggerFactory
 
@@ -58,6 +59,7 @@ object KuTuServer extends App with KuTuAppHTTPServer with AuthSupport with Hashi
         case s: String if (s.endsWith("cleanathletes")) =>
           markAthletesInactiveOlderThan(3)
           cleanUnusedClubs()
+          ResourceExchanger.cleanupMediaFiles()
           println("done")
           true
 

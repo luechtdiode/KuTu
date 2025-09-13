@@ -19,3 +19,6 @@ CREATE TRIGGER IF NOT EXISTS media_insert
 
 ALTER TABLE wertung            ADD COLUMN media_id varchar(70) REFERENCES media (id);
 ALTER TABLE athletregistration ADD COLUMN media_id varchar(70) REFERENCES media (id);
+
+CREATE INDEX xwertung_media ON wertung (media_id);
+CREATE INDEX xathletregistration_media ON athletregistration (media_id);

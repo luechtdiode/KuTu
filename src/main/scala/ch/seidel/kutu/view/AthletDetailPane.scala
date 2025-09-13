@@ -4,11 +4,10 @@ import ch.seidel.kutu.KuTuApp
 import ch.seidel.kutu.data.ResourceExchanger.saveMediaFile
 import ch.seidel.kutu.domain.{KutuService, Media, Wettkampf}
 import ch.seidel.kutu.view.player.Player
-import scalafx.event.ActionEvent
-import scalafx.scene.control.Button
 import javafx.stage.FileChooser
 import scalafx.Includes._
 import scalafx.beans.binding.Bindings
+import scalafx.event.ActionEvent
 import scalafx.geometry._
 import scalafx.scene.control._
 import scalafx.scene.layout._
@@ -40,28 +39,28 @@ case class AthletHeaderPane(wettkampf: Wettkampf, service: KutuService, wkview: 
   val lblAthlet = new Label() {
     styleClass += "toolbar-header"
   }
-
+  val currentMediaMenuItem = new MenuItem {
+    onAction = (event: ActionEvent) => {
+      if (selected != null) {
+        Player.clearPlayList()
+        selected.map(a => (a.init.wettkampfdisziplin.disziplin.name, a.init.mediafile.flatMap(m => service.loadMedia(m.id)))).filter(item => item._2.nonEmpty).foreach { item =>
+          val (disziplin, medias) = item
+          val media = medias.get
+          val title = s"${selected.head.init.athlet.vorname} ${selected.head.init.athlet.name} ${selected.head.init.athlet.verein.map(v => s"(${v.name})").getOrElse("")}, ${disziplin} - ${media.name}"
+          Player.addToPlayList(title, media.computeFilePath(wettkampf).toURI.toASCIIString)
+        }
+        Player.show(Player.getPlayList().getSongs.head.getKey)
+      }
+    }
+  }
   val mediaButton = new MenuButton("♪ Bodenmusik") {
     visible <== Bindings.createBooleanBinding(() =>
       !wkview.selectionModel().isEmpty && wkview.selectionModel().getSelectedItem.exists(we => we.init.wettkampfdisziplin.disziplin.name.equals("Boden")),
       wkview.selectionModel().selectedItemProperty())
-    items += new MenuItem {
-      text = "Mediaplayer"
-      disable <== Bindings.createBooleanBinding(() =>
-        wkview.selectionModel().isEmpty || !wkview.selectionModel().getSelectedItem
-          .filter(we => we.init.wettkampfdisziplin.disziplin.name.equals("Boden")).exists(we => we.init.mediafile.nonEmpty),
-        wkview.selectionModel().selectedItemProperty())
-      onAction = (event: ActionEvent) => {
-        if (selected != null && index > -1 && index < selected.size) {
-          selected(index).init.mediafile.flatMap(m => service.loadMedia(m.id)).foreach { media =>
-            val title = s"${selected.head.init.athlet.vorname} ${selected.head.init.athlet.name} (${selected.head.init.athlet.verein}), Boden - ${media.name}"
-            Player.clearPlayList()
-            Player.addToPlayList(title, media.computeFilePath(wettkampf).toURI.toASCIIString)
-            Player.show(title)
-          }
-        }
-      }
+    items += KuTuApp.makeMenuAction("Media Player anzeigen ...") { (caption, action) =>
+      Player.show()
     }
+    items += currentMediaMenuItem
     items += new MenuItem {
       text = "Bodenmusik zuordnen ..."
       disable <== Bindings.createBooleanBinding(() =>
@@ -96,6 +95,7 @@ case class AthletHeaderPane(wettkampf: Wettkampf, service: KutuService, wkview: 
           val file: File = fc.showOpenDialog(KuTuApp.stage)
           if (file != null) {
             saveAndAssignMedia(file.toPath.getFileName.toString, file.toURI)
+            adjust
           }
         }
       }
@@ -156,6 +156,9 @@ case class AthletHeaderPane(wettkampf: Wettkampf, service: KutuService, wkview: 
       lblAthlet.text.value = selected(index).init.athlet.easyprint
       lblDisciplin.text.value = selected(index).init.wettkampfdisziplin.easyprint
       lblMedia.text.value = selected(index).init.mediafile.map(m => s"♪ ${m.name} ").getOrElse("")
+      val title = s"${selected.head.init.athlet.vorname} ${selected.head.init.athlet.name} ${selected.head.init.athlet.verein.map(v => s"(${v.name})").getOrElse("")}"
+      currentMediaMenuItem.text = s"Mediaplayer mit Playlist von $title"
+      currentMediaMenuItem.disable = selected.flatMap(a => a.init.mediafile.flatMap(m => service.loadMedia(m.id))).isEmpty
     }
     else if (selected != null && selected.nonEmpty) {
       lblMedia.text.value = ""
@@ -163,11 +166,16 @@ case class AthletHeaderPane(wettkampf: Wettkampf, service: KutuService, wkview: 
       lblDisciplin.text.value = Seq(selected(0).init.riege, selected(0).init.riege2).map(_.getOrElse("")).filter {
         _.nonEmpty
       }.mkString(", ")
+      val title = s"${selected.head.init.athlet.vorname} ${selected.head.init.athlet.name} ${selected.head.init.athlet.verein.map(v => s"(${v.name})").getOrElse("")}"
+      currentMediaMenuItem.text = s"Mediaplayer mit Playlist von $title"
+      currentMediaMenuItem.disable = selected.flatMap(a => a.init.mediafile.flatMap(m => service.loadMedia(m.id))).isEmpty
     }
     else {
       lblAthlet.text.value = ""
       lblDisciplin.text.value = ""
       lblMedia.text.value = ""
+      currentMediaMenuItem.text = s"Mediaplayer (leere Playlist)"
+      currentMediaMenuItem.disable = true
     }
   }
 }
