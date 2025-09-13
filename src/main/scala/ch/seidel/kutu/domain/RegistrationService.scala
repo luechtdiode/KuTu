@@ -697,6 +697,34 @@ trait RegistrationService extends DBService with RegistrationResultMapper with M
     }
   }
 
+  def searchMedia(id: String): Option[MediaAdmin] = {
+    if (id == null || id.isEmpty) {
+      None
+    } else {
+      val md5Id = id.substring(0, id.lastIndexOf("."))
+      println(s"searching for $id, $md5Id")
+      val medias = Await.result(database.run {
+        sql"""
+                  select
+                      id, name, extension, stage, metadata, md5, stamp, 1 as ord
+                  from media
+                  where md5 = $md5Id
+                  union select
+                      id, name, extension, stage, metadata, md5, stamp, 2 as ord
+                  from media
+                  where id = $md5Id
+                  union select
+                      id, name, extension, stage, metadata, md5, stamp, 3 as ord
+                  from media
+                  where name = $id
+                  order by ord asc, stage desc, id asc
+         """.as[MediaAdmin].transactionally
+      }, Duration.Inf)
+      println(medias)
+      medias.headOption
+    }
+  }
+
   def analyzeUnusedMedia(): List[MediaAdmin] = {
     Await.result(database.run {
       sql""" select id, name, extension, stage, metadata, md5, stamp
@@ -759,6 +787,21 @@ trait RegistrationService extends DBService with RegistrationResultMapper with M
                 metadata = ${media.metadata},
                 md5 = ${media.md5},
                 stamp = current_timestamp
+            where id = ${media.id}
+        """ >>
+        sqlu"""
+            update wertung
+            set media_id = ${media.id}
+            where media_id is not null
+            and media_id <> ${media.id}
+            and exists (select true from media m where m.id <> ${media.id} and m.md5 == ${media.md5})
+        """ >>
+        sqlu"""
+            update athletregistration
+            set media_id = ${media.id}
+            where media_id is not null
+            and media_id <> ${media.id}
+            and exists (select true from media m where m.id <> ${media.id} and m.md5 == ${media.md5})
         """ >>
         sqlu"""
             delete from media

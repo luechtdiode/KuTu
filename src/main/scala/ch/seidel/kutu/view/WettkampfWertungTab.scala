@@ -168,7 +168,7 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
 
   val riegenFilterModel = ObservableBuffer[RiegeEditor]()
 
-  val athletHeaderPane: AthletHeaderPane = new AthletHeaderPane(wkview)
+  val athletHeaderPane: AthletHeaderPane = AthletHeaderPane(wettkampf.toWettkampf, service, wkview)
   val disziplinlist = wettkampfInfo.disziplinList
   val withDNotes = wettkampfInfo.isDNoteUsed
   var lastFilter = ""
