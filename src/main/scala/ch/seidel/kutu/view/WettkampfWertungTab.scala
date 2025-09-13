@@ -501,12 +501,13 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
       cellValueFactory = { x =>
         new ReadOnlyStringWrapper(x.value, "athlet", {
           val a = x.value.head.init.athlet
+          val hasmedia = x.value.flatMap(w => w.init.mediafile).nonEmpty
           s"${a.vorname} ${a.name} ${
             (a.gebdat match {
               case Some(d) => f"$d%tY "
               case _ => " "
             })
-          }"
+          }${if (hasmedia) " ♪" else ""}"
         })
       }
       //        delegate.impl_setReorderable(false) // shame on me??? why this feature should not be a requirement?
