@@ -29,7 +29,9 @@ class PlayList {
         val files = dir.listFiles(new FilenameFilter {
           override def accept(dir: File, name: String): Boolean = {
             val ln = name.toLowerCase
-            (ln.toLowerCase.endsWith(".aif")
+            ln.endsWith(".mp3")
+            /*(
+              ln.toLowerCase.endsWith(".aif")
               || ln.endsWith(".aiff")
               || ln.endsWith(".fxm")
               || ln.endsWith(".flv")
@@ -39,6 +41,7 @@ class PlayList {
               || ln.endsWith(".m4a")
               || ln.endsWith(".m4v")
               || ln.endsWith(".wav"))
+             */
           }
         })
         if (files != null) {
