@@ -20,8 +20,7 @@ class PlayList {
 
   def load(url: String): Unit = {
     this.url = url
-    songs.clear()
-    if (url.toLowerCase.endsWith(".mp3")) songs.add(new Pair[String, String](url.substring(url.lastIndexOf('/'), url.lastIndexOf('.')), url))
+    if (url.toLowerCase.endsWith(".mp3")) songs.add(new Pair[String, String](url.substring(url.lastIndexOf('/')+1, url.lastIndexOf('.')-1), url))
     else if (url.toLowerCase.endsWith(".m3u")) loadM3U(url)
     else if (url.toLowerCase.endsWith(".xml")) loadPhlowXML(url)
     else {
@@ -63,7 +62,7 @@ class PlayList {
         val baseUrl = url.substring(0, url.lastIndexOf('/') + 1)
         println("baseUrl = " + baseUrl)
         val songs = new util.ArrayList[Pair[String, String]]
-        val con = new URL(url).openConnection
+        val con = URI.create(url).toURL.openConnection
         val in = new InputStreamReader(con.getInputStream, "ISO-8859-1")
         val source = new Scanner(in)
         while (source.hasNextLine) {
@@ -96,7 +95,7 @@ class PlayList {
       override protected def call: util.List[Pair[String, String]] = {
         val baseUrl = url.substring(0, url.lastIndexOf('/') + 1)
         val songs = new util.ArrayList[Pair[String, String]]
-        val con = new URL(url).openConnection
+        val con = URI.create(url).toURL.openConnection
         val dbFactory = DocumentBuilderFactory.newInstance
         val dBuilder = dbFactory.newDocumentBuilder
         val doc = dBuilder.parse(con.getInputStream)
