@@ -1637,9 +1637,9 @@ package object domain {
 
   case class Media(id: String, name: String, extension: String)
 
-  object MediaAdmin {
-    def computeAudioFilesPath(wettkampf: Wettkampf) = new File(Config.homedir + "/" + encodeFileName(wettkampf.easyprint) + "/audiofiles/").toURI
-    def computeAudioFilesPath() = new File(Config.homedir + "/audiofiles/").toURI
+  object MediaAdminObject {
+    def computeAudioFilesPath(wettkampf: Wettkampf): URI = new File(Config.homedir + "/" + encodeFileName(wettkampf.easyprint) + "/audiofiles/").toURI
+    def computeAudioFilesPath(): URI = new File(Config.homedir + "/audiofiles/").toURI
   }
 
   /**
@@ -1650,7 +1650,7 @@ package object domain {
    * @param stage 1=upload, 2=transcoding, 3=transcoded
    * @param md5 md5 hash of transcoded normalized audio-file
    */
-  case class MediaAdmin(id: String, name: String, extension: String, stage: Int, metadata: String, md5: String, stamp: Timestamp) {
+  case class MediaAdmin(id: String, name: String, extension: String, stage: Int, metadata: String, md5: String, stamp: Long) {
     val md5Defined = md5 != null && md5.nonEmpty
     def isTranscoded: Boolean = stage > 2 && md5Defined
     def filename: String = if (isTranscoded) md5 + ".mp3" else {

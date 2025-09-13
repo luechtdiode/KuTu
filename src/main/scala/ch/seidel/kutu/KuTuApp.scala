@@ -1988,6 +1988,7 @@ object KuTuApp extends JFXApp3 with KutuService with JsonSupport with JwtSupport
   
   def cleanupDB(): Unit = {
     markAthletesInactiveOlderThan(3)
+    ResourceExchanger.cleanupMediaFiles()
   }
 
   def startUI(): Unit = {
