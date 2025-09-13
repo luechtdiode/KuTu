@@ -17,7 +17,7 @@ import java.io.File
 object LoadDialog {
   def loadPlayList(wettkampf: Option[Wettkampf] = None, owner: Stage, playList: PlayList): Unit = {
     val urlField: TextField = new TextField {
-      setText(wettkampf.map(_.audiofilesDir.toString).getOrElse(Config.homedir))
+      setText(new File(wettkampf.map(_.audiofilesDir.toString).getOrElse(Config.homedir)).toURI.toASCIIString)
       setPrefWidth(500)
       setStyle("-fx-font-size: 0.9em;")
     }
@@ -53,10 +53,10 @@ object LoadDialog {
                 val fc: FileChooser = new FileChooser
                 fc.setTitle("Audiofile laden")
                 fc.getExtensionFilters.addAll(
-                  new FileChooser.ExtensionFilter("Audio Dateien", "*.mp3", "*.wav", "*.aif", "*.aiff")
-                  ,new FileChooser.ExtensionFilter("MP3 (audio/mpeg)", "*.mp3")
-                  ,new FileChooser.ExtensionFilter("Audio Interchange File Format (pcm)", "*.aif", "*.aiff")
-                  ,new FileChooser.ExtensionFilter("Waveform Audio Format", "*.wav")
+                  //new FileChooser.ExtensionFilter("Audio Dateien", "*.mp3", "*.wav", "*.aif", "*.aiff")
+                  new FileChooser.ExtensionFilter("MP3 (audio/mpeg)", "*.mp3")
+                  //,new FileChooser.ExtensionFilter("Audio Interchange File Format (pcm)", "*.aif", "*.aiff")
+                  //,new FileChooser.ExtensionFilter("Waveform Audio Format", "*.wav")
                 )
                 fc.setSelectedExtensionFilter(fc.getExtensionFilters.get(0))
                 fc.setInitialDirectory(wettkampf.map(_.audiofilesDir).getOrElse(new File(Config.homedir)))

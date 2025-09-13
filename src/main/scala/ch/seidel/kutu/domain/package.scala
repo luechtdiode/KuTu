@@ -1492,14 +1492,14 @@ package object domain {
     def softEquals(other: GeraeteRiege): Boolean = {
       hash == other.hash
     }
-    private def songtitle(kandidat: Kandidat) = {
-      s"${kandidat.vorname} ${kandidat.name} (${kandidat.verein}), ${disziplin.map(_.easyprint).getOrElse("")}"
+    private def songtitle(kandidat: Kandidat, media: Media) = {
+      s"${kandidat.vorname} ${kandidat.name} (${kandidat.verein}), ${disziplin.map(_.easyprint).getOrElse("")} - ${media.name}"
     }
     def getMediaList(wettkampf: Wettkampf, lookup: String=>Option[MediaAdmin]): Seq[(Kandidat, String, URI)] = kandidaten
       .flatMap(k => k.wertungen.find(w => disziplin.contains(w.wettkampfdisziplin.disziplin))
         .map(_.toWertung)
         .filter(w => w.endnote.isEmpty && k.hasMedia(wettkampf, lookup, w))
-        .map(w => (k, songtitle(k), k.getMediaURI(wettkampf, lookup, w))))
+        .map(w => (k, songtitle(k, w.mediafile.get), k.getMediaURI(wettkampf, lookup, w))))
   }
 
   sealed trait SexDivideRule {
@@ -1636,6 +1636,12 @@ package object domain {
   case class RegistrationResetPW(id: Long, wettkampfId: Long, secret: String) extends DataObject
 
   case class Media(id: String, name: String, extension: String)
+
+  object MediaAdmin {
+    def computeAudioFilesPath(wettkampf: Wettkampf) = new File(Config.homedir + "/" + encodeFileName(wettkampf.easyprint) + "/audiofiles/").toURI
+    def computeAudioFilesPath() = new File(Config.homedir + "/audiofiles/").toURI
+  }
+
   /**
    *
    * @param id UUID
