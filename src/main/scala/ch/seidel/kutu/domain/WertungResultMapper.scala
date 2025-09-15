@@ -11,6 +11,12 @@ trait MediaResultMapper {
     }
   }
   implicit def getMedia: GetResult[Media] = GetResult{ r => Media(r.<<, r.<<, r.<<)}
+  implicit def getMediaAdminOption: GetResult[Option[MediaAdmin]] = GetResult{ r =>
+    r.nextStringOption() match {
+      case Some(x) => Some(MediaAdmin(x, r.<<, r.<<, r.<<, r.<<, r.<<, r.<<))
+      case None => r.skip; r.skip; r.skip; r.skip; None
+    }
+  }
   implicit def getMediaAdmin: GetResult[MediaAdmin] = GetResult{ r => MediaAdmin(r.<<, r.<<, r.<<, r.<<, r.<<, r.<<, r.<<)}
 }
 
