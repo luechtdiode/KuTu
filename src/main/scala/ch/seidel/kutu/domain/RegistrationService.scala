@@ -1,19 +1,14 @@
 package ch.seidel.kutu.domain
 
-import ch.seidel.kutu.Config
-import ch.seidel.kutu.data.ResourceExchanger.searchMedia
 import ch.seidel.kutu.http.AuthSupport.OPTION_LOGINRESET
+import ch.seidel.kutu.http.Hashing
+import slick.jdbc.PostgresProfile.api._
 
 import java.sql.Timestamp
 import java.time.LocalDateTime
 import java.util.UUID
-import ch.seidel.kutu.http.Hashing
-import slick.jdbc.PostgresProfile.api._
-
-import java.io.FileInputStream
-import java.util.zip.ZipEntry
-import scala.concurrent.{Await, Future}
 import scala.concurrent.duration.Duration
+import scala.concurrent.{Await, Future}
 
 trait RegistrationService extends DBService with RegistrationResultMapper with MediaResultMapper with Hashing {
 
@@ -225,7 +220,7 @@ trait RegistrationService extends DBService with RegistrationResultMapper with M
   def copyClubRegsFromCompetition(wettkampfCopyFrom: String, registrationId: Long): Unit = {
     Await.result(database.run {
       sqlu"""
-              insert into athletregistration (vereinregistration_id, athlet_id, geschlecht, name, vorname, gebdat, program_id, team, registrationtime)
+              insert into athletregistration (vereinregistration_id, athlet_id, geschlecht, name, vorname, gebdat, program_id, team, media_id, registrationtime)
               select distinct
                 #$registrationId as vereinregistration_id,
                 a.id,
@@ -235,6 +230,7 @@ trait RegistrationService extends DBService with RegistrationResultMapper with M
                 a.gebdat,
                 wkd.programm_id,
                 0,
+                m.id
                 current_timestamp as registrationtime
               from athlet a
               inner join wertung w on (w.athlet_id = a.id)
@@ -242,6 +238,7 @@ trait RegistrationService extends DBService with RegistrationResultMapper with M
               inner join vereinregistration vrnow on (vrnow.verein_id = a.verein)
               inner join wettkampf wkthen on (w.wettkampf_id = wkthen.id)
               inner join wettkampf wknow on (vrnow.wettkampf_id = wknow.id)
+              inner join media m on (w.media_id=m.id)
               where vrnow.id = $registrationId
                   and wkthen.uuid = $wettkampfCopyFrom
                   and wkthen.programm_id = wknow.programm_id
@@ -351,7 +348,7 @@ trait RegistrationService extends DBService with RegistrationResultMapper with M
     }
     val nomralizedAthlet = newReg.toAthlet
     newReg.mediafile match {
-      case Some(mf) => putMedia(mf)
+      case Some(mf) => putMedia(mf.toMedia)
       case _ =>
     }
     Await.result(database.run {
@@ -370,7 +367,9 @@ trait RegistrationService extends DBService with RegistrationResultMapper with M
                   select
                       r.id, r.vereinregistration_id,
                       r.athlet_id, r.geschlecht, r.name, r.vorname, r.gebdat,
-                      r.program_id, r.registrationtime, a.id, a.js_id, a.geschlecht, a.name, a.vorname, a.gebdat, a.strasse, a.plz, a.ort, a.activ, a.verein, v.*, r.team, r.media_id, m.name, m.extension
+                      r.program_id, r.registrationtime, a.id, a.js_id, a.geschlecht, a.name, a.vorname, a.gebdat, a.strasse, a.plz, a.ort, a.activ, a.verein, v.*,
+                      r.team, r.media_id,
+                      m.name, m.extension, m.stage, m.metadata, m.md5, m.stamp
                   from athletregistration r
                   left join athlet a on (r.athlet_id = a.id)
                   left join verein v on (a.verein = v.id)
@@ -394,7 +393,9 @@ trait RegistrationService extends DBService with RegistrationResultMapper with M
                   select
                       ar.id, ar.vereinregistration_id,
                       ar.athlet_id, ar.geschlecht, ar.name, ar.vorname, ar.gebdat,
-                      ar.program_id, ar.registrationtime, a.id, a.js_id, a.geschlecht, a.name, a.vorname, a.gebdat, a.strasse, a.plz, a.ort, a.activ, a.verein, v.*, ar.team, ar.media_id, m.name, m.extension
+                      ar.program_id, ar.registrationtime, a.id, a.js_id, a.geschlecht, a.name, a.vorname, a.gebdat, a.strasse, a.plz, a.ort, a.activ, a.verein, v.*,
+                      ar.team, ar.media_id,
+                      m.name, m.extension, m.stage, m.metadata, m.md5, m.stamp
                   from athletregistration ar
                   inner join vereinregistration vr on (ar.vereinregistration_id = vr.id)
                   inner join athlet a on (a.id = ar.athlet_id and a.verein = vr.verein_id)
@@ -443,7 +444,9 @@ trait RegistrationService extends DBService with RegistrationResultMapper with M
               select
                   r.id, r.vereinregistration_id,
                   r.athlet_id, r.geschlecht, r.name, r.vorname, r.gebdat,
-                  r.program_id, r.registrationtime, a.id, a.js_id, a.geschlecht, a.name, a.vorname, a.gebdat, a.strasse, a.plz, a.ort, a.activ, a.verein, v.*, r.team, r.media_id, m.name, m.extension
+                  r.program_id, r.registrationtime, a.id, a.js_id, a.geschlecht, a.name, a.vorname, a.gebdat, a.strasse, a.plz, a.ort, a.activ, a.verein, v.*,
+                  r.team, r.media_id,
+                  m.name, m.extension, m.stage, m.metadata, m.md5, m.stamp
               from athletregistration r
               left join athlet a on (r.athlet_id = a.id)
               left join verein v on (a.verein = v.id)
@@ -459,7 +462,9 @@ trait RegistrationService extends DBService with RegistrationResultMapper with M
                   select
                       r.id, r.vereinregistration_id,
                       r.athlet_id, r.geschlecht, r.name, r.vorname, r.gebdat,
-                      r.program_id, r.registrationtime, a.id, a.js_id, a.geschlecht, a.name, a.vorname, a.gebdat, a.strasse, a.plz, a.ort, a.activ, a.verein, v.*, r.team, r.media_id, m.name, m.extension
+                      r.program_id, r.registrationtime, a.id, a.js_id, a.geschlecht, a.name, a.vorname, a.gebdat, a.strasse, a.plz, a.ort, a.activ, a.verein, v.*,
+                      r.team, r.media_id,
+                      m.name, m.extension, m.stage, m.metadata, m.md5, m.stamp
                   from athletregistration r
                   left join athlet a on (r.athlet_id = a.id)
                   left join verein v on (a.verein = v.id)
@@ -475,7 +480,9 @@ trait RegistrationService extends DBService with RegistrationResultMapper with M
                   select
                       r.id, r.vereinregistration_id,
                       r.athlet_id, r.geschlecht, r.name, r.vorname, r.gebdat,
-                      r.program_id, r.registrationtime, a.id, a.js_id, a.geschlecht, a.name, a.vorname, a.gebdat, a.strasse, a.plz, a.ort, a.activ, a.verein, v.*, r.team, r.media_id, m.name, m.extension
+                      r.program_id, r.registrationtime, a.id, a.js_id, a.geschlecht, a.name, a.vorname, a.gebdat, a.strasse, a.plz, a.ort, a.activ, a.verein, v.*,
+                      r.team, r.media_id,
+                      m.name, m.extension, m.stage, m.metadata, m.md5, m.stamp
                   from athletregistration r
                   left join athlet a on (r.athlet_id = a.id)
                   left join verein v on (a.verein = v.id)
@@ -493,7 +500,7 @@ trait RegistrationService extends DBService with RegistrationResultMapper with M
                               0, ar.geschlecht, ar.name, ar.vorname, ar.gebdat,
                               0, ar.registrationtime,
                               null, null, null, null, null, null, null, null, null, null, null, null, null, -- athletview, vereinview
-                              ar.team, ar.media_id, m.name, m.extension
+                              ar.team, ar.media_id, m.name, m.extension, m.stage, m.metadata, m.md5, m.stamp
                     from vereinregistration avr
                     inner join vereinregistration vr on (vr.verein_id = avr.verein_id)
                     inner join athletregistration ar on (ar.vereinregistration_id = vr.id)
@@ -756,7 +763,7 @@ trait RegistrationService extends DBService with RegistrationResultMapper with M
                           ${media.stage},
                           ${media.metadata},
                           ${media.md5},
-                          ${media.stamp},
+                          ${media.stamp}
                           )
               """ >>
               sql"""
