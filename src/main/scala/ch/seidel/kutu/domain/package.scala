@@ -1568,7 +1568,7 @@ package object domain {
     override val caption = s"Verein bestätigen: ${verein.vereinname}"
   }
 
-  case class AddRegistration(override val verein: Registration, programId: Long, athlet: Athlet, suggestion: AthletView, team: Int, media: Option[Media]) extends SyncAction {
+  case class AddRegistration(override val verein: Registration, programId: Long, athlet: Athlet, suggestion: AthletView, team: Int, media: Option[MediaAdmin]) extends SyncAction {
     override val caption = s"Neue Anmeldung verarbeiten: ${suggestion.easyprint}"
   }
 
@@ -1600,10 +1600,10 @@ package object domain {
   }
 
   case class AddMedia(override val verein: Registration, athletReg: AthletRegistration) extends SyncAction {
-    override val caption = s"Media aktualisieren: Für ${athletReg.toAthlet.extendedprint} (${athletReg.mediafile.map(_.name)})"
+    override val caption = s"Media aktualisieren: Für ${athletReg.toAthlet.extendedprint} (${athletReg.mediafile.map(_.name).getOrElse("")})"
   }
-  case class UpdateAthletMediaAction(override val verein: Registration, athletReg: AthletRegistration, wertungId: Long) extends SyncAction {
-    override val caption = s"Athlet/-In Musik aktualisieren: Von ${athletReg.toAthlet.extendedprint} (${athletReg.mediafile.map(_.name)})"
+  case class UpdateAthletMediaAction(override val verein: Registration, athletReg: AthletRegistration, wertung: Wertung) extends SyncAction {
+    override val caption = s"Athlet/-In Musik aktualisieren: Von ${athletReg.toAthlet.extendedprint} (${athletReg.mediafile.map(_.name).getOrElse("")})"
   }
   case class RenameAthletAction(override val verein: Registration, athletReg: AthletRegistration, existing: Athlet, expected: Athlet) extends SyncAction {
     override val caption = s"Athlet/-In korrigieren: Von ${existing.extendedprint} zu ${expected.extendedprint}"
@@ -1637,12 +1637,12 @@ package object domain {
 
   case class Media(id: String, name: String, extension: String)
 
+  /**
+
   object MediaAdminObject {
     def computeAudioFilesPath(wettkampf: Wettkampf): URI = new File(Config.homedir + "/" + encodeFileName(wettkampf.easyprint) + "/audiofiles/").toURI
     def computeAudioFilesPath(): URI = new File(Config.homedir + "/audiofiles/").toURI
   }
-
-  /**
    *
    * @param id UUID
    * @param name
@@ -1651,7 +1651,7 @@ package object domain {
    * @param md5 md5 hash of transcoded normalized audio-file
    */
   case class MediaAdmin(id: String, name: String, extension: String, stage: Int, metadata: String, md5: String, stamp: Long) {
-    val md5Defined = md5 != null && md5.nonEmpty
+    def md5Defined: Boolean = md5 != null && md5.nonEmpty
     def isTranscoded: Boolean = stage > 2 && md5Defined
     def filename: String = if (isTranscoded) md5 + ".mp3" else {
       if (md5Defined) md5 + "." + extension else id + "." + extension
@@ -1676,7 +1676,7 @@ package object domain {
 
   case class AthletRegistration(id: Long, vereinregistrationId: Long,
                                 athletId: Option[Long], geschlecht: String, name: String, vorname: String, gebdat: String,
-                                programId: Long, registrationTime: Long, athlet: Option[AthletView], team: Option[Int], mediafile: Option[Media]) extends DataObject {
+                                programId: Long, registrationTime: Long, athlet: Option[AthletView], team: Option[Int], mediafile: Option[MediaAdmin]) extends DataObject {
     def toPublicView = AthletRegistration(id, vereinregistrationId, athletId, geschlecht, name, vorname, gebdat.substring(0, 4) + "-01-01", programId, registrationTime, athlet.map(_.toPublicView), team, mediafile)
 
     def capitalizeIfBlockCase(s: String): String = {

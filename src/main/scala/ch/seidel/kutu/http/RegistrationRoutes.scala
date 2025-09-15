@@ -1,29 +1,28 @@
 package ch.seidel.kutu.http
 
-import ch.seidel.jwt.JsonWebToken
 import ch.seidel.kutu.Config
-import ch.seidel.kutu.Config.{jwtAuthorizationKey, jwtHeader, jwtSecretKey, remoteAdminBaseUrl}
+import ch.seidel.kutu.Config.remoteAdminBaseUrl
 import ch.seidel.kutu.actors._
 import ch.seidel.kutu.data.RegistrationAdmin.adjustWertungRiegen
 import ch.seidel.kutu.data.ResourceExchanger
-import ch.seidel.kutu.domain.{AthletRegistration, AthletView, JudgeRegistration, KutuService, Media, NewRegistration, ProgrammRaw, Registration, RegistrationResetPW, TeamItem, TeamRegel, Verein, Wettkampf, dateToExportedStr, encodeFileName, str2SQLDate}
+import ch.seidel.kutu.domain.{AthletRegistration, AthletView, JudgeRegistration, KutuService, Media, MediaAdmin, NewRegistration, ProgrammRaw, Registration, RegistrationResetPW, TeamItem, TeamRegel, Verein, Wettkampf, dateToExportedStr, encodeFileName, str2SQLDate}
 import ch.seidel.kutu.http.AuthSupport.OPTION_LOGINRESET
 import ch.seidel.kutu.renderer.MailTemplates.createPasswordResetMail
 import ch.seidel.kutu.renderer.{CompetitionsClubsToHtmlRenderer, CompetitionsJudgeToHtmlRenderer, PrintUtil}
 import fr.davit.pekko.http.metrics.core.scaladsl.server.HttpMetricsDirectives._
+import org.apache.pekko.http.scaladsl.Http
 import org.apache.pekko.http.scaladsl.marshallers.sprayjson.SprayJsonSupport
 import org.apache.pekko.http.scaladsl.marshalling.ToResponseMarshallable
+import org.apache.pekko.http.scaladsl.model.HttpMethods.POST
 import org.apache.pekko.http.scaladsl.model._
-import org.apache.pekko.http.scaladsl.model.headers.RawHeader
 import org.apache.pekko.http.scaladsl.server.Route
 import org.apache.pekko.http.scaladsl.server.directives.FileInfo
 import org.apache.pekko.http.scaladsl.unmarshalling.Unmarshal
-import org.apache.pekko.stream.ActorAttributes
-import org.apache.pekko.stream.scaladsl.{FileIO, Framing, Keep, Sink, Source, StreamConverters}
+import org.apache.pekko.stream.scaladsl.{Sink, Source, StreamConverters}
 import org.apache.pekko.util.{ByteString, Timeout}
 import spray.json._
 
-import java.io.{InputStream, OutputStream}
+import java.io.{ByteArrayOutputStream, InputStream}
 import java.util.UUID
 import java.util.concurrent.TimeUnit
 import scala.concurrent.duration.{DAYS, Duration, DurationInt, FiniteDuration}
@@ -31,7 +30,7 @@ import scala.concurrent.{Await, Future}
 import scala.util.{Failure, Success}
 
 trait RegistrationRoutes extends SprayJsonSupport with JsonSupport with JwtSupport with AuthSupport with RouterLogging
-  with KutuService with CompetitionsClubsToHtmlRenderer with CompetitionsJudgeToHtmlRenderer with IpToDeviceID with CIDSupport {
+  with KutuService with CompetitionsClubsToHtmlRenderer with CompetitionsJudgeToHtmlRenderer with IpToDeviceID with CIDSupport with FailureSupport {
 
   import Core._
   import spray.json.DefaultJsonProtocol._
@@ -41,7 +40,6 @@ trait RegistrationRoutes extends SprayJsonSupport with JsonSupport with JwtSuppo
   // Required by the `ask` (?) method below
   // usually we'd obtain the timeout from the system's configuration
   private implicit lazy val timeout: Timeout = Timeout(5.seconds)
-
 
   def joinVereinWithRegistration(p: Wettkampf, reg: Registration, verein: Verein): Unit = {
     Await.result(httpPutClientRequest(
@@ -122,6 +120,48 @@ trait RegistrationRoutes extends SprayJsonSupport with JsonSupport with JwtSuppo
       case _ => Future("")
     }
     , Duration.Inf)
+
+  def getMediaDownloadRemote(p: Wettkampf, mediaList: List[MediaAdmin]): Unit = {
+    val request = withAuthHeader(
+      HttpRequest(
+        POST,
+        uri = s"$remoteAdminBaseUrl/api/registrations/${p.uuid.get}/mediafiles",
+        entity = HttpEntity(
+          ContentTypes.`application/json`,
+          ByteString(mediaList.toJson.compactPrint
+          )
+        )
+      )
+    )
+    Await.result(httpMediaDownloadRequest(p, mediaList, request), Duration.Inf)
+  }
+
+  private def httpMediaDownloadRequest(wettkampf: Wettkampf, mediaList: List[MediaAdmin], request: HttpRequest): Future[Unit] = {
+    import Core._
+    val source = Source.single(request, ())
+    val requestResponseFlow = Http().superPool[Unit](settings = poolsettings)
+
+    def importData(httpResponse: HttpResponse): Unit = {
+      if (httpResponse.status.isSuccess()) {
+        val is = httpResponse.entity.dataBytes.runWith(StreamConverters.asInputStream())
+        ResourceExchanger.importWettkampfMediaFiles(wettkampf, mediaList, is)
+      } else {
+        httpResponse.entity match {
+          case HttpEntity.Strict(_, text) =>
+            log.error(text.utf8String)
+            throw HTTPFailure(httpResponse.status, text.utf8String)
+          case x =>
+            log.error(x.toString)
+            throw HTTPFailure(httpResponse.status, x.toString)
+        }
+      }
+    }
+    source.via(requestResponseFlow)
+      .map(responseOrFail)
+      .map(_._1)
+      .map(importData)
+      .runWith(Sink.head)
+  }
 
   lazy val registrationRoutes: Route = {
     (handleCID & extractUri) { (clientId: String, uri: Uri) =>
@@ -269,6 +309,38 @@ trait RegistrationRoutes extends SprayJsonSupport with JsonSupport with JwtSuppo
                       CompetitionRegistrationClientActor.publish(RegistrationChanged(wettkampf.uuid.get), clientId)
                       log.info(s"SyncAdmin $clientId - athletes updated and riegenwertungen sex adjusted: $athletlist")
                       complete(StatusCodes.OK)
+                    }
+                  }
+                } else
+                  complete(StatusCodes.Conflict)
+              }
+            }
+          } ~ pathPrefixLabeled("mediafiles", "mediafiles") {
+            pathEndOrSingleSlash {
+              authenticated() { userId =>
+                if (userId.equals(competitionId.toString)) {
+                  post {
+                    withoutRequestTimeout {
+                      entity(as[List[Media]]) { medialist =>
+                        log.info(s"SyncAdmin $clientId - serving medialist: $medialist")
+                        onComplete(Future {
+                          val bos = new ByteArrayOutputStream()
+                          ResourceExchanger.exportWettkampfMediaFilesToStream(wettkampf, medialist, bos)
+                          HttpEntity(
+                            MediaTypes.`application/zip`,
+                            bos.toByteArray
+                          )
+                        }) {
+                          case Success(entity) =>
+                            complete(entity)
+                          case Failure(e) =>
+                            log.error(e, s"mediapackage for wettkampf $competitionId cannot be exported: " + e.toString)
+                            complete(StatusCodes.BadRequest,
+                              s"""Das Media-Package des Wettkampfs ${wettkampf.easyprint}
+                                 |konnte wg. einem technischen Fehler nicht vollständig zum Download exportiert werden.
+                                 |=>${e.getMessage}""".stripMargin)
+                        }
+                      }
                     }
                   }
                 } else
@@ -505,7 +577,7 @@ trait RegistrationRoutes extends SprayJsonSupport with JsonSupport with JwtSuppo
                                       val is: InputStream = file.runWith(StreamConverters.asInputStream(FiniteDuration(180, TimeUnit.SECONDS)))
                                       val processor = Future {
                                         println(s"media file uploading (${metadata.fileName}) ...")
-                                        ResourceExchanger.importWettkampfMediaFile(wettkampf, selectAthletRegistration(id).copy(mediafile = Some(Media("", metadata.fileName, fileext))), is)
+                                        ResourceExchanger.importWettkampfMediaFile(wettkampf, selectAthletRegistration(id).copy(mediafile = Some(MediaAdmin("", metadata.fileName, fileext, 0, "", "", 0L))), is)
                                       }
                                       onComplete(processor) {
                                         case Success(r) =>

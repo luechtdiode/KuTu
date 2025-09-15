@@ -26,14 +26,10 @@ import fr.davit.pekko.http.metrics.core.scaladsl.server.HttpMetricsDirectives._
 
 trait WettkampfRoutes extends SprayJsonSupport
   with JsonSupport with JwtSupport with AuthSupport with RouterLogging with WettkampfService with RegistrationService
-  with CIDSupport {
+  with CIDSupport with FailureSupport {
 
   import DefaultJsonProtocol._
   
-  def responseOrFail[T](in: (Try[HttpResponse], T)): (HttpResponse, T) = in match {
-    case (responseTry, context) => (responseTry.get, context)
-  }
-
   def toHttpEntity(wettkampf: Wettkampf): HttpEntity.Strict = {
     val bos = new ByteArrayOutputStream()
     ResourceExchanger.exportWettkampfToStream(wettkampf, bos)
@@ -244,34 +240,6 @@ trait WettkampfRoutes extends SprayJsonSupport
       .map(importData)
       .runWith(Sink.head)
     wettkampf
-  }
-
-  def httpMediaDownloadRequest(wettkampf: Wettkampf, request: HttpRequest): Future[Unit] = {
-    import Core._
-    val source = Source.single(withAuthHeader(request), ())
-    val requestResponseFlow = Http().superPool[Unit](settings = poolsettings)
-
-    def importData(httpResponse: HttpResponse): Unit = {
-      if (httpResponse.status.isSuccess()) {
-        val is = httpResponse.entity.dataBytes.runWith(StreamConverters.asInputStream())
-        ResourceExchanger.importWettkampfMediaFiles(wettkampf, is)
-      } else {
-        httpResponse.entity match {
-          case HttpEntity.Strict(_, text) =>
-            log.error(text.utf8String)
-            throw HTTPFailure(httpResponse.status, text.utf8String)
-          case x =>
-            log.error(x.toString)
-            throw HTTPFailure(httpResponse.status, x.toString)
-        }
-      }
-    }
-
-    source.via(requestResponseFlow)
-      .map(responseOrFail)
-      .map(_._1)
-      .map(importData)
-      .runWith(Sink.head)
   }
 
   def httpRemoveWettkampfRequest(wettkampf: Wettkampf): Future[HttpResponse] = {
