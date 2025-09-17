@@ -20,6 +20,8 @@ trait JsonSupport extends SprayJsonSupport with EnrichedJson {
   implicit val scoreCalcTemplateFormat: RootJsonFormat[ScoreCalcTemplate] = jsonFormat(ScoreCalcTemplate,
     "id", "wettkampfId", "disziplinId", "wettkampfdisziplinId", "dFormula", "eFormula", "pFormula", "aggregateFn")
   implicit val scoreCalcTemplateViewFormat: RootJsonFormat[ScoreCalcTemplateView] = jsonFormat10(ScoreCalcTemplateView)
+  implicit val mediaFormat: RootJsonFormat[Media] = jsonFormat3(Media)
+  implicit val mediaAdminFormat: RootJsonFormat[MediaAdmin] = jsonFormat7(MediaAdmin)
   implicit val wertungFormat: RootJsonFormat[Wertung] = jsonFormat(Wertung, "id", "athletId", "wettkampfdisziplinId", "wettkampfId", "wettkampfUUID", "noteD", "noteE", "endnote", "riege", "riege2", "team", "mediafile", "variables")
   implicit val vereinFormat: RootJsonFormat[Verein] = jsonFormat(Verein, "id", "name", "verband")
   implicit val atheltViewFormat: RootJsonFormat[AthletView] = jsonFormat(AthletView, "id", "js_id", "geschlecht", "name", "vorname", "gebdat", "strasse", "plz", "ort", "verein", "activ")
@@ -27,8 +29,6 @@ trait JsonSupport extends SprayJsonSupport with EnrichedJson {
   implicit val registrationFormat: RootJsonFormat[Registration] = jsonFormat11(Registration)
   implicit val newregistrationFormat: RootJsonFormat[NewRegistration] = jsonFormat8(NewRegistration)
   implicit val resetRegistrationPWFormat: RootJsonFormat[RegistrationResetPW] = jsonFormat3(RegistrationResetPW)
-  implicit val mediaFormat: RootJsonFormat[Media] = jsonFormat3(Media)
-  implicit val mediaAdminFormat: RootJsonFormat[MediaAdmin] = jsonFormat7(MediaAdmin)
   implicit val athletregistrationFormat: RootJsonFormat[AthletRegistration] = jsonFormat12(AthletRegistration)
   implicit val teamFormat: RootJsonFormat[TeamItem] = jsonFormat2(TeamItem)
   implicit val judgeregistrationFormat: RootJsonFormat[JudgeRegistration] = jsonFormat9(JudgeRegistration)
