@@ -194,7 +194,7 @@ object ResourceExchanger extends KutuService with RiegenBuilder {
     val mediaAdmin: MediaAdmin = putMedia(Media(media.id, media.name.trim, media.extension.trim))
     val wettkampfAudiofilesDir = mediaAdmin.computeFilePath(wettkampf).getParentFile
     if (!wettkampfAudiofilesDir.exists()) {
-      wettkampfAudiofilesDir.mkdir()
+      wettkampfAudiofilesDir.mkdirs()
     }
     val uploadedOriginalFile = mediaAdmin.computeFilePath(wettkampf)
     val fos = new FileOutputStream(uploadedOriginalFile)
