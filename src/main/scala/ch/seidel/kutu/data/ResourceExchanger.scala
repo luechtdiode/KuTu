@@ -1,6 +1,6 @@
 package ch.seidel.kutu.data
 
-import ch.seidel.kutu.actors._
+import ch.seidel.kutu.actors.{MediaPlayerAction, _}
 import ch.seidel.kutu.calc.{ScoreAggregateFn, ScoreCalcTemplate, ScoreCalcTemplateView, TemplateViewJsonReader}
 import ch.seidel.kutu.data.CaseObjectMetaUtil._
 import ch.seidel.kutu.domain._
@@ -44,6 +44,7 @@ object ResourceExchanger extends KutuService with RiegenBuilder {
       }
       val mappedAthlet = findAthleteLike(cache, wettkampf, exclusive = false)(athlet.toAthlet.copy(id = 0, verein = mappedverein))
       val mappedAthletView = athlet.updatedWith(mappedAthlet)
+      //println(mappedAthletView, mappedverein, cache)
       mappedAthletView
     }
 
@@ -126,6 +127,30 @@ object ResourceExchanger extends KutuService with RiegenBuilder {
               refresher(sender, uw)
           }
         }
+      case (sender, uw: MediaPlayerAction) =>
+        if (Config.isLocalHostServer) {
+          refresher(sender, uw)
+        } else if (wettkampf.uuid.contains(uw.wertung.wettkampfUUID)) /*Future*/ {
+          logger.info(s"received MediaAction for ${uw.athlet.vorname} ${uw.athlet.name} (${uw.athlet.verein})")
+          val mappedAthletView: AthletView = mapToLocal(uw.athlet, Some(wettkampf.id))
+          val mappedWertung = uw.wertung.copy(athletId = mappedAthletView.id)
+          val mappedAction = uw match {
+            case AthletMediaAquire(_,_,_) => AthletMediaAquire(uw.wertung.wettkampfUUID, mappedAthletView, mappedWertung)
+            case AthletMediaRelease(_,_,_) => AthletMediaRelease(uw.wertung.wettkampfUUID, mappedAthletView, mappedWertung)
+            case AthletMediaStart(_,_,_) => AthletMediaStart(uw.wertung.wettkampfUUID, mappedAthletView, mappedWertung)
+            case AthletMediaPause(_,_,_) => AthletMediaPause(uw.wertung.wettkampfUUID, mappedAthletView, mappedWertung)
+            case AthletMediaToStart(_,_,_) => AthletMediaToStart(uw.wertung.wettkampfUUID, mappedAthletView, mappedWertung)
+          }
+          try {
+            refresher(sender, mappedAction)
+          } catch {
+            case e: Exception =>
+              logger.error(s"failed to complete playeraction for " +
+                s"${mappedAthletView.vorname} ${mappedAthletView.name} (${mappedAthletView.verein.getOrElse("")}) " +
+                s": ${mappedAction}", e)
+              refresher(sender, uw)
+          }
+        }
       case (sender, scorePublished@ScoresPublished(scoreId: String, title: String, query: String, published: Boolean, wettkampfUUID: String)) =>
         if (wettkampf.uuid.contains(wettkampfUUID)) /*Future*/ {
           logger.info(s"received ${scorePublished}")
@@ -134,6 +159,7 @@ object ResourceExchanger extends KutuService with RiegenBuilder {
         }
       case (sender, awm@AthletsAddedToWettkampf(athlets, wettkampfUUID, programm, team)) =>
         if (wettkampf.uuid.contains(wettkampfUUID)) /*Future*/ {
+          cache.clear()
           val insertedAthlets = athlets
             .map { aa =>
               val (athlet, media) = aa
@@ -169,6 +195,7 @@ object ResourceExchanger extends KutuService with RiegenBuilder {
         if (wettkampf.uuid.contains(wettkampfUUID)) /*Future*/ {
           logger.info(s"received for ${arw.athlet.vorname} ${arw.athlet.name} (${arw.athlet.verein.getOrElse(() => "")}) " +
             s"to be removed from competition ${arw.wettkampfUUID}")
+          cache.clear()
           val mappedAthletView: AthletView = mapToLocal(athlet, Some(wettkampf.id))
           val mappedEvent = arw.copy(athlet = mappedAthletView)
           for (durchgang <- unassignAthletFromWettkampf(mappedEvent)) {
@@ -270,7 +297,6 @@ object ResourceExchanger extends KutuService with RiegenBuilder {
     }
     new ZipEntryTraversableClass().foreach { entry =>
       val filename = entry._1.getName
-      //val media: Media = searchMedia(filename).map(_.toMedia).getOrElse(Media("", filename, filename.substring(filename.lastIndexOf(".")+1)))
       val media: Media = mediaList.find(m => m.filename.equals(filename)).map(_.toMedia).getOrElse(Media("", filename, filename.substring(filename.lastIndexOf(".")+1)))
       println("synching media " + media, filename)
       //FIXME stabiler Dateiname - inkl. bereinigung auf md5-namen

@@ -7,10 +7,24 @@
     <ion-title>{{geraetName()}}</ion-title>
     <ion-note slot="end"><div class="athlet">{{item.vorname + ' ' + item.name}}</div><div class="riege">{{wertung.riege}}</div></ion-note>
   </ion-toolbar>
+
 </ion-header>
 
 <ion-content>
-  <form #wertungsform="ngForm" (ngSubmit)="saveNext(wertungsform)" (keyup.enter)="saveNext(wertungsform)">
+    @if (item.wertung?.mediafile && currentMediaButtonText != '') {
+      <ion-item>
+        <ion-icon slot="start" name="musical-notes-outline"></ion-icon>        
+        <ion-button size="large" [disabled]="waiting || mediaButtonDisabled"  color="primary" (click)='currentMediaAction()'>
+        <ion-icon slot="start" [attr.name]='currentMediaButtonIcon' />{{currentMediaButtonText}}</ion-button>
+      </ion-item>
+      <ion-item>
+        <ion-avatar slot="start"/>
+        <ion-note>
+          {{currentMediaState}}
+        </ion-note>
+      </ion-item>
+    }
+    <form #wertungsform="ngForm" (ngSubmit)="saveNext(wertungsform)" (keyup.enter)="saveNext(wertungsform)">
     @for (exercice of exercices; track exercice; let block = $index) {
       <ion-list>
         <ion-item-divider><h2>{{block +1}}. Übung</h2></ion-item-divider>
@@ -36,7 +50,7 @@
         </ion-item>
         @if (editable()) {
           <ion-button size="large" expand="block" #btnValidate (click)='validate(wertungsform)' [disabled]="waiting || !wertungsform.valid" color="secondary">
-          <ion-icon slot="start" name="acalculator-outline" />Endnote berechnen</ion-button>
+          <ion-icon slot="start" name="acalculator-outline" />Endnote berechnen2</ion-button>
         }
       </ion-list>
     }

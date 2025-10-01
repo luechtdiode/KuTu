@@ -11,7 +11,11 @@ case class CreateClient(deviceID: String, wettkampfUUID: String)
 case class WertungContainer(id: Long, vorname: String, name: String, geschlecht: String, verein: String, wertung: Wertung, geraet: Long, programm: String, durchgang: String, isDNoteUsed: Boolean, isStroked: Boolean)
 
 sealed trait KutuAppProtokoll
-
+sealed trait MediaPlayerEvent
+sealed trait MediaPlayerAction {
+  val athlet: AthletView
+  val wertung: Wertung
+}
 sealed trait KutuAppAction extends KutuAppProtokoll {
   val wettkampfUUID: String
 }
@@ -28,20 +32,18 @@ case class FinishDurchgang(override val wettkampfUUID: String, durchgang: String
 case class FinishDurchgangStep(override val wettkampfUUID: String) extends KutuAppAction
 case class Delete(override val wettkampfUUID: String) extends KutuAppAction
 case class PublishScores(override val wettkampfUUID: String, title: String, query: String, published: Boolean) extends KutuAppAction
-case class AthletMediaAquire(athlet: AthletView, override val wettkampfUUID: String, geraet: Long) extends KutuAppAction
-case class AthletMediaRelease(athlet: AthletView, override val wettkampfUUID: String, geraet: Long) extends KutuAppAction
-case class AthletMediaStart(athlet: AthletView, override val wettkampfUUID: String, geraet: Long) extends KutuAppAction
-case class AthletMediaStop(athlet: AthletView, override val wettkampfUUID: String, geraet: Long) extends KutuAppAction
-case class AthletMediaPause(athlet: AthletView, override val wettkampfUUID: String, geraet: Long) extends KutuAppAction
-case class AthletMediaToStart(athlet: AthletView, override val wettkampfUUID: String, geraet: Long) extends KutuAppAction
 
 sealed trait KutuAppEvent extends KutuAppProtokoll
 case class BulkEvent(wettkampfUUID: String, events: List[KutuAppEvent]) extends KutuAppEvent
-case class AthletMediaIsBusy(athlet: AthletView, geraet: Long) extends KutuAppEvent
-case class AthletMediaIsFree(athlet: AthletView, geraet: Long) extends KutuAppEvent
-case class AthletMediaIsAtStart(athlet: AthletView, geraet: Long) extends KutuAppEvent
-case class AthletMediaIsRunning(athlet: AthletView, geraet: Long) extends KutuAppEvent
-case class AthletMediaIsStopped(athlet: AthletView, geraet: Long) extends KutuAppEvent
+case class AthletMediaAquire(override val wettkampfUUID: String, override val athlet: AthletView,override val wertung: Wertung) extends KutuAppEvent with MediaPlayerAction with KutuAppAction
+case class AthletMediaRelease(override val wettkampfUUID: String, override val athlet: AthletView,override val wertung: Wertung) extends KutuAppEvent with MediaPlayerAction with KutuAppAction
+case class AthletMediaStart(override val wettkampfUUID: String, override val athlet: AthletView,override val wertung: Wertung) extends KutuAppEvent with MediaPlayerAction with KutuAppAction
+case class AthletMediaPause(override val wettkampfUUID: String, override val athlet: AthletView,override val wertung: Wertung) extends KutuAppEvent with MediaPlayerAction with KutuAppAction
+case class AthletMediaToStart(override val wettkampfUUID: String, override val athlet: AthletView,override val wertung: Wertung) extends KutuAppEvent with MediaPlayerAction with KutuAppAction
+case class AthletMediaIsFree(media: Media, context: String) extends KutuAppEvent with MediaPlayerEvent
+case class AthletMediaIsAtStart(media: Media, context: String) extends KutuAppEvent with MediaPlayerEvent
+case class AthletMediaIsRunning(media: Media, context: String) extends KutuAppEvent with MediaPlayerEvent
+case class AthletMediaIsPaused(media: Media, context: String) extends KutuAppEvent with MediaPlayerEvent
 case class DurchgangStarted(wettkampfUUID: String, durchgang: String, time: Long = System.currentTimeMillis()) extends KutuAppEvent
 case class DurchgangResetted(wettkampfUUID: String, durchgang: String) extends KutuAppEvent
 case class StationWertungenCompleted(wertungen: List[UpdateAthletWertung]) extends KutuAppEvent

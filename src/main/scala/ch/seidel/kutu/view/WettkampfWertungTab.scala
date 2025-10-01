@@ -677,7 +677,7 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
         prefWidth = 100
 
         onEditCommit = (evt: CellEditEvent[IndexedSeq[WertungEditor], String]) => {
-          if (!wettkampfmode.value) {
+          if (!wettkampfmode.value && evt.rowValue != null) {
             val rowIndex = wkModel.indexOf(evt.rowValue)
             val newRiege = if (evt.newValue.trim.isEmpty || evt.newValue.equals("keine Einteilung")) None
             else Some(evt.newValue)
