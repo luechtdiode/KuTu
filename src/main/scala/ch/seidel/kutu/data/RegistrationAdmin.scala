@@ -53,8 +53,9 @@ object RegistrationAdmin {
     val isMissingMediaFilter: RegTuple => Boolean = r =>
       r._2.mediafile.nonEmpty && r._2.mediafile.flatMap(m => service.loadMedia(m.id).filter(lm => lm.computeFilePath(wettkampf.toWettkampf).exists())).isEmpty
 
-    val isMediaChangedFilter: RegTuple => Boolean = r =>
-      r._2.mediafile.nonEmpty && (bodenWertungen.contains(r._4.id) && !bodenWertungen(r._4.id).mediafile.equals(r._2.mediafile))
+    val isMediaChangedFilter: RegTuple => Boolean = r => {
+      r._2.mediafile.nonEmpty && (bodenWertungen.contains(r._4.id) && !bodenWertungen(r._4.id).mediafile.exists(a => r._2.mediafile.exists(b => a.id.equals(b.id))))
+    }
 
     val addClubActions = registrations
       .filter(isNewVereinFilter)
@@ -278,10 +279,13 @@ object RegistrationAdmin {
       service.joinVereinWithRegistration(wkInfo.wettkampf.toWettkampf, registration.verein, club)
     }
 
-    service.saveOrUpdateMedias(syncActions.flatMap {
+    val requestMediaList = syncActions.flatMap {
+      case ar: AddRegistration => ar.media
+      case mr: UpdateAthletMediaAction => mr.athletReg.mediafile
       case am: AddMedia => am.athletReg.mediafile
       case _ => None
-    })
+    }
+    service.saveOrUpdateMedias(requestMediaList)
 
     for (moveRegistration: UpdateAthletMediaAction <- syncActions.flatMap {
       case mr: UpdateAthletMediaAction => Some(mr)
@@ -309,13 +313,6 @@ object RegistrationAdmin {
         wkInfo.wettkampf.uuid.get,
         progId, team))
     }
-
-    val requestMediaList = syncActions.flatMap {
-      case mr: UpdateAthletMediaAction => mr.athletReg.mediafile
-      case am: AddMedia => am.athletReg.mediafile
-      case _ => None
-    }
-    println(requestMediaList)
     service.getMediaDownloadRemote(wkInfo.wettkampf.toWettkampf, requestMediaList)
 
     cleanUnusedRiegen(wkInfo.wettkampf.id)

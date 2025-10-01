@@ -67,6 +67,7 @@ class CompetitionCoordinatorClientActor(wettkampfUUID: String) extends Persisten
   private var pendingKeepAliveAck: Option[Int] = None
   private var openDurchgangJournal: Map[Option[String], List[AthletWertungUpdatedSequenced]] = Map.empty
   private var state: CompetitionState = CompetitionState()
+  private var lastMediaEvent: Option[MediaPlayerEvent] = None
   private var geraeteRigeListe: List[GeraeteRiege] = List.empty
   private var clientId: () => String = () => ""
 
@@ -235,6 +236,11 @@ class CompetitionCoordinatorClientActor(wettkampfUUID: String) extends Persisten
     case awu: AthletRemovedFromWettkampf => websocketProcessor(Some(sender()), awu)
     case awu: ScoresPublished => websocketProcessor(Some(sender()), awu)
 
+    case m: MediaPlayerAction => websocketProcessor(Some(sender()), m.asInstanceOf[KutuAppEvent])
+    case m: MediaPlayerEvent =>
+      lastMediaEvent = Some(m)
+      websocketProcessor(Some(sender()), m.asInstanceOf[KutuAppEvent])
+
     case fds: FinishDurchgangStation =>
       persist(DurchgangStationFinished(fds.wettkampfUUID, fds.durchgang, fds.geraet, fds.step)) { evt =>
         handleEvent(evt)
@@ -289,6 +295,7 @@ class CompetitionCoordinatorClientActor(wettkampfUUID: String) extends Persisten
       state.lastWertungenPerWKDisz(durchgang.getOrElse("")),
       state.lastWertungenPerDisz(durchgang.getOrElse("")),
       state.lastBestenResults)
+      lastMediaEvent.foreach(ref ! _)
 
 
     // system actions
@@ -481,6 +488,12 @@ class CompetitionCoordinatorClientActor(wettkampfUUID: String) extends Persisten
         CompetitionCoordinatorClientActor.publish(RefreshWettkampfMap(wettkampf.uuid.get), "WK-Admin")
         CompetitionRegistrationClientActor.publish(RegistrationResync(wettkampf.uuid.get), "WK-Admin")
         notifyWebSocketClients(senderWebSocket, arw, "")
+
+      case mediaPlayerAction: MediaPlayerAction =>
+        notifyWebSocketClients(senderWebSocket, mediaPlayerAction, "")
+
+      case mediaPlayerEvent: MediaPlayerEvent =>
+        notifyWebSocketClients(senderWebSocket, mediaPlayerEvent, "")
 
       case _ =>
     }
@@ -707,7 +720,9 @@ object CompetitionCoordinatorClientActor extends JsonSupport with EnrichedJson {
     }
   } catch {
     case e: Exception =>
-      logger.debug("unparsable json mapped to MessageAck: " + text, e)
+      //logger.debug("unparsable json mapped to MessageAck: " + text, e)
+      println("unparsable json mapped to MessageAck: " + text, e)
+      e.printStackTrace()
       MessageAck(text)
   }
 

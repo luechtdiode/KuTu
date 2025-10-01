@@ -1,5 +1,5 @@
 import { Component, NgZone, inject, viewChild } from '@angular/core';
-import { WertungContainer, Wertung, ScoreCalcVariable, ScoreCalcVariables } from '../backend-types';
+import { WertungContainer, Wertung, ScoreCalcVariable, ScoreCalcVariables, AthletMediaIsAtStart, AthletMediaIsFree, AthletMediaIsPaused, AthletMediaIsRunning } from '../backend-types';
 import { BehaviorSubject, Subject, Subscription, defer, of } from 'rxjs';
 import { NavController, Platform, ToastController, AlertController, IonItemSliding } from '@ionic/angular';
 import { BackendService } from '../services/backend.service';
@@ -9,6 +9,7 @@ import { Keyboard } from '@capacitor/keyboard';
 import { Capacitor } from '@capacitor/core';
 import { turn10ProgrammNames } from '../utils';
 import { debounceTime, distinctUntilChanged, map, filter, switchMap, tap, share } from 'rxjs/operators';
+import { encodeURIComponent2 } from '../services/websocket.service';
 
 @Component({
     selector: 'app-wertung-editor',
@@ -25,9 +26,6 @@ export class WertungEditorPage {
   platform = inject(Platform);
   private zone = inject(NgZone);
 
-  private hasMedia = true;
-  private mediaSource: string = 'https://api.soundcloud.com/tracks/10510425'//'https://on.soundcloud.com/O5HeFmZCb9jZlH3cXT';
-
   constructor() {
     const backendService = this.backendService;
 
@@ -39,9 +37,18 @@ export class WertungEditorPage {
     const itemId = parseInt(this.route.snapshot.paramMap.get('itemId'));
     this.updateUI(backendService.wertungen.find(w => w.id === itemId));
     this.installLazyAction();
+    this.backendService.durchgangStarted.pipe(
+      map(dgl =>
+      dgl.filter(dg =>
+        encodeURIComponent2(dg.durchgang) === encodeURIComponent2(this.durchgang)
+        && dg.wettkampfUUID === this.backendService.competition).length > 0 ? true : false
+    )).subscribe(dg => {
+      this.durchgangopen = dg;
+      this.mediaButtonDisabled = !this.backendService.isWebsocketConnected() || !dg
+    });
   }
   private itemOriginal: WertungContainer;
-
+  private durchgangopen = false;
   public readonly form = viewChild<any>('wertungsform');
   public readonly enote = viewChild<{
     setFocus: () => void;
@@ -51,6 +58,7 @@ export class WertungEditorPage {
 }>('dnote');
 
   private subscription: Subscription;
+  private mediasubscription: Subscription;
 
   private readonly wertungChanged = new Subject<Wertung>();
 
@@ -59,6 +67,10 @@ export class WertungEditorPage {
   lastValidatedWertung: Wertung;
   nextItem: WertungContainer
   exercices: ScoreCalcVariable[][];
+  currentMediaState = 'unbekannt';
+  currentMediaButtonText = 'Musik laden';
+  currentMediaButtonIcon = 'play-circle-outline';
+  currentMediaAction = () => {};
 
   geraetId: number;
 
@@ -76,6 +88,14 @@ export class WertungEditorPage {
   set wertung(value: Wertung) {
     this._wertung = value;
     this.updateExercices();
+  }
+  mediaButtonDisabled = true;
+  durchgangstate() {
+    const connected = this.backendService.isWebsocketConnected() ? (this.durchgangopen ? 'gestartet' : 'gesperrt') : 'offline';
+    return connected;
+  }
+  get connected(): boolean {
+    return this.backendService.isWebsocketConnected();
   }
 
   groupBy = <T, K extends keyof any>(arr: T[], key: (i: T) => K) => arr.reduce(
@@ -177,7 +197,8 @@ export class WertungEditorPage {
     let toValidate: Wertung = Object.assign({}, wertung, {
       noteD: wertung.variables ? null : wertung.noteD,
       noteE: wertung.variables ? null : wertung.noteE,
-      variables: wertung.variables
+      variables: wertung.variables,
+      mediafile: wertung.mediafile
     });
     if (toValidate.variables || toValidate.noteD !== this.lastValidatedWertung?.noteD || toValidate.noteE !== this.lastValidatedWertung?.noteE) {
       this.lastValidatedWertung = toValidate;
@@ -201,6 +222,10 @@ export class WertungEditorPage {
       this.subscription.unsubscribe();
       this.subscription = undefined;
     }
+    if (this.mediasubscription) {
+      this.mediasubscription.unsubscribe();
+      this.mediasubscription = undefined;
+    }
   }
 
   ionViewWillEnter() {
@@ -208,6 +233,15 @@ export class WertungEditorPage {
       this.subscription.unsubscribe();
       this.subscription = undefined;
     }
+    if (this.mediasubscription) {
+      this.mediasubscription.unsubscribe();
+      this.mediasubscription = undefined;
+    }
+    this.mediasubscription = this.backendService.mediaStateChanged.subscribe(ms => {
+      this.zone.run(() => {
+        this.mediaStateChanged(ms);
+      });
+    });
     this.subscription = this.backendService.wertungUpdated.subscribe(wc => {
       this.zone.run(() => {
         if (wc.wertung.athletId === this.wertung.athletId
@@ -224,7 +258,6 @@ export class WertungEditorPage {
       });
     });
     this.platform.ready().then(() => {
-
       // We need to use a timeout in order to set the focus on load
       setTimeout(() => {
         let Keyboard;
@@ -259,7 +292,9 @@ export class WertungEditorPage {
   }
 
   updateUI(wc: WertungContainer) {
+
     this.zone.run(() => {
+      this.mediaStateChanged(this.backendService.mediaStateChanged.value);
       this.waiting = false;
       this.item = Object.assign({}, wc);
       this.isDNoteUsed = this.item.isDNoteUsed;
@@ -284,6 +319,86 @@ export class WertungEditorPage {
 
   ensureInitialValues(wertung: Wertung): Wertung {
     return Object.assign(this.wertung, wertung);
+  }
+
+
+  mediaStateChanged(message: AthletMediaIsAtStart|AthletMediaIsRunning|AthletMediaIsPaused|AthletMediaIsFree) {
+    if (this.wertung?.mediafile === null || this.geraetName() !== 'Boden') {
+      this.currentMediaState = 'keine Musik zugeordnet';
+      this.currentMediaButtonText = '';
+    } else {
+      switch (message.type) {
+        case 'AthletMediaIsFree':
+          this.currentMediaState = 'Musik Player ist frei';
+          this.currentMediaButtonText = 'Musik laden';
+          this.currentMediaButtonIcon = 'recording-outline';
+          this.currentMediaAction = this.loadMusic;
+          break;
+        default:
+          if (message.media?.id === this.wertung?.mediafile?.id) {
+            switch (message.type) {
+              case 'AthletMediaIsAtStart':
+                this.currentMediaState = 'Musik ist bereit für ' + message.context;
+                this.currentMediaButtonText = 'Musik abspielen';
+                this.currentMediaButtonIcon = 'play-circle-outline';
+                this.currentMediaAction = this.playMusic;
+                break;
+              case 'AthletMediaIsRunning':
+                this.currentMediaState = 'Musik läuft für ' + message.context;
+                this.currentMediaButtonText = 'Musik stoppen';
+                this.currentMediaButtonIcon = 'stop-circle-outline';
+                this.currentMediaAction = this.playMusic;
+                break;
+              case 'AthletMediaIsPaused':
+                this.currentMediaState = 'Musik ist pausiert für ' + message.context;
+                this.currentMediaButtonText = 'Musik abspielen';
+                this.currentMediaButtonIcon = 'play-circle-outline';
+                this.currentMediaAction = this.playMusic;
+                break;
+              case 'AthletMediaIsFree':
+                this.currentMediaState = 'Musik Player ist frei';
+                this.currentMediaButtonText = 'Musik abspielen';
+                this.currentMediaButtonIcon = 'play-circle-outline';
+                this.currentMediaAction = this.playMusic;
+                break;
+            }
+          } else {
+            this.currentMediaState = 'Musik Player ist belegt für ' + message.context;
+            this.currentMediaButtonText = '';
+            this.currentMediaButtonIcon = 'play-circle-outline';
+            this.currentMediaAction = () => {};
+          }
+      }
+    }
+  }
+
+  loadMusic() {
+    this.backendService.aquireMusic(this.ensureInitialValues(this.wertung));
+  }
+
+  playMusic() {
+    const message = this.backendService.mediaStateChanged.value;
+    const type = message.type;
+    switch (type) {
+      case 'AthletMediaIsAtStart':
+      case 'AthletMediaIsPaused':
+        if (message.media.id === this.wertung.mediafile?.id) {
+          this.backendService.playMusic(this.ensureInitialValues(this.wertung));
+        }
+        break;
+
+      case 'AthletMediaIsRunning':
+        if (message.media.id === this.wertung.mediafile?.id) {
+          this.backendService.stopMusic(this.ensureInitialValues(this.wertung));
+        } 
+       break;
+
+      case 'AthletMediaIsFree':
+        this.backendService.aquireMusic(this.ensureInitialValues(this.wertung));
+        this.backendService.playMusic(this.ensureInitialValues(this.wertung));
+        break;
+    }
+
   }
 
   validate(form: NgForm) {

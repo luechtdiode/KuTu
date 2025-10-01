@@ -1,6 +1,7 @@
 package ch.seidel.kutu.view
 
 import ch.seidel.kutu.KuTuApp
+import ch.seidel.kutu.actors.AthletMediaAquire
 import ch.seidel.kutu.data.ResourceExchanger.saveMediaFile
 import ch.seidel.kutu.domain.{KutuService, Media, Wettkampf}
 import ch.seidel.kutu.view.player.Player
@@ -43,13 +44,19 @@ case class AthletHeaderPane(wettkampf: Wettkampf, service: KutuService, wkview: 
     onAction = (event: ActionEvent) => {
       if (selected != null) {
         Player.clearPlayList()
-        selected.map(a => (a.init.wettkampfdisziplin.disziplin.name, a.init.mediafile.flatMap(m => service.loadMedia(m.id)))).filter(item => item._2.nonEmpty).foreach { item =>
-          val (disziplin, medias) = item
+        val items = selected
+          .filter(a => a.init.wettkampfdisziplin.disziplin.name.equals("Boden"))
+          .map(a => (a, a.init.wettkampfdisziplin.disziplin.name, a.init.mediafile.flatMap(m => service.loadMedia(m.id)))).filter(item => item._2.nonEmpty).filter(_._3.nonEmpty)
+        items.foreach(item => {
+          val (a, disziplin, medias) = item
           val media = medias.get
           val title = s"${selected.head.init.athlet.vorname} ${selected.head.init.athlet.name} ${selected.head.init.athlet.verein.map(v => s"(${v.name})").getOrElse("")}, ${disziplin} - ${media.name}"
-          Player.addToPlayList(title, media.computeFilePath(wettkampf).toURI.toASCIIString)
-        }
-        Player.show(Player.getPlayList().getSongs.head.getKey)
+          Player.addToPlayList(title, media.computeFilePath(wettkampf).toURI.toASCIIString.toLowerCase)
+        })
+        items.headOption.foreach(item => {
+          val (a, _, _) = item
+          Player.load(Player.getPlayList().getSongs.head.getKey, AthletMediaAquire(a.init.wettkampf.uuid.get, a.init.athlet, a.init.toWertung))
+        })
       }
     }
   }
