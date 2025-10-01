@@ -66,6 +66,65 @@ trait WertungenRoutes extends SprayJsonSupport with JsonSupport with JwtSupport 
             }
           }
         } ~
+        pathPrefixLabeled("music" / JavaUUID, "music/:competition-id") { (competitionId) =>
+          pathLabeled("aquire", "aquire") {
+            put {
+              authenticated() { userId =>
+                if (userId.equals(competitionId.toString)) {
+                  entity(as[Wertung]) { wertung =>
+                    getCurrentWertung(wertung) match {
+                      case None => None
+                      case Some(currentWertung) =>
+                        CompetitionCoordinatorClientActor.publish(AthletMediaAquire(userId, currentWertung.athlet, currentWertung.toWertung), clientId)
+                    }
+                    complete(StatusCodes.OK)
+                  }
+                } else {
+                  log.error(s"[$clientId/$userId] Unauthorized: Reject unauthenticated update of wertung")
+                  complete(StatusCodes.Unauthorized)
+                }
+              }
+            }
+          } ~
+          pathLabeled("start", "start") {
+            put {
+              authenticated() { userId =>
+                if (userId.equals(competitionId.toString)) {
+                  entity(as[Wertung]) { wertung =>
+                    getCurrentWertung(wertung) match {
+                      case None => None
+                      case Some(currentWertung) =>
+                        CompetitionCoordinatorClientActor.publish(AthletMediaStart(userId, currentWertung.athlet, currentWertung.toWertung), clientId)
+                    }
+                    complete(StatusCodes.OK)
+                  }
+                } else {
+                  log.error(s"[$clientId/$userId] Unauthorized: Reject unauthenticated update of wertung")
+                  complete(StatusCodes.Unauthorized)
+                }
+              }
+            }
+          } ~
+          pathLabeled("stop", "stop") {
+            put {
+              authenticated() { userId =>
+                if (userId.equals(competitionId.toString)) {
+                  entity(as[Wertung]) { wertung =>
+                    getCurrentWertung(wertung) match {
+                      case None => None
+                      case Some(currentWertung) =>
+                        CompetitionCoordinatorClientActor.publish(AthletMediaToStart(userId, currentWertung.athlet, currentWertung.toWertung), clientId)
+                    }
+                    complete(StatusCodes.OK)
+                  }
+                } else {
+                  log.error(s"[$clientId/$userId] Unauthorized: Reject unauthenticated update of wertung")
+                  complete(StatusCodes.Unauthorized)
+                }
+              }
+            }
+          }
+        } ~
         pathPrefixLabeled("durchgang" / JavaUUID, "durchgang/:competition-id") { competitionId =>
           if (!wettkampfExists(competitionId.toString)) {
             log.error(handleAbuse(clientId, uri))

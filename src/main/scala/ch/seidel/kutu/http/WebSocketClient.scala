@@ -25,6 +25,7 @@ object WebSocketClient extends SprayJsonSupport with JsonSupport with AuthSuppor
 
   private var connectedOutgoingQueue: Option[SourceQueueWithComplete[Message]] = None
   private var connectedIncomingPromise: Option[Promise[Option[Message]]] = None
+  private var mediaPlayerActions: Option[MediaPlayerAction=>Unit] = None
   val modelWettkampfWertungChanged: SimpleObjectProperty[KutuAppEvent] = new SimpleObjectProperty[KutuAppEvent]()
   var lastSequenceId = Long.MinValue
   var lastWettkampf: Option[Wettkampf] = None
@@ -84,7 +85,7 @@ object WebSocketClient extends SprayJsonSupport with JsonSupport with AuthSuppor
         logger.error(s"completed with error: $error")
         disconnect
     }
-    promise // return promise to close the ws-connection at some point later    
+    promise // return promise to close the ws-connection at some point later
   }
   
   def disconnect = {
@@ -95,11 +96,23 @@ object WebSocketClient extends SprayJsonSupport with JsonSupport with AuthSuppor
   }
   
   def isConnected = connectedIncomingPromise.nonEmpty
-  
+
+  def registerMediaPlayerActionHandler(eventhandler: MediaPlayerAction=>Unit): Unit = {
+    mediaPlayerActions = Some(eventhandler)
+  }
+
+  def publishLocal(event: MediaPlayerAction): Unit = {
+    mediaPlayerActions.foreach(_.apply(event))
+  }
+
   def publish(event: KutuAppEvent): Unit = {
     val message = tryMapEvent(event)
     Platform.runLater {
-      modelWettkampfWertungChanged.set(event)
+      event match {
+        case ma: MediaPlayerAction =>
+        case ma: MediaPlayerEvent =>
+        case _ => modelWettkampfWertungChanged.set(event)
+      }
       connectedOutgoingQueue.foreach(_.offer(message))
     }
   }

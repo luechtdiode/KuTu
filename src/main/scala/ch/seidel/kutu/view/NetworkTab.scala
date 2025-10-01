@@ -4,6 +4,7 @@ import ch.seidel.commons.{LazyTabPane, TabWithService}
 import ch.seidel.kutu.Config._
 import ch.seidel.kutu.KuTuApp.{enc, hostServices}
 import ch.seidel.kutu._
+import ch.seidel.kutu.actors.AthletMediaAquire
 import ch.seidel.kutu.domain._
 import ch.seidel.kutu.http.WebSocketClient
 import ch.seidel.kutu.renderer.PrintUtil.FilenameDefault
@@ -275,7 +276,7 @@ class NetworkTab(wettkampfmode: BooleanProperty, override val wettkampfInfo: Wet
   closable = false
   text = "Netzwerk-Dashboard"
 
-  Player.setWettkampf(wettkampfInfo.wettkampf.toWettkampf)
+  Player.setWettkampf(wettkampfInfo.wettkampf.toWettkampf, service)
 
   val disziplinlist: List[Disziplin] = wettkampfInfo.disziplinList
 
@@ -664,12 +665,12 @@ class NetworkTab(wettkampfmode: BooleanProperty, override val wettkampfInfo: Wet
           geraeteRiege =>
             Player.clearPlayList()
             val mediaList = geraeteRiege.getMediaList(p.toWettkampf, service.loadMedia)
-            mediaList.map { case (_, title, _) =>
+            mediaList.map { case (_, wertung, title, _) =>
               KuTuApp.makeMenuAction(title) { (caption, action) =>
-                mediaList.foreach { case (_, title, mediaURI) =>
-                  Player.addToPlayList(title, mediaURI.toString)
+                mediaList.foreach { case (_, _, title, mediaURI) =>
+                  Player.addToPlayList(title, mediaURI.toASCIIString.toLowerCase)
                 }
-                Player.show(title)
+                Player.load(title, AthletMediaAquire(wertung.wettkampf.uuid.get, wertung.athlet, wertung.toWertung))
               }
             }
         }.take(3)

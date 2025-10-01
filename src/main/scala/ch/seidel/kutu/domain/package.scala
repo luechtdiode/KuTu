@@ -1495,11 +1495,10 @@ package object domain {
     private def songtitle(kandidat: Kandidat, media: Media) = {
       s"${kandidat.vorname} ${kandidat.name} (${kandidat.verein}), ${disziplin.map(_.easyprint).getOrElse("")} - ${media.name}"
     }
-    def getMediaList(wettkampf: Wettkampf, lookup: String=>Option[MediaAdmin]): Seq[(Kandidat, String, URI)] = kandidaten
+    def getMediaList(wettkampf: Wettkampf, lookup: String=>Option[MediaAdmin]): Seq[(Kandidat, WertungView, String, URI)] = kandidaten
       .flatMap(k => k.wertungen.find(w => disziplin.contains(w.wettkampfdisziplin.disziplin))
-        .map(_.toWertung)
-        .filter(w => w.endnote.isEmpty && k.hasMedia(wettkampf, lookup, w))
-        .map(w => (k, songtitle(k, w.mediafile.get), k.getMediaURI(wettkampf, lookup, w))))
+        .filter(w => w.endnote.isEmpty && w.wettkampfdisziplin.disziplin.name.equals("Boden") && k.hasMedia(wettkampf, lookup, w.toWertung))
+        .map(w => (k, w, songtitle(k, w.mediafile.get), k.getMediaURI(wettkampf, lookup, w.toWertung))))
   }
 
   sealed trait SexDivideRule {
