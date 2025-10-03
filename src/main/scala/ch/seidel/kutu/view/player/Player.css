@@ -77,8 +77,11 @@
     -fx-background-color: transparent;
 }
 #volume .knobOverlay {
-    -fx-background-color:
-        linear (0%,0%) to (0%,100%) stops (0,rgba(255,255,255,0.1)) (1,rgba(0,0,0,0.5));
+    -fx-background-color:linear-gradient(
+                             to bottom,
+                             rgba(255,255,255,0.1) 0%,
+                             rgba(0,0,0,0.5) 100%
+                           );
     -fx-background-radius: 500;
     -fx-background-insets: 0;
     -fx-background-image: url("images/volume-highlights.png");
