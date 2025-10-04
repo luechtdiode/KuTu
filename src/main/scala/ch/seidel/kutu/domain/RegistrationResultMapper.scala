@@ -17,7 +17,7 @@ trait RegistrationResultMapper extends AthletResultMapper with MediaResultMapper
     val geschlecht: String = r.<<
     val name: String = r.<<
     val vorname: String = r.<<
-    val gebdat: String = r.<<
+    val gebdat: String = dateToExportedStr(r.<<)
     val programId: Long = r.<<
     val registrationTime: Long = getTime(r)
     val athlet: Option[AthletView] = getAthletOptionResult(r)
