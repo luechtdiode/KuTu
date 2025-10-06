@@ -13,9 +13,12 @@ CREATE TABLE IF NOT EXISTS media (
   stamp timestamp
 );
 
-CREATE TRIGGER IF NOT EXISTS media_insert
+CREATE OR REPLACE FUNCTION set_timestamp() RETURNS TRIGGER AS $$ BEGIN UPDATE media SET stamp=CURRENT_TIMESTAMP WHERE id=NEW.id; RETURN new; END; $$ language plpgsql;
+
+CREATE TRIGGER media_insert
   AFTER INSERT ON media
-  BEGIN UPDATE media SET stamp=CURRENT_TIMESTAMP WHERE id=NEW.id; END;
+  FOR EACH ROW
+  EXECUTE FUNCTION set_timestamp();
 
 ALTER TABLE wertung            ADD COLUMN media_id varchar(70) REFERENCES media (id);
 ALTER TABLE athletregistration ADD COLUMN media_id varchar(70) REFERENCES media (id);
