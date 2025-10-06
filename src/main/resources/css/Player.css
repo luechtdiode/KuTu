@@ -18,7 +18,7 @@
     -fx-background-radius: 0;
     -fx-background-insets: 0;
     -fx-padding: 84 53 0 0;
-    -fx-background-image: url("images/thumb.png");
+    -fx-background-image: url("/images/player/thumb.png");
 }
 .slider:focused *.thumb {
     -fx-effect: dropshadow( three-pass-box , rgba(255,0,0,0.5) , 8 , 0.5 , 0 , 0 );
@@ -50,7 +50,7 @@
 }
 #balance .knob {
     -fx-background-color: transparent;
-    -fx-background-image: url("images/balance.png");
+    -fx-background-image: url("/images/player/balance.png");
     -fx-background-position: center center;
     -fx-padding: 40.5;
 }
@@ -64,7 +64,7 @@
 }
 #volume .knob {
     -fx-background-color: transparent;
-    -fx-background-image: url("images/volume.png");
+    -fx-background-image: url("/images/player/volume.png");
     -fx-background-position: center center;
     -fx-padding: 85;
 }
@@ -84,6 +84,6 @@
                            );
     -fx-background-radius: 500;
     -fx-background-insets: 0;
-    -fx-background-image: url("images/volume-highlights.png");
+    -fx-background-image: url("/images/player/volume-highlights.png");
     -fx-background-position: center center;
 }

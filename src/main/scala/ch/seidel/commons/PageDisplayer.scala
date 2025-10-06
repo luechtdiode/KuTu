@@ -306,10 +306,22 @@ object PageDisplayer {
     }
   }
   private def chooseWettkampfPage(wettkampfmode: BooleanProperty, wettkampf: WettkampfView, tree: KuTuAppTree): Node = {
-    displayPage(WettkampfPage.buildTab(wettkampfmode, WettkampfInfo(wettkampf, tree.getService), tree.getService))
+    try {
+      displayPage(WettkampfPage.buildTab(wettkampfmode, WettkampfInfo(wettkampf, tree.getService), tree.getService))
+    } catch {
+      case e:Exception =>
+        e.printStackTrace()
+        throw e
+    }
   }
   private def chooseVereinPage(wettkampfmode: BooleanProperty, verein: Verein, tree: KuTuAppTree): Node = {
-    displayPage(TurnerPage.buildTab(wettkampfmode, verein, tree.getService))
+    try {
+      displayPage(TurnerPage.buildTab(wettkampfmode, verein, tree.getService))
+    } catch {
+      case e:Exception =>
+        e.printStackTrace()
+        throw e
+    }
   }
 
   var activePage: Option[DisplayablePage] = None
