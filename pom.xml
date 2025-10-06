@@ -321,7 +321,7 @@
 		<maven.build.timestamp.format>yyyy-MM-dd HH:mm</maven.build.timestamp.format>
 		<jdk-home>${JAVA_HOME}</jdk-home>
 		<scala.majorversion>2.13</scala.majorversion>
-		<scala.version>2.13.16</scala.version>
+		<scala.version>2.13.17</scala.version>
 		<javafx.version>21.0.4</javafx.version>
 		<pekkoHttp.version>1.2.0</pekkoHttp.version>
 		<pekko.version>1.2.0</pekko.version>
