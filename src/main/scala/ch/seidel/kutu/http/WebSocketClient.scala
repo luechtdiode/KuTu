@@ -113,8 +113,8 @@ object WebSocketClient extends SprayJsonSupport with JsonSupport with AuthSuppor
         case ma: MediaPlayerEvent =>
         case _ => modelWettkampfWertungChanged.set(event)
       }
-      connectedOutgoingQueue.foreach(_.offer(message))
     }
+    connectedOutgoingQueue.foreach(_.offer(message))
   }
   
   def reportErrorsFlow[T](handleError: Throwable=>Unit): Flow[T, T, Any] =

@@ -168,7 +168,7 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
 
   val riegenFilterModel = ObservableBuffer[RiegeEditor]()
 
-  val athletHeaderPane: AthletHeaderPane = AthletHeaderPane(wettkampf.toWettkampf, service, wkview)
+  val athletHeaderPane: AthletHeaderPane = AthletHeaderPane(wettkampf.toWettkampf, service, wkview, wettkampfmode)
   val disziplinlist = wettkampfInfo.disziplinList
   val withDNotes = wettkampfInfo.isDNoteUsed
   var lastFilter = ""
@@ -499,18 +499,12 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
     new WKTableColumn[String](-1) {
       text = "Athlet"
       cellValueFactory = { x =>
-        new ReadOnlyStringWrapper(x.value, "athlet", {
-          val a = x.value.head.init.athlet
-          val hasmedia = x.value.flatMap(w => w.init.mediafile).nonEmpty
-          s"${a.vorname} ${a.name} ${
-            (a.gebdat match {
-              case Some(d) => f"$d%tY "
-              case _ => " "
-            })
-          }${if (hasmedia) " ♪" else ""}"
-        })
+        x.value
+          .filter(w => w.init.wettkampfdisziplin.disziplin.name.equals("Boden"))
+          .map(_.athletText)
+          .headOption
+          .getOrElse(x.value.head.athletText)
       }
-      //        delegate.impl_setReorderable(false) // shame on me??? why this feature should not be a requirement?
       prefWidth = 150
       editable = false
     },

@@ -2,6 +2,7 @@ package ch.seidel.kutu.domain
 
 import ch.seidel.kutu.http.AuthSupport.OPTION_LOGINRESET
 import ch.seidel.kutu.http.Hashing
+import org.slf4j.LoggerFactory
 import slick.jdbc.PostgresProfile.api._
 
 import java.sql.Timestamp
@@ -11,7 +12,7 @@ import scala.concurrent.duration.Duration
 import scala.concurrent.{Await, Future}
 
 trait RegistrationService extends DBService with RegistrationResultMapper with MediaResultMapper with Hashing {
-
+  private val logger = LoggerFactory.getLogger(this.getClass)
   def createRegistration(newReg: NewRegistration): Registration = {
     val similarRegistrations = selectRegistrationsLike(newReg.toRegistration)
       .filter{(reg: Registration) =>
@@ -712,8 +713,8 @@ trait RegistrationService extends DBService with RegistrationResultMapper with M
     if (id == null || id.isEmpty) {
       None
     } else {
-      val md5Id = id.substring(0, id.lastIndexOf("."))
-      println(s"searching for $id, $md5Id")
+      val md5Id = if (id.contains(".")) id.substring(0, id.lastIndexOf(".")) else id
+      logger.info(s"searching for $id, $md5Id")
       val medias = Await.result(database.run {
         sql"""
                   select
@@ -731,7 +732,6 @@ trait RegistrationService extends DBService with RegistrationResultMapper with M
                   order by ord asc, stage desc, id asc
          """.as[MediaAdmin].transactionally
       }, Duration.Inf)
-      println(medias)
       medias.headOption
     }
   }
@@ -752,7 +752,7 @@ trait RegistrationService extends DBService with RegistrationResultMapper with M
       loadMedia(media.id) match {
         case Some(m) => updateMedia(m)
         case None =>
-          println(s"putting local unknown media to index")
+          logger.info(s"putting local unknown media to index")
           Await.result(database.run {
             sqlu"""
                   insert into media
@@ -779,7 +779,7 @@ trait RegistrationService extends DBService with RegistrationResultMapper with M
 
   def putMedia(media: Media): MediaAdmin = {
     if (media.id == null || media.id.isEmpty) {
-      println(s"putting new media to index")
+      logger.info(s"putting new media to index")
       val id = UUID.randomUUID().toString
       Await.result(database.run {
         sqlu"""
@@ -800,7 +800,7 @@ trait RegistrationService extends DBService with RegistrationResultMapper with M
       loadMedia(media.id) match {
         case Some(m) => m
         case None =>
-          println(s"putting local unknown media to index")
+          logger.info(s"putting local unknown media to index")
           Await.result(database.run {
             sqlu"""
                   insert into media
@@ -823,7 +823,9 @@ trait RegistrationService extends DBService with RegistrationResultMapper with M
   def cleanUnusedMedia(): Seq[MediaAdmin] = {
     Await.result(database.run{
       sqlu"""
-              delete from media where not exists (select true from athletregistration ar where ar.media_id = media.id) and not exists (select true from wertung w where w.media_id = media.id)
+              delete from media
+              where not exists (select true from athletregistration ar where ar.media_id = media.id)
+                and not exists (select true from wertung w where w.media_id = media.id)
           """ >>
       sql"""
               select
@@ -846,16 +848,12 @@ trait RegistrationService extends DBService with RegistrationResultMapper with M
         sqlu"""
             update wertung
             set media_id = ${media.id}
-            where media_id is not null
-            and media_id <> ${media.id}
-            and exists (select true from media m where m.id <> ${media.id} and m.md5 == ${media.md5})
+            where media_id in (select id from media m where m.id <> ${media.id} and m.md5 == ${media.md5})
         """ >>
         sqlu"""
             update athletregistration
             set media_id = ${media.id}
-            where media_id is not null
-            and media_id <> ${media.id}
-            and exists (select true from media m where m.id <> ${media.id} and m.md5 == ${media.md5})
+            where media_id in (select id from media m where m.id <> ${media.id} and m.md5 == ${media.md5})
         """ >>
         sqlu"""
             delete from media
