@@ -1547,7 +1547,7 @@ package object domain {
       case AddRegistration(verein, programId, athlet, suggestion, team, media) => AddRegistration(verein.toPublicView, programId, athlet.toPublicView, suggestion.toPublicView, team, media)
       case MoveRegistration(verein, fromProgramId, fromTeam, toProgramid, toTeam, athlet, suggestion) => MoveRegistration(verein.toPublicView, fromProgramId, fromTeam, toProgramid, toTeam, athlet.toPublicView, suggestion.toPublicView)
       case RemoveRegistration(verein, programId, athlet, suggestion) => RemoveRegistration(verein.toPublicView, programId, athlet.toPublicView, suggestion.toPublicView)
-      case am:AddMedia => am
+      case am:AddMedia => AddMedia(am.verein.toPublicView, am.athletReg.toPublicView)
     }
   }
 
