@@ -4,6 +4,11 @@ import ch.seidel.kutu.calc.{ScoreAggregateFn, ScoreCalcTemplate, ScoreCalcTempla
 import slick.jdbc.GetResult
 
 trait MediaResultMapper {
+  val getTime = GetResult(r => {
+    val t: java.sql.Timestamp = r.<<
+    t.getTime
+  })
+
   implicit def getMediaOption: GetResult[Option[Media]] = GetResult{ r =>
     r.nextStringOption() match {
       case Some(x) => Some(Media(x, r.<<, r.<<))
@@ -13,11 +18,11 @@ trait MediaResultMapper {
   implicit def getMedia: GetResult[Media] = GetResult{ r => Media(r.<<, r.<<, r.<<)}
   implicit def getMediaAdminOption: GetResult[Option[MediaAdmin]] = GetResult{ r =>
     r.nextStringOption() match {
-      case Some(x) => Some(MediaAdmin(x, r.<<, r.<<, r.<<, r.<<, r.<<, r.<<))
+      case Some(x) => Some(MediaAdmin(x, r.<<, r.<<, r.<<, r.<<, r.<<, getTime(r)))
       case None => r.skip; r.skip; r.skip; r.skip; None
     }
   }
-  implicit def getMediaAdmin: GetResult[MediaAdmin] = GetResult{ r => MediaAdmin(r.<<, r.<<, r.<<, r.<<, r.<<, r.<<, r.<<)}
+  implicit def getMediaAdmin: GetResult[MediaAdmin] = GetResult{ r => MediaAdmin(r.<<, r.<<, r.<<, r.<<, r.<<, r.<<, getTime(r))}
 }
 
 trait ScoreCalcTemplateResultMapper {
