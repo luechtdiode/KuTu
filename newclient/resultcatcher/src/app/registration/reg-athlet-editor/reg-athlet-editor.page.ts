@@ -196,6 +196,20 @@ export class RegAthletEditorPage implements OnInit {
   }
   
   mediaSource: string;
+  onRemoveMedia(event) {
+    this.backendService.deleteFile(this.wkId, this.regId, this.registration.id).subscribe({
+      next: (response) => {     
+        console.log("File delete finished: response:", response);
+        this.registration.mediafile = undefined;
+        this.mediaSource = undefined;  
+        const EL_audio: any = document.querySelector("#myAudio");        
+        EL_audio.src = undefined;
+        EL_audio.load();
+      }, 
+        error: this.backendService.standardErrorHandler
+      }
+    );
+  }
   onFileChange(fileChangeEvent) {
     if (!fileChangeEvent) {
         this.backendService.downloadFile(this.wkId, this.regId, this.registration.id).subscribe((blob) => {
@@ -212,16 +226,22 @@ export class RegAthletEditorPage implements OnInit {
       // Add the file that was just added to the form data
       formData.append("mediafile", audiofile, audiofile.name);    
       // POST formData to server using HttpClient
-      this.backendService.uploadFile(this.wkId, this.regId, this.registration.id, formData).subscribe((response) => {
-        console.log("File upload finished: response:", response);
-        this.registration.mediafile = response.mediafile;
-        this.backendService.downloadFile(this.wkId, this.regId, this.registration.id).subscribe((blob) => {
-          this.mediaSource = URL.createObjectURL(blob);
-          const EL_audio: any = document.querySelector("#myAudio");
-          EL_audio.src = URL.createObjectURL(blob);
-          EL_audio.load();
-        })
-      });
+      this.backendService.uploadFile(this.wkId, this.regId, this.registration.id, formData).subscribe({
+        next: (response) => {
+          console.log("File upload finished: response:", response);
+          this.registration.mediafile = response.mediafile;
+          if (this.registration.id > 0) {
+            this.backendService.downloadFile(this.wkId, this.regId, this.registration.id).subscribe((blob) => {
+              this.mediaSource = URL.createObjectURL(blob);
+              const EL_audio: any = document.querySelector("#myAudio");
+              EL_audio.src = URL.createObjectURL(blob);
+              EL_audio.load();
+            })
+          }
+        }, 
+          error: this.backendService.standardErrorHandler
+        }
+      );
     }
   }
 

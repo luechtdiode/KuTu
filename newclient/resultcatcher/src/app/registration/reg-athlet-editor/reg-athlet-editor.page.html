@@ -95,16 +95,21 @@
         <ion-avatar slot="start" />
         @if (registration.mediafile?.name) {
           <ion-label>Aktuelle Datei: {{registration.mediafile?.name}}</ion-label>
-          <ion-button (click)="onFileChange(null)">Zum anhören laden</ion-button>
+          @if (registration.mediafile?.name && registration.id > 0 && mediaSource === undefined) {
+            <ion-button [disabled]="registration.id === 0" (click)="onFileChange(null)">Zum anhören laden</ion-button>
+          }
+          <ion-button [disabled]="registration.id === 0" (click)="onRemoveMedia(null)" color="danger"><ion-icon name="trash-outline"/></ion-button>
         } @else {
           <ion-label>Keine Datei ausgewählt</ion-label>
         } 
       </ion-item>
+      @if (registration.mediafile?.name && registration.id > 0 && mediaSource) {
       <ion-item>
         <audio controls id="myAudio">
           <source [attr.src]="mediaSource" type="audio/mp3">
         </audio>
       </ion-item>
+      }
     </ion-list>
     <ion-list>
       <ion-button size="large" expand="block" type="submit" #btnSaveNext [disabled]="waiting || !isFormValid()|| !athletRegistrationForm.valid || athletRegistrationForm.untouched" color="success">

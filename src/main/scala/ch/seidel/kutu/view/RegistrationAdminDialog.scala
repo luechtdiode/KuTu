@@ -198,8 +198,9 @@ object RegistrationAdminDialog {
                   s"umteilen von $pgmText$teamText"
                 case RemoveRegistration(reg, programId, athlet, suggestion) =>
                   s"entfernen"
-                case ua:UpdateAthletMediaAction => "Playlist nachführen"
-                case am: AddMedia => "Playlist nachführen"
+                case ua:UpdateAthletMediaAction =>
+                  if (ua.athletReg.mediafile.nonEmpty) "Playlist nachführen" else "Musik entfernen"
+                case am: AddMedia => "Musik herunterladen"
               }
             })
           }

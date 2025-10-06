@@ -136,7 +136,13 @@ trait JsonSupport extends SprayJsonSupport with EnrichedJson {
         case _ =>
           caseClassesJsonFormatter.get(obj.getClass.getSimpleName) match {
             case Some(jsonWriter) =>
-              jsonWriter.asInstanceOf[JsonFormat[KutuAppEvent]].write(obj).addFields(Map("type" -> JsString(obj.getClass.getSimpleName)))
+              try {
+                jsonWriter.asInstanceOf[JsonFormat[KutuAppEvent]].write(obj).addFields(Map("type" -> JsString(obj.getClass.getSimpleName)))
+              } catch {
+                case e: Exception =>
+                  println(obj)
+                  throw e
+              }
             case _ => throw new Exception(s"Unable to find jsonFormatter for $obj")
           }
       }

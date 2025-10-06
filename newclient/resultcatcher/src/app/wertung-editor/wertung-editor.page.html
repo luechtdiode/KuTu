@@ -11,11 +11,13 @@
 </ion-header>
 
 <ion-content>
-    @if (item.wertung?.mediafile && currentMediaButtonText != '') {
+    @if (item.wertung?.mediafile) {
       <ion-item>
         <ion-icon slot="start" name="musical-notes-outline"></ion-icon>        
-        <ion-button size="large" [disabled]="waiting || mediaButtonDisabled"  color="primary" (click)='currentMediaAction()'>
+        <ion-button size="large" [disabled]="waiting || mediaButtonDisabled || currentMediaButtonDisabled"  color="primary" (click)='currentMediaAction()'>
         <ion-icon slot="start" [attr.name]='currentMediaButtonIcon' />{{currentMediaButtonText}}</ion-button>
+        <ion-button slot="end" size="large" [disabled]="waiting || mediaButtonDisabled || currentMediaReleaseButtonDisabled"  color="danger" (click)='releaseMusic()'>
+        <ion-icon name="power-outline"></ion-icon></ion-button>
       </ion-item>
       <ion-item>
         <ion-avatar slot="start"/>

@@ -70,6 +70,8 @@ export class WertungEditorPage {
   currentMediaState = 'unbekannt';
   currentMediaButtonText = 'Musik laden';
   currentMediaButtonIcon = 'play-circle-outline';
+  currentMediaButtonDisabled = true;
+  currentMediaReleaseButtonDisabled = true;
   currentMediaAction = () => {};
 
   geraetId: number;
@@ -325,6 +327,8 @@ export class WertungEditorPage {
   mediaStateChanged(message: AthletMediaIsAtStart|AthletMediaIsRunning|AthletMediaIsPaused|AthletMediaIsFree) {
     if (this.wertung?.mediafile === null || this.geraetName() !== 'Boden') {
       this.currentMediaState = 'keine Musik zugeordnet';
+      this.currentMediaButtonDisabled = true;
+      this.currentMediaReleaseButtonDisabled = true;
       this.currentMediaButtonText = '';
     } else {
       switch (message.type) {
@@ -333,40 +337,49 @@ export class WertungEditorPage {
           this.currentMediaButtonText = 'Musik laden';
           this.currentMediaButtonIcon = 'recording-outline';
           this.currentMediaAction = this.loadMusic;
+          this.currentMediaButtonDisabled = false;
+          this.currentMediaReleaseButtonDisabled = true;
           break;
         default:
           if (message.media?.id === this.wertung?.mediafile?.id) {
+            this.currentMediaReleaseButtonDisabled = false;
             switch (message.type) {
               case 'AthletMediaIsAtStart':
                 this.currentMediaState = 'Musik ist bereit für ' + message.context;
                 this.currentMediaButtonText = 'Musik abspielen';
                 this.currentMediaButtonIcon = 'play-circle-outline';
                 this.currentMediaAction = this.playMusic;
+                this.currentMediaButtonDisabled = false;
                 break;
               case 'AthletMediaIsRunning':
                 this.currentMediaState = 'Musik läuft für ' + message.context;
                 this.currentMediaButtonText = 'Musik stoppen';
                 this.currentMediaButtonIcon = 'stop-circle-outline';
                 this.currentMediaAction = this.playMusic;
+                this.currentMediaButtonDisabled = false;
                 break;
               case 'AthletMediaIsPaused':
                 this.currentMediaState = 'Musik ist pausiert für ' + message.context;
                 this.currentMediaButtonText = 'Musik abspielen';
                 this.currentMediaButtonIcon = 'play-circle-outline';
                 this.currentMediaAction = this.playMusic;
+                this.currentMediaButtonDisabled = false;
                 break;
               case 'AthletMediaIsFree':
                 this.currentMediaState = 'Musik Player ist frei';
                 this.currentMediaButtonText = 'Musik abspielen';
                 this.currentMediaButtonIcon = 'play-circle-outline';
                 this.currentMediaAction = this.playMusic;
+                this.currentMediaButtonDisabled = false;
                 break;
             }
           } else {
             this.currentMediaState = 'Musik Player ist belegt für ' + message.context;
-            this.currentMediaButtonText = '';
-            this.currentMediaButtonIcon = 'play-circle-outline';
+            this.currentMediaButtonText = 'Musik laden';
+            this.currentMediaButtonIcon = 'recording-outline';
             this.currentMediaAction = () => {};
+            this.currentMediaButtonDisabled = true;
+            this.currentMediaReleaseButtonDisabled = true;
           }
       }
     }
@@ -375,7 +388,9 @@ export class WertungEditorPage {
   loadMusic() {
     this.backendService.aquireMusic(this.ensureInitialValues(this.wertung));
   }
-
+  releaseMusic() {
+    this.backendService.releaseMusic(this.ensureInitialValues(this.wertung));
+  }
   playMusic() {
     const message = this.backendService.mediaStateChanged.value;
     const type = message.type;

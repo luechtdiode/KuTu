@@ -5,6 +5,7 @@ import ch.seidel.kutu.Config.remoteAdminBaseUrl
 import ch.seidel.kutu.actors._
 import ch.seidel.kutu.data.RegistrationAdmin.adjustWertungRiegen
 import ch.seidel.kutu.data.ResourceExchanger
+import ch.seidel.kutu.data.ResourceExchanger.updateAthletRegistration
 import ch.seidel.kutu.domain.{AthletRegistration, AthletView, JudgeRegistration, KutuService, Media, MediaAdmin, NewRegistration, ProgrammRaw, Registration, RegistrationResetPW, TeamItem, TeamRegel, Verein, Wettkampf, dateToExportedStr, encodeFileName, str2SQLDate}
 import ch.seidel.kutu.http.AuthSupport.OPTION_LOGINRESET
 import ch.seidel.kutu.renderer.MailTemplates.createPasswordResetMail
@@ -74,6 +75,8 @@ trait RegistrationRoutes extends SprayJsonSupport with JsonSupport with JwtSuppo
       case _ => Future(List[Registration]())
     }
     , Duration.Inf)
+
+  def regchanged(p: Wettkampf): Unit = httpGetClientRequest(s"$remoteAdminBaseUrl/api/registrations/${p.uuid.get}/regchanged")
 
   def getAthletRegistrations(p: Wettkampf, r: Registration): List[AthletRegistration] = Await.result(
     httpGetClientRequest(s"$remoteAdminBaseUrl/api/registrations/${p.uuid.get}/${r.id}/athletes").flatMap {
@@ -273,6 +276,20 @@ trait RegistrationRoutes extends SprayJsonSupport with JsonSupport with JwtSuppo
                         toHTMLasJudgeRegistrationsList(wettkampf, loadAllJudgesOfCompetition(wettkampf.uuid.map(UUID.fromString).get), logofile)
                       })
                   }
+                }
+              }
+            }
+          } ~ pathLabeled("regchanged", "regchanged") {
+            pathEndOrSingleSlash {
+              authenticated() { userId =>
+                if (userId.equals(competitionId.toString)) {
+                  get {
+                    log.info(s"SyncAdmin $clientId - registration changed - resync ...")
+                    CompetitionRegistrationClientActor.publish(RegistrationChanged(wettkampf.uuid.get), clientId)
+                    complete(StatusCodes.OK)
+                  }
+                } else {
+                  complete(StatusCodes.Conflict)
                 }
               }
             }
@@ -569,6 +586,19 @@ trait RegistrationRoutes extends SprayJsonSupport with JsonSupport with JwtSuppo
                                     case Some(mf) => getFromFile(mf.computeFilePath(wettkampf))
                                     case _ => complete(StatusCodes.Conflict, s"Es ist keine Media-Datei in der Anmeldung verknüpft")
                                   }
+                                } ~ delete {
+                                  val registration = selectAthletRegistration(id)
+                                  log.info(s"$clientId: Mediafile ${registration.mediafile} löschen ...")
+                                  registration.mediafile.flatMap(mf => loadMedia(mf.id)) match {
+                                    case Some(mf) =>
+                                      val cleanedAthletReg = registration.copy(mediafile = None)
+                                      ResourceExchanger.updateAthletRegistration(cleanedAthletReg)
+                                      mf.computeFilePath(wettkampf).delete()
+                                      log.info(s"Mediafile ${registration.mediafile.map(_.name).getOrElse("")} gelöscht")
+                                      CompetitionRegistrationClientActor.publish(RegistrationChanged(wettkampf.uuid.get), clientId)
+                                      complete(StatusCodes.OK, cleanedAthletReg)
+                                    case _ => complete(StatusCodes.Conflict, s"Es ist keine Media-Datei in der Anmeldung verknüpft")
+                                  }
                                 } ~ fileUpload("mediafile") {
                                   case (metadata: FileInfo, file: Source[ByteString, Any]) =>
                                     import Core.materializer
@@ -576,16 +606,22 @@ trait RegistrationRoutes extends SprayJsonSupport with JsonSupport with JwtSuppo
                                     if (metadata.contentType.mediaType.fileExtensions.contains(fileext)) {
                                       val is: InputStream = file.runWith(StreamConverters.asInputStream(FiniteDuration(180, TimeUnit.SECONDS)))
                                       val processor = Future {
-                                        println(s"media file uploading (${metadata.fileName}) ...")
-                                        ResourceExchanger.importWettkampfMediaFile(wettkampf, selectAthletRegistration(id).copy(mediafile = Some(MediaAdmin("", metadata.fileName, fileext, 0, "", "", 0L))), is)
+                                        log.info(s"$clientId: Mediafile ${metadata.fileName} aktualisieren ...")
+                                        if (id > 0) {
+                                          ResourceExchanger.importWettkampfMediaFile(wettkampf, selectAthletRegistration(id).copy(mediafile = Some(MediaAdmin("", metadata.fileName, fileext, 0, "", "", 0L))), is)
+                                        } else {
+                                          AthletRegistration(id, 0, None, "", "", "", "", 0L, 0L, None, None, Some(ResourceExchanger.saveMediaFile(is, wettkampf, Media("", metadata.fileName, fileext))))
+                                        }
                                       }
                                       onComplete(processor) {
                                         case Success(r) =>
+                                          CompetitionRegistrationClientActor.publish(RegistrationChanged(wettkampf.uuid.get), clientId)
+                                          log.info(s"$clientId: Mediafile ${metadata.fileName} aktualisiert: ${r.easyprint}")
                                           complete(r)
 
                                         case Failure(e) =>
                                           log.warning(s"mediafile ${metadata.fileName} cannot be uploaded: " + e.toString)
-                                          complete(StatusCodes.Conflict, s"Die Datei ${metadata.fileName} konnte wg. einem technischen Fehler nicht hochgeladen werden. (${e.toString})")
+                                          complete(StatusCodes.Conflict, s"Die Datei ${metadata.fileName} konnte nicht hochgeladen werden. (${e.getMessage})")
                                       }
                                     } else {
                                       log.error(s"invalid media type (${metadata.contentType.mediaType})")
@@ -616,7 +652,7 @@ trait RegistrationRoutes extends SprayJsonSupport with JsonSupport with JwtSuppo
                                 }
                                 val reg = updateAthletRegistration(athletRegistration)
                                 CompetitionRegistrationClientActor.publish(RegistrationChanged(wettkampf.uuid.get), clientId)
-                                log.info(s"$clientId: Athletanmeldung aktualisiert: ${athletRegistration.toPublicView.easyprint}")
+                                log.info(s"$clientId: Athletanmeldung aktualisiert: ${athletRegistration.toPublicView.easyprint}, $reg")
                                 complete(reg)
                               } catch {
                                 case e: IllegalArgumentException =>
