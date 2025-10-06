@@ -1120,7 +1120,11 @@ export class BackendService extends WebsocketService {
 
       return result.asObservable();
     }
-
+    deleteFile(competitionId: string, clubid: number, registrationid: number) {
+      return this.startLoading('Datei wird gelöscht. Bitte warten ...',
+        this.http.delete<MessageAck>(backendUrl + 'api/registrations/' + competitionId + '/' + clubid + '/athletes/' + registrationid + '/mediafile').pipe(share())
+      );
+    }
     uploadFile(competitionId: string, clubid: number, registrationid: number, formdata: FormData) {
       return this.startLoading('Datei wird hochgeladen. Bitte warten ...',
         this.http.post<MessageAck>(backendUrl + 'api/registrations/' + competitionId + '/' + clubid + '/athletes/' + registrationid + '/mediafile', formdata).pipe(share())
@@ -1235,6 +1239,23 @@ export class BackendService extends WebsocketService {
       this.startLoading('Musik wird geladen. Bitte warten ...',
         this.http.put<MessageAck>(
           backendUrl + 'api/music/' + competitionId + '/aquire',
+          wertung
+      ).pipe(share()))
+      .subscribe({
+        next: (data) => {
+        }, 
+        error: this.standardErrorHandler
+      });
+    }
+
+    releaseMusic(wertung: Wertung) {
+      const competitionId = wertung.wettkampfUUID;
+      if (this.shouldConnectAgain()) {
+        this.reconnect();
+      }
+      this.startLoading('Player wird freigegeben. Bitte warten ...',
+        this.http.put<MessageAck>(
+          backendUrl + 'api/music/' + competitionId + '/release',
           wertung
       ).pipe(share()))
       .subscribe({

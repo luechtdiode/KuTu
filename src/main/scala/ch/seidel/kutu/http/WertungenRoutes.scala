@@ -86,6 +86,25 @@ trait WertungenRoutes extends SprayJsonSupport with JsonSupport with JwtSupport 
               }
             }
           } ~
+          pathLabeled("release", "release") {
+            put {
+              authenticated() { userId =>
+                if (userId.equals(competitionId.toString)) {
+                  entity(as[Wertung]) { wertung =>
+                    getCurrentWertung(wertung) match {
+                      case None => None
+                      case Some(currentWertung) =>
+                        CompetitionCoordinatorClientActor.publish(AthletMediaRelease(userId, currentWertung.athlet, currentWertung.toWertung), clientId)
+                    }
+                    complete(StatusCodes.OK)
+                  }
+                } else {
+                  log.error(s"[$clientId/$userId] Unauthorized: Reject unauthenticated media release command")
+                  complete(StatusCodes.Unauthorized)
+                }
+              }
+            }
+          } ~
           pathLabeled("start", "start") {
             put {
               authenticated() { userId =>

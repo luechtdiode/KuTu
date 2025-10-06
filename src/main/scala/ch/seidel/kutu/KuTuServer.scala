@@ -32,6 +32,8 @@ object KuTuServer extends App with KuTuAppHTTPServer with AuthSupport with Hashi
   val cleanedAthletes = markAthletesInactiveOlderThan(3)
   logger.info("initial cleanup clubs ...")
   val cleanedClubs = cleanUnusedClubs()
+  logger.info("initial cleanup media files ...")
+  ResourceExchanger.cleanupMediaFiles()
 
   KuTuMailerActor.send(SimpleMail("Server-Startup Mailsend-Test", s"""
     Mailsender of ${KuTuMailerActor.mailSenderAppName} has been started up.
@@ -59,7 +61,6 @@ object KuTuServer extends App with KuTuAppHTTPServer with AuthSupport with Hashi
         case s: String if (s.endsWith("cleanathletes")) =>
           markAthletesInactiveOlderThan(3)
           cleanUnusedClubs()
-          ResourceExchanger.cleanupMediaFiles()
           println("done")
           true
 

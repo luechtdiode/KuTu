@@ -2,7 +2,7 @@ package ch.seidel.kutu.data
 
 import ch.seidel.kutu.KuTuApp.cleanUnusedRiegen
 import ch.seidel.kutu.actors.{AthletIndexActor, AthletLikeFound, AthletsAddedToWettkampf, FindAthletLike}
-import ch.seidel.kutu.domain.{AddMedia, AddRegistration, AddVereinAction, ApproveVereinAction, Athlet, AthletRegistration, AthletView, EmptyAthletRegistration, KutuService, Media, MoveRegistration, PublicSyncAction, Registration, RemoveRegistration, RenameAthletAction, RenameVereinAction, RiegeRaw, SyncAction, UpdateAthletMediaAction, Verein, WertungView, Wettkampf}
+import ch.seidel.kutu.domain.{AddMedia, AddRegistration, AddVereinAction, ApproveVereinAction, Athlet, AthletRegistration, AthletView, EmptyAthletRegistration, KutuService, MoveRegistration, PublicSyncAction, Registration, RemoveRegistration, RenameAthletAction, RenameVereinAction, RiegeRaw, SyncAction, UpdateAthletMediaAction, Verein, WertungView, Wettkampf}
 import ch.seidel.kutu.http.{RegistrationRoutes, WebSocketClient}
 import ch.seidel.kutu.squad.RiegenBuilder.{generateRiegen2Name, generateRiegenName}
 import ch.seidel.kutu.view.WettkampfInfo
@@ -54,7 +54,8 @@ object RegistrationAdmin {
       r._2.mediafile.nonEmpty && r._2.mediafile.flatMap(m => service.loadMedia(m.id).filter(lm => lm.computeFilePath(wettkampf.toWettkampf).exists())).isEmpty
 
     val isMediaChangedFilter: RegTuple => Boolean = r => {
-      r._2.mediafile.nonEmpty && (bodenWertungen.contains(r._4.id) && !bodenWertungen(r._4.id).mediafile.exists(a => r._2.mediafile.exists(b => a.id.equals(b.id))))
+      r._2.mediafile.nonEmpty && (bodenWertungen.contains(r._4.id) && !bodenWertungen(r._4.id).mediafile.exists(a => r._2.mediafile.exists(b => a.id.equals(b.id)))) ||
+      r._2.mediafile.isEmpty && (bodenWertungen.contains(r._4.id) && bodenWertungen(r._4.id).mediafile.nonEmpty)
     }
 
     val addClubActions = registrations
@@ -279,20 +280,19 @@ object RegistrationAdmin {
       service.joinVereinWithRegistration(wkInfo.wettkampf.toWettkampf, registration.verein, club)
     }
 
-    val requestMediaList = syncActions.flatMap {
+    service.saveOrUpdateMedias(syncActions.flatMap {
       case ar: AddRegistration => ar.media
       case mr: UpdateAthletMediaAction => mr.athletReg.mediafile
       case am: AddMedia => am.athletReg.mediafile
       case _ => None
-    }
-    service.saveOrUpdateMedias(requestMediaList)
+    }.distinct)
 
-    for (moveRegistration: UpdateAthletMediaAction <- syncActions.flatMap {
-      case mr: UpdateAthletMediaAction => Some(mr)
+    val requestMediaList = syncActions.flatMap {
+      case am: AddMedia => am.athletReg.mediafile
       case _ => None
-    }) {
-      // implicit pushing to ws-client
-      service.updateWertung(moveRegistration.wertung.copy(mediafile = moveRegistration.athletReg.mediafile.map(_.toMedia)))
+    }.distinct
+    if (requestMediaList.nonEmpty) {
+      service.getMediaDownloadRemote(wkInfo.wettkampf.toWettkampf, requestMediaList)
     }
 
     for (((progId, team), idAndathletes) <- addRegistrations.map {
@@ -313,7 +313,18 @@ object RegistrationAdmin {
         wkInfo.wettkampf.uuid.get,
         progId, team))
     }
-    service.getMediaDownloadRemote(wkInfo.wettkampf.toWettkampf, requestMediaList)
+
+    val updateAthletMediaActions = syncActions.flatMap {
+      case mr: UpdateAthletMediaAction => Some(mr)
+      case _ => None
+    }
+    for (athletMediaUpdateAction: UpdateAthletMediaAction <- updateAthletMediaActions) {
+      // implicit pushing to ws-client
+      service.updateWertung(athletMediaUpdateAction.wertung.copy(mediafile = athletMediaUpdateAction.athletReg.mediafile.map(_.toMedia)))
+    }
+    if (updateAthletMediaActions.nonEmpty) {
+      service.regchanged(wkInfo.wettkampf.toWettkampf)
+    }
 
     cleanUnusedRiegen(wkInfo.wettkampf.id)
 

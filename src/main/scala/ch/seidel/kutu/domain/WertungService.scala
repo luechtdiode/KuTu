@@ -334,7 +334,6 @@ abstract trait WertungService extends DBService with WertungResultMapper with Di
   
   @throws(classOf[Exception]) // called from rich-client-app via ResourceExchanger
   def updateWertungWithIDMapping(w: Wertung, cache2: scala.collection.mutable.Map[Long, List[ScoreCalcTemplate]] = scala.collection.mutable.Map[Long, List[ScoreCalcTemplate]]()): Wertung = {
-    println("single import wertung ...")
     val wv = validateWertung(w, cache2)
     val wvId = Await.result(database.run((for {
         updated <- sqlu"""

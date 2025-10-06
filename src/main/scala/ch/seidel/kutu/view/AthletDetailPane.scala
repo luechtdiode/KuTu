@@ -1,5 +1,7 @@
 package ch.seidel.kutu.view
 
+import ch.seidel.commons.PageDisplayer
+import ch.seidel.kutu.Config.{homedir, remoteHostOrigin}
 import ch.seidel.kutu.KuTuApp
 import ch.seidel.kutu.actors.AthletMediaAquire
 import ch.seidel.kutu.data.ResourceExchanger.saveMediaFile
@@ -8,6 +10,7 @@ import ch.seidel.kutu.view.player.Player
 import javafx.stage.FileChooser
 import scalafx.Includes._
 import scalafx.beans.binding.Bindings
+import scalafx.beans.property.BooleanProperty
 import scalafx.event.ActionEvent
 import scalafx.geometry._
 import scalafx.scene.control._
@@ -17,7 +20,8 @@ import java.io.{File, FileInputStream}
 import java.net.URI
 
 
-case class AthletHeaderPane(wettkampf: Wettkampf, service: KutuService, wkview: TableView[IndexedSeq[WertungEditor]]) extends HBox {
+case class AthletHeaderPane(wettkampf: Wettkampf, service: KutuService, wkview: TableView[IndexedSeq[WertungEditor]], wettkampfmode: BooleanProperty) extends HBox {
+  val isReadonly: Boolean = wettkampf.isReadonly(homedir, remoteHostOrigin)
   var index = -1
   var selected: IndexedSeq[WertungEditor] = IndexedSeq()
   val lblDivider1 = new Label() {
@@ -60,6 +64,60 @@ case class AthletHeaderPane(wettkampf: Wettkampf, service: KutuService, wkview: 
       }
     }
   }
+  val assignMediaMenuItem: MenuItem = new MenuItem {
+    text = "Bodenmusik zuordnen ..."
+    visible <== when(wettkampfmode) choose false otherwise true
+    onAction = (event: ActionEvent) => {
+      val athletwertung: Option[WertungEditor] = wkview.selectionModel().getSelectedItem.find(we => we.init.wettkampfdisziplin.disziplin.name.equals("Boden"))
+      athletwertung.foreach { aw =>
+
+        def saveAndAssignMedia(song: String, uri: URI): Unit = {
+          val file = new File(uri)
+          val songFile = new FileInputStream(file)
+          val extension = song.substring(song.lastIndexOf(".") + 1)
+          val media = service.searchMedia(song) match {
+            case Some(m) => Some(m.toMedia)
+            case _ => Some(saveMediaFile(songFile, wettkampf, Media("", song, extension)).toMedia)
+          }
+          aw.update(service.updateWertung(aw.init.copy(mediafile = media).toWertung))
+        }
+
+        val fc: FileChooser = new FileChooser
+        fc.setTitle("Audiofile laden")
+        fc.getExtensionFilters.addAll(
+          //new FileChooser.ExtensionFilter("Audio Dateien", "*.mp3", "*.wav", "*.aif", "*.aiff")
+          new FileChooser.ExtensionFilter("MP3 (audio/mpeg)", "*.mp3")
+          //, new FileChooser.ExtensionFilter("Audio Interchange File Format (pcm)", "*.aif", "*.aiff")
+          //, new FileChooser.ExtensionFilter("Waveform Audio Format", "*.wav")
+        )
+        fc.setSelectedExtensionFilter(fc.getExtensionFilters.get(0))
+        fc.setInitialDirectory(wettkampf.audiofilesDir)
+        val file: File = fc.showOpenDialog(KuTuApp.stage)
+        if (file != null) {
+          try {
+            saveAndAssignMedia(file.toPath.getFileName.toString, file.toURI)
+          } catch {
+            case e: Exception =>
+              PageDisplayer.showErrorDialog("Audiofile laden", e.getMessage)
+          }
+          adjust
+        }
+      }
+    }
+  }
+
+  val deleteMediaAssignmentMenuItem: MenuItem = new MenuItem {
+    text = "Bodenmusik löschen ..."
+    visible <== when(wettkampfmode) choose false otherwise true
+    onAction = (event: ActionEvent) => {
+      val athletwertung: Option[WertungEditor] = wkview.selectionModel().getSelectedItem.find(we => we.init.wettkampfdisziplin.disziplin.name.equals("Boden") && we.init.mediafile.nonEmpty)
+      athletwertung.foreach { aw =>
+        aw.update(service.updateWertung(aw.init.copy(mediafile = None).toWertung))
+      }
+      adjust
+    }
+  }
+
   val mediaButton = new MenuButton("♪ Bodenmusik") {
     visible <== Bindings.createBooleanBinding(() =>
       !wkview.selectionModel().isEmpty && wkview.selectionModel().getSelectedItem.exists(we => we.init.wettkampfdisziplin.disziplin.name.equals("Boden")),
@@ -68,44 +126,9 @@ case class AthletHeaderPane(wettkampf: Wettkampf, service: KutuService, wkview: 
       Player.show()
     }
     items += currentMediaMenuItem
-    items += new MenuItem {
-      text = "Bodenmusik zuordnen ..."
-      disable <== Bindings.createBooleanBinding(() =>
-        wkview.selectionModel().isEmpty || !wkview.selectionModel().getSelectedItem.exists(we => we.init.wettkampfdisziplin.disziplin.name.equals("Boden")),
-        wkview.selectionModel().selectedItemProperty())
-      minWidth = 75
-      onAction = (event: ActionEvent) => {
-        val athletwertung: Option[WertungEditor] = wkview.selectionModel().getSelectedItem.find(we => we.init.wettkampfdisziplin.disziplin.name.equals("Boden"))
-        athletwertung.foreach { aw =>
-
-          def saveAndAssignMedia(song: String, uri: URI) = {
-            val file = new File(uri)
-            val songFile = new FileInputStream(file)
-            val extension = song.substring(song.lastIndexOf(".") + 1)
-            val media = service.searchMedia(song) match {
-              case Some(m) => Some(m.toMedia)
-              case _ => Some(saveMediaFile(songFile, wettkampf, Media("", song, extension)).toMedia)
-            }
-            aw.update(service.updateWertung(aw.init.copy(mediafile = media).toWertung))
-          }
-
-          val fc: FileChooser = new FileChooser
-          fc.setTitle("Audiofile laden")
-          fc.getExtensionFilters.addAll(
-            //new FileChooser.ExtensionFilter("Audio Dateien", "*.mp3", "*.wav", "*.aif", "*.aiff")
-            new FileChooser.ExtensionFilter("MP3 (audio/mpeg)", "*.mp3")
-            //, new FileChooser.ExtensionFilter("Audio Interchange File Format (pcm)", "*.aif", "*.aiff")
-            //, new FileChooser.ExtensionFilter("Waveform Audio Format", "*.wav")
-          )
-          fc.setSelectedExtensionFilter(fc.getExtensionFilters.get(0))
-          fc.setInitialDirectory(wettkampf.audiofilesDir)
-          val file: File = fc.showOpenDialog(KuTuApp.stage)
-          if (file != null) {
-            saveAndAssignMedia(file.toPath.getFileName.toString, file.toURI)
-            adjust
-          }
-        }
-      }
+    if (!isReadonly) {
+      items += assignMediaMenuItem
+      items += deleteMediaAssignmentMenuItem
     }
   }
 
@@ -159,6 +182,10 @@ case class AthletHeaderPane(wettkampf: Wettkampf, service: KutuService, wkview: 
   HBox.setMargin(mediaButton, Insets(5d, 5d, 5d, 5d))
 
   def adjust: Unit = {
+    assignMediaMenuItem.disable = isReadonly || wkview.selectionModel().isEmpty ||
+      !wkview.selectionModel().getSelectedItem.exists(we => we.init.wettkampfdisziplin.disziplin.name.equals("Boden"))
+    deleteMediaAssignmentMenuItem.disable = isReadonly || wkview.selectionModel().isEmpty ||
+      !wkview.selectionModel().getSelectedItem.exists(we => we.init.wettkampfdisziplin.disziplin.name.equals("Boden") && we.init.mediafile.nonEmpty)
     if (selected != null && index > -1 && index < selected.size) {
       lblAthlet.text.value = selected(index).init.athlet.easyprint
       lblDisciplin.text.value = selected(index).init.wettkampfdisziplin.easyprint

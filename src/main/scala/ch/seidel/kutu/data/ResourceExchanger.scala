@@ -115,6 +115,7 @@ object ResourceExchanger extends KutuService with RiegenBuilder {
           logger.info(s"received for ${uw.athlet.vorname} ${uw.athlet.name} (${uw.athlet.verein.getOrElse("")}) im Pgm $programm Disz $disz: ${wertung.resultatWithVariables}")
           val mappedAthletView: AthletView = mapToLocal(athlet, Some(wettkampf.id))
           val mappedWertung = wertung.copy(athletId = mappedAthletView.id, wettkampfId = wettkampf.id, wettkampfUUID = wettkampfUUID)
+          wertung.mediafile.foreach(putMedia)
           try {
             val vw = updateWertungWithIDMapping(mappedWertung, cache2)
             logger.info(s"saved for ${mappedAthletView.vorname} ${mappedAthletView.name} (${uw.athlet.verein.getOrElse("")}) im Pgm $programm Disz $disz: ${wertung.resultatWithVariables}")
@@ -231,6 +232,13 @@ object ResourceExchanger extends KutuService with RiegenBuilder {
       fos.flush()
       fos.close()
     }
+    if (uploadedOriginalFile.length() > Config.mediafileMaxSize) {
+      val maxSize = java.text.NumberFormat.getInstance().format(Config.mediafileMaxSize / 1024)
+      val currentSize = java.text.NumberFormat.getInstance().format(uploadedOriginalFile.length() / 1024)
+      uploadedOriginalFile.delete()
+      throw new RuntimeException(s"Die Datei ${media.name} ist mit $currentSize Kilobytes zu gross. Sie darf nicht grösser als $maxSize Kilobytes sein.")
+    }
+
     val hash = digestStream.getMessageDigest.digest()
     val hashedMediaAdmin = mediaAdmin.copy(md5 = new BigInteger(1, hash).toString(16))
     saveAndReindexMediaFile(wettkampf, uploadedOriginalFile, hashedMediaAdmin)
@@ -251,12 +259,12 @@ object ResourceExchanger extends KutuService with RiegenBuilder {
       uploadedOriginalFile.renameTo(md5HashFile)
     }
     val finalmedia = updateMedia(mediaAdmin)
-    println(s"saved and reindexed mediafile: $finalmedia (${uploadedOriginalFile} -> ${md5HashFile}")
+    logger.info(s"saved and reindexed mediafile: $finalmedia (${uploadedOriginalFile} -> ${md5HashFile}")
     finalmedia
   }
 
   def cleanupMediaFiles(): Unit = {
-    println("cleanup media files ...")
+    logger.info("cleanup media files ...")
     val cleanedMedialist = cleanUnusedMedia().map(m => m.filename).toSet
     for (wettkampf <- listWettkaempfeView) {
       val competitionMediaDir = new java.io.File(Config.homedir + "/" + encodeFileName(wettkampf.easyprint) + "/audiofiles")
@@ -266,7 +274,7 @@ object ResourceExchanger extends KutuService with RiegenBuilder {
           .filter(f => !cleanedMedialist.contains(f.getName))
           .foreach { mp3File =>
             mp3File.delete()
-            println("mp3-file deleted " + mp3File.getName)
+            logger.info("mp3-file deleted " + mp3File.getName)
           }
       }
     }
@@ -296,10 +304,12 @@ object ResourceExchanger extends KutuService with RiegenBuilder {
       override def next(): (ZipEntry, InputStream) = (zisIterator.next(), zis)
     }
     new ZipEntryTraversableClass().foreach { entry =>
-      val filename = entry._1.getName
-      val media: Media = mediaList.find(m => m.filename.equals(filename)).map(_.toMedia).getOrElse(Media("", filename, filename.substring(filename.lastIndexOf(".")+1)))
-      println("synching media " + media, filename)
-      //FIXME stabiler Dateiname - inkl. bereinigung auf md5-namen
+      val keys = (entry._1.getName + "@0").split("@")
+      val filename = keys(0)
+      val mediaId = keys(1)
+      val media: Media = mediaList.find(m => m.id.equals(mediaId)).map(_.toMedia)
+        .getOrElse(mediaList.find(m => m.filename.equals(filename)).map(_.toMedia)
+          .getOrElse(Media("", filename, filename.substring(filename.lastIndexOf(".")+1))))
       saveMediaFile(entry._2, wettkampf, media)
     }
   }
@@ -518,7 +528,7 @@ object ResourceExchanger extends KutuService with RiegenBuilder {
     }
 
     val start = System.currentTimeMillis()
-    wertungInstances.flatMap(rt => rt.mediafile).map(m => putMedia(m)).toSet
+    wertungInstances.flatMap(rt => rt.mediafile).toSet.foreach(m => putMedia(m))
     val inserted = wertungInstances.groupBy(w => w.wettkampfId).map { wkWertungen =>
       val (wettkampfid, wertungen) = wkWertungen
       val wettkampf = wettkampfInstances.values.find(w => w.id == wettkampfid).get
@@ -721,15 +731,24 @@ object ResourceExchanger extends KutuService with RiegenBuilder {
         }
       }
       new ZipEntryTraversableClass()
-        .filter(entry => entry._1.getName.toLowerCase.endsWith(".mp3"))//startsWith("/audiofiles/"))
+        .filter(entry => entry._1.getName.toLowerCase.contains(".mp3"))//startsWith("/audiofiles/"))
         .foreach { entry =>
-          val filename = entry._1.getName
-          if (entry._1.getSize > Config.mediafileMaxSize) {
+          val keys = (entry._1.getName + "@0").split("@")
+          val filename = keys(0)
+          val mediaId = keys(1)
+          val media: Media = searchMedia(mediaId)
+            .map(_.toMedia)
+            .getOrElse(
+              searchMedia(filename)
+                .map(_.toMedia)
+                .getOrElse(
+                  Media("", filename, filename.substring(filename.lastIndexOf(".")))))
+
+          /*if (entry._1.getSize > Config.mediafileMaxSize) {
             val maxSize = java.text.NumberFormat.getInstance().format(Config.mediafileMaxSize / 1024d)
             val currentSize = java.text.NumberFormat.getInstance().format(entry._1.getSize / 1024d)
             throw new RuntimeException(s"Die Datei $filename ist mit $currentSize zu gross. Sie darf nicht grösser als $maxSize Kilobytes sein.")
-          }
-          val media: Media = searchMedia(filename).map(_.toMedia).getOrElse(Media("", filename, filename.substring(filename.lastIndexOf("."))))
+          }*/
           saveMediaFile(entry._2, wettkampf, media)
         }
     }
@@ -766,21 +785,19 @@ object ResourceExchanger extends KutuService with RiegenBuilder {
       competitionMediaDir
         .listFiles()
         .filter(f => f.getName.toLowerCase.endsWith(".mp3")) //startsWith("/audiofiles/")) //
-        .filter {f =>
-          searchMedia(f.getName).exists{m =>
-            println(m.id, medialist.map(_.id))
-            medialist.isEmpty ||
-              medialist.exists(me => me.id.equals(m.id))}
+        .groupBy { mp3File =>
+          searchMedia(mp3File.getName)
         }
-        .toList
-        .foreach { mp3File =>
+        .filter (_._1.exists{m => medialist.isEmpty || medialist.exists(me => me.id.equals(m.id))})
+        .foreach { group =>
+          val (Some(media), mp3Files) = group
+          val mp3File = mp3Files.head
           if (mp3File.length() > Config.mediafileMaxSize) {
             val maxSize = java.text.NumberFormat.getInstance().format(Config.mediafileMaxSize / 1024d)
             val currentSize = java.text.NumberFormat.getInstance().format(mp3File.length() / 1024d)
             throw new RuntimeException(s"Die Datei ${mp3File.getName} ist mit $currentSize zu gross. Sie darf nicht grösser als $maxSize Kilobytes sein.")
           }
-          //val name = searchMedia(mp3File.getName).map{m => m.id + "." + m.extension}.getOrElse(mp3File.getName)
-          val name = searchMedia(mp3File.getName).map{m => m.filename}.getOrElse(mp3File.getName)
+          val name = s"${media.filename}@${media.id}@${media.extension}"
           val fis = new FileInputStream(mp3File)
           zip.putNextEntry(new ZipEntry(name))
           val bytes = new Array[Byte](1024) //1024 bytes - Buffer size
@@ -789,7 +806,7 @@ object ResourceExchanger extends KutuService with RiegenBuilder {
             .takeWhile(-1 !=)
             .foreach(read => zip.write(bytes, 0, read))
           zip.closeEntry()
-          println(s"mp3-file ${mp3File.getName} was taken as ${name}")
+          logger.info(s"mp3-file ${mp3File.getName} was taken as ${name}")
         }
     }
   }
@@ -903,7 +920,7 @@ object ResourceExchanger extends KutuService with RiegenBuilder {
         .takeWhile(-1 !=)
         .foreach(read => zip.write(bytes, 0, read))
       zip.closeEntry()
-      println("logo was taken " + logofile.getName)
+      logger.info("logo was taken " + logofile.getName)
     }
     // pick score-defs
     if (competitionDir.exists()) {
@@ -920,7 +937,7 @@ object ResourceExchanger extends KutuService with RiegenBuilder {
             .takeWhile(-1 !=)
             .foreach(read => zip.write(bytes, 0, read))
           zip.closeEntry()
-          println("scoredef-file was taken " + scoredefFile.getName)
+          logger.info("scoredef-file was taken " + scoredefFile.getName)
         }
     }
     if (withSecret && wettkampf.hasSecred(Config.homedir, Config.remoteHostOrigin)) {
@@ -933,7 +950,7 @@ object ResourceExchanger extends KutuService with RiegenBuilder {
         .takeWhile(-1 !=)
         .foreach(read => zip.write(bytes, 0, read))
       zip.closeEntry()
-      println("secret was taken " + secretfile.getName)
+      logger.info("secret was taken " + secretfile.getName)
     }
     if (withSecret && wettkampf.hasRemote(Config.homedir, Config.remoteHostOrigin)) {
       val secretfile = wettkampf.fromOriginFilePath(Config.homedir, Config.remoteHostOrigin).toFile
@@ -945,7 +962,7 @@ object ResourceExchanger extends KutuService with RiegenBuilder {
         .takeWhile(-1 !=)
         .foreach(read => zip.write(bytes, 0, read))
       zip.closeEntry()
-      println("remote-info was taken " + secretfile.getName)
+      logger.info("remote-info was taken " + secretfile.getName)
     }
     if (withMediaFiles) {
       zipMediaFiles(wettkampf, List.empty, zip)

@@ -71,8 +71,12 @@ object Player extends JFXApp3 {
     this.service = Some(service)
   }
 
+  def isPlayerRunning(): Boolean = {
+    mediaPlayer != null && mediaPlayer.getStatus != null && mediaPlayer.getStatus.equals(Status.PLAYING)
+  }
+
   def clearPlayList(): Unit = {
-    if (mediaPlayer != null && mediaPlayer.getStatus != null && mediaPlayer.getStatus.equals(Status.PLAYING)) {
+    if (isPlayerRunning()) {
       if (playList.getSongs.size() > currentSongIndex) {
         playList.getSongs.retainAll(playList.getSongs(currentSongIndex))
       }
@@ -172,7 +176,7 @@ object Player extends JFXApp3 {
     case AthletMediaRelease(wkuuid,athlet, wertung) =>
       lastAction match {
         case Some(a) if a.athlet == athlet && a.wertung.mediafile == wertung.mediafile =>
-          lastAction = None
+          releasePlayer()
         case _ => // ignore
       }
     case AthletMediaStart(wkuuid,athlet, wertung) =>
@@ -248,20 +252,7 @@ object Player extends JFXApp3 {
     val powerBtn = new Button
     powerBtn.setOnAction(new EventHandler[ActionEvent]() {
       override def handle(event: ActionEvent): Unit = {
-        if (mediaPlayer != null) {
-          mediaPlayer.stop()
-          mediaPlayer.setAutoPlay(false)
-          mediaPlayer.seek(Duration.seconds(0))
-          playList.getSongs.clear()
-        }
-        lastAction.foreach {
-          case a: MediaPlayerAction =>
-            WebSocketClient.publish(AthletMediaIsFree(a.wertung.mediafile.get, ""))
-          case _ =>
-        }
-        lastAction = None
-
-        mediaPlayer = null
+        releasePlayer()
         onClose()
       }
     })
@@ -369,10 +360,18 @@ object Player extends JFXApp3 {
     volumeKnob.resizeRelocate(907, 491, 175, 175)
     // listen for when we have songs
     playList.getSongs.addListener(new ListChangeListener[Pair[String, String]]() {
-      override def onChanged(arg0: ListChangeListener.Change[_ <: Pair[String, String]]): Unit = {
-        if (!playList.getSongs.isEmpty) {
-          currentSongIndex = 0
-          play(currentSongIndex)
+      override def onChanged(change: ListChangeListener.Change[_ <: Pair[String, String]]): Unit = {
+        if (playList.getSongs.nonEmpty || isPlayerRunning()) {
+          lastAction.foreach {
+            case a: AthletMediaStart =>
+              change.getRemoved.forEach { context =>
+                if (a.wertung.mediafile.exists(m => m.name.contains(context))) {
+                  currentSongIndex = 0
+                  play(currentSongIndex)
+                }
+              }
+            case _ =>
+          }
         }
         else {
           if (mediaPlayer != null) {
@@ -392,6 +391,23 @@ object Player extends JFXApp3 {
     root
   }
 
+  def releasePlayer(): Unit = {
+    if (mediaPlayer != null) {
+      mediaPlayer.stop()
+      mediaPlayer.setAutoPlay(false)
+      mediaPlayer.seek(Duration.seconds(0))
+      playList.getSongs.clear()
+    }
+    lastAction.foreach {
+      case a: MediaPlayerAction =>
+        WebSocketClient.publish(AthletMediaIsFree(a.wertung.mediafile.get, ""))
+      case _ =>
+    }
+    lastAction = None
+
+    mediaPlayer = null
+  }
+
   private def play(songIndex: Int, autoplay: Boolean = false): Unit = {
     if (mediaPlayer != null) {
       mediaPlayer.stop()
@@ -406,12 +422,13 @@ object Player extends JFXApp3 {
     if (playList.getSongs.nonEmpty && playList.getSongs.size() > songIndex) {
       val context = playList.getSongs.get(songIndex).getKey
       val media = new Media(playList.getSongs.get(songIndex).getValue)
-      mediaPlayer = new MediaPlayer(media)
-      mediaPlayer.seek(Duration.seconds(0))
-      mediaPlayer.setAutoPlay(autoplay)
-      mediaPlayer.setOnError(new Runnable() {
+      val player = new MediaPlayer(media)
+      mediaPlayer = player
+      player.seek(Duration.seconds(0))
+      player.setAutoPlay(autoplay)
+      player.setOnError(new Runnable() {
         override def run(): Unit = {
-          println("mediaPlayer.getError() = " + mediaPlayer.getError)
+          println("mediaPlayer.getError() = " + player.getError)
         }
       })
       lastAction.foreach {
@@ -423,10 +440,10 @@ object Player extends JFXApp3 {
         case _ =>
       }
 
-      mediaPlayer.setOnEndOfMedia(() => {
-        mediaPlayer.stop()
-        mediaPlayer.setAutoPlay(false)
-        mediaPlayer.seek(Duration.seconds(0))
+      player.setOnEndOfMedia(() => {
+        player.stop()
+        player.setAutoPlay(false)
+        player.seek(Duration.seconds(0))
         lastAction.foreach {
           case a: MediaPlayerAction =>
             WebSocketClient.publish(AthletMediaIsFree(a.wertung.mediafile.get, context))
@@ -445,64 +462,64 @@ object Player extends JFXApp3 {
           String.format("%1$02d:%2$02d", minutesWhole, secondsWhole)
         }
 
-        if (mediaPlayer == null || mediaPlayer.getStatus == null) "Streaming..."
-        else mediaPlayer.getStatus match {
+        if (player.getStatus == null) "Streaming..."
+        else player.getStatus match {
           case Status.PLAYING =>
             lastAction.foreach {
               case a: MediaPlayerAction => WebSocketClient.publish(AthletMediaIsRunning(a.wertung.mediafile.get, context))
               case _ =>
             }
             if (media == null || media.getDuration == null) "Time: 00:00   Remaining: 00:00   Total: 00:00"
-            else if (mediaPlayer == null || mediaPlayer.getCurrentTime == null) "Time: 00:00   Remaining: 00:00   Total: " + formatDuration(media.getDuration)
-            else "Time: " + formatDuration(mediaPlayer.getCurrentTime) + "   Remaining: " + formatDuration(media.getDuration.subtract(mediaPlayer.getCurrentTime)) + "   Total: " + formatDuration(media.getDuration)
+            else if (player.getCurrentTime == null) "Time: 00:00   Remaining: 00:00   Total: " + formatDuration(media.getDuration)
+            else "Time: " + formatDuration(player.getCurrentTime) + "   Remaining: " + formatDuration(media.getDuration.subtract(player.getCurrentTime)) + "   Total: " + formatDuration(media.getDuration)
           case Status.PAUSED =>
             lastAction.foreach {
               case a: MediaPlayerAction => WebSocketClient.publish(AthletMediaIsPaused(a.wertung.mediafile.get, context))
               case _ =>
             }
             if (media == null || media.getDuration == null) "Paused"
-            else if (mediaPlayer == null || mediaPlayer.getCurrentTime == null) "Paused at: 00:00   Remaining: 00:00   Total: " + formatDuration(media.getDuration)
-            else "Paused at: " + formatDuration(mediaPlayer.getCurrentTime) + "   Remaining: " + formatDuration(media.getDuration.subtract(mediaPlayer.getCurrentTime)) + "   Total: " + formatDuration(media.getDuration)
+            else if (player.getCurrentTime == null) "Paused at: 00:00   Remaining: 00:00   Total: " + formatDuration(media.getDuration)
+            else "Paused at: " + formatDuration(player.getCurrentTime) + "   Remaining: " + formatDuration(media.getDuration.subtract(player.getCurrentTime)) + "   Total: " + formatDuration(media.getDuration)
           case _ =>
             if (media == null || media.getDuration == null) "Streaming..."
-            else if (mediaPlayer == null || mediaPlayer.getCurrentTime == null) "Paused at: 00:00   Remaining: 00:00   Total: " + formatDuration(media.getDuration)
-            else "Paused at: " + formatDuration(mediaPlayer.getCurrentTime) + "   Remaining: " + formatDuration(media.getDuration.subtract(mediaPlayer.getCurrentTime)) + "   Total: " + formatDuration(media.getDuration)
+            else if (player.getCurrentTime == null) "Paused at: 00:00   Remaining: 00:00   Total: " + formatDuration(media.getDuration)
+            else "Paused at: " + formatDuration(player.getCurrentTime) + "   Remaining: " + formatDuration(media.getDuration.subtract(player.getCurrentTime)) + "   Total: " + formatDuration(media.getDuration)
         }
-      }, mediaPlayer.currentTimeProperty(), mediaPlayer.statusProperty())
-      balanceKnob.valueProperty() <==> mediaPlayer.balanceProperty()
-      volumeKnob.valueProperty() <==> mediaPlayer.volumeProperty()
+      }, player.currentTimeProperty(), player.statusProperty())
+      balanceKnob.valueProperty() <==> player.balanceProperty()
+      volumeKnob.valueProperty() <==> player.volumeProperty()
       leftVURotation.angleProperty <== Bindings.createDoubleBinding(() => {
-        if (mediaPlayer.getStatus == null) -40d
-        else mediaPlayer.getStatus match {
+        if (player.getStatus == null) -40d
+        else player.getStatus match {
           case Status.PLAYING =>
             val zeroOne = leftVU.get
             -40 + (80 * zeroOne)
           case _ =>
             -40d
         }
-      }, leftVU, mediaPlayer.statusProperty(), mediaPlayer.balanceProperty())
+      }, leftVU, player.statusProperty(), player.balanceProperty())
 
       rightVURotation.angleProperty <== Bindings.createDoubleBinding(() => {
-        if (mediaPlayer.getStatus == null) -40d
-        else mediaPlayer.getStatus match {
+        if (player.getStatus == null) -40d
+        else player.getStatus match {
           case Status.PLAYING =>
             val zeroOne = rightVU.get
             -40 + (80 * zeroOne)
           case _ =>
             -40d
         }
-      }, rightVU, mediaPlayer.statusProperty(), mediaPlayer.balanceProperty())
+      }, rightVU, player.statusProperty(), player.balanceProperty())
 
-      mediaPlayer.setAudioSpectrumNumBands(10)
-      mediaPlayer.setAudioSpectrumInterval(1d / 30d)
-      for (i <- 0 until math.min(sliders.size(), mediaPlayer.getAudioEqualizer.getBands.size())) {
-        sliders.get(i).valueProperty() <==> mediaPlayer.getAudioEqualizer.getBands.get(i).gainProperty()
+      player.setAudioSpectrumNumBands(10)
+      player.setAudioSpectrumInterval(1d / 30d)
+      for (i <- 0 until math.min(sliders.size(), player.getAudioEqualizer.getBands.size())) {
+        sliders.get(i).valueProperty() <==> player.getAudioEqualizer.getBands.get(i).gainProperty()
       }
       for (i <- 0 until 10) {
         vuMeters.get(i).setValue(0)
       }
 
-      mediaPlayer.setAudioSpectrumListener(spectrumListener)
+      player.setAudioSpectrumListener(spectrumListener)
     }
   }
 
