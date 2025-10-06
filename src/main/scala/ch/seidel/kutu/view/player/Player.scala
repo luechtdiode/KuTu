@@ -66,7 +66,12 @@ object Player extends JFXApp3 {
   }
 
   def setWettkampf(wettkampf: Wettkampf, service: KutuService): Unit = {
-    getInitializedPlayerStage
+    try {
+      getInitializedPlayerStage
+    } catch {
+      case e: Exception =>
+        e.printStackTrace()
+    }
     this.wettkampf = Some(wettkampf)
     this.service = Some(service)
   }
@@ -256,10 +261,13 @@ object Player extends JFXApp3 {
         onClose()
       }
     })
-    WebSocketClient.registerMediaPlayerActionHandler( handleMediaAction(_) )
+    WebSocketClient.registerMediaPlayerActionHandler(handleMediaAction)
 
     val background = new ImageView()
-    background.setImage(new Image(Objects.requireNonNull(getClass.getResourceAsStream("images/player-background.png"))))
+    val bgResource = getClass.getResourceAsStream("/images/player/player-background.png")
+    if (bgResource != null) {
+      background.setImage(new Image(bgResource))
+    }
 
     for (i <- 0 until 10) {
       sliders.add(i, new Slider(EqualizerBand.MIN_GAIN, EqualizerBand.MAX_GAIN, 0))
@@ -387,7 +395,7 @@ object Player extends JFXApp3 {
         }
       }
     })
-    root.getStylesheets.add(getClass.getResource("Player.css").toExternalForm)
+    root.getStylesheets.add(getClass.getResource("/css/Player.css").toExternalForm)
     root
   }
 
