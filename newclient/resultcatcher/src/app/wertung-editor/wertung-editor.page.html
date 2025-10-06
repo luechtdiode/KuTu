@@ -13,7 +13,7 @@
 <ion-content>
     @if (item.wertung?.mediafile) {
       <ion-item>
-        <ion-icon slot="start" name="musical-notes-outline"></ion-icon>        
+        <ion-icon slot="start" name="musical-notes-outline"></ion-icon>
         <ion-button size="large" [disabled]="waiting || mediaButtonDisabled || currentMediaButtonDisabled"  color="primary" (click)='currentMediaAction()'>
         <ion-icon slot="start" [attr.name]='currentMediaButtonIcon' />{{currentMediaButtonText}}</ion-button>
         <ion-button slot="end" size="large" [disabled]="waiting || mediaButtonDisabled || currentMediaReleaseButtonDisabled"  color="danger" (click)='releaseMusic()'>
@@ -52,7 +52,7 @@
         </ion-item>
         @if (editable()) {
           <ion-button size="large" expand="block" #btnValidate (click)='validate(wertungsform)' [disabled]="waiting || !wertungsform.valid" color="secondary">
-          <ion-icon slot="start" name="acalculator-outline" />Endnote berechnen2</ion-button>
+          <ion-icon slot="start" name="acalculator-outline" />Endnote berechnen</ion-button>
         }
       </ion-list>
     }
