@@ -231,7 +231,7 @@ trait RegistrationService extends DBService with RegistrationResultMapper with M
                 a.gebdat,
                 wkd.programm_id,
                 0,
-                m.id
+                m.id,
                 current_timestamp as registrationtime
               from athlet a
               inner join wertung w on (w.athlet_id = a.id)
