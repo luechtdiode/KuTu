@@ -1,12 +1,13 @@
 package ch.seidel.kutu.view.player
 
 import ch.seidel.commons.PageDisplayer
-import ch.seidel.kutu.actors.{AthletMediaAquire, AthletMediaIsAtStart, AthletMediaIsFree, AthletMediaIsPaused, AthletMediaIsRunning, AthletMediaPause, AthletMediaRelease, AthletMediaStart, AthletMediaToStart, MediaPlayerAction}
+import ch.seidel.kutu.{Config, ConnectionStates}
+import ch.seidel.kutu.actors.{AthletMediaAquire, AthletMediaIsAtStart, AthletMediaIsFree, AthletMediaIsPaused, AthletMediaIsRunning, AthletMediaPause, AthletMediaRelease, AthletMediaStart, AthletMediaToStart, ForgetMyMediaPlayer, KutuAppEvent, MediaPlayerAction, MediaPlayerDisconnected, MediaPlayerEvent, MediaPlayerIsReady, UseMyMediaPlayer}
 import ch.seidel.kutu.domain.{KutuService, Wettkampf}
 import ch.seidel.kutu.http.WebSocketClient
 import javafx.application.Platform
 import javafx.beans.binding.Bindings
-import javafx.beans.property.SimpleDoubleProperty
+import javafx.beans.property.{SimpleBooleanProperty, SimpleDoubleProperty}
 import javafx.collections.ListChangeListener
 import javafx.event.{ActionEvent, EventHandler}
 import javafx.geometry.Orientation
@@ -26,7 +27,6 @@ import scalafx.application.JFXApp3.PrimaryStage
 import scalafx.scene.image.{Image, ImageView}
 
 import java.util
-import java.util.Objects
 
 object Player extends JFXApp3 {
   private val playList = new PlayList
@@ -49,6 +49,8 @@ object Player extends JFXApp3 {
   private var component: Option[Stage] = None
   private var wettkampf: Option[Wettkampf] = None
   private var service: Option[KutuService] = None
+
+  val isNetworkMediaPlayer = new SimpleBooleanProperty(false)
 
   override def start(): Unit = {
     // load initial playlist
@@ -74,6 +76,22 @@ object Player extends JFXApp3 {
     }
     this.wettkampf = Some(wettkampf)
     this.service = Some(service)
+    ConnectionStates.connectedProperty.addListener(_ => {
+      if (ConnectionStates.connectedProperty.getValue && isNetworkMediaPlayer.getValue) {
+        WebSocketClient.publish(UseMyMediaPlayer(wettkampf.uuid.get, Config.deviceId))
+      }
+    })
+  }
+
+  def useMyMediaPlayerAsNetworkplayer(flag: Boolean): Unit = {
+    this.wettkampf.foreach(wettkampf => {
+      if (flag) {
+        WebSocketClient.publish(UseMyMediaPlayer(wettkampf.uuid.get, Config.deviceId))
+      } else {
+        isNetworkMediaPlayer.set(false)
+        WebSocketClient.publish(ForgetMyMediaPlayer(wettkampf.uuid.get, Config.deviceId))
+      }
+    })
   }
 
   def isPlayerRunning(): Boolean = {
@@ -114,7 +132,7 @@ object Player extends JFXApp3 {
         lastAction = Some(aquire)
         show(song)
       } else {
-        handleMediaAction(aquire)
+        _handleMediaAction(aquire)
       }
     } else {
       PageDisplayer.showWarnDialog("Musik laden", "Der Player wird gerade von einer anderen Musik verwendet.\nDer gewünschte Titel kann noch nicht geladen werden.")
@@ -167,7 +185,20 @@ object Player extends JFXApp3 {
 
   var lastAction: Option[MediaPlayerAction] = None
 
-  private def handleMediaAction(action: MediaPlayerAction): Unit = action match {
+  private def handleMediaEvent(event: MediaPlayerEvent): Unit = {
+    event match {
+      case MediaPlayerIsReady(context) if context.equals(Config.deviceId) =>
+        isNetworkMediaPlayer.set(true)
+      case MediaPlayerDisconnected(context) if context.equals(Config.deviceId) =>
+        isNetworkMediaPlayer.set(false)
+      case _ =>
+        //ignore
+    }
+  }
+  private def handleMediaAction(action: MediaPlayerAction): Unit = {
+    if (isNetworkMediaPlayer.getValue) _handleMediaAction(action)
+  }
+  private def _handleMediaAction(action: MediaPlayerAction): Unit = action match {
     case a@AthletMediaAquire(wkuuid, athlet, wertung) =>
       if (lastAction.isEmpty) {
         lastAction = Some(a)
@@ -262,6 +293,7 @@ object Player extends JFXApp3 {
       }
     })
     WebSocketClient.registerMediaPlayerActionHandler(handleMediaAction)
+    WebSocketClient.registerMediaPlayerEventHandler(handleMediaEvent)
 
     val background = new ImageView()
     val bgResource = getClass.getResourceAsStream("/images/player/player-background.png")
@@ -408,7 +440,7 @@ object Player extends JFXApp3 {
     }
     lastAction.foreach {
       case a: MediaPlayerAction =>
-        WebSocketClient.publish(AthletMediaIsFree(a.wertung.mediafile.get, ""))
+        publishMediaEventIfConnected(AthletMediaIsFree(a.wertung.mediafile.get, ""))
       case _ =>
     }
     lastAction = None
@@ -442,9 +474,9 @@ object Player extends JFXApp3 {
       lastAction.foreach {
         case a: MediaPlayerAction =>
           if (!autoplay)
-            WebSocketClient.publish(AthletMediaIsAtStart(a.wertung.mediafile.get, context))
+            publishMediaEventIfConnected(AthletMediaIsAtStart(a.wertung.mediafile.get, context))
           else
-            WebSocketClient.publish(AthletMediaIsRunning(a.wertung.mediafile.get, context))
+            publishMediaEventIfConnected(AthletMediaIsRunning(a.wertung.mediafile.get, context))
         case _ =>
       }
 
@@ -454,7 +486,7 @@ object Player extends JFXApp3 {
         player.seek(Duration.seconds(0))
         lastAction.foreach {
           case a: MediaPlayerAction =>
-            WebSocketClient.publish(AthletMediaIsFree(a.wertung.mediafile.get, context))
+            publishMediaEventIfConnected(AthletMediaIsFree(a.wertung.mediafile.get, context))
             resetDisplay()
             lastAction = None
           case _ =>
@@ -474,7 +506,7 @@ object Player extends JFXApp3 {
         else player.getStatus match {
           case Status.PLAYING =>
             lastAction.foreach {
-              case a: MediaPlayerAction => WebSocketClient.publish(AthletMediaIsRunning(a.wertung.mediafile.get, context))
+              case a: MediaPlayerAction => publishMediaEventIfConnected(AthletMediaIsRunning(a.wertung.mediafile.get, context))
               case _ =>
             }
             if (media == null || media.getDuration == null) "Time: 00:00   Remaining: 00:00   Total: 00:00"
@@ -482,7 +514,7 @@ object Player extends JFXApp3 {
             else "Time: " + formatDuration(player.getCurrentTime) + "   Remaining: " + formatDuration(media.getDuration.subtract(player.getCurrentTime)) + "   Total: " + formatDuration(media.getDuration)
           case Status.PAUSED =>
             lastAction.foreach {
-              case a: MediaPlayerAction => WebSocketClient.publish(AthletMediaIsPaused(a.wertung.mediafile.get, context))
+              case a: MediaPlayerAction => publishMediaEventIfConnected(AthletMediaIsPaused(a.wertung.mediafile.get, context))
               case _ =>
             }
             if (media == null || media.getDuration == null) "Paused"
@@ -531,4 +563,9 @@ object Player extends JFXApp3 {
     }
   }
 
+  private def publishMediaEventIfConnected(action: KutuAppEvent) = {
+    if (isNetworkMediaPlayer.getValue) {
+      WebSocketClient.publish(action)
+    }
+  }
 }

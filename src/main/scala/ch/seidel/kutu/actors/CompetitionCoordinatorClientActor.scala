@@ -70,7 +70,7 @@ class CompetitionCoordinatorClientActor(wettkampfUUID: String) extends Persisten
   private var lastMediaEvent: Option[MediaPlayerEvent] = None
   private var geraeteRigeListe: List[GeraeteRiege] = List.empty
   private var clientId: () => String = () => ""
-
+  private var currentPlayer: Option[(Iterable[ActorRef], UseMyMediaPlayer)] = None
   private val wkUUID: UUID = UUID.fromString(wettkampfUUID)
 
   def rebuildWettkampfMap(): Unit = {
@@ -236,6 +236,18 @@ class CompetitionCoordinatorClientActor(wettkampfUUID: String) extends Persisten
     case awu: AthletRemovedFromWettkampf => websocketProcessor(Some(sender()), awu)
     case awu: ScoresPublished => websocketProcessor(Some(sender()), awu)
 
+    case playerEvent: UseMyMediaPlayer =>
+      val ws: Option[ActorRef] = deviceWebsocketRefs.find(p => p._1.endsWith(playerEvent.context)).map(_._2)
+      currentPlayer.foreach(p => {
+        notifyWebSocketClients(None, MediaPlayerDisconnected(p._2.context), "")
+      })
+      currentPlayer = Some((ws, playerEvent))
+      notifyWebSocketClients(None, MediaPlayerIsReady(playerEvent.context), "")
+
+    case playerEvent: ForgetMyMediaPlayer if currentPlayer.exists(p => p._2.context.equals(playerEvent.context)) =>
+      currentPlayer = None
+      notifyWebSocketClients(None, MediaPlayerDisconnected(playerEvent.context), "")
+
     case m: MediaPlayerAction => websocketProcessor(Some(sender()), m.asInstanceOf[KutuAppEvent])
     case m: MediaPlayerEvent =>
       lastMediaEvent = Some(m)
@@ -296,7 +308,6 @@ class CompetitionCoordinatorClientActor(wettkampfUUID: String) extends Persisten
       state.lastWertungenPerDisz(durchgang.getOrElse("")),
       state.lastBestenResults)
       lastMediaEvent.foreach(ref ! _)
-
 
     // system actions
     case KeepAlive =>
@@ -411,6 +422,15 @@ class CompetitionCoordinatorClientActor(wettkampfUUID: String) extends Persisten
         .labelValues(wettkampf.easyprint, dg.getOrElse("all"))
         .set(wsSend.get(dg).size)
     })
+    currentPlayer = currentPlayer.flatMap {
+      case (playerActorRefs, useMyMediaPlayerAction) =>
+        if (wsSend.isEmpty || deviceWebsocketRefs.exists(p => p._1.equals(useMyMediaPlayerAction.context) || playerActorRefs.exists(a => a.equals(stoppedWebsocket)))) {
+          notifyWebSocketClients(actorWithSameDeviceIdOfSender(), MediaPlayerDisconnected(useMyMediaPlayerAction.context), "")
+          None
+        } else {
+          Some((playerActorRefs, useMyMediaPlayerAction))
+        }
+    }
   }
 
   private def squashDurchgangEvents(durchgangNormalized: Option[String]) = {
@@ -490,7 +510,7 @@ class CompetitionCoordinatorClientActor(wettkampfUUID: String) extends Persisten
         notifyWebSocketClients(senderWebSocket, arw, "")
 
       case mediaPlayerAction: MediaPlayerAction =>
-        notifyWebSocketClients(senderWebSocket, mediaPlayerAction, "")
+        notifyPlayerWebSocketClient(mediaPlayerAction)
 
       case mediaPlayerEvent: MediaPlayerEvent =>
         notifyWebSocketClients(senderWebSocket, mediaPlayerEvent, "")
@@ -503,6 +523,12 @@ class CompetitionCoordinatorClientActor(wettkampfUUID: String) extends Persisten
       os ! MessageAck("OK")
     })
   }
+
+  private def notifyPlayerWebSocketClient(toPublish: KutuAppEvent) = currentPlayer.foreach {
+      case (playerActorRefs, useMyMediaPlayerAction) =>
+        playerActorRefs.foreach(player => player ! toPublish)
+      case _ =>
+    }
 
   private def notifyWebSocketClients(
                                       senderWebSocket: Iterable[ActorRef],

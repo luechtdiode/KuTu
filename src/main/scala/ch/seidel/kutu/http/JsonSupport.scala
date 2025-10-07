@@ -76,6 +76,10 @@ trait JsonSupport extends SprayJsonSupport with EnrichedJson {
   implicit val athletMediaPauseFormat: RootJsonFormat[AthletMediaPause] = jsonFormat3(AthletMediaPause)
   implicit val athletMediaToStartFormat: RootJsonFormat[AthletMediaToStart] = jsonFormat3(AthletMediaToStart)
 
+  implicit val useMyMediaPlayerFormat: RootJsonFormat[UseMyMediaPlayer] = jsonFormat2(UseMyMediaPlayer)
+  implicit val forgetMyMediaPlayerFormat: RootJsonFormat[ForgetMyMediaPlayer] = jsonFormat2(ForgetMyMediaPlayer)
+  implicit val mediaPlayerIsReadyFormat: RootJsonFormat[MediaPlayerIsReady] = jsonFormat1(MediaPlayerIsReady)
+  implicit val mediaPlayerDisconnectedFormat: RootJsonFormat[MediaPlayerDisconnected] = jsonFormat1(MediaPlayerDisconnected)
   implicit val athletMediaIsFreeFormat: RootJsonFormat[AthletMediaIsFree] = jsonFormat2(AthletMediaIsFree)
   implicit val athletMediaIsAtStartFormat: RootJsonFormat[AthletMediaIsAtStart] = jsonFormat2(AthletMediaIsAtStart)
   implicit val athletMediaIsRunningFormat: RootJsonFormat[AthletMediaIsRunning] = jsonFormat2(AthletMediaIsRunning)
@@ -98,6 +102,10 @@ trait JsonSupport extends SprayJsonSupport with EnrichedJson {
     classOf[AthletsAddedToWettkampf].getSimpleName -> athletAddedToettkampf,
     classOf[DurchgangChanged].getSimpleName -> durchgangChangedFormat,
     classOf[MessageAck].getSimpleName -> messageAckFormat,
+    classOf[UseMyMediaPlayer].getSimpleName -> useMyMediaPlayerFormat,
+    classOf[ForgetMyMediaPlayer].getSimpleName -> forgetMyMediaPlayerFormat,
+    classOf[MediaPlayerIsReady].getSimpleName -> mediaPlayerIsReadyFormat,
+    classOf[MediaPlayerDisconnected].getSimpleName -> mediaPlayerDisconnectedFormat,
     classOf[AthletMediaAquire].getSimpleName -> athletMediaAquireFormat,
     classOf[AthletMediaRelease].getSimpleName -> athletMediaReleaseFormat,
     classOf[AthletMediaStart].getSimpleName -> athletMediaStartFormat,

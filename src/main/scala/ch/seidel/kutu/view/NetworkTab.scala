@@ -23,7 +23,7 @@ import scalafx.print.PageOrientation
 import scalafx.scene.control.TreeTableColumn._
 import scalafx.scene.control._
 import scalafx.scene.image.{Image, ImageView}
-import scalafx.scene.layout.{BorderPane, Priority}
+import scalafx.scene.layout.{BorderPane, Priority, Region}
 
 import java.time.format.DateTimeFormatter
 import java.util.UUID
@@ -666,7 +666,7 @@ class NetworkTab(wettkampfmode: BooleanProperty, override val wettkampfInfo: Wet
             Player.clearPlayList()
             val mediaList = geraeteRiege.getMediaList(p.toWettkampf, service.loadMedia)
             mediaList.map { case (_, wertung, title, _) =>
-              KuTuApp.makeMenuAction(title) { (caption, action) =>
+              makeMenuAction(title + " ...") { (caption, action) =>
                 mediaList.foreach { case (_, _, title, mediaURI) =>
                   Player.addToPlayList(title, mediaURI.toASCIIString.toLowerCase)
                 }
@@ -783,6 +783,20 @@ class NetworkTab(wettkampfmode: BooleanProperty, override val wettkampfInfo: Wet
     btnMediaPlayer.items.clear()
     btnMediaPlayer.items += KuTuApp.makeMenuAction("Media Player anzeigen ...") { (caption, action) =>
       Player.show()
+    }
+    // graphic for displaying checkmark// graphic for displaying checkmark
+    if (!wettkampf.toWettkampf.isReadonly(homedir, remoteHostOrigin)) {
+      val checkmark = new Region()
+      checkmark.getStyleClass.add("check-mark")
+      checkmark.visible <== Player.isNetworkMediaPlayer
+
+      val checkIsUseMyMediaPlayerMenuItem = new MenuItem("Media Player den Wertungsrichtern freigeben", checkmark) {
+        onAction = handleAction { _: ActionEvent =>
+          Player.useMyMediaPlayerAsNetworkplayer(!Player.isNetworkMediaPlayer.getValue)
+        }
+      }
+
+      btnMediaPlayer.items += checkIsUseMyMediaPlayerMenuItem
     }
     btnMediaPlayer.items += new SeparatorMenuItem()
     btnMediaPlayer.items.addAll(mediaItems.items)
