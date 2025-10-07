@@ -208,7 +208,8 @@ object ResourceExchanger extends KutuService with RiegenBuilder {
           refresher(sender, mappedEvent)
 
         }
-      case (_, MessageAck(_)) => // ignore
+      case (_, MessageAck(msg)) =>
+        logger.debug(msg) // ignore
       case (sender, someOther) =>
         refresher(sender, someOther)
     }

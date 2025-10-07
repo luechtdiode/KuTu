@@ -131,6 +131,7 @@ export class BackendService extends WebsocketService {
     wertungUpdated = new Subject<AthletWertungUpdated>();
 
     mediaStateChanged = new BehaviorSubject<AthletMediaIsAtStart|AthletMediaIsRunning|AthletMediaIsPaused|AthletMediaIsFree>({context: '', type: 'AthletMediaIsFree'} as AthletMediaIsFree);
+    mediaPlayerAvailable = new BehaviorSubject<boolean>(false);
 
     getCurrentStation(): string {
       return localStorage.getItem('current_station')
@@ -1387,6 +1388,12 @@ export class BackendService extends WebsocketService {
           this.newLastResults.next((message as NewLastResults));
           return true;
 
+        case 'MediaPlayerIsReady':
+          this.mediaPlayerAvailable.next(true);
+          return true;
+        case 'MediaPlayerDisconnected':
+          this.mediaPlayerAvailable.next(false);
+          return true;
         case 'AthletMediaIsAtStart':
           this.mediaStateChanged.next((message as AthletMediaIsAtStart));
           return true;

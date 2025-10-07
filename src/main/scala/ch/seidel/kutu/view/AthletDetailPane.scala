@@ -3,6 +3,7 @@ package ch.seidel.kutu.view
 import ch.seidel.commons.PageDisplayer
 import ch.seidel.kutu.Config.{homedir, remoteHostOrigin}
 import ch.seidel.kutu.KuTuApp
+import ch.seidel.kutu.KuTuApp.handleAction
 import ch.seidel.kutu.actors.AthletMediaAquire
 import ch.seidel.kutu.data.ResourceExchanger.saveMediaFile
 import ch.seidel.kutu.domain.{KutuService, Media, Wettkampf}
@@ -44,6 +45,17 @@ case class AthletHeaderPane(wettkampf: Wettkampf, service: KutuService, wkview: 
   val lblAthlet = new Label() {
     styleClass += "toolbar-header"
   }
+
+  val checkmark = new Region()
+  checkmark.getStyleClass.add("check-mark")
+  checkmark.visibleProperty.bind(Player.isNetworkMediaPlayer)
+
+  val checkIsUseMyMediaPlayerMenuItem = new MenuItem("Media Player den Wertungsrichtern freigeben", checkmark) {
+    onAction = handleAction { _: ActionEvent =>
+      Player.useMyMediaPlayerAsNetworkplayer(!Player.isNetworkMediaPlayer.getValue)
+    }
+  }
+
   val currentMediaMenuItem = new MenuItem {
     onAction = (event: ActionEvent) => {
       if (selected != null) {
@@ -125,6 +137,9 @@ case class AthletHeaderPane(wettkampf: Wettkampf, service: KutuService, wkview: 
     items += KuTuApp.makeMenuAction("Media Player anzeigen ...") { (caption, action) =>
       Player.show()
     }
+    if (!isReadonly) {
+      items += checkIsUseMyMediaPlayerMenuItem
+    }
     items += currentMediaMenuItem
     if (!isReadonly) {
       items += assignMediaMenuItem
@@ -191,7 +206,7 @@ case class AthletHeaderPane(wettkampf: Wettkampf, service: KutuService, wkview: 
       lblDisciplin.text.value = selected(index).init.wettkampfdisziplin.easyprint
       lblMedia.text.value = selected(index).init.mediafile.map(m => s"♪ ${m.name} ").getOrElse("")
       val title = s"${selected.head.init.athlet.vorname} ${selected.head.init.athlet.name} ${selected.head.init.athlet.verein.map(v => s"(${v.name})").getOrElse("")}"
-      currentMediaMenuItem.text = s"Mediaplayer mit Playlist von $title"
+      currentMediaMenuItem.text = s"Media Player mit Playlist von $title ..."
       currentMediaMenuItem.disable = selected.flatMap(a => a.init.mediafile.flatMap(m => service.loadMedia(m.id))).isEmpty
     }
     else if (selected != null && selected.nonEmpty) {
@@ -201,14 +216,14 @@ case class AthletHeaderPane(wettkampf: Wettkampf, service: KutuService, wkview: 
         _.nonEmpty
       }.mkString(", ")
       val title = s"${selected.head.init.athlet.vorname} ${selected.head.init.athlet.name} ${selected.head.init.athlet.verein.map(v => s"(${v.name})").getOrElse("")}"
-      currentMediaMenuItem.text = s"Mediaplayer mit Playlist von $title"
+      currentMediaMenuItem.text = s"Media Player mit Playlist von $title ..."
       currentMediaMenuItem.disable = selected.flatMap(a => a.init.mediafile.flatMap(m => service.loadMedia(m.id))).isEmpty
     }
     else {
       lblAthlet.text.value = ""
       lblDisciplin.text.value = ""
       lblMedia.text.value = ""
-      currentMediaMenuItem.text = s"Mediaplayer (leere Playlist)"
+      currentMediaMenuItem.text = s"Media Player (leere Playlist) ..."
       currentMediaMenuItem.disable = true
     }
   }

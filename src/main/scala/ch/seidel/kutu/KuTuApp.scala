@@ -1164,8 +1164,9 @@ object KuTuApp extends JFXApp3 with KutuService with JsonSupport with JwtSupport
         Platform.runLater {
           event match {
             case ev: MediaPlayerAction =>
-              WebSocketClient.publishLocal(ev)
+              WebSocketClient.publishMediaActionLocal(ev)
             case ee: MediaPlayerEvent =>
+              WebSocketClient.publishMediaEventLocal(ee)
             case _ =>
               WebSocketClient.modelWettkampfWertungChanged.setValue(event)
           }

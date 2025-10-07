@@ -35,11 +35,15 @@ case class PublishScores(override val wettkampfUUID: String, title: String, quer
 
 sealed trait KutuAppEvent extends KutuAppProtokoll
 case class BulkEvent(wettkampfUUID: String, events: List[KutuAppEvent]) extends KutuAppEvent
+case class UseMyMediaPlayer(override val wettkampfUUID: String, context: String) extends KutuAppEvent with KutuAppAction
+case class ForgetMyMediaPlayer(override val wettkampfUUID: String, context: String) extends KutuAppEvent with KutuAppAction
 case class AthletMediaAquire(override val wettkampfUUID: String, override val athlet: AthletView,override val wertung: Wertung) extends KutuAppEvent with MediaPlayerAction with KutuAppAction
 case class AthletMediaRelease(override val wettkampfUUID: String, override val athlet: AthletView,override val wertung: Wertung) extends KutuAppEvent with MediaPlayerAction with KutuAppAction
 case class AthletMediaStart(override val wettkampfUUID: String, override val athlet: AthletView,override val wertung: Wertung) extends KutuAppEvent with MediaPlayerAction with KutuAppAction
 case class AthletMediaPause(override val wettkampfUUID: String, override val athlet: AthletView,override val wertung: Wertung) extends KutuAppEvent with MediaPlayerAction with KutuAppAction
 case class AthletMediaToStart(override val wettkampfUUID: String, override val athlet: AthletView,override val wertung: Wertung) extends KutuAppEvent with MediaPlayerAction with KutuAppAction
+case class MediaPlayerIsReady(context: String) extends KutuAppEvent with MediaPlayerEvent
+case class MediaPlayerDisconnected(context: String) extends KutuAppEvent with MediaPlayerEvent
 case class AthletMediaIsFree(media: Media, context: String) extends KutuAppEvent with MediaPlayerEvent
 case class AthletMediaIsAtStart(media: Media, context: String) extends KutuAppEvent with MediaPlayerEvent
 case class AthletMediaIsRunning(media: Media, context: String) extends KutuAppEvent with MediaPlayerEvent
