@@ -191,11 +191,6 @@ export class WertungEditorPage {
   }
 
   calculateEndnote(wertung: Wertung) {
-    if (this.wertung.variables) {
-      this.wertung.noteD = null;
-      this.wertung.noteE = null;
-    }
-    this.wertung.endnote = null;
     let toValidate: Wertung = Object.assign({}, wertung, {
       noteD: wertung.variables ? null : wertung.noteD,
       noteE: wertung.variables ? null : wertung.noteE,
@@ -203,10 +198,15 @@ export class WertungEditorPage {
       mediafile: wertung.mediafile
     });
     if (toValidate.variables || toValidate.noteD !== this.lastValidatedWertung?.noteD || toValidate.noteE !== this.lastValidatedWertung?.noteE) {
-      this.lastValidatedWertung = toValidate;
+      if (this.wertung.variables) {
+        this.wertung.noteD = null;
+        this.wertung.noteE = null;
+      }
+      this.wertung.endnote = null;
       this.backendService.validateWertung(toValidate).subscribe({
         next: (w) => {
           this.zone.run(() => {
+            this.lastValidatedWertung = toValidate;
             this.wertung.noteD = w.noteD;
             this.wertung.noteE = w.noteE;
             this.wertung.endnote = w.endnote;
