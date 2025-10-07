@@ -848,12 +848,12 @@ trait RegistrationService extends DBService with RegistrationResultMapper with M
         sqlu"""
             update wertung
             set media_id = ${media.id}
-            where media_id in (select id from media m where m.id <> ${media.id} and m.md5 == ${media.md5})
+            where media_id in (select id from media m where m.id <> ${media.id} and m.md5 = ${media.md5})
         """ >>
         sqlu"""
             update athletregistration
             set media_id = ${media.id}
-            where media_id in (select id from media m where m.id <> ${media.id} and m.md5 == ${media.md5})
+            where media_id in (select id from media m where m.id <> ${media.id} and m.md5 = ${media.md5})
         """ >>
         sqlu"""
             delete from media
