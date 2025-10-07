@@ -100,6 +100,10 @@ export class WertungEditorPage {
     return this.backendService.isWebsocketConnected();
   }
 
+  get isNetworkMediaPlayerAvailable(): boolean {
+    return this.backendService.mediaPlayerAvailable.value;
+  }
+  
   groupBy = <T, K extends keyof any>(arr: T[], key: (i: T) => K) => arr.reduce(
     (groups, item) => {
       (groups[key(item)] ||= []).push(item);

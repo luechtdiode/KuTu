@@ -26,6 +26,7 @@ object WebSocketClient extends SprayJsonSupport with JsonSupport with AuthSuppor
   private var connectedOutgoingQueue: Option[SourceQueueWithComplete[Message]] = None
   private var connectedIncomingPromise: Option[Promise[Option[Message]]] = None
   private var mediaPlayerActions: Option[MediaPlayerAction=>Unit] = None
+  private var mediaPlayerEvents: Option[MediaPlayerEvent=>Unit] = None
   val modelWettkampfWertungChanged: SimpleObjectProperty[KutuAppEvent] = new SimpleObjectProperty[KutuAppEvent]()
   var lastSequenceId = Long.MinValue
   var lastWettkampf: Option[Wettkampf] = None
@@ -101,8 +102,16 @@ object WebSocketClient extends SprayJsonSupport with JsonSupport with AuthSuppor
     mediaPlayerActions = Some(eventhandler)
   }
 
-  def publishLocal(event: MediaPlayerAction): Unit = {
+  def registerMediaPlayerEventHandler(eventhandler: MediaPlayerEvent=>Unit): Unit = {
+    mediaPlayerEvents = Some(eventhandler)
+  }
+
+  def publishMediaActionLocal(event: MediaPlayerAction): Unit = {
     mediaPlayerActions.foreach(_.apply(event))
+  }
+
+  def publishMediaEventLocal(event: MediaPlayerEvent): Unit = {
+    mediaPlayerEvents.foreach(_.apply(event))
   }
 
   def publish(event: KutuAppEvent): Unit = {
@@ -111,6 +120,8 @@ object WebSocketClient extends SprayJsonSupport with JsonSupport with AuthSuppor
       event match {
         case ma: MediaPlayerAction =>
         case ma: MediaPlayerEvent =>
+        case _: UseMyMediaPlayer =>
+        case _: ForgetMyMediaPlayer =>
         case _ => modelWettkampfWertungChanged.set(event)
       }
     }

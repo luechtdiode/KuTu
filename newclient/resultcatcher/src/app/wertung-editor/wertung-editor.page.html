@@ -11,7 +11,7 @@
 </ion-header>
 
 <ion-content>
-    @if (item.wertung?.mediafile) {
+    @if (isNetworkMediaPlayerAvailable && item.wertung?.mediafile) {
       <ion-item>
         <ion-icon slot="start" name="musical-notes-outline"></ion-icon>
         <ion-button size="large" [disabled]="waiting || mediaButtonDisabled || currentMediaButtonDisabled"  color="primary" (click)='currentMediaAction()'>
