@@ -367,10 +367,10 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
           }
         }
 
-        styleClass += "table-cell-with-value"
-        prefWidth = if (wertung.init.wettkampfdisziplin.isDNoteUsed) 60 else 0
-        editable = !wettkampf.toWettkampf.isReadonly(homedir, remoteHostOrigin) && wertung.init.wettkampfdisziplin.isDNoteUsed
-        visible = wertung.init.wettkampfdisziplin.isDNoteUsed
+          styleClass += "table-cell-with-value"
+          prefWidth = if (wertung.init.wettkampfdisziplin.isDNoteUsed) 60 else 0
+          editable = !wettkampf.toWettkampf.isReadonly(homedir, remoteHostOrigin) && wertung.init.wettkampfdisziplin.isDNoteUsed
+          visible = wertung.init.wettkampfdisziplin.isDNoteUsed
 
         onEditCancel = (evt: CellEditEvent[IndexedSeq[WertungEditor], Double]) => {
           if (evt.rowValue != null && evt.rowValue.size > index) {
@@ -378,35 +378,35 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
             disciplin.reset
           }
         }
-        onEditCommit = (evt: CellEditEvent[IndexedSeq[WertungEditor], Double]) => {
-          if (evt.rowValue != null && evt.rowValue.size > index) {
-            val disciplin = evt.rowValue(index)
-            if (disciplin.init.defaultVariables.isEmpty) {
-              if (evt.newValue.toString == "NaN") {
-                disciplin.noteD.value = evt.newValue
-                disciplin.noteE.value = evt.newValue
-                disciplin.endnote.value = evt.newValue
-              } else {
-                val updatedWertung = disciplin.init.validatedResult(
-                  disciplin.toDouble(evt.newValue),
-                  disciplin.toDouble(disciplin.noteE.value))
-                disciplin.noteD.set(updatedWertung.noteD.doubleValue)
-                disciplin.noteE.set(updatedWertung.noteE.doubleValue)
-                disciplin.endnote.set(updatedWertung.endnote.doubleValue)
+          onEditCommit = (evt: CellEditEvent[IndexedSeq[WertungEditor], Double]) => {
+            if (evt.rowValue != null && evt.rowValue.size > index) {
+              val disciplin = evt.rowValue(index)
+              if (disciplin.init.defaultVariables.isEmpty) {
+                if (evt.newValue.toString == "NaN") {
+                  disciplin.noteD.value = evt.newValue
+                  disciplin.noteE.value = evt.newValue
+                  disciplin.endnote.value = evt.newValue
+                } else {
+                  val updatedWertung = disciplin.init.validatedResult(
+                    disciplin.toDouble(evt.newValue),
+                    disciplin.toDouble(disciplin.noteE.value))
+                  disciplin.noteD.set(updatedWertung.noteD.doubleValue)
+                  disciplin.noteE.set(updatedWertung.noteE.doubleValue)
+                  disciplin.endnote.set(updatedWertung.endnote.doubleValue)
+                }
+              }
+              if (disciplin.isDirty) {
+                service.updateWertung(disciplin.updateAndcommit)
               }
             }
-            if (disciplin.isDirty) {
-              service.updateWertung(disciplin.updateAndcommit)
-            }
+            evt.tableView.requestFocus()
           }
-          evt.tableView.requestFocus()
         }
-      }
       lazy val clEnote = new WKTableColumn[Double](indexerE.next()) {
         val hasNoFormTemplate = wertungen.forall(we => if (index < we.size) we(index).init.wettkampfdisziplin.notenSpez.template.isEmpty else true)
-        text = eNoteLabel
-        cellValueFactory = { x => if (x.value.size > index) x.value(index).noteE else wertung.noteE }
-        cellFactory.value = { _: Any =>
+          text = eNoteLabel
+          cellValueFactory = { x => if (x.value.size > index) x.value(index).noteE else wertung.noteE }
+          cellFactory.value = { _: Any =>
           if (hasNoFormTemplate) {
             new AutoCommitTextFieldTableCell[IndexedSeq[WertungEditor], Double](
               DoubleConverter(wertung.init.wettkampfdisziplin.notenSpez),
@@ -419,7 +419,7 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
                 }
               }
             )
-          } else {
+          }else {
             new AutoCommitTextFieldTableCell[IndexedSeq[WertungEditor], Double](
               DoubleConverter(wertung.init.wettkampfdisziplin.notenSpez),
               (cell) => {
@@ -433,11 +433,11 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
           }
         }
 
-        styleClass += "table-cell-with-value"
-        prefWidth = if (hasNoFormTemplate) 60 else 100
-        editable = !wettkampf.toWettkampf.isReadonly(homedir, remoteHostOrigin)
+          styleClass += "table-cell-with-value"
+          prefWidth = if (hasNoFormTemplate) 60 else 100
+          editable = !wettkampf.toWettkampf.isReadonly(homedir, remoteHostOrigin)
 
-        onEditCancel = (evt: CellEditEvent[IndexedSeq[WertungEditor], Double]) => {
+  onEditCancel = (evt: CellEditEvent[IndexedSeq[WertungEditor], Double]) => {
           if (evt.rowValue != null && evt.rowValue.size > index) {
             val disciplin = evt.rowValue(index)
             disciplin.reset
@@ -445,7 +445,7 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
         }
 
         onEditCommit = (evt: CellEditEvent[IndexedSeq[WertungEditor], Double]) => {
-          if (evt.rowValue != null && evt.rowValue.size > index) {
+            if (evt.rowValue != null && evt.rowValue.size > index) {
             val disciplin = evt.rowValue(index)
             if (disciplin.init.defaultVariables.isEmpty) {
               if (evt.newValue.toString == "NaN") {
@@ -462,34 +462,34 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
               }
             }
             if (disciplin.isDirty) {
-              service.updateWertung(disciplin.updateAndcommit)
+                service.updateWertung(disciplin.updateAndcommit)
+              }
             }
+            evt.tableView.requestFocus()
           }
-          evt.tableView.requestFocus()
         }
-      }
-      lazy val clEndnote = new WKTableColumn[Double](indexerF.next()) {
-        text = "Endnote"
-        cellValueFactory = { x => if (x.value.size > index) x.value(index).endnote else wertung.endnote }
-        cellFactory.value = { _: Any => new AutoCommitTextFieldTableCell[IndexedSeq[WertungEditor], Double](DoubleConverter(wertung.init.wettkampfdisziplin.notenSpez)) }
-        styleClass += "table-cell-with-value"
-        prefWidth = 80
-        editable = false
-      }
-      val cl: jfxsc.TableColumn[IndexedSeq[WertungEditor], _] = if (withDNotes) {
-        new TableColumn[IndexedSeq[WertungEditor], String] {
-          text = wertung.init.wettkampfdisziplin.disziplin.name
-          columns ++= Seq(clDnote, clEnote, clEndnote)
+        lazy val clEndnote = new WKTableColumn[Double](indexerF.next()) {
+          text = "Endnote"
+          cellValueFactory = { x => if (x.value.size > index) x.value(index).endnote else wertung.endnote }
+          cellFactory.value = { _: Any => new AutoCommitTextFieldTableCell[IndexedSeq[WertungEditor], Double](DoubleConverter(wertung.init.wettkampfdisziplin.notenSpez)) }
+          styleClass += "table-cell-with-value"
+          prefWidth = 80
+          editable = false
         }
+        val cl: jfxsc.TableColumn[IndexedSeq[WertungEditor], _] = if (withDNotes) {
+          new TableColumn[IndexedSeq[WertungEditor], String] {
+            text = wertung.init.wettkampfdisziplin.disziplin.name
+            columns ++= Seq(clDnote, clEnote, clEndnote)
+          }
+        }
+        else {
+          // TODO Option, falls Mehrere Programme die gleichen Geräte benötigen,
+          //  abhängig von subpath oder aggr. gerät mit Pfad qualifizieren
+          clEnote.text = wertung.init.wettkampfdisziplin.disziplin.name
+          clEnote
+        }
+        cl
       }
-      else {
-        // TODO Option, falls Mehrere Programme die gleichen Geräte benötigen,
-        //  abhängig von subpath oder aggr. gerät mit Pfad qualifizieren
-        clEnote.text = wertung.init.wettkampfdisziplin.disziplin.name
-        clEnote
-      }
-      cl
-    }
   }
   else {
     IndexedSeq[jfxsc.TableColumn[IndexedSeq[WertungEditor], _]]()
@@ -1248,6 +1248,275 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
     reloadData()
   })
 
+
+  def doLoadRanglisteFromCSV(progrm: ProgrammView)(implicit event: ActionEvent) = {
+    import scala.concurrent.ExecutionContext.Implicits._
+    import scala.util.{Failure, Success}
+    val csvRangliste = new File(homedir + "/" + encodeFileName(wettkampf.easyprint) + s"/rangliste-${progrm.name}.csv".toLowerCase)
+    val source = Source.fromFile(csvRangliste)(Codec.ISO8859)
+    val vereineList = service.selectVereine
+    val verbandPartsResolver: Verein=>Set[String] = _.verband match {
+      case Some(verband) => verband.split(",").toSet + verband
+      case None => Set()
+    }
+    val knownVerbandList = vereineList.flatMap(verbandPartsResolver).toSet
+    val wkdiszs = service.listWettkampfDisziplineViews(wettkampf.toWettkampf)
+    val lines = source.getLines().toList
+    val fullDFields = "^([0-9.]+)\\s([\\D ]*)\\s([0-9]{4})\\s([\\D ]*)\\s([0-9.*]{3,4})\\s([0-9.*]{5,9})\\s([0-9.*]{3,4})\\s([0-9.*]{3,4})\\s([0-9.*]{5,9})\\s([0-9.*]{3,4})\\s([0-9.*]{5,9})\\s([0-9.*]{3,4})\\s([0-9.*]{3,4})\\s([0-9.*]{5,9})\\s([0-9.*]{3,4})\\s([0-9.*]{5,9})\\s([0-9.*]{3,4})\\s([0-9.*]{5,9})\\s([0-9.*]{3,4})\\s([0-9.*]{5,9}).*$".r
+    val partialDFields = "^([0-9.]+)\\s([\\D ]*)\\s([0-9]{4})\\s([\\D ]*)\\s([0-9.*]{3,4})\\s([0-9.*]{5,9})\\s([0-9.*]{3,4})\\s([0-9.*]{5,9})\\s([0-9.*]{3,4})\\s([0-9.*]{5,9})\\s([0-9.*]{3,4})\\s([0-9.*]{3,4})\\s([0-9.*]{5,9})\\s([0-9.*]{3,4})\\s([0-9.*]{5,9})\\s([0-9.*]{3,4})\\s([0-9.*]{5,9})\\s([0-9.*]{3,4})\\s([0-9.*]{5,9}).*$".r
+    val singleDFields = "^([0-9.]+)\\s([\\D ]*)\\s([0-9]{4})\\s([\\D ]*)\\s([0-9.*]+)\\s([0-9.*]+)\\s([0-9.*]+)\\s([0-9.*]+)\\s([0-9.*]+)\\s([0-9.*]+)\\s([0-9.*]+)\\s([0-9.*]+)\\s([0-9.*]+)\\s([0-9.*]+)\\s([0-9.*]+)\\s([0-9.*]+)\\s([0-9.*]+)\\s([0-9.*]+).*$".r
+
+    def mapWertung(geraet: String, valueD: String, valueE: String) = {
+      val dValue = valueD.split(",").map(BigDecimal(_)).sorted.reverse.head
+      val wkds = wkdiszs
+        .filter(_.programm.equals(progrm))
+        .find(_.disziplin.name.equals(geraet))
+      val wd: Long = wkds.map(_.id).getOrElse(0)
+      val defaultvariables = wkds
+        .flatMap(wd => wd.notenSpez.template.map(t => t.toView(t.variables)))
+
+      Wertung(
+        id = 0,
+        athletId = 0,
+        wettkampfdisziplinId = wd,
+        wettkampfId = wettkampf.id,
+        wettkampfUUID = wettkampf.uuid.getOrElse(""),
+        noteD = Some(dValue),
+        noteE = Some(BigDecimal(valueE) - dValue),
+        endnote = Some(BigDecimal(valueE)),
+        riege = None,
+        riege2 = None,
+        team = None,
+        variables = defaultvariables
+      )
+    }
+
+    def mapAthlet(name: String, jahrgang: String, verein: String) = {
+      val guessedVerband = verein.split(" ").last
+      val fallbackVerein = Verein(0, verein.replace(guessedVerband, "").replace("/", ", ").trim, Some(guessedVerband))
+      val v = knownVerbandList
+        .filter(verband => verein.contains(verband))
+        .map { verband =>
+          Verein(0, verein.replace(verband, "").replace("/", ", ").trim, Some(verband))
+        }.headOption.getOrElse(fallbackVerein)
+      val ns = name.split(" ")
+      val a = new Athlet(
+        id = 0,
+        js_id = 0,
+        geschlecht = "M",
+        name = ns.last,
+        vorname = ns.reverse.tail.reverse.mkString(" ").trim,
+        gebdat = Some(service.getSQLDate("01.01." + jahrgang)),
+        strasse = "",
+        plz = "",
+        ort = "",
+        verein = service.findVereinLike(v, exact = true),
+        activ = true
+      )
+      (v, a)
+    }
+
+    val rowfields = lines
+      .map {
+        case fullDFields(rang, name, jahrgang, verein, bodenD, bodenE, pferdD1, pferdD2, pferdE, ringeD, ringeE, sprungD1, sprungD2, sprungE, barrenD, barrenE, reckD, reckE, totalD, totalE) =>
+          val (v: Verein, a: Athlet) = mapAthlet(name, jahrgang, verein)
+
+          (a, v, List(
+            mapWertung("Boden", bodenD, bodenE),
+            mapWertung("Pferd Pauschen", pferdD1 + "," + pferdD2, pferdE),
+            mapWertung("Ring", ringeD, ringeE),
+            mapWertung("Sprung", sprungD1 + "," + sprungD2, sprungE),
+            mapWertung("Barren", barrenD, barrenE),
+            mapWertung("Reck", reckD, reckE)
+          ))
+
+        case partialDFields(rang, name, jahrgang, verein, bodenD, bodenE, pferdD1, pferdE, ringeD, ringeE, sprungD1, sprungD2, sprungE, barrenD, barrenE, reckD, reckE, totalD, totalE) =>
+          val (v: Verein, a: Athlet) = mapAthlet(name, jahrgang, verein)
+
+          (a, v, List(
+            mapWertung("Boden", bodenD, bodenE),
+            mapWertung("Pferd Pauschen", pferdD1, pferdE),
+            mapWertung("Ring", ringeD, ringeE),
+            mapWertung("Sprung", sprungD1 + "," + sprungD2, sprungE),
+            mapWertung("Barren", barrenD, barrenE),
+            mapWertung("Reck", reckD, reckE)
+          ))
+
+        case singleDFields(rang, name, jahrgang, verein, bodenD, bodenE, pferdD, pferdE, ringeD, ringeE, sprungD, sprungE, barrenD, barrenE, reckD, reckE, totalD, totalE) =>
+          val (v: Verein, a: Athlet) = mapAthlet(name, jahrgang, verein)
+          (a, v, List(
+            mapWertung("Boden", bodenD, bodenE),
+            mapWertung("Pferd Pauschen", pferdD, pferdE),
+            mapWertung("Ring", ringeD, ringeE),
+            mapWertung("Sprung", sprungD, sprungE),
+            mapWertung("Barren", barrenD, barrenE),
+            mapWertung("Reck", reckD, reckE)
+          ))
+      }
+
+    val athletModel = ObservableBuffer[(Long, Athlet, AthletView, List[Wertung])]()
+    val cache = new java.util.ArrayList[MatchCode]()
+    val cliprawf = KuTuApp.invokeAsyncWithBusyIndicator("RanglisteDaten von CSV-Datei einlesen ...") {
+      Future {
+
+        val importvereine = rowfields
+
+        val vereineList = service.selectVereine
+        val vereineMap = vereineList.map(v => v.id -> v).toMap
+        val athletSearchFn = service.findAthleteLike(wettkampf = None, cache = cache, exclusive = false, exactVerein = false)_
+        val csvRaw = importvereine.map { row =>
+          val (parsed, verein, wertungen) = row
+          val candidate = athletSearchFn(parsed)
+          val suggestion = AthletView(
+            candidate.id, candidate.js_id,
+            candidate.geschlecht, candidate.name, candidate.vorname, candidate.gebdat,
+            candidate.strasse, candidate.plz, candidate.ort,
+            candidate.verein.filter(_ > 0L)
+              .map(v => vereineMap(v))
+              .orElse(service.findVereinLike(verein, exact = false)
+                .filter(_ > 0L)
+                .map(v => vereineMap(v))
+                .orElse(Some(verein))),
+            activ = true)
+          (progrm.id, parsed, suggestion, wertungen)
+        }
+        csvRaw
+      }
+    }
+    cliprawf.onComplete {
+      case Failure(t) => println(t.toString)
+      case Success(clipraw) => Platform.runLater {
+        if (clipraw.nonEmpty) {
+          athletModel.appendAll(clipraw)
+          val filteredModel = ObservableBuffer.from(athletModel)
+          val athletTable = new TableView[(Long, Athlet, AthletView, List[Wertung])](filteredModel) {
+            columns ++= List(
+              new TableColumn[(Long, Athlet, AthletView, List[Wertung]), String] {
+                text = "Athlet (Name, Vorname, JG)"
+                cellValueFactory = { x =>
+                  new ReadOnlyStringWrapper(x.value, "athlet", {
+                    s"${x.value._2.shortPrint}"
+                  })
+                }
+                minWidth = 250
+              },
+              new TableColumn[(Long, Athlet, AthletView, List[Wertung]), String] {
+                text = "Verein"
+                cellValueFactory = { x =>
+                  new ReadOnlyStringWrapper(x.value, "verein", {
+                    s"${x.value._3.verein.get.extendedprint}"
+                  })
+                }
+              },
+              new TableColumn[(Long, Athlet, AthletView, List[Wertung]), String] {
+                text = "Importvorschlag"
+                cellValueFactory = { x =>
+                  new ReadOnlyStringWrapper(x.value, "vorschlag", {
+                    if (x.value._3.id > 0) "existierend" else "neu importieren"
+                  })
+                }
+              }
+            )
+          }
+          athletTable.selectionModel.value.setSelectionMode(SelectionMode.Multiple)
+          val filter = new TextField() {
+            promptText = "Such-Text"
+            text.addListener { (o: javafx.beans.value.ObservableValue[_ <: String], oldVal: String, newVal: String) =>
+              val sortOrder = athletTable.sortOrder.toList
+              filteredModel.clear()
+              val searchQuery = newVal.toUpperCase().split(" ")
+              for {(progrid, athlet, vorschlag, oldProgId) <- athletModel
+                   } {
+                val matches = searchQuery.forall { search =>
+                  if (search.isEmpty() || athlet.name.toUpperCase().contains(search)) {
+                    true
+                  }
+                  else if (athlet.vorname.toUpperCase().contains(search)) {
+                    true
+                  }
+                  else if (vorschlag.verein match {
+                    case Some(v) => v.name.toUpperCase().contains(search)
+                    case None => false
+                  }) {
+                    true
+                  }
+                  else {
+                    false
+                  }
+                }
+
+                if (matches) {
+                  filteredModel.add((progrid, athlet, vorschlag, oldProgId))
+                }
+              }
+              athletTable.sortOrder.clear()
+              val restored = athletTable.sortOrder ++= sortOrder
+            }
+          }
+          PageDisplayer.showInDialog("Aus CSV laden ...", new DisplayablePage() {
+            def getPage: Node = {
+              new BorderPane {
+                hgrow = Priority.Always
+                vgrow = Priority.Always
+                minWidth = 600
+                center = new BorderPane {
+                  hgrow = Priority.Always
+                  vgrow = Priority.Always
+                  top = filter
+                  center = athletTable
+                  minWidth = 550
+                }
+
+              }
+            }
+          }, new Button("OK") {
+            onAction = (event: ActionEvent) => {
+              if (!athletTable.selectionModel().isEmpty) {
+                val selected = athletTable.items.value.zipWithIndex.filter {
+                  x => athletTable.selectionModel.value.isSelected(x._2)
+                }.map(_._1)
+                selected
+                  .groupBy(_._3.verein)
+                  .filter(_._1.nonEmpty)
+                  .map { grp =>
+                    val v = insertVereinIfMissing(grp._1.get)
+                    (v.id, grp._2.map { c =>
+                      val a = c._2.copy(verein = Some(v.id))
+                      val av: AthletView = c._3.copy(verein = Some(v))
+                      (c._1, a, av, c._4)
+                    })
+                  }
+                  .foreach { grp =>
+                    println(s"insert ${grp._2.size} Athletes of Verein ${grp._1}")
+                    insertClipboardAssignments(grp._1, grp._2)
+                  }
+              }
+            }
+          }, new Button("OK Alle") {
+            onAction = (event: ActionEvent) => {
+              // insert to competition
+              filteredModel
+                .groupBy(_._3.verein)
+                .filter(_._1.nonEmpty)
+                .map { grp =>
+                  val v = insertVereinIfMissing(grp._1.get)
+                  (v.id, grp._2.map { c =>
+                    val a = c._2.copy(verein = Some(v.id))
+                    val av: AthletView = c._3.copy(verein = Some(v))
+                    (c._1, a, av, c._4)
+                  })
+                }
+                .foreach { grp =>
+                  println(s"insert ${grp._2.size} Athletes of Verein ${grp._1}")
+                  insertClipboardAssignments(grp._1, grp._2)
+                }
+            }
+          })
+        }
+      }
+    }
+  }
+
   def doLoadFromCSV(filename: URI, progrm: Option[ProgrammView])(implicit event: ActionEvent) = {
     import scala.concurrent.ExecutionContext.Implicits._
     import scala.util.{Failure, Success}
@@ -1414,77 +1683,12 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
                 val selected = athletTable.items.value.zipWithIndex.filter {
                   x => athletTable.selectionModel.value.isSelected(x._2)
                 }.map(_._1)
-                selected
-                  .filter(_._1 > 0L)
-                  .filter(_._4 == 0)
-                  .groupBy(_._3.verein)
-                  .filter(_._1.nonEmpty)
-                  .map { grp =>
-                    val v = grp._1.map(service.insertVerein).get
-                    println(s"verein inserted: ${v}")
-                    (v.id, grp._2.map { c =>
-                      val a = c._2.copy(verein = Some(v.id))
-                      val av: AthletView = c._3.copy(verein = Some(v))
-                      (c._1, a, av)
-                    })
-                  }
-                  .foreach { grp =>
-                    println(s"insert ${grp._2.size} Athletes of Verein ${grp._1}")
-                    insertClipboardAssignments(grp._1, grp._2)
-                  }
-                // move to program
-                selected
-                  .filter(_._1 > 0L)
-                  .filter(_._4 > 0)
-                  .foreach { grp =>
-                    service.moveToProgram(wettkampf.id, grp._1, 0, grp._3)
-                  }
-                // remove
-                selected
-                  .filter(_._1 == 0L)
-                  .foreach { grp =>
-                    val wertungenIds = wertungen.flatMap(row => row.filter(w => w.init.athlet.easyprint.equals(grp._3.easyprint))).map(_.init.id).toSet
-                    service.unassignAthletFromWettkampf(wertungenIds)
-                  }
-
+                syncImportedAthletListWithCompetition(selected)
               }
             }
           }, new Button("OK Alle") {
             onAction = (event: ActionEvent) => {
-              // insert to competition
-              filteredModel
-                .filter(_._1 > 0L)
-                .filter(_._4 == 0)
-                .groupBy(_._3.verein)
-                .filter(_._1.nonEmpty)
-                .map { grp =>
-                  val v = grp._1.map(service.insertVerein).get
-                  println(s"verein inserted: ${v}")
-                  (v.id, grp._2.map { c =>
-                    val a = c._2.copy(verein = Some(v.id))
-                    val av: AthletView = c._3.copy(verein = Some(v))
-                    (c._1, a, av)
-                  })
-                }
-                .foreach { grp =>
-                  println(s"insert ${grp._2.size} Athletes of Verein ${grp._1}")
-                  insertClipboardAssignments(grp._1, grp._2)
-                }
-              // move to program
-              filteredModel
-                .filter(_._1 > 0L)
-                .filter(_._4 > 0)
-                .foreach { grp =>
-                  service.moveToProgram(wettkampf.id, grp._1, 0, grp._3)
-                }
-              // remove
-              filteredModel
-                .filter(_._1 == 0L)
-                .foreach { grp =>
-                  val wertungenIds = wertungen.flatMap(row => row.filter(w => w.init.athlet.easyprint.equals(grp._3.easyprint))).map(_.init.id).toSet
-                  service.unassignAthletFromWettkampf(wertungenIds)
-                }
-
+              syncImportedAthletListWithCompetition(filteredModel)
             }
           })
         }
@@ -1664,13 +1868,13 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
                 val selectedAthleten = athletTable.items.value.zipWithIndex.filter {
                   x => athletTable.selectionModel.value.isSelected(x._2)
                 }.map(_._1)
-                insertClipboardAssignments(cbVereine.selectionModel.value.selectedItem.value.id, selectedAthleten)
+                insertClipboardAssignments(cbVereine.selectionModel.value.selectedItem.value.id, selectedAthleten.map(x => (x._1, x._2, x._3, List())))
               }
             }
           }, new Button("OK Alle") {
             disable <== when(cbVereine.selectionModel.value.selectedItemProperty.isNull()) choose true otherwise false
             onAction = (event: ActionEvent) => {
-              insertClipboardAssignments(cbVereine.selectionModel.value.selectedItem.value.id, filteredModel)
+              insertClipboardAssignments(cbVereine.selectionModel.value.selectedItem.value.id, filteredModel.map(x => (x._1, x._2, x._3, List())))
             }
           })
         }
@@ -1678,9 +1882,61 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
     }
   }
 
-  private def insertClipboardAssignments(vereinId: Long, selectedAthleten: ObservableBuffer[(Long, Athlet, AthletView)]): Unit = {
+  private def insertVereinIfMissing(verein: Verein) = {
+    if (verein.id > 0L) {
+      //println(s"verein updated: ${v}")
+      verein
+    }
+    else {
+      val vv = service.insertVerein(verein)
+      println(s"verein inserted: ${vv}")
+      vv
+    }
+  }
+
+  private def insertImportedAthletListToCompetition(athletList: ObservableBuffer[(Long, Athlet, AthletView, Long)]): Unit = {
+    athletList
+      .filter(_._1 > 0L)
+      .filter(_._4 == 0)
+      .groupBy(_._3.verein)
+      .filter(_._1.nonEmpty)
+      .map { grp =>
+        val v = insertVereinIfMissing(grp._1.get)
+        (v.id, grp._2.map { c =>
+          val a = c._2.copy(verein = Some(v.id))
+          val av: AthletView = c._3.copy(verein = Some(v))
+          (c._1, a, av)
+        })
+      }
+      .foreach { grp =>
+        println(s"insert ${grp._2.size} Athletes of Verein ${grp._1}")
+        insertClipboardAssignments(grp._1, grp._2.map(x => (x._1, x._2, x._3, List())))
+      }
+
+  }
+
+  private def syncImportedAthletListWithCompetition(athletList: ObservableBuffer[(Long, Athlet, AthletView, Long)]): Unit = {
+    // insert (progId, parsed, suggestion, oldProg) to competition
+    insertImportedAthletListToCompetition(athletList)
+    // move to program
+    athletList
+      .filter(_._1 > 0L)
+      .filter(_._4 > 0)
+      .foreach { grp =>
+        service.moveToProgram(wettkampf.id, grp._1, 0, grp._3)
+      }
+    // remove
+    athletList
+      .filter(_._1 == 0L)
+      .foreach { grp =>
+        val wertungenIds = wertungen.flatMap(row => row.filter(w => w.init.athlet.easyprint.equals(grp._3.easyprint))).map(_.init.id).toSet
+        service.unassignAthletFromWettkampf(wertungenIds)
+      }
+  }
+
+  private def insertClipboardAssignments(vereinId: Long, selectedAthleten: ObservableBuffer[(Long, Athlet, AthletView, List[Wertung])]): Unit = {
     val clip = selectedAthleten.map { x =>
-      val (progrId, importathlet, candidateView) = x
+      val (progrId, importathlet, candidateView, wertungen) = x
       val id = if (candidateView.id > 0 &&
         (importathlet.gebdat match {
           case Some(d) =>
@@ -1724,13 +1980,20 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
         ))
         athlet.id
       }
-      (progrId, id)
+      (progrId, id, wertungen.map{wertung =>
+        wertung.copy(athletId=id)
+      })
     }
     if (clip.nonEmpty) {
-      for ((progId, athletes) <- clip.groupBy(_._1).map(x => (x._1, x._2.map(_._2)))) {
-        service.assignAthletsToWettkampf(wettkampf.id, Set(progId), athletes.toSet, None)
+      for ((progId, athletes) <- clip.groupBy(_._1).map(x => (x._1, x._2.map(x => (x._2, x._3))))) {
+        if (athletes.exists(_._2.isEmpty)) {
+          service.assignAthletsToWettkampf(wettkampf.id, Set(progId), athletes.map(_._1).toSet, None)
+        } else {
+          athletes.flatMap(_._2).foreach { wertung =>
+            service.updateOrinsertWertung(wertung)
+          }
+        }
       }
-
       reloadData()
     }
   }
@@ -2216,9 +2479,14 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
           doLoadFromCSV(uri, Some(wettkampf.programm))(event)
         }
       }
+      val loadFromRangliste = new Button("Aus Rangliste laden ...") {
+        onAction = (event: ActionEvent) => {
+          doLoadRanglisteFromCSV(progrm)(event)
+        }
+      }
 
       if (csvInputFile.exists()) {
-        List(addButton, loadFromExcel, moveToOtherProgramButton, removeButton, setRiege2ForAllButton, riegenRemoveButton, generateTeilnehmerListe, generateNotenblaetter).filter(btn => !btn.text.value.equals("."))
+        List(addButton, loadFromExcel, loadFromRangliste, moveToOtherProgramButton, removeButton, setRiege2ForAllButton, riegenRemoveButton, generateTeilnehmerListe, generateNotenblaetter).filter(btn => !btn.text.value.equals("."))
       } else {
         List(addButton, pasteFromExcel, moveToOtherProgramButton, removeButton, setRiege2ForAllButton, riegenRemoveButton, generateTeilnehmerListe, generateNotenblaetter).filter(btn => !btn.text.value.equals("."))
       }
