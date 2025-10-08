@@ -4,7 +4,7 @@ import ch.seidel.commons.{LazyTabPane, TabWithService}
 import ch.seidel.kutu.Config._
 import ch.seidel.kutu.KuTuApp.{enc, hostServices}
 import ch.seidel.kutu._
-import ch.seidel.kutu.actors.AthletMediaAquire
+import ch.seidel.kutu.actors._
 import ch.seidel.kutu.domain._
 import ch.seidel.kutu.http.WebSocketClient
 import ch.seidel.kutu.renderer.PrintUtil.FilenameDefault
@@ -13,6 +13,7 @@ import ch.seidel.kutu.view.player.Player
 import javafx.event.EventHandler
 import javafx.scene.{control => jfxsc}
 import scalafx.Includes._
+import scalafx.application.Platform
 import scalafx.beans.binding.Bindings
 import scalafx.beans.property.{BooleanProperty, StringProperty}
 import scalafx.collections.ObservableBuffer
@@ -27,6 +28,7 @@ import scalafx.scene.layout.{BorderPane, Priority, Region}
 
 import java.time.format.DateTimeFormatter
 import java.util.UUID
+import java.util.concurrent.{ScheduledFuture, ScheduledThreadPoolExecutor, TimeUnit}
 import scala.collection.immutable
 import scala.concurrent.Await
 import scala.concurrent.duration.Duration
@@ -265,6 +267,23 @@ class DurchgangStationView(wettkampf: WettkampfView, service: KutuService, diszi
   }
 }
 
+object DeferredPanelRefresher {
+  private val refresherPool = new ScheduledThreadPoolExecutor(1)
+  var pendingUpdateTask: List[ScheduledFuture[_]] = List.empty
+  sys.addShutdownHook(refresherPool.shutdownNow)
+
+
+  def submitUpdateTask(task: () => Unit): Unit = {
+    pendingUpdateTask = (pendingUpdateTask.filter(t => !t.isDone) match {
+      case Nil => List()
+      case h :: t => t.foreach(_.cancel(true))
+        List(h)
+    }) :+ DeferredPanelRefresher.refresherPool.schedule(new Runnable() { def run(): Unit = {
+        Platform.runLater { task() }
+      }},10L, TimeUnit.SECONDS)
+  }
+}
+
 class NetworkTab(wettkampfmode: BooleanProperty, override val wettkampfInfo: WettkampfInfo, override val service: KutuService) extends Tab with TabWithService with ExportFunctions {
 
   private var lazypane: Option[LazyTabPane] = None
@@ -297,64 +316,63 @@ class NetworkTab(wettkampfmode: BooleanProperty, override val wettkampfInfo: Wet
   val isRunning: BooleanProperty = BooleanProperty(false)
 
   private def refreshData(): Unit = {
-    val expandedStates = model
-      .filter(_.isExpanded)
-      .map(_.value.value.durchgang.title)
-      .toSet
-    val selected = view.selectionModel.value.selectedCells.toList.headOption
-    val newList: immutable.Seq[DurchgangState] = loadDurchgaenge
+      val expandedStates = model
+        .filter(_.isExpanded)
+        .map(_.value.value.durchgang.title)
+        .toSet
+      val selected = view.selectionModel.value.selectedCells.toList.headOption
+      val newList: immutable.Seq[DurchgangState] = loadDurchgaenge
 
-    import CollectionConverters._
+      import CollectionConverters._
 
-    val groupMap = newList.groupBy(d => d.durchgang.title)
-    val items: List[TreeItem[DurchgangState]] = for (group <- groupMap.keySet.toList.sorted) yield {
-      val dgList = groupMap(group).sortBy(_.name)
-      if (dgList.size > 1 || dgList.head.name != dgList.head.durchgang.title) {
-        val dgh = dgList.foldLeft(Durchgang())((acc, dg) => {
-          if (acc.planTotal > dg.durchgang.planTotal) acc else dg.durchgang
-        })
-        val groupDurchgangState = DurchgangState(
-          wettkampfUUID = dgList.head.wettkampfUUID,
-          name = dgh.title,
-          complete = dgList.forall(_.complete),
-          geraeteRiegen = dgList.flatMap(_.geraeteRiegen).toList,
-          durchgang = dgh)
-        new TreeItem[DurchgangState](groupDurchgangState) {
-          for (d <- dgList) {
-            children.add(new TreeItem[DurchgangState](d))
+      val groupMap = newList.groupBy(d => d.durchgang.title)
+      val items: List[TreeItem[DurchgangState]] = for (group <- groupMap.keySet.toList.sorted) yield {
+        val dgList = groupMap(group).sortBy(_.name)
+        if (dgList.size > 1 || dgList.head.name != dgList.head.durchgang.title) {
+          val dgh = dgList.foldLeft(Durchgang())((acc, dg) => {
+            if (acc.planTotal > dg.durchgang.planTotal) acc else dg.durchgang
+          })
+          val groupDurchgangState = DurchgangState(
+            wettkampfUUID = dgList.head.wettkampfUUID,
+            name = dgh.title,
+            complete = dgList.forall(_.complete),
+            geraeteRiegen = dgList.flatMap(_.geraeteRiegen).toList,
+            durchgang = dgh)
+          new TreeItem[DurchgangState](groupDurchgangState) {
+            for (d <- dgList) {
+              children.add(new TreeItem[DurchgangState](d))
+            }
+            expanded = expandedStates.contains(group)
           }
-          expanded = expandedStates.contains(group)
+        } else {
+          new TreeItem[DurchgangState](dgList.head) {
+            expanded = false
+          }
         }
-      } else {
-        new TreeItem[DurchgangState](dgList.head) {
-          expanded = false
-        }
-      }
-    }
-    if (model.isEmpty) {
-      model.setAll(items.asJavaCollection)
-    } else {
-      items.zip(model).foreach(pair => syncTreeItems(pair._1, pair._2))
-      if (items.size < model.size) {
-        model.removeRange(items.size, model.size - 1)
       }
       if (model.isEmpty) {
-        val collection = items.asJavaCollection
-        model.setAll(collection)
+        model.setAll(items.asJavaCollection)
+      } else {
+        items.zip(model).foreach(pair => syncTreeItems(pair._1, pair._2))
+        if (items.size < model.size) {
+          model.removeRange(items.size, model.size - 1)
+        }
+        if (model.isEmpty) {
+          val collection = items.asJavaCollection
+          model.setAll(collection)
+        }
+        if (items.size > model.size) {
+          model.addAll(items.drop(model.size).asJavaCollection)
+        }
       }
-      if (items.size > model.size) {
-        model.addAll(items.drop(model.size).asJavaCollection)
-      }
-    }
 
-    isRunning.set(model.exists(_.getValue.isRunning))
-    selected.foreach(selection => {
-      if (selection.column > -1 && view.getColumns.size() > selection.column) {
-        val column = view.getColumns.get(selection.column)
-        view.selectionModel.value.select(selection.row, column)
-      }
-    })
-    updateButtons
+      isRunning.set(model.exists(_.getValue.isRunning))
+      selected.foreach(selection => {
+        if (selection.column > -1 && view.getColumns.size() > selection.column) {
+          val column = view.getColumns.get(selection.column)
+          view.selectionModel.value.select(selection.row, column)
+        }
+      })
   }
 
   private def syncTreeItems(source: TreeItem[DurchgangState], target: TreeItem[DurchgangState]): Unit = {
@@ -382,6 +400,7 @@ class NetworkTab(wettkampfmode: BooleanProperty, override val wettkampfInfo: Wet
   onSelectionChanged = _ => {
     if (selected.value) {
       refreshData()
+      updateButtons()
     }
   }
 
@@ -654,7 +673,7 @@ class NetworkTab(wettkampfmode: BooleanProperty, override val wettkampfInfo: Wet
     }
   }
 
-  def makePlayMediaMenu(p: WettkampfView): Menu = {
+  def makePlayMediaMenu(p: WettkampfView, cleanCache: Boolean = false): Menu = {
     new Menu("Playlist ...") {
       def addMediaPlaylistItems(durchgang: DurchgangState, column: DurchgangStationTCAccess): Unit = {
         val disziplin = column.getDisziplin
@@ -664,6 +683,9 @@ class NetworkTab(wettkampfmode: BooleanProperty, override val wettkampfInfo: Wet
         items = selection.filter(gr => !gr.erfasst).take(1).flatMap {
           geraeteRiege =>
             Player.clearPlayList()
+            if (cleanCache) {
+              geraeteRiege.resetMediaListCache()
+            }
             val mediaList = geraeteRiege.getMediaList(p.toWettkampf, service.loadMedia)
             mediaList.map { case (_, wertung, title, _) =>
               makeMenuAction(title + " ...") { (caption, action) =>
@@ -774,9 +796,9 @@ class NetworkTab(wettkampfmode: BooleanProperty, override val wettkampfInfo: Wet
     disable <== when(createBooleanBinding(() => items.isEmpty, items)) choose true otherwise false
   }
 
-  def updateButtons: Unit = {
+  def updateButtons(refreshMedia: Boolean = true): Unit = {
     val navigate = makeNavigateToMenu(wettkampf)
-    val mediaItems = makePlayMediaMenu(wettkampf)
+    val mediaItems = makePlayMediaMenu(wettkampf, refreshMedia)
     btnEditRiege.items.clear()
     btnEditRiege.items.addAll(navigate.items)
 
@@ -885,7 +907,7 @@ class NetworkTab(wettkampfmode: BooleanProperty, override val wettkampfInfo: Wet
   view.selectionModel().setSelectionMode(SelectionMode.Single)
   view.selectionModel().setCellSelectionEnabled(true)
   view.selectionModel().getSelectedCells.onChange { (_, _) =>
-    updateButtons
+    updateButtons(false)
   }
   content = rootpane
 
@@ -895,12 +917,47 @@ class NetworkTab(wettkampfmode: BooleanProperty, override val wettkampfInfo: Wet
       println("subscribing for network modus changes")
       subscriptions = subscriptions :+ KuTuApp.modelWettkampfModus.onChange { (_, _, newItem) =>
         println("refreshing Wettkampfmodus", newItem)
-        updateButtons
+        updateButtons()
       }
       println("subscribing for refreshing from websocket")
-      subscriptions = subscriptions :+ WebSocketClient.modelWettkampfWertungChanged.onChange { (_, _, newItem) => refreshData() }
+      //subscriptions = subscriptions :+ WebSocketClient.modelWettkampfWertungChanged.onChange { (_, _, newItem) => refreshData(scope=Some(newItem)) }
+      subscriptions = subscriptions :+ WebSocketClient.modelWettkampfWertungChanged.onChange { (_, _, newItem) =>
+       // if (selected.value) {
+       // println("refreshing network-dashboard from websocket", newItem)
+
+        newItem match {
+          case be: BulkEvent if be.events.forall {
+            case DurchgangStarted(_, _, _) => true
+            case DurchgangFinished(_, _, _) => true
+            case DurchgangResetted(_, _) => true
+            case _ => false
+          } =>
+            refreshData()
+
+          case ds: DurchgangStarted =>
+            refreshData()
+          //      case StationWertungenCompleted(wertungen: List[UpdateAthletWertung]) =>
+          case df: DurchgangFinished =>
+            refreshData()
+          case dr: DurchgangResetted =>
+            refreshData()
+          case AthletWertungUpdated(ahtlet: AthletView, wertung: Wertung, wettkampfUUID: String, durchgang: String, geraet: Long, programm: String) =>
+            if (selected.value) {
+              //DeferredPanelRefresher.submitUpdateTask(() => refreshData()) //
+              refreshData()
+            }
+          case AthletWertungUpdatedSequenced(ahtlet: AthletView, wertung: Wertung, wettkampfUUID: String, durchgang: String, geraet: Long, programm: String, sequenceId) =>
+            if (selected.value) {
+              //DeferredPanelRefresher.submitUpdateTask(() => refreshData()) //
+              refreshData()
+            }
+          case _ =>
+            DeferredPanelRefresher.submitUpdateTask(() => refreshData()) //
+        }
+      }
     }
     refreshData()
+    updateButtons()
     true
   }
 }

@@ -3,7 +3,7 @@ package ch.seidel.kutu
 import ch.seidel.commons.{DisplayablePage, PageDisplayer, ProgressForm, TaskSteps}
 import ch.seidel.jwt
 import ch.seidel.kutu.Config._
-import ch.seidel.kutu.actors.{KutuAppEvent, MediaPlayerAction, MediaPlayerEvent}
+import ch.seidel.kutu.actors.{ForgetMyMediaPlayer, KutuAppEvent, MediaPlayerAction, MediaPlayerEvent, UseMyMediaPlayer}
 import ch.seidel.kutu.data.{CaseObjectMetaUtil, ResourceExchanger, Surname}
 import ch.seidel.kutu.domain._
 import ch.seidel.kutu.http._
@@ -1167,6 +1167,8 @@ object KuTuApp extends JFXApp3 with KutuService with JsonSupport with JwtSupport
               WebSocketClient.publishMediaActionLocal(ev)
             case ee: MediaPlayerEvent =>
               WebSocketClient.publishMediaEventLocal(ee)
+            case _: UseMyMediaPlayer =>
+            case _: ForgetMyMediaPlayer =>
             case _ =>
               WebSocketClient.modelWettkampfWertungChanged.setValue(event)
           }
