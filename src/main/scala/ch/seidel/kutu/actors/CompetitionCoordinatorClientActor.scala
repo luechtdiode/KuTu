@@ -239,12 +239,14 @@ class CompetitionCoordinatorClientActor(wettkampfUUID: String) extends Persisten
     case playerEvent: UseMyMediaPlayer =>
       val ws: Option[ActorRef] = deviceWebsocketRefs.find(p => p._1.endsWith(playerEvent.context)).map(_._2)
       currentPlayer.foreach(p => {
+        sendMediaEjectedEvent()
         notifyWebSocketClients(None, MediaPlayerDisconnected(p._2.context), "")
       })
       currentPlayer = Some((ws, playerEvent))
       notifyWebSocketClients(None, MediaPlayerIsReady(playerEvent.context), "")
 
     case playerEvent: ForgetMyMediaPlayer if currentPlayer.exists(p => p._2.context.equals(playerEvent.context)) =>
+      sendMediaEjectedEvent()
       currentPlayer = None
       notifyWebSocketClients(None, MediaPlayerDisconnected(playerEvent.context), "")
 
@@ -359,6 +361,23 @@ class CompetitionCoordinatorClientActor(wettkampfUUID: String) extends Persisten
       handleStop()
 
     case _ =>
+  }
+
+  private def sendMediaEjectedEvent(): Unit = {
+    lastMediaEvent.foreach {
+      case AthletMediaIsFree(media, context) =>
+        lastMediaEvent = Some(AthletMediaIsFree(media, context))
+      case AthletMediaIsAtStart(media, context) =>
+        lastMediaEvent = Some(AthletMediaIsFree(media, context))
+      case AthletMediaIsRunning(media, context) =>
+        lastMediaEvent = Some(AthletMediaIsFree(media, context))
+      case AthletMediaIsPaused(media, context) =>
+        lastMediaEvent = Some(AthletMediaIsFree(media, context))
+      case _ =>
+    }
+    lastMediaEvent.foreach(mediaEvent => {
+      websocketProcessor(Some(sender()), mediaEvent.asInstanceOf[KutuAppEvent])
+    })
   }
 
   private def checkDonation(): Unit = {
