@@ -118,8 +118,8 @@ object WebSocketClient extends SprayJsonSupport with JsonSupport with AuthSuppor
     val message = tryMapEvent(event)
     Platform.runLater {
       event match {
-        case ma: MediaPlayerAction =>
-        case ma: MediaPlayerEvent =>
+        case _: MediaPlayerAction =>
+        case _: MediaPlayerEvent =>
         case _: UseMyMediaPlayer =>
         case _: ForgetMyMediaPlayer =>
         case _ => modelWettkampfWertungChanged.set(event)

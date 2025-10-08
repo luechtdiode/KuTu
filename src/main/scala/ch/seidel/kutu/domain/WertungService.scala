@@ -357,7 +357,7 @@ abstract trait WertungService extends DBService with WertungResultMapper with Di
 
   @throws(classOf[Exception]) // called from rich-client-app via ResourceExchanger
   def updateWertungenWithIDMapping(ws: Seq[Wertung], cache2: scala.collection.mutable.Map[Long, List[ScoreCalcTemplate]] = scala.collection.mutable.Map[Long, List[ScoreCalcTemplate]]()): Seq[Wertung] = {
-    println("multi import wertung ...")
+    logger.info("multi import wertung ...")
     val wvs = ws.map{w =>
       val notenspez = readWettkampfDisziplinView(w.wettkampfId, w.wettkampfdisziplinId, cache2)
       notenspez.verifiedAndCalculatedWertung(w)
@@ -394,6 +394,7 @@ abstract trait WertungService extends DBService with WertungResultMapper with Di
         case _ => false
       }
       .map{z => z._1.copy(id = z._2.get)}
+    logger.info("multi import wertung finished")
     result
   }
 
