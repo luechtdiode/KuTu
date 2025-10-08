@@ -1495,10 +1495,19 @@ package object domain {
     private def songtitle(kandidat: Kandidat, media: Media) = {
       s"${kandidat.vorname} ${kandidat.name} (${kandidat.verein}), ${disziplin.map(_.easyprint).getOrElse("")} - ${media.name}"
     }
-    def getMediaList(wettkampf: Wettkampf, lookup: String=>Option[MediaAdmin]): Seq[(Kandidat, WertungView, String, URI)] = kandidaten
-      .flatMap(k => k.wertungen.find(w => disziplin.contains(w.wettkampfdisziplin.disziplin))
-        .filter(w => w.endnote.isEmpty && w.wettkampfdisziplin.disziplin.name.equals("Boden") && k.hasMedia(wettkampf, lookup, w.toWertung))
-        .map(w => (k, w, songtitle(k, w.mediafile.get), k.getMediaURI(wettkampf, lookup, w.toWertung))))
+    var medialistCache: Option[Seq[(Kandidat, WertungView, String, URI)]] = None
+    def resetMediaListCache(): Unit = {
+      medialistCache = None
+    }
+    def getMediaList(wettkampf: Wettkampf, lookup: String=>Option[MediaAdmin]): Seq[(Kandidat, WertungView, String, URI)] = medialistCache match {
+      case Some(list) => list
+      case _ =>
+        medialistCache = Some(kandidaten
+          .flatMap(k => k.wertungen.find(w => disziplin.contains(w.wettkampfdisziplin.disziplin))
+            .filter(w => w.endnote.isEmpty && w.wettkampfdisziplin.disziplin.name.equals("Boden") && k.hasMedia(wettkampf, lookup, w.toWertung))
+            .map(w => (k, w, songtitle(k, w.mediafile.get), k.getMediaURI(wettkampf, lookup, w.toWertung)))))
+        medialistCache.get
+    }
   }
 
   sealed trait SexDivideRule {
