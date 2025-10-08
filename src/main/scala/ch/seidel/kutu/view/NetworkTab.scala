@@ -791,12 +791,21 @@ class NetworkTab(wettkampfmode: BooleanProperty, override val wettkampfInfo: Wet
   }
   val btnMediaPlayer: MenuButton = new MenuButton("Mediaplayer ...") {
     disable <== when(createBooleanBinding(() => items.isEmpty, items)) choose true otherwise false
+    delegate.showingProperty().addListener((_, _, newvalue) =>  {
+      if (newvalue) updateButtons(refreshToolbar = false)
+    })
   }
   val btnDurchgang: MenuButton = new MenuButton("Durchgang ...") {
     disable <== when(createBooleanBinding(() => items.isEmpty, items)) choose true otherwise false
+    delegate.showingProperty().addListener((_, _, newvalue) =>  {
+      if (newvalue) updateButtons(refreshToolbar = false, refreshMedia = false)
+    })
+  }
+  view.onContextMenuRequested = _ => {
+    updateButtons(refreshToolbar = false)
   }
 
-  def updateButtons(refreshMedia: Boolean = true): Unit = {
+  def updateButtons(refreshToolbar: Boolean = true, refreshMedia: Boolean = true): Unit = {
     val navigate = makeNavigateToMenu(wettkampf)
     val mediaItems = makePlayMediaMenu(wettkampf, refreshMedia)
     btnEditRiege.items.clear()
@@ -853,53 +862,57 @@ class NetworkTab(wettkampfmode: BooleanProperty, override val wettkampfInfo: Wet
         items += makeDurchgangAbschliessenMenu(wettkampf)
         items += makeDurchgangResetMenu(wettkampf)
       }
-      toolbar.content = List(
-        new Button {
-          onAction = connectAndShareMenu.onAction.get
-          text <== connectAndShareMenu.text
-          disable <== connectAndShareMenu.disable
-        }, new Button {
-          onAction = qrcodeMenu.onAction.get
-          text <== qrcodeMenu.text
-          disable <== qrcodeMenu.disable
-        }, btnDurchgang, btnEditRiege, btnMediaPlayer, new Button {
-          onAction = uploadMenu.onAction.get
-          text <== uploadMenu.text
-          disable <== uploadMenu.disable
-          visible <== when(wettkampfmode) choose false otherwise true
-        }, new Button {
-          onAction = downloadMenu.onAction.get
-          text <== downloadMenu.text
-          disable <== downloadMenu.disable
-          visible <== when(wettkampfmode) choose false otherwise true
-        }, new Button {
-          onAction = disconnectMenu.onAction.get
-          text <== disconnectMenu.text
-          disable <== disconnectMenu.disable
-        }, new Button {
-          onAction = removeRemoteMenu.onAction.get
-          text <== removeRemoteMenu.text
-          disable <== removeRemoteMenu.disable
-          visible <== when(wettkampfmode) choose false otherwise true
-        }).filter(_.isVisible)
+      if (refreshToolbar) {
+        toolbar.content = List(
+          new Button {
+            onAction = connectAndShareMenu.onAction.get
+            text <== connectAndShareMenu.text
+            disable <== connectAndShareMenu.disable
+          }, new Button {
+            onAction = qrcodeMenu.onAction.get
+            text <== qrcodeMenu.text
+            disable <== qrcodeMenu.disable
+          }, btnDurchgang, btnEditRiege, btnMediaPlayer, new Button {
+            onAction = uploadMenu.onAction.get
+            text <== uploadMenu.text
+            disable <== uploadMenu.disable
+            visible <== when(wettkampfmode) choose false otherwise true
+          }, new Button {
+            onAction = downloadMenu.onAction.get
+            text <== downloadMenu.text
+            disable <== downloadMenu.disable
+            visible <== when(wettkampfmode) choose false otherwise true
+          }, new Button {
+            onAction = disconnectMenu.onAction.get
+            text <== disconnectMenu.text
+            disable <== disconnectMenu.disable
+          }, new Button {
+            onAction = removeRemoteMenu.onAction.get
+            text <== removeRemoteMenu.text
+            disable <== removeRemoteMenu.disable
+            visible <== when(wettkampfmode) choose false otherwise true
+          }).filter(_.isVisible)
+      }
     } else {
       view.contextMenu = new ContextMenu() {
         items += navigate
       }
-      toolbar.content = List(
-        new Button {
-          onAction = connectAndShareMenu.onAction.get
-          text <== connectAndShareMenu.text
-          disable <== connectAndShareMenu.disable
-        }, btnEditRiege, btnMediaPlayer, new Button {
-          onAction = downloadMenu.onAction.get
-          text <== downloadMenu.text
-          disable <== downloadMenu.disable
-        }, new Button {
-          onAction = disconnectMenu.onAction.get
-          text <== disconnectMenu.text
-          disable <== disconnectMenu.disable
-        })
+      if (refreshToolbar) {
+        toolbar.content = List(
+          new Button {
+            onAction = connectAndShareMenu.onAction.get
+            text <== connectAndShareMenu.text
+            disable <== connectAndShareMenu.disable
+          }, btnEditRiege, btnMediaPlayer, new Button {
+            onAction = downloadMenu.onAction.get
+            text <== downloadMenu.text
+            disable <== downloadMenu.disable
+          }, new Button {
+            onAction = disconnectMenu.onAction.get
+            text <== disconnectMenu.text
+            disable <== disconnectMenu.disable
+          })
+      }
     }
   }
 
@@ -907,7 +920,7 @@ class NetworkTab(wettkampfmode: BooleanProperty, override val wettkampfInfo: Wet
   view.selectionModel().setSelectionMode(SelectionMode.Single)
   view.selectionModel().setCellSelectionEnabled(true)
   view.selectionModel().getSelectedCells.onChange { (_, _) =>
-    updateButtons(false)
+    updateButtons(refreshToolbar = false, refreshMedia = false)
   }
   content = rootpane
 
