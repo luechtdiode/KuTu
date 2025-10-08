@@ -24,6 +24,7 @@ import javafx.util.{Duration, Pair}
 import scalafx.Includes.{jfxProperty2sfx, observableList2ObservableBuffer}
 import scalafx.application.JFXApp3
 import scalafx.application.JFXApp3.PrimaryStage
+import javafx.beans.value.ChangeListener
 import scalafx.scene.image.{Image, ImageView}
 
 import java.util
@@ -67,6 +68,21 @@ object Player extends JFXApp3 {
     stage.show()
   }
 
+  private val connectionListener: ChangeListener[java.lang.Boolean] = (_, _, _) => {
+    if (ConnectionStates.connectedProperty.getValue && isNetworkMediaPlayer.getValue) {
+      wettkampf.foreach(wk =>  {
+        WebSocketClient.publish(UseMyMediaPlayer(wk.uuid.get, Config.deviceId))
+        if (lastMediaEvent.nonEmpty) {
+          lastMediaEvent.foreach {
+            a: MediaPlayerEvent => publishMediaEventIfConnected(a)
+          }
+        } else {
+          releasePlayer()
+        }
+      })
+    }
+  }
+
   def setWettkampf(wettkampf: Wettkampf, service: KutuService): Unit = {
     try {
       getInitializedPlayerStage
@@ -76,12 +92,8 @@ object Player extends JFXApp3 {
     }
     this.wettkampf = Some(wettkampf)
     this.service = Some(service)
-    ConnectionStates.connectedProperty.addListener(_ => {
-      if (ConnectionStates.connectedProperty.getValue && isNetworkMediaPlayer.getValue) {
-        WebSocketClient.publish(UseMyMediaPlayer(wettkampf.uuid.get, Config.deviceId))
-        releasePlayer()
-      }
-    })
+    ConnectionStates.connectedProperty.removeListener(connectionListener)
+    ConnectionStates.connectedProperty.addListener(connectionListener)
   }
 
   def useMyMediaPlayerAsNetworkplayer(flag: Boolean): Unit = {
@@ -129,12 +141,11 @@ object Player extends JFXApp3 {
   }
 
   def load(song: String, aquire: AthletMediaAquire):Unit = {
-    if (lastAction.isEmpty || lastAction.contains(aquire)) {
-      if (playList.getSongs.exists(_.getKey.equals(song))) {
-        lastAction = Some(aquire)
+    if (lastAction.isEmpty) {
+      _handleMediaAction(aquire)
+    } else if (lastAction.contains(aquire)) {
+      if (playList.getSongs.exists(_.getKey.endsWith(song))) {
         show(song)
-      } else {
-        _handleMediaAction(aquire)
       }
     } else {
       PageDisplayer.showWarnDialog("Musik laden", "Der Player wird gerade von einer anderen Musik verwendet.\nDer gewünschte Titel kann noch nicht geladen werden.")
@@ -151,7 +162,7 @@ object Player extends JFXApp3 {
   }
 
   def playSong(song: String = "", autoplay: Boolean = false): Stage = {
-    val wasPlaying = mediaPlayer != null && mediaPlayer.getStatus != null && mediaPlayer.getStatus == MediaPlayer.Status.PLAYING
+    val wasPlaying = mediaPlayer != null && mediaPlayer.getStatus != null &&  MediaPlayer.Status.PLAYING.equals(mediaPlayer.getStatus)
     val s = getInitializedPlayerStage
     playList.getSongs.toList.zipWithIndex.find(s => s._1.getKey.equals(song)).map(_._2).foreach(songIndex => {
       currentSongIndex = songIndex
@@ -357,8 +368,12 @@ object Player extends JFXApp3 {
         }
         // make up VU meter values
         average = average / magnitudes.length
-        average *= mediaPlayer.getVolume
-        if (mediaPlayer.getBalance == 0) {
+        if (mediaPlayer == null) {
+          average = 0
+        } else {
+          average *= mediaPlayer.getVolume
+        }
+        if (mediaPlayer == null || mediaPlayer.getBalance == 0) {
           leftVU.set(average)
           rightVU.set(average)
         }
@@ -446,8 +461,8 @@ object Player extends JFXApp3 {
       case _ =>
     }
     lastAction = None
-
     mediaPlayer = null
+    resetDisplay()
   }
 
   private def play(songIndex: Int, autoplay: Boolean = false): Unit = {
@@ -565,9 +580,11 @@ object Player extends JFXApp3 {
     }
   }
 
-  private def publishMediaEventIfConnected(action: KutuAppEvent) = {
+  private var lastMediaEvent: Option[MediaPlayerEvent] = None
+  private def publishMediaEventIfConnected(event: MediaPlayerEvent) = {
+    lastMediaEvent = Some(event)
     if (isNetworkMediaPlayer.getValue) {
-      WebSocketClient.publish(action)
+      WebSocketClient.publish(event.asInstanceOf[KutuAppEvent])
     }
   }
 }
