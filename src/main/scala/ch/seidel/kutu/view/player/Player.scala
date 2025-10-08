@@ -79,6 +79,7 @@ object Player extends JFXApp3 {
     ConnectionStates.connectedProperty.addListener(_ => {
       if (ConnectionStates.connectedProperty.getValue && isNetworkMediaPlayer.getValue) {
         WebSocketClient.publish(UseMyMediaPlayer(wettkampf.uuid.get, Config.deviceId))
+        releasePlayer()
       }
     })
   }
@@ -87,6 +88,7 @@ object Player extends JFXApp3 {
     this.wettkampf.foreach(wettkampf => {
       if (flag) {
         WebSocketClient.publish(UseMyMediaPlayer(wettkampf.uuid.get, Config.deviceId))
+        releasePlayer()
       } else {
         isNetworkMediaPlayer.set(false)
         WebSocketClient.publish(ForgetMyMediaPlayer(wettkampf.uuid.get, Config.deviceId))
