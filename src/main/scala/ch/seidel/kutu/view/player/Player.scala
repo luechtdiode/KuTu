@@ -357,8 +357,12 @@ object Player extends JFXApp3 {
         }
         // make up VU meter values
         average = average / magnitudes.length
-        average *= mediaPlayer.getVolume
-        if (mediaPlayer.getBalance == 0) {
+        if (mediaPlayer == null) {
+          average = 0
+        } else {
+          average *= mediaPlayer.getVolume
+        }
+        if (mediaPlayer == null || mediaPlayer.getBalance == 0) {
           leftVU.set(average)
           rightVU.set(average)
         }

@@ -148,6 +148,11 @@ export abstract class WebsocketService {
     this.startKeepAliveObservation();
   }
 
+  public ensurWebsocketConnection(message?: string) {
+    if (this.shouldConnectAgain()) {
+      this.connect(message);  
+    }
+  }
   private connect(message?: string) {
     this.disconnectWS();
     this.explicitClosed = false;

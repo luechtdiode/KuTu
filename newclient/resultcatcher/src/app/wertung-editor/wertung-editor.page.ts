@@ -263,6 +263,9 @@ export class WertungEditorPage {
         }
       });
     });
+    if (this.editable()) {
+      this.backendService.ensurWebsocketConnection();
+    }
     this.platform.ready().then(() => {
       // We need to use a timeout in order to set the focus on load
       setTimeout(() => {
