@@ -26,14 +26,10 @@ import fr.davit.pekko.http.metrics.core.scaladsl.server.HttpMetricsDirectives._
 
 trait WettkampfRoutes extends SprayJsonSupport
   with JsonSupport with JwtSupport with AuthSupport with RouterLogging with WettkampfService with RegistrationService
-  with CIDSupport {
+  with CIDSupport with FailureSupport {
 
   import DefaultJsonProtocol._
   
-  def responseOrFail[T](in: (Try[HttpResponse], T)): (HttpResponse, T) = in match {
-    case (responseTry, context) => (responseTry.get, context)
-  }
-
   def toHttpEntity(wettkampf: Wettkampf): HttpEntity.Strict = {
     val bos = new ByteArrayOutputStream()
     ResourceExchanger.exportWettkampfToStream(wettkampf, bos)

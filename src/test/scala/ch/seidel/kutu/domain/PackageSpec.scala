@@ -70,7 +70,7 @@ class PackageSpec extends KuTuBaseSpec {
 
     val athletRegistration = AthletRegistration(1, 1, Some(2), "W", "Saner ", " Waiata ", "2007-10-20", 1L, 1L, Some(
       AthletView(2, 0, "W", "Saner", "Waiata", Some(str2SQLDate("2007-10-20")), "", "", "",
-        Some(testverein), activ = true)), None)
+        Some(testverein), activ = true)), None, Some(MediaAdmin(1, "life-is-life.mp3", "mp3", 0, "", "", 0)))
 
     val athletView = athletRegistration.athlet.get
     val athlet = athletView.toAthlet
@@ -95,19 +95,19 @@ class PackageSpec extends KuTuBaseSpec {
   }
   "toAthlet" should {
     "initial trim and capitalize name and surname" in {
-      val ar = AthletRegistration(0, 1, None, "W", " SANER ", " claudia", "2007-10-20", 1L, 1L, None, None)
+      val ar = AthletRegistration(0, 1, None, "W", " SANER ", " claudia", "2007-10-20", 1L, 1L, None, None, Some(MediaAdmin(1, "life-is-life.mp3", "mp3", 0, "", "", 0)))
 
       assert(ar.matchesAthlet(AthletView(2, 0, "W", "Saner", "Claudia", Some(str2SQLDate("2007-10-20")), "", "", "", Some(
         Verein(1, "Verein", Some("Verband"))), true).toAthlet).==(true))
     }
     "initial determine sex from name and surname" in {
-      val ar = AthletRegistration(0, 1, None, "M", "Meier", "Claudia", "2007-10-20", 1L, 1L, None, None)
+      val ar = AthletRegistration(0, 1, None, "M", "Meier", "Claudia", "2007-10-20", 1L, 1L, None, None, Some(MediaAdmin(1, "life-is-life.mp3", "mp3", 0, "", "", 0)))
 
       assert(ar.matchesAthlet(AthletView(2, 0, "W", "Meier", "Claudia", Some(str2SQLDate("2007-10-20")), "", "", "", Some(
         Verein(1, "Verein", Some("Verband"))), true).toAthlet).==(true))
     }
     "initial switch name/vorname if its indicated in the surname-index" in {
-      val ar = AthletRegistration(0, 1, None, "M", "Claudia", "Meier", "2007-10-20", 1L, 1L, None, None)
+      val ar = AthletRegistration(0, 1, None, "M", "Claudia", "Meier", "2007-10-20", 1L, 1L, None, None, Some(MediaAdmin(1, "life-is-life.mp3", "mp3", 0, "", "", 0)))
 
       assert(ar.matchesAthlet(AthletView(2, 0, "W", "Meier", "Claudia", Some(str2SQLDate("2007-10-20")), "", "", "", Some(
         Verein(1, "Verein", Some("Verband"))), true).toAthlet).==(true))
@@ -115,7 +115,7 @@ class PackageSpec extends KuTuBaseSpec {
     "pass all attributes just trimmed if its just an update" in {
       val ar = AthletRegistration(1, 1, Some(2), "W", "Saner ", " Waiata ", "2007-10-20", 1L, 1L, Some(
         AthletView(2, 0, "W", "Saner", "Waiata", Some(str2SQLDate("2007-10-20")), "", "", "", Some(
-          Verein(1, "Verein", Some("Verband"))), true)), None)
+          Verein(1, "Verein", Some("Verband"))), true)), None, Some(MediaAdmin(1, "life-is-life.mp3", "mp3", 0, "", "", 0)))
       assert(ar.matchesAthlet().==(true))
     }
   }

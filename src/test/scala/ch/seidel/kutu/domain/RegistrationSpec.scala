@@ -34,10 +34,10 @@ class RegistrationSpec extends KuTuBaseSpec {
   def createTestAthletRegistration(reg: Registration) = {
     athletregistration = athletregistration match {
       case None =>
-        Some(createAthletRegistration(AthletRegistration(0, reg.id, None, "M", "Tester", "Test", "2010-05-05", 20, 0, None, None)))
+        Some(createAthletRegistration(AthletRegistration(0, reg.id, None, "M", "Tester", "Test", "2010-05-05", 20, 0, None, None, Some(MediaAdmin(1, "life-is-life.mp3", "mp3", 0, "", "", 0)))))
       case Some(r) =>
         if (r.vereinregistrationId == reg.id)
-        Some(r) else Some(createAthletRegistration(AthletRegistration(0, reg.id, None, "M", "Tester", "Test", "2010-05-05", 20, 0, None, None)))
+        Some(r) else Some(createAthletRegistration(AthletRegistration(0, reg.id, None, "M", "Tester", "Test", "2010-05-05", 20, 0, None, None, Some(MediaAdmin(1, "life-is-life.mp3", "mp3", 0, "", "", 0)))))
     }
     athletregistration.get
   }
@@ -125,7 +125,7 @@ class RegistrationSpec extends KuTuBaseSpec {
       }
       val athlet2 = createAthletRegistration(
         AthletRegistration(0, secondRegistration.id, None,
-          "M", "Tester", "Test", "2010-05-05", 20, 0, None, None))
+          "M", "Tester", "Test", "2010-05-05", 20, 0, None, None, Some(MediaAdmin(1, "life-is-life.mp3", "mp3", 0, "", "", 0))))
       athlet2.athletId should ===(Some(1L))
     }
 

@@ -94,6 +94,7 @@ object DBService {
       , "wettkampf-metadata-ddl.sql"
       , "AddWKProgrammBestOfCount-sqllite.sql"
       , "AddScoreTemplateTable-sqllite.sql"
+      , "AddWertugMediaFile-sqllite.sql"
     )
 
     (!dbfile.exists() || dbfile.length() == 0, Config.importDataFrom) match {
@@ -192,6 +193,7 @@ object DBService {
         , "wettkampf-metadata-ddl.sql"
         , "AddWKProgrammBestOfCount-pg.sql"
         , "AddScoreTemplateTable-pg.sql"
+        , "AddWertugMediaFile-pg.sql"
       )
       installDB(db, sqlScripts)
       /*Config.importDataFrom match {

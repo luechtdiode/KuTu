@@ -12,7 +12,11 @@ import { DurchgangStarted, Wettkampf, Geraet, WertungContainer, NewLastResults, 
          AthletRegistration,
          ProgrammRaw,
          RegistrationResetPW,
-         SyncAction, JudgeRegistration, JudgeRegistrationProgramItem, BulkEvent, Verein, Score, ScoreLink, TeamItem, TeamList} from '../backend-types';
+         SyncAction, JudgeRegistration, JudgeRegistrationProgramItem, BulkEvent, Verein, Score, ScoreLink, TeamItem, TeamList,
+         AthletMediaIsFree,
+         AthletMediaIsRunning,
+         AthletMediaIsAtStart,
+         AthletMediaIsPaused} from '../backend-types';
 import { backendUrl } from '../utils';
 
 // tslint:disable:radix
@@ -24,7 +28,6 @@ import { backendUrl } from '../utils';
 export class BackendService extends WebsocketService {
     http = inject(HttpClient);
     loadingCtrl = inject(LoadingController);
-
 
     get competition(): string {
       return this._competition;
@@ -126,6 +129,9 @@ export class BackendService extends WebsocketService {
 
     durchgangStarted = new BehaviorSubject<DurchgangStarted[]>([]);
     wertungUpdated = new Subject<AthletWertungUpdated>();
+
+    mediaStateChanged = new BehaviorSubject<AthletMediaIsAtStart|AthletMediaIsRunning|AthletMediaIsPaused|AthletMediaIsFree>({context: '', type: 'AthletMediaIsFree'} as AthletMediaIsFree);
+    mediaPlayerAvailable = new BehaviorSubject<boolean>(false);
 
     getCurrentStation(): string {
       return localStorage.getItem('current_station')
@@ -1115,7 +1121,26 @@ export class BackendService extends WebsocketService {
 
       return result.asObservable();
     }
-
+    deleteFile(competitionId: string, clubid: number, registrationid: number) {
+      return this.startLoading('Datei wird gelöscht. Bitte warten ...',
+        this.http.delete<MessageAck>(backendUrl + 'api/registrations/' + competitionId + '/' + clubid + '/athletes/' + registrationid + '/mediafile').pipe(share())
+      );
+    }
+    uploadFile(competitionId: string, clubid: number, registrationid: number, formdata: FormData) {
+      return this.startLoading('Datei wird hochgeladen. Bitte warten ...',
+        this.http.post<MessageAck>(backendUrl + 'api/registrations/' + competitionId + '/' + clubid + '/athletes/' + registrationid + '/mediafile', formdata).pipe(share())
+      );
+    }
+    getDownloadUrl(competitionId: string, clubid: number, registrationid: number): string {
+      return backendUrl + 'api/registrations/' + competitionId + '/' + clubid + '/athletes/' + registrationid + '/mediafile';
+    }
+    downloadFile(competitionId: string, clubid: number, registrationid: number): Observable<Blob> {
+      return this.startLoading('Datei wird heruntergeladen. Bitte warten ...',
+        this.http.get(backendUrl + 'api/registrations/' + competitionId + '/' + clubid + '/athletes/' + registrationid + '/mediafile', {
+          responseType: 'blob'
+        }).pipe(share())
+      );
+    }
     nextStep(): number {
       if (this.steps == undefined) {
         return this._step
@@ -1207,6 +1232,74 @@ export class BackendService extends WebsocketService {
       }
     }
 
+    aquireMusic(wertung: Wertung) {
+      const competitionId = wertung.wettkampfUUID;
+      if (this.shouldConnectAgain()) {
+        this.reconnect();
+      }
+      this.startLoading('Musik wird geladen. Bitte warten ...',
+        this.http.put<MessageAck>(
+          backendUrl + 'api/music/' + competitionId + '/aquire',
+          wertung
+      ).pipe(share()))
+      .subscribe({
+        next: (data) => {
+        }, 
+        error: this.standardErrorHandler
+      });
+    }
+
+    releaseMusic(wertung: Wertung) {
+      const competitionId = wertung.wettkampfUUID;
+      if (this.shouldConnectAgain()) {
+        this.reconnect();
+      }
+      this.startLoading('Player wird freigegeben. Bitte warten ...',
+        this.http.put<MessageAck>(
+          backendUrl + 'api/music/' + competitionId + '/release',
+          wertung
+      ).pipe(share()))
+      .subscribe({
+        next: (data) => {
+        }, 
+        error: this.standardErrorHandler
+      });
+    }
+
+    stopMusic(wertung: Wertung) {
+      const competitionId = wertung.wettkampfUUID;
+      if (this.shouldConnectAgain()) {
+        this.reconnect();
+      }
+      this.startLoading('Musik wird pausiert. Bitte warten ...',
+        this.http.put<MessageAck>(
+          backendUrl + 'api/music/' + competitionId + '/stop',
+          wertung
+      ).pipe(share()))
+      .subscribe({
+        next: (data) => {
+        }, 
+        error: this.standardErrorHandler
+      });
+    }
+
+    playMusic(wertung: Wertung) {
+      const competitionId = wertung.wettkampfUUID;
+      if (this.shouldConnectAgain()) {
+        this.reconnect();
+      }
+      this.startLoading('Musik wird abgespielt. Bitte warten ...',
+        this.http.put<MessageAck>(
+          backendUrl + 'api/music/' + competitionId + '/start',
+          wertung
+      ).pipe(share()))
+      .subscribe({
+        next: (data) => {
+        }, 
+        error: this.standardErrorHandler
+      });
+    }
+
     getScoreList(path: string): Observable<Score> {
       if (this._competition) {
         const link = `${backendUrl}${path}`;
@@ -1295,6 +1388,24 @@ export class BackendService extends WebsocketService {
           this.newLastResults.next((message as NewLastResults));
           return true;
 
+        case 'MediaPlayerIsReady':
+          this.mediaPlayerAvailable.next(true);
+          return true;
+        case 'MediaPlayerDisconnected':
+          this.mediaPlayerAvailable.next(false);
+          return true;
+        case 'AthletMediaIsAtStart':
+          this.mediaStateChanged.next((message as AthletMediaIsAtStart));
+          return true;
+        case 'AthletMediaIsRunning':
+          this.mediaStateChanged.next((message as AthletMediaIsRunning));
+          return true;
+        case 'AthletMediaIsPaused':
+          this.mediaStateChanged.next((message as AthletMediaIsPaused));
+          return true;
+        case 'AthletMediaIsFree':
+          this.mediaStateChanged.next((message as AthletMediaIsFree));
+          return true;
         case 'MessageAck':
           console.log((message as MessageAck).msg);
           this.showMessage.next((message as MessageAck));

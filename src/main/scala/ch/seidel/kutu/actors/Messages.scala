@@ -11,6 +11,21 @@ case class CreateClient(deviceID: String, wettkampfUUID: String)
 case class WertungContainer(id: Long, vorname: String, name: String, geschlecht: String, verein: String, wertung: Wertung, geraet: Long, programm: String, durchgang: String, isDNoteUsed: Boolean, isStroked: Boolean)
 
 sealed trait KutuAppProtokoll
+sealed trait MediaPlayerEvent
+sealed trait MediaPlayerAction {
+  val athlet: AthletView
+  val wertung: Wertung
+
+  override def equals(obj: Any): Boolean = {
+    obj match {
+      case mpa: MediaPlayerAction =>
+        mpa.athlet.equals(athlet) &&
+          mpa.wertung.wettkampfUUID.equals(wertung.wettkampfUUID) &&
+          mpa.wertung.wettkampfdisziplinId.equals(wertung.wettkampfdisziplinId)
+      case _ => false
+    }
+  }
+}
 
 sealed trait KutuAppAction extends KutuAppProtokoll {
   val wettkampfUUID: String
@@ -31,6 +46,19 @@ case class PublishScores(override val wettkampfUUID: String, title: String, quer
 
 sealed trait KutuAppEvent extends KutuAppProtokoll
 case class BulkEvent(wettkampfUUID: String, events: List[KutuAppEvent]) extends KutuAppEvent
+case class UseMyMediaPlayer(override val wettkampfUUID: String, context: String) extends KutuAppEvent with KutuAppAction
+case class ForgetMyMediaPlayer(override val wettkampfUUID: String, context: String) extends KutuAppEvent with KutuAppAction
+case class AthletMediaAquire(override val wettkampfUUID: String, override val athlet: AthletView,override val wertung: Wertung) extends KutuAppEvent with MediaPlayerAction with KutuAppAction
+case class AthletMediaRelease(override val wettkampfUUID: String, override val athlet: AthletView,override val wertung: Wertung) extends KutuAppEvent with MediaPlayerAction with KutuAppAction
+case class AthletMediaStart(override val wettkampfUUID: String, override val athlet: AthletView,override val wertung: Wertung) extends KutuAppEvent with MediaPlayerAction with KutuAppAction
+case class AthletMediaPause(override val wettkampfUUID: String, override val athlet: AthletView,override val wertung: Wertung) extends KutuAppEvent with MediaPlayerAction with KutuAppAction
+case class AthletMediaToStart(override val wettkampfUUID: String, override val athlet: AthletView,override val wertung: Wertung) extends KutuAppEvent with MediaPlayerAction with KutuAppAction
+case class MediaPlayerIsReady(context: String) extends KutuAppEvent with MediaPlayerEvent
+case class MediaPlayerDisconnected(context: String) extends KutuAppEvent with MediaPlayerEvent
+case class AthletMediaIsFree(media: Media, context: String) extends KutuAppEvent with MediaPlayerEvent
+case class AthletMediaIsAtStart(media: Media, context: String) extends KutuAppEvent with MediaPlayerEvent
+case class AthletMediaIsRunning(media: Media, context: String) extends KutuAppEvent with MediaPlayerEvent
+case class AthletMediaIsPaused(media: Media, context: String) extends KutuAppEvent with MediaPlayerEvent
 case class DurchgangStarted(wettkampfUUID: String, durchgang: String, time: Long = System.currentTimeMillis()) extends KutuAppEvent
 case class DurchgangResetted(wettkampfUUID: String, durchgang: String) extends KutuAppEvent
 case class StationWertungenCompleted(wertungen: List[UpdateAthletWertung]) extends KutuAppEvent
@@ -45,7 +73,7 @@ case class AthletWertungUpdatedSequenced(athlet: AthletView, wertung: Wertung, w
 }
 case class AthletRemovedFromWettkampf(athlet: AthletView, wettkampfUUID: String) extends KutuAppEvent
 case class AthletMovedInWettkampf(athlet: AthletView, wettkampfUUID: String, pgmId: Long, team: Int) extends KutuAppEvent
-case class AthletsAddedToWettkampf(athlet: List[AthletView], wettkampfUUID: String, pgmId: Long, team: Int) extends KutuAppEvent
+case class AthletsAddedToWettkampf(athlet: List[(AthletView,Option[Media])], wettkampfUUID: String, pgmId: Long, team: Int) extends KutuAppEvent
 case class DurchgangChanged(durchgang: String, wettkampfUUID: String, athlet: AthletView) extends KutuAppEvent
 case class ScoresPublished(scoreId: String, title: String, query: String, published: Boolean, wettkampfUUID: String) extends KutuAppEvent
 case class DonationMailSent(teilnehmer: Int, price: BigDecimal, donationLink: String, wettkampfUUID: String) extends KutuAppEvent

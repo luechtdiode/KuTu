@@ -168,7 +168,7 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
 
   val riegenFilterModel = ObservableBuffer[RiegeEditor]()
 
-  val athletHeaderPane: AthletHeaderPane = new AthletHeaderPane(wkview)
+  val athletHeaderPane: AthletHeaderPane = AthletHeaderPane(wettkampf.toWettkampf, service, wkview, wettkampfmode)
   val disziplinlist = wettkampfInfo.disziplinList
   val withDNotes = wettkampfInfo.isDNoteUsed
   var lastFilter = ""
@@ -499,17 +499,12 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
     new WKTableColumn[String](-1) {
       text = "Athlet"
       cellValueFactory = { x =>
-        new ReadOnlyStringWrapper(x.value, "athlet", {
-          val a = x.value.head.init.athlet
-          s"${a.vorname} ${a.name} ${
-            (a.gebdat match {
-              case Some(d) => f"$d%tY "
-              case _ => " "
-            })
-          }"
-        })
+        x.value
+          .filter(w => w.init.wettkampfdisziplin.disziplin.name.equals("Boden"))
+          .map(_.athletText)
+          .headOption
+          .getOrElse(x.value.head.athletText)
       }
-      //        delegate.impl_setReorderable(false) // shame on me??? why this feature should not be a requirement?
       prefWidth = 150
       editable = false
     },
@@ -676,7 +671,7 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
         prefWidth = 100
 
         onEditCommit = (evt: CellEditEvent[IndexedSeq[WertungEditor], String]) => {
-          if (!wettkampfmode.value) {
+          if (!wettkampfmode.value && evt.rowValue != null) {
             val rowIndex = wkModel.indexOf(evt.rowValue)
             val newRiege = if (evt.newValue.trim.isEmpty || evt.newValue.equals("keine Einteilung")) None
             else Some(evt.newValue)
@@ -1727,7 +1722,7 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
       (progrId, id)
     }
     if (clip.nonEmpty) {
-      for ((progId, athletes) <- clip.groupBy(_._1).map(x => (x._1, x._2.map(_._2)))) {
+      for ((progId, athletes) <- clip.groupBy(_._1).map(x => (x._1, x._2.map(x => (x._2, None))))) {
         service.assignAthletsToWettkampf(wettkampf.id, Set(progId), athletes.toSet, None)
       }
 
@@ -2157,7 +2152,8 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
             new AthletSelectionDialog(
               text.value, wettkampfFilterDate, wettkampf.programm.alterVon, wettkampf.programm.alterBis, Set("W", "M"), wertungen.map(w => w.head.init.athlet), service,
               (selection: Set[Long]) => {
-                service.assignAthletsToWettkampf(wettkampf.id, Set(2, 3), selection, None)
+                val athletMediaList: Set[(Long,Option[Media])] = selection.map(s => (s, None))
+                service.assignAthletsToWettkampf(wettkampf.id, Set(2, 3), athletMediaList, None)
                 reloadData()
               }
             ).execute(event)
@@ -2199,7 +2195,8 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
           new AthletSelectionDialog(
             text.value, wettkampfFilterDate, progrm.alterVon, progrm.alterBis, sex, wertungen.map(w => w.head.init.athlet), service,
             (selection: Set[Long]) => {
-              service.assignAthletsToWettkampf(wettkampf.id, Set(progrm.id), selection, None)
+              val athletMediaList: Set[(Long,Option[Media])] = selection.map(s => (s, None))
+              service.assignAthletsToWettkampf(wettkampf.id, Set(progrm.id), athletMediaList, None)
               reloadData()
             }
           ).execute(event)

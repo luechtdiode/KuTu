@@ -18,7 +18,7 @@ trait AthletResultMapper extends VereinResultMapper {
         plz = r.<<,
         ort = r.<<,
         activ = r.<<,
-        verein = r
+        verein = getVereinOptionResult(r)
     ))
 
   implicit val getAthletOptionResult: GetResult[Option[AthletView]] = GetResult(r => r.nextLongOption() match {
@@ -33,7 +33,7 @@ trait AthletResultMapper extends VereinResultMapper {
       plz = r.<<,
       ort = r.<<,
       activ = r.<<,
-      verein = r
+      verein = getVereinOptionResult(r)
     ))
     case _ => { r.skip; r.skip; r.skip; r.skip; r.skip; r.skip; r.skip; r.skip; r.skip; None }
   })

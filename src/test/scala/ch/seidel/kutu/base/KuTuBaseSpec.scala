@@ -28,7 +28,8 @@ trait KuTuBaseSpec extends AnyWordSpec with Matchers with DBService with KutuSer
         a <- (1 to Math.max(1, 4-pg))
       } yield {
         val athlet = insertAthlete(Athlet(vereinID).copy(name = s"Athlet-$pg-$a"))
-        assignAthletsToWettkampf(wettkampf.id, Set(pgIds(pg-1)), Set(athlet.id), None)
+        val tuple: (Long, Option[Media]) = (athlet.id, None)
+        assignAthletsToWettkampf(wettkampf.id, Set(pgIds(pg-1)), Set(tuple), None)
         athlet
       }
     }
@@ -50,7 +51,8 @@ trait KuTuBaseSpec extends AnyWordSpec with Matchers with DBService with KutuSer
           name = s"Athlet-$pg-$a",
           gebdat = Some(gebdat)
         ))
-        assignAthletsToWettkampf(wettkampf.id, Set(pgIds(pg-1)), Set(athlet.id), None)
+        val tuple: (Long, Option[Media]) = (athlet.id, None)
+        assignAthletsToWettkampf(wettkampf.id, Set(pgIds(pg-1)), Set(tuple), None)
         athlet
       }
     }

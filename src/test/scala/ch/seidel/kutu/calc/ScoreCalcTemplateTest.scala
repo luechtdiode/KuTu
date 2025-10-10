@@ -45,7 +45,7 @@ class ScoreCalcTemplateTest extends AnyWordSpec with Matchers with JsonSupport {
   }
 
   "calculate wertung" in {
-    val wertung = Wertung(0, 0, 0, 0, "", None, None, None, None, None, None, None)
+    val wertung = Wertung(0, 0, 0, 0, "", None, None, None, None, None, None, None, None)
     val wd = WettkampfdisziplinView(0, null, null, "", None, StandardWettkampf(1d), 1, 1, 1, 3, 1, 0, 30, 1)
     val dvalues = t.dVariables.zipWithIndex.map(item => item._1.updated(BigDecimal("0.12345") + item._2 + 1))
     val evalues = t.eVariables.zipWithIndex.map(item => item._1.updated(BigDecimal("0.12345") + item._2 + 1))
@@ -54,14 +54,14 @@ class ScoreCalcTemplateTest extends AnyWordSpec with Matchers with JsonSupport {
     val valuesList = List(values)
     val calculatedWertung = Calculator(t).calculate(wertung, wd, valuesList)
     assert(calculatedWertung match {
-      case Wertung(0,0,0,0,"",Some(d),Some(e), Some(end),None,None,None,Some(scvtv)) =>
+      case Wertung(0,0,0,0,"",Some(d),Some(e), Some(end),None,None,None,None,Some(scvtv)) =>
         d.toDouble == 2.1 && e.toDouble == 8.277 && end.toDouble == 10.377 && scvtv.variables == valuesList
       case _ => false
     })
   }
 
   "calculate n-wertung Min" in {
-    val wertung = Wertung(0, 0, 0, 0, "", None, None, None, None, None, None, None)
+    val wertung = Wertung(0, 0, 0, 0, "", None, None, None, None, None, None, None, None)
     val wd = WettkampfdisziplinView(0, null, null, "", None, StandardWettkampf(1d), 1, 1, 1, 3, 1, 0, 30, 1)
     val tt = t.copy(aggregateFn = Some(Min))
     val dvalues = tt.dVariables.zipWithIndex.map(item => item._1.updated(BigDecimal("0.12345") + item._2 + 1))
@@ -71,7 +71,7 @@ class ScoreCalcTemplateTest extends AnyWordSpec with Matchers with JsonSupport {
     val valuesList = values.groupBy(_.index).values.toList
     val calculatedWertung = Calculator(tt).calculate(wertung, wd, valuesList)
     assert(calculatedWertung match {
-      case Wertung(0,0,0,0,"",Some(d),Some(e), Some(end),None,None,None,Some(scvtv)) =>
+      case Wertung(0,0,0,0,"",Some(d),Some(e), Some(end),None,None,None, None,Some(scvtv)) =>
         assert(scvtv.variables === valuesList)
         d.toDouble == 4.1 && e.toDouble == 6.677 && end.toDouble == 10.777 && scvtv.variables == valuesList
       case _ => false
@@ -79,7 +79,7 @@ class ScoreCalcTemplateTest extends AnyWordSpec with Matchers with JsonSupport {
   }
 
   "calculate n-wertung Max" in {
-    val wertung = Wertung(0, 0, 0, 0, "", None, None, None, None, None, None, None)
+    val wertung = Wertung(0, 0, 0, 0, "", None, None, None, None, None, None, None, None)
     val wd = WettkampfdisziplinView(0, null, null, "", None, StandardWettkampf(1d), 1, 1, 1, 3, 1, 0, 30, 1)
     val tt = t.copy(aggregateFn = Some(Max))
     val dvalues = tt.dVariables.zipWithIndex.map(item => item._1.updated(BigDecimal("0.12345") + item._2 + 1))
@@ -89,14 +89,14 @@ class ScoreCalcTemplateTest extends AnyWordSpec with Matchers with JsonSupport {
     val valuesList = values.groupBy(_.index).values.toList
     val calculatedWertung = Calculator(tt).calculate(wertung, wd, valuesList)
     assert(calculatedWertung match {
-      case Wertung(0,0,0,0,"",Some(d),Some(e), Some(end),None,None,None,Some(scvtv)) =>
+      case Wertung(0,0,0,0,"",Some(d),Some(e), Some(end),None,None,None, None,Some(scvtv)) =>
         d.toDouble == 3.1 && e.toDouble == 7.777 && end.toDouble == 10.877 && scvtv.variables == valuesList
       case _ => false
     })
   }
 
   "calculate n-wertung Sum" in {
-    val wertung = Wertung(0, 0, 0, 0, "", None, None, None, None, None, None, None)
+    val wertung = Wertung(0, 0, 0, 0, "", None, None, None, None, None, None, None, None)
     val wd = WettkampfdisziplinView(0, null, null, "", None, StandardWettkampf(1d), 1, 1, 1, 3, 1, 0, 30, 1)
     val tt = t.copy(aggregateFn = Some(Sum))
     val dvalues = tt.dVariables.zipWithIndex.map(item => item._1.updated(BigDecimal("0.12345") + item._2 + 1))
@@ -106,14 +106,14 @@ class ScoreCalcTemplateTest extends AnyWordSpec with Matchers with JsonSupport {
     val valuesList = values.groupBy(_.index).values.toList
     val calculatedWertung = Calculator(tt).calculate(wertung, wd, valuesList)
     assert(calculatedWertung match {
-      case Wertung(0,0,0,0,"",Some(d),Some(e), Some(end),None,None,None,Some(scvtv)) =>
+      case Wertung(0,0,0,0,"",Some(d),Some(e), Some(end),None,None,None, None,Some(scvtv)) =>
         d.toDouble == 7.2 && e.toDouble == 14.454 && end.toDouble == 21.654 && scvtv.variables == valuesList
       case _ => false
     })
   }
 
   "calculate n-wertung Avg" in {
-    val wertung = Wertung(0, 0, 0, 0, "", None, None, None, None, None, None, None)
+    val wertung = Wertung(0, 0, 0, 0, "", None, None, None, None, None, None, None, None)
     val wd = WettkampfdisziplinView(0, null, null, "", None, StandardWettkampf(1d), 1, 1, 1, 3, 1, 0, 30, 1)
     val tt = t.copy(aggregateFn = Some(Avg))
     val dvalues = tt.dVariables.zipWithIndex.map(item => item._1.updated(BigDecimal("0.12345") + item._2 + 1))
@@ -123,7 +123,7 @@ class ScoreCalcTemplateTest extends AnyWordSpec with Matchers with JsonSupport {
     val valuesList = values.groupBy(_.index).values.toList
     val calculatedWertung = Calculator(tt).calculate(wertung, wd, valuesList)
     assert(calculatedWertung match {
-      case Wertung(0,0,0,0,"",Some(d),Some(e), Some(end),None,None,None,Some(scvtv)) =>
+      case Wertung(0,0,0,0,"",Some(d),Some(e), Some(end),None,None,None, None,Some(scvtv)) =>
         d.toDouble == 3.6 && e.toDouble == 7.227 && end.toDouble == 10.827 && scvtv.variables == valuesList
       case _ => false
     })
@@ -152,7 +152,7 @@ class ScoreCalcTemplateTest extends AnyWordSpec with Matchers with JsonSupport {
       "pFormula": "($Pname.0 / 10)^",
       "aggregateFn": "Max"
     }""")
-    val wertung = Wertung(0, 0, 0, 0, "", None, None, None, None, None, None, None)
+    val wertung = Wertung(0, 0, 0, 0, "", None, None, None, None, None, None, None, None)
     val wd = WettkampfdisziplinView(0, null, null, "", None, StandardWettkampf(1d), 1, 1, 1, 3, 1, 0, 30, 1)
     val dvalues = t.dVariables.zipWithIndex.map(item => item._1.updated(BigDecimal("0.12345") + item._2 + 1))
     val evalues = t.eVariables.zipWithIndex.map(item => item._1.updated(BigDecimal("0.12345") + item._2 + 1))
@@ -161,7 +161,7 @@ class ScoreCalcTemplateTest extends AnyWordSpec with Matchers with JsonSupport {
     val valuesList = values.groupBy(_.index).values.toList
     val calculatedWertung = Calculator(t).calculate(wertung, wd, List(values, values))
     assert(calculatedWertung match {
-      case Wertung(0,0,0,0,"",Some(d),Some(e), Some(end),None,None,None,Some(scvtv)) =>
+      case Wertung(0,0,0,0,"",Some(d),Some(e), Some(end),None,None,None, None,Some(scvtv)) =>
         d.toDouble == 3.1 && e.toDouble == 7.777 && end.toDouble == 10.877 && scvtv.variables == valuesList
       case _ => false
     })
@@ -177,7 +177,7 @@ class ScoreCalcTemplateTest extends AnyWordSpec with Matchers with JsonSupport {
       "pFormula": "($Pname.0 / 10)^",
       "aggregateFn": "Max"
     }""")
-    val wertung = Wertung(0, 0, 0, 0, "", None, None, None, None, None, None, None)
+    val wertung = Wertung(0, 0, 0, 0, "", None, None, None, None, None, None, None, None)
     val wd = WettkampfdisziplinView(0, null, null, "", None, StandardWettkampf(1d), 1, 1, 1, 3, 1, 0, 30, 1)
     val dvalues = t.dVariables.zipWithIndex.map(item => item._1.updated(BigDecimal("0.12345") + item._2 + 1))
     val evalues = t.eVariables.zipWithIndex.map(item => item._1.updated(BigDecimal("0.12345") + item._2 + 1))
@@ -186,7 +186,7 @@ class ScoreCalcTemplateTest extends AnyWordSpec with Matchers with JsonSupport {
     val valuesList = values.groupBy(_.index).values.toList
     val calculatedWertung = Calculator(t).calculate(wertung, wd, List(values, values))
     assert(calculatedWertung match {
-      case Wertung(0,0,0,0,"",Some(d),Some(e), Some(end),None,None,None,Some(scvtv)) =>
+      case Wertung(0,0,0,0,"",Some(d),Some(e), Some(end),None,None,None, None,Some(scvtv)) =>
         d.toDouble == 3.1 && e.toDouble == 7.777 && end.toDouble == 10.877 && scvtv.variables == valuesList
       case _ => false
     })

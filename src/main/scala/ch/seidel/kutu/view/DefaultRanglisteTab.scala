@@ -2,6 +2,7 @@ package ch.seidel.kutu.view
 
 import ch.seidel.commons._
 import ch.seidel.kutu.KuTuApp
+import ch.seidel.kutu.actors.{AthletWertungUpdated, AthletWertungUpdatedSequenced, KutuAppEvent, LastResults}
 import ch.seidel.kutu.data._
 import ch.seidel.kutu.domain._
 import ch.seidel.kutu.http.WebSocketClient
@@ -489,16 +490,23 @@ abstract class DefaultRanglisteTab(wettkampfmode: BooleanProperty, override val 
     if (logger.isDebugEnabled()) {
       logger.debug("subscribing for refreshing from websocket")
     }
+    def updateFromWebsocket(newItem: KutuAppEvent): Unit = {
+      submitLazy("refreshRangliste", () => if (selected.value) {
+        if (logger.isDebugEnabled()) {
+          logger.debug("refreshing rangliste from websocket", newItem)
+        }
+        refreshRangliste(buildGrouper)
+        refreshScorePresets(cbfSaved.items)
+      }, 5)
+    }
     subscription = subscription :+ WebSocketClient.modelWettkampfWertungChanged.onChange { (_, _, newItem) =>
       if (selected.value) {
-        submitLazy("refreshRangliste", () => if (selected.value) {
-          if (logger.isDebugEnabled()) {
-            logger.debug("refreshing rangliste from websocket", newItem)
-          }
-          refreshRangliste(buildGrouper)
-          refreshScorePresets(cbfSaved.items)
-        }, 5
-        )
+        newItem match {
+          case LastResults(_) => updateFromWebsocket(newItem)
+          case _: AthletWertungUpdated => updateFromWebsocket(newItem)
+          case _: AthletWertungUpdatedSequenced => updateFromWebsocket(newItem)
+          case _ =>
+        }
       }
     }
 

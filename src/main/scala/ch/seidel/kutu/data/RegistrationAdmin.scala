@@ -2,7 +2,7 @@ package ch.seidel.kutu.data
 
 import ch.seidel.kutu.KuTuApp.cleanUnusedRiegen
 import ch.seidel.kutu.actors.{AthletIndexActor, AthletLikeFound, AthletsAddedToWettkampf, FindAthletLike}
-import ch.seidel.kutu.domain.{AddRegistration, AddVereinAction, ApproveVereinAction, Athlet, AthletRegistration, AthletView, EmptyAthletRegistration, KutuService, MoveRegistration, PublicSyncAction, Registration, RemoveRegistration, RenameAthletAction, RenameVereinAction, RiegeRaw, SyncAction, Verein, WertungView, Wettkampf}
+import ch.seidel.kutu.domain.{AddMedia, AddRegistration, AddVereinAction, ApproveVereinAction, Athlet, AthletRegistration, AthletView, EmptyAthletRegistration, KutuService, MoveRegistration, PublicSyncAction, Registration, RemoveRegistration, RenameAthletAction, RenameVereinAction, RiegeRaw, SyncAction, UpdateAthletMediaAction, Verein, WertungView, Wettkampf}
 import ch.seidel.kutu.http.{RegistrationRoutes, WebSocketClient}
 import ch.seidel.kutu.squad.RiegenBuilder.{generateRiegen2Name, generateRiegenName}
 import ch.seidel.kutu.view.WettkampfInfo
@@ -21,10 +21,13 @@ object RegistrationAdmin {
 
   def doSyncUnassignedClubRegistrations(wkInfo: WettkampfInfo, service: KutuService)(registrations: List[RegTuple]): (Set[Verein], List[SyncAction]) = {
     val starttime = System.currentTimeMillis()
-    val registrationSet = registrations.map(r => (r._4.verein, r._1)).toSet
+    val registrationSet: Set[(Option[Verein], Registration)] = registrations.map(r => (r._4.verein, r._1)).toSet
     val existingPgmAthletes: Map[Long, Map[Long, AthletRegistration]] = registrations.filter(!_._2.isEmptyRegistration).groupBy(_._2.programId).map(group => group._1 -> group._2.map(t => (t._4.id -> t._2)).toMap)
     val existingAthletes: Set[Long] = registrations.map(_._4.id).filter(_ > 0).toSet
     val validatedClubs = registrations.filter(r => r._1.vereinId.isEmpty).flatMap(r => r._4.verein).toSet
+    val boden = Some(1L)
+    val bodenWertungen = service.selectWertungen(disziplinId = boden, wettkampfId = Some(wkInfo.wettkampf.id))
+      .map(w => w.athlet.id -> w).toMap
 
     val isNewVereinFilter: RegTuple => Boolean = r =>
       r._4.verein.isEmpty && !r._2.isEmptyRegistration
@@ -46,6 +49,15 @@ object RegistrationAdmin {
         r._1.matchesClubRelation() &&
         !(r._2.matchesAthlet() && r._2.matchesAthlet(r._4.toAthlet))
 
+    val wettkampf = wkInfo.wettkampf
+    val isMissingMediaFilter: RegTuple => Boolean = r =>
+      r._2.mediafile.nonEmpty && r._2.mediafile.flatMap(m => service.loadMedia(m.id).filter(lm => lm.computeFilePath(wettkampf.toWettkampf).exists())).isEmpty
+
+    val isMediaChangedFilter: RegTuple => Boolean = r => {
+      r._2.mediafile.nonEmpty && (bodenWertungen.contains(r._4.id) && !bodenWertungen(r._4.id).mediafile.exists(a => r._2.mediafile.exists(b => a.id.equals(b.id)))) ||
+      r._2.mediafile.isEmpty && (bodenWertungen.contains(r._4.id) && bodenWertungen(r._4.id).mediafile.nonEmpty)
+    }
+
     val addClubActions = registrations
       .filter(isNewVereinFilter)
       .map(r => AddVereinAction(r._1)).distinct
@@ -58,6 +70,9 @@ object RegistrationAdmin {
     val approvedClubActions = registrations
       .filter(isApprovedVereinFilter)
       .map(r => ApproveVereinAction(r._1.copy(vereinId = r._4.verein.map(_.id)))).distinct
+    val addMediaActions = registrations
+      .filter(isMissingMediaFilter)
+      .map(r => AddMedia(r._1, r._2))
 
     logger.info(s"start with mapping of ${registrations.size} registrations to sync-actions")
     val nonMatchinProgramAssignment: Map[String, Seq[(Registration, WertungView)]] = service.
@@ -89,6 +104,13 @@ object RegistrationAdmin {
         }
       }
 
+    val changedMedia: Seq[SyncAction] = registrations
+      .filter(isMediaChangedFilter)
+      .map { rt =>
+        val wertung: WertungView = bodenWertungen(rt._4.id)
+        UpdateAthletMediaAction(rt._1, rt._2, wertung.toWertung)
+      }
+
     val removeActions: Seq[SyncAction] = nonMatchinProgramAssignment.get("Entfernen") match {
       case Some(list) => list
         .map(t => RemoveRegistration(t._1, t._2.wettkampfdisziplin.programm.id, t._2.athlet.toAthlet, t._2.athlet))
@@ -117,12 +139,12 @@ object RegistrationAdmin {
         case Some(moveRegistration) =>
           Some(moveRegistration)
         case None if !r._2.isEmptyRegistration =>
-          Some(AddRegistration(r._1, r._2.programId, r._3, r._4, r._2.team.getOrElse(0)))
+          Some(AddRegistration(r._1, r._2.programId, r._3, r._4, r._2.team.getOrElse(0), r._2.mediafile))
         case None => None
       }
     }
 
-    val syncActions = addClubActions ++ approvedClubActions ++ renameClubActions ++ renameAthletActions ++ removeActions ++ reAssignProgramActions
+    val syncActions = addClubActions ++ approvedClubActions ++ renameClubActions ++ addMediaActions ++ renameAthletActions ++ removeActions ++ reAssignProgramActions ++ changedMedia
     logger.info(s"mapping of ${registrations.size} registrations to ${syncActions.size} sync-actions in ${System.currentTimeMillis() - starttime}ms")
     (validatedClubs, syncActions)
   }
@@ -178,7 +200,7 @@ object RegistrationAdmin {
       service.insertVerein(addVereinAction.verein.toVerein)
     }
     val addRegistrations: immutable.Seq[AddRegistration] = syncActions.flatMap {
-      case ar@AddRegistration(reg, _, _, candidateView, _) =>
+      case ar@AddRegistration(reg, _, _, candidateView, _, media) =>
         if (candidateView.verein.isEmpty) {
           newClubs.find(c => c.name.equals(reg.vereinname) && c.verband.getOrElse("").equals(reg.verband)) match {
             case Some(verein) =>
@@ -258,23 +280,50 @@ object RegistrationAdmin {
       service.joinVereinWithRegistration(wkInfo.wettkampf.toWettkampf, registration.verein, club)
     }
 
+    service.saveOrUpdateMedias(syncActions.flatMap {
+      case ar: AddRegistration => ar.media
+      case mr: UpdateAthletMediaAction => mr.athletReg.mediafile
+      case am: AddMedia => am.athletReg.mediafile
+      case _ => None
+    }.distinct)
+
+    val requestMediaList = syncActions.flatMap {
+      case am: AddMedia => am.athletReg.mediafile
+      case _ => None
+    }.distinct
+    if (requestMediaList.nonEmpty) {
+      service.getMediaDownloadRemote(wkInfo.wettkampf.toWettkampf, requestMediaList)
+    }
+
     for (((progId, team), idAndathletes) <- addRegistrations.map {
-      case AddRegistration(_, programId, _, candidateView, team) =>
+      case AddRegistration(_, programId, _, candidateView, team, media) =>
         val (pgmId, athlId) = mapAddRegistration(service, programId, candidateView)
-        (pgmId, team, athlId)
+        (pgmId, team, media.map(_.toMedia), athlId)
     }.groupBy(t => (t._1, t._2))) {
       // NOT implicit pushing to ws-client
-      val athletIds = idAndathletes.map(_._3).toSet
+      val athletIds = idAndathletes.map(x => (x._4, x._3)).toSet
       service.assignAthletsToWettkampf(wkInfo.wettkampf.id, Set(progId), athletIds, Some(team))
     }
 
     for (((progId, team), addActions) <- addRegistrations.groupBy {
-      case AddRegistration(_, programId, _, _, team) => (programId, team)
+      case AddRegistration(_, programId, _, _, team, _) => (programId, team)
     }) {
       WebSocketClient.publish(AthletsAddedToWettkampf(
-        addActions.map(_.suggestion).toList,
+        addActions.map(aa => (aa.suggestion, aa.media.map(_.toMedia))).toList,
         wkInfo.wettkampf.uuid.get,
         progId, team))
+    }
+
+    val updateAthletMediaActions = syncActions.flatMap {
+      case mr: UpdateAthletMediaAction => Some(mr)
+      case _ => None
+    }
+    for (athletMediaUpdateAction: UpdateAthletMediaAction <- updateAthletMediaActions) {
+      // implicit pushing to ws-client
+      service.updateWertung(athletMediaUpdateAction.wertung.copy(mediafile = athletMediaUpdateAction.athletReg.mediafile.map(_.toMedia)))
+    }
+    if (updateAthletMediaActions.nonEmpty) {
+      service.regchanged(wkInfo.wettkampf.toWettkampf)
     }
 
     cleanUnusedRiegen(wkInfo.wettkampf.id)

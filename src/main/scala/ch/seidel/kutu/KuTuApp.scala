@@ -3,12 +3,13 @@ package ch.seidel.kutu
 import ch.seidel.commons.{DisplayablePage, PageDisplayer, ProgressForm, TaskSteps}
 import ch.seidel.jwt
 import ch.seidel.kutu.Config._
-import ch.seidel.kutu.actors.KutuAppEvent
+import ch.seidel.kutu.actors.{ForgetMyMediaPlayer, KutuAppEvent, MediaPlayerAction, MediaPlayerEvent, UseMyMediaPlayer}
 import ch.seidel.kutu.data.{CaseObjectMetaUtil, ResourceExchanger, Surname}
 import ch.seidel.kutu.domain._
 import ch.seidel.kutu.http._
 import ch.seidel.kutu.renderer.PrintUtil
 import ch.seidel.kutu.view.WettkampfTableView
+import ch.seidel.kutu.view.player.Player
 import javafx.beans.property.SimpleObjectProperty
 import javafx.concurrent.Task
 import javafx.scene.control.DatePicker
@@ -65,8 +66,10 @@ object KuTuApp extends JFXApp3 with KutuService with JsonSupport with JwtSupport
 
   override def stopApp(): Unit = {
     lazyExecutor.shutdownNow()
-    server.shutDown("KuTuApp")
     ConnectionStates.disconnected()
+    server.shutDown("KuTuApp")
+    super.stopApp()
+    System.exit(0)
   }
 
   var tree: KuTuAppTree = AppNavigationModel.create(KuTuApp.this)
@@ -1161,7 +1164,16 @@ object KuTuApp extends JFXApp3 with KutuService with JsonSupport with JwtSupport
     }.map(_ => {
       WebSocketClient.connect(p.toWettkampf, ResourceExchanger.processWSMessage(p.toWettkampf, (sender: Object, event: KutuAppEvent) => {
         Platform.runLater {
-          WebSocketClient.modelWettkampfWertungChanged.setValue(event)
+          event match {
+            case ev: MediaPlayerAction =>
+              WebSocketClient.publishMediaActionLocal(ev)
+            case ee: MediaPlayerEvent =>
+              WebSocketClient.publishMediaEventLocal(ee)
+            case _: UseMyMediaPlayer =>
+            case _: ForgetMyMediaPlayer =>
+            case _ =>
+              WebSocketClient.modelWettkampfWertungChanged.setValue(event)
+          }
         }
       }), PageDisplayer.showErrorDialog(caption))
     })
@@ -1170,6 +1182,7 @@ object KuTuApp extends JFXApp3 with KutuService with JsonSupport with JwtSupport
         if (!wspromise.isCompleted) {
           logger.info(s"share: completed upload-operation. Show success-message ...")
           ConnectionStates.connectedWith(p.uuid.get, wspromise)
+          Player.setWettkampf(p.toWettkampf, this)
           Platform.runLater {
             PageDisplayer.showInDialog(caption,
               new DisplayablePage() {
@@ -1988,6 +2001,7 @@ object KuTuApp extends JFXApp3 with KutuService with JsonSupport with JwtSupport
   
   def cleanupDB(): Unit = {
     markAthletesInactiveOlderThan(3)
+    ResourceExchanger.cleanupMediaFiles()
   }
 
   def startUI(): Unit = {

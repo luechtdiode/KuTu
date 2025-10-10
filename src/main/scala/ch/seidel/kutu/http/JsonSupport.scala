@@ -20,14 +20,16 @@ trait JsonSupport extends SprayJsonSupport with EnrichedJson {
   implicit val scoreCalcTemplateFormat: RootJsonFormat[ScoreCalcTemplate] = jsonFormat(ScoreCalcTemplate,
     "id", "wettkampfId", "disziplinId", "wettkampfdisziplinId", "dFormula", "eFormula", "pFormula", "aggregateFn")
   implicit val scoreCalcTemplateViewFormat: RootJsonFormat[ScoreCalcTemplateView] = jsonFormat10(ScoreCalcTemplateView)
-  implicit val wertungFormat: RootJsonFormat[Wertung] = jsonFormat(Wertung, "id", "athletId", "wettkampfdisziplinId", "wettkampfId", "wettkampfUUID", "noteD", "noteE", "endnote", "riege", "riege2", "team", "variables")
+  implicit val mediaFormat: RootJsonFormat[Media] = jsonFormat3(Media)
+  implicit val mediaAdminFormat: RootJsonFormat[MediaAdmin] = jsonFormat7(MediaAdmin)
+  implicit val wertungFormat: RootJsonFormat[Wertung] = jsonFormat(Wertung, "id", "athletId", "wettkampfdisziplinId", "wettkampfId", "wettkampfUUID", "noteD", "noteE", "endnote", "riege", "riege2", "team", "mediafile", "variables")
   implicit val vereinFormat: RootJsonFormat[Verein] = jsonFormat(Verein, "id", "name", "verband")
   implicit val atheltViewFormat: RootJsonFormat[AthletView] = jsonFormat(AthletView, "id", "js_id", "geschlecht", "name", "vorname", "gebdat", "strasse", "plz", "ort", "verein", "activ")
   implicit val wertungContainerFormat: RootJsonFormat[WertungContainer] = jsonFormat11(WertungContainer)
   implicit val registrationFormat: RootJsonFormat[Registration] = jsonFormat11(Registration)
   implicit val newregistrationFormat: RootJsonFormat[NewRegistration] = jsonFormat8(NewRegistration)
   implicit val resetRegistrationPWFormat: RootJsonFormat[RegistrationResetPW] = jsonFormat3(RegistrationResetPW)
-  implicit val athletregistrationFormat: RootJsonFormat[AthletRegistration] = jsonFormat11(AthletRegistration)
+  implicit val athletregistrationFormat: RootJsonFormat[AthletRegistration] = jsonFormat12(AthletRegistration)
   implicit val teamFormat: RootJsonFormat[TeamItem] = jsonFormat2(TeamItem)
   implicit val judgeregistrationFormat: RootJsonFormat[JudgeRegistration] = jsonFormat9(JudgeRegistration)
   implicit val judgeregistrationPgmFormat: RootJsonFormat[JudgeRegistrationProgram] = jsonFormat5(JudgeRegistrationProgram)
@@ -64,8 +66,24 @@ trait JsonSupport extends SprayJsonSupport with EnrichedJson {
   implicit val bulkEvents: RootJsonFormat[BulkEvent] = jsonFormat2(BulkEvent)
   implicit val athletRemovedFromWettkampf: RootJsonFormat[AthletRemovedFromWettkampf] = jsonFormat2(AthletRemovedFromWettkampf)
   implicit val athletMovedInWettkampf: RootJsonFormat[AthletMovedInWettkampf] = jsonFormat4(AthletMovedInWettkampf)
+  implicit val durchgangChangedFormat: RootJsonFormat[DurchgangChanged] = jsonFormat3(DurchgangChanged)
   implicit val athletAddedToettkampf: RootJsonFormat[AthletsAddedToWettkampf] = jsonFormat4(AthletsAddedToWettkampf)
   implicit val messageAckFormat: RootJsonFormat[MessageAck] = jsonFormat1(MessageAck)
+
+  implicit val athletMediaAquireFormat: RootJsonFormat[AthletMediaAquire] = jsonFormat3(AthletMediaAquire)
+  implicit val athletMediaReleaseFormat: RootJsonFormat[AthletMediaRelease] = jsonFormat3(AthletMediaRelease)
+  implicit val athletMediaStartFormat: RootJsonFormat[AthletMediaStart] = jsonFormat3(AthletMediaStart)
+  implicit val athletMediaPauseFormat: RootJsonFormat[AthletMediaPause] = jsonFormat3(AthletMediaPause)
+  implicit val athletMediaToStartFormat: RootJsonFormat[AthletMediaToStart] = jsonFormat3(AthletMediaToStart)
+
+  implicit val useMyMediaPlayerFormat: RootJsonFormat[UseMyMediaPlayer] = jsonFormat2(UseMyMediaPlayer)
+  implicit val forgetMyMediaPlayerFormat: RootJsonFormat[ForgetMyMediaPlayer] = jsonFormat2(ForgetMyMediaPlayer)
+  implicit val mediaPlayerIsReadyFormat: RootJsonFormat[MediaPlayerIsReady] = jsonFormat1(MediaPlayerIsReady)
+  implicit val mediaPlayerDisconnectedFormat: RootJsonFormat[MediaPlayerDisconnected] = jsonFormat1(MediaPlayerDisconnected)
+  implicit val athletMediaIsFreeFormat: RootJsonFormat[AthletMediaIsFree] = jsonFormat2(AthletMediaIsFree)
+  implicit val athletMediaIsAtStartFormat: RootJsonFormat[AthletMediaIsAtStart] = jsonFormat2(AthletMediaIsAtStart)
+  implicit val athletMediaIsRunningFormat: RootJsonFormat[AthletMediaIsRunning] = jsonFormat2(AthletMediaIsRunning)
+  implicit val athletMediaIsPausedFormat: RootJsonFormat[AthletMediaIsPaused] = jsonFormat2(AthletMediaIsPaused)
 
   // support for websocket incoming json-messages
   val caseClassesJsonFormatter: Map[String, JsonFormat[_ <: KutuAppEvent]] = Map(
@@ -82,7 +100,21 @@ trait JsonSupport extends SprayJsonSupport with EnrichedJson {
     classOf[AthletRemovedFromWettkampf].getSimpleName -> athletRemovedFromWettkampf,
     classOf[AthletMovedInWettkampf].getSimpleName -> athletMovedInWettkampf,
     classOf[AthletsAddedToWettkampf].getSimpleName -> athletAddedToettkampf,
-    classOf[MessageAck].getSimpleName -> messageAckFormat
+    classOf[DurchgangChanged].getSimpleName -> durchgangChangedFormat,
+    classOf[MessageAck].getSimpleName -> messageAckFormat,
+    classOf[UseMyMediaPlayer].getSimpleName -> useMyMediaPlayerFormat,
+    classOf[ForgetMyMediaPlayer].getSimpleName -> forgetMyMediaPlayerFormat,
+    classOf[MediaPlayerIsReady].getSimpleName -> mediaPlayerIsReadyFormat,
+    classOf[MediaPlayerDisconnected].getSimpleName -> mediaPlayerDisconnectedFormat,
+    classOf[AthletMediaAquire].getSimpleName -> athletMediaAquireFormat,
+    classOf[AthletMediaRelease].getSimpleName -> athletMediaReleaseFormat,
+    classOf[AthletMediaStart].getSimpleName -> athletMediaStartFormat,
+    classOf[AthletMediaPause].getSimpleName -> athletMediaPauseFormat,
+    classOf[AthletMediaToStart].getSimpleName -> athletMediaToStartFormat,
+    classOf[AthletMediaIsFree].getSimpleName -> athletMediaIsFreeFormat,
+    classOf[AthletMediaIsAtStart].getSimpleName -> athletMediaIsAtStartFormat,
+    classOf[AthletMediaIsRunning].getSimpleName -> athletMediaIsRunningFormat,
+    classOf[AthletMediaIsPaused].getSimpleName -> athletMediaIsPausedFormat,
   )
 
   implicit val messagesFormatter: RootJsonFormat[KutuAppEvent] = new RootJsonFormat[KutuAppEvent] {
@@ -112,7 +144,13 @@ trait JsonSupport extends SprayJsonSupport with EnrichedJson {
         case _ =>
           caseClassesJsonFormatter.get(obj.getClass.getSimpleName) match {
             case Some(jsonWriter) =>
-              jsonWriter.asInstanceOf[JsonFormat[KutuAppEvent]].write(obj).addFields(Map("type" -> JsString(obj.getClass.getSimpleName)))
+              try {
+                jsonWriter.asInstanceOf[JsonFormat[KutuAppEvent]].write(obj).addFields(Map("type" -> JsString(obj.getClass.getSimpleName)))
+              } catch {
+                case e: Exception =>
+                  println(obj)
+                  throw e
+              }
             case _ => throw new Exception(s"Unable to find jsonFormatter for $obj")
           }
       }

@@ -4,25 +4,34 @@ import ch.seidel.kutu.Config
 import ch.seidel.kutu.Config.remoteAdminBaseUrl
 import ch.seidel.kutu.actors._
 import ch.seidel.kutu.data.RegistrationAdmin.adjustWertungRiegen
-import ch.seidel.kutu.domain.{AthletRegistration, AthletView, JudgeRegistration, KutuService, NewRegistration, ProgrammRaw, Registration, RegistrationResetPW, TeamItem, TeamRegel, Verein, Wettkampf, dateToExportedStr, encodeFileName, str2SQLDate}
+import ch.seidel.kutu.data.ResourceExchanger
+import ch.seidel.kutu.data.ResourceExchanger.updateAthletRegistration
+import ch.seidel.kutu.domain.{AthletRegistration, AthletView, JudgeRegistration, KutuService, Media, MediaAdmin, NewRegistration, ProgrammRaw, Registration, RegistrationResetPW, TeamItem, TeamRegel, Verein, Wettkampf, dateToExportedStr, encodeFileName, str2SQLDate}
 import ch.seidel.kutu.http.AuthSupport.OPTION_LOGINRESET
 import ch.seidel.kutu.renderer.MailTemplates.createPasswordResetMail
 import ch.seidel.kutu.renderer.{CompetitionsClubsToHtmlRenderer, CompetitionsJudgeToHtmlRenderer, PrintUtil}
 import fr.davit.pekko.http.metrics.core.scaladsl.server.HttpMetricsDirectives._
+import org.apache.pekko.http.scaladsl.Http
 import org.apache.pekko.http.scaladsl.marshallers.sprayjson.SprayJsonSupport
 import org.apache.pekko.http.scaladsl.marshalling.ToResponseMarshallable
+import org.apache.pekko.http.scaladsl.model.HttpMethods.POST
 import org.apache.pekko.http.scaladsl.model._
 import org.apache.pekko.http.scaladsl.server.Route
+import org.apache.pekko.http.scaladsl.server.directives.FileInfo
 import org.apache.pekko.http.scaladsl.unmarshalling.Unmarshal
+import org.apache.pekko.stream.scaladsl.{Sink, Source, StreamConverters}
 import org.apache.pekko.util.{ByteString, Timeout}
 import spray.json._
 
+import java.io.{ByteArrayOutputStream, InputStream}
 import java.util.UUID
-import scala.concurrent.duration.{DAYS, Duration, DurationInt}
+import java.util.concurrent.TimeUnit
+import scala.concurrent.duration.{DAYS, Duration, DurationInt, FiniteDuration}
 import scala.concurrent.{Await, Future}
+import scala.util.{Failure, Success}
 
 trait RegistrationRoutes extends SprayJsonSupport with JsonSupport with JwtSupport with AuthSupport with RouterLogging
-  with KutuService with CompetitionsClubsToHtmlRenderer with CompetitionsJudgeToHtmlRenderer with IpToDeviceID with CIDSupport {
+  with KutuService with CompetitionsClubsToHtmlRenderer with CompetitionsJudgeToHtmlRenderer with IpToDeviceID with CIDSupport with FailureSupport {
 
   import Core._
   import spray.json.DefaultJsonProtocol._
@@ -32,7 +41,6 @@ trait RegistrationRoutes extends SprayJsonSupport with JsonSupport with JwtSuppo
   // Required by the `ask` (?) method below
   // usually we'd obtain the timeout from the system's configuration
   private implicit lazy val timeout: Timeout = Timeout(5.seconds)
-
 
   def joinVereinWithRegistration(p: Wettkampf, reg: Registration, verein: Verein): Unit = {
     Await.result(httpPutClientRequest(
@@ -67,6 +75,8 @@ trait RegistrationRoutes extends SprayJsonSupport with JsonSupport with JwtSuppo
       case _ => Future(List[Registration]())
     }
     , Duration.Inf)
+
+  def regchanged(p: Wettkampf): Unit = httpGetClientRequest(s"$remoteAdminBaseUrl/api/registrations/${p.uuid.get}/regchanged")
 
   def getAthletRegistrations(p: Wettkampf, r: Registration): List[AthletRegistration] = Await.result(
     httpGetClientRequest(s"$remoteAdminBaseUrl/api/registrations/${p.uuid.get}/${r.id}/athletes").flatMap {
@@ -113,6 +123,48 @@ trait RegistrationRoutes extends SprayJsonSupport with JsonSupport with JwtSuppo
       case _ => Future("")
     }
     , Duration.Inf)
+
+  def getMediaDownloadRemote(p: Wettkampf, mediaList: List[MediaAdmin]): Unit = {
+    val request = withAuthHeader(
+      HttpRequest(
+        POST,
+        uri = s"$remoteAdminBaseUrl/api/registrations/${p.uuid.get}/mediafiles",
+        entity = HttpEntity(
+          ContentTypes.`application/json`,
+          ByteString(mediaList.toJson.compactPrint
+          )
+        )
+      )
+    )
+    Await.result(httpMediaDownloadRequest(p, mediaList, request), Duration.Inf)
+  }
+
+  private def httpMediaDownloadRequest(wettkampf: Wettkampf, mediaList: List[MediaAdmin], request: HttpRequest): Future[Unit] = {
+    import Core._
+    val source = Source.single(request, ())
+    val requestResponseFlow = Http().superPool[Unit](settings = poolsettings)
+
+    def importData(httpResponse: HttpResponse): Unit = {
+      if (httpResponse.status.isSuccess()) {
+        val is = httpResponse.entity.dataBytes.runWith(StreamConverters.asInputStream())
+        ResourceExchanger.importWettkampfMediaFiles(wettkampf, mediaList, is)
+      } else {
+        httpResponse.entity match {
+          case HttpEntity.Strict(_, text) =>
+            log.error(text.utf8String)
+            throw HTTPFailure(httpResponse.status, text.utf8String)
+          case x =>
+            log.error(x.toString)
+            throw HTTPFailure(httpResponse.status, x.toString)
+        }
+      }
+    }
+    source.via(requestResponseFlow)
+      .map(responseOrFail)
+      .map(_._1)
+      .map(importData)
+      .runWith(Sink.head)
+  }
 
   lazy val registrationRoutes: Route = {
     (handleCID & extractUri) { (clientId: String, uri: Uri) =>
@@ -227,6 +279,20 @@ trait RegistrationRoutes extends SprayJsonSupport with JsonSupport with JwtSuppo
                 }
               }
             }
+          } ~ pathLabeled("regchanged", "regchanged") {
+            pathEndOrSingleSlash {
+              authenticated() { userId =>
+                if (userId.equals(competitionId.toString)) {
+                  get {
+                    log.info(s"SyncAdmin $clientId - registration changed - resync ...")
+                    CompetitionRegistrationClientActor.publish(RegistrationChanged(wettkampf.uuid.get), clientId)
+                    complete(StatusCodes.OK)
+                  }
+                } else {
+                  complete(StatusCodes.Conflict)
+                }
+              }
+            }
           } ~ pathPrefixLabeled("verein", "verein") {
             pathEndOrSingleSlash {
               authenticated() { userId =>
@@ -260,6 +326,38 @@ trait RegistrationRoutes extends SprayJsonSupport with JsonSupport with JwtSuppo
                       CompetitionRegistrationClientActor.publish(RegistrationChanged(wettkampf.uuid.get), clientId)
                       log.info(s"SyncAdmin $clientId - athletes updated and riegenwertungen sex adjusted: $athletlist")
                       complete(StatusCodes.OK)
+                    }
+                  }
+                } else
+                  complete(StatusCodes.Conflict)
+              }
+            }
+          } ~ pathPrefixLabeled("mediafiles", "mediafiles") {
+            pathEndOrSingleSlash {
+              authenticated() { userId =>
+                if (userId.equals(competitionId.toString)) {
+                  post {
+                    withoutRequestTimeout {
+                      entity(as[List[Media]]) { medialist =>
+                        log.info(s"SyncAdmin $clientId - serving medialist: $medialist")
+                        onComplete(Future {
+                          val bos = new ByteArrayOutputStream()
+                          ResourceExchanger.exportWettkampfMediaFilesToStream(wettkampf, medialist, bos)
+                          HttpEntity(
+                            MediaTypes.`application/zip`,
+                            bos.toByteArray
+                          )
+                        }) {
+                          case Success(entity) =>
+                            complete(entity)
+                          case Failure(e) =>
+                            log.error(e, s"mediapackage for wettkampf $competitionId cannot be exported: " + e.toString)
+                            complete(StatusCodes.BadRequest,
+                              s"""Das Media-Package des Wettkampfs ${wettkampf.easyprint}
+                                 |konnte wg. einem technischen Fehler nicht vollständig zum Download exportiert werden.
+                                 |=>${e.getMessage}""".stripMargin)
+                        }
+                      }
                     }
                   }
                 } else
@@ -422,7 +520,7 @@ trait RegistrationRoutes extends SprayJsonSupport with JsonSupport with JwtSuppo
                               })
                               .map {
                                 case a@AthletView(id, _, geschlecht, name, vorname, gebdat, _, _, _, _, _) =>
-                                  AthletRegistration(0L, reg.id, Some(id), geschlecht, name, vorname, gebdat.map(dateToExportedStr).getOrElse(""), 0L, 0, Some(a), None)
+                                  AthletRegistration(0L, reg.id, Some(id), geschlecht, name, vorname, gebdat.map(dateToExportedStr).getOrElse(""), 0L, 0, Some(a), None, None)
                               }
                             val incompletedCandidates = selectUnaprovedAthletRegistrations(registrationId)
                               .filter(ar => !existingAthletRegs.exists { aro => aro.geschlecht.equals(ar.geschlecht) && aro.name.equals(ar.name) && aro.vorname.equals(ar.vorname) })
@@ -436,20 +534,110 @@ trait RegistrationRoutes extends SprayJsonSupport with JsonSupport with JwtSuppo
                       }
                     }
                   } ~ pathPrefixLabeled("athletes", "athletes") {
-                    pathEndOrSingleSlash {
-                      get { // list Athletes
-                        complete(
-                          selectAthletRegistrations(registrationId)
-                        )
-                      } ~ post { // create Athletes
-                        log.info("post athletregistration")
-                        entity(as[AthletRegistration]) { athletRegistration =>
-                          val x: Option[AthletView] = athletRegistration.athletId.filter(_ > 0L).map(loadAthleteView)
-                          if (athletRegistration.athletId.isDefined && athletRegistration.athletId.get > 0L && x.isEmpty) {
-                            complete(StatusCodes.BadRequest)
-                          } else {
-                            val reg = selectRegistration(registrationId)
-                            if (x.isEmpty || x.map(_.verein).flatMap(_.map(_.id)).equals(reg.vereinId)) {
+                      pathEndOrSingleSlash {
+                        get { // list Athletes
+                          complete(
+                            selectAthletRegistrations(registrationId)
+                          )
+                        } ~ post { // create Athletes
+                          log.info("post athletregistration")
+                          entity(as[AthletRegistration]) { athletRegistration =>
+                            val x: Option[AthletView] = athletRegistration.athletId.filter(_ > 0L).map(loadAthleteView)
+                            if (athletRegistration.athletId.isDefined && athletRegistration.athletId.get > 0L && x.isEmpty) {
+                              complete(StatusCodes.BadRequest)
+                            } else {
+                              val reg = selectRegistration(registrationId)
+                              if (x.isEmpty || x.map(_.verein).flatMap(_.map(_.id)).equals(reg.vereinId)) {
+                                try {
+                                  val isOverride = athletRegistration.athletId match {
+                                    case Some(id) if id > 0 =>
+                                      Await.result(AthletIndexActor.publish(FindAthletLike(athletRegistration.toAthlet)), Duration.Inf) match {
+                                        case AthletLikeFound(_, found) => found.id != id
+                                        case _ => false
+                                      }
+                                    case _ => false
+                                  }
+                                  if (isOverride) {
+                                    throw new IllegalArgumentException("Person-Überschreibung in einer Anmeldung zu einer anderen Person ist nicht erlaubt!")
+                                  }
+                                  val reg = createAthletRegistration(athletRegistration)
+                                  CompetitionRegistrationClientActor.publish(RegistrationChanged(wettkampf.uuid.get), clientId)
+                                  log.info(s"$clientId: Athletanmeldung angelegt: ${reg.toPublicView.easyprint}")
+                                  complete(reg)
+                                } catch {
+                                  case e: IllegalArgumentException =>
+                                    log.error(e.getMessage)
+                                    complete(StatusCodes.Conflict, e.getMessage)
+                                }
+                              } else {
+                                complete(StatusCodes.BadRequest)
+                              }
+                            }
+                          }
+                        }
+                      } ~ pathPrefixLabeled(LongNumber, ":athlet-id") { id =>
+                        pathPrefixLabeled("mediafile", "mediafile") {
+                          pathEndOrSingleSlash {
+                            withSizeLimit(10 * 1024 * 1024) {
+                              withoutRequestTimeout {
+                                get {
+                                  val registration = selectAthletRegistration(id)
+                                  registration.mediafile.flatMap(mf => loadMedia(mf.id)) match {
+                                    case Some(mf) => getFromFile(mf.computeFilePath(wettkampf))
+                                    case _ => complete(StatusCodes.Conflict, s"Es ist keine Media-Datei in der Anmeldung verknüpft")
+                                  }
+                                } ~ delete {
+                                  val registration = selectAthletRegistration(id)
+                                  log.info(s"$clientId: Mediafile ${registration.mediafile} löschen ...")
+                                  registration.mediafile.flatMap(mf => loadMedia(mf.id)) match {
+                                    case Some(mf) =>
+                                      val cleanedAthletReg = registration.copy(mediafile = None)
+                                      ResourceExchanger.updateAthletRegistration(cleanedAthletReg)
+                                      mf.computeFilePath(wettkampf).delete()
+                                      log.info(s"Mediafile ${registration.mediafile.map(_.name).getOrElse("")} gelöscht")
+                                      CompetitionRegistrationClientActor.publish(RegistrationChanged(wettkampf.uuid.get), clientId)
+                                      complete(StatusCodes.OK, cleanedAthletReg)
+                                    case _ => complete(StatusCodes.Conflict, s"Es ist keine Media-Datei in der Anmeldung verknüpft")
+                                  }
+                                } ~ fileUpload("mediafile") {
+                                  case (metadata: FileInfo, file: Source[ByteString, Any]) =>
+                                    import Core.materializer
+                                    val fileext = "mp3"
+                                    if (metadata.contentType.mediaType.fileExtensions.contains(fileext)) {
+                                      val is: InputStream = file.runWith(StreamConverters.asInputStream(FiniteDuration(180, TimeUnit.SECONDS)))
+                                      val processor = Future {
+                                        log.info(s"$clientId: Mediafile ${metadata.fileName} aktualisieren ...")
+                                        if (id > 0) {
+                                          ResourceExchanger.importWettkampfMediaFile(wettkampf, selectAthletRegistration(id).copy(mediafile = Some(MediaAdmin("", metadata.fileName, fileext, 0, "", "", 0L))), is)
+                                        } else {
+                                          AthletRegistration(id, 0, None, "", "", "", "", 0L, 0L, None, None, Some(ResourceExchanger.saveMediaFile(is, wettkampf, Media("", metadata.fileName, fileext))))
+                                        }
+                                      }
+                                      onComplete(processor) {
+                                        case Success(r) =>
+                                          CompetitionRegistrationClientActor.publish(RegistrationChanged(wettkampf.uuid.get), clientId)
+                                          log.info(s"$clientId: Mediafile ${metadata.fileName} aktualisiert: ${r.easyprint}")
+                                          complete(r)
+
+                                        case Failure(e) =>
+                                          log.warning(s"mediafile ${metadata.fileName} cannot be uploaded: " + e.toString)
+                                          complete(StatusCodes.Conflict, s"Die Datei ${metadata.fileName} konnte nicht hochgeladen werden. (${e.getMessage})")
+                                      }
+                                    } else {
+                                      log.error(s"invalid media type (${metadata.contentType.mediaType})")
+                                      complete(StatusCodes.Conflict, s"Ungültige Audiodatei (${metadata.contentType.mediaType})")
+                                    }
+                                }
+                              }
+                            }
+                          }
+                        } ~ pathEndOrSingleSlash {
+                          get {
+                            complete(
+                              selectAthletRegistration(id)
+                            )
+                          } ~ put { // update Athletes
+                            entity(as[AthletRegistration]) { athletRegistration =>
                               try {
                                 val isOverride = athletRegistration.athletId match {
                                   case Some(id) if id > 0 =>
@@ -462,106 +650,71 @@ trait RegistrationRoutes extends SprayJsonSupport with JsonSupport with JwtSuppo
                                 if (isOverride) {
                                   throw new IllegalArgumentException("Person-Überschreibung in einer Anmeldung zu einer anderen Person ist nicht erlaubt!")
                                 }
-                                val reg = createAthletRegistration(athletRegistration)
+                                val reg = updateAthletRegistration(athletRegistration)
                                 CompetitionRegistrationClientActor.publish(RegistrationChanged(wettkampf.uuid.get), clientId)
-                                log.info(s"$clientId: Athletanmeldung angelegt: ${athletRegistration.toPublicView.easyprint}")
+                                log.info(s"$clientId: Athletanmeldung aktualisiert: ${athletRegistration.toPublicView.easyprint}, $reg")
                                 complete(reg)
                               } catch {
                                 case e: IllegalArgumentException =>
                                   log.error(e.getMessage)
                                   complete(StatusCodes.Conflict, e.getMessage)
                               }
-                            } else {
-                              complete(StatusCodes.BadRequest)
                             }
-                          }
-                        }
-                      }
-                    } ~ pathPrefixLabeled(LongNumber, ":athlet-id") { id =>
-                      pathEndOrSingleSlash {
-                        get {
-                          complete(
-                            selectAthletRegistration(id)
-                          )
-                        } ~ put { // update Athletes
-                          entity(as[AthletRegistration]) { athletRegistration =>
-                            try {
-                              val isOverride = athletRegistration.athletId match {
-                                case Some(id) if id > 0 =>
-                                  Await.result(AthletIndexActor.publish(FindAthletLike(athletRegistration.toAthlet)), Duration.Inf) match {
-                                    case AthletLikeFound(_, found) => found.id != id
-                                    case _ => false
-                                  }
-                                case _ => false
-                              }
-                              if (isOverride) {
-                                throw new IllegalArgumentException("Person-Überschreibung in einer Anmeldung zu einer anderen Person ist nicht erlaubt!")
-                              }
-                              val reg = updateAthletRegistration(athletRegistration)
-                              CompetitionRegistrationClientActor.publish(RegistrationChanged(wettkampf.uuid.get), clientId)
-                              log.info(s"$clientId: Athletanmeldung aktualisiert: ${athletRegistration.toPublicView.easyprint}")
-                              complete(reg)
-                            } catch {
-                              case e: IllegalArgumentException =>
-                                log.error(e.getMessage)
-                                complete(StatusCodes.Conflict, e.getMessage)
-                            }
-                          }
-                        } ~ delete { // delete  Athletes
-                          complete(Future {
-                            deleteAthletRegistration(id)
-                            CompetitionRegistrationClientActor.publish(RegistrationChanged(wettkampf.uuid.get), clientId)
-                            log.info(s"$clientId: Athletanmeldung gelöscht: ${id}")
-                            StatusCodes.OK
-                          })
-                        }
-                      }
-                    }
-                  } ~ pathPrefixLabeled("judges", "judges") {
-                    pathEndOrSingleSlash {
-                      get { // list judges
-                        complete(
-                          selectJudgeRegistrations(registrationId)
-                        )
-                      } ~ post { // create judges
-                        log.info("post judgesregistration")
-                        entity(as[JudgeRegistration]) { judgeRegistration =>
-                          complete {
-                            try {
-                              val reg = createJudgeRegistration(judgeRegistration)
-                              CompetitionRegistrationClientActor.publish(RegistrationChanged(wettkampf.uuid.get), clientId)
-                              log.info(s"$clientId: WR-Anmeldung angelegt: ${judgeRegistration.easyprint}")
-                              reg
-                            } catch {
-                              case e: IllegalArgumentException =>
-                                log.error(e.getMessage)
-                                StatusCodes.Conflict
-                            }
-                          }
-                        }
-                      }
-                    } ~ pathPrefixLabeled(LongNumber, ":judgereg-id") { id =>
-                      pathEndOrSingleSlash {
-                        get {
-                          complete(
-                            selectJudgeRegistration(id)
-                          )
-                        } ~ put { // update judges
-                          entity(as[JudgeRegistration]) { judgesRegistration =>
+                          } ~ delete { // delete  Athletes
                             complete(Future {
-                              val reg = updateJudgeRegistration(judgesRegistration)
+                              deleteAthletRegistration(id)
                               CompetitionRegistrationClientActor.publish(RegistrationChanged(wettkampf.uuid.get), clientId)
-                              log.info(s"$clientId: WR-Anmeldung aktualisiert: ${judgesRegistration.easyprint}")
-                              reg
+                              log.info(s"$clientId: Athletanmeldung gelöscht: ${id}")
+                              StatusCodes.OK
                             })
                           }
-                        } ~ delete { // delete  judges
-                          complete(Future {
-                            deleteJudgeRegistration(id)
-                            CompetitionRegistrationClientActor.publish(RegistrationChanged(wettkampf.uuid.get), clientId)
-                            log.info(s"$clientId: WR-Anmeldung gelöscht: ${id}")
-                            StatusCodes.OK
-                          })
+                        }
+                      }
+                    } ~ pathPrefixLabeled("judges", "judges") {
+                      pathEndOrSingleSlash {
+                        get { // list judges
+                          complete(
+                            selectJudgeRegistrations(registrationId)
+                          )
+                        } ~ post { // create judges
+                          log.info("post judgesregistration")
+                          entity(as[JudgeRegistration]) { judgeRegistration =>
+                            complete {
+                              try {
+                                val reg = createJudgeRegistration(judgeRegistration)
+                                CompetitionRegistrationClientActor.publish(RegistrationChanged(wettkampf.uuid.get), clientId)
+                                log.info(s"$clientId: WR-Anmeldung angelegt: ${judgeRegistration.easyprint}")
+                                reg
+                              } catch {
+                                case e: IllegalArgumentException =>
+                                  log.error(e.getMessage)
+                                  StatusCodes.Conflict
+                              }
+                            }
+                          }
+                        }
+                      } ~ pathPrefixLabeled(LongNumber, ":judgereg-id") { id =>
+                        pathEndOrSingleSlash {
+                          get {
+                            complete(
+                              selectJudgeRegistration(id)
+                            )
+                          } ~ put { // update judges
+                            entity(as[JudgeRegistration]) { judgesRegistration =>
+                              complete(Future {
+                                val reg = updateJudgeRegistration(judgesRegistration)
+                                CompetitionRegistrationClientActor.publish(RegistrationChanged(wettkampf.uuid.get), clientId)
+                                log.info(s"$clientId: WR-Anmeldung aktualisiert: ${judgesRegistration.easyprint}")
+                                reg
+                              })
+                            }
+                          } ~ delete { // delete  judges
+                            complete(Future {
+                              deleteJudgeRegistration(id)
+                              CompetitionRegistrationClientActor.publish(RegistrationChanged(wettkampf.uuid.get), clientId)
+                              log.info(s"$clientId: WR-Anmeldung gelöscht: ${id}")
+                              StatusCodes.OK
+                            })
                         }
                       }
                     }

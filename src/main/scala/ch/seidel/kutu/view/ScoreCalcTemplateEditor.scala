@@ -128,7 +128,7 @@ case class ScoreCalcTemplateEditor(init: ScoreCalcTemplate, context: ScoreCalcTe
 
     WertungEditor(WertungView(0, Athlet().toAthletView(None),
       wkv.copy(notenSpez = nspatch),
-      context.wettkampf.toWettkampf, None, None, None, None, None, 0, None))
+      context.wettkampf.toWettkampf, None, None, None, None, None, 0, None, None))
   }
 
   def createValidator: Validator[String] = (control, formeltext) => {
