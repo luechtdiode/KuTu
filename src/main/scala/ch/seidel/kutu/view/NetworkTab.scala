@@ -682,13 +682,13 @@ class NetworkTab(wettkampfmode: BooleanProperty, override val wettkampfInfo: Wet
         }
         items = selection.filter(gr => !gr.erfasst).take(1).flatMap {
           geraeteRiege =>
-            Player.clearPlayList()
             if (cleanCache) {
               geraeteRiege.resetMediaListCache()
             }
             val mediaList = geraeteRiege.getMediaList(p.toWettkampf, service.loadMedia)
             mediaList.map { case (_, wertung, title, _) =>
               makeMenuAction(title + " ...") { (caption, action) =>
+                Player.clearPlayList()
                 mediaList.foreach { case (_, _, title, mediaURI) =>
                   Player.addToPlayList(title, mediaURI.toASCIIString.toLowerCase)
                 }
