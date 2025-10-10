@@ -66,8 +66,10 @@ object KuTuApp extends JFXApp3 with KutuService with JsonSupport with JwtSupport
 
   override def stopApp(): Unit = {
     lazyExecutor.shutdownNow()
-    server.shutDown("KuTuApp")
     ConnectionStates.disconnected()
+    server.shutDown("KuTuApp")
+    super.stopApp()
+    System.exit(0)
   }
 
   var tree: KuTuAppTree = AppNavigationModel.create(KuTuApp.this)
