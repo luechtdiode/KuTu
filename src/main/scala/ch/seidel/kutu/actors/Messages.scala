@@ -15,7 +15,18 @@ sealed trait MediaPlayerEvent
 sealed trait MediaPlayerAction {
   val athlet: AthletView
   val wertung: Wertung
+
+  override def equals(obj: Any): Boolean = {
+    obj match {
+      case mpa: MediaPlayerAction =>
+        mpa.athlet.equals(athlet) &&
+          mpa.wertung.wettkampfUUID.equals(wertung.wettkampfUUID) &&
+          mpa.wertung.wettkampfdisziplinId.equals(wertung.wettkampfdisziplinId)
+      case _ => false
+    }
+  }
 }
+
 sealed trait KutuAppAction extends KutuAppProtokoll {
   val wettkampfUUID: String
 }
