@@ -1,13 +1,14 @@
 package ch.seidel.kutu.view.player
 
 import ch.seidel.commons.PageDisplayer
-import ch.seidel.kutu.{Config, ConnectionStates}
-import ch.seidel.kutu.actors.{AthletMediaAquire, AthletMediaIsAtStart, AthletMediaIsFree, AthletMediaIsPaused, AthletMediaIsRunning, AthletMediaPause, AthletMediaRelease, AthletMediaStart, AthletMediaToStart, ForgetMyMediaPlayer, KutuAppEvent, MediaPlayerAction, MediaPlayerDisconnected, MediaPlayerEvent, MediaPlayerIsReady, UseMyMediaPlayer}
+import ch.seidel.kutu.actors._
 import ch.seidel.kutu.domain.{KutuService, Wettkampf}
 import ch.seidel.kutu.http.WebSocketClient
+import ch.seidel.kutu.{Config, ConnectionStates}
 import javafx.application.Platform
 import javafx.beans.binding.Bindings
 import javafx.beans.property.{SimpleBooleanProperty, SimpleDoubleProperty}
+import javafx.beans.value.ChangeListener
 import javafx.collections.ListChangeListener
 import javafx.event.{ActionEvent, EventHandler}
 import javafx.geometry.Orientation
@@ -24,7 +25,6 @@ import javafx.util.{Duration, Pair}
 import scalafx.Includes.{jfxProperty2sfx, observableList2ObservableBuffer}
 import scalafx.application.JFXApp3
 import scalafx.application.JFXApp3.PrimaryStage
-import javafx.beans.value.ChangeListener
 import scalafx.scene.image.{Image, ImageView}
 
 import java.util
@@ -113,14 +113,15 @@ object Player extends JFXApp3 {
   }
 
   def clearPlayList(): Unit = {
-    if (isPlayerRunning()) {
-      if (playList.getSongs.size() > currentSongIndex) {
+    if (lastAction.nonEmpty || isPlayerRunning()) {
+      if (playList.getSongs.size() > currentSongIndex && currentSongIndex > -1) {
         playList.getSongs.retainAll(playList.getSongs(currentSongIndex))
       }
       currentSongIndex = 0
     } else {
       playList.getSongs.clear()
-      currentSongIndex = 0
+      currentSongIndex = -1
+      releasePlayer()
     }
   }
 
@@ -148,7 +149,7 @@ object Player extends JFXApp3 {
         show(song)
       }
     } else {
-      PageDisplayer.showWarnDialog("Musik laden", "Der Player wird gerade von einer anderen Musik verwendet.\nDer gewünschte Titel kann noch nicht geladen werden.")
+      PageDisplayer.showWarnDialog(s"Musik laden", s"Der Player wird gerade von einer anderen Musik (für ${lastAction.get.athlet.easyprint}) verwendet.\nDer gewünschte Titel kann noch nicht geladen werden.")
       val stage = getInitializedPlayerStage
       stage.show()
       stage.toFront()
@@ -217,10 +218,10 @@ object Player extends JFXApp3 {
         lastAction = Some(a)
         clearPlayList()
         wertung.mediafile.flatMap(m => service.get.loadMedia(m.id)).foreach { media =>
-          val title = s"${athlet.vorname} ${athlet.name} (${athlet.verein.map(_.name).getOrElse("")}) - ${media.name}"
+          val title = s"${athlet.vorname} ${athlet.name} (${athlet.verein.map(_.name).getOrElse("")}), Boden - ${media.name}"
           addToPlayList(title, media.computeFilePath(wettkampf.get).toURI.toASCIIString.toLowerCase)
+          show(title)
         }
-        show(getPlayList().getSongs.head.getKey)
       }
     case AthletMediaRelease(wkuuid,athlet, wertung) =>
       lastAction match {
@@ -295,7 +296,7 @@ object Player extends JFXApp3 {
     val loadBtn = new Button
     loadBtn.setOnAction(new EventHandler[ActionEvent]() {
       override def handle(event: ActionEvent): Unit = {
-        LoadDialog.loadPlayList(wettkampf, getInitializedPlayerStage, playList);
+          LoadDialog.loadPlayList(wettkampf, getInitializedPlayerStage, playList);
       }
     })
     val powerBtn = new Button
@@ -489,12 +490,14 @@ object Player extends JFXApp3 {
         }
       })
       lastAction.foreach {
-        case a: MediaPlayerAction =>
+        case a: MediaPlayerAction if (context.endsWith(a.wertung.mediafile.get.name)) =>
           if (!autoplay)
             publishMediaEventIfConnected(AthletMediaIsAtStart(a.wertung.mediafile.get, context))
           else
             publishMediaEventIfConnected(AthletMediaIsRunning(a.wertung.mediafile.get, context))
-        case _ =>
+        case a: MediaPlayerAction =>
+          //publishMediaEventIfConnected(AthletMediaIsFree(a.wertung.mediafile.get, context))
+          lastAction = None
       }
 
       player.setOnEndOfMedia(() => {
