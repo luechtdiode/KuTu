@@ -52,5 +52,6 @@ ENTRYPOINT [ "java", "-cp", ".:app.jar:libs/*" \
     , "-XX:+ZGenerational" \
     , "-XX:MaxRAMPercentage=75.0" \
     , "-XX:+ExitOnOutOfMemoryError" \
+    , "-XX:+UseCompactObjectHeaders" \
     , "-XshowSettings:vm -version" \
     , "ch.seidel.kutu.KuTuServer"]
