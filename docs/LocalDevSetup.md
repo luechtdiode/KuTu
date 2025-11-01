@@ -2,7 +2,7 @@
 
 ## Prerequisites
 
-* JDK 21
+* JDK 25
 * Working Maven (3.9+) installation,
 * Git-Client
 * IDE (IntelliJ, vscode, eclipse, ...)
