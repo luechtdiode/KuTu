@@ -70,7 +70,7 @@
     "karma-jasmine-html-reporter": "^2.1.0",
     "rollup": ">=4.46.2",
     "ts-node": "~10.9.2",
-    "typescript": "~5.8.3",
+    "typescript": "~5.9.3",
     "vite": ">=7.1.12",
     "webpack": ">=5.101.0"
   },
