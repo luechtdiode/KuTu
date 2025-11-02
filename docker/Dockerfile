@@ -48,6 +48,7 @@ ENTRYPOINT [ "java", "-cp", ".:app.jar:libs/*" \
     , "--add-opens=java.base/java.util.concurrent.atomic=ALL-UNNAMED" \
     , "--add-opens=java.base/sun.nio.ch=ALL-UNNAMED" \
     , "--add-opens=java.base/sun.util.calendar=ALL-UNNAMED" \
+    , "--enable-native-access=ALL-UNNAMED" \
     , "-XX:+UseZGC" \
     , "-XX:MaxRAMPercentage=75.0" \
     , "-XX:+ExitOnOutOfMemoryError" \
