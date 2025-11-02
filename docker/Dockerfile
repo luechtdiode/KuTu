@@ -49,9 +49,9 @@ ENTRYPOINT [ "java", "-cp", ".:app.jar:libs/*" \
     , "--add-opens=java.base/sun.nio.ch=ALL-UNNAMED" \
     , "--add-opens=java.base/sun.util.calendar=ALL-UNNAMED" \
     , "-XX:+UseZGC" \
-    , "-XX:+ZGenerational" \
     , "-XX:MaxRAMPercentage=75.0" \
     , "-XX:+ExitOnOutOfMemoryError" \
     , "-XX:+UseCompactObjectHeaders" \
-    , "-XshowSettings:vm -version" \
+    , "-XshowSettings:vm" \
+    , "-XshowSettings:system" \
     , "ch.seidel.kutu.KuTuServer"]
