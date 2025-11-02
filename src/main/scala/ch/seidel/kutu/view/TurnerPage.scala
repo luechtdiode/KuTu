@@ -74,7 +74,7 @@ object TurnerPage {
             text =  field.getName.take(1).toUpperCase() + field.getName.drop(1)
             cellValueFactory = { x =>
               field.get(x.value).asInstanceOf[StringProperty] }
-            cellFactory.value = { _:Any => new AutoCommitTextFieldTableCell[AthletEditor, String](new DefaultStringConverter()) }
+            cellFactory.value = { (_:Any) => new AutoCommitTextFieldTableCell[AthletEditor, String](new DefaultStringConverter()) }
             styleClass += "table-cell-with-value"
             prefWidth = AthletEditor.coldef(field.getName)
             editable = true
@@ -285,7 +285,7 @@ object TurnerPage {
 
 class TurnerPage(tabPane: LazyTabPane) extends DisplayablePage {
 
-  def getPage = {
+  def getPage: LazyTabPane = {
     TurnerPage.turnerAnalyzers = Map[Long, TurnerAnalyzer]()
     tabPane.init()
     tabPane

@@ -12,7 +12,7 @@ class GeraeteRiegeComboBox[T](tableView: TableView[T]) extends ComboBox[GeraeteR
 
   promptText = "Durchgang-Filter"
   buttonCell = new GeraeteRiegeListCell()
-  cellFactory.value = { _:Any => new GeraeteRiegeListCell() }
+  cellFactory.value = { (_:Any) => new GeraeteRiegeListCell() }
 
   var textbuffer = ""
 

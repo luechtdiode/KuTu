@@ -257,7 +257,7 @@ object KuTuApp extends JFXApp3 with KutuService with JsonSupport with JwtSupport
 
   def makeMenuAction(caption: String)(handler: MenuActionHandler): MenuItem = {
     new MenuItem(caption) {
-      onAction = handleAction { e: ActionEvent =>
+      onAction = handleAction { (e: ActionEvent) =>
         handler(caption, e)
       }
     }
@@ -281,7 +281,7 @@ object KuTuApp extends JFXApp3 with KutuService with JsonSupport with JwtSupport
       val cmbProgramm = new ComboBox[ProgrammView] {
         prefWidth = 500
         buttonCell = new ProgrammListCell
-        cellFactory.value = {_:Any => new ProgrammListCell}
+        cellFactory.value = {(_:Any) => new ProgrammListCell}
         promptText = "Programm"
         items = ObservableBuffer.from(listRootProgramme().sorted)
         selectionModel.value.select(p.programm)
@@ -1104,7 +1104,7 @@ object KuTuApp extends JFXApp3 with KutuService with JsonSupport with JwtSupport
         }
       },
         new Button("OK") {
-          onAction = handleAction { e: ActionEvent =>
+          onAction = handleAction { (e: ActionEvent) =>
             handler(caption)
           }
         })
@@ -1128,7 +1128,7 @@ object KuTuApp extends JFXApp3 with KutuService with JsonSupport with JwtSupport
         }
       },
         new Button("OK") {
-          onAction = handleAction { e: ActionEvent =>
+          onAction = handleAction { (e: ActionEvent) =>
             handler(s"Wettkampf auf $remoteHostOrigin hochladen ...")
           }
         })
@@ -1242,7 +1242,7 @@ object KuTuApp extends JFXApp3 with KutuService with JsonSupport with JwtSupport
       val cmbProgramm = new ComboBox(pgms) {
         prefWidth = 500
         buttonCell = new ProgrammListCell
-        cellFactory.value = {_:Any => new ProgrammListCell}
+        cellFactory.value = {(_:Any) => new ProgrammListCell}
         promptText = "Programm"
         copyFrom.map(_.programm).foreach(pgm => {
           val pgmIndex = pgms.indexOf(pgm)

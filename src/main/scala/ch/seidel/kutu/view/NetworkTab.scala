@@ -139,7 +139,7 @@ class DurchgangStationView(wettkampf: WettkampfView, service: KutuService, diszi
           , new TreeTableColumn[DurchgangState, String] {
             text = "Fertig"
             prefWidth = 80
-            cellFactory.value = { _: Any =>
+            cellFactory.value = { (_: Any) =>
               new TreeTableCell[DurchgangState, String] {
                 val image = new ImageView()
                 graphic = image
@@ -421,7 +421,7 @@ class NetworkTab(wettkampfmode: BooleanProperty, override val wettkampfInfo: Wet
 
   def makeMenuAction(caption: String)(handler: MenuActionHandler): MenuItem = {
     new MenuItem(caption) {
-      onAction = handleAction { e: ActionEvent =>
+      onAction = handleAction { (e: ActionEvent) =>
         handler(caption, e)
       }
     }
@@ -822,7 +822,7 @@ class NetworkTab(wettkampfmode: BooleanProperty, override val wettkampfInfo: Wet
       checkmark.visible <== Player.isNetworkMediaPlayer
 
       val checkIsUseMyMediaPlayerMenuItem = new MenuItem("Media Player den Wertungsrichtern freigeben", checkmark) {
-        onAction = handleAction { _: ActionEvent =>
+        onAction = handleAction { (_: ActionEvent) =>
           Player.useMyMediaPlayerAsNetworkplayer(!Player.isNetworkMediaPlayer.getValue)
         }
       }

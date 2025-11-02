@@ -5,12 +5,13 @@ import java.security.spec.InvalidKeySpecException
 import java.security.{MessageDigest, NoSuchAlgorithmException, SecureRandom}
 import java.text.SimpleDateFormat
 import java.util.{Base64, Date}
-
 import org.apache.pekko.http.scaladsl.model.RemoteAddress
+
 import javax.crypto.SecretKeyFactory
 import javax.crypto.spec.PBEKeySpec
-import spray.json.{JsString, JsValue, JsonReader, _}
+import spray.json.{JsString, JsValue, JsonReader, *}
 
+import java.sql
 import java.time.format.DateTimeFormatter
 import java.time.{LocalDate, ZoneId}
 import scala.util.Try
@@ -57,7 +58,7 @@ trait EnrichedJson {
       localIsoDateFormatter.get().parse(date)
     }.toOption
 
-    def write(date: Date) = JsString(dateToIsoString(date))
+    def write(date: Date): JsString = JsString(dateToIsoString(date))
 
     def read(json: JsValue) = json match {
       case JsString(rawDate) =>
@@ -83,9 +84,9 @@ trait EnrichedJson {
       new java.sql.Date(localIsoDateFormatter.get().parse(date).getTime)
     }.toOption
 
-    def write(date: java.sql.Date) = JsString(dateToIsoString(date))
+    def write(date: java.sql.Date): JsString = JsString(dateToIsoString(date))
 
-    def read(json: JsValue) = json match {
+    def read(json: JsValue): sql.Date = json match {
       case JsString(rawDate) =>
         parseIsoDateString(rawDate)
           .fold(deserializationError(s"Expected ISO Date format, got $rawDate"))(identity)
@@ -131,7 +132,7 @@ trait EnrichedJson {
 
     override def read(json: JsValue): T = string2T.getOrElse(json, defaultValue)
 
-    override def write(value: T) = JsString(value.toString())
+    override def write(value: T): JsString = JsString(value.toString)
   }
 
 }

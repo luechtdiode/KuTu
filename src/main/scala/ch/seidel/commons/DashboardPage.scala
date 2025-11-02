@@ -11,7 +11,7 @@ import scalafx.scene.layout.{BorderPane, HBox, Priority, VBox}
 /** Dashboard Page */
 class DashboardPage(dashPart: String = "dashboard", tree: KuTuAppTree) extends DisplayablePage {
 
-  def getPage = {
+  def getPage: BorderPane = {
     def thumbs(filter: String = "") = dashPart match {
       case "dashboard" => tree.getDashThumbsCtrl(filter)
       case _           => tree.getDashThumb(dashPart, filter)

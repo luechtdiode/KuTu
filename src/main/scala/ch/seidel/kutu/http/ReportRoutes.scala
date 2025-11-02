@@ -96,7 +96,7 @@ trait ReportRoutes extends SprayJsonSupport
 
   private def filterMatchingCandidatesToQuery(q: Option[String]) = {
     val queryTokens = q.toList.flatMap(x => x.split(" ")).map(_.toLowerCase)
-    k: Kandidat => {
+    (k: Kandidat) => {
       queryTokens.isEmpty ||
         queryTokens.forall {
           case s: String if s.equals(s"${k.id}") => true

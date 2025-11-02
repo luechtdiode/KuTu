@@ -196,7 +196,7 @@ ScoreRoutes extends SprayJsonSupport with JsonSupport with AuthSupport with Rout
               get {
                 parameters(Symbol("html").?) { html =>
                   complete(
-                    listPublishedScores(competitionId).map{scores:List[PublishedScoreView] => html match {
+                    listPublishedScores(competitionId).map{(scores:List[PublishedScoreView]) => html match {
                       case None =>
                         ToResponseMarshallable(
                           scores.map(score =>
@@ -403,7 +403,7 @@ ScoreRoutes extends SprayJsonSupport with JsonSupport with AuthSupport with Rout
 
                   def filterMatchingWertungenToQuery = {
                     val queryTokens = q.toList.flatMap(x => x.split(" ")).map(_.toLowerCase)
-                    w: WertungView => {
+                    (w: WertungView) => {
                       queryTokens.isEmpty ||
                         queryTokens.forall {
                           case s: String if s == s"${w.athlet.id}" => true

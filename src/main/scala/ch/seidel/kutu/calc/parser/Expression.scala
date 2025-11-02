@@ -18,7 +18,7 @@ object Expression {
       Expression(v1).map2(Expression(v2))(function2(op))
     case f @ OperatorN(op, as) =>
       val args = sequence(as.map(Expression.apply)).map(_.toArray)
-      args.map{ xs: Array[Double] =>
+      args.map{ (xs: Array[Double]) =>
         xs.size match {
           case 1 => function1(op)(xs.head)
           case 2 => function2(op)(xs.head, xs(1))

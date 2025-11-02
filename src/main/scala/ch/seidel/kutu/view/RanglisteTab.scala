@@ -70,7 +70,7 @@ class RanglisteTab(wettkampfmode: BooleanProperty, wettkampf: WettkampfView, ove
     FilenameDefault("Rangliste_" + foldername + ".html", new java.io.File(homedir + "/" + foldername))
   }
 
-  val btnBereitstellen = new Button {
+  val btnBereitstellen: Button = new Button {
     text = "Bereitstellen ..."
     val p = wettkampf.toWettkampf
     visible <== when(wettkampfmode) choose false otherwise true
@@ -82,8 +82,8 @@ class RanglisteTab(wettkampfmode: BooleanProperty, wettkampf: WettkampfView, ove
     }, ConnectionStates.connectedWithProperty, lastPublishedScoreView, wettkampfmode
     )) choose true otherwise false
 
-    onAction = handleAction { action: ActionEvent =>
-      lastScoreDef.getValue.foreach { scoredef =>
+    onAction = handleAction { (action: ActionEvent) =>
+      lastScoreDef.getValue.foreach { (scoredef) =>
         implicit val e = action
 
         val txtScoreName = new TextField {
@@ -119,7 +119,7 @@ class RanglisteTab(wettkampfmode: BooleanProperty, wettkampf: WettkampfView, ove
       }
     }
   }
-  val btnErneutBereitstellen = new Button {
+  val btnErneutBereitstellen: Button = new Button {
     text = "Erneut bereitstellen ..."
     tooltip = "Die Publikation wird dadurch zurückgezogen, bis sie explizit wieder freigegeben wird."
     val p = wettkampf.toWettkampf
@@ -133,8 +133,8 @@ class RanglisteTab(wettkampfmode: BooleanProperty, wettkampf: WettkampfView, ove
 
     )) choose true otherwise false
 
-    onAction = handleAction { action: ActionEvent =>
-      lastScoreDef.getValue.foreach { scoredef =>
+    onAction = handleAction { (action: ActionEvent) =>
+      lastScoreDef.getValue.foreach { (scoredef) =>
         implicit val e = action
 
         val txtScoreName = new TextField {
@@ -172,7 +172,7 @@ class RanglisteTab(wettkampfmode: BooleanProperty, wettkampf: WettkampfView, ove
       }
     }
   }
-  val btnPublikationFreigeben = new Button {
+  val btnPublikationFreigeben: Button = new Button {
     text = "Publikation freigeben ..."
     val p = wettkampf.toWettkampf
 

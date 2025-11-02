@@ -777,6 +777,7 @@
 						<arg>-language:implicitConversions</arg>
 						<arg>-language:postfixOps</arg>
 						<arg>-language:existentials</arg>
+						<arg>-Xsource:3</arg>
 						<arg>-g:line</arg>
 					</args>
 					<javacArgs>

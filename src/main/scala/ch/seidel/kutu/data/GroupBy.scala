@@ -301,7 +301,7 @@ sealed trait FilterBy extends GroupBy {
 
 case class ByNothing() extends GroupBy with FilterBy {
   override val groupname = "keine"
-  protected override val grouper = (v: WertungView) => {
+  protected override val grouper: WertungView => DataObject = (v: WertungView) => {
     v
   }
   protected override val sorter: Option[(GroupSection, GroupSection) => Boolean] = Some((gs1: GroupSection, gs2: GroupSection) => {
@@ -311,7 +311,7 @@ case class ByNothing() extends GroupBy with FilterBy {
 
 case class ByAthlet() extends GroupBy with FilterBy {
   override val groupname = "Athlet"
-  protected override val grouper = (v: WertungView) => {
+  protected override val grouper: WertungView => DataObject = (v: WertungView) => {
     v.athlet
   }
   protected override val sorter: Option[(GroupSection, GroupSection) => Boolean] = Some((gs1: GroupSection, gs2: GroupSection) => {
@@ -322,7 +322,7 @@ case class ByAthlet() extends GroupBy with FilterBy {
 
 case class ByDurchgang(riegenZuDurchgang: Map[String, Durchgang]) extends GroupBy with FilterBy {
   override val groupname = "Durchgang"
-  protected override val grouper = (v: WertungView) => {
+  protected override val grouper: WertungView => DataObject = (v: WertungView) => {
     riegenZuDurchgang.getOrElse(v.riege.getOrElse(""), riegenZuDurchgang.getOrElse(v.riege2.getOrElse(""), Durchgang()))
   }
   protected override val sorter: Option[(GroupSection, GroupSection) => Boolean] = Some((gs1: GroupSection, gs2: GroupSection) => {
@@ -336,7 +336,7 @@ case class ByDurchgang(riegenZuDurchgang: Map[String, Durchgang]) extends GroupB
 
 case class ByProgramm(text: String = "Programm/Kategorie") extends GroupBy with FilterBy {
   override val groupname = text
-  protected override val grouper = (v: WertungView) => {
+  protected override val grouper: WertungView => DataObject = (v: WertungView) => {
     v.wettkampfdisziplin.programm
   }
   protected override val sorter: Option[(GroupSection, GroupSection) => Boolean] = Some((gs1: GroupSection, gs2: GroupSection) => {
@@ -350,7 +350,7 @@ case class ByProgramm(text: String = "Programm/Kategorie") extends GroupBy with 
 
 case class ByWettkampfProgramm(text: String = "Programm/Kategorie") extends GroupBy with FilterBy {
   override val groupname = "Wettkampf-" + text
-  protected override val grouper = (v: WertungView) => {
+  protected override val grouper: WertungView => DataObject = (v: WertungView) => {
     v.wettkampfdisziplin.programm.wettkampfprogramm
   }
   protected override val sorter: Option[(GroupSection, GroupSection) => Boolean] = Some((gs1: GroupSection, gs2: GroupSection) => {
@@ -364,7 +364,7 @@ case class ByWettkampfProgramm(text: String = "Programm/Kategorie") extends Grou
 
 case class ByWettkampfArt() extends GroupBy with FilterBy {
   override val groupname = "Wettkampf-Art"
-  protected override val grouper = (v: WertungView) => {
+  protected override val grouper: WertungView => DataObject = (v: WertungView) => {
     v.wettkampfdisziplin.programm.head
   }
   protected override val sorter: Option[(GroupSection, GroupSection) => Boolean] = Some((gs1: GroupSection, gs2: GroupSection) => {
@@ -378,7 +378,7 @@ case class ByWettkampfArt() extends GroupBy with FilterBy {
 
 case class ByWettkampf() extends GroupBy with FilterBy {
   override val groupname = "Wettkampf"
-  protected override val grouper = (v: WertungView) => {
+  protected override val grouper: WertungView => DataObject = (v: WertungView) => {
     v.wettkampf
   }
   protected override val sorter: Option[(GroupSection, GroupSection) => Boolean] = Some((gs1: GroupSection, gs2: GroupSection) => {
@@ -392,7 +392,7 @@ case class ByWettkampf() extends GroupBy with FilterBy {
 
 case class ByRiege() extends GroupBy with FilterBy {
   override val groupname = "Riege"
-  protected override val grouper = (v: WertungView) => {
+  protected override val grouper: WertungView => DataObject = (v: WertungView) => {
     Riege(v.riege match { case Some(r) => r case None => "Ohne Einteilung" }, None, None, 0)
   }
   protected override val sorter: Option[(GroupSection, GroupSection) => Boolean] = Some((gs1: GroupSection, gs2: GroupSection) => {
@@ -401,7 +401,7 @@ case class ByRiege() extends GroupBy with FilterBy {
 }
 case class ByRiege2() extends GroupBy with FilterBy {
   override val groupname = "Riege2"
-  protected override val grouper = (v: WertungView) => {
+  protected override val grouper: WertungView => DataObject = (v: WertungView) => {
     Riege(v.riege2 match { case Some(r) => r case None => "Ohne Spezial-Einteilung" }, None, None, 0)
   }
   protected override val sorter: Option[(GroupSection, GroupSection) => Boolean] = Some((gs1: GroupSection, gs2: GroupSection) => {
@@ -412,7 +412,7 @@ case class ByRiege2() extends GroupBy with FilterBy {
 case class ByJahr() extends GroupBy with FilterBy {
   override val groupname = "Wettkampf-Jahr"
   private val extractYear = new SimpleDateFormat("YYYY")
-  protected override val grouper = (v: WertungView) => {
+  protected override val grouper: WertungView => DataObject = (v: WertungView) => {
     WettkampfJahr(extractYear.format(v.wettkampf.datum))
   }
   protected override val sorter: Option[(GroupSection, GroupSection) => Boolean] = Some((gs1: GroupSection, gs2: GroupSection) => {
@@ -451,7 +451,7 @@ case class ByAltersklasse(bezeichnung: String = "GebDat Altersklasse", grenzen: 
     Altersklasse(klassen, alter, geschlecht, programm)
   }
 
-  protected override val grouper = (v: WertungView) => {
+  protected override val grouper: WertungView => DataObject = (v: WertungView) => {
     val wkd: LocalDate = v.wettkampf.datum
     val gebd: LocalDate = sqlDate2ld(v.athlet.gebdat.getOrElse(Date.valueOf(LocalDate.now())))
     makeGroupBy(v.wettkampf)(gebd, v.athlet.geschlecht, v.wettkampfdisziplin.programm)
@@ -472,7 +472,7 @@ case class ByJahrgangsAltersklasse(bezeichnung: String = "JG Altersklasse", gren
     Altersklasse(klassen, alter, geschlecht, programm)
   }
 
-  protected override val grouper = (v: WertungView) => {
+  protected override val grouper: WertungView => DataObject = (v: WertungView) => {
     val gebd: LocalDate = sqlDate2ld(v.athlet.gebdat.getOrElse(Date.valueOf(LocalDate.now())))
     makeGroupBy(v.wettkampf)(gebd, v.athlet.geschlecht, v.wettkampfdisziplin.programm)
   }
@@ -486,7 +486,7 @@ case class ByTeamRule(bezeichnung: String = "Teamregel", regel: TeamRegel) exten
   override val groupname = bezeichnung
   setKind(Teamrangliste)
 
-  protected override val grouper = (w:WertungView) => CompoundGrouper(Seq(GenericGrouper(regel.pgmGrouperText(w)), TurnerGeschlecht(regel.sexGrouperText(w))))
+  protected override val grouper: WertungView => DataObject = (w:WertungView) => CompoundGrouper(Seq(GenericGrouper(regel.pgmGrouperText(w)), TurnerGeschlecht(regel.sexGrouperText(w))))
 
   protected override val sorter: Option[(GroupSection, GroupSection) => Boolean] = Some((gs1: GroupSection, gs2: GroupSection) => {
     gs1.groupKey.compareTo(gs2.groupKey) < 0
@@ -497,7 +497,7 @@ case class ByDisziplin() extends GroupBy with FilterBy {
   override val groupname = "Disziplin"
   private val ordering = mutable.HashMap[Long, Long]()
 
-  protected override val grouper = (v: WertungView) => {
+  protected override val grouper: WertungView => DataObject = (v: WertungView) => {
     ordering.put(v.wettkampfdisziplin.disziplin.id, v.wettkampfdisziplin.ord.toLong)
     v.wettkampfdisziplin.disziplin
   }
@@ -514,7 +514,7 @@ case class ByDisziplin() extends GroupBy with FilterBy {
 
 case class ByGeschlecht() extends GroupBy with FilterBy {
   override val groupname = "Geschlecht"
-  protected override val grouper = (v: WertungView) => {
+  protected override val grouper: WertungView => DataObject = (v: WertungView) => {
     TurnerGeschlecht(v.athlet.geschlecht)
   }
   protected override val sorter: Option[(GroupSection, GroupSection) => Boolean] = Some((gs1: GroupSection, gs2: GroupSection) => {

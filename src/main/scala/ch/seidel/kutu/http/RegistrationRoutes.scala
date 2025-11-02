@@ -89,7 +89,7 @@ trait RegistrationRoutes extends SprayJsonSupport with JsonSupport with JwtSuppo
     httpGetClientRequest(s"$remoteAdminBaseUrl/api/registrations/${p.uuid.get}").flatMap {
       case HttpResponse(StatusCodes.OK, headers, entity, _) =>
         Unmarshal(entity).to[List[Registration]].map {
-          registrations: List[Registration] =>
+          (registrations: List[Registration]) =>
             (for (r <- registrations) yield {
               r -> getAthletRegistrations(p, r)
             }).toMap

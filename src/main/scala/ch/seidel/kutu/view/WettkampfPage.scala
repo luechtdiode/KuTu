@@ -112,7 +112,7 @@ object WettkampfPage {
 class WettkampfPage(tabPane: LazyTabPane)
   extends DisplayablePage {
 
-  def getPage = {
+  def getPage: LazyTabPane = {
 
     tabPane.init()
     tabPane

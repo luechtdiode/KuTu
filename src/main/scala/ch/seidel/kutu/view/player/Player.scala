@@ -74,7 +74,7 @@ object Player extends JFXApp3 {
         WebSocketClient.publish(UseMyMediaPlayer(wk.uuid.get, Config.deviceId))
         if (lastMediaEvent.nonEmpty) {
           lastMediaEvent.foreach {
-            a: MediaPlayerEvent => publishMediaEventIfConnected(a)
+            (a: MediaPlayerEvent) => publishMediaEventIfConnected(a)
           }
         } else {
           releasePlayer()

@@ -111,7 +111,7 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
       filter(wv => wv.wettkampf.id == wettkampf.id).
       filter(extrafilter).
       groupBy(wv => wv.athlet).
-      map(wvg => wvg._2.map(WertungEditor)).toIndexedSeq
+      map(wvg => wvg._2.map(WertungEditor.apply)).toIndexedSeq
   }
 
   var wertungen = Seq[IndexedSeq[WertungEditor]]()
@@ -340,7 +340,7 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
           else
             wertung.noteD
         }
-        cellFactory.value = { _: Any =>
+        cellFactory.value = { (_: Any) =>
           if (hasNoFormTemplate) {
             new AutoCommitTextFieldTableCell[IndexedSeq[WertungEditor], Double](
               DoubleConverter(wertung.init.wettkampfdisziplin.notenSpez),
@@ -406,7 +406,7 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
         val hasNoFormTemplate = wertungen.forall(we => if (index < we.size) we(index).init.wettkampfdisziplin.notenSpez.template.isEmpty else true)
         text = eNoteLabel
         cellValueFactory = { x => if (x.value.size > index) x.value(index).noteE else wertung.noteE }
-        cellFactory.value = { _: Any =>
+        cellFactory.value = { (_: Any) =>
           if (hasNoFormTemplate) {
             new AutoCommitTextFieldTableCell[IndexedSeq[WertungEditor], Double](
               DoubleConverter(wertung.init.wettkampfdisziplin.notenSpez),
@@ -471,7 +471,7 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
       lazy val clEndnote = new WKTableColumn[Double](indexerF.next()) {
         text = "Endnote"
         cellValueFactory = { x => if (x.value.size > index) x.value(index).endnote else wertung.endnote }
-        cellFactory.value = { _: Any => new AutoCommitTextFieldTableCell[IndexedSeq[WertungEditor], Double](DoubleConverter(wertung.init.wettkampfdisziplin.notenSpez)) }
+        cellFactory.value = { (_: Any) => new AutoCommitTextFieldTableCell[IndexedSeq[WertungEditor], Double](DoubleConverter(wertung.init.wettkampfdisziplin.notenSpez)) }
         styleClass += "table-cell-with-value"
         prefWidth = 80
         editable = false
@@ -607,7 +607,7 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
   val riegeCol: List[jfxsc.TableColumn[IndexedSeq[WertungEditor], _]] = if (!wettkampfInfo.isAggregated) {
     List(new WKTableColumn[String](-1) {
       text = "Riege"
-      cellFactory.value = { _: Any =>
+      cellFactory.value = { (_: Any) =>
         new AutoCommitTextFieldTableCell[IndexedSeq[WertungEditor], String](new DefaultStringConverter())
       }
       cellValueFactory = { x =>
@@ -653,7 +653,7 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
     },
       new WKTableColumn[String](-1) {
         text = "Riege 2"
-        cellFactory.value = { _: Any =>
+        cellFactory.value = { (_: Any) =>
           new AutoCommitTextFieldTableCell[IndexedSeq[WertungEditor], String](new DefaultStringConverter())
         }
 
@@ -700,7 +700,7 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
       new WKTableColumn[TeamItem](-1) {
 
         text = "Team"
-        cellFactory.value = { _: Any =>
+        cellFactory.value = { (_: Any) =>
           new AutoCommitTextFieldTableCell[IndexedSeq[WertungEditor], TeamItem](TeamItems.stringConverter, TeamItems.tableCellSuggestProvider)
         }
 
@@ -765,7 +765,7 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
           columns ++= Seq(
             new WKTableColumn[String](-1) {
               text = "Riege"
-              cellFactory.value = { _: Any =>
+              cellFactory.value = { (_: Any) =>
                 new AutoCommitTextFieldTableCell[IndexedSeq[WertungEditor], String](new DefaultStringConverter())
               }
               cellValueFactory = { x =>
@@ -810,7 +810,7 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
             },
             new WKTableColumn[String](-1) {
               text = "Riege 2"
-              cellFactory.value = { _: Any =>
+              cellFactory.value = { (_: Any) =>
                 new AutoCommitTextFieldTableCell[IndexedSeq[WertungEditor], String](new DefaultStringConverter())
               }
               cellValueFactory = { x =>
@@ -856,7 +856,7 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
             },
             new WKTableColumn[TeamItem](-1) {
               text = "Team"
-              cellFactory.value = { _: Any =>
+              cellFactory.value = { (_: Any) =>
                 new AutoCommitTextFieldTableCell[IndexedSeq[WertungEditor], TeamItem](TeamItems.stringConverter, TeamItems.tableCellSuggestProvider)
               }
 
@@ -2058,7 +2058,7 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
       }
     }
   }
-  val moveToOtherProgramButton = new Button {
+  val moveToOtherProgramButton: Button = new Button {
     val pgmpattern = ".*GETU.*/i".r
     text = programm.map(p => p.head.name match {
       case pgmpattern() => "Tu/Ti Kategorie wechseln ..."
@@ -2326,7 +2326,7 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
     children += teilnehmerCntLabel
   }
 
-  val riegenHeader = new VBox {
+  val riegenHeader: VBox = new VBox {
     focusTraversable = false
     maxWidth = Double.MaxValue
     minHeight = Region.USE_PREF_SIZE

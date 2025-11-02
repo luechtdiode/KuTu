@@ -84,10 +84,10 @@ abstract class DefaultRanglisteTab(wettkampfmode: BooleanProperty, override val 
   }
 
   class DataObjectConverter extends StringConverter[DataObject] {
-    def fromString(text: String) = {
+    def fromString(text: String): DataObject = {
       nullFilter
     }
-    def toString(d: DataObject) = if (d != null) d.easyprint else ""
+    def toString(d: DataObject): String = if (d != null) d.easyprint else ""
   }
   val converter = new DataObjectConverter()
 
@@ -525,7 +525,7 @@ abstract class DefaultRanglisteTab(wettkampfmode: BooleanProperty, override val 
         hgrow = Priority.Always
         children = List(label, labelfilter)
       }
-      val topCombos = combos.map{ccs =>
+      val topCombos: List[VBox] = combos.map{ ccs =>
         new VBox {
           vgrow = Priority.Always
           hgrow = Priority.Always

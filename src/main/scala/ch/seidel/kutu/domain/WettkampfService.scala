@@ -235,7 +235,7 @@ trait WettkampfService extends DBService
           inner join wettkampfdisziplin wd on wd.id = w.wettkampfdisziplin_id
           inner join programm p on wd.programm_id = p.id
           where wk.uuid = ${wettkampfUUID.toString} and a.gebdat is not null
-         """.as[(String, ProgrammView, Int, String, Date, Long)](getResultMapper).withPinnedSession
+         """.as[(String, ProgrammView, Int, String, Date, Long)](getResultMapper(_)).withPinnedSession
           .map(_.toList.map(x => (x._1, x._2, x._3, x._4, x._5)))
       }, Duration.Inf)
   }
@@ -991,14 +991,14 @@ trait WettkampfService extends DBService
       }
 
     val riegenset: Map[String, String] = wertungen
-      .map(w => (w._4, w._3)).toSet.map { w: (String, String) =>
+      .map(w => (w._4, w._3)).toSet.map { (w: (String, String)) =>
         val (oldRiege, newRiege) = w
         findMatchingOldNewRiegen(existingriegen, oldRiege, newRiege)
       }.toMap
 
     val riegenset2: Map[String, String] = wertungen
       .filter(w => w._5.nonEmpty)
-      .map(w => (w._6, w._5.get)).toSet.map { w: (String, String) =>
+      .map(w => (w._6, w._5.get)).toSet.map { (w: (String, String)) =>
         val (oldRiege2, newRiege2) = w
         findMatchingOldNewRiegen(existingriegen, oldRiege2, newRiege2)
       }.toMap

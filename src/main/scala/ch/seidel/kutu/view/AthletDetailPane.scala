@@ -52,7 +52,7 @@ case class AthletHeaderPane(wettkampf: Wettkampf, service: KutuService, wkview: 
   checkmark.visibleProperty.bind(Player.isNetworkMediaPlayer)
 
   val checkIsUseMyMediaPlayerMenuItem = new MenuItem("Media Player den Wertungsrichtern freigeben", checkmark) {
-    onAction = handleAction { _: ActionEvent =>
+    onAction = handleAction { (_: ActionEvent) =>
       Player.useMyMediaPlayerAsNetworkplayer(!Player.isNetworkMediaPlayer.getValue)
     }
   }

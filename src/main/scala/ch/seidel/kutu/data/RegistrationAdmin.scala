@@ -77,7 +77,7 @@ object RegistrationAdmin {
     logger.info(s"start with mapping of ${registrations.size} registrations to sync-actions")
     val nonMatchinProgramAssignment: Map[String, Seq[(Registration, WertungView)]] = service.
       selectWertungen(wkuuid = wkInfo.wettkampf.uuid)
-      .map { wertung: WertungView =>
+      .map { (wertung: WertungView) =>
         (registrationSet.find(club => wertung.athlet.verein.equals(club._1)).map(_._2), wertung)
       }
       .filter {

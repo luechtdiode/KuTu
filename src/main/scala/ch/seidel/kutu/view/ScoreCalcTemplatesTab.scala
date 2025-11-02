@@ -87,7 +87,7 @@ class ScoreCalcTemplatesTab(wettkampf: WettkampfView, override val service: Kutu
           cellValueFactory = { x =>
             field.get(x.value).asInstanceOf[StringProperty]
           }
-          cellFactory.value = { _: Any => new AutoCommitTextFieldTableCell[ScoreCalcTemplateEditor, String](new DefaultStringConverter()) }
+          cellFactory.value = { (_: Any) => new AutoCommitTextFieldTableCell[ScoreCalcTemplateEditor, String](new DefaultStringConverter()) }
           styleClass += "table-cell-with-value"
           prefWidth = ScoreCalcTemplateEditor.coldef(field.getName)
           editable = false

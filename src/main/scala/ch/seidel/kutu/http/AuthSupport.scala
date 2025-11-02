@@ -39,10 +39,10 @@ object AuthSupport {
 }
 
 trait AuthSupport extends Directives with SprayJsonSupport with Hashing with JwtSupport {
-  import AuthSupport._
-  import spray.json.DefaultJsonProtocol._
+  import AuthSupport.*
+  import spray.json.DefaultJsonProtocol.*
   
-  implicit val credsFormat: RootJsonFormat[UserCredentials] = jsonFormat2(UserCredentials)
+  implicit val credsFormat: RootJsonFormat[UserCredentials] = jsonFormat2(UserCredentials.apply)
   
   autoconfigProxy match {
     case (Some(host), Some(port)) =>

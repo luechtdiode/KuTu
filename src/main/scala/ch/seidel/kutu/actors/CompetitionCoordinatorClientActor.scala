@@ -808,7 +808,7 @@ object CompetitionCoordinatorClientActor extends JsonSupport with EnrichedJson {
     val sink = fromWebsocketToActorFlow.to(Sink.actorRef(clientActor, StopDevice(deviceId), _ => StopDevice(deviceId)).named(deviceId))
     val source = fromCoordinatorActorToWebsocketFlow(lastSequenceId,
       Source.actorRef(completionMatcher, failureMatcher, 256, OverflowStrategy.dropHead)
-        .mapMaterializedValue { wsSource: ActorRef =>
+        .mapMaterializedValue { (wsSource: ActorRef) =>
           clientActor ! Subscribe(wsSource, deviceId, durchgang, lastSequenceId)
           wsSource
         }.named(deviceId))

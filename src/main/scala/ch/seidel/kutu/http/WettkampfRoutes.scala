@@ -259,7 +259,7 @@ trait WettkampfRoutes extends SprayJsonSupport
   }
 
   lazy val wettkampfRoutes: Route = {
-    handleCID { clientId: String =>
+    handleCID { (clientId: String) =>
       pathLabeled("isTokenExpired", "isTokenExpired") {
         pathEnd {
           authenticated() { wettkampfUUID =>

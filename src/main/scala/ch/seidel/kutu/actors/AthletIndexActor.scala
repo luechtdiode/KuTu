@@ -1,10 +1,10 @@
 package ch.seidel.kutu.actors
 
 import org.apache.pekko.actor.SupervisorStrategy.{Restart, Stop}
-import org.apache.pekko.actor.{Actor, ActorLogging, ActorRef, OneForOneStrategy, PoisonPill, Props, Terminated}
+import org.apache.pekko.actor.{Actor, ActorLogging, ActorRef, OneForOneStrategy, PoisonPill, Props, SupervisorStrategy, Terminated}
 import org.apache.pekko.pattern.ask
 import org.apache.pekko.util.Timeout
-import ch.seidel.kutu.domain._
+import ch.seidel.kutu.domain.*
 import ch.seidel.kutu.http.Core.system
 import ch.seidel.kutu.http.JsonSupport
 import org.apache.pekko.event.Logging
@@ -45,7 +45,7 @@ class AthletIndexActor extends Actor with JsonSupport with KutuService {
     def debug(s: String): Unit = l.debug(s)
   }
 
-  override val supervisorStrategy = OneForOneStrategy() {
+  override val supervisorStrategy: SupervisorStrategy = OneForOneStrategy() {
     case NonFatal(e) =>
       log.error("Error in AthletIndexActor", e)
       Restart
@@ -99,7 +99,7 @@ class AthletIndexActorSupervisor extends Actor with ActorLogging {
   var athletIndexActor: Option[ActorRef] = None
   var statshedActions: List[(ActorRef,AthletIndexAction)] = List.empty
 
-  override val supervisorStrategy = OneForOneStrategy() {
+  override val supervisorStrategy: SupervisorStrategy = OneForOneStrategy() {
     case NonFatal(e) =>
       log.error("Error in AthletIndexActorSupervisor actor.", e)
       Stop

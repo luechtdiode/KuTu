@@ -172,7 +172,7 @@ trait AthletService extends DBService with AthletResultMapper with VereinService
           """ >>
           sql"""select * from athlet where id = (select max(athlet.id) from athlet)""".as[Athlet].head
     }
-    .map { a: Athlet =>
+    .map { (a: Athlet) =>
       publishChanged(a)
       (csvid, a)
     }
