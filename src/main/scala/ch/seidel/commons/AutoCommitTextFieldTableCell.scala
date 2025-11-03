@@ -498,8 +498,8 @@ class AutoCommitTextFieldTableCell[S, T](
       change match {
         case Remove(PSEUDO_CLASS_FOCUSED) if delegate.isEditing || AutoCommitTextFieldTableCell.editmode.value =>
           textField match {
-            case Some(TextFieldWithToolButton(tf,b)) => if (!b.visible.value)
-              commitEdit(delegate.sc.fromString(tf.text.value))
+            case Some(TextFieldWithToolButton(tf,b)) =>
+              if (!b.visible.value) commitEdit(delegate.sc.fromString(tf.text.value))
               AutoCommitTextFieldTableCell.setEditMode(false)
 
             case None =>

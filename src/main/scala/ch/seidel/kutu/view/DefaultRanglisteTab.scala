@@ -1,31 +1,31 @@
 package ch.seidel.kutu.view
 
-import ch.seidel.commons._
+import ch.seidel.commons.*
 import ch.seidel.kutu.KuTuApp
 import ch.seidel.kutu.actors.{AthletWertungUpdated, AthletWertungUpdatedSequenced, KutuAppEvent, LastResults}
-import ch.seidel.kutu.data._
-import ch.seidel.kutu.domain._
+import ch.seidel.kutu.data.*
+import ch.seidel.kutu.domain.*
 import ch.seidel.kutu.http.WebSocketClient
 import ch.seidel.kutu.renderer.PrintUtil.FilenameDefault
 import ch.seidel.kutu.renderer.{PrintUtil, ScoreToHtmlRenderer}
 import javafx.collections.ObservableList
 import javafx.scene.text.FontSmoothingType
 import org.controlsfx.control.CheckComboBox
-import scalafx.Includes._
+import scalafx.Includes.*
 import scalafx.application.Platform
 import scalafx.beans.property.{BooleanProperty, ObjectProperty}
 import scalafx.collections.ObservableBuffer
 import scalafx.event.subscriptions.Subscription
 import scalafx.geometry.Insets
 import scalafx.print.{PageOrientation, Printer}
-import scalafx.scene.control._
-import scalafx.scene.layout._
+import scalafx.scene.control.*
+import scalafx.scene.layout.*
 import scalafx.scene.web.WebView
 import scalafx.stage.FileChooser
 import scalafx.stage.FileChooser.ExtensionFilter
 import scalafx.util.StringConverter
 
-import java.io._
+import java.io.*
 import java.util.concurrent.{ScheduledFuture, TimeUnit}
 import scala.concurrent.Promise
 import scala.language.implicitConversions
@@ -45,18 +45,22 @@ abstract class DefaultRanglisteTab(wettkampfmode: BooleanProperty, override val 
     subscription.foreach(_.cancel())
     subscription = List.empty
   }
-  
+
   var lazyPaneUpdater: Map[String, ScheduledFuture[_]] = Map.empty
- 
-  def submitLazy(name: String, task: ()=>Unit, delay: Long): Unit = {
+
+  def submitLazy(name: String, task: () => Unit, delay: Long): Unit = {
     lazyPaneUpdater.get(name).foreach(_.cancel(true))
-    val ft = KuTuApp.lazyExecutor.schedule(new Runnable() { def run = { 
-      Platform.runLater{task()}
-    }}, delay, TimeUnit.SECONDS)
-    
+    val ft = KuTuApp.lazyExecutor.schedule(new Runnable() {
+      def run = {
+        Platform.runLater {
+          task()
+        }
+      }
+    }, delay, TimeUnit.SECONDS)
+
     lazyPaneUpdater = lazyPaneUpdater + (name -> ft)
   }
-  
+
 
   /*
          * combo 1. Gruppierung [leer, Programm, Jahrgang, Disziplin, Verein]
@@ -70,14 +74,20 @@ abstract class DefaultRanglisteTab(wettkampfmode: BooleanProperty, override val 
   //        x.wettkampfdisziplin.programm }.map(x => (x._1, x._2.groupBy { x =>
   //          x.athlet }))))
   def groupers: List[FilterBy] = ???
+
   def getData: Seq[WertungView] = ???
+
   def getSaveAsFilenameDefault: FilenameDefault = ???
+
   def getPublishedScores: List[PublishedScoreView] = List.empty
+
   def getActionButtons: List[Button] = List.empty
 
   private val webView = new WebView {
     fontSmoothingType = FontSmoothingType.GRAY
+
     import ch.seidel.javafx.webview.HyperLinkRedirectListener
+
     engine.getLoadWorker.stateProperty.addListener(new HyperLinkRedirectListener(this.delegate))
     //zoom = 1.2
     //fontScale = 1.2
@@ -87,8 +97,10 @@ abstract class DefaultRanglisteTab(wettkampfmode: BooleanProperty, override val 
     def fromString(text: String): DataObject = {
       nullFilter
     }
+
     def toString(d: DataObject): String = if (d != null) d.easyprint else ""
   }
+
   val converter = new DataObjectConverter()
 
   var restoring = false
@@ -187,14 +199,14 @@ abstract class DefaultRanglisteTab(wettkampfmode: BooleanProperty, override val 
     }
     val combfs = List(cbf1, cbf2, cbf3, cbf4)
     val fmodels = List(grf1Model, grf2Model, grf3Model, grf4Model)
-    
+
     val cbModus: CheckBox = new CheckBox {
       text = "Sortierung alphabetisch"
       selected = false
     }
 
     def relevantGroup(cb: ComboBox[FilterBy]): Boolean = {
-      if(!cb.selectionModel.value.isEmpty) {
+      if (!cb.selectionModel.value.isEmpty) {
         val grp = cb.selectionModel.value.getSelectedItem
         grp != ByNothing()
       }
@@ -208,17 +220,17 @@ abstract class DefaultRanglisteTab(wettkampfmode: BooleanProperty, override val 
     def buildGrouper = {
       restoring = true
       groupers.foreach { gr => gr.reset }
-      val cblist = combos.filter{cbp =>
+      val cblist = combos.filter { cbp =>
         val (cb, cf) = cbp
         val ret = relevantGroup(cb)
         cf.setDisable(!ret)
         ret
-      }.map{cbp =>
+      }.map { cbp =>
         val (cb, cf) = cbp
         val grp = cb.selectionModel.value.getSelectedItem
 
-        if(cf.getCheckModel.getCheckedItems.isEmpty() || cf.getCheckModel.getCheckedItems.forall(nullFilter.equals(_))) {
-        	grp.reset
+        if (cf.getCheckModel.getCheckedItems.isEmpty() || cf.getCheckModel.getCheckedItems.forall(nullFilter.equals(_))) {
+          grp.reset
         }
         else {
           grp.setFilter(cf.getCheckModel.getCheckedItems.toSet[DataObject])
@@ -248,26 +260,26 @@ abstract class DefaultRanglisteTab(wettkampfmode: BooleanProperty, override val 
 
     def refreshRangliste(query: GroupBy, linesPerPage: Int = 0) = {
       restoring = true
-    	val data = getData
+      val data = getData
       val filter = query.asInstanceOf[FilterBy]
-      val filterLists = filter.traverse(Seq[Seq[DataObject]]()){ (f, acc) =>
-        val allItems = f.asInstanceOf[FilterBy].analyze(data).sortBy { x => x.easyprint}
+      val filterLists = filter.traverse(Seq[Seq[DataObject]]()) { (f, acc) =>
+        val allItems = f.asInstanceOf[FilterBy].analyze(data).sortBy { x => x.easyprint }
         acc :+ (if (f.canSkipGrouper) nullFilter +: allItems else allItems)
       }
       combfs.filter(cmb => cmb.disabled.value).foreach(cmb => {
         cmb.getCheckModel.clearChecks()
         cmb.getItems.clear()
       })
-    	filterLists.zip(fmodels.zip(combos).filter{x => relevantGroup(x._2._1)}.map(x => (x._1, x._2._2))).foreach {x =>
-    	  val ( expected, (model, combf)) = x
-    	  val checked = combf.getCheckModel.getCheckedItems.toSet
-    	  combf.getCheckModel.clearChecks()
-    	  model.retainAll(expected)
-    	  model.insertAll(model.size, expected.filter(!model.contains(_)))
-    	  model.sort{ (a, b) => a.compareTo(b) < 0}
+      filterLists.zip(fmodels.zip(combos).filter { x => relevantGroup(x._2._1) }.map(x => (x._1, x._2._2))).foreach { x =>
+        val (expected, (model, combf)) = x
+        val checked = combf.getCheckModel.getCheckedItems.toSet
+        combf.getCheckModel.clearChecks()
+        model.retainAll(expected)
+        model.insertAll(model.size, expected.filter(!model.contains(_)))
+        model.sort { (a, b) => a.compareTo(b) < 0 }
 
-    	  checked.filter(model.contains(_)).foreach(combf.getCheckModel.check(_))
-    	}
+        checked.filter(model.contains(_)).foreach(combf.getCheckModel.check(_))
+      }
       query.setAlphanumericOrdered(cbModus.selected.value)
       query.setAvgOnMultipleCompetitions(cbAvg.selected.value)
       query.setBestNCounting(cbBestN.value.value)
@@ -278,7 +290,7 @@ abstract class DefaultRanglisteTab(wettkampfmode: BooleanProperty, override val 
 
       val logofile = PrintUtil.locateLogoFile(getSaveAsFilenameDefault.dir)
       val ret = toHTML(combination, linesPerPage, query.isAlphanumericOrdered, query.isAvgOnMultipleCompetitions, logofile)
-      if(linesPerPage == 0){
+      if (linesPerPage == 0) {
         webView.engine.loadContent(ret)
       }
       restoring = false
@@ -288,7 +300,7 @@ abstract class DefaultRanglisteTab(wettkampfmode: BooleanProperty, override val 
     def restoreGrouper(query: GroupBy): Unit = {
       restoring = true
 
-      combos.foreach{cb =>
+      combos.foreach { cb =>
         val (cmb, cmbf) = cb
         cmb.selectionModel.value.clearSelection()
         cmbf.getCheckModel.clearChecks
@@ -296,9 +308,9 @@ abstract class DefaultRanglisteTab(wettkampfmode: BooleanProperty, override val 
         cmbf.setDisable(true)
       }
 
-      query.traverse(combos){(grp, acc) =>
+      query.traverse(combos) { (grp, acc) =>
         logger.debug(grp.toString)
-        if(acc.isEmpty) {
+        if (acc.isEmpty) {
           acc
         }
         else {
@@ -307,7 +319,7 @@ abstract class DefaultRanglisteTab(wettkampfmode: BooleanProperty, override val 
           cmb.selectionModel.value.select(grp.asInstanceOf[FilterBy])
           cmbf.setDisable(false)
           val expected: List[DataObject] = grp.asInstanceOf[FilterBy].filterItems
-            .sortWith{case (a, b) => a.easyprint.compareTo(b.easyprint) < 0}
+            .sortWith { case (a, b) => a.easyprint.compareTo(b.easyprint) < 0 }
 
           expected.foreach(item => cmbf.getItems.add(item))
           grp.asInstanceOf[FilterBy].getFilter.foreach(cmbf.getCheckModel.check(_))
@@ -323,9 +335,9 @@ abstract class DefaultRanglisteTab(wettkampfmode: BooleanProperty, override val 
       refreshRangliste(query)
     }
 
-    combos.foreach{ case (comb, combfs) =>
+    combos.foreach { case (comb, combfs) =>
       comb.onAction = _ => {
-        if(!restoring) {
+        if (!restoring) {
           restoring = true
           combfs.getCheckModel.clearChecks()
           combfs.getItems.clear()
@@ -333,27 +345,27 @@ abstract class DefaultRanglisteTab(wettkampfmode: BooleanProperty, override val 
         }
       }
       combfs.getCheckModel.getCheckedItems.onChange((b, s) => {
-        if(!restoring) {
+        if (!restoring) {
           refreshRangliste(buildGrouper)
         }
-      })        
+      })
     }
-    
+
     cbModus.onAction = _ => {
-      if(!restoring)
+      if (!restoring)
         refreshRangliste(buildGrouper)
     }
     cbAvg.onAction = _ => {
-      if(!restoring)
+      if (!restoring)
         refreshRangliste(buildGrouper)
     }
     cbBestN.onAction = _ => {
-      if(!restoring)
+      if (!restoring)
         refreshRangliste(buildGrouper)
     }
     cbBestN.disable <== createBooleanBinding(() => cbKind.value.value == Teamrangliste, cbKind.value)
     cbKind.onAction = _ => {
-      if(!restoring) {
+      if (!restoring) {
         restoring = true
         if (cbKind.value.value == Teamrangliste) {
           cbBestN.value.value = AlleWertungen
@@ -365,7 +377,7 @@ abstract class DefaultRanglisteTab(wettkampfmode: BooleanProperty, override val 
 
 
     val btnPrint = PrintUtil.btnPrintFuture(text.value, getSaveAsFilenameDefault, true,
-      (lpp:Int) => {
+      (lpp: Int) => {
         val retProm = Promise[String]()
         if (Platform.isFxApplicationThread) {
           retProm.success(refreshRangliste(buildGrouper, lpp))
@@ -409,9 +421,9 @@ abstract class DefaultRanglisteTab(wettkampfmode: BooleanProperty, override val 
         .replace(".scoredef", "")
         .replace("-", " ")
         .capitalize) { (caption, action) =>
-          lastPublishedScoreView.setValue(None)
-          loadFilter(filter)
-        }
+        lastPublishedScoreView.setValue(None)
+        loadFilter(filter)
+      }
       if (!items.exists(m => m.text.value != null && m.text.value.equalsIgnoreCase(menu.text.value))) {
         items.add(menu)
       }
@@ -441,22 +453,22 @@ abstract class DefaultRanglisteTab(wettkampfmode: BooleanProperty, override val 
       text = "Einstellung speichern als ..."
       visible <== when(wettkampfmode) choose false otherwise true
       onAction = _ => {
-          val defaults = getFilterSaveAsFilenameDefault
-          val filename = defaults.filename
-          val dir = defaults.dir
-          if(!dir.exists()) {
-            dir.mkdirs()
-          }
-          val fileChooser = new FileChooser() {
+        val defaults = getFilterSaveAsFilenameDefault
+        val filename = defaults.filename
+        val dir = defaults.dir
+        if (!dir.exists()) {
+          dir.mkdirs()
+        }
+        val fileChooser = new FileChooser() {
           initialDirectory = dir
           this.title = "Filtereinstellung speichern ..."
           extensionFilters.addAll(
-                 new ExtensionFilter("Filtereinstellung", "*.scoredef"))
+            new ExtensionFilter("Filtereinstellung", "*.scoredef"))
           initialFileName = filename
         }
         val selectedFile = fileChooser.showSaveDialog(KuTuApp.getStage())
         if (selectedFile != null) {
-          val file = if(!selectedFile.getName.endsWith(".scoredef")) {
+          val file = if (!selectedFile.getName.endsWith(".scoredef")) {
             new java.io.File(selectedFile.getAbsolutePath + ".scoredef")
           }
           else {
@@ -481,7 +493,7 @@ abstract class DefaultRanglisteTab(wettkampfmode: BooleanProperty, override val 
     }
 
     onSelectionChanged = _ => {
-      if(selected.value) {
+      if (selected.value) {
         refreshRangliste(buildGrouper)
         refreshScorePresets(cbfSaved.items)
       }
@@ -490,6 +502,7 @@ abstract class DefaultRanglisteTab(wettkampfmode: BooleanProperty, override val 
     if (logger.isDebugEnabled()) {
       logger.debug("subscribing for refreshing from websocket")
     }
+
     def updateFromWebsocket(newItem: KutuAppEvent): Unit = {
       submitLazy("refreshRangliste", () => if (selected.value) {
         if (logger.isDebugEnabled()) {
@@ -499,6 +512,7 @@ abstract class DefaultRanglisteTab(wettkampfmode: BooleanProperty, override val 
         refreshScorePresets(cbfSaved.items)
       }, 5)
     }
+
     subscription = subscription :+ WebSocketClient.modelWettkampfWertungChanged.onChange { (_, _, newItem) =>
       if (selected.value) {
         newItem match {
@@ -515,17 +529,17 @@ abstract class DefaultRanglisteTab(wettkampfmode: BooleanProperty, override val 
       hgrow = Priority.Always
       //              children = new Label("Filter:") :+ combfs
       val label = new Label("Gruppierungen:") {
-        padding = Insets(7,0,0,0)
+        padding = Insets(7, 0, 0, 0)
       }
       val labelfilter = new Label("Filter:") {
-        padding = Insets(7,0,0,0)
+        padding = Insets(7, 0, 0, 0)
       }
       val topBox = new VBox {
         vgrow = Priority.Always
         hgrow = Priority.Always
         children = List(label, labelfilter)
       }
-      val topCombos: List[VBox] = combos.map{ ccs =>
+      val topCombos: List[VBox] = combos.map { ccs =>
         new VBox {
           vgrow = Priority.Always
           hgrow = Priority.Always
@@ -534,7 +548,7 @@ abstract class DefaultRanglisteTab(wettkampfmode: BooleanProperty, override val 
         }
       }
 
-      top = new VBox{
+      top = new VBox {
         vgrow = Priority.Always
         hgrow = Priority.Always
         buildToolbars
@@ -593,6 +607,6 @@ abstract class DefaultRanglisteTab(wettkampfmode: BooleanProperty, override val 
       .replace("=", "-")
       .replace(":", "-")
       .replace("!", "-")
-    )
+  )
 
 }

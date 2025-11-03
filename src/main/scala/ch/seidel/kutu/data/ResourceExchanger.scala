@@ -136,11 +136,11 @@ object ResourceExchanger extends KutuService with RiegenBuilder {
           val mappedAthletView: AthletView = mapToLocal(uw.athlet, Some(wettkampf.id))
           val mappedWertung = uw.wertung.copy(athletId = mappedAthletView.id)
           val mappedAction = uw match {
-            case AthletMediaAquire(_,_,_) => AthletMediaAquire(uw.wertung.wettkampfUUID, mappedAthletView, mappedWertung)
-            case AthletMediaRelease(_,_,_) => AthletMediaRelease(uw.wertung.wettkampfUUID, mappedAthletView, mappedWertung)
-            case AthletMediaStart(_,_,_) => AthletMediaStart(uw.wertung.wettkampfUUID, mappedAthletView, mappedWertung)
-            case AthletMediaPause(_,_,_) => AthletMediaPause(uw.wertung.wettkampfUUID, mappedAthletView, mappedWertung)
-            case AthletMediaToStart(_,_,_) => AthletMediaToStart(uw.wertung.wettkampfUUID, mappedAthletView, mappedWertung)
+            case AthletMediaAquire(_, _, _) => AthletMediaAquire(uw.wertung.wettkampfUUID, mappedAthletView, mappedWertung)
+            case AthletMediaRelease(_, _, _) => AthletMediaRelease(uw.wertung.wettkampfUUID, mappedAthletView, mappedWertung)
+            case AthletMediaStart(_, _, _) => AthletMediaStart(uw.wertung.wettkampfUUID, mappedAthletView, mappedWertung)
+            case AthletMediaPause(_, _, _) => AthletMediaPause(uw.wertung.wettkampfUUID, mappedAthletView, mappedWertung)
+            case AthletMediaToStart(_, _, _) => AthletMediaToStart(uw.wertung.wettkampfUUID, mappedAthletView, mappedWertung)
           }
           try {
             refresher(sender, mappedAction)
@@ -310,7 +310,7 @@ object ResourceExchanger extends KutuService with RiegenBuilder {
       val mediaId = keys(1)
       val media: Media = mediaList.find(m => m.id.equals(mediaId)).map(_.toMedia)
         .getOrElse(mediaList.find(m => m.filename.equals(filename)).map(_.toMedia)
-          .getOrElse(Media("", filename, filename.substring(filename.lastIndexOf(".")+1))))
+          .getOrElse(Media("", filename, filename.substring(filename.lastIndexOf(".") + 1))))
       saveMediaFile(entry._2, wettkampf, media)
     }
   }
@@ -732,7 +732,7 @@ object ResourceExchanger extends KutuService with RiegenBuilder {
         }
       }
       new ZipEntryTraversableClass()
-        .filter(entry => entry._1.getName.toLowerCase.contains(".mp3"))//startsWith("/audiofiles/"))
+        .filter(entry => entry._1.getName.toLowerCase.contains(".mp3")) //startsWith("/audiofiles/"))
         .foreach { entry =>
           val keys = (entry._1.getName + "@0").split("@")
           val filename = keys(0)
@@ -789,7 +789,7 @@ object ResourceExchanger extends KutuService with RiegenBuilder {
         .groupBy { mp3File =>
           searchMedia(mp3File.getName)
         }
-        .filter (_._1.exists{m => medialist.isEmpty || medialist.exists(me => me.id.equals(m.id))})
+        .filter(_._1.exists { m => medialist.isEmpty || medialist.exists(me => me.id.equals(m.id)) })
         .foreach { group =>
           val (Some(media), mp3Files) = group
           val mp3File = mp3Files.head

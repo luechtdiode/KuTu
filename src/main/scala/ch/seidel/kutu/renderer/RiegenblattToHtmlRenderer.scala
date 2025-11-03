@@ -10,12 +10,12 @@ import java.time.LocalDateTime
 
 object RiegenBuilder {
   val logger = LoggerFactory.getLogger(this.getClass)
-  def mapToGeraeteRiegen(kandidaten: Seq[Kandidat], printorder: Boolean = false, durchgangFilter: Set[String] = Set.empty, haltsFilter: Set[Int] = Set.empty): List[GeraeteRiege] = {
+  def mapToGeraeteRiegen(kandidaten: Seq[ch.seidel.kutu.domain.Kandidat], printorder: Boolean = false, durchgangFilter: Set[String] = Set.empty, haltsFilter: Set[Int] = Set.empty): List[GeraeteRiege] = {
     val sorter: RiegenRotationsregel = if (kandidaten.nonEmpty && kandidaten.head.wertungen.nonEmpty)
       RiegenRotationsregel(kandidaten.head.wertungen.head.wettkampf)
     else RiegenRotationsregel("")
 
-    def pickStartformationen(geraete: Seq[(Option[Disziplin], Seq[Riege], Int)], durchgang: Option[String], extractKandidatEinteilung: Kandidat => (Option[Riege], Seq[Disziplin])): Seq[(Int, Option[Disziplin], Seq[Kandidat], Boolean)] = {
+    def pickStartformationen(geraete: Seq[(Option[Disziplin], Seq[Riege], Int)], durchgang: Option[String], extractKandidatEinteilung: ch.seidel.kutu.domain.Kandidat => (Option[Riege], Seq[Disziplin])): Seq[(Int, Option[Disziplin], Seq[ch.seidel.kutu.domain.Kandidat], Boolean)] = {
       /*
         stationmap[Disziplin,Int](
           // Disziplin -> Halt
@@ -43,7 +43,7 @@ object RiegenBuilder {
       4. Halt: Riege Startgerät                                                                      (1W,Sprung)
                ,                (2M,Boden), (3W,Balken),             (4W,Minitramp) (5M,Minitramp), (6M,Sprung)
       */
-      val athletdevicemap: Seq[(Kandidat, List[Disziplin])] = geraete.flatMap(d => kandidaten
+      val athletdevicemap: Seq[(ch.seidel.kutu.domain.Kandidat, List[Disziplin])] = geraete.flatMap(d => kandidaten
         .map { kandidat =>
           (kandidat, extractKandidatEinteilung(kandidat))
         }
@@ -79,7 +79,7 @@ object RiegenBuilder {
           .map{ kandidat => (kandidat._2(station), kandidat) }
           .groupBy(_._1)
           .map{gr =>
-            val (disziplin: Disziplin, candidates: Seq[(Disziplin, (Kandidat, List[Disziplin]))]) = gr
+            val (disziplin: Disziplin, candidates: Seq[(Disziplin, (ch.seidel.kutu.domain.Kandidat, List[Disziplin]))]) = gr
             val completed = candidates.flatMap(k => k._2._1.wertungen)
               .filter(wertung => disziplin.equals(wertung.wettkampfdisziplin.disziplin))
               .forall(_.endnote.nonEmpty)
@@ -159,7 +159,7 @@ object RiegenBuilder {
       val startformationen = pickStartformationen(geraete, durchgang, k => (k.einteilung2, k.diszipline2))
         .zipWithIndex
         .map(x => {
-          val (sf: (Int, Option[Disziplin], Seq[Kandidat], Boolean), index) = x
+          val (sf: (Int, Option[Disziplin], Seq[ch.seidel.kutu.domain.Kandidat], Boolean), index) = x
           (sf._1, sf._2, sf._3, sf._4, durchgangIndex*100 + 100 - index)
         })
 
@@ -167,11 +167,11 @@ object RiegenBuilder {
         (durchgang, startformationen)        
       }
       else {
-        (durchgang, startformationen.sortBy(d => d._1 * 100 + d._2.map(x => x.normalizedOrdinal(dzl))))
+        (durchgang, startformationen.sortBy(d => d._1 * 100 + d._2.map(x => x.normalizedOrdinal(dzl)).getOrElse(1)))
       }
     }
     val riegen = (hauptdurchgaenge ++ nebendurchgaenge).flatMap { item =>
-      val (durchgang: Option[String], starts: Seq[(Int, Option[Disziplin], Seq[Kandidat], Boolean, Int)]) = item
+      val (durchgang: Option[String], starts: Seq[(Int, Option[Disziplin], Seq[ch.seidel.kutu.domain.Kandidat], Boolean, Int)]) = item
       val isND = nebendurchgaenge.exists(nd => nd._1 == durchgang && nd._2.exists(disz => disz._2 == starts.head._2))
       durchgang match {
         case Some(dg) if durchgangFilter.nonEmpty && !durchgangFilter.contains(dg) => Seq.empty
@@ -346,7 +346,7 @@ trait RiegenblattToHtmlRenderer {
 
   val fcs = 20
 
-  def toHTML(kandidaten: Seq[Kandidat], logo: File, baseUrl: String, durchgangFilter: Set[String] = Set.empty, haltsFilter: Set[Int] = Set.empty, dgMapping: Seq[(SimpleDurchgang, LocalDateTime)]): String = {
+  def toHTML(kandidaten: Seq[ch.seidel.kutu.domain.Kandidat], logo: File, baseUrl: String, durchgangFilter: Set[String] = Set.empty, haltsFilter: Set[Int] = Set.empty, dgMapping: Seq[(SimpleDurchgang, LocalDateTime)]): String = {
     val dgmap = dgMapping.map(dg => dg._1.name -> dg).toMap
     def splitToFitPage(riegen: List[GeraeteRiege]) = {
       riegen.foldLeft(List[(GeraeteRiege, Int)]()){(acc, item) =>
@@ -365,7 +365,7 @@ trait RiegenblattToHtmlRenderer {
           r
         }
         else {
-          (riege.copy(kandidaten = riege.kandidaten ++ (1 to full).map(i => Kandidat(
+          (riege.copy(kandidaten = riege.kandidaten ++ (1 to full).map(i => ch.seidel.kutu.domain.Kandidat(
               riege.kandidaten.head.wettkampfTitel,
               "", "", 0,
               "", "", "", "", None, None, 

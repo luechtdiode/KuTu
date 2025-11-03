@@ -1,36 +1,36 @@
 package ch.seidel.kutu.view
 
-import ch.seidel.commons._
-import ch.seidel.kutu.Config._
+import ch.seidel.commons.*
+import ch.seidel.kutu.Config.*
 import ch.seidel.kutu.KuTuApp.{enc, handleAction}
-import ch.seidel.kutu.actors._
-import ch.seidel.kutu.domain._
+import ch.seidel.kutu.actors.*
+import ch.seidel.kutu.domain.*
 import ch.seidel.kutu.http.WebSocketClient
+import ch.seidel.kutu.renderer.*
 import ch.seidel.kutu.renderer.PrintUtil.FilenameDefault
-import ch.seidel.kutu.renderer._
 import ch.seidel.kutu.squad.RiegenBuilder.{generateRiegen2Name, generateRiegenName}
 import ch.seidel.kutu.{Config, KuTuApp, KuTuServer}
-import javafx.scene.{control => jfxsc}
+import javafx.scene.control as jfxsc
 import org.slf4j.{Logger, LoggerFactory}
-import scalafx.Includes._
+import scalafx.Includes.*
 import scalafx.application.Platform
 import scalafx.beans.binding.Bindings
+import scalafx.beans.property.*
 import scalafx.beans.property.StringProperty.sfxStringProperty2jfx
-import scalafx.beans.property._
 import scalafx.beans.value.ObservableValue
 import scalafx.collections.ObservableBuffer
 import scalafx.collections.ObservableBuffer.observableBuffer2ObservableList
 import scalafx.event.ActionEvent
 import scalafx.event.subscriptions.Subscription
-import scalafx.geometry._
+import scalafx.geometry.*
 import scalafx.print.PageOrientation
 import scalafx.scene.Node
+import scalafx.scene.control.*
 import scalafx.scene.control.SelectionMode.sfxEnum2jfx
-import scalafx.scene.control.TableColumn._
+import scalafx.scene.control.TableColumn.*
 import scalafx.scene.control.TableView.sfxTableView2jfx
-import scalafx.scene.control._
 import scalafx.scene.input.{Clipboard, KeyEvent}
-import scalafx.scene.layout._
+import scalafx.scene.layout.*
 import scalafx.util.StringConverter
 import scalafx.util.converter.{DefaultStringConverter, DoubleStringConverter}
 
@@ -274,6 +274,7 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
           val w = cell.tableRow.value.item.value(index)
           w.init.defaultVariables.nonEmpty
         }
+
         override def clear(cell: TextFieldWithToolButtonTableCell[IndexedSeq[WertungEditor], Double], ae: ActionEvent): Unit = {
           val w = cell.tableRow.value.item.value(index)
           w.clearInput()
@@ -303,6 +304,7 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
           //  service.updateWertung(w.updateAndcommit)
           //}
         }
+
         override def fire(cell: TextFieldWithToolButtonTableCell[IndexedSeq[WertungEditor], Double], ae: ActionEvent): Unit = {
           val w = cell.tableRow.value.item.value(index)
           val box = TemplateFormular(w)
@@ -933,7 +935,7 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
   var isFilterRefreshing = false
 
   wkModel.onChange { (seq1, seq2) =>
-    import scalafx.collections.ObservableBuffer._
+    import scalafx.collections.ObservableBuffer.*
     if (!isFilterRefreshing) {
       def updateWertungen(index: Int): Unit = {
         val changed = wkModel.get(index)
@@ -1101,10 +1103,10 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
     teilnehmerCntLabel.text = s"$rc Riegen mit $counttotriegen Riegenmitglieder/-innen, $countsel von $counttotprogramm" + programm.map(" im " + _.name).getOrElse("")
   }
 
-  alleRiegenCheckBox onAction = (event: ActionEvent) => {
+  alleRiegenCheckBox.onAction = (event: ActionEvent) => {
     updateAlleRiegenCheck(true)
   }
-  cmbDurchgangFilter.onAction = _ => {
+  cmbDurchgangFilter.onAction = (_) => {
     val d = if (!cmbDurchgangFilter.selectionModel.value.isEmpty) {
       cmbDurchgangFilter.selectionModel.value.getSelectedItem
     }
@@ -1244,7 +1246,7 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
   })
 
   def doLoadFromCSV(filename: URI, progrm: Option[ProgrammView])(implicit event: ActionEvent) = {
-    import scala.concurrent.ExecutionContext.Implicits._
+    import scala.concurrent.ExecutionContext.Implicits.*
     import scala.util.{Failure, Success}
 
     val programms = progrm.map(p => service.readWettkampfLeafs(p.head.id)).toSeq.flatten
@@ -1488,7 +1490,7 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
   }
 
   def doPasteFromExcel(progrm: Option[ProgrammView])(implicit event: ActionEvent) = {
-    import scala.concurrent.ExecutionContext.Implicits._
+    import scala.concurrent.ExecutionContext.Implicits.*
     import scala.util.{Failure, Success}
     val athletModel = ObservableBuffer[(Long, Athlet, AthletView)]()
     val vereineList = service.selectVereine
@@ -2152,7 +2154,7 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
             new AthletSelectionDialog(
               text.value, wettkampfFilterDate, wettkampf.programm.alterVon, wettkampf.programm.alterBis, Set("W", "M"), wertungen.map(w => w.head.init.athlet), service,
               (selection: Set[Long]) => {
-                val athletMediaList: Set[(Long,Option[Media])] = selection.map(s => (s, None))
+                val athletMediaList: Set[(Long, Option[Media])] = selection.map(s => (s, None))
                 service.assignAthletsToWettkampf(wettkampf.id, Set(2, 3), athletMediaList, None)
                 reloadData()
               }
@@ -2195,7 +2197,7 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
           new AthletSelectionDialog(
             text.value, wettkampfFilterDate, progrm.alterVon, progrm.alterBis, sex, wertungen.map(w => w.head.init.athlet), service,
             (selection: Set[Long]) => {
-              val athletMediaList: Set[(Long,Option[Media])] = selection.map(s => (s, None))
+              val athletMediaList: Set[(Long, Option[Media])] = selection.map(s => (s, None))
               service.assignAthletsToWettkampf(wettkampf.id, Set(progrm.id), athletMediaList, None)
               reloadData()
             }

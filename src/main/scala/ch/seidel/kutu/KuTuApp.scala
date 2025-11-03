@@ -806,7 +806,7 @@ object KuTuApp extends JFXApp3 with KutuService with JsonSupport with JwtSupport
               else false
             }
           }
-          (tupel(0), tupel(1), CaseObjectMetaUtil.mergeMissingProperties(tupel(0), tupel(1)))
+          (tupel.head, tupel(1), CaseObjectMetaUtil.mergeMissingProperties(tupel.head, tupel(1)))
         }
       }
     }.onComplete {
@@ -2147,7 +2147,7 @@ object KuTuApp extends JFXApp3 with KutuService with JsonSupport with JwtSupport
                 }
               }
             case _ => (newItem.isLeaf, Option(newItem.getParent)) match {
-              case (true, Some(parent)) => {
+              case (true, Some(parent)) =>
                 tree.getThumbs(parent.getValue).find(p => p.button.text.getValue.equals(newItem.getValue)) match {
                   case Some(KuTuAppThumbNail(p: WettkampfView, _, newItem)) =>
                     btnWettkampfModus.disable.value = false
@@ -2161,41 +2161,40 @@ object KuTuApp extends JFXApp3 with KutuService with JsonSupport with JwtSupport
                           items += makeWettkampfDataDirectoryMenu(p)
                           items += makeWettkampfLoeschenMenu(p)
                         }
-                      case Some(KuTuAppThumbNail(v: Verein, _, newItem)) =>
-                        controlsView.contextMenu = new ContextMenu() {
-                          items += makeVereinUmbenennenMenu(v)
-                          items += makeVereinLoeschenMenu(v)
-                        }
-                      case _ => controlsView.contextMenu = new ContextMenu()
+                  case Some(KuTuAppThumbNail(v: Verein, _, newItem)) =>
+                    controlsView.contextMenu = new ContextMenu() {
+                      items += makeVereinUmbenennenMenu(v)
+                      items += makeVereinLoeschenMenu(v)
                     }
-                  }
                   case _ => controlsView.contextMenu = new ContextMenu()
                 }
-
-              }
-              val centerPane = (newItem.isLeaf, Option(newItem.getParent)) match {
-                case (true, Some(parent)) => {
-                  tree.getThumbs(parent.getValue).find(p => p.button.text.getValue.equals(newItem.getValue)) match {
-                    case Some(KuTuAppThumbNail(p: WettkampfView, _, newItem)) =>
-                      PageDisplayer.choosePage(modelWettkampfModus, Some(p), "dashBoard - " + newItem.getValue, tree)
-                    case Some(KuTuAppThumbNail(v: Verein, _, newItem)) =>
-                      PageDisplayer.choosePage(modelWettkampfModus, Some(v), "dashBoard - " + newItem.getValue, tree)
-                    case _ =>
-                      PageDisplayer.choosePage(modelWettkampfModus, None, "dashBoard - " + newItem.getValue, tree)
-                  }
-                }
-                case (false, Some(_)) =>
-                  PageDisplayer.choosePage(modelWettkampfModus, None, "dashBoard - " + newItem.getValue, tree)
-                case (_, _) =>
-                  PageDisplayer.choosePage(modelWettkampfModus, None, "dashBoard", tree)
-              }
-              if (splitPane.items.size > 1) {
-                splitPane.items.remove(1)
-              }
-              splitPane.items.add(1, centerPane)
+              case _ => controlsView.contextMenu = new ContextMenu()
             }
+
           }
+          val centerPane = (newItem.isLeaf, Option(newItem.getParent)) match {
+            case (true, Some(parent)) => {
+              tree.getThumbs(parent.getValue).find(p => p.button.text.getValue.equals(newItem.getValue)) match {
+                case Some(KuTuAppThumbNail(p: WettkampfView, _, newItem)) =>
+                  PageDisplayer.choosePage(modelWettkampfModus, Some(p), "dashBoard - " + newItem.getValue, tree)
+                case Some(KuTuAppThumbNail(v: Verein, _, newItem)) =>
+                  PageDisplayer.choosePage(modelWettkampfModus, Some(v), "dashBoard - " + newItem.getValue, tree)
+                case _ =>
+                  PageDisplayer.choosePage(modelWettkampfModus, None, "dashBoard - " + newItem.getValue, tree)
+              }
+            }
+            case (false, Some(_)) =>
+              PageDisplayer.choosePage(modelWettkampfModus, None, "dashBoard - " + newItem.getValue, tree)
+            case (_, _) =>
+              PageDisplayer.choosePage(modelWettkampfModus, None, "dashBoard", tree)
+          }
+          if (splitPane.items.size > 1) {
+            splitPane.items.remove(1)
+          }
+          splitPane.items.add(1, centerPane)
         }
+      }
+    }
 
     var divider: Option[Double] = None
     modelWettkampfModus.onChange {

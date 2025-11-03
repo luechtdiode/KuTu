@@ -2,19 +2,20 @@ package ch.seidel.kutu.view
 
 import ch.seidel.commons.{DisplayablePage, LazyTabPane}
 import ch.seidel.kutu.KuTuApp
-import ch.seidel.kutu.domain._
+import ch.seidel.kutu.domain.*
 import org.slf4j.LoggerFactory
-import scalafx.beans.binding.Bindings._
+import scalafx.beans.binding.Bindings.*
 import scalafx.beans.property.BooleanProperty
 import scalafx.event.subscriptions.Subscription
 import scalafx.scene.control.Tab
 
 object WettkampfPage {
   val logger = LoggerFactory.getLogger(this.getClass)
+
   def buildTab(wettkampfmode: BooleanProperty, wettkampfInfo: WettkampfInfo, service: KutuService) = {
     logger.debug("Start buildTab")
     val wettkampf = wettkampfInfo.wettkampf
-	  val progs = wettkampfInfo.leafprograms
+    val progs = wettkampfInfo.leafprograms
     val pathProgs = wettkampfInfo.parentPrograms
     logger.debug("Start Overview")
     val overview = new WettkampfOverviewTab(wettkampf, service)
@@ -23,20 +24,21 @@ object WettkampfPage {
       val leafHeadProgs = progs.filter(p => p.programPath.contains(v))
       val pgm = if (v.parent.nonEmpty) Some(v) else None
       new WettkampfWertungTab(wettkampfmode, pgm, None, wettkampfInfo, service, {
-          service.listAthletenWertungenZuProgramm(leafHeadProgs map (p => p.id), wettkampf.id)
-        }) {
-      val progHeader = if (v.parent.nonEmpty) v.name else ""
-      text <== when(wettkampfmode) choose s"Alle $progHeader Wertungen" otherwise s"Alle $progHeader"
-      closable = false
-    }})
-    val preferencesTab = new ScoreCalcTemplatesTab(wettkampf, service)// new PreferencesTab(wettkampfInfo, service)
+        service.listAthletenWertungenZuProgramm(leafHeadProgs map (p => p.id), wettkampf.id)
+      }) {
+        val progHeader = if (v.parent.nonEmpty) v.name else ""
+        text <== when(wettkampfmode) choose s"Alle $progHeader Wertungen" otherwise s"Alle $progHeader"
+        closable = false
+      }
+    })
+    val preferencesTab = new ScoreCalcTemplatesTab(wettkampf, service) // new PreferencesTab(wettkampfInfo, service)
 
     logger.debug("Start Program Tabs")
     val progSites: Seq[Tab] = (progs map { v =>
       new WettkampfWertungTab(wettkampfmode, Some(v), None, wettkampfInfo, service, {
         service.listAthletenWertungenZuProgramm(progs map (p => p.id), wettkampf.id)
           .filter(w => w.wettkampfdisziplin.programm.programPath.contains(v))
-        }) {
+      }) {
         text = v.name
         closable = false
       }
@@ -66,45 +68,45 @@ object WettkampfPage {
       subscription = None
       overview.release
       preferencesTab.release
-      (progSites).foreach { t => 
+      (progSites).foreach { t =>
         t.asInstanceOf[WettkampfWertungTab].release
       }
-      ranglisteSite.foreach{t => 
+      ranglisteSite.foreach { t =>
         t.asInstanceOf[RanglisteTab].release
       }
-      riegenSite.foreach{t =>
+      riegenSite.foreach { t =>
         t.asInstanceOf[RiegenTab].release
       }
-      networkSite.foreach{t => 
+      networkSite.foreach { t =>
         t.asInstanceOf[NetworkTab].release
       }
     }
-    
+
     def refresher(pane: LazyTabPane): Seq[Tab] = {
       overview.setLazyPane(pane)
       preferencesTab.setLazyPane(pane)
-      (progSites).foreach { t => 
+      (progSites).foreach { t =>
         t.asInstanceOf[WettkampfWertungTab].setLazyPane(pane)
       }
       networkSite.foreach {
         t => t.asInstanceOf[NetworkTab].setLazyPane(pane)
       }
-      if(wettkampfmode.value) {
+      if (wettkampfmode.value) {
         Seq[Tab](overview) ++
-                networkSite ++ alleWertungenTabs ++ ranglisteSite
+          networkSite ++ alleWertungenTabs ++ ranglisteSite
       }
       else {
         Seq[Tab](overview, preferencesTab) ++
-                progSites ++ riegenSite ++ networkSite ++ ranglisteSite
+          progSites ++ riegenSite ++ networkSite ++ ranglisteSite
       }
     }
 
     val lazyPane = new LazyTabPane(refresher, () => releaser())
     subscription = Some(wettkampfmode.onChange {
-        KuTuApp.invokeWithBusyIndicator {
-          lazyPane.init()
-        }
-      })
+      KuTuApp.invokeWithBusyIndicator {
+        lazyPane.init()
+      }
+    })
     new WettkampfPage(lazyPane)
   }
 }
@@ -117,7 +119,7 @@ class WettkampfPage(tabPane: LazyTabPane)
     tabPane.init()
     tabPane
   }
-  
+
   override def release(): Unit = {
     tabPane.release()
   }

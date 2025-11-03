@@ -18,7 +18,7 @@ import java.io.IOException
 import java.util.prefs.Preferences
 import scala.collection.immutable.TreeMap
 
-object AppNavigationModel  {
+object AppNavigationModel {
   def create(service: KutuService): KuTuAppTree = new KuTuAppTree(service)
 }
 
@@ -26,7 +26,7 @@ object AppNavigationModel  {
  * Wettkampf (Home)
  *    - ATT Frühling 2015
  *    - Jugendcup 2015
- * Stammdaten
+ *      Stammdaten
  *    - Athlet (+Verein)
  *    - Programm (Athletiktest)
  *      - Programm (ATT Kraft)
@@ -51,7 +51,7 @@ object KuTuAppTree {
 class KuTuAppTree(service: KutuService) {
 
   lazy val thumbnails: Map[String, (List[KuTuAppThumbNail], Boolean, Int)] = createThumbnails()
-	lazy val tree: Map[String, (List[TreeItem[String]], Boolean, Int)] = createTree()
+  lazy val tree: Map[String, (List[TreeItem[String]], Boolean, Int)] = createTree()
 
   def getService = service
 
@@ -60,16 +60,16 @@ class KuTuAppTree(service: KutuService) {
    * This is used in UI
    */
   private def createTree(): Map[String, (List[TreeItem[String]], Boolean, Int)] = {
-    thumbnails map {group =>
+    thumbnails map { group =>
       group._1 -> (group._2._1.map(_.item), group._2._2, group._2._3)
     }
   }
 
   private def createThumbnails() = {
     // Sanity check, the listing mey not work when ScalaFX KuTuApp is packaged into a jar.
-//    val exampleRootFiles = examplePath.listFiles()
-//    if (exampleRootFiles == null)
-//      throw new IOException("Cannot list files in the example directory. May be caused by Issue #10.")
+    //    val exampleRootFiles = examplePath.listFiles()
+    //    if (exampleRootFiles == null)
+    //      throw new IOException("Cannot list files in the example directory. May be caused by Issue #10.")
 
     implicit val session = service.database.createSession()
     try {
@@ -85,18 +85,19 @@ class KuTuAppTree(service: KutuService) {
         throw new IOException("Unable to locate resource: " + vfilePath)
       }
       val vimage = new Image(vinputStream)
+
       def thmb(context: Any, path: String, node: String) = {
         val thmbitem = new TreeItem[String](node) {
           expanded = false
         }
         val img = new ImageView {
           context match {
-            case _:Verein        => image = vimage
-            case _:WettkampfView => image = wkimage
+            case _: Verein => image = vimage
+            case _: WettkampfView => image = wkimage
           }
         }
         val t = context match {
-          case wv: WettkampfView => f"${wv.titel}\n${wv.datum}%td.${wv.datum}%tm.${wv.datum}%tY\n${wv.programm.easyprint}"//wv.easyprint
+          case wv: WettkampfView => f"${wv.titel}\n${wv.datum}%td.${wv.datum}%tm.${wv.datum}%tY\n${wv.programm.easyprint}" //wv.easyprint
           case v: Verein => s"${v.name}${v.verband.map("\n(" + _ + ")").getOrElse("")}"
           case _ => node
         }
@@ -118,17 +119,18 @@ class KuTuAppTree(service: KutuService) {
         }
         KuTuAppThumbNail(context, button, thmbitem)
       }
+
       TreeMap(
-          "Wettkämpfe" -> (service.listWettkaempfeView.map { wk =>
-              thmb(wk, "Wettkämpfe", s"${wk.titel} ${wk.datum}")
-            }.toList, true, 1),
-            "Athleten" -> (service.selectVereine.map { a =>
-              thmb(a, "Athleten", s"${a.name}" + a.verband.map(v => s" ($v)").getOrElse(""))
-            }, false, 2)//,
-//          "Analysen" -> service.selectWertungen().map { d =>
-//              thmb("Analysen", s"d.wettkampfdisziplin.disziplin.name}%s")
-//            }.toList
-          )
+        "Wettkämpfe" -> (service.listWettkaempfeView.map { wk =>
+          thmb(wk, "Wettkämpfe", s"${wk.titel} ${wk.datum}")
+        }.toList, true, 1),
+        "Athleten" -> (service.selectVereine.map { a =>
+          thmb(a, "Athleten", s"${a.name}" + a.verband.map(v => s" ($v)").getOrElse(""))
+        }, false, 2) //,
+        //          "Analysen" -> service.selectWertungen().map { d =>
+        //              thmb("Analysen", s"d.wettkampfdisziplin.disziplin.name}%s")
+        //            }.toList
+      )
     }
     finally {
       session.close()
@@ -142,11 +144,11 @@ class KuTuAppTree(service: KutuService) {
    */
   def getTree: List[TreeItem[String]] =
     tree.toList.sortBy(_._2._3).map {
-    case (name, (items, exp, ord)) => new TreeItem[String](name) {
-      expanded = exp
-      children = items
+      case (name, (items, exp, ord)) => new TreeItem[String](name) {
+        expanded = exp
+        children = items
+      }
     }
-  }
 
   def getThumbs(keyName: String): List[KuTuAppThumbNail] =
     thumbnails.getOrElse(keyName, (List[KuTuAppThumbNail](), false, 0))._1
@@ -157,10 +159,10 @@ class KuTuAppTree(service: KutuService) {
     filter.isEmpty || filter.forall { txt =>
       thumb.item.value.value.toUpperCase.contains(txt) ||
         (thumb.context match {
-        case v: Verein => v.easyprint.toUpperCase.contains(txt)
-        case wv: WettkampfView => wv.easyprint.toUpperCase.contains(txt)
-        case _ => false
-      })
+          case v: Verein => v.easyprint.toUpperCase.contains(txt)
+          case wv: WettkampfView => wv.easyprint.toUpperCase.contains(txt)
+          case _ => false
+        })
     }
   }
 
@@ -202,7 +204,7 @@ class KuTuAppTree(service: KutuService) {
     children = value.map(_.button)
   }
 
-  private def createListViews(value: List[KuTuAppThumbNail])= {
+  private def createListViews(value: List[KuTuAppThumbNail]) = {
     val wkTable = new WettkampfTableView(value
       .filter(_.context.isInstanceOf[WettkampfView])
       .map(_.context.asInstanceOf[WettkampfView])) {
@@ -226,8 +228,9 @@ class KuTuAppTree(service: KutuService) {
       wkTable
     } else {
       val vereinTable = VereinTableView(value
-      .filter(_.context.isInstanceOf[Verein])
-      .map(_.context.asInstanceOf[Verein]))
+        .filter(_.context.isInstanceOf[Verein])
+        .map(_.context.asInstanceOf[Verein]))
+
       def openVerein(): Unit = {
         val verein = vereinTable.selectionModel.value.getSelectedItem
         value.find(n => n.context.equals(verein)).foreach { thmbitem =>

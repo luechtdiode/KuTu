@@ -213,7 +213,7 @@ object Config extends KuTuSSLContext {
     .map { p => p.address.toString.split(":") }
     .map(a => (a(0), a(a.length - 1))).headOption match {
     case Some((proxyConfigIp, proxyConfigPort)) =>
-      println(proxyConfigIp, proxyConfigPort)
+      println((proxyConfigIp, proxyConfigPort))
       (Some(proxyConfigIp), Some(proxyConfigPort))
     case _ => (None, Some("3128"))
   }
