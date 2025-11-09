@@ -1,54 +1,45 @@
 package ch.seidel.kutu.data
 
 import java.sql.Date
-
-import scala.reflect.runtime.universe._
+import scala.compiletime.*
+import scala.deriving.*
+import scala.quoted.*
+import scala.reflect.runtime.universe.*
 
 object CaseObjectMetaUtil {
-  val rm = reflect.runtime.universe.runtimeMirror(getClass.getClassLoader)
+  val rm = scala.reflect.runtime.universe.runtimeMirror(getClass.getClassLoader)
 
-  def toMap[T: TypeTag : reflect.ClassTag](instance: T) = {
-    val im = rm.reflect(instance)
-    getCaseMethods[T].collect {
-      case m: MethodSymbol => m.name.decodedName.toString -> im.reflectMethod(m).apply()
-    }.toMap
+  inline def toMap[T <: Product](instance: T)(using mirror: Mirror.ProductOf[T]): Map[String, Any] = {
+    val fieldnames = getCaseFieldNames
+    val fieldvalues = getCaseValues(instance)
+    fieldnames.zip(fieldvalues).toMap
   }
 
-  def copyWithValues[T: TypeTag : reflect.ClassTag](instance: T, values: Map[String, Any]): T = {
-    if (values.isEmpty) instance else {
-      val im = rm.reflect(instance)
-      val mergedValues = typeOf[T].members.collect {
-        case m: MethodSymbol if m.isCaseAccessor =>
-          im.reflectMethod(m).apply() match {
-            case value => values.get(m.name.decodedName.toString) match {
-              case Some(newvalue) => m.name.decodedName.toString -> newvalue
-              case None => m.name.decodedName.toString -> value
-            }
-          }
-      }.toMap
-      val (imn, _, applymethods) = getApplyMethod(typeOf[T].typeSymbol)
-      val (applym, params) = applymethods.map { m => (m, m.paramLists.find(_.size == mergedValues.size)) }
-        .find {
-          case (_, Some(_)) => true
-          case _ => false
-        }
-        .map { item =>
-          val (method: MethodSymbol, paramslist: Option[List[Symbol]]) = item
-          val iterable = paramslist match {
-            case Some(list) => list.map(param => mergedValues(param.name.decodedName.toString))
-            case _ => IndexedSeq.empty
-          }
-          (method, iterable.toIndexedSeq)
-        }
-        .head
+  inline def getCaseFieldNames[T](using m: Mirror.ProductOf[T]): List[String] = constValue[m.MirroredElemLabels].toString.split(',').map(_.trim).toList
 
-      imn.reflectMethod(applym)(params: _*).asInstanceOf[T]
+  inline def getCaseValues[T <: Product](instance: T)(using mirror: Mirror.ProductOf[T]): List[Any] = Tuple.fromProductTyped(instance).productIterator.toList
+
+  inline def copyWithValues[T <: Product](instance: T, values: Map[String, Any])(using m: Mirror.ProductOf[T]): T = {
+    if (values.isEmpty) instance else {
+      val currentMap = toMap(instance)
+      val mergedValues = currentMap.map { case (k, v) =>
+        k -> values.getOrElse(k, v)
+      }
+      
+      val elementLabels = constValue[m.MirroredElemLabels].toString.split(',').map(_.trim)
+      val params = elementLabels.map(label => mergedValues(label))
+      
+      m.fromProduct(new Product {
+        def canEqual(that: Any): Boolean = true
+        def productArity: Int = params.length
+        def productElement(n: Int): Any = params(n)
+      })
     }
   }
 
   type KeepLogicFn[T] = String => Option[(T, T) => T]
 
-  def defaultKeepLogic[T: TypeTag : reflect.ClassTag](propertyname: String): Option[(T, T) => T] = {
+  def defaultKeepLogic[T](propertyname: String): Option[(T, T) => T] = {
     propertyname match {
       case "id" => Some((v1, _) => v1)
       case "activ" => Some((v1, _) => v1)
@@ -70,7 +61,7 @@ object CaseObjectMetaUtil {
     }
   }
 
-  def mergeMissingProperties[T: TypeTag : reflect.ClassTag](keeping: T, toDelete: T, keepLogic: KeepLogicFn[Any] = defaultKeepLogic): T = {
+  def mergeMissingProperties[T <: Product](keeping: T, toDelete: T, keepLogic: KeepLogicFn[Any] = defaultKeepLogic)(using m: Mirror.ProductOf[T]): T = {
     val keepingAttributesMap: Map[String, Any] = toMap(keeping)
     val toDeletAttributesMap: Map[String, Any] = toMap(toDelete)
     val mergegdMap: Map[String, Any] = keepingAttributesMap.map { pair =>
@@ -83,7 +74,7 @@ object CaseObjectMetaUtil {
           case (None, Some(o2)) => Some(o2)
           case (None, None) => None
           case (b1: Boolean, b2: Boolean) => b1 || b2
-          case (s1: String, s2: String) => if (s1.trim.length == 0) s2 else s1
+          case (s1: String, s2: String) => if (s1.trim.isEmpty) s2 else s1
           case (n1: Number, n2: Number) => if (n1.intValue() == 0) n2 else n1
           case (c1, c2) => if (c1.toString.compareTo(c2.toString) > 0) c1 else c2
         }
@@ -92,12 +83,12 @@ object CaseObjectMetaUtil {
       (k, keepingValue)
     }
 
-    CaseObjectMetaUtil.copyWithValues(keeping, mergegdMap)
+    copyWithValues(keeping, mergegdMap)
   }
 
-  def getCaseMethods[T: TypeTag]: Seq[MethodSymbol] = typeOf[T].members.collect {
-    case m: MethodSymbol if m.isCaseAccessor => m
-  }.toList
+/*
+  inline def getCaseAccessors[T](using m: Mirror.ProductOf[T]): List[String] = 
+    constValue[m.MirroredElemLabels].toString.split(',').map(_.trim).toList
 
   private def getApplyMethod(sym: Symbol): (InstanceMirror, Type, List[MethodSymbol]) = {
     val instanceMirror = rm.reflect(rm.reflectModule(sym.asClass.companion.asModule).instance)
@@ -106,4 +97,6 @@ object CaseObjectMetaUtil {
 
     (instanceMirror, typeSignature, applyMethods)
   }
+
+ */
 }
