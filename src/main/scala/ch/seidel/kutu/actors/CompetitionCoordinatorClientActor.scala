@@ -766,7 +766,7 @@ object CompetitionCoordinatorClientActor extends JsonSupport with EnrichedJson {
   } catch {
     case e: Exception =>
       //logger.debug("unparsable json mapped to MessageAck: " + text, e)
-      println("unparsable json mapped to MessageAck: " + text, e)
+      println(("unparsable json mapped to MessageAck: " + text, e))
       e.printStackTrace()
       MessageAck(text)
   }
