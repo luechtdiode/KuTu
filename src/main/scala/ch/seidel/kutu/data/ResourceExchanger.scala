@@ -1,17 +1,17 @@
 package ch.seidel.kutu.data
 
-import ch.seidel.kutu.actors.{MediaPlayerAction, _}
+import ch.seidel.kutu.actors.{MediaPlayerAction, *}
 import ch.seidel.kutu.calc.{ScoreAggregateFn, ScoreCalcTemplate, ScoreCalcTemplateView, TemplateViewJsonReader}
-import ch.seidel.kutu.data.CaseObjectMetaUtil._
-import ch.seidel.kutu.domain._
+import ch.seidel.kutu.data.CaseObjectMetaUtil.*
+import ch.seidel.kutu.domain.*
 import ch.seidel.kutu.renderer.PrintUtil
 import ch.seidel.kutu.squad.RiegenBuilder
-import ch.seidel.kutu.view._
+import ch.seidel.kutu.view.*
 import ch.seidel.kutu.{Config, KuTuApp}
 import org.slf4j.LoggerFactory
 import slick.jdbc
 
-import java.io._
+import java.io.*
 import java.math.BigInteger
 import java.security.{DigestInputStream, MessageDigest}
 import java.sql.Timestamp
@@ -19,10 +19,12 @@ import java.time.Instant
 import java.time.format.DateTimeFormatter
 import java.util.zip.{ZipEntry, ZipInputStream, ZipOutputStream}
 import java.util.{Base64, UUID}
+import scala.compiletime.{constValue, constValueTuple}
 import scala.concurrent.Await
 import scala.concurrent.duration.Duration
+import scala.deriving.Mirror
 import scala.io.Source
-import scala.reflect.runtime.universe._
+import scala.reflect.runtime.universe.*
 
 /**
  */
@@ -972,36 +974,31 @@ object ResourceExchanger extends KutuService with RiegenBuilder {
     zip.close()
   }
 
-  def getHeader[T: TypeTag]: String = {
-    val fields = getCaseMethods[T]
-    fields.map(f => "\"" + f.name.encodedName + "\"").mkString(",")
-  }
+  inline def getHeader[T](using m: Mirror.ProductOf[T]): String =
+    constValueTuple[m.MirroredElemLabels].toList.asInstanceOf[List[String]].map(fieldname => "\"" + fieldname + "\"").mkString(",")
 
-  def getValues[T: TypeTag : reflect.ClassTag](instance: T): String = {
-    val im = rm.reflect(instance)
-    val values = typeOf[T].members.collect {
-      case m: MethodSymbol if m.isCaseAccessor =>
-        im.reflectMethod(m).apply() match {
-          case Some(verein: Verein) => s"${verein.id}"
-          case Some(wk: Wettkampf) => s"${wk.id}"
-          case Some(programm: Programm) => s"${programm.id}"
-          case Some(athlet: Athlet) => s"${athlet.id}"
-          case Some(athlet: AthletView) => s"${athlet.id}"
-          case Some(disziplin: Disziplin) => s"${disziplin.id}"
-          case Some(media: Media) => enc.encodeToString(mediaFormat.write(media).compactPrint.getBytes)
-          //case Some(media: MediaAdmin) => enc.encodeToString(mediaAdminFormat.write(media).compactPrint.getBytes)
-          case Some(template: ScoreCalcTemplateView) => enc.encodeToString(scoreCalcTemplateViewFormat.write(template).compactPrint.getBytes)
-          case Some(ts: Timestamp) =>
-            import java.time.format.DateTimeFormatter
-            import java.util.TimeZone
-            var formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss.SSSSSS")
-            formatter = formatter.withZone(TimeZone.getTimeZone("UTC").toZoneId)
-            formatter.format(ts.toInstant)
-          case Some(value) => value.toString
-          case None => ""
-          case null => ""
-          case e => e.toString
-        }
+  def getValues[T <: Product](instance: T)(using m: Mirror.ProductOf[T]): String = {
+    val caseValues = getCaseValues(instance)
+    val values = caseValues.collect {
+      case Some(verein: Verein) => s"${verein.id}"
+      case Some(wk: Wettkampf) => s"${wk.id}"
+      case Some(programm: Programm) => s"${programm.id}"
+      case Some(athlet: Athlet) => s"${athlet.id}"
+      case Some(athlet: AthletView) => s"${athlet.id}"
+      case Some(disziplin: Disziplin) => s"${disziplin.id}"
+      case Some(media: Media) => enc.encodeToString(mediaFormat.write(media).compactPrint.getBytes)
+      //case Some(media: MediaAdmin) => enc.encodeToString(mediaAdminFormat.write(media).compactPrint.getBytes)
+      case Some(template: ScoreCalcTemplateView) => enc.encodeToString(scoreCalcTemplateViewFormat.write(template).compactPrint.getBytes)
+      case Some(ts: Timestamp) =>
+        import java.time.format.DateTimeFormatter
+        import java.util.TimeZone
+        var formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss.SSSSSS")
+        formatter = formatter.withZone(TimeZone.getTimeZone("UTC").toZoneId)
+        formatter.format(ts.toInstant)
+      case Some(value) => value.toString
+      case None => ""
+      case null => ""
+      case e => e.toString
     }
     values.map("\"" + _ + "\"").mkString(",")
   }
