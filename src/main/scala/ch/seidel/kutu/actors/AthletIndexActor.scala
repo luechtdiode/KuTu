@@ -13,6 +13,7 @@ import java.util
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 import scala.concurrent.duration.DurationInt
+import scala.concurrent.duration.FiniteDuration.*
 import scala.util.control.NonFatal
 import scala.util.{Failure, Success}
 
@@ -109,7 +110,7 @@ class AthletIndexActorSupervisor extends Actor with ActorLogging {
     log.info("Starting AthletIndexActorSupervisor")
     super.preStart()
 
-    implicit val timeout = Timeout(30000 milli)
+    implicit val timeout: Timeout = Timeout(30000 milli)
     system.actorSelection(s"user/AthletIndex").resolveOne().onComplete {
       case Success(actorRef) =>
         athletIndexActor = Some(actorRef)
@@ -151,7 +152,8 @@ object AthletIndexActor {
   val supervisor = system.actorOf(Props[AthletIndexActorSupervisor](), name = "AthletIndex-Supervisor")
 
   def publish(action: AthletIndexAction): Future[AthletIndexEvent] = {
-    implicit val timeout = Timeout(31000 milli)
+    import scala.concurrent.duration.FiniteDuration.*
+    implicit val timeout: Timeout = Timeout(31000 milli)
     (supervisor ? action).mapTo[AthletIndexEvent]
   }
 
