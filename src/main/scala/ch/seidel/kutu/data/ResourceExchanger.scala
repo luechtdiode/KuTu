@@ -24,7 +24,6 @@ import scala.concurrent.Await
 import scala.concurrent.duration.Duration
 import scala.deriving.Mirror
 import scala.io.Source
-import scala.reflect.runtime.universe.*
 
 /**
  */

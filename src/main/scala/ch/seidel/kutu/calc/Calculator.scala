@@ -1,6 +1,7 @@
 package ch.seidel.kutu.calc
 
-import ch.seidel.kutu.calc.parser._
+import ch.seidel.kutu.calc.ScoreAggregateFn.*
+import ch.seidel.kutu.calc.parser.*
 import ch.seidel.kutu.domain.{Resultat, Wertung, WettkampfdisziplinView}
 
 case class Calculator(template: ScoreCalcTemplate) {

@@ -333,7 +333,8 @@
 		<buildDate>${maven.build.timestamp}</buildDate>
 		<maven.build.timestamp.format>yyyy-MM-dd HH:mm</maven.build.timestamp.format>
 		<jdk-home>${JAVA_HOME}</jdk-home>
-		<scala.majorversion>2.13</scala.majorversion>
+		<_scala.majorversion>2.13</_scala.majorversion>
+		<scala.majorversion>3</scala.majorversion>
 		<_scala.version>2.13.17</_scala.version>
 		<scala.version>3.7.3</scala.version>
 		<javafx.version>21.0.4</javafx.version>
@@ -437,7 +438,7 @@
 		</dependency>
 		<dependency>
 			<groupId>org.scala-lang.modules</groupId>
-			<artifactId>scala-parser-combinators_2.13</artifactId>
+			<artifactId>scala-parser-combinators_${scala.majorversion}</artifactId>
 			<version>2.4.0</version>
 		</dependency>
 		<!--dependency>
