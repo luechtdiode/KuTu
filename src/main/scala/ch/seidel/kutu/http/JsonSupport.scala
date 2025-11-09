@@ -16,7 +16,7 @@ trait JsonSupport extends SprayJsonSupport with EnrichedJson {
   implicit val pgmFormat: RootJsonFormat[ProgrammRaw] = jsonFormat10(ProgrammRaw.apply)
   implicit val disziplinFormat: RootJsonFormat[Disziplin] = jsonFormat2(Disziplin.apply)
   implicit val scoreCalcVariableFormat: RootJsonFormat[ScoreCalcVariable] = jsonFormat6(ScoreCalcVariable.apply)
-  implicit val scoreAggrFnFormat: RootJsonFormat[ScoreAggregateFn] = new CaseObjectJsonSupport[ScoreAggregateFn]
+  implicit val scoreAggrFnFormat: RootJsonFormat[ScoreAggregateFn] = CaseObjectJsonSupport(ScoreAggregateFn)
   implicit val scoreCalcTemplateFormat: RootJsonFormat[ScoreCalcTemplate] = jsonFormat(ScoreCalcTemplate.apply,
     "id", "wettkampfId", "disziplinId", "wettkampfdisziplinId", "dFormula", "eFormula", "pFormula", "aggregateFn")
   implicit val scoreCalcTemplateViewFormat: RootJsonFormat[ScoreCalcTemplateView] = jsonFormat10(ScoreCalcTemplateView.apply)

@@ -1,5 +1,8 @@
 package ch.seidel.kutu.http
 
+import ch.seidel.kutu.calc.ScoreAggregateFn
+import ch.seidel.kutu.data.CaseObjectMetaUtil.getClass
+
 import java.nio.charset.StandardCharsets
 import java.security.spec.InvalidKeySpecException
 import java.security.{MessageDigest, NoSuchAlgorithmException, SecureRandom}
@@ -125,16 +128,24 @@ trait EnrichedJson {
     }.toMap
   }
 
-  class CaseObjectJsonSupport[T: TypeTag : ClassTag] extends RootJsonFormat[T] {
-    val string2T: Map[JsValue, T] = string2trait[T]
+  case class CaseObjectJsonSupport[T](implicit ct: ClassTag[T]) extends RootJsonFormat[T] {
+    // We can rely on the automatically generated valueOf method provided by Java/Scala enums
+    val valueOfMethod: String => T = (name: String) => java.lang.Enum.valueOf(ct.runtimeClass.asInstanceOf[Class[T]], name)
 
-    def defaultValue: T = deserializationError(s"${implicitly[ClassTag[T]].runtimeClass.getCanonicalName} expected")
+    override def write(obj: T): JsValue = JsString(obj.name()) // Use .name() which is equivalent to .toString for enums
 
-    override def read(json: JsValue): T = string2T.getOrElse(json, defaultValue)
-
-    override def write(value: T): JsString = JsString(value.toString)
+    override def read(json: JsValue): T = json match {
+      case JsString(txt) =>
+        try {
+          valueOfMethod(txt)
+        } catch {
+          case _: IllegalArgumentException =>
+            deserializationError(s"'$txt' is not a valid value for enum ${ct.runtimeClass.getSimpleName}")
+        }
+      case somethingElse =>
+        deserializationError(s"Expected a JsString for enum ${ct.runtimeClass.getSimpleName} instead of $somethingElse")
+    }
   }
-
 }
 
 trait Hashing {

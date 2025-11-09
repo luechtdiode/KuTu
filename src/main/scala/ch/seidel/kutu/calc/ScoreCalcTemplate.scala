@@ -5,6 +5,9 @@ import ch.seidel.kutu.http.JsonSupport
 
 import scala.math.BigDecimal.RoundingMode
 
+enum ScoreAggregateFn:
+  case Min, Max, Avg, Sum
+
 object ScoreAggregateFn {
   def apply(fn: Option[String]): Option[ScoreAggregateFn] = fn.map{
     case "Min" => Min
@@ -15,15 +18,6 @@ object ScoreAggregateFn {
 
   def values: List[String] = List(Min,Max,Avg,Sum).map(_.toString)
 }
-sealed trait ScoreAggregateFn
-
-case object Min extends ScoreAggregateFn
-
-case object Max extends ScoreAggregateFn
-
-case object Avg extends ScoreAggregateFn
-
-case object Sum extends ScoreAggregateFn
 
 object ScoreCalcVariable_ {
   def apply(source: String, prefix: String, name: String, scale: Option[Int]): ScoreCalcVariable = scale match {
