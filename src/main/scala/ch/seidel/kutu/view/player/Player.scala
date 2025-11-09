@@ -215,12 +215,16 @@ object Player extends JFXApp3 {
   private def _handleMediaAction(action: MediaPlayerAction): Unit = action match {
     case a@AthletMediaAquire(wkuuid, athlet, wertung) =>
       if (lastAction.isEmpty) {
-        lastAction = Some(a)
-        clearPlayList()
         wertung.mediafile.flatMap(m => service.get.loadMedia(m.id)).foreach { media =>
           val title = s"${athlet.vorname} ${athlet.name} (${athlet.verein.map(_.name).getOrElse("")}), Boden - ${media.name}"
-          addToPlayList(title, media.computeFilePath(wettkampf.get).toURI.toASCIIString.toLowerCase)
-          show(title)
+          if (media.computeFilePath(wettkampf.get).exists()) {
+            lastAction = Some(a)
+            clearPlayList()
+            addToPlayList(title, media.computeFilePath(wettkampf.get).toURI.toASCIIString.toLowerCase)
+            show(title)
+          } else {
+            PageDisplayer.showWarnDialog(s"Der Titel $title konnte nicht geladen werden.", s"Die Datei ${media.computeFilePath(wettkampf.get).toURI.toASCIIString} konnte nicht gefunden werden!")
+          }
         }
       }
     case AthletMediaRelease(wkuuid,athlet, wertung) =>
@@ -479,9 +483,8 @@ object Player extends JFXApp3 {
     resetDisplay()
     if (playList.getSongs.nonEmpty && playList.getSongs.size() > songIndex) {
       val context = playList.getSongs.get(songIndex).getKey
-      val media = new Media(playList.getSongs.get(songIndex).getValue)
-      val player = new MediaPlayer(media)
-      mediaPlayer = player
+      val (media: Media, player: MediaPlayer) = initPlayerWithMedia(songIndex)
+      if (media == null) return
       player.seek(Duration.seconds(0))
       player.setAutoPlay(autoplay)
       player.setOnError(new Runnable() {
@@ -580,6 +583,19 @@ object Player extends JFXApp3 {
       }
 
       player.setAudioSpectrumListener(spectrumListener)
+    }
+  }
+
+  private def initPlayerWithMedia(songIndex: Int) = {
+    try {
+      val media = new Media(playList.getSongs.get(songIndex).getValue)
+      val player = new MediaPlayer(media)
+      mediaPlayer = player
+      (media, player)
+    } catch {
+      case e: Exception =>
+        PageDisplayer.showErrorDialog(s"Der gewünschte Titel konnte nicht geladen werden.")(e)
+        (null, mediaPlayer)
     }
   }
 

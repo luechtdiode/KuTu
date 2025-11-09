@@ -33,7 +33,8 @@ case class AthletHeaderPane(wettkampf: Wettkampf, service: KutuService, wkview: 
     text = " : "
     visible <== Bindings.createBooleanBinding(() =>
       !wkview.selectionModel().isEmpty && wkview.selectionModel().getSelectedItem.exists(we => we.init.wettkampfdisziplin.disziplin.name.equals("Boden")),
-      wkview.selectionModel().selectedItemProperty())
+      wkview.selectionModel().selectedItemProperty()
+    )
     styleClass += "toolbar-header"
   }
   val lblDisciplin = new Label() {
@@ -132,8 +133,8 @@ case class AthletHeaderPane(wettkampf: Wettkampf, service: KutuService, wkview: 
 
   val mediaButton = new MenuButton("♪ Bodenmusik") {
     visible <== Bindings.createBooleanBinding(() =>
-      !wkview.selectionModel().isEmpty && wkview.selectionModel().getSelectedItem.exists(we => we.init.wettkampfdisziplin.disziplin.name.equals("Boden")),
-      wkview.selectionModel().selectedItemProperty())
+      (!wettkampfmode.value || wkview.items.value.exists(p => p.exists(w => w.init.mediafile.nonEmpty))) && !wkview.selectionModel().isEmpty && wkview.selectionModel().getSelectedItem.exists(we => we.init.wettkampfdisziplin.disziplin.name.equals("Boden")),
+      wkview.selectionModel().selectedItemProperty(), wettkampfmode, wkview.items)
     items += KuTuApp.makeMenuAction("Media Player anzeigen ...") { (caption, action) =>
       Player.show()
     }
@@ -197,6 +198,7 @@ case class AthletHeaderPane(wettkampf: Wettkampf, service: KutuService, wkview: 
   HBox.setMargin(mediaButton, Insets(5d, 5d, 5d, 5d))
 
   def adjust: Unit = {
+    lblMedia.visible.value = this.mediaButton.visible.value
     assignMediaMenuItem.disable = isReadonly || wkview.selectionModel().isEmpty ||
       !wkview.selectionModel().getSelectedItem.exists(we => we.init.wettkampfdisziplin.disziplin.name.equals("Boden"))
     deleteMediaAssignmentMenuItem.disable = isReadonly || wkview.selectionModel().isEmpty ||

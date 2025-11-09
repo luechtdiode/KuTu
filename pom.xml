@@ -788,6 +788,7 @@
 						<jvmArg>-Xss2m</jvmArg>
 						<jvmArg>-XX:+UseParallelGC</jvmArg>
 						<jvmArg>-XX:MaxInlineLevel=20</jvmArg>
+						<jvmArg>--enable-native-access=ALL-UNNAMED</jvmArg>
 					</jvmArgs>
 				</configuration>
 			</plugin>
