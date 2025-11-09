@@ -67,9 +67,10 @@ class CompetitionCoordinatorClientActor(wettkampfUUID: String) extends Persisten
   private var pendingKeepAliveAck: Option[Int] = None
   private var openDurchgangJournal: Map[Option[String], List[AthletWertungUpdatedSequenced]] = Map.empty
   private var state: CompetitionState = CompetitionState()
+  private var lastMediaEvent: Option[MediaPlayerEvent] = None
   private var geraeteRigeListe: List[GeraeteRiege] = List.empty
   private var clientId: () => String = () => ""
-
+  private var currentPlayer: Option[(Iterable[ActorRef], UseMyMediaPlayer)] = None
   private val wkUUID: UUID = UUID.fromString(wettkampfUUID)
 
   def rebuildWettkampfMap(): Unit = {
@@ -235,6 +236,25 @@ class CompetitionCoordinatorClientActor(wettkampfUUID: String) extends Persisten
     case awu: AthletRemovedFromWettkampf => websocketProcessor(Some(sender()), awu)
     case awu: ScoresPublished => websocketProcessor(Some(sender()), awu)
 
+    case playerEvent: UseMyMediaPlayer =>
+      val ws: Option[ActorRef] = deviceWebsocketRefs.find(p => p._1.endsWith(playerEvent.context)).map(_._2)
+      currentPlayer.foreach(p => {
+        sendMediaEjectedEvent()
+        notifyWebSocketClients(None, MediaPlayerDisconnected(p._2.context), "")
+      })
+      currentPlayer = Some((ws, playerEvent))
+      notifyWebSocketClients(None, MediaPlayerIsReady(playerEvent.context), "")
+
+    case playerEvent: ForgetMyMediaPlayer if currentPlayer.exists(p => p._2.context.equals(playerEvent.context)) =>
+      sendMediaEjectedEvent()
+      currentPlayer = None
+      notifyWebSocketClients(None, MediaPlayerDisconnected(playerEvent.context), "")
+
+    case m: MediaPlayerAction => websocketProcessor(Some(sender()), m.asInstanceOf[KutuAppEvent])
+    case m: MediaPlayerEvent =>
+      lastMediaEvent = Some(m)
+      websocketProcessor(Some(sender()), m.asInstanceOf[KutuAppEvent])
+
     case fds: FinishDurchgangStation =>
       persist(DurchgangStationFinished(fds.wettkampfUUID, fds.durchgang, fds.geraet, fds.step)) { evt =>
         handleEvent(evt)
@@ -289,7 +309,7 @@ class CompetitionCoordinatorClientActor(wettkampfUUID: String) extends Persisten
       state.lastWertungenPerWKDisz(durchgang.getOrElse("")),
       state.lastWertungenPerDisz(durchgang.getOrElse("")),
       state.lastBestenResults)
-
+      lastMediaEvent.foreach(ref ! _)
 
     // system actions
     case KeepAlive =>
@@ -341,6 +361,23 @@ class CompetitionCoordinatorClientActor(wettkampfUUID: String) extends Persisten
       handleStop()
 
     case _ =>
+  }
+
+  private def sendMediaEjectedEvent(): Unit = {
+    lastMediaEvent.foreach {
+      case AthletMediaIsFree(media, context) =>
+        lastMediaEvent = Some(AthletMediaIsFree(media, context))
+      case AthletMediaIsAtStart(media, context) =>
+        lastMediaEvent = Some(AthletMediaIsFree(media, context))
+      case AthletMediaIsRunning(media, context) =>
+        lastMediaEvent = Some(AthletMediaIsFree(media, context))
+      case AthletMediaIsPaused(media, context) =>
+        lastMediaEvent = Some(AthletMediaIsFree(media, context))
+      case _ =>
+    }
+    lastMediaEvent.foreach(mediaEvent => {
+      websocketProcessor(Some(sender()), mediaEvent.asInstanceOf[KutuAppEvent])
+    })
   }
 
   private def checkDonation(): Unit = {
@@ -404,6 +441,15 @@ class CompetitionCoordinatorClientActor(wettkampfUUID: String) extends Persisten
         .labelValues(wettkampf.easyprint, dg.getOrElse("all"))
         .set(wsSend.get(dg).size)
     })
+    currentPlayer = currentPlayer.flatMap {
+      case (playerActorRefs, useMyMediaPlayerAction) =>
+        if (wsSend.isEmpty || deviceWebsocketRefs.exists(p => p._1.equals(useMyMediaPlayerAction.context) || playerActorRefs.exists(a => a.equals(stoppedWebsocket)))) {
+          notifyWebSocketClients(actorWithSameDeviceIdOfSender(), MediaPlayerDisconnected(useMyMediaPlayerAction.context), "")
+          None
+        } else {
+          Some((playerActorRefs, useMyMediaPlayerAction))
+        }
+    }
   }
 
   private def squashDurchgangEvents(durchgangNormalized: Option[String]) = {
@@ -482,6 +528,12 @@ class CompetitionCoordinatorClientActor(wettkampfUUID: String) extends Persisten
         CompetitionRegistrationClientActor.publish(RegistrationResync(wettkampf.uuid.get), "WK-Admin")
         notifyWebSocketClients(senderWebSocket, arw, "")
 
+      case mediaPlayerAction: MediaPlayerAction =>
+        notifyPlayerWebSocketClient(mediaPlayerAction)
+
+      case mediaPlayerEvent: MediaPlayerEvent =>
+        notifyWebSocketClients(senderWebSocket, mediaPlayerEvent, "")
+
       case _ =>
     }
     val s = sender()
@@ -490,6 +542,12 @@ class CompetitionCoordinatorClientActor(wettkampfUUID: String) extends Persisten
       os ! MessageAck("OK")
     })
   }
+
+  private def notifyPlayerWebSocketClient(toPublish: KutuAppEvent) = currentPlayer.foreach {
+      case (playerActorRefs, useMyMediaPlayerAction) =>
+        playerActorRefs.foreach(player => player ! toPublish)
+      case _ =>
+    }
 
   private def notifyWebSocketClients(
                                       senderWebSocket: Iterable[ActorRef],
@@ -707,7 +765,9 @@ object CompetitionCoordinatorClientActor extends JsonSupport with EnrichedJson {
     }
   } catch {
     case e: Exception =>
-      logger.debug("unparsable json mapped to MessageAck: " + text, e)
+      //logger.debug("unparsable json mapped to MessageAck: " + text, e)
+      println("unparsable json mapped to MessageAck: " + text, e)
+      e.printStackTrace()
       MessageAck(text)
   }
 

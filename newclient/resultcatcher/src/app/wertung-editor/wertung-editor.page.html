@@ -7,10 +7,26 @@
     <ion-title>{{geraetName()}}</ion-title>
     <ion-note slot="end"><div class="athlet">{{item.vorname + ' ' + item.name}}</div><div class="riege">{{wertung.riege}}</div></ion-note>
   </ion-toolbar>
+
 </ion-header>
 
 <ion-content>
-  <form #wertungsform="ngForm" (ngSubmit)="saveNext(wertungsform)" (keyup.enter)="saveNext(wertungsform)">
+    @if (isNetworkMediaPlayerAvailable && item.wertung?.mediafile) {
+      <ion-item>
+        <ion-icon slot="start" name="musical-notes-outline"></ion-icon>
+        <ion-button size="large" [disabled]="waiting || mediaButtonDisabled || currentMediaButtonDisabled"  color="primary" (click)='currentMediaAction()'>
+        <ion-icon slot="start" [attr.name]='currentMediaButtonIcon' />{{currentMediaButtonText}}</ion-button>
+        <ion-button slot="end" size="large" [disabled]="waiting || mediaButtonDisabled || currentMediaReleaseButtonDisabled"  color="danger" (click)='releaseMusic()'>
+        <ion-icon name="power-outline"></ion-icon></ion-button>
+      </ion-item>
+      <ion-item>
+        <ion-avatar slot="start"/>
+        <ion-note>
+          {{currentMediaState}}
+        </ion-note>
+      </ion-item>
+    }
+    <form #wertungsform="ngForm" (ngSubmit)="saveNext(wertungsform)" (keyup.enter)="saveNext(wertungsform)">
     @for (exercice of exercices; track exercice; let block = $index) {
       <ion-list>
         <ion-item-divider><h2>{{block +1}}. Übung</h2></ion-item-divider>
@@ -65,12 +81,9 @@
         <ion-item>
           An diesem Gerät macht {{item.vorname + ' ' + item.name}} Pause. Es können keine Resultate erfasst werden.
         </ion-item>
-      }
-      @if (editable()) {
+      } @else {
         <ion-button size="large" expand="block" type="submit" #btnSaveNext [disabled]="waiting || !wertungsform.valid" color="success">
         <ion-icon slot="start" name="arrow-forward-circle-outline" />Speichern & Weiter</ion-button>
-      }
-      @if (editable()) {
         <ion-button size="large" expand="block" [disabled]="waiting || !wertungsform.valid"  color="secondary" (click)='saveClose(wertungsform)'>
         <ion-icon slot="start" name="checkmark-circle" />Speichern</ion-button>
       }

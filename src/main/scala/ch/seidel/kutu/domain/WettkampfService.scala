@@ -801,6 +801,7 @@ trait WettkampfService extends DBService
       sqlu"""      delete from judgeregistration where vereinregistration_id in (select id from vereinregistration where wettkampf_id=${wettkampfid})""" >>
       sqlu"""      delete from vereinregistration where wettkampf_id=${wettkampfid}""" >>
       sqlu"""      delete from wettkampfmetadata where wettkampf_id=${wettkampfid}""" >>
+      sqlu"""      delete from media where not exists (select true from athletregistration ar where ar.media_id = media.id) and not exists (select true from wertung w where w.media_id = media.id)""" >>
       sqlu"""      delete from wettkampf where id=${wettkampfid}"""
   }
 
@@ -887,13 +888,13 @@ trait WettkampfService extends DBService
     }
   }
 
-  def assignAthletsToWettkampf(wettkampfId: Long, programmIds: Set[Long], withAthlets: Set[Long] = Set.empty, team: Option[Int]): Unit = {
+  def assignAthletsToWettkampf(wettkampfId: Long, programmIds: Set[Long], withAthlets: Set[(Long, Option[Media])] = Set.empty, team: Option[Int]): Unit = {
     val cache = scala.collection.mutable.Map[Long, ProgrammView]()
     val programs = programmIds map (p => readProgramm(p, cache))
     assignAthletsToWettkampfS(wettkampfId, programs, withAthlets, team)
   }
 
-  def assignAthletsToWettkampfS(wettkampfId: Long, programs: Set[ProgrammView], withAthlets: Set[Long] = Set.empty, team: Option[Int]): Unit = {
+  def assignAthletsToWettkampfS(wettkampfId: Long, programs: Set[ProgrammView], withAthlets: Set[(Long, Option[Media])] = Set.empty, team: Option[Int]): Unit = {
     if (withAthlets.nonEmpty) {
       val disciplines = Await.result(database.run {
         (sql"""
@@ -902,7 +903,8 @@ trait WettkampfService extends DBService
            """.as[Long]).withPinnedSession
       }, Duration.Inf)
 
-      withAthlets.foreach { aid =>
+      withAthlets.foreach { aidPair =>
+        val (aid, media) = aidPair
         disciplines.foreach { case disciplin =>
           Await.result(database.run {
             (
@@ -912,8 +914,8 @@ trait WettkampfService extends DBService
                  """ >>
               sqlu"""
                      insert into wertung
-                     (athlet_Id, wettkampfdisziplin_Id, wettkampf_Id, team)
-                     values (${aid}, ${disciplin}, ${wettkampfId}, ${team.getOrElse(0)})
+                     (athlet_Id, wettkampfdisziplin_Id, wettkampf_Id, team, media_id)
+                     values (${aid}, ${disciplin}, ${wettkampfId}, ${team.getOrElse(0)}, ${media.map(_.id)})
                 """).transactionally
           }, Duration.Inf)
         }
@@ -923,7 +925,7 @@ trait WettkampfService extends DBService
           sql"""
                    select wd.id, w.id from wertung w inner join wettkampfdisziplin wd on (w.wettkampfdisziplin_Id = wd.id)
                    where
-                     athlet_Id in (#${withAthlets.mkString(",")})
+                     athlet_Id in (#${withAthlets.map(_._1).mkString(",")})
                      and wettkampf_Id = $wettkampfId
               """.as[(Long, Long)].transactionally
         }, Duration.Inf)

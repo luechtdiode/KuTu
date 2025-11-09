@@ -33,6 +33,7 @@ case class WertungEditor(private var lastCommitted: WertungView) {
     case "W" => lastCommitted.wettkampfdisziplin.feminim > 0
     case _ => true
   }
+  val athletText = ObjectProperty[String](this, "athlet", "")
   val noteD = DoubleProperty(Double.NaN)
   val noteE = DoubleProperty(Double.NaN)
   val endnote = DoubleProperty(Double.NaN)
@@ -104,6 +105,17 @@ case class WertungEditor(private var lastCommitted: WertungView) {
     eFormula.value = lastCommitted.wettkampfdisziplin.notenSpez.template.map {
       _.eExpressions(allVars)
     }.getOrElse("")
+
+    athletText.value = {
+      val hasmedia = lastCommitted.mediafile.nonEmpty
+      s"${lastCommitted.athlet.vorname} ${lastCommitted.athlet.name} ${
+        (lastCommitted.athlet.gebdat match {
+          case Some(d) => f"$d%tY "
+          case _ => " "
+        })
+      }${if (hasmedia) " ♪" else ""}"
+    }
+
     calculatedWertung.value = wertung
     listeners.foreach(f => f(this))
   }

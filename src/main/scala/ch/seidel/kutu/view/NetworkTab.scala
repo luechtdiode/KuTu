@@ -3,12 +3,13 @@ package ch.seidel.kutu.view
 import ch.seidel.commons.{LazyTabPane, TabWithService}
 import ch.seidel.kutu.Config._
 import ch.seidel.kutu.KuTuApp.{enc, hostServices}
+import ch.seidel.kutu._
 import ch.seidel.kutu.actors._
 import ch.seidel.kutu.domain._
 import ch.seidel.kutu.http.WebSocketClient
 import ch.seidel.kutu.renderer.PrintUtil.FilenameDefault
-import ch.seidel.kutu.renderer.{BestenListeToHtmlRenderer, KategorieTeilnehmerToHtmlRenderer, PrintUtil, RiegenBuilder}
-import ch.seidel.kutu._
+import ch.seidel.kutu.renderer.{BestenListeToHtmlRenderer, PrintUtil, RiegenBuilder}
+import ch.seidel.kutu.view.player.Player
 import javafx.event.EventHandler
 import javafx.scene.{control => jfxsc}
 import scalafx.Includes._
@@ -23,7 +24,7 @@ import scalafx.print.PageOrientation
 import scalafx.scene.control.TreeTableColumn._
 import scalafx.scene.control._
 import scalafx.scene.image.{Image, ImageView}
-import scalafx.scene.layout.{BorderPane, Priority}
+import scalafx.scene.layout.{BorderPane, Priority, Region}
 
 import java.time.format.DateTimeFormatter
 import java.util.UUID
@@ -32,7 +33,6 @@ import scala.collection.immutable
 import scala.concurrent.Await
 import scala.concurrent.duration.Duration
 import scala.jdk.CollectionConverters
-import scala.jdk.FunctionConverters.enrichAsJavaFunction
 
 trait DurchgangItem
 
@@ -51,23 +51,23 @@ case class DurchgangState(wettkampfUUID: String, name: String, complete: Boolean
   val isRunning: Boolean = started > 0L && finished < started
   lazy val statsBase: immutable.Iterable[Int] = geraeteRiegen.groupBy(_.disziplin).filter(!_._1.get.isPause).map(_._2.map(_.kandidaten.size).sum)
   lazy val statsCompletedBase: immutable.Iterable[(Option[Disziplin], Int, Int, Int, List[(Int, Int, Int, Int)])] = geraeteRiegen.groupBy(gr => gr.disziplin)
-    .filter { d => !d._1.get.isPause}
+    .filter { d => !d._1.get.isPause }
     .map { gr =>
-    val (disziplin, grd) = gr
+      val (disziplin, grd) = gr
 
-    def hasWertungInDisciplin(wertungen: Seq[WertungView]) = wertungen.filter(w => disziplin.contains(w.wettkampfdisziplin.disziplin)).exists(_.endnote.nonEmpty)
+      def hasWertungInDisciplin(wertungen: Seq[WertungView]) = wertungen.filter(w => disziplin.contains(w.wettkampfdisziplin.disziplin)).exists(_.endnote.nonEmpty)
 
-    val grdStats = grd.groupBy(grds => grds.halt).map { grdsh =>
-      val totalCnt = grdsh._2.map(_.kandidaten.size).sum
-      val completedCnt = grdsh._2.map(_.kandidaten.count(k => hasWertungInDisciplin(k.wertungen))).sum
-      (grdsh._1, 100 * completedCnt / totalCnt, completedCnt, totalCnt)
-    }.toList.sortBy(grdsh => grdsh._1)
+      val grdStats = grd.groupBy(grds => grds.halt).map { grdsh =>
+        val totalCnt = grdsh._2.map(_.kandidaten.size).sum
+        val completedCnt = grdsh._2.map(_.kandidaten.count(k => hasWertungInDisciplin(k.wertungen))).sum
+        (grdsh._1, 100 * completedCnt / totalCnt, completedCnt, totalCnt)
+      }.toList.sortBy(grdsh => grdsh._1)
 
-    val totalCnt = gr._2.map(_.kandidaten.size).sum
-    val completedCnt = gr._2.map(_.kandidaten.count(k => hasWertungInDisciplin(k.wertungen))).sum
-    // (geraet, complete%, completeCnt, totalCnt, haltStats(halt, complete%, completeCnt, totalCnt))
-    (disziplin, 100 * completedCnt / totalCnt, completedCnt, totalCnt, grdStats)
-  }
+      val totalCnt = gr._2.map(_.kandidaten.size).sum
+      val completedCnt = gr._2.map(_.kandidaten.count(k => hasWertungInDisciplin(k.wertungen))).sum
+      // (geraet, complete%, completeCnt, totalCnt, haltStats(halt, complete%, completeCnt, totalCnt))
+      (disziplin, 100 * completedCnt / totalCnt, completedCnt, totalCnt, grdStats)
+    }
 
   lazy val anzValue: Int = statsBase.sum
 
@@ -113,6 +113,7 @@ class DurchgangStationView(wettkampf: WettkampfView, service: KutuService, diszi
   showRoot = false
   tableMenuButtonVisible = true
   var lastDizs: Seq[Disziplin] = Seq()
+
   def rebuildDiszColumns(disziplinlist: Seq[Disziplin]): Unit = {
     if (lastDizs.nonEmpty) {
       val diszCols = lastDizs.map(_.name)
@@ -165,7 +166,7 @@ class DurchgangStationView(wettkampf: WettkampfView, service: KutuService, diszi
   root = new TreeItem[DurchgangState]() {
     durchgangModel.onChange {
       val dml = durchgangModel.toList
-      rebuildDiszColumns(disziplinlist().filter{d =>
+      rebuildDiszColumns(disziplinlist().filter { d =>
         dml.exists(ti => ti.value.value.geraeteRiegen.exists(gr => gr.disziplin.contains(d)))
       })
       children = dml
@@ -253,6 +254,7 @@ class DurchgangStationView(wettkampf: WettkampfView, service: KutuService, diszi
   )
 
   rebuildDiszColumns(disziplinlist())
+
   private def toIcon(newValue: String) = {
     newValue match {
       case "100%" => okIcon
@@ -293,6 +295,7 @@ class NetworkTab(wettkampfmode: BooleanProperty, override val wettkampfInfo: Wet
   closable = false
   text = "Netzwerk-Dashboard"
 
+  Player.setWettkampf(wettkampfInfo.wettkampf.toWettkampf, service)
 
   val disziplinlist: List[Disziplin] = wettkampfInfo.disziplinList
 
@@ -312,74 +315,73 @@ class NetworkTab(wettkampfmode: BooleanProperty, override val wettkampfInfo: Wet
 
   val isRunning: BooleanProperty = BooleanProperty(false)
 
-  def refreshData(event: Option[KutuAppEvent] = None): Unit = {
-    val expandedStates = model
-      .filter(_.isExpanded)
-      .map(_.value.value.durchgang.title)
-      .toSet
-    val selected = view.selectionModel.value.selectedCells.toList.headOption
-    val newList: immutable.Seq[DurchgangState] = loadDurchgaenge
+  private def refreshData(): Unit = {
+      val expandedStates = model
+        .filter(_.isExpanded)
+        .map(_.value.value.durchgang.title)
+        .toSet
+      val selected = view.selectionModel.value.selectedCells.toList.headOption
+      val newList: immutable.Seq[DurchgangState] = loadDurchgaenge
 
-    import CollectionConverters._
+      import CollectionConverters._
 
-    val groupMap = newList.groupBy(d => d.durchgang.title)
-    val items: List[TreeItem[DurchgangState]] = for (group <- groupMap.keySet.toList.sorted) yield {
-      val dgList = groupMap(group).sortBy(_.name)
-      if (dgList.size > 1 || dgList.head.name != dgList.head.durchgang.title) {
-        val dgh = dgList.foldLeft(Durchgang())((acc, dg) => {
-          if (acc.planTotal > dg.durchgang.planTotal) acc else dg.durchgang
-        })
-        val groupDurchgangState = DurchgangState(
-          wettkampfUUID = dgList.head.wettkampfUUID,
-          name = dgh.title,
-          complete = dgList.forall(_.complete),
-          geraeteRiegen = dgList.flatMap(_.geraeteRiegen).toList,
-          durchgang = dgh)
-        new TreeItem[DurchgangState](groupDurchgangState) {
-          for (d <- dgList) {
-            children.add(new TreeItem[DurchgangState](d))
+      val groupMap = newList.groupBy(d => d.durchgang.title)
+      val items: List[TreeItem[DurchgangState]] = for (group <- groupMap.keySet.toList.sorted) yield {
+        val dgList = groupMap(group).sortBy(_.name)
+        if (dgList.size > 1 || dgList.head.name != dgList.head.durchgang.title) {
+          val dgh = dgList.foldLeft(Durchgang())((acc, dg) => {
+            if (acc.planTotal > dg.durchgang.planTotal) acc else dg.durchgang
+          })
+          val groupDurchgangState = DurchgangState(
+            wettkampfUUID = dgList.head.wettkampfUUID,
+            name = dgh.title,
+            complete = dgList.forall(_.complete),
+            geraeteRiegen = dgList.flatMap(_.geraeteRiegen).toList,
+            durchgang = dgh)
+          new TreeItem[DurchgangState](groupDurchgangState) {
+            for (d <- dgList) {
+              children.add(new TreeItem[DurchgangState](d))
+            }
+            expanded = expandedStates.contains(group)
           }
-          expanded = expandedStates.contains(group)
+        } else {
+          new TreeItem[DurchgangState](dgList.head) {
+            expanded = false
+          }
         }
-      } else {
-        new TreeItem[DurchgangState](dgList.head) {
-          expanded = false
-        }
-      }
-    }
-    if (model.isEmpty) {
-      model.setAll(items.asJavaCollection)
-    } else {
-      items.zip(model).foreach(pair => syncTreeItems(pair._1, pair._2))
-      if (items.size < model.size) {
-        model.removeRange(items.size, model.size-1)
       }
       if (model.isEmpty) {
-        val collection = items.asJavaCollection
-        model.setAll(collection)
+        model.setAll(items.asJavaCollection)
+      } else {
+        items.zip(model).foreach(pair => syncTreeItems(pair._1, pair._2))
+        if (items.size < model.size) {
+          model.removeRange(items.size, model.size - 1)
+        }
+        if (model.isEmpty) {
+          val collection = items.asJavaCollection
+          model.setAll(collection)
+        }
+        if (items.size > model.size) {
+          model.addAll(items.drop(model.size).asJavaCollection)
+        }
       }
-      if (items.size > model.size) {
-        model.addAll(items.drop(model.size).asJavaCollection)
-      }
-    }
 
-    isRunning.set(model.exists(_.getValue.isRunning))
-    selected.foreach(selection => {
-      if (selection.column > -1 && view.getColumns.size() > selection.column) {
-        val column = view.getColumns.get(selection.column)
-        view.selectionModel.value.select(selection.row, column)
-      }
-    })
-    updateButtons
+      isRunning.set(model.exists(_.getValue.isRunning))
+      selected.foreach(selection => {
+        if (selection.column > -1 && view.getColumns.size() > selection.column) {
+          val column = view.getColumns.get(selection.column)
+          view.selectionModel.value.select(selection.row, column)
+        }
+      })
   }
 
-  private def syncTreeItems(source: TreeItem[DurchgangState], target: TreeItem[DurchgangState]):Unit = {
+  private def syncTreeItems(source: TreeItem[DurchgangState], target: TreeItem[DurchgangState]): Unit = {
     if (!target.getValue.equals(source.getValue)) {
       target.value = source.getValue
     }
     source.children.zip(target.children).foreach(pair => syncTreeItems(pair._1, pair._2))
     if (source.children.size < target.children.size) {
-      target.children.removeRange(source.children.size, target.children.size-1)
+      target.children.removeRange(source.children.size, target.children.size - 1)
     }
     if (source.children.size > target.children.size) {
       target.children.addAll(source.children.drop(target.children.size))
@@ -398,6 +400,7 @@ class NetworkTab(wettkampfmode: BooleanProperty, override val wettkampfInfo: Wet
   onSelectionChanged = _ => {
     if (selected.value) {
       refreshData()
+      updateButtons()
     }
   }
 
@@ -670,6 +673,55 @@ class NetworkTab(wettkampfmode: BooleanProperty, override val wettkampfInfo: Wet
     }
   }
 
+  def makePlayMediaMenu(p: WettkampfView, cleanCache: Boolean = false): Menu = {
+    new Menu("Playlist ...") {
+      def addMediaPlaylistItems(durchgang: DurchgangState, column: DurchgangStationTCAccess): Unit = {
+        val disziplin = column.getDisziplin
+        val selection = durchgang.geraeteRiegen.filter {
+          _.disziplin.contains(disziplin)
+        }
+        items = selection.filter(gr => !gr.erfasst).take(1).flatMap {
+          geraeteRiege =>
+            if (cleanCache) {
+              geraeteRiege.resetMediaListCache()
+            }
+            val mediaList = geraeteRiege.getMediaList(p.toWettkampf, service.loadMedia)
+            mediaList.map { case (_, wertung, title, _) =>
+              makeMenuAction(title + " ...") { (caption, action) =>
+                Player.clearPlayList()
+                mediaList.foreach { case (_, _, title, mediaURI) =>
+                  Player.addToPlayList(title, mediaURI.toASCIIString.toLowerCase)
+                }
+                Player.load(title, AthletMediaAquire(wertung.wettkampf.uuid.get, wertung.athlet, wertung.toWertung))
+              }
+            }
+        }.take(3)
+      }
+
+      items.clear()
+      view.selectionModel.value.selectedCells.toList.headOption match {
+        case None =>
+        case Some(cell) if cell.treeItem != null && cell.treeItem.getValue != null =>
+          cell.getTableColumn match {
+            case column: DurchgangStationTCAccess =>
+              addMediaPlaylistItems(cell.treeItem.getValue, column)
+            case _ => if (cell.getTableColumn.parentColumn.value != null && cell.getTableColumn.parentColumn.value.columns.size == 2) {
+              val col = cell.getTableColumn.getParentColumn.getColumns.head
+              col match {
+                case column: DurchgangStationJFSCTreeTableColumn[_] =>
+                  addMediaPlaylistItems(cell.treeItem.getValue, column)
+                case column: DurchgangStationTCAccess =>
+                  addMediaPlaylistItems(cell.treeItem.getValue, column)
+                case _ =>
+              }
+            }
+          }
+        case _ =>
+      }
+      disable = items.size() == 0
+    }
+  }
+
   val qrcodeMenu: MenuItem = KuTuApp.makeShowQRCodeMenu(wettkampf)
   val connectAndShareMenu: MenuItem = KuTuApp.makeConnectAndShareMenu(wettkampf)
 
@@ -737,14 +789,48 @@ class NetworkTab(wettkampfmode: BooleanProperty, override val wettkampfInfo: Wet
   val btnEditRiege: MenuButton = new MenuButton("Gehe zu ...") {
     disable <== when(createBooleanBinding(() => items.isEmpty, items)) choose true otherwise false
   }
+  val btnMediaPlayer: MenuButton = new MenuButton("Mediaplayer ...") {
+    disable <== when(createBooleanBinding(() => items.isEmpty, items)) choose true otherwise false
+    delegate.showingProperty().addListener((_, _, newvalue) =>  {
+      if (newvalue) updateButtons(refreshToolbar = false)
+    })
+  }
   val btnDurchgang: MenuButton = new MenuButton("Durchgang ...") {
     disable <== when(createBooleanBinding(() => items.isEmpty, items)) choose true otherwise false
+    delegate.showingProperty().addListener((_, _, newvalue) =>  {
+      if (newvalue) updateButtons(refreshToolbar = false, refreshMedia = false)
+    })
+  }
+  view.onContextMenuRequested = _ => {
+    updateButtons(refreshToolbar = false)
   }
 
-  def updateButtons: Unit = {
+  def updateButtons(refreshToolbar: Boolean = true, refreshMedia: Boolean = true): Unit = {
     val navigate = makeNavigateToMenu(wettkampf)
+    val mediaItems = makePlayMediaMenu(wettkampf, refreshMedia)
     btnEditRiege.items.clear()
     btnEditRiege.items.addAll(navigate.items)
+
+    btnMediaPlayer.items.clear()
+    btnMediaPlayer.items += KuTuApp.makeMenuAction("Media Player anzeigen ...") { (caption, action) =>
+      Player.show()
+    }
+    // graphic for displaying checkmark// graphic for displaying checkmark
+    if (!wettkampf.toWettkampf.isReadonly(homedir, remoteHostOrigin)) {
+      val checkmark = new Region()
+      checkmark.getStyleClass.add("check-mark")
+      checkmark.visible <== Player.isNetworkMediaPlayer
+
+      val checkIsUseMyMediaPlayerMenuItem = new MenuItem("Media Player den Wertungsrichtern freigeben", checkmark) {
+        onAction = handleAction { _: ActionEvent =>
+          Player.useMyMediaPlayerAsNetworkplayer(!Player.isNetworkMediaPlayer.getValue)
+        }
+      }
+
+      btnMediaPlayer.items += checkIsUseMyMediaPlayerMenuItem
+    }
+    btnMediaPlayer.items += new SeparatorMenuItem()
+    btnMediaPlayer.items.addAll(mediaItems.items)
 
     if (!wettkampf.toWettkampf.isReadonly(homedir, remoteHostOrigin)) {
       btnDurchgang.items.clear()
@@ -767,6 +853,7 @@ class NetworkTab(wettkampfmode: BooleanProperty, override val wettkampfInfo: Wet
         items += makeSelectedDurchgangTeilnehmerExport()
         items += new SeparatorMenuItem()
         items += makeSelectedRiegenBlaetterExport()
+        if (mediaItems.items.nonEmpty) items += mediaItems
         items += navigate
         items += makeMenuAction("Bestenliste erstellen") { (_, action) =>
           generateBestenliste.onAction.value.handle(action)
@@ -775,53 +862,57 @@ class NetworkTab(wettkampfmode: BooleanProperty, override val wettkampfInfo: Wet
         items += makeDurchgangAbschliessenMenu(wettkampf)
         items += makeDurchgangResetMenu(wettkampf)
       }
-      toolbar.content = List(
-        new Button {
-          onAction = connectAndShareMenu.onAction.get
-          text <== connectAndShareMenu.text
-          disable <== connectAndShareMenu.disable
-        }, new Button {
-          onAction = qrcodeMenu.onAction.get
-          text <== qrcodeMenu.text
-          disable <== qrcodeMenu.disable
-        }, btnDurchgang, btnEditRiege, new Button {
-          onAction = uploadMenu.onAction.get
-          text <== uploadMenu.text
-          disable <== uploadMenu.disable
-          visible <== when(wettkampfmode) choose false otherwise true
-        }, new Button {
-          onAction = downloadMenu.onAction.get
-          text <== downloadMenu.text
-          disable <== downloadMenu.disable
-          visible <== when(wettkampfmode) choose false otherwise true
-        }, new Button {
-          onAction = disconnectMenu.onAction.get
-          text <== disconnectMenu.text
-          disable <== disconnectMenu.disable
-        }, new Button {
-          onAction = removeRemoteMenu.onAction.get
-          text <== removeRemoteMenu.text
-          disable <== removeRemoteMenu.disable
-          visible <== when(wettkampfmode) choose false otherwise true
-        }).filter(_.isVisible)
+      if (refreshToolbar) {
+        toolbar.content = List(
+          new Button {
+            onAction = connectAndShareMenu.onAction.get
+            text <== connectAndShareMenu.text
+            disable <== connectAndShareMenu.disable
+          }, new Button {
+            onAction = qrcodeMenu.onAction.get
+            text <== qrcodeMenu.text
+            disable <== qrcodeMenu.disable
+          }, btnDurchgang, btnEditRiege, btnMediaPlayer, new Button {
+            onAction = uploadMenu.onAction.get
+            text <== uploadMenu.text
+            disable <== uploadMenu.disable
+            visible <== when(wettkampfmode) choose false otherwise true
+          }, new Button {
+            onAction = downloadMenu.onAction.get
+            text <== downloadMenu.text
+            disable <== downloadMenu.disable
+            visible <== when(wettkampfmode) choose false otherwise true
+          }, new Button {
+            onAction = disconnectMenu.onAction.get
+            text <== disconnectMenu.text
+            disable <== disconnectMenu.disable
+          }, new Button {
+            onAction = removeRemoteMenu.onAction.get
+            text <== removeRemoteMenu.text
+            disable <== removeRemoteMenu.disable
+            visible <== when(wettkampfmode) choose false otherwise true
+          }).filter(_.isVisible)
+      }
     } else {
       view.contextMenu = new ContextMenu() {
         items += navigate
       }
-      toolbar.content = List(
-        new Button {
-          onAction = connectAndShareMenu.onAction.get
-          text <== connectAndShareMenu.text
-          disable <== connectAndShareMenu.disable
-        }, btnEditRiege, new Button {
-          onAction = downloadMenu.onAction.get
-          text <== downloadMenu.text
-          disable <== downloadMenu.disable
-        }, new Button {
-          onAction = disconnectMenu.onAction.get
-          text <== disconnectMenu.text
-          disable <== disconnectMenu.disable
-        })
+      if (refreshToolbar) {
+        toolbar.content = List(
+          new Button {
+            onAction = connectAndShareMenu.onAction.get
+            text <== connectAndShareMenu.text
+            disable <== connectAndShareMenu.disable
+          }, btnEditRiege, btnMediaPlayer, new Button {
+            onAction = downloadMenu.onAction.get
+            text <== downloadMenu.text
+            disable <== downloadMenu.disable
+          }, new Button {
+            onAction = disconnectMenu.onAction.get
+            text <== disconnectMenu.text
+            disable <== disconnectMenu.disable
+          })
+      }
     }
   }
 
@@ -829,7 +920,7 @@ class NetworkTab(wettkampfmode: BooleanProperty, override val wettkampfInfo: Wet
   view.selectionModel().setSelectionMode(SelectionMode.Single)
   view.selectionModel().setCellSelectionEnabled(true)
   view.selectionModel().getSelectedCells.onChange { (_, _) =>
-    updateButtons
+    updateButtons(refreshToolbar = false, refreshMedia = false)
   }
   content = rootpane
 
@@ -839,10 +930,14 @@ class NetworkTab(wettkampfmode: BooleanProperty, override val wettkampfInfo: Wet
       println("subscribing for network modus changes")
       subscriptions = subscriptions :+ KuTuApp.modelWettkampfModus.onChange { (_, _, newItem) =>
         println("refreshing Wettkampfmodus", newItem)
-        updateButtons
+        updateButtons()
       }
       println("subscribing for refreshing from websocket")
+      //subscriptions = subscriptions :+ WebSocketClient.modelWettkampfWertungChanged.onChange { (_, _, newItem) => refreshData(scope=Some(newItem)) }
       subscriptions = subscriptions :+ WebSocketClient.modelWettkampfWertungChanged.onChange { (_, _, newItem) =>
+       // if (selected.value) {
+       // println("refreshing network-dashboard from websocket", newItem)
+
         newItem match {
           case be: BulkEvent if be.events.forall {
             case DurchgangStarted(_, _, _) => true
@@ -850,36 +945,32 @@ class NetworkTab(wettkampfmode: BooleanProperty, override val wettkampfInfo: Wet
             case DurchgangResetted(_, _) => true
             case _ => false
           } =>
-            println("refreshing network-dashboard from websocket", newItem)
             refreshData()
 
           case ds: DurchgangStarted =>
-            println("refreshing network-dashboard from websocket", newItem)
-            refreshData(Some(ds))
+            refreshData()
           //      case StationWertungenCompleted(wertungen: List[UpdateAthletWertung]) =>
           case df: DurchgangFinished =>
-            println("refreshing network-dashboard from websocket", newItem)
-            refreshData(Some(df))
+            refreshData()
           case dr: DurchgangResetted =>
-            println("refreshing network-dashboard from websocket", newItem)
-            refreshData(Some(dr))
+            refreshData()
           case AthletWertungUpdated(ahtlet: AthletView, wertung: Wertung, wettkampfUUID: String, durchgang: String, geraet: Long, programm: String) =>
             if (selected.value) {
-              println("refreshing network-dashboard from websocket", newItem)
               //DeferredPanelRefresher.submitUpdateTask(() => refreshData()) //
               refreshData()
             }
           case AthletWertungUpdatedSequenced(ahtlet: AthletView, wertung: Wertung, wettkampfUUID: String, durchgang: String, geraet: Long, programm: String, sequenceId) =>
             if (selected.value) {
-              println("refreshing network-dashboard from websocket", newItem)
               //DeferredPanelRefresher.submitUpdateTask(() => refreshData()) //
               refreshData()
             }
           case _ =>
+            DeferredPanelRefresher.submitUpdateTask(() => refreshData()) //
         }
       }
     }
     refreshData()
+    updateButtons()
     true
   }
 }

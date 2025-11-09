@@ -1,13 +1,16 @@
 package ch.seidel.kutu
 
+import ch.seidel.kutu.calc.TemplateViewJsonReader.scoreCalcTemplateViewFormat
 import ch.seidel.kutu.calc.{Calculator, ScoreCalcTemplate, ScoreCalcTemplateView, ScoreCalcVariable}
 import ch.seidel.kutu.data.{NameCodec, Surname}
+import ch.seidel.kutu.domain.{AthletRegistration, SyncAction}
+import ch.seidel.kutu.http.JsonSupport
 import org.apache.commons.codec.language.ColognePhonetic
 import org.apache.commons.codec.language.bm._
 import org.apache.commons.text.similarity.LevenshteinDistance
 
-import java.io.File
-import java.net.URLEncoder
+import java.io.{File, FilenameFilter}
+import java.net.{URI, URLEncoder}
 import java.nio.file.{Files, LinkOption, Path, StandardOpenOption}
 import java.sql.{Date, Timestamp}
 import java.text.{ParseException, SimpleDateFormat}
@@ -993,6 +996,7 @@ package object domain {
       case Some(_) => true
       case None => false
     }
+    def audiofilesDir = new java.io.File(Config.homedir + "/" + encodeFileName(easyprint) + "/audiofiles")
 
     def isReadonly(homedir: String, origin: String): Boolean = !hasSecred(homedir, origin) && hasRemote(homedir, origin)
   }
@@ -1012,7 +1016,6 @@ package object domain {
       s"${if (altersklassen.nonEmpty) ", Altersklassen" else ""}" +
       s"${if (jahrgangsklassen.nonEmpty) ", Jahrgangs Altersklassen" else ""}" +
       ""
-
     def toWettkampf = Wettkampf(id, uuid, datum, titel, programm.id, auszeichnung, auszeichnungendnote, notificationEMail, Option(altersklassen), Option(jahrgangsklassen), Option(punktegleichstandsregel), Option(rotation), Option(teamrule))
   }
 
@@ -1101,7 +1104,7 @@ package object domain {
 
   case class Wertung(id: Long, athletId: Long, wettkampfdisziplinId: Long, wettkampfId: Long, wettkampfUUID: String,
                      noteD: Option[scala.math.BigDecimal], noteE: Option[scala.math.BigDecimal], endnote: Option[scala.math.BigDecimal],
-                     riege: Option[String], riege2: Option[String], team: Option[Int],
+                     riege: Option[String], riege2: Option[String], team: Option[Int], mediafile: Option[Media],
                      variables: Option[ScoreCalcTemplateView]) extends DataObject {
     lazy val resultat = {
       val dTeilresults = variables match {
@@ -1153,7 +1156,7 @@ package object domain {
     }
   }
 
-  case class WertungView(id: Long, athlet: AthletView, wettkampfdisziplin: WettkampfdisziplinView, wettkampf: Wettkampf, noteD: Option[scala.math.BigDecimal], noteE: Option[scala.math.BigDecimal], endnote: Option[scala.math.BigDecimal], riege: Option[String], riege2: Option[String], team: Int, variables: Option[ScoreCalcTemplateView], isStroked: Boolean = false) extends DataObject {
+  case class WertungView(id: Long, athlet: AthletView, wettkampfdisziplin: WettkampfdisziplinView, wettkampf: Wettkampf, noteD: Option[scala.math.BigDecimal], noteE: Option[scala.math.BigDecimal], endnote: Option[scala.math.BigDecimal], riege: Option[String], riege2: Option[String], team: Int, mediafile: Option[Media], variables: Option[ScoreCalcTemplateView], isStroked: Boolean = false) extends DataObject {
     lazy val resultat = {
       val dTeilresults = variables match {
         case Some(v) if v.dDetails => v.dVariables.filter(_.value > 0).map(_.value.toString())
@@ -1200,9 +1203,9 @@ package object domain {
 
     lazy val teamName = getTeamName(wettkampf.extraTeams)
 
-    def toWertung = Wertung(id, athlet.id, wettkampfdisziplin.id, wettkampf.id, wettkampf.uuid.getOrElse(""), noteD, noteE, endnote, riege, riege2, Some(team), defaultVariables)
+    def toWertung = Wertung(id, athlet.id, wettkampfdisziplin.id, wettkampf.id, wettkampf.uuid.getOrElse(""), noteD, noteE, endnote, riege, riege2, Some(team), mediafile, defaultVariables)
 
-    def toWertung(riege: String, riege2: Option[String]) = Wertung(id, athlet.id, wettkampfdisziplin.id, wettkampf.id, wettkampf.uuid.getOrElse(""), noteD, noteE, endnote, Some(riege), riege2, Some(team), defaultVariables)
+    def toWertung(riege: String, riege2: Option[String]) = Wertung(id, athlet.id, wettkampfdisziplin.id, wettkampf.id, wettkampf.uuid.getOrElse(""), noteD, noteE, endnote, Some(riege), riege2, Some(team), mediafile, defaultVariables)
 
     def updatedWertung(valuesFrom: Wertung) = copy(noteD = valuesFrom.noteD, noteE = valuesFrom.noteE, endnote = valuesFrom.endnote, variables = valuesFrom.variables)
 
@@ -1417,6 +1420,36 @@ package object domain {
         copy(wertungen = wertungen.updated(idx, wertungen(idx).updatedWertung(wertung)))
       else this
     }
+    def getMediaURI(wettkampf: Wettkampf, lookup: String=>Option[MediaAdmin], wertung: Wertung): URI = {
+      val pattern =  s"${encodeFileName(s"${name}_${vorname}")}_${wertung.wettkampfdisziplinId}.".toLowerCase
+      val dir = new java.io.File(Config.homedir + "/" + encodeFileName(wettkampfTitel) + "/audiofiles")
+      val pattern2 = wertung.mediafile.flatMap(mf => lookup(mf.id)).map(_.computeFilePath(wettkampf).toString.toLowerCase()).getOrElse(Config.homedir + "/" + encodeFileName(wettkampfTitel) + s"/$pattern.mp3")
+      dir.listFiles(new FilenameFilter {
+        override def accept(dir: File, name: String): Boolean = {
+          val ln = name.toLowerCase
+          ln.endsWith(pattern2) || (ln.startsWith(pattern) && (
+          ln.toLowerCase.endsWith(".aif")
+            || ln.endsWith(".aiff")
+            || ln.endsWith(".fxm")
+            || ln.endsWith(".flv")
+            || ln.endsWith(".m3u8")
+            || ln.endsWith(".mp3")
+            || ln.endsWith(".mp4")
+            || ln.endsWith(".m4a")
+            || ln.endsWith(".m4v")
+            || ln.endsWith(".wav")
+          ))
+        }
+      }).toList
+        .headOption
+        .getOrElse(new java.io.File(pattern2))
+        .toURI
+    }
+    def hasMedia(wettkampf: Wettkampf, lookup: String=>Option[MediaAdmin], wertung: Wertung): Boolean = {
+      val uri = getMediaURI(wettkampf, lookup, wertung)
+      println("searching for mediafile at " + uri )
+      new File(uri).exists()
+    }
   }
 
   case class GeraeteRiege(wettkampfTitel: String, wettkampfUUID: String, durchgang: Option[String], halt: Int, disziplin: Option[Disziplin], kandidaten: Seq[Kandidat], erfasst: Boolean, sequenceId: String) {
@@ -1459,6 +1492,22 @@ package object domain {
     def softEquals(other: GeraeteRiege): Boolean = {
       hash == other.hash
     }
+    private def songtitle(kandidat: Kandidat, media: Media) = {
+      s"${kandidat.vorname} ${kandidat.name} (${kandidat.verein}), ${disziplin.map(_.easyprint).getOrElse("")} - ${media.name}"
+    }
+    var medialistCache: Option[Seq[(Kandidat, WertungView, String, URI)]] = None
+    def resetMediaListCache(): Unit = {
+      medialistCache = None
+    }
+    def getMediaList(wettkampf: Wettkampf, lookup: String=>Option[MediaAdmin]): Seq[(Kandidat, WertungView, String, URI)] = medialistCache match {
+      case Some(list) => list
+      case _ =>
+        medialistCache = Some(kandidaten
+          .flatMap(k => k.wertungen.find(w => disziplin.contains(w.wettkampfdisziplin.disziplin))
+            .filter(w => w.endnote.isEmpty && w.wettkampfdisziplin.disziplin.name.equals("Boden") && k.hasMedia(wettkampf, lookup, w.toWertung))
+            .map(w => (k, w, songtitle(k, w.mediafile.get), k.getMediaURI(wettkampf, lookup, w.toWertung)))))
+        medialistCache.get
+    }
   }
 
   sealed trait SexDivideRule {
@@ -1498,14 +1547,16 @@ package object domain {
       case AddVereinAction(verein) => AddVereinAction(verein.toPublicView)
       case ApproveVereinAction(verein) => ApproveVereinAction(verein.toPublicView)
       case RenameVereinAction(verein, oldVerein) => RenameVereinAction(verein.toPublicView, oldVerein)
+      case UpdateAthletMediaAction(verein, athletReg, wertung) => UpdateAthletMediaAction(verein.toPublicView, athletReg.toPublicView, wertung)
       case rn@RenameAthletAction(verein, athlet, existing, expected) =>
         if (rn.isGebDatChange)
           RenameAthletAction(verein.toPublicView, athlet.toPublicView, existing.toPublicView.copy(gebdat = existing.gebdat), expected.toPublicView.copy(gebdat = expected.gebdat))
         else
           RenameAthletAction(verein.toPublicView, athlet.toPublicView, existing.toPublicView, expected.toPublicView)
-      case AddRegistration(verein, programId, athlet, suggestion, team) => AddRegistration(verein.toPublicView, programId, athlet.toPublicView, suggestion.toPublicView, team)
+      case AddRegistration(verein, programId, athlet, suggestion, team, media) => AddRegistration(verein.toPublicView, programId, athlet.toPublicView, suggestion.toPublicView, team, media)
       case MoveRegistration(verein, fromProgramId, fromTeam, toProgramid, toTeam, athlet, suggestion) => MoveRegistration(verein.toPublicView, fromProgramId, fromTeam, toProgramid, toTeam, athlet.toPublicView, suggestion.toPublicView)
       case RemoveRegistration(verein, programId, athlet, suggestion) => RemoveRegistration(verein.toPublicView, programId, athlet.toPublicView, suggestion.toPublicView)
+      case am:AddMedia => AddMedia(am.verein.toPublicView, am.athletReg.toPublicView)
     }
   }
 
@@ -1525,7 +1576,7 @@ package object domain {
     override val caption = s"Verein bestätigen: ${verein.vereinname}"
   }
 
-  case class AddRegistration(override val verein: Registration, programId: Long, athlet: Athlet, suggestion: AthletView, team: Int) extends SyncAction {
+  case class AddRegistration(override val verein: Registration, programId: Long, athlet: Athlet, suggestion: AthletView, team: Int, media: Option[MediaAdmin]) extends SyncAction {
     override val caption = s"Neue Anmeldung verarbeiten: ${suggestion.easyprint}"
   }
 
@@ -1556,6 +1607,15 @@ package object domain {
     }
   }
 
+  case class AddMedia(override val verein: Registration, athletReg: AthletRegistration) extends SyncAction {
+    override val caption = s"Musik für ${athletReg.toAthlet.extendedprint} herunterladen: ${athletReg.mediafile.map(_.name).getOrElse("")}"
+  }
+  case class UpdateAthletMediaAction(override val verein: Registration, athletReg: AthletRegistration, wertung: Wertung) extends SyncAction {
+    override val caption = if (athletReg.mediafile.nonEmpty)
+      s"Athlet/-In Musik aktualisieren: Von ${athletReg.toAthlet.extendedprint} (${athletReg.mediafile.map(_.name).getOrElse("")})"
+    else
+      s"Athlet/-In Musik entfernen: Von ${athletReg.toAthlet.extendedprint} (${wertung.mediafile.map(_.name).getOrElse("")})"
+  }
   case class RenameAthletAction(override val verein: Registration, athletReg: AthletRegistration, existing: Athlet, expected: Athlet) extends SyncAction {
     override val caption = s"Athlet/-In korrigieren: Von ${existing.extendedprint} zu ${expected.extendedprint}"
 
@@ -1586,10 +1646,49 @@ package object domain {
 
   case class RegistrationResetPW(id: Long, wettkampfId: Long, secret: String) extends DataObject
 
+  case class Media(id: String, name: String, extension: String)
+
+  /**
+
+  object MediaAdminObject {
+    def computeAudioFilesPath(wettkampf: Wettkampf): URI = new File(Config.homedir + "/" + encodeFileName(wettkampf.easyprint) + "/audiofiles/").toURI
+    def computeAudioFilesPath(): URI = new File(Config.homedir + "/audiofiles/").toURI
+  }
+   *
+   * @param id UUID
+   * @param name
+   * @param extension
+   * @param stage 1=upload, 2=transcoding, 3=transcoded
+   * @param md5 md5 hash of transcoded normalized audio-file
+   */
+  case class MediaAdmin(id: String, name: String, extension: String, stage: Int, metadata: String, md5: String, stamp: Long) {
+    def md5Defined: Boolean = md5 != null && md5.nonEmpty
+    def isTranscoded: Boolean = stage > 2 && md5Defined
+    def filename: String = if (isTranscoded) md5 + ".mp3" else {
+      if (md5Defined) md5 + "." + extension else id + "." + extension
+    }
+    def computeFilePath(wettkampf: Wettkampf): File = {
+      if (stage < 2) {
+        new File(Config.homedir + "/" + encodeFileName(wettkampf.easyprint) + "/audiofiles/" + filename)
+      } else {
+        new File(Config.homedir + "/audiofiles/" + filename)
+      }
+    }
+    def toMedia = Media(id, name, extension)
+  }
+
+  case object MediaJsonReader extends JsonSupport {
+
+    import spray.json.enrichString
+
+    def apply(text: String): Media = mediaFormat.read(text.parseJson)
+    def apply(text: Option[String]): Option[Media] = text.map(t => mediaFormat.read(t.parseJson))
+  }
+
   case class AthletRegistration(id: Long, vereinregistrationId: Long,
                                 athletId: Option[Long], geschlecht: String, name: String, vorname: String, gebdat: String,
-                                programId: Long, registrationTime: Long, athlet: Option[AthletView], team: Option[Int]) extends DataObject {
-    def toPublicView = AthletRegistration(id, vereinregistrationId, athletId, geschlecht, name, vorname, gebdat.substring(0, 4) + "-01-01", programId, registrationTime, athlet.map(_.toPublicView), team)
+                                programId: Long, registrationTime: Long, athlet: Option[AthletView], team: Option[Int], mediafile: Option[MediaAdmin]) extends DataObject {
+    def toPublicView = AthletRegistration(id, vereinregistrationId, athletId, geschlecht, name, vorname, gebdat.substring(0, 4) + "-01-01", programId, registrationTime, athlet.map(_.toPublicView), team, mediafile)
 
     def capitalizeIfBlockCase(s: String): String = {
       if (s.length > 2 && (s.toUpperCase.equals(s) || s.toLowerCase.equals(s))) {
@@ -1699,7 +1798,7 @@ package object domain {
   }
 
   object EmptyAthletRegistration {
-    def apply(vereinregistrationId: Long): AthletRegistration = AthletRegistration(0L, vereinregistrationId, None, "", "", "", "", 0L, 0L, None, None)
+    def apply(vereinregistrationId: Long): AthletRegistration = AthletRegistration(0L, vereinregistrationId, None, "", "", "", "", 0L, 0L, None, None, None)
   }
 
   case class JudgeRegistration(id: Long, vereinregistrationId: Long,

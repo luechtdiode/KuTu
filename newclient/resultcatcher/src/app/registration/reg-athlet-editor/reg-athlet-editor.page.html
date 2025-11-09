@@ -59,13 +59,15 @@
           <ion-select-option *ngFor='let pgm of filterPGMsForAthlet(registration)' [value]='pgm.id'>{{pgm.name}}</ion-select-option>
         </ion-select>
       </ion-item>
-      <ion-item-divider *ngIf="teamsAllowed()">
+
+      @if (teamsAllowed()) {
+      <ion-item-divider>
         <ion-avatar slot="start">
           <img src="assets/imgs/verein.png">
         </ion-avatar>
         <ion-label>Team-/Mannschaftszuweisung</ion-label>
       </ion-item-divider>
-      <ion-item *ngIf="teamsAllowed()">
+      <ion-item >
         <ion-avatar slot="start" />
         <ion-grid no-padding>
           <ion-row *ngFor="let rule of teamrules">für {{rule}}</ion-row>
@@ -77,6 +79,37 @@
           </ion-row>
         </ion-grid>
       </ion-item>
+      }
+      <ion-item-divider>
+        <ion-avatar slot="start">
+          <img src="assets/imgs/boden.svg">
+        </ion-avatar>
+        <ion-label>Bodenmusik (optional)</ion-label>
+      </ion-item-divider>
+      <ion-item>
+        <ion-avatar slot="start" />
+        <ion-label>Neu hochladen</ion-label>
+        <input type="file" (change)="onFileChange($event)" />
+      </ion-item>
+      <ion-item>
+        <ion-avatar slot="start" />
+        @if (registration.mediafile?.name) {
+          <ion-label>Aktuelle Datei: {{registration.mediafile?.name}}</ion-label>
+          @if (registration.mediafile?.name && registration.id > 0 && mediaSource === undefined) {
+            <ion-button [disabled]="registration.id === 0" (click)="onFileChange(null)">Zum anhören laden</ion-button>
+          }
+          <ion-button [disabled]="registration.id === 0" (click)="onRemoveMedia(null)" color="danger"><ion-icon name="trash-outline"/></ion-button>
+        } @else {
+          <ion-label>Keine Datei ausgewählt</ion-label>
+        } 
+      </ion-item>
+      @if (registration.mediafile?.name && registration.id > 0 && mediaSource) {
+      <ion-item>
+        <audio controls id="myAudio">
+          <source [attr.src]="mediaSource" type="audio/mp3">
+        </audio>
+      </ion-item>
+      }
     </ion-list>
     <ion-list>
       <ion-button size="large" expand="block" type="submit" #btnSaveNext [disabled]="waiting || !isFormValid()|| !athletRegistrationForm.valid || athletRegistrationForm.untouched" color="success">

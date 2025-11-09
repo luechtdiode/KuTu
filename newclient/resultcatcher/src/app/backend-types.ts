@@ -99,6 +99,11 @@ export interface RegistrationResetPW {
   secret: string;
   verification?: string;
 }
+export interface Media {
+  extension: string;
+  id: string;
+  name: string;
+}
 export interface AthletRegistration {
   id: number;
   vereinregistrationId: number;
@@ -110,8 +115,8 @@ export interface AthletRegistration {
   programId: number;
   team: number;
   registrationTime: number;
+  mediafile: Media;
 }
-
 export interface JudgeRegistration {
   id: number;
   vereinregistrationId: number;
@@ -165,6 +170,7 @@ export interface Wertung {
   noteD: number;
   team: number;
   variables?: ScoreCalcVariables
+  mediafile?: Media;
 }
 
 export interface Geraet {
@@ -256,4 +262,24 @@ export interface AthletWertungUpdated {
   geraet: number;
   type: string;
   sequenceId: number;
+}
+export interface AthletMediaIsAtStart {
+  context: string;
+  media: Media
+  type: string;
+}
+export interface AthletMediaIsRunning {
+  context: string;
+  media: Media
+  type: string;
+}
+export interface AthletMediaIsPaused {
+  context: string;
+  media: Media
+  type: string;
+}
+export interface AthletMediaIsFree {
+  context: string;
+  media: Media
+  type: string;
 }

@@ -1,18 +1,18 @@
 package ch.seidel.kutu.domain
 
 import ch.seidel.kutu.http.AuthSupport.OPTION_LOGINRESET
+import ch.seidel.kutu.http.Hashing
+import org.slf4j.LoggerFactory
+import slick.jdbc.PostgresProfile.api._
 
 import java.sql.Timestamp
 import java.time.LocalDateTime
 import java.util.UUID
-import ch.seidel.kutu.http.Hashing
-import slick.jdbc.PostgresProfile.api._
-
-import scala.concurrent.{Await, Future}
 import scala.concurrent.duration.Duration
+import scala.concurrent.{Await, Future}
 
-trait RegistrationService extends DBService with RegistrationResultMapper with Hashing {
-
+trait RegistrationService extends DBService with RegistrationResultMapper with MediaResultMapper with Hashing {
+  private val logger = LoggerFactory.getLogger(this.getClass)
   def createRegistration(newReg: NewRegistration): Registration = {
     val similarRegistrations = selectRegistrationsLike(newReg.toRegistration)
       .filter{(reg: Registration) =>
@@ -221,7 +221,7 @@ trait RegistrationService extends DBService with RegistrationResultMapper with H
   def copyClubRegsFromCompetition(wettkampfCopyFrom: String, registrationId: Long): Unit = {
     Await.result(database.run {
       sqlu"""
-              insert into athletregistration (vereinregistration_id, athlet_id, geschlecht, name, vorname, gebdat, program_id, team, registrationtime)
+              insert into athletregistration (vereinregistration_id, athlet_id, geschlecht, name, vorname, gebdat, program_id, team, media_id, registrationtime)
               select distinct
                 #$registrationId as vereinregistration_id,
                 a.id,
@@ -231,6 +231,7 @@ trait RegistrationService extends DBService with RegistrationResultMapper with H
                 a.gebdat,
                 wkd.programm_id,
                 0,
+                m.id,
                 current_timestamp as registrationtime
               from athlet a
               inner join wertung w on (w.athlet_id = a.id)
@@ -238,6 +239,7 @@ trait RegistrationService extends DBService with RegistrationResultMapper with H
               inner join vereinregistration vrnow on (vrnow.verein_id = a.verein)
               inner join wettkampf wkthen on (w.wettkampf_id = wkthen.id)
               inner join wettkampf wknow on (vrnow.wettkampf_id = wknow.id)
+              inner join media m on (w.media_id=m.id)
               where vrnow.id = $registrationId
                   and wkthen.uuid = $wettkampfCopyFrom
                   and wkthen.programm_id = wknow.programm_id
@@ -346,26 +348,33 @@ trait RegistrationService extends DBService with RegistrationResultMapper with H
       throw new IllegalArgumentException("Person-Überschreibung in einer Anmeldung zu einer anderen Person ist nicht erlaubt!")
     }
     val nomralizedAthlet = newReg.toAthlet
-
+    newReg.mediafile match {
+      case Some(mf) => putMedia(mf.toMedia)
+      case _ =>
+    }
     Await.result(database.run {
       sqlu"""
                   insert into athletregistration
-                  (vereinregistration_id, athlet_id, geschlecht, name, vorname, gebdat, program_id, team, registrationtime)
+                  (vereinregistration_id, athlet_id, geschlecht, name, vorname, gebdat, program_id, team, media_id, registrationtime)
                   values (${newReg.vereinregistrationId}, ${athletId},
                           ${nomralizedAthlet.geschlecht}, ${nomralizedAthlet.name},
                           ${nomralizedAthlet.vorname}, ${nomralizedAthlet.gebdat},
                           ${newReg.programId},
                           ${newReg.team.getOrElse(0)},
+                          ${newReg.mediafile.map(_.id)},
                           ${Timestamp.valueOf(LocalDateTime.now())})
               """ >>
         sql"""
                   select
                       r.id, r.vereinregistration_id,
                       r.athlet_id, r.geschlecht, r.name, r.vorname, r.gebdat,
-                      r.program_id, r.registrationtime, a.id, a.js_id, a.geschlecht, a.name, a.vorname, a.gebdat, a.strasse, a.plz, a.ort, a.activ, a.verein, v.*, r.team
+                      r.program_id, r.registrationtime, a.id, a.js_id, a.geschlecht, a.name, a.vorname, a.gebdat, a.strasse, a.plz, a.ort, a.activ, a.verein, v.*,
+                      r.team, r.media_id,
+                      m.name, m.extension, m.stage, m.metadata, m.md5, m.stamp
                   from athletregistration r
                   left join athlet a on (r.athlet_id = a.id)
                   left join verein v on (a.verein = v.id)
+                  left join media m on (r.media_id = m.id)
                   where r.id = (select max(ar.id)
                               from athletregistration ar
                               where ar.vereinregistration_id=${newReg.vereinregistrationId}
@@ -385,11 +394,14 @@ trait RegistrationService extends DBService with RegistrationResultMapper with H
                   select
                       ar.id, ar.vereinregistration_id,
                       ar.athlet_id, ar.geschlecht, ar.name, ar.vorname, ar.gebdat,
-                      ar.program_id, ar.registrationtime, a.id, a.js_id, a.geschlecht, a.name, a.vorname, a.gebdat, a.strasse, a.plz, a.ort, a.activ, a.verein, v.*, ar.team
+                      ar.program_id, ar.registrationtime, a.id, a.js_id, a.geschlecht, a.name, a.vorname, a.gebdat, a.strasse, a.plz, a.ort, a.activ, a.verein, v.*,
+                      ar.team, ar.media_id,
+                      m.name, m.extension, m.stage, m.metadata, m.md5, m.stamp
                   from athletregistration ar
                   inner join vereinregistration vr on (ar.vereinregistration_id = vr.id)
                   inner join athlet a on (a.id = ar.athlet_id and a.verein = vr.verein_id)
                   left join verein v on (a.verein = v.id)
+                  left join media m on (ar.media_id = m.id)
                   where ar.geschlecht=${nomralizedAthlet.geschlecht}
                     and ar.name=${nomralizedAthlet.name}
                     and ar.vorname=${nomralizedAthlet.vorname}
@@ -420,17 +432,26 @@ trait RegistrationService extends DBService with RegistrationResultMapper with H
                   name=${registration.name}, vorname=${registration.vorname},
                   gebdat=${gebdat}, geschlecht=${registration.geschlecht},
                   program_id=${registration.programId},
-                  team=${registration.team.getOrElse(0)}
+                  team=${registration.team.getOrElse(0)},
+                  media_id=${registration.mediafile.map(_.id)}
               where id=${registration.id}
      """ >>
+      sqlu"""
+          delete from media
+          where not exists (select true from wertung w where w.media_id = media.id)
+            and not exists (select true from athletregistration ar where ar.media_id = media.id)
+      """ >>
       sql"""
               select
                   r.id, r.vereinregistration_id,
                   r.athlet_id, r.geschlecht, r.name, r.vorname, r.gebdat,
-                  r.program_id, r.registrationtime, a.id, a.js_id, a.geschlecht, a.name, a.vorname, a.gebdat, a.strasse, a.plz, a.ort, a.activ, a.verein, v.*, r.team
+                  r.program_id, r.registrationtime, a.id, a.js_id, a.geschlecht, a.name, a.vorname, a.gebdat, a.strasse, a.plz, a.ort, a.activ, a.verein, v.*,
+                  r.team, r.media_id,
+                  m.name, m.extension, m.stage, m.metadata, m.md5, m.stamp
               from athletregistration r
               left join athlet a on (r.athlet_id = a.id)
               left join verein v on (a.verein = v.id)
+              left join media m on (r.media_id = m.id)
               where r.id = ${registration.id}
       """.as[AthletRegistration].headOption
     }, Duration.Inf)
@@ -442,10 +463,13 @@ trait RegistrationService extends DBService with RegistrationResultMapper with H
                   select
                       r.id, r.vereinregistration_id,
                       r.athlet_id, r.geschlecht, r.name, r.vorname, r.gebdat,
-                      r.program_id, r.registrationtime, a.id, a.js_id, a.geschlecht, a.name, a.vorname, a.gebdat, a.strasse, a.plz, a.ort, a.activ, a.verein, v.*, r.team
+                      r.program_id, r.registrationtime, a.id, a.js_id, a.geschlecht, a.name, a.vorname, a.gebdat, a.strasse, a.plz, a.ort, a.activ, a.verein, v.*,
+                      r.team, r.media_id,
+                      m.name, m.extension, m.stage, m.metadata, m.md5, m.stamp
                   from athletregistration r
                   left join athlet a on (r.athlet_id = a.id)
                   left join verein v on (a.verein = v.id)
+                  left join media m on (r.media_id = m.id)
                   where r.id = ${id}
        """.as[AthletRegistration]
     }, Duration.Inf).head
@@ -457,10 +481,13 @@ trait RegistrationService extends DBService with RegistrationResultMapper with H
                   select
                       r.id, r.vereinregistration_id,
                       r.athlet_id, r.geschlecht, r.name, r.vorname, r.gebdat,
-                      r.program_id, r.registrationtime, a.id, a.js_id, a.geschlecht, a.name, a.vorname, a.gebdat, a.strasse, a.plz, a.ort, a.activ, a.verein, v.*, r.team
+                      r.program_id, r.registrationtime, a.id, a.js_id, a.geschlecht, a.name, a.vorname, a.gebdat, a.strasse, a.plz, a.ort, a.activ, a.verein, v.*,
+                      r.team, r.media_id,
+                      m.name, m.extension, m.stage, m.metadata, m.md5, m.stamp
                   from athletregistration r
                   left join athlet a on (r.athlet_id = a.id)
                   left join verein v on (a.verein = v.id)
+                  left join media m on (r.media_id = m.id)
                   where r.vereinregistration_id = $id
                   order by r.registrationtime asc
        """.as[AthletRegistration]
@@ -474,10 +501,11 @@ trait RegistrationService extends DBService with RegistrationResultMapper with H
                               0, ar.geschlecht, ar.name, ar.vorname, ar.gebdat,
                               0, ar.registrationtime,
                               null, null, null, null, null, null, null, null, null, null, null, null, null, -- athletview, vereinview
-                              0 -- team
+                              ar.team, ar.media_id, m.name, m.extension, m.stage, m.metadata, m.md5, m.stamp
                     from vereinregistration avr
                     inner join vereinregistration vr on (vr.verein_id = avr.verein_id)
                     inner join athletregistration ar on (ar.vereinregistration_id = vr.id)
+                    left join media m on (ar.media_id = m.id)
 
                     where avr.id = $vereinRegId
                       and vr.id <> avr.id
@@ -663,6 +691,183 @@ trait RegistrationService extends DBService with RegistrationResultMapper with H
   def deleteJudgePgmRegistration(id: Long): Unit = {
     Await.result(database.run {
       sqlu""" delete from judgeregistration_pgm where id = $id"""
+    }, Duration.Inf)
+  }
+
+  def loadMedia(id: String): Option[MediaAdmin] = {
+    if (id == null || id.isEmpty) {
+      None
+    } else {
+      Await.result(database.run {
+        sql"""
+                  select
+                      id, name, extension, stage, metadata, md5, stamp
+                  from media
+                  where id = ${id}
+         """.as[MediaAdmin].headOption.transactionally
+      }, Duration.Inf)
+    }
+  }
+
+  def searchMedia(id: String): Option[MediaAdmin] = {
+    if (id == null || id.isEmpty) {
+      None
+    } else {
+      val md5Id = if (id.contains(".")) id.substring(0, id.lastIndexOf(".")) else id
+      logger.info(s"searching for $id, $md5Id")
+      val medias = Await.result(database.run {
+        sql"""
+                  select
+                      id, name, extension, stage, metadata, md5, stamp, 1 as ord
+                  from media
+                  where md5 = $md5Id
+                  union select
+                      id, name, extension, stage, metadata, md5, stamp, 2 as ord
+                  from media
+                  where id = $md5Id
+                  union select
+                      id, name, extension, stage, metadata, md5, stamp, 3 as ord
+                  from media
+                  where name = $id
+                  order by ord asc, stage desc, id asc
+         """.as[MediaAdmin].transactionally
+      }, Duration.Inf)
+      medias.headOption
+    }
+  }
+
+  def analyzeUnusedMedia(): List[MediaAdmin] = {
+    Await.result(database.run {
+      sql""" select id, name, extension, stage, metadata, md5, stamp
+              from media m
+              where
+                    not exists (select true from wertung w where w.media_id = m.id)
+                and not exists (select true from athletregistration ar where ar.media_id = m.id)
+              """.as[MediaAdmin]
+    }, Duration.Inf).toList
+  }
+
+  def saveOrUpdateMedias(mediaList: Seq[MediaAdmin]): Seq[MediaAdmin] = {
+    mediaList.map{media =>
+      loadMedia(media.id) match {
+        case Some(m) => updateMedia(m)
+        case None =>
+          logger.info(s"putting local unknown media to index")
+          Await.result(database.run {
+            sqlu"""
+                  insert into media
+                  (id, name, extension, stage, metadata, md5, stamp)
+                  values (${media.id},
+                          ${media.name},
+                          ${media.extension},
+                          ${media.stage},
+                          ${media.metadata},
+                          ${media.md5},
+                          ${media.stamp}
+                          )
+              """ >>
+              sql"""
+                  select
+                      id, name, extension, stage, metadata, md5, stamp
+                  from media
+                  where id = ${media.id}
+            """.as[MediaAdmin].head.transactionally
+          }, Duration.Inf)
+      }
+    }
+  }
+
+  def putMedia(media: Media): MediaAdmin = {
+    if (media.id == null || media.id.isEmpty) {
+      logger.info(s"putting new media to index")
+      val id = UUID.randomUUID().toString
+      Await.result(database.run {
+        sqlu"""
+                  insert into media
+                  (id, name, extension)
+                  values ($id,
+                          ${media.name},
+                          ${media.extension})
+              """ >>
+          sql"""
+                  select
+                      id, name, extension, stage, metadata, md5, stamp
+                  from media
+                  where id = $id
+          """.as[MediaAdmin].head.transactionally
+      }, Duration.Inf)
+    } else {
+      loadMedia(media.id) match {
+        case Some(m) => m
+        case None =>
+          logger.info(s"putting local unknown media to index")
+          Await.result(database.run {
+            sqlu"""
+                  insert into media
+                  (id, name, extension)
+                  values (${media.id},
+                          ${media.name},
+                          ${media.extension})
+              """ >>
+              sql"""
+                  select
+                      id, name, extension, stage, metadata, md5, stamp
+                  from media
+                  where id = ${media.id}
+            """.as[MediaAdmin].head.transactionally
+          }, Duration.Inf)
+      }
+    }
+  }
+
+  def cleanUnusedMedia(): Seq[MediaAdmin] = {
+    Await.result(database.run{
+      sqlu"""
+              delete from media
+              where not exists (select true from athletregistration ar where ar.media_id = media.id)
+                and not exists (select true from wertung w where w.media_id = media.id)
+          """ >>
+      sql"""
+              select
+              id, name, extension, stage, metadata, md5, stamp
+              from media
+              """.as[MediaAdmin].transactionally
+    }, Duration.Inf)
+  }
+
+  def updateMedia(media: MediaAdmin): MediaAdmin = {
+    Await.result(database.run {
+      sqlu"""
+            update media
+            set stage = ${media.stage},
+                metadata = ${media.metadata},
+                md5 = ${media.md5},
+                stamp = current_timestamp
+            where id = ${media.id}
+        """ >>
+        sqlu"""
+            update wertung
+            set media_id = ${media.id}
+            where media_id in (select id from media m where m.id <> ${media.id} and m.md5 = ${media.md5})
+        """ >>
+        sqlu"""
+            update athletregistration
+            set media_id = ${media.id}
+            where media_id in (select id from media m where m.id <> ${media.id} and m.md5 = ${media.md5})
+        """ >>
+        sqlu"""
+            delete from media
+            where md5=${media.md5}
+            and id <> ${media.id}
+            and not exists (select true from wertung w where w.media_id = media.id)
+            and not exists (select true from athletregistration ar where ar.media_id = media.id)
+        """ >>
+        sql"""
+            select
+                id, name, extension, stage, metadata, md5, stamp
+            from media
+            where id = ${media.id}
+      """.as[MediaAdmin].head.transactionally
     }, Duration.Inf)
   }
 }
