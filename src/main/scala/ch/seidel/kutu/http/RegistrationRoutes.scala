@@ -175,7 +175,7 @@ trait RegistrationRoutes extends SprayJsonSupport with JsonSupport with JwtSuppo
             complete(selectRegistrations()
               .filter(_.registrationTime > since1Year)
               .map(r => r.toVerein).distinct
-              .sortBy(v => v.easyprint))
+              .sortBy(v => v.easyprint).toList)
           }
         }
       } ~ pathPrefixLabeled("registrations" / JavaUUID, "registrations/:competition-id") { competitionId =>

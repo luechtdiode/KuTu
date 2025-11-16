@@ -65,7 +65,19 @@ trait JsonSupport extends SprayJsonSupport with EnrichedJson {
   given durchgangFinishedFormat: RootJsonFormat[DurchgangFinished] = jsonFormat3(DurchgangFinished.apply)
   given scoresPublished: RootJsonFormat[ScoresPublished] = jsonFormat5(ScoresPublished.apply)
   given lastResults: RootJsonFormat[LastResults] = jsonFormat1(LastResults.apply)
-  given bulkEvents: RootJsonFormat[BulkEvent] = jsonFormat2(BulkEvent.apply)
+  given bulkEvents: RootJsonFormat[BulkEvent] = new RootJsonFormat[BulkEvent] {
+    override def write(obj: BulkEvent): JsValue = JsObject(
+      "wettkampfUUID" -> obj.wettkampfUUID.toJson,
+      "events" -> obj.events.map(_.toJson(using kutuAppEventFormat)).toJson
+    )
+    override def read(json: JsValue): BulkEvent = {
+      val fields = json.asJsObject.fields
+      BulkEvent(
+        fields("wettkampfUUID").convertTo[String],
+        fields("events").convertTo[List[JsValue]].map(_.convertTo[KutuAppEvent](using kutuAppEventFormat))
+      )
+    }
+  }
   given athletRemovedFromWettkampf: RootJsonFormat[AthletRemovedFromWettkampf] = jsonFormat2(AthletRemovedFromWettkampf.apply)
   given athletMovedInWettkampf: RootJsonFormat[AthletMovedInWettkampf] = jsonFormat4(AthletMovedInWettkampf.apply)
   given durchgangChangedFormat: RootJsonFormat[DurchgangChanged] = jsonFormat3(DurchgangChanged.apply)

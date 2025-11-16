@@ -42,7 +42,7 @@ abstract trait WettkampfResultMapper extends DisziplinResultMapper {
   implicit def getWettkampfPlanTimeView(implicit wkId: Long, cache: scala.collection.mutable.Map[Long, ProgrammView], cache2: scala.collection.mutable.Map[Long, List[ScoreCalcTemplate]]): GetResult[WettkampfPlanTimeView] = GetResult(r => {
     val id: Long = r.<<
     val wkd: WettkampfdisziplinView = r
-    val wk: Wettkampf = r
+    val wk: Wettkampf = getWettkampfResult(r)
     WettkampfPlanTimeView(id, wk, wkd, r.<<, r.<<, r.<<, r.<<)
   })
 
