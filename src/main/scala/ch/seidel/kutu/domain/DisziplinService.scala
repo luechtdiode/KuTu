@@ -125,7 +125,7 @@ abstract trait DisziplinService extends DBService with WettkampfResultMapper wit
   implicit def getWettkampfDisziplinViewResult(implicit wkId: Long, cache2: scala.collection.mutable.Map[Long, List[ScoreCalcTemplate]]): GetResult[WettkampfdisziplinView] = GetResult{ r =>
     val id = r.<<[Long]
     val pgm = readProgramm(r.<<)
-    val d: Disziplin = r
+    val d: Disziplin = Disziplin(r.<<[Long], r.<<[String])
     WettkampfdisziplinView(id, pgm, d, r.<<[String], r.nextBytesOption(), readNotenModus(wkId, id, d, pgm, r.<<, cache2), r.<<, r.<<, r.<<, r.<<, r.<<, r.<<, r.<<, r.<<)
   }
 

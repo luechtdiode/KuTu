@@ -8,5 +8,5 @@ trait RiegenResultMapper extends DisziplinResultMapper {
     RiegeRaw(r.<<, r.<<, r.<<, r.<<, r.<<))
     
   implicit val getRiegeResult: GetResult[Riege] = GetResult(r =>
-    Riege(r.<<, r.<<, r, r.<<))
+    Riege(r.<<, r.<<, r.<<?[Disziplin], r.<<))
 }

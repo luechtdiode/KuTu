@@ -22,7 +22,7 @@ abstract trait WettkampfResultMapper extends DisziplinResultMapper {
   implicit def getWettkampfDisziplinViewResultCached(r: PositionedResult)(implicit wkid: Long, cache: scala.collection.mutable.Map[Long, ProgrammView], cache2: scala.collection.mutable.Map[Long, List[ScoreCalcTemplate]]): WettkampfdisziplinView = {
     val id = r.<<[Long]
     val pgm = readProgramm(r.<<[Long], cache)
-    val disz: Disziplin = r
+    val disz: Disziplin = Disziplin(r.<<[Long], r.<<[String])
     WettkampfdisziplinView(id, pgm, disz, r.<<, r.nextBytesOption(), readNotenModus(wkid, id, disz, pgm, r.<<, cache2), r.<<, r.<<, r.<<, r.<<, r.<<, r.<<, r.<<, r.<<)
   }
   
