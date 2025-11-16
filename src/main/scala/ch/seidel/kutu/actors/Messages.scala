@@ -45,7 +45,7 @@ case class Delete(override val wettkampfUUID: String) extends KutuAppAction
 case class PublishScores(override val wettkampfUUID: String, title: String, query: String, published: Boolean) extends KutuAppAction
 
 sealed trait KutuAppEvent extends KutuAppProtokoll
-case class BulkEvent(wettkampfUUID: String, events: List[KutuAppEvent]) extends KutuAppEvent
+case class BulkEvent(wettkampfUUID: String, events: List[? <: KutuAppEvent]) extends KutuAppEvent
 case class UseMyMediaPlayer(override val wettkampfUUID: String, context: String) extends KutuAppEvent with KutuAppAction
 case class ForgetMyMediaPlayer(override val wettkampfUUID: String, context: String) extends KutuAppEvent with KutuAppAction
 case class AthletMediaAquire(override val wettkampfUUID: String, override val athlet: AthletView,override val wertung: Wertung) extends KutuAppEvent with MediaPlayerAction with KutuAppAction

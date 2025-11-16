@@ -31,7 +31,7 @@ trait AthletService extends DBService with AthletResultMapper with VereinService
   def selectAthletesOfVerein(id: Long): List[Athlet] = {
     Await.result(database.run {
       sql"""        select * from athlet
-                    where verein=${id}
+                    where verein=$id
                     order by activ desc, name, vorname asc
        """.as[Athlet].withPinnedSession
     }, Duration.Inf).toList
@@ -75,23 +75,23 @@ trait AthletService extends DBService with AthletResultMapper with VereinService
     }, Duration.Inf)
   }
 
-  def publishChanged(athlet: Athlet) = AthletIndexActor.publish(SaveAthlet(athlet))
-  def publishRemoved(athlet: Athlet) = AthletIndexActor.publish(RemoveAthlet(athlet))
+  private def publishChanged(athlet: Athlet) = AthletIndexActor.publish(SaveAthlet(athlet))
+  private def publishRemoved(athlet: Athlet) = AthletIndexActor.publish(RemoveAthlet(athlet))
 
   def mergeAthletes(idToDelete: Long, idToKeep: Long): Unit = {
     val toDelete = loadAthlet(idToDelete)
     Await.result(database.run {
       (
         sqlu"""       update wertung
-                    set athlet_id=${idToKeep}
-                    where athlet_id=${idToDelete}
+                    set athlet_id=$idToKeep
+                    where athlet_id=$idToDelete
           """ >>
         sqlu"""       update athletregistration
-                    set athlet_id=${idToKeep}
-                    where athlet_id=${idToDelete}
+                    set athlet_id=$idToKeep
+                    where athlet_id=$idToDelete
           """ >>
         sqlu"""
-                    delete from athlet where id=${idToDelete}
+                    delete from athlet where id=$idToDelete
           """).transactionally
     }, Duration.Inf)
     toDelete.foreach(publishRemoved)
@@ -102,10 +102,10 @@ trait AthletService extends DBService with AthletResultMapper with VereinService
     Await.result(database.run {
       (
         sqlu"""       delete from wertung
-                    where athlet_id=${id}
+                    where athlet_id=$id
           """ >>
         sqlu"""
-                    delete from athlet where id=${id}
+                    delete from athlet where id=$id
           """).transactionally
     }, Duration.Inf)
     toDelete.foreach(publishRemoved)
@@ -127,7 +127,7 @@ trait AthletService extends DBService with AthletResultMapper with VereinService
           sql"""
                   select max(athlet.id) as maxid
                   from athlet
-                  where name=${athlete.name} and vorname=${athlete.vorname} and gebdat=${gebdat} and verein=${athlete.verein}
+                  where name=${athlete.name} and vorname=${athlete.vorname} and gebdat=$gebdat and verein=${athlete.verein}
          """.as[Long].headOption
         case _ =>
           sql"""
@@ -141,7 +141,7 @@ trait AthletService extends DBService with AthletResultMapper with VereinService
         sql"""
                   select max(athlet.id) as maxid
                   from athlet
-                  where id=${id}
+                  where id=$id
          """.as[Long].headOption
     }
 
@@ -160,9 +160,9 @@ trait AthletService extends DBService with AthletResultMapper with VereinService
                     ort = ${athlete.ort},
                     verein = ${athlete.verein},
                     activ = ${athlete.activ}
-                where id=${athletId}
+                where id=$athletId
           """ >>
-          sql"""select * from athlet where id = ${athletId}""".as[Athlet].head
+          sql"""select * from athlet where id = $athletId""".as[Athlet].head
 
       case _ =>
         sqlu"""
@@ -189,10 +189,10 @@ trait AthletService extends DBService with AthletResultMapper with VereinService
     //    WebSocketClient.publish(awu)
   }
 
-  def startsSameInPercent(text1: String, text2: String) = 100 * text1.zip(text2).foldLeft((true, 0)) { (acc, pair) =>
+  def startsSameInPercent(text1: String, text2: String) = 100 * (text1.zip(text2).foldLeft((true, 0)) { (acc, pair) =>
     val same = pair._1 == pair._2
     (acc._1 && same, acc._2 + (if (acc._1 && same) 1 else 0))
-  }._2 / math.max(text1.length, text2.length)
+  }._2) / math.max(text1.length, text2.length)
 
   def findAthleteLike(cache: java.util.Collection[MatchCode] = new java.util.ArrayList[MatchCode], wettkampf: Option[Long] = None, exclusive: Boolean)(athlet: Athlet): Athlet = {
     val bmname = MatchCode.encode(athlet.name)

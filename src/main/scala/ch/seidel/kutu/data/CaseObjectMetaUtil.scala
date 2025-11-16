@@ -4,10 +4,10 @@ import java.sql.Date
 import scala.compiletime.*
 import scala.deriving.*
 import scala.quoted.*
-import scala.reflect.runtime.universe.*
+//import scala.reflect.runtime.universe.*
 
 object CaseObjectMetaUtil {
-  val rm = scala.reflect.runtime.universe.runtimeMirror(getClass.getClassLoader)
+  //val rm = scala.reflect.runtime.universe.runtimeMirror(getClass.getClassLoader)
 
   inline def toMap[T <: Product](instance: T)(using mirror: Mirror.ProductOf[T]): Map[String, Any] = {
     val fieldnames = getCaseFieldNames

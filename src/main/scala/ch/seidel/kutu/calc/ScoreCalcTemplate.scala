@@ -7,17 +7,10 @@ import scala.math.BigDecimal.RoundingMode
 
 enum ScoreAggregateFn:
   case Min, Max, Avg, Sum
-/*object ScoreAggregateFn {
-  def apply(fn: Option[String]): Option[ScoreAggregateFn] = fn.map{
-    case "Min" => Min
-    case "Max" => Max
-    case "Avg" => Avg
-    case "Sum" => Sum
-  }.orElse(None)
-
-  def values: List[String] = List(Min,Max,Avg,Sum).map(_.toString)
+object ScoreAggregateFn {
+  def apply(fn: Option[String]): Option[ScoreAggregateFn] = fn.map{ScoreAggregateFn.valueOf}.orElse(None)
 }
-*/
+
 object ScoreCalcVariable_ {
   def apply(source: String, prefix: String, name: String, scale: Option[Int]): ScoreCalcVariable = scale match {
     case Some(s) => ScoreCalcVariable(source, prefix, name, scale, BigDecimal("0").setScale(s))

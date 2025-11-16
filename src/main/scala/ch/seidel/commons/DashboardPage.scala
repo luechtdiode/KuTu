@@ -34,7 +34,7 @@ class DashboardPage(dashPart: String = "dashboard", tree: KuTuAppTree) extends D
         promptText = "Such-Text"
         styleClass += "search-text"
 
-        text.addListener { (o: javafx.beans.value.ObservableValue[_], oldVal: String, newVal: String) =>
+        text.addListener { (o: javafx.beans.value.ObservableValue[?], oldVal: String, newVal: String) =>
           refreshView()
         }
       }

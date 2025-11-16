@@ -25,15 +25,15 @@ trait EnrichedJson {
 
     def canConvert[T](implicit reader: JsonReader[T]): Boolean = Try(jsValue.convertTo[T]).isSuccess
 
-    def withoutFields(fieldnames: String*) = {
+    def withoutFields(fieldnames: String*): JsObject = {
       jsValue.asJsObject.copy(jsValue.asJsObject.fields -- fieldnames)
     }
 
-    def addFields(fieldnames: Map[String, JsValue]) = {
+    def addFields(fieldnames: Map[String, JsValue]): JsObject = {
       jsValue.asJsObject.copy(jsValue.asJsObject.fields ++ fieldnames)
     }
 
-    def toJsonStringWithType[T](t: T) = {
+    def toJsonStringWithType[T](t: T): String = {
       jsValue.addFields(Map(("type" -> JsString(t.getClass.getSimpleName)))).compactPrint
     }
   }
@@ -51,7 +51,7 @@ trait EnrichedJson {
       override def initialValue() = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSSZ")
     }
     private val localIsoDateTimeFormatter = new ThreadLocal[DateTimeFormatter] {
-      override def initialValue() = DateTimeFormatter.ofPattern("yyyy-MM-dd'T00:00:00.000+0000'")
+      override def initialValue(): DateTimeFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd'T00:00:00.000+0000'")
     }
 
     private def dateToIsoString(date: Date) = localIsoDateTimeFormatter.get().format(LocalDate.ofInstant(date.toInstant, ZoneId.of("Z")))
@@ -98,33 +98,6 @@ trait EnrichedJson {
 
 
   import scala.reflect.ClassTag
-
-  def getObjectInstance(clsName: String): AnyRef = {
-    val mirror = runtimeMirror(getClass.getClassLoader)
-    val module = mirror.staticModule(clsName)
-    mirror.reflectModule(module).instance.asInstanceOf[AnyRef]
-  }
-
-  def objectBy[T: ClassTag](name: String): T = {
-    val c = implicitly[ClassTag[T]]
-    try {
-      getObjectInstance(s"$c$$$name$$").asInstanceOf[T]
-    } catch {
-      case e: Exception => {
-        val cnn = c.toString
-        val cn = cnn.substring(0, cnn.lastIndexOf("."))
-        getObjectInstance(s"$cn.$name$$").asInstanceOf[T]
-      }
-    }
-  }
-
-  def string2trait[T: TypeTag : ClassTag]: Map[JsValue, T] = {
-    val clazz = typeOf[T].typeSymbol.asClass
-    clazz.knownDirectSubclasses.filter(sc => sc.toString.startsWith("object ")).map { sc =>
-      val objectName = sc.toString.stripPrefix("object ")
-      (JsString(objectName), objectBy[T](objectName))
-    }.toMap
-  }
 
   case class CaseObjectJsonSupport[T](values: Array[T]) extends RootJsonFormat[T] {
     // We can rely on the automatically generated valueOf method provided by Java/Scala enums

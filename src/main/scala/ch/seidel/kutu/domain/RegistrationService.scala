@@ -25,7 +25,7 @@ trait RegistrationService extends DBService with RegistrationResultMapper with M
       sqlu"""
                   insert into vereinregistration
                   (wettkampf_id, verein_id, vereinname, verband, responsible_name, responsible_vorname, mobilephone, mail, secrethash, registrationtime)
-                  values (${newReg.wettkampfId}, ${vereinId},
+                  values (${newReg.wettkampfId}, $vereinId,
                           ${newReg.vereinname}, ${newReg.verband},
                           ${newReg.respName}, ${newReg.respVorname},
                           ${newReg.mobilephone}, ${newReg.mail}, ${hashed(newReg.secret)},
@@ -94,7 +94,7 @@ trait RegistrationService extends DBService with RegistrationResultMapper with M
     extractRegistrationId(uuid) match {
       case Some(vereinid) =>
         Await.result(database.run {
-          sql"""          select secrethash from vereinregistration where id=${vereinid}""".as[String]
+          sql"""          select secrethash from vereinregistration where id=$vereinid""".as[String]
         }, Duration.Inf).toList.headOption.getOrElse(hashed(uuid))
       case None => hashed(uuid)
     }
@@ -142,7 +142,7 @@ trait RegistrationService extends DBService with RegistrationResultMapper with M
     registration
   }
 
-  def selectRegistrations() = {
+  def selectRegistrations(): Seq[Registration] = {
     Await.result(database.run {
       sql"""
         select
@@ -155,7 +155,7 @@ trait RegistrationService extends DBService with RegistrationResultMapper with M
     }, Duration.Inf).toList
   }
 
-  def selectRegistration(id: Long) = {
+  def selectRegistration(id: Long): Registration = {
     Await.result(database.run {
       sql"""
         select
@@ -164,11 +164,11 @@ trait RegistrationService extends DBService with RegistrationResultMapper with M
             r.registrationtime, r.verein_id, v.*
         from vereinregistration r
         left join verein v on (v.id = r.verein_id)
-        where r.id=${id}""".as[Registration]
+        where r.id=$id""".as[Registration]
     }, Duration.Inf).head
   }
 
-  def selectRegistrationsLike(registration: Registration) = {
+  private def selectRegistrationsLike(registration: Registration) = {
     Await.result(database.run {
       sql"""
         select
@@ -186,7 +186,7 @@ trait RegistrationService extends DBService with RegistrationResultMapper with M
     }, Duration.Inf).toList
   }
 
-  def selectRegistrationsOfWettkampf(id: UUID) = {
+  def selectRegistrationsOfWettkampf(id: UUID): List[Registration] = {
     Await.result(database.run {
       sql"""
         select
@@ -207,7 +207,7 @@ trait RegistrationService extends DBService with RegistrationResultMapper with M
       sql"""       select id
                    from vereinregistration
                    where wettkampf_id in (select id from wettkampf where uuid = ${wettkampfId.toString})""".as[Long].flatMap{ v =>
-        DBIO.sequence(for(id <- v) yield (deleteRegistrationAction(id)))
+        DBIO.sequence(for(id <- v) yield deleteRegistrationAction(id))
       }.transactionally
     )
   }
@@ -322,10 +322,10 @@ trait RegistrationService extends DBService with RegistrationResultMapper with M
   }
 
   private def deleteRegistrationAction(registrationId: Long) = {
-    sqlu"""       delete from judgeregistration_pgm where vereinregistration_id=${registrationId}""" >>
-      sqlu"""       delete from judgeregistration where vereinregistration_id=${registrationId}""" >>
-      sqlu"""       delete from athletregistration where vereinregistration_id=${registrationId}""" >>
-      sqlu"""       delete from vereinregistration where id=${registrationId}"""
+    sqlu"""       delete from judgeregistration_pgm where vereinregistration_id=$registrationId""" >>
+      sqlu"""       delete from judgeregistration where vereinregistration_id=$registrationId""" >>
+      sqlu"""       delete from athletregistration where vereinregistration_id=$registrationId""" >>
+      sqlu"""       delete from vereinregistration where id=$registrationId"""
   }
 
   private def removeVereinAndAthletIds(vereinId: Long) = {
@@ -356,7 +356,7 @@ trait RegistrationService extends DBService with RegistrationResultMapper with M
       sqlu"""
                   insert into athletregistration
                   (vereinregistration_id, athlet_id, geschlecht, name, vorname, gebdat, program_id, team, media_id, registrationtime)
-                  values (${newReg.vereinregistrationId}, ${athletId},
+                  values (${newReg.vereinregistrationId}, $athletId,
                           ${nomralizedAthlet.geschlecht}, ${nomralizedAthlet.name},
                           ${nomralizedAthlet.vorname}, ${nomralizedAthlet.gebdat},
                           ${newReg.programId},
@@ -387,7 +387,7 @@ trait RegistrationService extends DBService with RegistrationResultMapper with M
   }
 
 
-  def selectAthletRegistrationsLike(registration: AthletRegistration) = {
+  private def selectAthletRegistrationsLike(registration: AthletRegistration) = {
     val nomralizedAthlet = registration.toAthlet
     Await.result(database.run {
       sql"""
@@ -410,7 +410,7 @@ trait RegistrationService extends DBService with RegistrationResultMapper with M
     }, Duration.Inf).toList
   }
 
-  def updateAthletRegistration(registration: AthletRegistration) = {
+  def updateAthletRegistration(registration: AthletRegistration): Option[AthletRegistration] = {
     if (registration.id == 0L) {
       throw new IllegalArgumentException("AthletRegistration with id=0 can not be updated")
     }
@@ -428,9 +428,9 @@ trait RegistrationService extends DBService with RegistrationResultMapper with M
     Await.result(database.run {
       sqlu"""
               update athletregistration
-              set athlet_id=${athletId},
+              set athlet_id=$athletId,
                   name=${registration.name}, vorname=${registration.vorname},
-                  gebdat=${gebdat}, geschlecht=${registration.geschlecht},
+                  gebdat=$gebdat, geschlecht=${registration.geschlecht},
                   program_id=${registration.programId},
                   team=${registration.team.getOrElse(0)},
                   media_id=${registration.mediafile.map(_.id)}
@@ -457,7 +457,7 @@ trait RegistrationService extends DBService with RegistrationResultMapper with M
     }, Duration.Inf)
   }
 
-  def selectAthletRegistration(id: Long) = {
+  def selectAthletRegistration(id: Long): AthletRegistration = {
     Await.result(database.run {
       sql"""
                   select
@@ -470,12 +470,12 @@ trait RegistrationService extends DBService with RegistrationResultMapper with M
                   left join athlet a on (r.athlet_id = a.id)
                   left join verein v on (a.verein = v.id)
                   left join media m on (r.media_id = m.id)
-                  where r.id = ${id}
+                  where r.id = $id
        """.as[AthletRegistration]
     }, Duration.Inf).head
   }
 
-  def selectAthletRegistrations(id: Long) = {
+  def selectAthletRegistrations(id: Long): List[AthletRegistration] = {
     Await.result(database.run {
       sql"""
                   select
@@ -579,7 +579,7 @@ trait RegistrationService extends DBService with RegistrationResultMapper with M
 //    }, Duration.Inf).toList
 //  }
 
-  def updateJudgeRegistration(registration: JudgeRegistration) = {
+  def updateJudgeRegistration(registration: JudgeRegistration): JudgeRegistration = {
     if (registration.id == 0L) {
       throw new IllegalArgumentException("JudgeRegistration with id=0 can not be updated")
     }
@@ -595,7 +595,7 @@ trait RegistrationService extends DBService with RegistrationResultMapper with M
     registration
   }
 
-  def selectJudgeRegistration(id: Long) = {
+  def selectJudgeRegistration(id: Long): JudgeRegistration = {
     Await.result(database.run {
       sql"""
                   select
@@ -604,12 +604,12 @@ trait RegistrationService extends DBService with RegistrationResultMapper with M
                       ar.mobilephone, ar.mail, ar.comment,
                       ar.registrationtime
                   from judgeregistration ar
-                  where ar.id = ${id}
+                  where ar.id = $id
        """.as[JudgeRegistration]
     }, Duration.Inf).head
   }
 
-  def selectJudgeRegistrations(id: Long) = {
+  def selectJudgeRegistrations(id: Long): List[JudgeRegistration] = {
     Await.result(database.run {
       sql"""
                   select
@@ -644,7 +644,7 @@ trait RegistrationService extends DBService with RegistrationResultMapper with M
     }
   }
 
-  def listJudgePgmRegistrations(judgeId: Long) = {
+  def listJudgePgmRegistrations(judgeId: Long): List[JudgeRegistrationProgram] = {
     Await.result(database.run {
       sql"""
                   select
@@ -659,7 +659,7 @@ trait RegistrationService extends DBService with RegistrationResultMapper with M
     }, Duration.Inf).toList
   }
 
-  def saveJudgePgmRegistrations(judgeId: Long, wettkampfDisziplinIds: List[Long]) = {
+  def saveJudgePgmRegistrations(judgeId: Long, wettkampfDisziplinIds: List[Long]): JudgeRegistrationProgram = {
     val vereinregistrationId = selectJudgeRegistration(judgeId).id
     Await.result(database.run {
       sqlu""" delete from judgeregistration_pgm where id = $judgeId""" >>
@@ -667,7 +667,7 @@ trait RegistrationService extends DBService with RegistrationResultMapper with M
           sqlu"""
                   insert into judgeregistration_pgm
                   (vereinregistration_id, judgeregistration_id, wettkampfdisziplin_id, comment)
-                  values (${vereinregistrationId}, $judgeId}, ${wkid}, ${""})
+                  values ($vereinregistrationId, $judgeId, $wkid, "")
               """) >>
           sql"""  select id, vereinregistration_id, judgeregistration_id, wettkampfdisziplin_id, comment
                   from judgeregistration_pgm
@@ -703,7 +703,7 @@ trait RegistrationService extends DBService with RegistrationResultMapper with M
                   select
                       id, name, extension, stage, metadata, md5, stamp
                   from media
-                  where id = ${id}
+                  where id = $id
          """.as[MediaAdmin].headOption.transactionally
       }, Duration.Inf)
     }
