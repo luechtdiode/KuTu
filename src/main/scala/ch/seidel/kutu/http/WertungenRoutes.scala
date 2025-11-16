@@ -29,10 +29,10 @@ trait WertungenRoutes extends SprayJsonSupport with JsonSupport with JwtSupport 
       pathPrefixLabeled("programm", "programm") {
         pathEnd {
           get {
-            complete {
-              Future {
-                listRootProgramme().map(x => ProgrammRaw(x.id, x.name, x.aggregate, x.parent.map(_.id).getOrElse(0), x.ord, x.alterVon, x.alterBis, x.uuid, x.riegenmode, x.bestOfCount))
-              }
+              complete {
+                Future {
+                listRootProgramme().map(x => ProgrammRaw(x.id, x.name, x.aggregate, x.parent.map(_.id).getOrElse(0), x.ord, x.alterVon, x.alterBis, x.uuid, x.riegenmode, x.bestOfCount)).toJson
+                }
             }
           }
         }
@@ -60,7 +60,7 @@ trait WertungenRoutes extends SprayJsonSupport with JsonSupport with JwtSupport 
                       w.athlet.verein.map(_.easyprint).getOrElse(""),
                       w.toWertung,
                       w.wettkampfdisziplin.disziplin.id, w.wettkampfdisziplin.programm.name, "", w.wettkampfdisziplin.isDNoteUsed, w.isStroked)
-                  }
+                  }.toJson
                 }
               }
             }

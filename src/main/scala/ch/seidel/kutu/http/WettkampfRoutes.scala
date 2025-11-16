@@ -282,7 +282,7 @@ trait WettkampfRoutes extends SprayJsonSupport
           pathEnd {
             get {
               complete {
-                listWettkaempfeByVereinIdAsync(vereinId).map(list => list.map(_.toPublic))
+                listWettkaempfeByVereinIdAsync(vereinId).map(list => list.map(_.toPublic).toJson)
               }
             }
           }
@@ -290,12 +290,12 @@ trait WettkampfRoutes extends SprayJsonSupport
           get {
             complete(listRootProgrammeAsync.map(list => list.map(pv => {
               ProgrammRaw(pv.id, pv.name, pv.aggregate, pv.parent.map(_.id).getOrElse(0L), pv.ord, pv.alterVon, pv.alterBis, pv.uuid, pv.riegenmode, pv.bestOfCount)
-            })))
+            }).toJson))
           }
         } ~ pathEnd {
           get {
             complete {
-              listWettkaempfeAsync.map(list => list.map(_.toPublic))
+              listWettkaempfeAsync.map(list => list.map(_.toPublic).toJson)
             }
           }
         }

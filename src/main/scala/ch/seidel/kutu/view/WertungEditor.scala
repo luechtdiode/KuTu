@@ -3,6 +3,7 @@ package ch.seidel.kutu.view
 import ch.seidel.kutu.calc.{ScoreCalcTemplateView, ScoreCalcVariable}
 import ch.seidel.kutu.domain._
 import scalafx.beans.property.{BufferProperty, DoubleProperty, ObjectProperty}
+import scalafx.collections.ObservableBuffer
 
 import scala.jdk.CollectionConverters.IterableHasAsJava
 
@@ -37,9 +38,9 @@ case class WertungEditor(private var lastCommitted: WertungView) {
   val noteD = DoubleProperty(Double.NaN)
   val noteE = DoubleProperty(Double.NaN)
   val endnote = DoubleProperty(Double.NaN)
-  val dVariables = BufferProperty[ScoreCalcVariableEditor](this, "DVariablen", List.empty)
-  val eVariables = BufferProperty[ScoreCalcVariableEditor](this, "EVariablen", List.empty)
-  val pVariables = BufferProperty[ScoreCalcVariableEditor](this, "PVariablen", List.empty)
+  val dVariables = new BufferProperty[ScoreCalcVariableEditor](this, "DVariablen", ObservableBuffer[ScoreCalcVariableEditor]())
+  val eVariables = new BufferProperty[ScoreCalcVariableEditor](this, "EVariablen", ObservableBuffer[ScoreCalcVariableEditor]())
+  val pVariables = new BufferProperty[ScoreCalcVariableEditor](this, "PVariablen", ObservableBuffer[ScoreCalcVariableEditor]())
   def variableEditors = (dVariables.value.toList ++ eVariables.value.toList ++ pVariables.value.toList)
   def variableEditorsList = variableEditors.groupBy(_.score.value.index).values.toList
 

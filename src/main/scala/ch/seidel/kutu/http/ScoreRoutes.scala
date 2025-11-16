@@ -24,6 +24,7 @@ import scala.concurrent.duration.DurationInt
 trait
 ScoreRoutes extends SprayJsonSupport with JsonSupport with AuthSupport with RouterLogging with KutuService with IpToDeviceID {
   import spray.json.DefaultJsonProtocol._
+  import spray.json._
 
   import scala.concurrent.ExecutionContext.Implicits.global
   
@@ -75,7 +76,7 @@ ScoreRoutes extends SprayJsonSupport with JsonSupport with AuthSupport with Rout
               complete(
                 listWettkaempfeAsync.map{competitions => html match {
                   case None => 
-                    val allMap = "all" -> Map(
+                    val allMap: (String, Map[String, String]) = "all" -> Map(
                         "scores-href" -> "/api/scores/all",
                         "grouper-href" -> "/api/scores/all/grouper",
                         "filter-href" -> "/api/scores/all/filter",
@@ -128,7 +129,7 @@ ScoreRoutes extends SprayJsonSupport with JsonSupport with AuthSupport with Rout
           pathLabeled("grouper", "grouper") {
             get {
               complete{ Future { 
-                allGroupers.map(g => encodeURIParam(g.groupname))
+                allGroupers.map(g => encodeURIParam(g.groupname)).toJson
               }}
             }
           } ~
@@ -136,7 +137,7 @@ ScoreRoutes extends SprayJsonSupport with JsonSupport with AuthSupport with Rout
             get {
               parameters(Symbol("groupby").?) { groupby =>
                 complete{ Future {
-                  queryFilters(groupby, allGroupers, data)
+                  queryFilters(groupby, allGroupers, data).toJson
                 }}
               }
             }

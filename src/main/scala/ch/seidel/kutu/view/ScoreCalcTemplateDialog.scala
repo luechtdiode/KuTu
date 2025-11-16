@@ -124,7 +124,7 @@ class ScoreCalcTemplatedialog(actionTitle: String, templateEditor: ScoreCalcTemp
     disable <== when(scoreCalcTemplateEditor.editable) choose false otherwise true
     hgrow = Priority.Always
     items.value.add("")
-    ScoreAggregateFn.values.foreach(items.value.add(_))
+    ScoreAggregateFn.values.foreach(v => items.value.add(v.toString))
     value <==> scoreCalcTemplateEditor.aggregateFn
   }
 

@@ -175,7 +175,8 @@ trait RegistrationRoutes extends SprayJsonSupport with JsonSupport with JwtSuppo
             complete(selectRegistrations()
               .filter(_.registrationTime > since1Year)
               .map(r => r.toVerein).distinct
-              .sortBy(v => v.easyprint).toList)
+              .sortBy(v => v.easyprint)
+              .toJson)
           }
         }
       } ~ pathPrefixLabeled("registrations" / JavaUUID, "registrations/:competition-id") { competitionId =>
@@ -192,7 +193,7 @@ trait RegistrationRoutes extends SprayJsonSupport with JsonSupport with JwtSuppo
               get {
                 parameters(Symbol("html").?) {
                   case None =>
-                    complete(selectRegistrationsOfWettkampf(competitionId))
+                    complete(selectRegistrationsOfWettkampf(competitionId).toJson)
                   case _ =>
                     complete(ToResponseMarshallable(HttpEntity(ContentTypes.`text/html(UTF-8)`, toHTMLasClubRegistrationsList(wettkampf, selectRegistrationsOfWettkampf(competitionId), logofile))))
                 }
@@ -200,7 +201,7 @@ trait RegistrationRoutes extends SprayJsonSupport with JsonSupport with JwtSuppo
             } ~ get { // list Vereinsregistration
               parameters(Symbol("html").?) {
                 case None =>
-                  complete(selectRegistrationsOfWettkampf(competitionId).map(_.toPublicView))
+                  complete(selectRegistrationsOfWettkampf(competitionId).map(_.toPublicView).toJson)
                 case _ =>
                   complete(ToResponseMarshallable(HttpEntity(ContentTypes.`text/html(UTF-8)`, toHTMLasClubRegistrationsList(wettkampf, selectRegistrationsOfWettkampf(competitionId).map(_.toPublicView), logofile))))
               }
@@ -208,7 +209,7 @@ trait RegistrationRoutes extends SprayJsonSupport with JsonSupport with JwtSuppo
               entity(as[NewRegistration]) { newRegistration =>
                 val registration = createRegistration(newRegistration)
                 respondWithJwtHeader(s"${registration.id}") {
-                  complete(registration)
+                  complete(registration.toJson)
                 }
               }
             }
@@ -236,7 +237,7 @@ trait RegistrationRoutes extends SprayJsonSupport with JsonSupport with JwtSuppo
             get {
               complete {
                 val leafprograms = listWettkampfDisziplineViews(wettkampf).map(wd => wd.programm).distinct.sortBy(_.ord)
-                leafprograms.map(p => ProgrammRaw(p.id, p.name, p.aggregate, p.parent.map(_.id).getOrElse(0), p.ord, p.alterVon, p.alterBis, p.uuid, p.riegenmode, p.bestOfCount))
+                leafprograms.map(p => ProgrammRaw(p.id, p.name, p.aggregate, p.parent.map(_.id).getOrElse(0), p.ord, p.alterVon, p.alterBis, p.uuid, p.riegenmode, p.bestOfCount)).toJson
               }
             }
           } ~ pathLabeled("refreshsyncs", "refreshsyncs") {
@@ -251,15 +252,15 @@ trait RegistrationRoutes extends SprayJsonSupport with JsonSupport with JwtSuppo
             get {
               withRequestTimeout(60.seconds) {
                 complete(CompetitionRegistrationClientActor.publish(AskRegistrationSyncActions(wettkampf.uuid.get), clientId).map {
-                  case RegistrationSyncActions(actions) => actions.toVector
-                  case _ => Vector()
+                  case RegistrationSyncActions(actions) => actions.toVector.toJson
+                  case _ => Vector().toJson
                 })
               }
             }
           } ~ pathPrefixLabeled("programmdisziplinlist", "programmdisziplinlist") {
             pathEndOrSingleSlash {
               get {
-                complete(listJudgeRegistrationProgramItems(readWettkampfLeafs(wettkampf.programmId).map(p => p.id)))
+                complete(listJudgeRegistrationProgramItems(readWettkampfLeafs(wettkampf.programmId).map(p => p.id)).toJson)
               }
             }
           } ~ pathPrefixLabeled("judges", "judges") {
@@ -269,7 +270,7 @@ trait RegistrationRoutes extends SprayJsonSupport with JsonSupport with JwtSuppo
                   parameters(Symbol("html").?) {
                     case None =>
                       complete(Future {
-                        loadAllJudgesOfCompetition(wettkampf.uuid.map(UUID.fromString).get).toList
+                        loadAllJudgesOfCompetition(wettkampf.uuid.map(UUID.fromString).get).toJson
                       })
                     case _ =>
                       complete(Future {
