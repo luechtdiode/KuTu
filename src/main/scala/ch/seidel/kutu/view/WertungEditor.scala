@@ -182,8 +182,11 @@ case class WertungEditor(private var lastCommitted: WertungView) {
       lastCommitted.defaultVariables.map { sctv =>
         sctv.copy(
           dVariables = dVariables.value.toList.map(_.score.value),
+          dDetails = false,
           eVariables = eVariables.value.toList.map(_.score.value),
-          pVariables = pVariables.value.toList.map(_.score.value))
+          eDetails = false,
+          pVariables = pVariables.value.toList.map(_.score.value),
+          pDetails = false)
       }.orElse(None)
     }
 
@@ -259,12 +262,12 @@ case class WertungEditor(private var lastCommitted: WertungView) {
     lastCommitted.endnote match {
       case Some(end) if (end > 0 && variableEditors.forall(_.init.value < 0.01)) =>
         dVariables.value.headOption match {
-          case Some(d) =>
-            d.stringvalue.value = lastCommitted.noteD.map(_.toString).getOrElse("")
+          case Some(dVar) =>
+            dVar.stringvalue.value = lastCommitted.noteD.map(_.toString).getOrElse("")
           case None =>
         }
         eVariables.value.headOption match {
-          case Some(e) => e.stringvalue.value = lastCommitted.noteE.map(_.toString).getOrElse("")
+          case Some(eVar) => eVar.stringvalue.value = lastCommitted.noteE.map(_.toString).getOrElse("")
           case None =>
         }
       case _ =>

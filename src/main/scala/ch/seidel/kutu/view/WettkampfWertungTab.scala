@@ -1254,9 +1254,9 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
     val lines = source.getLines().toList
     val header = lines.head
     val rows = lines.tail
-    val fieldnames = header.split(";").zipWithIndex.map(e => (e._2.trim, e._1.trim)).toMap
+    val fieldnames = header.split(";").zipWithIndex.map { case (name, idx) => (idx.toString.trim, name.trim) }.toMap
     val rowfields = rows
-      .map(r => r.split(";").zipWithIndex.map(r => fieldnames(r._2.trim) -> r._1.replace("\"", "").trim).toMap)
+      .map(r => r.split(";").zipWithIndex.map { case (value, idx) => fieldnames.get(idx.toString.trim).map(_ -> value.replace("\"", "").trim) }.flatten.toMap)
     val normalizedPrograms = programms.map(p => p.name.replace("-", "").toUpperCase -> p).toMap
 
     val athletModel = ObservableBuffer[(Long, Athlet, AthletView, Long)]()
@@ -1266,10 +1266,10 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
 
         val importvereine = rowfields
           .map { fields =>
-            val ver = fields("VEREIN").trim
-            val verb = fields("VERBAND").trim
-            val rlz = fields("RLZ_TZ").trim
-            val rlzverb = fields("VERBAND_RLZ").trim
+            val ver = fields.get("VEREIN").map(_.trim).getOrElse("")
+            val verb = fields.get("VERBAND").map(_.trim).getOrElse("")
+            val rlz = fields.get("RLZ_TZ").map(_.trim).getOrElse("")
+            val rlzverb = fields.get("VERBAND_RLZ").map(_.trim).getOrElse("")
 
             val verein = List(ver, rlz).filter(_.nonEmpty).distinct.mkString(", ")
             val verband = List(verb, rlz, rlzverb).filter(_.nonEmpty).distinct.filter(v => !verein.contains(v)).mkString(", ")
@@ -1289,9 +1289,9 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
             id = 0,
             js_id = 0,
             geschlecht = "M",
-            name = fields("NAME_TURNER"),
-            vorname = fields("VORNAME_TURNER"),
-            gebdat = Some(service.getSQLDate("01.01." + fields("JG_TURNER"))),
+            name = fields.get("NAME_TURNER").getOrElse(""),
+            vorname = fields.get("VORNAME_TURNER").getOrElse(""),
+            gebdat = Some(service.getSQLDate("01.01." + fields.get("JG_TURNER").getOrElse(""))),
             strasse = "",
             plz = "",
             ort = "",
@@ -1299,7 +1299,7 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
             activ = true
           )
           val candidate = service.findAthleteLike(cache = cache, exclusive = false)(parsed)
-          val progId: Long = normalizedPrograms(fields("WETTKAMPF_TEIL").trim.toUpperCase()).id
+          val progId: Long = normalizedPrograms(fields.get("WETTKAMPF_TEIL").map(_.trim.toUpperCase()).getOrElse("")).id
           val suggestion = AthletView(
             candidate.id, candidate.js_id,
             candidate.geschlecht, candidate.name, candidate.vorname, candidate.gebdat,

@@ -9,7 +9,7 @@ import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration.Duration
 import scala.concurrent.{Await, Future}
 
-abstract trait DisziplinService extends DBService with WettkampfResultMapper {
+abstract trait DisziplinService extends DBService with WettkampfResultMapper with DisziplinResultMapper {
   private val logger = LoggerFactory.getLogger(this.getClass)
 
   def readWettkampfLeafs(programmid: Long): Seq[ProgrammView]
