@@ -18,7 +18,7 @@ val slf4jV       = "2.0.17"
 val logbackV     = "1.5.21"
 
 // Ensure Java compiler options match the project's target
-ThisBuild / javacOptions ++= Seq("-source", "25", "-target", "25")
+ThisBuild / javacOptions ++= Seq("-source", "21", "-target", "21")
 
 // Resolvers: include Sonatype snapshots because project uses SNAP dependencies
 resolvers ++= Seq(
@@ -48,7 +48,7 @@ Compile / scalacOptions ++= {
     "-language:existentials",
     "-g:line"
   )
-  if (scalaVersion.value.startsWith("3")) base ++ Seq("-source:3.0-migration", "-rewrite") else base
+  if (scalaVersion.value.startsWith("3")) base else base
 }
 
 // Prefer Java then Scala compilation order (to match maven config)
@@ -104,6 +104,7 @@ libraryDependencies ++= Seq(
 
   // Additional Java libraries from pom.xml
   "org.controlsfx" % "controlsfx" % "11.2.2",
+  "org.simplejavamail" % "simple-java-mail" % "8.12.6",
   "net.glxn" % "qrgen" % "1.4",
   "com.github.markusbernhardt" % "proxy-vole" % "1.0.5",
   "org.javadelight" % "delight-nashorn-sandbox" % "0.5.3",
@@ -119,17 +120,24 @@ libraryDependencies ++= Seq(
   // Test libraries
   "org.scalatest" %% "scalatest" % scalatestV % Test,
   "junit" % "junit" % "4.13.2" % Test,
-  "io.gatling.highcharts" % "gatling-charts-highcharts" % gatlingV % Test
+  "io.gatling.highcharts" % "gatling-charts-highcharts" % gatlingV % Test,
+  // Scala 3 std lib
+  "org.scala-lang" %% "scala3-library" % "3.7.3"
 )
 
-// Add parser combinators only for Scala 2.13 (avoid cross-version conflicts with Scala 3)
+// Add parser combinators: choose correct artifact for current scalaVersion
 libraryDependencies ++= {
-  if (scalaVersion.value.startsWith("2.13")) Seq("org.scala-lang.modules" %% "scala-parser-combinators" % "2.4.0")
+  if (scalaVersion.value.startsWith("3.")) Seq("org.scala-lang.modules" % "scala-parser-combinators_3" % "2.4.0")
+  else if (scalaVersion.value.startsWith("2.13")) Seq("org.scala-lang.modules" %% "scala-parser-combinators" % "2.4.0")
   else Seq.empty
 }
 
-// Global exclusion to force consistent scala-parser-combinators version
-dependencyOverrides += "org.scala-lang.modules" %% "scala-parser-combinators" % "2.4.0"
+// Exclude the 2.13 suffixed parser-combinators globally to avoid mixed-resolution during Scala 3 builds
+excludeDependencies += ExclusionRule(organization = "org.scala-lang.modules", name = "scala-parser-combinators_2.13")
+
+// Force consistent versions for both suffixed artifacts
+dependencyOverrides += "org.scala-lang.modules" % "scala-parser-combinators_3" % "2.4.0"
+dependencyOverrides += "org.scala-lang.modules" % "scala-parser-combinators_2.13" % "2.4.0"
 
 // Add JavaFX platform-specific artifacts (classifier based on OS)
 libraryDependencies ++= Seq(

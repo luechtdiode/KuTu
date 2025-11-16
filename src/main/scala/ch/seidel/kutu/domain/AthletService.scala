@@ -189,10 +189,13 @@ trait AthletService extends DBService with AthletResultMapper with VereinService
     //    WebSocketClient.publish(awu)
   }
 
-  def startsSameInPercent(text1: String, text2: String) = 100 * (text1.zip(text2).foldLeft((true, 0)) { (acc, pair) =>
-    val same = pair._1 == pair._2
-    (acc._1 && same, acc._2 + (if (acc._1 && same) 1 else 0))
-  }._2) / math.max(text1.length, text2.length)
+  def startsSameInPercent(text1: String, text2: String): Int = {
+    val count = text1.toSeq.zip(text2.toSeq).foldLeft((true, 0)) { (acc, pair) =>
+      val same = pair._1 == pair._2
+      (acc._1 && same, acc._2 + (if (acc._1 && same) 1 else 0))
+    }._2
+    100 * count / math.max(text1.length, text2.length)
+  }
 
   def findAthleteLike(cache: java.util.Collection[MatchCode] = new java.util.ArrayList[MatchCode], wettkampf: Option[Long] = None, exclusive: Boolean)(athlet: Athlet): Athlet = {
     val bmname = MatchCode.encode(athlet.name)

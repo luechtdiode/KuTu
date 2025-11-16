@@ -9,8 +9,10 @@ import spray.json.*
 
 trait JsonSupport extends SprayJsonSupport with EnrichedJson {
   // import the default encoders for primitive types (Int, String, Lists etc)
-
   import DefaultJsonProtocol.*
+
+  given kutuAppEventFormat: RootJsonFormat[KutuAppEvent] = messagesFormatter.asInstanceOf[RootJsonFormat[KutuAppEvent]]
+
 
   given wkFormat: RootJsonFormat[Wettkampf] = jsonFormat(Wettkampf.apply, "id", "uuid", "datum", "titel", "programmId", "auszeichnung", "auszeichnungendnote", "notificationEMail", "altersklassen", "jahrgangsklassen", "punktegleichstandsregel", "rotation", "teamrule")
   given pgmFormat: RootJsonFormat[ProgrammRaw] = jsonFormat10(ProgrammRaw.apply)
