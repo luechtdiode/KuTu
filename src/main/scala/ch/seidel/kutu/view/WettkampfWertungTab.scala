@@ -923,7 +923,7 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
         }
 
         val sumProperty = new StringProperty(f"$sum%3.3f")
-        sumProperty <== createStringBinding(() => f"$sum%3.3f", x.value.map(_.calculatedWertung): _*)
+        sumProperty <== createStringBinding(() => f"$sum%3.3f", x.value.map(_.calculatedWertung)*)
         sumProperty
       }
       prefWidth = 100
@@ -1051,7 +1051,7 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
 
   val txtUserFilter = new TextField() {
     promptText = "Athlet-Filter"
-    text.addListener { (o: javafx.beans.value.ObservableValue[_ <: String], oldVal: String, newVal: String) =>
+    text.addListener { (o: javafx.beans.value.ObservableValue[? <: String], oldVal: String, newVal: String) =>
       if (!lastFilter.equalsIgnoreCase(newVal)) {
         updateFilteredList(newVal, durchgangFilter)
       }
@@ -1357,7 +1357,7 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
           athletTable.selectionModel.value.setSelectionMode(SelectionMode.Multiple)
           val filter = new TextField() {
             promptText = "Such-Text"
-            text.addListener { (o: javafx.beans.value.ObservableValue[_ <: String], oldVal: String, newVal: String) =>
+            text.addListener { (o: javafx.beans.value.ObservableValue[? <: String], oldVal: String, newVal: String) =>
               val sortOrder = athletTable.sortOrder.toList
               filteredModel.clear()
               val searchQuery = newVal.toUpperCase().split(" ")
@@ -1600,7 +1600,7 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
           athletTable.selectionModel.value.setSelectionMode(SelectionMode.Multiple)
           val filter = new TextField() {
             promptText = "Such-Text"
-            text.addListener { (o: javafx.beans.value.ObservableValue[_ <: String], oldVal: String, newVal: String) =>
+            text.addListener { (o: javafx.beans.value.ObservableValue[? <: String], oldVal: String, newVal: String) =>
               val sortOrder = athletTable.sortOrder.toList
               filteredModel.clear()
               val searchQuery = newVal.toUpperCase().split(" ")

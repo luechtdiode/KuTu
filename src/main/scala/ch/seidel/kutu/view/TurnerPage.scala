@@ -134,7 +134,7 @@ object TurnerPage {
 
       val txtUserFilter = new TextField() {
         promptText = "Athlet-Filter"
-        text.addListener { (o: javafx.beans.value.ObservableValue[_ <: String], oldVal: String, newVal: String) =>
+        text.addListener { (o: javafx.beans.value.ObservableValue[? <: String], oldVal: String, newVal: String) =>
           if (!lastFilter.equalsIgnoreCase(newVal)) {
             updateFilteredList(newVal)
           }

@@ -63,7 +63,7 @@ class WettkampfOverviewTab(wettkampf: WettkampfView, override val service: KutuS
     val data = if (wettkampf.altersklassen.nonEmpty) {
       val aks = ByAltersklasse("AK", Altersklasse.parseGrenzen(wettkampf.altersklassen))
       val facts = service.listAKOverviewFacts(UUID.fromString(wettkampf.uuid.get))
-      val grouper = aks.makeGroupBy(wettkampf.toWettkampf)_
+      val grouper: (java.time.LocalDate, String, ProgrammView) => Altersklasse = (gebdat, geschlecht, programm) => aks.makeGroupBy(wettkampf.toWettkampf)(gebdat, geschlecht, programm)
       facts.groupBy(_._1).flatMap(gr => gr._2.groupBy(x => (x._2, grouper(x._5, x._4, x._2))).map { gr2 =>
         val pgmname = if (gr2._1._2.easyprint.contains(gr2._1._1.name)) gr2._1._2.easyprint else s"${gr2._1._1.name} ${gr2._1._2.easyprint}"
         (gr._1, pgmname, gr2._1._2.alterVon, gr2._2.count(_._4.equals("M")), gr2._2.count(_._4.equals("W")))
@@ -71,7 +71,7 @@ class WettkampfOverviewTab(wettkampf: WettkampfView, override val service: KutuS
     } else if (wettkampf.jahrgangsklassen.nonEmpty) {
       val aks = ByJahrgangsAltersklasse("AK", Altersklasse.parseGrenzen(wettkampf.jahrgangsklassen))
       val facts = service.listAKOverviewFacts(UUID.fromString(wettkampf.uuid.get))
-      val grouper = aks.makeGroupBy(wettkampf.toWettkampf) _
+      val grouper: (java.time.LocalDate, String, ProgrammView) => Altersklasse = (gebdat, geschlecht, programm) => aks.makeGroupBy(wettkampf.toWettkampf)(gebdat, geschlecht, programm)
       facts.groupBy(_._1).flatMap(gr => gr._2.groupBy(x => (x._2, grouper(x._5, x._4, x._2))).map { gr2 =>
         val pgmname = if (gr2._1._2.easyprint.contains(gr2._1._1.name)) gr2._1._2.easyprint else s"${gr2._1._1.name} ${gr2._1._2.easyprint}"
         (gr._1, pgmname, gr2._1._2.alterVon, gr2._2.count(_._4.equals("M")), gr2._2.count(_._4.equals("W")))

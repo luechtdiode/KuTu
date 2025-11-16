@@ -210,7 +210,7 @@ object RegistrationAdminDialog {
     athletTable.selectionModel.value.setSelectionMode(SelectionMode.Multiple)
     val filter = new TextField() {
       promptText = "Such-Text"
-      text.addListener { (o: ObservableValue[_ <: String], oldVal: String, newVal: String) =>
+      text.addListener { (o: ObservableValue[? <: String], oldVal: String, newVal: String) =>
         val sortOrder = athletTable.sortOrder.toList
         filteredModel.clear()
         val searchQuery = newVal.toUpperCase().split(" ")

@@ -191,16 +191,16 @@ class ScoreCalcTemplatesTab(wettkampf: WettkampfView, override val service: Kutu
 
     val txtFilter = new TextField() {
       promptText = "Filter (Ctrl + F)"
-      text.addListener { (o: javafx.beans.value.ObservableValue[_ <: String], oldVal: String, newVal: String) =>
+        text.addListener { (o: javafx.beans.value.ObservableValue[? <: String], oldVal: String, newVal: String) =>
         if (!lastFilter.equalsIgnoreCase(newVal)) {
           updateFilteredList(newVal)
         }
       }
     }
-    val defaultKeyActionHandler = AutoCommitTextFieldTableCell.handleDefaultEditingKeyEvents(scoreCalcTemplatesView, double = false, txtFilter)_
-    val defaultMouseActionHandler = AutoCommitTextFieldTableCell.handleDefaultEditingMouseEvents(scoreCalcTemplatesView, double = false, txtFilter)_
-    scoreCalcTemplatesView.filterEvent(KeyEvent.KeyPressed) {defaultKeyActionHandler}
-    scoreCalcTemplatesView.filterEvent(MouseEvent.MouseClicked) {defaultMouseActionHandler}
+      val defaultKeyActionHandler: KeyEvent => Unit = (ke: KeyEvent) => AutoCommitTextFieldTableCell.handleDefaultEditingKeyEvents(scoreCalcTemplatesView, double = false, txtFilter)(ke)
+      val defaultMouseActionHandler: MouseEvent => Unit = (me: MouseEvent) => AutoCommitTextFieldTableCell.handleDefaultEditingMouseEvents(scoreCalcTemplatesView, double = false, txtFilter)(me)
+      scoreCalcTemplatesView.filterEvent(KeyEvent.KeyPressed) { (ke: KeyEvent) => defaultKeyActionHandler(ke) }
+      scoreCalcTemplatesView.filterEvent(MouseEvent.MouseClicked) { (me: MouseEvent) => defaultMouseActionHandler(me) }
 
     text = "Noternerfassung Formulare"
     content = new BorderPane {

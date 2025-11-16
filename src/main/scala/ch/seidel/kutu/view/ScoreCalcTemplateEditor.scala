@@ -110,7 +110,7 @@ case class ScoreCalcTemplateEditor(init: ScoreCalcTemplate, context: ScoreCalcTe
 
   def selectedWettkampfDisziplin: Option[WettkampfdisziplinView] = context.wettkampfdisziplinViews.find(d => d.easyprint.equals(kategoriedisziplin.value))
 
-  def selectedAggregatFn: Option[ScoreAggregateFn] = ScoreAggregateFn(ScoreAggregateFn.values.find(a => a.equals(aggregateFn.value)))
+  def selectedAggregatFn: Option[ScoreAggregateFn] = ScoreAggregateFn(Some(aggregateFn.value))
 
   def previewWertung(): WertungEditor = {
     val wkv = selectedWettkampfDisziplin

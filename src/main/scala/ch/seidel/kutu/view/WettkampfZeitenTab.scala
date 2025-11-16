@@ -117,7 +117,7 @@ class WettkampfZeitenTab(editableProperty: Boolean, wettkampf: WettkampfView, ov
 
     val txtFilter = new TextField() {
       promptText = "Filter (Ctrl + F)"
-      text.addListener { (o: javafx.beans.value.ObservableValue[_ <: String], oldVal: String, newVal: String) =>
+      text.addListener { (o: javafx.beans.value.ObservableValue[? <: String], oldVal: String, newVal: String) =>
         if (!lastFilter.equalsIgnoreCase(newVal)) {
           updateFilteredList(newVal)
         }
