@@ -2,26 +2,26 @@ package ch.seidel.kutu.http
 
 import ch.seidel.kutu.Config
 import ch.seidel.kutu.Config.remoteAdminBaseUrl
-import ch.seidel.kutu.actors._
+import ch.seidel.kutu.actors.*
 import ch.seidel.kutu.data.RegistrationAdmin.adjustWertungRiegen
 import ch.seidel.kutu.data.ResourceExchanger
 import ch.seidel.kutu.data.ResourceExchanger.updateAthletRegistration
-import ch.seidel.kutu.domain.{AthletRegistration, AthletView, JudgeRegistration, KutuService, Media, MediaAdmin, NewRegistration, ProgrammRaw, Registration, RegistrationResetPW, TeamItem, TeamRegel, Verein, Wettkampf, dateToExportedStr, encodeFileName, str2SQLDate}
+import ch.seidel.kutu.domain.{AthletRegistration, AthletView, JudgeRegistration, KutuService, Media, MediaAdmin, NewRegistration, ProgrammRaw, Registration, RegistrationResetPW, SyncAction, TeamItem, TeamRegel, Verein, Wettkampf, dateToExportedStr, encodeFileName, str2SQLDate}
 import ch.seidel.kutu.http.AuthSupport.OPTION_LOGINRESET
 import ch.seidel.kutu.renderer.MailTemplates.createPasswordResetMail
 import ch.seidel.kutu.renderer.{CompetitionsClubsToHtmlRenderer, CompetitionsJudgeToHtmlRenderer, PrintUtil}
-import fr.davit.pekko.http.metrics.core.scaladsl.server.HttpMetricsDirectives._
+import fr.davit.pekko.http.metrics.core.scaladsl.server.HttpMetricsDirectives.*
 import org.apache.pekko.http.scaladsl.Http
 import org.apache.pekko.http.scaladsl.marshallers.sprayjson.SprayJsonSupport
 import org.apache.pekko.http.scaladsl.marshalling.ToResponseMarshallable
 import org.apache.pekko.http.scaladsl.model.HttpMethods.POST
-import org.apache.pekko.http.scaladsl.model._
+import org.apache.pekko.http.scaladsl.model.*
 import org.apache.pekko.http.scaladsl.server.Route
 import org.apache.pekko.http.scaladsl.server.directives.FileInfo
 import org.apache.pekko.http.scaladsl.unmarshalling.Unmarshal
 import org.apache.pekko.stream.scaladsl.{Sink, Source, StreamConverters}
 import org.apache.pekko.util.{ByteString, Timeout}
-import spray.json._
+import spray.json.*
 
 import java.io.{ByteArrayOutputStream, InputStream}
 import java.util.UUID
@@ -252,15 +252,15 @@ trait RegistrationRoutes extends SprayJsonSupport with JsonSupport with JwtSuppo
             get {
               withRequestTimeout(60.seconds) {
                 complete(CompetitionRegistrationClientActor.publish(AskRegistrationSyncActions(wettkampf.uuid.get), clientId).map {
-                  case RegistrationSyncActions(actions) => actions.toVector.toJson
-                  case _ => Vector().toJson
+                  case RegistrationSyncActions(actions) => actions.toJson(using baseSyncActionListFormat)
+                  case _ => List.empty[ch.seidel.kutu.domain.SyncAction].toJson(using baseSyncActionListFormat)
                 })
               }
             }
           } ~ pathPrefixLabeled("programmdisziplinlist", "programmdisziplinlist") {
             pathEndOrSingleSlash {
               get {
-                complete(listJudgeRegistrationProgramItems(readWettkampfLeafs(wettkampf.programmId).map(p => p.id)).toJson)
+                complete(listJudgeRegistrationProgramItems(readWettkampfLeafs(wettkampf.programmId).map(p => p.id)).map(_.toList).map(items => items.toJson(using listFormat(using judgeRegistrationProgramItemFormat))))
               }
             }
           } ~ pathPrefixLabeled("judges", "judges") {

@@ -15,8 +15,8 @@ import fr.davit.pekko.http.metrics.core.scaladsl.server.HttpMetricsDirectives._
 
 trait WertungenRoutes extends SprayJsonSupport with JsonSupport with JwtSupport with AuthSupport with RouterLogging with KutuService with CIDSupport {
 
+  import spray.json._
   import spray.json.DefaultJsonProtocol._
-
   import scala.concurrent.ExecutionContext.Implicits.global
 
   // Required by the `ask` (?) method below
@@ -157,7 +157,7 @@ trait WertungenRoutes extends SprayJsonSupport with JsonSupport with JwtSupport 
                   case GeraeteRiegeList(list, _) =>
                     list
                       .flatMap(gr => gr.durchgang)
-                      .distinct
+                      .distinct.toJson
                   case _ =>
                     StatusCodes.Conflict
                 }
@@ -210,7 +210,7 @@ trait WertungenRoutes extends SprayJsonSupport with JsonSupport with JwtSupport 
                   complete(StatusCodes.NotFound)
                 } else
                   complete {
-                    listDisziplinZuWettkampf(readWettkampf(competitionId.toString()))
+                    listDisziplinZuWettkampf(readWettkampf(competitionId.toString())).map(_.toList).map(items => items.toJson(using listFormat(using disziplinFormat)))
                   }
               }
             } ~
@@ -224,10 +224,10 @@ trait WertungenRoutes extends SprayJsonSupport with JsonSupport with JwtSupport 
                           case None => validateWertung(wertung)
                           case Some(currentWertung) => validateWertung(currentWertung.toWertung.updatedWertung(wertung))
                         }
-                        complete(w)
+                        complete(w.toJson)
                       } catch {
                         case e: IllegalArgumentException =>
-                          complete(MessageAck(e.getMessage))
+                          complete(MessageAck(e.getMessage).toJson)
                       }
                     }
                   } else {
@@ -252,6 +252,7 @@ trait WertungenRoutes extends SprayJsonSupport with JsonSupport with JwtSupport 
                           //.filter(d => !d.isPause)
                           //.map(_.harmless)
                           .distinct
+                          .toJson
                       case _ =>
                         StatusCodes.Conflict
                     }
@@ -268,6 +269,7 @@ trait WertungenRoutes extends SprayJsonSupport with JsonSupport with JwtSupport 
                         })
                           .map(gr => gr.halt + 1)
                           .distinct.sorted
+                          .toJson
                       case _ =>
                         StatusCodes.Conflict
                     }
@@ -296,7 +298,7 @@ trait WertungenRoutes extends SprayJsonSupport with JsonSupport with JwtSupport 
                                   wertungView.toWertung.copy(wettkampfdisziplinId = 0L),
                                   gid, k.programm, gr.durchgang.getOrElse(""), wertungView.wettkampfdisziplin.isDNoteUsed, wertungView.isStroked)
                             }
-                          }))
+                          })).toJson
                       case _ =>
                         StatusCodes.Conflict
                     }

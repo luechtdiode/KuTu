@@ -16,6 +16,43 @@ trait JsonSupport extends SprayJsonSupport with EnrichedJson {
 
   given wkFormat: RootJsonFormat[Wettkampf] = jsonFormat(Wettkampf.apply, "id", "uuid", "datum", "titel", "programmId", "auszeichnung", "auszeichnungendnote", "notificationEMail", "altersklassen", "jahrgangsklassen", "punktegleichstandsregel", "rotation", "teamrule")
   given pgmFormat: RootJsonFormat[ProgrammRaw] = jsonFormat10(ProgrammRaw.apply)
+  lazy given programmViewFormat: RootJsonFormat[ch.seidel.kutu.domain.ProgrammView] = new RootJsonFormat[ch.seidel.kutu.domain.ProgrammView] {
+    override def write(p: ch.seidel.kutu.domain.ProgrammView): JsValue = JsObject(
+      "id" -> JsNumber(p.id),
+      "name" -> JsString(p.name),
+      "aggregate" -> JsNumber(p.aggregate),
+      "parent" -> p.parent.map(_.toJson).getOrElse(JsNull),
+      "ord" -> JsNumber(p.ord),
+      "alterVon" -> JsNumber(p.alterVon),
+      "alterBis" -> JsNumber(p.alterBis),
+      "uuid" -> JsString(p.uuid),
+      "riegenmode" -> JsNumber(p.riegenmode),
+      "bestOfCount" -> JsNumber(p.bestOfCount)
+    )
+
+    override def read(json: JsValue): ch.seidel.kutu.domain.ProgrammView = {
+      val fields = json.asJsObject.fields
+      val parent = fields.get("parent") match {
+        case Some(JsNull) | None => None
+        case Some(jv) => Some(jv.convertTo[ch.seidel.kutu.domain.ProgrammView])
+      }
+      ch.seidel.kutu.domain.ProgrammView(
+        fields("id").convertTo[Long],
+        fields("name").convertTo[String],
+        fields("aggregate").convertTo[Int],
+        parent,
+        fields("ord").convertTo[Int],
+        fields("alterVon").convertTo[Int],
+        fields("alterBis").convertTo[Int],
+        fields("uuid").convertTo[String],
+        fields("riegenmode").convertTo[Int],
+        fields("bestOfCount").convertTo[Int]
+      )
+    }
+  }
+  given wettkampfViewFormat: RootJsonFormat[ch.seidel.kutu.domain.WettkampfView] = jsonFormat(ch.seidel.kutu.domain.WettkampfView.apply,
+    "id", "uuid", "datum", "titel", "programm", "auszeichnung", "auszeichnungendnote", "notificationEMail", "altersklassen", "jahrgangsklassen", "punktegleichstandsregel", "rotation", "teamrule")
+  given publishedScoreViewFormat: RootJsonFormat[ch.seidel.kutu.domain.PublishedScoreView] = jsonFormat6(ch.seidel.kutu.domain.PublishedScoreView.apply)
   given disziplinFormat: RootJsonFormat[Disziplin] = jsonFormat2(Disziplin.apply)
   given scoreCalcVariableFormat: RootJsonFormat[ScoreCalcVariable] = jsonFormat6(ScoreCalcVariable.apply)
   given scoreAggrFnFormat: RootJsonFormat[ScoreAggregateFn] = CaseObjectJsonSupport(ScoreAggregateFn.values)
@@ -153,7 +190,7 @@ trait JsonSupport extends SprayJsonSupport with EnrichedJson {
           jv.addFields(Map(
             "type" -> JsString(be.getClass.getSimpleName),
             "wettkampfUUID" -> JsString(be.wettkampfUUID),
-            "events" -> JsArray(be.events.map(ev => write(ev)).toVector)
+            "events" -> JsArray(be.events.map(ev => write(ev)).toList)
           ))
         case _ =>
           caseClassesJsonFormatter.get(obj.getClass.getSimpleName) match {
