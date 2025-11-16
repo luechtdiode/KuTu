@@ -5,7 +5,7 @@ import slick.jdbc.GetResult
 trait RegistrationResultMapper extends AthletResultMapper with MediaResultMapper with VereinResultMapper {
 
   implicit val getRegistrationResult: GetResult[Registration] = GetResult(r =>
-    Registration(r.<<, r.<<, r.<<, r.<<, r.<<, r.<<, r.<<, r.<<, r.<<, getTime(r), getVereinOptionResult(r)))
+    Registration(r.<<, r.<<, r.<<, r.<<, r.<<, r.<<, r.<<, r.<<, r.<<, getTime(r), r.<<?[Verein]))
   implicit val getAthletRegistrationResult: GetResult[AthletRegistration] = GetResult { r =>
     val id: Long = r.<<
     val vereinregistrationId: Long = r.<<
