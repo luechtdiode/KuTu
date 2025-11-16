@@ -116,7 +116,7 @@ object ScoreToJsonRenderer {
     gsBlock.toString
   }
 
-  private def renderGroupLeaf(openedTitle: String, level: Int, sortAlphabetically: Boolean, isAvgOnMultipleCompetitions: Boolean, gsBlock: StringBuilder, gl: GroupLeaf[_ <: domain.DataObject]): Unit = {
+  private def renderGroupLeaf(openedTitle: String, level: Int, sortAlphabetically: Boolean, isAvgOnMultipleCompetitions: Boolean, gsBlock: StringBuilder, gl: GroupLeaf[? <: domain.DataObject]): Unit = {
     val cols = gl.buildColumns(isAvgOnMultipleCompetitions)
 
     val alldata = gl.getTableData(sortAlphabetically, isAvgOnMultipleCompetitions)

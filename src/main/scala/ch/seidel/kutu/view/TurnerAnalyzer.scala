@@ -63,7 +63,7 @@ class TurnerAnalyzer(val verein: Option[Verein], val athlet: Option[Athlet], val
     val (dataText, isLandscape) = if(data.getYValue.isInstanceOf[String]) (new Text(s"${data.getXValue}"), true) else (new Text(s"${data.getYValue}"), false)
 
     data.nodeProperty().addListener(new ChangeListener[Node]() {
-      override def changed(ov: ObservableValue[_<: Node], oldNode: Node, node: Node): Unit = {
+      override def changed(ov: ObservableValue[? <: Node], oldNode: Node, node: Node): Unit = {
         if(node != null) {
           node.setEffect(null)
           node.onMouseEntered = _ => {
@@ -82,13 +82,13 @@ class TurnerAnalyzer(val verein: Option[Verein], val athlet: Option[Athlet], val
           }
 
           node.parentProperty().addListener(new ChangeListener[Parent]() {
-            override def changed(ov: ObservableValue[_<: Parent], oldParent: Parent, parent: Parent): Unit = {
+            override def changed(ov: ObservableValue[? <: Parent], oldParent: Parent, parent: Parent): Unit = {
               val parentGroup = parent.asInstanceOf[Group]
               parentGroup.getChildren.add(dataText)
             }
           })
           node.boundsInParentProperty().addListener(new ChangeListener[Bounds]() {
-            override def changed(ov: ObservableValue[_<: Bounds], oldBounds: Bounds, bounds: Bounds): Unit = {
+            override def changed(ov: ObservableValue[? <: Bounds], oldBounds: Bounds, bounds: Bounds): Unit = {
               dataText.setLayoutX(bounds.getMinX)
               dataText.setVisible(false)
               Platform.runLater{

@@ -79,7 +79,7 @@ class PlayList {
       }
     }
     fetchPlayListTask.stateProperty.addListener(new ChangeListener[Worker.State]() {
-      override def changed(arg0: ObservableValue[_ <: Worker.State], oldState: Worker.State, newState: Worker.State): Unit = {
+      override def changed(arg0: ObservableValue[? <: Worker.State], oldState: Worker.State, newState: Worker.State): Unit = {
         println("newState = " + newState)
         if (newState eq State.SUCCEEDED) try songs.addAll(fetchPlayListTask.get)
         catch {
@@ -119,7 +119,7 @@ class PlayList {
       }
     }
     fetchPlayListTask.stateProperty.addListener(new ChangeListener[Worker.State]() {
-      override def changed(arg0: ObservableValue[_ <: Worker.State], oldState: Worker.State, newState: Worker.State): Unit = {
+      override def changed(arg0: ObservableValue[? <: Worker.State], oldState: Worker.State, newState: Worker.State): Unit = {
         if (newState eq State.SUCCEEDED) try songs.addAll(fetchPlayListTask.get)
         catch {
           case ex: Exception =>

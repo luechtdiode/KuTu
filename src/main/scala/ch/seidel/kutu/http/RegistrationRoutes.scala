@@ -395,7 +395,7 @@ trait RegistrationRoutes extends SprayJsonSupport with JsonSupport with JwtSuppo
                   pathEndOrSingleSlash {
                     get { // list Athletes
                       complete(
-                        selectAthletRegistrations(registrationId)
+                        selectAthletRegistrations(registrationId).toList.toJson(using listFormat(using athletregistrationFormat))
                       )
                     }
                   }
@@ -422,7 +422,7 @@ trait RegistrationRoutes extends SprayJsonSupport with JsonSupport with JwtSuppo
                 respondWithJwtHeader(s"$registrationId") {
                   pathEndOrSingleSlash {
                     get {
-                      complete(selectRegistration(registrationId))
+                      complete(selectRegistration(registrationId).toJson(using registrationFormat))
                     } ~ put { // update Vereinsregistration
                       entity(as[Registration]) { registration =>
                         if (selectRegistration(registrationId).vereinId.equals(registration.vereinId)) {
@@ -430,7 +430,7 @@ trait RegistrationRoutes extends SprayJsonSupport with JsonSupport with JwtSuppo
                             val reg = updateRegistration(registration)
                             CompetitionRegistrationClientActor.publish(RegistrationChanged(wettkampf.uuid.get), clientId)
                             log.info(s"$clientId: Vereinsregistration aktualisiert: ${registration}")
-                            reg
+                            reg.toJson(using registrationFormat)
                           })
                         } else {
                           complete(StatusCodes.Conflict)
@@ -452,7 +452,7 @@ trait RegistrationRoutes extends SprayJsonSupport with JsonSupport with JwtSuppo
                             val registration = resetRegistrationPW(regPwReset)
                             log.info(s"$clientId: Passwort geändert")
                             respondWithJwtHeader(s"${registration.id}") {
-                              complete(registration)
+                              complete(registration.toJson(using registrationFormat))
                             }
                           } else {
                             complete(StatusCodes.Conflict)
@@ -496,9 +496,9 @@ trait RegistrationRoutes extends SprayJsonSupport with JsonSupport with JwtSuppo
                             (1 to nextTeamNumber).toList.map(idx => TeamItem(idx, teamname)) :::
                               wettkampf.extraTeams
                                 .filter(_.nonEmpty)
-                                .zipWithIndex.map(item => TeamItem(item._2 * -1 - 1, item._1))
+                                .zipWithIndex.map(item => TeamItem(item._2 * -1 - 1, item._1)).toJson(using listFormat(using teamFormat))
                           } else {
-                            List[TeamItem]()
+                            List[TeamItem]().toJson(using listFormat(using teamFormat))
                           }
                         }
                       }

@@ -929,7 +929,7 @@ class NetworkTab(wettkampfmode: BooleanProperty, override val wettkampfInfo: Wet
     if (subscriptions.isEmpty) {
       println("subscribing for network modus changes")
       subscriptions = subscriptions :+ KuTuApp.modelWettkampfModus.onChange { (_, _, newItem) =>
-        println("refreshing Wettkampfmodus", newItem)
+        println(("refreshing Wettkampfmodus", newItem))
         updateButtons()
       }
       println("subscribing for refreshing from websocket")

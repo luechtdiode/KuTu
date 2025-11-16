@@ -422,7 +422,7 @@ object Player extends JFXApp3 {
     volumeKnob.resizeRelocate(907, 491, 175, 175)
     // listen for when we have songs
     playList.getSongs.addListener(new ListChangeListener[Pair[String, String]]() {
-      override def onChanged(change: ListChangeListener.Change[_ <: Pair[String, String]]): Unit = {
+      override def onChanged(change: ListChangeListener.Change[? <: Pair[String, String]]): Unit = {
         if (playList.getSongs.nonEmpty || isPlayerRunning()) {
           lastAction.foreach {
             case a: AthletMediaStart =>

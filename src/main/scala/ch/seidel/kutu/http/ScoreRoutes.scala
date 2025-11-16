@@ -82,7 +82,7 @@ ScoreRoutes extends SprayJsonSupport with JsonSupport with AuthSupport with Rout
                         "filter-href" -> "/api/scores/all/filter",
                         "name" -> "Übergreifend"
                     )
-                      (competitions
+                      ToResponseMarshallable((competitions
                         .filter(comp => comp.uuid.nonEmpty)
                         .map(comp =>
                           comp.uuid.get ->
@@ -90,7 +90,7 @@ ScoreRoutes extends SprayJsonSupport with JsonSupport with AuthSupport with Rout
                               "scores-href" -> s"/api/scores/${comp.uuid.get}",
                               "name" -> comp.easyprint
                             )
-                        ).toMap + allMap).toJson
+                        ).toMap + allMap).toJson)
                   case Some(_) =>
                     ToResponseMarshallable(HttpEntity(ContentTypes.`text/html(UTF-8)`,
                         competitions
@@ -198,7 +198,7 @@ ScoreRoutes extends SprayJsonSupport with JsonSupport with AuthSupport with Rout
                   complete(
                     listPublishedScores(competitionId).map{(scores:List[PublishedScoreView]) => html match {
                       case None =>
-                        ToResponseMarshallable(
+                        ToResponseMarshallable((
                           scores.map(score =>
                             score.title ->
                               Map(
@@ -216,7 +216,7 @@ ScoreRoutes extends SprayJsonSupport with JsonSupport with AuthSupport with Rout
                             "topresults-href" -> s"/?${new String(Base64.getUrlEncoder.encodeToString(s"top&c=${competitionId.toString}".getBytes))}",
                             "name" -> "Zwischenresultate",
                             "logo" -> logoHtml
-                          )))
+                          ))).toJson)
                       case Some(_) =>
                         ToResponseMarshallable(HttpEntity(ContentTypes.`text/html(UTF-8)`,
                           (scores
@@ -456,7 +456,7 @@ ScoreRoutes extends SprayJsonSupport with JsonSupport with AuthSupport with Rout
             pathLabeled("grouper", "grouper") {
               get {
                 complete{ Future {
-                  groupers.map(g => encodeURIParam(g.groupname))
+                  ToResponseMarshallable(groupers.map(g => encodeURIParam(g.groupname)).toList(using listFormat(using stringFormat)))
                 }}
               }
             } ~
@@ -464,7 +464,7 @@ ScoreRoutes extends SprayJsonSupport with JsonSupport with AuthSupport with Rout
               get {
                 parameters(Symbol("groupby").?) { (groupby) =>
                   complete{ Future {
-                    queryFilters(groupby, groupers, data)
+                    ToResponseMarshallable(queryFilters(groupby, groupers, data))
                   }}
                 }
               }
