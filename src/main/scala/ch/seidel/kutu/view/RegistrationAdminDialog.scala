@@ -7,6 +7,7 @@ import ch.seidel.kutu.domain.{AddMedia, AddRegistration, AddVereinAction, Approv
 import ch.seidel.kutu.http.RegistrationRoutes
 import ch.seidel.kutu.data.RegistrationAdmin.{doSyncUnassignedClubRegistrations, findAthletLike, processSync}
 import javafx.beans.value.ObservableValue
+import javafx.beans.value.ChangeListener
 import org.slf4j.LoggerFactory
 import scalafx.Includes._
 import scalafx.application.Platform
@@ -210,46 +211,48 @@ object RegistrationAdminDialog {
     athletTable.selectionModel.value.setSelectionMode(SelectionMode.Multiple)
     val filter = new TextField() {
       promptText = "Such-Text"
-      text.addListener { (o: ObservableValue[? <: String], oldVal: String, newVal: String) =>
-        val sortOrder = athletTable.sortOrder.toList
-        filteredModel.clear()
-        val searchQuery = newVal.toUpperCase().split(" ")
-        for {syncAction <- athletModel } {
-          val (athlet, verein) = syncAction match {
-            case AddVereinAction(verein) => (Athlet(), Some(verein.toVerein))
-            case ApproveVereinAction(verein) => (Athlet(), Some(verein.toVerein))
-            case AddRegistration(reg, programId, athlet, suggestion, team, media) => (athlet, suggestion.verein)
-            case MoveRegistration(reg, fromProgramId, fromTeam, toProgramid, toTeam, athlet, suggestion) => (athlet, suggestion.verein)
-            case RemoveRegistration(reg, programId, athlet, suggestion) => (athlet, suggestion.verein)
-            case RenameVereinAction(verein, oldVerein) => (Athlet(), Some(verein.toVerein))
-            case RenameAthletAction(verein, athlet, existing, expected) => (expected, Some(verein.toVerein))
-            case _ => (Athlet(), None)
-          }
-          val matches = searchQuery.forall { search =>
-            if (search.isEmpty || athlet.name.toUpperCase().contains(search)) {
-              true
+      text.addListener(new ChangeListener[String] {
+        def changed(o: ObservableValue[? <: String], oldVal: String, newVal: String): Unit = {
+          val sortOrder = athletTable.sortOrder.toList
+          filteredModel.clear()
+          val searchQuery = newVal.toUpperCase().split(" ")
+          for {syncAction <- athletModel } {
+            val (athlet, verein) = syncAction match {
+              case AddVereinAction(verein) => (Athlet(), Some(verein.toVerein))
+              case ApproveVereinAction(verein) => (Athlet(), Some(verein.toVerein))
+              case AddRegistration(reg, programId, athlet, suggestion, team, media) => (athlet, suggestion.verein)
+              case MoveRegistration(reg, fromProgramId, fromTeam, toProgramid, toTeam, athlet, suggestion) => (athlet, suggestion.verein)
+              case RemoveRegistration(reg, programId, athlet, suggestion) => (athlet, suggestion.verein)
+              case RenameVereinAction(verein, oldVerein) => (Athlet(), Some(verein.toVerein))
+              case RenameAthletAction(verein, athlet, existing, expected) => (expected, Some(verein.toVerein))
+              case _ => (Athlet(), None)
             }
-            else if (athlet.vorname.toUpperCase().contains(search)) {
-              true
+            val matches = searchQuery.forall { search =>
+              if (search.isEmpty || athlet.name.toUpperCase().contains(search)) {
+                true
+              }
+              else if (athlet.vorname.toUpperCase().contains(search)) {
+                true
+              }
+              else if (verein match {
+                case Some(v) => v.name.toUpperCase().contains(search)
+                case None => false
+              }) {
+                true
+              }
+              else {
+                false
+              }
             }
-            else if (verein match {
-              case Some(v) => v.name.toUpperCase().contains(search)
-              case None => false
-            }) {
-              true
-            }
-            else {
-              false
-            }
-          }
 
-          if (matches) {
-            filteredModel.add(syncAction)
+            if (matches) {
+              filteredModel.add(syncAction)
+            }
           }
+          athletTable.sortOrder.clear()
+          athletTable.sortOrder ++= sortOrder
         }
-        athletTable.sortOrder.clear()
-        athletTable.sortOrder ++= sortOrder
-      }
+      })
     }
     PageDisplayer.showInDialog("Anmeldungen importieren ...", new DisplayablePage() {
       def getPage: Node = {

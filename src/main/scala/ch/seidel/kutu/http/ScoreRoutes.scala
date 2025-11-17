@@ -456,7 +456,7 @@ ScoreRoutes extends SprayJsonSupport with JsonSupport with AuthSupport with Rout
             pathLabeled("grouper", "grouper") {
               get {
                 complete{ Future {
-                  ToResponseMarshallable(groupers.map(g => encodeURIParam(g.groupname)).toList(using listFormat(using stringFormat)))
+                  groupers.map(g => encodeURIParam(g.groupname)).toJson
                 }}
               }
             } ~
@@ -464,7 +464,7 @@ ScoreRoutes extends SprayJsonSupport with JsonSupport with AuthSupport with Rout
               get {
                 parameters(Symbol("groupby").?) { (groupby) =>
                   complete{ Future {
-                    ToResponseMarshallable(queryFilters(groupby, groupers, data))
+                    queryFilters(groupby, groupers, data).toJson
                   }}
                 }
               }

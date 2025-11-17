@@ -405,12 +405,12 @@ trait RegistrationRoutes extends SprayJsonSupport with JsonSupport with JwtSuppo
                     if (registration.vereinId.isEmpty) {
                       log.info(s"SyncAdmin $clientId - neuer Verein zu Vereinsregistration wird angelegt: $verein")
                       selectVereine.find(v => v.name.equals(verein.name) && (v.verband.isEmpty || v.verband.equals(verein.verband))) match {
-                        case Some(v) => complete(updateRegistration(registration.copy(vereinId = Some(v.id))))
+                        case Some(v) => complete(updateRegistration(registration.copy(vereinId = Some(v.id))).toJson)
                         case None => complete(Future {
                           val insertedVerein = insertVerein(verein)
                           val reg = updateRegistration(registration.copy(vereinId = Some(insertedVerein.id)))
                           CompetitionRegistrationClientActor.publish(RegistrationChanged(wettkampf.uuid.get), clientId)
-                          reg
+                          reg.toJson
                         })
                       }
                     } else {
@@ -493,10 +493,10 @@ trait RegistrationRoutes extends SprayJsonSupport with JsonSupport with JwtSuppo
 
                             val nextTeamNumber = if (teamNumbers.isEmpty) 1 else teamNumbers.max + 1
 
-                            (1 to nextTeamNumber).toList.map(idx => TeamItem(idx, teamname)) :::
+                            ((1 to nextTeamNumber).toList.map(idx => TeamItem(idx, teamname)) ::: 
                               wettkampf.extraTeams
                                 .filter(_.nonEmpty)
-                                .zipWithIndex.map(item => TeamItem(item._2 * -1 - 1, item._1)).toJson(using listFormat(using teamFormat))
+                                .zipWithIndex.map(item => TeamItem(item._2 * -1 - 1, item._1))).toJson(using listFormat(using teamFormat))
                           } else {
                             List[TeamItem]().toJson(using listFormat(using teamFormat))
                           }
@@ -508,8 +508,8 @@ trait RegistrationRoutes extends SprayJsonSupport with JsonSupport with JwtSuppo
                       get { // list Athletes
                         complete {
                           val reg = selectRegistration(registrationId)
-                          if (reg.vereinId.isEmpty) {
-                            List[AthletRegistration]()
+                            if (reg.vereinId.isEmpty) {
+                            List[AthletRegistration]().toJson(using listFormat(using athletregistrationFormat))
                           } else {
                             val existingAthletRegs = selectAthletRegistrations(registrationId)
                             val pgm = readWettkampfLeafs(wettkampf.programmId).head
@@ -529,7 +529,7 @@ trait RegistrationRoutes extends SprayJsonSupport with JsonSupport with JwtSuppo
                             val preret = officialCandidates ++ incompletedCandidates.filter { ar =>
                               !officialCandidates.exists { aro => aro.geschlecht.equals(ar.geschlecht) && aro.name.equals(ar.name) && aro.vorname.equals(ar.vorname) }
                             }
-                            preret.sortBy(_.toAthlet.easyprint)
+                            preret.sortBy(_.toAthlet.easyprint).toJson(using listFormat(using athletregistrationFormat))
                           }
                         }
                       }
@@ -538,7 +538,7 @@ trait RegistrationRoutes extends SprayJsonSupport with JsonSupport with JwtSuppo
                       pathEndOrSingleSlash {
                         get { // list Athletes
                           complete(
-                            selectAthletRegistrations(registrationId)
+                            selectAthletRegistrations(registrationId).toJson(using listFormat(using athletregistrationFormat))
                           )
                         } ~ post { // create Athletes
                           log.info("post athletregistration")
@@ -564,7 +564,7 @@ trait RegistrationRoutes extends SprayJsonSupport with JsonSupport with JwtSuppo
                                   val reg = createAthletRegistration(athletRegistration)
                                   CompetitionRegistrationClientActor.publish(RegistrationChanged(wettkampf.uuid.get), clientId)
                                   log.info(s"$clientId: Athletanmeldung angelegt: ${reg.toPublicView.easyprint}")
-                                  complete(reg)
+                                  complete(reg.toJson(using athletregistrationFormat))
                                 } catch {
                                   case e: IllegalArgumentException =>
                                     log.error(e.getMessage)
@@ -597,7 +597,7 @@ trait RegistrationRoutes extends SprayJsonSupport with JsonSupport with JwtSuppo
                                       mf.computeFilePath(wettkampf).delete()
                                       log.info(s"Mediafile ${registration.mediafile.map(_.name).getOrElse("")} gelöscht")
                                       CompetitionRegistrationClientActor.publish(RegistrationChanged(wettkampf.uuid.get), clientId)
-                                      complete(StatusCodes.OK, cleanedAthletReg)
+                                      complete(StatusCodes.OK, cleanedAthletReg.toJson(using athletregistrationFormat))
                                     case _ => complete(StatusCodes.Conflict, s"Es ist keine Media-Datei in der Anmeldung verknüpft")
                                   }
                                 } ~ fileUpload("mediafile") {
@@ -618,7 +618,7 @@ trait RegistrationRoutes extends SprayJsonSupport with JsonSupport with JwtSuppo
                                         case Success(r) =>
                                           CompetitionRegistrationClientActor.publish(RegistrationChanged(wettkampf.uuid.get), clientId)
                                           log.info(s"$clientId: Mediafile ${metadata.fileName} aktualisiert: ${r.easyprint}")
-                                          complete(r)
+                                          complete(r.toJson(using athletregistrationFormat))
 
                                         case Failure(e) =>
                                           log.warning(s"mediafile ${metadata.fileName} cannot be uploaded: " + e.toString)
@@ -634,9 +634,7 @@ trait RegistrationRoutes extends SprayJsonSupport with JsonSupport with JwtSuppo
                           }
                         } ~ pathEndOrSingleSlash {
                           get {
-                            complete(
-                              selectAthletRegistration(id)
-                            )
+                            complete(selectAthletRegistration(id).toJson(using athletregistrationFormat))
                           } ~ put { // update Athletes
                             entity(as[AthletRegistration]) { athletRegistration =>
                               try {
@@ -651,10 +649,10 @@ trait RegistrationRoutes extends SprayJsonSupport with JsonSupport with JwtSuppo
                                 if (isOverride) {
                                   throw new IllegalArgumentException("Person-Überschreibung in einer Anmeldung zu einer anderen Person ist nicht erlaubt!")
                                 }
-                                val reg = updateAthletRegistration(athletRegistration)
+                                val reg: Option[AthletRegistration] = updateAthletRegistration(athletRegistration)
                                 CompetitionRegistrationClientActor.publish(RegistrationChanged(wettkampf.uuid.get), clientId)
                                 log.info(s"$clientId: Athletanmeldung aktualisiert: ${athletRegistration.toPublicView.easyprint}, $reg")
-                                complete(reg)
+                                complete(reg.getOrElse(athletRegistration).toJson(using athletregistrationFormat))
                               } catch {
                                 case e: IllegalArgumentException =>
                                   log.error(e.getMessage)
@@ -675,7 +673,7 @@ trait RegistrationRoutes extends SprayJsonSupport with JsonSupport with JwtSuppo
                       pathEndOrSingleSlash {
                         get { // list judges
                           complete(
-                            selectJudgeRegistrations(registrationId)
+                            selectJudgeRegistrations(registrationId).toJson(using listFormat(using judgeregistrationFormat))
                           )
                         } ~ post { // create judges
                           log.info("post judgesregistration")
@@ -685,7 +683,7 @@ trait RegistrationRoutes extends SprayJsonSupport with JsonSupport with JwtSuppo
                                 val reg = createJudgeRegistration(judgeRegistration)
                                 CompetitionRegistrationClientActor.publish(RegistrationChanged(wettkampf.uuid.get), clientId)
                                 log.info(s"$clientId: WR-Anmeldung angelegt: ${judgeRegistration.easyprint}")
-                                reg
+                                reg.toJson(using judgeregistrationFormat)
                               } catch {
                                 case e: IllegalArgumentException =>
                                   log.error(e.getMessage)
@@ -698,7 +696,7 @@ trait RegistrationRoutes extends SprayJsonSupport with JsonSupport with JwtSuppo
                         pathEndOrSingleSlash {
                           get {
                             complete(
-                              selectJudgeRegistration(id)
+                              selectJudgeRegistration(id).toJson(using judgeregistrationFormat)
                             )
                           } ~ put { // update judges
                             entity(as[JudgeRegistration]) { judgesRegistration =>
@@ -706,7 +704,7 @@ trait RegistrationRoutes extends SprayJsonSupport with JsonSupport with JwtSuppo
                                 val reg = updateJudgeRegistration(judgesRegistration)
                                 CompetitionRegistrationClientActor.publish(RegistrationChanged(wettkampf.uuid.get), clientId)
                                 log.info(s"$clientId: WR-Anmeldung aktualisiert: ${judgesRegistration.easyprint}")
-                                reg
+                                reg.toJson(using judgeregistrationFormat)
                               })
                             }
                           } ~ delete { // delete  judges

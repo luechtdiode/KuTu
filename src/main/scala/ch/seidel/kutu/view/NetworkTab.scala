@@ -362,7 +362,7 @@ class NetworkTab(wettkampfmode: BooleanProperty, override val wettkampfInfo: Wet
           model.setAll(collection)
         }
         if (items.size > model.size) {
-          model.addAll(items.drop(model.size).asJavaCollection)
+          items.drop(model.size).foreach(model.add)
         }
       }
 
