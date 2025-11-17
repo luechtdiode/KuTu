@@ -26,7 +26,7 @@
     "@capacitor/splash-screen": "7.0.3",
     "@capacitor/status-bar": "7.0.2",
     "@ionic/angular": "^8.7.7",
-    "@ionic/angular-server": "^8.7.2",
+    "@ionic/angular-server": "^8.7.9",
     "body-parser": ">=2.2.0",
     "color": "^4.2.3",
     "ini": ">=5.0.0",
