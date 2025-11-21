@@ -101,7 +101,7 @@ trait EnrichedJson {
 
   case class CaseObjectJsonSupport[T](values: Array[T]) extends RootJsonFormat[T] {
     // We can rely on the automatically generated valueOf method provided by Java/Scala enums
-    val valueOfMethod: String => T = (name: String) => values.find(v => v.asInstanceOf[Enum[T]].name().equals(name)).get
+    val valueOfMethod: String => T = (name: String) => values.find(v => v.toString.equals(name)).get
 
     override def write(obj: T): JsValue = JsString(obj.toString) // Use .name() which is equivalent to .toString for enums
 

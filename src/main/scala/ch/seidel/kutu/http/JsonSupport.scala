@@ -11,8 +11,6 @@ trait JsonSupport extends SprayJsonSupport with EnrichedJson {
   // import the default encoders for primitive types (Int, String, Lists etc)
   import DefaultJsonProtocol.*
 
-  given kutuAppEventFormat: RootJsonFormat[KutuAppEvent] = messagesFormatter.asInstanceOf[RootJsonFormat[KutuAppEvent]]
-
 
   given wkFormat: RootJsonFormat[Wettkampf] = jsonFormat(Wettkampf.apply, "id", "uuid", "datum", "titel", "programmId", "auszeichnung", "auszeichnungendnote", "notificationEMail", "altersklassen", "jahrgangsklassen", "punktegleichstandsregel", "rotation", "teamrule")
   given pgmFormat: RootJsonFormat[ProgrammRaw] = jsonFormat10(ProgrammRaw.apply)
@@ -105,13 +103,13 @@ trait JsonSupport extends SprayJsonSupport with EnrichedJson {
   given bulkEvents: RootJsonFormat[BulkEvent] = new RootJsonFormat[BulkEvent] {
     override def write(obj: BulkEvent): JsValue = JsObject(
       "wettkampfUUID" -> obj.wettkampfUUID.toJson,
-      "events" -> obj.events.map(_.toJson(using kutuAppEventFormat)).toJson
+        "events" -> obj.events.map(_.toJson(using messagesFormatter)).toJson
     )
     override def read(json: JsValue): BulkEvent = {
       val fields = json.asJsObject.fields
       BulkEvent(
         fields("wettkampfUUID").convertTo[String],
-        fields("events").convertTo[List[JsValue]].map(_.convertTo[KutuAppEvent](using kutuAppEventFormat))
+        fields("events").convertTo[List[JsValue]].map(_.convertTo[KutuAppEvent](using messagesFormatter))
       )
     }
   }
@@ -168,7 +166,7 @@ trait JsonSupport extends SprayJsonSupport with EnrichedJson {
     classOf[AthletMediaIsPaused].getSimpleName -> athletMediaIsPausedFormat,
   )
 
-  given messagesFormatter: RootJsonFormat[? <: KutuAppEvent] = new RootJsonFormat[? <: KutuAppEvent] {
+  given messagesFormatter: RootJsonFormat[KutuAppEvent] = new RootJsonFormat[KutuAppEvent] {
     override def read(json: JsValue): KutuAppEvent = json.asJsObject.fields("type").asOpt[String] match {
       case Some(s) if s.contains("BulkEvent") =>
         val list = json.asJsObject.fields("events").asInstanceOf[JsArray].elements

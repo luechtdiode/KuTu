@@ -32,7 +32,7 @@ class VereinSpec extends KuTuBaseSpec {
       val newverein = Verein(0, "NewVerein", Some("Verband"))
       findVereinLike(newverein) match {
         case Some(id) if (id > 0) =>
-          println(id, selectVereine.map(_.id), newverein)
+          println((id, selectVereine.map(_.id), newverein))
           fail("should not find Verein with unique name")
         case _ =>
           assert(insertVerein(newverein).id > 0L)

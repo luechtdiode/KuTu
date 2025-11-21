@@ -3,7 +3,8 @@ package ch.seidel.kutu.domain
 import java.time.LocalDate
 import java.util.UUID
 import ch.seidel.kutu.base.{KuTuBaseSpec, TestDBService}
-import ch.seidel.kutu.calc.{Max, ScoreCalcTemplate, TemplateJsonReader}
+import ch.seidel.kutu.calc.ScoreAggregateFn.*
+import ch.seidel.kutu.calc.{ScoreCalcTemplate, TemplateJsonReader}
 
 import scala.annotation.tailrec
 import scala.util.matching.Regex

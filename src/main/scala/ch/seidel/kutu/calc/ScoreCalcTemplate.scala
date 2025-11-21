@@ -8,7 +8,10 @@ import scala.math.BigDecimal.RoundingMode
 enum ScoreAggregateFn:
   case Min, Max, Avg, Sum
 object ScoreAggregateFn {
-  def apply(fn: Option[String]): Option[ScoreAggregateFn] = fn.map{ScoreAggregateFn.valueOf}.orElse(None)
+  val index: Map[String, ScoreAggregateFn] = ScoreAggregateFn.values.map(e => e.toString -> e).toMap
+  def apply(fn: Option[String]): Option[ScoreAggregateFn] = fn.flatMap {
+    index.get
+  }.orElse(None)
 }
 
 object ScoreCalcVariable_ {

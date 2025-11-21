@@ -2,11 +2,11 @@ package ch.seidel.kutu
 
 import ch.seidel.commons.{DisplayablePage, PageDisplayer, ProgressForm, TaskSteps}
 import ch.seidel.jwt
-import ch.seidel.kutu.Config._
-import ch.seidel.kutu.actors.{ForgetMyMediaPlayer, KutuAppEvent, MediaPlayerAction, MediaPlayerEvent, UseMyMediaPlayer}
-import ch.seidel.kutu.data.{CaseObjectMetaUtil, ResourceExchanger, Surname}
-import ch.seidel.kutu.domain._
-import ch.seidel.kutu.http._
+import ch.seidel.kutu.Config.*
+import ch.seidel.kutu.actors.*
+import ch.seidel.kutu.data.{ResourceExchanger, Surname, mergeMissingProperties}
+import ch.seidel.kutu.domain.*
+import ch.seidel.kutu.http.*
 import ch.seidel.kutu.renderer.PrintUtil
 import ch.seidel.kutu.view.WettkampfTableView
 import ch.seidel.kutu.view.player.Player
@@ -17,7 +17,7 @@ import net.glxn.qrgen.QRCode
 import net.glxn.qrgen.image.ImageType
 import org.controlsfx.validation.ValidationSupport
 import org.slf4j.LoggerFactory
-import scalafx.Includes._
+import scalafx.Includes.*
 import scalafx.application.JFXApp3.PrimaryStage
 import scalafx.application.{JFXApp3, Platform}
 import scalafx.beans.binding.Bindings
@@ -27,22 +27,21 @@ import scalafx.collections.ObservableBuffer
 import scalafx.event.ActionEvent
 import scalafx.geometry.{Insets, Side}
 import scalafx.scene.Node.sfxNode2jfx
-import scalafx.scene.control.Alert.AlertType
+import scalafx.scene.control.*
 import scalafx.scene.control.Label.sfxLabel2jfx
 import scalafx.scene.control.MenuItem.sfxMenuItem2jfx
 import scalafx.scene.control.Tab.sfxTab2jfx
-import scalafx.scene.control.TableColumn._
+import scalafx.scene.control.TableColumn.*
 import scalafx.scene.control.TextField.sfxTextField2jfx
 import scalafx.scene.control.TreeItem.sfxTreeItemToJfx
-import scalafx.scene.control._
 import scalafx.scene.image.{Image, ImageView}
 import scalafx.scene.input.{Clipboard, ClipboardContent, DataFormat}
-import scalafx.scene.layout._
+import scalafx.scene.layout.*
 import scalafx.scene.web.WebView
 import scalafx.scene.{Cursor, Node, Scene}
 import scalafx.stage.FileChooser.ExtensionFilter
 import scalafx.stage.{FileChooser, Screen}
-import spray.json._
+import spray.json.*
 
 import java.io.{ByteArrayInputStream, File, FileInputStream}
 import java.nio.file.Files
@@ -54,7 +53,7 @@ import scala.util.{Failure, Success}
 
 object KuTuApp extends JFXApp3 with KutuService with JsonSupport with JwtSupport {
 
-  import WertungServiceBestenResult._
+  import WertungServiceBestenResult.*
 
   private val logger = LoggerFactory.getLogger(this.getClass)
   private lazy val server = KuTuServer
@@ -795,7 +794,7 @@ object KuTuApp extends JFXApp3 with KutuService with JsonSupport with JwtSupport
           like = likeFinder(athlete)
           if (athleteView.id != like.id)
         } yield {
-          val tupel = List(athleteView, loadAthleteView(like.id)).sortWith { (a, b) =>
+          val tupel: List[AthletView] = List(athleteView, loadAthleteView(like.id)).sortWith { (a, b) =>
             if (a.gebdat.map(_.toLocalDate.getDayOfMonth).getOrElse(0) > b.gebdat.map(_.toLocalDate.getDayOfMonth).getOrElse(0)) true
             else {
               val asp = mapSexPrediction(a)
@@ -806,7 +805,8 @@ object KuTuApp extends JFXApp3 with KutuService with JsonSupport with JwtSupport
               else false
             }
           }
-          (tupel.head, tupel(1), CaseObjectMetaUtil.mergeMissingProperties(tupel.head, tupel(1)))
+          val merged = mergeMissingProperties[AthletView](tupel.head, tupel(1))
+          (tupel.head, tupel(1), merged)
         }
       }
     }.onComplete {
@@ -873,11 +873,11 @@ object KuTuApp extends JFXApp3 with KutuService with JsonSupport with JwtSupport
               right = new VBox {
                 margin = Insets(0, 0, 0, 10)
                 children += new Button("Vorschlag austauschen") {
-                  disable <== when(athletTable.selectionModel.value.selectedItemProperty.isNull()) choose true otherwise false
+                  disable <== when(athletTable.selectionModel.value.selectedItemProperty.isNull) choose true otherwise false
                   onAction = (event: ActionEvent) => {
                     val index = athletTable.selectionModel.value.getSelectedIndex
                     val (athlet1, athlet2, _) = athletTable.selectionModel.value.selectedItem.value
-                    athletModel.update(index, (athlet2, athlet1, CaseObjectMetaUtil.mergeMissingProperties(athlet2, athlet1)))
+                    athletModel.update(index, (athlet2, athlet1, mergeMissingProperties[AthletView](athlet2, athlet1)))
                   }
                 }
               }
@@ -1523,7 +1523,7 @@ object KuTuApp extends JFXApp3 with KutuService with JsonSupport with JwtSupport
   }
 
   def makeWettkampfHerunterladenMenu: MenuItem = {
-    import DefaultJsonProtocol._
+    import DefaultJsonProtocol.*
     val item = makeMenuAction("Wettkampf herunterladen") { (caption, action) =>
       implicit val e = action
       val wklist = server.httpGet(s"${remoteAdminBaseUrl}/api/competition").map {
@@ -1611,7 +1611,7 @@ object KuTuApp extends JFXApp3 with KutuService with JsonSupport with JwtSupport
         )
       }
       val selectedFile = fileChooser.showOpenDialog(getStage())
-      import scala.concurrent.ExecutionContext.Implicits._
+      import scala.concurrent.ExecutionContext.Implicits.*
       if (selectedFile != null) {
         val wf = KuTuApp.invokeAsyncWithBusyIndicator[Wettkampf](caption) {
           Future[Wettkampf] {

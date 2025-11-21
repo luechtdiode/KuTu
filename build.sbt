@@ -2,7 +2,6 @@
 ThisBuild / organization := "ch.seidel"
 ThisBuild / version := "2.3.22"
 ThisBuild / scalaVersion := "3.7.3"
-ThisBuild / crossScalaVersions := Seq("2.13.17", "3.7.3")
 
 name := "KuTu"
 
@@ -48,7 +47,7 @@ Compile / scalacOptions ++= {
     "-language:existentials",
     "-g:line"
   )
-  if (scalaVersion.value.startsWith("3")) base else base
+  base
 }
 
 // Prefer Java then Scala compilation order (to match maven config)
@@ -114,6 +113,9 @@ libraryDependencies ++= Seq(
   "org.apache.pekko" %% "pekko-persistence" % pekkoV,
   "io.altoo" %% "pekko-kryo-serialization" % "1.3.0",
 
+  // Pekko SLF4J logging
+  "org.apache.pekko" %% "pekko-slf4j" % pekkoV,
+
   // Prometheus metrics (via fr.davit plugin)
   "fr.davit" %% "pekko-http-metrics-prometheus" % "2.1.0" exclude("org.scala-lang.modules", "scala-parser-combinators_2.13"),
 
@@ -127,9 +129,7 @@ libraryDependencies ++= Seq(
 
 // Add parser combinators: choose correct artifact for current scalaVersion
 libraryDependencies ++= {
-  if (scalaVersion.value.startsWith("3.")) Seq("org.scala-lang.modules" % "scala-parser-combinators_3" % "2.4.0")
-  else if (scalaVersion.value.startsWith("2.13")) Seq("org.scala-lang.modules" %% "scala-parser-combinators" % "2.4.0")
-  else Seq.empty
+  Seq("org.scala-lang.modules" % "scala-parser-combinators_3" % "2.4.0")
 }
 
 // Exclude the 2.13 suffixed parser-combinators globally to avoid mixed-resolution during Scala 3 builds
@@ -137,7 +137,7 @@ excludeDependencies += ExclusionRule(organization = "org.scala-lang.modules", na
 
 // Force consistent versions for both suffixed artifacts
 dependencyOverrides += "org.scala-lang.modules" % "scala-parser-combinators_3" % "2.4.0"
-dependencyOverrides += "org.scala-lang.modules" % "scala-parser-combinators_2.13" % "2.4.0"
+//dependencyOverrides += "org.scala-lang.modules" % "scala-parser-combinators_2.13" % "2.4.0"
 
 // Add JavaFX platform-specific artifacts (classifier based on OS)
 libraryDependencies ++= Seq(
@@ -183,6 +183,8 @@ prepareJpackage := {
   log.info(s"Prepared jpackage input in: ${out.getAbsolutePath}")
   log.info("Run jpackage manually using the assembly jar and libs folder; example jpackage args are in the README.")
 }
+
+logLevel := Level.Error 
 
 // Resource directories (keep same structure as Maven project)
 Compile / unmanagedResourceDirectories += baseDirectory.value / "src" / "main" / "resources"
