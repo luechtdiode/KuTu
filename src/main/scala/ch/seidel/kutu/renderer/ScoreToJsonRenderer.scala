@@ -56,7 +56,7 @@ object ScoreToJsonRenderer {
           gsBlock.append(s""""rows":[],""")
       }
       cols.foreach {
-        case ccol: WKLeafCol[_] =>
+        case ccol: WKLeafCol[?] =>
           val c = ccol.asInstanceOf[WKLeafCol[T]]
           val value = c.valueMapper(row)
           gsBlock.append(s""""${escaped(c.text)}":"${escaped(value.text)}",""")
@@ -93,7 +93,7 @@ object ScoreToJsonRenderer {
     }
     for (c <- gs) {
       c match {
-        case gl: GroupLeaf[_] =>
+        case gl: GroupLeaf[?] =>
           renderGroupLeaf(openedTitle, level, sortAlphabetically, isAvgOnMultipleCompetitions, gsBlock, gl)
 
         case ts: TeamSums =>

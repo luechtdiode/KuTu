@@ -8,6 +8,8 @@ import scalafx.collections.ObservableBuffer
 import scala.jdk.CollectionConverters.IterableHasAsJava
 
 case class WertungEditor(private var lastCommitted: WertungView) {
+  import ch.seidel.kutu.domain.given_Conversion_Double_String
+
   def init: WertungView = lastCommitted
   def update(w: Wertung): Unit = {
     lastCommitted = lastCommitted.updatedWertung(w)

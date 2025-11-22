@@ -67,7 +67,7 @@ class DashboardPage(dashPart: String = "dashboard", tree: KuTuAppTree) extends D
           listToggleButton.selected = true
           val tv = nodes match {
             case _::tv::Nil => tv match {
-              case tableView: TableView[_] =>
+              case tableView: TableView[?] =>
                 Some(tableView)
               case _ => None
             }

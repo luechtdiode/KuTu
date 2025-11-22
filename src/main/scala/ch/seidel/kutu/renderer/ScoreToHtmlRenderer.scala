@@ -221,7 +221,7 @@ trait ScoreToHtmlRenderer {
     for (c <- gs) {
       val levelText = if ((gsSize == 1 && !falsePositives.contains(escaped(c.groupKey.capsulatedprint))) || c.groupKey.isInstanceOf[NullObject]) "" else escaped(c.groupKey.capsulatedprint)
       c match {
-        case gl: GroupLeaf[_] =>
+        case gl: GroupLeaf[?] =>
           renderGroupLeaf(openedTitle, level, athletsPerPage, sortAlphabetically, isAvgOnMultipleCompetitions, gsBlock, levelText, gl)
 
         case ts: TeamSums =>
@@ -303,7 +303,7 @@ trait ScoreToHtmlRenderer {
     list.foreach { row =>
       gsBlock.append(s"<tr>")
       cols.foreach {
-        case ccol: WKLeafCol[_] =>
+        case ccol: WKLeafCol[?] =>
           val c = ccol.asInstanceOf[WKLeafCol[T]]
           val value = c.valueMapper(row)
           val t = escaped(value.raw).trim().replace(" ", "<br>")
@@ -356,7 +356,7 @@ trait ScoreToHtmlRenderer {
   }
 
   private def renderListEnd(gsBlock: StringBuilder) = gsBlock.append(s"</tbody></table></div>\n")
-  private def renderGroupLeaf(openedTitle: String, level: Int, athletsPerPage: Int, sortAlphabetically: Boolean, isAvgOnMultipleCompetitions: Boolean = true, gsBlock: StringBuilder, levelText: String, gl: GroupLeaf[_]): Unit = {
+  private def renderGroupLeaf(openedTitle: String, level: Int, athletsPerPage: Int, sortAlphabetically: Boolean, isAvgOnMultipleCompetitions: Boolean = true, gsBlock: StringBuilder, levelText: String, gl: GroupLeaf[?]): Unit = {
     val pretitleprint = (openedTitle + levelText).trim.reverse.dropWhile(p => p.equals(',')).reverse
     if (openedTitle.startsWith("<h")) {
       val closetag = openedTitle.substring(0, openedTitle.indexOf(">") + 1).replace("<", "</")
@@ -478,7 +478,7 @@ trait ScoreToHtmlRenderer {
           gsBlock.append(s"<tr>")
           cols.foreach { col =>
             col match {
-              case ccol: WKLeafCol[_] if (ccol.colspan > 0)=>
+              case ccol: WKLeafCol[?] if (ccol.colspan > 0)=>
                 val c = ccol.asInstanceOf[WKLeafCol[TeamRow]]
                 val value = c.valueMapper(row)
                 val t = escaped(value.raw)

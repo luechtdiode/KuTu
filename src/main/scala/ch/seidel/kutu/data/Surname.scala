@@ -1,5 +1,8 @@
 package ch.seidel.kutu.data
 
+import ch.seidel.kutu.domain.{dbl2Str, ld2SQLDate, sqlDate2ld, str2Int, str2Long, str2bd, str2dbl}
+
+import java.time.LocalDate
 import scala.io.Source
 
 case class Surname(name: String, feminimCount: Int, masculinCount: Int) {
@@ -9,9 +12,10 @@ case class Surname(name: String, feminimCount: Int, masculinCount: Int) {
 }
 
 object Surname {
+  import ch.seidel.kutu.domain.given_Conversion_String_Int
   private def transformStatsMeaning(statsMeaning: String): Int = statsMeaning match {
     case "*" => 0
-    case n => n.replaceAll("'", "").toInt
+    case n => n.replace("'", "")
   }
 
   def apply(name: String, feminimCount: String, masculinCount: String): Surname = {

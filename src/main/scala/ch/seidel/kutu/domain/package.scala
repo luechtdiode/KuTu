@@ -21,9 +21,11 @@ import scala.concurrent.duration.Duration
 import scala.math.BigDecimal.RoundingMode
 
 package object domain {
-  implicit def dbl2Str(d: Double): String = f"${d}%2.3f"
+  def dbl2Str(d: Double): String = {
+    f"$d%2.3f"
+  }
 
-  implicit def str2bd(value: String): BigDecimal = {
+  def str2bd(value: String): BigDecimal = {
     if (value != null) {
       val trimmed = value.trim()
 
@@ -37,7 +39,7 @@ package object domain {
     }
   }
 
-  implicit def str2dbl(value: String): Double = {
+  def str2dbl(value: String): Double = {
     if (value != null) {
       val trimmed = value.trim()
 
@@ -52,7 +54,7 @@ package object domain {
     }
   }
 
-  implicit def str2Int(value: String): Int = {
+  def str2Int(value: String): Int = {
     if (value != null) {
       val trimmed = value.trim()
 
@@ -66,7 +68,7 @@ package object domain {
     }
   }
 
-  implicit def str2Long(value: String): Long = {
+  def str2Long(value: String): Long = {
     if (value != null) {
       val trimmed = value.trim()
 
@@ -80,18 +82,25 @@ package object domain {
     }
   }
 
-  implicit def ld2SQLDate(ld: LocalDate): java.sql.Date = {
+  def ld2SQLDate(ld: LocalDate): java.sql.Date = {
     if (ld == null) null else {
       val inst = ld.atStartOfDay(ZoneId.of("UTC"))
       new java.sql.Date(java.util.Date.from(inst.toInstant).getTime)
     }
   }
 
-  implicit def sqlDate2ld(sd: java.sql.Date): LocalDate = {
+  def sqlDate2ld(sd: java.sql.Date): LocalDate = {
     if (sd == null) null else {
       sd.toLocalDate //.toInstant().atZone(ZoneId.systemDefault()).toLocalDate()
     }
   }
+  given Conversion[Double, String] = dbl2Str
+  given Conversion[String,BigDecimal] = str2bd
+  given Conversion[String,Double] = str2dbl
+  given Conversion[String,Int] = str2Int
+  given Conversion[String,Long] = str2Long
+  given Conversion[LocalDate, java.sql.Date] = ld2SQLDate
+  given Conversion[java.sql.Date, LocalDate] = sqlDate2ld
 
   def isNumeric(c: String): Boolean = {
     try {
@@ -204,7 +213,7 @@ package object domain {
       if (ep.matches(".*\\s,\\.;.*")) s""""$ep"""" else ep
     }
 
-    def compare(o: DataObject): Int = easyprint.compare(o.easyprint)
+    def compare(o: DataObject): Int = easyprint.compareTo(o.easyprint)
   }
 
   case class NullObject(caption: String) extends DataObject {
@@ -1309,7 +1318,7 @@ package object domain {
     }
 
     def toString(value: Double): String = if (value.toString == Double.NaN.toString) ""
-    else value
+    else dbl2Str(value)
 
     /*override*/ def shouldSuggest(item: String, query: String): Boolean = false
   }

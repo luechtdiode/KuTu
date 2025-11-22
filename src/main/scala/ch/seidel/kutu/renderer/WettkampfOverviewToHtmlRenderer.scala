@@ -13,6 +13,8 @@ import java.time.{LocalDate, Period}
 import scala.collection.immutable._
 
 trait WettkampfOverviewToHtmlRenderer {
+  given Conversion[java.sql.Date, LocalDate] = sqlDate2ld
+
   private val logger = LoggerFactory.getLogger(classOf[WettkampfOverviewToHtmlRenderer])
   private val intro2 = """<html><body><ul><li>"""
   private val intro = s"""<html lang="de-CH"><head>

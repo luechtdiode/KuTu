@@ -1,7 +1,5 @@
 package ch.seidel.kutu.http
 
-import ch.seidel.kutu.data.CaseObjectMetaUtil.getClass
-
 import java.nio.charset.StandardCharsets
 import java.security.spec.InvalidKeySpecException
 import java.security.{MessageDigest, NoSuchAlgorithmException, SecureRandom}

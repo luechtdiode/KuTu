@@ -489,7 +489,7 @@ object KuTuApp extends JFXApp3 with KutuService with JsonSupport with JwtSupport
                 txtAuszeichnungEndnote.text.value match {
                   case "" => 0
                   case s: String => try {
-                    s
+                    str2bd(s)
                   } catch {
                     case e: Exception => 0
                   }
@@ -1456,11 +1456,11 @@ object KuTuApp extends JFXApp3 with KutuService with JsonSupport with JwtSupport
               case s: String => str2Int(s)
             },
             txtAuszeichnungEndnote.text.value match {
-              case "" => 0
+              case "" => BigDecimal.valueOf(0)
               case s: String => try {
-                BigDecimal.valueOf(s)
+                BigDecimal(s)
               } catch {
-                case e: Exception => 0
+                case e: Exception => BigDecimal.valueOf(0)
               }
             },
             Some(UUID.randomUUID().toString),

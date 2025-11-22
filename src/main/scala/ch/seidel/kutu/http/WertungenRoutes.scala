@@ -18,6 +18,8 @@ trait WertungenRoutes extends SprayJsonSupport with JsonSupport with JwtSupport 
   import spray.json._
   import spray.json.DefaultJsonProtocol._
   import scala.concurrent.ExecutionContext.Implicits.global
+  import ch.seidel.kutu.domain.given_Conversion_String_Int
+  import ch.seidel.kutu.domain.given_Conversion_String_Long
 
   // Required by the `ask` (?) method below
   private implicit lazy val timeout: Timeout = Timeout(5.seconds) // usually we'd obtain the timeout from the system's configuration

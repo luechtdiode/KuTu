@@ -46,7 +46,7 @@ abstract class DefaultRanglisteTab(wettkampfmode: BooleanProperty, override val 
     subscription = List.empty
   }
 
-  var lazyPaneUpdater: Map[String, ScheduledFuture[_]] = Map.empty
+  var lazyPaneUpdater: Map[String, ScheduledFuture[?]] = Map.empty
 
   def submitLazy(name: String, task: () => Unit, delay: Long): Unit = {
     lazyPaneUpdater.get(name).foreach(_.cancel(true))

@@ -45,7 +45,7 @@ class WettkampfZeitenTab(editableProperty: Boolean, wettkampf: WettkampfView, ov
       .map { a => ZeitenEditor(a) }
     val model = ObservableBuffer.from(planTimeViews)
 
-    val cols: List[jfxsc.TableColumn[ZeitenEditor, _]] = classOf[ZeitenEditor].getDeclaredFields.filter { f =>
+    val cols: List[jfxsc.TableColumn[ZeitenEditor, ?]] = classOf[ZeitenEditor].getDeclaredFields.filter { f =>
       f.getType.equals(classOf[ReadOnlyStringProperty])
     }.map { field =>
       field.setAccessible(true)

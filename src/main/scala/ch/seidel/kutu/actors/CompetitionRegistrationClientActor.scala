@@ -220,7 +220,7 @@ class CompetitionRegistrationClientActor(wettkampfUUID: String) extends Persiste
         case _ =>
           log.info("Rebuild Competition SyncActions failed")
           self ! RegistrationSyncActions(List.empty)
-      }(global)
+      }(using global)
     }
   }
 

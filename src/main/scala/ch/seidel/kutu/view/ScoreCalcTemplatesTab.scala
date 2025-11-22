@@ -19,6 +19,7 @@ import scalafx.util.converter.DefaultStringConverter
 
 import java.util
 import scala.jdk.CollectionConverters.IterableHasAsJava
+import ch.seidel.kutu.domain.given_Conversion_String_Int
 
 class ScoreCalcTemplatesTab(wettkampf: WettkampfView, override val service: KutuService) extends Tab with TabWithService {
 
@@ -60,7 +61,6 @@ class ScoreCalcTemplatesTab(wettkampf: WettkampfView, override val service: Kutu
     }
   }
   override def isPopulated: Boolean = {
-
     val sorter: ScoreCalcTemplateEditor => Int = editor => editor.init.sortOrder
 
     val cols: List[jfxsc.TableColumn[ScoreCalcTemplateEditor, _]] = classOf[ScoreCalcTemplateEditor].getDeclaredFields.filter { f =>

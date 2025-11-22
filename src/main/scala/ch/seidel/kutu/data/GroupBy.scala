@@ -9,6 +9,14 @@ import java.time.{LocalDate, Period}
 import scala.collection.mutable
 import scala.math.BigDecimal.int2bigDecimal
 
+import ch.seidel.kutu.domain.given_Conversion_Double_String
+import ch.seidel.kutu.domain.given_Conversion_String_BigDecimal
+import ch.seidel.kutu.domain.given_Conversion_String_Double
+import ch.seidel.kutu.domain.given_Conversion_String_Int
+import ch.seidel.kutu.domain.given_Conversion_String_Long
+import ch.seidel.kutu.domain.given_Conversion_LocalDate_Date
+import ch.seidel.kutu.domain.given_Conversion_Date_LocalDate
+
 object ScoreListKind {
   def apply(kind: Option[String]): ScoreListKind = kind
     .map {

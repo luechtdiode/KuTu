@@ -1,5 +1,17 @@
 package ch.seidel.kutu.actors
 
+import ch.seidel.kutu.Config
+import ch.seidel.kutu.actors.CompetitionCoordinatorClientActor.{PublishAction, competitionWebsocketConnectionsActive, competitionsActive}
+import ch.seidel.kutu.calc.ScoreCalcTemplate
+import ch.seidel.kutu.data.ResourceExchanger
+import ch.seidel.kutu.data.ResourceExchanger.listWettkampfDisziplineViews
+import ch.seidel.kutu.domain.{given_Conversion_Date_LocalDate, *}
+import ch.seidel.kutu.http.Core.system
+import ch.seidel.kutu.http.{EnrichedJson, JsonSupport, MetricsController}
+import ch.seidel.kutu.renderer.{MailTemplates, RiegenBuilder}
+import io.prometheus.metrics.config.PrometheusProperties
+import io.prometheus.metrics.core.metrics.Gauge
+import io.prometheus.metrics.model.snapshots.{Labels, PrometheusNaming}
 import org.apache.pekko.actor.SupervisorStrategy.{Restart, Stop}
 import org.apache.pekko.actor.{Actor, ActorLogging, ActorRef, OneForOneStrategy, PoisonPill, Props, Terminated}
 import org.apache.pekko.event.{Logging, LoggingAdapter}
@@ -9,20 +21,8 @@ import org.apache.pekko.persistence.{PersistentActor, SnapshotOffer, SnapshotSel
 import org.apache.pekko.stream.scaladsl.{Flow, Sink, Source}
 import org.apache.pekko.stream.{CompletionStrategy, OverflowStrategy}
 import org.apache.pekko.util.Timeout
-import ch.seidel.kutu.Config
-import ch.seidel.kutu.actors.CompetitionCoordinatorClientActor.{PublishAction, competitionWebsocketConnectionsActive, competitionsActive}
-import ch.seidel.kutu.calc.ScoreCalcTemplate
-import ch.seidel.kutu.data.ResourceExchanger
-import ch.seidel.kutu.data.ResourceExchanger.listWettkampfDisziplineViews
-import ch.seidel.kutu.domain._
-import ch.seidel.kutu.http.Core.system
-import ch.seidel.kutu.http.{EnrichedJson, JsonSupport, MetricsController}
-import ch.seidel.kutu.renderer.{MailTemplates, RiegenBuilder}
-import io.prometheus.metrics.config.PrometheusProperties
-import io.prometheus.metrics.core.metrics.Gauge
-import io.prometheus.metrics.model.snapshots.{Labels, PrometheusNaming}
 import org.slf4j.LoggerFactory
-import spray.json._
+import spray.json.*
 
 import java.time.{LocalDate, LocalDateTime, LocalTime}
 import java.util.UUID
@@ -50,7 +50,7 @@ class CompetitionCoordinatorClientActor(wettkampfUUID: String) extends Persisten
     def debug(s: String): Unit = l.debug(s"[$shortName] $s")
   }
 
-  import context._
+  import context.*
 
   private val wettkampf = readWettkampf(wettkampfUUID)
   private val websocketProcessor = ResourceExchanger.processWSMessage(wettkampf, handleWebsocketMessages)
@@ -59,8 +59,9 @@ class CompetitionCoordinatorClientActor(wettkampfUUID: String) extends Persisten
   private val wkPgmId = wettkampf.programmId
   private val isDNoteUsed = wkPgmId != 20 && wkPgmId != 1
   private val snapShotInterval = 100
-  private val donationDonationBegin = if (Config.donationDonationBegin.nonEmpty) LocalDate.parse(Config.donationDonationBegin) else LocalDate.of(2000, 1, 1)
-  private val donationActiv = donationDonationBegin.before(wettkampf.datum) && Config.donationLink.nonEmpty && Config.donationPrice.nonEmpty
+  private val donationDonationBegin: LocalDate = if (Config.donationDonationBegin.nonEmpty) LocalDate.parse(Config.donationDonationBegin) else LocalDate.of(2000, 1, 1)
+  private val wettkampfdatum: LocalDate = wettkampf.datum
+  private val donationActiv = donationDonationBegin.isBefore(wettkampfdatum) && Config.donationLink.nonEmpty && Config.donationPrice.nonEmpty
 
   private var wsSend: Map[Option[String], List[ActorRef]] = Map.empty
   private var deviceWebsocketRefs: Map[String, ActorRef] = Map.empty
@@ -330,7 +331,7 @@ class CompetitionCoordinatorClientActor(wettkampfUUID: String) extends Persisten
     case TryStop =>
       if (state.startedDurchgaenge.isEmpty &&
         wsSend.isEmpty &&
-        (LocalDate.now().before(wettkampf.datum) || LocalDate.now().minusDays(2).after(wettkampf.datum))
+        (LocalDate.now().isBefore(wettkampfdatum) || LocalDate.now().minusDays(2).isAfter(wettkampfdatum))
       ) handleStop()
 
     case Terminated(stoppedWebsocket) =>
@@ -731,7 +732,7 @@ object CompetitionCoordinatorClientActor extends JsonSupport with EnrichedJson {
 
   case class PublishAction(id: String, action: KutuAppAction)
 
-  import ch.seidel.kutu.http.Core._
+  import ch.seidel.kutu.http.Core.*
 
   val supervisor: ActorRef = system.actorOf(Props[ClientActorSupervisor](), name = "Supervisor")
 

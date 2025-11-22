@@ -16,6 +16,8 @@ class GeraeteRiegeComboBox[T](tableView: TableView[T]) extends ComboBox[GeraeteR
 
   var textbuffer = ""
 
+  import ch.seidel.kutu.domain.given_Conversion_String_BigDecimal
+
   onKeyPressed = event => {
     if (event.getText.equalsIgnoreCase("R")) {
       textbuffer = "R"

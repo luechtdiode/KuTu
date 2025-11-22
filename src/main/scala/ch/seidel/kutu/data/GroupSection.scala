@@ -535,7 +535,7 @@ case class GroupLeaf[GK <: DataObject](override val groupKey: GK, list: Iterable
 }
 
 object TeamSums {
-  def apply(teamRows: GroupLeaf[_]): List[TeamSums] = {
+  def apply(teamRows: GroupLeaf[?]): List[TeamSums] = {
     val wkCnt = teamRows.list.map(w => w.wettkampf).toSet.size
     if (wkCnt > 1) {
       List[TeamSums]()

@@ -1,9 +1,9 @@
 package ch.seidel.kutu.domain
 
 import ch.seidel.kutu.actors.{AthletIndexActor, RemoveAthlet, SaveAthlet}
-import ch.seidel.kutu.data.{CaseObjectMetaUtil, Surname}
+import ch.seidel.kutu.data.{Surname, mergeMissingProperties}
 import org.slf4j.LoggerFactory
-import slick.jdbc.SQLiteProfile.api._
+import slick.jdbc.SQLiteProfile.api.*
 
 import java.sql.Date
 import java.time.LocalDate
@@ -309,7 +309,7 @@ trait AthletService extends DBService with AthletResultMapper with VereinService
           else false
         }
       }
-      (tupel(0), tupel(1), CaseObjectMetaUtil.mergeMissingProperties(tupel(0), tupel(1)))
+      (tupel(0), tupel(1), mergeMissingProperties(tupel(0), tupel(1)))
     }
   }
 

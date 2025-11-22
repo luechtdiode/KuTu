@@ -1,8 +1,7 @@
 package ch.seidel.kutu.data
 
-import ch.seidel.kutu.actors.{MediaPlayerAction, *}
+import ch.seidel.kutu.actors.*
 import ch.seidel.kutu.calc.{ScoreAggregateFn, ScoreCalcTemplate, ScoreCalcTemplateView, TemplateViewJsonReader}
-import ch.seidel.kutu.data.CaseObjectMetaUtil.*
 import ch.seidel.kutu.domain.*
 import ch.seidel.kutu.renderer.PrintUtil
 import ch.seidel.kutu.squad.RiegenBuilder
@@ -15,8 +14,8 @@ import java.io.*
 import java.math.BigInteger
 import java.security.{DigestInputStream, MessageDigest}
 import java.sql.Timestamp
-import java.time.Instant
 import java.time.format.DateTimeFormatter
+import java.time.{Instant, LocalDate}
 import java.util.zip.{ZipEntry, ZipInputStream, ZipOutputStream}
 import java.util.{Base64, UUID}
 import scala.compiletime.{constValue, constValueTuple}
@@ -31,6 +30,13 @@ object ResourceExchanger extends KutuService with RiegenBuilder {
   private val logger = LoggerFactory.getLogger(this.getClass)
   val enc: Base64.Encoder = Base64.getUrlEncoder
   val dec: Base64.Decoder = Base64.getUrlDecoder
+  import ch.seidel.kutu.domain.given_Conversion_Double_String
+  import ch.seidel.kutu.domain.given_Conversion_String_BigDecimal
+  import ch.seidel.kutu.domain.given_Conversion_String_Double
+  import ch.seidel.kutu.domain.given_Conversion_String_Int
+  import ch.seidel.kutu.domain.given_Conversion_String_Long
+  import ch.seidel.kutu.domain.given_Conversion_LocalDate_Date
+  import ch.seidel.kutu.domain.given_Conversion_Date_LocalDate
 
   def processWSMessage[T](wettkampf: Wettkampf, refresher: (Option[T], KutuAppEvent) => Unit): (Option[T], KutuAppEvent) => Unit = {
     val cache = new java.util.ArrayList[MatchCode]()

@@ -13,6 +13,8 @@ inline def caseClassToMap[A](a: A)(using m: Mirror.ProductOf[A]): Map[String, An
   val vals  = a.asInstanceOf[Product].productIterator.toList
   lbls.zip(vals).toMap
 
+inline def getCaseValues[T <: Product](instance: T)(using mirror: Mirror.ProductOf[T]): List[Any] = Tuple.fromProductTyped(instance).productIterator.toList
+
 inline def mapToCaseClass[A](map: Map[String, Any])(using m: Mirror.ProductOf[A]): A =
   val lbls = labels[A]
   val vals = lbls.map(name => map.getOrElse(name, throw new IllegalArgumentException(s"Missing field: $name")))

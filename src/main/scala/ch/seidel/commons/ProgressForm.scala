@@ -45,7 +45,7 @@ class ProgressForm(stage: Option[Stage] = None) {
   private val scene = new Scene(pane)
   dialogStage.setScene(scene)
 
-  def activateProgressBar(title: String, task: Task[_], onSucces: () => Unit = ()=>{}): Unit = {
+  def activateProgressBar(title: String, task: Task[?], onSucces: () => Unit = ()=>{}): Unit = {
     if (task != null) {
       dialogStage.title.value = title
       pb.progressProperty.bind(task.progressProperty)

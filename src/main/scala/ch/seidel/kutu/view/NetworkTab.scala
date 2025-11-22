@@ -269,7 +269,7 @@ class DurchgangStationView(wettkampf: WettkampfView, service: KutuService, diszi
 
 object DeferredPanelRefresher {
   private val refresherPool = new ScheduledThreadPoolExecutor(1)
-  var pendingUpdateTask: List[ScheduledFuture[_]] = List.empty
+  var pendingUpdateTask: List[ScheduledFuture[?]] = List.empty
   sys.addShutdownHook(refresherPool.shutdownNow)
 
 
@@ -659,7 +659,7 @@ class NetworkTab(wettkampfmode: BooleanProperty, override val wettkampfInfo: Wet
             case _ => if (cell.getTableColumn.parentColumn.value != null && cell.getTableColumn.parentColumn.value.columns.size == 2) {
               val col = cell.getTableColumn.getParentColumn.getColumns.head
               col match {
-                case column: DurchgangStationJFSCTreeTableColumn[_] =>
+                case column: DurchgangStationJFSCTreeTableColumn[?] =>
                   addRiegenMenuItems(cell.treeItem.getValue, column)
                 case column: DurchgangStationTCAccess =>
                   addRiegenMenuItems(cell.treeItem.getValue, column)
@@ -708,7 +708,7 @@ class NetworkTab(wettkampfmode: BooleanProperty, override val wettkampfInfo: Wet
             case _ => if (cell.getTableColumn.parentColumn.value != null && cell.getTableColumn.parentColumn.value.columns.size == 2) {
               val col = cell.getTableColumn.getParentColumn.getColumns.head
               col match {
-                case column: DurchgangStationJFSCTreeTableColumn[_] =>
+                case column: DurchgangStationJFSCTreeTableColumn[?] =>
                   addMediaPlaylistItems(cell.treeItem.getValue, column)
                 case column: DurchgangStationTCAccess =>
                   addMediaPlaylistItems(cell.treeItem.getValue, column)

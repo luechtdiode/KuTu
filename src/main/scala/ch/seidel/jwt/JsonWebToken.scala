@@ -41,7 +41,7 @@ object JsonWebToken extends JsonMethods {
     jwt.split("\\.") match {
       case Array(providedHeader, providedClaims, providedSignature) =>
         import org.json4s.DefaultFormats
-        implicit val formats = DefaultFormats
+        implicit val formats: DefaultFormats.type = DefaultFormats
 
         val headerJsonString = new String(decodeBase64(providedHeader), "UTF-8")
         val header = JwtHeader.fromJsonStringOpt(headerJsonString)

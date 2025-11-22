@@ -18,7 +18,7 @@ object ConnectionStates {
   val connectedWithProperty = new ReadOnlyStringProperty(_connectedWithProperty)
   val connectedProperty = new ReadOnlyBooleanProperty(_connectedProperty)
 
-  def connectedWith[T <: Option[_]](wettkampfUUID: String, wspromise: Promise[_]): Unit = {
+  def connectedWith[T <: Option[?]](wettkampfUUID: String, wspromise: Promise[?]): Unit = {
     wspromise.future.onComplete { case _ => disconnected() }
     Platform.runLater(
       () => {
