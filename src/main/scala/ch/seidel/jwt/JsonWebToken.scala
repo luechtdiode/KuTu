@@ -76,7 +76,7 @@ object JsonWebToken extends JsonMethods {
   def validate(jwt: String, key: String): Boolean = {
 
     import org.json4s.DefaultFormats
-    implicit val formats = DefaultFormats
+    implicit val formats: DefaultFormats.type = DefaultFormats
 
     jwt.split("\\.") match {
       case Array(providedHeader, providedClaims, providedSignature) =>

@@ -252,8 +252,8 @@ trait RegistrationRoutes extends SprayJsonSupport with JsonSupport with JwtSuppo
             get {
               withRequestTimeout(60.seconds) {
                 complete(CompetitionRegistrationClientActor.publish(AskRegistrationSyncActions(wettkampf.uuid.get), clientId).map {
-                  case RegistrationSyncActions(actions) => actions.toJson(using baseSyncActionListFormat)
-                  case _ => List.empty[ch.seidel.kutu.domain.SyncAction].toJson(using baseSyncActionListFormat)
+                  case RegistrationSyncActions(actions) => actions.toJson(baseSyncActionListFormat)
+                  case _ => List.empty[ch.seidel.kutu.domain.SyncAction].toJson(baseSyncActionListFormat)
                 })
               }
             }

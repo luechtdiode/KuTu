@@ -913,7 +913,7 @@ class RiegenTab(override val wettkampfInfo: WettkampfInfo, override val service:
 
     def toGeraetName(id: Long) = disziplinlist.find(p => p.id == id).map(_.name).getOrElse("")
 
-    def makeMoveDurchganMenu(durchgang: DurchgangEditor, cells: List[jfxsc.TreeTablePosition[DurchgangEditor, _]]): Menu = {
+    def makeMoveDurchganMenu(durchgang: DurchgangEditor, cells: List[jfxsc.TreeTablePosition[DurchgangEditor, ?]]): Menu = {
       val selectedGerate = toGeraetId(cells.map(c => c.getColumn))
       new Menu("In anderen Durchgang verschieben") {
         durchgang.initstartriegen
@@ -954,7 +954,7 @@ class RiegenTab(override val wettkampfInfo: WettkampfInfo, override val service:
       }
     }
 
-    def makeMoveStartgeraetMenu(durchgang: DurchgangEditor, cells: List[jfxsc.TreeTablePosition[DurchgangEditor, _]]): Menu = {
+    def makeMoveStartgeraetMenu(durchgang: DurchgangEditor, cells: List[jfxsc.TreeTablePosition[DurchgangEditor, ?]]): Menu = {
       val selectedGerate = toGeraetId(cells.map(c => c.getColumn))
       new Menu("Auf anderes Startgerät verschieben") {
         durchgang.initstartriegen
@@ -995,7 +995,7 @@ class RiegenTab(override val wettkampfInfo: WettkampfInfo, override val service:
       }
     }
 
-    def makeSetEmptyRiegeMenu(durchgang: DurchgangEditor, cells: List[jfxsc.TreeTablePosition[DurchgangEditor, _]]): MenuItem = {
+    def makeSetEmptyRiegeMenu(durchgang: DurchgangEditor, cells: List[jfxsc.TreeTablePosition[DurchgangEditor, ?]]): MenuItem = {
       val assignedGeraete = durchgang.initstartriegen
         .filter(_._2.forall(_.kind != RiegeRaw.KIND_EMPTY_RIEGE))
         .map(_._1.id).toSet
@@ -1027,7 +1027,7 @@ class RiegenTab(override val wettkampfInfo: WettkampfInfo, override val service:
       menu
     }
 
-    def makeRemoveEmptyRiegeMenu(durchgang: DurchgangEditor, cells: List[jfxsc.TreeTablePosition[DurchgangEditor, _]]): MenuItem = {
+    def makeRemoveEmptyRiegeMenu(durchgang: DurchgangEditor, cells: List[jfxsc.TreeTablePosition[DurchgangEditor, ?]]): MenuItem = {
       val selectedGerate = toGeraetId(cells.map(c => c.getColumn))
       val emptyRiegen = durchgang.initstartriegen
         .filter(d => selectedGerate.isEmpty || selectedGerate.contains(d._1.id))
@@ -1173,10 +1173,10 @@ class RiegenTab(override val wettkampfInfo: WettkampfInfo, override val service:
               val riegenAmStart: Seq[RiegeEditor] = dgOpt.flatMap(dg => riege.initstart.flatMap(d => dg.initstartriegen.get(d))).getOrElse(List.empty)
 
               @tailrec
-              def findTableCell(node: Object): Option[jfxsc.TreeTableCell[DurchgangEditor, _]] =
+              def findTableCell(node: Object): Option[jfxsc.TreeTableCell[DurchgangEditor, ?]] =
                 node match {
                   case _: jfxsc.TreeTableCell[_, _] =>
-                    Some(node.asInstanceOf[jfxsc.TreeTableCell[DurchgangEditor, _]])
+                    Some(node.asInstanceOf[jfxsc.TreeTableCell[DurchgangEditor, ?]])
                   case t: Text =>
                     findTableCell(t.getParent)
                   case _ =>
@@ -1229,7 +1229,7 @@ class RiegenTab(override val wettkampfInfo: WettkampfInfo, override val service:
 
       durchgangView.getSelectionModel.getSelectedCells.onChange { (_, _) =>
         Platform.runLater {
-          val focusedCells: List[jfxsc.TreeTablePosition[DurchgangEditor, _]] = durchgangView.selectionModel.value.getSelectedCells.toList
+          val focusedCells: List[jfxsc.TreeTablePosition[DurchgangEditor, ?]] = durchgangView.selectionModel.value.getSelectedCells.toList
           val selectedDurchgaenge = focusedCells.filter(c => c.getTreeItem != null).flatMap(c => c.getTreeItem.getValue.isHeader match {
             case true =>
               c.getTreeItem.getChildren

@@ -20,7 +20,7 @@ case class JwtHeader(
     val map = toSerialize.toMap
 
     import org.json4s.native.Serialization.write
-    implicit val formats = org.json4s.DefaultFormats
+    implicit val formats: DefaultFormats.type = org.json4s.DefaultFormats
 
     write(map)
   }

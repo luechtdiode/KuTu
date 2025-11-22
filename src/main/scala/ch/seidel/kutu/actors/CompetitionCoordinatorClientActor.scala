@@ -26,6 +26,7 @@ import spray.json.*
 
 import java.time.{LocalDate, LocalDateTime, LocalTime}
 import java.util.UUID
+import java.util.concurrent.TimeUnit
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration.DurationInt
 import scala.concurrent.{Await, Future}
@@ -737,12 +738,12 @@ object CompetitionCoordinatorClientActor extends JsonSupport with EnrichedJson {
   val supervisor: ActorRef = system.actorOf(Props[ClientActorSupervisor](), name = "Supervisor")
 
   def publish(action: KutuAppAction, context: String): Future[KutuAppEvent] = {
-    implicit val timeout: Timeout = Timeout(15000 milli)
+    implicit val timeout: Timeout = Timeout(15000, TimeUnit.MILLISECONDS)
     (supervisor ? PublishAction(context, action)).mapTo[KutuAppEvent]
   }
 
   def stopAll(): Future[String] = {
-    implicit val timeout: Timeout = Timeout(15000 milli)
+    implicit val timeout: Timeout = Timeout(15000, TimeUnit.MILLISECONDS)
     (supervisor ? StopAll).mapTo[String]
   }
 
@@ -803,8 +804,11 @@ object CompetitionCoordinatorClientActor extends JsonSupport with EnrichedJson {
 
   // authenticated bidirectional streaming
   def createActorSinkSource(deviceId: String, wettkampfUUID: String, durchgang: Option[String], lastSequenceId: Option[Long]): Flow[Message, Message, Any] = {
+    implicit val timeout: Timeout = Timeout(5000, TimeUnit.MILLISECONDS)
     val clientActor = Await.result(
-      ask(supervisor, CreateClient(deviceId, wettkampfUUID))(5000 milli).mapTo[ActorRef], 5000 milli)
+      ask(supervisor, CreateClient(deviceId, wettkampfUUID)).mapTo[ActorRef]
+      , timeout.duration
+    )
 
     val sink = fromWebsocketToActorFlow.to(Sink.actorRef(clientActor, StopDevice(deviceId), _ => StopDevice(deviceId)).named(deviceId))
     val source = fromCoordinatorActorToWebsocketFlow(lastSequenceId,
@@ -819,8 +823,11 @@ object CompetitionCoordinatorClientActor extends JsonSupport with EnrichedJson {
 
   // unauthenticted oneway/readonly streaming
   def createActorSource(deviceId: String, wettkampfUUID: String, durchgang: Option[String], lastSequenceId: Option[Long] = None): Flow[Message, Message, Any] = {
+    implicit val timeout: Timeout = Timeout(5000, TimeUnit.MILLISECONDS)
     val clientActor = Await.result(
-      ask(supervisor, CreateClient(deviceId, wettkampfUUID))(5000 milli).mapTo[ActorRef], 5000 milli)
+      ask(supervisor, CreateClient(deviceId, wettkampfUUID)).mapTo[ActorRef]
+      , timeout.duration
+    )
 
     val sink = fromWebsocketToActorFlow.filter {
       case MessageAck(msg) if msg.equalsIgnoreCase("keepAlive") => true

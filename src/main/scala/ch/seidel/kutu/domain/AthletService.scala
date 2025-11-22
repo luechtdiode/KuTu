@@ -291,7 +291,7 @@ trait AthletService extends DBService with AthletResultMapper with VereinService
   }
 
   def findDuplicates(): List[(AthletView, AthletView, AthletView)] = {
-    val likeFinder = findAthleteLike(cache = new java.util.ArrayList[MatchCode], exclusive = true) _
+    val likeFinder = findAthleteLike(cache = new java.util.ArrayList[MatchCode], exclusive = true)
     for {
       athleteView <- selectAthletesView
       athlete = athleteView.toAthlet

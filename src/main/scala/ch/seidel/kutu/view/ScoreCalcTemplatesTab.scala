@@ -63,7 +63,7 @@ class ScoreCalcTemplatesTab(wettkampf: WettkampfView, override val service: Kutu
   override def isPopulated: Boolean = {
     val sorter: ScoreCalcTemplateEditor => Int = editor => editor.init.sortOrder
 
-    val cols: List[jfxsc.TableColumn[ScoreCalcTemplateEditor, _]] = classOf[ScoreCalcTemplateEditor].getDeclaredFields.filter { f =>
+    val cols: List[jfxsc.TableColumn[ScoreCalcTemplateEditor, ?]] = classOf[ScoreCalcTemplateEditor].getDeclaredFields.filter { f =>
       f.getType.equals(classOf[ReadOnlyStringProperty]) && ScoreCalcTemplateEditor.coldef.contains(f.getName)
     }.map { field =>
       field.setAccessible(true)
@@ -101,7 +101,7 @@ class ScoreCalcTemplatesTab(wettkampf: WettkampfView, override val service: Kutu
       editable = true
       selectionModel.value.setCellSelectionEnabled(false)
 
-      override def edit(row: Int, column: TableColumn[ScoreCalcTemplateEditor, _]): Unit = {
+      override def edit(row: Int, column: TableColumn[ScoreCalcTemplateEditor, ?]): Unit = {
         editDialog(row)
       }
 

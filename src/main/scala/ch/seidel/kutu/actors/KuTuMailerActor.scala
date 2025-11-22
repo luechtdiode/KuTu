@@ -1,22 +1,23 @@
 package ch.seidel.kutu.actors
 
+import ch.seidel.kutu.Config
+import ch.seidel.kutu.http.Core.system
 import org.apache.pekko.actor.SupervisorStrategy.Restart
 import org.apache.pekko.actor.{Actor, ActorRef, OneForOneStrategy, Props}
 import org.apache.pekko.event.{Logging, LoggingAdapter}
 import org.apache.pekko.http.scaladsl.model.{StatusCode, StatusCodes}
 import org.apache.pekko.pattern.ask
 import org.apache.pekko.util.Timeout
-import ch.seidel.kutu.Config
-import ch.seidel.kutu.http.Core.system
-import org.simplejavamail.api.mailer.{CustomMailer, Mailer}
 import org.simplejavamail.api.mailer.config.TransportStrategy
+import org.simplejavamail.api.mailer.{CustomMailer, Mailer}
 import org.simplejavamail.email.EmailBuilder
 import org.simplejavamail.mailer.MailerBuilder
 
+import java.util.concurrent.TimeUnit
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
-import scala.concurrent.duration.DurationInt
-import scala.util._
+import scala.concurrent.duration.FiniteDuration
+import scala.util.*
 import scala.util.control.NonFatal
 
 sealed trait SendMailAction
@@ -129,7 +130,7 @@ class KuTuMailerActor(smtpHost: String, smtpPort: Int, smtpUsername: String, smt
       e.printStackTrace()
       if (retries < 3) {
         log.warning(s"mail ${mail.subject} to ${mail.to} delivery failed: " + e.toString)
-        this.context.system.scheduler.scheduleOnce((5 * retries + 1) minutes, self, SendRetry(mail, retries + 1, sender))
+        this.context.system.scheduler.scheduleOnce(FiniteDuration((5 * retries + 1), TimeUnit.MINUTES), self, SendRetry(mail, retries + 1, sender))
       } else {
         log.error(s"could not send message ${mail.subject} after 3 retries to ${mail.to}")
         sender ! StatusCodes.ExpectationFailed
@@ -191,7 +192,7 @@ object KuTuMailerActor {
   private lazy val kutuapMailer: ActorRef = system.actorOf(props(), name = "KutuappMailer")
 
   def send(mail: Mail): Future[StatusCode] = {
-    implicit lazy val timeout: Timeout = Timeout(30 minutes)
+    implicit lazy val timeout: Timeout = Timeout(30, TimeUnit.MINUTES)
     (kutuapMailer ? mail).asInstanceOf[Future[StatusCode]]
   }
 }

@@ -71,11 +71,11 @@ object TurnerPage {
 
       val wkModel = ObservableBuffer.from(athleten)
 
-      val cols: List[jfxsc.TableColumn[AthletEditor, _]] = classOf[AthletEditor].getDeclaredFields.filter { f =>
+      val cols: List[jfxsc.TableColumn[AthletEditor, ?]] = classOf[AthletEditor].getDeclaredFields.filter { f =>
         f.getType.equals(classOf[StringProperty])
       }.map { field =>
         field.setAccessible(true)
-        val tc: jfxsc.TableColumn[AthletEditor, _] = new TableColumn[AthletEditor, String] {
+        val tc: jfxsc.TableColumn[AthletEditor, ?] = new TableColumn[AthletEditor, String] {
           text = field.getName.take(1).toUpperCase() + field.getName.drop(1)
           cellValueFactory = { x =>
             field.get(x.value).asInstanceOf[StringProperty]

@@ -184,7 +184,7 @@ prepareJpackage := {
   log.info("Run jpackage manually using the assembly jar and libs folder; example jpackage args are in the README.")
 }
 
-logLevel := Level.Error 
+//logLevel := Level.Error
 
 // Resource directories (keep same structure as Maven project)
 Compile / unmanagedResourceDirectories += baseDirectory.value / "src" / "main" / "resources"

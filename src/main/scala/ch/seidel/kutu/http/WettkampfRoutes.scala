@@ -41,7 +41,7 @@ trait WettkampfRoutes extends SprayJsonSupport
         responseEntity,
         Map("filename" -> s"${wettkampf.easyprint}.zip")
       )
-    ) toEntity
+    ).toEntity
   }
 
   def startDurchgang(p: WettkampfView, durchgang: String): Future[HttpResponse] = {

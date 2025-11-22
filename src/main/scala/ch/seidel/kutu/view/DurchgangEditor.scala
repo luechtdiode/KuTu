@@ -15,7 +15,7 @@ object DurchgangEditor {
           }.groupBy(_._1).map(t => (t._1, t._2.map(_._2)))
       )
   }
-  def apply(group: List[DurchgangEditor]): List[_ >: DurchgangEditor] = group.groupBy(_.durchgang.title)
+  def apply(group: List[DurchgangEditor]): List[? >: DurchgangEditor] = group.groupBy(_.durchgang.title)
     .map { case (durchgangTitle, editors) =>
       val childDGs = editors.filter(_.durchgang.title == durchgangTitle)
       if (childDGs.size > 1 || !durchgangTitle.equals(editors.head.durchgang.name)) {

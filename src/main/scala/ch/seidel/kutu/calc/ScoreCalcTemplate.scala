@@ -91,7 +91,7 @@ case class ScoreCalcTemplate(id: Long, wettkampfId: Option[Long], disziplinId: O
   lazy val variables: List[ScoreCalcVariable] = dVariables ++ eVariables ++ pVariables
 
   def toView(values: List[ScoreCalcVariable]): ScoreCalcTemplateView = {
-    val updateVarsOf = updateVarsWith(values) _
+    val updateVarsOf = updateVarsWith(values)
     ScoreCalcTemplateView(
       dExpression(values), updateVarsOf(dVariables), dResolveDetails,
       eExpression(values), updateVarsOf(eVariables), eResolveDetails,

@@ -228,5 +228,5 @@ trait JsonSupport extends SprayJsonSupport with EnrichedJson {
       }
     }
   }
-  given baseSyncActionListFormat: AnyRef & RootJsonFormat[List[SyncAction]] = listFormat(using syncActionFormatter)
+  given baseSyncActionListFormat: RootJsonFormat[List[SyncAction]] = listFormat(using syncActionFormatter)
 }

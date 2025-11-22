@@ -1,5 +1,6 @@
 package ch.seidel.kutu.actors
 
+import ch.seidel.kutu.actors.CompetitionCoordinatorClientActor.supervisor
 import org.apache.pekko.actor.SupervisorStrategy.{Restart, Stop}
 import org.apache.pekko.actor.{Actor, ActorLogging, ActorRef, OneForOneStrategy, PoisonPill, Props, SupervisorStrategy, Terminated}
 import org.apache.pekko.pattern.ask
@@ -10,8 +11,9 @@ import ch.seidel.kutu.http.JsonSupport
 import org.apache.pekko.event.Logging
 
 import java.util
+import java.util.concurrent.TimeUnit
 import scala.concurrent.ExecutionContext.Implicits.global
-import scala.concurrent.Future
+import scala.concurrent.{Await, Future}
 import scala.concurrent.duration.DurationInt
 import scala.concurrent.duration.FiniteDuration.*
 import scala.util.control.NonFatal
@@ -110,7 +112,7 @@ class AthletIndexActorSupervisor extends Actor with ActorLogging {
     log.info("Starting AthletIndexActorSupervisor")
     super.preStart()
 
-    implicit val timeout: Timeout = Timeout(30000 milli)
+    implicit val timeout: Timeout = Timeout(30000, TimeUnit.MILLISECONDS)
     system.actorSelection(s"user/AthletIndex").resolveOne().onComplete {
       case Success(actorRef) =>
         athletIndexActor = Some(actorRef)
@@ -153,7 +155,8 @@ object AthletIndexActor {
 
   def publish(action: AthletIndexAction): Future[AthletIndexEvent] = {
     import scala.concurrent.duration.FiniteDuration.*
-    implicit val timeout: Timeout = Timeout(31000 milli)
+    implicit val timeout: Timeout = Timeout(31000, TimeUnit.MILLISECONDS)
+
     (supervisor ? action).mapTo[AthletIndexEvent]
   }
 

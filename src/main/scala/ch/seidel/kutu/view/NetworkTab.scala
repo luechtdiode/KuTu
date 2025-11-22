@@ -743,7 +743,7 @@ class NetworkTab(wettkampfmode: BooleanProperty, override val wettkampfInfo: Wet
   val disconnectMenu: MenuItem = KuTuApp.makeDisconnectMenu(wettkampf)
   val removeRemoteMenu: MenuItem = KuTuApp.makeWettkampfRemoteRemoveMenu(wettkampf)
 
-  val generateBestenliste: Button with BestenListeToHtmlRenderer = new Button with BestenListeToHtmlRenderer {
+  val generateBestenliste: Button & BestenListeToHtmlRenderer = new Button with BestenListeToHtmlRenderer {
     text = "Bestenliste erstellen"
     minWidth = 75
     disable.value = wettkampf.toWettkampf.isReadonly(homedir, remoteHostOrigin)

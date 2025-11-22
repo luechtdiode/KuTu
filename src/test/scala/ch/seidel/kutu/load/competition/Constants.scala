@@ -1,16 +1,17 @@
 package ch.seidel.kutu.load.competition
 
-import io.gatling.core.Predef._
+import io.gatling.core.Predef.*
 import io.gatling.core.feeder.FeederBuilder
 import io.gatling.core.structure.{ChainBuilder, ScenarioBuilder}
-import io.gatling.http.Predef._
+import io.gatling.http.Predef.*
 
-import scala.concurrent.duration._
+import java.util.concurrent.TimeUnit
+import scala.concurrent.duration.*
 
 object Constants {
   val numberOfUsers: Int = 500//System.getProperty("numberOfUsers").toInt
-  val duration: FiniteDuration = 2 minutes//System.getProperty("durationMinutes").toInt.minutes
-  val pause: FiniteDuration = 2000 milliseconds//System.getProperty("pauseBetweenRequestsMs").toInt.millisecond
+  val duration: FiniteDuration = FiniteDuration(2, TimeUnit.MINUTES)//System.getProperty("durationMinutes").toInt.minutes
+  val pause: FiniteDuration = FiniteDuration(2000, TimeUnit.MILLISECONDS)//System.getProperty("pauseBetweenRequestsMs").toInt.millisecond
   val responseTimeMs = 500
   val responseSuccessPercentage = 99
   private val url: String = "http://localhost:5757"//System.getProperty("url")

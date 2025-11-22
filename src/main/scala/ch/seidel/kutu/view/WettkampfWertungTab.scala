@@ -962,7 +962,7 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
     isFilterRefreshing = true
     wkModel.clear()
 
-    def restoreVisibility(col: TableColumn[_, ?]): Unit = {
+    def restoreVisibility(col: TableColumn[?, ?]): Unit = {
       col.sortable.value = true
       if (col.delegate.isInstanceOf[WKTCAccess]) {
         val tca = col.delegate.asInstanceOf[WKTCAccess]
@@ -974,7 +974,7 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
       col.columns.foreach(restoreVisibility(_))
     }
 
-    def hideIfNotUsed(col: TableColumn[_, ?]): Unit = {
+    def hideIfNotUsed(col: TableColumn[?, ?]): Unit = {
       col.sortable.value = false
       if (col.delegate.isInstanceOf[WKTCAccess]) {
         val tca = col.delegate.asInstanceOf[WKTCAccess]

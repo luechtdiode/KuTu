@@ -2,7 +2,7 @@ package ch.seidel.kutu.actors
 
 import ch.seidel.kutu.Config
 import ch.seidel.kutu.data.RegistrationAdmin
-import ch.seidel.kutu.domain._
+import ch.seidel.kutu.domain.*
 import ch.seidel.kutu.http.Core.system
 import ch.seidel.kutu.http.JsonSupport
 import ch.seidel.kutu.renderer.MailTemplates
@@ -16,6 +16,7 @@ import org.apache.pekko.util.Timeout
 
 import java.time.LocalDate
 import java.util.UUID
+import java.util.concurrent.TimeUnit
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration.{DurationInt, FiniteDuration}
 import scala.concurrent.{Future, Promise}
@@ -239,7 +240,7 @@ object CompetitionRegistrationClientActor {
   }
 
   def stop(wettkampfUUID: String): Unit = {
-    implicit val timeout: Timeout = Timeout(60000 milli)
+    implicit val timeout: Timeout = Timeout(60000, TimeUnit.MILLISECONDS)
     system.actorSelection(s"user/Registration-${wettkampfUUID}").resolveOne().onComplete {
       case Success(actorRef) => system.stop(actorRef)
       case _ =>
@@ -248,7 +249,7 @@ object CompetitionRegistrationClientActor {
 
   def publish(action: RegistrationAction, context: String): Future[RegistrationEvent] = {
     val prom = Promise[RegistrationEvent]()
-    implicit val timeout: Timeout = Timeout(60000 milli)
+    implicit val timeout: Timeout = Timeout(60000, TimeUnit.MILLISECONDS)
     val actorName = s"user/Registration-${action.wettkampfUUID}"
     system.actorSelection(actorName).resolveOne().onComplete {
       case Success(actorRef) =>

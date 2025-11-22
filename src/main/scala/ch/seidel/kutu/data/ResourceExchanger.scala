@@ -707,7 +707,7 @@ object ResourceExchanger extends KutuService with RiegenBuilder {
           val bytes = new Array[Byte](1024) //1024 bytes - Buffer size
           Iterator
             .continually(entry._2.read(bytes))
-            .takeWhile(-1 !=)
+            .takeWhile(b => -1 != b)
             .foreach(read => fos.write(bytes, 0, read))
           fos.flush()
           fos.close()
@@ -731,7 +731,7 @@ object ResourceExchanger extends KutuService with RiegenBuilder {
           val bytes = new Array[Byte](1024) //1024 bytes - Buffer size
           Iterator
             .continually(entry._2.read(bytes))
-            .takeWhile(-1 !=)
+            .takeWhile(b => -1 != b)
             .foreach(read => fos.write(bytes, 0, read))
           fos.flush()
           fos.close()
@@ -798,7 +798,7 @@ object ResourceExchanger extends KutuService with RiegenBuilder {
         }
         .filter(_._1.exists { m => medialist.isEmpty || medialist.exists(me => me.id.equals(m.id)) })
         .foreach { group =>
-          val (Some(media), mp3Files) = group
+          val (Some(media), mp3Files) = group: @unchecked
           val mp3File = mp3Files.head
           if (mp3File.length() > Config.mediafileMaxSize) {
             val maxSize = java.text.NumberFormat.getInstance().format(Config.mediafileMaxSize / 1024d)
@@ -811,7 +811,7 @@ object ResourceExchanger extends KutuService with RiegenBuilder {
           val bytes = new Array[Byte](1024) //1024 bytes - Buffer size
           Iterator
             .continually(fis.read(bytes))
-            .takeWhile(-1 !=)
+            .takeWhile(b => -1 != b)
             .foreach(read => zip.write(bytes, 0, read))
           zip.closeEntry()
           logger.info(s"mp3-file ${mp3File.getName} was taken as ${name}")
@@ -925,7 +925,7 @@ object ResourceExchanger extends KutuService with RiegenBuilder {
       val bytes = new Array[Byte](1024) //1024 bytes - Buffer size
       Iterator
         .continually(fis.read(bytes))
-        .takeWhile(-1 !=)
+        .takeWhile(b => -1 != b)
         .foreach(read => zip.write(bytes, 0, read))
       zip.closeEntry()
       logger.info("logo was taken " + logofile.getName)
@@ -942,7 +942,7 @@ object ResourceExchanger extends KutuService with RiegenBuilder {
           val bytes = new Array[Byte](1024) //1024 bytes - Buffer size
           Iterator
             .continually(fis.read(bytes))
-            .takeWhile(-1 !=)
+            .takeWhile(b => -1 != b)
             .foreach(read => zip.write(bytes, 0, read))
           zip.closeEntry()
           logger.info("scoredef-file was taken " + scoredefFile.getName)
@@ -955,7 +955,7 @@ object ResourceExchanger extends KutuService with RiegenBuilder {
       val bytes = new Array[Byte](1024) //1024 bytes - Buffer size
       Iterator
         .continually(fis.read(bytes))
-        .takeWhile(-1 !=)
+        .takeWhile(b => -1 != b)
         .foreach(read => zip.write(bytes, 0, read))
       zip.closeEntry()
       logger.info("secret was taken " + secretfile.getName)
@@ -967,7 +967,7 @@ object ResourceExchanger extends KutuService with RiegenBuilder {
       val bytes = new Array[Byte](1024) //1024 bytes - Buffer size
       Iterator
         .continually(fis.read(bytes))
-        .takeWhile(-1 !=)
+        .takeWhile(b => -1 != b)
         .foreach(read => zip.write(bytes, 0, read))
       zip.closeEntry()
       logger.info("remote-info was taken " + secretfile.getName)
