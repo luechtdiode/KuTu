@@ -3,7 +3,7 @@ package ch.seidel.kutu.domain
 import ch.seidel.kutu.http.AuthSupport.OPTION_LOGINRESET
 import ch.seidel.kutu.http.Hashing
 import org.slf4j.LoggerFactory
-import slick.jdbc.PostgresProfile.api._
+import slick.jdbc.PostgresProfile.api.*
 
 import java.sql.Timestamp
 import java.time.LocalDateTime

@@ -1,7 +1,7 @@
 package ch.seidel.kutu.view
 
 import ch.seidel.kutu.domain
-import ch.seidel.kutu.domain.{Disziplin, KutuService, TeamRegel, WettkampfView, WettkampfdisziplinView, ld2SQLDate, sdfShort}
+import ch.seidel.kutu.domain.*
 
 import java.time.{LocalDateTime, LocalTime}
 import java.util.UUID

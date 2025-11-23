@@ -1,14 +1,14 @@
 package ch.seidel.kutu.http
 
+import ch.seidel.kutu.Config.{jwtHeader, jwtSecretKey}
+import ch.seidel.kutu.domain.*
+import ch.seidel.kutu.http.AuthSupport.OPTION_LOGINRESET
+import fr.davit.pekko.http.metrics.core.scaladsl.server.HttpMetricsDirectives.*
 import org.apache.pekko.http.scaladsl.marshallers.sprayjson.SprayJsonSupport
 import org.apache.pekko.http.scaladsl.model.StatusCodes
-import ch.seidel.kutu.Config.{jwtHeader, jwtSecretKey}
-import ch.seidel.kutu.domain._
-import ch.seidel.kutu.http.AuthSupport.OPTION_LOGINRESET
-import fr.davit.pekko.http.metrics.core.scaladsl.server.HttpMetricsDirectives._
 
 trait LoginRoutes extends SprayJsonSupport with EnrichedJson with JwtSupport with AuthSupport with RouterLogging with KutuService {
-  import AbuseHandler._
+  import AbuseHandler.*
 
   def login(userLookup: (String) => String, userIdLookup: (String) => Option[Long]) = pathPrefixLabeled("login", "login") {
     pathEndOrSingleSlash {

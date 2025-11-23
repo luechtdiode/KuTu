@@ -1,16 +1,16 @@
 package ch.seidel.kutu.http
 
+import ch.seidel.kutu.Config
+import ch.seidel.kutu.KuTuServer.handleCID
+import ch.seidel.kutu.actors.{CompetitionCoordinatorClientActor, GeraeteRiegeList, GetGeraeteRiegeList, KutuAppEvent}
+import ch.seidel.kutu.domain.{Kandidat, KutuService, encodeFileName}
+import ch.seidel.kutu.renderer.*
+import fr.davit.pekko.http.metrics.core.scaladsl.server.HttpMetricsDirectives.*
 import org.apache.pekko.http.scaladsl.marshallers.sprayjson.SprayJsonSupport
 import org.apache.pekko.http.scaladsl.marshalling.ToResponseMarshallable
 import org.apache.pekko.http.scaladsl.model.{ContentTypes, HttpEntity, StatusCodes, Uri}
 import org.apache.pekko.http.scaladsl.server.Route
 import org.apache.pekko.util.Timeout
-import ch.seidel.kutu.Config
-import ch.seidel.kutu.KuTuServer.handleCID
-import ch.seidel.kutu.actors.{CompetitionCoordinatorClientActor, GeraeteRiegeList, GetGeraeteRiegeList, KutuAppEvent}
-import ch.seidel.kutu.domain.{Kandidat, KutuService, encodeFileName}
-import ch.seidel.kutu.renderer._
-import fr.davit.pekko.http.metrics.core.scaladsl.server.HttpMetricsDirectives._
 import org.slf4j.{Logger, LoggerFactory}
 
 import java.util.UUID
@@ -41,7 +41,7 @@ trait ReportRoutes extends SprayJsonSupport
             abusedClientsToHTMListe()))
         }~
         pathPrefix(JavaUUID) { competitionId =>
-          import AbuseHandler._
+          import AbuseHandler.*
           if !wettkampfExists(competitionId.toString) then {
             log.error(handleAbuse(clientId, uri))
             complete(StatusCodes.NotFound)

@@ -1,19 +1,19 @@
 package ch.seidel.kutu.view
 
-import ch.seidel.commons._
+import ch.seidel.commons.*
 import ch.seidel.kutu.calc.ScoreAggregateFn
 import ch.seidel.kutu.view.ScoreCalcTemplatedialog.addVariableIcon
 import javafx.scene.control.TextFormatter
 import org.controlsfx.validation.ValidationSupport
-import scalafx.Includes._
+import scalafx.Includes.*
 import scalafx.beans.binding.Bindings
 import scalafx.beans.property.{IntegerProperty, ReadOnlyIntegerProperty}
 import scalafx.event.ActionEvent
 import scalafx.geometry.{Insets, Pos}
 import scalafx.scene.Node
-import scalafx.scene.control._
+import scalafx.scene.control.*
 import scalafx.scene.image.{Image, ImageView}
-import scalafx.scene.layout._
+import scalafx.scene.layout.*
 
 import java.util.function.UnaryOperator
 

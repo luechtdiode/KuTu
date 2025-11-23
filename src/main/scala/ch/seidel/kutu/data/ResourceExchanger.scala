@@ -30,13 +30,7 @@ object ResourceExchanger extends KutuService with RiegenBuilder {
   private val logger = LoggerFactory.getLogger(this.getClass)
   val enc: Base64.Encoder = Base64.getUrlEncoder
   val dec: Base64.Decoder = Base64.getUrlDecoder
-  import ch.seidel.kutu.domain.given_Conversion_Double_String
-  import ch.seidel.kutu.domain.given_Conversion_String_BigDecimal
-  import ch.seidel.kutu.domain.given_Conversion_String_Double
-  import ch.seidel.kutu.domain.given_Conversion_String_Int
-  import ch.seidel.kutu.domain.given_Conversion_String_Long
-  import ch.seidel.kutu.domain.given_Conversion_LocalDate_Date
-  import ch.seidel.kutu.domain.given_Conversion_Date_LocalDate
+  import ch.seidel.kutu.domain.{given_Conversion_Date_LocalDate, given_Conversion_Double_String, given_Conversion_LocalDate_Date, given_Conversion_String_BigDecimal, given_Conversion_String_Double, given_Conversion_String_Int, given_Conversion_String_Long}
 
   def processWSMessage[T](wettkampf: Wettkampf, refresher: (Option[T], KutuAppEvent) => Unit): (Option[T], KutuAppEvent) => Unit = {
     val cache = new java.util.ArrayList[MatchCode]()

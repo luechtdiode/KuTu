@@ -1,7 +1,7 @@
 package ch.seidel.kutu.data
 
 import ch.seidel.kutu.data.GroupSection.STANDARD_SCORE_FACTOR
-import ch.seidel.kutu.domain._
+import ch.seidel.kutu.domain.*
 
 import scala.collection.mutable
 

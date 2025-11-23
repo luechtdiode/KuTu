@@ -2,7 +2,7 @@ package ch.seidel.kutu
 
 import ch.seidel.kutu.http.WebSocketClient
 import javafx.application.Platform
-import scalafx.beans.property._
+import scalafx.beans.property.*
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Promise

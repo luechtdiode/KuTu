@@ -1,11 +1,11 @@
 package ch.seidel.kutu.renderer
 
-import java.io.File
-import ch.seidel.kutu.domain._
+import ch.seidel.kutu.domain.*
 import ch.seidel.kutu.renderer.KategorieTeilnehmerToHtmlRenderer.getDurchgangFullName
-import ch.seidel.kutu.renderer.PrintUtil._
+import ch.seidel.kutu.renderer.PrintUtil.*
 import org.slf4j.LoggerFactory
 
+import java.io.File
 import java.time.LocalDateTime
 
 object RiegenBuilder {

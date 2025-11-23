@@ -1,7 +1,7 @@
 package ch.seidel.kutu.squad
 
 import ch.seidel.kutu.data.{ByAltersklasse, ByJahrgangsAltersklasse}
-import ch.seidel.kutu.domain._
+import ch.seidel.kutu.domain.*
 
 case object JGClubGrouper extends RiegenGrouper {
 

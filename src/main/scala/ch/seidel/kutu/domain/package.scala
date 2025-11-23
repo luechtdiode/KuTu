@@ -6,7 +6,7 @@ import ch.seidel.kutu.data.{NameCodec, Surname}
 import ch.seidel.kutu.domain.{AthletRegistration, SyncAction}
 import ch.seidel.kutu.http.JsonSupport
 import org.apache.commons.codec.language.ColognePhonetic
-import org.apache.commons.codec.language.bm._
+import org.apache.commons.codec.language.bm.*
 import org.apache.commons.text.similarity.LevenshteinDistance
 
 import java.io.{File, FilenameFilter}
@@ -14,7 +14,7 @@ import java.net.{URI, URLEncoder}
 import java.nio.file.{Files, LinkOption, Path, StandardOpenOption}
 import java.sql.{Date, Timestamp}
 import java.text.{ParseException, SimpleDateFormat}
-import java.time._
+import java.time.*
 import java.util.UUID
 import java.util.concurrent.TimeUnit
 import scala.concurrent.duration.Duration
@@ -1388,7 +1388,7 @@ package object domain {
 
   case class MatchCode(id: Long, name: String, vorname: String, gebdat: Option[java.sql.Date], verein: Long) {
 
-    import MatchCode._
+    import MatchCode.*
 
     val jahrgang = AthletJahrgang(gebdat).jahrgang
     val encodedNamen = encode(name)

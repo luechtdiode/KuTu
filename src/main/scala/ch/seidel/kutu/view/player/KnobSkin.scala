@@ -1,10 +1,9 @@
 package ch.seidel.kutu.view.player
 
 import javafx.event.EventHandler
-import javafx.scene.control.Slider
+import javafx.scene.control.{SkinBase, Slider}
 import javafx.scene.input.MouseEvent
 import javafx.scene.layout.StackPane
-import javafx.scene.control.SkinBase
 
 
 class KnobSkin(slider: Slider) extends SkinBase[Slider](slider) {

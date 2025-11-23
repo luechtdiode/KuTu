@@ -1,6 +1,6 @@
 package ch.seidel.kutu.data
 
-import ch.seidel.kutu.domain._
+import ch.seidel.kutu.domain.*
 
 import java.net.URLDecoder
 import java.sql.Date

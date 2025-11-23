@@ -1,11 +1,11 @@
 package ch.seidel.kutu.domain
 
-import java.sql.{Date, Timestamp}
-import java.util.UUID
 import ch.seidel.kutu.actors.{DurchgangFinished, DurchgangResetted, DurchgangStarted}
 import org.slf4j.LoggerFactory
-import slick.jdbc.SQLiteProfile.api._
+import slick.jdbc.SQLiteProfile.api.*
 
+import java.sql.{Date, Timestamp}
+import java.util.UUID
 import scala.concurrent.Await
 import scala.concurrent.duration.Duration
 

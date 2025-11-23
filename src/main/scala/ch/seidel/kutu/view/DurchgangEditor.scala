@@ -1,7 +1,7 @@
 package ch.seidel.kutu.view
 
-import ch.seidel.kutu.domain._
-import scalafx.beans.property._
+import ch.seidel.kutu.domain.*
+import scalafx.beans.property.*
 
 object DurchgangEditor {
   def apply(wettkampfid: Long, durchgang: Durchgang, initstartriegen: Seq[RiegeEditor]): DurchgangEditor = {

@@ -1,23 +1,22 @@
 package ch.seidel.kutu.http
 
 
+import ch.seidel.kutu.Config.*
+import ch.seidel.kutu.actors.*
+import ch.seidel.kutu.domain.*
+import javafx.beans.property.SimpleObjectProperty
 import org.apache.pekko.http.scaladsl.marshallers.sprayjson.SprayJsonSupport
 import org.apache.pekko.http.scaladsl.model.headers.RawHeader
 import org.apache.pekko.http.scaladsl.model.ws.{BinaryMessage, Message, TextMessage, WebSocketRequest}
-import org.apache.pekko.stream.{OverflowStrategy, SubscriptionWithCancelException}
 import org.apache.pekko.stream.scaladsl.{Flow, Keep, Sink, Source, SourceQueueWithComplete}
-import ch.seidel.kutu.Config._
-import ch.seidel.kutu.actors._
-import ch.seidel.kutu.domain.Wettkampf
-import javafx.beans.property.SimpleObjectProperty
+import org.apache.pekko.stream.{OverflowStrategy, SubscriptionWithCancelException}
 import org.slf4j.LoggerFactory
 import scalafx.application.Platform
-import spray.json._
+import spray.json.*
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.{Future, Promise}
 import scala.util.{Failure, Success}
-import ch.seidel.kutu.domain._
 
 object WebSocketClient extends SprayJsonSupport with JsonSupport with AuthSupport {
   private val logger = LoggerFactory.getLogger(this.getClass)

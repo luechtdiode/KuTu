@@ -2,16 +2,16 @@ package ch.seidel.commons
 
 import ch.seidel.commons.TextFieldWithToolButtonTableCell.defaultStringConverter
 import javafx.event.ActionEvent
+import javafx.scene.control as jfxsc
 import javafx.scene.control.Cell
 import javafx.scene.input.{KeyCode, KeyEvent}
 import javafx.scene.layout.HBox
-import javafx.scene.{control => jfxsc}
 import javafx.util.{Callback, StringConverter}
-import scalafx.Includes._
+import scalafx.Includes.*
 import scalafx.scene.Node
 import scalafx.scene.Node.sfxNode2jfx
+import scalafx.scene.control.*
 import scalafx.scene.control.TextField.sfxTextField2jfx
-import scalafx.scene.control._
 import scalafx.scene.image.{Image, ImageView}
 
 import scala.language.implicitConversions

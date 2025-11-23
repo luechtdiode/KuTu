@@ -8,7 +8,7 @@ case class Expression[A, B](eval: A => B) {
 }
 
 object Expression {
-  import FunctionRegister._
+  import FunctionRegister.*
 
   def apply(ast: MathExpAST): Expression[String => Double, Double] = ast match {
     case Constant(d: Double) => Expression(_ => d)

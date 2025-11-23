@@ -1,10 +1,10 @@
 package ch.seidel.kutu.view
 
+import ch.seidel.kutu.domain.*
+import scalafx.beans.property.*
+
 import java.sql.Date
 import java.text.SimpleDateFormat
-
-import ch.seidel.kutu.domain._
-import scalafx.beans.property._
 
 object AthletEditor {
   def apply(init: Athlet) = new AthletEditor(init)

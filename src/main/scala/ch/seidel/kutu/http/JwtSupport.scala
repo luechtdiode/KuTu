@@ -1,17 +1,17 @@
 package ch.seidel.kutu.http
 
-import java.util.{Base64, Date}
-import java.util.concurrent.TimeUnit
+import ch.seidel.jwt
+import ch.seidel.jwt.{JsonWebToken, JwtClaimsSet, JwtClaimsSetMap}
+import ch.seidel.kutu.Config.*
+import ch.seidel.kutu.domain.Wettkampf
 import org.apache.pekko.http.scaladsl.model.StatusCodes
 import org.apache.pekko.http.scaladsl.model.headers.RawHeader
 import org.apache.pekko.http.scaladsl.server.{Directive0, Directive1, Directives}
-import ch.seidel.jwt
-import ch.seidel.jwt.{JsonWebToken, JwtClaimsSet, JwtClaimsSetMap}
-import ch.seidel.kutu.Config._
-import ch.seidel.kutu.domain.Wettkampf
 import org.slf4j.LoggerFactory
 
 import java.time.{Duration, Instant}
+import java.util.concurrent.TimeUnit
+import java.util.{Base64, Date}
 
 trait JwtSupport extends Directives {
   private lazy val userKey = "user"

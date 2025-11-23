@@ -1,12 +1,10 @@
 package ch.seidel.kutu.renderer
 
-import java.io.File
-import java.time.LocalDateTime
-import java.time.format.DateTimeFormatter
+import ch.seidel.kutu.domain.{Registration, Wettkampf}
+import ch.seidel.kutu.renderer.PrintUtil.*
 
-import ch.seidel.kutu.domain.{GeraeteRiege, Registration, Wettkampf, toTimeFormat}
-import ch.seidel.kutu.renderer.PrintUtil._
-import org.slf4j.LoggerFactory
+import java.io.File
+import java.time.format.DateTimeFormatter
 
 trait CompetitionsClubsToHtmlRenderer {
 

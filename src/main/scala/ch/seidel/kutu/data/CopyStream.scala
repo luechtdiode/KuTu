@@ -1,7 +1,6 @@
 package ch.seidel.kutu.data
 
-import java.io.ByteArrayInputStream
-import java.io.ByteArrayOutputStream
+import java.io.{ByteArrayInputStream, ByteArrayOutputStream}
 
 class CopyStream(override val size: Int) extends ByteArrayOutputStream(size) {
     /**

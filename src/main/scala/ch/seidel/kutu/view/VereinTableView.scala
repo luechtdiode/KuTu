@@ -1,9 +1,9 @@
 package ch.seidel.kutu.view
 
 import ch.seidel.kutu.domain.Verein
-import scalafx.scene.control._
 import scalafx.beans.property.ReadOnlyStringWrapper
 import scalafx.collections.ObservableBuffer
+import scalafx.scene.control.*
 
 object VereinTableView {
   def apply(vereinList: List[Verein]) = new VereinTableView(vereinList)

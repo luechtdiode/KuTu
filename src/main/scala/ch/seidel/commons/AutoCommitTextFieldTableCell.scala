@@ -1,12 +1,12 @@
 package ch.seidel.commons
 
-import javafx.scene.control.{TextField, cell => jfxscc}
-import javafx.scene.{control => jfxsc}
+import javafx.css as jfxcss
+import javafx.scene.control as jfxsc
+import javafx.scene.control.{TextField, cell as jfxscc}
 import javafx.util.Callback
-import javafx.{css => jfxcss}
 import org.controlsfx.control.textfield.AutoCompletionBinding.ISuggestionRequest
 import org.controlsfx.control.textfield.{AutoCompletionBinding, TextFields}
-import scalafx.Includes._
+import scalafx.Includes.*
 import scalafx.application.Platform
 import scalafx.beans.property.BooleanProperty
 import scalafx.beans.property.BooleanProperty.sfxBooleanProperty2jfx
@@ -17,9 +17,9 @@ import scalafx.css.PseudoClass
 import scalafx.delegate.SFXDelegate
 import scalafx.event.ActionEvent
 import scalafx.event.subscriptions.Subscription
-import scalafx.scene.control._
-import scalafx.scene.control.cell._
-import scalafx.scene.input.{Clipboard, ClipboardContent, KeyCode, KeyEvent, MouseEvent}
+import scalafx.scene.control.*
+import scalafx.scene.control.cell.*
+import scalafx.scene.input.*
 import scalafx.util.StringConverter
 
 import java.util

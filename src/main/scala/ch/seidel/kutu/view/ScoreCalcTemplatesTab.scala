@@ -1,20 +1,19 @@
 package ch.seidel.kutu.view
 
-import ch.seidel.commons._
+import ch.seidel.commons.*
 import ch.seidel.kutu.Config.{homedir, remoteHostOrigin}
-import ch.seidel.kutu.domain._
-import scalafx.scene.control.TableView
-import javafx.scene.{control => jfxsc}
-import scalafx.Includes._
+import ch.seidel.kutu.domain.*
+import javafx.scene.control as jfxsc
+import scalafx.Includes.*
 import scalafx.beans.binding.Bindings
 import scalafx.beans.property.{ReadOnlyStringProperty, StringProperty}
 import scalafx.collections.ObservableBuffer
 import scalafx.event.subscriptions.Subscription
 import scalafx.scene.Node
-import scalafx.scene.control.TableColumn._
-import scalafx.scene.control._
+import scalafx.scene.control.TableColumn.*
+import scalafx.scene.control.*
 import scalafx.scene.input.{KeyEvent, MouseEvent}
-import scalafx.scene.layout._
+import scalafx.scene.layout.*
 import scalafx.util.converter.DefaultStringConverter
 
 import java.util

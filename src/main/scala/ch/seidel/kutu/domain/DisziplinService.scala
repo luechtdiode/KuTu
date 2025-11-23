@@ -3,7 +3,7 @@ package ch.seidel.kutu.domain
 import ch.seidel.kutu.calc.ScoreCalcTemplate
 import org.slf4j.LoggerFactory
 import slick.jdbc.GetResult
-import slick.jdbc.SQLiteProfile.api._
+import slick.jdbc.SQLiteProfile.api.*
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration.Duration

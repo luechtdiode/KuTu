@@ -1,15 +1,14 @@
 package ch.seidel.kutu.view
 
-import java.util.UUID
 import ch.seidel.kutu.Config.{homedir, remoteBaseUrl}
 import ch.seidel.kutu.KuTuApp
 import ch.seidel.kutu.KuTuServer.renderer
 import ch.seidel.kutu.actors.DurchgangChanged
 import ch.seidel.kutu.domain.{KutuService, TeamItem, Wettkampf, encodeFileName}
 import ch.seidel.kutu.http.WebSocketClient
-import ch.seidel.kutu.renderer.{KategorieTeilnehmerToHtmlRenderer, KategorieTeilnehmerToJSONRenderer, PrintUtil}
 import ch.seidel.kutu.renderer.PrintUtil.FilenameDefault
 import ch.seidel.kutu.renderer.RiegenBuilder.mapToGeraeteRiegen
+import ch.seidel.kutu.renderer.{KategorieTeilnehmerToHtmlRenderer, KategorieTeilnehmerToJSONRenderer, PrintUtil}
 import javafx.beans.property.SimpleObjectProperty
 import org.slf4j.{Logger, LoggerFactory}
 import scalafx.Includes.jfxObjectProperty2sfx
@@ -17,6 +16,7 @@ import scalafx.application.Platform
 import scalafx.event.ActionEvent
 import scalafx.print.PageOrientation
 
+import java.util.UUID
 import scala.concurrent.Future
 
 trait ExportFunctions {

@@ -64,18 +64,19 @@ object Gleichstandsregel {
       GleichstandsregelList(mappedFactorizers)
     }
   }
-def createValidator: Validator[String] = (control, formeltext) => {
-  try {
-    val gleichstandsregelList = parseFormel(formeltext)
-    validated(gleichstandsregelList)
-    ValidationResult.fromMessageIf(control, "Formel valid", Severity.ERROR, false)
-  } catch {
-    case e: Exception =>
-      ValidationResult.fromMessageIf(control, e.getMessage, Severity.ERROR, true)
-  }
-}
 
-def apply(programmId: Long): Gleichstandsregel = {
+  def createValidator: Validator[String] = (control, formeltext) => {
+    try {
+      val gleichstandsregelList = parseFormel(formeltext)
+      validated(gleichstandsregelList)
+      ValidationResult.fromMessageIf(control, "Formel valid", Severity.ERROR, false)
+    } catch {
+      case e: Exception =>
+        ValidationResult.fromMessageIf(control, e.getMessage, Severity.ERROR, true)
+    }
+  }
+
+  def apply(programmId: Long): Gleichstandsregel = {
     programmId match {
       case id if (id > 0 && id < 4) => // Athletiktest
         GleichstandsregelDefault

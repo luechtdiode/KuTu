@@ -1,7 +1,7 @@
 package ch.seidel.kutu.view.player
 
 import ch.seidel.commons.PageDisplayer
-import ch.seidel.kutu.actors._
+import ch.seidel.kutu.actors.*
 import ch.seidel.kutu.domain.{KutuService, Wettkampf}
 import ch.seidel.kutu.http.WebSocketClient
 import ch.seidel.kutu.{Config, ConnectionStates}

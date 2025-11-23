@@ -1,10 +1,10 @@
 package ch.seidel.kutu.renderer
 
-import java.io.File
 import ch.seidel.kutu.domain.{Durchgang, GeraeteRiege, RiegenRotationsregelKategorie, SimpleDurchgang}
-import ch.seidel.kutu.renderer.PrintUtil._
+import ch.seidel.kutu.renderer.PrintUtil.*
 import org.slf4j.LoggerFactory
 
+import java.io.File
 import java.time.LocalDateTime
 
 trait KategorieTeilnehmerToJSONRenderer {

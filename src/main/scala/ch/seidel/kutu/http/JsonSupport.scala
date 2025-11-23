@@ -188,7 +188,7 @@ trait JsonSupport extends SprayJsonSupport with EnrichedJson {
           jv.addFields(Map(
             "type" -> JsString(be.getClass.getSimpleName),
             "wettkampfUUID" -> JsString(be.wettkampfUUID),
-            "events" -> JsArray(be.events.map(ev => write(ev)).toList)
+            "events" -> JsArray(be.events.map(ev => write(ev)).toVector)
           ))
         case _ =>
           caseClassesJsonFormatter.get(obj.getClass.getSimpleName) match {
@@ -224,7 +224,7 @@ trait JsonSupport extends SprayJsonSupport with EnrichedJson {
             "caption" -> JsString(be.caption),
             "verein" -> registrationFormat.write(be.verein)
           ))
-        case _ => throw new Exception(s"Unable to find jsonFormatter for $obj")
+        case null => throw new Exception(s"Unable to find jsonFormatter for $obj")
       }
     }
   }

@@ -1,6 +1,6 @@
 package ch.seidel.kutu.squad
 
-import ch.seidel.kutu.domain._
+import ch.seidel.kutu.domain.*
 import org.slf4j.LoggerFactory
 
 import scala.collection.mutable

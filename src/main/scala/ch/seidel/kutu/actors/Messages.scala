@@ -1,8 +1,8 @@
 package ch.seidel.kutu.actors
 
-import org.apache.pekko.actor.ActorRef
 import ch.seidel.kutu.data.GroupBy
-import ch.seidel.kutu.domain._
+import ch.seidel.kutu.domain.*
+import org.apache.pekko.actor.ActorRef
 
 case class Subscribe(clientSource: ActorRef, deviceId: String, durchgang: Option[String], lastSequenceId: Option[Long])
 case class StopDevice(deviceId: String)

@@ -2,8 +2,8 @@ package ch.seidel.kutu.renderer
 
 import ch.seidel.kutu.Config
 import ch.seidel.kutu.actors.{Mail, MultipartMail}
-import ch.seidel.kutu.domain.{JudgeRegistration, Registration, SyncAction, Wettkampf, WettkampfStats, encodeFileName}
-import ch.seidel.kutu.renderer.PrintUtil._
+import ch.seidel.kutu.domain.*
+import ch.seidel.kutu.renderer.PrintUtil.*
 
 object MailTemplates {
   val htmlhead =

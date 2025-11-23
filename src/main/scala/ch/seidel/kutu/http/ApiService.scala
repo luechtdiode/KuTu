@@ -1,10 +1,10 @@
 package ch.seidel.kutu.http
 
-import org.apache.pekko.http.scaladsl.model.StatusCodes._
-import org.apache.pekko.http.scaladsl.model.{HttpResponse, StatusCode, StatusCodes, Uri}
-import org.apache.pekko.http.scaladsl.server.{ExceptionHandler, RouteConcatenation}
 import ch.seidel.kutu.domain.toDurationFormat
 import fr.davit.pekko.http.metrics.core.scaladsl.server.HttpMetricsDirectives.pathPrefixLabeled
+import org.apache.pekko.http.scaladsl.model.StatusCodes.*
+import org.apache.pekko.http.scaladsl.model.{HttpResponse, StatusCode, StatusCodes, Uri}
+import org.apache.pekko.http.scaladsl.server.{ExceptionHandler, RouteConcatenation}
 
 
 case class HTTPFailure(status: StatusCode,
@@ -32,7 +32,7 @@ trait ApiService extends RouteConcatenation with CIDSupport with RouterLogging w
   with MetricsController {
 
   //  private implicit lazy val _ = ch.seidel.kutu.http.Core.system.dispatcher
-  import AbuseHandler._
+  import AbuseHandler.*
 
   def allroutes(userLookup: (String) => String, userIdLookup: (String) => Option[Long]) = {
     def myExceptionHandler: ExceptionHandler = ExceptionHandler {

@@ -12,7 +12,7 @@ object KuTuServer extends App with KuTuAppHTTPServer with AuthSupport with Hashi
   private val logger = LoggerFactory.getLogger(this.getClass)
 
 
-  import Core._
+  import Core.*
 
   implicit val executionContext: ExecutionContext = system.dispatcher
 

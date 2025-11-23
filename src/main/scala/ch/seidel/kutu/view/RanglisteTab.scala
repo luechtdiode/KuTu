@@ -1,13 +1,12 @@
 package ch.seidel.kutu.view
 
-import java.util.UUID
 import ch.seidel.commons.{DisplayablePage, PageDisplayer}
-import ch.seidel.kutu.Config._
-import ch.seidel.kutu.{ConnectionStates, domain}
+import ch.seidel.kutu.Config.*
 import ch.seidel.kutu.KuTuApp.handleAction
-import ch.seidel.kutu.data._
-import ch.seidel.kutu.domain.{Altersklasse, Durchgang, KutuService, TeamRegel, WertungView, WettkampfView, encodeFileName}
+import ch.seidel.kutu.data.*
+import ch.seidel.kutu.domain.*
 import ch.seidel.kutu.renderer.PrintUtil.FilenameDefault
+import ch.seidel.kutu.{ConnectionStates, domain}
 import scalafx.Includes.when
 import scalafx.beans.binding.Bindings
 import scalafx.beans.property.BooleanProperty
@@ -16,6 +15,7 @@ import scalafx.scene.Node
 import scalafx.scene.control.{Button, ComboBox, Label, TextField}
 import scalafx.scene.layout.{BorderPane, Priority, VBox}
 
+import java.util.UUID
 import scala.concurrent.Await
 import scala.concurrent.duration.Duration
 

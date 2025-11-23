@@ -6,7 +6,7 @@ import ch.seidel.kutu.actors.*
 import ch.seidel.kutu.data.RegistrationAdmin.adjustWertungRiegen
 import ch.seidel.kutu.data.ResourceExchanger
 import ch.seidel.kutu.data.ResourceExchanger.updateAthletRegistration
-import ch.seidel.kutu.domain.{AthletRegistration, AthletView, JudgeRegistration, KutuService, Media, MediaAdmin, NewRegistration, ProgrammRaw, Registration, RegistrationResetPW, SyncAction, TeamItem, TeamRegel, Verein, Wettkampf, dateToExportedStr, encodeFileName, str2SQLDate}
+import ch.seidel.kutu.domain.*
 import ch.seidel.kutu.http.AuthSupport.OPTION_LOGINRESET
 import ch.seidel.kutu.renderer.MailTemplates.createPasswordResetMail
 import ch.seidel.kutu.renderer.{CompetitionsClubsToHtmlRenderer, CompetitionsJudgeToHtmlRenderer, PrintUtil}
@@ -14,8 +14,8 @@ import fr.davit.pekko.http.metrics.core.scaladsl.server.HttpMetricsDirectives.*
 import org.apache.pekko.http.scaladsl.Http
 import org.apache.pekko.http.scaladsl.marshallers.sprayjson.SprayJsonSupport
 import org.apache.pekko.http.scaladsl.marshalling.ToResponseMarshallable
-import org.apache.pekko.http.scaladsl.model.HttpMethods.POST
 import org.apache.pekko.http.scaladsl.model.*
+import org.apache.pekko.http.scaladsl.model.HttpMethods.POST
 import org.apache.pekko.http.scaladsl.server.Route
 import org.apache.pekko.http.scaladsl.server.directives.FileInfo
 import org.apache.pekko.http.scaladsl.unmarshalling.Unmarshal
@@ -33,8 +33,8 @@ import scala.util.{Failure, Success}
 trait RegistrationRoutes extends SprayJsonSupport with JsonSupport with JwtSupport with AuthSupport with RouterLogging
   with KutuService with CompetitionsClubsToHtmlRenderer with CompetitionsJudgeToHtmlRenderer with IpToDeviceID with CIDSupport with FailureSupport {
 
-  import Core._
-  import spray.json.DefaultJsonProtocol._
+  import Core.*
+  import spray.json.DefaultJsonProtocol.*
 
   import scala.concurrent.ExecutionContext.Implicits.global
 
@@ -140,7 +140,7 @@ trait RegistrationRoutes extends SprayJsonSupport with JsonSupport with JwtSuppo
   }
 
   private def httpMediaDownloadRequest(wettkampf: Wettkampf, mediaList: List[MediaAdmin], request: HttpRequest): Future[Unit] = {
-    import Core._
+    import Core.*
     val source = Source.single(request, ())
     val requestResponseFlow = Http().superPool[Unit](settings = poolsettings)
 
@@ -180,7 +180,7 @@ trait RegistrationRoutes extends SprayJsonSupport with JsonSupport with JwtSuppo
           }
         }
       } ~ pathPrefixLabeled("registrations" / JavaUUID, "registrations/:competition-id") { competitionId =>
-        import AbuseHandler._
+        import AbuseHandler.*
         if !wettkampfExists(competitionId.toString) then {
           log.error(handleAbuse(clientId, uri))
           complete(StatusCodes.NotFound)

@@ -1,7 +1,7 @@
 package ch.seidel.kutu.domain
 
 import org.slf4j.LoggerFactory
-import slick.jdbc.SQLiteProfile.api._
+import slick.jdbc.SQLiteProfile.api.*
 
 import scala.concurrent.Await
 import scala.concurrent.duration.Duration

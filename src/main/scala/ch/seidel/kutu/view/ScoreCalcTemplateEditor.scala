@@ -2,9 +2,9 @@ package ch.seidel.kutu.view
 
 import ch.seidel.kutu.calc.parser.{Expression, MathExpCompiler}
 import ch.seidel.kutu.calc.{ScoreAggregateFn, ScoreCalcTemplate}
-import ch.seidel.kutu.domain.{Athlet, Disziplin, KutuService, StandardWettkampf, WertungView, WettkampfView, WettkampfdisziplinView}
+import ch.seidel.kutu.domain.*
 import org.controlsfx.validation.{Severity, ValidationResult, Validator}
-import scalafx.beans.property._
+import scalafx.beans.property.*
 
 object ScoreCalcTemplateEditor {
   val coldef = Map(

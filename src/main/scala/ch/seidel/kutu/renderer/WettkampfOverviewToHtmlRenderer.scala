@@ -3,14 +3,14 @@ package ch.seidel.kutu.renderer
 import ch.seidel.kutu.Config
 import ch.seidel.kutu.Config.{getRemoteHosts, homedir, remoteBaseUrl, remoteHostOrigin}
 import ch.seidel.kutu.KuTuApp.enc
-import ch.seidel.kutu.domain._
-import ch.seidel.kutu.renderer.PrintUtil._
+import ch.seidel.kutu.domain.*
+import ch.seidel.kutu.renderer.PrintUtil.*
 import org.slf4j.LoggerFactory
 
 import java.io.File
 import java.sql.Date
 import java.time.{LocalDate, Period}
-import scala.collection.immutable._
+import scala.collection.immutable.*
 
 trait WettkampfOverviewToHtmlRenderer {
   given Conversion[java.sql.Date, LocalDate] = sqlDate2ld

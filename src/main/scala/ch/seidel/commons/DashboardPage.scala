@@ -4,7 +4,7 @@ import ch.seidel.kutu.KuTuAppTree
 import ch.seidel.kutu.KuTuAppTree.showThumbnails
 import ch.seidel.kutu.view.WettkampfTableView
 import scalafx.scene.Node
-import scalafx.scene.control.{ScrollPane, TableView, TextField, Toggle, ToggleButton, ToggleGroup}
+import scalafx.scene.control.*
 import scalafx.scene.image.{Image, ImageView}
 import scalafx.scene.layout.{BorderPane, HBox, Priority, VBox}
 

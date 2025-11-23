@@ -1,6 +1,6 @@
 package ch.seidel.kutu.squad
 
-import ch.seidel.kutu.domain._
+import ch.seidel.kutu.domain.*
 import ch.seidel.kutu.squad.RiegenBuilder.selectRiegenGrouper
 
 /** Riegenbuilder:

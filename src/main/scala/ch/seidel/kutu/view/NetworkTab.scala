@@ -1,18 +1,18 @@
 package ch.seidel.kutu.view
 
 import ch.seidel.commons.{LazyTabPane, TabWithService}
-import ch.seidel.kutu.Config._
+import ch.seidel.kutu.*
+import ch.seidel.kutu.Config.*
 import ch.seidel.kutu.KuTuApp.{enc, hostServices}
-import ch.seidel.kutu._
-import ch.seidel.kutu.actors._
-import ch.seidel.kutu.domain._
+import ch.seidel.kutu.actors.*
+import ch.seidel.kutu.domain.*
 import ch.seidel.kutu.http.WebSocketClient
 import ch.seidel.kutu.renderer.PrintUtil.FilenameDefault
 import ch.seidel.kutu.renderer.{BestenListeToHtmlRenderer, PrintUtil, RiegenBuilder}
 import ch.seidel.kutu.view.player.Player
 import javafx.event.EventHandler
-import javafx.scene.{control => jfxsc}
-import scalafx.Includes._
+import javafx.scene.control as jfxsc
+import scalafx.Includes.*
 import scalafx.application.Platform
 import scalafx.beans.binding.Bindings
 import scalafx.beans.property.{BooleanProperty, StringProperty}
@@ -21,8 +21,8 @@ import scalafx.collections.ObservableBuffer.observableBuffer2ObservableList
 import scalafx.event.ActionEvent
 import scalafx.event.subscriptions.Subscription
 import scalafx.print.PageOrientation
-import scalafx.scene.control.TreeTableColumn._
-import scalafx.scene.control._
+import scalafx.scene.control.*
+import scalafx.scene.control.TreeTableColumn.*
 import scalafx.scene.image.{Image, ImageView}
 import scalafx.scene.layout.{BorderPane, Priority, Region}
 
@@ -323,7 +323,7 @@ class NetworkTab(wettkampfmode: BooleanProperty, override val wettkampfInfo: Wet
       val selected = view.selectionModel.value.selectedCells.toList.headOption
       val newList: immutable.Seq[DurchgangState] = loadDurchgaenge
 
-      import CollectionConverters._
+      import CollectionConverters.*
 
       val groupMap = newList.groupBy(d => d.durchgang.title)
       val items: List[TreeItem[DurchgangState]] = for group <- groupMap.keySet.toList.sorted yield {

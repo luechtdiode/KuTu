@@ -1,9 +1,9 @@
 package ch.seidel.kutu.view
 
 import ch.seidel.kutu.domain.WettkampfView
-import scalafx.scene.control._
 import scalafx.beans.property.ReadOnlyStringWrapper
 import scalafx.collections.ObservableBuffer
+import scalafx.scene.control.*
 
 object WettkampfTableView {
   def apply(wklviews: List[WettkampfView]) = new WettkampfTableView(wklviews)

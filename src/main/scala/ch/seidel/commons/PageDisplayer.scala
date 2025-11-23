@@ -1,26 +1,26 @@
 package ch.seidel.commons
 
-import java.io.StringWriter
+import ch.seidel.kutu.domain.*
+import ch.seidel.kutu.view.*
 import ch.seidel.kutu.{KuTuApp, KuTuAppTree}
-import ch.seidel.kutu.domain._
-import ch.seidel.kutu.view._
+import javafx.scene as jfxs
 import javafx.scene.input.{KeyCode, KeyEvent}
-import javafx.{scene => jfxs}
 import org.slf4j.{Logger, LoggerFactory}
-import scalafx.Includes._
+import scalafx.Includes.*
 import scalafx.application.Platform
 import scalafx.beans.Observable
 import scalafx.beans.property.BooleanProperty
 import scalafx.event.ActionEvent
 import scalafx.geometry.{Insets, Pos}
+import scalafx.scene.control.*
+import scalafx.scene.image.*
+import scalafx.scene.layout.*
 import scalafx.scene.{Node, Scene}
-import scalafx.scene.control.{Alert, Button, Label, PasswordField, TextArea, TextField}
-import scalafx.scene.image._
-import scalafx.scene.layout.{BorderPane, GridPane, HBox, Priority, VBox}
 import scalafx.stage.{Modality, Stage}
 
-import scala.concurrent.{Await, Promise}
+import java.io.StringWriter
 import scala.concurrent.duration.Duration
+import scala.concurrent.{Await, Promise}
 
 
 /**

@@ -1,7 +1,7 @@
 package ch.seidel.kutu.view
 
 import ch.seidel.kutu.calc.{ScoreCalcTemplateView, ScoreCalcVariable}
-import ch.seidel.kutu.domain._
+import ch.seidel.kutu.domain.*
 import scalafx.beans.property.{BufferProperty, DoubleProperty, ObjectProperty}
 import scalafx.collections.ObservableBuffer
 

@@ -1,9 +1,14 @@
 package ch.seidel.kutu.http
 
+import ch.seidel.commons.PageDisplayer
+import ch.seidel.jwt
+import ch.seidel.kutu.Config
+import ch.seidel.kutu.Config.*
+import ch.seidel.kutu.domain.Wettkampf
 import org.apache.pekko.http.scaladsl.marshallers.sprayjson.SprayJsonSupport
 import org.apache.pekko.http.scaladsl.marshalling.Marshal
-import org.apache.pekko.http.scaladsl.model._
-import org.apache.pekko.http.scaladsl.model.headers._
+import org.apache.pekko.http.scaladsl.model.*
+import org.apache.pekko.http.scaladsl.model.headers.*
 import org.apache.pekko.http.scaladsl.model.ws.{Message, WebSocketRequest}
 import org.apache.pekko.http.scaladsl.server.Directives
 import org.apache.pekko.http.scaladsl.server.directives.Credentials
@@ -11,12 +16,7 @@ import org.apache.pekko.http.scaladsl.server.directives.Credentials.Provided
 import org.apache.pekko.http.scaladsl.settings.{ClientConnectionSettings, ConnectionPoolSettings}
 import org.apache.pekko.http.scaladsl.unmarshalling.Unmarshal
 import org.apache.pekko.http.scaladsl.{ClientTransport, Http}
-import org.apache.pekko.stream.scaladsl._
-import ch.seidel.commons.PageDisplayer
-import ch.seidel.jwt
-import ch.seidel.kutu.Config
-import ch.seidel.kutu.Config._
-import ch.seidel.kutu.domain.Wettkampf
+import org.apache.pekko.stream.scaladsl.*
 import spray.json.{JsObject, RootJsonFormat}
 
 import java.net.{InetSocketAddress, PasswordAuthentication}
@@ -167,8 +167,8 @@ trait AuthSupport extends Directives with SprayJsonSupport with Hashing with Jwt
    * Supports header- and body-based request->response with credentials->acces-token
    */
   def httpLoginRequest(uri: String, user: String, pw: String): Future[Unit] = {
-    import Core._
-    import HttpMethods._
+    import Core.*
+    import HttpMethods.*
     Marshal(UserCredentials(user, pw)).to[RequestEntity] flatMap { entity =>
       Http().singleRequest(
           HttpRequest(method = POST, uri = uri, entity = entity).addHeader(Authorization(BasicHttpCredentials(user, pw))), settings = poolsettings).map {
@@ -209,8 +209,8 @@ trait AuthSupport extends Directives with SprayJsonSupport with Hashing with Jwt
   }
 
   def httpRenewLoginRequest(uri: String, wettkampfuuid: String, jwtToken: String): Future[HttpResponse] = {
-    import Core._
-    import HttpMethods._
+    import Core.*
+    import HttpMethods.*
     Marshal(UserCredentials(wettkampfuuid, jwtToken)).to[RequestEntity] flatMap { entity =>
       val request = HttpRequest(method = POST, uri = uri, entity = entity)
       val requestWithHeader = request.withHeaders(request.headers :+ RawHeader(jwtAuthorizationKey, jwtToken))
@@ -240,7 +240,7 @@ trait AuthSupport extends Directives with SprayJsonSupport with Hashing with Jwt
   }
   
   def httpGet[T](url: String): Future[String] = {
-    import Core._
+    import Core.*
     httpGetClientRequest(url).flatMap{
         case HttpResponse(StatusCodes.OK, headers, entity, _) => Unmarshal(entity).to[String]
         case _ => Future{""}
@@ -255,12 +255,12 @@ trait AuthSupport extends Directives with SprayJsonSupport with Hashing with Jwt
   }
   
   def httpClientRequest(request: HttpRequest): Future[HttpResponse] = {
-    import Core._
+    import Core.*
     Http().singleRequest(withAuthHeader(request), settings = poolsettings)
   }
   
   def websocketClientRequest(request: WebSocketRequest, flow: Flow[Message, Message, Promise[Option[Message]]]) : Promise[Option[Message]] = {
-    import Core._
+    import Core.*
     val (response, streamTerminationPromise) = Http().singleWebSocketRequest(request, clientFlow = flow, settings = clientsettings)
 
     // make sure that the connection could be established
@@ -270,25 +270,25 @@ trait AuthSupport extends Directives with SprayJsonSupport with Hashing with Jwt
   }
   
   def httpPutClientRequest(uri: String, entity: RequestEntity): Future[HttpResponse] = {
-    import HttpMethods._
+    import HttpMethods.*
     httpClientRequest(HttpRequest(PUT, uri=uri, entity = entity))
   }
   
   def httpPostClientRequest(uri: String, entity: RequestEntity): Future[HttpResponse] = {
-    import HttpMethods._
+    import HttpMethods.*
     httpClientRequest(HttpRequest(POST, uri=uri, entity = entity))
   }
   def httpDeleteClientRequest(uri: String): Future[HttpResponse] = {
-    import HttpMethods._
+    import HttpMethods.*
     httpClientRequest(HttpRequest(DELETE, uri=uri))
   }
   def makeHttpGetRequest(url: String): HttpRequest = {
-    import HttpMethods._
+    import HttpMethods.*
     withAuthHeader(HttpRequest(GET, uri=url))
   }
   
   def httpGetClientRequest(uri: String): Future[HttpResponse] = {
-    import HttpMethods._
+    import HttpMethods.*
     httpClientRequest(HttpRequest(GET, uri=uri))
   }
 

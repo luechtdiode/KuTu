@@ -5,7 +5,7 @@ import ch.seidel.kutu.actors.AthletWertungUpdated
 import ch.seidel.kutu.calc.ScoreCalcTemplate
 import ch.seidel.kutu.http.{JsonSupport, WebSocketClient}
 import org.slf4j.LoggerFactory
-import slick.jdbc.SQLiteProfile.api._
+import slick.jdbc.SQLiteProfile.api.*
 import spray.json.enrichAny
 
 import java.lang.IllegalArgumentException
@@ -50,7 +50,7 @@ object WertungServiceBestenResult {
 
 abstract trait WertungService extends DBService with WertungResultMapper with DisziplinService with RiegenService with JsonSupport {
   private val logger = LoggerFactory.getLogger(this.getClass)
-  import WertungServiceBestenResult._
+  import WertungServiceBestenResult.*
   
   def selectWertungen(vereinId: Option[Long] = None, athletId: Option[Long] = None, wettkampfId: Option[Long] = None, disziplinId: Option[Long] = None, wkuuid: Option[String] = None): Seq[WertungView] = {
     implicit val cid = wettkampfId.getOrElse(0)

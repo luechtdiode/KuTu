@@ -1,9 +1,5 @@
 package ch.seidel.kutu.domain
 
-import java.io.File
-import java.nio.file.{Files, StandardOpenOption}
-import java.text.{ParseException, SimpleDateFormat}
-import java.util.Properties
 import ch.seidel.kutu.Config
 import ch.seidel.kutu.Config.{appVersion, userHomePath}
 import ch.seidel.kutu.data.ResourceExchanger
@@ -11,11 +7,15 @@ import com.zaxxer.hikari.{HikariConfig, HikariDataSource}
 import org.slf4j.LoggerFactory
 import org.sqlite.SQLiteConnection
 import slick.jdbc
-import slick.jdbc.{JdbcBackend, JdbcDataSourceFactory}
 import slick.jdbc.JdbcBackend.Database
 import slick.jdbc.PostgresProfile.api.{DBIO, actionBasedSQLInterpolation, jdbcActionExtensionMethods}
+import slick.jdbc.{JdbcBackend, JdbcDataSourceFactory}
 
+import java.io.File
+import java.nio.file.{Files, StandardOpenOption}
 import java.sql.Date
+import java.text.{ParseException, SimpleDateFormat}
+import java.util.Properties
 import scala.annotation.tailrec
 import scala.concurrent.Await
 import scala.concurrent.duration.Duration

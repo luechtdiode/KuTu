@@ -1,21 +1,21 @@
 package ch.seidel.kutu.actors
 
 import ch.seidel.kutu.actors.CompetitionCoordinatorClientActor.supervisor
-import org.apache.pekko.actor.SupervisorStrategy.{Restart, Stop}
-import org.apache.pekko.actor.{Actor, ActorLogging, ActorRef, OneForOneStrategy, PoisonPill, Props, SupervisorStrategy, Terminated}
-import org.apache.pekko.pattern.ask
-import org.apache.pekko.util.Timeout
 import ch.seidel.kutu.domain.*
 import ch.seidel.kutu.http.Core.system
 import ch.seidel.kutu.http.JsonSupport
+import org.apache.pekko.actor.SupervisorStrategy.{Restart, Stop}
+import org.apache.pekko.actor.{Actor, ActorLogging, ActorRef, OneForOneStrategy, PoisonPill, Props, SupervisorStrategy, Terminated}
 import org.apache.pekko.event.Logging
+import org.apache.pekko.pattern.ask
+import org.apache.pekko.util.Timeout
 
 import java.util
 import java.util.concurrent.TimeUnit
 import scala.concurrent.ExecutionContext.Implicits.global
-import scala.concurrent.{Await, Future}
 import scala.concurrent.duration.DurationInt
 import scala.concurrent.duration.FiniteDuration.*
+import scala.concurrent.{Await, Future}
 import scala.util.control.NonFatal
 import scala.util.{Failure, Success}
 

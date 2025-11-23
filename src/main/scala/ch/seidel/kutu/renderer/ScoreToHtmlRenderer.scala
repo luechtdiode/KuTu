@@ -1,12 +1,12 @@
 package ch.seidel.kutu.renderer
 
+import ch.seidel.kutu.data.*
+import ch.seidel.kutu.domain.*
+import ch.seidel.kutu.renderer.PrintUtil.*
+import org.slf4j.LoggerFactory
+
 import java.io.File
 import java.util.concurrent.atomic.AtomicBoolean
-
-import ch.seidel.kutu.data._
-import ch.seidel.kutu.domain.{GroupRow, _}
-import ch.seidel.kutu.renderer.PrintUtil._
-import org.slf4j.LoggerFactory
 
 trait ScoreToHtmlRenderer {
   val logger = LoggerFactory.getLogger(this.getClass)
@@ -377,7 +377,7 @@ trait ScoreToHtmlRenderer {
       List(alldata.take(athletsPerPage - fixFirstPageHeaderLines)) ++
         alldata.drop(athletsPerPage - fixFirstPageHeaderLines).sliding(athletsPerPage, athletsPerPage)
     }
-    pagedata.foreach { section =>
+    pagedata.iterator.foreach { section =>
       renderListHead(gsBlock, cols)
       renderListRows(section, gsBlock, cols)
       renderListEnd(gsBlock)
@@ -551,7 +551,7 @@ trait ScoreToHtmlRenderer {
         List(alldata.take(teamsFirstSite)) ++
           alldata.drop(teamsFirstSite).sliding(teamsPerPage, teamsPerPage)
       }
-      pagedata.foreach { section =>
+      pagedata.iterator.foreach { section =>
         renderTeamHead
         renderTeamRows(section)
         renderTeamEnd

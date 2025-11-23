@@ -3,13 +3,12 @@ package ch.seidel.kutu.view.player
 import ch.seidel.kutu.Config
 import ch.seidel.kutu.domain.Wettkampf
 import javafx.event.{ActionEvent, EventHandler}
+import javafx.geometry.{Insets, Pos}
 import javafx.scene.Scene
 import javafx.scene.control.{Button, Label, TextField}
 import javafx.scene.layout.{HBox, Priority, VBox}
 import javafx.scene.paint.{Color, CycleMethod, LinearGradient, Stop}
-import javafx.stage.{Modality, Stage}
-import javafx.geometry.{Insets, Pos}
-import javafx.stage.FileChooser
+import javafx.stage.{FileChooser, Modality, Stage}
 import scalafx.stage.DirectoryChooser
 
 import java.io.File

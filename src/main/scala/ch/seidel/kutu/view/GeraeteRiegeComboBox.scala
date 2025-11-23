@@ -1,10 +1,10 @@
 package ch.seidel.kutu.view
 
-import ch.seidel.commons._
-import ch.seidel.kutu.domain._
-import scalafx.Includes._
+import ch.seidel.commons.*
+import ch.seidel.kutu.domain.*
+import scalafx.Includes.*
 import scalafx.application.Platform
-import scalafx.scene.control._
+import scalafx.scene.control.*
 
 
 class GeraeteRiegeComboBox[T](tableView: TableView[T]) extends ComboBox[GeraeteRiege]() {

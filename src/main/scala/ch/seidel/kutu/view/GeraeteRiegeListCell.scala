@@ -1,9 +1,9 @@
 package ch.seidel.kutu.view
 
-import ch.seidel.kutu.domain._
-import javafx.scene.{control => jfxsc}
+import ch.seidel.kutu.domain.*
+import javafx.scene.control as jfxsc
 import scalafx.collections.ObservableBuffer.observableBuffer2ObservableList
-import scalafx.scene.control._
+import scalafx.scene.control.*
 import scalafx.scene.image.{Image, ImageView}
 
 class GeraeteRiegeListCell extends ListCell[GeraeteRiege] {

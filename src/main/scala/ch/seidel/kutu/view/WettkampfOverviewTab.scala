@@ -1,28 +1,28 @@
 package ch.seidel.kutu.view
 
-import java.util.UUID
-import ch.seidel.commons._
+import ch.seidel.commons.*
 import ch.seidel.kutu.Config.{homedir, remoteBaseUrl, remoteHostOrigin}
 import ch.seidel.kutu.KuTuApp.{controlsView, getStage, handleAction, modelWettkampfModus, selectedWettkampf, selectedWettkampfSecret, stage}
 import ch.seidel.kutu.data.{ByAltersklasse, ByJahrgangsAltersklasse}
-import ch.seidel.kutu.domain._
+import ch.seidel.kutu.domain.*
 import ch.seidel.kutu.renderer.PrintUtil.FilenameDefault
 import ch.seidel.kutu.renderer.{CompetitionsJudgeToHtmlRenderer, PrintUtil, WettkampfOverviewToHtmlRenderer}
-import ch.seidel.kutu.{Config, ConnectionStates, KuTuApp, KuTuServer, LocalServerStates}
+import ch.seidel.kutu.*
 import javafx.scene.text.FontSmoothingType
-import scalafx.Includes._
+import scalafx.Includes.*
 import scalafx.application.Platform
 import scalafx.beans.binding.Bindings
 import scalafx.event.ActionEvent
 import scalafx.event.subscriptions.Subscription
 import scalafx.print.PageOrientation
 import scalafx.scene.Node
-import scalafx.scene.control._
-import scalafx.scene.layout._
+import scalafx.scene.control.*
+import scalafx.scene.layout.*
 import scalafx.scene.web.WebView
 import scalafx.stage.FileChooser
 import scalafx.stage.FileChooser.ExtensionFilter
 
+import java.util.UUID
 import scala.concurrent.Future
 import scala.util.{Failure, Success}
 

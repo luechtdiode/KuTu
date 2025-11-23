@@ -9,13 +9,13 @@ import ch.seidel.kutu.data.ResourceExchanger.saveMediaFile
 import ch.seidel.kutu.domain.{KutuService, Media, Wettkampf}
 import ch.seidel.kutu.view.player.Player
 import javafx.stage.FileChooser
-import scalafx.Includes._
+import scalafx.Includes.*
 import scalafx.beans.binding.Bindings
 import scalafx.beans.property.BooleanProperty
 import scalafx.event.ActionEvent
-import scalafx.geometry._
-import scalafx.scene.control._
-import scalafx.scene.layout._
+import scalafx.geometry.*
+import scalafx.scene.control.*
+import scalafx.scene.layout.*
 
 import java.io.{File, FileInputStream}
 import java.net.URI

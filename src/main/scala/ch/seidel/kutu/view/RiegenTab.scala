@@ -5,7 +5,7 @@ import ch.seidel.kutu.Config.*
 import ch.seidel.kutu.KuTuApp
 import ch.seidel.kutu.KuTuApp.hostServices
 import ch.seidel.kutu.data.ResourceExchanger
-import ch.seidel.kutu.domain.{Disziplin, Durchgang, GemischteRiegen, GemischterDurchgang, GetrennteDurchgaenge, KutuService, Riege, RiegeRaw, SexDivideRule, WettkampfView, encodeFileName, str2Int, toDurationFormat}
+import ch.seidel.kutu.domain.*
 import ch.seidel.kutu.renderer.PrintUtil.FilenameDefault
 import ch.seidel.kutu.renderer.{PrintUtil, RiegenBuilder, WertungsrichterQRCode, WertungsrichterQRCodesToHtmlRenderer}
 import ch.seidel.kutu.squad.DurchgangBuilder
@@ -21,13 +21,13 @@ import scalafx.collections.ObservableBuffer.observableBuffer2ObservableList
 import scalafx.event.ActionEvent
 import scalafx.geometry.*
 import scalafx.print.PageOrientation
+import scalafx.scene.control.*
 import scalafx.scene.control.SelectionMode.sfxEnum2jfx
 import scalafx.scene.control.TableColumn.{sfxTableColumn2jfx, CellEditEvent as TableCellEditEvent}
 import scalafx.scene.control.TableView.sfxTableView2jfx
 import scalafx.scene.control.TreeTableColumn.sfxTreeTableColumn2jfx
 import scalafx.scene.control.TreeTableView.sfxTreeTableView2jfx
 import scalafx.scene.control.cell.{CheckBoxListCell, CheckBoxTableCell, ComboBoxTableCell}
-import scalafx.scene.control.*
 import scalafx.scene.image.{Image, ImageView, WritableImage}
 import scalafx.scene.input.{ClipboardContent, DataFormat, KeyEvent, TransferMode}
 import scalafx.scene.layout.*
@@ -86,8 +86,7 @@ class DurchgangJFSCTableColumn[T](val index: Disziplin) extends jfxsc.TableColum
   override def valueEditor(selectedRow: DurchgangEditor): Seq[RiegeEditor] = selectedRow.valueEditor(index)
 }
 
-class DurchgangTableColumn[T](val index: Disziplin) extends TableColumn[DurchgangEditor, T] with DurchgangTCAccess {
-  override val delegate: jfxsc.TableColumn[DurchgangEditor, T] = new DurchgangJFSCTableColumn[T](index)
+class DurchgangTableColumn[T](val index: Disziplin) extends TableColumn[DurchgangEditor, T](new DurchgangJFSCTableColumn[T](index)) with DurchgangTCAccess {
 
   override def getIndex: Disziplin = index
 
@@ -100,8 +99,7 @@ class DurchgangJFSCTreeTableColumn[T](val index: Disziplin) extends jfxsc.TreeTa
   override def valueEditor(selectedRow: DurchgangEditor): Seq[RiegeEditor] = selectedRow.valueEditor(index)
 }
 
-class DurchgangTreeTableColumn[T](val index: Disziplin) extends TreeTableColumn[DurchgangEditor, T] with DurchgangTCAccess {
-  override val delegate: jfxsc.TreeTableColumn[DurchgangEditor, T] = new DurchgangJFSCTreeTableColumn[T](index)
+class DurchgangTreeTableColumn[T](val index: Disziplin) extends TreeTableColumn[DurchgangEditor, T](new DurchgangJFSCTreeTableColumn[T](index)) with DurchgangTCAccess {
 
   override def getIndex: Disziplin = index
 

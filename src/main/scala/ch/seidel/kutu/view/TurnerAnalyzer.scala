@@ -1,28 +1,28 @@
 package ch.seidel.kutu.view
 
 import ch.seidel.commons.TabWithService
-import ch.seidel.kutu.domain._
+import ch.seidel.kutu.domain.*
 import javafx.beans.value.{ChangeListener, ObservableValue}
 import javafx.geometry.Bounds
-import javafx.scene.{Group, Node, Parent}
 import javafx.scene.chart.XYChart.Data
 import javafx.scene.transform.Scale
+import javafx.scene.{Group, Node, Parent}
 import org.slf4j.{Logger, LoggerFactory}
-import scalafx.Includes._
+import scalafx.Includes.*
 import scalafx.application.Platform
 import scalafx.event.ActionEvent
 import scalafx.geometry.Side
 import scalafx.print.PageLayout.sfxPageLayout2jfx
-import scalafx.print.{PageOrientation, Paper, Printer, PrinterJob}
 import scalafx.print.PrinterJob.sfxPrinterJob2jfx
+import scalafx.print.{PageOrientation, Paper, Printer, PrinterJob}
+import scalafx.scene.chart.*
 import scalafx.scene.chart.BarChart.sfxBarChart2jfx
 import scalafx.scene.chart.XYChart.Series
-import scalafx.scene.chart._
-import scalafx.scene.control.{ScrollPane, Tab, _}
+import scalafx.scene.control.*
 import scalafx.scene.effect.Glow
 import scalafx.scene.effect.Glow.sfxGlow2jfx
-import scalafx.scene.layout.{BorderPane, Priority, VBox}
 import scalafx.scene.layout.VBox.sfxVBox2jfx
+import scalafx.scene.layout.{BorderPane, Priority, VBox}
 import scalafx.scene.text.Text
 import scalafx.scene.text.Text.sfxText2jfx
 

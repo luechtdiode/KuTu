@@ -1,19 +1,18 @@
 package ch.seidel.kutu.http
 
+import org.apache.pekko.http.scaladsl.model.RemoteAddress
+import spray.json.{JsString, JsValue, JsonReader, *}
+
 import java.nio.charset.StandardCharsets
 import java.security.spec.InvalidKeySpecException
 import java.security.{MessageDigest, NoSuchAlgorithmException, SecureRandom}
-import java.text.SimpleDateFormat
-import java.util.{Base64, Date}
-import org.apache.pekko.http.scaladsl.model.RemoteAddress
-
-import javax.crypto.SecretKeyFactory
-import javax.crypto.spec.PBEKeySpec
-import spray.json.{JsString, JsValue, JsonReader, *}
-
 import java.sql
+import java.text.SimpleDateFormat
 import java.time.format.DateTimeFormatter
 import java.time.{LocalDate, ZoneId}
+import java.util.{Base64, Date}
+import javax.crypto.SecretKeyFactory
+import javax.crypto.spec.PBEKeySpec
 import scala.util.Try
 
 trait EnrichedJson {

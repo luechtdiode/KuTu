@@ -1,15 +1,15 @@
 package ch.seidel.kutu
 
 import ch.seidel.kutu.KuTuAppTree.showThumbnails
-import ch.seidel.kutu.domain._
+import ch.seidel.kutu.domain.*
 import ch.seidel.kutu.view.{VereinTableView, WettkampfTableView}
-import scalafx.Includes._
+import scalafx.Includes.*
 import scalafx.beans.property.BooleanProperty
 import scalafx.event.ActionEvent
 import scalafx.geometry.{Insets, Orientation}
 import scalafx.scene.Node
+import scalafx.scene.control.*
 import scalafx.scene.control.TreeItem.sfxTreeItemToJfx
-import scalafx.scene.control._
 import scalafx.scene.image.{Image, ImageView}
 import scalafx.scene.input.{KeyEvent, MouseEvent}
 import scalafx.scene.layout.{Priority, Region, TilePane}

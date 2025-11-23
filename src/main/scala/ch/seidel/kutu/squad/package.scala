@@ -1,6 +1,6 @@
 package ch.seidel.kutu
 
-import ch.seidel.kutu.domain._
+import ch.seidel.kutu.domain.*
 
 import scala.math.abs
 

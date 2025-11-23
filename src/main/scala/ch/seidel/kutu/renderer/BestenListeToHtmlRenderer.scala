@@ -1,10 +1,10 @@
 package ch.seidel.kutu.renderer
 
-import java.io.File
-
 import ch.seidel.kutu.domain.WertungView
-import ch.seidel.kutu.renderer.PrintUtil._
+import ch.seidel.kutu.renderer.PrintUtil.*
 import org.slf4j.LoggerFactory
+
+import java.io.File
 
 trait BestenListeToHtmlRenderer {
   val logger = LoggerFactory.getLogger(classOf[BestenListeToHtmlRenderer])

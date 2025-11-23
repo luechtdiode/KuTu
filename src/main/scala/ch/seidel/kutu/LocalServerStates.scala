@@ -2,7 +2,7 @@ package ch.seidel.kutu
 
 import ch.seidel.kutu.Config.setLocalHostServer
 import javafx.application.Platform
-import scalafx.beans.property._
+import scalafx.beans.property.*
 
 object LocalServerStates {
 

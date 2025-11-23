@@ -1,6 +1,6 @@
 package ch.seidel.kutu.http
 
-import ch.seidel.kutu.http.Core._
+import ch.seidel.kutu.http.Core.*
 import org.apache.pekko.event.Logging
 
 trait RouterLogging {

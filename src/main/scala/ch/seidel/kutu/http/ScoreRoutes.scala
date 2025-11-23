@@ -1,19 +1,19 @@
 package ch.seidel.kutu.http
 
+import ch.seidel.kutu.Config
+import ch.seidel.kutu.KuTuServer.handleCID
+import ch.seidel.kutu.actors.{CompetitionCoordinatorClientActor, MessageAck, ResponseMessage, StartedDurchgaenge}
+import ch.seidel.kutu.data.*
+import ch.seidel.kutu.domain.*
+import ch.seidel.kutu.renderer.PrintUtil.*
+import ch.seidel.kutu.renderer.{PrintUtil, ScoreToHtmlRenderer, ScoreToJsonRenderer}
+import ch.seidel.kutu.view.WettkampfInfo
+import fr.davit.pekko.http.metrics.core.scaladsl.server.HttpMetricsDirectives.*
 import org.apache.pekko.http.scaladsl.marshallers.sprayjson.SprayJsonSupport
 import org.apache.pekko.http.scaladsl.marshalling.ToResponseMarshallable
 import org.apache.pekko.http.scaladsl.model.{ContentTypes, HttpEntity, StatusCodes, Uri}
 import org.apache.pekko.http.scaladsl.server.Route
 import org.apache.pekko.util.Timeout
-import ch.seidel.kutu.Config
-import ch.seidel.kutu.KuTuServer.handleCID
-import ch.seidel.kutu.actors.{CompetitionCoordinatorClientActor, MessageAck, ResponseMessage, StartedDurchgaenge}
-import ch.seidel.kutu.data._
-import ch.seidel.kutu.domain.{Altersklasse, Durchgang, KutuService, PublishedScoreView, TeamRegel, WertungView, encodeFileName, encodeURIParam, ld2SQLDate, sqlDate2ld}
-import ch.seidel.kutu.renderer.PrintUtil._
-import ch.seidel.kutu.renderer.{PrintUtil, ScoreToHtmlRenderer, ScoreToJsonRenderer}
-import ch.seidel.kutu.view.WettkampfInfo
-import fr.davit.pekko.http.metrics.core.scaladsl.server.HttpMetricsDirectives._
 
 import java.io.File
 import java.time.{LocalDate, LocalDateTime, LocalTime}
@@ -23,8 +23,8 @@ import scala.concurrent.duration.DurationInt
 
 trait
 ScoreRoutes extends SprayJsonSupport with JsonSupport with AuthSupport with RouterLogging with KutuService with IpToDeviceID {
-  import spray.json.DefaultJsonProtocol._
-  import spray.json._
+  import spray.json.*
+  import spray.json.DefaultJsonProtocol.*
 
   import scala.concurrent.ExecutionContext.Implicits.global
   
@@ -144,7 +144,7 @@ ScoreRoutes extends SprayJsonSupport with JsonSupport with AuthSupport with Rout
           }
         } ~
         pathPrefixLabeled(JavaUUID, ":competition-id") { competitionId =>
-          import AbuseHandler._
+          import AbuseHandler.*
           if !wettkampfExists(competitionId.toString) then {
             log.error(handleAbuse(clientId, uri))
             complete(StatusCodes.NotFound)

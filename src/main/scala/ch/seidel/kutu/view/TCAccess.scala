@@ -1,7 +1,7 @@
 package ch.seidel.kutu.view
 
-import javafx.scene.{control => jfxsc}
-import scalafx.scene.control._
+import javafx.scene.control as jfxsc
+import scalafx.scene.control.*
 
 trait TCAccess[R, E, IDX] {
   def getIndex: IDX

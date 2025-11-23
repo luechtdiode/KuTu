@@ -1527,7 +1527,7 @@ object KuTuApp extends JFXApp3 with KutuService with JsonSupport with JwtSupport
       implicit val e = action
       val wklist = httpGet(s"${remoteAdminBaseUrl}/api/competition").map {
         case entityString: String => entityString.asType[List[Wettkampf]]
-        case _ => List[Wettkampf]()
+        case null => List[Wettkampf]()
       }
       wklist.onComplete {
         case Success(wkl: List[Wettkampf]) =>

@@ -1,10 +1,10 @@
 package ch.seidel.kutu.http
 
+import ch.seidel.kutu.Config.*
+import org.apache.pekko.http.scaladsl.{ConnectionContext, HttpsConnectionContext}
+
 import java.io.{File, FileInputStream, InputStream}
 import java.security.{KeyStore, SecureRandom}
-
-import org.apache.pekko.http.scaladsl.{ConnectionContext, HttpsConnectionContext}
-import ch.seidel.kutu.Config._
 import javax.net.ssl.{KeyManagerFactory, SSLContext, TrustManagerFactory}
 
 

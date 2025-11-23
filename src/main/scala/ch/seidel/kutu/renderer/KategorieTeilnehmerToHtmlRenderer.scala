@@ -1,10 +1,10 @@
 package ch.seidel.kutu.renderer
 
-import java.io.File
-import ch.seidel.kutu.domain.{Durchgang, GeraeteRiege, SimpleDurchgang}
-import ch.seidel.kutu.renderer.PrintUtil._
+import ch.seidel.kutu.domain.{GeraeteRiege, SimpleDurchgang}
+import ch.seidel.kutu.renderer.PrintUtil.*
 import org.slf4j.Logger
 
+import java.io.File
 import java.time.LocalDateTime
 
 object KategorieTeilnehmerToHtmlRenderer {

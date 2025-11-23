@@ -1,10 +1,10 @@
 package ch.seidel.kutu.renderer
 
+import ch.seidel.kutu.domain.{JudgeRegistration, Registration, Verein, Wettkampf}
+import ch.seidel.kutu.renderer.PrintUtil.*
+
 import java.io.File
 import java.time.format.DateTimeFormatter
-
-import ch.seidel.kutu.domain.{JudgeRegistration, Registration, Verein, Wettkampf}
-import ch.seidel.kutu.renderer.PrintUtil._
 
 trait CompetitionsJudgeToHtmlRenderer {
 

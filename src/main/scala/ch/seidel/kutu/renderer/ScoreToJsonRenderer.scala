@@ -1,6 +1,6 @@
 package ch.seidel.kutu.renderer
 
-import ch.seidel.kutu.data._
+import ch.seidel.kutu.data.*
 import ch.seidel.kutu.domain
 import ch.seidel.kutu.domain.{NullObject, ResultRow, TeamRow}
 import ch.seidel.kutu.renderer.PrintUtil.{ImageFile, escaped}

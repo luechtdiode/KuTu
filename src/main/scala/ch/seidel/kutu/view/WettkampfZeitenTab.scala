@@ -1,20 +1,21 @@
 package ch.seidel.kutu.view
 
-import java.util.UUID
-import ch.seidel.commons._
-import ch.seidel.kutu.domain._
-import javafx.scene.{control => jfxsc}
+import ch.seidel.commons.*
+import ch.seidel.kutu.domain.*
+import javafx.scene.control as jfxsc
 import javafx.util.Callback
-import scalafx.Includes._
+import scalafx.Includes.*
 import scalafx.beans.property.{ReadOnlyStringProperty, StringProperty}
 import scalafx.collections.ObservableBuffer
 import scalafx.event.subscriptions.Subscription
 import scalafx.scene.Node
-import scalafx.scene.control.TableColumn._
-import scalafx.scene.control._
+import scalafx.scene.control.*
+import scalafx.scene.control.TableColumn.*
 import scalafx.scene.input.KeyEvent
-import scalafx.scene.layout._
+import scalafx.scene.layout.*
 import scalafx.util.converter.DefaultStringConverter
+
+import java.util.UUID
 
 class WettkampfZeitenTab(editableProperty: Boolean, wettkampf: WettkampfView, override val service: KutuService) extends Tab with TabWithService {
 

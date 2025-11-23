@@ -1,22 +1,21 @@
 package ch.seidel.kutu.view
 
-import org.apache.pekko.http.javadsl.model.HttpResponse
 import ch.seidel.commons.{DisplayablePage, PageDisplayer}
 import ch.seidel.kutu.KuTuApp
-import ch.seidel.kutu.domain.{AddMedia, AddRegistration, AddVereinAction, ApproveVereinAction, Athlet, AthletView, EmptyAthletRegistration, MoveRegistration, Registration, RemoveRegistration, RenameAthletAction, RenameVereinAction, SyncAction, UpdateAthletMediaAction, Verein}
-import ch.seidel.kutu.http.RegistrationRoutes
 import ch.seidel.kutu.data.RegistrationAdmin.{doSyncUnassignedClubRegistrations, findAthletLike, processSync}
-import javafx.beans.value.ObservableValue
-import javafx.beans.value.ChangeListener
+import ch.seidel.kutu.domain.*
+import ch.seidel.kutu.http.RegistrationRoutes
+import javafx.beans.value.{ChangeListener, ObservableValue}
+import org.apache.pekko.http.javadsl.model.HttpResponse
 import org.slf4j.LoggerFactory
-import scalafx.Includes._
+import scalafx.Includes.*
 import scalafx.application.Platform
 import scalafx.beans.property.ReadOnlyStringWrapper
 import scalafx.collections.ObservableBuffer
 import scalafx.event.ActionEvent
 import scalafx.scene.Node
+import scalafx.scene.control.*
 import scalafx.scene.control.TableColumn.sfxTableColumn2jfx
-import scalafx.scene.control._
 import scalafx.scene.layout.{BorderPane, Priority}
 
 import scala.concurrent.Future
@@ -46,7 +45,7 @@ object RegistrationAdminDialog {
   }
 
   def importRegistrations(wkInfo: WettkampfInfo, service: RegistrationRoutes, reloader: Boolean => Unit)(implicit event: ActionEvent): Unit = {
-    import scala.concurrent.ExecutionContext.Implicits._
+    import scala.concurrent.ExecutionContext.Implicits.*
     import scala.util.{Failure, Success}
     val athletModel = ObservableBuffer[SyncAction]()
     val vereineList = service.selectVereine

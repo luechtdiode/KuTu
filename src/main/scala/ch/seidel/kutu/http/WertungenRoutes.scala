@@ -1,29 +1,29 @@
 package ch.seidel.kutu.http
 
+import ch.seidel.kutu.actors.*
+import ch.seidel.kutu.domain.*
+import fr.davit.pekko.http.metrics.core.scaladsl.server.HttpMetricsDirectives.*
 import org.apache.pekko.http.scaladsl.marshallers.sprayjson.SprayJsonSupport
 import org.apache.pekko.http.scaladsl.marshalling.ToResponseMarshallable
 import org.apache.pekko.http.scaladsl.model.{StatusCodes, Uri}
 import org.apache.pekko.http.scaladsl.server.Route
 import org.apache.pekko.util.Timeout
-import ch.seidel.kutu.actors._
-import ch.seidel.kutu.domain.{Kandidat, KutuService, ProgrammRaw, Wertung, WertungView, encodeURIComponent, str2Int, str2Long}
 
 import scala.concurrent.Future
 import scala.concurrent.duration.DurationInt
 import scala.util.{Failure, Success}
-import fr.davit.pekko.http.metrics.core.scaladsl.server.HttpMetricsDirectives._
 
 trait WertungenRoutes extends SprayJsonSupport with JsonSupport with JwtSupport with AuthSupport with RouterLogging with KutuService with CIDSupport {
 
-  import spray.json._
-  import spray.json.DefaultJsonProtocol._
+  import ch.seidel.kutu.domain.{given_Conversion_String_Int, given_Conversion_String_Long}
+  import spray.json.*
+  import spray.json.DefaultJsonProtocol.*
+
   import scala.concurrent.ExecutionContext.Implicits.global
-  import ch.seidel.kutu.domain.given_Conversion_String_Int
-  import ch.seidel.kutu.domain.given_Conversion_String_Long
 
   // Required by the `ask` (?) method below
   private implicit lazy val timeout: Timeout = Timeout(5.seconds) // usually we'd obtain the timeout from the system's configuration
-  import AbuseHandler._
+  import AbuseHandler.*
 
   lazy val wertungenRoutes: Route = {
     (handleCID & extractUri) { (clientId: String, uri: Uri) =>

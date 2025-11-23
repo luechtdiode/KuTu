@@ -1,8 +1,8 @@
 package ch.seidel.kutu.view
 
-import ch.seidel.kutu.Config._
-import ch.seidel.kutu.data._
-import ch.seidel.kutu.domain._
+import ch.seidel.kutu.Config.*
+import ch.seidel.kutu.data.*
+import ch.seidel.kutu.domain.*
 import ch.seidel.kutu.renderer.PrintUtil.FilenameDefault
 import scalafx.beans.property.BooleanProperty
 

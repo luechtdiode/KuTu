@@ -2,7 +2,7 @@ package ch.seidel.kutu.data
 
 import ch.seidel.kutu.KuTuApp.cleanUnusedRiegen
 import ch.seidel.kutu.actors.{AthletIndexActor, AthletLikeFound, AthletsAddedToWettkampf, FindAthletLike}
-import ch.seidel.kutu.domain.{AddMedia, AddRegistration, AddVereinAction, ApproveVereinAction, Athlet, AthletRegistration, AthletView, EmptyAthletRegistration, KutuService, MoveRegistration, PublicSyncAction, Registration, RemoveRegistration, RenameAthletAction, RenameVereinAction, RiegeRaw, SyncAction, UpdateAthletMediaAction, Verein, WertungView, Wettkampf}
+import ch.seidel.kutu.domain.*
 import ch.seidel.kutu.http.{RegistrationRoutes, WebSocketClient}
 import ch.seidel.kutu.squad.RiegenBuilder.{generateRiegen2Name, generateRiegenName}
 import ch.seidel.kutu.view.WettkampfInfo
@@ -157,7 +157,7 @@ object RegistrationAdmin {
   }
 
   def computeSyncActions(wkInfo: WettkampfInfo, service: KutuService): Future[List[SyncAction]] = {
-    import scala.concurrent.ExecutionContext.Implicits._
+    import scala.concurrent.ExecutionContext.Implicits.*
     Future {
       logger.info("start computing SyncActions ...")
       val vereineList = service.selectVereine

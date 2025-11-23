@@ -1,13 +1,13 @@
 package ch.seidel.kutu.http
 
+import ch.seidel.kutu.Config
+import ch.seidel.kutu.Config.*
+import ch.seidel.kutu.actors.{AthletIndexActor, CompetitionCoordinatorClientActor, ResyncIndex}
+import ch.seidel.kutu.domain.DBService
 import org.apache.pekko.actor.ActorSystem
 import org.apache.pekko.http.scaladsl.Http
 import org.apache.pekko.http.scaladsl.server.Route
 import org.apache.pekko.stream.Materializer
-import ch.seidel.kutu.Config
-import ch.seidel.kutu.Config._
-import ch.seidel.kutu.actors.{AthletIndexActor, CompetitionCoordinatorClientActor, ResyncIndex}
-import ch.seidel.kutu.domain.DBService
 import org.slf4j.LoggerFactory
 
 import java.net.{DatagramSocket, InetAddress, NetworkInterface}
@@ -38,8 +38,8 @@ object Core extends KuTuSSLContext {
 trait KuTuAppHTTPServer extends ApiService with JsonSupport {
   private val logger = LoggerFactory.getLogger(this.getClass)
 
-  import Core._
-  import fr.davit.pekko.http.metrics.core.HttpMetrics._ // import extension methods
+  import Core.*
+  import fr.davit.pekko.http.metrics.core.HttpMetrics.* // import extension methods
 
   def startServer() = {
     serverBinding match {
@@ -100,7 +100,7 @@ trait KuTuAppHTTPServer extends ApiService with JsonSupport {
   }
 
   def listNetworkAdresses = {
-    import scala.jdk.CollectionConverters._
+    import scala.jdk.CollectionConverters.*
     val dgs = new DatagramSocket()
 
     def mapToInterfaceInfo(n: InetAddress) = {
@@ -136,7 +136,7 @@ trait KuTuAppHTTPServer extends ApiService with JsonSupport {
         .map(_._2)
       //        .toList.mkString("\n"))
 
-      if internetAccessAdresses.nonEmpty then {
+      if internetAccessAdresses.iterator.nonEmpty then {
         internetAccessAdresses
       } else {
         NetworkInterface

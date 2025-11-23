@@ -1,10 +1,8 @@
 package ch.seidel.kutu.view.player
 
-import javafx.beans.property.DoubleProperty
-import javafx.beans.property.SimpleDoubleProperty
+import javafx.beans.property.{DoubleProperty, SimpleDoubleProperty}
 import javafx.scene.Parent
-import javafx.scene.effect.BlurType
-import javafx.scene.effect.DropShadow
+import javafx.scene.effect.{BlurType, DropShadow}
 import javafx.scene.paint.Color
 import javafx.scene.shape.Rectangle
 

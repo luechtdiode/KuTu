@@ -1,8 +1,5 @@
 package ch.seidel.kutu.data
 
-import ch.seidel.kutu.domain.{dbl2Str, ld2SQLDate, sqlDate2ld, str2Int, str2Long, str2bd, str2dbl}
-
-import java.time.LocalDate
 import scala.io.Source
 
 case class Surname(name: String, feminimCount: Int, masculinCount: Int) {
