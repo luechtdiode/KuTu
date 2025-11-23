@@ -192,6 +192,21 @@ Compile / unmanagedSourceDirectories += baseDirectory.value / "src" / "main" / "
 Test / unmanagedSourceDirectories += baseDirectory.value / "src" / "test" / "scala"
 
 // Packaging / assembly / native packaging are left as next steps. Use sbt-native-packager or sbt-assembly as needed.
+// sbt-native-packager jpackage integration (optional)
+// To enable automated `jpackage` integration, add the sbt-native-packager plugin to `project/plugins.sbt`:
+//   addSbtPlugin("com.typesafe.sbt" % "sbt-native-packager" % "<plugin-version>")
+// Then enable the plugin and configure settings in this `build.sbt` or in a separate `project/packaging.sbt`.
+// Example (once plugin is enabled):
+//   enablePlugins(JavaAppPackaging)
+//   maintainer := "KuTu Maintainers <devops@example.com>"
+//   packageName := name.value
+//   packageSummary := "KuTu competition management"
+//   packageDescription := "KuTu - competition management and scoring application"
+//   addCommandAlias("prepareAndJpackage", "prepareJpackage; jpackage")
+// Keep the plugin commented/uncommented per your environment; uncommenting without the plugin
+// present will fail project load. The repository currently leaves the plugin commented so
+// CI/local builds don't require extra resolution steps.
+
 
 // Expose a quick run task that mirrors the main class used by maven (KuTuApp)
 Compile / mainClass := Some("ch.seidel.kutu.KuTuApp")

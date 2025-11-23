@@ -738,12 +738,11 @@
 					<args>
 						<arg>-unchecked</arg>
 						<arg>-deprecation</arg>
-						<arg>-explaintypes</arg>
+						<arg>-explain-types</arg>
 						<arg>-feature</arg>
 						<arg>-language:implicitConversions</arg>
 						<arg>-language:postfixOps</arg>
 						<arg>-language:existentials</arg>
-						<arg>-g:line</arg>
 					</args>
 					<javacArgs>
 						<javacArg>-Xlint:unchecked</javacArg>
