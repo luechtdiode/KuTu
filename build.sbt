@@ -1,7 +1,12 @@
-// Auto-generated sbt build translated from pom.xml (initial migration)
+import BuildUtils._ 
+import JpackageUtils._ 
+import JpackageExecutor._ 
+
+ThisBuild / scalaVersion := "3.7.3"
 ThisBuild / organization := "ch.seidel"
 ThisBuild / version := "2.3.22"
-ThisBuild / scalaVersion := "3.7.3"
+
+logLevel := Level.Error
 
 name := "KuTu"
 
@@ -25,16 +30,6 @@ resolvers ++= Seq(
   "Sonatype OSS Snapshots" at "https://oss.sonatype.org/content/repositories/snapshots/"
 )
 
-// Determine JavaFX classifier for current OS
-def javafxClassifier: String = {
-  val os = sys.props.getOrElse("os.name", "").toLowerCase
-  val arch = sys.props.getOrElse("os.arch", "").toLowerCase
-  if (os.contains("win")) "win"
-  else if (os.contains("mac") && arch.contains("aarch64")) "mac-aarch64"
-  else if (os.contains("mac")) "mac"
-  else "linux"
-}
-
 // Compiler options (inspired by scala-maven-plugin args)
 Compile / scalacOptions ++= {
   val base = Seq(
@@ -44,8 +39,7 @@ Compile / scalacOptions ++= {
     "-feature",
     "-language:implicitConversions",
     "-language:postfixOps",
-    "-language:existentials",
-    "-g:line"
+    "-language:existentials"
   )
   base
 }
@@ -60,8 +54,41 @@ Test / javaOptions ++= Seq(
   "-Xss2m",
   "-XX:+UseParallelGC",
   "-XX:MaxInlineLevel=20",
+  "--add-opens=java.base/java.lang=ALL-UNNAMED",
+  "--add-opens=java.base/java.lang.invoke=ALL-UNNAMED",
+  "--add-opens=java.base/java.net=ALL-UNNAMED",
+  "--add-opens=java.base/java.nio=ALL-UNNAMED",
+  "--add-opens=java.base/java.time=ALL-UNNAMED",
+  "--add-opens=java.base/java.util=ALL-UNNAMED",
+  "--add-opens=java.base/java.util.concurrent.atomic=ALL-UNNAMED",
+  "--add-opens=java.base/sun.nio.ch=ALL-UNNAMED",
+  "--add-opens=java.base/sun.util.calendar=ALL-UNNAMED",
+  "--add-opens=java.base/java.math=ALL-UNNAMED",
   "--enable-native-access=ALL-UNNAMED"
 )
+
+// Filter some source files ===========================================================
+// Define a directory to hold the filtered resources temporarily in the target folder
+val filteredResourcesDir = settingKey[File]("directory for filtered resources")
+Compile / filteredResourcesDir := crossTarget.value / "sbt-filtered-resources" / "main"
+
+// Define the task using the implementation from the external file
+Compile / filterApplicationConfTask := {
+  filterApplicationConfImpl(
+    (Compile / resourceDirectory).value,
+    (Compile / filteredResourcesDir).value,
+    streams.value.log,
+    version.value
+  )
+}
+// Add the output of the filtering task to the *managed* resources
+Compile / managedResources ++= (Compile / filterApplicationConfTask).value
+
+// Exclude the original 'application.conf' from the *unmanaged* resources
+Compile / unmanagedResources / excludeFilter := {
+  (Compile / unmanagedResources / excludeFilter).value || "application.conf"
+}
+// ============================================================================
 
 // Basic dependency translation (try to keep the same artifacts where possible)
 libraryDependencies ++= Seq(
@@ -139,50 +166,24 @@ dependencyOverrides += "org.scala-lang.modules" % "scala-parser-combinators_3" %
 
 // Add JavaFX platform-specific artifacts (classifier based on OS)
 libraryDependencies ++= Seq(
-  "org.openjfx" % "javafx-base" % javafxV classifier javafxClassifier,
-  "org.openjfx" % "javafx-controls" % javafxV classifier javafxClassifier,
-  "org.openjfx" % "javafx-web" % javafxV classifier javafxClassifier,
-  "org.openjfx" % "javafx-graphics" % javafxV classifier javafxClassifier,
-  "org.openjfx" % "javafx-media" % javafxV classifier javafxClassifier
+  "org.openjfx" % "javafx-base" % javafxV classifier BuildUtils.javafxClassifier,
+  "org.openjfx" % "javafx-controls" % javafxV classifier BuildUtils.javafxClassifier,
+  "org.openjfx" % "javafx-web" % javafxV classifier BuildUtils.javafxClassifier,
+  "org.openjfx" % "javafx-graphics" % javafxV classifier BuildUtils.javafxClassifier,
+  "org.openjfx" % "javafx-media" % javafxV classifier BuildUtils.javafxClassifier
 )
 
-// Assembly (uber-jar) settings to prepare a package input for jpackage
-import sbtassembly.AssemblyPlugin.autoImport.*
-assembly / assemblyJarName := s"${name.value}-${version.value}.jar"
-assembly / assemblyMergeStrategy := {
-  case PathList("META-INF", xs @ _*) => MergeStrategy.discard
-  case _ => MergeStrategy.first
-}
-
-// Task: prepareJpackage - builds an assembly jar and collects JavaFX native jars into target/package/libs
-lazy val prepareJpackage = taskKey[Unit]("Prepare directory for jpackage: assembly jar + JavaFX native jars")
+// Task: prepareJpackage - copies the compiled jar and all dependencies (including JavaFX) into target/package/libs
 prepareJpackage := {
+  // Extract all the necessary values using the modern slash syntax
   val log = streams.value.log
-  val out = target.value / "package"
-  val libs = out / "libs"
-  IO.delete(out)
-  IO.createDirectory(libs)
-
-  log.info("Running assembly to create fat jar...")
-  val jar: File = (Compile / assembly).value
-  val jarTarget = out / jar.getName
-  IO.copyFile(jar, jarTarget)
-  log.info(s"Copied assembly jar to: ${jarTarget.getAbsolutePath}")
-
-  // find resolved JavaFX jars from update report
+  val t = target.value
+  val packageJar = (Compile / packageBin).value
   val upd = update.value
-  val javafxJars = upd.matching(moduleFilter(organization = "org.openjfx"))
-  if (javafxJars.isEmpty) log.warn("No JavaFX jars resolved. Ensure JavaFX dependencies exist for the classifier.")
-  javafxJars.foreach { f =>
-    IO.copyFile(f, libs / f.getName)
-    log.info(s"Copied JavaFX jar: ${f.getName}")
-  }
 
-  log.info(s"Prepared jpackage input in: ${out.getAbsolutePath}")
-  log.info("Run jpackage manually using the assembly jar and libs folder; example jpackage args are in the README.")
+  // Call the extracted implementation function
+  prepareJpackageImpl(log, t, packageJar, upd)
 }
-
-//logLevel := Level.Error
 
 // Resource directories (keep same structure as Maven project)
 Compile / unmanagedResourceDirectories += baseDirectory.value / "src" / "main" / "resources"
@@ -191,22 +192,31 @@ Compile / unmanagedResourceDirectories += baseDirectory.value / "src" / "main" /
 Compile / unmanagedSourceDirectories += baseDirectory.value / "src" / "main" / "scala"
 Test / unmanagedSourceDirectories += baseDirectory.value / "src" / "test" / "scala"
 
-// Packaging / assembly / native packaging are left as next steps. Use sbt-native-packager or sbt-assembly as needed.
-// sbt-native-packager jpackage integration (optional)
-// To enable automated `jpackage` integration, add the sbt-native-packager plugin to `project/plugins.sbt`:
-//   addSbtPlugin("com.typesafe.sbt" % "sbt-native-packager" % "<plugin-version>")
-// Then enable the plugin and configure settings in this `build.sbt` or in a separate `project/packaging.sbt`.
-// Example (once plugin is enabled):
-//   enablePlugins(JavaAppPackaging)
-//   maintainer := "KuTu Maintainers <devops@example.com>"
-//   packageName := name.value
-//   packageSummary := "KuTu competition management"
-//   packageDescription := "KuTu - competition management and scoring application"
-//   addCommandAlias("prepareAndJpackage", "prepareJpackage; jpackage")
-// Keep the plugin commented/uncommented per your environment; uncommenting without the plugin
-// present will fail project load. The repository currently leaves the plugin commented so
-// CI/local builds don't require extra resolution steps.
+// ============================================================================
+// Platform-specific jpackage configuration and tasks
+// ============================================================================
 
+
+jpackageApp := {
+  // Extract all the necessary values using the modern slash syntax
+  val log = streams.value.log
+  val baseDir = baseDirectory.value
+  val targetDir = target.value
+  val sourceDir = (Compile / sourceDirectory).value
+  val appVersion = version.value
+
+  // Call the extracted implementation function
+  executeJpackage(
+    log,
+    baseDir,
+    targetDir,
+    sourceDir,
+    appVersion
+  )
+}
+
+// Add command aliases for convenience
+addCommandAlias("packageApp", "clean; compile; test; prepareJpackage; jpackageApp")
 
 // Expose a quick run task that mirrors the main class used by maven (KuTuApp)
 Compile / mainClass := Some("ch.seidel.kutu.KuTuApp")

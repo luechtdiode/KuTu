@@ -81,12 +81,14 @@ jobs:
           fetch-depth: 2
 
       - run: git checkout $(git log --branches -1 --pretty=format:'%D' | sed 's/.*, //g')
-      - name: Cache Maven packages
+      - name: Cache sbt packages
         uses: actions/cache@v4
         with:
-          path: ~/.m2
-          key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
-          restore-keys: ${{ runner.os }}-m2
+          path: |
+            ~/.sbt
+            ~/.ivy2/cache
+          key: ${{ runner.os }}-sbt-${{ hashFiles('**/build.sbt') }}
+          restore-keys: ${{ runner.os }}-sbt
       - name: Java Setup
         run: |
           . ./prepare_jdk.sh
@@ -97,11 +99,11 @@ jobs:
         with:
           name: src
           path: src/main/resources/app
-      - name: Maven Build
+      - name: sbt Build
         run: |
           java -version
-          mvn -version
-          mvn clean install package
+          sbt -version
+          sbt clean assembly
         env:
           OS: Linux
       - name: Prepare Releasenames
@@ -134,12 +136,14 @@ jobs:
           fetch-depth: 2
 
       - run: git checkout $(git log --branches -1 --pretty=format:'%D' | sed 's/.*, //g')
-      - name: Cache Maven packages
+      - name: Cache sbt packages
         uses: actions/cache@v4
         with:
-          path: ~/.m2
-          key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
-          restore-keys: ${{ runner.os }}-m2
+          path: |
+            ~/.sbt
+            ~/.ivy2/cache
+          key: ${{ runner.os }}-sbt-${{ hashFiles('**/build.sbt') }}
+          restore-keys: ${{ runner.os }}-sbt
       - name: Download client modifications
         uses: actions/download-artifact@v4
         with:
@@ -148,7 +152,7 @@ jobs:
       - name: Java Setup & Package-Build
         run: |
           . ./prepare_jdk.sh
-          mvn clean install package
+          sbt clean assembly
         env:
           OS: Win64
         shell: bash
@@ -176,12 +180,14 @@ jobs:
           fetch-depth: 2
 
       - run: git checkout $(git log --branches -1 --pretty=format:'%D' | sed 's/.*, //g')
-      - name: Cache Maven packages
+      - name: Cache sbt packages
         uses: actions/cache@v4
         with:
-          path: ~/.m2
-          key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
-          restore-keys: ${{ runner.os }}-m2
+          path: |
+            ~/.sbt
+            ~/.ivy2/cache
+          key: ${{ runner.os }}-sbt-${{ hashFiles('**/build.sbt') }}
+          restore-keys: ${{ runner.os }}-sbt
       - name: Java Setup
         id: jdk
         run: |
@@ -194,11 +200,11 @@ jobs:
         with:
           name: src
           path: src/main/resources/app
-      - name: Maven Build
+      - name: sbt Build
         run: |
           java -version
-          mvn -version
-          mvn clean install package
+          sbt -version
+          sbt clean assembly
         env:
           OS: macOS
       - name: Prepare Releasenames
@@ -224,12 +230,14 @@ jobs:
           fetch-depth: 2
 
       - run: git checkout $(git log --branches -1 --pretty=format:'%D' | sed 's/.*, //g')
-      - name: Cache Maven packages
+      - name: Cache sbt packages
         uses: actions/cache@v4
         with:
-          path: ~/.m2
-          key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
-          restore-keys: ${{ runner.os }}-m2
+          path: |
+            ~/.sbt
+            ~/.ivy2/cache
+          key: ${{ runner.os }}-sbt-${{ hashFiles('**/build.sbt') }}
+          restore-keys: ${{ runner.os }}-sbt
       - name: Java Setup
         id: jdk
         run: |
@@ -242,11 +250,11 @@ jobs:
         with:
           name: src
           path: src/main/resources/app
-      - name: Maven Build
+      - name: sbt Build
         run: |
           java -version
-          mvn -version
-          mvn clean install package
+          sbt -version
+          sbt clean assembly
         env:
           OS: macOS
       - name: Prepare Releasenames
