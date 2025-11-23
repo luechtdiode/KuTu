@@ -1,52 +1,50 @@
 package ch.seidel.jwt
 
-import org.json4s._
-import org.json4s.jackson.JsonMethods._
+import spray.json.*
+import spray.json.DefaultJsonProtocol.*
 
-import scala.util.control.Exception.allCatch
+import scala.util.Try
 
 case class JwtHeader(
-                      algorithm: Option[String],
-                      contentType: Option[String],
-                      typ: Option[String]
-                    ) {
+  algorithm: Option[String],
+  contentType: Option[String],
+  typ: Option[String]
+):
 
-  def asJsonString: String = {
-    val toSerialize =
-      algorithm.map(x => ("alg" -> x)).toSeq ++
-        contentType.map(x => ("cty", x)).toSeq ++
-        typ.map(x => ("typ", x)).toSeq
+  def asJsonString: String =
+    val obj = JsObject(
+      algorithm.map(x => ("alg", JsString(x))).toMap ++
+      contentType.map(x => ("cty", JsString(x))).toMap ++
+      typ.map(x => ("typ", JsString(x))).toMap
+    )
+    obj.compactPrint
 
-    val map = toSerialize.toMap
+end JwtHeader
 
-    import org.json4s.native.Serialization.write
-    implicit val formats: DefaultFormats.type = org.json4s.DefaultFormats
+object JwtHeader:
 
-    write(map)
-  }
-}
-
-object JwtHeader {
-
-  import org.json4s.DefaultFormats
-
-  implicit val formats: DefaultFormats.type = DefaultFormats
-
-  def apply(algorithm: String, contentType: String = null, typ: String = "JWT"): JwtHeader = {
+  def apply(algorithm: String, contentType: String = null, typ: String = "JWT"): JwtHeader =
     JwtHeader(Option(algorithm), Option(contentType), Option(typ))
-  }
 
-  def fromJsonString(jsonString: String): JwtHeader = {
-    val ast = parse(jsonString)
+  def fromJsonString(jsonString: String): JwtHeader =
+    val ast = jsonString.parseJson.asJsObject
 
-    val alg = (ast \ "alg").extract[Option[String]]
-    val cty = (ast \ "cty").extract[Option[String]]
-    val typ = (ast \ "typ").extract[Option[String]]
+    val alg = ast.fields.get("alg").flatMap {
+      case JsString(s) => Some(s)
+      case _ => None
+    }
+    val cty = ast.fields.get("cty").flatMap {
+      case JsString(s) => Some(s)
+      case _ => None
+    }
+    val typVal = ast.fields.get("typ").flatMap {
+      case JsString(s) => Some(s)
+      case _ => None
+    }
 
-    JwtHeader(alg, cty, typ)
-  }
+    JwtHeader(alg, cty, typVal)
 
-  def fromJsonStringOpt(jsonString: String): Option[JwtHeader] = allCatch opt {
-    fromJsonString(jsonString)
-  }
-}
+  def fromJsonStringOpt(jsonString: String): Option[JwtHeader] =
+    Try(fromJsonString(jsonString)).toOption
+
+end JwtHeader

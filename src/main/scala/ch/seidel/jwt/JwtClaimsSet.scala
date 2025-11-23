@@ -1,44 +1,64 @@
 package ch.seidel.jwt
 
-import org.json4s._
+import spray.json.*
+import spray.json.DefaultJsonProtocol.*
 
 import scala.util.Try
 
-sealed trait JwtClaimsSet {
+sealed trait JwtClaimsSet:
   def asJsonString: String
-}
 
-object JwtClaimsSet {
-  def apply(claims: Map[String, Any]) = JwtClaimsSetMap(claims)
-  def apply(jvalue: JValue) = JwtClaimsSetJValue(jvalue)
-  def apply(json: String) = JwtClaimsSetJsonString(json)
-}
+object JwtClaimsSet:
+  def apply(claims: Map[String, Any]): JwtClaimsSetMap = JwtClaimsSetMap(claims)
+  
+  def apply(jvalue: JsValue): JwtClaimsSetJValue = JwtClaimsSetJValue(jvalue)
+  
+  def apply(json: String): JwtClaimsSetJsonString = JwtClaimsSetJsonString(json)
 
-case class JwtClaimsSetMap(claims: Map[String, Any]) extends JwtClaimsSet {
-  implicit val formats: DefaultFormats.type = org.json4s.DefaultFormats
+end JwtClaimsSet
 
-  def asJsonString: String = {
-    org.json4s.jackson.Serialization.write(claims)
-  }
-}
+case class JwtClaimsSetMap(claims: Map[String, Any]) extends JwtClaimsSet:
 
-case class JwtClaimsSetJValue(jvalue: JValue) extends JwtClaimsSet {
-  import org.json4s.jackson.JsonMethods._
-  implicit val formats: DefaultFormats.type = org.json4s.DefaultFormats
+  def asJsonString: String =
+    val jsValue = claimsToJsValue(claims)
+    jsValue.compactPrint
 
-  def asJsonString: String = {
-    compact(jvalue)
-  }
+  private def claimsToJsValue(value: Any): JsValue = value match
+    case null => JsNull
+    case b: Boolean => JsBoolean(b)
+    case n: Int => JsNumber(n)
+    case n: Long => JsNumber(n)
+    case n: Double => JsNumber(n)
+    case n: java.math.BigDecimal => JsNumber(n)
+    case s: String => JsString(s)
+    case seq: Seq[_] => JsArray(seq.map(claimsToJsValue).toVector)
+    case map: Map[_, _] => JsObject(map.map { case (k, v) => (k.toString, claimsToJsValue(v)) })
+    case _ => JsString(value.toString)
 
-  def asSimpleMap: Try[Map[String, String]] = {
-    Try(jvalue.extract[Map[String, String]])
-  }
-}
+end JwtClaimsSetMap
 
-case class JwtClaimsSetJsonString(json: String) extends JwtClaimsSet {
-  implicit val formats: DefaultFormats.type = org.json4s.DefaultFormats
+case class JwtClaimsSetJValue(jvalue: JsValue) extends JwtClaimsSet:
 
-  def asJsonString: String = {
-    json
-  }
-}
+  def asJsonString: String =
+    jvalue.compactPrint
+
+  def asSimpleMap: Try[Map[String, String]] =
+    Try {
+      jvalue.asJsObject.fields.map { case (k, v) =>
+        k -> (v match
+          case JsString(s) => s
+          case JsNumber(n) => n.toString
+          case JsBoolean(b) => b.toString
+          case JsNull => "null"
+          case JsArray(_) | JsObject(_) => v.compactPrint
+        )
+      }
+    }
+
+end JwtClaimsSetJValue
+
+case class JwtClaimsSetJsonString(json: String) extends JwtClaimsSet:
+
+  def asJsonString: String = json
+
+end JwtClaimsSetJsonString

@@ -9,7 +9,7 @@ name := "KuTu"
 val scalafxV     = "21.0.0-R32"
 val javafxV     = "21.0.4"
 val pekkoHttpV   = "1.3.0"
-val pekkoV       = "1.2.1"
+val pekkoV       = "1.3.0"
 val slickV       = "3.6.1"
 val scalatestV   = "3.3.0-SNAP4"
 val gatlingV     = "3.14.7"
@@ -83,11 +83,10 @@ libraryDependencies ++= Seq(
   "com.typesafe.slick" %% "slick" % slickV,
   "com.typesafe.slick" %% "slick-hikaricp" % slickV,
 
-  // JSON / Jackson
-  "org.json4s" %% "json4s-native" % "4.0.7",
-  "org.json4s" %% "json4s-jackson" % "4.0.7",
+  // JSON / Jackson / Spray
   "com.fasterxml.jackson.core" % "jackson-core" % "2.20.1",
   "com.fasterxml.jackson.core" % "jackson-databind" % "2.20.1",
+  "io.spray" %% "spray-json" % "1.3.6",
 
   // Database drivers / utils
   "org.xerial" % "sqlite-jdbc" % "3.45.2.0",
@@ -97,8 +96,8 @@ libraryDependencies ++= Seq(
   // Utilities
   "org.slf4j" % "slf4j-api" % slf4jV,
   "ch.qos.logback" % "logback-classic" % logbackV,
-  "commons-codec" % "commons-codec" % "1.19.0",
-  "org.apache.commons" % "commons-lang3" % "3.19.0",
+  "commons-codec" % "commons-codec" % "1.20.0",
+  "org.apache.commons" % "commons-lang3" % "3.20.0",
   "org.apache.commons" % "commons-text" % "1.14.0",
 
   // Additional Java libraries from pom.xml
@@ -106,7 +105,7 @@ libraryDependencies ++= Seq(
   "org.simplejavamail" % "simple-java-mail" % "8.12.6",
   "net.glxn" % "qrgen" % "1.4",
   "com.github.markusbernhardt" % "proxy-vole" % "1.0.5",
-  "org.javadelight" % "delight-nashorn-sandbox" % "0.5.3",
+  "org.javadelight" % "delight-nashorn-sandbox" % "0.5.4",
   "org.fusesource.leveldbjni" % "leveldbjni-all" % "1.8",
 
   // Pekko persistence & Kryo
@@ -124,7 +123,7 @@ libraryDependencies ++= Seq(
   "junit" % "junit" % "4.13.2" % Test,
   "io.gatling.highcharts" % "gatling-charts-highcharts" % gatlingV % Test,
   // Scala 3 std lib
-  "org.scala-lang" %% "scala3-library" % "3.7.3"
+  "org.scala-lang" %% "scala3-library" % "3.7.4"
 )
 
 // Add parser combinators: choose correct artifact for current scalaVersion
@@ -149,7 +148,7 @@ libraryDependencies ++= Seq(
 )
 
 // Assembly (uber-jar) settings to prepare a package input for jpackage
-import sbtassembly.AssemblyPlugin.autoImport._
+import sbtassembly.AssemblyPlugin.autoImport.*
 assembly / assemblyJarName := s"${name.value}-${version.value}.jar"
 assembly / assemblyMergeStrategy := {
   case PathList("META-INF", xs @ _*) => MergeStrategy.discard

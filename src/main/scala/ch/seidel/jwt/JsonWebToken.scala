@@ -1,13 +1,11 @@
 package ch.seidel.jwt
 
-import com.fasterxml.jackson.core.JsonParser
 import org.apache.commons.codec.binary.Base64.{decodeBase64, encodeBase64URLSafeString}
-import org.json4s.jackson.JsonMethods
+import spray.json.*
 
-import scala.util.control.Exception.allCatch
+import scala.util.Try
 
-object JsonWebToken extends JsonMethods {
-  mapper.configure(JsonParser.Feature.ALLOW_COMMENTS, true)
+object JsonWebToken:
 
   /**
    * Produces a JWT.
@@ -18,7 +16,7 @@ object JsonWebToken extends JsonMethods {
    * @return
    */
 
-  def apply(header: JwtHeader, claims: JwtClaimsSet, key: String): String = {
+  def apply(header: JwtHeader, claims: JwtClaimsSet, key: String): String =
     val encodedHeader = encodeBase64URLSafeString(header.asJsonString.getBytes("UTF-8"))
     val encodedClaims = encodeBase64URLSafeString(claims.asJsonString.getBytes("UTF-8"))
 
@@ -28,7 +26,6 @@ object JsonWebToken extends JsonMethods {
       JsonWebSignature(header.algorithm.getOrElse("none"), signingInput, key))
 
     signingInput + "." + encodedSignature
-  }
 
   /**
    * Extractor method
@@ -37,31 +34,25 @@ object JsonWebToken extends JsonMethods {
    * @return
    */
 
-  def unapply(jwt: String): Option[(JwtHeader, JwtClaimsSetJValue, String)] = {
-    jwt.split("\\.") match {
+  def unapply(jwt: String): Option[(JwtHeader, JwtClaimsSetJValue, String)] =
+    jwt.split("\\.") match
       case Array(providedHeader, providedClaims, providedSignature) =>
-        import org.json4s.DefaultFormats
-        implicit val formats: DefaultFormats.type = DefaultFormats
 
         val headerJsonString = new String(decodeBase64(providedHeader), "UTF-8")
         val header = JwtHeader.fromJsonStringOpt(headerJsonString)
-        val optClaimsSet = allCatch opt {
-          parse(new String(decodeBase64(providedClaims), "UTF-8"))
-        }
+        val optClaimsSet = Try {
+          new String(decodeBase64(providedClaims), "UTF-8").parseJson
+        }.toOption
 
-        if (header.isEmpty || optClaimsSet.isEmpty)
+        if header.isEmpty || optClaimsSet.isEmpty then
           None
-        else {
+        else
           val claimsSet = JwtClaimsSetJValue(optClaimsSet.get)
-
           val signature = providedSignature
-
           Some(header.get, claimsSet, signature)
-        }
+
       case _ =>
         None
-    }
-  }
 
   /**
    * Validate a JWT claims set against a secret key.
@@ -73,12 +64,9 @@ object JsonWebToken extends JsonMethods {
    * @return
    */
 
-  def validate(jwt: String, key: String): Boolean = {
+  def validate(jwt: String, key: String): Boolean =
 
-    import org.json4s.DefaultFormats
-    implicit val formats: DefaultFormats.type = DefaultFormats
-
-    jwt.split("\\.") match {
+    jwt.split("\\.") match
       case Array(providedHeader, providedClaims, providedSignature) =>
 
         val headerJsonString = new String(decodeBase64(providedHeader), "UTF-8")
@@ -90,7 +78,5 @@ object JsonWebToken extends JsonMethods {
         providedSignature.contentEquals(signature)
       case _ =>
         false
-    }
-  }
 
-}
+end JsonWebToken
