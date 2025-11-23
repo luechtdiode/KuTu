@@ -463,7 +463,7 @@ object Player extends JFXApp3 {
     lastAction.foreach {
       case a: MediaPlayerAction =>
         publishMediaEventIfConnected(AthletMediaIsFree(a.wertung.mediafile.get, ""))
-      case _ =>
+      case null =>
     }
     lastAction = None
     mediaPlayer = null
@@ -512,7 +512,7 @@ object Player extends JFXApp3 {
             publishMediaEventIfConnected(AthletMediaIsFree(a.wertung.mediafile.get, context))
             resetDisplay()
             lastAction = None
-          case _ =>
+          case null =>
         }
       })
       trackLabel.setText("Track " + (currentSongIndex + 1) + "/" + playList.getSongs.size)
@@ -530,7 +530,7 @@ object Player extends JFXApp3 {
           case Status.PLAYING =>
             lastAction.foreach {
               case a: MediaPlayerAction => publishMediaEventIfConnected(AthletMediaIsRunning(a.wertung.mediafile.get, context))
-              case _ =>
+              case null =>
             }
             if media == null || media.getDuration == null then "Time: 00:00   Remaining: 00:00   Total: 00:00"
             else if player.getCurrentTime == null then "Time: 00:00   Remaining: 00:00   Total: " + formatDuration(media.getDuration)
@@ -538,7 +538,7 @@ object Player extends JFXApp3 {
           case Status.PAUSED =>
             lastAction.foreach {
               case a: MediaPlayerAction => publishMediaEventIfConnected(AthletMediaIsPaused(a.wertung.mediafile.get, context))
-              case _ =>
+              case null =>
             }
             if media == null || media.getDuration == null then "Paused"
             else if player.getCurrentTime == null then "Paused at: 00:00   Remaining: 00:00   Total: " + formatDuration(media.getDuration)

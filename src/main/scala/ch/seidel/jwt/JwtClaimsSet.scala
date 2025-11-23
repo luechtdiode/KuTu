@@ -51,6 +51,8 @@ case class JwtClaimsSetJValue(jvalue: JsValue) extends JwtClaimsSet:
           case JsBoolean(b) => b.toString
           case JsNull => "null"
           case JsArray(_) | JsObject(_) => v.compactPrint
+          case JsTrue => "true"
+          case JsFalse => "false"
         )
       }
     }
