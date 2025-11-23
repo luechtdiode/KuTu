@@ -55,7 +55,10 @@ object Surname {
     val isFc = surnames.count(_.isFeminin)
     val isM = isMc >= isFc
     val isF = isMc <= isFc
-    Some(Surname(name, if isF then 1 else 0, if isM then 1 else 0))
+    if surnames.nonEmpty && (isF || isM) then
+      Some(Surname(name, if isF then 1 else 0, if isM then 1 else 0))
+    else
+      None
   }
 }
 

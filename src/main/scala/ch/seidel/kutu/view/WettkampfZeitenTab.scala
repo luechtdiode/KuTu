@@ -42,7 +42,7 @@ class WettkampfZeitenTab(editableProperty: Boolean, wettkampf: WettkampfView, ov
   override def isPopulated: Boolean = {
 
     val planTimeViews = service
-      .loadWettkampfDisziplinTimes(wettkampf.id)
+      .loadWettkampfDisziplinTimes(using wettkampf.id)
       .map { a => ZeitenEditor(a) }
     val model = ObservableBuffer.from(planTimeViews)
 

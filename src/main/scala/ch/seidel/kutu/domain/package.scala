@@ -1709,15 +1709,12 @@ package object domain {
       if id == 0 && !isLocalIdentified then {
         val nameNorm = capitalizeIfBlockCase(name.trim)
         val vornameNorm = capitalizeIfBlockCase(vorname.trim)
-        val nameMasculinTest = Surname.isMasculin(nameNorm)
-        val nameFeminimTest = Surname.isFeminim(nameNorm)
-        val vornameMasculinTest = Surname.isMasculin(vornameNorm)
-        val vornameFeminimTest = Surname.isFeminim(vornameNorm)
-        val nameVornameSwitched = (nameMasculinTest || nameFeminimTest) && !(vornameMasculinTest || vornameFeminimTest)
-        val defName = if nameVornameSwitched then vornameNorm else nameNorm
-        val defVorName = if nameVornameSwitched then nameNorm else vornameNorm
-        val feminim = nameFeminimTest || vornameFeminimTest
-        val masculin = nameMasculinTest || vornameMasculinTest
+        val matchingSurname = List(Surname.isSurname(vornameNorm), Surname.isSurname(nameNorm)).flatten.headOption
+        val (defName, defVorName, feminim, masculin) = matchingSurname match {
+          case Some(sn) if sn.name.equalsIgnoreCase(nameNorm) => (vornameNorm, sn.name, sn.isFeminin, sn.isMasculin)
+          case Some(sn) if sn.name.equalsIgnoreCase(vornameNorm) => (nameNorm, sn.name, sn.isFeminin, sn.isMasculin)
+          case _ => (nameNorm, vornameNorm, Surname.isFeminim(vornameNorm), Surname.isMasculin(vornameNorm))
+        }
         val defGeschlecht = geschlecht match {
           case "M" =>
             if feminim && !masculin then "W" else "M"
@@ -1823,15 +1820,12 @@ package object domain {
       validate()
       val nameNorm = name.trim
       val vornameNorm = vorname.trim
-      val nameMasculinTest = Surname.isMasculin(nameNorm)
-      val nameFeminimTest = Surname.isFeminim(nameNorm)
-      val vornameMasculinTest = Surname.isMasculin(vornameNorm)
-      val vornameFeminimTest = Surname.isFeminim(vornameNorm)
-      val nameVornameSwitched = (nameMasculinTest || nameFeminimTest) && !(vornameMasculinTest || vornameFeminimTest)
-      val defName = if nameVornameSwitched then vornameNorm else nameNorm
-      val defVorName = if nameVornameSwitched then nameNorm else vornameNorm
-      val feminim = nameFeminimTest || vornameFeminimTest
-      val masculin = nameMasculinTest || vornameMasculinTest
+      val matchingSurname = List(Surname.isSurname(vornameNorm), Surname.isSurname(nameNorm)).flatten.headOption
+      val (defName, defVorName, feminim, masculin) = matchingSurname match {
+        case Some(sn) if sn.name.equalsIgnoreCase(nameNorm) => (vornameNorm, sn.name, sn.isFeminin, sn.isMasculin)
+        case Some(sn) if sn.name.equalsIgnoreCase(vornameNorm) => (nameNorm, sn.name, sn.isFeminin, sn.isMasculin)
+        case _ => (nameNorm, vornameNorm, Surname.isFeminim(vornameNorm), Surname.isMasculin(vornameNorm))
+      }
       val defGeschlecht = geschlecht match {
         case "M" =>
           if feminim && !masculin then "W" else "M"
