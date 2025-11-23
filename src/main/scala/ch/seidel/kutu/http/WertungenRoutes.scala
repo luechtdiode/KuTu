@@ -44,7 +44,7 @@ trait WertungenRoutes extends SprayJsonSupport with JsonSupport with JwtSupport 
             get {
               complete {
                 Future {
-                  val wettkampf = readWettkampf(competitionId.toString())
+                  val wettkampf = readWettkampf(competitionId.toString)
                   val wertungen = Kandidat.mapToBestOfCounting(selectWertungen(wettkampfId = Some(wettkampf.id), athletId = Some(athletId)))
                   wertungen.filter { wertung =>
                     if wertung.wettkampfdisziplin.feminim == 0 && !wertung.athlet.geschlecht.equalsIgnoreCase("M") then {
@@ -68,7 +68,7 @@ trait WertungenRoutes extends SprayJsonSupport with JsonSupport with JwtSupport 
             }
           }
         } ~
-        pathPrefixLabeled("music" / JavaUUID, "music/:competition-id") { (competitionId) =>
+        pathPrefixLabeled("music" / JavaUUID, "music/:competition-id") { competitionId =>
           pathLabeled("aquire", "aquire") {
             put {
               authenticated() { userId =>
@@ -212,7 +212,7 @@ trait WertungenRoutes extends SprayJsonSupport with JsonSupport with JwtSupport 
                   complete(StatusCodes.NotFound)
                 } else
                   complete {
-                    listDisziplinZuWettkampf(readWettkampf(competitionId.toString())).map(_.toList).map(items => items.toJson(using listFormat(using disziplinFormat)))
+                    listDisziplinZuWettkampf(readWettkampf(competitionId.toString)).map(_.toList).map(items => items.toJson(using listFormat(using disziplinFormat)))
                   }
               }
             } ~

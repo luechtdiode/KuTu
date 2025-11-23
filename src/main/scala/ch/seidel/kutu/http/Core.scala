@@ -6,6 +6,7 @@ import ch.seidel.kutu.actors.{AthletIndexActor, CompetitionCoordinatorClientActo
 import ch.seidel.kutu.domain.DBService
 import org.apache.pekko.actor.ActorSystem
 import org.apache.pekko.http.scaladsl.Http
+import org.apache.pekko.http.scaladsl.Http.ServerBinding
 import org.apache.pekko.http.scaladsl.server.Route
 import org.apache.pekko.stream.Materializer
 import org.slf4j.LoggerFactory
@@ -24,7 +25,7 @@ object Core extends KuTuSSLContext {
 
   //  val eventRegistryActor: ActorRef = system.actorOf(EventRegistryActor.props, "eventRegistryActor")
   //  val userRegistryActor: ActorRef = system.actorOf(UserRegistryActor.props(eventRegistryActor), "userRegistryActor")
-  private var terminated = false;
+  private var terminated = false
   var serverBinding: Option[Future[Http.ServerBinding]] = None
 
   def terminate(): Unit = {
@@ -41,7 +42,7 @@ trait KuTuAppHTTPServer extends ApiService with JsonSupport {
   import Core.*
   import fr.davit.pekko.http.metrics.core.HttpMetrics.* // import extension methods
 
-  def startServer() = {
+  def startServer(): Future[ServerBinding] = {
     serverBinding match {
       case None =>
 
@@ -59,12 +60,12 @@ trait KuTuAppHTTPServer extends ApiService with JsonSupport {
           val b = serverBuilder
             .enableHttps(https)
             .bindFlow(route)
-          logger.info(s"Server online at https://${httpInterface}:${httpPort}/")
+          logger.info(s"Server online at https://$httpInterface:$httpPort/")
           b
         } else {
           val b = serverBuilder
             .bindFlow(route)
-          logger.info(s"Server online at http://${httpInterface}:${httpPort}/")
+          logger.info(s"Server online at http://$httpInterface:$httpPort/")
           b
         }
         serverBinding = Some(binding)
@@ -99,7 +100,7 @@ trait KuTuAppHTTPServer extends ApiService with JsonSupport {
     println(caller + " System terminated")
   }
 
-  def listNetworkAdresses = {
+  def listNetworkAdresses: IterableOnce[String] = {
     import scala.jdk.CollectionConverters.*
     val dgs = new DatagramSocket()
 
@@ -152,7 +153,7 @@ trait KuTuAppHTTPServer extends ApiService with JsonSupport {
 
       }
     } finally {
-      dgs.close
+      dgs.close()
     }
 
   }

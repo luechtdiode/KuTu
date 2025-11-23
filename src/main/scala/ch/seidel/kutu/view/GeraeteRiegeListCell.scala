@@ -9,11 +9,11 @@ import scalafx.scene.image.{Image, ImageView}
 class GeraeteRiegeListCell extends ListCell[GeraeteRiege] {
   var okIcon: Image = null
   try {
-    okIcon = new Image(getClass().getResourceAsStream("/images/GreenOk.png"))
+    okIcon = new Image(getClass.getResourceAsStream("/images/GreenOk.png"))
   }catch{case e: Exception => e.printStackTrace()}
   var nokIcon: Image = null
   try {
-    nokIcon = new Image(getClass().getResourceAsStream("/images/RedException.png"))
+    nokIcon = new Image(getClass.getResourceAsStream("/images/RedException.png"))
   }catch{
     case e: Exception => e.printStackTrace()
   }

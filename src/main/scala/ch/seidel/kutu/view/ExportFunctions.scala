@@ -1,19 +1,19 @@
 package ch.seidel.kutu.view
 
 import ch.seidel.kutu.Config.{homedir, remoteBaseUrl}
-import ch.seidel.kutu.KuTuApp
-import ch.seidel.kutu.KuTuServer.renderer
+import ch.seidel.kutu.{KuTuApp, domain}
 import ch.seidel.kutu.actors.DurchgangChanged
-import ch.seidel.kutu.domain.{KutuService, TeamItem, Wettkampf, encodeFileName}
+import ch.seidel.kutu.domain.{KutuService, TeamItem, encodeFileName}
 import ch.seidel.kutu.http.WebSocketClient
 import ch.seidel.kutu.renderer.PrintUtil.FilenameDefault
 import ch.seidel.kutu.renderer.RiegenBuilder.mapToGeraeteRiegen
-import ch.seidel.kutu.renderer.{KategorieTeilnehmerToHtmlRenderer, KategorieTeilnehmerToJSONRenderer, PrintUtil}
+import ch.seidel.kutu.renderer.{KategorieTeilnehmerToHtmlRenderer, PrintUtil}
 import javafx.beans.property.SimpleObjectProperty
 import org.slf4j.{Logger, LoggerFactory}
 import scalafx.Includes.jfxObjectProperty2sfx
 import scalafx.application.Platform
 import scalafx.event.ActionEvent
+import scalafx.event.subscriptions.Subscription
 import scalafx.print.PageOrientation
 
 import java.util.UUID
@@ -21,12 +21,12 @@ import scala.concurrent.Future
 
 trait ExportFunctions {
   val wettkampfInfo: WettkampfInfo
-  val wettkampf = wettkampfInfo.wettkampf
+  val wettkampf: domain.WettkampfView = wettkampfInfo.wettkampf
   val service: KutuService
   val reprintItems: SimpleObjectProperty[Set[DurchgangChanged]] = new SimpleObjectProperty[Set[DurchgangChanged]]()
   reprintItems.set(Set.empty)
   println("subscribing RiegenTab for refreshing from websocket")
-  val subscription = WebSocketClient.modelWettkampfWertungChanged.onChange { (_, _, newItem) =>
+  val subscription: Subscription = WebSocketClient.modelWettkampfWertungChanged.onChange { (_, _, newItem) =>
     newItem match {
       case d: DurchgangChanged =>
         reprintItems.set(reprintItems.get() + d)
@@ -44,7 +44,7 @@ trait ExportFunctions {
     val filename = "Riegenblatt_" + encodeFileName(wettkampf.easyprint + durchgangFileQualifier + haltsFileQualifier) + ".html"
     val dir = new java.io.File(homedir + "/" + encodeFileName(wettkampf.easyprint))
     if !dir.exists() then {
-      dir.mkdirs();
+      dir.mkdirs()
     }
     val logofile = PrintUtil.locateLogoFile(dir)
     def generate = (lpp: Int) => KuTuApp.invokeAsyncWithBusyIndicator("Riegenblätter aufbereiten ...") { Future {
@@ -91,7 +91,7 @@ trait ExportFunctions {
     val filename = "DurchgangTeilnehmer_" + encodeFileName(wettkampf.easyprint) + durchgangFileQualifier + ".html"
     val dir = new java.io.File(homedir + "/" + encodeFileName(wettkampf.easyprint))
     if !dir.exists() then {
-      dir.mkdirs();
+      dir.mkdirs()
     }
     val logofile = PrintUtil.locateLogoFile(dir)
     def generate = (lpp: Int) => KuTuApp.invokeAsyncWithBusyIndicator("Durchgang Teilnehmerliste aufbereiten ...") { Future {

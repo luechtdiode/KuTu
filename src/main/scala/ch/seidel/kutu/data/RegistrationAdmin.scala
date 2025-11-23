@@ -292,7 +292,7 @@ object RegistrationAdmin {
       case _ => None
     }.distinct
     if requestMediaList.nonEmpty then {
-      service.getMediaDownloadRemote(wkInfo.wettkampf.toWettkampf, requestMediaList)
+      service.doMediaDownloadRemote(wkInfo.wettkampf.toWettkampf, requestMediaList)
     }
 
     for (((progId, team), idAndathletes) <- addRegistrations.map {

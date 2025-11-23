@@ -13,7 +13,6 @@ import java.nio.file.{Files, LinkOption, StandardOpenOption}
 import java.security.{NoSuchAlgorithmException, SecureRandom}
 import java.util.Collections.emptyList
 import java.util.UUID
-import java.util.prefs.Preferences
 import javax.crypto.KeyGenerator
 import scala.collection.mutable
 import scala.jdk.CollectionConverters.CollectionHasAsScala
@@ -23,7 +22,7 @@ object Config extends KuTuSSLContext {
   private val logger = LoggerFactory.getLogger(this.getClass)
   logger.info("OS-Name: " + System.getProperty("os.name"))
 
-  val configPath: String = System.getProperty("kutuAPPDIR", System.getProperty("user.dir"))
+  private val configPath: String = System.getProperty("kutuAPPDIR", System.getProperty("user.dir"))
   logger.info(s"user.dir Path where custom configurations (kutuapp.conf) are taken from: ${new File(configPath).getAbsolutePath}")
   val userHomePath: String = System.getProperty("user.home") + "/kutuapp"
   logger.info(s"user.home Path: ${new File(userHomePath).getAbsolutePath}")
@@ -31,7 +30,7 @@ object Config extends KuTuSSLContext {
   System.setProperty("pekko.persistence.snapshot-store.local.dir", userHomePath + "/snapshot")
   System.setProperty("pekko.persistence.journal.leveldb.dir", userHomePath + "/journal")
 
-  val userConfig: File = new File(configPath + "/kutuapp.conf")
+  private val userConfig: File = new File(configPath + "/kutuapp.conf")
   val config: com.typesafe.config.Config =
     ConfigFactory.systemEnvironment().withFallback(
       if userConfig.exists() then
@@ -60,8 +59,8 @@ object Config extends KuTuSSLContext {
 
   logger.info(s"App-Version: $appVersion")
 
-  val logoFileMaxSize = 1024 * 1024
-  val mediafileMaxSize = 5 * 1024 * 1024
+  val logoFileMaxSize: Int = 1024 * 1024
+  val mediafileMaxSize: Int = 5 * 1024 * 1024
 
   val importDataFrom: Option[String] = if config.hasPath("app.import.data.fromversion") then {
     Some(config.getString("app.import.data.fromversion"))
@@ -155,7 +154,7 @@ object Config extends KuTuSSLContext {
   }
 
 
-  def saveDeviceId(deviceId: String): Unit = {
+  private def saveDeviceId(deviceId: String): Unit = {
     val path = new File(userHomePath + "/.deviceId").toPath
     val fos = Files.newOutputStream(path, StandardOpenOption.CREATE_NEW)
     try {
@@ -169,7 +168,7 @@ object Config extends KuTuSSLContext {
     logger.info("DeviceId new created " + path)
   }
 
-  def readDeviceId: Option[String] = {
+  private def readDeviceId: Option[String] = {
     val path = new File(userHomePath + "/.deviceId").toPath
     if path.toFile.exists then {
       logger.info("DeviceId found " + path)
@@ -192,8 +191,8 @@ object Config extends KuTuSSLContext {
 
   // Use the static factory method getDefaultProxySearch to create a proxy search instance
   // configured with the default proxy search strategies for the current environment.
-  val proxySearch: ProxySearch = ProxySearch.getDefaultProxySearch
-  val proxySelector: ProxySelector = proxySearch.getProxySelector
+  private val proxySearch: ProxySearch = ProxySearch.getDefaultProxySearch
+  private val proxySelector: ProxySelector = proxySearch.getProxySelector
   ProxySelector.setDefault(proxySelector)
 
   //  private val proxy = Proxy.NO_PROXY
@@ -236,11 +235,11 @@ object Config extends KuTuSSLContext {
     else
       emptyList[String]()
     )
-    .asScala.toList :+  defaultRemoteHost).toSet.toList.sorted
+    .asScala.toList :+  defaultRemoteHost).distinct.sorted
   def setRemoteHost(host: String): Unit = {
     _remoteHost = host
   }
-  def remoteHost = _remoteHost
+  def remoteHost: String = _remoteHost
 
   def remoteSchema: String = if _isLocalHostServer then {
     if hasHttpsConfig then "https" else "http"
@@ -259,7 +258,7 @@ object Config extends KuTuSSLContext {
     _localHostRemoteIP = localHostRemoteIP
   }
   def isLocalHostServer: Boolean = _isLocalHostServer
-  lazy val remoteHostPort: String = if appRemoteConfig.hasPath("port") then appRemoteConfig.getString("port") else "443"
+  private lazy val remoteHostPort: String = if appRemoteConfig.hasPath("port") then appRemoteConfig.getString("port") else "443"
   def remoteBaseUrl: String = if _isLocalHostServer then
     if hasHttpsConfig then s"https://${_localHostRemoteIP.getOrElse(httpHostname)}:$httpPort"
     else s"http://${_localHostRemoteIP.getOrElse(httpHostname)}:$httpPort"

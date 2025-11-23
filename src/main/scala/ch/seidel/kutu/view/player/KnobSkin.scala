@@ -96,13 +96,13 @@ class KnobSkin(slider: Slider) extends SkinBase[Slider](slider) {
     rotateKnob()
   }
 
-  protected def computeMinWidth(height: Double): Double = slider.getInsets.getLeft + knob.minWidth(-(1)) + slider.getInsets.getRight
+  protected def computeMinWidth(height: Double): Double = slider.getInsets.getLeft + knob.minWidth(-1) + slider.getInsets.getRight
 
-  protected def computeMinHeight(width: Double): Double = slider.getInsets.getTop + knob.minHeight(-(1)) + slider.getInsets.getBottom
+  protected def computeMinHeight(width: Double): Double = slider.getInsets.getTop + knob.minHeight(-1) + slider.getInsets.getBottom
 
-  protected def computePrefWidth(height: Double): Double = slider.getInsets.getLeft + knob.prefWidth(-(1)) + slider.getInsets.getRight
+  protected def computePrefWidth(height: Double): Double = slider.getInsets.getLeft + knob.prefWidth(-1) + slider.getInsets.getRight
 
-  protected def computePrefHeight(width: Double): Double = slider.getInsets.getTop + knob.prefHeight(-(1)) + slider.getInsets.getBottom
+  protected def computePrefHeight(width: Double): Double = slider.getInsets.getTop + knob.prefHeight(-1) + slider.getInsets.getBottom
 
   protected def computeMaxWidth(height: Double): Double = Double.MaxValue
 

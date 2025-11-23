@@ -31,7 +31,7 @@ trait EnrichedJson {
     }
 
     def toJsonStringWithType[T](t: T): String = {
-      jsValue.addFields(Map(("type" -> JsString(t.getClass.getSimpleName)))).compactPrint
+      jsValue.addFields(Map("type" -> JsString(t.getClass.getSimpleName))).compactPrint
     }
   }
 
@@ -59,7 +59,7 @@ trait EnrichedJson {
 
     def write(date: Date): JsString = JsString(dateToIsoString(date))
 
-    def read(json: JsValue) = json match {
+    def read(json: JsValue): Date = json match {
       case JsString(rawDate) =>
         parseIsoDateString(rawDate)
           .fold(deserializationError(s"Expected ISO Date format, got $rawDate"))(identity)
@@ -74,7 +74,7 @@ trait EnrichedJson {
     }
 
     private val localIsoDateTimeFormatter = new ThreadLocal[DateTimeFormatter] {
-      override def initialValue() = DateTimeFormatter.ofPattern("yyyy-MM-dd'T00:00:00.000+0000'")
+      override def initialValue(): DateTimeFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd'T00:00:00.000+0000'")
     }
 
     private def dateToIsoString(date: java.sql.Date) = localIsoDateTimeFormatter.get().format(date.toLocalDate)
@@ -94,11 +94,9 @@ trait EnrichedJson {
   }
 
 
-  import scala.reflect.ClassTag
-
   case class CaseObjectJsonSupport[T](values: Array[T]) extends RootJsonFormat[T] {
     // We can rely on the automatically generated valueOf method provided by Java/Scala enums
-    val valueOfMethod: String => T = (name: String) => values.find(v => v.toString.equals(name)).get
+    private val valueOfMethod: String => T = (name: String) => values.find(v => v.toString.equals(name)).get
 
     override def write(obj: T): JsValue = JsString(obj.toString) // Use .name() which is equivalent to .toString for enums
 
@@ -125,13 +123,13 @@ trait Hashing {
     digest.digest(text.getBytes(StandardCharsets.UTF_8)).map("%02X".format(_)).mkString
   }
 
-  def matchHashed(saltedSecretHash: String)(secret: String) = {
+  def matchHashed(saltedSecretHash: String)(secret: String): String = {
     val split = saltedSecretHash.split(":")
     val salt = Base64.getDecoder.decode(split(0))
     hashedWithSalt(secret, salt)
   }
 
-  def hashed(secret: String) = {
+  def hashed(secret: String): String = {
     val saltb = new Array[Byte](16)
     random.nextBytes(saltb)
     hashedWithSalt(secret, saltb)
@@ -155,7 +153,7 @@ trait Hashing {
 }
 
 trait IpToDeviceID {
-  def makeDeviceId(ip: RemoteAddress, context: Option[String]) =
+  def makeDeviceId(ip: RemoteAddress, context: Option[String]): String =
     ip.toOption.map(_.getHostAddress).getOrElse("unknown") + context.map("@" + _).getOrElse("")
 
 }

@@ -58,7 +58,7 @@ object RiegenBuilder {
         }
     }
   }
-  def generateRiegenName(w: WertungView) = {
+  def generateRiegenName(w: WertungView): String = {
     val riegenmode = w.wettkampfdisziplin.programm.riegenmode
     val aks = w.wettkampf.altersklassen match {
       case Some(s: String) if s.nonEmpty => Some(s)
@@ -74,7 +74,7 @@ object RiegenBuilder {
   def generateRiegen2Name(w: WertungView): Option[String] = {
     val getuMatcher = ".*GETU.*/i".r
     w.wettkampfdisziplin.programm.head.name match {
-      case getuMatcher() if (w.athlet.geschlecht.equalsIgnoreCase("M")) =>
+      case getuMatcher() if w.athlet.geschlecht.equalsIgnoreCase("M") =>
         Some(s"Barren ${w.wettkampfdisziplin.programm.name}")
       case _ => None
     }

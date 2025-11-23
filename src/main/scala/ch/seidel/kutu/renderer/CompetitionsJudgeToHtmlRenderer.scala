@@ -1,10 +1,9 @@
 package ch.seidel.kutu.renderer
 
-import ch.seidel.kutu.domain.{JudgeRegistration, Registration, Verein, Wettkampf}
+import ch.seidel.kutu.domain.{JudgeRegistration, Registration, Wettkampf}
 import ch.seidel.kutu.renderer.PrintUtil.*
 
 import java.io.File
-import java.time.format.DateTimeFormatter
 
 trait CompetitionsJudgeToHtmlRenderer {
 
@@ -115,12 +114,12 @@ trait CompetitionsJudgeToHtmlRenderer {
       <div class=headline>
         $logoHtml
         <div class=title><h4>${escaped(wettkampf.easyprint)}</h4></div>
-        <div class=programm>${anmeldungenCnt} Wertungsrichter, gestellt durch ${escaped(verein.toVerein.easyprint)}</br></div>
+        <div class=programm>$anmeldungenCnt Wertungsrichter, gestellt durch ${escaped(verein.toVerein.easyprint)}</br></div>
       </div>
       <div class="showborder">
         <table width="100%">
           <tr class="totalRow heavyRow"><td>Wertungsrichter/-in</td><td>Mobil-Telefon</td><td>EMail</td><td class="totalCol">Bemerkung</td></tr>
-          ${dt}
+          $dt
         </table>
       </div>
     </div>

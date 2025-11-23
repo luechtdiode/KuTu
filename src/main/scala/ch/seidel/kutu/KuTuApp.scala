@@ -12,6 +12,7 @@ import ch.seidel.kutu.view.WettkampfTableView
 import ch.seidel.kutu.view.player.Player
 import javafx.beans.property.SimpleObjectProperty
 import javafx.concurrent.Task
+import javafx.event.EventHandler
 import javafx.scene.control.DatePicker
 import net.glxn.qrgen.QRCode
 import net.glxn.qrgen.image.ImageType
@@ -75,10 +76,10 @@ object KuTuApp extends JFXApp3 with KutuService with JsonSupport with JwtSupport
   val selectedWettkampf = new SimpleObjectProperty[WettkampfView]()
   val selectedWettkampfSecret = new SimpleObjectProperty[Option[String]]()
   var controlsView: TreeView[String] = null
-  var rootTreeItem: TreeItem[String] = null
+  private var rootTreeItem: TreeItem[String] = null
   var invisibleWebView: WebView = null
 
-  def updateTree: Unit = {
+  def updateTree(): Unit = {
     def selectionPathToRoot(node: TreeItem[String]): List[TreeItem[String]] = {
       if node == null then {
         List.empty
@@ -110,19 +111,17 @@ object KuTuApp extends JFXApp3 with KutuService with JsonSupport with JwtSupport
       controlsView.selectionModel().select(lastNode)
   }
 
-  def handleAction[J <: javafx.event.ActionEvent, R](handler: scalafx.event.ActionEvent => R) = new javafx.event.EventHandler[J] {
-    def handle(event: J): Unit = {
-      setCursor(Cursor.Wait)
-      try {
-        handler(event)
-      } catch {
-        case e: Throwable =>
-          logger.error("Unerwarteter Fehler", e)
-          throw e
-      }
-      finally {
-        setCursor(Cursor.Default)
-      }
+  def handleAction[J <: javafx.event.ActionEvent, R](handler: scalafx.event.ActionEvent => R): EventHandler[J] = (event: J) => {
+    setCursor(Cursor.Wait)
+    try {
+      handler(event)
+    } catch {
+      case e: Throwable =>
+        logger.error("Unerwarteter Fehler", e)
+        throw e
+    }
+    finally {
+      setCursor(Cursor.Default)
     }
   }
 
@@ -216,9 +215,9 @@ object KuTuApp extends JFXApp3 with KutuService with JsonSupport with JwtSupport
     p.future
   }
 
-  var cursorWaiters = 0
+  private var cursorWaiters = 0
 
-  def setCursor(c: Cursor): Unit = {
+  private def setCursor(c: Cursor): Unit = {
     val ctoSet = if c.equals(Cursor.Wait) then {
       cursorWaiters += 1
       c
@@ -234,13 +233,13 @@ object KuTuApp extends JFXApp3 with KutuService with JsonSupport with JwtSupport
       }
     }
     //logger.debug(cursorWaiters)
-    if getStage() != null then {
-      getStage().scene.delegate.getValue.cursor = ctoSet
-      getStage().scene.delegate.getValue.root.value.requestLayout()
+    if getStage != null then {
+      getStage.scene.delegate.getValue.cursor = ctoSet
+      getStage.scene.delegate.getValue.root.value.requestLayout()
     }
   }
 
-  class ProgrammListCell extends javafx.scene.control.ListCell[ProgrammView] {
+  private class ProgrammListCell extends javafx.scene.control.ListCell[ProgrammView] {
     override def updateItem(item: ProgrammView, empty: Boolean): Unit = {
       super.updateItem(item, empty)
       if item != null then {
@@ -249,7 +248,7 @@ object KuTuApp extends JFXApp3 with KutuService with JsonSupport with JwtSupport
     }
   }
 
-  val lastSelected = StringProperty("")
+  private val lastSelected = StringProperty("")
 
   type MenuActionHandler = (String, ActionEvent) => Unit
 
@@ -260,12 +259,12 @@ object KuTuApp extends JFXApp3 with KutuService with JsonSupport with JwtSupport
       }
     }
   }
-  def makeWettkampfKopierenMenu(copyFrom: WettkampfView): MenuItem = {
+  private def makeWettkampfKopierenMenu(copyFrom: WettkampfView): MenuItem = {
     makeNeuerWettkampfAnlegenMenu(Some(copyFrom))
   }
-  def makeWettkampfBearbeitenMenu(p: WettkampfView): MenuItem = {
+  private def makeWettkampfBearbeitenMenu(p: WettkampfView): MenuItem = {
     makeMenuAction("Wettkampf bearbeiten") { (caption, action) =>
-      implicit val e = action
+      given ActionEvent = action
       val txtDatum = new DatePicker {
         setPromptText("Wettkampf-Datum")
         setPrefWidth(500)
@@ -472,7 +471,8 @@ object KuTuApp extends JFXApp3 with KutuService with JsonSupport with JwtSupport
             txtDatum.value,
             txtTitel.text
           )) choose true otherwise false
-          onAction = handleAction { implicit e: ActionEvent =>
+          onAction = handleAction { (e: ActionEvent) =>
+            given ActionEvent = e
             try {
               val w = saveWettkampf(
                 p.id,
@@ -480,9 +480,9 @@ object KuTuApp extends JFXApp3 with KutuService with JsonSupport with JwtSupport
                 txtTitel.text.value,
                 Set(cmbProgramm.selectionModel.value.getSelectedItem.id),
                 txtNotificationEMail.text.value,
-                txtAuszeichnung.text.value.filter(c => c.isDigit || c == '.' || c == ',').toString match {
+                txtAuszeichnung.text.value.filter(c => c.isDigit || c == '.' || c == ',') match {
                   case "" => 0
-                  case s: String if (s.indexOf(".") > -1 || s.indexOf(",") > -1) => math.round(str2dbl(s) * 100).toInt
+                  case s: String if s.indexOf(".") > -1 || s.indexOf(",") > -1 => math.round(str2dbl(s) * 100).toInt
                   case s: String => str2Int(s)
                 },
                 txtAuszeichnungEndnote.text.value match {
@@ -502,7 +502,7 @@ object KuTuApp extends JFXApp3 with KutuService with JsonSupport with JwtSupport
               )
 
               w.prepareFilePath(homedir, readOnly = false, Some(p.toWettkampf))
-              updateTree
+              updateTree()
               val text = s"${w.titel} ${w.datum}"
               tree.getLeaves("Wettkämpfe").find { item => text.equals(item.value.value) } match {
                 case Some(node) =>
@@ -522,9 +522,9 @@ object KuTuApp extends JFXApp3 with KutuService with JsonSupport with JwtSupport
     }
   }
 
-  def makeWettkampfExportierenMenu(p: WettkampfView): MenuItem = {
+  private def makeWettkampfExportierenMenu(p: WettkampfView): MenuItem = {
     makeMenuAction("Wettkampf exportieren") { (caption, action) =>
-      implicit val e = action
+      given ActionEvent = action
       val fileChooser = new FileChooser {
         title = "Wettkampf File exportieren"
         initialDirectory = new java.io.File(homedir)
@@ -534,7 +534,7 @@ object KuTuApp extends JFXApp3 with KutuService with JsonSupport with JwtSupport
         )
         initialFileName.value = p.titel.replace(" ", "_") + "_" + sdfYear.format(p.datum) + ".zip"
       }
-      val selectedFile = fileChooser.showSaveDialog(getStage())
+      val selectedFile = fileChooser.showSaveDialog(getStage)
       if selectedFile != null then {
         KuTuApp.invokeWithBusyIndicator {
           val file = if !selectedFile.getName.endsWith(".zip") then {
@@ -543,13 +543,13 @@ object KuTuApp extends JFXApp3 with KutuService with JsonSupport with JwtSupport
           else {
             selectedFile
           }
-          ResourceExchanger.exportWettkampf(p.toWettkampf, file.getPath);
+          ResourceExchanger.exportWettkampf(p.toWettkampf, file.getPath)
         }
       }
     }
   }
 
-  def uploadResults(wettkampf: WettkampfView, caption: String): Unit = {
+  private def uploadResults(wettkampf: WettkampfView, caption: String): Unit = {
     import scala.concurrent.ExecutionContext.Implicits.global
     val process = KuTuApp.invokeAsyncWithBusyIndicator(caption) {
       if remoteBaseUrl.indexOf("localhost") > -1 then {
@@ -593,7 +593,7 @@ object KuTuApp extends JFXApp3 with KutuService with JsonSupport with JwtSupport
 
   def makeWettkampfRemoteRemoveMenu(p: WettkampfView): MenuItem = {
     val item = makeMenuAction("Wettkampf im Netzwerk entfernen") { (caption, action) =>
-      implicit val e = action
+      given ActionEvent = action
       PageDisplayer.showInDialog(caption, new DisplayablePage() {
         def getPage: Node = {
           new BorderPane {
@@ -620,7 +620,8 @@ object KuTuApp extends JFXApp3 with KutuService with JsonSupport with JwtSupport
                       "Wettkampf im Netzwerk entfernt."
                     case Failure(error) => error.getMessage.replace("(", "(\n")
                   }
-                  implicit val e = action
+
+                  given ActionEvent = action
                   PageDisplayer.showInDialog(caption, new DisplayablePage() {
                     def getPage: Node = {
                       new BorderPane {
@@ -642,7 +643,7 @@ object KuTuApp extends JFXApp3 with KutuService with JsonSupport with JwtSupport
       Config.isLocalHostServer ||
         !p.toWettkampf.hasSecred(homedir, remoteHostOrigin)
         || modelWettkampfModus.value
-        || !ConnectionStates.connectedWithProperty.value.equals(p.uuid.map(_.toString).getOrElse("")),
+        || !ConnectionStates.connectedWithProperty.value.equals(p.uuid.getOrElse("")),
 
       controlsView.selectionModel().selectedItem,
       ConnectionStates.connectedWithProperty,
@@ -655,7 +656,7 @@ object KuTuApp extends JFXApp3 with KutuService with JsonSupport with JwtSupport
 
   def makeWettkampfDownloadMenu(p: WettkampfView): MenuItem = {
     val item = makeMenuAction("Download") { (caption, action) =>
-      implicit val e = action
+      given ActionEvent = action
       PageDisplayer.showInDialog(caption, new DisplayablePage() {
         def getPage: Node = {
           new BorderPane {
@@ -678,7 +679,7 @@ object KuTuApp extends JFXApp3 with KutuService with JsonSupport with JwtSupport
                     case Success(w) =>
                       pr.success(w)
                       PageDisplayer.showMessageDialog("Download", "Erfolgreich heruntergeladen.")
-                      updateTree
+                      updateTree()
                       controlsView.selectionModel().select(controlsView.root.value)
                       val text = s"${w.titel} ${w.datum}"
                       tree.getLeaves("Wettkämpfe").find { item => text.equals(item.value.value) } match {
@@ -699,7 +700,7 @@ object KuTuApp extends JFXApp3 with KutuService with JsonSupport with JwtSupport
     item.disable <== when(Bindings.createBooleanBinding(() =>
       Config.isLocalHostServer ||
         (!p.toWettkampf.hasSecred(homedir, remoteHostOrigin) && !p.toWettkampf.hasRemote(homedir, remoteHostOrigin)) ||
-        !ConnectionStates.connectedWithProperty.value.equals(p.uuid.map(_.toString).getOrElse("")),
+        !ConnectionStates.connectedWithProperty.value.equals(p.uuid.getOrElse("")),
       controlsView.selectionModel().selectedItem,
       selectedWettkampfSecret,
       ConnectionStates.connectedWithProperty
@@ -707,7 +708,7 @@ object KuTuApp extends JFXApp3 with KutuService with JsonSupport with JwtSupport
     item
   }
 
-  def makeWettkampfDurchfuehrenMenu(p: WettkampfView): MenuItem = {
+  private def makeWettkampfDurchfuehrenMenu(p: WettkampfView): MenuItem = {
     if !modelWettkampfModus.value then {
       makeMenuAction("Wettkampf durchführen") { (caption, action) =>
         modelWettkampfModus.value = true
@@ -720,8 +721,8 @@ object KuTuApp extends JFXApp3 with KutuService with JsonSupport with JwtSupport
     }
   }
 
-  def makeNeuerVereinAnlegenMenu = makeMenuAction("Neuen Verein anlegen ...") { (caption, action) =>
-    implicit val e = action
+  private def makeNeuerVereinAnlegenMenu = makeMenuAction("Neuen Verein anlegen ...") { (caption, action) =>
+    given ActionEvent = action
 
     val txtVereinsname = new TextField {
       prefWidth = 500
@@ -759,7 +760,7 @@ object KuTuApp extends JFXApp3 with KutuService with JsonSupport with JwtSupport
             case s => Some(s.trim())
           }
         )
-        updateTree
+        updateTree()
         selectVereine.find {
           _.id == vid
         } match {
@@ -777,7 +778,7 @@ object KuTuApp extends JFXApp3 with KutuService with JsonSupport with JwtSupport
   }
 
   private def makeFindDuplicteAthletes = makeMenuAction("Doppelt erfasste Athleten finden ...") { (caption, action) =>
-    implicit val e = action
+    given ActionEvent = action
     KuTuApp.invokeAsyncWithBusyIndicator(caption) {
       Future {
 
@@ -791,7 +792,7 @@ object KuTuApp extends JFXApp3 with KutuService with JsonSupport with JwtSupport
           athleteView <- selectAthletesView
           athlete = athleteView.toAthlet
           like = likeFinder(athlete)
-          if (athleteView.id != like.id)
+          if athleteView.id != like.id
         yield {
           val tupel: List[AthletView] = List(athleteView, loadAthleteView(like.id)).sortWith { (a, b) =>
             if a.gebdat.map(_.toLocalDate.getDayOfMonth).getOrElse(0) > b.gebdat.map(_.toLocalDate.getDayOfMonth).getOrElse(0) then true
@@ -885,7 +886,7 @@ object KuTuApp extends JFXApp3 with KutuService with JsonSupport with JwtSupport
         },
 
           new Button("OK, zusammenlegen") {
-            disable <== when(athletTable.selectionModel.value.selectedItemProperty.isNull()) choose true otherwise false
+            disable <== when(athletTable.selectionModel.value.selectedItemProperty.isNull) choose true otherwise false
             onAction = (event: ActionEvent) => {
               val selectedAthleten = athletTable.items.value.zipWithIndex.filter {
                 x => athletTable.selectionModel.value.isSelected(x._2)
@@ -912,7 +913,7 @@ object KuTuApp extends JFXApp3 with KutuService with JsonSupport with JwtSupport
     }
   }
 
-  def makeStartServerMenu = {
+  private def makeStartServerMenu = {
     val item = makeMenuAction("Start local Server") { (caption, action) =>
       KuTuApp.invokeWithBusyIndicator {
         startServer()
@@ -927,7 +928,7 @@ object KuTuApp extends JFXApp3 with KutuService with JsonSupport with JwtSupport
     item
   }
 
-  def makeStopServerMenu = {
+  private def makeStopServerMenu = {
     val item = makeMenuAction("Stop local Server") { (caption, action) =>
       KuTuApp.invokeWithBusyIndicator {
         LocalServerStates.stopLocalServer()
@@ -944,9 +945,9 @@ object KuTuApp extends JFXApp3 with KutuService with JsonSupport with JwtSupport
     item
   }
 
-  def makeProxyLoginMenu = {
+  private def makeProxyLoginMenu = {
     val item = makeMenuAction("Internet Proxy ...") { (caption, action) =>
-      implicit val e = action
+      given ActionEvent = action
       val txtProxyAddress = new TextField {
         prefWidth = 500
         promptText = "Proxy Adresse"
@@ -984,7 +985,7 @@ object KuTuApp extends JFXApp3 with KutuService with JsonSupport with JwtSupport
         }
       }, new Button("OK") {
         disable <== when(Bindings.createBooleanBinding(() => {
-          txtUsername.text.isEmpty.value && txtPassword.text.isEmpty().value
+          txtUsername.text.isEmpty.value && txtPassword.text.isEmpty.value
         },
           txtUsername.text, txtPassword.text
         )) choose true otherwise false
@@ -1004,12 +1005,12 @@ object KuTuApp extends JFXApp3 with KutuService with JsonSupport with JwtSupport
     item
   }
 
-  def makeDisconnectMenu(p: WettkampfView) = {
+  def makeDisconnectMenu(p: WettkampfView): MenuItem = {
     val item = makeMenuAction("Verbindung stoppen") { (caption, action) =>
       ConnectionStates.disconnected()
     }
     item.disable <== when(Bindings.createBooleanBinding(() =>
-      !ConnectionStates.connectedWithProperty.value.equals(p.uuid.map(_.toString).getOrElse("")),
+      !ConnectionStates.connectedWithProperty.value.equals(p.uuid.getOrElse("")),
       controlsView.selectionModel().selectedItem,
       selectedWettkampfSecret,
       ConnectionStates.connectedWithProperty
@@ -1017,9 +1018,9 @@ object KuTuApp extends JFXApp3 with KutuService with JsonSupport with JwtSupport
     item
   }
 
-  def makeSelectBackendMenu = {
+  private def makeSelectBackendMenu = {
     val item = makeMenuAction("Server auswählen") { (caption, action) =>
-      implicit val e = action
+      given ActionEvent = action
       val filteredModel = ObservableBuffer.from(Config.getRemoteHosts)
       val header = new VBox {
         spacing = 5
@@ -1059,7 +1060,7 @@ object KuTuApp extends JFXApp3 with KutuService with JsonSupport with JwtSupport
           ConnectionStates.switchRemoteHost(Config.defaultRemoteHost)
         }
       }, new Button("OK") {
-        disable <== when(serverList.selectionModel.value.selectedItemProperty.isNull()) choose true otherwise false
+        disable <== when(serverList.selectionModel.value.selectedItemProperty.isNull) choose true otherwise false
         onAction = (_: ActionEvent) => {
           if !serverList.selectionModel().isEmpty then {
             serverList.items.value.zipWithIndex.filter {
@@ -1084,7 +1085,7 @@ object KuTuApp extends JFXApp3 with KutuService with JsonSupport with JwtSupport
     item
   }
 
-  def validateUpload(p: WettkampfView, caption: String, action: ActionEvent)(handler: String=>Unit): Unit = {
+  private def validateUpload(p: WettkampfView, caption: String, action: ActionEvent)(handler: String=>Unit): Unit = {
     implicit val e: ActionEvent = action
     if Config.isLocalHostServer then {
       handler(caption)
@@ -1134,7 +1135,7 @@ object KuTuApp extends JFXApp3 with KutuService with JsonSupport with JwtSupport
     }
   }
 
-  def validateConnect(p: WettkampfView, caption: String, action: ActionEvent)(handler: String=>Unit): Unit = {
+  private def validateConnect(p: WettkampfView, caption: String, action: ActionEvent)(handler: String=>Unit): Unit = {
     implicit val e: ActionEvent = action
     if Config.isLocalHostServer ||
       ConnectionStates.connectedProperty.value ||
@@ -1145,8 +1146,8 @@ object KuTuApp extends JFXApp3 with KutuService with JsonSupport with JwtSupport
       validateUpload(p, caption, action)(handler)
     }
   }
-  def connectAndShare(p: WettkampfView, caption: String, action: ActionEvent) = {
-    implicit val e = action
+  private def connectAndShare(p: WettkampfView, caption: String, action: ActionEvent): Unit = {
+    given ActionEvent = action
     val process = KuTuApp.invokeAsyncWithBusyIndicator(caption) {
       if Config.isLocalHostServer then {
         if !p.toWettkampf.hasSecred(homedir, "localhost") then {
@@ -1209,14 +1210,14 @@ object KuTuApp extends JFXApp3 with KutuService with JsonSupport with JwtSupport
     }
   }
 
-  def makeConnectAndShareMenu(p: WettkampfView) = {
+  def makeConnectAndShareMenu(p: WettkampfView): MenuItem = {
     val item = makeMenuAction("Verbinden ...") { (caption, action) =>
       validateConnect(p, caption, action) { title =>
         connectAndShare(selectedWettkampf.value, title, action)
       }
     }
     item.disable <== when(Bindings.createBooleanBinding(() =>
-      !ConnectionStates.connectedWithProperty.value.equals(p.uuid.map(_.toString).getOrElse("")),
+      !ConnectionStates.connectedWithProperty.value.equals(p.uuid.getOrElse("")),
       controlsView.selectionModel().selectedItem,
       selectedWettkampfSecret,
       ConnectionStates.connectedWithProperty
@@ -1224,10 +1225,10 @@ object KuTuApp extends JFXApp3 with KutuService with JsonSupport with JwtSupport
     item
   }
 
-  def makeNeuerWettkampfAnlegenMenu(copyFrom: Option[WettkampfView] = None): MenuItem = {
+  private def makeNeuerWettkampfAnlegenMenu(copyFrom: Option[WettkampfView] = None): MenuItem = {
     val menutext = if copyFrom.isEmpty then "Neuen Wettkampf anlegen ..." else s"Neuen Wettkampf wie ${copyFrom.get.easyprint} anlegen ..."
     makeMenuAction(menutext) { (caption, action) =>
-      implicit val e = action
+      given ActionEvent = action
       val txtDatum = new DatePicker {
         setPromptText("Wettkampf-Datum")
         setPrefWidth(500)
@@ -1263,7 +1264,7 @@ object KuTuApp extends JFXApp3 with KutuService with JsonSupport with JwtSupport
             text = dbl2Str(auszeichnung / 100d) + "%"
           }
           else {
-            text = s"${auszeichnung}%"
+            text = s"$auszeichnung%"
           }
         })
       }
@@ -1451,7 +1452,7 @@ object KuTuApp extends JFXApp3 with KutuService with JsonSupport with JwtSupport
             txtNotificationEMail.text.value,
             txtAuszeichnung.text.value.filter(c => c.isDigit || c == '.' || c == ',') match {
               case "" => 0
-              case s: String if (s.indexOf(".") > -1 || s.indexOf(",") > -1) => math.round(str2dbl(s) * 100).toInt
+              case s: String if s.indexOf(".") > -1 || s.indexOf(",") > -1 => math.round(str2dbl(s) * 100).toInt
               case s: String => str2Int(s)
             },
             txtAuszeichnungEndnote.text.value match {
@@ -1471,7 +1472,7 @@ object KuTuApp extends JFXApp3 with KutuService with JsonSupport with JwtSupport
           )
           val dir = new java.io.File(homedir + "/" + w.easyprint.replace(" ", "_"))
           if !dir.exists() then {
-            dir.mkdirs();
+            dir.mkdirs()
           }
           copyFrom.foreach(wkToCopy => {
             // Ranglisten (scoredef), Planzeiten und Logo kopieren ...
@@ -1509,7 +1510,7 @@ object KuTuApp extends JFXApp3 with KutuService with JsonSupport with JwtSupport
               savePublishedScore(wettkampfId = w.id, title = score.title, query = score.query, published = false, propagate = false)
             })
           })
-          updateTree
+          updateTree()
           val text = s"${w.titel} ${w.datum}"
           tree.getLeaves("Wettkämpfe").find { item => text.equals(item.value.value) } match {
             case Some(node) =>
@@ -1521,11 +1522,11 @@ object KuTuApp extends JFXApp3 with KutuService with JsonSupport with JwtSupport
     }
   }
 
-  def makeWettkampfHerunterladenMenu: MenuItem = {
+  private def makeWettkampfHerunterladenMenu: MenuItem = {
     import DefaultJsonProtocol.*
     val item = makeMenuAction("Wettkampf herunterladen") { (caption, action) =>
-      implicit val e = action
-      val wklist = httpGet(s"${remoteAdminBaseUrl}/api/competition").map {
+      given ActionEvent = action
+      val wklist = httpGet(s"$remoteAdminBaseUrl/api/competition").map {
         case entityString: String => entityString.asType[List[Wettkampf]]
         case null => List[Wettkampf]()
       }
@@ -1567,7 +1568,7 @@ object KuTuApp extends JFXApp3 with KutuService with JsonSupport with JwtSupport
                           ft match {
                             case Success(w) =>
                               pr.success(w)
-                              updateTree
+                              updateTree()
                               val text = s"${w.titel} ${w.datum}"
                               tree.getLeaves("Wettkämpfe").find { item => text.equals(item.value.value) } match {
                                 case Some(node) => controlsView.selectionModel().select(node)
@@ -1598,9 +1599,9 @@ object KuTuApp extends JFXApp3 with KutuService with JsonSupport with JwtSupport
     item
   }
 
-  def makeNeuerWettkampfImportierenMenu: MenuItem = {
+  private def makeNeuerWettkampfImportierenMenu: MenuItem = {
     makeMenuAction("Wettkampf importieren") { (caption, action) =>
-      implicit val e = action
+      given ActionEvent = action
       val fileChooser = new FileChooser {
         title = "Wettkampf File importieren"
         initialDirectory = new java.io.File(homedir)
@@ -1609,7 +1610,7 @@ object KuTuApp extends JFXApp3 with KutuService with JsonSupport with JwtSupport
           new ExtensionFilter("All Files", "*.*")
         )
       }
-      val selectedFile = fileChooser.showOpenDialog(getStage())
+      val selectedFile = fileChooser.showOpenDialog(getStage)
       import scala.concurrent.ExecutionContext.Implicits.*
       if selectedFile != null then {
         val wf = KuTuApp.invokeAsyncWithBusyIndicator[Wettkampf](caption) {
@@ -1619,7 +1620,7 @@ object KuTuApp extends JFXApp3 with KutuService with JsonSupport with JwtSupport
             is.close()
             val dir = new java.io.File(homedir + "/" + w.easyprint.replace(" ", "_"))
             if !dir.exists() then {
-              dir.mkdirs();
+              dir.mkdirs()
             }
             w
           }
@@ -1640,7 +1641,7 @@ object KuTuApp extends JFXApp3 with KutuService with JsonSupport with JwtSupport
                   }
                 })
               case Success(w) =>
-                updateTree
+                updateTree()
                 val text = s"${w.titel} ${w.datum}"
                 tree.getLeaves("Wettkämpfe").find { item => text.equals(item.value.value) } match {
                   case Some(node) =>
@@ -1654,16 +1655,16 @@ object KuTuApp extends JFXApp3 with KutuService with JsonSupport with JwtSupport
     }
   }
 
-  def makeShowQRCodeMenu(p: WettkampfView) = {
+  def makeShowQRCodeMenu(p: WettkampfView): MenuItem = {
     val item = makeMenuAction("Mobile App Connections ...") { (caption, action) =>
       showQRCode(caption, p)
     }
-    item.disable <== when(Bindings.createBooleanBinding(() => !p.toWettkampf.hasSecred(homedir, remoteHostOrigin) || !ConnectionStates.connectedWithProperty.value.equals(p.uuid.map(_.toString).getOrElse("")),
+    item.disable <== when(Bindings.createBooleanBinding(() => !p.toWettkampf.hasSecred(homedir, remoteHostOrigin) || !ConnectionStates.connectedWithProperty.value.equals(p.uuid.getOrElse("")),
       ConnectionStates.connectedWithProperty, selectedWettkampfSecret, controlsView.selectionModel().selectedItem)) choose true otherwise false
     item
   }
 
-  def showQRCode(caption: String, p: WettkampfView) = {
+  private def showQRCode(caption: String, p: WettkampfView): Unit = {
     val secretOrigin = if Config.isLocalHostServer then {
       if !p.toWettkampf.hasSecred(homedir, "localhost") then {
         p.toWettkampf.saveSecret(homedir, "localhost", jwt.JsonWebToken(jwtHeader, setClaims(p.uuid.get, Int.MaxValue), jwtSecretKey))
@@ -1681,17 +1682,17 @@ object KuTuApp extends JFXApp3 with KutuService with JsonSupport with JwtSupport
           List(Config.remoteBaseUrl) //server.listNetworkAdresses.toList
         } else List(remoteBaseUrl)
         val tablist = connectionList.map { address =>
-          val connectionString = s"$address/?" + new String(enc.encodeToString((s"c=$uuid&s=$secret").getBytes))
-          val shortConnectionString = s"$address/?" + new String(enc.encodeToString((s"c=$uuid&s=$shortsecret").getBytes))
-          val lastResultsConnectionString = s"$address/?" + new String(enc.encodeToString((s"last&c=$uuid").getBytes))
-          val topResultsConnectionString = s"$address/?" + new String(enc.encodeToString((s"top&c=$uuid").getBytes))
+          val connectionString = s"$address/?" + new String(enc.encodeToString(s"c=$uuid&s=$secret".getBytes))
+          val shortConnectionString = s"$address/?" + new String(enc.encodeToString(s"c=$uuid&s=$shortsecret".getBytes))
+          val lastResultsConnectionString = s"$address/?" + new String(enc.encodeToString(s"last&c=$uuid".getBytes))
+          val topResultsConnectionString = s"$address/?" + new String(enc.encodeToString(s"top&c=$uuid".getBytes))
 
           def formatDateTime(d: Date) = f"$d%td.$d%tm.$d%tY - $d%tH:$d%tM"
 
           println(("longterm-secret", formatDateTime(longtimeout), connectionString))
           println(("shortterm-secret", formatDateTime(shorttimeout), shortConnectionString))
           val out = QRCode.from(shortConnectionString).to(ImageType.PNG).withSize(500, 500).stream()
-          val in = new ByteArrayInputStream(out.toByteArray())
+          val in = new ByteArrayInputStream(out.toByteArray)
 
           val image = new Image(in)
           val view = new ImageView(image)
@@ -1718,7 +1719,7 @@ object KuTuApp extends JFXApp3 with KutuService with JsonSupport with JwtSupport
                    |
                    |  mit dem folgenden Link kommst Du in die App, in der Du die Wettkampf-Resultate
                    |  für den Wettkampf '${p.easyprint}' erfassen kannst:
-                   |  ${shortConnectionString}
+                   |  $shortConnectionString
                    |
                    |  Wichtig:
                    |  * Dieser Link ist bis am ${formatDateTime(shorttimeout)} UTC gültig.
@@ -1733,7 +1734,7 @@ object KuTuApp extends JFXApp3 with KutuService with JsonSupport with JwtSupport
           }
 
           val outLast = QRCode.from(lastResultsConnectionString).to(ImageType.PNG).withSize(500, 500).stream()
-          val inLast = new ByteArrayInputStream(outLast.toByteArray())
+          val inLast = new ByteArrayInputStream(outLast.toByteArray)
 
           val imageLast = new Image(inLast)
           val viewLast = new ImageView(imageLast)
@@ -1753,7 +1754,7 @@ object KuTuApp extends JFXApp3 with KutuService with JsonSupport with JwtSupport
                    |
                    |  mit dem folgenden Link kommst Du in die App, in der Du die aktuellsten Resultate
                    |  für den Wettkampf '${p.easyprint}' verfolgen kannst:
-                   |  ${lastResultsConnectionString}
+                   |  $lastResultsConnectionString
                    |
                    |  Sportliche Grüsse,
                    |  Einsatzplanung
@@ -1763,7 +1764,7 @@ object KuTuApp extends JFXApp3 with KutuService with JsonSupport with JwtSupport
 
 
           val outTop = QRCode.from(topResultsConnectionString).to(ImageType.PNG).withSize(500, 500).stream()
-          val inTop = new ByteArrayInputStream(outTop.toByteArray())
+          val inTop = new ByteArrayInputStream(outTop.toByteArray)
 
           val imageTop = new Image(inTop)
           val viewTop = new ImageView(imageTop)
@@ -1783,7 +1784,7 @@ object KuTuApp extends JFXApp3 with KutuService with JsonSupport with JwtSupport
                    |
                    |  mit dem folgenden Link kommst Du in die App, in der Du die Top-Resultate (Bestenliste)
                    |  für den Wettkampf '${p.easyprint}' verfolgen kannst:
-                   |  ${topResultsConnectionString}
+                   |  $topResultsConnectionString
                    |
                    |  Sportliche Grüsse,
                    |  Einsatzplanung
@@ -1877,8 +1878,8 @@ object KuTuApp extends JFXApp3 with KutuService with JsonSupport with JwtSupport
     }
   }
 
-  def makeWettkampfLoeschenMenu(p: WettkampfView) = makeMenuAction("Wettkampf löschen") { (caption, action) =>
-    implicit val e = action
+  private def makeWettkampfLoeschenMenu(p: WettkampfView) = makeMenuAction("Wettkampf löschen") { (caption, action) =>
+    given ActionEvent = action
     PageDisplayer.showInDialog(caption, new DisplayablePage() {
       def getPage: Node = {
         new BorderPane {
@@ -1894,13 +1895,13 @@ object KuTuApp extends JFXApp3 with KutuService with JsonSupport with JwtSupport
         onAction = handleAction { implicit e: ActionEvent =>
           deleteRegistrations(p.uuid.map(UUID.fromString).get)
           deleteWettkampf(p.id)
-          updateTree
+          updateTree()
         }
       }
     )
   }
 
-  def makeWettkampfDataDirectoryMenu(w: WettkampfView) = makeMenuAction("Wettkampf Verzeichnis öffnen") { (caption, action) =>
+  private def makeWettkampfDataDirectoryMenu(w: WettkampfView) = makeMenuAction("Wettkampf Verzeichnis öffnen") { (caption, action) =>
     val dir = new java.io.File(homedir + "/" + encodeFileName(w.easyprint))
     if !dir.exists() then {
       dir.mkdirs()
@@ -1909,8 +1910,8 @@ object KuTuApp extends JFXApp3 with KutuService with JsonSupport with JwtSupport
     hostServices.showDocument(dir.toURI.toString)
   }
 
-  def makeVereinLoeschenMenu(v: Verein) = makeMenuAction("Verein löschen") { (caption, action) =>
-    implicit val e = action
+  private def makeVereinLoeschenMenu(v: Verein) = makeMenuAction("Verein löschen") { (caption, action) =>
+    given ActionEvent = action
     PageDisplayer.showInDialog(caption, new DisplayablePage() {
       def getPage: Node = {
         new BorderPane {
@@ -1925,13 +1926,13 @@ object KuTuApp extends JFXApp3 with KutuService with JsonSupport with JwtSupport
       new Button("OK") {
         onAction = handleAction { implicit e: ActionEvent =>
           deleteVerein(v.id)
-          updateTree
+          updateTree()
         }
       })
   }
 
-  def makeVereinUmbenennenMenu(v: Verein) = makeMenuAction("Verein umbenennen") { (caption, action) =>
-    implicit val e = action
+  private def makeVereinUmbenennenMenu(v: Verein) = makeMenuAction("Verein umbenennen") { (caption, action) =>
+    given ActionEvent = action
     val txtVereinsname = new TextField {
       prefWidth = 500
       promptText = "Neuer Vereinsname"
@@ -1970,7 +1971,7 @@ object KuTuApp extends JFXApp3 with KutuService with JsonSupport with JwtSupport
               case s => Some(s.trim())
             }
           ))
-          updateTree
+          updateTree()
           val text = txtVereinsname.text.value
           tree.getLeaves("Athleten").find { item => item.value.value.contains(text) } match {
             case Some(node) =>
@@ -1981,7 +1982,7 @@ object KuTuApp extends JFXApp3 with KutuService with JsonSupport with JwtSupport
       })
   }
 
-  def getStage() = stage
+  def getStage: PrimaryStage = stage
 
   override def start(): Unit = {
     val pForm = new ProgressForm(Some(new PrimaryStage {
@@ -1997,13 +1998,13 @@ object KuTuApp extends JFXApp3 with KutuService with JsonSupport with JwtSupport
   def startDB(): Unit = {
     logger.info(database.source.toString)
   }
-  
-  def cleanupDB(): Unit = {
+
+  private def cleanupDB(): Unit = {
     markAthletesInactiveOlderThan(3)
     ResourceExchanger.cleanupMediaFiles()
   }
 
-  def startUI(): Unit = {
+  private def startUI(): Unit = {
     logger.info("starte das UI ...")
     rootTreeItem = new TreeItem[String]("Dashboard") {
       expanded = true
@@ -2029,7 +2030,7 @@ object KuTuApp extends JFXApp3 with KutuService with JsonSupport with JwtSupport
       styleClass += "toggle-button2"
 
       disable <== btnWettkampfModus.disable
-      onAction = handleAction { action =>
+      onAction = handleAction { (action: ActionEvent) =>
         if ConnectionStates.connectedProperty.value then {
           ConnectionStates.disconnected()
         } else {
@@ -2172,7 +2173,7 @@ object KuTuApp extends JFXApp3 with KutuService with JsonSupport with JwtSupport
 
           }
           val centerPane = (newItem.isLeaf, Option(newItem.getParent)) match {
-            case (true, Some(parent)) => {
+            case (true, Some(parent)) =>
               tree.getThumbs(parent.getValue).find(p => p.button.text.getValue.equals(newItem.getValue)) match {
                 case Some(KuTuAppThumbNail(p: WettkampfView, _, newItem)) =>
                   PageDisplayer.choosePage(modelWettkampfModus, Some(p), "dashBoard - " + newItem.getValue, tree)
@@ -2181,7 +2182,6 @@ object KuTuApp extends JFXApp3 with KutuService with JsonSupport with JwtSupport
                 case _ =>
                   PageDisplayer.choosePage(modelWettkampfModus, None, "dashBoard - " + newItem.getValue, tree)
               }
-            }
             case (false, Some(_)) =>
               PageDisplayer.choosePage(modelWettkampfModus, None, "dashBoard - " + newItem.getValue, tree)
             case (_, _) =>

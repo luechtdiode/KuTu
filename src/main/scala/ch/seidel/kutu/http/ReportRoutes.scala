@@ -29,7 +29,7 @@ trait ReportRoutes extends SprayJsonSupport
   val renderer: KategorieTeilnehmerToHtmlRenderer = new KategorieTeilnehmerToHtmlRenderer() {
     override val logger: Logger = LoggerFactory.getLogger(classOf[ReportRoutes])
   }
-  val jsonrenderer: KategorieTeilnehmerToJSONRenderer = new KategorieTeilnehmerToJSONRenderer() {
+  private val jsonrenderer: KategorieTeilnehmerToJSONRenderer = new KategorieTeilnehmerToJSONRenderer() {
     override val logger: Logger = LoggerFactory.getLogger(classOf[ReportRoutes])
   }
 
@@ -63,9 +63,9 @@ trait ReportRoutes extends SprayJsonSupport
                         case GeraeteRiegeList(riegen, _) =>
                           val filteredRiegen = riegen.filter { k => k.kandidaten.exists(filterMatchingCandidatesToQuery(q))}
                           gr match {
-                            case Some(grv) if (grv.equalsIgnoreCase("verein")) =>
+                            case Some(grv) if grv.equalsIgnoreCase("verein") =>
                               HttpEntity(ContentTypes.`text/html(UTF-8)`, renderer.riegenToVereinListeAsHTML(filteredRiegen, logofile, dgEvents))
-                            case Some(grv) if (grv.equalsIgnoreCase("durchgang")) =>
+                            case Some(grv) if grv.equalsIgnoreCase("durchgang") =>
                               HttpEntity(ContentTypes.`text/html(UTF-8)`, renderer.riegenToDurchgangListeAsHTML(filteredRiegen, logofile, dgEvents))
                             case _ =>
                               HttpEntity(ContentTypes.`text/html(UTF-8)`, renderer.riegenToKategorienListeAsHTML(filteredRiegen, logofile, dgEvents))
@@ -105,10 +105,7 @@ trait ReportRoutes extends SprayJsonSupport
           case s: String if s.equals(k.verein.toLowerCase) => true
           case s: String if s.equals(k.programm.toLowerCase) => true
           case s: String if s.equals(k.geschlecht.toLowerCase) => true
-          case s: String if s.nonEmpty => {
-            k.verein.toLowerCase.contains(s) ||
-              k.einteilung.exists(_.easyprint.toLowerCase.contains(s))
-          }
+          case s: String if s.nonEmpty => k.verein.toLowerCase.contains(s) || k.einteilung.exists(_.easyprint.toLowerCase.contains(s))
           case _ => false
         }
     }

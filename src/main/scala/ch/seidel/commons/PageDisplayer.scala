@@ -8,7 +8,6 @@ import javafx.scene.input.{KeyCode, KeyEvent}
 import org.slf4j.{Logger, LoggerFactory}
 import scalafx.Includes.*
 import scalafx.application.Platform
-import scalafx.beans.Observable
 import scalafx.beans.property.BooleanProperty
 import scalafx.event.ActionEvent
 import scalafx.geometry.{Insets, Pos}
@@ -29,7 +28,7 @@ import scala.concurrent.{Await, Promise}
  */
 object PageDisplayer {
   val logger: Logger = LoggerFactory.getLogger(this.getClass)
-  var errorIcon: Image = null
+  private var errorIcon: Image = null
   try {
     errorIcon = new Image(getClass.getResourceAsStream("/images/RedException.png"))
   } catch {
@@ -41,7 +40,7 @@ object PageDisplayer {
   } catch {
     case e: Exception => e.printStackTrace()
   }
-  var infoIcon: Image = null
+  private var infoIcon: Image = null
   try {
     infoIcon = new Image(getClass.getResourceAsStream("/images/GreenOk.png"))
   } catch {
@@ -55,10 +54,10 @@ object PageDisplayer {
       outer => {
         initModality(Modality.WindowModal)
         event.source match {
-          case n: jfxs.Node if n.getScene.getRoot == KuTuApp.getStage().getScene.getRoot =>
+          case n: jfxs.Node if n.getScene.getRoot == KuTuApp.getStage.getScene.getRoot =>
             delegate.initOwner(n.getScene.getWindow)
           case _ =>
-            delegate.initOwner(KuTuApp.getStage().getScene.getWindow)
+            delegate.initOwner(KuTuApp.getStage.getScene.getWindow)
         }
 
         title = tit
@@ -98,7 +97,7 @@ object PageDisplayer {
     val dialogStage = new Stage {
       outer => {
         initModality(Modality.WindowModal)
-        delegate.initOwner(KuTuApp.getStage().getScene.getWindow)
+        delegate.initOwner(KuTuApp.getStage.getScene.getWindow)
 
         title = tit
         scene = new Scene {
@@ -254,7 +253,7 @@ object PageDisplayer {
 
       // Set expandable Exception into the dialog pane.
       alert.getDialogPane.expandableContent = expContent
-      alert.initOwner(KuTuApp.getStage().getScene.getWindow)
+      alert.initOwner(KuTuApp.getStage.getScene.getWindow)
       alert.show()
     }
   }
@@ -266,7 +265,7 @@ object PageDisplayer {
       alert.setTitle("Fehler")
       alert.setHeaderText(caption)
       alert.setContentText(message)
-      alert.initOwner(KuTuApp.getStage().getScene.getWindow)
+      alert.initOwner(KuTuApp.getStage.getScene.getWindow)
       alert.show()
     }
   }
@@ -278,7 +277,7 @@ object PageDisplayer {
       alert.setTitle("Achtung")
       alert.setHeaderText(caption)
       alert.setContentText(message)
-      alert.initOwner(KuTuApp.getStage().getScene.getWindow)
+      alert.initOwner(KuTuApp.getStage.getScene.getWindow)
       alert.show()
     }
   }
@@ -290,7 +289,7 @@ object PageDisplayer {
       alert.setTitle("Information")
       alert.setHeaderText(caption)
       alert.setContentText(message)
-      alert.initOwner(KuTuApp.getStage().getScene.getWindow)
+      alert.initOwner(KuTuApp.getStage.getScene.getWindow)
       alert.show()
     }
   }
@@ -324,7 +323,7 @@ object PageDisplayer {
     }
   }
 
-  var activePage: Option[DisplayablePage] = None
+  private var activePage: Option[DisplayablePage] = None
   
   private def displayPage(nodeToAdd: DisplayablePage): Node = {
     activePage match {

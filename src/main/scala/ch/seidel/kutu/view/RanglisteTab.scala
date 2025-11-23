@@ -20,14 +20,14 @@ import scala.concurrent.Await
 import scala.concurrent.duration.Duration
 
 class RanglisteTab(wettkampfmode: BooleanProperty, wettkampf: WettkampfView, override val service: KutuService) extends DefaultRanglisteTab(wettkampfmode, service) {
-  override val title = wettkampf.easyprint
-  val programmText = wettkampf.programm.id match {
+  override val title: String = wettkampf.easyprint
+  val programmText: String = wettkampf.programm.id match {
     case 20 => "Kategorie"
     case _ => "Programm"
   }
 
-  val altersklassen = Altersklasse.parseGrenzen(wettkampf.altersklassen)
-  val jgAltersklassen = Altersklasse.parseGrenzen(wettkampf.jahrgangsklassen)
+  val altersklassen: Seq[(String, Seq[String], Int)] = Altersklasse.parseGrenzen(wettkampf.altersklassen)
+  val jgAltersklassen: Seq[(String, Seq[String], Int)] = Altersklasse.parseGrenzen(wettkampf.jahrgangsklassen)
 
   def riegenZuDurchgang: Map[String, Durchgang] = {
     val riegen = service.listRiegenZuWettkampf(wettkampf.id)
@@ -70,21 +70,21 @@ class RanglisteTab(wettkampfmode: BooleanProperty, wettkampf: WettkampfView, ove
     FilenameDefault("Rangliste_" + foldername + ".html", new java.io.File(homedir + "/" + foldername))
   }
 
-  val btnBereitstellen: Button = new Button {
+  private val btnBereitstellen: Button = new Button {
     text = "Bereitstellen ..."
-    val p = wettkampf.toWettkampf
+    val p: Wettkampf = wettkampf.toWettkampf
     visible <== when(wettkampfmode) choose false otherwise true
 
     disable <== when(Bindings.createBooleanBinding(() => {
       !p.hasSecred(homedir, remoteHostOrigin) ||
-        !ConnectionStates.connectedWithProperty.value.equals(p.uuid.map(_.toString).getOrElse("")) ||
-        !lastPublishedScoreView.getValue.isEmpty || wettkampfmode.getValue
+        !ConnectionStates.connectedWithProperty.value.equals(p.uuid.getOrElse("")) ||
+        lastPublishedScoreView.getValue.isDefined || wettkampfmode.getValue
     }, ConnectionStates.connectedWithProperty, lastPublishedScoreView, wettkampfmode
     )) choose true otherwise false
 
     onAction = handleAction { (action: ActionEvent) =>
-      lastScoreDef.getValue.foreach { (scoredef) =>
-        implicit val e = action
+      lastScoreDef.getValue.foreach { scoredef =>
+        given ActionEvent = action
 
         val txtScoreName = new TextField {
           prefWidth = 500
@@ -119,14 +119,14 @@ class RanglisteTab(wettkampfmode: BooleanProperty, wettkampf: WettkampfView, ove
       }
     }
   }
-  val btnErneutBereitstellen: Button = new Button {
+  private val btnErneutBereitstellen: Button = new Button {
     text = "Erneut bereitstellen ..."
     tooltip = "Die Publikation wird dadurch zurückgezogen, bis sie explizit wieder freigegeben wird."
-    val p = wettkampf.toWettkampf
+    val p: Wettkampf = wettkampf.toWettkampf
     visible <== when(wettkampfmode) choose false otherwise true
     disable <== when(Bindings.createBooleanBinding(() => {
       !p.hasSecred(homedir, remoteHostOrigin) ||
-        !ConnectionStates.connectedWithProperty.value.equals(p.uuid.map(_.toString).getOrElse("")) ||
+        !ConnectionStates.connectedWithProperty.value.equals(p.uuid.getOrElse("")) ||
         lastPublishedScoreView.getValue.isEmpty || wettkampfmode.getValue ||
         lastPublishedScoreView.getValue.map(_.query) == lastScoreDef.getValue.map(_.toRestQuery)
     }, ConnectionStates.connectedWithProperty, lastPublishedScoreView, lastScoreDef, wettkampfmode
@@ -134,8 +134,8 @@ class RanglisteTab(wettkampfmode: BooleanProperty, wettkampf: WettkampfView, ove
     )) choose true otherwise false
 
     onAction = handleAction { (action: ActionEvent) =>
-      lastScoreDef.getValue.foreach { (scoredef) =>
-        implicit val e = action
+      lastScoreDef.getValue.foreach { scoredef =>
+        given ActionEvent = action
 
         val txtScoreName = new TextField {
           prefWidth = 500
@@ -172,13 +172,13 @@ class RanglisteTab(wettkampfmode: BooleanProperty, wettkampf: WettkampfView, ove
       }
     }
   }
-  val btnPublikationFreigeben: Button = new Button {
+  private val btnPublikationFreigeben: Button = new Button {
     text = "Publikation freigeben ..."
-    val p = wettkampf.toWettkampf
+    val p: Wettkampf = wettkampf.toWettkampf
 
     disable <== when(Bindings.createBooleanBinding(() => {
       !p.hasSecred(homedir, remoteHostOrigin) ||
-        !ConnectionStates.connectedWithProperty.value.equals(p.uuid.map(_.toString).getOrElse("")) ||
+        !ConnectionStates.connectedWithProperty.value.equals(p.uuid.getOrElse("")) ||
         lastPublishedScoreView.getValue.isEmpty || lastPublishedScoreView.getValue.get.published ||
         lastPublishedScoreView.getValue.map(_.query) != lastScoreDef.getValue.map(_.toRestQuery)
 

@@ -1,48 +1,11 @@
 package ch.seidel.kutu.view
 
 import ch.seidel.commons.*
-import ch.seidel.kutu.Config.*
-import ch.seidel.kutu.KuTuApp
-import ch.seidel.kutu.KuTuApp.hostServices
-import ch.seidel.kutu.data.ResourceExchanger
 import ch.seidel.kutu.domain.*
-import ch.seidel.kutu.renderer.PrintUtil.FilenameDefault
-import ch.seidel.kutu.renderer.{PrintUtil, RiegenBuilder, WertungsrichterQRCode, WertungsrichterQRCodesToHtmlRenderer}
-import ch.seidel.kutu.squad.DurchgangBuilder
-import javafx.scene.control as jfxsc
-import javafx.scene.text.Text
-import scalafx.Includes.{eventClosureWrapperWithParam, jfxActionEvent2sfx, jfxBooleanBinding2sfx, jfxBounds2sfx, jfxCellEditEvent2sfx, jfxKeyEvent2sfx, jfxMouseEvent2sfx, jfxObjectProperty2sfx, jfxParent2sfx, jfxPixelReader2sfx, jfxReadOnlyBooleanProperty2sfx, jfxTableViewSelectionModel2sfx, jfxText2sfxText, observableList2ObservableBuffer, when}
-import scalafx.application.Platform
-import scalafx.beans.binding.Bindings
-import scalafx.beans.property.{BooleanProperty, StringProperty}
-import scalafx.beans.value.ObservableValue
-import scalafx.collections.ObservableBuffer
-import scalafx.collections.ObservableBuffer.observableBuffer2ObservableList
-import scalafx.event.ActionEvent
+import scalafx.beans.property.BooleanProperty
 import scalafx.geometry.*
-import scalafx.print.PageOrientation
-import scalafx.scene.control.SelectionMode.sfxEnum2jfx
-import scalafx.scene.control.TableColumn.{sfxTableColumn2jfx, CellEditEvent as TableCellEditEvent}
-import scalafx.scene.control.TableView.sfxTableView2jfx
-import scalafx.scene.control.TreeTableColumn.sfxTreeTableColumn2jfx
-import scalafx.scene.control.TreeTableView.sfxTreeTableView2jfx
-import scalafx.scene.control.cell.{CheckBoxListCell, CheckBoxTableCell, ComboBoxTableCell}
 import scalafx.scene.control.*
-import scalafx.scene.image.{Image, ImageView, WritableImage}
-import scalafx.scene.input.{ClipboardContent, DataFormat, KeyEvent, TransferMode}
 import scalafx.scene.layout.*
-import scalafx.scene.{Cursor, Node}
-import scalafx.util.StringConverter
-import scalafx.util.converter.DefaultStringConverter
-
-import java.time.format.DateTimeFormatter
-import java.time.temporal.ChronoUnit
-import java.time.temporal.ChronoUnit.NANOS
-import java.time.{Duration, LocalDateTime, LocalTime, ZoneOffset}
-import java.util.UUID
-import scala.annotation.tailrec
-import scala.concurrent.Future
-import scala.concurrent.duration.MILLISECONDS
 
 
 class PreferencesTab(val wettkampfInfo: WettkampfInfo, override val service: KutuService) extends Tab with TabWithService {

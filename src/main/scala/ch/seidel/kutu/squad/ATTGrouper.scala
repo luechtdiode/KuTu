@@ -4,20 +4,20 @@ import ch.seidel.kutu.domain.*
 
 case object ATTGrouper extends RiegenGrouper {
 
-  override def generateRiegenName(w: WertungView) = groupKey(atGrouper)(w)
+  override def generateRiegenName(w: WertungView): String = groupKey(atGrouper)(w)
 
   override def buildGrouper(riegencnt: Int): (List[WertungView => String], List[WertungView => String], Boolean) = {
     val atGrp = atGrouper.take(3)
     (atGrp, atGrouper, true)
   }
 
-  val atGrouper: List[WertungView => String] = List(
+  private val atGrouper: List[WertungView => String] = List(
     x => x.wettkampfdisziplin.programm.name.shorten,
     x => x.athlet.geschlecht,
-    x => (x.athlet.gebdat match {
+    x => x.athlet.gebdat match {
       case Some(d) => f"$d%tY";
       case _ => ""
-    }),
+    },
     x => x.athlet.verein match {
       case Some(v) => v.easyprint
       case None => ""

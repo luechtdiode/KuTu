@@ -2,12 +2,12 @@ package ch.seidel.kutu.renderer
 
 import ch.seidel.kutu.domain.WertungView
 import ch.seidel.kutu.renderer.PrintUtil.*
-import org.slf4j.LoggerFactory
+import org.slf4j.{Logger, LoggerFactory}
 
 import java.io.File
 
 trait BestenListeToHtmlRenderer {
-  val logger = LoggerFactory.getLogger(classOf[BestenListeToHtmlRenderer])
+  val logger: Logger = LoggerFactory.getLogger(classOf[BestenListeToHtmlRenderer])
   val intro = """<html>
     <head>
       <meta charset="UTF-8" />
@@ -114,7 +114,7 @@ trait BestenListeToHtmlRenderer {
       <div class="showborder">
         <table width="100%">
           <tr class="totalRow heavyRow"><td>Verein</td><td>Name</td><td>Gerät/Disziplin, Programm/Kategorie</td><td class="totalCol">Note</td></tr>
-          ${dt}
+          $dt
         </table>
       </div>
     </div>

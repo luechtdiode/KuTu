@@ -34,10 +34,10 @@ trait DurchgangEditor {
   val wettkampfid: Long
   val durchgang: Durchgang
   val isHeader = false
-  def getAnz = if initstartriegen.size > 0 then initstartriegen.map(r => r._2.map(rr => rr.initanz).sum).sum else 0
-  def getMin = if initstartriegen.size > 0 then initstartriegen.map(r => r._2.map(rr => rr.initanz).sum).min else 0
-  def getMax = if initstartriegen.size > 0 then initstartriegen.map(r => r._2.map(rr => rr.initanz).sum).max else 0
-  def getAvg = if initstartriegen.size > 0 then anz.value / initstartriegen.size else 0
+  def getAnz: Int = if initstartriegen.nonEmpty then initstartriegen.map(r => r._2.map(rr => rr.initanz).sum).sum else 0
+  def getMin: Int = if initstartriegen.nonEmpty then initstartriegen.map(r => r._2.map(rr => rr.initanz).sum).min else 0
+  def getMax: Int = if initstartriegen.nonEmpty then initstartriegen.map(r => r._2.map(rr => rr.initanz).sum).max else 0
+  def getAvg: Int = if initstartriegen.nonEmpty then anz.value / initstartriegen.size else 0
 
   val name = StringProperty(durchgang.name)
   val title = StringProperty(durchgang.title)
@@ -47,12 +47,12 @@ trait DurchgangEditor {
   val avg: IntegerProperty
 
   val initstartriegen: Map[Disziplin, Seq[RiegeEditor]] = Map.empty
-  def valueEditor(index: Disziplin): Seq[RiegeEditor] = initstartriegen.get(index).getOrElse(Seq.empty)
+  def valueEditor(index: Disziplin): Seq[RiegeEditor] = initstartriegen.getOrElse(index, Seq.empty)
 
   def riegenWithMergedClubs(): Map[Disziplin, Seq[(String,Int,Int)]] = {
     initstartriegen.map{
       case (key, riegen) =>
-        (key -> riegen
+        key -> riegen
           .groupBy(d => {
             val parts = d.initname.split(",")
             if parts.length > 2 then {
@@ -61,7 +61,6 @@ trait DurchgangEditor {
           })
           .map(r => (r._1, r._2.filter(_.initname.contains("W,")).map(_.initanz).sum, r._2.filter(!_.initname.contains("W,")).map(_.initanz).sum))
           .toSeq
-          )
     }
   }
 }
@@ -75,13 +74,13 @@ case class CompetitionDurchgangEditor(wettkampfid: Long, durchgang: Durchgang, o
 
 case class GroupDurchgangEditor(wettkampfid: Long, durchgang: Durchgang, aggregates: List[DurchgangEditor]) extends DurchgangEditor {
   override val isHeader = true
-  override val initstartriegen = aggregates
+  override val initstartriegen: Map[Disziplin, Seq[RiegeEditor]] = aggregates
     .flatMap(_.initstartriegen)
     .foldLeft(Map[Disziplin, Seq[RiegeEditor]]()){ case (acc, (disz, riegen)) =>
       acc.updated(disz, acc.getOrElse(disz, Seq.empty) ++ riegen)
     }
-  def getGroupMin = if initstartriegen.size > 0 then aggregates.map(r => r.min.value).min else 0
-  def getGroupMax = if initstartriegen.size > 0 then aggregates.map(r => r.max.value).max else 0
+  private def getGroupMin = if initstartriegen.nonEmpty then aggregates.map(r => r.min.value).min else 0
+  private def getGroupMax = if initstartriegen.nonEmpty then aggregates.map(r => r.max.value).max else 0
   override val anz = IntegerProperty(getAnz)
   override val min = IntegerProperty(getGroupMin)
   override val max = IntegerProperty(getGroupMax)

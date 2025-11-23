@@ -29,7 +29,7 @@ trait WettkampfClient extends AuthSupport with KutuService with FailureSupport {
   private val log = LoggerFactory.getLogger(WettkampfClient.this.getClass)
   import DefaultJsonProtocol.*
 
-  def toHttpEntity(wettkampf: Wettkampf): HttpEntity.Strict = {
+  private def toHttpEntity(wettkampf: Wettkampf): HttpEntity.Strict = {
     val bos = new ByteArrayOutputStream()
     ResourceExchanger.exportWettkampfToStream(wettkampf, bos)
     val bytes = bos.toByteArray

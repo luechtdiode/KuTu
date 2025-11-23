@@ -36,7 +36,7 @@ object LocalServerStates {
     setLocalHostServer(value = false, None)
     Platform.runLater(
       () => {
-        ConnectionStates.disconnect
+        ConnectionStates.disconnect()
         _localServerProperty.setValue(false)
       }
     )

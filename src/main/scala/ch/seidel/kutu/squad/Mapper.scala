@@ -8,7 +8,7 @@ import org.slf4j.LoggerFactory
 trait Mapper {
   private val logger = LoggerFactory.getLogger(classOf[Mapper])
 
-  protected def buildRiegenIndex(riegen: Seq[RiegeAthletWertungen]) = riegen.flatten.toMap
+  protected def buildRiegenIndex(riegen: Seq[RiegeAthletWertungen]): Map[String, Seq[(AthletView, Seq[WertungView])]] = riegen.flatten.toMap
 
   protected def buildWorkModel(riegen: Seq[RiegeAthletWertungen]): GeraeteRiegen = {
     riegen.map(raw => {

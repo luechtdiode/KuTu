@@ -1,7 +1,7 @@
 package ch.seidel.kutu.renderer
 
 import ch.seidel.kutu.Config
-import ch.seidel.kutu.Config.{getRemoteHosts, homedir, remoteBaseUrl, remoteHostOrigin}
+import ch.seidel.kutu.Config.{homedir, remoteBaseUrl, remoteHostOrigin}
 import ch.seidel.kutu.KuTuApp.enc
 import ch.seidel.kutu.domain.*
 import ch.seidel.kutu.renderer.PrintUtil.*
@@ -185,7 +185,7 @@ trait WettkampfOverviewToHtmlRenderer {
           |<ul><li>
   """.stripMargin
 
-  val outro = """
+  val outro: String = """
     |</li></ul>
     |<script>
     |var toggler = document.getElementsByClassName("caret");
@@ -230,7 +230,7 @@ trait WettkampfOverviewToHtmlRenderer {
     val tuSum = programme.map(_._3).sum
     val totSum = tiSum + tuSum
 
-    val logoHtml = (if logo.exists then s"""<img class=logo src="${logo.imageSrcForWebEngine}" title="Logo"/>""" else s"")
+    val logoHtml = if logo.exists then s"""<img class=logo src="${logo.imageSrcForWebEngine}" title="Logo"/>""" else s""
     val hasRemote = wettkampf.toWettkampf.hasSecred(homedir, remoteHostOrigin) || wettkampf.toWettkampf.hasRemote(homedir, remoteHostOrigin)
     val isLocalServer = Config.isLocalHostServer
     val registrationURL = s"$remoteBaseUrl/registration/${wettkampf.uuid.get}"
@@ -240,7 +240,7 @@ trait WettkampfOverviewToHtmlRenderer {
     val startlistQRUrl = toQRCodeImage(startlistURL)
     val startlistMobileURL = s"$remoteBaseUrl/search-athlet/${wettkampf.uuid.get}"
     val startlistMobileQRUrl = toQRCodeImage(startlistMobileURL)
-    val lastResultsURL = s"$remoteBaseUrl/?" + new String(enc.encodeToString((s"last&c=${wettkampf.uuid.get}").getBytes))
+    val lastResultsURL = s"$remoteBaseUrl/?" + new String(enc.encodeToString(s"last&c=${wettkampf.uuid.get}".getBytes))
     val lastQRUrl = toQRCodeImage(lastResultsURL)
 
     val auszSchwelle = (if wettkampf.auszeichnung > 100 then {
@@ -261,7 +261,7 @@ trait WettkampfOverviewToHtmlRenderer {
     val auszHint = if wettkampf.auszeichnungendnote.compare(BigDecimal.valueOf(0)) != 0 then
       s"<em>Auszeichnungs-Mindes-Notenschnitt: ${wettkampf.auszeichnungendnote}</em>"
     else
-      s"<em>Auszeichnungs-Schwelle: ${auszeichnung}</em>"
+      s"<em>Auszeichnungs-Schwelle: $auszeichnung</em>"
 
     val medallienHeader1 = medallienbedarf.map(p => p._1)
       .mkString("<th class='blockstart' colspan='2'>", "</th><th class='blockstart' colspan='2'>", "</th>")
@@ -344,8 +344,7 @@ trait WettkampfOverviewToHtmlRenderer {
       }
       val hasNoExplicitTeamAssignements = !wertungen.exists(_.team > 0)
       val unassignedAtletesTeam = Team("Ohne gültige Zuweisung", "", wertungen.filter(w => hasNoExplicitTeamAssignements || w.team > 0).filter(a => !allAthletesInTeams.contains(a.athlet)), Map.empty, Map.empty, Sum)
-      val teamsSections = groupedTeams.keySet.toList.sorted.map {
-        case name =>
+      val teamsSections = groupedTeams.keySet.toList.sorted.map { name =>
           val groupMerges = teamsIndex(name).getGrouperDefs.filter(d => d.exists(_.trim.nonEmpty))
           val mergeRules = if groupMerges.nonEmpty then {
             s"""
@@ -388,10 +387,10 @@ trait WettkampfOverviewToHtmlRenderer {
       ""
     }
     val medalrows = s"""
-    <tr><td class='data'>Goldmedallie</td>${goldDetails}<td class='blockstart valuedata'>${goldSum}</td></tr>
-    <tr><td class='data'>Silbermedallie</td>${silverDetails}<td class='blockstart valuedata'>${silverSum}</td></tr>
-    <tr><td class='data'>Bronzemedallie</td>${bronzeDetails}<td class='blockstart valuedata'>${bronzeSum}</td></tr>
-    <tr><td class='data'>Ab 4. Rang</td>${auszDetails}<td class='blockstart valuedata'>${auszSum}</td></tr>
+    <tr><td class='data'>Goldmedallie</td>$goldDetails<td class='blockstart valuedata'>$goldSum</td></tr>
+    <tr><td class='data'>Silbermedallie</td>$silverDetails<td class='blockstart valuedata'>$silverSum</td></tr>
+    <tr><td class='data'>Bronzemedallie</td>$bronzeDetails<td class='blockstart valuedata'>$bronzeSum</td></tr>
+    <tr><td class='data'>Ab 4. Rang</td>$auszDetails<td class='blockstart valuedata'>$auszSum</td></tr>
     """
 
     s"""<div class=blatt>
@@ -436,12 +435,12 @@ trait WettkampfOverviewToHtmlRenderer {
         ${if altersklassen.nonEmpty then
           s"""<h2>Altersklassen</h2>
           Alter am Wettkampf - Tag: ${escaped(wettkampf.altersklassen)} <br>
-          <ul>${altersklassen}
+          <ul>$altersklassen
           </ul>"""
           else if jgAltersklassen.nonEmpty then
           s"""<h2>Altersklassen</h2>
           Alter im Wettkampf - Jahr: ${escaped(wettkampf.jahrgangsklassen)} <br>
-          <ul>${jgAltersklassen}
+          <ul>$jgAltersklassen
           </ul>"""
           else ""
         }
@@ -450,26 +449,26 @@ trait WettkampfOverviewToHtmlRenderer {
       <div class="showborder">
         <table width="100%">
           <thead>
-            <tr class='head'><th>&nbsp;</th>${programHeader1}<th class='blockstart' colspan="3">Total</th></tr>
-            <tr class='head'><th>Verein</th>${programHeader2}<th class='blockstart'>Ti</th><th>Tu</th><th>Total</th></tr>
+            <tr class='head'><th>&nbsp;</th>$programHeader1<th class='blockstart' colspan="3">Total</th></tr>
+            <tr class='head'><th>Verein</th>$programHeader2<th class='blockstart'>Ti</th><th>Tu</th><th>Total</th></tr>
           </thead>
           <tbody>
-          ${rows}
+          $rows
           </tbody>
           <tfoot>
-          <tr><td class="data">Total</td>${totalDetails}<td class='valuedata blockstart'>${tiSum}</td><td class="valuedata">${tuSum}</td><td class="valuedata">${totSum}</td></tr>
-          <tr><td class="data">Total Ti & Tu</td>${totalTuTiDetails}<td class='tuti blockstart' colspan='3'>&nbsp;</td></tr>
+          <tr><td class="data">Total</td>$totalDetails<td class='valuedata blockstart'>$tiSum</td><td class="valuedata">$tuSum</td><td class="valuedata">$totSum</td></tr>
+          <tr><td class="data">Total Ti & Tu</td>$totalTuTiDetails<td class='tuti blockstart' colspan='3'>&nbsp;</td></tr>
           </tfoot>
         </table>
       </div>
       $teamsBlock
       <h2>Medallien-Bedarf</h2>
-        ${auszHint}
+        $auszHint
         <div class="showborder">
         <table width="100%">
           <thead>
-            <tr class='head'><th>&nbsp;</th>${medallienHeader1}<th class='blockstart'>&nbsp;</th></tr>
-            <tr class='head'><th>Auszeichnung</th>${medallienHeader2}<th class='blockstart'>Total</th></tr>
+            <tr class='head'><th>&nbsp;</th>$medallienHeader1<th class='blockstart'>&nbsp;</th></tr>
+            <tr class='head'><th>Auszeichnung</th>$medallienHeader2<th class='blockstart'>Total</th></tr>
           </thead>
             <tbody>
             $medalrows

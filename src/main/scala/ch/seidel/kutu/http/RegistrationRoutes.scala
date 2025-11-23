@@ -5,7 +5,6 @@ import ch.seidel.kutu.Config.remoteAdminBaseUrl
 import ch.seidel.kutu.actors.*
 import ch.seidel.kutu.data.RegistrationAdmin.adjustWertungRiegen
 import ch.seidel.kutu.data.ResourceExchanger
-import ch.seidel.kutu.data.ResourceExchanger.updateAthletRegistration
 import ch.seidel.kutu.domain.*
 import ch.seidel.kutu.http.AuthSupport.OPTION_LOGINRESET
 import ch.seidel.kutu.renderer.MailTemplates.createPasswordResetMail
@@ -124,7 +123,7 @@ trait RegistrationRoutes extends SprayJsonSupport with JsonSupport with JwtSuppo
     }
     , Duration.Inf)
 
-  def getMediaDownloadRemote(p: Wettkampf, mediaList: List[MediaAdmin]): Unit = {
+  def doMediaDownloadRemote(p: Wettkampf, mediaList: List[MediaAdmin]): Unit = {
     val request = withAuthHeader(
       HttpRequest(
         POST,
@@ -374,7 +373,7 @@ trait RegistrationRoutes extends SprayJsonSupport with JsonSupport with JwtSuppo
                   val wkid: String = wettkampf.uuid.get
                   val registration = selectRegistration(registrationId)
                   val resetLoginQuery = createOneTimeResetRegistrationLoginToken(wkid, registrationId)
-                  val link = s"$decodedorigin/registration/${wkid}/${registrationId}?$resetLoginQuery"
+                  val link = s"$decodedorigin/registration/$wkid/$registrationId?$resetLoginQuery"
                   complete(
                     KuTuMailerActor.send(createPasswordResetMail(wettkampf, registration, link))
                   )
@@ -395,7 +394,7 @@ trait RegistrationRoutes extends SprayJsonSupport with JsonSupport with JwtSuppo
                   pathEndOrSingleSlash {
                     get { // list Athletes
                       complete(
-                        selectAthletRegistrations(registrationId).toList.toJson(using listFormat(using athletregistrationFormat))
+                        selectAthletRegistrations(registrationId).toJson(using listFormat(using athletregistrationFormat))
                       )
                     }
                   }
@@ -429,7 +428,7 @@ trait RegistrationRoutes extends SprayJsonSupport with JsonSupport with JwtSuppo
                           complete(Future {
                             val reg = updateRegistration(registration)
                             CompetitionRegistrationClientActor.publish(RegistrationChanged(wettkampf.uuid.get), clientId)
-                            log.info(s"$clientId: Vereinsregistration aktualisiert: ${registration}")
+                            log.info(s"$clientId: Vereinsregistration aktualisiert: $registration")
                             reg.toJson(using registrationFormat)
                           })
                         } else {
@@ -440,7 +439,7 @@ trait RegistrationRoutes extends SprayJsonSupport with JsonSupport with JwtSuppo
                       complete(Future {
                         deleteRegistration(registrationId)
                         CompetitionRegistrationClientActor.publish(RegistrationChanged(wettkampf.uuid.get), clientId)
-                        log.info(s"$clientId: Vereinsregistration gelöscht: ${registrationId}")
+                        log.info(s"$clientId: Vereinsregistration gelöscht: $registrationId")
                         StatusCodes.OK
                       })
                     }
@@ -467,7 +466,7 @@ trait RegistrationRoutes extends SprayJsonSupport with JsonSupport with JwtSuppo
                           complete {
                             copyClubRegsFromCompetition(wettkampfCopyFrom.uuid.get, registrationId)
                             CompetitionRegistrationClientActor.publish(RegistrationChanged(wettkampf.uuid.get), clientId)
-                            log.info(s"$clientId: Anmeldungen kopiert: von ${wettkampfCopyFrom.easyprint} nach ${registrationId}")
+                            log.info(s"$clientId: Anmeldungen kopiert: von ${wettkampfCopyFrom.easyprint} nach $registrationId")
                             StatusCodes.OK
                           }
                         }
@@ -663,7 +662,7 @@ trait RegistrationRoutes extends SprayJsonSupport with JsonSupport with JwtSuppo
                             complete(Future {
                               deleteAthletRegistration(id)
                               CompetitionRegistrationClientActor.publish(RegistrationChanged(wettkampf.uuid.get), clientId)
-                              log.info(s"$clientId: Athletanmeldung gelöscht: ${id}")
+                              log.info(s"$clientId: Athletanmeldung gelöscht: $id")
                               StatusCodes.OK
                             })
                           }
@@ -711,7 +710,7 @@ trait RegistrationRoutes extends SprayJsonSupport with JsonSupport with JwtSuppo
                             complete(Future {
                               deleteJudgeRegistration(id)
                               CompetitionRegistrationClientActor.publish(RegistrationChanged(wettkampf.uuid.get), clientId)
-                              log.info(s"$clientId: WR-Anmeldung gelöscht: ${id}")
+                              log.info(s"$clientId: WR-Anmeldung gelöscht: $id")
                               StatusCodes.OK
                             })
                         }

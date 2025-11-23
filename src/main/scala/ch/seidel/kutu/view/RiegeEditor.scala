@@ -14,24 +14,24 @@ case class RiegeEditor(wettkampfid: Long, initname: String, initanz: Int, initvi
   val anz = IntegerProperty(initanz)
   val anzkat = StringProperty(s"$initviewanz/$initanz")
   val durchgang = StringProperty(initdurchgang.getOrElse(""))
-  val start = ObjectProperty(initstart.getOrElse(null))
-  val kind = if initviewanz + initanz == 0 then 1 else 0
+  val start = ObjectProperty(initstart.orNull)
+  val kind: Int = if initviewanz + initanz == 0 then 1 else 0
   if onSelectedChange.isDefined then {
     selected onChange {
       selected.value = onSelectedChange.get(initname, selected.value)
     }
   }
-  def reset: Unit = {
+  def reset(): Unit = {
     name.value = initname
     durchgang.value = initdurchgang.getOrElse("")
-    start.value = initstart.getOrElse(null)
+    start.value = initstart.orNull
   }
   def commit: RiegeRaw = {
     RiegeRaw (
       wettkampfId = wettkampfid,
       r = name.value,
-      durchgang = if durchgang.value.trim.length > 0 then Some(durchgang.value.trim) else None,
-      start = if start.value != null && start.value.isInstanceOf[Disziplin] then Some(start.value.asInstanceOf[Disziplin].id) else None,
+      durchgang = if durchgang.value.trim.nonEmpty then Some(durchgang.value.trim) else None,
+      start = if start.value != null && start.value.isInstanceOf[Disziplin] then Some(start.value.id) else None,
       kind = kind
     )
   }

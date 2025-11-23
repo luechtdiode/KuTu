@@ -163,7 +163,7 @@ trait KategorieTeilnehmerToHtmlRenderer {
       <div class="showborder">
         <table width="100%">
           <tr class="totalRow heavyRow"><td>${if kandidaten.head.team.nonEmpty then "Team" else "Verein"}</td><td>Name</td><td>Einteilung</td><td>Start</td><td class="totalCol">Bemerkung</td></tr>
-          ${dt}
+          $dt
         </table>
       </div>
     </div>
@@ -187,7 +187,7 @@ trait KategorieTeilnehmerToHtmlRenderer {
       <div class="showborder">
         <table width="100%">
           <tr class="totalRow heavyRow"><td></td><td>Name</td><td>Einteilung</td><td>Start</td><td class="totalCol">Bemerkung</td></tr>
-          ${dt}
+          $dt
         </table>
       </div>
     </div>
@@ -215,7 +215,7 @@ trait KategorieTeilnehmerToHtmlRenderer {
       <div class="showborder">
         <table width="100%">
           <tr class="totalRow heavyRow"><td>${if kandidaten.head.team.nonEmpty then "Team" else "Verein"}</td><td>Name</td><td>Einteilung</td><td>Start</td><td class="totalCol">Bemerkung</td></tr>
-          ${dt}
+          $dt
         </table>
       </div>
     </div>

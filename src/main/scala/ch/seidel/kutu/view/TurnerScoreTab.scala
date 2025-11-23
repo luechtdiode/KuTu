@@ -7,7 +7,7 @@ import ch.seidel.kutu.renderer.PrintUtil.FilenameDefault
 import scalafx.beans.property.BooleanProperty
 
 class TurnerScoreTab(wettkampfmode: BooleanProperty, val verein: Option[Verein], override val service: KutuService) extends DefaultRanglisteTab(wettkampfmode, service) {
-  override val title = verein match {case Some(v) => v.easyprint case None => "Vereinsübergreifend"}
+  override val title: String = verein match {case Some(v) => v.easyprint case None => "Vereinsübergreifend"}
 
   override def groupers: List[FilterBy] =
     List(ByNothing(), ByJahr(), ByWettkampf(), ByWettkampfArt(), ByWettkampfProgramm(), ByProgramm(),
@@ -25,7 +25,7 @@ class TurnerScoreTab(wettkampfmode: BooleanProperty, val verein: Option[Verein],
 
   override def getSaveAsFilenameDefault: FilenameDefault = FilenameDefault("Rangliste_" + encodeFileName(verein.map(_.name.replace(" ", "_")).getOrElse("Alle")), new java.io.File(homedir))
 
-  override def isPopulated = {
+  override def isPopulated: Boolean = {
     val combos = populate(groupers)
     combos.head.selectionModel.value.select(ByWettkampfProgramm())
     combos.tail.head.selectionModel.value.select(ByGeschlecht())

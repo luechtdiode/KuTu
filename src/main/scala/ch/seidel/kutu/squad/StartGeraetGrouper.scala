@@ -5,7 +5,6 @@ import ch.seidel.kutu.squad
 import org.slf4j.LoggerFactory
 
 import scala.annotation.tailrec
-import scala.collection.immutable
 
 trait StartGeraetGrouper extends RiegenSplitter with Stager {
   private val logger = LoggerFactory.getLogger(classOf[StartGeraetGrouper])
@@ -78,7 +77,7 @@ trait StartGeraetGrouper extends RiegenSplitter with Stager {
       val missingStartOffset = math.min(startgeraete.size, alignedriegen.size)
       val emptyGeraeteRiegen = Range(missingStartOffset, math.max(missingStartOffset, startgeraete.size))
         .map { startgeridx =>
-          (s"$programm (1)", s"Leere Riege ${programm}/${startgeraete(startgeridx).easyprint}", startgeraete(startgeridx), Seq[(AthletView, Seq[WertungView])]())
+          (s"$programm (1)", s"Leere Riege $programm/${startgeraete(startgeridx).easyprint}", startgeraete(startgeridx), Seq[(AthletView, Seq[WertungView])]())
         }
 
       alignedriegen
@@ -100,12 +99,12 @@ trait StartGeraetGrouper extends RiegenSplitter with Stager {
       val averageSize = startriegen.averageSize
       val optimized = startriegen.flatMap { raw =>
         raw.turnerriegen.map { r =>
-          (r.verein -> raw)
+          r.verein -> raw
         }
       }.groupBy { vereinraw =>
         vereinraw._1
       }.map { vereinraw =>
-        vereinraw._1 -> vereinraw._2.map(_._2).toSet // (Option[Verein] -> GeraeteRiegen)
+        vereinraw._1 -> vereinraw._2.map(_._2) // (Option[Verein] -> GeraeteRiegen)
       }.foldLeft(startriegen) { (accStartriegen, item) =>
         val (verein, riegen) = item
         val ret = riegen.map(f => (f, f.withVerein(verein))).foldLeft(accStartriegen) { (acccStartriegen, riegen2) =>
@@ -119,8 +118,8 @@ trait StartGeraetGrouper extends RiegenSplitter with Stager {
               p.countVereine(verein) > v1
           }
           match {
-            case Some(zielriege) if ((zielriege ++ toMove).size <= maxRiegenSize2) =>
-              logger.debug(s"moving $toMove from ${geraetRiege} to ${zielriege}")
+            case Some(zielriege) if (zielriege ++ toMove).size <= maxRiegenSize2 =>
+              logger.debug(s"moving $toMove from $geraetRiege to $zielriege")
               val gt = geraetRiege -- toMove
               val sg = zielriege ++ toMove
               val r1 = acccStartriegen - zielriege
@@ -135,7 +134,7 @@ trait StartGeraetGrouper extends RiegenSplitter with Stager {
                 if gt.size > maxRiegenSize2 || sg.size > maxRiegenSize2 then {
                   acccStartriegen
                 } else {
-                  logger.debug(s"switching ${substitues} with toMove between ${geraetRiege} to ${zielriege}")
+                  logger.debug(s"switching $substitues with toMove between $geraetRiege to $zielriege")
                   acccStartriegen - zielriege - geraetRiege + gt + sg
                 }
               case None => acccStartriegen

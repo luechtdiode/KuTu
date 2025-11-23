@@ -121,7 +121,7 @@ trait CompetitionsClubsToHtmlRenderer {
       <div class="showborder">
         <table width="100%">
           <tr class="totalRow heavyRow"><td>Vereinname</td><td>Verband</td><td>Verantwortlicher</td><td>Mobil-Telefon</td><td>EMail</td><td>Registriert am</td><td class="totalCol">Bemerkung</td></tr>
-          ${dt}
+          $dt
         </table>
       </div>
     </div>

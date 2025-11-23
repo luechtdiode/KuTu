@@ -3,13 +3,13 @@ package ch.seidel.kutu.renderer
 import ch.seidel.kutu.data.*
 import ch.seidel.kutu.domain.*
 import ch.seidel.kutu.renderer.PrintUtil.*
-import org.slf4j.LoggerFactory
+import org.slf4j.{Logger, LoggerFactory}
 
 import java.io.File
 import java.util.concurrent.atomic.AtomicBoolean
 
 trait ScoreToHtmlRenderer {
-  val logger = LoggerFactory.getLogger(this.getClass)
+  val logger: Logger = LoggerFactory.getLogger(this.getClass)
   
   protected val title: String
   
@@ -164,8 +164,8 @@ trait ScoreToHtmlRenderer {
           </style>          
           </head><body><ul><li>
   """
-  val fixFirstPageHeaderLines = 6
-  def firstSite(title: String, logoFile: File) = intro + (if logoFile.exists then s"""
+  private val fixFirstPageHeaderLines = 6
+  private def firstSite(title: String, logoFile: File) = intro + (if logoFile.exists then s"""
       <div class='headline'>
         <img class='logo' src="${logoFile.imageSrcForWebEngine}" title="Logo"/>
         <h1>Rangliste</h1><h2>${escaped(title)}</h2></div>
@@ -186,9 +186,9 @@ trait ScoreToHtmlRenderer {
       val partpage = if !p.startsWith(intro) then intro + p + outro else p + outro
       printjob(partpage)}
   }
-  val firstSiteRendered = new AtomicBoolean(false)
+  private val firstSiteRendered = new AtomicBoolean(false)
 
-  def collectFilterTitles(gss: Iterable[GroupSection], falsePositives: Boolean, titles: Set[String] = Set.empty): Set[String] = {
+  private def collectFilterTitles(gss: Iterable[GroupSection], falsePositives: Boolean, titles: Set[String] = Set.empty): Set[String] = {
     val gssList = gss.toList
     gssList.foldLeft(titles) { (acc, item) =>
       val newTitles = if !falsePositives && item.groupKey.isInstanceOf[NullObject] then {
@@ -229,10 +229,10 @@ trait ScoreToHtmlRenderer {
 
         case g: GroupNode => gsBlock.append(
             toHTML(g.next.toList,
-                if openedTitle.length() > 0 then
-                  openedTitle + s"${if levelText.isEmpty then "" else (levelText + ", ")}"
+                if openedTitle.nonEmpty then
+                  openedTitle + s"${if levelText.isEmpty then "" else levelText + ", "}"
                 else
-                  s"<h${level + 2}>${if levelText.isEmpty then "" else (levelText + ", ")}",
+                  s"<h${level + 2}>${if levelText.isEmpty then "" else levelText + ", "}",
                 level + 1, athletsPerPage, sortAlphabetically, isAvgOnMultipleCompetitions, falsePositives, logoFile))
 
         case s: GroupSection  =>
@@ -251,15 +251,13 @@ trait ScoreToHtmlRenderer {
     } else {
       gsBlock.append("\n<table width='100%'>\n")
     }
-    cols.foreach { th =>
-      th match {
-        case gc: WKGroupCol =>
-          gc.cols.foreach { thc =>
-            gsBlock.append(s"<col/>")
-          }
-        case _ =>
+    cols.foreach {
+      case gc: WKGroupCol =>
+        gc.cols.foreach { thc =>
           gsBlock.append(s"<col/>")
-      }
+        }
+      case _ =>
+        gsBlock.append(s"<col/>")
     }
 
     gsBlock.append(s"\n<thead><tr class='head'>\n")
@@ -280,26 +278,24 @@ trait ScoreToHtmlRenderer {
       }
     }
     gsBlock.append(s"</tr><tr>\n")
-    cols.foreach { th =>
-      th match {
-        case gc: WKGroupCol =>
-          var first = true
-          gc.cols.foreach { thc =>
-            if first then {
-              gsBlock.append(s"<th class='blockstart'>${escaped(thc.text)}</th>")
-              first = false
-            }
-            else {
-              gsBlock.append(s"<th>${escaped(thc.text)}</th>")
-            }
+    cols.foreach {
+      case gc: WKGroupCol =>
+        var first = true
+        gc.cols.foreach { thc =>
+          if first then {
+            gsBlock.append(s"<th class='blockstart'>${escaped(thc.text)}</th>")
+            first = false
           }
-        case _ =>
-      }
+          else {
+            gsBlock.append(s"<th>${escaped(thc.text)}</th>")
+          }
+        }
+      case _ =>
     }
     gsBlock.append(s"</tr></thead><tbody>\n")
   }
 
-  private def renderListRows[T <: ResultRow](list: List[T], gsBlock: StringBuilder, cols: List[WKCol]) = {
+  private def renderListRows[T <: ResultRow](list: List[T], gsBlock: StringBuilder, cols: List[WKCol]): Unit = {
     list.foreach { row =>
       gsBlock.append(s"<tr>")
       cols.foreach {
@@ -401,7 +397,7 @@ trait ScoreToHtmlRenderer {
       val pretitleprint = (openedTitle + levelText).trim.reverse.dropWhile(p => p.equals(',')).reverse
       if openedTitle.startsWith("<h") then {
         val closetag = openedTitle.substring(0, openedTitle.indexOf(">") + 1).replace("<", "</")
-        gsBlock.append(s"$pretitleprint${if pretitle.isEmpty then rulename else s": $rulename"} ${closetag}")
+        gsBlock.append(s"$pretitleprint${if pretitle.isEmpty then rulename else s": $rulename"} $closetag")
       }
       else {
         gsBlock.append(s"<h${level + 2}>$pretitleprint${if pretitle.isEmpty then rulename else s": $rulename"}</h${level + 2}>")
@@ -410,15 +406,13 @@ trait ScoreToHtmlRenderer {
 
       def renderTeamHead = {
         gsBlock.append("\n<div class='showborder'><table width='100%'>\n")
-        cols.foreach { th =>
-          th match {
-            case gc: WKGroupCol =>
-              gc.cols.foreach { thc =>
-                gsBlock.append(s"<col/>")
-              }
-            case _ =>
+        cols.foreach {
+          case gc: WKGroupCol =>
+            gc.cols.foreach { thc =>
               gsBlock.append(s"<col/>")
-          }
+            }
+          case _ =>
+            gsBlock.append(s"<col/>")
         }
 
         gsBlock.append(s"\n<thead><tr class='head'>\n")
@@ -439,28 +433,26 @@ trait ScoreToHtmlRenderer {
           }
         }
         gsBlock.append(s"</tr><tr>\n")
-        cols.foreach { th =>
-          th match {
-            case gc: WKGroupCol =>
-              var first = true
-              gc.cols.foreach { thc =>
-                if first then {
-                  gsBlock.append(s"<th class='blockstart'>${escaped(thc.text)}</th>")
-                  first = false
-                }
-                else {
-                  gsBlock.append(s"<th>${escaped(thc.text)}</th>")
-                }
+        cols.foreach {
+          case gc: WKGroupCol =>
+            var first = true
+            gc.cols.foreach { thc =>
+              if first then {
+                gsBlock.append(s"<th class='blockstart'>${escaped(thc.text)}</th>")
+                first = false
               }
-            case _ =>
-          }
+              else {
+                gsBlock.append(s"<th>${escaped(thc.text)}</th>")
+              }
+            }
+          case _ =>
         }
         gsBlock.append(s"</tr></thead><tbody>\n")
       }
 
       def renderTeamEnd = gsBlock.append(s"</tbody></table></div>\n")
 
-      def renderTeamRows(list: List[TeamRow]) = {
+      def renderTeamRows(list: List[TeamRow]): Unit = {
         list.foreach { row =>
           val teamGroupLeaf = gl.getTeamGroupLeaf(row.team)
           val teamGroupCols = teamGroupLeaf.buildColumns().tail//.dropRight(2)
@@ -476,54 +468,52 @@ trait ScoreToHtmlRenderer {
             spans
           }
           gsBlock.append(s"<tr>")
-          cols.foreach { col =>
-            col match {
-              case ccol: WKLeafCol[?] if (ccol.colspan > 0)=>
+          cols.foreach {
+            case ccol: WKLeafCol[?] if ccol.colspan > 0 =>
+              val c = ccol.asInstanceOf[WKLeafCol[TeamRow]]
+              val value = c.valueMapper(row)
+              val t = escaped(value.raw)
+              val h = escaped(value.text)
+              val smallfont = if t.length() > 17 then " sf2" else if t.length() > 13 then " sf1" else ""
+              if c.styleClass.contains("hintdata") then {
+                gsBlock.append(s"<td rowspan=$getRowSpans colspan=${c.colspan} class='data blockstart$smallfont'><div class=${(c.styleClass ++ value.styleClass).mkString("'", " ", "'")}>$t</div></td>")
+              }
+              else if c.styleClass.contains("data") then {
+                gsBlock.append(s"<td rowspan=$getRowSpans colspan=${c.colspan} class='data blockstart$smallfont'>$h</td>")
+              }
+              else if c.styleClass.contains("heading") then {
+                gsBlock.append(s"<td rowspan=$getRowSpans colspan=${c.colspan} class='heading blockstart'>$h</td>")
+              }
+              else {
+                gsBlock.append(s"<td rowspan=$getRowSpans colspan=${c.colspan} class='data blockstart$smallfont'><div class=${(c.styleClass ++ value.styleClass).mkString("'", " ", "'")}>$t</div></td>")
+              }
+            case gc: WKGroupCol if gc.colspan > 0 =>
+              var first = true
+              gc.cols.foreach { ccol =>
                 val c = ccol.asInstanceOf[WKLeafCol[TeamRow]]
+                val style = if first then {
+                  first = false
+                  "data blockstart"
+                }
+                else "data"
                 val value = c.valueMapper(row)
                 val t = escaped(value.raw)
                 val h = escaped(value.text)
-                val smallfont = if t.length() > 17 then " sf2" else if t.length() > 13 then " sf1" else ""
                 if c.styleClass.contains("hintdata") then {
-                  gsBlock.append(s"<td rowspan=$getRowSpans colspan=${c.colspan} class='data blockstart$smallfont'><div class=${(c.styleClass ++ value.styleClass).mkString("'", " ", "'")}>$t</div></td>")
+                  gsBlock.append(s"<td rowspan=$getRowSpans colspan=${c.colspan} class='$style'><div class=${(c.styleClass ++ value.styleClass).mkString("'", " ", "'")}>$t</div></td>")
                 }
                 else if c.styleClass.contains("data") then {
-                  gsBlock.append(s"<td rowspan=$getRowSpans colspan=${c.colspan} class='data blockstart$smallfont'>$h</td>")
+                  gsBlock.append(s"<td rowspan=$getRowSpans colspan=${c.colspan} class='$style'>$h</td>")
                 }
                 else if c.styleClass.contains("heading") then {
-                  gsBlock.append(s"<td rowspan=$getRowSpans colspan=${c.colspan} class='heading blockstart'>$h</td>")
+                  gsBlock.append(s"<td rowspan=$getRowSpans colspan=${c.colspan} class='$style heading'>$h</td>")
                 }
                 else {
-                  gsBlock.append(s"<td rowspan=$getRowSpans colspan=${c.colspan} class='data blockstart$smallfont'><div class=${(c.styleClass ++ value.styleClass).mkString("'", " ", "'")}>$t</div></td>")
+                  gsBlock.append(s"<td rowspan=$getRowSpans colspan=${c.colspan} class='$style'><div class=${(c.styleClass ++ value.styleClass).mkString("'", " ", "'")}>$t</div></td>")
                 }
-              case gc: WKGroupCol if (gc.colspan > 0) =>
-                var first = true
-                gc.cols.foreach { ccol =>
-                  val c = ccol.asInstanceOf[WKLeafCol[TeamRow]]
-                  val style = if first then {
-                    first = false
-                    "data blockstart"
-                  }
-                  else "data"
-                  val value = c.valueMapper(row)
-                  val t = escaped(value.raw)
-                  val h = escaped(value.text)
-                  if c.styleClass.contains("hintdata") then {
-                    gsBlock.append(s"<td rowspan=$getRowSpans colspan=${c.colspan} class='$style'><div class=${(c.styleClass ++ value.styleClass).mkString("'", " ", "'")}>$t</div></td>")
-                  }
-                  else if c.styleClass.contains("data") then {
-                    gsBlock.append(s"<td rowspan=$getRowSpans colspan=${c.colspan} class='$style'>$h</td>")
-                  }
-                  else if c.styleClass.contains("heading") then {
-                    gsBlock.append(s"<td rowspan=$getRowSpans colspan=${c.colspan} class='$style heading'>$h</td>")
-                  }
-                  else {
-                    gsBlock.append(s"<td rowspan=$getRowSpans colspan=${c.colspan} class='$style'><div class=${(c.styleClass ++ value.styleClass).mkString("'", " ", "'")}>$t</div></td>")
-                  }
-                }
+              }
 
-              case _ =>
-            }
+            case _ =>
           }
           gsBlock.append(s"</tr>\n")
           //gsBlock.append(s"<tr><td></td><td colspan=${countTableColumns(cols)-3}>")

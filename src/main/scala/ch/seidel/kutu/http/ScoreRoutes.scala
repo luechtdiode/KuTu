@@ -7,7 +7,6 @@ import ch.seidel.kutu.data.*
 import ch.seidel.kutu.domain.*
 import ch.seidel.kutu.renderer.PrintUtil.*
 import ch.seidel.kutu.renderer.{PrintUtil, ScoreToHtmlRenderer, ScoreToJsonRenderer}
-import ch.seidel.kutu.view.WettkampfInfo
 import fr.davit.pekko.http.metrics.core.scaladsl.server.HttpMetricsDirectives.*
 import org.apache.pekko.http.scaladsl.marshallers.sprayjson.SprayJsonSupport
 import org.apache.pekko.http.scaladsl.marshalling.ToResponseMarshallable
@@ -17,7 +16,7 @@ import org.apache.pekko.util.Timeout
 
 import java.io.File
 import java.time.{LocalDate, LocalDateTime, LocalTime}
-import java.util.{Base64, UUID}
+import java.util.Base64
 import scala.concurrent.Future
 import scala.concurrent.duration.DurationInt
 
@@ -39,11 +38,11 @@ ScoreRoutes extends SprayJsonSupport with JsonSupport with AuthSupport with Rout
       ByRiege(), ByRiege2(), ByDisziplin(), ByJahr()
   )
                   
-  def queryScoreResults(wettkampf: String, groupby: Option[String], filter: Iterable[String], html: Boolean,
+  private def queryScoreResults(wettkampf: String, groupby: Option[String], filter: Iterable[String], html: Boolean,
                         groupers: List[FilterBy], data: Seq[WertungView], alphanumeric: Boolean, isAvgOnMultipleCompetitions: Boolean,
                         kind: ScoreListKind, counting: ScoreListBestN,
                         logofile: File): HttpEntity.Strict = {
-    val query = GroupBy(groupby, filter, data, alphanumeric, isAvgOnMultipleCompetitions, kind, counting, groupers);
+    val query = GroupBy(groupby, filter, data, alphanumeric, isAvgOnMultipleCompetitions, kind, counting, groupers)
 
     if html then {
       HttpEntity(ContentTypes.`text/html(UTF-8)`, new ScoreToHtmlRenderer(){override val title: String = wettkampf}
@@ -54,7 +53,7 @@ ScoreRoutes extends SprayJsonSupport with JsonSupport with AuthSupport with Rout
     }
   }
   
-  def queryFilters(groupby: Option[String], groupers: List[FilterBy], data: Seq[WertungView]): Seq[String] = {
+  private def queryFilters(groupby: Option[String], groupers: List[FilterBy], data: Seq[WertungView]): Seq[String] = {
     val cblist = groupby.toSeq.flatMap(gb => gb.split(":")).map{groupername =>
       groupers.find(grouper => grouper.groupname.equals(groupername))
     }.filter{case Some(_) => true case None => false}.map(_.get)
@@ -220,10 +219,10 @@ ScoreRoutes extends SprayJsonSupport with JsonSupport with AuthSupport with Rout
                       case Some(_) =>
                         ToResponseMarshallable(HttpEntity(ContentTypes.`text/html(UTF-8)`,
                           (scores
-                            .map(score => (if score.published then s"""
+                            .map(score => if score.published then s"""
                                   |<li><a href='/api/scores/${competitionId.toString}/${score.id}/?html'>${score.title}</a></li>""".stripMargin else s"""
                                   |<li><a href='/api/scores/${competitionId.toString}/${score.id}/?html'>${score.title} (unveröffentlicht)</a></li>""".stripMargin
-                            ))
+                            )
                             :+ s"""
                                   |<li><a href='/api/scores/${competitionId.toString}/intermediate?html'>Zwischenresultate</a></li>
                                   |<li><a href='/?${new String(Base64.getUrlEncoder.encodeToString(s"last&c=${competitionId.toString}".getBytes))}'>Letzte Resultate</a></li>
@@ -368,7 +367,7 @@ ScoreRoutes extends SprayJsonSupport with JsonSupport with AuthSupport with Rout
                            |  </pre>
                            |  </p>
                            |  <h3>Verf&uuml;gbare Filter</h3>
-                           |  <ul>${queryFilters(groupby, groupers, data).map(filter => s"<li><pre>${filter}</pre></li>").mkString("\n")}</ul>
+                           |  <ul>${queryFilters(groupby, groupers, data).map(filter => s"<li><pre>$filter</pre></li>").mkString("\n")}</ul>
                            |  <h2>Alphanumerische Sortierung (optional)</h2>
                            |  <p>Mit dem Parameter '<b>alphanumeric</b>' kann die Auflistung alphanumerisch (alphabetisch) auf dem Namen sortiert werden.
                            |  Ohne Angabe ist die Sortierung numerisch gem&auml;ss der Rangierung.</p></div>
@@ -412,15 +411,12 @@ ScoreRoutes extends SprayJsonSupport with JsonSupport with AuthSupport with Rout
                           case s: String if s == w.athlet.verein.mkString.toLowerCase => true
                           case s: String if s == w.wettkampfdisziplin.programm.name.toLowerCase => true
                           case s: String if s == w.athlet.geschlecht.toLowerCase => true
-                          case s: String if s.nonEmpty => {
-                            w.athlet.verein.mkString.toLowerCase.contains(s) ||
-                              w.riege.exists(_.toLowerCase.contains(s))
-                          }
+                          case s: String if s.nonEmpty => w.athlet.verein.mkString.toLowerCase.contains(s) || w.riege.exists(_.toLowerCase.contains(s))
                           case _ => false
                         }
                     }
                   }
-                  complete(CompetitionCoordinatorClientActor.publish(StartedDurchgaenge(competitionId.toString()), clientid.getOrElse("")).flatMap {
+                  complete(CompetitionCoordinatorClientActor.publish(StartedDurchgaenge(competitionId.toString), clientid.getOrElse("")).flatMap {
                     case ResponseMessage(startedDurchgaenge) =>
                       val sd = startedDurchgaenge.asInstanceOf[Set[String]]
                       val kind = if wettkampf.teamrule.nonEmpty then Kombirangliste else Einzelrangliste
@@ -462,7 +458,7 @@ ScoreRoutes extends SprayJsonSupport with JsonSupport with AuthSupport with Rout
             } ~
             pathLabeled("filter", "filter") {
               get {
-                parameters(Symbol("groupby").?) { (groupby) =>
+                parameters(Symbol("groupby").?) { groupby =>
                   complete{ Future {
                     queryFilters(groupby, groupers, data).toJson
                   }}

@@ -11,10 +11,10 @@ import javax.net.ssl.{KeyManagerFactory, SSLContext, TrustManagerFactory}
 object KuTuSSLContext {
   // Manual HTTPS configuration
 
-  val ks: KeyStore = KeyStore.getInstance("JKS")
-  val jksfile = new File(httpHostname + ".jks")
-  lazy val keystore: InputStream = new FileInputStream(jksfile);
-  lazy val hasHttpsConfig = certPw != null && jksfile.exists()
+  private val ks: KeyStore = KeyStore.getInstance("JKS")
+  private val jksfile = new File(httpHostname + ".jks")
+  private lazy val keystore: InputStream = new FileInputStream(jksfile)
+  lazy val hasHttpsConfig: Boolean = certPw != null && jksfile.exists()
 
   lazy val https: HttpsConnectionContext = {
     require(certPw != null, "Keystore Password required!")
@@ -39,8 +39,8 @@ trait KuTuSSLContext {
 
     // Manual HTTPS configuration
   
-  lazy val hasHttpsConfig = KuTuSSLContext.hasHttpsConfig
+  lazy val hasHttpsConfig: Boolean = KuTuSSLContext.hasHttpsConfig
   
-  lazy val https = KuTuSSLContext.https
+  lazy val https: HttpsConnectionContext = KuTuSSLContext.https
  
 }

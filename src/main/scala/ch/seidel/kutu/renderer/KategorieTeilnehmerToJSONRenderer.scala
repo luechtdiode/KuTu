@@ -1,15 +1,14 @@
 package ch.seidel.kutu.renderer
 
-import ch.seidel.kutu.domain.{Durchgang, GeraeteRiege, RiegenRotationsregelKategorie, SimpleDurchgang}
+import ch.seidel.kutu.domain.{GeraeteRiege, SimpleDurchgang}
 import ch.seidel.kutu.renderer.PrintUtil.*
-import org.slf4j.LoggerFactory
+import org.slf4j.{Logger, LoggerFactory}
 
 import java.io.File
 import java.time.LocalDateTime
 
 trait KategorieTeilnehmerToJSONRenderer {
-  val logger = LoggerFactory.getLogger(classOf[KategorieTeilnehmerToJSONRenderer])
-
+  val logger: Logger = LoggerFactory.getLogger(classOf[KategorieTeilnehmerToJSONRenderer])
 
   val intro = "{\n"
   val outro = "}"
@@ -30,7 +29,7 @@ trait KategorieTeilnehmerToJSONRenderer {
     }
     val dt = d.mkString("[\n", ",\n", "]\n")
     s"""  {
-       |    "programm" : "${kategorie}",
+       |    "programm" : "$kategorie
        |    "teilnehmer" : $dt
        |  }""".stripMargin
   }
@@ -40,7 +39,7 @@ trait KategorieTeilnehmerToJSONRenderer {
     toJSONasKategorienListe(Kandidaten(riegen), logo, dgMapping)
   }
 
-  def toJSONasKategorienListe(kandidaten: Seq[Kandidat], logo: File, dgMapping: Seq[(SimpleDurchgang, LocalDateTime)]): String = {
+  private def toJSONasKategorienListe(kandidaten: Seq[Kandidat], logo: File, dgMapping: Seq[(SimpleDurchgang, LocalDateTime)]): String = {
     val logoHtml = if logo.exists() then logo.imageSrcForWebEngine else ""
     val dgmap = dgMapping.map(dg => dg._1.name -> dg).toMap
     val kandidatenPerKategorie = kandidaten.sortBy { k =>

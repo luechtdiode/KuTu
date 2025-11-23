@@ -43,7 +43,7 @@ class WettkampfTableView(wklviews: List[WettkampfView]) extends TableView[Wettka
   val filter: TextField = new TextField() {
     promptText = "Such-Text"
     text.addListener { (_, _, newVal: String) =>
-      val sortOrderList = sortOrder.toList;
+      val sortOrderList = sortOrder.toList
       filteredModel.clear()
       val searchQuery = newVal.toUpperCase().split(" ")
       for wettkampf <- wklviews

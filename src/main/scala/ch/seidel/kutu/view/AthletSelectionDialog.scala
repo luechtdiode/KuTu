@@ -19,7 +19,7 @@ import scalafx.scene.layout.*
 import java.time.{LocalDate, Period}
 
 class AthletSelectionDialog(actionTitle: String, wettkampfDatum: LocalDate, alterVon: Int, alterBis: Int, sex: Set[String], assignedAthleten: Seq[AthletView], service: KutuService, refreshPaneData: Set[Long] => Unit) {
-  val wkcompareJGMode = wettkampfDatum.getDayOfYear == 1
+  private val wkcompareJGMode = wettkampfDatum.getDayOfYear == 1
 
   def alter(a: AthletView): Int = {
     if wkcompareJGMode then {
@@ -29,22 +29,18 @@ class AthletSelectionDialog(actionTitle: String, wettkampfDatum: LocalDate, alte
     }
   }
 
-  val athletModel = ObservableBuffer.from(
+  val athletModel: ObservableBuffer[AthletView] = ObservableBuffer.from(
     service.selectAthletesView.filter(a => {
         sex.contains(a.geschlecht) &&
           Range.inclusive(alterVon, alterBis).contains(alter(a))
       }).
       filter { p => assignedAthleten.forall { wp => wp.id != p.id } }.
-      sortBy { a => (a.activ match {
-        case true => "A"
-        case _ => "X"
-      }) + ":" + a.name + ":" + a.vorname
-      }
+      sortBy { a => (if (a.activ) "A" else "X") + ":" + a.name + ":" + a.vorname}
   )
 
-  val filteredModel = ObservableBuffer.from(athletModel)
+  val filteredModel: ObservableBuffer[AthletView] = ObservableBuffer.from(athletModel)
 
-  val athletTable = new TableView[AthletView](filteredModel) {
+  val athletTable: TableView[AthletView] = new TableView[AthletView](filteredModel) {
     columns ++= List(
       new TableColumn[AthletView, String] {
         text = "Name Vorname Jg"
@@ -87,7 +83,7 @@ class AthletSelectionDialog(actionTitle: String, wettkampfDatum: LocalDate, alte
 
   athletTable.selectionModel.value.setSelectionMode(SelectionMode.Multiple)
 
-  val btnOK = new Button("OK") {
+  val btnOK: Button = new Button("OK") {
     onAction = (event: ActionEvent) => {
       if !athletTable.selectionModel().isEmpty then {
         val selectedAthleten = athletTable.items.value.zipWithIndex.filter {
@@ -99,13 +95,13 @@ class AthletSelectionDialog(actionTitle: String, wettkampfDatum: LocalDate, alte
     }
   }
 
-  val btnOKAll = new Button("OK, Alle") {
+  private val btnOKAll = new Button("OK, Alle") {
     onAction = (event: ActionEvent) => {
       if filteredModel.nonEmpty then refreshPaneData(filteredModel.map(_.id).toSet)
     }
   }
 
-  val btnNew = new Button("Neu erfassen ...") {
+  private val btnNew = new Button("Neu erfassen ...") {
     onAction = (event: ActionEvent) => {
       val athlet = AthletDialog(service, (a: Athlet) => {
         refreshPaneData(Set(a.id))
@@ -116,7 +112,7 @@ class AthletSelectionDialog(actionTitle: String, wettkampfDatum: LocalDate, alte
     }
   }
 
-  val filter = new TextField() {
+  val filter: TextField = new TextField() {
     promptText = "Such-Text"
     text.addListener { (o: javafx.beans.value.ObservableValue[? <: String], oldVal: String, newVal: String) =>
       val sortOrder = athletTable.sortOrder.toList
@@ -125,7 +121,7 @@ class AthletSelectionDialog(actionTitle: String, wettkampfDatum: LocalDate, alte
       for athlet <- athletModel
            do {
         val matches = searchQuery.forall { search =>
-          if search.isEmpty() || athlet.name.toUpperCase().contains(search) then {
+          if search.isEmpty || athlet.name.toUpperCase().contains(search) then {
             true
           }
           else if athlet.vorname.toUpperCase().contains(search) then {
@@ -175,8 +171,8 @@ class AthletSelectionDialog(actionTitle: String, wettkampfDatum: LocalDate, alte
     }
   }
 
-  def execute = (event: ActionEvent) => {
-    implicit val impevent = event
+  def execute: ActionEvent => Unit = (event: ActionEvent) => {
+    given ActionEvent = event
 
     PageDisplayer.showInDialog(actionTitle, new DisplayablePage() {
       def getPage: Node = {

@@ -14,7 +14,7 @@ class GeraeteRiegeComboBox[T](tableView: TableView[T]) extends ComboBox[GeraeteR
   buttonCell = new GeraeteRiegeListCell()
   cellFactory.value = { (_:Any) => new GeraeteRiegeListCell() }
 
-  var textbuffer = ""
+  private var textbuffer = ""
 
   import ch.seidel.kutu.domain.given_Conversion_String_BigDecimal
 

@@ -13,6 +13,7 @@ import scalafx.scene.control.TreeItem.sfxTreeItemToJfx
 import scalafx.scene.image.{Image, ImageView}
 import scalafx.scene.input.{KeyEvent, MouseEvent}
 import scalafx.scene.layout.{Priority, Region, TilePane}
+import slick.jdbc.JdbcBackend
 
 import java.io.IOException
 import java.util.prefs.Preferences
@@ -50,10 +51,10 @@ object KuTuAppTree {
  */
 class KuTuAppTree(service: KutuService) {
 
-  lazy val thumbnails: Map[String, (List[KuTuAppThumbNail], Boolean, Int)] = createThumbnails()
+  private lazy val thumbnails: Map[String, (List[KuTuAppThumbNail], Boolean, Int)] = createThumbnails()
   lazy val tree: Map[String, (List[TreeItem[String]], Boolean, Int)] = createTree()
 
-  def getService = service
+  def getService: KutuService = service
 
   /**
    * build a map by iterating through the examples folder.
@@ -71,7 +72,7 @@ class KuTuAppTree(service: KutuService) {
     //    if (exampleRootFiles == null)
     //      throw new IOException("Cannot list files in the example directory. May be caused by Issue #10.")
 
-    implicit val session = service.database.createSession()
+    implicit val session: JdbcBackend.Session = service.database.createSession()
     try {
       val wkfilePath = "/images/wettkampf-shadowed.png"
       val wkinputStream = this.getClass.getResourceAsStream(wkfilePath)
@@ -137,7 +138,7 @@ class KuTuAppTree(service: KutuService) {
     }
   }
 
-  def getLeaves(keyName: String) = tree(keyName)._1
+  def getLeaves(keyName: String): List[TreeItem[String]] = tree(keyName)._1
 
   /**
    * returns the entire tree
@@ -154,7 +155,7 @@ class KuTuAppTree(service: KutuService) {
     thumbnails.getOrElse(keyName, (List[KuTuAppThumbNail](), false, 0))._1
 
   // val searchQuery = newVal.toUpperCase().split(" ")
-  def dashboardFilter(query: String)(thumb: KuTuAppThumbNail) = {
+  private def dashboardFilter(query: String)(thumb: KuTuAppThumbNail) = {
     val filter = query.toUpperCase().split(" ")
     filter.isEmpty || filter.forall { txt =>
       thumb.item.value.value.toUpperCase.contains(txt) ||
@@ -177,7 +178,7 @@ class KuTuAppTree(service: KutuService) {
         ), ts._3)
     }.toList.sortBy(_._2).flatMap(_._1)
 
-  def getDashThumb(ctrlGrpName: String, filter: String = "") = {
+  def getDashThumb(ctrlGrpName: String, filter: String = ""): Seq[Region] = {
     val nails = getThumbs(ctrlGrpName)
       .filter(dashboardFilter(filter))
     Seq(

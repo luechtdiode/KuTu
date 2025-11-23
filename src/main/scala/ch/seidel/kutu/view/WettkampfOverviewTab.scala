@@ -95,9 +95,9 @@ class WettkampfOverviewTab(wettkampf: WettkampfView, override val service: KutuS
     }
   }
 
-  def importAnmeldungen(implicit event: ActionEvent): Unit = {
+  private def importAnmeldungen(implicit event: ActionEvent): Unit = {
     RegistrationAdminDialog.importRegistrations(WettkampfInfo(wettkampf, service), KuTuServer, vereinsupdated =>
-      if vereinsupdated then KuTuApp.updateTree else reloadData()
+      if vereinsupdated then KuTuApp.updateTree() else reloadData()
     )
   }
 
@@ -166,7 +166,7 @@ class WettkampfOverviewTab(wettkampf: WettkampfView, override val service: KutuS
             minWidth = 75
             disable = !wettkampfEditable
             onAction = (event: ActionEvent) => {
-              implicit val e: ActionEvent = event
+              given ActionEvent = event
               val fileChooser = new FileChooser {
                 title = "Wettkampf Logo laden"
                 initialDirectory = new java.io.File(homedir)
@@ -178,7 +178,7 @@ class WettkampfOverviewTab(wettkampf: WettkampfView, override val service: KutuS
                 )
                 initialFileName.value = "logo.jpg"
               }
-              val selectedFile = fileChooser.showOpenDialog(getStage())
+              val selectedFile = fileChooser.showOpenDialog(getStage)
               if selectedFile != null then {
                 if selectedFile.length() > Config.logoFileMaxSize then {
                   val maxSize = java.text.NumberFormat.getInstance().format(Config.logoFileMaxSize / 1024)
@@ -205,7 +205,7 @@ class WettkampfOverviewTab(wettkampf: WettkampfView, override val service: KutuS
             }
           },
           new Button {
-            val uploadMenu = KuTuApp.makeWettkampfUploadMenu(wettkampf, when(Bindings.createBooleanBinding(() => {
+            val uploadMenu: MenuItem = KuTuApp.makeWettkampfUploadMenu(wettkampf, when(Bindings.createBooleanBinding(() => {
               !wettkampfEditable ||
                 (wettkampf.toWettkampf.hasSecred(homedir, remoteHostOrigin) && !ConnectionStates.connectedProperty.value) ||
                 Config.isLocalHostServer || modelWettkampfModus.value

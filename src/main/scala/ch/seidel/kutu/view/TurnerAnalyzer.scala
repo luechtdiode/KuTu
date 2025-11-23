@@ -56,9 +56,9 @@ class TurnerAnalyzer(val verein: Option[Verein], val athlet: Option[Athlet], val
       node.getTransforms.remove(scale)
     }
   }
-  val glow = new Glow(.8)
+  private val glow = new Glow(.8)
 
-  def displayLabelForData[A,B](data: Data[A, B]): Data[A, B] = {
+  private def displayLabelForData[A,B](data: Data[A, B]): Data[A, B] = {
     // val node = data.nodeProperty()
     val (dataText, isLandscape) = if data.getYValue.isInstanceOf[String] then (new Text(s"${data.getXValue}"), true) else (new Text(s"${data.getYValue}"), false)
 
@@ -141,7 +141,7 @@ class TurnerAnalyzer(val verein: Option[Verein], val athlet: Option[Athlet], val
     series
   }
 
-  def toSeriesq(disciplinename: String, serie: Seq[(String,Object,Number)]): Series[Number, String] = {
+  private def toSeriesq(disciplinename: String, serie: Seq[(String,Object,Number)]): Series[Number, String] = {
     val series = serie.foldLeft(new Series[Number,String]()){(acc, pair) =>
       val d = new Data[Number,String](pair._3, pair._1, pair._2)
       displayLabelForData(d)

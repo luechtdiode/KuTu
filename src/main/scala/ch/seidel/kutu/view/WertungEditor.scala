@@ -13,16 +13,16 @@ case class WertungEditor(private var lastCommitted: WertungView) {
   def init: WertungView = lastCommitted
   def update(w: Wertung): Unit = {
     lastCommitted = lastCommitted.updatedWertung(w)
-    reset
+    reset()
   }
   def update(w: WertungView): Unit = {
     lastCommitted = w
-    reset
+    reset()
   }
 
-  type WertungChangeListener = (WertungEditor) => Unit
+  private type WertungChangeListener = WertungEditor => Unit
 
-  var listeners: Set[WertungChangeListener] = Set[WertungChangeListener]()
+  private var listeners: Set[WertungChangeListener] = Set[WertungChangeListener]()
   def addListener(l: WertungChangeListener): Unit = {
     listeners += l
   }
@@ -43,8 +43,8 @@ case class WertungEditor(private var lastCommitted: WertungView) {
   val dVariables = new BufferProperty[ScoreCalcVariableEditor](this, "DVariablen", ObservableBuffer[ScoreCalcVariableEditor]())
   val eVariables = new BufferProperty[ScoreCalcVariableEditor](this, "EVariablen", ObservableBuffer[ScoreCalcVariableEditor]())
   val pVariables = new BufferProperty[ScoreCalcVariableEditor](this, "PVariablen", ObservableBuffer[ScoreCalcVariableEditor]())
-  def variableEditors = (dVariables.value.toList ++ eVariables.value.toList ++ pVariables.value.toList)
-  def variableEditorsList = variableEditors.groupBy(_.score.value.index).values.toList
+  private def variableEditors = dVariables.value.toList ++ eVariables.value.toList ++ pVariables.value.toList
+  def variableEditorsList: List[List[ScoreCalcVariableEditor]] = variableEditors.groupBy(_.score.value.index).values.toList
 
   private def allVariables: List[ScoreCalcVariable] = variableEditors.map(_.score.value)
 
@@ -63,7 +63,7 @@ case class WertungEditor(private var lastCommitted: WertungView) {
           score.value = score.value.updated(BigDecimal(0).setScale(score.value.scale.getOrElse(0)))
       }
     }
-    var notifying = false
+    private var notifying = false
     score.onChange {
       if !notifying then try {
         stringvalue.value = score.value.value.toString()
@@ -75,7 +75,7 @@ case class WertungEditor(private var lastCommitted: WertungView) {
     }
   }
 
-  reset
+  reset()
 
   private def onChange(): Unit = {
     if !notifying then try {
@@ -112,10 +112,10 @@ case class WertungEditor(private var lastCommitted: WertungView) {
     athletText.value = {
       val hasmedia = lastCommitted.mediafile.nonEmpty
       s"${lastCommitted.athlet.vorname} ${lastCommitted.athlet.name} ${
-        (lastCommitted.athlet.gebdat match {
+        lastCommitted.athlet.gebdat match {
           case Some(d) => f"$d%tY "
           case _ => " "
-        })
+        }
       }${if hasmedia then " ♪" else ""}"
     }
 
@@ -177,10 +177,10 @@ case class WertungEditor(private var lastCommitted: WertungView) {
     }
   }
 
-  def isDirty =
+  def isDirty: Boolean =
     changed(noteD.value, lastCommitted.noteD) || changed(noteE.value, lastCommitted.noteE) || changed(endnote.value, lastCommitted.endnote)
 
-  def mapVariablen: Option[ScoreCalcTemplateView] = {
+  private def mapVariablen: Option[ScoreCalcTemplateView] = {
     def mappedScoreCalcTemplateView = {
       lastCommitted.defaultVariables.map { sctv =>
         sctv.copy(
@@ -223,7 +223,7 @@ case class WertungEditor(private var lastCommitted: WertungView) {
     calculatedWertung.value
   }
 
-  def reset: Unit = {
+  def reset(): Unit = {
     notifying = true
     try {
       lastCommitted.noteD match {
@@ -263,7 +263,7 @@ case class WertungEditor(private var lastCommitted: WertungView) {
         pVariables.value.clear()
     }
     lastCommitted.endnote match {
-      case Some(end) if (end > 0 && variableEditors.forall(_.init.value < 0.01)) =>
+      case Some(end) if end > 0 && variableEditors.forall(_.init.value < 0.01) =>
         dVariables.value.headOption match {
           case Some(dVar) =>
             dVar.stringvalue.value = lastCommitted.noteD.map(_.toString).getOrElse("")
@@ -281,7 +281,7 @@ case class WertungEditor(private var lastCommitted: WertungView) {
     if propertyValue.toString == Double.NaN.toString then None
     else Some(scala.math.BigDecimal(propertyValue))
 
-  def toDouble(propertyValue: Double) = {
+  def toDouble(propertyValue: Double): Double = {
     if propertyValue.toString == Double.NaN.toString then 0d
     else scala.math.BigDecimal(propertyValue).doubleValue
   }
@@ -300,9 +300,9 @@ case class WertungEditor(private var lastCommitted: WertungView) {
       )
   }
 
-  def updateAndcommit: Wertung = {
+  def updateAndcommit(): Wertung = {
     lastCommitted = lastCommitted.updatedWertung(commit)
-    reset
+    reset()
     lastCommitted.toWertung
   }
 

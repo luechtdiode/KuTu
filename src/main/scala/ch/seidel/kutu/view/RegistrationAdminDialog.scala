@@ -23,7 +23,7 @@ import scala.concurrent.Future
 object RegistrationAdminDialog {
   private val logger = LoggerFactory.getLogger(this.getClass)
 
-  def importVereinRegistration(service: RegistrationRoutes, verein: Registration, reloader: Boolean => Unit) = {
+  def importVereinRegistration(service: RegistrationRoutes, verein: Registration, reloader: Boolean => Unit): List[Verein] = {
     verein.vereinId match {
       case Some(id) => List(service.insertVerein(Verein(id, verein.vereinname, Some(verein.verband))))
       case None => PageDisplayer.confirm(
@@ -36,7 +36,7 @@ object RegistrationAdminDialog {
         ),
         () => {
           val v = service.insertVerein(Verein(verein.vereinId.getOrElse(0), verein.vereinname, Some(verein.verband)))
-          reloader(true);
+          reloader(true)
           // TODO update registration with verein_id or better do this operation remote and download verein
           v
         }
@@ -63,7 +63,7 @@ object RegistrationAdminDialog {
             logger.info(s"resolved Verein for Registration ${registration.vereinname}")
             val parsed = athlet.toAthlet.copy(id = 0L, verein = resolvedVerein.map(_.id))
             val candidate = if athlet.isEmptyRegistration then parsed else findAthletLike(parsed)
-            logger.info(s"resolved candidate for ${parsed} in ${System.currentTimeMillis() - startime}ms")
+            logger.info(s"resolved candidate for $parsed in ${System.currentTimeMillis() - startime}ms")
             (registration, athlet, parsed, candidate.toAthletView(resolvedVerein))
           }).toList
         case r: HttpResponse if !r.status.isSuccess() =>
@@ -74,7 +74,7 @@ object RegistrationAdminDialog {
       case Failure(t) => PageDisplayer.showErrorDialog("Online-Anmeldungen abfragen", t.getMessage)
       case Success(clipraw) => Platform.runLater {
         if clipraw._2.nonEmpty then {
-          showImportDialog(wkInfo, service, reloader, athletModel, clipraw)(event)
+          showImportDialog(wkInfo, service, reloader, athletModel, clipraw)(using event)
         } else {
           PageDisplayer.showMessageDialog("Anmeldungen verarbeiten", "Keine neuen Daten zum verarbeiten.")
         }
@@ -82,7 +82,7 @@ object RegistrationAdminDialog {
     }
   }
 
-  private def showImportDialog(wkInfo: WettkampfInfo, service: RegistrationRoutes, reloader: Boolean => Unit, athletModel: ObservableBuffer[SyncAction], clipraw: (Set[Verein],List[SyncAction]))(implicit event: ActionEvent) = {
+  private def showImportDialog(wkInfo: WettkampfInfo, service: RegistrationRoutes, reloader: Boolean => Unit, athletModel: ObservableBuffer[SyncAction], clipraw: (Set[Verein],List[SyncAction]))(implicit event: ActionEvent): Unit = {
     athletModel.appendAll(clipraw._2)
     val programms = wkInfo.leafprograms
     val filteredModel = ObservableBuffer.from(athletModel)

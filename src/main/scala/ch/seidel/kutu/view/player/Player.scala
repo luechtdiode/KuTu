@@ -108,12 +108,12 @@ object Player extends JFXApp3 {
     })
   }
 
-  def isPlayerRunning(): Boolean = {
+  private def isPlayerRunning: Boolean = {
     mediaPlayer != null && mediaPlayer.getStatus != null && mediaPlayer.getStatus.equals(Status.PLAYING)
   }
 
   def clearPlayList(): Unit = {
-    if lastAction.nonEmpty || isPlayerRunning() then {
+    if lastAction.nonEmpty || isPlayerRunning then {
       if playList.getSongs.size() > currentSongIndex && currentSongIndex > -1 then {
         playList.getSongs.retainAll(playList.getSongs(currentSongIndex))
       }
@@ -125,7 +125,7 @@ object Player extends JFXApp3 {
     }
   }
 
-  def loadPlayList(uri: String): Unit = {
+  private def loadPlayList(uri: String): Unit = {
     playList.load(uri)
   }
 
@@ -135,7 +135,7 @@ object Player extends JFXApp3 {
     }
   }
 
-  def getPlayList(): PlayList = playList
+  def getPlayList: PlayList = playList
 
   def hide(): Unit = {
     playerStage().foreach(_.close())
@@ -162,7 +162,7 @@ object Player extends JFXApp3 {
     s.toFront()
   }
 
-  def playSong(song: String = "", autoplay: Boolean = false): Stage = {
+  private def playSong(song: String = "", autoplay: Boolean = false): Stage = {
     val wasPlaying = mediaPlayer != null && mediaPlayer.getStatus != null &&  MediaPlayer.Status.PLAYING.equals(mediaPlayer.getStatus)
     val s = getInitializedPlayerStage
     playList.getSongs.toList.zipWithIndex.find(s => s._1.getKey.equals(song)).map(_._2).foreach(songIndex => {
@@ -174,7 +174,7 @@ object Player extends JFXApp3 {
     s
   }
 
-  def handlePrevious(): Unit = {
+  private def handlePrevious(): Unit = {
     if mediaPlayer != null && (currentSongIndex == 0 || mediaPlayer.getCurrentTime.toSeconds > 3) then {
       mediaPlayer.seek(Duration.seconds(0))
       mediaPlayer.pause()
@@ -184,20 +184,20 @@ object Player extends JFXApp3 {
     }
   }
 
-  def handleNext(): Unit = {
+  private def handleNext(): Unit = {
     if currentSongIndex < playList.getSongs.size - 1 then {
       currentSongIndex += 1
       play(currentSongIndex)
     }
   }
 
-  def handlePause(): Unit = {
+  private def handlePause(): Unit = {
     if mediaPlayer == null then play(currentSongIndex)
     else if mediaPlayer.getStatus eq MediaPlayer.Status.PLAYING then mediaPlayer.pause()
     else mediaPlayer.play()
   }
 
-  var lastAction: Option[MediaPlayerAction] = None
+  private var lastAction: Option[MediaPlayerAction] = None
 
   private def handleMediaEvent(event: MediaPlayerEvent): Unit = {
     event match {
@@ -300,7 +300,7 @@ object Player extends JFXApp3 {
     val loadBtn = new Button
     loadBtn.setOnAction(new EventHandler[ActionEvent]() {
       override def handle(event: ActionEvent): Unit = {
-          LoadDialog.loadPlayList(wettkampf, getInitializedPlayerStage, playList);
+          LoadDialog.loadPlayList(wettkampf, getInitializedPlayerStage, playList)
       }
     })
     val powerBtn = new Button
@@ -423,7 +423,7 @@ object Player extends JFXApp3 {
     // listen for when we have songs
     playList.getSongs.addListener(new ListChangeListener[Pair[String, String]]() {
       override def onChanged(change: ListChangeListener.Change[? <: Pair[String, String]]): Unit = {
-        if playList.getSongs.nonEmpty || isPlayerRunning() then {
+        if playList.getSongs.nonEmpty || isPlayerRunning then {
           lastAction.foreach {
             case a: AthletMediaStart =>
               change.getRemoved.forEach { context =>
@@ -453,7 +453,7 @@ object Player extends JFXApp3 {
     root
   }
 
-  def releasePlayer(): Unit = {
+  private def releasePlayer(): Unit = {
     if mediaPlayer != null then {
       mediaPlayer.stop()
       mediaPlayer.setAutoPlay(false)
@@ -493,7 +493,7 @@ object Player extends JFXApp3 {
         }
       })
       lastAction.foreach {
-        case a: MediaPlayerAction if (context.endsWith(a.wertung.mediafile.get.name)) =>
+        case a: MediaPlayerAction if context.endsWith(a.wertung.mediafile.get.name) =>
           if !autoplay then
             publishMediaEventIfConnected(AthletMediaIsAtStart(a.wertung.mediafile.get, context))
           else
@@ -600,7 +600,8 @@ object Player extends JFXApp3 {
   }
 
   private var lastMediaEvent: Option[MediaPlayerEvent] = None
-  private def publishMediaEventIfConnected(event: MediaPlayerEvent) = {
+
+  private def publishMediaEventIfConnected(event: MediaPlayerEvent): Unit = {
     lastMediaEvent = Some(event)
     if isNetworkMediaPlayer.getValue then {
       WebSocketClient.publish(event.asInstanceOf[KutuAppEvent])

@@ -139,7 +139,8 @@ trait Stager extends Mapper {
     }
   }
   
-  protected def computeDimensions(sumOfAll: Int, geraete: Int, maxGeraeteRiegenSize: Int, level: Int): (Int, Int) = {
+  @tailrec
+  private def computeDimensions(sumOfAll: Int, geraete: Int, maxGeraeteRiegenSize: Int, level: Int): (Int, Int) = {
     val eqsize = (1d * sumOfAll / (geraete * level) + 0.9d).intValue()
     if eqsize <= maxGeraeteRiegenSize || geraete == 0 || level > 100 then (eqsize, level) else computeDimensions(sumOfAll, geraete, maxGeraeteRiegenSize, level +1)
   }

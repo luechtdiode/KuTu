@@ -3,16 +3,16 @@ package ch.seidel.kutu.view
 import ch.seidel.commons.{DisplayablePage, LazyTabPane}
 import ch.seidel.kutu.KuTuApp
 import ch.seidel.kutu.domain.*
-import org.slf4j.LoggerFactory
+import org.slf4j.{Logger, LoggerFactory}
 import scalafx.beans.binding.Bindings.*
 import scalafx.beans.property.BooleanProperty
 import scalafx.event.subscriptions.Subscription
 import scalafx.scene.control.Tab
 
 object WettkampfPage {
-  val logger = LoggerFactory.getLogger(this.getClass)
+  val logger: Logger = LoggerFactory.getLogger(this.getClass)
 
-  def buildTab(wettkampfmode: BooleanProperty, wettkampfInfo: WettkampfInfo, service: KutuService) = {
+  def buildTab(wettkampfmode: BooleanProperty, wettkampfInfo: WettkampfInfo, service: KutuService): WettkampfPage = {
     logger.debug("Start buildTab")
     val wettkampf = wettkampfInfo.wettkampf
     val progs = wettkampfInfo.leafprograms
@@ -20,17 +20,17 @@ object WettkampfPage {
     logger.debug("Start Overview")
     val overview = new WettkampfOverviewTab(wettkampf, service)
     logger.debug("Start Alle Wertungen")
-    val alleWertungenTabs: Seq[Tab] = (pathProgs map { v =>
+    val alleWertungenTabs: Seq[Tab] = pathProgs map { v =>
       val leafHeadProgs = progs.filter(p => p.programPath.contains(v))
       val pgm = if v.parent.nonEmpty then Some(v) else None
       new WettkampfWertungTab(wettkampfmode, pgm, None, wettkampfInfo, service, {
         service.listAthletenWertungenZuProgramm(leafHeadProgs map (p => p.id), wettkampf.id)
       }) {
-        val progHeader = if v.parent.nonEmpty then v.name else ""
+        val progHeader: String = if v.parent.nonEmpty then v.name else ""
         text <== when(wettkampfmode) choose s"Alle $progHeader Wertungen" otherwise s"Alle $progHeader"
         closable = false
       }
-    })
+    }
     val preferencesTab = new ScoreCalcTemplatesTab(wettkampf, service) // new PreferencesTab(wettkampfInfo, service)
 
     logger.debug("Start Program Tabs")
@@ -68,7 +68,7 @@ object WettkampfPage {
       subscription = None
       overview.release
       preferencesTab.release
-      (progSites).foreach { t =>
+      progSites.foreach { t =>
         t.asInstanceOf[WettkampfWertungTab].release
       }
       ranglisteSite.foreach { t =>
@@ -85,7 +85,7 @@ object WettkampfPage {
     def refresher(pane: LazyTabPane): Seq[Tab] = {
       overview.setLazyPane(pane)
       preferencesTab.setLazyPane(pane)
-      (progSites).foreach { t =>
+      progSites.foreach { t =>
         t.asInstanceOf[WettkampfWertungTab].setLazyPane(pane)
       }
       networkSite.foreach {

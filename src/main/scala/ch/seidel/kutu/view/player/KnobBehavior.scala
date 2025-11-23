@@ -73,7 +73,7 @@ class KnobBehavior(slider: Slider) extends BehaviorBase[Slider](slider) {
   def knobPressed(e: MouseEvent, position: Double): Unit = {
     // If not already focused, request focus
     val slider: Slider = getNode
-    if !(slider.isFocused) then {
+    if !slider.isFocused then {
       slider.requestFocus()
     }
     slider.setValueChanging(true)

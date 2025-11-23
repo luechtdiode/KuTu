@@ -1,6 +1,5 @@
 package ch.seidel.kutu.renderer
 
-import ch.seidel.kutu.domain.*
 import ch.seidel.kutu.renderer.PrintUtil.*
 import org.slf4j.Logger
 
@@ -121,7 +120,7 @@ trait NotenblattToHtmlRenderer {
       s"""<tr class="geraeteRow"><td class="large">${dis._2}. ${escaped(dis._1.easyprint)}</td><td>&nbsp;</td><td>&nbsp;</td><td class="totalCol">&nbsp;</td></tr>"""
     }
     val dt = d.updated(d.size-1, d.last.replace("geraeteRow", "totalRow")).mkString("", "\n", "\n")
-    val logoHtml = (if logo.exists then s"""<img class=logo src="${logo.imageSrcForWebEngine}" title="Logo"/>""" else s"")
+    val logoHtml = if logo.exists then s"""<img class=logo src="${logo.imageSrcForWebEngine}" title="Logo"/>""" else s""
     s"""<div class=notenblatt>
       <div class=headline>
         $logoHtml
@@ -137,7 +136,7 @@ trait NotenblattToHtmlRenderer {
       <div class="showborder">
         <table class='dataTable' width="100%">
           <tr class="totalRow heavyRow"><td class='dataTd'>Gerät</td><td class='dataTd'>1. Wertung</td><td class='dataTd'>2. Wertung</td><td class="dataTd totalCol">Endnote</td></tr>
-          ${dt}
+          $dt
           <tr class="heavyRow"><td class="dataTd large">Total</td><td class='dataTd'>&nbsp;</td><td class='dataTd'>&nbsp;</td><td class="dataTd totalCol">&nbsp;</td></tr>
         </table>
       </div>
@@ -163,7 +162,7 @@ trait NotenblattToHtmlRenderer {
       <div class="showborder">
         <table class="dataTable" width="100%">
           <tr class="totalRow heavyRow"><td class='dataTd'>Disziplin</td><td class="dataTd totalCol">Punkte</td></tr>
-          ${dt}
+          $dt
         </table>
       </div>
     </div>
@@ -175,10 +174,10 @@ trait NotenblattToHtmlRenderer {
       s"""<tr class="geraeteRow"><td class="large">${dis._2}. ${escaped(dis._1.easyprint)}</td><td>&nbsp;</td><td>&nbsp;</td><td class="totalCol">&nbsp;</td></tr>"""
     }
     val dt = d.updated(d.size-1, d.last.replace("geraeteRow", "totalRow")).mkString("", "\n", "\n")
-    val logoHtml = (if logo.exists then s"""<img class=logo src="${logo.imageSrcForWebEngine}" title="Logo"/>""" else s"")
+    val logoHtml = if logo.exists then s"""<img class=logo src="${logo.imageSrcForWebEngine}" title="Logo"/>""" else s""
     s"""<div class=notenblatt>
       <div class=headline>
-        ${logoHtml}
+        $logoHtml
         <div class=programm>${escaped(kandidat.programm)}</br><div class=geschlecht>${escaped(kandidat.geschlecht)}</div></div>
       </div>
       <h1>${escaped(kandidat.wettkampfTitel)}</h1>
@@ -189,7 +188,7 @@ trait NotenblattToHtmlRenderer {
       <div class="showborder">
         <table class="dataTable" width="100%">
           <tr class="totalRow heavyRow"><td class='dataTd'>Gerät</td><td class='dataTd'>D-Wert</td><td class='dataTd'>E-Wert</td><td class="dataTd totalCol">Endnote</td></tr>
-          ${dt}
+          $dt
           <tr class="heavyRow"><td class="dataTd large">Total</td><td class='dataTd'>&nbsp;</td><td class='dataTd'>&nbsp;</td><td class="dataTd totalCol">&nbsp;</td></tr>
         </table>
       </div>
@@ -197,9 +196,9 @@ trait NotenblattToHtmlRenderer {
     """
   }
   val nextSite = "</li></ul><ul><li>\n"
-  
-  val pageIntro = "<table width='100%'><tr><td>"
-  val pageOutro = "</td></tr></table>"
+
+  private val pageIntro = "<table width='100%'><tr><td>"
+  private val pageOutro = "</td></tr></table>"
   def toHTMLasGeTu(kandidaten: Seq[ch.seidel.kutu.domain.Kandidat], logo: File): String = {
     val blaetter = kandidaten.map(notenblattForGeTu(_, logo))
     val pages = blaetter.sliding(2, 2).map { _.mkString(pageIntro, "</td><td>", pageOutro) }.mkString(nextSite)

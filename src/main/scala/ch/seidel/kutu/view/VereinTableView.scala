@@ -34,7 +34,7 @@ class VereinTableView(vereinList: List[Verein]) extends TableView[Verein] {
   val filter: TextField = new TextField() {
     promptText = "Such-Text"
     text.addListener { (_, _, newVal: String) =>
-      val sortOrderList = sortOrder.toList;
+      val sortOrderList = sortOrder.toList
       filteredModel.clear()
       val searchQuery = newVal.toUpperCase().split(" ")
       for verein <- vereinList

@@ -27,10 +27,10 @@ object WebSocketClient extends SprayJsonSupport with JsonSupport with AuthSuppor
   private var mediaPlayerActions: Option[MediaPlayerAction=>Unit] = None
   private var mediaPlayerEvents: Option[MediaPlayerEvent=>Unit] = None
   val modelWettkampfWertungChanged: SimpleObjectProperty[KutuAppEvent] = new SimpleObjectProperty[KutuAppEvent]()
-  var lastSequenceId = Long.MinValue
-  var lastWettkampf: Option[Wettkampf] = None
+  var lastSequenceId: Long = Long.MinValue
+  private var lastWettkampf: Option[Wettkampf] = None
 
-  def connect[T](wettkampf: Wettkampf, messageProcessor: (Option[T], KutuAppEvent)=>Unit, handleError: Throwable=>Unit = println) = {
+  def connect[T](wettkampf: Wettkampf, messageProcessor: (Option[T], KutuAppEvent)=>Unit, handleError: Throwable=>Unit = println): Promise[Option[Message]] = {
 
     def processorWithoutSender: KutuAppEvent=>Unit = {
       case LastResults(results) =>
@@ -57,7 +57,7 @@ object WebSocketClient extends SprayJsonSupport with JsonSupport with AuthSuppor
         websocketOutgoingSource.concatMat(Source.maybe[Message])(Keep.right))(Keep.right)
 
     lastWettkampf match {
-      case Some(wk) if (wk != wettkampf) =>
+      case Some(wk) if wk != wettkampf =>
         lastSequenceId = Long.MinValue
       case None =>
         lastSequenceId = Long.MinValue
@@ -80,22 +80,22 @@ object WebSocketClient extends SprayJsonSupport with JsonSupport with AuthSuppor
     connectedIncomingPromise = Some(promise)
 
     promise.future.onComplete{
-      case Success(_) => disconnect
+      case Success(_) => disconnect()
       case Failure(error) => 
         logger.error(s"completed with error: $error")
-        disconnect
+        disconnect()
     }
     promise // return promise to close the ws-connection at some point later
   }
   
-  def disconnect = {
+  def disconnect(): Unit = {
     connectedOutgoingQueue.foreach(_.complete())
     connectedOutgoingQueue = None
     connectedIncomingPromise.foreach(p => try {p.success(None)} catch {case e: Exception => })
     connectedIncomingPromise = None
   }
   
-  def isConnected = connectedIncomingPromise.nonEmpty
+  def isConnected: Boolean = connectedIncomingPromise.nonEmpty
 
   def registerMediaPlayerActionHandler(eventhandler: MediaPlayerAction=>Unit): Unit = {
     mediaPlayerActions = Some(eventhandler)
@@ -146,20 +146,20 @@ object WebSocketClient extends SprayJsonSupport with JsonSupport with AuthSuppor
   } catch {
     case e: Exception => MessageAck(text)
   }
-  def tryMapEvent(event: KutuAppEvent): TextMessage = try {
+  private def tryMapEvent(event: KutuAppEvent): TextMessage = try {
     TextMessage(event.toJson.compactPrint) 
   } catch {
     case e: Exception => TextMessage(event.toString)
   }
   
-  def websocketIncomingFlow(handleError: Throwable=>Unit): Flow[Message, KutuAppEvent, Any] =
+  private def websocketIncomingFlow(handleError: Throwable=>Unit): Flow[Message, KutuAppEvent, Any] =
     Flow[Message]
       .mapAsync(1) {
         case TextMessage.Strict(text) => Future.successful(tryMapText(text))
-        case TextMessage.Streamed(stream) => stream.runFold("")(_ + _).map(tryMapText(_))
+        case TextMessage.Streamed(stream) => stream.runFold("")(_ + _).map(tryMapText)
         case b: BinaryMessage => throw new Exception("Binary message cannot be handled")
       }.via(reportErrorsFlow(handleError))
       
-  val websocketOutgoingSource = Source.queue[Message](100, OverflowStrategy.dropHead)
+  private val websocketOutgoingSource = Source.queue[Message](100, OverflowStrategy.dropHead)
     .mapMaterializedValue(queue => connectedOutgoingQueue = Some(queue))
 }

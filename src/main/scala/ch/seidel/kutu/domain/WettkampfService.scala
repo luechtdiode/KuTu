@@ -1,7 +1,7 @@
 package ch.seidel.kutu.domain
 
 import ch.seidel.kutu.actors.{AthletMovedInWettkampf, AthletRemovedFromWettkampf, DurchgangChanged, ScoresPublished}
-import ch.seidel.kutu.calc.{ScoreAggregateFn, ScoreCalcTemplate}
+import ch.seidel.kutu.calc.ScoreCalcTemplate
 import ch.seidel.kutu.http.WebSocketClient
 import ch.seidel.kutu.squad.RiegenBuilder
 import ch.seidel.kutu.squad.RiegenBuilder.{generateRiegen2Name, generateRiegenName}

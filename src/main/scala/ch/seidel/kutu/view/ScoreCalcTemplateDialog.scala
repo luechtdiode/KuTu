@@ -2,6 +2,7 @@ package ch.seidel.kutu.view
 
 import ch.seidel.commons.*
 import ch.seidel.kutu.calc.ScoreAggregateFn
+import ch.seidel.kutu.domain
 import ch.seidel.kutu.view.ScoreCalcTemplatedialog.addVariableIcon
 import javafx.scene.control.TextFormatter
 import org.controlsfx.validation.ValidationSupport
@@ -19,7 +20,7 @@ import java.util.function.UnaryOperator
 
 case class TemplateFormular(working: WertungEditor) extends VBox {
   //val working = init.copy(init = init.init)
-  val caption = if working.init.athlet.id > 0 then s"Notenerfassung für ${working.init.wettkampfdisziplin.disziplin.name} - ${working.init.athlet.easyprint}" else s"Testformular für ${working.init.wettkampfdisziplin.disziplin.name}"
+  val caption: String = if working.init.athlet.id > 0 then s"Notenerfassung für ${working.init.wettkampfdisziplin.disziplin.name} - ${working.init.athlet.easyprint}" else s"Testformular für ${working.init.wettkampfdisziplin.disziplin.name}"
   spacing = 7.0
   minWidth = 600
   working.variableEditorsList.zipWithIndex.foreach(vs => {
@@ -61,10 +62,10 @@ case class TemplateFormular(working: WertungEditor) extends VBox {
 }
 
 object ScoreCalcTemplatedialog {
-  def apply(service: ScoreCalcTempateEditorService, onSelected: (ScoreCalcTemplateEditor) => Unit) =
+  def apply(service: ScoreCalcTempateEditorService, onSelected: ScoreCalcTemplateEditor => Unit) =
     new ScoreCalcTemplatedialog("Neu erfassen ...", service.newEditor(), onSelected)
 
-  def apply(editor: ScoreCalcTemplateEditor, actionTitle: String, onSelected: (ScoreCalcTemplateEditor) => Unit) =
+  def apply(editor: ScoreCalcTemplateEditor, actionTitle: String, onSelected: ScoreCalcTemplateEditor => Unit) =
     new ScoreCalcTemplatedialog(actionTitle, editor.copy(init = editor.init), onSelected)
 
   var addVariableIcon: Image = null
@@ -86,15 +87,15 @@ class FormulaCatchingCaretPositionFilter extends UnaryOperator[TextFormatter.Cha
   }
 }
 
-class ScoreCalcTemplatedialog(actionTitle: String, templateEditor: ScoreCalcTemplateEditor, onSelected: (ScoreCalcTemplateEditor) => Unit) {
-  val scoreCalcTemplateEditor = templateEditor
-  val disziplinList = scoreCalcTemplateEditor.context.disziplinList
-  val wettkampfDisziplinList = scoreCalcTemplateEditor.context.wettkampfdisziplinViews
+class ScoreCalcTemplatedialog(actionTitle: String, templateEditor: ScoreCalcTemplateEditor, onSelected: ScoreCalcTemplateEditor => Unit) {
+  private val scoreCalcTemplateEditor = templateEditor
+  val disziplinList: List[domain.Disziplin] = scoreCalcTemplateEditor.context.disziplinList
+  private val wettkampfDisziplinList = scoreCalcTemplateEditor.context.wettkampfdisziplinViews
 
-  val lblDisziplin = new Label {
+  private val lblDisziplin = new Label {
     text = "Disziplin"
   }
-  val cmbDisziplin = new ComboBox[String] {
+  private val cmbDisziplin = new ComboBox[String] {
     disable <== when(scoreCalcTemplateEditor.editable) choose false otherwise true
     hgrow = Priority.Always
     items.value.add("")
@@ -104,10 +105,10 @@ class ScoreCalcTemplatedialog(actionTitle: String, templateEditor: ScoreCalcTemp
     value <==> scoreCalcTemplateEditor.disziplin
   }
 
-  val lblWKDisziplin = new Label {
+  private val lblWKDisziplin = new Label {
     text = "Kategorie-Disziplin"
   }
-  val cmbWKDisziplin = new ComboBox[String] {
+  private val cmbWKDisziplin = new ComboBox[String] {
     disable <== when(scoreCalcTemplateEditor.editable) choose false otherwise true
     hgrow = Priority.Always
     items.value.add("")
@@ -117,10 +118,10 @@ class ScoreCalcTemplatedialog(actionTitle: String, templateEditor: ScoreCalcTemp
     value <==> scoreCalcTemplateEditor.kategoriedisziplin
   }
 
-  val lblAggregatFn = new Label {
+  private val lblAggregatFn = new Label {
     text = "Aggregat Funktion"
   }
-  val cmbAggregatFn = new ComboBox[String] {
+  private val cmbAggregatFn = new ComboBox[String] {
     disable <== when(scoreCalcTemplateEditor.editable) choose false otherwise true
     hgrow = Priority.Always
     items.value.add("")
@@ -132,7 +133,7 @@ class ScoreCalcTemplatedialog(actionTitle: String, templateEditor: ScoreCalcTemp
   private val eCaretFilter = new FormulaCatchingCaretPositionFilter
   private val pCaretFilter = new FormulaCatchingCaretPositionFilter
 
-  val txtdFormula = new TextField {
+  private val txtdFormula = new TextField {
     editable <== scoreCalcTemplateEditor.editable
     hgrow = Priority.Always
     prefWidth = 150
@@ -140,9 +141,9 @@ class ScoreCalcTemplatedialog(actionTitle: String, templateEditor: ScoreCalcTemp
     textFormatter = new TextFormatter[String](dCaretFilter)
     text <==> scoreCalcTemplateEditor.dFormula
   }
-  val lbldFormula = new Label(txtdFormula.promptText.value)
+  private val lbldFormula = new Label(txtdFormula.promptText.value)
 
-  val txteFormula = new TextField {
+  private val txteFormula = new TextField {
     editable <== scoreCalcTemplateEditor.editable
     hgrow = Priority.Always
     prefWidth = 150
@@ -151,7 +152,7 @@ class ScoreCalcTemplatedialog(actionTitle: String, templateEditor: ScoreCalcTemp
     text <==> scoreCalcTemplateEditor.eFormula
   }
 
-  val txtpFormula = new TextField {
+  private val txtpFormula = new TextField {
     editable <== scoreCalcTemplateEditor.editable
     hgrow = Priority.Always
     prefWidth = 150
@@ -160,27 +161,27 @@ class ScoreCalcTemplatedialog(actionTitle: String, templateEditor: ScoreCalcTemp
     text <==> scoreCalcTemplateEditor.pFormula
   }
 
-  val txtValidState = new Label() {
+  val txtValidState: Label = new Label() {
     hgrow = Priority.Always
     text <==> scoreCalcTemplateEditor.validState
   }
 
-  val txtdValidState = new Label() {
+  private val txtdValidState = new Label() {
     hgrow = Priority.Always
     text <==> scoreCalcTemplateEditor.dvalidState
   }
 
-  val txteValidState = new Label() {
+  private val txteValidState = new Label() {
     hgrow = Priority.Always
     text <==> scoreCalcTemplateEditor.evalidState
   }
 
-  val txtpValidState = new Label() {
+  private val txtpValidState = new Label() {
     hgrow = Priority.Always
     text <==> scoreCalcTemplateEditor.pvalidState
   }
 
-  val box = new BorderPane() {
+  val box: BorderPane = new BorderPane() {
     margin = Insets(10)
     top = new Label("Vorschau") {
       style = "-fx-font-size: 1.2em;-fx-font-weight: bold;-fx-padding: 8px 0 2px 0;-fx-text-fill: #0072aa;"
@@ -188,13 +189,13 @@ class ScoreCalcTemplatedialog(actionTitle: String, templateEditor: ScoreCalcTemp
     }
   }
 
-  val boxContainer = new BorderPane() {
+  private val boxContainer = new BorderPane() {
     style = "-fx-border-color: -fx-focus-color, blue;-fx-border-radius: 10.0;"
     margin = Insets(10)
     center = box
   }
 
-  val insertDVariable = new Button("", new ImageView { image = addVariableIcon }) {
+  private val insertDVariable = new Button("", new ImageView { image = addVariableIcon }) {
     //tooltip.value.text = "Variabel einfügen"
     disable <== when(scoreCalcTemplateEditor.editable) choose false otherwise true
     onAction = { ae =>
@@ -204,7 +205,7 @@ class ScoreCalcTemplatedialog(actionTitle: String, templateEditor: ScoreCalcTemp
       txtdFormula.insertText(dCaretFilter.caretPosition.value, dVariable)
     }
   }
-  val insertEVariable = new Button("", new ImageView { image = addVariableIcon }) {
+  private val insertEVariable = new Button("", new ImageView { image = addVariableIcon }) {
     //tooltip.value.text = "Variabel einfügen"
     disable <== when(scoreCalcTemplateEditor.editable) choose false otherwise true
     onAction = { ae =>
@@ -214,7 +215,7 @@ class ScoreCalcTemplatedialog(actionTitle: String, templateEditor: ScoreCalcTemp
       txteFormula.insertText(eCaretFilter.caretPosition.value, eVariable)
     }
   }
-  val insertPVariable = new Button("", new ImageView { image = addVariableIcon }) {
+  private val insertPVariable = new Button("", new ImageView { image = addVariableIcon }) {
     //tooltip.value.text = "Variabel einfügen"
     disable <== when(scoreCalcTemplateEditor.editable) choose false otherwise true
     onAction = { ae =>
@@ -223,7 +224,7 @@ class ScoreCalcTemplatedialog(actionTitle: String, templateEditor: ScoreCalcTemp
     }
   }
 
-  val panel = new GridPane() {
+  val panel: GridPane = new GridPane() {
     alignment = Pos.Center
     hgrow = Priority.Always
     vgrow = Priority.Always
@@ -255,7 +256,7 @@ class ScoreCalcTemplatedialog(actionTitle: String, templateEditor: ScoreCalcTemp
     //add(txtValidState, 0, 12, 2, 1)
   }
 
-  val btnOK = new Button("OK") {
+  val btnOK: Button = new Button("OK") {
     onAction = (event: ActionEvent) => {
       onSelected(
         templateEditor.context.updated(templateEditor.commit)

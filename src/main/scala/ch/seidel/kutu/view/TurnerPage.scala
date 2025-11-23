@@ -17,9 +17,9 @@ import scalafx.scene.layout.*
 import scalafx.util.converter.DefaultStringConverter
 
 object TurnerPage {
-  var turnerAnalyzers: Map[Long, TurnerAnalyzer] = Map[Long, TurnerAnalyzer]()
+  private var turnerAnalyzers: Map[Long, TurnerAnalyzer] = Map[Long, TurnerAnalyzer]()
 
-  def drillDownInAthlet(vverein: Option[Verein], a: Athlet, service: KutuService, tabpane: LazyTabPane): Unit = {
+  private def drillDownInAthlet(vverein: Option[Verein], a: Athlet, service: KutuService, tabpane: LazyTabPane): Unit = {
     val newtab = new TurnerAnalyzer(vverein, Some(a), None, service) {
       text = a.easyprint + "-Analyse"
       closable = true
@@ -38,7 +38,7 @@ object TurnerPage {
     tabpane.selectionModel.value.select(newtab)
   }
 
-  def drillDownInDisziplin(vverein: Option[Verein], w: WettkampfdisziplinView, service: KutuService, tabpane: LazyTabPane): Unit = {
+  private def drillDownInDisziplin(vverein: Option[Verein], w: WettkampfdisziplinView, service: KutuService, tabpane: LazyTabPane): Unit = {
     val newtab = new TurnerAnalyzer(vverein, None, Some(w), service) {
       text = w.easyprint + "-Analyse"
       closable = true
@@ -57,7 +57,7 @@ object TurnerPage {
     tabpane.selectionModel.value.select(newtab)
   }
 
-  class VereinTab(val verein: Verein, override val service: KutuService, val tabpane: LazyTabPane) extends Tab with TabWithService {
+  private class VereinTab(val verein: Verein, override val service: KutuService, val tabpane: LazyTabPane) extends Tab with TabWithService {
 
     override def isPopulated: Boolean = {
       val athleten = service.selectAthletesOfVerein(verein.id)
@@ -164,7 +164,7 @@ object TurnerPage {
         onAction = (event: ActionEvent) => {
           if !athletenview.selectionModel().isEmpty then {
             val athlet = athletenview.selectionModel().getSelectedItem
-            implicit val impevent = event
+            given ActionEvent = event
             PageDisplayer.showInDialog(text.value, new DisplayablePage() {
               def getPage: Node = {
                 new HBox {
@@ -233,7 +233,7 @@ object TurnerPage {
     }
   }
 
-  def buildTab(wettkampfmode: BooleanProperty, club: Verein, service: KutuService) = {
+  def buildTab(wettkampfmode: BooleanProperty, club: Verein, service: KutuService): TurnerPage = {
     def refresher(pane: LazyTabPane) = {
       val retUnsorted = Seq(new VereinTab(club, service, pane) {
         text = verein.name

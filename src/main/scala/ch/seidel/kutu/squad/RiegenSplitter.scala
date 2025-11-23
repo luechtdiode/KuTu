@@ -31,7 +31,7 @@ trait RiegenSplitter {
   final def splitToMaxTurnerCount(sugg: Seq[(String, Seq[(AthletView, Seq[WertungView])])], maxRiegenTurnerCount: Int, cache: scala.collection.mutable.Map[String, Int]): Seq[(String, Seq[(AthletView, Seq[WertungView])])] = {
     //cache.clear
     val ret = sugg.sortBy(_._2.size).reverse
-    if (ret.size > 0 && ret.head._2.size > maxRiegenTurnerCount) then {
+    if ret.nonEmpty && ret.head._2.size > maxRiegenTurnerCount then {
       splitToMaxTurnerCount(split(ret.head, "#", cache) ++ ret.tail, maxRiegenTurnerCount, cache)
     }
     else {
@@ -46,7 +46,7 @@ trait RiegenSplitter {
     def occurences(key: String) = {
       val cnt = cache.getOrElse(key, 0) + 1
       cache.update(key, cnt)
-      f"${cnt}%02d"
+      f"$cnt%02d"
     }
     val key1 = if key.contains(delimiter) then key else oldKey1 + delimiter + occurences(oldKey1)
     val key2 = oldKey1 + delimiter + occurences(oldKey1)

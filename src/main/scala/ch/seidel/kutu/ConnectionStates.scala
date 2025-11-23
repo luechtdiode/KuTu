@@ -31,13 +31,13 @@ object ConnectionStates {
   def disconnected(): Unit = {
     Platform.runLater(
       () => {
-        disconnect
+        disconnect()
       }
     )
   }
 
-  def disconnect = {
-    WebSocketClient.disconnect
+  def disconnect(): Unit = {
+    WebSocketClient.disconnect()
     _connectedWithProperty.setValue("")
     _connectedProperty.setValue(false)
   }

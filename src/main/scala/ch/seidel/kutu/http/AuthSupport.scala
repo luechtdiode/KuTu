@@ -114,7 +114,7 @@ trait AuthSupport extends Directives with SprayJsonSupport with Hashing with Jwt
 //    }               
 //  })
 //    
-  def askForUsernamePassword: Option[Seq[String]] = PageDisplayer.askFor("Proxy Login", ("Username", System.getProperty("user.name")), ("Passwort*", proxyPassword.getOrElse("")))
+  private def askForUsernamePassword: Option[Seq[String]] = PageDisplayer.askFor("Proxy Login", ("Username", System.getProperty("user.name")), ("Passwort*", proxyPassword.getOrElse("")))
   
   def getProxyAuth: PasswordAuthentication = askForUsernamePassword match {
     case Some(Seq(username, password)) => 
@@ -124,7 +124,7 @@ trait AuthSupport extends Directives with SprayJsonSupport with Hashing with Jwt
     case _ => new PasswordAuthentication(proxyUser.get, proxyPassword.get.toCharArray)
   }
   
-  def httpsProxyTransport: Option[ClientTransport] = proxyHost.flatMap(h =>
+  private def httpsProxyTransport: Option[ClientTransport] = proxyHost.flatMap(h =>
     proxyPort.map(p =>
       (proxyUser, proxyPassword) match {
         case (Some(user), Some(password)) => ClientTransport.httpsProxy(InetSocketAddress.createUnresolved(h, Integer.valueOf(p)), headers.BasicHttpCredentials(user, password))
@@ -138,26 +138,26 @@ trait AuthSupport extends Directives with SprayJsonSupport with Hashing with Jwt
       }
     ))
     
-  def clientsettings: ClientConnectionSettings = httpsProxyTransport match {
+  private def clientsettings: ClientConnectionSettings = httpsProxyTransport match {
     case Some(pt) => ClientConnectionSettings(Core.system).withTransport(pt)
     case _        => ClientConnectionSettings(Core.system)
   }
 
   def poolsettings: ConnectionPoolSettings = ConnectionPoolSettings(Core.system).withConnectionSettings(clientsettings)
 
-  def verify(credentials: Provided, userSecretHashLookup: (String) => String): Boolean = {
+  private def verify(credentials: Provided, userSecretHashLookup: String => String): Boolean = {
     val hash = userSecretHashLookup(credentials.identifier)
     credentials.verify(hash, matchHashed(hash))
   }
 
-  def knownVerein(credentials: Provided, userLookup: (String) => Option[Long]): Boolean = {
+  private def knownVerein(credentials: Provided, userLookup: String => Option[Long]): Boolean = {
     userLookup(credentials.identifier) match {
       case Some(_) => true
       case None    => false
     }
   }
 
-  def userPassAuthenticator(userSecretHashLookup: (String) => String, userLookup: (String) => Option[Long]): AuthenticatorPF[String] = {
+  def userPassAuthenticator(userSecretHashLookup: String => String, userLookup: String => Option[Long]): AuthenticatorPF[String] = {
     case p @ Credentials.Provided(id) if verify(p, userSecretHashLookup) => id
     case p @ Credentials.Provided(id) if knownVerein(p, userLookup) =>
       id + OPTION_LOGINRESET

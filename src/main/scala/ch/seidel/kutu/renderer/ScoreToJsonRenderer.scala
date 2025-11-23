@@ -34,10 +34,10 @@ object ScoreToJsonRenderer {
   def renderListHead(gsBlock: StringBuilder, level: Int, openedTitle: String): gsBlock.type = {
     gsBlock.append("{")
     if openedTitle.startsWith("\"title\":{") then {
-      gsBlock.append(s"""${openedTitle}"},""")
+      gsBlock.append(s"""$openedTitle"},""")
     }
     else {
-      gsBlock.append(s""""title":{"level":"${level + 2}", "text":"${openedTitle}"},""")
+      gsBlock.append(s""""title":{"level":"${level + 2}", "text":"$openedTitle"},""")
     }
   }
 

@@ -46,12 +46,12 @@ abstract class DefaultRanglisteTab(wettkampfmode: BooleanProperty, override val 
     subscription = List.empty
   }
 
-  var lazyPaneUpdater: Map[String, ScheduledFuture[?]] = Map.empty
+  private var lazyPaneUpdater: Map[String, ScheduledFuture[?]] = Map.empty
 
   def submitLazy(name: String, task: () => Unit, delay: Long): Unit = {
     lazyPaneUpdater.get(name).foreach(_.cancel(true))
     val ft = KuTuApp.lazyExecutor.schedule(new Runnable() {
-      def run = {
+      override def run(): Unit = {
         Platform.runLater {
           task()
         }
@@ -103,8 +103,8 @@ abstract class DefaultRanglisteTab(wettkampfmode: BooleanProperty, override val 
 
   val converter = new DataObjectConverter()
 
-  var restoring = false
-  val nullFilter = NullObject("alle")
+  private var restoring = false
+  private val nullFilter = NullObject("alle")
   val cbAvg: CheckBox = new CheckBox {
     text = "Durchschn. Punkte bei mehreren Wettkämpfen"
     selected = true
@@ -118,12 +118,12 @@ abstract class DefaultRanglisteTab(wettkampfmode: BooleanProperty, override val 
     BestNWertungen(5),
   ))
 
-  val cbBestN: ComboBox[ScoreListBestN] = new ComboBox[ScoreListBestN] {
+  private val cbBestN: ComboBox[ScoreListBestN] = new ComboBox[ScoreListBestN] {
     items = bestNModel
     selectionModel.value.select(AlleWertungen)
   }
 
-  val cbfSaved = new MenuButton("Gespeicherte Einstellungen") {
+  private val cbfSaved = new MenuButton("Gespeicherte Einstellungen") {
     disable <== when(createBooleanBinding(() => items.isEmpty, items)) choose true otherwise false
   }
 
@@ -229,7 +229,7 @@ abstract class DefaultRanglisteTab(wettkampfmode: BooleanProperty, override val 
         val (cb, cf) = cbp
         val grp = cb.selectionModel.value.getSelectedItem
 
-        if cf.getCheckModel.getCheckedItems.isEmpty() || cf.getCheckModel.getCheckedItems.forall(nullFilter.equals(_)) then {
+        if cf.getCheckModel.getCheckedItems.isEmpty || cf.getCheckModel.getCheckedItems.forall(nullFilter.equals(_)) then {
           grp.reset
         }
         else {
@@ -303,8 +303,8 @@ abstract class DefaultRanglisteTab(wettkampfmode: BooleanProperty, override val 
       combos.foreach { cb =>
         val (cmb, cmbf) = cb
         cmb.selectionModel.value.clearSelection()
-        cmbf.getCheckModel.clearChecks
-        cmbf.getItems.clear
+        cmbf.getCheckModel.clearChecks()
+        cmbf.getItems.clear()
         cmbf.setDisable(true)
       }
 
@@ -439,7 +439,7 @@ abstract class DefaultRanglisteTab(wettkampfmode: BooleanProperty, override val 
     }
 
     def refreshScorePresets(items: ObservableList[javafx.scene.control.MenuItem]): Unit = {
-      items.clear
+      items.clear()
       val addPublished: PublishedScoreView => Unit = addPublishedFilter(items)
       val addSaved: File => Unit = addPredefinedFilter(items)
       getPublishedScores.foreach(addPublished(_))
@@ -466,7 +466,7 @@ abstract class DefaultRanglisteTab(wettkampfmode: BooleanProperty, override val 
             new ExtensionFilter("Filtereinstellung", "*.scoredef"))
           initialFileName = filename
         }
-        val selectedFile = fileChooser.showSaveDialog(KuTuApp.getStage())
+        val selectedFile = fileChooser.showSaveDialog(KuTuApp.getStage)
         if selectedFile != null then {
           val file = if !selectedFile.getName.endsWith(".scoredef") then {
             new java.io.File(selectedFile.getAbsolutePath + ".scoredef")
@@ -528,13 +528,13 @@ abstract class DefaultRanglisteTab(wettkampfmode: BooleanProperty, override val 
       vgrow = Priority.Always
       hgrow = Priority.Always
       //              children = new Label("Filter:") :+ combfs
-      val label = new Label("Gruppierungen:") {
+      val label: Label = new Label("Gruppierungen:") {
         padding = Insets(7, 0, 0, 0)
       }
-      val labelfilter = new Label("Filter:") {
+      val labelfilter: Label = new Label("Filter:") {
         padding = Insets(7, 0, 0, 0)
       }
-      val topBox = new VBox {
+      val topBox: VBox = new VBox {
         vgrow = Priority.Always
         hgrow = Priority.Always
         children = List(label, labelfilter)
@@ -551,12 +551,12 @@ abstract class DefaultRanglisteTab(wettkampfmode: BooleanProperty, override val 
       top = new VBox {
         vgrow = Priority.Always
         hgrow = Priority.Always
-        buildToolbars
+        buildToolbars()
         wettkampfmode.onChange {
-          buildToolbars
+          buildToolbars()
         }
 
-        private def buildToolbars = {
+        private def buildToolbars(): Unit = {
           if wettkampfmode.value then {
             children = List(
               new ToolBar {
@@ -566,7 +566,7 @@ abstract class DefaultRanglisteTab(wettkampfmode: BooleanProperty, override val 
                 content = List(cbKind, cbBestN, cbModus, cbAvg)
               },
               new ToolBar {
-                content = (topBox +: topCombos)
+                content = topBox +: topCombos
               })
           } else {
             children = List(
@@ -577,7 +577,7 @@ abstract class DefaultRanglisteTab(wettkampfmode: BooleanProperty, override val 
                 content = List(cbKind, cbBestN, cbModus, cbAvg)
               },
               new ToolBar {
-                content = (topBox +: topCombos)
+                content = topBox +: topCombos
               })
           }
         }
@@ -591,7 +591,7 @@ abstract class DefaultRanglisteTab(wettkampfmode: BooleanProperty, override val 
     (if filter.published then "Publiziert: " else "Bereitgestellt: ") + filter.title
   }
 
-  def normalizeFilterText(text: String) = encodeFileName(
+  def normalizeFilterText(text: String): String = encodeFileName(
     text
       .replace("groupby", "Gruppiert")
       .replace("filter", "Gefiltert")

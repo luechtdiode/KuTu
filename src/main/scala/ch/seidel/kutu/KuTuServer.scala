@@ -90,7 +90,7 @@ object KuTuServer extends App with KuTuAppHTTPServer with AuthSupport with Hashi
           true
         //      case s =>
         //        println(s"cached unknown comand: '$s'")
-        case _ =>
+        case null =>
           // on linux, readLine doesn't block
           Thread.sleep(5000)
           true

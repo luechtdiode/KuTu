@@ -3,13 +3,13 @@ package ch.seidel.kutu.renderer
 import ch.seidel.kutu.domain.*
 import ch.seidel.kutu.renderer.KategorieTeilnehmerToHtmlRenderer.getDurchgangFullName
 import ch.seidel.kutu.renderer.PrintUtil.*
-import org.slf4j.LoggerFactory
+import org.slf4j.{Logger, LoggerFactory}
 
 import java.io.File
 import java.time.LocalDateTime
 
 object RiegenBuilder {
-  val logger = LoggerFactory.getLogger(this.getClass)
+  val logger: Logger = LoggerFactory.getLogger(this.getClass)
   def mapToGeraeteRiegen(kandidaten: Seq[ch.seidel.kutu.domain.Kandidat], printorder: Boolean = false, durchgangFilter: Set[String] = Set.empty, haltsFilter: Set[Int] = Set.empty): List[GeraeteRiege] = {
     val sorter: RiegenRotationsregel = if kandidaten.nonEmpty && kandidaten.head.wertungen.nonEmpty then
       RiegenRotationsregel(kandidaten.head.wertungen.head.wettkampf)
@@ -296,7 +296,7 @@ trait RiegenblattToHtmlRenderer {
     </html>
   """
 
-  def shorten(s: String, l: Int = 10) = {
+  def shorten(s: String, l: Int = 10): String = {
     if s.length() <= l then {
       s.trim
     } else {
@@ -321,13 +321,13 @@ trait RiegenblattToHtmlRenderer {
       val einteilung: String = kandidat._1.einteilung
         .map(r => r.r.replaceAll( s",${kandidat._1.verein}", ""))
         .getOrElse(kandidat._1.programm)
-      val programm = if einteilung.isEmpty() then "" else "(" + shorten(einteilung) + ")"
-      val verein = if kandidat._1.verein.isEmpty() then "" else shorten(kandidat._1.verein, 15)
+      val programm = if einteilung.isEmpty then "" else "(" + shorten(einteilung) + ")"
+      val verein = if kandidat._1.verein.isEmpty then "" else shorten(kandidat._1.verein, 15)
       s"""<tr class="turnerRow"><td class="large">${kandidat._2 + tutioffset}. ${escaped(kandidat._1.vorname)} ${escaped(kandidat._1.name)} <span class='sf'>${escaped(programm)}</span></td><td><span class='sf'>${escaped(verein)}</span></td><td>&nbsp;</td><td>&nbsp;</td><td class="totalCol">&nbsp;</td></tr>"""
     }.mkString("", "\n", "\n")
 
     val stationlink = WertungsrichterQRCode.toURI(baseUrl, riege)
-    val imagedata = s"<a href='$stationlink' target='_blank'><img title='${stationlink}' width='140px' height='140px' src='${PrintUtil.toQRCodeImage(stationlink)}'></a>"
+    val imagedata = s"<a href='$stationlink' target='_blank'><img title='$stationlink' width='140px' height='140px' src='${PrintUtil.toQRCodeImage(stationlink)}'></a>"
     s"""<div class=riegenblatt>
       <div class=headline>
         $logoHtml $imagedata
@@ -337,7 +337,7 @@ trait RiegenblattToHtmlRenderer {
       <div class="showborder">
         <table width="100%">
           <tr class="totalRow heavyRow"><td>Turner/Turnerin</td><td>Verein</td><td>1. Wertung</td><td>2. Wertung</td><td class="totalCol">Endnote</td></tr>
-          ${d}
+          $d
         </table>
       </div>
     </div>

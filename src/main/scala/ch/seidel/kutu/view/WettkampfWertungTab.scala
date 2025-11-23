@@ -199,7 +199,7 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
         if logger.isDebugEnabled() then {
           logger.debug("updating EditorPane ")
         }
-        athletHeaderPane.adjust
+        athletHeaderPane.adjust()
         updateRiegen()
         val model = cmbDurchgangFilter.items.getValue
         val raw = rebuildDurchgangFilterList
@@ -301,7 +301,7 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
             }
           )(using ae)
           //if (w.isDirty) {
-          //  service.updateWertung(w.updateAndcommit)
+          //  service.updateWertung(w.updateAndcommit())
           //}
         }
 
@@ -377,7 +377,7 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
         onEditCancel = (evt: CellEditEvent[IndexedSeq[WertungEditor], Double]) => {
           if evt.rowValue != null && evt.rowValue.size > index then {
             val disciplin = evt.rowValue(index)
-            disciplin.reset
+            disciplin.reset()
           }
         }
         onEditCommit = (evt: CellEditEvent[IndexedSeq[WertungEditor], Double]) => {
@@ -398,7 +398,7 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
               }
             }
             if disciplin.isDirty then {
-              service.updateWertung(disciplin.updateAndcommit)
+              service.updateWertung(disciplin.updateAndcommit())
             }
           }
           evt.tableView.requestFocus()
@@ -442,7 +442,7 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
         onEditCancel = (evt: CellEditEvent[IndexedSeq[WertungEditor], Double]) => {
           if evt.rowValue != null && evt.rowValue.size > index then {
             val disciplin = evt.rowValue(index)
-            disciplin.reset
+            disciplin.reset()
           }
         }
 
@@ -464,7 +464,7 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
               }
             }
             if disciplin.isDirty then {
-              service.updateWertung(disciplin.updateAndcommit)
+              service.updateWertung(disciplin.updateAndcommit())
             }
           }
           evt.tableView.requestFocus()
@@ -634,7 +634,7 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
           logger.debug("start riege-rename")
           service.updateAllWertungenAsync(
             evt.rowValue.map(wertung =>
-              wertung.updateAndcommit.copy(riege = newRiege))).andThen {
+              wertung.updateAndcommit().copy(riege = newRiege))).andThen {
             case Success(ws) => logger.debug("saved riege-rename")
               KuTuApp.invokeWithBusyIndicator {
                 val selected = wkview.selectionModel.value.selectedCells
@@ -680,7 +680,7 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
             logger.debug("start riege-rename")
             service.updateAllWertungenAsync(
               evt.rowValue.map(wertung =>
-                wertung.updateAndcommit.copy(riege2 = newRiege))).andThen {
+                wertung.updateAndcommit().copy(riege2 = newRiege))).andThen {
               case Success(ws) => logger.debug("saved riege-rename")
                 KuTuApp.invokeWithBusyIndicator {
                   val selected = wkview.selectionModel.value.selectedCells
@@ -791,7 +791,7 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
                   logger.debug("start riege-rename")
                   service.updateAllWertungenAsync(
                     evt.rowValue.map(wertung =>
-                      wertung.updateAndcommit.copy(riege = newRiege))).andThen {
+                      wertung.updateAndcommit().copy(riege = newRiege))).andThen {
                     case Success(ws) => logger.debug("saved riege-rename")
                       KuTuApp.invokeWithBusyIndicator {
                         val selected = wkview.selectionModel.value.selectedCells
@@ -837,7 +837,7 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
                   logger.debug("start riege-rename")
                   service.updateAllWertungenAsync(
                     evt.rowValue.map(wertung =>
-                      wertung.updateAndcommit.copy(riege2 = newRiege))).andThen {
+                      wertung.updateAndcommit().copy(riege2 = newRiege))).andThen {
                     case Success(ws) => logger.debug("saved riege-rename")
                       KuTuApp.invokeWithBusyIndicator {
                         val selected = wkview.selectionModel.value.selectedCells
@@ -1983,7 +1983,7 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
           }
           w <- wl
         do {
-          service.updateWertung(w.updateAndcommit.copy(riege = None))
+          service.updateWertung(w.updateAndcommit().copy(riege = None))
         }
         for
           wl <- reloadWertungen { wertung =>
@@ -1994,7 +1994,7 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
           }
           w <- wl
         do {
-          service.updateWertung(w.updateAndcommit.copy(riege2 = None))
+          service.updateWertung(w.updateAndcommit().copy(riege2 = None))
         }
         reloadData()
       }
@@ -2246,7 +2246,7 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
               for disciplin <- selected do {
                 disciplin.clearInput()
                 if disciplin.isDirty then {
-                  service.updateWertung(disciplin.updateAndcommit)
+                  service.updateWertung(disciplin.updateAndcommit())
                 }
               }
             }
@@ -2284,7 +2284,7 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
                   || index == disziplinlist.indexOf(durchgangFilter.disziplin.get) then {
                   disciplin.clearInput()
                   if disciplin.isDirty then {
-                    service.updateWertung(disciplin.updateAndcommit)
+                    service.updateWertung(disciplin.updateAndcommit())
                   }
                 }
               }

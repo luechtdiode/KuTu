@@ -18,9 +18,7 @@ class WKJFSCTableColumn[T](val index: Int) extends jfxsc.TableColumn[IndexedSeq[
   override def valueEditor(selectedRow: IndexedSeq[WertungEditor]): WertungEditor = selectedRow(index)
 }
 
-class WKTableColumn[T](val index: Int) extends TableColumn[IndexedSeq[WertungEditor], T] with WKTCAccess {
-  override val delegate: jfxsc.TableColumn[IndexedSeq[WertungEditor], T] = new WKJFSCTableColumn[T](index)
-
+class WKTableColumn[T](val index: Int) extends TableColumn[IndexedSeq[WertungEditor], T](new WKJFSCTableColumn[T](index)) with WKTCAccess {
   override def getIndex: Int = index
 
   override def valueEditor(selectedRow: IndexedSeq[WertungEditor]): WertungEditor = selectedRow(index)

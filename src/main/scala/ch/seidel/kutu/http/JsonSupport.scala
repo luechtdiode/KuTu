@@ -135,7 +135,7 @@ trait JsonSupport extends SprayJsonSupport with EnrichedJson {
   given athletMediaIsPausedFormat: RootJsonFormat[AthletMediaIsPaused] = jsonFormat2(AthletMediaIsPaused.apply)
 
   // support for websocket incoming json-messages
-  val caseClassesJsonFormatter: Map[String, JsonFormat[? <: KutuAppEvent]] = Map(
+  private val caseClassesJsonFormatter: Map[String, JsonFormat[? <: KutuAppEvent]] = Map(
     classOf[DurchgangStarted].getSimpleName -> durchgangStartedFormat,
     classOf[AthletWertungUpdated].getSimpleName -> wertungUpdatedFormat,
     classOf[AthletWertungUpdatedSequenced].getSimpleName -> wertungUpdatedFormatSeq,

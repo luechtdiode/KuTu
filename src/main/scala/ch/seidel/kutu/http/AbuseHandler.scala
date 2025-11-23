@@ -11,23 +11,23 @@ import scala.annotation.tailrec
 
 object AbuseHandler {
 
-  val abusedGauge: Gauge = Gauge
+  private val abusedGauge: Gauge = Gauge
     .builder()
     .name(PrometheusNaming.sanitizeMetricName(Config.metricsNamespaceName + "_abused_clients"))
     .help("Abused client counter")
     .register(MetricsController.registry.underlying)
 
-  val abusedWatchListGauge: Gauge = Gauge
+  private val abusedWatchListGauge: Gauge = Gauge
     .builder()
     .name(PrometheusNaming.sanitizeMetricName(Config.metricsNamespaceName + "_abused_watchlist_clients"))
     .help("Abused watchlist client counter")
     .register(MetricsController.registry.underlying)
 
   case class AbusedClient(ip: String, cid: String, path: String, abused: Boolean) {
-    val mapKey: String = s"${ip}@${cid}//${path}"
+    val mapKey: String = s"$ip@$cid//$path"
   }
 
-  case object AbusedClient {
+  private case object AbusedClient {
 
     @tailrec
     private def skipElements(path: Path, count: Int): Path =
@@ -87,9 +87,9 @@ object AbuseHandler {
     maybeCounter match {
       case None =>
         None
-      case acOption@Some(abuseCounter) if (abuseCounter.isAbused) =>
+      case acOption@Some(abuseCounter) if abuseCounter.isAbused =>
         acOption
-      case Some(abuseCounter) if (abuseCounter.isTimedOut) =>
+      case Some(abuseCounter) if abuseCounter.isTimedOut =>
         removeInAbuseMap(abuseCounter.client)
       case _ =>
         None

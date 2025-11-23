@@ -2,9 +2,7 @@ package ch.seidel.kutu.renderer
 
 import ch.seidel.kutu.domain.*
 import ch.seidel.kutu.renderer.PrintUtil.*
-import net.glxn.qrgen.QRCode
-import net.glxn.qrgen.image.ImageType
-import org.slf4j.LoggerFactory
+import org.slf4j.{Logger, LoggerFactory}
 
 import java.io.File
 import java.util.Base64
@@ -12,14 +10,14 @@ import java.util.Base64
 case class WertungsrichterQRCode(wettkampfTitle: String, durchgangname: String, geraet: String, uri: String, imageData: String)
 
 object WertungsrichterQRCode {
-  val logger = LoggerFactory.getLogger(this.getClass)
-  val enc = Base64.getUrlEncoder
+  val logger: Logger = LoggerFactory.getLogger(this.getClass)
+  val enc: Base64.Encoder = Base64.getUrlEncoder
   
-  def toURI(uuid: String, remoteBaseUrl: String, gr: GeraeteRiege) =
-    s"$remoteBaseUrl?" + new String(enc.encodeToString((s"c=$uuid&d=${encodeURIComponent(gr.durchgang.get)}&g=${gr.disziplin.get.id}").getBytes))
+  def toURI(uuid: String, remoteBaseUrl: String, gr: GeraeteRiege): String =
+    s"$remoteBaseUrl?" + new String(enc.encodeToString(s"c=$uuid&d=${encodeURIComponent(gr.durchgang.get)}&g=${gr.disziplin.get.id}".getBytes))
 
-  def toURI(remoteBaseUrl: String, gr: GeraeteRiege) =
-    s"$remoteBaseUrl?" + new String(enc.encodeToString((s"c=${gr.wettkampfUUID}&d=${encodeURIComponent(gr.durchgang.get)}&st=${gr.halt +1}&g=${gr.disziplin.get.id}").getBytes))
+  def toURI(remoteBaseUrl: String, gr: GeraeteRiege): String =
+    s"$remoteBaseUrl?" + new String(enc.encodeToString(s"c=${gr.wettkampfUUID}&d=${encodeURIComponent(gr.durchgang.get)}&st=${gr.halt +1}&g=${gr.disziplin.get.id}".getBytes))
 
   def toMobileConnectData(wettkampf: WettkampfView, baseUrl: String)(gr: GeraeteRiege) =
     WertungsrichterQRCode(wettkampf.titel, gr.durchgang.get, gr.disziplin.get.name, toURI(wettkampf.uuid.get, baseUrl, gr), toQRCodeImage(toURI(wettkampf.uuid.get, baseUrl, gr)))
@@ -145,13 +143,13 @@ trait WertungsrichterQRCodesToHtmlRenderer {
     s"""<div class=qrcodeblatt>
       <div class=headline>
         $logoHtml
-        <div class=geraet>${geraet}</div></div>
+        <div class=geraet>$geraet</div></div>
       </div>
       <h1>${escaped(wettkampfTitel)}</h1>
       <div class="showborder">
         <table width="100%">
           <tr class="totalRow heavyRow"><td>Durchgang</td><td>QRCode für Mobile-Connect</td><td class="totalCol">Durchgang</td><td>QRCode für Mobile-Connect</td></tr>
-          ${d}
+          $d
         </table>
       </div>
     </div>

@@ -4,13 +4,14 @@ import ch.seidel.kutu.domain.*
 import ch.seidel.kutu.squad.RiegenBuilder.generateRiegen2Name
 
 import scala.annotation.tailrec
+import scala.collection.mutable
 
 trait RiegenGrouper extends RiegenSplitter {
 
 
   def suggestRiegen(riegencnt: Int, wertungen: Seq[WertungView]): Seq[WertungenZuRiege] = {
 
-    implicit val cache = scala.collection.mutable.Map[String, Int]()
+    given cache: mutable.Map[String, Int] = scala.collection.mutable.Map[String, Int]()
     val athletGroupedWertungen = wertungen.groupBy(w => w.athlet)
     if athletGroupedWertungen.isEmpty then {
       Seq[(String, Seq[Wertung])]()
@@ -22,7 +23,7 @@ trait RiegenGrouper extends RiegenSplitter {
     }
   }
 
-  protected def toRiege(athletenZuRiegenName: (String, Seq[WertungViewsZuAthletView])): WertungenZuRiege = {
+  private def toRiege(athletenZuRiegenName: (String, Seq[WertungViewsZuAthletView])): WertungenZuRiege = {
     val (riegenname, athletenWertungen) = athletenZuRiegenName
 
     val wertungen = athletenWertungen.flatMap { athletenWertung => {

@@ -45,7 +45,7 @@ class ScoreCalcTemplatesTab(wettkampf: WettkampfView, override val service: Kutu
   }
 
   val model: ObservableBuffer[ScoreCalcTemplateEditor] = ObservableBuffer.from(List.empty[ScoreCalcTemplateEditor])
-  val scoreCalcTemplateEditors: util.Collection[ScoreCalcTemplateEditor] = new util.ArrayList[ScoreCalcTemplateEditor]()
+  private val scoreCalcTemplateEditors: util.Collection[ScoreCalcTemplateEditor] = new util.ArrayList[ScoreCalcTemplateEditor]()
   val context = ScoreCalcTempateEditorService(wettkampf, service)
 
   def reloadData(): Unit = {

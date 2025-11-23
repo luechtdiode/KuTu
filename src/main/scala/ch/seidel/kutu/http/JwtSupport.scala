@@ -57,9 +57,9 @@ trait JwtSupport extends Directives {
     respondWithHeader(RawHeader(jwtAuthorizationKey, jwt))
   }
 
-  def createOneTimeResetRegistrationLoginToken(competitionUUID: String, registrationId: Long) = {
+  def createOneTimeResetRegistrationLoginToken(competitionUUID: String, registrationId: Long): String = {
     val token = jwt.JsonWebToken(jwtHeader, setClaims(registrationId.toString, 1), jwtSecretKey)
-    new String(Base64.getUrlEncoder.encodeToString((s"registration&c=$competitionUUID&rid=$registrationId&rs=$token").getBytes))
+    new String(Base64.getUrlEncoder.encodeToString(s"registration&c=$competitionUUID&rid=$registrationId&rs=$token".getBytes))
   }
 
   def setClaims(userid: String, wettkampfDate: Date): JwtClaimsSetMap = {
@@ -86,12 +86,12 @@ trait JwtSupport extends Directives {
     )
   )
 
-  def getClaims(jwt: String) = jwt match {
+  private def getClaims(jwt: String) = jwt match {
     case JsonWebToken(_, claims, _) => claims.asSimpleMap.toOption
     case _ => None
   }
 
-  def getUserID(claims: Option[Map[String, String]]): Option[String] = claims.map(_.get(userKey)).get
+  private def getUserID(claims: Option[Map[String, String]]): Option[String] = claims.map(_.get(userKey)).get
 
   def getExpiration(jwt: String): Option[Date] = getClaims(jwt) match {
     case Some(claims) => claims.get(expiredAtKey) match {

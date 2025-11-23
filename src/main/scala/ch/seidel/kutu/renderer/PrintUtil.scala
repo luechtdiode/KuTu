@@ -5,7 +5,7 @@ import ch.seidel.kutu.KuTuApp
 import ch.seidel.kutu.KuTuApp.hostServices
 import net.glxn.qrgen.QRCode
 import net.glxn.qrgen.image.ImageType
-import org.slf4j.LoggerFactory
+import org.slf4j.{Logger, LoggerFactory}
 import scalafx.Includes.*
 import scalafx.application.Platform
 import scalafx.beans.binding.Bindings
@@ -29,13 +29,13 @@ import scala.util.Success
 
 
 object PrintUtil {
-  val logger = LoggerFactory.getLogger(this.getClass)
+  val logger: Logger = LoggerFactory.getLogger(this.getClass)
 
   import scala.concurrent.ExecutionContext.Implicits.global
 
   private val PRINT_TO_BROWSER = new AtomicBoolean(false)
 
-  def escaped(text: String) =
+  def escaped(text: String): String =
     if text == null then {
       ""
     }
@@ -45,27 +45,27 @@ object PrintUtil {
 
   case class FilenameDefault(filename: String, dir: java.io.File)
 
-  def btnPrint(title: String, defaults: FilenameDefault, adjustLinesPerPage: Boolean = false, onGenerateOutput: (Int) => String, engine: WebEngine = KuTuApp.invisibleWebView.engine, orientation: PageOrientation = PageOrientation.Portrait) = new Button {
+  def btnPrint(title: String, defaults: FilenameDefault, adjustLinesPerPage: Boolean = false, onGenerateOutput: Int => String, engine: WebEngine = KuTuApp.invisibleWebView.engine, orientation: PageOrientation = PageOrientation.Portrait): Button = new Button {
     text = "Drucken ..."
     onAction = printDialog(title, defaults, adjustLinesPerPage, onGenerateOutput, engine, orientation)
   }
 
-  def btnPrintFuture(title: String, defaults: FilenameDefault, adjustLinesPerPage: Boolean = false, onGenerateOutput: (Int) => Future[String], engine: WebEngine = KuTuApp.invisibleWebView.engine, orientation: PageOrientation = PageOrientation.Portrait) = new Button {
+  def btnPrintFuture(title: String, defaults: FilenameDefault, adjustLinesPerPage: Boolean = false, onGenerateOutput: Int => Future[String], engine: WebEngine = KuTuApp.invisibleWebView.engine, orientation: PageOrientation = PageOrientation.Portrait): Button = new Button {
     text = "Drucken ..."
     onAction = printDialogFuture(title, defaults, adjustLinesPerPage, onGenerateOutput, engine, orientation)
   }
 
-  def printDialog(title: String, defaults: FilenameDefault, adjustLinesPerPage: Boolean = false, onGenerateOutput: (Int) => String, engine: WebEngine = KuTuApp.invisibleWebView.engine, orientation: PageOrientation = PageOrientation.Portrait)(action: ActionEvent): Unit = {
+  def printDialog(title: String, defaults: FilenameDefault, adjustLinesPerPage: Boolean = false, onGenerateOutput: Int => String, engine: WebEngine = KuTuApp.invisibleWebView.engine, orientation: PageOrientation = PageOrientation.Portrait)(action: ActionEvent): Unit = {
     printDialogFuture(title, defaults, adjustLinesPerPage, (x: Int) => Future {
       onGenerateOutput(x)
     }, engine, orientation)(action)
   }
 
-  def printDialogFuture(title: String, defaults: FilenameDefault, adjustLinesPerPage: Boolean = false, onGenerateOutput: (Int) => Future[String], engine: WebEngine = KuTuApp.invisibleWebView.engine, orientation: PageOrientation = PageOrientation.Portrait)(action: ActionEvent): Unit = {
+  def printDialogFuture(title: String, defaults: FilenameDefault, adjustLinesPerPage: Boolean = false, onGenerateOutput: Int => Future[String], engine: WebEngine = KuTuApp.invisibleWebView.engine, orientation: PageOrientation = PageOrientation.Portrait)(action: ActionEvent): Unit = {
 
     val dir = defaults.dir
     if !dir.exists() then {
-      dir.mkdirs();
+      dir.mkdirs()
     }
     val selectedFile = new File(dir.getPath + "/" + defaults.filename)
     val txtLinesPerPage = new TextField {
@@ -82,7 +82,7 @@ object PrintUtil {
       PrintUtil.printers.toList.sortBy(p => p.name).foreach { p => items.value.add(p) }
       selectionModel.value.select(PrintUtil.pdfPrinter.getOrElse(PrintUtil.printers.head))
     }
-    implicit val impevent = action
+    given impevent: ActionEvent = action
     PageDisplayer.showInDialog(title, new DisplayablePage() {
       def getPage: Node = {
         new VBox {
@@ -102,7 +102,7 @@ object PrintUtil {
       }
     }, new Button("OK") {
       disable <== when(Bindings.createBooleanBinding(() => {
-        !chkViaBrowser.selected.value && cmbDrucker.selectionModel.value.isEmpty()
+        !chkViaBrowser.selected.value && cmbDrucker.selectionModel.value.isEmpty
       },
         chkViaBrowser.selected, cmbDrucker.selectionModel.value.selectedItemProperty
       )) choose true otherwise false
@@ -150,9 +150,9 @@ object PrintUtil {
     )
   }
 
-  def printers = Printer.allPrinters.map(jfxprinter => new Printer(jfxprinter))
+  private def printers = Printer.allPrinters.map(jfxprinter => new Printer(jfxprinter))
 
-  def pdfPrinter: Option[Printer] = printers.iterator.find { p => p.name.toUpperCase().contains("PDF24 PDF") } match {
+  private def pdfPrinter: Option[Printer] = printers.iterator.find { p => p.name.toUpperCase().contains("PDF24 PDF") } match {
     case Some(p) => Some(p)
     case _ => printers.iterator.find { p => p.name.toUpperCase().contains("PDF") && !p.name.toUpperCase().contains("FAX") } match {
       case Some(p) => Some(p)
@@ -197,57 +197,57 @@ object PrintUtil {
 
     val job = PrinterJob.createPrinterJob(printdevice)
     try {
-      job.getJobSettings().setPageLayout(layout)
-      job.getJobSettings().setJobName("KuTuApp Printing Job")
+      job.getJobSettings.setPageLayout(layout)
+      job.getJobSettings.setJobName("KuTuApp Printing Job")
       job.jobSettings.printQuality = PrintQuality.High
       //      job.jobSettings.printResolution = new PrintResolution(600,600,ResolutionSyntax.DPI)
-      engine.print(job);
+      engine.print(job)
     }
     finally {
       job.endJob()
     }
   }
 
-  def locateLogoFile(wettkampfDir: File) = {
-    val prefferedLogoFileNames = (List("logo.svg", "logo.png", "logo.jpg", "logo.jpeg").map(name => new java.io.File(s"${wettkampfDir.getPath}/$name")) ++
-      List("logo.svg", "logo.png", "logo.jpg", "logo.jpeg").map(name => new java.io.File(s"${wettkampfDir.getParentFile}/$name")))
-    prefferedLogoFileNames.find(_.exists).getOrElse(prefferedLogoFileNames.head);
+  def locateLogoFile(wettkampfDir: File): File = {
+    val prefferedLogoFileNames = List("logo.svg", "logo.png", "logo.jpg", "logo.jpeg").map(name => new java.io.File(s"${wettkampfDir.getPath}/$name")) ++
+      List("logo.svg", "logo.png", "logo.jpg", "logo.jpeg").map(name => new java.io.File(s"${wettkampfDir.getParentFile}/$name"))
+    prefferedLogoFileNames.find(_.exists).getOrElse(prefferedLogoFileNames.head)
   }
 
-  def toQRCodeImage(uri: String) = {
+  def toQRCodeImage(uri: String): String = {
     val out = QRCode.from(uri).to(ImageType.PNG).withSize(200, 200).stream()
     val imagedata = "data:image/png;base64," + Base64.getMimeEncoder().encodeToString(out.toByteArray)
     imagedata
   }
 
   implicit class ImageFile(file: File) {
-    def imageSrcForWebEngine = {
+    def imageSrcForWebEngine: String = {
       if file.getName.endsWith("svg") then {
         val in = new FileInputStream(file)
         val imagedata = try {
-          val buffer = Source.fromInputStream(in).mkString;
-          "data:image/svg+xml;base64," + Base64.getEncoder().encodeToString(buffer.getBytes())
+          val buffer = Source.fromInputStream(in).mkString
+          "data:image/svg+xml;base64," + Base64.getEncoder.encodeToString(buffer.getBytes())
         } finally {
-          in.close
+          in.close()
         }
         imagedata
       } else if file.getName.endsWith("png") then {
         val imageBuffer = ImageIO.read(file)
         val output = new ByteArrayOutputStream()
         ImageIO.write(imageBuffer, "png", output)
-        val imagedata = "data:image/png;base64," + Base64.getEncoder().encodeToString(output.toByteArray())
+        val imagedata = "data:image/png;base64," + Base64.getEncoder.encodeToString(output.toByteArray)
         imagedata
       } else if file.getName.endsWith("jpg") then {
         val imageBuffer = ImageIO.read(file)
         val output = new ByteArrayOutputStream()
         ImageIO.write(imageBuffer, "jpg", output)
-        val imagedata = "data:image/jpg;base64," + Base64.getEncoder().encodeToString(output.toByteArray())
+        val imagedata = "data:image/jpg;base64," + Base64.getEncoder.encodeToString(output.toByteArray)
         imagedata
       } else if file.getName.endsWith("jpeg") then {
         val imageBuffer = ImageIO.read(file)
         val output = new ByteArrayOutputStream()
         ImageIO.write(imageBuffer, "jpeg", output)
-        val imagedata = "data:image/jpeg;base64," + Base64.getEncoder().encodeToString(output.toByteArray())
+        val imagedata = "data:image/jpeg;base64," + Base64.getEncoder.encodeToString(output.toByteArray)
         imagedata
       } else {
         file.toURI.toASCIIString
