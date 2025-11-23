@@ -60,27 +60,27 @@ class WettkampfOverviewTab(wettkampf: WettkampfView, override val service: KutuS
 
   private def createDocument = {
     val logofile = PrintUtil.locateLogoFile(new java.io.File(homedir + "/" + encodeFileName(wettkampf.easyprint)))
-    val data = if (wettkampf.altersklassen.nonEmpty) {
+    val data = if wettkampf.altersklassen.nonEmpty then {
       val aks = ByAltersklasse("AK", Altersklasse.parseGrenzen(wettkampf.altersklassen))
       val facts = service.listAKOverviewFacts(UUID.fromString(wettkampf.uuid.get))
       val grouper: (java.time.LocalDate, String, ProgrammView) => Altersklasse = (gebdat, geschlecht, programm) => aks.makeGroupBy(wettkampf.toWettkampf)(gebdat, geschlecht, programm)
       facts.groupBy(_._1).flatMap(gr => gr._2.groupBy(x => (x._2, grouper(x._5, x._4, x._2))).map { gr2 =>
-        val pgmname = if (gr2._1._2.easyprint.contains(gr2._1._1.name)) gr2._1._2.easyprint else s"${gr2._1._1.name} ${gr2._1._2.easyprint}"
+        val pgmname = if gr2._1._2.easyprint.contains(gr2._1._1.name) then gr2._1._2.easyprint else s"${gr2._1._1.name} ${gr2._1._2.easyprint}"
         (gr._1, pgmname, gr2._1._2.alterVon, gr2._2.count(_._4.equals("M")), gr2._2.count(_._4.equals("W")))
       }).toList
-    } else if (wettkampf.jahrgangsklassen.nonEmpty) {
+    } else if wettkampf.jahrgangsklassen.nonEmpty then {
       val aks = ByJahrgangsAltersklasse("AK", Altersklasse.parseGrenzen(wettkampf.jahrgangsklassen))
       val facts = service.listAKOverviewFacts(UUID.fromString(wettkampf.uuid.get))
       val grouper: (java.time.LocalDate, String, ProgrammView) => Altersklasse = (gebdat, geschlecht, programm) => aks.makeGroupBy(wettkampf.toWettkampf)(gebdat, geschlecht, programm)
       facts.groupBy(_._1).flatMap(gr => gr._2.groupBy(x => (x._2, grouper(x._5, x._4, x._2))).map { gr2 =>
-        val pgmname = if (gr2._1._2.easyprint.contains(gr2._1._1.name)) gr2._1._2.easyprint else s"${gr2._1._1.name} ${gr2._1._2.easyprint}"
+        val pgmname = if gr2._1._2.easyprint.contains(gr2._1._1.name) then gr2._1._2.easyprint else s"${gr2._1._1.name} ${gr2._1._2.easyprint}"
         (gr._1, pgmname, gr2._1._2.alterVon, gr2._2.count(_._4.equals("M")), gr2._2.count(_._4.equals("W")))
       }).toList
     } else {
       service.listOverviewStats(UUID.fromString(wettkampf.uuid.get))
     }
     val teams = TeamRegel(wettkampf.teamrule)
-    val wertungen = if (teams.teamsAllowed) {
+    val wertungen = if teams.teamsAllowed then {
       service.selectWertungen(wettkampfId = Some(wettkampf.id))
     } else Seq()
     val eventString = WettkampfInfo(wettkampf, service).wkEventString
@@ -90,14 +90,14 @@ class WettkampfOverviewTab(wettkampf: WettkampfView, override val service: KutuS
   }
 
   onSelectionChanged = _ => {
-    if(selected.value) {
+    if selected.value then {
       reloadData()
     }
   }
 
   def importAnmeldungen(implicit event: ActionEvent): Unit = {
     RegistrationAdminDialog.importRegistrations(WettkampfInfo(wettkampf, service), KuTuServer, vereinsupdated =>
-      if (vereinsupdated) KuTuApp.updateTree else reloadData()
+      if vereinsupdated then KuTuApp.updateTree else reloadData()
     )
   }
 
@@ -123,7 +123,7 @@ class WettkampfOverviewTab(wettkampf: WettkampfView, override val service: KutuS
       items += KuTuApp.makeMenuAction(s"Liste der Online Vereins-Registrierungen ...") { (caption: String, action: ActionEvent) =>
         val filename = "VereinsRegistrierungen_" + encodeFileName(wettkampf.easyprint) + ".html"
         val dir = new java.io.File(homedir + "/" + encodeFileName(wettkampf.easyprint))
-        if (!dir.exists()) {
+        if !dir.exists() then {
           dir.mkdirs()
         }
 
@@ -141,7 +141,7 @@ class WettkampfOverviewTab(wettkampf: WettkampfView, override val service: KutuS
       items += KuTuApp.makeMenuAction(s"Liste der Online Wertungsrichter-Anmeldungen ...") { (caption: String, action: ActionEvent) =>
         val filename = "WRAnmeldungen_" + encodeFileName(wettkampf.easyprint) + ".html"
         val dir = new java.io.File(homedir + "/" + encodeFileName(wettkampf.easyprint))
-        if (!dir.exists()) {
+        if !dir.exists() then {
           dir.mkdirs()
         }
 
@@ -179,8 +179,8 @@ class WettkampfOverviewTab(wettkampf: WettkampfView, override val service: KutuS
                 initialFileName.value = "logo.jpg"
               }
               val selectedFile = fileChooser.showOpenDialog(getStage())
-              if (selectedFile != null) {
-                if (selectedFile.length() > Config.logoFileMaxSize) {
+              if selectedFile != null then {
+                if selectedFile.length() > Config.logoFileMaxSize then {
                   val maxSize = java.text.NumberFormat.getInstance().format(Config.logoFileMaxSize / 1024)
                   val currentSize = java.text.NumberFormat.getInstance().format(selectedFile.length() / 1024)
                   PageDisplayer.showWarnDialog("Wettkampf-Logo laden", s"Die Datei ${selectedFile.getName} ist mit $currentSize Kilobytes zu gross. Sie darf nicht grösser als $maxSize Kilobytes sein.")
@@ -239,7 +239,7 @@ class WettkampfOverviewTab(wettkampf: WettkampfView, override val service: KutuS
               import scala.concurrent.ExecutionContext.Implicits.global
               val filename = "Uebersicht_" + encodeFileName(wettkampf.easyprint) + ".html"
               val dir = new java.io.File(homedir + "/" + encodeFileName(wettkampf.easyprint))
-              if (!dir.exists()) {
+              if !dir.exists() then {
                 dir.mkdirs()
               }
 

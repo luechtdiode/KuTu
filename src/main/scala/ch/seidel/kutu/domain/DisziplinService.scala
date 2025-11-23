@@ -17,7 +17,7 @@ abstract trait DisziplinService extends DBService with WettkampfResultMapper wit
   
   def listDisziplinesZuDurchgang(durchgang: Set[String], wettkampf: Long, riege1: Boolean): Map[String, IndexedSeq[Disziplin]] = {
     Await.result(database.run{
-      val ret = if (riege1) sql"""
+      val ret = if riege1 then sql"""
              select distinct d.id, d.name, r.durchgang, wd.ord
              from wettkampfdisziplin wd
              inner join disziplin d on (wd.disziplin_id = d.id)

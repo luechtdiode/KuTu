@@ -31,7 +31,7 @@ object AbuseHandler {
 
     @tailrec
     private def skipElements(path: Path, count: Int): Path =
-      if (count < 1 || path.isEmpty || path.tail.isEmpty) path else skipElements(path.tail, count -1)
+      if count < 1 || path.isEmpty || path.tail.isEmpty then path else skipElements(path.tail, count -1)
 
     private def stripPath(path: Path) = s"${skipElements(path, 2).head}/${skipElements(path, 3).head}/../${path.reverse.head}"
 
@@ -97,7 +97,7 @@ object AbuseHandler {
   }
 
   private def addToAbuseMap(abusedClient: AbusedClient, counter: Int = 0): Unit = {
-    if (counter == 0) {
+    if counter == 0 then {
       findAbusedClient(abusedClient) match {
         case Some(ac) =>
           abuseMap.getAndUpdate{_ + (abusedClient.mapKey -> AbuseCounter(ac.getClient, ac.count + 1, System.currentTimeMillis()))}

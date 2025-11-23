@@ -12,7 +12,7 @@ trait RiegenGrouper extends RiegenSplitter {
 
     implicit val cache = scala.collection.mutable.Map[String, Int]()
     val athletGroupedWertungen = wertungen.groupBy(w => w.athlet)
-    if (athletGroupedWertungen.isEmpty) {
+    if athletGroupedWertungen.isEmpty then {
       Seq[(String, Seq[Wertung])]()
     }
     else {
@@ -43,7 +43,7 @@ trait RiegenGrouper extends RiegenSplitter {
                             (implicit cache: scala.collection.mutable.Map[String, Int]): Seq[(String, Seq[WertungViewsZuAthletView])] = {
 
     val sugg = athletGroupedWertungen.groupBy(w => groupKey(grp)(w._2.head)).toSeq
-    if (riegencnt > 0 && sugg.size > riegencnt && grp.size > 1) {
+    if riegencnt > 0 && sugg.size > riegencnt && grp.size > 1 then {
       // too much groups
       // remove last grouper and try again
       groupWertungen(riegencnt, athletGroupedWertungen, grp.reverse.tail.reverse, grpAll)
@@ -55,7 +55,7 @@ trait RiegenGrouper extends RiegenSplitter {
           /*values*/ x._2.foldLeft((Seq[WertungViewsZuAthletView](), Set[Long]())) { (acc, w) =>
             val (data, seen) = acc
             val (athlet, _) = w
-            if (seen.contains(athlet.id)) acc else (w +: data, seen + athlet.id)
+            if seen.contains(athlet.id) then acc else (w +: data, seen + athlet.id)
           }
           ._1.sortBy(w => groupKey(grpAll)(w._2.head))
         )

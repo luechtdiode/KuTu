@@ -130,7 +130,7 @@ trait WertungsrichterQRCodesToHtmlRenderer {
   """
 
   private def renderedDurchgaenge(geraetCodes: (String, String, Seq[WertungsrichterQRCode]), logo: File) = {
-    val logoHtml = if (logo.exists()) s"""<img class=logo src="${logo.imageSrcForWebEngine}" title="Logo"/>""" else ""
+    val logoHtml = if logo.exists() then s"""<img class=logo src="${logo.imageSrcForWebEngine}" title="Logo"/>""" else ""
     val (wettkampfTitel, geraet, codes) = geraetCodes
     val sorted = codes.sortBy(_.durchgangname)
     val divided = sorted.take(sorted.size / 2).zipAll(sorted.drop(sorted.size / 2), WertungsrichterQRCode("", "", "", "", ""), WertungsrichterQRCode("", "", "", "", ""))

@@ -21,27 +21,27 @@ class GeraeteRiegeListCell extends ListCell[GeraeteRiege] {
   override val delegate: jfxsc.ListCell[GeraeteRiege] = new jfxsc.ListCell[GeraeteRiege] {
     override protected def updateItem(item: GeraeteRiege, empty: Boolean): Unit = {
       super.updateItem(item, empty)
-      if (item != null) {
+      if item != null then {
         val imageView = new ImageView {
           image = okIcon
         }
         item.durchgang match {
           case Some(d) =>
             setText(s"${item.sequenceId} ${item.durchgang.get}: ${item.disziplin.map(d => d.name).getOrElse("")}  (${item.halt + 1}. Gerät)")
-            if(!item.erfasst) {
+            if !item.erfasst then {
               styleClass.add("incomplete")
               imageView.image = nokIcon
             }
-            else if (styleClass.indexOf("incomplete") > -1) {
+            else if styleClass.indexOf("incomplete") > -1 then {
               styleClass.remove(styleClass.indexOf("incomplete"))
             }
           case None =>
             setText(s"Alle")
-            if(!item.erfasst) {
+            if !item.erfasst then {
               styleClass.add("incomplete")
               imageView.image = nokIcon
             }
-            else if (styleClass.indexOf("incomplete") > -1) {
+            else if styleClass.indexOf("incomplete") > -1 then {
               styleClass.remove(styleClass.indexOf("incomplete"))
             }
         }

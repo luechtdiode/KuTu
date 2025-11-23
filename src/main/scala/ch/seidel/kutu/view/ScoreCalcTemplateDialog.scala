@@ -19,7 +19,7 @@ import java.util.function.UnaryOperator
 
 case class TemplateFormular(working: WertungEditor) extends VBox {
   //val working = init.copy(init = init.init)
-  val caption = if (working.init.athlet.id > 0) s"Notenerfassung für ${working.init.wettkampfdisziplin.disziplin.name} - ${working.init.athlet.easyprint}" else s"Testformular für ${working.init.wettkampfdisziplin.disziplin.name}"
+  val caption = if working.init.athlet.id > 0 then s"Notenerfassung für ${working.init.wettkampfdisziplin.disziplin.name} - ${working.init.athlet.easyprint}" else s"Testformular für ${working.init.wettkampfdisziplin.disziplin.name}"
   spacing = 7.0
   minWidth = 600
   working.variableEditorsList.zipWithIndex.foreach(vs => {
@@ -35,7 +35,7 @@ case class TemplateFormular(working: WertungEditor) extends VBox {
     })
   })
   children.add(new Label("Berechnete Werte"))
-  if (working.init.defaultVariables.get.dVariables.nonEmpty) {
+  if working.init.defaultVariables.get.dVariables.nonEmpty then {
     children.addAll(new Label() {
       text <== Bindings.createStringBinding(() => s"${working.init.wettkampfdisziplin.notenSpez.getDifficultLabel}-Note ${working.dFormula.value}", working.calculatedWertung)
     }, new TextField() {
@@ -44,7 +44,7 @@ case class TemplateFormular(working: WertungEditor) extends VBox {
       prefWidth = 100
     })
   }
-  if (working.init.defaultVariables.get.eVariables.nonEmpty) {
+  if working.init.defaultVariables.get.eVariables.nonEmpty then {
     children.addAll(new Label() {
       text <== Bindings.createStringBinding(() => s"${working.init.wettkampfdisziplin.notenSpez.getExecutionLabel}-Note ${working.eFormula.value}", working.calculatedWertung)
     }, new TextField() {
@@ -79,7 +79,7 @@ class FormulaCatchingCaretPositionFilter extends UnaryOperator[TextFormatter.Cha
   private val _caretPosition = new IntegerProperty()
   val caretPosition: ReadOnlyIntegerProperty = new ReadOnlyIntegerProperty(_caretPosition)
   def apply(change: TextFormatter.Change): TextFormatter.Change = {
-    if (change.getControl.isFocused) {
+    if change.getControl.isFocused then {
       _caretPosition.value = change.getCaretPosition
     }
     change

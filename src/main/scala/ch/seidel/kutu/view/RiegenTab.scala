@@ -46,19 +46,19 @@ object DurchgangView {
 
   def getVisibleBounds(aNode: Node): Bounds = {
     // If node not visible, return empty bounds
-    if (!aNode.isVisible) {
+    if !aNode.isVisible then {
       new BoundingBox(0, 0, -1, -1)
-    } else if (aNode.getClip != null) {
+    } else if aNode.getClip != null then {
       aNode.getClip.getBoundsInParent
     } else {
       // If node has parent, get parent visible bounds in node coords
-      val bounds = if (aNode.getParent() != null) getVisibleBounds(aNode.getParent()) else null
-      if (bounds != null && !bounds.isEmpty) aNode.parentToLocal(bounds) else bounds
+      val bounds = if aNode.getParent() != null then getVisibleBounds(aNode.getParent()) else null
+      if bounds != null && !bounds.isEmpty then aNode.parentToLocal(bounds) else bounds
     }
   }
 
   def positionInTarget(aNode: Node, aTargetNode: Object): Point2D = {
-    if (aNode.parent.value == aTargetNode) {
+    if aNode.parent.value == aTargetNode then {
       new Point2D(aNode.getLayoutX, aNode.getLayoutY)
     } else {
       val parentBounds = positionInScene(aNode.parent.value)
@@ -67,7 +67,7 @@ object DurchgangView {
   }
 
   def positionInScene(aNode: Node): Point2D = {
-    if (aNode.parent.value == null) {
+    if aNode.parent.value == null then {
       new Point2D(aNode.getLayoutX, aNode.getLayoutY)
     } else {
       val parentBounds = positionInScene(aNode.parent.value)
@@ -132,7 +132,7 @@ class DurchgangView(wettkampf: WettkampfView, service: KutuService, disziplinlis
       val formatter: DateTimeFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd hh:mm:ss")
       cellValueFactory = { x =>
         StringProperty(
-          if (x.value.getValue.durchgang.planStartOffset != 0 && x.value.getValue.durchgang.name.equals(x.value.getValue.durchgang.title)) {
+          if x.value.getValue.durchgang.planStartOffset != 0 && x.value.getValue.durchgang.name.equals(x.value.getValue.durchgang.title) then {
             s"""${x.value.getValue.durchgang.name}
                |Start: ${x.value.getValue.durchgang.effectivePlanStart(wettkampf.datum.toLocalDate).format(formatter)}
                |Ende: ${x.value.getValue.durchgang.effectivePlanFinish(wettkampf.datum.toLocalDate).format(formatter)}""".stripMargin
@@ -225,7 +225,7 @@ class RiegenFilterView(isEditable: BooleanProperty, wettkampf: WettkampfView, se
   id = "riege-table"
   editable = true
 
-  if (asFilter) {
+  if asFilter then {
     columns ++= List(
       new TableColumn[RiegeEditor, Boolean] {
         text = "Filter"
@@ -281,7 +281,7 @@ class RiegenFilterView(isEditable: BooleanProperty, wettkampf: WettkampfView, se
       prefWidth = 80
       editable = false
       cellValueFactory = {
-        if (asFilter) {
+        if asFilter then {
           x => x.value.anzkat.asInstanceOf[ObservableValue[String, String]]
         }
         else {
@@ -319,9 +319,9 @@ class RiegenFilterView(isEditable: BooleanProperty, wettkampf: WettkampfView, se
       text = "Start"
       prefWidth = 400
       val converter = new StringConverter[Disziplin] {
-        override def toString(d: Disziplin) = if (d != null) d.easyprint else ""
+        override def toString(d: Disziplin) = if d != null then d.easyprint else ""
 
-        override def fromString(s: String) = if (s != null) disziplinlist().find { d => d.name.equals(s) }.getOrElse(null) else null
+        override def fromString(s: String) = if s != null then disziplinlist().find { d => d.name.equals(s) }.getOrElse(null) else null
       }
       val list = ObservableBuffer.from(disziplinlist())
       cellValueFactory = { x => x.value.start.asInstanceOf[ObservableValue[Disziplin, Disziplin]] }
@@ -386,11 +386,11 @@ class RiegenTab(override val wettkampfInfo: WettkampfInfo, override val service:
         val (durchgang, rel) = res
         DurchgangEditor(wettkampf.id, durchgaenge.getOrElse(durchgang.get, Durchgang(wettkampf.id, durchgang.get)), rel.toList)
       }
-    for (group <- DurchgangEditor(durchgangEditors)) {
+    for group <- DurchgangEditor(durchgangEditors) do {
       group match {
         case gd: GroupDurchgangEditor =>
           durchgangModel.add(new TreeItem[DurchgangEditor](gd) {
-            for (d <- gd.aggregates) {
+            for d <- gd.aggregates do {
               children.add(new TreeItem[DurchgangEditor](d))
             }
             //        styleableParent.styleClass.add("parentrow")
@@ -425,7 +425,7 @@ class RiegenTab(override val wettkampfInfo: WettkampfInfo, override val service:
 
   // This handles also the initial load
   onSelectionChanged = _ => {
-    if (selected.value) {
+    if selected.value then {
       reloadData()
     }
   }
@@ -447,7 +447,7 @@ class RiegenTab(override val wettkampfInfo: WettkampfInfo, override val service:
   }
 
   val txtGruppengroesse = new TextField() {
-    text = if (wettkampfInfo.isAthletikTest) "0" else "11"
+    text = if wettkampfInfo.isAthletikTest then "0" else "11"
     tooltip = "Max. Gruppengrösse oder 0 für gleichmässige Verteilung mit einem Durchgang."
   }
 
@@ -564,7 +564,7 @@ class RiegenTab(override val wettkampfInfo: WettkampfInfo, override val service:
       content = riegenFilterView
       closable = false
       onSelectionChanged = _ => {
-        if (selected.value && wettkampfEditable) {
+        if selected.value && wettkampfEditable then {
           reloadData()
         }
       }
@@ -578,7 +578,7 @@ class RiegenTab(override val wettkampfInfo: WettkampfInfo, override val service:
         vgrow = Priority.Always
 
         private def adjustWarnPanel(): Unit = {
-          if (wettkampfEditable && warnings) {
+          if wettkampfEditable && warnings then {
             top = warnPanel
           } else {
             top = null
@@ -593,7 +593,7 @@ class RiegenTab(override val wettkampfInfo: WettkampfInfo, override val service:
       }
       closable = false
       onSelectionChanged = _ => {
-        if (selected.value && wettkampfEditable) {
+        if selected.value && wettkampfEditable then {
           reloadData()
         }
       }
@@ -623,7 +623,7 @@ class RiegenTab(override val wettkampfInfo: WettkampfInfo, override val service:
 
     def doRegenerateDurchgang(durchgang: Set[String])(implicit action: ActionEvent): Unit = {
       val allDurchgaenge = durchgangModel.flatMap(group => {
-        if (group.children.isEmpty) {
+        if group.children.isEmpty then {
           ObservableBuffer[jfxsc.TreeItem[DurchgangEditor]](group)
         } else {
           group.children
@@ -633,7 +633,7 @@ class RiegenTab(override val wettkampfInfo: WettkampfInfo, override val service:
       val startgeraete = inistartriegen.flatMap(_.keySet).distinct
       val cbSplitSex = new ComboBox[SexDivideRule]() {
         items.get.addAll(null, GemischteRiegen, GemischterDurchgang, GetrennteDurchgaenge)
-        if (durchgang.nonEmpty) {
+        if durchgang.nonEmpty then {
           selectionModel.value.selectFirst()
         }
         promptText = "automatisch"
@@ -646,7 +646,7 @@ class RiegenTab(override val wettkampfInfo: WettkampfInfo, override val service:
         prefHeight = 250
         disziplinlist.foreach { d =>
           val cde = CheckListBoxEditor[Disziplin](d)
-          if (durchgang.isEmpty) {
+          if durchgang.isEmpty then {
             cde.selected.value = wettkampfInfo.startDisziplinList.contains(d)
           } else {
             cde.selected.value = startgeraete.contains(d)
@@ -660,7 +660,7 @@ class RiegenTab(override val wettkampfInfo: WettkampfInfo, override val service:
 
       def getSelectedDisziplines = {
         val ret = lvOnDisziplines.items.get.filter { item => item.selected.value }.map(item => item.value).toSet
-        if (ret.isEmpty) {
+        if ret.isEmpty then {
           None
         }
         else {
@@ -668,7 +668,7 @@ class RiegenTab(override val wettkampfInfo: WettkampfInfo, override val service:
         }
       }
 
-      val titel = if (durchgang.nonEmpty)
+      val titel = if durchgang.nonEmpty then
         "Durchgänge " + durchgang.mkString("[", ", ", "]") + " neu zuteilen ..."
       else
         "Riegen frisch einteilen ..."
@@ -685,7 +685,7 @@ class RiegenTab(override val wettkampfInfo: WettkampfInfo, override val service:
             add(chkSplitPgm, 0, 2, 2, 1)
             add(new Label("Verteilung auf folgende Diszipline: "), 0, 3, 2, 1)
             add(lvOnDisziplines, 0, 4, 2, 2)
-            if (durchgang.isEmpty) {
+            if durchgang.isEmpty then {
               add(new Label(s"Mit der Neueinteilung der Riegen und Druchgänge werden\ndie bisherigen Einteilungen zurückgesetzt.", new ImageView {
                 image = warnIcon
               }),
@@ -693,11 +693,11 @@ class RiegenTab(override val wettkampfInfo: WettkampfInfo, override val service:
             }
           }
         }
-      }, new Button(if (durchgang.isEmpty) "OK (bestehende Einteilung wird zurückgesetzt)" else "OK (selektierte Durchgänge werden frisch eingeteilt)", new ImageView {
+      }, new Button(if durchgang.isEmpty then "OK (bestehende Einteilung wird zurückgesetzt)" else "OK (selektierte Durchgänge werden frisch eingeteilt)", new ImageView {
         image = warnIcon
       }) {
         onAction = (event: ActionEvent) => {
-          if (txtGruppengroesse.text.value.nonEmpty) {
+          if txtGruppengroesse.text.value.nonEmpty then {
             KuTuApp.invokeWithBusyIndicator {
               val riegenzuteilungen = DurchgangBuilder(service).suggestDurchgaenge(
                 wettkampf.id,
@@ -709,20 +709,20 @@ class RiegenTab(override val wettkampfInfo: WettkampfInfo, override val service:
                 splitPgm = chkSplitPgm.selected.value,
                 onDisziplinList = getSelectedDisziplines)
 
-              if (durchgang.isEmpty) {
+              if durchgang.isEmpty then {
                 service.cleanAllRiegenDurchgaenge(wettkampf.id)
               }
-              for {
+              for
                 durchgang <- riegenzuteilungen.keys
                 (start, riegen) <- riegenzuteilungen(durchgang)
                 (riege, wertungen) <- riegen
-              } {
+              do {
                 service.insertRiegenWertungen(RiegeRaw(
                   wettkampfId = wettkampf.id,
                   r = riege,
                   durchgang = Some(durchgang),
                   start = Some(start.id),
-                  kind = if (wertungen.nonEmpty) RiegeRaw.KIND_STANDARD else RiegeRaw.KIND_EMPTY_RIEGE
+                  kind = if wertungen.nonEmpty then RiegeRaw.KIND_STANDARD else RiegeRaw.KIND_EMPTY_RIEGE
                 ), wertungen)
               }
               service.updateDurchgaenge(wettkampf.id)
@@ -758,7 +758,7 @@ class RiegenTab(override val wettkampfInfo: WettkampfInfo, override val service:
           }
         }, new Button("OK") {
           onAction = (event: ActionEvent) => {
-            if (!txtNeuerDurchgangName.text.value.isEmpty) {
+            if !txtNeuerDurchgangName.text.value.isEmpty then {
               KuTuApp.invokeWithBusyIndicator {
                 durchgang.foreach { selectedDurchgang =>
                   service.renameDurchgang(wettkampf.id, selectedDurchgang, txtNeuerDurchgangName.text.value)
@@ -778,7 +778,7 @@ class RiegenTab(override val wettkampfInfo: WettkampfInfo, override val service:
     def makeAllDurchgangTeilnehmerExport() = {
       val allAction = KuTuApp.makeMenuAction("Durchgang-Teilnehmerliste aus allen Durchgängen drucken") { (caption, action) =>
         val allDurchgaenge = durchgangModel.flatMap(group => {
-          if (group.children.isEmpty) {
+          if group.children.isEmpty then {
             ObservableBuffer[jfxsc.TreeItem[DurchgangEditor]](group)
           } else {
             group.children
@@ -796,7 +796,7 @@ class RiegenTab(override val wettkampfInfo: WettkampfInfo, override val service:
         text = "Durchgang-Teilnehmerliste drucken"
         val selectedAction = KuTuApp.makeMenuAction("Durchgang-Teilnehmerliste aus selektion drucken") { (caption, action) =>
           val allDurchgaenge = durchgangModel.flatMap(group => {
-            if (group.children.isEmpty) {
+            if group.children.isEmpty then {
               ObservableBuffer[jfxsc.TreeItem[DurchgangEditor]](group)
             } else {
               group.children
@@ -819,7 +819,7 @@ class RiegenTab(override val wettkampfInfo: WettkampfInfo, override val service:
       val ret = KuTuApp.makeMenuAction("Durchgänge in Gruppe zusammenfassen ...") { (caption, action) =>
         implicit val e = action
         val allDurchgaenge = durchgangModel.flatMap(group => {
-          if (group.children.isEmpty) {
+          if group.children.isEmpty then {
             ObservableBuffer[jfxsc.TreeItem[DurchgangEditor]](group)
           } else {
             group.children
@@ -838,10 +838,10 @@ class RiegenTab(override val wettkampfInfo: WettkampfInfo, override val service:
           }
         }, new Button("OK") {
           onAction = (event: ActionEvent) => {
-            if (!txtNeuerDurchgangName.text.value.isEmpty) {
+            if !txtNeuerDurchgangName.text.value.isEmpty then {
               KuTuApp.invokeWithBusyIndicator {
                 val toStore = allDurchgaenge.map(_.getValue.durchgang)
-                  .map { case d: Durchgang => if (durchgang.contains(d.name)) d.copy(title = txtNeuerDurchgangName.text.value) else d }
+                  .map { case d: Durchgang => if durchgang.contains(d.name) then d.copy(title = txtNeuerDurchgangName.text.value) else d }
                 service.updateOrInsertDurchgaenge(toStore)
                 reloadData()
                 riegenFilterView.sort()
@@ -866,7 +866,7 @@ class RiegenTab(override val wettkampfInfo: WettkampfInfo, override val service:
         private def updateItems = {
           items.clear()
           val affectedDurchgaenge: Set[String] = reprintItems.get.map(_.durchgang)
-          if (selectedDurchgaenge.nonEmpty) {
+          if selectedDurchgaenge.nonEmpty then {
             items += KuTuApp.makeMenuAction(s"Alle selektierten") { (caption: String, action: ActionEvent) =>
               doSelectedRiegenBelatterExport(text.value, selectedDurchgaenge)(action)
             }
@@ -877,10 +877,10 @@ class RiegenTab(override val wettkampfInfo: WettkampfInfo, override val service:
               doSelectedRiegenBelatterExport(text.value, selectedDurchgaenge, Set(-1))(action)
             }
           }
-          if (affectedDurchgaenge.nonEmpty && selectedDurchgaenge.nonEmpty) {
+          if affectedDurchgaenge.nonEmpty && selectedDurchgaenge.nonEmpty then {
             items += new SeparatorMenuItem()
           }
-          if (affectedDurchgaenge.nonEmpty) {
+          if affectedDurchgaenge.nonEmpty then {
             val allItem = KuTuApp.makeMenuAction(s"Alle betroffenen (${affectedDurchgaenge.size})") { (caption: String, action: ActionEvent) =>
               doSelectedRiegenBelatterExport(text.value, affectedDurchgaenge)(action)
             }
@@ -935,7 +935,7 @@ class RiegenTab(override val wettkampfInfo: WettkampfInfo, override val service:
                   items += KuTuApp.makeMenuAction(durchgang.durchgang.name) { (caption, action) =>
                     val toSave = riege.copy(initdurchgang = Some(durchgang.durchgang.name))
                     KuTuApp.invokeWithBusyIndicator {
-                      if (riegenAmStart.size == 1) {
+                      if riegenAmStart.size == 1 then {
                         service.updateOrinsertRiege(RiegeRaw(wettkampf.id,
                           s"Leere Riege ${durchgang.durchgang.name}/${toGeraetName(riege.start.value.id)}",
                           Some(durchgang.durchgang.name), Some(riege.start.value.id), RiegeRaw.KIND_EMPTY_RIEGE
@@ -976,7 +976,7 @@ class RiegenTab(override val wettkampfInfo: WettkampfInfo, override val service:
                   items += KuTuApp.makeMenuAction(von + start.name + " (" + durchgang.initstartriegen.get(start).map(r => r.map(re => re.initanz).sum).getOrElse(0) + ")") { (caption, action) =>
                     val toSave = riege.copy(initstart = Some(start))
                     KuTuApp.invokeWithBusyIndicator {
-                      if (riegenAmStart.size == 1) {
+                      if riegenAmStart.size == 1 then {
                         service.updateOrinsertRiege(RiegeRaw(wettkampf.id,
                           s"Leere Riege ${durchgang.durchgang.name}/${toGeraetName(riege.start.value.id)}",
                           Some(durchgang.durchgang.name), Some(riege.start.value.id), RiegeRaw.KIND_EMPTY_RIEGE
@@ -1000,7 +1000,7 @@ class RiegenTab(override val wettkampfInfo: WettkampfInfo, override val service:
         .filter(_._2.forall(_.kind != RiegeRaw.KIND_EMPTY_RIEGE))
         .map(_._1.id).toSet
       val selectedCellsGeraete = toGeraetId(cells.map(c => c.getColumn))
-      val selectedGerate: List[Long] = if (selectedCellsGeraete.nonEmpty)
+      val selectedGerate: List[Long] = if selectedCellsGeraete.nonEmpty then
         selectedCellsGeraete
       else
         wettkampfInfo.disziplinList.map(_.id).filter(!assignedGeraete.contains(_))
@@ -1010,7 +1010,7 @@ class RiegenTab(override val wettkampfInfo: WettkampfInfo, override val service:
         .flatMap(_._2).toList
         .filter(r => r.kind == RiegeRaw.KIND_EMPTY_RIEGE)
         .map(r => r.initname)
-      val menu = KuTuApp.makeMenuAction(if (selectedGerate.size == 1) "Mit leerer Riege besetzen" else "Mit leeren Riegen besetzen") { (caption, action) =>
+      val menu = KuTuApp.makeMenuAction(if selectedGerate.size == 1 then "Mit leerer Riege besetzen" else "Mit leeren Riegen besetzen") { (caption, action) =>
         KuTuApp.invokeWithBusyIndicator {
           selectedGerate.foreach(selectedGeraet => {
             service.updateOrinsertRiege(RiegeRaw(wettkampf.id,
@@ -1034,7 +1034,7 @@ class RiegenTab(override val wettkampfInfo: WettkampfInfo, override val service:
         .flatMap(_._2).toList
         .filter(r => r.kind == RiegeRaw.KIND_EMPTY_RIEGE)
         .map(r => r.initname)
-      val menu = KuTuApp.makeMenuAction(if (emptyRiegen.size == 1) "Leere Riege entfernen" else "Leere Riegen entfernen") { (caption, action) =>
+      val menu = KuTuApp.makeMenuAction(if emptyRiegen.size == 1 then "Leere Riege entfernen" else "Leere Riegen entfernen") { (caption, action) =>
         KuTuApp.invokeWithBusyIndicator {
           emptyRiegen.foreach(service.deleteRiege(wettkampf.id, _))
           reloadData()
@@ -1120,12 +1120,12 @@ class RiegenTab(override val wettkampfInfo: WettkampfInfo, override val service:
 
     durchgangView.selectionModel.value.setSelectionMode(SelectionMode.Multiple)
     durchgangView.selectionModel.value.setCellSelectionEnabled(true)
-    if (!wettkampf.toWettkampf.isReadonly(homedir, remoteHostOrigin)) {
+    if !wettkampf.toWettkampf.isReadonly(homedir, remoteHostOrigin) then {
       durchgangView.setOnDragDetected((event) => {
         val focusedCells = durchgangView.selectionModel.value.getSelectedCells.toList
         val selectedGerate = toGeraetId(focusedCells.map(c => c.getColumn))
         val actDurchgangSelection = focusedCells.filter(c => c.getTreeItem != null).map(c => c.getTreeItem.getValue).toSet.filter(_ != null)
-        if (actDurchgangSelection.size == 1 && selectedGerate.size == 1) {
+        if actDurchgangSelection.size == 1 && selectedGerate.size == 1 then {
           val startgeraet = selectedGerate.head
           val durchgangEditor = actDurchgangSelection.head
           val riegenEditorCandidates = durchgangEditor.initstartriegen
@@ -1134,7 +1134,7 @@ class RiegenTab(override val wettkampfInfo: WettkampfInfo, override val service:
             .filter(r => r.kind != RiegeRaw.KIND_EMPTY_RIEGE)
             .sortBy(r => r.initname)
             .map(r => r.initname)
-          if (riegenEditorCandidates.nonEmpty && event.pickResult.getIntersectedNode.isInstanceOf[Text]) {
+          if riegenEditorCandidates.nonEmpty && event.pickResult.getIntersectedNode.isInstanceOf[Text] then {
             val text = event.pickResult.getIntersectedNode.asInstanceOf[Text]
             val vb = DurchgangView.positionInScene(text.parent.value)
             val pointInText = new Point2D(event.getSceneX - vb.x, event.getSceneY - vb.y)
@@ -1164,7 +1164,7 @@ class RiegenTab(override val wettkampfInfo: WettkampfInfo, override val service:
       durchgangView.setOnDragDropped((event) => {
         val db = event.getDragboard
         // If this is a meaningful drop...
-        if (db.hasContent(DurchgangView.DRAG_RIEGE)) {
+        if db.hasContent(DurchgangView.DRAG_RIEGE) then {
           val (selecteddurchgang, selectedriege, selectedGeraet) = db.getContent(DurchgangView.DRAG_RIEGE).asInstanceOf[(String, String, Long)]
           val fromDisziplin = disziplinlist.find(_.id == selectedGeraet)
           riegenFilterModel.find { p => p.initname.equals(selectedriege) } match {
@@ -1190,11 +1190,11 @@ class RiegenTab(override val wettkampfInfo: WettkampfInfo, override val service:
                   startGeraetColumn match {
                     case access: DurchgangTCAccess =>
                       val targetStartgeraet = access.getDisziplin
-                      if (!fromDisziplin.contains(targetStartgeraet) || !dgOpt.contains(durchgang.getItem)) {
+                      if !fromDisziplin.contains(targetStartgeraet) || !dgOpt.contains(durchgang.getItem) then {
                         val targetDurchgang = durchgang.getItem.durchgang.name
                         val toSave = riege.copy(initstart = Some(targetStartgeraet), initdurchgang = Some(targetDurchgang))
                         KuTuApp.invokeWithBusyIndicator {
-                          if (riegenAmStart.size == 1) {
+                          if riegenAmStart.size == 1 then {
                             service.updateOrinsertRiege(RiegeRaw(wettkampf.id,
                               s"Leere Riege ${dgOpt.map(_.durchgang.name).getOrElse("")}/${toGeraetName(riege.start.value.id)}",
                               dgOpt.map(_.durchgang.name), Some(riege.start.value.id), RiegeRaw.KIND_EMPTY_RIEGE
@@ -1221,7 +1221,7 @@ class RiegenTab(override val wettkampfInfo: WettkampfInfo, override val service:
         event.consume()
       })
       durchgangView.setOnDragOver((event) => {
-        if (event.getDragboard.hasContent(DurchgangView.DRAG_RIEGE)) {
+        if event.getDragboard.hasContent(DurchgangView.DRAG_RIEGE) then {
           event.acceptTransferModes(TransferMode.Move)
         }
         event.consume()
@@ -1242,21 +1242,21 @@ class RiegenTab(override val wettkampfInfo: WettkampfInfo, override val service:
             })
             .map(c => c.getTreeItem.getValue).toSet
           val actDurchgangSelection = selectedDurchgaenge.filter(_ != null).map(d => d.durchgang.name)
-          val selectedEditor = if (focusedCells.nonEmpty) focusedCells.head.getTreeItem.getValue else null
+          val selectedEditor = if focusedCells.nonEmpty then focusedCells.head.getTreeItem.getValue else null
           durchgangView.contextMenu = new ContextMenu() {
             items += makeRegenereateDurchgangMenu(actDurchgangSelection)
             items += makeMergeDurchganMenu(actDurchgangSelection)
             items += makeRenameDurchgangMenu
             items += makeStartOffsetDurchgangMenu
-            if (selectedDurchgangHeader.isEmpty) {
+            if selectedDurchgangHeader.isEmpty then {
               items += makeAggregateDurchganMenu(actDurchgangSelection)
             }
-            if (focusedCells.size == 1 && selectedEditor != null && selectedDurchgangHeader.isEmpty) {
+            if focusedCells.size == 1 && selectedEditor != null && selectedDurchgangHeader.isEmpty then {
               items += new SeparatorMenuItem()
               items += makeSetEmptyRiegeMenu(selectedEditor, focusedCells)
               items += makeRemoveEmptyRiegeMenu(selectedEditor, focusedCells)
             }
-            if (focusedCells.size == 1 && selectedEditor != null) {
+            if focusedCells.size == 1 && selectedEditor != null then {
               items += new SeparatorMenuItem()
               items += makeMoveDurchganMenu(selectedEditor, focusedCells)
               items += makeMoveStartgeraetMenu(selectedEditor, focusedCells)
@@ -1272,15 +1272,15 @@ class RiegenTab(override val wettkampfInfo: WettkampfInfo, override val service:
           btnEditDurchgang.items += makeMergeDurchganMenu(actDurchgangSelection)
           btnEditDurchgang.items += makeRenameDurchgangMenu
           btnEditDurchgang.items += makeStartOffsetDurchgangMenu
-          if (selectedDurchgangHeader.isEmpty) {
+          if selectedDurchgangHeader.isEmpty then {
             btnEditDurchgang.items += makeAggregateDurchganMenu(actDurchgangSelection)
           }
-          if (focusedCells.size == 1 && selectedEditor != null && selectedDurchgangHeader.isEmpty) {
+          if focusedCells.size == 1 && selectedEditor != null && selectedDurchgangHeader.isEmpty then {
             btnEditDurchgang.items += new SeparatorMenuItem()
             btnEditDurchgang.items += makeSetEmptyRiegeMenu(selectedEditor, focusedCells)
             btnEditDurchgang.items += makeRemoveEmptyRiegeMenu(selectedEditor, focusedCells)
           }
-          if (focusedCells.size == 1 && selectedEditor != null) {
+          if focusedCells.size == 1 && selectedEditor != null then {
             btnEditDurchgang.items += new SeparatorMenuItem()
             btnEditDurchgang.items += makeMoveDurchganMenu(selectedEditor, focusedCells)
             btnEditDurchgang.items += makeMoveStartgeraetMenu(selectedEditor, focusedCells)
@@ -1346,7 +1346,7 @@ class RiegenTab(override val wettkampfInfo: WettkampfInfo, override val service:
       KuTuApp.invokeWithBusyIndicator {
         val filename = "Durchgaenge.csv"
         val dir = new java.io.File(homedir + "/" + encodeFileName(wettkampf.easyprint))
-        if (!dir.exists()) {
+        if !dir.exists() then {
           dir.mkdirs();
         }
         val file = new java.io.File(dir.getPath + "/" + filename)
@@ -1371,7 +1371,7 @@ class RiegenTab(override val wettkampfInfo: WettkampfInfo, override val service:
       KuTuApp.invokeWithBusyIndicator {
         val filename = "Durchgaenge-Einfach.csv"
         val dir = new java.io.File(homedir + "/" + encodeFileName(wettkampf.easyprint))
-        if (!dir.exists()) {
+        if !dir.exists() then {
           dir.mkdirs();
         }
         val file = new java.io.File(dir.getPath + "/" + filename)
@@ -1490,7 +1490,7 @@ class RiegenTab(override val wettkampfInfo: WettkampfInfo, override val service:
       val seriendaten = service.getAllKandidatenWertungen(wettkampf.uuid.map(UUID.fromString).get)
       val filename = "Riegenblatt_" + encodeFileName(wettkampf.easyprint) + ".html"
       val dir = new java.io.File(homedir + "/" + encodeFileName(wettkampf.easyprint))
-      if (!dir.exists()) {
+      if !dir.exists() then {
         dir.mkdirs();
       }
       val logofile = PrintUtil.locateLogoFile(dir)
@@ -1524,7 +1524,7 @@ class RiegenTab(override val wettkampfInfo: WettkampfInfo, override val service:
           .toSet.toList
         val filename = "WertungsrichterConnectQRCodes_" + encodeFileName(wettkampf.easyprint) + ".html"
         val dir = new java.io.File(homedir + "/" + encodeFileName(wettkampf.easyprint))
-        if (!dir.exists()) {
+        if !dir.exists() then {
           dir.mkdirs();
         }
         val logofile = PrintUtil.locateLogoFile(dir)
@@ -1551,7 +1551,7 @@ class RiegenTab(override val wettkampfInfo: WettkampfInfo, override val service:
     }
 
     val riegenFilterControl = new ToolBar {
-      if (wettkampfEditable) {
+      if wettkampfEditable then {
         content = List[ButtonBase](
           btnRiegen
           , btnEditDurchgang

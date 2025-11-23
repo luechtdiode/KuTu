@@ -33,17 +33,17 @@ trait JwtSupport extends Directives {
 
   def authenticateWith(jwtOption: Option[String], rejectRequest: Boolean): Directive1[String] = jwtOption match {
     case Some(jwt) if JsonWebToken.validate(jwt, jwtSecretKey) =>
-      if (isTokenExpired(jwt)) {
+      if isTokenExpired(jwt) then {
         complete(StatusCodes.Unauthorized -> "Token expired.")
       } else {
         getUserID(getClaims(jwt)) match {
           case Some(id) => provide(id)
-          case _=> if (rejectRequest) reject else complete(StatusCodes.Unauthorized)
+          case _=> if rejectRequest then reject else complete(StatusCodes.Unauthorized)
         }
       }
 
     case _ =>
-      if (rejectRequest) reject else complete(StatusCodes.Unauthorized)
+      if rejectRequest then reject else complete(StatusCodes.Unauthorized)
   }
 
   def respondWithJwtHeader(userId: String): Directive0 = {
@@ -66,7 +66,7 @@ trait JwtSupport extends Directives {
     val wkStart = Instant.ofEpochMilli(wettkampfDate.getTime).truncatedTo(TimeUnit.DAYS.toChronoUnit)
     val wkEnd = wkStart.plus(Duration.ofDays(1))
     val originalTimeout = Duration.between(Instant.now(), wkEnd)
-    val permissionTimeout = if(originalTimeout.toDays > 3 || originalTimeout.toDays < jwtTokenExpiryPeriodInDays) {
+    val permissionTimeout = if originalTimeout.toDays > 3 || originalTimeout.toDays < jwtTokenExpiryPeriodInDays then {
       Instant.now().plus(Duration.ofDays(jwtTokenExpiryPeriodInDays))
     } else {
       wkEnd
@@ -108,7 +108,7 @@ trait JwtSupport extends Directives {
       claims.get(expiredAtKey) match {
         case Some(value) =>
           val ret = value.toLong < System.currentTimeMillis()
-          if (ret) {
+          if ret then {
             logger.warn(s"token (${getUserID(Some(claims))}) expired! expiredAt: ${formatDateTime(new Date(value.toLong))}")
           }
           ret

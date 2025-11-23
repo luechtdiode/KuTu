@@ -11,7 +11,7 @@ trait RiegenService extends DBService with RiegenResultMapper {
 
   def renameRiege(wettkampfid: Long, oldname: String, newname: String): Riege = {
     val existing = Await.result(database.run{
-        (if (newname.trim == oldname) {
+        (if newname.trim == oldname then {
           sql"""select r.wettkampf_id, r.name, r.durchgang, r.start, r.kind
              from riege r
              where wettkampf_id=$wettkampfid and name=${oldname}
@@ -27,7 +27,7 @@ trait RiegenService extends DBService with RiegenResultMapper {
     }, Duration.Inf)
     
     Await.result(database.run{
-      val riegeModifierAction = if(existing.isEmpty) {
+      val riegeModifierAction = if existing.isEmpty then {
         sqlu"""
                 insert into riege
                        (name, wettkampf_id)
@@ -83,24 +83,24 @@ trait RiegenService extends DBService with RiegenResultMapper {
 
   def updateOrinsertRiegen(riegen: Iterable[RiegeRaw]): Unit = {
     val riegenList: List[(Long, Iterable[RiegeRaw])] = riegen.groupBy(_.wettkampfId).toList
-    def insertRiegen(rs: Iterable[RiegeRaw]): DBIOAction[Iterable[Int], NoStream, Effect] = DBIO.sequence(for {
+    def insertRiegen(rs: Iterable[RiegeRaw]): DBIOAction[Iterable[Int], NoStream, Effect] = DBIO.sequence(for
         riege <- rs
-      } yield {
+      yield {
         updateOrInsertRiegeRawAction(riege)
       })
 
     val wettkampfList: List[Long] = riegenList.map(_._1).distinct
-    val process = DBIO.sequence(for {
+    val process = DBIO.sequence(for
       (wettkampfid, riegen) <- riegenList
-    } yield {
+    yield {
       sqlu"""
                 delete from riege where
                 wettkampf_id=${wettkampfid}
         """>>
       insertRiegen(riegen)
-    }) >> DBIO.sequence((for {
+    }) >> DBIO.sequence((for
       wettkampfId <- wettkampfList
-    } yield {
+    yield {
       updateDurchgaengeAction(wettkampfId)
     }))
 
@@ -171,14 +171,14 @@ trait RiegenService extends DBService with RiegenResultMapper {
     val (matchingRiege, matchscore) = existingRiegen.map { er =>
       (er, er.r.split(",").zip(riegenParts).zipWithIndex.map { case (pair, index) =>
         val (existing, newpart) = pair
-        if (existing.equalsIgnoreCase(newpart)) (riegenParts.length - index) * 10 else 0
+        if existing.equalsIgnoreCase(newpart) then (riegenParts.length - index) * 10 else 0
       }.sum / 10)
     }.sortBy(t => t._2).reverse.headOption.getOrElse((riege, 0))
 
     //println(matchscore, scoreSchwellwert, scoreSchwellwert2, matchingRiege)
-    if (matchscore >= scoreSchwellwert) {
+    if matchscore >= scoreSchwellwert then {
       matchingRiege
-    } else if (matchscore > scoreSchwellwert2) {
+    } else if matchscore > scoreSchwellwert2 then {
       updateOrinsertRiege(riege.copy(durchgang = matchingRiege.durchgang, start = matchingRiege.start))
         .toRaw(riege.wettkampfId)
     } else {
@@ -236,7 +236,7 @@ trait RiegenService extends DBService with RiegenResultMapper {
     Await.result(database.run{(
       updateOrInsertRiegeRawAction(riege) >>
       DBIO.sequence(riege2List) >>
-      DBIO.sequence(for(w <- wertungen) yield {
+      DBIO.sequence(for w <- wertungen yield {
         w.riege2 match {
           case Some(riege2) =>
             sqlu"""     UPDATE wertung

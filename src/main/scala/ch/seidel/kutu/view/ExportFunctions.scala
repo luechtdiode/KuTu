@@ -43,7 +43,7 @@ trait ExportFunctions {
     val haltsFileQualifier = halts.mkString("_h(", "-", ")")
     val filename = "Riegenblatt_" + encodeFileName(wettkampf.easyprint + durchgangFileQualifier + haltsFileQualifier) + ".html"
     val dir = new java.io.File(homedir + "/" + encodeFileName(wettkampf.easyprint))
-    if(!dir.exists()) {
+    if !dir.exists() then {
       dir.mkdirs();
     }
     val logofile = PrintUtil.locateLogoFile(dir)
@@ -68,7 +68,7 @@ trait ExportFunctions {
       .filter(gr => gr.halt == 0)
       .flatMap { gr =>
         gr.kandidaten.map { k =>
-          val tm = if (k.wertungen.head.team != 0) virtualTeams.getOrElse(k.wertungen.head.team, TeamItem(k.wertungen.head.team, k.verein)) else TeamItem(0, "")
+          val tm = if k.wertungen.head.team != 0 then virtualTeams.getOrElse(k.wertungen.head.team, TeamItem(k.wertungen.head.team, k.verein)) else TeamItem(0, "")
           ch.seidel.kutu.renderer.Kandidat(
             wettkampfTitel = gr.wettkampfTitel,
             geschlecht = k.geschlecht,
@@ -90,7 +90,7 @@ trait ExportFunctions {
 
     val filename = "DurchgangTeilnehmer_" + encodeFileName(wettkampf.easyprint) + durchgangFileQualifier + ".html"
     val dir = new java.io.File(homedir + "/" + encodeFileName(wettkampf.easyprint))
-    if(!dir.exists()) {
+    if !dir.exists() then {
       dir.mkdirs();
     }
     val logofile = PrintUtil.locateLogoFile(dir)

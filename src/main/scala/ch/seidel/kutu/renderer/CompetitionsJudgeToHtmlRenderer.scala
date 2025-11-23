@@ -104,7 +104,7 @@ trait CompetitionsJudgeToHtmlRenderer {
   """
 
   private def anmeldeListeProVerein(wettkampf: Wettkampf, verein: Registration, anmeldungenCnt: Int, wrs: Seq[JudgeRegistration], logo: File) = {
-    val logoHtml = if (logo.exists()) s"""<img class=logo src="${logo.imageSrcForWebEngine}" title="Logo"/>""" else ""
+    val logoHtml = if logo.exists() then s"""<img class=logo src="${logo.imageSrcForWebEngine}" title="Logo"/>""" else ""
 
     val d = wrs.map{ registration =>
       s"""<tr class="athletRow"><td class="large">${escaped(registration.name)} ${escaped(registration.vorname)}</td><td>${escaped(registration.mobilephone)}</td><td>${escaped(registration.mail)}</td><td class="totalCol">${
@@ -129,10 +129,10 @@ trait CompetitionsJudgeToHtmlRenderer {
 
   def toHTMLasJudgeRegistrationsList(wettkampf: Wettkampf, vereine: Map[Registration,Seq[JudgeRegistration]], logo: File, rowsPerPage: Int = 28): String = {
     val sortedList = vereine.keys.toList.sortBy(_.vereinname)
-    val rawpages = for {
+    val rawpages = for
       verein <- sortedList
-      a4seitenmenge <- if(rowsPerPage == 0) vereine(verein).sliding(vereine(verein).size, vereine(verein).size) else vereine(verein).sliding(rowsPerPage, rowsPerPage)
-    } yield {
+      a4seitenmenge <- if rowsPerPage == 0 then vereine(verein).sliding(vereine(verein).size, vereine(verein).size) else vereine(verein).sliding(rowsPerPage, rowsPerPage)
+    yield {
       anmeldeListeProVerein(wettkampf, verein, vereine(verein).size, a4seitenmenge, logo)
     }
 

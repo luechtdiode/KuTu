@@ -63,7 +63,7 @@ class KnobSkin(slider: Slider) extends SkinBase[Slider](slider) {
     val cy = slider.getHeight / 2
     val mouseAngle = Math.toDegrees(Math.atan((mouseY - cy) / (mouseX - cx)))
     var topZeroAngle = .0
-    if (mouseX < cx) topZeroAngle = 90 - mouseAngle
+    if mouseX < cx then topZeroAngle = 90 - mouseAngle
     else topZeroAngle = -(90 + mouseAngle)
     val value = 1 - ((topZeroAngle - minAngle) / (maxAngle - minAngle))
     value

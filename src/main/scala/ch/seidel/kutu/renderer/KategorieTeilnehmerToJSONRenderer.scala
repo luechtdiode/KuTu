@@ -41,16 +41,15 @@ trait KategorieTeilnehmerToJSONRenderer {
   }
 
   def toJSONasKategorienListe(kandidaten: Seq[Kandidat], logo: File, dgMapping: Seq[(SimpleDurchgang, LocalDateTime)]): String = {
-    val logoHtml = if (logo.exists()) logo.imageSrcForWebEngine else ""
+    val logoHtml = if logo.exists() then logo.imageSrcForWebEngine else ""
     val dgmap = dgMapping.map(dg => dg._1.name -> dg).toMap
     val kandidatenPerKategorie = kandidaten.sortBy { k =>
       val krit = f"${escaped(k.verein)}%-40s ${escaped(k.name)}%-40s ${escaped(k.vorname)}%-40s"
       //logger.debug(krit)
       krit
     }.groupBy(k => k.programm)
-    val rawpages = for {
+    val rawpages = for
       kategorie <- kandidatenPerKategorie.keys.toList.sorted
-    }
     yield {
       anmeldeListe(kategorie, kandidatenPerKategorie(kategorie), dgmap)
     }

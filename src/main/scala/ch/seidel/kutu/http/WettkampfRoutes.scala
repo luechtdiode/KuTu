@@ -90,7 +90,7 @@ trait WettkampfClient extends AuthSupport with KutuService with FailureSupport {
     val wettkampfEntity = toHttpEntity(wettkampf)
     val uploadProm = Promise[String]()
     val uploadFut = uploadProm.future
-    if (remoteHost.startsWith("localhost") && !wettkampf.hasSecred(homedir, remoteHostOrigin)) {
+    if remoteHost.startsWith("localhost") && !wettkampf.hasSecred(homedir, remoteHostOrigin) then {
       wettkampf.saveSecret(homedir, remoteHostOrigin, JsonWebToken(jwtHeader, setClaims(uuid, Int.MaxValue), jwtSecretKey))
     }
     val hadSecret = wettkampf.hasSecred(homedir, remoteHostOrigin)
@@ -102,7 +102,7 @@ trait WettkampfClient extends AuthSupport with KutuService with FailureSupport {
         HttpRequest(method = HttpMethods.POST, uri = s"$remoteAdminBaseUrl/api/competition/$uuid", entity = wettkampfEntity)).map {
         case response@HttpResponse(StatusCodes.OK, headers, entity, _) =>
           val secretOption = catchSecurityHeader(wettkampf, headers, entity).map(_.value)
-          if (secretOption.isEmpty) {
+          if secretOption.isEmpty then {
             log.info("failed post to " + s"$remoteAdminBaseUrl/api/competition/$uuid, no secret available")
             throw new RuntimeException("No Secret for Competition available")
           } else {
@@ -131,7 +131,7 @@ trait WettkampfClient extends AuthSupport with KutuService with FailureSupport {
       reqresp
     }
 
-    if (!hadSecret) {
+    if !hadSecret then {
       log.info("no secret seen, post instead of put competition ...")
       postWettkampf(uploadProm)
     } else {
@@ -160,7 +160,7 @@ trait WettkampfClient extends AuthSupport with KutuService with FailureSupport {
 
       case Success(response) =>
         log.info("got login resonse ...")
-        if (interaction == Upload && hadSecret && response.status.isSuccess()) {
+        if interaction == Upload && hadSecret && response.status.isSuccess() then {
           log.info("login successful - put to " + s"$remoteAdminBaseUrl/api/competition/$uuid")
           httpPutClientRequest(s"$remoteAdminBaseUrl/api/competition/$uuid", wettkampfEntity).map {
             case resp @ HttpResponse(StatusCodes.OK, headers, entity, _) =>
@@ -201,7 +201,7 @@ trait WettkampfClient extends AuthSupport with KutuService with FailureSupport {
       }
     }
     println(s"New Secret: " + secret)
-    if (secret.nonEmpty) {
+    if secret.nonEmpty then {
       wettkampf.saveSecret(homedir, remoteHostOrigin, secret.get.value)
     }
     secret
@@ -213,10 +213,10 @@ trait WettkampfClient extends AuthSupport with KutuService with FailureSupport {
     val requestResponseFlow = Http().superPool[Unit](settings = poolsettings)
 
     def importData(httpResponse: HttpResponse) = {
-      if (httpResponse.status.isSuccess()) {
+      if httpResponse.status.isSuccess() then {
         val is = httpResponse.entity.dataBytes.runWith(StreamConverters.asInputStream())
         val wettkampf = ResourceExchanger.importWettkampf(is)
-        if (!wettkampf.hasRemote(homedir, remoteHostOrigin)) {
+        if !wettkampf.hasRemote(homedir, remoteHostOrigin) then {
           wettkampf.saveRemoteOrigin(homedir, remoteHostOrigin)
         }
         wettkampf
@@ -312,7 +312,7 @@ trait WettkampfRoutes extends WettkampfClient with SprayJsonSupport
           post {
             authenticated() { userId =>
               entity(as[StartDurchgang]) { sd =>
-                if (userId.equals(wkuuid.toString)) {
+                if userId.equals(wkuuid.toString) then {
                   AbuseHandler.clearAbusedClients()
                   complete(CompetitionCoordinatorClientActor.publish(sd, clientId))
                 } else {
@@ -326,7 +326,7 @@ trait WettkampfRoutes extends WettkampfClient with SprayJsonSupport
           post {
             authenticated() { userId =>
               entity(as[ResetStartDurchgang]) { rsd =>
-                if (userId.equals(wkuuid.toString)) {
+                if userId.equals(wkuuid.toString) then {
                   AbuseHandler.clearAbusedClients()
                   complete(CompetitionCoordinatorClientActor.publish(rsd, clientId))
                 } else {
@@ -340,7 +340,7 @@ trait WettkampfRoutes extends WettkampfClient with SprayJsonSupport
             post {
               authenticated() { userId =>
                 entity(as[FinishDurchgang]) { fd =>
-                  if (userId.equals(wkuuid.toString)) {
+                  if userId.equals(wkuuid.toString) then {
                     complete(CompetitionCoordinatorClientActor.publish(fd, clientId))
                   } else {
                     complete(StatusCodes.Conflict)
@@ -353,7 +353,7 @@ trait WettkampfRoutes extends WettkampfClient with SprayJsonSupport
             post {
               authenticated() { userId =>
                 entity(as[FinishDurchgangStep]) { fd =>
-                  if (userId.equals(wkuuid.toString)) {
+                  if userId.equals(wkuuid.toString) then {
                     complete(CompetitionCoordinatorClientActor.publish(fd, clientId))
                   } else {
                     complete(StatusCodes.Conflict)
@@ -377,7 +377,7 @@ trait WettkampfRoutes extends WettkampfClient with SprayJsonSupport
                           val processor = Future[(Wettkampf,JwtClaimsSetMap)] {
                             try {
                               val wettkampf = ResourceExchanger.importWettkampf(is)
-                              val decodedorigin = s"${if (uri.authority.host.toString().contains("localhost")) "http" else "https"}://${uri.authority}"
+                              val decodedorigin = s"${if uri.authority.host.toString().contains("localhost") then "http" else "https"}://${uri.authority}"
                               val link = s"$decodedorigin/api/registrations/${wettkampf.uuid.get}/approvemail?mail=${encodeURIParam(wettkampf.notificationEMail)}"
                               AthletIndexActor.publish(ResyncIndex)
                               CompetitionRegistrationClientActor.publish(CompetitionCreated(wkuuid.toString, link), clientId)
@@ -390,7 +390,7 @@ trait WettkampfRoutes extends WettkampfClient with SprayJsonSupport
                           onComplete(processor) {
                             case Success((wettkampf, claims)) =>
                               respondWithHeader(RawHeader(jwtAuthorizationKey, JsonWebToken(jwtHeader, claims, jwtSecretKey))) {
-                                if (wettkampf.notificationEMail == null || wettkampf.notificationEMail.trim.isEmpty) {
+                                if wettkampf.notificationEMail == null || wettkampf.notificationEMail.trim.isEmpty then {
                                   complete(StatusCodes.Conflict, s"Die EMail-Adresse für die Notifikation von Online-Registrierungen ist noch nicht erfasst.")
                                 } else {
                                   complete(StatusCodes.OK)
@@ -412,7 +412,7 @@ trait WettkampfRoutes extends WettkampfClient with SprayJsonSupport
               put {
                 extractUri { uri =>
                   authenticated() { userId =>
-                    if (userId.equals(wkuuid.toString)) {
+                    if userId.equals(wkuuid.toString) then {
                       withoutRequestTimeout {
                         fileUpload("zip") {
                           case (metadata, file: Source[ByteString, Any]) =>
@@ -428,8 +428,8 @@ trait WettkampfRoutes extends WettkampfClient with SprayJsonSupport
                                 CompetitionCoordinatorClientActor.publish(RefreshWettkampfMap(wkuuid.toString), clientId)
                                 CompetitionRegistrationClientActor.publish(RegistrationChanged(wkuuid.toString), clientId)
                                 AbuseHandler.clearAbusedClients()
-                                if (!before.notificationEMail.equalsIgnoreCase(wettkampf.notificationEMail)) {
-                                  val decodedorigin = s"${if (uri.authority.host.toString().contains("localhost")) "http" else "https"}://${uri.authority}"
+                                if !before.notificationEMail.equalsIgnoreCase(wettkampf.notificationEMail) then {
+                                  val decodedorigin = s"${if uri.authority.host.toString().contains("localhost") then "http" else "https"}://${uri.authority}"
                                   val link = s"$decodedorigin/api/registrations/${wettkampf.uuid.get}/approvemail?mail=${encodeURIParam(wettkampf.notificationEMail)}"
                                   CompetitionRegistrationClientActor.publish(CompetitionCreated(wkuuid.toString, link), clientId)
                                 }
@@ -442,7 +442,7 @@ trait WettkampfRoutes extends WettkampfClient with SprayJsonSupport
                             onComplete(processor) {
                               case Success(wettkampf) =>
                                 log.info(s"wettkampf ${wettkampf.easyprint} updated")
-                                if (wettkampf.notificationEMail == null || wettkampf.notificationEMail.trim.isEmpty) {
+                                if wettkampf.notificationEMail == null || wettkampf.notificationEMail.trim.isEmpty then {
                                   complete(StatusCodes.Conflict, s"Die EMail-Adresse für die Notifikation von Online-Registrierungen ist noch nicht erfasst.")
                                 } else {
                                   complete(StatusCodes.OK)
@@ -467,7 +467,7 @@ trait WettkampfRoutes extends WettkampfClient with SprayJsonSupport
               } ~
               delete {
                 authenticated() { userId =>
-                  if (userId.equals(wkuuid.toString)) {
+                  if userId.equals(wkuuid.toString) then {
                     onSuccess(readWettkampfAsync(wkuuid.toString)) { wettkampf =>
                       log.info("deleting wettkampf: " + wettkampf)
                       complete(

@@ -35,7 +35,7 @@ def defaultKeepLogic[T](propertyname: String): Option[(T, T) => T] = {
     case "gebdat" => Some((v1, v2) => {
       v1 match {
         case Some(d: Date) =>
-          if (!f"$d%tF".endsWith("-01-01")) v1
+          if !f"$d%tF".endsWith("-01-01") then v1
           else v2 match {
             case Some(cd: Date) if (!f"$cd%tF".endsWith("-01-01") || d.equals(cd)) =>
               v2
@@ -58,14 +58,14 @@ inline def mergeMissingProperties[T <: Product](keeping: T, toDelete: T, keepLog
     val v2 = toDeletAttributesMap(k)
     val keepingValue = keepLogic(k) match {
       case None => (v1, v2) match {
-        case (Some(o1), Some(o2)) => if (o1.toString.compareTo(o2.toString) > 0) Some(o1) else Some(o2)
+        case (Some(o1), Some(o2)) => if o1.toString.compareTo(o2.toString) > 0 then Some(o1) else Some(o2)
         case (Some(o1), None) => Some(o1)
         case (None, Some(o2)) => Some(o2)
         case (None, None) => None
         case (b1: Boolean, b2: Boolean) => b1 || b2
-        case (s1: String, s2: String) => if (s1.trim.isEmpty) s2 else s1
-        case (n1: Number, n2: Number) => if (n1.intValue() == 0) n2 else n1
-        case (c1, c2) => if (c1.toString.compareTo(c2.toString) > 0) c1 else c2
+        case (s1: String, s2: String) => if s1.trim.isEmpty then s2 else s1
+        case (n1: Number, n2: Number) => if n1.intValue() == 0 then n2 else n1
+        case (c1, c2) => if c1.toString.compareTo(c2.toString) > 0 then c1 else c2
       }
       case Some(fn) => fn(v1, v2)
     }

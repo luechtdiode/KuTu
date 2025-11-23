@@ -56,7 +56,7 @@ class ScoreCalcTemplatesTab(wettkampf: WettkampfView, override val service: Kutu
   }
 
   onSelectionChanged = _ => {
-    if(selected.value) {
+    if selected.value then {
       reloadData()
     }
   }
@@ -106,7 +106,7 @@ class ScoreCalcTemplatesTab(wettkampf: WettkampfView, override val service: Kutu
       }
 
       def editDialog(row: Int): Unit = {
-        if (row < 0 || row >= model.size) {
+        if row < 0 || row >= model.size then {
           ScoreCalcTemplatedialog(context, editor => {
             model.add(editor.context.updated(editor.commit))
             model.sortBy(sorter)
@@ -157,7 +157,7 @@ class ScoreCalcTemplatesTab(wettkampf: WettkampfView, override val service: Kutu
 
       onAction = { _ =>
         val item = selection.getSelectedItem
-        if (item != null && item.isEditable) {
+        if item != null && item.isEditable then {
           context.delete(item)
           model.remove(item)
         }
@@ -181,7 +181,7 @@ class ScoreCalcTemplatesTab(wettkampf: WettkampfView, override val service: Kutu
               template.disziplin.value.toUpperCase().contains(search)
           }
 
-        if (matches) {
+        if matches then {
           model += template
         }
       })
@@ -192,7 +192,7 @@ class ScoreCalcTemplatesTab(wettkampf: WettkampfView, override val service: Kutu
     val txtFilter = new TextField() {
       promptText = "Filter (Ctrl + F)"
         text.addListener { (o: javafx.beans.value.ObservableValue[? <: String], oldVal: String, newVal: String) =>
-        if (!lastFilter.equalsIgnoreCase(newVal)) {
+        if !lastFilter.equalsIgnoreCase(newVal) then {
           updateFilteredList(newVal)
         }
       }

@@ -43,7 +43,7 @@ object ScoreListBestN {
 sealed trait ScoreListBestN extends DataObject {
   val counting: Option[Int]
   val text: String
-  def urlParam = if (counting.isEmpty || counting.get < 1) "alle" else s"beste(${counting.get})"
+  def urlParam = if counting.isEmpty || counting.get < 1 then "alle" else s"beste(${counting.get})"
   override def toString: String = text
 }
 case object AlleWertungen extends ScoreListBestN {
@@ -52,7 +52,7 @@ case object AlleWertungen extends ScoreListBestN {
 }
 case class BestNWertungen(c: Int) extends ScoreListBestN {
   override val counting: Option[Int] = Some(c)
-  override val text: String = if (c > 1) s"Beste ${c} Wertungen" else "Beste Wertung"
+  override val text: String = if c > 1 then s"Beste ${c} Wertungen" else "Beste Wertung"
 }
 
 sealed trait GroupBy {
@@ -114,8 +114,8 @@ sealed trait GroupBy {
       }
     }
     s"groupby=${groupby}" +
-      (if (isANO) "&alphanumeric" else "") +
-      (if (isAVG) "&avg=true" else "&avg=false") +
+      (if isANO then "&alphanumeric" else "") +
+      (if isAVG then "&avg=true" else "&avg=false") +
       s"&kind=${kind}&counting=${bestNCounting.urlParam}"
   }
 
@@ -140,13 +140,13 @@ sealed trait GroupBy {
   }
 
   def groupBy[T >: GroupBy](next: T): T = {
-    if (this == next) {
+    if this == next then {
       next
     }
     else {
       this.next match {
         case Some(n) =>
-          if (n != this) {
+          if n != this then {
             n.groupBy(next)
             this
           }
@@ -168,7 +168,7 @@ sealed trait GroupBy {
   }
 
   def select(wvlist: Seq[WertungView]): Iterable[GroupSection] = {
-    val grouped = if (skipGrouper) {
+    val grouped = if skipGrouper then {
       wvlist groupBy allgrouper filter (g => g._2.nonEmpty)
     }
     else {
@@ -184,7 +184,7 @@ sealed trait GroupBy {
   private def mapAndSortLeaf(grouped: Map[DataObject, Seq[WertungView]]) = {
     def reduce(switch: DataObject, list: Seq[WertungView]): Seq[GroupSection] = {
       val rl = list.filter(_.showInScoreList)
-      if (rl.nonEmpty) {
+      if rl.nonEmpty then {
         val gl = GroupLeaf(switch, rl, bestOfCountOverride = getBestNCounting.counting)
         kind match {
           case Teamrangliste => {
@@ -205,7 +205,7 @@ sealed trait GroupBy {
     sort(grouped.flatMap { x =>
       val (grp, seq) = x
       val list = ng.select(seq)
-      if (list.nonEmpty) {
+      if list.nonEmpty then {
         Seq(GroupNode(grp, list))
       } else {
         Seq()
@@ -232,16 +232,16 @@ sealed trait FilterBy extends GroupBy {
     val (groupby, filter) = traverse(("", List[String]())) { (gb, acc) =>
       val (groupby, filter) = acc
       (
-        if (gb.skipGrouper) {
+        if gb.skipGrouper then {
           groupby
-        } else if (groupby.isEmpty) {
+        } else if groupby.isEmpty then {
           gb.groupname
         } else {
           groupby + ":" + gb.groupname
         },
         gb match {
           case f: FilterBy if f.getFilter.nonEmpty =>
-            if (f.skipGrouper) {
+            if f.skipGrouper then {
               filter :+ s"&filter=${gb.groupname}:${f.getFilter.map(s => encodeURIParam(s.easyprint)).mkString("!")}"
             } else {
               filter :+ s"&filter=${gb.groupname}:${f.getFilter.map(s => encodeURIParam(s.easyprint)).mkString("!")}"
@@ -252,8 +252,8 @@ sealed trait FilterBy extends GroupBy {
       )
     }
     s"groupby=$groupby${filter.mkString}" +
-      (if (isANO) "&alphanumeric" else "") +
-      (if (isAVG) "&avg=true" else "&avg=false") +
+      (if isANO then "&alphanumeric" else "") +
+      (if isAVG then "&avg=true" else "&avg=false") +
       s"&kind=${kind}&counting=${bestNCounting.urlParam}"
   }
 
@@ -266,7 +266,7 @@ sealed trait FilterBy extends GroupBy {
   }
 
   def filterItems: List[DataObject] =
-    if (skipGrouper) {
+    if skipGrouper then {
       filtItems ++ getFilter.filter(nullObjectFilter)
     } else {
       filtItems
@@ -283,7 +283,7 @@ sealed trait FilterBy extends GroupBy {
 
   override def select(wvlist: Seq[WertungView]): Iterable[GroupSection] = {
     filtItems = items(wvlist)
-    super.select(wvlist.filter(g => if (getFilter.nonEmpty) getFilter.contains(grouper(g)) else true))
+    super.select(wvlist.filter(g => if getFilter.nonEmpty then getFilter.contains(grouper(g)) else true))
   }
 
   override def canSkipGrouper = getFilter.filterNot(nullObjectFilter).size > 1
@@ -603,7 +603,7 @@ object GroupBy {
     val cblist = groupby.toSeq.flatMap(gb => gb.split(":")).map { groupername =>
       groupers.find(grouper => grouper.groupname.equals(groupername))
     }.filter { case Some(_) => true case None => false }.map(_.get)
-    val cbllist = if (cblist.nonEmpty) cblist else if (kind == Teamrangliste) groupers.take(1) else Seq(ByWettkampfProgramm(), ByGeschlecht())
+    val cbllist = if cblist.nonEmpty then cblist else if kind == Teamrangliste then groupers.take(1) else Seq(ByWettkampfProgramm(), ByGeschlecht())
 
     val cbflist = filterList.keys.map { groupername =>
       groupers.find(grouper => grouper.groupname.equals(groupername))
@@ -619,7 +619,7 @@ object GroupBy {
           gr.setFilter(gr.analyze(data).filter { f =>
             filterValues.exists(entry => {
               val itemText = f.easyprint
-              val exists = if (entry.contains(" ")) {
+              val exists = if entry.contains(" ") then {
                 entry.split(" ").map(e => e.replace("_", "")).forall(subentry => itemText.contains(subentry))
               } else {
                 entry.equalsIgnoreCase(itemText)
@@ -627,21 +627,21 @@ object GroupBy {
               exists
             })
           }.toSet ++ (
-            if (filterValues.contains("all") || filterValues.contains("alle")) Set(NullObject("alle"))
+            if filterValues.contains("all") || filterValues.contains("alle") then Set(NullObject("alle"))
             else Set.empty)
           )
         case _ =>
       }
     }
-    val query = if (cbflist.nonEmpty) {
-      cbflist.foldLeft(cbflist.head.asInstanceOf[GroupBy])((acc, cb) => if (acc != cb) acc.groupBy(cb) else acc)
-    } else if (data.nonEmpty && data.head.wettkampf.altersklassen.get.nonEmpty) {
+    val query = if cbflist.nonEmpty then {
+      cbflist.foldLeft(cbflist.head.asInstanceOf[GroupBy])((acc, cb) => if acc != cb then acc.groupBy(cb) else acc)
+    } else if data.nonEmpty && data.head.wettkampf.altersklassen.get.nonEmpty then {
       val byAK = groupers.find(p => p.isInstanceOf[ByAltersklasse] && p.groupname.startsWith("Wettkampf")).getOrElse(ByAltersklasse("AK", Altersklasse.parseGrenzen(data.head.wettkampf.altersklassen.get)))
       ByProgramm().groupBy(byAK).groupBy(ByGeschlecht())
-    } else if (data.nonEmpty && data.head.wettkampf.jahrgangsklassen.get.nonEmpty) {
+    } else if data.nonEmpty && data.head.wettkampf.jahrgangsklassen.get.nonEmpty then {
       val byAK = groupers.find(p => p.isInstanceOf[ByJahrgangsAltersklasse] && p.groupname.startsWith("Wettkampf")).getOrElse(ByJahrgangsAltersklasse("AK", Altersklasse.parseGrenzen(data.head.wettkampf.jahrgangsklassen.get)))
       ByProgramm().groupBy(byAK).groupBy(ByGeschlecht())
-    } else if (data.nonEmpty && data.head.wettkampf.hasTeams) {
+    } else if data.nonEmpty && data.head.wettkampf.hasTeams then {
       val regel = TeamRegel(data.head.wettkampf)
       val byTeamRegel = groupers.find(p => p.isInstanceOf[ByTeamRule] && p.groupname.startsWith("Wettkampf")).getOrElse(ByTeamRule(regel.toRuleName, regel))
       byTeamRegel

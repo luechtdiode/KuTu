@@ -112,7 +112,7 @@ trait DurchgangService extends DBService with DurchgangResultMapper {
   }
 
   def storeDurchgangStarted(started: DurchgangStarted): Unit = {
-    if (started.time > 0) {
+    if started.time > 0 then {
       val t = new Timestamp(started.time)
       Await.result(database.run {
         sqlu"""
@@ -150,7 +150,7 @@ trait DurchgangService extends DBService with DurchgangResultMapper {
   }
 
   def storeDurchgangFinished(finished: DurchgangFinished): Unit = {
-    if (finished.time > 0) {
+    if finished.time > 0 then {
       val t = new Timestamp(finished.time)
       Await.result(database.run {
         sqlu"""
@@ -167,9 +167,9 @@ trait DurchgangService extends DBService with DurchgangResultMapper {
   }
 
   def updateOrInsertDurchgaenge(durchgaenge: Iterable[Durchgang]): Unit = {
-    def insertDurchgang(rs: Iterable[Durchgang]) = DBIO.sequence(for {
+    def insertDurchgang(rs: Iterable[Durchgang]) = DBIO.sequence(for
       durchgang <- rs
-    } yield {
+    yield {
       sqlu"""
                 insert into durchgang
                 (wettkampf_id, title, name, durchgangtype, ordinal, planStartOffset, effectiveStartTime, effectiveEndTime)
@@ -178,9 +178,9 @@ trait DurchgangService extends DBService with DurchgangResultMapper {
         """
     })
 
-    val process = DBIO.sequence(for {
+    val process = DBIO.sequence(for
       (wettkampfid, planTime) <- durchgaenge.groupBy(_.wettkampfId)
-    } yield {
+    yield {
       sqlu"""
                 delete from durchgang where
                 wettkampf_id=${wettkampfid}

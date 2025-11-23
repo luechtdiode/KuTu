@@ -192,7 +192,7 @@ trait AthletService extends DBService with AthletResultMapper with VereinService
   def startsSameInPercent(text1: String, text2: String): Int = {
     val count = text1.toSeq.zip(text2.toSeq).foldLeft((true, 0)) { (acc, pair) =>
       val same = pair._1 == pair._2
-      (acc._1 && same, acc._2 + (if (acc._1 && same) 1 else 0))
+      (acc._1 && same, acc._2 + (if acc._1 && same then 1 else 0))
     }._2
     100 * count / math.max(text1.length, text2.length)
   }
@@ -226,13 +226,13 @@ trait AthletService extends DBService with AthletResultMapper with VereinService
       //      if (code.name.equals(athlet.name)) {
       //      print(athlet.easyprint, this)
       //      }
-      if (vereinSimilarity && preret && gebdatSimilarity) {
+      if vereinSimilarity && preret && gebdatSimilarity then {
         (namenSimilarity + vorNamenSimilarity) * 3
       }
-      else if (vereinSimilarity && preret && jahrgangSimilarity) {
+      else if vereinSimilarity && preret && jahrgangSimilarity then {
         (namenSimilarity + vorNamenSimilarity) * 2
       }
-      else if (vereinSimilarity && (preret || (preret2 && gebdatSimilarity))) {
+      else if vereinSimilarity && (preret || (preret2 && gebdatSimilarity)) then {
         namenSimilarity + vorNamenSimilarity
       }
       else {
@@ -240,7 +240,7 @@ trait AthletService extends DBService with AthletResultMapper with VereinService
       }
     }
 
-    val preselect = if (cache.isEmpty) {
+    val preselect = if cache.isEmpty then {
       Await.result(database.run {
         (wettkampf match {
           case None => sql"""
@@ -257,7 +257,7 @@ trait AthletService extends DBService with AthletResultMapper with VereinService
         flatMap { x =>
           val (id, name, vorname, gebdat, verein) = x
           val mc1 = MatchCode(id, name, vorname, gebdat, verein)
-          if (Surname.isSurname(mc1.name).isDefined) {
+          if Surname.isSurname(mc1.name).isDefined then {
             List(mc1, mc1.swappednames)
           } else {
             List(mc1)
@@ -275,7 +275,7 @@ trait AthletService extends DBService with AthletResultMapper with VereinService
       (matchcode.id, similarAthletFactor(matchcode))
     }.filter(p => p._2 > 0).toList.sortBy(_._2).reverse
     presel2.headOption.flatMap(k => loadAthlet(k._1)).getOrElse {
-      if (!athlet.equals(Athlet())) {
+      if !athlet.equals(Athlet()) then {
         logger.warn("Athlet local not found! " + athlet.extendedprint)
       }
       athlet
@@ -292,20 +292,20 @@ trait AthletService extends DBService with AthletResultMapper with VereinService
 
   def findDuplicates(): List[(AthletView, AthletView, AthletView)] = {
     val likeFinder = findAthleteLike(cache = new java.util.ArrayList[MatchCode], exclusive = true)
-    for {
+    for
       athleteView <- selectAthletesView
       athlete = athleteView.toAthlet
       like = likeFinder(athlete)
       if athleteView.id != like.id
-    } yield {
+    yield {
       val tupel = List(athleteView, loadAthleteView(like.id)).sortWith { (a, b) =>
-        if (a.gebdat.map(_.toLocalDate.getDayOfMonth).getOrElse(0) > b.gebdat.map(_.toLocalDate.getDayOfMonth).getOrElse(0)) true
+        if a.gebdat.map(_.toLocalDate.getDayOfMonth).getOrElse(0) > b.gebdat.map(_.toLocalDate.getDayOfMonth).getOrElse(0) then true
         else {
           val asp = Athlet.mapSexPrediction(a.toAthlet)
           val bsp = Athlet.mapSexPrediction(b.toAthlet)
-          if (asp == a.geschlecht && bsp != b.geschlecht) true
-          else if (bsp == b.geschlecht && asp != a.geschlecht) false
-          else if (a.id - b.id > 0) true
+          if asp == a.geschlecht && bsp != b.geschlecht then true
+          else if bsp == b.geschlecht && asp != a.geschlecht then false
+          else if a.id - b.id > 0 then true
           else false
         }
       }
@@ -328,7 +328,7 @@ trait AthletService extends DBService with AthletResultMapper with VereinService
         having max(wk.datum) < ${Date.valueOf(d)}
        """.as[(Int, String, String, Date)]
       }, Duration.Inf).toList
-      if (inactivList.length > 0) {
+      if inactivList.length > 0 then {
         logger.info("setting the following list of athlets inactiv:")
         logger.info(inactivList.mkString("(", "\n", ")"))
         val length = Await.result(database.run {
@@ -368,7 +368,7 @@ trait AthletService extends DBService with AthletResultMapper with VereinService
 			        and wk.datum >= current_date
           )          """.as[Verein]
     }, Duration.Inf).toSet
-    for(verein <- affectedClubs) {
+    for verein <- affectedClubs do {
       deleteVerein(verein.id)
     }
     affectedClubs

@@ -5,13 +5,13 @@ import scalafx.beans.property._
 
 case class CheckListBoxEditor[T](value: T, onSelectedChange: Option[(T, Boolean) => Boolean] = None) {
   val selected = BooleanProperty(true)
-  if(onSelectedChange.isDefined) {
+  if onSelectedChange.isDefined then {
     selected onChange {
       selected.value = onSelectedChange.get(value, selected.value)
     }
   }
   override def toString = {
-    if(value.isInstanceOf[DataObject]) {
+    if value.isInstanceOf[DataObject] then {
       value.asInstanceOf[DataObject].easyprint
     }
     else {

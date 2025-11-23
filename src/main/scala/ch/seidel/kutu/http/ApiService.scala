@@ -11,7 +11,7 @@ case class HTTPFailure(status: StatusCode,
                        private val message: String = "",
                        private val cause: Throwable = None.orNull) extends RuntimeException(cause) {
   val text =
-    if (message.isEmpty || status.reason().equals(message)) s"Status: $status"
+    if message.isEmpty || status.reason().equals(message) then s"Status: $status"
     else s"Status: $status, $message"
   override def getMessage: String = text
 }

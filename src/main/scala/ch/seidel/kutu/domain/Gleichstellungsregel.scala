@@ -30,7 +30,7 @@ object Gleichstandsregel {
 
   def validated(regel: Gleichstandsregel): Gleichstandsregel = {
     try {
-      if (STANDARD_SCORE_FACTOR / 1000L < regel.powerRange) {
+      if STANDARD_SCORE_FACTOR / 1000L < regel.powerRange then {
         println(s"Max scorefactor ${STANDARD_SCORE_FACTOR / 1000L}, powerRange ${regel.powerRange}, zu gross: ${regel.powerRange - STANDARD_SCORE_FACTOR / 1000L}")
         throw new RuntimeException("Bitte reduzieren, es sind zu viele Regeln definiert")
       }
@@ -58,7 +58,7 @@ object Gleichstandsregel {
       case "Ohne" => Some(GleichstandsregelDefault.asInstanceOf[Gleichstandsregel])
       case s: String => Some(GleichstandsregelDefault.asInstanceOf[Gleichstandsregel])
     }
-    if (mappedFactorizers.isEmpty) {
+    if mappedFactorizers.isEmpty then {
       GleichstandsregelList(List(GleichstandsregelDefault))
     } else {
       GleichstandsregelList(mappedFactorizers)
@@ -112,10 +112,10 @@ case class GleichstandsregelList(regeln: List[Gleichstandsregel]) extends Gleich
       .foldLeft((BigDecimal(0), STANDARD_SCORE_FACTOR/1000)){(acc, regel) =>
         val range = regel.powerRange
         val factorFull = regel.factorize(athlWertungen)
-        val factor = if (factorFull > range) (factorFull % range).max(1) else factorFull
+        val factor = if factorFull > range then (factorFull % range).max(1) else factorFull
         val contribution = factor * acc._2 / range
         val ret = (acc._1 + contribution, (acc._2 / regel.powerRange).setScale(0, RoundingMode.FLOOR))
-        if (factor > range) {
+        if factor > range then {
           println(s"""
                      |Rule:   ${regel.toFormel}
                      |acc:    $acc,
@@ -179,7 +179,7 @@ case class GleichstandsregelStreichDisziplin(disziplinOrder: List[String]) exten
 }
 
 case class GleichstandsregelStreichWertungen(typ: String = "Endnote", minmax: String = "Min") extends Gleichstandsregel {
-  private val _minmax = if (minmax == null || minmax.isEmpty) "Min" else minmax
+  private val _minmax = if minmax == null || minmax.isEmpty then "Min" else minmax
   override def toFormel: String = s"StreichWertungen($typ,${_minmax})"
   val maxGeraete = 6
   override val maxvalue: Int = 180
@@ -205,7 +205,7 @@ case class GleichstandsregelStreichWertungen(typ: String = "Endnote", minmax: St
   }
 
   private def f(athlWertungen: List[WertungView]): BigDecimal = {
-    if (athlWertungen.nonEmpty) {
+    if athlWertungen.nonEmpty then {
       val level = BigDecimal(maxvalue).pow(athlWertungen.size)
       val sum = athlWertungen
         .map(pickWertung)

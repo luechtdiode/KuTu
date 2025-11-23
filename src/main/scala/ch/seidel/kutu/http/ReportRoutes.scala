@@ -42,7 +42,7 @@ trait ReportRoutes extends SprayJsonSupport
         }~
         pathPrefix(JavaUUID) { competitionId =>
           import AbuseHandler._
-          if (!wettkampfExists(competitionId.toString)) {
+          if !wettkampfExists(competitionId.toString) then {
             log.error(handleAbuse(clientId, uri))
             complete(StatusCodes.NotFound)
           } else {

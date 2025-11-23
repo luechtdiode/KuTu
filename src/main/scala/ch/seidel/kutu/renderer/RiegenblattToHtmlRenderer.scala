@@ -11,7 +11,7 @@ import java.time.LocalDateTime
 object RiegenBuilder {
   val logger = LoggerFactory.getLogger(this.getClass)
   def mapToGeraeteRiegen(kandidaten: Seq[ch.seidel.kutu.domain.Kandidat], printorder: Boolean = false, durchgangFilter: Set[String] = Set.empty, haltsFilter: Set[Int] = Set.empty): List[GeraeteRiege] = {
-    val sorter: RiegenRotationsregel = if (kandidaten.nonEmpty && kandidaten.head.wertungen.nonEmpty)
+    val sorter: RiegenRotationsregel = if kandidaten.nonEmpty && kandidaten.head.wertungen.nonEmpty then
       RiegenRotationsregel(kandidaten.head.wertungen.head.wettkampf)
     else RiegenRotationsregel("")
 
@@ -62,11 +62,11 @@ object RiegenBuilder {
         .map { riegeneinteilung =>
           val (kandidat, (_, diszipline)) = riegeneinteilung
           val disziplin = d._1.get
-          if (splitmerged)
+          if splitmerged then
             (kandidat, (diszipline.dropWhile(d => d.id != disziplin.id) ++ diszipline.takeWhile(d => d.id != disziplin.id)).toList)
           else {
             val diszs = geraete.map(_._1.get).map{d =>
-              if (diszipline.contains(d)) d else d.asPause
+              if diszipline.contains(d) then d else d.asPause
             }
             (kandidat, (diszs.dropWhile(d => !d.equalsOrPause(disziplin)) ++ diszs.takeWhile(d => !d.equalsOrPause(disziplin))).toList)
           }
@@ -120,7 +120,7 @@ object RiegenBuilder {
           val (sf, index) = x
           (sf._1, sf._2, sf._3, sf._4, durchgangIndex * 100 + index + 1)
         })
-      if (printorder) {
+      if printorder then {
         (durchgang, startformationen.sortBy(d => d._2.map(x => x.normalizedOrdinal(dzl)).getOrElse(0) * 100 + d._1))
       }
       else {
@@ -163,7 +163,7 @@ object RiegenBuilder {
           (sf._1, sf._2, sf._3, sf._4, durchgangIndex*100 + 100 - index)
         })
 
-      if (printorder) {
+      if printorder then {
         (durchgang, startformationen)        
       }
       else {
@@ -297,7 +297,7 @@ trait RiegenblattToHtmlRenderer {
   """
 
   def shorten(s: String, l: Int = 10) = {
-    if (s.length() <= l) {
+    if s.length() <= l then {
       s.trim
     } else {
       val words = s.split("[ ,]")
@@ -315,14 +315,14 @@ trait RiegenblattToHtmlRenderer {
   }
 
   private def notenblatt(riegepart: (GeraeteRiege, Int), logo: File, baseUrl: String, dgMapping: Map[String, (SimpleDurchgang, LocalDateTime)]) = {
-    val logoHtml = if (logo.exists()) s"""<img class=logo src="${logo.imageSrcForWebEngine}" title="Logo"/>""" else ""
+    val logoHtml = if logo.exists() then s"""<img class=logo src="${logo.imageSrcForWebEngine}" title="Logo"/>""" else ""
     val (riege, tutioffset) = riegepart
     val d = riege.kandidaten.zip(Range(1, riege.kandidaten.size+1)).map{kandidat =>
       val einteilung: String = kandidat._1.einteilung
         .map(r => r.r.replaceAll( s",${kandidat._1.verein}", ""))
         .getOrElse(kandidat._1.programm)
-      val programm = if(einteilung.isEmpty()) "" else "(" + shorten(einteilung) + ")"
-      val verein = if(kandidat._1.verein.isEmpty())"" else shorten(kandidat._1.verein, 15)
+      val programm = if einteilung.isEmpty() then "" else "(" + shorten(einteilung) + ")"
+      val verein = if kandidat._1.verein.isEmpty() then "" else shorten(kandidat._1.verein, 15)
       s"""<tr class="turnerRow"><td class="large">${kandidat._2 + tutioffset}. ${escaped(kandidat._1.vorname)} ${escaped(kandidat._1.name)} <span class='sf'>${escaped(programm)}</span></td><td><span class='sf'>${escaped(verein)}</span></td><td>&nbsp;</td><td>&nbsp;</td><td class="totalCol">&nbsp;</td></tr>"""
     }.mkString("", "\n", "\n")
 
@@ -350,7 +350,7 @@ trait RiegenblattToHtmlRenderer {
     val dgmap = dgMapping.map(dg => dg._1.name -> dg).toMap
     def splitToFitPage(riegen: List[GeraeteRiege]) = {
       riegen.foldLeft(List[(GeraeteRiege, Int)]()){(acc, item) =>
-        if(item.kandidaten.size > fcs) {
+        if item.kandidaten.size > fcs then {
           acc ++ item.kandidaten.sliding(fcs, fcs)
           .zipWithIndex.map(k => (item.copy(kandidaten = k._1), k._2 * fcs))
         }
@@ -361,7 +361,7 @@ trait RiegenblattToHtmlRenderer {
       .map{r =>
         val (riege, offset) = r
         val full = (fcs + riege.kandidaten.size / fcs * fcs) - riege.kandidaten.size
-        if(full % fcs == 0) {
+        if full % fcs == 0 then {
           r
         }
         else {

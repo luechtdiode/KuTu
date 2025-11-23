@@ -51,7 +51,7 @@ object RiegenBuilder {
       case RiegeRaw.RIEGENMODE_BY_JG => ATTGrouper
       case RiegeRaw.RIEGENMODE_BY_JG_VEREIN => JGClubGrouper
       case _ =>
-        if (jahrgangsklassen.nonEmpty || altersklassen.nonEmpty) {
+        if jahrgangsklassen.nonEmpty || altersklassen.nonEmpty then {
           JGClubGrouper
         } else {
           KuTuGeTuGrouper

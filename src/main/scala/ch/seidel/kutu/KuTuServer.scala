@@ -17,7 +17,7 @@ object KuTuServer extends App with KuTuAppHTTPServer with AuthSupport with Hashi
   implicit val executionContext: ExecutionContext = system.dispatcher
 
   override def shutDown(caller: String): Unit = {
-    if (binding != null) {
+    if binding != null then {
       logger.info(s"$caller: Server stops ...")
       binding.flatMap(_.unbind()) // trigger unbinding from the port
         .onComplete { done =>
@@ -48,7 +48,7 @@ object KuTuServer extends App with KuTuAppHTTPServer with AuthSupport with Hashi
 
   Future {
     logger.info(s"Server started\ntype 'quit' to stop...")
-    while (
+    while
       StdIn.readLine() match {
         case s: String if (s.endsWith("quit")) =>
           shutDown("KuTuServer")
@@ -95,6 +95,6 @@ object KuTuServer extends App with KuTuAppHTTPServer with AuthSupport with Hashi
           Thread.sleep(5000)
           true
       }
-    ) {}
+    do {}
   }
 }

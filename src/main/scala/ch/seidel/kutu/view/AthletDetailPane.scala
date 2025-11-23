@@ -59,7 +59,7 @@ case class AthletHeaderPane(wettkampf: Wettkampf, service: KutuService, wkview: 
 
   val currentMediaMenuItem = new MenuItem {
     onAction = (event: ActionEvent) => {
-      if (selected != null) {
+      if selected != null then {
         Player.clearPlayList()
         val items = selected
           .filter(a => a.init.wettkampfdisziplin.disziplin.name.equals("Boden"))
@@ -106,7 +106,7 @@ case class AthletHeaderPane(wettkampf: Wettkampf, service: KutuService, wkview: 
         fc.setSelectedExtensionFilter(fc.getExtensionFilters.get(0))
         fc.setInitialDirectory(wettkampf.audiofilesDir)
         val file: File = fc.showOpenDialog(KuTuApp.stage)
-        if (file != null) {
+        if file != null then {
           try {
             saveAndAssignMedia(file.toPath.getFileName.toString, file.toURI)
           } catch {
@@ -138,11 +138,11 @@ case class AthletHeaderPane(wettkampf: Wettkampf, service: KutuService, wkview: 
     items += KuTuApp.makeMenuAction("Media Player anzeigen ...") { (caption, action) =>
       Player.show()
     }
-    if (!isReadonly) {
+    if !isReadonly then {
       items += checkIsUseMyMediaPlayerMenuItem
     }
     items += currentMediaMenuItem
-    if (!isReadonly) {
+    if !isReadonly then {
       items += assignMediaMenuItem
       items += deleteMediaAssignmentMenuItem
     }
@@ -152,11 +152,11 @@ case class AthletHeaderPane(wettkampf: Wettkampf, service: KutuService, wkview: 
     (model: scalafx.beans.value.ObservableValue[IndexedSeq[WertungEditor], IndexedSeq[WertungEditor]],
      oldSelection: IndexedSeq[WertungEditor],
      newSelection: IndexedSeq[WertungEditor]) => {
-      if (newSelection != null && selected != newSelection) {
+      if newSelection != null && selected != newSelection then {
         selected = newSelection
         adjust
       }
-      else if (newSelection == null) {
+      else if newSelection == null then {
         selected = null
         index = -1
         adjust
@@ -164,18 +164,18 @@ case class AthletHeaderPane(wettkampf: Wettkampf, service: KutuService, wkview: 
     })
 
   wkview.focusModel.value.focusedCell.onChange { (focusModel, oldTablePos, newTablePos) =>
-    if (newTablePos != null && selected != null) {
+    if newTablePos != null && selected != null then {
       val column = newTablePos.tableColumn
       val selrow = newTablePos.getRow
-      if (column != null && selrow > -1) {
+      if column != null && selrow > -1 then {
         column match {
           case access: WKTCAccess =>
             val selectedIndex = access.getIndex
-            if (selectedIndex > -1 && selectedIndex != index) {
+            if selectedIndex > -1 && selectedIndex != index then {
               index = selectedIndex
               adjust
             }
-            else if (selectedIndex < 0) {
+            else if selectedIndex < 0 then {
               index = -1
               adjust
             }
@@ -203,7 +203,7 @@ case class AthletHeaderPane(wettkampf: Wettkampf, service: KutuService, wkview: 
       !wkview.selectionModel().getSelectedItem.exists(we => we.init.wettkampfdisziplin.disziplin.name.equals("Boden"))
     deleteMediaAssignmentMenuItem.disable = isReadonly || wkview.selectionModel().isEmpty ||
       !wkview.selectionModel().getSelectedItem.exists(we => we.init.wettkampfdisziplin.disziplin.name.equals("Boden") && we.init.mediafile.nonEmpty)
-    if (selected != null && index > -1 && index < selected.size) {
+    if selected != null && index > -1 && index < selected.size then {
       lblAthlet.text.value = selected(index).init.athlet.easyprint
       lblDisciplin.text.value = selected(index).init.wettkampfdisziplin.easyprint
       lblMedia.text.value = selected(index).init.mediafile.map(m => s"♪ ${m.name} ").getOrElse("")
@@ -211,7 +211,7 @@ case class AthletHeaderPane(wettkampf: Wettkampf, service: KutuService, wkview: 
       currentMediaMenuItem.text = s"Media Player mit Playlist von $title ..."
       currentMediaMenuItem.disable = selected.flatMap(a => a.init.mediafile.flatMap(m => service.loadMedia(m.id))).isEmpty
     }
-    else if (selected != null && selected.nonEmpty) {
+    else if selected != null && selected.nonEmpty then {
       lblMedia.text.value = ""
       lblAthlet.text.value = selected(0).init.athlet.easyprint
       lblDisciplin.text.value = Seq(selected(0).init.riege, selected(0).init.riege2).map(_.getOrElse("")).filter {

@@ -147,7 +147,7 @@ trait Hashing {
       salt + ":" + Base64.getEncoder.encodeToString(factory.generateSecret(spec).getEncoded)
     } catch {
       case e@(_: NoSuchAlgorithmException | _: InvalidKeySpecException) =>
-        for (i <- 0 until iterationCount) {
+        for i <- 0 until iterationCount do {
           random.reseed()
         }
         salt + ":" + (salt + secret).hashCode

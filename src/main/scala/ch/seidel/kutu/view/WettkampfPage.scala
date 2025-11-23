@@ -22,11 +22,11 @@ object WettkampfPage {
     logger.debug("Start Alle Wertungen")
     val alleWertungenTabs: Seq[Tab] = (pathProgs map { v =>
       val leafHeadProgs = progs.filter(p => p.programPath.contains(v))
-      val pgm = if (v.parent.nonEmpty) Some(v) else None
+      val pgm = if v.parent.nonEmpty then Some(v) else None
       new WettkampfWertungTab(wettkampfmode, pgm, None, wettkampfInfo, service, {
         service.listAthletenWertungenZuProgramm(leafHeadProgs map (p => p.id), wettkampf.id)
       }) {
-        val progHeader = if (v.parent.nonEmpty) v.name else ""
+        val progHeader = if v.parent.nonEmpty then v.name else ""
         text <== when(wettkampfmode) choose s"Alle $progHeader Wertungen" otherwise s"Alle $progHeader"
         closable = false
       }
@@ -91,7 +91,7 @@ object WettkampfPage {
       networkSite.foreach {
         t => t.asInstanceOf[NetworkTab].setLazyPane(pane)
       }
-      if (wettkampfmode.value) {
+      if wettkampfmode.value then {
         Seq[Tab](overview) ++
           networkSite ++ alleWertungenTabs ++ ranglisteSite
       }

@@ -75,13 +75,13 @@ class KuTuAppTree(service: KutuService) {
     try {
       val wkfilePath = "/images/wettkampf-shadowed.png"
       val wkinputStream = this.getClass.getResourceAsStream(wkfilePath)
-      if (wkinputStream == null) {
+      if wkinputStream == null then {
         throw new IOException("Unable to locate resource: " + wkfilePath)
       }
       val wkimage = new Image(wkinputStream)
       val vfilePath = "/images/verein-shadowed.png"
       val vinputStream = this.getClass.getResourceAsStream(vfilePath)
-      if (vinputStream == null) {
+      if vinputStream == null then {
         throw new IOException("Unable to locate resource: " + vfilePath)
       }
       val vimage = new Image(vinputStream)
@@ -173,7 +173,7 @@ class KuTuAppTree(service: KutuService) {
           .filter(dashboardFilter(filter))
         (Seq[Node](
           createCategoryLabel(heading),
-          if (showThumbnails.value) createTiles(nails) else createListViews(nails)
+          if showThumbnails.value then createTiles(nails) else createListViews(nails)
         ), ts._3)
     }.toList.sortBy(_._2).flatMap(_._1)
 
@@ -182,7 +182,7 @@ class KuTuAppTree(service: KutuService) {
       .filter(dashboardFilter(filter))
     Seq(
       createCategoryLabel(ctrlGrpName),
-      if (showThumbnails.value) createTiles(nails) else createListViews(nails)
+      if showThumbnails.value then createTiles(nails) else createListViews(nails)
     )
   }
 
@@ -211,7 +211,7 @@ class KuTuAppTree(service: KutuService) {
       hgrow = Priority.Always
       vgrow = Priority.Always
     }
-    if (wkTable.items.value.nonEmpty) {
+    if wkTable.items.value.nonEmpty then {
       def openWK(): Unit = {
         val wk = wkTable.selectionModel.value.getSelectedItem
         value.find(n => n.context.equals(wk)).foreach { thmbitem =>
@@ -220,10 +220,10 @@ class KuTuAppTree(service: KutuService) {
       }
 
       wkTable.onKeyPressed = (ae: KeyEvent) => {
-        if (ae.code.isWhitespaceKey) openWK()
+        if ae.code.isWhitespaceKey then openWK()
       }
       wkTable.onMouseClicked = (ae: MouseEvent) => {
-        if (ae.clickCount > 1) openWK()
+        if ae.clickCount > 1 then openWK()
       }
       wkTable
     } else {
@@ -239,10 +239,10 @@ class KuTuAppTree(service: KutuService) {
       }
 
       vereinTable.onKeyPressed = (ae: KeyEvent) => {
-        if (ae.code.isWhitespaceKey) openVerein()
+        if ae.code.isWhitespaceKey then openVerein()
       }
       vereinTable.onMouseClicked = (ae: MouseEvent) => {
-        if (ae.clickCount > 1) openVerein()
+        if ae.clickCount > 1 then openVerein()
       }
       vereinTable
     }

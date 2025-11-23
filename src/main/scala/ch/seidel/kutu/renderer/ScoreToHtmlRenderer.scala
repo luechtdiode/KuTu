@@ -165,7 +165,7 @@ trait ScoreToHtmlRenderer {
           </head><body><ul><li>
   """
   val fixFirstPageHeaderLines = 6
-  def firstSite(title: String, logoFile: File) = intro + (if (logoFile.exists) s"""
+  def firstSite(title: String, logoFile: File) = intro + (if logoFile.exists then s"""
       <div class='headline'>
         <img class='logo' src="${logoFile.imageSrcForWebEngine}" title="Logo"/>
         <h1>Rangliste</h1><h2>${escaped(title)}</h2></div>
@@ -183,7 +183,7 @@ trait ScoreToHtmlRenderer {
   def splitToAutonomPages(html: String, printjob: String => Unit): Unit = {
     val pages = html.split(nextSite)
     pages.foreach{p => 
-      val partpage = if(!p.startsWith(intro)) intro + p + outro else p + outro
+      val partpage = if !p.startsWith(intro) then intro + p + outro else p + outro
       printjob(partpage)}
   }
   val firstSiteRendered = new AtomicBoolean(false)
@@ -191,12 +191,12 @@ trait ScoreToHtmlRenderer {
   def collectFilterTitles(gss: Iterable[GroupSection], falsePositives: Boolean, titles: Set[String] = Set.empty): Set[String] = {
     val gssList = gss.toList
     gssList.foldLeft(titles) { (acc, item) =>
-      val newTitles = if (!falsePositives && item.groupKey.isInstanceOf[NullObject]) {
+      val newTitles = if !falsePositives && item.groupKey.isInstanceOf[NullObject] then {
         val text = item.groupKey.capsulatedprint
-        if (text.length < 200) acc + text else acc
-      } else if (!falsePositives && gssList.size == 1) {
+        if text.length < 200 then acc + text else acc
+      } else if !falsePositives && gssList.size == 1 then {
         acc + item.groupKey.capsulatedprint
-      } else if (falsePositives && gssList.size > 1) {
+      } else if falsePositives && gssList.size > 1 then {
         acc + item.groupKey.capsulatedprint
       } else acc
       item match {
@@ -209,17 +209,17 @@ trait ScoreToHtmlRenderer {
   private def toHTML(gs: List[GroupSection], openedTitle: String, level: Int, athletsPerPage: Int, sortAlphabetically: Boolean, isAvgOnMultipleCompetitions: Boolean, falsePositives: Set[String], logoFile: File): String = {
     val gsBlock = new StringBuilder()
 
-    if (level == 0) {
+    if level == 0 then {
       gsBlock.append(firstSite(title, logoFile))
       val subtitles = collectFilterTitles(gs, false) -- falsePositives
-      if (subtitles.nonEmpty) {
+      if subtitles.nonEmpty then {
         gsBlock.append(s"<em>${escaped(subtitles.mkString(", "))}</em><br>")
       }
       firstSiteRendered.set(false)
     }
     val gsSize = gs.size
-    for (c <- gs) {
-      val levelText = if ((gsSize == 1 && !falsePositives.contains(escaped(c.groupKey.capsulatedprint))) || c.groupKey.isInstanceOf[NullObject]) "" else escaped(c.groupKey.capsulatedprint)
+    for c <- gs do {
+      val levelText = if (gsSize == 1 && !falsePositives.contains(escaped(c.groupKey.capsulatedprint))) || c.groupKey.isInstanceOf[NullObject] then "" else escaped(c.groupKey.capsulatedprint)
       c match {
         case gl: GroupLeaf[?] =>
           renderGroupLeaf(openedTitle, level, athletsPerPage, sortAlphabetically, isAvgOnMultipleCompetitions, gsBlock, levelText, gl)
@@ -229,24 +229,24 @@ trait ScoreToHtmlRenderer {
 
         case g: GroupNode => gsBlock.append(
             toHTML(g.next.toList,
-                if(openedTitle.length() > 0)
-                  openedTitle + s"${if (levelText.isEmpty) "" else (levelText + ", ")}"
+                if openedTitle.length() > 0 then
+                  openedTitle + s"${if levelText.isEmpty then "" else (levelText + ", ")}"
                 else
-                  s"<h${level + 2}>${if (levelText.isEmpty) "" else (levelText + ", ")}",
+                  s"<h${level + 2}>${if levelText.isEmpty then "" else (levelText + ", ")}",
                 level + 1, athletsPerPage, sortAlphabetically, isAvgOnMultipleCompetitions, falsePositives, logoFile))
 
         case s: GroupSection  =>
           gsBlock.append(s.easyprint)
       }
     }
-    if (level == 0) {
+    if level == 0 then {
       gsBlock.append(outro)
     }
     gsBlock.toString()
   }
 
   private def renderListHead(gsBlock: StringBuilder, cols: List[WKCol], framed: Boolean = true) = {
-    if (framed) {
+    if framed then {
       gsBlock.append("\n<div class='showborder'><table width='100%'>\n")
     } else {
       gsBlock.append("\n<table width='100%'>\n")
@@ -265,7 +265,7 @@ trait ScoreToHtmlRenderer {
     gsBlock.append(s"\n<thead><tr class='head'>\n")
     var first = true
     cols.foreach { th =>
-      val style = if (first) {
+      val style = if first then {
         first = false
         ""
       }
@@ -285,7 +285,7 @@ trait ScoreToHtmlRenderer {
         case gc: WKGroupCol =>
           var first = true
           gc.cols.foreach { thc =>
-            if (first) {
+            if first then {
               gsBlock.append(s"<th class='blockstart'>${escaped(thc.text)}</th>")
               first = false
             }
@@ -309,14 +309,14 @@ trait ScoreToHtmlRenderer {
           val t = escaped(value.raw).trim().replace(" ", "<br>")
           val h = escaped(value.text)
           val verysmallfont = " sf2"
-          val smallfont = if (t.length() > 17) verysmallfont else if (t.length() > 13) " sf1" else ""
-          if (c.styleClass.contains("hintdata")) {
+          val smallfont = if t.length() > 17 then verysmallfont else if t.length() > 13 then " sf1" else ""
+          if c.styleClass.contains("hintdata") then {
             gsBlock.append(s"<td class='data blockstart$smallfont'><div class=${(c.styleClass ++ value.styleClass).mkString("'", " ", "'")}>$t</div></td>")
           }
-          else if (c.styleClass.contains("heading")) {
+          else if c.styleClass.contains("heading") then {
             gsBlock.append(s"<td class='heading blockstart'>$h</td>")
           }
-          else if (c.styleClass.contains("data")) {
+          else if c.styleClass.contains("data") then {
             gsBlock.append(s"<td class='data blockstart$smallfont'>$h</td>")
           }
           else {
@@ -326,7 +326,7 @@ trait ScoreToHtmlRenderer {
           var first = true
           gc.cols.foreach { ccol =>
             val c = ccol.asInstanceOf[WKLeafCol[T]]
-            val style = if (first) {
+            val style = if first then {
               first = false
               "data blockstart"
             }
@@ -334,14 +334,14 @@ trait ScoreToHtmlRenderer {
             val value = c.valueMapper(row)
             val t = escaped(value.raw).trim().replace(" ", "<br>")
             val h = escaped(value.text)
-            val smallfont = if (t.contains("<br>")) " sf2" else ""
-            if (c.styleClass.contains("hintdata")) {
+            val smallfont = if t.contains("<br>") then " sf2" else ""
+            if c.styleClass.contains("hintdata") then {
               gsBlock.append(s"<td class='$style$smallfont'><div class=${(c.styleClass ++ value.styleClass).mkString("'", " ", "'")}>$t</div></td>")
             }
-            else if (c.styleClass.contains("data")) {
+            else if c.styleClass.contains("data") then {
               gsBlock.append(s"<td class='$style$smallfont'>$h</td>")
             }
-            else if (c.styleClass.contains("heading")) {
+            else if c.styleClass.contains("heading") then {
               gsBlock.append(s"<td class='$style heading'>$h</td>")
               //gsBlock.append(s"<td class='$style'><div class='heading'>$t</div></td>")
             }
@@ -358,7 +358,7 @@ trait ScoreToHtmlRenderer {
   private def renderListEnd(gsBlock: StringBuilder) = gsBlock.append(s"</tbody></table></div>\n")
   private def renderGroupLeaf(openedTitle: String, level: Int, athletsPerPage: Int, sortAlphabetically: Boolean, isAvgOnMultipleCompetitions: Boolean = true, gsBlock: StringBuilder, levelText: String, gl: GroupLeaf[?]): Unit = {
     val pretitleprint = (openedTitle + levelText).trim.reverse.dropWhile(p => p.equals(',')).reverse
-    if (openedTitle.startsWith("<h")) {
+    if openedTitle.startsWith("<h") then {
       val closetag = openedTitle.substring(0, openedTitle.indexOf(">") + 1).replace("<", "</")
       gsBlock.append(s"$pretitleprint$closetag")
     }
@@ -368,8 +368,8 @@ trait ScoreToHtmlRenderer {
     val cols = gl.buildColumns(isAvgOnMultipleCompetitions)
 
     val alldata = gl.getTableData(sortAlphabetically, isAvgOnMultipleCompetitions)
-    val pagedata = if (athletsPerPage == 0) alldata.sliding(alldata.size, alldata.size)
-    else if (firstSiteRendered.get) {
+    val pagedata = if athletsPerPage == 0 then alldata.sliding(alldata.size, alldata.size)
+    else if firstSiteRendered.get then {
       alldata.sliding(athletsPerPage, athletsPerPage)
     }
     else {
@@ -394,17 +394,17 @@ trait ScoreToHtmlRenderer {
     }.sum
   }
   private def renderTeamLeaf(openedTitle: String, level: Int, athletsPerPage: Int, gsBlock: StringBuilder, levelText: String, gl: TeamSums): Unit = {
-    for (teamRuleGroup <- gl.getTableData().groupBy(_.team.rulename)) {
+    for teamRuleGroup <- gl.getTableData().groupBy(_.team.rulename) do {
       val (rulename, alldata) = teamRuleGroup
       val blockSize = alldata.map(_.team.blockrows).max
       val pretitle = (openedTitle + levelText).replace("<h2>", "").trim
       val pretitleprint = (openedTitle + levelText).trim.reverse.dropWhile(p => p.equals(',')).reverse
-      if (openedTitle.startsWith("<h")) {
+      if openedTitle.startsWith("<h") then {
         val closetag = openedTitle.substring(0, openedTitle.indexOf(">") + 1).replace("<", "</")
-        gsBlock.append(s"$pretitleprint${if (pretitle.isEmpty) rulename else s": $rulename"} ${closetag}")
+        gsBlock.append(s"$pretitleprint${if pretitle.isEmpty then rulename else s": $rulename"} ${closetag}")
       }
       else {
-        gsBlock.append(s"<h${level + 2}>$pretitleprint${if (pretitle.isEmpty) rulename else s": $rulename"}</h${level + 2}>")
+        gsBlock.append(s"<h${level + 2}>$pretitleprint${if pretitle.isEmpty then rulename else s": $rulename"}</h${level + 2}>")
       }
       val cols = gl.buildColumns
 
@@ -424,7 +424,7 @@ trait ScoreToHtmlRenderer {
         gsBlock.append(s"\n<thead><tr class='head'>\n")
         var first = true
         cols.foreach { th =>
-          val style = if (first) {
+          val style = if first then {
             first = false
             ""
           }
@@ -444,7 +444,7 @@ trait ScoreToHtmlRenderer {
             case gc: WKGroupCol =>
               var first = true
               gc.cols.foreach { thc =>
-                if (first) {
+                if first then {
                   gsBlock.append(s"<th class='blockstart'>${escaped(thc.text)}</th>")
                   first = false
                 }
@@ -465,7 +465,7 @@ trait ScoreToHtmlRenderer {
           val teamGroupLeaf = gl.getTeamGroupLeaf(row.team)
           val teamGroupCols = teamGroupLeaf.buildColumns().tail//.dropRight(2)
           val allMemberdata = teamGroupLeaf.getTableData()
-          var rowspans = if (allMemberdata.size % 2 == 0) {
+          var rowspans = if allMemberdata.size % 2 == 0 then {
             allMemberdata.size + 1
           } else {
             allMemberdata.size + 2
@@ -483,14 +483,14 @@ trait ScoreToHtmlRenderer {
                 val value = c.valueMapper(row)
                 val t = escaped(value.raw)
                 val h = escaped(value.text)
-                val smallfont = if (t.length() > 17) " sf2" else if (t.length() > 13) " sf1" else ""
-                if (c.styleClass.contains("hintdata")) {
+                val smallfont = if t.length() > 17 then " sf2" else if t.length() > 13 then " sf1" else ""
+                if c.styleClass.contains("hintdata") then {
                   gsBlock.append(s"<td rowspan=$getRowSpans colspan=${c.colspan} class='data blockstart$smallfont'><div class=${(c.styleClass ++ value.styleClass).mkString("'", " ", "'")}>$t</div></td>")
                 }
-                else if (c.styleClass.contains("data")) {
+                else if c.styleClass.contains("data") then {
                   gsBlock.append(s"<td rowspan=$getRowSpans colspan=${c.colspan} class='data blockstart$smallfont'>$h</td>")
                 }
-                else if (c.styleClass.contains("heading")) {
+                else if c.styleClass.contains("heading") then {
                   gsBlock.append(s"<td rowspan=$getRowSpans colspan=${c.colspan} class='heading blockstart'>$h</td>")
                 }
                 else {
@@ -500,7 +500,7 @@ trait ScoreToHtmlRenderer {
                 var first = true
                 gc.cols.foreach { ccol =>
                   val c = ccol.asInstanceOf[WKLeafCol[TeamRow]]
-                  val style = if (first) {
+                  val style = if first then {
                     first = false
                     "data blockstart"
                   }
@@ -508,13 +508,13 @@ trait ScoreToHtmlRenderer {
                   val value = c.valueMapper(row)
                   val t = escaped(value.raw)
                   val h = escaped(value.text)
-                  if (c.styleClass.contains("hintdata")) {
+                  if c.styleClass.contains("hintdata") then {
                     gsBlock.append(s"<td rowspan=$getRowSpans colspan=${c.colspan} class='$style'><div class=${(c.styleClass ++ value.styleClass).mkString("'", " ", "'")}>$t</div></td>")
                   }
-                  else if (c.styleClass.contains("data")) {
+                  else if c.styleClass.contains("data") then {
                     gsBlock.append(s"<td rowspan=$getRowSpans colspan=${c.colspan} class='$style'>$h</td>")
                   }
-                  else if (c.styleClass.contains("heading")) {
+                  else if c.styleClass.contains("heading") then {
                     gsBlock.append(s"<td rowspan=$getRowSpans colspan=${c.colspan} class='$style heading'>$h</td>")
                   }
                   else {
@@ -530,7 +530,7 @@ trait ScoreToHtmlRenderer {
           //renderListHead(gsBlock, teamGroupCols, false)
           //gsBlock.append(s"<tr><td rowspan=${allMemberdata.size + 1}></td><td colspan=${countTableColumns(cols)-3}>")
           renderListRows(allMemberdata, gsBlock, teamGroupCols)
-          if (allMemberdata.size % 2 != 0) {
+          if allMemberdata.size % 2 != 0 then {
             gsBlock.append(s"<tr><td colspan=${countTableColumns(teamGroupCols)}>&nbsp;</td></tr>\n")
           }
           //renderListEnd(gsBlock)
@@ -540,8 +540,8 @@ trait ScoreToHtmlRenderer {
       }
 
       val teamsPerPage = athletsPerPage / (blockSize + 2) // 6 lines per team, 1 for the team, 4 for the members, 1 for the spacer
-      val pagedata = if (athletsPerPage == 0) alldata.sliding(alldata.size, alldata.size)
-      else if (firstSiteRendered.get) {
+      val pagedata = if athletsPerPage == 0 then alldata.sliding(alldata.size, alldata.size)
+      else if firstSiteRendered.get then {
         alldata.sliding(teamsPerPage, teamsPerPage)
       }
       else {

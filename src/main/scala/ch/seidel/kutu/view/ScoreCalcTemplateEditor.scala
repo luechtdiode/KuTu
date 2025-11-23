@@ -31,7 +31,7 @@ case class ScoreCalcTempateEditorService(wettkampf: WettkampfView, service: Kutu
   def editorOf(init: ScoreCalcTemplate) = loadEditors().find(e => e.init == init).getOrElse(ScoreCalcTemplateEditor(init, this))
 
   def newEditor(): ScoreCalcTemplateEditor = {
-    val dnote = if (wettkampfdisziplinViews.head.isDNoteUsed) s"$$${wettkampfdisziplinViews.head.notenSpez.getDifficultLabel}${wettkampfdisziplinViews.head.notenSpez.getDifficultLabel} Wert.2" else "0"
+    val dnote = if wettkampfdisziplinViews.head.isDNoteUsed then s"$$${wettkampfdisziplinViews.head.notenSpez.getDifficultLabel}${wettkampfdisziplinViews.head.notenSpez.getDifficultLabel} Wert.2" else "0"
     ScoreCalcTemplateEditor(ScoreCalcTemplate(0, Some(wettkampf.id), None, None, dnote, s"$$${wettkampfdisziplinViews.head.notenSpez.getExecutionLabel}${wettkampfdisziplinViews.head.notenSpez.getExecutionLabel} Wert.2", "0", None), this)
   }
 
@@ -74,13 +74,13 @@ case class ScoreCalcTemplateEditor(init: ScoreCalcTemplate, context: ScoreCalcTe
     case None => ""
   })
   disziplin.onChange {
-    if (!kategoriedisziplin.value.contains(disziplin.value)) {
+    if !kategoriedisziplin.value.contains(disziplin.value) then {
       kategoriedisziplin.value = ""
     }
     val v = isValid
   }
   kategoriedisziplin.onChange {
-    if (!kategoriedisziplin.value.contains(disziplin.value)) {
+    if !kategoriedisziplin.value.contains(disziplin.value) then {
       disziplin.value = ""
     }
     val v = isValid
@@ -122,7 +122,7 @@ case class ScoreCalcTemplateEditor(init: ScoreCalcTemplate, context: ScoreCalcTe
       case _ => wkv.notenSpez
     }
     val visible = wkv.isDNoteUsed
-    if (!visible) {
+    if !visible then {
       dFormula.value = "0"
     }
 

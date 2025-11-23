@@ -36,7 +36,7 @@ object PrintUtil {
   private val PRINT_TO_BROWSER = new AtomicBoolean(false)
 
   def escaped(text: String) =
-    if (text == null) {
+    if text == null then {
       ""
     }
     else {
@@ -64,7 +64,7 @@ object PrintUtil {
   def printDialogFuture(title: String, defaults: FilenameDefault, adjustLinesPerPage: Boolean = false, onGenerateOutput: (Int) => Future[String], engine: WebEngine = KuTuApp.invisibleWebView.engine, orientation: PageOrientation = PageOrientation.Portrait)(action: ActionEvent): Unit = {
 
     val dir = defaults.dir
-    if (!dir.exists()) {
+    if !dir.exists() then {
       dir.mkdirs();
     }
     val selectedFile = new File(dir.getPath + "/" + defaults.filename)
@@ -90,7 +90,7 @@ object PrintUtil {
           alignment = Pos.TopLeft
 
           hgrow = Priority.Always
-          children = (if (adjustLinesPerPage) Seq(
+          children = (if adjustLinesPerPage then Seq(
             new Label("Zeilen pro Seite (51 für A4 hoch, 34 für A4 quer)"),
             txtLinesPerPage) else Seq.empty) ++ Seq(
             chkViaBrowser,
@@ -107,7 +107,7 @@ object PrintUtil {
         chkViaBrowser.selected, cmbDrucker.selectionModel.value.selectedItemProperty
       )) choose true otherwise false
       onAction = (event: ActionEvent) => {
-        val file = if (!selectedFile.getName.endsWith(".html") && !selectedFile.getName.endsWith(".htm")) {
+        val file = if !selectedFile.getName.endsWith(".html") && !selectedFile.getName.endsWith(".htm") then {
           new java.io.File(selectedFile.getAbsolutePath + ".html")
         }
         else {
@@ -116,13 +116,13 @@ object PrintUtil {
         var lpp = 51
         try {
           lpp = Integer.valueOf(txtLinesPerPage.text.value)
-          if (lpp < 1) lpp = 51
+          if lpp < 1 then lpp = 51
         }
         catch {
           case e: Exception =>
         }
         PRINT_TO_BROWSER.set(chkViaBrowser.selected.value)
-        if (chkViaBrowser.selected.value) {
+        if chkViaBrowser.selected.value then {
           onGenerateOutput(lpp).onComplete {
             case Success(toSave) => Platform.runLater {
               val bos = new BufferedOutputStream(new FileOutputStream(file))
@@ -222,7 +222,7 @@ object PrintUtil {
 
   implicit class ImageFile(file: File) {
     def imageSrcForWebEngine = {
-      if (file.getName.endsWith("svg")) {
+      if file.getName.endsWith("svg") then {
         val in = new FileInputStream(file)
         val imagedata = try {
           val buffer = Source.fromInputStream(in).mkString;
@@ -231,19 +231,19 @@ object PrintUtil {
           in.close
         }
         imagedata
-      } else if (file.getName.endsWith("png")) {
+      } else if file.getName.endsWith("png") then {
         val imageBuffer = ImageIO.read(file)
         val output = new ByteArrayOutputStream()
         ImageIO.write(imageBuffer, "png", output)
         val imagedata = "data:image/png;base64," + Base64.getEncoder().encodeToString(output.toByteArray())
         imagedata
-      } else if (file.getName.endsWith("jpg")) {
+      } else if file.getName.endsWith("jpg") then {
         val imageBuffer = ImageIO.read(file)
         val output = new ByteArrayOutputStream()
         ImageIO.write(imageBuffer, "jpg", output)
         val imagedata = "data:image/jpg;base64," + Base64.getEncoder().encodeToString(output.toByteArray())
         imagedata
-      } else if (file.getName.endsWith("jpeg")) {
+      } else if file.getName.endsWith("jpeg") then {
         val imageBuffer = ImageIO.read(file)
         val output = new ByteArrayOutputStream()
         ImageIO.write(imageBuffer, "jpeg", output)

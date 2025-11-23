@@ -27,14 +27,14 @@ trait VereinService extends DBService with VereinResultMapper {
   }
   
   def insertVerein(verein: Verein): Verein = {
-    val process = for {
+    val process = for
       candidateId <- sql"""
                     select max(verein.id) as maxid
                     from verein
                     where LOWER(name)=${verein.name.toLowerCase()}
                       and LOWER(verband)=${verein.verband.map(_.toLowerCase()).getOrElse("")}
          """.as[Long].headOption
-    } yield {
+    yield {
       candidateId match {
         case Some(id) if (id > 0) =>
           sql"""

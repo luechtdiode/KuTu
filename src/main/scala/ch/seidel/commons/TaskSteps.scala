@@ -11,14 +11,14 @@ case class TaskSteps(title: String) extends Task[Void] {
   @throws[InterruptedException]
   override def call: Void = {
     val allSteps = steps.size
-    for (((msg, stepFn), idx) <- steps.zipWithIndex) {
+    for ((msg, stepFn), idx) <- steps.zipWithIndex do {
       logger.info(msg)
       updateMessage(msg)
-      if (allSteps > 1) {
+      if allSteps > 1 then {
         updateProgress((idx * 2) + 1, allSteps * 2)
       }
       stepFn()
-      if (allSteps > 1) {
+      if allSteps > 1 then {
         updateProgress(idx * 2 + 2, allSteps * 2)
       }
       logger.info(msg + "ready")

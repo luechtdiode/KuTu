@@ -12,7 +12,7 @@ class RollbackableStringProperty(bean: Object = null, name: String = null, initi
   def this() = this(null)
 
   override def set(newValue: String) = {
-    if (originalValue.isEmpty)
+    if originalValue.isEmpty then
       originalValue = Some(get)
     super.set(newValue)
   }

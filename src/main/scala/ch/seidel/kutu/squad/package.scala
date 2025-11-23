@@ -16,7 +16,7 @@ package object squad {
   case class GeraeteRiege(turnerriegen: Set[TurnerRiege]) {
     lazy val size = turnerriegen.foldLeft(0)((acc, item) => acc + item.size)
     lazy val smallestDividable: Option[TurnerRiege] = {
-      if(turnerriegen.size > 1) Some(turnerriegen.toSeq.minBy(_.size))
+      if turnerriegen.size > 1 then Some(turnerriegen.toSeq.minBy(_.size))
       else                      None
     }
     def ++ (other: GeraeteRiege) = GeraeteRiege(turnerriegen ++ other.turnerriegen)

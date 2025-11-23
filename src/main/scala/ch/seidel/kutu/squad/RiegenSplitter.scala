@@ -18,7 +18,7 @@ trait RiegenSplitter {
   final def splitToRiegenCount(sugg: Seq[(String, Seq[WertungViewsZuAthletView])], requiredRiegenCount: Int, cache: scala.collection.mutable.Map[String, Int]): Seq[(String, Seq[WertungViewsZuAthletView])] = {
     val ret = sugg.sortBy(_._2.size).reverse
     //logger.debug((ret.size, riegencnt))
-    if(ret.size < requiredRiegenCount) {
+    if ret.size < requiredRiegenCount then {
       splitToRiegenCount(split(ret.head, ".", cache) ++ ret.tail, requiredRiegenCount, cache)
     }
     else {
@@ -31,7 +31,7 @@ trait RiegenSplitter {
   final def splitToMaxTurnerCount(sugg: Seq[(String, Seq[(AthletView, Seq[WertungView])])], maxRiegenTurnerCount: Int, cache: scala.collection.mutable.Map[String, Int]): Seq[(String, Seq[(AthletView, Seq[WertungView])])] = {
     //cache.clear
     val ret = sugg.sortBy(_._2.size).reverse
-    if((ret.size > 0 && ret.head._2.size > maxRiegenTurnerCount)) {
+    if (ret.size > 0 && ret.head._2.size > maxRiegenTurnerCount) then {
       splitToMaxTurnerCount(split(ret.head, "#", cache) ++ ret.tail, maxRiegenTurnerCount, cache)
     }
     else {
@@ -48,7 +48,7 @@ trait RiegenSplitter {
       cache.update(key, cnt)
       f"${cnt}%02d"
     }
-    val key1 = if(key.contains(delimiter)) key else oldKey1 + delimiter + occurences(oldKey1)
+    val key1 = if key.contains(delimiter) then key else oldKey1 + delimiter + occurences(oldKey1)
     val key2 = oldKey1 + delimiter + occurences(oldKey1)
     val splitpos = r.size / 2
     List((key1, oldList.take(splitpos)), (key2, oldList.drop(splitpos)))

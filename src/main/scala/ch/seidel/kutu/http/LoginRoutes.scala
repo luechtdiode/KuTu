@@ -15,7 +15,7 @@ trait LoginRoutes extends SprayJsonSupport with EnrichedJson with JwtSupport wit
       authenticateBasicPF(realm = "secure site", userPassAuthenticator(userLookup, userIdLookup)) { userId =>
         extractUri { uri =>
           respondWithJwtHeader(userId) {
-            if (userId.endsWith(OPTION_LOGINRESET)) {
+            if userId.endsWith(OPTION_LOGINRESET) then {
               log.error(handleAbuse(userId, uri))
               complete(StatusCodes.Unauthorized)
             } else {
@@ -33,7 +33,7 @@ trait LoginRoutes extends SprayJsonSupport with EnrichedJson with JwtSupport wit
   pathPrefixLabeled("loginrenew", "loginrenew") {
     pathEndOrSingleSlash {
       authenticated() { userId =>
-        if (wettkampfExists(userId)) {
+        if wettkampfExists(userId) then {
           val wettkampf = readWettkampf(userId)
           respondWithJwtHeader(wettkampf) {
             complete(StatusCodes.OK)

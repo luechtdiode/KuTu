@@ -194,8 +194,8 @@ trait AuthSupport extends Directives with SprayJsonSupport with Hashing with Jwt
     }
   }
 
-  def loginWithWettkampf(p: Wettkampf): Future[HttpResponse] = if (Config.isLocalHostServer) {
-    if (!p.hasSecred(homedir, "localhost")) {
+  def loginWithWettkampf(p: Wettkampf): Future[HttpResponse] = if Config.isLocalHostServer then {
+    if !p.hasSecred(homedir, "localhost") then {
       p.saveSecret(homedir, "localhost", jwt.JsonWebToken(jwtHeader, setClaims(p.uuid.get, Int.MaxValue), jwtSecretKey))
     }
     httpRenewLoginRequest(s"$remoteBaseUrl/api/loginrenew", p.uuid.get, p.readSecret(homedir, "localhost").get)

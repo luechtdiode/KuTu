@@ -70,7 +70,7 @@ class AthletIndexActor extends Actor with JsonSupport with KutuService {
 
   private def mcOfId(athletId: Long): Option[MatchCode] = {
     val mcOpt = index.stream().filter(mc => mc.id == athletId).findFirst()
-    if (mcOpt.isEmpty) None else Some(mcOpt.get)
+    if mcOpt.isEmpty then None else Some(mcOpt.get)
   }
 
   override def receive = {

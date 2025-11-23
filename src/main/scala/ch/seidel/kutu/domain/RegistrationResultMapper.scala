@@ -19,7 +19,7 @@ trait RegistrationResultMapper extends AthletResultMapper with MediaResultMapper
     val athlet: Option[AthletView] = getAthletOptionResult(r)
     var team: Option[Int] = None
     var mediafile: Option[MediaAdmin] = None
-    while(r.hasMoreColumns) {
+    while r.hasMoreColumns do {
       r.currentPos match {
         case pos:Int if (pos == 23) =>
           team = r.<<?

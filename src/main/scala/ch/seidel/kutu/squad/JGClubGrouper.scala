@@ -11,13 +11,13 @@ case object JGClubGrouper extends RiegenGrouper {
     (jgclubGrouper, jgclubGrouper, true)
   }
 
-  def extractSexGrouper(w: WertungView): String = if (extractJGGrouper(w).contains(w.athlet.geschlecht)) "" else w.athlet.geschlecht
+  def extractSexGrouper(w: WertungView): String = if extractJGGrouper(w).contains(w.athlet.geschlecht) then "" else w.athlet.geschlecht
 
-  def extractProgrammGrouper(w: WertungView): String = if (extractJGGrouper(w).contains(w.wettkampfdisziplin.programm.name)) "" else w.wettkampfdisziplin.programm.name
+  def extractProgrammGrouper(w: WertungView): String = if extractJGGrouper(w).contains(w.wettkampfdisziplin.programm.name) then "" else w.wettkampfdisziplin.programm.name
 
-  def extractJGGrouper(w: WertungView): String = if (w.wettkampf.altersklassen.get.nonEmpty) {
+  def extractJGGrouper(w: WertungView): String = if w.wettkampf.altersklassen.get.nonEmpty then {
     ByAltersklasse("AK", Altersklasse.parseGrenzen(w.wettkampf.altersklassen.get, "AK")).analyze(Seq(w)).head.asInstanceOf[Altersklasse].easyprintShort
-  } else if (w.wettkampf.jahrgangsklassen.nonEmpty) {
+  } else if w.wettkampf.jahrgangsklassen.nonEmpty then {
     ByJahrgangsAltersklasse("AK", Altersklasse.parseGrenzen(w.wettkampf.jahrgangsklassen.get, "AK")).analyze(Seq(w)).head.asInstanceOf[Altersklasse].easyprintShort
   } else
     (w.athlet.gebdat match {

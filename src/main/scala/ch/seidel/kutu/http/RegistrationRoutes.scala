@@ -90,7 +90,7 @@ trait RegistrationRoutes extends SprayJsonSupport with JsonSupport with JwtSuppo
       case HttpResponse(StatusCodes.OK, headers, entity, _) =>
         Unmarshal(entity).to[List[Registration]].map {
           (registrations: List[Registration]) =>
-            (for (r <- registrations) yield {
+            (for r <- registrations yield {
               r -> getAthletRegistrations(p, r)
             }).toMap
         }
@@ -145,7 +145,7 @@ trait RegistrationRoutes extends SprayJsonSupport with JsonSupport with JwtSuppo
     val requestResponseFlow = Http().superPool[Unit](settings = poolsettings)
 
     def importData(httpResponse: HttpResponse): Unit = {
-      if (httpResponse.status.isSuccess()) {
+      if httpResponse.status.isSuccess() then {
         val is = httpResponse.entity.dataBytes.runWith(StreamConverters.asInputStream())
         ResourceExchanger.importWettkampfMediaFiles(wettkampf, mediaList, is)
       } else {
@@ -181,7 +181,7 @@ trait RegistrationRoutes extends SprayJsonSupport with JsonSupport with JwtSuppo
         }
       } ~ pathPrefixLabeled("registrations" / JavaUUID, "registrations/:competition-id") { competitionId =>
         import AbuseHandler._
-        if (!wettkampfExists(competitionId.toString)) {
+        if !wettkampfExists(competitionId.toString) then {
           log.error(handleAbuse(clientId, uri))
           complete(StatusCodes.NotFound)
         } else {
@@ -283,7 +283,7 @@ trait RegistrationRoutes extends SprayJsonSupport with JsonSupport with JwtSuppo
           } ~ pathLabeled("regchanged", "regchanged") {
             pathEndOrSingleSlash {
               authenticated() { userId =>
-                if (userId.equals(competitionId.toString)) {
+                if userId.equals(competitionId.toString) then {
                   get {
                     log.info(s"SyncAdmin $clientId - registration changed - resync ...")
                     CompetitionRegistrationClientActor.publish(RegistrationChanged(wettkampf.uuid.get), clientId)
@@ -297,7 +297,7 @@ trait RegistrationRoutes extends SprayJsonSupport with JsonSupport with JwtSuppo
           } ~ pathPrefixLabeled("verein", "verein") {
             pathEndOrSingleSlash {
               authenticated() { userId =>
-                if (userId.equals(competitionId.toString)) {
+                if userId.equals(competitionId.toString) then {
                   put {
                     entity(as[Verein]) { verein =>
                       updateVerein(verein)
@@ -313,7 +313,7 @@ trait RegistrationRoutes extends SprayJsonSupport with JsonSupport with JwtSuppo
           } ~ pathPrefixLabeled("athletes", "athletes") {
             pathEndOrSingleSlash {
               authenticated() { userId =>
-                if (userId.equals(competitionId.toString)) {
+                if userId.equals(competitionId.toString) then {
                   put {
                     entity(as[List[AthletView]]) { athletlist =>
                       val sexchanges = athletlist
@@ -336,7 +336,7 @@ trait RegistrationRoutes extends SprayJsonSupport with JsonSupport with JwtSuppo
           } ~ pathPrefixLabeled("mediafiles", "mediafiles") {
             pathEndOrSingleSlash {
               authenticated() { userId =>
-                if (userId.equals(competitionId.toString)) {
+                if userId.equals(competitionId.toString) then {
                   post {
                     withoutRequestTimeout {
                       entity(as[List[Media]]) { medialist =>
@@ -367,9 +367,9 @@ trait RegistrationRoutes extends SprayJsonSupport with JsonSupport with JwtSuppo
             }
           } ~ pathPrefixLabeled(LongNumber / "loginreset", ":registration-id/loginreset") { registrationId =>
             (authenticated() & extractHost & optionalHeaderValueByName("Referer")) { (loginresetToken, host, refererOption) =>
-              if (loginresetToken.endsWith(OPTION_LOGINRESET)) {
+              if loginresetToken.endsWith(OPTION_LOGINRESET) then {
                 val userId = loginresetToken.substring(0, loginresetToken.length - OPTION_LOGINRESET.length)
-                if (extractRegistrationId(userId).contains(registrationId)) {
+                if extractRegistrationId(userId).contains(registrationId) then {
                   val decodedorigin = refererOption.map(r => r.substring(0, r.indexOf("/registration"))).getOrElse(s"https://$host")
                   val wkid: String = wettkampf.uuid.get
                   val registration = selectRegistration(registrationId)
@@ -387,7 +387,7 @@ trait RegistrationRoutes extends SprayJsonSupport with JsonSupport with JwtSuppo
             }
           } ~ pathPrefixLabeled(LongNumber, ":registration-id") { registrationId =>
             authenticated() { userId =>
-              if (userId.equals(competitionId.toString)) {
+              if userId.equals(competitionId.toString) then {
                 // approve registration - means assign verein-id if missing, and apply registrations
                 // This is made from the FX-Client
                 // 1. get all
@@ -402,7 +402,7 @@ trait RegistrationRoutes extends SprayJsonSupport with JsonSupport with JwtSuppo
                 } ~ put {
                   entity(as[Verein]) { verein =>
                     val registration = selectRegistration(registrationId)
-                    if (registration.vereinId.isEmpty) {
+                    if registration.vereinId.isEmpty then {
                       log.info(s"SyncAdmin $clientId - neuer Verein zu Vereinsregistration wird angelegt: $verein")
                       selectVereine.find(v => v.name.equals(verein.name) && (v.verband.isEmpty || v.verband.equals(verein.verband))) match {
                         case Some(v) => complete(updateRegistration(registration.copy(vereinId = Some(v.id))).toJson)
@@ -418,14 +418,14 @@ trait RegistrationRoutes extends SprayJsonSupport with JsonSupport with JwtSuppo
                     }
                   }
                 }
-              } else if (extractRegistrationId(userId).contains(registrationId)) {
+              } else if extractRegistrationId(userId).contains(registrationId) then {
                 respondWithJwtHeader(s"$registrationId") {
                   pathEndOrSingleSlash {
                     get {
                       complete(selectRegistration(registrationId).toJson(using registrationFormat))
                     } ~ put { // update Vereinsregistration
                       entity(as[Registration]) { registration =>
-                        if (selectRegistration(registrationId).vereinId.equals(registration.vereinId)) {
+                        if selectRegistration(registrationId).vereinId.equals(registration.vereinId) then {
                           complete(Future {
                             val reg = updateRegistration(registration)
                             CompetitionRegistrationClientActor.publish(RegistrationChanged(wettkampf.uuid.get), clientId)
@@ -448,7 +448,7 @@ trait RegistrationRoutes extends SprayJsonSupport with JsonSupport with JwtSuppo
                     pathEndOrSingleSlash {
                       put { // update/reset Password
                         entity(as[RegistrationResetPW]) { regPwReset =>
-                          if (selectRegistration(registrationId).id.equals(regPwReset.id)) {
+                          if selectRegistration(registrationId).id.equals(regPwReset.id) then {
                             val registration = resetRegistrationPW(regPwReset)
                             log.info(s"$clientId: Passwort geändert")
                             respondWithJwtHeader(s"${registration.id}") {
@@ -477,13 +477,13 @@ trait RegistrationRoutes extends SprayJsonSupport with JsonSupport with JwtSuppo
                     pathEndOrSingleSlash {
                       get {
                         complete {
-                          if (wettkampf.hasTeams) {
+                          if wettkampf.hasTeams then {
                             val registration = selectRegistration(registrationId)
-                            val (teamname, teamNumbers) = if (wettkampf.teamrule.exists(r => TeamRegel.vereinRegeln.exists(p => r.contains(p))))
+                            val (teamname, teamNumbers) = if wettkampf.teamrule.exists(r => TeamRegel.vereinRegeln.exists(p => r.contains(p))) then
                               (s"${registration.toVerein.extendedprint}", selectAthletRegistrations(registrationId)
                                 .flatMap(_.team)
                                 .filter(_ > 0).distinct.sorted)
-                            else if (wettkampf.teamrule.exists(r => TeamRegel.verbandRegeln.exists(p => r.contains(p))))
+                            else if wettkampf.teamrule.exists(r => TeamRegel.verbandRegeln.exists(p => r.contains(p))) then
                               (s"${registration.verband}", selectRegistrations()
                                 .filter(_.verband.equalsIgnoreCase(registration.verband))
                                 .flatMap(vereinsReg => selectAthletRegistrations(vereinsReg.id))
@@ -491,7 +491,7 @@ trait RegistrationRoutes extends SprayJsonSupport with JsonSupport with JwtSuppo
                                 .filter(_ > 0).distinct.sorted)
                             else (s"${registration.toVerein.extendedprint}", List.empty)
 
-                            val nextTeamNumber = if (teamNumbers.isEmpty) 1 else teamNumbers.max + 1
+                            val nextTeamNumber = if teamNumbers.isEmpty then 1 else teamNumbers.max + 1
 
                             ((1 to nextTeamNumber).toList.map(idx => TeamItem(idx, teamname)) ::: 
                               wettkampf.extraTeams
@@ -508,7 +508,7 @@ trait RegistrationRoutes extends SprayJsonSupport with JsonSupport with JwtSuppo
                       get { // list Athletes
                         complete {
                           val reg = selectRegistration(registrationId)
-                            if (reg.vereinId.isEmpty) {
+                            if reg.vereinId.isEmpty then {
                             List[AthletRegistration]().toJson(using listFormat(using athletregistrationFormat))
                           } else {
                             val existingAthletRegs = selectAthletRegistrations(registrationId)
@@ -544,11 +544,11 @@ trait RegistrationRoutes extends SprayJsonSupport with JsonSupport with JwtSuppo
                           log.info("post athletregistration")
                           entity(as[AthletRegistration]) { athletRegistration =>
                             val x: Option[AthletView] = athletRegistration.athletId.filter(_ > 0L).map(loadAthleteView)
-                            if (athletRegistration.athletId.isDefined && athletRegistration.athletId.get > 0L && x.isEmpty) {
+                            if athletRegistration.athletId.isDefined && athletRegistration.athletId.get > 0L && x.isEmpty then {
                               complete(StatusCodes.BadRequest)
                             } else {
                               val reg = selectRegistration(registrationId)
-                              if (x.isEmpty || x.map(_.verein).flatMap(_.map(_.id)).equals(reg.vereinId)) {
+                              if x.isEmpty || x.map(_.verein).flatMap(_.map(_.id)).equals(reg.vereinId) then {
                                 try {
                                   val isOverride = athletRegistration.athletId match {
                                     case Some(id) if id > 0 =>
@@ -558,7 +558,7 @@ trait RegistrationRoutes extends SprayJsonSupport with JsonSupport with JwtSuppo
                                       }
                                     case _ => false
                                   }
-                                  if (isOverride) {
+                                  if isOverride then {
                                     throw new IllegalArgumentException("Person-Überschreibung in einer Anmeldung zu einer anderen Person ist nicht erlaubt!")
                                   }
                                   val reg = createAthletRegistration(athletRegistration)
@@ -604,11 +604,11 @@ trait RegistrationRoutes extends SprayJsonSupport with JsonSupport with JwtSuppo
                                   case (metadata: FileInfo, file: Source[ByteString, Any]) =>
                                     import Core.materializer
                                     val fileext = "mp3"
-                                    if (metadata.contentType.mediaType.fileExtensions.contains(fileext)) {
+                                    if metadata.contentType.mediaType.fileExtensions.contains(fileext) then {
                                       val is: InputStream = file.runWith(StreamConverters.asInputStream(FiniteDuration(180, TimeUnit.SECONDS)))
                                       val processor = Future {
                                         log.info(s"$clientId: Mediafile ${metadata.fileName} aktualisieren ...")
-                                        if (id > 0) {
+                                        if id > 0 then {
                                           ResourceExchanger.importWettkampfMediaFile(wettkampf, selectAthletRegistration(id).copy(mediafile = Some(MediaAdmin("", metadata.fileName, fileext, 0, "", "", 0L))), is)
                                         } else {
                                           AthletRegistration(id, 0, None, "", "", "", "", 0L, 0L, None, None, Some(ResourceExchanger.saveMediaFile(is, wettkampf, Media("", metadata.fileName, fileext))))
@@ -646,7 +646,7 @@ trait RegistrationRoutes extends SprayJsonSupport with JsonSupport with JwtSuppo
                                     }
                                   case _ => false
                                 }
-                                if (isOverride) {
+                                if isOverride then {
                                   throw new IllegalArgumentException("Person-Überschreibung in einer Anmeldung zu einer anderen Person ist nicht erlaubt!")
                                 }
                                 val reg: Option[AthletRegistration] = updateAthletRegistration(athletRegistration)

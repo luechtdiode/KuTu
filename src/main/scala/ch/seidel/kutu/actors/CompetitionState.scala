@@ -18,7 +18,7 @@ case class CompetitionState (
 
   def updated(event: KutuAppEvent, isDNoteUsed: Boolean): CompetitionState = event match {
     case eventDurchgangStarted: DurchgangStarted =>
-      if (startedDurchgaenge.contains(eventDurchgangStarted.durchgang)) {
+      if startedDurchgaenge.contains(eventDurchgangStarted.durchgang) then {
         this
       } else {
         CompetitionState(
@@ -36,7 +36,7 @@ case class CompetitionState (
     }
 
     case eventDurchgangFinished: DurchgangFinished =>
-      if (finishedDurchgaenge.contains(eventDurchgangFinished.durchgang)) {
+      if finishedDurchgaenge.contains(eventDurchgangFinished.durchgang) then {
         this
       } else {
         CompetitionState(
@@ -87,7 +87,7 @@ case class CompetitionState (
       copy(completedflags = completedflags :+ dms)
 
     case _: DurchgangStepFinished =>
-      if (lastWertungen.nonEmpty) {
+      if lastWertungen.nonEmpty then {
         CompetitionState(
           startedDurchgaenge,
           finishedDurchgangSteps,
@@ -104,7 +104,7 @@ case class CompetitionState (
   }
 
   def putBestenResult(wertungContainer: WertungContainer) =
-    if (wertungContainer.wertung.endnote.sum >= Config.bestenlisteSchwellwert) {
+    if wertungContainer.wertung.endnote.sum >= Config.bestenlisteSchwellwert then {
       val key = s"${wertungContainer.id}:${wertungContainer.wertung.wettkampfdisziplinId.toString}"
       bestenResults.updated(key, wertungContainer)
     } else {

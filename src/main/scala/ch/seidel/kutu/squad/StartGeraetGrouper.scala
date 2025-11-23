@@ -16,7 +16,7 @@ trait StartGeraetGrouper extends RiegenSplitter with Stager {
                     (implicit cache: scala.collection.mutable.Map[String, Int]): Seq[(String, String, Disziplin, Seq[(AthletView, Seq[WertungView])])] = {
 
     val startgeraeteSize = startgeraete.size
-    if (startgeraeteSize == 0) {
+    if startgeraeteSize == 0 then {
       Seq.empty
     } else {
       // per groupkey, transform map to seq, sorted by all groupkeys
@@ -25,7 +25,7 @@ trait StartGeraetGrouper extends RiegenSplitter with Stager {
           /*values*/ x._2.foldLeft((Seq[(AthletView, Seq[WertungView])](), Set[Long]())) { (acc, w) =>
           val (data, seen) = acc
           val (athlet, _) = w
-          if (seen.contains(athlet.id)) acc else (w +: data, seen + athlet.id)
+          if seen.contains(athlet.id) then acc else (w +: data, seen + athlet.id)
         }
           ._1.sortBy(w => groupKey(grpAll)(w._2.head)) // Liste der Athleten in der Riege, mit ihren Wertungen
         )
@@ -34,7 +34,7 @@ trait StartGeraetGrouper extends RiegenSplitter with Stager {
       val athletensum = atheltenInRiege.flatMap {
         _._2.map(aw => aw._1.id)
       }.toSet.size
-      val maxRiegenSize2 = if (maxRiegenSize > 0) maxRiegenSize else math.max(14, math.ceil(1d * athletensum / startgeraeteSize).intValue())
+      val maxRiegenSize2 = if maxRiegenSize > 0 then maxRiegenSize else math.max(14, math.ceil(1d * athletensum / startgeraeteSize).intValue())
       val riegen = splitToMaxTurnerCount(atheltenInRiege, maxRiegenSize2, cache).map(r => Map(r._1 -> r._2))
       // Maximalausdehnung. Nun die sinnvollen Zusammenlegungen
       val riegenindex = buildRiegenIndex(riegen)
@@ -54,7 +54,7 @@ trait StartGeraetGrouper extends RiegenSplitter with Stager {
       }
 
       def handleVereinMerges(startriegen: GeraeteRiegen): GeraeteRiegen = {
-        if (jahrgangGroup) {
+        if jahrgangGroup then {
           startriegen
         }
         else splitSex match {
@@ -64,7 +64,7 @@ trait StartGeraetGrouper extends RiegenSplitter with Stager {
         }
       }
 
-      val alignedriegen = if (workmodel.isEmpty) workmodel else handleVereinMerges(combineToDurchgangSize(workmodel))
+      val alignedriegen = if workmodel.isEmpty then workmodel else handleVereinMerges(combineToDurchgangSize(workmodel))
 
       // Startgeräteverteilung
       distributeToStartgeraete(programm, startgeraete, maxRiegenSize, rebuildWertungen(alignedriegen, riegenindex))
@@ -72,7 +72,7 @@ trait StartGeraetGrouper extends RiegenSplitter with Stager {
   }
 
   private def distributeToStartgeraete(programm: String, startgeraete: List[Disziplin], maxRiegenSize: Int, alignedriegen: Seq[RiegeAthletWertungen]): Seq[(String, String, Disziplin, Seq[(AthletView, Seq[WertungView])])] = {
-    if (alignedriegen.isEmpty) {
+    if alignedriegen.isEmpty then {
       Seq.empty
     } else {
       val missingStartOffset = math.min(startgeraete.size, alignedriegen.size)
@@ -87,7 +87,7 @@ trait StartGeraetGrouper extends RiegenSplitter with Stager {
         val startgeridx = (index + startgeraete.size) % startgeraete.size
         rr.keys.map { riegenname =>
           logger.debug(s"Durchgang $programm (${index / startgeraete.size + 1}), Start ${startgeraete(startgeridx).easyprint}, ${rr(riegenname).size} Tu/Ti der Riege $riegenname")
-          (s"$programm (${if (maxRiegenSize > 0) index / startgeraete.size + 1 else 1})", riegenname, startgeraete(startgeridx), rr(riegenname))
+          (s"$programm (${if maxRiegenSize > 0 then index / startgeraete.size + 1 else 1})", riegenname, startgeraete(startgeridx), rr(riegenname))
         }
       } ++ emptyGeraeteRiegen
     }
@@ -132,7 +132,7 @@ trait StartGeraetGrouper extends RiegenSplitter with Stager {
               case Some(substitues) =>
                 val gt = geraetRiege -- toMove ++ substitues
                 val sg = zielriege -- substitues ++ toMove
-                if (gt.size > maxRiegenSize2 || sg.size > maxRiegenSize2) {
+                if gt.size > maxRiegenSize2 || sg.size > maxRiegenSize2 then {
                   acccStartriegen
                 } else {
                   logger.debug(s"switching ${substitues} with toMove between ${geraetRiege} to ${zielriege}")
@@ -145,11 +145,11 @@ trait StartGeraetGrouper extends RiegenSplitter with Stager {
         }
         ret
       }
-      if (optimized == startriegen || variantsCache.contains(optimized)) {
+      if optimized == startriegen || variantsCache.contains(optimized) then {
         optimized
       } else {
         val evenoptimized = spreadEven(optimized, splitSex)
-        if (evenoptimized == startriegen || variantsCache.contains(evenoptimized)) {
+        if evenoptimized == startriegen || variantsCache.contains(evenoptimized) then {
           evenoptimized
         } else {
           _bringVereineTogether(evenoptimized, variantsCache + optimized + evenoptimized)
@@ -166,13 +166,13 @@ trait StartGeraetGrouper extends RiegenSplitter with Stager {
 
     val candidates = reducedZielriege.turnerriegen.toSeq.sortBy(_.size).reverse.foldLeft(squad.GeraeteRiege()) { (acc, candidate) =>
       val grouped = acc + candidate
-      if (grouped.size <= replaceCnt) {
+      if grouped.size <= replaceCnt then {
         grouped
       } else {
         acc
       }
     }
-    if (candidates.nonEmpty) {
+    if candidates.nonEmpty then {
       Some(candidates)
     } else {
       None
@@ -226,7 +226,7 @@ trait StartGeraetGrouper extends RiegenSplitter with Stager {
         val gt = geraeteRiege - turnerRiege
         val sg = geraeteRiegeAusKleinsterGruppe + turnerRiege
         val nextCombi = gt + startriegen.filter(sr => sr != geraeteRiege && sr != geraeteRiegeAusKleinsterGruppe) + sg
-        if (mustIncreaseQuality && nextCombi.quality > startriegen.quality) {
+        if mustIncreaseQuality && nextCombi.quality > startriegen.quality then {
           spreadEven(nextCombi, splitSex, mustIncreaseQuality)
         } else {
           startriegen

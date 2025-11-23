@@ -65,7 +65,7 @@ case class WertungEditor(private var lastCommitted: WertungView) {
     }
     var notifying = false
     score.onChange {
-      if (!notifying) try {
+      if !notifying then try {
         stringvalue.value = score.value.value.toString()
         onChange()
       }
@@ -78,7 +78,7 @@ case class WertungEditor(private var lastCommitted: WertungView) {
   reset
 
   private def onChange(): Unit = {
-    if (!notifying) try {
+    if !notifying then try {
       notifying = true
 
       val wertung = commit
@@ -116,7 +116,7 @@ case class WertungEditor(private var lastCommitted: WertungView) {
           case Some(d) => f"$d%tY "
           case _ => " "
         })
-      }${if (hasmedia) " ♪" else ""}"
+      }${if hasmedia then " ♪" else ""}"
     }
 
     calculatedWertung.value = wertung
@@ -143,9 +143,9 @@ case class WertungEditor(private var lastCommitted: WertungView) {
   }
 
   private def changed(propertyValue: Double, initValue: Option[BigDecimal]): Boolean = {
-    if (propertyValue.equals(Double.NaN) && initValue.isEmpty) {
+    if propertyValue.equals(Double.NaN) && initValue.isEmpty then {
       false
-    } else if (initValue.map(_.toDouble).contains(propertyValue)) {
+    } else if initValue.map(_.toDouble).contains(propertyValue) then {
       false
     } else {
       true
@@ -204,7 +204,7 @@ case class WertungEditor(private var lastCommitted: WertungView) {
 
   def update(vars: List[ScoreCalcVariable]): Wertung = {
     def upateVar(buffer: BufferProperty[ScoreCalcVariableEditor])(v: ScoreCalcVariable): Unit = {
-      buffer.value.foreach(e => if (e.score.value.equalID(v)) {
+      buffer.value.foreach(e => if e.score.value.equalID(v) then {
         e.score.value = v
       })
     }
@@ -278,16 +278,16 @@ case class WertungEditor(private var lastCommitted: WertungView) {
   }
 
   def toOption(propertyValue: Double): Option[BigDecimal] =
-    if (propertyValue.toString == Double.NaN.toString) None
+    if propertyValue.toString == Double.NaN.toString then None
     else Some(scala.math.BigDecimal(propertyValue))
 
   def toDouble(propertyValue: Double) = {
-    if (propertyValue.toString == Double.NaN.toString) 0d
+    if propertyValue.toString == Double.NaN.toString then 0d
     else scala.math.BigDecimal(propertyValue).doubleValue
   }
 
   def toString(propertyValue: Double): String =
-    if (propertyValue.toString == Double.NaN.toString) ""
+    if propertyValue.toString == Double.NaN.toString then ""
     else propertyValue
 
   def commit: Wertung = {

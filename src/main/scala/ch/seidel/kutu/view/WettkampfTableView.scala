@@ -46,10 +46,10 @@ class WettkampfTableView(wklviews: List[WettkampfView]) extends TableView[Wettka
       val sortOrderList = sortOrder.toList;
       filteredModel.clear()
       val searchQuery = newVal.toUpperCase().split(" ")
-      for {wettkampf <- wklviews
-           } {
+      for wettkampf <- wklviews
+           do {
         val matches = searchQuery.forall { search =>
-          if (search.isEmpty || wettkampf.easyprint.toUpperCase().contains(search)) {
+          if search.isEmpty || wettkampf.easyprint.toUpperCase().contains(search) then {
             true
           }
           else {
@@ -57,7 +57,7 @@ class WettkampfTableView(wklviews: List[WettkampfView]) extends TableView[Wettka
           }
         }
 
-        if (matches) {
+        if matches then {
           filteredModel.add(wettkampf)
         }
       }

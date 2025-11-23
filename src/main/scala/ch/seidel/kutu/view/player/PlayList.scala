@@ -20,12 +20,12 @@ class PlayList {
 
   def load(url: String): Unit = {
     this.url = url
-    if (url.toLowerCase.endsWith(".mp3")) songs.add(new Pair[String, String](url.substring(url.lastIndexOf('/')+1, url.lastIndexOf('.')-1), url))
-    else if (url.toLowerCase.endsWith(".m3u")) loadM3U(url)
-    else if (url.toLowerCase.endsWith(".xml")) loadPhlowXML(url)
+    if url.toLowerCase.endsWith(".mp3") then songs.add(new Pair[String, String](url.substring(url.lastIndexOf('/')+1, url.lastIndexOf('.')-1), url))
+    else if url.toLowerCase.endsWith(".m3u") then loadM3U(url)
+    else if url.toLowerCase.endsWith(".xml") then loadPhlowXML(url)
     else {
       val dir = new java.io.File(URI.create(url))
-      if (dir.exists()) {
+      if dir.exists() then {
         val files = dir.listFiles(new FilenameFilter {
           override def accept(dir: File, name: String): Boolean = {
             val ln = name.toLowerCase
@@ -44,7 +44,7 @@ class PlayList {
              */
           }
         })
-        if (files != null) {
+        if files != null then {
           files
             .toList
             .filter(_ != null)
@@ -68,10 +68,10 @@ class PlayList {
         val con = URI.create(url).toURL.openConnection
         val in = new InputStreamReader(con.getInputStream, "ISO-8859-1")
         val source = new Scanner(in)
-        while (source.hasNextLine) {
+        while source.hasNextLine do {
           val inputLine = source.nextLine()
           println(inputLine)
-          if (inputLine.charAt(0) != '#') songs.add(new Pair[String, String](inputLine.substring(0, inputLine.lastIndexOf('.')), baseUrl + URLEncoder.encode(inputLine, "UTF-8")))
+          if inputLine.charAt(0) != '#' then songs.add(new Pair[String, String](inputLine.substring(0, inputLine.lastIndexOf('.')), baseUrl + URLEncoder.encode(inputLine, "UTF-8")))
         }
         in.close()
         System.out.println("content = " + util.Arrays.toString(songs.toArray))
@@ -81,12 +81,12 @@ class PlayList {
     fetchPlayListTask.stateProperty.addListener(new ChangeListener[Worker.State]() {
       override def changed(arg0: ObservableValue[? <: Worker.State], oldState: Worker.State, newState: Worker.State): Unit = {
         println("newState = " + newState)
-        if (newState eq State.SUCCEEDED) try songs.addAll(fetchPlayListTask.get)
+        if newState eq State.SUCCEEDED then try songs.addAll(fetchPlayListTask.get)
         catch {
           case ex: Exception =>
             ex.printStackTrace()
         }
-        else if (fetchPlayListTask.getException != null) fetchPlayListTask.getException.printStackTrace()
+        else if fetchPlayListTask.getException != null then fetchPlayListTask.getException.printStackTrace()
       }
     })
     new Thread(fetchPlayListTask).start()
@@ -104,13 +104,13 @@ class PlayList {
         val doc = dBuilder.parse(con.getInputStream)
         val root = doc.getDocumentElement
         val children = root.getElementsByTagName("file")
-        for (i <- 0 until children.getLength) {
+        for i <- 0 until children.getLength do {
           val child = children.item(i).asInstanceOf[Element]
           val name = child.getAttributes.getNamedItem("name").getTextContent
-          if (name.endsWith(".mp3")) {
+          if name.endsWith(".mp3") then {
             val titleElements = child.getElementsByTagName("title")
             var title: String = null
-            if (titleElements.getLength > 0) title = titleElements.item(0).getTextContent.trim
+            if titleElements.getLength > 0 then title = titleElements.item(0).getTextContent.trim
             else title = name.substring(0, name.lastIndexOf('.'))
             songs.add(new Pair[String, String](title, baseUrl + URLEncoder.encode(name, "UTF-8")))
           }
@@ -120,12 +120,12 @@ class PlayList {
     }
     fetchPlayListTask.stateProperty.addListener(new ChangeListener[Worker.State]() {
       override def changed(arg0: ObservableValue[? <: Worker.State], oldState: Worker.State, newState: Worker.State): Unit = {
-        if (newState eq State.SUCCEEDED) try songs.addAll(fetchPlayListTask.get)
+        if newState eq State.SUCCEEDED then try songs.addAll(fetchPlayListTask.get)
         catch {
           case ex: Exception =>
             ex.printStackTrace()
         }
-        else if (fetchPlayListTask.getException != null) fetchPlayListTask.getException.printStackTrace()
+        else if fetchPlayListTask.getException != null then fetchPlayListTask.getException.printStackTrace()
       }
     })
     new Thread(fetchPlayListTask).start()

@@ -99,7 +99,7 @@ class WettkampfZeitenTab(editableProperty: Boolean, wettkampf: WettkampfView, ov
       val sortOrder = zeitenView.sortOrder.toList
       model.clear()
       val searchQuery = newVal.toUpperCase().split(" ")
-      for {planTime <- planTimeViews} {
+      for planTime <- planTimeViews do {
         val matches =
           searchQuery.forall { search =>
             search.isEmpty ||
@@ -107,7 +107,7 @@ class WettkampfZeitenTab(editableProperty: Boolean, wettkampf: WettkampfView, ov
               planTime.disziplin.value.toUpperCase().contains(search)
           }
 
-        if (matches) {
+        if matches then {
           model += planTime
         }
       }
@@ -118,7 +118,7 @@ class WettkampfZeitenTab(editableProperty: Boolean, wettkampf: WettkampfView, ov
     val txtFilter = new TextField() {
       promptText = "Filter (Ctrl + F)"
       text.addListener { (o: javafx.beans.value.ObservableValue[? <: String], oldVal: String, newVal: String) =>
-        if (!lastFilter.equalsIgnoreCase(newVal)) {
+        if !lastFilter.equalsIgnoreCase(newVal) then {
           updateFilteredList(newVal)
         }
       }

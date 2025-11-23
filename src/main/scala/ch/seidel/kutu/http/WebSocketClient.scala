@@ -37,13 +37,13 @@ object WebSocketClient extends SprayJsonSupport with JsonSupport with AuthSuppor
       case LastResults(results) =>
         val relevantResults = results.filter(_.sequenceId > lastSequenceId)
         val sequenceId = relevantResults.foldLeft(lastSequenceId){(accumulator, b) => Math.max(accumulator, b.sequenceId)}
-        if (sequenceId > lastSequenceId) {
+        if sequenceId > lastSequenceId then {
           messageProcessor(None, LastResults(relevantResults))
           lastSequenceId = sequenceId
         }
 
       case event@AthletWertungUpdatedSequenced(_, _, _, _, _, _, sequenceId) =>
-        if (sequenceId > lastSequenceId) {
+        if sequenceId > lastSequenceId then {
           lastSequenceId = sequenceId
           messageProcessor(None, event)
         }
@@ -67,11 +67,11 @@ object WebSocketClient extends SprayJsonSupport with JsonSupport with AuthSuppor
     lastWettkampf = Some(wettkampf)
 
     val promise = websocketClientRequest(
-      if (wettkampf.hasSecred(homedir, remoteHostOrigin)) {
+      if wettkampf.hasSecred(homedir, remoteHostOrigin) then {
         WebSocketRequest(
           s"$remoteWebSocketUrl/api/competition/ws?clientid=${encodeURIParam(System.getProperty("user.name") + ":" + deviceId)}&lastSequenceId=$lastSequenceId",
           extraHeaders = immutable.Seq(RawHeader(jwtAuthorizationKey, wettkampf.readSecret(homedir, remoteHostOrigin).get)))
-      } else if (wettkampf.hasRemote(homedir, remoteHostOrigin)) {
+      } else if wettkampf.hasRemote(homedir, remoteHostOrigin) then {
         WebSocketRequest(
           s"$remoteWebSocketUrl/api/durchgang/${wettkampf.uuid.get}/all/ws?clientid=${encodeURIParam(System.getProperty("user.name") + ":" + deviceId)}&lastSequenceId=$lastSequenceId")
       } else {

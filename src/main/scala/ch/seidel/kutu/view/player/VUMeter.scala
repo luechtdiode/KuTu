@@ -17,12 +17,12 @@ class VUMeter extends Parent {
     override protected def invalidated(): Unit = {
       super.invalidated()
       val lastBar = get * bars.size()
-      for (i <- 0 until bars.size()) {
+      for i <- 0 until bars.size() do {
         bars.get(i).setVisible(i < lastBar)
       }
     }
   }
-  for (i <- 0 until 20) {
+  for i <- 0 until 20 do {
     val rectangle = new Rectangle(26, 2) {
       setFill(BAR_COLOR)
       setX(-13)

@@ -22,7 +22,7 @@ class AthletSelectionDialog(actionTitle: String, wettkampfDatum: LocalDate, alte
   val wkcompareJGMode = wettkampfDatum.getDayOfYear == 1
 
   def alter(a: AthletView): Int = {
-    if (wkcompareJGMode) {
+    if wkcompareJGMode then {
       a.gebdat.map(d => Period.between(LocalDate.of(d.toLocalDate.getYear, 1, 1), wettkampfDatum).getYears).getOrElse(100)
     } else {
       a.gebdat.map(d => Period.between(d.toLocalDate, wettkampfDatum).getYears).getOrElse(100)
@@ -72,7 +72,7 @@ class AthletSelectionDialog(actionTitle: String, wettkampfDatum: LocalDate, alte
         text = "Status"
         cellValueFactory = { x =>
           new ReadOnlyStringWrapper(x.value, "status", {
-            if (x.value.activ) {
+            if x.value.activ then {
               "Aktiv"
             } else {
               "Inaktiv"
@@ -89,7 +89,7 @@ class AthletSelectionDialog(actionTitle: String, wettkampfDatum: LocalDate, alte
 
   val btnOK = new Button("OK") {
     onAction = (event: ActionEvent) => {
-      if (!athletTable.selectionModel().isEmpty) {
+      if !athletTable.selectionModel().isEmpty then {
         val selectedAthleten = athletTable.items.value.zipWithIndex.filter {
           x => athletTable.selectionModel.value.isSelected(x._2)
         }.map(x => x._1.id)
@@ -101,7 +101,7 @@ class AthletSelectionDialog(actionTitle: String, wettkampfDatum: LocalDate, alte
 
   val btnOKAll = new Button("OK, Alle") {
     onAction = (event: ActionEvent) => {
-      if (filteredModel.nonEmpty) refreshPaneData(filteredModel.map(_.id).toSet)
+      if filteredModel.nonEmpty then refreshPaneData(filteredModel.map(_.id).toSet)
     }
   }
 
@@ -122,19 +122,19 @@ class AthletSelectionDialog(actionTitle: String, wettkampfDatum: LocalDate, alte
       val sortOrder = athletTable.sortOrder.toList
       filteredModel.clear()
       val searchQuery = newVal.toUpperCase().split(" ")
-      for {athlet <- athletModel
-           } {
+      for athlet <- athletModel
+           do {
         val matches = searchQuery.forall { search =>
-          if (search.isEmpty() || athlet.name.toUpperCase().contains(search)) {
+          if search.isEmpty() || athlet.name.toUpperCase().contains(search) then {
             true
           }
-          else if (athlet.vorname.toUpperCase().contains(search)) {
+          else if athlet.vorname.toUpperCase().contains(search) then {
             true
           }
-          else if (athlet.verein match {
+          else if athlet.verein match {
             case Some(v) => v.name.toUpperCase().contains(search)
             case None => false
-          }) {
+          } then {
             true
           }
           else {
@@ -142,7 +142,7 @@ class AthletSelectionDialog(actionTitle: String, wettkampfDatum: LocalDate, alte
           }
         }
 
-        if (matches) {
+        if matches then {
           filteredModel.add(athlet)
         }
       }
@@ -160,7 +160,7 @@ class AthletSelectionDialog(actionTitle: String, wettkampfDatum: LocalDate, alte
   athletTable.onKeyPressed = (event: KeyEvent) => {
     event.code match {
       case KeyCode.Enter =>
-        if (!btnOK.disabled.value) {
+        if !btnOK.disabled.value then {
           btnOK.fire()
         }
       case _ =>
@@ -168,8 +168,8 @@ class AthletSelectionDialog(actionTitle: String, wettkampfDatum: LocalDate, alte
   }
 
   athletTable.onMouseClicked = (event: MouseEvent) => {
-    if (event.clickCount == 2) {
-      if (!btnOK.disabled.value) {
+    if event.clickCount == 2 then {
+      if !btnOK.disabled.value then {
         btnOK.fire()
       }
     }

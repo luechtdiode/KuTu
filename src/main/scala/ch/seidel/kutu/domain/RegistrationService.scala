@@ -49,7 +49,7 @@ trait RegistrationService extends DBService with RegistrationResultMapper with M
   }
 
   def resetRegistrationPW(resetPW: RegistrationResetPW): Registration = {
-    if (resetPW.id == 0L) {
+    if resetPW.id == 0L then {
       throw new IllegalArgumentException("Registration with id=0 can not be updated")
     }
     Await.result(database.run {
@@ -77,7 +77,7 @@ trait RegistrationService extends DBService with RegistrationResultMapper with M
     } catch {
       case e: NumberFormatException =>
         val parts = uuid.split(":")
-        if (!uuid.endsWith(OPTION_LOGINRESET) && parts.length == 2) {
+        if !uuid.endsWith(OPTION_LOGINRESET) && parts.length == 2 then {
           Await.result(database.run {
             sql"""     select id
                        from vereinregistration
@@ -117,7 +117,7 @@ trait RegistrationService extends DBService with RegistrationResultMapper with M
   }
 
   def updateRegistration(registration: Registration): Registration = {
-    if (registration.id == 0L) {
+    if registration.id == 0L then {
       throw new IllegalArgumentException("Registration with id=0 can not be updated")
     }
     Await.result(database.run {
@@ -207,7 +207,7 @@ trait RegistrationService extends DBService with RegistrationResultMapper with M
       sql"""       select id
                    from vereinregistration
                    where wettkampf_id in (select id from wettkampf where uuid = ${wettkampfId.toString})""".as[Long].flatMap{ v =>
-        DBIO.sequence(for(id <- v) yield deleteRegistrationAction(id))
+        DBIO.sequence(for id <- v yield deleteRegistrationAction(id))
       }.transactionally
     )
   }
@@ -339,12 +339,12 @@ trait RegistrationService extends DBService with RegistrationResultMapper with M
 
   def createAthletRegistration(newReg: AthletRegistration): AthletRegistration = {
     val athletIdLike: Option[Long] = selectAthletRegistrationsLike(newReg).headOption.flatMap(_.athletId)
-    val athletId: Option[Long] = if (newReg.athletId.isDefined && newReg.athletId.get > 0L) {
+    val athletId: Option[Long] = if newReg.athletId.isDefined && newReg.athletId.get > 0L then {
       newReg.athletId
     } else {
       athletIdLike
     }
-    if (athletId.nonEmpty && athletIdLike.nonEmpty && athletId.get > 0 && !athletIdLike.equals(athletId)) {
+    if athletId.nonEmpty && athletIdLike.nonEmpty && athletId.get > 0 && !athletIdLike.equals(athletId) then {
       throw new IllegalArgumentException("Person-Überschreibung in einer Anmeldung zu einer anderen Person ist nicht erlaubt!")
     }
     val nomralizedAthlet = newReg.toAthlet
@@ -411,7 +411,7 @@ trait RegistrationService extends DBService with RegistrationResultMapper with M
   }
 
   def updateAthletRegistration(registration: AthletRegistration): Option[AthletRegistration] = {
-    if (registration.id == 0L) {
+    if registration.id == 0L then {
       throw new IllegalArgumentException("AthletRegistration with id=0 can not be updated")
     }
     val gebdat: java.sql.Date = str2SQLDate(registration.gebdat)
@@ -420,7 +420,7 @@ trait RegistrationService extends DBService with RegistrationResultMapper with M
       case Some(id) if id < 1 => None
       case Some(id) =>
         val athletIdLike: Option[Long] = selectAthletRegistrationsLike(registration).headOption.flatMap(_.athletId)
-        if (athletIdLike.nonEmpty && !athletIdLike.contains(id)) {
+        if athletIdLike.nonEmpty && !athletIdLike.contains(id) then {
           throw new IllegalArgumentException("Person-Überschreibung in einer Anmeldung zu einer anderen Person ist nicht erlaubt!")
         }
         Some(id)
@@ -580,7 +580,7 @@ trait RegistrationService extends DBService with RegistrationResultMapper with M
 //  }
 
   def updateJudgeRegistration(registration: JudgeRegistration): JudgeRegistration = {
-    if (registration.id == 0L) {
+    if registration.id == 0L then {
       throw new IllegalArgumentException("JudgeRegistration with id=0 can not be updated")
     }
     registration.validate()
@@ -663,7 +663,7 @@ trait RegistrationService extends DBService with RegistrationResultMapper with M
     val vereinregistrationId = selectJudgeRegistration(judgeId).id
     Await.result(database.run {
       sqlu""" delete from judgeregistration_pgm where id = $judgeId""" >>
-        DBIO.sequence(for{wkid <- wettkampfDisziplinIds} yield
+        DBIO.sequence(for wkid <- wettkampfDisziplinIds yield
           sqlu"""
                   insert into judgeregistration_pgm
                   (vereinregistration_id, judgeregistration_id, wettkampfdisziplin_id, comment)
@@ -677,10 +677,10 @@ trait RegistrationService extends DBService with RegistrationResultMapper with M
   }
 
   def loadAllJudgesOfCompetition(wettkampf: UUID): Map[Registration,List[JudgeRegistration]] = {
-    (for {
+    (for
       reg <- selectRegistrationsOfWettkampf(wettkampf)
       judge <- selectJudgeRegistrations(reg.id)
-    } yield {
+    yield {
       (reg, judge)
     }).foldLeft(Map[Registration,List[JudgeRegistration]]()) {(acc, entry) =>
       val registrations = acc.getOrElse(entry._1, List[JudgeRegistration]())
@@ -695,7 +695,7 @@ trait RegistrationService extends DBService with RegistrationResultMapper with M
   }
 
   def loadMedia(id: String): Option[MediaAdmin] = {
-    if (id == null || id.isEmpty) {
+    if id == null || id.isEmpty then {
       None
     } else {
       Await.result(database.run {
@@ -710,10 +710,10 @@ trait RegistrationService extends DBService with RegistrationResultMapper with M
   }
 
   def searchMedia(id: String): Option[MediaAdmin] = {
-    if (id == null || id.isEmpty) {
+    if id == null || id.isEmpty then {
       None
     } else {
-      val md5Id = if (id.contains(".")) id.substring(0, id.lastIndexOf(".")) else id
+      val md5Id = if id.contains(".") then id.substring(0, id.lastIndexOf(".")) else id
       logger.info(s"searching for $id, $md5Id")
       val medias = Await.result(database.run {
         sql"""
@@ -778,7 +778,7 @@ trait RegistrationService extends DBService with RegistrationResultMapper with M
   }
 
   def putMedia(media: Media): MediaAdmin = {
-    if (media.id == null || media.id.isEmpty) {
+    if media.id == null || media.id.isEmpty then {
       logger.info(s"putting new media to index")
       val id = UUID.randomUUID().toString
       Await.result(database.run {

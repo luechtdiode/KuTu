@@ -98,7 +98,7 @@ abstract class DefaultRanglisteTab(wettkampfmode: BooleanProperty, override val 
       nullFilter
     }
 
-    def toString(d: DataObject): String = if (d != null) d.easyprint else ""
+    def toString(d: DataObject): String = if d != null then d.easyprint else ""
   }
 
   val converter = new DataObjectConverter()
@@ -206,7 +206,7 @@ abstract class DefaultRanglisteTab(wettkampfmode: BooleanProperty, override val 
     }
 
     def relevantGroup(cb: ComboBox[FilterBy]): Boolean = {
-      if (!cb.selectionModel.value.isEmpty) {
+      if !cb.selectionModel.value.isEmpty then {
         val grp = cb.selectionModel.value.getSelectedItem
         grp != ByNothing()
       }
@@ -229,7 +229,7 @@ abstract class DefaultRanglisteTab(wettkampfmode: BooleanProperty, override val 
         val (cb, cf) = cbp
         val grp = cb.selectionModel.value.getSelectedItem
 
-        if (cf.getCheckModel.getCheckedItems.isEmpty() || cf.getCheckModel.getCheckedItems.forall(nullFilter.equals(_))) {
+        if cf.getCheckModel.getCheckedItems.isEmpty() || cf.getCheckModel.getCheckedItems.forall(nullFilter.equals(_)) then {
           grp.reset
         }
         else {
@@ -239,11 +239,11 @@ abstract class DefaultRanglisteTab(wettkampfmode: BooleanProperty, override val 
       }
       val akg = groupers.find(p => p.isInstanceOf[ByAltersklasse] && p.groupname.startsWith("Wettkampf"))
       val jakg = groupers.find(p => p.isInstanceOf[ByJahrgangsAltersklasse] && p.groupname.startsWith("Wettkampf"))
-      val groupBy = if (cblist.nonEmpty) {
-        cblist.foldLeft(cblist.head.asInstanceOf[GroupBy])((acc, cb) => if (acc != cb) acc.groupBy(cb) else acc)
-      } else if (akg.nonEmpty) {
+      val groupBy = if cblist.nonEmpty then {
+        cblist.foldLeft(cblist.head.asInstanceOf[GroupBy])((acc, cb) => if acc != cb then acc.groupBy(cb) else acc)
+      } else if akg.nonEmpty then {
         ByProgramm().groupBy(akg.get).groupBy(ByGeschlecht())
-      } else if (jakg.nonEmpty) {
+      } else if jakg.nonEmpty then {
         ByProgramm().groupBy(jakg.get).groupBy(ByGeschlecht())
       }
       else {
@@ -264,7 +264,7 @@ abstract class DefaultRanglisteTab(wettkampfmode: BooleanProperty, override val 
       val filter = query.asInstanceOf[FilterBy]
       val filterLists = filter.traverse(Seq[Seq[DataObject]]()) { (f, acc) =>
         val allItems = f.asInstanceOf[FilterBy].analyze(data).sortBy { x => x.easyprint }
-        acc :+ (if (f.canSkipGrouper) nullFilter +: allItems else allItems)
+        acc :+ (if f.canSkipGrouper then nullFilter +: allItems else allItems)
       }
       combfs.filter(cmb => cmb.disabled.value).foreach(cmb => {
         cmb.getCheckModel.clearChecks()
@@ -290,7 +290,7 @@ abstract class DefaultRanglisteTab(wettkampfmode: BooleanProperty, override val 
 
       val logofile = PrintUtil.locateLogoFile(getSaveAsFilenameDefault.dir)
       val ret = toHTML(combination, linesPerPage, query.isAlphanumericOrdered, query.isAvgOnMultipleCompetitions, logofile)
-      if (linesPerPage == 0) {
+      if linesPerPage == 0 then {
         webView.engine.loadContent(ret)
       }
       restoring = false
@@ -310,7 +310,7 @@ abstract class DefaultRanglisteTab(wettkampfmode: BooleanProperty, override val 
 
       query.traverse(combos) { (grp, acc) =>
         logger.debug(grp.toString)
-        if (acc.isEmpty) {
+        if acc.isEmpty then {
           acc
         }
         else {
@@ -337,7 +337,7 @@ abstract class DefaultRanglisteTab(wettkampfmode: BooleanProperty, override val 
 
     combos.foreach { case (comb, combfs) =>
       comb.onAction = _ => {
-        if (!restoring) {
+        if !restoring then {
           restoring = true
           combfs.getCheckModel.clearChecks()
           combfs.getItems.clear()
@@ -345,29 +345,29 @@ abstract class DefaultRanglisteTab(wettkampfmode: BooleanProperty, override val 
         }
       }
       combfs.getCheckModel.getCheckedItems.onChange((b, s) => {
-        if (!restoring) {
+        if !restoring then {
           refreshRangliste(buildGrouper)
         }
       })
     }
 
     cbModus.onAction = _ => {
-      if (!restoring)
+      if !restoring then
         refreshRangliste(buildGrouper)
     }
     cbAvg.onAction = _ => {
-      if (!restoring)
+      if !restoring then
         refreshRangliste(buildGrouper)
     }
     cbBestN.onAction = _ => {
-      if (!restoring)
+      if !restoring then
         refreshRangliste(buildGrouper)
     }
     cbBestN.disable <== createBooleanBinding(() => cbKind.value.value == Teamrangliste, cbKind.value)
     cbKind.onAction = _ => {
-      if (!restoring) {
+      if !restoring then {
         restoring = true
-        if (cbKind.value.value == Teamrangliste) {
+        if cbKind.value.value == Teamrangliste then {
           cbBestN.value.value = AlleWertungen
         }
         resetFilterPresets(combs, cbKind.value.value, cbBestN.value.value)
@@ -379,7 +379,7 @@ abstract class DefaultRanglisteTab(wettkampfmode: BooleanProperty, override val 
     val btnPrint = PrintUtil.btnPrintFuture(text.value, getSaveAsFilenameDefault, true,
       (lpp: Int) => {
         val retProm = Promise[String]()
-        if (Platform.isFxApplicationThread) {
+        if Platform.isFxApplicationThread then {
           retProm.success(refreshRangliste(buildGrouper, lpp))
         } else Platform.runLater(() => {
           retProm.success(refreshRangliste(buildGrouper, lpp))
@@ -424,7 +424,7 @@ abstract class DefaultRanglisteTab(wettkampfmode: BooleanProperty, override val 
         lastPublishedScoreView.setValue(None)
         loadFilter(filter)
       }
-      if (!items.exists(m => m.text.value != null && m.text.value.equalsIgnoreCase(menu.text.value))) {
+      if !items.exists(m => m.text.value != null && m.text.value.equalsIgnoreCase(menu.text.value)) then {
         items.add(menu)
       }
     }
@@ -443,7 +443,7 @@ abstract class DefaultRanglisteTab(wettkampfmode: BooleanProperty, override val 
       val addPublished: PublishedScoreView => Unit = addPublishedFilter(items)
       val addSaved: File => Unit = addPredefinedFilter(items)
       getPublishedScores.foreach(addPublished(_))
-      if (items.nonEmpty) {
+      if items.nonEmpty then {
         items.add(new SeparatorMenuItem())
       }
       listFilter.foreach(addSaved(_))
@@ -456,7 +456,7 @@ abstract class DefaultRanglisteTab(wettkampfmode: BooleanProperty, override val 
         val defaults = getFilterSaveAsFilenameDefault
         val filename = defaults.filename
         val dir = defaults.dir
-        if (!dir.exists()) {
+        if !dir.exists() then {
           dir.mkdirs()
         }
         val fileChooser = new FileChooser() {
@@ -467,8 +467,8 @@ abstract class DefaultRanglisteTab(wettkampfmode: BooleanProperty, override val 
           initialFileName = filename
         }
         val selectedFile = fileChooser.showSaveDialog(KuTuApp.getStage())
-        if (selectedFile != null) {
-          val file = if (!selectedFile.getName.endsWith(".scoredef")) {
+        if selectedFile != null then {
+          val file = if !selectedFile.getName.endsWith(".scoredef") then {
             new java.io.File(selectedFile.getAbsolutePath + ".scoredef")
           }
           else {
@@ -493,19 +493,19 @@ abstract class DefaultRanglisteTab(wettkampfmode: BooleanProperty, override val 
     }
 
     onSelectionChanged = _ => {
-      if (selected.value) {
+      if selected.value then {
         refreshRangliste(buildGrouper)
         refreshScorePresets(cbfSaved.items)
       }
     }
 
-    if (logger.isDebugEnabled()) {
+    if logger.isDebugEnabled() then {
       logger.debug("subscribing for refreshing from websocket")
     }
 
     def updateFromWebsocket(newItem: KutuAppEvent): Unit = {
-      submitLazy("refreshRangliste", () => if (selected.value) {
-        if (logger.isDebugEnabled()) {
+      submitLazy("refreshRangliste", () => if selected.value then {
+        if logger.isDebugEnabled() then {
           logger.debug("refreshing rangliste from websocket", newItem)
         }
         refreshRangliste(buildGrouper)
@@ -514,7 +514,7 @@ abstract class DefaultRanglisteTab(wettkampfmode: BooleanProperty, override val 
     }
 
     subscription = subscription :+ WebSocketClient.modelWettkampfWertungChanged.onChange { (_, _, newItem) =>
-      if (selected.value) {
+      if selected.value then {
         newItem match {
           case LastResults(_) => updateFromWebsocket(newItem)
           case _: AthletWertungUpdated => updateFromWebsocket(newItem)
@@ -557,7 +557,7 @@ abstract class DefaultRanglisteTab(wettkampfmode: BooleanProperty, override val 
         }
 
         private def buildToolbars = {
-          if (wettkampfmode.value) {
+          if wettkampfmode.value then {
             children = List(
               new ToolBar {
                 content = List(cbfSaved) ++ getActionButtons ++ List(btnPrint)
@@ -588,7 +588,7 @@ abstract class DefaultRanglisteTab(wettkampfmode: BooleanProperty, override val 
   }
 
   private def toMenuText(filter: PublishedScoreView) = {
-    (if (filter.published) "Publiziert: " else "Bereitgestellt: ") + filter.title
+    (if filter.published then "Publiziert: " else "Bereitgestellt: ") + filter.title
   }
 
   def normalizeFilterText(text: String) = encodeFileName(

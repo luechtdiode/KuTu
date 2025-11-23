@@ -45,7 +45,7 @@ ScoreRoutes extends SprayJsonSupport with JsonSupport with AuthSupport with Rout
                         logofile: File): HttpEntity.Strict = {
     val query = GroupBy(groupby, filter, data, alphanumeric, isAvgOnMultipleCompetitions, kind, counting, groupers);
 
-    if (html) {
+    if html then {
       HttpEntity(ContentTypes.`text/html(UTF-8)`, new ScoreToHtmlRenderer(){override val title: String = wettkampf}
       .toHTML(query.select(data).toList, athletsPerPage = 0, sortAlphabetically = alphanumeric, isAvgOnMultipleCompetitions = isAvgOnMultipleCompetitions, logofile))
     } else {
@@ -59,7 +59,7 @@ ScoreRoutes extends SprayJsonSupport with JsonSupport with AuthSupport with Rout
       groupers.find(grouper => grouper.groupname.equals(groupername))
     }.filter{case Some(_) => true case None => false}.map(_.get)
     cblist.foreach(_.reset)
-    val query = if (cblist.nonEmpty) {
+    val query = if cblist.nonEmpty then {
       cblist
     } else {
       groupers
@@ -145,7 +145,7 @@ ScoreRoutes extends SprayJsonSupport with JsonSupport with AuthSupport with Rout
         } ~
         pathPrefixLabeled(JavaUUID, ":competition-id") { competitionId =>
           import AbuseHandler._
-          if (!wettkampfExists(competitionId.toString)) {
+          if !wettkampfExists(competitionId.toString) then {
             log.error(handleAbuse(clientId, uri))
             complete(StatusCodes.NotFound)
           } else {
@@ -185,13 +185,13 @@ ScoreRoutes extends SprayJsonSupport with JsonSupport with AuthSupport with Rout
                 case (true,false) => standardGroupers :+ ByAltersklasse("Wettkampf Altersklassen", altersklassen)
                 case _ => standardGroupers
               }
-              if (wettkampf.hasTeams) {
+              if wettkampf.hasTeams then {
                 TeamRegel(wettkampf).getTeamRegeln.map(r => ByTeamRule("Wettkampf Teamregel " + r.toRuleName, r)).toList ++ akenhanced
               } else {
                 akenhanced
               }
             }
-            val logoHtml = if (logofile.exists()) s"""<img class=logo src="${logofile.imageSrcForWebEngine}" title="Logo"/>""" else ""
+            val logoHtml = if logofile.exists() then s"""<img class=logo src="${logofile.imageSrcForWebEngine}" title="Logo"/>""" else ""
             pathEnd {
               get {
                 parameters(Symbol("html").?) { html =>
@@ -220,7 +220,7 @@ ScoreRoutes extends SprayJsonSupport with JsonSupport with AuthSupport with Rout
                       case Some(_) =>
                         ToResponseMarshallable(HttpEntity(ContentTypes.`text/html(UTF-8)`,
                           (scores
-                            .map(score => (if (score.published) s"""
+                            .map(score => (if score.published then s"""
                                   |<li><a href='/api/scores/${competitionId.toString}/${score.id}/?html'>${score.title}</a></li>""".stripMargin else s"""
                                   |<li><a href='/api/scores/${competitionId.toString}/${score.id}/?html'>${score.title} (unveröffentlicht)</a></li>""".stripMargin
                             ))
@@ -280,7 +280,7 @@ ScoreRoutes extends SprayJsonSupport with JsonSupport with AuthSupport with Rout
                           case c::_ => (Some(c), data)
                         }
                         val query = GroupBy(score.map(_.query).getOrElse(""), publishedData, groupers)
-                        if (html.nonEmpty) {
+                        if html.nonEmpty then {
                           HttpEntity(ContentTypes.`text/html(UTF-8)`, new ScoreToHtmlRenderer() {
                             override val title: String = wettkampf.easyprint // + " - " + score.map(_.title).getOrElse(wettkampf.easyprint)
                           }
@@ -304,7 +304,7 @@ ScoreRoutes extends SprayJsonSupport with JsonSupport with AuthSupport with Rout
                   , Symbol("counting").?
                 ) { (groupby, filter, html, alphanumeric, avg, kind, counting) =>
                   complete(
-                    if (!endDate.atStartOfDay().isBefore(LocalDate.now.atStartOfDay) || (groupby.isEmpty && filter.isEmpty && ScoreListKind(kind) != Teamrangliste)) {
+                    if !endDate.atStartOfDay().isBefore(LocalDate.now.atStartOfDay) || (groupby.isEmpty && filter.isEmpty && ScoreListKind(kind) != Teamrangliste) then {
                       ToResponseMarshallable(HttpEntity(ContentTypes.`text/html(UTF-8)`,
                         f"""
                            |<html>
@@ -423,8 +423,8 @@ ScoreRoutes extends SprayJsonSupport with JsonSupport with AuthSupport with Rout
                   complete(CompetitionCoordinatorClientActor.publish(StartedDurchgaenge(competitionId.toString()), clientid.getOrElse("")).flatMap {
                     case ResponseMessage(startedDurchgaenge) =>
                       val sd = startedDurchgaenge.asInstanceOf[Set[String]]
-                      val kind = if (wettkampf.teamrule.nonEmpty) Kombirangliste else Einzelrangliste
-                      if (sd.nonEmpty) {
+                      val kind = if wettkampf.teamrule.nonEmpty then Kombirangliste else Einzelrangliste
+                      if sd.nonEmpty then {
                             Future {queryScoreResults(s"${wettkampf.easyprint} - Zwischenresultate", None,
                                 filter ++ Iterable(byDurchgangMat.groupname + ":" + sd.mkString("!")),
                                 html.nonEmpty, groupers, data.filter(filterMatchingWertungenToQuery), alphanumeric = false, isAvgOnMultipleCompetitions = true, kind, AlleWertungen, logofile)
@@ -436,7 +436,7 @@ ScoreRoutes extends SprayJsonSupport with JsonSupport with AuthSupport with Rout
                             }
                       }
                     case MessageAck(msg) =>
-                      val kind = if (wettkampf.teamrule.nonEmpty) Kombirangliste else Einzelrangliste
+                      val kind = if wettkampf.teamrule.nonEmpty then Kombirangliste else Einzelrangliste
                       Future {queryScoreResults(s"${wettkampf.easyprint} - Zwischenresultate", None,
                         filter,
                         html.nonEmpty, groupers, Seq(), alphanumeric = false, isAvgOnMultipleCompetitions = true, kind, AlleWertungen, logofile)

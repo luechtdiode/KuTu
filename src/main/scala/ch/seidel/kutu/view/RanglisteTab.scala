@@ -51,7 +51,7 @@ class RanglisteTab(wettkampfmode: BooleanProperty, wettkampf: WettkampfView, ove
       case (true,false) => standardGroupers :+ ByAltersklasse("Wettkampf Altersklassen", altersklassen)
       case _ => standardGroupers
     }
-    if (wettkampf.toWettkampf.hasTeams) {
+    if wettkampf.toWettkampf.hasTeams then {
       TeamRegel(wettkampf.toWettkampf).getTeamRegeln.map(r => ByTeamRule("Wettkampf Teamregel " + r.toRuleName, r)).toList ++ akenhanced
     } else {
       akenhanced
@@ -211,7 +211,7 @@ class RanglisteTab(wettkampfmode: BooleanProperty, wettkampf: WettkampfView, ove
   }
 
   override def getActionButtons: List[Button] =
-    if (wettkampfmode.value) {
+    if wettkampfmode.value then {
       List(
         btnPublikationFreigeben)
     } else {
@@ -232,11 +232,11 @@ class RanglisteTab(wettkampfmode: BooleanProperty, wettkampf: WettkampfView, ove
       case _ =>
         val akg = groupers.find(p => p.isInstanceOf[ByAltersklasse] && p.groupname.startsWith("Wettkampf"))
         val jakg = groupers.find(p => p.isInstanceOf[ByJahrgangsAltersklasse] && p.groupname.startsWith("Wettkampf"))
-        if (akg.nonEmpty) {
+        if akg.nonEmpty then {
           combos(1).selectionModel.value.select(ByProgramm(programmText))
           combos(2).selectionModel.value.select(akg.get)
           combos(3).selectionModel.value.select(ByGeschlecht())
-        } else if (jakg.nonEmpty) {
+        } else if jakg.nonEmpty then {
           combos(1).selectionModel.value.select(ByProgramm(programmText))
           combos(2).selectionModel.value.select(jakg.get)
           combos(3).selectionModel.value.select(ByGeschlecht())
@@ -251,7 +251,7 @@ class RanglisteTab(wettkampfmode: BooleanProperty, wettkampf: WettkampfView, ove
     val combos = populate(groupers)
 
     val team = groupers.find(p => p.isInstanceOf[ByTeamRule] && p.groupname.startsWith("Wettkampf"))
-    val kind: ScoreListKind = if (getData.exists(_.team > 0) || team.nonEmpty) Teamrangliste else Einzelrangliste
+    val kind: ScoreListKind = if getData.exists(_.team > 0) || team.nonEmpty then Teamrangliste else Einzelrangliste
     resetFilterPresets(combos, kind, AlleWertungen)
     cbAvg.visible = false
     true

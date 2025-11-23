@@ -120,7 +120,7 @@ trait NotenblattToHtmlRenderer {
       s"""<tr class="geraeteRow"><td class="large">${dis._2}. ${escaped(dis._1.easyprint)}</td><td>&nbsp;</td><td>&nbsp;</td><td class="totalCol">&nbsp;</td></tr>"""
     }
     val dt = d.updated(d.size-1, d.last.replace("geraeteRow", "totalRow")).mkString("", "\n", "\n")
-    val logoHtml = (if (logo.exists) s"""<img class=logo src="${logo.imageSrcForWebEngine}" title="Logo"/>""" else s"")
+    val logoHtml = (if logo.exists then s"""<img class=logo src="${logo.imageSrcForWebEngine}" title="Logo"/>""" else s"")
     s"""<div class=notenblatt>
       <div class=headline>
         $logoHtml
@@ -174,7 +174,7 @@ trait NotenblattToHtmlRenderer {
       s"""<tr class="geraeteRow"><td class="large">${dis._2}. ${escaped(dis._1.easyprint)}</td><td>&nbsp;</td><td>&nbsp;</td><td class="totalCol">&nbsp;</td></tr>"""
     }
     val dt = d.updated(d.size-1, d.last.replace("geraeteRow", "totalRow")).mkString("", "\n", "\n")
-    val logoHtml = (if (logo.exists) s"""<img class=logo src="${logo.imageSrcForWebEngine}" title="Logo"/>""" else s"")
+    val logoHtml = (if logo.exists then s"""<img class=logo src="${logo.imageSrcForWebEngine}" title="Logo"/>""" else s"")
     s"""<div class=notenblatt>
       <div class=headline>
         ${logoHtml}

@@ -56,7 +56,7 @@ class DashboardPage(dashPart: String = "dashboard", tree: KuTuAppTree) extends D
       }
       def refreshView(): Unit = {
         val nodes = thumbs(filter.text.value)
-        if (showThumbnails.value) {
+        if showThumbnails.value then {
           iconToggleButton.selected = true
           listToggleButton.selected = false
           box.children = nodes

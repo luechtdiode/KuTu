@@ -120,7 +120,7 @@ class CompetitionRegistrationClientActor(wettkampfUUID: String) extends Persiste
     case CompetitionCreated(_, link) =>
       syncState = syncState.unapproved
       val wk = readWettkampf(wettkampfUUID)
-      if (wk.notificationEMail.nonEmpty) {
+      if wk.notificationEMail.nonEmpty then {
         KuTuMailerActor.send(
           MailTemplates.createMailApprovement(wk, link)
         )
@@ -133,8 +133,8 @@ class CompetitionRegistrationClientActor(wettkampfUUID: String) extends Persiste
 
     case ApproveEMail(_, mail) =>
       val notificationEMail = readWettkampf(wettkampfUUID).notificationEMail
-      if (notificationEMail.equals(mail)) {
-        if (!syncState.emailApproved) {
+      if notificationEMail.equals(mail) then {
+        if !syncState.emailApproved then {
           syncState = syncState.approved
           sender() ! EMailApproved(s"EMail ${mail} erfolgreich verifiziert", success = true)
           log.info(s"EMail approved ${mail}")
@@ -149,9 +149,9 @@ class CompetitionRegistrationClientActor(wettkampfUUID: String) extends Persiste
       }
 
     case CheckEMailApprovedNotifier =>
-      if (!syncState.emailApproved && (approvementEMailSent || readWettkampf(wettkampfUUID).notificationEMail.isEmpty)) {
-        if (selectWertungen(wkuuid = Some(wettkampfUUID)).groupBy { x => x.athlet }.map(_._2).isEmpty) {
-          if (selectRegistrationsOfWettkampf(UUID.fromString(wettkampf.uuid.get)).isEmpty) {
+      if !syncState.emailApproved && (approvementEMailSent || readWettkampf(wettkampfUUID).notificationEMail.isEmpty) then {
+        if selectWertungen(wkuuid = Some(wettkampfUUID)).groupBy { x => x.athlet }.map(_._2).isEmpty then {
+          if selectRegistrationsOfWettkampf(UUID.fromString(wettkampf.uuid.get)).isEmpty then {
             CompetitionCoordinatorClientActor.publish(Delete(wettkampfUUID), "EMail-Approver")
             deleteRegistrations(UUID.fromString(wettkampfUUID))
             deleteWettkampf(wettkampf.id)
@@ -169,7 +169,7 @@ class CompetitionRegistrationClientActor(wettkampfUUID: String) extends Persiste
 
     case RegistrationChanged(_) => retrieveSyncActions(sender())
     case AskRegistrationSyncActions(_) =>
-      if (this.syncActions.nonEmpty)
+      if this.syncActions.nonEmpty then
         sender() ! RegistrationSyncActions(this.syncState.syncActions)
       else
         retrieveSyncActions(sender())
@@ -177,7 +177,7 @@ class CompetitionRegistrationClientActor(wettkampfUUID: String) extends Persiste
       this.syncState = syncState.resynced(actions, loadAllJudgesOfCompetition(UUID.fromString(wettkampf.uuid.get)).flatMap(_._2).toList)
       this.syncActions = Some(syncState)
       rescheduleSyncActionNotifier()
-      if (syncActionReceivers.nonEmpty) {
+      if syncActionReceivers.nonEmpty then {
         syncActionReceivers.foreach(_ ! a)
         syncActionReceivers = List()
       }
@@ -188,11 +188,11 @@ class CompetitionRegistrationClientActor(wettkampfUUID: String) extends Persiste
 
   private def notifyChangesToEMail(): Unit = {
     val wk = readWettkampf(wettkampfUUID)
-    if (this.syncState.hasChanges) {
+    if this.syncState.hasChanges then {
       val regChanges = this.syncState.syncActions
       val judgeChanges = this.syncState.judgeSyncActions
       this.syncState = this.syncState.notified()
-      if (wk.notificationEMail.nonEmpty && wk.datum.toLocalDate.isAfter(LocalDate.now().plusDays(1))) {
+      if wk.notificationEMail.nonEmpty && wk.datum.toLocalDate.isAfter(LocalDate.now().plusDays(1)) then {
         KuTuMailerActor.send(
           MailTemplates.createSyncNotificationMail(wk, regChanges, judgeChanges.changed, judgeChanges.removed, judgeChanges.added)
         )
@@ -201,7 +201,7 @@ class CompetitionRegistrationClientActor(wettkampfUUID: String) extends Persiste
         deleteSnapshots(criteria)
       }
     }
-    if (wk.datum.toLocalDate.isAfter(LocalDate.now().plusDays(1))) {
+    if wk.datum.toLocalDate.isAfter(LocalDate.now().plusDays(1)) then {
       context.stop(self)
     }
   }
@@ -209,7 +209,7 @@ class CompetitionRegistrationClientActor(wettkampfUUID: String) extends Persiste
   private def retrieveSyncActions(syncActionReceiver: ActorRef): Unit = {
     syncActions = None
 
-    if (syncActionReceivers.nonEmpty) {
+    if syncActionReceivers.nonEmpty then {
       syncActionReceivers = syncActionReceivers :+ syncActionReceiver
     } else {
       log.info("Rebuild Competition SyncActions ...")
@@ -228,7 +228,7 @@ class CompetitionRegistrationClientActor(wettkampfUUID: String) extends Persiste
   private def rescheduleSyncActionNotifier(): Unit = {
     this.rescheduleSyncNotificationCheck.cancel()
     val wk = readWettkampf(wettkampfUUID)
-    if (wk.datum.toLocalDate.plusDays(1).isAfter(LocalDate.now())) {
+    if wk.datum.toLocalDate.plusDays(1).isAfter(LocalDate.now()) then {
       this.rescheduleSyncNotificationCheck = context.system.scheduler.scheduleOnce(notifierInterval, self, CheckSyncChangedForNotifier)
     }
   }

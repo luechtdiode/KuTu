@@ -64,7 +64,7 @@ class PreferencesTab(val wettkampfInfo: WettkampfInfo, override val service: Kut
 
   // This handles also the initial load
   onSelectionChanged = _ => {
-    if(selected.value) {
+    if selected.value then {
     }
   }
 

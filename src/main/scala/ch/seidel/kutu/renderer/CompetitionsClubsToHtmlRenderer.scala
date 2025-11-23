@@ -106,7 +106,7 @@ trait CompetitionsClubsToHtmlRenderer {
   """
 
   private def anmeldeListeProVerein(wettkampf: Wettkampf, vereine: List[Registration], logo: File) = {
-    val logoHtml = if (logo.exists()) s"""<img class=logo src="${logo.imageSrcForWebEngine}" title="Logo"/>""" else ""
+    val logoHtml = if logo.exists() then s"""<img class=logo src="${logo.imageSrcForWebEngine}" title="Logo"/>""" else ""
 
     val d = vereine.map{ registration =>
       s"""<tr class="athletRow"><td>${escaped(registration.vereinname)}</td><td>(${escaped(registration.verband)})</td><td class="large">${escaped(registration.respName)} ${escaped(registration.respVorname)}</td><td>${escaped(registration.mobilephone)}</td><td>${escaped(registration.mail)}</td><td>${
@@ -133,11 +133,10 @@ trait CompetitionsClubsToHtmlRenderer {
   def toHTMLasClubRegistrationsList(wettkampf: Wettkampf, vereine: List[Registration], logo: File, rowsPerPage: Int = 28): String = {
     val sortedList = vereine.sortBy(_.vereinname)
     val rawpages = for {
-      a4seitenmenge <- if(rowsPerPage == 0) sortedList.sliding(sortedList.size, sortedList.size) else sortedList.sliding(rowsPerPage, rowsPerPage)
+      a4seitenmenge <- if rowsPerPage == 0 then sortedList.sliding(sortedList.size, sortedList.size) else sortedList.sliding(rowsPerPage, rowsPerPage)
+    } yield {
+      anmeldeListeProVerein(wettkampf, a4seitenmenge, logo)
     }
-      yield {
-        anmeldeListeProVerein(wettkampf, a4seitenmenge, logo)
-      }
 
     val pages = rawpages.mkString("</li></ul><ul><li>")
     intro + pages + outro

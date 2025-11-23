@@ -26,11 +26,11 @@ object Surname {
     given String = "UTF-8"
     val bufferedSource = Source.fromResource("vornamen.csv")
     try {
-      (for {
+      (for
         line <- bufferedSource.getLines()
         cols = line.split("\t").map(_.trim)
         if (cols.length == 3)
-      } yield {
+      yield {
         Surname(cols(0), cols(1), cols(2))
       }).toSet[Surname]
     } catch {

@@ -60,7 +60,7 @@ class CompetitionCoordinatorClientActor(wettkampfUUID: String) extends Persisten
   private val wkPgmId = wettkampf.programmId
   private val isDNoteUsed = wkPgmId != 20 && wkPgmId != 1
   private val snapShotInterval = 100
-  private val donationDonationBegin: LocalDate = if (Config.donationDonationBegin.nonEmpty) LocalDate.parse(Config.donationDonationBegin) else LocalDate.of(2000, 1, 1)
+  private val donationDonationBegin: LocalDate = if Config.donationDonationBegin.nonEmpty then LocalDate.parse(Config.donationDonationBegin) else LocalDate.of(2000, 1, 1)
   private val wettkampfdatum: LocalDate = wettkampf.datum
   private val donationActiv = donationDonationBegin.isBefore(wettkampfdatum) && Config.donationLink.nonEmpty && Config.donationPrice.nonEmpty
 
@@ -137,7 +137,7 @@ class CompetitionCoordinatorClientActor(wettkampfUUID: String) extends Persisten
   def handleEvent(evt: KutuAppEvent, recoveryMode: Boolean = false): Boolean = {
     val stateBefore = state
     state = state.updated(evt, isDNoteUsed)
-    if (!recoveryMode && lastSequenceNr % snapShotInterval == 0 && lastSequenceNr != 0) {
+    if !recoveryMode && lastSequenceNr % snapShotInterval == 0 && lastSequenceNr != 0 then {
       val criteria = SnapshotSelectionCriteria.Latest
       deleteSnapshots(criteria)
       saveSnapshot(state)
@@ -167,7 +167,7 @@ class CompetitionCoordinatorClientActor(wettkampfUUID: String) extends Persisten
     case ResetStartDurchgang(wettkampfUUID, durchgang) =>
       val senderWebSocket = actorWithSameDeviceIdOfSender()
       val resetted = DurchgangResetted(wettkampfUUID, durchgang)
-      if (handleEvent(resetted)) persist(resetted) { _ =>
+      if handleEvent(resetted) then persist(resetted) { _ =>
         storeDurchgangResetted(resetted)
         notifyWebSocketClients(senderWebSocket, resetted, durchgang)
       }
@@ -176,7 +176,7 @@ class CompetitionCoordinatorClientActor(wettkampfUUID: String) extends Persisten
     case StartDurchgang(wettkampfUUID, durchgang) =>
       val senderWebSocket = actorWithSameDeviceIdOfSender()
       val started = DurchgangStarted(wettkampfUUID, durchgang)
-      if (handleEvent(started)) persist(started) { evt =>
+      if handleEvent(started) then persist(started) { evt =>
         storeDurchgangStarted(started)
         notifyWebSocketClients(senderWebSocket, started, durchgang)
         val msg = NewLastResults(
@@ -190,7 +190,7 @@ class CompetitionCoordinatorClientActor(wettkampfUUID: String) extends Persisten
     case FinishDurchgang(wettkampfUUID, durchgang) =>
       val senderWebSocket = actorWithSameDeviceIdOfSender()
       val eventDurchgangFinished = DurchgangFinished(wettkampfUUID, durchgang)
-      if (handleEvent(eventDurchgangFinished)) persist(eventDurchgangFinished) { evt =>
+      if handleEvent(eventDurchgangFinished) then persist(eventDurchgangFinished) { evt =>
         storeDurchgangFinished(eventDurchgangFinished)
         notifyWebSocketClients(senderWebSocket, eventDurchgangFinished, durchgang)
         notifyBestenResult(durchgang)
@@ -200,11 +200,11 @@ class CompetitionCoordinatorClientActor(wettkampfUUID: String) extends Persisten
 
     case UpdateAthletWertung(athlet, wertung, wettkampfUUID, durchgang, geraet, step, programm) =>
       val senderWebSocket = actorWithSameDeviceIdOfSender()
-      if (state.finishedDurchgangSteps.exists(fds =>
+      if state.finishedDurchgangSteps.exists(fds =>
         encodeURIComponent(fds.durchgang) == encodeURIComponent(durchgang)
-          && fds.geraet == geraet && fds.step == step + 1)) {
+          && fds.geraet == geraet && fds.step == step + 1) then {
         sender() ! MessageAck("Diese Station ist bereits abgeschlossen und kann keine neuen Resultate mehr entgegennehmen.")
-      } else if (!state.startedDurchgaenge.exists(d => encodeURIComponent(d) == encodeURIComponent(durchgang))) {
+      } else if !state.startedDurchgaenge.exists(d => encodeURIComponent(d) == encodeURIComponent(durchgang)) then {
         sender() ! MessageAck("Dieser Durchgang ist noch nicht für die Resultaterfassung freigegeben.")
       } else try {
         val disz = wkDiszs.get(wertung.wettkampfdisziplinId).map(_.disziplin.easyprint).getOrElse(s"Disz${wertung.wettkampfdisziplinId}")
@@ -318,7 +318,7 @@ class CompetitionCoordinatorClientActor(wettkampfUUID: String) extends Persisten
       wsSend.flatMap(_._2).foreach(ws => ws ! TextMessage("keepAlive"))
       checkDonation()
 
-    case MessageAck(txt) => if (txt.equals("keepAlive")) handleKeepAliveAck() else println(txt)
+    case MessageAck(txt) => if txt.equals("keepAlive") then handleKeepAliveAck() else println(txt)
 
     case Stop => handleStop()
 
@@ -330,10 +330,10 @@ class CompetitionCoordinatorClientActor(wettkampfUUID: String) extends Persisten
       context.system.scheduler.scheduleOnce(30.second, self, TryStop)
 
     case TryStop =>
-      if (state.startedDurchgaenge.isEmpty &&
+      if state.startedDurchgaenge.isEmpty &&
         wsSend.isEmpty &&
         (LocalDate.now().isBefore(wettkampfdatum) || LocalDate.now().minusDays(2).isAfter(wettkampfdatum))
-      ) handleStop()
+      then handleStop()
 
     case Terminated(stoppedWebsocket) =>
       context.unwatch(stoppedWebsocket)
@@ -383,10 +383,10 @@ class CompetitionCoordinatorClientActor(wettkampfUUID: String) extends Persisten
   }
 
   private def checkDonation(): Unit = {
-    if (donationActiv && LocalDateTime.of(wettkampf.datum, LocalTime.of(7, 0, 0)).plusDays(2).isBefore(LocalDateTime.now()) && !state.completedflags.exists {
+    if donationActiv && LocalDateTime.of(wettkampf.datum, LocalTime.of(7, 0, 0)).plusDays(2).isBefore(LocalDateTime.now()) && !state.completedflags.exists {
       case DonationMailSent(_, _, _, wkid) if wkid == this.wettkampfUUID => true
       case _ => false
-    }) {
+    } then {
       val meta = getWettkampfMetaData(wkUUID)
       meta.finishDonationAsked match {
         case None =>
@@ -398,9 +398,9 @@ class CompetitionCoordinatorClientActor(wettkampfUUID: String) extends Persisten
                |""".stripMargin)
           val teilnehmer = getAllKandidatenWertungen(wkUUID)
           val results = teilnehmer.flatMap(k => k.wertungen.map(w => w.resultat.endnote)).sum
-          if (abschluss.finishOnlineAthletesCnt > 10 || (results > 0 && abschluss.finishAthletesCnt > 10)) {
-            val teilnehmerCnt = if (abschluss.finishAthletesCnt > 0) abschluss.finishAthletesCnt else abschluss.finishOnlineAthletesCnt
-            val clubsCnt = if (abschluss.finishClubsCnt > 0) abschluss.finishClubsCnt else abschluss.finishOnlineClubsCnt
+          if abschluss.finishOnlineAthletesCnt > 10 || (results > 0 && abschluss.finishAthletesCnt > 10) then {
+            val teilnehmerCnt = if abschluss.finishAthletesCnt > 0 then abschluss.finishAthletesCnt else abschluss.finishOnlineAthletesCnt
+            val clubsCnt = if abschluss.finishClubsCnt > 0 then abschluss.finishClubsCnt else abschluss.finishOnlineClubsCnt
             val pricePerTn = BigDecimal(Config.donationPrice)
             val betrag = (pricePerTn * teilnehmerCnt).setScale(2)
             val donationLink = Config.donationLink
@@ -445,7 +445,7 @@ class CompetitionCoordinatorClientActor(wettkampfUUID: String) extends Persisten
     })
     currentPlayer = currentPlayer.flatMap {
       case (playerActorRefs, useMyMediaPlayerAction) =>
-        if (wsSend.isEmpty || deviceWebsocketRefs.exists(p => p._1.equals(useMyMediaPlayerAction.context) || playerActorRefs.exists(a => a.equals(stoppedWebsocket)))) {
+        if wsSend.isEmpty || deviceWebsocketRefs.exists(p => p._1.equals(useMyMediaPlayerAction.context) || playerActorRefs.exists(a => a.equals(stoppedWebsocket))) then {
           notifyWebSocketClients(actorWithSameDeviceIdOfSender(), MediaPlayerDisconnected(useMyMediaPlayerAction.context), "")
           None
         } else {
@@ -472,7 +472,7 @@ class CompetitionCoordinatorClientActor(wettkampfUUID: String) extends Persisten
           }
           .filter(_._1 != "_")
           .flatMap { d =>
-            if (d._2.size > 1) {
+            if d._2.size > 1 then {
               Seq(d._2.head, d._2.last)
             } else {
               d._2
@@ -498,14 +498,14 @@ class CompetitionCoordinatorClientActor(wettkampfUUID: String) extends Persisten
 
     event match {
       case awuv: AthletWertungUpdated =>
-        val awuvWithDG = awuv.copy(durchgang = if (awuv.durchgang.isEmpty) findDurchgangForWertung(awuv.wertung) else awuv.durchgang)
+        val awuvWithDG = awuv.copy(durchgang = if awuv.durchgang.isEmpty then findDurchgangForWertung(awuv.wertung) else awuv.durchgang)
         persist(awuvWithDG) { _ => }
         handleEvent(awuvWithDG)
         val handledEvent = awuvWithDG.toAthletWertungUpdatedSequenced(state.lastSequenceId)
         forwardToListeners(handledEvent)
 
       case awuv: AthletWertungUpdatedSequenced =>
-        val awuvWithDG = awuv.copy(durchgang = if (awuv.durchgang.isEmpty) findDurchgangForWertung(awuv.wertung) else awuv.durchgang)
+        val awuvWithDG = awuv.copy(durchgang = if awuv.durchgang.isEmpty then findDurchgangForWertung(awuv.wertung) else awuv.durchgang)
         persist(awuvWithDG) { _ => }
         handleEvent(awuvWithDG)
         val handledEvent = awuvWithDG.toAthletWertungUpdated().toAthletWertungUpdatedSequenced(state.lastSequenceId)
@@ -540,7 +540,7 @@ class CompetitionCoordinatorClientActor(wettkampfUUID: String) extends Persisten
     }
     val s = sender()
     s ! MessageAck("OK")
-    originSender.foreach(os => if (!os.equals(s)) {
+    originSender.foreach(os => if !os.equals(s) then {
       os ! MessageAck("OK")
     })
   }
@@ -556,8 +556,8 @@ class CompetitionCoordinatorClientActor(wettkampfUUID: String) extends Persisten
                                       toPublish: KutuAppEvent,
                                       durchgang: String, exclusive:Boolean = false) = Future {
     //println(s"notifyWebsocketClients dg: $durchgang, excl: $exclusive, $toPublish")
-    if (durchgang == "") {
-      if (exclusive) {
+    if durchgang == "" then {
+      if exclusive then {
         wsSend.get(None) match {
           case Some(wsList) => wsList.filter(ws => !senderWebSocket.exists(_ == ws)).foreach(ws => ws ! toPublish)
           case _ =>
@@ -572,7 +572,7 @@ class CompetitionCoordinatorClientActor(wettkampfUUID: String) extends Persisten
         case Some(wsList) => wsList.filter(ws => !senderWebSocket.exists(_ == ws)).foreach(ws => ws ! toPublish)
         case _ =>
       }
-      if (!exclusive) {
+      if !exclusive then {
         wsSend.get(None) match {
           case Some(wsList) => wsList.filter(ws => !senderWebSocket.exists(_ == ws)).foreach(ws => ws ! toPublish)
           case _ =>
@@ -587,7 +587,7 @@ class CompetitionCoordinatorClientActor(wettkampfUUID: String) extends Persisten
   }
 
   private def addToDurchgangJournal(toPublish: AthletWertungUpdatedSequenced, durchgang: String): Unit = {
-    if (durchgang == "") {
+    if durchgang == "" then {
       openDurchgangJournal = openDurchgangJournal.flatMap {
         case (dgoption: Option[String], list: List[AthletWertungUpdatedSequenced]) =>
           Some(dgoption -> (list :+ toPublish))
@@ -612,7 +612,7 @@ class CompetitionCoordinatorClientActor(wettkampfUUID: String) extends Persisten
       state.lastWertungenPerDisz(durchgang),
       state.lastBestenResults)
     notifyWebSocketClients(Iterable.empty, msg, durchgang, exclusive = true)
-    if (durchgang.nonEmpty) {
+    if durchgang.nonEmpty then {
       val msgAll = NewLastResults(
         state.lastWertungenPerWKDisz(""),
         state.lastWertungenPerDisz(""),
@@ -760,7 +760,7 @@ object CompetitionCoordinatorClientActor extends JsonSupport with EnrichedJson {
 
 
   def tryMapText(text: String): KutuAppEvent = try {
-    if ("keepAlive".equalsIgnoreCase(text)) {
+    if "keepAlive".equalsIgnoreCase(text) then {
       MessageAck(text)
     } else {
       text.asType[KutuAppEvent]

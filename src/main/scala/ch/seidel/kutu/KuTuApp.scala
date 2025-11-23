@@ -80,10 +80,10 @@ object KuTuApp extends JFXApp3 with KutuService with JsonSupport with JwtSupport
 
   def updateTree: Unit = {
     def selectionPathToRoot(node: TreeItem[String]): List[TreeItem[String]] = {
-      if (node == null) {
+      if node == null then {
         List.empty
       }
-      else if (node.parent.value != null) {
+      else if node.parent.value != null then {
         selectionPathToRoot(node.parent.value) :+ node
       } else {
         List(node)
@@ -97,7 +97,7 @@ object KuTuApp extends JFXApp3 with KutuService with JsonSupport with JwtSupport
       try {
         tree = AppNavigationModel.create(KuTuApp.this)
         rootTreeItem.children = tree.getTree
-        for {node <- oldselected} {
+        for node <- oldselected do {
           lastNode.setExpanded(true)
           lastNode.children.find(n => n.value.value.equals(node.value.value)) match {
             case Some(n) => lastNode = n
@@ -153,15 +153,15 @@ object KuTuApp extends JFXApp3 with KutuService with JsonSupport with JwtSupport
     val timerTask = new Task[Void] {
       @throws[InterruptedException]
       override def call: Void = {
-        for (i <- 0 until 20) {
+        for i <- 0 until 20 do {
           updateProgress(i, 20)
-          if (seconds > 0) Thread.sleep(seconds * 50)
+          if seconds > 0 then Thread.sleep(seconds * 50)
         }
         updateProgress(20, 20)
         null
       }
     }
-    pForm.activateProgressBar(title, if (seconds > 0) timerTask else null)
+    pForm.activateProgressBar(title, if seconds > 0 then timerTask else null)
 
     val p = Promise[R]()
     Future[Boolean] {
@@ -219,13 +219,13 @@ object KuTuApp extends JFXApp3 with KutuService with JsonSupport with JwtSupport
   var cursorWaiters = 0
 
   def setCursor(c: Cursor): Unit = {
-    val ctoSet = if (c.equals(Cursor.Wait)) {
+    val ctoSet = if c.equals(Cursor.Wait) then {
       cursorWaiters += 1
       c
     }
     else {
       cursorWaiters -= 1
-      if (cursorWaiters > 0) {
+      if cursorWaiters > 0 then {
         Cursor.Wait
       }
       else {
@@ -234,7 +234,7 @@ object KuTuApp extends JFXApp3 with KutuService with JsonSupport with JwtSupport
       }
     }
     //logger.debug(cursorWaiters)
-    if (getStage() != null) {
+    if getStage() != null then {
       getStage().scene.delegate.getValue.cursor = ctoSet
       getStage().scene.delegate.getValue.root.value.requestLayout()
     }
@@ -243,7 +243,7 @@ object KuTuApp extends JFXApp3 with KutuService with JsonSupport with JwtSupport
   class ProgrammListCell extends javafx.scene.control.ListCell[ProgrammView] {
     override def updateItem(item: ProgrammView, empty: Boolean): Unit = {
       super.updateItem(item, empty)
-      if (item != null) {
+      if item != null then {
         textProperty().setValue(item.easyprint)
       }
     }
@@ -292,7 +292,7 @@ object KuTuApp extends JFXApp3 with KutuService with JsonSupport with JwtSupport
       val txtAuszeichnung = new TextField {
         prefWidth = 500
         promptText = "%-Angabe, wer eine Auszeichnung bekommt"
-        if (p.auszeichnung > 100) {
+        if p.auszeichnung > 100 then {
           text = dbl2Str(p.auszeichnung / 100d) + "%"
         }
         else {
@@ -324,7 +324,7 @@ object KuTuApp extends JFXApp3 with KutuService with JsonSupport with JwtSupport
 
         cmbRiegenRotationsregel.value.onChange {
           text.value = RiegenRotationsregel.predefined(cmbRiegenRotationsregel.value.value)
-          if (text.value.isEmpty && !"Einfach".equals(cmbRiegenRotationsregel.value.value)) {
+          if text.value.isEmpty && !"Einfach".equals(cmbRiegenRotationsregel.value.value) then {
             text.value = p.rotation
           }
         }
@@ -348,11 +348,11 @@ object KuTuApp extends JFXApp3 with KutuService with JsonSupport with JwtSupport
         )
 
         cmbTeamRegel.value.onChange {
-          if (cmbTeamRegel.value.value.equals("Individuell")) {
+          if cmbTeamRegel.value.value.equals("Individuell") then {
             text.value = p.teamrule
           } else {
             text.value = TeamRegel.predefined(cmbTeamRegel.value.value)
-            if (text.value.isEmpty && !"Keine Teams".equals(cmbTeamRegel.value.value)) {
+            if text.value.isEmpty && !"Keine Teams".equals(cmbTeamRegel.value.value) then {
               text.value = p.teamrule
             }
           }
@@ -378,7 +378,7 @@ object KuTuApp extends JFXApp3 with KutuService with JsonSupport with JwtSupport
 
         cmbPunktgleichstandsregel.value.onChange {
           text.value = Gleichstandsregel.predefined(cmbPunktgleichstandsregel.value.value)
-          if (text.value.isEmpty && !"Ohne".equals(cmbPunktgleichstandsregel.value.value)) {
+          if text.value.isEmpty && !"Ohne".equals(cmbPunktgleichstandsregel.value.value) then {
             text.value = p.punktegleichstandsregel
           }
         }
@@ -410,7 +410,7 @@ object KuTuApp extends JFXApp3 with KutuService with JsonSupport with JwtSupport
 
         cmbAltersklassen.value.onChange{
           text.value = Altersklasse.predefinedAKs(cmbAltersklassen.value.value)
-          if (text.value.isEmpty && !"Ohne".equals(cmbAltersklassen.value.value)) {
+          if text.value.isEmpty && !"Ohne".equals(cmbAltersklassen.value.value) then {
             text.value = p.altersklassen
           }
         }
@@ -436,7 +436,7 @@ object KuTuApp extends JFXApp3 with KutuService with JsonSupport with JwtSupport
 
         cmbJGAltersklassen.value.onChange{
           text.value = Altersklasse.predefinedAKs(cmbJGAltersklassen.value.value)
-          if (text.value.isEmpty && !"Ohne".equals(cmbJGAltersklassen.value.value)) {
+          if text.value.isEmpty && !"Ohne".equals(cmbJGAltersklassen.value.value) then {
             text.value = p.jahrgangsklassen
           }
         }
@@ -535,9 +535,9 @@ object KuTuApp extends JFXApp3 with KutuService with JsonSupport with JwtSupport
         initialFileName.value = p.titel.replace(" ", "_") + "_" + sdfYear.format(p.datum) + ".zip"
       }
       val selectedFile = fileChooser.showSaveDialog(getStage())
-      if (selectedFile != null) {
+      if selectedFile != null then {
         KuTuApp.invokeWithBusyIndicator {
-          val file = if (!selectedFile.getName.endsWith(".zip")) {
+          val file = if !selectedFile.getName.endsWith(".zip") then {
             new java.io.File(selectedFile.getAbsolutePath + ".zip")
           }
           else {
@@ -552,7 +552,7 @@ object KuTuApp extends JFXApp3 with KutuService with JsonSupport with JwtSupport
   def uploadResults(wettkampf: WettkampfView, caption: String): Unit = {
     import scala.concurrent.ExecutionContext.Implicits.global
     val process = KuTuApp.invokeAsyncWithBusyIndicator(caption) {
-      if (remoteBaseUrl.indexOf("localhost") > -1) {
+      if remoteBaseUrl.indexOf("localhost") > -1 then {
         KuTuServer.startServer()
       }
       KuTuServer.httpUploadWettkampfRequest(wettkampf.toWettkampf)
@@ -708,7 +708,7 @@ object KuTuApp extends JFXApp3 with KutuService with JsonSupport with JwtSupport
   }
 
   def makeWettkampfDurchfuehrenMenu(p: WettkampfView): MenuItem = {
-    if (!modelWettkampfModus.value) {
+    if !modelWettkampfModus.value then {
       makeMenuAction("Wettkampf durchführen") { (caption, action) =>
         modelWettkampfModus.value = true
       }
@@ -783,24 +783,24 @@ object KuTuApp extends JFXApp3 with KutuService with JsonSupport with JwtSupport
 
         def mapSexPrediction(athlet: AthletView) = Surname
           .isSurname(athlet.vorname)
-          .map { sn => if (sn.isMasculin == sn.isFeminin) athlet.geschlecht else if (sn.isMasculin) "M" else "W" }
+          .map { sn => if sn.isMasculin == sn.isFeminin then athlet.geschlecht else if sn.isMasculin then "M" else "W" }
           .getOrElse("X")
 
         val likeFinder = findAthleteLike(cache = new java.util.ArrayList[MatchCode], exclusive = true)
-        for {
+        for
           athleteView <- selectAthletesView
           athlete = athleteView.toAthlet
           like = likeFinder(athlete)
           if (athleteView.id != like.id)
-        } yield {
+        yield {
           val tupel: List[AthletView] = List(athleteView, loadAthleteView(like.id)).sortWith { (a, b) =>
-            if (a.gebdat.map(_.toLocalDate.getDayOfMonth).getOrElse(0) > b.gebdat.map(_.toLocalDate.getDayOfMonth).getOrElse(0)) true
+            if a.gebdat.map(_.toLocalDate.getDayOfMonth).getOrElse(0) > b.gebdat.map(_.toLocalDate.getDayOfMonth).getOrElse(0) then true
             else {
               val asp = mapSexPrediction(a)
               val bsp = mapSexPrediction(b)
-              if (asp == a.geschlecht && bsp != b.geschlecht) true
-              else if (bsp == b.geschlecht && asp != a.geschlecht) false
-              else if (a.id - b.id < 0) true
+              if asp == a.geschlecht && bsp != b.geschlecht then true
+              else if bsp == b.geschlecht && asp != a.geschlecht then false
+              else if a.id - b.id < 0 then true
               else false
             }
           }
@@ -1061,7 +1061,7 @@ object KuTuApp extends JFXApp3 with KutuService with JsonSupport with JwtSupport
       }, new Button("OK") {
         disable <== when(serverList.selectionModel.value.selectedItemProperty.isNull()) choose true otherwise false
         onAction = (_: ActionEvent) => {
-          if (!serverList.selectionModel().isEmpty) {
+          if !serverList.selectionModel().isEmpty then {
             serverList.items.value.zipWithIndex.filter {
               x => serverList.selectionModel.value.isSelected(x._2)
             }.collectFirst{ selected =>
@@ -1086,11 +1086,11 @@ object KuTuApp extends JFXApp3 with KutuService with JsonSupport with JwtSupport
 
   def validateUpload(p: WettkampfView, caption: String, action: ActionEvent)(handler: String=>Unit): Unit = {
     implicit val e: ActionEvent = action
-    if(Config.isLocalHostServer) {
+    if Config.isLocalHostServer then {
       handler(caption)
-    } else if (
+    } else if
       ConnectionStates.connectedProperty.value ||
-        p.toWettkampf.hasSecred(homedir, remoteHostOrigin)) {
+        p.toWettkampf.hasSecred(homedir, remoteHostOrigin) then {
       PageDisplayer.showInDialog(caption, new DisplayablePage() {
         def getPage: Node = {
           new BorderPane {
@@ -1114,7 +1114,7 @@ object KuTuApp extends JFXApp3 with KutuService with JsonSupport with JwtSupport
             hgrow = Priority.Always
             vgrow = Priority.Always
             center = new VBox {
-              if (p.titel.toLowerCase.contains("test") && !remoteHostOrigin.contains("test")) {
+              if p.titel.toLowerCase.contains("test") && !remoteHostOrigin.contains("test") then {
                 children.addAll(new Label("Sofern es sich um ein Testwettkampf handelt bitte zuerst mit dem Test-Server verbinden."))
               }
               children.addAll(
@@ -1136,10 +1136,10 @@ object KuTuApp extends JFXApp3 with KutuService with JsonSupport with JwtSupport
 
   def validateConnect(p: WettkampfView, caption: String, action: ActionEvent)(handler: String=>Unit): Unit = {
     implicit val e: ActionEvent = action
-    if(Config.isLocalHostServer ||
+    if Config.isLocalHostServer ||
       ConnectionStates.connectedProperty.value ||
       p.toWettkampf.hasSecred(homedir, remoteHostOrigin) ||
-      p.toWettkampf.hasRemote(homedir, remoteHostOrigin)) {
+      p.toWettkampf.hasRemote(homedir, remoteHostOrigin) then {
       handler(caption)
     } else {
       validateUpload(p, caption, action)(handler)
@@ -1148,14 +1148,14 @@ object KuTuApp extends JFXApp3 with KutuService with JsonSupport with JwtSupport
   def connectAndShare(p: WettkampfView, caption: String, action: ActionEvent) = {
     implicit val e = action
     val process = KuTuApp.invokeAsyncWithBusyIndicator(caption) {
-      if (Config.isLocalHostServer) {
-        if (!p.toWettkampf.hasSecred(homedir, "localhost")) {
+      if Config.isLocalHostServer then {
+        if !p.toWettkampf.hasSecred(homedir, "localhost") then {
           p.toWettkampf.saveSecret(homedir, "localhost", jwt.JsonWebToken(jwtHeader, setClaims(p.uuid.get, Int.MaxValue), jwtSecretKey))
         }
         httpRenewLoginRequest   (s"$remoteBaseUrl/api/loginrenew", p.uuid.get, p.toWettkampf.readSecret(homedir, "localhost").get)
-      } else if (!p.toWettkampf.hasRemote(homedir, remoteHostOrigin)) {
+      } else if !p.toWettkampf.hasRemote(homedir, remoteHostOrigin) then {
         httpUploadWettkampfRequest(p.toWettkampf, Connect)
-      } else if (p.toWettkampf.hasSecred(homedir, remoteHostOrigin)) {
+      } else if p.toWettkampf.hasSecred(homedir, remoteHostOrigin) then {
         httpRenewLoginRequest(s"$remoteBaseUrl/api/loginrenew", p.uuid.get, p.toWettkampf.readSecret(homedir, remoteHostOrigin).get)
       } else {
         Future{EmptyResponse()}
@@ -1178,7 +1178,7 @@ object KuTuApp extends JFXApp3 with KutuService with JsonSupport with JwtSupport
     })
     process.onComplete {
       case Success(wspromise) =>
-        if (!wspromise.isCompleted) {
+        if !wspromise.isCompleted then {
           logger.info(s"share: completed upload-operation. Show success-message ...")
           ConnectionStates.connectedWith(p.uuid.get, wspromise)
           Player.setWettkampf(p.toWettkampf, this)
@@ -1225,7 +1225,7 @@ object KuTuApp extends JFXApp3 with KutuService with JsonSupport with JwtSupport
   }
 
   def makeNeuerWettkampfAnlegenMenu(copyFrom: Option[WettkampfView] = None): MenuItem = {
-    val menutext = if (copyFrom.isEmpty) "Neuen Wettkampf anlegen ..." else s"Neuen Wettkampf wie ${copyFrom.get.easyprint} anlegen ..."
+    val menutext = if copyFrom.isEmpty then "Neuen Wettkampf anlegen ..." else s"Neuen Wettkampf wie ${copyFrom.get.easyprint} anlegen ..."
     makeMenuAction(menutext) { (caption, action) =>
       implicit val e = action
       val txtDatum = new DatePicker {
@@ -1259,7 +1259,7 @@ object KuTuApp extends JFXApp3 with KutuService with JsonSupport with JwtSupport
         promptText = "%-Angabe, wer eine Auszeichnung bekommt"
         text.value = "40.00%"
         copyFrom.map(_.auszeichnung).foreach(auszeichnung => {
-          if (auszeichnung > 100) {
+          if auszeichnung > 100 then {
             text = dbl2Str(auszeichnung / 100d) + "%"
           }
           else {
@@ -1324,7 +1324,7 @@ object KuTuApp extends JFXApp3 with KutuService with JsonSupport with JwtSupport
 
         cmbTeamRegel.value.onChange {
           text.value = TeamRegel.predefined(cmbTeamRegel.value.value)
-          if (text.value.isEmpty && !"Keine Teams".equals(cmbTeamRegel.value.value)) {
+          if text.value.isEmpty && !"Keine Teams".equals(cmbTeamRegel.value.value) then {
             text.value = ""
           }
         }
@@ -1470,7 +1470,7 @@ object KuTuApp extends JFXApp3 with KutuService with JsonSupport with JwtSupport
             txtTeamRegel.text.value
           )
           val dir = new java.io.File(homedir + "/" + w.easyprint.replace(" ", "_"))
-          if (!dir.exists()) {
+          if !dir.exists() then {
             dir.mkdirs();
           }
           copyFrom.foreach(wkToCopy => {
@@ -1478,18 +1478,18 @@ object KuTuApp extends JFXApp3 with KutuService with JsonSupport with JwtSupport
             val sourceFolder = new File(homedir + "/" + encodeFileName(copyFrom.get.easyprint))
             val targetFolder = new File(homedir + "/" + encodeFileName(w.easyprint))
             val sourceLogo = PrintUtil.locateLogoFile(sourceFolder)
-            if (!targetFolder.equals(sourceFolder) && sourceLogo.exists()) {
+            if !targetFolder.equals(sourceFolder) && sourceLogo.exists() then {
               val logofileCopyTo = targetFolder.toPath.resolve(sourceLogo.getName)
-              if (!logofileCopyTo.toFile.exists()) {
+              if !logofileCopyTo.toFile.exists() then {
                 Files.copy(sourceLogo.toPath, logofileCopyTo)
               }
             }
-            if (wkToCopy.programm.id == w.programmId) {
+            if wkToCopy.programm.id == w.programmId then {
               updateOrInsertPlanTimes(loadWettkampfDisziplinTimes(wkToCopy.id).map(_.toWettkampfPlanTimeRaw.copy(wettkampfId = w.id)))
               updateScoreCalcTemplates(loadScoreCalcTemplates(wkToCopy.id).map(_.copy(wettkampfId = Some(w.id))))
             }
 
-            if (!targetFolder.equals(sourceFolder)) {
+            if !targetFolder.equals(sourceFolder) then {
               sourceFolder
                 .listFiles()
                 .filter(f => f.getName.endsWith(".scoredef"))
@@ -1499,7 +1499,7 @@ object KuTuApp extends JFXApp3 with KutuService with JsonSupport with JwtSupport
                 }
                 .foreach(scoreFileSource => {
                   val targetFilePath = targetFolder.toPath.resolve(scoreFileSource.getName)
-                  if (!targetFilePath.toFile.exists()) {
+                  if !targetFilePath.toFile.exists() then {
                     Files.copy(scoreFileSource.toPath, targetFilePath)
                   }
                 })
@@ -1554,7 +1554,7 @@ object KuTuApp extends JFXApp3 with KutuService with JsonSupport with JwtSupport
             }, new Button("OK") {
               disable <== when(wkTable.selectionModel.value.selectedItemProperty.isNull) choose true otherwise false
               onAction = (event: ActionEvent) => {
-                if (!wkTable.selectionModel.value.isEmpty) {
+                if !wkTable.selectionModel.value.isEmpty then {
                   wkTable.items.value.zipWithIndex.filter {
                     x => wkTable.selectionModel.value.isSelected(x._2)
                   }.map { x =>
@@ -1611,14 +1611,14 @@ object KuTuApp extends JFXApp3 with KutuService with JsonSupport with JwtSupport
       }
       val selectedFile = fileChooser.showOpenDialog(getStage())
       import scala.concurrent.ExecutionContext.Implicits.*
-      if (selectedFile != null) {
+      if selectedFile != null then {
         val wf = KuTuApp.invokeAsyncWithBusyIndicator[Wettkampf](caption) {
           Future[Wettkampf] {
             val is = new FileInputStream(selectedFile)
             val w = ResourceExchanger.importWettkampf(is)
             is.close()
             val dir = new java.io.File(homedir + "/" + w.easyprint.replace(" ", "_"))
-            if (!dir.exists()) {
+            if !dir.exists() then {
               dir.mkdirs();
             }
             w
@@ -1664,8 +1664,8 @@ object KuTuApp extends JFXApp3 with KutuService with JsonSupport with JwtSupport
   }
 
   def showQRCode(caption: String, p: WettkampfView) = {
-    val secretOrigin = if (Config.isLocalHostServer) {
-      if (!p.toWettkampf.hasSecred(homedir, "localhost")) {
+    val secretOrigin = if Config.isLocalHostServer then {
+      if !p.toWettkampf.hasSecred(homedir, "localhost") then {
         p.toWettkampf.saveSecret(homedir, "localhost", jwt.JsonWebToken(jwtHeader, setClaims(p.uuid.get, Int.MaxValue), jwtSecretKey))
       }
       "localhost"
@@ -1677,7 +1677,7 @@ object KuTuApp extends JFXApp3 with KutuService with JsonSupport with JwtSupport
         val shorttimeout = getExpiration(shortsecret).getOrElse(new Date())
         val longtimeout = getExpiration(secret).getOrElse(new Date())
 
-        val connectionList = if (Config.isLocalHostServer) {
+        val connectionList = if Config.isLocalHostServer then {
           List(Config.remoteBaseUrl) //server.listNetworkAdresses.toList
         } else List(remoteBaseUrl)
         val tablist = connectionList.map { address =>
@@ -1902,7 +1902,7 @@ object KuTuApp extends JFXApp3 with KutuService with JsonSupport with JwtSupport
 
   def makeWettkampfDataDirectoryMenu(w: WettkampfView) = makeMenuAction("Wettkampf Verzeichnis öffnen") { (caption, action) =>
     val dir = new java.io.File(homedir + "/" + encodeFileName(w.easyprint))
-    if (!dir.exists()) {
+    if !dir.exists() then {
       dir.mkdirs()
     }
 
@@ -2030,7 +2030,7 @@ object KuTuApp extends JFXApp3 with KutuService with JsonSupport with JwtSupport
 
       disable <== btnWettkampfModus.disable
       onAction = handleAction { action =>
-        if (ConnectionStates.connectedProperty.value) {
+        if ConnectionStates.connectedProperty.value then {
           ConnectionStates.disconnected()
         } else {
           validateConnect(selectedWettkampf.value, "Share", action) { caption =>
@@ -2122,9 +2122,9 @@ object KuTuApp extends JFXApp3 with KutuService with JsonSupport with JwtSupport
     }
     controlsView.selectionModel().selectionMode = SelectionMode.Single
     controlsView.selectionModel().selectedItem.onChange { (_, _, newItem) =>
-      if (!lastSelected.value.equals("Updating")) {
+      if !lastSelected.value.equals("Updating") then {
         btnWettkampfModus.disable.value = true
-        if (newItem != null && !newItem.value.value.equals(lastSelected.value)) {
+        if newItem != null && !newItem.value.value.equals(lastSelected.value) then {
           lastSelected.value = newItem.value.value
           newItem.value.value match {
             case "Athleten" =>
@@ -2187,7 +2187,7 @@ object KuTuApp extends JFXApp3 with KutuService with JsonSupport with JwtSupport
             case (_, _) =>
               PageDisplayer.choosePage(modelWettkampfModus, None, "dashBoard", tree)
           }
-          if (splitPane.items.size > 1) {
+          if splitPane.items.size > 1 then {
             splitPane.items.remove(1)
           }
           splitPane.items.add(1, centerPane)
@@ -2197,13 +2197,13 @@ object KuTuApp extends JFXApp3 with KutuService with JsonSupport with JwtSupport
 
     var divider: Option[Double] = None
     modelWettkampfModus.onChange {
-      if (modelWettkampfModus.value) {
+      if modelWettkampfModus.value then {
         divider = Some(splitPane.dividerPositions(0))
       }
-      if (!modelWettkampfModus.value && (divider match {
+      if !modelWettkampfModus.value && (divider match {
         case Some(_) => true
         case _ => false
-      })) {
+      }) then {
         splitPane.dividerPositions = divider.get
       }
       else {
@@ -2235,13 +2235,13 @@ object KuTuApp extends JFXApp3 with KutuService with JsonSupport with JwtSupport
       x = bounds.minX + bounds.width / 2 - sceneWidth / 2
       y = bounds.minY + bounds.height / 2 - sceneHeigth / 2
       val st = this.getClass.getResource("/css/Main.css")
-      if (st == null) {
+      if st == null then {
         logger.debug("Ressource /css/main.css not found. Class-Anchor: " + this.getClass)
       }
-      else if (scene() == null) {
+      else if scene() == null then {
         logger.debug("scene() == null")
       }
-      else if (scene().getStylesheets == null) {
+      else if scene().getStylesheets == null then {
         logger.debug("scene().getStylesheets == null")
       }
       else {

@@ -76,7 +76,7 @@ class KuTuMailerActor(smtpHost: String, smtpPort: Int, smtpUsername: String, smt
 
   override def preStart(): Unit = {
     log.info(s"Start KuTuMailerActor")
-    if (!smtpHost.equalsIgnoreCase("undefined") && smtpPort > 0) {
+    if !smtpHost.equalsIgnoreCase("undefined") && smtpPort > 0 then {
       this.context.become(receiveHot)
     } else {
       log.warning("No smtp environment configured. No mails will be sent!")
@@ -99,7 +99,7 @@ class KuTuMailerActor(smtpHost: String, smtpPort: Int, smtpUsername: String, smt
     case mail: Mail =>
       val completionObserver: Try[String] => Unit = observeMailComletion(mail, 0, sender())
       send(mail).handleAsync {(v,e) =>
-        if (e != null) {
+        if e != null then {
           completionObserver(Failure(e))
         } else {
           completionObserver(Success("OK"))
@@ -110,7 +110,7 @@ class KuTuMailerActor(smtpHost: String, smtpPort: Int, smtpUsername: String, smt
       case mail: Mail =>
         val completionObserver: Try[String] => Unit = observeMailComletion(mail, retries, sender)
         send(mail).handleAsync {(v,e) =>
-          if (e != null) {
+          if e != null then {
             completionObserver(Failure(e))
           } else {
             completionObserver(
@@ -128,7 +128,7 @@ class KuTuMailerActor(smtpHost: String, smtpPort: Int, smtpUsername: String, smt
       sender ! StatusCodes.OK
     case Failure(e) =>
       e.printStackTrace()
-      if (retries < 3) {
+      if retries < 3 then {
         log.warning(s"mail ${mail.subject} to ${mail.to} delivery failed: " + e.toString)
         this.context.system.scheduler.scheduleOnce(FiniteDuration((5 * retries + 1), TimeUnit.MINUTES), self, SendRetry(mail, retries + 1, sender))
       } else {
@@ -163,7 +163,7 @@ object KuTuMailerActor {
   val mailSenderAppName = Config.config.getString("app.smtpsender.appname")
 
   def props(): Props = {
-    if (isSMTPConfigured) {
+    if isSMTPConfigured then {
       Props(classOf[KuTuMailerActor],
         Config.config.getString("X_SMTP_HOST"), Config.config.getInt("X_SMTP_PORT"),
         Config.config.getString("X_SMTP_USERNAME"), Config.config.getString("X_SMTP_DOMAIN"),

@@ -41,7 +41,7 @@ object LoadDialog {
                 fc.setTitle("Audiofiles laden")
                 fc.setInitialDirectory(wettkampf.map(_.audiofilesDir).getOrElse(new File(Config.homedir)))
                 val file: File = fc.showDialog(dialog)
-                if (file != null) {
+                if file != null then {
                   urlField.setText(file.toURI.toString)
                 }
               }
@@ -61,7 +61,7 @@ object LoadDialog {
                 fc.setSelectedExtensionFilter(fc.getExtensionFilters.get(0))
                 fc.setInitialDirectory(wettkampf.map(_.audiofilesDir).getOrElse(new File(Config.homedir)))
                 val file: File = fc.showOpenDialog(dialog)
-                if (file != null) {
+                if file != null then {
                   urlField.setText(file.toURI.toString)
                 }
               }

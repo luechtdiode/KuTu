@@ -49,7 +49,7 @@ object PageDisplayer {
   }
 
   def showInDialog(tit: String, nodeToAdd: DisplayablePage, commands: Button*)(implicit event: ActionEvent): Unit = {
-    val buttons = commands :+ new Button(if(commands.isEmpty) "Schliessen" else "Abbrechen")
+    val buttons = commands :+ new Button(if commands.isEmpty then "Schliessen" else "Abbrechen")
     // Create dialog
     val dialogStage = new Stage {
       outer => {
@@ -74,7 +74,7 @@ object PageDisplayer {
             }
             var first = false
             buttons.foreach { btn =>
-              if(!first) {
+              if !first then {
                 first = true
                 btn.defaultButton = true
               }
@@ -85,7 +85,7 @@ object PageDisplayer {
       }
     }
     dialogStage.delegate.addEventHandler(KeyEvent.KEY_RELEASED, (event: KeyEvent) => {
-      if (KeyCode.ESCAPE eq event.getCode) dialogStage.close()
+      if KeyCode.ESCAPE eq event.getCode then dialogStage.close()
     })
 
     // Show dialog and wait till it is closed
@@ -93,7 +93,7 @@ object PageDisplayer {
   }
   
   def showInDialogFromRoot(tit: String, nodeToAdd: DisplayablePage, commands: Button*): Unit = {
-    val buttons = commands :+ new Button(if(commands.isEmpty) "Schliessen" else "Abbrechen")
+    val buttons = commands :+ new Button(if commands.isEmpty then "Schliessen" else "Abbrechen")
     // Create dialog
     val dialogStage = new Stage {
       outer => {
@@ -113,7 +113,7 @@ object PageDisplayer {
             }
             var first = false
             buttons.foreach { btn =>
-              if(!first) {
+              if !first then {
                 first = true
                 btn.defaultButton = true
               }
@@ -124,7 +124,7 @@ object PageDisplayer {
       }
     }
     dialogStage.delegate.addEventHandler(KeyEvent.KEY_RELEASED, (event: KeyEvent) => {
-      if (KeyCode.ESCAPE eq event.getCode) dialogStage.close()
+      if KeyCode.ESCAPE eq event.getCode then dialogStage.close()
     })
     // Show dialog and wait till it is closed
     dialogStage.showAndWait()
@@ -193,7 +193,7 @@ object PageDisplayer {
         })
       p success ret      
     }
-    if (Platform.isFxApplicationThread) ask() else Platform.runLater{ask()}
+    if Platform.isFxApplicationThread then ask() else Platform.runLater{ask()}
 
     Await.result(p.future, Duration.Inf)
   }
@@ -219,7 +219,7 @@ object PageDisplayer {
         })
       p success ret
     }
-    if (Platform.isFxApplicationThread) ask() else Platform.runLater{ask()}
+    if Platform.isFxApplicationThread then ask() else Platform.runLater{ask()}
 
     Await.result(p.future, Duration.Inf)
   }

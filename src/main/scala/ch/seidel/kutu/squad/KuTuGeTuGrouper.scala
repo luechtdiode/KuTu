@@ -7,7 +7,7 @@ case object KuTuGeTuGrouper extends RiegenGrouper {
   override def generateRiegenName(w: WertungView) = groupKey(wkGrouper.take(wkGrouper.size - 1))(w)
 
   override def buildGrouper(riegencnt: Int): (List[WertungView => String], List[WertungView => String], Boolean) = {
-    val wkFilteredGrouper = wkGrouper.take(if (riegencnt == 0) wkGrouper.size - 1 else wkGrouper.size)
+    val wkFilteredGrouper = wkGrouper.take(if riegencnt == 0 then wkGrouper.size - 1 else wkGrouper.size)
     (wkFilteredGrouper, wkGrouper, false)
   }
 

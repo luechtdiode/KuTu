@@ -121,6 +121,6 @@ object NameCodec {
   private def cleanFromNonChars(text: String) = text.toCharArray.filter(char => !ignoredChars.contains(char)).mkString("")
 
   private def cleanFromRepeatedChars(text: String) = text.foldLeft(""){(acc, char) =>
-    if (acc.nonEmpty && acc.last == char) acc else acc :+ char
+    if acc.nonEmpty && acc.last == char then acc else acc :+ char
   }
 }

@@ -62,7 +62,7 @@ object TurnerPage {
     override def isPopulated: Boolean = {
       val athleten = service.selectAthletesOfVerein(verein.id)
         .sortBy { a =>
-          (if (a.activ) {
+          (if a.activ then {
             "A"
           } else {
             "X"
@@ -109,13 +109,13 @@ object TurnerPage {
         val sortOrder = athletenview.sortOrder.toList
         wkModel.clear()
         val searchQuery = newVal.toUpperCase().split(" ")
-        for {athlet <- athleten} {
+        for athlet <- athleten do {
           val matches =
             searchQuery.forall { search =>
-              if (search.isEmpty || athlet.name.value.toUpperCase().contains(search)) {
+              if search.isEmpty || athlet.name.value.toUpperCase().contains(search) then {
                 true
               }
-              else if (athlet.vorname.value.toUpperCase().contains(search)) {
+              else if athlet.vorname.value.toUpperCase().contains(search) then {
                 true
               }
               else {
@@ -123,7 +123,7 @@ object TurnerPage {
               }
             }
 
-          if (matches) {
+          if matches then {
             wkModel += athlet
           }
         }
@@ -135,7 +135,7 @@ object TurnerPage {
       val txtUserFilter = new TextField() {
         promptText = "Athlet-Filter"
         text.addListener { (o: javafx.beans.value.ObservableValue[? <: String], oldVal: String, newVal: String) =>
-          if (!lastFilter.equalsIgnoreCase(newVal)) {
+          if !lastFilter.equalsIgnoreCase(newVal) then {
             updateFilteredList(newVal)
           }
         }
@@ -162,7 +162,7 @@ object TurnerPage {
         text = "Athlet entfernen"
         minWidth = 75
         onAction = (event: ActionEvent) => {
-          if (!athletenview.selectionModel().isEmpty) {
+          if !athletenview.selectionModel().isEmpty then {
             val athlet = athletenview.selectionModel().getSelectedItem
             implicit val impevent = event
             PageDisplayer.showInDialog(text.value, new DisplayablePage() {
@@ -190,7 +190,7 @@ object TurnerPage {
         text = "Athlet im Verein Analysieren"
         minWidth = 75
         onAction = (event: ActionEvent) => {
-          if (!athletenview.selectionModel().isEmpty) {
+          if !athletenview.selectionModel().isEmpty then {
             val a = athletenview.selectionModel().getSelectedItem.commit
             drillDownInAthlet(Some(verein), a, service, tabpane)
           }

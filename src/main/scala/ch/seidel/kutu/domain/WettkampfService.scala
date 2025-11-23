@@ -49,7 +49,7 @@ trait WettkampfService extends DBService
   }
 
   def readNotenModus(wkid: Long, id: Long, disz: Disziplin, pgm: ProgrammView, notenfaktor: Double, cache: scala.collection.mutable.Map[Long, List[ScoreCalcTemplate]]): NotenModus = {
-    if (pgm.head.id == 1) {
+    if pgm.head.id == 1 then {
       val skala = sql"""
                    select kurzbeschreibung, punktwert from notenskala
                    where wettkampfdisziplin_id=${id}
@@ -58,7 +58,7 @@ trait WettkampfService extends DBService
       val skalamap = Await.result(database.run(skala.withPinnedSession), Duration.Inf).toMap
       Athletiktest(skalamap, notenfaktor)
     }
-    else if (pgm.toPath.contains("Turn10")) {
+    else if pgm.toPath.contains("Turn10") then {
       // Turn10 special score-labels
       StandardWettkampf(notenfaktor, "A", "B", scoreTemplate = evaluateScoreCalcTemplate(wkid, disz.id, id, cache))
     }
@@ -80,7 +80,7 @@ trait WettkampfService extends DBService
         .map { map =>
           map.foldLeft(List[ProgrammView]()) { (acc, pgmEntry) =>
             val (id, pgm) = pgmEntry
-            if (pgm.parentId > 0) {
+            if pgm.parentId > 0 then {
               acc :+ pgm.withParent(map(pgm.parentId).toView)
             } else {
               acc :+ pgm.toView
@@ -166,9 +166,9 @@ trait WettkampfService extends DBService
   }
 
   def updateOrInsertPlanTimes(planTimes: Iterable[WettkampfPlanTimeRaw]): Unit = {
-    def insertPlanTime(rs: Iterable[WettkampfPlanTimeRaw]) = DBIO.sequence(for {
+    def insertPlanTime(rs: Iterable[WettkampfPlanTimeRaw]) = DBIO.sequence(for
       planTime <- rs
-    } yield {
+    yield {
       sqlu"""
                 insert into wettkampf_plan_zeiten
                 (wettkampf_Id, wettkampfdisziplin_id, wechsel, einturnen, uebung, wertung)
@@ -177,9 +177,9 @@ trait WettkampfService extends DBService
         """
     })
 
-    val process = DBIO.sequence(for {
+    val process = DBIO.sequence(for
       (wettkampfid, planTime) <- planTimes.groupBy(_.wettkampfId)
-    } yield {
+    yield {
       sqlu"""
                 delete from wettkampf_plan_zeiten where
                 wettkampf_id=${wettkampfid}
@@ -264,16 +264,16 @@ trait WettkampfService extends DBService
          """.as[PublishedScoreView].head
 
     val publishedScoreView = Await.result(database.run(process.transactionally), Duration.Inf)
-    if (propagate) {
+    if propagate then {
       val ps = ScoresPublished(publishedScoreView.id, publishedScoreView.title, publishedScoreView.query, publishedScoreView.published, publishedScoreView.wettkampf.uuid.get)
       WebSocketClient.publish(ps)
     }
     publishedScoreView
   }
 
-  private def insertPublishedScores(scs: Iterable[PublishedScoreRaw]) = DBIO.sequence(for {
+  private def insertPublishedScores(scs: Iterable[PublishedScoreRaw]) = DBIO.sequence(for
     score <- scs
-  } yield {
+  yield {
     sqlu"""
                 delete from published_scores where
                 wettkampf_id=${score.wettkampfId} and (id=${score.id} or title=${score.title})
@@ -294,7 +294,7 @@ trait WettkampfService extends DBService
       insertPublishedScores(Seq(PublishedScoreRaw(scoreId, title, query, published, new Date(System.currentTimeMillis()), wettkampfId)))
         .transactionally), Duration.Inf).head
 
-    if (propagate) {
+    if propagate then {
       val ps = ScoresPublished(publishedScoreView.id, publishedScoreView.title, publishedScoreView.query, publishedScoreView.published, publishedScoreView.wettkampf.uuid.get)
       WebSocketClient.publish(ps)
     }
@@ -302,9 +302,9 @@ trait WettkampfService extends DBService
   }
 
   def updateOrinsertScoreDefs(scores: Iterable[PublishedScoreRaw]): Unit = {
-    val process = DBIO.sequence(for {
+    val process = DBIO.sequence(for
       (wettkampfid, scores) <- scores.groupBy(_.wettkampfId)
-    } yield {
+    yield {
       sqlu"""
                 delete from published_scores where
                 wettkampf_id=${wettkampfid}
@@ -324,7 +324,7 @@ trait WettkampfService extends DBService
         def resolve(id: Long): ProgrammView = {
           val item = map(id)
           val parent = item.parentId
-          if (parent > 0) {
+          if parent > 0 then {
             item.withParent(resolve(parent))
           } else {
             item.toView
@@ -486,9 +486,9 @@ trait WettkampfService extends DBService
   }
 
   def updateScoreCalcTemplates(templates: Iterable[ScoreCalcTemplate]): Unit = {
-    def insertTemplate(rs: Iterable[ScoreCalcTemplate]) = DBIO.sequence(for {
+    def insertTemplate(rs: Iterable[ScoreCalcTemplate]) = DBIO.sequence(for
       template <- rs
-    } yield {
+    yield {
       sqlu"""
                 insert into scoretemplate
                 (wettkampf_id, disziplin_id, wettkampfdisziplin_id, dFormula, eFormula, pFormula, aggregateFn)
@@ -497,10 +497,10 @@ trait WettkampfService extends DBService
         """
     })
 
-    val process = DBIO.sequence(for {
+    val process = DBIO.sequence(for
       (wettkampfid, templates) <- templates.groupBy(_.wettkampfId)
       if wettkampfid.nonEmpty
-    } yield {
+    yield {
       sqlu"""
                 delete from scoretemplate where
                 wettkampf_id=${wettkampfid}
@@ -552,11 +552,11 @@ trait WettkampfService extends DBService
 
     def seek(pid: Long, acc: Seq[ProgrammView]): Seq[ProgrammView] = {
       val ch = children(pid)
-      if (ch.isEmpty) {
+      if ch.isEmpty then {
         acc :+ readProgramm(pid)
       }
       else {
-        (for (c <- ch) yield (seek(c.id, acc))).flatten
+        (for c <- ch yield (seek(c.id, acc))).flatten
       }
     }
 
@@ -629,7 +629,7 @@ trait WettkampfService extends DBService
       case None => throw new IllegalStateException(s"Techn. Fehler: Wettkampf nicht gefunden")
     }
 
-    if (!heads.forall { h => h.id == heads.head.id }) {
+    if !heads.forall { h => h.id == heads.head.id } then {
       throw new IllegalArgumentException("Programme nicht aus der selben Gruppe können nicht in einen Wettkampf aufgenommen werden")
     }
     val process = initialCheck
@@ -658,14 +658,14 @@ trait WettkampfService extends DBService
   def saveWettkampf(id: Long, datum: java.sql.Date, titel: String, programmId: Set[Long], notificationEMail: String, auszeichnung: Int, auszeichnungendnote: scala.math.BigDecimal, uuidOption: Option[String], altersklassen: String, jahrgangsklassen: String, punktegleichstandsregel: String, rotation: String, teamrule: String): Wettkampf = {
     val uuid = uuidOption.getOrElse(UUID.randomUUID().toString())
     val cache = scala.collection.mutable.Map[Long, ProgrammView]()
-    val process = for {
+    val process = for
       existing <- sql"""
                   select * from wettkampf
                   where id = $id
                       """.as[Wettkampf]
       hasWertungen <- sql"""
                   select count(*) from wertung where wettkampf_id=$id""".as[Int]
-    } yield {
+    yield {
       val programs = (programmId + existing.head.programmId) map (p => readProgramm(p, cache))
       val heads = programs map (_.head)
       val update =
@@ -684,8 +684,8 @@ trait WettkampfService extends DBService
                   where id=$id
           """
 
-      val updateWithPlanTimes = if (!heads.forall { h => h.id == heads.head.id }) {
-        if (hasWertungen.head > 0)
+      val updateWithPlanTimes = if !heads.forall { h => h.id == heads.head.id } then {
+        if hasWertungen.head > 0 then
           throw new IllegalArgumentException("Es kann keine Programmanpassung gemacht werden, wenn bereits Turner zum Wettkampf verknüpft sind.")
         else {
           update >> initPlanZeitenActions(id)
@@ -883,7 +883,7 @@ trait WettkampfService extends DBService
 
     val awu = AthletRemovedFromWettkampf(wertung.athlet, wertung.wettkampf.uuid.get)
     WebSocketClient.publish(awu)
-    for (durchgang <- durchgaenge) {
+    for durchgang <- durchgaenge do {
       WebSocketClient.publish(DurchgangChanged(durchgang, wertung.wettkampf.uuid.get, wertung.athlet))
     }
   }
@@ -895,7 +895,7 @@ trait WettkampfService extends DBService
   }
 
   def assignAthletsToWettkampfS(wettkampfId: Long, programs: Set[ProgrammView], withAthlets: Set[(Long, Option[Media])] = Set.empty, team: Option[Int]): Unit = {
-    if (withAthlets.nonEmpty) {
+    if withAthlets.nonEmpty then {
       val disciplines = Await.result(database.run {
         (sql"""
                    select id from wettkampfdisziplin
@@ -938,7 +938,7 @@ trait WettkampfService extends DBService
         })
 
       Await.result(database.run {
-        DBIO.sequence(for (w <- wertungen) yield {
+        DBIO.sequence(for w <- wertungen yield {
           val (wertungId, riegeText1, riegeText2) = w
           riegeText2 match {
             case Some(riegeText2) =>
@@ -1003,7 +1003,7 @@ trait WettkampfService extends DBService
         findMatchingOldNewRiegen(existingriegen, oldRiege2, newRiege2)
       }.toMap
 
-    val process = for (w <- wertungen) yield {
+    val process = for w <- wertungen yield {
       val riegeText: String = riegenset.getOrElse(w._4, w._3)
       w._5 match {
         case Some(oldRiegeText2) if (riegenset2.contains(w._6)) =>
@@ -1032,7 +1032,7 @@ trait WettkampfService extends DBService
     cleanUnusedRiegen(wettkampf.id)
 
     Await.result(database.run {
-      DBIO.sequence(for (w <- riegenset.toVector) yield {
+      DBIO.sequence(for w <- riegenset.toVector yield {
         sql"""    select distinct durchgang from riege
                   where wettkampf_id = (select id
                     from wettkampf
@@ -1063,7 +1063,7 @@ trait WettkampfService extends DBService
 
     WebSocketClient.publish(movedInWettkampf)
 
-    for (durchgang <- durchgaenge) {
+    for durchgang <- durchgaenge do {
       WebSocketClient.publish(DurchgangChanged(durchgang, wettkampf.uuid.get, athelteView))
     }
   }
@@ -1075,7 +1075,7 @@ trait WettkampfService extends DBService
            """.as[ProgrammRaw]).withPinnedSession
     }, Duration.Inf)
 
-    if (programme.exists(p => p.name.equalsIgnoreCase(rootprogram))) {
+    if programme.exists(p => p.name.equalsIgnoreCase(rootprogram)) then {
       // alternative: return existing associated WettkampfdisziplinViews
       throw new RuntimeException(s"Name des Rootprogrammes ist nicht eindeutig: $rootprogram")
     }
@@ -1098,24 +1098,24 @@ trait WettkampfService extends DBService
     val alterBisMatcher: Regex = "(?iumU)\\(.*bis=([\\d]{1,2}).*\\)$".r
     val sexMatcher: Regex = "(?iumU)\\(.*sex=([mMwW]{1,2}).*\\)$".r
     val startMatcher: Regex = "(?iumU)\\(.*start=([01jJnNyYwWtTfF]{1}).*\\)$".r
-    val sexMapping = (for {
+    val sexMapping = (for
       w <- disziplinlist
       name = nameMatcher.findFirstMatchIn(w).map(md => md.group(1)).mkString
-    } yield {
+    yield {
       (name -> sexMatcher.findFirstMatchIn(w).map(md => md.group(1)).mkString.toUpperCase)
     }).toMap
-    val startMapping = (for {
+    val startMapping = (for
       w <- disziplinlist
       name = nameMatcher.findFirstMatchIn(w).map(md => md.group(1)).mkString
-    } yield {
+    yield {
       (name -> startMatcher.findFirstMatchIn(w).map(md => md.group(1)).mkString.toUpperCase)
     }).toMap
 
-    val diszInserts = for {
+    val diszInserts = for
       w <- disziplinlist
       name = nameMatcher.findFirstMatchIn(w).map(md => md.group(1)).mkString
       if !disciplines.exists(_.name.equalsIgnoreCase(name))
-    } yield {
+    yield {
 
       sqlu"""    INSERT INTO disziplin
                     (name)
@@ -1143,7 +1143,7 @@ trait WettkampfService extends DBService
         sql"""
                  SELECT * from programm where id=$pgmIdRoot
                """.as[ProgrammRaw]
-    val aggregate = if (programlist.exists(_.contains("/"))) 1 else 0
+    val aggregate = if programlist.exists(_.contains("/")) then 1 else 0
     val items = programlist.flatMap(path => path.split("/")).distinct.zipWithIndex
     val parentItemsMap = items.flatMap { item =>
       val pgm = item._1
@@ -1156,9 +1156,9 @@ trait WettkampfService extends DBService
         .flatMap(parentItem => items.find(it => it._1.equals(parentItem)))
         .map(parent => pgm -> (pgmIdRoot + 1L + parent._2).longValue())
     }.toMap
-    val pgmInserts = rootPgmInsert +: (for {
+    val pgmInserts = rootPgmInsert +: (for
       w <- items
-    } yield {
+    yield {
       val (pgm, idx) = w
       val pgmId: Long = nextPgmId + idx
       val parentId: Long = parentItemsMap.getOrElse(pgm, pgmIdRoot)
@@ -1180,11 +1180,11 @@ trait WettkampfService extends DBService
     }, Duration.Inf).flatten
 
     val cache = scala.collection.mutable.Map[Long, ProgrammView]()
-    val wkDiszsInserts = (for {
+    val wkDiszsInserts = (for
       pgm <- insertedPgmList
       if pgm.parentId > 0 && !insertedPgmList.exists(p => p.parentId == pgm.id)
       disz <- insertedDiszList
-    } yield {
+    yield {
       (pgm, disz)
     }).zipWithIndex.map {
       case ((p, d), i) =>

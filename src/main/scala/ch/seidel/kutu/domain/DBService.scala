@@ -27,11 +27,11 @@ object DBService {
   def buildFilename(version: String) = s"kutu-$version.sqlite"
 
   lazy private val dbFilename = buildFilename(appVersion)
-  lazy private val dbhomedir = if (new File("./db/" + dbFilename).exists()) {
+  lazy private val dbhomedir = if new File("./db/" + dbFilename).exists() then {
     logger.info("dbhomedir at: " + new File("./db/" + dbFilename).getAbsolutePath);
     "./db"
   }
-  else if (new File(userHomePath + "/db").exists()) {
+  else if new File(userHomePath + "/db").exists() then {
     logger.info("dbhomedir at: " + userHomePath + "/db");
     userHomePath + "/db"
     //    "./db"
@@ -119,7 +119,7 @@ object DBService {
         db.close()
         val backupFile = {
           var cnt = 1;
-          while (new File(s"${dbfile.getAbsolutePath}.backup-$cnt").exists()) cnt = cnt + 1
+          while new File(s"${dbfile.getAbsolutePath}.backup-$cnt").exists() do cnt = cnt + 1
           new File(s"${dbfile.getAbsolutePath}.backup-$cnt")
         }
         dbfile.renameTo(backupFile)
@@ -138,7 +138,7 @@ object DBService {
 
   private def migrateFrom(dsCreate: String => JdbcBackend.Database, version: String): Unit = {
     val preversion = new File(dbhomedir + "/" + buildFilename(version))
-    if (preversion.exists()) {
+    if preversion.exists() then {
       logger.info(s"Migrating Database from ${preversion.getAbsolutePath}")
       try {
         Files.copy(preversion.toPath, dbfile.toPath)
@@ -212,7 +212,7 @@ object DBService {
       db
     }
 
-    if (Config.config.hasPath(dbconfigname_key) && Config.config.hasPath(Config.config.getString(dbconfigname_key))) try {
+    if Config.config.hasPath(dbconfigname_key) && Config.config.hasPath(Config.config.getString(dbconfigname_key)) then try {
       startExternalDB
     } catch {
       case e: Exception =>
@@ -245,7 +245,7 @@ object DBService {
     } catch {
       case _: Throwable => false
     }
-    if (ret) {
+    if ret then {
       logger.info(s"the script ${script} is already installed")
     } else {
       logger.info(s"the script ${script} should be executed")
@@ -265,36 +265,36 @@ object DBService {
   def parseLine(s: String): IndexedSeq[String] = {
     @tailrec
     def cutFields(s: String, acc: IndexedSeq[String]): IndexedSeq[String] = {
-      if (s.isEmpty()) {
+      if s.isEmpty() then {
         acc
       }
-      else if (s.startsWith("\"")) {
+      else if s.startsWith("\"") then {
         val splitter = s.indexOf("\",", 1)
-        if (splitter == -1) {
+        if splitter == -1 then {
           val splitter2 = s.indexOf("\"", 1)
-          if (splitter2 == 0) {
+          if splitter2 == 0 then {
             acc :+ ""
           }
           else {
             acc :+ s.drop(1).take(splitter2 - 1)
           }
         }
-        else if (splitter == 0) {
+        else if splitter == 0 then {
           cutFields(s.drop(splitter + 2), acc :+ "")
         }
         else {
           cutFields(s.drop(splitter + 2), acc :+ s.drop(1).take(splitter - 1))
         }
       }
-      else if (s.startsWith(",")) {
+      else if s.startsWith(",") then {
         cutFields(s.drop(1), acc :+ "")
       }
       else {
         val splitter = s.indexOf(",", 1)
-        if (splitter == -1) {
+        if splitter == -1 then {
           acc :+ s
         }
-        else if (splitter == 0) {
+        else if splitter == 0 then {
           cutFields(s.drop(1), acc :+ "")
         }
         else {
@@ -312,7 +312,7 @@ object DBService {
     }
 
     def combineMultilineStatement(acc: List[String], line: String) = {
-      if (line.endsWith(";")) {
+      if line.endsWith(";") then {
         acc.updated(acc.size - 1, acc.last + line) :+ ""
       }
       else {
@@ -330,8 +330,8 @@ object DBService {
       sqlu"""#$statement"""
     }
 
-    val counters: Seq[Int] = if (statementActions.size == 1) {
-      if (statements(0).startsWith("PRAGMA")) {
+    val counters: Seq[Int] = if statementActions.size == 1 then {
+      if statements(0).startsWith("PRAGMA") then {
         Await.result(db.run(sql"""#${statements(0)}""".as[String]), Duration.Inf)
         Seq(1)
       } else {
@@ -352,7 +352,7 @@ object DBService {
     }.map { filename =>
       logger.info(s"running sql-script: $filename ...")
       val file = getClass.getResourceAsStream("/dbscripts/" + filename)
-      if (file == null) {
+      if file == null then {
         println(filename + " not found")
       } else {
         val sqlscript = Source.fromInputStream(file, "utf-8").getLines().toList

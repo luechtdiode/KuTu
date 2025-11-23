@@ -28,7 +28,7 @@ object Core extends KuTuSSLContext {
   var serverBinding: Option[Future[Http.ServerBinding]] = None
 
   def terminate(): Unit = {
-    if (!terminated) {
+    if !terminated then {
       terminated = true
       system.terminate()
     }
@@ -55,7 +55,7 @@ trait KuTuAppHTTPServer extends ApiService with JsonSupport {
 
         val serverBuilder = Http()
           .newMeteredServerAt(httpInterface, httpPort, MetricsController.registry)
-        val binding = if (hasHttpsConfig) {
+        val binding = if hasHttpsConfig then {
           val b = serverBuilder
             .enableHttps(https)
             .bindFlow(route)
@@ -104,12 +104,12 @@ trait KuTuAppHTTPServer extends ApiService with JsonSupport {
     val dgs = new DatagramSocket()
 
     def mapToInterfaceInfo(n: InetAddress) = {
-      val url = if (n.getHostAddress.contains(":")) {
+      val url = if n.getHostAddress.contains(":") then {
         s"${Config.remoteSchema}://[${n.getHostAddress}]:${Config.httpPort}"
       } else {
         s"${Config.remoteSchema}://${n.getHostAddress}:${Config.httpPort}"
       }
-      val status = if (n.isReachable(2)) {
+      val status = if n.isReachable(2) then {
         val test = try {
           val value = s"$url/"
           Await.result(httpGetClientRequest(value), Duration.Inf).status.intValue()
@@ -127,7 +127,7 @@ trait KuTuAppHTTPServer extends ApiService with JsonSupport {
       dgs.connect(InetAddress.getByAddress(Array[Byte](1, 1, 1, 1)), 53)
       val networkInterface = NetworkInterface
         .getByInetAddress(dgs.getLocalAddress)
-      val internetAccessAdresses = if (networkInterface == null) List.empty else networkInterface
+      val internetAccessAdresses = if networkInterface == null then List.empty else networkInterface
         .getInetAddresses.asIterator().asScala.map(mapToInterfaceInfo)
         .filter {
           case (_, _, 200) => true
@@ -136,7 +136,7 @@ trait KuTuAppHTTPServer extends ApiService with JsonSupport {
         .map(_._2)
       //        .toList.mkString("\n"))
 
-      if (internetAccessAdresses.nonEmpty) {
+      if internetAccessAdresses.nonEmpty then {
         internetAccessAdresses
       } else {
         NetworkInterface

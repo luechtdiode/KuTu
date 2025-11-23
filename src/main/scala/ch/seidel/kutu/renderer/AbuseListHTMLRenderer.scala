@@ -43,9 +43,9 @@ trait AbuseListHTMLRenderer {
       .zipWithIndex
       .map { item =>
         val client = item._1
-        val cid = if (client.cid.contains("@") && client.cid.contains(":"))
+        val cid = if client.cid.contains("@") && client.cid.contains(":") then
           client.cid.split("@")(0) + " : " + client.cid.split(":")(1)
-        else if (client.cid.contains("@"))
+        else if client.cid.contains("@") then
           client.cid.split("@")(0)
         else
           client.cid

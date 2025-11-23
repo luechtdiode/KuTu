@@ -41,11 +41,11 @@ case class ScoreCalcTemplateView(
                                   pExpression: String, pVariables: List[ScoreCalcVariable], pDetails: Boolean,
                                   aggregateFn: Option[ScoreAggregateFn]) extends DataObject  {
   def variables = (dVariables ++ eVariables ++ pVariables).groupBy(_.index).values.toList
-  def readablDFormula = if (dVariables.isEmpty) "" else aggregateFn match {
+  def readablDFormula = if dVariables.isEmpty then "" else aggregateFn match {
     case None => dExpression
     case Some(agf) => dVariables.map(v => v.value).mkString(s"$agf(", "," ,")")
   }
-  def readablEFormula = if (eVariables.isEmpty) "" else aggregateFn match {
+  def readablEFormula = if eVariables.isEmpty then "" else aggregateFn match {
     case None => eExpression
     case Some(agf) => eVariables.map(v => v.value).mkString(s"$agf(", "," ,")")
   }
@@ -136,7 +136,7 @@ case class ScoreCalcTemplate(id: Long, wettkampfId: Option[Long], disziplinId: O
   private def parseVariables(formula: String): List[ScoreCalcVariable] = varPattern.findAllMatchIn(formula).map { m =>
     val prefix = m.group(1)
     val name = m.group(2)
-    val scale = if (m.groupCount == 5 && m.group(5) != null && !m.group(5).equals("0")) Some(m.group(5)) else None
+    val scale = if m.groupCount == 5 && m.group(5) != null && !m.group(5).equals("0") then Some(m.group(5)) else None
     ScoreCalcVariable_(m.group(0), prefix, name, scale.map(_.toInt))
   }.distinct.flatMap{scv => aggregateFn match {
     case None => List(scv.copy(index = 0))
@@ -150,7 +150,7 @@ case class ScoreCalcTemplate(id: Long, wettkampfId: Option[Long], disziplinId: O
     val ff = variables.foldLeft(f) { (acc, variable) =>
       acc.replace(variable.source, variable.value.toString())
     }
-    if (ff.endsWith("^")) ff.dropRight(1) else ff
+    if ff.endsWith("^") then ff.dropRight(1) else ff
   }
 
   def validateFormula(formula: String):String = {

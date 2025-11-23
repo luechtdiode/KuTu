@@ -9,10 +9,10 @@ import java.util.UUID
 case class WettkampfInfo(wettkampf: WettkampfView, service: KutuService) {
   val wettkampfdisziplinViews: List[WettkampfdisziplinView] = service.listWettkampfDisziplineViews(wettkampf.toWettkampf)
   val disziplinList: List[Disziplin] = wettkampfdisziplinViews.foldLeft(List[Disziplin]()) { (acc, dv) =>
-    if (!acc.contains(dv.disziplin)) acc :+ dv.disziplin else acc
+    if !acc.contains(dv.disziplin) then acc :+ dv.disziplin else acc
   }
   val startDisziplinList: List[Disziplin] = wettkampfdisziplinViews.foldLeft(List[Disziplin]()) { (acc, dv) =>
-    if (!acc.contains(dv.disziplin) && dv.startgeraet > 0) acc :+ dv.disziplin else acc
+    if !acc.contains(dv.disziplin) && dv.startgeraet > 0 then acc :+ dv.disziplin else acc
   }
   val teamRegel: TeamRegel = TeamRegel(wettkampf.teamrule)
   val isAlterklasse: Boolean = wettkampf.altersklassen.nonEmpty
@@ -30,5 +30,5 @@ case class WettkampfInfo(wettkampf: WettkampfView, service: KutuService) {
     .map(d => (d, d.effectivePlanStart(wettkampf.datum.toLocalDate), d.effectivePlanFinish(wettkampf.datum.toLocalDate)))
   val startDate = ld2SQLDate((LocalDateTime.of(wettkampf.datum.toLocalDate, LocalTime.MIN) +: dgEvents.map(_._2)).distinct.min.toLocalDate)
   val endDate = ld2SQLDate((LocalDateTime.of(wettkampf.datum.toLocalDate, LocalTime.MIN) +: dgEvents.map(_._2)).distinct.max.toLocalDate)
-  val wkEventString = if (startDate.equals(endDate))  f"$startDate%td.$startDate%tm.$startDate%ty" else  f"$startDate%td.$startDate%tm.$startDate%ty - $endDate%td.$endDate%tm.$endDate%ty"
+  val wkEventString = if startDate.equals(endDate) then  f"$startDate%td.$startDate%tm.$startDate%ty" else  f"$startDate%td.$startDate%tm.$startDate%ty - $endDate%td.$endDate%tm.$endDate%ty"
 }

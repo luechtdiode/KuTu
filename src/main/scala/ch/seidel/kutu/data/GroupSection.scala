@@ -72,7 +72,7 @@ case class GroupLeaf[GK <: DataObject](override val groupKey: GK, list: Iterable
     }
   }
   override def easyprint = groupKey.easyprint + s" $sum, $avg"
-  val groups = if (diszs.nonEmpty) {
+  val groups = if diszs.nonEmpty then {
     GroupSection.groupWertungList(list).map(t => (t._1, diszs))
   } else GroupSection.groupWertungList(list)
   lazy val anzahWettkaempfe = list.filter(_.endnote.nonEmpty).groupBy { w => w.wettkampf }.size // Anzahl Wettkämpfe
@@ -80,18 +80,18 @@ case class GroupLeaf[GK <: DataObject](override val groupKey: GK, list: Iterable
   val withENotes = list.exists(w => w.wettkampf.programmId != 1)
   val dNoteLabel = list.map(_.wettkampfdisziplin.notenSpez.getDifficultLabel).toList.distinct.sorted.mkString("/")
   val eNoteLabel = list.map(_.wettkampfdisziplin.notenSpez.getExecutionLabel).toList.distinct.sorted.mkString("/")
-  val mostCountingGroup = groups.reduce((a, b) => if (a._2.size > b._2.size) a else b)
+  val mostCountingGroup = groups.reduce((a, b) => if a._2.size > b._2.size then a else b)
   val isDivided = !(withDNotes || groups.isEmpty)
-  val divider = if(!isDivided) 1 else mostCountingGroup._2.size
+  val divider = if !isDivided then 1 else mostCountingGroup._2.size
   //val divider = if(!isDivided) 1 else groups.head._2.size
 
   val gleichstandsregel = Gleichstandsregel(list.head.wettkampf)
   def buildColumns(isAvgOnMultipleCompetitions: Boolean = true): List[WKCol] = {
     val athletCols: List[WKCol] = List(
       WKLeafCol[ResultRow](text = "Rang", prefWidth = 20, styleClass = Seq("data"), valueMapper = gr => {
-        if (isTeamGroup) {
+        if isTeamGroup then {
           WKColValue("", "", Seq())
-        } else if(gr.auszeichnung) gr.rang.endnote.intValue match {
+        } else if gr.auszeichnung then gr.rang.endnote.intValue match {
           case 1 =>  WKColValue(f"${gr.rang.endnote}%3.0f G", f"${gr.rang.endnote}%3.0f", Seq())
           case 2 =>  WKColValue(f"${gr.rang.endnote}%3.0f S", f"${gr.rang.endnote}%3.0f", Seq())
           case 3 =>  WKColValue(f"${gr.rang.endnote}%3.0f B", f"${gr.rang.endnote}%3.0f", Seq())
@@ -99,7 +99,7 @@ case class GroupLeaf[GK <: DataObject](override val groupKey: GK, list: Iterable
         }
         else WKColValue(f"${gr.rang.endnote}%3.0f")
       }),
-      if (isTeamGroup) {
+      if isTeamGroup then {
         WKLeafCol[GroupRow](text = "Team", prefWidth = 90, styleClass = Seq("data"), valueMapper = gr => {
           val a = gr.athlet
           WKColValue(f"${a.vorname} ${a.name}")
@@ -114,7 +114,7 @@ case class GroupLeaf[GK <: DataObject](override val groupKey: GK, list: Iterable
         val a = gr.athlet
         WKColValue(s"${AthletJahrgang(a.gebdat).jahrgang}")
       }),
-      if (isTeamGroup) {
+      if isTeamGroup then {
         WKLeafCol[GroupRow](text = "K", prefWidth = 10, styleClass = Seq("data"), valueMapper = gr => {
           WKColValue(gr.pgm.name)
         })
@@ -133,7 +133,7 @@ case class GroupLeaf[GK <: DataObject](override val groupKey: GK, list: Iterable
   def buildCommonColumns(isAvgOnMultipleCompetitions: Boolean): (List[WKCol], List[WKCol]) = {
     val indexer = Iterator.from(0)
     val disziplinCol: List[WKCol] =
-      if (!isTeamGroup && groups.keySet.size > 1) {
+      if !isTeamGroup && groups.keySet.size > 1 then {
         // Mehrere "Programme" => pro Gruppenkey eine Summenspalte bilden
         groups.toList.sortBy(gru => gru._1.ord).map { gr =>
           val (grKey, disziplin) = gr
@@ -146,25 +146,25 @@ case class GroupLeaf[GK <: DataObject](override val groupKey: GK, list: Iterable
 
           val clDnote = WKLeafCol[ResultRow](text = dNoteLabel, prefWidth = 60, styleClass = Seq("hintdata"), valueMapper = gr => {
             val cs = colsum(gr)
-            val best = if (cs.sum.noteD > 0 && cs.rang.noteD.toInt == 1) "*" else ""
-            val styles = if (cs.sum.noteD > 0 && cs.rang.noteD.toInt == 1) Seq("best") else Seq()
-            val value = if (cs.sum.teilresultateD.isEmpty) cs.sum.formattedD else cs.sum.teilresultateD.mkString(" ")
+            val best = if cs.sum.noteD > 0 && cs.rang.noteD.toInt == 1 then "*" else ""
+            val styles = if cs.sum.noteD > 0 && cs.rang.noteD.toInt == 1 then Seq("best") else Seq()
+            val value = if cs.sum.teilresultateD.isEmpty then cs.sum.formattedD else cs.sum.teilresultateD.mkString(" ")
             WKColValue(best + value, value, styles)
           })
-          val clEnote = WKLeafCol[ResultRow](text = if (withDNotes) eNoteLabel else "ø Gerät", prefWidth = 60, styleClass = Seq("hintdata"), valueMapper = gr => {
+          val clEnote = WKLeafCol[ResultRow](text = if withDNotes then eNoteLabel else "ø Gerät", prefWidth = 60, styleClass = Seq("hintdata"), valueMapper = gr => {
             val cs = colsum(gr)
-            val best = if (cs.sum.noteE > 0 && cs.rang.noteE.toInt == 1) "*" else ""
-            val styles = if (cs.sum.noteE > 0 && cs.rang.noteE.toInt == 1) Seq("best") else Seq()
+            val best = if cs.sum.noteE > 0 && cs.rang.noteE.toInt == 1 then "*" else ""
+            val styles = if cs.sum.noteE > 0 && cs.rang.noteE.toInt == 1 then Seq("best") else Seq()
             val div = Math.max(gr.divider, divider)
-            val value = if (cs.sum.teilresultateE.isEmpty) if (div == 1) cs.sum.formattedE else (cs.sum / div).formattedEnd else cs.sum.teilresultateE.mkString(" ")
+            val value = if cs.sum.teilresultateE.isEmpty then if div == 1 then cs.sum.formattedE else (cs.sum / div).formattedEnd else cs.sum.teilresultateE.mkString(" ")
             WKColValue(best + value, value, styles)
           })
           val clEndnote = WKLeafCol[ResultRow](text = "Endnote", prefWidth = 60, styleClass = Seq("valuedata"), valueMapper = gr => {
             val cs = colsum(gr)
             val raw = cs.sum.formattedEnd.trim
-            val styles = (if (cs.auszeichnung) Seq("best") else Seq()) ++ (if (cs.streichwert) Seq("stroke") else Seq())
-            val best = if (cs.auszeichnung) "*" else ""
-            val streich = if (cs.streichwert) ("(", ")") else ("", "")
+            val styles = (if cs.auszeichnung then Seq("best") else Seq()) ++ (if cs.streichwert then Seq("stroke") else Seq())
+            val best = if cs.auszeichnung then "*" else ""
+            val streich = if cs.streichwert then ("(", ")") else ("", "")
             WKColValue(best + streich._1 + raw + streich._2, raw, styles)
           })
           val clRang = WKLeafCol[ResultRow](text = "Rang", prefWidth = 60, styleClass = Seq("hintdata"), valueMapper = gr => {
@@ -172,7 +172,7 @@ case class GroupLeaf[GK <: DataObject](override val groupKey: GK, list: Iterable
             WKColValue(f"${cs.rang.endnote}%3.0f")
           })
           val cl: WKCol = WKGroupCol(
-            text = if (isAvgOnMultipleCompetitions && anzahWettkaempfe > 1) {
+            text = if isAvgOnMultipleCompetitions && anzahWettkaempfe > 1 then {
               s"ø aus " + grKey.easyprint
             }
             else {
@@ -180,10 +180,10 @@ case class GroupLeaf[GK <: DataObject](override val groupKey: GK, list: Iterable
             }
             , prefWidth = 240, styleClass = Seq("hintdata"), cols = {
               val withDNotes = list.exists(w => w.noteD.sum > 0)
-              if (withDNotes) {
+              if withDNotes then {
                 Seq(clDnote, clEnote, clEndnote, clRang)
               }
-              else if (withENotes) {
+              else if withENotes then {
                 Seq(clEnote, clEndnote, clRang)
               }
               else {
@@ -198,52 +198,52 @@ case class GroupLeaf[GK <: DataObject](override val groupKey: GK, list: Iterable
         mostCountingGroup._2.map { disziplin =>
           val index = indexer.next()
           lazy val clDnote = WKLeafCol[ResultRow](text = dNoteLabel, prefWidth = 60, styleClass = Seq("hintdata"), valueMapper = gr => {
-            if (gr.resultate.size > index) {
-              val styles = if (gr.resultate(index).sum.noteD > 0&& gr.resultate(index).rang.noteD.toInt == 1) Seq("best") else Seq()
-              val best = if (gr.resultate(index).sum.noteD > 0
-                && gr.resultate(index).rang.noteD.toInt == 1)
+            if gr.resultate.size > index then {
+              val styles = if gr.resultate(index).sum.noteD > 0&& gr.resultate(index).rang.noteD.toInt == 1 then Seq("best") else Seq()
+              val best = if gr.resultate(index).sum.noteD > 0
+                && gr.resultate(index).rang.noteD.toInt == 1 then
                 "*"
               else
                 ""
-              val value = if (gr.resultate(index).sum.teilresultateD.isEmpty) gr.resultate(index).sum.formattedD else gr.resultate(index).sum.teilresultateD.mkString(" ")
+              val value = if gr.resultate(index).sum.teilresultateD.isEmpty then gr.resultate(index).sum.formattedD else gr.resultate(index).sum.teilresultateD.mkString(" ")
 
               WKColValue(best + value, value, styles)
 
             } else WKColValue("")
           })
           lazy val clEnote = WKLeafCol[ResultRow](text = eNoteLabel, prefWidth = 60, styleClass = Seq("hintdata"), valueMapper = gr => {
-            if (gr.resultate.size > index) {
-              val styles = if (gr.resultate(index).sum.noteE > 0&& gr.resultate(index).rang.noteE.toInt == 1) Seq("best") else Seq()
-              val best = if (gr.resultate(index).sum.noteE > 0
-                && gr.resultate(index).rang.noteE.toInt == 1)
+            if gr.resultate.size > index then {
+              val styles = if gr.resultate(index).sum.noteE > 0&& gr.resultate(index).rang.noteE.toInt == 1 then Seq("best") else Seq()
+              val best = if gr.resultate(index).sum.noteE > 0
+                && gr.resultate(index).rang.noteE.toInt == 1 then
                 "*"
               else
                 ""
-              val value = if (gr.resultate(index).sum.teilresultateE.isEmpty) gr.resultate(index).sum.formattedE else gr.resultate(index).sum.teilresultateE.mkString(" ")
+              val value = if gr.resultate(index).sum.teilresultateE.isEmpty then gr.resultate(index).sum.formattedE else gr.resultate(index).sum.teilresultateE.mkString(" ")
               WKColValue(best + value, value, styles)
             } else WKColValue("")
           })
           lazy val clEndnote = WKLeafCol[ResultRow](text = "Endnote", prefWidth = 60, styleClass = Seq("valuedata"), valueMapper = gr => {
-            if (gr.resultate.size > index) {
+            if gr.resultate.size > index then {
               val cs = gr.resultate(index)
               val raw = cs.sum.formattedEnd.trim
-              val styles = (if (cs.auszeichnung) Seq("best") else Seq()) ++ (if (cs.streichwert) Seq("stroke") else Seq())
-              val best = if (cs.auszeichnung) "*" else ""
-              val streich = if (cs.streichwert) ("(", ")") else ("", "")
+              val styles = (if cs.auszeichnung then Seq("best") else Seq()) ++ (if cs.streichwert then Seq("stroke") else Seq())
+              val best = if cs.auszeichnung then "*" else ""
+              val streich = if cs.streichwert then ("(", ")") else ("", "")
               WKColValue(best + streich._1 + raw + streich._2, raw, styles)
             } else WKColValue("")
           })
           lazy val clRang = WKLeafCol[ResultRow](text = "Rang", prefWidth = 60, styleClass = Seq("hintdata"), valueMapper = gr => {
-            if (gr.resultate.size > index) WKColValue(f"${gr.resultate(index).rang.endnote}%3.0f") else WKColValue("")
+            if gr.resultate.size > index then WKColValue(f"${gr.resultate(index).rang.endnote}%3.0f") else WKColValue("")
           })
-          val cl = WKGroupCol(text = if (isAvgOnMultipleCompetitions && anzahWettkaempfe > 1) {
+          val cl = WKGroupCol(text = if isAvgOnMultipleCompetitions && anzahWettkaempfe > 1 then {
             s"ø aus " + disziplin.name
           }
           else {
             disziplin.name
           }
             , prefWidth = 240, styleClass = Seq("valuedata"), cols = {
-              if (withDNotes) {
+              if withDNotes then {
                 Seq(clDnote, clEnote, clEndnote, clRang)
               }
               else {
@@ -255,7 +255,7 @@ case class GroupLeaf[GK <: DataObject](override val groupKey: GK, list: Iterable
       }
     val sumColAll: List[WKCol] = List(
       WKLeafCol[ResultRow](
-        text = if (isAvgOnMultipleCompetitions && anzahWettkaempfe > 1) {
+        text = if isAvgOnMultipleCompetitions && anzahWettkaempfe > 1 then {
           s"Total ø aus $dNoteLabel"
         }
         else {
@@ -263,45 +263,45 @@ case class GroupLeaf[GK <: DataObject](override val groupKey: GK, list: Iterable
         }
         , prefWidth = 80, styleClass = Seq("hintdata"), valueMapper = gr => {
           val value = gr.sum.formattedD
-          val styles = if (gr.sum.noteD > 0 && gr.rang.noteD.toInt == 1) Seq("best") else Seq()
-          val best = if (gr.sum.noteD > 0 ) "*" else ""
+          val styles = if gr.sum.noteD > 0 && gr.rang.noteD.toInt == 1 then Seq("best") else Seq()
+          val best = if gr.sum.noteD > 0  then "*" else ""
           WKColValue(best + value, value, styles)
         }
       ),
       WKLeafCol[ResultRow](
-        text = if (isAvgOnMultipleCompetitions && anzahWettkaempfe > 1) {
-          if (!isDivided && withDNotes) {
+        text = if isAvgOnMultipleCompetitions && anzahWettkaempfe > 1 then {
+          if !isDivided && withDNotes then {
             s"Total ø aus $eNoteLabel"
           }
           else {
             "ø Gerät"
           }
         }
-        else if (!isDivided && withDNotes) {
+        else if !isDivided && withDNotes then {
           s"Total $eNoteLabel"
         }
         else {
           "ø Gerät"
         }
         , prefWidth = 80, styleClass = Seq("hintdata"), valueMapper = gr => {
-          val value: String = if (isTeamGroup && aggreateFun != Sum) {
+          val value: String = if isTeamGroup && aggreateFun != Sum then {
             gr.avg.formattedEnd
           } else {
-            val div = if (bestOfCountOverride.isEmpty || !isDivided && withDNotes) Math.max(gr.divider, divider) else Math.max(gr.divider, bestOfCountOverride.getOrElse(1))
-            if (div < 2) {
+            val div = if bestOfCountOverride.isEmpty || !isDivided && withDNotes then Math.max(gr.divider, divider) else Math.max(gr.divider, bestOfCountOverride.getOrElse(1))
+            if div < 2 then {
               gr.sum.formattedE
             }
             else {
               (gr.sum / div).formattedEnd
             }
           }
-          val styles = if (gr.sum.noteE > 0 && gr.rang.noteE.toInt == 1) Seq("best") else Seq()
-          val best = if (gr.sum.noteE > 0 && gr.rang.noteE.toInt == 1) "*" else ""
+          val styles = if gr.sum.noteE > 0 && gr.rang.noteE.toInt == 1 then Seq("best") else Seq()
+          val best = if gr.sum.noteE > 0 && gr.rang.noteE.toInt == 1 then "*" else ""
           WKColValue(best + value, value, styles)
         }
       ),
       WKLeafCol[ResultRow](
-        text = if (isAvgOnMultipleCompetitions && anzahWettkaempfe > 1) {
+        text = if isAvgOnMultipleCompetitions && anzahWettkaempfe > 1 then {
           s"Total ø Punkte"
         }
         else {
@@ -322,13 +322,13 @@ case class GroupLeaf[GK <: DataObject](override val groupKey: GK, list: Iterable
   }
 
   def mapToBestOfCounting(wertungen: Iterable[WertungView]): Iterable[WertungView] = {
-    if (wertungen.isEmpty || (wertungen.head.wettkampfdisziplin.programm.bestOfCount < 1 && bestOfCountOverride.isEmpty))
+    if wertungen.isEmpty || (wertungen.head.wettkampfdisziplin.programm.bestOfCount < 1 && bestOfCountOverride.isEmpty) then
       wertungen
     else {
       val bestOfCount = bestOfCountOverride.getOrElse(wertungen.head.wettkampfdisziplin.programm.bestOfCount)
       val bestOfwertungen = wertungen.toList.sortBy(w => w.resultat.endnote).reverse.take(bestOfCount)
       wertungen.map{ w =>
-        if (bestOfwertungen.contains(w)) {
+        if bestOfwertungen.contains(w) then {
           w
         } else {
           w.copy(isStroked = true)
@@ -348,11 +348,11 @@ case class GroupLeaf[GK <: DataObject](override val groupKey: GK, list: Iterable
     val gwksums = wks.map { wk =>
       val countingWertungen = wk._2.toList
       val countingNonStrokenWertungen = countingWertungen.filter(!_.isStroked)
-      val factorizeRelevantWertungen = if(bestOfCountOverride.isEmpty) countingNonStrokenWertungen else countingWertungen
+      val factorizeRelevantWertungen = if bestOfCountOverride.isEmpty then countingNonStrokenWertungen else countingWertungen
       val factorShift = gleichstandsregel.factorize(factorizeRelevantWertungen)
       aggreateFun(
         countingNonStrokenWertungen.map { w =>
-          if (anzahWettkaempfe > 1)
+          if anzahWettkaempfe > 1 then
             w.resultat
           else {
             w.resultat * STANDARD_SCORE_FACTOR + factorShift
@@ -361,16 +361,15 @@ case class GroupLeaf[GK <: DataObject](override val groupKey: GK, list: Iterable
       ) * aggreateFun.sortFactor
     }
     val gsum = aggreateFun(gwksums) //if (gwksums.nonEmpty) gwksums.reduce(_ + _) else Resultat(0, 0, 0)
-    val wkDivider = if(avgSumsWithMultiCompetitions) wksums.size else 1
-    val avg = if (wksums.nonEmpty) rsum / wkDivider else Resultat(0, 0, 0)
-    val gavg = if (wksums.nonEmpty) gsum / wkDivider else Resultat(0, 0, 0)
+    val wkDivider = if avgSumsWithMultiCompetitions then wksums.size else 1
+    val avg = if wksums.nonEmpty then rsum / wkDivider else Resultat(0, 0, 0)
+    val gavg = if wksums.nonEmpty then gsum / wkDivider else Resultat(0, 0, 0)
     val withAuszeichnung = anzahWettkaempfe == 1 && groups.size == 1 && wks.size == 1
-    val auszeichnung = if (withAuszeichnung) Some(wks.head._1.auszeichnung) else None
-    val auszeichnungEndnote = if (withAuszeichnung && wks.head._1.auszeichnungendnote > 0) Some(wks.head._1.auszeichnungendnote) else None
-    val perDisziplinAvgs = (for {
+    val auszeichnung = if withAuszeichnung then Some(wks.head._1.auszeichnung) else None
+    val auszeichnungEndnote = if withAuszeichnung && wks.head._1.auszeichnungendnote > 0 then Some(wks.head._1.auszeichnungendnote) else None
+    val perDisziplinAvgs = (for
       wettkampf <- wks.keySet.toSeq
       ((ord, disziplin), dwertungen) <- wks(wettkampf).groupBy { x => (x.wettkampfdisziplin.ord, x.wettkampfdisziplin.disziplin) }
-    }
     yield {
       val prog = dwertungen.head.wettkampf.programmId
       val dsums = dwertungen.map { w => w.resultat }
@@ -379,26 +378,25 @@ case class GroupLeaf[GK <: DataObject](override val groupKey: GK, list: Iterable
     }).groupBy(_._1).map { x =>
       val xsum = x._2.map(_._2).reduce(_ + _)
       val xasum = aggreateFun(x._2.map(_._2))
-      val diszDivider = if(avgSumsWithMultiCompetitions) x._2.size else 1
+      val diszDivider = if avgSumsWithMultiCompetitions then x._2.size else 1
       (x._1, xasum, xsum / diszDivider, auszeichnung, auszeichnungEndnote)
     }
       .toList.sortBy(d => d._1._1)
       .map(d => (d._1._2, d._1._3, d._2, d._3, d._4, d._5))
 
-    val perProgrammAvgs = (for {
+    val perProgrammAvgs = (for
       wettkampf <- wks.keySet.toSeq
       (programm, pwertungen) <- wks(wettkampf).groupBy {
         _.wettkampfdisziplin.programm.aggregatorSubHead
       }
       psums = pwertungen.map { w => w.resultat }
       psum = aggreateFun(psums) //if (psums.nonEmpty) psums.reduce(_ + _) else Resultat(0, 0, 0)
-    }
     yield {
       (programm, psum)
     }).groupBy(_._1).map { x =>
       val xsum = x._2.map(_._2).reduce(_ + _)
       val xasum = aggreateFun(x._2.map(_._2))
-      val pgmDivider = if(avgSumsWithMultiCompetitions) x._2.size else 1
+      val pgmDivider = if avgSumsWithMultiCompetitions then x._2.size else 1
       (x._1, xasum, xsum / pgmDivider, auszeichnung, auszeichnungEndnote)
     }
       .toList.sortBy(d => d._1.ord)
@@ -436,11 +434,11 @@ case class GroupLeaf[GK <: DataObject](override val groupKey: GK, list: Iterable
         disziplinResults: Iterable[(Disziplin, Long, Resultat, Resultat, Option[Int], Option[BigDecimal])],
         programmResults: Iterable[(ProgrammView, Resultat, Resultat, Option[Int], Option[BigDecimal])]): IndexedSeq[LeafRow] = {
 
-      if(groups.size == 1 || isTeamGroup) {
+      if groups.size == 1 || isTeamGroup then {
         val dr = disziplinResults.map{w =>
           val ww = avgDisziplinRangMap(w._1)(athlet)
           val rang = ww.rang
-          if (isTeamGroup) {
+          if isTeamGroup then {
             val team = groupKey.asInstanceOf[Team]
             LeafRow(w._1.easyprint,
               ww.avg,
@@ -448,7 +446,7 @@ case class GroupLeaf[GK <: DataObject](override val groupKey: GK, list: Iterable
               ww.rang.endnote == 1,
               !team.isRelevantResult(w._1, ww.groupKey.asInstanceOf[AthletView]))
           }
-          else if(avgSumsWithMultiCompetitions && anzahWettkaempfe > 1) {
+          else if avgSumsWithMultiCompetitions && anzahWettkaempfe > 1 then {
             LeafRow(w._1.name,
               ww.avg,
               rang,
@@ -476,7 +474,7 @@ case class GroupLeaf[GK <: DataObject](override val groupKey: GK, list: Iterable
         programmResults.map{w =>
           val ww = avgProgrammRangMap(w._1)(athlet)
 //          val posproz = 100d * ww.rang.endnote / avgProgrammRangMap.size
-          if(avgSumsWithMultiCompetitions && anzahWettkaempfe > 1) {
+          if avgSumsWithMultiCompetitions && anzahWettkaempfe > 1 then {
             LeafRow(w._1.easyprint,
               ww.avg,
               ww.rang,
@@ -500,14 +498,14 @@ case class GroupLeaf[GK <: DataObject](override val groupKey: GK, list: Iterable
       val posproz = 100d * gsrang.rang.endnote / teilnehmer
       val posprom = 10000d * gsrang.rang.endnote / teilnehmer
       val gs = mapToGroupSum(athlet, wd, wp)
-      val divider = if(withDNotes || gs.isEmpty) 1 else gs.count{r => !r.streichwert && r.sum.endnote > 0}
+      val divider = if withDNotes || gs.isEmpty then 1 else gs.count{r => !r.streichwert && r.sum.endnote > 0}
 
       GroupRow(athlet, pgm, gs, avg, gsrang.rang,
           gsrang.rang.endnote > 0
           && !isTeamGroup && (gsrang.rang.endnote < 4
               || (wp.head._4 match {
                 case Some(auszeichnung) =>
-                  if(auszeichnung > 100) {
+                  if auszeichnung > 100 then {
                     val ret = posprom <= auszeichnung
                     ret
                   }
@@ -522,7 +520,7 @@ case class GroupLeaf[GK <: DataObject](override val groupKey: GK, list: Iterable
                 case None               => false})))
 
     }.toList
-    if(sortAlphabetically) {
+    if sortAlphabetically then {
       prepared.sortBy(_.athlet.easyprint)
     }
 //    else if(avgSumsWithMultiCompetitions) {
@@ -537,12 +535,12 @@ case class GroupLeaf[GK <: DataObject](override val groupKey: GK, list: Iterable
 object TeamSums {
   def apply(teamRows: GroupLeaf[?]): List[TeamSums] = {
     val wkCnt = teamRows.list.map(w => w.wettkampf).toSet.size
-    if (wkCnt > 1) {
+    if wkCnt > 1 then {
       List[TeamSums]()
     } else {
       val wk = teamRows.list.map(w => w.wettkampf).head
       val teamregel = TeamRegel(wk)
-      if (teamregel.teamsAllowed) {
+      if teamregel.teamsAllowed then {
         teamregel.extractTeams(teamRows.list)
           .groupBy(_.rulename).filter(_._2.size > 1)
           .flatMap {
@@ -552,7 +550,7 @@ object TeamSums {
               val tms = teams.filter(team => team.wertungen.nonEmpty).map { team =>
                 GroupLeaf(team, team.wertungen, diszs, team.aggregateFun)
               }
-              if (tms.isEmpty) None else Some(TeamSums(teamRows.groupKey.asInstanceOf[DataObject], tms))
+              if tms.isEmpty then None else Some(TeamSums(teamRows.groupKey.asInstanceOf[DataObject], tms))
           }
           .toList
       } else List[TeamSums]()
@@ -570,11 +568,11 @@ case class TeamSums(override val groupKey: DataObject, teamRows: List[GroupLeaf[
   def getTeam(gl: GroupLeaf[Team]) = gl.groupKey
   def getTeamGroupLeaf(team: Team): GroupLeaf[Team] = teamRows.find(t => t.groupKey.equals(team)).get
 
-  private val glGroup: GroupLeaf[Team] = teamRows.reduce((a, b) => if (a.divider > b.divider) a else b)
+  private val glGroup: GroupLeaf[Team] = teamRows.reduce((a, b) => if a.divider > b.divider then a else b)
   def buildColumns: List[WKCol] = {
     val teamCols: List[WKCol] = List(
       WKLeafCol[TeamRow](text = "Rang", prefWidth = 20, styleClass = Seq("data"), valueMapper = gr => {
-        WKColValue(if (gr.auszeichnung) gr.rang.endnote.intValue match {
+        WKColValue(if gr.auszeichnung then gr.rang.endnote.intValue match {
           case 1 => f"${gr.rang.endnote}%3.0f G"
           case 2 => f"${gr.rang.endnote}%3.0f S"
           case 3 => f"${gr.rang.endnote}%3.0f B"
@@ -605,7 +603,7 @@ case class TeamSums(override val groupKey: DataObject, teamRows: List[GroupLeaf[
       (team, teamRow.mapToAvgRowSummary(teamwertungen, avgSumsWithMultiCompetitions = true))
     }
 
-    (for (teamRuleGroup <- avgPerTeams.groupBy(_._1.rulename)) yield {
+    (for teamRuleGroup <- avgPerTeams.groupBy(_._1.rulename) yield {
       val (rulename, avgPerTeam) = teamRuleGroup
       val rangMap: Map[Team, GroupSum] = glGroup.mapToAvgRang(avgPerTeam.map(rm => rm._1 -> (rm._2._1, rm._2._5)))
       lazy val avgDisziplinRangMap = avgPerTeam.foldLeft(Map[Disziplin, Map[Team, (Resultat, Resultat)]]()) { (acc, x) =>
@@ -656,7 +654,7 @@ case class GroupNode(override val groupKey: DataObject, next: Iterable[GroupSect
   override def easyprint = {
     val buffer = new mutable.StringBuilder()
     buffer.append(groupKey.easyprint).append("\n")
-    for (gi <- next) {
+    for gi <- next do {
       buffer.append(gi.easyprint).append("\n")
     }
     buffer.toString
