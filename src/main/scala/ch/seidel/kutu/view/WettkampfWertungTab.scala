@@ -43,12 +43,13 @@ import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration.Duration
 import scala.concurrent.{Await, Future}
 import scala.io.{Codec, Source}
+import scala.util.matching.Regex
 import scala.util.{Failure, Success}
 
 class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[ProgrammView], riege: Option[GeraeteRiege], wettkampfInfo: WettkampfInfo, override val service: KutuService, athleten: => IndexedSeq[WertungView]) extends Tab with TabWithService {
-  val logger = LoggerFactory.getLogger(this.getClass)
-  val wettkampf = wettkampfInfo.wettkampf
-  val wettkampfFilterDate = if wettkampfInfo.isJGAlterklasse then {
+  val logger: Logger = LoggerFactory.getLogger(this.getClass)
+  val wettkampf: WettkampfView = wettkampfInfo.wettkampf
+  private val wettkampfFilterDate = if wettkampfInfo.isJGAlterklasse then {
     LocalDate.of(wettkampf.datum.toLocalDate.getYear, 1, 1)
   } else {
     wettkampf.datum.toLocalDate
@@ -66,24 +67,24 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
     lazypane = Some(pane)
   }
 
-  def refreshLazyPane(): Unit = {
+  private def refreshLazyPane(): Unit = {
     lazypane match {
       case Some(pane) => pane.refreshTabs()
       case _ =>
     }
   }
 
-  def refreshOtherLazyPanes(): Unit = {
+  private def refreshOtherLazyPanes(): Unit = {
     lazypane match {
       case Some(pane) => pane.refreshTabs()
       case _ =>
     }
   }
 
-  var scheduledGears: List[Disziplin] = List.empty
+  private var scheduledGears: List[Disziplin] = List.empty
 
   var subscription: Option[Subscription] = None
-  var websocketsubscription: Option[Subscription] = None
+  private var websocketsubscription: Option[Subscription] = None
 
   override def release: Unit = {
     websocketsubscription.foreach(_.cancel())
@@ -97,7 +98,7 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
   }
 
 
-  def defaultFilter: (WertungView) => Boolean = { wertung =>
+  private def defaultFilter: WertungView => Boolean = { wertung =>
     programm match {
       case Some(progrm) =>
         wertung.wettkampfdisziplin.programm.programPath.contains(progrm)
@@ -106,7 +107,7 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
     }
   }
 
-  def reloadWertungen(extrafilter: (WertungView) => Boolean = defaultFilter) = {
+  private def reloadWertungen(extrafilter: WertungView => Boolean = defaultFilter) = {
     athleten.
       filter(wv => wv.wettkampf.id == wettkampf.id).
       filter(extrafilter).
@@ -115,17 +116,17 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
   }
 
   var wertungen = Seq[IndexedSeq[WertungEditor]]()
-  val wkModel = ObservableBuffer.from(wertungen)
-  val wkview = new TableView[IndexedSeq[WertungEditor]](wkModel) {
+  val wkModel: ObservableBuffer[IndexedSeq[WertungEditor]] = ObservableBuffer.from(wertungen)
+  val wkview: TableView[IndexedSeq[WertungEditor]] = new TableView[IndexedSeq[WertungEditor]](wkModel) {
     id = "kutu-table"
     editable = !wettkampf.toWettkampf.isReadonly(homedir, remoteHostOrigin)
   }
-  var emptyRiege = GeraeteRiege("", "", None, 0, None, Seq(), false, "")
-  var relevantRiegen: Map[String, (Boolean, Int)] = Map[String, (Boolean, Int)]()
+  private var emptyRiege = GeraeteRiege("", "", None, 0, None, Seq(), false, "")
+  private var relevantRiegen: Map[String, (Boolean, Int)] = Map[String, (Boolean, Int)]()
 
-  val cmbDurchgangFilter = new GeraeteRiegeComboBox(wkview)
+  private val cmbDurchgangFilter = new GeraeteRiegeComboBox(wkview)
 
-  def rebuildDurchgangFilterList = {
+  private def rebuildDurchgangFilterList = {
     val kandidaten = service.getAllKandidatenWertungen(UUID.fromString(wettkampf.uuid.get))
     val alleRiegen = RiegenBuilder.mapToGeraeteRiegen(kandidaten)
     var newGearList = alleRiegen.flatMap(r => r.disziplin).distinct
@@ -139,9 +140,9 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
     emptyRiege +: ret
   }
 
-  def computeRelevantRiegen = {
+  private def computeRelevantRiegen = {
     val prefilteredRiegen: Set[(String, Int)] =
-      if wertungen.size > 0 then
+      if wertungen.nonEmpty then
         wertungen.
           flatMap(x => x.flatMap(x => Seq(x.init.riege, x.init.riege2).flatten).toSet).
           groupBy(x => x).map(x => (x._1, x._2.size)).toSet
@@ -168,21 +169,21 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
 
   val riegenFilterModel = ObservableBuffer[RiegeEditor]()
 
-  val athletHeaderPane: AthletHeaderPane = AthletHeaderPane(wettkampf.toWettkampf, service, wkview, wettkampfmode)
-  val disziplinlist = wettkampfInfo.disziplinList
-  val withDNotes = wettkampfInfo.isDNoteUsed
+  private val athletHeaderPane: AthletHeaderPane = AthletHeaderPane(wettkampf.toWettkampf, service, wkview, wettkampfmode)
+  val disziplinlist: List[Disziplin] = wettkampfInfo.disziplinList
+  val withDNotes: Boolean = wettkampfInfo.isDNoteUsed
   var lastFilter = ""
-  var durchgangFilter = riege match {
+  var durchgangFilter: GeraeteRiege = riege match {
     case Some(riege) => riege
     case None => emptyRiege
   }
 
-  var lazyEditorPaneUpdater: Map[String, ScheduledFuture[?]] = Map.empty
+  private var lazyEditorPaneUpdater: Map[String, ScheduledFuture[?]] = Map.empty
 
   def submitLazy(name: String, task: () => Unit, delay: Long): Unit = {
     lazyEditorPaneUpdater.get(name).foreach(_.cancel(true))
     val ft = KuTuApp.lazyExecutor.schedule(new Runnable() {
-      def run = {
+      override def run(): Unit = {
         Platform.runLater {
           task()
         }
@@ -192,7 +193,7 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
     lazyEditorPaneUpdater = lazyEditorPaneUpdater + (name -> ft)
   }
 
-  def updateEditorPane(focusHolder: Option[Node] = None): Unit = {
+  private def updateEditorPane(focusHolder: Option[Node] = None): Unit = {
     def task: () => Unit = () => {
       if selected.value then {
         if logger.isDebugEnabled() then {
@@ -223,21 +224,21 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
             i = raw.find {
               _.softEquals(o)
             }
-            if (i.isEmpty && o.softEquals(emptyRiege))
+            if i.isEmpty && o.softEquals(emptyRiege)
           yield {
             model.indexOf(o)
           }
-        for i <- toRemove.sorted.reverse do {
+        for {i <- toRemove.sorted.reverse} do {
           model.remove(i)
         }
 
-        for
+        for {
           o <- raw
           i = model.find {
             _.softEquals(o)
           }
-          if (i.isEmpty)
-        do {
+          if i.isEmpty
+        } do {
           model.insert(raw.indexWhere { rx => rx.softEquals(o) }, o)
         }
         updateAlleRiegenCheck()
@@ -248,8 +249,8 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
     submitLazy("updateEditorPane", task, 5)
   }
 
-  case class DoubleConverter(notenModus: NotenModus) extends DoubleStringConverter {
-    override def toString(value: Double) = notenModus.toString(value)
+  private case class DoubleConverter(notenModus: NotenModus) extends DoubleStringConverter {
+    override def toString(value: Double): String = notenModus.toString(value)
 
     override def fromString(var1: String): Double = if var1 == null || var1.trim.isEmpty then Double.NaN
     else {
@@ -257,7 +258,7 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
     }
   }
 
-  def wertungenCols = if wertungen.nonEmpty then {
+  private def wertungenCols = if wertungen.nonEmpty then {
     val indexerE = Iterator.from(0)
     val indexerD = Iterator.from(0)
     val indexerF = Iterator.from(0)
@@ -331,8 +332,8 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
         }
       }
 
-      lazy val clDnote = new WKTableColumn[Double](indexerD.next()) {
-        val hasNoFormTemplate = wertungen.forall(we => if index < we.size then we(index).init.wettkampfdisziplin.notenSpez.template.isEmpty else true)
+      lazy val clDnote: WKTableColumn[Double] = new WKTableColumn[Double](indexerD.next()) {
+        val hasNoFormTemplate: Boolean = wertungen.forall(we => if index < we.size then we(index).init.wettkampfdisziplin.notenSpez.template.isEmpty else true)
         text = dNoteLabel
 
         cellValueFactory = { x =>
@@ -345,7 +346,7 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
           if hasNoFormTemplate then {
             new AutoCommitTextFieldTableCell[IndexedSeq[WertungEditor], Double](
               DoubleConverter(wertung.init.wettkampfdisziplin.notenSpez),
-              (cell) => {
+              cell => {
                 if cell.tableRow.value != null && cell.tableRow.value.item.value != null && index < cell.tableRow.value.item.value.size then {
                   val w = cell.tableRow.value.item.value(index)
                   val editable = w.matchesSexAssignment
@@ -357,7 +358,7 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
           } else {
             new AutoCommitTextFieldTableCell[IndexedSeq[WertungEditor], Double](
               DoubleConverter(wertung.init.wettkampfdisziplin.notenSpez),
-              (cell) => {
+              cell => {
                 if cell.tableRow.value != null && cell.tableRow.value.item.value != null && index < cell.tableRow.value.item.value.size then {
                   val w = cell.tableRow.value.item.value(index)
                   val editable = w.matchesSexAssignment
@@ -403,15 +404,15 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
           evt.tableView.requestFocus()
         }
       }
-      lazy val clEnote = new WKTableColumn[Double](indexerE.next()) {
-        val hasNoFormTemplate = wertungen.forall(we => if index < we.size then we(index).init.wettkampfdisziplin.notenSpez.template.isEmpty else true)
+      lazy val clEnote: WKTableColumn[Double] = new WKTableColumn[Double](indexerE.next()) {
+        val hasNoFormTemplate: Boolean = wertungen.forall(we => if index < we.size then we(index).init.wettkampfdisziplin.notenSpez.template.isEmpty else true)
         text = eNoteLabel
         cellValueFactory = { x => if x.value.size > index then x.value(index).noteE else wertung.noteE }
         cellFactory.value = { (_: Any) =>
           if hasNoFormTemplate then {
             new AutoCommitTextFieldTableCell[IndexedSeq[WertungEditor], Double](
               DoubleConverter(wertung.init.wettkampfdisziplin.notenSpez),
-              (cell) => {
+              cell => {
                 if cell.tableRow.value != null && cell.tableRow.value.item.value != null && index < cell.tableRow.value.item.value.size then {
                   val w = cell.tableRow.value.item.value(index)
                   val editable = w.matchesSexAssignment
@@ -423,7 +424,7 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
           } else {
             new AutoCommitTextFieldTableCell[IndexedSeq[WertungEditor], Double](
               DoubleConverter(wertung.init.wettkampfdisziplin.notenSpez),
-              (cell) => {
+              cell => {
                 if cell.tableRow.value != null && cell.tableRow.value.item.value != null && index < cell.tableRow.value.item.value.size then {
                   val w = cell.tableRow.value.item.value(index)
                   val editable = w.matchesSexAssignment
@@ -496,7 +497,7 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
     IndexedSeq[jfxsc.TableColumn[IndexedSeq[WertungEditor], ?]]()
   }
 
-  val athletCol: List[jfxsc.TableColumn[IndexedSeq[WertungEditor], ?]] = List(
+  private val athletCol: List[jfxsc.TableColumn[IndexedSeq[WertungEditor], ?]] = List(
     new WKTableColumn[String](-1) {
       text = "Athlet"
       cellValueFactory = { x =>
@@ -527,12 +528,12 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
     }
   )
 
-  case object TeamItems {
+  private case object TeamItems {
     def apply(editor: WertungEditor): List[TeamItem] = this.apply(editor.init)
 
     def apply(editor: WertungView): List[TeamItem] = {
       val (teamname, vereinTeams) = editor.athlet.verein match {
-        case Some(v) if (editor.wettkampf.teamrule.nonEmpty) =>
+        case Some(v) if editor.wettkampf.teamrule.nonEmpty =>
           if editor.wettkampf.teamrule.exists(r => r.contains("VereinGe")) then
             (s"${v.easyprint}", wkModel
               .filter(editorRow => editorRow(0).init.athlet.verein == editor.athlet.verein)
@@ -605,7 +606,7 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
   }
 
 
-  val riegeCol: List[jfxsc.TableColumn[IndexedSeq[WertungEditor], ?]] = if !wettkampfInfo.isAggregated then {
+  private val riegeCol: List[jfxsc.TableColumn[IndexedSeq[WertungEditor], ?]] = if !wettkampfInfo.isAggregated then {
     List(new WKTableColumn[String](-1) {
       text = "Riege"
       cellFactory.value = { (_: Any) =>
@@ -628,7 +629,7 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
       onEditCommit = (evt: CellEditEvent[IndexedSeq[WertungEditor], String]) => {
         if !wettkampfmode.value then {
           val rowIndex = wkModel.indexOf(evt.rowValue)
-          val newRiege = if evt.newValue.trim.isEmpty() || evt.newValue.equals("keine Einteilung") then None
+          val newRiege = if evt.newValue.trim.isEmpty || evt.newValue.equals("keine Einteilung") then None
           else Some(evt.newValue)
           logger.debug("start riege-rename")
           service.updateAllWertungenAsync(
@@ -754,7 +755,7 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
     val cols: List[jfxsc.TableColumn[IndexedSeq[WertungEditor], ?]] = wettkampfInfo.groupHeadPrograms
       .filter { p =>
         programm match {
-          case Some(pgm) if (pgm.programPath.contains(p)) => true
+          case Some(pgm) if pgm.programPath.contains(p) => true
           case None => true
           case _ => false
         }
@@ -785,7 +786,7 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
               onEditCommit = (evt: CellEditEvent[IndexedSeq[WertungEditor], String]) => {
                 if !wettkampfmode.value then {
                   val rowIndex = wkModel.indexOf(evt.rowValue)
-                  val newRiege = if evt.newValue.trim.isEmpty() || evt.newValue.equals("keine Einteilung") then None
+                  val newRiege = if evt.newValue.trim.isEmpty || evt.newValue.equals("keine Einteilung") then None
                   else Some(evt.newValue)
                   logger.debug("start riege-rename")
                   service.updateAllWertungenAsync(
@@ -831,7 +832,7 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
               onEditCommit = (evt: CellEditEvent[IndexedSeq[WertungEditor], String]) => {
                 if !wettkampfmode.value then {
                   val rowIndex = wkModel.indexOf(evt.rowValue)
-                  val newRiege = if evt.newValue.trim.isEmpty() || evt.newValue.equals("keine Einteilung") then None
+                  val newRiege = if evt.newValue.trim.isEmpty || evt.newValue.equals("keine Einteilung") then None
                   else Some(evt.newValue)
                   logger.debug("start riege-rename")
                   service.updateAllWertungenAsync(
@@ -931,7 +932,7 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
       editable = false
     })
   wkview.columns ++= athletCol ++ riegeCol ++ wertungenCols ++ sumCol
-  var isFilterRefreshing = false
+  private var isFilterRefreshing = false
 
   wkModel.onChange { (seq1, seq2) =>
     import scalafx.collections.ObservableBuffer.*
@@ -963,24 +964,26 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
 
     def restoreVisibility(col: TableColumn[?, ?]): Unit = {
       col.sortable.value = true
-      if col.delegate.isInstanceOf[WKTCAccess] then {
-        val tca = col.delegate.asInstanceOf[WKTCAccess]
-        if tca.getIndex > -1 then {
-          val v = scheduledGears.contains(disziplinlist(tca.getIndex))
-          col.setVisible(v)
-        }
+      col.delegate match {
+        case tca: WKTCAccess =>
+          if tca.getIndex > -1 then {
+            val v = scheduledGears.contains(disziplinlist(tca.getIndex))
+            col.setVisible(v)
+          }
+        case _ =>
       }
       col.columns.foreach(restoreVisibility(_))
     }
 
     def hideIfNotUsed(col: TableColumn[?, ?]): Unit = {
       col.sortable.value = false
-      if col.delegate.isInstanceOf[WKTCAccess] then {
-        val tca = col.delegate.asInstanceOf[WKTCAccess]
-        if tca.getIndex > -1 then {
-          val v = (tca.getIndex >= disziplinlist.size || scheduledGears.contains(disziplinlist(tca.getIndex))) && durchgangFilter.disziplin.isDefined && tca.getIndex == disziplinlist.indexOf(durchgangFilter.disziplin.get)
-          col.setVisible(v)
-        }
+      col.delegate match {
+        case tca: WKTCAccess =>
+          if tca.getIndex > -1 then {
+            val v = (tca.getIndex >= disziplinlist.size || scheduledGears.contains(disziplinlist(tca.getIndex))) && durchgangFilter.disziplin.isDefined && tca.getIndex == disziplinlist.indexOf(durchgangFilter.disziplin.get)
+            col.setVisible(v)
+          }
+        case _ =>
       }
       col.columns.foreach(hideIfNotUsed(_))
     }
@@ -1001,13 +1004,13 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
       def isRiegenFilterConform(athletRiegen: Set[Option[String]]) = {
         val undefined = athletRiegen.forall { case None => true case _ => false }
         val durchgangKonform = durchgangFilter.softEquals(emptyRiege) ||
-          durchgangFilter.kandidaten.filter { k => athletRiegen.contains(k.einteilung.map(_.r)) }.nonEmpty
+          durchgangFilter.kandidaten.exists { k => athletRiegen.contains(k.einteilung.map(_.r)) }
         durchgangKonform && (undefined || !athletRiegen.forall { case Some(riege) => !relevantRiegen.getOrElse(riege, (false, 0))._1 case _ => true })
       }
 
       val matches = athlet.nonEmpty && isRiegenFilterConform(athlet.flatMap(a => Set(a.init.riege, a.init.riege2)).toSet) &&
         searchQuery.forall { search =>
-          if search.isEmpty() || athlet(0).init.athlet.name.toUpperCase().contains(search) then {
+          if search.isEmpty || athlet(0).init.athlet.name.toUpperCase().contains(search) then {
             true
           }
           else if athlet(0).init.athlet.vorname.toUpperCase().contains(search) then {
@@ -1048,7 +1051,7 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
     isFilterRefreshing = false
   }
 
-  val txtUserFilter = new TextField() {
+  val txtUserFilter: TextField = new TextField() {
     promptText = "Athlet-Filter"
     text.addListener { (o: javafx.beans.value.ObservableValue[? <: String], oldVal: String, newVal: String) =>
       if !lastFilter.equalsIgnoreCase(newVal) then {
@@ -1060,7 +1063,7 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
     if !txtUserFilter.focused.value then {
       val focusSetter = AutoCommitTextFieldTableCell.selectFirstEditable(wkview)
       Platform.runLater(new Runnable() {
-        override def run = {
+        override def run(): Unit = {
           focusSetter()
         }
       })
@@ -1075,16 +1078,16 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
     }
   })
 
-  val teilnehmerCntLabel = new Label {
+  private val teilnehmerCntLabel = new Label {
     margin = Insets(5, 0, 5, 5)
   }
-  val alleRiegenCheckBox = new CheckBox {
+  private val alleRiegenCheckBox = new CheckBox {
     focusTraversable = false
     text = "Alle Riegen" + programm.map(" im " + _.name).getOrElse("")
     margin = Insets(5, 0, 5, 5)
   }
 
-  def updateAlleRiegenCheck(toggle: Boolean = false): Unit = {
+  private def updateAlleRiegenCheck(toggle: Boolean = false): Unit = {
     val allselected = relevantRiegen.values.forall { x => x._1 }
     val newAllSelected = if toggle then !allselected else allselected
     if toggle then {
@@ -1105,7 +1108,7 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
   alleRiegenCheckBox.onAction = (event: ActionEvent) => {
     updateAlleRiegenCheck(true)
   }
-  cmbDurchgangFilter.onAction = (_) => {
+  cmbDurchgangFilter.onAction = _ => {
     val d = if !cmbDurchgangFilter.selectionModel.value.isEmpty then {
       cmbDurchgangFilter.selectionModel.value.getSelectedItem
     }
@@ -1117,7 +1120,7 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
     }
   }
 
-  def updateRiegen(): Unit = {
+  private def updateRiegen(): Unit = {
     relevantRiegen = computeRelevantRiegen
 
     def onSelectedChange(name: String, selected: Boolean) = {
@@ -1136,7 +1139,7 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
     riegen(onSelectedChange).foreach(riegenFilterModel.add(_))
   }
 
-  def reloadData() = {
+  def reloadData(): Unit = {
     val selectionstore = wkview.selectionModel.value.getSelectedCells.toList
     val coords = for ts <- selectionstore yield {
       if ts.getColumn > -1 && ts.getTableColumn.getParentColumn != null then
@@ -1204,7 +1207,7 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
     isFilterRefreshing = false
   }
 
-  def handleWertungUpdated(wertung: Wertung) = {
+  private def handleWertungUpdated(wertung: Wertung): Unit = {
     AutoCommitTextFieldTableCell.doWhenEditmodeEnds(() => {
       val selectionstore = wkview.selectionModel.value.getSelectedCells.toList
       val columnIndex = selectionstore.map(tp => wkview.getColumns.indexOf(tp.getTableColumn))
@@ -1230,7 +1233,7 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
 
   val editableProperty = new BooleanProperty()
   editableProperty <== wettkampfmode.not()
-  val riegenFilterView = new RiegenFilterView(editableProperty,
+  val riegenFilterView: RiegenFilterView = new RiegenFilterView(editableProperty,
     wettkampf, service,
     () => {
       disziplinlist
@@ -1244,18 +1247,20 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
     reloadData()
   })
 
-  def doLoadFromCSV(filename: URI, progrm: Option[ProgrammView])(implicit event: ActionEvent) = {
-    import scala.concurrent.ExecutionContext.Implicits.*
+  private def doLoadFromCSV(filename: URI, progrm: Option[ProgrammView])(implicit event: ActionEvent): Unit = {
+    //import scala.concurrent.ExecutionContext.Implicits.*
     import scala.util.{Failure, Success}
 
     val programms = progrm.map(p => service.readWettkampfLeafs(p.head.id)).toSeq.flatten
-    val source = Source.fromFile(filename)(Codec.ISO8859)
+    val source = Source.fromFile(filename)(using Codec.ISO8859)
     val lines = source.getLines().toList
     val header = lines.head
     val rows = lines.tail
     val fieldnames = header.split(";").zipWithIndex.map { case (name, idx) => (idx.toString.trim, name.trim) }.toMap
     val rowfields = rows
-      .map(r => r.split(";").zipWithIndex.map { case (value, idx) => fieldnames.get(idx.toString.trim).map(_ -> value.replace("\"", "").trim) }.flatten.toMap)
+      .map(r => r.split(";").zipWithIndex.flatMap {
+        case (value, idx) => fieldnames.get(idx.toString.trim).map(_ -> value.replace("\"", "").trim)
+      }.toMap)
     val normalizedPrograms = programms.map(p => p.name.replace("-", "").toUpperCase -> p).toMap
 
     val athletModel = ObservableBuffer[(Long, Athlet, AthletView, Long)]()
@@ -1288,9 +1293,9 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
             id = 0,
             js_id = 0,
             geschlecht = "M",
-            name = fields.get("NAME_TURNER").getOrElse(""),
-            vorname = fields.get("VORNAME_TURNER").getOrElse(""),
-            gebdat = Some(service.getSQLDate("01.01." + fields.get("JG_TURNER").getOrElse(""))),
+            name = fields.getOrElse("NAME_TURNER", ""),
+            vorname = fields.getOrElse("VORNAME_TURNER", ""),
+            gebdat = Some(service.getSQLDate("01.01." + fields.getOrElse("JG_TURNER", ""))),
             strasse = "",
             plz = "",
             ort = "",
@@ -1363,7 +1368,7 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
               for (progrid, athlet, vorschlag, oldProgId) <- athletModel
                    do {
                 val matches = searchQuery.forall { search =>
-                  if search.isEmpty() || athlet.name.toUpperCase().contains(search) then {
+                  if search.isEmpty || athlet.name.toUpperCase().contains(search) then {
                     true
                   }
                   else if athlet.vorname.toUpperCase().contains(search) then {
@@ -1417,7 +1422,7 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
                   .filter(_._1.nonEmpty)
                   .map { grp =>
                     val v = grp._1.map(service.insertVerein).get
-                    println(s"verein inserted: ${v}")
+                    println(s"verein inserted: $v")
                     (v.id, grp._2.map { c =>
                       val a = c._2.copy(verein = Some(v.id))
                       val av: AthletView = c._3.copy(verein = Some(v))
@@ -1455,7 +1460,7 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
                 .filter(_._1.nonEmpty)
                 .map { grp =>
                   val v = grp._1.map(service.insertVerein).get
-                  println(s"verein inserted: ${v}")
+                  println(s"verein inserted: $v")
                   (v.id, grp._2.map { c =>
                     val a = c._2.copy(verein = Some(v.id))
                     val av: AthletView = c._3.copy(verein = Some(v))
@@ -1488,8 +1493,8 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
     }
   }
 
-  def doPasteFromExcel(progrm: Option[ProgrammView])(implicit event: ActionEvent) = {
-    import scala.concurrent.ExecutionContext.Implicits.*
+  private def doPasteFromExcel(progrm: Option[ProgrammView])(implicit event: ActionEvent): Unit = {
+    //import scala.concurrent.ExecutionContext.Implicits.*
     import scala.util.{Failure, Success}
     val athletModel = ObservableBuffer[(Long, Athlet, AthletView)]()
     val vereineList = service.selectVereine
@@ -1603,10 +1608,9 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
               val sortOrder = athletTable.sortOrder.toList
               filteredModel.clear()
               val searchQuery = newVal.toUpperCase().split(" ")
-              for (progrid, athlet, vorschlag) <- athletModel
-                   do {
+              for (progrid, athlet, vorschlag) <- athletModel do {
                 val matches = searchQuery.forall { search =>
-                  if search.isEmpty() || athlet.name.toUpperCase().contains(search) then {
+                  if search.isEmpty || athlet.name.toUpperCase().contains(search) then {
                     true
                   }
                   else if athlet.vorname.toUpperCase().contains(search) then {
@@ -1654,7 +1658,7 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
               }
             }
           }, new Button("OK") {
-            disable <== when(cbVereine.selectionModel.value.selectedItemProperty.isNull()) choose true otherwise false
+            disable <== when(cbVereine.selectionModel.value.selectedItemProperty.isNull) choose true otherwise false
             onAction = (event: ActionEvent) => {
               if !athletTable.selectionModel().isEmpty then {
                 val selectedAthleten = athletTable.items.value.zipWithIndex.filter {
@@ -1664,7 +1668,7 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
               }
             }
           }, new Button("OK Alle") {
-            disable <== when(cbVereine.selectionModel.value.selectedItemProperty.isNull()) choose true otherwise false
+            disable <== when(cbVereine.selectionModel.value.selectedItemProperty.isNull) choose true otherwise false
             onAction = (event: ActionEvent) => {
               insertClipboardAssignments(cbVereine.selectionModel.value.selectedItem.value.id, filteredModel)
             }
@@ -1681,7 +1685,7 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
         (importathlet.gebdat match {
           case Some(d) =>
             candidateView.gebdat match {
-              case Some(cd) => f"${cd}%tF".endsWith("-01-01")
+              case Some(cd) => f"$cd%tF".endsWith("-01-01")
               case _ => true
             }
           case _ => false
@@ -1731,7 +1735,7 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
     }
   }
 
-  val generateTeilnehmerListe = new Button with KategorieTeilnehmerToHtmlRenderer {
+  private val generateTeilnehmerListe = new Button with KategorieTeilnehmerToHtmlRenderer {
     override val logger: Logger = WettkampfWertungTab.this.logger
     text = "Teilnehmerliste erstellen"
     minWidth = 75
@@ -1749,12 +1753,11 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
         logger.debug(programme.toString)
 
         val riegen = service.selectRiegen(wettkampf.id).map(r => r.r -> (r.start.map(_.name).getOrElse(""), r.durchgang.getOrElse(""))).toMap
-        val seriendaten = for
+        val seriendaten = for {
           programm <- programme
-
           athletwertungen <- driver.map(we => we.filter { x => x.init.wettkampfdisziplin.programm.id == programm.id })
-          if (athletwertungen.nonEmpty)
-        yield {
+          if athletwertungen.nonEmpty
+        } yield {
           val einsatz = athletwertungen.head.init
           val team = TeamItems.map(einsatz).map(_.itemText).getOrElse("")
           val athlet = einsatz.athlet
@@ -1801,7 +1804,7 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
       }
     }
   }
-  val generateVereinsTeilnehmerListe = new Button with KategorieTeilnehmerToHtmlRenderer {
+  private val generateVereinsTeilnehmerListe = new Button with KategorieTeilnehmerToHtmlRenderer {
     override val logger: Logger = WettkampfWertungTab.this.logger
     text = "Vereins-Teilnehmerliste erstellen"
     minWidth = 75
@@ -1818,12 +1821,11 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
         }
         logger.debug(programme.toString)
         val riegen = service.selectRiegen(wettkampf.id).map(r => r.r -> (r.start.map(_.name).getOrElse(""), r.durchgang.getOrElse(""))).toMap
-        val seriendaten = for
+        val seriendaten = for {
           programm <- programme
-
           athletwertungen <- driver.map(we => we.filter { x => x.init.wettkampfdisziplin.programm.id == programm.id })
-          if (athletwertungen.nonEmpty)
-        yield {
+          if athletwertungen.nonEmpty
+        } yield {
           val einsatz = athletwertungen.head.init
           val team = TeamItems.map(einsatz).map(_.itemText).getOrElse("")
           val athlet = einsatz.athlet
@@ -1869,7 +1871,7 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
       }
     }
   }
-  val generateNotenblaetter = new Button with NotenblattToHtmlRenderer {
+  private val generateNotenblaetter = new Button with NotenblattToHtmlRenderer {
     override val logger: Logger = WettkampfWertungTab.this.logger
     text = "Notenblätter erstellen"
     minWidth = 75
@@ -1887,12 +1889,11 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
         }
         logger.debug(programme.toString)
         val riegendurchgaenge = service.selectRiegen(wettkampf.id).map(r => r.r -> r).toMap
-        val seriendaten = for
+        val seriendaten = for {
           programm <- programme
-
           athletwertungen <- driver.map(we => we.filter { x => x.init.wettkampfdisziplin.programm.id == programm.id })
-          if (athletwertungen.nonEmpty)
-        yield {
+          if athletwertungen.nonEmpty
+        } yield {
           val einsatz = athletwertungen.head.init
           val athlet = einsatz.athlet
           ch.seidel.kutu.domain.Kandidat(
@@ -1919,7 +1920,7 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
             }.map(_.init.wettkampfdisziplin.disziplin)
             ,
             Seq.empty,
-            athletwertungen.toSeq.map(_.view)
+            athletwertungen.map(_.view)
           )
         }
         val filename = "Notenblatt_" +
@@ -1934,7 +1935,7 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
 
         def generate(lpp: Int) = wettkampf.programm.head.id match {
           case 20 => toHTMLasGeTu(seriendaten, logofile)
-          case n if (n == 11 || n == 31) => toHTMLasKuTu(seriendaten, logofile)
+          case n if n == 11 || n == 31 => toHTMLasKuTu(seriendaten, logofile)
           case _ => toHTMLasATT(seriendaten, logofile)
         }
 
@@ -1942,7 +1943,7 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
       }
     }
   }
-  val generateBestenliste = new Button with BestenListeToHtmlRenderer {
+  val generateBestenliste: Button & BestenListeToHtmlRenderer = new Button with BestenListeToHtmlRenderer {
     text = "Bestenliste erstellen"
     minWidth = 75
     disable.value = wettkampf.toWettkampf.isReadonly(homedir, remoteHostOrigin)
@@ -1960,16 +1961,16 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
         PrintUtil.printDialog(text.value, FilenameDefault(filename, dir), false, generate, orientation = PageOrientation.Portrait)(event)
       } else {
         Await.result(KuTuServer.finishDurchgangStep(wettkampf), Duration.Inf)
-        val topResults = s"${Config.remoteBaseUrl}/?" + new String(enc.encodeToString((s"top&c=${wettkampf.uuid.get}").getBytes))
+        val topResults = s"${Config.remoteBaseUrl}/?" + new String(enc.encodeToString(s"top&c=${wettkampf.uuid.get}".getBytes))
         KuTuApp.hostServices.showDocument(topResults)
       }
-      WertungServiceBestenResult.resetBestenResults
+      WertungServiceBestenResult.resetBestenResults()
     }
   }
-  val riegenRemoveButton = new Button {
+  val riegenRemoveButton: Button = new Button {
     text = "Riege löschen"
     minWidth = 75
-    disable <== when(riegenFilterView.selectionModel.value.selectedItemProperty().isNull()) choose true otherwise false
+    disable <== when(riegenFilterView.selectionModel.value.selectedItemProperty().isNull) choose true otherwise false
     onAction = (event: ActionEvent) => {
       KuTuApp.invokeWithBusyIndicator {
         val selectedRiege = riegenFilterView.selectionModel.value.getSelectedItem.name.value
@@ -1999,12 +2000,12 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
       }
     }
   }
-  val riegeRenameButton = new Button {
+  val riegeRenameButton: Button = new Button {
     text = "Riege umbenennen"
     minWidth = 75
-    disable <== when(riegenFilterView.selectionModel.value.selectedItemProperty().isNull()) choose true otherwise false
+    disable <== when(riegenFilterView.selectionModel.value.selectedItemProperty().isNull) choose true otherwise false
     onAction = (event: ActionEvent) => {
-      implicit val impevent = event
+      implicit val impevent: ActionEvent = event
       val selectedRiege = riegenFilterView.selectionModel.value.getSelectedItem.name.value
       val txtRiegenName = new TextField {
         text.value = selectedRiege
@@ -2029,14 +2030,14 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
     }
   }
 
-  val removeButton = new Button {
+  val removeButton: Button = new Button {
     text = "Athlet entfernen"
     minWidth = 75
     onAction = (event: ActionEvent) => {
       if !wkview.selectionModel().isEmpty then {
         val wertungEditor = wkview.selectionModel().getSelectedItem.head
         val athletwertungen = wkview.selectionModel().getSelectedItem.map(_.init.id).toSet
-        implicit val impevent = event
+        implicit val impevent: ActionEvent = event
         PageDisplayer.showInDialog(text.value, new DisplayablePage() {
           def getPage: Node = {
             new HBox {
@@ -2056,15 +2057,15 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
       }
     }
   }
-  val moveToOtherProgramButton: Button = new Button {
-    val pgmpattern = ".*GETU.*/i".r
+  private val moveToOtherProgramButton: Button = new Button {
+    val pgmpattern: Regex = ".*GETU.*/i".r
     text = programm.map(p => p.head.name match {
       case pgmpattern() => "Tu/Ti Kategorie wechseln ..."
       case _ => "Tu/Ti Programm wechseln ..."
     }).getOrElse(".")
     minWidth = 75
     onAction = (event: ActionEvent) => {
-      implicit val impevent = event
+      implicit val impevent: ActionEvent = event
       import ch.seidel.kutu.domain.given_Conversion_Date_LocalDate
       val athlet = wkview.selectionModel().getSelectedItem.head.init.athlet
       val alter = if wettkampfInfo.isJGAlterklasse then {
@@ -2100,12 +2101,12 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
       })
     }
   }
-  val setRiege2ForAllButton = new Button {
+  private val setRiege2ForAllButton = new Button {
     text = "2. Riege"
     tooltip = "2. Riegenzuteilung für alle in der Liste angezeigten Tu/Ti"
     minWidth = 75
     onAction = (event: ActionEvent) => {
-      implicit val impevent = event
+      implicit val impevent: ActionEvent = event
       val selectedRiege = wkModel
       val txtRiegenName = new TextField
       PageDisplayer.showInDialog(text.value, new DisplayablePage() {
@@ -2130,18 +2131,18 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
   }
 
   //addButton.disable <== when (wkview.selectionModel.value.selectedItemProperty.isNull()) choose true otherwise false
-  val moveAvaillable = programm.forall { p => p.head.id != 1L }
-  moveToOtherProgramButton.disable <== when(wkview.selectionModel.value.selectedItemProperty.isNull()) choose moveAvaillable otherwise false
+  private val moveAvaillable = programm.forall { p => p.head.id != 1L }
+  moveToOtherProgramButton.disable <== when(wkview.selectionModel.value.selectedItemProperty.isNull) choose moveAvaillable otherwise false
   setRiege2ForAllButton.disable <== when(Bindings.createBooleanBinding(() => {
     wkModel.isEmpty
   },
     wkModel
   )) choose true otherwise false
-  removeButton.disable <== when(wkview.selectionModel.value.selectedItemProperty.isNull()) choose true otherwise false
+  removeButton.disable <== when(wkview.selectionModel.value.selectedItemProperty.isNull) choose true otherwise false
 
-  val csvInputFile = new File(homedir + "/" + encodeFileName(wettkampf.easyprint) + "/excelinput.csv")
+  private val csvInputFile = new File(homedir + "/" + encodeFileName(wettkampf.easyprint) + "/excelinput.csv")
 
-  val actionButtons = programm match {
+  private val actionButtons = programm match {
     case None => wettkampf.programm.id match {
       case 1 => // Athletiktest
         val addButton = new Button {
@@ -2220,13 +2221,13 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
       }
   }
 
-  val clearButton = new Button {
+  private val clearButton = new Button {
     text = "Athlet zurücksetzen"
     minWidth = 75
     onAction = (event: ActionEvent) => {
       if !wkview.selectionModel().isEmpty then {
         val selected = wkview.selectionModel().getSelectedItem
-        implicit val impevent = event
+        implicit val impevent: ActionEvent = event
         PageDisplayer.showInDialog(text.value, new DisplayablePage() {
           def getPage: Node = {
             new HBox {
@@ -2254,13 +2255,13 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
       }
     }
   }
-  clearButton.disable <== when(wkview.selectionModel.value.selectedItemProperty.isNull()) choose true otherwise false
+  clearButton.disable <== when(wkview.selectionModel.value.selectedItemProperty.isNull) choose true otherwise false
 
-  val clearAllButton = new Button {
+  private val clearAllButton = new Button {
     text = "Alle angezeigten Resultate zurücksetzen"
     minWidth = 75
     onAction = (event: ActionEvent) => {
-      implicit val impevent = event
+      implicit val impevent: ActionEvent = event
       PageDisplayer.showInDialog(text.value, new DisplayablePage() {
         def getPage: Node = {
           new HBox {
@@ -2312,7 +2313,7 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
     }
   }
 
-  val editTablePane = new BorderPane {
+  private val editTablePane = new BorderPane {
     hgrow = Priority.Always
     vgrow = Priority.Always
     top = athletHeaderPane
@@ -2321,7 +2322,7 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
     }
   }
 
-  val filterControl = new HBox {
+  val filterControl: HBox = new HBox {
     children += teilnehmerCntLabel
   }
 
@@ -2329,7 +2330,7 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
     focusTraversable = false
     maxWidth = Double.MaxValue
     minHeight = Region.USE_PREF_SIZE
-    val title = new Label {
+    val title: Label = new Label {
       text = "Riegen-Filter"
       styleClass += "toolbar-header"
     }
@@ -2338,7 +2339,7 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
     children += alleRiegenCheckBox
   }
   riegenFilterView.focusTraversable = false
-  val riegenFilterPane = new BorderPane {
+  private val riegenFilterPane = new BorderPane {
     focusTraversable = false
     hgrow = Priority.Always
     vgrow = Priority.Always
@@ -2351,7 +2352,7 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
     bottom = filterControl
   }
 
-  override def isPopulated = {
+  override def isPopulated: Boolean = {
     logger.debug("populate Wertungen Tab for " + programm)
 
     subscription match {
@@ -2439,7 +2440,7 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
           )
       }
       center = riege match {
-        case None if (!wettkampfmode.value) =>
+        case None if !wettkampfmode.value =>
           new SplitPane {
             orientation = Orientation.Horizontal
             items += riegenFilterPane

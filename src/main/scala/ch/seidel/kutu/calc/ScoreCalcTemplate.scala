@@ -40,12 +40,12 @@ case class ScoreCalcTemplateView(
                                   eExpression: String, eVariables: List[ScoreCalcVariable], eDetails: Boolean,
                                   pExpression: String, pVariables: List[ScoreCalcVariable], pDetails: Boolean,
                                   aggregateFn: Option[ScoreAggregateFn]) extends DataObject  {
-  def variables = (dVariables ++ eVariables ++ pVariables).groupBy(_.index).values.toList
-  def readablDFormula = if dVariables.isEmpty then "" else aggregateFn match {
+  def variables: List[List[ScoreCalcVariable]] = (dVariables ++ eVariables ++ pVariables).groupBy(_.index).values.toList
+  def readablDFormula: String = if dVariables.isEmpty then "" else aggregateFn match {
     case None => dExpression
     case Some(agf) => dVariables.map(v => v.value).mkString(s"$agf(", "," ,")")
   }
-  def readablEFormula = if eVariables.isEmpty then "" else aggregateFn match {
+  def readablEFormula: String = if eVariables.isEmpty then "" else aggregateFn match {
     case None => eExpression
     case Some(agf) => eVariables.map(v => v.value).mkString(s"$agf(", "," ,")")
   }
@@ -65,7 +65,7 @@ case object TemplateJsonReader extends JsonSupport {
 case class ScoreCalcTemplate(id: Long, wettkampfId: Option[Long], disziplinId: Option[Long], wettkampfdisziplinId: Option[Long], dFormula: String, eFormula: String, pFormula: String, aggregateFn: Option[ScoreAggregateFn]) {
   private val varPattern = "\\$([DAEBP]{1})([\\w]+([\\w\\d\\s\\-]*[\\w\\d]{1})?)(\\.([0123]+))?".r
 
-  val scoreCalcTemplateSorter: ScoreCalcTemplate => String = t => {
+  private val scoreCalcTemplateSorter: ScoreCalcTemplate => String = t => {
     val wkm = t.wettkampfId match {
       case Some(_) => 100
       case None => 1000
@@ -78,7 +78,7 @@ case class ScoreCalcTemplate(id: Long, wettkampfId: Option[Long], disziplinId: O
       case Some(_) => 1
       case None => 3000
     }
-    f"${(wkm + dm + wdm)}%04d"
+    f"${wkm + dm + wdm}%04d"
   }
   val dVariables: List[ScoreCalcVariable] = parseVariables(dFormula)
   val dResolveDetails: Boolean = dFormula.endsWith("^")
@@ -143,7 +143,7 @@ case class ScoreCalcTemplate(id: Long, wettkampfId: Option[Long], disziplinId: O
     case Some(_) => List(scv.copy(index = 0), scv.copy(index = 1))
   }}.toList
 
-  def renderExpression(formula: String, values: List[ScoreCalcVariable]): String = {
+  private def renderExpression(formula: String, values: List[ScoreCalcVariable]): String = {
     val f = values.foldLeft(formula) { (acc, variable) =>
       acc.replace(variable.source, variable.value.toString())
     }

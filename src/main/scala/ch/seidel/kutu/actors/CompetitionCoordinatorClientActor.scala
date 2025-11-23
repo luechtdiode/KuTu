@@ -208,7 +208,7 @@ class CompetitionCoordinatorClientActor(wettkampfUUID: String) extends Persisten
         sender() ! MessageAck("Dieser Durchgang ist noch nicht für die Resultaterfassung freigegeben.")
       } else try {
         val disz = wkDiszs.get(wertung.wettkampfdisziplinId).map(_.disziplin.easyprint).getOrElse(s"Disz${wertung.wettkampfdisziplinId}")
-        log.debug(s"received for ${athlet.vorname} ${athlet.name} (${athlet.verein.getOrElse("")}) im Pgm $programm Disz $disz: ${wertung}")
+        log.debug(s"received for ${athlet.vorname} ${athlet.name} (${athlet.verein.getOrElse("")}) im Pgm $programm Disz $disz: $wertung")
         val verifiedWertung = updateWertungSimple(wertung, cache2)
         val updated = AthletWertungUpdated(athlet, verifiedWertung, wettkampfUUID, durchgang, geraet, programm)
         log.info(s"saved for ${athlet.vorname} ${athlet.name} (${athlet.verein.getOrElse("")}) im Pgm $programm Disz $disz: ${verifiedWertung.resultatWithVariables}")
@@ -303,7 +303,7 @@ class CompetitionCoordinatorClientActor(wettkampfUUID: String) extends Persisten
           case _ =>
         }
       }
-      ref ! BulkEvent(wettkampfUUID, squashDurchgangEvents(durchgangNormalized).toList)
+      ref ! BulkEvent(wettkampfUUID, squashDurchgangEvents(durchgangNormalized))
       //      squashDurchgangEvents(durchgangNormalized).foreach { d =>
       //        ref ! d
       //      }
@@ -545,7 +545,7 @@ class CompetitionCoordinatorClientActor(wettkampfUUID: String) extends Persisten
     })
   }
 
-  private def notifyPlayerWebSocketClient(toPublish: KutuAppEvent) = currentPlayer.foreach {
+  private def notifyPlayerWebSocketClient(toPublish: KutuAppEvent): Unit = currentPlayer.foreach {
       case (playerActorRefs, useMyMediaPlayerAction) =>
         playerActorRefs.foreach(player => player ! toPublish)
       case null =>

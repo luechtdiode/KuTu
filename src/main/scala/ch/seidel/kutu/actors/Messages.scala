@@ -1,6 +1,5 @@
 package ch.seidel.kutu.actors
 
-import ch.seidel.kutu.data.GroupBy
 import ch.seidel.kutu.domain.*
 import org.apache.pekko.actor.ActorRef
 
@@ -68,7 +67,7 @@ case class DurchgangFinished(wettkampfUUID: String, durchgang: String, time: Lon
 case class AthletWertungUpdated(athlet: AthletView, wertung: Wertung, wettkampfUUID: String, durchgang: String, geraet: Long, programm: String) extends KutuAppEvent {
   def toAthletWertungUpdatedSequenced(sequenceId: Long) = AthletWertungUpdatedSequenced(athlet, wertung, wettkampfUUID, durchgang, geraet, programm, sequenceId)
 }
-case class AthletWertungUpdatedSequenced(athlet: AthletView, wertung: Wertung, wettkampfUUID: String, durchgang: String, geraet: Long, programm: String, val sequenceId: Long) extends KutuAppEvent {
+case class AthletWertungUpdatedSequenced(athlet: AthletView, wertung: Wertung, wettkampfUUID: String, durchgang: String, geraet: Long, programm: String, sequenceId: Long) extends KutuAppEvent {
   def toAthletWertungUpdated() = AthletWertungUpdated(athlet, wertung, wettkampfUUID, durchgang, geraet, programm)
 }
 case class AthletRemovedFromWettkampf(athlet: AthletView, wettkampfUUID: String) extends KutuAppEvent

@@ -3,9 +3,9 @@ package ch.seidel.kutu.domain
 import slick.jdbc.GetResult
 
 trait AthletResultMapper extends VereinResultMapper {
-  implicit val getAthletResult: GetResult[Athlet] = GetResult(r =>
+  implicit val getAthletResult: GetResult[Athlet] = GetResult(using r =>
     Athlet(r.<<, r.<<, r.<<, r.<<, r.<<, r.<<, r.<<, r.<<, r.<<, r.<<, r.<<))
-  implicit val getAthletViewResult: GetResult[AthletView] = GetResult(r =>
+  implicit val getAthletViewResult: GetResult[AthletView] = GetResult(using r =>
     //id |js_id |geschlecht |name |vorname   |gebdat |strasse |plz |ort |activ |verein |id |name        |
     AthletView(
         id = r.<<,
@@ -21,7 +21,7 @@ trait AthletResultMapper extends VereinResultMapper {
         verein = getVereinOptionResult(r)
     ))
 
-  implicit val getAthletOptionResult: GetResult[Option[AthletView]] = GetResult(r => r.nextLongOption() match {
+  implicit val getAthletOptionResult: GetResult[Option[AthletView]] = GetResult(using r => r.nextLongOption() match {
     case Some(id) => Some(AthletView(
       id = id,
       js_id = r.<<,
@@ -35,6 +35,6 @@ trait AthletResultMapper extends VereinResultMapper {
       activ = r.<<,
       verein = getVereinOptionResult(r)
     ))
-    case _ => { r.skip; r.skip; r.skip; r.skip; r.skip; r.skip; r.skip; r.skip; r.skip; None }
+    case _ => r.skip; r.skip; r.skip; r.skip; r.skip; r.skip; r.skip; r.skip; r.skip; None
   })
 }

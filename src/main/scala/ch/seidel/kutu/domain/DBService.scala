@@ -9,12 +9,11 @@ import org.sqlite.SQLiteConnection
 import slick.jdbc
 import slick.jdbc.JdbcBackend.Database
 import slick.jdbc.PostgresProfile.api.{DBIO, actionBasedSQLInterpolation, jdbcActionExtensionMethods}
-import slick.jdbc.{JdbcBackend, JdbcDataSourceFactory}
+import slick.jdbc.JdbcBackend
 
 import java.io.File
 import java.nio.file.{Files, StandardOpenOption}
 import java.sql.Date
-import java.text.{ParseException, SimpleDateFormat}
 import java.util.Properties
 import scala.annotation.tailrec
 import scala.concurrent.Await
@@ -24,30 +23,30 @@ import scala.io.Source
 object DBService {
   private val logger = LoggerFactory.getLogger(this.getClass)
 
-  def buildFilename(version: String) = s"kutu-$version.sqlite"
+  private def buildFilename(version: String) = s"kutu-$version.sqlite"
 
   lazy private val dbFilename = buildFilename(appVersion)
   lazy private val dbhomedir = if new File("./db/" + dbFilename).exists() then {
-    logger.info("dbhomedir at: " + new File("./db/" + dbFilename).getAbsolutePath);
+    logger.info("dbhomedir at: " + new File("./db/" + dbFilename).getAbsolutePath)
     "./db"
   }
   else if new File(userHomePath + "/db").exists() then {
-    logger.info("dbhomedir at: " + userHomePath + "/db");
+    logger.info("dbhomedir at: " + userHomePath + "/db")
     userHomePath + "/db"
     //    "./db"
   }
   else {
     val f = new File(userHomePath + "/db")
-    logger.info("try to create for installing the db: " + f);
+    logger.info("try to create for installing the db: " + f)
     try {
-      f.mkdirs();
-      logger.info("dbhomedir at: " + f);
+      f.mkdirs()
+      logger.info("dbhomedir at: " + f)
       userHomePath + "/db"
     } catch {
       case _: Throwable =>
         val f = new File(".db")
-        logger.warn("try to create for installing the db: " + f.getAbsolutePath);
-        f.mkdirs();
+        logger.warn("try to create for installing the db: " + f.getAbsolutePath)
+        f.mkdirs()
         f.getPath
     }
   }
@@ -118,7 +117,7 @@ object DBService {
       case _: DatabaseNotInitializedException =>
         db.close()
         val backupFile = {
-          var cnt = 1;
+          var cnt = 1
           while new File(s"${dbfile.getAbsolutePath}.backup-$cnt").exists() do cnt = cnt + 1
           new File(s"${dbfile.getAbsolutePath}.backup-$cnt")
         }
@@ -167,9 +166,9 @@ object DBService {
 
     def startExternalDB = {
       val dbconfig_key = Config.config.getString(dbconfigname_key)
-      logger.info("load db-config with " + dbconfig_key);
+      logger.info("load db-config with " + dbconfig_key)
       val db = Database.forConfig(dbconfig_key, Config.config)
-      logger.info("db-config with " + dbconfig_key + " loaded");
+      logger.info("db-config with " + dbconfig_key + " loaded")
       val sqlScripts = List(
         "kutu-pg-ddl.sql"
         , "kutu-initialdata.sql"
@@ -208,7 +207,7 @@ object DBService {
           }
         case _ =>
       }*/
-      logger.info("database initialization ready with config " + dbconfig_key);
+      logger.info("database initialization ready with config " + dbconfig_key)
       db
     }
 
@@ -216,26 +215,26 @@ object DBService {
       startExternalDB
     } catch {
       case e: Exception =>
-        logger.error("Could not initialize database as expected.", e);
+        logger.error("Could not initialize database as expected.", e)
         Thread.sleep(30000L)
         try {
           startExternalDB
         } catch {
           case ee: Exception =>
-            logger.error("Could not initialize database as expected.", ee);
+            logger.error("Could not initialize database as expected.", ee)
             Thread.sleep(60000L)
             startExternalDB
         }
     } else {
-      logger.info("No dedicated db-config defined. Initialize the fallback with sqlite");
+      logger.info("No dedicated db-config defined. Initialize the fallback with sqlite")
       databaseLite
     }
   }
 
   private var database: Option[Database] = None
 
-  def checkMigrationDone(db: Database, script: String): Boolean = {
-    logger.info(s"checking installation-status for ${script} ...")
+  private def checkMigrationDone(db: Database, script: String): Boolean = {
+    logger.info(s"checking installation-status for $script ...")
     val ret = try {
       0 < Await.result(db.run {
         sql"""
@@ -246,14 +245,14 @@ object DBService {
       case _: Throwable => false
     }
     if ret then {
-      logger.info(s"the script ${script} is already installed")
+      logger.info(s"the script $script is already installed")
     } else {
-      logger.info(s"the script ${script} should be executed")
+      logger.info(s"the script $script should be executed")
     }
     ret
   }
 
-  def migrationDone(db: Database, script: String, log: String): Unit = {
+  private def migrationDone(db: Database, script: String, log: String): Unit = {
     Await.result(db.run {
       sqlu"""
           insert into migrations (name, result) values ($script, $log)
@@ -265,7 +264,7 @@ object DBService {
   def parseLine(s: String): IndexedSeq[String] = {
     @tailrec
     def cutFields(s: String, acc: IndexedSeq[String]): IndexedSeq[String] = {
-      if s.isEmpty() then {
+      if s.isEmpty then {
         acc
       }
       else if s.startsWith("\"") then {
@@ -276,14 +275,14 @@ object DBService {
             acc :+ ""
           }
           else {
-            acc :+ s.drop(1).take(splitter2 - 1)
+            acc :+ s.slice(1, splitter2 - 1 + 1)
           }
         }
         else if splitter == 0 then {
           cutFields(s.drop(splitter + 2), acc :+ "")
         }
         else {
-          cutFields(s.drop(splitter + 2), acc :+ s.drop(1).take(splitter - 1))
+          cutFields(s.drop(splitter + 2), acc :+ s.slice(1, splitter - 1 + 1))
         }
       }
       else if s.startsWith(",") then {
@@ -306,7 +305,7 @@ object DBService {
     cutFields(s, IndexedSeq[String]())
   }
 
-  def executeDBScript(script: Seq[String], db: Database) = {
+  private def executeDBScript(script: Seq[String], db: Database) = {
     def filterCommentLines(line: String) = {
       !line.trim().startsWith("--")
     }
@@ -322,7 +321,7 @@ object DBService {
 
     def parse(lines: Seq[String]): List[String] = {
       lines.filter(filterCommentLines).foldLeft(List(""))(combineMultilineStatement)
-        .filter(_.trim().length() > 0)
+        .filter(_.trim().nonEmpty)
     }
 
     val statements = parse(script)
@@ -331,8 +330,8 @@ object DBService {
     }
 
     val counters: Seq[Int] = if statementActions.size == 1 then {
-      if statements(0).startsWith("PRAGMA") then {
-        Await.result(db.run(sql"""#${statements(0)}""".as[String]), Duration.Inf)
+      if statements.head.startsWith("PRAGMA") then {
+        Await.result(db.run(sql"""#${statements.head}""".as[String]), Duration.Inf)
         Seq(1)
       } else {
         Await.result(db.run(DBIO.sequence(statementActions)), Duration.Inf)
@@ -346,7 +345,7 @@ object DBService {
   }
 
 
-  def installDB(db: Database, sqlScripts: List[String]) = {
+  def installDB(db: Database, sqlScripts: List[String]): List[Unit] = {
     sqlScripts.filter { filename =>
       !checkMigrationDone(db, filename)
     }.map { filename =>
@@ -362,17 +361,17 @@ object DBService {
         }
         catch {
           case e: Exception =>
-            logger.error("Error on executing database setup script", e);
+            logger.error("Error on executing database setup script", e)
             val errorfile = new File(dbhomedir + s"/$appVersion-$filename.err")
             errorfile.getParentFile.mkdirs()
             val fos = Files.newOutputStream(errorfile.toPath, StandardOpenOption.CREATE, StandardOpenOption.APPEND)
             try {
               fos.write(e.getMessage.getBytes("utf-8"))
-              fos.write("\n\nStatement:\n".getBytes("utf-8"));
+              fos.write("\n\nStatement:\n".getBytes("utf-8"))
               fos.write(sqlscript.mkString("\n").getBytes("utf-8"))
               fos.write("\n".getBytes("utf-8"))
             } finally {
-              fos.close
+              fos.close()
             }
             throw new DatabaseNotInitializedException()
         }
@@ -401,11 +400,11 @@ object DBService {
           val fos = Files.newOutputStream(new File(dbhomedir + s"/$appVersion-$filename.err").toPath, StandardOpenOption.CREATE, StandardOpenOption.APPEND)
           try {
             fos.write(e.getMessage.getBytes("utf-8"))
-            fos.write("\n\nStatement:\n".getBytes("utf-8"));
+            fos.write("\n\nStatement:\n".getBytes("utf-8"))
             fos.write(sqlscript.mkString("\n").getBytes("utf-8"))
             fos.write("\n".getBytes("utf-8"))
           } finally {
-            fos.close
+            fos.close()
           }
           throw e
       }
@@ -414,13 +413,13 @@ object DBService {
       try {
         fos.write(log.getBytes("utf-8"))
       } finally {
-        fos.close
+        fos.close()
       }
     }
     sqlScripts
   }
 
-  def startDB(alternativDB: Option[Database] = None) = {
+  def startDB(alternativDB: Option[Database] = None): _root_.slick.jdbc.JdbcBackend.JdbcDatabaseDef = {
     alternativDB match {
       case Some(db) =>
         database = Some(db)

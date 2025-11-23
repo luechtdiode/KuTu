@@ -1,7 +1,7 @@
 package ch.seidel.kutu.actors
 
 import ch.seidel.kutu.Config
-import ch.seidel.kutu.domain.{Disziplin, encodeURIComponent}
+import ch.seidel.kutu.domain.encodeURIComponent
 
 case class CompetitionState (
            //                  durchgangGeraetMap: Map[String, List[Disziplin]] = Map.empty,
@@ -103,7 +103,7 @@ case class CompetitionState (
     case _ => this
   }
 
-  def putBestenResult(wertungContainer: WertungContainer) =
+  private def putBestenResult(wertungContainer: WertungContainer) =
     if wertungContainer.wertung.endnote.sum >= Config.bestenlisteSchwellwert then {
       val key = s"${wertungContainer.id}:${wertungContainer.wertung.wettkampfdisziplinId.toString}"
       bestenResults.updated(key, wertungContainer)

@@ -17,12 +17,12 @@ import scala.concurrent.{Await, Future}
 object RegistrationAdmin {
   private val logger = LoggerFactory.getLogger(this.getClass)
 
-  type RegTuple = (Registration, AthletRegistration, Athlet, AthletView)
+  private type RegTuple = (Registration, AthletRegistration, Athlet, AthletView)
 
   def doSyncUnassignedClubRegistrations(wkInfo: WettkampfInfo, service: KutuService)(registrations: List[RegTuple]): (Set[Verein], List[SyncAction]) = {
     val starttime = System.currentTimeMillis()
     val registrationSet: Set[(Option[Verein], Registration)] = registrations.map(r => (r._4.verein, r._1)).toSet
-    val existingPgmAthletes: Map[Long, Map[Long, AthletRegistration]] = registrations.filter(!_._2.isEmptyRegistration).groupBy(_._2.programId).map(group => group._1 -> group._2.map(t => (t._4.id -> t._2)).toMap)
+    val existingPgmAthletes: Map[Long, Map[Long, AthletRegistration]] = registrations.filter(!_._2.isEmptyRegistration).groupBy(_._2.programId).map(group => group._1 -> group._2.map(t => t._4.id -> t._2).toMap)
     val existingAthletes: Set[Long] = registrations.map(_._4.id).filter(_ > 0).toSet
     val validatedClubs = registrations.filter(r => r._1.vereinId.isEmpty).flatMap(r => r._4.verein).toSet
     val boden = Some(1L)

@@ -3,7 +3,6 @@ package ch.seidel.kutu.data
 import java.sql.Date
 import scala.compiletime.*
 import scala.deriving.*
-import scala.quoted.*
 
 inline def labels[A](using m: Mirror.ProductOf[A]) =
   constValueTuple[m.MirroredElemLabels].asInstanceOf[Product].productIterator.map(_.toString).toList
@@ -37,7 +36,7 @@ def defaultKeepLogic[T](propertyname: String): Option[(T, T) => T] = {
         case Some(d: Date) =>
           if !f"$d%tF".endsWith("-01-01") then v1
           else v2 match {
-            case Some(cd: Date) if (!f"$cd%tF".endsWith("-01-01") || d.equals(cd)) =>
+            case Some(cd: Date) if !f"$cd%tF".endsWith("-01-01") || d.equals(cd) =>
               v2
             case _ =>
               v1

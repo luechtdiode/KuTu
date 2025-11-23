@@ -147,7 +147,7 @@ trait AthletService extends DBService with AthletResultMapper with VereinService
 
 
     getId.flatMap {
-      case Some(athletId) if (athletId > 0) =>
+      case Some(athletId) if athletId > 0 =>
         sqlu"""
                 update athlet
                 set js_id=${athlete.js_id},
@@ -284,7 +284,7 @@ trait AthletService extends DBService with AthletResultMapper with VereinService
 
   def loadAthlet(key: Long): Option[Athlet] = {
     Await.result(database.run {
-      sql"""select * from athlet where id=${key}""".as[Athlet]
+      sql"""select * from athlet where id=$key""".as[Athlet]
         .headOption
         .withPinnedSession
     }, Duration.Inf)
@@ -309,7 +309,7 @@ trait AthletService extends DBService with AthletResultMapper with VereinService
           else false
         }
       }
-      (tupel(0), tupel(1), mergeMissingProperties(tupel(0), tupel(1)))
+      (tupel.head, tupel(1), mergeMissingProperties(tupel.head, tupel(1)))
     }
   }
 
@@ -328,7 +328,7 @@ trait AthletService extends DBService with AthletResultMapper with VereinService
         having max(wk.datum) < ${Date.valueOf(d)}
        """.as[(Int, String, String, Date)]
       }, Duration.Inf).toList
-      if inactivList.length > 0 then {
+      if inactivList.nonEmpty then {
         logger.info("setting the following list of athlets inactiv:")
         logger.info(inactivList.mkString("(", "\n", ")"))
         val length = Await.result(database.run {

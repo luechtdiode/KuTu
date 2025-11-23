@@ -764,7 +764,7 @@ class NetworkTab(wettkampfmode: BooleanProperty, override val wettkampfInfo: Wet
         val topResults = s"${Config.remoteBaseUrl}/?" + new String(enc.encodeToString((s"top&c=${wettkampf.uuid.get}").getBytes))
         KuTuApp.hostServices.showDocument(topResults)
       }
-      WertungServiceBestenResult.resetBestenResults
+      WertungServiceBestenResult.resetBestenResults()
     }
   }
 

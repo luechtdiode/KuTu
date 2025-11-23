@@ -95,7 +95,7 @@ class KuTuMailerActor(smtpHost: String, smtpPort: Int, smtpUsername: String, smt
     case _ =>
   }
 
-  def receiveHot: Receive = {
+  private def receiveHot: Receive = {
     case mail: Mail =>
       val completionObserver: Try[String] => Unit = observeMailComletion(mail, 0, sender())
       send(mail).handleAsync {(v,e) =>
@@ -130,7 +130,7 @@ class KuTuMailerActor(smtpHost: String, smtpPort: Int, smtpUsername: String, smt
       e.printStackTrace()
       if retries < 3 then {
         log.warning(s"mail ${mail.subject} to ${mail.to} delivery failed: " + e.toString)
-        this.context.system.scheduler.scheduleOnce(FiniteDuration((5 * retries + 1), TimeUnit.MINUTES), self, SendRetry(mail, retries + 1, sender))
+        this.context.system.scheduler.scheduleOnce(FiniteDuration(5 * retries + 1, TimeUnit.MINUTES), self, SendRetry(mail, retries + 1, sender))
       } else {
         log.error(s"could not send message ${mail.subject} after 3 retries to ${mail.to}")
         sender ! StatusCodes.ExpectationFailed
@@ -159,8 +159,8 @@ class KuTuMailerActor(smtpHost: String, smtpPort: Int, smtpUsername: String, smt
 }
 
 object KuTuMailerActor {
-  private var customMailer: Option[CustomMailer] = None;
-  val mailSenderAppName = Config.config.getString("app.smtpsender.appname")
+  private var customMailer: Option[CustomMailer] = None
+  val mailSenderAppName: String = Config.config.getString("app.smtpsender.appname")
 
   def props(): Props = {
     if isSMTPConfigured then {
@@ -179,7 +179,7 @@ object KuTuMailerActor {
     }
   }
 
-  def isSMTPConfigured = Config.config.hasPath("X_SMTP_USERNAME") &&
+  def isSMTPConfigured: Boolean = Config.config.hasPath("X_SMTP_USERNAME") &&
     Config.config.hasPath("X_SMTP_DOMAIN") &&
     Config.config.hasPath("X_SMTP_HOST") &&
     Config.config.hasPath("X_SMTP_PORT") &&

@@ -19,14 +19,14 @@ object Surname {
     Surname(name, transformStatsMeaning(feminimCount), transformStatsMeaning(masculinCount))
   }
 
-  lazy val names: Set[Surname] = {
+  private lazy val names: Set[Surname] = {
     given String = "UTF-8"
     val bufferedSource = Source.fromResource("vornamen.csv")
     try {
       (for
         line <- bufferedSource.getLines()
         cols = line.split("\t").map(_.trim)
-        if (cols.length == 3)
+        if cols.length == 3
       yield {
         Surname(cols(0), cols(1), cols(2))
       }).toSet[Surname]

@@ -26,21 +26,13 @@ object WertungServiceBestenResult {
     logger.info(s"actually best-scored: \n${bestenResults.values.map(_.shortLogText).mkString("\n")}")
   }
   
-  def getBestenResults = {
-    bestenResults
-/* Athlet, Disziplin, Wertung (Endnote)
-    .map(w =>(w._2.athlet.easyprint, w._2.wettkampfdisziplin.disziplin.name, w._2.endnote))    
-    .sortBy(_._3)
- */
-    .map(_._2)    
-    .toList
-  }
+  def getBestenResults: List[WertungView] = bestenResults.values.toList
   
-  def resetBestenResults: Unit = {
+  def resetBestenResults(): Unit = {
     shouldResetBestenResults = true;
   }
 
-  def cleanBestenResults: Unit = {
+  def cleanBestenResults(): Unit = {
     if shouldResetBestenResults then {
       bestenResults = Map[String,WertungView]()
       shouldResetBestenResults = false
@@ -297,7 +289,7 @@ abstract trait WertungService extends DBService with WertungResultMapper with Di
        """.as[WertungView](getResultWertungView).head).transactionally)
     
     ret.map{wv =>
-      cleanBestenResults
+      cleanBestenResults()
       if wv.endnote.sum >= Config.bestenlisteSchwellwert then {
         putWertungToBestenResults(wv)
       }

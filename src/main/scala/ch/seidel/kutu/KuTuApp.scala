@@ -2209,7 +2209,7 @@ object KuTuApp extends JFXApp3 with KutuService with JsonSupport with JwtSupport
       else {
         splitPane.dividerPositions = 0d
       }
-      resetBestenResults
+      resetBestenResults()
     }
 
     //

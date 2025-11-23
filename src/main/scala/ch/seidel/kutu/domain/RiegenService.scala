@@ -14,15 +14,15 @@ trait RiegenService extends DBService with RiegenResultMapper {
         (if newname.trim == oldname then {
           sql"""select r.wettkampf_id, r.name, r.durchgang, r.start, r.kind
              from riege r
-             where wettkampf_id=$wettkampfid and name=${oldname}
+             where wettkampf_id=$wettkampfid and name=$oldname
           """.as[RiegeRaw]
         } else {
           sqlu"""
-                DELETE from riege where name=${newname.trim} and wettkampf_id=${wettkampfid}
+                DELETE from riege where name=${newname.trim} and wettkampf_id=$wettkampfid
                 """  >>
           sql"""select r.wettkampf_id, r.name, r.durchgang, r.start, r.kind
              from riege r
-             where wettkampf_id=$wettkampfid and name=${oldname}
+             where wettkampf_id=$wettkampfid and name=$oldname
           """.as[RiegeRaw]}).transactionally
     }, Duration.Inf)
     
@@ -31,7 +31,7 @@ trait RiegenService extends DBService with RiegenResultMapper {
         sqlu"""
                 insert into riege
                        (name, wettkampf_id)
-                VALUES (${newname.trim}, ${wettkampfid})
+                VALUES (${newname.trim}, $wettkampfid)
         """
       }
       else {
@@ -39,22 +39,22 @@ trait RiegenService extends DBService with RiegenResultMapper {
                   update riege
                   set name=${newname.trim}
                   where
-                  wettkampf_id=${wettkampfid} and name=${oldname}
+                  wettkampf_id=$wettkampfid and name=$oldname
           """
       }
       (riegeModifierAction >>
         sqlu"""   UPDATE wertung
-                  SET riege=${newname}
-                  WHERE wettkampf_id=${wettkampfid} and riege=${oldname}
+                  SET riege=$newname
+                  WHERE wettkampf_id=$wettkampfid and riege=$oldname
             """ >>
         sqlu"""   UPDATE wertung
-                  SET riege2=${newname}
-                  WHERE wettkampf_id=${wettkampfid} and riege2=${oldname}
+                  SET riege2=$newname
+                  WHERE wettkampf_id=$wettkampfid and riege2=$oldname
             """ >>
         sql"""   select r.name as riegenname, r.durchgang, d.*, r.kind
                  from riege r
                  left outer join disziplin d on (r.start = d.id)
-                 where r.wettkampf_id=${wettkampfid} and r.name=${newname}
+                 where r.wettkampf_id=$wettkampfid and r.name=$newname
            """.as[Riege].headOption).transactionally
     }, Duration.Inf).getOrElse(Riege(newname, None, None, 0))
   }
@@ -63,20 +63,20 @@ trait RiegenService extends DBService with RiegenResultMapper {
     Await.result(database.run{(
       sqlu"""
                 delete from durchgang where
-                wettkampf_id=${wettkampfid}
+                wettkampf_id=$wettkampfid
         """ >>
       sqlu"""
                 delete from durchgangstation where
-                wettkampf_id=${wettkampfid}
+                wettkampf_id=$wettkampfid
         """ >>
       sqlu"""
                 delete from riege where
-                wettkampf_id=${wettkampfid}
+                wettkampf_id=$wettkampfid
         """ >>
       sqlu"""   UPDATE wertung
                 SET riege=NULL
                   , riege2=NULL
-                WHERE wettkampf_id=${wettkampfid}
+                WHERE wettkampf_id=$wettkampfid
           """).transactionally
     }, Duration.Inf)
   }
@@ -95,14 +95,14 @@ trait RiegenService extends DBService with RiegenResultMapper {
     yield {
       sqlu"""
                 delete from riege where
-                wettkampf_id=${wettkampfid}
+                wettkampf_id=$wettkampfid
         """>>
       insertRiegen(riegen)
-    }) >> DBIO.sequence((for
+    }) >> DBIO.sequence(for
       wettkampfId <- wettkampfList
     yield {
       updateDurchgaengeAction(wettkampfId)
-    }))
+    })
 
     Await.result(database.run{process.transactionally}, Duration.Inf)
   }
@@ -111,7 +111,7 @@ trait RiegenService extends DBService with RiegenResultMapper {
     Await.result(database.run{ updateDurchgaengeAction(wettkampfId).transactionally}, Duration.Inf)
   }
 
-  def updateDurchgaengeAction(wettkampfId: Long): DBIOAction[Int, NoStream, Effect] =
+  private def updateDurchgaengeAction(wettkampfId: Long): DBIOAction[Int, NoStream, Effect] =
       sqlu"""
                 insert into durchgang (wettkampf_id, title, name, durchgangtype, ordinal, planStartOffset)
                 SELECT
@@ -124,19 +124,19 @@ trait RiegenService extends DBService with RiegenResultMapper {
                 FROM
                     zeitplan zp
                 WHERE
-                    zp.wettkampf_id = ${wettkampfId}
+                    zp.wettkampf_id = $wettkampfId
                     AND NOT EXISTS (SELECT 1 FROM durchgang dd WHERE dd.wettkampf_id = zp.wettkampf_id and dd.name = zp.durchgang)
         """>>
       sqlu"""
                 delete from durchgang
-                where wettkampf_id = ${wettkampfId}
+                where wettkampf_id = $wettkampfId
                 and durchgangType = 1
                 and not exists (
                   select 1 from riege r where r.durchgang = durchgang.name
                 )
             """
 
-  def updateOrInsertRiegeRawAction(riege: RiegeRaw) =
+  private def updateOrInsertRiegeRawAction(riege: RiegeRaw) =
     sqlu"""
                 delete from riege where
                 wettkampf_id=${riege.wettkampfId} and name=${riege.r}
@@ -189,13 +189,13 @@ trait RiegenService extends DBService with RiegenResultMapper {
   def cleanUnusedRiegen(wettkampfid: Long): Unit = {
     Await.result(database.run{(
       sqlu"""
-                DELETE from riege where wettkampf_id=${wettkampfid} and kind=0 and not exists(
+                DELETE from riege where wettkampf_id=$wettkampfid and kind=0 and not exists(
                   select 1 from wertung w where (w.riege = riege.name or w.riege2 = riege.name) and w.wettkampf_id = riege.wettkampf_id
                 )
           """ >>
       sqlu"""
               DELETE from durchgang
-              where wettkampf_id=${wettkampfid}
+              where wettkampf_id=$wettkampfid
               and durchgangtype=1
               and not exists (
                 select 1 from riege r
@@ -210,15 +210,15 @@ trait RiegenService extends DBService with RiegenResultMapper {
   def deleteRiege(wettkampfid: Long, oldname: String): Unit = {
     Await.result(database.run{(
       sqlu"""
-                DELETE from riege where name=${oldname.trim} and wettkampf_id=${wettkampfid}
+                DELETE from riege where name=${oldname.trim} and wettkampf_id=$wettkampfid
           """ >>
       sqlu"""   UPDATE wertung
                 SET riege=null
-                WHERE wettkampf_id=${wettkampfid} and riege=${oldname}
+                WHERE wettkampf_id=$wettkampfid and riege=$oldname
           """ >>
       sqlu"""   UPDATE wertung
                 SET riege2=null
-                WHERE wettkampf_id=${wettkampfid} and riege2=${oldname}
+                WHERE wettkampf_id=$wettkampfid and riege2=$oldname
           """ >>
       updateDurchgaengeAction(wettkampfid)).transactionally
     }, Duration.Inf)
@@ -241,7 +241,7 @@ trait RiegenService extends DBService with RiegenResultMapper {
           case Some(riege2) =>
             sqlu"""     UPDATE wertung
                     SET riege=${riege.r}
-                      , riege2=${riege2}
+                      , riege2=$riege2
                     WHERE id=${w.id}
           """
           case _ =>
@@ -254,22 +254,22 @@ trait RiegenService extends DBService with RiegenResultMapper {
     }, Duration.Inf)
   }
 
-  def selectRiegenRaw(wettkampfId: Long) = {
-    Await.result(database.run{(
+  def selectRiegenRaw(wettkampfId: Long): List[RiegeRaw] = {
+    Await.result(database.run{
        sql"""select r.wettkampf_id, r.name, r.durchgang, r.start, r.kind
              from riege r
              where wettkampf_id=$wettkampfId
-          """.as[RiegeRaw]).withPinnedSession
+          """.as[RiegeRaw].withPinnedSession
     }, Duration.Inf).toList
   }
 
-  def selectRiegen(wettkampfId: Long) = {
-    Await.result(database.run{(
+  def selectRiegen(wettkampfId: Long): List[Riege] = {
+    Await.result(database.run{
        sql"""select r.name as riegenname, r.durchgang, d.*, r.kind
              from riege r
              left outer join disziplin d on (r.start = d.id)
              where wettkampf_id=$wettkampfId
-          """.as[Riege]).withPinnedSession
+          """.as[Riege].withPinnedSession
     }, Duration.Inf).toList
   }
   

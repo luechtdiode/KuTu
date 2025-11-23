@@ -439,7 +439,7 @@ class RiegenTab(override val wettkampfInfo: WettkampfInfo, override val service:
         x._3,
         x._4,
         None)).sortBy { re =>
-      re.initdurchgang.toString() + re.initname + re.initstart.toString()
+      re.initdurchgang.toString + re.initname + re.initstart.toString
     }
 
   }

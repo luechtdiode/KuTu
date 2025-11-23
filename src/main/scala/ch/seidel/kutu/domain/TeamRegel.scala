@@ -3,29 +3,29 @@ package ch.seidel.kutu.domain
 object TeamRegel {
   val defaultRegel = TeamRegelList(List(), Some("Keine Teams"))
 
-  val vereinGesamt = "VereinGesamt"
-  val vereinGeraet = "VereinGerät"
-  val verbandGesamt = "VerbandGesamt"
-  val verbandGeraet = "VerbandGerät"
+  private val vereinGesamt = "VereinGesamt"
+  private val vereinGeraet = "VereinGerät"
+  private val verbandGesamt = "VerbandGesamt"
+  private val verbandGeraet = "VerbandGerät"
   val vereinRegeln = Set(vereinGesamt, vereinGeraet)
   val verbandRegeln = Set(verbandGesamt, verbandGeraet)
 
   val predefined = Map(
-      ("Keine Teams" -> "")
-    , ("Aus Verein, drei Bestnoten pro Gerät, mit unbeschränkter Anzahl Mitglieder" -> s"$vereinGeraet(3/*)")
-    , ("Aus Verein, drei Bestnoten pro Gerät, mit max vier Mitglieder" -> s"$vereinGeraet(3/4)")
-    , ("Aus Verein, drei Bestnoten pro Gerät, mit max vier Mitglieder, zusammengefasste Kategorien K6, K7, KH, KD" -> s"$vereinGeraet[K6+K7+KD+KH](3/4)")
-    , ("Aus Verein, drei Gesamt-Bestnoten, mit unbeschränkter Anzahl Mitglieder" -> s"$vereinGesamt(3/*)")
-    , ("Aus Verein, drei Gesamt-Bestnoten, mit max vier Mitglieder" -> s"$vereinGesamt(3/4)")
-    , ("Aus Verein, durchschnitt pro Gerät, mit unbeschränkter Anzahl Mitglieder (M/W)" -> s"$vereinGeraet[M+W](avg/*/*)")
-    , ("Aus Verein, median pro Gerät, mit unbeschränkter Anzahl Mitglieder (M/W)" -> s"$vereinGeraet[M+W](median/*/*)")
-    , ("Aus Verein, kleinste Abweichung pro Gerät, mit unbeschränkter Anzahl Mitglieder (M/W)" -> s"$vereinGeraet[M+W](devmin/*/*)")
-    , ("Aus Verein, grösste Abweichung pro Gerät, mit unbeschränkter Anzahl Mitglieder (M/W)" -> s"$vereinGeraet[M+W](devmax/*/*)")
-    , ("Aus Verband, drei Bestnoten pro Gerät, mit unbeschränkter Anzahl Mitglieder" -> s"$verbandGeraet(3/*)")
-    , ("Aus Verband, drei Bestnoten pro Gerät, mit max vier Mitglieder" -> s"$verbandGeraet(3/4)")
-    , ("Aus Verband, drei Gesamt-Bestnoten, mit unbeschränkter Anzahl Mitglieder" -> s"$verbandGesamt(3/*)")
-    , ("Aus Verband, drei Gesamt-Bestnoten, mit max vier Mitglieder" -> s"$verbandGesamt(3/4)")
-    , ("Individuell" -> s"$vereinGesamt(<min>/<max>/<extrateam1>+<extrateam2>), $verbandGesamt(<min>/<max>), VereinGerät(<min>/<max>), $vereinGeraet(<min>/<max>)")
+      "Keine Teams" -> ""
+    , "Aus Verein, drei Bestnoten pro Gerät, mit unbeschränkter Anzahl Mitglieder" -> s"$vereinGeraet(3/*)"
+    , "Aus Verein, drei Bestnoten pro Gerät, mit max vier Mitglieder" -> s"$vereinGeraet(3/4)"
+    , "Aus Verein, drei Bestnoten pro Gerät, mit max vier Mitglieder, zusammengefasste Kategorien K6, K7, KH, KD" -> s"$vereinGeraet[K6+K7+KD+KH](3/4)"
+    , "Aus Verein, drei Gesamt-Bestnoten, mit unbeschränkter Anzahl Mitglieder" -> s"$vereinGesamt(3/*)"
+    , "Aus Verein, drei Gesamt-Bestnoten, mit max vier Mitglieder" -> s"$vereinGesamt(3/4)"
+    , "Aus Verein, durchschnitt pro Gerät, mit unbeschränkter Anzahl Mitglieder (M/W)" -> s"$vereinGeraet[M+W](avg/*/*)"
+    , "Aus Verein, median pro Gerät, mit unbeschränkter Anzahl Mitglieder (M/W)" -> s"$vereinGeraet[M+W](median/*/*)"
+    , "Aus Verein, kleinste Abweichung pro Gerät, mit unbeschränkter Anzahl Mitglieder (M/W)" -> s"$vereinGeraet[M+W](devmin/*/*)"
+    , "Aus Verein, grösste Abweichung pro Gerät, mit unbeschränkter Anzahl Mitglieder (M/W)" -> s"$vereinGeraet[M+W](devmax/*/*)"
+    , "Aus Verband, drei Bestnoten pro Gerät, mit unbeschränkter Anzahl Mitglieder" -> s"$verbandGeraet(3/*)"
+    , "Aus Verband, drei Bestnoten pro Gerät, mit max vier Mitglieder" -> s"$verbandGeraet(3/4)"
+    , "Aus Verband, drei Gesamt-Bestnoten, mit unbeschränkter Anzahl Mitglieder" -> s"$verbandGesamt(3/*)"
+    , "Aus Verband, drei Gesamt-Bestnoten, mit max vier Mitglieder" -> s"$verbandGesamt(3/4)"
+    , "Individuell" -> s"$vereinGesamt(<min>/<max>/<extrateam1>+<extrateam2>), $verbandGesamt(<min>/<max>), VereinGerät(<min>/<max>), $vereinGeraet(<min>/<max>)"
   )
   private val rangePattern = "([a-zA-ZäöüÄÖÜ]+)([\\[\\S\\s0-9+\\]]+)?\\(([devmax\\/|devmin\\/|median\\/|min\\/|max\\/|avg\\/|sum\\/]+)?([0-9,\\*]+)\\/([0-9,\\*]*)(\\/[\\S\\s\\/0-9+]*)?\\)".r
 
@@ -85,7 +85,7 @@ sealed trait TeamRegel {
    * Per rule means, that each rule can have its own definition about whether a split or a group of a criterion is required.
    * @param wertungen list of wertungen, containing athlets and its assignment to a program, team, etc., where each
    *                  rule can extract its criterion to apply a splitting- or grouping- rule.
-   * @return List[pgm,sex,List[teams]]
+   * @return instance of <code>List[pgm,sex,List[teams]]</code>
    */
   def extractTeamsWithDefaultGouping(wertungen: Iterable[WertungView]): List[(String,String,List[Team])] = {
     val hasNoExplicitTeams = !wertungen.exists(w => w.team != 0)
@@ -165,7 +165,7 @@ case class TeamRegelVereinGeraet(min: Int, max: Int, extraTeamsDef: String, grou
               allRelevantWertungen.contains(w.athlet)
             }
           }
-          List(Team(s"${teamname}", toRuleName, limitedTeamwertungen, perDisciplinCountingWertungen, perDisciplinWertungen, aggregateFun))
+          List(Team(s"$teamname", toRuleName, limitedTeamwertungen, perDisciplinCountingWertungen, perDisciplinWertungen, aggregateFun))
         } else {
           List.empty
         }
@@ -213,7 +213,7 @@ case class TeamRegelVereinGesamt(min: Int, max: Int, extraTeamsDef: String, grou
               allRelevantWertungen.contains
             }
           }
-          List(Team(s"${teamname}", toRuleName, limitedTeamwertungen, perAthletWertungen, perAthletWertungen, aggregateFun))
+          List(Team(s"$teamname", toRuleName, limitedTeamwertungen, perAthletWertungen, perAthletWertungen, aggregateFun))
         } else {
           List.empty
         }
@@ -270,7 +270,7 @@ case class TeamRegelVerbandGeraet(min: Int, max: Int, extraTeamsDef: String, gro
               allRelevantWertungen.contains(w.athlet)
             }
           }
-          List(Team(s"${teamname}", toRuleName, limitedTeamwertungen, perDisciplinCountingWertungen, perDisciplinWertungen, aggregateFun))
+          List(Team(s"$teamname", toRuleName, limitedTeamwertungen, perDisciplinCountingWertungen, perDisciplinWertungen, aggregateFun))
         } else {
           List.empty
         }
@@ -317,7 +317,7 @@ case class TeamRegelVerbandGesamt(min: Int, max: Int, extraTeamsDef: String, gro
               allRelevantWertungen.contains
             }
           }
-          List(Team(s"${teamname}", toRuleName, limitedTeamwertungen, perAthletWertungen, perAthletWertungen, aggregateFun))
+          List(Team(s"$teamname", toRuleName, limitedTeamwertungen, perAthletWertungen, perAthletWertungen, aggregateFun))
         } else {
           List.empty
         }

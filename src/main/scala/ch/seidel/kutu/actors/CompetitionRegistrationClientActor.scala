@@ -64,9 +64,9 @@ class CompetitionRegistrationClientActor(wettkampfUUID: String) extends Persiste
     def debug(s: String): Unit = l.debug(s"[$shortName] $s")
   }
 
-  object CheckSyncChangedForNotifier
+  private object CheckSyncChangedForNotifier
 
-  object CheckEMailApprovedNotifier
+  private object CheckEMailApprovedNotifier
 
   private val wettkampf = readWettkampf(wettkampfUUID)
   private val wettkampfInfo = WettkampfInfo(wettkampf.toView(readProgramm(wettkampf.programmId)), this)
@@ -136,21 +136,21 @@ class CompetitionRegistrationClientActor(wettkampfUUID: String) extends Persiste
       if notificationEMail.equals(mail) then {
         if !syncState.emailApproved then {
           syncState = syncState.approved
-          sender() ! EMailApproved(s"EMail ${mail} erfolgreich verifiziert", success = true)
-          log.info(s"EMail approved ${mail}")
+          sender() ! EMailApproved(s"EMail $mail erfolgreich verifiziert", success = true)
+          log.info(s"EMail approved $mail")
         } else {
-          sender() ! EMailApproved(s"EMail ${mail} wurde bereits verifiziert", success = true)
-          log.info(s"EMail ${mail} was already approved")
+          sender() ! EMailApproved(s"EMail $mail wurde bereits verifiziert", success = true)
+          log.info(s"EMail $mail was already approved")
         }
       }
       else {
-        sender() ! EMailApproved(s"EMail ${mail} nicht erfolgreich verifiziert.", success = false)
-        log.info(s"EMail not approved ${mail} - not matching with competitions notificationEMail: $notificationEMail")
+        sender() ! EMailApproved(s"EMail $mail nicht erfolgreich verifiziert.", success = false)
+        log.info(s"EMail not approved $mail - not matching with competitions notificationEMail: $notificationEMail")
       }
 
     case CheckEMailApprovedNotifier =>
       if !syncState.emailApproved && (approvementEMailSent || readWettkampf(wettkampfUUID).notificationEMail.isEmpty) then {
-        if selectWertungen(wkuuid = Some(wettkampfUUID)).groupBy { x => x.athlet }.map(_._2).isEmpty then {
+        if selectWertungen(wkuuid = Some(wettkampfUUID)).groupBy { x => x.athlet }.values.isEmpty then {
           if selectRegistrationsOfWettkampf(UUID.fromString(wettkampf.uuid.get)).isEmpty then {
             CompetitionCoordinatorClientActor.publish(Delete(wettkampfUUID), "EMail-Approver")
             deleteRegistrations(UUID.fromString(wettkampfUUID))
@@ -241,7 +241,7 @@ object CompetitionRegistrationClientActor {
 
   def stop(wettkampfUUID: String): Unit = {
     implicit val timeout: Timeout = Timeout(60000, TimeUnit.MILLISECONDS)
-    system.actorSelection(s"user/Registration-${wettkampfUUID}").resolveOne().onComplete {
+    system.actorSelection(s"user/Registration-$wettkampfUUID").resolveOne().onComplete {
       case Success(actorRef) => system.stop(actorRef)
       case _ =>
     }
