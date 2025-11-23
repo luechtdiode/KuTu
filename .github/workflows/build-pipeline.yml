@@ -92,6 +92,7 @@ jobs:
       - name: Cleanup
         run: |
           rm -rf src/main/resources/app
+        shell: bash
       - name: Download client modifications
         uses: actions/download-artifact@v4
         with:
@@ -105,6 +106,7 @@ jobs:
           sbt packageApp
         env:
           OS: Linux
+        shell: bash
       - name: Prepare Releasenames
         run: |
           . ./normalize-releasenames.sh
@@ -146,6 +148,7 @@ jobs:
       - name: Cleanup
         run: |
           rm -rf src/main/resources/app
+        shell: bash
       - name: Download client modifications
         uses: actions/download-artifact@v4
         with:
@@ -195,6 +198,7 @@ jobs:
       - name: Cleanup
         run: |
           rm -rf src/main/resources/app
+        shell: bash
       - name: Download client modifications
         uses: actions/download-artifact@v4
         with:
@@ -208,6 +212,7 @@ jobs:
           sbt packageApp
         env:
           OS: macOS
+        shell: bash
       - name: Prepare Releasenames
         run: |
           . ./normalize-releasenames.sh
@@ -245,6 +250,7 @@ jobs:
           rm -rf src/main/resources/app
         env:
           OS: macOS
+        shell: bash
       - name: Download client modifications
         uses: actions/download-artifact@v4
         with:
@@ -258,6 +264,7 @@ jobs:
           sbt packageApp
         env:
           OS: macOS
+        shell: bash
       - name: Prepare Releasenames
         run: |
           . ./normalize-releasenames.sh
