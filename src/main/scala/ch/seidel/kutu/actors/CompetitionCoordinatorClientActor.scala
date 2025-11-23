@@ -548,7 +548,7 @@ class CompetitionCoordinatorClientActor(wettkampfUUID: String) extends Persisten
   private def notifyPlayerWebSocketClient(toPublish: KutuAppEvent) = currentPlayer.foreach {
       case (playerActorRefs, useMyMediaPlayerAction) =>
         playerActorRefs.foreach(player => player ! toPublish)
-      case _ =>
+      case null =>
     }
 
   private def notifyWebSocketClients(
@@ -588,10 +588,10 @@ class CompetitionCoordinatorClientActor(wettkampfUUID: String) extends Persisten
 
   private def addToDurchgangJournal(toPublish: AthletWertungUpdatedSequenced, durchgang: String): Unit = {
     if (durchgang == "") {
-      openDurchgangJournal = openDurchgangJournal.map {
+      openDurchgangJournal = openDurchgangJournal.flatMap {
         case (dgoption: Option[String], list: List[AthletWertungUpdatedSequenced]) =>
-          dgoption -> (list :+ toPublish)
-        case x => x
+          Some(dgoption -> (list :+ toPublish))
+        case null => None
       }
     } else {
       val key = Some(encodeURIComponent(durchgang))

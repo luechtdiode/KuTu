@@ -1,35 +1,34 @@
 package ch.seidel.kutu.http
 
-import java.io.ByteArrayOutputStream
-import java.util.UUID
-import java.util.concurrent.TimeUnit
+import ch.seidel.jwt.{JsonWebToken, JwtClaimsSetMap}
+import ch.seidel.kutu.Config.*
+import ch.seidel.kutu.actors.*
+import ch.seidel.kutu.data.ResourceExchanger
+import ch.seidel.kutu.domain.*
+import fr.davit.pekko.http.metrics.core.scaladsl.server.HttpMetricsDirectives.*
 import org.apache.pekko.http.scaladsl.Http
 import org.apache.pekko.http.scaladsl.marshallers.sprayjson.SprayJsonSupport
-import org.apache.pekko.http.scaladsl.model._
+import org.apache.pekko.http.scaladsl.model.*
 import org.apache.pekko.http.scaladsl.model.headers.RawHeader
 import org.apache.pekko.http.scaladsl.server.Route
 import org.apache.pekko.http.scaladsl.unmarshalling.Unmarshal
 import org.apache.pekko.stream.scaladsl.{Sink, Source, StreamConverters}
 import org.apache.pekko.util.ByteString
-import ch.seidel.jwt.{JsonWebToken, JwtClaimsSetMap}
-import ch.seidel.kutu.Config._
-import ch.seidel.kutu.actors._
-import ch.seidel.kutu.data.ResourceExchanger
-import ch.seidel.kutu.domain.{RegistrationService, ProgrammRaw, Wettkampf, WettkampfService, WettkampfView, encodeURIParam}
-import spray.json._
+import org.slf4j.LoggerFactory
+import spray.json.*
 
+import java.io.ByteArrayOutputStream
+import java.util.UUID
+import java.util.concurrent.TimeUnit
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration.{Duration, FiniteDuration}
 import scala.concurrent.{Await, Future, Promise}
-import scala.util.{Failure, Success, Try}
-import fr.davit.pekko.http.metrics.core.scaladsl.server.HttpMetricsDirectives._
+import scala.util.{Failure, Success}
 
-trait WettkampfRoutes extends SprayJsonSupport
-  with JsonSupport with JwtSupport with AuthSupport with RouterLogging with WettkampfService with RegistrationService
-  with CIDSupport with FailureSupport {
+trait WettkampfClient extends AuthSupport with KutuService with FailureSupport {
+  private val log = LoggerFactory.getLogger(WettkampfClient.this.getClass)
+  import DefaultJsonProtocol.*
 
-  import DefaultJsonProtocol._
-  
   def toHttpEntity(wettkampf: Wettkampf): HttpEntity.Strict = {
     val bos = new ByteArrayOutputStream()
     ResourceExchanger.exportWettkampfToStream(wettkampf, bos)
@@ -151,11 +150,11 @@ trait WettkampfRoutes extends SprayJsonSupport
     }.transformWith {
       case Failure(f) => f match {
         case HTTPFailure(StatusCodes.NotFound, _, _ ) =>
-          log.warning(s"login with existing secret impossible ($f), remote competition not existing! try post ...")
+          log.warn(s"login with existing secret impossible ($f), remote competition not existing! try post ...")
           postWettkampf(Promise[String]())
 
         case e: Throwable =>
-          log.warning(s"login with existing secret impossible ($f), remote competition not existing! abort!")
+          log.warn(s"login with existing secret impossible ($f), remote competition not existing! abort!")
           throw e
       }
 
@@ -209,7 +208,7 @@ trait WettkampfRoutes extends SprayJsonSupport
   }
 
   def httpDownloadRequest(request: HttpRequest): Future[Wettkampf] = {
-    import Core._
+    import Core.*
     val source = Source.single(request, ())
     val requestResponseFlow = Http().superPool[Unit](settings = poolsettings)
 
@@ -257,6 +256,14 @@ trait WettkampfRoutes extends SprayJsonSupport
     case HttpHeader("wkuuid", value) => Some(value)
     case _ => None
   }
+
+}
+
+trait WettkampfRoutes extends WettkampfClient with SprayJsonSupport
+  with JsonSupport with JwtSupport with AuthSupport with RouterLogging with WettkampfService with RegistrationService
+  with CIDSupport with FailureSupport {
+
+  import DefaultJsonProtocol.*
 
   lazy val wettkampfRoutes: Route = {
     handleCID { (clientId: String) =>

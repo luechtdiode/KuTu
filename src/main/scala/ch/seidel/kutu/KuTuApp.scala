@@ -51,12 +51,11 @@ import scala.concurrent.duration.Duration
 import scala.concurrent.{Await, Future, Promise}
 import scala.util.{Failure, Success}
 
-object KuTuApp extends JFXApp3 with KutuService with JsonSupport with JwtSupport {
+object KuTuApp extends JFXApp3 with KutuService with JsonSupport with JwtSupport with WettkampfClient with KuTuAppHTTPServer {
 
   import WertungServiceBestenResult.*
 
   private val logger = LoggerFactory.getLogger(this.getClass)
-  private lazy val server = KuTuServer
   val enc: Base64.Encoder = Base64.getUrlEncoder
 
   import scala.concurrent.ExecutionContext.Implicits.global
@@ -66,7 +65,7 @@ object KuTuApp extends JFXApp3 with KutuService with JsonSupport with JwtSupport
   override def stopApp(): Unit = {
     lazyExecutor.shutdownNow()
     ConnectionStates.disconnected()
-    server.shutDown("KuTuApp")
+    shutDown("KuTuApp")
     super.stopApp()
     System.exit(0)
   }
@@ -609,7 +608,7 @@ object KuTuApp extends JFXApp3 with KutuService with JsonSupport with JwtSupport
         new Button("OK") {
           onAction = handleAction { implicit e: ActionEvent =>
             val process = KuTuApp.invokeAsyncWithBusyIndicator(caption) {
-              server.httpRemoveWettkampfRequest(p.toWettkampf)
+              httpRemoveWettkampfRequest(p.toWettkampf)
             }
             process.onComplete {
               resultTry =>
@@ -673,7 +672,7 @@ object KuTuApp extends JFXApp3 with KutuService with JsonSupport with JwtSupport
             val url = s"$remoteAdminBaseUrl/api/competition/${p.uuid.get}"
             invokeAsyncWithBusyIndicator[Wettkampf](s"Wettkampf ${p.easyprint} herunterladen") {
               val pr = Promise[Wettkampf]()
-              server.httpDownloadRequest(server.makeHttpGetRequest(url)).onComplete(ft =>
+              httpDownloadRequest(makeHttpGetRequest(url)).onComplete(ft =>
                 Platform.runLater {
                   ft match {
                     case Success(w) =>
@@ -916,8 +915,8 @@ object KuTuApp extends JFXApp3 with KutuService with JsonSupport with JwtSupport
   def makeStartServerMenu = {
     val item = makeMenuAction("Start local Server") { (caption, action) =>
       KuTuApp.invokeWithBusyIndicator {
-        server.startServer()
-        LocalServerStates.startLocalServer(() => server.listNetworkAdresses)
+        startServer()
+        LocalServerStates.startLocalServer(() => listNetworkAdresses)
       }
     }
     item.disable <== when(Bindings.createBooleanBinding(() => isLocalHostServer,
@@ -932,7 +931,7 @@ object KuTuApp extends JFXApp3 with KutuService with JsonSupport with JwtSupport
     val item = makeMenuAction("Stop local Server") { (caption, action) =>
       KuTuApp.invokeWithBusyIndicator {
         LocalServerStates.stopLocalServer()
-        server.stopServer("user stops local server")
+        stopServer("user stops local server")
       }
     }
     item.disable <== when(Bindings.createBooleanBinding(() => {
@@ -990,7 +989,7 @@ object KuTuApp extends JFXApp3 with KutuService with JsonSupport with JwtSupport
           txtUsername.text, txtPassword.text
         )) choose true otherwise false
         onAction = handleAction { implicit e: ActionEvent =>
-          server.setProxyProperties(
+          setProxyProperties(
             host = txtProxyAddress.text.value.trim(),
             port = txtProxyPort.text.value.trim(),
             user = txtUsername.text.value.trim(),
@@ -1153,11 +1152,11 @@ object KuTuApp extends JFXApp3 with KutuService with JsonSupport with JwtSupport
         if (!p.toWettkampf.hasSecred(homedir, "localhost")) {
           p.toWettkampf.saveSecret(homedir, "localhost", jwt.JsonWebToken(jwtHeader, setClaims(p.uuid.get, Int.MaxValue), jwtSecretKey))
         }
-        server.httpRenewLoginRequest(s"$remoteBaseUrl/api/loginrenew", p.uuid.get, p.toWettkampf.readSecret(homedir, "localhost").get)
+        httpRenewLoginRequest   (s"$remoteBaseUrl/api/loginrenew", p.uuid.get, p.toWettkampf.readSecret(homedir, "localhost").get)
       } else if (!p.toWettkampf.hasRemote(homedir, remoteHostOrigin)) {
-        server.httpUploadWettkampfRequest(p.toWettkampf, server.Connect)
+        httpUploadWettkampfRequest(p.toWettkampf, Connect)
       } else if (p.toWettkampf.hasSecred(homedir, remoteHostOrigin)) {
-        server.httpRenewLoginRequest(s"$remoteBaseUrl/api/loginrenew", p.uuid.get, p.toWettkampf.readSecret(homedir, remoteHostOrigin).get)
+        httpRenewLoginRequest(s"$remoteBaseUrl/api/loginrenew", p.uuid.get, p.toWettkampf.readSecret(homedir, remoteHostOrigin).get)
       } else {
         Future{EmptyResponse()}
       }
@@ -1526,7 +1525,7 @@ object KuTuApp extends JFXApp3 with KutuService with JsonSupport with JwtSupport
     import DefaultJsonProtocol.*
     val item = makeMenuAction("Wettkampf herunterladen") { (caption, action) =>
       implicit val e = action
-      val wklist = server.httpGet(s"${remoteAdminBaseUrl}/api/competition").map {
+      val wklist = httpGet(s"${remoteAdminBaseUrl}/api/competition").map {
         case entityString: String => entityString.asType[List[Wettkampf]]
         case _ => List[Wettkampf]()
       }
@@ -1563,7 +1562,7 @@ object KuTuApp extends JFXApp3 with KutuService with JsonSupport with JwtSupport
                     val url = s"$remoteAdminBaseUrl/api/competition/${wettkampf.uuid.get}"
                     invokeAsyncWithBusyIndicator[Wettkampf](s"Wettkampf ${wettkampf.easyprint} herunterladen") {
                       val pr = Promise[Wettkampf]()
-                      server.httpDownloadRequest(server.makeHttpGetRequest(url)).onComplete(ft =>
+                      httpDownloadRequest(makeHttpGetRequest(url)).onComplete(ft =>
                         Platform.runLater {
                           ft match {
                             case Success(w) =>

@@ -11,7 +11,6 @@ import scala.io.StdIn
 object KuTuServer extends App with KuTuAppHTTPServer with AuthSupport with Hashing {
   private val logger = LoggerFactory.getLogger(this.getClass)
 
-  val binding = startServer()
 
   import Core._
 
@@ -28,6 +27,7 @@ object KuTuServer extends App with KuTuAppHTTPServer with AuthSupport with Hashi
     super.shutDown("KuTuServer")
   }
 
+  val binding = startServer()
   logger.info("initial cleanup athletes ...")
   val cleanedAthletes = markAthletesInactiveOlderThan(3)
   logger.info("initial cleanup clubs ...")
