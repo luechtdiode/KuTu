@@ -89,21 +89,20 @@ jobs:
             ~/.ivy2/cache
           key: ${{ runner.os }}-sbt-${{ hashFiles('**/build.sbt') }}
           restore-keys: ${{ runner.os }}-sbt
-      - name: Java Setup
+      - name: Cleanup
         run: |
-          . ./prepare_jdk.sh
-        env:
-          OS: Linux
+          rm -rf src/main/resources/app
       - name: Download client modifications
         uses: actions/download-artifact@v4
         with:
           name: src
           path: src/main/resources/app
-      - name: sbt Build
+      - name: Java Setup & Package-Build
         run: |
+          . ./prepare_jdk.sh
           java -version
           sbt -version
-          sbt clean assembly
+          sbt packageApp
         env:
           OS: Linux
       - name: Prepare Releasenames
@@ -144,6 +143,9 @@ jobs:
             ~/.ivy2/cache
           key: ${{ runner.os }}-sbt-${{ hashFiles('**/build.sbt') }}
           restore-keys: ${{ runner.os }}-sbt
+      - name: Cleanup
+        run: |
+          rm -rf src/main/resources/app
       - name: Download client modifications
         uses: actions/download-artifact@v4
         with:
@@ -152,7 +154,9 @@ jobs:
       - name: Java Setup & Package-Build
         run: |
           . ./prepare_jdk.sh
-          sbt clean assembly
+          java -version
+          sbt -version
+          sbt packageApp
         env:
           OS: Win64
         shell: bash
@@ -188,23 +192,20 @@ jobs:
             ~/.ivy2/cache
           key: ${{ runner.os }}-sbt-${{ hashFiles('**/build.sbt') }}
           restore-keys: ${{ runner.os }}-sbt
-      - name: Java Setup
-        id: jdk
+      - name: Cleanup
         run: |
-          . ./prepare_jdk.sh
           rm -rf src/main/resources/app
-        env:
-          OS: macOS
       - name: Download client modifications
         uses: actions/download-artifact@v4
         with:
           name: src
           path: src/main/resources/app
-      - name: sbt Build
+      - name: Java Setup & Package-Build
         run: |
+          . ./prepare_jdk.sh
           java -version
           sbt -version
-          sbt clean assembly
+          sbt packageApp
         env:
           OS: macOS
       - name: Prepare Releasenames
@@ -241,7 +242,6 @@ jobs:
       - name: Java Setup
         id: jdk
         run: |
-          . ./prepare_jdk.sh
           rm -rf src/main/resources/app
         env:
           OS: macOS
@@ -250,11 +250,12 @@ jobs:
         with:
           name: src
           path: src/main/resources/app
-      - name: sbt Build
+      - name: Java Setup & Package-Build
         run: |
+          . ./prepare_jdk.sh
           java -version
           sbt -version
-          sbt clean assembly
+          sbt packageApp
         env:
           OS: macOS
       - name: Prepare Releasenames
