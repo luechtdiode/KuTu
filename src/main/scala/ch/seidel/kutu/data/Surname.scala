@@ -53,7 +53,12 @@ object Surname {
   }
   def isSurname(name: String): Option[Surname] = {
     val namen = name.split(" ")
-    names.find(sn => namen.exists(nn => sn.name.equalsIgnoreCase(nn)))
+    val surnames = names.filter(sn => namen.exists(nn => sn.name.equalsIgnoreCase(nn)))
+    val isMc = surnames.count(_.isMasculin)
+    val isFc = surnames.count(_.isFeminin)
+    val isM = isMc >= isFc
+    val isF = isMc <= isFc
+    Some(Surname(name, if isF then 1 else 0, if isM then 1 else 0))
   }
 }
 
