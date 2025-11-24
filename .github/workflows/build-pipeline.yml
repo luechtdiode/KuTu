@@ -98,6 +98,8 @@ jobs:
         with:
           name: src
           path: src/main/resources/app
+      - name: Setup sbt launcher
+        uses: sbt/setup-sbt@v1
       - name: Java Setup & Package-Build
         run: |
           . ./prepare_jdk.sh
@@ -154,6 +156,8 @@ jobs:
         with:
           name: src
           path: src/main/resources/app
+      - name: Setup sbt launcher
+        uses: sbt/setup-sbt@v1
       - name: Java Setup & Package-Build
         run: |
           . ./prepare_jdk.sh
@@ -204,6 +208,8 @@ jobs:
         with:
           name: src
           path: src/main/resources/app
+      - name: Setup sbt launcher
+        uses: sbt/setup-sbt@v1
       - name: Java Setup & Package-Build
         run: |
           . ./prepare_jdk.sh
@@ -256,6 +262,8 @@ jobs:
         with:
           name: src
           path: src/main/resources/app
+      - name: Setup sbt launcher
+        uses: sbt/setup-sbt@v1
       - name: Java Setup & Package-Build
         run: |
           . ./prepare_jdk.sh
