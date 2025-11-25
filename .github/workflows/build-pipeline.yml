@@ -304,8 +304,8 @@ jobs:
       - name: Prepare Docker-Build
         run: |
           mkdir -p docker/libs
-          cp target/package/libs/*.jar docker/libs/
-          cp target/package/*.jar docker/
+          cp target/libs/*.jar docker/libs/
+          cp target/*.jar docker/
           rm docker/libs/javafx*.jar
       - name: Login to DockerHub
         uses: docker/login-action@v3
