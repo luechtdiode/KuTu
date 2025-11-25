@@ -81,14 +81,6 @@ jobs:
           fetch-depth: 2
 
       - run: git checkout $(git log --branches -1 --pretty=format:'%D' | sed 's/.*, //g')
-      - name: Cache sbt packages
-        uses: actions/cache@v4
-        with:
-          path: |
-            ~/.sbt
-            ~/.ivy2/cache
-          key: ${{ runner.os }}-sbt-${{ hashFiles('**/build.sbt') }}
-          restore-keys: ${{ runner.os }}-sbt
       - name: Cleanup
         run: |
           rm -rf src/main/resources/app
@@ -98,17 +90,20 @@ jobs:
         with:
           name: src
           path: src/main/resources/app
+      - name: Setup JDK
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 25
+          cache: sbt
       - name: Setup sbt launcher
         uses: sbt/setup-sbt@v1
       - name: Java Setup & Package-Build
         run: |
-          . ./prepare_jdk.sh
-          java -version
-          sbt -version
-          sbt packageApp
+          sbt -v "packageApp"
+        shell: bash
         env:
           OS: Linux
-        shell: bash
       - name: Prepare Releasenames
         run: |
           . ./normalize-releasenames.sh
@@ -139,14 +134,6 @@ jobs:
           fetch-depth: 2
 
       - run: git checkout $(git log --branches -1 --pretty=format:'%D' | sed 's/.*, //g')
-      - name: Cache sbt packages
-        uses: actions/cache@v4
-        with:
-          path: |
-            ~/.sbt
-            ~/.ivy2/cache
-          key: ${{ runner.os }}-sbt-${{ hashFiles('**/build.sbt') }}
-          restore-keys: ${{ runner.os }}-sbt
       - name: Cleanup
         run: |
           rm -rf src/main/resources/app
@@ -156,17 +143,20 @@ jobs:
         with:
           name: src
           path: src/main/resources/app
+      - name: Setup JDK
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 25
+          cache: sbt
       - name: Setup sbt launcher
         uses: sbt/setup-sbt@v1
       - name: Java Setup & Package-Build
         run: |
-          . ./prepare_jdk.sh
-          java -version
-          sbt -version
-          sbt packageApp
+          sbt -v "packageApp"
+        shell: bash
         env:
           OS: Win64
-        shell: bash
       - name: Prepare Releasenames
         run: |
           . ./normalize-releasenames.sh
@@ -191,14 +181,6 @@ jobs:
           fetch-depth: 2
 
       - run: git checkout $(git log --branches -1 --pretty=format:'%D' | sed 's/.*, //g')
-      - name: Cache sbt packages
-        uses: actions/cache@v4
-        with:
-          path: |
-            ~/.sbt
-            ~/.ivy2/cache
-          key: ${{ runner.os }}-sbt-${{ hashFiles('**/build.sbt') }}
-          restore-keys: ${{ runner.os }}-sbt
       - name: Cleanup
         run: |
           rm -rf src/main/resources/app
@@ -208,17 +190,20 @@ jobs:
         with:
           name: src
           path: src/main/resources/app
+      - name: Setup JDK
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 25
+          cache: sbt
       - name: Setup sbt launcher
         uses: sbt/setup-sbt@v1
       - name: Java Setup & Package-Build
         run: |
-          . ./prepare_jdk.sh
-          java -version
-          sbt -version
-          sbt packageApp
+          sbt -v "packageApp"
+        shell: bash
         env:
           OS: macOS
-        shell: bash
       - name: Prepare Releasenames
         run: |
           . ./normalize-releasenames.sh
@@ -242,37 +227,29 @@ jobs:
           fetch-depth: 2
 
       - run: git checkout $(git log --branches -1 --pretty=format:'%D' | sed 's/.*, //g')
-      - name: Cache sbt packages
-        uses: actions/cache@v4
-        with:
-          path: |
-            ~/.sbt
-            ~/.ivy2/cache
-          key: ${{ runner.os }}-sbt-${{ hashFiles('**/build.sbt') }}
-          restore-keys: ${{ runner.os }}-sbt
-      - name: Java Setup
-        id: jdk
+      - name: Cleanup
         run: |
           rm -rf src/main/resources/app
-        env:
-          OS: macOS
         shell: bash
       - name: Download client modifications
         uses: actions/download-artifact@v4
         with:
           name: src
           path: src/main/resources/app
+      - name: Setup JDK
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 25
+          cache: sbt
       - name: Setup sbt launcher
         uses: sbt/setup-sbt@v1
       - name: Java Setup & Package-Build
         run: |
-          . ./prepare_jdk.sh
-          java -version
-          sbt -version
-          sbt packageApp
+          sbt -v "packageApp"
+        shell: bash
         env:
           OS: macOS
-        shell: bash
       - name: Prepare Releasenames
         run: |
           . ./normalize-releasenames.sh
