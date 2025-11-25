@@ -100,6 +100,7 @@ jobs:
         uses: sbt/setup-sbt@v1
       - name: Java Setup & Package-Build
         run: |
+          sbt -v "test"
           sbt -v "packageApp"
         shell: bash
         env:
@@ -112,8 +113,8 @@ jobs:
         with:
           name: app
           path: |
-            target/*.jar
-            target/dependency
+            target/package/*.jar
+            target/package/libs
       - name: Archive production artifacts
         uses: actions/upload-artifact@v4
         with:

@@ -216,7 +216,7 @@ jpackageApp := {
 }
 
 // Add command aliases for convenience
-addCommandAlias("packageApp", "clean; compile; test; prepareJpackage; jpackageApp")
+addCommandAlias("packageApp", "prepareJpackage; jpackageApp")
 
 // Expose a quick run task that mirrors the main class used by maven (KuTuApp)
 Compile / mainClass := Some("ch.seidel.kutu.KuTuApp")
