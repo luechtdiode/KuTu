@@ -1,7 +1,8 @@
 package ch.seidel.kutu.renderer
 
 import ch.seidel.kutu.domain.*
-import ch.seidel.kutu.renderer.PrintUtil.*
+import ch.seidel.kutu.renderer.*
+import ch.seidel.kutu.renderer.ServerPrintUtil.*
 import org.slf4j.{Logger, LoggerFactory}
 
 import java.io.File

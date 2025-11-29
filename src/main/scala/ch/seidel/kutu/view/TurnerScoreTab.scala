@@ -3,7 +3,7 @@ package ch.seidel.kutu.view
 import ch.seidel.kutu.Config.*
 import ch.seidel.kutu.data.*
 import ch.seidel.kutu.domain.*
-import ch.seidel.kutu.renderer.PrintUtil.FilenameDefault
+import ch.seidel.kutu.renderer.FilenameDefault
 import scalafx.beans.property.BooleanProperty
 
 class TurnerScoreTab(wettkampfmode: BooleanProperty, val verein: Option[Verein], override val service: KutuService) extends DefaultRanglisteTab(wettkampfmode, service) {

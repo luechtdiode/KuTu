@@ -5,8 +5,7 @@ import ch.seidel.kutu.Config.{homedir, remoteBaseUrl, remoteHostOrigin}
 import ch.seidel.kutu.KuTuApp.{controlsView, getStage, handleAction, modelWettkampfModus, selectedWettkampf, selectedWettkampfSecret, stage}
 import ch.seidel.kutu.data.{ByAltersklasse, ByJahrgangsAltersklasse}
 import ch.seidel.kutu.domain.*
-import ch.seidel.kutu.renderer.PrintUtil.FilenameDefault
-import ch.seidel.kutu.renderer.{CompetitionsJudgeToHtmlRenderer, PrintUtil, WettkampfOverviewToHtmlRenderer}
+import ch.seidel.kutu.renderer.{FilenameDefault, ServerPrintUtil, CompetitionsJudgeToHtmlRenderer, WettkampfOverviewToHtmlRenderer}
 import ch.seidel.kutu.*
 import javafx.scene.text.FontSmoothingType
 import scalafx.Includes.*
@@ -59,7 +58,7 @@ class WettkampfOverviewTab(wettkampf: WettkampfView, override val service: KutuS
   }
 
   private def createDocument = {
-    val logofile = PrintUtil.locateLogoFile(new java.io.File(homedir + "/" + encodeFileName(wettkampf.easyprint)))
+    val logofile = ServerPrintUtil.locateLogoFile(new java.io.File(homedir + "/" + encodeFileName(wettkampf.easyprint)))
     val data = if wettkampf.altersklassen.nonEmpty then {
       val aks = ByAltersklasse("AK", Altersklasse.parseGrenzen(wettkampf.altersklassen))
       val facts = service.listAKOverviewFacts(UUID.fromString(wettkampf.uuid.get))

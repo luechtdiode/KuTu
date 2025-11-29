@@ -6,8 +6,7 @@ import ch.seidel.kutu.actors.{AthletWertungUpdated, AthletWertungUpdatedSequence
 import ch.seidel.kutu.data.*
 import ch.seidel.kutu.domain.*
 import ch.seidel.kutu.http.WebSocketClient
-import ch.seidel.kutu.renderer.PrintUtil.FilenameDefault
-import ch.seidel.kutu.renderer.{PrintUtil, ScoreToHtmlRenderer}
+import ch.seidel.kutu.renderer.{FilenameDefault, ServerPrintUtil, ScoreToHtmlRenderer}
 import javafx.collections.ObservableList
 import javafx.scene.text.FontSmoothingType
 import org.controlsfx.control.CheckComboBox
@@ -29,6 +28,7 @@ import java.io.*
 import java.util.concurrent.{ScheduledFuture, TimeUnit}
 import scala.concurrent.Promise
 import scala.language.implicitConversions
+import ch.seidel.kutu.renderer.ServerPrintUtil.*
 
 abstract class DefaultRanglisteTab(wettkampfmode: BooleanProperty, override val service: KutuService) extends Tab with TabWithService with ScoreToHtmlRenderer {
 
@@ -288,7 +288,7 @@ abstract class DefaultRanglisteTab(wettkampfmode: BooleanProperty, override val 
       val combination = query.select(data).toList
       lastScoreDef.setValue(Some(query.asInstanceOf[FilterBy]))
 
-      val logofile = PrintUtil.locateLogoFile(getSaveAsFilenameDefault.dir)
+      val logofile = ServerPrintUtil.locateLogoFile(getSaveAsFilenameDefault.dir)
       val ret = toHTML(combination, linesPerPage, query.isAlphanumericOrdered, query.isAvgOnMultipleCompetitions, logofile)
       if linesPerPage == 0 then {
         webView.engine.loadContent(ret)

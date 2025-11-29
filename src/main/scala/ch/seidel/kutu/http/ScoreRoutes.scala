@@ -5,8 +5,8 @@ import ch.seidel.kutu.KuTuServer.handleCID
 import ch.seidel.kutu.actors.{CompetitionCoordinatorClientActor, MessageAck, ResponseMessage, StartedDurchgaenge}
 import ch.seidel.kutu.data.*
 import ch.seidel.kutu.domain.*
-import ch.seidel.kutu.renderer.PrintUtil.*
-import ch.seidel.kutu.renderer.{PrintUtil, ScoreToHtmlRenderer, ScoreToJsonRenderer}
+import ch.seidel.kutu.renderer.ServerPrintUtil.*
+import ch.seidel.kutu.renderer.{ServerPrintUtil, ScoreToHtmlRenderer, ScoreToJsonRenderer}
 import fr.davit.pekko.http.metrics.core.scaladsl.server.HttpMetricsDirectives.*
 import org.apache.pekko.http.scaladsl.marshallers.sprayjson.SprayJsonSupport
 import org.apache.pekko.http.scaladsl.marshalling.ToResponseMarshallable
@@ -24,6 +24,9 @@ trait
 ScoreRoutes extends SprayJsonSupport with JsonSupport with AuthSupport with RouterLogging with KutuService with IpToDeviceID {
   import spray.json.*
   import spray.json.DefaultJsonProtocol.*
+
+  import ch.seidel.kutu.renderer.ServerPrintUtil
+  import ch.seidel.kutu.renderer.ServerPrintUtil.ImageFile
 
   import scala.concurrent.ExecutionContext.Implicits.global
   
@@ -107,7 +110,7 @@ ScoreRoutes extends SprayJsonSupport with JsonSupport with AuthSupport with Rout
         pathPrefixLabeled("all", "all") {
           val data = selectWertungen()
           val logodir = new java.io.File(Config.homedir)
-          val logofile = PrintUtil.locateLogoFile(logodir)
+          val logofile = ServerPrintUtil.locateLogoFile(logodir)
 
 //          val programmText = data.head.wettkampf.programmId match {case 20 => "Kategorie" case _ => "Programm"}
           pathEnd {
@@ -161,7 +164,7 @@ ScoreRoutes extends SprayJsonSupport with JsonSupport with AuthSupport with Rout
               .filter(w => scheduledDisziplines.contains(w.wettkampfdisziplin.disziplin.id))
 
             val logodir = new java.io.File(Config.homedir + "/" + encodeFileName(wettkampf.easyprint))
-            val logofile = PrintUtil.locateLogoFile(logodir)
+            val logofile = ServerPrintUtil.locateLogoFile(logodir)
             val programmText = wettkampf.programmId match {case 20 => "Kategorie" case _ => "Programm"}
             val altersklassen = Altersklasse.parseGrenzen(wettkampf.altersklassen.get)
             val jgAltersklassen = Altersklasse.parseGrenzen(wettkampf.jahrgangsklassen.get)

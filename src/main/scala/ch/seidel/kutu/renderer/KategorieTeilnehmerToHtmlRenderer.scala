@@ -1,7 +1,7 @@
 package ch.seidel.kutu.renderer
 
 import ch.seidel.kutu.domain.{GeraeteRiege, SimpleDurchgang}
-import ch.seidel.kutu.renderer.PrintUtil.*
+import ch.seidel.kutu.renderer.ServerPrintUtil.*
 import org.slf4j.Logger
 
 import java.io.File

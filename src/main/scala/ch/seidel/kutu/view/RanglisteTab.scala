@@ -5,7 +5,7 @@ import ch.seidel.kutu.Config.*
 import ch.seidel.kutu.KuTuApp.handleAction
 import ch.seidel.kutu.data.*
 import ch.seidel.kutu.domain.*
-import ch.seidel.kutu.renderer.PrintUtil.FilenameDefault
+import ch.seidel.kutu.renderer.FilenameDefault
 import ch.seidel.kutu.{ConnectionStates, domain}
 import scalafx.Includes.when
 import scalafx.beans.binding.Bindings

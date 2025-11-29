@@ -17,6 +17,7 @@ services:
       - X_POSTGRES_HOST=db
       - X_POSTGRES_USER=kutuapp
       - X_POSTGRES_PASSWORD=kutuapp
+      - X_KUTU_SECRET=4A319703C448898ED093195E136C9216D77DD0927E479687F9CEDD85318D7214
       #- X_SMTP_HOST=<smtp.provider.com>
       #- X_SMTP_PORT=465
       #- X_SMTP_USERNAME=<kutuapp-smtp-user>

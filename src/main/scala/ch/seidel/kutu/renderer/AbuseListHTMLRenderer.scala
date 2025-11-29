@@ -1,7 +1,7 @@
 package ch.seidel.kutu.renderer
 
 import ch.seidel.kutu.http.AbuseHandler
-import ch.seidel.kutu.renderer.PrintUtil.escaped
+import ch.seidel.kutu.renderer.ServerPrintUtil.escaped
 
 trait AbuseListHTMLRenderer {
 

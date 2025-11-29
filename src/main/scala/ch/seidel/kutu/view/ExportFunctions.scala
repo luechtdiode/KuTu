@@ -5,9 +5,9 @@ import ch.seidel.kutu.{KuTuApp, domain}
 import ch.seidel.kutu.actors.DurchgangChanged
 import ch.seidel.kutu.domain.{KutuService, TeamItem, encodeFileName}
 import ch.seidel.kutu.http.WebSocketClient
-import ch.seidel.kutu.renderer.PrintUtil.FilenameDefault
+import ch.seidel.kutu.renderer.{FilenameDefault, KategorieTeilnehmerToHtmlRenderer, ServerPrintUtil}
+import ch.seidel.kutu.renderer.ServerPrintUtil.*
 import ch.seidel.kutu.renderer.RiegenBuilder.mapToGeraeteRiegen
-import ch.seidel.kutu.renderer.{KategorieTeilnehmerToHtmlRenderer, PrintUtil}
 import javafx.beans.property.SimpleObjectProperty
 import org.slf4j.{Logger, LoggerFactory}
 import scalafx.Includes.jfxObjectProperty2sfx
@@ -46,7 +46,7 @@ trait ExportFunctions {
     if !dir.exists() then {
       dir.mkdirs()
     }
-    val logofile = PrintUtil.locateLogoFile(dir)
+    val logofile = ServerPrintUtil.locateLogoFile(dir)
     def generate = (lpp: Int) => KuTuApp.invokeAsyncWithBusyIndicator("Riegenblätter aufbereiten ...") { Future {
       Platform.runLater {
         reprintItems.set(reprintItems.get().filter(p => !durchgang.contains(p.durchgang)))
@@ -93,7 +93,7 @@ trait ExportFunctions {
     if !dir.exists() then {
       dir.mkdirs()
     }
-    val logofile = PrintUtil.locateLogoFile(dir)
+    val logofile = ServerPrintUtil.locateLogoFile(dir)
     def generate = (lpp: Int) => KuTuApp.invokeAsyncWithBusyIndicator("Durchgang Teilnehmerliste aufbereiten ...") { Future {
       Platform.runLater {
         reprintItems.set(reprintItems.get().filter(p => !durchgang.contains(p.durchgang)))

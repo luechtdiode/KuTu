@@ -7,8 +7,8 @@ import ch.seidel.kutu.actors.*
 import ch.seidel.kutu.data.{ResourceExchanger, Surname, mergeMissingProperties}
 import ch.seidel.kutu.domain.*
 import ch.seidel.kutu.http.*
-import ch.seidel.kutu.renderer.PrintUtil
-import ch.seidel.kutu.view.WettkampfTableView
+import ch.seidel.kutu.renderer.ServerPrintUtil
+import ch.seidel.kutu.view.{PrintUtil, WettkampfTableView}
 import ch.seidel.kutu.view.player.Player
 import javafx.beans.property.SimpleObjectProperty
 import javafx.concurrent.Task
@@ -1478,7 +1478,7 @@ object KuTuApp extends JFXApp3 with KutuService with JsonSupport with JwtSupport
             // Ranglisten (scoredef), Planzeiten und Logo kopieren ...
             val sourceFolder = new File(homedir + "/" + encodeFileName(copyFrom.get.easyprint))
             val targetFolder = new File(homedir + "/" + encodeFileName(w.easyprint))
-            val sourceLogo = PrintUtil.locateLogoFile(sourceFolder)
+            val sourceLogo = ServerPrintUtil.locateLogoFile(sourceFolder)
             if !targetFolder.equals(sourceFolder) && sourceLogo.exists() then {
               val logofileCopyTo = targetFolder.toPath.resolve(sourceLogo.getName)
               if !logofileCopyTo.toFile.exists() then {
