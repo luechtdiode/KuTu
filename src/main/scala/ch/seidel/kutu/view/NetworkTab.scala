@@ -7,8 +7,7 @@ import ch.seidel.kutu.KuTuApp.{enc, hostServices}
 import ch.seidel.kutu.actors.*
 import ch.seidel.kutu.domain.*
 import ch.seidel.kutu.http.WebSocketClient
-import ch.seidel.kutu.renderer.PrintUtil.FilenameDefault
-import ch.seidel.kutu.renderer.{BestenListeToHtmlRenderer, PrintUtil, RiegenBuilder}
+import ch.seidel.kutu.renderer.{FilenameDefault, ServerPrintUtil, BestenListeToHtmlRenderer, RiegenBuilder}
 import ch.seidel.kutu.view.player.Player
 import javafx.event.EventHandler
 import javafx.scene.control as jfxsc
@@ -751,7 +750,7 @@ class NetworkTab(wettkampfmode: BooleanProperty, override val wettkampfInfo: Wet
         if !dir.exists() then {
           dir.mkdirs()
         }
-        val logofile = PrintUtil.locateLogoFile(dir)
+        val logofile = ServerPrintUtil.locateLogoFile(dir)
 
         def generate(lpp: Int) = toHTMListe(WertungServiceBestenResult.getBestenResults, logofile)
 

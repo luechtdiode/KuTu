@@ -7,7 +7,6 @@ import ch.seidel.kutu.actors.*
 import ch.seidel.kutu.domain.*
 import ch.seidel.kutu.http.WebSocketClient
 import ch.seidel.kutu.renderer.*
-import ch.seidel.kutu.renderer.PrintUtil.FilenameDefault
 import ch.seidel.kutu.squad.RiegenBuilder.{generateRiegen2Name, generateRiegenName}
 import ch.seidel.kutu.{Config, KuTuApp, KuTuServer}
 import javafx.scene.control as jfxsc
@@ -1797,7 +1796,7 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
         }
         val file = new java.io.File(dir.getPath + "/" + filename)
 
-        def generate(lpp: Int) = toHTMLasKategorienListe(seriendaten, PrintUtil.locateLogoFile(dir), service.selectSimpleDurchgaenge(wettkampf.id)
+        def generate(lpp: Int) = toHTMLasKategorienListe(seriendaten, ServerPrintUtil.locateLogoFile(dir), service.selectSimpleDurchgaenge(wettkampf.id)
           .map(d => (d, d.effectivePlanStart(wettkampf.datum.toLocalDate))))
 
         PrintUtil.printDialog(text.value, FilenameDefault(filename, dir), adjustLinesPerPage = false, generate, orientation = PageOrientation.Portrait)(event)
@@ -1864,7 +1863,7 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
           dir.mkdirs()
         }
 
-        def generate(lpp: Int) = toHTMLasVereinsListe(seriendaten, PrintUtil.locateLogoFile(dir), service.selectSimpleDurchgaenge(wettkampf.id)
+        def generate(lpp: Int) = toHTMLasVereinsListe(seriendaten, ServerPrintUtil.locateLogoFile(dir), service.selectSimpleDurchgaenge(wettkampf.id)
           .map(d => (d, d.effectivePlanStart(wettkampf.datum.toLocalDate))))
 
         PrintUtil.printDialog(text.value, FilenameDefault(filename, dir), false, generate, orientation = PageOrientation.Portrait)(event)
@@ -1931,7 +1930,7 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
         if !dir.exists() then {
           dir.mkdirs()
         }
-        val logofile = PrintUtil.locateLogoFile(dir)
+        val logofile = ServerPrintUtil.locateLogoFile(dir)
 
         def generate(lpp: Int) = wettkampf.programm.head.id match {
           case 20 => toHTMLasGeTu(seriendaten, logofile)
@@ -1954,7 +1953,7 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
         if !dir.exists() then {
           dir.mkdirs()
         }
-        val logofile = PrintUtil.locateLogoFile(dir)
+        val logofile = ServerPrintUtil.locateLogoFile(dir)
 
         def generate(lpp: Int) = toHTMListe(WertungServiceBestenResult.getBestenResults, logofile)
 

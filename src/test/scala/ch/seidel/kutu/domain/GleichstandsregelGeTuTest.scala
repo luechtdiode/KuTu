@@ -2,7 +2,7 @@ package ch.seidel.kutu.domain
 
 import ch.seidel.kutu.Config
 import ch.seidel.kutu.data.{ByGeschlecht, ByProgramm}
-import ch.seidel.kutu.renderer.{PrintUtil, ScoreToHtmlRenderer}
+import ch.seidel.kutu.renderer.{ScoreToHtmlRenderer, ServerPrintUtil}
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
 
@@ -11,7 +11,7 @@ import java.util.UUID
 
 class GleichstandsregelGeTuTest extends AnyWordSpec with Matchers {
   val logodir = new java.io.File(Config.homedir)
-  val logofile = PrintUtil.locateLogoFile(logodir)
+  val logofile = ServerPrintUtil.locateLogoFile(logodir)
 
   val wk = Wettkampf(1L, None, LocalDate.of(2023, 3, 3), "Testwettkampf", 20L, 0, BigDecimal(0d), "", None, None, Some("Disziplin(Schaukelringe,Sprung,Reck)"), None, None)
   val renderer = new ScoreToHtmlRenderer() {

@@ -4,7 +4,8 @@ import ch.seidel.kutu.Config
 import ch.seidel.kutu.KuTuServer.handleCID
 import ch.seidel.kutu.actors.{CompetitionCoordinatorClientActor, GeraeteRiegeList, GetGeraeteRiegeList, KutuAppEvent}
 import ch.seidel.kutu.domain.{Kandidat, KutuService, encodeFileName}
-import ch.seidel.kutu.renderer.*
+import ch.seidel.kutu.renderer.{AbuseListHTMLRenderer, ServerPrintUtil, KategorieTeilnehmerToHtmlRenderer, KategorieTeilnehmerToJSONRenderer}
+import ch.seidel.kutu.renderer.ServerPrintUtil.*
 import fr.davit.pekko.http.metrics.core.scaladsl.server.HttpMetricsDirectives.*
 import org.apache.pekko.http.scaladsl.marshallers.sprayjson.SprayJsonSupport
 import org.apache.pekko.http.scaladsl.marshalling.ToResponseMarshallable
@@ -51,7 +52,7 @@ trait ReportRoutes extends SprayJsonSupport
             val dgEvents = selectSimpleDurchgaenge(wettkampf.id)
               .map(d => (d, d.effectivePlanStart(wettkampf.datum.toLocalDate)))
             val logodir = new java.io.File(Config.homedir + "/" + encodeFileName(wettkampf.easyprint))
-            val logofile = PrintUtil.locateLogoFile(logodir)
+            val logofile = locateLogoFile(logodir)
 
             pathLabeled("startlist", "startlist") {
               get {

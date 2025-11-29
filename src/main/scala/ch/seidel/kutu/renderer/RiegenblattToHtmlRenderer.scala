@@ -2,7 +2,7 @@ package ch.seidel.kutu.renderer
 
 import ch.seidel.kutu.domain.*
 import ch.seidel.kutu.renderer.KategorieTeilnehmerToHtmlRenderer.getDurchgangFullName
-import ch.seidel.kutu.renderer.PrintUtil.*
+import ch.seidel.kutu.renderer.ServerPrintUtil.*
 import org.slf4j.{Logger, LoggerFactory}
 
 import java.io.File
@@ -327,7 +327,7 @@ trait RiegenblattToHtmlRenderer {
     }.mkString("", "\n", "\n")
 
     val stationlink = WertungsrichterQRCode.toURI(baseUrl, riege)
-    val imagedata = s"<a href='$stationlink' target='_blank'><img title='$stationlink' width='140px' height='140px' src='${PrintUtil.toQRCodeImage(stationlink)}'></a>"
+    val imagedata = s"<a href='$stationlink' target='_blank'><img title='$stationlink' width='140px' height='140px' src='${ServerPrintUtil.toQRCodeImage(stationlink)}'></a>"
     s"""<div class=riegenblatt>
       <div class=headline>
         $logoHtml $imagedata

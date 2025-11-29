@@ -4,7 +4,7 @@ import ch.seidel.kutu.Config
 import ch.seidel.kutu.Config.{homedir, remoteBaseUrl, remoteHostOrigin}
 import ch.seidel.kutu.KuTuApp.enc
 import ch.seidel.kutu.domain.*
-import ch.seidel.kutu.renderer.PrintUtil.*
+import ch.seidel.kutu.renderer.ServerPrintUtil.*
 import org.slf4j.LoggerFactory
 
 import java.io.File

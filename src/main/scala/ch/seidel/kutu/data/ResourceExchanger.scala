@@ -3,7 +3,7 @@ package ch.seidel.kutu.data
 import ch.seidel.kutu.actors.*
 import ch.seidel.kutu.calc.{ScoreAggregateFn, ScoreCalcTemplate, ScoreCalcTemplateView, TemplateViewJsonReader}
 import ch.seidel.kutu.domain.*
-import ch.seidel.kutu.renderer.PrintUtil
+import ch.seidel.kutu.renderer.ServerPrintUtil
 import ch.seidel.kutu.squad.RiegenBuilder
 import ch.seidel.kutu.view.*
 import ch.seidel.kutu.{Config, KuTuApp}
@@ -905,7 +905,7 @@ object ResourceExchanger extends KutuService with RiegenBuilder {
 
     val competitionDir = new java.io.File(Config.homedir + "/" + encodeFileName(wettkampf.easyprint))
 
-    val logofile = PrintUtil.locateLogoFile(competitionDir)
+    val logofile = ServerPrintUtil.locateLogoFile(competitionDir)
     if logofile.exists() then {
 
       if logofile.length() > Config.logoFileMaxSize then {

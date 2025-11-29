@@ -3,7 +3,8 @@ package ch.seidel.kutu.renderer
 import ch.seidel.kutu.Config
 import ch.seidel.kutu.actors.{Mail, MultipartMail}
 import ch.seidel.kutu.domain.*
-import ch.seidel.kutu.renderer.PrintUtil.*
+import ch.seidel.kutu.renderer.ServerPrintUtil
+import ch.seidel.kutu.renderer.ServerPrintUtil.*
 
 object MailTemplates {
   private val htmlhead =
@@ -56,7 +57,7 @@ object MailTemplates {
 
   def createMailApprovement(wettkampf: Wettkampf, link: String): Mail = {
     val logodir = new java.io.File(Config.homedir + "/" + encodeFileName(wettkampf.easyprint))
-    val logofile = PrintUtil.locateLogoFile(logodir)
+    val logofile = ServerPrintUtil.locateLogoFile(logodir)
     val logoHtml = if logofile.exists() then s"""<img class=logo src="${logofile.imageSrcForWebEngine}" title="Logo"/>""" else ""
     val imageData = toQRCodeImage(link)
     MultipartMail(s"Kutuapp EMail Verifikation nach Wettkampf-Upload (${wettkampf.easyprint})",
@@ -110,7 +111,7 @@ object MailTemplates {
 
   def createDonateMail(wettkampf: Wettkampf, link: String, wkStats: WettkampfStats, preisPerTn: BigDecimal, betrag: BigDecimal, clubs: Int, teilnehmer: Int): Mail = {
     val logodir = new java.io.File(Config.homedir + "/" + encodeFileName(wettkampf.easyprint))
-    val logofile = PrintUtil.locateLogoFile(logodir)
+    val logofile = ServerPrintUtil.locateLogoFile(logodir)
     val logoHtml = if logofile.exists() then s"""<img class=logo src="${logofile.imageSrcForWebEngine}" title="Logo"/>""" else ""
     val linkMaterialized = link.replace(":betrag", s"$betrag")
     val imageData = toQRCodeImage(linkMaterialized)
@@ -187,7 +188,7 @@ object MailTemplates {
 
   def createSyncNotificationMail(wettkampf: Wettkampf, syncActions: List[SyncAction], changedJudges: List[JudgeRegistration], removedJudges: List[JudgeRegistration], addedJudges: List[JudgeRegistration]): Mail = {
     val logodir = new java.io.File(Config.homedir + "/" + encodeFileName(wettkampf.easyprint))
-    val logofile = PrintUtil.locateLogoFile(logodir)
+    val logofile = ServerPrintUtil.locateLogoFile(logodir)
     val logoHtml = if logofile.exists() then s"""<img class=logo src="${logofile.imageSrcForWebEngine}" title="Logo"/>""" else ""
     MultipartMail("Mutationen bei Wettkampfanmeldungen",
       s"""Salut Wettkampf-Administrator/-In
@@ -268,7 +269,7 @@ object MailTemplates {
 
   def createPasswordResetMail(wettkampf: Wettkampf, registration: Registration, link: String): Mail = {
     val logodir = new java.io.File(Config.homedir + "/" + encodeFileName(wettkampf.easyprint))
-    val logofile = PrintUtil.locateLogoFile(logodir)
+    val logofile = ServerPrintUtil.locateLogoFile(logodir)
     val logoHtml = if logofile.exists() then s"""<img class=logo src="${logofile.imageSrcForWebEngine}" title="Logo"/>""" else ""
     val imageData = toQRCodeImage(link)
     MultipartMail("Kutuapp Passwort-Reset",

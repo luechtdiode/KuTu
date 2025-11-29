@@ -6,8 +6,7 @@ import ch.seidel.kutu.KuTuApp
 import ch.seidel.kutu.KuTuApp.hostServices
 import ch.seidel.kutu.data.ResourceExchanger
 import ch.seidel.kutu.domain.*
-import ch.seidel.kutu.renderer.PrintUtil.FilenameDefault
-import ch.seidel.kutu.renderer.{PrintUtil, RiegenBuilder, WertungsrichterQRCode, WertungsrichterQRCodesToHtmlRenderer}
+import ch.seidel.kutu.renderer.*
 import ch.seidel.kutu.squad.DurchgangBuilder
 import javafx.scene.control as jfxsc
 import javafx.scene.text.Text
@@ -744,6 +743,7 @@ class RiegenTab(override val wettkampfInfo: WettkampfInfo, override val service:
     def makeMergeDurchganMenu(durchgang: Set[String]): MenuItem = {
       val ret = KuTuApp.makeMenuAction("Durchgänge zusammenlegen ...") { (caption, action) =>
         given ActionEvent = action
+
         val txtNeuerDurchgangName = new TextField() {
           text = durchgang.toList.min
         }
@@ -816,6 +816,7 @@ class RiegenTab(override val wettkampfInfo: WettkampfInfo, override val service:
     def makeAggregateDurchganMenu(durchgang: Set[String]): MenuItem = {
       val ret = KuTuApp.makeMenuAction("Durchgänge in Gruppe zusammenfassen ...") { (caption, action) =>
         given ActionEvent = action
+
         val allDurchgaenge = durchgangModel.flatMap(group => {
           if group.children.isEmpty then {
             ObservableBuffer[jfxsc.TreeItem[DurchgangEditor]](group)
@@ -1047,6 +1048,7 @@ class RiegenTab(override val wettkampfInfo: WettkampfInfo, override val service:
     def makeRenameDurchgangMenu: MenuItem = {
       val m = KuTuApp.makeMenuAction("Durchgang umbenennen ...") { (caption, action) =>
         given ActionEvent = action
+
         val selectedDurchgang = durchgangView.selectionModel.value.getSelectedCells.head.getTreeItem.getValue.durchgang.name
         val txtDurchgangName = new TextField {
           text.value = selectedDurchgang
@@ -1079,6 +1081,7 @@ class RiegenTab(override val wettkampfInfo: WettkampfInfo, override val service:
     def makeStartOffsetDurchgangMenu: MenuItem = {
       val m = KuTuApp.makeMenuAction("Durchgang Start Zeitpunkt ...") { (caption, action) =>
         given ActionEvent = action
+
         val selectedDurchgang: String = durchgangView.selectionModel.value.getSelectedCells.head.getTreeItem.getValue.durchgang.title
         val selectedStartTime: String = s"${durchgangView.selectionModel.value.getSelectedCells.head.getTreeItem.getValue.durchgang.effectivePlanStart(wettkampf.datum.toLocalDate)}"
         val txtDurchgangStartTime = new TextField {
@@ -1312,6 +1315,7 @@ class RiegenTab(override val wettkampfInfo: WettkampfInfo, override val service:
 
     def doRiegenReset(event: ActionEvent): Unit = {
       given ActionEvent = event
+
       PageDisplayer.showInDialog("Riegen- und Durchgangseinteilung zurücksetzen ...", new DisplayablePage() {
         def getPage: Node = {
           new HBox {
@@ -1329,6 +1333,7 @@ class RiegenTab(override val wettkampfInfo: WettkampfInfo, override val service:
       }, new Button("OK") {
         onAction = (event: ActionEvent) => {
           given ActionEvent = event
+
           KuTuApp.invokeWithBusyIndicator {
             service.cleanAllRiegenDurchgaenge(wettkampf.id)
             reloadData()
@@ -1341,6 +1346,7 @@ class RiegenTab(override val wettkampfInfo: WettkampfInfo, override val service:
 
     def doDurchgangExport(event: ActionEvent): Unit = {
       given ActionEvent = event
+
       KuTuApp.invokeWithBusyIndicator {
         val filename = "Durchgaenge.csv"
         val dir = new java.io.File(homedir + "/" + encodeFileName(wettkampf.easyprint))
@@ -1366,6 +1372,7 @@ class RiegenTab(override val wettkampfInfo: WettkampfInfo, override val service:
 
     def doDurchgangExport2(event: ActionEvent): Unit = {
       given ActionEvent = event
+
       KuTuApp.invokeWithBusyIndicator {
         val filename = "Durchgaenge-Einfach.csv"
         val dir = new java.io.File(homedir + "/" + encodeFileName(wettkampf.easyprint))
@@ -1392,7 +1399,9 @@ class RiegenTab(override val wettkampfInfo: WettkampfInfo, override val service:
       disable <== when(makeRiegenFilterActiveBinding) choose true otherwise false
       onAction = (event: ActionEvent) => {
         val selectedRiege = riegenFilterView.selectionModel.value.getSelectedItem.name.value
+
         given ActionEvent = event
+
         PageDisplayer.showInDialog(text.value, new DisplayablePage() {
           def getPage: Node = {
             new HBox {
@@ -1423,6 +1432,7 @@ class RiegenTab(override val wettkampfInfo: WettkampfInfo, override val service:
       disable <== when(makeRiegenFilterActiveBinding) choose true otherwise false
       onAction = (event: ActionEvent) => {
         given ActionEvent = event
+
         val selectedRiege = riegenFilterView.selectionModel.value.getSelectedItem.name.value
         val txtRiegenName = new TextField {
           text.value = selectedRiege
@@ -1455,6 +1465,7 @@ class RiegenTab(override val wettkampfInfo: WettkampfInfo, override val service:
       disable <== when(makeDurchgangActiveBinding) choose true otherwise false
       onAction = (event: ActionEvent) => {
         given ActionEvent = event
+
         val selectedDurchgang = durchgangView.selectionModel.value.getSelectedItem.getValue.durchgang.name
         val txtDurchgangName = new TextField {
           text.value = selectedDurchgang
@@ -1491,7 +1502,7 @@ class RiegenTab(override val wettkampfInfo: WettkampfInfo, override val service:
       if !dir.exists() then {
         dir.mkdirs()
       }
-      val logofile = PrintUtil.locateLogoFile(dir)
+      val logofile = ServerPrintUtil.locateLogoFile(dir)
 
       def generate = (lpp: Int) => KuTuApp.invokeAsyncWithBusyIndicator(caption) {
         Future {
@@ -1524,7 +1535,7 @@ class RiegenTab(override val wettkampfInfo: WettkampfInfo, override val service:
         if !dir.exists() then {
           dir.mkdirs()
         }
-        val logofile = PrintUtil.locateLogoFile(dir)
+        val logofile = ServerPrintUtil.locateLogoFile(dir)
 
         def generate(lpp: Int) = (new Object with WertungsrichterQRCodesToHtmlRenderer).toHTML(seriendaten.sortBy(_.uri), logofile)
 
