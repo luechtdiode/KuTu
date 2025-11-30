@@ -2,9 +2,8 @@
 
 ## Prerequisites
 
-* JDK 25
-* Working Maven (3.9+) installation,
-* Working sbt (1.11.7+) installation,
+* JDK 25,
+* Working sbt (1.11.7+) installation (alternative Working Maven (3.9+) installation),
 * Git-Client
 * IDE (IntelliJ, vscode, eclipse, ...)
 * Node (v12.22+)
@@ -122,8 +121,9 @@ the following command (after `sbt clean packageApp` / `mvn clean install`):
 rm -rf docker/libs
 mkdir docker/libs
 cp target/dependency/*.jar docker/libs/
-cp target/package*.jar docker/
 cp target/*.jar docker/
+cp target/package/libs/*.jar docker/libs/
+cp target/package/*.jar docker/
 rm docker/libs/javafx*.jar
 
 docker build ./docker -t luechtdiode/kutuapp:test

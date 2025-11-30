@@ -68,7 +68,7 @@ object JpackageExecutor {
     ).mkString(" ")
 
     // --- Logic for finding JDK Home ---
-    val localJdk = baseDir / s"jdk-21.0.4+7" // Assuming a constant name
+    val localJdk = baseDir / s"jdk-25.0.1+8" // Assuming a constant name
     val jdkHome = 
       if (localJdk.exists()) {
         log.info(s"Using local JDK: ${localJdk.getAbsolutePath}")
