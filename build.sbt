@@ -17,7 +17,7 @@ val pekkoHttpV   = "1.3.0"
 val pekkoV       = "1.3.0"
 val slickV       = "3.6.1"
 val scalatestV   = "3.3.0-SNAP4"
-val gatlingV     = "3.14.7"
+val gatlingV     = "3.14.9"
 val slf4jV       = "2.0.17"
 val logbackV     = "1.5.21"
 
@@ -148,9 +148,12 @@ libraryDependencies ++= Seq(
   "org.scalatest" %% "scalatest" % scalatestV % Test,
   "junit" % "junit" % "4.13.2" % Test,
   "io.gatling.highcharts" % "gatling-charts-highcharts" % gatlingV % Test,
+  "io.gatling"            % "gatling-test-framework"    % gatlingV % Test,
   // Scala 3 std lib
   "org.scala-lang" %% "scala3-library" % "3.7.4"
 )
+
+enablePlugins(GatlingPlugin)
 
 // Add parser combinators: choose correct artifact for current scalaVersion
 libraryDependencies ++= {
