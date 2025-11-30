@@ -29,7 +29,7 @@ trait KategorieTeilnehmerToJSONRenderer {
     }
     val dt = d.mkString("[\n", ",\n", "]\n")
     s"""  {
-       |    "programm" : "$kategorie
+       |    "programm" : "$kategorie",
        |    "teilnehmer" : $dt
        |  }""".stripMargin
   }
