@@ -4,7 +4,7 @@ import JpackageExecutor._
 
 ThisBuild / scalaVersion := "3.7.3"
 ThisBuild / organization := "ch.seidel"
-ThisBuild / version := "2.3.22"
+ThisBuild / version := "2.3.23"
 
 logLevel := Level.Error
 
