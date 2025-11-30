@@ -5,9 +5,9 @@ export CODECOV_TOKEN='d03b4d79-1273-44ff-9206-69b56dbc4058'
 
 . ./prepare_jdk.sh
 
-#mvn clean install package
-sbt -v "clean; test"
-sbt -v "packageApp"
+mvn clean install package
+#sbt -v "clean; test"
+#sbt -v "packageApp"
 
 #bash <(curl -s https://codecov.io/bash)
 
