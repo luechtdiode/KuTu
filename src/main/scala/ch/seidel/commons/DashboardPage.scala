@@ -2,7 +2,6 @@ package ch.seidel.commons
 
 import ch.seidel.kutu.KuTuAppTree
 import ch.seidel.kutu.KuTuAppTree.showThumbnails
-import ch.seidel.kutu.view.WettkampfTableView
 import scalafx.scene.Node
 import scalafx.scene.control.*
 import scalafx.scene.image.{Image, ImageView}
@@ -30,7 +29,7 @@ class DashboardPage(dashPart: String = "dashboard", tree: KuTuAppTree) extends D
         vbarPolicy = ScrollPane.ScrollBarPolicy.Always
         content = node
       }
-      val filter = new TextField() {
+      val filter: TextField = new TextField() {
         promptText = "Such-Text"
         styleClass += "search-text"
 
@@ -50,7 +49,7 @@ class DashboardPage(dashPart: String = "dashboard", tree: KuTuAppTree) extends D
         styleClass += "toggle-button3"
         selected =!= showThumbnails
       }
-      val toggleGrp = new ToggleGroup {
+      val toggleGrp: ToggleGroup = new ToggleGroup {
         toggles += iconToggleButton
         toggles += listToggleButton
       }
@@ -83,14 +82,16 @@ class DashboardPage(dashPart: String = "dashboard", tree: KuTuAppTree) extends D
           }
         }
       }
-      var searchIcon: Image = null
+      var searchIcon: Option[Image] = None
       try {
-        searchIcon = new Image(getClass().getResourceAsStream("/images/search-inv.png"))
-      }catch{case e: Exception => e.printStackTrace()}
-      val iv = new ImageView(searchIcon) {
+        searchIcon = Some(new Image(getClass.getResourceAsStream("/images/search-inv.png")))
+      } catch {
+        case e: Exception => e.printStackTrace()
+      }
+      val iv: ImageView = new ImageView(searchIcon.orNull) {
         styleClass += "search-icon"
       }
-      val searchbar = new BorderPane{
+      val searchbar: BorderPane = new BorderPane{
         styleClass += "category-page"
         left = iv
         center = filter

@@ -531,16 +531,14 @@ class NetworkTab(wettkampfmode: BooleanProperty, override val wettkampfInfo: Wet
     new Menu {
       text = "Durchgang-Teilnehmerliste erstellen"
       updateItems()
-      reprintItems.onChange {
-        updateItems()
-      }
+      reprintItems.onChange(updateItems())
 
       private def updateItems(): Unit = {
         items.clear()
         val affectedDurchgaenge: Set[String] = reprintItems.get.map(_.durchgang)
         if selectedDurchgaenge.nonEmpty then {
           items += KuTuApp.makeMenuAction(s"Aus Durchgang ${selectedDurchgaenge.mkString(", ")}") { (caption: String, action: ActionEvent) =>
-            doSelectedTeilnehmerExport(text.value, selectedDurchgaenge)(action)
+            doSelectedTeilnehmerExport(text.value, selectedDurchgaenge)(using action)
           }
         }
         if affectedDurchgaenge.nonEmpty && selectedDurchgaenge.nonEmpty then {
@@ -578,13 +576,13 @@ class NetworkTab(wettkampfmode: BooleanProperty, override val wettkampfInfo: Wet
         val affectedDurchgaenge: Set[String] = reprintItems.get.map(_.durchgang)
         if selectedDurchgaenge.nonEmpty then {
           items += KuTuApp.makeMenuAction(s"Alle Stationen im Durchgang") { (caption: String, action: ActionEvent) =>
-            doSelectedRiegenBelatterExport(text.value, selectedDurchgaenge)(action)
+            doSelectedRiegenBelatterExport(text.value, selectedDurchgaenge)(using action)
           }
           items += KuTuApp.makeMenuAction(s"Nur 1. Station pro Gerät im Durchgang") { (caption: String, action: ActionEvent) =>
-            doSelectedRiegenBelatterExport(text.value, selectedDurchgaenge, Set(0))(action)
+            doSelectedRiegenBelatterExport(text.value, selectedDurchgaenge, Set(0))(using action)
           }
           items += KuTuApp.makeMenuAction(s"Alle ab 2. Station pro Gerät im Durchgang") { (caption: String, action: ActionEvent) =>
-            doSelectedRiegenBelatterExport(text.value, selectedDurchgaenge, Set(-1))(action)
+            doSelectedRiegenBelatterExport(text.value, selectedDurchgaenge, Set(-1))(using action)
           }
         }
         if affectedDurchgaenge.nonEmpty && selectedDurchgaenge.nonEmpty then {
@@ -592,13 +590,13 @@ class NetworkTab(wettkampfmode: BooleanProperty, override val wettkampfInfo: Wet
         }
         if affectedDurchgaenge.nonEmpty then {
           val allItem = KuTuApp.makeMenuAction(s"Alle betroffenen (${affectedDurchgaenge.size})") { (caption: String, action: ActionEvent) =>
-            doSelectedRiegenBelatterExport(text.value, affectedDurchgaenge)(action)
+            doSelectedRiegenBelatterExport(text.value, affectedDurchgaenge)(using action)
           }
           items += allItem
           items += new SeparatorMenuItem()
           affectedDurchgaenge.toList.sorted.foreach { durchgang =>
             items += KuTuApp.makeMenuAction(s"$durchgang") { (caption: String, action: ActionEvent) =>
-              doSelectedRiegenBelatterExport(text.value, Set(durchgang))(action)
+              doSelectedRiegenBelatterExport(text.value, Set(durchgang))(using action)
             }
           }
         }

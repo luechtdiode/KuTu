@@ -28,30 +28,13 @@ import scala.concurrent.{Await, Promise}
  */
 object PageDisplayer {
   val logger: Logger = LoggerFactory.getLogger(this.getClass)
-  private var errorIcon: Image = null
-  try {
-    errorIcon = new Image(getClass.getResourceAsStream("/images/RedException.png"))
-  } catch {
-    case e: Exception => e.printStackTrace()
-  }
-  var warnIcon: Image = null
-  try {
-    warnIcon = new Image(getClass.getResourceAsStream("/images/OrangeWarning.png"))
-  } catch {
-    case e: Exception => e.printStackTrace()
-  }
-  private var infoIcon: Image = null
-  try {
-    infoIcon = new Image(getClass.getResourceAsStream("/images/GreenOk.png"))
-  } catch {
-    case e: Exception => e.printStackTrace()
-  }
 
   def showInDialog(tit: String, nodeToAdd: DisplayablePage, commands: Button*)(implicit event: ActionEvent): Unit = {
     val buttons = commands :+ new Button(if commands.isEmpty then "Schliessen" else "Abbrechen")
     // Create dialog
     val dialogStage = new Stage {
-      outer => {
+      outer =>
+      {
         initModality(Modality.WindowModal)
         event.source match {
           case n: jfxs.Node if n.getScene.getRoot == KuTuApp.getStage.getScene.getRoot =>
@@ -78,7 +61,8 @@ object PageDisplayer {
                 btn.defaultButton = true
               }
               btn.minWidth = 100
-              btn.filterEvent(ActionEvent.Action) { () => outer.close()}}
+              btn.filterEvent(ActionEvent.Action) { () => outer.close() }
+            }
           }
         }
       }
@@ -90,12 +74,13 @@ object PageDisplayer {
     // Show dialog and wait till it is closed
     dialogStage.showAndWait()
   }
-  
+
   def showInDialogFromRoot(tit: String, nodeToAdd: DisplayablePage, commands: Button*): Unit = {
     val buttons = commands :+ new Button(if commands.isEmpty then "Schliessen" else "Abbrechen")
     // Create dialog
     val dialogStage = new Stage {
-      outer => {
+      outer =>
+      {
         initModality(Modality.WindowModal)
         delegate.initOwner(KuTuApp.getStage.getScene.getWindow)
 
@@ -117,7 +102,8 @@ object PageDisplayer {
                 btn.defaultButton = true
               }
               btn.minWidth = 100
-              btn.filterEvent(ActionEvent.Action) { () => outer.close()}}
+              btn.filterEvent(ActionEvent.Action) { () => outer.close() }
+            }
           }
         }
       }
@@ -128,32 +114,33 @@ object PageDisplayer {
     // Show dialog and wait till it is closed
     dialogStage.showAndWait()
   }
-  
-/*
-    val txtUsername = new TextField {
-          prefWidth = 500
-          promptText = "Username"
-          text = System.getProperty("user.name")
-        }
-    
-        val txtPassword = new PasswordField {
-          prefWidth = 500
-          promptText = "Internet Proxy Passwort"
-        }
-        "Internet Proxy authentication"
-        () =>
-            setProxyProperties(
-                host = Config.proxyHost.getOrElse(""), 
-                port = Config.proxyPort.getOrElse(""),
-                user = txtUsername.text.value.trim(),
-                password = txtPassword.text.value.trim())
+
+  /*
+      val txtUsername = new TextField {
+            prefWidth = 500
+            promptText = "Username"
+            text = System.getProperty("user.name")
           }
- * 
- */
+
+          val txtPassword = new PasswordField {
+            prefWidth = 500
+            promptText = "Internet Proxy Passwort"
+          }
+          "Internet Proxy authentication"
+          () =>
+              setProxyProperties(
+                  host = Config.proxyHost.getOrElse(""),
+                  port = Config.proxyPort.getOrElse(""),
+                  user = txtUsername.text.value.trim(),
+                  password = txtPassword.text.value.trim())
+            }
+   *
+   */
   def askFor(caption: String, fields: (String, String)*): Option[Seq[String]] = {
     val p = Promise[Option[Seq[String]]]()
+
     def ask(): Unit = {
-      val controls = fields.flatMap{
+      val controls = fields.flatMap {
         case f if f._1.contains("*") =>
           val t = f._1.split('*')(0)
           Seq(new Label(t), new PasswordField {
@@ -171,54 +158,61 @@ object PageDisplayer {
       val observedControls = controls.zipWithIndex.filter(x => x._2 % 2 != 0).map(_._1.asInstanceOf[TextField])
       var ret: Option[Seq[String]] = None
       showInDialogFromRoot(caption, new DisplayablePage() {
-          def getPage: Node = {
-            new BorderPane {
-              hgrow = Priority.Always
-              vgrow = Priority.Always
-              center = new VBox {
-                children = controls
-              }
+        def getPage: Node = {
+          new BorderPane {
+            hgrow = Priority.Always
+            vgrow = Priority.Always
+            center = new VBox {
+              children = controls
             }
           }
-        }, new Button("OK") {
-//          disable <== when(Bindings.createBooleanBinding(() => {
-//                                observedControls.forall(c => !c.text.isEmpty.value)
-//                              },
-//                                observedControls2(0), observedControls2(Math.min(1, observedControls2.size-1)), observedControls2(Math.min(3, observedControls2.size-1)), observedControls2(Math.min(4, observedControls2.size-1))
-//                              )) choose true otherwise false
-          onAction = () => {
-            ret = Some(observedControls.map(c => c.text.value))
-          }
-        })
-      p success ret      
+        }
+      }, new Button("OK") {
+        //          disable <== when(Bindings.createBooleanBinding(() => {
+        //                                observedControls.forall(c => !c.text.isEmpty.value)
+        //                              },
+        //                                observedControls2(0), observedControls2(Math.min(1, observedControls2.size-1)), observedControls2(Math.min(3, observedControls2.size-1)), observedControls2(Math.min(4, observedControls2.size-1))
+        //                              )) choose true otherwise false
+        onAction = () => {
+          ret = Some(observedControls.map(c => c.text.value))
+        }
+      })
+      p success ret
     }
-    if Platform.isFxApplicationThread then ask() else Platform.runLater{ask()}
+
+    if Platform.isFxApplicationThread then ask() else Platform.runLater {
+      ask()
+    }
 
     Await.result(p.future, Duration.Inf)
   }
 
   def confirm[T](caption: String, lines: Seq[String], okAction: () => T): Option[T] = {
     val p = Promise[Option[T]]()
+
     def ask(): Unit = {
       var ret: Option[T] = None
       showInDialogFromRoot(caption, new DisplayablePage() {
-          def getPage: Node = {
-            new BorderPane {
-              hgrow = Priority.Always
-              vgrow = Priority.Always
-              center = new VBox {
-                children = lines.map(text => new Label(text))
-              }
+        def getPage: Node = {
+          new BorderPane {
+            hgrow = Priority.Always
+            vgrow = Priority.Always
+            center = new VBox {
+              children = lines.map(text => new Label(text))
             }
           }
-        }, new Button("OK") {
-          onAction = () => {
-            ret = Some(okAction())
-          }
-        })
+        }
+      }, new Button("OK") {
+        onAction = () => {
+          ret = Some(okAction())
+        }
+      })
       p success ret
     }
-    if Platform.isFxApplicationThread then ask() else Platform.runLater{ask()}
+
+    if Platform.isFxApplicationThread then ask() else Platform.runLater {
+      ask()
+    }
 
     Await.result(p.future, Duration.Inf)
   }
@@ -297,34 +291,36 @@ object PageDisplayer {
   def choosePage(wettkampfmode: BooleanProperty, context: Option[Any], value: String = "dashBoard", tree: KuTuAppTree): Node = {
     value match {
       case "dashBoard" => displayPage(new DashboardPage(tree = tree))
-      case _           => context match {
+      case _ => context match {
         case Some(w: WettkampfView) => chooseWettkampfPage(wettkampfmode, w, tree)
-        case Some(v: Verein)        => chooseVereinPage(wettkampfmode, v, tree)
-        case _                      => displayPage(new DashboardPage(value.split("-")(1).trim(), tree))
+        case Some(v: Verein) => chooseVereinPage(wettkampfmode, v, tree)
+        case _ => displayPage(new DashboardPage(value.split("-")(1).trim(), tree))
       }
     }
   }
+
   private def chooseWettkampfPage(wettkampfmode: BooleanProperty, wettkampf: WettkampfView, tree: KuTuAppTree): Node = {
     try {
       displayPage(WettkampfPage.buildTab(wettkampfmode, WettkampfInfo(wettkampf, tree.getService), tree.getService))
     } catch {
-      case e:Exception =>
+      case e: Exception =>
         e.printStackTrace()
         throw e
     }
   }
+
   private def chooseVereinPage(wettkampfmode: BooleanProperty, verein: Verein, tree: KuTuAppTree): Node = {
     try {
       displayPage(TurnerPage.buildTab(wettkampfmode, verein, tree.getService))
     } catch {
-      case e:Exception =>
+      case e: Exception =>
         e.printStackTrace()
         throw e
     }
   }
 
   private var activePage: Option[DisplayablePage] = None
-  
+
   private def displayPage(nodeToAdd: DisplayablePage): Node = {
     activePage match {
       case Some(p) if p != nodeToAdd =>
@@ -343,6 +339,7 @@ object PageDisplayer {
       }
       children = Seq(indicator)
     }
+
     def op(): Unit = {
       logger.debug("start nodeToAdd.getPage")
       val p = nodeToAdd.getPage
@@ -350,6 +347,7 @@ object PageDisplayer {
       ret.children = p
       ret.requestLayout()
     }
+
     KuTuApp.invokeWithBusyIndicator(op())
     ret
   }

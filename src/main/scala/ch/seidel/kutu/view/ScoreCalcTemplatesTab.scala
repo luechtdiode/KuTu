@@ -210,7 +210,7 @@ class ScoreCalcTemplatesTab(wettkampf: WettkampfView, override val service: Kutu
           new Label {
             text = s"Filter"
             maxWidth = Double.MaxValue
-            minHeight = Region.USE_PREF_SIZE
+            minHeight = Region.UsePrefSize
             styleClass += "toolbar-header"
           },
           txtFilter,

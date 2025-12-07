@@ -11,12 +11,12 @@ class RollbackableStringProperty(bean: Object = null, name: String = null, initi
 
   def this() = this(null)
 
-  override def set(newValue: String) = {
+  override def set(newValue: String): Unit = {
     if originalValue.isEmpty then
       originalValue = Some(get)
     super.set(newValue)
   }
 
   // enabling tests
-  override def fireValueChangedEvent(): Unit = super.fireValueChangedEvent
+  override def fireValueChangedEvent(): Unit = super.fireValueChangedEvent()
 }

@@ -6,7 +6,7 @@ ThisBuild / scalaVersion := "3.7.3"
 ThisBuild / organization := "ch.seidel"
 ThisBuild / version := "2.3.23"
 
-logLevel := Level.Error
+// logLevel := Level.Error
 
 name := "KuTu"
 

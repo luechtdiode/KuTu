@@ -365,6 +365,7 @@ class RiegenTab(override val wettkampfInfo: WettkampfInfo, override val service:
   text = "Riegeneinteilung"
 
   private def reloadRiegen(): Unit = {
+    riegenFilterModel.clear()
     riegen().foreach(riegenFilterModel.add)
   }
 
@@ -403,15 +404,10 @@ class RiegenTab(override val wettkampfInfo: WettkampfInfo, override val service:
   def reloadData(): Unit = {
     reloadRiegen()
     reloadDurchgaenge()
-
   }
 
   def onNameChange(name1: String, name2: String): Unit = {
     reloadData()
-  }
-
-  def onSelectedChange(name: String, selected: Boolean): Boolean = {
-    selected
   }
 
   private def onRiegeChanged(sorter: () => Unit)(editor: RiegeEditor): Unit = {
@@ -701,7 +697,7 @@ class RiegenTab(override val wettkampfInfo: WettkampfInfo, override val service:
                 str2Int(txtGruppengroesse.text.value), durchgang,
                 splitSexOption = cbSplitSex.getSelectionModel.getSelectedItem match {
                   case item: SexDivideRule => Some(item)
-                  case _ => None
+                  case null => None
                 },
                 splitPgm = chkSplitPgm.selected.value,
                 onDisziplinList = getSelectedDisziplines)
@@ -734,7 +730,7 @@ class RiegenTab(override val wettkampfInfo: WettkampfInfo, override val service:
 
     def makeRegenereateDurchgangMenu(durchgang: Set[String]): MenuItem = {
       val m = KuTuApp.makeMenuAction("Durchgang neu einteilen ...") { (caption: String, action: ActionEvent) =>
-        doRegenerateDurchgang(durchgang)(action)
+        doRegenerateDurchgang(durchgang)(using action)
       }
       m.disable <== when(makeDurchgangActiveBinding) choose true otherwise false
       m
@@ -784,7 +780,7 @@ class RiegenTab(override val wettkampfInfo: WettkampfInfo, override val service:
         })
         val selectedDurchgaenge = allDurchgaenge.map(_.getValue.durchgang)
           .map(_.name).toSet
-        doSelectedTeilnehmerExport(text.value, selectedDurchgaenge)(action)
+        doSelectedTeilnehmerExport(text.value, selectedDurchgaenge)(using action)
       }
       allAction
     }
@@ -803,7 +799,7 @@ class RiegenTab(override val wettkampfInfo: WettkampfInfo, override val service:
           val selectedDurchgaenge = allDurchgaenge.map(_.getValue.durchgang)
             .filter { (d: Durchgang) => durchgang.contains(d.name) }
             .map(_.name).toSet
-          doSelectedTeilnehmerExport(text.value, selectedDurchgaenge)(action)
+          doSelectedTeilnehmerExport(text.value, selectedDurchgaenge)(using action)
         }
         selectedAction.setDisable(durchgang.size < 1)
         items += selectedAction
@@ -867,13 +863,13 @@ class RiegenTab(override val wettkampfInfo: WettkampfInfo, override val service:
           val affectedDurchgaenge: Set[String] = reprintItems.get.map(_.durchgang)
           if selectedDurchgaenge.nonEmpty then {
             items += KuTuApp.makeMenuAction(s"Alle selektierten") { (caption: String, action: ActionEvent) =>
-              doSelectedRiegenBelatterExport(text.value, selectedDurchgaenge)(action)
+              doSelectedRiegenBelatterExport(text.value, selectedDurchgaenge)(using action)
             }
             items += KuTuApp.makeMenuAction(s"Alle selektierten, nur 1. Gerät") { (caption: String, action: ActionEvent) =>
-              doSelectedRiegenBelatterExport(text.value, selectedDurchgaenge, Set(0))(action)
+              doSelectedRiegenBelatterExport(text.value, selectedDurchgaenge, Set(0))(using action)
             }
             items += KuTuApp.makeMenuAction(s"Alle selektierten, ab 2. Gerät") { (caption: String, action: ActionEvent) =>
-              doSelectedRiegenBelatterExport(text.value, selectedDurchgaenge, Set(-1))(action)
+              doSelectedRiegenBelatterExport(text.value, selectedDurchgaenge, Set(-1))(using action)
             }
           }
           if affectedDurchgaenge.nonEmpty && selectedDurchgaenge.nonEmpty then {
@@ -881,13 +877,13 @@ class RiegenTab(override val wettkampfInfo: WettkampfInfo, override val service:
           }
           if affectedDurchgaenge.nonEmpty then {
             val allItem = KuTuApp.makeMenuAction(s"Alle betroffenen (${affectedDurchgaenge.size})") { (caption: String, action: ActionEvent) =>
-              doSelectedRiegenBelatterExport(text.value, affectedDurchgaenge)(action)
+              doSelectedRiegenBelatterExport(text.value, affectedDurchgaenge)(using action)
             }
             items += allItem
             items += new SeparatorMenuItem()
             affectedDurchgaenge.toList.sorted.foreach { durchgang =>
               items += KuTuApp.makeMenuAction(s"$durchgang") { (caption: String, action: ActionEvent) =>
-                doSelectedRiegenBelatterExport(text.value, Set(durchgang))(action)
+                doSelectedRiegenBelatterExport(text.value, Set(durchgang))(using action)
               }
             }
           }
@@ -1295,7 +1291,7 @@ class RiegenTab(override val wettkampfInfo: WettkampfInfo, override val service:
 
     def makeRiegenSuggestMenu(): MenuItem = {
       val m = KuTuApp.makeMenuAction("Riegen & Durchgänge frisch einteilen ...") { (caption: String, action: ActionEvent) =>
-        doRegenerateDurchgang(Set.empty)(action)
+        doRegenerateDurchgang(Set.empty)(using action)
       }
       m.graphic = new ImageView {
         image = warnIcon

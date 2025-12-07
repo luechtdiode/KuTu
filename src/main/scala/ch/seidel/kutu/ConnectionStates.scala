@@ -19,7 +19,7 @@ object ConnectionStates {
   val connectedProperty = new ReadOnlyBooleanProperty(_connectedProperty)
 
   def connectedWith[T <: Option[?]](wettkampfUUID: String, wspromise: Promise[?]): Unit = {
-    wspromise.future.onComplete { case _ => disconnected() }
+    wspromise.future.onComplete(_ => disconnected())
     Platform.runLater(
       () => {
         _connectedWithProperty.setValue(wettkampfUUID)

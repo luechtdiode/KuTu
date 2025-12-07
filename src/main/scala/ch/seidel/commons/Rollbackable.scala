@@ -10,10 +10,9 @@ trait Rollbackable[T] extends WritableObjectValue[T] {
 
   def rollback(): Unit = {
     originalValue match {
-      case Some(v) => {
+      case Some(v) =>
         set(v)
         originalValue = None
-      }
       case None =>
     }
   }

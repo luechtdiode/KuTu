@@ -37,14 +37,14 @@ class AthletEditor(init: Athlet) {
     "Inaktiv"
   })
 
-  def isValid = {
+  def isValid: Boolean = {
     name.value.nonEmpty &&
     vorname.value.nonEmpty &&
     geschlecht.value.nonEmpty &&
     (optionOfGebDat match {case Some(d) => true case _ => false})
   }
 
-  def reset: Unit = {
+  def reset(): Unit = {
     jsid.value_=(s"${init.js_id}")
   }
 

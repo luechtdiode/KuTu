@@ -8,7 +8,7 @@ import javafx.util.Pair
 import org.w3c.dom.Element
 
 import java.io.{File, FilenameFilter, InputStreamReader}
-import java.net.{URI, URL, URLEncoder}
+import java.net.{URI, URLEncoder}
 import java.util
 import java.util.Scanner
 import javax.xml.parsers.DocumentBuilderFactory

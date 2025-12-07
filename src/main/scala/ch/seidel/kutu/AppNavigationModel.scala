@@ -191,7 +191,7 @@ class KuTuAppTree(service: KutuService) {
     new Label {
       text = value
       maxWidth = Double.MaxValue
-      minHeight = Region.USE_PREF_SIZE
+      minHeight = Region.UsePrefSize
       styleClass += "category-header"
     }
 

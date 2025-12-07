@@ -1,7 +1,7 @@
 package ch.seidel.commons
 
 import javafx.css as jfxcss
-import javafx.scene.control as jfxsc
+import javafx.scene.{control, control as jfxsc}
 import javafx.scene.control.{TextField, cell as jfxscc}
 import javafx.util.Callback
 import org.controlsfx.control.textfield.AutoCompletionBinding.ISuggestionRequest
@@ -27,12 +27,12 @@ import scala.jdk.CollectionConverters.IterableHasAsJava
 import scala.language.implicitConversions
 
 object AutoCommitTextFieldTableCell {
-  implicit def sfxAutoCommitTextFieldTableCell2jfx[S, T](cell: AutoCommitTextFieldTableCell[S, T]): TextFieldWithToolButtonTableCell[S, T] = if cell != null then cell.delegate.asInstanceOf[TextFieldWithToolButtonTableCell[S, T]] else null
+  implicit def sfxAutoCommitTextFieldTableCell2jfx[S, T](cell: AutoCommitTextFieldTableCell[S, T]): TextFieldWithToolButtonTableCell[S, T] = if cell != null then cell.delegate else null
 
-  protected val PSEUDO_CLASS_FOCUSED = PseudoClass("focused")
-  var lastKey: Option[String] = None
-  val editmode = BooleanProperty(false)
-  var editModeTerminationListener: List[() => Unit] = List.empty
+  private val PSEUDO_CLASS_FOCUSED = PseudoClass("focused")
+  private var lastKey: Option[String] = None
+  private val editmode = BooleanProperty(false)
+  private var editModeTerminationListener: List[() => Unit] = List.empty
   editmode.onChange {
     if !editmode.value then {
       println(s"executing ${editModeTerminationListener.size} waiting tasks ...")
@@ -52,17 +52,17 @@ object AutoCommitTextFieldTableCell {
     }
   }
 
-  protected def setEditMode(flag: Boolean): Unit = {
+  private def setEditMode(flag: Boolean): Unit = {
     editmode.setValue(flag)
   }
 
-  def forTableColumn[S](): (TableColumn[S, String] => TableCell[S, String]) =
+  def forTableColumn[S](): TableColumn[S, String] => TableCell[S, String] =
     (view: TableColumn[S, String]) => jfxscc.TextFieldTableCell.forTableColumn[S]().call(view)
 
-  def forTableColumn[S, T](converter: StringConverter[T]): (TableColumn[S, T] => TableCell[S, T]) =
+  def forTableColumn[S, T](converter: StringConverter[T]): TableColumn[S, T] => TableCell[S, T] =
     (view: TableColumn[S, T]) => jfxscc.TextFieldTableCell.forTableColumn[S, T](converter).call(view)
 
-  def isEditableColumn[S, T](p: TableColumn[S, T], rowIndex: Int): Boolean = {
+  private def isEditableColumn[S, T](p: TableColumn[S, T], rowIndex: Int): Boolean = {
     p.isVisible && p.isEditable && p.columns.isEmpty && {
       import javafx.scene.AccessibleAttribute
       val colIndex = p.tableView.value.getVisibleLeafIndex(p)
@@ -74,7 +74,7 @@ object AutoCommitTextFieldTableCell {
     }
   }
 
-  def getEditableColums[T](tableView: TableView[T], row: Int) =
+  private def getEditableColums[T](tableView: TableView[T], row: Int): List[control.TableColumn[T, ?]] =
     tableView.columns.toList.flatMap(p => p +: p.columns.toList).filter(tc => isEditableColumn(tc, row))
 
   def selectFirstEditable[T](tableView: TableView[T]): () => Unit = {
@@ -90,7 +90,7 @@ object AutoCommitTextFieldTableCell {
     ret
   }
 
-  def selectNextEditable[T](tableView: TableView[T]): () => Unit = {
+  private def selectNextEditable[T](tableView: TableView[T]): () => Unit = {
     tableView.selectionModel.value.selectedCells.headOption match {
       case Some(selected) =>
         val editableColumns = getEditableColums(tableView, selected.row)
@@ -127,7 +127,7 @@ object AutoCommitTextFieldTableCell {
     }
   }
 
-  def selectPrevEditable[T](tableView: TableView[T]): () => Unit = {
+  private def selectPrevEditable[T](tableView: TableView[T]): () => Unit = {
     tableView.selectionModel.value.selectedCells.headOption match {
       case Some(selected) =>
         val editableColumns = getEditableColums(tableView, selected.row)
@@ -164,7 +164,7 @@ object AutoCommitTextFieldTableCell {
     }
   }
 
-  def selectBelowEditable[T](tableView: TableView[T]): () => Unit = {
+  private def selectBelowEditable[T](tableView: TableView[T]): () => Unit = {
     tableView.selectionModel.value.selectedCells.headOption match {
       case Some(selected) =>
         val newSelectedRowIdx = if selected.getRow == tableView.items.value.size() - 1 then 0 else selected.getRow + 1
@@ -194,7 +194,7 @@ object AutoCommitTextFieldTableCell {
     }
   }
 
-  def selectAboveEditable[T](tableView: TableView[T]): () => Unit = {
+  private def selectAboveEditable[T](tableView: TableView[T]): () => Unit = {
     tableView.selectionModel.value.selectedCells.headOption match {
       case Some(selected) =>
         val newSelectedRowIdx = if selected.getRow == 0 then tableView.items.value.size() - 1 else selected.getRow - 1
@@ -341,7 +341,7 @@ object AutoCommitTextFieldTableCell {
         lastKey = Some(ke.getText)
         tableView.edit(fc.row, tc)
 
-      case c if (c.isWhitespaceKey) && tableView.delegate.getEditingCell == null =>
+      case c if c.isWhitespaceKey && tableView.delegate.getEditingCell == null =>
         ke.consume()
         lastKey = Some("")
         tableView.edit(fc.row, tc)
@@ -359,9 +359,9 @@ trait FormularAction[S, T] {
 }
 
 class AutoCommitTextFieldTableCell[S, T](
-                                          val cellStateUpdater: scala.Function1[scalafx.scene.control.TableCell[S, T], scala.Unit],
+                                          val cellStateUpdater: scalafx.scene.control.TableCell[S, T] => scala.Unit,
                                           override val delegate: TextFieldWithToolButtonTableCell[S, T] = new TextFieldWithToolButtonTableCell[S, T],
-                                          val suggestListProvider: Option[scala.Function2[S, String, List[T]]],
+                                          val suggestListProvider: Option[(S, String) => List[T]],
                                           val formularAction: Option[FormularAction[S,T]] = None
                                         )
   extends TableCell[S, T](delegate)
@@ -370,21 +370,21 @@ class AutoCommitTextFieldTableCell[S, T](
 
   import AutoCommitTextFieldTableCell.PSEUDO_CLASS_FOCUSED
 
-  def this(converter: StringConverter[T], cellStateUpdater: scala.Function1[scalafx.scene.control.TableCell[S, T], scala.Unit]) = {
+  def this(converter: StringConverter[T], cellStateUpdater: scalafx.scene.control.TableCell[S, T] => scala.Unit) = {
     this(cellStateUpdater, new TextFieldWithToolButtonTableCell[S, T](converter), None)
   }
-  def this(converter: StringConverter[T], cellStateUpdater: scala.Function1[scalafx.scene.control.TableCell[S, T], scala.Unit], formularAction: FormularAction[S,T]) = {
+  def this(converter: StringConverter[T], cellStateUpdater: scalafx.scene.control.TableCell[S, T] => scala.Unit, formularAction: FormularAction[S,T]) = {
     this(cellStateUpdater, new TextFieldWithToolButtonTableCell[S, T](converter), None, Some(formularAction))
   }
   def this(converter: StringConverter[T]) = {
     this((tc: TableCell[S, T])=>{}, new TextFieldWithToolButtonTableCell[S, T](converter), None)
   }
-  def this(converter: StringConverter[T], suggestListProvider: scala.Function2[S, String, List[T]]) = {
+  def this(converter: StringConverter[T], suggestListProvider: (S, String) => List[T]) = {
     this((tc: TableCell[S, T])=>{}, new TextFieldWithToolButtonTableCell[S, T](converter), Some(suggestListProvider))
   }
 
   var textField: Option[TextFieldWithToolButton] = None
-  val readonlyCellClass = "readonly-cell"
+  private val readonlyCellClass = "readonly-cell"
 
   editable.onChange( adjustEditablStateInStyles() )
   index.onChange( cellStateUpdater(this) )
@@ -397,7 +397,7 @@ class AutoCommitTextFieldTableCell[S, T](
     }
   }
 
-  var lastBinding: Option[AutoCompletionBinding[T]] = None
+  private var lastBinding: Option[AutoCompletionBinding[T]] = None
   graphic.onChange({
     textField = graphic.value match {
       case tf@TextFieldWithToolButton(field, button) =>
@@ -444,7 +444,7 @@ class AutoCommitTextFieldTableCell[S, T](
         }
         Platform.runLater(() => {
           formularAction match {
-            case Some(a) if (a.hasFormular(this)) =>
+            case Some(a) if a.hasFormular(this) =>
               val ae = new ActionEvent(this, b)
               if isDelete then {
                 a.clear(this, ae)
@@ -465,7 +465,7 @@ class AutoCommitTextFieldTableCell[S, T](
       case (Some(TextFieldWithToolButton(tf,b)), None) =>
         Platform.runLater(() => {
           formularAction match {
-            case Some(a) if (a.hasFormular(this)) =>
+            case Some(a) if a.hasFormular(this) =>
               val ae = new ActionEvent(this, b)
               a.fire(this, ae)
               AutoCommitTextFieldTableCell.setEditMode(false)
@@ -479,10 +479,10 @@ class AutoCommitTextFieldTableCell[S, T](
       case _ =>
     }
   })
-  editing.onChange(handleEditingState)
+  editing.onChange(handleEditingState())
 
-  var connected: Option[Subscription] = None
-  def handleEditingState: Unit = {
+  private var connected: Option[Subscription] = None
+  private def handleEditingState(): Unit = {
     if editing.value && editable.value then {
       connected = Some(connect)
     } else if connected.nonEmpty then {

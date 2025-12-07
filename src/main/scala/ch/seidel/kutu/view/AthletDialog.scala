@@ -11,60 +11,60 @@ import scalafx.scene.control.*
 import scalafx.scene.layout.*
 
 object AthletDialog {
-  def apply(service: KutuService, onSelected: (Athlet)=>Unit) =
+  def apply(service: KutuService, onSelected: Athlet =>Unit) =
     new AthletDialog(Athlet(), "Neu erfassen ...", service, onSelected)
-  def apply(init: Athlet, actionTitle: String, service: KutuService, onSelected: (Athlet)=>Unit) =
+  def apply(init: Athlet, actionTitle: String, service: KutuService, onSelected: Athlet =>Unit) =
     new AthletDialog(init, actionTitle, service, onSelected)
 }
-class AthletDialog(init: Athlet, actionTitle: String, service: KutuService, onSelected: (Athlet)=>Unit) {
+class AthletDialog(init: Athlet, actionTitle: String, service: KutuService, onSelected: Athlet =>Unit) {
 
-  val athletEditor = AthletEditor(init)
-  val vereineList = service.selectVereine
-  val vereineMap = vereineList.map(v => v.id -> v).toMap
-  val vereine = ObservableBuffer.from(vereineList)
+  private val athletEditor = AthletEditor(init)
+  val vereineList: List[Verein] = service.selectVereine
+  val vereineMap: Map[Long, Verein] = vereineList.map(v => v.id -> v).toMap
+  val vereine: ObservableBuffer[Verein] = ObservableBuffer.from(vereineList)
 
-  val lblGeschlecht = new Label {
+  private val lblGeschlecht = new Label {
     text = "Geschlecht (M/W)"
   }
-  val cmbGeschlecht = new ComboBox[String] {
+  private val cmbGeschlecht = new ComboBox[String] {
     items.value.add("W")
     items.value.add("M")
     value <==> athletEditor.geschlecht
   }
 
-  val lblVerein = new Label {
+  private val lblVerein = new Label {
     text = "Verein"
   }
-  val cmbVerein = new ComboBox[Verein] {
+  private val cmbVerein = new ComboBox[Verein] {
     items = vereine
   }
 
-  val txtName = new TextField {
+  private val txtName = new TextField {
     promptText = "Name"
     text <==> athletEditor.name
   }
-  val txtVorname = new TextField {
+  private val txtVorname = new TextField {
     promptText = "Vorname"
     text <==> athletEditor.vorname
   }
-  val txtJahrgang = new TextField {
+  private val txtJahrgang = new TextField {
     promptText = "Geburtsdatum"
     text <==> athletEditor.gebdat
   }
-  val txtPLZ = new TextField {
+  private val txtPLZ = new TextField {
     promptText = "PLZ"
     text <==> athletEditor.plz
   }
-  val txtOrt = new TextField {
+  private val txtOrt = new TextField {
     promptText = "Ort"
     text <==> athletEditor.ort
   }
-  val txtStrasse = new TextField {
+  private val txtStrasse = new TextField {
     promptText = "Strasse"
     text <==> athletEditor.strasse
   }
 
-  val panel = new GridPane() {
+  val panel: GridPane = new GridPane() {
     alignment = Pos.Center
     hgrow = Priority.Always
     vgrow = Priority.Always
@@ -85,7 +85,7 @@ class AthletDialog(init: Athlet, actionTitle: String, service: KutuService, onSe
     add(txtStrasse,    0, 7, 2, 1)
   }
 
-  val btnOK = new Button("OK") {
+  val btnOK: Button = new Button("OK") {
     onAction = (event: ActionEvent) => {
       onSelected(
           service.insertAthlete(
@@ -99,21 +99,19 @@ class AthletDialog(init: Athlet, actionTitle: String, service: KutuService, onSe
 
   btnOK.disable.value = true
 
-  def changeHandler: Unit = {
-    btnOK.disable.value = !athletEditor.isValid || cmbVerein.selectionModel.value.isEmpty()
+  def changeHandler(): Unit = {
+    btnOK.disable.value = !athletEditor.isValid || cmbVerein.selectionModel.value.isEmpty
   }
-  cmbVerein.value.onChange(changeHandler)
-  cmbGeschlecht.value.onChange(changeHandler)
-  txtName.text.onChange(changeHandler)
-  txtVorname.text.onChange(changeHandler)
-  txtJahrgang.text.onChange(changeHandler)
-  txtPLZ.text.onChange(changeHandler)
-  txtOrt.text.onChange(changeHandler)
-  txtStrasse.text.onChange(changeHandler)
+  cmbVerein.value.onChange(changeHandler())
+  cmbGeschlecht.value.onChange(changeHandler())
+  txtName.text.onChange(changeHandler())
+  txtVorname.text.onChange(changeHandler())
+  txtJahrgang.text.onChange(changeHandler())
+  txtPLZ.text.onChange(changeHandler())
+  txtOrt.text.onChange(changeHandler())
+  txtStrasse.text.onChange(changeHandler())
 
-  def execute = (event: ActionEvent) => {
-    implicit val impevent = event
-
+  def execute: ActionEvent => Unit = (event: ActionEvent) => {
     PageDisplayer.showInDialog(actionTitle, new DisplayablePage() {
       def getPage: Node = {
         new BorderPane {
@@ -124,6 +122,6 @@ class AthletDialog(init: Athlet, actionTitle: String, service: KutuService, onSe
 //          minWidth = 350
         }
       }
-    }, btnOK)
+    }, btnOK)(using event)
   }
 }

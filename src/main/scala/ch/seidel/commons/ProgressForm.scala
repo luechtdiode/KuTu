@@ -1,13 +1,10 @@
 package ch.seidel.commons
 
-import scalafx.Includes.double2DurationHelper
-import scalafx.animation.FadeTransition
-import scalafx.application.{JFXApp3, Platform}
 import scalafx.concurrent.{Task, Worker}
 import scalafx.geometry.{Insets, Pos}
 import scalafx.scene.Scene
 import scalafx.scene.control.{Label, ProgressBar, ProgressIndicator}
-import scalafx.scene.layout.{BorderPane, HBox, Priority, VBox}
+import scalafx.scene.layout.{BorderPane, HBox, Priority}
 import scalafx.stage.{Modality, Stage, StageStyle}
 
 
@@ -24,7 +21,7 @@ class ProgressForm(stage: Option[Stage] = None) {
     resizable = false
     minWidth = 480
   }
-  def dialogStage = stage match {
+  def dialogStage: Stage = stage match {
     case Some(s) => s
     case None => _dialogStage
   }

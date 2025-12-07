@@ -6,7 +6,7 @@ import scalafx.collections.ObservableBuffer.observableBuffer2ObservableList
 import scalafx.scene.control.*
 import scalafx.scene.image.{Image, ImageView}
 
-class GeraeteRiegeListCell extends ListCell[GeraeteRiege] {
+class GeraeteRiegeListCell extends ListCell[GeraeteRiege]() {
   var okIcon: Image = null
   try {
     okIcon = new Image(getClass.getResourceAsStream("/images/GreenOk.png"))

@@ -10,12 +10,12 @@ case class CheckListBoxEditor[T](value: T, onSelectedChange: Option[(T, Boolean)
       selected.value = onSelectedChange.get(value, selected.value)
     }
   }
-  override def toString = {
-    if value.isInstanceOf[DataObject] then {
-      value.asInstanceOf[DataObject].easyprint
-    }
-    else {
-      value.toString
+  override def toString: String = {
+    value match {
+      case dataObject: DataObject =>
+        dataObject.easyprint
+      case _ =>
+        value.toString
     }
   }
 }

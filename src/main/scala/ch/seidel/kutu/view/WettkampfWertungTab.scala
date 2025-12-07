@@ -288,7 +288,7 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
             }
           },
             new Button("OK") {
-              onAction = handleAction { implicit e: ActionEvent =>
+              onAction = handleAction { (e: ActionEvent) =>
                 try {
                   cell.commitEdit(cell.sc.fromString(mapper(w.commit)))
                 }
@@ -317,7 +317,7 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
             }
           },
             new Button("OK") {
-              onAction = handleAction { implicit e: ActionEvent =>
+              onAction = handleAction { (e: ActionEvent) =>
                 try {
                   cell.commitEdit(cell.sc.fromString(mapper(w.commit)))
                 }
@@ -2163,13 +2163,13 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
       case _ => // andere
         val pasteFromExcel = new Button("Aus Excel einfügen ...") {
           onAction = (event: ActionEvent) => {
-            doPasteFromExcel(Some(wettkampf.programm))(event)
+            doPasteFromExcel(Some(wettkampf.programm))(using event)
           }
         }
         val loadFromExcel = new Button("Aus CSV laden ...") {
           onAction = (event: ActionEvent) => {
             val uri = csvInputFile.toURI
-            doLoadFromCSV(uri, Some(wettkampf.programm))(event)
+            doLoadFromCSV(uri, Some(wettkampf.programm))(using event)
           }
         }
         if csvInputFile.exists() then {
@@ -2203,13 +2203,13 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
       }
       val pasteFromExcel = new Button("Aus Excel einfügen ...") {
         onAction = (event: ActionEvent) => {
-          doPasteFromExcel(Some(progrm))(event)
+          doPasteFromExcel(Some(progrm))(using event)
         }
       }
       val loadFromExcel = new Button("Aus CSV laden ...") {
         onAction = (event: ActionEvent) => {
           val uri = csvInputFile.toURI
-          doLoadFromCSV(uri, Some(wettkampf.programm))(event)
+          doLoadFromCSV(uri, Some(wettkampf.programm))(using event)
         }
       }
 
@@ -2328,7 +2328,7 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
   val riegenHeader: VBox = new VBox {
     focusTraversable = false
     maxWidth = Double.MaxValue
-    minHeight = Region.USE_PREF_SIZE
+    minHeight = Region.UsePrefSize
     val title: Label = new Label {
       text = "Riegen-Filter"
       styleClass += "toolbar-header"
@@ -2422,7 +2422,7 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
               case None => ""
             }).trim
             maxWidth = Double.MaxValue
-            minHeight = Region.USE_PREF_SIZE
+            minHeight = Region.UsePrefSize
             styleClass += "toolbar-header"
           }
         ) ++ (

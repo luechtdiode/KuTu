@@ -1,6 +1,5 @@
 package ch.seidel.commons
 
-import scala.io.Source
 import scala.util.control.NonFatal
 
 /** Helper functions related to I/O. */

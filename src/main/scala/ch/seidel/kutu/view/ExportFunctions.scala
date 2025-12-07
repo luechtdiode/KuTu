@@ -6,7 +6,6 @@ import ch.seidel.kutu.actors.DurchgangChanged
 import ch.seidel.kutu.domain.{KutuService, TeamItem, encodeFileName}
 import ch.seidel.kutu.http.WebSocketClient
 import ch.seidel.kutu.renderer.{FilenameDefault, KategorieTeilnehmerToHtmlRenderer, ServerPrintUtil}
-import ch.seidel.kutu.renderer.ServerPrintUtil.*
 import ch.seidel.kutu.renderer.RiegenBuilder.mapToGeraeteRiegen
 import javafx.beans.property.SimpleObjectProperty
 import org.slf4j.{Logger, LoggerFactory}

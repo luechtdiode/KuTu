@@ -7,7 +7,7 @@ import scalafx.scene.layout.Priority
 
 import scala.jdk.CollectionConverters.IterableHasAsJava
 
-class LazyTabPane(refreshTabsFn: (LazyTabPane) => Seq[Tab], releaseTabs: () => Unit) extends TabPane {
+class LazyTabPane(refreshTabsFn: LazyTabPane => Seq[Tab], releaseTabs: () => Unit) extends TabPane {
   val logger: Logger = LoggerFactory.getLogger(this.getClass)
   hgrow = Priority.Always
   vgrow = Priority.Always
@@ -18,12 +18,7 @@ class LazyTabPane(refreshTabsFn: (LazyTabPane) => Seq[Tab], releaseTabs: () => U
     val selected = selectionModel.value.getSelectedItem
 
     def indexOfTab(title: String): Int = {
-      for idx <- (tabs.size()-1 to 0 by -1) do {
-        if title.equals(tabs.get(idx).textProperty().getValue) then {
-          return idx
-        }
-      }
-      -1
+      (tabs.size()-1 to 0 by -1).find(idx => title.equals(tabs.get(idx).textProperty().getValue)).getOrElse(-1)
     }
     val lazytabs: Seq[Tab] = refreshTabsFn(this)
     val lazyJFXTabs = lazytabs.map(t => {

@@ -29,9 +29,9 @@ object KuTuServer extends App with KuTuAppHTTPServer with AuthSupport with Hashi
 
   val binding = startServer()
   logger.info("initial cleanup athletes ...")
-  val cleanedAthletes = markAthletesInactiveOlderThan(3)
+  private val cleanedAthletes = markAthletesInactiveOlderThan(3)
   logger.info("initial cleanup clubs ...")
-  val cleanedClubs = cleanUnusedClubs()
+  private val cleanedClubs = cleanUnusedClubs()
   logger.info("initial cleanup media files ...")
   ResourceExchanger.cleanupMediaFiles()
 
@@ -50,30 +50,30 @@ object KuTuServer extends App with KuTuAppHTTPServer with AuthSupport with Hashi
     logger.info(s"Server started\ntype 'quit' to stop...")
     while
       StdIn.readLine() match {
-        case s: String if (s.endsWith("quit")) =>
+        case s: String if s.endsWith("quit") =>
           shutDown("KuTuServer")
           false
 
-        case s: String if (s.endsWith("showsecret")) =>
+        case s: String if s.endsWith("showsecret") =>
           println(Config.jwtSecretKey)
           true
 
-        case s: String if (s.endsWith("cleanathletes")) =>
+        case s: String if s.endsWith("cleanathletes") =>
           markAthletesInactiveOlderThan(3)
           cleanUnusedClubs()
           println("done")
           true
 
-        case s: String if (s.endsWith("wkmeta")) =>
+        case s: String if s.endsWith("wkmeta") =>
           addMissingWettkampfMetaData()
           println("done")
           true
 
-        case s: String if (s.endsWith("refresh")) =>
+        case s: String if s.endsWith("refresh") =>
           AthletIndexActor.publish(ResyncIndex)
           println("done")
           true
-        case s: String if (s.startsWith("sendmail")) =>
+        case s: String if s.startsWith("sendmail") =>
           KuTuMailerActor.send(SimpleMail("Mailsend-Test", s, "btv@interpolar.ch")).onComplete {
             println(_)
           }

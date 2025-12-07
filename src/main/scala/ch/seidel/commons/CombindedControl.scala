@@ -26,7 +26,7 @@ case class TextFieldWithToolButton(textField: TextField, button: Button) extends
     setSpacing(0)
     setFillHeight(false)
 
-    textField.onKeyReleased = (ae) => {
+    textField.onKeyReleased = ae => {
       ae.getCode match {
         case c if c.isWhitespaceKey || c.isLetterKey || c.isDigitKey || c.getChar == "-" =>
           if ae.getText.nonEmpty && !textField.editable.value && button.visible.value then {
@@ -104,9 +104,9 @@ class TextFieldWithToolButtonTableCell[S, T](val sc: StringConverter[T]) extends
 
 
 object CellUtils {
-  var editIcon: Image = null
+  private var editIcon: Option[Image] = None
   try {
-    editIcon = new Image(getClass.getResourceAsStream("/images/inplace-edit.png"))
+    editIcon = Some(new Image(getClass.getResourceAsStream("/images/inplace-edit.png")))
   } catch {
     case e: Exception => e.printStackTrace()
   }
@@ -186,7 +186,7 @@ object CellUtils {
       }
 
     })
-    TextFieldWithToolButton(tf, new Button("" ,new ImageView { image = editIcon }) {
+    TextFieldWithToolButton(tf, new Button("" ,new ImageView { editIcon.foreach(image = _) }) {
     })
   }
 

@@ -15,8 +15,6 @@ import scalafx.scene.input.KeyEvent
 import scalafx.scene.layout.*
 import scalafx.util.converter.DefaultStringConverter
 
-import java.util.UUID
-
 class WettkampfZeitenTab(editableProperty: Boolean, wettkampf: WettkampfView, override val service: KutuService) extends Tab with TabWithService {
 
   var subscription: List[Subscription] = List.empty
@@ -138,7 +136,7 @@ class WettkampfZeitenTab(editableProperty: Boolean, wettkampf: WettkampfView, ov
           new Label {
             text = s"Filter"
             maxWidth = Double.MaxValue
-            minHeight = Region.USE_PREF_SIZE
+            minHeight = Region.UsePrefSize
             styleClass += "toolbar-header"
           },
           txtFilter

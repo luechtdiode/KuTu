@@ -13,7 +13,6 @@ import java.sql.Date
 import java.util.UUID
 import scala.collection.mutable
 import scala.util.matching.Regex
-//import slick.jdbc.SQLiteProfile.api._
 import slick.jdbc.PostgresProfile.api.*
 
 import scala.concurrent.ExecutionContext.Implicits.global

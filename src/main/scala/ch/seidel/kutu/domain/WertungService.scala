@@ -40,14 +40,14 @@ object WertungServiceBestenResult {
   }
 }
 
-abstract trait WertungService extends DBService with WertungResultMapper with DisziplinService with RiegenService with JsonSupport {
+trait WertungService extends DBService with WertungResultMapper with DisziplinService with RiegenService with JsonSupport {
   private val logger = LoggerFactory.getLogger(this.getClass)
   import WertungServiceBestenResult.*
   
   def selectWertungen(vereinId: Option[Long] = None, athletId: Option[Long] = None, wettkampfId: Option[Long] = None, disziplinId: Option[Long] = None, wkuuid: Option[String] = None): Seq[WertungView] = {
-    implicit val cid = wettkampfId.getOrElse(0)
-    implicit val cache = scala.collection.mutable.Map[Long, ProgrammView]()
-    implicit val cache2 = scala.collection.mutable.Map[Long, List[ScoreCalcTemplate]]()
+    val cid = wettkampfId.getOrElse(0)
+    val cache = scala.collection.mutable.Map[Long, ProgrammView]()
+    val cache2 = scala.collection.mutable.Map[Long, List[ScoreCalcTemplate]]()
 
     val where = "where " + (athletId match {
       case None     => "1=1"
@@ -66,7 +66,6 @@ abstract trait WertungService extends DBService with WertungResultMapper with Di
       case Some(uuid) => s"wk.uuid = '$uuid'"
     })
     Await.result(database.run {
-      (
         sql"""
                     SELECT w.id, a.id, a.js_id, a.geschlecht, a.name, a.vorname, a.gebdat, a.strasse, a.plz, a.ort, a.activ, a.verein, v.*,
                       wk.id, wk.uuid, wk.datum, wk.titel, wk.programm_id, wk.auszeichnung, wk.auszeichnungendnote, wk.notificationEMail, wk.altersklassen, wk.jahrgangsklassen, wk.punktegleichstandsregel, wk.rotation, wk.teamrule,
@@ -83,14 +82,14 @@ abstract trait WertungService extends DBService with WertungResultMapper with Di
                     inner join wettkampf wk on (wk.id = w.wettkampf_id)
                     #$where
                     order by wd.programm_id, wd.ord
-         """.as[WertungView](getResultWertungView)).withPinnedSession
+         """.as[WertungView](using getResultWertungView(using cache, cache2)).withPinnedSession
     }, Duration.Inf)
   }
   
   def getWertung(id: Long): WertungView = {
-    implicit val cache = scala.collection.mutable.Map[Long, ProgrammView]()
-    implicit val cache2 = scala.collection.mutable.Map[Long, List[ScoreCalcTemplate]]()
-    Await.result(database.run{(
+    val cache = scala.collection.mutable.Map[Long, ProgrammView]()
+    val cache2 = scala.collection.mutable.Map[Long, List[ScoreCalcTemplate]]()
+    Await.result(database.run{
       sql"""
                     SELECT w.id, a.id, a.js_id, a.geschlecht, a.name, a.vorname, a.gebdat, a.strasse, a.plz, a.ort, a.activ, a.verein, v.*,
                       wk.id, wk.uuid, wk.datum, wk.titel, wk.programm_id, wk.auszeichnung, wk.auszeichnungendnote, wk.notificationEMail, wk.altersklassen, wk.jahrgangsklassen, wk.punktegleichstandsregel, wk.rotation, wk.teamrule,
@@ -104,17 +103,17 @@ abstract trait WertungService extends DBService with WertungResultMapper with Di
                     inner join disziplin d on (d.id = wd.disziplin_id)
                     inner join programm p on (p.id = wd.programm_id)
                     inner join wettkampf wk on (wk.id = w.wettkampf_id)
-                    where w.id = ${id}
+                    where w.id = $id
                     order by wd.programm_id, wd.ord
-         """.as[WertungView](getResultWertungView)).withPinnedSession
+         """.as[WertungView](using getResultWertungView(using cache, cache2)).withPinnedSession
     }, Duration.Inf).head
   }
 
   def getCurrentWertung(wertung: Wertung): Option[WertungView] = {
-    implicit val cache = scala.collection.mutable.Map[Long, ProgrammView]()
-    implicit val cache2 = scala.collection.mutable.Map[Long, List[ScoreCalcTemplate]]()
+    val cache = scala.collection.mutable.Map[Long, ProgrammView]()
+    val cache2 = scala.collection.mutable.Map[Long, List[ScoreCalcTemplate]]()
 
-    Await.result(database.run{(
+    Await.result(database.run{
       sql"""
                     SELECT w.id, a.id, a.js_id, a.geschlecht, a.name, a.vorname, a.gebdat, a.strasse, a.plz, a.ort, a.activ, a.verein, v.*,
                       wk.id, wk.uuid, wk.datum, wk.titel, wk.programm_id, wk.auszeichnung, wk.auszeichnungendnote, wk.notificationEMail, wk.altersklassen, wk.jahrgangsklassen, wk.punktegleichstandsregel, wk.rotation, wk.teamrule,
@@ -131,7 +130,7 @@ abstract trait WertungService extends DBService with WertungResultMapper with Di
                     where a.id = ${wertung.athletId}
                       and wk.uuid = ${wertung.wettkampfUUID}
                       and wd.id = ${wertung.wettkampfdisziplinId}
-         """.as[WertungView](getResultWertungView)).withPinnedSession
+         """.as[WertungView](using getResultWertungView(using cache, cache2)).withPinnedSession
     }, Duration.Inf).headOption
   }
 
@@ -158,7 +157,7 @@ abstract trait WertungService extends DBService with WertungResultMapper with Di
     }, Duration.Inf).toList
   }
 
-  def updateOrinsertWertungenZuWettkampf(wettkampf: Wettkampf, wertungen: Iterable[Wertung]) = {
+  def updateOrinsertWertungenZuWettkampf(wettkampf: Wettkampf, wertungen: Iterable[Wertung]): Int = {
     val insertWertungenAction = DBIO.sequence(for
       w <- wertungen
     yield {
@@ -187,7 +186,7 @@ abstract trait WertungService extends DBService with WertungResultMapper with Di
     wertungen.size
   }
 
-  def updateOrinsertWertung(w: Wertung) = {
+  def updateOrinsertWertung(w: Wertung): Unit = {
     Await.result(database.run(DBIO.sequence(Seq(
       sqlu"""
                 delete from wertung where
@@ -215,8 +214,8 @@ abstract trait WertungService extends DBService with WertungResultMapper with Di
   }
   
   def updateAllWertungenAsync(ws: Seq[Wertung]): Future[Seq[WertungView]] = {
-    implicit val cache = scala.collection.mutable.Map[Long, ProgrammView]()
-    implicit val cache2 = scala.collection.mutable.Map[Long, List[ScoreCalcTemplate]]()
+    val cache = scala.collection.mutable.Map[Long, ProgrammView]()
+    val cache2 = scala.collection.mutable.Map[Long, List[ScoreCalcTemplate]]()
     //implicit val mapper = getAthletViewResult
     val ret = database.run(DBIO.sequence(for
       w <- ws
@@ -247,15 +246,15 @@ abstract trait WertungService extends DBService with WertungResultMapper with Di
                     inner join wettkampf wk on (wk.id = w.wettkampf_id)
                     WHERE w.id=${w.id}
                     order by wd.programm_id, wd.ord
-       """.as[WertungView](getResultWertungView).head
+       """.as[WertungView](using getResultWertungView(using cache, cache2)).head
      }).transactionally)
     
     ret
   }
   
-  def updateWertungAsync(w: Wertung): Future[WertungView] = {
-    implicit val cache = scala.collection.mutable.Map[Long, ProgrammView]()
-    implicit val cache2 = scala.collection.mutable.Map[Long, List[ScoreCalcTemplate]]()
+  private def updateWertungAsync(w: Wertung): Future[WertungView] = {
+    val cache = scala.collection.mutable.Map[Long, ProgrammView]()
+    val cache2 = scala.collection.mutable.Map[Long, List[ScoreCalcTemplate]]()
 
     //implicit val mapper = getAthletViewResult
     val ret = database.run((
@@ -286,7 +285,7 @@ abstract trait WertungService extends DBService with WertungResultMapper with Di
                     inner join wettkampf wk on (wk.id = w.wettkampf_id)
                     WHERE w.id=${w.id}
                     order by wd.programm_id, wd.ord
-       """.as[WertungView](getResultWertungView).head).transactionally)
+       """.as[WertungView](using getResultWertungView(using cache, cache2)).head).transactionally)
     
     ret.map{wv =>
       cleanBestenResults()
@@ -390,11 +389,11 @@ abstract trait WertungService extends DBService with WertungResultMapper with Di
     result
   }
 
-  def listAthletenWertungenZuProgramm(progids: Seq[Long], wettkampf: Long, riege: String = "%") = {
+  def listAthletenWertungenZuProgramm(progids: Seq[Long], wettkampf: Long, riege: String = "%"): IndexedSeq[WertungView] = {
     Await.result(database.run{
       val cache = scala.collection.mutable.Map[Long, ProgrammView]()
       val cache2 = scala.collection.mutable.Map[Long, List[ScoreCalcTemplate]]()
-      (sql"""
+      sql"""
                    SELECT w.id, a.id, a.js_id, a.geschlecht, a.name, a.vorname, a.gebdat, a.strasse, a.plz, a.ort, a.activ, a.verein, v.*,
                      wk.id, wk.uuid, wk.datum, wk.titel, wk.programm_id, wk.auszeichnung, wk.auszeichnungendnote, wk.notificationEMail, wk.altersklassen, wk.jahrgangsklassen, wk.punktegleichstandsregel, wk.rotation, wk.teamrule,
                      wd.id, wd.programm_id, d.*, wd.kurzbeschreibung, wd.detailbeschreibung, wd.notenfaktor, wd.masculin, wd.feminim, wd.ord, wd.scale, wd.dnote, wd.min, wd.max, wd.startgeraet,
@@ -411,14 +410,14 @@ abstract trait WertungService extends DBService with WertungResultMapper with Di
                      and w.wettkampf_id = $wettkampf
                      and ($riege = '%' or w.riege = $riege or w.riege2 = $riege)
                    order by wd.programm_id, wd.ord
-       """.as[WertungView](getResultWertungView(cache, cache2))).withPinnedSession}, Duration.Inf)
+       """.as[WertungView](using getResultWertungView(using cache, cache2)).withPinnedSession}, Duration.Inf)
   }
 
-  def listAthletWertungenZuWettkampf(athletId: Long, wettkampf: Long) = {
+  def listAthletWertungenZuWettkampf(athletId: Long, wettkampf: Long): Seq[WertungView] = {
     Await.result(database.run{
       val cache = scala.collection.mutable.Map[Long, ProgrammView]()
       val cache2 = scala.collection.mutable.Map[Long, List[ScoreCalcTemplate]]()
-      (sql"""
+      sql"""
                    SELECT w.id, a.id, a.js_id, a.geschlecht, a.name, a.vorname, a.gebdat, a.strasse, a.plz, a.ort, a.activ, a.verein, v.*,
                      wk.id, wk.uuid, wk.datum, wk.titel, wk.programm_id, wk.auszeichnung, wk.auszeichnungendnote, wk.notificationEMail, wk.altersklassen, wk.jahrgangsklassen, wk.punktegleichstandsregel, wk.rotation, wk.teamrule,
                      wd.id, wd.programm_id, d.*, wd.kurzbeschreibung, wd.detailbeschreibung, wd.notenfaktor, wd.masculin, wd.feminim, wd.ord, wd.scale, wd.dnote, wd.min, wd.max, wd.startgeraet,
@@ -434,12 +433,12 @@ abstract trait WertungService extends DBService with WertungResultMapper with Di
                    where w.athlet_id = $athletId
                      and w.wettkampf_id = $wettkampf
                    order by wd.programm_id, wd.ord
-       """.as[WertungView](getResultWertungView(cache, cache2))).withPinnedSession
+       """.as[WertungView](using getResultWertungView(using cache, cache2)).withPinnedSession
     }, Duration.Inf)
   }
 
-  def getAllKandidatenWertungen(competitionUUId: UUID) = {
-    val driver = selectWertungen(wkuuid = Some(competitionUUId.toString())).groupBy { x => x.athlet }.map(_._2).toList
+  def getAllKandidatenWertungen(competitionUUId: UUID): Seq[Kandidat] = {
+    val driver = selectWertungen(wkuuid = Some(competitionUUId.toString)).groupBy { x => x.athlet }.values.toList
     val competitionId = if driver.isEmpty || driver.head.isEmpty then {
       0
     } else {
@@ -462,7 +461,7 @@ abstract trait WertungService extends DBService with WertungResultMapper with Di
     for
       programm <- programme
       athletwertungen <- driver.map(we => we.filter { x => x.wettkampfdisziplin.programm.id == programm.id})
-      if(athletwertungen.nonEmpty)
+      if athletwertungen.nonEmpty
       einsatz = athletwertungen.head
       athlet = einsatz.athlet
     yield {

@@ -8,7 +8,7 @@ import ch.seidel.kutu.data.{ResourceExchanger, Surname, mergeMissingProperties}
 import ch.seidel.kutu.domain.*
 import ch.seidel.kutu.http.*
 import ch.seidel.kutu.renderer.ServerPrintUtil
-import ch.seidel.kutu.view.{PrintUtil, WettkampfTableView}
+import ch.seidel.kutu.view.WettkampfTableView
 import ch.seidel.kutu.view.player.Player
 import javafx.beans.property.SimpleObjectProperty
 import javafx.concurrent.Task
@@ -26,7 +26,7 @@ import scalafx.beans.property.StringProperty.sfxStringProperty2jfx
 import scalafx.beans.property.{BooleanProperty, ReadOnlyStringWrapper, StringProperty}
 import scalafx.collections.ObservableBuffer
 import scalafx.event.ActionEvent
-import scalafx.geometry.{Insets, Side}
+import scalafx.geometry.{Insets, Rectangle2D, Side}
 import scalafx.scene.Node.sfxNode2jfx
 import scalafx.scene.control.*
 import scalafx.scene.control.Label.sfxLabel2jfx
@@ -45,6 +45,7 @@ import scalafx.stage.{FileChooser, Screen}
 import spray.json.*
 
 import java.io.{ByteArrayInputStream, File, FileInputStream}
+import java.net.URL
 import java.nio.file.Files
 import java.util.concurrent.{Executors, ScheduledExecutorService}
 import java.util.{Base64, Date, UUID}
@@ -1444,7 +1445,7 @@ object KuTuApp extends JFXApp3 with KutuService with JsonSupport with JwtSupport
           txtNotificationEMail.text,
           txtTitel.text
         )) choose true otherwise false
-        onAction = handleAction { implicit e: ActionEvent =>
+        onAction = handleAction { (e: ActionEvent) =>
           val w = createWettkampf(
             ld2SQLDate(txtDatum.valueProperty().value),
             txtTitel.text.value,
@@ -1486,7 +1487,7 @@ object KuTuApp extends JFXApp3 with KutuService with JsonSupport with JwtSupport
               }
             }
             if wkToCopy.programm.id == w.programmId then {
-              updateOrInsertPlanTimes(loadWettkampfDisziplinTimes(wkToCopy.id).map(_.toWettkampfPlanTimeRaw.copy(wettkampfId = w.id)))
+              updateOrInsertPlanTimes(loadWettkampfDisziplinTimes(using wkToCopy.id).map(_.toWettkampfPlanTimeRaw.copy(wettkampfId = w.id)))
               updateScoreCalcTemplates(loadScoreCalcTemplates(wkToCopy.id).map(_.copy(wettkampfId = Some(w.id))))
             }
 
@@ -1611,7 +1612,6 @@ object KuTuApp extends JFXApp3 with KutuService with JsonSupport with JwtSupport
         )
       }
       val selectedFile = fileChooser.showOpenDialog(getStage)
-      import scala.concurrent.ExecutionContext.Implicits.*
       if selectedFile != null then {
         val wf = KuTuApp.invokeAsyncWithBusyIndicator[Wettkampf](caption) {
           Future[Wettkampf] {
@@ -2231,10 +2231,10 @@ object KuTuApp extends JFXApp3 with KutuService with JsonSupport with JwtSupport
         }
 
       }
-      val bounds = Screen.primary.bounds
+      val bounds: Rectangle2D = Screen.primary.bounds
       x = bounds.minX + bounds.width / 2 - sceneWidth / 2
       y = bounds.minY + bounds.height / 2 - sceneHeigth / 2
-      val st = this.getClass.getResource("/css/Main.css")
+      val st: URL = this.getClass.getResource("/css/Main.css")
       if st == null then {
         logger.debug("Ressource /css/main.css not found. Class-Anchor: " + this.getClass)
       }

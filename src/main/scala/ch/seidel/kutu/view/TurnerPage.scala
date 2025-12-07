@@ -218,7 +218,7 @@ object TurnerPage {
             new Label {
               text = s"Verein ${verein.name} "
               maxWidth = Double.MaxValue
-              minHeight = Region.USE_PREF_SIZE
+              minHeight = Region.UsePrefSize
               styleClass += "toolbar-header"
             },
             addButton, analyzeVereinButton, /*analyzeButton,*/ removeButton, txtUserFilter
