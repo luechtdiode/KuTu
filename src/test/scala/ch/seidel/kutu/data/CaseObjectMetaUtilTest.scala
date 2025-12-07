@@ -1,15 +1,16 @@
 package ch.seidel.kutu.data
 
-import ch.seidel.kutu.domain._
+import ch.seidel.kutu.domain.*
+import ch.seidel.kutu.data.{labels, caseClassToMap, mapToCaseClass, mergeMissingProperties}
 import org.scalatest.funsuite.AnyFunSuite
 
 class CaseObjectMetaUtilTest extends AnyFunSuite {
   private val rm = reflect.runtime.universe.runtimeMirror(getClass.getClassLoader)
 
   test("testCopyWithValues") {
-    val athlet = Athlet(33)
+    val athlet: Athlet = Athlet.apply(33)
 
-    val newathlet = CaseObjectMetaUtil.copyWithValues(athlet, Map("strasse" -> "Teststrasse"))
+    val newathlet = copyToCaseClass[Athlet](athlet, Map("strasse" -> "Teststrasse"))
     assert(newathlet.strasse === "Teststrasse")
     assert(newathlet.verein === Some(33))
   }
@@ -17,7 +18,7 @@ class CaseObjectMetaUtilTest extends AnyFunSuite {
   test("testToMap") {
     val athlet = Athlet(33)
 
-    val map = CaseObjectMetaUtil.toMap(athlet)
+    val map = caseClassToMap(athlet)
     assert(map("verein") === Some(33))
   }
 
@@ -42,7 +43,7 @@ class CaseObjectMetaUtilTest extends AnyFunSuite {
       activ = false
     )
 
-    val athlet = CaseObjectMetaUtil.mergeMissingProperties(keepingAthlet, toDeletAthlet)
+    val athlet = mergeMissingProperties(keepingAthlet, toDeletAthlet)
 
     assert(athlet.id === 0L) // ID should not be overridden
     assert(athlet.js_id === 11)
@@ -57,23 +58,4 @@ class CaseObjectMetaUtilTest extends AnyFunSuite {
     assert(athlet.activ === true)// false is les than true
   }
 
-  import scala.reflect.runtime.universe._
-
-  private def getValues[T: TypeTag : reflect.ClassTag](instance: T) = {
-    val im = rm.reflect(instance)
-    val values = typeOf[T].members.collect {
-      case m: MethodSymbol if m.isCaseAccessor =>
-        im.reflectMethod(m).apply() match {
-          case Some(verein: Verein) => s"${verein.id}"
-          case Some(programm: Programm) => s"${programm.id}"
-          case Some(athlet: Athlet) => s"${athlet.id}"
-          case Some(athlet: AthletView) => s"${athlet.id}"
-          case Some(disziplin: Disziplin) => s"${disziplin.id}"
-          case Some(value) => value.toString
-          case None => ""
-          case e => e.toString
-        }
-    }
-    values.map("\"" + _ + "\"").mkString(",")
-  }
 }

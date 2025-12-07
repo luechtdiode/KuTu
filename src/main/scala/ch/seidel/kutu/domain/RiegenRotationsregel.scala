@@ -12,10 +12,10 @@ object RiegenRotationsregel {
   ), Some("Einfach"))
 
   val predefined = Map(
-      ("Einfache Rotation" -> "Einfach")
-    , ("Verschiebende Rotation" -> "Einfach/Rotierend")
-    , ("Verschiebende Rotation alternierend invers" -> "Einfach/Rotierend/AltInvers")
-    , ("Individuell" -> "")
+      "Einfache Rotation" -> "Einfach"
+    , "Verschiebende Rotation" -> "Einfach/Rotierend"
+    , "Verschiebende Rotation alternierend invers" -> "Einfach/Rotierend/AltInvers"
+    , "Individuell" -> ""
   )
 
   def apply(formel: String): RiegenRotationsregel = {
@@ -33,11 +33,11 @@ object RiegenRotationsregel {
       case "Einfach" => Some(defaultRegel.asInstanceOf[RiegenRotationsregel])
       case s: String => None
     }
-    if (!mappedRules.exists {
+    if !mappedRules.exists {
       case RiegenRotationsregelAlternierendInvers => false
       case RiegenRotationsregelRotierend => false
       case _ => true
-    }) defaultRegel else {
+    } then defaultRegel else {
       RiegenRotationsregelList(mappedRules)
     }
   }
@@ -54,7 +54,7 @@ sealed trait RiegenRotationsregel {
   def toFormel: String
 
   private def align(s: String): String = {
-    if (s.matches("^[0-9]+$")) s else f"$s%-30s"
+    if s.matches("^[0-9]+$") then s else f"$s%-30s"
   }
 }
 case class RiegenRotationsregelList(regeln: List[RiegenRotationsregel], name: Option[String] = None) extends RiegenRotationsregel {
@@ -72,25 +72,25 @@ case object RiegenRotationsregelAlternierendInvers extends RiegenRotationsregel 
     val date = kandidat.wertungen.head.wettkampf.datum.toLocalDate
     val day = date.getDayOfYear
     val reversed = day % 2 == 0
-    if (reversed) acc.map(inverseIfAlphaNumeric) else acc
+    if reversed then acc.map(inverseIfAlphaNumeric) else acc
   }
   private def inverseIfAlphaNumeric(s: String): String = {
-    if (s.matches("^[0-9]+$")) s else s.reverse
+    if s.matches("^[0-9]+$") then s else s.reverse
   }
   override def toFormel: String = "AltInvers"
 }
 
 case object RiegenRotationsregelRotierend extends RiegenRotationsregel {
-  def rotateIfAlphaNumeric(text: String, offset: Int): String = {
-    if (text.matches("^[0-9]+$")) text else text.trim.toUpperCase().map(rotate(_, offset))
+  private def rotateIfAlphaNumeric(text: String, offset: Int): String = {
+    if text.matches("^[0-9]+$") then text else text.trim.toUpperCase().map(rotate(_, offset))
   }
 
   def rotate(text: Char, offset: Int): Char = {
-    if (text <='9' && text >= '0') text else {
+    if text <='9' && text >= '0' then text else {
       val r1 = text + offset
-      val r2 = if (r1 > 'Z') {
+      val r2 = if r1 > 'Z' then {
         r1 - 26
-      } else if (r1 < 'A') {
+      } else if r1 < 'A' then {
         r1 + 26
       } else {
         r1
@@ -156,8 +156,8 @@ case class RiegenRotationsregelAlter(aufsteigend: Boolean) extends RiegenRotatio
     } catch {
       case _: NumberFormatException => 100
     }
-    val jg = (if (alter > 15) "0000" else kandidat.jahrgang)
-    acc :+ (if (aufsteigend) jg.reverse else jg)
+    val jg = if alter > 15 then "0000" else kandidat.jahrgang
+    acc :+ (if aufsteigend then jg.reverse else jg)
   }
-  override def toFormel: String = if (aufsteigend) "AlterAufsteigend" else "AlterAbsteigend"
+  override def toFormel: String = if aufsteigend then "AlterAufsteigend" else "AlterAbsteigend"
 }

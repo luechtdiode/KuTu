@@ -1,22 +1,23 @@
 package ch.seidel.kutu.actors
 
+import ch.seidel.kutu.Config
+import ch.seidel.kutu.http.Core.system
 import org.apache.pekko.actor.SupervisorStrategy.Restart
 import org.apache.pekko.actor.{Actor, ActorRef, OneForOneStrategy, Props}
 import org.apache.pekko.event.{Logging, LoggingAdapter}
 import org.apache.pekko.http.scaladsl.model.{StatusCode, StatusCodes}
 import org.apache.pekko.pattern.ask
 import org.apache.pekko.util.Timeout
-import ch.seidel.kutu.Config
-import ch.seidel.kutu.http.Core.system
-import org.simplejavamail.api.mailer.{CustomMailer, Mailer}
 import org.simplejavamail.api.mailer.config.TransportStrategy
+import org.simplejavamail.api.mailer.{CustomMailer, Mailer}
 import org.simplejavamail.email.EmailBuilder
 import org.simplejavamail.mailer.MailerBuilder
 
+import java.util.concurrent.TimeUnit
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
-import scala.concurrent.duration.DurationInt
-import scala.util._
+import scala.concurrent.duration.FiniteDuration
+import scala.util.*
 import scala.util.control.NonFatal
 
 sealed trait SendMailAction
@@ -75,7 +76,7 @@ class KuTuMailerActor(smtpHost: String, smtpPort: Int, smtpUsername: String, smt
 
   override def preStart(): Unit = {
     log.info(s"Start KuTuMailerActor")
-    if (!smtpHost.equalsIgnoreCase("undefined") && smtpPort > 0) {
+    if !smtpHost.equalsIgnoreCase("undefined") && smtpPort > 0 then {
       this.context.become(receiveHot)
     } else {
       log.warning("No smtp environment configured. No mails will be sent!")
@@ -94,11 +95,11 @@ class KuTuMailerActor(smtpHost: String, smtpPort: Int, smtpUsername: String, smt
     case _ =>
   }
 
-  def receiveHot: Receive = {
+  private def receiveHot: Receive = {
     case mail: Mail =>
       val completionObserver: Try[String] => Unit = observeMailComletion(mail, 0, sender())
       send(mail).handleAsync {(v,e) =>
-        if (e != null) {
+        if e != null then {
           completionObserver(Failure(e))
         } else {
           completionObserver(Success("OK"))
@@ -109,7 +110,7 @@ class KuTuMailerActor(smtpHost: String, smtpPort: Int, smtpUsername: String, smt
       case mail: Mail =>
         val completionObserver: Try[String] => Unit = observeMailComletion(mail, retries, sender)
         send(mail).handleAsync {(v,e) =>
-          if (e != null) {
+          if e != null then {
             completionObserver(Failure(e))
           } else {
             completionObserver(
@@ -127,9 +128,9 @@ class KuTuMailerActor(smtpHost: String, smtpPort: Int, smtpUsername: String, smt
       sender ! StatusCodes.OK
     case Failure(e) =>
       e.printStackTrace()
-      if (retries < 3) {
+      if retries < 3 then {
         log.warning(s"mail ${mail.subject} to ${mail.to} delivery failed: " + e.toString)
-        this.context.system.scheduler.scheduleOnce((5 * retries + 1) minutes, self, SendRetry(mail, retries + 1, sender))
+        this.context.system.scheduler.scheduleOnce(FiniteDuration(5 * retries + 1, TimeUnit.MINUTES), self, SendRetry(mail, retries + 1, sender))
       } else {
         log.error(s"could not send message ${mail.subject} after 3 retries to ${mail.to}")
         sender ! StatusCodes.ExpectationFailed
@@ -158,11 +159,11 @@ class KuTuMailerActor(smtpHost: String, smtpPort: Int, smtpUsername: String, smt
 }
 
 object KuTuMailerActor {
-  private var customMailer: Option[CustomMailer] = None;
-  val mailSenderAppName = Config.config.getString("app.smtpsender.appname")
+  private var customMailer: Option[CustomMailer] = None
+  val mailSenderAppName: String = Config.config.getString("app.smtpsender.appname")
 
   def props(): Props = {
-    if (isSMTPConfigured) {
+    if isSMTPConfigured then {
       Props(classOf[KuTuMailerActor],
         Config.config.getString("X_SMTP_HOST"), Config.config.getInt("X_SMTP_PORT"),
         Config.config.getString("X_SMTP_USERNAME"), Config.config.getString("X_SMTP_DOMAIN"),
@@ -178,7 +179,7 @@ object KuTuMailerActor {
     }
   }
 
-  def isSMTPConfigured = Config.config.hasPath("X_SMTP_USERNAME") &&
+  def isSMTPConfigured: Boolean = Config.config.hasPath("X_SMTP_USERNAME") &&
     Config.config.hasPath("X_SMTP_DOMAIN") &&
     Config.config.hasPath("X_SMTP_HOST") &&
     Config.config.hasPath("X_SMTP_PORT") &&
@@ -191,7 +192,7 @@ object KuTuMailerActor {
   private lazy val kutuapMailer: ActorRef = system.actorOf(props(), name = "KutuappMailer")
 
   def send(mail: Mail): Future[StatusCode] = {
-    implicit lazy val timeout: Timeout = Timeout(30 minutes)
+    implicit lazy val timeout: Timeout = Timeout(30, TimeUnit.MINUTES)
     (kutuapMailer ? mail).asInstanceOf[Future[StatusCode]]
   }
 }

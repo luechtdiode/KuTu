@@ -1,36 +1,35 @@
 package ch.seidel.kutu.http
 
-import java.io.ByteArrayOutputStream
-import java.util.UUID
-import java.util.concurrent.TimeUnit
+import ch.seidel.jwt.{JsonWebToken, JwtClaimsSetMap}
+import ch.seidel.kutu.Config.*
+import ch.seidel.kutu.actors.*
+import ch.seidel.kutu.data.ResourceExchanger
+import ch.seidel.kutu.domain.*
+import fr.davit.pekko.http.metrics.core.scaladsl.server.HttpMetricsDirectives.*
 import org.apache.pekko.http.scaladsl.Http
 import org.apache.pekko.http.scaladsl.marshallers.sprayjson.SprayJsonSupport
-import org.apache.pekko.http.scaladsl.model._
+import org.apache.pekko.http.scaladsl.model.*
 import org.apache.pekko.http.scaladsl.model.headers.RawHeader
 import org.apache.pekko.http.scaladsl.server.Route
 import org.apache.pekko.http.scaladsl.unmarshalling.Unmarshal
 import org.apache.pekko.stream.scaladsl.{Sink, Source, StreamConverters}
 import org.apache.pekko.util.ByteString
-import ch.seidel.jwt.{JsonWebToken, JwtClaimsSetMap}
-import ch.seidel.kutu.Config._
-import ch.seidel.kutu.actors._
-import ch.seidel.kutu.data.ResourceExchanger
-import ch.seidel.kutu.domain.{RegistrationService, ProgrammRaw, Wettkampf, WettkampfService, WettkampfView, encodeURIParam}
-import spray.json._
+import org.slf4j.LoggerFactory
+import spray.json.*
 
+import java.io.ByteArrayOutputStream
+import java.util.UUID
+import java.util.concurrent.TimeUnit
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration.{Duration, FiniteDuration}
 import scala.concurrent.{Await, Future, Promise}
-import scala.util.{Failure, Success, Try}
-import fr.davit.pekko.http.metrics.core.scaladsl.server.HttpMetricsDirectives._
+import scala.util.{Failure, Success}
 
-trait WettkampfRoutes extends SprayJsonSupport
-  with JsonSupport with JwtSupport with AuthSupport with RouterLogging with WettkampfService with RegistrationService
-  with CIDSupport with FailureSupport {
+trait WettkampfClient extends AuthSupport with KutuService with FailureSupport {
+  private val log = LoggerFactory.getLogger(WettkampfClient.this.getClass)
+  import DefaultJsonProtocol.*
 
-  import DefaultJsonProtocol._
-  
-  def toHttpEntity(wettkampf: Wettkampf): HttpEntity.Strict = {
+  private def toHttpEntity(wettkampf: Wettkampf): HttpEntity.Strict = {
     val bos = new ByteArrayOutputStream()
     ResourceExchanger.exportWettkampfToStream(wettkampf, bos)
     val bytes = bos.toByteArray
@@ -41,7 +40,7 @@ trait WettkampfRoutes extends SprayJsonSupport
         responseEntity,
         Map("filename" -> s"${wettkampf.easyprint}.zip")
       )
-    ) toEntity
+    ).toEntity
   }
 
   def startDurchgang(p: WettkampfView, durchgang: String): Future[HttpResponse] = {
@@ -91,7 +90,7 @@ trait WettkampfRoutes extends SprayJsonSupport
     val wettkampfEntity = toHttpEntity(wettkampf)
     val uploadProm = Promise[String]()
     val uploadFut = uploadProm.future
-    if (remoteHost.startsWith("localhost") && !wettkampf.hasSecred(homedir, remoteHostOrigin)) {
+    if remoteHost.startsWith("localhost") && !wettkampf.hasSecred(homedir, remoteHostOrigin) then {
       wettkampf.saveSecret(homedir, remoteHostOrigin, JsonWebToken(jwtHeader, setClaims(uuid, Int.MaxValue), jwtSecretKey))
     }
     val hadSecret = wettkampf.hasSecred(homedir, remoteHostOrigin)
@@ -103,7 +102,7 @@ trait WettkampfRoutes extends SprayJsonSupport
         HttpRequest(method = HttpMethods.POST, uri = s"$remoteAdminBaseUrl/api/competition/$uuid", entity = wettkampfEntity)).map {
         case response@HttpResponse(StatusCodes.OK, headers, entity, _) =>
           val secretOption = catchSecurityHeader(wettkampf, headers, entity).map(_.value)
-          if (secretOption.isEmpty) {
+          if secretOption.isEmpty then {
             log.info("failed post to " + s"$remoteAdminBaseUrl/api/competition/$uuid, no secret available")
             throw new RuntimeException("No Secret for Competition available")
           } else {
@@ -132,7 +131,7 @@ trait WettkampfRoutes extends SprayJsonSupport
       reqresp
     }
 
-    if (!hadSecret) {
+    if !hadSecret then {
       log.info("no secret seen, post instead of put competition ...")
       postWettkampf(uploadProm)
     } else {
@@ -151,17 +150,17 @@ trait WettkampfRoutes extends SprayJsonSupport
     }.transformWith {
       case Failure(f) => f match {
         case HTTPFailure(StatusCodes.NotFound, _, _ ) =>
-          log.warning(s"login with existing secret impossible ($f), remote competition not existing! try post ...")
+          log.warn(s"login with existing secret impossible ($f), remote competition not existing! try post ...")
           postWettkampf(Promise[String]())
 
         case e: Throwable =>
-          log.warning(s"login with existing secret impossible ($f), remote competition not existing! abort!")
+          log.warn(s"login with existing secret impossible ($f), remote competition not existing! abort!")
           throw e
       }
 
       case Success(response) =>
         log.info("got login resonse ...")
-        if (interaction == Upload && hadSecret && response.status.isSuccess()) {
+        if interaction == Upload && hadSecret && response.status.isSuccess() then {
           log.info("login successful - put to " + s"$remoteAdminBaseUrl/api/competition/$uuid")
           httpPutClientRequest(s"$remoteAdminBaseUrl/api/competition/$uuid", wettkampfEntity).map {
             case resp @ HttpResponse(StatusCodes.OK, headers, entity, _) =>
@@ -202,22 +201,22 @@ trait WettkampfRoutes extends SprayJsonSupport
       }
     }
     println(s"New Secret: " + secret)
-    if (secret.nonEmpty) {
+    if secret.nonEmpty then {
       wettkampf.saveSecret(homedir, remoteHostOrigin, secret.get.value)
     }
     secret
   }
 
   def httpDownloadRequest(request: HttpRequest): Future[Wettkampf] = {
-    import Core._
+    import Core.*
     val source = Source.single(request, ())
     val requestResponseFlow = Http().superPool[Unit](settings = poolsettings)
 
     def importData(httpResponse: HttpResponse) = {
-      if (httpResponse.status.isSuccess()) {
+      if httpResponse.status.isSuccess() then {
         val is = httpResponse.entity.dataBytes.runWith(StreamConverters.asInputStream())
         val wettkampf = ResourceExchanger.importWettkampf(is)
-        if (!wettkampf.hasRemote(homedir, remoteHostOrigin)) {
+        if !wettkampf.hasRemote(homedir, remoteHostOrigin) then {
           wettkampf.saveRemoteOrigin(homedir, remoteHostOrigin)
         }
         wettkampf
@@ -258,8 +257,16 @@ trait WettkampfRoutes extends SprayJsonSupport
     case _ => None
   }
 
+}
+
+trait WettkampfRoutes extends WettkampfClient with SprayJsonSupport
+  with JsonSupport with JwtSupport with AuthSupport with RouterLogging with WettkampfService with RegistrationService
+  with CIDSupport with FailureSupport {
+
+  import DefaultJsonProtocol.*
+
   lazy val wettkampfRoutes: Route = {
-    handleCID { clientId: String =>
+    handleCID { (clientId: String) =>
       pathLabeled("isTokenExpired", "isTokenExpired") {
         pathEnd {
           authenticated() { wettkampfUUID =>
@@ -282,7 +289,7 @@ trait WettkampfRoutes extends SprayJsonSupport
           pathEnd {
             get {
               complete {
-                listWettkaempfeByVereinIdAsync(vereinId).map(list => list.map(_.toPublic))
+                listWettkaempfeByVereinIdAsync(vereinId).map(list => list.map(_.toPublic).toJson)
               }
             }
           }
@@ -290,12 +297,12 @@ trait WettkampfRoutes extends SprayJsonSupport
           get {
             complete(listRootProgrammeAsync.map(list => list.map(pv => {
               ProgrammRaw(pv.id, pv.name, pv.aggregate, pv.parent.map(_.id).getOrElse(0L), pv.ord, pv.alterVon, pv.alterBis, pv.uuid, pv.riegenmode, pv.bestOfCount)
-            })))
+            }).toJson))
           }
         } ~ pathEnd {
           get {
             complete {
-              listWettkaempfeAsync.map(list => list.map(_.toPublic))
+              listWettkaempfeAsync.map(list => list.map(_.toPublic).toJson)
             }
           }
         }
@@ -305,7 +312,7 @@ trait WettkampfRoutes extends SprayJsonSupport
           post {
             authenticated() { userId =>
               entity(as[StartDurchgang]) { sd =>
-                if (userId.equals(wkuuid.toString)) {
+                if userId.equals(wkuuid.toString) then {
                   AbuseHandler.clearAbusedClients()
                   complete(CompetitionCoordinatorClientActor.publish(sd, clientId))
                 } else {
@@ -319,7 +326,7 @@ trait WettkampfRoutes extends SprayJsonSupport
           post {
             authenticated() { userId =>
               entity(as[ResetStartDurchgang]) { rsd =>
-                if (userId.equals(wkuuid.toString)) {
+                if userId.equals(wkuuid.toString) then {
                   AbuseHandler.clearAbusedClients()
                   complete(CompetitionCoordinatorClientActor.publish(rsd, clientId))
                 } else {
@@ -333,7 +340,7 @@ trait WettkampfRoutes extends SprayJsonSupport
             post {
               authenticated() { userId =>
                 entity(as[FinishDurchgang]) { fd =>
-                  if (userId.equals(wkuuid.toString)) {
+                  if userId.equals(wkuuid.toString) then {
                     complete(CompetitionCoordinatorClientActor.publish(fd, clientId))
                   } else {
                     complete(StatusCodes.Conflict)
@@ -346,7 +353,7 @@ trait WettkampfRoutes extends SprayJsonSupport
             post {
               authenticated() { userId =>
                 entity(as[FinishDurchgangStep]) { fd =>
-                  if (userId.equals(wkuuid.toString)) {
+                  if userId.equals(wkuuid.toString) then {
                     complete(CompetitionCoordinatorClientActor.publish(fd, clientId))
                   } else {
                     complete(StatusCodes.Conflict)
@@ -370,7 +377,7 @@ trait WettkampfRoutes extends SprayJsonSupport
                           val processor = Future[(Wettkampf,JwtClaimsSetMap)] {
                             try {
                               val wettkampf = ResourceExchanger.importWettkampf(is)
-                              val decodedorigin = s"${if (uri.authority.host.toString().contains("localhost")) "http" else "https"}://${uri.authority}"
+                              val decodedorigin = s"${if uri.authority.host.toString().contains("localhost") then "http" else "https"}://${uri.authority}"
                               val link = s"$decodedorigin/api/registrations/${wettkampf.uuid.get}/approvemail?mail=${encodeURIParam(wettkampf.notificationEMail)}"
                               AthletIndexActor.publish(ResyncIndex)
                               CompetitionRegistrationClientActor.publish(CompetitionCreated(wkuuid.toString, link), clientId)
@@ -383,7 +390,7 @@ trait WettkampfRoutes extends SprayJsonSupport
                           onComplete(processor) {
                             case Success((wettkampf, claims)) =>
                               respondWithHeader(RawHeader(jwtAuthorizationKey, JsonWebToken(jwtHeader, claims, jwtSecretKey))) {
-                                if (wettkampf.notificationEMail == null || wettkampf.notificationEMail.trim.isEmpty) {
+                                if wettkampf.notificationEMail == null || wettkampf.notificationEMail.trim.isEmpty then {
                                   complete(StatusCodes.Conflict, s"Die EMail-Adresse für die Notifikation von Online-Registrierungen ist noch nicht erfasst.")
                                 } else {
                                   complete(StatusCodes.OK)
@@ -405,7 +412,7 @@ trait WettkampfRoutes extends SprayJsonSupport
               put {
                 extractUri { uri =>
                   authenticated() { userId =>
-                    if (userId.equals(wkuuid.toString)) {
+                    if userId.equals(wkuuid.toString) then {
                       withoutRequestTimeout {
                         fileUpload("zip") {
                           case (metadata, file: Source[ByteString, Any]) =>
@@ -421,8 +428,8 @@ trait WettkampfRoutes extends SprayJsonSupport
                                 CompetitionCoordinatorClientActor.publish(RefreshWettkampfMap(wkuuid.toString), clientId)
                                 CompetitionRegistrationClientActor.publish(RegistrationChanged(wkuuid.toString), clientId)
                                 AbuseHandler.clearAbusedClients()
-                                if (!before.notificationEMail.equalsIgnoreCase(wettkampf.notificationEMail)) {
-                                  val decodedorigin = s"${if (uri.authority.host.toString().contains("localhost")) "http" else "https"}://${uri.authority}"
+                                if !before.notificationEMail.equalsIgnoreCase(wettkampf.notificationEMail) then {
+                                  val decodedorigin = s"${if uri.authority.host.toString().contains("localhost") then "http" else "https"}://${uri.authority}"
                                   val link = s"$decodedorigin/api/registrations/${wettkampf.uuid.get}/approvemail?mail=${encodeURIParam(wettkampf.notificationEMail)}"
                                   CompetitionRegistrationClientActor.publish(CompetitionCreated(wkuuid.toString, link), clientId)
                                 }
@@ -435,7 +442,7 @@ trait WettkampfRoutes extends SprayJsonSupport
                             onComplete(processor) {
                               case Success(wettkampf) =>
                                 log.info(s"wettkampf ${wettkampf.easyprint} updated")
-                                if (wettkampf.notificationEMail == null || wettkampf.notificationEMail.trim.isEmpty) {
+                                if wettkampf.notificationEMail == null || wettkampf.notificationEMail.trim.isEmpty then {
                                   complete(StatusCodes.Conflict, s"Die EMail-Adresse für die Notifikation von Online-Registrierungen ist noch nicht erfasst.")
                                 } else {
                                   complete(StatusCodes.OK)
@@ -460,7 +467,7 @@ trait WettkampfRoutes extends SprayJsonSupport
               } ~
               delete {
                 authenticated() { userId =>
-                  if (userId.equals(wkuuid.toString)) {
+                  if userId.equals(wkuuid.toString) then {
                     onSuccess(readWettkampfAsync(wkuuid.toString)) { wettkampf =>
                       log.info("deleting wettkampf: " + wettkampf)
                       complete(

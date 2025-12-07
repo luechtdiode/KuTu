@@ -1,15 +1,14 @@
 package ch.seidel.kutu.renderer
 
-import java.io.File
-import ch.seidel.kutu.domain.{Durchgang, GeraeteRiege, RiegenRotationsregelKategorie, SimpleDurchgang}
-import ch.seidel.kutu.renderer.PrintUtil._
-import org.slf4j.LoggerFactory
+import ch.seidel.kutu.domain.{GeraeteRiege, SimpleDurchgang}
+import ch.seidel.kutu.renderer.ServerPrintUtil.*
+import org.slf4j.{Logger, LoggerFactory}
 
+import java.io.File
 import java.time.LocalDateTime
 
 trait KategorieTeilnehmerToJSONRenderer {
-  val logger = LoggerFactory.getLogger(classOf[KategorieTeilnehmerToJSONRenderer])
-
+  val logger: Logger = LoggerFactory.getLogger(classOf[KategorieTeilnehmerToJSONRenderer])
 
   val intro = "{\n"
   val outro = "}"
@@ -30,7 +29,7 @@ trait KategorieTeilnehmerToJSONRenderer {
     }
     val dt = d.mkString("[\n", ",\n", "]\n")
     s"""  {
-       |    "programm" : "${kategorie}",
+       |    "programm" : "$kategorie",
        |    "teilnehmer" : $dt
        |  }""".stripMargin
   }
@@ -40,17 +39,16 @@ trait KategorieTeilnehmerToJSONRenderer {
     toJSONasKategorienListe(Kandidaten(riegen), logo, dgMapping)
   }
 
-  def toJSONasKategorienListe(kandidaten: Seq[Kandidat], logo: File, dgMapping: Seq[(SimpleDurchgang, LocalDateTime)]): String = {
-    val logoHtml = if (logo.exists()) logo.imageSrcForWebEngine else ""
+  private def toJSONasKategorienListe(kandidaten: Seq[Kandidat], logo: File, dgMapping: Seq[(SimpleDurchgang, LocalDateTime)]): String = {
+    val logoHtml = if logo.exists() then logo.imageSrcForWebEngine else ""
     val dgmap = dgMapping.map(dg => dg._1.name -> dg).toMap
     val kandidatenPerKategorie = kandidaten.sortBy { k =>
       val krit = f"${escaped(k.verein)}%-40s ${escaped(k.name)}%-40s ${escaped(k.vorname)}%-40s"
       //logger.debug(krit)
       krit
     }.groupBy(k => k.programm)
-    val rawpages = for {
+    val rawpages = for
       kategorie <- kandidatenPerKategorie.keys.toList.sorted
-    }
     yield {
       anmeldeListe(kategorie, kandidatenPerKategorie(kategorie), dgmap)
     }

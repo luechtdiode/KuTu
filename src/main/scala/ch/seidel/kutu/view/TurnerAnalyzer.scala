@@ -1,28 +1,28 @@
 package ch.seidel.kutu.view
 
 import ch.seidel.commons.TabWithService
-import ch.seidel.kutu.domain._
+import ch.seidel.kutu.domain.*
 import javafx.beans.value.{ChangeListener, ObservableValue}
 import javafx.geometry.Bounds
-import javafx.scene.{Group, Node, Parent}
 import javafx.scene.chart.XYChart.Data
 import javafx.scene.transform.Scale
+import javafx.scene.{Group, Node, Parent}
 import org.slf4j.{Logger, LoggerFactory}
-import scalafx.Includes._
+import scalafx.Includes.*
 import scalafx.application.Platform
 import scalafx.event.ActionEvent
 import scalafx.geometry.Side
 import scalafx.print.PageLayout.sfxPageLayout2jfx
-import scalafx.print.{PageOrientation, Paper, Printer, PrinterJob}
 import scalafx.print.PrinterJob.sfxPrinterJob2jfx
+import scalafx.print.{PageOrientation, Paper, Printer, PrinterJob}
+import scalafx.scene.chart.*
 import scalafx.scene.chart.BarChart.sfxBarChart2jfx
 import scalafx.scene.chart.XYChart.Series
-import scalafx.scene.chart._
-import scalafx.scene.control.{ScrollPane, Tab, _}
+import scalafx.scene.control.*
 import scalafx.scene.effect.Glow
 import scalafx.scene.effect.Glow.sfxGlow2jfx
-import scalafx.scene.layout.{BorderPane, Priority, VBox}
 import scalafx.scene.layout.VBox.sfxVBox2jfx
+import scalafx.scene.layout.{BorderPane, Priority, VBox}
 import scalafx.scene.text.Text
 import scalafx.scene.text.Text.sfxText2jfx
 
@@ -48,23 +48,23 @@ class TurnerAnalyzer(val verein: Option[Verein], val athlet: Option[Athlet], val
     node.getTransforms.add(scale)
 
     val job = PrinterJob.createPrinterJob
-    if (job != null) {
+    if job != null then {
       val success = job.printPage(node)
-      if (success) {
+      if success then {
         job.endJob()
       }
       node.getTransforms.remove(scale)
     }
   }
-  val glow = new Glow(.8)
+  private val glow = new Glow(.8)
 
-  def displayLabelForData[A,B](data: Data[A, B]): Data[A, B] = {
+  private def displayLabelForData[A,B](data: Data[A, B]): Data[A, B] = {
     // val node = data.nodeProperty()
-    val (dataText, isLandscape) = if(data.getYValue.isInstanceOf[String]) (new Text(s"${data.getXValue}"), true) else (new Text(s"${data.getYValue}"), false)
+    val (dataText, isLandscape) = if data.getYValue.isInstanceOf[String] then (new Text(s"${data.getXValue}"), true) else (new Text(s"${data.getYValue}"), false)
 
     data.nodeProperty().addListener(new ChangeListener[Node]() {
-      override def changed(ov: ObservableValue[_<: Node], oldNode: Node, node: Node): Unit = {
-        if(node != null) {
+      override def changed(ov: ObservableValue[? <: Node], oldNode: Node, node: Node): Unit = {
+        if node != null then {
           node.setEffect(null)
           node.onMouseEntered = _ => {
             node.setEffect(glow)
@@ -82,18 +82,18 @@ class TurnerAnalyzer(val verein: Option[Verein], val athlet: Option[Athlet], val
           }
 
           node.parentProperty().addListener(new ChangeListener[Parent]() {
-            override def changed(ov: ObservableValue[_<: Parent], oldParent: Parent, parent: Parent): Unit = {
+            override def changed(ov: ObservableValue[? <: Parent], oldParent: Parent, parent: Parent): Unit = {
               val parentGroup = parent.asInstanceOf[Group]
               parentGroup.getChildren.add(dataText)
             }
           })
           node.boundsInParentProperty().addListener(new ChangeListener[Bounds]() {
-            override def changed(ov: ObservableValue[_<: Bounds], oldBounds: Bounds, bounds: Bounds): Unit = {
+            override def changed(ov: ObservableValue[? <: Bounds], oldBounds: Bounds, bounds: Bounds): Unit = {
               dataText.setLayoutX(bounds.getMinX)
               dataText.setVisible(false)
               Platform.runLater{
               dataText.setVisible(true)
-              if(isLandscape) {
+              if isLandscape then {
                 dataText.setLayoutX(
                   Math.min(
                       Math.round(bounds.getWidth + dataText.prefWidth(-1) * 0.5).toDouble,
@@ -141,7 +141,7 @@ class TurnerAnalyzer(val verein: Option[Verein], val athlet: Option[Athlet], val
     series
   }
 
-  def toSeriesq(disciplinename: String, serie: Seq[(String,Object,Number)]): Series[Number, String] = {
+  private def toSeriesq(disciplinename: String, serie: Seq[(String,Object,Number)]): Series[Number, String] = {
     val series = serie.foldLeft(new Series[Number,String]()){(acc, pair) =>
       val d = new Data[Number,String](pair._3, pair._1, pair._2)
       displayLabelForData(d)
@@ -155,9 +155,9 @@ class TurnerAnalyzer(val verein: Option[Verein], val athlet: Option[Athlet], val
   override def isPopulated: Boolean = {
     val qry = service.selectWertungen(vereinId = verein.map(_.id), athletId = athlet.map(_.id))
     val charts = new VBox
-    for {
+    for
       (programm, pwertungen) <- qry.filter(x => x.endnote.nonEmpty).groupBy { x => x.wettkampfdisziplin.programm.wettkampfprogramm }.toList.sortBy(x => x._1.ord)
-    }
+    do
     {
       var hastoadd = false
       val pwg = pwertungen.
@@ -184,12 +184,12 @@ class TurnerAnalyzer(val verein: Option[Verein], val athlet: Option[Athlet], val
       val withDNotes = pwg.map(x => x._2).flatMap(x => x.filter(x => x.noteD.sum > 0).map(_.wettkampfdisziplin.id)).toSet.nonEmpty
       val elemente = athlet match {
         case None => pwg.map(x => x._2).flatMap(x => x.map(_.athlet.id)).toSet.size
-        case _    => pwg.map(x => x._2).flatMap(x => x.map(_.wettkampfdisziplin.id)).toSet.size * (if(withDNotes) 2 else 1)
+        case _    => pwg.map(x => x._2).flatMap(x => x.map(_.wettkampfdisziplin.id)).toSet.size * (if withDNotes then 2 else 1)
       }
       val chartheight = elemente * pwg.size * 40d
-      for{
+      for
         (wettkampf, awertungen) <- pwg
-      }
+      do
       {
 //        logger.debug(s"für Programm ${programm.easyprint} und Wettkampf ${wettkampf.easyprint}")
         val sumPerDivider = awertungen.
@@ -200,8 +200,8 @@ class TurnerAnalyzer(val verein: Option[Verein], val athlet: Option[Athlet], val
         }.
         filter(x => x._3 > 1).
         toSeq.sortBy(x => x._3)
-        if(sumPerDivider.nonEmpty) {
-          if(withDNotes) {
+        if sumPerDivider.nonEmpty then {
+          if withDNotes then {
             lineChart.data().add(toSeriesq("D-Note " +wettkampf.easyprint, sumPerDivider.map(x => (x._1, x._2, x._4))))
             lineChart.data().add(toSeriesq("Endnote " + wettkampf.easyprint, sumPerDivider.map(x => (x._1, x._2, x._3))))
           }
@@ -216,7 +216,7 @@ class TurnerAnalyzer(val verein: Option[Verein], val athlet: Option[Athlet], val
         lineChart.maxHeight = lineChart.minHeight.value
 //        logger.debug(s"Wettkampf ${wettkampf.easyprint} berechnete Charthöhe ${chartheight} eff. ZH ${lineChart.minHeight.value} ${elemente}, ${pwg.size}")
       }
-      if(hastoadd) {
+      if hastoadd then {
         charts.getChildren.add(lineChart)
       }
     }

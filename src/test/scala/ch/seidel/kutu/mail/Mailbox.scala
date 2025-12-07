@@ -46,7 +46,7 @@ class Mailbox(val address: Address) extends util.ArrayList[MimeMessage] {
     m
   }
 
-  override def addAll(messages: util.Collection[_ <: MimeMessage]): Boolean = {
+  override def addAll(messages: util.Collection[? <: MimeMessage]): Boolean = {
     println(s"add messages to mailbox")
     this.unread.addAll(messages)
     super.addAll(messages)

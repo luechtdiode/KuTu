@@ -1,13 +1,13 @@
 package ch.seidel.kutu.renderer
 
+import ch.seidel.kutu.domain.WertungView
+import ch.seidel.kutu.renderer.ServerPrintUtil.*
+import org.slf4j.{Logger, LoggerFactory}
+
 import java.io.File
 
-import ch.seidel.kutu.domain.WertungView
-import ch.seidel.kutu.renderer.PrintUtil._
-import org.slf4j.LoggerFactory
-
 trait BestenListeToHtmlRenderer {
-  val logger = LoggerFactory.getLogger(classOf[BestenListeToHtmlRenderer])
+  val logger: Logger = LoggerFactory.getLogger(classOf[BestenListeToHtmlRenderer])
   val intro = """<html>
     <head>
       <meta charset="UTF-8" />
@@ -105,7 +105,7 @@ trait BestenListeToHtmlRenderer {
       s"""<tr class="athletRow"><td>${escaped(wertung.athlet.verein.map(_.name).getOrElse(""))}</td><td class="large">${escaped(wertung.athlet.name)} ${escaped(wertung.athlet.vorname)}</td><td class="large">${wertung.wettkampfdisziplin.disziplin.name}, ${wertung.wettkampfdisziplin.programm.name}</td><td class="totalCol">${wertung.endnote}</td></tr>"""
     }
     val dt = d.mkString("", "\n", "\n")
-    val logoHtml = if (logo.exists()) s"""<img class=logo src="${logo.imageSrcForWebEngine}" title="Logo"/>""" else ""
+    val logoHtml = if logo.exists() then s"""<img class=logo src="${logo.imageSrcForWebEngine}" title="Logo"/>""" else ""
     s"""<div class=notenblatt>
       <div class=headline>
         $logoHtml
@@ -114,7 +114,7 @@ trait BestenListeToHtmlRenderer {
       <div class="showborder">
         <table width="100%">
           <tr class="totalRow heavyRow"><td>Verein</td><td>Name</td><td>Gerät/Disziplin, Programm/Kategorie</td><td class="totalCol">Note</td></tr>
-          ${dt}
+          $dt
         </table>
       </div>
     </div>
@@ -127,9 +127,8 @@ trait BestenListeToHtmlRenderer {
       //logger.debug(krit)
       krit
     }
-    val rawpages = for {
+    val rawpages = for
       a4seitenmenge <- kandidatenPerKategorie.sliding(28, 28)
-    }
     yield {
       bestenListe(a4seitenmenge, logo)
     }

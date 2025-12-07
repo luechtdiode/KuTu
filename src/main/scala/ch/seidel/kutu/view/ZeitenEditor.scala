@@ -1,7 +1,7 @@
 package ch.seidel.kutu.view
 
-import ch.seidel.kutu.domain._
-import scalafx.beans.property._
+import ch.seidel.kutu.domain.*
+import scalafx.beans.property.*
 
 object ZeitenEditor {
   def apply(init: WettkampfPlanTimeView) = new ZeitenEditor(init)
@@ -23,8 +23,8 @@ class ZeitenEditor(init: WettkampfPlanTimeView) {
   val uebung = new StringProperty(f"${init.uebung.toDouble / 1000}%1.0f ''")
   val wertung = new StringProperty(f"${init.wertung.toDouble / 1000}%1.0f ''")
 
-  def stripNonNumeric(value: String) = value.filter(_.isDigit)
-  def checkValid(value: String): Boolean = {
+  private def stripNonNumeric(value: String) = value.filter(_.isDigit)
+  private def checkValid(value: String): Boolean = {
     try {
       val normalized = stripNonNumeric(value)
       normalized.nonEmpty && Integer.parseInt(normalized) > 0
@@ -33,18 +33,18 @@ class ZeitenEditor(init: WettkampfPlanTimeView) {
     }
   }
 
-  def isValid = {
+  def isValid: Boolean = {
     checkValid(wechsel.value) &&
     checkValid(einturnen.value) &&
     checkValid(uebung.value) &&
     checkValid(wertung.value)
   }
 
-  def reset: Unit = {
+  def reset(): Unit = {
 
   }
 
-  def commit = init.copy(
+  def commit: WettkampfPlanTimeView = init.copy(
     wechsel = Integer.parseInt(stripNonNumeric(this.wechsel.value)) * 1000,
     einturnen = Integer.parseInt(stripNonNumeric(this.einturnen.value)) * 1000,
     uebung = Integer.parseInt(stripNonNumeric(this.uebung.value)) * 1000,

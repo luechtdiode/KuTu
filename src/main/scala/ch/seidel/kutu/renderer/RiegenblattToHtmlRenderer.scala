@@ -1,21 +1,21 @@
 package ch.seidel.kutu.renderer
 
-import java.io.File
-import ch.seidel.kutu.domain._
+import ch.seidel.kutu.domain.*
 import ch.seidel.kutu.renderer.KategorieTeilnehmerToHtmlRenderer.getDurchgangFullName
-import ch.seidel.kutu.renderer.PrintUtil._
-import org.slf4j.LoggerFactory
+import ch.seidel.kutu.renderer.ServerPrintUtil.*
+import org.slf4j.{Logger, LoggerFactory}
 
+import java.io.File
 import java.time.LocalDateTime
 
 object RiegenBuilder {
-  val logger = LoggerFactory.getLogger(this.getClass)
-  def mapToGeraeteRiegen(kandidaten: Seq[Kandidat], printorder: Boolean = false, durchgangFilter: Set[String] = Set.empty, haltsFilter: Set[Int] = Set.empty): List[GeraeteRiege] = {
-    val sorter: RiegenRotationsregel = if (kandidaten.nonEmpty && kandidaten.head.wertungen.nonEmpty)
+  val logger: Logger = LoggerFactory.getLogger(this.getClass)
+  def mapToGeraeteRiegen(kandidaten: Seq[ch.seidel.kutu.domain.Kandidat], printorder: Boolean = false, durchgangFilter: Set[String] = Set.empty, haltsFilter: Set[Int] = Set.empty): List[GeraeteRiege] = {
+    val sorter: RiegenRotationsregel = if kandidaten.nonEmpty && kandidaten.head.wertungen.nonEmpty then
       RiegenRotationsregel(kandidaten.head.wertungen.head.wettkampf)
     else RiegenRotationsregel("")
 
-    def pickStartformationen(geraete: Seq[(Option[Disziplin], Seq[Riege], Int)], durchgang: Option[String], extractKandidatEinteilung: Kandidat => (Option[Riege], Seq[Disziplin])): Seq[(Int, Option[Disziplin], Seq[Kandidat], Boolean)] = {
+    def pickStartformationen(geraete: Seq[(Option[Disziplin], Seq[Riege], Int)], durchgang: Option[String], extractKandidatEinteilung: ch.seidel.kutu.domain.Kandidat => (Option[Riege], Seq[Disziplin])): Seq[(Int, Option[Disziplin], Seq[ch.seidel.kutu.domain.Kandidat], Boolean)] = {
       /*
         stationmap[Disziplin,Int](
           // Disziplin -> Halt
@@ -43,7 +43,7 @@ object RiegenBuilder {
       4. Halt: Riege Startgerät                                                                      (1W,Sprung)
                ,                (2M,Boden), (3W,Balken),             (4W,Minitramp) (5M,Minitramp), (6M,Sprung)
       */
-      val athletdevicemap: Seq[(Kandidat, List[Disziplin])] = geraete.flatMap(d => kandidaten
+      val athletdevicemap: Seq[(ch.seidel.kutu.domain.Kandidat, List[Disziplin])] = geraete.flatMap(d => kandidaten
         .map { kandidat =>
           (kandidat, extractKandidatEinteilung(kandidat))
         }
@@ -62,11 +62,11 @@ object RiegenBuilder {
         .map { riegeneinteilung =>
           val (kandidat, (_, diszipline)) = riegeneinteilung
           val disziplin = d._1.get
-          if (splitmerged)
+          if splitmerged then
             (kandidat, (diszipline.dropWhile(d => d.id != disziplin.id) ++ diszipline.takeWhile(d => d.id != disziplin.id)).toList)
           else {
             val diszs = geraete.map(_._1.get).map{d =>
-              if (diszipline.contains(d)) d else d.asPause
+              if diszipline.contains(d) then d else d.asPause
             }
             (kandidat, (diszs.dropWhile(d => !d.equalsOrPause(disziplin)) ++ diszs.takeWhile(d => !d.equalsOrPause(disziplin))).toList)
           }
@@ -79,7 +79,7 @@ object RiegenBuilder {
           .map{ kandidat => (kandidat._2(station), kandidat) }
           .groupBy(_._1)
           .map{gr =>
-            val (disziplin: Disziplin, candidates: Seq[(Disziplin, (Kandidat, List[Disziplin]))]) = gr
+            val (disziplin: Disziplin, candidates: Seq[(Disziplin, (ch.seidel.kutu.domain.Kandidat, List[Disziplin]))]) = gr
             val completed = candidates.flatMap(k => k._2._1.wertungen)
               .filter(wertung => disziplin.equals(wertung.wettkampfdisziplin.disziplin))
               .forall(_.endnote.nonEmpty)
@@ -120,7 +120,7 @@ object RiegenBuilder {
           val (sf, index) = x
           (sf._1, sf._2, sf._3, sf._4, durchgangIndex * 100 + index + 1)
         })
-      if (printorder) {
+      if printorder then {
         (durchgang, startformationen.sortBy(d => d._2.map(x => x.normalizedOrdinal(dzl)).getOrElse(0) * 100 + d._1))
       }
       else {
@@ -159,19 +159,19 @@ object RiegenBuilder {
       val startformationen = pickStartformationen(geraete, durchgang, k => (k.einteilung2, k.diszipline2))
         .zipWithIndex
         .map(x => {
-          val (sf: (Int, Option[Disziplin], Seq[Kandidat], Boolean), index) = x
+          val (sf: (Int, Option[Disziplin], Seq[ch.seidel.kutu.domain.Kandidat], Boolean), index) = x
           (sf._1, sf._2, sf._3, sf._4, durchgangIndex*100 + 100 - index)
         })
 
-      if (printorder) {
+      if printorder then {
         (durchgang, startformationen)        
       }
       else {
-        (durchgang, startformationen.sortBy(d => d._1 * 100 + d._2.map(x => x.normalizedOrdinal(dzl))))
+        (durchgang, startformationen.sortBy(d => d._1 * 100 + d._2.map(x => x.normalizedOrdinal(dzl)).getOrElse(1)))
       }
     }
     val riegen = (hauptdurchgaenge ++ nebendurchgaenge).flatMap { item =>
-      val (durchgang: Option[String], starts: Seq[(Int, Option[Disziplin], Seq[Kandidat], Boolean, Int)]) = item
+      val (durchgang: Option[String], starts: Seq[(Int, Option[Disziplin], Seq[ch.seidel.kutu.domain.Kandidat], Boolean, Int)]) = item
       val isND = nebendurchgaenge.exists(nd => nd._1 == durchgang && nd._2.exists(disz => disz._2 == starts.head._2))
       durchgang match {
         case Some(dg) if durchgangFilter.nonEmpty && !durchgangFilter.contains(dg) => Seq.empty
@@ -296,8 +296,8 @@ trait RiegenblattToHtmlRenderer {
     </html>
   """
 
-  def shorten(s: String, l: Int = 10) = {
-    if (s.length() <= l) {
+  def shorten(s: String, l: Int = 10): String = {
+    if s.length() <= l then {
       s.trim
     } else {
       val words = s.split("[ ,]")
@@ -315,19 +315,19 @@ trait RiegenblattToHtmlRenderer {
   }
 
   private def notenblatt(riegepart: (GeraeteRiege, Int), logo: File, baseUrl: String, dgMapping: Map[String, (SimpleDurchgang, LocalDateTime)]) = {
-    val logoHtml = if (logo.exists()) s"""<img class=logo src="${logo.imageSrcForWebEngine}" title="Logo"/>""" else ""
+    val logoHtml = if logo.exists() then s"""<img class=logo src="${logo.imageSrcForWebEngine}" title="Logo"/>""" else ""
     val (riege, tutioffset) = riegepart
     val d = riege.kandidaten.zip(Range(1, riege.kandidaten.size+1)).map{kandidat =>
       val einteilung: String = kandidat._1.einteilung
         .map(r => r.r.replaceAll( s",${kandidat._1.verein}", ""))
         .getOrElse(kandidat._1.programm)
-      val programm = if(einteilung.isEmpty()) "" else "(" + shorten(einteilung) + ")"
-      val verein = if(kandidat._1.verein.isEmpty())"" else shorten(kandidat._1.verein, 15)
+      val programm = if einteilung.isEmpty then "" else "(" + shorten(einteilung) + ")"
+      val verein = if kandidat._1.verein.isEmpty then "" else shorten(kandidat._1.verein, 15)
       s"""<tr class="turnerRow"><td class="large">${kandidat._2 + tutioffset}. ${escaped(kandidat._1.vorname)} ${escaped(kandidat._1.name)} <span class='sf'>${escaped(programm)}</span></td><td><span class='sf'>${escaped(verein)}</span></td><td>&nbsp;</td><td>&nbsp;</td><td class="totalCol">&nbsp;</td></tr>"""
     }.mkString("", "\n", "\n")
 
     val stationlink = WertungsrichterQRCode.toURI(baseUrl, riege)
-    val imagedata = s"<a href='$stationlink' target='_blank'><img title='${stationlink}' width='140px' height='140px' src='${PrintUtil.toQRCodeImage(stationlink)}'></a>"
+    val imagedata = s"<a href='$stationlink' target='_blank'><img title='$stationlink' width='140px' height='140px' src='${ServerPrintUtil.toQRCodeImage(stationlink)}'></a>"
     s"""<div class=riegenblatt>
       <div class=headline>
         $logoHtml $imagedata
@@ -337,7 +337,7 @@ trait RiegenblattToHtmlRenderer {
       <div class="showborder">
         <table width="100%">
           <tr class="totalRow heavyRow"><td>Turner/Turnerin</td><td>Verein</td><td>1. Wertung</td><td>2. Wertung</td><td class="totalCol">Endnote</td></tr>
-          ${d}
+          $d
         </table>
       </div>
     </div>
@@ -346,11 +346,11 @@ trait RiegenblattToHtmlRenderer {
 
   val fcs = 20
 
-  def toHTML(kandidaten: Seq[Kandidat], logo: File, baseUrl: String, durchgangFilter: Set[String] = Set.empty, haltsFilter: Set[Int] = Set.empty, dgMapping: Seq[(SimpleDurchgang, LocalDateTime)]): String = {
+  def toHTML(kandidaten: Seq[ch.seidel.kutu.domain.Kandidat], logo: File, baseUrl: String, durchgangFilter: Set[String] = Set.empty, haltsFilter: Set[Int] = Set.empty, dgMapping: Seq[(SimpleDurchgang, LocalDateTime)]): String = {
     val dgmap = dgMapping.map(dg => dg._1.name -> dg).toMap
     def splitToFitPage(riegen: List[GeraeteRiege]) = {
       riegen.foldLeft(List[(GeraeteRiege, Int)]()){(acc, item) =>
-        if(item.kandidaten.size > fcs) {
+        if item.kandidaten.size > fcs then {
           acc ++ item.kandidaten.sliding(fcs, fcs)
           .zipWithIndex.map(k => (item.copy(kandidaten = k._1), k._2 * fcs))
         }
@@ -361,11 +361,11 @@ trait RiegenblattToHtmlRenderer {
       .map{r =>
         val (riege, offset) = r
         val full = (fcs + riege.kandidaten.size / fcs * fcs) - riege.kandidaten.size
-        if(full % fcs == 0) {
+        if full % fcs == 0 then {
           r
         }
         else {
-          (riege.copy(kandidaten = riege.kandidaten ++ (1 to full).map(i => Kandidat(
+          (riege.copy(kandidaten = riege.kandidaten ++ (1 to full).map(i => ch.seidel.kutu.domain.Kandidat(
               riege.kandidaten.head.wettkampfTitel,
               "", "", 0,
               "", "", "", "", None, None, 

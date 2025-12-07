@@ -2,9 +2,9 @@ package ch.seidel.kutu.view
 
 import ch.seidel.kutu.calc.parser.{Expression, MathExpCompiler}
 import ch.seidel.kutu.calc.{ScoreAggregateFn, ScoreCalcTemplate}
-import ch.seidel.kutu.domain.{Athlet, Disziplin, KutuService, StandardWettkampf, WertungView, WettkampfView, WettkampfdisziplinView}
+import ch.seidel.kutu.domain.*
 import org.controlsfx.validation.{Severity, ValidationResult, Validator}
-import scalafx.beans.property._
+import scalafx.beans.property.*
 
 object ScoreCalcTemplateEditor {
   val coldef = Map(
@@ -28,10 +28,10 @@ case class ScoreCalcTempateEditorService(wettkampf: WettkampfView, service: Kutu
     .sortBy(_.sortOrder)
     .map { init => ScoreCalcTemplateEditor(init, this) }
 
-  def editorOf(init: ScoreCalcTemplate) = loadEditors().find(e => e.init == init).getOrElse(ScoreCalcTemplateEditor(init, this))
+  def editorOf(init: ScoreCalcTemplate): ScoreCalcTemplateEditor = loadEditors().find(e => e.init == init).getOrElse(ScoreCalcTemplateEditor(init, this))
 
   def newEditor(): ScoreCalcTemplateEditor = {
-    val dnote = if (wettkampfdisziplinViews.head.isDNoteUsed) s"$$${wettkampfdisziplinViews.head.notenSpez.getDifficultLabel}${wettkampfdisziplinViews.head.notenSpez.getDifficultLabel} Wert.2" else "0"
+    val dnote = if wettkampfdisziplinViews.head.isDNoteUsed then s"$$${wettkampfdisziplinViews.head.notenSpez.getDifficultLabel}${wettkampfdisziplinViews.head.notenSpez.getDifficultLabel} Wert.2" else "0"
     ScoreCalcTemplateEditor(ScoreCalcTemplate(0, Some(wettkampf.id), None, None, dnote, s"$$${wettkampfdisziplinViews.head.notenSpez.getExecutionLabel}${wettkampfdisziplinViews.head.notenSpez.getExecutionLabel} Wert.2", "0", None), this)
   }
 
@@ -62,7 +62,7 @@ case class ScoreCalcTemplateEditor(init: ScoreCalcTemplate, context: ScoreCalcTe
   val evalidState = new StringProperty("")
   val pvalidState = new StringProperty("")
 
-  val editable = new BooleanProperty() {
+  val editable: BooleanProperty = new BooleanProperty() {
     value = isEditable
   }
   val disziplin = new StringProperty(init.disziplinId match {
@@ -74,43 +74,43 @@ case class ScoreCalcTemplateEditor(init: ScoreCalcTemplate, context: ScoreCalcTe
     case None => ""
   })
   disziplin.onChange {
-    if (!kategoriedisziplin.value.contains(disziplin.value)) {
+    if !kategoriedisziplin.value.contains(disziplin.value) then {
       kategoriedisziplin.value = ""
     }
     val v = isValid
   }
   kategoriedisziplin.onChange {
-    if (!kategoriedisziplin.value.contains(disziplin.value)) {
+    if !kategoriedisziplin.value.contains(disziplin.value) then {
       disziplin.value = ""
     }
     val v = isValid
   }
-  val dFormula = new StringProperty(init.dFormula) {
+  val dFormula: StringProperty = new StringProperty(init.dFormula) {
     onChange {
       val v = isValid
     }
   }
-  val eFormula = new StringProperty(init.eFormula) {
+  val eFormula: StringProperty = new StringProperty(init.eFormula) {
     onChange {
       val v = isValid
     }
   }
-  val pFormula = new StringProperty(init.pFormula) {
+  val pFormula: StringProperty = new StringProperty(init.pFormula) {
     onChange {
       val v = isValid
     }
   }
-  val aggregateFn = new StringProperty(init.aggregateFn.map(_.toString).getOrElse("")) {
+  val aggregateFn: StringProperty = new StringProperty(init.aggregateFn.map(_.toString).getOrElse("")) {
     onChange {
       val v = isValid
     }
   }
 
-  def selectedDisziplin: Option[Disziplin] = context.disziplinList.find(d => d.easyprint.equals(disziplin.value))
+  private def selectedDisziplin: Option[Disziplin] = context.disziplinList.find(d => d.easyprint.equals(disziplin.value))
 
-  def selectedWettkampfDisziplin: Option[WettkampfdisziplinView] = context.wettkampfdisziplinViews.find(d => d.easyprint.equals(kategoriedisziplin.value))
+  private def selectedWettkampfDisziplin: Option[WettkampfdisziplinView] = context.wettkampfdisziplinViews.find(d => d.easyprint.equals(kategoriedisziplin.value))
 
-  def selectedAggregatFn: Option[ScoreAggregateFn] = ScoreAggregateFn(ScoreAggregateFn.values.find(a => a.equals(aggregateFn.value)))
+  private def selectedAggregatFn: Option[ScoreAggregateFn] = ScoreAggregateFn(Some(aggregateFn.value))
 
   def previewWertung(): WertungEditor = {
     val wkv = selectedWettkampfDisziplin
@@ -122,7 +122,7 @@ case class ScoreCalcTemplateEditor(init: ScoreCalcTemplate, context: ScoreCalcTe
       case _ => wkv.notenSpez
     }
     val visible = wkv.isDNoteUsed
-    if (!visible) {
+    if !visible then {
       dFormula.value = "0"
     }
 
@@ -187,7 +187,7 @@ case class ScoreCalcTemplateEditor(init: ScoreCalcTemplate, context: ScoreCalcTe
     }
   }
 
-  def reset: Unit = {
+  def reset(): Unit = {
     disziplin.value = init.disziplinId match {
       case Some(id) => context.disziplinList.find(d => d.id == id).map(_.name).getOrElse("")
       case None => ""
@@ -202,7 +202,7 @@ case class ScoreCalcTemplateEditor(init: ScoreCalcTemplate, context: ScoreCalcTe
     aggregateFn.value = init.aggregateFn.map(_.toString).getOrElse("")
   }
 
-  def commit = init.copy(
+  def commit: ScoreCalcTemplate = init.copy(
     disziplinId = selectedDisziplin.map(_.id), wettkampfdisziplinId = selectedWettkampfDisziplin.map(_.id),
     dFormula = dFormula.value.trim, eFormula = eFormula.value.trim, pFormula = pFormula.value.trim,
     aggregateFn = selectedAggregatFn

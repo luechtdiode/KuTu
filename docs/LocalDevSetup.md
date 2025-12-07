@@ -2,8 +2,8 @@
 
 ## Prerequisites
 
-* JDK 25
-* Working Maven (3.9+) installation,
+* JDK 25,
+* Working sbt (1.11.7+) installation (alternative Working Maven (3.9+) installation),
 * Git-Client
 * IDE (IntelliJ, vscode, eclipse, ...)
 * Node (v12.22+)
@@ -31,7 +31,7 @@ cd KuTu
 
 ### Prepare jdk (optional)
 
-This script installs the required JDK 21
+This script installs the required JDK 25
 
 ```bash
 # Set the os-variable. Should be one of [Darwin, Win64, Linux]
@@ -68,7 +68,13 @@ mkdir ./src/main/resources/app
 cp -R -f ./newclient/resultcatcher/www/* ./src/main/resources/app
 ```
 
-### Build the backend
+### Build the backend (sbt)
+
+```bash
+sbt -v "clean; test"
+```
+
+### Build the backend (Maven)
 
 ```bash
 mvn clean install
@@ -89,7 +95,14 @@ See the preconfigured files in
 * `.client/kutuapp.conf`
 * `.server/kutuapp.conf`
 
-### Build the distribution
+
+### Build the distribution (sbt)
+
+```bash
+sbt -v "packageApp"
+```
+
+### Build the distribution (Maven)
 
 ```bash
 mvn package
@@ -97,18 +110,20 @@ mvn package
 
 #### Java-Client
 
-The java-client is built using jpackage. It's in the `target/$OS` directory after `mvn package`.
+The java-client is built using jpackage. It's in the `target/$OS` directory after `sbt packageApp` / `mvn package`.
 
 #### Docker-Image
 
 The docker-image is build by the local Docker for desktop Installation running
-the following command (after `mvn clean install`):
+the following command (after `sbt clean packageApp` / `mvn clean install`):
 
 ```bash
 rm -rf docker/libs
 mkdir docker/libs
 cp target/dependency/*.jar docker/libs/
 cp target/*.jar docker/
+cp target/package/libs/*.jar docker/libs/
+cp target/package/*.jar docker/
 rm docker/libs/javafx*.jar
 
 docker build ./docker -t luechtdiode/kutuapp:test

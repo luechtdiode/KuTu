@@ -3,34 +3,36 @@ package ch.seidel.kutu.data
 import scala.io.Source
 
 case class Surname(name: String, feminimCount: Int, masculinCount: Int) {
-  val isFeminin = feminimCount > 0
-  val isMasculin = masculinCount > 0
-  def matchesSex(sex: String) = (isFeminin && "F".equalsIgnoreCase(sex)) || (isMasculin && "M".equalsIgnoreCase(sex))
+  val isFeminin: Boolean = feminimCount > 0
+  val isMasculin: Boolean = masculinCount > 0
+  def matchesSex(sex: String): Boolean = (isFeminin && "F".equalsIgnoreCase(sex)) || (isMasculin && "M".equalsIgnoreCase(sex))
 }
 
 object Surname {
-  def transformStatsMeaning(statsMeaning: String): Int = statsMeaning match {
+  import ch.seidel.kutu.domain.given_Conversion_String_Int
+  private def transformStatsMeaning(statsMeaning: String): Int = statsMeaning match {
     case "*" => 0
-    case n => n.replaceAll("'", "").toInt
+    case n => n.replace("'", "")
   }
 
   def apply(name: String, feminimCount: String, masculinCount: String): Surname = {
     Surname(name, transformStatsMeaning(feminimCount), transformStatsMeaning(masculinCount))
   }
 
-  lazy val names: Set[Surname] = {
-    val bufferedSource = Source.fromResource("vornamen.csv")("UTF-8")
+  private lazy val names: Set[Surname] = {
+    given String = "UTF-8"
+    val bufferedSource = Source.fromResource("vornamen.csv")
     try {
-      (for {
+      (for
         line <- bufferedSource.getLines()
         cols = line.split("\t").map(_.trim)
-        if (cols.size == 3)
-      } yield {
+        if cols.length == 3
+      yield {
         Surname(cols(0), cols(1), cols(2))
       }).toSet[Surname]
     } catch {
       case e: Exception =>
-        e.printStackTrace
+        e.printStackTrace()
         Set.empty
     } finally {
       bufferedSource.close
@@ -48,7 +50,15 @@ object Surname {
   }
   def isSurname(name: String): Option[Surname] = {
     val namen = name.split(" ")
-    names.find(sn => namen.exists(nn => sn.name.equalsIgnoreCase(nn)))
+    val surnames = names.filter(sn => namen.exists(nn => sn.name.equalsIgnoreCase(nn)))
+    val isMc = surnames.count(_.isMasculin)
+    val isFc = surnames.count(_.isFeminin)
+    val isM = isMc >= isFc
+    val isF = isMc <= isFc
+    if surnames.nonEmpty && (isF || isM) then
+      Some(Surname(name, if isF then 1 else 0, if isM then 1 else 0))
+    else
+      None
   }
 }
 

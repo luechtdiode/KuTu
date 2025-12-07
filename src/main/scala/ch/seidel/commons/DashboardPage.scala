@@ -4,14 +4,14 @@ import ch.seidel.kutu.KuTuAppTree
 import ch.seidel.kutu.KuTuAppTree.showThumbnails
 import ch.seidel.kutu.view.WettkampfTableView
 import scalafx.scene.Node
-import scalafx.scene.control.{ScrollPane, TableView, TextField, Toggle, ToggleButton, ToggleGroup}
+import scalafx.scene.control.*
 import scalafx.scene.image.{Image, ImageView}
 import scalafx.scene.layout.{BorderPane, HBox, Priority, VBox}
 
 /** Dashboard Page */
 class DashboardPage(dashPart: String = "dashboard", tree: KuTuAppTree) extends DisplayablePage {
 
-  def getPage = {
+  def getPage: BorderPane = {
     def thumbs(filter: String = "") = dashPart match {
       case "dashboard" => tree.getDashThumbsCtrl(filter)
       case _           => tree.getDashThumb(dashPart, filter)
@@ -34,7 +34,7 @@ class DashboardPage(dashPart: String = "dashboard", tree: KuTuAppTree) extends D
         promptText = "Such-Text"
         styleClass += "search-text"
 
-        text.addListener { (o: javafx.beans.value.ObservableValue[_], oldVal: String, newVal: String) =>
+        text.addListener { (o: javafx.beans.value.ObservableValue[?], oldVal: String, newVal: String) =>
           refreshView()
         }
       }
@@ -56,7 +56,7 @@ class DashboardPage(dashPart: String = "dashboard", tree: KuTuAppTree) extends D
       }
       def refreshView(): Unit = {
         val nodes = thumbs(filter.text.value)
-        if (showThumbnails.value) {
+        if showThumbnails.value then {
           iconToggleButton.selected = true
           listToggleButton.selected = false
           box.children = nodes
@@ -67,7 +67,7 @@ class DashboardPage(dashPart: String = "dashboard", tree: KuTuAppTree) extends D
           listToggleButton.selected = true
           val tv = nodes match {
             case _::tv::Nil => tv match {
-              case tableView: TableView[_] =>
+              case tableView: TableView[?] =>
                 Some(tableView)
               case _ => None
             }

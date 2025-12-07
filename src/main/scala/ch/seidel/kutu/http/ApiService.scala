@@ -1,17 +1,17 @@
 package ch.seidel.kutu.http
 
-import org.apache.pekko.http.scaladsl.model.StatusCodes._
-import org.apache.pekko.http.scaladsl.model.{HttpResponse, StatusCode, StatusCodes, Uri}
-import org.apache.pekko.http.scaladsl.server.{ExceptionHandler, RouteConcatenation}
 import ch.seidel.kutu.domain.toDurationFormat
 import fr.davit.pekko.http.metrics.core.scaladsl.server.HttpMetricsDirectives.pathPrefixLabeled
+import org.apache.pekko.http.scaladsl.model.StatusCodes.*
+import org.apache.pekko.http.scaladsl.model.{HttpResponse, StatusCode, StatusCodes, Uri}
+import org.apache.pekko.http.scaladsl.server.{ExceptionHandler, Route, RouteConcatenation}
 
 
 case class HTTPFailure(status: StatusCode,
                        private val message: String = "",
                        private val cause: Throwable = None.orNull) extends RuntimeException(cause) {
-  val text =
-    if (message.isEmpty || status.reason().equals(message)) s"Status: $status"
+  val text: String =
+    if message.isEmpty || status.reason().equals(message) then s"Status: $status"
     else s"Status: $status, $message"
   override def getMessage: String = text
 }
@@ -32,9 +32,9 @@ trait ApiService extends RouteConcatenation with CIDSupport with RouterLogging w
   with MetricsController {
 
   //  private implicit lazy val _ = ch.seidel.kutu.http.Core.system.dispatcher
-  import AbuseHandler._
+  import AbuseHandler.*
 
-  def allroutes(userLookup: (String) => String, userIdLookup: (String) => Option[Long]) = {
+  def allroutes(userLookup: String => String, userIdLookup: String => Option[Long]): Route = {
     def myExceptionHandler: ExceptionHandler = ExceptionHandler {
       case e: Exception =>
         (handleCID & extractUri & authenticatedId) { (clientId: String, uri: Uri, authId: Option[String]) =>

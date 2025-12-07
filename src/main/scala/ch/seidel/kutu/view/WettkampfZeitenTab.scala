@@ -1,20 +1,21 @@
 package ch.seidel.kutu.view
 
-import java.util.UUID
-import ch.seidel.commons._
-import ch.seidel.kutu.domain._
-import javafx.scene.{control => jfxsc}
+import ch.seidel.commons.*
+import ch.seidel.kutu.domain.*
+import javafx.scene.control as jfxsc
 import javafx.util.Callback
-import scalafx.Includes._
+import scalafx.Includes.*
 import scalafx.beans.property.{ReadOnlyStringProperty, StringProperty}
 import scalafx.collections.ObservableBuffer
 import scalafx.event.subscriptions.Subscription
 import scalafx.scene.Node
-import scalafx.scene.control.TableColumn._
-import scalafx.scene.control._
+import scalafx.scene.control.*
+import scalafx.scene.control.TableColumn.*
 import scalafx.scene.input.KeyEvent
-import scalafx.scene.layout._
+import scalafx.scene.layout.*
 import scalafx.util.converter.DefaultStringConverter
+
+import java.util.UUID
 
 class WettkampfZeitenTab(editableProperty: Boolean, wettkampf: WettkampfView, override val service: KutuService) extends Tab with TabWithService {
 
@@ -41,11 +42,11 @@ class WettkampfZeitenTab(editableProperty: Boolean, wettkampf: WettkampfView, ov
   override def isPopulated: Boolean = {
 
     val planTimeViews = service
-      .loadWettkampfDisziplinTimes(wettkampf.id)
+      .loadWettkampfDisziplinTimes(using wettkampf.id)
       .map { a => ZeitenEditor(a) }
     val model = ObservableBuffer.from(planTimeViews)
 
-    val cols: List[jfxsc.TableColumn[ZeitenEditor, _]] = classOf[ZeitenEditor].getDeclaredFields.filter { f =>
+    val cols: List[jfxsc.TableColumn[ZeitenEditor, ?]] = classOf[ZeitenEditor].getDeclaredFields.filter { f =>
       f.getType.equals(classOf[ReadOnlyStringProperty])
     }.map { field =>
       field.setAccessible(true)
@@ -69,7 +70,7 @@ class WettkampfZeitenTab(editableProperty: Boolean, wettkampf: WettkampfView, ov
           cellValueFactory = { x =>
             field.get(x.value).asInstanceOf[StringProperty]
           }
-          cellFactory.value = { _:Any => new AutoCommitTextFieldTableCell[ZeitenEditor, String](new DefaultStringConverter()) }
+          cellFactory.value = { (_:Any) => new AutoCommitTextFieldTableCell[ZeitenEditor, String](new DefaultStringConverter()) }
           styleClass += "table-cell-with-value"
           prefWidth = ZeitenEditor.coldef(field.getName)
           editable = editableProperty
@@ -99,7 +100,7 @@ class WettkampfZeitenTab(editableProperty: Boolean, wettkampf: WettkampfView, ov
       val sortOrder = zeitenView.sortOrder.toList
       model.clear()
       val searchQuery = newVal.toUpperCase().split(" ")
-      for {planTime <- planTimeViews} {
+      for planTime <- planTimeViews do {
         val matches =
           searchQuery.forall { search =>
             search.isEmpty ||
@@ -107,7 +108,7 @@ class WettkampfZeitenTab(editableProperty: Boolean, wettkampf: WettkampfView, ov
               planTime.disziplin.value.toUpperCase().contains(search)
           }
 
-        if (matches) {
+        if matches then {
           model += planTime
         }
       }
@@ -117,8 +118,8 @@ class WettkampfZeitenTab(editableProperty: Boolean, wettkampf: WettkampfView, ov
 
     val txtFilter = new TextField() {
       promptText = "Filter (Ctrl + F)"
-      text.addListener { (o: javafx.beans.value.ObservableValue[_ <: String], oldVal: String, newVal: String) =>
-        if (!lastFilter.equalsIgnoreCase(newVal)) {
+      text.addListener { (o: javafx.beans.value.ObservableValue[? <: String], oldVal: String, newVal: String) =>
+        if !lastFilter.equalsIgnoreCase(newVal) then {
           updateFilteredList(newVal)
         }
       }

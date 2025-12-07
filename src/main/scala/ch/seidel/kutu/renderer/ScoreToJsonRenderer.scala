@@ -1,9 +1,9 @@
 package ch.seidel.kutu.renderer
 
-import ch.seidel.kutu.data._
+import ch.seidel.kutu.data.*
 import ch.seidel.kutu.domain
 import ch.seidel.kutu.domain.{NullObject, ResultRow, TeamRow}
-import ch.seidel.kutu.renderer.PrintUtil.{ImageFile, escaped}
+import ch.seidel.kutu.renderer.ServerPrintUtil.*
 import org.slf4j.{Logger, LoggerFactory}
 
 import java.io.File
@@ -18,7 +18,7 @@ object ScoreToJsonRenderer {
 
   val intro = s"""{
   """
-  def firstSite(title: String, logoFile: File): String = intro + (if (logoFile.exists) s"""
+  def firstSite(title: String, logoFile: File): String = intro + (if logoFile.exists then s"""
       "logo":"${logoFile.imageSrcForWebEngine}",
       "title":"${escaped(title)}",
       "scoreblocks":[
@@ -33,11 +33,11 @@ object ScoreToJsonRenderer {
 
   def renderListHead(gsBlock: StringBuilder, level: Int, openedTitle: String): gsBlock.type = {
     gsBlock.append("{")
-    if (openedTitle.startsWith("\"title\":{")) {
-      gsBlock.append(s"""${openedTitle}"},""")
+    if openedTitle.startsWith("\"title\":{") then {
+      gsBlock.append(s"""$openedTitle"},""")
     }
     else {
-      gsBlock.append(s""""title":{"level":"${level + 2}", "text":"${openedTitle}"},""")
+      gsBlock.append(s""""title":{"level":"${level + 2}", "text":"$openedTitle"},""")
     }
   }
 
@@ -56,7 +56,7 @@ object ScoreToJsonRenderer {
           gsBlock.append(s""""rows":[],""")
       }
       cols.foreach {
-        case ccol: WKLeafCol[_] =>
+        case ccol: WKLeafCol[?] =>
           val c = ccol.asInstanceOf[WKLeafCol[T]]
           val value = c.valueMapper(row)
           gsBlock.append(s""""${escaped(c.text)}":"${escaped(value.text)}",""")
@@ -77,7 +77,7 @@ object ScoreToJsonRenderer {
       gsBlock.deleteCharAt(gsBlock.size - 1)
       gsBlock.append("},")
     }
-    if (list.nonEmpty) gsBlock.deleteCharAt(gsBlock.size - 1)
+    if list.nonEmpty then gsBlock.deleteCharAt(gsBlock.size - 1)
     gsBlock.append("],")
   }
 
@@ -88,19 +88,19 @@ object ScoreToJsonRenderer {
 
   private def toJsonString(title: String, gs: List[GroupSection], openedTitle: String, level: Int, sortAlphabetically: Boolean, isAvgOnMultipleCompetitions: Boolean, logoFile: File): String = {
     val gsBlock = new StringBuilder()
-    if (level == 0) {
+    if level == 0 then {
       gsBlock.append(firstSite(title, logoFile))
     }
-    for (c <- gs) {
+    for c <- gs do {
       c match {
-        case gl: GroupLeaf[_] =>
+        case gl: GroupLeaf[?] =>
           renderGroupLeaf(openedTitle, level, sortAlphabetically, isAvgOnMultipleCompetitions, gsBlock, gl)
 
         case ts: TeamSums =>
           renderTeamLeaf(openedTitle, level,gsBlock, ts)
 
         case g: GroupNode => gsBlock.append(
-            toJsonString(title, g.next.toList, if(openedTitle.nonEmpty)
+            toJsonString(title, g.next.toList, if openedTitle.nonEmpty then
                               openedTitle + s"${escaped(g.groupKey.capsulatedprint)}, "
                             else
                               s""""title":{"level":"${level + 2}", "text":"${escaped(g.groupKey.capsulatedprint)}, """, level + 1, sortAlphabetically, isAvgOnMultipleCompetitions, logoFile))
@@ -109,14 +109,14 @@ object ScoreToJsonRenderer {
           gsBlock.append(s.easyprint)
       }
     }
-    if (level == 0) {
+    if level == 0 then {
       gsBlock.setCharAt(gsBlock.size-1, '\n')
       gsBlock.append(outro)
     }
     gsBlock.toString
   }
 
-  private def renderGroupLeaf(openedTitle: String, level: Int, sortAlphabetically: Boolean, isAvgOnMultipleCompetitions: Boolean, gsBlock: StringBuilder, gl: GroupLeaf[_ <: domain.DataObject]): Unit = {
+  private def renderGroupLeaf(openedTitle: String, level: Int, sortAlphabetically: Boolean, isAvgOnMultipleCompetitions: Boolean, gsBlock: StringBuilder, gl: GroupLeaf[? <: domain.DataObject]): Unit = {
     val cols = gl.buildColumns(isAvgOnMultipleCompetitions)
 
     val alldata = gl.getTableData(sortAlphabetically, isAvgOnMultipleCompetitions)
@@ -129,14 +129,14 @@ object ScoreToJsonRenderer {
   }
 
   private def renderTeamLeaf(openedTitle: String, level: Int, gsBlock: StringBuilder, gl: TeamSums): Unit = {
-    val levelText = if (gl.groupKey.isInstanceOf[NullObject]) "" else escaped(gl.groupKey.capsulatedprint)
+    val levelText = if gl.groupKey.isInstanceOf[NullObject] then "" else escaped(gl.groupKey.capsulatedprint)
 
-    for (teamRuleGroup <- gl.getTableData().groupBy(_.team.rulename)) {
+    for teamRuleGroup <- gl.getTableData().groupBy(_.team.rulename) do {
       val (rulename, alldata) = teamRuleGroup
       val sanitizedRulename = escaped(rulename)
       val pretitle = (openedTitle + levelText).replace("<h2>", "").trim
       val pretitleprint = (openedTitle + levelText).trim.reverse.dropWhile(p => p.equals(',')).reverse
-      renderListHead(gsBlock, level, s"$pretitleprint${if (pretitle.isEmpty) sanitizedRulename else s": $sanitizedRulename"}")
+      renderListHead(gsBlock, level, s"$pretitleprint${if pretitle.isEmpty then sanitizedRulename else s": $sanitizedRulename"}")
       val cols = gl.buildColumns
       renderListRows(alldata, gsBlock, cols, Some(gl))
       renderListEnd(gsBlock)

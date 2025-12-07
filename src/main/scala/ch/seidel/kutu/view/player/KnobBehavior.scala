@@ -62,7 +62,7 @@ class KnobBehavior(slider: Slider) extends BehaviorBase[Slider](slider) {
     val slider: Slider = getNode
     slider.setValueChanging(false)
     // detect click rather than drag
-    if (Math.abs(e.getX - dragStartX) < 3 && Math.abs(e.getY - dragStartY) < 3) {
+    if Math.abs(e.getX - dragStartX) < 3 && Math.abs(e.getY - dragStartY) < 3 then {
       slider.adjustValue((position + slider.getMin) * (slider.getMax - slider.getMin))
     }
   }
@@ -73,7 +73,7 @@ class KnobBehavior(slider: Slider) extends BehaviorBase[Slider](slider) {
   def knobPressed(e: MouseEvent, position: Double): Unit = {
     // If not already focused, request focus
     val slider: Slider = getNode
-    if (!(slider.isFocused)) {
+    if !slider.isFocused then {
       slider.requestFocus()
     }
     slider.setValueChanging(true)

@@ -29,15 +29,16 @@ protected object MathExpParser extends Parsers {
     functionName ~ (
       LEFT_PARENTHESIS ~> expression ~ rep(COMMA ~> expression) <~ RIGHT_PARENTHESIS) ^^ {
       case Constant(n) ~ (e ~ es) => OperatorN(n.toString, e :: es)
+      case _ => throw new IllegalArgumentException("operation not supported")
     }
 
   private def shortFactor: Parser[MathExpAST] =
-    constant | variable | function | LEFT_PARENTHESIS ~> expression <~ RIGHT_PARENTHESIS ^^
-      { case x => x }
+    constant | variable | function | LEFT_PARENTHESIS ~> expression <~ RIGHT_PARENTHESIS ^^ (x => x)
 
   private def longFactor: Parser[MathExpAST] = shortFactor ~ rep(POWER ~ shortFactor) ^^ {
     case x ~ ls => ls.foldLeft[MathExpAST](x) {
       case (d1, POWER ~ d2) => Operator2(POWER.toString, d1, d2)
+      case _ => throw new IllegalArgumentException("operation not supported")
     }
   }
 
@@ -45,6 +46,7 @@ protected object MathExpParser extends Parsers {
     case x ~ ls => ls.foldLeft[MathExpAST](x) {
       case (d1, MULTIPLY ~ d2) => Operator2(MULTIPLY.toString, d1, d2)
       case (d1, DIVIDE ~ d2) => Operator2(DIVIDE.toString, d1, d2)
+      case _ => throw new IllegalArgumentException("operation not supported")
     }
   }
 
@@ -52,6 +54,7 @@ protected object MathExpParser extends Parsers {
     case x ~ ls => ls.foldLeft[MathExpAST](x) {
       case (d1, PLUS ~ d2) => Operator2(PLUS.toString, d1, d2)
       case (d1, MINUS ~ d2) => Operator2(MINUS.toString, d1, d2)
+      case _ => throw new IllegalArgumentException("operation not supported")
     }
   }
 

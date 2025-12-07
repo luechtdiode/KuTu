@@ -1,24 +1,24 @@
 package ch.seidel.kutu.view
 
-import ch.seidel.commons._
+import ch.seidel.commons.*
 import ch.seidel.kutu.Config.{homedir, remoteHostOrigin}
-import ch.seidel.kutu.domain._
-import scalafx.scene.control.TableView
-import javafx.scene.{control => jfxsc}
-import scalafx.Includes._
+import ch.seidel.kutu.domain.*
+import javafx.scene.control as jfxsc
+import scalafx.Includes.*
 import scalafx.beans.binding.Bindings
 import scalafx.beans.property.{ReadOnlyStringProperty, StringProperty}
 import scalafx.collections.ObservableBuffer
 import scalafx.event.subscriptions.Subscription
 import scalafx.scene.Node
-import scalafx.scene.control.TableColumn._
-import scalafx.scene.control._
+import scalafx.scene.control.TableColumn.*
+import scalafx.scene.control.*
 import scalafx.scene.input.{KeyEvent, MouseEvent}
-import scalafx.scene.layout._
+import scalafx.scene.layout.*
 import scalafx.util.converter.DefaultStringConverter
 
 import java.util
 import scala.jdk.CollectionConverters.IterableHasAsJava
+import ch.seidel.kutu.domain.given_Conversion_String_Int
 
 class ScoreCalcTemplatesTab(wettkampf: WettkampfView, override val service: KutuService) extends Tab with TabWithService {
 
@@ -45,7 +45,7 @@ class ScoreCalcTemplatesTab(wettkampf: WettkampfView, override val service: Kutu
   }
 
   val model: ObservableBuffer[ScoreCalcTemplateEditor] = ObservableBuffer.from(List.empty[ScoreCalcTemplateEditor])
-  val scoreCalcTemplateEditors: util.Collection[ScoreCalcTemplateEditor] = new util.ArrayList[ScoreCalcTemplateEditor]()
+  private val scoreCalcTemplateEditors: util.Collection[ScoreCalcTemplateEditor] = new util.ArrayList[ScoreCalcTemplateEditor]()
   val context = ScoreCalcTempateEditorService(wettkampf, service)
 
   def reloadData(): Unit = {
@@ -55,15 +55,14 @@ class ScoreCalcTemplatesTab(wettkampf: WettkampfView, override val service: Kutu
   }
 
   onSelectionChanged = _ => {
-    if(selected.value) {
+    if selected.value then {
       reloadData()
     }
   }
   override def isPopulated: Boolean = {
-
     val sorter: ScoreCalcTemplateEditor => Int = editor => editor.init.sortOrder
 
-    val cols: List[jfxsc.TableColumn[ScoreCalcTemplateEditor, _]] = classOf[ScoreCalcTemplateEditor].getDeclaredFields.filter { f =>
+    val cols: List[jfxsc.TableColumn[ScoreCalcTemplateEditor, ?]] = classOf[ScoreCalcTemplateEditor].getDeclaredFields.filter { f =>
       f.getType.equals(classOf[ReadOnlyStringProperty]) && ScoreCalcTemplateEditor.coldef.contains(f.getName)
     }.map { field =>
       field.setAccessible(true)
@@ -87,7 +86,7 @@ class ScoreCalcTemplatesTab(wettkampf: WettkampfView, override val service: Kutu
           cellValueFactory = { x =>
             field.get(x.value).asInstanceOf[StringProperty]
           }
-          cellFactory.value = { _: Any => new AutoCommitTextFieldTableCell[ScoreCalcTemplateEditor, String](new DefaultStringConverter()) }
+          cellFactory.value = { (_: Any) => new AutoCommitTextFieldTableCell[ScoreCalcTemplateEditor, String](new DefaultStringConverter()) }
           styleClass += "table-cell-with-value"
           prefWidth = ScoreCalcTemplateEditor.coldef(field.getName)
           editable = false
@@ -101,12 +100,12 @@ class ScoreCalcTemplatesTab(wettkampf: WettkampfView, override val service: Kutu
       editable = true
       selectionModel.value.setCellSelectionEnabled(false)
 
-      override def edit(row: Int, column: TableColumn[ScoreCalcTemplateEditor, _]): Unit = {
+      override def edit(row: Int, column: TableColumn[ScoreCalcTemplateEditor, ?]): Unit = {
         editDialog(row)
       }
 
       def editDialog(row: Int): Unit = {
-        if (row < 0 || row >= model.size) {
+        if row < 0 || row >= model.size then {
           ScoreCalcTemplatedialog(context, editor => {
             model.add(editor.context.updated(editor.commit))
             model.sortBy(sorter)
@@ -157,7 +156,7 @@ class ScoreCalcTemplatesTab(wettkampf: WettkampfView, override val service: Kutu
 
       onAction = { _ =>
         val item = selection.getSelectedItem
-        if (item != null && item.isEditable) {
+        if item != null && item.isEditable then {
           context.delete(item)
           model.remove(item)
         }
@@ -181,7 +180,7 @@ class ScoreCalcTemplatesTab(wettkampf: WettkampfView, override val service: Kutu
               template.disziplin.value.toUpperCase().contains(search)
           }
 
-        if (matches) {
+        if matches then {
           model += template
         }
       })
@@ -191,16 +190,16 @@ class ScoreCalcTemplatesTab(wettkampf: WettkampfView, override val service: Kutu
 
     val txtFilter = new TextField() {
       promptText = "Filter (Ctrl + F)"
-      text.addListener { (o: javafx.beans.value.ObservableValue[_ <: String], oldVal: String, newVal: String) =>
-        if (!lastFilter.equalsIgnoreCase(newVal)) {
+        text.addListener { (o: javafx.beans.value.ObservableValue[? <: String], oldVal: String, newVal: String) =>
+        if !lastFilter.equalsIgnoreCase(newVal) then {
           updateFilteredList(newVal)
         }
       }
     }
-    val defaultKeyActionHandler = AutoCommitTextFieldTableCell.handleDefaultEditingKeyEvents(scoreCalcTemplatesView, double = false, txtFilter)_
-    val defaultMouseActionHandler = AutoCommitTextFieldTableCell.handleDefaultEditingMouseEvents(scoreCalcTemplatesView, double = false, txtFilter)_
-    scoreCalcTemplatesView.filterEvent(KeyEvent.KeyPressed) {defaultKeyActionHandler}
-    scoreCalcTemplatesView.filterEvent(MouseEvent.MouseClicked) {defaultMouseActionHandler}
+      val defaultKeyActionHandler: KeyEvent => Unit = (ke: KeyEvent) => AutoCommitTextFieldTableCell.handleDefaultEditingKeyEvents(scoreCalcTemplatesView, double = false, txtFilter)(ke)
+      val defaultMouseActionHandler: MouseEvent => Unit = (me: MouseEvent) => AutoCommitTextFieldTableCell.handleDefaultEditingMouseEvents(scoreCalcTemplatesView, double = false, txtFilter)(me)
+      scoreCalcTemplatesView.filterEvent(KeyEvent.KeyPressed) { (ke: KeyEvent) => defaultKeyActionHandler(ke) }
+      scoreCalcTemplatesView.filterEvent(MouseEvent.MouseClicked) { (me: MouseEvent) => defaultMouseActionHandler(me) }
 
     text = "Noternerfassung Formulare"
     content = new BorderPane {

@@ -14,6 +14,7 @@ on:
     - 'src/**'
     - 'docker/**'
     - '**.xml'
+    - '**.sbt'
     - '**.yml'
     - '**.sh'
     - '!data/**'
@@ -81,27 +82,28 @@ jobs:
           fetch-depth: 2
 
       - run: git checkout $(git log --branches -1 --pretty=format:'%D' | sed 's/.*, //g')
-      - name: Cache Maven packages
-        uses: actions/cache@v4
-        with:
-          path: ~/.m2
-          key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
-          restore-keys: ${{ runner.os }}-m2
-      - name: Java Setup
+      - name: Cleanup
         run: |
-          . ./prepare_jdk.sh
-        env:
-          OS: Linux
+          rm -rf src/main/resources/app
+        shell: bash
       - name: Download client modifications
         uses: actions/download-artifact@v4
         with:
           name: src
           path: src/main/resources/app
-      - name: Maven Build
+      - name: Setup JDK
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 25
+          cache: sbt
+      - name: Setup sbt launcher
+        uses: sbt/setup-sbt@v1
+      - name: Java Setup & Package-Build
         run: |
-          java -version
-          mvn -version
-          mvn clean install package
+          sbt -v "test"
+          sbt -v "packageApp"
+        shell: bash
         env:
           OS: Linux
       - name: Prepare Releasenames
@@ -112,8 +114,8 @@ jobs:
         with:
           name: app
           path: |
-            target/*.jar
-            target/dependency
+            target/package/*.jar
+            target/package/libs
       - name: Archive production artifacts
         uses: actions/upload-artifact@v4
         with:
@@ -134,24 +136,29 @@ jobs:
           fetch-depth: 2
 
       - run: git checkout $(git log --branches -1 --pretty=format:'%D' | sed 's/.*, //g')
-      - name: Cache Maven packages
-        uses: actions/cache@v4
-        with:
-          path: ~/.m2
-          key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
-          restore-keys: ${{ runner.os }}-m2
+      - name: Cleanup
+        run: |
+          rm -rf src/main/resources/app
+        shell: bash
       - name: Download client modifications
         uses: actions/download-artifact@v4
         with:
           name: src
           path: src/main/resources/app
+      - name: Setup JDK
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 25
+          cache: sbt
+      - name: Setup sbt launcher
+        uses: sbt/setup-sbt@v1
       - name: Java Setup & Package-Build
         run: |
-          . ./prepare_jdk.sh
-          mvn clean install package
+          sbt -v "packageApp"
+        shell: bash
         env:
           OS: Win64
-        shell: bash
       - name: Prepare Releasenames
         run: |
           . ./normalize-releasenames.sh
@@ -176,29 +183,27 @@ jobs:
           fetch-depth: 2
 
       - run: git checkout $(git log --branches -1 --pretty=format:'%D' | sed 's/.*, //g')
-      - name: Cache Maven packages
-        uses: actions/cache@v4
-        with:
-          path: ~/.m2
-          key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
-          restore-keys: ${{ runner.os }}-m2
-      - name: Java Setup
-        id: jdk
+      - name: Cleanup
         run: |
-          . ./prepare_jdk.sh
           rm -rf src/main/resources/app
-        env:
-          OS: macOS
+        shell: bash
       - name: Download client modifications
         uses: actions/download-artifact@v4
         with:
           name: src
           path: src/main/resources/app
-      - name: Maven Build
+      - name: Setup JDK
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 25
+          cache: sbt
+      - name: Setup sbt launcher
+        uses: sbt/setup-sbt@v1
+      - name: Java Setup & Package-Build
         run: |
-          java -version
-          mvn -version
-          mvn clean install package
+          sbt -v "packageApp"
+        shell: bash
         env:
           OS: macOS
       - name: Prepare Releasenames
@@ -224,29 +229,27 @@ jobs:
           fetch-depth: 2
 
       - run: git checkout $(git log --branches -1 --pretty=format:'%D' | sed 's/.*, //g')
-      - name: Cache Maven packages
-        uses: actions/cache@v4
-        with:
-          path: ~/.m2
-          key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
-          restore-keys: ${{ runner.os }}-m2
-      - name: Java Setup
-        id: jdk
+      - name: Cleanup
         run: |
-          . ./prepare_jdk.sh
           rm -rf src/main/resources/app
-        env:
-          OS: macOS
+        shell: bash
       - name: Download client modifications
         uses: actions/download-artifact@v4
         with:
           name: src
           path: src/main/resources/app
-      - name: Maven Build
+      - name: Setup JDK
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 25
+          cache: sbt
+      - name: Setup sbt launcher
+        uses: sbt/setup-sbt@v1
+      - name: Java Setup & Package-Build
         run: |
-          java -version
-          mvn -version
-          mvn clean install package
+          sbt -v "packageApp"
+        shell: bash
         env:
           OS: macOS
       - name: Prepare Releasenames
@@ -302,7 +305,7 @@ jobs:
       - name: Prepare Docker-Build
         run: |
           mkdir -p docker/libs
-          cp target/dependency/*.jar docker/libs/
+          cp target/libs/*.jar docker/libs/
           cp target/*.jar docker/
           rm docker/libs/javafx*.jar
       - name: Login to DockerHub

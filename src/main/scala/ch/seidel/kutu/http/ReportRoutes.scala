@@ -1,16 +1,17 @@
 package ch.seidel.kutu.http
 
+import ch.seidel.kutu.Config
+import ch.seidel.kutu.KuTuServer.handleCID
+import ch.seidel.kutu.actors.{CompetitionCoordinatorClientActor, GeraeteRiegeList, GetGeraeteRiegeList, KutuAppEvent}
+import ch.seidel.kutu.domain.{Kandidat, KutuService, encodeFileName}
+import ch.seidel.kutu.renderer.{AbuseListHTMLRenderer, ServerPrintUtil, KategorieTeilnehmerToHtmlRenderer, KategorieTeilnehmerToJSONRenderer}
+import ch.seidel.kutu.renderer.ServerPrintUtil.*
+import fr.davit.pekko.http.metrics.core.scaladsl.server.HttpMetricsDirectives.*
 import org.apache.pekko.http.scaladsl.marshallers.sprayjson.SprayJsonSupport
 import org.apache.pekko.http.scaladsl.marshalling.ToResponseMarshallable
 import org.apache.pekko.http.scaladsl.model.{ContentTypes, HttpEntity, StatusCodes, Uri}
 import org.apache.pekko.http.scaladsl.server.Route
 import org.apache.pekko.util.Timeout
-import ch.seidel.kutu.Config
-import ch.seidel.kutu.KuTuServer.handleCID
-import ch.seidel.kutu.actors.{CompetitionCoordinatorClientActor, GeraeteRiegeList, GetGeraeteRiegeList, KutuAppEvent}
-import ch.seidel.kutu.domain.{Kandidat, KutuService, encodeFileName}
-import ch.seidel.kutu.renderer._
-import fr.davit.pekko.http.metrics.core.scaladsl.server.HttpMetricsDirectives._
 import org.slf4j.{Logger, LoggerFactory}
 
 import java.util.UUID
@@ -29,7 +30,7 @@ trait ReportRoutes extends SprayJsonSupport
   val renderer: KategorieTeilnehmerToHtmlRenderer = new KategorieTeilnehmerToHtmlRenderer() {
     override val logger: Logger = LoggerFactory.getLogger(classOf[ReportRoutes])
   }
-  val jsonrenderer: KategorieTeilnehmerToJSONRenderer = new KategorieTeilnehmerToJSONRenderer() {
+  private val jsonrenderer: KategorieTeilnehmerToJSONRenderer = new KategorieTeilnehmerToJSONRenderer() {
     override val logger: Logger = LoggerFactory.getLogger(classOf[ReportRoutes])
   }
 
@@ -41,8 +42,8 @@ trait ReportRoutes extends SprayJsonSupport
             abusedClientsToHTMListe()))
         }~
         pathPrefix(JavaUUID) { competitionId =>
-          import AbuseHandler._
-          if (!wettkampfExists(competitionId.toString)) {
+          import AbuseHandler.*
+          if !wettkampfExists(competitionId.toString) then {
             log.error(handleAbuse(clientId, uri))
             complete(StatusCodes.NotFound)
           } else {
@@ -51,7 +52,7 @@ trait ReportRoutes extends SprayJsonSupport
             val dgEvents = selectSimpleDurchgaenge(wettkampf.id)
               .map(d => (d, d.effectivePlanStart(wettkampf.datum.toLocalDate)))
             val logodir = new java.io.File(Config.homedir + "/" + encodeFileName(wettkampf.easyprint))
-            val logofile = PrintUtil.locateLogoFile(logodir)
+            val logofile = locateLogoFile(logodir)
 
             pathLabeled("startlist", "startlist") {
               get {
@@ -63,9 +64,9 @@ trait ReportRoutes extends SprayJsonSupport
                         case GeraeteRiegeList(riegen, _) =>
                           val filteredRiegen = riegen.filter { k => k.kandidaten.exists(filterMatchingCandidatesToQuery(q))}
                           gr match {
-                            case Some(grv) if (grv.equalsIgnoreCase("verein")) =>
+                            case Some(grv) if grv.equalsIgnoreCase("verein") =>
                               HttpEntity(ContentTypes.`text/html(UTF-8)`, renderer.riegenToVereinListeAsHTML(filteredRiegen, logofile, dgEvents))
-                            case Some(grv) if (grv.equalsIgnoreCase("durchgang")) =>
+                            case Some(grv) if grv.equalsIgnoreCase("durchgang") =>
                               HttpEntity(ContentTypes.`text/html(UTF-8)`, renderer.riegenToDurchgangListeAsHTML(filteredRiegen, logofile, dgEvents))
                             case _ =>
                               HttpEntity(ContentTypes.`text/html(UTF-8)`, renderer.riegenToKategorienListeAsHTML(filteredRiegen, logofile, dgEvents))
@@ -96,7 +97,7 @@ trait ReportRoutes extends SprayJsonSupport
 
   private def filterMatchingCandidatesToQuery(q: Option[String]) = {
     val queryTokens = q.toList.flatMap(x => x.split(" ")).map(_.toLowerCase)
-    k: Kandidat => {
+    (k: Kandidat) => {
       queryTokens.isEmpty ||
         queryTokens.forall {
           case s: String if s.equals(s"${k.id}") => true
@@ -105,10 +106,7 @@ trait ReportRoutes extends SprayJsonSupport
           case s: String if s.equals(k.verein.toLowerCase) => true
           case s: String if s.equals(k.programm.toLowerCase) => true
           case s: String if s.equals(k.geschlecht.toLowerCase) => true
-          case s: String if s.nonEmpty => {
-            k.verein.toLowerCase.contains(s) ||
-              k.einteilung.exists(_.easyprint.toLowerCase.contains(s))
-          }
+          case s: String if s.nonEmpty => k.verein.toLowerCase.contains(s) || k.einteilung.exists(_.easyprint.toLowerCase.contains(s))
           case _ => false
         }
     }

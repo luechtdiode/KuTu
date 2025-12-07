@@ -18,8 +18,8 @@ class LazyTabPane(refreshTabsFn: (LazyTabPane) => Seq[Tab], releaseTabs: () => U
     val selected = selectionModel.value.getSelectedItem
 
     def indexOfTab(title: String): Int = {
-      for(idx <- (tabs.size()-1 to 0 by -1)) {
-        if(title.equals(tabs.get(idx).textProperty().getValue)) {
+      for idx <- (tabs.size()-1 to 0 by -1) do {
+        if title.equals(tabs.get(idx).textProperty().getValue) then {
           return idx
         }
       }
@@ -33,7 +33,7 @@ class LazyTabPane(refreshTabsFn: (LazyTabPane) => Seq[Tab], releaseTabs: () => U
     tabs.setAll(lazyJFXTabs.asJavaCollection)
     tabs.sort((tab1, tab2) => lazyJFXTabs.indexOf(tab2) - lazyJFXTabs.indexOf(tab1) > 0)
     lazytabs.foreach(_.asInstanceOf[TabWithService].populated)
-    if(selected != null && indexOfTab(selected.textProperty().getValue) > -1) {
+    if selected != null && indexOfTab(selected.textProperty().getValue) > -1 then {
       selectionModel.value.select(indexOfTab(selected.textProperty().getValue))
     }
   }

@@ -2,7 +2,7 @@ package ch.seidel.kutu
 
 import ch.seidel.kutu.Config.setLocalHostServer
 import javafx.application.Platform
-import scalafx.beans.property._
+import scalafx.beans.property.*
 
 object LocalServerStates {
 
@@ -36,7 +36,7 @@ object LocalServerStates {
     setLocalHostServer(value = false, None)
     Platform.runLater(
       () => {
-        ConnectionStates.disconnect
+        ConnectionStates.disconnect()
         _localServerProperty.setValue(false)
       }
     )

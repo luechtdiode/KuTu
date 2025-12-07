@@ -2,7 +2,7 @@ package ch.seidel.kutu.actors
 
 import ch.seidel.kutu.Config
 import ch.seidel.kutu.data.RegistrationAdmin
-import ch.seidel.kutu.domain._
+import ch.seidel.kutu.domain.*
 import ch.seidel.kutu.http.Core.system
 import ch.seidel.kutu.http.JsonSupport
 import ch.seidel.kutu.renderer.MailTemplates
@@ -16,6 +16,7 @@ import org.apache.pekko.util.Timeout
 
 import java.time.LocalDate
 import java.util.UUID
+import java.util.concurrent.TimeUnit
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration.{DurationInt, FiniteDuration}
 import scala.concurrent.{Future, Promise}
@@ -63,9 +64,9 @@ class CompetitionRegistrationClientActor(wettkampfUUID: String) extends Persiste
     def debug(s: String): Unit = l.debug(s"[$shortName] $s")
   }
 
-  object CheckSyncChangedForNotifier
+  private object CheckSyncChangedForNotifier
 
-  object CheckEMailApprovedNotifier
+  private object CheckEMailApprovedNotifier
 
   private val wettkampf = readWettkampf(wettkampfUUID)
   private val wettkampfInfo = WettkampfInfo(wettkampf.toView(readProgramm(wettkampf.programmId)), this)
@@ -119,7 +120,7 @@ class CompetitionRegistrationClientActor(wettkampfUUID: String) extends Persiste
     case CompetitionCreated(_, link) =>
       syncState = syncState.unapproved
       val wk = readWettkampf(wettkampfUUID)
-      if (wk.notificationEMail.nonEmpty) {
+      if wk.notificationEMail.nonEmpty then {
         KuTuMailerActor.send(
           MailTemplates.createMailApprovement(wk, link)
         )
@@ -132,25 +133,25 @@ class CompetitionRegistrationClientActor(wettkampfUUID: String) extends Persiste
 
     case ApproveEMail(_, mail) =>
       val notificationEMail = readWettkampf(wettkampfUUID).notificationEMail
-      if (notificationEMail.equals(mail)) {
-        if (!syncState.emailApproved) {
+      if notificationEMail.equals(mail) then {
+        if !syncState.emailApproved then {
           syncState = syncState.approved
-          sender() ! EMailApproved(s"EMail ${mail} erfolgreich verifiziert", success = true)
-          log.info(s"EMail approved ${mail}")
+          sender() ! EMailApproved(s"EMail $mail erfolgreich verifiziert", success = true)
+          log.info(s"EMail approved $mail")
         } else {
-          sender() ! EMailApproved(s"EMail ${mail} wurde bereits verifiziert", success = true)
-          log.info(s"EMail ${mail} was already approved")
+          sender() ! EMailApproved(s"EMail $mail wurde bereits verifiziert", success = true)
+          log.info(s"EMail $mail was already approved")
         }
       }
       else {
-        sender() ! EMailApproved(s"EMail ${mail} nicht erfolgreich verifiziert.", success = false)
-        log.info(s"EMail not approved ${mail} - not matching with competitions notificationEMail: $notificationEMail")
+        sender() ! EMailApproved(s"EMail $mail nicht erfolgreich verifiziert.", success = false)
+        log.info(s"EMail not approved $mail - not matching with competitions notificationEMail: $notificationEMail")
       }
 
     case CheckEMailApprovedNotifier =>
-      if (!syncState.emailApproved && (approvementEMailSent || readWettkampf(wettkampfUUID).notificationEMail.isEmpty)) {
-        if (selectWertungen(wkuuid = Some(wettkampfUUID)).groupBy { x => x.athlet }.map(_._2).isEmpty) {
-          if (selectRegistrationsOfWettkampf(UUID.fromString(wettkampf.uuid.get)).isEmpty) {
+      if !syncState.emailApproved && (approvementEMailSent || readWettkampf(wettkampfUUID).notificationEMail.isEmpty) then {
+        if selectWertungen(wkuuid = Some(wettkampfUUID)).groupBy { x => x.athlet }.values.isEmpty then {
+          if selectRegistrationsOfWettkampf(UUID.fromString(wettkampf.uuid.get)).isEmpty then {
             CompetitionCoordinatorClientActor.publish(Delete(wettkampfUUID), "EMail-Approver")
             deleteRegistrations(UUID.fromString(wettkampfUUID))
             deleteWettkampf(wettkampf.id)
@@ -168,7 +169,7 @@ class CompetitionRegistrationClientActor(wettkampfUUID: String) extends Persiste
 
     case RegistrationChanged(_) => retrieveSyncActions(sender())
     case AskRegistrationSyncActions(_) =>
-      if (this.syncActions.nonEmpty)
+      if this.syncActions.nonEmpty then
         sender() ! RegistrationSyncActions(this.syncState.syncActions)
       else
         retrieveSyncActions(sender())
@@ -176,7 +177,7 @@ class CompetitionRegistrationClientActor(wettkampfUUID: String) extends Persiste
       this.syncState = syncState.resynced(actions, loadAllJudgesOfCompetition(UUID.fromString(wettkampf.uuid.get)).flatMap(_._2).toList)
       this.syncActions = Some(syncState)
       rescheduleSyncActionNotifier()
-      if (syncActionReceivers.nonEmpty) {
+      if syncActionReceivers.nonEmpty then {
         syncActionReceivers.foreach(_ ! a)
         syncActionReceivers = List()
       }
@@ -187,11 +188,11 @@ class CompetitionRegistrationClientActor(wettkampfUUID: String) extends Persiste
 
   private def notifyChangesToEMail(): Unit = {
     val wk = readWettkampf(wettkampfUUID)
-    if (this.syncState.hasChanges) {
+    if this.syncState.hasChanges then {
       val regChanges = this.syncState.syncActions
       val judgeChanges = this.syncState.judgeSyncActions
       this.syncState = this.syncState.notified()
-      if (wk.notificationEMail.nonEmpty && wk.datum.toLocalDate.isAfter(LocalDate.now().plusDays(1))) {
+      if wk.notificationEMail.nonEmpty && wk.datum.toLocalDate.isAfter(LocalDate.now().plusDays(1)) then {
         KuTuMailerActor.send(
           MailTemplates.createSyncNotificationMail(wk, regChanges, judgeChanges.changed, judgeChanges.removed, judgeChanges.added)
         )
@@ -200,7 +201,7 @@ class CompetitionRegistrationClientActor(wettkampfUUID: String) extends Persiste
         deleteSnapshots(criteria)
       }
     }
-    if (wk.datum.toLocalDate.isAfter(LocalDate.now().plusDays(1))) {
+    if wk.datum.toLocalDate.isAfter(LocalDate.now().plusDays(1)) then {
       context.stop(self)
     }
   }
@@ -208,7 +209,7 @@ class CompetitionRegistrationClientActor(wettkampfUUID: String) extends Persiste
   private def retrieveSyncActions(syncActionReceiver: ActorRef): Unit = {
     syncActions = None
 
-    if (syncActionReceivers.nonEmpty) {
+    if syncActionReceivers.nonEmpty then {
       syncActionReceivers = syncActionReceivers :+ syncActionReceiver
     } else {
       log.info("Rebuild Competition SyncActions ...")
@@ -220,14 +221,14 @@ class CompetitionRegistrationClientActor(wettkampfUUID: String) extends Persiste
         case _ =>
           log.info("Rebuild Competition SyncActions failed")
           self ! RegistrationSyncActions(List.empty)
-      }(global)
+      }(using global)
     }
   }
 
   private def rescheduleSyncActionNotifier(): Unit = {
     this.rescheduleSyncNotificationCheck.cancel()
     val wk = readWettkampf(wettkampfUUID)
-    if (wk.datum.toLocalDate.plusDays(1).isAfter(LocalDate.now())) {
+    if wk.datum.toLocalDate.plusDays(1).isAfter(LocalDate.now()) then {
       this.rescheduleSyncNotificationCheck = context.system.scheduler.scheduleOnce(notifierInterval, self, CheckSyncChangedForNotifier)
     }
   }
@@ -239,8 +240,8 @@ object CompetitionRegistrationClientActor {
   }
 
   def stop(wettkampfUUID: String): Unit = {
-    implicit val timeout: Timeout = Timeout(60000 milli)
-    system.actorSelection(s"user/Registration-${wettkampfUUID}").resolveOne().onComplete {
+    implicit val timeout: Timeout = Timeout(60000, TimeUnit.MILLISECONDS)
+    system.actorSelection(s"user/Registration-$wettkampfUUID").resolveOne().onComplete {
       case Success(actorRef) => system.stop(actorRef)
       case _ =>
     }
@@ -248,7 +249,7 @@ object CompetitionRegistrationClientActor {
 
   def publish(action: RegistrationAction, context: String): Future[RegistrationEvent] = {
     val prom = Promise[RegistrationEvent]()
-    implicit val timeout: Timeout = Timeout(60000 milli)
+    implicit val timeout: Timeout = Timeout(60000, TimeUnit.MILLISECONDS)
     val actorName = s"user/Registration-${action.wettkampfUUID}"
     system.actorSelection(actorName).resolveOne().onComplete {
       case Success(actorRef) =>

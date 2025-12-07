@@ -1,10 +1,9 @@
 package ch.seidel.kutu.view.player
 
 import javafx.event.EventHandler
-import javafx.scene.control.Slider
+import javafx.scene.control.{SkinBase, Slider}
 import javafx.scene.input.MouseEvent
 import javafx.scene.layout.StackPane
-import javafx.scene.control.SkinBase
 
 
 class KnobSkin(slider: Slider) extends SkinBase[Slider](slider) {
@@ -63,7 +62,7 @@ class KnobSkin(slider: Slider) extends SkinBase[Slider](slider) {
     val cy = slider.getHeight / 2
     val mouseAngle = Math.toDegrees(Math.atan((mouseY - cy) / (mouseX - cx)))
     var topZeroAngle = .0
-    if (mouseX < cx) topZeroAngle = 90 - mouseAngle
+    if mouseX < cx then topZeroAngle = 90 - mouseAngle
     else topZeroAngle = -(90 + mouseAngle)
     val value = 1 - ((topZeroAngle - minAngle) / (maxAngle - minAngle))
     value
@@ -97,13 +96,13 @@ class KnobSkin(slider: Slider) extends SkinBase[Slider](slider) {
     rotateKnob()
   }
 
-  protected def computeMinWidth(height: Double): Double = slider.getInsets.getLeft + knob.minWidth(-(1)) + slider.getInsets.getRight
+  protected def computeMinWidth(height: Double): Double = slider.getInsets.getLeft + knob.minWidth(-1) + slider.getInsets.getRight
 
-  protected def computeMinHeight(width: Double): Double = slider.getInsets.getTop + knob.minHeight(-(1)) + slider.getInsets.getBottom
+  protected def computeMinHeight(width: Double): Double = slider.getInsets.getTop + knob.minHeight(-1) + slider.getInsets.getBottom
 
-  protected def computePrefWidth(height: Double): Double = slider.getInsets.getLeft + knob.prefWidth(-(1)) + slider.getInsets.getRight
+  protected def computePrefWidth(height: Double): Double = slider.getInsets.getLeft + knob.prefWidth(-1) + slider.getInsets.getRight
 
-  protected def computePrefHeight(width: Double): Double = slider.getInsets.getTop + knob.prefHeight(-(1)) + slider.getInsets.getBottom
+  protected def computePrefHeight(width: Double): Double = slider.getInsets.getTop + knob.prefHeight(-1) + slider.getInsets.getBottom
 
   protected def computeMaxWidth(height: Double): Double = Double.MaxValue
 

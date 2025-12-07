@@ -3,13 +3,14 @@ package ch.seidel.kutu.domain
 import ch.seidel.kutu.calc.ScoreCalcTemplate
 import org.slf4j.LoggerFactory
 import slick.jdbc.GetResult
-import slick.jdbc.SQLiteProfile.api._
+import slick.jdbc.SQLiteProfile.api.*
 
+import scala.collection.mutable
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration.Duration
 import scala.concurrent.{Await, Future}
 
-abstract trait DisziplinService extends DBService with WettkampfResultMapper {
+trait DisziplinService extends DBService with WettkampfResultMapper with DisziplinResultMapper {
   private val logger = LoggerFactory.getLogger(this.getClass)
 
   def readWettkampfLeafs(programmid: Long): Seq[ProgrammView]
@@ -17,7 +18,7 @@ abstract trait DisziplinService extends DBService with WettkampfResultMapper {
   
   def listDisziplinesZuDurchgang(durchgang: Set[String], wettkampf: Long, riege1: Boolean): Map[String, IndexedSeq[Disziplin]] = {
     Await.result(database.run{
-      val ret = if (riege1) sql"""
+      val ret = if riege1 then sql"""
              select distinct d.id, d.name, r.durchgang, wd.ord
              from wettkampfdisziplin wd
              inner join disziplin d on (wd.disziplin_id = d.id)
@@ -122,18 +123,18 @@ abstract trait DisziplinService extends DBService with WettkampfResultMapper {
     .map{t => Wettkampfdisziplin(t._1, t._2, t._3, s"${t._4} (${t._5})", None, 0, t._6, t._7, t._8, t._9, t._10, t._11, t._12, t._13) }.toList
   }
 
-  implicit def getWettkampfDisziplinViewResult(implicit wkId: Long, cache2: scala.collection.mutable.Map[Long, List[ScoreCalcTemplate]]): GetResult[WettkampfdisziplinView] = GetResult{ r =>
+  implicit def getWettkampfDisziplinViewResult(implicit wkId: Long, cache2: scala.collection.mutable.Map[Long, List[ScoreCalcTemplate]]): GetResult[WettkampfdisziplinView] = GetResult(using r => {
     val id = r.<<[Long]
     val pgm = readProgramm(r.<<)
-    val d: Disziplin = r
+    val d: Disziplin = Disziplin(r.<<[Long], r.<<[String])
     WettkampfdisziplinView(id, pgm, d, r.<<[String], r.nextBytesOption(), readNotenModus(wkId, id, d, pgm, r.<<, cache2), r.<<, r.<<, r.<<, r.<<, r.<<, r.<<, r.<<, r.<<)
-  }
+  })
 
   def listWettkampfDisziplineViews(wettkampf: Wettkampf): List[WettkampfdisziplinView] = {
     Await.result(database.run{
       val programme = readWettkampfLeafs(wettkampf.programmId).map(p => p.id).mkString("(", ",", ")")
-      implicit val cache2 = scala.collection.mutable.Map[Long, List[ScoreCalcTemplate]]()
-      implicit val wkId = wettkampf.id
+      implicit val cache2: mutable.Map[Long, List[ScoreCalcTemplate]] = scala.collection.mutable.Map[Long, List[ScoreCalcTemplate]]()
+      implicit val wkId: Long = wettkampf.id
       sql""" select wd.id, wd.programm_id, d.*, wd.kurzbeschreibung, wd.detailbeschreibung, wd.notenfaktor, wd.masculin, wd.feminim, wd.ord, wd.scale, wd.dnote, wd.min, wd.max, wd.startgeraet
              from wettkampfdisziplin wd, disziplin d, programm p
              where
@@ -155,7 +156,7 @@ abstract trait DisziplinService extends DBService with WettkampfResultMapper {
               and wd.id = $wettkampfDisziplinId
              order by
               wd.ord
-         """.as[WettkampfdisziplinView](getWettkampfDisziplinViewResult(wkId, cache2)).withPinnedSession
+         """.as[WettkampfdisziplinView](using getWettkampfDisziplinViewResult(using wkId, cache2)).withPinnedSession
     }, Duration.Inf).toList
     wd.head    
   }

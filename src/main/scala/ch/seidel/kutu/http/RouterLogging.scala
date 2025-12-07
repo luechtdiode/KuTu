@@ -1,10 +1,10 @@
 package ch.seidel.kutu.http
 
-import ch.seidel.kutu.http.Core._
-import org.apache.pekko.event.Logging
+import ch.seidel.kutu.http.Core.*
+import org.apache.pekko.event.{Logging, LoggingAdapter}
 
 trait RouterLogging {
-  lazy val log = Logging(system, classOf[RouterLogging])
+  lazy val log: LoggingAdapter = Logging(system, classOf[RouterLogging])
 //  def shortName = {
 //
 //  }

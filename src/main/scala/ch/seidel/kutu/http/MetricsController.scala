@@ -2,16 +2,16 @@ package ch.seidel.kutu.http
 
 import ch.seidel.kutu.Config
 import fr.davit.pekko.http.metrics.core.scaladsl.server.HttpMetricsDirectives.metrics
-import fr.davit.pekko.http.metrics.prometheus.marshalling.PrometheusMarshallers._
+import fr.davit.pekko.http.metrics.prometheus.marshalling.PrometheusMarshallers.*
 import fr.davit.pekko.http.metrics.prometheus.{PrometheusRegistry, PrometheusSettings}
+import io.prometheus.metrics.model.registry as prometheus
 import io.prometheus.metrics.model.snapshots.PrometheusNaming
-import org.apache.pekko.http.scaladsl.server.Directives.{path, _}
+import org.apache.pekko.http.scaladsl.server.Directives.{path, *}
 import org.apache.pekko.http.scaladsl.server.Route
-import io.prometheus.metrics.model.{registry => prometheus}
 
 trait MetricsController {
 
-  import MetricsController._
+  import MetricsController.*
 
   val metricsroute: Route = (get & path("metrics")) (metrics(registry))
 }

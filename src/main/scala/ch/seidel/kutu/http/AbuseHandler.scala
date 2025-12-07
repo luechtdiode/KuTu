@@ -11,27 +11,27 @@ import scala.annotation.tailrec
 
 object AbuseHandler {
 
-  val abusedGauge: Gauge = Gauge
+  private val abusedGauge: Gauge = Gauge
     .builder()
     .name(PrometheusNaming.sanitizeMetricName(Config.metricsNamespaceName + "_abused_clients"))
     .help("Abused client counter")
     .register(MetricsController.registry.underlying)
 
-  val abusedWatchListGauge: Gauge = Gauge
+  private val abusedWatchListGauge: Gauge = Gauge
     .builder()
     .name(PrometheusNaming.sanitizeMetricName(Config.metricsNamespaceName + "_abused_watchlist_clients"))
     .help("Abused watchlist client counter")
     .register(MetricsController.registry.underlying)
 
   case class AbusedClient(ip: String, cid: String, path: String, abused: Boolean) {
-    val mapKey: String = s"${ip}@${cid}//${path}"
+    val mapKey: String = s"$ip@$cid//$path"
   }
 
-  case object AbusedClient {
+  private case object AbusedClient {
 
     @tailrec
     private def skipElements(path: Path, count: Int): Path =
-      if (count < 1 || path.isEmpty || path.tail.isEmpty) path else skipElements(path.tail, count -1)
+      if count < 1 || path.isEmpty || path.tail.isEmpty then path else skipElements(path.tail, count -1)
 
     private def stripPath(path: Path) = s"${skipElements(path, 2).head}/${skipElements(path, 3).head}/../${path.reverse.head}"
 
@@ -87,9 +87,9 @@ object AbuseHandler {
     maybeCounter match {
       case None =>
         None
-      case acOption@Some(abuseCounter) if (abuseCounter.isAbused) =>
+      case acOption@Some(abuseCounter) if abuseCounter.isAbused =>
         acOption
-      case Some(abuseCounter) if (abuseCounter.isTimedOut) =>
+      case Some(abuseCounter) if abuseCounter.isTimedOut =>
         removeInAbuseMap(abuseCounter.client)
       case _ =>
         None
@@ -97,7 +97,7 @@ object AbuseHandler {
   }
 
   private def addToAbuseMap(abusedClient: AbusedClient, counter: Int = 0): Unit = {
-    if (counter == 0) {
+    if counter == 0 then {
       findAbusedClient(abusedClient) match {
         case Some(ac) =>
           abuseMap.getAndUpdate{_ + (abusedClient.mapKey -> AbuseCounter(ac.getClient, ac.count + 1, System.currentTimeMillis()))}

@@ -1,12 +1,10 @@
 package ch.seidel.kutu.renderer
 
-import java.io.File
-import java.time.LocalDateTime
-import java.time.format.DateTimeFormatter
+import ch.seidel.kutu.domain.{Registration, Wettkampf}
+import ch.seidel.kutu.renderer.ServerPrintUtil.*
 
-import ch.seidel.kutu.domain.{GeraeteRiege, Registration, Wettkampf, toTimeFormat}
-import ch.seidel.kutu.renderer.PrintUtil._
-import org.slf4j.LoggerFactory
+import java.io.File
+import java.time.format.DateTimeFormatter
 
 trait CompetitionsClubsToHtmlRenderer {
 
@@ -106,7 +104,7 @@ trait CompetitionsClubsToHtmlRenderer {
   """
 
   private def anmeldeListeProVerein(wettkampf: Wettkampf, vereine: List[Registration], logo: File) = {
-    val logoHtml = if (logo.exists()) s"""<img class=logo src="${logo.imageSrcForWebEngine}" title="Logo"/>""" else ""
+    val logoHtml = if logo.exists() then s"""<img class=logo src="${logo.imageSrcForWebEngine}" title="Logo"/>""" else ""
 
     val d = vereine.map{ registration =>
       s"""<tr class="athletRow"><td>${escaped(registration.vereinname)}</td><td>(${escaped(registration.verband)})</td><td class="large">${escaped(registration.respName)} ${escaped(registration.respVorname)}</td><td>${escaped(registration.mobilephone)}</td><td>${escaped(registration.mail)}</td><td>${
@@ -123,7 +121,7 @@ trait CompetitionsClubsToHtmlRenderer {
       <div class="showborder">
         <table width="100%">
           <tr class="totalRow heavyRow"><td>Vereinname</td><td>Verband</td><td>Verantwortlicher</td><td>Mobil-Telefon</td><td>EMail</td><td>Registriert am</td><td class="totalCol">Bemerkung</td></tr>
-          ${dt}
+          $dt
         </table>
       </div>
     </div>
@@ -133,11 +131,10 @@ trait CompetitionsClubsToHtmlRenderer {
   def toHTMLasClubRegistrationsList(wettkampf: Wettkampf, vereine: List[Registration], logo: File, rowsPerPage: Int = 28): String = {
     val sortedList = vereine.sortBy(_.vereinname)
     val rawpages = for {
-      a4seitenmenge <- if(rowsPerPage == 0) sortedList.sliding(sortedList.size, sortedList.size) else sortedList.sliding(rowsPerPage, rowsPerPage)
+      a4seitenmenge <- if rowsPerPage == 0 then sortedList.sliding(sortedList.size, sortedList.size) else sortedList.sliding(rowsPerPage, rowsPerPage)
+    } yield {
+      anmeldeListeProVerein(wettkampf, a4seitenmenge, logo)
     }
-      yield {
-        anmeldeListeProVerein(wettkampf, a4seitenmenge, logo)
-      }
 
     val pages = rawpages.mkString("</li></ul><ul><li>")
     intro + pages + outro

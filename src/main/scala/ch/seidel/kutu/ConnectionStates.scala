@@ -2,7 +2,7 @@ package ch.seidel.kutu
 
 import ch.seidel.kutu.http.WebSocketClient
 import javafx.application.Platform
-import scalafx.beans.property._
+import scalafx.beans.property.*
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Promise
@@ -18,7 +18,7 @@ object ConnectionStates {
   val connectedWithProperty = new ReadOnlyStringProperty(_connectedWithProperty)
   val connectedProperty = new ReadOnlyBooleanProperty(_connectedProperty)
 
-  def connectedWith[T <: Option[_]](wettkampfUUID: String, wspromise: Promise[_]): Unit = {
+  def connectedWith[T <: Option[?]](wettkampfUUID: String, wspromise: Promise[?]): Unit = {
     wspromise.future.onComplete { case _ => disconnected() }
     Platform.runLater(
       () => {
@@ -31,13 +31,13 @@ object ConnectionStates {
   def disconnected(): Unit = {
     Platform.runLater(
       () => {
-        disconnect
+        disconnect()
       }
     )
   }
 
-  def disconnect = {
-    WebSocketClient.disconnect
+  def disconnect(): Unit = {
+    WebSocketClient.disconnect()
     _connectedWithProperty.setValue("")
     _connectedProperty.setValue(false)
   }

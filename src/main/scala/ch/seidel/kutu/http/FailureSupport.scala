@@ -1,6 +1,6 @@
 package ch.seidel.kutu.http
 
-import org.apache.pekko.http.scaladsl.model._
+import org.apache.pekko.http.scaladsl.model.*
 
 import scala.util.Try
 

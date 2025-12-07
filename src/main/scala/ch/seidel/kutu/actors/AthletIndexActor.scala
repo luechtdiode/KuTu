@@ -1,18 +1,18 @@
 package ch.seidel.kutu.actors
 
-import org.apache.pekko.actor.SupervisorStrategy.{Restart, Stop}
-import org.apache.pekko.actor.{Actor, ActorLogging, ActorRef, OneForOneStrategy, PoisonPill, Props, Terminated}
-import org.apache.pekko.pattern.ask
-import org.apache.pekko.util.Timeout
-import ch.seidel.kutu.domain._
+import ch.seidel.kutu.domain.*
 import ch.seidel.kutu.http.Core.system
 import ch.seidel.kutu.http.JsonSupport
-import org.apache.pekko.event.Logging
+import org.apache.pekko.actor.SupervisorStrategy.{Restart, Stop}
+import org.apache.pekko.actor.{Actor, ActorLogging, ActorRef, OneForOneStrategy, PoisonPill, Props, SupervisorStrategy, Terminated}
+import org.apache.pekko.event.{Logging, LoggingAdapter}
+import org.apache.pekko.pattern.ask
+import org.apache.pekko.util.Timeout
 
 import java.util
+import java.util.concurrent.TimeUnit
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
-import scala.concurrent.duration.DurationInt
 import scala.util.control.NonFatal
 import scala.util.{Failure, Success}
 
@@ -31,7 +31,7 @@ case class AthletIndexChanged(athlet: Athlet) extends AthletIndexEvent
 case class AthletLikeFound(like: Athlet, athlet: Athlet) extends AthletIndexEvent
 
 class AthletIndexActor extends Actor with JsonSupport with KutuService {
-  lazy val l = Logging(system, this)
+  lazy val l: LoggingAdapter = Logging(system, this)
 
   object log {
     def error(s: String): Unit = l.error(s)
@@ -45,7 +45,7 @@ class AthletIndexActor extends Actor with JsonSupport with KutuService {
     def debug(s: String): Unit = l.debug(s)
   }
 
-  override val supervisorStrategy = OneForOneStrategy() {
+  override val supervisorStrategy: SupervisorStrategy = OneForOneStrategy() {
     case NonFatal(e) =>
       log.error("Error in AthletIndexActor", e)
       Restart
@@ -67,10 +67,10 @@ class AthletIndexActor extends Actor with JsonSupport with KutuService {
 
   private def mcOfId(athletId: Long): Option[MatchCode] = {
     val mcOpt = index.stream().filter(mc => mc.id == athletId).findFirst()
-    if (mcOpt.isEmpty) None else Some(mcOpt.get)
+    if mcOpt.isEmpty then None else Some(mcOpt.get)
   }
 
-  override def receive = {
+  override def receive: Receive = {
     case ResyncIndex =>
       log.info("Resync Athlet Index ...")
       invalidateIndex()
@@ -96,10 +96,10 @@ class AthletIndexActor extends Actor with JsonSupport with KutuService {
 }
 
 class AthletIndexActorSupervisor extends Actor with ActorLogging {
-  var athletIndexActor: Option[ActorRef] = None
-  var statshedActions: List[(ActorRef,AthletIndexAction)] = List.empty
+  private var athletIndexActor: Option[ActorRef] = None
+  private var statshedActions: List[(ActorRef,AthletIndexAction)] = List.empty
 
-  override val supervisorStrategy = OneForOneStrategy() {
+  override val supervisorStrategy: SupervisorStrategy = OneForOneStrategy() {
     case NonFatal(e) =>
       log.error("Error in AthletIndexActorSupervisor actor.", e)
       Stop
@@ -109,7 +109,7 @@ class AthletIndexActorSupervisor extends Actor with ActorLogging {
     log.info("Starting AthletIndexActorSupervisor")
     super.preStart()
 
-    implicit val timeout = Timeout(30000 milli)
+    implicit val timeout: Timeout = Timeout(30000, TimeUnit.MILLISECONDS)
     system.actorSelection(s"user/AthletIndex").resolveOne().onComplete {
       case Success(actorRef) =>
         athletIndexActor = Some(actorRef)
@@ -130,28 +130,29 @@ class AthletIndexActorSupervisor extends Actor with ActorLogging {
     super.postStop()
   }
 
-  def receiveCommands: Actor.Receive = {
+  private def receiveCommands: Actor.Receive = {
     case a: AthletIndexAction =>
       athletIndexActor.foreach(_.forward(a))
     case _ => receive
   }
 
   override def receive: Actor.Receive = {
+    case StopAthletIndex => athletIndexActor.foreach(_.forward(PoisonPill))
+      self ! PoisonPill
     case a: AthletIndexAction =>
       statshedActions = statshedActions :+ (sender(), a)
     case Terminated(wettkampfActor) =>
       context.unwatch(wettkampfActor)
-    case StopAthletIndex => athletIndexActor.foreach(_.forward(PoisonPill))
-      self ! PoisonPill
   }
 }
 
 object AthletIndexActor {
 
-  val supervisor = system.actorOf(Props[AthletIndexActorSupervisor](), name = "AthletIndex-Supervisor")
+  val supervisor: ActorRef = system.actorOf(Props[AthletIndexActorSupervisor](), name = "AthletIndex-Supervisor")
 
   def publish(action: AthletIndexAction): Future[AthletIndexEvent] = {
-    implicit val timeout = Timeout(31000 milli)
+    implicit val timeout: Timeout = Timeout(31000, TimeUnit.MILLISECONDS)
+
     (supervisor ? action).mapTo[AthletIndexEvent]
   }
 

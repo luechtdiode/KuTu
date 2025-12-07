@@ -20,7 +20,7 @@ object Kandidaten {
       .flatMap(riege => {
         riege.kandidaten
           .map(kandidat => {
-            val team = if (kandidat.wertungen.head.team != 0) virtualTeams.getOrElse(kandidat.wertungen.head.team, TeamItem(kandidat.wertungen.head.team, kandidat.verein)) else TeamItem(0, "")
+            val team = if kandidat.wertungen.head.team != 0 then virtualTeams.getOrElse(kandidat.wertungen.head.team, TeamItem(kandidat.wertungen.head.team, kandidat.verein)) else TeamItem(0, "")
             Kandidat(riege.wettkampfTitel, kandidat.geschlecht, kandidat.programm, kandidat.id, kandidat.name, kandidat.vorname, kandidat.jahrgang, kandidat.verein, team.itemText, "", riege.durchgang.get, riege.disziplin.get.easyprint, Seq.empty)
           })
       })

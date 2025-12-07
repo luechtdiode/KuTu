@@ -1,13 +1,12 @@
 package ch.seidel.kutu.http
 
-import org.apache.pekko.http.scaladsl.model.{ContentTypes, HttpEntity}
-import org.apache.pekko.http.scaladsl.server.Directives
-import fr.davit.pekko.http.metrics.core.scaladsl.server.HttpMetricsDirectives._
+import fr.davit.pekko.http.metrics.core.scaladsl.server.HttpMetricsDirectives.*
+import org.apache.pekko.http.scaladsl.server.{Directives, Route}
 
 trait ResourceService extends Directives {
-  val fallbackRoute = getFromResource("app/index.html")
+  val fallbackRoute: Route = getFromResource("app/index.html")
 
-  def appRoute = {
+  private def appRoute = {
     pathPrefixLabeled("", "index") {
       pathEndOrSingleSlash {
         fallbackRoute
@@ -16,5 +15,5 @@ trait ResourceService extends Directives {
     getFromResourceDirectory("app") ~ getFromResourceDirectory("static")
   }
 
-  val resourceRoutes = appRoute
+  val resourceRoutes: Route = appRoute
 }

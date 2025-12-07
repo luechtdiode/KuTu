@@ -1,9 +1,9 @@
 package ch.seidel.kutu.domain
 
 import ch.seidel.kutu.actors.{AthletIndexActor, RemoveAthlet, SaveAthlet}
-import ch.seidel.kutu.data.{CaseObjectMetaUtil, Surname}
+import ch.seidel.kutu.data.{Surname, mergeMissingProperties}
 import org.slf4j.LoggerFactory
-import slick.jdbc.SQLiteProfile.api._
+import slick.jdbc.SQLiteProfile.api.*
 
 import java.sql.Date
 import java.time.LocalDate
@@ -31,7 +31,7 @@ trait AthletService extends DBService with AthletResultMapper with VereinService
   def selectAthletesOfVerein(id: Long): List[Athlet] = {
     Await.result(database.run {
       sql"""        select * from athlet
-                    where verein=${id}
+                    where verein=$id
                     order by activ desc, name, vorname asc
        """.as[Athlet].withPinnedSession
     }, Duration.Inf).toList
@@ -75,23 +75,23 @@ trait AthletService extends DBService with AthletResultMapper with VereinService
     }, Duration.Inf)
   }
 
-  def publishChanged(athlet: Athlet) = AthletIndexActor.publish(SaveAthlet(athlet))
-  def publishRemoved(athlet: Athlet) = AthletIndexActor.publish(RemoveAthlet(athlet))
+  private def publishChanged(athlet: Athlet) = AthletIndexActor.publish(SaveAthlet(athlet))
+  private def publishRemoved(athlet: Athlet) = AthletIndexActor.publish(RemoveAthlet(athlet))
 
   def mergeAthletes(idToDelete: Long, idToKeep: Long): Unit = {
     val toDelete = loadAthlet(idToDelete)
     Await.result(database.run {
       (
         sqlu"""       update wertung
-                    set athlet_id=${idToKeep}
-                    where athlet_id=${idToDelete}
+                    set athlet_id=$idToKeep
+                    where athlet_id=$idToDelete
           """ >>
         sqlu"""       update athletregistration
-                    set athlet_id=${idToKeep}
-                    where athlet_id=${idToDelete}
+                    set athlet_id=$idToKeep
+                    where athlet_id=$idToDelete
           """ >>
         sqlu"""
-                    delete from athlet where id=${idToDelete}
+                    delete from athlet where id=$idToDelete
           """).transactionally
     }, Duration.Inf)
     toDelete.foreach(publishRemoved)
@@ -102,10 +102,10 @@ trait AthletService extends DBService with AthletResultMapper with VereinService
     Await.result(database.run {
       (
         sqlu"""       delete from wertung
-                    where athlet_id=${id}
+                    where athlet_id=$id
           """ >>
         sqlu"""
-                    delete from athlet where id=${id}
+                    delete from athlet where id=$id
           """).transactionally
     }, Duration.Inf)
     toDelete.foreach(publishRemoved)
@@ -127,7 +127,7 @@ trait AthletService extends DBService with AthletResultMapper with VereinService
           sql"""
                   select max(athlet.id) as maxid
                   from athlet
-                  where name=${athlete.name} and vorname=${athlete.vorname} and gebdat=${gebdat} and verein=${athlete.verein}
+                  where name=${athlete.name} and vorname=${athlete.vorname} and gebdat=$gebdat and verein=${athlete.verein}
          """.as[Long].headOption
         case _ =>
           sql"""
@@ -141,13 +141,13 @@ trait AthletService extends DBService with AthletResultMapper with VereinService
         sql"""
                   select max(athlet.id) as maxid
                   from athlet
-                  where id=${id}
+                  where id=$id
          """.as[Long].headOption
     }
 
 
     getId.flatMap {
-      case Some(athletId) if (athletId > 0) =>
+      case Some(athletId) if athletId > 0 =>
         sqlu"""
                 update athlet
                 set js_id=${athlete.js_id},
@@ -160,9 +160,9 @@ trait AthletService extends DBService with AthletResultMapper with VereinService
                     ort = ${athlete.ort},
                     verein = ${athlete.verein},
                     activ = ${athlete.activ}
-                where id=${athletId}
+                where id=$athletId
           """ >>
-          sql"""select * from athlet where id = ${athletId}""".as[Athlet].head
+          sql"""select * from athlet where id = $athletId""".as[Athlet].head
 
       case _ =>
         sqlu"""
@@ -172,7 +172,7 @@ trait AthletService extends DBService with AthletResultMapper with VereinService
           """ >>
           sql"""select * from athlet where id = (select max(athlet.id) from athlet)""".as[Athlet].head
     }
-    .map { a: Athlet =>
+    .map { (a: Athlet) =>
       publishChanged(a)
       (csvid, a)
     }
@@ -189,10 +189,13 @@ trait AthletService extends DBService with AthletResultMapper with VereinService
     //    WebSocketClient.publish(awu)
   }
 
-  def startsSameInPercent(text1: String, text2: String) = 100 * text1.zip(text2).foldLeft((true, 0)) { (acc, pair) =>
-    val same = pair._1 == pair._2
-    (acc._1 && same, acc._2 + (if (acc._1 && same) 1 else 0))
-  }._2 / math.max(text1.length, text2.length)
+  def startsSameInPercent(text1: String, text2: String): Int = {
+    val count = text1.toSeq.zip(text2.toSeq).foldLeft((true, 0)) { (acc, pair) =>
+      val same = pair._1 == pair._2
+      (acc._1 && same, acc._2 + (if acc._1 && same then 1 else 0))
+    }._2
+    100 * count / math.max(text1.length, text2.length)
+  }
 
   def findAthleteLike(cache: java.util.Collection[MatchCode] = new java.util.ArrayList[MatchCode], wettkampf: Option[Long] = None, exclusive: Boolean)(athlet: Athlet): Athlet = {
     val bmname = MatchCode.encode(athlet.name)
@@ -223,13 +226,13 @@ trait AthletService extends DBService with AthletResultMapper with VereinService
       //      if (code.name.equals(athlet.name)) {
       //      print(athlet.easyprint, this)
       //      }
-      if (vereinSimilarity && preret && gebdatSimilarity) {
+      if vereinSimilarity && preret && gebdatSimilarity then {
         (namenSimilarity + vorNamenSimilarity) * 3
       }
-      else if (vereinSimilarity && preret && jahrgangSimilarity) {
+      else if vereinSimilarity && preret && jahrgangSimilarity then {
         (namenSimilarity + vorNamenSimilarity) * 2
       }
-      else if (vereinSimilarity && (preret || (preret2 && gebdatSimilarity))) {
+      else if vereinSimilarity && (preret || (preret2 && gebdatSimilarity)) then {
         namenSimilarity + vorNamenSimilarity
       }
       else {
@@ -237,7 +240,7 @@ trait AthletService extends DBService with AthletResultMapper with VereinService
       }
     }
 
-    val preselect = if (cache.isEmpty) {
+    val preselect = if cache.isEmpty then {
       Await.result(database.run {
         (wettkampf match {
           case None => sql"""
@@ -254,7 +257,7 @@ trait AthletService extends DBService with AthletResultMapper with VereinService
         flatMap { x =>
           val (id, name, vorname, gebdat, verein) = x
           val mc1 = MatchCode(id, name, vorname, gebdat, verein)
-          if (Surname.isSurname(mc1.name).isDefined) {
+          if Surname.isSurname(mc1.name).isDefined then {
             List(mc1, mc1.swappednames)
           } else {
             List(mc1)
@@ -272,7 +275,7 @@ trait AthletService extends DBService with AthletResultMapper with VereinService
       (matchcode.id, similarAthletFactor(matchcode))
     }.filter(p => p._2 > 0).toList.sortBy(_._2).reverse
     presel2.headOption.flatMap(k => loadAthlet(k._1)).getOrElse {
-      if (!athlet.equals(Athlet())) {
+      if !athlet.equals(Athlet()) then {
         logger.warn("Athlet local not found! " + athlet.extendedprint)
       }
       athlet
@@ -281,32 +284,32 @@ trait AthletService extends DBService with AthletResultMapper with VereinService
 
   def loadAthlet(key: Long): Option[Athlet] = {
     Await.result(database.run {
-      sql"""select * from athlet where id=${key}""".as[Athlet]
+      sql"""select * from athlet where id=$key""".as[Athlet]
         .headOption
         .withPinnedSession
     }, Duration.Inf)
   }
 
   def findDuplicates(): List[(AthletView, AthletView, AthletView)] = {
-    val likeFinder = findAthleteLike(cache = new java.util.ArrayList[MatchCode], exclusive = true) _
-    for {
+    val likeFinder = findAthleteLike(cache = new java.util.ArrayList[MatchCode], exclusive = true)
+    for
       athleteView <- selectAthletesView
       athlete = athleteView.toAthlet
       like = likeFinder(athlete)
       if athleteView.id != like.id
-    } yield {
+    yield {
       val tupel = List(athleteView, loadAthleteView(like.id)).sortWith { (a, b) =>
-        if (a.gebdat.map(_.toLocalDate.getDayOfMonth).getOrElse(0) > b.gebdat.map(_.toLocalDate.getDayOfMonth).getOrElse(0)) true
+        if a.gebdat.map(_.toLocalDate.getDayOfMonth).getOrElse(0) > b.gebdat.map(_.toLocalDate.getDayOfMonth).getOrElse(0) then true
         else {
           val asp = Athlet.mapSexPrediction(a.toAthlet)
           val bsp = Athlet.mapSexPrediction(b.toAthlet)
-          if (asp == a.geschlecht && bsp != b.geschlecht) true
-          else if (bsp == b.geschlecht && asp != a.geschlecht) false
-          else if (a.id - b.id > 0) true
+          if asp == a.geschlecht && bsp != b.geschlecht then true
+          else if bsp == b.geschlecht && asp != a.geschlecht then false
+          else if a.id - b.id > 0 then true
           else false
         }
       }
-      (tupel(0), tupel(1), CaseObjectMetaUtil.mergeMissingProperties(tupel(0), tupel(1)))
+      (tupel.head, tupel(1), mergeMissingProperties(tupel.head, tupel(1)))
     }
   }
 
@@ -325,7 +328,7 @@ trait AthletService extends DBService with AthletResultMapper with VereinService
         having max(wk.datum) < ${Date.valueOf(d)}
        """.as[(Int, String, String, Date)]
       }, Duration.Inf).toList
-      if (inactivList.length > 0) {
+      if inactivList.nonEmpty then {
         logger.info("setting the following list of athlets inactiv:")
         logger.info(inactivList.mkString("(", "\n", ")"))
         val length = Await.result(database.run {
@@ -365,7 +368,7 @@ trait AthletService extends DBService with AthletResultMapper with VereinService
 			        and wk.datum >= current_date
           )          """.as[Verein]
     }, Duration.Inf).toSet
-    for(verein <- affectedClubs) {
+    for verein <- affectedClubs do {
       deleteVerein(verein.id)
     }
     affectedClubs

@@ -1,10 +1,9 @@
 package ch.seidel.kutu.renderer
 
-import java.io.File
-import java.time.format.DateTimeFormatter
+import ch.seidel.kutu.domain.{JudgeRegistration, Registration, Wettkampf}
+import ch.seidel.kutu.renderer.ServerPrintUtil.*
 
-import ch.seidel.kutu.domain.{JudgeRegistration, Registration, Verein, Wettkampf}
-import ch.seidel.kutu.renderer.PrintUtil._
+import java.io.File
 
 trait CompetitionsJudgeToHtmlRenderer {
 
@@ -104,7 +103,7 @@ trait CompetitionsJudgeToHtmlRenderer {
   """
 
   private def anmeldeListeProVerein(wettkampf: Wettkampf, verein: Registration, anmeldungenCnt: Int, wrs: Seq[JudgeRegistration], logo: File) = {
-    val logoHtml = if (logo.exists()) s"""<img class=logo src="${logo.imageSrcForWebEngine}" title="Logo"/>""" else ""
+    val logoHtml = if logo.exists() then s"""<img class=logo src="${logo.imageSrcForWebEngine}" title="Logo"/>""" else ""
 
     val d = wrs.map{ registration =>
       s"""<tr class="athletRow"><td class="large">${escaped(registration.name)} ${escaped(registration.vorname)}</td><td>${escaped(registration.mobilephone)}</td><td>${escaped(registration.mail)}</td><td class="totalCol">${
@@ -115,12 +114,12 @@ trait CompetitionsJudgeToHtmlRenderer {
       <div class=headline>
         $logoHtml
         <div class=title><h4>${escaped(wettkampf.easyprint)}</h4></div>
-        <div class=programm>${anmeldungenCnt} Wertungsrichter, gestellt durch ${escaped(verein.toVerein.easyprint)}</br></div>
+        <div class=programm>$anmeldungenCnt Wertungsrichter, gestellt durch ${escaped(verein.toVerein.easyprint)}</br></div>
       </div>
       <div class="showborder">
         <table width="100%">
           <tr class="totalRow heavyRow"><td>Wertungsrichter/-in</td><td>Mobil-Telefon</td><td>EMail</td><td class="totalCol">Bemerkung</td></tr>
-          ${dt}
+          $dt
         </table>
       </div>
     </div>
@@ -129,10 +128,10 @@ trait CompetitionsJudgeToHtmlRenderer {
 
   def toHTMLasJudgeRegistrationsList(wettkampf: Wettkampf, vereine: Map[Registration,Seq[JudgeRegistration]], logo: File, rowsPerPage: Int = 28): String = {
     val sortedList = vereine.keys.toList.sortBy(_.vereinname)
-    val rawpages = for {
+    val rawpages = for
       verein <- sortedList
-      a4seitenmenge <- if(rowsPerPage == 0) vereine(verein).sliding(vereine(verein).size, vereine(verein).size) else vereine(verein).sliding(rowsPerPage, rowsPerPage)
-    } yield {
+      a4seitenmenge <- if rowsPerPage == 0 then vereine(verein).sliding(vereine(verein).size, vereine(verein).size) else vereine(verein).sliding(rowsPerPage, rowsPerPage)
+    yield {
       anmeldeListeProVerein(wettkampf, verein, vereine(verein).size, a4seitenmenge, logo)
     }
 

@@ -3,7 +3,8 @@ package ch.seidel.kutu.domain
 import java.time.LocalDate
 import java.util.UUID
 import ch.seidel.kutu.base.{KuTuBaseSpec, TestDBService}
-import ch.seidel.kutu.calc.{Max, ScoreCalcTemplate, TemplateJsonReader}
+import ch.seidel.kutu.calc.ScoreAggregateFn.*
+import ch.seidel.kutu.calc.{ScoreCalcTemplate, TemplateJsonReader}
 
 import scala.annotation.tailrec
 import scala.util.matching.Regex
@@ -13,7 +14,7 @@ class WettkampfSpec extends KuTuBaseSpec {
     "create with disziplin-plan-times" in {
       val wettkampf = createWettkampf(LocalDate.now(), "titel", Set(20), "testmail@test.com", 33, 0, None, "7,8,9,11,13,15,17,19", "7,8,9,11,13,15,17,19", "", "", "")
       assert(wettkampf.id > 0L)
-      val views = initWettkampfDisziplinTimes(wettkampf.id)
+      val views = initWettkampfDisziplinTimes(using wettkampf.id)
       assert(views.nonEmpty)
     }
 
@@ -53,28 +54,28 @@ class WettkampfSpec extends KuTuBaseSpec {
     "recreate with disziplin-plan-times" in {
       val wettkampf = createWettkampf(LocalDate.now(), "titel2", Set(20), "testmail@test.com", 33, 0, None, "", "", "", "", "")
       assert(wettkampf.id > 0L)
-      val views = initWettkampfDisziplinTimes(wettkampf.id)
+      val views = initWettkampfDisziplinTimes(using wettkampf.id)
       assert(views.nonEmpty)
       val wettkampf2 = createWettkampf(LocalDate.now(), "titel2", Set(20), "testmail@test.com", 33, 0, wettkampf.uuid, "", "", "", "", "")
       assert(wettkampf2.id == wettkampf.id)
-      val views2 = initWettkampfDisziplinTimes(wettkampf.id)
+      val views2 = initWettkampfDisziplinTimes(using wettkampf.id)
       assert(views2.size == views.size)
     }
 
     "update disziplin-plan-time" in {
       val wettkampf = createWettkampf(LocalDate.now(), "titel2", Set(20), "testmail@test.com", 33, 0, None, "", "", "", "", "")
       assert(wettkampf.id > 0L)
-      val views = initWettkampfDisziplinTimes(wettkampf.id)
+      val views = initWettkampfDisziplinTimes(using wettkampf.id)
 
       updateWettkampfPlanTimeView(views(0).toWettkampfPlanTimeRaw.copy(einturnen = 20000))
-      val reloaded = loadWettkampfDisziplinTimes(wettkampf.id)
+      val reloaded = loadWettkampfDisziplinTimes(using wettkampf.id)
       assert(reloaded(0).einturnen == 20000L)
     }
 
     "delete all disziplin-plan-time entries when wk is deleted" in {
       val wettkampf = createWettkampf(LocalDate.now(), "titel3", Set(20), "testmail@test.com", 33, 0, None, "", "", "", "", "")
       deleteWettkampf(wettkampf.id)
-      val reloaded = loadWettkampfDisziplinTimes(wettkampf.id)
+      val reloaded = loadWettkampfDisziplinTimes(using wettkampf.id)
       assert(reloaded.isEmpty)
     }
 

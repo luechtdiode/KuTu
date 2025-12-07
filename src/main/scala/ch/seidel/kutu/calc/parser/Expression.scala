@@ -8,7 +8,7 @@ case class Expression[A, B](eval: A => B) {
 }
 
 object Expression {
-  import FunctionRegister._
+  import FunctionRegister.*
 
   def apply(ast: MathExpAST): Expression[String => Double, Double] = ast match {
     case Constant(d: Double) => Expression(_ => d)
@@ -18,17 +18,17 @@ object Expression {
       Expression(v1).map2(Expression(v2))(function2(op))
     case f @ OperatorN(op, as) =>
       val args = sequence(as.map(Expression.apply)).map(_.toArray)
-      args.map{ xs: Array[Double] =>
-        xs.size match {
+      args.map{ (xs: Array[Double]) =>
+        xs.length match {
           case 1 => function1(op)(xs.head)
           case 2 => function2(op)(xs.head, xs(1))
-          case n if (n > 0) => functionN(op)(xs)
+          case n if n > 0 => functionN(op)(xs)
           case _ => throw new UnsupportedOperationException(f.toString)
         }
       }
   }
 
-  def unit[A, B](b: => B): Expression[A, B] = Expression(_ => b)
+  private def unit[A, B](b: => B): Expression[A, B] = Expression(_ => b)
 
   def sequence[A, B](ls: List[Expression[A, B]]): Expression[A, List[B]] =
     ls.foldRight(unit[A, List[B]](List.empty))(

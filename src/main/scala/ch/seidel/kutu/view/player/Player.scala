@@ -1,7 +1,7 @@
 package ch.seidel.kutu.view.player
 
 import ch.seidel.commons.PageDisplayer
-import ch.seidel.kutu.actors._
+import ch.seidel.kutu.actors.*
 import ch.seidel.kutu.domain.{KutuService, Wettkampf}
 import ch.seidel.kutu.http.WebSocketClient
 import ch.seidel.kutu.{Config, ConnectionStates}
@@ -69,12 +69,12 @@ object Player extends JFXApp3 {
   }
 
   private val connectionListener: ChangeListener[java.lang.Boolean] = (_, _, _) => {
-    if (ConnectionStates.connectedProperty.getValue && isNetworkMediaPlayer.getValue) {
+    if ConnectionStates.connectedProperty.getValue && isNetworkMediaPlayer.getValue then {
       wettkampf.foreach(wk =>  {
         WebSocketClient.publish(UseMyMediaPlayer(wk.uuid.get, Config.deviceId))
-        if (lastMediaEvent.nonEmpty) {
+        if lastMediaEvent.nonEmpty then {
           lastMediaEvent.foreach {
-            a: MediaPlayerEvent => publishMediaEventIfConnected(a)
+            (a: MediaPlayerEvent) => publishMediaEventIfConnected(a)
           }
         } else {
           releasePlayer()
@@ -98,7 +98,7 @@ object Player extends JFXApp3 {
 
   def useMyMediaPlayerAsNetworkplayer(flag: Boolean): Unit = {
     this.wettkampf.foreach(wettkampf => {
-      if (flag) {
+      if flag then {
         WebSocketClient.publish(UseMyMediaPlayer(wettkampf.uuid.get, Config.deviceId))
         releasePlayer()
       } else {
@@ -108,13 +108,13 @@ object Player extends JFXApp3 {
     })
   }
 
-  def isPlayerRunning(): Boolean = {
+  private def isPlayerRunning: Boolean = {
     mediaPlayer != null && mediaPlayer.getStatus != null && mediaPlayer.getStatus.equals(Status.PLAYING)
   }
 
   def clearPlayList(): Unit = {
-    if (lastAction.nonEmpty || isPlayerRunning()) {
-      if (playList.getSongs.size() > currentSongIndex && currentSongIndex > -1) {
+    if lastAction.nonEmpty || isPlayerRunning then {
+      if playList.getSongs.size() > currentSongIndex && currentSongIndex > -1 then {
         playList.getSongs.retainAll(playList.getSongs(currentSongIndex))
       }
       currentSongIndex = 0
@@ -125,27 +125,27 @@ object Player extends JFXApp3 {
     }
   }
 
-  def loadPlayList(uri: String): Unit = {
+  private def loadPlayList(uri: String): Unit = {
     playList.load(uri)
   }
 
   def addToPlayList(caption: String, uri: String): Unit = {
-    if (!playList.getSongs.exists(_.getValue.equals(uri))) {
+    if !playList.getSongs.exists(_.getValue.equals(uri)) then {
       playList.getSongs.add(new Pair[String, String](caption, uri))
     }
   }
 
-  def getPlayList(): PlayList = playList
+  def getPlayList: PlayList = playList
 
   def hide(): Unit = {
     playerStage().foreach(_.close())
   }
 
   def load(song: String, aquire: AthletMediaAquire):Unit = {
-    if (lastAction.isEmpty) {
+    if lastAction.isEmpty then {
       _handleMediaAction(aquire)
-    } else if (lastAction.contains(aquire)) {
-      if (playList.getSongs.exists(_.getKey.endsWith(song))) {
+    } else if lastAction.contains(aquire) then {
+      if playList.getSongs.exists(_.getKey.endsWith(song)) then {
         show(song)
       }
     } else {
@@ -162,42 +162,42 @@ object Player extends JFXApp3 {
     s.toFront()
   }
 
-  def playSong(song: String = "", autoplay: Boolean = false): Stage = {
+  private def playSong(song: String = "", autoplay: Boolean = false): Stage = {
     val wasPlaying = mediaPlayer != null && mediaPlayer.getStatus != null &&  MediaPlayer.Status.PLAYING.equals(mediaPlayer.getStatus)
     val s = getInitializedPlayerStage
     playList.getSongs.toList.zipWithIndex.find(s => s._1.getKey.equals(song)).map(_._2).foreach(songIndex => {
       currentSongIndex = songIndex
-      if (!wasPlaying) {
+      if !wasPlaying then {
         play(currentSongIndex, autoplay)
       }
     })
     s
   }
 
-  def handlePrevious(): Unit = {
-    if (mediaPlayer != null && (currentSongIndex == 0 || mediaPlayer.getCurrentTime.toSeconds > 3)) {
+  private def handlePrevious(): Unit = {
+    if mediaPlayer != null && (currentSongIndex == 0 || mediaPlayer.getCurrentTime.toSeconds > 3) then {
       mediaPlayer.seek(Duration.seconds(0))
       mediaPlayer.pause()
-    } else if (currentSongIndex > 0) {
+    } else if currentSongIndex > 0 then {
       currentSongIndex -= 1
       play(currentSongIndex)
     }
   }
 
-  def handleNext(): Unit = {
-    if (currentSongIndex < playList.getSongs.size - 1) {
+  private def handleNext(): Unit = {
+    if currentSongIndex < playList.getSongs.size - 1 then {
       currentSongIndex += 1
       play(currentSongIndex)
     }
   }
 
-  def handlePause(): Unit = {
-    if (mediaPlayer == null) play(currentSongIndex)
-    else if (mediaPlayer.getStatus eq MediaPlayer.Status.PLAYING) mediaPlayer.pause()
+  private def handlePause(): Unit = {
+    if mediaPlayer == null then play(currentSongIndex)
+    else if mediaPlayer.getStatus eq MediaPlayer.Status.PLAYING then mediaPlayer.pause()
     else mediaPlayer.play()
   }
 
-  var lastAction: Option[MediaPlayerAction] = None
+  private var lastAction: Option[MediaPlayerAction] = None
 
   private def handleMediaEvent(event: MediaPlayerEvent): Unit = {
     event match {
@@ -210,14 +210,14 @@ object Player extends JFXApp3 {
     }
   }
   private def handleMediaAction(action: MediaPlayerAction): Unit = {
-    if (isNetworkMediaPlayer.getValue) _handleMediaAction(action)
+    if isNetworkMediaPlayer.getValue then _handleMediaAction(action)
   }
   private def _handleMediaAction(action: MediaPlayerAction): Unit = action match {
     case a@AthletMediaAquire(wkuuid, athlet, wertung) =>
-      if (lastAction.isEmpty) {
+      if lastAction.isEmpty then {
         wertung.mediafile.flatMap(m => service.get.loadMedia(m.id)).foreach { media =>
           val title = s"${athlet.vorname} ${athlet.name} (${athlet.verein.map(_.name).getOrElse("")}), Boden - ${media.name}"
-          if (media.computeFilePath(wettkampf.get).exists()) {
+          if media.computeFilePath(wettkampf.get).exists() then {
             lastAction = Some(a)
             clearPlayList()
             addToPlayList(title, media.computeFilePath(wettkampf.get).toURI.toASCIIString.toLowerCase)
@@ -274,9 +274,9 @@ object Player extends JFXApp3 {
   }
 
   private def resetDisplay(): Unit = {
-    if (trackLabel != null) trackLabel.setText("Track 0/0")
+    if trackLabel != null then trackLabel.setText("Track 0/0")
     //if (timeLabel != null) timeLabel.setText("Remaining: 0:00   Total: 0:00")
-    if (nameLabel != null) nameLabel.setText("no Track loaded")
+    if nameLabel != null then nameLabel.setText("no Track loaded")
   }
   private def initComponents(onClose: () => Unit) = {
     val prevBtn = new Button
@@ -300,7 +300,7 @@ object Player extends JFXApp3 {
     val loadBtn = new Button
     loadBtn.setOnAction(new EventHandler[ActionEvent]() {
       override def handle(event: ActionEvent): Unit = {
-          LoadDialog.loadPlayList(wettkampf, getInitializedPlayerStage, playList);
+          LoadDialog.loadPlayList(wettkampf, getInitializedPlayerStage, playList)
       }
     })
     val powerBtn = new Button
@@ -315,11 +315,11 @@ object Player extends JFXApp3 {
 
     val background = new ImageView()
     val bgResource = getClass.getResourceAsStream("/images/player/player-background.png")
-    if (bgResource != null) {
+    if bgResource != null then {
       background.setImage(new Image(bgResource))
     }
 
-    for (i <- 0 until 10) {
+    for i <- 0 until 10 do {
       sliders.add(i, new Slider(EqualizerBand.MIN_GAIN, EqualizerBand.MAX_GAIN, 0))
       sliders.get(i).setOrientation(Orientation.VERTICAL)
     }
@@ -357,7 +357,7 @@ object Player extends JFXApp3 {
     nameLabel.setFont(lcd)
 
      */
-    for (i <- 0 until 10) {
+    for i <- 0 until 10 do {
       vuMeters.add(new VUMeter)
     }
     balanceKnob = new Slider(-1, 1, 0)
@@ -365,7 +365,7 @@ object Player extends JFXApp3 {
     spectrumListener = new AudioSpectrumListener() {
       override def spectrumDataUpdate(timestamp: Double, duration: Double, magnitudes: Array[Float], phases: Array[Float]): Unit = {
         var average: Double = 0
-        for (i <- magnitudes.indices) {
+        for i <- magnitudes.indices do {
           val corr = sliders.get(i).getValue
           val level = (60 + math.max(-60, math.min(60, magnitudes(i) + corr))) / 60
           vuMeters.get(i).setValue(level)
@@ -373,20 +373,20 @@ object Player extends JFXApp3 {
         }
         // make up VU meter values
         average = average / magnitudes.length
-        if (mediaPlayer == null) {
+        if mediaPlayer == null then {
           average = 0
         } else {
           average *= mediaPlayer.getVolume
         }
-        if (mediaPlayer == null || mediaPlayer.getBalance == 0) {
+        if mediaPlayer == null || mediaPlayer.getBalance == 0 then {
           leftVU.set(average)
           rightVU.set(average)
         }
-        else if (mediaPlayer.getBalance > 0) {
+        else if mediaPlayer.getBalance > 0 then {
           leftVU.set(average * (1 - mediaPlayer.getBalance))
           rightVU.set(average)
         }
-        else if (mediaPlayer.getBalance < 0) {
+        else if mediaPlayer.getBalance < 0 then {
           leftVU.set(average)
           rightVU.set(average * (mediaPlayer.getBalance + 1))
         }
@@ -408,13 +408,13 @@ object Player extends JFXApp3 {
     nextBtn.resizeRelocate(310, 285, 74, 74)
     loadBtn.resizeRelocate(413, 285, 77, 74)
     powerBtn.resizeRelocate(104, 532, 68, 86)
-    for (i <- 0 until 10) {
+    for i <- 0 until 10 do {
       sliders.get(i).resizeRelocate(515 + (58 * i), 228 - 20, 53, 181 + 40)
     }
     trackLabel.resizeRelocate(122, 95, 389, 26)
     timeLabel.resizeRelocate(122, 125, 389, 26)
     nameLabel.resizeRelocate(122, 155, 389, 26)
-    for (i <- 0 until 10) {
+    for i <- 0 until 10 do {
       vuMeters.get(i).setLayoutX(542 + (58 * i))
       vuMeters.get(i).setLayoutY(177)
     }
@@ -422,12 +422,12 @@ object Player extends JFXApp3 {
     volumeKnob.resizeRelocate(907, 491, 175, 175)
     // listen for when we have songs
     playList.getSongs.addListener(new ListChangeListener[Pair[String, String]]() {
-      override def onChanged(change: ListChangeListener.Change[_ <: Pair[String, String]]): Unit = {
-        if (playList.getSongs.nonEmpty || isPlayerRunning()) {
+      override def onChanged(change: ListChangeListener.Change[? <: Pair[String, String]]): Unit = {
+        if playList.getSongs.nonEmpty || isPlayerRunning then {
           lastAction.foreach {
             case a: AthletMediaStart =>
               change.getRemoved.forEach { context =>
-                if (a.wertung.mediafile.exists(m => m.name.contains(context))) {
+                if a.wertung.mediafile.exists(m => m.name.contains(context)) then {
                   currentSongIndex = 0
                   play(currentSongIndex)
                 }
@@ -436,12 +436,12 @@ object Player extends JFXApp3 {
           }
         }
         else {
-          if (mediaPlayer != null) {
+          if mediaPlayer != null then {
             mediaPlayer.stop()
             mediaPlayer.setAudioSpectrumListener(null)
           }
           resetDisplay()
-          for (i <- 0 until 10) {
+          for i <- 0 until 10 do {
             vuMeters.get(i).setValue(0)
           }
           leftVU.set(0)
@@ -453,8 +453,8 @@ object Player extends JFXApp3 {
     root
   }
 
-  def releasePlayer(): Unit = {
-    if (mediaPlayer != null) {
+  private def releasePlayer(): Unit = {
+    if mediaPlayer != null then {
       mediaPlayer.stop()
       mediaPlayer.setAutoPlay(false)
       mediaPlayer.seek(Duration.seconds(0))
@@ -463,7 +463,7 @@ object Player extends JFXApp3 {
     lastAction.foreach {
       case a: MediaPlayerAction =>
         publishMediaEventIfConnected(AthletMediaIsFree(a.wertung.mediafile.get, ""))
-      case _ =>
+      case null =>
     }
     lastAction = None
     mediaPlayer = null
@@ -471,20 +471,20 @@ object Player extends JFXApp3 {
   }
 
   private def play(songIndex: Int, autoplay: Boolean = false): Unit = {
-    if (mediaPlayer != null) {
+    if mediaPlayer != null then {
       mediaPlayer.stop()
       mediaPlayer.setAudioSpectrumListener(null)
-      for (i <- 0 until 10) {
+      for i <- 0 until 10 do {
         vuMeters.get(i).setValue(0)
       }
       leftVU.set(0)
       rightVU.set(0)
     }
     resetDisplay()
-    if (playList.getSongs.nonEmpty && playList.getSongs.size() > songIndex) {
+    if playList.getSongs.nonEmpty && playList.getSongs.size() > songIndex then {
       val context = playList.getSongs.get(songIndex).getKey
       val (media: Media, player: MediaPlayer) = initPlayerWithMedia(songIndex)
-      if (media == null) return
+      if media == null then return
       player.seek(Duration.seconds(0))
       player.setAutoPlay(autoplay)
       player.setOnError(new Runnable() {
@@ -493,8 +493,8 @@ object Player extends JFXApp3 {
         }
       })
       lastAction.foreach {
-        case a: MediaPlayerAction if (context.endsWith(a.wertung.mediafile.get.name)) =>
-          if (!autoplay)
+        case a: MediaPlayerAction if context.endsWith(a.wertung.mediafile.get.name) =>
+          if !autoplay then
             publishMediaEventIfConnected(AthletMediaIsAtStart(a.wertung.mediafile.get, context))
           else
             publishMediaEventIfConnected(AthletMediaIsRunning(a.wertung.mediafile.get, context))
@@ -512,7 +512,7 @@ object Player extends JFXApp3 {
             publishMediaEventIfConnected(AthletMediaIsFree(a.wertung.mediafile.get, context))
             resetDisplay()
             lastAction = None
-          case _ =>
+          case null =>
         }
       })
       trackLabel.setText("Track " + (currentSongIndex + 1) + "/" + playList.getSongs.size)
@@ -525,34 +525,34 @@ object Player extends JFXApp3 {
           String.format("%1$02d:%2$02d", minutesWhole, secondsWhole)
         }
 
-        if (player.getStatus == null) "Streaming..."
+        if player.getStatus == null then "Streaming..."
         else player.getStatus match {
           case Status.PLAYING =>
             lastAction.foreach {
               case a: MediaPlayerAction => publishMediaEventIfConnected(AthletMediaIsRunning(a.wertung.mediafile.get, context))
-              case _ =>
+              case null =>
             }
-            if (media == null || media.getDuration == null) "Time: 00:00   Remaining: 00:00   Total: 00:00"
-            else if (player.getCurrentTime == null) "Time: 00:00   Remaining: 00:00   Total: " + formatDuration(media.getDuration)
+            if media == null || media.getDuration == null then "Time: 00:00   Remaining: 00:00   Total: 00:00"
+            else if player.getCurrentTime == null then "Time: 00:00   Remaining: 00:00   Total: " + formatDuration(media.getDuration)
             else "Time: " + formatDuration(player.getCurrentTime) + "   Remaining: " + formatDuration(media.getDuration.subtract(player.getCurrentTime)) + "   Total: " + formatDuration(media.getDuration)
           case Status.PAUSED =>
             lastAction.foreach {
               case a: MediaPlayerAction => publishMediaEventIfConnected(AthletMediaIsPaused(a.wertung.mediafile.get, context))
-              case _ =>
+              case null =>
             }
-            if (media == null || media.getDuration == null) "Paused"
-            else if (player.getCurrentTime == null) "Paused at: 00:00   Remaining: 00:00   Total: " + formatDuration(media.getDuration)
+            if media == null || media.getDuration == null then "Paused"
+            else if player.getCurrentTime == null then "Paused at: 00:00   Remaining: 00:00   Total: " + formatDuration(media.getDuration)
             else "Paused at: " + formatDuration(player.getCurrentTime) + "   Remaining: " + formatDuration(media.getDuration.subtract(player.getCurrentTime)) + "   Total: " + formatDuration(media.getDuration)
           case _ =>
-            if (media == null || media.getDuration == null) "Streaming..."
-            else if (player.getCurrentTime == null) "Paused at: 00:00   Remaining: 00:00   Total: " + formatDuration(media.getDuration)
+            if media == null || media.getDuration == null then "Streaming..."
+            else if player.getCurrentTime == null then "Paused at: 00:00   Remaining: 00:00   Total: " + formatDuration(media.getDuration)
             else "Paused at: " + formatDuration(player.getCurrentTime) + "   Remaining: " + formatDuration(media.getDuration.subtract(player.getCurrentTime)) + "   Total: " + formatDuration(media.getDuration)
         }
       }, player.currentTimeProperty(), player.statusProperty())
       balanceKnob.valueProperty() <==> player.balanceProperty()
       volumeKnob.valueProperty() <==> player.volumeProperty()
       leftVURotation.angleProperty <== Bindings.createDoubleBinding(() => {
-        if (player.getStatus == null) -40d
+        if player.getStatus == null then -40d
         else player.getStatus match {
           case Status.PLAYING =>
             val zeroOne = leftVU.get
@@ -563,7 +563,7 @@ object Player extends JFXApp3 {
       }, leftVU, player.statusProperty(), player.balanceProperty())
 
       rightVURotation.angleProperty <== Bindings.createDoubleBinding(() => {
-        if (player.getStatus == null) -40d
+        if player.getStatus == null then -40d
         else player.getStatus match {
           case Status.PLAYING =>
             val zeroOne = rightVU.get
@@ -575,10 +575,10 @@ object Player extends JFXApp3 {
 
       player.setAudioSpectrumNumBands(10)
       player.setAudioSpectrumInterval(1d / 30d)
-      for (i <- 0 until math.min(sliders.size(), player.getAudioEqualizer.getBands.size())) {
+      for i <- 0 until math.min(sliders.size(), player.getAudioEqualizer.getBands.size()) do {
         sliders.get(i).valueProperty() <==> player.getAudioEqualizer.getBands.get(i).gainProperty()
       }
-      for (i <- 0 until 10) {
+      for i <- 0 until 10 do {
         vuMeters.get(i).setValue(0)
       }
 
@@ -600,9 +600,10 @@ object Player extends JFXApp3 {
   }
 
   private var lastMediaEvent: Option[MediaPlayerEvent] = None
-  private def publishMediaEventIfConnected(event: MediaPlayerEvent) = {
+
+  private def publishMediaEventIfConnected(event: MediaPlayerEvent): Unit = {
     lastMediaEvent = Some(event)
-    if (isNetworkMediaPlayer.getValue) {
+    if isNetworkMediaPlayer.getValue then {
       WebSocketClient.publish(event.asInstanceOf[KutuAppEvent])
     }
   }

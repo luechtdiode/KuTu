@@ -1,18 +1,20 @@
 package ch.seidel.kutu.renderer
 
 import ch.seidel.kutu.Config
-import ch.seidel.kutu.Config.{getRemoteHosts, homedir, remoteBaseUrl, remoteHostOrigin}
+import ch.seidel.kutu.Config.{homedir, remoteBaseUrl, remoteHostOrigin}
 import ch.seidel.kutu.KuTuApp.enc
-import ch.seidel.kutu.domain._
-import ch.seidel.kutu.renderer.PrintUtil._
+import ch.seidel.kutu.domain.*
+import ch.seidel.kutu.renderer.ServerPrintUtil.*
 import org.slf4j.LoggerFactory
 
 import java.io.File
 import java.sql.Date
 import java.time.{LocalDate, Period}
-import scala.collection.immutable._
+import scala.collection.immutable.*
 
 trait WettkampfOverviewToHtmlRenderer {
+  given Conversion[java.sql.Date, LocalDate] = sqlDate2ld
+
   private val logger = LoggerFactory.getLogger(classOf[WettkampfOverviewToHtmlRenderer])
   private val intro2 = """<html><body><ul><li>"""
   private val intro = s"""<html lang="de-CH"><head>
@@ -183,7 +185,7 @@ trait WettkampfOverviewToHtmlRenderer {
           |<ul><li>
   """.stripMargin
 
-  val outro = """
+  val outro: String = """
     |</li></ul>
     |<script>
     |var toggler = document.getElementsByClassName("caret");
@@ -228,7 +230,7 @@ trait WettkampfOverviewToHtmlRenderer {
     val tuSum = programme.map(_._3).sum
     val totSum = tiSum + tuSum
 
-    val logoHtml = (if (logo.exists) s"""<img class=logo src="${logo.imageSrcForWebEngine}" title="Logo"/>""" else s"")
+    val logoHtml = if logo.exists then s"""<img class=logo src="${logo.imageSrcForWebEngine}" title="Logo"/>""" else s""
     val hasRemote = wettkampf.toWettkampf.hasSecred(homedir, remoteHostOrigin) || wettkampf.toWettkampf.hasRemote(homedir, remoteHostOrigin)
     val isLocalServer = Config.isLocalHostServer
     val registrationURL = s"$remoteBaseUrl/registration/${wettkampf.uuid.get}"
@@ -238,28 +240,28 @@ trait WettkampfOverviewToHtmlRenderer {
     val startlistQRUrl = toQRCodeImage(startlistURL)
     val startlistMobileURL = s"$remoteBaseUrl/search-athlet/${wettkampf.uuid.get}"
     val startlistMobileQRUrl = toQRCodeImage(startlistMobileURL)
-    val lastResultsURL = s"$remoteBaseUrl/?" + new String(enc.encodeToString((s"last&c=${wettkampf.uuid.get}").getBytes))
+    val lastResultsURL = s"$remoteBaseUrl/?" + new String(enc.encodeToString(s"last&c=${wettkampf.uuid.get}".getBytes))
     val lastQRUrl = toQRCodeImage(lastResultsURL)
 
-    val auszSchwelle = (if (wettkampf.auszeichnung > 100) {
+    val auszSchwelle = (if wettkampf.auszeichnung > 100 then {
       wettkampf.auszeichnung / 100d
     } else {
       wettkampf.auszeichnung * 1d
     }) /100
-    val auszeichnung = if (wettkampf.auszeichnung > 100) {
+    val auszeichnung = if wettkampf.auszeichnung > 100 then {
       dbl2Str(wettkampf.auszeichnung / 100d) + "%"
     }
     else {
       s"${wettkampf.auszeichnung}%"
     }
     val medallienbedarf = programme.map{p =>
-      (p._1, if (p._4 > 0) 1 else 0, if (p._4 > 1) 1 else 0, if (p._4 > 2) 1 else 0, Math.max(Math.floor(p._4*auszSchwelle-3), 0).toInt,
-             if (p._3 > 0) 1 else 0, if (p._3 > 1) 1 else 0, if (p._3 > 2) 1 else 0, Math.max(Math.floor(p._3*auszSchwelle-3), 0).toInt)
+      (p._1, if p._4 > 0 then 1 else 0, if p._4 > 1 then 1 else 0, if p._4 > 2 then 1 else 0, Math.max(Math.floor(p._4*auszSchwelle-3), 0).toInt,
+             if p._3 > 0 then 1 else 0, if p._3 > 1 then 1 else 0, if p._3 > 2 then 1 else 0, Math.max(Math.floor(p._3*auszSchwelle-3), 0).toInt)
     }
-    val auszHint = if (wettkampf.auszeichnungendnote.compare(BigDecimal.valueOf(0)) != 0)
+    val auszHint = if wettkampf.auszeichnungendnote.compare(BigDecimal.valueOf(0)) != 0 then
       s"<em>Auszeichnungs-Mindes-Notenschnitt: ${wettkampf.auszeichnungendnote}</em>"
     else
-      s"<em>Auszeichnungs-Schwelle: ${auszeichnung}</em>"
+      s"<em>Auszeichnungs-Schwelle: $auszeichnung</em>"
 
     val medallienHeader1 = medallienbedarf.map(p => p._1)
       .mkString("<th class='blockstart' colspan='2'>", "</th><th class='blockstart' colspan='2'>", "</th>")
@@ -290,8 +292,8 @@ trait WettkampfOverviewToHtmlRenderer {
 
     val teams = TeamRegel(wettkampf.teamrule)
     val teamsIndex = teams.getTeamRegeln.map(r => r.toRuleName -> r).toMap
-    val teamsBlock = if (teams.teamsAllowed) {
-      val groupedWertungen = if (jgAltersklassen.nonEmpty) {
+    val teamsBlock = if teams.teamsAllowed then {
+      val groupedWertungen = if jgAltersklassen.nonEmpty then {
         wertungen.groupBy { w =>
           val programm = w.wettkampfdisziplin.programm
           val gebdat: LocalDate = w.athlet.gebdat.getOrElse(new Date(System.currentTimeMillis())).toLocalDate
@@ -302,7 +304,7 @@ trait WettkampfOverviewToHtmlRenderer {
           ("", jgak.easyprint, "")
         }
       }
-      else if (altersklassen.nonEmpty) {
+      else if altersklassen.nonEmpty then {
         wertungen.groupBy { w =>
           val programm = w.wettkampfdisziplin.programm
           val gebdat: LocalDate = w.athlet.gebdat.getOrElse(new Date(System.currentTimeMillis())).toLocalDate
@@ -325,8 +327,8 @@ trait WettkampfOverviewToHtmlRenderer {
           case (grouper, teamgroup) => teamgroup.flatMap(_._3).groupBy(_.rulename).map {
             case (rulename, teams) =>
               val (pgm, ak, sex) = group
-              val pgmValue = if(grouper._1.contains(pgm)) grouper._1 else  pgm + grouper._1
-              val sexValue = if(grouper._2.contains(sex)) grouper._2 else sex + grouper._2
+              val pgmValue = if grouper._1.contains(pgm) then grouper._1 else  pgm + grouper._1
+              val sexValue = if grouper._2.contains(sex) then grouper._2 else sex + grouper._2
               (rulename, pgmValue, ak, sexValue, teams.size, teams.map(team =>
                 s"""<li><span class="caret"></span>${team.name} (${team.blockrows})
                    |  <ul class="nested">
@@ -342,10 +344,9 @@ trait WettkampfOverviewToHtmlRenderer {
       }
       val hasNoExplicitTeamAssignements = !wertungen.exists(_.team > 0)
       val unassignedAtletesTeam = Team("Ohne gültige Zuweisung", "", wertungen.filter(w => hasNoExplicitTeamAssignements || w.team > 0).filter(a => !allAthletesInTeams.contains(a.athlet)), Map.empty, Map.empty, Sum)
-      val teamsSections = groupedTeams.keySet.toList.sorted.map {
-        case name =>
+      val teamsSections = groupedTeams.keySet.toList.sorted.map { name =>
           val groupMerges = teamsIndex(name).getGrouperDefs.filter(d => d.exists(_.trim.nonEmpty))
-          val mergeRules = if (groupMerges.nonEmpty) {
+          val mergeRules = if groupMerges.nonEmpty then {
             s"""
                |<h4>Explizite Gruppenzusammenfassungen:</h4>
                |${teamsIndex(name).getGrouperDefs.filter(d => d.exists(_.trim.nonEmpty)).map(d => d.mkString("<li>", "+", "</li>")).mkString("<ul>", "\n", "</ul><br>")}
@@ -363,7 +364,7 @@ trait WettkampfOverviewToHtmlRenderer {
                     s"<tr><td class='data'>$pgm</td><td class='blockstart data'>$ak</td><td class='blockstart data'>$sex</td><td class='blockstart valuedata'>$teamssize</td><td class='blockstart data'>${teams.replace(",", "<br>")}</td></tr>"
                 }.mkString
               }
-             ${if (unassignedAtletesTeam.wertungen.nonEmpty) {
+             ${if unassignedAtletesTeam.wertungen.nonEmpty then {
                 val uat = s"""<ul class='treeUL'><li><span class="caret"></span>${unassignedAtletesTeam.name} (${unassignedAtletesTeam.blockrows})
                              |  <ul class="nested">
                              |  ${unassignedAtletesTeam.wertungen.map(w => (w.athlet, w.wettkampfdisziplin.programm.name)).distinct.map(a => s"<li>${a._1.easyprint} (${a._2})</li>").mkString("")}
@@ -386,10 +387,10 @@ trait WettkampfOverviewToHtmlRenderer {
       ""
     }
     val medalrows = s"""
-    <tr><td class='data'>Goldmedallie</td>${goldDetails}<td class='blockstart valuedata'>${goldSum}</td></tr>
-    <tr><td class='data'>Silbermedallie</td>${silverDetails}<td class='blockstart valuedata'>${silverSum}</td></tr>
-    <tr><td class='data'>Bronzemedallie</td>${bronzeDetails}<td class='blockstart valuedata'>${bronzeSum}</td></tr>
-    <tr><td class='data'>Ab 4. Rang</td>${auszDetails}<td class='blockstart valuedata'>${auszSum}</td></tr>
+    <tr><td class='data'>Goldmedallie</td>$goldDetails<td class='blockstart valuedata'>$goldSum</td></tr>
+    <tr><td class='data'>Silbermedallie</td>$silverDetails<td class='blockstart valuedata'>$silverSum</td></tr>
+    <tr><td class='data'>Bronzemedallie</td>$bronzeDetails<td class='blockstart valuedata'>$bronzeSum</td></tr>
+    <tr><td class='data'>Ab 4. Rang</td>$auszDetails<td class='blockstart valuedata'>$auszSum</td></tr>
     """
 
     s"""<div class=blatt>
@@ -400,8 +401,8 @@ trait WettkampfOverviewToHtmlRenderer {
       <h2>Anmeldungen</h2>
       <div class=headline>
         ${
-        if (!isLocalServer) {
-          if (hasRemote)
+        if !isLocalServer then {
+          if hasRemote then
             s"""<img class=qrcode src="$regQRUrl"/>
                 <h3>Wettkampf-Registrierung / Online-Anmeldungen</h3>
                   <p class=wordwrapper>Zum Versenden an die Vereinsverantwortlichen oder für in die Wettkampf-Ausschreibung.<br>
@@ -423,23 +424,23 @@ trait WettkampfOverviewToHtmlRenderer {
           } else ""
         }
         ${
-        if (!isLocalServer) {
+        if !isLocalServer then {
           s"""<h3>EMail des Wettkampf-Administrators</h3>
             <p>An diese EMail Adresse werden Notifikations-Meldungen versendet, sobald sich an den Anmeldungen Mutationen ergeben.<br>
-              ${if (wettkampf.notificationEMail.nonEmpty) s"""<a href="mailto://${escaped(wettkampf.notificationEMail)}" target="_blank">${escaped(wettkampf.notificationEMail)}</a>""" else "<strong>Keine EMail hinterlegt!</strong>"}
+              ${if wettkampf.notificationEMail.nonEmpty then s"""<a href="mailto://${escaped(wettkampf.notificationEMail)}" target="_blank">${escaped(wettkampf.notificationEMail)}</a>""" else "<strong>Keine EMail hinterlegt!</strong>"}
           """
         } else ""
         }
         </p>
-        ${if (altersklassen.nonEmpty)
+        ${if altersklassen.nonEmpty then
           s"""<h2>Altersklassen</h2>
           Alter am Wettkampf - Tag: ${escaped(wettkampf.altersklassen)} <br>
-          <ul>${altersklassen}
+          <ul>$altersklassen
           </ul>"""
-          else if (jgAltersklassen.nonEmpty)
+          else if jgAltersklassen.nonEmpty then
           s"""<h2>Altersklassen</h2>
           Alter im Wettkampf - Jahr: ${escaped(wettkampf.jahrgangsklassen)} <br>
-          <ul>${jgAltersklassen}
+          <ul>$jgAltersklassen
           </ul>"""
           else ""
         }
@@ -448,26 +449,26 @@ trait WettkampfOverviewToHtmlRenderer {
       <div class="showborder">
         <table width="100%">
           <thead>
-            <tr class='head'><th>&nbsp;</th>${programHeader1}<th class='blockstart' colspan="3">Total</th></tr>
-            <tr class='head'><th>Verein</th>${programHeader2}<th class='blockstart'>Ti</th><th>Tu</th><th>Total</th></tr>
+            <tr class='head'><th>&nbsp;</th>$programHeader1<th class='blockstart' colspan="3">Total</th></tr>
+            <tr class='head'><th>Verein</th>$programHeader2<th class='blockstart'>Ti</th><th>Tu</th><th>Total</th></tr>
           </thead>
           <tbody>
-          ${rows}
+          $rows
           </tbody>
           <tfoot>
-          <tr><td class="data">Total</td>${totalDetails}<td class='valuedata blockstart'>${tiSum}</td><td class="valuedata">${tuSum}</td><td class="valuedata">${totSum}</td></tr>
-          <tr><td class="data">Total Ti & Tu</td>${totalTuTiDetails}<td class='tuti blockstart' colspan='3'>&nbsp;</td></tr>
+          <tr><td class="data">Total</td>$totalDetails<td class='valuedata blockstart'>$tiSum</td><td class="valuedata">$tuSum</td><td class="valuedata">$totSum</td></tr>
+          <tr><td class="data">Total Ti & Tu</td>$totalTuTiDetails<td class='tuti blockstart' colspan='3'>&nbsp;</td></tr>
           </tfoot>
         </table>
       </div>
       $teamsBlock
       <h2>Medallien-Bedarf</h2>
-        ${auszHint}
+        $auszHint
         <div class="showborder">
         <table width="100%">
           <thead>
-            <tr class='head'><th>&nbsp;</th>${medallienHeader1}<th class='blockstart'>&nbsp;</th></tr>
-            <tr class='head'><th>Auszeichnung</th>${medallienHeader2}<th class='blockstart'>Total</th></tr>
+            <tr class='head'><th>&nbsp;</th>$medallienHeader1<th class='blockstart'>&nbsp;</th></tr>
+            <tr class='head'><th>Auszeichnung</th>$medallienHeader2<th class='blockstart'>Total</th></tr>
           </thead>
             <tbody>
             $medalrows
@@ -475,7 +476,7 @@ trait WettkampfOverviewToHtmlRenderer {
         </table><br>
       </div>
       <em>(Ohne Reserven)</em>
-      ${ if (hasRemote)
+      ${ if hasRemote then
         s"""
         <h2 id="usefullinks">Weitere nützliche Links</h2>
         <div class=headline>

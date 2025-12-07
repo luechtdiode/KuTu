@@ -1,7 +1,7 @@
 package ch.seidel.kutu.actors
 
 import ch.seidel.kutu.Config
-import ch.seidel.kutu.domain.{Disziplin, encodeURIComponent}
+import ch.seidel.kutu.domain.encodeURIComponent
 
 case class CompetitionState (
            //                  durchgangGeraetMap: Map[String, List[Disziplin]] = Map.empty,
@@ -18,7 +18,7 @@ case class CompetitionState (
 
   def updated(event: KutuAppEvent, isDNoteUsed: Boolean): CompetitionState = event match {
     case eventDurchgangStarted: DurchgangStarted =>
-      if (startedDurchgaenge.contains(eventDurchgangStarted.durchgang)) {
+      if startedDurchgaenge.contains(eventDurchgangStarted.durchgang) then {
         this
       } else {
         CompetitionState(
@@ -36,7 +36,7 @@ case class CompetitionState (
     }
 
     case eventDurchgangFinished: DurchgangFinished =>
-      if (finishedDurchgaenge.contains(eventDurchgangFinished.durchgang)) {
+      if finishedDurchgaenge.contains(eventDurchgangFinished.durchgang) then {
         this
       } else {
         CompetitionState(
@@ -87,7 +87,7 @@ case class CompetitionState (
       copy(completedflags = completedflags :+ dms)
 
     case _: DurchgangStepFinished =>
-      if (lastWertungen.nonEmpty) {
+      if lastWertungen.nonEmpty then {
         CompetitionState(
           startedDurchgaenge,
           finishedDurchgangSteps,
@@ -103,8 +103,8 @@ case class CompetitionState (
     case _ => this
   }
 
-  def putBestenResult(wertungContainer: WertungContainer) =
-    if (wertungContainer.wertung.endnote.sum >= Config.bestenlisteSchwellwert) {
+  private def putBestenResult(wertungContainer: WertungContainer) =
+    if wertungContainer.wertung.endnote.sum >= Config.bestenlisteSchwellwert then {
       val key = s"${wertungContainer.id}:${wertungContainer.wertung.wettkampfdisziplinId.toString}"
       bestenResults.updated(key, wertungContainer)
     } else {

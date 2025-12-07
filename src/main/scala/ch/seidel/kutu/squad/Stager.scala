@@ -29,15 +29,15 @@ trait Stager extends Mapper {
           case _ => (0, Set.empty)
         }
       }
-      if(nextCandidates.isEmpty || acc.size > 500) {
+      if nextCandidates.isEmpty || acc.size > 500 then {
         finish(acc)
       }
       else {
-        val withNewCandidates = nextCandidates :++ (for{
+        val withNewCandidates = nextCandidates :++ (for
           neweinteilung <- mergeCandidates(geraete, eqsize, nextCandidates.head, Set.empty)
           s = score(geraete, eqsize, neweinteilung)
           if neweinteilung.size >= geraete && !acc.contains((s, neweinteilung))
-        } yield {
+        yield {
           neweinteilung
         })
         
@@ -72,24 +72,24 @@ trait Stager extends Mapper {
     val candidates = einteilung.filter(_.size < targetGeraeteRiegeSize).toList.sortBy(_.size).reverse
     val finishedRiegen = actualGeraeteRiegen - candidates.size
     val keepUnmerged = geraete - finishedRiegen
-    if (keepUnmerged == 0) {
+    if keepUnmerged == 0 then {
       acc
     } else {
       lazy val min = candidates.minBy(_.size).size
       lazy val max = candidates.maxBy(_.size).size
       lazy val median = ((min + max) / 2 + targetGeraeteRiegeSize / 2) / 2
       
-      val smallerCandidates = if (preferredRiege.nonEmpty) 
+      val smallerCandidates = if preferredRiege.nonEmpty then 
           candidates
           .filter(_.size + preferredRiege.get.preferred.size <= targetGeraeteRiegeSize)         
-        else if(keepUnmerged == 1) candidates
+        else if keepUnmerged == 1 then candidates
         else
            candidates
            .dropWhile(_.size > median)
          
-      val biggerCandidates =  if (preferredRiege.nonEmpty) 
+      val biggerCandidates =  if preferredRiege.nonEmpty then 
           preferredRiege.map(_.preferred).toList
-        else if(keepUnmerged == 1) candidates
+        else if keepUnmerged == 1 then candidates
         else
           candidates
           .takeWhile(_.size >= median)
@@ -116,7 +116,7 @@ trait Stager extends Mapper {
           val pair = pairOption.get
           val (s, b) = pair
           val (merged, newEinteilung) = merge(s, b)
-          if ( !acc.contains(newEinteilung)) {
+          if  !acc.contains(newEinteilung) then {
             val pr = preferredRiege.map(p => p.copy(preferred = p.basepreferred, pairs = p.pairs + pair)).orElse(Some(PreferredAccumulator(merged, einteilung, b, Set(pair))))
             mergeCandidates(geraete, targetGeraeteRiegeSize, pr.get.base, acc + newEinteilung, pr)
           } else {
@@ -125,10 +125,10 @@ trait Stager extends Mapper {
         case Some(pair) =>
           val (s, b) = pair
           val (merged, newEinteilung) = merge(s, b)
-          if(keepUnmerged == 1) {
+          if keepUnmerged == 1 then {
 //            logger.debug("staging not optimal")
             acc + newEinteilung
-          } else if ( !acc.contains(newEinteilung)) {
+          } else if  !acc.contains(newEinteilung) then {
             val pr = preferredRiege.map(p => p.copy(preferred = merged, pairs = p.pairs + pair)).orElse(Some(PreferredAccumulator(merged, einteilung, b, Set(pair))))
             mergeCandidates(geraete, targetGeraeteRiegeSize, newEinteilung, acc, pr)
           } else {
@@ -139,9 +139,10 @@ trait Stager extends Mapper {
     }
   }
   
-  protected def computeDimensions(sumOfAll: Int, geraete: Int, maxGeraeteRiegenSize: Int, level: Int): (Int, Int) = {
+  @tailrec
+  private def computeDimensions(sumOfAll: Int, geraete: Int, maxGeraeteRiegenSize: Int, level: Int): (Int, Int) = {
     val eqsize = (1d * sumOfAll / (geraete * level) + 0.9d).intValue()
-    if (eqsize <= maxGeraeteRiegenSize || geraete == 0 || level > 100) (eqsize, level) else computeDimensions(sumOfAll, geraete, maxGeraeteRiegenSize, level +1)
+    if eqsize <= maxGeraeteRiegenSize || geraete == 0 || level > 100 then (eqsize, level) else computeDimensions(sumOfAll, geraete, maxGeraeteRiegenSize, level +1)
   }
   
 }

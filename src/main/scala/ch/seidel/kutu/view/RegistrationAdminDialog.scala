@@ -1,21 +1,21 @@
 package ch.seidel.kutu.view
 
-import org.apache.pekko.http.javadsl.model.HttpResponse
 import ch.seidel.commons.{DisplayablePage, PageDisplayer}
 import ch.seidel.kutu.KuTuApp
-import ch.seidel.kutu.domain.{AddMedia, AddRegistration, AddVereinAction, ApproveVereinAction, Athlet, AthletView, EmptyAthletRegistration, MoveRegistration, Registration, RemoveRegistration, RenameAthletAction, RenameVereinAction, SyncAction, UpdateAthletMediaAction, Verein}
-import ch.seidel.kutu.http.RegistrationRoutes
 import ch.seidel.kutu.data.RegistrationAdmin.{doSyncUnassignedClubRegistrations, findAthletLike, processSync}
-import javafx.beans.value.ObservableValue
+import ch.seidel.kutu.domain.*
+import ch.seidel.kutu.http.RegistrationRoutes
+import javafx.beans.value.{ChangeListener, ObservableValue}
+import org.apache.pekko.http.javadsl.model.HttpResponse
 import org.slf4j.LoggerFactory
-import scalafx.Includes._
+import scalafx.Includes.*
 import scalafx.application.Platform
 import scalafx.beans.property.ReadOnlyStringWrapper
 import scalafx.collections.ObservableBuffer
 import scalafx.event.ActionEvent
 import scalafx.scene.Node
+import scalafx.scene.control.*
 import scalafx.scene.control.TableColumn.sfxTableColumn2jfx
-import scalafx.scene.control._
 import scalafx.scene.layout.{BorderPane, Priority}
 
 import scala.concurrent.Future
@@ -23,7 +23,7 @@ import scala.concurrent.Future
 object RegistrationAdminDialog {
   private val logger = LoggerFactory.getLogger(this.getClass)
 
-  def importVereinRegistration(service: RegistrationRoutes, verein: Registration, reloader: Boolean => Unit) = {
+  def importVereinRegistration(service: RegistrationRoutes, verein: Registration, reloader: Boolean => Unit): List[Verein] = {
     verein.vereinId match {
       case Some(id) => List(service.insertVerein(Verein(id, verein.vereinname, Some(verein.verband))))
       case None => PageDisplayer.confirm(
@@ -36,7 +36,7 @@ object RegistrationAdminDialog {
         ),
         () => {
           val v = service.insertVerein(Verein(verein.vereinId.getOrElse(0), verein.vereinname, Some(verein.verband)))
-          reloader(true);
+          reloader(true)
           // TODO update registration with verein_id or better do this operation remote and download verein
           v
         }
@@ -45,7 +45,7 @@ object RegistrationAdminDialog {
   }
 
   def importRegistrations(wkInfo: WettkampfInfo, service: RegistrationRoutes, reloader: Boolean => Unit)(implicit event: ActionEvent): Unit = {
-    import scala.concurrent.ExecutionContext.Implicits._
+    import scala.concurrent.ExecutionContext.Implicits.*
     import scala.util.{Failure, Success}
     val athletModel = ObservableBuffer[SyncAction]()
     val vereineList = service.selectVereine
@@ -53,17 +53,17 @@ object RegistrationAdminDialog {
     val cliprawf: Future[(Set[Verein],List[SyncAction])] = KuTuApp.invokeAsyncWithBusyIndicator("Online-Registrierungen abgleichen ...") {
       service.loginWithWettkampf(wkInfo.wettkampf.toWettkampf).map {
         case r: HttpResponse if r.status.isSuccess() =>
-          (for {
+          (for
             (registration, athleten) <- service.getAllRegistrationsRemote(wkInfo.wettkampf.toWettkampf)
             athlet <- athleten :+ EmptyAthletRegistration(registration.id)
-          } yield {
+          yield {
             logger.info(s"start processing Registration ${registration.vereinname}")
             val startime = System.currentTimeMillis()
             val resolvedVerein = vereineList.find(v => registration.matchesVerein(v))
             logger.info(s"resolved Verein for Registration ${registration.vereinname}")
             val parsed = athlet.toAthlet.copy(id = 0L, verein = resolvedVerein.map(_.id))
-            val candidate = if (athlet.isEmptyRegistration) parsed else findAthletLike(parsed)
-            logger.info(s"resolved candidate for ${parsed} in ${System.currentTimeMillis() - startime}ms")
+            val candidate = if athlet.isEmptyRegistration then parsed else findAthletLike(parsed)
+            logger.info(s"resolved candidate for $parsed in ${System.currentTimeMillis() - startime}ms")
             (registration, athlet, parsed, candidate.toAthletView(resolvedVerein))
           }).toList
         case r: HttpResponse if !r.status.isSuccess() =>
@@ -73,8 +73,8 @@ object RegistrationAdminDialog {
     cliprawf.onComplete {
       case Failure(t) => PageDisplayer.showErrorDialog("Online-Anmeldungen abfragen", t.getMessage)
       case Success(clipraw) => Platform.runLater {
-        if (clipraw._2.nonEmpty) {
-          showImportDialog(wkInfo, service, reloader, athletModel, clipraw)(event)
+        if clipraw._2.nonEmpty then {
+          showImportDialog(wkInfo, service, reloader, athletModel, clipraw)(using event)
         } else {
           PageDisplayer.showMessageDialog("Anmeldungen verarbeiten", "Keine neuen Daten zum verarbeiten.")
         }
@@ -82,13 +82,13 @@ object RegistrationAdminDialog {
     }
   }
 
-  private def showImportDialog(wkInfo: WettkampfInfo, service: RegistrationRoutes, reloader: Boolean => Unit, athletModel: ObservableBuffer[SyncAction], clipraw: (Set[Verein],List[SyncAction]))(implicit event: ActionEvent) = {
+  private def showImportDialog(wkInfo: WettkampfInfo, service: RegistrationRoutes, reloader: Boolean => Unit, athletModel: ObservableBuffer[SyncAction], clipraw: (Set[Verein],List[SyncAction]))(implicit event: ActionEvent): Unit = {
     athletModel.appendAll(clipraw._2)
     val programms = wkInfo.leafprograms
     val filteredModel = ObservableBuffer.from(athletModel)
 
     def suggestImportAthletText(parsed: Athlet, suggestion: AthletView) = {
-      if (suggestion.id > 0) {
+      if suggestion.id > 0 then {
         "als " + suggestion.toAthlet.extendedprint
       }
       else {
@@ -190,7 +190,7 @@ object RegistrationAdminDialog {
                 case RenameAthletAction(verein, _, _, _) => ""
                 case AddRegistration(reg, programId, athlet, suggestion, team, media) => "hinzufügen"
                 case MoveRegistration(reg, fromProgramId, fromTeam, toProgramid, toTeam, athlet, suggestion) =>
-                  val teamText = if (fromTeam != toTeam) s", von Team $fromTeam auf $toTeam" else ""
+                  val teamText = if fromTeam != toTeam then s", von Team $fromTeam auf $toTeam" else ""
                   val pgmText = programms.find { p => p.id == fromProgramId || p.aggregatorHead.id == fromProgramId } match {
                     case Some(programm) => programm.name
                     case _ => "unbekannt"
@@ -199,7 +199,7 @@ object RegistrationAdminDialog {
                 case RemoveRegistration(reg, programId, athlet, suggestion) =>
                   s"entfernen"
                 case ua:UpdateAthletMediaAction =>
-                  if (ua.athletReg.mediafile.nonEmpty) "Playlist nachführen" else "Musik entfernen"
+                  if ua.athletReg.mediafile.nonEmpty then "Playlist nachführen" else "Musik entfernen"
                 case am: AddMedia => "Musik herunterladen"
               }
             })
@@ -210,46 +210,48 @@ object RegistrationAdminDialog {
     athletTable.selectionModel.value.setSelectionMode(SelectionMode.Multiple)
     val filter = new TextField() {
       promptText = "Such-Text"
-      text.addListener { (o: ObservableValue[_ <: String], oldVal: String, newVal: String) =>
-        val sortOrder = athletTable.sortOrder.toList
-        filteredModel.clear()
-        val searchQuery = newVal.toUpperCase().split(" ")
-        for {syncAction <- athletModel } {
-          val (athlet, verein) = syncAction match {
-            case AddVereinAction(verein) => (Athlet(), Some(verein.toVerein))
-            case ApproveVereinAction(verein) => (Athlet(), Some(verein.toVerein))
-            case AddRegistration(reg, programId, athlet, suggestion, team, media) => (athlet, suggestion.verein)
-            case MoveRegistration(reg, fromProgramId, fromTeam, toProgramid, toTeam, athlet, suggestion) => (athlet, suggestion.verein)
-            case RemoveRegistration(reg, programId, athlet, suggestion) => (athlet, suggestion.verein)
-            case RenameVereinAction(verein, oldVerein) => (Athlet(), Some(verein.toVerein))
-            case RenameAthletAction(verein, athlet, existing, expected) => (expected, Some(verein.toVerein))
-            case _ => (Athlet(), None)
-          }
-          val matches = searchQuery.forall { search =>
-            if (search.isEmpty || athlet.name.toUpperCase().contains(search)) {
-              true
+      text.addListener(new ChangeListener[String] {
+        def changed(o: ObservableValue[? <: String], oldVal: String, newVal: String): Unit = {
+          val sortOrder = athletTable.sortOrder.toList
+          filteredModel.clear()
+          val searchQuery = newVal.toUpperCase().split(" ")
+          for syncAction <- athletModel  do {
+            val (athlet, verein) = syncAction match {
+              case AddVereinAction(verein) => (Athlet(), Some(verein.toVerein))
+              case ApproveVereinAction(verein) => (Athlet(), Some(verein.toVerein))
+              case AddRegistration(reg, programId, athlet, suggestion, team, media) => (athlet, suggestion.verein)
+              case MoveRegistration(reg, fromProgramId, fromTeam, toProgramid, toTeam, athlet, suggestion) => (athlet, suggestion.verein)
+              case RemoveRegistration(reg, programId, athlet, suggestion) => (athlet, suggestion.verein)
+              case RenameVereinAction(verein, oldVerein) => (Athlet(), Some(verein.toVerein))
+              case RenameAthletAction(verein, athlet, existing, expected) => (expected, Some(verein.toVerein))
+              case _ => (Athlet(), None)
             }
-            else if (athlet.vorname.toUpperCase().contains(search)) {
-              true
+            val matches = searchQuery.forall { search =>
+              if search.isEmpty || athlet.name.toUpperCase().contains(search) then {
+                true
+              }
+              else if athlet.vorname.toUpperCase().contains(search) then {
+                true
+              }
+              else if verein match {
+                case Some(v) => v.name.toUpperCase().contains(search)
+                case None => false
+              } then {
+                true
+              }
+              else {
+                false
+              }
             }
-            else if (verein match {
-              case Some(v) => v.name.toUpperCase().contains(search)
-              case None => false
-            }) {
-              true
-            }
-            else {
-              false
-            }
-          }
 
-          if (matches) {
-            filteredModel.add(syncAction)
+            if matches then {
+              filteredModel.add(syncAction)
+            }
           }
+          athletTable.sortOrder.clear()
+          athletTable.sortOrder ++= sortOrder
         }
-        athletTable.sortOrder.clear()
-        athletTable.sortOrder ++= sortOrder
-      }
+      })
     }
     PageDisplayer.showInDialog("Anmeldungen importieren ...", new DisplayablePage() {
       def getPage: Node = {
@@ -270,7 +272,7 @@ object RegistrationAdminDialog {
     }, new Button("OK") {
       disable <== when(athletTable.selectionModel.value.selectedItemProperty.isNull) choose true otherwise false
       onAction = (event: ActionEvent) => {
-        if (!athletTable.selectionModel().isEmpty) {
+        if !athletTable.selectionModel().isEmpty then {
           val selectedAthleten = athletTable.items.value.zipWithIndex.filter {
             x => athletTable.selectionModel.value.isSelected(x._2)
           }.map(_._1)
@@ -280,7 +282,7 @@ object RegistrationAdminDialog {
             case _: RenameVereinAction => true
             case _ => false
           })
-          if (localAttentionNeeded.nonEmpty) {
+          if localAttentionNeeded.nonEmpty then {
             println(localAttentionNeeded)
             PageDisplayer.showMessageDialog(
               "Anmeldungen verarbeiten",
@@ -308,7 +310,7 @@ object RegistrationAdminDialog {
           case AddVereinAction(_) => true
           case _ => false
         })
-        if (localAttentionNeeded.nonEmpty) {
+        if localAttentionNeeded.nonEmpty then {
           println(localAttentionNeeded)
           PageDisplayer.showMessageDialog(
             "Anmeldungen verarbeiten",

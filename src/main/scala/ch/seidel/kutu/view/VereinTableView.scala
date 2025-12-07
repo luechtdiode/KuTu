@@ -1,9 +1,9 @@
 package ch.seidel.kutu.view
 
 import ch.seidel.kutu.domain.Verein
-import scalafx.scene.control._
 import scalafx.beans.property.ReadOnlyStringWrapper
 import scalafx.collections.ObservableBuffer
+import scalafx.scene.control.*
 
 object VereinTableView {
   def apply(vereinList: List[Verein]) = new VereinTableView(vereinList)
@@ -34,13 +34,13 @@ class VereinTableView(vereinList: List[Verein]) extends TableView[Verein] {
   val filter: TextField = new TextField() {
     promptText = "Such-Text"
     text.addListener { (_, _, newVal: String) =>
-      val sortOrderList = sortOrder.toList;
+      val sortOrderList = sortOrder.toList
       filteredModel.clear()
       val searchQuery = newVal.toUpperCase().split(" ")
-      for {verein <- vereinList
-           } {
+      for verein <- vereinList
+           do {
         val matches = searchQuery.forall { search =>
-          if (search.isEmpty || verein.easyprint.toUpperCase().contains(search)) {
+          if search.isEmpty || verein.easyprint.toUpperCase().contains(search) then {
             true
           }
           else {
@@ -48,7 +48,7 @@ class VereinTableView(vereinList: List[Verein]) extends TableView[Verein] {
           }
         }
 
-        if (matches) {
+        if matches then {
           filteredModel.add(verein)
         }
       }

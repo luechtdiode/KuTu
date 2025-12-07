@@ -9,13 +9,13 @@ import ch.seidel.kutu.data.ResourceExchanger.saveMediaFile
 import ch.seidel.kutu.domain.{KutuService, Media, Wettkampf}
 import ch.seidel.kutu.view.player.Player
 import javafx.stage.FileChooser
-import scalafx.Includes._
+import scalafx.Includes.*
 import scalafx.beans.binding.Bindings
 import scalafx.beans.property.BooleanProperty
 import scalafx.event.ActionEvent
-import scalafx.geometry._
-import scalafx.scene.control._
-import scalafx.scene.layout._
+import scalafx.geometry.*
+import scalafx.scene.control.*
+import scalafx.scene.layout.*
 
 import java.io.{File, FileInputStream}
 import java.net.URI
@@ -25,11 +25,11 @@ case class AthletHeaderPane(wettkampf: Wettkampf, service: KutuService, wkview: 
   val isReadonly: Boolean = wettkampf.isReadonly(homedir, remoteHostOrigin)
   var index = -1
   var selected: IndexedSeq[WertungEditor] = IndexedSeq()
-  val lblDivider1 = new Label() {
+  private val lblDivider1 = new Label() {
     text = " : "
     styleClass += "toolbar-header"
   }
-  val lblDivider2 = new Label() {
+  private val lblDivider2 = new Label() {
     text = " : "
     visible <== Bindings.createBooleanBinding(() =>
       !wkview.selectionModel().isEmpty && wkview.selectionModel().getSelectedItem.exists(we => we.init.wettkampfdisziplin.disziplin.name.equals("Boden")),
@@ -37,13 +37,13 @@ case class AthletHeaderPane(wettkampf: Wettkampf, service: KutuService, wkview: 
     )
     styleClass += "toolbar-header"
   }
-  val lblDisciplin = new Label() {
+  private val lblDisciplin = new Label() {
     styleClass += "toolbar-header"
   }
-  val lblMedia = new Label() {
+  private val lblMedia = new Label() {
     styleClass += "toolbar-header"
   }
-  val lblAthlet = new Label() {
+  private val lblAthlet = new Label() {
     styleClass += "toolbar-header"
   }
 
@@ -51,15 +51,15 @@ case class AthletHeaderPane(wettkampf: Wettkampf, service: KutuService, wkview: 
   checkmark.getStyleClass.add("check-mark")
   checkmark.visibleProperty.bind(Player.isNetworkMediaPlayer)
 
-  val checkIsUseMyMediaPlayerMenuItem = new MenuItem("Media Player den Wertungsrichtern freigeben", checkmark) {
-    onAction = handleAction { _: ActionEvent =>
+  val checkIsUseMyMediaPlayerMenuItem: MenuItem = new MenuItem("Media Player den Wertungsrichtern freigeben", checkmark) {
+    onAction = handleAction { (_: ActionEvent) =>
       Player.useMyMediaPlayerAsNetworkplayer(!Player.isNetworkMediaPlayer.getValue)
     }
   }
 
-  val currentMediaMenuItem = new MenuItem {
+  private val currentMediaMenuItem = new MenuItem {
     onAction = (event: ActionEvent) => {
-      if (selected != null) {
+      if selected != null then {
         Player.clearPlayList()
         val items = selected
           .filter(a => a.init.wettkampfdisziplin.disziplin.name.equals("Boden"))
@@ -67,17 +67,17 @@ case class AthletHeaderPane(wettkampf: Wettkampf, service: KutuService, wkview: 
         items.foreach(item => {
           val (a, disziplin, medias) = item
           val media = medias.get
-          val title = s"${selected.head.init.athlet.vorname} ${selected.head.init.athlet.name} ${selected.head.init.athlet.verein.map(v => s"(${v.name})").getOrElse("")}, ${disziplin} - ${media.name}"
+          val title = s"${selected.head.init.athlet.vorname} ${selected.head.init.athlet.name} ${selected.head.init.athlet.verein.map(v => s"(${v.name})").getOrElse("")}, $disziplin - ${media.name}"
           Player.addToPlayList(title, media.computeFilePath(wettkampf).toURI.toASCIIString.toLowerCase)
         })
         items.headOption.foreach(item => {
           val (a, _, _) = item
-          Player.load(Player.getPlayList().getSongs.head.getKey, AthletMediaAquire(a.init.wettkampf.uuid.get, a.init.athlet, a.init.toWertung))
+          Player.load(Player.getPlayList.getSongs.head.getKey, AthletMediaAquire(a.init.wettkampf.uuid.get, a.init.athlet, a.init.toWertung))
         })
       }
     }
   }
-  val assignMediaMenuItem: MenuItem = new MenuItem {
+  private val assignMediaMenuItem: MenuItem = new MenuItem {
     text = "Bodenmusik zuordnen ..."
     visible <== when(wettkampfmode) choose false otherwise true
     onAction = (event: ActionEvent) => {
@@ -106,20 +106,20 @@ case class AthletHeaderPane(wettkampf: Wettkampf, service: KutuService, wkview: 
         fc.setSelectedExtensionFilter(fc.getExtensionFilters.get(0))
         fc.setInitialDirectory(wettkampf.audiofilesDir)
         val file: File = fc.showOpenDialog(KuTuApp.stage)
-        if (file != null) {
+        if file != null then {
           try {
             saveAndAssignMedia(file.toPath.getFileName.toString, file.toURI)
           } catch {
             case e: Exception =>
               PageDisplayer.showErrorDialog("Audiofile laden", e.getMessage)
           }
-          adjust
+          adjust()
         }
       }
     }
   }
 
-  val deleteMediaAssignmentMenuItem: MenuItem = new MenuItem {
+  private val deleteMediaAssignmentMenuItem: MenuItem = new MenuItem {
     text = "Bodenmusik löschen ..."
     visible <== when(wettkampfmode) choose false otherwise true
     onAction = (event: ActionEvent) => {
@@ -127,22 +127,22 @@ case class AthletHeaderPane(wettkampf: Wettkampf, service: KutuService, wkview: 
       athletwertung.foreach { aw =>
         aw.update(service.updateWertung(aw.init.copy(mediafile = None).toWertung))
       }
-      adjust
+      adjust()
     }
   }
 
-  val mediaButton = new MenuButton("♪ Bodenmusik") {
+  private val mediaButton = new MenuButton("♪ Bodenmusik") {
     visible <== Bindings.createBooleanBinding(() =>
       (!wettkampfmode.value || wkview.items.value.exists(p => p.exists(w => w.init.mediafile.nonEmpty))) && !wkview.selectionModel().isEmpty && wkview.selectionModel().getSelectedItem.exists(we => we.init.wettkampfdisziplin.disziplin.name.equals("Boden")),
       wkview.selectionModel().selectedItemProperty(), wettkampfmode, wkview.items)
     items += KuTuApp.makeMenuAction("Media Player anzeigen ...") { (caption, action) =>
       Player.show()
     }
-    if (!isReadonly) {
+    if !isReadonly then {
       items += checkIsUseMyMediaPlayerMenuItem
     }
     items += currentMediaMenuItem
-    if (!isReadonly) {
+    if !isReadonly then {
       items += assignMediaMenuItem
       items += deleteMediaAssignmentMenuItem
     }
@@ -152,41 +152,41 @@ case class AthletHeaderPane(wettkampf: Wettkampf, service: KutuService, wkview: 
     (model: scalafx.beans.value.ObservableValue[IndexedSeq[WertungEditor], IndexedSeq[WertungEditor]],
      oldSelection: IndexedSeq[WertungEditor],
      newSelection: IndexedSeq[WertungEditor]) => {
-      if (newSelection != null && selected != newSelection) {
+      if newSelection != null && selected != newSelection then {
         selected = newSelection
-        adjust
+        adjust()
       }
-      else if (newSelection == null) {
+      else if newSelection == null then {
         selected = null
         index = -1
-        adjust
+        adjust()
       }
     })
 
   wkview.focusModel.value.focusedCell.onChange { (focusModel, oldTablePos, newTablePos) =>
-    if (newTablePos != null && selected != null) {
+    if newTablePos != null && selected != null then {
       val column = newTablePos.tableColumn
       val selrow = newTablePos.getRow
-      if (column != null && selrow > -1) {
+      if column != null && selrow > -1 then {
         column match {
           case access: WKTCAccess =>
             val selectedIndex = access.getIndex
-            if (selectedIndex > -1 && selectedIndex != index) {
+            if selectedIndex > -1 && selectedIndex != index then {
               index = selectedIndex
-              adjust
+              adjust()
             }
-            else if (selectedIndex < 0) {
+            else if selectedIndex < 0 then {
               index = -1
-              adjust
+              adjust()
             }
           case _ =>
             index = -1
-            adjust
+            adjust()
         }
       }
       else {
         index = -1
-        adjust
+        adjust()
       }
     }
   }
@@ -197,13 +197,13 @@ case class AthletHeaderPane(wettkampf: Wettkampf, service: KutuService, wkview: 
   HBox.setMargin(lblMedia, Insets(0d, 1d, 0d, 1d))
   HBox.setMargin(mediaButton, Insets(5d, 5d, 5d, 5d))
 
-  def adjust: Unit = {
+  def adjust(): Unit = {
     lblMedia.visible.value = this.mediaButton.visible.value
     assignMediaMenuItem.disable = isReadonly || wkview.selectionModel().isEmpty ||
       !wkview.selectionModel().getSelectedItem.exists(we => we.init.wettkampfdisziplin.disziplin.name.equals("Boden"))
     deleteMediaAssignmentMenuItem.disable = isReadonly || wkview.selectionModel().isEmpty ||
       !wkview.selectionModel().getSelectedItem.exists(we => we.init.wettkampfdisziplin.disziplin.name.equals("Boden") && we.init.mediafile.nonEmpty)
-    if (selected != null && index > -1 && index < selected.size) {
+    if selected != null && index > -1 && index < selected.size then {
       lblAthlet.text.value = selected(index).init.athlet.easyprint
       lblDisciplin.text.value = selected(index).init.wettkampfdisziplin.easyprint
       lblMedia.text.value = selected(index).init.mediafile.map(m => s"♪ ${m.name} ").getOrElse("")
@@ -211,7 +211,7 @@ case class AthletHeaderPane(wettkampf: Wettkampf, service: KutuService, wkview: 
       currentMediaMenuItem.text = s"Media Player mit Playlist von $title ..."
       currentMediaMenuItem.disable = selected.flatMap(a => a.init.mediafile.flatMap(m => service.loadMedia(m.id))).isEmpty
     }
-    else if (selected != null && selected.nonEmpty) {
+    else if selected != null && selected.nonEmpty then {
       lblMedia.text.value = ""
       lblAthlet.text.value = selected(0).init.athlet.easyprint
       lblDisciplin.text.value = Seq(selected(0).init.riege, selected(0).init.riege2).map(_.getOrElse("")).filter {

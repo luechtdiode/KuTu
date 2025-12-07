@@ -1,7 +1,7 @@
 package ch.seidel.kutu.renderer
 
 import ch.seidel.kutu.http.AbuseHandler
-import ch.seidel.kutu.renderer.PrintUtil.escaped
+import ch.seidel.kutu.renderer.ServerPrintUtil.escaped
 
 trait AbuseListHTMLRenderer {
 
@@ -43,9 +43,9 @@ trait AbuseListHTMLRenderer {
       .zipWithIndex
       .map { item =>
         val client = item._1
-        val cid = if (client.cid.contains("@") && client.cid.contains(":"))
+        val cid = if client.cid.contains("@") && client.cid.contains(":") then
           client.cid.split("@")(0) + " : " + client.cid.split(":")(1)
-        else if (client.cid.contains("@"))
+        else if client.cid.contains("@") then
           client.cid.split("@")(0)
         else
           client.cid

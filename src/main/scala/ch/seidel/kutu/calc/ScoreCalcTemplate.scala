@@ -5,25 +5,14 @@ import ch.seidel.kutu.http.JsonSupport
 
 import scala.math.BigDecimal.RoundingMode
 
+enum ScoreAggregateFn:
+  case Min, Max, Avg, Sum
 object ScoreAggregateFn {
-  def apply(fn: Option[String]): Option[ScoreAggregateFn] = fn.map{
-    case "Min" => Min
-    case "Max" => Max
-    case "Avg" => Avg
-    case "Sum" => Sum
+  val index: Map[String, ScoreAggregateFn] = ScoreAggregateFn.values.map(e => e.toString -> e).toMap
+  def apply(fn: Option[String]): Option[ScoreAggregateFn] = fn.flatMap {
+    index.get
   }.orElse(None)
-
-  def values: List[String] = List(Min,Max,Avg,Sum).map(_.toString)
 }
-sealed trait ScoreAggregateFn
-
-case object Min extends ScoreAggregateFn
-
-case object Max extends ScoreAggregateFn
-
-case object Avg extends ScoreAggregateFn
-
-case object Sum extends ScoreAggregateFn
 
 object ScoreCalcVariable_ {
   def apply(source: String, prefix: String, name: String, scale: Option[Int]): ScoreCalcVariable = scale match {
@@ -51,12 +40,12 @@ case class ScoreCalcTemplateView(
                                   eExpression: String, eVariables: List[ScoreCalcVariable], eDetails: Boolean,
                                   pExpression: String, pVariables: List[ScoreCalcVariable], pDetails: Boolean,
                                   aggregateFn: Option[ScoreAggregateFn]) extends DataObject  {
-  def variables = (dVariables ++ eVariables ++ pVariables).groupBy(_.index).values.toList
-  def readablDFormula = if (dVariables.isEmpty) "" else aggregateFn match {
+  def variables: List[List[ScoreCalcVariable]] = (dVariables ++ eVariables ++ pVariables).groupBy(_.index).values.toList
+  def readablDFormula: String = if dVariables.isEmpty then "" else aggregateFn match {
     case None => dExpression
     case Some(agf) => dVariables.map(v => v.value).mkString(s"$agf(", "," ,")")
   }
-  def readablEFormula = if (eVariables.isEmpty) "" else aggregateFn match {
+  def readablEFormula: String = if eVariables.isEmpty then "" else aggregateFn match {
     case None => eExpression
     case Some(agf) => eVariables.map(v => v.value).mkString(s"$agf(", "," ,")")
   }
@@ -76,7 +65,7 @@ case object TemplateJsonReader extends JsonSupport {
 case class ScoreCalcTemplate(id: Long, wettkampfId: Option[Long], disziplinId: Option[Long], wettkampfdisziplinId: Option[Long], dFormula: String, eFormula: String, pFormula: String, aggregateFn: Option[ScoreAggregateFn]) {
   private val varPattern = "\\$([DAEBP]{1})([\\w]+([\\w\\d\\s\\-]*[\\w\\d]{1})?)(\\.([0123]+))?".r
 
-  val scoreCalcTemplateSorter: ScoreCalcTemplate => String = t => {
+  private val scoreCalcTemplateSorter: ScoreCalcTemplate => String = t => {
     val wkm = t.wettkampfId match {
       case Some(_) => 100
       case None => 1000
@@ -89,7 +78,7 @@ case class ScoreCalcTemplate(id: Long, wettkampfId: Option[Long], disziplinId: O
       case Some(_) => 1
       case None => 3000
     }
-    f"${(wkm + dm + wdm)}%04d"
+    f"${wkm + dm + wdm}%04d"
   }
   val dVariables: List[ScoreCalcVariable] = parseVariables(dFormula)
   val dResolveDetails: Boolean = dFormula.endsWith("^")
@@ -102,7 +91,7 @@ case class ScoreCalcTemplate(id: Long, wettkampfId: Option[Long], disziplinId: O
   lazy val variables: List[ScoreCalcVariable] = dVariables ++ eVariables ++ pVariables
 
   def toView(values: List[ScoreCalcVariable]): ScoreCalcTemplateView = {
-    val updateVarsOf = updateVarsWith(values) _
+    val updateVarsOf = updateVarsWith(values)
     ScoreCalcTemplateView(
       dExpression(values), updateVarsOf(dVariables), dResolveDetails,
       eExpression(values), updateVarsOf(eVariables), eResolveDetails,
@@ -147,21 +136,21 @@ case class ScoreCalcTemplate(id: Long, wettkampfId: Option[Long], disziplinId: O
   private def parseVariables(formula: String): List[ScoreCalcVariable] = varPattern.findAllMatchIn(formula).map { m =>
     val prefix = m.group(1)
     val name = m.group(2)
-    val scale = if (m.groupCount == 5 && m.group(5) != null && !m.group(5).equals("0")) Some(m.group(5)) else None
+    val scale = if m.groupCount == 5 && m.group(5) != null && !m.group(5).equals("0") then Some(m.group(5)) else None
     ScoreCalcVariable_(m.group(0), prefix, name, scale.map(_.toInt))
   }.distinct.flatMap{scv => aggregateFn match {
     case None => List(scv.copy(index = 0))
     case Some(_) => List(scv.copy(index = 0), scv.copy(index = 1))
   }}.toList
 
-  def renderExpression(formula: String, values: List[ScoreCalcVariable]): String = {
+  private def renderExpression(formula: String, values: List[ScoreCalcVariable]): String = {
     val f = values.foldLeft(formula) { (acc, variable) =>
       acc.replace(variable.source, variable.value.toString())
     }
     val ff = variables.foldLeft(f) { (acc, variable) =>
       acc.replace(variable.source, variable.value.toString())
     }
-    if (ff.endsWith("^")) ff.dropRight(1) else ff
+    if ff.endsWith("^") then ff.dropRight(1) else ff
   }
 
   def validateFormula(formula: String):String = {

@@ -25,6 +25,10 @@ scratch.*
 *.code-workspace
 .classpath
 .project
+/project/project
+/project/target
+/project/.bloop
+/project/metals.sbt
 *travis*.json
 jpack.sh
 deploy-aws.sh

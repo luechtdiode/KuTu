@@ -1,10 +1,10 @@
 package ch.seidel.kutu.view
 
+import ch.seidel.kutu.domain.*
+import scalafx.beans.property.*
+
 import java.sql.Date
 import java.text.SimpleDateFormat
-
-import ch.seidel.kutu.domain._
-import scalafx.beans.property._
 
 object AthletEditor {
   def apply(init: Athlet) = new AthletEditor(init)
@@ -24,14 +24,14 @@ object AthletEditor {
 class AthletEditor(init: Athlet) {
   val sdf = new SimpleDateFormat("dd.MM.yyyy")
   val jsid = new StringProperty(s"${init.js_id}")
-  val geschlecht = new StringProperty(if(init.geschlecht.toUpperCase.startsWith("M")) "M" else "W")
+  val geschlecht = new StringProperty(if init.geschlecht.toUpperCase.startsWith("M") then "M" else "W")
   val name = new StringProperty(init.name)
   val vorname = new StringProperty(init.vorname)
   val gebdat = new StringProperty(init.gebdat match {case Some(d) => sdf.format(d); case _ => ""})
   val strasse = new StringProperty(init.strasse)
   val plz = new StringProperty(init.plz)
   val ort = new StringProperty(init.ort)
-  val activ = new StringProperty(if (init.activ) {
+  val activ = new StringProperty(if init.activ then {
     "Aktiv"
   } else {
     "Inaktiv"
@@ -60,5 +60,5 @@ class AthletEditor(init: Athlet) {
     }
   }
 
-  def commit = Athlet(init.id, Integer.valueOf(jsid.value), if(geschlecht.value.toUpperCase.startsWith("M")) "M" else "W", name.value, vorname.value, optionOfGebDat, strasse.value, plz.value, ort.value, init.verein, activ.value.toUpperCase().startsWith("A"))
+  def commit = Athlet(init.id, Integer.valueOf(jsid.value), if geschlecht.value.toUpperCase.startsWith("M") then "M" else "W", name.value, vorname.value, optionOfGebDat, strasse.value, plz.value, ort.value, init.verein, activ.value.toUpperCase().startsWith("A"))
 }

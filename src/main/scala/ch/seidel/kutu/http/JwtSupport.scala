@@ -1,17 +1,17 @@
 package ch.seidel.kutu.http
 
-import java.util.{Base64, Date}
-import java.util.concurrent.TimeUnit
+import ch.seidel.jwt
+import ch.seidel.jwt.{JsonWebToken, JwtClaimsSet, JwtClaimsSetMap}
+import ch.seidel.kutu.Config.*
+import ch.seidel.kutu.domain.Wettkampf
 import org.apache.pekko.http.scaladsl.model.StatusCodes
 import org.apache.pekko.http.scaladsl.model.headers.RawHeader
 import org.apache.pekko.http.scaladsl.server.{Directive0, Directive1, Directives}
-import ch.seidel.jwt
-import ch.seidel.jwt.{JsonWebToken, JwtClaimsSet, JwtClaimsSetMap}
-import ch.seidel.kutu.Config._
-import ch.seidel.kutu.domain.Wettkampf
 import org.slf4j.LoggerFactory
 
 import java.time.{Duration, Instant}
+import java.util.concurrent.TimeUnit
+import java.util.{Base64, Date}
 
 trait JwtSupport extends Directives {
   private lazy val userKey = "user"
@@ -33,17 +33,17 @@ trait JwtSupport extends Directives {
 
   def authenticateWith(jwtOption: Option[String], rejectRequest: Boolean): Directive1[String] = jwtOption match {
     case Some(jwt) if JsonWebToken.validate(jwt, jwtSecretKey) =>
-      if (isTokenExpired(jwt)) {
+      if isTokenExpired(jwt) then {
         complete(StatusCodes.Unauthorized -> "Token expired.")
       } else {
         getUserID(getClaims(jwt)) match {
           case Some(id) => provide(id)
-          case _=> if (rejectRequest) reject else complete(StatusCodes.Unauthorized)
+          case _=> if rejectRequest then reject else complete(StatusCodes.Unauthorized)
         }
       }
 
     case _ =>
-      if (rejectRequest) reject else complete(StatusCodes.Unauthorized)
+      if rejectRequest then reject else complete(StatusCodes.Unauthorized)
   }
 
   def respondWithJwtHeader(userId: String): Directive0 = {
@@ -57,16 +57,16 @@ trait JwtSupport extends Directives {
     respondWithHeader(RawHeader(jwtAuthorizationKey, jwt))
   }
 
-  def createOneTimeResetRegistrationLoginToken(competitionUUID: String, registrationId: Long) = {
+  def createOneTimeResetRegistrationLoginToken(competitionUUID: String, registrationId: Long): String = {
     val token = jwt.JsonWebToken(jwtHeader, setClaims(registrationId.toString, 1), jwtSecretKey)
-    new String(Base64.getUrlEncoder.encodeToString((s"registration&c=$competitionUUID&rid=$registrationId&rs=$token").getBytes))
+    new String(Base64.getUrlEncoder.encodeToString(s"registration&c=$competitionUUID&rid=$registrationId&rs=$token".getBytes))
   }
 
   def setClaims(userid: String, wettkampfDate: Date): JwtClaimsSetMap = {
     val wkStart = Instant.ofEpochMilli(wettkampfDate.getTime).truncatedTo(TimeUnit.DAYS.toChronoUnit)
     val wkEnd = wkStart.plus(Duration.ofDays(1))
     val originalTimeout = Duration.between(Instant.now(), wkEnd)
-    val permissionTimeout = if(originalTimeout.toDays > 3 || originalTimeout.toDays < jwtTokenExpiryPeriodInDays) {
+    val permissionTimeout = if originalTimeout.toDays > 3 || originalTimeout.toDays < jwtTokenExpiryPeriodInDays then {
       Instant.now().plus(Duration.ofDays(jwtTokenExpiryPeriodInDays))
     } else {
       wkEnd
@@ -86,12 +86,12 @@ trait JwtSupport extends Directives {
     )
   )
 
-  def getClaims(jwt: String) = jwt match {
+  private def getClaims(jwt: String) = jwt match {
     case JsonWebToken(_, claims, _) => claims.asSimpleMap.toOption
     case _ => None
   }
 
-  def getUserID(claims: Option[Map[String, String]]): Option[String] = claims.map(_.get(userKey)).get
+  private def getUserID(claims: Option[Map[String, String]]): Option[String] = claims.map(_.get(userKey)).get
 
   def getExpiration(jwt: String): Option[Date] = getClaims(jwt) match {
     case Some(claims) => claims.get(expiredAtKey) match {
@@ -108,7 +108,7 @@ trait JwtSupport extends Directives {
       claims.get(expiredAtKey) match {
         case Some(value) =>
           val ret = value.toLong < System.currentTimeMillis()
-          if (ret) {
+          if ret then {
             logger.warn(s"token (${getUserID(Some(claims))}) expired! expiredAt: ${formatDateTime(new Date(value.toLong))}")
           }
           ret

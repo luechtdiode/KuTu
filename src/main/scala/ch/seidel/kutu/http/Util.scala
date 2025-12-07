@@ -1,18 +1,18 @@
 package ch.seidel.kutu.http
 
+import org.apache.pekko.http.scaladsl.model.RemoteAddress
+import spray.json.{JsString, JsValue, JsonReader, *}
+
 import java.nio.charset.StandardCharsets
 import java.security.spec.InvalidKeySpecException
 import java.security.{MessageDigest, NoSuchAlgorithmException, SecureRandom}
+import java.sql
 import java.text.SimpleDateFormat
-import java.util.{Base64, Date}
-
-import org.apache.pekko.http.scaladsl.model.RemoteAddress
-import javax.crypto.SecretKeyFactory
-import javax.crypto.spec.PBEKeySpec
-import spray.json.{JsString, JsValue, JsonReader, _}
-
 import java.time.format.DateTimeFormatter
 import java.time.{LocalDate, ZoneId}
+import java.util.{Base64, Date}
+import javax.crypto.SecretKeyFactory
+import javax.crypto.spec.PBEKeySpec
 import scala.util.Try
 
 trait EnrichedJson {
@@ -22,16 +22,16 @@ trait EnrichedJson {
 
     def canConvert[T](implicit reader: JsonReader[T]): Boolean = Try(jsValue.convertTo[T]).isSuccess
 
-    def withoutFields(fieldnames: String*) = {
+    def withoutFields(fieldnames: String*): JsObject = {
       jsValue.asJsObject.copy(jsValue.asJsObject.fields -- fieldnames)
     }
 
-    def addFields(fieldnames: Map[String, JsValue]) = {
+    def addFields(fieldnames: Map[String, JsValue]): JsObject = {
       jsValue.asJsObject.copy(jsValue.asJsObject.fields ++ fieldnames)
     }
 
-    def toJsonStringWithType[T](t: T) = {
-      jsValue.addFields(Map(("type" -> JsString(t.getClass.getSimpleName)))).compactPrint
+    def toJsonStringWithType[T](t: T): String = {
+      jsValue.addFields(Map("type" -> JsString(t.getClass.getSimpleName))).compactPrint
     }
   }
 
@@ -48,7 +48,7 @@ trait EnrichedJson {
       override def initialValue() = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSSZ")
     }
     private val localIsoDateTimeFormatter = new ThreadLocal[DateTimeFormatter] {
-      override def initialValue() = DateTimeFormatter.ofPattern("yyyy-MM-dd'T00:00:00.000+0000'")
+      override def initialValue(): DateTimeFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd'T00:00:00.000+0000'")
     }
 
     private def dateToIsoString(date: Date) = localIsoDateTimeFormatter.get().format(LocalDate.ofInstant(date.toInstant, ZoneId.of("Z")))
@@ -57,9 +57,9 @@ trait EnrichedJson {
       localIsoDateFormatter.get().parse(date)
     }.toOption
 
-    def write(date: Date) = JsString(dateToIsoString(date))
+    def write(date: Date): JsString = JsString(dateToIsoString(date))
 
-    def read(json: JsValue) = json match {
+    def read(json: JsValue): Date = json match {
       case JsString(rawDate) =>
         parseIsoDateString(rawDate)
           .fold(deserializationError(s"Expected ISO Date format, got $rawDate"))(identity)
@@ -74,7 +74,7 @@ trait EnrichedJson {
     }
 
     private val localIsoDateTimeFormatter = new ThreadLocal[DateTimeFormatter] {
-      override def initialValue() = DateTimeFormatter.ofPattern("yyyy-MM-dd'T00:00:00.000+0000'")
+      override def initialValue(): DateTimeFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd'T00:00:00.000+0000'")
     }
 
     private def dateToIsoString(date: java.sql.Date) = localIsoDateTimeFormatter.get().format(date.toLocalDate)
@@ -83,9 +83,9 @@ trait EnrichedJson {
       new java.sql.Date(localIsoDateFormatter.get().parse(date).getTime)
     }.toOption
 
-    def write(date: java.sql.Date) = JsString(dateToIsoString(date))
+    def write(date: java.sql.Date): JsString = JsString(dateToIsoString(date))
 
-    def read(json: JsValue) = json match {
+    def read(json: JsValue): sql.Date = json match {
       case JsString(rawDate) =>
         parseIsoDateString(rawDate)
           .fold(deserializationError(s"Expected ISO Date format, got $rawDate"))(identity)
@@ -94,46 +94,24 @@ trait EnrichedJson {
   }
 
 
-  import scala.reflect.ClassTag
-  import scala.reflect.runtime.universe._
+  case class CaseObjectJsonSupport[T](values: Array[T]) extends RootJsonFormat[T] {
+    // We can rely on the automatically generated valueOf method provided by Java/Scala enums
+    private val valueOfMethod: String => T = (name: String) => values.find(v => v.toString.equals(name)).get
 
-  def getObjectInstance(clsName: String): AnyRef = {
-    val mirror = runtimeMirror(getClass.getClassLoader)
-    val module = mirror.staticModule(clsName)
-    mirror.reflectModule(module).instance.asInstanceOf[AnyRef]
-  }
+    override def write(obj: T): JsValue = JsString(obj.toString) // Use .name() which is equivalent to .toString for enums
 
-  def objectBy[T: ClassTag](name: String): T = {
-    val c = implicitly[ClassTag[T]]
-    try {
-      getObjectInstance(s"$c$$$name$$").asInstanceOf[T]
-    } catch {
-      case e: Exception => {
-        val cnn = c.toString
-        val cn = cnn.substring(0, cnn.lastIndexOf("."))
-        getObjectInstance(s"$cn.$name$$").asInstanceOf[T]
-      }
+    override def read(json: JsValue): T = json match {
+      case JsString(txt) =>
+        try {
+          valueOfMethod(txt)
+        } catch {
+          case _: IllegalArgumentException =>
+            deserializationError(s"'$txt' is not a valid value for enum ${values.mkString("(", ", ", ")")}")
+        }
+      case somethingElse =>
+        deserializationError(s"Expected a JsString for enum ${values.mkString("(", ", ", ")")} instead of $somethingElse")
     }
   }
-
-  def string2trait[T: TypeTag : ClassTag]: Map[JsValue, T] = {
-    val clazz = typeOf[T].typeSymbol.asClass
-    clazz.knownDirectSubclasses.filter(sc => sc.toString.startsWith("object ")).map { sc =>
-      val objectName = sc.toString.stripPrefix("object ")
-      (JsString(objectName), objectBy[T](objectName))
-    }.toMap
-  }
-
-  class CaseObjectJsonSupport[T: TypeTag : ClassTag] extends RootJsonFormat[T] {
-    val string2T: Map[JsValue, T] = string2trait[T]
-
-    def defaultValue: T = deserializationError(s"${implicitly[ClassTag[T]].runtimeClass.getCanonicalName} expected")
-
-    override def read(json: JsValue): T = string2T.getOrElse(json, defaultValue)
-
-    override def write(value: T) = JsString(value.toString())
-  }
-
 }
 
 trait Hashing {
@@ -145,13 +123,13 @@ trait Hashing {
     digest.digest(text.getBytes(StandardCharsets.UTF_8)).map("%02X".format(_)).mkString
   }
 
-  def matchHashed(saltedSecretHash: String)(secret: String) = {
+  def matchHashed(saltedSecretHash: String)(secret: String): String = {
     val split = saltedSecretHash.split(":")
     val salt = Base64.getDecoder.decode(split(0))
     hashedWithSalt(secret, salt)
   }
 
-  def hashed(secret: String) = {
+  def hashed(secret: String): String = {
     val saltb = new Array[Byte](16)
     random.nextBytes(saltb)
     hashedWithSalt(secret, saltb)
@@ -166,7 +144,7 @@ trait Hashing {
       salt + ":" + Base64.getEncoder.encodeToString(factory.generateSecret(spec).getEncoded)
     } catch {
       case e@(_: NoSuchAlgorithmException | _: InvalidKeySpecException) =>
-        for (i <- 0 until iterationCount) {
+        for i <- 0 until iterationCount do {
           random.reseed()
         }
         salt + ":" + (salt + secret).hashCode
@@ -175,7 +153,7 @@ trait Hashing {
 }
 
 trait IpToDeviceID {
-  def makeDeviceId(ip: RemoteAddress, context: Option[String]) =
+  def makeDeviceId(ip: RemoteAddress, context: Option[String]): String =
     ip.toOption.map(_.getHostAddress).getOrElse("unknown") + context.map("@" + _).getOrElse("")
 
 }

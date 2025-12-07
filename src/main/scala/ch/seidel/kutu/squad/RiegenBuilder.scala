@@ -1,6 +1,6 @@
 package ch.seidel.kutu.squad
 
-import ch.seidel.kutu.domain._
+import ch.seidel.kutu.domain.*
 import ch.seidel.kutu.squad.RiegenBuilder.selectRiegenGrouper
 
 /** Riegenbuilder:
@@ -51,14 +51,14 @@ object RiegenBuilder {
       case RiegeRaw.RIEGENMODE_BY_JG => ATTGrouper
       case RiegeRaw.RIEGENMODE_BY_JG_VEREIN => JGClubGrouper
       case _ =>
-        if (jahrgangsklassen.nonEmpty || altersklassen.nonEmpty) {
+        if jahrgangsklassen.nonEmpty || altersklassen.nonEmpty then {
           JGClubGrouper
         } else {
           KuTuGeTuGrouper
         }
     }
   }
-  def generateRiegenName(w: WertungView) = {
+  def generateRiegenName(w: WertungView): String = {
     val riegenmode = w.wettkampfdisziplin.programm.riegenmode
     val aks = w.wettkampf.altersklassen match {
       case Some(s: String) if s.nonEmpty => Some(s)
@@ -74,7 +74,7 @@ object RiegenBuilder {
   def generateRiegen2Name(w: WertungView): Option[String] = {
     val getuMatcher = ".*GETU.*/i".r
     w.wettkampfdisziplin.programm.head.name match {
-      case getuMatcher() if (w.athlet.geschlecht.equalsIgnoreCase("M")) =>
+      case getuMatcher() if w.athlet.geschlecht.equalsIgnoreCase("M") =>
         Some(s"Barren ${w.wettkampfdisziplin.programm.name}")
       case _ => None
     }

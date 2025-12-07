@@ -7,10 +7,10 @@ trait DisziplinResultMapper  {
     val value: Option[String] = rs.<<?
     value.map(BigDecimal(_))
   }
-  implicit val getDisziplinResult: GetResult[Disziplin] = GetResult(r =>
+  implicit val getDisziplinResult: GetResult[Disziplin] = GetResult(using r =>
     Disziplin(r.<<[Long], r.<<[String]))
-  implicit val getDisziplinOptionResult: GetResult[Option[Disziplin]] = GetResult(r => r.nextLongOption() match {
+  implicit val getDisziplinOptionResult: GetResult[Option[Disziplin]] = GetResult(using r => r.nextLongOption() match {
     case Some(id) => Some(Disziplin(id, r.<<[String]))
-    case _        => {r.skip; None}
+    case _        => r.skip; None
   })
 }

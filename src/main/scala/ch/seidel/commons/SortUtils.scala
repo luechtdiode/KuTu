@@ -1,7 +1,7 @@
 package ch.seidel.commons
 
 import ch.seidel.kutu.KuTuAppThumbNail
-import scalafx.scene.control._
+import scalafx.scene.control.*
 
 /**
  * utility to sort the items

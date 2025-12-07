@@ -1,9 +1,10 @@
 package ch.seidel.kutu.load.competition
 
-import io.gatling.core.Predef.{constantConcurrentUsers, exec, _}
-import io.gatling.http.Predef._
+import io.gatling.core.Predef.{constantConcurrentUsers, exec, *}
+import io.gatling.http.Predef.*
 
-import scala.concurrent.duration._
+import scala.concurrent.duration.*
+import scala.language.postfixOps
 
 class SimulationBottmingenD1 extends Simulation {
   // mws-01

@@ -13,15 +13,15 @@ object Gleichstandsregel {
   private val kutustv = "StreichWertungen(Endnote,Min)/StreichWertungen(E-Note,Min)/StreichWertungen(D-Note,Min)"
 
   val predefined = Map(
-      ("Ohne - Punktgleichstand => gleicher Rang" -> "Ohne")
-    , ("GeTu Punktgleichstandsregel" -> getu)
-    , ("KuTu Punktgleichstandsregel" -> kutu)
-    , ("KuTu STV Punktgleichstandsregel" -> kutustv)
-    , ("Individuell" -> "")
+      "Ohne - Punktgleichstand => gleicher Rang" -> "Ohne"
+    , "GeTu Punktgleichstandsregel" -> getu
+    , "KuTu Punktgleichstandsregel" -> kutu
+    , "KuTu STV Punktgleichstandsregel" -> kutustv
+    , "Individuell" -> ""
   )
-  val disziplinPattern = "^Disziplin\\((.+)\\)$".r
-  val streichDisziplinPattern = "^StreichDisziplin\\((.+)\\)$".r
-  val streichWertungPattern = "^StreichWertungen\\((Endnote|E-Note|D-Note)(,(Min|Max))*\\)$".r
+  private val disziplinPattern = "^Disziplin\\((.+)\\)$".r
+  private val streichDisziplinPattern = "^StreichDisziplin\\((.+)\\)$".r
+  private val streichWertungPattern = "^StreichWertungen\\((Endnote|E-Note|D-Note)(,(Min|Max))*\\)$".r
 
   def apply(formel: String): Gleichstandsregel = {
     val gleichstandsregelList = parseFormel(formel)
@@ -30,7 +30,7 @@ object Gleichstandsregel {
 
   def validated(regel: Gleichstandsregel): Gleichstandsregel = {
     try {
-      if (STANDARD_SCORE_FACTOR / 1000L < regel.powerRange) {
+      if STANDARD_SCORE_FACTOR / 1000L < regel.powerRange then {
         println(s"Max scorefactor ${STANDARD_SCORE_FACTOR / 1000L}, powerRange ${regel.powerRange}, zu gross: ${regel.powerRange - STANDARD_SCORE_FACTOR / 1000L}")
         throw new RuntimeException("Bitte reduzieren, es sind zu viele Regeln definiert")
       }
@@ -58,38 +58,39 @@ object Gleichstandsregel {
       case "Ohne" => Some(GleichstandsregelDefault.asInstanceOf[Gleichstandsregel])
       case s: String => Some(GleichstandsregelDefault.asInstanceOf[Gleichstandsregel])
     }
-    if (mappedFactorizers.isEmpty) {
+    if mappedFactorizers.isEmpty then {
       GleichstandsregelList(List(GleichstandsregelDefault))
     } else {
       GleichstandsregelList(mappedFactorizers)
     }
   }
-def createValidator: Validator[String] = (control, formeltext) => {
-  try {
-    val gleichstandsregelList = parseFormel(formeltext)
-    validated(gleichstandsregelList)
-    ValidationResult.fromMessageIf(control, "Formel valid", Severity.ERROR, false)
-  } catch {
-    case e: Exception =>
-      ValidationResult.fromMessageIf(control, e.getMessage, Severity.ERROR, true)
-  }
-}
 
-def apply(programmId: Long): Gleichstandsregel = {
+  def createValidator: Validator[String] = (control, formeltext) => {
+    try {
+      val gleichstandsregelList = parseFormel(formeltext)
+      validated(gleichstandsregelList)
+      ValidationResult.fromMessageIf(control, "Formel valid", Severity.ERROR, false)
+    } catch {
+      case e: Exception =>
+        ValidationResult.fromMessageIf(control, e.getMessage, Severity.ERROR, true)
+    }
+  }
+
+  def apply(programmId: Long): Gleichstandsregel = {
     programmId match {
-      case id if (id > 0 && id < 4) => // Athletiktest
+      case id if id > 0 && id < 4 => // Athletiktest
         GleichstandsregelDefault
-      case id if ((id > 10 && id < 20) || id == 28) => // KuTu Programm
+      case id if (id > 10 && id < 20) || id == 28 => // KuTu Programm
         Gleichstandsregel(kutustv)
       case id if (id > 19 && id < 27) || (id > 73 && id < 84) => // GeTu Kategorie
         Gleichstandsregel(getu)
-      case id if (id > 30 && id < 41) => // KuTuRi Programm
+      case id if id > 30 && id < 41 => // KuTuRi Programm
         Gleichstandsregel(kutustv)
       case _ => GleichstandsregelDefault
     }
   }
   def apply(wettkampf: Wettkampf): Gleichstandsregel = wettkampf.punktegleichstandsregel match {
-    case Some(regel) if (regel.trim.nonEmpty) => this (regel)
+    case Some(regel) if regel.trim.nonEmpty => this (regel)
     case _ => this (wettkampf.programmId)
   }
 }
@@ -112,10 +113,10 @@ case class GleichstandsregelList(regeln: List[Gleichstandsregel]) extends Gleich
       .foldLeft((BigDecimal(0), STANDARD_SCORE_FACTOR/1000)){(acc, regel) =>
         val range = regel.powerRange
         val factorFull = regel.factorize(athlWertungen)
-        val factor = if (factorFull > range) (factorFull % range).max(1) else factorFull
+        val factor = if factorFull > range then (factorFull % range).max(1) else factorFull
         val contribution = factor * acc._2 / range
         val ret = (acc._1 + contribution, (acc._2 / regel.powerRange).setScale(0, RoundingMode.FLOOR))
-        if (factor > range) {
+        if factor > range then {
           println(s"""
                      |Rule:   ${regel.toFormel}
                      |acc:    $acc,
@@ -150,7 +151,7 @@ case class GleichstandsregelDisziplin(disziplinOrder: List[String]) extends Glei
   override def toFormel: String = s"Disziplin${disziplinOrder.mkString("(", ",", ")")}"
   override def powerRange: BigDecimal = BigDecimal(maxvalue).pow(disziplinOrder.length)
 
-  val zippedDisziplins = disziplinOrder.reverse.zipWithIndex
+  private val zippedDisziplins = disziplinOrder.reverse.zipWithIndex
   override def factorize(athlWertungen: List[WertungView]): BigDecimal = {
     val result = zippedDisziplins.foldLeft(BigDecimal(0L)) { (acc, disziplin) =>
       val wertungen = athlWertungen.filter(_.wettkampfdisziplin.disziplin.name.equals(disziplin._1))
@@ -167,7 +168,7 @@ case class GleichstandsregelStreichDisziplin(disziplinOrder: List[String]) exten
   override val maxvalue: Int = 300 * 6//disziplinOrder.length
   override def powerRange: BigDecimal = BigDecimal(maxvalue).pow(disziplinOrder.length+1)
 
-  val reversedOrder = disziplinOrder.reverse.zipWithIndex
+  private val reversedOrder = disziplinOrder.reverse.zipWithIndex
   override def factorize(athlWertungen: List[WertungView]): BigDecimal = {
     reversedOrder.foldLeft(BigDecimal(0L)) { (acc, disziplin) =>
       val wertungen = athlWertungen.filter(!_.wettkampfdisziplin.disziplin.name.equals(disziplin._1))
@@ -179,9 +180,9 @@ case class GleichstandsregelStreichDisziplin(disziplinOrder: List[String]) exten
 }
 
 case class GleichstandsregelStreichWertungen(typ: String = "Endnote", minmax: String = "Min") extends Gleichstandsregel {
-  private val _minmax = if (minmax == null || minmax.isEmpty) "Min" else minmax
+  private val _minmax = if minmax == null || minmax.isEmpty then "Min" else minmax
   override def toFormel: String = s"StreichWertungen($typ,${_minmax})"
-  val maxGeraete = 6
+  private val maxGeraete = 6
   override val maxvalue: Int = 180
   override def powerRange: BigDecimal = BigDecimal(maxvalue).pow(maxGeraete)
 
@@ -205,7 +206,7 @@ case class GleichstandsregelStreichWertungen(typ: String = "Endnote", minmax: St
   }
 
   private def f(athlWertungen: List[WertungView]): BigDecimal = {
-    if (athlWertungen.nonEmpty) {
+    if athlWertungen.nonEmpty then {
       val level = BigDecimal(maxvalue).pow(athlWertungen.size)
       val sum = athlWertungen
         .map(pickWertung)

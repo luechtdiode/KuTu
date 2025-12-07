@@ -5,7 +5,7 @@ import ch.seidel.kutu.actors.AthletWertungUpdated
 import ch.seidel.kutu.calc.ScoreCalcTemplate
 import ch.seidel.kutu.http.{JsonSupport, WebSocketClient}
 import org.slf4j.LoggerFactory
-import slick.jdbc.SQLiteProfile.api._
+import slick.jdbc.SQLiteProfile.api.*
 import spray.json.enrichAny
 
 import java.lang.IllegalArgumentException
@@ -26,22 +26,14 @@ object WertungServiceBestenResult {
     logger.info(s"actually best-scored: \n${bestenResults.values.map(_.shortLogText).mkString("\n")}")
   }
   
-  def getBestenResults = {
-    bestenResults
-/* Athlet, Disziplin, Wertung (Endnote)
-    .map(w =>(w._2.athlet.easyprint, w._2.wettkampfdisziplin.disziplin.name, w._2.endnote))    
-    .sortBy(_._3)
- */
-    .map(_._2)    
-    .toList
-  }
+  def getBestenResults: List[WertungView] = bestenResults.values.toList
   
-  def resetBestenResults: Unit = {
+  def resetBestenResults(): Unit = {
     shouldResetBestenResults = true;
   }
 
-  def cleanBestenResults: Unit = {
-    if(shouldResetBestenResults) {
+  def cleanBestenResults(): Unit = {
+    if shouldResetBestenResults then {
       bestenResults = Map[String,WertungView]()
       shouldResetBestenResults = false
     }
@@ -50,7 +42,7 @@ object WertungServiceBestenResult {
 
 abstract trait WertungService extends DBService with WertungResultMapper with DisziplinService with RiegenService with JsonSupport {
   private val logger = LoggerFactory.getLogger(this.getClass)
-  import WertungServiceBestenResult._
+  import WertungServiceBestenResult.*
   
   def selectWertungen(vereinId: Option[Long] = None, athletId: Option[Long] = None, wettkampfId: Option[Long] = None, disziplinId: Option[Long] = None, wkuuid: Option[String] = None): Seq[WertungView] = {
     implicit val cid = wettkampfId.getOrElse(0)
@@ -152,7 +144,7 @@ abstract trait WertungService extends DBService with WertungResultMapper with Di
         .filter(_.nonEmpty)
         .map(_.get)
         .filter(_ > 0).toSet
-      if (riegen.nonEmpty) {
+      if riegen.nonEmpty then {
         sql""" select distinct disziplin_id from wettkampfdisziplin
              where programm_Id in #$programme
                and disziplin_id in #${riegen.mkString("(", ",", ")")}
@@ -167,9 +159,9 @@ abstract trait WertungService extends DBService with WertungResultMapper with Di
   }
 
   def updateOrinsertWertungenZuWettkampf(wettkampf: Wettkampf, wertungen: Iterable[Wertung]) = {
-    val insertWertungenAction = DBIO.sequence(for {
+    val insertWertungenAction = DBIO.sequence(for
       w <- wertungen
-    } yield {
+    yield {
       sqlu"""
                 insert into wertung
                 (athlet_Id, wettkampfdisziplin_Id, wettkampf_Id, note_d, note_e, endnote, riege, riege2, team, media_id, variables)
@@ -226,9 +218,9 @@ abstract trait WertungService extends DBService with WertungResultMapper with Di
     implicit val cache = scala.collection.mutable.Map[Long, ProgrammView]()
     implicit val cache2 = scala.collection.mutable.Map[Long, List[ScoreCalcTemplate]]()
     //implicit val mapper = getAthletViewResult
-    val ret = database.run(DBIO.sequence(for {
+    val ret = database.run(DBIO.sequence(for
       w <- ws
-    } yield {
+    yield {
       sqlu"""       UPDATE wertung
                     SET note_d=${w.noteD}, note_e=${w.noteE}, endnote=${w.endnote}, riege=${w.riege}, riege2=${w.riege2}, team=${w.team.getOrElse(0)}, media_id=${w.mediafile.map(_.id)}, variables=${w.variables.map(_.toJson.compactPrint)}
                     WHERE id=${w.id}
@@ -297,8 +289,8 @@ abstract trait WertungService extends DBService with WertungResultMapper with Di
        """.as[WertungView](getResultWertungView).head).transactionally)
     
     ret.map{wv =>
-      cleanBestenResults
-      if(wv.endnote.sum >= Config.bestenlisteSchwellwert) {
+      cleanBestenResults()
+      if wv.endnote.sum >= Config.bestenlisteSchwellwert then {
         putWertungToBestenResults(wv)
       }
       val awu = AthletWertungUpdated(wv.athlet, wv.toWertung, wv.wettkampf.uuid.get, "", wv.wettkampfdisziplin.disziplin.id, wv.wettkampfdisziplin.programm.easyprint)
@@ -335,7 +327,7 @@ abstract trait WertungService extends DBService with WertungResultMapper with Di
   @throws(classOf[Exception]) // called from rich-client-app via ResourceExchanger
   def updateWertungWithIDMapping(w: Wertung, cache2: scala.collection.mutable.Map[Long, List[ScoreCalcTemplate]] = scala.collection.mutable.Map[Long, List[ScoreCalcTemplate]]()): Wertung = {
     val wv = validateWertung(w, cache2)
-    val wvId = Await.result(database.run((for {
+    val wvId = Await.result(database.run((for
         updated <- sqlu"""
                   UPDATE wertung
                   SET note_d=${wv.noteD}, note_e=${wv.noteE}, endnote=${wv.endnote}, riege=${wv.riege}, riege2=${wv.riege2}, team=${wv.team.getOrElse(0)}, media_id=${w.mediafile.map(_.id)}, variables=${w.variables.map(_.toJson.compactPrint)}
@@ -347,7 +339,7 @@ abstract trait WertungService extends DBService with WertungResultMapper with Di
                   WHERE
                     athlet_Id=${wv.athletId} and wettkampfdisziplin_Id=${wv.wettkampfdisziplinId} and wettkampf_Id=${wv.wettkampfId}
         """.as[Long]
-      } yield {
+      yield {
         wvId
       }).transactionally
     ), Duration.Inf).head
@@ -362,9 +354,9 @@ abstract trait WertungService extends DBService with WertungResultMapper with Di
       val notenspez = readWettkampfDisziplinView(w.wettkampfId, w.wettkampfdisziplinId, cache2)
       notenspez.verifiedAndCalculatedWertung(w)
     }
-    val wvId: Seq[Option[Long]] = Await.result(database.run(DBIO.sequence(for {
+    val wvId: Seq[Option[Long]] = Await.result(database.run(DBIO.sequence(for
       wv <- wvs
-    } yield {
+    yield {
       sqlu"""
                   UPDATE wertung
                   SET note_d=${wv.noteD}, note_e=${wv.noteE}, endnote=${wv.endnote}, riege=${wv.riege}, riege2=${wv.riege2}, team=${wv.team.getOrElse(0)}, media_id=${wv.mediafile.map(_.id)}, variables=${wv.variables.map(_.toJson.compactPrint)}
@@ -448,14 +440,14 @@ abstract trait WertungService extends DBService with WertungResultMapper with Di
 
   def getAllKandidatenWertungen(competitionUUId: UUID) = {
     val driver = selectWertungen(wkuuid = Some(competitionUUId.toString())).groupBy { x => x.athlet }.map(_._2).toList
-    val competitionId = if (driver.isEmpty || driver.head.isEmpty) {
+    val competitionId = if driver.isEmpty || driver.head.isEmpty then {
       0
     } else {
       driver.head.head.wettkampf.id
     }
     
     val programme = driver.flatten.map(x => x.wettkampfdisziplin.programm).foldLeft(Seq[ProgrammView]()){(acc, pgm) =>
-      if(!acc.exists { x => x.id == pgm.id }) {
+      if !acc.exists { x => x.id == pgm.id } then {
         acc :+ pgm
       }
       else {
@@ -467,13 +459,12 @@ abstract trait WertungService extends DBService with WertungResultMapper with Di
     val disziplinsZuDurchgangR1 = listDisziplinesZuDurchgang(rds, competitionId, true)
     val disziplinsZuDurchgangR2 = listDisziplinesZuDurchgang(rds, competitionId, false)
 
-    for {
+    for
       programm <- programme
       athletwertungen <- driver.map(we => we.filter { x => x.wettkampfdisziplin.programm.id == programm.id})
       if(athletwertungen.nonEmpty)
       einsatz = athletwertungen.head
       athlet = einsatz.athlet
-    }
     yield {
       val riegendurchgang1 = riegendurchgaenge.get(einsatz.riege.getOrElse(""))
       val riegendurchgang2 = riegendurchgaenge.get(einsatz.riege2.getOrElse(""))
@@ -490,10 +481,10 @@ abstract trait WertungService extends DBService with WertungResultMapper with Di
       ,riegendurchgang1
       ,riegendurchgang2
       ,athletwertungen.filter{wertung =>
-        if(wertung.wettkampfdisziplin.feminim == 0 && !wertung.athlet.geschlecht.equalsIgnoreCase("M")) {
+        if wertung.wettkampfdisziplin.feminim == 0 && !wertung.athlet.geschlecht.equalsIgnoreCase("M") then {
           false
         }
-        else if(wertung.wettkampfdisziplin.masculin == 0 && wertung.athlet.geschlecht.equalsIgnoreCase("M")) {
+        else if wertung.wettkampfdisziplin.masculin == 0 && wertung.athlet.geschlecht.equalsIgnoreCase("M") then {
           false
         }
         else {
@@ -507,10 +498,10 @@ abstract trait WertungService extends DBService with WertungResultMapper with Di
         }
       }.map(_.wettkampfdisziplin.disziplin)
       ,athletwertungen.filter{wertung =>
-        if(wertung.wettkampfdisziplin.feminim == 0 && !wertung.athlet.geschlecht.equalsIgnoreCase("M")) {
+        if wertung.wettkampfdisziplin.feminim == 0 && !wertung.athlet.geschlecht.equalsIgnoreCase("M") then {
           false
         }
-        else if(wertung.wettkampfdisziplin.masculin == 0 && wertung.athlet.geschlecht.equalsIgnoreCase("M")) {
+        else if wertung.wettkampfdisziplin.masculin == 0 && wertung.athlet.geschlecht.equalsIgnoreCase("M") then {
           false
         }
         else {

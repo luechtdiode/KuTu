@@ -1,10 +1,10 @@
 package ch.seidel.kutu.view
 
-import ch.seidel.commons._
-import ch.seidel.kutu.domain._
-import scalafx.Includes._
+import ch.seidel.commons.*
+import ch.seidel.kutu.domain.*
+import scalafx.Includes.*
 import scalafx.application.Platform
-import scalafx.scene.control._
+import scalafx.scene.control.*
 
 
 class GeraeteRiegeComboBox[T](tableView: TableView[T]) extends ComboBox[GeraeteRiege]() {
@@ -12,26 +12,28 @@ class GeraeteRiegeComboBox[T](tableView: TableView[T]) extends ComboBox[GeraeteR
 
   promptText = "Durchgang-Filter"
   buttonCell = new GeraeteRiegeListCell()
-  cellFactory.value = { _:Any => new GeraeteRiegeListCell() }
+  cellFactory.value = { (_:Any) => new GeraeteRiegeListCell() }
 
-  var textbuffer = ""
+  private var textbuffer = ""
+
+  import ch.seidel.kutu.domain.given_Conversion_String_BigDecimal
 
   onKeyPressed = event => {
-    if (event.getText.equalsIgnoreCase("R")) {
+    if event.getText.equalsIgnoreCase("R") then {
       textbuffer = "R"
-      if (tooltip.value == null) {
+      if tooltip.value == null then {
         tooltip = new Tooltip()
         tooltip.value.autoHide = false
       }
       tooltip.value.text = textbuffer
       tooltip.value.show(scene.value.getWindow)
 
-    } else if (textbuffer.startsWith("R") && event.getText.isDecimalFloat) {
+    } else if textbuffer.startsWith("R") && event.getText.isDecimalFloat then {
       textbuffer += event.getText
       tooltip.value.text = textbuffer
       tooltip.value.show(scene.value.getWindow)
     }
-    if (textbuffer.length == 5) {
+    if textbuffer.length == 5 then {
       tooltip.value.text = textbuffer
       tooltip.value.show(scene.value.getWindow)
       items.value.find(p => p.sequenceId == textbuffer) match {
@@ -41,7 +43,7 @@ class GeraeteRiegeComboBox[T](tableView: TableView[T]) extends ComboBox[GeraeteR
           val focusSetter = AutoCommitTextFieldTableCell.selectFirstEditable(tableView)
           Platform.runLater{
               focusSetter()
-              if (tooltip.value != null) {
+              if tooltip.value != null then {
                 tooltip.value.hide()
                 tooltip.value = null
               }
@@ -49,7 +51,7 @@ class GeraeteRiegeComboBox[T](tableView: TableView[T]) extends ComboBox[GeraeteR
 
         case _ =>
           textbuffer = ""
-          if (tooltip.value != null) {
+          if tooltip.value != null then {
             tooltip.value.hide()
             tooltip.value = null
           }
@@ -58,9 +60,9 @@ class GeraeteRiegeComboBox[T](tableView: TableView[T]) extends ComboBox[GeraeteR
   }
 
   focused.onChange({
-    if (!focused.value) {
+    if !focused.value then {
       textbuffer = ""
-      if (tooltip.value != null) {
+      if tooltip.value != null then {
         tooltip.value.hide()
         tooltip.value = null
       }

@@ -1,9 +1,9 @@
 package ch.seidel.kutu.view
 
 import ch.seidel.kutu.domain.WettkampfView
-import scalafx.scene.control._
 import scalafx.beans.property.ReadOnlyStringWrapper
 import scalafx.collections.ObservableBuffer
+import scalafx.scene.control.*
 
 object WettkampfTableView {
   def apply(wklviews: List[WettkampfView]) = new WettkampfTableView(wklviews)
@@ -43,13 +43,13 @@ class WettkampfTableView(wklviews: List[WettkampfView]) extends TableView[Wettka
   val filter: TextField = new TextField() {
     promptText = "Such-Text"
     text.addListener { (_, _, newVal: String) =>
-      val sortOrderList = sortOrder.toList;
+      val sortOrderList = sortOrder.toList
       filteredModel.clear()
       val searchQuery = newVal.toUpperCase().split(" ")
-      for {wettkampf <- wklviews
-           } {
+      for wettkampf <- wklviews
+           do {
         val matches = searchQuery.forall { search =>
-          if (search.isEmpty || wettkampf.easyprint.toUpperCase().contains(search)) {
+          if search.isEmpty || wettkampf.easyprint.toUpperCase().contains(search) then {
             true
           }
           else {
@@ -57,7 +57,7 @@ class WettkampfTableView(wklviews: List[WettkampfView]) extends TableView[Wettka
           }
         }
 
-        if (matches) {
+        if matches then {
           filteredModel.add(wettkampf)
         }
       }

@@ -1,27 +1,29 @@
 package ch.seidel.kutu.http
 
+import ch.seidel.kutu.actors.*
+import ch.seidel.kutu.domain.*
+import fr.davit.pekko.http.metrics.core.scaladsl.server.HttpMetricsDirectives.*
 import org.apache.pekko.http.scaladsl.marshallers.sprayjson.SprayJsonSupport
 import org.apache.pekko.http.scaladsl.marshalling.ToResponseMarshallable
 import org.apache.pekko.http.scaladsl.model.{StatusCodes, Uri}
 import org.apache.pekko.http.scaladsl.server.Route
 import org.apache.pekko.util.Timeout
-import ch.seidel.kutu.actors._
-import ch.seidel.kutu.domain.{Kandidat, KutuService, ProgrammRaw, Wertung, WertungView, encodeURIComponent, str2Int, str2Long}
 
 import scala.concurrent.Future
 import scala.concurrent.duration.DurationInt
 import scala.util.{Failure, Success}
-import fr.davit.pekko.http.metrics.core.scaladsl.server.HttpMetricsDirectives._
 
 trait WertungenRoutes extends SprayJsonSupport with JsonSupport with JwtSupport with AuthSupport with RouterLogging with KutuService with CIDSupport {
 
-  import spray.json.DefaultJsonProtocol._
+  import ch.seidel.kutu.domain.{given_Conversion_String_Int, given_Conversion_String_Long}
+  import spray.json.*
+  import spray.json.DefaultJsonProtocol.*
 
   import scala.concurrent.ExecutionContext.Implicits.global
 
   // Required by the `ask` (?) method below
   private implicit lazy val timeout: Timeout = Timeout(5.seconds) // usually we'd obtain the timeout from the system's configuration
-  import AbuseHandler._
+  import AbuseHandler.*
 
   lazy val wertungenRoutes: Route = {
     (handleCID & extractUri) { (clientId: String, uri: Uri) =>
@@ -29,10 +31,10 @@ trait WertungenRoutes extends SprayJsonSupport with JsonSupport with JwtSupport 
       pathPrefixLabeled("programm", "programm") {
         pathEnd {
           get {
-            complete {
-              Future {
-                listRootProgramme().map(x => ProgrammRaw(x.id, x.name, x.aggregate, x.parent.map(_.id).getOrElse(0), x.ord, x.alterVon, x.alterBis, x.uuid, x.riegenmode, x.bestOfCount))
-              }
+              complete {
+                Future {
+                listRootProgramme().map(x => ProgrammRaw(x.id, x.name, x.aggregate, x.parent.map(_.id).getOrElse(0), x.ord, x.alterVon, x.alterBis, x.uuid, x.riegenmode, x.bestOfCount)).toJson
+                }
             }
           }
         }
@@ -42,13 +44,13 @@ trait WertungenRoutes extends SprayJsonSupport with JsonSupport with JwtSupport 
             get {
               complete {
                 Future {
-                  val wettkampf = readWettkampf(competitionId.toString())
+                  val wettkampf = readWettkampf(competitionId.toString)
                   val wertungen = Kandidat.mapToBestOfCounting(selectWertungen(wettkampfId = Some(wettkampf.id), athletId = Some(athletId)))
                   wertungen.filter { wertung =>
-                    if (wertung.wettkampfdisziplin.feminim == 0 && !wertung.athlet.geschlecht.equalsIgnoreCase("M")) {
+                    if wertung.wettkampfdisziplin.feminim == 0 && !wertung.athlet.geschlecht.equalsIgnoreCase("M") then {
                       false
                     }
-                    else if (wertung.wettkampfdisziplin.masculin == 0 && wertung.athlet.geschlecht.equalsIgnoreCase("M")) {
+                    else if wertung.wettkampfdisziplin.masculin == 0 && wertung.athlet.geschlecht.equalsIgnoreCase("M") then {
                       false
                     }
                     else {
@@ -60,17 +62,17 @@ trait WertungenRoutes extends SprayJsonSupport with JsonSupport with JwtSupport 
                       w.athlet.verein.map(_.easyprint).getOrElse(""),
                       w.toWertung,
                       w.wettkampfdisziplin.disziplin.id, w.wettkampfdisziplin.programm.name, "", w.wettkampfdisziplin.isDNoteUsed, w.isStroked)
-                  }
+                  }.toJson
                 }
               }
             }
           }
         } ~
-        pathPrefixLabeled("music" / JavaUUID, "music/:competition-id") { (competitionId) =>
+        pathPrefixLabeled("music" / JavaUUID, "music/:competition-id") { competitionId =>
           pathLabeled("aquire", "aquire") {
             put {
               authenticated() { userId =>
-                if (userId.equals(competitionId.toString)) {
+                if userId.equals(competitionId.toString) then {
                   entity(as[Wertung]) { wertung =>
                     getCurrentWertung(wertung) match {
                       case None => None
@@ -89,7 +91,7 @@ trait WertungenRoutes extends SprayJsonSupport with JsonSupport with JwtSupport 
           pathLabeled("release", "release") {
             put {
               authenticated() { userId =>
-                if (userId.equals(competitionId.toString)) {
+                if userId.equals(competitionId.toString) then {
                   entity(as[Wertung]) { wertung =>
                     getCurrentWertung(wertung) match {
                       case None => None
@@ -108,7 +110,7 @@ trait WertungenRoutes extends SprayJsonSupport with JsonSupport with JwtSupport 
           pathLabeled("start", "start") {
             put {
               authenticated() { userId =>
-                if (userId.equals(competitionId.toString)) {
+                if userId.equals(competitionId.toString) then {
                   entity(as[Wertung]) { wertung =>
                     getCurrentWertung(wertung) match {
                       case None => None
@@ -127,7 +129,7 @@ trait WertungenRoutes extends SprayJsonSupport with JsonSupport with JwtSupport 
           pathLabeled("stop", "stop") {
             put {
               authenticated() { userId =>
-                if (userId.equals(competitionId.toString)) {
+                if userId.equals(competitionId.toString) then {
                   entity(as[Wertung]) { wertung =>
                     getCurrentWertung(wertung) match {
                       case None => None
@@ -145,7 +147,7 @@ trait WertungenRoutes extends SprayJsonSupport with JsonSupport with JwtSupport 
           }
         } ~
         pathPrefixLabeled("durchgang" / JavaUUID, "durchgang/:competition-id") { competitionId =>
-          if (!wettkampfExists(competitionId.toString)) {
+          if !wettkampfExists(competitionId.toString) then {
             log.error(handleAbuse(clientId, uri))
             complete(StatusCodes.NotFound)
           } else
@@ -157,7 +159,7 @@ trait WertungenRoutes extends SprayJsonSupport with JsonSupport with JwtSupport 
                   case GeraeteRiegeList(list, _) =>
                     list
                       .flatMap(gr => gr.durchgang)
-                      .distinct
+                      .distinct.toJson
                   case _ =>
                     StatusCodes.Conflict
                 }
@@ -169,8 +171,8 @@ trait WertungenRoutes extends SprayJsonSupport with JsonSupport with JwtSupport 
               val lastSequenceIdOption: Option[Long] = lastSequenceId.map(str2Long)
               parameters(Symbol("jwt").as[String]) { jwt =>
                 authenticateWith(Some(jwt), true) { id =>
-                  if (id == competitionId.toString) {
-                    if (durchgang.equalsIgnoreCase("all")) {
+                  if id == competitionId.toString then {
+                    if durchgang.equalsIgnoreCase("all") then {
                       handleWebSocketMessages(CompetitionCoordinatorClientActor.createActorSinkSource(clientId, competitionId.toString, None, lastSequenceIdOption))
                     } else {
                       handleWebSocketMessages(CompetitionCoordinatorClientActor.createActorSinkSource(clientId, competitionId.toString, Some(durchgang), lastSequenceIdOption))
@@ -181,14 +183,14 @@ trait WertungenRoutes extends SprayJsonSupport with JsonSupport with JwtSupport 
                 }
               } ~
                 authenticated(true) { id =>
-                  if (id == competitionId.toString) {
+                  if id == competitionId.toString then {
                     handleWebSocketMessages(CompetitionCoordinatorClientActor.createActorSinkSource(clientId, competitionId.toString, Some(durchgang), lastSequenceIdOption))
                   } else {
                     complete(StatusCodes.Unauthorized)
                   }
                 } ~
                 pathEnd {
-                  if (durchgang.equalsIgnoreCase("all")) {
+                  if durchgang.equalsIgnoreCase("all") then {
                     handleWebSocketMessages(CompetitionCoordinatorClientActor.createActorSource(clientId, competitionId.toString, None, lastSequenceIdOption))
                   } else {
                     handleWebSocketMessages(CompetitionCoordinatorClientActor.createActorSource(clientId, competitionId.toString, Some(durchgang)))
@@ -206,28 +208,28 @@ trait WertungenRoutes extends SprayJsonSupport with JsonSupport with JwtSupport 
             } ~
             pathLabeled("geraete", "geraete") {
               get {
-                if (!wettkampfExists(competitionId.toString)) {
+                if !wettkampfExists(competitionId.toString) then {
                   complete(StatusCodes.NotFound)
                 } else
                   complete {
-                    listDisziplinZuWettkampf(readWettkampf(competitionId.toString()))
+                    listDisziplinZuWettkampf(readWettkampf(competitionId.toString)).map(_.toList).map(items => items.toJson(using listFormat(using disziplinFormat)))
                   }
               }
             } ~
             pathLabeled("validate", "validate") {
               put {
                 authenticated() { userId =>
-                  if (userId.equals(competitionId.toString)) {
+                  if userId.equals(competitionId.toString) then {
                     entity(as[Wertung]) { wertung =>
                       try {
                         val w = getCurrentWertung(wertung) match {
                           case None => validateWertung(wertung)
                           case Some(currentWertung) => validateWertung(currentWertung.toWertung.updatedWertung(wertung))
                         }
-                        complete(w)
+                        complete(w.toJson)
                       } catch {
                         case e: IllegalArgumentException =>
-                          complete(MessageAck(e.getMessage))
+                          complete(MessageAck(e.getMessage).toJson)
                       }
                     }
                   } else {
@@ -252,6 +254,7 @@ trait WertungenRoutes extends SprayJsonSupport with JsonSupport with JwtSupport 
                           //.filter(d => !d.isPause)
                           //.map(_.harmless)
                           .distinct
+                          .toJson
                       case _ =>
                         StatusCodes.Conflict
                     }
@@ -268,6 +271,7 @@ trait WertungenRoutes extends SprayJsonSupport with JsonSupport with JwtSupport 
                         })
                           .map(gr => gr.halt + 1)
                           .distinct.sorted
+                          .toJson
                       case _ =>
                         StatusCodes.Conflict
                     }
@@ -296,7 +300,7 @@ trait WertungenRoutes extends SprayJsonSupport with JsonSupport with JwtSupport 
                                   wertungView.toWertung.copy(wettkampfdisziplinId = 0L),
                                   gid, k.programm, gr.durchgang.getOrElse(""), wertungView.wettkampfdisziplin.isDNoteUsed, wertungView.isStroked)
                             }
-                          }))
+                          })).toJson
                       case _ =>
                         StatusCodes.Conflict
                     }
@@ -307,7 +311,7 @@ trait WertungenRoutes extends SprayJsonSupport with JsonSupport with JwtSupport 
               } ~
                 put {
                   authenticated() { userId =>
-                    if (userId.equals(competitionId.toString)) {
+                    if userId.equals(competitionId.toString) then {
                       entity(as[Wertung]) { wertung =>
                         segments match {
                           case List(dg, geraet, step) => {

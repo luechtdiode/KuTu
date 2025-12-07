@@ -1,14 +1,14 @@
 package ch.seidel.kutu.view
 
-import ch.seidel.commons._
-import ch.seidel.kutu.domain._
-import scalafx.Includes._
+import ch.seidel.commons.*
+import ch.seidel.kutu.domain.*
+import scalafx.Includes.*
 import scalafx.collections.ObservableBuffer
 import scalafx.event.ActionEvent
 import scalafx.geometry.Pos
 import scalafx.scene.Node
-import scalafx.scene.control._
-import scalafx.scene.layout._
+import scalafx.scene.control.*
+import scalafx.scene.layout.*
 
 object AthletDialog {
   def apply(service: KutuService, onSelected: (Athlet)=>Unit) =

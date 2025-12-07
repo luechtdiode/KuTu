@@ -1,6 +1,7 @@
 package ch.seidel.kutu.calc
 
-import ch.seidel.kutu.calc.parser._
+import ch.seidel.kutu.calc.ScoreAggregateFn.*
+import ch.seidel.kutu.calc.parser.*
 import ch.seidel.kutu.domain.{Resultat, Wertung, WettkampfdisziplinView}
 
 case class Calculator(template: ScoreCalcTemplate) {
@@ -14,7 +15,7 @@ case class Calculator(template: ScoreCalcTemplate) {
       wertung.copy(noteD = Some(dValue), noteE = Some(eValue), endnote = Some(result), variables = Some(template.toView(variables)))
     }
 
-    val wertungen = valuesList.take(if (template.aggregateFn.isEmpty) 1 else valuesList.length)
+    val wertungen = valuesList.take(if template.aggregateFn.isEmpty then 1 else valuesList.length)
       .map(values => {
         val dExpression = Expression(MathExpCompiler(template.dExpression(values)))
         val eExpression = Expression(MathExpCompiler(template.eExpression(values)))
@@ -31,9 +32,9 @@ case class Calculator(template: ScoreCalcTemplate) {
     template.aggregateFn match {
       case None => wertungen.headOption.getOrElse(w.copy(noteD = None, noteE = None, endnote = None, variables = None))
       case Some(Min) =>
-        wertungen.reduce((a,b) => if (a.resultat.endnote < b.resultat.endnote) a else b)
+        wertungen.reduce((a,b) => if a.resultat.endnote < b.resultat.endnote then a else b)
       case Some(Max) =>
-        wertungen.reduce((a,b) => if (a.resultat.endnote > b.resultat.endnote) a else b)
+        wertungen.reduce((a,b) => if a.resultat.endnote > b.resultat.endnote then a else b)
       case Some(Avg) =>
         val r = wertungen
           .map(_.resultat)

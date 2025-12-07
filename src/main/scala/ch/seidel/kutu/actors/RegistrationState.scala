@@ -4,12 +4,12 @@ import ch.seidel.kutu.domain.{JudgeRegistration, SyncAction}
 
 import java.time.Instant
 
-case class JudgeSyncAtions(
+case class JudgeSyncActions(
                             changed: List[JudgeRegistration],
                             removed: List[JudgeRegistration],
                             added: List[JudgeRegistration]
                           ) {
-  def nonEmpty = changed.nonEmpty || removed.nonEmpty || added.nonEmpty
+  def nonEmpty: Boolean = changed.nonEmpty || removed.nonEmpty || added.nonEmpty
 }
 
 case class RegistrationState(
@@ -27,14 +27,14 @@ case class RegistrationState(
     RegistrationState(this.syncJudgeList, this.syncJudgeListNotified, syncActions, this.syncActionsNotified, this.created, emailApproved = false)
 
   def hasChanges: Boolean =
-    ((syncActions.nonEmpty && syncActions != syncActionsNotified)
-      || (syncJudgeList.nonEmpty && syncJudgeList != syncJudgeListNotified))
+    (syncActions.nonEmpty && syncActions != syncActionsNotified)
+      || (syncJudgeList.nonEmpty && syncJudgeList != syncJudgeListNotified)
 
-  def judgeSyncActions: JudgeSyncAtions = {
+  def judgeSyncActions: JudgeSyncActions = {
     val changed = syncJudgeList.filter(j => syncJudgeListNotified.exists(jj => jj.id == j.id && jj != j))
     val removed = syncJudgeListNotified.filter(j => !syncJudgeList.exists(jj => jj.id == j.id))
     val added = syncJudgeList.filter(j => !syncJudgeListNotified.exists(jj => jj.id == j.id))
-    JudgeSyncAtions(changed, removed, added)
+    JudgeSyncActions(changed, removed, added)
   }
 
   def resynced(syncActions: List[SyncAction], syncJudgeList: List[JudgeRegistration]): RegistrationState =

@@ -63,7 +63,7 @@ class ScoreCalcTemplateTest extends AnyWordSpec with Matchers with JsonSupport {
   "calculate n-wertung Min" in {
     val wertung = Wertung(0, 0, 0, 0, "", None, None, None, None, None, None, None, None)
     val wd = WettkampfdisziplinView(0, null, null, "", None, StandardWettkampf(1d), 1, 1, 1, 3, 1, 0, 30, 1)
-    val tt = t.copy(aggregateFn = Some(Min))
+    val tt = t.copy(aggregateFn = Some(ScoreAggregateFn.Min))
     val dvalues = tt.dVariables.zipWithIndex.map(item => item._1.updated(BigDecimal("0.12345") + item._2 + 1))
     val evalues = tt.eVariables.zipWithIndex.map(item => item._1.updated(BigDecimal("0.12345") + item._2 + 1))
     val pvalues = tt.pVariables.zipWithIndex.map(item => item._1.updated(BigDecimal("0.12345") + item._2 + 1))
@@ -81,7 +81,7 @@ class ScoreCalcTemplateTest extends AnyWordSpec with Matchers with JsonSupport {
   "calculate n-wertung Max" in {
     val wertung = Wertung(0, 0, 0, 0, "", None, None, None, None, None, None, None, None)
     val wd = WettkampfdisziplinView(0, null, null, "", None, StandardWettkampf(1d), 1, 1, 1, 3, 1, 0, 30, 1)
-    val tt = t.copy(aggregateFn = Some(Max))
+    val tt = t.copy(aggregateFn = Some(ScoreAggregateFn.Max))
     val dvalues = tt.dVariables.zipWithIndex.map(item => item._1.updated(BigDecimal("0.12345") + item._2 + 1))
     val evalues = tt.eVariables.zipWithIndex.map(item => item._1.updated(BigDecimal("0.12345") + item._2 + 1))
     val pvalues = tt.pVariables.zipWithIndex.map(item => item._1.updated(BigDecimal("0.12345") + item._2 + 1))
@@ -98,7 +98,7 @@ class ScoreCalcTemplateTest extends AnyWordSpec with Matchers with JsonSupport {
   "calculate n-wertung Sum" in {
     val wertung = Wertung(0, 0, 0, 0, "", None, None, None, None, None, None, None, None)
     val wd = WettkampfdisziplinView(0, null, null, "", None, StandardWettkampf(1d), 1, 1, 1, 3, 1, 0, 30, 1)
-    val tt = t.copy(aggregateFn = Some(Sum))
+    val tt = t.copy(aggregateFn = Some(ScoreAggregateFn.Sum))
     val dvalues = tt.dVariables.zipWithIndex.map(item => item._1.updated(BigDecimal("0.12345") + item._2 + 1))
     val evalues = tt.eVariables.zipWithIndex.map(item => item._1.updated(BigDecimal("0.12345") + item._2 + 1))
     val pvalues = tt.pVariables.zipWithIndex.map(item => item._1.updated(BigDecimal("0.12345") + item._2 + 1))
@@ -115,7 +115,7 @@ class ScoreCalcTemplateTest extends AnyWordSpec with Matchers with JsonSupport {
   "calculate n-wertung Avg" in {
     val wertung = Wertung(0, 0, 0, 0, "", None, None, None, None, None, None, None, None)
     val wd = WettkampfdisziplinView(0, null, null, "", None, StandardWettkampf(1d), 1, 1, 1, 3, 1, 0, 30, 1)
-    val tt = t.copy(aggregateFn = Some(Avg))
+    val tt = t.copy(aggregateFn = Some(ScoreAggregateFn.Avg))
     val dvalues = tt.dVariables.zipWithIndex.map(item => item._1.updated(BigDecimal("0.12345") + item._2 + 1))
     val evalues = tt.eVariables.zipWithIndex.map(item => item._1.updated(BigDecimal("0.12345") + item._2 + 1))
     val pvalues = tt.pVariables.zipWithIndex.map(item => item._1.updated(BigDecimal("0.12345") + item._2 + 1))
@@ -138,7 +138,7 @@ class ScoreCalcTemplateTest extends AnyWordSpec with Matchers with JsonSupport {
       "pFormula": "($Pname.0 / 10)^",
       "aggregateFn": "Max"
     }""")
-    assert(t.aggregateFn === Some(Max))
+    assert(t.aggregateFn === Some(ScoreAggregateFn.Max))
     assert(t.dFormula === "max($Dname1.1, $Dname2.1)^")
     assert(t.dResolveDetails === true)
   }

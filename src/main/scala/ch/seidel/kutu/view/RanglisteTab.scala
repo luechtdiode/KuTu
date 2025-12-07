@@ -1,13 +1,12 @@
 package ch.seidel.kutu.view
 
-import java.util.UUID
 import ch.seidel.commons.{DisplayablePage, PageDisplayer}
-import ch.seidel.kutu.Config._
-import ch.seidel.kutu.{ConnectionStates, domain}
+import ch.seidel.kutu.Config.*
 import ch.seidel.kutu.KuTuApp.handleAction
-import ch.seidel.kutu.data._
-import ch.seidel.kutu.domain.{Altersklasse, Durchgang, KutuService, TeamRegel, WertungView, WettkampfView, encodeFileName}
-import ch.seidel.kutu.renderer.PrintUtil.FilenameDefault
+import ch.seidel.kutu.data.*
+import ch.seidel.kutu.domain.*
+import ch.seidel.kutu.renderer.FilenameDefault
+import ch.seidel.kutu.{ConnectionStates, domain}
 import scalafx.Includes.when
 import scalafx.beans.binding.Bindings
 import scalafx.beans.property.BooleanProperty
@@ -16,18 +15,19 @@ import scalafx.scene.Node
 import scalafx.scene.control.{Button, ComboBox, Label, TextField}
 import scalafx.scene.layout.{BorderPane, Priority, VBox}
 
+import java.util.UUID
 import scala.concurrent.Await
 import scala.concurrent.duration.Duration
 
 class RanglisteTab(wettkampfmode: BooleanProperty, wettkampf: WettkampfView, override val service: KutuService) extends DefaultRanglisteTab(wettkampfmode, service) {
-  override val title = wettkampf.easyprint
-  val programmText = wettkampf.programm.id match {
+  override val title: String = wettkampf.easyprint
+  val programmText: String = wettkampf.programm.id match {
     case 20 => "Kategorie"
     case _ => "Programm"
   }
 
-  val altersklassen = Altersklasse.parseGrenzen(wettkampf.altersklassen)
-  val jgAltersklassen = Altersklasse.parseGrenzen(wettkampf.jahrgangsklassen)
+  val altersklassen: Seq[(String, Seq[String], Int)] = Altersklasse.parseGrenzen(wettkampf.altersklassen)
+  val jgAltersklassen: Seq[(String, Seq[String], Int)] = Altersklasse.parseGrenzen(wettkampf.jahrgangsklassen)
 
   def riegenZuDurchgang: Map[String, Durchgang] = {
     val riegen = service.listRiegenZuWettkampf(wettkampf.id)
@@ -51,7 +51,7 @@ class RanglisteTab(wettkampfmode: BooleanProperty, wettkampf: WettkampfView, ove
       case (true,false) => standardGroupers :+ ByAltersklasse("Wettkampf Altersklassen", altersklassen)
       case _ => standardGroupers
     }
-    if (wettkampf.toWettkampf.hasTeams) {
+    if wettkampf.toWettkampf.hasTeams then {
       TeamRegel(wettkampf.toWettkampf).getTeamRegeln.map(r => ByTeamRule("Wettkampf Teamregel " + r.toRuleName, r)).toList ++ akenhanced
     } else {
       akenhanced
@@ -70,21 +70,21 @@ class RanglisteTab(wettkampfmode: BooleanProperty, wettkampf: WettkampfView, ove
     FilenameDefault("Rangliste_" + foldername + ".html", new java.io.File(homedir + "/" + foldername))
   }
 
-  val btnBereitstellen = new Button {
+  private val btnBereitstellen: Button = new Button {
     text = "Bereitstellen ..."
-    val p = wettkampf.toWettkampf
+    val p: Wettkampf = wettkampf.toWettkampf
     visible <== when(wettkampfmode) choose false otherwise true
 
     disable <== when(Bindings.createBooleanBinding(() => {
       !p.hasSecred(homedir, remoteHostOrigin) ||
-        !ConnectionStates.connectedWithProperty.value.equals(p.uuid.map(_.toString).getOrElse("")) ||
-        !lastPublishedScoreView.getValue.isEmpty || wettkampfmode.getValue
+        !ConnectionStates.connectedWithProperty.value.equals(p.uuid.getOrElse("")) ||
+        lastPublishedScoreView.getValue.isDefined || wettkampfmode.getValue
     }, ConnectionStates.connectedWithProperty, lastPublishedScoreView, wettkampfmode
     )) choose true otherwise false
 
-    onAction = handleAction { action: ActionEvent =>
+    onAction = handleAction { (action: ActionEvent) =>
       lastScoreDef.getValue.foreach { scoredef =>
-        implicit val e = action
+        given ActionEvent = action
 
         val txtScoreName = new TextField {
           prefWidth = 500
@@ -119,23 +119,23 @@ class RanglisteTab(wettkampfmode: BooleanProperty, wettkampf: WettkampfView, ove
       }
     }
   }
-  val btnErneutBereitstellen = new Button {
+  private val btnErneutBereitstellen: Button = new Button {
     text = "Erneut bereitstellen ..."
     tooltip = "Die Publikation wird dadurch zurückgezogen, bis sie explizit wieder freigegeben wird."
-    val p = wettkampf.toWettkampf
+    val p: Wettkampf = wettkampf.toWettkampf
     visible <== when(wettkampfmode) choose false otherwise true
     disable <== when(Bindings.createBooleanBinding(() => {
       !p.hasSecred(homedir, remoteHostOrigin) ||
-        !ConnectionStates.connectedWithProperty.value.equals(p.uuid.map(_.toString).getOrElse("")) ||
+        !ConnectionStates.connectedWithProperty.value.equals(p.uuid.getOrElse("")) ||
         lastPublishedScoreView.getValue.isEmpty || wettkampfmode.getValue ||
         lastPublishedScoreView.getValue.map(_.query) == lastScoreDef.getValue.map(_.toRestQuery)
     }, ConnectionStates.connectedWithProperty, lastPublishedScoreView, lastScoreDef, wettkampfmode
 
     )) choose true otherwise false
 
-    onAction = handleAction { action: ActionEvent =>
+    onAction = handleAction { (action: ActionEvent) =>
       lastScoreDef.getValue.foreach { scoredef =>
-        implicit val e = action
+        given ActionEvent = action
 
         val txtScoreName = new TextField {
           prefWidth = 500
@@ -172,13 +172,13 @@ class RanglisteTab(wettkampfmode: BooleanProperty, wettkampf: WettkampfView, ove
       }
     }
   }
-  val btnPublikationFreigeben = new Button {
+  private val btnPublikationFreigeben: Button = new Button {
     text = "Publikation freigeben ..."
-    val p = wettkampf.toWettkampf
+    val p: Wettkampf = wettkampf.toWettkampf
 
     disable <== when(Bindings.createBooleanBinding(() => {
       !p.hasSecred(homedir, remoteHostOrigin) ||
-        !ConnectionStates.connectedWithProperty.value.equals(p.uuid.map(_.toString).getOrElse("")) ||
+        !ConnectionStates.connectedWithProperty.value.equals(p.uuid.getOrElse("")) ||
         lastPublishedScoreView.getValue.isEmpty || lastPublishedScoreView.getValue.get.published ||
         lastPublishedScoreView.getValue.map(_.query) != lastScoreDef.getValue.map(_.toRestQuery)
 
@@ -211,7 +211,7 @@ class RanglisteTab(wettkampfmode: BooleanProperty, wettkampf: WettkampfView, ove
   }
 
   override def getActionButtons: List[Button] =
-    if (wettkampfmode.value) {
+    if wettkampfmode.value then {
       List(
         btnPublikationFreigeben)
     } else {
@@ -232,11 +232,11 @@ class RanglisteTab(wettkampfmode: BooleanProperty, wettkampf: WettkampfView, ove
       case _ =>
         val akg = groupers.find(p => p.isInstanceOf[ByAltersklasse] && p.groupname.startsWith("Wettkampf"))
         val jakg = groupers.find(p => p.isInstanceOf[ByJahrgangsAltersklasse] && p.groupname.startsWith("Wettkampf"))
-        if (akg.nonEmpty) {
+        if akg.nonEmpty then {
           combos(1).selectionModel.value.select(ByProgramm(programmText))
           combos(2).selectionModel.value.select(akg.get)
           combos(3).selectionModel.value.select(ByGeschlecht())
-        } else if (jakg.nonEmpty) {
+        } else if jakg.nonEmpty then {
           combos(1).selectionModel.value.select(ByProgramm(programmText))
           combos(2).selectionModel.value.select(jakg.get)
           combos(3).selectionModel.value.select(ByGeschlecht())
@@ -251,7 +251,7 @@ class RanglisteTab(wettkampfmode: BooleanProperty, wettkampf: WettkampfView, ove
     val combos = populate(groupers)
 
     val team = groupers.find(p => p.isInstanceOf[ByTeamRule] && p.groupname.startsWith("Wettkampf"))
-    val kind: ScoreListKind = if (getData.exists(_.team > 0) || team.nonEmpty) Teamrangliste else Einzelrangliste
+    val kind: ScoreListKind = if getData.exists(_.team > 0) || team.nonEmpty then Teamrangliste else Einzelrangliste
     resetFilterPresets(combos, kind, AlleWertungen)
     cbAvg.visible = false
     true

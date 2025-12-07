@@ -1,8 +1,7 @@
 package ch.seidel.kutu.actors
 
+import ch.seidel.kutu.domain.*
 import org.apache.pekko.actor.ActorRef
-import ch.seidel.kutu.data.GroupBy
-import ch.seidel.kutu.domain._
 
 case class Subscribe(clientSource: ActorRef, deviceId: String, durchgang: Option[String], lastSequenceId: Option[Long])
 case class StopDevice(deviceId: String)
@@ -45,7 +44,7 @@ case class Delete(override val wettkampfUUID: String) extends KutuAppAction
 case class PublishScores(override val wettkampfUUID: String, title: String, query: String, published: Boolean) extends KutuAppAction
 
 sealed trait KutuAppEvent extends KutuAppProtokoll
-case class BulkEvent(wettkampfUUID: String, events: List[KutuAppEvent]) extends KutuAppEvent
+case class BulkEvent(wettkampfUUID: String, events: List[? <: KutuAppEvent]) extends KutuAppEvent
 case class UseMyMediaPlayer(override val wettkampfUUID: String, context: String) extends KutuAppEvent with KutuAppAction
 case class ForgetMyMediaPlayer(override val wettkampfUUID: String, context: String) extends KutuAppEvent with KutuAppAction
 case class AthletMediaAquire(override val wettkampfUUID: String, override val athlet: AthletView,override val wertung: Wertung) extends KutuAppEvent with MediaPlayerAction with KutuAppAction
@@ -68,7 +67,7 @@ case class DurchgangFinished(wettkampfUUID: String, durchgang: String, time: Lon
 case class AthletWertungUpdated(athlet: AthletView, wertung: Wertung, wettkampfUUID: String, durchgang: String, geraet: Long, programm: String) extends KutuAppEvent {
   def toAthletWertungUpdatedSequenced(sequenceId: Long) = AthletWertungUpdatedSequenced(athlet, wertung, wettkampfUUID, durchgang, geraet, programm, sequenceId)
 }
-case class AthletWertungUpdatedSequenced(athlet: AthletView, wertung: Wertung, wettkampfUUID: String, durchgang: String, geraet: Long, programm: String, val sequenceId: Long) extends KutuAppEvent {
+case class AthletWertungUpdatedSequenced(athlet: AthletView, wertung: Wertung, wettkampfUUID: String, durchgang: String, geraet: Long, programm: String, sequenceId: Long) extends KutuAppEvent {
   def toAthletWertungUpdated() = AthletWertungUpdated(athlet, wertung, wettkampfUUID, durchgang, geraet, programm)
 }
 case class AthletRemovedFromWettkampf(athlet: AthletView, wettkampfUUID: String) extends KutuAppEvent

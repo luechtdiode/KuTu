@@ -1,13 +1,14 @@
 package ch.seidel.kutu.http
 
-import org.apache.pekko.actor.ActorSystem
-import org.apache.pekko.http.scaladsl.Http
-import org.apache.pekko.http.scaladsl.server.Route
-import org.apache.pekko.stream.Materializer
 import ch.seidel.kutu.Config
-import ch.seidel.kutu.Config._
+import ch.seidel.kutu.Config.*
 import ch.seidel.kutu.actors.{AthletIndexActor, CompetitionCoordinatorClientActor, ResyncIndex}
 import ch.seidel.kutu.domain.DBService
+import org.apache.pekko.actor.ActorSystem
+import org.apache.pekko.http.scaladsl.Http
+import org.apache.pekko.http.scaladsl.Http.ServerBinding
+import org.apache.pekko.http.scaladsl.server.Route
+import org.apache.pekko.stream.Materializer
 import org.slf4j.LoggerFactory
 
 import java.net.{DatagramSocket, InetAddress, NetworkInterface}
@@ -24,11 +25,11 @@ object Core extends KuTuSSLContext {
 
   //  val eventRegistryActor: ActorRef = system.actorOf(EventRegistryActor.props, "eventRegistryActor")
   //  val userRegistryActor: ActorRef = system.actorOf(UserRegistryActor.props(eventRegistryActor), "userRegistryActor")
-  private var terminated = false;
+  private var terminated = false
   var serverBinding: Option[Future[Http.ServerBinding]] = None
 
   def terminate(): Unit = {
-    if (!terminated) {
+    if !terminated then {
       terminated = true
       system.terminate()
     }
@@ -38,10 +39,10 @@ object Core extends KuTuSSLContext {
 trait KuTuAppHTTPServer extends ApiService with JsonSupport {
   private val logger = LoggerFactory.getLogger(this.getClass)
 
-  import Core._
-  import fr.davit.pekko.http.metrics.core.HttpMetrics._ // import extension methods
+  import Core.*
+  import fr.davit.pekko.http.metrics.core.HttpMetrics.* // import extension methods
 
-  def startServer() = {
+  def startServer(): Future[ServerBinding] = {
     serverBinding match {
       case None =>
 
@@ -55,16 +56,16 @@ trait KuTuAppHTTPServer extends ApiService with JsonSupport {
 
         val serverBuilder = Http()
           .newMeteredServerAt(httpInterface, httpPort, MetricsController.registry)
-        val binding = if (hasHttpsConfig) {
+        val binding = if hasHttpsConfig then {
           val b = serverBuilder
             .enableHttps(https)
             .bindFlow(route)
-          logger.info(s"Server online at https://${httpInterface}:${httpPort}/")
+          logger.info(s"Server online at https://$httpInterface:$httpPort/")
           b
         } else {
           val b = serverBuilder
             .bindFlow(route)
-          logger.info(s"Server online at http://${httpInterface}:${httpPort}/")
+          logger.info(s"Server online at http://$httpInterface:$httpPort/")
           b
         }
         serverBinding = Some(binding)
@@ -99,17 +100,17 @@ trait KuTuAppHTTPServer extends ApiService with JsonSupport {
     println(caller + " System terminated")
   }
 
-  def listNetworkAdresses = {
-    import scala.jdk.CollectionConverters._
+  def listNetworkAdresses: IterableOnce[String] = {
+    import scala.jdk.CollectionConverters.*
     val dgs = new DatagramSocket()
 
     def mapToInterfaceInfo(n: InetAddress) = {
-      val url = if (n.getHostAddress.contains(":")) {
+      val url = if n.getHostAddress.contains(":") then {
         s"${Config.remoteSchema}://[${n.getHostAddress}]:${Config.httpPort}"
       } else {
         s"${Config.remoteSchema}://${n.getHostAddress}:${Config.httpPort}"
       }
-      val status = if (n.isReachable(2)) {
+      val status = if n.isReachable(2) then {
         val test = try {
           val value = s"$url/"
           Await.result(httpGetClientRequest(value), Duration.Inf).status.intValue()
@@ -127,7 +128,7 @@ trait KuTuAppHTTPServer extends ApiService with JsonSupport {
       dgs.connect(InetAddress.getByAddress(Array[Byte](1, 1, 1, 1)), 53)
       val networkInterface = NetworkInterface
         .getByInetAddress(dgs.getLocalAddress)
-      val internetAccessAdresses = if (networkInterface == null) List.empty else networkInterface
+      val internetAccessAdresses = if networkInterface == null then List.empty else networkInterface
         .getInetAddresses.asIterator().asScala.map(mapToInterfaceInfo)
         .filter {
           case (_, _, 200) => true
@@ -136,7 +137,7 @@ trait KuTuAppHTTPServer extends ApiService with JsonSupport {
         .map(_._2)
       //        .toList.mkString("\n"))
 
-      if (internetAccessAdresses.nonEmpty) {
+      if internetAccessAdresses.iterator.nonEmpty then {
         internetAccessAdresses
       } else {
         NetworkInterface
@@ -152,7 +153,7 @@ trait KuTuAppHTTPServer extends ApiService with JsonSupport {
 
       }
     } finally {
-      dgs.close
+      dgs.close()
     }
 
   }

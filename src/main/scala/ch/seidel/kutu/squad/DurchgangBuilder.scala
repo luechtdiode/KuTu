@@ -1,6 +1,6 @@
 package ch.seidel.kutu.squad
 
-import ch.seidel.kutu.domain._
+import ch.seidel.kutu.domain.*
 import org.slf4j.LoggerFactory
 
 import scala.collection.mutable
@@ -20,7 +20,7 @@ case class DurchgangBuilder(service: KutuService) extends Mapper with RiegenSpli
         (programmfilter.isEmpty || programmfilter.contains(x._2.head.wettkampfdisziplin.programm.id))
       }
     
-    if(filteredWert.isEmpty) {
+    if filteredWert.isEmpty then {
       Map[String, Map[Disziplin, Iterable[(String,Seq[Wertung])]]]()
     }
     else {
@@ -44,7 +44,7 @@ case class DurchgangBuilder(service: KutuService) extends Mapper with RiegenSpli
         val dzlffm = dzlff.filter(d => startgeraete.find(wd => wd.disziplinId == d.id).exists(p => p.masculin == 1))
         val dzlfff = dzlff.filter(d => startgeraete.find(wd => wd.disziplinId == d.id).exists(p => p.feminim == 1))
         val splitSex = splitSexOption match {
-          case None => if (dzlffm == dzlfff) GemischteRiegen else GetrennteDurchgaenge
+          case None => if dzlffm == dzlfff then GemischteRiegen else GetrennteDurchgaenge
           case Some(option) => option
         }
         val wv = wertungen.head._2.head
@@ -102,7 +102,7 @@ case class DurchgangBuilder(service: KutuService) extends Mapper with RiegenSpli
   private def prepareWertungen(wettkampfId: Long) = service.selectWertungen(wettkampfId = Some(wettkampfId)).groupBy(w => w.athlet)
   
   private def wertungZuDurchgang(durchgangfilter: Set[String], durchgangMap: Map[String, String])(x: (AthletView, Seq[WertungView])): (AthletView, Seq[WertungView]) =
-    if(durchgangfilter.isEmpty) {
+    if durchgangfilter.isEmpty then {
       x
     }
     else {
@@ -114,11 +114,11 @@ case class DurchgangBuilder(service: KutuService) extends Mapper with RiegenSpli
     filteredWert.toSeq.flatMap{aw =>
       val (athlet, wertungen) = aw
       val pgmsPerAthlet = wertungen.groupBy { wg => wg.wettkampfdisziplin.programm }.toSeq.map(w => (athlet, w._1, w._2))
-      if(pgmsPerAthlet.size > 1) {
+      if pgmsPerAthlet.size > 1 then {
         pgmsPerAthlet.map(pgpa =>
           (pgpa._1, pgpa._2, pgpa._3.map{w =>
             val wkpg = pgpa._2.name.shorten
-            if(w.riege.getOrElse("").contains(wkpg))
+            if w.riege.getOrElse("").contains(wkpg) then
               w
             else
               w.copy(riege = Some((w.riege.getOrElse("") + wkpg).trim))
@@ -128,7 +128,7 @@ case class DurchgangBuilder(service: KutuService) extends Mapper with RiegenSpli
         pgmsPerAthlet
       }
     }.groupBy{x =>
-      if(splitPgm) x._2.name
+      if splitPgm then x._2.name
       else         programme.mkString(" & ")
     }.map(x => x._1 -> x._2.map(xx => xx._1 -> xx._3).toMap)
     
