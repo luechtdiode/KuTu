@@ -103,6 +103,9 @@ case class AthletHeaderPane(wettkampf: Wettkampf, service: KutuService, wkview: 
           //, new FileChooser.ExtensionFilter("Audio Interchange File Format (pcm)", "*.aif", "*.aiff")
           //, new FileChooser.ExtensionFilter("Waveform Audio Format", "*.wav")
         )
+        if !wettkampf.audiofilesDir.exists() then {
+          wettkampf.audiofilesDir.mkdirs()
+        }
         fc.setSelectedExtensionFilter(fc.getExtensionFilters.get(0))
         fc.setInitialDirectory(wettkampf.audiofilesDir)
         val file: File = fc.showOpenDialog(KuTuApp.stage)

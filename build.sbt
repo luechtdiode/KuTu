@@ -11,8 +11,8 @@ logLevel := Level.Error
 name := "KuTu"
 
 // library versions (from pom properties)
-val scalafxV     = "21.0.0-R32"
-val javafxV     = "21.0.4"
+val scalafxV     = "24.0.2-R36"
+val javafxV     = "26-ea+19"
 val pekkoHttpV   = "1.3.0"
 val pekkoV       = "1.3.0"
 val slickV       = "3.6.1"
