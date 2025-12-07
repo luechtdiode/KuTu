@@ -1,12 +1,12 @@
 package ch.seidel.kutu.view
 
 import ch.seidel.commons.*
-import ch.seidel.kutu.Config.{homedir, remoteBaseUrl, remoteHostOrigin}
-import ch.seidel.kutu.KuTuApp.{controlsView, getStage, handleAction, modelWettkampfModus, selectedWettkampf, selectedWettkampfSecret, stage}
+import ch.seidel.kutu.*
+import ch.seidel.kutu.Config.{homedir, remoteHostOrigin}
+import ch.seidel.kutu.KuTuApp.{controlsView, getStage, modelWettkampfModus, selectedWettkampfSecret}
 import ch.seidel.kutu.data.{ByAltersklasse, ByJahrgangsAltersklasse}
 import ch.seidel.kutu.domain.*
-import ch.seidel.kutu.renderer.{FilenameDefault, ServerPrintUtil, CompetitionsJudgeToHtmlRenderer, WettkampfOverviewToHtmlRenderer}
-import ch.seidel.kutu.*
+import ch.seidel.kutu.renderer.{CompetitionsJudgeToHtmlRenderer, FilenameDefault, ServerPrintUtil, WettkampfOverviewToHtmlRenderer}
 import javafx.scene.text.FontSmoothingType
 import scalafx.Includes.*
 import scalafx.application.Platform
@@ -23,7 +23,6 @@ import scalafx.stage.FileChooser.ExtensionFilter
 
 import java.util.UUID
 import scala.concurrent.Future
-import scala.util.{Failure, Success}
 
 class WettkampfOverviewTab(wettkampf: WettkampfView, override val service: KutuService) extends Tab with TabWithService
   with WettkampfOverviewToHtmlRenderer with CompetitionsJudgeToHtmlRenderer {
@@ -47,9 +46,12 @@ class WettkampfOverviewTab(wettkampf: WettkampfView, override val service: KutuS
       case _ =>
     }
   }
+
   private val webView = new WebView {
     fontSmoothingType = FontSmoothingType.GRAY
+
     import ch.seidel.javafx.webview.HyperLinkRedirectListener
+
     engine.getLoadWorker.stateProperty.addListener(new HyperLinkRedirectListener(this.delegate))
   }
 
@@ -166,6 +168,7 @@ class WettkampfOverviewTab(wettkampf: WettkampfView, override val service: KutuS
             disable = !wettkampfEditable
             onAction = (event: ActionEvent) => {
               given ActionEvent = event
+
               val fileChooser = new FileChooser {
                 title = "Wettkampf Logo laden"
                 initialDirectory = new java.io.File(homedir)
@@ -228,7 +231,7 @@ class WettkampfOverviewTab(wettkampf: WettkampfView, override val service: KutuS
               selectedWettkampfSecret,
               controlsView.selectionModel().selectedItem)
             ) choose true otherwise false
-            onAction = (e: ActionEvent) => importAnmeldungen(e)
+            onAction = (e: ActionEvent) => importAnmeldungen(using e)
           },
           reportMenu,
           new Button {
@@ -245,6 +248,7 @@ class WettkampfOverviewTab(wettkampf: WettkampfView, override val service: KutuS
               def generate = (lpp: Int) => Future {
                 createDocument
               }
+
               Platform.runLater {
                 PrintUtil.printDialogFuture("Wettkampfübersicht drucken ...", FilenameDefault(filename, dir), adjustLinesPerPage = false, generate, orientation = PageOrientation.Portrait)(event)
               }
