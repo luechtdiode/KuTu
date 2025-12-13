@@ -124,7 +124,7 @@ libraryDependencies ++= Seq(
   "ch.qos.logback" % "logback-classic" % logbackV,
   "commons-codec" % "commons-codec" % "1.20.0",
   "org.apache.commons" % "commons-lang3" % "3.20.0",
-  "org.apache.commons" % "commons-text" % "1.14.0",
+  "org.apache.commons" % "commons-text" % "1.15.0",
 
   // Additional Java libraries from pom.xml
   "org.controlsfx" % "controlsfx" % "11.2.2",
