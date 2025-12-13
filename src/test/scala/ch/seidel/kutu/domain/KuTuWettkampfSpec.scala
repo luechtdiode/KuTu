@@ -68,12 +68,11 @@ class KuTuWettkampfSpec extends AnyWordSpec with Matchers with KutuService {
 //    @tailrec
     def _solve(einteilung: Set[Set[Int]], acc: Set[Set[Set[Int]]], lastScore: Long): (Long, Set[Set[Int]]) = {
       mergeCandidates(geraete, eqsize, einteilung)
-      .map { case (a, b) =>
-        val merged = a ++ b
-        val cleaned = einteilung.filterNot(p => p == a || p == b)
-        cleaned + merged
-      }
-      .filterNot(x => acc.contains(x))
+        .map { case (a, b) =>
+          val merged = a ++ b
+          val cleaned = einteilung.filterNot(p => p == a || p == b)
+          cleaned + merged
+        }.diff(acc)
       .map{neweinteilung =>
         val newScore = score(geraete, neweinteilung)
         newScore match {

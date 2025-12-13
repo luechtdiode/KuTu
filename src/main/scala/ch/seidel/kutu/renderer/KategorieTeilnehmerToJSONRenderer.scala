@@ -54,7 +54,7 @@ trait KategorieTeilnehmerToJSONRenderer {
     }
 
     val pages = rawpages.mkString(s""""logo" : "$logoHtml",
-                                     |  "title" : "${kandidaten.head.wettkampfTitel}",
+                                     |  "title" : "${if kandidaten.nonEmpty then kandidaten.head.wettkampfTitel else ""}",
                                      |  "programme" : [\n""".stripMargin, ",\n", "]\n")
     intro + pages + outro
   }

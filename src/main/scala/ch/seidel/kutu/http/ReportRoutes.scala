@@ -4,7 +4,7 @@ import ch.seidel.kutu.Config
 import ch.seidel.kutu.KuTuServer.handleCID
 import ch.seidel.kutu.actors.{CompetitionCoordinatorClientActor, GeraeteRiegeList, GetGeraeteRiegeList, KutuAppEvent}
 import ch.seidel.kutu.domain.{Kandidat, KutuService, encodeFileName}
-import ch.seidel.kutu.renderer.{AbuseListHTMLRenderer, ServerPrintUtil, KategorieTeilnehmerToHtmlRenderer, KategorieTeilnehmerToJSONRenderer}
+import ch.seidel.kutu.renderer.{AbuseListHTMLRenderer, KategorieTeilnehmerToHtmlRenderer, KategorieTeilnehmerToJSONRenderer}
 import ch.seidel.kutu.renderer.ServerPrintUtil.*
 import fr.davit.pekko.http.metrics.core.scaladsl.server.HttpMetricsDirectives.*
 import org.apache.pekko.http.scaladsl.marshallers.sprayjson.SprayJsonSupport
@@ -14,7 +14,7 @@ import org.apache.pekko.http.scaladsl.server.Route
 import org.apache.pekko.util.Timeout
 import org.slf4j.{Logger, LoggerFactory}
 
-import java.util.UUID
+import java.net.URLDecoder
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 import scala.concurrent.duration.DurationInt
@@ -61,7 +61,7 @@ trait ReportRoutes extends SprayJsonSupport
                   html match {
                     case Some(_) => complete {
                       val toResponseMarshallable: Future[ToResponseMarshallable] = eventualKutuAppEvent.map {
-                        case GeraeteRiegeList(riegen, _) =>
+                        case GeraeteRiegeList(riegen, _) if riegen.nonEmpty =>
                           val filteredRiegen = riegen.filter { k => k.kandidaten.exists(filterMatchingCandidatesToQuery(q))}
                           gr match {
                             case Some(grv) if grv.equalsIgnoreCase("verein") =>
@@ -72,16 +72,16 @@ trait ReportRoutes extends SprayJsonSupport
                               HttpEntity(ContentTypes.`text/html(UTF-8)`, renderer.riegenToKategorienListeAsHTML(filteredRiegen, logofile, dgEvents))
                           }
                         case _ =>
-                          StatusCodes.Conflict
+                          StatusCodes.NotFound
                       }
                       toResponseMarshallable
                     }
                     case None => complete {
                       val toResponseMarshallable: Future[ToResponseMarshallable] = eventualKutuAppEvent.map {
-                        case GeraeteRiegeList(riegen, _) =>
+                        case GeraeteRiegeList(riegen, _) if riegen.nonEmpty =>
                           HttpEntity(ContentTypes.`application/json`, jsonrenderer.riegenToKategorienListeAsJSON(riegen.filter { k => k.kandidaten.exists(filterMatchingCandidatesToQuery(q))}, logofile, dgEvents))
                         case _ =>
-                          StatusCodes.Conflict
+                          StatusCodes.NotFound
                       }
                       toResponseMarshallable
                     }
@@ -96,7 +96,7 @@ trait ReportRoutes extends SprayJsonSupport
   }
 
   private def filterMatchingCandidatesToQuery(q: Option[String]) = {
-    val queryTokens = q.toList.flatMap(x => x.split(" ")).map(_.toLowerCase)
+    val queryTokens = q.toList.flatMap(x => URLDecoder.decode(x, "UTF-8").split(" ")).map(_.toLowerCase)
     (k: Kandidat) => {
       queryTokens.isEmpty ||
         queryTokens.forall {

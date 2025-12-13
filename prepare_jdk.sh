@@ -26,8 +26,13 @@ function makeLink {
 
 if [ ${OS} == "Win64" ]
 then
+  if [ ! -e "jdk-${OS}.zip" ]
+  then
+    echo "download jdk for ${OS} started"
     curl -L $(makeLink $msspec "zip") -o "jdk-${OS}.zip"
     unzip -u "jdk-${OS}.zip" -d .  >/dev/null 2>&1
+    echo "download jdk for ${OS} finished"
+  fi
 fi
 
 if [ ${OS} == "MSYS_NT-10.0" ]
