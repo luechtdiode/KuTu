@@ -21,8 +21,10 @@ case class TaskSteps(title: String) extends Task[Void] {
       if allSteps > 1 then {
         updateProgress(idx * 2 + 2, allSteps * 2)
       }
-      logger.info(msg + "ready")
+      logger.info(msg + " ready")
+      updateMessage(msg + " ready")
     }
+    updateMessage(title + s" done ($allSteps steps)")
     null
   }
 
