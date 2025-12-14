@@ -18,8 +18,13 @@ trait JavaFxTestBase extends BeforeAndAfterAll { this: Suite =>
       synchronized {
         if (!toolkitInitialized) {
           val latch = new CountDownLatch(1)
-          Platform.startup(() => latch.countDown())
-          latch.await()
+          try {
+            Platform.startup(() => latch.countDown())
+            latch.await()
+          } catch {
+            case _: IllegalStateException =>
+              // JavaFX toolkit already initialized
+          }
           toolkitInitialized = true
         }
       }
