@@ -1,7 +1,6 @@
 package ch.seidel.javafx.webview
 
 import ch.seidel.javafx.JavaFxTestBase
-import com.sun.webkit.dom.MouseEventImpl
 import javafx.application.Platform
 import javafx.beans.value.ObservableValue
 import javafx.concurrent.Worker
@@ -9,7 +8,6 @@ import javafx.scene.web.WebView
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
 import org.w3c.dom.events.EventTarget
-import org.w3c.dom.{Document, Node, NodeList}
 import scalafx.beans.property
 import scalafx.beans.property.ReadOnlyObjectProperty
 

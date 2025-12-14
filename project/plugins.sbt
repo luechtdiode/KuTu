@@ -7,6 +7,6 @@ addSbtPlugin("ch.epfl.scala" % "sbt-bloop" % "1.5.8")
 // Ensure the sbt plugin resolver is available so plugin artifacts can be resolved.
 // resolvers += "sbt-plugin-releases" at "https://repo.scala-sbt.org/scalasbt/sbt-plugin-releases/"
 // addSbtPlugin("com.typesafe.sbt" % "sbt-native-packager" % "1.9.25")
-addSbtPlugin("org.scoverage" % "sbt-scoverage" % "2.1.0")
+addSbtPlugin("org.scoverage" % "sbt-scoverage" % "2.2.2")
 addSbtPlugin("com.eed3si9n" % "sbt-assembly" % "1.2.0")
 addSbtPlugin("io.gatling" % "gatling-sbt" % "4.17.8")
