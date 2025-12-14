@@ -11,7 +11,6 @@ import javax.crypto.spec.SecretKeySpec
  * Note there is an incomplete set of hashing implementations here.
  * http://tools.ietf.org/html/draft-ietf-jose-json-web-algorithms-25
  */
-
 object JsonWebSignature {
 
   object HexToString {
@@ -25,7 +24,7 @@ object JsonWebSignature {
       case "HS256" => apply(HS256, data, key)
       case "HS384" => apply(HS384, data, key)
       case "HS512" => apply(HS512, data, key)
-      case "none" => apply(NONE, data, key)
+      //case "none" => apply(NONE, data, key)
       case x => throw new UnsupportedOperationException(x + " is an unknown or unimplemented JWT algo key")
     }
   }
@@ -35,8 +34,8 @@ object JsonWebSignature {
       case HS256 => HmacSha("HmacSHA256", data, key)
       case HS384 => HmacSha("HmacSHA384", data, key)
       case HS512 => HmacSha("HmacSHA512", data, key)
-      case NONE => Array.empty[Byte]
-      case x => throw new UnsupportedOperationException(s"$x is an unknown or unimplemented JWT algo key")
+      //case NONE => Array.empty[Byte]
+      //case x => throw new UnsupportedOperationException(s"$x is an unknown or unimplemented JWT algo key")
     }
   }
 
@@ -51,9 +50,9 @@ object JsonWebSignature {
     }
   }
 
-  abstract class Algorithm
+  sealed abstract class Algorithm
 
-  case object NONE extends Algorithm
+  //case object NONE extends Algorithm
 
   case object HS256 extends Algorithm
 
