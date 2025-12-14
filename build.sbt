@@ -1,6 +1,8 @@
-import BuildUtils._ 
-import JpackageUtils._ 
-import JpackageExecutor._ 
+import BuildUtils.*
+import JpackageUtils.*
+import JpackageExecutor.*
+
+import scala.collection.immutable.Seq
 
 ThisBuild / scalaVersion := "3.7.3"
 ThisBuild / organization := "ch.seidel"
@@ -194,6 +196,13 @@ Compile / unmanagedResourceDirectories += baseDirectory.value / "src" / "main" /
 // Include scala source directories
 Compile / unmanagedSourceDirectories += baseDirectory.value / "src" / "main" / "scala"
 Test / unmanagedSourceDirectories += baseDirectory.value / "src" / "test" / "scala"
+
+// JVM options for forked tests (headless TestFX)
+Test / javaOptions ++= Seq(
+  "-Dtestfx.robot=glass",
+  "-Dtestfx.headless=true",
+  "-Dprism.order=sw"
+)
 
 // ============================================================================
 // Platform-specific jpackage configuration and tasks

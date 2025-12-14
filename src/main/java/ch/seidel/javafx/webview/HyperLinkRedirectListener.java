@@ -47,17 +47,17 @@ public class HyperLinkRedirectListener implements ChangeListener<Worker.State>, 
         HTMLAnchorElement anchorElement = (HTMLAnchorElement) event.getCurrentTarget();
         String href = anchorElement.getHref();
 
-        if (Desktop.isDesktopSupported()) {
-            openLinkInSystemBrowser(href);
-        }
+        openLinkInSystemBrowser(href);
         event.preventDefault();
     }
 
-    private void openLinkInSystemBrowser(String url) {
+    void openLinkInSystemBrowser(String url) {
         try {
-            URI uri = new URI(url);
-            Desktop.getDesktop().browse(uri);
-        } catch (Throwable e) {
+            if (Desktop.isDesktopSupported()) {
+                URI uri = new URI(url);
+                Desktop.getDesktop().browse(uri);
+            }
+        } catch (Throwable ignored) {
         }
     }
 }
