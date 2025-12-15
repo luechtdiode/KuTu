@@ -337,7 +337,7 @@
 		<scala.version>3.7.3</scala.version>
 		<javafx.version>26-ea+19</javafx.version>
 		<pekkoHttp.version>1.3.0</pekkoHttp.version>
-		<pekko.version>1.3.0</pekko.version>
+		<pekko.version>1.4.0</pekko.version>
 		<scalafx.version>24.0.2-R36</scalafx.version>
 		<scalatest.version>3.3.0-SNAP4</scalatest.version>
 		<scala-maven-plugin.version>4.9.7</scala-maven-plugin.version>
