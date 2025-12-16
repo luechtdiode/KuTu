@@ -46,22 +46,23 @@ trait VereinService extends DBService with VereinResultMapper {
          """.as[Long].withPinnedSession
         }, Duration.Inf).toList.headOption
         if (result.isEmpty && verein.name.split(",").length > 1) {
-          println(s"findVereinLike: ${verein.name} ${verein.verband} => try equals verein-name-parts")
+          val vereinNamePart = verein.name.split(",").find(v => v.length > 3).getOrElse(verein.name.split(",")(0))
+          println(s"findVereinLike: $vereinNamePart ${verein.verband} => try equals verein-name-parts")
           result = Await.result(database.run {
             sql"""
                     select max(verein.id) as maxid
                     from verein
-                    where LOWER(name)=${verein.name.split(",")(0).toLowerCase()}
+                    where LOWER(name)=${vereinNamePart.toLowerCase()}
                       and LOWER(verband) like ${verein.verband.map(v => s"%${v.toLowerCase()}%").getOrElse("%")}
          """.as[Long].withPinnedSession
           }, Duration.Inf).toList.headOption
           if (result.isEmpty && verein.name.split(",").length > 1) {
-            println(s"findVereinLike: ${verein.name} ${verein.verband} => try like verein-name-parts")
+            println(s"findVereinLike: $vereinNamePart ${verein.verband} => try like verein-name-parts")
             result = Await.result(database.run {
               sql"""
                     select max(verein.id) as maxid
                     from verein
-                    where LOWER(name) like ${s"%${verein.name.split(",")(0).toLowerCase()}%"}
+                    where LOWER(name) like ${s"%${vereinNamePart.toLowerCase()}%"}
                       and LOWER(verband) like ${verein.verband.map(v => s"%${v.toLowerCase()}%").getOrElse("%")}
          """.as[Long].withPinnedSession
             }, Duration.Inf).toList.headOption
