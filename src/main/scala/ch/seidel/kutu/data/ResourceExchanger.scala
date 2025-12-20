@@ -269,7 +269,7 @@ object ResourceExchanger extends KutuService with RiegenBuilder {
     logger.info("cleanup media files ...")
     val cleanedMedialist = cleanUnusedMedia().map(m => m.filename).toSet
     for wettkampf <- listWettkaempfeView do {
-      val competitionMediaDir = new java.io.File(Config.homedir + "/" + encodeFileName(wettkampf.easyprint) + "/audiofiles")
+      val competitionMediaDir = new java.io.File(wettkampf.toWettkampf.prepareFilePath(Config.homedir).getPath + "/audiofiles")
       if competitionMediaDir.exists() && competitionMediaDir.isDirectory then {
         competitionMediaDir
           .listFiles()
@@ -716,11 +716,11 @@ object ResourceExchanger extends KutuService with RiegenBuilder {
             val currentSize = java.text.NumberFormat.getInstance().format(entry._1.getSize / 1024d)
             throw new RuntimeException(s"Die Datei $filename ist mit $currentSize zu gross. Sie darf nicht grösser als $maxSize Kilobytes sein.")
           }
-          val logodir = new java.io.File(Config.homedir + "/" + encodeFileName(wettkampf.easyprint))
+          val logodir = wettkampf.prepareFilePath(Config.homedir)
           if !logodir.exists() then {
             logodir.mkdir()
           }
-          val logofile = new java.io.File(Config.homedir + "/" + encodeFileName(wettkampf.easyprint) + "/" + filename)
+          val logofile = new java.io.File(logodir.getPath + "/" + filename)
           val fos = new FileOutputStream(logofile)
           val bytes = new Array[Byte](1024) //1024 bytes - Buffer size
           Iterator
@@ -903,7 +903,7 @@ object ResourceExchanger extends KutuService with RiegenBuilder {
     }
     zip.closeEntry()
 
-    val competitionDir = new java.io.File(Config.homedir + "/" + encodeFileName(wettkampf.easyprint))
+    val competitionDir = wettkampf.prepareFilePath(Config.homedir)
 
     val logofile = ServerPrintUtil.locateLogoFile(competitionDir)
     if logofile.exists() then {

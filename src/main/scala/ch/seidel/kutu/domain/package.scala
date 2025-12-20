@@ -914,12 +914,12 @@ package object domain {
       teamrule.map(TeamRegel(_).toRuleName))
 
     def prepareFilePath(homedir: String, readOnly: Boolean = true, moveFrom: Option[Wettkampf] = None): File = {
-      val targetDir = new File(homedir + "/" + encodeFileName(easyprint))
+      val targetDir = new File(new File(homedir + "/" + encodeFileName(easyprint)).toURI)
       if !readOnly then {
         moveFrom match {
           case None => if !targetDir.exists() then targetDir.mkdirs
           case Some(p) =>
-            val oldDir = new java.io.File(homedir + "/" + encodeFileName(p.easyprint))
+            val oldDir = new File(new java.io.File(homedir + "/" + encodeFileName(p.easyprint)).toURI)
             if !targetDir.exists() then {
               if oldDir.exists() && !oldDir.equals(targetDir) then {
                 oldDir.renameTo(targetDir)
@@ -1682,9 +1682,9 @@ package object domain {
     }
     def computeFilePath(wettkampf: Wettkampf): File = {
       if stage < 2 then {
-        new File(Config.homedir + "/" + encodeFileName(wettkampf.easyprint) + "/audiofiles/" + filename)
+        new File(new File(wettkampf.prepareFilePath(Config.homedir).getPath + "/audiofiles/" + filename).toURI)
       } else {
-        new File(Config.homedir + "/audiofiles/" + filename)
+        new File(new File(Config.homedir + "/audiofiles/" + filename).toURI)
       }
     }
     def toMedia = Media(id, name, extension)
