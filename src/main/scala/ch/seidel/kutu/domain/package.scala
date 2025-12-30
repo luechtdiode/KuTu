@@ -101,6 +101,11 @@ package object domain {
   given Conversion[LocalDate, java.sql.Date] = ld2SQLDate
   given Conversion[java.sql.Date, LocalDate] = sqlDate2ld
 
+
+  def sanitize(text: String): String = {
+    if text == null then "" else text.trim
+  }
+
   def isNumeric(c: String): Boolean = {
     try {
       Integer.parseInt(c)
@@ -1598,11 +1603,11 @@ package object domain {
   }
 
   case class NewRegistration(wettkampfId: Long, vereinname: String, verband: String, respName: String, respVorname: String, mobilephone: String, mail: String, secret: String) {
-    def toRegistration: Registration = Registration(0, wettkampfId, None, vereinname, verband, respName, respVorname, mobilephone, mail, Timestamp.valueOf(LocalDateTime.now()).getTime)
+    def toRegistration: Registration = Registration(0, wettkampfId, None, sanitize(vereinname), sanitize(verband), sanitize(respName), sanitize(respVorname), sanitize(mobilephone), sanitize(mail), Timestamp.valueOf(LocalDateTime.now()).getTime)
   }
 
   case class Registration(id: Long, wettkampfId: Long, vereinId: Option[Long], vereinname: String, verband: String, respName: String, respVorname: String, mobilephone: String, mail: String, registrationTime: Long, selectedInitialClub: Option[Verein] = None) extends DataObject {
-    def toVerein: Verein = Verein(0L, vereinname, Some(verband))
+    def toVerein: Verein = Verein(0L, vereinname.trim, Some(verband.trim))
 
     def toPublicView: Registration = Registration(id, wettkampfId, vereinId, vereinname, verband, respName, respVorname, "***", "***", registrationTime)
 

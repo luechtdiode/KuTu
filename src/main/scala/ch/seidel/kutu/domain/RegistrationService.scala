@@ -13,6 +13,7 @@ import scala.concurrent.{Await, Future}
 
 trait RegistrationService extends DBService with RegistrationResultMapper with MediaResultMapper with Hashing {
   private val logger = LoggerFactory.getLogger(this.getClass)
+
   def createRegistration(newReg: NewRegistration): Registration = {
     val similarRegistrations = selectRegistrationsLike(newReg.toRegistration)
       .filter{(reg: Registration) =>
@@ -26,9 +27,9 @@ trait RegistrationService extends DBService with RegistrationResultMapper with M
                   insert into vereinregistration
                   (wettkampf_id, verein_id, vereinname, verband, responsible_name, responsible_vorname, mobilephone, mail, secrethash, registrationtime)
                   values (${newReg.wettkampfId}, $vereinId,
-                          ${newReg.vereinname}, ${newReg.verband},
-                          ${newReg.respName}, ${newReg.respVorname},
-                          ${newReg.mobilephone}, ${newReg.mail}, ${hashed(newReg.secret)},
+                          ${sanitize(newReg.vereinname)}, ${sanitize(newReg.verband)},
+                          ${sanitize(newReg.respName)}, ${sanitize(newReg.respVorname)},
+                          ${sanitize(newReg.mobilephone)}, ${sanitize(newReg.mail)}, ${hashed(newReg.secret)},
                           ${Timestamp.valueOf(LocalDateTime.now())})
               """ >>
         sql"""
@@ -41,9 +42,9 @@ trait RegistrationService extends DBService with RegistrationResultMapper with M
                   where r.id = (select max(vr.id)
                               from vereinregistration vr
                               where vr.wettkampf_id=${newReg.wettkampfId}
-                                and vr.responsible_name=${newReg.respName}
-                                and vr.responsible_vorname=${newReg.respVorname}
-                                and vr.vereinname=${newReg.vereinname})
+                                and vr.responsible_name=${sanitize(newReg.respName)}
+                                and vr.responsible_vorname=${sanitize(newReg.respVorname)}
+                                and vr.vereinname=${sanitize(newReg.vereinname)})
          """.as[Registration].head.transactionally
     }, Duration.Inf)
   }
@@ -120,13 +121,14 @@ trait RegistrationService extends DBService with RegistrationResultMapper with M
     if registration.id == 0L then {
       throw new IllegalArgumentException("Registration with id=0 can not be updated")
     }
+
     Await.result(database.run {
       sqlu"""
               update vereinregistration
               set verein_id=${registration.vereinId},
-                  vereinname=${registration.vereinname}, verband=${registration.verband},
-                  responsible_name=${registration.respName}, responsible_vorname=${registration.respVorname},
-                  mobilephone=${registration.mobilephone}, mail=${registration.mail}
+                  vereinname=${registration.vereinname.trim}, verband=${registration.verband.trim},
+                  responsible_name=${registration.respName.trim}, responsible_vorname=${registration.respVorname.trim},
+                  mobilephone=${registration.mobilephone.trim}, mail=${registration.mail.trim}
               where id=${registration.id}
         """ >>
         sql"""
