@@ -4,7 +4,7 @@ import JpackageExecutor.*
 
 import scala.collection.immutable.Seq
 
-ThisBuild / scalaVersion := "3.7.3"
+ThisBuild / scalaVersion := "3.7.4"
 ThisBuild / organization := "ch.seidel"
 ThisBuild / version := "2.3.23"
 
@@ -16,12 +16,12 @@ name := "KuTu"
 val scalafxV     = "24.0.2-R36"
 val javafxV     = "26-ea+19"
 val pekkoHttpV   = "1.3.0"
-val pekkoV       = "1.3.0"
+val pekkoV       = "1.4.0"
 val slickV       = "3.6.1"
 val scalatestV   = "3.3.0-SNAP4"
 val gatlingV     = "3.14.9"
 val slf4jV       = "2.0.17"
-val logbackV     = "1.5.21"
+val logbackV     = "1.5.23"
 
 // Ensure Java compiler options match the project's target
 ThisBuild / javacOptions ++= Seq("-source", "21", "-target", "21")
@@ -117,7 +117,7 @@ libraryDependencies ++= Seq(
   "com.fasterxml.jackson.core" % "jackson-databind" % "2.20.1",
 
   // Database drivers / utils
-  "org.xerial" % "sqlite-jdbc" % "3.45.2.0",
+  "org.xerial" % "sqlite-jdbc" % "3.51.1.0",
   "org.postgresql" % "postgresql" % "42.7.8",
   "com.zaxxer" % "HikariCP" % "7.0.2",
 
@@ -129,7 +129,7 @@ libraryDependencies ++= Seq(
   "org.apache.commons" % "commons-text" % "1.15.0",
 
   // Additional Java libraries from pom.xml
-  "org.controlsfx" % "controlsfx" % "11.2.2",
+  "org.controlsfx" % "controlsfx" % "11.2.3",
   "org.simplejavamail" % "simple-java-mail" % "8.12.6",
   "net.glxn" % "qrgen" % "1.4",
   "com.github.markusbernhardt" % "proxy-vole" % "1.0.5",
@@ -138,7 +138,7 @@ libraryDependencies ++= Seq(
 
   // Pekko persistence & Kryo
   "org.apache.pekko" %% "pekko-persistence" % pekkoV,
-  "io.altoo" %% "pekko-kryo-serialization" % "1.3.0",
+  "io.altoo" %% "pekko-kryo-serialization" % "1.3.2",
 
   // Pekko SLF4J logging
   "org.apache.pekko" %% "pekko-slf4j" % pekkoV,
