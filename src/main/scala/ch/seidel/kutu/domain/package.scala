@@ -1572,7 +1572,8 @@ package object domain {
   }
 
   case class RenameVereinAction(override val verein: Registration, oldVerein: Verein) extends SyncAction {
-    override val caption = s"Verein korrigieren: ${oldVerein.easyprint}${oldVerein.verband.map(verband => s" ($verband)").getOrElse("")} zu ${verein.toVerein.easyprint}${if verein.verband.nonEmpty then s"${verein.verband})" else ""}"
+    override val caption = s"Verein korrigieren: ${oldVerein.easyprint}${oldVerein.verband.map(verband =>
+      s" ($verband)").getOrElse("")} zu ${verein.toVerein.easyprint}${if verein.verband.nonEmpty then s" (${verein.verband})" else ""}"
 
     def prepareLocalUpdate: Verein = verein.toVerein.copy(id = oldVerein.id)
 
