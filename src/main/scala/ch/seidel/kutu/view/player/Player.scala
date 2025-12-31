@@ -223,7 +223,7 @@ object Player extends JFXApp3 {
             addToPlayList(title, media.computeFilePath(wettkampf.get).getPath)
             show(title)
           } else {
-            PageDisplayer.showWarnDialog(s"Der Titel $title konnte nicht geladen werden.", s"Die Datei ${media.computeFilePath(wettkampf.get).toURI.getPath} konnte nicht gefunden werden!")
+            PageDisplayer.showWarnDialog(s"Der Titel $title konnte nicht geladen werden.", s"Die Datei ${media.computeFilePath(wettkampf.get).getPath} konnte nicht gefunden werden!")
           }
         }
       }
