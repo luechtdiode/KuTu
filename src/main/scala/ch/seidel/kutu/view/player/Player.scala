@@ -220,10 +220,10 @@ object Player extends JFXApp3 {
           if media.computeFilePath(wettkampf.get).exists() then {
             lastAction = Some(a)
             clearPlayList()
-            addToPlayList(title, media.computeFilePath(wettkampf.get).toURI.toASCIIString)
+            addToPlayList(title, media.computeFilePath(wettkampf.get).getPath)
             show(title)
           } else {
-            PageDisplayer.showWarnDialog(s"Der Titel $title konnte nicht geladen werden.", s"Die Datei ${media.computeFilePath(wettkampf.get).toURI.toASCIIString} konnte nicht gefunden werden!")
+            PageDisplayer.showWarnDialog(s"Der Titel $title konnte nicht geladen werden.", s"Die Datei ${media.computeFilePath(wettkampf.get).toURI.getPath} konnte nicht gefunden werden!")
           }
         }
       }
