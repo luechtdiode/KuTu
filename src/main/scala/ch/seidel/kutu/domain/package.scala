@@ -1191,14 +1191,14 @@ package object domain {
           else
             s"${v.easyprint} $team"
         } else {
-          if (team == 0) s"${v.verband.getOrElse(v.extendedprint).split(",").last.trim}"
+          if (team == 0) v.easyprint
           else if (team < 0 && extraTeams.size > team * -1 - 1) {
             s"${extraTeams(team * -1 - 1)}"
           }
           else
             s"${v.verband.getOrElse(v.extendedprint).split(",").last.trim} $team"
         }
-      case _ => if (team != 0) "$team" else ""
+      case _ => if (team != 0) s"$team" else ""
     }
 
     lazy val teamName = getTeamName(wettkampf.extraTeams)
@@ -1565,7 +1565,8 @@ package object domain {
   }
 
   case class RenameVereinAction(override val verein: Registration, oldVerein: Verein) extends SyncAction {
-    override val caption = s"Verein korrigieren: ${oldVerein.easyprint}${oldVerein.verband.map(verband => s" ($verband)").getOrElse("")} zu ${verein.toVerein.easyprint}${if (verein.verband.nonEmpty) s"${verein.verband})" else ""}"
+    override val caption = s"Verein korrigieren: ${oldVerein.easyprint}${oldVerein.verband.map(verband =>
+      s" ($verband)").getOrElse("")} zu ${verein.toVerein.easyprint}${if (verein.verband.nonEmpty) s" (${verein.verband})" else ""}"
 
     def prepareLocalUpdate: Verein = verein.toVerein.copy(id = oldVerein.id)
 
