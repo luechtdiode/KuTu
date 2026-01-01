@@ -2050,7 +2050,9 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
           }
         }, new Button("OK") {
           onAction = (event: ActionEvent) => {
-            service.unassignAthletFromWettkampf(athletwertungen)
+            if athletwertungen.nonEmpty then {
+              service.unassignAthletFromWettkampf(athletwertungen)
+            }
           }
         })
       }
