@@ -1,6 +1,7 @@
 package ch.seidel.kutu.domain
 
 import ch.seidel.kutu.base.KuTuBaseSpec
+import ch.seidel.kutu.calc.ScoreCalcTemplateView
 
 import java.time.LocalDate
 import scala.math.BigDecimal.RoundingMode
@@ -11,6 +12,8 @@ import ch.seidel.kutu.domain.given_Conversion_String_Int
 import ch.seidel.kutu.domain.given_Conversion_String_Long
 import ch.seidel.kutu.domain.given_Conversion_LocalDate_Date
 import ch.seidel.kutu.domain.given_Conversion_Date_LocalDate
+
+import java.sql.Date
 
 class PackageSpec extends KuTuBaseSpec {
   "GeTuWettkampf" should {
@@ -56,7 +59,106 @@ class PackageSpec extends KuTuBaseSpec {
       assert("1d, 23h, 59m, 3s" == toDurationFormat(1L, 1L + millis))
     }
   }
-  
+
+  "WertungView.getTeamname" should {
+    val teamrule = ""
+    val programm = ProgrammView(1L, "Testprogramm", 0, None, 1, 0, 99, "", 1, 0)
+    val wettkampf = WettkampfView(1L, None, LocalDate.now(), "Testwettkampf", programm, 0, BigDecimal(0), "", "", "", "", "", teamrule)
+    val disziplin = Disziplin(1L, "Testdisziplin")
+    val notenSpez = StandardWettkampf(1d)
+    val wettkampfdisziplin = WettkampfdisziplinView(1L, programm, disziplin, "", None, notenSpez, 1, 1, 1, 1, 0, 0, 0, 1)
+    val verein = Verein(1, "Testverein", Some("Testverband"))
+    val athlet = AthletView(1, 0, "M", "Mustermann", "Max", Some(LocalDate.of(2000,1,1)), "", "", "", Some(verein), activ = true)
+
+    "respond verein-name, if teamnumber is 0" in {
+      val riege = None
+      val team = 0
+      val wv = WertungView(1L, athlet, wettkampfdisziplin, wettkampf.toWettkampf, None, None, None, riege, None, team, None, None)
+
+      assert(wv.teamName == "Testverein")
+    }
+    "respond team-name with vereinsname, if teamnumber is > 0" in {
+      val riege = None
+      val team = 3
+      val wv = WertungView(1L, athlet, wettkampfdisziplin, wettkampf.toWettkampf, None, None, None, riege, None, team, None, None)
+
+      assert(wv.teamName == "Testverein 3")
+    }
+    "respond not riege-name, if riege is defined" in {
+      val riege = Some("Riegenname")
+      val team = 3
+      val wv = WertungView(1L, athlet, wettkampfdisziplin, wettkampf.toWettkampf, None, None, None, riege, None, team, None, None)
+
+      assert(wv.teamName == "Testverein 3")
+    }
+    "respond not team-name, if teamnumber is 0 and riege is defined" in {
+      val riege = Some("Riegenname")
+      val team = 0
+      val wv = WertungView(1L, athlet, wettkampfdisziplin, wettkampf.toWettkampf, None, None, None, riege, None, team, None, None)
+
+      assert(wv.teamName == "Testverein")
+    }
+    "respond teamnumber, if no verein is defined" in {
+      val team = 3
+      val athletNoVerein = athlet.copy(verein = None)
+      val wv = WertungView(1L, athletNoVerein, wettkampfdisziplin, wettkampf.toWettkampf, None, None, None, None, None, team, None, None)
+
+      assert(wv.teamName == "3")
+    }
+    "respond empty-string, if no verein is defined and teamnumber is 0" in {
+      val team = 0
+      val athletNoVerein = athlet.copy(verein = None)
+      val wv = WertungView(1L, athletNoVerein, wettkampfdisziplin, wettkampf.toWettkampf, None, None, None, None, None, team, None, None)
+
+      assert(wv.teamName == "")
+    }
+    "respond not riege-name, if no verein is defined and riege is defined" in {
+      val riege = Some("Riegenname")
+      val team = 3
+      val athletNoVerein = athlet.copy(verein = None)
+      val wv = WertungView(1L, athletNoVerein, wettkampfdisziplin, wettkampf.toWettkampf, None, None, None, riege, None, team, None, None)
+
+      assert(wv.teamName == "3")
+    }
+    "respond not teamnumber, if no verein is defined, teamnumber is 0 and riege is defined" in {
+      val riege = Some("Riegenname")
+      val team = 0
+      val athletNoVerein = athlet.copy(verein = None)
+      val wv = WertungView(1L, athletNoVerein, wettkampfdisziplin, wettkampf.toWettkampf, None, None, None, riege, None, team, None, None)
+
+      assert(wv.teamName == "")
+    }
+    "respond empty-string, if no verein is defined, teamnumber is 0 and riege is empty" in {
+      val riege = Some("")
+      val team = 0
+      val athletNoVerein = athlet.copy(verein = None)
+      val wv = WertungView(1L, athletNoVerein, wettkampfdisziplin, wettkampf.toWettkampf, None, None, None, riege, None, team, None, None)
+
+      assert(wv.teamName == "")
+    }
+    "respond effectiv verein-teamname, if verein and teamrule is defined" in {
+      val team = 2
+      val wettkampfWithTeamrule = wettkampf.copy(teamrule = "VereinGerät(3/4)")
+      val wv = WertungView(1L, athlet, wettkampfdisziplin, wettkampfWithTeamrule.toWettkampf, None, None, None, None, None, team, None, None)
+
+      assert(wv.teamName == "Testverein 2")
+    }
+    "respond virtual teamname if teamnumber is < 0 and teamrule is defined" in {
+      val team = -1
+      val wettkampfWithTeamrule = wettkampf.copy(teamrule = "VereinGerät(3/4/extrateam1+extrateam2)")
+      val wv = WertungView(1L, athlet, wettkampfdisziplin, wettkampfWithTeamrule.toWettkampf, None, None, None, None, None, team, None, None)
+
+      assert(wv.teamName == "extrateam1")
+    }
+    "respond verband teamname teamrule is defined, but without 'Verein' Context" in {
+      val team = 2
+      val wettkampfWithTeamrule = wettkampf.copy(teamrule = "VerbandGerät(3/4/extrateam1+extrateam2)")
+      val wv = WertungView(1L, athlet, wettkampfdisziplin, wettkampfWithTeamrule.toWettkampf, None, None, None, None, None, team, None, None)
+
+      assert(wv.teamName == "Testverband 2")
+    }
+  }
+
   "encapsulated titles" should {
     "match" in {
       val titles = Seq(
