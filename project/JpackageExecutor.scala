@@ -62,6 +62,7 @@ object JpackageExecutor {
     "--add-opens=java.base/sun.nio.ch=ALL-UNNAMED",
     "--add-opens=java.base/sun.util.calendar=ALL-UNNAMED",
     "--add-opens=java.base/java.math=ALL-UNNAMED",
+    "--enable-native-access=ALL-UNNAMED",
     "-XX:+UseZGC",
     "-XX:+ZGenerational",
     "-XX:+ExitOnOutOfMemoryError"

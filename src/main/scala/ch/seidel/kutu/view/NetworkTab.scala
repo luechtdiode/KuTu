@@ -684,7 +684,7 @@ class NetworkTab(wettkampfmode: BooleanProperty, override val wettkampfInfo: Wet
               makeMenuAction(title + " ...") { (caption, action) =>
                 Player.clearPlayList()
                 mediaList.foreach { case (_, _, title, mediaURI) =>
-                  Player.addToPlayList(title, mediaURI.toASCIIString.toLowerCase)
+                  Player.addToPlayList(title, mediaURI)
                 }
                 Player.load(title, AthletMediaAquire(wertung.wettkampf.uuid.get, wertung.athlet, wertung.toWertung))
               }

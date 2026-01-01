@@ -27,6 +27,7 @@ import scalafx.application.JFXApp3
 import scalafx.application.JFXApp3.PrimaryStage
 import scalafx.scene.image.{Image, ImageView}
 
+import java.net.URI
 import java.util
 
 object Player extends JFXApp3 {
@@ -125,13 +126,14 @@ object Player extends JFXApp3 {
     }
   }
 
-  private def loadPlayList(uri: String): Unit = {
-    playList.load(uri)
+  private def loadPlayList(url: String): Unit = {
+    playList.load(url)
   }
 
-  def addToPlayList(caption: String, uri: String): Unit = {
+  def addToPlayList(caption: String, uri: URI): Unit = {
     if !playList.getSongs.exists(_.getValue.equals(uri)) then {
-      playList.getSongs.add(new Pair[String, String](caption, uri))
+      println(s"Adding to playlist: $caption -> $uri")
+      playList.getSongs.add(new Pair[String, URI](caption, uri))
     }
   }
 
@@ -220,7 +222,7 @@ object Player extends JFXApp3 {
           if media.computeFilePath(wettkampf.get).exists() then {
             lastAction = Some(a)
             clearPlayList()
-            addToPlayList(title, media.computeFilePath(wettkampf.get).getPath)
+            addToPlayList(title, media.computeFilePath(wettkampf.get).toURI)
             show(title)
           } else {
             PageDisplayer.showWarnDialog(s"Der Titel $title konnte nicht geladen werden.", s"Die Datei ${media.computeFilePath(wettkampf.get).getPath} konnte nicht gefunden werden!")
@@ -421,8 +423,8 @@ object Player extends JFXApp3 {
     balanceKnob.resizeRelocate(735, 535, 87, 87)
     volumeKnob.resizeRelocate(907, 491, 175, 175)
     // listen for when we have songs
-    playList.getSongs.addListener(new ListChangeListener[Pair[String, String]]() {
-      override def onChanged(change: ListChangeListener.Change[? <: Pair[String, String]]): Unit = {
+    playList.getSongs.addListener(new ListChangeListener[Pair[String, URI]]() {
+      override def onChanged(change: ListChangeListener.Change[? <: Pair[String, URI]]): Unit = {
         if playList.getSongs.nonEmpty || isPlayerRunning then {
           lastAction.foreach {
             case a: AthletMediaStart =>
@@ -588,7 +590,7 @@ object Player extends JFXApp3 {
 
   private def initPlayerWithMedia(songIndex: Int) = {
     try {
-      val media = new Media(playList.getSongs.get(songIndex).getValue)
+      val media = new Media(playList.getSongs.get(songIndex).getValue.toASCIIString)
       val player = new MediaPlayer(media)
       mediaPlayer = player
       (media, player)
