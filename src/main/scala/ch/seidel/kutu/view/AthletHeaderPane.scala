@@ -68,7 +68,7 @@ case class AthletHeaderPane(wettkampf: Wettkampf, service: KutuService, wkview: 
           val (a, disziplin, medias) = item
           val media = medias.get
           val title = s"${selected.head.init.athlet.vorname} ${selected.head.init.athlet.name} ${selected.head.init.athlet.verein.map(v => s"(${v.name})").getOrElse("")}, $disziplin - ${media.name}"
-          Player.addToPlayList(title, media.computeFilePath(wettkampf).toURI.toASCIIString.toLowerCase)
+          Player.addToPlayList(title, media.computeFilePath(wettkampf).toURI)
         })
         items.headOption.foreach(item => {
           val (a, _, _) = item
