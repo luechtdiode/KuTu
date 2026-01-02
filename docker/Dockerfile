@@ -37,7 +37,6 @@ ENTRYPOINT [ "java", "-cp", ".:app.jar:libs/*" \
     , "-Duser.home=/home" \
     , "-server" \
     , "--add-opens=java.base/java.io=ALL-UNNAMED" \
-    , "--add-opens=java.base/java.util=ALL-UNNAMED" \
     , "--add-opens=java.base/java.lang=ALL-UNNAMED" \
     , "--add-opens=java.base/java.lang.invoke=ALL-UNNAMED" \
     , "--add-opens=java.base/java.net=ALL-UNNAMED" \
