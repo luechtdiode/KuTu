@@ -14,7 +14,7 @@ name := "KuTu"
 
 // library versions (from pom properties)
 val scalafxV     = "24.0.2-R36"
-val javafxV      = "25" //26-ea+21 - current issues with macos - see https://youtrack.jetbrains.com/articles/SUPPORT-A-860/How-to-fix-JavaFX-running-crash-issue-NSInternalInconsistencyException-on-macOS?_gl=1*173yxy7*_ga*NTcyODg1ODk1LjE3NjczMDM1MTc.*_ga_9J976DJZ68*czE3NjczMDM1MTYkbzEkZzAkdDE3NjczMDM1MTgkajYwJGwwJGgw*_gcl_au*MjI4ODI3MTEwLjE3NjczMDM1MTk.*FPAU*MjI4ODI3MTEwLjE3NjczMDM1MTk.&_cl=MTsxOzE7V0dydFNwb0tnM2w0eHZuUUdzMUxiVjFYS1JaV3NIQjNMQmxKcHViMUtaUDNRYjlkcFFjUjBaa0NVczdwOWZtbjs=
+val javafxV      = "25.0.1" //26-ea+21 - current issues with macos - see https://youtrack.jetbrains.com/articles/SUPPORT-A-860/How-to-fix-JavaFX-running-crash-issue-NSInternalInconsistencyException-on-macOS?_gl=1*173yxy7*_ga*NTcyODg1ODk1LjE3NjczMDM1MTc.*_ga_9J976DJZ68*czE3NjczMDM1MTYkbzEkZzAkdDE3NjczMDM1MTgkajYwJGwwJGgw*_gcl_au*MjI4ODI3MTEwLjE3NjczMDM1MTk.*FPAU*MjI4ODI3MTEwLjE3NjczMDM1MTk.&_cl=MTsxOzE7V0dydFNwb0tnM2w0eHZuUUdzMUxiVjFYS1JaV3NIQjNMQmxKcHViMUtaUDNRYjlkcFFjUjBaa0NVczdwOWZtbjs=
 val pekkoHttpV   = "1.3.0"
 val pekkoV       = "1.4.0"
 val slickV       = "3.6.1"

@@ -52,16 +52,17 @@ object JpackageExecutor {
 
     // Java options for jpackage (VM options passed to the packaged app)
     val javaOptionsStr = Seq(
+    "--add-opens=java.base/java.io=ALL-UNNAMED",
     "--add-opens=java.base/java.lang=ALL-UNNAMED",
     "--add-opens=java.base/java.lang.invoke=ALL-UNNAMED",
     "--add-opens=java.base/java.net=ALL-UNNAMED",
     "--add-opens=java.base/java.nio=ALL-UNNAMED",
     "--add-opens=java.base/java.time=ALL-UNNAMED",
     "--add-opens=java.base/java.util=ALL-UNNAMED",
+    "--add-opens=java.base/java.math=ALL-UNNAMED",
     "--add-opens=java.base/java.util.concurrent.atomic=ALL-UNNAMED",
     "--add-opens=java.base/sun.nio.ch=ALL-UNNAMED",
     "--add-opens=java.base/sun.util.calendar=ALL-UNNAMED",
-    "--add-opens=java.base/java.math=ALL-UNNAMED",
     "--enable-native-access=ALL-UNNAMED",
     "-XX:+UseZGC",
     "-XX:+ZGenerational",
