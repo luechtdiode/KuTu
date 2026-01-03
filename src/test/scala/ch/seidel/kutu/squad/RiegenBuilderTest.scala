@@ -29,7 +29,7 @@ with Matchers {
     val verein = Verein(1, "Testverein", Some("Testverband"))
     val athlet = AthletView(1, 0, "M", "Mustermann", "Max", Some(LocalDate.of(2000, 1, 1)), "", "", "", Some(verein), activ = true)
 
-    "return barren riege if athlet is masculine and wettkampfdisziplin is GETU" in {
+    "return barren riege if athlet is male and wettkampfdisziplin is GETU" in {
       val wertungView = WertungView(1L, athlet, wettkampfdisziplin, wettkampf.toWettkampf, None, None, None, None, None, 0, None, None)
       val riege2Name = RiegenBuilder.generateRiegen2Name(wertungView)
       riege2Name.isDefined shouldBe true
