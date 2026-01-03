@@ -72,7 +72,7 @@ object RiegenBuilder {
   }
 
   def generateRiegen2Name(w: WertungView): Option[String] = {
-    val getuMatcher = ".*GETU.*/i".r
+    val getuMatcher = "(?im).*GETU.*".r
     w.wettkampfdisziplin.programm.head.name match {
       case getuMatcher() if (w.athlet.geschlecht.equalsIgnoreCase("M")) =>
         Some(s"Barren ${w.wettkampfdisziplin.programm.name}")
