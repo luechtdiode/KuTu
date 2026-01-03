@@ -142,7 +142,7 @@ object RiegenBuilder {
       val dzl = dzlmap.keys.toList.sortBy {
         dzlmap(_)
       }
-      val riegen = riegen1.sortBy(r => r.start.map( dzlmap(_)))
+      val riegen = riegen1.filter(r => r.start.exists(dzlmap.contains)).sortBy(r => r.start.map( dzlmap(_)))
 
       //kandidat.diszipline für die Rotationsberechnung verwenden
       val rg = riegen.groupBy(e => e.start).toList.sortBy{d => d._1.map( dzl.indexOf(_))}
