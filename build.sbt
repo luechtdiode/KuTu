@@ -22,7 +22,7 @@ val slickV       = "3.6.1"
 val scalatestV   = "3.3.0-SNAP4"
 val gatlingV     = "3.14.9"
 val slf4jV       = "2.0.17"
-val logbackV     = "1.5.23"
+val logbackV     = "1.5.24"
 
 // Ensure Java compiler options match the project's target
 ThisBuild / javacOptions ++= Seq("-source", "21", "-target", "21")
