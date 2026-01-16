@@ -136,6 +136,7 @@ libraryDependencies ++= Seq(
   "com.github.markusbernhardt" % "proxy-vole" % "1.0.5",
   "org.javadelight" % "delight-nashorn-sandbox" % "0.5.5",
   "org.fusesource.leveldbjni" % "leveldbjni-all" % "1.8",
+  "org.iq80.leveldb" % "leveldb" % "0.12",
 
   // Pekko persistence & Kryo
   "org.apache.pekko" %% "pekko-persistence" % pekkoV,
