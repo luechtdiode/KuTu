@@ -24,7 +24,7 @@
     "@capacitor/core": "7.4.2",
     "@capacitor/haptics": "7.0.2",
     "@capacitor/keyboard": "7.0.3",
-    "@capacitor/splash-screen": "7.0.3",
+    "@capacitor/splash-screen": "8.0.0",
     "@capacitor/status-bar": "7.0.2",
     "@ionic/angular": "^8.7.17",
     "@ionic/angular-server": "^8.7.17",
