@@ -550,10 +550,22 @@ object KuTuApp extends JFXApp3 with KutuService with JsonSupport with JwtSupport
     }
   }
 
+  private def testLocalPort(host: String) : Boolean = {
+    try {
+      val url = java.net.URI.create(s"http://$host:${Config.httpPort}/").toURL
+      val connection = url.openConnection()
+      connection.setConnectTimeout(20)
+      connection.connect()
+      true
+    } catch {
+      case _: Throwable => false
+    }
+  }
+
   private def uploadResults(wettkampf: WettkampfView, caption: String): Unit = {
     import scala.concurrent.ExecutionContext.Implicits.global
     val process = KuTuApp.invokeAsyncWithBusyIndicator(caption) {
-      if remoteBaseUrl.indexOf("localhost") > -1 then {
+      if remoteBaseUrl.indexOf("localhost") > -1 && !testLocalPort("localhost") then {
         KuTuServer.startServer()
       }
       KuTuServer.httpUploadWettkampfRequest(wettkampf.toWettkampf)

@@ -32,6 +32,7 @@ ENV X_SMTP_PORT=0
 ENV X_SMTP_USERNAME="undefined"
 ENV X_SMTP_DOMAIN="undefined"
 ENV X_SMTP_PASSWORD="undefined"
+ENV X_LEVELDB_NATIVE="on"
 
 ENTRYPOINT [ "java", "-cp", ".:app.jar:libs/*" \
     , "-Duser.home=/home" \

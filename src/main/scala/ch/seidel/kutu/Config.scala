@@ -58,6 +58,7 @@ object Config extends KuTuSSLContext {
   else "today"
 
   logger.info(s"App-Version: $appVersion")
+  logger.info("leveldb.native=" + config.getString("pekko.persistence.journal.leveldb.native"))
 
   val logoFileMaxSize: Int = 1024 * 1024
   val mediafileMaxSize: Int = 5 * 1024 * 1024
