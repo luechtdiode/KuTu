@@ -32,10 +32,10 @@ ENV X_SMTP_PORT=0
 ENV X_SMTP_USERNAME="undefined"
 ENV X_SMTP_DOMAIN="undefined"
 ENV X_SMTP_PASSWORD="undefined"
-ENV X_LEVELDB_NATIVE="on"
 
 ENTRYPOINT [ "java", "-cp", ".:app.jar:libs/*" \
     , "-Duser.home=/home" \
+    , "-Dpekko.persistence.journal.leveldb.native=on" \
     , "-server" \
     , "--add-opens=java.base/java.io=ALL-UNNAMED" \
     , "--add-opens=java.base/java.lang=ALL-UNNAMED" \
