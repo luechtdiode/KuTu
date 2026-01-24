@@ -1,11 +1,10 @@
 package ch.seidel.kutu.data
 
 import ch.seidel.kutu.domain.*
-import ch.seidel.kutu.data.{labels, caseClassToMap, mapToCaseClass, mergeMissingProperties}
+import ch.seidel.kutu.data.{caseClassToMap, mergeMissingProperties}
 import org.scalatest.funsuite.AnyFunSuite
 
 class CaseObjectMetaUtilTest extends AnyFunSuite {
-  private val rm = reflect.runtime.universe.runtimeMirror(getClass.getClassLoader)
 
   test("testCopyWithValues") {
     val athlet: Athlet = Athlet.apply(33)
