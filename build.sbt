@@ -4,7 +4,7 @@ import JpackageExecutor.*
 
 import scala.collection.immutable.Seq
 
-ThisBuild / scalaVersion := "3.8.0"
+ThisBuild / scalaVersion := "3.8.1"
 ThisBuild / organization := "ch.seidel"
 ThisBuild / version := "2.3.23"
 
