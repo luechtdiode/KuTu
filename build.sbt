@@ -4,7 +4,7 @@ import JpackageExecutor.*
 
 import scala.collection.immutable.Seq
 
-ThisBuild / scalaVersion := "3.7.4"
+ThisBuild / scalaVersion := "3.8.0"
 ThisBuild / organization := "ch.seidel"
 ThisBuild / version := "2.3.23"
 
@@ -22,7 +22,7 @@ val slickV       = "3.6.1"
 val scalatestV   = "3.3.0-SNAP4"
 val gatlingV     = "3.14.9"
 val slf4jV       = "2.0.17"
-val logbackV     = "1.5.24"
+val logbackV     = "1.5.25"
 
 // Ensure Java compiler options match the project's target
 ThisBuild / javacOptions ++= Seq("-source", "21", "-target", "21")
@@ -114,12 +114,12 @@ libraryDependencies ++= Seq(
   "com.typesafe.slick" %% "slick-hikaricp" % slickV,
 
   // JSON / Jackson / Spray
-  "com.fasterxml.jackson.core" % "jackson-core" % "2.20.1",
-  "com.fasterxml.jackson.core" % "jackson-databind" % "2.20.1",
+  "com.fasterxml.jackson.core" % "jackson-core" % "2.21.0",
+  "com.fasterxml.jackson.core" % "jackson-databind" % "2.21.0",
 
   // Database drivers / utils
   "org.xerial" % "sqlite-jdbc" % "3.51.1.0",
-  "org.postgresql" % "postgresql" % "42.7.8",
+  "org.postgresql" % "postgresql" % "42.7.9",
   "com.zaxxer" % "HikariCP" % "7.0.2",
 
   // Utilities
