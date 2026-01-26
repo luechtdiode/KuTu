@@ -52,7 +52,7 @@
     "@types/jasmine": "~5.1.12",
     "@types/jasminewd2": "~2.0.13",
     "@types/node": "^25.0.6",
-    "@typescript-eslint/parser": "^8.53.1",
+    "@typescript-eslint/parser": "^8.54.0",
     "body-parser": ">=2.2.1",
     "eslint": "^9.39.0",
     "eslint-plugin-import": "2.32.0",
