@@ -232,7 +232,7 @@ trait AthletService extends DBService with AthletResultMapper with VereinService
       else if vereinSimilarity && preret && jahrgangSimilarity then {
         (namenSimilarity + vorNamenSimilarity) * 2
       }
-      else if vereinSimilarity && (preret || (preret2 && gebdatSimilarity)) then {
+      else if vereinSimilarity && preret2 && gebdatSimilarity then {
         namenSimilarity + vorNamenSimilarity
       }
       else {
