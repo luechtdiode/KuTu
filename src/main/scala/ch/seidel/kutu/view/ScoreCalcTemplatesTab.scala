@@ -202,7 +202,7 @@ class ScoreCalcTemplatesTab(wettkampf: WettkampfView, override val service: Kutu
     scoreCalcTemplatesView.filterEvent(KeyEvent.KeyPressed) {defaultKeyActionHandler}
     scoreCalcTemplatesView.filterEvent(MouseEvent.MouseClicked) {defaultMouseActionHandler}
 
-    text = "Noternerfassung Formulare"
+    text = "Notenerfassung Formulare"
     content = new BorderPane {
       hgrow = Priority.Always
       vgrow = Priority.Always
