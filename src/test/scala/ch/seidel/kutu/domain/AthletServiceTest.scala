@@ -2,17 +2,19 @@ package ch.seidel.kutu.domain
 
 import java.time.LocalDate
 import java.util
-
 import org.scalatest.funsuite.AnyFunSuite
+
+import java.sql.Date
 
 class AthletServiceTest extends AnyFunSuite with AthletService {
 
-  val gebdat1 = java.sql.Date.valueOf(LocalDate.of(2012, 1, 1))
-  val gebdat2 = java.sql.Date.valueOf(LocalDate.of(2013, 1, 1))
-  val gebdat3 = java.sql.Date.valueOf(LocalDate.of(2012, 4, 28))
+  val gebdat1: Date = java.sql.Date.valueOf(LocalDate.of(2012, 1, 1))
+  val gebdat2: Date = java.sql.Date.valueOf(LocalDate.of(2013, 1, 1))
+  val gebdat3: Date = java.sql.Date.valueOf(LocalDate.of(2012, 4, 28))
+  val gebdat4: Date = java.sql.Date.valueOf(LocalDate.of(2008, 11, 2))
 
   val verein = 33
-  val athleteList = List(
+  val athleteList: Seq[Athlet] = List(
     Athlet(verein).copy(id = 1L, name = "Bolliquèr", vorname = "Sophia"),
     Athlet(verein).copy(id = 2L, name = "Boliger", vorname = "Sofia"),
     Athlet(verein).copy(id = 3L, name = "Gwerder", vorname = "Noelia", gebdat = Some(gebdat1)),
@@ -31,12 +33,14 @@ class AthletServiceTest extends AnyFunSuite with AthletService {
     Athlet(verein).copy(id = 16L, name = "Villiger", vorname = "Freia", gebdat = Some(gebdat3)),
     Athlet(verein).copy(id = 17L, name = "Villiger", vorname = "Anina", gebdat = Some(gebdat3)),
     Athlet(verein).copy(id = 18L, name = "Rutishuser", vorname = "Lena", gebdat = Some(gebdat3)),
-    Athlet(verein).copy(id = 19L, name = "Rutishuser", vorname = "Lisa", gebdat = Some(gebdat3))
+    Athlet(verein).copy(id = 19L, name = "Rutishuser", vorname = "Lisa", gebdat = Some(gebdat3)),
+    Athlet(verein).copy(id = 20L, name = "Muster", vorname = "Elina", gebdat = Some(gebdat3)),
+    Athlet(verein).copy(id = 21L, name = "Muster", vorname = "Alena", gebdat = Some(gebdat4))
   )
 
-  var athletes = athleteList.map(a => a.id -> a).toMap
+  var athletes: Map[Long, Athlet] = athleteList.map(a => a.id -> a).toMap
 
-  override def loadAthlet(key: Long) = {
+  override def loadAthlet(key: Long): Option[Athlet] = {
     athletes.get(key)
   }
 
@@ -66,6 +70,9 @@ class AthletServiceTest extends AnyFunSuite with AthletService {
     assert(findAthleteLike(cache, exclusive = false)(athletes(11L)) === athletes(11L))
     assert(findAthleteLike(cache, exclusive = false)(athletes(13L)) === athletes(13L))
 
+    assert(findAthleteLike(cache, exclusive = false)(athletes(20L)) === athletes(20L))
+    assert(findAthleteLike(cache, exclusive = false)(athletes(21L)) === athletes(21L))
+
     // trillings
     assert(findAthleteLike(cache, exclusive = false)(athletes(15L)) === athletes(15L))
     assert(findAthleteLike(cache, exclusive = false)(athletes(16L)) === athletes(16L))
@@ -74,6 +81,17 @@ class AthletServiceTest extends AnyFunSuite with AthletService {
     assert(findAthleteLike(cache, exclusive = false)(athletes(18)) === athletes(18))
     assert(findAthleteLike(cache, exclusive = false)(athletes(19L)) === athletes(19))
 
+  }
+
+  test("testFindAthleteLike with missing athlete") {
+    val cache = new util.ArrayList[MatchCode]
+    athletes.values
+      .filter(a => a.id != 21L)
+      .foreach(a =>
+        cache.add(MatchCode(a.id, a.name, a.vorname, a.gebdat, a.verein.getOrElse(0))))
+
+    assert(findAthleteLike(cache, exclusive = false)(athletes(20L)) === athletes(20L))
+    assert(findAthleteLike(cache, exclusive = false)(athletes(21L)) === athletes(21L))
   }
 
   test("testFindAthleteLike-exclusive") {
