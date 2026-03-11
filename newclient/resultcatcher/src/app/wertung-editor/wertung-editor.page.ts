@@ -103,7 +103,7 @@ export class WertungEditorPage {
   get isNetworkMediaPlayerAvailable(): boolean {
     return this.backendService.mediaPlayerAvailable.value;
   }
-  
+
   groupBy = <T, K extends keyof any>(arr: T[], key: (i: T) => K) => arr.reduce(
     (groups, item) => {
       (groups[key(item)] ||= []).push(item);
@@ -210,10 +210,12 @@ export class WertungEditorPage {
       this.backendService.validateWertung(toValidate).subscribe({
         next: (w) => {
           this.zone.run(() => {
-            this.lastValidatedWertung = toValidate;
-            this.wertung.noteD = w.noteD;
-            this.wertung.noteE = w.noteE;
-            this.wertung.endnote = w.endnote;
+            if (w.athletId === this.wertung.athletId && w.wettkampfdisziplinId === this.wertung.wettkampfdisziplinId) {
+              this.lastValidatedWertung = toValidate;
+              this.wertung.noteD = w.noteD;
+              this.wertung.noteE = w.noteE;
+              this.wertung.endnote = w.endnote;
+            }
           });
         },
         error: (err) => {
@@ -412,7 +414,7 @@ export class WertungEditorPage {
       case 'AthletMediaIsRunning':
         if (message.media.id === this.wertung.mediafile?.id) {
           this.backendService.stopMusic(this.ensureInitialValues(this.wertung));
-        } 
+        }
        break;
 
       case 'AthletMediaIsFree':
