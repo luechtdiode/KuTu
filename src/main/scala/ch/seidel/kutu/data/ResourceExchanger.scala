@@ -293,19 +293,14 @@ object ResourceExchanger extends KutuService with RiegenBuilder {
   def importWettkampfMediaFiles(wettkampf: Wettkampf, mediaList: List[MediaAdmin], file: InputStream): Unit = {
     val buffer = new BufferedInputStream(file)
     buffer.mark(1024 * 1024 * 1024) // max 1GB
-    type ZipStream = (ZipEntry, InputStream)
-    class ZipEntryTraversableClass extends Iterator[ZipStream] {
-      buffer.reset()
-      val zis = new ZipInputStream(buffer)
-      val zisIterator: Iterator[ZipEntry] = Iterator.continually(zis.getNextEntry)
-        .filter(ze => ze == null || !ze.isDirectory)
-        .takeWhile(ze => ze != null).iterator
+    buffer.reset()
+    val zis = new ZipInputStream(buffer)
+    val zipEntries: Iterator[(ZipEntry, InputStream)] = Iterator.continually(zis.getNextEntry)
+      .filter(ze => ze == null || !ze.isDirectory)
+      .takeWhile(ze => ze != null)
+      .map(ze => (ze, zis))
 
-      override def hasNext: Boolean = zisIterator.hasNext
-
-      override def next(): (ZipEntry, InputStream) = (zisIterator.next(), zis)
-    }
-    new ZipEntryTraversableClass().foreach { entry =>
+    zipEntries.foreach { entry =>
       val keys = (entry._1.getName + "@0").split("@")
       val filename = keys(0)
       val mediaId = keys(1)
@@ -319,20 +314,17 @@ object ResourceExchanger extends KutuService with RiegenBuilder {
   def importWettkampf(file: InputStream): Wettkampf = {
     val buffer = new BufferedInputStream(file)
     buffer.mark(1024 * 1024 * 1024) // max 1GB
-    type ZipStream = (ZipEntry, InputStream)
-    class ZipEntryTraversableClass extends Iterator[ZipStream] {
+
+    def createZipIterator(): Iterator[(ZipEntry, InputStream)] = {
       buffer.reset()
       val zis = new ZipInputStream(buffer)
-      val zisIterator: Iterator[ZipEntry] = Iterator.continually(zis.getNextEntry)
+      Iterator.continually(zis.getNextEntry)
         .filter(ze => ze == null || !ze.isDirectory)
-        .takeWhile(ze => ze != null).iterator
-
-      override def hasNext: Boolean = zisIterator.hasNext
-
-      override def next(): (ZipEntry, InputStream) = (zisIterator.next(), zis)
+        .takeWhile(ze => ze != null)
+        .map(ze => (ze, zis))
     }
 
-    val collection = new ZipEntryTraversableClass().foldLeft(Map[String, (Seq[String], Map[String, Int])]()) { (acc, entry) =>
+    val collection = createZipIterator().foldLeft(Map[String, (Seq[String], Map[String, Int])]()) { (acc, entry) =>
       if entry._1.getName.endsWith(".csv") then {
         val csv = Source.fromInputStream(entry._2, "utf-8").getLines().toList
         val header = csv.take(1).map(_.dropWhile {
@@ -671,7 +663,7 @@ object ResourceExchanger extends KutuService with RiegenBuilder {
     if wettkampfInstances.values.size == 1 then {
       val wettkampf = wettkampfInstances.values.head
 
-      new ZipEntryTraversableClass().foreach { entry =>
+      createZipIterator().foreach { entry =>
         if entry._1.getName.startsWith(".at") && entry._1.getName.contains(Config.remoteHostOrigin) && !wettkampf.hasSecred(Config.homedir, Config.remoteHostOrigin) then {
           val filename = entry._1.getName
           if !wettkampf.hasSecred(Config.homedir, Config.remoteHostOrigin) then {
@@ -680,7 +672,7 @@ object ResourceExchanger extends KutuService with RiegenBuilder {
           }
         }
       }
-      new ZipEntryTraversableClass().foreach { entry =>
+      createZipIterator().foreach { entry =>
         if entry._1.getName.startsWith(".from") && entry._1.getName.contains(Config.remoteHostOrigin) && !wettkampf.hasRemote(Config.homedir, Config.remoteHostOrigin) then {
           val filename = entry._1.getName
           if !wettkampf.hasRemote(Config.homedir, Config.remoteHostOrigin) then {
@@ -689,7 +681,7 @@ object ResourceExchanger extends KutuService with RiegenBuilder {
           }
         }
       }
-      new ZipEntryTraversableClass().foreach { entry =>
+      createZipIterator().foreach { entry =>
         if entry._1.getName.endsWith(".scoredef") then {
           val filename = entry._1.getName
           val wettkampfDir = new java.io.File(Config.homedir + "/" + encodeFileName(wettkampf.easyprint))
@@ -708,7 +700,7 @@ object ResourceExchanger extends KutuService with RiegenBuilder {
           logger.info("scoredef-file was written " + scoredefFile.getName)
         }
       }
-      new ZipEntryTraversableClass().foreach { entry =>
+      createZipIterator().foreach { entry =>
         if entry._1.getName.startsWith("logo") then {
           val filename = entry._1.getName
           if entry._1.getSize > Config.logoFileMaxSize then {
@@ -732,7 +724,7 @@ object ResourceExchanger extends KutuService with RiegenBuilder {
           logger.info("logo was written " + logofile.getName)
         }
       }
-      new ZipEntryTraversableClass()
+      createZipIterator()
         .filter(entry => entry._1.getName.toLowerCase.contains(".mp3")) //startsWith("/audiofiles/"))
         .foreach { entry =>
           val keys = (entry._1.getName + "@0").split("@")

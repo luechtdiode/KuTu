@@ -3,19 +3,23 @@ package ch.seidel.kutu
 import ch.seidel.kutu.actors.{AthletIndexActor, KuTuMailerActor, ResyncIndex, SimpleMail}
 import ch.seidel.kutu.data.ResourceExchanger
 import ch.seidel.kutu.http.{AuthSupport, Core, Hashing, KuTuAppHTTPServer}
+import org.apache.pekko.http.scaladsl.Http
 import org.slf4j.LoggerFactory
 
 import scala.concurrent.{ExecutionContext, Future}
 import scala.io.StdIn
 
-object KuTuServer extends App with KuTuAppHTTPServer with AuthSupport with Hashing {
+object KuTuServer extends KuTuAppHTTPServer with AuthSupport with Hashing {
   private val logger = LoggerFactory.getLogger(this.getClass)
-
 
   import Core.*
 
   implicit val executionContext: ExecutionContext = system.dispatcher
 
+  @main
+  final def main(): Unit = {
+  }
+  
   override def shutDown(caller: String): Unit = {
     if binding != null then {
       logger.info(s"$caller: Server stops ...")
@@ -27,7 +31,7 @@ object KuTuServer extends App with KuTuAppHTTPServer with AuthSupport with Hashi
     super.shutDown("KuTuServer")
   }
 
-  val binding = startServer()
+  val binding: Future[Http.ServerBinding] = startServer()
   logger.info("initial cleanup athletes ...")
   private val cleanedAthletes = markAthletesInactiveOlderThan(3)
   logger.info("initial cleanup clubs ...")
