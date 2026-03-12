@@ -646,9 +646,9 @@ class RiegenTab(override val wettkampfInfo: WettkampfInfo, override val service:
           }
           items.get.add(cde)
         }
-        cellFactory = CheckBoxListCell.forListView[CheckListBoxEditor[Disziplin]](new javafx.util.Callback[CheckListBoxEditor[Disziplin], javafx.beans.value.ObservableValue[java.lang.Boolean]] {
-          override def call(p: CheckListBoxEditor[Disziplin]): javafx.beans.value.ObservableValue[java.lang.Boolean] = p.selected.delegate
-        })
+        cellFactory = (_: ListView[CheckListBoxEditor[Disziplin]]) => new CheckBoxListCell[CheckListBoxEditor[Disziplin]] {
+          selectedStateCallback = (item: CheckListBoxEditor[Disziplin]) => item.selected
+        }
       }
 
       def getSelectedDisziplines = {

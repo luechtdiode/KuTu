@@ -6,7 +6,7 @@ import scalafx.collections.ObservableBuffer.observableBuffer2ObservableList
 import scalafx.scene.control.*
 import scalafx.scene.image.{Image, ImageView}
 
-class GeraeteRiegeListCell extends ListCell[GeraeteRiege]() {
+class GeraeteRiegeListCell extends ListCell[GeraeteRiege] {
   var okIcon: Image = null
   try {
     okIcon = new Image(getClass.getResourceAsStream("/images/GreenOk.png"))
@@ -18,38 +18,40 @@ class GeraeteRiegeListCell extends ListCell[GeraeteRiege]() {
     case e: Exception => e.printStackTrace()
   }
 
-  override val delegate: jfxsc.ListCell[GeraeteRiege] = new jfxsc.ListCell[GeraeteRiege] {
-    override protected def updateItem(item: GeraeteRiege, empty: Boolean): Unit = {
-      super.updateItem(item, empty)
-      if item != null then {
-        val imageView = new ImageView {
-          image = okIcon
-        }
-        item.durchgang match {
-          case Some(d) =>
-            setText(s"${item.sequenceId} ${item.durchgang.get}: ${item.disziplin.map(d => d.name).getOrElse("")}  (${item.halt + 1}. Gerät)")
-            if !item.erfasst then {
-              styleClass.add("incomplete")
-              imageView.image = nokIcon
-            }
-            else if styleClass.indexOf("incomplete") > -1 then {
-              styleClass.remove(styleClass.indexOf("incomplete"))
-            }
-          case None =>
-            setText(s"Alle")
-            if !item.erfasst then {
-              styleClass.add("incomplete")
-              imageView.image = nokIcon
-            }
-            else if styleClass.indexOf("incomplete") > -1 then {
-              styleClass.remove(styleClass.indexOf("incomplete"))
-            }
-        }
-        graphic = imageView
+  item.onChange { (_, _, newItem) =>
+    updateCellContent(newItem)
+  }
+
+  private def updateCellContent(item: GeraeteRiege): Unit = {
+    if item != null then {
+      val imageView = new ImageView {
+        image = okIcon
       }
-      else {
-        graphic = null
+      item.durchgang match {
+        case Some(d) =>
+          text = s"${item.sequenceId} ${item.durchgang.get}: ${item.disziplin.map(d => d.name).getOrElse("")}  (${item.halt + 1}. Gerät)"
+          if !item.erfasst then {
+            styleClass.add("incomplete")
+            imageView.image = nokIcon
+          }
+          else if styleClass.indexOf("incomplete") > -1 then {
+            styleClass.remove(styleClass.indexOf("incomplete"))
+          }
+        case None =>
+          text = "Alle"
+          if !item.erfasst then {
+            styleClass.add("incomplete")
+            imageView.image = nokIcon
+          }
+          else if styleClass.indexOf("incomplete") > -1 then {
+            styleClass.remove(styleClass.indexOf("incomplete"))
+          }
       }
+      graphic = imageView
+    }
+    else {
+      text = null
+      graphic = null
     }
   }
 }

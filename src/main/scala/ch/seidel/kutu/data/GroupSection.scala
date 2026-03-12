@@ -389,9 +389,9 @@ case class GroupLeaf[GK <: DataObject](override val groupKey: GK, list: Iterable
       (programm, pwertungen) <- wks(wettkampf).groupBy {
         _.wettkampfdisziplin.programm.aggregatorSubHead
       }
-      psums = pwertungen.map { w => w.resultat }
-      psum = aggreateFun(psums) //if (psums.nonEmpty) psums.reduce(_ + _) else Resultat(0, 0, 0)
     yield {
+      val psums = pwertungen.map { w => w.resultat }
+      val psum = aggreateFun(psums) //if (psums.nonEmpty) psums.reduce(_ + _) else Resultat(0, 0, 0)
       (programm, psum)
     }).groupBy(_._1).map { x =>
       val xsum = x._2.map(_._2).reduce(_ + _)
