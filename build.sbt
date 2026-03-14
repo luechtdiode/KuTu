@@ -25,7 +25,7 @@ val slf4jV       = "2.0.17"
 val logbackV     = "1.5.32"
 
 // Ensure Java compiler options match the project's target
-ThisBuild / javacOptions ++= Seq("-source", "21", "-target", "21")
+ThisBuild / javacOptions ++= Seq("-source", "25", "-target", "25")
 
 // Resolvers: include Sonatype snapshots because project uses SNAP dependencies
 resolvers ++= Seq(
@@ -42,9 +42,7 @@ Compile / scalacOptions ++= {
     "-feature",
     "-language:implicitConversions",
     "-language:postfixOps",
-    "-language:existentials",
-    "-source:3.8-migration",
-    "-rewrite"
+    "-language:existentials"
   )
   base
 }
