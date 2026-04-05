@@ -222,8 +222,8 @@ class SimulationBottmingenD1 extends Simulation {
     scnVisitor
       .inject(
         rampConcurrentUsers(100) to (500) during (10 minutes),
-        constantConcurrentUsers(500) during(40 minutes),
-        rampConcurrentUsers(500) to (300) during (10 minutes),
+        constantConcurrentUsers(600) during(40 minutes),
+        rampConcurrentUsers(700) to (300) during (10 minutes),
 //        constantConcurrentUsers(150) during (10 hours)
         )
       .throttle(
