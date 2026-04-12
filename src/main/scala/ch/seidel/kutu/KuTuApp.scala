@@ -44,7 +44,8 @@ import scalafx.stage.FileChooser.ExtensionFilter
 import scalafx.stage.{FileChooser, Screen}
 import spray.json.*
 
-import java.io.{ByteArrayInputStream, File, FileInputStream}
+import java.awt.Desktop
+import java.io.{ByteArrayInputStream, File, FileInputStream, IOException}
 import java.net.URL
 import java.nio.file.Files
 import java.util.concurrent.{Executors, ScheduledExecutorService}
@@ -1918,8 +1919,18 @@ object KuTuApp extends JFXApp3 with KutuService with JsonSupport with JwtSupport
     if !dir.exists() then {
       dir.mkdirs()
     }
+    if (Desktop.isDesktopSupported) {
+      new Thread(() => {
+        try Desktop.getDesktop.open(dir)
+        catch {
+          case e: IOException =>
+            e.printStackTrace
+        }
 
-    hostServices.showDocument(dir.toURI.toString)
+      }).start()
+    } else {
+      hostServices.showDocument(dir.toURI.toString)
+    }
   }
 
   private def makeVereinLoeschenMenu(v: Verein) = makeMenuAction("Verein löschen") { (caption, action) =>

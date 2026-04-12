@@ -4,7 +4,7 @@ import JpackageExecutor.*
 
 import scala.collection.immutable.Seq
 
-ThisBuild / scalaVersion := "3.8.2"
+ThisBuild / scalaVersion := "3.8.3"
 ThisBuild / organization := "ch.seidel"
 ThisBuild / version := "2.3.23"
 
@@ -13,11 +13,11 @@ ThisBuild / version := "2.3.23"
 name := "KuTu"
 
 // library versions (from pom properties)
-val scalafxV     = "24.0.2-R36"
+val scalafxV     = "26.0.0-R38"
 val javafxV      = "26-ea+21" // current issues with macos - see https://youtrack.jetbrains.com/articles/SUPPORT-A-860/How-to-fix-JavaFX-running-crash-issue-NSInternalInconsistencyException-on-macOS?_gl=1*173yxy7*_ga*NTcyODg1ODk1LjE3NjczMDM1MTc.*_ga_9J976DJZ68*czE3NjczMDM1MTYkbzEkZzAkdDE3NjczMDM1MTgkajYwJGwwJGgw*_gcl_au*MjI4ODI3MTEwLjE3NjczMDM1MTk.*FPAU*MjI4ODI3MTEwLjE3NjczMDM1MTk.&_cl=MTsxOzE7V0dydFNwb0tnM2w0eHZuUUdzMUxiVjFYS1JaV3NIQjNMQmxKcHViMUtaUDNRYjlkcFFjUjBaa0NVczdwOWZtbjs=
                               // 25.0.1 runs stable on macOS but has other issues with Treetable JavaFX controls
 val pekkoHttpV   = "1.3.0"
-val pekkoV       = "1.4.0"
+val pekkoV       = "1.5.0"
 val slickV       = "3.6.1"
 val scalatestV   = "3.3.0-SNAP4"
 val gatlingV     = "3.15.0"
@@ -114,11 +114,11 @@ libraryDependencies ++= Seq(
   "com.typesafe.slick" %% "slick-hikaricp" % slickV,
 
   // JSON / Jackson / Spray
-  "com.fasterxml.jackson.core" % "jackson-core" % "2.21.1",
-  "com.fasterxml.jackson.core" % "jackson-databind" % "2.21.1",
+  "com.fasterxml.jackson.core" % "jackson-core" % "2.21.2",
+  "com.fasterxml.jackson.core" % "jackson-databind" % "2.21.2",
 
   // Database drivers / utils
-  "org.xerial" % "sqlite-jdbc" % "3.51.2.0",
+  "org.xerial" % "sqlite-jdbc" % "3.51.3.0",
   "org.postgresql" % "postgresql" % "42.7.10",
   "com.zaxxer" % "HikariCP" % "7.0.2",
 
@@ -140,7 +140,7 @@ libraryDependencies ++= Seq(
 
   // Pekko persistence & Kryo
   "org.apache.pekko" %% "pekko-persistence" % pekkoV,
-  "io.altoo" %% "pekko-kryo-serialization" % "1.3.2",
+  "io.altoo" %% "pekko-kryo-serialization" % "1.5.1",
 
   // Pekko SLF4J logging
   "org.apache.pekko" %% "pekko-slf4j" % pekkoV,
