@@ -4,7 +4,7 @@ import JpackageExecutor.*
 
 import scala.collection.immutable.Seq
 
-ThisBuild / scalaVersion := "3.8.2"
+ThisBuild / scalaVersion := "3.8.3"
 ThisBuild / organization := "ch.seidel"
 ThisBuild / version := "2.3.23"
 
@@ -118,7 +118,7 @@ libraryDependencies ++= Seq(
   "com.fasterxml.jackson.core" % "jackson-databind" % "2.21.2",
 
   // Database drivers / utils
-  "org.xerial" % "sqlite-jdbc" % "3.51.2.0",
+  "org.xerial" % "sqlite-jdbc" % "3.51.3.0",
   "org.postgresql" % "postgresql" % "42.7.10",
   "com.zaxxer" % "HikariCP" % "7.0.2",
 
