@@ -60,11 +60,11 @@ jobs:
           mkdir ./src/main/resources/app
           cp -R -f ./newclient/resultcatcher/www/* ./src/main/resources/app
       - name: Autocommit Client
-        uses: stefanzweifel/git-auto-commit-action@v5
+        uses: stefanzweifel/git-auto-commit-action@v7
         with:
           commit_message: update with generated Client from Github Actions CI for build ${{env.GITHUB_RUN_NUMBER}} with [skip ci]
       - name: Archive client-modifications
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: src
           path: |
