@@ -340,7 +340,7 @@
 		<pekko.version>1.5.0</pekko.version>
 		<scalafx.version>26.0.0-R38</scalafx.version>
 		<scalatest.version>3.3.0-SNAP4</scalatest.version>
-		<scala-maven-plugin.version>4.9.9</scala-maven-plugin.version>
+		<scala-maven-plugin.version>4.9.10</scala-maven-plugin.version>
 		<gatling.version>3.15.0</gatling.version>
 		<gatling-plugin.version>4.21.4</gatling-plugin.version>
 		<maven.compiler.source>21</maven.compiler.source>
