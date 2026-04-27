@@ -1147,9 +1147,13 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
         (ts.getRow, ts.getColumn)
     }
 
-    val columnrebuild = wertungen.isEmpty
+    val sizeBefore = (wertungen.map(_.size) :+ 0).max
+    val hadVariables = wertungen.flatMap(row => row.filter(w => w.init.wettkampfdisziplin.notenSpez.template.nonEmpty).map(w => w.init.wettkampfdisziplin)).toSet
     isFilterRefreshing = true
     wertungen = reloadWertungen()
+    def sizeNow = (wertungen.map(_.size) :+ 0).max
+    def hasVariables = wertungen.flatMap(row => row.filter(w => w.init.wettkampfdisziplin.notenSpez.template.nonEmpty).map(w => w.init.wettkampfdisziplin)).toSet
+    val columnrebuild = (sizeBefore != sizeNow) || (hadVariables != hasVariables)
     if columnrebuild && wertungen.nonEmpty then {
       wkview.columns.clear()
       riege match {
