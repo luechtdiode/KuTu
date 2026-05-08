@@ -1418,31 +1418,34 @@ package object domain {
     def getMediaURI(wettkampf: Wettkampf, lookup: String=>Option[MediaAdmin], wertung: Wertung): URI = {
       val pattern =  s"${encodeFileName(s"${name}_${vorname}")}_${wertung.wettkampfdisziplinId}.".toLowerCase
       val dir = new java.io.File(Config.homedir + "/" + encodeFileName(wettkampfTitel) + "/audiofiles")
-      val pattern2 = wertung.mediafile.flatMap(mf => lookup(mf.id)).map(_.computeFilePath(wettkampf).toString.toLowerCase()).getOrElse(Config.homedir + "/" + encodeFileName(wettkampfTitel) + s"/$pattern.mp3")
-      dir.listFiles(new FilenameFilter {
+      val pattern2 = wertung.mediafile.flatMap(mf => lookup(mf.id)).map(_.computeFilePath(wettkampf).toString.toLowerCase()).getOrElse(Config.homedir + "/" + encodeFileName(wettkampfTitel) + s"/${pattern}mp3")
+      val files: Array[File] = dir.listFiles(new FilenameFilter {
         override def accept(dir: File, name: String): Boolean = {
           val ln = name.toLowerCase
           ln.endsWith(pattern2) || (ln.startsWith(pattern) && (
-          ln.toLowerCase.endsWith(".aif")
-            || ln.endsWith(".aiff")
-            || ln.endsWith(".fxm")
-            || ln.endsWith(".flv")
-            || ln.endsWith(".m3u8")
-            || ln.endsWith(".mp3")
-            || ln.endsWith(".mp4")
-            || ln.endsWith(".m4a")
-            || ln.endsWith(".m4v")
-            || ln.endsWith(".wav")
-          ))
+            ln.toLowerCase.endsWith(".aif")
+              || ln.endsWith(".aiff")
+              || ln.endsWith(".fxm")
+              || ln.endsWith(".flv")
+              || ln.endsWith(".m3u8")
+              || ln.endsWith(".mp3")
+              || ln.endsWith(".mp4")
+              || ln.endsWith(".m4a")
+              || ln.endsWith(".m4v")
+              || ln.endsWith(".wav")
+            ))
         }
-      }).toList
+      })
+      if (files == null) {
+        new java.io.File(pattern2).toURI
+      } else files.toList
         .headOption
         .getOrElse(new java.io.File(pattern2))
         .toURI
     }
     def hasMedia(wettkampf: Wettkampf, lookup: String=>Option[MediaAdmin], wertung: Wertung): Boolean = {
       val uri = getMediaURI(wettkampf, lookup, wertung)
-      println("searching for mediafile at " + uri )
+      //println("searching for mediafile at " + uri )
       new File(uri).exists()
     }
   }
