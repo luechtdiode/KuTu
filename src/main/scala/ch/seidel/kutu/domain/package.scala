@@ -615,7 +615,7 @@ package object domain {
 
   object Leistungsklasse {
     // https://www.dtb.de/fileadmin/user_upload/dtb.de/Sportarten/Ger%C3%A4tturnen/PDFs/2022/01_DTB-Arbeitshilfe_Gtw_KuerMod_2022_V1.pdf
-    val dtb = Seq(
+    val dtb: Seq[String] = Seq(
       "Kür", "LK1", "LK2", "LK3", "LK4"
     )
   }
@@ -1298,7 +1298,7 @@ package object domain {
           wertung.copy(noteD = None, noteE = None, endnote = None)
         } else {
           val (d, e) = validated(wertung.noteD.getOrElse(BigDecimal(0)).doubleValue, wertung.noteE.getOrElse(BigDecimal(0)).doubleValue, wettkampfDisziplin)
-          wertung.copy(noteD = Some(d), noteE = Some(e), endnote = Some(calcEndnote(d, e, wettkampfDisziplin)))
+          wertung.copy(noteD = Some(d), noteE = Some(e), endnote = Some(calcEndnote(d, e, wettkampfDisziplin)), variables = wertung.variables.map(_.toNormalizedVariablesView))
         }
       }
 
@@ -1323,8 +1323,8 @@ package object domain {
 
   case class StandardWettkampf(punktgewicht: Double, dNoteLabel: String = "D", eNoteLabel: String = "E", scoreTemplate: Option[ScoreCalcTemplate] = None) extends NotenModus {
     override def validated(dnote: Double, enote: Double, wettkampfDisziplin: WettkampfdisziplinView): (Double, Double) = {
-      val dnoteValidated = if wettkampfDisziplin.isDNoteUsed then BigDecimal(dnote).setScale(wettkampfDisziplin.scale, BigDecimal.RoundingMode.FLOOR).max(wettkampfDisziplin.min).min(wettkampfDisziplin.max).toDouble else 0d
-      val enoteValidated = BigDecimal(enote).setScale(wettkampfDisziplin.scale, BigDecimal.RoundingMode.FLOOR).max(wettkampfDisziplin.min).min(wettkampfDisziplin.max).toDouble
+      val dnoteValidated = if wettkampfDisziplin.isDNoteUsed then BigDecimal(dnote).setScale(wettkampfDisziplin.scale, BigDecimal.RoundingMode.HALF_UP).max(wettkampfDisziplin.min).min(wettkampfDisziplin.max).toDouble else 0d
+      val enoteValidated = BigDecimal(enote).setScale(wettkampfDisziplin.scale, BigDecimal.RoundingMode.HALF_UP).max(wettkampfDisziplin.min).min(wettkampfDisziplin.max).toDouble
       (dnoteValidated, enoteValidated)
     }
 
@@ -1332,7 +1332,7 @@ package object domain {
 
     override def calcEndnote(dnote: Double, enote: Double, wettkampfDisziplin: WettkampfdisziplinView): Double = {
       val dnoteValidated = if wettkampfDisziplin.isDNoteUsed then dnote else 0d
-      (BigDecimal(dnoteValidated) + BigDecimal(enote)).*(punktgewicht).setScale(wettkampfDisziplin.scale, BigDecimal.RoundingMode.FLOOR).max(wettkampfDisziplin.min).min(wettkampfDisziplin.max).toDouble
+      (BigDecimal(dnoteValidated) + BigDecimal(enote)).*(punktgewicht).setScale(wettkampfDisziplin.scale, BigDecimal.RoundingMode.HALF_UP).max(wettkampfDisziplin.min).min(wettkampfDisziplin.max).toDouble
     }
 
     override def getDifficultLabel: String = dNoteLabel
@@ -1448,7 +1448,7 @@ package object domain {
             ))
         }
       })
-      if (files == null) then
+      if files == null then
         new java.io.File(pattern2).toURI
       else files.toList
         .headOption

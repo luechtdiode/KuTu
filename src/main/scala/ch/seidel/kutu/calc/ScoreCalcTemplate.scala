@@ -22,6 +22,7 @@ object ScoreCalcVariable_ {
 }
 
 case class ScoreCalcVariable(source: String, prefix: String, name: String, scale: Option[Int], value: BigDecimal, index: Int = 0) extends DataObject  {
+  def normalized(): ScoreCalcVariable = updated(value)
   def updated(newValue: BigDecimal): ScoreCalcVariable = copy(value = newValue.setScale(scale.getOrElse(value.scale), RoundingMode.HALF_UP)): ScoreCalcVariable
   def equalID(other: ScoreCalcVariable): Boolean = prefix.equals(other.prefix) && name.equals(other.name) && index.equals(other.index)
   def isGeneric: Boolean = source.isEmpty
@@ -31,8 +32,11 @@ case object TemplateViewJsonReader extends JsonSupport {
 
   import spray.json.enrichString
 
-  def apply(text: String): ScoreCalcTemplateView = scoreCalcTemplateViewFormat.read(text.parseJson)
-  def apply(text: Option[String]): Option[ScoreCalcTemplateView] = text.map(t => scoreCalcTemplateViewFormat.read(t.parseJson))
+  def apply(text: String): ScoreCalcTemplateView = {
+    scoreCalcTemplateViewFormat.read(text.parseJson).toNormalizedVariablesView
+  }
+
+  def apply(text: Option[String]): Option[ScoreCalcTemplateView] = text.map(t => apply(t))
 }
 
 case class ScoreCalcTemplateView(
@@ -49,6 +53,11 @@ case class ScoreCalcTemplateView(
     case None => eExpression
     case Some(agf) => eVariables.map(v => v.value).mkString(s"$agf(", "," ,")")
   }
+  def toNormalizedVariablesView: ScoreCalcTemplateView = copy(
+    dVariables = dVariables.map(_.normalized()),
+    eVariables = eVariables.map(_.normalized()),
+    pVariables = pVariables.map(_.normalized())
+  )
 }
 /*
   wettkampf_id integer NOT NULL,
