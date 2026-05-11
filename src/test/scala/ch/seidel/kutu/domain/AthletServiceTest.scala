@@ -6,6 +6,10 @@ import org.scalatest.funsuite.AnyFunSuite
 
 import java.sql.Date
 
+/**
+ * Unit tests for AthletService utility methods that don't require database access.
+ * For integration tests with database, see AthletServiceIntegrationSpec.
+ */
 class AthletServiceTest extends AnyFunSuite with AthletService {
 
   val gebdat1: Date = java.sql.Date.valueOf(LocalDate.of(2012, 1, 1))
