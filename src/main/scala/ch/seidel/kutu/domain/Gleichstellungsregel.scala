@@ -11,7 +11,7 @@ object Gleichstandsregel {
   private val kutu = "E-Note-Summe/D-Note-Summe/JugendVorAlter"
   private val kutustv = "StreichWertungen(Endnote,Min)/StreichWertungen(E-Note,Min)/StreichWertungen(D-Note,Min)"
 
-  val predefined: Map[String, String] = Map(
+  val predefined = Map(
       "Ohne - Punktgleichstand => gleicher Rang" -> "Ohne"
     , "GeTu Punktgleichstandsregel" -> getu
     , "KuTu Punktgleichstandsregel" -> kutu
@@ -85,21 +85,17 @@ object Gleichstandsregel {
 
 sealed trait Gleichstandsregel {
   protected val maxvalue = 30000 // max is 30.000
-  def rankingValue(athlWertungen: List[WertungView]): BigDecimal
   protected def maxOrZero(values: List[BigDecimal]): BigDecimal = if values.isEmpty then 0 else values.max
-  def compare(left: List[WertungView], right: List[WertungView]): Int = rankingValue(left).compare(rankingValue(right))
+  def compare(left: List[WertungView], right: List[WertungView]): Int
   def toFormel: String
 }
 
 case object GleichstandsregelDefault extends Gleichstandsregel {
-  override def rankingValue(athlWertungen: List[WertungView]): BigDecimal = 0
+  override def compare(left: List[WertungView], right: List[WertungView]): Int = 0
   override def toFormel: String = "Ohne"
 }
 
 case class GleichstandsregelList(regeln: List[Gleichstandsregel]) extends Gleichstandsregel {
-  override def rankingValue(athlWertungen: List[WertungView]): BigDecimal = {
-    regeln.map(_.rankingValue(athlWertungen)).sum
-  }
   override def compare(left: List[WertungView], right: List[WertungView]): Int = {
     regeln.iterator
       .map(_.compare(left, right))
@@ -113,7 +109,7 @@ case class GleichstandsregelDisziplin(disziplinOrder: List[String]) extends Glei
   override def toFormel: String = s"Disziplin${disziplinOrder.mkString("(", ",", ")")}"
 
   private val zippedDisziplins = disziplinOrder.reverse.zipWithIndex
-  override def rankingValue(athlWertungen: List[WertungView]): BigDecimal = {
+  private def score(athlWertungen: List[WertungView]): BigDecimal = {
     val result = zippedDisziplins.foldLeft(BigDecimal(0L)) { (acc, disziplin) =>
       val wertungen = athlWertungen.filter(_.wettkampfdisziplin.disziplin.name.equals(disziplin._1))
       val level = BigDecimal(maxvalue).pow(disziplin._2)
@@ -122,6 +118,7 @@ case class GleichstandsregelDisziplin(disziplinOrder: List[String]) extends Glei
     }
     result
   }
+  override def compare(left: List[WertungView], right: List[WertungView]): Int = score(left).compare(score(right))
 }
 
 case class GleichstandsregelStreichDisziplin(disziplinOrder: List[String]) extends Gleichstandsregel {
@@ -129,7 +126,7 @@ case class GleichstandsregelStreichDisziplin(disziplinOrder: List[String]) exten
   override val maxvalue: Int = 300 * 6//disziplinOrder.length
 
   private val reversedOrder = disziplinOrder.reverse.zipWithIndex
-  override def rankingValue(athlWertungen: List[WertungView]): BigDecimal = {
+  private def score(athlWertungen: List[WertungView]): BigDecimal = {
     reversedOrder.foldLeft(BigDecimal(0L)) { (acc, disziplin) =>
       val wertungen = athlWertungen.filter(!_.wettkampfdisziplin.disziplin.name.equals(disziplin._1))
       val level = BigDecimal(maxvalue).pow(disziplin._2)
@@ -137,6 +134,7 @@ case class GleichstandsregelStreichDisziplin(disziplinOrder: List[String]) exten
       acc + (wertungenSum * level)
     }
   }
+  override def compare(left: List[WertungView], right: List[WertungView]): Int = score(left).compare(score(right))
 }
 
 case class GleichstandsregelStreichWertungen(typ: String = "Endnote", minmax: String = "Min") extends Gleichstandsregel {
@@ -176,16 +174,17 @@ case class GleichstandsregelStreichWertungen(typ: String = "Endnote", minmax: St
     }
   }
 
-  override def rankingValue(athlWertungen: List[WertungView]): BigDecimal = {
+  private def score(athlWertungen: List[WertungView]): BigDecimal = {
     f(sort(athlWertungen).slice(1, maxGeraete)) + BigDecimal(maxvalue).pow(maxGeraete - athlWertungen.size)
   }
+  override def compare(left: List[WertungView], right: List[WertungView]): Int = score(left).compare(score(right))
 }
 
 case object GleichstandsregelJugendVorAlter extends Gleichstandsregel {
   override def toFormel: String = "JugendVorAlter"
   override val maxvalue: Int = 100
 
-  override def rankingValue(athlWertungen: List[WertungView]): BigDecimal = {
+  private def score(athlWertungen: List[WertungView]): BigDecimal = {
     athlWertungen.headOption.map { currentWertung =>
       val jet = currentWertung.wettkampf.datum.toLocalDate
       val gebdat = currentWertung.athlet.gebdat match {
@@ -197,36 +196,33 @@ case object GleichstandsregelJugendVorAlter extends Gleichstandsregel {
       maxvalue - alterInJahren
     }.getOrElse(0L)
   }
+  override def compare(left: List[WertungView], right: List[WertungView]): Int = score(left).compare(score(right))
 }
 
 case object GleichstandsregelENoteBest extends Gleichstandsregel {
   override def toFormel: String = "E-Note-Best"
 
-  override def rankingValue(athlWertungen: List[WertungView]): BigDecimal = {
-    maxOrZero(athlWertungen.map(_.resultat.noteE))
-  }
+  override def compare(left: List[WertungView], right: List[WertungView]): Int =
+    maxOrZero(left.map(_.resultat.noteE)).compare(maxOrZero(right.map(_.resultat.noteE)))
 }
 
 case object GleichstandsregelENoteSumme extends Gleichstandsregel {
   override def toFormel: String = "E-Note-Summe"
 
-  override def rankingValue(athlWertungen: List[WertungView]): BigDecimal = {
-    athlWertungen.map(w => w.resultat).map(_.noteE).sum
-  }
+  override def compare(left: List[WertungView], right: List[WertungView]): Int =
+    left.map(_.resultat.noteE).sum.compare(right.map(_.resultat.noteE).sum)
 }
 
 case object GleichstandsregelDNoteBest extends Gleichstandsregel {
   override def toFormel: String = "D-Note-Best"
 
-  override def rankingValue(athlWertungen: List[WertungView]): BigDecimal = {
-    maxOrZero(athlWertungen.map(_.resultat.noteD))
-  }
+  override def compare(left: List[WertungView], right: List[WertungView]): Int =
+    maxOrZero(left.map(_.resultat.noteD)).compare(maxOrZero(right.map(_.resultat.noteD)))
 }
 
 case object GleichstandsregelDNoteSumme extends Gleichstandsregel {
   override def toFormel: String = "D-Note-Summe"
 
-  override def rankingValue(athlWertungen: List[WertungView]): BigDecimal = {
-    athlWertungen.map(w => w.resultat).map(_.noteD).sum
-  }
+  override def compare(left: List[WertungView], right: List[WertungView]): Int =
+    left.map(_.resultat.noteD).sum.compare(right.map(_.resultat.noteD).sum)
 }
