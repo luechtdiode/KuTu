@@ -33,6 +33,7 @@ on:
 jobs:
   build-app:
     runs-on: ubuntu-latest
+    environment: Dockerhub
     steps:
       - name: Checkout repository
         uses: actions/checkout@v6
