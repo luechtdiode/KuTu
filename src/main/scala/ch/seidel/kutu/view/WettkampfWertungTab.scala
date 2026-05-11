@@ -1250,6 +1250,274 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
     reloadData()
   })
 
+  private def doLoadRanglisteFromCSV(progrm: ProgrammView)(implicit event: ActionEvent): Unit = {
+    import scala.util.{Failure, Success}
+    val csvRangliste = new File(homedir + "/" + encodeFileName(wettkampf.easyprint) + s"/rangliste-${progrm.name}.csv".toLowerCase)
+    val source = Source.fromFile(csvRangliste)(using Codec.ISO8859)
+    val vereineList = service.selectVereine
+    val verbandPartsResolver: Verein=>Set[String] = _.verband match {
+      case Some(verband) => verband.split(",").toSet + verband
+      case None => Set()
+    }
+    val knownVerbandList = vereineList.flatMap(verbandPartsResolver).toSet
+    val wkdiszs = service.listWettkampfDisziplineViews(wettkampf.toWettkampf)
+    val lines = source.getLines().toList
+    val fullDFields = "^([0-9.]+)\\s([\\D ]*)\\s([0-9]{4})\\s([\\D ]*)\\s([0-9.*]{3,4})\\s([0-9.*]{5,9})\\s([0-9.*]{3,4})\\s([0-9.*]{3,4})\\s([0-9.*]{5,9})\\s([0-9.*]{3,4})\\s([0-9.*]{5,9})\\s([0-9.*]{3,4})\\s([0-9.*]{3,4})\\s([0-9.*]{5,9})\\s([0-9.*]{3,4})\\s([0-9.*]{5,9})\\s([0-9.*]{3,4})\\s([0-9.*]{5,9})\\s([0-9.*]{3,4})\\s([0-9.*]{5,9}).*$".r
+    val partialDFields = "^([0-9.]+)\\s([\\D ]*)\\s([0-9]{4})\\s([\\D ]*)\\s([0-9.*]{3,4})\\s([0-9.*]{5,9})\\s([0-9.*]{3,4})\\s([0-9.*]{5,9})\\s([0-9.*]{3,4})\\s([0-9.*]{5,9})\\s([0-9.*]{3,4})\\s([0-9.*]{3,4})\\s([0-9.*]{5,9})\\s([0-9.*]{3,4})\\s([0-9.*]{5,9})\\s([0-9.*]{3,4})\\s([0-9.*]{5,9})\\s([0-9.*]{3,4})\\s([0-9.*]{5,9}).*$".r
+    val singleDFields = "^([0-9.]+)\\s([\\D ]*)\\s([0-9]{4})\\s([\\D ]*)\\s([0-9.*]+)\\s([0-9.*]+)\\s([0-9.*]+)\\s([0-9.*]+)\\s([0-9.*]+)\\s([0-9.*]+)\\s([0-9.*]+)\\s([0-9.*]+)\\s([0-9.*]+)\\s([0-9.*]+)\\s([0-9.*]+)\\s([0-9.*]+)\\s([0-9.*]+)\\s([0-9.*]+).*$".r
+
+    def mapWertung(geraet: String, valueD: String, valueE: String) = {
+      val dValue = valueD.split(",").map(BigDecimal(_)).sorted.reverse.head
+      val wkds = wkdiszs
+        .filter(_.programm.equals(progrm))
+        .find(_.disziplin.name.equals(geraet))
+      val wd: Long = wkds.map(_.id).getOrElse(0)
+      val defaultvariables = wkds
+        .flatMap(wd => wd.notenSpez.template.map(t => t.toView(t.variables)))
+
+      Wertung(
+        id = 0,
+        athletId = 0,
+        wettkampfdisziplinId = wd,
+        wettkampfId = wettkampf.id,
+        wettkampfUUID = wettkampf.uuid.getOrElse(""),
+        noteD = Some(dValue),
+        noteE = Some(BigDecimal(valueE) - dValue),
+        endnote = Some(BigDecimal(valueE)),
+        riege = None,
+        riege2 = None,
+        team = None,
+        mediafile = None,
+        variables = defaultvariables
+      )
+    }
+
+    def mapAthlet(name: String, jahrgang: String, verein: String) = {
+      val guessedVerband = verein.split(" ").last
+      val fallbackVerein = Verein(0, verein.replace(guessedVerband, "").replace("/", ", ").trim, Some(guessedVerband))
+      val v = knownVerbandList
+        .filter(verband => verein.contains(verband))
+        .map { verband =>
+          Verein(0, verein.replace(verband, "").replace("/", ", ").trim, Some(verband))
+        }.headOption.getOrElse(fallbackVerein)
+      val ns = name.split(" ")
+      val a = new Athlet(
+        id = 0,
+        js_id = 0,
+        geschlecht = "M",
+        name = ns.last,
+        vorname = ns.reverse.tail.reverse.mkString(" ").trim,
+        gebdat = Some(service.getSQLDate("01.01." + jahrgang)),
+        strasse = "",
+        plz = "",
+        ort = "",
+        verein = service.findVereinLike(v, exact = true),
+        activ = true
+      )
+      (v, a)
+    }
+
+    val rowfields = lines
+      .map {
+        case fullDFields(rang, name, jahrgang, verein, bodenD, bodenE, pferdD1, pferdD2, pferdE, ringeD, ringeE, sprungD1, sprungD2, sprungE, barrenD, barrenE, reckD, reckE, totalD, totalE) =>
+          val (v: Verein, a: Athlet) = mapAthlet(name, jahrgang, verein)
+
+          (a, v, List(
+            mapWertung("Boden", bodenD, bodenE),
+            mapWertung("Pferd Pauschen", pferdD1 + "," + pferdD2, pferdE),
+            mapWertung("Ring", ringeD, ringeE),
+            mapWertung("Sprung", sprungD1 + "," + sprungD2, sprungE),
+            mapWertung("Barren", barrenD, barrenE),
+            mapWertung("Reck", reckD, reckE)
+          ))
+
+        case partialDFields(rang, name, jahrgang, verein, bodenD, bodenE, pferdD1, pferdE, ringeD, ringeE, sprungD1, sprungD2, sprungE, barrenD, barrenE, reckD, reckE, totalD, totalE) =>
+          val (v: Verein, a: Athlet) = mapAthlet(name, jahrgang, verein)
+
+          (a, v, List(
+            mapWertung("Boden", bodenD, bodenE),
+            mapWertung("Pferd Pauschen", pferdD1, pferdE),
+            mapWertung("Ring", ringeD, ringeE),
+            mapWertung("Sprung", sprungD1 + "," + sprungD2, sprungE),
+            mapWertung("Barren", barrenD, barrenE),
+            mapWertung("Reck", reckD, reckE)
+          ))
+
+        case singleDFields(rang, name, jahrgang, verein, bodenD, bodenE, pferdD, pferdE, ringeD, ringeE, sprungD, sprungE, barrenD, barrenE, reckD, reckE, totalD, totalE) =>
+          val (v: Verein, a: Athlet) = mapAthlet(name, jahrgang, verein)
+          (a, v, List(
+            mapWertung("Boden", bodenD, bodenE),
+            mapWertung("Pferd Pauschen", pferdD, pferdE),
+            mapWertung("Ring", ringeD, ringeE),
+            mapWertung("Sprung", sprungD, sprungE),
+            mapWertung("Barren", barrenD, barrenE),
+            mapWertung("Reck", reckD, reckE)
+          ))
+      }
+
+    val athletModel = ObservableBuffer[(Long, Athlet, AthletView, List[Wertung])]()
+    val cache = new java.util.ArrayList[MatchCode]()
+    val cliprawf = KuTuApp.invokeAsyncWithBusyIndicator("RanglisteDaten von CSV-Datei einlesen ...") {
+      Future {
+
+        val importvereine = rowfields
+
+        val vereineList = service.selectVereine
+        val vereineMap = vereineList.map(v => v.id -> v).toMap
+        val athletSearchFn = service.findAthleteLike(wettkampf = None, cache = cache, exclusive = false, exactVerein = false)
+        val csvRaw = importvereine.map { row =>
+          val (parsed, verein, wertungen) = row
+          val candidate = athletSearchFn(parsed)
+          val suggestion = AthletView(
+            candidate.id, candidate.js_id,
+            candidate.geschlecht, candidate.name, candidate.vorname, candidate.gebdat,
+            candidate.strasse, candidate.plz, candidate.ort,
+            candidate.verein.filter(_ > 0L)
+              .map(v => vereineMap(v))
+              .orElse(service.findVereinLike(verein, exact = false)
+                .filter(_ > 0L)
+                .map(v => vereineMap(v))
+                .orElse(Some(verein))),
+            activ = true)
+          (progrm.id, parsed, suggestion, wertungen)
+        }
+        csvRaw
+      }
+    }
+    cliprawf.onComplete {
+      case Failure(t) => println(t.toString)
+      case Success(clipraw) => Platform.runLater {
+        if (clipraw.nonEmpty) {
+          athletModel.appendAll(clipraw)
+          val filteredModel = ObservableBuffer.from(athletModel)
+          val athletTable = new TableView[(Long, Athlet, AthletView, List[Wertung])](filteredModel) {
+            columns ++= List(
+              new TableColumn[(Long, Athlet, AthletView, List[Wertung]), String] {
+                text = "Athlet (Name, Vorname, JG)"
+                cellValueFactory = { x =>
+                  new ReadOnlyStringWrapper(x.value, "athlet", {
+                    s"${x.value._2.shortPrint}"
+                  })
+                }
+                minWidth = 250
+              },
+              new TableColumn[(Long, Athlet, AthletView, List[Wertung]), String] {
+                text = "Verein"
+                cellValueFactory = { x =>
+                  new ReadOnlyStringWrapper(x.value, "verein", {
+                    s"${x.value._3.verein.get.extendedprint}"
+                  })
+                }
+              },
+              new TableColumn[(Long, Athlet, AthletView, List[Wertung]), String] {
+                text = "Importvorschlag"
+                cellValueFactory = { x =>
+                  new ReadOnlyStringWrapper(x.value, "vorschlag", {
+                    if (x.value._3.id > 0) "existierend" else "neu importieren"
+                  })
+                }
+              }
+            )
+          }
+          athletTable.selectionModel.value.setSelectionMode(SelectionMode.Multiple)
+          val filter = new TextField() {
+            promptText = "Such-Text"
+            text.addListener { (o: javafx.beans.value.ObservableValue[? <: String], oldVal: String, newVal: String) =>
+              val sortOrder = athletTable.sortOrder.toList
+              filteredModel.clear()
+              val searchQuery = newVal.toUpperCase().split(" ")
+              for {(progrid, athlet, vorschlag, oldProgId) <- athletModel
+                   } {
+                val matches = searchQuery.forall { search =>
+                  if (search.isEmpty || athlet.name.toUpperCase().contains(search)) {
+                    true
+                  }
+                  else if (athlet.vorname.toUpperCase().contains(search)) {
+                    true
+                  }
+                  else if (vorschlag.verein match {
+                    case Some(v) => v.name.toUpperCase().contains(search)
+                    case None => false
+                  }) {
+                    true
+                  }
+                  else {
+                    false
+                  }
+                }
+
+                if (matches) {
+                  filteredModel.add((progrid, athlet, vorschlag, oldProgId))
+                }
+              }
+              athletTable.sortOrder.clear()
+              val restored = athletTable.sortOrder ++= sortOrder
+            }
+          }
+          PageDisplayer.showInDialog("Aus CSV laden ...", new DisplayablePage() {
+            def getPage: Node = {
+              new BorderPane {
+                hgrow = Priority.Always
+                vgrow = Priority.Always
+                minWidth = 600
+                center = new BorderPane {
+                  hgrow = Priority.Always
+                  vgrow = Priority.Always
+                  top = filter
+                  center = athletTable
+                  minWidth = 550
+                }
+
+              }
+            }
+          }, new Button("OK") {
+            onAction = (event: ActionEvent) => {
+              if (!athletTable.selectionModel().isEmpty) {
+                val selected = athletTable.items.value.zipWithIndex.filter {
+                  x => athletTable.selectionModel.value.isSelected(x._2)
+                }.map(_._1)
+                selected
+                  .groupBy(_._3.verein)
+                  .filter(_._1.nonEmpty)
+                  .map { grp =>
+                    val v = insertVereinIfMissing(grp._1.get)
+                    (v.id, grp._2.map { c =>
+                      val a = c._2.copy(verein = Some(v.id))
+                      val av: AthletView = c._3.copy(verein = Some(v))
+                      (c._1, a, av, c._4)
+                    })
+                  }
+                  .foreach { grp =>
+                    println(s"insert ${grp._2.size} Athletes of Verein ${grp._1}")
+                    insertClipboardAssignments(grp._1, grp._2)
+                  }
+              }
+            }
+          }, new Button("OK Alle") {
+            onAction = (event: ActionEvent) => {
+              // insert to competition
+              filteredModel
+                .groupBy(_._3.verein)
+                .filter(_._1.nonEmpty)
+                .map { grp =>
+                  val v = insertVereinIfMissing(grp._1.get)
+                  (v.id, grp._2.map { c =>
+                    val a = c._2.copy(verein = Some(v.id))
+                    val av: AthletView = c._3.copy(verein = Some(v))
+                    (c._1, a, av, c._4)
+                  })
+                }
+                .foreach { grp =>
+                  println(s"insert ${grp._2.size} Athletes of Verein ${grp._1}")
+                  insertClipboardAssignments(grp._1, grp._2)
+                }
+            }
+          })
+        }
+      }
+    }
+  }
+
   private def doLoadFromCSV(filename: URI, progrm: Option[ProgrammView])(implicit event: ActionEvent): Unit = {
     //import scala.concurrent.ExecutionContext.Implicits.*
     import scala.util.{Failure, Success}
@@ -2210,12 +2478,24 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
           doLoadFromCSV(uri, Some(wettkampf.programm))(using event)
         }
       }
-
-      if csvInputFile.exists() then {
-        List(addButton, loadFromExcel, moveToOtherProgramButton, removeButton, setRiege2ForAllButton, riegenRemoveButton, generateTeilnehmerListe, generateNotenblaetter).filter(btn => !btn.text.value.equals("."))
-      } else {
-        List(addButton, pasteFromExcel, moveToOtherProgramButton, removeButton, setRiege2ForAllButton, riegenRemoveButton, generateTeilnehmerListe, generateNotenblaetter).filter(btn => !btn.text.value.equals("."))
+      new File(homedir + "/" + encodeFileName(wettkampf.easyprint) + s"/rangliste-${progrm.name}.csv".toLowerCase)
+      val loadFromRangliste = new Button("Aus Rangliste laden ...") {
+        onAction = (event: ActionEvent) => {
+          doLoadRanglisteFromCSV(progrm)(using event)
+        }
       }
+      var buttons = List( moveToOtherProgramButton, removeButton, setRiege2ForAllButton, riegenRemoveButton, generateTeilnehmerListe, generateNotenblaetter).filter(btn => !btn.text.value.equals("."))
+
+      if new File(homedir + "/" + encodeFileName(wettkampf.easyprint) + s"/rangliste-${progrm.name}.csv".toLowerCase).exists() then {
+        buttons = loadFromRangliste +: buttons
+      }
+      if csvInputFile.exists() then {
+        buttons = loadFromExcel +: buttons
+      } else {
+        buttons = pasteFromExcel +: buttons
+      }
+
+      addButton +: buttons
   }
 
   private val clearButton = new Button {
