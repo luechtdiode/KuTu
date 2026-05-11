@@ -1,23 +1,18 @@
 codecov:
   require_ci_to_pass: true
-
+comment:
+  behavior: default
+  layout: reach,diff,flags,files,footer
 coverage:
-  round: up
   precision: 5
   range:
     - 18.0
     - 100.0
-
+  round: up
 parsers:
   gcov:
     branch_detection:
       conditional: true
       loop: true
-      method: true
       macro: false
-
-comment:
-  layout: reach,diff,flags,files,footer
-  behavior: default
-  require_changes:
-    - 0
+      method: true
