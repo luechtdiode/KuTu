@@ -15,9 +15,9 @@ object GroupSection {
   ): Map[DataObject, Int] = {
     sorted.zipWithIndex.foldLeft((Map.empty[DataObject, Int], Option.empty[((DataObject, Resultat, Resultat), Int)])) {
       case ((acc, None), (current, _)) =>
-        (acc.updated(current._1, 0), Some((current, 0)))
+        (acc.updated(current._1, 1), Some((current, 1)))
       case ((acc, Some((previous, prevRank))), (current, index)) =>
-        val rank = if compare(current, previous) == 0 then prevRank else index
+        val rank = if compare(current, previous) == 0 then prevRank else index+1
         (acc.updated(current._1, rank), Some((current, rank)))
     }._1
   }
