@@ -5,6 +5,23 @@ import ch.seidel.kutu.domain.*
 import scala.collection.mutable
 
 object GroupSection {
+  /**
+   * Assign ranks for an already sorted list while preserving ties.
+   * Equal comparator results receive the same rank index.
+   */
+  private def assignRanksWithTies(
+      sorted: List[(DataObject, Resultat, Resultat)],
+      compare: ((DataObject, Resultat, Resultat), (DataObject, Resultat, Resultat)) => Int
+  ): Map[DataObject, Int] = {
+    sorted.zipWithIndex.foldLeft((Map.empty[DataObject, Int], Option.empty[((DataObject, Resultat, Resultat), Int)])) {
+      case ((acc, None), (current, _)) =>
+        (acc.updated(current._1, 0), Some((current, 0)))
+      case ((acc, Some((previous, prevRank))), (current, index)) =>
+        val rank = if compare(current, previous) == 0 then prevRank else index
+        (acc.updated(current._1, rank), Some((current, rank)))
+    }._1
+  }
+
   private def programGrouper(w: WertungView): ProgrammView = w.wettkampfdisziplin.programm.aggregatorSubHead
   private def disziplinGrouper(w: WertungView): (Int, Disziplin) = (w.wettkampfdisziplin.ord, w.wettkampfdisziplin.disziplin)
   def groupWertungList(list: Iterable[WertungView]): Map[ProgrammView, List[Disziplin]] = {
@@ -28,13 +45,7 @@ object GroupSection {
         values.map(v => v._1 -> rangEnd.getOrElse(v._3.endnote, 0)).toMap
       case Some(compare) =>
         val sorted = values.sortWith((l, r) => compare(l, r) > 0)
-        sorted.zipWithIndex.foldLeft((Map.empty[DataObject, Int], Option.empty[((DataObject, Resultat, Resultat), Int)])) {
-          case ((acc, None), (current, _)) =>
-            (acc.updated(current._1, 0), Some((current, 0)))
-          case ((acc, Some((previous, prevRank))), (current, index)) =>
-            val rank = if compare(current, previous) == 0 then prevRank else index
-            (acc.updated(current._1, rank), Some((current, rank)))
-        }._1
+        assignRanksWithTies(sorted, compare)
     }
     def rang(key: DataObject, r: Resultat) = {
       val rd = rangD.getOrElse(r.noteD, 0)
@@ -336,6 +347,9 @@ case class GroupLeaf[GK <: DataObject](override val groupKey: GK, list: Iterable
     GroupSection.mapAvgRang(grp.map { d => (d._1, d._2._1, d._2._2) }).map(r => r.groupKey.asInstanceOf[A] -> r).toMap
   }
 
+  /**
+   * Rank grouped items with a custom comparator for end ranking.
+   */
   def mapToAvgRangWithComparator[A <: DataObject](
       grp: Iterable[(A, (Resultat, Resultat))],
       compare: ((A, (Resultat, Resultat)), (A, (Resultat, Resultat))) => Int
@@ -365,6 +379,9 @@ case class GroupLeaf[GK <: DataObject](override val groupKey: GK, list: Iterable
     }
   }
 
+  /**
+   * Return the wertungen that are relevant for tie-break comparisons.
+   */
   def tieBreakRelevantWertungen(athlWertungen: Iterable[WertungView]): List[WertungView] = {
     val wks = athlWertungen
       .filter(_.endnote.nonEmpty)
@@ -378,6 +395,9 @@ case class GroupLeaf[GK <: DataObject](override val groupKey: GK, list: Iterable
     }
   }
 
+  /**
+   * Delegate tie-break comparison to the configured Gleichstandsregel.
+   */
   def compareTieBreak(left: List[WertungView], right: List[WertungView]): Int = gleichstandsregel.compare(left, right)
 
   def mapToAvgRowSummary(athlWertungen: Iterable[WertungView] = list, avgSumsWithMultiCompetitions: Boolean): (Resultat, Resultat, Iterable[(Disziplin, Long, Resultat, Resultat, Option[Int], Option[BigDecimal])], Iterable[(ProgrammView, Resultat, Resultat, Option[Int], Option[BigDecimal])], Resultat) = {

@@ -86,6 +86,7 @@ object Gleichstandsregel {
 sealed trait Gleichstandsregel {
   protected val maxvalue = 30000 // max is 30.000
   protected def rankingValue(athlWertungen: List[WertungView]): BigDecimal
+  protected def maxOrZero(values: List[BigDecimal]): BigDecimal = if values.isEmpty then 0 else values.max
   def compare(left: List[WertungView], right: List[WertungView]): Int = rankingValue(left).compare(rankingValue(right))
   def toFormel: String
 }
@@ -202,7 +203,7 @@ case object GleichstandsregelENoteBest extends Gleichstandsregel {
   override def toFormel: String = "E-Note-Best"
 
   override protected def rankingValue(athlWertungen: List[WertungView]): BigDecimal = {
-    if athlWertungen.isEmpty then 0 else athlWertungen.map(w => w.resultat).map(_.noteE).max
+    maxOrZero(athlWertungen.map(_.resultat.noteE))
   }
 }
 
@@ -218,7 +219,7 @@ case object GleichstandsregelDNoteBest extends Gleichstandsregel {
   override def toFormel: String = "D-Note-Best"
 
   override protected def rankingValue(athlWertungen: List[WertungView]): BigDecimal = {
-    if athlWertungen.isEmpty then 0 else athlWertungen.map(w => w.resultat).map(_.noteD).max
+    maxOrZero(athlWertungen.map(_.resultat.noteD))
   }
 }
 
