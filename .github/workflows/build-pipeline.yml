@@ -109,9 +109,8 @@ jobs:
         env:
           OS: Linux
           DISPLAY: :99
-      - name: make coverage report
-        run: |
-          bash <(curl -s https://codecov.io/bash)
+      - name: Upload coverage reports to Codecov with GitHub Action
+        uses: codecov/codecov-action@v5
         env:
           CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
       - name: Prepare Releasenames
