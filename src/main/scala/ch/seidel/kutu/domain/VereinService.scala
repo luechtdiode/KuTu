@@ -34,7 +34,7 @@ trait VereinService extends DBService with VereinResultMapper {
                     where LOWER(name)=${verein.name.toLowerCase()}
                       and LOWER(verband) like ${verein.verband.map(v => s"%${v.toLowerCase()}%").getOrElse("%")}
          """.as[Long].withPinnedSession
-      }, Duration.Inf).toList.headOption
+      }, Duration.Inf).toList.find(_ > 0)
       if (result.isEmpty) {
         println(s"findVereinLike: ${verein.name} ${verein.verband} => try like verein-name")
         result = Await.result(database.run {
@@ -44,7 +44,7 @@ trait VereinService extends DBService with VereinResultMapper {
                     where LOWER(name) like ${s"%${verein.name.toLowerCase()}%"}
                       and LOWER(verband) like ${verein.verband.map(v => s"%${v.toLowerCase()}%").getOrElse("%")}
          """.as[Long].withPinnedSession
-        }, Duration.Inf).toList.headOption
+        }, Duration.Inf).toList.find(_ > 0)
         if (result.isEmpty && verein.name.split(",").length > 1) {
           val vereinNamePart = verein.name.split(",").find(v => v.length > 3).getOrElse(verein.name.split(",")(0))
           println(s"findVereinLike: $vereinNamePart ${verein.verband} => try equals verein-name-parts")
@@ -55,8 +55,8 @@ trait VereinService extends DBService with VereinResultMapper {
                     where LOWER(name)=${vereinNamePart.toLowerCase()}
                       and LOWER(verband) like ${verein.verband.map(v => s"%${v.toLowerCase()}%").getOrElse("%")}
          """.as[Long].withPinnedSession
-          }, Duration.Inf).toList.headOption
-          if (result.isEmpty && verein.name.split(",").length > 1) {
+          }, Duration.Inf).toList.find(_ > 0)
+          if (result.isEmpty ) {
             println(s"findVereinLike: $vereinNamePart ${verein.verband} => try like verein-name-parts")
             result = Await.result(database.run {
               sql"""
@@ -65,7 +65,7 @@ trait VereinService extends DBService with VereinResultMapper {
                     where LOWER(name) like ${s"%${vereinNamePart.toLowerCase()}%"}
                       and LOWER(verband) like ${verein.verband.map(v => s"%${v.toLowerCase()}%").getOrElse("%")}
          """.as[Long].withPinnedSession
-            }, Duration.Inf).toList.headOption
+            }, Duration.Inf).toList.find(_ > 0)
           }
         }
       }
