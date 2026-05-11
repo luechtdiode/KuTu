@@ -1418,77 +1418,12 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
                 val selected = athletTable.items.value.zipWithIndex.filter {
                   x => athletTable.selectionModel.value.isSelected(x._2)
                 }.map(_._1)
-                selected
-                  .filter(_._1 > 0L)
-                  .filter(_._4 == 0)
-                  .groupBy(_._3.verein)
-                  .filter(_._1.nonEmpty)
-                  .map { grp =>
-                    val v = grp._1.map(service.insertVerein).get
-                    println(s"verein inserted: $v")
-                    (v.id, grp._2.map { c =>
-                      val a = c._2.copy(verein = Some(v.id))
-                      val av: AthletView = c._3.copy(verein = Some(v))
-                      (c._1, a, av)
-                    })
-                  }
-                  .foreach { grp =>
-                    println(s"insert ${grp._2.size} Athletes of Verein ${grp._1}")
-                    insertClipboardAssignments(grp._1, grp._2)
-                  }
-                // move to program
-                selected
-                  .filter(_._1 > 0L)
-                  .filter(_._4 > 0)
-                  .foreach { grp =>
-                    service.moveToProgram(wettkampf.id, grp._1, 0, grp._3)
-                  }
-                // remove
-                selected
-                  .filter(_._1 == 0L)
-                  .foreach { grp =>
-                    val wertungenIds = wertungen.flatMap(row => row.filter(w => w.init.athlet.easyprint.equals(grp._3.easyprint))).map(_.init.id).toSet
-                    service.unassignAthletFromWettkampf(wertungenIds)
-                  }
-
+                syncImportedAthletListWithCompetition(selected)
               }
             }
           }, new Button("OK Alle") {
             onAction = (event: ActionEvent) => {
-              // insert to competition
-              filteredModel
-                .filter(_._1 > 0L)
-                .filter(_._4 == 0)
-                .groupBy(_._3.verein)
-                .filter(_._1.nonEmpty)
-                .map { grp =>
-                  val v = grp._1.map(service.insertVerein).get
-                  println(s"verein inserted: $v")
-                  (v.id, grp._2.map { c =>
-                    val a = c._2.copy(verein = Some(v.id))
-                    val av: AthletView = c._3.copy(verein = Some(v))
-                    (c._1, a, av)
-                  })
-                }
-                .foreach { grp =>
-                  println(s"insert ${grp._2.size} Athletes of Verein ${grp._1}")
-                  insertClipboardAssignments(grp._1, grp._2)
-                }
-              // move to program
-              filteredModel
-                .filter(_._1 > 0L)
-                .filter(_._4 > 0)
-                .foreach { grp =>
-                  service.moveToProgram(wettkampf.id, grp._1, 0, grp._3)
-                }
-              // remove
-              filteredModel
-                .filter(_._1 == 0L)
-                .foreach { grp =>
-                  val wertungenIds = wertungen.flatMap(row => row.filter(w => w.init.athlet.easyprint.equals(grp._3.easyprint))).map(_.init.id).toSet
-                  service.unassignAthletFromWettkampf(wertungenIds)
-                }
-
+              syncImportedAthletListWithCompetition(filteredModel)
             }
           })
         }
@@ -1667,13 +1602,13 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
                 val selectedAthleten = athletTable.items.value.zipWithIndex.filter {
                   x => athletTable.selectionModel.value.isSelected(x._2)
                 }.map(_._1)
-                insertClipboardAssignments(cbVereine.selectionModel.value.selectedItem.value.id, selectedAthleten)
+                insertClipboardAssignments(cbVereine.selectionModel.value.selectedItem.value.id, selectedAthleten.map(x => (x._1, x._2, x._3, List())))
               }
             }
           }, new Button("OK Alle") {
             disable <== when(cbVereine.selectionModel.value.selectedItemProperty.isNull) choose true otherwise false
             onAction = (event: ActionEvent) => {
-              insertClipboardAssignments(cbVereine.selectionModel.value.selectedItem.value.id, filteredModel)
+              insertClipboardAssignments(cbVereine.selectionModel.value.selectedItem.value.id, filteredModel.map(x => (x._1, x._2, x._3, List())))
             }
           })
         }
@@ -1681,9 +1616,59 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
     }
   }
 
-  private def insertClipboardAssignments(vereinId: Long, selectedAthleten: ObservableBuffer[(Long, Athlet, AthletView)]): Unit = {
+  private def insertVereinIfMissing(verein: Verein) = {
+    if verein.id > 0L then
+      //println(s"verein updated: $v")
+      verein
+    else
+      val vv = service.insertVerein(verein)
+      println(s"verein inserted: $vv")
+      vv
+  }
+
+  private def insertImportedAthletListToCompetition(athletList: ObservableBuffer[(Long, Athlet, AthletView, Long)]): Unit = {
+    athletList
+      .filter(_._1 > 0L)
+      .filter(_._4 == 0)
+      .groupBy(_._3.verein)
+      .filter(_._1.nonEmpty)
+      .map { grp =>
+        val v = insertVereinIfMissing(grp._1.get)
+        (v.id, grp._2.map { c =>
+          val a = c._2.copy(verein = Some(v.id))
+          val av: AthletView = c._3.copy(verein = Some(v))
+          (c._1, a, av)
+        })
+      }
+      .foreach { grp =>
+        println(s"insert ${grp._2.size} Athletes of Verein ${grp._1}")
+        insertClipboardAssignments(grp._1, grp._2.map(x => (x._1, x._2, x._3, List())))
+      }
+
+  }
+
+  private def syncImportedAthletListWithCompetition(athletList: ObservableBuffer[(Long, Athlet, AthletView, Long)]): Unit = {
+    // insert (progId, parsed, suggestion, oldProg) to competition
+    insertImportedAthletListToCompetition(athletList)
+    // move to program
+    athletList
+      .filter(_._1 > 0L)
+      .filter(_._4 > 0)
+      .foreach { grp =>
+        service.moveToProgram(wettkampf.id, grp._1, 0, grp._3)
+      }
+    // remove
+    athletList
+      .filter(_._1 == 0L)
+      .foreach { grp =>
+        val wertungenIds = wertungen.flatMap(row => row.filter(w => w.init.athlet.easyprint.equals(grp._3.easyprint))).map(_.init.id).toSet
+        service.unassignAthletFromWettkampf(wertungenIds)
+      }
+  }
+
+  private def insertClipboardAssignments(vereinId: Long, selectedAthleten: ObservableBuffer[(Long, Athlet, AthletView, List[Wertung])]): Unit = {
     val clip = selectedAthleten.map { x =>
-      val (progrId, importathlet, candidateView) = x
+      val (progrId, importathlet, candidateView, wertungen) = x
       val id = if candidateView.id > 0 &&
         (importathlet.gebdat match {
           case Some(d) =>
@@ -1727,13 +1712,20 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
         ))
         athlet.id
       }
-      (progrId, id)
+      (progrId, id, wertungen.map{wertung =>
+        wertung.copy(athletId=id)
+      })
     }
     if clip.nonEmpty then {
-      for (progId, athletes) <- clip.groupBy(_._1).map(x => (x._1, x._2.map(x => (x._2, None)))) do {
-        service.assignAthletsToWettkampf(wettkampf.id, Set(progId), athletes.toSet, None)
+      for (progId, athletes) <- clip.groupBy(_._1).map(x => (x._1, x._2.map(x => (x._2, x._3)))) do {
+        if athletes.exists(_._2.isEmpty) then
+          val athletMediaList: Set[(Long, Option[Media])] = athletes.map(s => (s._1, None)).toSet
+          service.assignAthletsToWettkampf(wettkampf.id, Set(progId), athletMediaList, None)
+        else
+          athletes.flatMap(_._2).foreach { wertung =>
+            service.updateOrinsertWertung(wertung)
+          }
       }
-
       reloadData()
     }
   }
