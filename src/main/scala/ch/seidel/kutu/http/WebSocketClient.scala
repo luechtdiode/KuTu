@@ -115,14 +115,18 @@ object WebSocketClient extends SprayJsonSupport with JsonSupport with AuthSuppor
 
   def publish(event: KutuAppEvent): Unit = {
     val message = tryMapEvent(event)
-    Platform.runLater {
-      event match {
-        case _: MediaPlayerAction =>
-        case _: MediaPlayerEvent =>
-        case _: UseMyMediaPlayer =>
-        case _: ForgetMyMediaPlayer =>
-        case _ => modelWettkampfWertungChanged.set(event)
+    try {
+      Platform.runLater {
+        event match {
+          case _: MediaPlayerAction =>
+          case _: MediaPlayerEvent =>
+          case _: UseMyMediaPlayer =>
+          case _: ForgetMyMediaPlayer =>
+          case _ => modelWettkampfWertungChanged.set(event)
+        }
       }
+    } catch {
+      case e: IllegalStateException => logger.error(s"Error while setting modelWettkampfWertungChanged: $e")
     }
     connectedOutgoingQueue.foreach(_.offer(message))
   }
