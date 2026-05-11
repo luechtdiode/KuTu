@@ -6,27 +6,28 @@ import ch.seidel.kutu.renderer.{ScoreToHtmlRenderer, ServerPrintUtil}
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
 
+import java.io.File
 import java.time.LocalDate
 import java.util.UUID
 
 class GleichstandsregelKuTuTest extends AnyWordSpec with Matchers {
-  val logodir = new java.io.File(Config.homedir)
-  val logofile = ServerPrintUtil.locateLogoFile(logodir)
+  val logodir: File = new java.io.File(Config.homedir)
+  val logofile: File = ServerPrintUtil.locateLogoFile(logodir)
 
   val wk = Wettkampf(1L, None, LocalDate.of(2023, 3, 3), "Testwettkampf", 44L, 0, BigDecimal(0d), "", None, None, Some("E-Note-Summe/D-Note-Summe/StreichWertungen(Endnote)/StreichWertungen(E-Note)/StreichWertungen(D-Note)"), None, None)
-  val renderer = new ScoreToHtmlRenderer() {
+  val renderer: ScoreToHtmlRenderer = new ScoreToHtmlRenderer() {
     override val title: String = wk.titel
   }
-  val diszipline = List("Boden", "Pauschen", "Ring", "Sprung", "Barren", "Reck")
+  val diszipline: List[String] = List("Boden", "Pauschen", "Ring", "Sprung", "Barren", "Reck")
   val testprogramm = ProgrammView(44L, "Testprogramm", 0, None, 1, 0, 100, UUID.randomUUID().toString, 1, 0)
 
-  def testWertungen(name: String, wertungen: List[(BigDecimal,BigDecimal)]) = {
+  def testWertungen(name: String, wertungen: List[(BigDecimal,BigDecimal)]): List[WertungView] = {
     val a = Athlet(1L).copy(vorname = name, name = "Muster", gebdat = Some(LocalDate.of(2004, 3, 2)), geschlecht = "M").toAthletView(Some(Verein(1L, "Testverein", Some("Testverband"))))
     for (
       geraet <- diszipline.zip(wertungen).zipWithIndex
     )
     yield {
-      val wd = WettkampfdisziplinView(100 + geraet._2, testprogramm, Disziplin(geraet._2, geraet._1._1), "", None, StandardWettkampf(1.0), 1, 1, 0, 3, 1, 0, 30, 1)
+      val wd = WettkampfdisziplinView(100 + geraet._2, testprogramm, Disziplin(geraet._2, geraet._1._1), "", None, StandardWettkampf(1.0), 1, 1, geraet._2, 3, 1, 0, 30, 1)
       val (dnote, enote) = geraet._1._2
       val endnote = enote + dnote
       println(s"athlet $a, disziplin ${wd.disziplin} note  d${dnote} e${enote} = ${endnote}")
