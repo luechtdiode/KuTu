@@ -12,7 +12,7 @@ import java.util.UUID
  * This demonstrates how to test HTTP routes using ScalatestRouteTest
  */
 class ReportRoutesSpec extends KuTuBaseSpec {
-  var testWettkampf: Wettkampf = _
+  var testWettkampf: Wettkampf = uninitialized
 
   override def beforeAll(): Unit = {
     super.beforeAll()

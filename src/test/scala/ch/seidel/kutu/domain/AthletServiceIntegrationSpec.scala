@@ -250,7 +250,7 @@ class AthletServiceIntegrationSpec extends KuTuBaseSpec {
       val cleaned = cleanUnusedClubs()
 
       // The result should be a Set of Verein objects
-      cleaned shouldBe a [Set[_]]
+      cleaned shouldBe a [Set[?]]
       // The unused club may be in the cleaned set if it has no wertungen
       // (Note: This may not include it if there are registrations for future events)
     }

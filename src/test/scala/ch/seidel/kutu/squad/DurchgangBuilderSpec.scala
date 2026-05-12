@@ -11,7 +11,7 @@ import ch.seidel.kutu.domain.*
  */
 class DurchgangBuilderSpec extends KuTuBaseSpec {
 
-  var testWettkampf: Wettkampf = _
+  var testWettkampf: Wettkampf = uninitialized
 
   override def beforeAll(): Unit = {
     super.beforeAll()
@@ -247,7 +247,7 @@ class DurchgangBuilderSpec extends KuTuBaseSpec {
               riegenName should not be empty
               // Riegen can be empty (e.g., "Leere Riege" for empty starting positions)
               // So we just check that wertungen is a valid sequence
-              wertungen shouldBe a[Seq[_]]
+              wertungen shouldBe a[Seq[?]]
             }
           }
         }

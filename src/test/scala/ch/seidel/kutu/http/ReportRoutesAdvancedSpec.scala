@@ -16,7 +16,7 @@ import java.util.UUID
  * - Testing with different content types
  */
 class ReportRoutesAdvancedSpec extends KuTuBaseSpec {
-  var testWettkampf: Wettkampf = _
+  var testWettkampf: Wettkampf = uninitialized
 
   override def beforeAll(): Unit = {
     super.beforeAll()
