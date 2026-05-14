@@ -5,6 +5,7 @@ import ch.seidel.kutu.domain.Wettkampf
 import org.apache.pekko.http.scaladsl.model.{ContentTypes, HttpMethods, HttpRequest, StatusCodes}
 
 import java.util.UUID
+import scala.compiletime.uninitialized
 
 /**
  * Advanced test examples for ReportRoutes
