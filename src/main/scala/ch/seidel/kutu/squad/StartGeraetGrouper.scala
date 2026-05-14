@@ -9,6 +9,15 @@ import scala.annotation.tailrec
 trait StartGeraetGrouper extends RiegenSplitter with Stager {
   private val logger = LoggerFactory.getLogger(classOf[StartGeraetGrouper])
 
+  protected object BalanceConfig {
+    val strictFairnessAthletesPerDurchgang: Int = 40
+    val fairnessWeight: Int = 50
+    val splitWeight: Int = 30
+    val cohesionWeight: Int = 20
+
+    def targetDiff(participants: Int): Int = if participants <= strictFairnessAthletesPerDurchgang then 1 else 2
+  }
+
   def groupWertungen(programm: String, wertungen: Map[AthletView, Seq[WertungView]],
                      grp: List[WertungView => String], grpAll: List[WertungView => String],
                      startgeraete: List[Disziplin], maxRiegenSize: Int, splitSex: SexDivideRule, jahrgangGroup: Boolean)
@@ -33,22 +42,28 @@ trait StartGeraetGrouper extends RiegenSplitter with Stager {
       val athletensum = atheltenInRiege.flatMap {
         _._2.map(aw => aw._1.id)
       }.toSet.size
+      val targetDiff = BalanceConfig.targetDiff(athletensum)
       val maxRiegenSize2 = if maxRiegenSize > 0 then maxRiegenSize else math.max(14, math.ceil(1d * athletensum / startgeraeteSize).intValue())
-      val riegen = splitToMaxTurnerCount(atheltenInRiege, maxRiegenSize2, cache).map(r => Map(r._1 -> r._2))
+      val avoidSplitsForSmallDurchgang = athletensum <= startgeraeteSize
+      val riegen = (if avoidSplitsForSmallDurchgang then atheltenInRiege else splitToMaxTurnerCount(atheltenInRiege, maxRiegenSize2, cache))
+        .map(r => Map(r._1 -> r._2))
       // Maximalausdehnung. Nun die sinnvollen Zusammenlegungen
       val riegenindex = buildRiegenIndex(riegen)
       val workmodel = buildWorkModel(riegen)
 
       def combineToDurchgangSize(relevantcombis: GeraeteRiegen): GeraeteRiegen = {
+        val participants = relevantcombis.sizeOfAll
+        val localTargetDiff = BalanceConfig.targetDiff(participants)
         splitSex match {
           case GemischterDurchgang =>
             val rcm = relevantcombis.filter(c => c.turnerriegen.head.geschlecht.equalsIgnoreCase("M"))
             val rcw = relevantcombis.filter(c => c.turnerriegen.head.geschlecht.equalsIgnoreCase("W"))
             val maxMGeraete = startgeraeteSize * rcm.size / relevantcombis.size
             val maxWGeraete = startgeraeteSize * rcw.size / relevantcombis.size
-            buildPairs(maxMGeraete, maxRiegenSize2, rcm) ++ buildPairs(maxWGeraete, maxRiegenSize2, rcw)
+            buildPairs(maxMGeraete, maxRiegenSize2, rcm, localTargetDiff, BalanceConfig.fairnessWeight, BalanceConfig.splitWeight, BalanceConfig.cohesionWeight) ++
+              buildPairs(maxWGeraete, maxRiegenSize2, rcw, localTargetDiff, BalanceConfig.fairnessWeight, BalanceConfig.splitWeight, BalanceConfig.cohesionWeight)
           case _ =>
-            buildPairs(startgeraeteSize, maxRiegenSize2, relevantcombis)
+            buildPairs(startgeraeteSize, maxRiegenSize2, relevantcombis, localTargetDiff, BalanceConfig.fairnessWeight, BalanceConfig.splitWeight, BalanceConfig.cohesionWeight)
         }
       }
 
@@ -57,9 +72,9 @@ trait StartGeraetGrouper extends RiegenSplitter with Stager {
           startriegen
         }
         else splitSex match {
-          case GemischteRiegen => bringVereineTogether(startriegen, maxRiegenSize2, splitSex)
+          case GemischteRiegen => bringVereineTogether(startriegen, maxRiegenSize2, splitSex, targetDiff)
           case GemischterDurchgang => startriegen
-          case GetrennteDurchgaenge => bringVereineTogether(startriegen, maxRiegenSize2, splitSex)
+          case GetrennteDurchgaenge => bringVereineTogether(startriegen, maxRiegenSize2, splitSex, targetDiff)
         }
       }
 
@@ -93,7 +108,7 @@ trait StartGeraetGrouper extends RiegenSplitter with Stager {
   }
 
 
-  private def bringVereineTogether(startriegen: GeraeteRiegen, maxRiegenSize2: Int, splitSex: SexDivideRule): GeraeteRiegen = {
+  private def bringVereineTogether(startriegen: GeraeteRiegen, maxRiegenSize2: Int, splitSex: SexDivideRule, targetDiff: Int): GeraeteRiegen = {
     @tailrec
     def _bringVereineTogether(startriegen: GeraeteRiegen, variantsCache: Set[GeraeteRiegen]): GeraeteRiegen = {
       val averageSize = startriegen.averageSize
@@ -147,7 +162,7 @@ trait StartGeraetGrouper extends RiegenSplitter with Stager {
       if optimized == startriegen || variantsCache.contains(optimized) then {
         optimized
       } else {
-        val evenoptimized = spreadEven(optimized, splitSex)
+        val evenoptimized = spreadEven(optimized, splitSex, targetDiff)
         if evenoptimized == startriegen || variantsCache.contains(evenoptimized) then {
           evenoptimized
         } else {
@@ -179,22 +194,29 @@ trait StartGeraetGrouper extends RiegenSplitter with Stager {
   }
 
   @tailrec
-  private def spreadEven(startriegen: GeraeteRiegen, splitSex: SexDivideRule, mustIncreaseQuality: Boolean = false): GeraeteRiegen = {
+  private def spreadEven(startriegen: GeraeteRiegen, splitSex: SexDivideRule, targetDiff: Int, mustIncreaseQuality: Boolean = false): GeraeteRiegen = {
     /*
    * 1. Durchschnittsgrösse ermitteln
    * 2. Grösste Abweichungen ermitteln (kleinste, grösste)
    * 3. davon (teilbare) Gruppen filtern
    * 4. schieben.
    */
-    val stats = startriegen.map { raw =>
+    type GrpStats = (squad.GeraeteRiege, Int, Int, Int, Option[TurnerRiege])
+    if startriegen.isEmpty then {
+      startriegen
+    }
+    else if startriegen.map(_.size).max - startriegen.map(_.size).min <= targetDiff then {
+      startriegen
+    }
+    else {
+    val stats: Seq[GrpStats] = startriegen.map { raw =>
       // Riege, Anz. Gruppen, Anz. Turner, Std.Abweichung, (kleinste Gruppekey, kleinste Gruppe)
       val anzTurner = raw.size
       val abweichung = anzTurner - startriegen.averageSize
-      (raw, raw.size, anzTurner, abweichung, raw.smallestDividable)
+      (raw, raw.size, raw.turnerriegen.size, abweichung, raw.smallestDividable)
     }.toSeq.sortBy(_._4).reverse // Abweichung
 
     val kleinsteGruppe@(geraeteRiegeAusKleinsterGruppe, _, anzGruppenAusKleinsterGruppe, _, turnerRiegeAusKleinsterGruppe) = stats.last
-    type GrpStats = (squad.GeraeteRiege, Int, Int, Int, Option[TurnerRiege])
 
     def checkSC(p1: GrpStats, p2: GrpStats): Boolean = {
       splitSex match {
@@ -207,10 +229,10 @@ trait StartGeraetGrouper extends RiegenSplitter with Stager {
     }
 
     stats.find { groessteGruppe =>
-      val (geraeteRiege, _, anzGruppenAusGroessterGruppe, _, turnerRiege) = groessteGruppe
+      val (geraeteRiege, anzahlInGruppe, anzahlGruppen, abweichung, turnerRiege) = groessteGruppe
       val b11 = turnerRiege.isDefined && groessteGruppe != kleinsteGruppe
       val b12 = checkSC(groessteGruppe, kleinsteGruppe)
-      val b2 = anzGruppenAusGroessterGruppe > startriegen.averageSize
+      val b2 = anzahlInGruppe > startriegen.averageSize
       val b3 = b11 && turnerRiege.size + anzGruppenAusKleinsterGruppe <= startriegen.averageSize
       lazy val v1 = geraeteRiege.countVereine(turnerRiege.head.verein)
       lazy val v2 = kleinsteGruppe._1.countVereine(turnerRiege.head.verein)
@@ -226,7 +248,7 @@ trait StartGeraetGrouper extends RiegenSplitter with Stager {
         val sg = geraeteRiegeAusKleinsterGruppe + turnerRiege
         val nextCombi = gt + startriegen.filter(sr => sr != geraeteRiege && sr != geraeteRiegeAusKleinsterGruppe) + sg
         if mustIncreaseQuality && nextCombi.quality > startriegen.quality then {
-          spreadEven(nextCombi, splitSex, mustIncreaseQuality)
+          spreadEven(nextCombi, splitSex, targetDiff, mustIncreaseQuality)
         } else {
           startriegen
         }
@@ -241,9 +263,10 @@ trait StartGeraetGrouper extends RiegenSplitter with Stager {
         case Some(groessteGruppe@(geraeteRiegeAusGroessterGruppe, _, _, _, Some(turnerRiegeAusGroessterGruppe))) =>
           val gt = geraeteRiegeAusGroessterGruppe - turnerRiegeAusGroessterGruppe
           val sg = geraeteRiegeAusKleinsterGruppe + turnerRiegeAusGroessterGruppe
-          spreadEven(gt + startriegen.filter(sr => sr != geraeteRiegeAusGroessterGruppe && sr != geraeteRiegeAusKleinsterGruppe) + sg, splitSex, true)
+          spreadEven(gt + startriegen.filter(sr => sr != geraeteRiegeAusGroessterGruppe && sr != geraeteRiegeAusKleinsterGruppe) + sg, splitSex, targetDiff, true)
         case _ => startriegen
       } // inner stats find match
     } // stats find match
+    }
   }
 }

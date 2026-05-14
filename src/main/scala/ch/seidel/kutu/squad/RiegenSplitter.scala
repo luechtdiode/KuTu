@@ -7,7 +7,18 @@ import scala.annotation.tailrec
 
 trait RiegenSplitter {
   private val logger = LoggerFactory.getLogger(classOf[RiegenSplitter])
-  
+
+  private def computeSplitPos(size: Int, targetSize: Option[Int]): Int = {
+    val fallback = size / 2
+    targetSize match {
+      case Some(target) if target > 0 && size > 1 =>
+        val bounded = math.max(1, math.min(size - 1, target))
+        // Prefer non-symmetric splits when a meaningful target exists.
+        if bounded == fallback && size > 2 then math.max(1, fallback - 1) else bounded
+      case _ => fallback
+    }
+  }
+
   def groupKey(grplst: List[WertungView => String])(wertung: WertungView): String = {
     grplst.foldLeft(""){(acc, f) =>
       acc + "," + f(wertung)
@@ -19,7 +30,8 @@ trait RiegenSplitter {
     val ret = sugg.sortBy(_._2.size).reverse
     //logger.debug((ret.size, riegencnt))
     if ret.size < requiredRiegenCount then {
-      splitToRiegenCount(split(ret.head, ".", cache) ++ ret.tail, requiredRiegenCount, cache)
+      val targetSize = math.ceil(1d * ret.map(_._2.size).sum / math.max(1, requiredRiegenCount)).toInt
+      splitToRiegenCount(split(ret.head, ".", cache, Some(targetSize)) ++ ret.tail, requiredRiegenCount, cache)
     }
     else {
       //logger.debug(ret.mkString("\n"))
@@ -32,14 +44,14 @@ trait RiegenSplitter {
     //cache.clear
     val ret = sugg.sortBy(_._2.size).reverse
     if ret.nonEmpty && ret.head._2.size > maxRiegenTurnerCount then {
-      splitToMaxTurnerCount(split(ret.head, "#", cache) ++ ret.tail, maxRiegenTurnerCount, cache)
+      splitToMaxTurnerCount(split(ret.head, "#", cache, Some(maxRiegenTurnerCount)) ++ ret.tail, maxRiegenTurnerCount, cache)
     }
     else {
       ret
     }
   }
   
-  private def split[A](riege: (String, Seq[A]), delimiter: String, cache: scala.collection.mutable.Map[String, Int]): Seq[(String, Seq[A])] = {
+  private def split[A](riege: (String, Seq[A]), delimiter: String, cache: scala.collection.mutable.Map[String, Int], targetSize: Option[Int] = None): Seq[(String, Seq[A])] = {
     val (key, r) = riege
     val oldKey1 = (key + delimiter).split(delimiter).headOption.getOrElse("Riege")
     val oldList = r.toList
@@ -50,7 +62,7 @@ trait RiegenSplitter {
     }
     val key1 = if key.contains(delimiter) then key else oldKey1 + delimiter + occurences(oldKey1)
     val key2 = oldKey1 + delimiter + occurences(oldKey1)
-    val splitpos = r.size / 2
+    val splitpos = computeSplitPos(r.size, targetSize)
     List((key1, oldList.take(splitpos)), (key2, oldList.drop(splitpos)))
   }
   

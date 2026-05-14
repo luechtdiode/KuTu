@@ -321,6 +321,7 @@ class DurchgangBuilderSpec extends KuTuBaseSpec {
     }
 
     "distribute athletes evenly across riegen" in {
+      testWettkampf = insertGeTuWettkampf("DistributionTestWK", 20)
       val builder = DurchgangBuilder(this)
       val result = builder.suggestDurchgaenge(
         testWettkampf.id,
@@ -331,14 +332,15 @@ class DurchgangBuilderSpec extends KuTuBaseSpec {
       if (result.nonEmpty) {
         result.values.foreach { durchgangMap =>
           durchgangMap.values.foreach { riegenList =>
-            if (riegenList.size > 1) {
-              val sizes = riegenList.map { case (_, wertungen) => wertungen.size }.toList.sorted
-              if (sizes.nonEmpty && sizes.max > 0) {
-                // The difference between smallest and largest riege should not be too large
-                // (reasonable distribution)
-                val difference = sizes.max - sizes.min
-                difference should be <= (sizes.max / 2 + 1)
-              }
+            val distribution = riegenList
+              .map { case (_, wertungen) => wertungen.map(_.athletId).distinct.size }
+              .filter(_ > 0)
+
+            if (distribution.nonEmpty) {
+              val participantsPerDurchgang = distribution.sum
+              val targetDifference = if (participantsPerDurchgang <= 40) 1 else 2
+              val difference = distribution.max - distribution.min
+              difference should be <= targetDifference
             }
           }
         }

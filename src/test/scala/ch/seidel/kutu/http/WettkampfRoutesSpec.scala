@@ -9,17 +9,14 @@ import ch.seidel.kutu.domain.{ProgrammRaw, Wettkampf}
 import org.apache.pekko.http.scaladsl.model.*
 import org.apache.pekko.http.scaladsl.model.HttpMethods.{DELETE, GET, POST, PUT}
 import org.apache.pekko.http.scaladsl.model.headers.RawHeader
-import org.apache.pekko.http.scaladsl.testkit.RouteTestTimeout
 import spray.json.*
 import spray.json.DefaultJsonProtocol.*
 
 import java.io.ByteArrayOutputStream
 import java.util.UUID
 import scala.compiletime.uninitialized
-import scala.concurrent.duration.*
 
 class WettkampfRoutesSpec extends KuTuBaseSpec {
-  implicit val routeTestTimeout: RouteTestTimeout = RouteTestTimeout(5.seconds) // or any duration you need
   private var testWettkampf: Wettkampf = uninitialized
 
   /** Competition whose zip is prepared in beforeAll; the DB entry is deleted before tests run so

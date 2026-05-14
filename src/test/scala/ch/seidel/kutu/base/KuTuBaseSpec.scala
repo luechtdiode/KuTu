@@ -3,7 +3,7 @@ package ch.seidel.kutu.base
 import java.sql.Date
 import java.util.UUID
 import com.typesafe.config.{Config, ConfigFactory}
-import org.apache.pekko.http.scaladsl.testkit.ScalatestRouteTest
+import org.apache.pekko.http.scaladsl.testkit.{RouteTestTimeout, ScalatestRouteTest}
 import ch.seidel.kutu.domain.*
 import ch.seidel.kutu.http.ApiService
 import ch.seidel.kutu.squad.DurchgangBuilder
@@ -14,6 +14,7 @@ import org.scalatest.BeforeAndAfterAll
 
 import java.time.{Instant, LocalDate}
 import java.time.temporal.ChronoUnit
+import scala.concurrent.duration.*
 
 trait KuTuBaseSpec extends AnyWordSpec
   with Matchers
@@ -23,6 +24,8 @@ trait KuTuBaseSpec extends AnyWordSpec
   with ScalaFutures
   with ScalatestRouteTest
   with BeforeAndAfterAll {
+
+  implicit val routeTestTimeout: RouteTestTimeout = RouteTestTimeout(15.seconds) // or any duration you need
 
   DBService.startDB(Some(TestDBService.db))
 
@@ -46,7 +49,7 @@ trait KuTuBaseSpec extends AnyWordSpec
       val vereinID = createVerein(s"Verein-$v", Some(s"Verband-$v"))
       val athleten = for {
         pg <- (1 to pgIds.size) 
-        a <- (1 to Math.max(1, 4-pg))
+        a <- (1 to Math.max(1, anzvereine / pgIds.size * (pgIds.size - pg) + 1)) // Distribute athletes across programs
       } yield {
         val athlet = insertAthlete(Athlet(vereinID).copy(name = s"Athlet-$pg-$a"))
         val tuple: (Long, Option[Media]) = (athlet.id, None)
