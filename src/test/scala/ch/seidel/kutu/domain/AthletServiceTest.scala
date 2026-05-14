@@ -126,7 +126,6 @@ class AthletServiceTest extends AnyFunSuite with AthletService {
 
   test("Lena and Lisa") {
     val athleteList = List(athletes(18), athletes(19))
-    athletes = athleteList.map(a => a.id -> a).toMap
     val cache = new util.ArrayList[MatchCode]
     athleteList
       .foreach(a =>
@@ -136,8 +135,7 @@ class AthletServiceTest extends AnyFunSuite with AthletService {
   }
 
   test("Anna and Emma") {
-    val athleteList = List(athletes(21), athletes(22))
-    athletes = athleteList.map(a => a.id -> a).toMap
+    val athleteList = List(athletes(21L), athletes(22L))
     val cache = new util.ArrayList[MatchCode]
     athleteList
       .foreach(a =>
@@ -152,7 +150,6 @@ class AthletServiceTest extends AnyFunSuite with AthletService {
     val a1 = Athlet(verein).copy(id = 15L, name = "Brodbeck", vorname = "Simone", gebdat = Some(gebdat1))
     val a2 = Athlet(verein).copy(id = 16L, name = "Brodbeck", vorname = "Sophia", gebdat = Some(gebdat2))
     val athleteList = List(a1, a2)
-    athletes = athleteList.map(a => a.id -> a).toMap
     val cache = new util.ArrayList[MatchCode]
     athleteList
       .foreach(a =>
