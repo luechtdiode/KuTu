@@ -212,9 +212,10 @@ trait AthletService extends DBService with AthletResultMapper with VereinService
         bmname.find(encodedNamen.contains(_)).map(_ => 100).getOrElse(0)
       )
       val encodedVorNamen = code.encodedVorNamen
-      val vorNamenSimilarity = MatchCode.similarFactor(code.vorname, athlet.vorname, calcThreshold(athlet.vorname, code.vorname)) + startsSameInPercent(code.vorname, athlet.vorname) + encodedVorNamen.find(bmvorname.contains(_)).map(_ => 100).getOrElse(
+      val vorNamenSoundsLike = encodedVorNamen.find(bmvorname.contains(_)).map(_ => 100).getOrElse(
         bmvorname.find(encodedVorNamen.contains(_)).map(_ => 100).getOrElse(0)
       )
+      val vorNamenSimilarity = if vorNamenSoundsLike>0 then vorNamenSoundsLike + MatchCode.similarFactor(code.vorname, athlet.vorname, calcThreshold(athlet.vorname, code.vorname)) + startsSameInPercent(code.vorname, athlet.vorname) else 0
       val gebdatSimilarity = athlet.gebdat.isEmpty || code.gebdat.equals(athlet.gebdat)
       val jahrgangSimilarity = athlet.gebdat.isEmpty || code.jahrgang.equals(AthletJahrgang(athlet.gebdat).jahrgang)
       val preret = namenSimilarity > 140 && vorNamenSimilarity > 140
