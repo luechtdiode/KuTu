@@ -662,7 +662,7 @@ trait RegistrationService extends DBService with RegistrationResultMapper with M
   }
 
   def saveJudgePgmRegistrations(judgeId: Long, wettkampfDisziplinIds: List[Long]): JudgeRegistrationProgram = {
-    val vereinregistrationId = selectJudgeRegistration(judgeId).id
+    val vereinregistrationId = selectJudgeRegistration(judgeId).vereinregistrationId
     Await.result(database.run {
       sqlu""" delete from judgeregistration_pgm where id = $judgeId""" >>
         DBIO.sequence(for wkid <- wettkampfDisziplinIds yield
