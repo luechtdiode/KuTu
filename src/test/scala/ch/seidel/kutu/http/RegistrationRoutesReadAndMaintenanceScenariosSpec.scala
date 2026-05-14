@@ -1,13 +1,15 @@
-package ch.seidel.kutu.domain
+package ch.seidel.kutu.http
 
 import ch.seidel.jwt.JsonWebToken
 import ch.seidel.kutu.Config.{jwtAuthorizationKey, jwtHeader, jwtSecretKey, jwtTokenExpiryPeriodInDays}
 import ch.seidel.kutu.base.KuTuBaseSpec
+import ch.seidel.kutu.domain.{JudgeRegistration, NewRegistration, Registration, Wettkampf}
 import ch.seidel.kutu.mail.MockedSMTPMailer
-import org.apache.pekko.http.scaladsl.testkit.RouteTestTimeout
 import org.apache.pekko.http.scaladsl.model.HttpMethods.GET
 import org.apache.pekko.http.scaladsl.model.headers.RawHeader
 import org.apache.pekko.http.scaladsl.model.{HttpRequest, MediaTypes, StatusCodes}
+import org.apache.pekko.http.scaladsl.testkit.RouteTestTimeout
+
 import scala.concurrent.duration.*
 
 class RegistrationRoutesReadAndMaintenanceScenariosSpec extends KuTuBaseSpec {

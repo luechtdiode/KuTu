@@ -1,11 +1,12 @@
-package ch.seidel.kutu.domain
+package ch.seidel.kutu.http
 
 import ch.seidel.jwt.JsonWebToken
 import ch.seidel.kutu.Config.{jwtAuthorizationKey, jwtHeader, jwtSecretKey, jwtTokenExpiryPeriodInDays}
 import ch.seidel.kutu.base.KuTuBaseSpec
+import ch.seidel.kutu.domain.*
 import org.apache.pekko.http.scaladsl.model.HttpMethods.{DELETE, GET, POST, PUT}
 import org.apache.pekko.http.scaladsl.model.headers.RawHeader
-import org.apache.pekko.http.scaladsl.model.{ContentTypes, HttpEntity, HttpRequest, Multipart, StatusCodes}
+import org.apache.pekko.http.scaladsl.model.*
 import org.apache.pekko.util.ByteString
 import spray.json.*
 import spray.json.DefaultJsonProtocol.listFormat
