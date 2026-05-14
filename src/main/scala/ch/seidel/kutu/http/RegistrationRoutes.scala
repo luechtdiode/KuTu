@@ -102,7 +102,13 @@ trait RegistrationRoutes extends SprayJsonSupport with JsonSupport with JwtSuppo
   def getAllJudgesRemote(p: Wettkampf): List[(Registration, List[JudgeRegistration])] = Await.result(
     httpGetClientRequest(s"$remoteAdminBaseUrl/api/registrations/${p.uuid.get}/judges").flatMap {
       case HttpResponse(StatusCodes.OK, headers, entity, _) =>
-        Unmarshal(entity).to[List[(Registration, List[JudgeRegistration])]]
+        try {
+          Unmarshal(entity).to[List[(Registration, List[JudgeRegistration])]]
+        } catch {
+          case e: Throwable =>
+            log.error(e, "Unable to unmarshal judge registrations from remote admin")
+            Future(List.empty)
+        }
       case _ => Future(List.empty)
     }
     , Duration.Inf)
@@ -272,7 +278,9 @@ trait RegistrationRoutes extends SprayJsonSupport with JsonSupport with JwtSuppo
                   parameters(Symbol("html").?) {
                     case None =>
                       complete(Future {
-                        loadAllJudgesOfCompetition(wettkampf.uuid.map(UUID.fromString).get).toJson
+                        loadAllJudgesOfCompetition(wettkampf.uuid.map(UUID.fromString).get)
+                          .toList
+                          .toJson
                       })
                     case _ =>
                       complete(Future {
