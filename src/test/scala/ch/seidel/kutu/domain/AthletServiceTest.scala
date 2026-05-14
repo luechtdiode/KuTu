@@ -20,7 +20,7 @@ class AthletServiceTest extends AnyFunSuite with AthletService {
   val verein = 33
   val athleteList: Seq[Athlet] = List(
     Athlet(verein).copy(id = 1L, name = "Bolliquèr", vorname = "Sophia"),
-    Athlet(verein).copy(id = 2L, name = "Boliger", vorname = "Sofia"),
+    Athlet(verein).copy(id = 2L, name = "Boliker", vorname = "Sofia"),
     Athlet(verein).copy(id = 3L, name = "Gwerder", vorname = "Noelia", gebdat = Some(gebdat1)),
     Athlet(verein).copy(id = 4L, name = "Gwerder", vorname = "Alicia", gebdat = Some(gebdat2)),
     Athlet(verein).copy(id = 5L, name = "Wittwer", vorname = "Noelia", gebdat = Some(gebdat1)),
@@ -110,7 +110,7 @@ class AthletServiceTest extends AnyFunSuite with AthletService {
     assert(findAthleteLike(cache, exclusive = true)(athletes(4L)) !== athletes(3L))
     assert(findAthleteLike(cache, exclusive = true)(athletes(6L)) !== athletes(5L))
     assert(findAthleteLike(cache, exclusive = true)(athletes(8L)) === athletes(7L))
-    //assert(findAthleteLike(cache, exclusive = true)(athletes(10L)) === athletes(9L))
+    assert(findAthleteLike(cache, exclusive = true)(athletes(10L)) === athletes(9L))
     assert(findAthleteLike(cache, exclusive = true)(athletes(12L)) !== athletes(11L))
     assert(findAthleteLike(cache, exclusive = true)(athletes(14L)) !== athletes(13L))
 

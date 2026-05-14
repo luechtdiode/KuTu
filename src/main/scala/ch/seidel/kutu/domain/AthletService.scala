@@ -208,14 +208,11 @@ trait AthletService extends DBService with AthletResultMapper with VereinService
         80 - 60 / maxthresholdCharCount * math.min(maxthresholdCharCount, math.max(0, maxthresholdCharCount - math.max(text1.length, text2.length)))
 
       val encodedNamen = code.encodedNamen
-      val namenSimilarity = MatchCode.similarFactor(code.name, athlet.name, calcThreshold(athlet.name, code.name)) + encodedNamen.find(bmname.contains(_)).map(_ => 100).getOrElse(
-        bmname.find(encodedNamen.contains(_)).map(_ => 100).getOrElse(0)
-      )
+      val namenSimilarity = MatchCode.similarFactor(code.name, athlet.name, calcThreshold(athlet.name, code.name)) +
+        MatchCode.similarFactor(bmname, encodedNamen)
       val encodedVorNamen = code.encodedVorNamen
-      val vorNamenSoundsLike = encodedVorNamen.find(bmvorname.contains(_)).map(_ => 100).getOrElse(
-        bmvorname.find(encodedVorNamen.contains(_)).map(_ => 100).getOrElse(0)
-      )
-      val vorNamenSimilarity = if vorNamenSoundsLike>0 then vorNamenSoundsLike + MatchCode.similarFactor(code.vorname, athlet.vorname, calcThreshold(athlet.vorname, code.vorname)) + startsSameInPercent(code.vorname, athlet.vorname) else 0
+      val vorNamenSoundsLike = MatchCode.similarFactor(bmvorname, encodedVorNamen)
+      val vorNamenSimilarity = vorNamenSoundsLike + MatchCode.similarFactor(code.vorname, athlet.vorname, calcThreshold(athlet.vorname, code.vorname)) + startsSameInPercent(code.vorname, athlet.vorname)
       val gebdatSimilarity = athlet.gebdat.isEmpty || code.gebdat.equals(athlet.gebdat)
       val jahrgangSimilarity = athlet.gebdat.isEmpty || code.jahrgang.equals(AthletJahrgang(athlet.gebdat).jahrgang)
       val preret = namenSimilarity > 140 && vorNamenSimilarity > 140

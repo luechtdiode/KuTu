@@ -1366,10 +1366,19 @@ package object domain {
     def encArrToList(enc: String): Seq[String] = enc.split("-").flatMap(_.split("\\|")).toList
 
     def encode(name: String): Seq[String] =
-      encArrToList(bmenc.encode(name)) ++
+      (encArrToList(bmenc.encode(name)) ++
         encArrToList(bmenc2.encode(name)) ++
         encArrToList(bmenc3.encode(name)) ++
-        Seq(NameCodec.encode(name), colenc.encode(name).mkString(""))
+        Seq(NameCodec.encode(name), colenc.encode(name).mkString(""))).reverse
+
+    def similarFactor(left: Seq[String], right: Seq[String]): Int = {
+      val gs = left.take(2).zip(right.take(2)).zipWithIndex.map{
+        case (((l, r), idx)) => if l.equals(r) then (idx +1) * 20 else 0
+      }.sum
+      val remainingright = right.drop(2).toSet
+      val remainingLeft = left.drop(2).toSet
+      if remainingright.intersect(remainingLeft).nonEmpty then gs + 80 else gs
+    }
 
     def similarFactor(name1: String, name2: String, threshold: Int = 80): Int = {
       val diff = LevenshteinDistance.getDefaultInstance.apply(name1, name2)
@@ -1393,6 +1402,14 @@ package object domain {
     val encodedVorNamen: Seq[String] = encode(vorname)
 
     def swappednames = MatchCode(id, vorname, name, gebdat, verein)
+
+    def nameSimilarFactor(other: MatchCode): Int = {
+      similarFactor(encodedNamen, other.encodedNamen)
+    }
+    def vornameSimilarFactor(other: MatchCode): Int = {
+      similarFactor(encodedVorNamen, other.encodedVorNamen)
+    }
+
   }
 
   object Kandidat {
