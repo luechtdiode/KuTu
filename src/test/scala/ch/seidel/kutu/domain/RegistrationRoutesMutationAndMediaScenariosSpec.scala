@@ -60,7 +60,7 @@ class RegistrationRoutesMutationAndMediaScenariosSpec extends KuTuBaseSpec {
       }
     }
 
-    "return InternalServerError for sync-admin athletes bulk update on SQLite" in {
+    "update athlete-name in sync-admin athletes bulk update" in {
       val wk = insertGeTuWettkampf("ScenarioUpdateAthletes", 0)
       val vereinId = createVerein("AthleteSyncClub", Some("AthleteSyncVerband"))
       val athlet = insertAthlete(Athlet(vereinId).copy(name = "OldName", vorname = "OldVorname", geschlecht = "M"))
@@ -70,9 +70,10 @@ class RegistrationRoutesMutationAndMediaScenariosSpec extends KuTuBaseSpec {
       HttpRequest(PUT, s"/api/registrations/${wk.uuid.get}/athletes", entity = jsonEntity(List(changed)))
         .addHeader(syncAdminJwt(wk)) ~>
         routes ~> check {
-        // Route uses SQL syntax unsupported by SQLite test DB in adjustOnlineRegistrations.
-        status should ===(StatusCodes.InternalServerError)
+        status should ===(StatusCodes.OK)
       }
+      val athletViewUpdated = loadAthleteView(athlet.id)
+      athletViewUpdated.name should ===("UpdatedName")
     }
 
     "reject athletes bulk update with registration token" in {

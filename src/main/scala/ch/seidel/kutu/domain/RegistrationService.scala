@@ -104,13 +104,13 @@ trait RegistrationService extends DBService with RegistrationResultMapper with M
   def adjustOnlineRegistrations(changedAthlet: AthletView): Unit = {
     Await.result(database.run {
       sqlu"""
-              update athletregistration ar
+              update athletregistration
               set geschlecht = a.geschlecht,
                   name = a.name,
                   vorname = a.vorname,
                   gebdat = a.gebdat
               from athlet a
-              where ar.athlet_id = a.id
+              where athlet_id = a.id
                 and a.id = ${changedAthlet.id}
           """
     }, Duration.Inf)

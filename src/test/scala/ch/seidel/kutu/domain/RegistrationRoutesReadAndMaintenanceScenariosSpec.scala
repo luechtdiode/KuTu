@@ -3,11 +3,18 @@ package ch.seidel.kutu.domain
 import ch.seidel.jwt.JsonWebToken
 import ch.seidel.kutu.Config.{jwtAuthorizationKey, jwtHeader, jwtSecretKey, jwtTokenExpiryPeriodInDays}
 import ch.seidel.kutu.base.KuTuBaseSpec
+import ch.seidel.kutu.mail.MockedSMTPMailer
+import org.apache.pekko.http.scaladsl.testkit.RouteTestTimeout
 import org.apache.pekko.http.scaladsl.model.HttpMethods.GET
 import org.apache.pekko.http.scaladsl.model.headers.RawHeader
 import org.apache.pekko.http.scaladsl.model.{HttpRequest, MediaTypes, StatusCodes}
+import scala.concurrent.duration.*
 
 class RegistrationRoutesReadAndMaintenanceScenariosSpec extends KuTuBaseSpec {
+  implicit val routeTestTimeout: RouteTestTimeout = RouteTestTimeout(5.seconds) // or any duration you need
+
+  // Keep mocked SMTP setup aligned with registration integration specs.
+  private val mailer = new MockedSMTPMailer()
 
   private val wk: Wettkampf = insertGeTuWettkampf("RegistrationRoutesReadMaintenance", 0)
 
@@ -133,6 +140,17 @@ class RegistrationRoutesReadAndMaintenanceScenariosSpec extends KuTuBaseSpec {
       }
     }
 
+    "return competition scoped message for approvemail with mail parameter" in {
+      val approvedMail = "approve-me@test.local"
+
+      HttpRequest(GET, s"/api/registrations/${wk.uuid.get}/approvemail?mail=$approvedMail") ~>
+        routes ~> check {
+        status should ===(StatusCodes.OK)
+        val response = entityAs[String]
+        response should include(wk.easyprint)
+      }
+    }
+
     "return OK for refreshsyncs" in {
       HttpRequest(GET, s"/api/registrations/${wk.uuid.get}/refreshsyncs") ~>
         routes ~> check {
@@ -150,5 +168,3 @@ class RegistrationRoutesReadAndMaintenanceScenariosSpec extends KuTuBaseSpec {
     }
   }
 }
-
-
