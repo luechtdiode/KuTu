@@ -274,7 +274,8 @@ trait AthletService extends DBService with AthletResultMapper with VereinService
     val presel2 = preselect.asScala.filter(mc => !exclusive || mc.id != athlet.id).map { matchcode =>
       (matchcode.id, similarAthletFactor(matchcode, exactVereinFlag = true))
     }.filter(p => p._2 > 0).toList.sortBy(_._2).reverse
-    presel2.headOption.flatMap(k => loadAthlet(k._1)).getOrElse {
+    val severity = if (exclusive && presel2.size == 1) 300 else 0
+    presel2.find(p => p._2 > severity).flatMap(k => loadAthlet(k._1)).getOrElse {
       if (!athlet.equals(Athlet()) && !exactVerein) {
         val presel3 = preselect.asScala.filter(mc => !exclusive || mc.id != athlet.id).map { matchcode =>
           (matchcode.id, similarAthletFactor(matchcode, exactVereinFlag = false))

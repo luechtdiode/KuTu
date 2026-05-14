@@ -120,56 +120,85 @@ class AthletServiceIntegrationSpec extends KuTuBaseSpec {
       athleteView.verein shouldBe defined
     }
 
-    "detect duplicates" in {
-      // Insert potential duplicate
-      val gebdat = Date.valueOf(LocalDate.of(2010, 5, 15))
-      val duplicate = Athlet(
-        id = 0L,
-        js_id = 99999,
-        geschlecht = "M",
-        name = "TestName",  // Same as testAthlet
-        vorname = "TestVorname",  // Same as testAthlet
-        gebdat = Some(gebdat),  // Same as testAthlet
-        strasse = "Different Street",
-        plz = "7000",
-        ort = "Chur",
-        verein = Some(testVereinId),
-        activ = true
-      )
-      val inserted = insertAthlete(duplicate)
+    "handle similarities correctly" should {
 
-      val duplicates = findDuplicates()
-      // findDuplicates returns a List - test the method executes without errors
-      // (The actual duplicates found depend on the similarity threshold algorithm)
-      noException should be thrownBy findDuplicates()
-    }
+      "detect duplicates" in {
+        // Insert potential duplicate
+        val gebdat = Date.valueOf(LocalDate.of(2010, 5, 15))
+        val duplicate = Athlet(
+          id = 0L,
+          js_id = 99999,
+          geschlecht = "M",
+          name = "TestName", // Same as testAthlet
+          vorname = "TestVorname", // Same as testAthlet
+          gebdat = Some(gebdat), // Same as testAthlet
+          strasse = "Different Street",
+          plz = "7000",
+          ort = "Chur",
+          verein = Some(testVereinId),
+          activ = true
+        )
+        val inserted = insertAthlete(duplicate)
 
-    "find athlete like with different spelling" in {
-      val gebdat = Date.valueOf(LocalDate.of(2014, 8, 25))
-      val athlete1 = insertAthlete(Athlet(testVereinId).copy(
-        name = "Müller",
-        vorname = "Maria",
-        gebdat = Some(gebdat)
-      ))
+        val duplicates = findDuplicates()
+        // findDuplicates returns a List - test the method executes without errors
+        // (The actual duplicates found depend on the similarity threshold algorithm)
+        noException should be thrownBy findDuplicates()
+      }
 
-      val athlete2 = insertAthlete(Athlet(testVereinId).copy(
-        name = "Mueller", // Different spelling
-        vorname = "Maria",
-        gebdat = Some(gebdat)
-      ))
+      "find athlete like with different spelling" in {
+        val gebdat = Date.valueOf(LocalDate.of(2014, 8, 25))
+        val athlete1 = insertAthlete(Athlet(testVereinId).copy(
+          name = "Müller",
+          vorname = "Maria",
+          gebdat = Some(gebdat)
+        ))
 
-      val cache = new java.util.ArrayList[MatchCode]()
-      cache.add(MatchCode(athlete1.id, athlete1.name, athlete1.vorname, athlete1.gebdat, athlete1.verein.getOrElse(0L)))
+        val athlete2 = insertAthlete(Athlet(testVereinId).copy(
+          name = "Mueller", // Different spelling
+          vorname = "Maria",
+          gebdat = Some(gebdat)
+        ))
 
-      val searchAthlet = Athlet(testVereinId).copy(
-        name = "Muller",  // Another variation
-        vorname = "Maria",
-        gebdat = Some(gebdat)
-      )
+        val cache = new java.util.ArrayList[MatchCode]()
+        cache.add(MatchCode(athlete1.id, athlete1.name, athlete1.vorname, athlete1.gebdat, athlete1.verein.getOrElse(0L)))
 
-      val found = findAthleteLike(cache, None, exclusive = false, exactVerein = true)(searchAthlet)
-      // Should find athlete1 due to similarity
-      found.name should (be("Müller") or be("Mueller"))
+        val searchAthlet = Athlet(testVereinId).copy(
+          name = "Muller", // Another variation
+          vorname = "Maria",
+          gebdat = Some(gebdat)
+        )
+
+        val found = findAthleteLike(cache, None, exclusive = false, exactVerein = true)(searchAthlet)
+        // Should find athlete1 due to similarity
+        found.name should (be("Müller") or be("Mueller"))
+      }
+
+      "prevents false positives in duplicate detection" in {
+        val gebdat = Date.valueOf(LocalDate.of(2016, 5, 15))
+        val emmaSmith = insertAthlete(Athlet(testVereinId).copy(
+          name = "Smith",
+          vorname = "Emma",
+          gebdat = Some(gebdat)
+        ))
+
+        val annaSmith = insertAthlete(Athlet(testVereinId).copy(
+          name = "Smith",
+          vorname = "Anna",
+          gebdat = Some(gebdat)
+        ))
+
+        val finder = findAthleteLike(new java.util.ArrayList[MatchCode](), None, exclusive = true)
+
+        val found1 = finder(emmaSmith)
+        // Should find emma but not anna due to exclusivity
+        found1.id shouldBe emmaSmith.id
+
+        val found2 = finder(annaSmith)
+        // Should find anna but not emma due to exclusivity
+        found2.id shouldBe annaSmith.id
+
+      }
     }
 
     "merge athletes correctly" in {
@@ -250,7 +279,7 @@ class AthletServiceIntegrationSpec extends KuTuBaseSpec {
       val cleaned = cleanUnusedClubs()
 
       // The result should be a Set of Verein objects
-      cleaned shouldBe a [Set[?]]
+      cleaned shouldBe a[Set[?]]
       // The unused club may be in the cleaned set if it has no wertungen
       // (Note: This may not include it if there are registrations for future events)
     }

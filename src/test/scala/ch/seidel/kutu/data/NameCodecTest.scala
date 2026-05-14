@@ -9,6 +9,7 @@ class NameCodecTest extends AnyFunSuite {
     assert(NameCodec.encode("Maier") === NameCodec.encode("Meyer"))
     assert(NameCodec.encode("Sofia") === NameCodec.encode("Sophia"))
     assert(NameCodec.encode("Lisa") !== NameCodec.encode("Lena"))
+    assert(NameCodec.encode("Anna") !== NameCodec.encode("Emma"))
   }
 
 }

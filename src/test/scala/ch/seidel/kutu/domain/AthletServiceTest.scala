@@ -39,7 +39,9 @@ class AthletServiceTest extends AnyFunSuite with AthletService {
     Athlet(verein).copy(id = 18L, name = "Rutishuser", vorname = "Lena", gebdat = Some(gebdat3)),
     Athlet(verein).copy(id = 19L, name = "Rutishuser", vorname = "Lisa", gebdat = Some(gebdat3)),
     Athlet(verein).copy(id = 20L, name = "Muster", vorname = "Elina", gebdat = Some(gebdat3)),
-    Athlet(verein).copy(id = 21L, name = "Muster", vorname = "Alena", gebdat = Some(gebdat4))
+    Athlet(verein).copy(id = 21L, name = "Muster", vorname = "Alena", gebdat = Some(gebdat4)),
+    Athlet(verein).copy(id = 22L, name = "Muster", vorname = "Emma", gebdat = Some(gebdat4)),
+    Athlet(verein).copy(id = 23L, name = "Muster", vorname = "Anna", gebdat = Some(gebdat4))
   )
 
   var athletes: Map[Long, Athlet] = athleteList.map(a => a.id -> a).toMap
@@ -131,6 +133,17 @@ class AthletServiceTest extends AnyFunSuite with AthletService {
         cache.add(MatchCode(a.id, a.name, a.vorname, a.gebdat, a.verein.getOrElse(0))))
 
     assert(findAthleteLike(cache, exclusive = true)(athletes(18)) !== athletes(19))
+  }
+
+  test("Anna and Emma") {
+    val athleteList = List(athletes(21), athletes(22))
+    athletes = athleteList.map(a => a.id -> a).toMap
+    val cache = new util.ArrayList[MatchCode]
+    athleteList
+      .foreach(a =>
+        cache.add(MatchCode(a.id, a.name, a.vorname, a.gebdat, a.verein.getOrElse(0))))
+
+    assert(findAthleteLike(cache, exclusive = true)(athletes(21)) !== athletes(22))
   }
 
   test("Sophia and Simone") {

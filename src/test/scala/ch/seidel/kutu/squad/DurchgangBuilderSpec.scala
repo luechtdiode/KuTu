@@ -4,6 +4,8 @@ import ch.seidel.kutu.base.KuTuBaseSpec
 import ch.seidel.kutu.domain.*
 import scala.compiletime.uninitialized
 
+import scala.compiletime.uninitialized
+
 /**
  * Test coverage for DurchgangBuilder
  *
