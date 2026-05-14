@@ -327,7 +327,7 @@ trait RegistrationRoutes extends SprayJsonSupport with JsonSupport with JwtSuppo
                   put {
                     entity(as[List[AthletView]]) { athletlist =>
                       val sexchanges = athletlist
-                        .map(a => (a, loadAthlet(a.id).get))
+                        .flatMap(a => loadAthlet(a.id).map(a2 => (a, a2)))
                         .filter(aa => aa._1.geschlecht != aa._2.geschlecht)
                       val reg = insertAthletes(athletlist.map(aw => (aw.id.toString, aw.toAthlet)))
                       sexchanges.foreach(aa => adjustWertungRiegen(wettkampf, this, aa._1.toAthlet))
