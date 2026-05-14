@@ -1726,7 +1726,7 @@ object KuTuApp extends JFXApp3 with KutuService with JsonSupport with JwtSupport
             val mailURIStr = String.format("mailto:%s?subject=%s&bcc=%s&body=%s",
               p.notificationEMail,
               encodeURIParam(s"Link für Datenerfassung im Wettkampf (${p.easyprint})"),
-              judges,
+              encodeURIParam(judges),
               encodeURIParam(
                 s"""  Geschätze(r) Wertungsrichter(in)
                    |
@@ -1736,14 +1736,24 @@ object KuTuApp extends JFXApp3 with KutuService with JsonSupport with JwtSupport
                    |
                    |  Wichtig:
                    |  * Dieser Link ist bis am ${formatDateTime(shorttimeout)} UTC gültig.
-                   |  * Der Link kann bis dahin beliebig of verwendet werden, um die Berechtigung
+                   |  * Der Link kann bis dahin beliebig oft verwendet werden, um die Berechtigung
                    |    für die Erfassung von Wertungen freizuschalten.
                    |  * Bitte den Link vertraulich behandeln - nur Du darfst mit diesem Link einsteigen.
                    |
                    |  Sportliche Grüsse,
                    |  Wertungsrichter-Einsatzplanung
                 """.stripMargin))
-            hostServices.showDocument(mailURIStr)
+            if (Desktop.isDesktopSupported) {
+              new Thread(() => {
+                try Desktop.getDesktop.mail(java.net.URI.create(mailURIStr))
+                catch {
+                  case e: IOException =>
+                    log.error(e, s"Fehler beim Öffnen des Mail-Clients mit URI: $mailURIStr")
+                }
+              }).start()
+            } else {
+              hostServices.showDocument(mailURIStr)
+            }
           }
 
           val outLast = QRCode.from(lastResultsConnectionString).to(ImageType.PNG).withSize(500, 500).stream()
@@ -1772,7 +1782,17 @@ object KuTuApp extends JFXApp3 with KutuService with JsonSupport with JwtSupport
                    |  Sportliche Grüsse,
                    |  Einsatzplanung
                 """.stripMargin))
-            hostServices.showDocument(mailURIStr)
+            if (Desktop.isDesktopSupported) {
+              new Thread(() => {
+                try Desktop.getDesktop.mail(java.net.URI.create(mailURIStr))
+                catch {
+                  case e: IOException =>
+                    log.error(e, s"Fehler beim Öffnen des Mail-Clients mit URI: $mailURIStr")
+                }
+              }).start()
+            } else {
+              hostServices.showDocument(mailURIStr)
+            }
           }
 
 
@@ -1802,7 +1822,17 @@ object KuTuApp extends JFXApp3 with KutuService with JsonSupport with JwtSupport
                    |  Sportliche Grüsse,
                    |  Einsatzplanung
                 """.stripMargin))
-            hostServices.showDocument(mailURIStr)
+            if (Desktop.isDesktopSupported) {
+              new Thread(() => {
+                try Desktop.getDesktop.mail(java.net.URI.create(mailURIStr))
+                catch {
+                  case e: IOException =>
+                    log.error(e, s"Fehler beim Öffnen des Mail-Clients mit URI: $mailURIStr")
+                }
+              }).start()
+            } else {
+              hostServices.showDocument(mailURIStr)
+            }
           }
           val urlLastLabel = new Hyperlink("Link auf 'Letzte Resultate'")
           urlLastLabel.onMouseClicked = _ => {
