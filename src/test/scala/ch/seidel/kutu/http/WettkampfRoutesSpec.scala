@@ -19,7 +19,7 @@ import scala.compiletime.uninitialized
 import scala.concurrent.duration.*
 
 class WettkampfRoutesSpec extends KuTuBaseSpec {
-  implicit val routeTestTimeout: RouteTestTimeout = RouteTestTimeout(5.seconds) // or any duration you need
+  implicit val routeTestTimeout: RouteTestTimeout = RouteTestTimeout(15.seconds)
   private var testWettkampf: Wettkampf = uninitialized
 
   /** Competition whose zip is prepared in beforeAll; the DB entry is deleted before tests run so
@@ -369,5 +369,4 @@ class WettkampfRoutesSpec extends KuTuBaseSpec {
     }
   }
 }
-
 

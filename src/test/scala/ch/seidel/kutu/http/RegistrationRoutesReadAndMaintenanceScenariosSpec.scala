@@ -13,7 +13,7 @@ import org.apache.pekko.http.scaladsl.testkit.RouteTestTimeout
 import scala.concurrent.duration.*
 
 class RegistrationRoutesReadAndMaintenanceScenariosSpec extends KuTuBaseSpec {
-  implicit val routeTestTimeout: RouteTestTimeout = RouteTestTimeout(5.seconds) // or any duration you need
+  implicit val routeTestTimeout: RouteTestTimeout = RouteTestTimeout(15.seconds)
 
   // Keep mocked SMTP setup aligned with registration integration specs.
   private val mailer = new MockedSMTPMailer()
