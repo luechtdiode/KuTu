@@ -44,8 +44,12 @@ trait StartGeraetGrouper extends RiegenSplitter with Stager {
       }.toSet.size
       val targetDiff = BalanceConfig.targetDiff(athletensum)
       val maxRiegenSize2 = if maxRiegenSize > 0 then maxRiegenSize else math.max(14, math.ceil(1d * athletensum / startgeraeteSize).intValue())
+      // Pre-compute eqsize: when rounds > 1 are needed, TurnerRiegen must not exceed eqsize,
+      // otherwise mergeCandidates (which is capped at eqsize) cannot fully balance them.
+      val (effectiveSplitTarget, _) = computeDimensions(athletensum, startgeraeteSize, maxRiegenSize2)
       val avoidSplitsForSmallDurchgang = athletensum <= startgeraeteSize
-      val riegen = (if avoidSplitsForSmallDurchgang then atheltenInRiege else splitToMaxTurnerCount(atheltenInRiege, maxRiegenSize2, cache))
+      val riegen = (if avoidSplitsForSmallDurchgang then atheltenInRiege
+                    else splitToMaxTurnerCount(atheltenInRiege, effectiveSplitTarget, cache))
         .map(r => Map(r._1 -> r._2))
       // Maximalausdehnung. Nun die sinnvollen Zusammenlegungen
       val riegenindex = buildRiegenIndex(riegen)
@@ -89,13 +93,19 @@ trait StartGeraetGrouper extends RiegenSplitter with Stager {
     if alignedriegen.isEmpty then {
       Seq.empty
     } else {
-      val missingStartOffset = math.min(startgeraete.size, alignedriegen.size)
+      val numDurchgaenge = math.ceil(alignedriegen.size.toDouble / startgeraete.size).toInt
+      // Sort descending by athlete count so each consecutive chunk of startgeraeteSize entries
+      // (= one Durchgang) is homogeneous in size → minimal intra-Durchgang spread.
+      val orderedRiegen = if numDurchgaenge <= 1 then alignedriegen
+                          else alignedriegen.sortBy(r => -r.sizeOfAll)
+
+      val missingStartOffset = math.min(startgeraete.size, orderedRiegen.size)
       val emptyGeraeteRiegen = Range(missingStartOffset, math.max(missingStartOffset, startgeraete.size))
         .map { startgeridx =>
           (s"$programm (1)", s"Leere Riege $programm/${startgeraete(startgeridx).easyprint}", startgeraete(startgeridx), Seq[(AthletView, Seq[WertungView])]())
         }
 
-      alignedriegen
+      orderedRiegen
         .zipWithIndex.flatMap { r =>
         val (rr, index) = r
         val startgeridx = (index + startgeraete.size) % startgeraete.size

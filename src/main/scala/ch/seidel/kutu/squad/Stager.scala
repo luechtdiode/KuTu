@@ -16,7 +16,7 @@ trait Stager extends Mapper {
   def buildPairs(geraeteOriginal: Int, maxGeraeteRiegenSize: Int, geraeteriegen: GeraeteRiegen,
       targetDiff: Int = Int.MaxValue, fairnessWeight: Int = 50, splitWeight: Int = 30, cohesionWeight: Int = 20): GeraeteRiegen = {
     val sum = geraeteriegen.sizeOfAll
-    val (eqsize, rounds) = computeDimensions(sum, geraeteOriginal, maxGeraeteRiegenSize, 1)
+    val (eqsize, rounds) = computeDimensions(sum, geraeteOriginal, maxGeraeteRiegenSize)
     val geraete = rounds * geraeteOriginal
     logger.debug(s"sum: $sum, eqsize: $eqsize, geraete: $geraete, gerateOriginal: $geraeteOriginal")
 
@@ -164,10 +164,16 @@ trait Stager extends Mapper {
     }
   }
   
+  /** Returns (eqsize, rounds) for evenly distributing sumOfAll athletes across geraete
+   *  slots without exceeding maxGeraeteRiegenSize per slot.
+   */
+  protected final def computeDimensions(sumOfAll: Int, geraete: Int, maxGeraeteRiegenSize: Int): (Int, Int) =
+    computeDimensionsRec(sumOfAll, geraete, maxGeraeteRiegenSize, 1)
+
   @tailrec
-  private def computeDimensions(sumOfAll: Int, geraete: Int, maxGeraeteRiegenSize: Int, level: Int): (Int, Int) = {
+  private def computeDimensionsRec(sumOfAll: Int, geraete: Int, maxGeraeteRiegenSize: Int, level: Int): (Int, Int) = {
     val eqsize = (1d * sumOfAll / (geraete * level) + 0.9d).intValue()
-    if eqsize <= maxGeraeteRiegenSize || geraete == 0 || level > 100 then (eqsize, level) else computeDimensions(sumOfAll, geraete, maxGeraeteRiegenSize, level +1)
+    if eqsize <= maxGeraeteRiegenSize || geraete == 0 || level > 100 then (eqsize, level) else computeDimensionsRec(sumOfAll, geraete, maxGeraeteRiegenSize, level + 1)
   }
   
 }

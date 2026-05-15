@@ -320,6 +320,37 @@ class DurchgangBuilderSpec extends KuTuBaseSpec {
       result should not be empty
     }
 
+    "have equal riegen sizes within each durchgang when forced into multiple durchgaenge" in {
+      // maxRiegenSize=5 forces multiple Durchgänge per category
+      val bigWk = insertGeTuWettkampf("IntraDurchgangBalanceWK", 20)
+      val builder = DurchgangBuilder(this)
+      val result = builder.suggestDurchgaenge(
+        bigWk.id,
+        maxRiegenSize = 5,
+        splitSexOption = Some(GemischteRiegen)
+      )
+
+      if (result.nonEmpty) {
+        result.foreach { case (durchgang, diszMap) =>
+          // Compare TOTAL athletes per Startgerät (Disziplin) within a Durchgang.
+          // A Startgerät may have several merged TurnerRiegen; their combined total should
+          // be near-equal to every other Startgerät's total in the same Durchgang.
+          val totalsPerDevice: Seq[Int] = diszMap.toSeq.map { case (_, riegenList) =>
+            riegenList.toSeq.flatMap { case (_, wertungen) =>
+              wertungen.map(_.athletId)
+            }.distinct.size
+          }.filter(_ > 0)
+
+          if (totalsPerDevice.size > 1) {
+            val diff = totalsPerDevice.max - totalsPerDevice.min
+            withClue(s"Durchgang '$durchgang': athletes-per-device=$totalsPerDevice") {
+              diff should be <= 2
+            }
+          }
+        }
+      }
+    }
+
     "distribute athletes evenly across riegen" in {
       testWettkampf = insertGeTuWettkampf("DistributionTestWK", 20)
       val builder = DurchgangBuilder(this)
