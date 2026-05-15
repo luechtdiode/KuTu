@@ -13,9 +13,10 @@ trait Stager extends Mapper {
 //    rebuildWertungen(suggest, riegenindex)
 //  }
 
-  def buildPairs(geraeteOriginal: Int, maxGeraeteRiegenSize: Int, geraeteriegen: GeraeteRiegen): GeraeteRiegen = {
+  def buildPairs(geraeteOriginal: Int, maxGeraeteRiegenSize: Int, geraeteriegen: GeraeteRiegen,
+      targetDiff: Int = Int.MaxValue, fairnessWeight: Int = 50, splitWeight: Int = 30, cohesionWeight: Int = 20): GeraeteRiegen = {
     val sum = geraeteriegen.sizeOfAll
-    val (eqsize, rounds) = computeDimensions(sum, geraeteOriginal, maxGeraeteRiegenSize, 1)
+    val (eqsize, rounds) = computeDimensions(sum, geraeteOriginal, maxGeraeteRiegenSize)
     val geraete = rounds * geraeteOriginal
     logger.debug(s"sum: $sum, eqsize: $eqsize, geraete: $geraete, gerateOriginal: $geraeteOriginal")
 
@@ -35,7 +36,7 @@ trait Stager extends Mapper {
       else {
         val withNewCandidates = nextCandidates :++ (for
           neweinteilung <- mergeCandidates(geraete, eqsize, nextCandidates.head, Set.empty)
-          s = score(geraete, eqsize, neweinteilung)
+          s = score(geraete, eqsize, neweinteilung, targetDiff, fairnessWeight, splitWeight, cohesionWeight)
           if neweinteilung.size >= geraete && !acc.contains((s, neweinteilung))
         yield {
           neweinteilung
@@ -44,12 +45,12 @@ trait Stager extends Mapper {
         withNewCandidates match {
           case candidate #:: tail if tail.isEmpty =>
 //            logger.debug("found end of LazyList")
-            val sc = (score(geraete, eqsize, candidate), candidate)
+            val sc = (score(geraete, eqsize, candidate, targetDiff, fairnessWeight, splitWeight, cohesionWeight), candidate)
             finish(acc + sc)
-          case candidate #:: tail => score(geraete, eqsize, candidate) match {
-            case 0 => 
+          case candidate #:: tail => score(geraete, eqsize, candidate, targetDiff, fairnessWeight, splitWeight, cohesionWeight) match {
+            case 0 =>
 //              logger.debug("found top scorer")
-              (score(geraete, eqsize, candidate), candidate)
+              (score(geraete, eqsize, candidate, targetDiff, fairnessWeight, splitWeight, cohesionWeight), candidate)
             case s =>
 //              logger.debug("should seek further")
               val sc = (s, candidate)
@@ -62,8 +63,32 @@ trait Stager extends Mapper {
     //logger.debug(rank, pairs.mkString("\n ", "\n ", ""))
     pairs
   }
-  protected def score(geraete: Int, eqsize: Int, einteilung: GeraeteRiegen): Long = {
-    einteilung.map(riege => math.abs(riege.size - eqsize)).sum + math.abs(geraete - einteilung.size) * einteilung.size * 10L
+  protected def score(geraete: Int, eqsize: Int, einteilung: GeraeteRiegen,
+      targetDiff: Int = Int.MaxValue, fairnessWeight: Int = 50, splitWeight: Int = 30, cohesionWeight: Int = 20): Long = {
+    if einteilung.isEmpty then {
+      Long.MaxValue
+    }
+    else {
+      val sizes = einteilung.map(_.size).toSeq
+      val spread = sizes.max - sizes.min
+      val spreadOverTarget = if targetDiff == Int.MaxValue then 0 else math.max(0, spread - targetDiff)
+      val baseDeviation = einteilung.map(riege => math.abs(riege.size - eqsize)).sum
+      val geraetePenalty = math.abs(geraete - einteilung.size) * einteilung.size * 10L
+      val splitPenalty = einteilung.flatMap(_.turnerriegen).count(_.name.contains("#"))
+      val vereinFragmentation = einteilung.toSeq.zipWithIndex
+        .flatMap { case (gr, idx) => gr.turnerriegen.flatMap(_.verein).map(v => v.id -> idx) }
+        .groupBy(_._1)
+        .values
+        .map(_.map(_._2).toSet.size - 1)
+        .sum
+
+      // Strongly enforce target spread, then prefer fewer splits, then better club cohesion.
+      baseDeviation +
+        geraetePenalty +
+        spreadOverTarget.toLong * fairnessWeight * 10000L +
+        splitPenalty.toLong * splitWeight * 100L +
+        vereinFragmentation.toLong * cohesionWeight
+    }
   }
   
   @tailrec
@@ -139,10 +164,16 @@ trait Stager extends Mapper {
     }
   }
   
+  /** Returns (eqsize, rounds) for evenly distributing sumOfAll athletes across geraete
+   *  slots without exceeding maxGeraeteRiegenSize per slot.
+   */
+  protected final def computeDimensions(sumOfAll: Int, geraete: Int, maxGeraeteRiegenSize: Int): (Int, Int) =
+    computeDimensionsRec(sumOfAll, geraete, maxGeraeteRiegenSize, 1)
+
   @tailrec
-  private def computeDimensions(sumOfAll: Int, geraete: Int, maxGeraeteRiegenSize: Int, level: Int): (Int, Int) = {
+  private def computeDimensionsRec(sumOfAll: Int, geraete: Int, maxGeraeteRiegenSize: Int, level: Int): (Int, Int) = {
     val eqsize = (1d * sumOfAll / (geraete * level) + 0.9d).intValue()
-    if eqsize <= maxGeraeteRiegenSize || geraete == 0 || level > 100 then (eqsize, level) else computeDimensions(sumOfAll, geraete, maxGeraeteRiegenSize, level +1)
+    if eqsize <= maxGeraeteRiegenSize || geraete == 0 || level > 100 then (eqsize, level) else computeDimensionsRec(sumOfAll, geraete, maxGeraeteRiegenSize, level + 1)
   }
   
 }
