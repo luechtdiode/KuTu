@@ -51,7 +51,7 @@ Compile / scalacOptions ++= {
 Compile / compileOrder := CompileOrder.JavaThenScala
 
 // JVM options for forked runs/tests
-Test / fork := true
+Test / fork := true // FIXME ev. auf false stellen, wenn die Tests nicht funktionieren.
 Test / javaOptions ++= Seq(
   "-server",
   "-Xss2m",

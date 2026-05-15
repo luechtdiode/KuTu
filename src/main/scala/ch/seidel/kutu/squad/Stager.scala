@@ -6,12 +6,6 @@ import scala.annotation.tailrec
 
 trait Stager extends Mapper {
   private val logger = LoggerFactory.getLogger(classOf[Stager])
-//  def solve(geraete: Int, maxGeraeteRiegenSize: Int, riegen: Seq[RiegeAthletWertungen]): Seq[RiegeAthletWertungen] = {
-//    val riegenindex = buildRiegenIndex(riegen)
-//    val workmodel = buildWorkModel(riegen)
-//    val suggest = buildPairs(geraete, maxGeraeteRiegenSize, workmodel)
-//    rebuildWertungen(suggest, riegenindex)
-//  }
 
   def buildPairs(geraeteOriginal: Int, maxGeraeteRiegenSize: Int, geraeteriegen: GeraeteRiegen,
       targetDiff: Int = Int.MaxValue, fairnessWeight: Int = 50, splitWeight: Int = 30, cohesionWeight: Int = 20): GeraeteRiegen = {
@@ -30,12 +24,12 @@ trait Stager extends Mapper {
           case _ => (0, Set.empty)
         }
       }
-      if nextCandidates.isEmpty || acc.size > 500 then {
+      if nextCandidates.isEmpty || acc.size > 1000 then {
         finish(acc)
       }
       else {
         val withNewCandidates = nextCandidates :++ (for
-          neweinteilung <- mergeCandidates(geraete, eqsize, nextCandidates.head, Set.empty)
+          neweinteilung <- mergeCandidates(geraete, maxGeraeteRiegenSize, nextCandidates.head, Set.empty)
           s = score(geraete, eqsize, neweinteilung, targetDiff, fairnessWeight, splitWeight, cohesionWeight)
           if neweinteilung.size >= geraete && !acc.contains((s, neweinteilung))
         yield {
@@ -73,7 +67,7 @@ trait Stager extends Mapper {
       val spread = sizes.max - sizes.min
       val spreadOverTarget = if targetDiff == Int.MaxValue then 0 else math.max(0, spread - targetDiff)
       val baseDeviation = einteilung.map(riege => math.abs(riege.size - eqsize)).sum
-      val geraetePenalty = math.abs(geraete - einteilung.size) * einteilung.size * 10L
+      val geraetePenalty = math.abs(geraete - einteilung.size) * einteilung.size
       val splitPenalty = einteilung.flatMap(_.turnerriegen).count(_.name.contains("#"))
       val vereinFragmentation = einteilung.toSeq.zipWithIndex
         .flatMap { case (gr, idx) => gr.turnerriegen.flatMap(_.verein).map(v => v.id -> idx) }
@@ -82,19 +76,18 @@ trait Stager extends Mapper {
         .map(_.map(_._2).toSet.size - 1)
         .sum
 
-      // Strongly enforce target spread, then prefer fewer splits, then better club cohesion.
-      baseDeviation +
-        geraetePenalty +
-        spreadOverTarget.toLong * fairnessWeight * 10000L +
-        splitPenalty.toLong * splitWeight * 100L +
-        vereinFragmentation.toLong * cohesionWeight
+      geraetePenalty * 10000L +
+        baseDeviation  * 100L +
+        vereinFragmentation.toLong * cohesionWeight +
+        spreadOverTarget.toLong * fairnessWeight
+      //splitPenalty.toLong * splitWeight * 10L +
     }
   }
   
   @tailrec
-  private def mergeCandidates(geraete: Int, targetGeraeteRiegeSize: Int, einteilung: GeraeteRiegen, acc: Set[GeraeteRiegen], preferredRiege: Option[PreferredAccumulator] = None): Set[GeraeteRiegen] = {
+  private def mergeCandidates(geraete: Int, maxGeraeteRiegeSize: Int, einteilung: GeraeteRiegen, acc: Set[GeraeteRiegen], preferredRiege: Option[PreferredAccumulator] = None): Set[GeraeteRiegen] = {
     val actualGeraeteRiegen = einteilung.size
-    val candidates = einteilung.filter(_.size < targetGeraeteRiegeSize).toList.sortBy(_.size).reverse
+    val candidates = einteilung.filter(_.size < maxGeraeteRiegeSize).toList.sortBy(_.size).reverse
     val finishedRiegen = actualGeraeteRiegen - candidates.size
     val keepUnmerged = geraete - finishedRiegen
     if keepUnmerged == 0 then {
@@ -102,11 +95,11 @@ trait Stager extends Mapper {
     } else {
       lazy val min = candidates.minBy(_.size).size
       lazy val max = candidates.maxBy(_.size).size
-      lazy val median = ((min + max) / 2 + targetGeraeteRiegeSize / 2) / 2
-      
+      lazy val median = ((min + max) / 2 + maxGeraeteRiegeSize / 2) / 2
+
       val smallerCandidates = if preferredRiege.nonEmpty then 
           candidates
-          .filter(_.size + preferredRiege.get.preferred.size <= targetGeraeteRiegeSize)         
+          .filter(_.size + preferredRiege.get.preferred.size <= maxGeraeteRiegeSize)
         else if keepUnmerged == 1 then candidates
         else
            candidates
@@ -123,27 +116,27 @@ trait Stager extends Mapper {
         .flatMap{candidateSmaller => biggerCandidates.map(candidateBigger => (candidateSmaller, candidateBigger))}
         .filter{case (candidateSmaller, candidateBigger) => 
           candidateSmaller != candidateBigger &&
-          candidateSmaller.size + candidateBigger.size <= targetGeraeteRiegeSize
+          candidateSmaller.size + candidateBigger.size <= maxGeraeteRiegeSize
         }
         .filter(pair => preferredRiege match {
           case None => true 
           case Some(pr) => !pr.pairs.contains(pair)
         })
-        .sortBy(p => (targetGeraeteRiegeSize - p._1.size - p._2.size) * 10 + p._1 ~ p._2)
-        
+        .sortBy(p => (maxGeraeteRiegeSize - p._1.size - p._2.size) * 10 + p._1 ~ p._2)
+
       def merge(s: GeraeteRiege, b: GeraeteRiege): (GeraeteRiege, GeraeteRiegen) = {
         val merged = s ++ b
         val cleaned = einteilung.filterNot(p => p == s || p == b)
         (merged, cleaned + merged)
       }
       validPairs.headOption match {
-        case pairOption @ Some((s, b)) if s.size + b.size - targetGeraeteRiegeSize == 0 =>
+        case pairOption @ Some((s, b)) if s.size + b.size - maxGeraeteRiegeSize == 0 =>
           val pair = pairOption.get
           val (s, b) = pair
           val (merged, newEinteilung) = merge(s, b)
           if  !acc.contains(newEinteilung) then {
             val pr = preferredRiege.map(p => p.copy(preferred = p.basepreferred, pairs = p.pairs + pair)).orElse(Some(PreferredAccumulator(merged, einteilung, b, Set(pair))))
-            mergeCandidates(geraete, targetGeraeteRiegeSize, pr.get.base, acc + newEinteilung, pr)
+            mergeCandidates(geraete, maxGeraeteRiegeSize, pr.get.base, acc + newEinteilung, pr)
           } else {
             acc
           }
@@ -155,7 +148,7 @@ trait Stager extends Mapper {
             acc + newEinteilung
           } else if  !acc.contains(newEinteilung) then {
             val pr = preferredRiege.map(p => p.copy(preferred = merged, pairs = p.pairs + pair)).orElse(Some(PreferredAccumulator(merged, einteilung, b, Set(pair))))
-            mergeCandidates(geraete, targetGeraeteRiegeSize, newEinteilung, acc, pr)
+            mergeCandidates(geraete, maxGeraeteRiegeSize, newEinteilung, acc, pr)
           } else {
             acc
           }
