@@ -73,6 +73,28 @@ class GeraeteRiegenBuilderSpec extends AnyWordSpec with Matchers {
       result.map(_._1) should contain allOf ("R1#01", "R1#02")
     }
 
+    "return empty distribution when no aligned riegen are provided" in {
+      Harness.distribute("K0", List(disziplin1), Seq.empty) shouldBe empty
+    }
+
+    "return empty distribution when no start devices are provided" in {
+      val aligned = Seq(Map("R1" -> team("R1", vereinA, Seq(1L, 2L))._2))
+      Harness.distribute("K0", Nil, aligned) shouldBe empty
+    }
+
+    "return no result when no athletes are available" in {
+      val result = Harness.build(
+        programm = "K-empty",
+        startgeraete = List(disziplin1, disziplin2),
+        turnerRiegen = Seq.empty,
+        maxRiegenSize = 8,
+        splitSex = GemischteRiegen,
+        jahrgangGroup = false
+      )
+
+      result shouldBe empty
+    }
+
     "add empty Geräteriegen when a Durchgang has fewer starts than devices" in {
       val aligned = Seq(Map("R1" -> team("R1", vereinA, Seq(1L, 2L))._2))
 

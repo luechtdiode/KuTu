@@ -301,7 +301,7 @@ class RegistrationAdminSpec extends KuTuBaseSpec with PatienceConfiguration {
 
         // Update athlete (simulate sex change)
         val updatedAthlet = athlet.copy(geschlecht = "W")
-        adjustWertungRiegen(testWettkampf, this, updatedAthlet)
+        adjustWertungRiegen(testWettkampf, this, updatedAthlet, true)
 
         // Verify wertungen were updated
         val updatedWertungen = selectWertungen(athletId = Some(athlet.id), wettkampfId = Some(testWettkampf.id))

@@ -10,6 +10,7 @@ import ch.seidel.kutu.renderer.*
 import ch.seidel.kutu.squad.{DurchgangBuilder, DurchgangGrouper}
 import javafx.scene.control as jfxsc
 import javafx.scene.text.Text
+import org.apache.pekko.http.scaladsl.server.PathMatcher.Lift.MOps.OptionMOps
 import scalafx.Includes.{eventClosureWrapperWithParam, jfxActionEvent2sfx, jfxBooleanBinding2sfx, jfxBounds2sfx, jfxCellEditEvent2sfx, jfxKeyEvent2sfx, jfxMouseEvent2sfx, jfxObjectProperty2sfx, jfxParent2sfx, jfxPixelReader2sfx, jfxReadOnlyBooleanProperty2sfx, jfxTableViewSelectionModel2sfx, jfxText2sfxText, observableList2ObservableBuffer, when}
 import scalafx.application.Platform
 import scalafx.beans.binding.Bindings
@@ -439,6 +440,18 @@ class RiegenTab(override val wettkampfInfo: WettkampfInfo, override val service:
 
   }
 
+  val chkSplitPgm = new CheckBox() {
+    text = "Programme / Kategorien teilen"
+  }
+  val cbSplitSex = new ComboBox[SexDivideRule]() {
+    items.get.addAll(null, GemischteRiegen, GemischterDurchgang, GetrennteDurchgaenge)
+    promptText = "automatisch"
+  }
+  val chkSeparateRiegen2Durchgang = new CheckBox() {
+    text = "Riegen2 in separaten Durchgang einteilen"
+    selected = false
+  }
+
   private val txtGruppengroesse = new TextField() {
     text = if wettkampfInfo.isAthletikTest then "0" else "11"
     tooltip = "Max. Gruppengrösse oder 0 für gleichmässige Verteilung mit einem Durchgang."
@@ -446,7 +459,7 @@ class RiegenTab(override val wettkampfInfo: WettkampfInfo, override val service:
 
   private val txtMaxParallelDurchgaengeProGruppe = new TextField() {
     text = "3"
-    tooltip = "Max. Anzahl paralleler Durchgänge pro Durchganggruppe. 0 = unbegrenzt."
+    tooltip = "Max. Anzahl paralleler Durchgänge pro Durchganggruppe. Wert kleiner 2 => keine Durchganggruppen."
   }
 
   override def release: Unit = {
@@ -629,30 +642,25 @@ class RiegenTab(override val wettkampfInfo: WettkampfInfo, override val service:
       })
       val inistartriegen = allDurchgaenge.filter(dg => durchgang.contains(dg.getValue.durchgang.name)).map(_.getValue.initstartriegen)
       val startgeraete = inistartriegen.flatMap(_.keySet).distinct
-      val cbSplitSex = new ComboBox[SexDivideRule]() {
-        items.get.addAll(null, GemischteRiegen, GemischterDurchgang, GetrennteDurchgaenge)
-        if durchgang.nonEmpty then {
-          selectionModel.value.selectFirst()
+      val ispureMasculine: Boolean = service.selectWertungen(wettkampfId = Some(wettkampf.id)).forall(w => w.athlet.geschlecht.equals("M"))
+      if durchgang.nonEmpty then {
+        cbSplitSex.selectionModel.value.selectFirst()
+      }
+      chkSplitPgm.selected = durchgang.size != 1
+
+      def isDefaultSelected(d: Disziplin) = {
+        if durchgang.isEmpty then {
+          ispureMasculine || wettkampfInfo.startDisziplinList.contains(d)
+        } else {
+          startgeraete.contains(d)
         }
-        promptText = "automatisch"
       }
-      val chkSplitPgm = new CheckBox() {
-        text = "Programme / Kategorien teilen"
-        selected = durchgang.size != 1
-      }
-      val chkSeparateRiegen2Durchgang = new CheckBox() {
-        text = "Riegen2 in separaten Durchgang einteilen"
-        selected = false
-      }
+
       val lvOnDisziplines = new ListView[CheckListBoxEditor[Disziplin]] {
         prefHeight = 250
         disziplinlist.foreach { d =>
           val cde = CheckListBoxEditor[Disziplin](d)
-          if durchgang.isEmpty then {
-            cde.selected.value = wettkampfInfo.startDisziplinList.contains(d)
-          } else {
-            cde.selected.value = startgeraete.contains(d)
-          }
+          cde.selected.value = isDefaultSelected(d)
           items.get.add(cde)
         }
         cellFactory = (_: ListView[CheckListBoxEditor[Disziplin]]) => new CheckBoxListCell[CheckListBoxEditor[Disziplin]] {
@@ -660,7 +668,7 @@ class RiegenTab(override val wettkampfInfo: WettkampfInfo, override val service:
         }
       }
 
-      def getSelectedDisziplines = {
+      def getSelectedDisziplines: Option[Set[Disziplin]] = {
         val ret = lvOnDisziplines.items.get.filter { item => item.selected.value }.map(item => item.value).toSet
         if ret.isEmpty then {
           None
@@ -670,9 +678,26 @@ class RiegenTab(override val wettkampfInfo: WettkampfInfo, override val service:
         }
       }
 
+      /**
+       * Es gibt drei Möglichkeiten, wie Riegen2 in den Durchgängen verteilt werden kann:
+       * 1. chkSeparateRiegen2Durchgang wird angekreuzt und es wird sowieso die Riege2-Zuteilungen im separaten Durchgang
+       *    einteilen, unabhängig davon, ob Barren in der Liste selektiert ist.
+       * 2a. chkSeparateRiegen2Durchgang wird nicht angekreuzt, aber Barren ist in der Liste der selektierten Disziplinen.
+       *    Dann wird der Barren in die normale Rotation im selben Durchgang für alle Riegen eingeplant.
+       * 2b. chkSeparateRiegen2Durchgang wird nicht angekreuzt, und der Barren in der Liste ist ebenfalls nicht angekreuzt,
+       *    aber es ist ein GeTu Wettkampf mit M+W Beteiligung, wobei automatisch eine Riege2 mit Barrenzuteilung für
+       *    alle M-Turner im selben Durchgang aber als separate Rotation eingeplant.
+       *
+       * @return
+       */
+      def isDerivedRiege2Barren: Boolean =
+        !chkSeparateRiegen2Durchgang.selected.value &&
+        !getSelectedDisziplines.exists(_.exists(d => d.name.equalsIgnoreCase("Barren"))) &&
+        disziplinlist.exists(g => g.name.equalsIgnoreCase("Barren"))
+
       def getMaxParallelDurchgaengeProGruppe: Int = {
         val configured = str2Int(txtMaxParallelDurchgaengeProGruppe.text.value)
-        if configured <= 0 then Int.MaxValue else configured
+        if configured < 0 then Int.MaxValue else configured
       }
 
       val titel = if durchgang.nonEmpty then
@@ -682,7 +707,7 @@ class RiegenTab(override val wettkampfInfo: WettkampfInfo, override val service:
       PageDisplayer.showInDialog(titel, new DisplayablePage() {
         def getPage: Node = {
           new GridPane {
-            prefWidth = 400
+            prefWidth = 500
             hgap = 10
             vgap = 10
             add(new Label("Maximale Gruppengrösse: "), 0, 0)
@@ -744,7 +769,7 @@ class RiegenTab(override val wettkampfInfo: WettkampfInfo, override val service:
                    durchgang = Some(durchgang),
                    start = Some(start.id),
                    kind = if wertungen.nonEmpty then RiegeRaw.KIND_STANDARD else RiegeRaw.KIND_EMPTY_RIEGE
-                 ), wertungen)
+                 ), wertungen, deriveRiege2Barren = isDerivedRiege2Barren)
                }
 
 
@@ -883,6 +908,77 @@ class RiegenTab(override val wettkampfInfo: WettkampfInfo, override val service:
         })
       }
       ret.setDisable(durchgang.size < 1)
+      ret
+    }
+
+    def makeMoveDurchgangToGroupMenu(durchgang: Set[String], selectedEditor: DurchgangEditor): MenuItem = {
+      val allDurchgaenge = durchgangModel.flatMap(group => {
+        if group.children.isEmpty then {
+          ObservableBuffer[jfxsc.TreeItem[DurchgangEditor]](group)
+        } else {
+          group.children
+        }
+      }).map(_.getValue.durchgang).toList
+      val selectedDurchgaenge: Seq[Durchgang] = selectedEditor match {
+        case gd: GroupDurchgangEditor => allDurchgaenge.filter(d => gd.aggregates.exists(_.durchgang.name == d.name))
+        case _ => allDurchgaenge.filter(d => durchgang.contains(d.name))
+      }
+      val selectedDurchgangNames = selectedDurchgaenge.map(_.name).toSet
+      val selectedGroupTitles = selectedDurchgaenge.map(_.title).toSet
+      val hasTargets = allDurchgaenge.exists(d => !selectedDurchgangNames.contains(d.name) && !selectedGroupTitles.contains(d.title))
+      val ret = KuTuApp.makeMenuAction("Durchgang in andere Gruppe verschieben ...") { (caption, action) =>
+        given ActionEvent = action
+        val targetDurchgaenge = durchgangModel
+          .filter(_.children.nonEmpty)
+          .map(_.getValue.durchgang)
+          .filterNot(d => selectedDurchgangNames.contains(d.name))
+          .filterNot(d => selectedGroupTitles.contains(d.title))
+          .sortBy(d => (d.title, d.name))
+
+        val txtAktuelleAuswahl = new Label(selectedDurchgaenge.map(_.name).toList.sorted.mkString(", "))
+        val cmbTargetDurchgang = new ComboBox[Durchgang]() {
+          items = ObservableBuffer.from(targetDurchgaenge)
+          converter = new StringConverter[Durchgang] {
+            override def toString(d: Durchgang): String = if d == null then "" else d.title
+
+            override def fromString(s: String): Durchgang = null
+          }
+          if targetDurchgaenge.nonEmpty then {
+            selectionModel.value.selectFirst()
+          }
+        }
+
+        PageDisplayer.showInDialog(text.value, new DisplayablePage() {
+          def getPage: Node = {
+            new GridPane {
+              hgap = 10
+              vgap = 10
+              add(new Label("Selektierte Durchgänge:"), 0, 0)
+              add(txtAktuelleAuswahl, 0, 1)
+              add(new Label("Ziel-Abteilung:"), 0, 2)
+              add(cmbTargetDurchgang, 0, 3)
+            }
+          }
+        }, new Button("OK") {
+          onAction = (_: ActionEvent) => {
+            val selectedTargetDurchgang = cmbTargetDurchgang.selectionModel.value.getSelectedItem
+            if selectedTargetDurchgang != null then {
+              val targetGroupTitle = selectedTargetDurchgang.title
+              KuTuApp.invokeWithBusyIndicator {
+                val toStore = allDurchgaenge.map { d =>
+                  if selectedDurchgangNames.contains(d.name) then d.copy(title = targetGroupTitle) else d
+                }
+                service.updateOrInsertDurchgaenge(toStore)
+                reloadData()
+                riegenFilterView.sort()
+                durchgangView.sort()
+              }
+            }
+          }
+        })
+      }
+
+      ret.setDisable(selectedDurchgaenge.isEmpty || !hasTargets)
       ret
     }
 
@@ -1326,6 +1422,7 @@ class RiegenTab(override val wettkampfInfo: WettkampfInfo, override val service:
             if selectedDurchgangHeader.isEmpty then {
               items += makeAggregateDurchganMenu(actDurchgangSelection)
             }
+            items += makeMoveDurchgangToGroupMenu(actDurchgangSelection, selectedEditor)
             items += makeUngroupDurchgangMenu(actDurchgangSelection, selectedEditor)
             if focusedCells.size == 1 && selectedEditor != null && selectedDurchgangHeader.isEmpty then {
               items += new SeparatorMenuItem()
@@ -1351,6 +1448,7 @@ class RiegenTab(override val wettkampfInfo: WettkampfInfo, override val service:
           if selectedDurchgangHeader.isEmpty then {
             btnEditDurchgang.items += makeAggregateDurchganMenu(actDurchgangSelection)
           }
+          btnEditDurchgang.items += makeMoveDurchgangToGroupMenu(actDurchgangSelection, selectedEditor)
           btnEditDurchgang.items += makeUngroupDurchgangMenu(actDurchgangSelection, selectedEditor)
           if focusedCells.size == 1 && selectedEditor != null && selectedDurchgangHeader.isEmpty then {
             btnEditDurchgang.items += new SeparatorMenuItem()
