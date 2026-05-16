@@ -19,10 +19,10 @@ class DurchgangGrouperSpec extends AnyWordSpec with Matchers {
         "K2 (2)" -> data
       ))
 
-      grouped.find(_.name == "K1 (1)").get.title.shouldBe("Abteilung 1 K1-K2")
-      grouped.find(_.name == "K2 (1)").get.title.shouldBe("Abteilung 1 K1-K2")
-      grouped.find(_.name == "K1 (2)").get.title.shouldBe("Abteilung 2 K1-K2")
-      grouped.find(_.name == "K2 (2)").get.title.shouldBe("Abteilung 2 K1-K2")
+      grouped.find(_.name == "K1 (1)").get.title.shouldBe("Abteilung 1 (K1, K2)")
+      grouped.find(_.name == "K2 (1)").get.title.shouldBe("Abteilung 1 (K1, K2)")
+      grouped.find(_.name == "K1 (2)").get.title.shouldBe("Abteilung 2 (K1, K2)")
+      grouped.find(_.name == "K2 (2)").get.title.shouldBe("Abteilung 2 (K1, K2)")
     }
 
     "keep the Durchgang name as title when no grouping is needed" in {
@@ -38,8 +38,8 @@ class DurchgangGrouperSpec extends AnyWordSpec with Matchers {
         "K3 (1)" -> data
       ))
 
-      grouped.find(_.name == "K1 & K2 (1)").get.title.shouldBe("Abteilung 1 K1-K2-K3")
-      grouped.find(_.name == "K3 (1)").get.title.shouldBe("Abteilung 1 K1-K2-K3")
+      grouped.find(_.name == "K1 & K2 (1)").get.title.shouldBe("Abteilung 1 (K1, K2, K3)")
+      grouped.find(_.name == "K3 (1)").get.title.shouldBe("Abteilung 1 (K1, K2, K3)")
     }
 
     "expose the grouped output also as a title-name keyed map" in {
@@ -49,8 +49,8 @@ class DurchgangGrouperSpec extends AnyWordSpec with Matchers {
       ))
 
       grouped.keySet shouldBe Set(
-        ("Abteilung 1 K1-K2", "K1 (1)"),
-        ("Abteilung 1 K1-K2", "K2 (1)")
+        ("Abteilung 1 (K1, K2)", "K1 (1)"),
+        ("Abteilung 1 (K1, K2)", "K2 (1)")
       )
     }
 
@@ -62,10 +62,10 @@ class DurchgangGrouperSpec extends AnyWordSpec with Matchers {
         "K4 (1)" -> data
       ), maxParallelProGruppe = 3)
 
-      grouped.find(_.name == "K1 (1)").get.title shouldBe "Abteilung 1 K1-K2-K3"
-      grouped.find(_.name == "K2 (1)").get.title shouldBe "Abteilung 1 K1-K2-K3"
-      grouped.find(_.name == "K3 (1)").get.title shouldBe "Abteilung 1 K1-K2-K3"
-      grouped.find(_.name == "K4 (1)").get.title shouldBe "Abteilung 2 K4"
+      grouped.find(_.name == "K1 (1)").get.title shouldBe "Abteilung 1 (K1, K2, K3)"
+      grouped.find(_.name == "K2 (1)").get.title shouldBe "Abteilung 1 (K1, K2, K3)"
+      grouped.find(_.name == "K3 (1)").get.title shouldBe "Abteilung 1 (K1, K2, K3)"
+      grouped.find(_.name == "K4 (1)").get.title shouldBe "Abteilung 2 (K4)"
     }
 
     "keep unlimited grouping behavior when max parallel count is disabled" in {
@@ -76,7 +76,7 @@ class DurchgangGrouperSpec extends AnyWordSpec with Matchers {
         "K4 (1)" -> data
       ), maxParallelProGruppe = 0)
 
-      grouped.map(_.title).toSet shouldBe Set("Abteilung 1 K1-K2-K3-K4")
+      grouped.map(_.title).toSet shouldBe Set("K1 (1)","K2 (1)","K3 (1)","K4 (1)")
     }
   }
 }

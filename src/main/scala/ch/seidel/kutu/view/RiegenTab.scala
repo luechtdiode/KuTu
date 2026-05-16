@@ -10,6 +10,7 @@ import ch.seidel.kutu.renderer.*
 import ch.seidel.kutu.squad.{DurchgangBuilder, DurchgangGrouper}
 import javafx.scene.control as jfxsc
 import javafx.scene.text.Text
+import org.apache.pekko.http.scaladsl.server.PathMatcher.Lift.MOps.OptionMOps
 import scalafx.Includes.{eventClosureWrapperWithParam, jfxActionEvent2sfx, jfxBooleanBinding2sfx, jfxBounds2sfx, jfxCellEditEvent2sfx, jfxKeyEvent2sfx, jfxMouseEvent2sfx, jfxObjectProperty2sfx, jfxParent2sfx, jfxPixelReader2sfx, jfxReadOnlyBooleanProperty2sfx, jfxTableViewSelectionModel2sfx, jfxText2sfxText, observableList2ObservableBuffer, when}
 import scalafx.application.Platform
 import scalafx.beans.binding.Bindings
@@ -439,6 +440,18 @@ class RiegenTab(override val wettkampfInfo: WettkampfInfo, override val service:
 
   }
 
+  val chkSplitPgm = new CheckBox() {
+    text = "Programme / Kategorien teilen"
+  }
+  val cbSplitSex = new ComboBox[SexDivideRule]() {
+    items.get.addAll(null, GemischteRiegen, GemischterDurchgang, GetrennteDurchgaenge)
+    promptText = "automatisch"
+  }
+  val chkSeparateRiegen2Durchgang = new CheckBox() {
+    text = "Riegen2 in separaten Durchgang einteilen"
+    selected = false
+  }
+
   private val txtGruppengroesse = new TextField() {
     text = if wettkampfInfo.isAthletikTest then "0" else "11"
     tooltip = "Max. Gruppengrösse oder 0 für gleichmässige Verteilung mit einem Durchgang."
@@ -446,7 +459,7 @@ class RiegenTab(override val wettkampfInfo: WettkampfInfo, override val service:
 
   private val txtMaxParallelDurchgaengeProGruppe = new TextField() {
     text = "3"
-    tooltip = "Max. Anzahl paralleler Durchgänge pro Durchganggruppe. 0 = unbegrenzt."
+    tooltip = "Max. Anzahl paralleler Durchgänge pro Durchganggruppe. Wert kleiner 2 => keine Durchganggruppen."
   }
 
   override def release: Unit = {
@@ -629,27 +642,17 @@ class RiegenTab(override val wettkampfInfo: WettkampfInfo, override val service:
       })
       val inistartriegen = allDurchgaenge.filter(dg => durchgang.contains(dg.getValue.durchgang.name)).map(_.getValue.initstartriegen)
       val startgeraete = inistartriegen.flatMap(_.keySet).distinct
-      val cbSplitSex = new ComboBox[SexDivideRule]() {
-        items.get.addAll(null, GemischteRiegen, GemischterDurchgang, GetrennteDurchgaenge)
-        if durchgang.nonEmpty then {
-          selectionModel.value.selectFirst()
-        }
-        promptText = "automatisch"
+      if durchgang.nonEmpty then {
+        cbSplitSex.selectionModel.value.selectFirst()
       }
-      val chkSplitPgm = new CheckBox() {
-        text = "Programme / Kategorien teilen"
-        selected = durchgang.size != 1
-      }
-      val chkSeparateRiegen2Durchgang = new CheckBox() {
-        text = "Riegen2 in separaten Durchgang einteilen"
-        selected = false
-      }
+      chkSplitPgm.selected = durchgang.size != 1
       val lvOnDisziplines = new ListView[CheckListBoxEditor[Disziplin]] {
         prefHeight = 250
+        val ispureMasculine: Boolean = service.selectWertungen(wettkampfId=Some(wettkampf.id)).forall(w => w.athlet.geschlecht.equals("M"))
         disziplinlist.foreach { d =>
           val cde = CheckListBoxEditor[Disziplin](d)
           if durchgang.isEmpty then {
-            cde.selected.value = wettkampfInfo.startDisziplinList.contains(d)
+            cde.selected.value = ispureMasculine || wettkampfInfo.startDisziplinList.contains(d)
           } else {
             cde.selected.value = startgeraete.contains(d)
           }
@@ -672,7 +675,7 @@ class RiegenTab(override val wettkampfInfo: WettkampfInfo, override val service:
 
       def getMaxParallelDurchgaengeProGruppe: Int = {
         val configured = str2Int(txtMaxParallelDurchgaengeProGruppe.text.value)
-        if configured <= 0 then Int.MaxValue else configured
+        if configured < 0 then Int.MaxValue else configured
       }
 
       val titel = if durchgang.nonEmpty then
@@ -682,7 +685,7 @@ class RiegenTab(override val wettkampfInfo: WettkampfInfo, override val service:
       PageDisplayer.showInDialog(titel, new DisplayablePage() {
         def getPage: Node = {
           new GridPane {
-            prefWidth = 400
+            prefWidth = 500
             hgap = 10
             vgap = 10
             add(new Label("Maximale Gruppengrösse: "), 0, 0)
@@ -744,7 +747,7 @@ class RiegenTab(override val wettkampfInfo: WettkampfInfo, override val service:
                    durchgang = Some(durchgang),
                    start = Some(start.id),
                    kind = if wertungen.nonEmpty then RiegeRaw.KIND_STANDARD else RiegeRaw.KIND_EMPTY_RIEGE
-                 ), wertungen)
+                 ), wertungen, !chkSeparateRiegen2Durchgang.selected.value)
                }
 
 

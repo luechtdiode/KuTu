@@ -348,19 +348,16 @@ class NetworkTab(wettkampfmode: BooleanProperty, override val wettkampfInfo: Wet
           }
         }
       }
-      if model.isEmpty then {
+      if model.isEmpty || items.isEmpty then {
         model.setAll(items.asJavaCollection)
       } else {
-        items.zip(model).foreach(pair => syncTreeItems(pair._1, pair._2))
         if items.size < model.size then {
           model.removeRange(items.size, model.size - 1)
         }
-        if model.isEmpty then {
+        items.zip(model).foreach(pair => syncTreeItems(pair._1, pair._2))
+        if model.isEmpty || items.size > model.size then {
           val collection = items.asJavaCollection
           model.setAll(collection)
-        }
-        if items.size > model.size then {
-          items.drop(model.size).foreach(model.add)
         }
       }
 

@@ -224,29 +224,37 @@ trait RiegenService extends DBService with RiegenResultMapper {
     }, Duration.Inf)
   }
 
-  def insertRiegenWertungen(riege: RiegeRaw, wertungen: Seq[Wertung]): Unit = {
+  def insertRiegenWertungen(riege: RiegeRaw, wertungen: Seq[Wertung], deriveRiege2Barren: Boolean = true): Unit = {
     val barrenDisziplinId = Some(5L)
-    val riege2List = wertungen.flatMap(w => w.riege2)
+    val riege2List: Seq[DBIOAction[Int, NoStream, Effect]] = if deriveRiege2Barren then wertungen
+      .flatMap(w => w.riege2)
       .toSet
       .map{(r2: String) =>
         updateOrInsertRiegeRawAction(
           RiegeRaw(riege.wettkampfId, r2, riege.durchgang, barrenDisziplinId, RiegeRaw.KIND_STANDARD))
       }
       .toList
+    else List.empty
+    
     Await.result(database.run{(
       updateOrInsertRiegeRawAction(riege) >>
       DBIO.sequence(riege2List) >>
       DBIO.sequence(for w <- wertungen yield {
         w.riege2 match {
+          case Some(riege2) if riege2.equals(riege.r) =>
+            sqlu"""     UPDATE wertung
+                    SET riege2=$riege2
+                    WHERE id=${w.id}
+          """
           case Some(riege2) =>
             sqlu"""     UPDATE wertung
                     SET riege=${riege.r}
-                      , riege2=$riege2
                     WHERE id=${w.id}
           """
           case _ =>
             sqlu"""     UPDATE wertung
                     SET riege=${riege.r}
+                       , riege2=null
                     WHERE id=${w.id}
           """
         }
